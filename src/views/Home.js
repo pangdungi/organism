@@ -407,7 +407,6 @@ function bindHomeEventPulseRefreshOnce() {
     refreshTracker();
   };
   document.addEventListener("calendar-time-rows-updated", refresh);
-  document.addEventListener("calendar-budget-scheduled-updated", refreshPulse);
 }
 
 /** 막대 좌·우 계획/실제 분: 60분 미만 「Nm」(기존), 이상 「h시간 m분」 */
@@ -754,7 +753,7 @@ function appendHomeMainBelowToolbar(el) {
   const timelineMount = document.createElement("div");
   timelineMount.className = "home-1day-timeline-mount";
   timelineMount.appendChild(
-    render1DayView(null, LP_CAL_TODO_SIDEBAR_NONE, null, true),
+    render1DayView(null, LP_CAL_TODO_SIDEBAR_NONE, true),
   );
   timelineSection.appendChild(timelineMount);
   section2.appendChild(timelineSection);

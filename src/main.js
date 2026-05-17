@@ -1,4 +1,5 @@
 import "./main.css";
+import "./styles/time-ledger.css";
 import { showOnly } from "./pages.js";
 import {
   login,

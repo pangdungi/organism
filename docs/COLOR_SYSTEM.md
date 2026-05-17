@@ -55,7 +55,8 @@ applyTimeCategoryColors()가 동적으로 `<style id="time-category-colors-style
 | `Time.js` | 작업 카테고리 드롭다운 (cat-dream, cat-sideincome 등) |
 | `Time.js` | 오딧 그래프, 대시 도넛차트 |
 | `Calendar.js` | 1일 뷰 타임테이블 블록 (실제/예상) |
-| `main.css` | .time-tag-pill.prod-pink/blue/green, .time-dash-donut-seg 등 기본 스타일 |
+| `main.css` | 공통 셸; 과거 문서 기준 `.time-tag-pill` 등은 점진적으로 `time-ledger.css`로 이전 가능 |
+| `time-ledger.css` | 시간가계부 전용 정적 스타일 (루트 `.time-ledger-view` 스코프 권장) |
 
 ### 3-3. 작업 카테고리 색상 (taskCategoryColors + sectionColors) - cat-*
 
@@ -65,7 +66,7 @@ applyTaskCategoryColors()가 동적으로 `<style id="task-category-colors-style
 | 파일 | 용도 |
 |------|------|
 | `Time.js` | 카테고리 선택 (cat-dream, cat-sideincome, cat-pleasure 등) |
-| `main.css` | .time-tag-pill.cat-* 기본 스타일 (applyTaskCategoryColors가 덮어씀) |
+| `main.css` / `time-ledger.css` | `.time-tag-pill.cat-*` 정적 보조 스타일은 시간가계부 전용 시 `time-ledger.css`(applyTaskCategoryColors가 덮어씀) |
 
 ---
 

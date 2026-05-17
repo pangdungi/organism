@@ -97,7 +97,7 @@ export function render() {
   const defaultRangeEnd = `${y0}-${pad2(mo0 + 1)}-${pad2(lastDayOfMonth)}`;
 
   const searchRow = document.createElement("div");
-  searchRow.className = "archive-search-row";
+  searchRow.className = "archive-search-row lp-date-range-search-row";
 
   const searchWrap = document.createElement("div");
   searchWrap.className = "archive-search-wrap";
@@ -115,7 +115,8 @@ export function render() {
   searchWrap.appendChild(searchInput);
 
   const dateNavCluster = document.createElement("div");
-  dateNavCluster.className = "time-filter-nav-cluster archive-date-nav-cluster";
+  dateNavCluster.className =
+    "time-filter-nav-cluster lp-date-range-cluster archive-date-nav-cluster";
   const rangeWrap = document.createElement("div");
   rangeWrap.className = "time-filter-range-wrap archive-date-range-filter";
   rangeWrap.setAttribute("data-filter-wrap", "range");
@@ -135,15 +136,7 @@ export function render() {
   const startDateInput = rangeWrap.querySelector(".time-filter-start-date");
   const endDateInput = rangeWrap.querySelector(".time-filter-end-date");
 
-  /** 모바일: YYYY-MM-DD → "2026년 4월 1일(수)" */
-  function formatArchiveFilterDateKr(dStr) {
-    if (!dStr || !/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return "";
-    const [y, mo, d] = dStr.split("-").map(Number);
-    const dt = new Date(y, mo - 1, d);
-    const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
-    return `${y}년 ${mo}월 ${d}일(${weekdays[dt.getDay()]})`;
-  }
-  /** 데스크톱: 시간가계부 필터와 동일 — "2026. 04. 04(토)" (끝 마침표 없음) */
+  /** 시간가계부와 동일 — "2026. 04. 04(토)" (모바일·데스크톱 공통) */
   function formatArchiveFilterDateDotsWithWeekday(dStr) {
     if (!dStr || !/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return "";
     const [y, mo, d] = dStr.split("-").map(Number);
@@ -159,12 +152,7 @@ export function render() {
       ".time-filter-date-label--start",
     );
     const endLabel = rangeWrap.querySelector(".time-filter-date-label--end");
-    const isDesktop =
-      typeof window !== "undefined" &&
-      window.matchMedia("(min-width: 48.0625rem)").matches;
-    const fmt = isDesktop
-      ? formatArchiveFilterDateDotsWithWeekday
-      : formatArchiveFilterDateKr;
+    const fmt = formatArchiveFilterDateDotsWithWeekday;
     if (startLabel) startLabel.textContent = fmt(startDateInput.value || "");
     if (endLabel) endLabel.textContent = fmt(endDateInput.value || "");
   }
@@ -174,34 +162,29 @@ export function render() {
   syncArchiveDateLabels();
   startDateInput.addEventListener("input", syncArchiveDateLabels);
   endDateInput.addEventListener("input", syncArchiveDateLabels);
-  window.addEventListener("resize", syncArchiveDateLabels, {
-    signal: archiveTabAbort.signal,
-  });
 
-  if (mobileViewport) {
-    const openArchiveRangeDate = (inp) => {
-      if (!inp) return;
+  const openArchiveRangeDate = (inp) => {
+    if (!inp) return;
+    try {
+      inp.focus({ preventScroll: true });
+    } catch (_) {
+      inp.focus();
+    }
+    if (typeof inp.showPicker === "function") {
       try {
-        inp.focus({ preventScroll: true });
-      } catch (_) {
-        inp.focus();
-      }
-      if (typeof inp.showPicker === "function") {
-        try {
-          inp.showPicker();
-          return;
-        } catch (_) {}
-      }
-      inp.click();
-    };
-    rangeWrap.querySelectorAll(".time-filter-date-field").forEach((field) => {
-      const inp = field.querySelector('input[type="date"]');
-      if (!inp) return;
-      field.addEventListener("click", () => {
-        openArchiveRangeDate(inp);
-      });
+        inp.showPicker();
+        return;
+      } catch (_) {}
+    }
+    inp.click();
+  };
+  rangeWrap.querySelectorAll(".time-filter-date-field").forEach((field) => {
+    const inp = field.querySelector('input[type="date"]');
+    if (!inp) return;
+    field.addEventListener("click", () => {
+      openArchiveRangeDate(inp);
     });
-  }
+  });
 
   dateNavCluster.appendChild(rangeWrap);
   searchRow.appendChild(searchWrap);

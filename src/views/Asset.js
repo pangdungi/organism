@@ -6977,8 +6977,8 @@ function renderExpenseView(options = {}) {
   filterBar.className = "asset-expense-filter-bar";
   filterBar.innerHTML = `
     <div class="asset-expense-filter-add-row time-ledger-filter-add-row">
-      <div class="time-filter-bar">
-        <div class="time-filter-nav-cluster asset-expense-date-nav-cluster">
+      <div class="time-filter-bar lp-date-range-host">
+        <div class="time-filter-nav-cluster lp-date-range-cluster asset-expense-date-nav-cluster">
           <div class="time-filter-range-wrap asset-expense-date-range-wrap" data-filter-wrap="range">
             <div class="time-filter-date-field">
               <input type="date" class="time-filter-start-date" name="asset-filter-start" aria-label="시작일" />
@@ -8397,8 +8397,8 @@ function renderCashflowView() {
   periodToolbar.className = "asset-expense-filter-bar asset-cashflow-period-toolbar";
   periodToolbar.innerHTML = `
     <div class="asset-expense-filter-add-row time-ledger-filter-add-row">
-      <div class="time-filter-bar">
-        <div class="time-filter-nav-cluster asset-expense-date-nav-cluster asset-cashflow-date-nav-cluster">
+      <div class="time-filter-bar lp-date-range-host">
+        <div class="time-filter-nav-cluster lp-date-range-cluster asset-expense-date-nav-cluster asset-cashflow-date-nav-cluster">
           <div class="time-filter-range-wrap asset-expense-date-range-wrap" data-cashflow-range="1">
             <div class="time-filter-date-field">
               <input type="date" class="time-filter-start-date asset-cashflow-range-start" name="cashflow-filter-start" aria-label="현금흐름 시작일" />

@@ -21,10 +21,13 @@ import { render as renderArchive } from "./views/Archive.js";
 import { render as renderDiary } from "./views/Diary.js";
 import { render as renderIdea } from "./views/Idea.js";
 import { render as renderAdmin } from "./views/Admin.js";
-import { render as renderHome } from "./views/Home.js";
 import { supabase } from "./supabase.js";
 import { isAppAdminUser } from "./utils/adminAccess.js";
 import { showToast } from "./utils/showToast.js";
+import {
+  APP_FOOTER_ICON_BTN_CLASS,
+  clearAppFooterActions,
+} from "./utils/appFooterShell.js";
 import { pullCalendarSectionTasksFromSupabase } from "./utils/todoSectionTasksSupabase.js";
 import { attachAssetExpenseTransactionsSaveListener } from "./utils/assetExpenseTransactionsSupabase.js";
 import { initPushReminderInAppPopup } from "./utils/initPushReminderInAppPopup.js";
@@ -66,7 +69,7 @@ import { initDomPulseDebug } from "./utils/domPulseDebug.js";
 import { initMobileVisualViewportKeyboardInset } from "./utils/mobileViewportKeyboard.js";
 import { logTodoScheduleTabOnNavigate } from "./utils/lpTabDataSourceLog.js";
 
-/** 데스크톱 사이드바 그룹·순서 (모바일 하단 순서와 별개) */
+/** 상위 탭 메타(아이콘·메뉴 런처 구역 순서) */
 const TABS = [
   {
     id: "home",
@@ -165,7 +168,6 @@ const SIDEBAR_SECTION_ORDER = ["main", "bucket", "other"];
 const SIDEBAR_SECTION_LABEL = { bucket: "버킷", other: "기타" };
 
 const RENDERERS = {
-  home: renderHome,
   calendar: renderCalendar,
   time: renderTime,
   workschedule: () =>
@@ -305,9 +307,6 @@ async function pullDataForActiveTab(tabId, opts = {}) {
 }
 
 const ROUTINE_REMOVED_KEY = "app-routine-removed-v1";
-const SIDEBAR_COLLAPSED_KEY = "app-sidebar-collapsed-v1";
-/** 타블릿·좁은 창: 본문(타임블록 등) 너비 확보 — 48rem 이하에서는 하단 탭이라 사이드바가 숨겨짐 */
-const SIDEBAR_AUTO_COLLAPSE_MQ = "(max-width: 1024px)";
 
 function migrateRemoveRoutineTasks() {
   if (localStorage.getItem(ROUTINE_REMOVED_KEY) === "1") return;
@@ -379,120 +378,7 @@ export async function mountApp(container) {
   const appScreen = document.createElement("div");
   appScreen.id = "app-screen-inner";
 
-  const sidebar = document.createElement("aside");
-  sidebar.className = "app-sidebar";
-
-  const sidebarHeader = document.createElement("div");
-  sidebarHeader.className = "app-sidebar-header";
-
-  const brandTitle = document.createElement("div");
-  brandTitle.className = "app-sidebar-brand-title";
-  const brandTitleText = document.createElement("span");
-  brandTitleText.className = "app-sidebar-brand-title-text";
-  brandTitleText.textContent = "Organism";
-  brandTitle.appendChild(brandTitleText);
-  sidebarHeader.appendChild(brandTitle);
-
-  const sidebarToggle = document.createElement("button");
-  sidebarToggle.type = "button";
-  sidebarToggle.className = "app-sidebar-toggle";
-  sidebarToggle.innerHTML =
-    '<img src="/toolbaricons/caret-left-double.svg" alt="" class="app-sidebar-toggle-icon" width="20" height="20" />';
-  sidebarHeader.appendChild(sidebarToggle);
-  sidebar.appendChild(sidebarHeader);
-
-  const nav = document.createElement("nav");
-  nav.className = "app-sidebar-nav";
-
-  const HIDE_ON_MOBILE_TAB_IDS = [
-    "dream",
-    "sideincome",
-    "happiness",
-    "health",
-    "asset",
-  ];
-
-  function appendSidebarIcon(btn, iconSrc) {
-    const iconWrap = document.createElement("span");
-    iconWrap.className = "app-sidebar-item-icon";
-    const iconImg = document.createElement("img");
-    iconImg.src = iconSrc;
-    iconImg.alt = "";
-    iconImg.width = 20;
-    iconImg.height = 20;
-    iconImg.loading = "lazy";
-    iconWrap.appendChild(iconImg);
-    btn.appendChild(iconWrap);
-  }
-
-  function appendSidebarTabButton(tab) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className =
-      "app-sidebar-item" + (tab.id === currentTabId ? " active" : "");
-    if (HIDE_ON_MOBILE_TAB_IDS.includes(tab.id)) {
-      btn.classList.add("app-sidebar-item--hide-on-mobile");
-    }
-    if (tab.sidebarDesktopOnly) {
-      btn.classList.add("app-sidebar-item--desktop-only");
-    }
-    if (tab.sidebarMobileOnly) {
-      btn.classList.add("app-sidebar-item--mobile-only");
-    }
-    btn.dataset.tabId = tab.id;
-    btn.title = tab.label;
-    appendSidebarIcon(btn, tab.iconDesktop ?? tab.icon);
-    const label = document.createElement("span");
-    label.className = "app-sidebar-item-label";
-    label.textContent = tab.label;
-    btn.appendChild(label);
-    nav.appendChild(btn);
-  }
-
-  const sidebarGroups = { main: [], bucket: [], other: [] };
-  TABS.forEach((tab) => {
-    const sec = tab.sidebarSection === "bucket" || tab.sidebarSection === "other" ? tab.sidebarSection : "main";
-    sidebarGroups[sec].push(tab);
-  });
-  SIDEBAR_SECTION_ORDER.forEach((sec) => {
-    sidebarGroups[sec].sort(
-      (a, b) => (a.sidebarOrder ?? 0) - (b.sidebarOrder ?? 0),
-    );
-    if (sec !== "main" && SIDEBAR_SECTION_LABEL[sec]) {
-      const sectionEl = document.createElement("div");
-      sectionEl.className = "app-sidebar-section-label";
-      sectionEl.textContent = SIDEBAR_SECTION_LABEL[sec];
-      nav.appendChild(sectionEl);
-    }
-    sidebarGroups[sec].forEach((tab) => appendSidebarTabButton(tab));
-  });
-
-  const accountBtn = document.createElement("button");
-  accountBtn.type = "button";
-  accountBtn.className = "app-sidebar-item app-sidebar-logout";
-  accountBtn.title = "나의 계정";
-  accountBtn.dataset.tabId = "idea";
-  appendSidebarIcon(accountBtn, "/toolbaricons/user-square.svg");
-  const accountLabel = document.createElement("span");
-  accountLabel.className = "app-sidebar-item-label";
-  accountLabel.textContent = "나의 계정";
-  accountBtn.appendChild(accountLabel);
-  nav.appendChild(accountBtn);
-
-  const adminNavBtn = document.createElement("button");
-  adminNavBtn.type = "button";
-  adminNavBtn.className = "app-sidebar-item app-sidebar-item--admin-only";
-  adminNavBtn.hidden = true;
-  adminNavBtn.title = "관리자전용";
-  adminNavBtn.dataset.tabId = "admin";
-  appendSidebarIcon(adminNavBtn, "/toolbaricons/settings.svg");
-  const adminNavLabel = document.createElement("span");
-  adminNavLabel.className = "app-sidebar-item-label";
-  adminNavLabel.textContent = "관리자전용";
-  adminNavBtn.appendChild(adminNavLabel);
-  nav.appendChild(adminNavBtn);
-
-  let adminBottomBtn = null;
+  let launcherAdminBtn = null;
 
   async function syncAdminMenuVisibility() {
     let show = false;
@@ -502,111 +388,11 @@ export async function mountApp(container) {
         show = isAppAdminUser(session?.user);
       } catch (_) {}
     }
-    adminNavBtn.hidden = !show;
-    if (adminBottomBtn) adminBottomBtn.hidden = !show;
+    if (launcherAdminBtn) launcherAdminBtn.hidden = !show;
   }
-  const sidebarBody = document.createElement("div");
-  sidebarBody.className = "app-sidebar-body";
-  sidebarBody.appendChild(nav);
-  sidebar.appendChild(sidebarBody);
-
-  let sidebarCollapsedUserPreference = false;
-  try {
-    sidebarCollapsedUserPreference =
-      localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
-  } catch (_) {}
-
-  function applySidebarCollapsedVisual(collapsed) {
-    sidebar.classList.toggle("is-collapsed", collapsed);
-    sidebarToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
-    sidebarToggle.setAttribute(
-      "aria-label",
-      collapsed ? "사이드바 펼치기" : "사이드바 접기",
-    );
-  }
-
-  function persistSidebarCollapsedPreference(collapsed) {
-    sidebarCollapsedUserPreference = collapsed;
-    try {
-      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? "1" : "0");
-    } catch (_) {}
-  }
-
-  function applySidebarCollapsed(collapsed, { persist = true } = {}) {
-    applySidebarCollapsedVisual(collapsed);
-    if (persist) persistSidebarCollapsedPreference(collapsed);
-  }
-
-  const sidebarAutoCollapseMql = (() => {
-    try {
-      return window.matchMedia(SIDEBAR_AUTO_COLLAPSE_MQ);
-    } catch (_) {
-      return null;
-    }
-  })();
-
-  function syncSidebarCollapsedForNarrowViewport() {
-    if (!sidebarAutoCollapseMql) {
-      applySidebarCollapsedVisual(sidebarCollapsedUserPreference);
-      return;
-    }
-    if (sidebarAutoCollapseMql.matches) {
-      applySidebarCollapsedVisual(true);
-    } else {
-      applySidebarCollapsedVisual(sidebarCollapsedUserPreference);
-    }
-  }
-
-  syncSidebarCollapsedForNarrowViewport();
-  if (sidebarAutoCollapseMql?.addEventListener) {
-    sidebarAutoCollapseMql.addEventListener(
-      "change",
-      syncSidebarCollapsedForNarrowViewport,
-    );
-  } else if (sidebarAutoCollapseMql?.addListener) {
-    sidebarAutoCollapseMql.addListener(syncSidebarCollapsedForNarrowViewport);
-  }
-
-  sidebarToggle.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    let narrow = false;
-    try {
-      narrow = window.matchMedia(SIDEBAR_AUTO_COLLAPSE_MQ).matches;
-    } catch (_) {}
-    const collapsedNow = sidebar.classList.contains("is-collapsed");
-    const next = !collapsedNow;
-    if (narrow) {
-      applySidebarCollapsedVisual(next);
-      return;
-    }
-    applySidebarCollapsed(next);
-  });
-
-  appScreen.appendChild(sidebar);
 
   const main = document.createElement("main");
   main.className = "app-main";
-
-  const menuBtn = document.createElement("button");
-  menuBtn.className = "app-menu-btn";
-  menuBtn.innerHTML = "☰";
-  menuBtn.title = "메뉴";
-  menuBtn.addEventListener("click", () => {
-    const wasOpen = sidebar.classList.contains("is-open");
-    sidebar.classList.toggle("is-open");
-    document.querySelector(".app-sidebar-overlay")?.remove();
-    if (!wasOpen) {
-      const overlay = document.createElement("div");
-      overlay.className = "app-sidebar-overlay";
-      overlay.addEventListener("click", () => {
-        sidebar.classList.remove("is-open");
-        overlay.remove();
-      });
-      document.body.appendChild(overlay);
-    }
-  });
-  main.appendChild(menuBtn);
 
   const panel = document.createElement("div");
   panel.className = "app-tab-panel";
@@ -632,6 +418,32 @@ export async function mountApp(container) {
     applySetActiveTab(tabId);
   }
 
+  const footerNav = document.createElement("nav");
+  footerNav.className = "app-footer-menu";
+  footerNav.setAttribute("aria-label", "하단 메뉴");
+  const footerBackBtn = document.createElement("button");
+  footerBackBtn.type = "button";
+  footerBackBtn.className = `app-footer-menu-back ${APP_FOOTER_ICON_BTN_CLASS}`;
+  footerBackBtn.title = "오늘(메인)으로";
+  footerBackBtn.setAttribute("aria-label", "오늘(메인)으로");
+  footerBackBtn.innerHTML =
+    '<img src="/toolbaricons/caret-left-circle.svg" alt="" width="22" height="22" aria-hidden="true" />';
+  footerBackBtn.addEventListener("click", () => setActiveTab("home"));
+  const footerSpacer = document.createElement("div");
+  footerSpacer.className = "app-footer-spacer";
+  footerSpacer.setAttribute("aria-hidden", "true");
+  const footerActionsSlot = document.createElement("div");
+  footerActionsSlot.className = "app-footer-actions";
+  footerActionsSlot.setAttribute("data-lp-app-footer-actions", "");
+  footerNav.appendChild(footerBackBtn);
+  footerNav.appendChild(footerSpacer);
+  footerNav.appendChild(footerActionsSlot);
+
+  function syncAppFooterVisibility() {
+    footerNav.hidden = currentTabId === "home";
+  }
+  syncAppFooterVisibility();
+
   let _tabSwitchTimer = null;
 
   function applySetActiveTab(tabId) {
@@ -641,16 +453,6 @@ export async function mountApp(container) {
     persistActiveTabId(tabId);
     logTodoScheduleTabOnNavigate(tabId, fromTab);
     logTabSync("tab_switch", { from: fromTab, to: tabId });
-    /* 하이라이트(싸게 처리) — 즉시 반영 */
-    nav.querySelectorAll(".app-sidebar-item").forEach((b) => {
-      b.classList.toggle("active", b.dataset.tabId === tabId);
-    });
-    accountBtn.classList.toggle("active", tabId === "idea");
-    if (bottomNav) {
-      bottomNav.querySelectorAll(".app-bottom-nav-item").forEach((b) => {
-        b.classList.toggle("active", b.dataset.tabId === tabId);
-      });
-    }
     /* 렌더·pull은 빠른 연속 탭 전환 시 마지막 탭만 처리하도록 디바운스(80ms) */
     if (_tabSwitchTimer != null) clearTimeout(_tabSwitchTimer);
     _tabSwitchTimer = setTimeout(() => {
@@ -666,7 +468,7 @@ export async function mountApp(container) {
           renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
           return;
         }
-        /* 그 외 탭: pull 대기 중에도 본문을 바로 갈아끼움 — 무거운 pull이 1~2초 걸릴 때 하단 탭만 바뀌고 화면이 남는 현상 방지 */
+        /* 그 외 탭: pull 대기 중에도 본문을 바로 갈아끼움 — 무거운 pull이 1~2초 걸릴 때 탭만 바뀌고 화면이 남는 현상 방지 */
         renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
         try {
           await pullDataForActiveTab(targetTabId, { fromBoot: false });
@@ -690,11 +492,6 @@ export async function mountApp(container) {
           try {
             window.__lpIdeaSoftRefresh?.();
           } catch (_) {}
-        } else if (targetTabId === "home") {
-          /* 오늘: 첫 render는 즉시 표시, pull 후 통째 renderMain 하면 1~2초 뒤에야 갱신되는 것처럼 보임 — 본문 유지 후 부분 갱신 */
-          try {
-            window.__lpHomeAfterPullRefresh?.();
-          } catch (_) {}
         } else if (targetTabId === "asset") {
           /* 자산관리: pull 뒤 두 번째 renderMain 으로 패널을 통째로 갈아끼우면 순자산 등이 깜빡임 — 현재 하위 탭만 다시 그림 */
           try {
@@ -703,7 +500,11 @@ export async function mountApp(container) {
         } else {
           renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
         }
-        if (targetTabId === "idea" || targetTabId === "admin") {
+        if (
+          targetTabId === "idea" ||
+          targetTabId === "admin" ||
+          targetTabId === "home"
+        ) {
           requestAnimationFrame(() => {
             main.scrollTop = 0;
           });
@@ -712,122 +513,99 @@ export async function mountApp(container) {
     }, 80);
   }
 
-  nav.querySelectorAll(".app-sidebar-item").forEach((b) => {
-    b.addEventListener("click", () => {
-      setActiveTab(b.dataset.tabId);
-      sidebar.classList.remove("is-open");
-      document.querySelector(".app-sidebar-overlay")?.remove();
+  function appendLauncherIcon(btn, iconSrc) {
+    const iconWrap = document.createElement("span");
+    iconWrap.className = "app-home-menu-launcher-icon";
+    const img = document.createElement("img");
+    img.src = iconSrc;
+    img.alt = "";
+    img.width = 22;
+    img.height = 22;
+    img.loading = "lazy";
+    iconWrap.appendChild(img);
+    btn.appendChild(iconWrap);
+  }
+
+  function renderHomeMenuLauncher() {
+    const root = document.createElement("div");
+    root.className = "app-home-menu-launcher";
+
+    const list = document.createElement("div");
+    list.className = "app-home-menu-launcher-list";
+
+    const groups = { main: [], bucket: [], other: [] };
+    TABS.filter((t) => t.id !== "home").forEach((tab) => {
+      const sec =
+        tab.sidebarSection === "bucket" || tab.sidebarSection === "other"
+          ? tab.sidebarSection
+          : "main";
+      groups[sec].push(tab);
     });
-  });
-  accountBtn.addEventListener("click", () => {
-    setActiveTab("idea");
-    sidebar.classList.remove("is-open");
-    document.querySelector(".app-sidebar-overlay")?.remove();
-  });
-
-  const bottomNav = document.createElement("nav");
-  bottomNav.className = "app-bottom-nav";
-  bottomNav.setAttribute("aria-label", "하단 메뉴");
-  const bottomNavMain = document.createElement("div");
-  bottomNavMain.className = "app-bottom-nav-main";
-
-  const mobileTabsFiltered = TABS.filter(
-    (t) => !HIDE_ON_MOBILE_TAB_IDS.includes(t.id) && !t.sidebarDesktopOnly,
-  );
-  /** 모바일 하단 탭 순서: 오늘 → 시간 → 할일 → 일정 → 근무표 → … */
-  const MOBILE_BOTTOM_NAV_ORDER = [
-    "home",
-    "time",
-    "calendar",
-    "schedulecalendar",
-    "workschedule",
-    "diary",
-    "archive",
-  ];
-  const mobileTabs = [
-    ...MOBILE_BOTTOM_NAV_ORDER.map((id) =>
-      mobileTabsFiltered.find((t) => t.id === id),
-    ).filter(Boolean),
-    ...mobileTabsFiltered.filter(
-      (t) => !MOBILE_BOTTOM_NAV_ORDER.includes(t.id),
-    ),
-  ];
-  mobileTabs.forEach((tab) => {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className =
-      "app-bottom-nav-item" + (tab.id === currentTabId ? " active" : "");
-    btn.dataset.tabId = tab.id;
-    const navLabel = tab.mobileLabel ?? tab.label;
-    btn.title = navLabel;
-    btn.innerHTML = `<img src="${tab.icon}" alt="" class="app-bottom-nav-icon" width="20" height="20"><span class="app-bottom-nav-label">${navLabel}</span>`;
-    btn.addEventListener("click", () => {
-      setActiveTab(tab.id);
-      sidebar.classList.remove("is-open");
-      document.querySelector(".app-sidebar-overlay")?.remove();
+    SIDEBAR_SECTION_ORDER.forEach((sec) => {
+      groups[sec].sort(
+        (a, b) => (a.sidebarOrder ?? 0) - (b.sidebarOrder ?? 0),
+      );
+      if (sec !== "main" && SIDEBAR_SECTION_LABEL[sec]) {
+        const lab = document.createElement("div");
+        lab.className = "app-home-menu-launcher-section";
+        lab.textContent = SIDEBAR_SECTION_LABEL[sec];
+        list.appendChild(lab);
+      }
+      groups[sec].forEach((tab) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "app-home-menu-launcher-btn";
+        btn.dataset.tabId = tab.id;
+        btn.title = tab.label;
+        appendLauncherIcon(btn, tab.iconDesktop ?? tab.icon);
+        const labelSpan = document.createElement("span");
+        labelSpan.className = "app-home-menu-launcher-label";
+        labelSpan.textContent = tab.label;
+        btn.appendChild(labelSpan);
+        btn.addEventListener("click", () => setActiveTab(tab.id));
+        list.appendChild(btn);
+      });
     });
-    bottomNavMain.appendChild(btn);
-  });
-  /* 모바일 하단: 나의 계정 바로 앞에 꿈·행복·부수입·건강·자산 (가로 스크롤로 모두 접근) */
-  const KPI_MOBILE_IN_MAIN_ORDER = [
-    "dream",
-    "happiness",
-    "sideincome",
-    "health",
-    "asset",
-  ];
-  KPI_MOBILE_IN_MAIN_ORDER.forEach((id) => {
-    const tab = TABS.find((t) => t.id === id);
-    if (!tab) return;
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className =
-      "app-bottom-nav-item app-bottom-nav-item--kpi" +
-      (tab.id === currentTabId ? " active" : "");
-    btn.dataset.tabId = tab.id;
-    const navLabel = tab.mobileLabel ?? tab.label;
-    btn.title = navLabel;
-    btn.innerHTML = `<img src="${tab.icon}" alt="" class="app-bottom-nav-icon" width="20" height="20"><span class="app-bottom-nav-label">${navLabel}</span>`;
-    btn.addEventListener("click", () => {
-      setActiveTab(tab.id);
-      sidebar.classList.remove("is-open");
-      document.querySelector(".app-sidebar-overlay")?.remove();
-    });
-    bottomNavMain.appendChild(btn);
-  });
-  const accountBottomBtn = document.createElement("button");
-  accountBottomBtn.type = "button";
-  accountBottomBtn.className =
-    "app-bottom-nav-item" + (currentTabId === "idea" ? " active" : "");
-  accountBottomBtn.dataset.tabId = "idea";
-  accountBottomBtn.title = "나의 계정";
-  accountBottomBtn.innerHTML =
-    '<img src="/toolbaricons/user-square.svg" alt="" class="app-bottom-nav-icon" width="20" height="20"><span class="app-bottom-nav-label">나의 계정</span>';
-  accountBottomBtn.addEventListener("click", () => {
-    setActiveTab("idea");
-    sidebar.classList.remove("is-open");
-    document.querySelector(".app-sidebar-overlay")?.remove();
-  });
-  bottomNavMain.appendChild(accountBottomBtn);
 
-  adminBottomBtn = document.createElement("button");
-  adminBottomBtn.type = "button";
-  adminBottomBtn.className =
-    "app-bottom-nav-item app-bottom-nav-item--admin-only" +
-    (currentTabId === "admin" ? " active" : "");
-  adminBottomBtn.dataset.tabId = "admin";
-  adminBottomBtn.title = "관리자전용";
-  adminBottomBtn.hidden = true;
-  adminBottomBtn.innerHTML =
-    '<img src="/toolbaricons/settings.svg" alt="" class="app-bottom-nav-icon" width="20" height="20"><span class="app-bottom-nav-label">관리자전용</span>';
-  adminBottomBtn.addEventListener("click", () => {
-    setActiveTab("admin");
-    sidebar.classList.remove("is-open");
-    document.querySelector(".app-sidebar-overlay")?.remove();
-  });
-  bottomNavMain.appendChild(adminBottomBtn);
+    root.appendChild(list);
 
-  bottomNav.appendChild(bottomNavMain);
+    const actions = document.createElement("div");
+    actions.className = "app-home-menu-launcher-actions";
+
+    const ideaBtn = document.createElement("button");
+    ideaBtn.type = "button";
+    ideaBtn.className =
+      "app-home-menu-launcher-btn app-home-menu-launcher-btn--muted";
+    ideaBtn.dataset.tabId = "idea";
+    ideaBtn.title = "나의 계정";
+    appendLauncherIcon(ideaBtn, "/toolbaricons/user-square.svg");
+    const ideaLabel = document.createElement("span");
+    ideaLabel.className = "app-home-menu-launcher-label";
+    ideaLabel.textContent = "나의 계정";
+    ideaBtn.appendChild(ideaLabel);
+    ideaBtn.addEventListener("click", () => setActiveTab("idea"));
+    actions.appendChild(ideaBtn);
+
+    launcherAdminBtn = document.createElement("button");
+    launcherAdminBtn.type = "button";
+    launcherAdminBtn.className =
+      "app-home-menu-launcher-btn app-home-menu-launcher-btn--admin";
+    launcherAdminBtn.hidden = true;
+    launcherAdminBtn.title = "관리자전용";
+    launcherAdminBtn.dataset.tabId = "admin";
+    appendLauncherIcon(launcherAdminBtn, "/toolbaricons/settings.svg");
+    const adminLbl = document.createElement("span");
+    adminLbl.className = "app-home-menu-launcher-label";
+    adminLbl.textContent = "관리자전용";
+    launcherAdminBtn.appendChild(adminLbl);
+    launcherAdminBtn.addEventListener("click", () => setActiveTab("admin"));
+    actions.appendChild(launcherAdminBtn);
+
+    root.appendChild(actions);
+    void syncAdminMenuVisibility();
+
+    return root;
+  }
 
   document.addEventListener("app-switch-tab", (e) => {
     const tabId = e.detail?.tabId;
@@ -907,7 +685,7 @@ export async function mountApp(container) {
    * @param {{ skipTodoSaveBeforeUnmount?: boolean, force?: boolean }} [opts]
    * - skipTodoSaveBeforeUnmount: 저장소를 이미 갱신한 뒤(예: 완료 일괄 제거) DOM이 옛 상태일 때 true.
    *   그렇지 않으면 save가 DOM을 다시 저장해 퍼지 결과를 덮어쓴다.
-   * - force: true일 때만 입력 중이어도 탭을 다시 그림(사이드/하단 메뉴로 화면 전환 시).
+   * - force: true일 때만 입력 중이어도 탭을 다시 그림(메뉴·코드 등으로 화면 전환 시).
    */
   function renderMain(mainEl, opts = {}) {
     logLpRenderStack("renderMain 진입", { tab: currentTabId, opts });
@@ -952,10 +730,15 @@ export async function mountApp(container) {
       } catch (_) {}
       prevRoot._lpTabAbortController = null;
     }
+    launcherAdminBtn = null;
+    clearAppFooterActions();
     p.innerHTML = "";
     const render = RENDERERS[currentTabId];
     try {
-      if (render) {
+      if (currentTabId === "home") {
+        const content = renderHomeMenuLauncher();
+        if (content) p.appendChild(content);
+      } else if (render) {
         const content = render();
         if (content) p.appendChild(content);
         if (window.matchMedia("(max-width: 48rem)").matches) {
@@ -987,6 +770,7 @@ export async function mountApp(container) {
         });
       });
     }
+    syncAppFooterVisibility();
   }
 
   window.__lpRenderMain = (opts) => renderMain(main, opts || {});
@@ -1014,6 +798,10 @@ export async function mountApp(container) {
   /* 서버 pull 은 상위 탭 전환(setActiveTab)·최초 진입 시에만 수행. 포커스 복귀 등에서는 pull 하지 않음. */
 
   logTabSync("boot", { tab: currentTabId, phase: "pull_then_first_render" });
+  appScreen.appendChild(main);
+  appScreen.appendChild(footerNav);
+  appPage.appendChild(appScreen);
+  container.appendChild(appPage);
   void (async () => {
     await syncAdminMenuVisibility();
     try {
@@ -1021,10 +809,6 @@ export async function mountApp(container) {
     } catch (_) {}
     renderMain(main);
   })();
-  appScreen.appendChild(main);
-  appPage.appendChild(appScreen);
-  appPage.appendChild(bottomNav);
-  container.appendChild(appPage);
   if (window.matchMedia("(max-width: 48rem)").matches) {
     initMobileVisualViewportKeyboardInset();
   }

@@ -48,105 +48,7 @@ export function timeLedgerLocalYesterdayYmd() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-const SS_AUDIT_START = "lp_time_audit_filter_start";
-const SS_AUDIT_END = "lp_time_audit_filter_end";
-const SS_RETROSPECT_START = "lp_time_retrospect_filter_start";
-const SS_RETROSPECT_END = "lp_time_retrospect_filter_end";
-
-/**
- * 오늘(또는 ymd)이 속한 주의 월요일~일요일(로컬 7일) YYYY-MM-DD
- * — 회고 표 열(Time.js startOfWeekMondayYmd)과 동일 기준.
- */
-function weekMondayToSundayContainingYmd(ymd) {
-  let dStr = ymd;
-  if (!dStr || !YMD_RE.test(dStr)) {
-    dStr = timeLedgerLocalTodayYmd();
-  }
-  const [y, mo, d] = dStr.split("-").map(Number);
-  const dt = new Date(y, mo - 1, d, 12, 0, 0, 0);
-  if (Number.isNaN(dt.getTime())) {
-    const t = timeLedgerLocalTodayYmd();
-    const [y2, mo2, d2] = t.split("-").map(Number);
-    dt.setFullYear(y2, mo2 - 1, d2);
-  }
-  const daysSinceMon = (dt.getDay() + 6) % 7;
-  dt.setDate(dt.getDate() - daysSinceMon);
-  const pad = (n) => String(n).padStart(2, "0");
-  const rs = `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
-  const end = new Date(dt);
-  end.setDate(end.getDate() + 6);
-  const re = `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}`;
-  return { rangeStart: rs, rangeEnd: re };
-}
-
-/** 예전 기본값(일~토 7일)으로 세션에 남은 구간 → 같은 달력 주의 월~일로 치환 */
-function migrateLegacyRetrospectSunSatWeekToMonSun(stored) {
-  const rs = stored.rangeStart;
-  const re = stored.rangeEnd;
-  const d0 = new Date(`${rs}T12:00:00`);
-  const d1 = new Date(`${re}T12:00:00`);
-  if (Number.isNaN(d0.getTime()) || Number.isNaN(d1.getTime())) return null;
-  const diffDays = Math.round((d1.getTime() - d0.getTime()) / 86400000);
-  if (diffDays !== 6) return null;
-  if (d0.getDay() !== 0 || d1.getDay() !== 6) return null;
-  const monday = new Date(d0);
-  monday.setDate(monday.getDate() + 1);
-  const sunday = new Date(monday);
-  sunday.setDate(sunday.getDate() + 6);
-  const pad = (n) => String(n).padStart(2, "0");
-  return {
-    rangeStart: `${monday.getFullYear()}-${pad(monday.getMonth() + 1)}-${pad(monday.getDate())}`,
-    rangeEnd: `${sunday.getFullYear()}-${pad(sunday.getMonth() + 1)}-${pad(sunday.getDate())}`,
-  };
-}
-
-function readTimeLedgerRetrospectSessionStoredYmdOrNull() {
-  try {
-    if (typeof sessionStorage !== "undefined") {
-      const ss = sessionStorage.getItem(SS_RETROSPECT_START);
-      const se = sessionStorage.getItem(SS_RETROSPECT_END);
-      if (ss && YMD_RE.test(ss)) {
-        let rs = ss;
-        let re = se && YMD_RE.test(se) ? se : ss;
-        if (rs > re) {
-          const t = rs;
-          rs = re;
-          re = t;
-        }
-        return { rangeStart: rs, rangeEnd: re };
-      }
-    }
-  } catch (_) {}
-  return null;
-}
-
-/**
- * 「회고」탭 날짜 구간. 저장값 없으면 오늘이 속한 주 월~일(7일).
- * 예전 일~토 기본값만 세션에 남았으면 같은 주의 월~일로 한 번 교체합니다.
- */
-export function readTimeLedgerRetrospectSessionFilterRangeYmd() {
-  const stored = readTimeLedgerRetrospectSessionStoredYmdOrNull();
-  if (stored) {
-    const migrated = migrateLegacyRetrospectSunSatWeekToMonSun(stored);
-    if (
-      migrated &&
-      (migrated.rangeStart !== stored.rangeStart ||
-        migrated.rangeEnd !== stored.rangeEnd)
-    ) {
-      try {
-        if (typeof sessionStorage !== "undefined") {
-          sessionStorage.setItem(SS_RETROSPECT_START, migrated.rangeStart);
-          sessionStorage.setItem(SS_RETROSPECT_END, migrated.rangeEnd);
-        }
-      } catch (_) {}
-      return migrated;
-    }
-    return stored;
-  }
-  return weekMondayToSundayContainingYmd(timeLedgerLocalTodayYmd());
-}
-
-/** 로컬 달력 기준 이번 달 1일 YYYY-MM-DD (보고서 기본 시작일) */
+/** 로컬 달력 기준 이번 달 1일 YYYY-MM-DD (기록 피커 복구 등) */
 export function timeLedgerLocalMonthFirstYmd() {
   const d = new Date();
   const pad = (n) => String(n).padStart(2, "0");
@@ -182,7 +84,7 @@ export function readTimeLedgerSessionFilterRangeYmd() {
         }
         const today = timeLedgerLocalTodayYmd();
         const monthFirst = timeLedgerLocalMonthFirstYmd();
-        /* 시간「기록」은 오늘 하루가 기본. 달 1일~오늘은 보고서용이라 기록 키에 남은 값은 오늘로 맞춤 */
+        /* 예전에 보고서 탭이 같은 키로 달 1일~오늘을 쓰던 경우 → 기록 탭 기본(오늘 하루)로 복구 */
         if (rs === monthFirst && re === today) {
           try {
             sessionStorage.setItem("lp_time_filter_start", today);
@@ -198,60 +100,12 @@ export function readTimeLedgerSessionFilterRangeYmd() {
   return { rangeStart: t, rangeEnd: t };
 }
 
-/** 보고서 탭에만 저장된 구간. 없으면 null(당겨오기 범위는 시간 기록 구간만 씀). */
-function readTimeLedgerAuditSessionStoredYmdOrNull() {
-  try {
-    if (typeof sessionStorage !== "undefined") {
-      const ss = sessionStorage.getItem(SS_AUDIT_START);
-      const se = sessionStorage.getItem(SS_AUDIT_END);
-      if (ss && YMD_RE.test(ss)) {
-        let rs = ss;
-        let re = se && YMD_RE.test(se) ? se : ss;
-        if (rs > re) {
-          const t = rs;
-          rs = re;
-          re = t;
-        }
-        return { rangeStart: rs, rangeEnd: re };
-      }
-    }
-  } catch (_) {}
-  return null;
-}
-
-/**
- * 「보고서」탭용 날짜 구간(저장값 없으면 이번 달 1일~오늘).
- */
-export function readTimeLedgerAuditSessionFilterRangeYmd() {
-  const stored = readTimeLedgerAuditSessionStoredYmdOrNull();
-  if (stored) return stored;
-  return {
-    rangeStart: timeLedgerLocalMonthFirstYmd(),
-    rangeEnd: timeLedgerLocalTodayYmd(),
-  };
-}
-
-/**
- * 서버 당겨오기: 시간 기록·보고서 구간을 합친 최소~최대(보고서를 한 번도 안 열었으면 시간 기록 구간만).
- */
+/** 서버 당겨오기·실시간: 시간「기록」세션 피커 구간과 동일 */
 export function readTimeLedgerCombinedPullRangeYmd() {
-  const L = readTimeLedgerSessionFilterRangeYmd();
-  let rs = L.rangeStart;
-  let re = L.rangeEnd;
-  const A = readTimeLedgerAuditSessionStoredYmdOrNull();
-  if (A) {
-    if (A.rangeStart < rs) rs = A.rangeStart;
-    if (A.rangeEnd > re) re = A.rangeEnd;
-  }
-  const R = readTimeLedgerRetrospectSessionStoredYmdOrNull();
-  if (R) {
-    if (R.rangeStart < rs) rs = R.rangeStart;
-    if (R.rangeEnd > re) re = R.rangeEnd;
-  }
-  return { rangeStart: rs, rangeEnd: re };
+  return readTimeLedgerSessionFilterRangeYmd();
 }
 
-/** KPI 탭용 시간기록 pull: 오늘 기준 뒤로 약 6개월 + 기록/보고서/회고 세션 구간 합침 */
+/** KPI 탭용 시간기록 pull: 오늘 기준 뒤로 약 6개월 + 기록 세션 구간과 합침 */
 const KPI_TAB_LEDGER_PULL_BACK_DAYS = 179;
 
 /**
@@ -272,7 +126,7 @@ export function readTimeLedgerPullRangeForKpiTabsYmd() {
   return { rangeStart: rs, rangeEnd: re2 };
 }
 
-/** Realtime payload: 이 변경이 현재 피커/보고서 구간 entry_date에 닿는지 (알 수 없으면 true). */
+/** Realtime payload: 이 변경이 현재 피커 구간 entry_date에 닿는지 (알 수 없으면 true). */
 export function timeLedgerEntryPayloadTouchesSessionPicker(payload) {
   if (!payload || payload.table !== "time_ledger_entries") return true;
   const row =
@@ -547,7 +401,7 @@ export async function pushDirtyTimeLedgerEntriesToSupabase(opts = {}) {
   });
 }
 
-/** 시간 탭에서 쓰는 pull: 계정 + 시간기록·보고서 날짜 구간 합친 entry_date만 조회 */
+/** 시간 탭에서 쓰는 pull: 계정 + 시간「기록」세션 구간 entry_date만 조회 */
 export async function pullTimeLedgerEntriesFromSupabase() {
   const { rangeStart, rangeEnd } = readTimeLedgerCombinedPullRangeYmd();
   return pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd);

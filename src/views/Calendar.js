@@ -41,12 +41,9 @@ import {
   hhMmToMinutes,
 } from "../utils/timeKpiSync.js";
 import {
-  renderTimeBudgetTablesForCalendar,
   getBudgetGoals,
   getTaskOptionByName,
   loadTimeRows,
-  saveBudgetGoal,
-  clearOverlapFromBudgetGoalsOnly,
   formatGoalDiff,
   parseTimeToHours,
   isTimeLedgerRowLiveRecording,
@@ -473,7 +470,6 @@ function ensureOneDayTimetableDocumentListeners() {
   const run = (e) => {
     oneDayTimetableRefreshHandler?.(e);
   };
-  document.addEventListener("calendar-budget-scheduled-updated", run);
   document.addEventListener("calendar-time-rows-updated", run);
 }
 
@@ -4173,44 +4169,6 @@ function render3WeekView(
   return wrap;
 }
 
-/** 표→타임테이블 실시간 동기화: DOM에서 현재 입력값 직접 수집 (표 값 변경 시 즉시 반영) */
-const TT_SYNC_DEBUG = false;
-if (typeof window !== "undefined") window.TT_SYNC_DEBUG = TT_SYNC_DEBUG;
-function collectLiveScheduledFromBudgetColumn(budgetColumn) {
-  if (!budgetColumn) {
-    return {};
-  }
-  const byTask = {};
-  /*
-   * 투두 표(.calendar-1day-todo-table)는 time-budget-scheduled-input 이 없어도
-   * dataset·DOM 구조 때문에 잘못 짝지어지면 다른 과제 시간이 섞일 수 있음.
-   * 예상 타임라인 동기화는 "투자/소비" 예산 블록 행만 읽는다.
-   */
-  const rows = budgetColumn.querySelectorAll(
-    ".time-daily-budget-table-block tbody tr:not(.time-row-add)",
-  );
-  rows.forEach((row, idx) => {
-    const name = (row.dataset.taskName || "").trim();
-    if (!name) return;
-    const inputs = row.querySelectorAll(".time-budget-scheduled-input");
-    let start = "";
-    let end = "";
-    if (inputs.length >= 2) {
-      start = String(inputs[0]?.value ?? row.dataset.scheduledStart ?? "").trim();
-      end = String(inputs[1]?.value ?? row.dataset.scheduledEnd ?? "").trim();
-    } else {
-      start = String(row.dataset.scheduledStart ?? "").trim();
-      end = String(row.dataset.scheduledEnd ?? "").trim();
-    }
-    void idx;
-    if (!start || !end) return;
-    const st = `${start}-${end}`;
-    if (!byTask[name]) byTask[name] = [];
-    if (!byTask[name].includes(st)) byTask[name].push(st);
-  });
-  return byTask;
-}
-
 /** dateStr(YYYY-MM-DD) 기준 전날 키 반환 */
 function getYesterdayKey(dateStr) {
   if (!dateStr || typeof dateStr !== "string") return "";
@@ -4743,14 +4701,9 @@ function lpStampCalendar1DayVariableHourRows(innerEl, hourGeom, overlayEls) {
   }
 }
 
-/** 1일 뷰 시간표(예상/실제) 오버레이만 생성 - budget 테이블 재구성 없이 시간표만 갱신용 */
-function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
-  const storedGoals = getBudgetGoals(targetKey);
-  const liveFromDom = collectLiveScheduledFromBudgetColumn(budgetColumn);
-  const budgetGoals = { ...storedGoals };
-  Object.entries(liveFromDom).forEach(([task, times]) => {
-    budgetGoals[task] = { ...(budgetGoals[task] || {}), scheduledTimes: times };
-  });
+/** 1일 뷰 시간표(예상/실제) 오버레이만 생성 - 시간표만 갱신용 */
+function build1DayTimetableOverlays(targetKey, actualDateKey) {
+  const budgetGoals = { ...getBudgetGoals(targetKey) };
   const allTimeRows = loadTimeRows();
   const tasks = getAllTasksForDateDisplay(targetKey);
   const parseDateFromTimeStr = (str) => {
@@ -5585,8 +5538,6 @@ function build1DayTimetableOverlays(targetKey, budgetColumn, actualDateKey) {
 function render1DayView(
   tabsElement,
   sidebarMode = LP_CAL_TODO_SIDEBAR_QUADRANT,
-  /** 모바일 일정 상단 슬롯 — 1일 뷰가 아직 DOM에 안 붙었을 때도 안정적으로 + 위치 고정 */
-  calendarScheduleBudgetAddSlot = null,
   /** true: 홈 「오늘」타임라인 전용 카드 UI. 일정 탭 타임블록(1일)은 false → 기존 타임테이블 */
   useHomeTodayTimeline = false,
 ) {
@@ -5889,33 +5840,12 @@ function render1DayView(
 
     const targetKey = formatDateKey(targetDate);
 
-    const budgetColumn = document.createElement("div");
-    budgetColumn.className = "calendar-1day-budget-column";
-    budgetColumn.appendChild(topBar);
     const timeColumn = document.createElement("div");
     timeColumn.className = "calendar-1day-time-column";
+    timeColumn.appendChild(topBar);
 
     const tasks = getAllTasksForDateDisplay(targetKey);
     const budgetGoals = getBudgetGoals(targetKey);
-
-    const EISENHOWER_ORDER = [
-      "urgent-important",
-      "important-not-urgent",
-      "urgent-not-important",
-      "not-urgent-not-important",
-    ];
-    const sortedTasks = [...tasks].sort((a, b) => {
-      const aq = (a.eisenhower || "").trim();
-      const bq = (b.eisenhower || "").trim();
-      const ai = aq ? EISENHOWER_ORDER.indexOf(aq) : 999;
-      const bi = bq ? EISENHOWER_ORDER.indexOf(bq) : 999;
-      return ai - bi;
-    });
-    const skipBudgetTaskNames = new Set();
-    sortedTasks.forEach((t) => {
-      const n = (t.name || "").trim();
-      if (n) skipBudgetTaskNames.add(n);
-    });
 
     const SECTION_LABELS = {
       dream: "꿈",
@@ -5931,64 +5861,6 @@ function render1DayView(
       taskStats[sid] = { done, total, label: SECTION_LABELS[sid] || sid };
     });
 
-    const onScheduledUpdate = (dateStr) => {
-      if (dayOffset === 0 && useHomeTodayTimeline) {
-        requestAnimationFrame(() => renderCalendar());
-        return;
-      }
-      requestAnimationFrame(() => {
-        const inner = wrap.querySelector(".calendar-1day-time-table-inner");
-        if (!inner || !dateStr) {
-          return;
-        }
-        const budgetColOrNull =
-          wrap.querySelector(".calendar-1day-budget-column") || null;
-        const actualDateKey =
-          wrap.dataset.actualShowsYesterday === "true"
-            ? getYesterdayKey(dateStr)
-            : undefined;
-        const { expected, actual, stampHourRows } = build1DayTimetableOverlays(
-          dateStr,
-          budgetColOrNull,
-          actualDateKey,
-        );
-        const oldExp = inner.querySelector(
-          ".calendar-1day-time-fill-overlay--expected",
-        );
-        const oldAct = inner.querySelector(
-          ".calendar-1day-time-fill-overlay--actual",
-        );
-        if (oldExp) oldExp.replaceWith(expected);
-        else inner.appendChild(expected);
-        if (oldAct) oldAct.replaceWith(actual);
-        else inner.appendChild(actual);
-        stampHourRows?.(inner);
-      });
-    };
-    const onOverlapCleared = () => {
-      requestAnimationFrame(() => {
-        /* 입력 중일 때 재렌더하면 입력 필드가 사라져 '01' 등 입력이 안 되는 문제 방지 */
-        if (budgetColumn.contains(document.activeElement)) return;
-        renderCalendar();
-      });
-    };
-    const budgetAddBtnMount =
-      calendarScheduleBudgetAddSlot ??
-      wrap.closest(".calendar-view-with-subtabs")?.querySelector(
-        ".calendar-schedule-budget-add-slot",
-      ) ??
-      null;
-    renderTimeBudgetTablesForCalendar(
-      budgetColumn,
-      targetKey,
-      null,
-      onScheduledUpdate,
-      onOverlapCleared,
-      topBarLeft,
-      skipBudgetTaskNames,
-      budgetAddBtnMount,
-    );
-    calendarGrid.appendChild(budgetColumn);
     refreshKpiSidebar(taskStats);
     calendarGrid.appendChild(timeColumn);
 
@@ -6479,11 +6351,7 @@ function render1DayView(
       expected: fillOverlayExpected,
       actual: fillOverlayActual,
       stampHourRows: stampHourRowsInit,
-    } = build1DayTimetableOverlays(
-      targetKey,
-      budgetColumn,
-      actualDateKeyForInit,
-    );
+    } = build1DayTimetableOverlays(targetKey, actualDateKeyForInit);
     const timeTableWrap = document.createElement("div");
     timeTableWrap.className = "calendar-1day-time-table-wrap";
     const timeTableInner = document.createElement("div");
@@ -6531,7 +6399,7 @@ function render1DayView(
     }
 
     wrap.dataset.dateStr = targetKey;
-    /* 날짜 이동 등 renderCalendar만 다시 돌 때도 예산·시간 열에 글로벌 flex:6/4 가 붙음 → 모바일 일정 탭에서 재스탬프 */
+    /* 날짜 이동 등 renderCalendar만 다시 돌 때도 1일 열 레이아웃이 깨지지 않게 모바일 일정 탭에서 재스탬프 */
     const scheduleMob = wrap.closest(".calendar-view--mobile-schedule");
     if (
       scheduleMob &&
@@ -6551,28 +6419,20 @@ function render1DayView(
               split.style.setProperty("box-sizing", "border-box", "important");
             } catch (_) {}
           }
-          [".calendar-1day-budget-column", ".calendar-1day-time-column"].forEach(
-            (sel) => {
-              const el = split?.querySelector(sel);
-              if (!el) return;
-              try {
-                el.style.setProperty("flex", "0 0 auto", "important");
-                el.style.setProperty("min-height", "min-content", "important");
-                el.style.setProperty("max-height", "none", "important");
-                el.style.setProperty("width", "100%", "important");
-                el.style.setProperty("max-width", "100%", "important");
-                el.style.setProperty("min-width", "0", "important");
-                el.style.setProperty("box-sizing", "border-box", "important");
-                if (sel === ".calendar-1day-budget-column") {
-                  el.style.setProperty("overflow-x", "auto", "important");
-                  el.style.setProperty("overflow-y", "visible", "important");
-                } else {
-                  el.style.setProperty("overflow", "visible", "important");
-                  el.style.setProperty("overflow-x", "hidden", "important");
-                }
-              } catch (_) {}
-            },
-          );
+          const el = split?.querySelector(".calendar-1day-time-column");
+          if (el) {
+            try {
+              el.style.setProperty("flex", "0 0 auto", "important");
+              el.style.setProperty("min-height", "min-content", "important");
+              el.style.setProperty("max-height", "none", "important");
+              el.style.setProperty("width", "100%", "important");
+              el.style.setProperty("max-width", "100%", "important");
+              el.style.setProperty("min-width", "0", "important");
+              el.style.setProperty("box-sizing", "border-box", "important");
+              el.style.setProperty("overflow", "visible", "important");
+              el.style.setProperty("overflow-x", "hidden", "important");
+            } catch (_) {}
+          }
         });
       });
     }
@@ -6643,14 +6503,12 @@ function render1DayView(
       return;
     }
     if (timeTableInner && dateStr) {
-      const budgetCol = wrap.querySelector(".calendar-1day-budget-column");
       const actualDateKey =
         wrap.dataset.actualShowsYesterday === "true"
           ? getYesterdayKey(dateStr)
           : undefined;
       const { expected, actual, stampHourRows } = build1DayTimetableOverlays(
         dateStr,
-        budgetCol,
         actualDateKey,
       );
       const oldExpected = timeTableInner.querySelector(
@@ -7904,8 +7762,6 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
 
   /** @type {HTMLElement | null} */
   let navLiftSlot = null;
-  /** 모바일 일정 — 예상 일정 + 전용 슬롯(서브탭 줄 왼쪽), `render1DayView`에 직접 전달 */
-  let scheduleMobileBudgetAddSlot = null;
   /** @type {HTMLElement} */
   let subTabsMountOuter;
   const subTabsControlRoot = document.createElement("div");
@@ -7963,10 +7819,10 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
     const topLine = document.createElement("div");
     topLine.className = "calendar-schedule-tab-top-line";
 
-    const budgetAddSlot = document.createElement("div");
-    budgetAddSlot.className =
+    const scheduleTabLeftSpacer = document.createElement("div");
+    scheduleTabLeftSpacer.className =
       "calendar-sub-tabs-strip calendar-sub-tabs-strip--left calendar-schedule-budget-add-slot";
-    scheduleMobileBudgetAddSlot = budgetAddSlot;
+    scheduleTabLeftSpacer.setAttribute("aria-hidden", "true");
 
     const centerStrip = document.createElement("div");
     centerStrip.className =
@@ -7977,7 +7833,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
     topLineRightSpacer.className = "calendar-schedule-tab-top-line-spacer";
     topLineRightSpacer.setAttribute("aria-hidden", "true");
 
-    topLine.appendChild(budgetAddSlot);
+    topLine.appendChild(scheduleTabLeftSpacer);
     topLine.appendChild(centerStrip);
     topLine.appendChild(topLineRightSpacer);
     headerRow.appendChild(topLine);
@@ -8080,9 +7936,6 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
 
     if (gen !== _nestedSubViewGen) return;
     if (navLiftSlot) navLiftSlot.replaceChildren();
-    wrap
-      .querySelector(".calendar-schedule-budget-add-slot")
-      ?.replaceChildren();
     if (subTabsMountOuter.parentNode) subTabsMountOuter.remove();
     contentArea.innerHTML = "";
     if (subViewId === "monthly") {
@@ -8094,13 +7947,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
     } else if (subViewId === "annual") {
       contentArea.appendChild(renderAnnualView(null));
     } else if (subViewId === "1day") {
-      contentArea.appendChild(
-        render1DayView(
-          null,
-          todoSidebarMode,
-          keepSubTabsOnTop ? scheduleMobileBudgetAddSlot : null,
-        ),
-      );
+      contentArea.appendChild(render1DayView(null, todoSidebarMode));
     }
     if (keepSubTabsOnTop) {
       wrap.insertBefore(subTabsMountOuter, contentArea);
@@ -8204,10 +8051,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
           el.style.setProperty("width", "100%", "important");
           el.style.setProperty("align-items", "stretch", "important");
         }
-        if (el.classList.contains("calendar-1day-budget-column")) {
-          el.style.setProperty("overflow-x", "auto", "important");
-          el.style.setProperty("overflow-y", "visible", "important");
-        } else if (el.classList.contains("calendar-1day-time-column")) {
+        if (el.classList.contains("calendar-1day-time-column")) {
           el.style.setProperty("width", "100%", "important");
           el.style.setProperty("overflow-x", "hidden", "important");
           el.style.setProperty("overflow-y", "visible", "important");
@@ -8226,7 +8070,6 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
         one,
         one?.querySelector(".calendar-monthly-main"),
         split,
-        split?.querySelector(".calendar-1day-budget-column"),
         split?.querySelector(".calendar-1day-time-column"),
       ];
     };
@@ -8298,7 +8141,7 @@ export function renderMobileScheduleCalendar() {
         storageKey: "calendar-mobile-schedule-sub-view",
         forceInitialMonthlyOnMobile: false,
         keepSubTabsOnTop: true,
-        /* 모바일: 화면 세로 한정 — 할일 사이드바 생략, 예산 표 + 24h 타임테이블만 */
+        /* 모바일: 화면 세로 한정 — 할일 사이드바 생략, 24h 타임테이블·타임라인만 */
         todoSidebarMode: LP_CAL_TODO_SIDEBAR_NONE,
       }),
     );
