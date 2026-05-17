@@ -5,58 +5,36 @@
  * - 그 외 규칙은 가능하면 `.time-ledger-view …` 로 스코프해 다른 탭과 충돌을 막는다.
  */
 
-/* 상단 스트립 제목(세그먼트 탭 자리) */
-.time-ledger-view .time-ledger-top-title {
-  width: 100%;
+/* [auto] data-legacy 병기 선택자 — scripts/time-js-main-only-classes.mjs */
+.time-ledger-view .time-ledger-top-title, [data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-top-title"]{width: 100%;
   text-align: center;
   font-size: 0.9375rem;
   font-weight: 600;
   color: #3d4a3e;
-}
-
-/**
- * 날짜 구간 필터 (시간가계부·아카이브·자산) — 뷰포트 공통, 우측 정렬
- */
-.time-ledger-filter-add-row {
-  width: 100%;
+}.time-ledger-filter-add-row, [data-legacy~="time-ledger-filter-add-row"]{width: 100%;
   box-sizing: border-box;
-}
-
-.lp-date-range-host {
-  width: 100%;
+}.lp-date-range-host, [data-legacy~="lp-date-range-host"]{width: 100%;
   display: flex;
   justify-content: flex-end;
   align-items: center;
   min-width: 0;
   box-sizing: border-box;
-}
-
-.time-filter-nav-cluster {
-  display: flex;
+}.time-filter-nav-cluster, [data-legacy~="time-filter-nav-cluster"]{display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 0.35rem 0.5rem;
   min-width: 0;
-}
-
-.time-filter-range-wrap {
-  display: flex;
+}.time-filter-range-wrap, [data-legacy~="time-filter-range-wrap"]{display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.25rem 0.35rem;
-}
-
-.time-filter-range-sep {
-  color: #6b7280;
+}.time-filter-range-sep, [data-legacy~="time-filter-range-sep"]{color: #6b7280;
   font-size: 0.8125rem;
   line-height: 1;
   user-select: none;
   flex-shrink: 0;
-}
-
-.time-filter-date-field {
-  position: relative;
+}.time-filter-date-field, [data-legacy~="time-filter-date-field"]{position: relative;
   display: inline-flex;
   flex-direction: row;
   align-items: center;
@@ -64,10 +42,7 @@
   max-width: 100%;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-}
-
-.time-filter-date-field input[type="date"] {
-  position: absolute;
+}.time-filter-date-field input[type="date"], [data-legacy~="time-filter-date-field"] input[type="date"]{position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -78,33 +53,21 @@
   border: 0;
   opacity: 0;
   pointer-events: none;
-}
-
-.time-filter-date-label {
-  font-size: 0.8125rem;
+}.time-filter-date-label, [data-legacy~="time-filter-date-label"]{font-size: 0.8125rem;
   font-weight: 500;
   color: #374151;
   line-height: 1.2;
   white-space: nowrap;
-}
-
-.time-filter-date-cal-icon {
-  flex-shrink: 0;
+}.time-filter-date-cal-icon, [data-legacy~="time-filter-date-cal-icon"]{flex-shrink: 0;
   display: block;
   opacity: 0.72;
-}
-
-.time-filter-day-nav {
-  display: inline-flex;
+}.time-filter-day-nav, [data-legacy~="time-filter-day-nav"]{display: inline-flex;
   flex-direction: row;
   align-items: center;
   gap: 0.15rem;
   flex-shrink: 0;
-}
-
-.time-filter-day-prev,
-.time-filter-day-next {
-  display: inline-flex;
+}.time-filter-day-prev,
+.time-filter-day-next, [data-legacy~="time-filter-day-prev"], [data-legacy~="time-filter-day-next"]{display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0;
@@ -114,31 +77,18 @@
   cursor: pointer;
   line-height: 0;
   -webkit-tap-highlight-color: transparent;
-}
-
-.time-filter-day-prev:focus-visible,
-.time-filter-day-next:focus-visible {
-  outline: 2px solid #8b9a8c;
+}.time-filter-day-prev:focus-visible,
+.time-filter-day-next:focus-visible, [data-legacy~="time-filter-day-prev"]:focus-visible, [data-legacy~="time-filter-day-next"]:focus-visible{outline: 2px solid #8b9a8c;
   outline-offset: 2px;
-}
-
-/* 아카이브: 검색 + 구간 — 검색은 남은 공간, 구간은 우측 */
-.archive-search-row.lp-date-range-search-row {
-  display: flex;
+}.archive-search-row.lp-date-range-search-row, [data-legacy~="archive-search-row"][data-legacy~="lp-date-range-search-row"]{display: flex;
   flex-direction: row;
   align-items: center;
   gap: 0.5rem;
   width: 100%;
   box-sizing: border-box;
-}
-
-.archive-search-row.lp-date-range-search-row .archive-search-wrap {
-  flex: 1 1 auto;
+}.archive-search-row.lp-date-range-search-row .archive-search-wrap, [data-legacy~="archive-search-row"][data-legacy~="lp-date-range-search-row"] [data-legacy~="archive-search-wrap"]{flex: 1 1 auto;
   min-width: 0;
-}
-
-.archive-search-row.lp-date-range-search-row .archive-date-nav-cluster {
-  flex: 0 0 auto;
+}.archive-search-row.lp-date-range-search-row .archive-date-nav-cluster, [data-legacy~="archive-search-row"][data-legacy~="lp-date-range-search-row"] [data-legacy~="archive-date-nav-cluster"]{flex: 0 0 auto;
   max-width: 100%;
   margin-left: auto;
 }

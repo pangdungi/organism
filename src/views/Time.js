@@ -97,6 +97,13 @@ import {
   WS_DIET_LEDGER_TASK_NAMES,
 } from "../utils/workScheduleDietLedgerTags.js";
 
+import {
+  lpSetClasses,
+  lpTokenAdd,
+  lpTokenRemove,
+  lpTokenToggle,
+  lpTokenHas,
+} from "../utils/timeLedgerClassPolicy.js";
 export { getTaskOptionByName };
 
 /** 모바일 과제 기록 FAB — TodoList ADD_TASK_ICON과 동일 */
@@ -109,10 +116,10 @@ const TIME_LEDGER_ADD_PLUS_ICON_SVG =
 
 /** 툴바 설정·필터: img 필터 대신 +와 동일 currentColor (버튼 color #dc2626 상속) */
 const TIME_LEDGER_TOOLBAR_SETTINGS_ICON_SVG =
-  '<svg class="time-btn-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m19.845 13.561c.1-.505.155-1.027.155-1.561s-.055-1.056-.155-1.561l1.806-1.489c.502-.414.632-1.132.307-1.696l-.869-1.508c-.325-.564-1.011-.811-1.62-.582l-2.198.825c-.779-.684-1.689-1.218-2.691-1.559l-.385-2.316c-.108-.643-.663-1.114-1.314-1.114h-1.738c-.651 0-1.206.471-1.313 1.114l-.386 2.316c-1.002.341-1.912.875-2.691 1.559l-2.198-.825c-.61-.228-1.295.018-1.62.582l-.87 1.508c-.325.564-.195 1.282.307 1.696l1.806 1.489c-.1.505-.155 1.026-.155 1.561s.055 1.056.155 1.561l-1.806 1.489c-.502.414-.632 1.132-.307 1.696l.869 1.508c.325.564 1.011.811 1.62.582l2.198-.825c.779.684 1.689 1.218 2.691 1.559l.385 2.316c.109.643.664 1.114 1.315 1.114h1.738c.651 0 1.206-.471 1.313-1.114l.385-2.316c1.002-.341 1.913-.875 2.691-1.559l2.198.825c.609.229 1.295-.017 1.62-.582l.869-1.508c.325-.564.196-1.282-.307-1.696z"/><circle cx="12.012" cy="12" r="3"/></g></svg>';
+  '<svg data-legacy="time-btn-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m19.845 13.561c.1-.505.155-1.027.155-1.561s-.055-1.056-.155-1.561l1.806-1.489c.502-.414.632-1.132.307-1.696l-.869-1.508c-.325-.564-1.011-.811-1.62-.582l-2.198.825c-.779-.684-1.689-1.218-2.691-1.559l-.385-2.316c-.108-.643-.663-1.114-1.314-1.114h-1.738c-.651 0-1.206.471-1.313 1.114l-.386 2.316c-1.002.341-1.912.875-2.691 1.559l-2.198-.825c-.61-.228-1.295.018-1.62.582l-.87 1.508c-.325.564-.195 1.282.307 1.696l1.806 1.489c-.1.505-.155 1.026-.155 1.561s.055 1.056.155 1.561l-1.806 1.489c-.502.414-.632 1.132-.307 1.696l.869 1.508c.325.564 1.011.811 1.62.582l2.198-.825c.779.684 1.689 1.218 2.691 1.559l.385 2.316c.109.643.664 1.114 1.315 1.114h1.738c.651 0 1.206-.471 1.313-1.114l.385-2.316c1.002-.341 1.913-.875 2.691-1.559l2.198.825c.609.229 1.295-.017 1.62-.582l.869-1.508c.325-.564.196-1.282-.307-1.696z"/><circle cx="12.012" cy="12" r="3"/></g></svg>';
 
 const TIME_LEDGER_TOOLBAR_FILTER_ICON_SVG =
-  '<svg class="time-btn-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" d="m20.988 2h-17.976c-1.664 0-2.606 1.899-1.595 3.216l7.583 9.784v7l4.853-2.101c.731-.318 1.147-1.037 1.147-1.832v-3.067l7.583-9.784c1.011-1.317.069-3.216-1.595-3.216z"/></svg>';
+  '<svg data-legacy="time-btn-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" d="m20.988 2h-17.976c-1.664 0-2.606 1.899-1.595 3.216l7.583 9.784v7l4.853-2.101c.731-.318 1.147-1.037 1.147-1.832v-3.067l7.583-9.784c1.011-1.317.069-3.216-1.595-3.216z"/></svg>';
 
 const PRODUCTIVITY_OPTIONS = [
   { value: "productive", label: "생산적", color: "prod-pink" },
@@ -214,7 +221,7 @@ function appendTaskDropdownBadges(textWrap, task, opts = {}) {
   if (opts.omitBadges) return;
   if (isTimeTaskBuiltinTemplate(task)) {
     const bb = document.createElement("span");
-    bb.className = "lp-task-badge lp-task-badge--builtin";
+    lpSetClasses(bb, "lp-task-badge lp-task-badge--builtin");
     bb.textContent = "기본";
     bb.title =
       "앱에서 제공하는 기본 과제입니다. 과제 설정에서 삭제할 수 없습니다.";
@@ -222,7 +229,7 @@ function appendTaskDropdownBadges(textWrap, task, opts = {}) {
   }
   if (isTimeTaskKpiLinked(task)) {
     const kb = document.createElement("span");
-    kb.className = "lp-task-badge lp-task-badge--kpi";
+    lpSetClasses(kb, "lp-task-badge lp-task-badge--kpi");
     kb.textContent = "KPI";
     kb.title = "KPI(맵)에서 연결된 과제입니다";
     textWrap.appendChild(kb);
@@ -869,7 +876,7 @@ function getMobileCardTimeRangeHtmlForRow(rowData) {
   if (startStr && endStr)
     return escapeHtml(`${startStr} - ${endStr}`);
   if (startStr && !rowHasEndTimeForMobileCard(rowData)) {
-    return `${escapeHtml(startStr)} - <span class="time-mobile-card-in-progress-tag">${escapeHtml(TIME_LEDGER_IN_PROGRESS_LABEL)}</span>`;
+    return `${escapeHtml(startStr)} - <span data-legacy="time-mobile-card-in-progress-tag">${escapeHtml(TIME_LEDGER_IN_PROGRESS_LABEL)}</span>`;
   }
   const single = startStr || endStr || "";
   return single ? escapeHtml(single) : "";
@@ -939,8 +946,8 @@ function computeMobileCardPriceValue(rowData, hourlyRate) {
 function applyMobileCardPriceEl(priceEl, value) {
   if (!priceEl) return;
   priceEl.textContent = formatPrice(value);
-  priceEl.classList.toggle("is-negative", value < 0);
-  priceEl.classList.toggle("is-positive", value > 0);
+  lpTokenToggle(priceEl, "is-negative", value < 0);
+  lpTokenToggle(priceEl, "is-positive", value > 0);
 }
 
 function mobileCardNeedsLiveClock(rowData) {
@@ -1030,13 +1037,13 @@ export function formatHomeLiveStartClock(row) {
 function updateMobileTimeCardLiveFields(card) {
   if (!card?._rowData) return;
   const live = mobileCardNeedsLiveClock(card._rowData);
-  card.classList.toggle("time-ledger-mobile-card--in-progress", live);
+  lpTokenToggle(card, "time-ledger-mobile-card--in-progress", live);
   if (!live) return;
   const rd = card._rowData;
   const viewEl = card._timeLedgerViewEl;
-  const trackedEl = card.querySelector(".time-mobile-card-tracked");
-  const timeEl = card.querySelector(".time-mobile-card-time");
-  const priceEl = card.querySelector(".time-mobile-card-price");
+  const trackedEl = card.querySelector('[data-legacy~="time-mobile-card-tracked"]');
+  const timeEl = card.querySelector('[data-legacy~="time-mobile-card-time"]');
+  const priceEl = card.querySelector('[data-legacy~="time-mobile-card-price"]');
   const start = getRowStartInstantForMobileCard(rd);
   if (!start) return;
   const ms = Date.now() - start.getTime();
@@ -1047,7 +1054,7 @@ function updateMobileTimeCardLiveFields(card) {
     timeEl.innerHTML = getMobileCardTimeRangeHtmlForRow(rd) || "—";
   }
   if (priceEl && viewEl) {
-    const hourlyInput = viewEl.querySelector(".time-hourly-input");
+    const hourlyInput = viewEl.querySelector('[data-legacy~="time-hourly-input"]');
     const hourlyRate =
       parseFloat(String(hourlyInput?.value || "0").replace(/,/g, "")) || 0;
     applyMobileCardPriceEl(priceEl, computeMobileCardPriceValue(rd, hourlyRate));
@@ -1606,20 +1613,20 @@ function parsePriceFromDisplay(text) {
 
 function createDateCell(initialValue) {
   const wrap = document.createElement("div");
-  wrap.className = "time-date-cell";
+  lpSetClasses(wrap, "time-date-cell");
   const display = document.createElement("span");
-  display.className = "time-date-display";
+  lpSetClasses(display, "time-date-display");
   const input = document.createElement("input");
   input.type = "date";
-  input.className = "time-input-date-hidden";
+  lpSetClasses(input, "time-input-date-hidden");
   input.name = "time-date";
   function refresh() {
     if (input.value) {
       display.textContent = formatDateDisplay(input.value);
-      display.classList.add("has-value");
+      lpTokenAdd(display, "has-value");
     } else {
       display.textContent = "";
-      display.classList.remove("has-value");
+      lpTokenRemove(display, "has-value");
     }
   }
   input.addEventListener("change", refresh);
@@ -1650,7 +1657,7 @@ function createTagDropdown(
   enablePanelFilter = false,
 ) {
   const wrap = document.createElement("div");
-  wrap.className = "time-tag-dropdown-wrap";
+  lpSetClasses(wrap, "time-tag-dropdown-wrap");
   let value =
     initialValue !== undefined && initialValue !== null
       ? String(initialValue)
@@ -1660,22 +1667,21 @@ function createTagDropdown(
 
   const trigger = document.createElement("button");
   trigger.type = "button";
-  trigger.className = "time-tag-trigger";
+  lpSetClasses(trigger, "time-tag-trigger");
   trigger.setAttribute("aria-haspopup", "listbox");
   trigger.setAttribute("aria-expanded", "false");
   function updateTrigger() {
     const opt = options.find((o) => o.value === value);
     const label = opt ? opt.label : value || "—";
     const colorClass = opt ? opt.color : "";
-    trigger.innerHTML = `<span class="time-tag-pill ${optionClass} ${colorClass}">${label}</span>`;
+    trigger.innerHTML = `<span data-legacy="time-tag-pill ${optionClass} ${colorClass}">${label}</span>`;
     trigger.setAttribute("aria-label", `선택: ${label}. 클릭 시 메뉴 열기`);
   }
   updateTrigger();
 
   const panel = document.createElement("div");
-  panel.className =
-    "time-tag-panel" +
-    (enablePanelFilter ? " time-tag-panel--with-filter" : "");
+  lpSetClasses(panel, "time-tag-panel" +
+    (enablePanelFilter ? " time-tag-panel--with-filter" : ""));
   panel.hidden = true;
 
   /** @type {HTMLInputElement | null} */
@@ -1685,18 +1691,18 @@ function createTagDropdown(
   if (enablePanelFilter) {
     filterInput = document.createElement("input");
     filterInput.type = "text";
-    filterInput.className = "time-tag-panel-filter";
+    lpSetClasses(filterInput, "time-tag-panel-filter");
     filterInput.setAttribute("aria-label", "과제 검색");
     filterInput.placeholder = "과제 검색…";
     filterInput.autocomplete = "off";
     listRoot = document.createElement("div");
-    listRoot.className = "time-tag-panel-list";
+    lpSetClasses(listRoot, "time-tag-panel-list");
     panel.appendChild(filterInput);
     panel.appendChild(listRoot);
 
     function applyFilter() {
       const q = (filterInput.value || "").trim().toLowerCase();
-      listRoot.querySelectorAll(".time-tag-option").forEach((el) => {
+      listRoot.querySelectorAll('[data-legacy~="time-tag-option"]').forEach((el) => {
         const label = (el.dataset.filterLabel || "").toLowerCase();
         const show = !q || label.includes(q);
         el.hidden = !show;
@@ -1714,10 +1720,9 @@ function createTagDropdown(
 
   function appendOption(o) {
     const opt = document.createElement("div");
-    opt.className =
-      "time-tag-option" +
-      (String(o.value ?? "") === String(value ?? "") ? " is-selected" : "");
-    opt.innerHTML = `<span class="time-tag-pill ${o.color || ""}">${o.label}</span>`;
+    lpSetClasses(opt, "time-tag-option" +
+      (String(o.value ?? "") === String(value ?? "") ? " is-selected" : ""));
+    opt.innerHTML = `<span data-legacy="time-tag-pill ${o.color || ""}">${o.label}</span>`;
     opt.setAttribute(
       "data-option-value",
       o.value === undefined || o.value === null ? "" : String(o.value),
@@ -1752,7 +1757,7 @@ function createTagDropdown(
   function resetPanelFilter() {
     if (!enablePanelFilter || !filterInput) return;
     filterInput.value = "";
-    listRoot.querySelectorAll(".time-tag-option").forEach((el) => {
+    listRoot.querySelectorAll('[data-legacy~="time-tag-option"]').forEach((el) => {
       el.hidden = false;
     });
   }
@@ -1864,36 +1869,34 @@ function createTagDropdown(
   wrap._setValue = (v) => {
     value = v !== undefined && v !== null ? String(v) : "";
     updateTrigger();
-    panel.querySelectorAll(".time-tag-option").forEach((optEl) => {
+    panel.querySelectorAll('[data-legacy~="time-tag-option"]').forEach((optEl) => {
       const ov = optEl.getAttribute("data-option-value");
-      optEl.classList.toggle("is-selected", ov === value);
+      lpTokenToggle(optEl, "is-selected", ov === value);
     });
   };
   return { wrap, getValue: () => value };
 }
 
 const DELETE_ICON =
-  '<svg class="time-task-delete-icon" viewBox="0 0 16 16" width="16" height="16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+  '<svg data-legacy="time-task-delete-icon" viewBox="0 0 16 16" width="16" height="16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
 
 /** 과제명 입력: 포커스 시 목록 표시, 목록에 없으면 Create 옵션 @param {AbortSignal} [tabSignal] */
 function createTaskNameInput(initialValue, onTaskSelect, tabSignal) {
   const wrap = document.createElement("div");
-  wrap.className = "time-task-name-wrap";
-
+  lpSetClasses(wrap, "time-task-name-wrap");
   const inputWrap = document.createElement("div");
-  inputWrap.className = "time-task-input-wrap";
-
+  lpSetClasses(inputWrap, "time-task-input-wrap");
   const input = document.createElement("input");
   input.type = "text";
   input.name = "time-task-name";
-  input.className = "time-input-task";
+  lpSetClasses(input, "time-input-task");
   input.placeholder = "Search";
   if (initialValue) input.value = initialValue;
 
   inputWrap.appendChild(input);
 
   const panel = document.createElement("div");
-  panel.className = "time-task-name-panel";
+  lpSetClasses(panel, "time-task-name-panel");
   panel.hidden = true;
 
   let highlightedIndex = -1;
@@ -1920,7 +1923,7 @@ function createTaskNameInput(initialValue, onTaskSelect, tabSignal) {
     }
 
     const sep = document.createElement("div");
-    sep.className = "time-task-name-separator";
+    lpSetClasses(sep, "time-task-name-separator");
     sep.textContent = "—";
     panel.appendChild(sep);
 
@@ -1929,12 +1932,12 @@ function createTaskNameInput(initialValue, onTaskSelect, tabSignal) {
       const name = getName(opt);
       const isLocked = lockedNames.has(name);
       const row = document.createElement("div");
-      row.className = "time-task-name-option";
-      row.innerHTML = `<span class="time-task-tag">${name}</span>${isLocked ? "" : `<button type="button" class="time-task-delete-btn" title="삭제">${DELETE_ICON}</button>`}`;
+      lpSetClasses(row, "time-task-name-option");
+      row.innerHTML = `<span data-legacy="time-task-tag">${name}</span>${isLocked ? "" : `<button type="button" data-legacy="time-task-delete-btn" title="삭제">${DELETE_ICON}</button>`}`;
       row.dataset.value = name;
-      const delBtn = row.querySelector(".time-task-delete-btn");
+      const delBtn = row.querySelector('[data-legacy~="time-task-delete-btn"]');
       row.addEventListener("click", (e) => {
-        if (e.target.closest(".time-task-delete-btn")) return;
+        if (e.target.closest('[data-legacy~="time-task-delete-btn"]')) return;
         input.value = name;
         panel.hidden = true;
         input.blur();
@@ -1959,8 +1962,8 @@ function createTaskNameInput(initialValue, onTaskSelect, tabSignal) {
 
     if (showCreate) {
       const createRow = document.createElement("div");
-      createRow.className = "time-task-name-option time-task-name-create";
-      createRow.innerHTML = `<span class="time-task-create-label">Create</span><span class="time-task-tag">${(query || "").trim()}</span>`;
+      lpSetClasses(createRow, "time-task-name-option time-task-name-create");
+      createRow.innerHTML = `<span data-legacy="time-task-create-label">Create</span><span data-legacy="time-task-tag">${(query || "").trim()}</span>`;
       createRow.dataset.value = (query || "").trim();
       createRow.dataset.isCreate = "true";
       createRow.addEventListener("click", () => {
@@ -1975,8 +1978,8 @@ function createTaskNameInput(initialValue, onTaskSelect, tabSignal) {
     }
 
     highlightedIndex = 0;
-    const opts = panel.querySelectorAll(".time-task-name-option");
-    if (opts[0]) opts[0].classList.add("is-highlighted");
+    const opts = panel.querySelectorAll('[data-legacy~="time-task-name-option"]');
+    if (opts[0]) lpTokenAdd(opts[0], "is-highlighted");
     panel.hidden = false;
   }
 
@@ -2001,14 +2004,14 @@ function createTaskNameInput(initialValue, onTaskSelect, tabSignal) {
       }
       return;
     }
-    const opts = panel.querySelectorAll(".time-task-name-option");
+    const opts = panel.querySelectorAll('[data-legacy~="time-task-name-option"]');
     if (opts.length === 0) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
       highlightedIndex = Math.min(highlightedIndex + 1, opts.length - 1);
       opts[highlightedIndex]?.scrollIntoView({ block: "nearest" });
       opts.forEach((o, i) =>
-        o.classList.toggle("is-highlighted", i === highlightedIndex),
+        lpTokenToggle(o, "is-highlighted", i === highlightedIndex),
       );
       return;
     }
@@ -2017,7 +2020,7 @@ function createTaskNameInput(initialValue, onTaskSelect, tabSignal) {
       highlightedIndex = Math.max(highlightedIndex - 1, 0);
       opts[highlightedIndex]?.scrollIntoView({ block: "nearest" });
       opts.forEach((o, i) =>
-        o.classList.toggle("is-highlighted", i === highlightedIndex),
+        lpTokenToggle(o, "is-highlighted", i === highlightedIndex),
       );
       return;
     }
@@ -2055,8 +2058,7 @@ function createTaskNameInput(initialValue, onTaskSelect, tabSignal) {
 
 function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   const tr = document.createElement("tr");
-  tr.className = "time-row";
-
+  lpSetClasses(tr, "time-row");
   const taskName = initialData?.taskName || "";
   const opt = taskName ? getTaskOptionByName(taskName) : null;
   const idIn = String(initialData?.id || "").trim();
@@ -2095,35 +2097,33 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   tr._rowData = rowData;
 
   const prodTd = document.createElement("td");
-  prodTd.className = "time-cell time-cell-productivity";
+  lpSetClasses(prodTd, "time-cell time-cell-productivity");
   const priceTd = document.createElement("td");
-  priceTd.className = "time-cell time-cell-price";
+  lpSetClasses(priceTd, "time-cell time-cell-price");
   const priceDisplay = document.createElement("span");
-  priceDisplay.className = "time-price-display";
-
+  lpSetClasses(priceDisplay, "time-price-display");
   const prodDisplay = document.createElement("span");
-  prodDisplay.className = "time-tag-pill prod";
+  lpSetClasses(prodDisplay, "time-tag-pill prod");
   const prodOpt = PRODUCTIVITY_OPTIONS.find(
     (o) => o.value === rowData.productivity,
   );
   prodDisplay.textContent = prodOpt ? prodOpt.label : "";
-  prodDisplay.className =
-    "time-tag-pill prod " + (prodOpt ? prodOpt.color : "");
+  lpSetClasses(prodDisplay, "time-tag-pill prod " + (prodOpt ? prodOpt.color : ""));
   prodTd.appendChild(prodDisplay);
 
   const startTimeTd = document.createElement("td");
-  startTimeTd.className = "time-cell time-cell-start";
+  lpSetClasses(startTimeTd, "time-cell time-cell-start");
   const startTimeSpan = document.createElement("span");
-  startTimeSpan.className = "time-display-start";
+  lpSetClasses(startTimeSpan, "time-display-start");
   startTimeSpan.textContent = rowData.startTime
     ? toDisplayTimeOnly(rowData.startTime) || rowData.startTime
     : "";
   startTimeTd.appendChild(startTimeSpan);
 
   const endTimeTd = document.createElement("td");
-  endTimeTd.className = "time-cell time-cell-end";
+  lpSetClasses(endTimeTd, "time-cell time-cell-end");
   const endTimeSpan = document.createElement("span");
-  endTimeSpan.className = "time-display-end";
+  lpSetClasses(endTimeSpan, "time-display-end");
   endTimeSpan.textContent = formatTimeLedgerEndCellDisplay(
     rowData.startTime,
     rowData.endTime,
@@ -2131,14 +2131,14 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   endTimeTd.appendChild(endTimeSpan);
 
   const timeTd = document.createElement("td");
-  timeTd.className = "time-cell time-cell-tracked";
+  lpSetClasses(timeTd, "time-cell time-cell-tracked");
   const timeSpan = document.createElement("span");
-  timeSpan.className = "time-display-tracked";
+  lpSetClasses(timeSpan, "time-display-tracked");
   timeTd.appendChild(timeSpan);
 
   function updatePrice() {
     const data = tr._rowData || rowData;
-    const hourlyInput = viewEl?.querySelector(".time-hourly-input");
+    const hourlyInput = viewEl?.querySelector('[data-legacy~="time-hourly-input"]');
     const hourlyRate =
       parseFloat(String(hourlyInput?.value || "0").replace(/,/g, "")) || 0;
     const hours = getMobileCardEffectiveHoursForPrice(data);
@@ -2147,8 +2147,8 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
     if (pv === "nonproductive") price *= -1;
     else if (pv === "other" || pv === "그 외" || !pv) price = 0;
     priceDisplay.textContent = formatPrice(price);
-    priceDisplay.classList.toggle("is-negative", price < 0);
-    priceDisplay.classList.toggle("is-positive", price > 0);
+    lpTokenToggle(priceDisplay, "is-negative", price < 0);
+    lpTokenToggle(priceDisplay, "is-positive", price > 0);
 
     const tracked = (data.timeTracked || "").trim();
     const hasStart = !!(data.startTime && String(data.startTime).trim());
@@ -2166,29 +2166,28 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   }
 
   const catTd = document.createElement("td");
-  catTd.className = "time-cell time-cell-category";
+  lpSetClasses(catTd, "time-cell time-cell-category");
   const catDisplay = document.createElement("span");
-  catDisplay.className = "time-tag-pill cat cat-empty";
+  lpSetClasses(catDisplay, "time-tag-pill cat cat-empty");
   catDisplay.textContent = getCategoryLabel(rowData.category) || "—";
-  catDisplay.className =
-    "time-tag-pill cat " + getCategoryColor(rowData.category);
+  lpSetClasses(catDisplay, "time-tag-pill cat " + getCategoryColor(rowData.category));
   catTd.appendChild(catDisplay);
 
   const taskTd = document.createElement("td");
-  taskTd.className = "time-cell time-cell-task";
+  lpSetClasses(taskTd, "time-cell time-cell-task");
   const taskInner = document.createElement("div");
-  taskInner.className = "time-cell-task-inner";
+  lpSetClasses(taskInner, "time-cell-task-inner");
   const prodBar = document.createElement("span");
-  prodBar.className = "time-task-prod-bar";
+  lpSetClasses(prodBar, "time-task-prod-bar");
   const prodBarMod =
     rowData.productivity === "productive"
       ? "time-task-prod-bar--productive"
       : rowData.productivity === "nonproductive"
         ? "time-task-prod-bar--nonproductive"
         : "time-task-prod-bar--other";
-  prodBar.classList.add(prodBarMod);
+  lpTokenAdd(prodBar, prodBarMod);
   const taskSpan = document.createElement("span");
-  taskSpan.className = "time-display-task";
+  lpSetClasses(taskSpan, "time-display-task");
   taskSpan.textContent = rowData.taskName || "";
   taskInner.appendChild(prodBar);
   taskInner.appendChild(taskSpan);
@@ -2202,9 +2201,9 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   tr.appendChild(prodTd);
 
   const dateTd = document.createElement("td");
-  dateTd.className = "time-cell time-cell-date";
+  lpSetClasses(dateTd, "time-cell time-cell-date");
   const dateSpan = document.createElement("span");
-  dateSpan.className = "time-display-date";
+  lpSetClasses(dateSpan, "time-display-date");
   dateSpan.textContent = rowData.date ? formatDateDisplay(rowData.date) : "";
   dateTd.appendChild(dateSpan);
   tr.appendChild(dateTd);
@@ -2213,21 +2212,21 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   tr.appendChild(priceTd);
 
   const feedbackTd = document.createElement("td");
-  feedbackTd.className = "time-cell time-cell-feedback";
+  lpSetClasses(feedbackTd, "time-cell time-cell-feedback");
   const feedbackSpan = document.createElement("span");
-  feedbackSpan.className = "time-display-feedback";
+  lpSetClasses(feedbackSpan, "time-display-feedback");
   feedbackSpan.textContent = rowData.feedback || "";
   feedbackTd.appendChild(feedbackSpan);
   tr.appendChild(feedbackTd);
 
   const memoTagTd = document.createElement("td");
-  memoTagTd.className = "time-cell time-cell-memo-tag";
+  lpSetClasses(memoTagTd, "time-cell time-cell-memo-tag");
   const memoTagDisplayTexts = getMemoTagDisplayTextsForLedgerRow(rowData);
   const memoTagWrap = document.createElement("span");
-  memoTagWrap.className = "time-display-memo-tags";
+  lpSetClasses(memoTagWrap, "time-display-memo-tags");
   memoTagDisplayTexts.forEach((tag) => {
     const pill = document.createElement("span");
-    pill.className = "time-memo-tag-pill";
+    lpSetClasses(pill, "time-memo-tag-pill");
     pill.textContent = tag;
     memoTagWrap.appendChild(pill);
   });
@@ -2239,7 +2238,7 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   updatePrice();
 
   if (onRowEdit) {
-    tr.classList.add("time-row-clickable");
+    lpTokenAdd(tr, "time-row-clickable");
     tr.title = "클릭하여 수정";
     tr.addEventListener("click", (e) => {
       onRowEdit(tr, collectRowFromTR(tr));
@@ -2391,7 +2390,7 @@ function buildMobileCardExpenseBlockHtml(rowData) {
   }
   if (parts.length === 0) return "";
   const text = parts.join(" · ");
-  return `<div class="time-mobile-card-focus time-mobile-card-expense-snippet"><span class="time-mobile-card-focus-label">소비</span><span class="time-mobile-card-focus-text">${text}</span></div>`;
+  return `<div data-legacy="time-mobile-card-focus time-mobile-card-expense-snippet"><span data-legacy="time-mobile-card-focus-label">소비</span><span data-legacy="time-mobile-card-focus-text">${text}</span></div>`;
 }
 
 /**
@@ -2399,12 +2398,12 @@ function buildMobileCardExpenseBlockHtml(rowData) {
  */
 function refreshMobileTimeCardExpenseSnippetsIn(container) {
   if (!container?.querySelectorAll) return;
-  container.querySelectorAll(".time-ledger-mobile-card").forEach((card) => {
+  container.querySelectorAll('[data-legacy~="time-ledger-mobile-card"]').forEach((card) => {
     const rd = card._rowData;
     if (!rd || getLedgerLinkedExpenseIds(rd).length === 0) return;
-    const body = card.querySelector(".time-mobile-card-body");
+    const body = card.querySelector('[data-legacy~="time-mobile-card-body"]');
     if (!body) return;
-    body.querySelectorAll(".time-mobile-card-expense-snippet").forEach((n) =>
+    body.querySelectorAll('[data-legacy~="time-mobile-card-expense-snippet"]').forEach((n) =>
       n.remove(),
     );
     const html = buildMobileCardExpenseBlockHtml(rd);
@@ -2423,7 +2422,7 @@ function serializeMemoContent(containerEl) {
       return;
     }
     if (node.nodeType === Node.ELEMENT_NODE) {
-      if (node.classList?.contains("time-memo-tag-chip")) {
+      if (lpTokenHas(node, "time-memo-tag-chip")) {
         const tag = (node.getAttribute("data-tag") || "").trim();
         if (tag) parts.push("#" + tag);
         return;
@@ -2441,22 +2440,22 @@ function setMemoContent(containerEl, feedbackStr) {
   const str = (feedbackStr || "").trim();
   containerEl.innerHTML = "";
   if (!str) {
-    containerEl.classList.add("is-empty");
+    lpTokenAdd(containerEl, "is-empty");
     return;
   }
-  containerEl.classList.remove("is-empty");
+  lpTokenRemove(containerEl, "is-empty");
   const tokens = str.split(/(#[^\s#]+)/g).filter(Boolean);
   tokens.forEach((tok) => {
     if (tok.startsWith("#") && tok.length > 1) {
       const tagName = tok.slice(1).trim();
       if (!tagName) return;
       const chip = document.createElement("span");
-      chip.className = "time-memo-tag-chip";
+      lpSetClasses(chip, "time-memo-tag-chip");
       chip.contentEditable = "false";
       chip.setAttribute("data-tag", tagName);
-      chip.innerHTML = `<span class="time-memo-tag-chip-text">${escapeHtml(tagName)}</span><button type="button" class="time-memo-tag-chip-remove" aria-label="태그 삭제">&times;</button>`;
+      chip.innerHTML = `<span data-legacy="time-memo-tag-chip-text">${escapeHtml(tagName)}</span><button type="button" data-legacy="time-memo-tag-chip-remove" aria-label="태그 삭제">&times;</button>`;
       chip
-        .querySelector(".time-memo-tag-chip-remove")
+        .querySelector('[data-legacy~="time-memo-tag-chip-remove"]')
         ?.addEventListener("click", (e) => {
           e.preventDefault();
           chip.remove();
@@ -2526,12 +2525,12 @@ function initMemoFeedbackWithTags(containerEl) {
     delRange.setEnd(range.startContainer, range.startOffset);
     delRange.deleteContents();
     const chip = document.createElement("span");
-    chip.className = "time-memo-tag-chip";
+    lpSetClasses(chip, "time-memo-tag-chip");
     chip.contentEditable = "false";
     chip.setAttribute("data-tag", tagNameTrim);
-    chip.innerHTML = `<span class="time-memo-tag-chip-text">${escapeHtml(tagNameTrim)}</span><button type="button" class="time-memo-tag-chip-remove" aria-label="태그 삭제">&times;</button>`;
+    chip.innerHTML = `<span data-legacy="time-memo-tag-chip-text">${escapeHtml(tagNameTrim)}</span><button type="button" data-legacy="time-memo-tag-chip-remove" aria-label="태그 삭제">&times;</button>`;
     chip
-      .querySelector(".time-memo-tag-chip-remove")
+      .querySelector('[data-legacy~="time-memo-tag-chip-remove"]')
       ?.addEventListener("click", (ev) => {
         ev.preventDefault();
         chip.remove();
@@ -2561,7 +2560,7 @@ function initMemoFeedbackWithTags(containerEl) {
         }
         if (
           n.nodeType === Node.ELEMENT_NODE &&
-          n.classList?.contains("time-memo-tag-chip")
+          lpTokenHas(n, "time-memo-tag-chip")
         ) {
           count += 1 + (n.getAttribute("data-tag") || "").trim().length;
           return true;
@@ -2574,7 +2573,7 @@ function initMemoFeedbackWithTags(containerEl) {
       }
       if (
         n.nodeType === Node.ELEMENT_NODE &&
-        n.classList?.contains("time-memo-tag-chip")
+        lpTokenHas(n, "time-memo-tag-chip")
       ) {
         count += 1 + (n.getAttribute("data-tag") || "").trim().length;
         return false;
@@ -2601,7 +2600,7 @@ function initMemoFeedbackWithTags(containerEl) {
       }
       if (
         n.nodeType === Node.ELEMENT_NODE &&
-        n.classList?.contains("time-memo-tag-chip")
+        lpTokenHas(n, "time-memo-tag-chip")
       ) {
         const len = 1 + (n.getAttribute("data-tag") || "").trim().length;
         if (passed + len >= charOffset) return { node: n, offset: 0 };
@@ -2621,8 +2620,8 @@ function initMemoFeedbackWithTags(containerEl) {
 
   containerEl.addEventListener("input", () => {
     if (serializeMemoContent(containerEl).trim() === "")
-      containerEl.classList.add("is-empty");
-    else containerEl.classList.remove("is-empty");
+      lpTokenAdd(containerEl, "is-empty");
+    else lpTokenRemove(containerEl, "is-empty");
     if (composing) return;
     const sel = window.getSelection();
     if (!sel.rangeCount) return;
@@ -2674,15 +2673,17 @@ function isEmptyTimeRow(row) {
 
 function collectRowFromTR(tr) {
   if (tr._rowData) return tr._rowData;
-  const taskInput = tr.querySelector(".time-input-task");
-  const timeInput = tr.querySelector(".time-input-tracked");
-  const startInput = tr.querySelector(".time-input-start");
-  const endInput = tr.querySelector(".time-input-end");
+  const taskInput = tr.querySelector('[data-legacy~="time-input-task"]');
+  const timeInput = tr.querySelector('[data-legacy~="time-input-tracked"]');
+  const startInput = tr.querySelector('[data-legacy~="time-input-start"]');
+  const endInput = tr.querySelector('[data-legacy~="time-input-end"]');
   const prodWrap = tr.querySelector(
-    ".time-cell-productivity .time-productivity-display-wrap",
+    '[data-legacy~="time-cell-productivity"] [data-legacy~="time-productivity-display-wrap"]',
   );
-  const dateInput = tr.querySelector(".time-cell-date input[type='date']");
-  const feedbackInput = tr.querySelector(".time-input-feedback");
+  const dateInput = tr.querySelector(
+    '[data-legacy~="time-cell-date"] input[type="date"]',
+  );
+  const feedbackInput = tr.querySelector('[data-legacy~="time-input-feedback"]');
   const taskName = (taskInput?.value || "").trim();
   const opt = taskName ? getTaskOptionByName(taskName) : null;
   const tid = (opt?.id || "").trim();
@@ -2709,11 +2710,11 @@ function collectRowFromTR(tr) {
 
 function collectRowsFromDOM(container) {
   const rows = [];
-  container.querySelectorAll(".time-row").forEach((tr) => {
+  container.querySelectorAll('[data-legacy~="time-row"]').forEach((tr) => {
     const row = collectRowFromTR(tr);
     if (!isEmptyTimeRow(row)) rows.push(row);
   });
-  container.querySelectorAll(".time-ledger-mobile-card").forEach((card) => {
+  container.querySelectorAll('[data-legacy~="time-ledger-mobile-card"]').forEach((card) => {
     if (card._rowData && !isEmptyTimeRow(card._rowData))
       rows.push(card._rowData);
   });
@@ -2736,7 +2737,7 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   const timeRangeHtml = getMobileCardTimeRangeHtmlForRow(rowData) || "—";
   const hourlyRate =
     parseFloat(
-      String(viewEl?.querySelector(".time-hourly-input")?.value || "0").replace(
+      String(viewEl?.querySelector('[data-legacy~="time-hourly-input"]')?.value || "0").replace(
         /,/g,
         "",
       ),
@@ -2753,33 +2754,32 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   const expenseBlock = buildMobileCardExpenseBlockHtml(rowData);
 
   const card = document.createElement("div");
-  card.className =
-    "time-ledger-mobile-card" +
+  lpSetClasses(card, "time-ledger-mobile-card" +
     (mobileCardNeedsLiveClock(rowData)
       ? " time-ledger-mobile-card--in-progress"
-      : "");
+      : ""));
   card._rowData = rowData;
   card._timeLedgerViewEl = viewEl || null;
   card._onRowDelete = onDelete;
   card.innerHTML = `
-    <div class="time-mobile-card-leading">
-      <div class="time-mobile-card-color-bar" style="background:${color}"></div>
+    <div data-legacy="time-mobile-card-leading">
+      <div data-legacy="time-mobile-card-color-bar" style="background:${color}"></div>
     </div>
-    <div class="time-mobile-card-body">
-      <div class="time-mobile-card-header">
-        <span class="time-mobile-card-task">${taskName}</span>
-        <span class="time-mobile-card-tracked">${tracked}</span>
+    <div data-legacy="time-mobile-card-body">
+      <div data-legacy="time-mobile-card-header">
+        <span data-legacy="time-mobile-card-task">${taskName}</span>
+        <span data-legacy="time-mobile-card-tracked">${tracked}</span>
       </div>
-      <div class="time-mobile-card-meta">
-        <span class="time-mobile-card-time">${timeRangeHtml}</span>
-        <span class="time-mobile-card-price${priceClass}">${formatPrice(priceVal)}</span>
+      <div data-legacy="time-mobile-card-meta">
+        <span data-legacy="time-mobile-card-time">${timeRangeHtml}</span>
+        <span data-legacy="time-mobile-card-price${priceClass}">${formatPrice(priceVal)}</span>
       </div>
-      ${memo ? `<div class="time-mobile-card-memo">${memo}</div>` : ""}
+      ${memo ? `<div data-legacy="time-mobile-card-memo">${memo}</div>` : ""}
       ${expenseBlock}
     </div>
   `;
   card.addEventListener("click", (e) => {
-    if (e.target.closest(".time-mobile-card-body")) onEdit(card, rowData);
+    if (e.target.closest('[data-legacy~="time-mobile-card-body"]')) onEdit(card, rowData);
   });
   return card;
 }
@@ -2787,7 +2787,7 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
 /** 과제명 열 너비 변경 시 sticky left 위치 동기화 */
 function updateStickyLefts(table) {
   if (!table) return;
-  const taskEl = table.querySelector(".time-th-task");
+  const taskEl = table.querySelector('[data-legacy~="time-th-task"]');
   if (!taskEl) return;
   const taskW = taskEl.getBoundingClientRect().width;
   const startW = 90;
@@ -2803,53 +2803,53 @@ function updateStickyLefts(table) {
 
 /** 시간 기록 탭 요약: 데스크톱·숨김 패널용 5칸(마지막: 오늘 하루의 가치) */
 const TIME_LEDGER_SUMMARY_FIVE_CELLS_HTML = `
-    <div class="time-ledger-summary-cell">
-      <div class="time-ledger-summary-label">총 기록 시간</div>
-      <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-tracked">0</span><span class="time-ledger-summary-unit">h</span><span class="time-ledger-summary-num time-ledger-summary-tracked">0</span><span class="time-ledger-summary-unit">m</span></div>
+    <div data-legacy="time-ledger-summary-cell">
+      <div data-legacy="time-ledger-summary-label">총 기록 시간</div>
+      <div data-legacy="time-ledger-summary-value"><span data-legacy="time-ledger-summary-num time-ledger-summary-tracked">0</span><span data-legacy="time-ledger-summary-unit">h</span><span data-legacy="time-ledger-summary-num time-ledger-summary-tracked">0</span><span data-legacy="time-ledger-summary-unit">m</span></div>
     </div>
-    <div class="time-ledger-summary-cell">
-      <div class="time-ledger-summary-label">생산적 시간</div>
-      <div class="time-ledger-summary-value"><span class="time-ledger-summary-num time-ledger-summary-productive">0</span><span class="time-ledger-summary-unit">h</span><span class="time-ledger-summary-num time-ledger-summary-productive">0</span><span class="time-ledger-summary-unit">m</span></div>
+    <div data-legacy="time-ledger-summary-cell">
+      <div data-legacy="time-ledger-summary-label">생산적 시간</div>
+      <div data-legacy="time-ledger-summary-value"><span data-legacy="time-ledger-summary-num time-ledger-summary-productive">0</span><span data-legacy="time-ledger-summary-unit">h</span><span data-legacy="time-ledger-summary-num time-ledger-summary-productive">0</span><span data-legacy="time-ledger-summary-unit">m</span></div>
     </div>
-    <div class="time-ledger-summary-cell">
-      <div class="time-ledger-summary-label">투자한 시급</div>
-      <div class="time-ledger-summary-value time-ledger-summary-value--invested"><span class="time-ledger-summary-num time-ledger-summary-price time-ledger-summary-invested">+0</span><span class="time-ledger-summary-unit">원</span></div>
+    <div data-legacy="time-ledger-summary-cell">
+      <div data-legacy="time-ledger-summary-label">투자한 시급</div>
+      <div data-legacy="time-ledger-summary-value time-ledger-summary-value--invested"><span data-legacy="time-ledger-summary-num time-ledger-summary-price time-ledger-summary-invested">+0</span><span data-legacy="time-ledger-summary-unit">원</span></div>
     </div>
-    <div class="time-ledger-summary-cell">
-      <div class="time-ledger-summary-label">낭비한 시급</div>
-      <div class="time-ledger-summary-value time-ledger-summary-value--spent"><span class="time-ledger-summary-num time-ledger-summary-wasted time-ledger-summary-spent">-0</span><span class="time-ledger-summary-unit">원</span></div>
+    <div data-legacy="time-ledger-summary-cell">
+      <div data-legacy="time-ledger-summary-label">낭비한 시급</div>
+      <div data-legacy="time-ledger-summary-value time-ledger-summary-value--spent"><span data-legacy="time-ledger-summary-num time-ledger-summary-wasted time-ledger-summary-spent">-0</span><span data-legacy="time-ledger-summary-unit">원</span></div>
     </div>
-    <div class="time-ledger-summary-cell">
-      <div class="time-ledger-summary-label">오늘 하루의 가치</div>
-      <div class="time-ledger-summary-value time-ledger-summary-value--day-net"><span class="time-ledger-summary-num time-ledger-summary-day-net">+0</span><span class="time-ledger-summary-unit">원</span></div>
+    <div data-legacy="time-ledger-summary-cell">
+      <div data-legacy="time-ledger-summary-label">오늘 하루의 가치</div>
+      <div data-legacy="time-ledger-summary-value time-ledger-summary-value--day-net"><span data-legacy="time-ledger-summary-num time-ledger-summary-day-net">+0</span><span data-legacy="time-ledger-summary-unit">원</span></div>
     </div>`;
 
 function createTableHTML() {
   return `
     <colgroup>
-      <col class="time-col-task">
-      <col class="time-col-start">
-      <col class="time-col-end">
-      <col class="time-col-tracked">
-      <col class="time-col-category">
-      <col class="time-col-productivity">
-      <col class="time-col-date">
-      <col class="time-col-price">
-      <col class="time-col-feedback">
-      <col class="time-col-memo-tag">
+      <col data-legacy="time-col-task">
+      <col data-legacy="time-col-start">
+      <col data-legacy="time-col-end">
+      <col data-legacy="time-col-tracked">
+      <col data-legacy="time-col-category">
+      <col data-legacy="time-col-productivity">
+      <col data-legacy="time-col-date">
+      <col data-legacy="time-col-price">
+      <col data-legacy="time-col-feedback">
+      <col data-legacy="time-col-memo-tag">
     </colgroup>
     <thead>
       <tr>
-        <th class="time-th-task">과제명</th>
-        <th class="time-th-start">시작시간</th>
-        <th class="time-th-end">마감시간</th>
-        <th class="time-th-tracked">사용 시간</th>
-        <th class="time-th-category">카테고리</th>
-        <th class="time-th-productivity">생산성</th>
-        <th class="time-th-date">기록 날짜</th>
-        <th class="time-th-price">행동의 가치</th>
-        <th class="time-th-feedback">과제 메모</th>
-        <th class="time-th-memo-tag">메모 태그</th>
+        <th data-legacy="time-th-task">과제명</th>
+        <th data-legacy="time-th-start">시작시간</th>
+        <th data-legacy="time-th-end">마감시간</th>
+        <th data-legacy="time-th-tracked">사용 시간</th>
+        <th data-legacy="time-th-category">카테고리</th>
+        <th data-legacy="time-th-productivity">생산성</th>
+        <th data-legacy="time-th-date">기록 날짜</th>
+        <th data-legacy="time-th-price">행동의 가치</th>
+        <th data-legacy="time-th-feedback">과제 메모</th>
+        <th data-legacy="time-th-memo-tag">메모 태그</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -2858,7 +2858,7 @@ function createTableHTML() {
 
 export function render() {
   const el = document.createElement("div");
-  el.className = "app-tab-panel-content time-ledger-view";
+  lpSetClasses(el, "app-tab-panel-content time-ledger-view");
   el.dataset.timeContentView = "all";
   const timeTabAbort = new AbortController();
   el._lpTabAbortController = timeTabAbort;
@@ -2877,15 +2877,14 @@ export function render() {
   })();
   const hourlyInput = document.createElement("input");
   hourlyInput.type = "hidden";
-  hourlyInput.className = "time-hourly-input";
+  lpSetClasses(hourlyInput, "time-hourly-input");
   hourlyInput.value = String(storedRate);
   el.appendChild(hourlyInput);
 
   const hourlyAddSlot = document.createElement("div");
-  hourlyAddSlot.className = "time-hourly-add-slot";
-
+  lpSetClasses(hourlyAddSlot, "time-hourly-add-slot");
   const ledgerTopHeading = document.createElement("div");
-  ledgerTopHeading.className = "time-ledger-top-title";
+  lpSetClasses(ledgerTopHeading, "time-ledger-top-title");
   ledgerTopHeading.textContent = "시간 기록";
 
   const now = new Date();
@@ -2912,59 +2911,56 @@ export function render() {
   let selectedTaskNamesForFilter = null;
 
   const filterBar = document.createElement("div");
-  filterBar.className = "time-filter-bar lp-date-range-host";
+  lpSetClasses(filterBar, "time-filter-bar lp-date-range-host");
   filterBar.innerHTML = `
-    <div class="time-filter-nav-cluster lp-date-range-cluster" data-filter-for="all">
-      <div class="time-filter-range-wrap" data-filter-wrap="range">
-        <div class="time-filter-date-field">
-          <input type="date" class="time-filter-start-date" name="time-filter-start" aria-label="시작일" />
-          <span class="time-filter-date-label time-filter-date-label--start" aria-hidden="true"></span>
-          <img src="/toolbaricons/calendar-alt.svg" alt="" class="time-filter-date-cal-icon" width="14" height="14" aria-hidden="true" />
+    <div data-legacy="time-filter-nav-cluster lp-date-range-cluster" data-filter-for="all">
+      <div data-legacy="time-filter-range-wrap" data-filter-wrap="range">
+        <div data-legacy="time-filter-date-field">
+          <input type="date" data-legacy="time-filter-start-date" name="time-filter-start" aria-label="시작일" />
+          <span data-legacy="time-filter-date-label time-filter-date-label--start" aria-hidden="true"></span>
+          <img src="/toolbaricons/calendar-alt.svg" alt="" data-legacy="time-filter-date-cal-icon" width="14" height="14" aria-hidden="true" />
         </div>
-        <span class="time-filter-range-sep" data-audit-range-hidden>~</span>
-        <div class="time-filter-date-field">
-          <input type="date" class="time-filter-end-date" name="time-filter-end" data-audit-range-hidden aria-label="종료일" />
-          <span class="time-filter-date-label time-filter-date-label--end" aria-hidden="true"></span>
-          <img src="/toolbaricons/calendar-alt.svg" alt="" class="time-filter-date-cal-icon" width="14" height="14" aria-hidden="true" />
+        <span data-legacy="time-filter-range-sep" data-audit-range-hidden>~</span>
+        <div data-legacy="time-filter-date-field">
+          <input type="date" data-legacy="time-filter-end-date" name="time-filter-end" data-audit-range-hidden aria-label="종료일" />
+          <span data-legacy="time-filter-date-label time-filter-date-label--end" aria-hidden="true"></span>
+          <img src="/toolbaricons/calendar-alt.svg" alt="" data-legacy="time-filter-date-cal-icon" width="14" height="14" aria-hidden="true" />
         </div>
       </div>
-      <div class="time-filter-day-nav">
-        <button type="button" class="time-filter-day-prev" aria-label="이전 날짜">
-          <img src="/toolbaricons/caret-left-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
+      <div data-legacy="time-filter-day-nav">
+        <button type="button" data-legacy="time-filter-day-prev" aria-label="이전 날짜">
+          <img src="/toolbaricons/caret-left-circle.svg" alt="" data-legacy="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
         </button>
-        <button type="button" class="time-filter-day-next" aria-label="다음 날짜">
-          <img src="/toolbaricons/caret-right-circle.svg" alt="" class="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
+        <button type="button" data-legacy="time-filter-day-next" aria-label="다음 날짜">
+          <img src="/toolbaricons/caret-right-circle.svg" alt="" data-legacy="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
         </button>
       </div>
     </div>
   `;
 
-  const startDateInput = filterBar.querySelector(".time-filter-start-date");
-  const endDateInput = filterBar.querySelector(".time-filter-end-date");
+  const startDateInput = filterBar.querySelector('[data-legacy~="time-filter-start-date"]');
+  const endDateInput = filterBar.querySelector('[data-legacy~="time-filter-end-date"]');
   const rangeWrap = filterBar.querySelector("[data-filter-wrap='range']");
-  const filterNavCluster = filterBar.querySelector(".time-filter-nav-cluster");
+  const filterNavCluster = filterBar.querySelector('[data-legacy~="time-filter-nav-cluster"]');
   const taskSetupBtn = document.createElement("button");
   taskSetupBtn.type = "button";
-  taskSetupBtn.className = "time-task-setup-btn";
+  lpSetClasses(taskSetupBtn, "time-task-setup-btn");
   taskSetupBtn.dataset.filterFor = "all";
   taskSetupBtn.title = "과제명, 생산성, 카테고리를 한 번에 설정";
   taskSetupBtn.setAttribute("aria-label", "과제 설정");
   taskSetupBtn.innerHTML = TIME_LEDGER_TOOLBAR_SETTINGS_ICON_SVG;
-  taskSetupBtn.classList.add(
-    "time-ledger-tabs-settings-btn",
-    "time-ledger-toolbar-icon-btn",
-    APP_FOOTER_ICON_BTN_CLASS,
-  );
+  lpTokenAdd(taskSetupBtn, "time-ledger-tabs-settings-btn");
+  lpTokenAdd(taskSetupBtn, "time-ledger-toolbar-icon-btn");
+  lpTokenAdd(taskSetupBtn, APP_FOOTER_ICON_BTN_CLASS);
 
   const taskSelectBtn = document.createElement("button");
   taskSelectBtn.type = "button";
-  taskSelectBtn.className =
-    "time-task-setup-btn time-filter-task-select-btn time-ledger-toolbar-icon-btn";
+  lpSetClasses(taskSelectBtn, "time-task-setup-btn time-filter-task-select-btn time-ledger-toolbar-icon-btn");
   taskSelectBtn.id = "time-task-select-btn";
   taskSelectBtn.title = "과제 선택";
   taskSelectBtn.setAttribute("aria-label", "과제 선택");
   taskSelectBtn.innerHTML = TIME_LEDGER_TOOLBAR_FILTER_ICON_SVG;
-  taskSelectBtn.classList.add(APP_FOOTER_ICON_BTN_CLASS);
+  lpTokenAdd(taskSelectBtn, APP_FOOTER_ICON_BTN_CLASS);
 
   /** YYYY-MM-DD → "2026. 05. 05(화)" — 필터·목록 일자(모바일·데스크탑 공통) */
   function formatTimeFilterDateDotsWithWeekday(dStr) {
@@ -2981,8 +2977,8 @@ export function render() {
   function syncTimeFilterDateLabels() {
     /* 모바일: navCluster가 contentWrap 툴바로 옮겨져도 같은 노드 — filterBar로 찾으면 라벨이 끊김 */
     const labelRoot = filterNavCluster || filterBar;
-    const startLabel = labelRoot?.querySelector(".time-filter-date-label--start");
-    const endLabel = labelRoot?.querySelector(".time-filter-date-label--end");
+    const startLabel = labelRoot?.querySelector('[data-legacy~="time-filter-date-label--start"]');
+    const endLabel = labelRoot?.querySelector('[data-legacy~="time-filter-date-label--end"]');
     const fmt = formatTimeFilterDateDotsWithWeekday;
     if (startLabel) {
       startLabel.textContent = fmt(startDateInput.value || filterStartDate);
@@ -3041,8 +3037,8 @@ export function render() {
 
   /* 모바일에서 툴바로 DOM만 옮겨지므로, 클러스터에 위임해 < > 탭이 항상 동일하게 동작 */
   filterNavCluster?.addEventListener("click", (e) => {
-    const prev = e.target.closest(".time-filter-day-prev");
-    const next = e.target.closest(".time-filter-day-next");
+    const prev = e.target.closest('[data-legacy~="time-filter-day-prev"]');
+    const next = e.target.closest('[data-legacy~="time-filter-day-next"]');
     if (!prev && !next) return;
     e.preventDefault();
     shiftFilterRangeByDays(prev ? -1 : 1);
@@ -3064,7 +3060,7 @@ export function render() {
     }
     inp.click();
   }
-  filterNavCluster?.querySelectorAll(".time-filter-date-field").forEach((field) => {
+  filterNavCluster?.querySelectorAll('[data-legacy~="time-filter-date-field"]').forEach((field) => {
     const inp = field.querySelector('input[type="date"]');
     if (!inp) return;
     field.addEventListener("click", () => {
@@ -3114,12 +3110,12 @@ export function render() {
 
   /* filterBar는 월 드롭다운 패널이 세로로 열리므로 상단 탭 줄(overflow) 밖에 둠 */
   const tabsFilterRow = document.createElement("div");
-  tabsFilterRow.className = "time-ledger-tabs-filter-row";
+  lpSetClasses(tabsFilterRow, "time-ledger-tabs-filter-row");
   window.addEventListener("resize", syncTimeFilterDateLabels, { signal });
   const tabsTopMargin = document.createElement("div");
-  tabsTopMargin.className = "time-ledger-tabs-top-margin";
+  lpSetClasses(tabsTopMargin, "time-ledger-tabs-top-margin");
   const ledgerTopCenter = document.createElement("div");
-  ledgerTopCenter.className = "time-ledger-top-strip__center";
+  lpSetClasses(ledgerTopCenter, "time-ledger-top-strip__center");
   ledgerTopCenter.appendChild(ledgerTopHeading);
 
   /** 설정·필터·과제 기록(+) — 앱 푸터 공통: appFooterShell + main.css; 시간가계부 전용 래핑은 time-ledger.css */
@@ -3134,52 +3130,55 @@ export function render() {
   syncAppFooterLedgerActions();
 
   const tabHeaderRow = document.createElement("div");
-  tabHeaderRow.className = "time-ledger-tab-header-row";
+  lpSetClasses(tabHeaderRow, "time-ledger-tab-header-row");
   tabHeaderRow.appendChild(ledgerTopCenter);
   tabsFilterRow.appendChild(tabsTopMargin);
   tabsFilterRow.appendChild(tabHeaderRow);
 
   /* 2행: 날짜·필터 */
   const filterAddRow = document.createElement("div");
-  filterAddRow.className = "time-ledger-filter-add-row";
+  lpSetClasses(filterAddRow, "time-ledger-filter-add-row");
   filterAddRow.appendChild(filterBar);
 
   const mobileFilterTotalRow = document.createElement("div");
-  mobileFilterTotalRow.className = "time-ledger-mobile-filter-total";
+  lpSetClasses(mobileFilterTotalRow, "time-ledger-mobile-filter-total");
   mobileFilterTotalRow.setAttribute("hidden", "");
   mobileFilterTotalRow.innerHTML =
-    '<span class="time-ledger-mobile-filter-total-inner"><span class="time-ledger-mobile-filter-total-label">전체</span><span class="time-ledger-mobile-filter-total-sep"> : </span><span class="time-ledger-mobile-filter-total-value" aria-label="필터 구간 전체 기록 시간">00:00</span></span>';
+    '<span data-legacy="time-ledger-mobile-filter-total-inner"><span data-legacy="time-ledger-mobile-filter-total-label">전체</span><span data-legacy="time-ledger-mobile-filter-total-sep"> : </span><span data-legacy="time-ledger-mobile-filter-total-value" aria-label="필터 구간 전체 기록 시간">00:00</span></span>';
 
   el.appendChild(tabsFilterRow);
   el.appendChild(filterAddRow);
   el.appendChild(mobileFilterTotalRow);
 
   const taskSetupModal = document.createElement("div");
-  taskSetupModal.className = "time-task-setup-modal";
+  lpSetClasses(taskSetupModal, "time-task-setup-modal");
   taskSetupModal.innerHTML = `
-    <div class="time-task-setup-backdrop"></div>
-    <div class="time-task-setup-panel">
-      <div class="time-task-setup-header">
-        <h3 class="time-task-setup-title">과제 설정</h3>
-        <button type="button" class="time-task-setup-close" aria-label="닫기">&times;</button>
+    <div data-legacy="time-task-setup-backdrop"></div>
+    <div data-legacy="time-task-setup-panel">
+      <div data-legacy="time-task-setup-header">
+        <h3 data-legacy="time-task-setup-title">과제 설정</h3>
+        <button type="button" data-legacy="time-task-setup-close" aria-label="닫기">&times;</button>
       </div>
-      <div class="time-task-setup-body">
-        <button type="button" class="time-task-add-btn">+ 과제 추가하기</button>
-        <div class="time-task-setup-tabs">
-          <button type="button" class="time-task-setup-tab active" data-tab="all">전체</button>
-          <button type="button" class="time-task-setup-tab" data-tab="productive">생산적</button>
-          <button type="button" class="time-task-setup-tab" data-tab="nonproductive">비생산적</button>
-          <button type="button" class="time-task-setup-tab" data-tab="other">그 외</button>
+      <div data-legacy="time-task-setup-body">
+        <button type="button" data-legacy="time-task-add-btn">+ 과제 추가하기</button>
+        <div data-legacy="time-task-setup-tabs">
+          <button type="button" data-legacy="time-task-setup-tab active" data-tab="all">전체</button>
+          <button type="button" data-legacy="time-task-setup-tab" data-tab="productive">생산적</button>
+          <button type="button" data-legacy="time-task-setup-tab" data-tab="nonproductive">비생산적</button>
+          <button type="button" data-legacy="time-task-setup-tab" data-tab="other">그 외</button>
         </div>
-        <div class="time-task-setup-subcats" data-subcat-bar style="display:none">
-          <button type="button" class="time-task-setup-subcat-btn active" data-subcat="">전체</button>
+        <div data-legacy="time-task-setup-subcats" data-subcat-bar style="display:none">
+          <button type="button" data-legacy="time-task-setup-subcat-btn active" data-subcat="">전체</button>
         </div>
-        <div class="time-task-setup-list-scroll">
-          <div class="time-task-setup-list" data-tab-content="all"></div>
-          <div class="time-task-setup-list" data-tab-content="productive" style="display:none"></div>
-          <div class="time-task-setup-list" data-tab-content="nonproductive" style="display:none"></div>
-          <div class="time-task-setup-list" data-tab-content="other" style="display:none"></div>
+        <div data-legacy="time-task-setup-list-scroll">
+          <div data-legacy="time-task-setup-list" data-tab-content="all"></div>
+          <div data-legacy="time-task-setup-list" data-tab-content="productive" style="display:none"></div>
+          <div data-legacy="time-task-setup-list" data-tab-content="nonproductive" style="display:none"></div>
+          <div data-legacy="time-task-setup-list" data-tab-content="other" style="display:none"></div>
         </div>
+      </div>
+      <div data-legacy="time-task-setup-footer time-task-log-footer">
+        <button type="button" data-legacy="time-task-setup-footer-close todo-list-modal-cancel">닫기</button>
       </div>
     </div>
   `;
@@ -3187,24 +3186,24 @@ export function render() {
   el.appendChild(taskSetupModal);
 
   const taskSelectModal = document.createElement("div");
-  taskSelectModal.className = "time-task-setup-modal time-task-select-modal";
+  lpSetClasses(taskSelectModal, "time-task-setup-modal time-task-select-modal");
   taskSelectModal.innerHTML = `
-    <div class="time-task-setup-backdrop"></div>
-    <div class="time-task-setup-panel time-task-select-panel">
-      <div class="time-task-setup-header">
-        <h3 class="time-task-setup-title">과제 선택</h3>
-        <button type="button" class="time-task-setup-close" aria-label="닫기">&times;</button>
+    <div data-legacy="time-task-setup-backdrop"></div>
+    <div data-legacy="time-task-setup-panel time-task-select-panel">
+      <div data-legacy="time-task-setup-header">
+        <h3 data-legacy="time-task-setup-title">과제 선택</h3>
+        <button type="button" data-legacy="time-task-setup-close" aria-label="닫기">&times;</button>
       </div>
-      <div class="time-task-setup-body">
-        <div class="time-task-select-actions">
-          <button type="button" class="time-task-select-all-btn">전체 선택</button>
-          <button type="button" class="time-task-select-none-btn">전체 해제</button>
+      <div data-legacy="time-task-setup-body">
+        <div data-legacy="time-task-select-actions">
+          <button type="button" data-legacy="time-task-select-all-btn">전체 선택</button>
+          <button type="button" data-legacy="time-task-select-none-btn">전체 해제</button>
         </div>
-        <div class="time-task-select-list" data-task-select-list></div>
-        <div class="time-task-select-footer">
-          <button type="button" class="time-task-select-apply-btn">적용</button>
-          <button type="button" class="time-task-select-clear-btn">필터 해제</button>
-        </div>
+        <div data-legacy="time-task-select-list" data-task-select-list></div>
+      </div>
+      <div data-legacy="time-task-select-footer time-task-log-footer">
+        <button type="button" data-legacy="time-task-select-clear-btn">필터 해제</button>
+        <button type="button" data-legacy="time-task-select-apply-btn">적용</button>
       </div>
     </div>
   `;
@@ -3216,22 +3215,22 @@ export function render() {
       "[data-task-select-list]",
     );
     const taskSelectBackdrop = taskSelectModal.querySelector(
-      ".time-task-setup-backdrop",
+      '[data-legacy~="time-task-setup-backdrop"]',
     );
     const taskSelectClose = taskSelectModal.querySelector(
-      ".time-task-setup-header .time-task-setup-close",
+      '[data-legacy~="time-task-setup-header"] [data-legacy~="time-task-setup-close"]',
     );
     const taskSelectAllBtn = taskSelectModal.querySelector(
-      ".time-task-select-all-btn",
+      '[data-legacy~="time-task-select-all-btn"]',
     );
     const taskSelectNoneBtn = taskSelectModal.querySelector(
-      ".time-task-select-none-btn",
+      '[data-legacy~="time-task-select-none-btn"]',
     );
     const taskSelectApplyBtn = taskSelectModal.querySelector(
-      ".time-task-select-apply-btn",
+      '[data-legacy~="time-task-select-apply-btn"]',
     );
     const taskSelectClearBtn = taskSelectModal.querySelector(
-      ".time-task-select-clear-btn",
+      '[data-legacy~="time-task-select-clear-btn"]',
     );
 
     function openTaskSelectModal() {
@@ -3253,17 +3252,17 @@ export function render() {
           const opt = getTaskOptionByName(name);
           const kpiMark =
             opt && isTimeTaskKpiLinked(opt)
-              ? '<span class="lp-task-badge lp-task-badge--kpi" title="KPI(맵)에서 연결된 과제입니다">KPI</span>'
+              ? '<span data-legacy="lp-task-badge lp-task-badge--kpi" title="KPI(맵)에서 연결된 과제입니다">KPI</span>'
               : "";
           const builtinMark = isTimeTaskBuiltinTemplate({ name })
-            ? '<span class="lp-task-badge lp-task-badge--builtin" title="앱에서 제공하는 기본 과제입니다. 과제 설정에서 삭제할 수 없습니다.">기본</span>'
+            ? '<span data-legacy="lp-task-badge lp-task-badge--builtin" title="앱에서 제공하는 기본 과제입니다. 과제 설정에서 삭제할 수 없습니다.">기본</span>'
             : "";
-          return `<label class="time-task-select-item"><input type="checkbox" class="time-task-select-cb" data-task-name="${attrEsc}" ${selectedSet === null || selectedSet.has(name) ? "checked" : ""} /><span class="time-task-select-item-text"><span class="time-task-select-item-name-part">${nameHtml}</span>${builtinMark}${kpiMark}</span></label>`;
+          return `<label data-legacy="time-task-select-item"><input type="checkbox" data-legacy="time-task-select-cb" data-task-name="${attrEsc}" ${selectedSet === null || selectedSet.has(name) ? "checked" : ""} /><span data-legacy="time-task-select-item-text"><span data-legacy="time-task-select-item-name-part">${nameHtml}</span>${builtinMark}${kpiMark}</span></label>`;
         })
         .join("");
       if (names.length === 0)
         taskSelectList.innerHTML =
-          '<p class="time-task-select-empty">기록된 과제가 없습니다.</p>';
+          '<p data-legacy="time-task-select-empty">기록된 과제가 없습니다.</p>';
       taskSelectModal.hidden = false;
     }
 
@@ -3277,27 +3276,25 @@ export function render() {
     );
     taskSelectClose?.addEventListener("click", closeTaskSelectModal);
     taskSelectAllBtn?.addEventListener("click", () => {
-      taskSelectModal.querySelectorAll(".time-task-select-cb").forEach((cb) => {
+      taskSelectModal.querySelectorAll('[data-legacy~="time-task-select-cb"]').forEach((cb) => {
         cb.checked = true;
       });
     });
     taskSelectNoneBtn?.addEventListener("click", () => {
-      taskSelectModal.querySelectorAll(".time-task-select-cb").forEach((cb) => {
+      taskSelectModal.querySelectorAll('[data-legacy~="time-task-select-cb"]').forEach((cb) => {
         cb.checked = false;
       });
     });
     taskSelectApplyBtn?.addEventListener("click", () => {
       const checked = [
-        ...taskSelectModal.querySelectorAll(".time-task-select-cb:checked"),
+        ...taskSelectModal.querySelectorAll('[data-legacy~="time-task-select-cb"]:checked'),
       ].map((cb) => cb.dataset.taskName || "");
       selectedTaskNamesForFilter = checked.length === 0 ? null : checked;
       closeTaskSelectModal();
       onFilterChange();
       const btn = el.querySelector("#time-task-select-btn");
       if (btn)
-        btn.classList.toggle(
-          "is-active",
-          selectedTaskNamesForFilter != null &&
+        lpTokenToggle(btn, "is-active", selectedTaskNamesForFilter != null &&
             selectedTaskNamesForFilter.length > 0,
         );
     });
@@ -3305,38 +3302,40 @@ export function render() {
       selectedTaskNamesForFilter = null;
       closeTaskSelectModal();
       onFilterChange();
-      el.querySelector("#time-task-select-btn")?.classList.remove("is-active");
+      lpTokenRemove(el.querySelector("#time-task-select-btn"), "is-active");
     });
   })();
 
   const addTaskModal = document.createElement("div");
-  addTaskModal.className = "time-task-setup-modal time-add-task-modal";
+  lpSetClasses(addTaskModal, "time-task-setup-modal time-add-task-modal");
   addTaskModal.innerHTML = `
-    <div class="time-task-setup-backdrop"></div>
-    <div class="time-task-setup-panel time-add-task-panel">
-      <div class="time-task-setup-header">
-        <h3 class="time-task-setup-title">과제 추가</h3>
-        <button type="button" class="time-task-setup-close" aria-label="닫기">&times;</button>
+    <div data-legacy="time-task-setup-backdrop"></div>
+    <div data-legacy="time-task-setup-panel time-add-task-panel">
+      <div data-legacy="time-task-setup-header">
+        <h3 data-legacy="time-task-setup-title">과제 추가</h3>
+        <button type="button" data-legacy="time-task-setup-close" aria-label="닫기">&times;</button>
       </div>
-      <div class="time-task-setup-body">
-        <div class="time-add-task-field">
+      <div data-legacy="time-task-setup-body">
+        <div data-legacy="time-add-task-field">
           <label>과제명</label>
-          <input type="text" class="time-add-task-name" name="time-add-task-name" placeholder="과제명 입력" />
+          <input type="text" data-legacy="time-add-task-name" name="time-add-task-name" placeholder="과제명 입력" />
         </div>
-        <div class="time-add-task-field">
+        <div data-legacy="time-add-task-field">
           <label>생산성</label>
-          <div class="time-add-task-productivity">
-            <label class="time-add-task-radio"><input type="radio" name="addProd" value="productive" checked /> 생산적</label>
-            <label class="time-add-task-radio"><input type="radio" name="addProd" value="nonproductive" /> 비생산적</label>
+          <div data-legacy="time-add-task-productivity">
+            <label data-legacy="time-add-task-radio"><input type="radio" name="addProd" value="productive" checked /> 생산적</label>
+            <label data-legacy="time-add-task-radio"><input type="radio" name="addProd" value="nonproductive" /> 비생산적</label>
           </div>
         </div>
-        <div class="time-add-task-field time-add-task-category-wrap">
+        <div data-legacy="time-add-task-field time-add-task-category-wrap">
           <label>카테고리</label>
-          <div class="time-add-task-categories lp-choice-chip-row" data-for="productive"></div>
-          <div class="time-add-task-categories lp-choice-chip-row" data-for="nonproductive" style="display:none"></div>
+          <div data-legacy="time-add-task-categories lp-choice-chip-row" data-for="productive"></div>
+          <div data-legacy="time-add-task-categories lp-choice-chip-row" data-for="nonproductive" style="display:none"></div>
         </div>
-        <button type="button" class="time-add-task-submit">추가</button>
-        <button type="button" class="time-add-task-delete" hidden>과제 삭제</button>
+      </div>
+      <div data-legacy="time-add-task-footer time-task-log-footer">
+        <button type="button" data-legacy="time-add-task-delete" hidden>과제 삭제</button>
+        <button type="button" data-legacy="time-add-task-submit">추가</button>
       </div>
     </div>
   `;
@@ -3344,178 +3343,180 @@ export function render() {
   el.appendChild(addTaskModal);
 
   const taskLogModal = document.createElement("div");
-  taskLogModal.className = "time-task-setup-modal time-task-log-modal";
+  lpSetClasses(taskLogModal, "time-task-setup-modal time-task-log-modal");
   taskLogModal.innerHTML = `
-    <div class="time-task-setup-backdrop"></div>
-    <div class="time-task-setup-panel time-task-log-panel">
-      <div class="time-datetime-picker-backdrop" hidden></div>
-      <div class="time-task-setup-header time-task-log-header">
-        <h3 class="time-task-setup-title">과제 기록</h3>
-        <button type="button" class="time-task-setup-close" aria-label="닫기">&times;</button>
+    <div data-legacy="time-task-setup-backdrop"></div>
+    <div data-legacy="time-task-setup-panel time-task-log-panel">
+      <div data-legacy="time-datetime-picker-backdrop" hidden></div>
+      <div data-legacy="time-task-setup-header time-task-log-header">
+        <h3 data-legacy="time-task-setup-title">과제 기록</h3>
+        <button type="button" data-legacy="time-task-setup-close" aria-label="닫기">&times;</button>
       </div>
-      <div class="time-task-setup-body time-task-log-body">
-        <div class="time-task-log-scroll-area">
-        <div class="time-task-log-datetime-fields-wrap">
-          <div class="time-task-log-field">
+      <div data-legacy="time-task-setup-body time-task-log-body">
+        <div data-legacy="time-task-log-scroll-area">
+        <div data-legacy="time-task-log-datetime-fields-wrap">
+          <div data-legacy="time-task-log-field">
             <label>이 시간에 할 행동</label>
-            <div class="time-task-log-task-wrap"></div>
+            <div data-legacy="time-task-log-task-wrap"></div>
           </div>
-          <div class="time-task-log-field time-task-log-datetime-onerow">
-            <div class="time-task-log-datetime-card lp-modal-datetime-card">
-              <div class="time-task-log-datetime-input-row time-task-log-datetime-main-row">
-                <div class="time-task-log-date-native-wrap">
-                  <input type="date" class="time-task-log-date-start" name="time-task-log-date" data-hide-delete-btn="true" data-use-native-mobile="true" aria-label="기록 날짜" />
-                  <span class="time-task-log-date-overlay" aria-hidden="true"></span>
+          <div data-legacy="time-task-log-field time-task-log-datetime-onerow">
+            <div data-legacy="time-task-log-datetime-card lp-modal-datetime-card">
+              <div data-legacy="time-task-log-datetime-input-row time-task-log-datetime-main-row">
+                <div data-legacy="time-task-log-date-native-wrap">
+                  <input type="date" data-legacy="time-task-log-date-start" name="time-task-log-date" data-hide-delete-btn="true" data-use-native-mobile="true" aria-label="기록 날짜" />
+                  <span data-legacy="time-task-log-date-overlay" aria-hidden="true"></span>
                 </div>
-                <span class="time-task-log-datetime-sep" aria-hidden="true">–</span>
-                <input type="text" class="time-task-log-time-start" name="time-task-log-time-start" lang="en" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="--:--" maxlength="5" autocomplete="off" inputmode="numeric" pattern="[0-9]*" aria-label="시작 시각" />
-                <span class="time-task-log-datetime-sep" aria-hidden="true">–</span>
-                <input type="text" class="time-task-log-time-end" name="time-task-log-time-end" lang="en" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="--:--" maxlength="5" autocomplete="off" inputmode="numeric" pattern="[0-9]*" aria-label="마감 시각" />
+                <span data-legacy="time-task-log-datetime-sep" aria-hidden="true">–</span>
+                <input type="text" data-legacy="time-task-log-time-start" name="time-task-log-time-start" lang="en" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="--:--" maxlength="5" autocomplete="off" inputmode="numeric" pattern="[0-9]*" aria-label="시작 시각" />
+                <span data-legacy="time-task-log-datetime-sep" aria-hidden="true">–</span>
+                <input type="text" data-legacy="time-task-log-time-end" name="time-task-log-time-end" lang="en" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="--:--" maxlength="5" autocomplete="off" inputmode="numeric" pattern="[0-9]*" aria-label="마감 시각" />
               </div>
             </div>
-            <p class="time-task-log-time-order-warning" hidden role="alert">마감시간은 시작시간보다 빠를 수 없습니다.</p>
-            <div class="time-task-log-quick-block">
-            <span class="time-task-log-section-label time-task-log-quick-section-label">빠른 선택</span>
-            <div class="time-task-log-time-adjust-btns">
-              <button type="button" class="time-task-log-time-adjust-btn time-task-log-time-adjust-now" data-now="true">지금</button>
-              <button type="button" class="time-task-log-time-adjust-btn time-task-log-time-adjust-last" data-last="true">마지막</button>
-              <button type="button" class="time-task-log-time-adjust-btn" data-delta="-30">−30</button>
-              <button type="button" class="time-task-log-time-adjust-btn" data-delta="-15">−15</button>
-              <button type="button" class="time-task-log-time-adjust-btn" data-delta="15">+15</button>
-              <button type="button" class="time-task-log-time-adjust-btn" data-delta="30">+30</button>
-              <button type="button" class="time-task-log-time-adjust-btn" data-day-end="true">하루끝</button>
+            <p data-legacy="time-task-log-time-order-warning" hidden role="alert">마감시간은 시작시간보다 빠를 수 없습니다.</p>
+            <div data-legacy="time-task-log-quick-block">
+            <span data-legacy="time-task-log-section-label time-task-log-quick-section-label">빠른 선택</span>
+            <div data-legacy="time-task-log-time-adjust-btns">
+              <button type="button" data-legacy="time-task-log-time-adjust-btn time-task-log-time-adjust-now" data-now="true">지금</button>
+              <button type="button" data-legacy="time-task-log-time-adjust-btn time-task-log-time-adjust-last" data-last="true">마지막</button>
+              <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="-30">−30</button>
+              <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="-15">−15</button>
+              <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="15">+15</button>
+              <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="30">+30</button>
+              <button type="button" data-legacy="time-task-log-time-adjust-btn" data-day-end="true">하루끝</button>
             </div>
             </div>
-            <input type="hidden" class="time-task-log-start" />
-            <input type="hidden" class="time-task-log-end" />
+            <input type="hidden" data-legacy="time-task-log-start" />
+            <input type="hidden" data-legacy="time-task-log-end" />
           </div>
         </div>
-        <div class="time-task-log-kpi-todos-section" hidden>
-          <h4 class="time-task-log-kpi-todos-title">할일 목록</h4>
-          <div class="time-task-log-kpi-todos-list"></div>
+        <div data-legacy="time-task-log-kpi-todos-section" hidden>
+          <h4 data-legacy="time-task-log-kpi-todos-title">할일 목록</h4>
+          <div data-legacy="time-task-log-kpi-todos-list"></div>
         </div>
-        <div class="time-task-log-daily-todos-section" hidden>
-          <h4 class="time-task-log-daily-todos-title">매일 할일 목록</h4>
-          <div class="time-task-log-daily-todos-list"></div>
+        <div data-legacy="time-task-log-daily-todos-section" hidden>
+          <h4 data-legacy="time-task-log-daily-todos-title">매일 할일 목록</h4>
+          <div data-legacy="time-task-log-daily-todos-list"></div>
         </div>
-        <div class="time-task-log-memo-section">
-          <span class="time-task-log-section-label time-task-log-memo-section-label">메모</span>
-          <div class="time-task-log-memo-fields">
-            <div class="time-task-log-field time-task-log-meal-detail-section" hidden>
-              <label class="time-task-log-section-label time-task-log-meal-detail-label" for="time-task-log-meal-detail">식단명</label>
-              <input type="text" id="time-task-log-meal-detail" class="time-task-log-meal-detail-input time-task-log-memo-input" placeholder="무엇을 드셨는지 한 줄로 적어 주세요" autocomplete="off" />
+        <div data-legacy="time-task-log-memo-section">
+          <span data-legacy="time-task-log-section-label time-task-log-memo-section-label">메모</span>
+          <div data-legacy="time-task-log-memo-fields">
+            <div data-legacy="time-task-log-field time-task-log-meal-detail-section" hidden>
+              <label data-legacy="time-task-log-section-label time-task-log-meal-detail-label" for="time-task-log-meal-detail">식단명</label>
+              <input type="text" id="time-task-log-meal-detail" data-legacy="time-task-log-meal-detail-input time-task-log-memo-input" placeholder="무엇을 드셨는지 한 줄로 적어 주세요" autocomplete="off" />
             </div>
-            <div class="time-task-log-field">
-              <textarea class="time-task-log-feedback time-task-log-memo-input" rows="3" placeholder="메모를 입력하세요"></textarea>
+            <div data-legacy="time-task-log-field">
+              <textarea data-legacy="time-task-log-feedback time-task-log-memo-input" rows="3" placeholder="메모를 입력하세요"></textarea>
             </div>
-            <div class="time-task-log-field">
-              <span class="time-task-log-section-label">태그</span>
-              <div class="time-task-log-tags-wrap">
-                <input type="text" class="time-task-log-tag-input" placeholder="태그 입력 후 Enter" />
-                <div class="time-task-log-tag-list"></div>
+            <div data-legacy="time-task-log-field">
+              <span data-legacy="time-task-log-section-label">태그</span>
+              <div data-legacy="time-task-log-tags-wrap">
+                <input type="text" data-legacy="time-task-log-tag-input" placeholder="태그 입력 후 Enter" />
+                <div data-legacy="time-task-log-tag-list"></div>
               </div>
             </div>
           </div>
         </div>
-        <div class="time-task-log-todo-row">
-          <div class="time-task-log-link-row-head">
-            <span class="time-task-log-todo-label time-task-log-link-strip-label">투두 리스트</span>
-            <button type="button" class="time-task-log-todo-add-btn time-task-log-link-strip-add" aria-label="할일 추가">+</button>
+        <div data-legacy="time-task-log-todo-row">
+          <div data-legacy="time-task-log-link-row-head">
+            <span data-legacy="time-task-log-todo-label time-task-log-link-strip-label">투두 리스트</span>
+            <button type="button" data-legacy="time-task-log-todo-add-btn time-task-log-link-strip-add" aria-label="할일 추가">+</button>
           </div>
-          <div class="time-task-log-todo-pills"></div>
+          <div data-legacy="time-task-log-todo-pills"></div>
         </div>
-        <div class="time-task-log-expense-row">
-          <div class="time-task-log-link-row-head">
-            <span class="time-task-log-expense-label time-task-log-link-strip-label">소비 기록</span>
-            <button type="button" class="time-task-log-expense-add-btn time-task-log-link-strip-add" aria-label="소비 기록 추가">+</button>
+        <div data-legacy="time-task-log-expense-row">
+          <div data-legacy="time-task-log-link-row-head">
+            <span data-legacy="time-task-log-expense-label time-task-log-link-strip-label">소비 기록</span>
+            <button type="button" data-legacy="time-task-log-expense-add-btn time-task-log-link-strip-add" aria-label="소비 기록 추가">+</button>
           </div>
-          <div class="time-task-log-expense-pills"></div>
+          <div data-legacy="time-task-log-expense-pills"></div>
         </div>
         </div>
       </div>
-      <div class="time-task-log-footer" data-task-log-footer>
-        <button type="button" class="time-task-log-submit">기록</button>
-        <button type="button" class="time-task-log-delete-btn" hidden>이 시간기록 삭제</button>
+      <div data-legacy="time-task-log-footer" data-task-log-footer>
+        <button type="button" data-legacy="time-task-log-delete-btn" hidden>이 시간기록 삭제</button>
+        <button type="button" data-legacy="time-task-log-submit">기록</button>
       </div>
-      <div class="time-datetime-picker-wrap time-datetime-picker-bottom" hidden>
-        <div class="time-datetime-picker-buttons-wrap">
-          <div class="time-datetime-picker-header">
-            <span class="time-datetime-picker-title"></span>
-            <button type="button" class="time-datetime-picker-confirm">확인</button>
+      <div data-legacy="time-datetime-picker-wrap time-datetime-picker-bottom" hidden>
+        <div data-legacy="time-datetime-picker-buttons-wrap">
+          <div data-legacy="time-datetime-picker-header">
+            <span data-legacy="time-datetime-picker-title"></span>
+            <button type="button" data-legacy="time-datetime-picker-confirm">확인</button>
           </div>
-          <div class="time-datetime-picker-buttons time-datetime-picker-offset-btns">
-            <button type="button" class="time-datetime-picker-btn" data-offset="-30">-30</button>
-            <button type="button" class="time-datetime-picker-btn" data-offset="-15">-15</button>
-            <button type="button" class="time-datetime-picker-btn" data-offset="-5">-5</button>
-            <button type="button" class="time-datetime-picker-btn" data-offset="5">+5</button>
-            <button type="button" class="time-datetime-picker-btn" data-offset="15">+15</button>
-            <button type="button" class="time-datetime-picker-btn" data-offset="30">+30</button>
+          <div data-legacy="time-datetime-picker-buttons time-datetime-picker-offset-btns">
+            <button type="button" data-legacy="time-datetime-picker-btn" data-offset="-30">-30</button>
+            <button type="button" data-legacy="time-datetime-picker-btn" data-offset="-15">-15</button>
+            <button type="button" data-legacy="time-datetime-picker-btn" data-offset="-5">-5</button>
+            <button type="button" data-legacy="time-datetime-picker-btn" data-offset="5">+5</button>
+            <button type="button" data-legacy="time-datetime-picker-btn" data-offset="15">+15</button>
+            <button type="button" data-legacy="time-datetime-picker-btn" data-offset="30">+30</button>
           </div>
-          <div class="time-datetime-picker-buttons time-datetime-picker-action-btns">
-            <button type="button" class="time-datetime-picker-btn" data-action="last">마지막</button>
-            <button type="button" class="time-datetime-picker-btn" data-action="now">지금</button>
-            <button type="button" class="time-datetime-picker-btn" data-action="eod">하루의 끝</button>
+          <div data-legacy="time-datetime-picker-buttons time-datetime-picker-action-btns">
+            <button type="button" data-legacy="time-datetime-picker-btn" data-action="last">마지막</button>
+            <button type="button" data-legacy="time-datetime-picker-btn" data-action="now">지금</button>
+            <button type="button" data-legacy="time-datetime-picker-btn" data-action="eod">하루의 끝</button>
           </div>
         </div>
-        <div class="time-datetime-picker-wheels">
-          <div class="time-datetime-picker-column" data-col="date"></div>
-          <div class="time-datetime-picker-column" data-col="ampm"></div>
-          <div class="time-datetime-picker-column" data-col="hour"></div>
-          <div class="time-datetime-picker-column" data-col="minute"></div>
+        <div data-legacy="time-datetime-picker-wheels">
+          <div data-legacy="time-datetime-picker-column" data-col="date"></div>
+          <div data-legacy="time-datetime-picker-column" data-col="ampm"></div>
+          <div data-legacy="time-datetime-picker-column" data-col="hour"></div>
+          <div data-legacy="time-datetime-picker-column" data-col="minute"></div>
         </div>
       </div>
     </div>
-    <div class="time-task-log-todo-inner-modal" hidden>
-      <div class="time-task-log-todo-inner-backdrop"></div>
-      <div class="time-task-log-todo-inner-panel">
-        <div class="time-task-log-todo-inner-header time-task-setup-header time-task-log-header">
-          <h3 class="time-task-setup-title time-task-log-todo-inner-header-label">투두리스트</h3>
-          <button type="button" class="time-task-setup-close time-task-log-todo-inner-close" aria-label="닫기">&times;</button>
+    <div data-legacy="time-task-log-todo-inner-modal" hidden>
+      <div data-legacy="time-task-log-todo-inner-backdrop"></div>
+      <div data-legacy="time-task-log-todo-inner-panel">
+        <div data-legacy="time-task-log-todo-inner-header time-task-setup-header time-task-log-header">
+          <h3 data-legacy="time-task-setup-title time-task-log-todo-inner-header-label">투두리스트</h3>
+          <button type="button" data-legacy="time-task-setup-close time-task-log-todo-inner-close" aria-label="닫기">&times;</button>
         </div>
-        <div class="time-task-log-todo-inner-body">
-          <div class="time-task-log-field">
+        <div data-legacy="time-task-log-todo-inner-body">
+          <div data-legacy="time-task-log-field">
             <label>카테고리</label>
-            <div class="time-task-log-todo-category-wrap"></div>
+            <div data-legacy="time-task-log-todo-category-wrap"></div>
           </div>
-          <div class="time-task-log-field">
-            <input type="text" class="time-task-log-todo-inner-name" placeholder="할 일 이름 입력" />
+          <div data-legacy="time-task-log-field">
+            <input type="text" data-legacy="time-task-log-todo-inner-name" placeholder="할 일 이름 입력" />
           </div>
         </div>
-        <div class="time-task-log-todo-inner-footer">
-          <button type="button" class="time-task-log-todo-inner-add">추가</button>
+        <div data-legacy="time-task-log-todo-inner-footer">
+          <button type="button" data-legacy="time-task-log-todo-inner-add">추가</button>
         </div>
       </div>
     </div>
-    <div class="time-task-log-expense-inner-modal" hidden>
-      <div class="time-task-log-expense-inner-backdrop"></div>
-      <div class="time-task-log-expense-inner-panel">
-        <div class="time-task-log-expense-inner-header time-task-setup-header time-task-log-header">
-          <h3 class="time-task-setup-title">소비 기록</h3>
-          <button type="button" class="time-task-setup-close time-task-log-expense-inner-close" aria-label="닫기">&times;</button>
+    <div data-legacy="time-task-log-expense-inner-modal" hidden>
+      <div data-legacy="time-task-log-expense-inner-backdrop"></div>
+      <div data-legacy="time-task-log-expense-inner-panel">
+        <div data-legacy="time-task-log-expense-inner-header time-task-setup-header time-task-log-header">
+          <h3 data-legacy="time-task-setup-title">소비 기록</h3>
+          <button type="button" data-legacy="time-task-setup-close time-task-log-expense-inner-close" aria-label="닫기">&times;</button>
         </div>
-        <div class="time-task-log-expense-inner-body">
-          <div class="time-task-log-expense-inner-fields">
-            <div class="time-task-log-expense-amount-name-row">
-              <div class="time-task-log-field">
+        <div data-legacy="time-task-log-expense-inner-body">
+          <div data-legacy="time-task-log-expense-inner-fields">
+            <div data-legacy="time-task-log-expense-amount-name-row">
+              <div data-legacy="time-task-log-field">
                 <label>금액</label>
-                <div class="time-task-log-expense-amount-wrap">
-                  <input type="text" class="time-task-log-expense-amount" name="time-task-log-expense-amount" placeholder="0" inputmode="numeric" />
-                  <span class="time-task-log-expense-amount-unit">원</span>
+                <div data-legacy="time-task-log-expense-amount-wrap">
+                  <input type="text" data-legacy="time-task-log-expense-amount" name="time-task-log-expense-amount" placeholder="0" inputmode="numeric" />
+                  <span data-legacy="time-task-log-expense-amount-unit">원</span>
                 </div>
               </div>
-              <div class="time-task-log-field">
+              <div data-legacy="time-task-log-field">
                 <label>소비명</label>
-                <input type="text" class="time-task-log-expense-name" name="time-task-log-expense-name" placeholder="스타벅스" />
+                <input type="text" data-legacy="time-task-log-expense-name" name="time-task-log-expense-name" placeholder="스타벅스" />
               </div>
             </div>
-            <div class="time-task-log-field">
+            <div data-legacy="time-task-log-field">
               <label>소비 분류</label>
-              <div class="time-task-log-expense-classification-wrap"></div>
+              <div data-legacy="time-task-log-expense-classification-wrap"></div>
             </div>
-            <div class="time-task-log-expense-error" hidden></div>
-            <button type="button" class="time-task-log-expense-inner-add-btn">추가</button>
+            <div data-legacy="time-task-log-expense-error" hidden></div>
           </div>
-          <div class="time-task-log-expense-added-list"></div>
+          <div data-legacy="time-task-log-expense-added-list"></div>
+        </div>
+        <div data-legacy="time-task-log-expense-inner-footer time-task-log-todo-inner-footer">
+          <button type="button" data-legacy="time-task-log-expense-inner-add-btn">추가</button>
         </div>
       </div>
     </div>
@@ -3524,47 +3525,47 @@ export function render() {
   el.appendChild(taskLogModal);
 
   const taskLogPickerWrap = taskLogModal.querySelector(
-    ".time-datetime-picker-wrap",
+    '[data-legacy~="time-datetime-picker-wrap"]',
   );
   const taskLogPickerBackdrop = taskLogModal.querySelector(
-    ".time-datetime-picker-backdrop",
+    '[data-legacy~="time-datetime-picker-backdrop"]',
   );
 
   function closeDateTimePicker() {
-    taskLogPickerWrap.hidden = true;
-    taskLogPickerBackdrop.hidden = true;
+    if (taskLogPickerWrap) taskLogPickerWrap.hidden = true;
+    if (taskLogPickerBackdrop) taskLogPickerBackdrop.hidden = true;
   }
 
 
-  const taskLogTitleEl = taskLogModal.querySelector(".time-task-setup-title");
+  const taskLogTitleEl = taskLogModal.querySelector('[data-legacy~="time-task-setup-title"]');
   const taskLogFooterEl = taskLogModal.querySelector("[data-task-log-footer]");
   const taskLogTaskWrap = taskLogModal.querySelector(
-    ".time-task-log-task-wrap",
+    '[data-legacy~="time-task-log-task-wrap"]',
   );
-  const taskLogStartInput = taskLogModal.querySelector(".time-task-log-start");
-  const taskLogEndInput = taskLogModal.querySelector(".time-task-log-end");
+  const taskLogStartInput = taskLogModal.querySelector('[data-legacy~="time-task-log-start"]');
+  const taskLogEndInput = taskLogModal.querySelector('[data-legacy~="time-task-log-end"]');
   const taskLogDateStart = taskLogModal.querySelector(
-    ".time-task-log-date-start",
+    '[data-legacy~="time-task-log-date-start"]',
   );
   const taskLogTimeStart = taskLogModal.querySelector(
-    ".time-task-log-time-start",
+    '[data-legacy~="time-task-log-time-start"]',
   );
-  const taskLogTimeEnd = taskLogModal.querySelector(".time-task-log-time-end");
+  const taskLogTimeEnd = taskLogModal.querySelector('[data-legacy~="time-task-log-time-end"]');
   const taskLogTimeOrderWarning = taskLogModal.querySelector(
-    ".time-task-log-time-order-warning",
+    '[data-legacy~="time-task-log-time-order-warning"]',
   );
   let taskLogEditTr = null;
   const taskLogEndWrap = taskLogModal.querySelector(
-    ".time-task-log-datetime-wrap-end",
+    '[data-legacy~="time-task-log-datetime-wrap-end"]',
   );
   const taskLogFeedbackInput = taskLogModal.querySelector(
-    ".time-task-log-feedback",
+    '[data-legacy~="time-task-log-feedback"]',
   );
   const taskLogMealDetailSection = taskLogModal.querySelector(
-    ".time-task-log-meal-detail-section",
+    '[data-legacy~="time-task-log-meal-detail-section"]',
   );
   const taskLogMealDetailInput = taskLogModal.querySelector(
-    ".time-task-log-meal-detail-input",
+    '[data-legacy~="time-task-log-meal-detail-input"]',
   );
   function updateTaskLogMealDetailVisibility(taskName) {
     const show = AUDIT_UNHEALTHY_MEAL_TASK_NAMES.has((taskName || "").trim());
@@ -3574,10 +3575,10 @@ export function render() {
     }
   }
   const taskLogTagInput = taskLogModal.querySelector(
-    ".time-task-log-tag-input",
+    '[data-legacy~="time-task-log-tag-input"]',
   );
   const taskLogTagListEl = taskLogModal.querySelector(
-    ".time-task-log-tag-list",
+    '[data-legacy~="time-task-log-tag-list"]',
   );
   let taskLogMemoTags = [];
 
@@ -3586,11 +3587,11 @@ export function render() {
     taskLogTagListEl.innerHTML = "";
     taskLogMemoTags.forEach((tag, i) => {
       const pill = document.createElement("span");
-      pill.className = "time-memo-tag-chip time-task-log-tag-pill";
+      lpSetClasses(pill, "time-memo-tag-chip time-task-log-tag-pill");
       pill.setAttribute("data-tag", tag);
-      pill.innerHTML = `<span class="time-memo-tag-chip-text">${escapeHtml(tag)}</span><button type="button" class="time-memo-tag-chip-remove" aria-label="태그 삭제">&times;</button>`;
+      pill.innerHTML = `<span data-legacy="time-memo-tag-chip-text">${escapeHtml(tag)}</span><button type="button" data-legacy="time-memo-tag-chip-remove" aria-label="태그 삭제">&times;</button>`;
       pill
-        .querySelector(".time-memo-tag-chip-remove")
+        .querySelector('[data-legacy~="time-memo-tag-chip-remove"]')
         ?.addEventListener("click", (e) => {
           e.preventDefault();
           taskLogMemoTags = taskLogMemoTags.filter((_, idx) => idx !== i);
@@ -3615,28 +3616,28 @@ export function render() {
 
   /* 메모 + 버튼 → 내부 모달 (레거시, 미사용) */
   const taskLogMemoAddBtn = taskLogModal.querySelector(
-    ".time-task-log-memo-add-btn",
+    '[data-legacy~="time-task-log-memo-add-btn"]',
   );
   const taskLogMemoInnerModal = taskLogModal.querySelector(
-    ".time-task-log-memo-inner-modal",
+    '[data-legacy~="time-task-log-memo-inner-modal"]',
   );
   const taskLogMemoInnerBackdrop = taskLogModal.querySelector(
-    ".time-task-log-memo-inner-backdrop",
+    '[data-legacy~="time-task-log-memo-inner-backdrop"]',
   );
   const taskLogMemoInnerInput = taskLogModal.querySelector(
-    ".time-task-log-memo-inner-input",
+    '[data-legacy~="time-task-log-memo-inner-input"]',
   );
   const taskLogMemoInnerTagInput = taskLogModal.querySelector(
-    ".time-task-log-memo-inner-tag-input",
+    '[data-legacy~="time-task-log-memo-inner-tag-input"]',
   );
   const taskLogMemoInnerTagList = taskLogModal.querySelector(
-    ".time-task-log-memo-inner-tag-list",
+    '[data-legacy~="time-task-log-memo-inner-tag-list"]',
   );
   const taskLogMemoInnerCancel = taskLogModal.querySelector(
-    ".time-task-log-memo-inner-cancel",
+    '[data-legacy~="time-task-log-memo-inner-cancel"]',
   );
   const taskLogMemoInnerAdd = taskLogModal.querySelector(
-    ".time-task-log-memo-inner-add",
+    '[data-legacy~="time-task-log-memo-inner-add"]',
   );
 
   let taskLogMemoModalTags = [];
@@ -3646,10 +3647,10 @@ export function render() {
     taskLogMemoInnerTagList.innerHTML = "";
     taskLogMemoModalTags.forEach((tag, i) => {
       const pill = document.createElement("span");
-      pill.className = "time-memo-tag-chip time-task-log-tag-pill";
-      pill.innerHTML = `<span class="time-memo-tag-chip-text">${escapeHtml(tag)}</span><button type="button" class="time-memo-tag-chip-remove" aria-label="태그 삭제">&times;</button>`;
+      lpSetClasses(pill, "time-memo-tag-chip time-task-log-tag-pill");
+      pill.innerHTML = `<span data-legacy="time-memo-tag-chip-text">${escapeHtml(tag)}</span><button type="button" data-legacy="time-memo-tag-chip-remove" aria-label="태그 삭제">&times;</button>`;
       pill
-        .querySelector(".time-memo-tag-chip-remove")
+        .querySelector('[data-legacy~="time-memo-tag-chip-remove"]')
         ?.addEventListener("click", () => {
           taskLogMemoModalTags = taskLogMemoModalTags.filter(
             (_, idx) => idx !== i,
@@ -3740,12 +3741,12 @@ export function render() {
       if (cur !== v) taskLogDateStart.value = v;
     }
     const has = /^\d{4}-\d{2}-\d{2}$/.test(v);
-    taskLogDateStart.classList.toggle("time-task-log-date-has-value", has);
-    const wrap = taskLogDateStart.closest(".time-task-log-date-native-wrap");
+    lpTokenToggle(taskLogDateStart, "time-task-log-date-has-value", has);
+    const wrap = taskLogDateStart.closest('[data-legacy~="time-task-log-date-native-wrap"]');
     if (wrap?.classList) {
-      wrap.classList.toggle("time-task-log-date-native-wrap--has-value", has);
+      lpTokenToggle(wrap, "time-task-log-date-native-wrap--has-value", has);
     }
-    const ov = wrap?.querySelector?.(".time-task-log-date-overlay");
+    const ov = wrap?.querySelector?.('[data-legacy~="time-task-log-date-overlay"]');
     if (ov) ov.textContent = has ? formatTaskLogDateOverlayYmd(v) : "";
   }
 
@@ -3920,7 +3921,7 @@ export function render() {
 
   function updateEndTimeClearVisibility() {
     const hasValue = (taskLogEndInput.value || "").trim().length > 0;
-    taskLogEndWrap?.classList.toggle("has-value", hasValue);
+    if (taskLogEndWrap) lpTokenToggle(taskLogEndWrap, "has-value", hasValue);
   }
 
   const beforeInputTimeDigitsOnly = (e) => {
@@ -3992,7 +3993,7 @@ export function render() {
   };
 
   const taskLogFocusOutTargetIsTimeAdjustBtn = (ev) =>
-    !!ev.relatedTarget?.closest?.(".time-task-log-time-adjust-btns");
+    !!ev.relatedTarget?.closest?.('[data-legacy~="time-task-log-time-adjust-btns"]');
 
   [taskLogDateStart, taskLogTimeStart].forEach((el) => {
     el?.addEventListener("change", () => {
@@ -4060,16 +4061,14 @@ export function render() {
   let taskLogEditExclude = null;
 
   function setTaskLogQuickAdjustActive(btn) {
-    taskLogModal.querySelectorAll(".time-task-log-time-adjust-btn").forEach((b) => {
-      b.classList.toggle(
-        "time-task-log-time-adjust-active",
-        !!(btn && b === btn),
+    taskLogModal.querySelectorAll('[data-legacy~="time-task-log-time-adjust-btn"]').forEach((b) => {
+      lpTokenToggle(b, "time-task-log-time-adjust-active", !!(btn && b === btn),
       );
     });
   }
 
   taskLogModal
-    .querySelectorAll(".time-task-log-time-adjust-btn")
+    .querySelectorAll('[data-legacy~="time-task-log-time-adjust-btn"]')
     .forEach((btn) => {
       /* 데스크탑: 버튼으로 포커스가 빠지며 blur→syncEndToHidden이 먼저 돌아 마감 hidden이 비는 순서 경합 방지 */
       btn.addEventListener("mousedown", (e) => {
@@ -4177,118 +4176,119 @@ export function render() {
     });
 
   const taskLogExpenseAddBtn = taskLogModal.querySelector(
-    ".time-task-log-expense-add-btn",
+    '[data-legacy~="time-task-log-expense-add-btn"]',
   );
   const taskLogExpenseInnerModal = taskLogModal.querySelector(
-    ".time-task-log-expense-inner-modal",
+    '[data-legacy~="time-task-log-expense-inner-modal"]',
   );
   const taskLogExpenseInnerBackdrop = taskLogModal.querySelector(
-    ".time-task-log-expense-inner-backdrop",
+    '[data-legacy~="time-task-log-expense-inner-backdrop"]',
   );
   const taskLogExpenseNameInput = taskLogModal.querySelector(
-    ".time-task-log-expense-name",
+    '[data-legacy~="time-task-log-expense-name"]',
   );
   const taskLogExpenseClassificationWrap = taskLogModal.querySelector(
-    ".time-task-log-expense-classification-wrap",
+    '[data-legacy~="time-task-log-expense-classification-wrap"]',
   );
   const taskLogExpenseAmountInput = taskLogModal.querySelector(
-    ".time-task-log-expense-amount",
+    '[data-legacy~="time-task-log-expense-amount"]',
   );
   const taskLogExpenseErrorEl = taskLogModal.querySelector(
-    ".time-task-log-expense-error",
+    '[data-legacy~="time-task-log-expense-error"]',
   );
   const taskLogExpenseInnerList = taskLogModal.querySelector(
-    ".time-task-log-expense-added-list",
+    '[data-legacy~="time-task-log-expense-added-list"]',
   );
   const taskLogExpensePills = taskLogModal.querySelector(
-    ".time-task-log-expense-pills",
+    '[data-legacy~="time-task-log-expense-pills"]',
   );
   const taskLogExpenseInnerAdd = taskLogModal.querySelector(
-    ".time-task-log-expense-inner-add-btn",
+    '[data-legacy~="time-task-log-expense-inner-add-btn"]',
   );
   const taskLogExpenseInnerClose = taskLogModal.querySelector(
-    ".time-task-log-expense-inner-close",
+    '[data-legacy~="time-task-log-expense-inner-close"]',
   );
   const taskLogTodoAddBtn = taskLogModal.querySelector(
-    ".time-task-log-todo-add-btn",
+    '[data-legacy~="time-task-log-todo-add-btn"]',
   );
   const taskLogTodoPills = taskLogModal.querySelector(
-    ".time-task-log-todo-pills",
+    '[data-legacy~="time-task-log-todo-pills"]',
   );
   const taskLogTodoInnerModal = taskLogModal.querySelector(
-    ".time-task-log-todo-inner-modal",
+    '[data-legacy~="time-task-log-todo-inner-modal"]',
   );
   const taskLogTodoCategoryWrap = taskLogModal.querySelector(
-    ".time-task-log-todo-category-wrap",
+    '[data-legacy~="time-task-log-todo-category-wrap"]',
   );
   const taskLogTodoInnerName = taskLogModal.querySelector(
-    ".time-task-log-todo-inner-name",
+    '[data-legacy~="time-task-log-todo-inner-name"]',
   );
   const taskLogTodoInnerClose = taskLogModal.querySelector(
-    ".time-task-log-todo-inner-close",
+    '[data-legacy~="time-task-log-todo-inner-close"]',
   );
   const taskLogTodoInnerAdd = taskLogModal.querySelector(
-    ".time-task-log-todo-inner-add",
+    '[data-legacy~="time-task-log-todo-inner-add"]',
   );
   const taskLogTodoInnerBackdrop = taskLogModal.querySelector(
-    ".time-task-log-todo-inner-backdrop",
+    '[data-legacy~="time-task-log-todo-inner-backdrop"]',
   );
   const taskLogKpiTodosSection = taskLogModal.querySelector(
-    ".time-task-log-kpi-todos-section",
+    '[data-legacy~="time-task-log-kpi-todos-section"]',
   );
   const taskLogKpiTodosList = taskLogModal.querySelector(
-    ".time-task-log-kpi-todos-list",
+    '[data-legacy~="time-task-log-kpi-todos-list"]',
   );
   const taskLogDailyTodosSection = taskLogModal.querySelector(
-    ".time-task-log-daily-todos-section",
+    '[data-legacy~="time-task-log-daily-todos-section"]',
   );
   const taskLogDailyTodosList = taskLogModal.querySelector(
-    ".time-task-log-daily-todos-list",
+    '[data-legacy~="time-task-log-daily-todos-list"]',
   );
-  const taskLogSubmitBtn = taskLogModal.querySelector(".time-task-log-submit");
+  const taskLogSubmitBtn = taskLogModal.querySelector('[data-legacy~="time-task-log-submit"]');
   const taskLogCloseBtn = taskLogModal.querySelector(
-    ".time-task-setup-panel .time-task-setup-close",
+    '[data-legacy~="time-task-setup-panel"] [data-legacy~="time-task-setup-close"]',
   );
 
   /* 아코디언: 한 번에 하나만 열림, 열린 걸 다시 누르면 닫힘 */
   taskLogModal
-    .querySelectorAll(".time-task-log-accordion-header")
+    .querySelectorAll('[data-legacy~="time-task-log-accordion-header"]')
     .forEach((header) => {
       header.addEventListener("click", (e) => {
         if (e.target.closest("label")) return;
-        const item = header.closest(".time-task-log-accordion-item");
+        const item = header.closest('[data-legacy~="time-task-log-accordion-item"]');
         if (!item) return;
-        const body = item.querySelector(".time-task-log-accordion-body");
-        const chevron = item.querySelector(".time-task-log-accordion-chevron");
-        const isExpanded = item.classList.contains(
+        const body = item.querySelector('[data-legacy~="time-task-log-accordion-body"]');
+        const chevron = item.querySelector('[data-legacy~="time-task-log-accordion-chevron"]');
+        const isExpanded = lpTokenHas(
+          item,
           "time-task-log-accordion-expanded",
         );
         if (isExpanded) {
-          item.classList.remove("time-task-log-accordion-expanded");
+          lpTokenRemove(item, "time-task-log-accordion-expanded");
           header.setAttribute("aria-expanded", "false");
           if (chevron) chevron.textContent = "▶";
           if (body) body.hidden = true;
         } else {
           taskLogModal
-            .querySelectorAll(".time-task-log-accordion-item")
+            .querySelectorAll('[data-legacy~="time-task-log-accordion-item"]')
             .forEach((other) => {
               if (other === item) return;
-              other.classList.remove("time-task-log-accordion-expanded");
+              lpTokenRemove(other, "time-task-log-accordion-expanded");
               const otherHeader = other.querySelector(
-                ".time-task-log-accordion-header",
+                '[data-legacy~="time-task-log-accordion-header"]',
               );
               const otherBody = other.querySelector(
-                ".time-task-log-accordion-body",
+                '[data-legacy~="time-task-log-accordion-body"]',
               );
               const otherChevron = other.querySelector(
-                ".time-task-log-accordion-chevron",
+                '[data-legacy~="time-task-log-accordion-chevron"]',
               );
               if (otherHeader)
                 otherHeader.setAttribute("aria-expanded", "false");
               if (otherBody) otherBody.hidden = true;
               if (otherChevron) otherChevron.textContent = "▶";
             });
-          item.classList.add("time-task-log-accordion-expanded");
+          lpTokenAdd(item, "time-task-log-accordion-expanded");
           header.setAttribute("aria-expanded", "true");
           if (chevron) chevron.textContent = "▼";
           if (body) body.hidden = false;
@@ -4300,14 +4300,14 @@ export function render() {
     });
   taskLogModal
     .querySelectorAll(
-      ".time-task-log-accordion-item:not(.time-task-log-accordion-expanded) .time-task-log-accordion-body",
+      '[data-legacy~="time-task-log-accordion-item"]:not([data-legacy~="time-task-log-accordion-expanded"]) [data-legacy~="time-task-log-accordion-body"]',
     )
     .forEach((body) => {
       body.hidden = true;
     });
   taskLogModal
     .querySelectorAll(
-      ".time-task-log-accordion-item:not(.time-task-log-accordion-expanded) .time-task-log-accordion-chevron",
+      '[data-legacy~="time-task-log-accordion-item"]:not([data-legacy~="time-task-log-accordion-expanded"]) [data-legacy~="time-task-log-accordion-chevron"]',
     )
     .forEach((chevron) => {
       chevron.textContent = "▶";
@@ -4346,14 +4346,13 @@ export function render() {
     }
 
     const wrap = document.createElement("div");
-    wrap.className = "time-task-log-task-dropdown";
+    lpSetClasses(wrap, "time-task-log-task-dropdown");
     const trigger = document.createElement("button");
     trigger.type = "button";
-    trigger.className = "time-task-log-task-dropdown-trigger";
+    lpSetClasses(trigger, "time-task-log-task-dropdown-trigger");
     trigger.textContent = "과제를 선택하세요";
     const panel = document.createElement("div");
-    panel.className =
-      "time-task-log-task-dropdown-panel time-task-log-task-dropdown-panel--ledger-buckets";
+    lpSetClasses(panel, "time-task-log-task-dropdown-panel time-task-log-task-dropdown-panel--ledger-buckets");
     panel.hidden = true;
     let value = "";
     let searchQuery = "";
@@ -4375,7 +4374,7 @@ export function render() {
       tasks.sort((a, b) => (a.name || "").localeCompare(b.name || "", "ko"));
       tasks.forEach((t) => {
         const row = document.createElement("div");
-        row.className = "time-task-log-task-dropdown-option";
+        lpSetClasses(row, "time-task-log-task-dropdown-option");
         const prod = (
           t.productivity ||
           getProductivityFromCategory(t.category) ||
@@ -4388,12 +4387,12 @@ export function render() {
               ? "time-task-prod-bar time-task-prod-bar--nonproductive"
               : "time-task-prod-bar time-task-prod-bar--other";
         const bar = document.createElement("span");
-        bar.className = barClass;
+        lpSetClasses(bar, barClass);
         bar.setAttribute("aria-hidden", "true");
         const textWrap = document.createElement("span");
-        textWrap.className = "time-task-log-task-dropdown-option-text";
+        lpSetClasses(textWrap, "time-task-log-task-dropdown-option-text");
         const label = document.createElement("span");
-        label.className = "time-task-log-task-dropdown-option-label";
+        lpSetClasses(label, "time-task-log-task-dropdown-option-label");
         label.textContent = t.name || "";
         textWrap.appendChild(label);
         appendTaskDropdownBadges(textWrap, t);
@@ -4424,36 +4423,36 @@ export function render() {
       let optionsContainer = null;
 
       const searchWrap = document.createElement("div");
-      searchWrap.className = "time-task-log-task-dropdown-search-wrap";
+      lpSetClasses(searchWrap, "time-task-log-task-dropdown-search-wrap");
       const searchInput = document.createElement("input");
       searchInput.type = "text";
       searchInput.placeholder = "과제 검색...";
-      searchInput.className = "time-task-log-task-dropdown-search";
+      lpSetClasses(searchInput, "time-task-log-task-dropdown-search");
       searchInput.value = searchQuery;
       searchInput.setAttribute("autocomplete", "off");
       searchWrap.appendChild(searchInput);
       panel.appendChild(searchWrap);
 
       const chipsWrap = document.createElement("div");
-      chipsWrap.className = "time-task-log-task-dropdown-buckets";
+      lpSetClasses(chipsWrap, "time-task-log-task-dropdown-buckets");
       chipsWrap.setAttribute("role", "tablist");
       chipsWrap.setAttribute("aria-label", "과제 구역");
       LEDGER_BUCKET_CHIPS.forEach(({ id, label: chipLabel }) => {
         const b = document.createElement("button");
         b.type = "button";
-        b.className = "time-task-log-task-dropdown-bucket";
+        lpSetClasses(b, "time-task-log-task-dropdown-bucket");
         b.dataset.bucket = id;
         b.textContent = chipLabel;
         b.setAttribute("role", "tab");
         b.setAttribute("aria-selected", id === pickerBucket ? "true" : "false");
-        if (id === pickerBucket) b.classList.add("is-active");
+        if (id === pickerBucket) lpTokenAdd(b, "is-active");
         b.addEventListener("click", (e) => {
           e.preventDefault();
           e.stopPropagation();
           pickerBucket = id;
-          chipsWrap.querySelectorAll(".time-task-log-task-dropdown-bucket").forEach((x) => {
+          chipsWrap.querySelectorAll('[data-legacy~="time-task-log-task-dropdown-bucket"]').forEach((x) => {
             const on = x.dataset.bucket === id;
-            x.classList.toggle("is-active", on);
+            lpTokenToggle(x, "is-active", on);
             x.setAttribute("aria-selected", on ? "true" : "false");
           });
           if (optionsContainer) {
@@ -4465,7 +4464,7 @@ export function render() {
       panel.appendChild(chipsWrap);
 
       optionsContainer = document.createElement("div");
-      optionsContainer.className = "time-task-log-task-dropdown-options";
+      lpSetClasses(optionsContainer, "time-task-log-task-dropdown-options");
       panel.appendChild(optionsContainer);
       searchInput.addEventListener("input", () => {
         searchQuery = searchInput.value.trim();
@@ -4482,7 +4481,7 @@ export function render() {
       renderPanel();
       panel.hidden = !panel.hidden;
       if (!panel.hidden)
-        panel.querySelector(".time-task-log-task-dropdown-search")?.focus();
+        panel.querySelector('[data-legacy~="time-task-log-task-dropdown-search"]')?.focus();
     });
     const closePanelOnOutside = (e) => {
       if (panel.hidden) return;
@@ -4507,8 +4506,8 @@ export function render() {
     return wrap;
   }
 
-  const taskLogPickerTitle = taskLogPickerWrap.querySelector(
-    ".time-datetime-picker-title",
+  const taskLogPickerTitle = taskLogPickerWrap?.querySelector(
+    '[data-legacy~="time-datetime-picker-title"]',
   );
 
   function createDateTimePickerModal(getOtherValue, onConfirm) {
@@ -4517,7 +4516,7 @@ export function render() {
     const colAmpm = wrap.querySelector('[data-col="ampm"]');
     const colHour = wrap.querySelector('[data-col="hour"]');
     const colMinute = wrap.querySelector('[data-col="minute"]');
-    const confirmBtn = wrap.querySelector(".time-datetime-picker-confirm");
+    const confirmBtn = wrap.querySelector('[data-legacy~="time-datetime-picker-confirm"]');
     let currentD = new Date();
     let fieldType = "start";
     let lastEndTime = null;
@@ -4615,12 +4614,12 @@ export function render() {
         container.innerHTML = "";
         if (addSpacers) {
           const spacer = document.createElement("div");
-          spacer.className = "time-datetime-picker-spacer";
+          lpSetClasses(spacer, "time-datetime-picker-spacer");
           container.appendChild(spacer);
         }
         items.forEach((item) => {
           const div = document.createElement("div");
-          div.className = "time-datetime-picker-option";
+          lpSetClasses(div, "time-datetime-picker-option");
           div.textContent = typeof format === "function" ? format(item) : item;
           div.dataset.value = String(
             typeof item === "object"
@@ -4630,12 +4629,12 @@ export function render() {
               : item,
           );
           if (String(selectedVal) === div.dataset.value)
-            div.classList.add("selected");
+            lpTokenAdd(div, "selected");
           div.addEventListener("click", () => {
             container
-              .querySelectorAll(".time-datetime-picker-option")
-              .forEach((o) => o.classList.remove("selected"));
-            div.classList.add("selected");
+              .querySelectorAll('[data-legacy~="time-datetime-picker-option"]')
+              .forEach((o) => lpTokenRemove(o, "selected"));
+            lpTokenAdd(div, "selected");
             const needsScroll = container !== colAmpm;
             if (item instanceof Date) {
               currentD.setFullYear(
@@ -4661,7 +4660,7 @@ export function render() {
         });
         if (addSpacers) {
           const spacer = document.createElement("div");
-          spacer.className = "time-datetime-picker-spacer";
+          lpSetClasses(spacer, "time-datetime-picker-spacer");
           container.appendChild(spacer);
         }
       }
@@ -4705,7 +4704,7 @@ export function render() {
       const scrollToSelected = () => {
         [colDate, colAmpm, colHour, colMinute].forEach((col) => {
           const sel = col.querySelector(
-            ".time-datetime-picker-option.selected",
+            '[data-legacy~="time-datetime-picker-option"][data-legacy~="selected"]',
           );
           if (sel) {
             sel.scrollIntoView({
@@ -4725,7 +4724,7 @@ export function render() {
     }
 
     function getCenteredOption(col) {
-      const opts = col.querySelectorAll(".time-datetime-picker-option");
+      const opts = col.querySelectorAll('[data-legacy~="time-datetime-picker-option"]');
       if (!opts.length) return null;
       const centerY = col.scrollTop + col.clientHeight / 2;
       let best = opts[0];
@@ -4771,9 +4770,9 @@ export function render() {
       const centered = getCenteredOption(col);
       if (!centered) return;
       col
-        .querySelectorAll(".time-datetime-picker-option")
-        .forEach((o) => o.classList.remove("selected"));
-      centered.classList.add("selected");
+        .querySelectorAll('[data-legacy~="time-datetime-picker-option"]')
+        .forEach((o) => lpTokenRemove(o, "selected"));
+      lpTokenAdd(centered, "selected");
       const prevAmpm = currentD.getHours() < 12 ? "오전" : "오후";
       applyValueFromCenteredOption(col, centered);
       if (col === colAmpm) {
@@ -4794,7 +4793,7 @@ export function render() {
       updateDisplay();
     }
 
-    wrap.querySelectorAll(".time-datetime-picker-btn").forEach((btn) => {
+    wrap.querySelectorAll('[data-legacy~="time-datetime-picker-btn"]').forEach((btn) => {
       btn.addEventListener("click", () => {
         const offset = btn.dataset.offset;
         const action = btn.dataset.action;
@@ -4843,8 +4842,8 @@ export function render() {
       onConfirm?.(toValue(currentD));
       wrap.hidden = true;
       const backdrop = wrap
-        .closest(".time-task-log-panel")
-        ?.querySelector(".time-datetime-picker-backdrop");
+        .closest('[data-legacy~="time-task-log-panel"]')
+        ?.querySelector('[data-legacy~="time-datetime-picker-backdrop"]');
       if (backdrop) backdrop.hidden = true;
     });
 
@@ -4887,8 +4886,8 @@ export function render() {
         renderWheels();
         wrap.hidden = false;
         const backdrop = wrap
-          .closest(".time-task-log-panel")
-          ?.querySelector(".time-datetime-picker-backdrop");
+          .closest('[data-legacy~="time-task-log-panel"]')
+          ?.querySelector('[data-legacy~="time-datetime-picker-backdrop"]');
         if (backdrop) backdrop.hidden = false;
         setTimeout(() => {
           skipScrollSync = false;
@@ -4904,12 +4903,12 @@ export function render() {
     onUpdate,
   ) {
     const wrap = document.createElement("div");
-    wrap.className = "time-task-log-expense-classification-btns";
+    lpSetClasses(wrap, "time-task-log-expense-classification-btns");
     const hint = document.createElement("span");
-    hint.className = "time-task-log-expense-classification-hint";
+    lpSetClasses(hint, "time-task-log-expense-classification-hint");
     hint.textContent = "큰분류(입금/지출)를 먼저 선택해 주세요.";
     const btnsWrap = document.createElement("div");
-    btnsWrap.className = "lp-choice-chip-row time-task-log-expense-cls-btns-wrap";
+    lpSetClasses(btnsWrap, "lp-choice-chip-row time-task-log-expense-cls-btns-wrap");
     let value = (initialValue || "").trim();
     let payment = "";
     /** 지출 전용: "all" | "payment" | "done" */
@@ -4937,16 +4936,16 @@ export function render() {
       function makeClsBtn(opt, selected, onClick) {
         const btn = document.createElement("button");
         btn.type = "button";
-        btn.className = "lp-choice-chip";
-        if (selected) btn.classList.add("lp-choice-chip--on");
+        lpSetClasses(btn, "lp-choice-chip");
+        if (selected) lpTokenAdd(btn, "lp-choice-chip--on");
         btn.dataset.label = opt.label;
         const svgInnerPaths =
           isExpense ? "" : (opt.svg || (flowType === "입금" ? BAG_DOLLAR_PATHS_INNER : ""));
         if (svgInnerPaths) {
-          btn.classList.add("lp-choice-chip--has-icon");
-          btn.innerHTML = `<span class="lp-choice-chip__icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${svgInnerPaths}</svg></span><span class="lp-choice-chip__label">${escapeHtml(opt.label)}</span>`;
+          lpTokenAdd(btn, "lp-choice-chip--has-icon");
+          btn.innerHTML = `<span data-legacy="lp-choice-chip__icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${svgInnerPaths}</svg></span><span data-legacy="lp-choice-chip__label">${escapeHtml(opt.label)}</span>`;
         } else {
-          btn.innerHTML = `<span class="lp-choice-chip__label">${escapeHtml(opt.label)}</span>`;
+          btn.innerHTML = `<span data-legacy="lp-choice-chip__label">${escapeHtml(opt.label)}</span>`;
         }
         btn.addEventListener("click", onClick);
         return btn;
@@ -4968,10 +4967,10 @@ export function render() {
         (paymentOptions || ["현금", "체크카드", "신용카드"]).forEach((opt) => {
           const btn = document.createElement("button");
           btn.type = "button";
-          btn.className = "lp-choice-chip";
+          lpSetClasses(btn, "lp-choice-chip");
           btn.dataset.payment = opt;
-          btn.innerHTML = `<span class="lp-choice-chip__label">${escapeHtml(opt)}</span>`;
-          if (payment === opt) btn.classList.add("lp-choice-chip--on");
+          btn.innerHTML = `<span data-legacy="lp-choice-chip__label">${escapeHtml(opt)}</span>`;
+          if (payment === opt) lpTokenAdd(btn, "lp-choice-chip--on");
           btn.addEventListener("click", () => {
             payment = opt;
             expenseStep = "done";
@@ -5000,9 +4999,9 @@ export function render() {
           } else {
             value = value === opt.label ? "" : opt.label;
             btnsWrap
-              .querySelectorAll(".lp-choice-chip[data-label]")
+              .querySelectorAll('[data-legacy~="lp-choice-chip"][data-label]')
               .forEach((b) =>
-                b.classList.toggle("lp-choice-chip--on", b.dataset.label === value),
+                lpTokenToggle(b, "lp-choice-chip--on", b.dataset.label === value),
               );
             onUpdate?.(value);
           }
@@ -5053,7 +5052,7 @@ export function render() {
 
     if (!taskLogDailyTodosSection || !taskLogDailyTodosList) return;
     const taskLogDailyTodosTitle = taskLogModal.querySelector(
-      ".time-task-log-daily-todos-title",
+      '[data-legacy~="time-task-log-daily-todos-title"]',
     );
     const DEFAULT_DAILY_TODOS_TITLE = "매일 할일 목록";
 
@@ -5090,16 +5089,15 @@ export function render() {
       );
       dailyTodos.forEach((todo) => {
         const label = document.createElement("label");
-        label.className =
-          "time-task-log-kpi-todo-row time-task-log-daily-todo-row";
+        lpSetClasses(label, "time-task-log-kpi-todo-row time-task-log-daily-todo-row");
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
         checkbox.checked = logCheckedIds.has(String(todo.id || "").trim());
         checkbox.dataset.todoId = todo.id;
         const span = document.createElement("span");
-        span.className = "time-task-log-kpi-todo-text";
+        lpSetClasses(span, "time-task-log-kpi-todo-text");
         span.textContent = todo.text || "";
-        if (checkbox.checked) span.classList.add("is-done");
+        if (checkbox.checked) lpTokenAdd(span, "is-done");
         label.appendChild(checkbox);
         label.appendChild(span);
         checkbox.addEventListener("change", () => {
@@ -5111,7 +5109,7 @@ export function render() {
           const ymd = normalizeTaskLogPickerDateYmd();
           if (ymd.length < 10) return;
           /* KPI 맵은 「기록」 저장 시에만 반영 — X로 닫으면 체크만 무효 */
-          span.classList.toggle("is-done", checkbox.checked);
+          lpTokenToggle(span, "is-done", checkbox.checked);
         });
         taskLogDailyTodosList.appendChild(label);
       });
@@ -5130,21 +5128,20 @@ export function render() {
       const saved = getMealChecklistState(dateYmd, name);
       dietNames.forEach((dietLabel) => {
         const label = document.createElement("label");
-        label.className =
-          "time-task-log-kpi-todo-row time-task-log-daily-todo-row";
+        lpSetClasses(label, "time-task-log-kpi-todo-row time-task-log-daily-todo-row");
         label.dataset.mealChecklist = "1";
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
         checkbox.checked = !!saved[dietLabel];
         const span = document.createElement("span");
-        span.className = "time-task-log-kpi-todo-text";
+        lpSetClasses(span, "time-task-log-kpi-todo-text");
         span.textContent = dietLabel;
-        if (checkbox.checked) span.classList.add("is-done");
+        if (checkbox.checked) lpTokenAdd(span, "is-done");
         label.appendChild(checkbox);
         label.appendChild(span);
         checkbox.addEventListener("change", () => {
           setMealChecklistItem(dateYmd, name, dietLabel, checkbox.checked);
-          span.classList.toggle("is-done", checkbox.checked);
+          lpTokenToggle(span, "is-done", checkbox.checked);
         });
         taskLogDailyTodosList.appendChild(label);
       });
@@ -5165,25 +5162,25 @@ export function render() {
 
   function setupScoreButtons(container, getValue, setValue) {
     if (!container) return;
-    container.querySelectorAll(".time-task-log-score-btn").forEach((btn) => {
+    container.querySelectorAll('[data-legacy~="time-task-log-score-btn"]').forEach((btn) => {
       btn.addEventListener("click", () => {
         const val = btn.dataset.value || "";
         container
-          .querySelectorAll(".time-task-log-score-btn")
-          .forEach((b) => b.classList.remove("selected"));
+          .querySelectorAll('[data-legacy~="time-task-log-score-btn"]')
+          .forEach((b) => lpTokenRemove(b, "selected"));
         if (getValue() === val) {
           setValue("");
         } else {
           setValue(val);
-          btn.classList.add("selected");
+          lpTokenAdd(btn, "selected");
         }
       });
     });
   }
   function updateScoreBtnStates(container, value) {
     if (!container) return;
-    container.querySelectorAll(".time-task-log-score-btn").forEach((b) => {
-      b.classList.toggle("selected", b.dataset.value === value);
+    container.querySelectorAll('[data-legacy~="time-task-log-score-btn"]').forEach((b) => {
+      lpTokenToggle(b, "selected", b.dataset.value === value);
     });
   }
   function parseEnergyToValue(val) {
@@ -5254,12 +5251,12 @@ export function render() {
     taskLogTodoPills.innerHTML = "";
     taskLogTodoAddedItems.forEach((item, idx) => {
       const pill = document.createElement("span");
-      pill.className = "time-task-log-todo-pill time-memo-tag-chip";
+      lpSetClasses(pill, "time-task-log-todo-pill time-memo-tag-chip");
       const label =
         [item.categoryLabel, item.todoName].filter(Boolean).join(" | ") || "";
-      pill.innerHTML = `<span class="time-memo-tag-chip-text">${escapeHtml(label)}</span><button type="button" class="time-memo-tag-chip-remove" aria-label="삭제">&times;</button>`;
+      pill.innerHTML = `<span data-legacy="time-memo-tag-chip-text">${escapeHtml(label)}</span><button type="button" data-legacy="time-memo-tag-chip-remove" aria-label="삭제">&times;</button>`;
       pill
-        .querySelector(".time-memo-tag-chip-remove")
+        .querySelector('[data-legacy~="time-memo-tag-chip-remove"]')
         ?.addEventListener("click", (ev) => {
           ev.preventDefault();
           taskLogTodoAddedItems.splice(idx, 1);
@@ -5275,15 +5272,18 @@ export function render() {
     TODO_CATEGORIES.forEach(({ id, label }) => {
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = `time-task-log-todo-category-btn${taskLogTodoSelectedCategory === id ? " selected" : ""}`;
+      lpSetClasses(
+        btn,
+        `time-task-log-todo-category-btn${taskLogTodoSelectedCategory === id ? " selected" : ""}`,
+      );
       btn.dataset.category = id;
       btn.textContent = label;
       btn.addEventListener("click", () => {
         taskLogTodoSelectedCategory = id;
         taskLogModal
-          .querySelectorAll(".time-task-log-todo-category-btn")
-          .forEach((b) => b.classList.remove("selected"));
-        btn.classList.add("selected");
+          .querySelectorAll('[data-legacy~="time-task-log-todo-category-btn"]')
+          .forEach((b) => lpTokenRemove(b, "selected"));
+        lpTokenAdd(btn, "selected");
       });
       taskLogTodoCategoryWrap.appendChild(btn);
     });
@@ -5342,14 +5342,14 @@ export function render() {
     taskLogExpensePills.innerHTML = "";
     taskLogExpenseAddedItems.forEach((item, idx) => {
       const pill = document.createElement("span");
-      pill.className = "time-task-log-expense-pill time-memo-tag-chip";
+      lpSetClasses(pill, "time-task-log-expense-pill time-memo-tag-chip");
       const label =
         [item.classification || "", item.amountFormatted || ""]
           .filter(Boolean)
           .join(" | ") || "";
-      pill.innerHTML = `<span class="time-memo-tag-chip-text">${escapeHtml(label)}</span><button type="button" class="time-memo-tag-chip-remove" aria-label="삭제">&times;</button>`;
+      pill.innerHTML = `<span data-legacy="time-memo-tag-chip-text">${escapeHtml(label)}</span><button type="button" data-legacy="time-memo-tag-chip-remove" aria-label="삭제">&times;</button>`;
       pill
-        .querySelector(".time-memo-tag-chip-remove")
+        .querySelector('[data-legacy~="time-memo-tag-chip-remove"]')
         ?.addEventListener("click", (ev) => {
           ev.preventDefault();
           if (item.id) {
@@ -5503,8 +5503,10 @@ export function render() {
       } catch (_) {}
     }
     if (taskLogEndInput) taskLogEndInput.value = "";
-    const wrap = taskLogDateStart?.closest?.(".time-task-log-date-native-wrap");
-    const ov = wrap?.querySelector?.(".time-task-log-date-overlay");
+    const wrap = taskLogDateStart?.closest?.(
+      '[data-legacy~="time-task-log-date-native-wrap"]',
+    );
+    const ov = wrap?.querySelector?.('[data-legacy~="time-task-log-date-overlay"]');
     if (ov && /^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
       ov.textContent = formatTaskLogDateOverlayYmd(ymd);
     }
@@ -5586,7 +5588,7 @@ export function render() {
     taskLogModal.style.zIndex = "1002";
     document.body.style.overflow = "hidden";
     closeDateTimePicker();
-    const bodyEl = taskLogModal.querySelector(".time-task-setup-body");
+    const bodyEl = taskLogModal.querySelector('[data-legacy~="time-task-setup-body"]');
     if (bodyEl) bodyEl.scrollTop = 0;
     if (!taskLogTaskDropdown) {
       taskLogTaskDropdown = buildTaskDropdown();
@@ -5594,7 +5596,7 @@ export function render() {
       taskLogTaskWrap.appendChild(taskLogTaskDropdown);
     }
     const taskDropdownPanel = taskLogTaskDropdown?.querySelector(
-      ".time-task-log-task-dropdown-panel",
+      '[data-legacy~="time-task-log-task-dropdown-panel"]',
     );
     if (taskDropdownPanel) taskDropdownPanel.hidden = true;
     const mainTasks = getFullTaskOptions().filter(
@@ -5614,17 +5616,17 @@ export function render() {
       taskLogExpenseErrorEl.hidden = true;
     }
     taskLogModal
-      .querySelectorAll(".time-task-log-accordion-item")
+      .querySelectorAll('[data-legacy~="time-task-log-accordion-item"]')
       .forEach((item) => {
         if (
-          !item.classList.contains("time-task-log-accordion-expanded") ||
+          !lpTokenHas(item, "time-task-log-accordion-expanded") ||
           item.dataset?.accordion === "expense"
         )
           return;
-        item.classList.remove("time-task-log-accordion-expanded");
-        const body = item.querySelector(".time-task-log-accordion-body");
-        const chevron = item.querySelector(".time-task-log-accordion-chevron");
-        const header = item.querySelector(".time-task-log-accordion-header");
+        lpTokenRemove(item, "time-task-log-accordion-expanded");
+        const body = item.querySelector('[data-legacy~="time-task-log-accordion-body"]');
+        const chevron = item.querySelector('[data-legacy~="time-task-log-accordion-chevron"]');
+        const header = item.querySelector('[data-legacy~="time-task-log-accordion-header"]');
         if (body) body.hidden = true;
         if (chevron) chevron.textContent = "▶";
         if (header) header.setAttribute("aria-expanded", "false");
@@ -5651,7 +5653,7 @@ export function render() {
       applyTaskLogModalDefaultsForNewEntry();
     }, 0);
     setTaskLogQuickAdjustActive(
-      taskLogModal.querySelector(".time-task-log-time-adjust-last"),
+      taskLogModal.querySelector('[data-legacy~="time-task-log-time-adjust-last"]'),
     );
   }
 
@@ -5660,7 +5662,7 @@ export function render() {
       tr?._rowData && typeof tr._rowData === "object" ? tr._rowData : rowData;
     let startTime = data.startTime || "";
     let endTime = data.endTime || "";
-    const rowDateEl = tr?.querySelector(".time-display-date");
+    const rowDateEl = tr?.querySelector('[data-legacy~="time-display-date"]');
     const displayDateStr = (rowDateEl?.textContent || "").trim();
     const recordDate =
       normalizeDateForCompare(displayDateStr) ||
@@ -5711,7 +5713,7 @@ export function render() {
     taskLogModal.style.zIndex = "1002";
     document.body.style.overflow = "hidden";
     closeDateTimePicker();
-    const bodyEl = taskLogModal.querySelector(".time-task-setup-body");
+    const bodyEl = taskLogModal.querySelector('[data-legacy~="time-task-setup-body"]');
     if (bodyEl) bodyEl.scrollTop = 0;
     if (!taskLogTaskDropdown) {
       taskLogTaskDropdown = buildTaskDropdown();
@@ -5813,7 +5815,7 @@ export function render() {
     if (taskLogFooterEl) taskLogFooterEl.style.display = "none";
     closeDateTimePicker();
     const taskDropdownPanel = taskLogTaskDropdown?.querySelector(
-      ".time-task-log-task-dropdown-panel",
+      '[data-legacy~="time-task-log-task-dropdown-panel"]',
     );
     if (taskDropdownPanel) taskDropdownPanel.hidden = true;
     taskLogModal.style.zIndex = "";
@@ -5926,7 +5928,7 @@ export function render() {
         .querySelectorAll("label[data-meal-checklist='1']")
         .forEach((lab) => {
           const cb = lab.querySelector('input[type="checkbox"]');
-          const span = lab.querySelector(".time-task-log-kpi-todo-text");
+          const span = lab.querySelector('[data-legacy~="time-task-log-kpi-todo-text"]');
           const dietName = (span?.textContent || "").trim();
           if (cb?.checked && dietName) {
             const tag = makeWorkScheduleDietLedgerMemoTag(dietName);
@@ -6033,19 +6035,21 @@ export function render() {
       };
       editTr._rowData = newRowData;
       submittedLedgerRowForExpenseLink = newRowData;
-      const isMobileCard = editTr.classList?.contains(
-        "time-ledger-mobile-card",
-      );
+      const isMobileCard = lpTokenHas(editTr, "time-ledger-mobile-card");
       if (!isMobileCard) {
-        editTr.querySelector(".time-display-task").textContent = taskName;
-        const prodBarEl = editTr.querySelector(".time-task-prod-bar");
+        const dispTask = editTr.querySelector(
+          '[data-legacy~="time-display-task"]',
+        );
+        if (dispTask) dispTask.textContent = taskName;
+        const prodBarEl = editTr.querySelector(
+          '[data-legacy~="time-task-prod-bar"]',
+        );
         if (prodBarEl) {
-          prodBarEl.classList.remove(
-            "time-task-prod-bar--productive",
-            "time-task-prod-bar--nonproductive",
-            "time-task-prod-bar--other",
-          );
-          prodBarEl.classList.add(
+          lpTokenRemove(prodBarEl, "time-task-prod-bar--productive");
+          lpTokenRemove(prodBarEl, "time-task-prod-bar--nonproductive");
+          lpTokenRemove(prodBarEl, "time-task-prod-bar--other");
+          lpTokenAdd(
+            prodBarEl,
             productivity === "productive"
               ? "time-task-prod-bar--productive"
               : productivity === "nonproductive"
@@ -6053,41 +6057,66 @@ export function render() {
                 : "time-task-prod-bar--other",
           );
         }
-        editTr.querySelector(".time-display-start").textContent = startTime
-          ? toDisplayTimeOnly(startTime) || startTime
-          : "";
-        editTr.querySelector(".time-display-end").textContent =
-          formatTimeLedgerEndCellDisplay(startTime, endTime);
-        editTr.querySelector(".time-display-tracked").textContent = timeTracked;
-        editTr.querySelector(".time-display-feedback").textContent = feedback;
+        const dispStart = editTr.querySelector(
+          '[data-legacy~="time-display-start"]',
+        );
+        if (dispStart)
+          dispStart.textContent = startTime
+            ? toDisplayTimeOnly(startTime) || startTime
+            : "";
+        const dispEnd = editTr.querySelector(
+          '[data-legacy~="time-display-end"]',
+        );
+        if (dispEnd)
+          dispEnd.textContent = formatTimeLedgerEndCellDisplay(
+            startTime,
+            endTime,
+          );
+        const dispTracked = editTr.querySelector(
+          '[data-legacy~="time-display-tracked"]',
+        );
+        if (dispTracked) dispTracked.textContent = timeTracked;
+        const dispFeedback = editTr.querySelector(
+          '[data-legacy~="time-display-feedback"]',
+        );
+        if (dispFeedback) dispFeedback.textContent = feedback;
         const memoTagCell = editTr.querySelector(
-          ".time-cell-memo-tag .time-display-memo-tags",
+          '[data-legacy~="time-cell-memo-tag"] [data-legacy~="time-display-memo-tags"]',
         );
         if (memoTagCell) {
           memoTagCell.innerHTML = "";
           getMemoTagDisplayTextsForLedgerRow(newRowData).forEach((tag) => {
             const pill = document.createElement("span");
-            pill.className = "time-memo-tag-pill";
+            lpSetClasses(pill, "time-memo-tag-pill");
             pill.textContent = tag;
             memoTagCell.appendChild(pill);
           });
         }
-        editTr.querySelector(".time-cell-category .time-tag-pill").textContent =
-          getCategoryLabel(category) || "—";
-        editTr.querySelector(".time-cell-category .time-tag-pill").className =
-          "time-tag-pill cat " + getCategoryColor(category);
+        const catPill = editTr.querySelector(
+          '[data-legacy~="time-cell-category"] [data-legacy~="time-tag-pill"]',
+        );
+        if (catPill) {
+          catPill.textContent = getCategoryLabel(category) || "—";
+          lpSetClasses(catPill, "time-tag-pill cat " + getCategoryColor(category));
+        }
         const prodOpt = PRODUCTIVITY_OPTIONS.find(
           (o) => o.value === productivity,
         );
-        editTr.querySelector(
-          ".time-cell-productivity .time-tag-pill",
-        ).textContent = prodOpt ? prodOpt.label : "";
-        editTr.querySelector(
-          ".time-cell-productivity .time-tag-pill",
-        ).className = "time-tag-pill prod " + (prodOpt ? prodOpt.color : "");
-        editTr.querySelector(".time-display-date").textContent = dateStr
-          ? formatDateDisplay(dateStr)
-          : "";
+        const prodPill = editTr.querySelector(
+          '[data-legacy~="time-cell-productivity"] [data-legacy~="time-tag-pill"]',
+        );
+        if (prodPill) {
+          prodPill.textContent = prodOpt ? prodOpt.label : "";
+          lpSetClasses(
+            prodPill,
+            "time-tag-pill prod " + (prodOpt ? prodOpt.color : ""),
+          );
+        }
+        const dispDate = editTr.querySelector(
+          '[data-legacy~="time-display-date"]',
+        );
+        if (dispDate)
+          dispDate.textContent = dateStr ? formatDateDisplay(dateStr) : "";
         editTr._updatePrice?.();
       }
     } else if (addCtx) {
@@ -6187,9 +6216,9 @@ export function render() {
         syncTr._rowData.linkedExpenseIds =
           submittedLedgerRowForExpenseLink.linkedExpenseIds;
       }
-      if (syncTr && !syncTr.classList?.contains("time-ledger-mobile-card")) {
+      if (syncTr && !lpTokenHas(syncTr, "time-ledger-mobile-card")) {
         const memoTagCell = syncTr.querySelector(
-          ".time-cell-memo-tag .time-display-memo-tags",
+          '[data-legacy~="time-cell-memo-tag"] [data-legacy~="time-display-memo-tags"]',
         );
         if (memoTagCell) {
           memoTagCell.innerHTML = "";
@@ -6197,7 +6226,7 @@ export function render() {
             submittedLedgerRowForExpenseLink,
           ).forEach((tag) => {
             const pill = document.createElement("span");
-            pill.className = "time-memo-tag-pill";
+            lpSetClasses(pill, "time-memo-tag-pill");
             pill.textContent = tag;
             memoTagCell.appendChild(pill);
           });
@@ -6220,8 +6249,7 @@ export function render() {
           oldRowDataToRemove,
         );
         allRowsCache = next;
-        const isMobileCardEdit = editTr.classList?.contains(
-          "time-ledger-mobile-card",
+        const isMobileCardEdit = lpTokenHas(editTr, "time-ledger-mobile-card",
         );
         if (isMobileCardEdit && editTr._rowData) {
           allRowsCache.push(editTr._rowData);
@@ -6237,10 +6265,10 @@ export function render() {
       ) {
         const completed = [];
         taskLogDailyTodosList
-          .querySelectorAll("label.time-task-log-daily-todo-row")
+          .querySelectorAll('label[data-legacy~="time-task-log-daily-todo-row"]')
           .forEach((label) => {
             const cb = label.querySelector('input[type="checkbox"]');
-            const span = label.querySelector(".time-task-log-kpi-todo-text");
+            const span = label.querySelector('[data-legacy~="time-task-log-kpi-todo-text"]');
             const id =
               cb && cb.dataset && cb.dataset.todoId ? cb.dataset.todoId : "";
             const text =
@@ -6291,7 +6319,7 @@ export function render() {
   taskLogCloseBtn?.addEventListener("click", closeTaskLogModal);
 
   const taskLogDeleteBtn = taskLogModal.querySelector(
-    ".time-task-log-delete-btn",
+    '[data-legacy~="time-task-log-delete-btn"]',
   );
   taskLogDeleteBtn?.addEventListener("click", () => {
     const tr = taskLogEditTr;
@@ -6301,9 +6329,12 @@ export function render() {
     closeTaskLogModal();
   });
 
-  const closeBtn = taskSetupModal.querySelector(".time-task-setup-close");
-  const addTaskBtn = taskSetupModal.querySelector(".time-task-add-btn");
-  const setupTabs = taskSetupModal.querySelectorAll(".time-task-setup-tab");
+  const closeBtn = taskSetupModal.querySelector('[data-legacy~="time-task-setup-close"]');
+  const setupFooterCloseBtn = taskSetupModal.querySelector(
+    '[data-legacy~="time-task-setup-footer-close"]',
+  );
+  const addTaskBtn = taskSetupModal.querySelector('[data-legacy~="time-task-add-btn"]');
+  const setupTabs = taskSetupModal.querySelectorAll('[data-legacy~="time-task-setup-tab"]');
   const setupListAll = taskSetupModal.querySelector('[data-tab-content="all"]');
   const setupListProd = taskSetupModal.querySelector(
     '[data-tab-content="productive"]',
@@ -6316,27 +6347,27 @@ export function render() {
   );
   const setupSubcatBar = taskSetupModal.querySelector("[data-subcat-bar]");
 
-  const addTaskCloseBtn = addTaskModal.querySelector(".time-task-setup-close");
-  const addTaskNameInput = addTaskModal.querySelector(".time-add-task-name");
+  const addTaskCloseBtn = addTaskModal.querySelector('[data-legacy~="time-task-setup-close"]');
+  const addTaskNameInput = addTaskModal.querySelector('[data-legacy~="time-add-task-name"]');
   const addTaskProdRadios = addTaskModal.querySelectorAll(
     'input[name="addProd"]',
   );
   const addTaskCatProd = addTaskModal.querySelector(
-    '.time-add-task-categories[data-for="productive"]',
+    '[data-legacy~="time-add-task-categories"][data-for="productive"]',
   );
   const addTaskCatNonProd = addTaskModal.querySelector(
-    '.time-add-task-categories[data-for="nonproductive"]',
+    '[data-legacy~="time-add-task-categories"][data-for="nonproductive"]',
   );
-  const addTaskSubmitBtn = addTaskModal.querySelector(".time-add-task-submit");
-  const addTaskModalTitle = addTaskModal.querySelector(".time-task-setup-title");
-  const addTaskDeleteBtn = addTaskModal.querySelector(".time-add-task-delete");
+  const addTaskSubmitBtn = addTaskModal.querySelector('[data-legacy~="time-add-task-submit"]');
+  const addTaskModalTitle = addTaskModal.querySelector('[data-legacy~="time-task-setup-title"]');
+  const addTaskDeleteBtn = addTaskModal.querySelector('[data-legacy~="time-add-task-delete"]');
 
   function renderCategoryButtons(container, categories) {
     container.innerHTML = "";
     categories.forEach((c) => {
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "lp-choice-chip";
+      lpSetClasses(btn, "lp-choice-chip");
       btn.textContent = c.label;
       btn.dataset.value = c.value;
       container.appendChild(btn);
@@ -6373,18 +6404,17 @@ export function render() {
     categories.forEach((c) => {
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className =
-        "time-task-setup-subcat-btn" +
-        (c.value === selectedSubcat ? " active" : "");
+      lpSetClasses(btn, "time-task-setup-subcat-btn" +
+        (c.value === selectedSubcat ? " active" : ""));
       btn.textContent = c.label;
       btn.dataset.subcat = c.value;
-      if (c.color) btn.classList.add(c.color);
+      if (c.color) lpTokenAdd(btn, c.color);
       btn.addEventListener("click", () => {
         selectedSubcat = c.value;
         setupSubcatBar
-          .querySelectorAll(".time-task-setup-subcat-btn")
-          .forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
+          .querySelectorAll('[data-legacy~="time-task-setup-subcat-btn"]')
+          .forEach((b) => lpTokenRemove(b, "active"));
+        lpTokenAdd(btn, "active");
         renderTaskSetupList();
       });
       setupSubcatBar.appendChild(btn);
@@ -6430,25 +6460,24 @@ export function render() {
         const isRowSelected =
           Boolean(setupListSelectedTaskName) &&
           setupListSelectedTaskName === t.name;
-        row.className =
-          "time-task-setup-item" +
+        lpSetClasses(row, "time-task-setup-item" +
           (isLocked
             ? " time-task-setup-item--locked"
             : " time-task-setup-item--editable") +
-          (isRowSelected ? " time-task-setup-item--selected" : "");
+          (isRowSelected ? " time-task-setup-item--selected" : ""));
         const nameEsc = (t.name || "").replace(/</g, "&lt;");
         const builtinBadge = isTimeTaskBuiltinTemplate(t)
-          ? `<span class="lp-task-badge lp-task-badge--builtin" title="앱에서 제공하는 기본 과제입니다. 과제 설정에서 삭제할 수 없습니다.">기본</span>`
+          ? `<span data-legacy="lp-task-badge lp-task-badge--builtin" title="앱에서 제공하는 기본 과제입니다. 과제 설정에서 삭제할 수 없습니다.">기본</span>`
           : "";
         const kpiBadge = fromKpi
-          ? `<span class="lp-task-badge lp-task-badge--kpi" title="KPI(맵)에서 연결된 과제입니다">KPI</span>`
+          ? `<span data-legacy="lp-task-badge lp-task-badge--kpi" title="KPI(맵)에서 연결된 과제입니다">KPI</span>`
           : "";
         row.innerHTML = `
-          <span class="time-task-setup-item-title">
-            <span class="time-task-setup-item-name">${nameEsc}</span>
+          <span data-legacy="time-task-setup-item-title">
+            <span data-legacy="time-task-setup-item-name">${nameEsc}</span>
             ${builtinBadge}${kpiBadge}
           </span>
-          <span class="time-task-setup-item-cat">${catLabel}</span>
+          <span data-legacy="time-task-setup-item-cat">${catLabel}</span>
         `;
         if (!isLocked) {
           row.setAttribute("role", "button");
@@ -6471,7 +6500,7 @@ export function render() {
       });
       if (list.length === 0) {
         const empty = document.createElement("div");
-        empty.className = "time-task-setup-empty";
+        lpSetClasses(empty, "time-task-setup-empty");
         empty.textContent = "등록된 과제가 없습니다";
         container.appendChild(empty);
       }
@@ -6519,19 +6548,15 @@ export function render() {
     addTaskCatNonProd.style.display =
       prod === "nonproductive" ? "" : "none";
     addTaskCatProd
-      .querySelectorAll(".lp-choice-chip")
+      .querySelectorAll('[data-legacy~="lp-choice-chip"]')
       .forEach((b) =>
-        b.classList.toggle(
-          "lp-choice-chip--on",
-          b.dataset.value === selectedCategory,
+        lpTokenToggle(b, "lp-choice-chip--on", b.dataset.value === selectedCategory,
         ),
       );
     addTaskCatNonProd
-      .querySelectorAll(".lp-choice-chip")
+      .querySelectorAll('[data-legacy~="lp-choice-chip"]')
       .forEach((b) =>
-        b.classList.toggle(
-          "lp-choice-chip--on",
-          b.dataset.value === selectedCategory,
+        lpTokenToggle(b, "lp-choice-chip--on", b.dataset.value === selectedCategory,
         ),
       );
     syncAddTaskSubmitState();
@@ -6555,30 +6580,30 @@ export function render() {
         prod === "nonproductive" ? "" : "none";
       selectedCategory = "";
       addTaskCatProd
-        .querySelectorAll(".lp-choice-chip")
-        .forEach((b) => b.classList.remove("lp-choice-chip--on"));
+        .querySelectorAll('[data-legacy~="lp-choice-chip"]')
+        .forEach((b) => lpTokenRemove(b, "lp-choice-chip--on"));
       addTaskCatNonProd
-        .querySelectorAll(".lp-choice-chip")
-        .forEach((b) => b.classList.remove("lp-choice-chip--on"));
+        .querySelectorAll('[data-legacy~="lp-choice-chip"]')
+        .forEach((b) => lpTokenRemove(b, "lp-choice-chip--on"));
       syncAddTaskSubmitState();
     });
   });
-  addTaskCatProd.querySelectorAll(".lp-choice-chip").forEach((b) => {
+  addTaskCatProd.querySelectorAll('[data-legacy~="lp-choice-chip"]').forEach((b) => {
     b.addEventListener("click", () => {
       addTaskCatProd
-        .querySelectorAll(".lp-choice-chip")
-        .forEach((x) => x.classList.remove("lp-choice-chip--on"));
-      b.classList.add("lp-choice-chip--on");
+        .querySelectorAll('[data-legacy~="lp-choice-chip"]')
+        .forEach((x) => lpTokenRemove(x, "lp-choice-chip--on"));
+      lpTokenAdd(b, "lp-choice-chip--on");
       selectedCategory = b.dataset.value;
       syncAddTaskSubmitState();
     });
   });
-  addTaskCatNonProd.querySelectorAll(".lp-choice-chip").forEach((b) => {
+  addTaskCatNonProd.querySelectorAll('[data-legacy~="lp-choice-chip"]').forEach((b) => {
     b.addEventListener("click", () => {
       addTaskCatNonProd
-        .querySelectorAll(".lp-choice-chip")
-        .forEach((x) => x.classList.remove("lp-choice-chip--on"));
-      b.classList.add("lp-choice-chip--on");
+        .querySelectorAll('[data-legacy~="lp-choice-chip"]')
+        .forEach((x) => lpTokenRemove(x, "lp-choice-chip--on"));
+      lpTokenAdd(b, "lp-choice-chip--on");
       selectedCategory = b.dataset.value;
       syncAddTaskSubmitState();
     });
@@ -6635,8 +6660,8 @@ export function render() {
 
   setupTabs.forEach((tab) => {
     tab.addEventListener("click", () => {
-      setupTabs.forEach((t) => t.classList.remove("active"));
-      tab.classList.add("active");
+      setupTabs.forEach((t) => lpTokenRemove(t, "active"));
+      lpTokenAdd(tab, "active");
       const which = tab.dataset.tab;
       activeSetupTab = which;
       setupListAll.style.display = which === "all" ? "" : "none";
@@ -6655,7 +6680,7 @@ export function render() {
       taskSetupModal.hidden = false;
       document.body.style.overflow = "hidden";
       activeSetupTab =
-        taskSetupModal.querySelector(".time-task-setup-tab.active")?.dataset
+        taskSetupModal.querySelector('[data-legacy~="time-task-setup-tab"][data-legacy~="active"]')?.dataset
           ?.tab || "all";
       selectedSubcat = "";
       renderSubcatButtons(activeSetupTab);
@@ -6669,6 +6694,7 @@ export function render() {
   }
   /* 과제 설정 모달: 배경 탭으로 닫지 않음 */
   closeBtn?.addEventListener("click", closeTaskSetupModal);
+  setupFooterCloseBtn?.addEventListener("click", closeTaskSetupModal);
   document.addEventListener(
     "keydown",
     (e) => {
@@ -6718,7 +6744,7 @@ export function render() {
   );
 
   const contentWrap = document.createElement("div");
-  contentWrap.className = "time-view-content-wrap";
+  lpSetClasses(contentWrap, "time-view-content-wrap");
   el.appendChild(contentWrap);
 
   let allRowsCache = loadTimeRows();
@@ -6767,8 +6793,8 @@ export function render() {
           ? "time-ledger-summary-productive"
           : "time-ledger-summary-tracked";
       const num = (n) =>
-        `<span class="time-ledger-summary-num ${role}">${n}</span>`;
-      const u = (s) => `<span class="time-ledger-summary-unit">${s}</span>`;
+        `<span data-legacy="time-ledger-summary-num ${role}">${n}</span>`;
+      const u = (s) => `<span data-legacy="time-ledger-summary-unit">${s}</span>`;
       if (hours <= 0 || !isFinite(hours)) {
         valueEl.innerHTML = `${num("0")}${u("h")}${num("0")}${u("m")}`;
         return;
@@ -6784,19 +6810,19 @@ export function render() {
 
     /* 1. 시간기록하기: 요약 패널 + 테이블 행 또는 카드 목록 */
     const allTable = contentWrap.querySelector(
-      ".time-ledger-container .time-ledger-table",
+      '[data-legacy~="time-ledger-container"] [data-legacy~="time-ledger-table"]',
     );
     const summaryPanelEl = contentWrap.querySelector(
-      ".time-ledger-summary-panel",
+      '[data-legacy~="time-ledger-summary-panel"]',
     );
     const allTfoot = allTable?.querySelector("tfoot");
-    const cardNodes = contentWrap.querySelectorAll(".time-ledger-mobile-card");
+    const cardNodes = contentWrap.querySelectorAll('[data-legacy~="time-ledger-mobile-card"]');
     const useCardTotals = summaryPanelEl && !allTable;
 
     if (summaryPanelEl && (allTable || useCardTotals)) {
       const hourlyRate =
         parseFloat(
-          String(el.querySelector(".time-hourly-input")?.value || "0").replace(
+          String(el.querySelector('[data-legacy~="time-hourly-input"]')?.value || "0").replace(
             /,/g,
             "",
           ),
@@ -6808,10 +6834,10 @@ export function render() {
 
       if (allTable) {
         const tbody = allTable.querySelector("tbody");
-        tbody?.querySelectorAll(".time-row").forEach((tr) => {
+        tbody?.querySelectorAll('[data-legacy~="time-row"]').forEach((tr) => {
           const timeEl =
-            tr.querySelector(".time-input-tracked") ||
-            tr.querySelector(".time-display-tracked");
+            tr.querySelector('[data-legacy~="time-input-tracked"]') ||
+            tr.querySelector('[data-legacy~="time-display-tracked"]');
           const val = (timeEl?.value ?? timeEl?.textContent ?? "").trim();
           const hrs = parseTimeToHours(val) || 0;
           totalHrs += hrs;
@@ -6846,27 +6872,27 @@ export function render() {
       }
 
       const trackedValueEl = summaryPanelEl.querySelector(
-        ".time-ledger-summary-cell:nth-child(1) .time-ledger-summary-value",
+        '[data-legacy~="time-ledger-summary-cell"]:nth-child(1) [data-legacy~="time-ledger-summary-value"]',
       );
       fillTimeSummaryHM(trackedValueEl, totalHrs, "tracked");
       const productiveValueEl = summaryPanelEl.querySelector(
-        ".time-ledger-summary-cell:nth-child(2) .time-ledger-summary-value",
+        '[data-legacy~="time-ledger-summary-cell"]:nth-child(2) [data-legacy~="time-ledger-summary-value"]',
       );
       fillTimeSummaryHM(productiveValueEl, productiveHrs, "productive");
       const investedNum = summaryPanelEl.querySelector(
-        ".time-ledger-summary-invested",
+        '[data-legacy~="time-ledger-summary-invested"]',
       );
       const investedUnit = investedNum?.nextElementSibling;
       if (investedNum) investedNum.textContent = `+${formatPrice(investedPrice)}`;
       if (investedUnit) investedUnit.textContent = "원";
       const spentNum = summaryPanelEl.querySelector(
-        ".time-ledger-summary-spent",
+        '[data-legacy~="time-ledger-summary-spent"]',
       );
       const spentUnit = spentNum?.nextElementSibling;
       if (spentNum) spentNum.textContent = `-${formatPrice(wastedValue)}`;
       if (spentUnit) spentUnit.textContent = "원";
       const dayNet = investedPrice - wastedValue;
-      const dayNetNum = summaryPanelEl.querySelector(".time-ledger-summary-day-net");
+      const dayNetNum = summaryPanelEl.querySelector('[data-legacy~="time-ledger-summary-day-net"]');
       const dayNetUnit = dayNetNum?.nextElementSibling;
       if (dayNetNum) {
         if (dayNet > 0) dayNetNum.textContent = `+${formatPrice(dayNet)}`;
@@ -6877,43 +6903,40 @@ export function render() {
       if (dayNetUnit) dayNetUnit.textContent = "원";
       const overHrs = totalHrs > 24 ? totalHrs - 24 : 0;
       if (allTable && allTfoot) {
-        const overRow = allTfoot.querySelector(".time-ledger-over-row");
+        const overRow = allTfoot.querySelector('[data-legacy~="time-ledger-over-row"]');
         if (overRow)
-          overRow.classList.toggle(
-            "time-ledger-over-row-visible",
-            overHrs > 0,
-          );
-        const totalOverEl = allTfoot.querySelector(".time-ledger-total-over");
+          lpTokenToggle(overRow, "time-ledger-over-row-visible", overHrs > 0);
+        const totalOverEl = allTfoot.querySelector('[data-legacy~="time-ledger-total-over"]');
         if (totalOverEl) {
           totalOverEl.textContent =
             overHrs > 0 ? formatHoursDisplay(overHrs) : "";
-          totalOverEl.classList.toggle("has-over", overHrs > 0);
+          lpTokenToggle(totalOverEl, "has-over", overHrs > 0);
         }
       }
     }
 
-    contentWrap.querySelectorAll(".time-section").forEach((section) => {
+    contentWrap.querySelectorAll('[data-legacy~="time-section"]').forEach((section) => {
       const tbody = section.querySelector("tbody");
       const tfoot = section.querySelector("tfoot");
       const summaryTracked = tfoot?.querySelector(
-        ".time-section-summary-tracked",
+        '[data-legacy~="time-section-summary-tracked"]',
       );
-      const summaryPrice = tfoot?.querySelector(".time-section-summary-price");
+      const summaryPrice = tfoot?.querySelector('[data-legacy~="time-section-summary-price"]');
       if (!tbody || !summaryTracked || !summaryPrice) return;
       const prod = section.dataset.productivity || "";
       const hourlyRate =
         parseFloat(
-          String(el.querySelector(".time-hourly-input")?.value || "0").replace(
+          String(el.querySelector('[data-legacy~="time-hourly-input"]')?.value || "0").replace(
             /,/g,
             "",
           ),
         ) || 0;
       let totalHrs = 0;
       let totalPrice = 0;
-      tbody.querySelectorAll(".time-row").forEach((tr) => {
+      tbody.querySelectorAll('[data-legacy~="time-row"]').forEach((tr) => {
         const timeEl =
-          tr.querySelector(".time-input-tracked") ||
-          tr.querySelector(".time-display-tracked");
+          tr.querySelector('[data-legacy~="time-input-tracked"]') ||
+          tr.querySelector('[data-legacy~="time-display-tracked"]');
         const val = (timeEl?.value ?? timeEl?.textContent ?? "").trim();
         const hrs = parseTimeToHours(val) || 0;
         totalHrs += hrs;
@@ -6926,27 +6949,26 @@ export function render() {
       summaryTracked.textContent =
         totalHrs > 0 ? formatHoursDisplay(totalHrs) : "";
       summaryPrice.textContent = formatPrice(totalPrice);
-      summaryPrice.className =
-        "time-section-summary-price" +
+      lpSetClasses(summaryPrice, "time-section-summary-price" +
         (totalPrice < 0
           ? " is-negative"
           : totalPrice > 0
             ? " is-positive"
-            : "");
+            : ""));
     });
 
-    const mobileRow = el.querySelector(".time-ledger-mobile-filter-total");
+    const mobileRow = el.querySelector('[data-legacy~="time-ledger-mobile-filter-total"]');
     const mobileVal = mobileRow?.querySelector(
-      ".time-ledger-mobile-filter-total-value",
+      '[data-legacy~="time-ledger-mobile-filter-total-value"]',
     );
     if (mobileRow && mobileVal) {
       const viewOk = (el.dataset.timeContentView || "all") === "all";
-      const cardsHost = contentWrap.querySelector(".time-ledger-mobile-cards");
+      const cardsHost = contentWrap.querySelector('[data-legacy~="time-ledger-mobile-cards"]');
       const show = viewOk && !!cardsHost;
       mobileRow.toggleAttribute("hidden", !show);
       if (show) {
         let totalHrsMob = 0;
-        contentWrap.querySelectorAll(".time-ledger-mobile-card").forEach((card) => {
+        contentWrap.querySelectorAll('[data-legacy~="time-ledger-mobile-card"]').forEach((card) => {
           const rd = card._rowData;
           if (!rd || isEmptyTimeRow(rd)) return;
           totalHrsMob += getMobileCardEffectiveHoursForPrice(rd);
@@ -6958,18 +6980,17 @@ export function render() {
   el._updateTotal = updateTotal;
 
   const tableWrap = document.createElement("div");
-  tableWrap.className = "time-ledger-table-wrap";
-
+  lpSetClasses(tableWrap, "time-ledger-table-wrap");
   const table = document.createElement("table");
-  table.className = "time-ledger-table";
+  lpSetClasses(table, "time-ledger-table");
   table.innerHTML = createTableHTML();
 
-  const taskTh = table.querySelector(".time-th-task");
-  const taskCol = table.querySelector(".time-col-task");
+  const taskTh = table.querySelector('[data-legacy~="time-th-task"]');
+  const taskCol = table.querySelector('[data-legacy~="time-col-task"]');
 
   if (taskTh && taskCol) {
     const resizer = document.createElement("div");
-    resizer.className = "time-col-resizer";
+    lpSetClasses(resizer, "time-col-resizer");
     resizer.title = "드래그하여 너비 조절";
     taskTh.appendChild(resizer);
 
@@ -7087,19 +7108,18 @@ export function render() {
     };
 
     const hiddenTableWrap = document.createElement("div");
-    hiddenTableWrap.className = "time-ledger-mobile-hidden-table";
+    lpSetClasses(hiddenTableWrap, "time-ledger-mobile-hidden-table");
     hiddenTableWrap.style.cssText =
       "position:absolute;left:-62.5rem;width:0.0625rem;height:0.0625rem;overflow:hidden;";
     const hiddenTable = document.createElement("table");
-    hiddenTable.className = "time-ledger-table";
+    lpSetClasses(hiddenTable, "time-ledger-table");
     hiddenTable.innerHTML = createTableHTML();
     const hiddenTbody = hiddenTable.querySelector("tbody");
     hiddenTableWrap.appendChild(hiddenTable);
     contentWrap.appendChild(hiddenTableWrap);
 
     const cardsWrap = document.createElement("div");
-    cardsWrap.className = "time-ledger-mobile-cards";
-
+    lpSetClasses(cardsWrap, "time-ledger-mobile-cards");
     const showDayGroups = timeLedgerShouldShowDayGroups(rows);
     const appendCardTo = (parent, d) => {
       const card = createMobileTimeCard(
@@ -7115,11 +7135,11 @@ export function render() {
     /** 새 카드는 마지막 일별 스택에 붙임 */
     function appendNewCardToLedgerCardsWrap(card) {
       let stack = cardsWrap.querySelector(
-        ".time-ledger-day-card-stack:last-of-type",
+        '[data-legacy~="time-ledger-day-card-stack"]:last-of-type',
       );
       if (!stack) {
         stack = document.createElement("div");
-        stack.className = "time-ledger-day-card-stack";
+        lpSetClasses(stack, "time-ledger-day-card-stack");
         cardsWrap.appendChild(stack);
       }
       stack.appendChild(card);
@@ -7130,13 +7150,13 @@ export function render() {
       for (const g of groups) {
         if (g.key !== "_nodate") {
           const header = document.createElement("div");
-          header.className = "time-ledger-day-group-header";
+          lpSetClasses(header, "time-ledger-day-group-header");
           header.setAttribute("role", "presentation");
           const label = document.createElement("span");
-          label.className = "time-ledger-day-group-date";
+          lpSetClasses(label, "time-ledger-day-group-date");
           label.textContent = formatTimeFilterDateDotsWithWeekday(g.key);
           const totalEl = document.createElement("span");
-          totalEl.className = "time-ledger-day-group-total";
+          lpSetClasses(totalEl, "time-ledger-day-group-total");
           totalEl.textContent = formatHoursDisplay(
             sumTimeLedgerDayHours(g.rows),
           );
@@ -7148,7 +7168,7 @@ export function render() {
           g.rows.length > 0
             ? (() => {
                 const stack = document.createElement("div");
-                stack.className = "time-ledger-day-card-stack";
+                lpSetClasses(stack, "time-ledger-day-card-stack");
                 cardsWrap.appendChild(stack);
                 return stack;
               })()
@@ -7160,7 +7180,7 @@ export function render() {
         rows.length > 0
           ? (() => {
               const stack = document.createElement("div");
-              stack.className = "time-ledger-day-card-stack";
+              lpSetClasses(stack, "time-ledger-day-card-stack");
               cardsWrap.appendChild(stack);
               return stack;
             })()
@@ -7198,11 +7218,11 @@ export function render() {
     };
 
     const summaryPanel = document.createElement("div");
-    summaryPanel.className = "time-ledger-summary-panel";
+    lpSetClasses(summaryPanel, "time-ledger-summary-panel");
     summaryPanel.innerHTML = TIME_LEDGER_SUMMARY_FIVE_CELLS_HTML;
 
     const ledgerContainer = document.createElement("div");
-    ledgerContainer.className = "time-ledger-container";
+    lpSetClasses(ledgerContainer, "time-ledger-container");
     ledgerContainer.appendChild(summaryPanel);
     ledgerContainer.appendChild(cardsWrap);
     contentWrap.appendChild(ledgerContainer);
@@ -7211,12 +7231,13 @@ export function render() {
       if (hourlyAddSlot) {
         hourlyAddSlot.innerHTML = "";
         const addInner = document.createElement("div");
-        addInner.className =
-          "time-hourly-add-inner time-ledger-add-inner--icon-only";
+        lpSetClasses(addInner, "time-hourly-add-inner time-ledger-add-inner--icon-only");
         const addBtnEl = document.createElement("button");
         addBtnEl.type = "button";
-        addBtnEl.className =
-          `todo-add-btn time-ledger-add-plus-btn ${APP_FOOTER_ICON_BTN_CLASS}`;
+        lpSetClasses(
+          addBtnEl,
+          `todo-add-btn time-ledger-add-plus-btn ${APP_FOOTER_ICON_BTN_CLASS}`,
+        );
         addBtnEl.title = "과제 기록";
         addBtnEl.setAttribute("aria-label", "과제 기록");
         addBtnEl.innerHTML = TIME_LEDGER_ADD_PLUS_ICON_SVG;
@@ -7228,7 +7249,7 @@ export function render() {
 
     const refreshCardLiveFields = () => {
       cardsWrap
-        .querySelectorAll(".time-ledger-mobile-card")
+        .querySelectorAll('[data-legacy~="time-ledger-mobile-card"]')
         .forEach(updateMobileTimeCardLiveFields);
       updateTotal();
     };
@@ -7292,7 +7313,7 @@ export function render() {
 
   tableWrap.appendChild(table);
   const ledgerContainer = document.createElement("div");
-  ledgerContainer.className = "time-ledger-container";
+  lpSetClasses(ledgerContainer, "time-ledger-container");
   ledgerContainer.appendChild(tableWrap);
   contentWrap.appendChild(ledgerContainer);
 
@@ -7360,9 +7381,9 @@ export function render() {
 if (typeof document !== "undefined") {
   document.addEventListener("app-hourly-rate-changed", (e) => {
     const rate = Number(e.detail?.rate ?? 0);
-    const root = document.querySelector(".app-tab-panel-content.time-ledger-view");
+    const root = document.querySelector('[data-legacy~="app-tab-panel-content"][data-legacy~="time-ledger-view"]');
     if (!root) return;
-    const inp = root.querySelector(".time-hourly-input");
+    const inp = root.querySelector('[data-legacy~="time-hourly-input"]');
     if (inp) inp.value = String(rate);
   });
 }
