@@ -658,14 +658,15 @@ export function render() {
       if (isEdit) {
         const idx = data.kpiLogs.findIndex((l) => l.id === editLog.id);
         if (idx >= 0) {
-          data.kpiLogs[idx] = {
+          const row = {
             ...data.kpiLogs[idx],
             date: dateStr,
             dateRaw: dateVal,
             value: sanitizeNumericInput(form.value.value) || "",
-            status: "순항",
             memo: (form.memo.value || "").trim(),
           };
+          delete row.status;
+          data.kpiLogs[idx] = row;
         }
       } else {
         const log = {
@@ -675,7 +676,6 @@ export function render() {
           date: dateStr,
           dateRaw: dateVal,
           value: sanitizeNumericInput(form.value.value) || "",
-          status: "순항",
           memo: (form.memo.value || "").trim(),
           ...defaultManualKpiLogMeta(),
         };
@@ -1456,20 +1456,19 @@ export function render() {
         </div>
         <form class="dream-kpi-form dream-path-edit-form">
           <div class="dream-kpi-form-body" data-legacy="time-task-setup-body">
-          <div class="dream-kpi-field">
-            <label>꿈 이름</label>
-            <input type="text" name="name" value="${escapeHtml(dream.name || "")}" placeholder="꿈 이름" />
-          </div>
+            <div class="dream-kpi-field" data-legacy="time-add-task-field">
+              <label>꿈 이름</label>
+              <input type="text" name="name" value="${escapeHtml(dream.name || "")}" placeholder="꿈 이름" />
+            </div>
+            <div class="dream-kpi-delete-wrap">
+              <button type="button" class="dream-kpi-delete-btn" data-action="delete">꿈 목표 삭제</button>
+              <p class="dream-kpi-delete-note">삭제 시 복구 불가</p>
+            </div>
           </div>
           <div data-legacy="time-task-log-footer">
             <button type="submit" data-legacy="time-task-log-submit">수정</button>
           </div>
         </form>
-        <div class="dream-path-context-divider"></div>
-        <div class="dream-path-context-actions">
-          <button type="button" class="dream-path-context-btn dream-path-context-delete" data-action="delete">삭제</button>
-        </div>
-        <p class="dream-path-context-warn">삭제 시 복구할 수 없습니다.</p>
       </div>
     `;
     const close = () => modal.remove();

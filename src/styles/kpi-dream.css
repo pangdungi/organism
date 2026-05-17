@@ -1,7 +1,7 @@
 /**
  * 꿈 KPI 탭 페이지 — 미니멀 셸(.lp-kpi-dream-page).
- * 꿈 탭 모달·공용 KPI 할일 모달: .time-task-setup-modal + data-legacy( lp-modals.css ).
- * 건강·행복·부수입 등 일부 뷰는 아직 .dream-kpi-modal 레거시 셸을 쓰며 아래 동일 절의 스타일을 공유함.
+ * KPI 탭 모달·공용 KPI 할일 모달: .time-task-setup-modal + data-legacy( lp-modals.css ).
+ * 건강·행복·부수입·러브는 동일 페이지 클래스와 로그 모달 셸을 공유합니다.
  */
 
 /* -------------------------------------------------------------------------- */
@@ -423,6 +423,156 @@
 .lp-kpi-dream-page .dream-kpi-add-card-text {
   font-size: 0.875rem;
   font-weight: 500;
+}
+
+/* 부수입 경로 요약 — KPI 카드·로그 목록과 동일 톤 */
+.lp-kpi-dream-page .dream-kpi-path-summary {
+  flex-shrink: 0;
+  margin: 0 0 0.65rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-sizing: border-box;
+}
+
+.lp-kpi-dream-page .dream-kpi-path-summary-inner {
+  padding: 0.95rem 1rem 1rem;
+}
+
+.lp-kpi-dream-page .dream-kpi-path-summary-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.lp-kpi-dream-page .dream-kpi-path-summary-name {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #111827;
+}
+
+.lp-kpi-dream-page .dream-kpi-path-summary-hero {
+  margin-top: 0.15rem;
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.lp-kpi-dream-page .dream-kpi-path-summary-hero-slash {
+  margin: 0 0.2rem;
+  font-weight: 500;
+  font-size: 1.05rem;
+  color: #94a3b8;
+}
+
+.lp-kpi-dream-page .dream-kpi-path-summary-hero-denom {
+  font-weight: 600;
+  color: #374151;
+}
+
+.lp-kpi-dream-page .dream-kpi-path-summary-hero-unit {
+  margin-left: 0.3rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.lp-kpi-dream-page .dream-kpi-path-summary .dream-kpi-card-progress {
+  margin-top: 0.65rem;
+}
+
+.lp-kpi-dream-page .dream-kpi-path-summary-logs-heading {
+  margin: 0.85rem 0 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.lp-kpi-dream-page .dream-kpi-path-summary-logs {
+  margin-top: 0;
+}
+
+.lp-kpi-dream-page .dream-kpi-path-log-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  background: #fafafa;
+  border: 1px solid #f3f4f6;
+  border-radius: 10px;
+}
+
+.lp-kpi-dream-page .dream-kpi-path-log-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.lp-kpi-dream-page .dream-kpi-path-log-date {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.lp-kpi-dream-page .dream-kpi-path-log-value {
+  margin-left: 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--lp-modal-accent);
+}
+
+.lp-kpi-dream-page .dream-kpi-path-log-memo {
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #6b7280;
+}
+
+.lp-kpi-dream-page .dream-kpi-path-log-actions {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.lp-kpi-dream-page .dream-kpi-path-log-edit,
+.lp-kpi-dream-page .dream-kpi-path-log-del {
+  margin: 0;
+  padding: 0.3rem 0.55rem;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--lp-modal-navy-muted);
+  background: #fff;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lp-kpi-dream-page .dream-kpi-path-log-edit:hover {
+  border-color: rgba(30, 77, 123, 0.3);
+  color: var(--lp-modal-navy);
+}
+
+.lp-kpi-dream-page .dream-kpi-path-log-del {
+  color: var(--lp-modal-danger);
+  background: var(--lp-modal-danger-soft);
+  border-color: rgba(185, 28, 28, 0.35);
 }
 
 /* 섹션 헤더: 제목만(로그·할일 추가는 앱 푸터). 매일 반복 행만 인라인 +추가 유지 */

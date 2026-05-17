@@ -53,8 +53,15 @@ import { formatKpiCardHeroHtml } from "../utils/kpiViewModal.js";
 import { showKpiTodoEditModal } from "../utils/kpiTodoEditModal.js";
 import { KPI_TAB_EDIT_PENCIL_HTML } from "../utils/kpiTabNameEditIcon.js";
 import { sortKpiLogsNewestFirst } from "../utils/kpiLogsSort.js";
+import {
+  APP_FOOTER_ICON_BTN_CLASS,
+  getAppFooterActionsSlot,
+} from "../utils/appFooterShell.js";
 
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
+
+const LOVE_FOOTER_LOG_ICON = `<img src="/toolbaricons/list.svg" alt="" width="22" height="22" aria-hidden="true" />`;
+const LOVE_FOOTER_TODO_ICON = `<img src="/toolbaricons/todolist.svg" alt="" width="22" height="22" aria-hidden="true" />`;
 
 function defaultDeletedRefs() {
   return {
@@ -529,7 +536,7 @@ export function render() {
   function showKpiLogModal(kpi, editLog) {
     const isEdit = !!editLog;
     const modal = document.createElement("div");
-    modal.className = "dream-kpi-log-modal";
+    modal.className = "time-task-setup-modal time-task-log-modal";
     const today = new Date();
     let dateVal =
       today.getFullYear() +
@@ -539,7 +546,6 @@ export function render() {
       String(today.getDate()).padStart(2, "0");
     let valueVal = "";
     let memoVal = "";
-    let statusVal = "순항";
     if (editLog) {
       if (editLog.dateRaw) {
         dateVal = editLog.dateRaw;
@@ -550,17 +556,17 @@ export function render() {
       }
       valueVal = sanitizeNumericInput(editLog.value) || "";
       memoVal = editLog.memo || "";
-      const st = editLog.status;
-      if (st === "순항" || st === "보통" || st === "부진") statusVal = st;
     }
     modal.innerHTML = `
-      <div class="dream-kpi-log-backdrop"></div>
-      <div class="dream-kpi-log-panel">
-        <div class="dream-kpi-log-header">
-          <h3 class="dream-kpi-log-title">${isEdit ? "로그 수정" : "오늘의 수치 기록"}</h3>
-          <button type="button" class="dream-kpi-log-close" title="닫기">×</button>
+      <div data-legacy="time-task-setup-backdrop"></div>
+      <div data-legacy="time-task-setup-panel time-task-log-panel">
+        <div data-legacy="time-task-setup-header">
+          <h3 data-legacy="time-task-setup-title">${isEdit ? "로그 수정" : "오늘의 수치 기록"}</h3>
+          <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
         </div>
         <form class="dream-kpi-log-form">
+          <div data-legacy="time-task-setup-body">
+          ${kpi.direction === "lower" ? '<p class="dream-kpi-log-lower-hint">숫자가 <strong>작을수록</strong> 좋은 지표예요. 카드와 진행 막대에는 <strong>가장 최근에 입력한 숫자 하나</strong>만 반영하고, 예전 기록은 더하지 않아요.</p>' : ""}
           <div class="dream-kpi-log-section">
             <div class="dream-kpi-log-row">
               <div class="dream-kpi-log-field">
@@ -574,16 +580,8 @@ export function render() {
             </div>
             <div class="dream-kpi-log-row">
               <div class="dream-kpi-log-field">
-                <label>오늘 측정값</label>
+                <label>${kpi.direction === "lower" ? "이날 대표값" : "오늘 측정값"}</label>
                 <input type="text" name="value" placeholder="숫자 입력" value="${escapeHtml(valueVal)}" inputmode="numeric" />
-              </div>
-              <div class="dream-kpi-log-field">
-                <label>목표 대비 상태</label>
-                <div class="dream-kpi-log-status">
-                  <label class="dream-kpi-log-status-btn"><input type="radio" name="status" value="순항" ${statusVal === "순항" ? "checked" : ""} /><span>순항</span></label>
-                  <label class="dream-kpi-log-status-btn"><input type="radio" name="status" value="보통" ${statusVal === "보통" ? "checked" : ""} /><span>보통</span></label>
-                  <label class="dream-kpi-log-status-btn"><input type="radio" name="status" value="부진" ${statusVal === "부진" ? "checked" : ""} /><span>부진</span></label>
-                </div>
               </div>
             </div>
             <div class="dream-kpi-log-field">
@@ -591,62 +589,56 @@ export function render() {
               <textarea name="memo" placeholder="오늘 이 수치가 나온 이유, 특이사항 등..." rows="3">${escapeHtml(memoVal)}</textarea>
             </div>
           </div>
-          <div class="dream-kpi-log-modal-footer">
+          </div>
+          <div data-legacy="time-task-log-footer" class="dream-kpi-log-modal-footer">
             ${isEdit ? '<button type="button" class="dream-kpi-log-modal-delete-btn" data-legacy="time-task-log-delete-btn">삭제</button>' : ""}
-            <button type="submit" class="dream-kpi-log-submit">${isEdit ? "수정" : "로그 저장"}</button>
+            <button type="submit" data-legacy="time-task-log-submit">${isEdit ? "수정" : "로그 저장"}</button>
           </div>
         </form>
       </div>
     `;
     const close = () => modal.remove();
-    modal
-      .querySelector(".dream-kpi-log-close")
-      .addEventListener("click", close);
-    modal
-      .querySelector(".dream-kpi-log-form")
-      .addEventListener("submit", (e) => {
-        e.preventDefault();
-        const form = e.target;
-        const dateVal = form.date.value;
-        const dateStr = dateVal
-          ? `${dateVal.split("-")[0]}. ${dateVal.split("-")[1]}. ${dateVal.split("-")[2]}.`
-          : toDateStr(new Date());
-        const statusRaw = form.querySelector('input[name="status"]:checked')?.value || "순항";
-        const statusSave =
-          statusRaw === "순항" || statusRaw === "보통" || statusRaw === "부진" ? statusRaw : "순항";
-        const data = loadHappinessMap();
-        if (isEdit) {
-          const idx = data.kpiLogs.findIndex((l) => l.id === editLog.id);
-          if (idx >= 0) {
-            data.kpiLogs[idx] = {
-              ...data.kpiLogs[idx],
-              date: dateStr,
-              dateRaw: dateVal,
-              value: sanitizeNumericInput(form.value.value) || "",
-              status: statusSave,
-              memo: (form.memo.value || "").trim(),
-            };
-          }
-        } else {
-          const log = {
-            id: nextId(),
-            kpiId: kpi.id,
-            happinessId: kpi.happinessId,
+    modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
+    modal.querySelector(".dream-kpi-log-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const dateVal = form.date.value;
+      const dateStr = dateVal
+        ? `${dateVal.split("-")[0]}. ${dateVal.split("-")[1]}. ${dateVal.split("-")[2]}.`
+        : toDateStr(new Date());
+      const data = loadHappinessMap();
+      if (isEdit) {
+        const idx = data.kpiLogs.findIndex((l) => l.id === editLog.id);
+        if (idx >= 0) {
+          const row = {
+            ...data.kpiLogs[idx],
             date: dateStr,
             dateRaw: dateVal,
             value: sanitizeNumericInput(form.value.value) || "",
-            status: statusSave,
             memo: (form.memo.value || "").trim(),
-            ...defaultManualKpiLogMeta(),
           };
-          data.kpiLogs = data.kpiLogs || [];
-          data.kpiLogs.push(log);
+          delete row.status;
+          data.kpiLogs[idx] = row;
         }
-        saveHappinessMap(data);
-        close();
-        renderKpiList();
-        renderKpiHistory();
-      });
+      } else {
+        const log = {
+          id: nextId(),
+          kpiId: kpi.id,
+          happinessId: kpi.happinessId,
+          date: dateStr,
+          dateRaw: dateVal,
+          value: sanitizeNumericInput(form.value.value) || "",
+          memo: (form.memo.value || "").trim(),
+          ...defaultManualKpiLogMeta(),
+        };
+        data.kpiLogs = data.kpiLogs || [];
+        data.kpiLogs.push(log);
+      }
+      saveHappinessMap(data);
+      close();
+      renderKpiList();
+      renderKpiHistory();
+    });
     const delBtn = modal.querySelector(".dream-kpi-log-modal-delete-btn");
     if (delBtn && isEdit) {
       delBtn.addEventListener("click", () => {
@@ -661,6 +653,69 @@ export function render() {
     }
     document.body.appendChild(modal);
     setupNumericOnlyInput(modal.querySelector('input[name="value"]'));
+  }
+
+  function clearLoveKpiFooterActions() {
+    const slot = getAppFooterActionsSlot();
+    if (!slot) return;
+    slot
+      .querySelectorAll("[data-lp-dream-kpi-footer-action]")
+      .forEach((n) => n.remove());
+  }
+
+  function syncAppFooterLoveKpiActions() {
+    clearLoveKpiFooterActions();
+    const slot = getAppFooterActionsSlot();
+    if (!slot) return;
+    if (!selectedKpiId || !activeHappinessId) return;
+    const data = loadHappinessMap();
+    const kpiNow = (data.kpis || []).find((k) => k.id === selectedKpiId);
+    if (!kpiNow || kpiNow.happinessId !== activeHappinessId) return;
+
+    const logBtn = document.createElement("button");
+    logBtn.type = "button";
+    logBtn.className = APP_FOOTER_ICON_BTN_CLASS;
+    logBtn.setAttribute("data-lp-dream-kpi-footer-action", "");
+    logBtn.title = "로그 추가";
+    logBtn.setAttribute("aria-label", "로그 추가");
+    logBtn.innerHTML = LOVE_FOOTER_LOG_ICON;
+    logBtn.addEventListener("click", () => {
+      const d = loadHappinessMap();
+      const k = (d.kpis || []).find((x) => x.id === selectedKpiId);
+      if (k) showKpiLogModal(k);
+    });
+
+    const todoBtn = document.createElement("button");
+    todoBtn.type = "button";
+    todoBtn.className = APP_FOOTER_ICON_BTN_CLASS;
+    todoBtn.setAttribute("data-lp-dream-kpi-footer-action", "");
+    todoBtn.title = "할 일 추가";
+    todoBtn.setAttribute("aria-label", "할 일 추가");
+    todoBtn.innerHTML = LOVE_FOOTER_TODO_ICON;
+    todoBtn.addEventListener("click", async () => {
+      const d = loadHappinessMap();
+      const k = (d.kpis || []).find((x) => x.id === selectedKpiId);
+      if (!k) return;
+      const text = await showKpiTodoAddModal({
+        kpiName: k.name,
+        placeholder: "할 일 입력",
+      });
+      if (!text) return;
+      const d2 = loadHappinessMap();
+      const todo = {
+        id: nextId(),
+        kpiId: String(selectedKpiId),
+        text,
+        completed: false,
+      };
+      d2.kpiTodos = d2.kpiTodos || [];
+      d2.kpiTodos.push(todo);
+      saveHappinessMap(d2);
+      renderKpiHistory({ scrollTodoAfterMutation: true });
+    });
+
+    slot.appendChild(logBtn);
+    slot.appendChild(todoBtn);
   }
 
   function getLatestKpiLog(kpiId) {
@@ -739,11 +794,15 @@ export function render() {
       kpiGridScrollPrevFilter,
       kpiGridScrollPrevScopeId,
     );
+    historyWrap.remove();
     contentWrap.innerHTML = "";
     if (!activeHappinessId) {
       kpiGridScrollPrevFilter = null;
       kpiGridScrollPrevScopeId = null;
       persistKpiUiState();
+      historyWrap.hidden = true;
+      el.appendChild(historyWrap);
+      syncAppFooterLoveKpiActions();
       return;
     }
     const data = loadHappinessMap();
@@ -796,6 +855,7 @@ export function render() {
         : kpiFilter === "completed"
           ? completedKpis
           : happinessKpis;
+    let historyAnchoredUnderCard = false;
     listToShow.forEach((kpi) => {
       const {
         progress,
@@ -889,12 +949,19 @@ export function render() {
         }
       });
       grid.appendChild(card);
+      if (selectedKpiId === kpi.id) {
+        grid.appendChild(historyWrap);
+        historyAnchoredUnderCard = true;
+      }
     });
     grid.addEventListener("dragend", () => {
       grid
         .querySelectorAll(".dream-kpi-card-drag-over")
         .forEach((c) => c.classList.remove("dream-kpi-card-drag-over"));
     });
+    if (!historyAnchoredUnderCard) {
+      grid.appendChild(historyWrap);
+    }
     if (!selectedKpiId) {
       const addCard = document.createElement("button");
       addCard.type = "button";
@@ -913,6 +980,7 @@ export function render() {
     kpiGridScrollPrevFilter = kpiFilter;
     kpiGridScrollPrevScopeId = scopeId;
     persistKpiUiState();
+    syncAppFooterLoveKpiActions();
   }
 
   function renderKpiHistory(opts = {}) {
@@ -920,12 +988,15 @@ export function render() {
     historyWrap.innerHTML = "";
     if (!selectedKpiId) {
       historyWrap.hidden = true;
+      syncAppFooterLoveKpiActions();
       return;
     }
     const data = loadHappinessMap();
     const kpi = (data.kpis || []).find((k) => k.id === selectedKpiId);
     if (!kpi) {
       historyWrap.hidden = true;
+      selectedKpiId = null;
+      renderKpiList();
       return;
     }
     const needHabitTracker = !!kpi.needHabitTracker;
@@ -940,11 +1011,7 @@ export function render() {
     headerRow.className = "dream-kpi-history-header";
     headerRow.innerHTML = `
       <h4 class="dream-kpi-history-title">${escapeHtml(kpi.name)} 기록</h4>
-      <button type="button" class="dream-kpi-history-log-btn">+ 로그</button>
     `;
-    headerRow
-      .querySelector(".dream-kpi-history-log-btn")
-      .addEventListener("click", () => showKpiLogModal(kpi));
     historyWrap.appendChild(headerRow);
 
     const dailyTodosForGrid = needHabitTracker
@@ -1040,7 +1107,7 @@ export function render() {
 
     const todoHeader = document.createElement("div");
     todoHeader.className = "dream-kpi-todo-header";
-    todoHeader.innerHTML = `<span class="dream-kpi-todo-title">할일 목록</span><button type="button" class="dream-kpi-history-log-btn dream-kpi-todo-header-add-btn">+ 추가</button>`;
+    todoHeader.innerHTML = `<span class="dream-kpi-todo-title">할일 목록</span>`;
     historyWrap.appendChild(todoHeader);
 
     const todoDivider = document.createElement("div");
@@ -1132,28 +1199,11 @@ export function render() {
       todoList.appendChild(item);
     });
 
-    todoHeader.querySelector(".dream-kpi-todo-header-add-btn")?.addEventListener("click", async () => {
-      const text = await showKpiTodoAddModal({
-        kpiName: kpi.name,
-        placeholder: "할 일 입력",
-      });
-      if (!text) return;
-      const data = loadHappinessMap();
-      const todo = {
-        id: nextId(),
-        kpiId: selKpi,
-        text,
-        completed: false,
-      };
-      data.kpiTodos = data.kpiTodos || [];
-      data.kpiTodos.push(todo);
-      saveHappinessMap(data);
-      renderKpiHistory({ scrollTodoAfterMutation: true });
-    });
     historyWrap.appendChild(todoList);
     if (scrollTodoAfterMutation) {
       afterKpiTodoListMutationScroll(historyWrap);
     }
+    syncAppFooterLoveKpiActions();
   }
 
   function escapeHtml(str) {
@@ -1164,27 +1214,29 @@ export function render() {
 
   function showHappinessAddModal() {
     const modal = document.createElement("div");
-    modal.className = "dream-kpi-modal";
+    modal.className = "time-task-setup-modal";
     modal.innerHTML = `
-      <div class="dream-kpi-backdrop"></div>
-      <div class="dream-kpi-panel">
-        <div class="dream-kpi-modal-header">
-          <h3 class="dream-kpi-modal-title">행복 목표 추가</h3>
-          <button type="button" class="dream-kpi-modal-close" title="닫기">×</button>
+      <div data-legacy="time-task-setup-backdrop"></div>
+      <div data-legacy="time-task-setup-panel">
+        <div data-legacy="time-task-setup-header">
+          <h3 data-legacy="time-task-setup-title">행복 목표 추가</h3>
+          <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
         </div>
         <form class="dream-kpi-form">
-          <div class="dream-kpi-field">
-            <label>행복 이름</label>
-            <input type="text" name="name" placeholder="성장과 기쁨 같이 누리기" />
+          <div class="dream-kpi-form-body" data-legacy="time-task-setup-body">
+            <div class="dream-kpi-field" data-legacy="time-add-task-field">
+              <label>행복 이름</label>
+              <input type="text" name="name" placeholder="성장과 기쁨 같이 누리기" />
+            </div>
           </div>
-          <button type="button" class="dream-kpi-submit dream-add-confirm-btn">확인</button>
+          <div data-legacy="time-task-log-footer">
+            <button type="button" data-legacy="time-task-log-submit" class="dream-add-confirm-btn">확인</button>
+          </div>
         </form>
       </div>
     `;
     const close = () => modal.remove();
-    modal
-      .querySelector(".dream-kpi-modal-close")
-      .addEventListener("click", close);
+    modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
     const form = modal.querySelector("form");
     const confirmBtn = modal.querySelector(".dream-add-confirm-btn");
     const doSubmit = () => {
@@ -1216,20 +1268,26 @@ export function render() {
     const happiness = data.happinesses.find((h) => h.id === happinessId);
     const happinessName = happiness?.name || "이 행복";
     const modal = document.createElement("div");
-    modal.className = "dream-kpi-modal dream-delete-confirm-modal";
+    modal.className = "time-task-setup-modal dream-delete-confirm-modal";
     modal.innerHTML = `
-      <div class="dream-kpi-backdrop"></div>
-      <div class="dream-kpi-panel dream-delete-confirm-panel">
-        <h3 class="dream-delete-confirm-title">행복 삭제</h3>
-        <p class="dream-delete-confirm-msg">"${escapeHtml(happinessName)}"을(를) 정말 삭제하시겠습니까?</p>
-        <p class="dream-delete-confirm-warn">삭제 시 복구 불가</p>
-        <div class="dream-delete-confirm-actions">
-          <button type="button" class="dream-delete-confirm-cancel">취소</button>
+      <div data-legacy="time-task-setup-backdrop"></div>
+      <div data-legacy="time-task-setup-panel" class="dream-delete-confirm-panel">
+        <div data-legacy="time-task-setup-header">
+          <h3 data-legacy="time-task-setup-title">행복 삭제</h3>
+          <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
+        </div>
+        <div data-legacy="time-task-setup-body">
+          <p class="dream-delete-confirm-msg">"${escapeHtml(happinessName)}"을(를) 정말 삭제하시겠습니까?</p>
+          <p class="dream-delete-confirm-warn">삭제 시 복구 불가</p>
+        </div>
+        <div data-legacy="time-task-log-footer" class="dream-delete-confirm-modal-footer">
+          <button type="button" class="dream-delete-confirm-cancel" data-legacy="todo-list-modal-cancel">취소</button>
           <button type="button" class="dream-delete-confirm-submit">삭제</button>
         </div>
       </div>
     `;
     const close = () => modal.remove();
+    modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
     modal
       .querySelector(".dream-delete-confirm-cancel")
       .addEventListener("click", close);
@@ -1274,32 +1332,33 @@ export function render() {
 
   function showHappinessContextModal(happiness, tabEl) {
     const modal = document.createElement("div");
-    modal.className = "dream-kpi-modal";
+    modal.className = "time-task-setup-modal";
     modal.innerHTML = `
-      <div class="dream-kpi-backdrop"></div>
-      <div class="dream-kpi-panel dream-path-context-panel">
-        <div class="dream-kpi-modal-header">
-          <h3 class="dream-kpi-modal-title">행복 수정</h3>
-          <button type="button" class="dream-kpi-modal-close" title="닫기">×</button>
+      <div data-legacy="time-task-setup-backdrop"></div>
+      <div data-legacy="time-task-setup-panel" class="dream-path-context-panel">
+        <div data-legacy="time-task-setup-header">
+          <h3 data-legacy="time-task-setup-title">행복 수정</h3>
+          <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
         </div>
         <form class="dream-kpi-form dream-path-edit-form">
-          <div class="dream-kpi-field">
-            <label>행복 이름</label>
-            <input type="text" name="name" value="${escapeHtml(happiness.name || "")}" placeholder="성장과 기쁨 같이 누리기" />
+          <div class="dream-kpi-form-body" data-legacy="time-task-setup-body">
+            <div class="dream-kpi-field" data-legacy="time-add-task-field">
+              <label>행복 이름</label>
+              <input type="text" name="name" value="${escapeHtml(happiness.name || "")}" placeholder="성장과 기쁨 같이 누리기" />
+            </div>
+            <div class="dream-kpi-delete-wrap">
+              <button type="button" class="dream-kpi-delete-btn" data-action="delete">행복 목표 삭제</button>
+              <p class="dream-kpi-delete-note">삭제 시 복구 불가</p>
+            </div>
           </div>
-          <button type="submit" class="dream-kpi-submit">수정</button>
+          <div data-legacy="time-task-log-footer">
+            <button type="submit" data-legacy="time-task-log-submit">수정</button>
+          </div>
         </form>
-        <div class="dream-path-context-divider"></div>
-        <div class="dream-path-context-actions">
-          <button type="button" class="dream-path-context-btn dream-path-context-delete" data-action="delete">삭제</button>
-        </div>
-        <p class="dream-path-context-warn">삭제 시 복구할 수 없습니다.</p>
       </div>
     `;
     const close = () => modal.remove();
-    modal
-      .querySelector(".dream-kpi-modal-close")
-      .addEventListener("click", close);
+    modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
     modal.querySelector("form").addEventListener("submit", (e) => {
       e.preventDefault();
       const val = (e.target.name.value || "").trim() || "행복 이름";
