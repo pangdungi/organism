@@ -79,12 +79,12 @@ body {
   max-width: 100%;
 }
 
-/* 하단 고정: 뒤로 + 액션 슬롯(App.js) — 뷰포트 분기 없이 동일 */
+/* 하단 고정: 한 슬롯 안에서 뒤로 + 탭 액션을 칸 단위로 균등 분할 */
 .app-footer-menu {
   flex-shrink: 0;
   display: flex;
-  justify-content: flex-start;
-  align-items: center;
+  justify-content: stretch;
+  align-items: stretch;
   gap: 0;
   width: 100%;
   padding: 0.45rem 0.75rem calc(0.5rem + var(--lp-safe-bottom));
@@ -102,10 +102,19 @@ body {
 .app-footer-actions {
   flex: 1 1 auto;
   display: flex;
-  align-items: center;
-  justify-content: space-evenly;
+  align-items: stretch;
+  justify-content: flex-start;
   gap: 0;
   min-width: 0;
+  width: 100%;
+}
+
+.app-footer-actions > * {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .app-footer-menu-back.app-footer-icon-btn,

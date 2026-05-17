@@ -429,14 +429,11 @@ export async function mountApp(container) {
   footerBackBtn.innerHTML =
     '<img src="/toolbaricons/caret-left-circle.svg" alt="" width="22" height="22" aria-hidden="true" />';
   footerBackBtn.addEventListener("click", () => setActiveTab("home"));
-  const footerSpacer = document.createElement("div");
-  footerSpacer.className = "app-footer-spacer";
-  footerSpacer.setAttribute("aria-hidden", "true");
+  footerBackBtn.setAttribute("data-lp-app-footer-back", "");
   const footerActionsSlot = document.createElement("div");
   footerActionsSlot.className = "app-footer-actions";
   footerActionsSlot.setAttribute("data-lp-app-footer-actions", "");
-  footerNav.appendChild(footerBackBtn);
-  footerNav.appendChild(footerSpacer);
+  footerActionsSlot.appendChild(footerBackBtn);
   footerNav.appendChild(footerActionsSlot);
 
   function syncAppFooterVisibility() {
