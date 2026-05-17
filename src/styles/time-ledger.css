@@ -238,6 +238,16 @@
   flex-direction: column;
   gap: 0.45rem;
 }
+
+/* 시도: 왼쪽 생산성 컬러바 숨김 — 마음에 안 들면 이 블록 전체 삭제 */
+.time-ledger-view [data-legacy~="time-mobile-card-leading"],
+[data-legacy~="time-ledger-view"] [data-legacy~="time-mobile-card-leading"] {
+  display: none;
+}
+.time-ledger-view [data-legacy~="time-mobile-card-body"],
+[data-legacy~="time-ledger-view"] [data-legacy~="time-mobile-card-body"] {
+  padding: 0.55rem 0.65rem;
+}
 .time-ledger-view [data-legacy~="time-mobile-card-top-grid"],
 [data-legacy~="time-ledger-view"] [data-legacy~="time-mobile-card-top-grid"] {
   display: grid;
@@ -255,6 +265,8 @@
   justify-content: center;
   border-radius: 0.35rem;
   box-sizing: border-box;
+  /* 아이콘 사분면 안쪽 여백 — PNG/SVG가 칸을 꽉 채우지 않게 */
+  padding: 0.5rem;
 }
 .time-ledger-view [data-legacy~="time-mobile-card-icon-slot"][data-legacy~="time-mobile-card-icon-slot--empty"],
 [data-legacy~="time-ledger-view"] [data-legacy~="time-mobile-card-icon-slot"][data-legacy~="time-mobile-card-icon-slot--empty"] {
@@ -266,13 +278,14 @@
   justify-content: center;
   border-radius: 0.35rem;
   box-sizing: border-box;
+  padding: 0.5rem;
   background: transparent;
   border: 1px dashed #ddd8cc;
 }
 .time-ledger-view [data-legacy~="time-mobile-card-icon-slot"] img,
 [data-legacy~="time-ledger-view"] [data-legacy~="time-mobile-card-icon-slot"] img {
-  max-width: 2.35rem;
-  max-height: 2.35rem;
+  max-width: 100%;
+  max-height: 100%;
   width: auto;
   height: auto;
   object-fit: contain;

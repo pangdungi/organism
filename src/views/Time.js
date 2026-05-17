@@ -963,7 +963,7 @@ function applyMobileCardPriceEl(priceEl, rowData, hourlyRate) {
     priceEl.textContent = "";
     return;
   }
-  priceEl.textContent = formatPrice(value);
+  priceEl.textContent = formatTimeLedgerActionPriceDisplay(value, slot);
 }
 
 function mobileCardNeedsLiveClock(rowData) {
@@ -1651,6 +1651,16 @@ function formatPrice(n) {
   return n < 0 ? `-${str}` : str;
 }
 
+/** 타임 카드·표 「행동의 가치」: 생산적 +n 원 / 비생산적 -n 원 */
+function formatTimeLedgerActionPriceDisplay(value, productivitySlot) {
+  if (productivitySlot === "other") return "";
+  const abs = Math.abs(Math.round(Number(value) || 0));
+  const str = abs.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  if (productivitySlot === "productive") return `+${str} 원`;
+  if (productivitySlot === "nonproductive") return `-${str} 원`;
+  return "";
+}
+
 function parsePriceFromDisplay(text) {
   if (!text || typeof text !== "string") return 0;
   const trimmed = text.trim().replace(/,/g, "");
@@ -2213,7 +2223,8 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
     let price = hours * hourlyRate;
     if (pv === "nonproductive") price *= -1;
     else if (pv === "other" || pv === "그 외" || !pv) price = 0;
-    priceDisplay.textContent = formatPrice(price);
+    const slot = getMobileCardPriceProductivitySlot(data);
+    priceDisplay.textContent = formatTimeLedgerActionPriceDisplay(price, slot);
     lpTokenToggle(priceDisplay, "is-negative", price < 0);
     lpTokenToggle(priceDisplay, "is-positive", price > 0);
 
@@ -2833,8 +2844,7 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
     ) || 0;
   const priceVal = computeMobileCardPriceValue(rowData, hourlyRate);
   const priceSlot = getMobileCardPriceProductivitySlot(rowData);
-  const priceText =
-    priceSlot === "other" ? "" : formatPrice(priceVal);
+  const priceText = formatTimeLedgerActionPriceDisplay(priceVal, priceSlot);
   const priceLegacy = `time-mobile-card-price time-mobile-card-price--${priceSlot}`;
   const taskName = (rowData.taskName || "")
     .replace(/</g, "&lt;")
@@ -7084,7 +7094,16 @@ export function render() {
         });
         summaryTracked.textContent =
           totalHrs > 0 ? formatHoursDisplay(totalHrs) : "";
-        summaryPrice.textContent = formatPrice(totalPrice);
+        const prodSlot =
+          prod === "productive"
+            ? "productive"
+            : prod === "nonproductive"
+              ? "nonproductive"
+              : "other";
+        summaryPrice.textContent = formatTimeLedgerActionPriceDisplay(
+          totalPrice,
+          prodSlot,
+        );
         lpSetClasses(
           summaryPrice,
           "time-section-summary-price" +

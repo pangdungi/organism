@@ -41,6 +41,7 @@ import {
   pullTimeLedgerEntriesForDateRange,
   timeLedgerLocalTodayYmd,
   timeLedgerLocalYesterdayYmd,
+  resetTimeLedgerSessionFilterToToday,
 } from "./utils/timeLedgerEntriesSupabase.js";
 import { pullKpiTabFromCloud } from "./utils/kpiTabCloudRefresh.js";
 import { pullTimeLedgerTabEnterFromCloud } from "./utils/timeLedgerCloudRefresh.js";
@@ -229,7 +230,7 @@ function persistActiveTabId(tabId) {
  * 상위 탭 전환(및 앱 최초 진입 시 현재 탭)에서 서버와 맞춤.
  * 시간가계부 **과제 목록**(time_ledger_tasks) pull: (1) 앱 상위 **시간가계부 탭** 클릭 시 `App.js`에서만
  * (2) 시간가계부 안 **과제설정** 모달 열 때 `Time.js`에서만.
- * @param {{ fromBoot?: boolean }} [opts] — true면 세션에 남은 시간가계부 날짜 필터를 유지(복원 진입).
+ * @param {{ fromBoot?: boolean }} [opts] — (예약) 부팅 전용 분기; 시간가계부 날짜는 탭 전환 시 메뉴 진입마다 오늘로 맞춤.
  */
 async function pullDataForActiveTab(tabId, opts = {}) {
   const fromBoot = !!opts.fromBoot;
@@ -258,7 +259,7 @@ async function pullDataForActiveTab(tabId, opts = {}) {
       break;
     }
     case "time":
-      /* 세션에 저장된 날짜 범위 유지(피커로 바꾼 뒤 다른 탭 갔다 와도 오늘로 덮어쓰지 않음). 최초 방문은 Time 뷰/헬퍼가 빈 세션에 오늘 적용. */
+      /* 기록 탭 날짜는 메뉴 전환 직전 `resetTimeLedgerSessionFilterToToday` 로 맞춤. pull 은 그 구간 기준 */
       await pullTimeLedgerTabEnterFromCloud();
       try {
         await pullTimeLedgerTasksFromSupabase();
@@ -464,7 +465,12 @@ export async function mountApp(container) {
           renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
           return;
         }
-        /* 그 외 탭: pull 대기 중에도 본문을 바로 갈아끼움 — 무거운 pull이 1~2초 걸릴 때 탭만 바뀌고 화면이 남는 현상 방지 */
+        /* 그 외 탭: 메뉴·사이드바로 시간가계부에 들어올 때는 항상 오늘 구간(세션 피커 초기화) 후 렌더 */
+        if (targetTabId === "time") {
+          try {
+            resetTimeLedgerSessionFilterToToday();
+          } catch (_) {}
+        }
         renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
         try {
           await pullDataForActiveTab(targetTabId, { fromBoot: false });
