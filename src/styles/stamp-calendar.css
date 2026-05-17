@@ -1,0 +1,200 @@
+/**
+ * 스탬프 캘린더 탭 (App.js `workschedule` → WorkSchedule.js)
+ * — 공통 모달 껍데기: `lp-modals.css` 의 `.todo-list-modal*` (WorkSchedule.js 에서 병기)
+ */
+
+@import "./calendar.css";
+
+/* 일정 탭과 같이 푸터 위 남는 세로 공간까지 본문·그리드 확장 (데스크탑은 .calendar-view 없음) */
+.app-tab-panel > .work-schedule-view {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.work-schedule-view > .calendar-content-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 유형 설정(단일 목록) */
+.work-schedule-type-settings-modal.todo-list-modal
+  .work-schedule-type-settings-panel--single.todo-list-modal-panel {
+  max-width: min(96vw, 32rem);
+}
+
+/* —— 스탬프 설정 / 등록 모달 내부: lp-modals 토큰·유틸 클래스와 맞춤 —— */
+
+.work-schedule-type-settings-modal.todo-list-modal .work-schedule-type-settings-add-block {
+  margin-bottom: 0.75rem;
+}
+
+.work-schedule-type-settings-modal.todo-list-modal .work-schedule-type-settings-add-one {
+  margin-top: 0.25rem;
+}
+
+.work-schedule-type-settings-modal.todo-list-modal .time-task-log-expense-amount-name-row {
+  align-items: center;
+}
+
+.work-schedule-type-settings-modal.todo-list-modal
+  .time-task-log-expense-amount-name-row
+  .todo-list-modal-cancel {
+  flex-shrink: 0;
+  min-height: auto;
+  padding: 0.55rem 0.85rem;
+}
+
+.work-schedule-type-settings-modal.todo-list-modal
+  .work-schedule-type-settings-list
+  .time-task-setup-item:last-child {
+  border-bottom: none;
+}
+
+.work-schedule-type-settings-modal.todo-list-modal .work-schedule-type-settings-row[role="button"] {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.work-schedule-type-settings-modal.todo-list-modal
+  .work-schedule-type-settings-row[role="button"]:focus-visible {
+  outline: 2px solid var(--lp-modal-accent);
+  outline-offset: 2px;
+}
+
+/* 스탬프 한 줄 클릭 시 — 설정 모달 안 작은 편집창 */
+.work-schedule-type-settings-modal.todo-list-modal .work-schedule-type-settings-stamp-edit-popover {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.work-schedule-type-settings-modal.todo-list-modal
+  .work-schedule-type-settings-stamp-edit-popover[hidden] {
+  display: none !important;
+}
+
+.work-schedule-type-settings-modal.todo-list-modal .work-schedule-type-settings-stamp-edit-backdrop {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: rgba(21, 43, 69, 0.28);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.work-schedule-type-settings-modal.todo-list-modal .work-schedule-type-settings-stamp-edit-dialog.todo-list-modal-panel {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: min(96vw, 20rem);
+  max-height: min(88vh, 28rem);
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.work-schedule-type-settings-modal.todo-list-modal .work-schedule-type-settings-stamp-edit-body {
+  padding-bottom: 0.75rem;
+}
+
+.work-schedule-type-settings-modal.todo-list-modal .work-schedule-type-settings-stamp-edit-hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--lp-modal-navy-muted);
+}
+
+.work-schedule-type-settings-modal.todo-list-modal .work-schedule-type-settings-stamp-edit-hint[hidden] {
+  display: none !important;
+}
+
+.work-schedule-type-settings-modal.todo-list-modal .work-schedule-type-settings-stamp-edit-delete {
+  color: var(--lp-modal-danger) !important;
+  border-color: rgba(185, 28, 28, 0.35) !important;
+  background: var(--lp-modal-danger-soft) !important;
+}
+
+/* 일자·유형 모달 본문 — 필드 간 간격 */
+.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+  .work-schedule-day-entry-body.todo-list-modal-body
+  > * + * {
+  margin-top: 0.65rem;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 스탬프 캘린더 — 날짜 칸 안 유형(스탬프) 칩 */
+/* -------------------------------------------------------------------------- */
+
+.work-schedule-monthly-content .work-schedule-monthly-entry--pills {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.2rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.work-schedule-monthly-content .work-schedule-monthly-type-pill {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.2rem 0.38rem;
+  border: none;
+  border-radius: 5px;
+  background: #f0f4fa;
+  color: #3a6ea8;
+  font-size: 0.6rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.work-schedule-monthly-content .work-schedule-monthly-type-pill-text,
+.work-schedule-monthly-content .work-schedule-monthly-type-pill-label {
+  color: inherit;
+  font: inherit;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.work-schedule-monthly-content .work-schedule-monthly-type-pill.is-placeholder {
+  justify-content: center;
+  opacity: 0.55;
+  font-weight: 500;
+}
+
+.work-schedule-monthly-content .work-schedule-monthly-type-pill--with-meal-check {
+  gap: 0.3rem;
+}
+
+.work-schedule-monthly-content .work-schedule-monthly-type-pill.is-ws-pill-default,
+.work-schedule-monthly-content .work-schedule-monthly-type-pill.is-ws-pill-builtin,
+.work-schedule-monthly-content .work-schedule-monthly-type-pill.is-ws-pill-work {
+  background: #f0f4fa;
+  color: #3a6ea8;
+}
+
+.work-schedule-monthly-content .work-schedule-monthly-meal-done-check {
+  flex-shrink: 0;
+  width: 0.65rem;
+  height: 0.65rem;
+  margin: 0;
+  accent-color: #3a6ea8;
+}

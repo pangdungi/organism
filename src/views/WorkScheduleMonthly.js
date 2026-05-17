@@ -8,68 +8,28 @@
  */
 
 import { applyWorkScheduleRowTimesFromTypes } from "../utils/workScheduleEntryResolve.js";
-import {
-  readWorkScheduleRowsFromMem,
-  listWorkScheduleDietTypeNamesFromMem,
-} from "../utils/workScheduleModel.js";
-import { readTimeLedgerEntriesRaw } from "../utils/timeLedgerEntriesModel.js";
-import { collectDietNamesFromLedgerForDate } from "../utils/workScheduleDietLedgerTags.js";
+import { readWorkScheduleRowsFromMem } from "../utils/workScheduleModel.js";
 import { workScheduleDiagLog } from "../utils/workScheduleDiag.js";
 
-let _calendarRowsListenerAttached = false;
 let _workScheduleMonthlyRerender = null;
 
-/** 근무표 월별 콘텐츠가 마운트된 뒤, 시간가계부 저장 시 달력을 다시 그립니다. */
 export function setWorkScheduleMonthlyLiveRerender(fn) {
   _workScheduleMonthlyRerender = typeof fn === "function" ? fn : null;
 }
 
-/**
- * 같은 날 같은 식단명: 근무표 행 + 시간가계부 기록을 한 칩으로 합침.
- * @returns {{ items: Array<{ workType: string, rowId: string | null, mealLoggedInLedger: boolean, sortStart: string, sortKey: string }>, dietTypeSet: Set<string> }}
- */
-function buildMonthlyTypeModePillItems(sortedWorkRows, dateKey) {
-  const ledgerRows = readTimeLedgerEntriesRaw();
-  const ledgerDietSet = collectDietNamesFromLedgerForDate(ledgerRows, dateKey);
-  const dietTypeSet = new Set(listWorkScheduleDietTypeNamesFromMem());
-
-  const nonDietRows = [];
-  const dietByName = new Map();
-  for (const e of sortedWorkRows) {
-    const wt = String(e.workType || "").trim();
-    if (!wt) continue;
-    if (!dietTypeSet.has(wt)) {
-      nonDietRows.push(e);
-      continue;
-    }
-    if (!dietByName.has(wt)) dietByName.set(wt, []);
-    dietByName.get(wt).push(e);
-  }
-
-  const mergedNames = new Set([...dietByName.keys(), ...ledgerDietSet]);
-  const dietDisplays = [];
-  for (const name of Array.from(mergedNames).sort((a, b) =>
-    a.localeCompare(b, "ko"),
-  )) {
-    const rows = dietByName.get(name) || [];
-    const primary = rows[0] || null;
-    dietDisplays.push({
-      workType: name,
-      rowId: primary ? String(primary.id) : null,
-      mealLoggedInLedger: ledgerDietSet.has(name),
-      sortStart: String(primary?.startTime || "").trim(),
-      sortKey: primary ? String(primary.id) : `ledger:${name}`,
-    });
-  }
-
-  const nonDietDisplays = nonDietRows.map((e) => ({
-    workType: String(e.workType || "").trim(),
-    rowId: String(e.id),
-    mealLoggedInLedger: false,
-    sortStart: String(e.startTime || "").trim(),
-    sortKey: String(e.id),
-  }));
-
+/** 스탬프 캘린더 행만 칩으로 표시 (시간가계부 식단 연동 없음) */
+function buildMonthlyTypeModePillItems(sortedWorkRows, _dateKey) {
+  void _dateKey;
+  const dietTypeSet = new Set();
+  const displays = sortedWorkRows
+    .filter((e) => String(e.workType || "").trim())
+    .map((e) => ({
+      workType: String(e.workType || "").trim(),
+      rowId: String(e.id),
+      mealLoggedInLedger: false,
+      sortStart: String(e.startTime || "").trim(),
+      sortKey: String(e.id),
+    }));
   const sortPillGroup = (a, b) => {
     if (a.sortStart !== b.sortStart)
       return a.sortStart.localeCompare(b.sortStart);
@@ -77,11 +37,8 @@ function buildMonthlyTypeModePillItems(sortedWorkRows, dateKey) {
       return a.workType.localeCompare(b.workType, "ko");
     return a.sortKey.localeCompare(b.sortKey);
   };
-  nonDietDisplays.sort(sortPillGroup);
-  dietDisplays.sort(sortPillGroup);
-  /* 근무유형(비식단) 먼저 — 식단표 유형은 뒤에서 한 덩어리 */
-  const all = [...nonDietDisplays, ...dietDisplays];
-  return { items: all, dietTypeSet };
+  displays.sort(sortPillGroup);
+  return { items: displays, dietTypeSet };
 }
 
 /** 근무표 월별보기에서 보고 있던 연·월 — 모달·탭 갱신 후에도 유지 (localStorage: 세션보다 안정적) */
@@ -220,10 +177,6 @@ const MONTH_NAMES_EN = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
-const MONTH_NAMES_SHORT = [
-  "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
-  "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
-];
 
 /**
  * 근무표 내부에서 사용하는 먼슬리 캘린더 콘텐츠
@@ -232,15 +185,6 @@ const MONTH_NAMES_SHORT = [
  *   - typeOnly: true면 근무유형만 표시(필터 버튼 숨김). 근무표 「2. 월별보기」는 항상 이 모드
  */
 export function renderMonthlyContent(opts = {}) {
-  if (!_calendarRowsListenerAttached && typeof document !== "undefined") {
-    _calendarRowsListenerAttached = true;
-    document.addEventListener("calendar-time-rows-updated", () => {
-      try {
-        _workScheduleMonthlyRerender?.();
-      } catch (_) {}
-    });
-  }
-
   const hoursOnly = !!opts.hoursOnly;
   const typeOnly = !!opts.typeOnly;
   const noFilter = hoursOnly || typeOnly;
@@ -251,45 +195,33 @@ export function renderMonthlyContent(opts = {}) {
   const typePillClassForName =
     typeof opts.typePillClassForName === "function" ? opts.typePillClassForName : null;
   const el = document.createElement("div");
-  el.className = "work-schedule-monthly-content" + (noFilter ? " work-schedule-monthly-content--hours-only" : "");
+  el.className =
+    "work-schedule-monthly-content calendar-monthly-layout calendar-subview-monthly" +
+    (noFilter ? " work-schedule-monthly-content--hours-only" : "");
 
+  const main = document.createElement("div");
+  main.className = "calendar-monthly-main";
+
+  /** 일정 탭 월별 뷰와 동일 마크업 — `.calendar-monthly-layout` 변수·`.calendar-nav-controls` 스타일 적용 */
   const nav = document.createElement("div");
-  nav.className = "work-schedule-monthly-nav";
-
-  const todayBtn = document.createElement("button");
-  todayBtn.type = "button";
-  todayBtn.className = "work-schedule-monthly-today-btn";
-  todayBtn.textContent = "Today";
-  todayBtn.title = "오늘 날짜가 있는 달로 이동";
-
-  const prevBtn = document.createElement("button");
-  prevBtn.type = "button";
-  prevBtn.className = "work-schedule-monthly-nav-btn";
-  prevBtn.textContent = "<";
-  prevBtn.title = "이전 달";
-
-  const monthLabel = document.createElement("span");
-  monthLabel.className = "work-schedule-monthly-label";
-  if (onMonthLabelClick) {
-    monthLabel.setAttribute("role", "button");
-    monthLabel.tabIndex = 0;
-    monthLabel.style.cursor = "pointer";
-    monthLabel.title = "이 달의 날짜를 골라 근무를 등록합니다";
-  }
-
-  const nextBtn = document.createElement("button");
-  nextBtn.type = "button";
-  nextBtn.className = "work-schedule-monthly-nav-btn";
-  nextBtn.textContent = ">";
-  nextBtn.title = "다음 달";
-
-  nav.appendChild(prevBtn);
-  nav.appendChild(monthLabel);
-  nav.appendChild(nextBtn);
-  nav.appendChild(todayBtn);
-
-  const topRow = document.createElement("div");
-  topRow.className = "work-schedule-monthly-top-row";
+  nav.className = "calendar-monthly-nav";
+  nav.innerHTML = `
+    <span class="calendar-nav-date">
+      <span class="calendar-nav-month"></span>
+      <span class="calendar-nav-year"></span>
+    </span>
+    <div class="calendar-nav-controls">
+      <button type="button" class="calendar-nav-prev" title="이전 달">&lt;</button>
+      <button type="button" class="calendar-nav-today" title="오늘 날짜가 있는 달로 이동">Today</button>
+      <button type="button" class="calendar-nav-next" title="다음 달">&gt;</button>
+    </div>
+  `;
+  const navMonth = nav.querySelector(".calendar-nav-month");
+  const navYear = nav.querySelector(".calendar-nav-year");
+  const prevBtn = nav.querySelector(".calendar-nav-prev");
+  const todayBtn = nav.querySelector(".calendar-nav-today");
+  const nextBtn = nav.querySelector(".calendar-nav-next");
+  const navDateEl = nav.querySelector(".calendar-nav-date");
 
   const filterRow = document.createElement("div");
   filterRow.className = "work-schedule-monthly-filter";
@@ -307,12 +239,14 @@ export function renderMonthlyContent(opts = {}) {
     filterRow.appendChild(btnHours);
     filterRow.appendChild(btnType);
   }
-  topRow.appendChild(nav);
-  if (!noFilter) topRow.appendChild(filterRow);
-  el.appendChild(topRow);
 
   const calendarWrap = document.createElement("div");
-  calendarWrap.className = "work-schedule-monthly-calendar";
+  calendarWrap.className = "work-schedule-monthly-calendar calendar-monthly-grid";
+
+  main.appendChild(nav);
+  if (!noFilter) main.appendChild(filterRow);
+  main.appendChild(calendarWrap);
+  el.appendChild(main);
 
   const nowInit = new Date();
   const storedYm = readStoredMonthlyYm();
@@ -331,14 +265,18 @@ export function renderMonthlyContent(opts = {}) {
     });
   }
 
-  if (onMonthLabelClick) {
+  if (onMonthLabelClick && navDateEl) {
+    navDateEl.setAttribute("role", "button");
+    navDateEl.tabIndex = 0;
+    navDateEl.style.cursor = "pointer";
+    navDateEl.title = "이 달의 날짜를 골라 근무를 등록합니다";
     const fire = () => onMonthLabelClick({ year: currentYear, month: currentMonth });
-    monthLabel.addEventListener("click", (e) => {
+    navDateEl.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
       fire();
     });
-    monthLabel.addEventListener("keydown", (e) => {
+    navDateEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         fire();
@@ -363,26 +301,29 @@ export function renderMonthlyContent(opts = {}) {
     const byDate = groupByDate(rows);
     const grid = getCalendarGrid(currentYear, currentMonth);
 
-    monthLabel.textContent = `${MONTH_NAMES_SHORT[currentMonth]} ${currentYear}`;
+    if (navMonth) navMonth.textContent = MONTH_NAMES_EN[currentMonth];
+    if (navYear) navYear.textContent = String(currentYear);
 
     calendarWrap.innerHTML = "";
 
     const dayHeader = document.createElement("div");
-    dayHeader.className = "work-schedule-monthly-weekdays";
+    dayHeader.className = "calendar-monthly-weekdays";
     DAY_NAMES.forEach((name) => {
       const cell = document.createElement("div");
-      cell.className = "work-schedule-monthly-weekday";
+      cell.className = "calendar-monthly-weekday";
       cell.textContent = name;
       dayHeader.appendChild(cell);
     });
     calendarWrap.appendChild(dayHeader);
 
     grid.forEach((week) => {
+      const weekWrap = document.createElement("div");
+      weekWrap.className = "calendar-monthly-week-wrap";
       const weekRow = document.createElement("div");
-      weekRow.className = "work-schedule-monthly-week";
+      weekRow.className = "calendar-monthly-week work-schedule-monthly-week";
       week.forEach((date) => {
         const cell = document.createElement("div");
-        cell.className = "work-schedule-monthly-day";
+        cell.className = "calendar-monthly-day work-schedule-monthly-day";
         if (!date) {
           cell.classList.add("empty");
           weekRow.appendChild(cell);
@@ -399,7 +340,7 @@ export function renderMonthlyContent(opts = {}) {
           cell.classList.add("other-month");
         }
         const dayNum = document.createElement("div");
-        dayNum.className = "work-schedule-monthly-day-num";
+        dayNum.className = "calendar-monthly-day-num work-schedule-monthly-day-num";
         dayNum.textContent = date.getDate();
         if (date.getDay() === 0) cell.classList.add("sun");
         if (date.getDay() === 6) cell.classList.add("sat");
@@ -420,17 +361,9 @@ export function renderMonthlyContent(opts = {}) {
         const entries = sortEntriesForDay(byDate[key] || []);
         const entriesEl = document.createElement("div");
         entriesEl.className = "work-schedule-monthly-day-entries";
-        const ledgerDietCountForDay =
-          displayMode === "type"
-            ? collectDietNamesFromLedgerForDate(
-                readTimeLedgerEntriesRaw(),
-                key,
-              ).size
-            : 0;
         const shouldRenderEntryBlock =
           (displayMode === "hours" && entries.length > 0) ||
-          (displayMode === "type" &&
-            (entries.length > 0 || ledgerDietCountForDay > 0));
+          (displayMode === "type" && entries.length > 0);
         if (shouldRenderEntryBlock) {
           const item = document.createElement("div");
           item.className = "work-schedule-monthly-entry";
@@ -527,7 +460,8 @@ export function renderMonthlyContent(opts = {}) {
         cell.appendChild(entriesEl);
         weekRow.appendChild(cell);
       });
-      calendarWrap.appendChild(weekRow);
+      weekWrap.appendChild(weekRow);
+      calendarWrap.appendChild(weekWrap);
     });
     storeMonthlyYm(currentYear, currentMonth);
   }
@@ -558,7 +492,6 @@ export function renderMonthlyContent(opts = {}) {
   });
 
   renderCalendar();
-  el.appendChild(calendarWrap);
 
   return el;
 }

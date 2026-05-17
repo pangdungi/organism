@@ -2,6 +2,7 @@ import "./main.css";
 import "./styles/time-ledger.css";
 import "./styles/lp-modals.css";
 import "./styles/calendar.css";
+import "./styles/stamp-calendar.css";
 import "./styles/todo-list.css";
 import "./styles/kpi-dream.css";
 import { showOnly } from "./pages.js";

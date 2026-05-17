@@ -1,6 +1,5 @@
 /**
- * 근무-식단표 - 근무 일정 관리
- * 근무시간, 근무유형, 근무일, 시간, 메모
+ * 스탬프 캘린더 — 날짜별 스탬프(유형) 표시
  */
 import {
   renderMonthlyContent,
@@ -21,6 +20,10 @@ import {
   readWorkScheduleTypeOptionsRawFromMem,
   writeWorkScheduleTypeOptionsRawToMem,
 } from "../utils/workScheduleModel.js";
+import {
+  APP_FOOTER_ICON_BTN_CLASS,
+  getAppFooterActionsSlot,
+} from "../utils/appFooterShell.js";
 
 function wsUiLog(...args) {
   workScheduleDiagLog("[ui]", ...args);
@@ -53,8 +56,8 @@ function defaultDateKeyForCalendarMonth(year, monthIndex0) {
 }
 
 /** 기본 근무유형 순서: 연차 → 휴가 → 정규근무 (시간 없음·표시만) */
+/** 근무 유형(스탬프) — kind 컬럼은 호환용으로 두되 클라이언트에서는 항상 work 로 취급 */
 const TYPE_KIND_WORK = "work";
-const TYPE_KIND_DIET = "diet";
 const DEFAULT_WORK_TYPE_OPTIONS = [
   { name: "연차", start: "", end: "", kind: TYPE_KIND_WORK },
   { name: "휴가", start: "", end: "", kind: TYPE_KIND_WORK },
@@ -69,12 +72,9 @@ const CALC_PROTECTED_WORK_TYPES = [];
 const PROTECTED_WORK_TYPES = READONLY_WORK_TYPES;
 const WORK_TYPE_DISPLAY_ORDER = DEFAULT_WORK_TYPE_OPTIONS.map((o) => o.name);
 
-const DELETE_ICON =
-  '<svg class="time-task-delete-icon" viewBox="0 0 16 16" width="16" height="16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
-
-/** 툴바 설정(톱니): TodoList TODO_TOOLBAR_SETTINGS_ICON 과 동일 경로 — currentColor 로 CSS에서 #dc2626 */
+/** 툴바 설정(톱니): 아이콘은 currentColor · 푸터는 APP_FOOTER_ICON_BTN_CLASS 만 사용 */
 const WORK_SCHEDULE_SETTINGS_ICON_SVG =
-  '<svg class="work-schedule-settings-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m19.845 13.561c.1-.505.155-1.027.155-1.561s-.055-1.056-.155-1.561l1.806-1.489c.502-.414.632-1.132.307-1.696l-.869-1.508c-.325-.564-1.011-.811-1.62-.582l-2.198.825c-.779-.684-1.689-1.218-2.691-1.559l-.385-2.316c-.108-.643-.663-1.114-1.314-1.114h-1.738c-.651 0-1.206.471-1.313 1.114l-.386 2.316c-1.002.341-1.912.875-2.691 1.559l-2.198-.825c-.61-.228-1.295.018-1.62.582l-.87 1.508c-.325.564-.195 1.282.307 1.696l1.806 1.489c-.1.505-.155 1.026-.155 1.561s.055 1.056.155 1.561l-1.806 1.489c-.502.414-.632 1.132-.307 1.696l.869 1.508c.325.564 1.011.811 1.62.582l2.198-.825c.779.684 1.689 1.218 2.691 1.559l.385 2.316c.109.643.664 1.114 1.315 1.114h1.738c.651 0 1.206-.471 1.313-1.114l.385-2.316c1.002-.341 1.913-.875 2.691-1.559l2.198.825c.609.229 1.295-.017 1.62-.582l.869-1.508c.325-.564.196-1.282-.307-1.696z"/><circle cx="12.012" cy="12" r="3"/></g></svg>';
+  '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m19.845 13.561c.1-.505.155-1.027.155-1.561s-.055-1.056-.155-1.561l1.806-1.489c.502-.414.632-1.132.307-1.696l-.869-1.508c-.325-.564-1.011-.811-1.62-.582l-2.198.825c-.779-.684-1.689-1.218-2.691-1.559l-.385-2.316c-.108-.643-.663-1.114-1.314-1.114h-1.738c-.651 0-1.206.471-1.313 1.114l-.386 2.316c-1.002.341-1.912.875-2.691 1.559l-2.198-.825c-.61-.228-1.295.018-1.62.582l-.87 1.508c-.325.564-.195 1.282.307 1.696l1.806 1.489c-.1.505-.155 1.026-.155 1.561s.055 1.056.155 1.561l-1.806 1.489c-.502.414-.632 1.132-.307 1.696l.869 1.508c.325.564 1.011.811 1.62.582l2.198-.825c.779.684 1.689 1.218 2.691 1.559l.385 2.316c.109.643.664 1.114 1.315 1.114h1.738c.651 0 1.206-.471 1.313-1.114l.385-2.316c1.002-.341 1.913-.875 2.691-1.559l2.198.825c.609.229 1.295-.017 1.62-.582l.869-1.508c.325-.564.196-1.282-.307-1.696z"/><circle cx="12.012" cy="12" r="3"/></g></svg>';
 
 function normalizeTypeEntry(o) {
   if (typeof o === "string")
@@ -85,10 +85,6 @@ function normalizeTypeEntry(o) {
       kind: TYPE_KIND_WORK,
       addedAt: 0,
     };
-  const kind =
-    String(o.kind || "").trim() === TYPE_KIND_DIET
-      ? TYPE_KIND_DIET
-      : TYPE_KIND_WORK;
   const ar = o.addedAt;
   const addedAt =
     typeof ar === "number" && Number.isFinite(ar) ? ar : 0;
@@ -96,7 +92,7 @@ function normalizeTypeEntry(o) {
     name: (o.name || "").trim(),
     start: (o.start != null ? String(o.start) : "").trim(),
     end: (o.end != null ? String(o.end) : "").trim(),
-    kind,
+    kind: TYPE_KIND_WORK,
     addedAt,
   };
 }
@@ -112,16 +108,9 @@ function compareByAddedAtDescThenName(a, b) {
 }
 
 /**
- * 저장·표시 순서: 근무(사용자 추가·최신이 위) → 연차·휴가·정규근무 → 식단(최신이 위)
- * — 추가 직후 바로 보이도록 커스텀을 기본 3종 위에 둠
+ * 저장·표시 순서: 사용자 추가(최신이 위) → 연차·휴가·정규근무
  */
 function compareTypeEntriesForPersist(a, b) {
-  const aDiet = a.kind === TYPE_KIND_DIET;
-  const bDiet = b.kind === TYPE_KIND_DIET;
-  if (aDiet !== bDiet) return aDiet ? 1 : -1;
-
-  if (aDiet && bDiet) return compareByAddedAtDescThenName(a, b);
-
   const aDef = DEFAULT_TYPE_NAMES.has(a.name);
   const bDef = DEFAULT_TYPE_NAMES.has(b.name);
   if (aDef !== bDef) return aDef ? 1 : -1;
@@ -166,7 +155,7 @@ function getWorkTypeOptionsFull() {
           name: o.name,
           start: o.start || "",
           end: o.end || "",
-          kind: o.kind === TYPE_KIND_DIET ? TYPE_KIND_DIET : TYPE_KIND_WORK,
+          kind: TYPE_KIND_WORK,
           addedAt:
             typeof o.addedAt === "number" && Number.isFinite(o.addedAt)
               ? o.addedAt
@@ -191,7 +180,7 @@ function cloneWorkTypeOptionsForDraft() {
     name: o.name,
     start: (o.start || "").trim(),
     end: (o.end || "").trim(),
-    kind: o.kind === TYPE_KIND_DIET ? TYPE_KIND_DIET : TYPE_KIND_WORK,
+    kind: TYPE_KIND_WORK,
     addedAt:
       typeof o.addedAt === "number" && Number.isFinite(o.addedAt)
         ? o.addedAt
@@ -205,7 +194,7 @@ function persistWorkTypeDraftToMemAndSync(rawList) {
       name: (o.name || "").trim(),
       start: (o.start || "").trim(),
       end: (o.end || "").trim(),
-      kind: o.kind === TYPE_KIND_DIET ? TYPE_KIND_DIET : TYPE_KIND_WORK,
+      kind: TYPE_KIND_WORK,
       addedAt:
         typeof o.addedAt === "number" && Number.isFinite(o.addedAt)
           ? o.addedAt
@@ -332,76 +321,88 @@ export function render(opts = {}) {
 
   const settingsBtn = document.createElement("button");
   settingsBtn.type = "button";
-  settingsBtn.className = "work-schedule-settings-btn";
   settingsBtn.setAttribute("aria-label", "스탬프 설정");
   settingsBtn.title = "스탬프 설정";
   settingsBtn.innerHTML = WORK_SCHEDULE_SETTINGS_ICON_SVG;
-
-  const header = document.createElement("div");
-  if (mobile) {
-    header.className =
-      "calendar-view-header dream-view-header-wrap work-schedule-header work-schedule-header--mobile-tab";
-    const headerInner = document.createElement("div");
-    headerInner.className =
-      "work-schedule-header-inner work-schedule-header-inner--mobile-tab";
-    headerInner.appendChild(settingsBtn);
-    header.appendChild(headerInner);
-  } else {
-    header.className = "work-schedule-header dream-view-header-wrap";
-    const headerInner = document.createElement("div");
-    headerInner.className = "work-schedule-header-inner";
-    headerInner.appendChild(settingsBtn);
-    header.appendChild(headerInner);
-  }
-  el.appendChild(header);
 
   async function openWorkTypeSettingsModal() {
     try {
       await pullWorkScheduleFromSupabase({ includeTypes: true });
     } catch (_) {}
     const modal = document.createElement("div");
-    modal.className = "work-schedule-type-settings-modal";
+    modal.className =
+      "work-schedule-type-settings-modal todo-list-modal";
     modal.setAttribute("role", "dialog");
     modal.setAttribute("aria-labelledby", "work-schedule-type-settings-title");
     modal.innerHTML = `
-      <div class="work-schedule-type-settings-backdrop"></div>
-      <div class="work-schedule-type-settings-panel work-schedule-type-settings-panel--dual">
-        <div class="work-schedule-type-settings-header">
-          <h3 class="work-schedule-type-settings-title" id="work-schedule-type-settings-title">스탬프 설정</h3>
-          <button type="button" class="work-schedule-type-settings-close" aria-label="닫기">&times;</button>
+      <div class="work-schedule-type-settings-backdrop todo-list-modal-backdrop"></div>
+      <div class="work-schedule-type-settings-panel work-schedule-type-settings-panel--single todo-list-modal-panel">
+        <div class="work-schedule-type-settings-header todo-list-modal-header">
+          <h3 class="work-schedule-type-settings-title todo-list-modal-title" id="work-schedule-type-settings-title">스탬프 설정</h3>
+          <button type="button" class="work-schedule-type-settings-close todo-list-modal-close" aria-label="닫기">&times;</button>
         </div>
-        <div class="work-schedule-type-settings-body-dual">
-          <div class="work-schedule-type-settings-add-block">
-            <div class="work-schedule-type-settings-kind-row">
-              <label class="work-schedule-type-settings-radio"><input type="radio" name="ws-add-kind" value="diet" /> 식단</label>
-              <label class="work-schedule-type-settings-radio"><input type="radio" name="ws-add-kind" value="work" checked /> 그 외</label>
+        <div class="work-schedule-type-settings-body-single todo-list-modal-body">
+          <div class="work-schedule-type-settings-add-block time-task-log-field">
+            <div class="work-schedule-type-settings-add-one time-task-log-expense-amount-name-row">
+              <input type="text" class="work-schedule-type-settings-input-name time-add-task-name" placeholder="이름" maxlength="50" autocomplete="off" />
+              <button type="button" class="work-schedule-type-settings-add-btn todo-list-modal-cancel">추가</button>
             </div>
-            <div class="work-schedule-type-settings-add-one">
-              <input type="text" class="work-schedule-type-settings-input-name" placeholder="이름" maxlength="50" autocomplete="off" />
-              <button type="button" class="work-schedule-type-settings-add-btn">추가</button>
-            </div>
-          </div>
-          <div class="work-schedule-type-settings-dual-cols">
-            <div class="work-schedule-type-settings-col work-schedule-type-settings-col--diet">
-              <div class="work-schedule-type-settings-col-head">식단</div>
-              <div class="work-schedule-type-settings-list" data-diet-list></div>
-            </div>
-            <div class="work-schedule-type-settings-col work-schedule-type-settings-col--work">
-              <div class="work-schedule-type-settings-col-head">그 외</div>
-              <div class="work-schedule-type-settings-list" data-work-list></div>
-            </div>
+            <div class="work-schedule-type-settings-list time-task-setup-list-scroll" data-work-list></div>
           </div>
         </div>
-        <div class="work-schedule-type-settings-footer work-schedule-type-settings-footer--dual">
+        <div class="work-schedule-type-settings-footer todo-list-modal-footer">
           <button type="button" class="todo-list-modal-confirm work-schedule-type-settings-save-btn">저장</button>
+        </div>
+        <div class="work-schedule-type-settings-stamp-edit-popover" hidden>
+          <div class="work-schedule-type-settings-stamp-edit-backdrop"></div>
+          <div class="work-schedule-type-settings-stamp-edit-dialog todo-list-modal-panel" role="dialog" aria-modal="true" aria-labelledby="work-schedule-stamp-edit-title">
+            <div class="todo-list-modal-header">
+              <h3 class="todo-list-modal-title" id="work-schedule-stamp-edit-title">스탬프</h3>
+              <button type="button" class="work-schedule-type-settings-stamp-edit-dismiss todo-list-modal-close" aria-label="닫기">&times;</button>
+            </div>
+            <div class="todo-list-modal-body work-schedule-type-settings-stamp-edit-body">
+              <label class="work-schedule-day-entry-label todo-task-edit-label work-schedule-type-settings-stamp-edit-label">
+                <span class="work-schedule-day-entry-label-text">이름</span>
+                <input type="text" class="work-schedule-type-settings-stamp-edit-name time-add-task-name" maxlength="50" autocomplete="off" />
+              </label>
+              <p class="work-schedule-type-settings-stamp-edit-hint"></p>
+            </div>
+            <div class="todo-list-modal-footer work-schedule-type-settings-stamp-edit-footer-editable">
+              <button type="button" class="todo-list-modal-cancel work-schedule-type-settings-stamp-edit-delete">삭제</button>
+              <button type="button" class="todo-list-modal-confirm work-schedule-type-settings-stamp-edit-save">저장</button>
+            </div>
+          </div>
         </div>
       </div>
     `;
     const workListEl = modal.querySelector("[data-work-list]");
-    const dietListEl = modal.querySelector("[data-diet-list]");
     const addInput = modal.querySelector(".work-schedule-type-settings-input-name");
     const addBtn = modal.querySelector(".work-schedule-type-settings-add-btn");
     const saveBtn = modal.querySelector(".work-schedule-type-settings-save-btn");
+    const stampPopover = modal.querySelector(
+      ".work-schedule-type-settings-stamp-edit-popover",
+    );
+    const stampEditBackdrop = modal.querySelector(
+      ".work-schedule-type-settings-stamp-edit-backdrop",
+    );
+    const stampEditName = modal.querySelector(
+      ".work-schedule-type-settings-stamp-edit-name",
+    );
+    const stampEditHint = modal.querySelector(
+      ".work-schedule-type-settings-stamp-edit-hint",
+    );
+    const stampEditDelete = modal.querySelector(
+      ".work-schedule-type-settings-stamp-edit-delete",
+    );
+    const stampEditSave = modal.querySelector(
+      ".work-schedule-type-settings-stamp-edit-save",
+    );
+    const stampEditDismiss = modal.querySelector(
+      ".work-schedule-type-settings-stamp-edit-dismiss",
+    );
+    const stampEditFooterEditable = modal.querySelector(
+      ".work-schedule-type-settings-stamp-edit-footer-editable",
+    );
 
     /** 모달 안에서만 조작하고, 「저장」 시에 한 번 메모 반영 → 서버 동기화 */
     const draftTypes = cloneWorkTypeOptionsForDraft();
@@ -414,7 +415,7 @@ export function render(opts = {}) {
           name: (o.name || "").trim(),
           start: (o.start || "").trim(),
           end: (o.end || "").trim(),
-          kind: o.kind === TYPE_KIND_DIET ? TYPE_KIND_DIET : TYPE_KIND_WORK,
+          kind: TYPE_KIND_WORK,
           addedAt:
             typeof o.addedAt === "number" && Number.isFinite(o.addedAt)
               ? o.addedAt
@@ -440,189 +441,172 @@ export function render(opts = {}) {
 
     let lastSavedComparable = draftComparableSnapshot();
 
-    function beginInlineRename(origName, row) {
-      if (DEFAULT_TYPE_NAMES.has(origName)) return;
-      const slot = row.querySelector(".work-schedule-type-settings-name");
-      if (!slot || row.querySelector(".work-schedule-type-settings-inline-name-edit"))
-        return;
+    let stampEditOrigName = "";
 
-      const inp = document.createElement("input");
-      inp.type = "text";
-      inp.className =
-        "work-schedule-type-settings-inline-name-edit work-schedule-type-settings-input-name";
-      inp.value = origName;
-      inp.maxLength = 50;
-      inp.autocomplete = "off";
-
-      slot.replaceWith(inp);
-      inp.focus();
-      inp.select();
-
-      let finished = false;
-
-      function restoreListOnly() {
-        renderTypeListsFromDraft();
-      }
-
-      function applyRenameCommit() {
-        if (finished) return;
-        const newName = (inp.value || "").trim();
-        if (!newName) {
-          try {
-            showToast("이름을 비워둘 수 없습니다.", "원래 이름으로 되돌립니다.");
-          } catch (_) {}
-          finished = true;
-          restoreListOnly();
-          return;
-        }
-        if (newName === origName) {
-          finished = true;
-          restoreListOnly();
-          return;
-        }
-        if (DEFAULT_TYPE_NAMES.has(newName)) {
-          try {
-            showToast(
-              "기본 유형 이름과 겹칩니다.",
-              "다른 이름을 사용해 주세요.",
-            );
-          } catch (_) {}
-          return;
-        }
-        if (
-          draftTypes.some(
-            (t) =>
-              String(t.name).trim() !== origName &&
-              String(t.name).trim() === newName,
-          )
-        ) {
-          try {
-            showToast(
-              "이미 있는 이름입니다.",
-              "다른 이름을 사용해 주세요.",
-            );
-          } catch (_) {}
-          return;
-        }
-        const t = draftTypes.find((x) => String(x.name) === origName);
-        if (!t) {
-          finished = true;
-          restoreListOnly();
-          return;
-        }
-        t.name = newName;
-        pendingWorkTypeRenames.push({ from: origName, to: newName });
-        draftTypes.sort(compareTypeEntriesForPersist);
-        finished = true;
-        renderTypeListsFromDraft();
-      }
-
-      inp.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") {
-          if (finished) return;
-          finished = true;
-          restoreListOnly();
-        } else if (e.key === "Enter") {
-          e.preventDefault();
-          inp.blur();
-        }
-      });
-
-      inp.addEventListener("blur", () => {
-        if (finished) return;
-        applyRenameCommit();
-      });
+    function closeStampEditPopover() {
+      stampPopover.hidden = true;
+      stampEditOrigName = "";
+      stampEditHint.textContent = "";
+      stampEditHint.hidden = true;
     }
+
+    function openStampEditPopover(entryName, isProtected) {
+      stampEditOrigName = entryName;
+      stampEditName.value = entryName;
+      if (isProtected) {
+        stampEditName.disabled = true;
+        stampEditHint.textContent =
+          "기본 스탬프는 이름 변경·삭제가 제한됩니다.";
+        stampEditHint.hidden = false;
+        stampEditFooterEditable.hidden = true;
+      } else {
+        stampEditName.disabled = false;
+        stampEditHint.hidden = true;
+        stampEditHint.textContent = "";
+        stampEditFooterEditable.hidden = false;
+      }
+      stampPopover.hidden = false;
+      if (!isProtected) {
+        requestAnimationFrame(() => {
+          try {
+            stampEditName.focus();
+            stampEditName.select();
+          } catch (_) {}
+        });
+      } else {
+        try {
+          stampEditDismiss.focus();
+        } catch (_) {}
+      }
+    }
+
+    function detachTypeSettingsModal() {
+      document.removeEventListener("keydown", onTypeSettingsModalKeyDown);
+      modal.remove();
+    }
+
+    function onTypeSettingsModalKeyDown(e) {
+      if (e.key !== "Escape" || !modal.isConnected) return;
+      e.preventDefault();
+      if (!stampPopover.hidden) {
+        closeStampEditPopover();
+        return;
+      }
+      tryCloseModal();
+    }
+    document.addEventListener("keydown", onTypeSettingsModalKeyDown);
+
+    stampEditBackdrop.addEventListener("click", closeStampEditPopover);
+    stampEditDismiss.addEventListener("click", closeStampEditPopover);
+    stampEditDelete.addEventListener("click", () => {
+      if (!stampEditOrigName || DEFAULT_TYPE_NAMES.has(stampEditOrigName))
+        return;
+      const idx = draftTypes.findIndex((o) => o.name === stampEditOrigName);
+      if (idx === -1) {
+        closeStampEditPopover();
+        return;
+      }
+      draftTypes.splice(idx, 1);
+      closeStampEditPopover();
+      renderTypeListsFromDraft();
+    });
+    stampEditSave.addEventListener("click", () => {
+      const origName = stampEditOrigName;
+      const newName = (stampEditName.value || "").trim();
+      if (!origName || DEFAULT_TYPE_NAMES.has(origName)) {
+        closeStampEditPopover();
+        return;
+      }
+      if (!newName) {
+        try {
+          showToast(
+            "이름을 비워둘 수 없습니다.",
+            "이름을 입력해 주세요.",
+          );
+        } catch (_) {}
+        return;
+      }
+      if (newName === origName) {
+        closeStampEditPopover();
+        return;
+      }
+      if (DEFAULT_TYPE_NAMES.has(newName)) {
+        try {
+          showToast(
+            "기본 유형 이름과 겹칩니다.",
+            "다른 이름을 사용해 주세요.",
+          );
+        } catch (_) {}
+        return;
+      }
+      if (
+        draftTypes.some(
+          (t) =>
+            String(t.name).trim() !== origName &&
+            String(t.name).trim() === newName,
+        )
+      ) {
+        try {
+          showToast(
+            "이미 있는 이름입니다.",
+            "다른 이름을 사용해 주세요.",
+          );
+        } catch (_) {}
+        return;
+      }
+      const t = draftTypes.find((x) => String(x.name) === origName);
+      if (!t) {
+        closeStampEditPopover();
+        return;
+      }
+      t.name = newName;
+      pendingWorkTypeRenames.push({ from: origName, to: newName });
+      draftTypes.sort(compareTypeEntriesForPersist);
+      closeStampEditPopover();
+      renderTypeListsFromDraft();
+    });
+    stampEditName.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      stampEditSave.click();
+    });
 
     function renderTypeListsFromDraft() {
       draftTypes.sort(compareTypeEntriesForPersist);
 
-      const workRows = draftTypes.filter((o) => o.kind !== TYPE_KIND_DIET);
-      const dietRows = draftTypes.filter((o) => o.kind === TYPE_KIND_DIET);
-
       workListEl.replaceChildren();
-      workRows.forEach((entry) => {
+      draftTypes.forEach((entry) => {
         const isProtected = DEFAULT_TYPE_NAMES.has(entry.name);
         const row = document.createElement("div");
         row.className =
-          "work-schedule-type-settings-row work-schedule-type-settings-row--simple" +
+          "work-schedule-type-settings-row work-schedule-type-settings-row--simple time-task-setup-item" +
           (isProtected ? " is-protected" : "");
+        row.setAttribute("role", "button");
+        row.tabIndex = 0;
+        row.setAttribute(
+          "aria-label",
+          `${entry.name}, 스탬프 편집 열기`,
+        );
 
         const nameSpan = document.createElement("span");
-        nameSpan.className = "work-schedule-type-settings-name";
+        nameSpan.className =
+          "work-schedule-type-settings-name time-task-setup-item-name";
         nameSpan.textContent = entry.name;
-        if (!isProtected) {
-          nameSpan.title = "더블 클릭하여 이름 변경";
-          nameSpan.classList.add("work-schedule-type-settings-name--editable");
-          nameSpan.addEventListener("dblclick", (ev) => {
-            ev.preventDefault();
-            beginInlineRename(entry.name, row);
-          });
-        }
 
-        const actions = document.createElement("span");
-        actions.className = "work-schedule-type-settings-row-action";
-        if (isProtected) {
-          actions.setAttribute("aria-hidden", "true");
-        } else {
-          const del = document.createElement("button");
-          del.type = "button";
-          del.className = "work-schedule-type-settings-del";
-          del.title = "목록에서 제거";
-          del.innerHTML = DELETE_ICON;
-          del.addEventListener("click", () => {
-            const idx = draftTypes.findIndex((o) => o.name === entry.name);
-            if (idx === -1) return;
-            draftTypes.splice(idx, 1);
-            renderTypeListsFromDraft();
-          });
-          actions.appendChild(del);
+        function openRowEditor(ev) {
+          if (ev) ev.preventDefault();
+          openStampEditPopover(entry.name, isProtected);
         }
+        row.addEventListener("click", openRowEditor);
+        row.addEventListener("keydown", (ev) => {
+          if (ev.key !== "Enter" && ev.key !== " ") return;
+          if (ev.key === " ") ev.preventDefault();
+          openRowEditor(ev);
+        });
+
         row.appendChild(nameSpan);
-        row.appendChild(actions);
         workListEl.appendChild(row);
       });
-
-      dietListEl.replaceChildren();
-      dietRows.forEach((entry) => {
-        const row = document.createElement("div");
-        row.className =
-          "work-schedule-type-settings-row work-schedule-type-settings-row--simple is-diet-row";
-
-        const nameSpan = document.createElement("span");
-        nameSpan.className = "work-schedule-type-settings-name";
-        nameSpan.textContent = entry.name;
-        nameSpan.title = "더블 클릭하여 이름 변경";
-        nameSpan.classList.add("work-schedule-type-settings-name--editable");
-        nameSpan.addEventListener("dblclick", (ev) => {
-          ev.preventDefault();
-          beginInlineRename(entry.name, row);
-        });
-
-        const actions = document.createElement("span");
-        actions.className = "work-schedule-type-settings-row-action";
-        const del = document.createElement("button");
-        del.type = "button";
-        del.className = "work-schedule-type-settings-del";
-        del.title = "목록에서 제거";
-        del.innerHTML = DELETE_ICON;
-        del.addEventListener("click", () => {
-          const idx = draftTypes.findIndex((o) => o.name === entry.name);
-          if (idx === -1) return;
-          draftTypes.splice(idx, 1);
-          renderTypeListsFromDraft();
-        });
-        actions.appendChild(del);
-
-        row.appendChild(nameSpan);
-        row.appendChild(actions);
-        dietListEl.appendChild(row);
-      });
-    }
-
-    function getSelectedAddKind() {
-      const r = modal.querySelector('input[name="ws-add-kind"]:checked');
-      return r && r.value === "diet" ? TYPE_KIND_DIET : TYPE_KIND_WORK;
     }
 
     let addInputImeComposing = false;
@@ -655,21 +639,18 @@ export function render(opts = {}) {
         } catch (_) {}
         return;
       }
-      const kindAdded = getSelectedAddKind();
       draftTypes.push({
         name,
         start: "",
         end: "",
-        kind: kindAdded,
+        kind: TYPE_KIND_WORK,
         addedAt: Date.now(),
       });
       draftTypes.sort(compareTypeEntriesForPersist);
       addInput.value = "";
       addInput.blur();
       renderTypeListsFromDraft();
-      const listEl =
-        kindAdded === TYPE_KIND_DIET ? dietListEl : workListEl;
-      listEl.scrollTop = 0;
+      workListEl.scrollTop = 0;
       requestAnimationFrame(() => {
         try {
           addInput.focus();
@@ -688,6 +669,18 @@ export function render(opts = {}) {
     });
 
     saveBtn.addEventListener("click", () => {
+      if (!stampPopover.hidden) {
+        try {
+          showToast(
+            "스탬프 편집을 마쳐 주세요.",
+            "작은 창에서 저장 또는 취소를 눌러 닫은 뒤 다시 시도해 주세요.",
+          );
+        } catch (_) {}
+        try {
+          stampEditName.focus();
+        } catch (_) {}
+        return;
+      }
       const renamesSnapshot = pendingWorkTypeRenames.slice();
       try {
         persistWorkTypeDraftToMemAndSync(draftTypes);
@@ -697,7 +690,7 @@ export function render(opts = {}) {
           draftTypes.map((t) => String(t?.name || "").trim()).filter(Boolean),
         );
         lastSavedComparable = draftComparableSnapshot();
-        modal.remove();
+        detachTypeSettingsModal();
       } catch (err) {
         try {
           showToast(
@@ -709,6 +702,10 @@ export function render(opts = {}) {
     });
 
     function tryCloseModal() {
+      if (!stampPopover.hidden) {
+        closeStampEditPopover();
+        return;
+      }
       if (draftComparableSnapshot() !== lastSavedComparable) {
         if (
           !window.confirm(
@@ -717,7 +714,7 @@ export function render(opts = {}) {
         )
           return;
       }
-      modal.remove();
+      detachTypeSettingsModal();
     }
 
     modal
@@ -734,18 +731,20 @@ export function render(opts = {}) {
     if (!n) return "";
     const entry = getWorkTypeOptionsFull().find((o) => o.name === n);
     if (!entry) return "is-ws-pill-default";
-    if (entry.kind === TYPE_KIND_DIET) return "is-ws-pill-diet";
     if (DEFAULT_TYPE_NAMES.has(n)) return "is-ws-pill-builtin";
     return "is-ws-pill-work";
   }
 
 
   settingsBtn.addEventListener("click", openWorkTypeSettingsModal);
+  const footerSlot = getAppFooterActionsSlot();
+  if (footerSlot) {
+    settingsBtn.className = APP_FOOTER_ICON_BTN_CLASS;
+    footerSlot.appendChild(settingsBtn);
+  }
 
   const contentWrap = document.createElement("div");
-  contentWrap.className = mobile
-    ? "work-schedule-content-wrap calendar-content-wrap"
-    : "work-schedule-content-wrap";
+  contentWrap.className = "work-schedule-content-wrap calendar-content-wrap";
   el.appendChild(contentWrap);
 
   /** 월별보기: 날짜 셀 → 새 행 추가 / 근무 칩 → 해당 행 수정·삭제 */
@@ -764,74 +763,57 @@ export function render(opts = {}) {
     document.querySelectorAll(".work-schedule-day-entry-modal").forEach((n) => n.remove());
 
     const modal = document.createElement("div");
-    modal.className = "work-schedule-type-settings-modal work-schedule-day-entry-modal";
+    modal.className =
+      "work-schedule-type-settings-modal work-schedule-day-entry-modal todo-list-modal";
     modal.setAttribute("role", "dialog");
     modal.setAttribute("aria-modal", "true");
     modal.setAttribute("aria-labelledby", "work-schedule-day-entry-title");
 
     const backdrop = document.createElement("div");
-    backdrop.className = "work-schedule-type-settings-backdrop";
+    backdrop.className =
+      "work-schedule-type-settings-backdrop todo-list-modal-backdrop";
 
     const panel = document.createElement("div");
-    panel.className = "work-schedule-type-settings-panel work-schedule-day-entry-modal-panel";
+    panel.className =
+      "work-schedule-type-settings-panel work-schedule-day-entry-modal-panel todo-list-modal-panel";
 
     const header = document.createElement("div");
-    header.className = "work-schedule-type-settings-header";
+    header.className =
+      "work-schedule-type-settings-header todo-list-modal-header";
     const title = document.createElement("h3");
     title.id = "work-schedule-day-entry-title";
-    title.className = "work-schedule-type-settings-title";
+    title.className =
+      "work-schedule-type-settings-title todo-list-modal-title";
     title.textContent = resolvedEditId ? "스탬프 수정" : "스탬프 등록";
     const closeBtn = document.createElement("button");
     closeBtn.type = "button";
-    closeBtn.className = "work-schedule-type-settings-close";
+    closeBtn.className =
+      "work-schedule-type-settings-close todo-list-modal-close";
     closeBtn.setAttribute("aria-label", "닫기");
     closeBtn.innerHTML = "&times;";
     header.appendChild(title);
     header.appendChild(closeBtn);
 
     const body = document.createElement("div");
-    body.className = "work-schedule-day-entry-body";
+    body.className = "work-schedule-day-entry-body todo-list-modal-body";
 
     const labelDate = document.createElement("label");
-    labelDate.className = "work-schedule-day-entry-label";
+    labelDate.className =
+      "work-schedule-day-entry-label todo-task-edit-label";
     const spanDate = document.createElement("span");
     spanDate.className = "work-schedule-day-entry-label-text";
     spanDate.textContent = "일자";
     const dateInput = document.createElement("input");
     dateInput.type = "date";
-    dateInput.className = "work-schedule-day-entry-date";
+    dateInput.className =
+      "work-schedule-day-entry-date time-add-task-name";
     dateInput.value = dateKey;
     labelDate.appendChild(spanDate);
     labelDate.appendChild(dateInput);
 
-    const kindRow = document.createElement("div");
-    kindRow.className =
-      "work-schedule-type-settings-kind-row work-schedule-day-entry-kind-row";
-    const labelRadioWork = document.createElement("label");
-    labelRadioWork.className = "work-schedule-type-settings-radio";
-    const radioWork = document.createElement("input");
-    radioWork.type = "radio";
-    radioWork.name = "ws-day-entry-kind";
-    radioWork.value = "work";
-    const spanRw = document.createElement("span");
-    spanRw.textContent = "그 외";
-    labelRadioWork.appendChild(radioWork);
-    labelRadioWork.appendChild(spanRw);
-    const labelRadioDiet = document.createElement("label");
-    labelRadioDiet.className = "work-schedule-type-settings-radio";
-    const radioDiet = document.createElement("input");
-    radioDiet.type = "radio";
-    radioDiet.name = "ws-day-entry-kind";
-    radioDiet.value = "diet";
-    const spanRd = document.createElement("span");
-    spanRd.textContent = "식단";
-    labelRadioDiet.appendChild(radioDiet);
-    labelRadioDiet.appendChild(spanRd);
-    kindRow.appendChild(labelRadioDiet);
-    kindRow.appendChild(labelRadioWork);
-
     const labelType = document.createElement("label");
-    labelType.className = "work-schedule-day-entry-label";
+    labelType.className =
+      "work-schedule-day-entry-label todo-task-edit-label";
     const spanType = document.createElement("span");
     spanType.className = "work-schedule-day-entry-label-text";
 
@@ -839,12 +821,14 @@ export function render(opts = {}) {
     selectWrap.className = "work-schedule-day-entry-custom-select";
     const triggerBtn = document.createElement("button");
     triggerBtn.type = "button";
-    triggerBtn.className = "work-schedule-day-entry-custom-select-trigger";
+    triggerBtn.className =
+      "work-schedule-day-entry-custom-select-trigger time-add-task-name";
     triggerBtn.id = "work-schedule-day-entry-type-trigger";
     triggerBtn.setAttribute("aria-haspopup", "listbox");
     triggerBtn.setAttribute("aria-expanded", "false");
     const listEl = document.createElement("ul");
-    listEl.className = "work-schedule-day-entry-custom-select-list";
+    listEl.className =
+      "work-schedule-day-entry-custom-select-list time-task-select-list";
     listEl.id = "work-schedule-day-entry-type-list";
     listEl.setAttribute("role", "listbox");
     listEl.setAttribute("aria-labelledby", triggerBtn.id);
@@ -965,7 +949,8 @@ export function render(opts = {}) {
           "aria-selected",
           opt.value === dayEntryTypeValue ? "true" : "false",
         );
-        li.className = "work-schedule-day-entry-custom-select-option";
+        li.className =
+          "work-schedule-day-entry-custom-select-option time-task-select-item";
         if (!opt.value) li.classList.add("is-placeholder");
         li.dataset.value = opt.value;
         li.textContent = opt.label;
@@ -996,19 +981,11 @@ export function render(opts = {}) {
     selectWrap.appendChild(triggerBtn);
     selectWrap.appendChild(listEl);
 
-    function getDayEntrySelectedKind() {
-      return radioDiet.checked ? TYPE_KIND_DIET : TYPE_KIND_WORK;
-    }
-
-    function typeNamesForDayEntryKind(kind) {
+    function typeNamesForStampDayEntry() {
       const full = getWorkTypeOptionsFull();
-      const list =
-        kind === TYPE_KIND_DIET
-          ? full.filter((o) => o.kind === TYPE_KIND_DIET)
-          : full.filter((o) => o.kind !== TYPE_KIND_DIET);
       const out = [];
       const seen = new Set();
-      list.forEach((o) => {
+      full.forEach((o) => {
         const n = (o.name || "").trim();
         if (!n || seen.has(n)) return;
         seen.add(n);
@@ -1017,12 +994,11 @@ export function render(opts = {}) {
       return out;
     }
 
-    function fillDayEntrySelect(kind, preserveValue) {
+    function fillDayEntrySelect(preserveValue) {
       closeDayEntrySelectList();
-      const labelText = kind === TYPE_KIND_DIET ? "식단" : "그 외";
-      spanType.textContent = labelText;
-      triggerBtn.setAttribute("aria-label", labelText);
-      const names = typeNamesForDayEntryKind(kind);
+      spanType.textContent = "스탬프";
+      triggerBtn.setAttribute("aria-label", "스탬프 유형");
+      const names = typeNamesForStampDayEntry();
       dayEntryTypeOptions = names.map((n) => ({ value: n, label: n }));
       const pv = (preserveValue || "").trim();
       dayEntryTypeValue = pv && names.includes(pv) ? pv : "";
@@ -1030,43 +1006,16 @@ export function render(opts = {}) {
       updateDayEntryTriggerLabel();
     }
 
-    let initialKind;
-    if (resolvedEditId && existingRow) {
-      const wt0 = (existingRow.workType || "").trim();
-      const ent0 = getWorkTypeOptionsFull().find((o) => o.name === wt0);
-      initialKind =
-        ent0 && ent0.kind === TYPE_KIND_DIET
-          ? TYPE_KIND_DIET
-          : TYPE_KIND_WORK;
-    } else {
-      initialKind = TYPE_KIND_DIET;
-    }
-    if (initialKind === TYPE_KIND_DIET) {
-      radioDiet.checked = true;
-      radioWork.checked = false;
-    } else {
-      radioWork.checked = true;
-      radioDiet.checked = false;
-    }
     fillDayEntrySelect(
-      initialKind,
       resolvedEditId && existingRow
         ? (existingRow.workType || "").trim()
         : "",
     );
 
-    radioWork.addEventListener("change", () => {
-      if (radioWork.checked) fillDayEntrySelect(TYPE_KIND_WORK, "");
-    });
-    radioDiet.addEventListener("change", () => {
-      if (radioDiet.checked) fillDayEntrySelect(TYPE_KIND_DIET, "");
-    });
-
     labelType.appendChild(spanType);
     labelType.appendChild(selectWrap);
 
     body.appendChild(labelDate);
-    body.appendChild(kindRow);
     body.appendChild(labelType);
 
     const footer = document.createElement("div");
@@ -1083,7 +1032,8 @@ export function render(opts = {}) {
     deleteWrap.hidden = !resolvedEditId;
     const deleteBtn = document.createElement("button");
     deleteBtn.type = "button";
-    deleteBtn.className = "work-schedule-day-entry-delete-link";
+    deleteBtn.className =
+      "work-schedule-day-entry-delete-link todo-list-modal-cancel";
     deleteBtn.textContent = "삭제";
     deleteBtn.setAttribute("aria-label", "이 스탬프 일정 삭제");
     deleteWrap.appendChild(deleteBtn);
@@ -1123,11 +1073,7 @@ export function render(opts = {}) {
         return;
       }
       if (!typeName) {
-        window.alert(
-          getDayEntrySelectedKind() === TYPE_KIND_DIET
-            ? "식단 유형을 선택해 주세요."
-            : "그 외 유형을 선택해 주세요.",
-        );
+        window.alert("스탬프 유형을 선택해 주세요.");
         return;
       }
       const baseFields = {

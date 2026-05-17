@@ -3,7 +3,7 @@
  *
  * 테이블 (로컬 필드 → 컬럼):
  * - work_schedule_settings     daily_work_hours
- * - work_schedule_types        name, start_time, end_time, sort_order, kind ('work'|'diet')
+ * - work_schedule_types        name, start_time, end_time, sort_order, kind (stored as 'work')
  * - work_schedule_entries      work_date, start/end_time, work_type, memo, hours, hours_worked, id
  *
  * 스키마: supabase/migrations/20260419120000_work_schedule_meal_schema.sql (Supabase SQL Editor에 실행)
@@ -75,12 +75,12 @@ function parseLocalTypes() {
 function normalizeTypeEntry(o) {
   if (typeof o === "string")
     return { name: (o || "").trim(), start: "", end: "", kind: "work" };
-  const kind = String(o.kind || "").trim() === "diet" ? "diet" : "work";
+  void o.kind;
   return {
     name: (o.name || "").trim(),
     start: (o.start != null ? String(o.start) : "").trim(),
     end: (o.end != null ? String(o.end) : "").trim(),
-    kind,
+    kind: "work",
   };
 }
 
@@ -94,7 +94,7 @@ function typeOptionsFromServerRows(serverRows) {
         name: r.name,
         start: (r.start_time != null ? String(r.start_time) : "").trim(),
         end: (r.end_time != null ? String(r.end_time) : "").trim(),
-        kind: String(r.kind || "").trim() === "diet" ? "diet" : "work",
+        kind: "work",
       },
     ]),
   );
@@ -107,9 +107,9 @@ function typeOptionsFromServerRows(serverRows) {
             name: d.name,
             start: s.start,
             end: s.end,
-            kind: s.kind === "diet" ? "diet" : "work",
+            kind: "work",
           }
-        : { name: d.name, start: d.start, end: d.end, kind: d.kind || "work" },
+        : { name: d.name, start: d.start, end: d.end, kind: "work" },
     );
     byName.delete(d.name);
   }
@@ -124,7 +124,7 @@ function typeOptionsFromServerRows(serverRows) {
       name: r.name,
       start: (r.start_time != null ? String(r.start_time) : "").trim(),
       end: (r.end_time != null ? String(r.end_time) : "").trim(),
-      kind: String(r.kind || "").trim() === "diet" ? "diet" : "work",
+      kind: "work",
     }));
   return [...out, ...rest];
 }
@@ -187,7 +187,7 @@ async function upsertWorkScheduleTypesToSupabase(userId, typeList) {
     name: t.name,
     start_time: t.start || "",
     end_time: t.end || "",
-    kind: t.kind === "diet" ? "diet" : "work",
+    kind: "work",
     sort_order: i,
   }));
   if (typeUpserts.length === 0) {
@@ -284,28 +284,7 @@ async function pullWorkScheduleFromSupabaseImpl(opts = {}) {
               : String(entry?.name || "").trim();
           if (!name || DEFAULT_TYPE_SEED.some((d) => d.name === name)) continue;
           if (serverCustomNames.has(name) || namesInMerged.has(name)) continue;
-          const kind =
-            typeof entry === "object" &&
-            entry &&
-            String(entry.kind || "").trim() === "diet"
-              ? "diet"
-              : "work";
-          const start =
-            typeof entry === "object" && entry && entry.start != null
-              ? String(entry.start).trim()
-              : "";
-          const end =
-            typeof entry === "object" && entry && entry.end != null
-              ? String(entry.end).trim()
-              : "";
-          const addedAt =
-            typeof entry === "object" &&
-            entry &&
-            typeof entry.addedAt === "number" &&
-            Number.isFinite(entry.addedAt)
-              ? entry.addedAt
-              : 0;
-          extras.push({ name, start, end, kind, addedAt });
+          extras.push({ name, start, end, kind: "work", addedAt });
           namesInMerged.add(name);
         }
       }
