@@ -388,6 +388,43 @@ function ensureOneDayTimetableDocumentListeners() {
   document.addEventListener("calendar-time-rows-updated", run);
 }
 
+/** 같은 마감일·같은 섹션: 세션 배열 순서 그대로(뒤에 push된 할 일이 캘린더에서도 아래행). */
+function tasksForCalendarSameDayInStorageOrder(arr, dateKey) {
+  return arr.filter(
+    (t) =>
+      (t.name || "").trim() !== "" &&
+      (t.dueDate || "").slice(0, 10) === dateKey,
+  );
+}
+
+/** 월간 막대: 단일일 항목의 세로 순서(큰 값 = 아래줄). 서버 갱신시각 → 캘린더 칸 전용 터치 ms → 없으면 0 */
+function calendarSingleDayStackMs(t) {
+  const u = String(t.serverUpdatedAt || "").trim();
+  if (u) {
+    const ms = Date.parse(u);
+    if (!Number.isNaN(ms)) return ms;
+  }
+  const c = Number(t._calCellTouchMs);
+  if (Number.isFinite(c) && c > 0) return c;
+  return 0;
+}
+
+/**
+ * 월간 그리드에서 같은 날 단일일 막대는 이 순서로 쌓음 — 최근 추가/수정이 맨 아래.
+ * 시간 정보가 전부 같으면 getTasksForDate가 준 순서 유지(안정 정렬).
+ */
+function orderSingleDayTasksForMonthlyBarStack(tasks) {
+  const list = Array.isArray(tasks) ? tasks.slice() : [];
+  const indexed = list.map((t, i) => ({ t, i }));
+  indexed.sort((a, b) => {
+    const ma = calendarSingleDayStackMs(a.t);
+    const mb = calendarSingleDayStackMs(b.t);
+    if (ma !== mb) return ma - mb;
+    return a.i - b.i;
+  });
+  return indexed.map(({ t }) => t);
+}
+
 function getSectionTasksForDate(dateKey) {
   const out = [];
   try {
@@ -402,31 +439,29 @@ function getSectionTasksForDate(dateKey) {
           health: "건강",
           happy: "행복",
         }[sectionId] || sectionId;
-      arr
-        .filter(
-          (t) =>
-            (t.name || "").trim() !== "" &&
-            (t.dueDate || "").slice(0, 10) === dateKey,
-        )
-        .forEach((t) =>
-          out.push({
-            name: t.name,
-            startDate: (t.startDate || "").slice(0, 10),
-            dueDate: (t.dueDate || "").slice(0, 10),
-            startTime: t.startTime || "",
-            endTime: t.endTime || "",
-            sectionId,
-            sectionLabel,
-            itemType: t.itemType || "todo",
-            done: !!t.done,
-            taskId: t.taskId || "",
-            eisenhower: (t.eisenhower || "").trim() || "",
-            classification: "",
-            _calPrevStart:
-              (t._calPrevStart || "").toString().slice(0, 10) || "",
-            _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
-          }),
-        );
+      tasksForCalendarSameDayInStorageOrder(arr, dateKey).forEach((t) =>
+        out.push({
+          name: t.name,
+          startDate: (t.startDate || "").slice(0, 10),
+          dueDate: (t.dueDate || "").slice(0, 10),
+          startTime: t.startTime || "",
+          endTime: t.endTime || "",
+          sectionId,
+          sectionLabel,
+          itemType: t.itemType || "todo",
+          done: !!t.done,
+          taskId: t.taskId || "",
+          eisenhower: (t.eisenhower || "").trim() || "",
+          classification: "",
+          _calPrevStart:
+            (t._calPrevStart || "").toString().slice(0, 10) || "",
+          _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
+          serverUpdatedAt: String(t.serverUpdatedAt || "").trim(),
+          ...(Number.isFinite(Number(t._calCellTouchMs))
+            ? { _calCellTouchMs: Number(t._calCellTouchMs) }
+            : {}),
+        }),
+      );
     });
   } catch (_) {}
   return out;
@@ -1104,31 +1139,29 @@ function getCustomSectionTasksForDate(dateKey) {
     getCustomSections().forEach((sec) => {
       const arr = obj[sec.id];
       if (!Array.isArray(arr)) return;
-      arr
-        .filter(
-          (t) =>
-            (t.name || "").trim() !== "" &&
-            (t.dueDate || "").slice(0, 10) === dateKey,
-        )
-        .forEach((t) =>
-          out.push({
-            name: t.name,
-            startDate: (t.startDate || "").slice(0, 10),
-            dueDate: (t.dueDate || "").slice(0, 10),
-            startTime: t.startTime || "",
-            endTime: t.endTime || "",
-            sectionId: sec.id,
-            sectionLabel: sec.label || sec.id,
-            itemType: t.itemType || "todo",
-            done: !!t.done,
-            taskId: t.taskId || "",
-            eisenhower: (t.eisenhower || "").trim() || "",
-            classification: "",
-            _calPrevStart:
-              (t._calPrevStart || "").toString().slice(0, 10) || "",
-            _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
-          }),
-        );
+      tasksForCalendarSameDayInStorageOrder(arr, dateKey).forEach((t) =>
+        out.push({
+          name: t.name,
+          startDate: (t.startDate || "").slice(0, 10),
+          dueDate: (t.dueDate || "").slice(0, 10),
+          startTime: t.startTime || "",
+          endTime: t.endTime || "",
+          sectionId: sec.id,
+          sectionLabel: sec.label || sec.id,
+          itemType: t.itemType || "todo",
+          done: !!t.done,
+          taskId: t.taskId || "",
+          eisenhower: (t.eisenhower || "").trim() || "",
+          classification: "",
+          _calPrevStart:
+            (t._calPrevStart || "").toString().slice(0, 10) || "",
+          _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
+          serverUpdatedAt: String(t.serverUpdatedAt || "").trim(),
+          ...(Number.isFinite(Number(t._calCellTouchMs))
+            ? { _calCellTouchMs: Number(t._calCellTouchMs) }
+            : {}),
+        }),
+      );
     });
   } catch (_) {}
   return out;
@@ -1232,6 +1265,7 @@ function addSectionTodoFromCalendarBubble(
     if (!obj[sid]) obj[sid] = [];
     const arr = obj[sid];
     const sortOrder = arr.length;
+    const touch = Date.now();
     arr.push({
       taskId,
       name: todoName,
@@ -1241,6 +1275,8 @@ function addSectionTodoFromCalendarBubble(
       endTime: "",
       done: false,
       itemType: it,
+      serverUpdatedAt: new Date(touch).toISOString(),
+      _calCellTouchMs: touch,
     });
     persistSectionTasksAndSchedule(obj);
     const task = {
@@ -1283,21 +1319,16 @@ function detachCalendarEventBubbleOutsideListener() {
 }
 
 function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
-  const isMobile = window.matchMedia("(max-width: 48rem)").matches;
+  void cellRect;
   detachCalendarEventBubbleOutsideListener();
   document
     .querySelectorAll(".calendar-event-bubble, .calendar-day-expand-overlay")
     .forEach((el) => el.remove());
-  let overlayEl = null;
-  if (isMobile) {
-    overlayEl = document.createElement("div");
-    overlayEl.className = "calendar-day-expand-overlay";
-    document.body.appendChild(overlayEl);
-  }
+  const overlayEl = document.createElement("div");
+  overlayEl.className = "calendar-day-expand-overlay";
+  document.body.appendChild(overlayEl);
   const bubble = document.createElement("div");
-  bubble.className =
-    "calendar-event-bubble" +
-    (isMobile ? " calendar-event-bubble--mobile" : "");
+  bubble.className = "calendar-event-bubble calendar-event-bubble--mobile";
   bubble.innerHTML = `
     <div class="calendar-event-bubble-tail"></div>
     <div class="calendar-event-bubble-body">
@@ -1324,7 +1355,7 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
 
   const close = () => {
     detachCalendarEventBubbleOutsideListener();
-    overlayEl?.remove();
+    overlayEl.remove();
     bubble.remove();
     onClose?.();
   };
@@ -1371,37 +1402,18 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
         bubble.querySelector(".calendar-event-bubble-save").click();
     });
 
-  const BUBBLE_PADDING = 16;
   Object.assign(bubble.style, {
     position: "fixed",
-    zIndex: isMobile ? "1002" : "1000",
-    ...(isMobile
-      ? {
-          left: "50%",
-          top: "50%",
-          transform: "translate(-50%, -50%)",
-          width: "min(22rem, calc(100vw - 1.25rem))",
-          maxHeight: "min(85vh, 520px)",
-          overflowY: "auto",
-        }
-      : {
-          left: `${cellRect.left}px`,
-          top: `${cellRect.bottom + 4}px`,
-        }),
+    zIndex: "1002",
+    left: "50%",
+    top: "50%",
+    transform: "translate(-50%, -50%)",
+    width: "min(22rem, calc(100vw - 1.25rem))",
+    maxHeight: "min(85vh, 520px)",
+    overflowY: "auto",
   });
 
   document.body.appendChild(bubble);
-
-  if (!isMobile) {
-    const bubbleHeight = bubble.getBoundingClientRect().height;
-    if (
-      cellRect.bottom + 4 + bubbleHeight >
-      window.innerHeight - BUBBLE_PADDING
-    ) {
-      bubble.style.top = `${cellRect.top - bubbleHeight - 4}px`;
-      bubble.classList.add("calendar-event-bubble--above");
-    }
-  }
 
   setTimeout(() => {
     _calendarEventBubbleOutsideHandler = (e) => {
@@ -2086,7 +2098,9 @@ function renderMonthlyView(tabsElement) {
         });
       });
       weekDateKeys.forEach((dateKey, dayIdx) => {
-        getTasksForDate(dateKey, true).forEach((t) => {
+        orderSingleDayTasksForMonthlyBarStack(
+          getTasksForDate(dateKey, true),
+        ).forEach((t) => {
           const left = (dayIdx / 7) * 100 + CELL_GAP / 7;
           const width = (1 / 7) * 100 - (CELL_GAP * 2) / 7;
           const baseColor = getSectionColor(t.sectionId);
@@ -3814,7 +3828,9 @@ function render1WeekView(tabsElement) {
       });
     });
     weekDateKeys.forEach((dateKey, dayIdx) => {
-      getTasksForDate(dateKey, true).forEach((t) => {
+      orderSingleDayTasksForMonthlyBarStack(
+        getTasksForDate(dateKey, true),
+      ).forEach((t) => {
         const left = (dayIdx / 7) * 100 + CELL_GAP / 7;
         const width = (1 / 7) * 100 - (CELL_GAP * 2) / 7;
         const baseColor = getSectionColor(t.sectionId);

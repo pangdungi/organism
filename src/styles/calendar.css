@@ -987,8 +987,8 @@
 
 .calendar-1week-flow-card-title {
   display: inline;
-  font-weight: 600;
-  font-size: 0.8125rem;
+  font-weight: 500;
+  font-size: 0.75rem;
   letter-spacing: -0.02em;
   line-height: inherit;
   word-break: keep-all;
@@ -1000,7 +1000,7 @@
   display: inline;
   margin-right: 0.18em;
   font-size: 0.85em;
-  font-weight: 700;
+  font-weight: 600;
   line-height: inherit;
   vertical-align: 0.04em;
 }
@@ -1308,7 +1308,7 @@
   }
 
   .calendar-1week-flow-card-title {
-    font-size: 0.6875rem;
+    font-size: 0.65625rem;
   }
 
   .calendar-1week-flow-card-done-check,
