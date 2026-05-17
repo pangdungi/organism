@@ -47,6 +47,10 @@ import {
 } from "../utils/todoSectionTasksSupabase.js";
 import { logLpRender } from "../utils/lpRenderDebugLog.js";
 import {
+  APP_FOOTER_ICON_BTN_CLASS,
+  getAppFooterActionsSlot,
+} from "../utils/appFooterShell.js";
+import {
   logTodoScheduleAddStep1,
   logTodoScheduleAddStep2,
   markTodoAddPendingServerLog,
@@ -69,6 +73,16 @@ export const DRAG_TYPE_TODO_TO_EISENHOWER = "todo-task-to-eisenhower";
 const TODO_DEBUG = false;
 function todoDebug(..._args) {
   void TODO_DEBUG;
+}
+
+const TODO_LIST_FOOTER_ACTION_ATTR = "data-lp-todo-list-footer-action";
+
+function clearTodoListFooterActions() {
+  const slot = getAppFooterActionsSlot();
+  if (!slot) return;
+  slot
+    .querySelectorAll(`[${TODO_LIST_FOOTER_ACTION_ATTR}]`)
+    .forEach((n) => n.remove());
 }
 
 /** 모바일(≤48rem): 할일 계열 모달은 백드롭 탭으로 닫지 않음(취소·×만) — 데스크탑은 기존 유지 */
@@ -5246,7 +5260,7 @@ export function render(options = {}) {
     toolbar.appendChild(settingsBtn);
   }
 
-  if (categoryToolbarRightActions) {
+  if (categoryToolbarRightActions && !showTodoListSearchUi) {
     settingsBtn.classList.add("time-ledger-toolbar-icon-btn");
   }
 
@@ -5299,8 +5313,9 @@ export function render(options = {}) {
     syncTodoListSegmentThumb();
     quickAddBtn = document.createElement("button");
     quickAddBtn.type = "button";
-    quickAddBtn.className =
-      "todo-list-toolbar-quick-add todo-add-btn time-ledger-add-plus-btn";
+    quickAddBtn.className = showTodoListSearchUi
+      ? `${APP_FOOTER_ICON_BTN_CLASS} todo-add-btn time-ledger-add-plus-btn`
+      : "todo-list-toolbar-quick-add todo-add-btn time-ledger-add-plus-btn";
     quickAddBtn.title = "할 일 추가";
     quickAddBtn.innerHTML = CALENDAR_TOOLBAR_QUICK_ADD_ICON;
     quickAddBtn.addEventListener("click", () => {
@@ -5329,35 +5344,37 @@ export function render(options = {}) {
     tabsTopMargin.className = "todo-list-tabs-top-margin";
     const tabHeaderRow = document.createElement("div");
     tabHeaderRow.className = "todo-list-tab-header-row";
-    const leftStrip = document.createElement("div");
-    leftStrip.className = "todo-list-top-strip__left";
-    const leftIcons = document.createElement("div");
-    leftIcons.className = "time-ledger-toolbar-icons";
-    leftIcons.appendChild(settingsBtn);
+    const centerStrip = document.createElement("div");
+    centerStrip.className = "todo-list-top-strip__center";
+    centerStrip.appendChild(categoryTabs);
+    if (showTodoListSearchUi) {
+      tabHeaderRow.appendChild(centerStrip);
+    } else {
+      const leftStrip = document.createElement("div");
+      leftStrip.className = "todo-list-top-strip__left";
+      const leftIcons = document.createElement("div");
+      leftIcons.className = "time-ledger-toolbar-icons";
+      leftIcons.appendChild(settingsBtn);
+      leftStrip.appendChild(leftIcons);
+      const rightStrip = document.createElement("div");
+      rightStrip.className = "todo-list-top-strip__right";
+      const rightIcons = document.createElement("div");
+      rightIcons.className = "time-ledger-toolbar-icons";
+      if (quickAddBtn) rightIcons.appendChild(quickAddBtn);
+      rightStrip.appendChild(rightIcons);
+      tabHeaderRow.appendChild(leftStrip);
+      tabHeaderRow.appendChild(centerStrip);
+      tabHeaderRow.appendChild(rightStrip);
+    }
     if (showTodoListSearchUi) {
       searchToggleBtn = document.createElement("button");
       searchToggleBtn.type = "button";
-      searchToggleBtn.className =
-        "todo-list-search-toggle time-ledger-toolbar-icon-btn";
+      searchToggleBtn.className = `${APP_FOOTER_ICON_BTN_CLASS} todo-list-search-toggle`;
       searchToggleBtn.title = "검색";
       searchToggleBtn.setAttribute("aria-label", "할 일 검색");
       searchToggleBtn.setAttribute("aria-expanded", "false");
       searchToggleBtn.innerHTML = TODO_TOOLBAR_SEARCH_ICON;
-      leftIcons.appendChild(searchToggleBtn);
     }
-    leftStrip.appendChild(leftIcons);
-    const centerStrip = document.createElement("div");
-    centerStrip.className = "todo-list-top-strip__center";
-    centerStrip.appendChild(categoryTabs);
-    const rightStrip = document.createElement("div");
-    rightStrip.className = "todo-list-top-strip__right";
-    const rightIcons = document.createElement("div");
-    rightIcons.className = "time-ledger-toolbar-icons";
-    if (quickAddBtn) rightIcons.appendChild(quickAddBtn);
-    rightStrip.appendChild(rightIcons);
-    tabHeaderRow.appendChild(leftStrip);
-    tabHeaderRow.appendChild(centerStrip);
-    tabHeaderRow.appendChild(rightStrip);
     toolbarRow.appendChild(tabsTopMargin);
     toolbarRow.appendChild(tabHeaderRow);
     if (useSidebarHeaderToolbarActions && categoryToolbarActionsSlot) {
@@ -5373,6 +5390,22 @@ export function render(options = {}) {
     }
   }
   el.appendChild(toolbarRow);
+
+  function mountTodoListMainFooterActions() {
+    clearTodoListFooterActions();
+    if (!showTodoListSearchUi) return;
+    const slot = getAppFooterActionsSlot();
+    if (!slot || !quickAddBtn || !searchToggleBtn) return;
+    settingsBtn.className = `${APP_FOOTER_ICON_BTN_CLASS} todo-list-settings-btn`;
+    quickAddBtn.className = `${APP_FOOTER_ICON_BTN_CLASS} todo-add-btn time-ledger-add-plus-btn`;
+    searchToggleBtn.className = `${APP_FOOTER_ICON_BTN_CLASS} todo-list-search-toggle`;
+    settingsBtn.setAttribute(TODO_LIST_FOOTER_ACTION_ATTR, "");
+    quickAddBtn.setAttribute(TODO_LIST_FOOTER_ACTION_ATTR, "");
+    searchToggleBtn.setAttribute(TODO_LIST_FOOTER_ACTION_ATTR, "");
+    slot.appendChild(settingsBtn);
+    slot.appendChild(quickAddBtn);
+    slot.appendChild(searchToggleBtn);
+  }
 
   let todoMobileSearchQuery = "";
   let todoMobileSearchInput = null;
@@ -5431,6 +5464,7 @@ export function render(options = {}) {
         { signal: listUiSignal },
       );
     }
+    mountTodoListMainFooterActions();
   }
 
   const sectionsWrap = document.createElement("div");
@@ -5737,6 +5771,7 @@ export function render(options = {}) {
 
   listUiSignal.addEventListener("abort", () => {
     delete el._lpRemountTodoSectionsAfterCalendarPull;
+    clearTodoListFooterActions();
     try {
       observer.disconnect();
     } catch (_) {}
