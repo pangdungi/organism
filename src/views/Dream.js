@@ -238,7 +238,7 @@ function setupActionUnitTimeCalc(modal) {
 
 export function render() {
   const el = document.createElement("div");
-  el.className = "app-tab-panel-content dream-view";
+  el.className = "app-tab-panel-content dream-view lp-kpi-dream-page";
 
   const header = document.createElement("header");
   header.className = "dream-view-header";

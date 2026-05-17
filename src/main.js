@@ -1,6 +1,7 @@
 import "./main.css";
 import "./styles/time-ledger.css";
 import "./styles/lp-modals.css";
+import "./styles/kpi-dream.css";
 import { showOnly } from "./pages.js";
 import {
   login,
