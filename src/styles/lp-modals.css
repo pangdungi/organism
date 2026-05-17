@@ -17,6 +17,7 @@
   --lp-modal-radius: 12px;
   --lp-modal-font: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR",
     sans-serif;
+  --lp-modal-textarea-height: 4.5rem;
 }.lp-task-badge, [data-legacy~="lp-task-badge"]{display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -98,6 +99,18 @@
   }}.time-task-setup-modal[hidden],
 .todo-list-modal[hidden],
 .diary-desktop-compose-modal[hidden], [data-legacy~="time-task-setup-modal"][hidden], [data-legacy~="todo-list-modal"][hidden], [data-legacy~="diary-desktop-compose-modal"][hidden]{display: none !important;
+}/* 모달 내부 textarea: 높이 고정 + 리사이즈 금지(늘었다 줄었다 방지), 넘침은 스크롤 */
+.time-task-setup-modal textarea,
+.todo-list-modal textarea,
+.diary-desktop-compose-modal textarea,
+.time-task-log-todo-inner-modal textarea,
+.time-task-log-expense-inner-modal textarea, [data-legacy~="time-task-setup-modal"] textarea, [data-legacy~="todo-list-modal"] textarea, [data-legacy~="diary-desktop-compose-modal"] textarea, [data-legacy~="time-task-log-todo-inner-modal"] textarea, [data-legacy~="time-task-log-expense-inner-modal"] textarea{height: var(--lp-modal-textarea-height);
+  min-height: var(--lp-modal-textarea-height);
+  max-height: var(--lp-modal-textarea-height);
+  resize: none;
+  overflow-y: auto;
+  box-sizing: border-box;
+  field-sizing: fixed;
 }.time-task-setup-backdrop,
 .todo-list-modal-backdrop,
 .diary-desktop-compose-modal-backdrop,
@@ -236,12 +249,15 @@
 .todo-task-edit-name:focus,
 .archive-memo-modal-textarea:focus, [data-legacy~="time-add-task-name"]:focus, [data-legacy~="time-task-log-todo-inner-name"]:focus, [data-legacy~="time-task-log-expense-name"]:focus, [data-legacy~="time-task-log-meal-detail-input"]:focus, [data-legacy~="time-task-log-feedback"]:focus, [data-legacy~="time-task-log-tag-input"]:focus, [data-legacy~="todo-task-edit-name"]:focus, [data-legacy~="archive-memo-modal-textarea"]:focus{border-color: rgba(30, 77, 123, 0.45);
   box-shadow: 0 0 0 3px rgba(30, 77, 123, 0.12);
-}.archive-memo-modal-textarea, [data-legacy~="archive-memo-modal-textarea"]{resize: vertical;
-  min-height: 4.5rem;
+}.archive-memo-modal-textarea, [data-legacy~="archive-memo-modal-textarea"]{resize: none;
+  height: var(--lp-modal-textarea-height);
+  min-height: var(--lp-modal-textarea-height);
+  max-height: var(--lp-modal-textarea-height);
   line-height: 1.45;
 }.time-task-log-feedback, [data-legacy~="time-task-log-feedback"]{resize: none;
-  min-height: 4.5rem;
-  max-height: 7.5rem;
+  height: var(--lp-modal-textarea-height);
+  min-height: var(--lp-modal-textarea-height);
+  max-height: var(--lp-modal-textarea-height);
   overflow-y: auto;
   line-height: 1.45;
   -webkit-overflow-scrolling: touch;

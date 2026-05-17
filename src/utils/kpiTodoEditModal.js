@@ -27,15 +27,16 @@ export function showKpiTodoEditModal(opts = {}) {
     }
 
     const modal = document.createElement("div");
-    modal.className = "dream-kpi-modal dream-kpi-todo-edit-modal";
+    modal.className = "time-task-setup-modal dream-kpi-todo-edit-modal";
     modal.innerHTML = `
-      <div class="dream-kpi-backdrop"></div>
-      <div class="dream-kpi-panel">
-        <div class="dream-kpi-modal-header">
-          <h3 class="dream-kpi-modal-title">${escapeHtml(title)}</h3>
-          <button type="button" class="dream-kpi-modal-close" title="닫기">×</button>
+      <div data-legacy="time-task-setup-backdrop"></div>
+      <div data-legacy="time-task-setup-panel">
+        <div data-legacy="time-task-setup-header">
+          <h3 data-legacy="time-task-setup-title">${escapeHtml(title)}</h3>
+          <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
         </div>
         <form class="dream-kpi-form">
+          <div class="dream-kpi-form-body" data-legacy="time-task-setup-body">
           ${
             kpiName
               ? `<div class="dream-kpi-field dream-kpi-todo-kpi-block">
@@ -48,11 +49,10 @@ export function showKpiTodoEditModal(opts = {}) {
             <label>${escapeHtml(inputLabel)}</label>
             <textarea name="text" rows="5" placeholder="${escapeHtml(placeholder)}" autocomplete="off"></textarea>
           </div>
-          <div class="dream-kpi-todo-edit-actions">
-            <button type="submit" class="dream-kpi-submit">저장</button>
-            <div class="dream-kpi-delete-wrap dream-kpi-todo-edit-modal-delete-wrap">
-              <button type="button" class="dream-kpi-delete-btn dream-kpi-todo-edit-modal-delete">삭제</button>
-            </div>
+          </div>
+          <div data-legacy="time-task-log-footer" class="dream-kpi-todo-edit-modal-footer">
+            <button type="button" data-legacy="time-task-log-delete-btn" class="dream-kpi-todo-edit-modal-delete">삭제</button>
+            <button type="submit" data-legacy="time-task-log-submit">저장</button>
           </div>
         </form>
       </div>
@@ -71,8 +71,8 @@ export function showKpiTodoEditModal(opts = {}) {
     const form = modal.querySelector("form");
     const deleteBtn = modal.querySelector(".dream-kpi-todo-edit-modal-delete");
 
-    modal.querySelector(".dream-kpi-modal-close").addEventListener("click", () => finish(null));
-    modal.querySelector(".dream-kpi-backdrop").addEventListener("click", () => finish(null));
+    modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", () => finish(null));
+    modal.querySelector('[data-legacy~="time-task-setup-backdrop"]').addEventListener("click", () => finish(null));
 
     form.addEventListener("submit", (e) => {
       e.preventDefault();

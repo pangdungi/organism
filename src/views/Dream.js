@@ -45,8 +45,15 @@ import {
 } from "../utils/kpiTodoLifecycleDebug.js";
 import { kpiTodoFineTrace } from "../utils/kpiTodoFineTrace.js";
 import { pullKpiMapSubViewFromCloud } from "../utils/kpiTabCloudRefresh.js";
+import {
+  APP_FOOTER_ICON_BTN_CLASS,
+  getAppFooterActionsSlot,
+} from "../utils/appFooterShell.js";
 
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
+
+const DREAM_FOOTER_LOG_ICON = `<img src="/toolbaricons/list.svg" alt="" width="22" height="22" aria-hidden="true" />`;
+const DREAM_FOOTER_TODO_ICON = `<img src="/toolbaricons/todolist.svg" alt="" width="22" height="22" aria-hidden="true" />`;
 
 function defaultDeletedRefs() {
   return {
@@ -311,27 +318,23 @@ export function render() {
   function showKpiModal() {
     if (!activeDreamId) return;
     const modal = document.createElement("div");
-    modal.className = "dream-kpi-modal";
+    modal.className = "time-task-setup-modal";
     modal.innerHTML = `
-      <div class="dream-kpi-backdrop"></div>
-      <div class="dream-kpi-panel">
-        <div class="dream-kpi-modal-header">
-          <h3 class="dream-kpi-modal-title">새 KPI 추가</h3>
-          <button type="button" class="dream-kpi-modal-close" title="닫기">×</button>
+      <div data-legacy="time-task-setup-backdrop"></div>
+      <div data-legacy="time-task-setup-panel">
+        <div data-legacy="time-task-setup-header">
+          <h3 data-legacy="time-task-setup-title">새 KPI 추가</h3>
+          <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
         </div>
         <form class="dream-kpi-form">
-          <div class="dream-kpi-form-body">
-            <div class="dream-kpi-section">
-              <h4 class="dream-kpi-section-title">기본</h4>
-              <div class="dream-kpi-field">
-                <label>행동 이름</label>
-                <input type="text" name="name" placeholder="예) 플래너 오류 수정" />
-              </div>
+          <div class="dream-kpi-form-body" data-legacy="time-task-setup-body">
+            <div class="dream-kpi-field" data-legacy="time-add-task-field">
+              <label>행동 이름</label>
+              <input type="text" name="name" placeholder="예) 플래너 오류 수정" />
             </div>
-            <div class="dream-kpi-section">
-              <h4 class="dream-kpi-section-title">목표</h4>
-              <div class="dream-kpi-field dream-kpi-direction-field">
-                <span class="dream-kpi-field-label">지표 방향</span>
+            <div class="dream-kpi-field dream-kpi-direction-field" data-legacy="time-add-task-field">
+              <div class="dream-kpi-direction-inline">
+                <span class="dream-kpi-direction-caption">지표 방향</span>
                 <div class="dream-kpi-direction-options">
                   <label class="dream-kpi-direction-option">
                     <input type="radio" name="direction" value="higher" checked />
@@ -343,23 +346,22 @@ export function render() {
                   </label>
                 </div>
               </div>
-              <div class="dream-kpi-row">
-                <div class="dream-kpi-field">
-                  <label><span class="dream-kpi-target-label-text">목표값</span></label>
-                  <input type="text" name="targetValue" placeholder="예) 99" inputmode="numeric" />
-                </div>
-                <div class="dream-kpi-field">
-                  <label>단위</label>
-                  <input type="text" name="unit" placeholder="예) %(완성도), 일" />
-                </div>
+            </div>
+            <div class="dream-kpi-row">
+              <div class="dream-kpi-field" data-legacy="time-add-task-field">
+                <label><span class="dream-kpi-target-label-text">목표값</span></label>
+                <input type="text" name="targetValue" placeholder="예) 99" inputmode="numeric" />
               </div>
-              <div class="dream-kpi-field">
-                <label>필요시간</label>
-                <input type="text" name="targetTimeRequired" placeholder="예) 25:00" />
+              <div class="dream-kpi-field" data-legacy="time-add-task-field">
+                <label>단위</label>
+                <input type="text" name="unit" placeholder="예) %(완성도), 일" />
               </div>
             </div>
-            <div class="dream-kpi-section">
-              <h4 class="dream-kpi-section-title">기간</h4>
+            <div class="dream-kpi-field" data-legacy="time-add-task-field">
+              <label>필요시간</label>
+              <input type="text" name="targetTimeRequired" placeholder="예) 25:00" />
+            </div>
+            <div class="dream-kpi-period-block" data-legacy="time-add-task-field">
               <div class="dream-kpi-row">
                 <div class="dream-kpi-field">
                   <label>시작기한</label>
@@ -376,21 +378,21 @@ export function render() {
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
               </div>
             </div>
-            <div class="dream-kpi-field dream-kpi-field-checkbox">
+            <div class="dream-kpi-field dream-kpi-field-checkbox" data-legacy="time-add-task-field">
               <label class="dream-kpi-checkbox-label">
                 매일 반복
                 <input type="checkbox" name="needHabitTracker" />
               </label>
             </div>
           </div>
-          <div class="dream-kpi-form-actions">
-            <button type="submit" class="dream-kpi-submit">KPI 등록하기</button>
+          <div data-legacy="time-task-log-footer">
+            <button type="submit" data-legacy="time-task-log-submit">KPI 등록하기</button>
           </div>
         </form>
       </div>
     `;
     const close = () => modal.remove();
-    modal.querySelector(".dream-kpi-modal-close").addEventListener("click", close);
+    modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
     modal.querySelector(".dream-kpi-form").addEventListener("submit", (e) => {
       e.preventDefault();
       const form = e.target;
@@ -447,27 +449,23 @@ export function render() {
 
   function showKpiEditModal(kpi) {
     const modal = document.createElement("div");
-    modal.className = "dream-kpi-modal";
+    modal.className = "time-task-setup-modal";
     modal.innerHTML = `
-      <div class="dream-kpi-backdrop"></div>
-      <div class="dream-kpi-panel">
-        <div class="dream-kpi-modal-header">
-          <h3 class="dream-kpi-modal-title">KPI 수정</h3>
-          <button type="button" class="dream-kpi-modal-close" title="닫기">×</button>
+      <div data-legacy="time-task-setup-backdrop"></div>
+      <div data-legacy="time-task-setup-panel">
+        <div data-legacy="time-task-setup-header">
+          <h3 data-legacy="time-task-setup-title">KPI 수정</h3>
+          <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
         </div>
         <form class="dream-kpi-form">
-          <div class="dream-kpi-form-body">
-            <div class="dream-kpi-section">
-              <h4 class="dream-kpi-section-title">기본</h4>
-              <div class="dream-kpi-field">
-                <label>행동 이름</label>
-                <input type="text" name="name" value="${escapeHtml(kpi.name || "")}" placeholder="예) 플래너 오류 수정" />
-              </div>
+          <div class="dream-kpi-form-body" data-legacy="time-task-setup-body">
+            <div class="dream-kpi-field" data-legacy="time-add-task-field">
+              <label>행동 이름</label>
+              <input type="text" name="name" value="${escapeHtml(kpi.name || "")}" placeholder="예) 플래너 오류 수정" />
             </div>
-            <div class="dream-kpi-section">
-              <h4 class="dream-kpi-section-title">목표</h4>
-              <div class="dream-kpi-field dream-kpi-direction-field">
-                <span class="dream-kpi-field-label">지표 방향</span>
+            <div class="dream-kpi-field dream-kpi-direction-field" data-legacy="time-add-task-field">
+              <div class="dream-kpi-direction-inline">
+                <span class="dream-kpi-direction-caption">지표 방향</span>
                 <div class="dream-kpi-direction-options">
                   <label class="dream-kpi-direction-option">
                     <input type="radio" name="direction" value="higher" ${kpi.direction !== "lower" ? "checked" : ""} />
@@ -479,23 +477,22 @@ export function render() {
                   </label>
                 </div>
               </div>
-              <div class="dream-kpi-row">
-                <div class="dream-kpi-field">
-                  <label><span class="dream-kpi-target-label-text">목표값</span></label>
-                  <input type="text" name="targetValue" value="${escapeHtml(sanitizeNumericInput(kpi.targetValue))}" placeholder="예) 99" inputmode="numeric" />
-                </div>
-                <div class="dream-kpi-field">
-                  <label>단위</label>
-                  <input type="text" name="unit" value="${escapeHtml(kpi.unit || "")}" placeholder="예) %(완성도), 일" />
-                </div>
+            </div>
+            <div class="dream-kpi-row">
+              <div class="dream-kpi-field" data-legacy="time-add-task-field">
+                <label><span class="dream-kpi-target-label-text">목표값</span></label>
+                <input type="text" name="targetValue" value="${escapeHtml(sanitizeNumericInput(kpi.targetValue))}" placeholder="예) 99" inputmode="numeric" />
               </div>
-              <div class="dream-kpi-field">
-                <label>필요시간</label>
-                <input type="text" name="targetTimeRequired" value="${escapeHtml(kpi.targetTimeRequired || "")}" placeholder="예) 25:00" />
+              <div class="dream-kpi-field" data-legacy="time-add-task-field">
+                <label>단위</label>
+                <input type="text" name="unit" value="${escapeHtml(kpi.unit || "")}" placeholder="예) %(완성도), 일" />
               </div>
             </div>
-            <div class="dream-kpi-section">
-              <h4 class="dream-kpi-section-title">기간</h4>
+            <div class="dream-kpi-field" data-legacy="time-add-task-field">
+              <label>필요시간</label>
+              <input type="text" name="targetTimeRequired" value="${escapeHtml(kpi.targetTimeRequired || "")}" placeholder="예) 25:00" />
+            </div>
+            <div class="dream-kpi-period-block" data-legacy="time-add-task-field">
               <div class="dream-kpi-row">
                 <div class="dream-kpi-field">
                   <label>시작기한</label>
@@ -512,25 +509,25 @@ export function render() {
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
               </div>
             </div>
-            <div class="dream-kpi-field dream-kpi-field-checkbox">
+            <div class="dream-kpi-field dream-kpi-field-checkbox" data-legacy="time-add-task-field">
               <label class="dream-kpi-checkbox-label">
                 매일 반복
                 <input type="checkbox" name="needHabitTracker" ${kpi.needHabitTracker ? "checked" : ""} />
               </label>
             </div>
-          </div>
-          <div class="dream-kpi-form-actions">
-            <button type="submit" class="dream-kpi-submit">수정</button>
             <div class="dream-kpi-delete-wrap">
               <button type="button" class="dream-kpi-delete-btn">KPI 삭제하기</button>
               <p class="dream-kpi-delete-note">삭제 시 복구 불가</p>
             </div>
           </div>
+          <div data-legacy="time-task-log-footer">
+            <button type="submit" data-legacy="time-task-log-submit">수정</button>
+          </div>
         </form>
       </div>
     `;
     const close = () => modal.remove();
-    modal.querySelector(".dream-kpi-modal-close").addEventListener("click", close);
+    modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
     modal.querySelector(".dream-kpi-delete-btn").addEventListener("click", () => {
       syncKpiToTimeTask(kpi, "remove");
       const data = loadDreamMap();
@@ -595,7 +592,7 @@ export function render() {
   function showKpiLogModal(kpi, editLog) {
     const isEdit = !!editLog;
     const modal = document.createElement("div");
-    modal.className = "dream-kpi-log-modal";
+    modal.className = "time-task-setup-modal time-task-log-modal";
     const today = new Date();
     let dateVal = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
     let valueVal = "";
@@ -611,13 +608,14 @@ export function render() {
       memoVal = editLog.memo || "";
     }
     modal.innerHTML = `
-      <div class="dream-kpi-log-backdrop"></div>
-      <div class="dream-kpi-log-panel">
-        <div class="dream-kpi-log-header">
-          <h3 class="dream-kpi-log-title">${isEdit ? "로그 수정" : "오늘의 수치 기록"}</h3>
-          <button type="button" class="dream-kpi-log-close" title="닫기">×</button>
+      <div data-legacy="time-task-setup-backdrop"></div>
+      <div data-legacy="time-task-setup-panel time-task-log-panel">
+        <div data-legacy="time-task-setup-header">
+          <h3 data-legacy="time-task-setup-title">${isEdit ? "로그 수정" : "오늘의 수치 기록"}</h3>
+          <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
         </div>
         <form class="dream-kpi-log-form">
+          <div data-legacy="time-task-setup-body">
           ${kpi.direction === "lower" ? '<p class="dream-kpi-log-lower-hint">숫자가 <strong>작을수록</strong> 좋은 지표예요. 카드와 진행 막대에는 <strong>가장 최근에 입력한 숫자 하나</strong>만 반영하고, 예전 기록은 더하지 않아요.</p>' : ""}
           <div class="dream-kpi-log-section">
             <div class="dream-kpi-log-row">
@@ -641,12 +639,16 @@ export function render() {
               <textarea name="memo" placeholder="오늘 이 수치가 나온 이유, 특이사항 등..." rows="3">${escapeHtml(memoVal)}</textarea>
             </div>
           </div>
-          <button type="submit" class="dream-kpi-log-submit">${isEdit ? "수정 저장" : "로그 저장"}</button>
+          </div>
+          <div data-legacy="time-task-log-footer" class="dream-kpi-log-modal-footer">
+            ${isEdit ? '<button type="button" class="dream-kpi-log-modal-delete-btn" data-legacy="time-task-log-delete-btn">삭제</button>' : ""}
+            <button type="submit" data-legacy="time-task-log-submit">${isEdit ? "수정" : "로그 저장"}</button>
+          </div>
         </form>
       </div>
     `;
     const close = () => modal.remove();
-    modal.querySelector(".dream-kpi-log-close").addEventListener("click", close);
+    modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
     modal.querySelector(".dream-kpi-log-form").addEventListener("submit", (e) => {
       e.preventDefault();
       const form = e.target;
@@ -685,8 +687,83 @@ export function render() {
       renderKpiList();
       renderKpiHistory();
     });
+    const delBtn = modal.querySelector(".dream-kpi-log-modal-delete-btn");
+    if (delBtn && isEdit) {
+      delBtn.addEventListener("click", () => {
+        const d = loadDreamMap();
+        appendDeletedRef(d, "kpiLogs", editLog.id);
+        d.kpiLogs = (d.kpiLogs || []).filter((l) => l.id !== editLog.id);
+        saveDreamMap(d);
+        close();
+        renderKpiList();
+        renderKpiHistory();
+      });
+    }
     document.body.appendChild(modal);
     setupNumericOnlyInput(modal.querySelector('input[name="value"]'));
+  }
+
+  function clearDreamKpiFooterActions() {
+    const slot = getAppFooterActionsSlot();
+    if (!slot) return;
+    slot
+      .querySelectorAll("[data-lp-dream-kpi-footer-action]")
+      .forEach((n) => n.remove());
+  }
+
+  function syncAppFooterDreamKpiActions() {
+    clearDreamKpiFooterActions();
+    const slot = getAppFooterActionsSlot();
+    if (!slot) return;
+    if (!selectedKpiId || !activeDreamId) return;
+    const data = loadDreamMap();
+    const kpiNow = (data.kpis || []).find((k) => k.id === selectedKpiId);
+    if (!kpiNow || kpiNow.dreamId !== activeDreamId) return;
+
+    const logBtn = document.createElement("button");
+    logBtn.type = "button";
+    logBtn.className = APP_FOOTER_ICON_BTN_CLASS;
+    logBtn.setAttribute("data-lp-dream-kpi-footer-action", "");
+    logBtn.title = "로그 추가";
+    logBtn.setAttribute("aria-label", "로그 추가");
+    logBtn.innerHTML = DREAM_FOOTER_LOG_ICON;
+    logBtn.addEventListener("click", () => {
+      const d = loadDreamMap();
+      const k = (d.kpis || []).find((x) => x.id === selectedKpiId);
+      if (k) showKpiLogModal(k);
+    });
+
+    const todoBtn = document.createElement("button");
+    todoBtn.type = "button";
+    todoBtn.className = APP_FOOTER_ICON_BTN_CLASS;
+    todoBtn.setAttribute("data-lp-dream-kpi-footer-action", "");
+    todoBtn.title = "할 일 추가";
+    todoBtn.setAttribute("aria-label", "할 일 추가");
+    todoBtn.innerHTML = DREAM_FOOTER_TODO_ICON;
+    todoBtn.addEventListener("click", async () => {
+      const d = loadDreamMap();
+      const k = (d.kpis || []).find((x) => x.id === selectedKpiId);
+      if (!k) return;
+      const text = await showKpiTodoAddModal({
+        kpiName: k.name,
+        placeholder: "할 일 입력",
+      });
+      if (!text) return;
+      const d2 = loadDreamMap();
+      const todo = {
+        id: nextId(),
+        kpiId: String(selectedKpiId),
+        text,
+        completed: false,
+      };
+      d2.kpiTodos = d2.kpiTodos || [];
+      d2.kpiTodos.push(todo);
+      saveDreamMap(d2);
+      renderKpiHistory({ scrollTodoAfterMutation: true });
+    });
+
+    slot.appendChild(logBtn);
+    slot.appendChild(todoBtn);
   }
 
   function getLatestKpiLog(kpiId) {
@@ -781,11 +858,15 @@ export function render() {
       kpiGridScrollPrevFilter,
       kpiGridScrollPrevScopeId,
     );
+    historyWrap.remove();
     contentWrap.innerHTML = "";
     if (!activeDreamId) {
       kpiGridScrollPrevFilter = null;
       kpiGridScrollPrevScopeId = null;
       persistKpiUiState();
+      historyWrap.hidden = true;
+      el.appendChild(historyWrap);
+      syncAppFooterDreamKpiActions();
       return;
     }
     const data = loadDreamMap();
@@ -827,6 +908,7 @@ export function render() {
     const grid = document.createElement("div");
     grid.className = "dream-kpi-grid";
     const listToShow = kpiFilter === "active" ? activeKpis : kpiFilter === "completed" ? completedKpis : dreamKpis;
+    let historyAnchoredUnderCard = false;
     listToShow.forEach((kpi) => {
       const {
         progress,
@@ -917,25 +999,35 @@ export function render() {
         }
       });
       grid.appendChild(card);
+      if (selectedKpiId === kpi.id) {
+        grid.appendChild(historyWrap);
+        historyAnchoredUnderCard = true;
+      }
     });
+    if (!historyAnchoredUnderCard) {
+      grid.appendChild(historyWrap);
+    }
     grid.addEventListener("dragend", () => {
       grid.querySelectorAll(".dream-kpi-card-drag-over").forEach((c) => c.classList.remove("dream-kpi-card-drag-over"));
     });
-    const addCard = document.createElement("button");
-    addCard.type = "button";
-    addCard.className = "dream-kpi-add-card";
-    addCard.innerHTML = '<span class="dream-kpi-add-card-text">+ KPI 추가하기</span>';
-    addCard.addEventListener("click", () => {
-      if (!activeDreamId) return;
-      showKpiModal();
-    });
-    grid.appendChild(addCard);
+    if (!selectedKpiId) {
+      const addCard = document.createElement("button");
+      addCard.type = "button";
+      addCard.className = "dream-kpi-add-card";
+      addCard.innerHTML = '<span class="dream-kpi-add-card-text">+ KPI 추가하기</span>';
+      addCard.addEventListener("click", () => {
+        if (!activeDreamId) return;
+        showKpiModal();
+      });
+      grid.appendChild(addCard);
+    }
     contentWrap.appendChild(grid);
 
     applyKpiGridScrollRestore(contentWrap, savedGridScroll);
     kpiGridScrollPrevFilter = kpiFilter;
     kpiGridScrollPrevScopeId = scopeId;
     persistKpiUiState();
+    syncAppFooterDreamKpiActions();
   }
 
   function renderKpiHistory(opts = {}) {
@@ -943,6 +1035,7 @@ export function render() {
     historyWrap.innerHTML = "";
     if (!selectedKpiId) {
       historyWrap.hidden = true;
+      syncAppFooterDreamKpiActions();
       return;
     }
     const data = loadDreamMap();
@@ -950,6 +1043,8 @@ export function render() {
     const needHabitTracker = kpi ? !!kpi.needHabitTracker : false;
     if (!kpi) {
       historyWrap.hidden = true;
+      selectedKpiId = null;
+      renderKpiList();
       return;
     }
     const logs = getKpiLogs(selectedKpiId);
@@ -963,9 +1058,7 @@ export function render() {
     headerRow.className = "dream-kpi-history-header";
     headerRow.innerHTML = `
       <h4 class="dream-kpi-history-title">${escapeHtml(kpi.name)} 기록</h4>
-      <button type="button" class="dream-kpi-history-log-btn">+ 로그</button>
     `;
-    headerRow.querySelector(".dream-kpi-history-log-btn").addEventListener("click", () => showKpiLogModal(kpi));
     historyWrap.appendChild(headerRow);
 
     const dailyTodosForGrid = needHabitTracker
@@ -1006,19 +1099,16 @@ export function render() {
             ${log.memo ? `<div class="dream-kpi-history-memo">${escapeHtml(log.memo)}</div>` : ""}
             ${dailyLine ? `<div class="dream-kpi-history-daily dream-kpi-history-daily--checked-only">${escapeHtml(dailyLine)}</div>` : ""}
           </div>
-          <div class="dream-kpi-history-actions">
-            <button type="button" class="dream-kpi-history-edit">수정</button>
-            <button type="button" class="dream-kpi-history-delete">삭제</button>
-          </div>
         `;
-          item.querySelector(".dream-kpi-history-edit").addEventListener("click", () => showKpiLogModal(kpi, log));
-          item.querySelector(".dream-kpi-history-delete").addEventListener("click", () => {
-            const d = loadDreamMap();
-            appendDeletedRef(d, "kpiLogs", log.id);
-            d.kpiLogs = (d.kpiLogs || []).filter((l) => l.id !== log.id);
-            saveDreamMap(d);
-            renderKpiList();
-            renderKpiHistory();
+          item.setAttribute("role", "button");
+          item.setAttribute("tabindex", "0");
+          item.title = "눌러서 수정";
+          item.addEventListener("click", () => showKpiLogModal(kpi, log));
+          item.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              showKpiLogModal(kpi, log);
+            }
           });
           list.appendChild(item);
         });
@@ -1064,7 +1154,7 @@ export function render() {
 
     const todoHeader = document.createElement("div");
     todoHeader.className = "dream-kpi-todo-header";
-    todoHeader.innerHTML = `<span class="dream-kpi-todo-title">할일 목록</span><button type="button" class="dream-kpi-history-log-btn dream-kpi-todo-header-add-btn">+ 추가</button>`;
+    todoHeader.innerHTML = `<span class="dream-kpi-todo-title">할일 목록</span>`;
     historyWrap.appendChild(todoHeader);
 
     const todoDivider = document.createElement("div");
@@ -1155,19 +1245,6 @@ export function render() {
       todoList.appendChild(item);
     });
 
-    todoHeader.querySelector(".dream-kpi-todo-header-add-btn")?.addEventListener("click", async () => {
-      const text = await showKpiTodoAddModal({
-        kpiName: kpi.name,
-        placeholder: "할 일 입력",
-      });
-      if (!text) return;
-      const data = loadDreamMap();
-      const todo = { id: nextId(), kpiId: selKpi, text, completed: false };
-      data.kpiTodos = data.kpiTodos || [];
-      data.kpiTodos.push(todo);
-      saveDreamMap(data);
-      renderKpiHistory({ scrollTodoAfterMutation: true });
-    });
     historyWrap.appendChild(todoList);
 
     if (needHabitTracker) {
@@ -1253,6 +1330,7 @@ export function render() {
     if (scrollTodoAfterMutation) {
       afterKpiTodoListMutationScroll(historyWrap);
     }
+    syncAppFooterDreamKpiActions();
   }
 
   function escapeHtml(str) {
@@ -1264,25 +1342,29 @@ export function render() {
 
   function showDreamAddModal() {
     const modal = document.createElement("div");
-    modal.className = "dream-kpi-modal";
+    modal.className = "time-task-setup-modal";
     modal.innerHTML = `
-      <div class="dream-kpi-backdrop"></div>
-      <div class="dream-kpi-panel">
-        <div class="dream-kpi-modal-header">
-          <h3 class="dream-kpi-modal-title">꿈 목표 추가</h3>
-          <button type="button" class="dream-kpi-modal-close" title="닫기">×</button>
+      <div data-legacy="time-task-setup-backdrop"></div>
+      <div data-legacy="time-task-setup-panel">
+        <div data-legacy="time-task-setup-header">
+          <h3 data-legacy="time-task-setup-title">꿈 목표 추가</h3>
+          <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
         </div>
         <form class="dream-kpi-form">
+          <div class="dream-kpi-form-body" data-legacy="time-task-setup-body">
           <div class="dream-kpi-field">
             <label>꿈 이름</label>
             <input type="text" name="name" placeholder="삶이 정리가 될 수 있는 플래너 만들기" />
           </div>
-          <button type="button" class="dream-kpi-submit dream-add-confirm-btn">확인</button>
+          </div>
+          <div data-legacy="time-task-log-footer">
+            <button type="button" data-legacy="time-task-log-submit" class="dream-add-confirm-btn">확인</button>
+          </div>
         </form>
       </div>
     `;
     const close = () => modal.remove();
-    modal.querySelector(".dream-kpi-modal-close").addEventListener("click", close);
+    modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
     const form = modal.querySelector("form");
     const confirmBtn = modal.querySelector(".dream-add-confirm-btn");
     const doSubmit = () => {
@@ -1312,20 +1394,26 @@ export function render() {
     const dream = data.dreams.find((d) => d.id === dreamId);
     const dreamName = dream?.name || "이 꿈";
     const modal = document.createElement("div");
-    modal.className = "dream-kpi-modal dream-delete-confirm-modal";
+    modal.className = "time-task-setup-modal dream-delete-confirm-modal";
     modal.innerHTML = `
-      <div class="dream-kpi-backdrop"></div>
-      <div class="dream-kpi-panel dream-delete-confirm-panel">
-        <h3 class="dream-delete-confirm-title">꿈 삭제</h3>
-        <p class="dream-delete-confirm-msg">"${escapeHtml(dreamName)}"을(를) 정말 삭제하시겠습니까?</p>
-        <p class="dream-delete-confirm-warn">삭제 시 복구 불가</p>
-        <div class="dream-delete-confirm-actions">
-          <button type="button" class="dream-delete-confirm-cancel">취소</button>
+      <div data-legacy="time-task-setup-backdrop"></div>
+      <div data-legacy="time-task-setup-panel" class="dream-delete-confirm-panel">
+        <div data-legacy="time-task-setup-header">
+          <h3 data-legacy="time-task-setup-title">꿈 삭제</h3>
+          <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
+        </div>
+        <div data-legacy="time-task-setup-body">
+          <p class="dream-delete-confirm-msg">"${escapeHtml(dreamName)}"을(를) 정말 삭제하시겠습니까?</p>
+          <p class="dream-delete-confirm-warn">삭제 시 복구 불가</p>
+        </div>
+        <div data-legacy="time-task-log-footer" class="dream-delete-confirm-modal-footer">
+          <button type="button" class="dream-delete-confirm-cancel" data-legacy="todo-list-modal-cancel">취소</button>
           <button type="button" class="dream-delete-confirm-submit">삭제</button>
         </div>
       </div>
     `;
     const close = () => modal.remove();
+    modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
     modal.querySelector(".dream-delete-confirm-cancel").addEventListener("click", close);
     modal.querySelector(".dream-delete-confirm-submit").addEventListener("click", () => {
       close();
@@ -1358,20 +1446,24 @@ export function render() {
 
   function showDreamContextModal(dream, tabEl) {
     const modal = document.createElement("div");
-    modal.className = "dream-kpi-modal";
+    modal.className = "time-task-setup-modal";
     modal.innerHTML = `
-      <div class="dream-kpi-backdrop"></div>
-      <div class="dream-kpi-panel dream-path-context-panel">
-        <div class="dream-kpi-modal-header">
-          <h3 class="dream-kpi-modal-title">꿈 수정</h3>
-          <button type="button" class="dream-kpi-modal-close" title="닫기">×</button>
+      <div data-legacy="time-task-setup-backdrop"></div>
+      <div data-legacy="time-task-setup-panel" class="dream-path-context-panel">
+        <div data-legacy="time-task-setup-header">
+          <h3 data-legacy="time-task-setup-title">꿈 수정</h3>
+          <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
         </div>
         <form class="dream-kpi-form dream-path-edit-form">
+          <div class="dream-kpi-form-body" data-legacy="time-task-setup-body">
           <div class="dream-kpi-field">
             <label>꿈 이름</label>
             <input type="text" name="name" value="${escapeHtml(dream.name || "")}" placeholder="꿈 이름" />
           </div>
-          <button type="submit" class="dream-kpi-submit">수정</button>
+          </div>
+          <div data-legacy="time-task-log-footer">
+            <button type="submit" data-legacy="time-task-log-submit">수정</button>
+          </div>
         </form>
         <div class="dream-path-context-divider"></div>
         <div class="dream-path-context-actions">
@@ -1381,7 +1473,7 @@ export function render() {
       </div>
     `;
     const close = () => modal.remove();
-    modal.querySelector(".dream-kpi-modal-close").addEventListener("click", close);
+    modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
     modal.querySelector("form").addEventListener("submit", (e) => {
       e.preventDefault();
       const val = (e.target.name.value || "").trim() || "꿈 이름";
@@ -1405,28 +1497,30 @@ export function render() {
     const data = loadDreamMap();
     const currentText = data.desiredLife || "";
     const modal = document.createElement("div");
-    modal.className = "dream-kpi-modal";
+    modal.className = "time-task-setup-modal";
     modal.innerHTML = `
-      <div class="dream-kpi-backdrop"></div>
-      <div class="dream-kpi-panel">
-        <div class="dream-kpi-modal-header">
-          <h3 class="dream-kpi-modal-title">내가 원하는 삶</h3>
-          <button type="button" class="dream-kpi-modal-close" title="닫기">×</button>
+      <div data-legacy="time-task-setup-backdrop"></div>
+      <div data-legacy="time-task-setup-panel">
+        <div data-legacy="time-task-setup-header">
+          <h3 data-legacy="time-task-setup-title">내가 원하는 삶</h3>
+          <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
         </div>
         <form class="dream-kpi-form">
+          <div class="dream-kpi-form-body" data-legacy="time-task-setup-body">
           <div class="dream-kpi-field">
             <label>원하는 삶을 자유롭게 적어보세요</label>
             <textarea name="desiredLife" rows="6" placeholder="예) 건강하게 오래 살고, 가족과 행복한 시간을 보내며, 하고 싶은 일을 하며 살고 싶습니다.">${escapeHtml(currentText)}</textarea>
           </div>
-          <div class="dream-desired-life-modal-actions">
-            <button type="submit" class="dream-kpi-submit">저장</button>
+          </div>
+          <div data-legacy="time-task-log-footer" class="dream-desired-life-modal-footer">
             ${currentText ? '<button type="button" class="dream-desired-life-delete-btn">삭제</button>' : ""}
+            <button type="submit" data-legacy="time-task-log-submit">저장</button>
           </div>
         </form>
       </div>
     `;
     const close = () => modal.remove();
-    modal.querySelector(".dream-kpi-modal-close").addEventListener("click", close);
+    modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
     modal.querySelector("form").addEventListener("submit", (e) => {
       e.preventDefault();
       const val = (e.target.desiredLife.value || "").trim();

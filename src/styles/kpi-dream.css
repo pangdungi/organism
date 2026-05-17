@@ -1,8 +1,7 @@
 /**
  * 꿈 KPI 탭 페이지 — 미니멀 셸(.lp-kpi-dream-page).
- * 모달 마크업(dream-kpi-modal / dream-kpi-log-modal)은 본문 밖(body)에 붙으므로
- * 아래 「KPI 모달」절은 꿈·건강·행복·부수입 등 동일 클래스 공통 스타일(lp-modals 토큰).
- * 앱 푸터는 건드리지 않음.
+ * 꿈 탭 모달·공용 KPI 할일 모달: .time-task-setup-modal + data-legacy( lp-modals.css ).
+ * 건강·행복·부수입 등 일부 뷰는 아직 .dream-kpi-modal 레거시 셸을 쓰며 아래 동일 절의 스타일을 공유함.
  */
 
 /* -------------------------------------------------------------------------- */
@@ -11,10 +10,28 @@
 
 .lp-kpi-dream-page {
   --lp-kpi-inset: 1rem;
+  /* 로그 목록 약 3행 분량(카드·메모 줄수에 따라 대략) — 필요 시 조정 */
+  --lp-kpi-dream-log-list-max-h: 14rem;
   font-family: inherit;
   color: #111827;
   background: #fff;
   box-sizing: border-box;
+}
+
+.lp-kpi-dream-page.app-tab-panel-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+/* 선택한 KPI 카드 바로 아래에 붙는 기록·할 일 블록 */
+.lp-kpi-dream-page .dream-kpi-grid > .dream-kpi-history-wrap {
+  width: 100%;
+  flex: 0 0 auto;
+  margin: 0.15rem 0 0.65rem;
+  padding: 0.75rem 0 0;
+  border-top: 1px solid #e5e7eb;
 }
 
 .lp-kpi-dream-page .dream-view-header {
@@ -69,13 +86,14 @@
 }
 
 .lp-kpi-dream-page .dream-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   flex-shrink: 0;
   margin: 0;
   padding: 0.38rem 0.75rem;
   max-width: 12.5rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
   font: inherit;
   font-size: 0.8125rem;
   font-weight: 500;
@@ -88,6 +106,44 @@
   transition:
     background 0.12s ease,
     color 0.12s ease;
+}
+
+.lp-kpi-dream-page .dream-tab-text {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lp-kpi-dream-page .dream-tab-edit {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  color: #c4c9d1;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.12s ease;
+}
+
+.lp-kpi-dream-page .dream-tab-edit:hover {
+  color: #94a3b8;
+}
+
+.lp-kpi-dream-page .dream-tab-edit:focus-visible {
+  outline: 2px solid rgba(30, 77, 123, 0.3);
+  outline-offset: 1px;
+}
+
+.lp-kpi-dream-page .dream-tab-edit-icon {
+  display: block;
+  flex-shrink: 0;
 }
 
 .lp-kpi-dream-page .dream-tab:hover {
@@ -145,10 +201,12 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 0.25rem;
   padding: 0.2rem;
   width: fit-content;
   max-width: 100%;
+  align-self: center;
   background: #f3f4f6;
   border-radius: 10px;
   box-sizing: border-box;
@@ -367,16 +425,13 @@
   font-weight: 500;
 }
 
-/* 기록 패널 — content-wrap 밖에 붙으므로 좌우 inset 필수 */
-.lp-kpi-dream-page .dream-kpi-history-wrap {
-  margin: 0;
-  padding: 0.85rem var(--lp-kpi-inset) 1.35rem;
-  border-top: 1px solid #f3f4f6;
+/* 섹션 헤더: 제목만(로그·할일 추가는 앱 푸터). 매일 반복 행만 인라인 +추가 유지 */
+.lp-kpi-dream-page .dream-kpi-history-header {
+  display: block;
+  margin-bottom: 0.65rem;
 }
 
-/* 섹션 헤더 행: KPI 기록 제목+로그 / 할일 제목+추가 등 동일 배치 */
-.lp-kpi-dream-page .dream-kpi-history-header,
-.lp-kpi-dream-page .dream-kpi-todo-header {
+.lp-kpi-dream-page .dream-kpi-todo-header:has(.dream-kpi-todo-header-add-btn) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -384,23 +439,30 @@
   gap: 0.5rem;
 }
 
-.lp-kpi-dream-page .dream-kpi-history-header {
-  margin-bottom: 0.65rem;
+.lp-kpi-dream-page .dream-kpi-todo-header:not(:has(.dream-kpi-todo-header-add-btn)) {
+  display: block;
+}
+
+/* 로그 기록 영역 바로 아래 할일 목록 헤더만 간격 */
+.lp-kpi-dream-page .dream-kpi-history-wrap > .dream-kpi-todo-header:not(:has(.dream-kpi-todo-header-add-btn)) {
+  margin-top: 0.9rem;
 }
 
 .lp-kpi-dream-page .dream-kpi-history-title,
 .lp-kpi-dream-page .dream-kpi-todo-title {
   margin: 0;
-  flex: 1 1 auto;
-  min-width: 0;
   font-size: 0.9375rem;
   font-weight: 600;
   line-height: 1.3;
   color: #111827;
 }
 
-/* 주요 인라인 액션: + 로그, 할일 + 추가 — 동일 규격 */
-.lp-kpi-dream-page .dream-kpi-history-log-btn,
+.lp-kpi-dream-page .dream-kpi-todo-header:has(.dream-kpi-todo-header-add-btn) .dream-kpi-todo-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* 매일 반복 할일 인라인 +추가 버튼 */
 .lp-kpi-dream-page .dream-kpi-todo-header-add-btn {
   flex-shrink: 0;
   display: inline-flex;
@@ -422,7 +484,6 @@
   transition: background 0.12s ease;
 }
 
-.lp-kpi-dream-page .dream-kpi-history-log-btn:hover,
 .lp-kpi-dream-page .dream-kpi-todo-header-add-btn:hover {
   background: var(--lp-modal-accent-hover);
 }
@@ -447,6 +508,11 @@
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  max-height: var(--lp-kpi-dream-log-list-max-h);
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .lp-kpi-dream-page .dream-kpi-history-item {
@@ -459,6 +525,9 @@
   background: #fafafa;
   border: 1px solid #f3f4f6;
   border-radius: 10px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  text-align: left;
 }
 
 .lp-kpi-dream-page .dream-kpi-history-item-main {
@@ -558,6 +627,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  max-height: none;
+  overflow: visible;
 }
 
 .lp-kpi-dream-page .dream-kpi-todo-item {
@@ -659,8 +730,43 @@
 
 /* -------------------------------------------------------------------------- */
 /* KPI 모달 — markup 공통(바디에 mount), lp-modals 토큰과 맞춤 */
-/* -------------------------------------------------------------------------- */
 
+/* time-task-setup-modal 셸 안 KPI 폼(꿈 탭·할일 추가/수정) */
+.time-task-setup-modal .dream-kpi-form,
+.time-task-setup-modal.time-task-log-modal .dream-kpi-log-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.time-task-setup-modal .dream-delete-confirm-panel {
+  padding: 0;
+}
+
+.time-task-setup-modal .dream-delete-confirm-modal-footer {
+  justify-content: flex-end;
+}
+
+.time-task-setup-modal .dream-desired-life-modal-footer {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.time-task-setup-modal .dream-kpi-todo-edit-modal-footer {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.time-task-setup-modal .dream-path-context-panel .dream-kpi-form {
+  padding-bottom: 0;
+}
+
+/* 레거시 셸: 건강·행복·부수입·러브 등 (dream-kpi-modal) */
 .dream-kpi-modal,
 .dream-kpi-log-modal {
   position: fixed;
@@ -757,6 +863,23 @@
   min-height: 0;
 }
 
+/* 타임 모달 필드 간격과 맞춤(lp-modals 단일 선택자보다 구체성 높임) */
+.dream-kpi-field[data-legacy~="time-add-task-field"] {
+  margin-bottom: 0.85rem;
+}
+
+.dream-kpi-field[data-legacy~="time-add-task-field"]:last-child {
+  margin-bottom: 0;
+}
+
+.dream-kpi-period-block[data-legacy~="time-add-task-field"] {
+  margin-bottom: 0.85rem;
+}
+
+.dream-kpi-period-block[data-legacy~="time-add-task-field"]:last-child {
+  margin-bottom: 0;
+}
+
 .dream-kpi-section {
   margin-top: 0.85rem;
 }
@@ -781,10 +904,36 @@
 .dream-kpi-field label,
 .dream-kpi-field .dream-kpi-field-label {
   display: block;
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.35rem;
   font-size: 0.8125rem;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--lp-modal-navy-muted);
+}
+
+/* KPI 폼: 지표 방향 — 행동 이름 등 필드 라벨과 구분(작게·옅게), 라디오만 한 줄 */
+.dream-kpi-direction-caption {
+  display: block;
+  margin: 0 0 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--lp-modal-muted);
+  line-height: 1.35;
+}
+
+.dream-kpi-direction-inline {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+}
+
+.dream-kpi-direction-inline .dream-kpi-direction-options {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
 }
 
 .dream-kpi-field input[type="text"],
@@ -803,8 +952,12 @@
 }
 
 .dream-kpi-field textarea {
-  min-height: 5rem;
-  resize: vertical;
+  height: var(--lp-modal-textarea-height);
+  min-height: var(--lp-modal-textarea-height);
+  max-height: var(--lp-modal-textarea-height);
+  resize: none;
+  overflow-y: auto;
+  field-sizing: fixed;
 }
 
 .dream-kpi-field input:focus,
@@ -828,23 +981,40 @@
 
 .dream-kpi-direction-options {
   display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
 }
 
 .dream-kpi-direction-option {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  font-size: 0.875rem;
+  gap: 0.35rem;
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
   color: var(--lp-modal-navy-muted);
   cursor: pointer;
+}
+
+.dream-kpi-direction-option span {
+  white-space: nowrap;
 }
 
 .dream-kpi-deadline-quick {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+
+.dream-kpi-period-block .dream-kpi-row .dream-kpi-field {
+  margin-bottom: 0;
+}
+
+.dream-kpi-period-block .dream-kpi-deadline-quick {
   margin-top: 0.35rem;
 }
 
@@ -873,7 +1043,8 @@
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
   color: var(--lp-modal-navy-muted);
   cursor: pointer;
 }
@@ -910,8 +1081,8 @@
   background: var(--lp-modal-accent-hover) !important;
 }
 
-.dream-add-confirm-btn.dream-kpi-submit {
-  margin-top: 0.75rem;
+.dream-add-confirm-btn[data-legacy~="time-task-log-submit"] {
+  margin-top: 0;
 }
 
 .dream-kpi-delete-wrap {
@@ -951,7 +1122,7 @@
   flex: 1 1 auto;
   min-height: 0;
   padding: 0 1rem 1rem;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .dream-kpi-log-lower-hint {
@@ -971,6 +1142,30 @@
 
 .dream-kpi-log-section {
   margin-top: 0.65rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.dream-kpi-log-modal-footer {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  margin-top: 0.35rem;
+  border-top: 1px solid var(--lp-modal-border);
+}
+
+.dream-kpi-log-modal-footer .dream-kpi-log-submit {
+  margin-left: auto;
+  margin-top: 0;
+  width: auto;
+  min-width: 5.5rem;
 }
 
 .dream-kpi-log-row {
@@ -1009,6 +1204,15 @@
   border-radius: 8px;
 }
 
+.dream-kpi-log-field textarea {
+  height: var(--lp-modal-textarea-height);
+  min-height: var(--lp-modal-textarea-height);
+  max-height: var(--lp-modal-textarea-height);
+  resize: none;
+  overflow-y: auto;
+  field-sizing: fixed;
+}
+
 .dream-kpi-log-readonly {
   background: #f8fafc !important;
   color: var(--lp-modal-muted) !important;
@@ -1036,15 +1240,15 @@
 }
 
 /* 삭제 확인 · 꿈 편집 보조 */
-.dream-delete-confirm-panel {
-  padding: 1.1rem 1.15rem 1.15rem;
-}
-
 .dream-delete-confirm-title {
   margin: 0 0 0.5rem;
   font-size: 1.05rem;
   font-weight: 600;
   color: var(--lp-modal-navy);
+}
+
+.dream-delete-confirm-panel {
+  padding: 1.1rem 1.15rem 1.15rem;
 }
 
 .dream-delete-confirm-msg {
@@ -1129,20 +1333,6 @@
   padding: 0 1rem 1rem;
   font-size: 0.72rem;
   color: var(--lp-modal-muted);
-}
-
-.dream-desired-life-modal-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-}
-
-.dream-desired-life-modal-actions .dream-kpi-submit {
-  flex: 1 1 auto;
-  margin-top: 0;
-  width: auto;
-  min-width: 6rem;
 }
 
 .dream-desired-life-delete-btn {

@@ -26,15 +26,16 @@ export function showKpiTodoAddModal(opts = {}) {
     }
 
     const modal = document.createElement("div");
-    modal.className = "dream-kpi-modal dream-kpi-todo-add-modal";
+    modal.className = "time-task-setup-modal dream-kpi-todo-add-modal";
     modal.innerHTML = `
-      <div class="dream-kpi-backdrop"></div>
-      <div class="dream-kpi-panel">
-        <div class="dream-kpi-modal-header">
-          <h3 class="dream-kpi-modal-title">${escapeHtml(title)}</h3>
-          <button type="button" class="dream-kpi-modal-close" title="닫기">×</button>
+      <div data-legacy="time-task-setup-backdrop"></div>
+      <div data-legacy="time-task-setup-panel">
+        <div data-legacy="time-task-setup-header">
+          <h3 data-legacy="time-task-setup-title">${escapeHtml(title)}</h3>
+          <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
         </div>
         <form class="dream-kpi-form">
+          <div class="dream-kpi-form-body" data-legacy="time-task-setup-body">
           ${
             kpiName
               ? `<div class="dream-kpi-field dream-kpi-todo-kpi-block">
@@ -47,7 +48,10 @@ export function showKpiTodoAddModal(opts = {}) {
             <label>${escapeHtml(inputLabel)}</label>
             <input type="text" name="text" placeholder="${escapeHtml(placeholder)}" autocomplete="off" />
           </div>
-          <button type="submit" class="dream-kpi-submit">${escapeHtml(submitLabel)}</button>
+          </div>
+          <div data-legacy="time-task-log-footer">
+            <button type="submit" data-legacy="time-task-log-submit">${escapeHtml(submitLabel)}</button>
+          </div>
         </form>
       </div>
     `;
@@ -63,8 +67,8 @@ export function showKpiTodoAddModal(opts = {}) {
     const input = modal.querySelector('input[name="text"]');
     const form = modal.querySelector("form");
 
-    modal.querySelector(".dream-kpi-modal-close").addEventListener("click", () => finish(null));
-    modal.querySelector(".dream-kpi-backdrop").addEventListener("click", () => finish(null));
+    modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", () => finish(null));
+    modal.querySelector('[data-legacy~="time-task-setup-backdrop"]').addEventListener("click", () => finish(null));
     form.addEventListener("submit", (e) => {
       e.preventDefault();
       const val = (input.value || "").trim();
