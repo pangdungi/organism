@@ -274,22 +274,12 @@ function lpCalendarFinalizeBarRowLayout(
 
 
 
-/** 모바일 1주 플로우: 스크롤 안 세로 격자가 뷰포트까지 오도록 본문 최소 높이를 스크롤창·콘텐츠 중 큰 값으로 맞춤 */
+/** 1주 플로우: 본문 최소 높이를 스크롤창·콘텐츠 중 큰 값으로 맞춰 열 세로 구분선이 뷰포트까지 끊기지 않게 */
 function lpSync1WeekMobileFlowBodyToScrollViewport(scrollEl, bodyEl) {
   if (!scrollEl || !bodyEl) return;
   try {
     if (!scrollEl.isConnected || !bodyEl.isConnected) return;
   } catch (_) {
-    return;
-  }
-  if (
-    typeof window === "undefined" ||
-    !window.matchMedia("(max-width: 48rem)").matches
-  ) {
-    bodyEl.style.removeProperty("min-height");
-    try {
-      delete bodyEl._lpFlowMinHApplied;
-    } catch (_) {}
     return;
   }
   bodyEl.style.removeProperty("min-height");
@@ -327,6 +317,7 @@ function lpAttach1WeekMobileFlowBodyMinSync(wrap, scrollEl, bodyEl) {
     });
   });
   ro.observe(scrollEl);
+  ro.observe(bodyEl);
   wrap._lp1WeekFlowBodyMinRo = ro;
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
@@ -1801,7 +1792,7 @@ function createCalendarBarDateEditBubble(
 
 function renderMonthlyView(tabsElement) {
   const wrap = document.createElement("div");
-  wrap.className = "calendar-monthly-layout";
+  wrap.className = "calendar-monthly-layout calendar-subview-monthly";
 
   let currentYear = new Date().getFullYear();
   let currentMonth = new Date().getMonth();
@@ -1941,7 +1932,7 @@ function renderMonthlyView(tabsElement) {
             rect,
             key,
             () => {
-              renderCalendar();
+              void renderCalendar();
               refreshTodoList();
             },
             () => {},
@@ -2569,7 +2560,7 @@ function render2WeekView(tabsElement) {
             rect,
             key,
             () => {
-              renderCalendar();
+              void renderCalendar();
               refreshTodoList();
             },
             () => {},
@@ -3953,7 +3944,7 @@ function render1WeekView(tabsElement) {
 
   function refreshTodoList() {}
 
-  function renderCalendar(opts = {}) {
+  async function renderCalendar(opts = {}) {
     const skipWeekPull = !!opts.skipWeekPull;
     const week = getCalendarGridFor1Week(weekOffset);
     const weekKeysForPull = week
@@ -3963,17 +3954,11 @@ function render1WeekView(tabsElement) {
     const lastPullKey = weekKeysForPull[weekKeysForPull.length - 1] || "";
     if (!skipWeekPull && firstPullKey && lastPullKey) {
       const pullGen = ++_1weekRenderGen;
-      void (async () => {
-        try {
-          await pullTimeLedgerEntriesForDateRange(firstPullKey, lastPullKey);
-          await pullTimeDailyBudgetFromSupabase();
-        } catch (_) {}
-        if (pullGen !== _1weekRenderGen) return;
-        requestAnimationFrame(() => {
-          if (pullGen !== _1weekRenderGen) return;
-          renderCalendar({ skipWeekPull: true });
-        });
-      })();
+      try {
+        await pullTimeLedgerEntriesForDateRange(firstPullKey, lastPullKey);
+        await pullTimeDailyBudgetFromSupabase();
+      } catch (_) {}
+      if (pullGen !== _1weekRenderGen) return;
     }
 
     const monthIndex = week[0] ? week[0].getMonth() : new Date().getMonth();
@@ -4065,7 +4050,7 @@ function render1WeekView(tabsElement) {
       }
       if (ok) {
         syncCalendarSectionTaskToServerAfterCalendarDateDrop(payload, ok);
-        renderCalendar({ skipWeekPull: true });
+        void renderCalendar({ skipWeekPull: true });
         refreshTodoList();
       }
     }
@@ -4137,7 +4122,7 @@ function render1WeekView(tabsElement) {
             createCalendarDayExpandBubble(rect, key, tasks, () => {}, {
               positionBelow: true,
               onAfterTaskEdit: () => {
-                renderCalendar();
+                void renderCalendar();
                 refreshTodoList();
               },
               onAdd: () => {
@@ -4145,7 +4130,7 @@ function render1WeekView(tabsElement) {
                   rect,
                   key,
                   () => {
-                    renderCalendar();
+                    void renderCalendar();
                     refreshTodoList();
                   },
                   () => {},
@@ -4169,7 +4154,7 @@ function render1WeekView(tabsElement) {
           rect,
           key,
           () => {
-            renderCalendar();
+            void renderCalendar();
             refreshTodoList();
           },
           () => {},
@@ -4351,7 +4336,7 @@ function render1WeekView(tabsElement) {
             e.clientY,
             b,
             () => {
-              renderCalendar();
+              void renderCalendar();
               refreshTodoList();
             },
             () => {},
@@ -4368,7 +4353,7 @@ function render1WeekView(tabsElement) {
             e.clientY,
             b,
             () => {
-              renderCalendar();
+              void renderCalendar();
               refreshTodoList();
             },
             () => {},
@@ -4475,6 +4460,11 @@ function render1WeekView(tabsElement) {
     weekWrap.appendChild(moreEl);
     stripHeader.appendChild(weekWrap);
 
+    const flowHScrollOuter = document.createElement("div");
+    flowHScrollOuter.className = "calendar-1week-flow-hscroll-outer";
+    const flowHScrollInner = document.createElement("div");
+    flowHScrollInner.className = "calendar-1week-flow-hscroll-inner";
+
     const scrollArea = document.createElement("div");
     scrollArea.className = "calendar-1week-google-scroll";
 
@@ -4568,10 +4558,6 @@ function render1WeekView(tabsElement) {
           }
         }
         if (!badgeAccent && c.border) badgeAccent = c.border;
-
-        if (!ledgerMissed) {
-          card.style.setProperty("--calendar-timeline-stripe", c.leftStripe);
-        }
 
         const titleEl = document.createElement("div");
         titleEl.className = "calendar-1week-flow-card-title";
@@ -4718,30 +4704,33 @@ function render1WeekView(tabsElement) {
       applyWeekDropToDate(targetDate, payload);
     });
 
-    outer.appendChild(stripHeader);
-    outer.appendChild(scrollArea);
+    outer.appendChild(flowHScrollOuter);
+    flowHScrollOuter.appendChild(flowHScrollInner);
+    flowHScrollInner.appendChild(stripHeader);
+    flowHScrollInner.appendChild(scrollArea);
     calendarGrid.appendChild(outer);
+    lpAttach1WeekMobileFlowBodyMinSync(wrap, scrollArea, bodyGrid);
   }
 
   lpCalendarNavQ(nav, wrap, ".calendar-nav-today").addEventListener(
     "click",
     () => {
       weekOffset = 0;
-      renderCalendar();
+      void renderCalendar();
     },
   );
   lpCalendarNavQ(nav, wrap, ".calendar-nav-prev").addEventListener(
     "click",
     () => {
       weekOffset--;
-      renderCalendar();
+      void renderCalendar();
     },
   );
   lpCalendarNavQ(nav, wrap, ".calendar-nav-next").addEventListener(
     "click",
     () => {
       weekOffset++;
-      renderCalendar();
+      void renderCalendar();
     },
   );
 
@@ -4756,10 +4745,10 @@ function render1WeekView(tabsElement) {
   });
 
   /* 상위 renderSubView 가 같은 주간에 이미 시간·예산을 pull 한 뒤 호출함 — 여기서 또 pull 하면 전체 격자가 연달아 다시 그려져 줄이 여러 번 튐 */
-  renderCalendar({ skipWeekPull: true });
+  void renderCalendar({ skipWeekPull: true });
 
   wrap._lpRefreshCalendarView = () => {
-    renderCalendar({ skipWeekPull: true });
+    void renderCalendar({ skipWeekPull: true });
   };
 
   return wrap;
@@ -5122,8 +5111,8 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
   let activeSubViewId = initialSubView;
 
   /**
-   * 월별·1주 등 서브탭 전환: 먼저 뷰를 그린 뒤(즉시 반응), skipPull 아닐 때만 서버 pull 후 `_lpRefreshCalendarView`로 반영.
-   * 예전에는 pull을 전부 await 한 다음에야 DOM을 바꿔 네트워크 지연만큼 탭이 멈춘 것처럼 보였음.
+   * 서브탭 전환: 뷰는 즉시 마운트. skipPull 아닐 때만 서버 pull 후 `_lpRefreshCalendarView`로 반영.
+   * (1주도 동일 — 빈 화면 대기 없음; 과제 기록은 짧은 뒤 갱신)
    */
   function renderSubView(subViewId, subOpts = {}) {
     const skipPull = !!subOpts.skipPull;
@@ -5142,6 +5131,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
     if (gen !== _nestedSubViewGen) return;
     if (subTabsMountOuter?.parentNode) subTabsMountOuter.remove();
     contentArea.innerHTML = "";
+
     if (subViewId === "monthly") {
       contentArea.appendChild(renderMonthlyView(null));
     } else if (subViewId === "2week") {
