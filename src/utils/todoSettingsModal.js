@@ -59,18 +59,28 @@ function showColorPickerModal(label, currentColor, onChange) {
   const currentHex = findClosestPresetHex(currentColor || "rgba(200,200,200,0.6)");
 
   const modal = document.createElement("div");
-  modal.className = "todo-settings-color-modal";
+  modal.className = "time-task-setup-modal time-todo-color-modal";
   modal.innerHTML = `
-    <div class="todo-settings-color-modal-backdrop"></div>
-    <div class="todo-settings-color-modal-panel">
-      <h4 class="todo-settings-color-modal-title">${label}</h4>
-      <div class="todo-settings-color-modal-swatches"></div>
-      <button type="button" class="todo-settings-color-modal-close">저장</button>
+    <div class="time-task-setup-backdrop"></div>
+    <div class="time-task-setup-panel time-add-task-panel">
+      <div class="time-task-setup-header">
+        <h3 class="time-task-setup-title">${label}</h3>
+        <button type="button" class="time-task-setup-close" aria-label="닫기">&times;</button>
+      </div>
+      <div class="time-task-setup-body">
+        <div class="time-task-log-scroll-area time-todo-color-scroll">
+          <div class="todo-settings-color-modal-swatches"></div>
+        </div>
+      </div>
+      <div class="time-task-log-footer">
+        <button type="button" class="time-add-task-submit">저장</button>
+      </div>
     </div>
   `;
 
   const swatchesEl = modal.querySelector(".todo-settings-color-modal-swatches");
-  const closeBtn = modal.querySelector(".todo-settings-color-modal-close");
+  const headerCloseBtn = modal.querySelector(".time-task-setup-close");
+  const saveBtn = modal.querySelector(".time-add-task-submit");
 
   let selectedRgba = hexToRgba(currentHex, alpha);
 
@@ -95,7 +105,8 @@ function showColorPickerModal(label, currentColor, onChange) {
     document.body.style.overflow = "";
   }
 
-  closeBtn.addEventListener("click", () => {
+  headerCloseBtn.addEventListener("click", close);
+  saveBtn.addEventListener("click", () => {
     onChange(selectedRgba);
     close();
   });
@@ -174,26 +185,26 @@ export function createTodoSettingsModal(options = {}) {
   const settings = getTodoSettings();
 
   const modal = document.createElement("div");
-  modal.className = "todo-settings-modal";
+  modal.className = "time-task-setup-modal time-todo-settings-modal";
   modal.innerHTML = `
-    <div class="todo-settings-backdrop"></div>
-    <div class="todo-settings-panel todo-settings-panel--macos">
-      <div class="todo-settings-mac-titlebar">
-        <div class="todo-settings-mac-title-wrap">
-          <h3 class="todo-settings-title">할 일 환경 설정</h3>
-        </div>
-        <button type="button" class="todo-settings-sheet-close" aria-label="닫기"><span aria-hidden="true">×</span></button>
+    <div class="time-task-setup-backdrop"></div>
+    <div class="time-task-setup-panel time-add-task-panel">
+      <div class="time-task-setup-header">
+        <h3 class="time-task-setup-title">할 일 환경 설정</h3>
+        <button type="button" class="time-task-setup-close" aria-label="닫기"><span aria-hidden="true">&times;</span></button>
       </div>
-      <div class="todo-settings-body">
-        <div class="todo-settings-block">
-          <div class="todo-settings-toggles todo-settings-toggles--macos"></div>
+      <div class="time-task-setup-body">
+        <div class="time-task-log-scroll-area time-todo-settings-scroll">
+          <div class="todo-settings-block">
+            <div class="todo-settings-toggles"></div>
+          </div>
         </div>
       </div>
     </div>
   `;
 
   const togglesEl = modal.querySelector(".todo-settings-toggles");
-  const closeBtn = modal.querySelector(".todo-settings-sheet-close");
+  const closeBtn = modal.querySelector(".time-task-setup-close");
 
   let hideCompleted = settings.hideCompleted;
   let sectionTaskListFilter = normalizeSectionTaskListFilter(

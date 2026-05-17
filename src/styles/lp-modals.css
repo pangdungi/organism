@@ -318,6 +318,20 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   min-height: 0;
   padding: 0;
 }
+/* 할 일 환경설정 / 색상 팔레트 — 기록 모달과 동일 본문·스크롤 구조 */
+.time-task-setup-modal.time-todo-settings-modal .time-task-setup-body,
+.time-task-setup-modal.time-todo-color-modal .time-task-setup-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+}
+.time-task-setup-modal.time-todo-settings-modal .time-task-log-scroll-area,
+.time-task-setup-modal.time-todo-color-modal .time-task-log-scroll-area {
+  flex: 1 1 auto;
+  min-height: 0;
+}
 .time-task-log-scroll-area,
 [data-legacy~="time-task-log-scroll-area"] {
   flex: 1 1 auto;
@@ -598,6 +612,22 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   white-space: nowrap;
   pointer-events: none;
 }
+.time-add-task-panel .time-task-log-field > .time-task-log-date-native-wrap,
+[data-legacy~="time-add-task-panel"]
+  [data-legacy~="time-task-log-field"]
+  > [data-legacy~="time-task-log-date-native-wrap"] {
+  width: 100%;
+  display: flex;
+  align-items: stretch;
+}
+.time-add-task-panel .time-task-log-date-native-wrap .time-task-log-date-overlay,
+[data-legacy~="time-add-task-panel"]
+  [data-legacy~="time-task-log-date-native-wrap"]
+  [data-legacy~="time-task-log-date-overlay"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  justify-content: flex-start;
+}
 .time-task-log-quick-block,
 [data-legacy~="time-task-log-quick-block"] {
   margin-top: 0.15rem;
@@ -738,6 +768,8 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 [data-legacy~="time-task-log-footer"]
   > [data-legacy~="time-task-select-apply-btn"],
 [data-legacy~="time-task-log-footer"] > [data-legacy~="time-add-task-submit"],
+.time-task-log-footer > .time-add-task-submit,
+.time-task-log-footer > .todo-list-modal-confirm,
 .todo-list-modal-footer > .todo-list-modal-confirm,
 .diary-desktop-compose-modal-footer > .diary-desktop-compose-modal-confirm,
 [data-legacy~="time-task-log-todo-inner-footer"]
@@ -747,10 +779,12 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   margin-left: auto;
 }
 [data-legacy~="time-task-log-footer"]:has(> :only-child) > *,
+.time-task-log-footer:has(> :only-child) > *,
 .todo-list-modal-footer:has(> :only-child) > *,
 .diary-desktop-compose-modal-footer:has(> :only-child) > * {
   margin-left: auto;
 }
+.time-task-log-footer.todo-task-edit-footer--actions,
 .todo-list-modal-footer.todo-task-edit-footer--actions,
 [data-legacy~="todo-list-modal-footer"][data-legacy~="todo-task-edit-footer--actions"] {
   padding-top: 0.65rem;
@@ -866,9 +900,22 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   background: #fee2e2 !important;
   border-color: rgba(185, 28, 28, 0.45) !important;
 }
-.todo-task-edit-delete-below .todo-task-edit-footer-delete,
-.todo-task-edit-delete-below [data-legacy~="todo-task-edit-footer-delete"] {
-  width: 100%;
+/* main.css 의 svg { max-width:100%; height:auto } 가 풀폭 버튼 안에서 아이콘을 가로로 늘려 거대하게 만듦 */
+.time-task-log-delete-btn svg,
+.time-add-task-delete svg,
+.todo-task-edit-footer-delete svg,
+[data-legacy~="time-task-log-delete-btn"] svg,
+[data-legacy~="time-add-task-delete"] svg,
+[data-legacy~="todo-task-edit-footer-delete"] svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  max-width: 1.125rem;
+  flex-shrink: 0;
+  display: block;
+}
+.todo-task-edit-footer-delete-label,
+[data-legacy~="todo-task-edit-footer-delete-label"] {
+  white-space: nowrap;
 }
 .time-task-add-btn,
 [data-legacy~="time-task-add-btn"] {
@@ -1184,15 +1231,134 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   font-size: 0.875rem;
   color: var(--lp-modal-navy);
 }
-.todo-task-edit-delete-below,
-[data-legacy~="todo-task-edit-delete-below"] {
-  padding: 0 1rem 0.5rem;
-}
 .todo-list-confirm-body,
 [data-legacy~="todo-list-confirm-body"] {
   font-size: 0.9375rem;
   line-height: 1.5;
   color: var(--lp-modal-navy-muted);
+}
+/* 할 일 환경설정·색칩 — time-task-setup-modal 본문 안 */
+.todo-settings-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.todo-settings-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+.todo-settings-toggle-row,
+.todo-settings-clear-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.todo-settings-toggle-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--lp-modal-navy);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.todo-settings-toggle {
+  position: relative;
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 1.5rem;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: #e2e8f0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.todo-settings-toggle.on {
+  background: var(--lp-modal-accent);
+}
+.todo-settings-toggle-track {
+  display: none;
+}
+.todo-settings-toggle-thumb {
+  position: absolute;
+  top: 0.15rem;
+  left: 0.15rem;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  transition: transform 0.15s ease;
+}
+.todo-settings-toggle.on .todo-settings-toggle-thumb {
+  transform: translateX(1.25rem);
+}
+.todo-settings-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--lp-modal-danger);
+  background: var(--lp-modal-danger-soft);
+  border: 1px solid rgba(185, 28, 28, 0.35);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.todo-settings-color-modal-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+}
+.todo-settings-color-modal-swatch {
+  box-sizing: border-box;
+  width: 2.35rem;
+  height: 2.35rem;
+  padding: 0;
+  margin: 0;
+  border: 2px solid var(--lp-modal-border);
+  border-radius: 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.todo-settings-color-modal-swatch.selected {
+  border-color: var(--lp-modal-accent);
+  box-shadow: 0 0 0 2px rgba(30, 77, 123, 0.22);
+}
+.todo-settings-color-row-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+.todo-settings-color-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--lp-modal-navy);
+}
+.todo-settings-color-chip {
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 10px;
+  cursor: pointer;
+  background: #f1f5f9;
+  -webkit-tap-highlight-color: transparent;
+}
+.todo-settings-color-chip-inner {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
 }
 .todo-list-modal-confirm.todo-list-confirm-btn--danger,
 [data-legacy~="todo-list-modal-confirm"][data-legacy~="todo-list-confirm-btn--danger"] {

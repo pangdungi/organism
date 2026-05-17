@@ -7382,10 +7382,7 @@ export function render() {
         );
         const addBtnEl = document.createElement("button");
         addBtnEl.type = "button";
-        lpSetClasses(
-          addBtnEl,
-          `todo-add-btn time-ledger-add-plus-btn ${APP_FOOTER_ICON_BTN_CLASS}`,
-        );
+        lpSetClasses(addBtnEl, APP_FOOTER_ICON_BTN_CLASS);
         addBtnEl.title = "과제 기록";
         addBtnEl.setAttribute("aria-label", "과제 기록");
         addBtnEl.innerHTML = TIME_LEDGER_ADD_PLUS_ICON_SVG;

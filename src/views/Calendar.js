@@ -1,7 +1,7 @@
 /**
  * 캘린더 - 월별/2주/1주/1일 뷰
  * 월별: 왼쪽 미니멀 캘린더 + 오른쪽 태스크 사이드바
- * 할일목록: 인생 KPI와 동일한 구조
+ * (할 일/일정 목록 UI는 TodoList. KPI 할 일은 KPI 탭·kpiTodoSync 별도.)
  */
 
 import {
@@ -8825,7 +8825,7 @@ export function render() {
     if (skipSubtabPull && contentWrap.querySelector(".calendar-view-todo")) {
       const existingTodo = contentWrap.querySelector(".calendar-view-todo");
       const reuseBtn = existingTodo?.querySelector(
-        ".time-ledger-toolbar-icons .todo-list-settings-btn, .todo-list-settings-btn",
+        "[data-lp-todo-list-settings-btn], .time-ledger-toolbar-icons .todo-list-settings-btn, .todo-list-settings-btn",
       );
       const todoMain = existingTodo.querySelector(".calendar-todo-main");
       const todoListView = todoMain?.querySelector(".todo-list-view");

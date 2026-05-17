@@ -1,5 +1,5 @@
 /**
- * 할일 목록 등과 동일한 패널 스타일(todo-list-modal)로 확인창을 띄우고, Promise로 결과를 돌려줍니다.
+ * 할 일·타임레저와 동일한 `time-task-setup-modal` 셸로 확인창을 띄우고, Promise로 결과를 돌려줍니다.
  * @param {{ title?: string, message: string, warnMessage?: string, confirmText?: string, cancelText?: string, confirmDanger?: boolean }} options
  * @returns {Promise<boolean>} 확인 시 true, 취소·닫기 시 false
  */
@@ -27,29 +27,29 @@ export function showConfirmModal(options = {}) {
     }
 
     const modal = document.createElement("div");
-    modal.className = "todo-list-modal todo-list-confirm-modal";
+    modal.className = "time-task-setup-modal";
     const confirmBtnClass = confirmDanger
       ? "todo-list-modal-confirm todo-list-confirm-btn--danger"
       : "todo-list-modal-confirm todo-list-confirm-delete";
     modal.innerHTML = `
-      <div class="todo-list-modal-backdrop"></div>
-      <div class="todo-list-modal-panel">
-        <div class="todo-list-modal-header">
-          <h3 class="todo-list-modal-title">${escapeHtml(title)}</h3>
-          <button type="button" class="todo-list-modal-close" aria-label="닫기">×</button>
+      <div class="time-task-setup-backdrop"></div>
+      <div class="time-task-setup-panel time-add-task-panel">
+        <div class="time-task-setup-header">
+          <h3 class="time-task-setup-title">${escapeHtml(title)}</h3>
+          <button type="button" class="time-task-setup-close" aria-label="닫기">&times;</button>
         </div>
-        <div class="todo-list-modal-body todo-list-confirm-body">
+        <div class="time-task-setup-body todo-list-confirm-body">
           <p class="todo-list-confirm-message">${escapeHtml(message)}</p>
           ${warnMessage ? `<p class="todo-list-confirm-warn">${escapeHtml(warnMessage)}</p>` : ""}
         </div>
-        <div class="todo-list-modal-footer">
+        <div class="time-task-log-footer">
           <button type="button" class="todo-list-modal-cancel">${escapeHtml(cancelText)}</button>
           <button type="button" class="${confirmBtnClass}">${escapeHtml(confirmText)}</button>
         </div>
       </div>
     `;
 
-    const closeBtn = modal.querySelector(".todo-list-modal-close");
+    const closeBtn = modal.querySelector(".time-task-setup-close");
     const cancelBtn = modal.querySelector(".todo-list-modal-cancel");
     const confirmBtn = modal.querySelector(".todo-list-modal-confirm");
 
