@@ -6,53 +6,102 @@
  */
 
 /* [auto] data-legacy 병기 선택자 — scripts/time-js-main-only-classes.mjs */
-.time-ledger-view .time-ledger-top-title, [data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-top-title"]{width: 100%;
+.time-ledger-view .time-ledger-top-title,
+[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-top-title"] {
+  width: 100%;
   text-align: center;
   font-size: 3.45rem;
   font-weight: 600;
   line-height: 1.12;
   letter-spacing: -0.03em;
   color: #3d4a3e;
-}.time-ledger-tabs-filter-row, [data-legacy~="time-ledger-tabs-filter-row"]{
+}
+.time-ledger-tabs-filter-row,
+[data-legacy~="time-ledger-tabs-filter-row"] {
   /* app-main 이 이미 safe-top 반영 — 여기서는 추가 간격만 (중복 inset 방지) */
   padding-top: 0.55rem;
   box-sizing: border-box;
-}.time-ledger-filter-add-row, [data-legacy~="time-ledger-filter-add-row"]{width: 100%;
+}
+.time-ledger-filter-add-row,
+[data-legacy~="time-ledger-filter-add-row"] {
+  width: 100%;
   box-sizing: border-box;
   border-top: 1px solid #e8e2d2;
   border-bottom: 1px solid #e8e2d2;
   padding-top: 0.45rem;
   padding-bottom: 0.45rem;
-}.lp-date-range-host, [data-legacy~="lp-date-range-host"]{width: 100%;
+}
+/* 날짜 구간(시작~종료) 블록 바깥 — 위아래 살짝 여백 */
+.time-ledger-view .time-ledger-filter-add-row [data-legacy~="time-filter-range-wrap"],
+[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-filter-add-row"] [data-legacy~="time-filter-range-wrap"] {
+  margin-top: 0.3rem;
+  margin-bottom: 0.3rem;
+}
+.lp-date-range-host,
+[data-legacy~="lp-date-range-host"] {
+  width: 100%;
   display: flex;
   justify-content: flex-end;
   align-items: center;
   min-width: 0;
   box-sizing: border-box;
-}.time-filter-nav-cluster, [data-legacy~="time-filter-nav-cluster"]{display: flex;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+.time-filter-nav-cluster,
+[data-legacy~="time-filter-nav-cluster"] {
+  display: flex;
   flex-wrap: wrap;
   align-items: center;
+  align-content: center;
   justify-content: flex-end;
   gap: 0.35rem 0.5rem;
   min-width: 0;
-}.time-filter-range-wrap, [data-legacy~="time-filter-range-wrap"]{display: flex;
+  line-height: 1;
+}
+/* 한 줄 안에서 날짜 블록·날짜 칸·구분자가 세로 기준선에 붙지 않도록 */
+.time-filter-nav-cluster > *,
+[data-legacy~="time-filter-nav-cluster"] > * {
+  align-self: center;
+}
+.time-filter-range-wrap,
+[data-legacy~="time-filter-range-wrap"] {
+  display: flex;
   flex-wrap: wrap;
   align-items: center;
+  align-content: center;
   gap: 0.25rem 0.35rem;
-}.time-filter-range-sep, [data-legacy~="time-filter-range-sep"]{color: #6b7280;
+  line-height: 1;
+}
+.time-filter-range-wrap > *,
+[data-legacy~="time-filter-range-wrap"] > * {
+  align-self: center;
+}
+.time-filter-range-sep,
+[data-legacy~="time-filter-range-sep"] {
+  color: #6b7280;
   font-size: 0.8125rem;
   line-height: 1;
   user-select: none;
   flex-shrink: 0;
-}.time-filter-date-field, [data-legacy~="time-filter-date-field"]{position: relative;
+}
+.time-filter-date-field,
+[data-legacy~="time-filter-date-field"] {
+  position: relative;
   display: inline-flex;
   flex-direction: row;
   align-items: center;
+  justify-content: center;
   gap: 0.3rem;
   max-width: 100%;
+  min-height: 0;
+  line-height: 1;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-}.time-filter-date-field input[type="date"], [data-legacy~="time-filter-date-field"] input[type="date"]{position: absolute;
+}
+.time-filter-date-field input[type="date"],
+[data-legacy~="time-filter-date-field"] input[type="date"] {
+  position: absolute;
   width: 1px;
   height: 1px;
   padding: 0;
@@ -63,21 +112,37 @@
   border: 0;
   opacity: 0;
   pointer-events: none;
-}.time-filter-date-label, [data-legacy~="time-filter-date-label"]{font-size: 0.8125rem;
+}
+.time-filter-date-label,
+[data-legacy~="time-filter-date-label"] {
+  font-size: 0.8125rem;
   font-weight: 500;
   color: #374151;
-  line-height: 1.2;
+  line-height: 1;
   white-space: nowrap;
-}.time-filter-date-cal-icon, [data-legacy~="time-filter-date-cal-icon"]{flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+}
+.time-filter-date-cal-icon,
+[data-legacy~="time-filter-date-cal-icon"] {
+  flex-shrink: 0;
   display: block;
   opacity: 0.72;
-}.time-filter-day-nav, [data-legacy~="time-filter-day-nav"]{display: inline-flex;
+  align-self: center;
+}
+.time-filter-day-nav,
+[data-legacy~="time-filter-day-nav"] {
+  display: inline-flex;
   flex-direction: row;
   align-items: center;
   gap: 0.15rem;
   flex-shrink: 0;
-}.time-filter-day-prev,
-.time-filter-day-next, [data-legacy~="time-filter-day-prev"], [data-legacy~="time-filter-day-next"]{display: inline-flex;
+}
+.time-filter-day-prev,
+.time-filter-day-next,
+[data-legacy~="time-filter-day-prev"],
+[data-legacy~="time-filter-day-next"] {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0;
@@ -87,18 +152,205 @@
   cursor: pointer;
   line-height: 0;
   -webkit-tap-highlight-color: transparent;
-}.time-filter-day-prev:focus-visible,
-.time-filter-day-next:focus-visible, [data-legacy~="time-filter-day-prev"]:focus-visible, [data-legacy~="time-filter-day-next"]:focus-visible{outline: 2px solid #8b9a8c;
+}
+.time-filter-day-prev:focus-visible,
+.time-filter-day-next:focus-visible,
+[data-legacy~="time-filter-day-prev"]:focus-visible,
+[data-legacy~="time-filter-day-next"]:focus-visible {
+  outline: 2px solid #8b9a8c;
   outline-offset: 2px;
-}.archive-search-row.lp-date-range-search-row, [data-legacy~="archive-search-row"][data-legacy~="lp-date-range-search-row"]{display: flex;
+}
+.archive-search-row.lp-date-range-search-row,
+[data-legacy~="archive-search-row"][data-legacy~="lp-date-range-search-row"] {
+  display: flex;
   flex-direction: row;
   align-items: center;
   gap: 0.5rem;
   width: 100%;
   box-sizing: border-box;
-}.archive-search-row.lp-date-range-search-row .archive-search-wrap, [data-legacy~="archive-search-row"][data-legacy~="lp-date-range-search-row"] [data-legacy~="archive-search-wrap"]{flex: 1 1 auto;
+}
+.archive-search-row.lp-date-range-search-row .archive-search-wrap,
+[data-legacy~="archive-search-row"][data-legacy~="lp-date-range-search-row"]
+  [data-legacy~="archive-search-wrap"] {
+  flex: 1 1 auto;
   min-width: 0;
-}.archive-search-row.lp-date-range-search-row .archive-date-nav-cluster, [data-legacy~="archive-search-row"][data-legacy~="lp-date-range-search-row"] [data-legacy~="archive-date-nav-cluster"]{flex: 0 0 auto;
+}
+.archive-search-row.lp-date-range-search-row .archive-date-nav-cluster,
+[data-legacy~="archive-search-row"][data-legacy~="lp-date-range-search-row"]
+  [data-legacy~="archive-date-nav-cluster"] {
+  flex: 0 0 auto;
   max-width: 100%;
   margin-left: auto;
+}
+
+/* 시간 기록 리스트 행: 왼쪽 컬러바 · 아이콘+과제·시간 · 총시간+가격 · 하단 메모 */
+.time-ledger-view .time-ledger-mobile-cards,
+[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-mobile-cards"] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  width: 100%;
+  box-sizing: border-box;
+  /* 날짜 픽커 구분선과 첫 줄(헤더·카드)만 띄움 — 카드마다 마진 없음 */
+  padding-top: 0.5rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+.time-ledger-view .time-ledger-mobile-card,
+[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-mobile-card"] {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #e8e2d2;
+  border-radius: 0.55rem;
+  background: transparent;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+.time-ledger-view [data-legacy~="time-mobile-card-leading"],
+[data-legacy~="time-ledger-view"] [data-legacy~="time-mobile-card-leading"] {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.time-ledger-view [data-legacy~="time-mobile-card-color-bar"],
+[data-legacy~="time-ledger-view"] [data-legacy~="time-mobile-card-color-bar"] {
+  width: 0.35rem;
+  flex: 1 1 auto;
+  min-height: 3rem;
+  border-radius: 0.15rem 0 0 0.15rem;
+}
+.time-ledger-view [data-legacy~="time-mobile-card-body"],
+[data-legacy~="time-ledger-view"] [data-legacy~="time-mobile-card-body"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.55rem 0.65rem 0.55rem 0.55rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.time-ledger-view [data-legacy~="time-mobile-card-top-grid"],
+[data-legacy~="time-ledger-view"] [data-legacy~="time-mobile-card-top-grid"] {
+  display: grid;
+  grid-template-columns: 2.85rem minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.45rem 0.55rem;
+}
+.time-ledger-view [data-legacy~="time-mobile-card-icon-slot"]:not([data-legacy~="time-mobile-card-icon-slot--empty"]),
+[data-legacy~="time-ledger-view"] [data-legacy~="time-mobile-card-icon-slot"]:not([data-legacy~="time-mobile-card-icon-slot--empty"]) {
+  width: 2.85rem;
+  height: 2.85rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.35rem;
+  box-sizing: border-box;
+}
+.time-ledger-view [data-legacy~="time-mobile-card-icon-slot"][data-legacy~="time-mobile-card-icon-slot--empty"],
+[data-legacy~="time-ledger-view"] [data-legacy~="time-mobile-card-icon-slot"][data-legacy~="time-mobile-card-icon-slot--empty"] {
+  width: 2.85rem;
+  height: 2.85rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.35rem;
+  box-sizing: border-box;
+  background: transparent;
+  border: 1px dashed #ddd8cc;
+}
+.time-ledger-view [data-legacy~="time-mobile-card-icon-slot"] img,
+[data-legacy~="time-ledger-view"] [data-legacy~="time-mobile-card-icon-slot"] img {
+  max-width: 2.35rem;
+  max-height: 2.35rem;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+.time-ledger-view [data-legacy~="time-mobile-card-center-col"],
+[data-legacy~="time-ledger-view"] [data-legacy~="time-mobile-card-center-col"] {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 0.2rem;
+  min-width: 0;
+}
+.time-ledger-view
+  [data-legacy~="time-mobile-card-center-col"]
+  [data-legacy~="time-mobile-card-task"],
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-mobile-card-center-col"]
+  [data-legacy~="time-mobile-card-task"] {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #2d3b2e;
+  line-height: 1.25;
+  word-break: break-word;
+}
+.time-ledger-view
+  [data-legacy~="time-mobile-card-center-col"]
+  [data-legacy~="time-mobile-card-time"],
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-mobile-card-center-col"]
+  [data-legacy~="time-mobile-card-time"] {
+  font-size: 0.8125rem;
+  color: #5c665d;
+  line-height: 1.3;
+}
+.time-ledger-view [data-legacy~="time-mobile-card-right-col"],
+[data-legacy~="time-ledger-view"] [data-legacy~="time-mobile-card-right-col"] {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: 0.2rem;
+  flex-shrink: 0;
+  text-align: right;
+}
+.time-ledger-view
+  [data-legacy~="time-mobile-card-right-col"]
+  [data-legacy~="time-mobile-card-tracked"],
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-mobile-card-right-col"]
+  [data-legacy~="time-mobile-card-tracked"] {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #2d3b2e;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.time-ledger-view [data-legacy~="time-mobile-card-price"],
+[data-legacy~="time-ledger-view"] [data-legacy~="time-mobile-card-price"] {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #5c665d;
+  white-space: nowrap;
+}
+.time-ledger-view [data-legacy~="time-mobile-card-price"][data-legacy~="is-negative"],
+[data-legacy~="time-ledger-view"] [data-legacy~="time-mobile-card-price"][data-legacy~="is-negative"] {
+  color: #c62828;
+}
+.time-ledger-view [data-legacy~="time-mobile-card-price"][data-legacy~="is-positive"],
+[data-legacy~="time-ledger-view"] [data-legacy~="time-mobile-card-price"][data-legacy~="is-positive"] {
+  color: #2e7d32;
+}
+.time-ledger-view [data-legacy~="time-mobile-card-memo"],
+[data-legacy~="time-ledger-view"] [data-legacy~="time-mobile-card-memo"] {
+  width: 100%;
+  font-size: 0.8125rem;
+  color: #6b7280;
+  line-height: 1.4;
+  padding-top: 0.35rem;
+  border-top: 1px solid #ece6d9;
+  word-break: break-word;
+}
+.time-ledger-view [data-legacy~="time-mobile-card-expense-snippet"],
+[data-legacy~="time-ledger-view"] [data-legacy~="time-mobile-card-expense-snippet"] {
+  font-size: 0.8125rem;
+  color: #5c665d;
 }
