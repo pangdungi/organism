@@ -169,19 +169,19 @@ export const DEFAULT_SECTION_COLORS = {
 };
 
 /**
- * 시간가계부 생산성 3분류 기본 색 — 홈「지금 진행 중」·막대·태그와 통일
- * - 생산: #C13030
- * - 비생산: #2172BE
- * - 기타: #4E8A1E
+ * 시간가계부 생산성 3분류 기본 색 — 홈「지금 진행 중」·막대·태그·리스트 카드와 통일
+ * - 생산: #FFABAB
+ * - 비생산: #AFCBE6
+ * - 기타: #A8D5A2 (Foam Green 계열)
  */
 export const DEFAULT_TIME_CATEGORY_COLORS = {
-  productive: hexToRgba("#C13030", 0.94),
-  nonproductive: hexToRgba("#2172BE", 0.94),
-  other: hexToRgba("#4E8A1E", 0.94),
+  productive: hexToRgba("#FFABAB", 0.94),
+  nonproductive: hexToRgba("#AFCBE6", 0.94),
+  other: hexToRgba("#A8D5A2", 0.94),
 };
 
 /** 생산성 색 프리셋 개편 시 버전 올리면, 저장값 없거나 구버전이면 아래 기본으로 일괄 적용 */
-const TIME_CATEGORY_PRESET_VERSION = 3;
+const TIME_CATEGORY_PRESET_VERSION = 4;
 
 /** 고정 리스트(브레인덤프·꿈·부수입·건강·행복) 기본색 재배치 시 버전 증가 */
 const SECTION_LIST_PRESET_VERSION = 3;
@@ -465,7 +465,7 @@ function rgbStringToHex6(rgbStr) {
 
 /**
  * 생산/비생산/기타 — 홈 과제 막대·제목 등에 쓰는 불투명 6자리 hex
- * (설정의 rgba를 rgb로 올린 뒤 변환; 기본 #C13030 / #2172BE / #4E8A1E)
+ * (설정의 rgba를 rgb로 올린 뒤 변환; 기본 #FFABAB / #AFCBE6 / #A8D5A2)
  */
 export function getTimeCategorySolidHex(prodKey) {
   const k =
@@ -482,39 +482,37 @@ export function getTimeCategorySolidHex(prodKey) {
   const hex = rgbStringToHex6(rgbaToRgb(rgba));
   if (hex) return hex;
   return k === "productive"
-    ? "#C13030"
+    ? "#FFABAB"
     : k === "nonproductive"
-      ? "#2172BE"
-      : "#4E8A1E";
+      ? "#AFCBE6"
+      : "#A8D5A2";
 }
 
 /**
  * 타임블록 면 스펙 — 홈 타임라인 카드·시간 마커 배경·글자
- * - 생산: 배경 #FCEAEA / 글자 #791F1F / 카드 왼쪽 강조 #F5A0A0
- * - 비생산: 배경 #E3EEF9 / 글자 #0C447C / 왼쪽 강조 #9EC8F0
- * - 기타: 배경 #EBF5E1 / 글자 #27500A / 왼쪽 강조 #C5E09A
+ * 왼쪽 강조 막대는 시간가계부 리스트 카드 컬러바와 동일 톤(#FFABAB / #AFCBE6 / #A8D5A2)
  */
 export const TIMETABLE_SURFACE_SPECS = {
   productive: {
-    bg: "#FCEAEA",
-    border: "#791F1F",
+    bg: "#FFF5F5",
+    border: "#C97B7B",
     /** 타임라인 카드 왼쪽 세로 강조 막대 */
-    leftStripe: "#F5A0A0",
-    textPrimary: "#791F1F",
+    leftStripe: "#FFABAB",
+    textPrimary: "#6B2F2F",
     textSecondary: "#5C1818",
   },
   nonproductive: {
-    bg: "#E3EEF9",
-    border: "#0C447C",
-    leftStripe: "#9EC8F0",
-    textPrimary: "#0C447C",
+    bg: "#F3F8FC",
+    border: "#6B8EAE",
+    leftStripe: "#AFCBE6",
+    textPrimary: "#2E4A62",
     textSecondary: "#083560",
   },
   other: {
-    bg: "#EBF5E1",
-    border: "#27500A",
-    leftStripe: "#C5E09A",
-    textPrimary: "#27500A",
+    bg: "#F2F8F0",
+    border: "#5E8A52",
+    leftStripe: "#A8D5A2",
+    textPrimary: "#2D4A28",
     textSecondary: "#1E3F08",
   },
 };

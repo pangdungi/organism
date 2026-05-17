@@ -2791,11 +2791,11 @@ function timeLedgerListRowIconSrc(rowData) {
   return "";
 }
 
-/** 모바일 리스트 컬러바: 생산적 빨강 · 비생산 파랑 · 그 외 초록 (추후 조정) */
+/** 모바일 리스트 왼쪽 컬러바 — 기본 생산성 3색(테이블 막대·DEFAULT_TIME_CATEGORY_COLORS와 동일 톤) */
 function getProductivityBarColor(prod) {
-  if (prod === "productive") return "#e53935";
-  if (prod === "nonproductive") return "#1e88e5";
-  return "#43a047";
+  if (prod === "productive") return "#FFABAB";
+  if (prod === "nonproductive") return "#AFCBE6";
+  return "#A8D5A2";
 }
 
 /** 모바일 시간가계부 카드 생성 */
@@ -3654,7 +3654,7 @@ export function render() {
     '[data-legacy~="time-task-log-meal-detail-input"]',
   );
   function updateTaskLogMealDetailVisibility(taskName) {
-    const show = AUDIT_UNHEALTHY_MEAL_TASK_NAMES.has((taskName || "").trim());
+    const show = WS_DIET_LEDGER_TASK_NAMES.has((taskName || "").trim());
     if (taskLogMealDetailSection) {
       taskLogMealDetailSection.hidden = !show;
       if (!show && taskLogMealDetailInput) taskLogMealDetailInput.value = "";
@@ -5888,7 +5888,7 @@ export function render() {
     let mealDetailVal = String(data.mealDetail || "").trim();
     let feedbackRaw = String(data.feedback || "").trim();
     const tnForMemo = (data.taskName || "").trim();
-    if (AUDIT_UNHEALTHY_MEAL_TASK_NAMES.has(tnForMemo)) {
+    if (WS_DIET_LEDGER_TASK_NAMES.has(tnForMemo)) {
       if (!mealDetailVal && feedbackRaw.startsWith("[식단] ")) {
         const sp = splitUnhealthyMealMemoFromDb(feedbackRaw);
         mealDetailVal = sp.mealDetail;
@@ -6078,7 +6078,7 @@ export function render() {
       return;
     }
     const feedbackBody = (taskLogFeedbackInput?.value || "").trim();
-    const mealDetailForRow = AUDIT_UNHEALTHY_MEAL_TASK_NAMES.has(taskName)
+    const mealDetailForRow = WS_DIET_LEDGER_TASK_NAMES.has(taskName)
       ? (taskLogMealDetailInput?.value || "").trim()
       : "";
     const feedback = feedbackBody;
