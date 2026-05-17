@@ -1,0 +1,490 @@
+/**
+ * 캘린더 뷰 — 월별 / 2주 / 1주 도킹 스트립 공통 그리드
+ * 모바일·데스크톱 동일 레이아웃 (막대 밀도는 .calendar-monthly-layout CSS 변수 + JS 공통).
+ */
+
+/* -------------------------------------------------------------------------- */
+/* 토큰 (캘린더 트리 안에서만) */
+/* -------------------------------------------------------------------------- */
+
+.calendar-monthly-layout {
+  --cal-line: rgba(61, 74, 62, 0.12);
+  --cal-line-strong: rgba(61, 74, 62, 0.18);
+  --cal-surface: #fff;
+  --cal-surface-muted: rgba(61, 74, 62, 0.04);
+  --cal-text: #2a3229;
+  --cal-text-muted: rgba(42, 50, 41, 0.55);
+  --cal-today-accent: #3d4a3e;
+  --cal-radius: 10px;
+  --cal-cell-pad: 0.35rem;
+  --cal-weekday-pad-y: 0.45rem;
+  --cal-nav-gap: 0.5rem;
+  /**
+   * 막대 스택 — JS `lpCalendarWeekBarLayoutMetrics` 가 숫자만 파싱 (예: 2.35rem → 2.35)
+   * 날짜 숫자·패딩 아래부터 막대 시작, 행 사이 여백 통일 (모바일/데스크톱 동일)
+   */
+  --cal-bar-stack-offset: 2.35rem;
+  --cal-bar-row-min: 1.32rem;
+  --cal-bar-row-gap: 0.18rem;
+  --cal-bar-bottom-pad: 0.36rem;
+  /** 막대 없는 주·최소 행 높이 — Calendar.js `lpCalendarMonthlyWeekRowTargetMinHeightRem` 과 동기 */
+  --cal-week-row-min: 4.75rem;
+  color: var(--cal-text);
+  box-sizing: border-box;
+}
+
+.calendar-monthly-layout *,
+.calendar-monthly-layout *::before,
+.calendar-monthly-layout *::after {
+  box-sizing: inherit;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 셸: 서브탭이 있는 일정 탭 */
+/* -------------------------------------------------------------------------- */
+
+.calendar-view-with-subtabs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.calendar-view-top-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.calendar-monthly-tabs-wrap {
+  min-width: 0;
+}
+
+/* 서브뷰 전환 — 미니멀 세그먼트 */
+.calendar-sub-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  padding: 0.15rem 0;
+  margin-bottom: 0.15rem;
+}
+
+.calendar-sub-tab {
+  margin: 0;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--cal-text-muted);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.calendar-sub-tab:hover {
+  color: var(--cal-text);
+  background: var(--cal-surface-muted);
+}
+
+.calendar-sub-tab.active {
+  color: var(--cal-today-accent);
+  border-color: var(--cal-line-strong);
+  background: var(--cal-surface);
+}
+
+.calendar-sub-tab-label {
+  pointer-events: none;
+}
+
+.calendar-monthly-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 네비게이션 (월별 · n주 공통) */
+/* -------------------------------------------------------------------------- */
+
+.calendar-monthly-nav,
+.calendar-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cal-nav-gap);
+  padding: 0.25rem 0.75rem 0.5rem;
+}
+
+.calendar-nav-date {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-size: 1.05rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.calendar-nav-month {
+  text-transform: capitalize;
+  font-size: 3.25rem;
+  line-height: 1.05;
+}
+
+.calendar-nav-year {
+  font-size: 0.9em;
+  font-weight: 600;
+  color: var(--cal-text-muted);
+}
+
+.calendar-nav-controls {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-end;
+  gap: 0.25rem;
+}
+
+.calendar-nav-controls button {
+  margin: 0;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--cal-line);
+  border-radius: 8px;
+  background: var(--cal-surface);
+  color: var(--cal-text);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.calendar-nav-controls button:hover {
+  border-color: var(--cal-line-strong);
+  background: var(--cal-surface-muted);
+}
+
+.calendar-nav-controls .calendar-nav-today {
+  padding-inline: 0.75rem;
+  font-weight: 600;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 뷰포트~푸터: 일정 탭에서 그리드가 남는 세로 공간까지 확장 */
+/* -------------------------------------------------------------------------- */
+
+.app-tab-panel > .calendar-view {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-view > .calendar-content-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-content-wrap > .calendar-monthly-layout {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-monthly-layout.calendar-view-with-subtabs > .calendar-view-top-row {
+  flex-shrink: 0;
+}
+
+.calendar-monthly-layout.calendar-view-with-subtabs > .calendar-view-content-area {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-view-content-area > .calendar-monthly-layout {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 그리드 컨테이너 (타임블록 1일 제외: .calendar-1day-view) */
+/* -------------------------------------------------------------------------- */
+
+.calendar-monthly-layout:not(.calendar-1day-view) > .calendar-monthly-main > .calendar-monthly-grid {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  border-block: 1px solid var(--cal-line);
+  border-inline: none;
+  border-radius: var(--cal-radius);
+  overflow: hidden;
+  background: var(--cal-surface);
+}
+
+/* 월별·2주: 요일 행 고정, 주 행은 남는 높이 균등 분배(셀 min·JS 높이는 유지) */
+.calendar-monthly-grid:not(.calendar-monthly-grid--1week-timegrid) > .calendar-monthly-weekdays {
+  flex-shrink: 0;
+}
+
+.calendar-monthly-grid:not(.calendar-monthly-grid--1week-timegrid) > .calendar-monthly-week-wrap {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-monthly-grid:not(.calendar-monthly-grid--1week-timegrid)
+  > .calendar-monthly-week-wrap
+  > .calendar-monthly-week {
+  flex: 1 1 auto;
+  width: 100%;
+}
+
+.calendar-monthly-layout:not(.calendar-1day-view) > .calendar-monthly-main > .calendar-monthly-tabs-wrap {
+  flex-shrink: 0;
+}
+
+.calendar-monthly-layout:not(.calendar-1day-view) > .calendar-monthly-main > .calendar-monthly-nav {
+  flex-shrink: 0;
+}
+
+.calendar-monthly-grid--1week-timegrid {
+  border-block: 1px solid var(--cal-line);
+  border-inline: none;
+  border-radius: var(--cal-radius);
+  overflow: hidden;
+  background: var(--cal-surface);
+}
+
+/* -------------------------------------------------------------------------- */
+/* 요일 헤더 */
+/* -------------------------------------------------------------------------- */
+
+.calendar-monthly-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border-bottom: 1px solid var(--cal-line);
+  background: var(--cal-surface-muted);
+}
+
+.calendar-monthly-weekday {
+  padding: var(--cal-weekday-pad-y) var(--cal-cell-pad);
+  text-align: center;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cal-text-muted);
+  border-right: 1px solid var(--cal-line);
+}
+
+.calendar-monthly-weekday:last-child {
+  border-right: none;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 주 행 래퍼 — 기간 막대 absolute 기준 */
+/* -------------------------------------------------------------------------- */
+
+.calendar-monthly-week-wrap {
+  position: relative;
+  border-bottom: 1px solid var(--cal-line);
+  flex: 0 0 auto;
+}
+
+.calendar-monthly-week-wrap:last-child {
+  border-bottom: none;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 요일 셀 7열 */
+/* -------------------------------------------------------------------------- */
+
+.calendar-monthly-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  min-height: var(--cal-week-row-min);
+  position: relative;
+  z-index: 0;
+}
+
+.calendar-monthly-day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: var(--cal-cell-pad);
+  border-right: 1px solid var(--cal-line);
+  min-height: 4.75rem;
+  background: var(--cal-surface);
+  transition: background 0.12s ease;
+}
+
+.calendar-monthly-day:nth-child(7n) {
+  border-right: none;
+}
+
+.calendar-monthly-day.empty {
+  min-height: 2.5rem;
+  background: var(--cal-surface-muted);
+}
+
+.calendar-monthly-day.other-month .calendar-monthly-day-num {
+  color: var(--cal-text-muted);
+  opacity: 0.65;
+}
+
+.calendar-monthly-day.today {
+  background: rgba(61, 74, 62, 0.06);
+}
+
+.calendar-monthly-day.today .calendar-monthly-day-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.65rem;
+  min-height: 1.65rem;
+  padding: 0 0.2rem;
+  border-radius: 999px;
+  background: var(--cal-today-accent);
+  color: #fff;
+  font-weight: 700;
+}
+
+.calendar-monthly-day.sun:not(.today) .calendar-monthly-day-num {
+  color: #b54747;
+}
+
+.calendar-monthly-day.sat:not(.today) .calendar-monthly-day-num {
+  color: #3d5a8a;
+}
+
+.calendar-monthly-day-num {
+  flex-shrink: 0;
+  align-self: flex-start;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0 0 0.22rem;
+  padding: 0;
+}
+
+.calendar-monthly-day-entries {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  font-size: 0.6875rem;
+  line-height: 1.35;
+  color: var(--cal-text-muted);
+}
+
+/* 드래그 타깃 */
+.calendar-monthly-day.calendar-day-drag-over {
+  background: rgba(61, 74, 62, 0.1);
+  outline: 2px solid rgba(61, 74, 62, 0.35);
+  outline-offset: -2px;
+  z-index: 2;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 기간 막대 레이어 */
+/* -------------------------------------------------------------------------- */
+
+.calendar-monthly-bars {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.calendar-monthly-bars .calendar-monthly-span-bar {
+  pointer-events: auto;
+}
+
+.calendar-monthly-span-bar {
+  position: absolute;
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  padding: 0.12rem 0.3rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.calendar-monthly-span-bar--todo,
+.calendar-monthly-span-bar--range {
+  color: var(--cal-text);
+}
+
+.calendar-monthly-span-bar.is-completed {
+  opacity: 0.72;
+}
+
+.calendar-monthly-span-bar--dragging {
+  opacity: 0.85;
+  z-index: 10;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 1주 뷰 상단 스트립 (요일 + 한 주) */
+/* -------------------------------------------------------------------------- */
+
+.calendar-1week-strip-header .calendar-monthly-weekdays {
+  border-radius: 0;
+}
+
+.calendar-1week-strip-header .calendar-monthly-week-wrap {
+  border-bottom: none;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 1주 타임그리드 외곽 (플로우 / 구글 스타일 래퍼) */
+/* -------------------------------------------------------------------------- */
+
+.calendar-1week-time-grid-google {
+  border-radius: var(--cal-radius);
+  border-block: 1px solid var(--cal-line);
+  border-inline: none;
+  overflow: hidden;
+  background: var(--cal-surface);
+}
+
+.calendar-1week-time-grid-google .calendar-monthly-grid--1week-timegrid {
+  border: none;
+  border-radius: 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 일정 탭 패널 여백 — 좌우는 전체 폭(.app-main safe-area) */
+/* -------------------------------------------------------------------------- */
+
+.calendar-view .calendar-monthly-layout,
+.calendar-view .calendar-view-with-subtabs {
+  padding-inline: 0;
+  padding-bottom: 0.5rem;
+}
+
+.calendar-view--mobile-schedule .calendar-content-wrap {
+  min-width: 0;
+}

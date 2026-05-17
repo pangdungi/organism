@@ -175,6 +175,53 @@ function lpCalendarSpanBarTodoMarkerHtml(sectionColor) {
   return `<span class="calendar-monthly-span-bar-checkbox" style="color:${c.replace(/"/g, "")}" aria-hidden="true">|</span>`;
 }
 
+/** 월간·2주·1주 막대 스택: 레이아웃의 CSS 변수와 동기 (모바일/데스크톱 동일 수치) */
+function lpCalendarWeekBarLayoutMetrics(weekRow) {
+  const fallback = {
+    BARS_TOP: 2.35,
+    BAR_HEIGHT: 1.32,
+    BOTTOM_PAD: 0.36,
+    ROW_GAP: 0.18,
+    WEEK_ROW_MIN: 4.75,
+  };
+  let el = weekRow?.closest?.(".calendar-monthly-layout") ?? null;
+  if (!el && typeof document !== "undefined") {
+    el = document.querySelector(".calendar-monthly-layout");
+  }
+  if (!el || typeof getComputedStyle === "undefined") return fallback;
+  const cs = getComputedStyle(el);
+  const n = (prop, def) => {
+    const v = parseFloat(cs.getPropertyValue(prop));
+    return Number.isFinite(v) && v >= 0 ? v : def;
+  };
+  return {
+    BARS_TOP: n("--cal-bar-stack-offset", fallback.BARS_TOP),
+    BAR_HEIGHT: n("--cal-bar-row-min", fallback.BAR_HEIGHT),
+    BOTTOM_PAD: n("--cal-bar-bottom-pad", fallback.BOTTOM_PAD),
+    ROW_GAP: n("--cal-bar-row-gap", fallback.ROW_GAP),
+    WEEK_ROW_MIN: n("--cal-week-row-min", fallback.WEEK_ROW_MIN),
+  };
+}
+
+/** 월간 주 행 목표 min-height(rem): 막대 줄 수만큼만 확장(빈 주는 --cal-week-row-min). */
+function lpCalendarMonthlyWeekRowTargetMinHeightRem(
+  baseBarTop,
+  rowsNeeded,
+  BAR_HEIGHT,
+  ROW_GAP,
+  BOTTOM_PAD,
+  weekRowMinRem,
+) {
+  const floor =
+    Number.isFinite(weekRowMinRem) && weekRowMinRem > 0 ? weekRowMinRem : 4.75;
+  const safeRows = Math.max(0, rowsNeeded);
+  if (safeRows <= 0) return floor;
+  const barGaps = safeRows > 1 ? (safeRows - 1) * ROW_GAP : 0;
+  const stackHeight =
+    baseBarTop + safeRows * BAR_HEIGHT + barGaps + BOTTOM_PAD;
+  return Math.max(floor, stackHeight);
+}
+
 /** 월간 막대: 줄바꿈 반영 후 행별 실제 높이로 top·주 행 minHeight 맞춤(행 겹침 방지). */
 function lpCalendarFinalizeBarRowLayout(
   barsWithRow,
@@ -182,10 +229,13 @@ function lpCalendarFinalizeBarRowLayout(
   BAR_HEIGHT,
   BARS_TOP,
   BOTTOM_PAD,
+  ROW_GAP,
 ) {
+  const gap = Number.isFinite(ROW_GAP) ? Math.max(0, ROW_GAP) : 0;
   if (!barsWithRow.length || !weekRow) return;
+  const { WEEK_ROW_MIN } = lpCalendarWeekBarLayoutMetrics(weekRow);
   const maxRow = Math.max(...barsWithRow.map((b) => b.row), 0);
-  const DEFAULT_ROW_HEIGHT_REM = BARS_TOP + 3 * BAR_HEIGHT + BOTTOM_PAD;
+  const baseTop = BARS_TOP + 0.1;
   requestAnimationFrame(() => {
     const rootFont =
       parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
@@ -198,7 +248,7 @@ function lpCalendarFinalizeBarRowLayout(
       const r = b.row;
       rowMaxPx[r] = Math.max(rowMaxPx[r] || 0, h);
     }
-    let topAcc = 0.1;
+    let topAcc = baseTop;
     const rowTopRem = [];
     for (let r = 0; r <= maxRow; r++) {
       rowTopRem[r] = topAcc;
@@ -207,16 +257,16 @@ function lpCalendarFinalizeBarRowLayout(
         rowMaxPx[r] != null ? pxToRem(rowMaxPx[r]) : BAR_HEIGHT,
       );
       topAcc += slotRem;
+      if (r < maxRow) topAcc += gap;
     }
     for (const b of barsWithRow) {
       if (b._barEl?.isConnected) {
         b._barEl.style.top = `${rowTopRem[b.row]}rem`;
       }
     }
-    const barsBlockRem = topAcc - 0.1;
-    const requiredHeight = BARS_TOP + barsBlockRem + BOTTOM_PAD;
+    const requiredHeight = topAcc + BOTTOM_PAD;
     weekRow.style.minHeight = `${Math.max(
-      DEFAULT_ROW_HEIGHT_REM,
+      WEEK_ROW_MIN,
       requiredHeight,
     )}rem`;
   });
@@ -2000,9 +2050,9 @@ function renderMonthlyView(tabsElement) {
 
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
-      const BAR_HEIGHT = window.matchMedia("(max-width: 48rem)").matches
-        ? 1.02
-        : 1.78;
+      const { BARS_TOP, BAR_HEIGHT, BOTTOM_PAD, ROW_GAP, WEEK_ROW_MIN } =
+        lpCalendarWeekBarLayoutMetrics(weekRow);
+      const baseBarTop = BARS_TOP + 0.1;
       const overlaps = (a, b) =>
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
@@ -2081,23 +2131,22 @@ function renderMonthlyView(tabsElement) {
           .filter((b) => b.isSingleDay && b.dayIdx === dayIdx)
           .sort((a, b) => a.row - b.row),
       );
-      /* 기본 3개 높이 유지, 그 이상이면 행을 늘려 전부 표시 (+n 버튼 없음) */
+      /* 막대 줄 수에 맞춰 해당 주 행만 높이 확장(빈 주는 최소 높이만) */
       allBars.forEach((b) => {
         b.isOverflow = false;
       });
       const maxRow = allBars.length
         ? Math.max(...allBars.map((b) => b.row), 0)
-        : 0;
-      const rowsNeeded = maxRow + 1;
-      const BARS_TOP = window.matchMedia("(max-width: 48rem)").matches
-        ? 1.62
-        : 2.25;
-      const BOTTOM_PAD = window.matchMedia("(max-width: 48rem)").matches
-        ? 0.34
-        : 0.42;
-      const DEFAULT_ROW_HEIGHT_REM = BARS_TOP + 3 * BAR_HEIGHT + BOTTOM_PAD;
-      const requiredHeight = BARS_TOP + rowsNeeded * BAR_HEIGHT + BOTTOM_PAD;
-      weekRow.style.minHeight = `${Math.max(DEFAULT_ROW_HEIGHT_REM, requiredHeight)}rem`;
+        : -1;
+      const rowsNeeded = allBars.length ? maxRow + 1 : 0;
+      weekRow.style.minHeight = `${lpCalendarMonthlyWeekRowTargetMinHeightRem(
+        baseBarTop,
+        rowsNeeded,
+        BAR_HEIGHT,
+        ROW_GAP,
+        BOTTOM_PAD,
+        WEEK_ROW_MIN,
+      )}rem`;
       const barsWithRow = allBars;
       barsWithRow.forEach((b) => {
         const isTodo = (b.itemType || "todo").toLowerCase() === "todo";
@@ -2115,7 +2164,7 @@ function renderMonthlyView(tabsElement) {
             ? " calendar-monthly-span-bar--schedule-strip"
             : "");
         bar.title = b.name;
-        bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.1 + b.row * BAR_HEIGHT}rem`;
+        bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${baseBarTop + b.row * (BAR_HEIGHT + ROW_GAP)}rem`;
         lpApplyCalendarMultiDaySpanBarBackground(bar, b);
         if (b.isSingleDay) {
           if (isTodo) {
@@ -2194,6 +2243,7 @@ function renderMonthlyView(tabsElement) {
         BAR_HEIGHT,
         BARS_TOP,
         BOTTOM_PAD,
+        ROW_GAP,
       );
       const moreEl = document.createElement("div");
       moreEl.className = "calendar-day-more-overlay";
@@ -2628,9 +2678,9 @@ function render2WeekView(tabsElement) {
 
       const barsEl = document.createElement("div");
       barsEl.className = "calendar-monthly-bars";
-      const BAR_HEIGHT = window.matchMedia("(max-width: 48rem)").matches
-        ? 1.02
-        : 1.78;
+      const { BARS_TOP, BAR_HEIGHT, BOTTOM_PAD, ROW_GAP, WEEK_ROW_MIN } =
+        lpCalendarWeekBarLayoutMetrics(weekRow);
+      const baseBarTop = BARS_TOP + 0.1;
       const overlaps = (a, b) =>
         a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
@@ -2709,23 +2759,22 @@ function render2WeekView(tabsElement) {
           .filter((b) => b.isSingleDay && b.dayIdx === dayIdx)
           .sort((a, b) => a.row - b.row),
       );
-      /* 기본 3개 높이 유지, 그 이상이면 행을 늘려 전부 표시 (+n 버튼 없음) */
+      /* 막대 줄 수에 맞춰 해당 주 행만 높이 확장(빈 주는 최소 높이만) */
       allBars.forEach((b) => {
         b.isOverflow = false;
       });
       const maxRow = allBars.length
         ? Math.max(...allBars.map((b) => b.row), 0)
-        : 0;
-      const rowsNeeded = maxRow + 1;
-      const BARS_TOP = window.matchMedia("(max-width: 48rem)").matches
-        ? 1.62
-        : 2.25;
-      const BOTTOM_PAD = window.matchMedia("(max-width: 48rem)").matches
-        ? 0.34
-        : 0.42;
-      const DEFAULT_ROW_HEIGHT_REM = BARS_TOP + 3 * BAR_HEIGHT + BOTTOM_PAD;
-      const requiredHeight = BARS_TOP + rowsNeeded * BAR_HEIGHT + BOTTOM_PAD;
-      weekRow.style.minHeight = `${Math.max(DEFAULT_ROW_HEIGHT_REM, requiredHeight)}rem`;
+        : -1;
+      const rowsNeeded = allBars.length ? maxRow + 1 : 0;
+      weekRow.style.minHeight = `${lpCalendarMonthlyWeekRowTargetMinHeightRem(
+        baseBarTop,
+        rowsNeeded,
+        BAR_HEIGHT,
+        ROW_GAP,
+        BOTTOM_PAD,
+        WEEK_ROW_MIN,
+      )}rem`;
       const barsWithRow = allBars;
       barsWithRow.forEach((b) => {
         const isTodo = (b.itemType || "todo").toLowerCase() === "todo";
@@ -2743,7 +2792,7 @@ function render2WeekView(tabsElement) {
             ? " calendar-monthly-span-bar--schedule-strip"
             : "");
         bar.title = b.name;
-        bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.1 + b.row * BAR_HEIGHT}rem`;
+        bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${baseBarTop + b.row * (BAR_HEIGHT + ROW_GAP)}rem`;
         lpApplyCalendarMultiDaySpanBarBackground(bar, b);
         if (b.isSingleDay) {
           if (isTodo) {
@@ -2822,6 +2871,7 @@ function render2WeekView(tabsElement) {
         BAR_HEIGHT,
         BARS_TOP,
         BOTTOM_PAD,
+        ROW_GAP,
       );
       const moreEl = document.createElement("div");
       moreEl.className = "calendar-day-more-overlay";
@@ -4154,9 +4204,9 @@ function render1WeekView(tabsElement) {
 
     const barsEl = document.createElement("div");
     barsEl.className = "calendar-monthly-bars";
-    const BAR_HEIGHT = window.matchMedia("(max-width: 48rem)").matches
-      ? 1.02
-      : 1.78;
+    const { BARS_TOP, BAR_HEIGHT, BOTTOM_PAD, ROW_GAP, WEEK_ROW_MIN } =
+      lpCalendarWeekBarLayoutMetrics(weekRow);
+    const baseBarTop = BARS_TOP + 0.1;
     const overlaps = (a, b) =>
       a.left < b.left + b.width && b.left < a.left + a.width;
     const allBars = [];
@@ -4234,17 +4284,16 @@ function render1WeekView(tabsElement) {
     });
     const maxRow = allBars.length
       ? Math.max(...allBars.map((b) => b.row), 0)
-      : 0;
-    const rowsNeeded = maxRow + 1;
-    const BARS_TOP = window.matchMedia("(max-width: 48rem)").matches
-      ? 1.62
-      : 2.25;
-    const BOTTOM_PAD = window.matchMedia("(max-width: 48rem)").matches
-      ? 0.34
-      : 0.42;
-    const DEFAULT_ROW_HEIGHT_REM = BARS_TOP + 3 * BAR_HEIGHT + BOTTOM_PAD;
-    const requiredHeight = BARS_TOP + rowsNeeded * BAR_HEIGHT + BOTTOM_PAD;
-    weekRow.style.minHeight = `${Math.max(DEFAULT_ROW_HEIGHT_REM, requiredHeight)}rem`;
+      : -1;
+    const rowsNeeded = allBars.length ? maxRow + 1 : 0;
+    weekRow.style.minHeight = `${lpCalendarMonthlyWeekRowTargetMinHeightRem(
+      baseBarTop,
+      rowsNeeded,
+      BAR_HEIGHT,
+      ROW_GAP,
+      BOTTOM_PAD,
+      WEEK_ROW_MIN,
+    )}rem`;
     const barsWithRow = allBars;
     barsWithRow.forEach((b) => {
       const isTodo = (b.itemType || "todo").toLowerCase() === "todo";
@@ -4262,7 +4311,7 @@ function render1WeekView(tabsElement) {
           ? " calendar-monthly-span-bar--schedule-strip"
           : "");
       bar.title = b.name;
-      bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${0.1 + b.row * BAR_HEIGHT}rem`;
+      bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${baseBarTop + b.row * (BAR_HEIGHT + ROW_GAP)}rem`;
       lpApplyCalendarMultiDaySpanBarBackground(bar, b);
       if (b.isSingleDay) {
         if (isTodo) {
@@ -4336,6 +4385,7 @@ function render1WeekView(tabsElement) {
       BAR_HEIGHT,
       BARS_TOP,
       BOTTOM_PAD,
+      ROW_GAP,
     );
     const moreEl = document.createElement("div");
     moreEl.className = "calendar-day-more-overlay";
@@ -5281,7 +5331,6 @@ export function render() {
     const view = "todo";
 
     saveTodoListBeforeUnmount(contentWrap);
-    registerEisenhowerQuadrantsRefresh(null);
     const gen = ++_renderContentGen;
 
     if (_calendarMainSubtabPullPrimedByApp) {
