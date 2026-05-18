@@ -449,6 +449,10 @@ export async function mountApp(container) {
           try {
             window.__lpIdeaSoftRefresh?.();
           } catch (_) {}
+        } else if (targetTabId === "home") {
+          try {
+            await syncAdminMenuVisibility();
+          } catch (_) {}
         } else {
           renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
         }
@@ -783,6 +787,11 @@ export async function mountApp(container) {
     } else if (bootTabId === "idea") {
       try {
         window.__lpIdeaSoftRefresh?.();
+      } catch (_) {}
+    } else if (bootTabId === "home") {
+      /* 메뉴 런처는 pull 후에도 DOM 구조·아이콘 URL 동일 — 두 번째 renderMain 하면 <img>만 통째로 다시 붙어 깜빡임 */
+      try {
+        await syncAdminMenuVisibility();
       } catch (_) {}
     } else {
       renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
