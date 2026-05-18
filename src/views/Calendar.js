@@ -3006,6 +3006,89 @@ function sumLedgerEffectiveMinutesMatchingTaskOnDay(dayRows, span) {
   return sumMin;
 }
 
+function ledgerRowNameMatchesSpan(r, span) {
+  const expName = normTaskNameForWeekFlowMatch(span.taskName);
+  const expTid = String(span._task?.taskId || "").trim();
+  const rtid = String(r?.taskId || "").trim();
+  const rn = normTaskNameForWeekFlowMatch(r?.taskName);
+  return (
+    (expTid && rtid && expTid === rtid) ||
+    !!(expName && rn && expName === rn)
+  );
+}
+
+/** 프로그레스·실제 칸 표시에 쓸 같은 과제 기록 목록(겹침 우선, 없으면 당일 매칭) */
+function getLedgerRowsContributingToActualDisplay(
+  dayRows,
+  span,
+  targetKeyYmd,
+  nowDate,
+) {
+  if (!Array.isArray(dayRows) || !span || !targetKeyYmd) return [];
+  const expStart = Number(span.startMin);
+  const expEnd = Number(span.endMin);
+  if (
+    !Number.isFinite(expStart) ||
+    !Number.isFinite(expEnd) ||
+    expEnd <= expStart
+  ) {
+    return [];
+  }
+  const parts = String(targetKeyYmd).split("-").map(Number);
+  if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) return [];
+  const [yy, mo, dd] = parts;
+  const dayBaseMs = new Date(yy, mo - 1, dd, 0, 0, 0, 0).getTime();
+  const spanStartMs = dayBaseMs + expStart * 60000;
+  const spanEndMs = dayBaseMs + expEnd * 60000;
+  const nowMs = nowDate.getTime();
+  const overlapRows = [];
+  for (const r of dayRows) {
+    if (!ledgerRowNameMatchesSpan(r, span)) continue;
+    const startMs = getRowStartInstantForMobileCard(r)?.getTime();
+    if (!Number.isFinite(startMs)) continue;
+    let endMs;
+    if (rowHasEndTimeForMobileCard(r)) {
+      endMs = getRowEndInstantForMobileCard(r)?.getTime();
+      if (!Number.isFinite(endMs)) continue;
+    } else {
+      endMs = nowMs;
+    }
+    const lo = Math.max(startMs, spanStartMs);
+    const hi = Math.min(endMs, spanEndMs);
+    if (hi > lo) overlapRows.push(r);
+  }
+  if (overlapRows.length) return overlapRows;
+  if (weekFlowExpectedSpanHasLedgerMatch(dayRows, span)) {
+    return dayRows.filter((r) => ledgerRowNameMatchesSpan(r, span));
+  }
+  return [];
+}
+
+function formatClockHmFromDate(d) {
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "";
+  return `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+function formatActualLedgerTimeRangeLine(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return "—";
+  const sorted = [...rows].sort((a, b) => {
+    const ta = getRowStartInstantForMobileCard(a)?.getTime() ?? 0;
+    const tb = getRowStartInstantForMobileCard(b)?.getTime() ?? 0;
+    return ta - tb;
+  });
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+  const sInst = getRowStartInstantForMobileCard(first);
+  const sStr = formatClockHmFromDate(sInst);
+  if (!sStr) return "—";
+  if (!rowHasEndTimeForMobileCard(last)) {
+    return `${sStr} ~ 진행 중`;
+  }
+  const eInst = getRowEndInstantForMobileCard(last);
+  const eStr = formatClockHmFromDate(eInst);
+  return eStr ? `${sStr} ~ ${eStr}` : `${sStr} ~ —`;
+}
+
 /** 예상 블록 종료 시각이 지났거나(당일) 날짜가 지났는데 실제 기록이 없을 때만 미이행 표시 */
 function weekFlowExpectedSpanLedgerMissed(
   dayKeyYmd,
@@ -3275,6 +3358,15 @@ function render1DayView(tabsElement = null) {
         );
         const progressOverExpected = progressRatio > 1.0001;
 
+        const actualRowsForDisplay = getLedgerRowsContributingToActualDisplay(
+          dayLedgerRowsTL,
+          span,
+          targetKey,
+          nowForTimeline,
+        );
+        const actualRangeLine =
+          formatActualLedgerTimeRangeLine(actualRowsForDisplay);
+
         const sidRaw = String(span.sectionId || "").trim();
         let sectionAccent = "";
         if (sidRaw && !sidRaw.startsWith("custom-")) {
@@ -3325,39 +3417,8 @@ function render1DayView(tabsElement = null) {
           );
         }
 
-        const startEl = document.createElement("span");
-        startEl.className = "calendar-1day-timeline-card-start";
-        startEl.textContent = span.startDisplay;
-
-        const headBarCell = document.createElement("div");
-        headBarCell.className = "calendar-1day-timeline-card-head-bar";
-        const trackEl = document.createElement("div");
-        trackEl.className = "calendar-1day-timeline-card-bar-track";
-        trackEl.setAttribute("aria-hidden", "true");
-        const fillEl = document.createElement("div");
-        fillEl.className = "calendar-1day-timeline-card-head-bar-fill";
-        fillEl.style.width = `${progressPctFill}%`;
-        trackEl.appendChild(fillEl);
-        headBarCell.appendChild(trackEl);
-
-        const timeConnector = document.createElement("span");
-        timeConnector.className = "calendar-1day-timeline-card-time-connector";
-        timeConnector.setAttribute("aria-hidden", "true");
-
-        const endEl = document.createElement("span");
-        endEl.className = "calendar-1day-timeline-card-end";
-        endEl.textContent = span.endDisplay;
-
-        card.appendChild(startEl);
-        card.appendChild(headBarCell);
-        card.appendChild(timeConnector);
-
-        const body = document.createElement("div");
-        body.className = "calendar-1day-timeline-card-body";
-
-        const durRow = document.createElement("span");
-        durRow.className = "calendar-1day-timeline-card-duration";
-        durRow.textContent = formatIntegerMinutesDurationKo(durMin);
+        const cardHead = document.createElement("div");
+        cardHead.className = "calendar-1day-timeline-card-head";
 
         const titleRow = document.createElement("div");
         titleRow.className = "calendar-1day-timeline-card-title-row";
@@ -3365,8 +3426,7 @@ function render1DayView(tabsElement = null) {
         titleEl.className = "calendar-1day-timeline-card-title";
         titleEl.textContent = taskLabel;
         titleRow.appendChild(titleEl);
-        titleRow.appendChild(durRow);
-        body.appendChild(titleRow);
+        cardHead.appendChild(titleRow);
 
         let badgeText = "";
         if (sidRaw && TL_SECTION_LABELS[sidRaw]) {
@@ -3404,28 +3464,85 @@ function render1DayView(tabsElement = null) {
           meta.appendChild(prog);
         }
         if (meta.childNodes.length) {
-          body.appendChild(meta);
+          cardHead.appendChild(meta);
         }
 
         if (memoTextStored) {
           const memoEl = document.createElement("div");
           memoEl.className = "calendar-1day-timeline-card-memo";
           memoEl.textContent = memoTextStored;
-          body.appendChild(memoEl);
+          cardHead.appendChild(memoEl);
         }
 
-        card.appendChild(body);
+        const split = document.createElement("div");
+        split.className = "calendar-1day-timeline-card-split";
 
-        card.appendChild(endEl);
+        const paneExpected = document.createElement("div");
+        paneExpected.className =
+          "calendar-1day-timeline-card-pane calendar-1day-timeline-card-pane--expected";
+        const labExp = document.createElement("div");
+        labExp.className = "calendar-1day-timeline-card-pane-label";
+        labExp.textContent = "예상";
+        const timesExp = document.createElement("div");
+        timesExp.className = "calendar-1day-timeline-card-pane-times";
+        timesExp.textContent = `${span.startDisplay} ~ ${span.endDisplay}`;
+        const trackExp = document.createElement("div");
+        trackExp.className = "calendar-1day-timeline-card-bar-track";
+        trackExp.setAttribute("aria-hidden", "true");
+        const fillExp = document.createElement("div");
+        fillExp.className = "calendar-1day-timeline-card-head-bar-fill";
+        fillExp.style.width = "100%";
+        trackExp.appendChild(fillExp);
+        const durExp = document.createElement("div");
+        durExp.className = "calendar-1day-timeline-card-pane-dur";
+        durExp.textContent = formatIntegerMinutesDurationKo(durMin);
+        paneExpected.appendChild(labExp);
+        paneExpected.appendChild(timesExp);
+        paneExpected.appendChild(trackExp);
+        paneExpected.appendChild(durExp);
+
+        const paneActual = document.createElement("div");
+        paneActual.className =
+          "calendar-1day-timeline-card-pane calendar-1day-timeline-card-pane--actual";
+        const labAct = document.createElement("div");
+        labAct.className = "calendar-1day-timeline-card-pane-label";
+        labAct.textContent = "실제";
+        const timesAct = document.createElement("div");
+        timesAct.className = "calendar-1day-timeline-card-pane-times";
+        timesAct.textContent = actualRangeLine;
+        const trackAct = document.createElement("div");
+        trackAct.className = "calendar-1day-timeline-card-bar-track";
+        trackAct.setAttribute("aria-hidden", "true");
+        const fillAct = document.createElement("div");
+        fillAct.className = "calendar-1day-timeline-card-head-bar-fill";
+        fillAct.style.width = `${progressPctFill}%`;
+        trackAct.appendChild(fillAct);
+        const durAct = document.createElement("div");
+        durAct.className = "calendar-1day-timeline-card-pane-dur";
+        durAct.textContent =
+          actualMinutesRaw >= 0.5
+            ? formatIntegerMinutesDurationKo(Math.round(actualMinutesRaw))
+            : "—";
+        paneActual.appendChild(labAct);
+        paneActual.appendChild(timesAct);
+        paneActual.appendChild(trackAct);
+        paneActual.appendChild(durAct);
+
+        split.appendChild(paneExpected);
+        split.appendChild(paneActual);
+
+        card.appendChild(cardHead);
+        card.appendChild(split);
 
         if (expectedMinProg > 0) {
           card.title = `${card.title}\n실제 소요 / 예상: ${formatIntegerMinutesDurationKo(Math.round(actualMinutesRaw))} / ${formatIntegerMinutesDurationKo(expectedMinProg)}`;
         }
 
         if (!ledgerMissed && !ledgerMatched) {
-          startEl.style.color = c.accentMuted;
-          endEl.style.color = c.accentMuted;
-          durRow.style.color = c.accentMuted;
+          timesExp.style.color = c.accentMuted;
+          durExp.style.color = c.accentMuted;
+          timesAct.style.color = c.accentMuted;
+          durAct.style.color = c.accentMuted;
         }
 
         card.setAttribute("role", "button");

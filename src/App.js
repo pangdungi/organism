@@ -69,6 +69,7 @@ import { logLpRender, logLpRenderStack } from "./utils/lpRenderDebugLog.js";
 import { initDomPulseDebug } from "./utils/domPulseDebug.js";
 import { initMobileVisualViewportKeyboardInset } from "./utils/mobileViewportKeyboard.js";
 import { logTodoScheduleTabOnNavigate } from "./utils/lpTabDataSourceLog.js";
+import { syncAppViewportChromeForTab } from "./utils/syncAppViewportChrome.js";
 
 /** 상위 탭 메타(아이콘·메뉴 런처 구역 순서) */
 const TABS = [
@@ -445,6 +446,7 @@ export async function mountApp(container) {
     if (fromTab !== tabId) flushAllPendingTimeDailyBudgetSync();
     currentTabId = tabId;
     persistActiveTabId(tabId);
+    syncAppViewportChromeForTab(tabId);
     syncAppFooterVisibility();
     logTodoScheduleTabOnNavigate(tabId, fromTab);
     logTabSync("tab_switch", { from: fromTab, to: tabId });
@@ -795,6 +797,7 @@ export async function mountApp(container) {
       mountNodes = [errDiv];
     }
     p.replaceChildren(...mountNodes);
+    syncAppViewportChromeForTab(currentTabId);
     try {
       if (
         currentTabId !== "home" &&
@@ -857,6 +860,7 @@ export async function mountApp(container) {
     }
     /* 로컬·메모리 상태로 먼저 화면 표시 — PWA 재실행·탭 복귀 후 네트워크 대기로 빈 화면이 길게 보이지 않게 */
     const pullPromise = pullDataForActiveTab(bootTabId, { fromBoot: true });
+    syncAppViewportChromeForTab(bootTabId);
     renderMain(main);
     try {
       await pullPromise;

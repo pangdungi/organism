@@ -21,6 +21,15 @@
   background: #fff;
 }
 
+/** 탭별 상태 표시줄·바운스 영역과 맞춤(App.js 가 클래스 토글) */
+html.lp-viewport-chrome-dark.lp-app-bg {
+  background: #1e4d7b;
+}
+
+html.lp-viewport-chrome-idea.lp-app-bg {
+  background: #f0f4fa;
+}
+
 html {
   font-size: 16px;
 }
@@ -215,6 +224,8 @@ body {
 /* 메인(오늘) 뷰 — 메뉴 페이지 배경(네이비), 본문은 위부터 풀너비·풀높이 */
 .app-main:has(.app-home-menu-launcher) {
   background: #1e4d7b;
+  /* 하단 세이프 영역은 흰 시트(.launcher-card·body 패딩)가 채움 — main 패딩 시 네이비 줄이 생김 */
+  padding-bottom: 0;
 }
 
 .app-main:has(.app-home-menu-launcher) .app-tab-panel {
