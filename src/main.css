@@ -160,12 +160,20 @@ body {
   align-items: stretch;
   gap: 0;
   width: 100%;
-  padding: 0.45rem 0.75rem 0.5rem;
-  padding-left: calc(0.75rem + var(--lp-safe-left));
-  padding-right: calc(0.75rem + var(--lp-safe-right));
+  padding: calc(0.45rem * 0.6) calc(0.75rem * 0.6) calc(0.5rem * 0.6);
+  padding-left: calc(0.75rem * 0.6 + var(--lp-safe-left));
+  padding-right: calc(0.75rem * 0.6 + var(--lp-safe-right));
   border-top: 1px solid #e2e8f0;
   background: #fff;
   box-sizing: border-box;
+}
+
+.app-footer-menu img {
+  max-width: calc(28px * 0.6);
+  max-height: calc(28px * 0.6);
+  width: auto;
+  height: auto;
+  object-fit: contain;
 }
 
 .app-footer-spacer {
@@ -196,8 +204,8 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
+  width: calc(2.75rem * 0.6);
+  height: calc(2.75rem * 0.6);
   padding: 0;
   margin: 0;
   border: none;
