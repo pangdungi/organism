@@ -31,6 +31,10 @@ import {
   enforceSubscriptionAccessOrSignOut,
   SUBSCRIPTION_EXPIRED_MESSAGE,
 } from "./utils/subscriptionAccess.js";
+import {
+  hasPasswordRecoveryUrlHint,
+  isPasswordRecoverySession,
+} from "./utils/authRecoverySession.js";
 
 /**
  * IndexedDB 시간기록은 user_id가 없어 계정과 묶이지 않음.
@@ -184,10 +188,23 @@ function init() {
   document.getElementById("btn-send-reset-mail")?.addEventListener("click", doForgotPassword);
   document.getElementById("btn-reset-pw-submit")?.addEventListener("click", doResetPassword);
 
-  // PASSWORD_RECOVERY: 이메일 링크 클릭 후 새 비밀번호 페이지 표시
-  supabase?.auth?.onAuthStateChange?.((event) => {
+  function goToPasswordResetUi() {
+    closeAuthPwRecoveryModal();
+    showOnly("reset-password");
+  }
+
+  // 이메일 재설정 링크: implicit → PASSWORD_RECOVERY / PKCE → SIGNED_IN(+ JWT amr recovery)
+  supabase?.auth?.onAuthStateChange?.((event, session) => {
     if (event === "PASSWORD_RECOVERY") {
-      showOnly("reset-password");
+      goToPasswordResetUi();
+      return;
+    }
+    if (
+      (event === "SIGNED_IN" || event === "INITIAL_SESSION") &&
+      session &&
+      (isPasswordRecoverySession(session) || hasPasswordRecoveryUrlHint())
+    ) {
+      goToPasswordResetUi();
       return;
     }
     if (event === "SIGNED_OUT") {
@@ -295,6 +312,13 @@ function init() {
       return;
     }
     if (session) {
+      if (
+        isPasswordRecoverySession(session) ||
+        hasPasswordRecoveryUrlHint()
+      ) {
+        goToPasswordResetUi();
+        return;
+      }
       const blockedBySubscription = await enforceSubscriptionAccessOrSignOut();
       if (blockedBySubscription) {
         window.alert(SUBSCRIPTION_EXPIRED_MESSAGE);
@@ -411,15 +435,32 @@ async function doSignUp() {
   if (loginId) loginId.value = email;
 }
 
+const LP_PW_RESET_LOG = "[lp pw-reset]";
+
 async function doForgotPassword() {
-  const email = document.getElementById("forgot-pw-email")?.value?.trim() || "";
-  const result = await resetPasswordRequest(email);
-  if (result.ok) {
-    closeAuthPwRecoveryModal();
-    document.getElementById("forgot-pw-email").value = "";
-    showToast("비밀번호 재설정 메일을 보냈어요.", "이메일을 확인해 주세요.");
-  } else {
-    showToast(result.msg);
+  console.log(LP_PW_RESET_LOG, "1) 재설정 메일 버튼 클릭");
+  const emailInput = document.getElementById("forgot-pw-email");
+  const email = emailInput?.value?.trim() || "";
+  console.log(LP_PW_RESET_LOG, "2) 입력값", {
+    이메일길이: email.length,
+    이메일: email || "(비어 있음)",
+  });
+  try {
+    console.log(LP_PW_RESET_LOG, "3) resetPasswordRequest 호출");
+    const result = await resetPasswordRequest(email);
+    console.log(LP_PW_RESET_LOG, "4) resetPasswordRequest 결과", result);
+    if (result.ok) {
+      console.log(LP_PW_RESET_LOG, "5) 성공 → 토스트·모달 닫기");
+      closeAuthPwRecoveryModal();
+      if (emailInput) emailInput.value = "";
+      showToast("비밀번호 재설정 메일을 보냈어요.", "이메일을 확인해 주세요.");
+    } else {
+      console.log(LP_PW_RESET_LOG, "5) 실패 → 토스트(메시지)", result.msg);
+      showToast(result.msg);
+    }
+  } catch (e) {
+    console.error(LP_PW_RESET_LOG, "예외 발생", e);
+    showToast("처리 중 오류가 났어요. 콘솔 로그를 확인해 주세요.");
   }
 }
 

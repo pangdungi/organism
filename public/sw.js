@@ -1,8 +1,8 @@
 /* PWA 서비스 워커 — 앱 설치·오프라인 + Web Push(할일 리마인더) */
 /** 번들·아이콘 등 캐시 버전 (전략 바꿀 때만 올리면 이전 캐시 정리됨) */
-const ASSET_CACHE = "organism-assets-v4";
+const ASSET_CACHE = "tip-assets-v6";
 /** HTML 셸 캐시 — 홈 화면에서 열 때 즉시 표시용 */
-const HTML_CACHE = "organism-html-v1";
+const HTML_CACHE = "tip-html-v1";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -19,7 +19,8 @@ self.addEventListener("install", (event) => {
         const assetCache = await caches.open(ASSET_CACHE);
         const urls = [
           "/manifest.json",
-          "/icon-192.png?v=organism-icon-4",
+          "/fonts/Vellmarie-Regular.otf",
+          "/icon-192.png?v=timeisprice-icon-2",
           "/toolbaricons/dashboard.svg",
           "/toolbaricons/menu-time.png",
           "/toolbaricons/menu-todo.png",
@@ -55,8 +56,9 @@ self.addEventListener("activate", (event) => {
         keys
           .filter(
             (k) =>
-              (k.startsWith("organism-assets-") && k !== ASSET_CACHE) ||
-              (k.startsWith("organism-html-") && k !== HTML_CACHE),
+              ((k.startsWith("organism-assets-") || k.startsWith("tip-assets-")) &&
+                k !== ASSET_CACHE) ||
+              ((k.startsWith("organism-html-") || k.startsWith("tip-html-")) && k !== HTML_CACHE),
           )
           .map((k) => caches.delete(k)),
       );
@@ -171,9 +173,9 @@ self.addEventListener("push", (event) => {
   /* iOS WebKit은 알림 아이콘에 SVG 를 쓰면 showNotification 이 조용히 실패하는 경우가 있음 → PNG 권장 */
   const options = {
     body: data.body || "설정한 시간이 되었어요.",
-    icon: "/icon-192.png?v=organism-icon-4",
-    badge: "/icon-192.png?v=organism-icon-4",
-    tag: data.tag || "organism-reminder",
+    icon: "/icon-192.png?v=timeisprice-icon-2",
+    badge: "/icon-192.png?v=timeisprice-icon-2",
+    tag: data.tag || "timeisprice-reminder",
     renotify: true,
     silent: false,
     vibrate: [180, 80, 180],

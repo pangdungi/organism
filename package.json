@@ -1,6 +1,7 @@
 {
-  "name": "life-planner-pwa",
+  "name": "time-is-price",
   "version": "1.0.0",
+  "description": "Time is Price — KPI·시간가계부·일정 PWA",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -189,6 +189,15 @@ body {
   background: #e8f0f8;
 }
 
+/* 홈 메뉴 브랜드 타이틀 — Vellmarie Regular (public/fonts) */
+@font-face {
+  font-family: "Vellmarie";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/Vellmarie-Regular.otf") format("opentype");
+}
+
 /* 메인(오늘) 뷰 — 메뉴 페이지 배경, 메뉴 블록을 뷰포트 안 세로·가로 가운데 */
 .app-main:has(.app-home-menu-launcher) {
   background: #f0f4fa;
@@ -202,27 +211,38 @@ body {
 }
 
 .app-main:has(.app-home-menu-launcher) .app-home-menu-launcher {
-  width: min(100%, 28rem);
-  max-width: 28rem;
+  width: 100%;
+  max-width: none;
   margin: 0;
   flex-shrink: 0;
 }
 
-/* 홈(오늘) — 메뉴 페이지: 참고 목업 — 헤더·섹션·2열 그리드·가로 버튼 */
+/* 홈(오늘) — 브랜드(카드 밖) + 흰 메뉴 카드 */
 .app-home-menu-launcher {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   box-sizing: border-box;
-  width: min(100%, 28rem);
-  max-width: 28rem;
+  width: 100%;
+  max-width: none;
   margin: 0 auto;
-  padding: 1rem 0.75rem 1.75rem;
+  padding: 0 0.75rem 1.75rem;
+}
+
+.app-home-menu-launcher-brand {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0 0 0.65rem;
+  padding: 0.85rem 0.5rem 0.65rem;
+  background: #f0f4fa;
+  text-align: center;
 }
 
 .app-home-menu-launcher-card {
   box-sizing: border-box;
   width: 100%;
+  max-width: 28rem;
+  margin: 0 auto;
   padding: 1.15rem 1rem 1.25rem;
   background: #fff;
   border: 1px solid #d8dee8;
@@ -230,26 +250,22 @@ body {
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
 }
 
-.app-home-menu-launcher-head {
-  margin: 0 0 0.35rem;
-  padding: 0;
-}
-
 .app-home-menu-launcher-title {
   margin: 0;
   padding: 0;
-  font-size: 1.55rem;
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  color: #141820;
-  line-height: 1.2;
+  font-family: "Vellmarie", Georgia, "Times New Roman", serif;
+  font-size: clamp(1.85rem, 6.5vw, 2.45rem);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: #1e4d7b;
+  line-height: 1.15;
 }
 
 .app-home-menu-launcher-body {
   display: flex;
   flex-direction: column;
   gap: 1.15rem;
-  margin-top: 0.85rem;
+  margin-top: 0;
 }
 
 .app-home-menu-launcher-section {
@@ -1252,7 +1268,7 @@ table {
 
 .auth-gate-logo {
   font-weight: 600;
-  font-size: 1.05rem;
+  font-size: 0.88rem;
   letter-spacing: -0.02em;
   color: var(--auth-navy);
 }

@@ -434,7 +434,7 @@ export async function mountApp(container) {
     syncAppFooterVisibility();
     logTodoScheduleTabOnNavigate(tabId, fromTab);
     logTabSync("tab_switch", { from: fromTab, to: tabId });
-    /* 렌더·pull은 빠른 연속 탭 전환 시 마지막 탭만 처리하도록 디바운스(80ms) */
+    /* 렌더·pull은 빠른 연속 탭 전환 시 마지막 탭만 처리하도록 짧게 디바운스 */
     if (_tabSwitchTimer != null) clearTimeout(_tabSwitchTimer);
     _tabSwitchTimer = setTimeout(() => {
       _tabSwitchTimer = null;
@@ -446,9 +446,12 @@ export async function mountApp(container) {
             resetTimeLedgerSessionFilterToToday();
           } catch (_) {}
         }
+        const pullPromise = pullDataForActiveTab(targetTabId, {
+          fromBoot: false,
+        });
         renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
         try {
-          await pullDataForActiveTab(targetTabId, { fromBoot: false });
+          await pullPromise;
         } catch (_) {}
         if (currentTabId !== targetTabId) return;
         /* 시간가계부: pull 뒤 통째 renderMain 하면 화면이 한 번 비워졌다 다시 그려져 깜빡임 — 같은 인스턴스에서만 소프트 갱신 */
@@ -473,6 +476,20 @@ export async function mountApp(container) {
           try {
             await syncAdminMenuVisibility();
           } catch (_) {}
+        } else if (
+          targetTabId === "dream" ||
+          targetTabId === "health" ||
+          targetTabId === "happiness" ||
+          targetTabId === "sideincome"
+        ) {
+          /* KPI 탭: pull 후 통째 renderMain 하면 패널 비움 → 소프트 갱신만 */
+          try {
+            if (targetTabId === "dream") window.__lpDreamSoftRefresh?.();
+            else if (targetTabId === "health") window.__lpHealthSoftRefresh?.();
+            else if (targetTabId === "happiness")
+              window.__lpHappinessSoftRefresh?.();
+            else window.__lpSideincomeSoftRefresh?.();
+          } catch (_) {}
         } else {
           renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
         }
@@ -486,7 +503,7 @@ export async function mountApp(container) {
           });
         }
       })();
-    }, 80);
+    }, 24);
   }
 
   function appendLauncherIcon(btn, iconSrc) {
@@ -508,15 +525,15 @@ export async function mountApp(container) {
     const root = document.createElement("div");
     root.className = "app-home-menu-launcher";
 
-    const card = document.createElement("div");
-    card.className = "app-home-menu-launcher-card";
-
-    const head = document.createElement("header");
-    head.className = "app-home-menu-launcher-head";
+    const brandBar = document.createElement("div");
+    brandBar.className = "app-home-menu-launcher-brand";
     const titleEl = document.createElement("h1");
     titleEl.className = "app-home-menu-launcher-title";
-    titleEl.textContent = "메뉴";
-    head.appendChild(titleEl);
+    titleEl.textContent = "Time is Price";
+    brandBar.appendChild(titleEl);
+
+    const card = document.createElement("div");
+    card.className = "app-home-menu-launcher-card";
 
     const body = document.createElement("div");
     body.className = "app-home-menu-launcher-body";
@@ -572,9 +589,8 @@ export async function mountApp(container) {
 
     void syncAdminMenuVisibility();
 
-    card.append(head, body);
-    root.appendChild(card);
-    root.appendChild(launcherAdminBtn);
+    card.appendChild(body);
+    root.append(brandBar, card, launcherAdminBtn);
     return root;
   }
 
@@ -703,33 +719,41 @@ export async function mountApp(container) {
     }
     launcherAdminBtn = null;
     clearAppFooterActions();
-    p.innerHTML = "";
-    const render = RENDERERS[currentTabId];
+    const tabRenderer = RENDERERS[currentTabId];
+    /** @type {Node[]} */
+    let mountNodes;
     try {
       if (currentTabId === "home") {
         const content = renderHomeMenuLauncher();
-        if (content) p.appendChild(content);
-      } else if (render) {
-        const content = render();
-        if (content) p.appendChild(content);
-        if (window.matchMedia("(max-width: 48rem)").matches) {
-          initDatePickersIn(p);
-        }
+        mountNodes = content ? [content] : [];
+      } else if (tabRenderer) {
+        const content = tabRenderer();
+        mountNodes = content ? [content] : [];
       } else {
         const div = document.createElement("p");
         div.textContent =
           currentTabId === "admin"
             ? "관리자전용"
             : TABS.find((t) => t.id === currentTabId)?.label || "준비 중";
-        p.appendChild(div);
+        mountNodes = [div];
       }
     } catch (err) {
       const errDiv = document.createElement("div");
       errDiv.className = "app-render-error";
       errDiv.style.cssText = "padding:1.5rem;color:#b91c1c;";
       errDiv.innerHTML = `<p><strong>${currentTabId === "admin" ? "관리자전용" : TABS.find((t) => t.id === currentTabId)?.label || currentTabId} 로드 중 오류</strong></p><p>${String(err?.message || err)}</p>`;
-      p.appendChild(errDiv);
+      mountNodes = [errDiv];
     }
+    p.replaceChildren(...mountNodes);
+    try {
+      if (
+        currentTabId !== "home" &&
+        tabRenderer &&
+        window.matchMedia("(max-width: 48rem)").matches
+      ) {
+        initDatePickersIn(p);
+      }
+    } catch (_) {}
     if (preserveScrollTop != null && mainEl) {
       const y = preserveScrollTop;
       requestAnimationFrame(() => {
@@ -782,9 +806,10 @@ export async function mountApp(container) {
       } catch (_) {}
     }
     /* 로컬·메모리 상태로 먼저 화면 표시 — PWA 재실행·탭 복귀 후 네트워크 대기로 빈 화면이 길게 보이지 않게 */
+    const pullPromise = pullDataForActiveTab(bootTabId, { fromBoot: true });
     renderMain(main);
     try {
-      await pullDataForActiveTab(bootTabId, { fromBoot: true });
+      await pullPromise;
     } catch (_) {}
     if (currentTabId !== bootTabId) return;
     if (bootTabId === "time") {
@@ -798,6 +823,19 @@ export async function mountApp(container) {
     } else if (bootTabId === "idea") {
       try {
         window.__lpIdeaSoftRefresh?.();
+      } catch (_) {}
+    } else if (
+      bootTabId === "dream" ||
+      bootTabId === "health" ||
+      bootTabId === "happiness" ||
+      bootTabId === "sideincome"
+    ) {
+      try {
+        if (bootTabId === "dream") window.__lpDreamSoftRefresh?.();
+        else if (bootTabId === "health") window.__lpHealthSoftRefresh?.();
+        else if (bootTabId === "happiness")
+          window.__lpHappinessSoftRefresh?.();
+        else window.__lpSideincomeSoftRefresh?.();
       } catch (_) {}
     } else if (bootTabId === "home") {
       /* 메뉴 런처는 pull 후에도 DOM 구조·아이콘 URL 동일 — 두 번째 renderMain 하면 <img>만 통째로 다시 붙어 깜빡임 */

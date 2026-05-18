@@ -119,19 +119,33 @@ export async function signOut() {
   await purgeTimeLedgerLocalOnSignOut();
 }
 
+const LP_PW_RESET_AUTH_LOG = "[lp pw-reset auth]";
+
 /** 비밀번호 재설정 메일 요청 (가입 이메일로 링크 발송) */
 export async function resetPasswordRequest(email) {
+  console.log(LP_PW_RESET_AUTH_LOG, "A) 진입", { email: email?.trim() || "" });
   if (!email?.trim()) {
+    console.log(LP_PW_RESET_AUTH_LOG, "B) 중단: 이메일 없음");
     return { ok: false, msg: "이메일을 입력하세요." };
   }
   if (!supabase) {
+    console.log(LP_PW_RESET_AUTH_LOG, "B) 중단: supabase 클라이언트 없음");
     return { ok: false, msg: "연결되지 않았습니다." };
   }
   const redirectTo = `${window.location.origin}${window.location.pathname || "/"}`;
-  const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+  console.log(LP_PW_RESET_AUTH_LOG, "C) redirectTo", redirectTo);
+  console.log(LP_PW_RESET_AUTH_LOG, "D) supabase.auth.resetPasswordForEmail 호출 직전");
+  const { data, error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+  console.log(LP_PW_RESET_AUTH_LOG, "E) 응답", {
+    data: data ?? null,
+    error: error
+      ? { message: error.message, name: error.name, status: error.status }
+      : null,
+  });
   if (error) {
     return { ok: false, msg: toKoAuthError(error.message) };
   }
+  console.log(LP_PW_RESET_AUTH_LOG, "F) 성공(에러 객체 없음 — 메일 발송은 Supabase·SMTP 설정에 따름)");
   return { ok: true };
 }
 

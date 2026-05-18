@@ -1530,22 +1530,17 @@ export function render() {
     contentWrap.hidden = true;
   }
 
-  const onMergedSync = (e) => {
+  function syncHappinessUiFromStoredMap() {
     if (!el.isConnected) return;
-    /* push 시에는 화면 갱신 불필요 (로컬 변경을 서버에 올린 것이므로) */
-    if (e.detail?.fromPush) return;
-    if (!e.detail?.fromServerMerge && !e.detail?.fromLocalWrite) return;
     const data = loadHappinessMap();
     if (!data.happinesses.some((h) => h.id === activeHappinessId)) {
       activeHappinessId = data.happinesses[0]?.id || null;
       selectedKpiId = null;
     }
-    /* 선택된 KPI가 삭제됐으면 선택 해제 */
     if (selectedKpiId && !data.kpis.some((k) => k.id === selectedKpiId)) {
       selectedKpiId = null;
     }
     renderTabs();
-    /* 서버 동기화 시에는 selectedKpiId를 유지하면서 화면만 갱신 */
     const happiness = data.happinesses.find((h) => h.id === activeHappinessId);
     if (happiness) {
       contentWrap.hidden = false;
@@ -1555,8 +1550,17 @@ export function render() {
       contentWrap.hidden = true;
     }
     persistKpiUiState();
+  }
+
+  const onMergedSync = (e) => {
+    if (!el.isConnected) return;
+    /* push 시에는 화면 갱신 불필요 (로컬 변경을 서버에 올린 것이므로) */
+    if (e.detail?.fromPush) return;
+    if (!e.detail?.fromServerMerge && !e.detail?.fromLocalWrite) return;
+    syncHappinessUiFromStoredMap();
   };
   window.addEventListener("happiness-kpi-map-saved", onMergedSync);
+  window.__lpHappinessSoftRefresh = syncHappinessUiFromStoredMap;
 
   return el;
 }

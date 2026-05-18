@@ -1530,22 +1530,17 @@ export function render() {
     contentWrap.hidden = true;
   }
 
-  const onMergedSync = (e) => {
+  function syncHealthUiFromStoredMap() {
     if (!el.isConnected) return;
-    /* push 시에는 화면 갱신 불필요 (로컬 변경을 서버에 올린 것이므로) */
-    if (e.detail?.fromPush) return;
-    if (!e.detail?.fromServerMerge && !e.detail?.fromLocalWrite) return;
     const data = loadHealthMap();
     if (!data.healths.some((h) => h.id === activeHealthId)) {
       activeHealthId = data.healths[0]?.id || null;
       selectedKpiId = null;
     }
-    /* 선택된 KPI가 삭제됐으면 선택 해제 */
     if (selectedKpiId && !data.kpis.some((k) => k.id === selectedKpiId)) {
       selectedKpiId = null;
     }
     renderTabs();
-    /* 서버 동기화 시에는 selectedKpiId를 유지하면서 화면만 갱신 */
     const health = data.healths.find((h) => h.id === activeHealthId);
     if (health) {
       contentWrap.hidden = false;
@@ -1555,8 +1550,17 @@ export function render() {
       contentWrap.hidden = true;
     }
     persistKpiUiState();
+  }
+
+  const onMergedSync = (e) => {
+    if (!el.isConnected) return;
+    /* push 시에는 화면 갱신 불필요 (로컬 변경을 서버에 올린 것이므로) */
+    if (e.detail?.fromPush) return;
+    if (!e.detail?.fromServerMerge && !e.detail?.fromLocalWrite) return;
+    syncHealthUiFromStoredMap();
   };
   window.addEventListener("health-kpi-map-saved", onMergedSync);
+  window.__lpHealthSoftRefresh = syncHealthUiFromStoredMap;
 
   return el;
 }
