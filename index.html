@@ -88,7 +88,6 @@
         box-sizing: border-box;
         background: var(--app-splash-bg);
         color: var(--app-splash-ink);
-        text-align: center;
         -webkit-tap-highlight-color: transparent;
         transition: opacity 0.38s ease;
       }
@@ -96,140 +95,37 @@
         opacity: 0;
         pointer-events: none;
       }
-      .app-splash-bg {
-        position: absolute;
-        inset: 0;
-        overflow: hidden;
-        pointer-events: none;
-      }
-      .app-splash-orb {
-        position: absolute;
-        width: min(72vw, 20rem);
-        height: min(72vw, 20rem);
-        background: rgba(26, 95, 168, 0.07);
-        clip-path: circle(50% at 50% 50%);
-        animation: app-splash-orb-drift 9s ease-in-out infinite;
-      }
-      .app-splash-orb--tl {
-        top: -18%;
-        left: -22%;
-        animation-delay: 0s;
-      }
-      .app-splash-orb--bl {
-        bottom: -28%;
-        left: -18%;
-        animation-delay: -4.5s;
-      }
-      @keyframes app-splash-orb-drift {
-        0%,
-        100% {
-          transform: translate(0, 0) scale(1);
-        }
-        50% {
-          transform: translate(14px, 10px) scale(1.03);
-        }
-      }
-      .app-splash-main {
-        position: relative;
-        z-index: 1;
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-      }
-      .app-splash-brand {
-        margin: 0;
-        font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
-        font-weight: 700;
-        font-size: clamp(1.35rem, 5.5vw, 2.1rem);
-        line-height: 1.2;
-        letter-spacing: -0.03em;
-        color: var(--app-splash-ink);
-        max-width: min(100%, 20rem);
-        padding: 0 0.5rem;
-        box-sizing: border-box;
-      }
-      /* 기업 웹필터·크롤러가 볼 수 있도록 스플래시에도 정적 설명 문구(숨김 #app 보완) */
-      .app-splash-tagline {
-        margin: 0.75rem 0 0;
-        max-width: 22rem;
-        padding: 0 1rem;
-        box-sizing: border-box;
-        font-family: "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
-        font-size: clamp(0.75rem, 3.2vw, 0.875rem);
-        font-weight: 400;
-        line-height: 1.55;
-        letter-spacing: -0.02em;
-        color: var(--app-splash-ink);
-        opacity: 0.9;
-      }
-      .app-splash-footer {
-        position: relative;
-        z-index: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.65rem;
-        padding-bottom: 0.25rem;
+      .app-splash-bar-wrap {
+        width: min(11rem, 48vw);
+        max-width: 100%;
       }
       .app-splash-bar-track {
-        width: min(32vw, 8rem);
-        height: 2px;
-        background: rgba(26, 95, 168, 0.22);
+        height: 3px;
+        border-radius: 999px;
+        background: rgba(26, 95, 168, 0.18);
         overflow: hidden;
       }
       .app-splash-bar-fill {
-        width: 38%;
+        width: 40%;
         height: 100%;
+        border-radius: inherit;
         background: var(--app-splash-ink);
-        animation: app-splash-bar-slide 1.35s ease-in-out infinite;
+        animation: app-splash-bar-slide 1.25s ease-in-out infinite;
       }
       @keyframes app-splash-bar-slide {
         0% {
-          transform: translateX(-120%);
+          transform: translateX(-100%);
         }
         100% {
-          transform: translateX(320%);
-        }
-      }
-      .app-splash-loading-label {
-        margin: 0;
-        font-family: "DM Mono", ui-monospace, monospace;
-        font-size: 0.5625rem;
-        font-weight: 500;
-        letter-spacing: 0.28em;
-        text-indent: 0.28em;
-        color: var(--app-splash-ink);
-        opacity: 0.75;
-      }
-      .app-splash-arrow {
-        color: var(--app-splash-ink);
-        opacity: 0.5;
-        animation: app-splash-arrow-nudge 2.2s ease-in-out infinite;
-      }
-      @keyframes app-splash-arrow-nudge {
-        0%,
-        100% {
-          transform: translateY(0);
-          opacity: 0.45;
-        }
-        50% {
-          transform: translateY(4px);
-          opacity: 0.65;
+          transform: translateX(275%);
         }
       }
       @media (prefers-reduced-motion: reduce) {
-        .app-splash-orb,
-        .app-splash-bar-fill,
-        .app-splash-arrow {
-          animation: none;
-        }
         .app-splash-bar-fill {
+          animation: none;
           width: 100%;
           transform: none;
-          opacity: 0.85;
-          animation: none;
+          opacity: 0.55;
         }
       }
       .app-tablet-landscape-hint,
@@ -256,7 +152,7 @@
           background: #fff;
         "
       >
-        <h1 style="font-size: 1.35rem; margin: 0 0 0.75rem">Time is Price</h1>
+        <h1 style="font-size: 1.35rem; margin: 0 0 0.75rem">Time = Money</h1>
         <p style="margin: 0 0 0.75rem">
           KPI·목표 관리, 시간 기반 기록, 일정·가계부·일지·습관 트래커를 하나의 웹 앱에서 사용하는 생산성 서비스입니다.
         </p>
@@ -271,34 +167,12 @@
       class="app-splash"
       role="status"
       aria-live="polite"
+      aria-busy="true"
       aria-label="앱을 불러오는 중"
     >
-      <div class="app-splash-bg" aria-hidden="true">
-        <span class="app-splash-orb app-splash-orb--tl"></span>
-        <span class="app-splash-orb app-splash-orb--bl"></span>
-      </div>
-      <div class="app-splash-main">
-        <p class="app-splash-brand">Time is Price</p>
-        <p class="app-splash-tagline">
-          KPI·시간·일정·가계부를 잇는 생산성 서비스 — organismplanner.com
-        </p>
-      </div>
-      <div class="app-splash-footer">
+      <div class="app-splash-bar-wrap">
         <div class="app-splash-bar-track" aria-hidden="true">
           <div class="app-splash-bar-fill"></div>
-        </div>
-        <p class="app-splash-loading-label">LOADING</p>
-        <div class="app-splash-arrow" aria-hidden="true">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.2" opacity="0.4" />
-            <path
-              d="M8 10l4 4 4-4"
-              stroke="currentColor"
-              stroke-width="1.2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
         </div>
       </div>
     </div>
@@ -339,7 +213,7 @@
         <div class="auth-gate-body">
           <div class="login-wrap">
             <div class="app-home-menu-launcher-brand">
-              <p class="app-home-menu-launcher-title">Time is Price</p>
+              <p class="app-home-menu-launcher-title">Time = Money</p>
             </div>
             <div class="login-card login-card--brand">
               <h1 class="auth-gate-heading login-title" id="auth-gate-heading">로그인</h1>
@@ -532,7 +406,7 @@
         <div class="auth-gate-body">
           <div class="login-wrap">
             <div class="app-home-menu-launcher-brand">
-              <p class="app-home-menu-launcher-title">Time is Price</p>
+              <p class="app-home-menu-launcher-title">Time = Money</p>
             </div>
             <div class="login-card login-card--brand">
               <h1 class="login-title">새 비밀번호 설정</h1>

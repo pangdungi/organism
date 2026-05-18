@@ -234,7 +234,7 @@ body {
   width: 100%;
   margin: 0 0 0.65rem;
   padding: 0.85rem 0.5rem 0.65rem;
-  background: #f0f4fa;
+  background: transparent;
   text-align: center;
 }
 
@@ -313,7 +313,7 @@ body {
   font-family: "Vellmarie", Georgia, "Times New Roman", serif;
   font-size: clamp(1.85rem, 6.5vw, 2.45rem);
   font-weight: 400;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.085em;
   color: #1e4d7b;
   line-height: 1.15;
 }
