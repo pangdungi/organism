@@ -332,11 +332,11 @@
 /* 금액 글자색 = 왼쪽 생산성 컬러바 톤(초록·빨강 의미색과 분리) */
 .time-ledger-view [data-legacy~="time-mobile-card-price--productive"],
 [data-legacy~="time-ledger-view"] [data-legacy~="time-mobile-card-price--productive"] {
-  color: #a85a5a;
+  color: #c02b2b;
 }
 .time-ledger-view [data-legacy~="time-mobile-card-price--nonproductive"],
 [data-legacy~="time-ledger-view"] [data-legacy~="time-mobile-card-price--nonproductive"] {
-  color: #3e5c78;
+  color: #1a5fa8;
 }
 .time-ledger-view [data-legacy~="time-mobile-card-price--other"],
 [data-legacy~="time-ledger-view"] [data-legacy~="time-mobile-card-price--other"] {

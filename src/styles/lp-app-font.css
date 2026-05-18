@@ -36,19 +36,3 @@ body {
   font-style: normal;
   font-display: swap;
 }
-
-@font-face {
-  font-family: "LP Omu Dayeppemche";
-  src: url("/fonts/LP-Omu-Dayeppemche.ttf") format("truetype");
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "LP IM Hyemin";
-  src: url("/fonts/LP-IM-Hyemin-Regular.otf") format("opentype");
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}

@@ -3540,9 +3540,6 @@ export function render() {
           <div data-legacy="time-task-setup-list" data-tab-content="other" style="display:none"></div>
         </div>
       </div>
-      <div data-legacy="time-task-setup-footer time-task-log-footer">
-        <button type="button" data-legacy="time-task-setup-footer-close todo-list-modal-cancel">닫기</button>
-      </div>
     </div>
   `;
   taskSetupModal.hidden = true;
@@ -5781,9 +5778,6 @@ export function render() {
   const closeBtn = taskSetupModal.querySelector(
     '[data-legacy~="time-task-setup-close"]',
   );
-  const setupFooterCloseBtn = taskSetupModal.querySelector(
-    '[data-legacy~="time-task-setup-footer-close"]',
-  );
   const addTaskBtn = taskSetupModal.querySelector(
     '[data-legacy~="time-task-add-btn"]',
   );
@@ -6182,7 +6176,6 @@ export function render() {
   }
   /* 과제 설정 모달: 배경 탭으로 닫지 않음 */
   closeBtn?.addEventListener("click", closeTaskSetupModal);
-  setupFooterCloseBtn?.addEventListener("click", closeTaskSetupModal);
   document.addEventListener(
     "keydown",
     (e) => {

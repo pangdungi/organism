@@ -22,16 +22,6 @@ export const LP_APP_FONT_OPTIONS = [
     label: "Lee Seoyun",
     stack: `"LP Lee Seoyun", ${LP_APP_FONT_FALLBACK}`,
   },
-  {
-    id: "omu",
-    label: "오뮤 다예쁨체",
-    stack: `"LP Omu Dayeppemche", ${LP_APP_FONT_FALLBACK}`,
-  },
-  {
-    id: "imhyemin",
-    label: "아이엠 혜민체",
-    stack: `"LP IM Hyemin", ${LP_APP_FONT_FALLBACK}`,
-  },
 ];
 
 /**

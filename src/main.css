@@ -1098,3 +1098,458 @@ table {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* -------------------------------------------------------------------------- */
+/* 로그인·회원가입 게이트 + 비밀번호 모달 (index.html) — 미니멀 블루톤 */
+/* -------------------------------------------------------------------------- */
+
+.login-page.login-page--gate {
+  --auth-navy: #1e4d7b;
+  --auth-blue: #3a6ea8;
+  --auth-track: rgba(58, 110, 168, 0.14);
+  --auth-seg-muted: rgba(30, 77, 123, 0.55);
+  --auth-ink: #1a2d45;
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  font-family: "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
+  color: var(--auth-ink);
+  background: linear-gradient(165deg, #e9f0fb 0%, #f2f6fc 42%, #fafcfe 100%);
+}
+
+.auth-gate-header {
+  flex: 0 0 auto;
+  padding: max(0.85rem, env(safe-area-inset-top, 0)) 1.25rem 0.5rem;
+  box-sizing: border-box;
+}
+
+.auth-gate-header-inner {
+  max-width: 26rem;
+  margin: 0 auto;
+}
+
+.auth-gate-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.auth-gate-logo-mark {
+  display: block;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(30, 77, 123, 0.12);
+}
+
+.auth-gate-logo {
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+  color: var(--auth-navy);
+}
+
+.auth-gate-body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 1rem 1.25rem 1.5rem;
+  box-sizing: border-box;
+}
+
+.login-wrap {
+  width: 100%;
+  max-width: 22.5rem;
+  margin: 0 auto;
+}
+
+.login-card.login-card--brand {
+  position: relative;
+  background: #fff;
+  border-radius: 20px;
+  padding: 1.6rem 1.35rem 1rem;
+  box-shadow:
+    0 12px 40px rgba(30, 77, 123, 0.09),
+    0 1px 0 rgba(255, 255, 255, 0.9) inset;
+  box-sizing: border-box;
+}
+
+.auth-gate-heading.login-title {
+  margin: 0 0 1.1rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--auth-navy);
+  line-height: 1.25;
+}
+
+/* 세그먼트 토글 — 슬라이딩 흰 칩 */
+.auth-gate-segments {
+  --ag-pad: 4px;
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  padding: var(--ag-pad);
+  margin-bottom: 1.35rem;
+  border-radius: 14px;
+  background: var(--auth-track);
+  box-sizing: border-box;
+}
+
+.auth-gate-segments::before {
+  content: "";
+  position: absolute;
+  top: var(--ag-pad);
+  bottom: var(--ag-pad);
+  left: var(--ag-pad);
+  width: calc((100% - 2 * var(--ag-pad)) / 2);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow:
+    0 2px 8px rgba(30, 77, 123, 0.1),
+    0 1px 2px rgba(30, 77, 123, 0.06);
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.auth-gate-segments.is-signup::before {
+  transform: translateX(calc(100% + 0px));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-gate-segments::before {
+    transition: none;
+  }
+}
+
+.auth-gate-seg {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  padding: 0.55rem 0.5rem;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--auth-seg-muted);
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.auth-gate-seg.is-active {
+  color: var(--auth-navy);
+}
+
+.auth-gate-seg:focus-visible {
+  outline: 2px solid var(--auth-blue);
+  outline-offset: 2px;
+}
+
+.auth-gate-panel {
+  min-height: 0;
+}
+
+.login-form--auth-gate {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.login-field--auth {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.login-form--auth-gate .login-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #a8a290;
+  letter-spacing: -0.01em;
+}
+
+.login-input--auth {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0.45rem 0 0.5rem;
+  font: inherit;
+  font-size: 0.9375rem;
+  color: #3d4a3e;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #c4bea8;
+  border-radius: 0;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.login-input--auth::placeholder {
+  color: #c4bea8;
+}
+
+.login-field--auth:focus-within .login-label {
+  color: #2a3828;
+}
+
+.login-input--auth:focus {
+  border-bottom-width: 1.5px;
+  border-bottom-color: #2a3828;
+  color: #1a2218;
+}
+
+.login-input--auth:not(:placeholder-shown):not(:focus) {
+  color: #3d4a3e;
+}
+
+.login-password-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-bottom: 1px solid #c4bea8;
+}
+
+.login-password-row:focus-within {
+  border-bottom-width: 1.5px;
+  border-bottom-color: #2a3828;
+}
+
+.login-password-row .login-input--auth,
+.login-password-row .login-input--in-password-row {
+  flex: 1 1 auto;
+  min-width: 0;
+  border-bottom: none;
+  padding-right: 0;
+}
+
+.login-password-row:focus-within .login-input--auth {
+  border-bottom: none;
+}
+
+.login-pw-toggle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  padding: 0;
+  color: var(--auth-blue);
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.login-pw-toggle:hover {
+  background: rgba(58, 110, 168, 0.06);
+}
+
+.login-pw-toggle:focus-visible {
+  outline: 2px solid var(--auth-blue);
+  outline-offset: 1px;
+}
+
+.login-btn-cta {
+  margin-top: 0.25rem;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #fff;
+  background: var(--auth-navy);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(30, 77, 123, 0.22);
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s ease, transform 0.12s ease;
+}
+
+.login-btn-cta:hover {
+  opacity: 0.95;
+}
+
+.login-btn-cta:active {
+  transform: scale(0.99);
+}
+
+.login-btn-cta:focus-visible {
+  outline: 2px solid var(--auth-blue);
+  outline-offset: 3px;
+}
+
+.login-btn-cta.login-btn-sm {
+  padding: 0.65rem 0.9rem;
+  font-size: 0.875rem;
+  margin-top: 0;
+  box-shadow: 0 2px 10px rgba(30, 77, 123, 0.18);
+}
+
+.login-auth-switch {
+  margin: 0;
+  text-align: center;
+}
+
+.login-auth-switch--forgot {
+  margin-top: 1rem;
+}
+
+.login-link {
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 0.8125rem;
+  color: var(--auth-blue);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  background: none;
+  border: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.login-link--forgot {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.login-link:focus-visible {
+  outline: 2px solid var(--auth-blue);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* 비밀번호 재설정 풀페이지 카드 */
+#reset-password-page .login-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--auth-navy);
+}
+
+#reset-password-page .login-desc {
+  margin: 0 0 1.15rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: rgba(30, 77, 123, 0.6);
+}
+
+/* 비밀번호 복구 모달 */
+.auth-pw-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(1rem, env(safe-area-inset-top, 0)) 1rem max(1rem, env(safe-area-inset-bottom, 0));
+  box-sizing: border-box;
+}
+
+.auth-pw-modal[hidden] {
+  display: none !important;
+}
+
+body.auth-pw-modal-open {
+  overflow: hidden;
+}
+
+.auth-pw-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(26, 45, 69, 0.38);
+  backdrop-filter: blur(4px);
+}
+
+.auth-pw-modal__panel {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 22rem;
+  max-height: min(90vh, 36rem);
+  overflow: auto;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 20px 48px rgba(30, 77, 123, 0.18);
+  box-sizing: border-box;
+}
+
+.auth-pw-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1rem 0.65rem;
+  border-bottom: 1px solid rgba(58, 110, 168, 0.12);
+}
+
+.auth-pw-modal__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--auth-navy);
+  letter-spacing: -0.02em;
+}
+
+.auth-pw-modal__close {
+  width: 2.25rem;
+  height: 2.25rem;
+  margin: -0.25rem -0.25rem 0 0;
+  font-size: 1.35rem;
+  line-height: 1;
+  color: rgba(30, 77, 123, 0.55);
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.auth-pw-modal__close:hover {
+  background: rgba(58, 110, 168, 0.08);
+}
+
+.auth-pw-modal__body {
+  padding: 1rem 1rem 1.15rem;
+}
+
+.login-change-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.login-forgot-desc {
+  margin: 0 0 0.35rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: rgba(30, 77, 123, 0.58);
+}
+
+.login-change-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 0.35rem;
+}
+
+.login-show-pw {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.8125rem;
+  color: rgba(30, 77, 123, 0.7);
+  cursor: pointer;
+}

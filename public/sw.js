@@ -19,7 +19,7 @@ self.addEventListener("install", (event) => {
         const assetCache = await caches.open(ASSET_CACHE);
         const urls = [
           "/manifest.json",
-          "/icon-192.png?v=organism-icon-3",
+          "/icon-192.png?v=organism-icon-4",
           "/toolbaricons/dashboard.svg",
           "/toolbaricons/timer.svg",
           "/toolbaricons/todolist.svg",
@@ -164,8 +164,8 @@ self.addEventListener("push", (event) => {
   /* iOS WebKit은 알림 아이콘에 SVG 를 쓰면 showNotification 이 조용히 실패하는 경우가 있음 → PNG 권장 */
   const options = {
     body: data.body || "설정한 시간이 되었어요.",
-    icon: "/icon-192.png?v=organism-icon-3",
-    badge: "/icon-192.png?v=organism-icon-3",
+    icon: "/icon-192.png?v=organism-icon-4",
+    badge: "/icon-192.png?v=organism-icon-4",
     tag: data.tag || "organism-reminder",
     renotify: true,
     silent: false,

@@ -26,7 +26,7 @@
     />
     <meta property="og:url" content="https://organismplanner.com/" />
     <meta property="og:locale" content="ko_KR" />
-    <meta property="og:image" content="https://organismplanner.com/icon-512.png?v=organism-icon-3" />
+    <meta property="og:image" content="https://organismplanner.com/icon-512.png?v=organism-icon-4" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="오가니즘 플래너 | Organism Planner" />
     <meta
@@ -35,7 +35,7 @@
     />
     <title>오가니즘 플래너 | Organism Planner</title>
     <!-- manifest 캐시로 예전 앱 이름이 남는 경우 방지: 쿼리 변경 시 브라우저가 다시 받음 -->
-    <link rel="manifest" href="/manifest.json?v=organism-2026-icon3" />
+    <link rel="manifest" href="/manifest.json?v=organism-2026-icon4" />
     <!-- 스플래시·로고(Organism)용 Archivo Bold — swap 깜빡임 방지: main.css 파싱 전에 우선 로드 -->
     <link rel="preload" href="/fonts/Archivo-Bold.ttf" as="font" type="font/ttf" crossorigin />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -44,8 +44,8 @@
       href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;500&family=Noto+Sans+KR:wght@300;400;500;600&family=Space+Grotesk:wght@500;600&display=swap"
       rel="stylesheet"
     />
-    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=organism-icon-3" />
-    <link rel="apple-touch-icon" href="/icon-192.png?v=organism-icon-3" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=organism-icon-4" />
+    <link rel="apple-touch-icon" href="/icon-192.png?v=organism-icon-4" />
     <!-- iOS 홈 화면에서 탭 직후 WebView가 뜨기 전 시스템이 보여 주는 구간을 배경색과 맞춤 (기기별) -->
     <link
       rel="apple-touch-startup-image"
@@ -331,14 +331,14 @@
       </div>
     </div>
     <div id="app">
-      <!-- 진입: 기본 회원가입, 로그인은 전환 -->
+      <!-- 진입: 기본 로그인 — 상단 세그먼트로 회원가입 전환 -->
       <div id="login-page" class="page login-page login-page--gate" style="display: flex">
         <header class="auth-gate-header">
           <div class="auth-gate-header-inner">
             <div class="auth-gate-brand">
               <img
                 class="auth-gate-logo-mark"
-                src="/icon-192.png?v=organism-icon-3"
+                src="/icon-192.png?v=organism-icon-4"
                 width="36"
                 height="36"
                 alt=""
@@ -351,26 +351,53 @@
         <div class="auth-gate-body">
           <div class="login-wrap">
             <div class="login-card login-card--brand">
-            <div id="auth-panel-signup" class="auth-gate-panel">
-            <h1 class="login-title">회원가입</h1>
-            <form class="login-form login-form--login-boxed" id="signup-form" onsubmit="return false">
-              <div class="login-field login-field--auth-boxed">
+            <h1 class="auth-gate-heading login-title" id="auth-gate-heading">로그인</h1>
+            <div
+              class="auth-gate-segments"
+              id="auth-gate-segments"
+              role="tablist"
+              aria-label="로그인 또는 회원가입"
+            >
+              <button
+                type="button"
+                role="tab"
+                id="auth-seg-login"
+                class="auth-gate-seg is-active"
+                aria-selected="true"
+                aria-controls="auth-panel-login"
+              >
+                로그인
+              </button>
+              <button
+                type="button"
+                role="tab"
+                id="auth-seg-signup"
+                class="auth-gate-seg"
+                aria-selected="false"
+                aria-controls="auth-panel-signup"
+              >
+                회원가입
+              </button>
+            </div>
+            <div id="auth-panel-signup" class="auth-gate-panel" style="display: none">
+            <form class="login-form login-form--auth-gate" id="signup-form" onsubmit="return false">
+              <div class="login-field login-field--auth">
                 <label class="login-label" for="signup-email">이메일</label>
                 <input
                   type="email"
                   id="signup-email"
-                  class="login-input login-input--auth-boxed"
+                  class="login-input login-input--auth"
                   placeholder="이메일 주소"
                   autocomplete="email"
                 />
               </div>
-              <div class="login-field login-field--auth-boxed">
+              <div class="login-field login-field--auth">
                 <label class="login-label" for="signup-pw">비밀번호</label>
                 <div class="login-password-row">
                   <input
                     type="password"
                     id="signup-pw"
-                    class="login-input login-input--auth-boxed login-input--in-password-row"
+                    class="login-input login-input--auth login-input--in-password-row"
                     placeholder="6자 이상"
                     autocomplete="new-password"
                   />
@@ -390,13 +417,13 @@
                   </button>
                 </div>
               </div>
-              <div class="login-field login-field--auth-boxed">
+              <div class="login-field login-field--auth">
                 <label class="login-label" for="signup-pw-confirm">비밀번호 확인</label>
                 <div class="login-password-row">
                   <input
                     type="password"
                     id="signup-pw-confirm"
-                    class="login-input login-input--auth-boxed login-input--in-password-row"
+                    class="login-input login-input--auth login-input--in-password-row"
                     placeholder="비밀번호 다시 입력"
                     autocomplete="new-password"
                   />
@@ -418,30 +445,26 @@
               </div>
               <button type="button" class="login-btn-cta" id="btn-do-signup">가입하기</button>
             </form>
-            <p class="login-auth-switch">
-              <button type="button" class="login-link" id="btn-go-login">이미 계정이 있어요? 로그인</button>
-            </p>
             </div>
-            <div id="auth-panel-login" class="auth-gate-panel" style="display: none">
-            <h1 class="login-title">로그인</h1>
-            <form class="login-form login-form--login-boxed" onsubmit="return false">
-              <div class="login-field login-field--auth-boxed">
+            <div id="auth-panel-login" class="auth-gate-panel">
+            <form class="login-form login-form--auth-gate" onsubmit="return false">
+              <div class="login-field login-field--auth">
                 <label class="login-label" for="login-id">이메일</label>
                 <input
                   type="email"
                   id="login-id"
-                  class="login-input login-input--auth-boxed"
+                  class="login-input login-input--auth"
                   placeholder="가입 시 사용한 이메일"
                   autocomplete="email"
                 />
               </div>
-              <div class="login-field login-field--auth-boxed">
+              <div class="login-field login-field--auth">
                 <label class="login-label" for="login-pw">비밀번호</label>
                 <div class="login-password-row">
                   <input
                     type="password"
                     id="login-pw"
-                    class="login-input login-input--auth-boxed login-input--in-password-row"
+                    class="login-input login-input--auth login-input--in-password-row"
                     placeholder="비밀번호 입력"
                     autocomplete="current-password"
                   />
@@ -463,18 +486,12 @@
               </div>
               <button type="button" class="login-btn-cta" id="btn-do-login">로그인</button>
             </form>
-            <p class="login-auth-switch login-auth-switch--tight">
-              <button type="button" class="login-link login-link--sub" id="btn-go-signup">회원가입</button>
-            </p>
-            <p class="login-auth-switch login-auth-switch--pw-links">
-              <button type="button" class="login-link" id="btn-show-change-pw">비밀번호 변경</button>
-              <span class="login-link-sep">·</span>
-              <button type="button" class="login-link" id="btn-show-forgot-pw">비밀번호 찾기</button>
+            <p class="login-auth-switch login-auth-switch--forgot">
+              <button type="button" class="login-link login-link--forgot" id="btn-show-forgot-pw">
+                비밀번호를 잊었나요?
+              </button>
             </p>
             </div>
-            <footer class="auth-gate-footer auth-gate-footer--in-card">
-              <p>copyright @ 누이니제이</p>
-            </footer>
             </div>
           </div>
         </div>
@@ -492,38 +509,18 @@
             aria-labelledby="auth-pw-modal-title"
           >
             <div class="auth-pw-modal__head">
-              <h2 id="auth-pw-modal-title" class="auth-pw-modal__title">비밀번호</h2>
+              <h2 id="auth-pw-modal-title" class="auth-pw-modal__title">비밀번호를 잊었나요?</h2>
               <button type="button" class="auth-pw-modal__close" id="auth-pw-modal-close" aria-label="닫기">
                 <span aria-hidden="true">×</span>
               </button>
             </div>
-            <div class="auth-pw-modal__tabs" role="tablist" aria-label="비밀번호 메뉴">
-              <button
-                type="button"
-                role="tab"
-                id="auth-pw-tab-change"
-                class="auth-pw-modal__tab is-active"
-                aria-selected="true"
-              >
-                비밀번호 변경
-              </button>
-              <button
-                type="button"
-                role="tab"
-                id="auth-pw-tab-forgot"
-                class="auth-pw-modal__tab"
-                aria-selected="false"
-              >
-                비밀번호 찾기
-              </button>
-            </div>
             <div class="auth-pw-modal__body">
-              <div id="forgot-pw-form" class="login-change-form" style="display: none">
+              <div id="forgot-pw-form" class="login-change-form">
                 <p class="login-forgot-desc">가입한 이메일 주소를 입력하면 비밀번호 재설정 링크를 보내드려요.</p>
                 <input
                   type="text"
                   id="forgot-pw-email"
-                  class="login-input login-input--auth-boxed"
+                  class="login-input login-input--auth"
                   placeholder="이메일 주소"
                   autocomplete="email"
                 />
@@ -532,19 +529,6 @@
                     재설정 메일 보내기
                   </button>
                   <button type="button" class="login-link" id="btn-cancel-forgot">취소</button>
-                </div>
-              </div>
-              <div id="change-pw-form" class="login-change-form" style="display: none">
-                <input type="text" id="cp-email" class="login-input login-input--auth-boxed" placeholder="이메일 주소" />
-                <input type="password" id="cp-current" class="login-input login-input--auth-boxed" placeholder="현재 비밀번호" />
-                <input type="password" id="cp-new" class="login-input login-input--auth-boxed" placeholder="새 비밀번호" />
-                <input type="password" id="cp-confirm" class="login-input login-input--auth-boxed" placeholder="새 비밀번호 확인" />
-                <label class="login-show-pw">
-                  <input type="checkbox" id="cp-show-pw" class="login-show-pw-checkbox" /> 비밀번호 보기
-                </label>
-                <div class="login-change-actions">
-                  <button type="button" class="login-btn-cta login-btn-sm" id="btn-change-pw">변경하기</button>
-                  <button type="button" class="login-link" id="btn-cancel-pw">취소</button>
                 </div>
               </div>
             </div>
@@ -564,14 +548,26 @@
           <div class="login-card login-card--brand">
             <h1 class="login-title">새 비밀번호 설정</h1>
             <p class="login-desc">새 비밀번호를 입력해 주세요.</p>
-            <form class="login-form" onsubmit="return false">
-              <div class="login-field">
+            <form class="login-form login-form--auth-gate" onsubmit="return false">
+              <div class="login-field login-field--auth">
                 <label class="login-label" for="reset-pw-new">새 비밀번호</label>
-                <input type="password" id="reset-pw-new" class="login-input" placeholder="새 비밀번호 (6자 이상)" autocomplete="new-password" />
+                <input
+                  type="password"
+                  id="reset-pw-new"
+                  class="login-input login-input--auth"
+                  placeholder="새 비밀번호 (6자 이상)"
+                  autocomplete="new-password"
+                />
               </div>
-              <div class="login-field">
+              <div class="login-field login-field--auth">
                 <label class="login-label" for="reset-pw-confirm">새 비밀번호 확인</label>
-                <input type="password" id="reset-pw-confirm" class="login-input" placeholder="새 비밀번호 확인" autocomplete="new-password" />
+                <input
+                  type="password"
+                  id="reset-pw-confirm"
+                  class="login-input login-input--auth"
+                  placeholder="새 비밀번호 확인"
+                  autocomplete="new-password"
+                />
                 <label class="login-show-pw">
                   <input type="checkbox" id="reset-pw-show" class="login-show-pw-checkbox" /> 비밀번호 보기
                 </label>

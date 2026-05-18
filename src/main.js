@@ -14,7 +14,6 @@ import {
   login,
   signUp,
   signOut,
-  changePassword,
   resetPasswordRequest,
   updatePasswordForRecovery,
   purgeTimeLedgerLocalOnSignOut,
@@ -67,41 +66,34 @@ function setAuthGatePanel(mode) {
   closeAuthPwRecoveryModal();
   const signupEl = document.getElementById("auth-panel-signup");
   const loginEl = document.getElementById("auth-panel-login");
+  const headingEl = document.getElementById("auth-gate-heading");
+  const segWrap = document.getElementById("auth-gate-segments");
+  const segLogin = document.getElementById("auth-seg-login");
+  const segSignup = document.getElementById("auth-seg-signup");
   if (!signupEl || !loginEl) return;
-  if (mode === "signup") {
+  const isSignup = mode === "signup";
+  if (isSignup) {
     signupEl.style.display = "";
     loginEl.style.display = "none";
   } else {
     signupEl.style.display = "none";
     loginEl.style.display = "";
   }
+  if (headingEl) headingEl.textContent = isSignup ? "회원가입" : "로그인";
+  segWrap?.classList.toggle("is-signup", isSignup);
+  segLogin?.classList.toggle("is-active", !isSignup);
+  segSignup?.classList.toggle("is-active", isSignup);
+  segLogin?.setAttribute("aria-selected", isSignup ? "false" : "true");
+  segSignup?.setAttribute("aria-selected", isSignup ? "true" : "false");
 }
 
-function syncAuthPwRecoveryModalTab(tab) {
-  const isForgot = tab === "forgot";
-  const tabChange = document.getElementById("auth-pw-tab-change");
-  const tabForgot = document.getElementById("auth-pw-tab-forgot");
-  const formForgot = document.getElementById("forgot-pw-form");
-  const formChange = document.getElementById("change-pw-form");
-  tabForgot?.classList.toggle("is-active", isForgot);
-  tabChange?.classList.toggle("is-active", !isForgot);
-  tabForgot?.setAttribute("aria-selected", isForgot ? "true" : "false");
-  tabChange?.setAttribute("aria-selected", isForgot ? "false" : "true");
-  if (formForgot) formForgot.style.display = isForgot ? "flex" : "none";
-  if (formChange) formChange.style.display = isForgot ? "none" : "flex";
-}
-
-function openAuthPwRecoveryModal(mode) {
+function openAuthPwRecoveryModal() {
   const modal = document.getElementById("auth-pw-recovery-modal");
   if (!modal) return;
-  syncAuthPwRecoveryModalTab(mode === "forgot" ? "forgot" : "change");
   modal.removeAttribute("hidden");
   modal.setAttribute("aria-hidden", "false");
   document.body.classList.add("auth-pw-modal-open");
-  const focusEl =
-    mode === "forgot"
-      ? document.getElementById("forgot-pw-email")
-      : document.getElementById("cp-email");
+  const focusEl = document.getElementById("forgot-pw-email");
   requestAnimationFrame(() => focusEl?.focus?.());
 }
 
@@ -173,17 +165,13 @@ function init() {
 
   document.getElementById("btn-do-login")?.addEventListener("click", doLogin);
   document.getElementById("btn-do-signup")?.addEventListener("click", doSignUp);
-  document.getElementById("btn-go-login")?.addEventListener("click", () => setAuthGatePanel("login"));
-  document.getElementById("btn-go-signup")?.addEventListener("click", () => setAuthGatePanel("signup"));
-  document.getElementById("btn-show-change-pw")?.addEventListener("click", () => openAuthPwRecoveryModal("change"));
-  document.getElementById("btn-show-forgot-pw")?.addEventListener("click", () => openAuthPwRecoveryModal("forgot"));
-  document.getElementById("auth-pw-tab-change")?.addEventListener("click", () => syncAuthPwRecoveryModalTab("change"));
-  document.getElementById("auth-pw-tab-forgot")?.addEventListener("click", () => syncAuthPwRecoveryModalTab("forgot"));
+  document.getElementById("auth-seg-login")?.addEventListener("click", () => setAuthGatePanel("login"));
+  document.getElementById("auth-seg-signup")?.addEventListener("click", () => setAuthGatePanel("signup"));
+  document.getElementById("btn-show-forgot-pw")?.addEventListener("click", () => openAuthPwRecoveryModal());
   document.getElementById("auth-pw-modal-close")?.addEventListener("click", closeAuthPwRecoveryModal);
   document
     .querySelector("#auth-pw-recovery-modal .auth-pw-modal__backdrop")
     ?.addEventListener("click", closeAuthPwRecoveryModal);
-  document.getElementById("btn-cancel-pw")?.addEventListener("click", closeAuthPwRecoveryModal);
   document.getElementById("btn-cancel-forgot")?.addEventListener("click", closeAuthPwRecoveryModal);
 
   document.addEventListener("keydown", (e) => {
@@ -193,7 +181,6 @@ function init() {
       closeAuthPwRecoveryModal();
     }
   });
-  document.getElementById("btn-change-pw")?.addEventListener("click", doChangePassword);
   document.getElementById("btn-send-reset-mail")?.addEventListener("click", doForgotPassword);
   document.getElementById("btn-reset-pw-submit")?.addEventListener("click", doResetPassword);
 
@@ -252,15 +239,6 @@ function init() {
     );
   })();
 
-  // 비밀번호 변경 폼 비밀번호 보기
-  document.getElementById("cp-show-pw")?.addEventListener("change", (e) => {
-    const type = e.target.checked ? "text" : "password";
-    ["cp-current", "cp-new", "cp-confirm"].forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) el.type = type;
-    });
-  });
-
   // 새 비밀번호 설정 폼 비밀번호 보기
   document.getElementById("reset-pw-show")?.addEventListener("change", (e) => {
     const type = e.target.checked ? "text" : "password";
@@ -298,7 +276,7 @@ function init() {
   async function showInitialPage() {
     if (!supabase) {
       showOnly("login");
-      setAuthGatePanel("signup");
+      setAuthGatePanel("login");
       return;
     }
     let session = null;
@@ -312,7 +290,7 @@ function init() {
       session = res?.data?.session ?? null;
     } catch (_e) {
       showOnly("login");
-      setAuthGatePanel("signup");
+      setAuthGatePanel("login");
       return;
     }
     if (session) {
@@ -320,7 +298,7 @@ function init() {
       if (blockedBySubscription) {
         window.alert(SUBSCRIPTION_EXPIRED_MESSAGE);
         showOnly("login");
-        setAuthGatePanel("signup");
+        setAuthGatePanel("login");
         return;
       }
       showOnly("signin");
@@ -331,7 +309,7 @@ function init() {
       return;
     }
     showOnly("login");
-    setAuthGatePanel("signup");
+    setAuthGatePanel("login");
   }
 
   async function dismissAppSplash() {
@@ -430,21 +408,6 @@ async function doSignUp() {
   setAuthGatePanel("login");
   const loginId = document.getElementById("login-id");
   if (loginId) loginId.value = email;
-}
-
-async function doChangePassword() {
-  const email = document.getElementById("cp-email")?.value?.trim() || "";
-  const current = document.getElementById("cp-current")?.value || "";
-  const newPw = document.getElementById("cp-new")?.value || "";
-  const result = await changePassword({ email, currentPassword: current, newPassword: newPw });
-  if (result.ok) {
-    closeAuthPwRecoveryModal();
-    showToast("비밀번호 변경됐어. 다시 로그인해 주세요.");
-    showOnly("login");
-    setAuthGatePanel("login");
-  } else {
-    showToast(result.msg);
-  }
 }
 
 async function doForgotPassword() {
