@@ -21,4 +21,8 @@
 .calendar-monthly-top-bar-date-dow,
 button.calendar-nav-today {
   font-family: "LP Corsica Display", "Helvetica Neue", Arial, sans-serif !important;
+  /* 얇은 디스플레이 획: 서브픽셀 보간으로 번질 때 회색조 스무싱 + 형상 우선 렌더 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: geometricPrecision;
 }
