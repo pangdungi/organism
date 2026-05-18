@@ -1243,42 +1243,12 @@ table {
   background: linear-gradient(165deg, #e9f0fb 0%, #f2f6fc 42%, #fafcfe 100%);
 }
 
-.auth-gate-header {
-  flex: 0 0 auto;
-  padding: max(0.85rem, env(safe-area-inset-top, 0)) 1.25rem 0.5rem;
-  box-sizing: border-box;
-}
-
-.auth-gate-header-inner {
-  max-width: 26rem;
-  margin: 0 auto;
-}
-
-.auth-gate-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-}
-
-.auth-gate-logo-mark {
-  display: block;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(30, 77, 123, 0.12);
-}
-
-.auth-gate-logo {
-  font-weight: 600;
-  font-size: 0.88rem;
-  letter-spacing: -0.02em;
-  color: var(--auth-navy);
-}
-
 .auth-gate-body {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 1rem 1.25rem 1.5rem;
+  padding: max(1rem, calc(0.85rem + env(safe-area-inset-top, 0))) 1.25rem 1.5rem;
   box-sizing: border-box;
 }
 
@@ -1567,6 +1537,80 @@ table {
   font-size: 0.8125rem;
   line-height: 1.5;
   color: rgba(30, 77, 123, 0.6);
+}
+
+/* 앱 전역 알림 — 스플래시(2147483646)·비밀번호 모달 위에 표시 */
+.app-toast-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(1rem, env(safe-area-inset-top, 0)) 1rem max(1rem, env(safe-area-inset-bottom, 0));
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-toast-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.42);
+  backdrop-filter: blur(3px);
+}
+
+.app-toast-panel {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 22rem;
+  padding: 1.25rem 1.2rem 1.1rem;
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid rgba(58, 110, 168, 0.14);
+  box-shadow: 0 20px 48px rgba(30, 77, 123, 0.2);
+  box-sizing: border-box;
+}
+
+.app-toast-message {
+  margin: 0 0 0.5rem;
+  font-family: "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+  font-size: 0.97rem;
+  font-weight: 600;
+  line-height: 1.55;
+  letter-spacing: -0.02em;
+  color: var(--auth-navy, #1e4d7b);
+}
+
+.app-toast-sub {
+  margin: 0 0 1rem;
+  font-family: "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: rgba(30, 77, 123, 0.62);
+}
+
+.app-toast-btn {
+  width: 100%;
+  padding: 0.72rem 1rem;
+  font-family: "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--auth-blue, #1a5fa8);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-toast-btn:hover {
+  filter: brightness(1.06);
+}
+
+.app-toast-btn:focus-visible {
+  outline: 2px solid var(--auth-blue, #1a5fa8);
+  outline-offset: 2px;
 }
 
 /* 비밀번호 복구 모달 */

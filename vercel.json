@@ -1,6 +1,9 @@
 {
   "buildCommand": "node scripts/write-vapid-build-json.mjs && vite build",
   "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/auth/:path*", "destination": "/index.html" }
+  ],
   "headers": [
     {
       "source": "/index.html",

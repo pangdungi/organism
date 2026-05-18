@@ -33,8 +33,10 @@ import {
 } from "./utils/subscriptionAccess.js";
 import {
   hasPasswordRecoveryUrlHint,
+  isPasswordRecoveryPathname,
   isPasswordRecoverySession,
 } from "./utils/authRecoverySession.js";
+import { consumeSupabaseAuthRedirectErrors } from "./utils/authRedirectErrorUi.js";
 
 /**
  * IndexedDB 시간기록은 user_id가 없어 계정과 묶이지 않음.
@@ -110,6 +112,8 @@ function closeAuthPwRecoveryModal() {
 }
 
 function init() {
+  consumeSupabaseAuthRedirectErrors();
+
   const app = document.getElementById("app");
   if (app) app.style.display = "block";
 
@@ -424,6 +428,7 @@ async function doSignUp() {
     void pullUserPrefsFromSupabase().catch(() => {});
     await prepareTimeLedgerStorageForCurrentSession();
     await mountApp(document.getElementById("app-screen"));
+    showToast("가입이 완료됐어요.", "메인 화면으로 들어갔어요.");
     return;
   }
   showToast(
@@ -474,6 +479,11 @@ async function doResetPassword() {
   const result = await updatePasswordForRecovery(newPw);
   if (result.ok) {
     showToast("비밀번호가 변경됐어요.", "새 비밀번호로 로그인해 주세요.");
+    try {
+      if (isPasswordRecoveryPathname()) {
+        window.history.replaceState(window.history.state, "", `${window.location.origin}/`);
+      }
+    } catch (_) {}
     showOnly("login");
     setAuthGatePanel("login");
   } else {

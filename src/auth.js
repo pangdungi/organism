@@ -9,6 +9,10 @@ import { clearTodoSubtasksMemAndLegacy } from "./utils/todoSubtasks.js";
 import { clearTodoSettingsAndCustomSectionsOnSignOut } from "./utils/todoSettings.js";
 import { clearAllKpiUiSessions } from "./utils/kpiViewUiSession.js";
 import { flushAllPendingTimeDailyBudgetSync } from "./utils/timeDailyBudgetSupabase.js";
+import {
+  getPasswordRecoveryRedirectUrl,
+  getSignupEmailRedirectUrl,
+} from "./utils/authEmailRedirect.js";
 
 /**
  * 로그아웃 시 sessionStorage·localStorage 전부 비움(키 누락으로 이전 사용자 데이터가 남는 것 방지).
@@ -80,11 +84,11 @@ export async function signUp(email, password) {
   if (!supabase) {
     return { ok: false, msg: "서버를 재시작해 주세요. (.env가 로드되지 않았습니다)" };
   }
-  const redirectTo = `${window.location.origin}${window.location.pathname || "/"}`;
+  const emailRedirectTo = getSignupEmailRedirectUrl();
   const { data, error } = await supabase.auth.signUp({
     email: email.trim(),
     password,
-    options: { emailRedirectTo: redirectTo },
+    options: { emailRedirectTo },
   });
   if (error) {
     return { ok: false, msg: toKoAuthError(error.message) };
@@ -132,7 +136,7 @@ export async function resetPasswordRequest(email) {
     console.log(LP_PW_RESET_AUTH_LOG, "B) 중단: supabase 클라이언트 없음");
     return { ok: false, msg: "연결되지 않았습니다." };
   }
-  const redirectTo = `${window.location.origin}${window.location.pathname || "/"}`;
+  const redirectTo = getPasswordRecoveryRedirectUrl();
   console.log(LP_PW_RESET_AUTH_LOG, "C) redirectTo", redirectTo);
   console.log(LP_PW_RESET_AUTH_LOG, "D) supabase.auth.resetPasswordForEmail 호출 직전");
   const { data, error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });

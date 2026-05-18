@@ -336,31 +336,19 @@
     <div id="app">
       <!-- 진입: 기본 로그인 — 상단 세그먼트로 회원가입 전환 -->
       <div id="login-page" class="page login-page login-page--gate" style="display: flex">
-        <header class="auth-gate-header">
-          <div class="auth-gate-header-inner">
-            <div class="auth-gate-brand">
-              <img
-                class="auth-gate-logo-mark"
-                src="/icon-192.png?v=timeisprice-icon-2"
-                width="36"
-                height="36"
-                alt=""
-                decoding="sync"
-              />
-              <span class="auth-gate-logo">Time is Price</span>
-            </div>
-          </div>
-        </header>
         <div class="auth-gate-body">
           <div class="login-wrap">
+            <div class="app-home-menu-launcher-brand">
+              <p class="app-home-menu-launcher-title">Time is Price</p>
+            </div>
             <div class="login-card login-card--brand">
-            <h1 class="auth-gate-heading login-title" id="auth-gate-heading">로그인</h1>
-            <div
-              class="auth-gate-segments"
-              id="auth-gate-segments"
-              role="tablist"
-              aria-label="로그인 또는 회원가입"
-            >
+              <h1 class="auth-gate-heading login-title" id="auth-gate-heading">로그인</h1>
+              <div
+                class="auth-gate-segments"
+                id="auth-gate-segments"
+                role="tablist"
+                aria-label="로그인 또는 회원가입"
+              >
               <button
                 type="button"
                 role="tab"
@@ -541,44 +529,42 @@
 
       <!-- 비밀번호 재설정 (이메일 링크 클릭 후) -->
       <div id="reset-password-page" class="page login-page login-page--gate" style="display: none">
-        <header class="auth-gate-header">
-          <div class="auth-gate-header-inner">
-            <span class="auth-gate-logo">Time is Price</span>
-          </div>
-        </header>
         <div class="auth-gate-body">
-        <div class="login-wrap">
-          <div class="login-card login-card--brand">
-            <h1 class="login-title">새 비밀번호 설정</h1>
-            <p class="login-desc">새 비밀번호를 입력해 주세요.</p>
-            <form class="login-form login-form--auth-gate" onsubmit="return false">
-              <div class="login-field login-field--auth">
-                <label class="login-label" for="reset-pw-new">새 비밀번호</label>
-                <input
-                  type="password"
-                  id="reset-pw-new"
-                  class="login-input login-input--auth"
-                  placeholder="새 비밀번호 (6자 이상)"
-                  autocomplete="new-password"
-                />
-              </div>
-              <div class="login-field login-field--auth">
-                <label class="login-label" for="reset-pw-confirm">새 비밀번호 확인</label>
-                <input
-                  type="password"
-                  id="reset-pw-confirm"
-                  class="login-input login-input--auth"
-                  placeholder="새 비밀번호 확인"
-                  autocomplete="new-password"
-                />
-                <label class="login-show-pw">
-                  <input type="checkbox" id="reset-pw-show" class="login-show-pw-checkbox" /> 비밀번호 보기
-                </label>
-              </div>
-              <button type="button" class="login-btn-cta" id="btn-reset-pw-submit">비밀번호 변경하기</button>
-            </form>
+          <div class="login-wrap">
+            <div class="app-home-menu-launcher-brand">
+              <p class="app-home-menu-launcher-title">Time is Price</p>
+            </div>
+            <div class="login-card login-card--brand">
+              <h1 class="login-title">새 비밀번호 설정</h1>
+              <p class="login-desc">새 비밀번호를 입력해 주세요.</p>
+              <form class="login-form login-form--auth-gate" onsubmit="return false">
+                <div class="login-field login-field--auth">
+                  <label class="login-label" for="reset-pw-new">새 비밀번호</label>
+                  <input
+                    type="password"
+                    id="reset-pw-new"
+                    class="login-input login-input--auth"
+                    placeholder="새 비밀번호 (6자 이상)"
+                    autocomplete="new-password"
+                  />
+                </div>
+                <div class="login-field login-field--auth">
+                  <label class="login-label" for="reset-pw-confirm">새 비밀번호 확인</label>
+                  <input
+                    type="password"
+                    id="reset-pw-confirm"
+                    class="login-input login-input--auth"
+                    placeholder="새 비밀번호 확인"
+                    autocomplete="new-password"
+                  />
+                  <label class="login-show-pw">
+                    <input type="checkbox" id="reset-pw-show" class="login-show-pw-checkbox" /> 비밀번호 보기
+                  </label>
+                </div>
+                <button type="button" class="login-btn-cta" id="btn-reset-pw-submit">비밀번호 변경하기</button>
+              </form>
+            </div>
           </div>
-        </div>
         </div>
       </div>
 

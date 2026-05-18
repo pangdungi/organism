@@ -10,6 +10,9 @@ export function showToast(message, subMessage) {
   const subHtml = subMessage ? `<p class="app-toast-sub">${escapeHtml(subMessage)}</p>` : "";
   overlay = document.createElement("div");
   overlay.className = "app-toast-modal";
+  overlay.setAttribute("role", "alertdialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute("aria-live", "assertive");
   overlay.innerHTML = `
     <div class="app-toast-backdrop"></div>
     <div class="app-toast-panel">

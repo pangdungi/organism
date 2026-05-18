@@ -37,6 +37,17 @@ export function isPasswordRecoverySession(session) {
   }
 }
 
+/** 재설정 전용 경로(Supabase redirectTo 와 동일하게 쓰면 다른 앱과 설정 패턴 통일) */
+export function isPasswordRecoveryPathname(pathname) {
+  try {
+    const p = String(pathname || (typeof window !== "undefined" ? window.location.pathname : "") || "/")
+      .replace(/\/+$/, "") || "/";
+    return p === "/auth/recovery";
+  } catch {
+    return false;
+  }
+}
+
 /** implicit / 일부 리다이렉트: 해시·쿼리에 type=recovery */
 export function hasPasswordRecoveryUrlHint() {
   try {
