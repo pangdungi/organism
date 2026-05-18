@@ -1,0 +1,24 @@
+/**
+ * 디스플레이용 영역만 CorsicaDisplay 고정 (본문 광역 폰트와 무관하게 보이게)
+ * 폰트 파일: public/fonts/CorsicaDisplay.otf
+ */
+@font-face {
+  font-family: "LP Corsica Display";
+  src: url("/fonts/CorsicaDisplay.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+.time-ledger-view [data-legacy~="time-ledger-header-total"],
+[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-header-total"],
+.calendar-nav-date .calendar-nav-month,
+.calendar-nav-date .calendar-nav-year,
+.calendar-monthly-day-num,
+.calendar-annual-cell-num,
+.calendar-annual-row-month,
+.calendar-monthly-top-bar-date-num,
+.calendar-monthly-top-bar-date-dow,
+button.calendar-nav-today {
+  font-family: "LP Corsica Display", "Helvetica Neue", Arial, sans-serif !important;
+}

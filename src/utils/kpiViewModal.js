@@ -3,6 +3,7 @@
  */
 
 import { formatDeadlineRangeCompact } from "./ganttModal.js";
+import { getLatestKpiLogWithExplicitValue } from "./kpiLogsSort.js";
 import { getAccumulatedMinutesForKpiId, minutesToHhMm, hhMmToMinutes } from "./timeKpiSync.js";
 
 const DREAM_MAP_KEY = "kpi-dream-map";
@@ -29,16 +30,11 @@ function getAccumulatedLogValue(kpiId, logs) {
   return filtered.reduce((sum, log) => sum + parseNum(log.value), 0);
 }
 
-/** 날짜 기준 최신 로그 한 건의 숫자값 (없으면 null) */
+/** 날짜 기준 최신 로그 중 “수치 입력”이 있는 한 건의 숫자값 (없으면 null) */
 function getLatestLogNumeric(kpiId, logs) {
-  const filtered = (logs || []).filter((l) => l.kpiId === kpiId);
-  if (filtered.length === 0) return null;
-  filtered.sort((a, b) => {
-    const da = a.dateRaw || a.date || "";
-    const db = b.dateRaw || b.date || "";
-    return db.localeCompare(da);
-  });
-  const v = parseNum(filtered[0].value);
+  const hit = getLatestKpiLogWithExplicitValue(kpiId, logs);
+  if (!hit) return null;
+  const v = parseNum(hit.value);
   return Number.isNaN(v) ? null : v;
 }
 

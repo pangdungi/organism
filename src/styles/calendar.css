@@ -905,6 +905,39 @@
   overscroll-behavior-y: contain;
 }
 
+/* 1주 뷰: 앱 푸터 바로 위 — 요일별 예정 시간과제 대비 실제 기록 반영 비율 */
+.calendar-1week-execution-strip {
+  flex-shrink: 0;
+  padding: 0.12rem 0.45rem 0.22rem;
+  background: var(--cal-surface-muted);
+  border-top: 1px solid var(--cal-line);
+}
+.calendar-1week-execution-strip__row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.12rem;
+  align-items: stretch;
+}
+.calendar-1week-execution-strip__cell {
+  text-align: center;
+  font-size: 0.65rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--cal-text-muted);
+  padding: 0.18rem 0.08rem;
+  line-height: 1.2;
+  border-radius: 6px;
+  min-width: 0;
+  background: transparent;
+}
+/* 오늘 열: 실행률 숫자만 표시(파란 칩/배경 없음) */
+.calendar-1week-execution-strip__cell.is-today {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none;
+  color: var(--cal-text-muted);
+}
+
 .calendar-1week-google-body {
   flex: 1 1 auto;
   width: 100%;

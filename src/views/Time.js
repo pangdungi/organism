@@ -4,16 +4,6 @@
  */
 
 import {
-  loadExpenseRows,
-  saveExpenseRows,
-  newExpenseRowId,
-  getClassificationToCategoryMap,
-  getClassificationsByFlowType,
-  getPaymentOptions,
-} from "./Asset.js";
-import { EXPENSE_MODAL_CLASSIFICATIONS } from "../expenseModalClassifications.js";
-import { BAG_DOLLAR_PATHS_INNER } from "../utils/expenseLedgerIcons.js";
-import {
   getKpiSyncedTaskNames,
   syncHabitTrackerLogs,
   upsertHabitTrackerLogWithDailyState,
@@ -53,11 +43,11 @@ import {
   pullTimeLedgerTasksFromSupabase,
 } from "../utils/timeLedgerTasksSupabase.js";
 import { pullKpiMapsForTaskLogModalOpen } from "../utils/kpiTabCloudRefresh.js";
-import { pullWorkScheduleFromSupabase } from "../utils/workScheduleSupabase.js";
 import {
   scheduleTimeDailyBudgetSyncPush,
 } from "../utils/timeDailyBudgetSupabase.js";
 import { buildTimeTaskLogPickerDropdown } from "../utils/timeTaskLogPickerDropdown.js";
+import { getTimeTaskListIconSrc } from "../utils/timeTaskIconUrls.js";
 import {
   ensureTimeLedgerEntryIds,
   readTimeLedgerEntriesRaw,
@@ -72,36 +62,10 @@ import {
   readTimeLedgerSessionFilterRangeYmd,
   readTimeLedgerCombinedPullRangeYmd,
 } from "../utils/timeLedgerEntriesSupabase.js";
-import {
-  deleteAssetExpenseTransactionsFromSupabase,
-  grantAssetExpenseTransactionServerWrite,
-  pullAssetExpenseTransactionsFromSupabase,
-  syncAssetExpenseTransactionsToSupabase,
-} from "../utils/assetExpenseTransactionsSupabase.js";
 import { pullTimeLedgerTabEnterFromCloud } from "../utils/timeLedgerCloudRefresh.js";
 import { timeLedgerSyncLog } from "../utils/timeLedgerSyncDebug.js";
 import { lpSaveDebug } from "../utils/lpSaveDebug.js";
 import { logTabSync } from "../utils/lpTabSyncDebug.js";
-import {
-  persistSectionTasksAndSchedule,
-  persistCustomSectionTasksAndSchedule,
-} from "../utils/todoSectionTasksSupabase.js";
-import {
-  readSectionTasksObject,
-  readCustomSectionTasksObject,
-} from "../utils/todoSectionTasksModel.js";
-import { listWorkScheduleDietTypeNamesFromMem } from "../utils/workScheduleModel.js";
-import {
-  getMealChecklistState,
-  setMealChecklistItem,
-} from "../utils/mealTaskChecklistStorage.js";
-import {
-  dietNameFromLedgerMemoTag,
-  isWorkScheduleDietLedgerMemoTag,
-  ledgerRowLogsDietForWorkSchedule,
-  makeWorkScheduleDietLedgerMemoTag,
-  WS_DIET_LEDGER_TASK_NAMES,
-} from "../utils/workScheduleDietLedgerTags.js";
 
 import {
   lpSetClasses,
@@ -2568,11 +2532,7 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
     feedback: initialData?.feedback || "",
     mealDetail: String(initialData?.mealDetail || "").trim(),
     memoTags: Array.isArray(initialData?.memoTags) ? initialData.memoTags : [],
-    linkedExpenseIds: Array.isArray(initialData?.linkedExpenseIds)
-      ? initialData.linkedExpenseIds
-          .map((id) => String(id || "").trim())
-          .filter(Boolean)
-      : [],
+    linkedExpenseIds: [],
     focus: String(initialData?.focus || "").trim(),
   };
   tr._rowData = rowData;
@@ -2744,44 +2704,26 @@ export function parseTagsFromFeedback(feedbackStr) {
   return [...new Set(matches.map((m) => m.slice(1).trim()).filter(Boolean))];
 }
 
-/** 구버전 memo_tags에 섞여 있던 가계부 지출 참조 접두사 — pull 시 linkedExpenseIds로 이전 */
+/** 구 memo_tags 안의 가계부 연동 접두사 — 화면·저장 시 제외 */
 const LP_LEDGER_EXPENSE_TAG_PREFIX = "lp-expense:";
 
-function isLedgerExpenseRefTag(tag) {
-  return String(tag || "")
-    .trim()
-    .startsWith(LP_LEDGER_EXPENSE_TAG_PREFIX);
-}
-
-function expenseIdFromLedgerMemoTag(tag) {
-  const s = String(tag || "").trim();
-  if (!isLedgerExpenseRefTag(s)) return "";
-  return s.slice(LP_LEDGER_EXPENSE_TAG_PREFIX.length).trim();
-}
-
-/**
- * memo_tags에서 사용자 표시 태그와 소비 거래 id 목록 분리
- * @returns {{ userTags: string[], expenseIds: string[] }}
- */
-function splitLedgerMemoTags(memoTags) {
-  const userTags = [];
-  const expenseIds = [];
-  for (const t of Array.isArray(memoTags) ? memoTags : []) {
+function userMemoTagsFromLedgerRaw(raw) {
+  const arr = Array.isArray(raw) ? raw : [];
+  const out = [];
+  const seen = new Set();
+  for (const t of arr) {
     const s = String(t ?? "").trim();
-    if (!s) continue;
-    const eid = expenseIdFromLedgerMemoTag(s);
-    if (eid) expenseIds.push(eid);
-    else userTags.push(s);
+    if (!s || s.startsWith(LP_LEDGER_EXPENSE_TAG_PREFIX)) continue;
+    if (seen.has(s)) continue;
+    seen.add(s);
+    out.push(s);
   }
-  return { userTags, expenseIds };
+  return out;
 }
 
-/** 사용자 메모 태그·투두만 memo_tags에 넣음. 가계부 지출 id는 linkedExpenseIds(서버 컬럼)로 별도 저장 */
-function buildLedgerMemoTagsForSubmit(userTags, todoTags) {
-  const base = [
-    ...(Array.isArray(userTags) ? userTags : []),
-    ...(Array.isArray(todoTags) ? todoTags : []),
-  ];
+/** 사용자 메모 태그만 memo_tags에 넣음 */
+function buildLedgerMemoTagsForSubmit(userTags) {
+  const base = [...(Array.isArray(userTags) ? userTags : [])];
   const seen = new Set();
   const out = [];
   for (const x of base) {
@@ -2793,118 +2735,26 @@ function buildLedgerMemoTagsForSubmit(userTags, todoTags) {
   return out;
 }
 
-/** 연결된 지출 id: 필드 + 구버전 memo_tags 내 lp-expense: (로컬만 남은 행 호환) */
-function getLedgerLinkedExpenseIds(row) {
-  const fromField = Array.isArray(row?.linkedExpenseIds)
-    ? row.linkedExpenseIds.map((id) => String(id || "").trim()).filter(Boolean)
-    : [];
-  const fromMemo = splitLedgerMemoTags(row?.memoTags || []).expenseIds;
-  return [...new Set([...fromField, ...fromMemo])];
-}
-
-function ledgerExpenseAddedItemsFromIds(expenseIds) {
-  const ids = Array.isArray(expenseIds) ? expenseIds : [];
-  if (ids.length === 0) return [];
-  const all = loadExpenseRows();
-  const out = [];
-  for (const eid of ids) {
-    const row = all.find(
-      (r) => String(r?.id || "").trim() === String(eid).trim(),
-    );
-    if (!row || row.flowType !== "지출") continue;
-    out.push({
-      id: row.id,
-      name: row.name || "",
-      classification: row.classification || "",
-      amountFormatted: row.amount || "",
-    });
-  }
-  return out;
-}
-
-/** 가계부 지출 행 → 한 줄 표시용 (이름·분류·금액·카테고리) — 테이블·모바일 카드 공통 */
-function formatExpenseLineForMobileCard(row) {
-  if (!row || typeof row !== "object") return "";
-  const name = String(row.name || "").trim();
-  const amt = String(row.amount || "").trim();
-  const cls = String(row.classification || "").trim();
-  const cat = String(row.category || "").trim();
-  if (name) return [name, amt].filter(Boolean).join(" | ");
-  const clsAmt = [cls, amt].filter(Boolean).join(" | ");
-  if (clsAmt) return clsAmt;
-  if (cat && amt) return `${cat} | ${amt}`;
-  if (amt) return amt;
-  if (cls) return cls;
-  if (cat) return cat;
-  return "";
-}
-
-/** 테이블 메모 태그 열: 사용자 태그 + 소비 요약(가계부 행 기준) */
+/** 테이블 메모 태그 열: 사용자 태그만 */
 function getMemoTagDisplayTextsForLedgerRow(rowData) {
   const raw =
     rowData?.memoTags?.length > 0
       ? rowData.memoTags
       : parseTagsFromFeedback(rowData?.feedback || "");
-  const { userTags } = splitLedgerMemoTags(Array.isArray(raw) ? raw : []);
-  const expenseIds = getLedgerLinkedExpenseIds(rowData);
+  const userTags = userMemoTagsFromLedgerRaw(Array.isArray(raw) ? raw : []);
   const texts = [];
+  const LP_MEAL_LEGACY_PREFIX = "lp-meal:";
   for (const t of userTags) {
     const s = String(t ?? "").trim();
     if (!s) continue;
-    const meal = dietNameFromLedgerMemoTag(s);
-    if (meal) {
-      texts.push(meal);
+    if (s.startsWith(LP_MEAL_LEGACY_PREFIX)) {
+      const inner = s.slice(LP_MEAL_LEGACY_PREFIX.length).trim();
+      texts.push(inner || s);
       continue;
     }
-    if (!isWorkScheduleDietLedgerMemoTag(s)) texts.push(s);
-  }
-  const allExp = loadExpenseRows();
-  for (const eid of expenseIds) {
-    const row = allExp.find((r) => String(r?.id || "").trim() === eid);
-    if (!row) continue;
-    const label = formatExpenseLineForMobileCard(row);
-    if (label) texts.push(label);
+    texts.push(s);
   }
   return texts;
-}
-
-/** 모바일 카드: 방해기록과 동일 레이아웃으로 연결된 소비 요약 (lp-expense 태그 기준) */
-function buildMobileCardExpenseBlockHtml(rowData) {
-  const expenseIds = getLedgerLinkedExpenseIds(rowData);
-  if (expenseIds.length === 0) return "";
-  const allExp = loadExpenseRows();
-  const parts = [];
-  for (const eid of expenseIds) {
-    const row = allExp.find((r) => String(r?.id || "").trim() === eid);
-    if (!row) continue;
-    const line = formatExpenseLineForMobileCard(row);
-    if (!line) continue;
-    const safe = line.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    parts.push(safe);
-  }
-  if (parts.length === 0) return "";
-  const text = parts.join(" · ");
-  return `<div data-legacy="time-mobile-card-focus time-mobile-card-expense-snippet"><span data-legacy="time-mobile-card-focus-label">소비</span><span data-legacy="time-mobile-card-focus-text">${text}</span></div>`;
-}
-
-/**
- * 가계부 지출이 늦게 메모리에 올 때 카드는 이미 그려져 '소비'만 보이던 문제 → 동기화·탭 복귀 후 소비 줄만 다시 그림
- */
-function refreshMobileTimeCardExpenseSnippetsIn(container) {
-  if (!container?.querySelectorAll) return;
-  container
-    .querySelectorAll('[data-legacy~="time-ledger-mobile-card"]')
-    .forEach((card) => {
-      const rd = card._rowData;
-      if (!rd || getLedgerLinkedExpenseIds(rd).length === 0) return;
-      const body = card.querySelector('[data-legacy~="time-mobile-card-body"]');
-      if (!body) return;
-      body
-        .querySelectorAll('[data-legacy~="time-mobile-card-expense-snippet"]')
-        .forEach((n) => n.remove());
-      const html = buildMobileCardExpenseBlockHtml(rd);
-      if (html) body.insertAdjacentHTML("beforeend", html);
-    });
 }
 
 /** contenteditable 메모 영역 직렬화: 텍스트 + #태그명 → 한 줄 문자열 */
@@ -3222,10 +3072,15 @@ function collectRowsFromDOM(container) {
 }
 
 /** 시간기록 리스트 왼쪽 컬러바·수면 행 아이콘(임시 팔레트·아이콘은 이후 확장) */
-const TIME_LEDGER_LIST_SLEEP_ICON_SRC = "/toolbaricons/time-ledger-icon-sleep.png";
+const TIME_LEDGER_LIST_SLEEP_ICON_SRC = "/toolbaricons/time-task/sleep-bed.png";
 
 function timeLedgerListRowIconSrc(rowData) {
   const t = (rowData?.taskName || "").trim();
+  const listed = getTimeTaskListIconSrc(t, {
+    category: rowData?.category,
+    productivity: rowData?.productivity,
+  });
+  if (listed) return listed;
   if (t === "수면하기" || /수면/.test(t)) return TIME_LEDGER_LIST_SLEEP_ICON_SRC;
   return "";
 }
@@ -3261,7 +3116,6 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   const memo = (rowData.feedback || "")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
-  const expenseBlock = buildMobileCardExpenseBlockHtml(rowData);
   const iconSrc = timeLedgerListRowIconSrc(rowData);
   const iconSlotInner = iconSrc
     ? `<img data-legacy="time-mobile-card-icon" src="${iconSrc}" alt="" decoding="async" />`
@@ -3300,7 +3154,6 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
         </div>
       </div>
       ${memo ? `<div data-legacy="time-mobile-card-memo">${memo}</div>` : ""}
-      ${expenseBlock}
     </div>
   `;
   card.addEventListener("click", (e) => {
@@ -3931,20 +3784,6 @@ export function render() {
             </div>
           </div>
         </div>
-        <div data-legacy="time-task-log-todo-row">
-          <div data-legacy="time-task-log-link-row-head">
-            <span data-legacy="time-task-log-todo-label time-task-log-link-strip-label">투두 리스트</span>
-            <button type="button" data-legacy="time-task-log-todo-add-btn time-task-log-link-strip-add" aria-label="할일 추가">+</button>
-          </div>
-          <div data-legacy="time-task-log-todo-pills"></div>
-        </div>
-        <div data-legacy="time-task-log-expense-row">
-          <div data-legacy="time-task-log-link-row-head">
-            <span data-legacy="time-task-log-expense-label time-task-log-link-strip-label">소비 기록</span>
-            <button type="button" data-legacy="time-task-log-expense-add-btn time-task-log-link-strip-add" aria-label="소비 기록 추가">+</button>
-          </div>
-          <div data-legacy="time-task-log-expense-pills"></div>
-        </div>
         </div>
       </div>
       <div data-legacy="time-task-log-footer" data-task-log-footer>
@@ -3976,62 +3815,6 @@ export function render() {
           <div data-legacy="time-datetime-picker-column" data-col="ampm"></div>
           <div data-legacy="time-datetime-picker-column" data-col="hour"></div>
           <div data-legacy="time-datetime-picker-column" data-col="minute"></div>
-        </div>
-      </div>
-    </div>
-    <div data-legacy="time-task-log-todo-inner-modal" hidden>
-      <div data-legacy="time-task-log-todo-inner-backdrop"></div>
-      <div data-legacy="time-task-log-todo-inner-panel">
-        <div data-legacy="time-task-log-todo-inner-header time-task-setup-header time-task-log-header">
-          <h3 data-legacy="time-task-setup-title time-task-log-todo-inner-header-label">투두리스트</h3>
-          <button type="button" data-legacy="time-task-setup-close time-task-log-todo-inner-close" aria-label="닫기">&times;</button>
-        </div>
-        <div data-legacy="time-task-log-todo-inner-body">
-          <div data-legacy="time-task-log-field">
-            <label>카테고리</label>
-            <div data-legacy="time-task-log-todo-category-wrap"></div>
-          </div>
-          <div data-legacy="time-task-log-field">
-            <input type="text" data-legacy="time-task-log-todo-inner-name" placeholder="할 일 이름 입력" />
-          </div>
-        </div>
-        <div data-legacy="time-task-log-todo-inner-footer">
-          <button type="button" data-legacy="time-task-log-todo-inner-add">추가</button>
-        </div>
-      </div>
-    </div>
-    <div data-legacy="time-task-log-expense-inner-modal" hidden>
-      <div data-legacy="time-task-log-expense-inner-backdrop"></div>
-      <div data-legacy="time-task-log-expense-inner-panel">
-        <div data-legacy="time-task-log-expense-inner-header time-task-setup-header time-task-log-header">
-          <h3 data-legacy="time-task-setup-title">소비 기록</h3>
-          <button type="button" data-legacy="time-task-setup-close time-task-log-expense-inner-close" aria-label="닫기">&times;</button>
-        </div>
-        <div data-legacy="time-task-log-expense-inner-body">
-          <div data-legacy="time-task-log-expense-inner-fields">
-            <div data-legacy="time-task-log-expense-amount-name-row">
-              <div data-legacy="time-task-log-field">
-                <label>금액</label>
-                <div data-legacy="time-task-log-expense-amount-wrap">
-                  <input type="text" data-legacy="time-task-log-expense-amount" name="time-task-log-expense-amount" placeholder="0" inputmode="numeric" />
-                  <span data-legacy="time-task-log-expense-amount-unit">원</span>
-                </div>
-              </div>
-              <div data-legacy="time-task-log-field">
-                <label>소비명</label>
-                <input type="text" data-legacy="time-task-log-expense-name" name="time-task-log-expense-name" placeholder="스타벅스" />
-              </div>
-            </div>
-            <div data-legacy="time-task-log-field">
-              <label>소비 분류</label>
-              <div data-legacy="time-task-log-expense-classification-wrap"></div>
-            </div>
-            <div data-legacy="time-task-log-expense-error" hidden></div>
-          </div>
-          <div data-legacy="time-task-log-expense-added-list"></div>
-        </div>
-        <div data-legacy="time-task-log-expense-inner-footer time-task-log-todo-inner-footer">
-          <button type="button" data-legacy="time-task-log-expense-inner-add-btn">추가</button>
         </div>
       </div>
     </div>
@@ -4090,7 +3873,7 @@ export function render() {
     '[data-legacy~="time-task-log-meal-detail-input"]',
   );
   function updateTaskLogMealDetailVisibility(taskName) {
-    const show = WS_DIET_LEDGER_TASK_NAMES.has((taskName || "").trim());
+    const show = TTC.MEAL_DETAIL_TASK_NAMES.has((taskName || "").trim());
     if (taskLogMealDetailSection) {
       taskLogMealDetailSection.hidden = !show;
       if (!show && taskLogMealDetailInput) taskLogMealDetailInput.value = "";
@@ -4706,63 +4489,6 @@ export function render() {
       });
     });
 
-  const taskLogExpenseAddBtn = taskLogModal.querySelector(
-    '[data-legacy~="time-task-log-expense-add-btn"]',
-  );
-  const taskLogExpenseInnerModal = taskLogModal.querySelector(
-    '[data-legacy~="time-task-log-expense-inner-modal"]',
-  );
-  const taskLogExpenseInnerBackdrop = taskLogModal.querySelector(
-    '[data-legacy~="time-task-log-expense-inner-backdrop"]',
-  );
-  const taskLogExpenseNameInput = taskLogModal.querySelector(
-    '[data-legacy~="time-task-log-expense-name"]',
-  );
-  const taskLogExpenseClassificationWrap = taskLogModal.querySelector(
-    '[data-legacy~="time-task-log-expense-classification-wrap"]',
-  );
-  const taskLogExpenseAmountInput = taskLogModal.querySelector(
-    '[data-legacy~="time-task-log-expense-amount"]',
-  );
-  const taskLogExpenseErrorEl = taskLogModal.querySelector(
-    '[data-legacy~="time-task-log-expense-error"]',
-  );
-  const taskLogExpenseInnerList = taskLogModal.querySelector(
-    '[data-legacy~="time-task-log-expense-added-list"]',
-  );
-  const taskLogExpensePills = taskLogModal.querySelector(
-    '[data-legacy~="time-task-log-expense-pills"]',
-  );
-  const taskLogExpenseInnerAdd = taskLogModal.querySelector(
-    '[data-legacy~="time-task-log-expense-inner-add-btn"]',
-  );
-  const taskLogExpenseInnerClose = taskLogModal.querySelector(
-    '[data-legacy~="time-task-log-expense-inner-close"]',
-  );
-  const taskLogTodoAddBtn = taskLogModal.querySelector(
-    '[data-legacy~="time-task-log-todo-add-btn"]',
-  );
-  const taskLogTodoPills = taskLogModal.querySelector(
-    '[data-legacy~="time-task-log-todo-pills"]',
-  );
-  const taskLogTodoInnerModal = taskLogModal.querySelector(
-    '[data-legacy~="time-task-log-todo-inner-modal"]',
-  );
-  const taskLogTodoCategoryWrap = taskLogModal.querySelector(
-    '[data-legacy~="time-task-log-todo-category-wrap"]',
-  );
-  const taskLogTodoInnerName = taskLogModal.querySelector(
-    '[data-legacy~="time-task-log-todo-inner-name"]',
-  );
-  const taskLogTodoInnerClose = taskLogModal.querySelector(
-    '[data-legacy~="time-task-log-todo-inner-close"]',
-  );
-  const taskLogTodoInnerAdd = taskLogModal.querySelector(
-    '[data-legacy~="time-task-log-todo-inner-add"]',
-  );
-  const taskLogTodoInnerBackdrop = taskLogModal.querySelector(
-    '[data-legacy~="time-task-log-todo-inner-backdrop"]',
-  );
   const taskLogKpiTodosSection = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-kpi-todos-section"]',
   );
@@ -5256,163 +4982,6 @@ export function render() {
     };
   }
 
-  /** 소비 기록 모달 전용: 소비 분류(지출은 글만) + 결제수단 선택 */
-  function buildExpenseClassificationByFlowTypeButtons(
-    getFlowType,
-    initialValue,
-    onUpdate,
-  ) {
-    const wrap = document.createElement("div");
-    lpSetClasses(wrap, "time-task-log-expense-classification-btns");
-    const hint = document.createElement("span");
-    lpSetClasses(hint, "time-task-log-expense-classification-hint");
-    hint.textContent = "큰분류(입금/지출)를 먼저 선택해 주세요.";
-    const btnsWrap = document.createElement("div");
-    lpSetClasses(
-      btnsWrap,
-      "lp-choice-chip-row time-task-log-expense-cls-btns-wrap",
-    );
-    let value = (initialValue || "").trim();
-    let payment = "";
-    /** 지출 전용: "all" | "payment" | "done" */
-    let expenseStep = "all";
-
-    function renderButtons() {
-      const flowType = (getFlowType && getFlowType()) || "";
-      btnsWrap.innerHTML = "";
-      const isExpense = flowType === "지출";
-      const opts = isExpense
-        ? EXPENSE_MODAL_CLASSIFICATIONS
-        : getClassificationsByFlowType(flowType);
-      if (!flowType || opts.length === 0) {
-        hint.hidden = false;
-        hint.textContent = "큰분류(입금/지출)를 먼저 선택해 주세요.";
-        value = "";
-        payment = "";
-        expenseStep = "all";
-        return;
-      }
-      hint.hidden = true;
-
-      const paymentOptions = getPaymentOptions && getPaymentOptions();
-
-      function makeClsBtn(opt, selected, onClick) {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        lpSetClasses(btn, "lp-choice-chip");
-        if (selected) lpTokenAdd(btn, "lp-choice-chip--on");
-        btn.dataset.label = opt.label;
-        const svgInnerPaths = isExpense
-          ? ""
-          : opt.svg || (flowType === "입금" ? BAG_DOLLAR_PATHS_INNER : "");
-        if (svgInnerPaths) {
-          lpTokenAdd(btn, "lp-choice-chip--has-icon");
-          btn.innerHTML = `<span data-legacy="lp-choice-chip__icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${svgInnerPaths}</svg></span><span data-legacy="lp-choice-chip__label">${escapeHtml(opt.label)}</span>`;
-        } else {
-          btn.innerHTML = `<span data-legacy="lp-choice-chip__label">${escapeHtml(opt.label)}</span>`;
-        }
-        btn.addEventListener("click", onClick);
-        return btn;
-      }
-
-      if (
-        isExpense &&
-        (expenseStep === "payment" || expenseStep === "done") &&
-        value
-      ) {
-        const selectedOpt = EXPENSE_MODAL_CLASSIFICATIONS.find(
-          (o) => o.label === value,
-        );
-        if (selectedOpt) {
-          const clsBtn = makeClsBtn(selectedOpt, true, () => {
-            expenseStep = "all";
-            value = "";
-            payment = "";
-            renderButtons();
-            onUpdate?.("");
-          });
-          clsBtn.title = "다시 누르면 분류 수정";
-          btnsWrap.appendChild(clsBtn);
-        }
-        (paymentOptions || ["현금", "체크카드", "신용카드"]).forEach((opt) => {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          lpSetClasses(btn, "lp-choice-chip");
-          btn.dataset.payment = opt;
-          btn.innerHTML = `<span data-legacy="lp-choice-chip__label">${escapeHtml(opt)}</span>`;
-          if (payment === opt) lpTokenAdd(btn, "lp-choice-chip--on");
-          btn.addEventListener("click", () => {
-            payment = opt;
-            expenseStep = "done";
-            renderButtons();
-            onUpdate?.(value);
-          });
-          btnsWrap.appendChild(btn);
-        });
-        return;
-      }
-
-      const valid = opts.some((o) => o.label === value);
-      if (!valid) {
-        value = "";
-        payment = "";
-        expenseStep = "all";
-      }
-      opts.forEach((opt) => {
-        const btn = makeClsBtn(opt, value === opt.label, () => {
-          if (isExpense) {
-            value = opt.label;
-            expenseStep = "payment";
-            payment = "";
-            renderButtons();
-            onUpdate?.(value);
-          } else {
-            value = value === opt.label ? "" : opt.label;
-            btnsWrap
-              .querySelectorAll('[data-legacy~="lp-choice-chip"][data-label]')
-              .forEach((b) =>
-                lpTokenToggle(
-                  b,
-                  "lp-choice-chip--on",
-                  b.dataset.label === value,
-                ),
-              );
-            onUpdate?.(value);
-          }
-        });
-        btnsWrap.appendChild(btn);
-      });
-    }
-
-    wrap.appendChild(hint);
-    wrap.appendChild(btnsWrap);
-    wrap._getValue = () => value;
-    wrap._getPaymentValue = () => payment;
-    wrap._setValue = (v) => {
-      value = (v || "").trim();
-      payment = "";
-      expenseStep = "all";
-      renderButtons();
-    };
-    wrap._setFlowType = () => {
-      payment = "";
-      expenseStep = "all";
-      renderButtons();
-    };
-    renderButtons();
-    return wrap;
-  }
-
-  /* 소비 기록 모달: 항상 지출만 기록, 큰분류 선택 없음 */
-  const expenseClassificationButtons =
-    buildExpenseClassificationByFlowTypeButtons(
-      () => "지출",
-      "",
-      () => {},
-    );
-
-  taskLogExpenseClassificationWrap?.appendChild(expenseClassificationButtons);
-
   function onTaskSelectedForLog(taskName) {
     refreshKpiTodosInLogModal(taskName);
     updateTaskLogMealDetailVisibility(taskName);
@@ -5442,7 +5011,6 @@ export function render() {
 
     const dateYmd = normalizeTaskLogPickerDateYmd();
     const dailyInfo = getKpiDailyRepeatInfoByKpiName(name);
-    const dietNames = listWorkScheduleDietTypeNamesFromMem();
 
     if (dailyInfo && dailyInfo.needHabitTracker) {
       if (taskLogDailyTodosTitle)
@@ -5497,52 +5065,11 @@ export function render() {
       return;
     }
 
-    if (
-      WS_DIET_LEDGER_TASK_NAMES.has(name) &&
-      dateYmd.length >= 10 &&
-      dietNames.length > 0
-    ) {
-      if (taskLogDailyTodosTitle)
-        taskLogDailyTodosTitle.textContent = "등록한 식단";
-      taskLogDailyTodosSection.hidden = false;
-      taskLogDailyTodosList.innerHTML = "";
-      const saved = getMealChecklistState(dateYmd, name);
-      dietNames.forEach((dietLabel) => {
-        const label = document.createElement("label");
-        lpSetClasses(
-          label,
-          "time-task-log-kpi-todo-row time-task-log-daily-todo-row",
-        );
-        label.dataset.mealChecklist = "1";
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.checked = !!saved[dietLabel];
-        const span = document.createElement("span");
-        lpSetClasses(span, "time-task-log-kpi-todo-text");
-        span.textContent = dietLabel;
-        if (checkbox.checked) lpTokenAdd(span, "is-done");
-        label.appendChild(checkbox);
-        label.appendChild(span);
-        checkbox.addEventListener("change", () => {
-          setMealChecklistItem(dateYmd, name, dietLabel, checkbox.checked);
-          lpTokenToggle(span, "is-done", checkbox.checked);
-        });
-        taskLogDailyTodosList.appendChild(label);
-      });
-      return;
-    }
-
     taskLogDailyTodosSection.hidden = true;
     taskLogDailyTodosList.innerHTML = "";
     if (taskLogDailyTodosTitle)
       taskLogDailyTodosTitle.textContent = DEFAULT_DAILY_TODOS_TITLE;
   }
-
-  window.addEventListener("work-schedule-saved", () => {
-    if (!taskLogModal || taskLogModal.hidden) return;
-    const tn = taskLogTaskDropdown?._getValue?.() || "";
-    if (tn) refreshKpiTodosInLogModal(tn);
-  });
 
   function setupScoreButtons(container, getValue, setValue) {
     if (!container) return;
@@ -5580,283 +5107,6 @@ export function render() {
     if (!isNaN(n) && n >= -50 && n <= 50) return n;
     return null;
   }
-  /** 할일 일정탭 리스트(todo-section-tasks)에 이름만 추가. KPI 불필요. */
-  function addTodoNameToSection(sectionId, name) {
-    const todoName = (name || "").trim();
-    if (!todoName) return false;
-    const VALID_SECTIONS = ["dream", "sideincome", "happy", "health"];
-    if (!VALID_SECTIONS.includes(sectionId)) return false;
-    try {
-      const obj = readSectionTasksObject();
-      const arr = Array.isArray(obj[sectionId]) ? obj[sectionId] : [];
-      const taskId =
-        typeof crypto !== "undefined" && crypto.randomUUID
-          ? crypto.randomUUID()
-          : "";
-      if (!taskId) return false;
-      arr.push({
-        taskId,
-        name: todoName,
-        startDate: "",
-        dueDate: "",
-        startTime: "",
-        endTime: "",
-        eisenhower: "",
-        done: false,
-        itemType: "todo",
-      });
-      obj[sectionId] = arr;
-      persistSectionTasksAndSchedule(obj);
-      document.dispatchEvent(
-        new CustomEvent("todo-braindump-added", { detail: {} }),
-      );
-      return true;
-    } catch (_) {}
-    return false;
-  }
-
-  const TODO_CATEGORIES = [
-    { id: "dream", label: "꿈" },
-    { id: "sideincome", label: "부수입" },
-    { id: "happy", label: "행복" },
-    { id: "health", label: "건강" },
-  ];
-  let taskLogTodoSelectedCategory = "dream";
-  /** 과제 기록 시 추가한 할 일: { categoryLabel, todoName } → "리스트 | 할일이름" 태그로 저장 */
-  let taskLogTodoAddedItems = [];
-
-  function addTodoToSection(sectionId, name) {
-    return addTodoNameToSection(sectionId, name);
-  }
-
-  function updateTodoPills() {
-    if (!taskLogTodoPills) return;
-    taskLogTodoPills.innerHTML = "";
-    taskLogTodoAddedItems.forEach((item, idx) => {
-      const pill = document.createElement("span");
-      lpSetClasses(pill, "time-task-log-todo-pill time-memo-tag-chip");
-      const label =
-        [item.categoryLabel, item.todoName].filter(Boolean).join(" | ") || "";
-      pill.innerHTML = `<span data-legacy="time-memo-tag-chip-text">${escapeHtml(label)}</span><button type="button" data-legacy="time-memo-tag-chip-remove" aria-label="삭제">&times;</button>`;
-      pill
-        .querySelector('[data-legacy~="time-memo-tag-chip-remove"]')
-        ?.addEventListener("click", (ev) => {
-          ev.preventDefault();
-          taskLogTodoAddedItems.splice(idx, 1);
-          updateTodoPills();
-        });
-      taskLogTodoPills.appendChild(pill);
-    });
-  }
-
-  function renderTodoCategoryButtons() {
-    if (!taskLogTodoCategoryWrap) return;
-    taskLogTodoCategoryWrap.innerHTML = "";
-    TODO_CATEGORIES.forEach(({ id, label }) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      lpSetClasses(
-        btn,
-        `time-task-log-todo-category-btn${taskLogTodoSelectedCategory === id ? " selected" : ""}`,
-      );
-      btn.dataset.category = id;
-      btn.textContent = label;
-      btn.addEventListener("click", () => {
-        taskLogTodoSelectedCategory = id;
-        taskLogModal
-          .querySelectorAll('[data-legacy~="time-task-log-todo-category-btn"]')
-          .forEach((b) => lpTokenRemove(b, "selected"));
-        lpTokenAdd(btn, "selected");
-      });
-      taskLogTodoCategoryWrap.appendChild(btn);
-    });
-  }
-
-  function openTodoInnerModal() {
-    taskLogTodoSelectedCategory = "dream";
-    renderTodoCategoryButtons();
-    if (taskLogTodoInnerName) taskLogTodoInnerName.value = "";
-    if (taskLogTodoInnerModal) taskLogTodoInnerModal.hidden = false;
-    taskLogTodoInnerName?.focus();
-  }
-
-  function closeTodoInnerModal() {
-    if (taskLogTodoInnerModal) taskLogTodoInnerModal.hidden = true;
-  }
-
-  taskLogTodoAddBtn?.addEventListener("click", openTodoInnerModal);
-  taskLogTodoInnerClose?.addEventListener("click", closeTodoInnerModal);
-
-  taskLogExpenseAddBtn?.addEventListener("click", openExpenseInnerModal);
-  taskLogExpenseInnerClose?.addEventListener("click", closeExpenseInnerModal);
-
-  taskLogTodoInnerAdd?.addEventListener("click", () => {
-    const todoName = (taskLogTodoInnerName?.value || "").trim();
-    if (!todoName) return;
-    const cat = TODO_CATEGORIES.find(
-      (c) => c.id === taskLogTodoSelectedCategory,
-    );
-    const sectionLabel = cat?.label || "";
-    if (addTodoToSection(taskLogTodoSelectedCategory, todoName)) {
-      taskLogTodoAddedItems.push({ categoryLabel: sectionLabel, todoName });
-      updateTodoPills();
-      if (taskLogTodoInnerName) taskLogTodoInnerName.value = "";
-      closeTodoInnerModal();
-    } else {
-      showToast("할 일 추가에 실패했습니다.", "warn");
-    }
-  });
-
-  /** 소비 모달: 추가한 기록 (가계부와 연동, id로 삭제) */
-  let taskLogExpenseAddedItems = [];
-
-  function getExpenseModalDate() {
-    const startRaw = (taskLogStartInput?.value || "").trim();
-    const parsed = parseDateFromDateTime(startRaw) || startRaw.slice(0, 10);
-    return (parsed || new Date().toISOString().slice(0, 10)).replace(
-      /\//g,
-      "-",
-    );
-  }
-
-  /** 소비 기록을 방해기록·투두처럼 행 아래 태그(분류 | 가격)로만 표시. 모달 내 목록은 사용하지 않음 */
-  function updateExpensePills() {
-    if (!taskLogExpensePills) return;
-    taskLogExpensePills.innerHTML = "";
-    taskLogExpenseAddedItems.forEach((item, idx) => {
-      const pill = document.createElement("span");
-      lpSetClasses(pill, "time-task-log-expense-pill time-memo-tag-chip");
-      const label =
-        [item.classification || "", item.amountFormatted || ""]
-          .filter(Boolean)
-          .join(" | ") || "";
-      pill.innerHTML = `<span data-legacy="time-memo-tag-chip-text">${escapeHtml(label)}</span><button type="button" data-legacy="time-memo-tag-chip-remove" aria-label="삭제">&times;</button>`;
-      pill
-        .querySelector('[data-legacy~="time-memo-tag-chip-remove"]')
-        ?.addEventListener("click", (ev) => {
-          ev.preventDefault();
-          if (item.id) {
-            const rows = loadExpenseRows().filter((r) => r.id !== item.id);
-            saveExpenseRows(rows);
-            grantAssetExpenseTransactionServerWrite(1);
-            void deleteAssetExpenseTransactionsFromSupabase([item.id]).catch(
-              () => {},
-            );
-            window.dispatchEvent(
-              new CustomEvent("asset-expense-transactions-saved"),
-            );
-          }
-          taskLogExpenseAddedItems.splice(idx, 1);
-          updateExpensePills();
-        });
-      taskLogExpensePills.appendChild(pill);
-    });
-  }
-
-  function updateExpenseInnerList() {
-    if (taskLogExpenseInnerList) taskLogExpenseInnerList.innerHTML = "";
-    updateExpensePills();
-  }
-
-  function openExpenseInnerModal() {
-    if (taskLogExpenseInnerModal) taskLogExpenseInnerModal.hidden = false;
-    taskLogExpenseNameInput?.focus();
-  }
-
-  function closeExpenseInnerModal() {
-    if (taskLogExpenseInnerModal) taskLogExpenseInnerModal.hidden = true;
-  }
-
-  taskLogExpenseInnerAdd?.addEventListener("click", () => {
-    const name = (taskLogExpenseNameInput?.value || "").trim();
-    const amountRaw = (taskLogExpenseAmountInput?.value || "")
-      .trim()
-      .replace(/,/g, "");
-    const expenseClassification =
-      expenseClassificationButtons._getValue?.() || "";
-    const expensePayment =
-      expenseClassificationButtons._getPaymentValue?.() || "";
-    const classificationToCategory = getClassificationToCategoryMap();
-    const expenseCategory = expenseClassification
-      ? classificationToCategory[expenseClassification] || ""
-      : "";
-    const missing = [];
-    if (!expenseClassification) missing.push("소비 분류");
-    if (!amountRaw || !parseFloat(amountRaw)) missing.push("금액");
-    if (!expensePayment) missing.push("결제수단");
-    if (missing.length > 0) {
-      if (taskLogExpenseErrorEl) {
-        taskLogExpenseErrorEl.textContent = "입력 필요: " + missing.join(", ");
-        taskLogExpenseErrorEl.hidden = false;
-      }
-      return;
-    }
-    if (taskLogExpenseErrorEl) {
-      taskLogExpenseErrorEl.textContent = "";
-      taskLogExpenseErrorEl.hidden = true;
-    }
-    const raw = parseFloat(amountRaw) || 0;
-    const signed = -Math.abs(raw);
-    const amountFormatted = signed.toLocaleString("ko-KR");
-    const dateForExpense = getExpenseModalDate();
-    const id = newExpenseRowId();
-    if (!id) {
-      showToast(
-        "거래 ID를 만들 수 없습니다. 브라우저를 업데이트해 주세요.",
-        "warn",
-      );
-      return;
-    }
-    const row = {
-      id,
-      name: name || "",
-      date: dateForExpense,
-      flowType: "지출",
-      category: expenseCategory,
-      classification: expenseClassification,
-      amount: amountFormatted,
-      payment: expensePayment,
-      memo: "",
-    };
-    taskLogExpenseAddedItems.push({
-      id,
-      name: name || "",
-      classification: expenseClassification,
-      amountFormatted,
-    });
-    const existingRows = loadExpenseRows();
-    existingRows.push(row);
-    saveExpenseRows(existingRows);
-    lpSaveDebug("방해기록 소비 모달 → 가계부 메모리 추가", {
-      expenseId: id,
-      date: row.date,
-      flowType: row.flowType,
-      amount: row.amount,
-      memTotal: existingRows.length,
-    });
-    grantAssetExpenseTransactionServerWrite(1);
-    void syncAssetExpenseTransactionsToSupabase().catch(() => {});
-    window.dispatchEvent(new CustomEvent("asset-expense-transactions-saved"));
-    updateExpenseInnerList();
-    taskLogExpenseNameInput.value = "";
-    taskLogExpenseAmountInput.value = "";
-    expenseClassificationButtons._setValue?.("");
-    expenseClassificationButtons._setFlowType?.();
-    closeExpenseInnerModal();
-  });
-
-  taskLogExpenseAmountInput?.addEventListener("input", () => {
-    const v = taskLogExpenseAmountInput.value;
-    const digits = v.replace(/\D/g, "");
-    const formatted = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-    if (v !== formatted) {
-      taskLogExpenseAmountInput.value = formatted;
-      taskLogExpenseAmountInput.setSelectionRange(
-        formatted.length,
-        formatted.length,
-      );
-    }
-  });
 
   /**
    * 신규 과제 기록 모달: 오늘 날짜·오버레이 확정, 시작=해당일 마지막 마감(없으면 늦은 시작), 마감 입력 비움.
@@ -5922,14 +5172,12 @@ export function render() {
   }
 
   /**
-   * 과제 기록/수정 모달: KPI 탭 미방문 상태에서도 매일 할일·식단 유형이 비지 않게 서버와 맞춤.
-   * (로컬만 보던 `getKpiDailyRepeatInfoByKpiName` / `listWorkScheduleDietTypeNamesFromMem` 선행 조건)
+   * 과제 기록/수정 모달: KPI 탭 미방문 상태에서도 매일 할일이 비지 않게 서버와 맞춤.
    */
   async function ensureTaskLogModalCloudData() {
     await Promise.all([
       pullTimeLedgerTasksFromSupabase().catch(() => {}),
       pullKpiMapsForTaskLogModalOpen().catch(() => {}),
-      pullWorkScheduleFromSupabase({ includeTypes: true }).catch(() => {}),
     ]);
     try {
       getFullTaskOptions();
@@ -6000,14 +5248,6 @@ export function render() {
     if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
     taskLogMemoTags = [];
     renderTaskLogTagPills();
-    taskLogExpenseNameInput.value = "";
-    expenseClassificationButtons._setValue?.("");
-    expenseClassificationButtons._setFlowType?.();
-    taskLogExpenseAmountInput.value = "";
-    if (taskLogExpenseErrorEl) {
-      taskLogExpenseErrorEl.textContent = "";
-      taskLogExpenseErrorEl.hidden = true;
-    }
     taskLogModal
       .querySelectorAll('[data-legacy~="time-task-log-accordion-item"]')
       .forEach((item) => {
@@ -6030,13 +5270,6 @@ export function render() {
         if (chevron) chevron.textContent = "▶";
         if (header) header.setAttribute("aria-expanded", "false");
       });
-    if (taskLogTodoInnerName) taskLogTodoInnerName.value = "";
-    taskLogTodoAddedItems = [];
-    if (taskLogTodoPills) taskLogTodoPills.innerHTML = "";
-    taskLogExpenseAddedItems = [];
-    if (taskLogExpenseInnerList) taskLogExpenseInnerList.innerHTML = "";
-    updateExpensePills();
-    if (taskLogExpenseInnerModal) taskLogExpenseInnerModal.hidden = true;
     if (taskLogKpiTodosSection) taskLogKpiTodosSection.hidden = true;
     if (taskLogKpiTodosList) taskLogKpiTodosList.innerHTML = "";
     applyTaskLogModalDefaultsForNewEntry();
@@ -6130,7 +5363,7 @@ export function render() {
     let mealDetailVal = String(data.mealDetail || "").trim();
     let feedbackRaw = String(data.feedback || "").trim();
     const tnForMemo = (data.taskName || "").trim();
-    if (WS_DIET_LEDGER_TASK_NAMES.has(tnForMemo)) {
+    if (TTC.MEAL_DETAIL_TASK_NAMES.has(tnForMemo)) {
       if (!mealDetailVal && feedbackRaw.startsWith("[식단] ")) {
         const sp = splitUnhealthyMealMemoFromDb(feedbackRaw);
         mealDetailVal = sp.mealDetail;
@@ -6143,52 +5376,12 @@ export function render() {
     const rawMemoTagsForEdit = Array.isArray(data.memoTags)
       ? [...data.memoTags]
       : parseTagsFromFeedback(feedbackRaw);
-    const splitEdit = splitLedgerMemoTags(rawMemoTagsForEdit);
-    const mealNamesFromRow = [];
-    taskLogMemoTags = splitEdit.userTags.filter((t) => {
-      const s = String(t ?? "").trim();
-      if (isWorkScheduleDietLedgerMemoTag(s)) {
-        const n = dietNameFromLedgerMemoTag(s);
-        if (n) mealNamesFromRow.push(n);
-        return false;
-      }
-      return true;
-    });
+    taskLogMemoTags = userMemoTagsFromLedgerRaw(rawMemoTagsForEdit)
+      .map((t) => String(t ?? "").trim())
+      .filter(Boolean);
     renderTaskLogTagPills();
-    const fromLinkedField = Array.isArray(data.linkedExpenseIds)
-      ? data.linkedExpenseIds
-      : [];
-    const mergedExpenseIds = [
-      ...new Set(
-        [...splitEdit.expenseIds, ...fromLinkedField].map((id) =>
-          String(id || "").trim(),
-        ),
-      ),
-    ].filter(Boolean);
-    taskLogExpenseAddedItems = ledgerExpenseAddedItemsFromIds(mergedExpenseIds);
-    updateExpensePills();
-    taskLogTodoAddedItems = [];
-    if (typeof updateTodoPills === "function") updateTodoPills();
     if (taskLogTagInput) taskLogTagInput.value = "";
-    taskLogExpenseNameInput.value = "";
-    expenseClassificationButtons._setValue?.("");
-    expenseClassificationButtons._setFlowType?.();
-    taskLogExpenseAmountInput.value = "";
-    const ymdEdit = String(recKey || "")
-      .trim()
-      .replace(/\//g, "-")
-      .slice(0, 10);
     const tnSync = (data.taskName || "").trim();
-    if (
-      WS_DIET_LEDGER_TASK_NAMES.has((tnSync || "").trim()) &&
-      ymdEdit.length >= 10
-    ) {
-      const dietList = listWorkScheduleDietTypeNamesFromMem();
-      const picked = new Set(mealNamesFromRow);
-      for (const d of dietList) {
-        setMealChecklistItem(ymdEdit, tnSync, d, picked.has(d));
-      }
-    }
     refreshKpiTodosInLogModal(tnSync);
     const lockedName = (data.taskName || "").trim();
     if (taskLogTaskDropdown && lockedName) {
@@ -6206,16 +5399,6 @@ export function render() {
           migrateTimeLogRowsTaskIds();
         } catch (_) {}
         const tnPost = (data.taskName || "").trim();
-        if (
-          WS_DIET_LEDGER_TASK_NAMES.has((tnPost || "").trim()) &&
-          ymdEdit.length >= 10
-        ) {
-          const dietList = listWorkScheduleDietTypeNamesFromMem();
-          const picked = new Set(mealNamesFromRow);
-          for (const d of dietList) {
-            setMealChecklistItem(ymdEdit, tnPost, d, picked.has(d));
-          }
-        }
         refreshKpiTodosInLogModal(tnPost);
         if (taskLogTaskDropdown && tnPost) {
           taskLogTaskDropdown._setValue?.(tnPost);
@@ -6274,10 +5457,6 @@ export function render() {
     const addCtx = taskLogAddContext;
     let addLedgerTr = null;
     let oldRowDataToRemove = null;
-    /** 메인 폼에서 만든 지출 id → linkedExpenseIds에 합침 (memo_tags와 분리) */
-    let mainFormExpenseId = null;
-    let submittedLedgerRowForExpenseLink = null;
-    let didAddMainFormExpense = false;
 
     const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
     const startRaw = (taskLogStartInput.value || "").trim();
@@ -6320,44 +5499,16 @@ export function render() {
       return;
     }
     const feedbackBody = (taskLogFeedbackInput?.value || "").trim();
-    const mealDetailForRow = WS_DIET_LEDGER_TASK_NAMES.has(taskName)
+    const mealDetailForRow = TTC.MEAL_DETAIL_TASK_NAMES.has(taskName)
       ? (taskLogMealDetailInput?.value || "").trim()
       : "";
     const feedback = feedbackBody;
-    const todoTags = taskLogTodoAddedItems
-      .map((t) => [t.categoryLabel, t.todoName].filter(Boolean).join(" | "))
-      .filter(Boolean);
-    const linkedFromModal = taskLogExpenseAddedItems
-      .map((it) => String(it?.id || "").trim())
-      .filter(Boolean);
-    const userTagsNoMeal = (
+    const userTagsForSubmit = (
       Array.isArray(taskLogMemoTags) ? taskLogMemoTags : []
     )
       .map((t) => String(t ?? "").trim())
-      .filter((t) => t && !isWorkScheduleDietLedgerMemoTag(t));
-    const mealMemoTags = [];
-    if (
-      WS_DIET_LEDGER_TASK_NAMES.has((taskName || "").trim()) &&
-      taskLogDailyTodosList
-    ) {
-      taskLogDailyTodosList
-        .querySelectorAll("label[data-meal-checklist='1']")
-        .forEach((lab) => {
-          const cb = lab.querySelector('input[type="checkbox"]');
-          const span = lab.querySelector(
-            '[data-legacy~="time-task-log-kpi-todo-text"]',
-          );
-          const dietName = (span?.textContent || "").trim();
-          if (cb?.checked && dietName) {
-            const tag = makeWorkScheduleDietLedgerMemoTag(dietName);
-            if (tag) mealMemoTags.push(tag);
-          }
-        });
-    }
-    const memoTags = buildLedgerMemoTagsForSubmit(
-      [...userTagsNoMeal, ...mealMemoTags],
-      todoTags,
-    );
+      .filter(Boolean);
+    const memoTags = buildLedgerMemoTagsForSubmit(userTagsForSubmit);
     const timeTracked = (() => {
       if (startTime && endTime) {
         const toIso = (str) => {
@@ -6385,45 +5536,7 @@ export function render() {
       productivity = nap.productivity;
     }
     const dateStr = parseDateFromDateTime(startTime) || toDateStr(new Date());
-    const expenseName = (taskLogExpenseNameInput.value || "").trim();
-    const expenseAmount = (taskLogExpenseAmountInput.value || "")
-      .trim()
-      .replace(/,/g, "");
-    const expenseClassification =
-      expenseClassificationButtons._getValue?.() || "";
-    const expensePayment =
-      expenseClassificationButtons._getPaymentValue?.() || "";
-    const classificationToCategory = getClassificationToCategoryMap();
-    const expenseCategory = expenseClassification
-      ? classificationToCategory[expenseClassification] || ""
-      : "";
-
     const focusValue = "";
-
-    const hasExpenseContent =
-      expenseName || expenseClassification || expenseAmount;
-    if (hasExpenseContent) {
-      const missing = [];
-      if (!expenseClassification) missing.push("소비 분류");
-      if (!expenseAmount || !parseFloat(expenseAmount)) missing.push("금액");
-      if (!expensePayment) missing.push("결제수단");
-      if (missing.length > 0) {
-        console.warn("[lp-task-log]", "submit_abort", {
-          reason: "expense_form_incomplete",
-          missing,
-        });
-        if (taskLogExpenseErrorEl) {
-          taskLogExpenseErrorEl.textContent =
-            "입력 필요: " + missing.join(", ");
-          taskLogExpenseErrorEl.hidden = false;
-        }
-        return;
-      }
-    }
-    if (taskLogExpenseErrorEl) {
-      taskLogExpenseErrorEl.textContent = "";
-      taskLogExpenseErrorEl.hidden = true;
-    }
 
     if (editTr) {
       oldRowDataToRemove = editTr._rowData ? { ...editTr._rowData } : null;
@@ -6448,11 +5561,10 @@ export function render() {
         feedback,
         mealDetail: mealDetailForRow,
         memoTags,
-        linkedExpenseIds: [...linkedFromModal],
+        linkedExpenseIds: [],
         focus: focusValue,
       };
       editTr._rowData = newRowData;
-      submittedLedgerRowForExpenseLink = newRowData;
       const isMobileCard = lpTokenHas(editTr, "time-ledger-mobile-card");
       if (!isMobileCard) {
         const dispTask = editTr.querySelector(
@@ -6560,7 +5672,7 @@ export function render() {
         feedback,
         mealDetail: mealDetailForRow,
         memoTags,
-        linkedExpenseIds: [...linkedFromModal],
+        linkedExpenseIds: [],
         focus: focusValue,
       };
       const tr = createRow(
@@ -6571,100 +5683,12 @@ export function render() {
         ctx.handleRowEdit,
       );
       addLedgerTr = tr;
-      submittedLedgerRowForExpenseLink = tr._rowData;
       if (ctx.addRow) ctx.tbody.insertBefore(tr, ctx.addRow);
       else ctx.tbody.appendChild(tr);
       /* DOM과 동일 객체를 캐시에 둠(createRow가 정규화한 행 = 저장·서버 push 기준) */
       allRowsCache.push(tr._rowData);
       ctx.onRowUpdate?.();
     }
-
-    if (
-      expenseCategory &&
-      expenseClassification &&
-      expenseAmount &&
-      parseFloat(expenseAmount) &&
-      expensePayment
-    ) {
-      const raw = parseFloat(String(expenseAmount).replace(/,/g, "")) || 0;
-      const signed = -Math.abs(raw);
-      const amountFormatted = signed.toLocaleString("ko-KR");
-      const existingRows = loadExpenseRows();
-      const dateForExpense = (
-        dateStr || new Date().toISOString().slice(0, 10)
-      ).replace(/\//g, "-");
-      const expId = newExpenseRowId();
-      if (expId) {
-        mainFormExpenseId = expId;
-        existingRows.push({
-          id: expId,
-          name: expenseName || "",
-          date: dateForExpense,
-          flowType: "지출",
-          category: expenseCategory,
-          classification: expenseClassification,
-          amount: amountFormatted,
-          payment: expensePayment,
-          memo: "",
-        });
-        saveExpenseRows(existingRows);
-        lpSaveDebug("과제모달 메인폼 소비 → 가계부 메모리 추가", {
-          expenseId: expId,
-          date: dateForExpense,
-          amount: amountFormatted,
-          memTotal: existingRows.length,
-        });
-        didAddMainFormExpense = true;
-      } else if (hasExpenseContent) {
-        lpSaveDebug("메인폼 소비 스킵(expId 없음)", {
-          hasExpenseContent,
-          expId: expId || null,
-        });
-      }
-    }
-
-    if (mainFormExpenseId && submittedLedgerRowForExpenseLink) {
-      const cur = new Set(
-        Array.isArray(submittedLedgerRowForExpenseLink.linkedExpenseIds)
-          ? submittedLedgerRowForExpenseLink.linkedExpenseIds.map(String)
-          : [],
-      );
-      cur.add(mainFormExpenseId);
-      submittedLedgerRowForExpenseLink.linkedExpenseIds = [...cur];
-      lpSaveDebug("시간행에 linkedExpenseIds 반영", {
-        ids: submittedLedgerRowForExpenseLink.linkedExpenseIds,
-        rowId: String(submittedLedgerRowForExpenseLink.id || "").slice(0, 8),
-      });
-      const syncTr = editTr || addLedgerTr;
-      if (syncTr?._rowData) {
-        syncTr._rowData.linkedExpenseIds =
-          submittedLedgerRowForExpenseLink.linkedExpenseIds;
-      }
-      if (syncTr && !lpTokenHas(syncTr, "time-ledger-mobile-card")) {
-        const memoTagCell = syncTr.querySelector(
-          '[data-legacy~="time-cell-memo-tag"] [data-legacy~="time-display-memo-tags"]',
-        );
-        if (memoTagCell) {
-          memoTagCell.innerHTML = "";
-          getMemoTagDisplayTextsForLedgerRow(
-            submittedLedgerRowForExpenseLink,
-          ).forEach((tag) => {
-            const pill = document.createElement("span");
-            lpSetClasses(pill, "time-memo-tag-pill");
-            pill.textContent = tag;
-            memoTagCell.appendChild(pill);
-          });
-        }
-      }
-    }
-
-    if (didAddMainFormExpense) {
-      grantAssetExpenseTransactionServerWrite(1);
-      void syncAssetExpenseTransactionsToSupabase().catch(() => {});
-      window.dispatchEvent(new CustomEvent("asset-expense-transactions-saved"));
-    }
-
-    /* 투두는 + 버튼 모달에서 카테고리 선택 후 추가 시 저장됨 */
 
     if (editTr || addCtx) {
       if (editTr && oldRowDataToRemove) {
@@ -6914,6 +5938,13 @@ export function render() {
             (isRowSelected ? " time-task-setup-item--selected" : ""),
         );
         const nameEsc = (t.name || "").replace(/</g, "&lt;");
+        const iconSrc = getTimeTaskListIconSrc(t.name, {
+          category: t.category,
+          productivity: t.productivity,
+        });
+        const iconBlock = iconSrc
+          ? `<span data-legacy="time-task-setup-item-icon-wrap"><img data-legacy="time-task-setup-item-icon" src="${iconSrc}" alt="" decoding="async" /></span>`
+          : "";
         const builtinBadge = isTimeTaskBuiltinTemplate(t)
           ? `<span data-legacy="lp-task-badge lp-task-badge--builtin" title="앱에서 제공하는 기본 과제입니다. 과제 설정에서 삭제할 수 없습니다.">기본</span>`
           : "";
@@ -6921,6 +5952,7 @@ export function render() {
           ? `<span data-legacy="lp-task-badge lp-task-badge--kpi" title="KPI(맵)에서 연결된 과제입니다">KPI</span>`
           : "";
         row.innerHTML = `
+          ${iconBlock}
           <span data-legacy="time-task-setup-item-title">
             <span data-legacy="time-task-setup-item-name">${nameEsc}</span>
             ${builtinBadge}${kpiBadge}
@@ -7163,18 +6195,8 @@ export function render() {
       }
       /* 과제 기록 모달 안 중첩 UI가 열려 있으면 Esc/백키로 메인까지 닫지 않고 해당 레이어만 닫음 */
       if (!taskLogModal.hidden) {
-        if (taskLogExpenseInnerModal && !taskLogExpenseInnerModal.hidden) {
-          closeExpenseInnerModal();
-          e.preventDefault();
-          return;
-        }
         if (focusModal && !focusModal.hidden) {
           closeFocusModal();
-          e.preventDefault();
-          return;
-        }
-        if (taskLogTodoInnerModal && !taskLogTodoInnerModal.hidden) {
-          closeTodoInnerModal();
           e.preventDefault();
           return;
         }
@@ -7208,16 +6230,12 @@ export function render() {
   let cachedRows = [];
 
   logTabSync("time_tab_hydrate", {});
-  void Promise.resolve(pullAssetExpenseTransactionsFromSupabase()).then(() => {
-    if (!el.isConnected) return;
-    try {
-      _pickerRangeKeyAtLastPullIntent = computePickerRangeKeyForPull();
-    } catch (_) {}
-    allRowsCache = loadTimeRows();
-    cachedRows = getFullRowsForFilter(true);
-    syncTimeLedgerContent();
-    refreshMobileTimeCardExpenseSnippetsIn(contentWrap);
-  });
+  try {
+    _pickerRangeKeyAtLastPullIntent = computePickerRangeKeyForPull();
+  } catch (_) {}
+  allRowsCache = loadTimeRows();
+  cachedRows = getFullRowsForFilter(true);
+  syncTimeLedgerContent();
 
   function mergeRowsIntoCache() {
     const fromDom = collectRowsFromDOM(contentWrap);
@@ -7666,9 +6684,6 @@ export function render() {
   function syncTimeLedgerContent(opts = {}) {
     const userSubTabClick = !!opts.userSubTabClick;
     el.dataset.timeContentView = "all";
-    if (userSubTabClick) {
-      void pullAssetExpenseTransactionsFromSupabase();
-    }
     mergeRowsIntoCache();
     cachedRows = getFullRowsForFilter(true);
     const rowsToUse = getFilteredRows(cachedRows);
@@ -7732,29 +6747,6 @@ export function render() {
   document.addEventListener(
     "lp-time-ledger-remote-updated",
     refreshTimeLedgerFromRemotePull,
-    { signal },
-  );
-
-  /* 가계부 지출 메모리가 늦게 채워져도 모바일 카드 소비 줄이 실제 명·금액으로 갱신되게 */
-  function scheduleRefreshMobileExpenseSnippets() {
-    queueMicrotask(() => {
-      if (!el.isConnected) return;
-      refreshMobileTimeCardExpenseSnippetsIn(contentWrap);
-    });
-  }
-  window.addEventListener(
-    "asset-expense-transactions-saved",
-    scheduleRefreshMobileExpenseSnippets,
-    {
-      signal,
-    },
-  );
-  document.addEventListener(
-    "visibilitychange",
-    () => {
-      if (document.visibilityState === "visible")
-        scheduleRefreshMobileExpenseSnippets();
-    },
     { signal },
   );
 

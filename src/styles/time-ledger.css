@@ -1,5 +1,5 @@
 /**
- * 시간가계부(Time.js) 중심 스타일 + 날짜 구간 UI 공통(아카이브·자산과 공유)
+ * 시간가계부(Time.js) 중심 스타일 + 날짜 구간 UI 공통(자산 탭 등과 공유)
  * - 앱 공통 레이아웃·푸터·홈 런처 등은 ../main.css
  * - `.time-filter-*`, `.lp-date-range-*` 는 여러 탭에서 쓰이므로 전역 선택자로 둔다.
  * - 그 외 규칙은 가능하면 `.time-ledger-view …` 로 스코프해 다른 탭과 충돌을 막는다.
@@ -160,29 +160,6 @@
   outline: 2px solid #8b9a8c;
   outline-offset: 2px;
 }
-.archive-search-row.lp-date-range-search-row,
-[data-legacy~="archive-search-row"][data-legacy~="lp-date-range-search-row"] {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  box-sizing: border-box;
-}
-.archive-search-row.lp-date-range-search-row .archive-search-wrap,
-[data-legacy~="archive-search-row"][data-legacy~="lp-date-range-search-row"]
-  [data-legacy~="archive-search-wrap"] {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.archive-search-row.lp-date-range-search-row .archive-date-nav-cluster,
-[data-legacy~="archive-search-row"][data-legacy~="lp-date-range-search-row"]
-  [data-legacy~="archive-date-nav-cluster"] {
-  flex: 0 0 auto;
-  max-width: 100%;
-  margin-left: auto;
-}
-
 /* 시간 기록 리스트 행: 왼쪽 컬러바 · 아이콘+과제·시간 · 총시간+가격 · 하단 메모 */
 .time-ledger-view .time-ledger-mobile-cards,
 [data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-mobile-cards"] {

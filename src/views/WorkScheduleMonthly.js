@@ -17,16 +17,14 @@ export function setWorkScheduleMonthlyLiveRerender(fn) {
   _workScheduleMonthlyRerender = typeof fn === "function" ? fn : null;
 }
 
-/** 스탬프 캘린더 행만 칩으로 표시 (시간가계부 식단 연동 없음) */
+/** 스탬프 캘린더 행만 칩으로 표시 */
 function buildMonthlyTypeModePillItems(sortedWorkRows, _dateKey) {
   void _dateKey;
-  const dietTypeSet = new Set();
   const displays = sortedWorkRows
     .filter((e) => String(e.workType || "").trim())
     .map((e) => ({
       workType: String(e.workType || "").trim(),
       rowId: String(e.id),
-      mealLoggedInLedger: false,
       sortStart: String(e.startTime || "").trim(),
       sortKey: String(e.id),
     }));
@@ -38,7 +36,7 @@ function buildMonthlyTypeModePillItems(sortedWorkRows, _dateKey) {
     return a.sortKey.localeCompare(b.sortKey);
   };
   displays.sort(sortPillGroup);
-  return { items: displays, dietTypeSet };
+  return { items: displays };
 }
 
 /** 근무표 월별보기에서 보고 있던 연·월 — 모달·탭 갱신 후에도 유지 (localStorage: 세션보다 안정적) */
@@ -389,7 +387,7 @@ export function renderMonthlyContent(opts = {}) {
           } else if (displayMode === "type") {
             item.className =
               "work-schedule-monthly-entry work-schedule-monthly-entry--pills";
-            const { items: pillItems, dietTypeSet } = buildMonthlyTypeModePillItems(
+            const { items: pillItems } = buildMonthlyTypeModePillItems(
               entries,
               key,
             );
@@ -402,8 +400,6 @@ export function renderMonthlyContent(opts = {}) {
             } else {
               pillItems.forEach((p) => {
                 const t = (p.workType || "").trim() || "-";
-                const showMealCheck =
-                  p.mealLoggedInLedger && dietTypeSet.has(t);
                 const pill = document.createElement("span");
                 const pillKind =
                   typePillClassForName && t !== "-"
@@ -412,33 +408,11 @@ export function renderMonthlyContent(opts = {}) {
                 const resolvedKind = (pillKind || "is-default").trim();
                 pill.className =
                   "work-schedule-monthly-type-pill " + resolvedKind;
-                if (showMealCheck) {
-                  pill.classList.add(
-                    "work-schedule-monthly-type-pill--with-meal-check",
-                  );
-                  const cb = document.createElement("input");
-                  cb.type = "checkbox";
-                  cb.className = "work-schedule-monthly-meal-done-check";
-                  cb.checked = true;
-                  cb.disabled = true;
-                  cb.title = "시간가계부에 식사를 기록함";
-                  cb.setAttribute(
-                    "aria-label",
-                    "시간가계부에 이 식단을 기록함",
-                  );
-                  cb.addEventListener("click", (ev) => ev.stopPropagation());
-                  pill.appendChild(cb);
-                  const lab = document.createElement("span");
-                  lab.className = "work-schedule-monthly-type-pill-label";
-                  lab.textContent = t;
-                  pill.appendChild(lab);
-                } else {
-                  const textSpan = document.createElement("span");
-                  textSpan.className =
-                    "work-schedule-monthly-type-pill-text";
-                  textSpan.textContent = t;
-                  pill.appendChild(textSpan);
-                }
+                const textSpan = document.createElement("span");
+                textSpan.className =
+                  "work-schedule-monthly-type-pill-text";
+                textSpan.textContent = t;
+                pill.appendChild(textSpan);
                 if (onEntryClick && p.rowId) {
                   pill.style.cursor = "pointer";
                   pill.title = "탭하여 이 근무 수정·삭제";
@@ -447,9 +421,6 @@ export function renderMonthlyContent(opts = {}) {
                     ev.stopPropagation();
                     onEntryClick({ dateKey: key, rowId: String(p.rowId) });
                   });
-                } else if (!p.rowId) {
-                  pill.title =
-                    "스탬프 캘린더에만 없는 항목입니다. 시간가계부에서 기록되었습니다.";
                 }
                 item.appendChild(pill);
               });

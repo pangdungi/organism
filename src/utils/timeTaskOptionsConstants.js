@@ -99,12 +99,7 @@ export const FIXED_NONPRODUCTIVE_TASKS = [
     productivity: "nonproductive",
   },
   {
-    name: "뭐 살지 고민하기",
-    category: "moneylosing",
-    productivity: "nonproductive",
-  },
-  {
-    name: "배달 메뉴 고민하기",
+    name: "구매 고민",
     category: "moneylosing",
     productivity: "nonproductive",
   },
@@ -146,13 +141,9 @@ export const FIXED_NONPRODUCTIVE_TASKS = [
     productivity: "nonproductive",
   },
   { name: "단순 이동", category: "pleasure", productivity: "nonproductive" },
+  { name: "게임", category: "pleasure", productivity: "nonproductive" },
   {
     name: "쇼츠/릴스 피드 보기",
-    category: "media_watch",
-    productivity: "nonproductive",
-  },
-  {
-    name: "무의식적 SNS",
     category: "media_watch",
     productivity: "nonproductive",
   },
@@ -167,6 +158,13 @@ export const FIXED_NONPRODUCTIVE_TASKS = [
     productivity: "nonproductive",
   },
 ];
+
+/** 건강한 식사 계열 — 과제 기록에서 식단 상세(meal_detail) 필드 표시용 (스탬프 캘린더와 무관) */
+export const MEAL_DETAIL_TASK_NAMES = new Set([
+  "건강한 식사",
+  "건강한 식사 준비",
+  "건강한 식사준비",
+]);
 
 export const TASKS_LOCKED_FOR_EDIT = [NAP_TASK_NAME];
 

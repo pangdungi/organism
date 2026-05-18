@@ -2,13 +2,6 @@ import { supabase } from "./supabase.js";
 import { showOnly } from "./pages.js";
 import { purgeTimeLedgerLocalData } from "./utils/timeLedgerEntriesModel.js";
 import { clearTimeLedgerTaskOptionsLocalStorage } from "./utils/timeTaskOptionsModel.js";
-import { clearAssetExpenseTransactionsMemAndLegacy } from "./utils/assetExpenseTransactionsSupabase.js";
-import { clearNetWorthBundleMemAndLegacy } from "./utils/assetNetWorthBundleSupabase.js";
-import { clearNetWorthTargetMemAndLegacy } from "./utils/assetNetWorthTargetSupabase.js";
-import { clearAssetExpensePrefsMemAndLegacy } from "./utils/assetExpensePrefsSupabase.js";
-import { clearPlanMonthlyGoalsMemAndLegacy } from "./utils/assetPlanMonthlyGoalsSupabase.js";
-import { clearStockCategoryMemAndLegacy } from "./utils/assetStockCategorySupabase.js";
-import { clearAssetUiSessionMem } from "./utils/assetUiSessionMem.js";
 import { clearWorkScheduleMemAndLegacy } from "./utils/workScheduleModel.js";
 import { clearDiaryMemAndLegacy } from "./diaryData.js";
 import { clearTodoSectionTasksMemAndLegacy } from "./utils/todoSectionTasksModel.js";
@@ -34,13 +27,6 @@ function nukeClientWebStorageOnSignOut() {
 export async function purgeTimeLedgerLocalOnSignOut() {
   await purgeTimeLedgerLocalData();
   clearTimeLedgerTaskOptionsLocalStorage();
-  clearAssetExpenseTransactionsMemAndLegacy();
-  clearNetWorthBundleMemAndLegacy();
-  clearNetWorthTargetMemAndLegacy();
-  clearAssetExpensePrefsMemAndLegacy();
-  clearPlanMonthlyGoalsMemAndLegacy();
-  clearStockCategoryMemAndLegacy();
-  clearAssetUiSessionMem();
   clearWorkScheduleMemAndLegacy();
   clearDiaryMemAndLegacy();
   clearTodoSectionTasksMemAndLegacy();

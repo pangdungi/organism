@@ -185,6 +185,14 @@
 }
 
 /* -------------------------------------------------------------------------- */
+/* 설정: 완료 항목 숨기기 — 루트에 .hide-completed(JS)가 있을 때 완료 카드 비표시 */
+/* -------------------------------------------------------------------------- */
+
+.todo-list-view.hide-completed .todo-card.is-done {
+  display: none !important;
+}
+
+/* -------------------------------------------------------------------------- */
 /* 할 일 카드 — 3열(아이콘 / 날짜 / 과제명+우선순위) */
 /* -------------------------------------------------------------------------- */
 
@@ -256,7 +264,9 @@
 }
 
 .todo-card-col--icons {
-  padding-right: 0.55rem;
+  width: 100%;
+  min-width: 0;
+  padding-inline: 0;
   box-sizing: border-box;
 }
 
@@ -271,6 +281,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.3rem;
 }
 

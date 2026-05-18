@@ -14,6 +14,7 @@ import {
   TAB3_EMOTION_PLACEHOLDERS,
 } from "../diaryData.js";
 import { hydrateDiaryFromCloud, deleteDiaryEntryFromSupabase } from "../utils/diarySupabase.js";
+import { getAppFooterActionsSlot, APP_FOOTER_ICON_BTN_CLASS } from "../utils/appFooterShell.js";
 
 /** 탭 2 통제일기 Q&A 템플릿 */
 const TAB2_QA_TEMPLATE = [
@@ -28,7 +29,15 @@ const TAB2_QA_TEMPLATE = [
   "통제할 수 있는 것",
 ];
 
+/** 푸터·짧은 표기 */
 function diaryTabLabel(tabId) {
+  if (tabId === "3") return "감정";
+  if (tabId === "2") return "통제";
+  return "자유";
+}
+
+/** 모달 제목 등 긴 표기 */
+function diaryTabModalTitle(tabId) {
   if (tabId === "3") return "감정일기";
   if (tabId === "2") return "통제일기";
   return "자유일기";
@@ -62,7 +71,10 @@ function compareDiaryEntriesNewestFirst(a, b) {
 /** Q&A 답 영역: 폭 변경 시 autosize 재실행(내부 스크롤 없을 때 잘림 방지) */
 function attachDiaryQaAnswerResizeSync(ansEl, adjustHeight) {
   if (!ansEl || typeof ResizeObserver === "undefined") return;
-  const block = ansEl.closest(".diary-qa-block");
+  const block =
+    ansEl.closest(".diary-qa-block") ||
+    ansEl.closest(".time-task-log-field") ||
+    ansEl.closest("[data-lp-diary-qa-block]");
   if (!block) return;
   const ro = new ResizeObserver(() => {
     if (!ansEl.isConnected) {
@@ -107,53 +119,34 @@ export function render() {
   inner.className = "diary-view-inner";
   el.appendChild(inner);
 
-  const tabs = document.createElement("div");
-  tabs.className = "time-view-tabs diary-tabs";
-  /** 모바일: 세그먼트 오른쪽 끝 빨간 + / 데스크톱: 탭 행 우측 끝 + (할일·시간가계부 톤) */
-  let diaryMobileHeaderAddBtn = null;
-  let diaryDesktopHeaderAddBtn = null;
-  if (!mobileViewport) {
-    const diaryDesktopTabsStrip = document.createElement("div");
-    diaryDesktopTabsStrip.className = "diary-desktop-tabs-strip";
-    const diaryDesktopTabsSpacer = document.createElement("div");
-    diaryDesktopTabsSpacer.className = "diary-desktop-tabs-strip__spacer";
-    diaryDesktopTabsSpacer.setAttribute("aria-hidden", "true");
-    const diaryDesktopTabsCenter = document.createElement("div");
-    diaryDesktopTabsCenter.className = "diary-desktop-tabs-strip__center";
-    tabs.innerHTML = `
-      <button type="button" class="time-view-tab diary-tab-btn" data-tab="3">감정일기</button>
-      <button type="button" class="time-view-tab diary-tab-btn active" data-tab="2">통제일기</button>
-      <button type="button" class="time-view-tab diary-tab-btn" data-tab="1">자유일기</button>
-    `;
-    diaryDesktopTabsCenter.appendChild(tabs);
-    const diaryDesktopTabsRight = document.createElement("div");
-    diaryDesktopTabsRight.className = "diary-desktop-tabs-strip__right";
-    diaryDesktopHeaderAddBtn = document.createElement("button");
-    diaryDesktopHeaderAddBtn.type = "button";
-    diaryDesktopHeaderAddBtn.className = "diary-desktop-header-add-btn todo-add-btn";
-    diaryDesktopHeaderAddBtn.title = "새 일기 작성";
-    diaryDesktopHeaderAddBtn.setAttribute("aria-label", "새 일기 작성");
-    diaryDesktopHeaderAddBtn.innerHTML =
-      '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
-    diaryDesktopTabsRight.appendChild(diaryDesktopHeaderAddBtn);
-    diaryDesktopTabsStrip.appendChild(diaryDesktopTabsSpacer);
-    diaryDesktopTabsStrip.appendChild(diaryDesktopTabsCenter);
-    diaryDesktopTabsStrip.appendChild(diaryDesktopTabsRight);
-    inner.appendChild(diaryDesktopTabsStrip);
-  } else {
-    const diaryMobileTabsStrip = document.createElement("div");
-    diaryMobileTabsStrip.className = "diary-mobile-tabs-strip";
-    diaryMobileTabsStrip.appendChild(tabs);
-    diaryMobileHeaderAddBtn = document.createElement("button");
-    diaryMobileHeaderAddBtn.type = "button";
-    diaryMobileHeaderAddBtn.className = "diary-mobile-header-add-btn";
-    diaryMobileHeaderAddBtn.title = "일기 추가";
-    diaryMobileHeaderAddBtn.setAttribute("aria-label", "일기 추가");
-    diaryMobileHeaderAddBtn.innerHTML =
-      '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
-    diaryMobileTabsStrip.appendChild(diaryMobileHeaderAddBtn);
-    inner.appendChild(diaryMobileTabsStrip);
-  }
+  /** 상단 한 줄: 전역 lp-search-bar + 새 일기(+) — 탭 전환은 앱 푸터 */
+  const topTools = document.createElement("div");
+  topTools.className = "diary-top-tools";
+  const searchBar = document.createElement("div");
+  searchBar.className = "lp-search-bar diary-top-inline-search";
+  const searchBarRow = document.createElement("div");
+  searchBarRow.className = "lp-search-bar__row";
+  const searchInput = document.createElement("input");
+  searchInput.type = "text";
+  searchInput.className = "lp-search-bar__input";
+  searchInput.autocomplete = "off";
+  searchInput.setAttribute("aria-label", "날짜·내용 검색");
+  searchBarRow.appendChild(searchInput);
+  searchBar.appendChild(searchBarRow);
+  /** 캘린더 일간 네비(.calendar-nav-controls .calendar-1day-nav-add)와 동일 클래스 */
+  const topToolsNavControls = document.createElement("div");
+  topToolsNavControls.className = "calendar-nav-controls";
+  const topAddBtn = document.createElement("button");
+  topAddBtn.type = "button";
+  topAddBtn.className = "calendar-1day-nav-add";
+  topAddBtn.title = "새 일기 작성";
+  topAddBtn.setAttribute("aria-label", "새 일기 작성");
+  topAddBtn.textContent = "+";
+  topToolsNavControls.appendChild(topAddBtn);
+  topTools.appendChild(searchBar);
+  topTools.appendChild(topToolsNavControls);
+
+  inner.appendChild(topTools);
 
   const layoutWrap = document.createElement("div");
   layoutWrap.className = "diary-layout-wrap";
@@ -163,10 +156,22 @@ export function render() {
   let currentEntryId = null;
   let searchQuery = "";
   let isComposing = false;
-  let sidebarCollapsed = false;
   let entries = loadDiaryEntries();
 
   (function mountDiary() {
+    searchInput.addEventListener("compositionstart", () => {
+      isComposing = true;
+    });
+    searchInput.addEventListener("compositionend", (e) => {
+      isComposing = false;
+      searchQuery = e.target.value;
+      renderLayout();
+    });
+    searchInput.addEventListener("input", () => {
+      searchQuery = searchInput.value;
+      if (!isComposing) renderLayout();
+    });
+
   function notifyServerDeletedEntry(entryId) {
     if (isDiaryEntryUuid(entryId)) {
       void deleteDiaryEntryFromSupabase(entryId).catch(() => {});
@@ -211,35 +216,45 @@ export function render() {
   }
 
   /** 날짜 표시 + 숨김 date 입력 + 달력 버튼(데스크톱·모바일 공통) */
-  function createDiaryDateEditor(entry, _tabId, variant) {
-    void _tabId;
+  function createDiaryDateEditor(entry, tabId, variant, styleOpts = {}) {
+    const lpModal = styleOpts.lpModal === true;
+    const bareEmotion = tabId === "3";
     const row = document.createElement("div");
-    row.className = "diary-date-edit-row";
+    if (!lpModal) {
+      row.className = bareEmotion ? "" : "diary-date-edit-row";
+    } else {
+      row.className = "diary-date-edit-row diary-date-edit-row--lp-modal";
+    }
     const norm = (s) => normalizeDiaryDateStr(s) || toDateStr(new Date());
     const inp = document.createElement("input");
     inp.type = "date";
-    inp.className = "diary-date-edit-input-native";
+    inp.className =
+      lpModal ? "diary-date-edit-input-native" : bareEmotion ? "" : "diary-date-edit-input-native";
     inp.setAttribute("aria-hidden", "true");
     inp.tabIndex = -1;
     inp.value = norm(entry.date);
     const display = document.createElement("span");
-    display.className = "diary-date-edit-display";
-    if (variant === "qa-header") {
-      display.classList.add("diary-paper-meta", "diary-paper-qa-header-title");
-    } else if (variant === "feed") {
-      display.classList.add("diary-feed-card-title");
+    display.className = bareEmotion ? "" : "diary-date-edit-display";
+    if (!bareEmotion) {
+      if (variant === "qa-header") {
+        display.classList.add("diary-paper-meta", "diary-paper-qa-header-title");
+      } else if (variant === "feed") {
+        display.classList.add("diary-feed-card-title");
+        display.setAttribute("aria-label", "일기 날짜");
+      } else if (variant === "free") {
+        display.classList.add("diary-paper-date");
+        display.setAttribute("aria-label", "일기 날짜");
+        display.style.marginBottom = "0";
+      } else if (variant === "step") {
+        display.classList.add("diary-step-modal-date-display");
+      }
+    } else if (variant === "qa-header" || variant === "free") {
       display.setAttribute("aria-label", "일기 날짜");
-    } else if (variant === "free") {
-      display.classList.add("diary-paper-date");
-      display.setAttribute("aria-label", "일기 날짜");
-      display.style.marginBottom = "0";
-    } else if (variant === "step") {
-      display.classList.add("diary-step-modal-date-display");
     }
     display.textContent = formatDateDisplay(inp.value);
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "diary-date-cal-btn";
+    btn.className = bareEmotion ? "" : "diary-date-cal-btn";
     btn.title = "날짜 변경";
     btn.setAttribute("aria-label", "날짜 선택");
     btn.innerHTML =
@@ -264,6 +279,20 @@ export function render() {
     row.appendChild(display);
     row.appendChild(btn);
     row.appendChild(inp);
+
+    if (lpModal) {
+      const field = document.createElement("div");
+      field.className = "time-task-log-field";
+      const lab = document.createElement("label");
+      lab.textContent = "날짜";
+      const card = document.createElement("div");
+      card.className = "lp-modal-datetime-card";
+      card.appendChild(row);
+      field.appendChild(lab);
+      field.appendChild(card);
+      return field;
+    }
+
     return row;
   }
 
@@ -272,42 +301,16 @@ export function render() {
     return formatDateDisplay(d) || formatDateDisplay(toDateStr(new Date()));
   }
 
-  function createDiaryEditButton(onClick) {
+  function createDiaryEditButton(onClick, bareMainCss = false) {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "diary-paper-edit-btn";
+    btn.className = bareMainCss ? "" : "diary-paper-edit-btn";
     btn.title = "수정";
     btn.setAttribute("aria-label", "일기 수정");
     btn.innerHTML =
       '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="m16.5 3.5 4.5 4.5-12 12H4v-4.5l12-12Z"/></svg>';
     btn.addEventListener("click", onClick);
     return btn;
-  }
-
-  function filterPageListInPlace(query) {
-    const pageList = layoutWrap.querySelector(".diary-page-list");
-    if (!pageList) return;
-    const q = (query || "").trim().toLowerCase();
-    const items = pageList.querySelectorAll(".diary-page-item");
-    let visibleCount = 0;
-    items.forEach((btn) => {
-      const searchText = (btn.dataset.searchText || "").toLowerCase();
-      const matches = !q || searchText.includes(q);
-      btn.style.display = matches ? "" : "none";
-      if (matches) visibleCount++;
-    });
-    let noResult = pageList.querySelector(".diary-search-no-result");
-    if (visibleCount === 0 && q) {
-      if (!noResult) {
-        noResult = document.createElement("div");
-        noResult.className = "diary-search-no-result";
-        noResult.textContent = "검색 결과가 없습니다.";
-        pageList.appendChild(noResult);
-      }
-      noResult.style.display = "";
-    } else if (noResult) {
-      noResult.style.display = "none";
-    }
   }
 
   function isDiaryMobileViewport() {
@@ -321,18 +324,32 @@ export function render() {
 
   /** 본문·피드·작성/편집 모달: 날짜·Q&A·자유일기 (readOnly 시 미리보기 + 연필) */
   function mountDiaryPaperForm(paper, entry, tabId, opts = {}) {
-    const { onDelete, showDelete = true, readOnly = false, onEdit, feedCard = false } = opts;
+    const {
+      onDelete,
+      showDelete = true,
+      readOnly = false,
+      onEdit,
+      feedCard = false,
+      lpModalForm = false,
+    } = opts;
+    const lpForm = lpModalForm && !readOnly;
     if (feedCard && entry && entry.id) paper.dataset.entryId = String(entry.id);
     if (tabId === "3") {
-      paper.className =
-        "diary-paper diary-paper-qa diary-paper-tab3" + (feedCard ? " diary-feed-card" : "");
+      if (lpForm) {
+        paper.className = "diary-modal-paper-root";
+      } else if (feedCard) {
+        paper.className = "diary-feed-card";
+      } else {
+        paper.className = "";
+      }
       if (!entry.q1 && entry.q1 !== "") entry.q1 = "";
       if (!entry.q2 && entry.q2 !== "") entry.q2 = "";
       if (!entry.q3 && entry.q3 !== "") entry.q3 = "";
       if (!entry.q4 && entry.q4 !== "") entry.q4 = "";
       const qaHeader = document.createElement("div");
-      qaHeader.className = "diary-paper-qa-header";
       if (readOnly) {
+        /* 통제일기와 동일: 피드·본문 모두 .diary-paper-edit-btn 계열로 스타일 적용 */
+        qaHeader.className = "diary-paper-qa-header";
         const dateSpan = document.createElement("span");
         dateSpan.className = feedCard
           ? "diary-paper-meta diary-feed-card-title"
@@ -346,13 +363,15 @@ export function render() {
           qaHeader.appendChild(eb);
         }
       } else {
-        const dateRow = createDiaryDateEditor(entry, tabId, "qa-header");
+        qaHeader.className = lpForm ? "diary-modal-paper-header-row" : "";
+        const dateRow = createDiaryDateEditor(entry, tabId, "qa-header", { lpModal: lpForm });
         qaHeader.appendChild(dateRow);
         if (showDelete && typeof onDelete === "function") {
           const deleteBtn = document.createElement("button");
           deleteBtn.type = "button";
-          deleteBtn.className = "diary-paper-delete-btn diary-paper-delete-btn-qa";
+          deleteBtn.className = lpForm ? "time-task-log-delete-btn" : "";
           deleteBtn.title = "해당 기록 삭제";
+          deleteBtn.setAttribute("aria-label", "해당 기록 삭제");
           deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
           deleteBtn.addEventListener("click", onDelete);
           qaHeader.appendChild(deleteBtn);
@@ -362,14 +381,15 @@ export function render() {
       TAB3_EMOTION_TEMPLATE.forEach((label, i) => {
         const key = "q" + (i + 1);
         const block = document.createElement("div");
-        block.className = "diary-qa-block";
-        const qHead = document.createElement("div");
-        qHead.className = "diary-qa-question";
+        block.className = lpForm ? "time-task-log-field" : "";
+        block.setAttribute("data-lp-diary-qa-block", "");
+        const qHead = document.createElement(lpForm ? "label" : "div");
+        qHead.className = "";
         qHead.textContent = label;
         block.appendChild(qHead);
         if (readOnly) {
           const ansEl = document.createElement("textarea");
-          ansEl.className = "diary-qa-answer diary-qa-answer-readonly";
+          ansEl.className = lpForm ? "time-task-log-feedback" : "";
           ansEl.readOnly = true;
           ansEl.tabIndex = -1;
           ansEl.setAttribute("aria-label", "답변");
@@ -384,7 +404,7 @@ export function render() {
           attachDiaryQaAnswerResizeSync(ansEl, adjustRo);
         } else {
           const ansArea = document.createElement("textarea");
-          ansArea.className = "diary-qa-answer";
+          ansArea.className = lpForm ? "time-task-log-feedback" : "";
           ansArea.placeholder = TAB3_EMOTION_PLACEHOLDERS[i] || "";
           ansArea.value = entry[key] != null ? entry[key] : "";
           const adjustHeight = () => {
@@ -410,9 +430,11 @@ export function render() {
         entry.qa = Object.fromEntries(TAB2_QA_TEMPLATE.map((_, i) => [String(i), ""]));
         saveDiaryEntries(entries, { skipCloud: true });
       }
-      paper.className = "diary-paper diary-paper-qa" + (feedCard ? " diary-feed-card" : "");
+      paper.className =
+        (lpForm ? "diary-paper diary-modal-paper-root diary-paper-qa" : "diary-paper diary-paper-qa") +
+        (feedCard ? " diary-feed-card" : "");
       const qaHeader = document.createElement("div");
-      qaHeader.className = "diary-paper-qa-header";
+      qaHeader.className = lpForm ? "diary-modal-paper-header-row diary-paper-qa-header" : "diary-paper-qa-header";
       if (readOnly) {
         const dateSpan = document.createElement("span");
         dateSpan.className = feedCard
@@ -427,13 +449,14 @@ export function render() {
           qaHeader.appendChild(eb);
         }
       } else {
-        const dateRow = createDiaryDateEditor(entry, tabId, "qa-header");
+        const dateRow = createDiaryDateEditor(entry, tabId, "qa-header", { lpModal: lpForm });
         qaHeader.appendChild(dateRow);
         if (showDelete && typeof onDelete === "function") {
           const deleteBtn = document.createElement("button");
           deleteBtn.type = "button";
-          deleteBtn.className = "diary-paper-delete-btn diary-paper-delete-btn-qa";
+          deleteBtn.className = lpForm ? "time-task-log-delete-btn" : "diary-paper-delete-btn diary-paper-delete-btn-qa";
           deleteBtn.title = "해당 기록 삭제";
+          deleteBtn.setAttribute("aria-label", "해당 기록 삭제");
           deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
           deleteBtn.addEventListener("click", onDelete);
           qaHeader.appendChild(deleteBtn);
@@ -442,14 +465,14 @@ export function render() {
       paper.appendChild(qaHeader);
       TAB2_QA_TEMPLATE.forEach((question, i) => {
         const block = document.createElement("div");
-        block.className = "diary-qa-block";
-        const qHead = document.createElement("div");
-        qHead.className = "diary-qa-question";
+        block.className = lpForm ? "time-task-log-field" : "diary-qa-block";
+        const qHead = document.createElement(lpForm ? "label" : "div");
+        qHead.className = lpForm ? "" : "diary-qa-question";
         qHead.textContent = question;
         block.appendChild(qHead);
         if (readOnly) {
           const ansEl = document.createElement("textarea");
-          ansEl.className = "diary-qa-answer diary-qa-answer-readonly";
+          ansEl.className = lpForm ? "time-task-log-feedback" : "diary-qa-answer diary-qa-answer-readonly";
           ansEl.readOnly = true;
           ansEl.tabIndex = -1;
           ansEl.setAttribute("aria-label", "답변");
@@ -464,7 +487,7 @@ export function render() {
           attachDiaryQaAnswerResizeSync(ansEl, adjustRo);
         } else {
           const ansArea = document.createElement("textarea");
-          ansArea.className = "diary-qa-answer";
+          ansArea.className = lpForm ? "time-task-log-feedback" : "diary-qa-answer";
           ansArea.placeholder = "";
           ansArea.value = (entry.qa && entry.qa[String(i)]) || "";
           const adjustHeight = () => {
@@ -487,9 +510,10 @@ export function render() {
       return;
     }
     if (tabId === "1") {
-      paper.className = "diary-paper" + (feedCard ? " diary-feed-card" : "");
+      paper.className =
+        (lpForm ? "diary-paper diary-modal-paper-root" : "diary-paper") + (feedCard ? " diary-feed-card" : "");
       const titleRow = document.createElement("div");
-      titleRow.className = "diary-paper-title-row";
+      titleRow.className = lpForm ? "diary-modal-paper-header-row diary-paper-title-row" : "diary-paper-title-row";
       if (readOnly) {
         const dateSpan = document.createElement("span");
         if (feedCard) {
@@ -508,13 +532,14 @@ export function render() {
           titleRow.appendChild(eb);
         }
       } else {
-        const dateRow = createDiaryDateEditor(entry, tabId, "free");
+        const dateRow = createDiaryDateEditor(entry, tabId, "free", { lpModal: lpForm });
         titleRow.appendChild(dateRow);
         if (showDelete && typeof onDelete === "function") {
           const deleteBtn = document.createElement("button");
           deleteBtn.type = "button";
-          deleteBtn.className = "diary-paper-delete-btn";
+          deleteBtn.className = lpForm ? "time-task-log-delete-btn" : "diary-paper-delete-btn";
           deleteBtn.title = "해당 기록 삭제";
+          deleteBtn.setAttribute("aria-label", "해당 기록 삭제");
           deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
           deleteBtn.addEventListener("click", onDelete);
           titleRow.appendChild(deleteBtn);
@@ -528,7 +553,7 @@ export function render() {
         paper.appendChild(body);
       } else {
         const textarea = document.createElement("textarea");
-        textarea.className = "diary-paper-text";
+        textarea.className = lpForm ? "time-task-log-feedback" : "diary-paper-text";
         textarea.placeholder = "start writing";
         textarea.value = entry.content || "";
         textarea.addEventListener("input", () => {
@@ -557,18 +582,19 @@ export function render() {
     if (!entry) return;
     document.querySelectorAll(".diary-desktop-compose-modal").forEach((m) => m.remove());
     const modal = document.createElement("div");
-    modal.className = "diary-desktop-compose-modal diary-desktop-compose-modal--mac-diary";
+    modal.className = "time-task-setup-modal diary-desktop-compose-modal";
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
     const backdrop = document.createElement("div");
     backdrop.className = "diary-desktop-compose-modal-backdrop";
     const panel = document.createElement("div");
     panel.className = "diary-desktop-compose-modal-panel";
     panel.addEventListener("click", (e) => e.stopPropagation());
     const modalHeader = document.createElement("div");
-    modalHeader.className =
-      "diary-desktop-compose-modal-header time-task-setup-header time-task-log-header";
+    modalHeader.className = "time-task-setup-header diary-desktop-compose-modal-header";
     const modalTitle = document.createElement("h3");
     modalTitle.className = "time-task-setup-title";
-    modalTitle.textContent = diaryTabLabel(tabId);
+    modalTitle.textContent = diaryTabModalTitle(tabId);
     const closeModalOnly = () => {
       modal.remove();
       renderLayout();
@@ -585,13 +611,13 @@ export function render() {
     const scroll = document.createElement("div");
     scroll.className = "diary-desktop-compose-modal-scroll";
     const paper = document.createElement("div");
-    mountDiaryPaperForm(paper, entry, tabId, { showDelete: false });
+    mountDiaryPaperForm(paper, entry, tabId, { showDelete: false, lpModalForm: true });
     scroll.appendChild(paper);
     const footer = document.createElement("div");
     footer.className = "diary-desktop-compose-modal-footer";
     const confirmBtn = document.createElement("button");
     confirmBtn.type = "button";
-    confirmBtn.className = "diary-desktop-compose-modal-confirm";
+    confirmBtn.className = "time-task-log-submit diary-desktop-compose-modal-confirm";
     confirmBtn.textContent = "추가";
     confirmBtn.addEventListener("click", () => {
       if (draft) {
@@ -622,18 +648,19 @@ export function render() {
     if (!entry) return;
     document.querySelectorAll(".diary-desktop-compose-modal").forEach((m) => m.remove());
     const modal = document.createElement("div");
-    modal.className = "diary-desktop-compose-modal diary-desktop-compose-modal--mac-diary";
+    modal.className = "time-task-setup-modal diary-desktop-compose-modal";
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
     const backdrop = document.createElement("div");
     backdrop.className = "diary-desktop-compose-modal-backdrop";
     const panel = document.createElement("div");
     panel.className = "diary-desktop-compose-modal-panel";
     panel.addEventListener("click", (e) => e.stopPropagation());
     const modalHeader = document.createElement("div");
-    modalHeader.className =
-      "diary-desktop-compose-modal-header time-task-setup-header time-task-log-header";
+    modalHeader.className = "time-task-setup-header diary-desktop-compose-modal-header";
     const modalTitle = document.createElement("h3");
     modalTitle.className = "time-task-setup-title";
-    modalTitle.textContent = diaryTabLabel(tabId);
+    modalTitle.textContent = diaryTabModalTitle(tabId);
     const closeModalOnly = () => {
       modal.remove();
       renderLayout();
@@ -662,13 +689,28 @@ export function render() {
     const scroll = document.createElement("div");
     scroll.className = "diary-desktop-compose-modal-scroll";
     const paper = document.createElement("div");
-    mountDiaryPaperForm(paper, entry, tabId, { showDelete: true, onDelete: handleEditModalDelete });
+    mountDiaryPaperForm(paper, entry, tabId, {
+      showDelete: tabId !== "3",
+      onDelete: handleEditModalDelete,
+      lpModalForm: true,
+    });
     scroll.appendChild(paper);
     const footer = document.createElement("div");
     footer.className = "diary-desktop-compose-modal-footer";
+    if (tabId === "3") {
+      const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.className = "time-task-log-delete-btn";
+      deleteBtn.title = "해당 기록 삭제";
+      deleteBtn.setAttribute("aria-label", "해당 기록 삭제");
+      deleteBtn.innerHTML =
+        '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
+      deleteBtn.addEventListener("click", handleEditModalDelete);
+      footer.appendChild(deleteBtn);
+    }
     const saveBtn = document.createElement("button");
     saveBtn.type = "button";
-    saveBtn.className = "diary-desktop-compose-modal-confirm";
+    saveBtn.className = "time-task-log-submit diary-desktop-compose-modal-confirm";
     saveBtn.textContent = "수정";
     saveBtn.addEventListener("click", () => {
       saveDiaryEntries(entries);
@@ -690,22 +732,57 @@ export function render() {
     document.body.appendChild(modal);
   }
 
+  const DIARY_FOOTER_TAB_ORDER = ["3", "2", "1"];
+
+  function syncDiaryFooterSubtabs() {
+    document.querySelectorAll("[data-diary-subtab]").forEach((b) => {
+      const id = b.getAttribute("data-diary-subtab");
+      b.setAttribute("aria-pressed", id === currentTabId ? "true" : "false");
+    });
+  }
+
+  function mountDiaryFooterSubtabs() {
+    const slot = getAppFooterActionsSlot();
+    if (!slot) return;
+    for (const id of DIARY_FOOTER_TAB_ORDER) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = APP_FOOTER_ICON_BTN_CLASS;
+      b.setAttribute("data-diary-subtab", id);
+      b.textContent = diaryTabLabel(id);
+      b.title = diaryTabModalTitle(id);
+      b.setAttribute("aria-label", diaryTabModalTitle(id));
+      b.addEventListener("click", () => {
+        currentTabId = id;
+        const list = ensureTabEntries(currentTabId);
+        currentEntryId = list.length > 0 ? list[0].id : null;
+        renderLayout();
+      });
+      slot.appendChild(b);
+    }
+  }
+
   function renderLayout() {
     layoutWrap.dataset.diaryTab = currentTabId;
     layoutWrap.innerHTML = "";
+    searchInput.value = searchQuery;
+    searchInput.placeholder = currentTabId === "3" ? "" : "날짜·내용 검색...";
     const mobile = isDiaryMobileViewport();
-    /* 데스크톱(사이드바) 레이아웃 — 감정·통제·자유 일기 공통 맥 설정창 톤 */
-    const desktopMacDiary = !mobile;
-    inner.classList.toggle("diary-view-inner--desktop-mac-diary", desktopMacDiary);
-    el.classList.toggle("diary-view--desktop-mac-diary", desktopMacDiary);
+    /* 데스크톱·모바일 동일: 날짜 사이드바 없이 카드 피드만 스크롤 */
+    inner.classList.remove("diary-view-inner--desktop-mac-diary");
+    el.classList.remove("diary-view--desktop-mac-diary");
     const layout = document.createElement("div");
     layout.className =
-      "diary-layout" +
-      (!mobile && sidebarCollapsed ? " sidebar-collapsed" : "") +
+      "diary-layout diary-layout--feed-only" +
+      (!mobile ? " diary-layout--no-sidebar" : "") +
       (mobile ? " diary-layout--mobile" : "");
 
     if (currentTabId === "3") {
       ensureTab3Entries(entries);
+    }
+
+    if (!DIARY_FOOTER_TAB_ORDER.includes(currentTabId)) {
+      currentTabId = "2";
     }
 
     const fullEntryList = ensureTabEntries(currentTabId);
@@ -725,8 +802,10 @@ export function render() {
     };
 
     const qTrim = (searchQuery || "").trim().toLowerCase();
-    const mobileFeedEntries =
-      mobile && qTrim
+    /** 항목이 있으면 모바일·데스크톱 공통 카드 피드(스크롤) */
+    const cardFeedMode = fullEntryList.length > 0;
+    const cardFeedEntries =
+      cardFeedMode && qTrim
         ? fullEntryList.filter((e) => getEntrySearchText(e).includes(qTrim))
         : fullEntryList;
 
@@ -748,157 +827,27 @@ export function render() {
       openDiaryComposeModal(newEntry, currentTabId, { draft: true });
     };
 
-    if (mobile && diaryMobileHeaderAddBtn) {
-      diaryMobileHeaderAddBtn.onclick = () => {
-        addPageHandler();
-      };
-    }
-    if (!mobile && diaryDesktopHeaderAddBtn) {
-      diaryDesktopHeaderAddBtn.onclick = () => addPageHandler();
-    }
+    topAddBtn.onclick = () => {
+      addPageHandler();
+    };
 
-    /** 모바일 서브탭은 항상 3개(감정·통제·자유). 예전에는 항목 있는 탭만 표시해 통제만 쓰면 나머지 탭이 사라짐 */
-    const DIARY_MOBILE_TAB_ORDER = ["3", "2", "1"];
-
-    function updateMobileTabs() {
-      if (!isDiaryMobileViewport()) return;
-      const tabIds = DIARY_MOBILE_TAB_ORDER;
-      if (!tabIds.includes(currentTabId)) {
-        currentTabId = tabIds[0];
-        const list = ensureTabEntries(currentTabId);
-        currentEntryId = list.length > 0 ? list[list.length - 1].id : null;
-      }
-      tabs.innerHTML = tabIds
-        .map(
-          (id) =>
-            `<button type="button" class="time-view-tab diary-tab-btn${id === currentTabId ? " active" : ""}" data-tab="${id}">${diaryTabLabel(id)}</button>`
-        )
-        .join("");
-      tabs.querySelectorAll(".diary-tab-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          tabs.querySelectorAll(".diary-tab-btn").forEach((b) => b.classList.remove("active"));
-          btn.classList.add("active");
-          currentTabId = btn.dataset.tab;
-          const list = ensureTabEntries(currentTabId);
-          currentEntryId = list.length > 0 ? list[list.length - 1].id : null;
-          renderLayout();
-        });
-      });
-    }
-
-    if (!mobile) {
-      const sidebar = document.createElement("aside");
-      sidebar.className = "diary-sidebar";
-
-      const sidebarHeader = document.createElement("div");
-      sidebarHeader.className = "diary-sidebar-header";
-      sidebarHeader.innerHTML = `
-        <div class="diary-sidebar-actions">
-          <button type="button" class="diary-sidebar-collapse diary-sidebar-collapse-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-          </button>
-        </div>
-      `;
-      sidebarHeader.querySelector(".diary-sidebar-collapse").addEventListener("click", () => {
-        sidebarCollapsed = !sidebarCollapsed;
-        renderLayout();
-      });
-      sidebar.appendChild(sidebarHeader);
-
-      const searchRow = document.createElement("div");
-      searchRow.className = "diary-search-row";
-      const searchInput = document.createElement("input");
-      searchInput.type = "text";
-      searchInput.className = "diary-search-input";
-      searchInput.placeholder = "날짜·내용 검색...";
-      searchInput.value = searchQuery;
-      searchInput.addEventListener("compositionstart", () => {
-        isComposing = true;
-      });
-      searchInput.addEventListener("compositionend", (e) => {
-        isComposing = false;
-        searchQuery = e.target.value;
-        filterPageListInPlace(searchQuery);
-      });
-      searchInput.addEventListener("input", () => {
-        searchQuery = searchInput.value;
-        if (!isComposing) filterPageListInPlace(searchQuery);
-      });
-      searchRow.appendChild(searchInput);
-      sidebar.appendChild(searchRow);
-
-      const pageListScrollWrap = document.createElement("div");
-      pageListScrollWrap.className = "diary-page-list-scroll-wrap";
-
-      const pageList = document.createElement("div");
-      pageList.className = "diary-page-list";
-
-      fullEntryList.forEach((entry) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "diary-page-item" + (entry.id === currentEntryId ? " active" : "");
-        btn.textContent = getDisplayLabel(entry);
-        btn.dataset.entryId = entry.id;
-        btn.dataset.searchText = getEntrySearchText(entry);
-        btn.addEventListener("click", () => {
-          currentEntryId = entry.id;
-          renderLayout();
-        });
-        pageList.appendChild(btn);
-      });
-
-      pageListScrollWrap.appendChild(pageList);
-      sidebar.appendChild(pageListScrollWrap);
-
-      layout.appendChild(sidebar);
-    } else {
-      const bar = document.createElement("div");
-      bar.className = "diary-mobile-entry-bar";
-      const searchRow = document.createElement("div");
-      searchRow.className = "diary-search-row diary-mobile-search-row";
-      const searchInput = document.createElement("input");
-      searchInput.type = "text";
-      searchInput.className = "diary-search-input";
-      searchInput.placeholder =
-        currentTabId === "3" ? "" : "날짜·내용 검색...";
-      searchInput.setAttribute("aria-label", "날짜·내용 검색");
-      searchInput.value = searchQuery;
-      searchInput.addEventListener("compositionstart", () => {
-        isComposing = true;
-      });
-      searchInput.addEventListener("compositionend", (e) => {
-        isComposing = false;
-        searchQuery = e.target.value;
-        renderLayout();
-      });
-      searchInput.addEventListener("input", () => {
-        searchQuery = searchInput.value;
-        if (!isComposing) renderLayout();
-      });
-      searchRow.appendChild(searchInput);
-      bar.appendChild(searchRow);
-      layout.appendChild(bar);
-    }
-
-    // ----- 오른쪽 콘텐츠 (빈 종이) -----
+    // ----- 본문: 스크롤 영역만 (사이드바 없음) -----
     const contentArea = document.createElement("div");
     contentArea.className = "diary-content-area";
     const scrollWrap = document.createElement("div");
     scrollWrap.className = "diary-content-scroll";
     const paper = document.createElement("div");
-    paper.className = "diary-paper";
+    paper.className = currentTabId === "3" ? "" : "diary-paper";
     const currentEntry = currentEntryId ? getEntryById(currentTabId, currentEntryId) : null;
 
-    const mobileFeedMode = mobile && fullEntryList.length > 0;
-
-    if (mobileFeedMode) {
-      if (qTrim && mobileFeedEntries.length === 0) {
+    if (cardFeedMode) {
+      if (qTrim && cardFeedEntries.length === 0) {
         const noResult = document.createElement("div");
         noResult.className = "diary-search-no-result";
         noResult.textContent = "검색 결과가 없습니다.";
         scrollWrap.appendChild(noResult);
       } else {
-      mobileFeedEntries.forEach((entry) => {
+      cardFeedEntries.forEach((entry) => {
         const card = document.createElement("div");
         mountDiaryPaperForm(card, entry, currentTabId, {
           readOnly: true,
@@ -929,7 +878,7 @@ export function render() {
       });
     }
 
-    if (!mobileFeedMode) {
+    if (!cardFeedMode) {
       const showMainPaper =
         (currentTabId === "3" && currentEntry) ||
         (currentTabId === "2" && currentEntry) ||
@@ -942,27 +891,10 @@ export function render() {
     layout.appendChild(contentArea);
     layoutWrap.appendChild(layout);
 
-    filterPageListInPlace(searchQuery);
-    if (mobile) {
-      updateMobileTabs();
-    } else {
-      tabs.querySelectorAll(".diary-tab-btn").forEach((b) => {
-        b.classList.toggle("active", b.dataset.tab === currentTabId);
-      });
-    }
+    syncDiaryFooterSubtabs();
   }
 
-  tabs.querySelectorAll(".diary-tab-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      tabs.querySelectorAll(".diary-tab-btn").forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      currentTabId = btn.dataset.tab;
-      const list = ensureTabEntries(currentTabId);
-      currentEntryId = list.length > 0 ? list[0].id : null;
-      renderLayout();
-    });
-  });
-
+    mountDiaryFooterSubtabs();
     const initialList = ensureTabEntries(currentTabId);
     currentEntryId = initialList.length > 0 ? initialList[0].id : null;
     renderLayout();

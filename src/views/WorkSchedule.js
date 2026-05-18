@@ -343,7 +343,7 @@ export function render(opts = {}) {
         </div>
         <div class="work-schedule-type-settings-body-single todo-list-modal-body">
           <div class="work-schedule-type-settings-add-block time-task-log-field">
-            <div class="work-schedule-type-settings-add-one time-task-log-expense-amount-name-row">
+            <div class="work-schedule-type-settings-add-one work-schedule-type-settings-name-row">
               <input type="text" class="work-schedule-type-settings-input-name time-add-task-name" placeholder="이름" maxlength="50" autocomplete="off" />
               <button type="button" class="work-schedule-type-settings-add-btn todo-list-modal-cancel">추가</button>
             </div>

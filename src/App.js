@@ -12,12 +12,10 @@ import {
 import { saveTodoListBeforeUnmount } from "./views/TodoList.js";
 import { render as renderTime } from "./views/Time.js";
 import { render as renderWorkSchedule } from "./views/WorkSchedule.js";
-import { render as renderAsset } from "./views/Asset.js";
 import { render as renderDream } from "./views/Dream.js";
 import { render as renderSideincome } from "./views/Sideincome.js";
 import { render as renderHappiness } from "./views/Happiness.js";
 import { render as renderHealth } from "./views/Health.js";
-import { render as renderArchive } from "./views/Archive.js";
 import { render as renderDiary } from "./views/Diary.js";
 import { render as renderIdea } from "./views/Idea.js";
 import { render as renderAdmin } from "./views/Admin.js";
@@ -29,7 +27,6 @@ import {
   clearAppFooterActions,
 } from "./utils/appFooterShell.js";
 import { pullCalendarSectionTasksFromSupabase } from "./utils/todoSectionTasksSupabase.js";
-import { attachAssetExpenseTransactionsSaveListener } from "./utils/assetExpenseTransactionsSupabase.js";
 import { initPushReminderInAppPopup } from "./utils/initPushReminderInAppPopup.js";
 import { attachHealthKpiMapSaveListener } from "./utils/healthKpiMapSupabase.js";
 import { attachHappinessKpiMapSaveListener } from "./utils/happinessKpiMapSupabase.js";
@@ -37,7 +34,6 @@ import { attachDreamKpiMapSaveListener } from "./utils/dreamKpiMapSupabase.js";
 import { attachSideincomeKpiMapSaveListener } from "./utils/sideincomeKpiMapSupabase.js";
 import {
   attachTimeLedgerEntriesSaveListener,
-  hydrateTimeLedgerEntriesForArchiveMonth,
   pullTimeLedgerEntriesForDateRange,
   timeLedgerLocalTodayYmd,
   timeLedgerLocalYesterdayYmd,
@@ -57,7 +53,6 @@ import {
   pullTimeDailyBudgetFromSupabase,
   flushAllPendingTimeDailyBudgetSync,
 } from "./utils/timeDailyBudgetSupabase.js";
-import { pullAllAssetFromCloud } from "./utils/assetCloudRefresh.js";
 import { pullAllDiaryFromCloud } from "./utils/diaryCloudRefresh.js";
 import { pullUserPrefsFromSupabase } from "./utils/userHourlySync.js";
 import { initSupabaseRealtimeSync } from "./utils/supabaseRealtimeSync.js";
@@ -132,14 +127,6 @@ const TABS = [
     sidebarOrder: 1,
   },
   {
-    id: "asset",
-    label: "자산관리",
-    mobileLabel: "자산",
-    icon: "/toolbaricons/wallet.svg",
-    sidebarSection: "other",
-    sidebarOrder: 0,
-  },
-  {
     id: "workschedule",
     label: "스탬프 캘린더",
     mobileLabel: "스탬프 캘린더",
@@ -155,13 +142,6 @@ const TABS = [
     sidebarSection: "main",
     sidebarOrder: 4,
   },
-  {
-    id: "archive",
-    label: "아카이브",
-    icon: "/toolbaricons/harddrive.svg",
-    sidebarSection: "other",
-    sidebarOrder: 1,
-  },
 ];
 
 const SIDEBAR_SECTION_ORDER = ["main", "bucket", "other"];
@@ -176,12 +156,10 @@ const RENDERERS = {
       ? renderWorkSchedule({ mobile: true })
       : renderWorkSchedule(),
   schedulecalendar: renderMobileScheduleCalendar,
-  asset: renderAsset,
   dream: renderDream,
   sideincome: renderSideincome,
   happiness: renderHappiness,
   health: renderHealth,
-  archive: renderArchive,
   diary: renderDiary,
   idea: renderIdea,
   admin: renderAdmin,
@@ -271,17 +249,6 @@ async function pullDataForActiveTab(tabId, opts = {}) {
     case "sideincome":
       await pullKpiTabFromCloud(tabId);
       break;
-    case "asset": {
-      /* 기동 직후 자산 탭: 상위 App pull 생략 → Asset mount 시 1회만 pull(쓰기 없음) */
-      if (opts.fromBoot) {
-        try {
-          if (typeof window !== "undefined") window.__lpAssetNeedDeferredInitialPull = true;
-        } catch (_) {}
-        break;
-      }
-      await pullAllAssetFromCloud(() => tabId, { forceExpensePull: true });
-      break;
-    }
     case "diary":
       await pullAllDiaryFromCloud();
       break;
@@ -293,14 +260,6 @@ async function pullDataForActiveTab(tabId, opts = {}) {
       break;
     case "admin":
       break;
-    case "archive": {
-      const now = new Date();
-      await hydrateTimeLedgerEntriesForArchiveMonth(
-        now.getFullYear(),
-        now.getMonth() + 1,
-      );
-      break;
-    }
     default:
       break;
   }
@@ -360,8 +319,6 @@ export async function mountApp(container) {
       if (session?.user?.id) await pullTimeLedgerTasksFromSupabase();
     }
   } catch (_) {}
-  /* 가계부 미방문 시에도 시간가계부 소비 저장 → Supabase 동기화 이벤트 수신 */
-  attachAssetExpenseTransactionsSaveListener();
   attachHealthKpiMapSaveListener();
   attachHappinessKpiMapSaveListener();
   attachDreamKpiMapSaveListener();
@@ -456,15 +413,6 @@ export async function mountApp(container) {
       _tabSwitchTimer = null;
       void (async () => {
         const targetTabId = currentTabId;
-        /* 아카이브: 입력 없이 보기 전용 — 서버 구간 pull 후에만 본문 렌더(로컬만 먼저 보이지 않음) */
-        if (targetTabId === "archive") {
-          try {
-            await pullDataForActiveTab(targetTabId, { fromBoot: false });
-          } catch (_) {}
-          if (currentTabId !== targetTabId) return;
-          renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
-          return;
-        }
         /* 그 외 탭: 메뉴·사이드바로 시간가계부에 들어올 때는 항상 오늘 구간(세션 피커 초기화) 후 렌더 */
         if (targetTabId === "time") {
           try {
@@ -493,11 +441,6 @@ export async function mountApp(container) {
           /* 나의 계정: pull(시급·appearance) 후 통째 renderMain 하면 화면이 두 번 새로고침되는 것처럼 보임 */
           try {
             window.__lpIdeaSoftRefresh?.();
-          } catch (_) {}
-        } else if (targetTabId === "asset") {
-          /* 자산관리: pull 뒤 두 번째 renderMain 으로 패널을 통째로 갈아끼우면 순자산 등이 깜빡임 — 현재 하위 탭만 다시 그림 */
-          try {
-            window.__lpAssetSoftRefresh?.();
           } catch (_) {}
         } else {
           renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
@@ -547,7 +490,11 @@ export async function mountApp(container) {
       groups[sec].sort(
         (a, b) => (a.sidebarOrder ?? 0) - (b.sidebarOrder ?? 0),
       );
-      if (sec !== "main" && SIDEBAR_SECTION_LABEL[sec]) {
+      if (
+        sec !== "main" &&
+        SIDEBAR_SECTION_LABEL[sec] &&
+        groups[sec].length > 0
+      ) {
         const lab = document.createElement("div");
         lab.className = "app-home-menu-launcher-section";
         lab.textContent = SIDEBAR_SECTION_LABEL[sec];

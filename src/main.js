@@ -1,4 +1,7 @@
 import "./main.css";
+import "./styles/lp-corsica-display.css";
+import "./styles/diary.css";
+import "./styles/daily.css";
 import "./styles/time-ledger.css";
 import "./styles/lp-modals.css";
 import "./styles/calendar.css";

@@ -9,6 +9,7 @@ import {
 } from "./timeLedgerClassPolicy.js";
 import { getFullTaskOptions } from "./timeTaskOptionsModel.js";
 import * as TTC from "./timeTaskOptionsConstants.js";
+import { getTimeTaskListIconSrc } from "./timeTaskIconUrls.js";
 
 function getProductivityFromCategory(categoryValue) {
   if (!categoryValue) return "";
@@ -142,6 +143,17 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
       const bar = document.createElement("span");
       lpSetClasses(bar, barClass);
       bar.setAttribute("aria-hidden", "true");
+      const iconSrc = getTimeTaskListIconSrc(t.name, {
+        category: t.category,
+        productivity: t.productivity,
+      });
+      const iconEl = iconSrc ? document.createElement("img") : null;
+      if (iconEl) {
+        lpSetClasses(iconEl, "time-task-log-task-dropdown-option-icon");
+        iconEl.src = iconSrc;
+        iconEl.alt = "";
+        iconEl.decoding = "async";
+      }
       const textWrap = document.createElement("span");
       lpSetClasses(textWrap, "time-task-log-task-dropdown-option-text");
       const label = document.createElement("span");
@@ -150,6 +162,7 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
       textWrap.appendChild(label);
       appendTaskDropdownBadges(textWrap, t);
       row.appendChild(bar);
+      if (iconEl) row.appendChild(iconEl);
       row.appendChild(textWrap);
       const closePanelAndSelect = () => {
         value = t.name || "";

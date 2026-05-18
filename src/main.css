@@ -214,14 +214,28 @@ body {
   gap: 0.5rem;
   width: 100%;
   max-width: 20rem;
-  padding: 0.6rem 1rem;
+  padding: 0.65rem 1rem;
   box-sizing: border-box;
   cursor: pointer;
   font: inherit;
-  line-height: 1.3;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: #2a3828;
   background: #fff;
-  border: 1px solid #1a2218;
-  border-radius: 4px;
+  border: 1px solid rgba(42, 56, 40, 0.14);
+  border-radius: 10px;
+  box-shadow: 0 1px 0 rgba(26, 34, 24, 0.04);
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.app-home-menu-launcher-btn:hover {
+  border-color: rgba(42, 56, 40, 0.22);
+  background: rgba(42, 56, 40, 0.02);
 }
 
 .app-home-menu-launcher-icon {
@@ -243,7 +257,14 @@ body {
 }
 
 .app-home-menu-launcher-btn--admin {
-  border-color: #5c4033;
+  border-color: rgba(92, 64, 51, 0.35);
+  color: #5c4033;
+  background: rgba(92, 64, 51, 0.03);
+}
+
+.app-home-menu-launcher-btn--admin:hover {
+  border-color: rgba(92, 64, 51, 0.48);
+  background: rgba(92, 64, 51, 0.06);
 }
 
 /**
@@ -368,4 +389,677 @@ table {
   display: none;
   width: 0;
   height: 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 나의 계정 — 미니멀 · 하늘색 톤 (Idea.js / .idea-view) */
+/* 팔레트: Cloud #F0F4FA · Sky Mist #C8DCEF · Bubble #A0C4E2 · Ocean #2E7CC4 · Navy #1E4D7B · Blue text #3A6EA8 */
+/* -------------------------------------------------------------------------- */
+
+.idea-view.app-tab-panel-content {
+  /* 토큰 — 이 블록 안에서만 사용 */
+  --idea-cloud: #f0f4fa;
+  --idea-navy: #1e4d7b;
+  --idea-blue: #3a6ea8;
+  --idea-mist: #c8dcef;
+  --idea-bubble: #a0c4e2;
+  --idea-ocean: #2e7cc4;
+  --idea-surface: #fff;
+  --idea-border: rgba(58, 110, 168, 0.16);
+  --idea-border-soft: rgba(58, 110, 168, 0.1);
+  --idea-shadow: rgba(30, 77, 123, 0.06);
+
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
+  background: var(--idea-cloud);
+  color: var(--idea-navy);
+  font-family: inherit;
+}
+
+.idea-view .dream-view-header {
+  padding: 0.65rem 1rem 0.85rem;
+  border-bottom: 1px solid var(--idea-border-soft);
+  background: var(--idea-surface);
+}
+
+.idea-view .dream-view-label {
+  display: block;
+  margin: 0;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--idea-blue);
+}
+
+.idea-view .dream-view-title,
+.idea-view .idea-view-title {
+  margin: 0.25rem 0 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--idea-navy);
+  line-height: 1.25;
+}
+
+.idea-view .idea-widget-grid.time-dashboard-view {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  padding-bottom: 1.75rem;
+  max-width: 36rem;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.idea-view--mobile .idea-widget-grid.time-dashboard-view {
+  padding: 0.85rem 1rem 1.5rem;
+}
+
+.idea-view .time-dashboard-widget.idea-widget {
+  margin: 0;
+  padding: 1rem 1.05rem;
+  background: var(--idea-surface);
+  border: 1px solid var(--idea-border);
+  border-radius: 10px;
+  box-shadow: 0 1px 0 var(--idea-shadow);
+}
+
+.idea-view .time-dashboard-widget-title {
+  margin: 0 0 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--idea-navy);
+}
+
+.idea-view .idea-basic-rows,
+.idea-view .idea-subscription-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.idea-view .idea-basic-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.idea-view .idea-form-label {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--idea-blue);
+}
+
+.idea-view .idea-user-id-value {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--idea-navy);
+  text-align: right;
+  word-break: break-all;
+}
+
+.idea-view .idea-logout-row {
+  margin-top: 0.15rem;
+}
+
+.idea-view .idea-btn-logout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.5rem 0.85rem;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--idea-navy);
+  background: transparent;
+  border: 1px solid var(--idea-border);
+  border-radius: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.idea-view .idea-btn-logout:hover {
+  background: rgba(200, 220, 239, 0.45);
+  border-color: rgba(58, 110, 168, 0.32);
+}
+
+.idea-view .idea-delete-account-block {
+  margin-top: 0.35rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--idea-border-soft);
+}
+
+.idea-view .idea-btn-delete-account {
+  padding: 0.35rem 0;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--idea-ocean);
+  background: none;
+  border: none;
+  border-bottom: 1px solid rgba(46, 124, 196, 0.45);
+  border-radius: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.idea-view .idea-btn-delete-account:hover {
+  color: var(--idea-navy);
+  border-bottom-color: rgba(30, 77, 123, 0.55);
+}
+
+.idea-view .idea-delete-account-hint {
+  margin: 0.45rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--idea-blue);
+  opacity: 0.88;
+}
+
+.idea-view .idea-subscription-pass {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--idea-navy);
+}
+
+.idea-view .idea-hourly-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.85rem;
+}
+
+.idea-view .idea-hourly-tab {
+  padding: 0.35rem 0.75rem;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--idea-blue);
+  background: rgba(160, 196, 226, 0.28);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.idea-view .idea-hourly-tab:hover {
+  background: rgba(160, 196, 226, 0.48);
+  color: var(--idea-navy);
+}
+
+.idea-view .idea-hourly-tab.active {
+  color: var(--idea-navy);
+  background: var(--idea-mist);
+  border-color: rgba(58, 110, 168, 0.22);
+}
+
+.idea-view .idea-hourly-form .idea-form-row {
+  margin-bottom: 0.65rem;
+}
+
+.idea-view .idea-hourly-form .idea-form-label {
+  display: block;
+  margin-bottom: 0.28rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--idea-blue);
+}
+
+.idea-view .idea-input-with-unit {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.idea-view .idea-form-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0.4rem 0;
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--idea-navy);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--idea-bubble);
+  border-radius: 0;
+  outline: none;
+}
+
+.idea-view .idea-form-input::placeholder {
+  color: var(--idea-blue);
+  opacity: 0.55;
+}
+
+.idea-view .idea-form-input:focus {
+  border-bottom-width: 1.5px;
+  border-bottom-color: var(--idea-ocean);
+}
+
+.idea-view .idea-form-input:focus + .idea-input-unit,
+.idea-view .idea-form-row:focus-within .idea-form-label {
+  color: var(--idea-navy);
+}
+
+.idea-view .idea-input-unit {
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--idea-blue);
+}
+
+.idea-view .idea-form-hint {
+  font-size: 0.72rem;
+  color: var(--idea-blue);
+  opacity: 0.85;
+}
+
+.idea-view .idea-btn-calc {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.58rem 1rem;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--idea-cloud);
+  background: var(--idea-ocean);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.12s ease;
+}
+
+.idea-view .idea-btn-calc:hover {
+  opacity: 0.94;
+}
+
+.idea-view .idea-hourly-result-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.5rem;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--idea-border-soft);
+}
+
+.idea-view .idea-hourly-result-label {
+  width: 100%;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--idea-blue);
+  letter-spacing: -0.01em;
+}
+
+.idea-view .idea-hourly-result-value {
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--idea-navy);
+}
+
+.idea-view .idea-hourly-result-unit {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--idea-blue);
+}
+
+/* 회원 탈퇴 모달 — body에 붙으므로 토큰을 이 루트에도 둠 */
+.idea-delete-account-modal {
+  --idea-cloud: #f0f4fa;
+  --idea-navy: #1e4d7b;
+  --idea-blue: #3a6ea8;
+  --idea-mist: #c8dcef;
+  --idea-bubble: #a0c4e2;
+  --idea-ocean: #2e7cc4;
+  --idea-surface: #fff;
+  --idea-border: rgba(58, 110, 168, 0.16);
+  --idea-border-soft: rgba(58, 110, 168, 0.1);
+
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.idea-delete-account-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(30, 77, 123, 0.38);
+}
+
+.idea-delete-account-modal-panel {
+  position: relative;
+  width: 100%;
+  max-width: 22rem;
+  max-height: min(90vh, 28rem);
+  overflow: auto;
+  background: var(--idea-surface);
+  border: 1px solid var(--idea-border);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(30, 77, 123, 0.14);
+}
+
+.idea-delete-account-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--idea-border-soft);
+}
+
+.idea-delete-account-modal-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--idea-navy);
+}
+
+.idea-delete-account-modal-close {
+  padding: 0.2rem 0.45rem;
+  font: inherit;
+  font-size: 1.35rem;
+  line-height: 1;
+  color: var(--idea-blue);
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.idea-delete-account-modal-close:hover {
+  color: var(--idea-navy);
+  background: rgba(200, 220, 239, 0.55);
+}
+
+.idea-delete-account-modal-body {
+  padding: 1rem;
+}
+
+.idea-delete-account-modal-warn {
+  margin: 0 0 0.85rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--idea-navy);
+}
+
+.idea-delete-account-modal-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--idea-blue);
+}
+
+.idea-delete-account-modal-pw {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.45rem 0;
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--idea-navy);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--idea-bubble);
+  outline: none;
+}
+
+.idea-delete-account-modal-pw:focus {
+  border-bottom-width: 1.5px;
+  border-bottom-color: var(--idea-ocean);
+}
+
+.idea-delete-account-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  border-top: 1px solid var(--idea-border-soft);
+}
+
+.idea-delete-account-modal-cancel,
+.idea-delete-account-modal-submit {
+  padding: 0.45rem 0.85rem;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.idea-delete-account-modal-cancel {
+  color: var(--idea-navy);
+  background: transparent;
+  border: 1px solid var(--idea-border);
+}
+
+.idea-delete-account-modal-submit {
+  color: var(--idea-cloud);
+  background: var(--idea-ocean);
+  border: none;
+}
+
+.idea-delete-account-modal-submit:hover {
+  opacity: 0.93;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 관리자전용 — 미니멀 (Admin.js / .admin-view) */
+/* -------------------------------------------------------------------------- */
+
+.admin-view.app-tab-panel-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
+  background: #fff;
+  color: #1a2218;
+  font-family: inherit;
+}
+
+.admin-view .admin-view-header {
+  padding: 0.65rem 1rem 0.85rem;
+  border-bottom: 1px solid rgba(42, 56, 40, 0.08);
+  background: #fff;
+}
+
+.admin-view .admin-view-title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #2a3828;
+  line-height: 1.25;
+}
+
+.admin-view .admin-view-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 1rem;
+  padding-bottom: 1.75rem;
+  max-width: 64rem;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.admin-view .admin-view-hint {
+  margin: 0 0 0.85rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #a8a290;
+}
+
+.admin-view .admin-subs-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  margin-bottom: 0.65rem;
+}
+
+.admin-view .admin-subs-toolbar-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #3d4a3e;
+  letter-spacing: -0.01em;
+}
+
+.admin-view .admin-subs-refresh {
+  padding: 0.4rem 0.85rem;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #2a3828;
+  background: #fff;
+  border: 1px solid rgba(42, 56, 40, 0.18);
+  border-radius: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.admin-view .admin-subs-refresh:hover {
+  background: rgba(42, 56, 40, 0.04);
+}
+
+.admin-view .admin-subs-statusline {
+  margin: 0 0 0.65rem;
+  font-size: 0.78rem;
+  min-height: 1.2em;
+  color: #6b7268;
+}
+
+.admin-view .admin-subs-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid rgba(42, 56, 40, 0.1);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 1px 0 rgba(26, 34, 24, 0.04);
+}
+
+.admin-view .admin-subs-table {
+  width: 100%;
+  min-width: 44rem;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.admin-view .admin-subs-table thead th {
+  padding: 0.55rem 0.65rem;
+  text-align: left;
+  font-weight: 600;
+  color: #3d4a3e;
+  background: rgba(42, 56, 40, 0.04);
+  border-bottom: 1px solid rgba(42, 56, 40, 0.08);
+  white-space: nowrap;
+}
+
+.admin-view .admin-subs-table tbody td {
+  padding: 0.5rem 0.65rem;
+  vertical-align: middle;
+  color: #1a2218;
+  border-bottom: 1px solid rgba(42, 56, 40, 0.06);
+}
+
+.admin-view .admin-subs-tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-view .admin-subs-td--email {
+  font-weight: 500;
+  word-break: break-all;
+}
+
+.admin-view .admin-subs-td--uid {
+  font-family: ui-monospace, monospace;
+  font-size: 0.74rem;
+  color: #5a6358;
+}
+
+.admin-view .admin-subs-td--dt {
+  white-space: nowrap;
+  color: #5a6358;
+}
+
+.admin-view .admin-subs-status,
+.admin-view .admin-subs-until {
+  box-sizing: border-box;
+  max-width: 100%;
+  padding: 0.28rem 0.4rem;
+  font: inherit;
+  font-size: 0.76rem;
+  color: #1a2218;
+  background: #fff;
+  border: 1px solid rgba(42, 56, 40, 0.14);
+  border-radius: 6px;
+}
+
+.admin-view .admin-subs-action-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  justify-content: flex-end;
+}
+
+.admin-view .admin-subs-btn {
+  padding: 0.32rem 0.55rem;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.admin-view .admin-subs-btn--year {
+  color: #2a3828;
+  background: rgba(42, 56, 40, 0.06);
+  border: 1px solid rgba(42, 56, 40, 0.16);
+}
+
+.admin-view .admin-subs-btn--year:hover {
+  background: rgba(42, 56, 40, 0.1);
+}
+
+.admin-view .admin-subs-btn--save {
+  color: #fff;
+  background: #2a3828;
+  border: none;
+}
+
+.admin-view .admin-subs-btn--save:hover {
+  opacity: 0.93;
+}
+
+.admin-view .admin-subs-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

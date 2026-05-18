@@ -350,17 +350,6 @@ function rowEntryDateInInclusiveRange(row, startYmd, endYmd) {
   return d >= startYmd && d <= endYmd;
 }
 
-/** 연·월(1–12) → 해당 달 entry_date 범위 YYYY-MM-DD (포함) */
-export function timeLedgerMonthRangeYmd(year, month) {
-  const y = Number(year);
-  const m = Number(month);
-  const pad2 = (n) => String(n).padStart(2, "0");
-  const rangeStart = `${y}-${pad2(m)}-01`;
-  const lastDay = new Date(y, m, 0).getDate();
-  const rangeEnd = `${y}-${pad2(m)}-${pad2(lastDay)}`;
-  return { rangeStart, rangeEnd };
-}
-
 /**
  * 서버에서 받은 행만으로 로컬 시간기록 전체를 교체 (로컬·서버 병합 없음).
  * 성공 응답이 빈 배열이면 로컬도 비움.

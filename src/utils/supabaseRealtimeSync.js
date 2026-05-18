@@ -48,17 +48,6 @@ const TIME_LEDGER_REALTIME_TABLES = [
   "time_daily_budget_days",
 ];
 
-/** 자산관리 — 가계부·순자산·설정 등 */
-const ASSET_REALTIME_TABLES = [
-  "asset_user_expense_transactions",
-  "asset_user_expense_classifications",
-  "asset_user_payment_options",
-  "asset_user_net_worth_bundle",
-  "asset_user_net_worth_goal",
-  "asset_user_plan_monthly_goals",
-  "asset_user_stock_category_options",
-];
-
 const DIARY_REALTIME_TABLES = ["diary_daily_entries"];
 
 let _channel = null;
@@ -170,19 +159,6 @@ export function initSupabaseRealtimeSync(opts) {
     }
 
     for (const table of TIME_LEDGER_REALTIME_TABLES) {
-      ch = ch.on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table,
-          filter: `user_id=eq.${uid}`,
-        },
-        onEvent,
-      );
-    }
-
-    for (const table of ASSET_REALTIME_TABLES) {
       ch = ch.on(
         "postgres_changes",
         {

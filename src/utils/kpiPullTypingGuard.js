@@ -36,10 +36,3 @@ export function shouldSkipKpiDomainForBackgroundPullAll(domain, getCurrentTabId)
   const tab = typeof getCurrentTabId === "function" ? getCurrentTabId() : "";
   return tab === domain;
 }
-
-/** 자산관리 탭에서 입력 중이면 가계부 거래 full pull 만 잠시 생략 */
-export function shouldDeferAssetExpensePull(getCurrentTabId) {
-  if (!isDomTypingActive()) return false;
-  const tab = typeof getCurrentTabId === "function" ? getCurrentTabId() : "";
-  return tab === "asset";
-}

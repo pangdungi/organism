@@ -36,12 +36,12 @@
   margin-top: 0.25rem;
 }
 
-.work-schedule-type-settings-modal.todo-list-modal .time-task-log-expense-amount-name-row {
+.work-schedule-type-settings-modal.todo-list-modal .work-schedule-type-settings-name-row {
   align-items: center;
 }
 
 .work-schedule-type-settings-modal.todo-list-modal
-  .time-task-log-expense-amount-name-row
+  .work-schedule-type-settings-name-row
   .todo-list-modal-cancel {
   flex-shrink: 0;
   min-height: auto;

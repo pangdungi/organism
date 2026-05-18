@@ -17,7 +17,6 @@ import {
   mergeTimeLedgerEntriesPushedServerTimes,
   readTimeLedgerEntriesRaw,
   recordTimeLedgerDeletionTombstone,
-  timeLedgerMonthRangeYmd,
   timeLedgerRowIsSyncable,
   timeLedgerRowNeedsPush,
   writeTimeLedgerEntriesRaw,
@@ -416,36 +415,6 @@ export async function pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd) {
       trigger: "direct",
     }),
   );
-}
-
-/**
- * 아카이브: 해당 연·월만 서버에서 받아 세션 메모리에 반영.
- */
-export async function hydrateTimeLedgerEntriesForArchiveMonth(year, month) {
-  lpPullDebug("hydrateTimeLedgerEntriesForArchiveMonth", { year, month });
-  if (!supabase) return false;
-  const { rangeStart, rangeEnd } = timeLedgerMonthRangeYmd(year, month);
-  return pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd);
-}
-
-/**
- * 아카이브: 선택한 날짜 구간(YYYY-MM-DD 포함)을 서버에서 받아 세션 메모리에 반영.
- */
-export async function hydrateTimeLedgerEntriesForArchiveRange(
-  rangeStart,
-  rangeEnd,
-) {
-  lpPullDebug("hydrateTimeLedgerEntriesForArchiveRange", {
-    rangeStart,
-    rangeEnd,
-  });
-  if (!supabase) return false;
-  const rs = String(rangeStart || "").trim();
-  const re = String(rangeEnd || "").trim();
-  const ymd = /^\d{4}-\d{2}-\d{2}$/;
-  if (!ymd.test(rs) || !ymd.test(re)) return false;
-  if (rs > re) return false;
-  return pullTimeLedgerEntriesForDateRange(rs, re);
 }
 
 let _listenerAttached = false;

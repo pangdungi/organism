@@ -2929,6 +2929,15 @@ function render1DayView(tabsElement = null) {
 
   let dayOffset = 0;
   /** Date#getDay() 용 (0=일) — 네비 날짜 옆 요일 표기 */
+  const NAV_WEEKDAYS_EN_SUN0 = [
+    "sun",
+    "mon",
+    "tue",
+    "wed",
+    "thu",
+    "fri",
+    "sat",
+  ];
   const NAV_WEEKDAYS_SUN0 = ["일", "월", "화", "수", "목", "금", "토"];
 
   /* 1번 레이아웃: 탭을 최상단 전체 영역에 배치 */
@@ -2980,9 +2989,10 @@ function render1DayView(tabsElement = null) {
     const y = targetDate.getFullYear();
     const m = targetDate.getMonth() + 1;
     const d = targetDate.getDate();
-    const w = NAV_WEEKDAYS_SUN0[targetDate.getDay()] || "";
+    const wKo = NAV_WEEKDAYS_SUN0[targetDate.getDay()] || "";
+    const wEn = NAV_WEEKDAYS_EN_SUN0[targetDate.getDay()] || "";
     const mdPart = `${m}/${d}`;
-    const dowPart = `(${w})`;
+    const dowPart = `(${wEn})`;
 
     const dateFieldEl = lpCalendarNavQ(
       nav,
@@ -3017,7 +3027,7 @@ function render1DayView(tabsElement = null) {
     dateHeading.appendChild(hw);
     dateHeading.setAttribute(
       "aria-label",
-      `${y}년 ${m}월 ${d}일 ${w}요일`,
+      `${y}년 ${m}월 ${d}일 ${wKo}요일`,
     );
     topBarLeft.appendChild(dateHeading);
 
@@ -3512,6 +3522,27 @@ function renderTodoView(tabsElement) {
   wrap.appendChild(todoMain);
 
   return wrap;
+}
+
+/** 1주 플로우: 날짜별 예정 시간과제 수 대비 실제 기록 매칭 완료 수 → 실행률(%) */
+function computeCalendar1WeekDayExecutionRate(dateKey, allLedgerRows) {
+  const dayLedgerRows = ledgerRowsForCalendarYmd(allLedgerRows, dateKey);
+  const { spans: daySpans } = buildExpectedScheduleSpansForDateKey(dateKey);
+  const spansSorted = [...daySpans]
+    .filter((s) => !expectedSpanHiddenFromWeekFlowOnly(s))
+    .sort(
+      (a, b) =>
+        a.startMin - b.startMin ||
+        (a.lane ?? 0) - (b.lane ?? 0) ||
+        String(a.taskName || "").localeCompare(String(b.taskName || ""), "ko"),
+    );
+  const expected = spansSorted.length;
+  let completed = 0;
+  for (const span of spansSorted) {
+    if (weekFlowExpectedSpanHasLedgerMatch(dayLedgerRows, span)) completed++;
+  }
+  const pct = expected > 0 ? Math.round((completed / expected) * 100) : null;
+  return { expected, completed, pct };
 }
 
 function render1WeekView(tabsElement) {
@@ -4283,6 +4314,35 @@ function render1WeekView(tabsElement) {
     flowHScrollInner.appendChild(scrollArea);
     calendarGrid.appendChild(outer);
     lpAttach1WeekMobileFlowBodyMinSync(wrap, scrollArea, bodyGrid);
+
+    calendarSection.querySelector(".calendar-1week-execution-strip")?.remove();
+    const execStrip = document.createElement("div");
+    execStrip.className = "calendar-1week-execution-strip";
+    execStrip.setAttribute("role", "region");
+    execStrip.setAttribute(
+      "aria-label",
+      "요일별 예정 시간과제 대비 실행률(실제 기록 반영 개수)",
+    );
+    const execRow = document.createElement("div");
+    execRow.className = "calendar-1week-execution-strip__row";
+    weekDateKeys.forEach((key) => {
+      const { expected, completed, pct } = computeCalendar1WeekDayExecutionRate(
+        key,
+        allLedgerRowsForWeek,
+      );
+      const cell = document.createElement("div");
+      cell.className = "calendar-1week-execution-strip__cell";
+      if (expected === 0) {
+        cell.textContent = "—";
+        cell.title = `${key}\n예정 시간과제 없음`;
+      } else {
+        cell.textContent = `${pct}%`;
+        cell.title = `${key}\n완료 ${completed}개 / 예정 ${expected}개`;
+      }
+      execRow.appendChild(cell);
+    });
+    execStrip.appendChild(execRow);
+    calendarSection.appendChild(execStrip);
   }
 
   lpCalendarNavQ(nav, wrap, ".calendar-nav-today").addEventListener(

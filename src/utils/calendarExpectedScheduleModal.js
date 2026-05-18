@@ -12,7 +12,6 @@ import { syncTimeDailyBudgetDateToSupabase } from "./timeDailyBudgetSupabase.js"
 import { buildTimeTaskLogPickerDropdown } from "./timeTaskLogPickerDropdown.js";
 import { pullTimeLedgerTasksFromSupabase } from "./timeLedgerTasksSupabase.js";
 import { pullKpiMapsForTaskLogModalOpen } from "./kpiTabCloudRefresh.js";
-import { pullWorkScheduleFromSupabase } from "./workScheduleSupabase.js";
 import {
   getFullTaskOptions,
   migrateTimeLogRowsTaskIds,
@@ -80,7 +79,6 @@ async function ensureExpectedModalCloudData() {
   await Promise.all([
     pullTimeLedgerTasksFromSupabase().catch(() => {}),
     pullKpiMapsForTaskLogModalOpen().catch(() => {}),
-    pullWorkScheduleFromSupabase({ includeTypes: true }).catch(() => {}),
   ]);
   try {
     getFullTaskOptions();

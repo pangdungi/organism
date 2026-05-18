@@ -36,7 +36,7 @@ import { showKpiTodoAddModal } from "../utils/kpiTodoAddModal.js";
 import { formatKpiCardHeroHtml } from "../utils/kpiViewModal.js";
 import { showKpiTodoEditModal } from "../utils/kpiTodoEditModal.js";
 import { KPI_TAB_EDIT_PENCIL_HTML } from "../utils/kpiTabNameEditIcon.js";
-import { sortKpiLogsNewestFirst } from "../utils/kpiLogsSort.js";
+import { sortKpiLogsNewestFirst, getLatestKpiLogWithExplicitValue } from "../utils/kpiLogsSort.js";
 import {
   deletedRefsKpiTodosLen,
   kpiTodoLifecycleLog,
@@ -748,14 +748,6 @@ export function render() {
     slot.appendChild(todoBtn);
   }
 
-  function getLatestKpiLog(kpiId) {
-    const data = loadHappinessMap();
-    const logs = (data.kpiLogs || []).filter((l) => l.kpiId === kpiId);
-    if (logs.length === 0) return null;
-    const sorted = sortKpiLogsNewestFirst(logs, data.kpiLogs);
-    return sorted[0];
-  }
-
   function getKpiLogs(kpiId) {
     const data = loadHappinessMap();
     const logs = (data.kpiLogs || []).filter((l) => l.kpiId === kpiId);
@@ -781,7 +773,10 @@ export function render() {
 
   function getKpiProgress(kpi) {
     const lower = kpi.direction === "lower";
-    const latestLog = getLatestKpiLog(kpi.id);
+    const data = loadHappinessMap();
+    const latestLog = lower
+      ? getLatestKpiLogWithExplicitValue(kpi.id, data.kpiLogs)
+      : null;
     const targetVal = parseNum(kpi.targetValue);
     let currentVal;
     let progress = 0;

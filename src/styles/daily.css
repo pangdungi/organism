@@ -1,0 +1,165 @@
+/**
+ * 일기 피드 카드 — 감정·통제·자유 (미니멀)
+ * 모달·편집 화면에는 침범하지 않도록 `.diary-layout--feed-only` 안에서만 적용
+ */
+
+.diary-layout--feed-only .diary-content-scroll {
+  padding-left: calc(0.75rem + var(--lp-safe-left, 0px));
+  padding-right: calc(0.75rem + var(--lp-safe-right, 0px));
+  padding-bottom: 1rem;
+}
+
+/* 카드 셸 — 통제·자유(.diary-paper) · 감정(루트만 .diary-feed-card) */
+.diary-layout--feed-only .diary-feed-card,
+.diary-layout--feed-only .diary-paper.diary-feed-card {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.95rem 1rem 1rem;
+  background: #fff;
+  border: 1px solid rgba(42, 56, 40, 0.08);
+  border-radius: 10px;
+  box-shadow: 0 1px 0 rgba(26, 34, 24, 0.03);
+}
+
+.diary-layout--feed-only .diary-feed-card + .diary-feed-card,
+.diary-layout--feed-only .diary-paper.diary-feed-card + .diary-paper.diary-feed-card,
+.diary-layout--feed-only .diary-feed-card + .diary-paper.diary-feed-card,
+.diary-layout--feed-only .diary-paper.diary-feed-card + .diary-feed-card {
+  margin-top: 0.65rem;
+}
+
+/* 날짜 행 */
+.diary-layout--feed-only .diary-paper-qa-header,
+.diary-layout--feed-only .diary-paper-title-row,
+.diary-layout--feed-only .diary-feed-card > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0 0 0.7rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid rgba(42, 56, 40, 0.06);
+}
+
+.diary-layout--feed-only .diary-feed-card-title,
+.diary-layout--feed-only .diary-paper-qa-header-title,
+.diary-layout--feed-only .diary-paper-date,
+.diary-layout--feed-only .diary-feed-card > div:first-child > span:first-child {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #3d4a3e;
+}
+
+/* 연필 수정 */
+.diary-layout--feed-only .diary-paper-edit-btn,
+.diary-layout--feed-only .diary-paper-edit-btn-qa {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.28rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(61, 74, 62, 0.45);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.diary-layout--feed-only .diary-paper-edit-btn:hover,
+.diary-layout--feed-only .diary-paper-edit-btn-qa:hover {
+  color: #2a3828;
+  background: rgba(61, 74, 62, 0.06);
+}
+
+/* 통제 Q&A 블록 */
+.diary-layout--feed-only .diary-qa-block {
+  margin-top: 0.75rem;
+}
+
+.diary-layout--feed-only .diary-qa-block:first-of-type,
+.diary-layout--feed-only .diary-paper-qa-header + .diary-qa-block {
+  margin-top: 0;
+}
+
+.diary-layout--feed-only .diary-qa-question {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: -0.01em;
+  line-height: 1.4;
+  color: #3a6ea8;
+  margin: 0 0 0.35rem;
+  padding: 0.4rem 0.55rem;
+  background: #f0f4fa;
+  border-radius: 6px;
+}
+
+/* 감정일기 블록 — 질문 줄(클래스 없는 div/label) */
+.diary-layout--feed-only [data-lp-diary-qa-block] {
+  margin-top: 0.75rem;
+}
+
+.diary-layout--feed-only .diary-feed-card > div:first-child + [data-lp-diary-qa-block] {
+  margin-top: 0;
+}
+
+.diary-layout--feed-only [data-lp-diary-qa-block] > label,
+.diary-layout--feed-only [data-lp-diary-qa-block] > div:first-child {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.4;
+  color: #3a6ea8;
+  margin: 0 0 0.35rem;
+  padding: 0.4rem 0.55rem;
+  background: #f0f4fa;
+  border-radius: 6px;
+}
+
+/* 답변 영역(읽기 전용) */
+.diary-layout--feed-only .diary-qa-answer,
+.diary-layout--feed-only .diary-qa-answer-readonly,
+.diary-layout--feed-only [data-lp-diary-qa-block] textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid rgba(58, 110, 168, 0.14);
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: #2a3229;
+  resize: none;
+  overflow: hidden;
+}
+
+.diary-layout--feed-only .diary-qa-answer:focus,
+.diary-layout--feed-only [data-lp-diary-qa-block] textarea:focus {
+  outline: none;
+  border-color: rgba(58, 110, 168, 0.35);
+  box-shadow: 0 0 0 2px rgba(58, 110, 168, 0.12);
+}
+
+/* 자유일기 본문 */
+.diary-layout--feed-only .diary-paper-text-readonly {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: #2a3229;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 검색 결과 없음 */
+.diary-layout--feed-only .diary-search-no-result {
+  margin: 1.5rem 0 0;
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: rgba(61, 74, 62, 0.45);
+}

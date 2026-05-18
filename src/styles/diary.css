@@ -1,0 +1,187 @@
+/**
+ * 감정일기 / Diary.js — 전용 스타일
+ * (공통 모달·검색은 lp-modals.css · main.css 와 맞춤)
+ */
+
+/* 상단 한 줄: 캘린더 일간 네비와 동일 토큰(var) — .calendar-nav-controls 버튼에 사용 */
+.diary-top-tools {
+  --cal-line: rgba(61, 74, 62, 0.12);
+  --cal-line-strong: rgba(61, 74, 62, 0.18);
+  --cal-surface: #fff;
+  --cal-surface-muted: rgba(61, 74, 62, 0.04);
+  --cal-text: #2a3229;
+  --cal-text-muted: rgba(42, 50, 41, 0.55);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.65rem;
+  box-sizing: border-box;
+  width: 100%;
+  padding-left: calc(0.75rem + var(--lp-safe-left, 0px));
+  padding-right: calc(0.75rem + var(--lp-safe-right, 0px));
+}
+
+.diary-top-tools .calendar-nav-controls {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.diary-top-tools .diary-top-inline-search {
+  flex: 1 1 auto;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.diary-top-tools .diary-top-inline-search.lp-search-bar {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.diary-top-tools .diary-top-inline-search .lp-search-bar__row {
+  max-width: none;
+  margin: 0;
+}
+
+/* 일기 탭 루트: 본문 스크롤까지 flex 체인 */
+.diary-view.app-tab-panel-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* 일기 본문: 상단 도구 아래 세로 피드만 — 데스크톱·모바일 동일 */
+.diary-view-inner {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+
+.diary-layout-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.diary-layout.diary-layout--feed-only {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.diary-layout--feed-only .diary-content-area {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.diary-layout--feed-only .diary-content-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 피드 카드 간격·카드 스타일은 daily.css */
+
+/* 작성/수정 모달 본문 — 타임로그 필드 + 답변란 확장 */
+.diary-modal-paper-header-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.diary-modal-paper-header-row .time-task-log-field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.diary-modal-paper-root > .time-task-log-field {
+  margin-bottom: 0.85rem;
+}
+
+.diary-modal-paper-root > .time-task-log-field:last-child {
+  margin-bottom: 0;
+}
+
+.diary-date-edit-row--lp-modal {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+/* 모달: 날짜는 표시 span + 달력 버튼만 보임 — native date는 피커용으로만 두고 화면에서 숨김 */
+.diary-date-edit-row--lp-modal .diary-date-edit-input-native,
+.diary-date-edit-row--lp-modal input[type="date"] {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+  opacity: 0;
+}
+
+.diary-desktop-compose-modal .diary-date-edit-row--lp-modal .diary-date-edit-display,
+.diary-desktop-compose-modal .diary-date-edit-row--lp-modal > span:first-child {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--lp-modal-navy);
+}
+
+.diary-desktop-compose-modal .diary-date-edit-row--lp-modal .diary-date-cal-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--lp-modal-navy-muted);
+  cursor: pointer;
+}
+
+.diary-desktop-compose-modal .diary-date-edit-row--lp-modal .diary-date-cal-btn:hover {
+  background: rgba(30, 77, 123, 0.08);
+  color: var(--lp-modal-navy);
+}
+
+/* lp-modals 고정 높이 textarea 규칙보다 우선: 일기 답변·본문 세로 늘림 */
+.diary-desktop-compose-modal textarea.time-task-log-feedback {
+  height: auto !important;
+  min-height: var(--lp-modal-textarea-height) !important;
+  max-height: min(50vh, 16rem) !important;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.diary-desktop-compose-modal .diary-modal-paper-header-row .time-task-log-delete-btn {
+  flex-shrink: 0;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0.4rem 0.65rem;
+}
+
+.diary-desktop-compose-modal .diary-modal-paper-header-row .time-task-log-delete-btn svg {
+  display: block;
+}

@@ -111,11 +111,6 @@ export function readWorkScheduleTypeOptionsRawFromMem() {
   return _typeOptionsMem;
 }
 
-/** 스탬프 유형명 목록 — 예전 식단(kind=diet) 분리는 종료. 시간가계부 연동용으로 빈 배열만 반환합니다. */
-export function listWorkScheduleDietTypeNamesFromMem() {
-  return [];
-}
-
 export function writeWorkScheduleTypeOptionsRawToMem(arr) {
   migrateFromLegacyLocalStorageOnce();
   if (!Array.isArray(arr) || arr.length === 0) {
