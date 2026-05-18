@@ -249,6 +249,66 @@
   margin-bottom: 0.35rem;
 }
 
+/* KPI 확장 패널: 로그·할 일·매일 한 번에 하나만(꿈 탭) */
+.lp-kpi-dream-page .dream-kpi-bottom-seg-bar {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+  width: 100%;
+  margin: 0.4rem 0 0.45rem;
+  box-sizing: border-box;
+}
+
+.lp-kpi-dream-page .dream-kpi-bottom-seg-btn {
+  flex: 1 1 0;
+  margin: 0;
+  padding: 0.3rem 0.4rem;
+  min-height: 2rem;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: #64748b;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease,
+    color 0.12s ease;
+}
+
+.lp-kpi-dream-page .dream-kpi-bottom-seg-btn:hover {
+  color: #334155;
+}
+
+.lp-kpi-dream-page .dream-kpi-bottom-seg-btn:focus-visible {
+  outline: 2px solid var(--lp-modal-navy, #1e4d7b);
+  outline-offset: 2px;
+}
+
+.lp-kpi-dream-page .dream-kpi-bottom-seg-btn.active {
+  color: var(--lp-modal-navy, #1e4d7b);
+  border-color: rgba(30, 77, 123, 0.35);
+  background: rgba(30, 77, 123, 0.07);
+}
+
+.lp-kpi-dream-page .dream-kpi-bottom-seg-panel[hidden] {
+  display: none !important;
+}
+
+.lp-kpi-dream-page .dream-kpi-bottom-seg-panel--todo .dream-kpi-todo-list--seg-panel,
+.lp-kpi-dream-page .dream-kpi-bottom-seg-panel--daily .dream-kpi-todo-list--seg-panel {
+  max-height: var(--lp-kpi-dream-log-list-max-h, 14rem);
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
 .lp-kpi-dream-page .dream-kpi-filter-btn {
   margin: 0;
   display: inline-flex;
@@ -623,11 +683,6 @@
 
 .lp-kpi-dream-page .dream-kpi-todo-header:not(:has(.dream-kpi-todo-header-add-btn)) {
   display: block;
-}
-
-/* 로그 기록 영역 바로 아래 할일 목록 헤더만 간격 */
-.lp-kpi-dream-page .dream-kpi-history-wrap > .dream-kpi-todo-header:not(:has(.dream-kpi-todo-header-add-btn)) {
-  margin-top: 0.9rem;
 }
 
 .lp-kpi-dream-page .dream-kpi-history-title,
