@@ -434,12 +434,11 @@ export async function mountApp(container) {
   footerNav.appendChild(footerActionsSlot);
 
   function syncAppFooterVisibility() {
-    footerNav.hidden = currentTabId === "home";
+    /* 요청: 하단 앱 메뉴 바 비표시 — 상단 세이프·#signin-page padding-top 등은 CSS 유지 */
+    footerNav.hidden = true;
     try {
       const root = document.getElementById("signin-page");
-      if (root) {
-        root.classList.toggle("lp-tab-footer-visible", !footerNav.hidden);
-      }
+      if (root) root.classList.remove("lp-tab-footer-visible");
     } catch (_) {}
   }
   syncAppFooterVisibility();
