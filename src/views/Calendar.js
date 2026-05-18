@@ -2991,7 +2991,7 @@ function render1DayView(tabsElement = null) {
         <input type="date" class="calendar-1day-nav-date-input" aria-label="날짜 선택" />
         <img src="/toolbaricons/calendar-alt.svg" alt="" class="time-filter-date-cal-icon" width="18" height="18" aria-hidden="true" />
       </div>
-      <button type="button" class="calendar-1day-nav-add" title="예상 일정 추가">+</button>
+      <button type="button" class="calendar-1day-nav-time-log" title="선택한 날짜로 과제 기록" aria-label="선택한 날짜로 시간 기록">+ 시간기록</button>
     </div>
   `;
   nav.classList.add("calendar-monthly-nav");
@@ -3078,6 +3078,8 @@ function render1DayView(tabsElement = null) {
 
     const remainingBar = document.createElement("div");
     remainingBar.className = "calendar-1day-timeline-remaining";
+    const remainingMain = document.createElement("div");
+    remainingMain.className = "calendar-1day-timeline-remaining-main";
     const remainingLabel = document.createElement("span");
     remainingLabel.textContent = "남은 시간:";
     const remainingValue = document.createElement("span");
@@ -3085,8 +3087,28 @@ function render1DayView(tabsElement = null) {
     remainingValue.title = `이 날 24시간 중 예상 일정으로 덮인 시간: ${formatMinutesAsCompactHm(plannedMinutes)}`;
     remainingLabel.title =
       "같은 날짜 예상 시간(합쳐서 겹침은 한 번만 계산)을 모두 쓰고도 남은 분입니다.";
-    remainingBar.appendChild(remainingLabel);
-    remainingBar.appendChild(remainingValue);
+    remainingMain.appendChild(remainingLabel);
+    remainingMain.appendChild(remainingValue);
+    remainingBar.appendChild(remainingMain);
+
+    const addExpectedBtn = document.createElement("button");
+    addExpectedBtn.type = "button";
+    addExpectedBtn.className = "calendar-1day-nav-add";
+    addExpectedBtn.title = "예상 일정(계획) 추가";
+    addExpectedBtn.textContent = "+ 계획";
+    addExpectedBtn.setAttribute("aria-label", "이 날 예상 일정 추가");
+    addExpectedBtn.addEventListener("click", () => {
+      const td = new Date();
+      td.setDate(td.getDate() + dayOffset);
+      const key = formatDateKey(td);
+      openCalendarExpectedScheduleModal({
+        dateKey: key,
+        defaultStartHhMm: defaultStartHhMmForExpectedModalFromDateKey(key),
+        onSaved: () => renderCalendar(),
+      });
+    });
+    remainingBar.appendChild(addExpectedBtn);
+
     timeColumn.appendChild(remainingBar);
 
     const nowForTimeline = new Date();
@@ -3396,20 +3418,22 @@ function render1DayView(tabsElement = null) {
         renderCalendar();
       });
     }
-  }
-  {
-    const addBtn = lpCalendarNavQ(nav, wrap, ".calendar-1day-nav-add");
-    if (addBtn) {
-      addBtn.setAttribute("aria-label", "이 날 예상 일정 추가");
-      addBtn.addEventListener("click", () => {
-        const targetDate = new Date();
-        targetDate.setDate(targetDate.getDate() + dayOffset);
-        const key = formatDateKey(targetDate);
-        openCalendarExpectedScheduleModal({
-          dateKey: key,
-          defaultStartHhMm: defaultStartHhMmForExpectedModalFromDateKey(key),
-          onSaved: () => renderCalendar(),
-        });
+    const timeLogOpenBtn = lpCalendarNavQ(
+      nav,
+      wrap,
+      ".calendar-1day-nav-time-log",
+    );
+    if (timeLogOpenBtn) {
+      timeLogOpenBtn.addEventListener("click", () => {
+        const td = new Date();
+        td.setDate(td.getDate() + dayOffset);
+        const key = formatDateKey(td);
+        document.dispatchEvent(
+          new CustomEvent("lp-open-time-task-log", {
+            bubbles: true,
+            detail: { dateKey: key },
+          }),
+        );
       });
     }
   }

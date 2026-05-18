@@ -14,6 +14,7 @@ import {
   render as renderTime,
   getTodayTimeLedgerValueSum,
   getHomeMenuLedgerKrwParts,
+  teardownDetachedTimeLedgerTaskLogBridge,
 } from "./views/Time.js";
 import { render as renderWorkSchedule } from "./views/WorkSchedule.js";
 import { render as renderDream } from "./views/Dream.js";
@@ -455,6 +456,9 @@ export async function mountApp(container) {
         const targetTabId = currentTabId;
         /* 그 외 탭: 메뉴·사이드바로 시간가계부에 들어올 때는 항상 오늘 구간(세션 피커 초기화) 후 렌더 */
         if (targetTabId === "time") {
+          try {
+            teardownDetachedTimeLedgerTaskLogBridge();
+          } catch (_) {}
           try {
             resetTimeLedgerSessionFilterToToday();
           } catch (_) {}

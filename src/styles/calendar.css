@@ -140,6 +140,11 @@
   box-sizing: border-box;
 }
 
+/* 일간 상단 바 우측: `.calendar-monthly-top-bar` 패딩과 겹치지 않게 네비 컨테이너 오른쪽 패딩만 제거 */
+.calendar-1day-nav.calendar-monthly-nav {
+  padding-right: 0;
+}
+
 .calendar-nav-date {
   display: inline-flex;
   align-items: baseline;
@@ -209,13 +214,41 @@
   background: var(--cal-surface-muted);
 }
 
-/* 일간 네비: 시간 기록 바로가기 (+) — Prev/Next 대체 */
+/* 일간 네비: 일기 등 (+ 단일 문자) */
 .calendar-nav-controls .calendar-1day-nav-add {
   font-size: 1.15rem;
   font-weight: 600;
   line-height: 1;
   padding-inline: 0.5rem;
   min-width: 2.25rem;
+}
+
+.calendar-nav-controls .calendar-1day-nav-time-log {
+  white-space: nowrap;
+  font-weight: 650;
+}
+
+/* 일간 남은 시간 줄: 예상 일정 추가 — 라벨 「+ 계획」 */
+.calendar-1day-timeline-remaining .calendar-1day-nav-add {
+  flex-shrink: 0;
+  margin: 0;
+  padding-block: 0.35rem;
+  padding-inline: 0.45rem 0.5rem;
+  border: 1px solid var(--cal-line);
+  border-radius: 8px;
+  background: var(--cal-surface);
+  color: var(--cal-text);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.calendar-1day-timeline-remaining .calendar-1day-nav-add:hover {
+  border-color: var(--cal-line-strong);
+  background: var(--cal-surface-muted);
 }
 
 /* 일간 타임라인 상단: 월 네비(MMM/연도)와 동일 타이포 체계, 사방 패딩·하단 보더 */
@@ -279,20 +312,30 @@
   color: var(--cal-text-muted);
 }
 
-/* 일간: 헤더와 예상 카드 사이 — 24h 기준 예상 일정 합집합을 제외한 남은 시간 */
+/* 일간: 헤더와 예상 카드 사이 — 24h 기준 예상 일정 합집합을 제외한 남은 시간 (+ 오른쪽) */
 .calendar-1day-timeline-remaining {
   display: flex;
   flex-direction: row;
-  align-items: baseline;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 0.35rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
   width: 100%;
   box-sizing: border-box;
   padding: 0.55rem 0.65rem 0.5rem;
   margin: 0;
   border-bottom: 1px solid #f0f4fa;
   text-align: center;
+}
+
+.calendar-1day-timeline-remaining-main {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.35rem;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 /* 일간 타임라인: 예상 타임카드 */
@@ -1331,6 +1374,12 @@
 
   .calendar-nav-controls .time-filter-date-field.calendar-1day-nav-date-field {
     padding: 0.3rem 0.45rem;
+  }
+
+  .calendar-1day-timeline-remaining .calendar-1day-nav-add {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.42rem;
+    min-width: 0;
   }
 
   .calendar-monthly-weekday {

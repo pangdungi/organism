@@ -3797,7 +3797,8 @@ function createTableHTML() {
   `;
 }
 
-export function render() {
+export function render(opts = {}) {
+  const taskLogBridgeMode = !!opts?.taskLogBridgeMode;
   const el = document.createElement("div");
   lpSetClasses(el, "app-tab-panel-content time-ledger-view");
   el.dataset.timeContentView = "all";
@@ -4026,7 +4027,7 @@ export function render() {
       if (node && node.parentElement !== slot) slot.appendChild(node);
     }
   }
-  syncAppFooterLedgerActions();
+  if (!taskLogBridgeMode) syncAppFooterLedgerActions();
 
   const tabHeaderRow = document.createElement("div");
   lpSetClasses(tabHeaderRow, "time-ledger-tab-header-row");
@@ -4408,7 +4409,11 @@ export function render() {
     </div>
   `;
   taskLogModal.hidden = true;
-  el.appendChild(taskLogModal);
+  try {
+    document.body.appendChild(taskLogModal);
+  } catch (_) {
+    el.appendChild(taskLogModal);
+  }
 
   const taskLogPickerWrap = taskLogModal.querySelector(
     '[data-legacy~="time-datetime-picker-wrap"]',
@@ -4681,6 +4686,13 @@ export function render() {
   /** 과제 기록 모달: 기본 기록일은 오늘(로컬). 상단 피커 구간과 무관 — 과거·다른 날은 모달에서 날짜를 바꿈. */
   function taskLogDefaultRecordYmd() {
     return toDateStr(new Date());
+  }
+
+  /** 신규 기록: 캘린더 등에서 넘긴 `taskLogAddContext.recordDateKey`가 있으면 그날을 기록일로 씀. */
+  function resolveTaskLogNewEntryRecordYmd() {
+    const ctxYmd = String(taskLogAddContext?.recordDateKey || "").trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(ctxYmd)) return ctxYmd;
+    return taskLogDefaultRecordYmd();
   }
 
   /**
@@ -5701,7 +5713,7 @@ export function render() {
    * (type=date/WebKit 이슈 대비 인풋 값·value 속성·오버레이 문구를 모두 맞춤.)
    */
   function applyTaskLogModalDefaultsForNewEntry() {
-    const ymd = taskLogDefaultRecordYmd();
+    const ymd = resolveTaskLogNewEntryRecordYmd();
     const mergedRows = mergeLedgerRowsForDedupe(
       loadTimeRows(),
       Array.isArray(allRowsCache) ? allRowsCache : [],
@@ -7126,6 +7138,9 @@ export function render() {
   function renderAll(rows = []) {
     clearTimeLedgerMobileElapsedTimer(el);
     rescueTimeFilterControlsToFilterBar();
+    try {
+      delete el._lpTaskLogModalLedgerRefs;
+    } catch (_) {}
     contentWrap.innerHTML = "";
 
     const handleCardDelete = (card, rowData) => {
@@ -7364,6 +7379,13 @@ export function render() {
         10000,
       );
     }
+    try {
+      el._lpTaskLogModalLedgerRefs = {
+        hiddenTbody,
+        handleCardDelete,
+        handleCardEdit,
+      };
+    } catch (_) {}
     updateTotal();
   }
 
@@ -7435,16 +7457,52 @@ export function render() {
     syncTimeLedgerContent();
   }
 
+  function openTaskLogModalFromExternal(partial = {}) {
+    const refs = el._lpTaskLogModalLedgerRefs;
+    if (!refs?.hiddenTbody) {
+      try {
+        onFilterChange(true);
+      } catch (_) {}
+    }
+    const r = el._lpTaskLogModalLedgerRefs;
+    if (!r?.hiddenTbody) return;
+    openTaskLogModal({
+      productivity: null,
+      tbody: r.hiddenTbody,
+      addRow: null,
+      onRowUpdate: () => {
+        updateTotal();
+        onFilterChange();
+      },
+      viewEl: el,
+      createRow,
+      handleRowDelete: r.handleCardDelete,
+      handleRowEdit: r.handleCardEdit,
+      ...partial,
+    });
+  }
+
+  window.__lpOpenTimeTaskLog = openTaskLogModalFromExternal;
+
   /** App.setActiveTab 에서 pull 후 두 번째 renderMain 대신 호출 — 패널 통째 교체 없이 위 갱신만 */
   window.__lpTimeLedgerSoftRefresh = refreshTimeLedgerFromRemotePull;
   signal.addEventListener(
     "abort",
     () => {
+      try {
+        closeTaskLogModal();
+      } catch (_) {}
+      try {
+        taskLogModal?.remove();
+      } catch (_) {}
       clearAppFooterActions();
       if (
         window.__lpTimeLedgerSoftRefresh === refreshTimeLedgerFromRemotePull
       ) {
         delete window.__lpTimeLedgerSoftRefresh;
+      }
+      if (window.__lpOpenTimeTaskLog === openTaskLogModalFromExternal) {
+        delete window.__lpOpenTimeTaskLog;
       }
     },
     { once: true },
@@ -7459,7 +7517,48 @@ export function render() {
   return el;
 }
 
+const LP_DETACHED_TIME_TASK_LOG_BRIDGE_ID = "lp-time-task-log-bridge";
+
+/** 일정 캘린더 등에서 탭 전환 없이 과제 기록 모달만 쓰기 위해 마운트한 숨김 호스트 — 시간가계부 탭 진입 시 제거 */
+export function teardownDetachedTimeLedgerTaskLogBridge() {
+  const bridge = document.getElementById(LP_DETACHED_TIME_TASK_LOG_BRIDGE_ID);
+  if (!bridge) return;
+  const inner = bridge.firstElementChild;
+  try {
+    inner?._lpTabAbortController?.abort();
+  } catch (_) {}
+  try {
+    bridge.remove();
+  } catch (_) {}
+}
+
+/** 시간가계부 탭을 열지 않고도 `window.__lpOpenTimeTaskLog` 를 제공 */
+export function ensureDetachedTimeLedgerTaskLogBridge() {
+  if (typeof document === "undefined") return;
+  if (typeof window.__lpOpenTimeTaskLog === "function") return;
+  let bridge = document.getElementById(LP_DETACHED_TIME_TASK_LOG_BRIDGE_ID);
+  if (!bridge) {
+    bridge = document.createElement("div");
+    bridge.id = LP_DETACHED_TIME_TASK_LOG_BRIDGE_ID;
+    bridge.setAttribute("aria-hidden", "true");
+    bridge.style.cssText =
+      "position:fixed;inset:0;pointer-events:none;visibility:hidden;z-index:-1;";
+    document.body.appendChild(bridge);
+  }
+  if (bridge.querySelector(".time-ledger-view")) return;
+  bridge.appendChild(render({ taskLogBridgeMode: true }));
+}
+
 if (typeof document !== "undefined") {
+  document.addEventListener("lp-open-time-task-log", (e) => {
+    const dk = String(e.detail?.dateKey || "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dk)) return;
+    try {
+      ensureDetachedTimeLedgerTaskLogBridge();
+      window.__lpOpenTimeTaskLog?.({ recordDateKey: dk });
+    } catch (_) {}
+  });
+
   document.addEventListener("app-hourly-rate-changed", (e) => {
     const rate = Number(e.detail?.rate ?? 0);
     const root = document.querySelector(
