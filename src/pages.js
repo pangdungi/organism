@@ -1,3 +1,5 @@
+import { clearLpHomeTimeSafeTopChrome } from "./utils/syncLpHomeTimeSafeTopChrome.js";
+
 export function showOnly(pageId) {
   if (pageId !== "login") {
     const m = document.getElementById("auth-pw-recovery-modal");
@@ -19,4 +21,7 @@ export function showOnly(pageId) {
       p.style.display = "none";
     }
   });
+  if (pageId === "login" || pageId === "reset-password") {
+    clearLpHomeTimeSafeTopChrome();
+  }
 }

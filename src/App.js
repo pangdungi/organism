@@ -69,6 +69,7 @@ import { logLpRender, logLpRenderStack } from "./utils/lpRenderDebugLog.js";
 import { initDomPulseDebug } from "./utils/domPulseDebug.js";
 import { initMobileVisualViewportKeyboardInset } from "./utils/mobileViewportKeyboard.js";
 import { logTodoScheduleTabOnNavigate } from "./utils/lpTabDataSourceLog.js";
+import { syncLpHomeTimeSafeTopChrome } from "./utils/syncLpHomeTimeSafeTopChrome.js";
 
 /** 상위 탭 메타(아이콘·메뉴 런처 구역 순서) */
 const TABS = [
@@ -343,6 +344,7 @@ export async function mountApp(container) {
   } else if (currentTabId === "admin" && !supabase) {
     currentTabId = "home";
   }
+  syncLpHomeTimeSafeTopChrome(currentTabId);
   initPushReminderInAppPopup();
   migrateRemoveRoutineTasks();
   try {
@@ -445,6 +447,7 @@ export async function mountApp(container) {
     if (fromTab !== tabId) flushAllPendingTimeDailyBudgetSync();
     currentTabId = tabId;
     persistActiveTabId(tabId);
+    syncLpHomeTimeSafeTopChrome(tabId);
     syncAppFooterVisibility();
     logTodoScheduleTabOnNavigate(tabId, fromTab);
     logTabSync("tab_switch", { from: fromTab, to: tabId });
