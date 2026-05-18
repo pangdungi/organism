@@ -69,7 +69,6 @@ import { logLpRender, logLpRenderStack } from "./utils/lpRenderDebugLog.js";
 import { initDomPulseDebug } from "./utils/domPulseDebug.js";
 import { initMobileVisualViewportKeyboardInset } from "./utils/mobileViewportKeyboard.js";
 import { logTodoScheduleTabOnNavigate } from "./utils/lpTabDataSourceLog.js";
-import { syncAppViewportChromeForTab } from "./utils/syncAppViewportChrome.js";
 
 /** 상위 탭 메타(아이콘·메뉴 런처 구역 순서) */
 const TABS = [
@@ -430,18 +429,10 @@ export async function mountApp(container) {
 
   function syncAppFooterVisibility() {
     footerNav.hidden = currentTabId === "home";
-    const footerShown = !footerNav.hidden;
     try {
       const root = document.getElementById("signin-page");
       if (root) {
-        root.classList.toggle("lp-tab-footer-visible", footerShown);
-      }
-    } catch (_) {}
-    /* id 충돌·마운트 순서와 무관하게: 본문 하단 세이프 패딩은 푸터 한 곳만 */
-    try {
-      const shell = document.getElementById("app-screen");
-      if (shell) {
-        shell.classList.toggle("lp-app-footer-visible", footerShown);
+        root.classList.toggle("lp-tab-footer-visible", !footerNav.hidden);
       }
     } catch (_) {}
   }
@@ -454,7 +445,6 @@ export async function mountApp(container) {
     if (fromTab !== tabId) flushAllPendingTimeDailyBudgetSync();
     currentTabId = tabId;
     persistActiveTabId(tabId);
-    syncAppViewportChromeForTab(tabId);
     syncAppFooterVisibility();
     logTodoScheduleTabOnNavigate(tabId, fromTab);
     logTabSync("tab_switch", { from: fromTab, to: tabId });
@@ -805,7 +795,6 @@ export async function mountApp(container) {
       mountNodes = [errDiv];
     }
     p.replaceChildren(...mountNodes);
-    syncAppViewportChromeForTab(currentTabId);
     try {
       if (
         currentTabId !== "home" &&
@@ -868,7 +857,6 @@ export async function mountApp(container) {
     }
     /* 로컬·메모리 상태로 먼저 화면 표시 — PWA 재실행·탭 복귀 후 네트워크 대기로 빈 화면이 길게 보이지 않게 */
     const pullPromise = pullDataForActiveTab(bootTabId, { fromBoot: true });
-    syncAppViewportChromeForTab(bootTabId);
     renderMain(main);
     try {
       await pullPromise;

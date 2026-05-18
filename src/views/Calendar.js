@@ -19,9 +19,14 @@ import {
   getTaskOptionByName,
   loadTimeRows,
   formatGoalDiff,
+  parseTimeToHours,
   isTimeLedgerRowLiveRecording,
   formatIntegerMinutesDurationKo,
   findBudgetScheduleSlotIndex,
+  getRowStartInstantForMobileCard,
+  getRowEndInstantForMobileCard,
+  rowHasEndTimeForMobileCard,
+  getMobileCardEffectiveHoursForPrice,
 } from "./Time.js";
 import { showToast } from "../utils/showToast.js";
 import { supabase } from "../supabase.js";
@@ -2928,6 +2933,79 @@ function weekFlowSpanHasMatchingLiveRecording(dayRows, span) {
   return false;
 }
 
+/**
+ * 예상 블록 시각과 겹치는 같은 과제 기록만 골라, 시간가계부와 동일한 유효 소요(h)→분을 합산.
+ * 프로그레스 = 합계 분 / 예상 블록 분.
+ */
+function sumLedgerEffectiveMinutesForExpectedSpan(
+  dayRows,
+  span,
+  targetKeyYmd,
+  nowDate,
+) {
+  if (!Array.isArray(dayRows) || !span || !targetKeyYmd) return 0;
+  const expStart = Number(span.startMin);
+  const expEnd = Number(span.endMin);
+  if (
+    !Number.isFinite(expStart) ||
+    !Number.isFinite(expEnd) ||
+    expEnd <= expStart
+  ) {
+    return 0;
+  }
+  const parts = String(targetKeyYmd).split("-").map(Number);
+  if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) return 0;
+  const [yy, mo, dd] = parts;
+  const dayBaseMs = new Date(yy, mo - 1, dd, 0, 0, 0, 0).getTime();
+  const spanStartMs = dayBaseMs + expStart * 60000;
+  const spanEndMs = dayBaseMs + expEnd * 60000;
+  const nowMs = nowDate.getTime();
+  let sumMin = 0;
+  for (const r of dayRows) {
+    const expName = normTaskNameForWeekFlowMatch(span.taskName);
+    const expTid = String(span._task?.taskId || "").trim();
+    const rtid = String(r?.taskId || "").trim();
+    const rn = normTaskNameForWeekFlowMatch(r?.taskName);
+    const nameMatch =
+      (expTid && rtid && expTid === rtid) ||
+      !!(expName && rn && expName === rn);
+    if (!nameMatch) continue;
+    const startMs = getRowStartInstantForMobileCard(r)?.getTime();
+    if (!Number.isFinite(startMs)) continue;
+    let endMs;
+    if (rowHasEndTimeForMobileCard(r)) {
+      endMs = getRowEndInstantForMobileCard(r)?.getTime();
+      if (!Number.isFinite(endMs)) continue;
+    } else {
+      endMs = nowMs;
+    }
+    const lo = Math.max(startMs, spanStartMs);
+    const hi = Math.min(endMs, spanEndMs);
+    if (hi <= lo) continue;
+    const hours = getMobileCardEffectiveHoursForPrice(r);
+    sumMin += Math.max(0, hours * 60);
+  }
+  return sumMin;
+}
+
+/** 같은 날·같은 과제명/taskId 기록의 유효 소요(분) 합 — 시각대가 예상 블록과 어긋나도 진행률 표시용 */
+function sumLedgerEffectiveMinutesMatchingTaskOnDay(dayRows, span) {
+  if (!Array.isArray(dayRows) || !span) return 0;
+  let sumMin = 0;
+  for (const r of dayRows) {
+    const expName = normTaskNameForWeekFlowMatch(span.taskName);
+    const expTid = String(span._task?.taskId || "").trim();
+    const rtid = String(r?.taskId || "").trim();
+    const rn = normTaskNameForWeekFlowMatch(r?.taskName);
+    const nameMatch =
+      (expTid && rtid && expTid === rtid) ||
+      !!(expName && rn && expName === rn);
+    if (!nameMatch) continue;
+    sumMin += Math.max(0, getMobileCardEffectiveHoursForPrice(r) * 60);
+  }
+  return sumMin;
+}
+
 /** 예상 블록 종료 시각이 지났거나(당일) 날짜가 지났는데 실제 기록이 없을 때만 미이행 표시 */
 function weekFlowExpectedSpanLedgerMissed(
   dayKeyYmd,
@@ -3172,6 +3250,29 @@ function render1DayView(tabsElement = null) {
             span,
           );
 
+        const actualMinutesRawOverlap =
+          sumLedgerEffectiveMinutesForExpectedSpan(
+            dayLedgerRowsTL,
+            span,
+            targetKey,
+            nowForTimeline,
+          );
+        let actualMinutesRaw = actualMinutesRawOverlap;
+        if (
+          actualMinutesRaw < 0.5 &&
+          weekFlowExpectedSpanHasLedgerMatch(dayLedgerRowsTL, span)
+        ) {
+          actualMinutesRaw = sumLedgerEffectiveMinutesMatchingTaskOnDay(
+            dayLedgerRowsTL,
+            span,
+          );
+        }
+        const expectedMinProg = durMin;
+        const progressRatio =
+          expectedMinProg > 0 ? actualMinutesRaw / expectedMinProg : 0;
+        const progressPctFill = Math.min(100, Math.max(0, progressRatio * 100));
+        const progressOverExpected = progressRatio > 1.0001;
+
         const sidRaw = String(span.sectionId || "").trim();
         let sectionAccent = "";
         if (sidRaw && !sidRaw.startsWith("custom-")) {
@@ -3207,6 +3308,9 @@ function render1DayView(tabsElement = null) {
         if (!ledgerMissed) {
           card.style.setProperty("--calendar-timeline-stripe", c.leftStripe);
         }
+        if (progressOverExpected && !ledgerMissed) {
+          card.classList.add("calendar-1day-timeline-card--progress-over");
+        }
         if (!ledgerMissed) {
           card.style.setProperty(
             "--calendar-timeline-progress-fill",
@@ -3219,8 +3323,39 @@ function render1DayView(tabsElement = null) {
           );
         }
 
-        const cardHead = document.createElement("div");
-        cardHead.className = "calendar-1day-timeline-card-head";
+        const startEl = document.createElement("span");
+        startEl.className = "calendar-1day-timeline-card-start";
+        startEl.textContent = span.startDisplay;
+
+        const headBarCell = document.createElement("div");
+        headBarCell.className = "calendar-1day-timeline-card-head-bar";
+        const trackEl = document.createElement("div");
+        trackEl.className = "calendar-1day-timeline-card-bar-track";
+        trackEl.setAttribute("aria-hidden", "true");
+        const fillEl = document.createElement("div");
+        fillEl.className = "calendar-1day-timeline-card-head-bar-fill";
+        fillEl.style.width = `${progressPctFill}%`;
+        trackEl.appendChild(fillEl);
+        headBarCell.appendChild(trackEl);
+
+        const timeConnector = document.createElement("span");
+        timeConnector.className = "calendar-1day-timeline-card-time-connector";
+        timeConnector.setAttribute("aria-hidden", "true");
+
+        const endEl = document.createElement("span");
+        endEl.className = "calendar-1day-timeline-card-end";
+        endEl.textContent = span.endDisplay;
+
+        card.appendChild(startEl);
+        card.appendChild(headBarCell);
+        card.appendChild(timeConnector);
+
+        const body = document.createElement("div");
+        body.className = "calendar-1day-timeline-card-body";
+
+        const durRow = document.createElement("span");
+        durRow.className = "calendar-1day-timeline-card-duration";
+        durRow.textContent = formatIntegerMinutesDurationKo(durMin);
 
         const titleRow = document.createElement("div");
         titleRow.className = "calendar-1day-timeline-card-title-row";
@@ -3228,7 +3363,8 @@ function render1DayView(tabsElement = null) {
         titleEl.className = "calendar-1day-timeline-card-title";
         titleEl.textContent = taskLabel;
         titleRow.appendChild(titleEl);
-        cardHead.appendChild(titleRow);
+        titleRow.appendChild(durRow);
+        body.appendChild(titleRow);
 
         let badgeText = "";
         if (sidRaw && TL_SECTION_LABELS[sidRaw]) {
@@ -3266,43 +3402,28 @@ function render1DayView(tabsElement = null) {
           meta.appendChild(prog);
         }
         if (meta.childNodes.length) {
-          cardHead.appendChild(meta);
+          body.appendChild(meta);
         }
 
         if (memoTextStored) {
           const memoEl = document.createElement("div");
           memoEl.className = "calendar-1day-timeline-card-memo";
           memoEl.textContent = memoTextStored;
-          cardHead.appendChild(memoEl);
+          body.appendChild(memoEl);
         }
 
-        const cardBody = document.createElement("div");
-        cardBody.className = "calendar-1day-timeline-card-body";
+        card.appendChild(body);
 
-        const timesExp = document.createElement("div");
-        timesExp.className = "calendar-1day-timeline-card-pane-times";
-        timesExp.textContent = `${span.startDisplay} ~ ${span.endDisplay}`;
-        const trackExp = document.createElement("div");
-        trackExp.className = "calendar-1day-timeline-card-bar-track";
-        trackExp.setAttribute("aria-hidden", "true");
-        const fillExp = document.createElement("div");
-        fillExp.className = "calendar-1day-timeline-card-head-bar-fill";
-        fillExp.style.width = "100%";
-        trackExp.appendChild(fillExp);
-        const durExp = document.createElement("div");
-        durExp.className = "calendar-1day-timeline-card-pane-dur";
-        durExp.textContent = formatIntegerMinutesDurationKo(durMin);
+        card.appendChild(endEl);
 
-        cardBody.appendChild(timesExp);
-        cardBody.appendChild(trackExp);
-        cardBody.appendChild(durExp);
-
-        card.appendChild(cardHead);
-        card.appendChild(cardBody);
+        if (expectedMinProg > 0) {
+          card.title = `${card.title}\n실제 소요 / 예상: ${formatIntegerMinutesDurationKo(Math.round(actualMinutesRaw))} / ${formatIntegerMinutesDurationKo(expectedMinProg)}`;
+        }
 
         if (!ledgerMissed && !ledgerMatched) {
-          timesExp.style.color = c.accentMuted;
-          durExp.style.color = c.accentMuted;
+          startEl.style.color = c.accentMuted;
+          endEl.style.color = c.accentMuted;
+          durRow.style.color = c.accentMuted;
         }
 
         card.setAttribute("role", "button");

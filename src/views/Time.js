@@ -1327,20 +1327,6 @@ function hoursBetweenRowStartEnd(rowData) {
   }
 }
 
-/**
- * 잔액·「다시 받을 금액」·시간 레포트 집계용 시간(h).
- * 사용시간 입력 또는 시작~마감이 확정된 구간만 — 마감 없는 행의 실시간 경과는 포함하지 않음
- * (재진입·타이머마다 금액이 계속 바뀌는 현상 방지). 카드/표 실시간 표시는 getMobileCardEffectiveHoursForPrice.
- */
-export function getMobileCardFrozenHoursForLedgerTotals(rowData) {
-  if (!rowData) return 0;
-  const tracked = (rowData.timeTracked || "").trim();
-  if (tracked) return parseTimeToHours(tracked) || 0;
-  if (rowHasEndTimeForMobileCard(rowData))
-    return hoursBetweenRowStartEnd(rowData);
-  return 0;
-}
-
 /** 행동의 가치 계산용 유효 시간(h): 사용시간 입력 > 마감 있음(구간) > 진행 중(경과) */
 export function getMobileCardEffectiveHoursForPrice(rowData) {
   const tracked = (rowData.timeTracked || "").trim();
@@ -2353,9 +2339,9 @@ export function formatInvestReclaimWonDisplay(won) {
   return `+₩ ${formatLedgerWonInteger(w)}`;
 }
 
-/** 가계부 잔고·레포트 집계 — 확정 시간만(실시간 경과 제외) */
+/** 가계부 잔고 카드와 동일 규칙 — 구간 시간·진행 행 포함 */
 export function getLedgerEffectiveHoursForReclaim(rowData) {
-  return getMobileCardFrozenHoursForLedgerTotals(rowData);
+  return getMobileCardEffectiveHoursForPrice(rowData);
 }
 
 function taskLikeFromLedgerRowForInvestSnapshot(r) {
@@ -2373,7 +2359,7 @@ function aggregateInvestReclaimSnapshotFromRows(rows) {
   const hourlyRate = readUserHourlyRateNumber();
   let reclaimHrs = 0;
   rows.forEach((r) => {
-    const h = getMobileCardFrozenHoursForLedgerTotals(r);
+    const h = getMobileCardEffectiveHoursForPrice(r);
     if (!(h > 0) || !Number.isFinite(h)) return;
     if (!taskAllowedForLedgerPreset(taskLikeFromLedgerRowForInvestSnapshot(r), "invest")) {
       return;
@@ -2434,7 +2420,7 @@ function aggregateProductiveCategoryInvestBarsFromRows(rows) {
   const hoursBy = Object.fromEntries(KEYS.map((k) => [k, 0]));
   let otherProdHours = 0;
   rows.forEach((r) => {
-    const h = getMobileCardFrozenHoursForLedgerTotals(r);
+    const h = getMobileCardEffectiveHoursForPrice(r);
     if (!(h > 0) || !Number.isFinite(h)) return;
     const { category, productivity } = resolveRowCategoryProductivityForAudit(r);
     const cat = String(category || "").trim().toLowerCase();
@@ -4027,6 +4013,7 @@ export function render(opts = {}) {
       filtered = filtered.filter((r) => set.has((r.taskName || "").trim()));
     }
     renderAll(filtered);
+    updateTotal();
     persistActiveViewTimeFilterToSession();
     const pickerKeyNow = computePickerRangeKeyForPull();
     if (pickerKeyNow !== _pickerRangeKeyAtLastPullIntent) {
@@ -6871,6 +6858,7 @@ export function render(opts = {}) {
   } catch (_) {}
   allRowsCache = loadTimeRows();
   cachedRows = getFullRowsForFilter(true);
+  syncTimeLedgerContent();
 
   function mergeRowsIntoCache() {
     const fromDom = collectRowsFromDOM(contentWrap);
@@ -7021,7 +7009,7 @@ export function render(opts = {}) {
     let todayInvestHrsHdr = 0;
     for (const r of allRowsCache) {
       if (!isTodayRowForBankHeader(r, todayKey)) continue;
-      const hrs = getMobileCardFrozenHoursForLedgerTotals(r);
+      const hrs = getMobileCardEffectiveHoursForPrice(r);
       todaySpentHrsHdr += hrs;
       if (taskAllowedForLedgerPreset(taskLikeFromLedgerRowForInvest(r), "invest"))
         todayInvestHrsHdr += hrs;
@@ -7155,7 +7143,7 @@ export function render(opts = {}) {
   function sumTimeLedgerDayHours(dayRows) {
     let s = 0;
     for (const r of dayRows) {
-      s += getMobileCardFrozenHoursForLedgerTotals(r);
+      s += getMobileCardEffectiveHoursForPrice(r);
     }
     return s;
   }
@@ -7440,6 +7428,7 @@ export function render(opts = {}) {
     cachedRows = getFullRowsForFilter(true);
     const rowsToUse = getFilteredRows(cachedRows);
     renderAll(rowsToUse);
+    updateTotal();
     persistActiveViewTimeFilterToSession();
     updateFilterBarVisibility();
     if (userSubTabClick) {
@@ -7463,34 +7452,22 @@ export function render(opts = {}) {
 
   onFilterChange(true);
 
-  /** 서버·픽커 pull 등이 연달아 와도 한 번만 목록·잔액을 다시 그림 */
-  const TIME_LEDGER_REMOTE_REFRESH_DEBOUNCE_MS = 200;
   function refreshTimeLedgerFromRemotePull() {
     if (!el.isConnected) return;
+    /* App 탭 진입 pull 직후 session 만 오늘 등으로 바뀌고 DOM 날짜는 옛값일 수 있음 → 통째로 renderMain 하지 않고 갱신할 때 맞춤 */
     try {
-      if (el._lpRefreshPullTimer != null) {
-        clearTimeout(el._lpRefreshPullTimer);
-        el._lpRefreshPullTimer = null;
-      }
-    } catch (_) {}
-    el._lpRefreshPullTimer = setTimeout(() => {
-      el._lpRefreshPullTimer = null;
-      if (!el.isConnected) return;
-      /* App 탭 진입 pull 직후 session 만 오늘 등으로 바뀌고 DOM 날짜는 옛값일 수 있음 → 통째로 renderMain 하지 않고 갱신할 때 맞춤 */
+      const t = getLedgerFilterTodayYmd();
       try {
-        const t = getLedgerFilterTodayYmd();
-        try {
-          if (typeof sessionStorage !== "undefined") {
-            sessionStorage.setItem("lp_time_filter_start", t);
-            sessionStorage.setItem("lp_time_filter_end", t);
-          }
-        } catch (_) {}
-        _pickerRangeKeyAtLastPullIntent = computePickerRangeKeyForPull();
+        if (typeof sessionStorage !== "undefined") {
+          sessionStorage.setItem("lp_time_filter_start", t);
+          sessionStorage.setItem("lp_time_filter_end", t);
+        }
       } catch (_) {}
-      allRowsCache = loadTimeRows();
-      cachedRows = getFullRowsForFilter(true);
-      syncTimeLedgerContent();
-    }, TIME_LEDGER_REMOTE_REFRESH_DEBOUNCE_MS);
+      _pickerRangeKeyAtLastPullIntent = computePickerRangeKeyForPull();
+    } catch (_) {}
+    allRowsCache = loadTimeRows();
+    cachedRows = getFullRowsForFilter(true);
+    syncTimeLedgerContent();
   }
 
   function openTaskLogModalFromExternal(partial = {}) {
@@ -7525,12 +7502,6 @@ export function render(opts = {}) {
   signal.addEventListener(
     "abort",
     () => {
-      try {
-        if (el._lpRefreshPullTimer != null) {
-          clearTimeout(el._lpRefreshPullTimer);
-          el._lpRefreshPullTimer = null;
-        }
-      } catch (_) {}
       try {
         closeTaskLogModal();
       } catch (_) {}

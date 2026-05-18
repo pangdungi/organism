@@ -21,15 +21,6 @@
   background: #fff;
 }
 
-/** 탭별 상태 표시줄·바운스 영역과 맞춤(App.js 가 클래스 토글) */
-html.lp-viewport-chrome-dark.lp-app-bg {
-  background: #1e4d7b;
-}
-
-html.lp-viewport-chrome-idea.lp-app-bg {
-  background: #f0f4fa;
-}
-
 html {
   font-size: 16px;
 }
@@ -119,10 +110,9 @@ body {
   padding-top: calc(var(--lp-safe-top) + clamp(1.15rem, 20vh, 5rem));
 }
 
-/* 탭 푸터가 보일 때: 본문 하단 세이프 패딩 없음 — 하단 env는 .app-footer-menu 의 padding-bottom 한 번만 */
-#signin-page.lp-tab-footer-visible .app-main,
-#app-screen.lp-app-footer-visible .app-main {
-  padding-bottom: 0 !important;
+/* 탭 푸터가 보일 때: 하단 세이프 존은 .app-footer-menu 한 곳만(이중 패딩으로 푸터가 위로 뜨는 느낌 방지) */
+#signin-page.lp-tab-footer-visible .app-main {
+  padding-bottom: 0;
 }
 
 .app-tab-panel {
@@ -152,8 +142,7 @@ body {
   align-items: stretch;
   gap: 0;
   width: 100%;
-  /* 홈 인디케이터: 페이지 padding 과 분리하지 않고 푸터 한 블록 안에서만 calc(고정 + env) */
-  padding: 0.35rem 0.75rem calc(0.35rem + env(safe-area-inset-bottom, 0px));
+  padding: 0.45rem 0.75rem calc(0.5rem + var(--lp-safe-bottom));
   padding-left: calc(0.75rem + var(--lp-safe-left));
   padding-right: calc(0.75rem + var(--lp-safe-right));
   border-top: 1px solid #e2e8f0;
@@ -226,8 +215,6 @@ body {
 /* 메인(오늘) 뷰 — 메뉴 페이지 배경(네이비), 본문은 위부터 풀너비·풀높이 */
 .app-main:has(.app-home-menu-launcher) {
   background: #1e4d7b;
-  /* 하단 세이프 영역은 흰 시트(.launcher-card·body 패딩)가 채움 — main 패딩 시 네이비 줄이 생김 */
-  padding-bottom: 0;
 }
 
 .app-main:has(.app-home-menu-launcher) .app-tab-panel {
@@ -1350,7 +1337,7 @@ table {
   padding-bottom: env(safe-area-inset-bottom, 0);
   font-family: "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
   color: var(--auth-ink);
-  background: var(--auth-navy);
+  background: linear-gradient(165deg, #e9f0fb 0%, #f2f6fc 42%, #fafcfe 100%);
 }
 
 .auth-gate-body {
