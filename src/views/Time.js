@@ -2276,6 +2276,50 @@ export function getMonthlyTimeReportSummaryGrid(ymdTen) {
   return aggregateDailyTimeReportSummaryFromLedgerRows(rows);
 }
 
+function aggregateTopTasksByTrackedMinutesFromRows(rows, limit) {
+  const cap = Math.max(1, Math.min(12, Number(limit) || 3));
+  /** @type {Map<string, number>} */
+  const map = new Map();
+  rows.forEach((r) => {
+    const name = String(r.taskName || "").trim();
+    if (!name) return;
+    const hrs = parseTimeToHours(r.timeTracked);
+    if (!(hrs > 0) || !Number.isFinite(hrs)) return;
+    const mins = Math.round(hrs * 60);
+    map.set(name, (map.get(name) || 0) + mins);
+  });
+  const arr = [...map.entries()].map(([taskName, minutes]) => ({ taskName, minutes }));
+  arr.sort((a, b) => {
+    if (b.minutes !== a.minutes) return b.minutes - a.minutes;
+    return String(a.taskName).localeCompare(String(b.taskName), "ko");
+  });
+  return arr.slice(0, cap);
+}
+
+/** 소비 레포트: 해당 일 기준 과제명별 기록 시간 합 → 상위 N개(분 내림차순) */
+export function getDailyTimeReportTopTasksByMinutes(ymdTen, limit = 3) {
+  const key = String(ymdTen || "")
+    .replace(/\//g, "-")
+    .slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return [];
+  const rows = loadTimeRows().filter((r) => {
+    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    return d === key;
+  });
+  return aggregateTopTasksByTrackedMinutesFromRows(rows, limit);
+}
+
+/** 소비 레포트: 해당 월 기준 과제명별 기록 시간 합 → 상위 N개 */
+export function getMonthlyTimeReportTopTasksByMinutes(ymdTen, limit = 3) {
+  const range = getTimeReportMonthInclusiveRange(ymdTen);
+  if (!range) return [];
+  const rows = loadTimeRows().filter((r) => {
+    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    return d >= range.start && d <= range.end;
+  });
+  return aggregateTopTasksByTrackedMinutesFromRows(rows, limit);
+}
+
 /** 소비·투자 레포트: 가계부 「다시 받을 금액」 라인 「+₩ n」 표기 */
 export function formatInvestReclaimWonDisplay(won) {
   const w = Math.round(Number(won) || 0);

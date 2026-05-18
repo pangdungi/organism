@@ -51,6 +51,11 @@
   width: 100%;
 }
 
+/* 예산 탭 등에서 .hidden / hidden 속성 — 위의 display:flex 보다 우선 */
+.diary-report-chrome__toggle-row[hidden] {
+  display: none !important;
+}
+
 .diary-report-chrome__date-row {
   display: flex;
   justify-content: center;
@@ -203,9 +208,20 @@
   align-items: center;
 }
 
+/* 예산 탭만: 본문을 세로 가운데가 아니라 위부터 */
+.diary-layout--feed-only
+  .diary-content-scroll[data-lp-time-report-body][data-lp-time-report-vertical-start]:not(
+    :empty
+  ) {
+  justify-content: flex-start;
+}
+
 .diary-layout--feed-only
   .diary-content-scroll[data-lp-time-report-body]:not(:empty)
   > .diary-tr-work-sleep-shell,
+.diary-layout--feed-only
+  .diary-content-scroll[data-lp-time-report-body]:not(:empty)
+  > .diary-tr-consumption-top3-shell,
 .diary-layout--feed-only
   .diary-content-scroll[data-lp-time-report-body]:not(:empty)
   > .diary-tr-invest-shell,
@@ -218,6 +234,9 @@
 .diary-layout--feed-only
   .diary-content-scroll[data-lp-time-report-body]:not(:empty)
   > .diary-tr-routine-kpi-shell,
+.diary-layout--feed-only
+  .diary-content-scroll[data-lp-time-report-body]:not(:empty)
+  > .diary-tr-budget-day-section-shell,
 .diary-layout--feed-only
   .diary-content-scroll[data-lp-time-report-body]:not(:empty)
   > .diary-tr-donut-shell,
@@ -342,8 +361,10 @@
 /* 시간 레포트 — 투자(바이백)·생산 막대·도넛·요약 행 너비 통일 */
 .diary-tr-donut-shell,
 .diary-tr-work-sleep-shell,
+.diary-tr-consumption-top3-shell,
 .diary-tr-invest-shell,
 .diary-tr-prod-bars-shell,
+.diary-tr-budget-day-section-shell,
 .diary-tr-invest-quote-shell,
 .diary-tr-routine-kpi-shell,
 .diary-tr-summary-shell {
@@ -356,6 +377,67 @@
   padding-right: calc(0.5rem + var(--lp-safe-right, 0px));
 }
 
+/* 소비 탭: 근무·수면 블록 바로 아래 — 과제별 기록 시간 Top 3 */
+.diary-tr-consumption-top3-shell {
+  padding-top: 0.12rem;
+  padding-bottom: 0.42rem;
+}
+
+.diary-tr-consumption-top3-title {
+  margin: 0 0 0.52rem;
+  padding: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--lp-modal-navy, #1e4d7b);
+}
+
+.diary-tr-consumption-top3-card {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 0.72rem 0.85rem 0.78rem;
+  background: #fff;
+  border-radius: 1rem;
+  border: none;
+  box-shadow: 0 2px 14px rgba(30, 61, 93, 0.08);
+}
+
+.diary-tr-consumption-top3-row {
+  display: grid;
+  grid-template-columns: 1.35rem minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 0.45rem 0.55rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.diary-tr-consumption-top3-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.diary-tr-consumption-top3-rank {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #94a3b8;
+}
+
+.diary-tr-consumption-top3-name {
+  font-weight: 600;
+  color: #475569;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.diary-tr-consumption-top3-time {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--cal-text, #1a2d45);
+}
+
 .diary-tr-invest-shell {
   padding-top: 0.55rem;
   padding-bottom: 0.35rem;
@@ -364,6 +446,54 @@
 .diary-tr-prod-bars-shell {
   padding-top: 0.38rem;
   padding-bottom: 0.38rem;
+}
+
+/* 예산 탭(데이): 섹션별 막대·목록 — 너비는 생산 막대 셸과 동일 */
+.diary-tr-budget-day-section-shell {
+  padding-top: 0.25rem;
+  padding-bottom: 0.55rem;
+}
+
+.diary-budget-unplanned-card {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 0.75rem 0.85rem;
+  background: #fff;
+  border-radius: 1rem;
+  border: none;
+  box-shadow: 0 2px 14px rgba(30, 61, 93, 0.08);
+}
+
+.diary-budget-unplanned-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.diary-budget-unplanned-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.diary-budget-unplanned-name {
+  font-weight: 600;
+  color: #475569;
+  overflow-wrap: anywhere;
+  min-width: 0;
+  flex: 1;
+}
+
+.diary-budget-unplanned-time {
+  flex-shrink: 0;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--cal-text, #1a2d45);
 }
 
 /* 투자 탭 생산 카테고리 메시지 카드 그리드(막대 아래, 아이콘 미정) */
