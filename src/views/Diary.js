@@ -376,6 +376,23 @@ export function render() {
     return toDateStr(new Date());
   })();
 
+  /** 탭 4 예산 — 데이/먼스·날짜 앵커(소비·투자와 동일 UI, 별도 저장) */
+  let tab4ViewGranularity = "day";
+  const LP_TAB4_REPORT_DATE_KEY = "lp_tab4_report_anchor_date";
+  let tab4ReportAnchorDateStr = (() => {
+    try {
+      const raw = sessionStorage.getItem(LP_TAB4_REPORT_DATE_KEY);
+      if (raw && /^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    } catch (_) {}
+    return toDateStr(new Date());
+  })();
+
+  function persistTab4ReportAnchorDate() {
+    try {
+      sessionStorage.setItem(LP_TAB4_REPORT_DATE_KEY, tab4ReportAnchorDateStr);
+    } catch (_) {}
+  }
+
   function persistTab3ReportAnchorDate() {
     try {
       sessionStorage.setItem(LP_TAB3_REPORT_DATE_KEY, tab3ReportAnchorDateStr);
@@ -1698,34 +1715,59 @@ export function render() {
     scrollWrap.appendChild(section);
   }
 
-  /** 투자·소비 공통: 데이 time-task-log-date-native-wrap · 먼스 ‹ › (현재 탭별 앵커) */
+  /** 투자·소비·예산 공통: 데이 time-task-log-date-native-wrap · 먼스 ‹ › (현재 탭별 앵커) */
   function buildTimeReportDateBar() {
     const bar = document.createElement("div");
     bar.className = "diary-time-report-date-bar";
     bar.setAttribute("role", "group");
     bar.setAttribute("aria-label", "보고서 기준 날짜");
 
-    const useTab2 = currentTabId === "2";
-    let anchor = normalizeDiaryDateStr(
-      useTab2 ? tab2ReportAnchorDateStr : tab3ReportAnchorDateStr,
-    );
+    let anchor = "";
+    if (currentTabId === "2") {
+      anchor = normalizeDiaryDateStr(tab2ReportAnchorDateStr);
+    } else if (currentTabId === "3") {
+      anchor = normalizeDiaryDateStr(tab3ReportAnchorDateStr);
+    } else if (currentTabId === "4") {
+      anchor = normalizeDiaryDateStr(tab4ReportAnchorDateStr);
+    }
     if (!anchor || anchor.length < 10) {
       anchor = toDateStr(new Date());
-      if (useTab2) {
+      if (currentTabId === "2") {
         tab2ReportAnchorDateStr = anchor;
         persistTab2ReportAnchorDate();
-      } else {
+      } else if (currentTabId === "3") {
         tab3ReportAnchorDateStr = anchor;
         persistTab3ReportAnchorDate();
+      } else if (currentTabId === "4") {
+        tab4ReportAnchorDateStr = anchor;
+        persistTab4ReportAnchorDate();
       }
     } else {
-      if (useTab2) tab2ReportAnchorDateStr = anchor;
-      else tab3ReportAnchorDateStr = anchor;
+      if (currentTabId === "2") tab2ReportAnchorDateStr = anchor;
+      else if (currentTabId === "3") tab3ReportAnchorDateStr = anchor;
+      else if (currentTabId === "4") tab4ReportAnchorDateStr = anchor;
     }
 
-    const isMonth = useTab2
-      ? tab2ViewGranularity === "month"
-      : tab3ViewGranularity === "month";
+    const isMonth =
+      currentTabId === "2"
+        ? tab2ViewGranularity === "month"
+        : currentTabId === "3"
+          ? tab3ViewGranularity === "month"
+          : tab4ViewGranularity === "month";
+
+    function persistAnchorFromInput(v) {
+      if (!v) return;
+      if (currentTabId === "2") {
+        tab2ReportAnchorDateStr = v;
+        persistTab2ReportAnchorDate();
+      } else if (currentTabId === "3") {
+        tab3ReportAnchorDateStr = v;
+        persistTab3ReportAnchorDate();
+      } else if (currentTabId === "4") {
+        tab4ReportAnchorDateStr = v;
+        persistTab4ReportAnchorDate();
+      }
+    }
 
     if (!isMonth) {
       const card = document.createElement("div");
@@ -1759,13 +1801,7 @@ export function render() {
       dateInp.addEventListener("change", () => {
         const v = dateInp.value;
         if (!v) return;
-        if (useTab2) {
-          tab2ReportAnchorDateStr = v;
-          persistTab2ReportAnchorDate();
-        } else {
-          tab3ReportAnchorDateStr = v;
-          persistTab3ReportAnchorDate();
-        }
+        persistAnchorFromInput(v);
         syncOverlay();
         renderLayout();
       });
@@ -1804,13 +1840,7 @@ export function render() {
 
     const shift = (delta) => {
       const next = shiftCalendarMonthBy(anchor, delta);
-      if (useTab2) {
-        tab2ReportAnchorDateStr = next;
-        persistTab2ReportAnchorDate();
-      } else {
-        tab3ReportAnchorDateStr = next;
-        persistTab3ReportAnchorDate();
-      }
+      persistAnchorFromInput(next);
       renderLayout();
     };
 
@@ -1828,12 +1858,13 @@ export function render() {
   function renderLayout() {
     layoutWrap.dataset.diaryTab = currentTabId;
     layoutWrap.innerHTML = "";
-    const showReportChrome = currentTabId === "2" || currentTabId === "3";
+    const showReportChrome =
+      currentTabId === "2" || currentTabId === "3" || currentTabId === "4";
     const isConsumptionTab = currentTabId === "3";
     topTools.classList.toggle("diary-top-tools--time-report-mode", showReportChrome);
     searchBar.hidden = showReportChrome;
     reportChrome.hidden = !showReportChrome;
-    topToolsNavControls.hidden = isConsumptionTab;
+    topToolsNavControls.hidden = isConsumptionTab || currentTabId === "4";
     /* 예산(탭4): 우선 빈 화면 — 새 글 + 숨김 */
     topAddBtn.hidden = isConsumptionTab || currentTabId === "4";
 
@@ -1850,6 +1881,8 @@ export function render() {
       gNow = tab2ViewGranularity === "month" ? "month" : "day";
     } else if (currentTabId === "3") {
       gNow = tab3ViewGranularity === "month" ? "month" : "day";
+    } else if (currentTabId === "4") {
+      gNow = tab4ViewGranularity === "month" ? "month" : "day";
     }
     granularityDayBtn.classList.toggle("is-active", gNow === "day");
     granularityMonthBtn.classList.toggle("is-active", gNow === "month");
@@ -1860,6 +1893,8 @@ export function render() {
     delete layoutWrap.dataset.tab2SelectedDate;
     delete layoutWrap.dataset.tab3Granularity;
     delete layoutWrap.dataset.tab3SelectedDate;
+    delete layoutWrap.dataset.tab4Granularity;
+    delete layoutWrap.dataset.tab4SelectedDate;
 
     if (currentTabId === "2") {
       layoutWrap.dataset.tab2Granularity = gNow;
@@ -1879,6 +1914,15 @@ export function render() {
         persistTab3ReportAnchorDate();
       }
       layoutWrap.dataset.tab3SelectedDate = da3;
+    } else if (currentTabId === "4") {
+      layoutWrap.dataset.tab4Granularity = gNow;
+      let da4 = normalizeDiaryDateStr(tab4ReportAnchorDateStr);
+      if (!da4 || da4.length < 10) {
+        da4 = toDateStr(new Date());
+        tab4ReportAnchorDateStr = da4;
+        persistTab4ReportAnchorDate();
+      }
+      layoutWrap.dataset.tab4SelectedDate = da4;
     }
 
     const mobile = isDiaryMobileViewport();
@@ -2082,12 +2126,14 @@ export function render() {
 
     granularityDayBtn.addEventListener("click", () => {
       if (currentTabId === "2") tab2ViewGranularity = "day";
-      else tab3ViewGranularity = "day";
+      else if (currentTabId === "3") tab3ViewGranularity = "day";
+      else if (currentTabId === "4") tab4ViewGranularity = "day";
       renderLayout();
     });
     granularityMonthBtn.addEventListener("click", () => {
       if (currentTabId === "2") tab2ViewGranularity = "month";
-      else tab3ViewGranularity = "month";
+      else if (currentTabId === "3") tab3ViewGranularity = "month";
+      else if (currentTabId === "4") tab4ViewGranularity = "month";
       renderLayout();
     });
 
