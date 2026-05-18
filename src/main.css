@@ -163,9 +163,9 @@ body {
   padding: 0.45rem 0.75rem 0.5rem;
   padding-left: calc(0.75rem + var(--lp-safe-left));
   padding-right: calc(0.75rem + var(--lp-safe-right));
-  /* 하단 세이프: 시스템 값의 20%만 반영(80% 제거) */
+  /* 하단 세이프: 기본 패딩 외 추가는 최대 6px만(살짝만 맞춤) */
   padding-bottom: calc(
-    0.5rem + (env(safe-area-inset-bottom, 0px) * 0.2)
+    0.5rem + min(6px, env(safe-area-inset-bottom, 0px))
   );
   border-top: 1px solid #e2e8f0;
   background: #fff;
