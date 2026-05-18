@@ -7,6 +7,7 @@ export function showToast(message, subMessage) {
   let overlay = document.querySelector(".app-toast-modal");
   if (overlay) overlay.remove();
 
+  const mainHtml = formatToastMainHtml(message);
   const subHtml = subMessage ? `<p class="app-toast-sub">${escapeHtml(subMessage)}</p>` : "";
   overlay = document.createElement("div");
   overlay.className = "app-toast-modal";
@@ -16,7 +17,7 @@ export function showToast(message, subMessage) {
   overlay.innerHTML = `
     <div class="app-toast-backdrop"></div>
     <div class="app-toast-panel">
-      <p class="app-toast-message">${escapeHtml(message)}</p>
+      <p class="app-toast-message">${mainHtml}</p>
       ${subHtml}
       <button type="button" class="app-toast-btn">확인</button>
     </div>
@@ -28,6 +29,13 @@ export function showToast(message, subMessage) {
   overlay.querySelector(".app-toast-btn").addEventListener("click", close);
 
   document.body.appendChild(overlay);
+}
+
+function formatToastMainHtml(message) {
+  return String(message ?? "")
+    .split(/\r?\n/)
+    .map((line) => escapeHtml(line))
+    .join("<br>");
 }
 
 function escapeHtml(str) {

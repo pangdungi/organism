@@ -1564,12 +1564,13 @@ table {
   z-index: 1;
   width: 100%;
   max-width: 22rem;
-  padding: 1.25rem 1.2rem 1.1rem;
+  padding: 1.35rem 1.25rem 1.15rem;
   background: #fff;
-  border-radius: 16px;
+  border-radius: 18px;
   border: 1px solid rgba(58, 110, 168, 0.14);
   box-shadow: 0 20px 48px rgba(30, 77, 123, 0.2);
   box-sizing: border-box;
+  text-align: center;
 }
 
 .app-toast-message {
@@ -1577,17 +1578,28 @@ table {
   font-family: "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
   font-size: 0.97rem;
   font-weight: 600;
-  line-height: 1.55;
+  line-height: 1.6;
   letter-spacing: -0.02em;
   color: var(--auth-navy, #1e4d7b);
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  text-wrap: balance;
 }
 
 .app-toast-sub {
-  margin: 0 0 1rem;
+  margin: 0 0 1.05rem;
   font-family: "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
   font-size: 0.8125rem;
-  line-height: 1.5;
+  font-weight: 500;
+  line-height: 1.55;
   color: rgba(30, 77, 123, 0.62);
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  text-wrap: balance;
+}
+
+.app-toast-panel:has(.app-toast-sub) .app-toast-message {
+  margin-bottom: 0.35rem;
 }
 
 .app-toast-btn {
