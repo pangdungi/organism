@@ -55,12 +55,12 @@ body {
   width: 100%;
 }
 
-/* 로그인 후 메인 셸: 높이 고정 · 상·하 세이프는 이 박스에서만 한 번(내부 .app-main·푸터와 이중 적용 안 함) */
+/* 로그인 후 메인 셸: 상단 세이프만 유지 · 하단 세이프 패딩은 제거(푸터 바만 두고 빈 줄 최소화) */
 #signin-page {
   flex-direction: column;
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: var(--lp-safe-bottom);
+  padding-bottom: 0;
   /* vh: 폴백 · svh: 모바일 주소창 등에 덜 출렁여 하단 푸터가 떠 보이는 현상 완화 */
   height: 100vh;
   max-height: 100vh;
@@ -163,10 +163,6 @@ body {
   padding: 0.45rem 0.75rem 0.5rem;
   padding-left: calc(0.75rem + var(--lp-safe-left));
   padding-right: calc(0.75rem + var(--lp-safe-right));
-  /* 하단 세이프: 기본 패딩 외 추가는 최대 6px만(살짝만 맞춤) */
-  padding-bottom: calc(
-    0.5rem + min(6px, env(safe-area-inset-bottom, 0px))
-  );
   border-top: 1px solid #e2e8f0;
   background: #fff;
   box-sizing: border-box;
