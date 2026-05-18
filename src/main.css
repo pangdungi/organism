@@ -163,6 +163,7 @@ body {
   padding: calc(0.45rem * 0.6) calc(0.75rem * 0.6) calc(0.5rem * 0.6);
   padding-left: calc(0.75rem * 0.6 + var(--lp-safe-left));
   padding-right: calc(0.75rem * 0.6 + var(--lp-safe-right));
+  padding-bottom: calc((0.5rem * 0.6) + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid #e2e8f0;
   background: #fff;
   box-sizing: border-box;
