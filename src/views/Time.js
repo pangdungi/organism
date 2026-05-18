@@ -2339,8 +2339,10 @@ export function formatInvestReclaimWonDisplay(won) {
   return `+₩ ${formatLedgerWonInteger(w)}`;
 }
 
-/** 가계부 잔고 카드와 동일 규칙 — 구간 시간·진행 행 포함 */
+/** 다시 받을 금액: 마감·사용시간 입력 등 확정된 기록만. 진행 중(경과) 행은 제외해 금액이 실시간으로 변하지 않게 함 */
 export function getLedgerEffectiveHoursForReclaim(rowData) {
+  if (!rowData) return 0;
+  if (timeLedgerRowIsLiveInProgress(rowData)) return 0;
   return getMobileCardEffectiveHoursForPrice(rowData);
 }
 
@@ -2359,7 +2361,7 @@ function aggregateInvestReclaimSnapshotFromRows(rows) {
   const hourlyRate = readUserHourlyRateNumber();
   let reclaimHrs = 0;
   rows.forEach((r) => {
-    const h = getMobileCardEffectiveHoursForPrice(r);
+    const h = getLedgerEffectiveHoursForReclaim(r);
     if (!(h > 0) || !Number.isFinite(h)) return;
     if (!taskAllowedForLedgerPreset(taskLikeFromLedgerRowForInvestSnapshot(r), "invest")) {
       return;
@@ -7012,7 +7014,7 @@ export function render(opts = {}) {
       const hrs = getMobileCardEffectiveHoursForPrice(r);
       todaySpentHrsHdr += hrs;
       if (taskAllowedForLedgerPreset(taskLikeFromLedgerRowForInvest(r), "invest"))
-        todayInvestHrsHdr += hrs;
+        todayInvestHrsHdr += getLedgerEffectiveHoursForReclaim(r);
     }
     const capHrs = TIME_LEDGER_DAILY_RECORD_CAP_HOURS;
     const remainHrs = capHrs - todaySpentHrsHdr;
