@@ -227,23 +227,22 @@
 }
 
 .lp-kpi-dream-page .dream-kpi-filter-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 0.25rem;
-  padding: 0.2rem;
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
   width: fit-content;
   max-width: 100%;
   align-self: center;
-  background: var(--lp-kpi-sky-muted);
-  border-radius: 10px;
+  border-radius: 0.5rem;
+  border: 1px solid var(--cal-line-strong, rgba(58, 110, 168, 0.22));
+  background: var(--cal-surface-muted, rgba(58, 110, 168, 0.06));
+  overflow: hidden;
   box-sizing: border-box;
 }
 
 .lp-kpi-dream-page .dream-kpi-filter-bar.dream-kpi-history-habit-subtabs {
-  width: fit-content;
-  max-width: 100%;
   margin-left: auto;
   margin-right: auto;
   margin-bottom: 0.35rem;
@@ -255,7 +254,7 @@
   flex-wrap: nowrap;
   gap: 0.35rem;
   width: 100%;
-  margin: 0.4rem 0 0.45rem;
+  margin: 0 0 0.45rem;
   box-sizing: border-box;
 }
 
@@ -300,6 +299,11 @@
   display: none !important;
 }
 
+/* 세그 패널 안 로그 행만: 기존 스카이 서페이스 대신 카드 바탕과 맞춤 */
+.lp-kpi-dream-page .dream-kpi-bottom-seg-panel--log .dream-kpi-history-item {
+  background: #fff;
+}
+
 .lp-kpi-dream-page .dream-kpi-bottom-seg-panel--todo .dream-kpi-todo-list--seg-panel,
 .lp-kpi-dream-page .dream-kpi-bottom-seg-panel--daily .dream-kpi-todo-list--seg-panel {
   max-height: var(--lp-kpi-dream-log-list-max-h, 14rem);
@@ -309,37 +313,50 @@
   overscroll-behavior: contain;
 }
 
+/* 전체·진행중·완료 — 시간 레포트 DAY/MONTH 토글(diary-report-granularity)과 동일 톤·크기 */
 .lp-kpi-dream-page .dream-kpi-filter-btn {
+  appearance: none;
   margin: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 2.25rem;
-  padding: 0.4rem 0.85rem;
-  font: inherit;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  line-height: 1.2;
-  color: #6b7280;
-  background: transparent;
   border: none;
-  border-radius: 8px;
+  padding: 0.28rem 0.55rem;
+  min-height: 0;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
   cursor: pointer;
+  color: var(--cal-text-muted, rgba(30, 61, 93, 0.52));
+  background: transparent;
+  font-family: inherit;
+  text-align: center;
   -webkit-tap-highlight-color: transparent;
   transition:
     background 0.12s ease,
-    color 0.12s ease,
-    box-shadow 0.12s ease;
+    color 0.12s ease;
+}
+
+.lp-kpi-dream-page .dream-kpi-filter-btn + .dream-kpi-filter-btn {
+  box-shadow: inset 1px 0 0 var(--cal-line, rgba(58, 110, 168, 0.14));
 }
 
 .lp-kpi-dream-page .dream-kpi-filter-btn:hover {
-  color: #374151;
+  color: var(--cal-text, #1a2d45);
 }
 
 .lp-kpi-dream-page .dream-kpi-filter-btn.active {
-  color: var(--lp-modal-navy);
-  background: #fff;
-  box-shadow: var(--lp-kpi-elev-shadow);
+  color: var(--cal-text, #1a2d45);
+  background: var(--cal-surface, #fff);
+  box-shadow: none;
+}
+
+.lp-kpi-dream-page .dream-kpi-filter-btn:focus-visible {
+  outline: 2px solid var(--idea-navy, #1e4d7b);
+  outline-offset: 1px;
+  z-index: 1;
+  position: relative;
 }
 
 .lp-kpi-dream-page .dream-kpi-grid {

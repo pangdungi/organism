@@ -1055,13 +1055,6 @@ export function render() {
     );
     historyWrap.hidden = false;
 
-    const headerRow = document.createElement("div");
-    headerRow.className = "dream-kpi-history-header";
-    headerRow.innerHTML = `
-      <h4 class="dream-kpi-history-title">${escapeHtml(kpi.name)} 기록</h4>
-    `;
-    historyWrap.appendChild(headerRow);
-
     const dailyTodosForGrid = needHabitTracker
       ? (data.kpiDailyRepeatTodos || []).filter(
           (t) => String(t.kpiId) === selKpi && (t.text || "").trim() !== "",
