@@ -26,8 +26,8 @@
 [data-legacy~="time-ledger-filter-add-row"] {
   width: 100%;
   box-sizing: border-box;
-  border-top: 1px solid #e8e2d2;
-  border-bottom: 1px solid #e8e2d2;
+  border-top: 1px solid #e8ecf2;
+  border-bottom: 1px solid #e8ecf2;
   padding-top: 0.45rem;
   padding-bottom: 0.45rem;
 }
@@ -187,7 +187,7 @@
   align-items: stretch;
   width: 100%;
   box-sizing: border-box;
-  border: 1px solid #e8e2d2;
+  border: 1px solid #e8ecf2;
   border-radius: 0.55rem;
   background: transparent;
   overflow: hidden;
@@ -257,7 +257,7 @@
   box-sizing: border-box;
   padding: 0.5rem;
   background: transparent;
-  border: 1px dashed #ddd8cc;
+  border: 1px dashed #d1d5db;
 }
 .time-ledger-view [data-legacy~="time-mobile-card-icon-slot"] img,
 [data-legacy~="time-ledger-view"] [data-legacy~="time-mobile-card-icon-slot"] img {
@@ -350,7 +350,7 @@
   color: #6b7280;
   line-height: 1.4;
   padding-top: 0.35rem;
-  border-top: 1px solid #ece6d9;
+  border-top: 1px solid #e8ecf2;
   word-break: break-word;
 }
 .time-ledger-view [data-legacy~="time-mobile-card-expense-snippet"],

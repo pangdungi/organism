@@ -144,11 +144,7 @@ function lpCalendarDayOffsetFromYmd(ymd) {
     pick.getMonth(),
     pick.getDate(),
   );
-  const todayNorm = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-  );
+  const todayNorm = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   return Math.round((pickNorm - todayNorm) / 86400000);
 }
 
@@ -253,8 +249,7 @@ function lpCalendarMonthlyWeekRowTargetMinHeightRem(
   const safeRows = Math.max(0, rowsNeeded);
   if (safeRows <= 0) return floor;
   const barGaps = safeRows > 1 ? (safeRows - 1) * ROW_GAP : 0;
-  const stackHeight =
-    baseBarTop + safeRows * BAR_HEIGHT + barGaps + BOTTOM_PAD;
+  const stackHeight = baseBarTop + safeRows * BAR_HEIGHT + barGaps + BOTTOM_PAD;
   return Math.max(floor, stackHeight);
 }
 
@@ -304,10 +299,7 @@ function lpCalendarFinalizeBarRowLayout(
     }
     const subPxSlackRem = 0.12;
     const requiredHeight = topAcc + BOTTOM_PAD + subPxSlackRem;
-    weekRow.style.minHeight = `${Math.max(
-      WEEK_ROW_MIN,
-      requiredHeight,
-    )}rem`;
+    weekRow.style.minHeight = `${Math.max(WEEK_ROW_MIN, requiredHeight)}rem`;
   };
 
   let pass = 0;
@@ -321,8 +313,6 @@ function lpCalendarFinalizeBarRowLayout(
   };
   requestAnimationFrame(step);
 }
-
-
 
 /** 1주 플로우: 본문 최소 높이를 스크롤창·콘텐츠 중 큰 값으로 맞춰 열 세로 구분선이 뷰포트까지 끊기지 않게 */
 function lpSync1WeekMobileFlowBodyToScrollViewport(scrollEl, bodyEl) {
@@ -375,7 +365,6 @@ function lpAttach1WeekMobileFlowBodyMinSync(wrap, scrollEl, bodyEl) {
     });
   });
 }
-
 
 /** 1일 뷰: document 리스너는 한 번만 — 탭 전환·재진입 시 핸들러만 교체 (누적 방지) */
 let oneDayTimetableRefreshHandler = null;
@@ -453,8 +442,7 @@ function getSectionTasksForDate(dateKey) {
           taskId: t.taskId || "",
           eisenhower: (t.eisenhower || "").trim() || "",
           classification: "",
-          _calPrevStart:
-            (t._calPrevStart || "").toString().slice(0, 10) || "",
+          _calPrevStart: (t._calPrevStart || "").toString().slice(0, 10) || "",
           _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
           serverUpdatedAt: String(t.serverUpdatedAt || "").trim(),
           ...(Number.isFinite(Number(t._calCellTouchMs))
@@ -1021,10 +1009,7 @@ function revertTaskToTodoList(barData) {
       .trim()
       .slice(0, 10) || "";
   let ok = false;
-  if (
-    KPI_SECTION_IDS.includes(barData.sectionId) &&
-    barData.taskId
-  ) {
+  if (KPI_SECTION_IDS.includes(barData.sectionId) && barData.taskId) {
     ok = updateSectionTaskDates(barData.sectionId, barData.taskId, revS, revD);
     if (ok) {
       clearSectionTaskCalendarRevertSnapshot(barData.sectionId, barData.taskId);
@@ -1138,8 +1123,6 @@ function bindCalendarSpanBarDragHandlers(bar, b) {
   });
 }
 
-
-
 function getCustomSectionTasksForDate(dateKey) {
   const out = [];
   try {
@@ -1161,8 +1144,7 @@ function getCustomSectionTasksForDate(dateKey) {
           taskId: t.taskId || "",
           eisenhower: (t.eisenhower || "").trim() || "",
           classification: "",
-          _calPrevStart:
-            (t._calPrevStart || "").toString().slice(0, 10) || "",
+          _calPrevStart: (t._calPrevStart || "").toString().slice(0, 10) || "",
           _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
           serverUpdatedAt: String(t.serverUpdatedAt || "").trim(),
           ...(Number.isFinite(Number(t._calCellTouchMs))
@@ -1759,10 +1741,7 @@ function createCalendarBarDateEditBubble(
         return;
       }
       let ok = false;
-      if (
-        KPI_SECTION_IDS.includes(barData.sectionId) &&
-        barData.taskId
-      ) {
+      if (KPI_SECTION_IDS.includes(barData.sectionId) && barData.taskId) {
         ok = updateSectionTaskDates(
           barData.sectionId,
           barData.taskId,
@@ -2000,10 +1979,7 @@ function renderMonthlyView(tabsElement) {
             newStart = targetDate;
           }
           let ok = false;
-          if (
-            payload.sectionId &&
-            payload.sectionId.startsWith("custom-")
-          ) {
+          if (payload.sectionId && payload.sectionId.startsWith("custom-")) {
             ok = updateCustomSectionTaskDates(
               payload.sectionId,
               payload.taskId,
@@ -2328,10 +2304,7 @@ function renderMonthlyView(tabsElement) {
           newStart = targetDate;
         }
         let ok = false;
-        if (
-          payload.sectionId &&
-          payload.sectionId.startsWith("custom-")
-        ) {
+        if (payload.sectionId && payload.sectionId.startsWith("custom-")) {
           ok = updateCustomSectionTaskDates(
             payload.sectionId,
             payload.taskId,
@@ -2471,7 +2444,6 @@ function renderMonthlyView(tabsElement) {
   calendarSection.appendChild(calendarGrid);
   wrap.appendChild(calendarSection);
 
-
   wrap.addEventListener("dragend", () => {
     wrap
       .querySelectorAll(".calendar-day-drag-over")
@@ -2486,7 +2458,6 @@ function renderMonthlyView(tabsElement) {
 
   return wrap;
 }
-
 
 /** dateStr(YYYY-MM-DD) 기준 전날 키 반환 */
 function getYesterdayKey(dateStr) {
@@ -2564,7 +2535,7 @@ function clipBudgetExpectedSpansBySavedAt(
     const em = Number(s.endMin);
     if (!Number.isFinite(sm) || !Number.isFinite(em) || em <= sm) continue;
     const pieces = clipPiecesByReservedRects([[sm, em]], reserved);
-    reserved.push([ sm, em ]);
+    reserved.push([sm, em]);
     for (const [p0, p1] of pieces) {
       if (p1 <= p0) continue;
       const startMin = p0;
@@ -2746,8 +2717,7 @@ export function buildExpectedScheduleSpansForDateKey(dateKey) {
       if (taskFromList) {
         span.sectionId = taskFromList.sectionId;
         span._task = taskFromList;
-        span._taskKey =
-          taskFromList.taskId || taskFromList.name;
+        span._taskKey = taskFromList.taskId || taskFromList.name;
       }
       budgetRawSpans.push(span);
     });
@@ -2895,9 +2865,7 @@ const WEEK_FLOW_EXCLUDED_TASK_NAMES = new Set(
 );
 
 function expectedSpanHiddenFromWeekFlowOnly(span) {
-  return WEEK_FLOW_EXCLUDED_TASK_NAMES.has(
-    String(span?.taskName || "").trim(),
-  );
+  return WEEK_FLOW_EXCLUDED_TASK_NAMES.has(String(span?.taskName || "").trim());
 }
 
 function normLedgerRowDateYmd(s) {
@@ -3033,7 +3001,6 @@ function render1DayView(tabsElement = null) {
 
   function refreshTodoList() {}
 
-
   function renderCalendar() {
     document
       .querySelectorAll(".calendar-1day-drag-drop-line")
@@ -3083,10 +3050,7 @@ function render1DayView(tabsElement = null) {
     hw.textContent = dowPart;
     dateHeading.appendChild(hn);
     dateHeading.appendChild(hw);
-    dateHeading.setAttribute(
-      "aria-label",
-      `${y}년 ${m}월 ${d}일 ${wKo}요일`,
-    );
+    dateHeading.setAttribute("aria-label", `${y}년 ${m}월 ${d}일 ${wKo}요일`);
     topBarLeft.appendChild(dateHeading);
 
     if (topBar.parentNode) topBar.parentNode.removeChild(topBar);
@@ -3107,269 +3071,262 @@ function render1DayView(tabsElement = null) {
     divider.className = "calendar-1day-divider";
     timeColumn.appendChild(divider);
 
-      const { spans: daySpansTl } =
-        buildExpectedScheduleSpansForDateKey(targetKey);
-      const plannedMinutes = minutesCoveredByExpectedSpansUnion(daySpansTl);
-      const remainingMinutes = Math.max(0, 24 * 60 - plannedMinutes);
+    const { spans: daySpansTl } =
+      buildExpectedScheduleSpansForDateKey(targetKey);
+    const plannedMinutes = minutesCoveredByExpectedSpansUnion(daySpansTl);
+    const remainingMinutes = Math.max(0, 24 * 60 - plannedMinutes);
 
-      const remainingBar = document.createElement("div");
-      remainingBar.className = "calendar-1day-timeline-remaining";
-      const remainingLabel = document.createElement("span");
-      remainingLabel.className = "calendar-1day-timeline-remaining-label";
-      remainingLabel.textContent = "남은 시간:";
-      const remainingValue = document.createElement("span");
-      remainingValue.className = "calendar-1day-timeline-remaining-value";
-      remainingValue.textContent = formatMinutesAsCompactHm(remainingMinutes);
-      remainingValue.title = `이 날 24시간 중 예상 일정으로 덮인 시간: ${formatMinutesAsCompactHm(plannedMinutes)}`;
-      remainingLabel.title =
-        "같은 날짜 예상 시간(합쳐서 겹침은 한 번만 계산)을 모두 쓰고도 남은 분입니다.";
-      remainingBar.appendChild(remainingLabel);
-      remainingBar.appendChild(remainingValue);
-      timeColumn.appendChild(remainingBar);
+    const remainingBar = document.createElement("div");
+    remainingBar.className = "calendar-1day-timeline-remaining";
+    const remainingLabel = document.createElement("span");
+    remainingLabel.className = "calendar-1day-timeline-remaining-label";
+    remainingLabel.textContent = "남은 시간:";
+    const remainingValue = document.createElement("span");
+    remainingValue.className = "calendar-1day-timeline-remaining-value";
+    remainingValue.textContent = formatMinutesAsCompactHm(remainingMinutes);
+    remainingValue.title = `이 날 24시간 중 예상 일정으로 덮인 시간: ${formatMinutesAsCompactHm(plannedMinutes)}`;
+    remainingLabel.title =
+      "같은 날짜 예상 시간(합쳐서 겹침은 한 번만 계산)을 모두 쓰고도 남은 분입니다.";
+    remainingBar.appendChild(remainingLabel);
+    remainingBar.appendChild(remainingValue);
+    timeColumn.appendChild(remainingBar);
 
-      const nowForTimeline = new Date();
-      const nowMinuteClockTL =
-        nowForTimeline.getHours() * 60 + nowForTimeline.getMinutes();
-      const todayYmdForTimeline = timeLedgerLocalTodayYmd();
-      const dayLedgerRowsTL = ledgerRowsForCalendarYmd(
-        loadTimeRows(),
-        targetKey,
-      );
-      const prodColorsTL = getTimeCategoryColorsForTimetableExpected();
-      const TL_SECTION_LABELS = {
-        dream: "꿈",
-        sideincome: "부수입",
-        health: "건강",
-        happy: "행복",
-      };
+    const nowForTimeline = new Date();
+    const nowMinuteClockTL =
+      nowForTimeline.getHours() * 60 + nowForTimeline.getMinutes();
+    const todayYmdForTimeline = timeLedgerLocalTodayYmd();
+    const dayLedgerRowsTL = ledgerRowsForCalendarYmd(loadTimeRows(), targetKey);
+    const prodColorsTL = getTimeCategoryColorsForTimetableExpected();
+    const TL_SECTION_LABELS = {
+      dream: "꿈",
+      sideincome: "부수입",
+      health: "건강",
+      happy: "행복",
+    };
 
-      const timelineWrap = document.createElement("div");
-      timelineWrap.className = "calendar-1day-timeline-wrap";
+    const timelineWrap = document.createElement("div");
+    timelineWrap.className = "calendar-1day-timeline-wrap";
 
-      const timelineList = document.createElement("div");
-      timelineList.className = "calendar-1day-timeline-list";
+    const timelineList = document.createElement("div");
+    timelineList.className = "calendar-1day-timeline-list";
 
-      const spansSortedTl = [...daySpansTl].sort(
-          (a, b) =>
-            a.startMin - b.startMin ||
-            (a.lane ?? 0) - (b.lane ?? 0) ||
-            String(a.taskName || "").localeCompare(
-              String(b.taskName || ""),
-              "ko",
-            ),
+    const spansSortedTl = [...daySpansTl].sort(
+      (a, b) =>
+        a.startMin - b.startMin ||
+        (a.lane ?? 0) - (b.lane ?? 0) ||
+        String(a.taskName || "").localeCompare(String(b.taskName || ""), "ko"),
+    );
+
+    if (spansSortedTl.length === 0) {
+      const emptyTl = document.createElement("p");
+      emptyTl.className = "calendar-1day-timeline-empty";
+      emptyTl.textContent = "예정된 일정이 없습니다.";
+      timelineList.appendChild(emptyTl);
+    } else {
+      spansSortedTl.forEach((span) => {
+        const pk = prodKeyForWeekExpectedSpan(span);
+        const c = prodColorsTL[pk] || prodColorsTL.other;
+        const taskLabel = String(span.taskName || "").trim();
+        const memoTextStored = String(span.scheduleMemo || "").trim();
+        const durMin = Math.max(0, span.endMin - span.startMin);
+        const ledgerMatched = weekFlowExpectedSpanHasLedgerMatch(
+          dayLedgerRowsTL,
+          span,
         );
-
-      if (spansSortedTl.length === 0) {
-        const emptyTl = document.createElement("p");
-        emptyTl.className = "calendar-1day-timeline-empty";
-        emptyTl.textContent = "예정된 일정이 없습니다.";
-        timelineList.appendChild(emptyTl);
-      } else {
-        spansSortedTl.forEach((span) => {
-          const pk = prodKeyForWeekExpectedSpan(span);
-          const c = prodColorsTL[pk] || prodColorsTL.other;
-          const taskLabel = String(span.taskName || "").trim();
-          const memoTextStored = String(span.scheduleMemo || "").trim();
-          const durMin = Math.max(0, span.endMin - span.startMin);
-          const ledgerMatched = weekFlowExpectedSpanHasLedgerMatch(
-            dayLedgerRowsTL,
+        const hasLiveRecordingForSpanTL = weekFlowSpanHasMatchingLiveRecording(
+          dayLedgerRowsTL,
+          span,
+        );
+        const inExpectedWindow =
+          targetKey === todayYmdForTimeline &&
+          span.startMin <= nowMinuteClockTL &&
+          nowMinuteClockTL < span.endMin;
+        const liveRecordingThisSpan =
+          inExpectedWindow && hasLiveRecordingForSpanTL;
+        const ledgerMissed =
+          !ledgerMatched &&
+          !hasLiveRecordingForSpanTL &&
+          weekFlowExpectedSpanLedgerMissed(
+            targetKey,
+            todayYmdForTimeline,
+            nowMinuteClockTL,
             span,
           );
-          const hasLiveRecordingForSpanTL =
-            weekFlowSpanHasMatchingLiveRecording(dayLedgerRowsTL, span);
-          const inExpectedWindow =
-            targetKey === todayYmdForTimeline &&
-            span.startMin <= nowMinuteClockTL &&
-            nowMinuteClockTL < span.endMin;
-          const liveRecordingThisSpan =
-            inExpectedWindow && hasLiveRecordingForSpanTL;
-          const ledgerMissed =
-            !ledgerMatched &&
-            !hasLiveRecordingForSpanTL &&
-            weekFlowExpectedSpanLedgerMissed(
-              targetKey,
-              todayYmdForTimeline,
-              nowMinuteClockTL,
-              span,
-            );
 
-          const sidRaw = String(span.sectionId || "").trim();
-          let sectionAccent = "";
-          if (sidRaw && !sidRaw.startsWith("custom-")) {
-            try {
-              sectionAccent = getSectionColor(sidRaw) || "";
-            } catch (_) {
-              sectionAccent = "";
-            }
+        const sidRaw = String(span.sectionId || "").trim();
+        let sectionAccent = "";
+        if (sidRaw && !sidRaw.startsWith("custom-")) {
+          try {
+            sectionAccent = getSectionColor(sidRaw) || "";
+          } catch (_) {
+            sectionAccent = "";
           }
+        }
 
-          const item = document.createElement("div");
-          item.className = "calendar-1day-timeline-item";
+        const item = document.createElement("div");
+        item.className = "calendar-1day-timeline-item";
 
-          const card = document.createElement("div");
-          card.className = "calendar-1day-timeline-card";
-          const titleBase = memoTextStored
-            ? `${taskLabel} (${span.startDisplay} ~ ${span.endDisplay})\n${memoTextStored}`
-            : `${taskLabel} (${span.startDisplay} ~ ${span.endDisplay})`;
-          if (ledgerMissed) {
-            card.classList.add("calendar-1day-timeline-card--ledger-missed");
-            card.title = `${titleBase}\n예정 종료 시간이 지났는데 아직 기록이 없습니다`;
+        const card = document.createElement("div");
+        card.className = "calendar-1day-timeline-card";
+        const titleBase = memoTextStored
+          ? `${taskLabel} (${span.startDisplay} ~ ${span.endDisplay})\n${memoTextStored}`
+          : `${taskLabel} (${span.startDisplay} ~ ${span.endDisplay})`;
+        if (ledgerMissed) {
+          card.classList.add("calendar-1day-timeline-card--ledger-missed");
+          card.title = `${titleBase}\n예정 종료 시간이 지났는데 아직 기록이 없습니다`;
+        } else {
+          card.title = ledgerMatched
+            ? `${titleBase}\n실제 과제 기록에 반영됨`
+            : titleBase;
+        }
+        if (liveRecordingThisSpan) {
+          card.classList.add("calendar-1day-timeline-card--in-progress");
+        }
+        if (inExpectedWindow && !liveRecordingThisSpan && !ledgerMatched) {
+          card.classList.add("calendar-1day-timeline-card--expected-now");
+        }
+        if (!ledgerMissed) {
+          card.style.setProperty("--calendar-timeline-stripe", c.leftStripe);
+        }
+
+        const startEl = document.createElement("span");
+        startEl.className = "calendar-1day-timeline-card-start";
+        startEl.textContent = span.startDisplay;
+
+        const headBarCell = document.createElement("div");
+        headBarCell.className = "calendar-1day-timeline-card-head-bar";
+        const barEl = document.createElement("div");
+        barEl.className = "calendar-1day-timeline-card-bar";
+        barEl.setAttribute("aria-hidden", "true");
+        headBarCell.appendChild(barEl);
+
+        const timeConnector = document.createElement("span");
+        timeConnector.className = "calendar-1day-timeline-card-time-connector";
+        timeConnector.setAttribute("aria-hidden", "true");
+
+        const endEl = document.createElement("span");
+        endEl.className = "calendar-1day-timeline-card-end";
+        endEl.textContent = span.endDisplay;
+
+        card.appendChild(startEl);
+        card.appendChild(headBarCell);
+        card.appendChild(timeConnector);
+
+        const body = document.createElement("div");
+        body.className = "calendar-1day-timeline-card-body";
+
+        const durRow = document.createElement("span");
+        durRow.className = "calendar-1day-timeline-card-duration";
+        durRow.textContent = formatIntegerMinutesDurationKo(durMin);
+
+        const titleRow = document.createElement("div");
+        titleRow.className = "calendar-1day-timeline-card-title-row";
+        const titleEl = document.createElement("div");
+        titleEl.className = "calendar-1day-timeline-card-title";
+        titleEl.textContent = taskLabel;
+        titleRow.appendChild(titleEl);
+        titleRow.appendChild(durRow);
+        body.appendChild(titleRow);
+
+        let badgeText = "";
+        if (sidRaw && TL_SECTION_LABELS[sidRaw]) {
+          badgeText = TL_SECTION_LABELS[sidRaw];
+        } else if (sidRaw.startsWith("custom-")) {
+          badgeText = "커스텀";
+        }
+
+        const meta = document.createElement("div");
+        meta.className = "calendar-1day-timeline-card-meta";
+        if (badgeText) {
+          const badge = document.createElement("span");
+          badge.className = "calendar-1day-timeline-card-badge";
+          badge.textContent = badgeText;
+          if (sectionAccent) {
+            badge.style.backgroundColor = withMoreTransparency(
+              sectionAccent,
+              0.22,
+            );
+            badge.style.color =
+              timetableAccentTextColor(sectionAccent) || sectionAccent;
           } else {
-            card.title = ledgerMatched
-              ? `${titleBase}\n실제 과제 기록에 반영됨`
-              : titleBase;
+            badge.style.backgroundColor = withMoreTransparency(c.border, 0.18);
+            badge.style.color = c.accentText;
           }
-          if (liveRecordingThisSpan) {
-            card.classList.add("calendar-1day-timeline-card--in-progress");
-          }
-          if (inExpectedWindow && !liveRecordingThisSpan && !ledgerMatched) {
-            card.classList.add("calendar-1day-timeline-card--expected-now");
-          }
-          if (!ledgerMissed) {
-            card.style.setProperty("--calendar-timeline-stripe", c.leftStripe);
-          }
-
-          const startEl = document.createElement("span");
-          startEl.className = "calendar-1day-timeline-card-start";
-          startEl.textContent = span.startDisplay;
-
-          const headBarCell = document.createElement("div");
-          headBarCell.className = "calendar-1day-timeline-card-head-bar";
-          const barEl = document.createElement("div");
-          barEl.className = "calendar-1day-timeline-card-bar";
-          barEl.setAttribute("aria-hidden", "true");
-          headBarCell.appendChild(barEl);
-
-          const timeConnector = document.createElement("span");
-          timeConnector.className = "calendar-1day-timeline-card-time-connector";
-          timeConnector.setAttribute("aria-hidden", "true");
-
-          const endEl = document.createElement("span");
-          endEl.className = "calendar-1day-timeline-card-end";
-          endEl.textContent = span.endDisplay;
-
-          card.appendChild(startEl);
-          card.appendChild(headBarCell);
-          card.appendChild(timeConnector);
-
-          const body = document.createElement("div");
-          body.className = "calendar-1day-timeline-card-body";
-
-          const durRow = document.createElement("span");
-          durRow.className = "calendar-1day-timeline-card-duration";
-          durRow.textContent = formatIntegerMinutesDurationKo(durMin);
-
-          const titleRow = document.createElement("div");
-          titleRow.className = "calendar-1day-timeline-card-title-row";
-          const titleEl = document.createElement("div");
-          titleEl.className = "calendar-1day-timeline-card-title";
-          titleEl.textContent = taskLabel;
-          titleRow.appendChild(titleEl);
-          titleRow.appendChild(durRow);
-          body.appendChild(titleRow);
-
-          let badgeText = "";
-          if (sidRaw && TL_SECTION_LABELS[sidRaw]) {
-            badgeText = TL_SECTION_LABELS[sidRaw];
-          } else if (sidRaw.startsWith("custom-")) {
-            badgeText = "커스텀";
-          }
-
-          const meta = document.createElement("div");
-          meta.className = "calendar-1day-timeline-card-meta";
-          if (badgeText) {
-            const badge = document.createElement("span");
-            badge.className = "calendar-1day-timeline-card-badge";
-            badge.textContent = badgeText;
-            if (sectionAccent) {
-              badge.style.backgroundColor = withMoreTransparency(
-                sectionAccent,
-                0.22,
-              );
-              badge.style.color =
-                timetableAccentTextColor(sectionAccent) || sectionAccent;
-            } else {
-              badge.style.backgroundColor = withMoreTransparency(
-                c.border,
-                0.18,
-              );
-              badge.style.color = c.accentText;
-            }
-            meta.appendChild(badge);
-          }
-          if (liveRecordingThisSpan) {
-            const prog = document.createElement("span");
-            prog.className = "calendar-1day-timeline-card-progress";
-            prog.textContent = "진행 중";
-            if (!ledgerMissed && !ledgerMatched) {
-              prog.style.color = c.accentText;
-            }
-            meta.appendChild(prog);
-          }
-          if (meta.childNodes.length) {
-            body.appendChild(meta);
-          }
-
-          if (memoTextStored) {
-            const memoEl = document.createElement("div");
-            memoEl.className = "calendar-1day-timeline-card-memo";
-            memoEl.textContent = memoTextStored;
-            body.appendChild(memoEl);
-          }
-
-          card.appendChild(body);
-
-          card.appendChild(endEl);
-
+          meta.appendChild(badge);
+        }
+        if (liveRecordingThisSpan) {
+          const prog = document.createElement("span");
+          prog.className = "calendar-1day-timeline-card-progress";
+          prog.textContent = "진행 중";
           if (!ledgerMissed && !ledgerMatched) {
-            startEl.style.color = c.accentMuted;
-            endEl.style.color = c.accentMuted;
-            durRow.style.color = c.accentMuted;
+            prog.style.color = c.accentText;
           }
+          meta.appendChild(prog);
+        }
+        if (meta.childNodes.length) {
+          body.appendChild(meta);
+        }
 
-          card.setAttribute("role", "button");
-          card.tabIndex = 0;
-          card.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              card.click();
-            }
-          });
-          card.addEventListener("click", () => {
-            const slotIdx = findBudgetScheduleSlotIndex(
-              targetKey,
-              span.taskName,
-              span.startMin,
-              span.endMin,
-            );
-            if (slotIdx < 0) {
-              showToast(
-                "일간 예산에서 추가한 예상 일정만 여기서 수정할 수 있습니다.",
-              );
-              return;
-            }
-            openCalendarExpectedScheduleModal({
-              dateKey: targetKey,
-              edit: { taskName: span.taskName, timeIdx: slotIdx },
-              title: "예상 일정 수정",
-              submitLabel: "저장",
-              onSaved: () => renderCalendar(),
-            });
-          });
+        if (memoTextStored) {
+          const memoEl = document.createElement("div");
+          memoEl.className = "calendar-1day-timeline-card-memo";
+          memoEl.textContent = memoTextStored;
+          body.appendChild(memoEl);
+        }
 
-          item.appendChild(card);
-          timelineList.appendChild(item);
+        card.appendChild(body);
+
+        card.appendChild(endEl);
+
+        if (!ledgerMissed && !ledgerMatched) {
+          startEl.style.color = c.accentMuted;
+          endEl.style.color = c.accentMuted;
+          durRow.style.color = c.accentMuted;
+        }
+
+        card.setAttribute("role", "button");
+        card.tabIndex = 0;
+        card.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            card.click();
+          }
         });
-      }
+        card.addEventListener("click", () => {
+          const slotIdx = findBudgetScheduleSlotIndex(
+            targetKey,
+            span.taskName,
+            span.startMin,
+            span.endMin,
+          );
+          if (slotIdx < 0) {
+            showToast(
+              "일간 예산에서 추가한 예상 일정만 여기서 수정할 수 있습니다.",
+            );
+            return;
+          }
+          openCalendarExpectedScheduleModal({
+            dateKey: targetKey,
+            edit: { taskName: span.taskName, timeIdx: slotIdx },
+            title: "예상 일정 수정",
+            submitLabel: "저장",
+            onSaved: () => renderCalendar(),
+          });
+        });
 
-      timelineWrap.appendChild(timelineList);
-      timeColumn.appendChild(timelineWrap);
+        item.appendChild(card);
+        timelineList.appendChild(item);
+      });
+    }
 
-      const timeTableInnerStub = document.createElement("div");
-      timeTableInnerStub.className = "calendar-1day-time-table-inner calendar-1day-time-table-inner--timeline-only";
-      timeTableInnerStub.setAttribute("aria-hidden", "true");
-      timeColumn.appendChild(timeTableInnerStub);
+    timelineWrap.appendChild(timelineList);
+    timeColumn.appendChild(timelineWrap);
 
+    const timeTableInnerStub = document.createElement("div");
+    timeTableInnerStub.className =
+      "calendar-1day-time-table-inner calendar-1day-time-table-inner--timeline-only";
+    timeTableInnerStub.setAttribute("aria-hidden", "true");
+    timeColumn.appendChild(timeTableInnerStub);
 
     wrap.dataset.dateStr = targetKey;
     /* 날짜 이동 등 renderCalendar만 다시 돌 때도 1일 열 레이아웃이 깨지지 않게 모바일 일정 탭에서 재스탬프 */
@@ -4581,8 +4538,7 @@ function renderAnnualView(tabsElement) {
       for (let d = 1; d <= MAX_DAYS; d++) {
         if (d > lastDay) {
           const padCell = document.createElement("div");
-          padCell.className =
-            "calendar-annual-cell calendar-annual-cell--pad";
+          padCell.className = "calendar-annual-cell calendar-annual-cell--pad";
           padCell.setAttribute("aria-hidden", "true");
           daysRow.appendChild(padCell);
           continue;
@@ -4834,9 +4790,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
       btn.setAttribute("aria-pressed", "false");
       btn.setAttribute(LP_SCHEDULE_CAL_SUBVIEW_FOOTER_ATTR, v.id);
       const short =
-        typeof v.footerShortLabel === "string"
-          ? v.footerShortLabel.trim()
-          : "";
+        typeof v.footerShortLabel === "string" ? v.footerShortLabel.trim() : "";
       if (short) {
         btn.textContent = short;
       } else {
@@ -5013,7 +4967,8 @@ function renderCalendarView(tabsElement) {
 /** 모바일 하단 '일정' 탭: 월별·1주·연간·타임블록(앱 푸터 아이콘으로 뷰 전환) */
 export function renderMobileScheduleCalendar() {
   const el = document.createElement("div");
-  el.className = "app-tab-panel-content calendar-view calendar-view--mobile-schedule";
+  el.className =
+    "app-tab-panel-content calendar-view calendar-view--mobile-schedule";
 
   /* 하단 「일정」탭: 사이드/상단 라벨로 구분 가능 — SCHEDULE·대제목 줄 없음 (태블릿 너비만 보이던 헤더 갭 방지) */
 
@@ -5048,7 +5003,6 @@ export function renderMobileScheduleCalendar() {
 
   return el;
 }
-
 
 function renderPlaceholderView(tabsElement, label) {
   const wrap = document.createElement("div");
