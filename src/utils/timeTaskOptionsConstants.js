@@ -159,11 +159,14 @@ export const FIXED_NONPRODUCTIVE_TASKS = [
   },
 ];
 
-/** 건강한 식사 계열 — 과제 기록에서 식단 상세(meal_detail) 필드 표시용 (스탬프 캘린더와 무관) */
+/** 건강한·건강하지 않은 식사 계열 — 과제 기록에서 식단 상세(meal_detail) 필드 표시·서버 time_ledger_entries.meal_detail 동기화 */
 export const MEAL_DETAIL_TASK_NAMES = new Set([
   "건강한 식사",
   "건강한 식사 준비",
   "건강한 식사준비",
+  "건강하지 않은 식사",
+  "건강하지 않은 식사 준비",
+  "건강하지 않은 식사준비",
 ]);
 
 export const TASKS_LOCKED_FOR_EDIT = [NAP_TASK_NAME];
