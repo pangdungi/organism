@@ -80,21 +80,22 @@
   text-align: center;
   padding: 0.85rem 1.1rem 0.75rem;
   background: linear-gradient(
-    168deg,
-    #feffff 0%,
-    #f3f8fc 38%,
-    #e8eef6 100%
+    155deg,
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(255, 255, 255, 0.09) 46%,
+    rgba(230, 242, 255, 0.13) 100%
   );
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   border-radius: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.42);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.95) inset,
-    0 0 0 1px rgba(30, 77, 123, 0.08),
-    0 10px 32px rgba(15, 23, 42, 0.14),
-    0 2px 10px rgba(15, 23, 42, 0.07);
+    0 12px 38px rgba(0, 25, 55, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.52),
+    inset 0 -1px 0 rgba(30, 77, 123, 0.12);
   box-sizing: border-box;
 }
-/* 상단 광택 — 위 레이어는 텍스트 아래(z-index) */
+/* 얕은 상단 하이라이트 — 블러 위에서만 은은하게 */
 .time-ledger-view .time-ledger-bank-card-inner::before,
 [data-legacy~="time-ledger-view"] .time-ledger-bank-card-inner::before {
   content: "";
@@ -105,11 +106,11 @@
   z-index: 0;
   background: linear-gradient(
     118deg,
-    rgba(255, 255, 255, 0.88) 0%,
-    rgba(255, 255, 255, 0.22) 32%,
-    rgba(255, 255, 255, 0) 52%
+    rgba(255, 255, 255, 0.38) 0%,
+    rgba(255, 255, 255, 0.1) 34%,
+    rgba(255, 255, 255, 0) 54%
   );
-  opacity: 0.92;
+  opacity: 0.58;
 }
 .time-ledger-view .time-ledger-bank-card-inner::after,
 [data-legacy~="time-ledger-view"] .time-ledger-bank-card-inner::after {
@@ -124,10 +125,10 @@
   border-radius: 0 0 0.85rem 0.85rem;
   background: linear-gradient(
     to top,
-    rgba(30, 77, 123, 0.04) 0%,
-    transparent 72%
+    rgba(0, 15, 40, 0.14) 0%,
+    transparent 78%
   );
-  opacity: 0.85;
+  opacity: 0.55;
 }
 .time-ledger-view .time-ledger-bank-card-inner > *,
 [data-legacy~="time-ledger-view"] .time-ledger-bank-card-inner > * {
@@ -140,13 +141,14 @@
   font-size: 0.8125rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: #0f172a;
+  color: rgba(255, 255, 255, 0.94);
+  text-shadow: 0 1px 3px rgba(0, 25, 55, 0.35);
 }
 .time-ledger-view .time-ledger-bank-eyebrow--balance,
 [data-legacy~="time-ledger-view"] .time-ledger-bank-eyebrow--balance {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #94a3b8;
+  color: rgba(255, 255, 255, 0.76);
   text-transform: none;
   letter-spacing: 0.02em;
   margin-top: 0;
@@ -166,7 +168,7 @@
 [data-legacy~="time-ledger-view"] .time-ledger-bank-won-mark {
   font-size: clamp(1.1rem, 4.2vw, 1.4rem);
   font-weight: 600;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.82);
   vertical-align: baseline;
 }
 .time-ledger-view .time-ledger-bank-won-num,
@@ -174,7 +176,8 @@
   font-size: clamp(1.85rem, 7.2vw, 2.45rem);
   font-weight: 800;
   letter-spacing: -0.05em;
-  color: #030712;
+  color: #fff;
+  text-shadow: 0 2px 16px rgba(0, 35, 70, 0.38);
   font-variant-numeric: tabular-nums;
 }
 .time-ledger-view .time-ledger-bank-time-strip,
@@ -186,30 +189,34 @@
   gap: 0.35rem 0.5rem;
   margin: 0.6rem 0 0;
   padding: 0.45rem 0.75rem;
-  background: #f8fafc;
+  background: rgba(255, 255, 255, 0.11);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: 0.65rem;
-  border: 1px solid #e8ecf2;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
   box-sizing: border-box;
 }
 .time-ledger-view .time-ledger-bank-time-strip-label,
 [data-legacy~="time-ledger-view"] .time-ledger-bank-time-strip-label {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.78);
 }
 .time-ledger-view .time-ledger-bank-balance-time,
 [data-legacy~="time-ledger-view"] .time-ledger-bank-balance-time {
   font-size: 1.0625rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: #1e4d7b;
+  color: rgba(224, 242, 254, 0.98);
+  text-shadow: 0 1px 3px rgba(0, 25, 55, 0.25);
   font-variant-numeric: tabular-nums;
 }
 .time-ledger-view .time-ledger-bank-invest-block,
 [data-legacy~="time-ledger-view"] .time-ledger-bank-invest-block {
   margin: 0.55rem 0 0;
   padding-top: 0.45rem;
-  border-top: 1px solid rgba(226, 232, 240, 0.95);
+  border-top: 1px solid rgba(255, 255, 255, 0.28);
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -232,14 +239,15 @@
 [data-legacy~="time-ledger-view"] .time-ledger-bank-invest-caption {
   font-size: 0.6875rem;
   font-weight: 600;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.74);
 }
 .time-ledger-view .time-ledger-bank-invest-amount,
 [data-legacy~="time-ledger-view"] .time-ledger-bank-invest-amount {
   font-size: 0.8125rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: #dc2626;
+  color: #fecaca;
+  text-shadow: 0 1px 2px rgba(0, 25, 55, 0.35);
   font-variant-numeric: tabular-nums;
 }
 /* 시간가계부 루트: 본문(잔고+사용내역 시트)이 남은 높이 채움 */
@@ -300,6 +308,41 @@
   outline: 2px solid rgba(255, 255, 255, 0.75);
   outline-offset: 2px;
 }
+
+/* 지출하기 — 파랑 계열 글자·테두리 */
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-quick-action-btn--spend"] {
+  color: #bae6fd;
+  border-color: rgba(125, 211, 252, 0.82);
+  background: rgba(125, 211, 252, 0.14);
+  box-shadow: 0 1px 0 rgba(186, 230, 253, 0.28) inset;
+}
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-quick-action-btn--spend"]:active {
+  background: rgba(125, 211, 252, 0.26);
+}
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-quick-action-btn--spend"]:focus-visible {
+  outline-color: rgba(125, 211, 252, 0.95);
+}
+
+/* 투자하기 — 빨강 계열 글자·테두리 */
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-quick-action-btn--invest"] {
+  color: #fecaca;
+  border-color: rgba(252, 165, 165, 0.85);
+  background: rgba(252, 165, 165, 0.12);
+  box-shadow: 0 1px 0 rgba(254, 202, 202, 0.22) inset;
+}
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-quick-action-btn--invest"]:active {
+  background: rgba(252, 165, 165, 0.24);
+}
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-quick-action-btn--invest"]:focus-visible {
+  outline-color: rgba(252, 165, 165, 0.95);
+}
+
 [data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-usage-sheet"] {
   flex: 1 1 auto;
   min-height: 0;

@@ -13,7 +13,10 @@ import {
   TAB3_EMOTION_TEMPLATE,
   TAB3_EMOTION_PLACEHOLDERS,
 } from "../diaryData.js";
-import { hydrateDiaryFromCloud, deleteDiaryEntryFromSupabase } from "../utils/diarySupabase.js";
+import {
+  attachDiarySaveListener,
+  deleteDiaryEntryFromSupabase,
+} from "../utils/diarySupabase.js";
 import {
   pullTimeLedgerEntriesForDateRange,
   readTimeLedgerPullRangeForKpiTabsYmd,
@@ -126,6 +129,7 @@ const TAB2_QA_TEMPLATE = [
 function diaryTabLabel(tabId) {
   if (tabId === "3") return "소비";
   if (tabId === "2") return "투자";
+  if (tabId === "5") return "로그";
   if (tabId === "4") return "예산";
   return "메모";
 }
@@ -134,6 +138,7 @@ function diaryTabLabel(tabId) {
 function diaryTabModalTitle(tabId) {
   if (tabId === "3") return "소비";
   if (tabId === "2") return "투자";
+  if (tabId === "5") return "로그";
   if (tabId === "4") return "예산";
   return "메모";
 }
@@ -278,6 +283,7 @@ function getTabEntriesList(tabId, all) {
 }
 
 export function render() {
+  attachDiarySaveListener();
   const el = document.createElement("div");
   el.className = "app-tab-panel-content diary-view";
   const mobileViewport =
@@ -402,6 +408,23 @@ export function render() {
     } catch (_) {}
   }
 
+  /** 탭 5 로그 — 예산과 동형: 데이만·날짜 앵커 별도 저장 (본문은 추후 실제 기록 UI) */
+  let tab5ViewGranularity = "day";
+  const LP_TAB5_REPORT_DATE_KEY = "lp_tab5_report_anchor_date";
+  let tab5ReportAnchorDateStr = (() => {
+    try {
+      const raw = sessionStorage.getItem(LP_TAB5_REPORT_DATE_KEY);
+      if (raw && /^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    } catch (_) {}
+    return toDateStr(new Date());
+  })();
+
+  function persistTab5ReportAnchorDate() {
+    try {
+      sessionStorage.setItem(LP_TAB5_REPORT_DATE_KEY, tab5ReportAnchorDateStr);
+    } catch (_) {}
+  }
+
   function persistTab3ReportAnchorDate() {
     try {
       sessionStorage.setItem(LP_TAB3_REPORT_DATE_KEY, tab3ReportAnchorDateStr);
@@ -437,6 +460,10 @@ export function render() {
   }
 
   function ensureTabEntries(tabId) {
+    if (tabId === "5") {
+      if (!entries["5"]) entries["5"] = { entries: [] };
+      return [];
+    }
     if (tabId === "3") {
       ensureTab3Entries(entries);
       const list = entries["3"].entries || [];
@@ -457,6 +484,10 @@ export function render() {
   }
 
   function getTabEntriesRaw(tabId) {
+    if (tabId === "5") {
+      if (!entries["5"]) entries["5"] = { entries: [] };
+      return [];
+    }
     if (tabId === "3") {
       ensureTab3Entries(entries);
       return entries["3"].entries || [];
@@ -990,8 +1021,8 @@ export function render() {
     document.body.appendChild(modal);
   }
 
-  /** 소비 · 투자 · 예산 — 메모 탭(1)은 메뉴에서 제외 */
-  const DIARY_FOOTER_TAB_ORDER = ["3", "2", "4"];
+  /** 소비 · 투자 · 로그 · 예산 — 메모 탭(1)은 메뉴에서 제외 */
+  const DIARY_FOOTER_TAB_ORDER = ["3", "2", "5", "4"];
 
   function syncDiaryFooterSubtabs() {
     document.querySelectorAll("[data-diary-subtab]").forEach((b) => {
@@ -1895,6 +1926,8 @@ export function render() {
       anchor = normalizeDiaryDateStr(tab3ReportAnchorDateStr);
     } else if (currentTabId === "4") {
       anchor = normalizeDiaryDateStr(tab4ReportAnchorDateStr);
+    } else if (currentTabId === "5") {
+      anchor = normalizeDiaryDateStr(tab5ReportAnchorDateStr);
     }
     if (!anchor || anchor.length < 10) {
       anchor = toDateStr(new Date());
@@ -1907,15 +1940,19 @@ export function render() {
       } else if (currentTabId === "4") {
         tab4ReportAnchorDateStr = anchor;
         persistTab4ReportAnchorDate();
+      } else if (currentTabId === "5") {
+        tab5ReportAnchorDateStr = anchor;
+        persistTab5ReportAnchorDate();
       }
     } else {
       if (currentTabId === "2") tab2ReportAnchorDateStr = anchor;
       else if (currentTabId === "3") tab3ReportAnchorDateStr = anchor;
       else if (currentTabId === "4") tab4ReportAnchorDateStr = anchor;
+      else if (currentTabId === "5") tab5ReportAnchorDateStr = anchor;
     }
 
     const isMonth =
-      currentTabId === "4"
+      currentTabId === "4" || currentTabId === "5"
         ? false
         : currentTabId === "2"
           ? tab2ViewGranularity === "month"
@@ -1934,6 +1971,9 @@ export function render() {
       } else if (currentTabId === "4") {
         tab4ReportAnchorDateStr = v;
         persistTab4ReportAnchorDate();
+      } else if (currentTabId === "5") {
+        tab5ReportAnchorDateStr = v;
+        persistTab5ReportAnchorDate();
       }
     }
 
@@ -2024,18 +2064,30 @@ export function render() {
   }
 
   function renderLayout() {
+    /* 앱 탭 진입 시 이미 시간기록 범위 pull 예정·진행 중이면 본문에서 같은 pull 을 또 걸지 않음(연속 깜빡임 방지) */
+    const skipDupLedgerPull =
+      typeof window !== "undefined" &&
+      !!window.__lpDiaryLedgerPrefetchedForTabSwitch &&
+      !reportLedgerRefreshFromPull;
+
     layoutWrap.dataset.diaryTab = currentTabId;
     layoutWrap.innerHTML = "";
     const showReportChrome =
-      currentTabId === "2" || currentTabId === "3" || currentTabId === "4";
+      currentTabId === "2" ||
+      currentTabId === "3" ||
+      currentTabId === "4" ||
+      currentTabId === "5";
     const isConsumptionTab = currentTabId === "3";
     topTools.classList.toggle("diary-top-tools--time-report-mode", showReportChrome);
     searchBar.hidden = showReportChrome;
     reportChrome.hidden = !showReportChrome;
-    topToolsNavControls.hidden = isConsumptionTab || currentTabId === "4";
-    /* 예산(탭4): 우선 빈 화면 — 새 글 + 숨김 */
-    topAddBtn.hidden = isConsumptionTab || currentTabId === "4";
-    reportChromeToggleRow.hidden = currentTabId === "4";
+    topToolsNavControls.hidden =
+      isConsumptionTab || currentTabId === "4" || currentTabId === "5";
+    /* 예산·로그(탭4·5): 새 글 + 숨김, DAY/MONTH 토글 숨김 */
+    topAddBtn.hidden =
+      isConsumptionTab || currentTabId === "4" || currentTabId === "5";
+    reportChromeToggleRow.hidden =
+      currentTabId === "4" || currentTabId === "5";
 
     reportChromeDateRow.replaceChildren();
     if (showReportChrome) {
@@ -2053,6 +2105,9 @@ export function render() {
     } else if (currentTabId === "4") {
       tab4ViewGranularity = "day";
       gNow = "day";
+    } else if (currentTabId === "5") {
+      tab5ViewGranularity = "day";
+      gNow = "day";
     }
     granularityDayBtn.classList.toggle("is-active", gNow === "day");
     granularityMonthBtn.classList.toggle("is-active", gNow === "month");
@@ -2065,6 +2120,8 @@ export function render() {
     delete layoutWrap.dataset.tab3SelectedDate;
     delete layoutWrap.dataset.tab4Granularity;
     delete layoutWrap.dataset.tab4SelectedDate;
+    delete layoutWrap.dataset.tab5Granularity;
+    delete layoutWrap.dataset.tab5SelectedDate;
 
     if (currentTabId === "2") {
       layoutWrap.dataset.tab2Granularity = gNow;
@@ -2093,6 +2150,15 @@ export function render() {
         persistTab4ReportAnchorDate();
       }
       layoutWrap.dataset.tab4SelectedDate = da4;
+    } else if (currentTabId === "5") {
+      layoutWrap.dataset.tab5Granularity = gNow;
+      let da5 = normalizeDiaryDateStr(tab5ReportAnchorDateStr);
+      if (!da5 || da5.length < 10) {
+        da5 = toDateStr(new Date());
+        tab5ReportAnchorDateStr = da5;
+        persistTab5ReportAnchorDate();
+      }
+      layoutWrap.dataset.tab5SelectedDate = da5;
     }
 
     const mobile = isDiaryMobileViewport();
@@ -2162,11 +2228,17 @@ export function render() {
       currentTabId === "2" &&
       (tab2ViewGranularity === "day" || tab2ViewGranularity === "month");
     const showTab4BudgetDayReport = currentTabId === "4";
+    const showTab5LogDayShell = currentTabId === "5";
 
-    if (showTab3ConsumptionReport || showTab2InvestReport || showTab4BudgetDayReport) {
+    if (
+      showTab3ConsumptionReport ||
+      showTab2InvestReport ||
+      showTab4BudgetDayReport ||
+      showTab5LogDayShell
+    ) {
       scrollWrap.setAttribute("data-lp-time-report-body", "");
     }
-    if (showTab4BudgetDayReport) {
+    if (showTab4BudgetDayReport || showTab5LogDayShell) {
       scrollWrap.setAttribute("data-lp-time-report-vertical-start", "");
     }
     contentArea.appendChild(scrollWrap);
@@ -2182,7 +2254,7 @@ export function render() {
       mountTimeReportInvestRoutineTrackerHeader(scrollWrap);
       mountTimeReportInvestRoutineKpiTimeCards(scrollWrap, ymd, g);
 
-      if (!reportLedgerRefreshFromPull) {
+      if (!reportLedgerRefreshFromPull && !skipDupLedgerPull) {
         const k = readTimeLedgerPullRangeForKpiTabsYmd();
         let rs = k.rangeStart;
         let re = k.rangeEnd;
@@ -2243,7 +2315,7 @@ export function render() {
       mountTimeReportNonproductiveWasteMini(scrollWrap, ymd, g);
       mountTimeReportSummaryGrid(scrollWrap, ymd, g);
 
-      if (!reportLedgerRefreshFromPull) {
+      if (!reportLedgerRefreshFromPull && !skipDupLedgerPull) {
         const k = readTimeLedgerPullRangeForKpiTabsYmd();
         let rs = k.rangeStart;
         let re = k.rangeEnd;
@@ -2302,7 +2374,11 @@ export function render() {
         mountBudgetDayReportBlocks(scrollWrap, ymdB);
       }
 
-      if (!reportLedgerRefreshFromPull && /^\d{4}-\d{2}-\d{2}$/.test(ymdB)) {
+      if (
+        !reportLedgerRefreshFromPull &&
+        !skipDupLedgerPull &&
+        /^\d{4}-\d{2}-\d{2}$/.test(ymdB)
+      ) {
         const k = readTimeLedgerPullRangeForKpiTabsYmd();
         let rs = k.rangeStart;
         let re = k.rangeEnd;
@@ -2337,20 +2413,78 @@ export function render() {
       }
     }
 
+    if (showTab5LogDayShell) {
+      const ymdL = normalizeDiaryDateStr(
+        layoutWrap.dataset.tab5SelectedDate || tab5ReportAnchorDateStr,
+      );
+      /* 예산 탭과 동일 레이아웃 껍데기만 — 본문 블록은 추후 실제 시간 기록 목록으로 채움 */
+
+      if (
+        !reportLedgerRefreshFromPull &&
+        !skipDupLedgerPull &&
+        /^\d{4}-\d{2}-\d{2}$/.test(ymdL)
+      ) {
+        const k = readTimeLedgerPullRangeForKpiTabsYmd();
+        let rs = k.rangeStart;
+        let re = k.rangeEnd;
+        if (ymdL < rs) rs = ymdL;
+        if (ymdL > re) re = ymdL;
+        const anchorsAtStart = {
+          tabId: currentTabId,
+          granularity: tab5ViewGranularity,
+          ymd: ymdL,
+        };
+        void pullTimeLedgerEntriesForDateRange(rs, re).finally(() => {
+          if (
+            anchorsAtStart.tabId !== currentTabId ||
+            anchorsAtStart.granularity !== tab5ViewGranularity
+          ) {
+            return;
+          }
+          if (
+            anchorsAtStart.ymd &&
+            /^\d{4}-\d{2}-\d{2}$/.test(normalizeDiaryDateStr(tab5ReportAnchorDateStr)) &&
+            anchorsAtStart.ymd !== normalizeDiaryDateStr(tab5ReportAnchorDateStr)
+          ) {
+            return;
+          }
+          try {
+            reportLedgerRefreshFromPull = true;
+            renderLayout();
+          } finally {
+            reportLedgerRefreshFromPull = false;
+          }
+        });
+      }
+    }
+
     layout.appendChild(contentArea);
     layoutWrap.appendChild(layout);
 
     syncDiaryFooterSubtabs();
   }
 
+    function diarySoftRefreshAfterTabPull() {
+      try {
+        entries = loadDiaryEntries();
+        const alist = ensureTabEntries(currentTabId);
+        if (currentEntryId && !alist.some((e) => e.id === currentEntryId)) {
+          currentEntryId = alist.length > 0 ? alist[0].id : null;
+        }
+        renderLayout();
+      } catch (_) {}
+    }
+    window.__lpDiarySoftRefresh = diarySoftRefreshAfterTabPull;
+
     granularityDayBtn.addEventListener("click", () => {
       if (currentTabId === "2") tab2ViewGranularity = "day";
       else if (currentTabId === "3") tab3ViewGranularity = "day";
       else if (currentTabId === "4") tab4ViewGranularity = "day";
+      else if (currentTabId === "5") tab5ViewGranularity = "day";
       renderLayout();
     });
     granularityMonthBtn.addEventListener("click", () => {
-      if (currentTabId === "4") return;
+      if (currentTabId === "4" || currentTabId === "5") return;
       if (currentTabId === "2") tab2ViewGranularity = "month";
       else if (currentTabId === "3") tab3ViewGranularity = "month";
       renderLayout();
@@ -2360,17 +2494,6 @@ export function render() {
     const initialList = ensureTabEntries(currentTabId);
     currentEntryId = initialList.length > 0 ? initialList[0].id : null;
     renderLayout();
-
-    void hydrateDiaryFromCloud()
-      .catch(() => {})
-      .finally(() => {
-        entries = loadDiaryEntries();
-        const alist = ensureTabEntries(currentTabId);
-        if (currentEntryId && !alist.some((e) => e.id === currentEntryId)) {
-          currentEntryId = alist.length > 0 ? alist[0].id : null;
-        }
-        renderLayout();
-      });
   })();
 
   return el;

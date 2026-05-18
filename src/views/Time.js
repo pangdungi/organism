@@ -4214,7 +4214,7 @@ export function render(opts = {}) {
   lpSetClasses(usageRangeModal, "time-task-setup-modal time-usage-range-modal");
   usageRangeModal.innerHTML = `
     <div data-legacy="time-task-setup-backdrop"></div>
-    <div data-legacy="time-task-setup-panel" class="time-usage-range-panel">
+    <div data-legacy="time-task-setup-panel time-usage-range-panel">
       <div data-legacy="time-task-setup-header">
         <h3 data-legacy="time-task-setup-title">조회 기간</h3>
         <button type="button" data-legacy="time-task-setup-close" aria-label="닫기">&times;</button>
@@ -7197,12 +7197,18 @@ export function render(opts = {}) {
     quickActionsRow.setAttribute("aria-label", "시간 잔액 다음 동작");
     const spendBtn = document.createElement("button");
     spendBtn.type = "button";
-    lpSetClasses(spendBtn, "time-ledger-quick-action-btn");
+    lpSetClasses(
+      spendBtn,
+      "time-ledger-quick-action-btn time-ledger-quick-action-btn--spend",
+    );
     spendBtn.textContent = "지출하기";
     spendBtn.setAttribute("aria-label", "지출하기");
     const investBtn = document.createElement("button");
     investBtn.type = "button";
-    lpSetClasses(investBtn, "time-ledger-quick-action-btn");
+    lpSetClasses(
+      investBtn,
+      "time-ledger-quick-action-btn time-ledger-quick-action-btn--invest",
+    );
     investBtn.textContent = "투자하기";
     investBtn.setAttribute("aria-label", "투자하기");
     quickActionsRow.appendChild(spendBtn);

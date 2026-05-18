@@ -1,7 +1,7 @@
 /**
  * 꿈·부수입·행복·건강 KPI 맵
  * - 고정 pull(읽기): `pullKpiTabFromCloud` — 꿈/건강/행복/부수입 **상위 앱 탭** 클릭 시 `force: true`.
- *   이 때 **시간가계부 기록**도 같은 진입 시점에 서버에서 당겨 KPI–시간 연동·일지 표시에 쓰임(시간 탭 선방문 불필요).
+ *   이 때 **시간가계부 기록** 구간 pull 과 KPI 맵 pull 은 **병렬**(네트워크 대기 합산 단축). 완료 후 `syncHabitTrackerLogs`.
  * - 서브 pull: `pullKpiMapSubViewFromCloud` — 탭 **내부**에서 꿈/경로/건강 **루트(상단 목표) 전환** 시만.
  *   `force: false`로 sync 진행 중이면 생략(삭제·수정 직후 낡은 서버로 덮임 방지). KPI 카드 클릭에서는 pull 안 함.
  * - push: `saveDreamMap` 등 저장 후 즉시 sync 리스너. 가시성만으로는 푸시 안 함.
@@ -44,6 +44,14 @@ const KPI_LOCAL_STORAGE_KEYS = {
   sideincome: SIDEINCOME_KPI_MAP_STORAGE_KEY,
 };
 
+/** KPI 탭 진입 시 시간기록 구간 pull — 도메인 맵 pull 과 네트워크 대기 합산을 줄이기 위해 병렬에 사용 */
+async function pullLedgerRangeForKpiTabs() {
+  try {
+    const { rangeStart, rangeEnd } = readTimeLedgerPullRangeForKpiTabsYmd();
+    await pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd);
+  } catch (_) {}
+}
+
 /**
  * @param {string} tabId dream | health | happiness | sideincome
  * @returns {Promise<{ pullOk: boolean, localChanged: boolean }>}
@@ -54,28 +62,28 @@ export async function pullKpiTabFromCloud(tabId) {
   const key = KPI_LOCAL_STORAGE_KEYS[tabId];
   const before = key ? localStorage.getItem(key) : null;
 
-  try {
-    const { rangeStart, rangeEnd } = readTimeLedgerPullRangeForKpiTabsYmd();
-    await pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd);
-  } catch (_) {}
-
-  let pullOk = false;
+  let domainPull = Promise.resolve(false);
   switch (tabId) {
     case "dream":
-      pullOk = await pullDreamKpiMapFromSupabase({ force: true });
+      domainPull = pullDreamKpiMapFromSupabase({ force: true });
       break;
     case "health":
-      pullOk = await pullHealthKpiMapFromSupabase({ force: true });
+      domainPull = pullHealthKpiMapFromSupabase({ force: true });
       break;
     case "happiness":
-      pullOk = await pullHappinessKpiMapFromSupabase({ force: true });
+      domainPull = pullHappinessKpiMapFromSupabase({ force: true });
       break;
     case "sideincome":
-      pullOk = await pullSideincomeKpiMapFromSupabase({ force: true });
+      domainPull = pullSideincomeKpiMapFromSupabase({ force: true });
       break;
     default:
       return { pullOk: false, localChanged: false };
   }
+
+  const [, pullOk] = await Promise.all([
+    pullLedgerRangeForKpiTabs(),
+    domainPull,
+  ]);
 
   try {
     syncHabitTrackerLogs();
@@ -112,28 +120,29 @@ export async function pullKpiMapSubViewFromCloud(tabId) {
   kpiTodoFineTrace("cloud.pullKpiSubView:시작", { tabId });
   lpPullDebug("pullKpiMapSubViewFromCloud", { tabId });
 
-  try {
-    const { rangeStart, rangeEnd } = readTimeLedgerPullRangeForKpiTabsYmd();
-    await pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd);
-  } catch (_) {}
-
-  let pullOk = false;
+  let domainPull = Promise.resolve(false);
   switch (tabId) {
     case "dream":
-      pullOk = await pullDreamKpiMapFromSupabase({ force: false });
+      domainPull = pullDreamKpiMapFromSupabase({ force: false });
       break;
     case "health":
-      pullOk = await pullHealthKpiMapFromSupabase({ force: false });
+      domainPull = pullHealthKpiMapFromSupabase({ force: false });
       break;
     case "happiness":
-      pullOk = await pullHappinessKpiMapFromSupabase({ force: false });
+      domainPull = pullHappinessKpiMapFromSupabase({ force: false });
       break;
     case "sideincome":
-      pullOk = await pullSideincomeKpiMapFromSupabase({ force: false });
+      domainPull = pullSideincomeKpiMapFromSupabase({ force: false });
       break;
     default:
       return false;
   }
+
+  const [, pullOk] = await Promise.all([
+    pullLedgerRangeForKpiTabs(),
+    domainPull,
+  ]);
+
   try {
     syncHabitTrackerLogs();
   } catch (_) {}
@@ -233,20 +242,18 @@ export async function pullKpiMapsForTaskLogModalOpen() {
   kpiTodoFineTrace("cloud.pullKpiMapsForTaskLogModalOpen:시작", {});
   lpPullDebug("pullKpiMapsForTaskLogModalOpen", {});
 
-  try {
-    const { rangeStart, rangeEnd } = readTimeLedgerPullRangeForKpiTabsYmd();
-    await pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd);
-  } catch (_) {}
-
   let pullOk = false;
   try {
-    const [d, h, ha, si] = await Promise.all([
-      pullDreamKpiMapFromSupabase({ force: true }),
-      pullHealthKpiMapFromSupabase({ force: true }),
-      pullHappinessKpiMapFromSupabase({ force: true }),
-      pullSideincomeKpiMapFromSupabase({ force: true }),
+    const [, mapsOk] = await Promise.all([
+      pullLedgerRangeForKpiTabs(),
+      Promise.all([
+        pullDreamKpiMapFromSupabase({ force: true }),
+        pullHealthKpiMapFromSupabase({ force: true }),
+        pullHappinessKpiMapFromSupabase({ force: true }),
+        pullSideincomeKpiMapFromSupabase({ force: true }),
+      ]).then(([d, h, ha, si]) => !!(d || h || ha || si)),
     ]);
-    pullOk = !!(d || h || ha || si);
+    pullOk = mapsOk;
   } catch (_) {}
 
   try {

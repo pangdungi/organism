@@ -470,6 +470,11 @@ export async function mountApp(container) {
             resetTimeLedgerSessionFilterToToday();
           } catch (_) {}
         }
+        if (targetTabId === "diary") {
+          try {
+            window.__lpDiaryLedgerPrefetchedForTabSwitch = true;
+          } catch (_) {}
+        }
         const pullPromise = pullDataForActiveTab(targetTabId, {
           fromBoot: false,
         });
@@ -477,7 +482,12 @@ export async function mountApp(container) {
         try {
           await pullPromise;
         } catch (_) {}
-        if (currentTabId !== targetTabId) return;
+        if (currentTabId !== targetTabId) {
+          try {
+            window.__lpDiaryLedgerPrefetchedForTabSwitch = false;
+          } catch (_) {}
+          return;
+        }
         /* 시간가계부: pull 뒤 통째 renderMain 하면 화면이 한 번 비워졌다 다시 그려져 깜빡임 — 같은 인스턴스에서만 소프트 갱신 */
         if (targetTabId === "time") {
           try {
@@ -516,6 +526,14 @@ export async function mountApp(container) {
             else if (targetTabId === "happiness")
               window.__lpHappinessSoftRefresh?.();
             else window.__lpSideincomeSoftRefresh?.();
+          } catch (_) {}
+        } else if (targetTabId === "diary") {
+          /* 시간 레포트: 두 번째 renderMain·본문 중복 pull 로 카드·아이콘이 연달아 깜빡임 → 소프트 갱신만 */
+          try {
+            window.__lpDiarySoftRefresh?.();
+          } catch (_) {}
+          try {
+            window.__lpDiaryLedgerPrefetchedForTabSwitch = false;
           } catch (_) {}
         } else {
           renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
@@ -862,13 +880,23 @@ export async function mountApp(container) {
         resetTimeLedgerSessionFilterToToday();
       } catch (_) {}
     }
+    if (bootTabId === "diary") {
+      try {
+        window.__lpDiaryLedgerPrefetchedForTabSwitch = true;
+      } catch (_) {}
+    }
     /* 로컬·메모리 상태로 먼저 화면 표시 — PWA 재실행·탭 복귀 후 네트워크 대기로 빈 화면이 길게 보이지 않게 */
     const pullPromise = pullDataForActiveTab(bootTabId, { fromBoot: true });
     renderMain(main);
     try {
       await pullPromise;
     } catch (_) {}
-    if (currentTabId !== bootTabId) return;
+    if (currentTabId !== bootTabId) {
+      try {
+        window.__lpDiaryLedgerPrefetchedForTabSwitch = false;
+      } catch (_) {}
+      return;
+    }
     if (bootTabId === "time") {
       try {
         window.__lpTimeLedgerSoftRefresh?.();
@@ -901,6 +929,13 @@ export async function mountApp(container) {
       } catch (_) {}
       try {
         window.__lpHomeMenuSoftRefresh?.();
+      } catch (_) {}
+    } else if (bootTabId === "diary") {
+      try {
+        window.__lpDiarySoftRefresh?.();
+      } catch (_) {}
+      try {
+        window.__lpDiaryLedgerPrefetchedForTabSwitch = false;
       } catch (_) {}
     } else {
       renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
