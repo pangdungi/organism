@@ -77,6 +77,8 @@ const DIARY_TR_ICON = {
   budgetProductivity: `${DIARY_TR_ICON_BASE}/budget-productivity.png`,
   /** 예산 「안하기로 했는데 한거겠죠?」 */
   budgetUnplanned: `${DIARY_TR_ICON_BASE}/budget-unplanned.png`,
+  /** 예산 「예산에 하기로 했는데 왜 못했을까요?」— 예상만 있고 실제 기록 없음 */
+  budgetMissedPlanned: `${DIARY_TR_ICON_BASE}/budget-missed-planned.png`,
 };
 
 /** 아이콘 슬롯에 PNG 채우기(점선 빈 슬롯 대체) */
@@ -1257,6 +1259,39 @@ export function render() {
     appendBarSection("생산성이 좋았을까요?", snap.productivity, {
       leadingIconSrc: DIARY_TR_ICON.budgetProductivity,
     });
+
+    if (snap.plannedButNoActual.length > 0) {
+      mountBudgetDaySectionTitle(
+        scrollWrap,
+        "예산에 하기로 했는데 왜 못했을까요?",
+        {
+          leadingIconSrc: DIARY_TR_ICON.budgetMissedPlanned,
+        },
+      );
+      const section = document.createElement("section");
+      section.className = "diary-tr-budget-day-section-shell";
+      section.setAttribute(
+        "aria-label",
+        "예상 일정은 있으나 실제 시간 기록이 없는 과제",
+      );
+      const card = document.createElement("div");
+      card.className = "diary-budget-unplanned-card";
+      snap.plannedButNoActual.forEach((row) => {
+        const line = document.createElement("div");
+        line.className = "diary-budget-unplanned-row";
+        const nameEl = document.createElement("span");
+        nameEl.className = "diary-budget-unplanned-name";
+        nameEl.textContent = row.taskName;
+        const timeEl = document.createElement("span");
+        timeEl.className = "diary-budget-unplanned-time";
+        timeEl.textContent = `예상 ${formatIntegerMinutesDurationKo(row.expectedMin)}`;
+        line.appendChild(nameEl);
+        line.appendChild(timeEl);
+        card.appendChild(line);
+      });
+      section.appendChild(card);
+      scrollWrap.appendChild(section);
+    }
 
     if (snap.unplannedNonproductive.length > 0) {
       mountBudgetDaySectionTitle(scrollWrap, "안하기로 했는데 한거겠죠?", {

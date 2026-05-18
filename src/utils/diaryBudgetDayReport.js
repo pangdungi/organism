@@ -148,6 +148,7 @@ function sortKoByTaskName(arr) {
  * @returns {{
  *   wellDone: Array<{ taskName: string, barPct: number }>,
  *   productivity: Array<{ taskName: string, barPct: number }>,
+ *   plannedButNoActual: Array<{ taskName: string, expectedMin: number }>,
  *   unplannedNonproductive: Array<{ taskName: string, minutes: number }>,
  * }}
  */
@@ -156,6 +157,7 @@ export function getBudgetDayReportForDay(ymdTen) {
   const empty = () => ({
     wellDone: [],
     productivity: [],
+    plannedButNoActual: [],
     unplannedNonproductive: [],
   });
   if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return empty();
@@ -221,9 +223,25 @@ export function getBudgetDayReportForDay(ymdTen) {
     [...npAgg.entries()].map(([taskName, minutes]) => ({ taskName, minutes })),
   );
 
+  /** 예상 시간(일간예산)은 있는데 당일 시간가계부에 사용시간 기록이 없는 과제 */
+  /** @type {Array<{ taskName: string, expectedMin: number }>} */
+  const plannedButNoActual = [];
+  for (const [name, exp] of expectedByTask.entries()) {
+    if (!exp || !(exp.expectedMin > 0)) continue;
+    const act = actualByTask.get(name);
+    const actualMin = act?.actualMin ?? 0;
+    if (actualMin <= 0) {
+      plannedButNoActual.push({
+        taskName: name,
+        expectedMin: Math.round(exp.expectedMin),
+      });
+    }
+  }
+
   return {
     wellDone: sortKoByTaskName(wellDone),
     productivity: sortKoByTaskName(productivity),
+    plannedButNoActual: sortKoByTaskName(plannedButNoActual),
     unplannedNonproductive,
   };
 }

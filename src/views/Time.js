@@ -1327,6 +1327,20 @@ function hoursBetweenRowStartEnd(rowData) {
   }
 }
 
+/**
+ * 잔액·「다시 받을 금액」·시간 레포트 집계용 시간(h).
+ * 사용시간 입력 또는 시작~마감이 확정된 구간만 — 마감 없는 행의 실시간 경과는 포함하지 않음
+ * (재진입·타이머마다 금액이 계속 바뀌는 현상 방지). 카드/표 실시간 표시는 getMobileCardEffectiveHoursForPrice.
+ */
+export function getMobileCardFrozenHoursForLedgerTotals(rowData) {
+  if (!rowData) return 0;
+  const tracked = (rowData.timeTracked || "").trim();
+  if (tracked) return parseTimeToHours(tracked) || 0;
+  if (rowHasEndTimeForMobileCard(rowData))
+    return hoursBetweenRowStartEnd(rowData);
+  return 0;
+}
+
 /** 행동의 가치 계산용 유효 시간(h): 사용시간 입력 > 마감 있음(구간) > 진행 중(경과) */
 export function getMobileCardEffectiveHoursForPrice(rowData) {
   const tracked = (rowData.timeTracked || "").trim();
@@ -2339,9 +2353,9 @@ export function formatInvestReclaimWonDisplay(won) {
   return `+₩ ${formatLedgerWonInteger(w)}`;
 }
 
-/** 가계부 잔고 카드와 동일 규칙 — 구간 시간·진행 행 포함 */
+/** 가계부 잔고·레포트 집계 — 확정 시간만(실시간 경과 제외) */
 export function getLedgerEffectiveHoursForReclaim(rowData) {
-  return getMobileCardEffectiveHoursForPrice(rowData);
+  return getMobileCardFrozenHoursForLedgerTotals(rowData);
 }
 
 function taskLikeFromLedgerRowForInvestSnapshot(r) {
@@ -2359,7 +2373,7 @@ function aggregateInvestReclaimSnapshotFromRows(rows) {
   const hourlyRate = readUserHourlyRateNumber();
   let reclaimHrs = 0;
   rows.forEach((r) => {
-    const h = getMobileCardEffectiveHoursForPrice(r);
+    const h = getMobileCardFrozenHoursForLedgerTotals(r);
     if (!(h > 0) || !Number.isFinite(h)) return;
     if (!taskAllowedForLedgerPreset(taskLikeFromLedgerRowForInvestSnapshot(r), "invest")) {
       return;
@@ -2420,7 +2434,7 @@ function aggregateProductiveCategoryInvestBarsFromRows(rows) {
   const hoursBy = Object.fromEntries(KEYS.map((k) => [k, 0]));
   let otherProdHours = 0;
   rows.forEach((r) => {
-    const h = getMobileCardEffectiveHoursForPrice(r);
+    const h = getMobileCardFrozenHoursForLedgerTotals(r);
     if (!(h > 0) || !Number.isFinite(h)) return;
     const { category, productivity } = resolveRowCategoryProductivityForAudit(r);
     const cat = String(category || "").trim().toLowerCase();
@@ -7007,7 +7021,7 @@ export function render(opts = {}) {
     let todayInvestHrsHdr = 0;
     for (const r of allRowsCache) {
       if (!isTodayRowForBankHeader(r, todayKey)) continue;
-      const hrs = getMobileCardEffectiveHoursForPrice(r);
+      const hrs = getMobileCardFrozenHoursForLedgerTotals(r);
       todaySpentHrsHdr += hrs;
       if (taskAllowedForLedgerPreset(taskLikeFromLedgerRowForInvest(r), "invest"))
         todayInvestHrsHdr += hrs;
@@ -7141,7 +7155,7 @@ export function render(opts = {}) {
   function sumTimeLedgerDayHours(dayRows) {
     let s = 0;
     for (const r of dayRows) {
-      s += getMobileCardEffectiveHoursForPrice(r);
+      s += getMobileCardFrozenHoursForLedgerTotals(r);
     }
     return s;
   }
