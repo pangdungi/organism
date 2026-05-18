@@ -10,7 +10,11 @@ import {
   dismissCalendarDayExpandUI,
 } from "./views/Calendar.js";
 import { saveTodoListBeforeUnmount } from "./views/TodoList.js";
-import { render as renderTime } from "./views/Time.js";
+import {
+  render as renderTime,
+  getTodayTimeLedgerValueSum,
+  formatHomeMenuLedgerKrw,
+} from "./views/Time.js";
 import { render as renderWorkSchedule } from "./views/WorkSchedule.js";
 import { render as renderDream } from "./views/Dream.js";
 import { render as renderSideincome } from "./views/Sideincome.js";
@@ -146,14 +150,18 @@ const TABS = [
   },
 ];
 
-const HOME_MENU_SECTIONS = [
-  { title: "시간 · 할일", tabIds: ["time", "calendar"] },
-  { title: "일정", tabIds: ["schedulecalendar", "workschedule"] },
-  {
-    title: "KPI",
-    tabIds: ["health", "happiness", "dream", "sideincome"],
-  },
-  { title: "기타", tabIds: ["diary", "idea"] },
+/** 홈 메뉴: 섹션 제목 없이 한 그리드 순서 */
+const HOME_MENU_TAB_ORDER = [
+  "time",
+  "calendar",
+  "schedulecalendar",
+  "workschedule",
+  "health",
+  "happiness",
+  "dream",
+  "sideincome",
+  "diary",
+  "idea",
 ];
 
 function tabMetaById(tabId) {
@@ -476,6 +484,9 @@ export async function mountApp(container) {
           try {
             await syncAdminMenuVisibility();
           } catch (_) {}
+          try {
+            window.__lpHomeMenuSoftRefresh?.();
+          } catch (_) {}
         } else if (
           targetTabId === "dream" ||
           targetTabId === "health" ||
@@ -525,15 +536,29 @@ export async function mountApp(container) {
     const root = document.createElement("div");
     root.className = "app-home-menu-launcher";
 
-    const brandBar = document.createElement("div");
-    brandBar.className = "app-home-menu-launcher-brand";
-    const titleEl = document.createElement("h1");
-    titleEl.className = "app-home-menu-launcher-title";
-    titleEl.textContent = "Time is Price";
-    brandBar.appendChild(titleEl);
-
     const card = document.createElement("div");
     card.className = "app-home-menu-launcher-card";
+
+    const balanceWrap = document.createElement("div");
+    balanceWrap.className = "app-home-menu-balance";
+    const balanceLabel = document.createElement("p");
+    balanceLabel.className = "app-home-menu-balance-label";
+    balanceLabel.textContent = "오늘의 시간 가치";
+    const balanceAmount = document.createElement("p");
+    balanceAmount.className = "app-home-menu-balance-amount";
+    balanceAmount.setAttribute("aria-live", "polite");
+    const balanceMeta = document.createElement("p");
+    balanceMeta.className = "app-home-menu-balance-meta";
+
+    function paintHomeMenuBalance() {
+      const sum = getTodayTimeLedgerValueSum();
+      balanceAmount.textContent = formatHomeMenuLedgerKrw(sum);
+      balanceMeta.textContent = `${timeLedgerLocalTodayYmd()} · 시간가계부 오늘 기록 합계`;
+    }
+    paintHomeMenuBalance();
+    window.__lpHomeMenuSoftRefresh = paintHomeMenuBalance;
+
+    balanceWrap.append(balanceLabel, balanceAmount, balanceMeta);
 
     const body = document.createElement("div");
     body.className = "app-home-menu-launcher-body";
@@ -556,27 +581,13 @@ export async function mountApp(container) {
       return btn;
     }
 
-    function appendSection(sectionTitle, mountBtns) {
-      const section = document.createElement("section");
-      section.className = "app-home-menu-launcher-section";
-      const h2 = document.createElement("h2");
-      h2.className = "app-home-menu-launcher-section-title";
-      h2.textContent = sectionTitle;
-      const grid = document.createElement("div");
-      grid.className = "app-home-menu-launcher-section-grid";
-      mountBtns(grid);
-      section.append(h2, grid);
-      body.appendChild(section);
-    }
-
-    HOME_MENU_SECTIONS.forEach(({ title: sectionTitle, tabIds }) => {
-      appendSection(sectionTitle, (grid) => {
-        tabIds.forEach((tid) => {
-          const tab = tabMetaById(tid);
-          if (tab) grid.appendChild(navButtonFromTab(tab));
-        });
-      });
+    const grid = document.createElement("div");
+    grid.className = "app-home-menu-launcher-section-grid";
+    HOME_MENU_TAB_ORDER.forEach((tid) => {
+      const tab = tabMetaById(tid);
+      if (tab) grid.appendChild(navButtonFromTab(tab));
     });
+    body.appendChild(grid);
 
     launcherAdminBtn = document.createElement("button");
     launcherAdminBtn.type = "button";
@@ -589,8 +600,8 @@ export async function mountApp(container) {
 
     void syncAdminMenuVisibility();
 
-    card.appendChild(body);
-    root.append(brandBar, card, launcherAdminBtn);
+    card.append(balanceWrap, body);
+    root.append(card, launcherAdminBtn);
     return root;
   }
 
@@ -719,6 +730,11 @@ export async function mountApp(container) {
     }
     launcherAdminBtn = null;
     clearAppFooterActions();
+    if (currentTabId !== "home") {
+      try {
+        window.__lpHomeMenuSoftRefresh = null;
+      } catch (_) {}
+    }
     const tabRenderer = RENDERERS[currentTabId];
     /** @type {Node[]} */
     let mountNodes;
@@ -838,9 +854,12 @@ export async function mountApp(container) {
         else window.__lpSideincomeSoftRefresh?.();
       } catch (_) {}
     } else if (bootTabId === "home") {
-      /* 메뉴 런처는 pull 후에도 DOM 구조·아이콘 URL 동일 — 두 번째 renderMain 하면 <img>만 통째로 다시 붙어 깜빡임 */
+      /* 메뉴 런처: 시간기록 pull 후 로컬 캐시가 채워지므로 잔액만 소프트 갱신(두 번째 renderMain은 아이콘 깜빡임 유발) */
       try {
         await syncAdminMenuVisibility();
+      } catch (_) {}
+      try {
+        window.__lpHomeMenuSoftRefresh?.();
       } catch (_) {}
     } else {
       renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });

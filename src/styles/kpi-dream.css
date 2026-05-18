@@ -8,6 +8,16 @@
 /* 꿈 탭 페이지만 */
 /* -------------------------------------------------------------------------- */
 
+:is(.lp-kpi-dream-page, .kpi-view-modal) {
+  /* 앱 하늘색 톤(.idea-view --idea-cloud)과 맞춤: 음영·칩은 옅은 하늘, 선은 냉색 회색, 그림자는 블루 틴 */
+  --lp-kpi-sky-surface: #f0f4fa;
+  --lp-kpi-sky-muted: #e4edf7;
+  --lp-kpi-border-gray: #cbd5e1;
+  --lp-kpi-border-gray-soft: #e2e8f0;
+  --lp-kpi-elev-shadow: 0 1px 2px rgba(30, 77, 123, 0.08);
+  --lp-kpi-modal-drop-shadow: 0 22px 60px rgba(30, 77, 123, 0.17);
+}
+
 .lp-kpi-dream-page {
   --lp-kpi-inset: 1rem;
   /* 로그 목록 약 3행 분량(카드·메모 줄수에 따라 대략) — 필요 시 조정 */
@@ -83,8 +93,8 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0 var(--lp-kpi-inset);
-  border-bottom: 1px solid #f3f4f6;
-  background: #fafafa;
+  border-bottom: 1px solid var(--lp-kpi-border-gray-soft);
+  background: var(--lp-kpi-sky-surface);
 }
 
 .lp-kpi-dream-page .dream-tabs {
@@ -167,13 +177,13 @@
 
 .lp-kpi-dream-page .dream-tab:hover {
   color: #374151;
-  background: rgba(0, 0, 0, 0.04);
+  background: rgba(30, 77, 123, 0.07);
 }
 
 .lp-kpi-dream-page .dream-tab.active {
   color: #0f172a;
   background: #fff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--lp-kpi-elev-shadow);
 }
 
 .lp-kpi-dream-page .dream-add-icon-btn {
@@ -226,7 +236,7 @@
   width: fit-content;
   max-width: 100%;
   align-self: center;
-  background: #f3f4f6;
+  background: var(--lp-kpi-sky-muted);
   border-radius: 10px;
   box-sizing: border-box;
 }
@@ -269,7 +279,7 @@
 .lp-kpi-dream-page .dream-kpi-filter-btn.active {
   color: var(--lp-modal-navy);
   background: #fff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--lp-kpi-elev-shadow);
 }
 
 .lp-kpi-dream-page .dream-kpi-grid {
@@ -332,8 +342,8 @@
   font-weight: 500;
   line-height: 1.2;
   color: var(--lp-modal-navy-muted);
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--lp-kpi-sky-surface);
+  border: 1px solid var(--lp-kpi-border-gray-soft);
   border-radius: 8px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -386,7 +396,7 @@
 .lp-kpi-dream-page .dream-kpi-card-progress-bar {
   height: 4px;
   overflow: hidden;
-  background: #f3f4f6;
+  background: var(--lp-kpi-sky-muted);
   border-radius: 999px;
 }
 
@@ -425,8 +435,8 @@
   padding: 1rem;
   font: inherit;
   color: #9ca3af;
-  background: #fafafa;
-  border: 1px dashed #e5e7eb;
+  background: var(--lp-kpi-sky-surface);
+  border: 1px dashed var(--lp-kpi-border-gray);
   border-radius: 14px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -532,8 +542,8 @@
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.65rem 0.75rem;
-  background: #fafafa;
-  border: 1px solid #f3f4f6;
+  background: var(--lp-kpi-sky-surface);
+  border: 1px solid var(--lp-kpi-border-gray-soft);
   border-radius: 10px;
 }
 
@@ -694,8 +704,8 @@
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.65rem 0.75rem;
-  background: #fafafa;
-  border: 1px solid #f3f4f6;
+  background: var(--lp-kpi-sky-surface);
+  border: 1px solid var(--lp-kpi-border-gray-soft);
   border-radius: 10px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -808,7 +818,7 @@
   align-items: flex-start;
   gap: 0.5rem;
   padding: 0.5rem 0;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--lp-kpi-border-gray-soft);
 }
 
 .lp-kpi-dream-page .dream-kpi-todo-item:last-child {
@@ -869,7 +879,7 @@
 .lp-kpi-dream-page .dream-kpi-habit-grid-td {
   padding: 0.35rem 0.4rem;
   text-align: center;
-  border: 1px solid #f3f4f6;
+  border: 1px solid var(--lp-kpi-border-gray-soft);
   color: #4b5563;
 }
 
@@ -881,7 +891,7 @@
   max-width: 7rem;
   text-align: left;
   font-weight: 500;
-  background: #fafafa;
+  background: var(--lp-kpi-sky-surface);
 }
 
 .lp-kpi-dream-page .dream-kpi-habit-cell--ok {
@@ -974,7 +984,7 @@
   overflow: hidden;
   background: var(--lp-modal-surface);
   border-radius: var(--lp-modal-radius);
-  box-shadow: 0 22px 60px rgba(15, 23, 42, 0.2);
+  box-shadow: var(--lp-kpi-modal-drop-shadow);
   box-sizing: border-box;
 }
 

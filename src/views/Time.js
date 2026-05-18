@@ -61,6 +61,7 @@ import {
   pushDirtyTimeLedgerEntriesToSupabase,
   readTimeLedgerSessionFilterRangeYmd,
   readTimeLedgerCombinedPullRangeYmd,
+  timeLedgerLocalTodayYmd,
 } from "../utils/timeLedgerEntriesSupabase.js";
 import { pullTimeLedgerTabEnterFromCloud } from "../utils/timeLedgerCloudRefresh.js";
 import { timeLedgerSyncLog } from "../utils/timeLedgerSyncDebug.js";
@@ -1974,6 +1975,35 @@ export function getTodayTimeSummary() {
     trackedGoalPercentLabel: `${Math.round(trackedPctOfGoal)}%`,
     productiveOfAvailablePercentLabel: `${Math.round(productivePctOfAvailable)}%`,
   };
+}
+
+/** 오늘(로컬 달력) 시간기록 행동가치 합 — 시간가계부와 동일 규칙(시급·생산성) */
+export function getTodayTimeLedgerValueSum() {
+  const todayKey = timeLedgerLocalTodayYmd();
+  const rows = loadTimeRows().filter(
+    (r) => (r.date || "").toString().slice(0, 10) === todayKey,
+  );
+  let hourlyRate = 0;
+  try {
+    hourlyRate =
+      parseFloat(
+        String(localStorage.getItem(USER_HOURLY_RATE_KEY) || "0").replace(
+          /,/g,
+          "",
+        ),
+      ) || 0;
+  } catch (_) {}
+  return calcPeriodValueFromFiltered(rows, hourlyRate);
+}
+
+/** 홈 메뉴 등: +₩ / -₩ / ₩0 (부호는 원화 기호 앞) */
+export function formatHomeMenuLedgerKrw(n) {
+  const v = Number(n) || 0;
+  const abs = Math.abs(Math.round(v));
+  const str = abs.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  if (v === 0) return `₩${str}`;
+  if (v < 0) return `-₩${str}`;
+  return `+₩${str}`;
 }
 
 /** 카테고리 라벨 조회 */
