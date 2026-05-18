@@ -1333,6 +1333,24 @@ export function render() {
     scrollWrap.appendChild(block);
   }
 
+  /** 동기 카드 그리드 아래 · 루틴 트래커 영역 제목만(소비·시간 투자 리포트 제목과 동일 클래스) */
+  function mountTimeReportInvestRoutineTrackerHeader(scrollWrap) {
+    const block = document.createElement("div");
+    block.className = "diary-tr-consumption-section-header";
+
+    const rule = document.createElement("hr");
+    rule.className = "diary-tr-consumption-section-rule";
+    rule.setAttribute("aria-hidden", "true");
+
+    const h2 = document.createElement("h2");
+    h2.className = "diary-tr-consumption-section-title";
+    h2.textContent = "루틴트랙커";
+
+    block.appendChild(rule);
+    block.appendChild(h2);
+    scrollWrap.appendChild(block);
+  }
+
   /** 「시간 소비 리포트」 제목 직후 · 카드 그리드 직전: 비생산 합(컴팩트) */
   function mountTimeReportNonproductiveWasteMini(scrollWrap, ymdTen, granularity) {
     const mins =
@@ -1793,6 +1811,7 @@ export function render() {
       mountTimeReportInvestSectionHeader(scrollWrap);
       mountTimeReportInvestMini(scrollWrap, ymd, g);
       mountTimeReportInvestMotivationCards(scrollWrap, ymd, g);
+      mountTimeReportInvestRoutineTrackerHeader(scrollWrap);
 
       if (!reportLedgerRefreshFromPull) {
         const k = readTimeLedgerPullRangeForKpiTabsYmd();

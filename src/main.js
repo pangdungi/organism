@@ -18,12 +18,19 @@ import {
   updatePasswordForRecovery,
   purgeTimeLedgerLocalOnSignOut,
 } from "./auth.js";
-import { mountApp, LP_LAST_TAB_LOCAL_KEY, LP_LAST_TAB_SESSION_KEY } from "./App.js";
+import {
+  mountApp,
+  LP_LAST_TAB_LOCAL_KEY,
+  LP_LAST_TAB_SESSION_KEY,
+} from "./App.js";
 import { initOfflineAppGate } from "./utils/offlineAppGate.js";
 import { supabase } from "./supabase.js";
 import { applyAppFont } from "./utils/appUiFont.js";
 import { pullUserPrefsFromSupabase } from "./utils/userHourlySync.js";
-import { applyTimeCategoryColors, applyTaskCategoryColors } from "./utils/todoSettings.js";
+import {
+  applyTimeCategoryColors,
+  applyTaskCategoryColors,
+} from "./utils/todoSettings.js";
 import { showToast } from "./utils/showToast.js";
 import { ensureTimeLedgerStorageReady } from "./utils/timeLedgerEntriesModel.js";
 import { flushAllPendingTimeDailyBudgetSync } from "./utils/timeDailyBudgetSupabase.js";
@@ -173,14 +180,24 @@ function init() {
 
   document.getElementById("btn-do-login")?.addEventListener("click", doLogin);
   document.getElementById("btn-do-signup")?.addEventListener("click", doSignUp);
-  document.getElementById("auth-seg-login")?.addEventListener("click", () => setAuthGatePanel("login"));
-  document.getElementById("auth-seg-signup")?.addEventListener("click", () => setAuthGatePanel("signup"));
-  document.getElementById("btn-show-forgot-pw")?.addEventListener("click", () => openAuthPwRecoveryModal());
-  document.getElementById("auth-pw-modal-close")?.addEventListener("click", closeAuthPwRecoveryModal);
+  document
+    .getElementById("auth-seg-login")
+    ?.addEventListener("click", () => setAuthGatePanel("login"));
+  document
+    .getElementById("auth-seg-signup")
+    ?.addEventListener("click", () => setAuthGatePanel("signup"));
+  document
+    .getElementById("btn-show-forgot-pw")
+    ?.addEventListener("click", () => openAuthPwRecoveryModal());
+  document
+    .getElementById("auth-pw-modal-close")
+    ?.addEventListener("click", closeAuthPwRecoveryModal);
   document
     .querySelector("#auth-pw-recovery-modal .auth-pw-modal__backdrop")
     ?.addEventListener("click", closeAuthPwRecoveryModal);
-  document.getElementById("btn-cancel-forgot")?.addEventListener("click", closeAuthPwRecoveryModal);
+  document
+    .getElementById("btn-cancel-forgot")
+    ?.addEventListener("click", closeAuthPwRecoveryModal);
 
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
@@ -189,8 +206,12 @@ function init() {
       closeAuthPwRecoveryModal();
     }
   });
-  document.getElementById("btn-send-reset-mail")?.addEventListener("click", doForgotPassword);
-  document.getElementById("btn-reset-pw-submit")?.addEventListener("click", doResetPassword);
+  document
+    .getElementById("btn-send-reset-mail")
+    ?.addEventListener("click", doForgotPassword);
+  document
+    .getElementById("btn-reset-pw-submit")
+    ?.addEventListener("click", doResetPassword);
 
   function goToPasswordResetUi() {
     closeAuthPwRecoveryModal();
@@ -274,14 +295,23 @@ function init() {
     const isMobile = () => window.matchMedia("(max-width: 48rem)").matches;
     const blurInput = () => {
       const a = document.activeElement;
-      if (a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA" || a.tagName === "SELECT")) a.blur();
+      if (
+        a &&
+        (a.tagName === "INPUT" ||
+          a.tagName === "TEXTAREA" ||
+          a.tagName === "SELECT")
+      )
+        a.blur();
     };
     const observer = new MutationObserver((mutations) => {
       if (!isMobile()) return;
       for (const m of mutations) {
         if (m.type === "attributes" && m.attributeName === "hidden") {
           const el = m.target;
-          if (!el.hasAttribute?.("hidden") && el.getAttribute?.("class")?.includes("modal")) {
+          if (
+            !el.hasAttribute?.("hidden") &&
+            el.getAttribute?.("class")?.includes("modal")
+          ) {
             blurInput();
             [0, 50, 150, 300].forEach((ms) => setTimeout(blurInput, ms));
             break;
@@ -289,7 +319,12 @@ function init() {
         }
       }
     });
-    observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["hidden"] });
+    observer.observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["hidden"],
+    });
   })();
 
   /** 느린 네트워크에서 세션 로드가 잘리며 로그인 화면만 보이는 일 줄이기 */
@@ -306,7 +341,10 @@ function init() {
       const res = await Promise.race([
         supabase.auth.getSession(),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("auth_get_session_timeout")), AUTH_GET_SESSION_MS),
+          setTimeout(
+            () => reject(new Error("auth_get_session_timeout")),
+            AUTH_GET_SESSION_MS,
+          ),
         ),
       ]);
       session = res?.data?.session ?? null;
@@ -316,10 +354,7 @@ function init() {
       return;
     }
     if (session) {
-      if (
-        isPasswordRecoverySession(session) ||
-        hasPasswordRecoveryUrlHint()
-      ) {
+      if (isPasswordRecoverySession(session) || hasPasswordRecoveryUrlHint()) {
         goToPasswordResetUi();
         return;
       }
@@ -345,13 +380,15 @@ function init() {
     const splash = document.getElementById("app-splash");
     /* 너무 짧으면 스플래시가 깜빡이고, 너무 길면 PWA 재실행이 답답해짐 */
     const minVisibleMs = 380;
-    const t0 = typeof performance !== "undefined" ? performance.now() : Date.now();
+    const t0 =
+      typeof performance !== "undefined" ? performance.now() : Date.now();
     try {
       await showInitialPage();
     } catch (_e) {
     } finally {
       const elapsed =
-        (typeof performance !== "undefined" ? performance.now() : Date.now()) - t0;
+        (typeof performance !== "undefined" ? performance.now() : Date.now()) -
+        t0;
       const rest = Math.max(0, minVisibleMs - elapsed);
       if (rest > 0) {
         await new Promise((r) => setTimeout(r, rest));
@@ -481,7 +518,11 @@ async function doResetPassword() {
     showToast("비밀번호가 변경됐어요.", "새 비밀번호로 로그인해 주세요.");
     try {
       if (isPasswordRecoveryPathname()) {
-        window.history.replaceState(window.history.state, "", `${window.location.origin}/`);
+        window.history.replaceState(
+          window.history.state,
+          "",
+          `${window.location.origin}/`,
+        );
       }
     } catch (_) {}
     showOnly("login");
@@ -494,7 +535,10 @@ async function doResetPassword() {
 init();
 
 // PWA: 서비스 워커 등록 (앱 설치·홈 화면 추가 가능)
-if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+if (
+  "serviceWorker" in navigator &&
+  (location.protocol === "https:" || location.hostname === "localhost")
+) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch(() => {});
   });
