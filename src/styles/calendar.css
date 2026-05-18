@@ -203,7 +203,8 @@
   background: var(--cal-surface);
   box-sizing: border-box;
 }
-.calendar-nav-controls .time-filter-date-field.calendar-1day-nav-date-field:hover {
+.calendar-nav-controls
+  .time-filter-date-field.calendar-1day-nav-date-field:hover {
   border-color: var(--cal-line-strong);
   background: var(--cal-surface-muted);
 }
@@ -354,7 +355,8 @@
 }
 
 .calendar-1day-timeline-card:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--cal-line-strong) 70%, var(--cal-text));
+  outline: 2px solid
+    color-mix(in srgb, var(--cal-line-strong) 70%, var(--cal-text));
   outline-offset: 2px;
 }
 
@@ -497,7 +499,8 @@
 
 .calendar-1day-timeline-card--ledger-missed .calendar-1day-timeline-card-start,
 .calendar-1day-timeline-card--ledger-missed .calendar-1day-timeline-card-end,
-.calendar-1day-timeline-card--ledger-missed .calendar-1day-timeline-card-duration {
+.calendar-1day-timeline-card--ledger-missed
+  .calendar-1day-timeline-card-duration {
   color: var(--cal-text-muted);
 }
 
@@ -545,7 +548,8 @@
   flex-shrink: 0;
 }
 
-.calendar-monthly-layout.calendar-view-with-subtabs > .calendar-view-content-area {
+.calendar-monthly-layout.calendar-view-with-subtabs
+  > .calendar-view-content-area {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
@@ -563,7 +567,9 @@
 /* 그리드 컨테이너 (타임블록 1일 제외: .calendar-1day-view) */
 /* -------------------------------------------------------------------------- */
 
-.calendar-monthly-layout:not(.calendar-1day-view) > .calendar-monthly-main > .calendar-monthly-grid {
+.calendar-monthly-layout:not(.calendar-1day-view)
+  > .calendar-monthly-main
+  > .calendar-monthly-grid {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
@@ -578,12 +584,15 @@
 }
 
 /* 월별 뷰만: 그리드 카드 전체의 아래 외곽 보더 제거(연간 등은 유지) */
-.calendar-monthly-layout.calendar-subview-monthly > .calendar-monthly-main > .calendar-monthly-grid {
+.calendar-monthly-layout.calendar-subview-monthly
+  > .calendar-monthly-main
+  > .calendar-monthly-grid {
   border-bottom: none;
 }
 
 /* 월별: 요일 행 고정, 주 행은 남는 높이 균등 분배(셀 min·JS 높이는 유지) */
-.calendar-monthly-grid:not(.calendar-monthly-grid--1week-timegrid) > .calendar-monthly-weekdays {
+.calendar-monthly-grid:not(.calendar-monthly-grid--1week-timegrid)
+  > .calendar-monthly-weekdays {
   flex-shrink: 0;
   position: sticky;
   top: 0;
@@ -591,7 +600,8 @@
 }
 
 /* 주 행: 남는 세로는 균등 확장(flex-grow), 내용보다 줄어들지 않음(긴 달은 그리드 안에서 스크롤) */
-.calendar-monthly-grid:not(.calendar-monthly-grid--1week-timegrid) > .calendar-monthly-week-wrap {
+.calendar-monthly-grid:not(.calendar-monthly-grid--1week-timegrid)
+  > .calendar-monthly-week-wrap {
   flex: 1 0 auto;
   display: flex;
   flex-direction: column;
@@ -604,11 +614,15 @@
   width: 100%;
 }
 
-.calendar-monthly-layout:not(.calendar-1day-view) > .calendar-monthly-main > .calendar-monthly-tabs-wrap {
+.calendar-monthly-layout:not(.calendar-1day-view)
+  > .calendar-monthly-main
+  > .calendar-monthly-tabs-wrap {
   flex-shrink: 0;
 }
 
-.calendar-monthly-layout:not(.calendar-1day-view) > .calendar-monthly-main > .calendar-monthly-nav {
+.calendar-monthly-layout:not(.calendar-1day-view)
+  > .calendar-monthly-main
+  > .calendar-monthly-nav {
   flex-shrink: 0;
 }
 
@@ -1038,11 +1052,19 @@
 
 .calendar-1week-flow-card--in-progress {
   background: #fff;
-  border-color: color-mix(in srgb, var(--cal-today-accent) 28%, var(--cal-line));
+  border-color: color-mix(
+    in srgb,
+    var(--cal-today-accent) 28%,
+    var(--cal-line)
+  );
 }
 
 .calendar-1week-flow-card--expected-now {
-  border-color: color-mix(in srgb, var(--cal-today-accent) 42%, var(--cal-line));
+  border-color: color-mix(
+    in srgb,
+    var(--cal-today-accent) 42%,
+    var(--cal-line)
+  );
 }
 
 .calendar-1week-flow-card-title-row {
@@ -1172,9 +1194,9 @@
   min-height: 0;
   display: grid;
   grid-template-columns: var(--annual-month-col-w) repeat(
-    31,
-    var(--annual-day-col-w)
-  );
+      31,
+      var(--annual-day-col-w)
+    );
   align-items: stretch;
   width: max-content;
   border-bottom: 1px solid var(--cal-line);

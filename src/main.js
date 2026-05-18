@@ -271,7 +271,8 @@ function init() {
     observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["hidden"] });
   })();
 
-  const AUTH_GET_SESSION_MS = 12_000;
+  /** 느린 네트워크에서 세션 로드가 잘리며 로그인 화면만 보이는 일 줄이기 */
+  const AUTH_GET_SESSION_MS = 30_000;
 
   async function showInitialPage() {
     if (!supabase) {

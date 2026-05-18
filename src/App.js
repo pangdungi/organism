@@ -76,28 +76,28 @@ const TABS = [
   {
     id: "dream",
     label: "꿈",
-    icon: "/toolbaricons/star.svg",
+    icon: "/toolbaricons/menu-dream.png",
     sidebarSection: "bucket",
     sidebarOrder: 0,
   },
   {
     id: "sideincome",
     label: "부수입",
-    icon: "/toolbaricons/money-circle.svg",
+    icon: "/toolbaricons/menu-sideincome.png",
     sidebarSection: "bucket",
     sidebarOrder: 2,
   },
   {
     id: "happiness",
     label: "행복",
-    icon: "/toolbaricons/plug-electric.svg",
+    icon: "/toolbaricons/menu-happiness.png",
     sidebarSection: "bucket",
     sidebarOrder: 1,
   },
   {
     id: "health",
     label: "건강",
-    icon: "/toolbaricons/heart-rate.svg",
+    icon: "/toolbaricons/menu-health.png",
     sidebarSection: "bucket",
     sidebarOrder: 3,
   },
@@ -106,7 +106,7 @@ const TABS = [
     label: "할일",
     mobileLabel: "할일",
     /** 모바일 하단·데스크톱 사이드바 동일 — 할일 목록 아이콘 */
-    icon: "/toolbaricons/todolist.svg",
+    icon: "/toolbaricons/menu-todo.png",
     sidebarSection: "main",
     sidebarOrder: 2,
   },
@@ -114,7 +114,9 @@ const TABS = [
     id: "schedulecalendar",
     label: "일정",
     mobileLabel: "일정",
-    icon: "/toolbaricons/calendar-alt.svg",
+    /** 홈 메뉴 그리드 표시명 */
+    homeMenuLabel: "캘린더",
+    icon: "/toolbaricons/menu-schedule.png",
     sidebarSection: "main",
     sidebarOrder: 3,
   },
@@ -122,7 +124,7 @@ const TABS = [
     id: "time",
     label: "시간가계부",
     mobileLabel: "시간",
-    icon: "/toolbaricons/timer.svg",
+    icon: "/toolbaricons/menu-time.png",
     sidebarSection: "main",
     sidebarOrder: 1,
   },
@@ -130,7 +132,7 @@ const TABS = [
     id: "workschedule",
     label: "스탬프 캘린더",
     mobileLabel: "스탬프 캘린더",
-    icon: "/toolbaricons/rubber-stamp.svg",
+    icon: "/toolbaricons/menu-stamp.png",
     sidebarSection: "main",
     sidebarOrder: 5,
   },
@@ -138,14 +140,32 @@ const TABS = [
     id: "diary",
     label: "감정일기",
     mobileLabel: "감정일기",
-    icon: "/toolbaricons/chat-bubbles.svg",
+    icon: "/toolbaricons/menu-diary.png",
     sidebarSection: "main",
     sidebarOrder: 4,
   },
 ];
 
-const SIDEBAR_SECTION_ORDER = ["main", "bucket", "other"];
-const SIDEBAR_SECTION_LABEL = { bucket: "버킷", other: "기타" };
+const HOME_MENU_SECTIONS = [
+  { title: "시간 · 할일", tabIds: ["time", "calendar"] },
+  { title: "일정", tabIds: ["schedulecalendar", "workschedule"] },
+  {
+    title: "KPI",
+    tabIds: ["health", "happiness", "dream", "sideincome"],
+  },
+  { title: "기타", tabIds: ["diary", "idea"] },
+];
+
+function tabMetaById(tabId) {
+  if (tabId === "idea") {
+    return {
+      id: "idea",
+      label: "나의 계정",
+      icon: "/toolbaricons/menu-account.png",
+    };
+  }
+  return TABS.find((t) => t.id === tabId);
+}
 
 const RENDERERS = {
   calendar: renderCalendar,
@@ -475,95 +495,86 @@ export async function mountApp(container) {
     const img = document.createElement("img");
     img.src = iconSrc;
     img.alt = "";
-    img.width = 22;
-    img.height = 22;
+    img.width = 28;
+    img.height = 28;
     img.loading = "lazy";
     iconWrap.appendChild(img);
     btn.appendChild(iconWrap);
   }
 
   function renderHomeMenuLauncher() {
+    launcherAdminBtn = null;
+
     const root = document.createElement("div");
     root.className = "app-home-menu-launcher";
 
-    const list = document.createElement("div");
-    list.className = "app-home-menu-launcher-list";
+    const card = document.createElement("div");
+    card.className = "app-home-menu-launcher-card";
 
-    const groups = { main: [], bucket: [], other: [] };
-    TABS.filter((t) => t.id !== "home").forEach((tab) => {
-      const sec =
-        tab.sidebarSection === "bucket" || tab.sidebarSection === "other"
-          ? tab.sidebarSection
-          : "main";
-      groups[sec].push(tab);
-    });
-    SIDEBAR_SECTION_ORDER.forEach((sec) => {
-      groups[sec].sort(
-        (a, b) => (a.sidebarOrder ?? 0) - (b.sidebarOrder ?? 0),
-      );
-      if (
-        sec !== "main" &&
-        SIDEBAR_SECTION_LABEL[sec] &&
-        groups[sec].length > 0
-      ) {
-        const lab = document.createElement("div");
-        lab.className = "app-home-menu-launcher-section";
-        lab.textContent = SIDEBAR_SECTION_LABEL[sec];
-        list.appendChild(lab);
+    const head = document.createElement("header");
+    head.className = "app-home-menu-launcher-head";
+    const titleEl = document.createElement("h1");
+    titleEl.className = "app-home-menu-launcher-title";
+    titleEl.textContent = "메뉴";
+    head.appendChild(titleEl);
+
+    const body = document.createElement("div");
+    body.className = "app-home-menu-launcher-body";
+
+    function navButtonFromTab(tab) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "app-home-menu-launcher-btn";
+      if (tab.id === "idea") {
+        btn.classList.add("app-home-menu-launcher-btn--muted");
       }
-      groups[sec].forEach((tab) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "app-home-menu-launcher-btn";
-        btn.dataset.tabId = tab.id;
-        btn.title = tab.label;
-        appendLauncherIcon(btn, tab.iconDesktop ?? tab.icon);
-        const labelSpan = document.createElement("span");
-        labelSpan.className = "app-home-menu-launcher-label";
-        labelSpan.textContent = tab.label;
-        btn.appendChild(labelSpan);
-        btn.addEventListener("click", () => setActiveTab(tab.id));
-        list.appendChild(btn);
+      btn.dataset.tabId = tab.id;
+      btn.title = tab.label;
+      appendLauncherIcon(btn, tab.iconDesktop ?? tab.icon);
+      const labelSpan = document.createElement("span");
+      labelSpan.className = "app-home-menu-launcher-label";
+      labelSpan.textContent = tab.homeMenuLabel ?? tab.label;
+      btn.appendChild(labelSpan);
+      btn.addEventListener("click", () => setActiveTab(tab.id));
+      return btn;
+    }
+
+    function appendSection(sectionTitle, mountBtns) {
+      const section = document.createElement("section");
+      section.className = "app-home-menu-launcher-section";
+      const h2 = document.createElement("h2");
+      h2.className = "app-home-menu-launcher-section-title";
+      h2.textContent = sectionTitle;
+      const grid = document.createElement("div");
+      grid.className = "app-home-menu-launcher-section-grid";
+      mountBtns(grid);
+      section.append(h2, grid);
+      body.appendChild(section);
+    }
+
+    HOME_MENU_SECTIONS.forEach(({ title: sectionTitle, tabIds }) => {
+      appendSection(sectionTitle, (grid) => {
+        tabIds.forEach((tid) => {
+          const tab = tabMetaById(tid);
+          if (tab) grid.appendChild(navButtonFromTab(tab));
+        });
       });
     });
 
-    root.appendChild(list);
-
-    const actions = document.createElement("div");
-    actions.className = "app-home-menu-launcher-actions";
-
-    const ideaBtn = document.createElement("button");
-    ideaBtn.type = "button";
-    ideaBtn.className =
-      "app-home-menu-launcher-btn app-home-menu-launcher-btn--muted";
-    ideaBtn.dataset.tabId = "idea";
-    ideaBtn.title = "나의 계정";
-    appendLauncherIcon(ideaBtn, "/toolbaricons/user-square.svg");
-    const ideaLabel = document.createElement("span");
-    ideaLabel.className = "app-home-menu-launcher-label";
-    ideaLabel.textContent = "나의 계정";
-    ideaBtn.appendChild(ideaLabel);
-    ideaBtn.addEventListener("click", () => setActiveTab("idea"));
-    actions.appendChild(ideaBtn);
-
     launcherAdminBtn = document.createElement("button");
     launcherAdminBtn.type = "button";
-    launcherAdminBtn.className =
-      "app-home-menu-launcher-btn app-home-menu-launcher-btn--admin";
+    launcherAdminBtn.className = "app-home-menu-launcher-admin-fab";
     launcherAdminBtn.hidden = true;
     launcherAdminBtn.title = "관리자전용";
-    launcherAdminBtn.dataset.tabId = "admin";
-    appendLauncherIcon(launcherAdminBtn, "/toolbaricons/settings.svg");
-    const adminLbl = document.createElement("span");
-    adminLbl.className = "app-home-menu-launcher-label";
-    adminLbl.textContent = "관리자전용";
-    launcherAdminBtn.appendChild(adminLbl);
+    launcherAdminBtn.setAttribute("aria-label", "관리자 전용");
+    launcherAdminBtn.textContent = "관리";
     launcherAdminBtn.addEventListener("click", () => setActiveTab("admin"));
-    actions.appendChild(launcherAdminBtn);
 
-    root.appendChild(actions);
     void syncAdminMenuVisibility();
 
+    card.append(head, body);
+    root.appendChild(card);
+    root.appendChild(launcherAdminBtn);
     return root;
   }
 

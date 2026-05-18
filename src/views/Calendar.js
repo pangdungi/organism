@@ -2834,6 +2834,16 @@ export function buildExpectedScheduleSpansForDateKey(dateKey) {
   return { spans: normalized, maxLane: withLanes.maxLane };
 }
 
+/** 일간 타임라인과 동일한 스팬 기준: 새 예상 일정의 제안 시작 시각(빈 날이면 00:00) */
+function defaultStartHhMmForExpectedModalFromDateKey(dateKey) {
+  const { spans } = buildExpectedScheduleSpansForDateKey(dateKey);
+  if (!spans.length) return "00:00";
+  const maxEnd = Math.max(...spans.map((s) => Number(s.endMin) || 0));
+  const h = Math.floor(maxEnd / 60) % 24;
+  const mi = maxEnd % 60;
+  return `${String(h).padStart(2, "0")}:${String(mi).padStart(2, "0")}`;
+}
+
 /** 0~24h 안에서 예상 일정 구간 겹침을 합쳐 실제로 덮인 분(합집합 길이) */
 function minutesCoveredByExpectedSpansUnion(spans) {
   if (!Array.isArray(spans) || spans.length === 0) return 0;
@@ -3442,6 +3452,7 @@ function render1DayView(tabsElement = null) {
         const key = formatDateKey(targetDate);
         openCalendarExpectedScheduleModal({
           dateKey: key,
+          defaultStartHhMm: defaultStartHhMmForExpectedModalFromDateKey(key),
           onSaved: () => renderCalendar(),
         });
       });

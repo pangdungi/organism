@@ -106,6 +106,8 @@ function attachExpectedScheduleDatetimeUI(panel, ctx) {
     taskLogStartInput,
     taskLogEndInput,
     taskLogTimeOrderWarning,
+    /** 일간 뷰 등: 화면에 보이는 예상 블록과 동일한 기준의 시작 시각(없으면 미전달) */
+    defaultStartHhMm: defaultStartHhMmFromCtx,
   } = ctx;
 
   const normalizeHhMm = (val) => {
@@ -541,13 +543,19 @@ function attachExpectedScheduleDatetimeUI(panel, ctx) {
     });
 
   function applyDefaultsForYmd(ymd) {
-    const fromBudget = getLatestBudgetScheduleEndHhMm(ymd);
-    const fromLedger = getNextTaskLogStartHhMmFromLedger(
-      ymd,
-      null,
-      loadTimeRows(),
-    );
-    const startHhMm = fromBudget || fromLedger || "00:00";
+    let startHhMm = "00:00";
+    if (defaultStartHhMmFromCtx !== undefined) {
+      const raw = String(defaultStartHhMmFromCtx || "").trim();
+      startHhMm = (raw && normalizeHhMm(raw)) || raw || "00:00";
+    } else {
+      const fromBudget = getLatestBudgetScheduleEndHhMm(ymd);
+      const fromLedger = getNextTaskLogStartHhMmFromLedger(
+        ymd,
+        null,
+        loadTimeRows(),
+      );
+      startHhMm = fromBudget || fromLedger || "00:00";
+    }
     if (taskLogDateStart) {
       taskLogDateStart.value = ymd;
       try {
@@ -618,7 +626,8 @@ function attachExpectedScheduleDatetimeUI(panel, ctx) {
 
 /**
  * @param {{ dateKey: string, title?: string, submitLabel?: string, onSaved?: () => void,
- *   edit?: { taskName: string, timeIdx: number } }} options
+ *   edit?: { taskName: string, timeIdx: number },
+ *   defaultStartHhMm?: string }} options
  */
 export function openCalendarExpectedScheduleModal(options) {
   const {
@@ -627,6 +636,7 @@ export function openCalendarExpectedScheduleModal(options) {
     submitLabel = "등록",
     onSaved,
     edit,
+    defaultStartHhMm,
   } = options || {};
 
   if (document.querySelector(".lp-calendar-budget-add-modal")) return;
@@ -739,6 +749,14 @@ export function openCalendarExpectedScheduleModal(options) {
     '[data-legacy~="time-task-log-feedback"]',
   );
 
+  const editTaskName = String(edit?.taskName || "").trim();
+  const editTimeIdx = Number(edit?.timeIdx);
+  const isEdit =
+    edit &&
+    editTaskName &&
+    Number.isFinite(editTimeIdx) &&
+    editTimeIdx >= 0;
+
   const { applyDefaultsForYmd, flushBeforeSubmit } =
     attachExpectedScheduleDatetimeUI(panel, {
       fallbackYmd: dk,
@@ -749,6 +767,10 @@ export function openCalendarExpectedScheduleModal(options) {
       taskLogStartInput,
       taskLogEndInput,
       taskLogTimeOrderWarning,
+      defaultStartHhMm:
+        isEdit || defaultStartHhMm === undefined
+          ? undefined
+          : defaultStartHhMm,
     });
 
   applyDefaultsForYmd(dk);
@@ -756,13 +778,6 @@ export function openCalendarExpectedScheduleModal(options) {
   const deleteBtn = modal.querySelector(
     '[data-legacy~="lp-calendar-expected-delete-btn"]',
   );
-  const editTaskName = String(edit?.taskName || "").trim();
-  const editTimeIdx = Number(edit?.timeIdx);
-  const isEdit =
-    edit &&
-    editTaskName &&
-    Number.isFinite(editTimeIdx) &&
-    editTimeIdx >= 0;
 
   if (isEdit) {
     const goal = getBudgetGoals(dk)[editTaskName];

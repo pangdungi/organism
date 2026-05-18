@@ -75,8 +75,8 @@
         display: none;
       }
       .app-splash {
-        --app-splash-green: #fff;
-        --app-splash-cream: #1f4654;
+        --app-splash-bg: #f0f4fa;
+        --app-splash-ink: #1a5fa8;
         position: fixed;
         inset: 0;
         z-index: 2147483646;
@@ -86,8 +86,8 @@
         justify-content: center;
         padding: max(1.5rem, env(safe-area-inset-top, 0)) 1.5rem max(2rem, env(safe-area-inset-bottom, 0));
         box-sizing: border-box;
-        background: var(--app-splash-green);
-        color: var(--app-splash-cream);
+        background: var(--app-splash-bg);
+        color: var(--app-splash-ink);
         text-align: center;
         -webkit-tap-highlight-color: transparent;
         transition: opacity 0.38s ease;
@@ -106,7 +106,7 @@
         position: absolute;
         width: min(72vw, 20rem);
         height: min(72vw, 20rem);
-        background: rgba(0, 0, 0, 0.04);
+        background: rgba(26, 95, 168, 0.07);
         clip-path: circle(50% at 50% 50%);
         animation: app-splash-orb-drift 9s ease-in-out infinite;
       }
@@ -145,7 +145,7 @@
         font-size: clamp(2.75rem, 13vw, 4.75rem);
         line-height: 1.15;
         letter-spacing: -0.03em;
-        color: var(--app-splash-cream);
+        color: var(--app-splash-ink);
       }
       /* 기업 웹필터·크롤러가 볼 수 있도록 스플래시에도 정적 설명 문구(숨김 #app 보완) */
       .app-splash-tagline {
@@ -158,7 +158,7 @@
         font-weight: 400;
         line-height: 1.55;
         letter-spacing: -0.02em;
-        color: var(--app-splash-cream);
+        color: var(--app-splash-ink);
         opacity: 0.9;
       }
       .app-splash-footer {
@@ -173,13 +173,13 @@
       .app-splash-bar-track {
         width: min(32vw, 8rem);
         height: 2px;
-        background: rgba(60, 60, 67, 0.18);
+        background: rgba(26, 95, 168, 0.22);
         overflow: hidden;
       }
       .app-splash-bar-fill {
         width: 38%;
         height: 100%;
-        background: var(--app-splash-cream);
+        background: var(--app-splash-ink);
         animation: app-splash-bar-slide 1.35s ease-in-out infinite;
       }
       @keyframes app-splash-bar-slide {
@@ -197,11 +197,11 @@
         font-weight: 500;
         letter-spacing: 0.28em;
         text-indent: 0.28em;
-        color: var(--app-splash-cream);
+        color: var(--app-splash-ink);
         opacity: 0.75;
       }
       .app-splash-arrow {
-        color: var(--app-splash-cream);
+        color: var(--app-splash-ink);
         opacity: 0.5;
         animation: app-splash-arrow-nudge 2.2s ease-in-out infinite;
       }
