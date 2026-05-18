@@ -1,5 +1,5 @@
 /**
- * 감정일기 - 탭별 날짜 단위 기록
+ * 시간 레포트 - 탭별 날짜 단위 기록(본문 피드는 보고서용으로 비워 둠)
  * - 사이드바·본문 헤더에는 날짜만 표시, 제목 입력 없음
  * - 같은 날짜에 여러 페이지(항목) 가능
  */
@@ -15,6 +15,24 @@ import {
 } from "../diaryData.js";
 import { hydrateDiaryFromCloud, deleteDiaryEntryFromSupabase } from "../utils/diarySupabase.js";
 import { getAppFooterActionsSlot, APP_FOOTER_ICON_BTN_CLASS } from "../utils/appFooterShell.js";
+import {
+  formatIntegerMinutesDurationKo,
+  getDailyTimeReportDonutSnapshot,
+} from "./Time.js";
+
+/** 시간 레포트 일별 도넛 — 파스텔 순환 */
+const REPORT_DONUT_PASTELS = [
+  "#93C5FD",
+  "#FCA5A5",
+  "#86EFAC",
+  "#C4B5FD",
+  "#FCD34D",
+  "#5EEAD4",
+  "#F9A8D4",
+  "#A5B4FC",
+  "#FDBA74",
+  "#DDD6FE",
+];
 
 /** 탭 2 통제일기 Q&A 템플릿 */
 const TAB2_QA_TEMPLATE = [
@@ -31,16 +49,16 @@ const TAB2_QA_TEMPLATE = [
 
 /** 푸터·짧은 표기 */
 function diaryTabLabel(tabId) {
-  if (tabId === "3") return "감정";
-  if (tabId === "2") return "통제";
-  return "자유";
+  if (tabId === "3") return "시간사용 레포트";
+  if (tabId === "2") return "예산";
+  return "메모";
 }
 
 /** 모달 제목 등 긴 표기 */
 function diaryTabModalTitle(tabId) {
-  if (tabId === "3") return "감정일기";
-  if (tabId === "2") return "통제일기";
-  return "자유일기";
+  if (tabId === "3") return "시간사용 레포트";
+  if (tabId === "2") return "예산";
+  return "메모";
 }
 
 function toDateStr(d) {
@@ -56,9 +74,31 @@ function formatDateDisplay(dateStr) {
   return `${y}/${m}/${d}`;
 }
 
+/** YYYY-MM-DD 또는 앞 7자 → YYYY/MM (먼스 모드 표시용) */
+function formatMonthSlashFromYmd(ymd) {
+  const n = normalizeDiaryDateStr(ymd);
+  if (!n || n.length < 7) return "";
+  return `${n.slice(0, 4)}/${n.slice(5, 7)}`;
+}
+
 function normalizeDiaryDateStr(dateVal) {
   if (!dateVal) return "";
   return String(dateVal).replace(/\//g, "-").slice(0, 10);
+}
+
+/** 앵커 날짜에서 ±N달(일은 해당 월 말일에 맞춤) */
+function shiftCalendarMonthBy(ymdTen, deltaMonths) {
+  const n = normalizeDiaryDateStr(ymdTen);
+  if (!n || n.length < 10) return toDateStr(new Date());
+  const y = parseInt(n.slice(0, 4), 10);
+  const mo = parseInt(n.slice(5, 7), 10) - 1;
+  const d = parseInt(n.slice(8, 10), 10);
+  const first = new Date(y, mo + deltaMonths, 1);
+  const y2 = first.getFullYear();
+  const m2 = first.getMonth();
+  const lastDay = new Date(y2, m2 + 1, 0).getDate();
+  const dayClamped = Math.min(Number.isFinite(d) ? d : 1, lastDay);
+  return toDateStr(new Date(y2, m2, dayClamped));
 }
 
 /** 일기 날짜 내림차순, 같은 날짜면 id 내림차순 */
@@ -133,6 +173,39 @@ export function render() {
   searchInput.setAttribute("aria-label", "날짜·내용 검색");
   searchBarRow.appendChild(searchInput);
   searchBar.appendChild(searchBarRow);
+
+  /** 시간사용 레포트(탭3): 검색 대신 DAY / MONTH 단위 토글 */
+  const granularityBar = document.createElement("div");
+  granularityBar.className = "diary-report-granularity";
+  granularityBar.setAttribute("role", "toolbar");
+  granularityBar.setAttribute("aria-label", "시간사용 레포트 보기 단위");
+  const granularityDayBtn = document.createElement("button");
+  granularityDayBtn.type = "button";
+  granularityDayBtn.className = "diary-report-granularity__seg";
+  granularityDayBtn.textContent = "데이";
+  granularityDayBtn.title = "일 단위";
+  granularityDayBtn.setAttribute("aria-pressed", "true");
+  const granularityMonthBtn = document.createElement("button");
+  granularityMonthBtn.type = "button";
+  granularityMonthBtn.className = "diary-report-granularity__seg";
+  granularityMonthBtn.textContent = "먼스";
+  granularityMonthBtn.title = "월 단위";
+  granularityMonthBtn.setAttribute("aria-pressed", "false");
+  granularityBar.appendChild(granularityDayBtn);
+  granularityBar.appendChild(granularityMonthBtn);
+
+  /** 탭3: 데이/먼스 토글 직 아래 날짜·캘린더 줄을 넣는 상단 블록 */
+  const reportChrome = document.createElement("div");
+  reportChrome.className = "diary-report-chrome";
+  reportChrome.setAttribute("hidden", "");
+  const reportChromeToggleRow = document.createElement("div");
+  reportChromeToggleRow.className = "diary-report-chrome__toggle-row";
+  reportChromeToggleRow.appendChild(granularityBar);
+  const reportChromeDateRow = document.createElement("div");
+  reportChromeDateRow.className = "diary-report-chrome__date-row";
+  reportChrome.appendChild(reportChromeToggleRow);
+  reportChrome.appendChild(reportChromeDateRow);
+
   /** 캘린더 일간 네비(.calendar-nav-controls .calendar-1day-nav-add)와 동일 클래스 */
   const topToolsNavControls = document.createElement("div");
   topToolsNavControls.className = "calendar-nav-controls";
@@ -144,6 +217,7 @@ export function render() {
   topAddBtn.textContent = "+";
   topToolsNavControls.appendChild(topAddBtn);
   topTools.appendChild(searchBar);
+  topTools.appendChild(reportChrome);
   topTools.appendChild(topToolsNavControls);
 
   inner.appendChild(topTools);
@@ -156,6 +230,23 @@ export function render() {
   let currentEntryId = null;
   let searchQuery = "";
   let isComposing = false;
+  /** 탭 3 시간사용 레포트 상단 단위 토글 */
+  let tab3ViewGranularity = "day"; // "day" | "month"
+  const LP_TAB3_REPORT_DATE_KEY = "lp_tab3_report_anchor_date";
+  let tab3ReportAnchorDateStr = (() => {
+    try {
+      const raw = sessionStorage.getItem(LP_TAB3_REPORT_DATE_KEY);
+      if (raw && /^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    } catch (_) {}
+    return toDateStr(new Date());
+  })();
+
+  function persistTab3ReportAnchorDate() {
+    try {
+      sessionStorage.setItem(LP_TAB3_REPORT_DATE_KEY, tab3ReportAnchorDateStr);
+    } catch (_) {}
+  }
+
   let entries = loadDiaryEntries();
 
   (function mountDiary() {
@@ -759,11 +850,256 @@ export function render() {
     }
   }
 
+  /** 도넛 범례용 정수 % (합 100 근사) */
+  function legendIntegerPercents(hoursList, totalHrs) {
+    if (!Array.isArray(hoursList) || totalHrs <= 0 || !hoursList.length) {
+      return hoursList.map(() => 0);
+    }
+    const exact = hoursList.map((h) => (h / totalHrs) * 100);
+    const out = exact.map((x) => Math.floor(x));
+    let rem = 100 - out.reduce((a, b) => a + b, 0);
+    const idxs = exact
+      .map((x, i) => ({ i, f: x - out[i] }))
+      .sort((a, b) => b.f - a.f);
+    if (idxs.length === 0) return out;
+    for (let k = 0; k < rem; k++) out[idxs[k % idxs.length].i] += 1;
+    return out;
+  }
+
+  /** 데이 모드 본문: 수면·근무 제외 세부 카테고리 도넛 */
+  function mountTimeReportDayDonut(scrollWrap, ymdTen) {
+    const snap = getDailyTimeReportDonutSnapshot(ymdTen);
+    const section = document.createElement("section");
+    section.className = "diary-tr-donut-shell";
+    section.setAttribute("aria-label", "선택한 날의 생산·비생산 카테고리별 시간");
+
+    const card = document.createElement("div");
+    card.className = "diary-tr-donut-card";
+
+    const viz = document.createElement("div");
+    viz.className = "diary-tr-donut-viz";
+
+    const host = document.createElement("div");
+    host.className = "diary-tr-donut-ring-host";
+
+    const ring = document.createElement("div");
+    ring.className = "diary-tr-donut-ring";
+    ring.setAttribute("aria-hidden", "true");
+
+    const center = document.createElement("div");
+    center.className = "diary-tr-donut-center";
+
+    const cap = document.createElement("span");
+    cap.className = "diary-tr-donut-center-caption";
+    cap.textContent = "전체";
+
+    const strong = document.createElement("strong");
+    strong.className = "diary-tr-donut-center-value";
+
+    center.appendChild(cap);
+    center.appendChild(strong);
+
+    host.appendChild(ring);
+    host.appendChild(center);
+    viz.appendChild(host);
+
+    const legend = document.createElement("ul");
+    legend.className = "diary-tr-donut-legend";
+
+    const totalH = snap.totalHours;
+    if (!totalH || totalH <= 0) {
+      strong.textContent = "—";
+      ring.style.background = "#e2e8f0";
+      const li = document.createElement("li");
+      li.className = "diary-tr-donut-legend-empty";
+      li.textContent =
+        "수면·근무를 뺀 뒤 집계할 생산·비생산 카테고리 시간이 없습니다. 시간가계부에서 해당 날짜를 기록해 보세요.";
+      legend.appendChild(li);
+    } else {
+      strong.textContent = formatIntegerMinutesDurationKo(snap.totalMinutesRounded);
+      const segs = snap.segments;
+      const colors = segs.map((_, i) => REPORT_DONUT_PASTELS[i % REPORT_DONUT_PASTELS.length]);
+      const pcts = legendIntegerPercents(
+        segs.map((s) => s.hours),
+        totalH,
+      );
+
+      let deg = 0;
+      const parts = [];
+      segs.forEach((s, i) => {
+        const spanDeg = (s.hours / totalH) * 360;
+        parts.push(`${colors[i]} ${deg}deg ${deg + spanDeg}deg`);
+        deg += spanDeg;
+      });
+      ring.style.background = `conic-gradient(${parts.join(", ")})`;
+
+      segs.forEach((s, i) => {
+        const li = document.createElement("li");
+        li.className = "diary-tr-donut-legend-item";
+        const dot = document.createElement("span");
+        dot.className = "diary-tr-donut-legend-dot";
+        dot.style.background = colors[i];
+        const lbl = document.createElement("span");
+        lbl.className = "diary-tr-donut-legend-label";
+        lbl.textContent = s.label;
+        const pctEl = document.createElement("span");
+        pctEl.className = "diary-tr-donut-legend-pct";
+        pctEl.textContent = `${pcts[i]}%`;
+        li.appendChild(dot);
+        li.appendChild(lbl);
+        li.appendChild(pctEl);
+        legend.appendChild(li);
+      });
+    }
+
+    card.appendChild(viz);
+    card.appendChild(legend);
+    section.appendChild(card);
+    scrollWrap.appendChild(section);
+  }
+
+  /** 시간사용 레포트: 공용 날짜 UI — 데이: time-task-log-date-native-wrap 패턴 · 먼스: ‹ › 달 이동 */
+  function buildTimeReportDateBar() {
+    const bar = document.createElement("div");
+    bar.className = "diary-time-report-date-bar";
+    bar.setAttribute("role", "group");
+    bar.setAttribute("aria-label", "보고서 기준 날짜");
+
+    let anchor = normalizeDiaryDateStr(tab3ReportAnchorDateStr);
+    if (!anchor || anchor.length < 10) {
+      anchor = toDateStr(new Date());
+      tab3ReportAnchorDateStr = anchor;
+      persistTab3ReportAnchorDate();
+    } else {
+      tab3ReportAnchorDateStr = anchor;
+    }
+
+    const isMonth = tab3ViewGranularity === "month";
+
+    if (!isMonth) {
+      const card = document.createElement("div");
+      card.className = "lp-modal-datetime-card diary-time-report-date-picker-card";
+      card.setAttribute("data-legacy", "lp-modal-datetime-card");
+
+      const row = document.createElement("div");
+      row.className = "time-task-log-datetime-main-row diary-time-report-date-picker-row";
+      row.setAttribute("data-legacy", "time-task-log-datetime-main-row");
+
+      const wrap = document.createElement("div");
+      wrap.className = "time-task-log-date-native-wrap";
+      wrap.setAttribute("data-legacy", "time-task-log-date-native-wrap");
+
+      const dateInp = document.createElement("input");
+      dateInp.type = "date";
+      dateInp.value = anchor;
+      dateInp.setAttribute("aria-label", "보고서 날짜 선택");
+      dateInp.setAttribute("data-legacy", "time-task-log-date-start");
+
+      const overlay = document.createElement("span");
+      overlay.className = "time-task-log-date-overlay";
+      overlay.setAttribute("data-legacy", "time-task-log-date-overlay");
+      overlay.textContent = formatDateDisplay(anchor);
+
+      const syncOverlay = () => {
+        if (dateInp.value) overlay.textContent = formatDateDisplay(dateInp.value);
+      };
+
+      dateInp.addEventListener("input", syncOverlay);
+      dateInp.addEventListener("change", () => {
+        const v = dateInp.value;
+        if (!v) return;
+        tab3ReportAnchorDateStr = v;
+        persistTab3ReportAnchorDate();
+        syncOverlay();
+        renderLayout();
+      });
+
+      wrap.appendChild(dateInp);
+      wrap.appendChild(overlay);
+      row.appendChild(wrap);
+      card.appendChild(row);
+      bar.appendChild(card);
+      return bar;
+    }
+
+    const card = document.createElement("div");
+    card.className = "lp-modal-datetime-card diary-time-report-month-nav-card";
+    card.setAttribute("data-legacy", "lp-modal-datetime-card");
+
+    const row = document.createElement("div");
+    row.className = "diary-time-report-month-nav-row";
+
+    const prevBtn = document.createElement("button");
+    prevBtn.type = "button";
+    prevBtn.className = "diary-time-report-month-nav-btn";
+    prevBtn.setAttribute("aria-label", "이전 달");
+    prevBtn.textContent = "‹";
+
+    const monthLabel = document.createElement("span");
+    monthLabel.className = "diary-time-report-month-nav-label";
+    monthLabel.setAttribute("aria-live", "polite");
+    monthLabel.textContent = formatMonthSlashFromYmd(anchor);
+
+    const nextBtn = document.createElement("button");
+    nextBtn.type = "button";
+    nextBtn.className = "diary-time-report-month-nav-btn";
+    nextBtn.setAttribute("aria-label", "다음 달");
+    nextBtn.textContent = "›";
+
+    const shift = (delta) => {
+      tab3ReportAnchorDateStr = shiftCalendarMonthBy(anchor, delta);
+      persistTab3ReportAnchorDate();
+      renderLayout();
+    };
+
+    prevBtn.addEventListener("click", () => shift(-1));
+    nextBtn.addEventListener("click", () => shift(1));
+
+    row.appendChild(prevBtn);
+    row.appendChild(monthLabel);
+    row.appendChild(nextBtn);
+    card.appendChild(row);
+    bar.appendChild(card);
+    return bar;
+  }
+
   function renderLayout() {
     layoutWrap.dataset.diaryTab = currentTabId;
     layoutWrap.innerHTML = "";
-    searchInput.value = searchQuery;
-    searchInput.placeholder = currentTabId === "3" ? "" : "날짜·내용 검색...";
+    const isTabReport = currentTabId === "3";
+    topTools.classList.toggle("diary-top-tools--time-report-mode", isTabReport);
+    searchBar.hidden = isTabReport;
+    reportChrome.hidden = !isTabReport;
+    topToolsNavControls.hidden = isTabReport;
+    topAddBtn.hidden = isTabReport;
+
+    reportChromeDateRow.replaceChildren();
+    if (isTabReport) {
+      reportChromeDateRow.appendChild(buildTimeReportDateBar());
+    }
+    if (!isTabReport) {
+      searchInput.value = searchQuery;
+      searchInput.placeholder = "날짜·내용 검색...";
+    }
+    const gNow = tab3ViewGranularity === "month" ? "month" : "day";
+    granularityDayBtn.classList.toggle("is-active", gNow === "day");
+    granularityMonthBtn.classList.toggle("is-active", gNow === "month");
+    granularityDayBtn.setAttribute("aria-pressed", gNow === "day" ? "true" : "false");
+    granularityMonthBtn.setAttribute("aria-pressed", gNow === "month" ? "true" : "false");
+    if (isTabReport) {
+      layoutWrap.dataset.tab3Granularity = gNow;
+      let da = normalizeDiaryDateStr(tab3ReportAnchorDateStr);
+      if (!da || da.length < 10) {
+        da = toDateStr(new Date());
+        tab3ReportAnchorDateStr = da;
+        persistTab3ReportAnchorDate();
+      }
+      layoutWrap.dataset.tab3SelectedDate = da;
+    } else {
+      delete layoutWrap.dataset.tab3Granularity;
+      delete layoutWrap.dataset.tab3SelectedDate;
+    }
+
     const mobile = isDiaryMobileViewport();
     /* 데스크톱·모바일 동일: 날짜 사이드바 없이 카드 피드만 스크롤 */
     inner.classList.remove("diary-view-inner--desktop-mac-diary");
@@ -787,25 +1123,6 @@ export function render() {
       currentEntryId = fullEntryList[0].id;
     }
 
-    const getEntrySearchText = (e) => {
-      let s = (e.content || "") + (e.date || "");
-      if (e.qa && typeof e.qa === "object") {
-        s += Object.values(e.qa).join(" ");
-      }
-      if (e.q1 != null || e.q2 != null || e.q3 != null || e.q4 != null) {
-        s += (e.q1 || "") + (e.q2 || "") + (e.q3 || "") + (e.q4 || "");
-      }
-      return s.toLowerCase();
-    };
-
-    const qTrim = (searchQuery || "").trim().toLowerCase();
-    /** 항목이 있으면 모바일·데스크톱 공통 카드 피드(스크롤) */
-    const cardFeedMode = fullEntryList.length > 0;
-    const cardFeedEntries =
-      cardFeedMode && qTrim
-        ? fullEntryList.filter((e) => getEntrySearchText(e).includes(qTrim))
-        : fullEntryList;
-
     const addPageHandler = () => {
       const today = toDateStr(new Date());
       ensureTabEntries(currentTabId);
@@ -828,68 +1145,33 @@ export function render() {
       addPageHandler();
     };
 
-    // ----- 본문: 스크롤 영역만 (사이드바 없음) -----
+    // ----- 본문: 스크롤 영역 — 일기 카드·본문 미리보기 없음(보고서로 채울 빈 영역)
     const contentArea = document.createElement("div");
     contentArea.className = "diary-content-area";
     const scrollWrap = document.createElement("div");
     scrollWrap.className = "diary-content-scroll";
-    const paper = document.createElement("div");
-    paper.className = currentTabId === "3" ? "" : "diary-paper";
-    const currentEntry = currentEntryId ? getEntryById(currentTabId, currentEntryId) : null;
-
-    if (cardFeedMode) {
-      if (qTrim && cardFeedEntries.length === 0) {
-        const noResult = document.createElement("div");
-        noResult.className = "diary-search-no-result";
-        noResult.textContent = "검색 결과가 없습니다.";
-        scrollWrap.appendChild(noResult);
-      } else {
-      cardFeedEntries.forEach((entry) => {
-        const card = document.createElement("div");
-        mountDiaryPaperForm(card, entry, currentTabId, {
-          readOnly: true,
-          showDelete: false,
-          feedCard: true,
-          onEdit: () => openDiaryEditModal(entry.id, currentTabId),
-        });
-        scrollWrap.appendChild(card);
-      });
-      }
-    } else if (currentTabId === "3" && currentEntry) {
-      mountDiaryPaperForm(paper, currentEntry, "3", {
-        readOnly: true,
-        showDelete: false,
-        onEdit: () => openDiaryEditModal(currentEntry.id, "3"),
-      });
-    } else if (currentTabId === "2" && currentEntry) {
-      mountDiaryPaperForm(paper, currentEntry, "2", {
-        readOnly: true,
-        showDelete: false,
-        onEdit: () => openDiaryEditModal(currentEntry.id, "2"),
-      });
-    } else if (currentTabId === "1" && currentEntry) {
-      mountDiaryPaperForm(paper, currentEntry, "1", {
-        readOnly: true,
-        showDelete: false,
-        onEdit: () => openDiaryEditModal(currentEntry.id, "1"),
-      });
-    }
-
-    if (!cardFeedMode) {
-      const showMainPaper =
-        (currentTabId === "3" && currentEntry) ||
-        (currentTabId === "2" && currentEntry) ||
-        (currentTabId === "1" && currentEntry);
-      if (showMainPaper) {
-        scrollWrap.appendChild(paper);
-      }
-    }
+    scrollWrap.setAttribute("data-lp-time-report-body", "");
     contentArea.appendChild(scrollWrap);
+    if (currentTabId === "3" && tab3ViewGranularity === "day") {
+      mountTimeReportDayDonut(
+        scrollWrap,
+        layoutWrap.dataset.tab3SelectedDate || tab3ReportAnchorDateStr,
+      );
+    }
     layout.appendChild(contentArea);
     layoutWrap.appendChild(layout);
 
     syncDiaryFooterSubtabs();
   }
+
+    granularityDayBtn.addEventListener("click", () => {
+      tab3ViewGranularity = "day";
+      renderLayout();
+    });
+    granularityMonthBtn.addEventListener("click", () => {
+      tab3ViewGranularity = "month";
+      renderLayout();
+    });
 
     mountDiaryFooterSubtabs();
     const initialList = ensureTabEntries(currentTabId);

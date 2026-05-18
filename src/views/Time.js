@@ -2021,6 +2021,57 @@ export function getTodayTimeLedgerValueSum() {
   return calcPeriodValueFromFiltered(rows, hourlyRate);
 }
 
+/**
+ * 시간사용 레포트(일별): 해당 날짜에서 수면·근무 기록을 제외하고,
+ * 생산·비생산 세부(category)별 시간 — 도넛 차트용.
+ */
+export function getDailyTimeReportDonutSnapshot(ymdTen) {
+  const key = String(ymdTen || "")
+    .replace(/\//g, "-")
+    .slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) {
+    return { segments: [], totalHours: 0, totalMinutesRounded: 0 };
+  }
+  const rows = loadTimeRows().filter((r) => {
+    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    return d === key;
+  });
+  const byCat = {};
+  rows.forEach((r) => {
+    const { category, productivity } = resolveRowCategoryProductivityForAudit(r);
+    const cat = (category || "").trim();
+    if (cat === "work" || cat === "sleep") return;
+    const p = (
+      String(productivity || "")
+        .trim()
+        .toLowerCase() || getProductivityFromCategory(cat)
+    ).trim();
+    if (p !== "productive" && p !== "nonproductive") return;
+    const hrs = parseTimeToHours(r.timeTracked);
+    if (hrs <= 0 || !Number.isFinite(hrs)) return;
+    const k = cat || "other";
+    byCat[k] = (byCat[k] || 0) + hrs;
+  });
+  const totalHours = Object.values(byCat).reduce((a, h) => a + h, 0);
+  const categoryLabel = (value) => {
+    if (!value || value === "other") return "미분류";
+    const opt = CATEGORY_OPTIONS.find((o) => o.value === value);
+    return opt?.label || value;
+  };
+  const segments = Object.entries(byCat)
+    .map(([catKey, hours]) => ({
+      key: catKey,
+      label: categoryLabel(catKey),
+      hours,
+    }))
+    .sort((a, b) => b.hours - a.hours);
+  return {
+    segments,
+    totalHours,
+    totalMinutesRounded: Math.round(totalHours * 60),
+  };
+}
+
 /** 홈 메뉴 금액: 부호·₩·숫자를 나눠 간격·접근성 라벨 제공 */
 export function getHomeMenuLedgerKrwParts(n) {
   const v = Number(n) || 0;

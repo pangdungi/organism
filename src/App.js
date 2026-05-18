@@ -142,8 +142,8 @@ const TABS = [
   },
   {
     id: "diary",
-    label: "감정일기",
-    mobileLabel: "감정일기",
+    label: "시간 레포트",
+    mobileLabel: "시간 레포트",
     icon: "/toolbaricons/menu-diary.png",
     sidebarSection: "main",
     sidebarOrder: 4,

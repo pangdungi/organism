@@ -21,6 +21,62 @@
   padding-right: calc(0.75rem + var(--lp-safe-right, 0px));
 }
 
+/* 시간사용 레포트(탭3): 데이·먼스 블록(토글+날짜) 세로 배치 · 본문 최하단이 아님 */
+.diary-top-tools.diary-top-tools--time-report-mode {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0;
+  padding-top: 0.15rem;
+}
+
+.diary-report-chrome[hidden] {
+  display: none !important;
+}
+
+.diary-report-chrome:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  box-sizing: border-box;
+  width: 100%;
+  gap: 0.35rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--cal-line-strong, rgba(58, 110, 168, 0.22));
+}
+
+.diary-report-chrome__toggle-row {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.diary-report-chrome__date-row {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.diary-top-tools.diary-top-tools--time-report-mode .diary-top-inline-search,
+.diary-top-tools.diary-top-tools--time-report-mode .calendar-nav-controls {
+  display: none !important;
+  margin: 0 !important;
+  flex: 0 0 0 !important;
+  min-width: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.diary-top-tools.diary-top-tools--time-report-mode .diary-report-granularity {
+  flex: 0 0 auto;
+  margin-inline: auto;
+}
+
 .diary-top-tools .calendar-nav-controls {
   flex-shrink: 0;
   margin-left: auto;
@@ -40,6 +96,52 @@
 .diary-top-tools .diary-top-inline-search .lp-search-bar__row {
   max-width: none;
   margin: 0;
+}
+
+/* 시간사용 레포트(탭3): DAY / MONTH 토글 — 캘린더 상단 버튼과 톤 통일 */
+.diary-report-granularity {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: stretch;
+  gap: 0;
+  border-radius: 0.5rem;
+  border: 1px solid var(--cal-line-strong, rgba(58, 110, 168, 0.22));
+  background: var(--cal-surface-muted, rgba(58, 110, 168, 0.06));
+  overflow: hidden;
+}
+
+.diary-report-granularity__seg {
+  appearance: none;
+  border: none;
+  margin: 0;
+  padding: 0.28rem 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  cursor: pointer;
+  color: var(--cal-text-muted, rgba(30, 61, 93, 0.52));
+  background: transparent;
+  font-family: inherit;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.diary-report-granularity__seg + .diary-report-granularity__seg {
+  box-shadow: inset 1px 0 0 var(--cal-line, rgba(58, 110, 168, 0.14));
+}
+
+.diary-report-granularity__seg.is-active {
+  color: var(--cal-text, #1a2d45);
+  background: var(--cal-surface, #fff);
+}
+
+.diary-report-granularity__seg:focus-visible {
+  outline: 2px solid var(--idea-navy, #1e4d7b);
+  outline-offset: 1px;
+  z-index: 1;
 }
 
 /* 일기 탭 루트: 본문 스크롤까지 flex 체인 */
@@ -89,6 +191,231 @@
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+/* 시간사용 레포트: 데이·먼스 아래 — Time 탭과 동일 lp-modal-datetime-card + date-native-wrap */
+.diary-time-report-date-bar {
+  flex-shrink: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.05rem 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+}
+
+.diary-report-chrome__date-row .diary-time-report-date-picker-card,
+.diary-report-chrome__date-row .diary-time-report-month-nav-card {
+  margin: 0 auto;
+  padding: 0;
+  border: none;
+  background: transparent !important;
+  box-shadow: none;
+}
+
+.diary-time-report-date-picker-row {
+  display: flex;
+  justify-content: center;
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
+}
+
+/* 일별: 표시 줄·입력 레이어만 — 배경·테두리 없음 */
+.diary-report-chrome__date-row .diary-time-report-date-picker-card .time-task-log-date-overlay,
+.diary-report-chrome__date-row
+  .diary-time-report-date-picker-card
+  [data-legacy~="time-task-log-date-overlay"] {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none;
+}
+
+.diary-report-chrome__date-row .diary-time-report-date-picker-card .time-task-log-date-native-wrap,
+.diary-report-chrome__date-row
+  .diary-time-report-date-picker-card
+  [data-legacy~="time-task-log-date-native-wrap"] {
+  width: fit-content !important;
+  flex: 0 0 auto;
+  min-width: 5rem;
+  margin-inline: auto;
+}
+
+/* 월별: ‹ · › 줄 전체 가운더 — 버튼·카드 무테두리 */
+.diary-time-report-month-nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.diary-time-report-month-nav-label {
+  flex: 0 0 auto;
+  min-width: 4rem;
+  text-align: center;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--lp-modal-navy, #1e4d7b);
+}
+
+.diary-time-report-month-nav-btn {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0.25rem 0.45rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--lp-modal-navy, #1e4d7b);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.diary-time-report-month-nav-btn:hover {
+  background: rgba(30, 77, 123, 0.08);
+}
+
+.diary-time-report-month-nav-btn:focus-visible {
+  outline: 2px solid var(--idea-navy, #1e4d7b);
+  outline-offset: 2px;
+}
+
+/* 시간 레포트 — 일별 카테고리 도넛(파스텔) · 참고 카드 레이아웃 */
+.diary-tr-donut-shell {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.6rem calc(0.5rem + var(--lp-safe-left, 0px)) 1rem calc(0.5rem + var(--lp-safe-right, 0px));
+}
+
+.diary-tr-donut-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1rem 1.25rem;
+  max-width: 24rem;
+  margin: 0 auto;
+  padding: 1rem 1.1rem;
+  background: #fff;
+  border-radius: 1rem;
+  border: none;
+  box-shadow: 0 2px 14px rgba(30, 61, 93, 0.08);
+  box-sizing: border-box;
+}
+
+.diary-tr-donut-viz {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.diary-tr-donut-ring-host {
+  position: relative;
+  width: 10.75rem;
+  height: 10.75rem;
+  flex-shrink: 0;
+}
+
+.diary-tr-donut-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  -webkit-mask: radial-gradient(circle, transparent 56%, #000 57%);
+  mask: radial-gradient(circle, transparent 56%, #000 57%);
+}
+
+.diary-tr-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  text-align: center;
+  padding: 0 0.5rem;
+  box-sizing: border-box;
+}
+
+.diary-tr-donut-center-caption {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: rgba(30, 61, 93, 0.55);
+  margin-bottom: 0.18rem;
+}
+
+.diary-tr-donut-center-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--cal-text, #1a2d45);
+  line-height: 1.25;
+}
+
+.diary-tr-donut-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1 1 9rem;
+  min-width: 8.5rem;
+  max-width: 12rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.diary-tr-donut-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: #334155;
+}
+
+.diary-tr-donut-legend-dot {
+  flex: 0 0 auto;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+}
+
+.diary-tr-donut-legend-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.diary-tr-donut-legend-pct {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: #475569;
+}
+
+.diary-tr-donut-legend-empty {
+  margin: 0;
+  padding: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #64748b;
+  max-width: 16rem;
 }
 
 /* 피드 카드 간격·카드 스타일은 daily.css */
