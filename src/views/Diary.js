@@ -14,11 +14,37 @@ import {
   TAB3_EMOTION_PLACEHOLDERS,
 } from "../diaryData.js";
 import { hydrateDiaryFromCloud, deleteDiaryEntryFromSupabase } from "../utils/diarySupabase.js";
+import {
+  pullTimeLedgerEntriesForDateRange,
+  readTimeLedgerPullRangeForKpiTabsYmd,
+} from "../utils/timeLedgerEntriesSupabase.js";
 import { getAppFooterActionsSlot, APP_FOOTER_ICON_BTN_CLASS } from "../utils/appFooterShell.js";
 import {
   formatIntegerMinutesDurationKo,
+  formatInvestReclaimWonDisplay,
+  formatLedgerLossKrwDisplay,
+  formatYmdDotsWithWeekdayKo,
+  getDailyInvestReclaimSnapshot,
+  getDailyProductiveCategoryInvestBarsSnapshot,
   getDailyTimeReportDonutSnapshot,
+  getDailyTimeReportSummaryGrid,
+  getMonthlyInvestReclaimSnapshot,
+  getMonthlyProductiveCategoryInvestBarsSnapshot,
+  getMonthlyTimeReportDonutSnapshot,
+  getMonthlyTimeReportSummaryGrid,
+  getTimeReportMonthInclusiveRange,
 } from "./Time.js";
+
+/** 요약 카드 아이콘 자리 — 파스텔(실제 아이콘은 사용자가 채움) */
+const SUMMARY_ICON_PASTELS = [
+  "#C7E2FF",
+  "#CDE8F7",
+  "#FBCFE8",
+  "#FDE68A",
+  "#BBF7D0",
+  "#DDD6FE",
+  "#FECACA",
+];
 
 /** 시간 레포트 일별 도넛 — 파스텔 순환 */
 const REPORT_DONUT_PASTELS = [
@@ -33,6 +59,15 @@ const REPORT_DONUT_PASTELS = [
   "#FDBA74",
   "#DDD6FE",
 ];
+
+/** 투자 탭 레포트 — 생산 카테고리 막대 채색(소비 도넛과 같은 톤) */
+const DIARY_PROD_CAT_BAR_FILL = {
+  dream: "#93C5FD",
+  happiness: "#FCA5A5",
+  sideincome: "#86EFAC",
+  health: "#C4B5FD",
+  other_prod: "#CBD5E1",
+};
 
 /** 탭 2 통제일기 Q&A 템플릿 */
 const TAB2_QA_TEMPLATE = [
@@ -49,15 +84,17 @@ const TAB2_QA_TEMPLATE = [
 
 /** 푸터·짧은 표기 */
 function diaryTabLabel(tabId) {
-  if (tabId === "3") return "시간사용 레포트";
-  if (tabId === "2") return "예산";
+  if (tabId === "3") return "소비";
+  if (tabId === "2") return "투자";
+  if (tabId === "4") return "예산";
   return "메모";
 }
 
 /** 모달 제목 등 긴 표기 */
 function diaryTabModalTitle(tabId) {
-  if (tabId === "3") return "시간사용 레포트";
-  if (tabId === "2") return "예산";
+  if (tabId === "3") return "소비";
+  if (tabId === "2") return "투자";
+  if (tabId === "4") return "예산";
   return "메모";
 }
 
@@ -84,6 +121,44 @@ function formatMonthSlashFromYmd(ymd) {
 function normalizeDiaryDateStr(dateVal) {
   if (!dateVal) return "";
   return String(dateVal).replace(/\//g, "-").slice(0, 10);
+}
+
+/** 소비 탭 일별 도넛 위 제목 — 오늘이면 「오늘」, 아니면 날짜표기 포함 */
+function timeReportDayDonutBlockTitle(ymdTen) {
+  const ten = normalizeDiaryDateStr(ymdTen);
+  if (!ten || ten.length < 10) return "하루 시간 사용";
+  if (ten === toDateStr(new Date())) return "오늘 하루 시간 사용";
+  const disp = formatDateDisplay(ten);
+  return disp ? `${disp} 하루 시간 사용` : "하루 시간 사용";
+}
+
+/** 소비 탭 월별 도넛 위 제목 — 이번 달이면 「이번 달」, 아니면 YYYY/MM */
+function timeReportMonthDonutBlockTitle(ymdTen) {
+  const ten = normalizeDiaryDateStr(ymdTen);
+  if (!ten || ten.length < 10) return "월별 시간 사용";
+  const ymAnchor = ten.slice(0, 7);
+  const today = toDateStr(new Date());
+  if (ymAnchor === today.slice(0, 7)) return "이번 달 시간 사용";
+  const disp = formatMonthSlashFromYmd(ten);
+  return disp ? `${disp} 시간 사용` : "월별 시간 사용";
+}
+
+/** 투자 탭 레포트 — 바이백 카드 기준 줄(일·월) */
+function timeReportInvestPeriodCaption(ymdTen, granularity) {
+  const ten = normalizeDiaryDateStr(ymdTen);
+  if (granularity === "month") {
+    const ym = ten.length >= 7 ? ten.slice(0, 7) : "";
+    const today = toDateStr(new Date());
+    const disp = formatMonthSlashFromYmd(ten);
+    if (!disp) return "조회 기간";
+    if (ym && ym === today.slice(0, 7)) return `이번 달 · ${disp}`;
+    return disp;
+  }
+  return (
+    formatYmdDotsWithWeekdayKo(ten) ||
+    (ten.length >= 10 ? formatDateDisplay(ten) : "") ||
+    "조회일"
+  );
 }
 
 /** 앵커 날짜에서 ±N달(일은 해당 월 말일에 맞춤) */
@@ -178,7 +253,7 @@ export function render() {
   const granularityBar = document.createElement("div");
   granularityBar.className = "diary-report-granularity";
   granularityBar.setAttribute("role", "toolbar");
-  granularityBar.setAttribute("aria-label", "시간사용 레포트 보기 단위");
+    granularityBar.setAttribute("aria-label", "데이·먼스 보기 단위");
   const granularityDayBtn = document.createElement("button");
   granularityDayBtn.type = "button";
   granularityDayBtn.className = "diary-report-granularity__seg";
@@ -230,8 +305,21 @@ export function render() {
   let currentEntryId = null;
   let searchQuery = "";
   let isComposing = false;
-  /** 탭 3 시간사용 레포트 상단 단위 토글 */
+  /** 탭 3 소비 보기 단위 */
   let tab3ViewGranularity = "day"; // "day" | "month"
+  /** 탭 2 투자 — 데이/먼스·날짜 앵커(소비와 동일 UI, 별도 저장) */
+  let tab2ViewGranularity = "day";
+  const LP_TAB2_REPORT_DATE_KEY = "lp_tab2_report_anchor_date";
+  let tab2ReportAnchorDateStr = (() => {
+    try {
+      const raw = sessionStorage.getItem(LP_TAB2_REPORT_DATE_KEY);
+      if (raw && /^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    } catch (_) {}
+    return toDateStr(new Date());
+  })();
+
+  /** pull 완료 후 renderLayout 한 번 — 동기화 루프 방지 */
+  let reportLedgerRefreshFromPull = false;
   const LP_TAB3_REPORT_DATE_KEY = "lp_tab3_report_anchor_date";
   let tab3ReportAnchorDateStr = (() => {
     try {
@@ -244,6 +332,12 @@ export function render() {
   function persistTab3ReportAnchorDate() {
     try {
       sessionStorage.setItem(LP_TAB3_REPORT_DATE_KEY, tab3ReportAnchorDateStr);
+    } catch (_) {}
+  }
+
+  function persistTab2ReportAnchorDate() {
+    try {
+      sessionStorage.setItem(LP_TAB2_REPORT_DATE_KEY, tab2ReportAnchorDateStr);
     } catch (_) {}
   }
 
@@ -274,6 +368,9 @@ export function render() {
       ensureTab3Entries(entries);
       const list = entries["3"].entries || [];
       return [...list].sort(compareDiaryEntriesNewestFirst);
+    }
+    if (tabId === "4" && !entries["4"]) {
+      entries["4"] = { entries: [] };
     }
     const tab = entries[tabId];
     const needsMigration = !tab || !Array.isArray(tab) && !tab.entries;
@@ -600,7 +697,7 @@ export function render() {
       });
       return;
     }
-    if (tabId === "1") {
+    if (tabId === "1" || tabId === "4") {
       paper.className =
         (lpForm ? "diary-paper diary-modal-paper-root" : "diary-paper") + (feedCard ? " diary-feed-card" : "");
       const titleRow = document.createElement("div");
@@ -820,7 +917,8 @@ export function render() {
     document.body.appendChild(modal);
   }
 
-  const DIARY_FOOTER_TAB_ORDER = ["3", "2", "1"];
+  /** 소비 · 투자 · 메모 · 예산(메모 옆, 우선 빈 화면) */
+  const DIARY_FOOTER_TAB_ORDER = ["3", "2", "1", "4"];
 
   function syncDiaryFooterSubtabs() {
     document.querySelectorAll("[data-diary-subtab]").forEach((b) => {
@@ -866,12 +964,296 @@ export function render() {
     return out;
   }
 
-  /** 데이 모드 본문: 수면·근무 제외 세부 카테고리 도넛 */
-  function mountTimeReportDayDonut(scrollWrap, ymdTen) {
-    const snap = getDailyTimeReportDonutSnapshot(ymdTen);
+  const SVG_NS = "http://www.w3.org/2000/svg";
+
+  /** 도넛 윗점(-90°) 기준 반시계향 호 조각(path d). 전체 원(≈360°)은 두 번으로 나눔 */
+  function annularSectorPath(cx, cy, rOut, rIn, a0, a1) {
+    const span = a1 - a0;
+    if (span <= 1e-9) return "";
+    const twoPi = Math.PI * 2;
+    if (span >= twoPi - 1e-5) {
+      const h = annularSectorPath(cx, cy, rOut, rIn, a0, a0 + Math.PI);
+      const h2 = annularSectorPath(cx, cy, rOut, rIn, a0 + Math.PI, a0 + twoPi);
+      return `${h} ${h2}`;
+    }
+    const large = span > Math.PI ? 1 : 0;
+    const x1 = cx + rOut * Math.cos(a0);
+    const y1 = cy + rOut * Math.sin(a0);
+    const x2 = cx + rOut * Math.cos(a1);
+    const y2 = cy + rOut * Math.sin(a1);
+    const x3 = cx + rIn * Math.cos(a1);
+    const y3 = cy + rIn * Math.sin(a1);
+    const x4 = cx + rIn * Math.cos(a0);
+    const y4 = cy + rIn * Math.sin(a0);
+    return [
+      "M",
+      x1,
+      y1,
+      "A",
+      rOut,
+      rOut,
+      0,
+      large,
+      1,
+      x2,
+      y2,
+      "L",
+      x3,
+      y3,
+      "A",
+      rIn,
+      rIn,
+      0,
+      large,
+      0,
+      x4,
+      y4,
+      "Z",
+    ].join(" ");
+  }
+
+  /** 투자 탭: 가계부와 동일 바이백(다시 받을 금액) + 집계 시간 */
+  function mountTimeReportInvestBank(scrollWrap, ymdTen, granularity) {
+    const snap =
+      granularity === "month"
+        ? getMonthlyInvestReclaimSnapshot(ymdTen)
+        : getDailyInvestReclaimSnapshot(ymdTen);
+
+    const section = document.createElement("section");
+    section.className = "diary-tr-invest-shell";
+    section.setAttribute("aria-label", "투자 바이백 요약");
+
+    const card = document.createElement("div");
+    card.className = "diary-tr-invest-card";
+
+    const eyebrow = document.createElement("p");
+    eyebrow.className = "diary-tr-invest-eyebrow";
+    eyebrow.textContent = "시간 가계부 · 투자(바이백)";
+
+    const period = document.createElement("p");
+    period.className = "diary-tr-invest-period";
+    period.textContent = timeReportInvestPeriodCaption(ymdTen, granularity);
+
+    const reclaimLbl = document.createElement("p");
+    reclaimLbl.className = "diary-tr-invest-reclaim-caption";
+    reclaimLbl.textContent = "다시 받을 금액";
+
+    const reclaimAmt = document.createElement("p");
+    reclaimAmt.className = "diary-tr-invest-reclaim-amount";
+    reclaimAmt.textContent = formatInvestReclaimWonDisplay(snap.reclaimWon);
+
+    const timeStrip = document.createElement("div");
+    timeStrip.className = "diary-tr-invest-time-strip";
+    const tsl = document.createElement("span");
+    tsl.className = "diary-tr-invest-time-strip-label";
+    tsl.textContent = "투자로 집계된 시간 합계";
+    const tsv = document.createElement("span");
+    tsv.className = "diary-tr-invest-time-strip-value";
+    tsv.textContent = formatIntegerMinutesDurationKo(snap.reclaimMinutesRounded);
+    timeStrip.appendChild(tsl);
+    timeStrip.appendChild(tsv);
+
+    card.appendChild(eyebrow);
+    card.appendChild(period);
+    card.appendChild(reclaimLbl);
+    card.appendChild(reclaimAmt);
+    card.appendChild(timeStrip);
+    if (!(snap.hourlyRate > 0)) {
+      const hint = document.createElement("p");
+      hint.className = "diary-tr-invest-hint";
+      hint.textContent = "시급을 입력하면 원화가 계산됩니다.";
+      card.appendChild(hint);
+    }
+    section.appendChild(card);
+    scrollWrap.appendChild(section);
+  }
+
+  /** 투자 탭: 생산 과제 카테고리별 비중(가로 막대) */
+  function mountTimeReportProductiveBars(scrollWrap, ymdTen, granularity) {
+    const snap =
+      granularity === "month"
+        ? getMonthlyProductiveCategoryInvestBarsSnapshot(ymdTen)
+        : getDailyProductiveCategoryInvestBarsSnapshot(ymdTen);
+
+    const section = document.createElement("section");
+    section.className = "diary-tr-prod-bars-shell";
+    section.setAttribute("aria-label", "생산 과제 카테고리별 투자 비중");
+
+    const h2 = document.createElement("h2");
+    h2.className = "diary-tr-prod-bars-heading";
+    h2.textContent = "생산 과제 · 카테고리별 투자 비중";
+
+    const card = document.createElement("div");
+    card.className = "diary-tr-prod-bars-card";
+    if (!snap.totalProductiveHours || snap.totalProductiveHours <= 0) {
+      const empty = document.createElement("p");
+      empty.className = "diary-tr-prod-bars-empty";
+      empty.textContent = "표시할 생산 과제 기록이 없습니다.";
+      card.appendChild(empty);
+    } else {
+      snap.segments.forEach((seg) => {
+        const row = document.createElement("div");
+        row.className = "diary-tr-prod-bar-row";
+        const meta = document.createElement("div");
+        meta.className = "diary-tr-prod-bar-meta";
+        const lab = document.createElement("span");
+        lab.className = "diary-tr-prod-bar-label";
+        lab.textContent = seg.label;
+        const pct = document.createElement("span");
+        pct.className = "diary-tr-prod-bar-pct";
+        pct.textContent = `${seg.pctRounded}%`;
+        meta.appendChild(lab);
+        meta.appendChild(pct);
+        const track = document.createElement("div");
+        track.className = "diary-tr-prod-bar-track";
+        track.setAttribute("aria-hidden", "true");
+        const fill = document.createElement("div");
+        fill.className = "diary-tr-prod-bar-fill";
+        const wPct = Math.min(100, Math.max(0, seg.pct));
+        fill.style.width = `${wPct}%`;
+        fill.style.background =
+          DIARY_PROD_CAT_BAR_FILL[seg.categoryKey] || DIARY_PROD_CAT_BAR_FILL.other_prod;
+        track.appendChild(fill);
+        row.appendChild(meta);
+        row.appendChild(track);
+        card.appendChild(row);
+      });
+    }
+
+    section.appendChild(h2);
+    section.appendChild(card);
+    scrollWrap.appendChild(section);
+  }
+
+  /** 소비 탭 일·월 공통: 아이콘 자리(파스텔) + 제목 + 시간·(원) 요약 카드 그리드 */
+  function mountTimeReportSummaryGrid(scrollWrap, ymdTen, granularity) {
+    const g =
+      granularity === "month"
+        ? getMonthlyTimeReportSummaryGrid(ymdTen)
+        : getDailyTimeReportSummaryGrid(ymdTen);
+    const section = document.createElement("section");
+    section.className = "diary-tr-summary-shell";
+    section.setAttribute(
+      "aria-label",
+      granularity === "month" ? "선택한 달의 시간·행동 요약" : "선택한 날의 시간·행동 요약",
+    );
+
+    const grid = document.createElement("div");
+    grid.className = "diary-tr-summary-grid";
+
+    const showMoney = g.hourlyRate > 0;
+    /** @type {Array<{ title: string, minutes: number, lossWon?: number | null, meals?: string[] }>} */
+    const specs = [
+      { title: "근무시간", minutes: g.workMinutes },
+      { title: "수면시간", minutes: g.sleepMinutes },
+      {
+        title: "미디어 시청시간",
+        minutes: g.mediaMinutes,
+        lossWon: showMoney ? g.mediaLossWon : null,
+      },
+      { title: "쾌락만 쫓은 시간", minutes: g.pleasureMinutes },
+      {
+        title: "건강을 해치는데 쓴 시간",
+        minutes: g.unhealthyMinutes,
+        meals: g.unhealthyMealDetails.length ? g.unhealthyMealDetails : undefined,
+      },
+      {
+        title: "시간도 잃고, 돈도 잃고",
+        minutes: g.moneylosingMinutes,
+        lossWon: showMoney ? g.moneylosingLossWon : null,
+      },
+      {
+        title: "도파민 충전료",
+        minutes: g.pleasureMinutes,
+        lossWon: showMoney ? g.pleasureLossWon : null,
+      },
+    ];
+
+    specs.forEach((c, i) => {
+      const art = document.createElement("article");
+      art.className = "diary-tr-summary-card";
+
+      const iconSlot = document.createElement("div");
+      iconSlot.className = "diary-tr-summary-icon-slot";
+      iconSlot.style.backgroundColor = SUMMARY_ICON_PASTELS[i % SUMMARY_ICON_PASTELS.length];
+      iconSlot.setAttribute("aria-hidden", "true");
+
+      const h = document.createElement("h3");
+      h.className = "diary-tr-summary-title";
+      h.textContent = c.title;
+
+      const timeEl = document.createElement("p");
+      timeEl.className = "diary-tr-summary-time";
+      timeEl.textContent = formatIntegerMinutesDurationKo(c.minutes);
+
+      art.appendChild(iconSlot);
+      art.appendChild(h);
+      art.appendChild(timeEl);
+
+      if (c.lossWon != null) {
+        const moneyEl = document.createElement("p");
+        moneyEl.className = "diary-tr-summary-money";
+        moneyEl.textContent = formatLedgerLossKrwDisplay(c.lossWon);
+        art.appendChild(moneyEl);
+      }
+
+      if (Array.isArray(c.meals) && c.meals.length > 0) {
+        const ul = document.createElement("ul");
+        ul.className = "diary-tr-summary-meals";
+        c.meals.forEach((line) => {
+          const li = document.createElement("li");
+          li.textContent = line;
+          ul.appendChild(li);
+        });
+        art.appendChild(ul);
+      }
+
+      grid.appendChild(art);
+    });
+
+    section.appendChild(grid);
+    scrollWrap.appendChild(section);
+  }
+
+  /** 도넛 카드 아래 · 요약 그리드 위 — 구분선 + 소제목 */
+  function mountTimeReportConsumptionSectionHeader(scrollWrap) {
+    const block = document.createElement("div");
+    block.className = "diary-tr-consumption-section-header";
+
+    const rule = document.createElement("hr");
+    rule.className = "diary-tr-consumption-section-rule";
+    rule.setAttribute("aria-hidden", "true");
+
+    const h2 = document.createElement("h2");
+    h2.className = "diary-tr-consumption-section-title";
+    h2.textContent = "시간 소비 리포트";
+
+    block.appendChild(rule);
+    block.appendChild(h2);
+    scrollWrap.appendChild(block);
+  }
+
+  /** 소비 탭 일·월 공통 본문: 수면·근무 제외 세부 카테고리 도넛 */
+  function mountTimeReportDonut(scrollWrap, ymdTen, granularity) {
+    const snap =
+      granularity === "month"
+        ? getMonthlyTimeReportDonutSnapshot(ymdTen)
+        : getDailyTimeReportDonutSnapshot(ymdTen);
     const section = document.createElement("section");
     section.className = "diary-tr-donut-shell";
-    section.setAttribute("aria-label", "선택한 날의 생산·비생산 카테고리별 시간");
+
+    const headingId =
+      granularity === "month"
+        ? "diary-time-report-month-donut-heading"
+        : "diary-time-report-day-donut-heading";
+    const blockTitle = document.createElement("h2");
+    blockTitle.className = "diary-tr-donut-block-heading";
+    blockTitle.id = headingId;
+    blockTitle.textContent =
+      granularity === "month"
+        ? timeReportMonthDonutBlockTitle(ymdTen)
+        : timeReportDayDonutBlockTitle(ymdTen);
+    section.setAttribute("aria-labelledby", headingId);
 
     const card = document.createElement("div");
     card.className = "diary-tr-donut-card";
@@ -882,9 +1264,10 @@ export function render() {
     const host = document.createElement("div");
     host.className = "diary-tr-donut-ring-host";
 
-    const ring = document.createElement("div");
-    ring.className = "diary-tr-donut-ring";
-    ring.setAttribute("aria-hidden", "true");
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("viewBox", "0 0 200 200");
+    svg.classList.add("diary-tr-donut-svg");
+    svg.setAttribute("aria-hidden", "true");
 
     const center = document.createElement("div");
     center.className = "diary-tr-donut-center";
@@ -899,7 +1282,7 @@ export function render() {
     center.appendChild(cap);
     center.appendChild(strong);
 
-    host.appendChild(ring);
+    host.appendChild(svg);
     host.appendChild(center);
     viz.appendChild(host);
 
@@ -909,11 +1292,20 @@ export function render() {
     const totalH = snap.totalHours;
     if (!totalH || totalH <= 0) {
       strong.textContent = "—";
-      ring.style.background = "#e2e8f0";
+      const circ = document.createElementNS(SVG_NS, "circle");
+      circ.setAttribute("cx", "100");
+      circ.setAttribute("cy", "100");
+      circ.setAttribute("r", "71");
+      circ.setAttribute("fill", "none");
+      circ.setAttribute("stroke", "#e2e8f0");
+      circ.setAttribute("stroke-width", "42");
+      svg.appendChild(circ);
       const li = document.createElement("li");
       li.className = "diary-tr-donut-legend-empty";
       li.textContent =
-        "수면·근무를 뺀 뒤 집계할 생산·비생산 카테고리 시간이 없습니다. 시간가계부에서 해당 날짜를 기록해 보세요.";
+        granularity === "month"
+          ? "수면·근무를 뺀 뒤 집계할 생산·비생산 카테고리 시간이 없습니다. 시간가계부에서 해당 달 기록을 모아 두면 여기 표시됩니다."
+          : "수면·근무를 뺀 뒤 집계할 생산·비생산 카테고리 시간이 없습니다. 시간가계부에서 해당 날짜를 기록해 보세요.";
       legend.appendChild(li);
     } else {
       strong.textContent = formatIntegerMinutesDurationKo(snap.totalMinutesRounded);
@@ -924,14 +1316,40 @@ export function render() {
         totalH,
       );
 
-      let deg = 0;
-      const parts = [];
+      const rOut = 92;
+      const rIn = 48;
+      let angle = -Math.PI / 2;
+
       segs.forEach((s, i) => {
-        const spanDeg = (s.hours / totalH) * 360;
-        parts.push(`${colors[i]} ${deg}deg ${deg + spanDeg}deg`);
-        deg += spanDeg;
+        const span = (s.hours / totalH) * 2 * Math.PI;
+        const a0 = angle;
+        const a1 = angle + span;
+        const d = annularSectorPath(100, 100, rOut, rIn, a0, a1);
+        if (d) {
+          const path = document.createElementNS(SVG_NS, "path");
+          path.setAttribute("d", d);
+          path.setAttribute("fill", colors[i]);
+          svg.appendChild(path);
+
+          const showPct =
+            span >= 0.18 && (pcts[i] >= 5 || (segs.length <= 3 && pcts[i] >= 1));
+          if (showPct) {
+            const mid = (a0 + a1) / 2;
+            const tr = (rOut + rIn) / 2;
+            const tx = 100 + tr * Math.cos(mid);
+            const ty = 100 + tr * Math.sin(mid);
+            const t = document.createElementNS(SVG_NS, "text");
+            t.setAttribute("x", String(tx));
+            t.setAttribute("y", String(ty));
+            t.setAttribute("text-anchor", "middle");
+            t.setAttribute("dominant-baseline", "middle");
+            t.classList.add("diary-tr-donut-slice-pct");
+            t.textContent = `${pcts[i]}%`;
+            svg.appendChild(t);
+          }
+        }
+        angle = a1;
       });
-      ring.style.background = `conic-gradient(${parts.join(", ")})`;
 
       segs.forEach((s, i) => {
         const li = document.createElement("li");
@@ -942,39 +1360,47 @@ export function render() {
         const lbl = document.createElement("span");
         lbl.className = "diary-tr-donut-legend-label";
         lbl.textContent = s.label;
-        const pctEl = document.createElement("span");
-        pctEl.className = "diary-tr-donut-legend-pct";
-        pctEl.textContent = `${pcts[i]}%`;
         li.appendChild(dot);
         li.appendChild(lbl);
-        li.appendChild(pctEl);
         legend.appendChild(li);
       });
     }
 
     card.appendChild(viz);
     card.appendChild(legend);
+    section.appendChild(blockTitle);
     section.appendChild(card);
     scrollWrap.appendChild(section);
   }
 
-  /** 시간사용 레포트: 공용 날짜 UI — 데이: time-task-log-date-native-wrap 패턴 · 먼스: ‹ › 달 이동 */
+  /** 투자·소비 공통: 데이 time-task-log-date-native-wrap · 먼스 ‹ › (현재 탭별 앵커) */
   function buildTimeReportDateBar() {
     const bar = document.createElement("div");
     bar.className = "diary-time-report-date-bar";
     bar.setAttribute("role", "group");
     bar.setAttribute("aria-label", "보고서 기준 날짜");
 
-    let anchor = normalizeDiaryDateStr(tab3ReportAnchorDateStr);
+    const useTab2 = currentTabId === "2";
+    let anchor = normalizeDiaryDateStr(
+      useTab2 ? tab2ReportAnchorDateStr : tab3ReportAnchorDateStr,
+    );
     if (!anchor || anchor.length < 10) {
       anchor = toDateStr(new Date());
-      tab3ReportAnchorDateStr = anchor;
-      persistTab3ReportAnchorDate();
+      if (useTab2) {
+        tab2ReportAnchorDateStr = anchor;
+        persistTab2ReportAnchorDate();
+      } else {
+        tab3ReportAnchorDateStr = anchor;
+        persistTab3ReportAnchorDate();
+      }
     } else {
-      tab3ReportAnchorDateStr = anchor;
+      if (useTab2) tab2ReportAnchorDateStr = anchor;
+      else tab3ReportAnchorDateStr = anchor;
     }
 
-    const isMonth = tab3ViewGranularity === "month";
+    const isMonth = useTab2
+      ? tab2ViewGranularity === "month"
+      : tab3ViewGranularity === "month";
 
     if (!isMonth) {
       const card = document.createElement("div");
@@ -1008,8 +1434,13 @@ export function render() {
       dateInp.addEventListener("change", () => {
         const v = dateInp.value;
         if (!v) return;
-        tab3ReportAnchorDateStr = v;
-        persistTab3ReportAnchorDate();
+        if (useTab2) {
+          tab2ReportAnchorDateStr = v;
+          persistTab2ReportAnchorDate();
+        } else {
+          tab3ReportAnchorDateStr = v;
+          persistTab3ReportAnchorDate();
+        }
         syncOverlay();
         renderLayout();
       });
@@ -1047,8 +1478,14 @@ export function render() {
     nextBtn.textContent = "›";
 
     const shift = (delta) => {
-      tab3ReportAnchorDateStr = shiftCalendarMonthBy(anchor, delta);
-      persistTab3ReportAnchorDate();
+      const next = shiftCalendarMonthBy(anchor, delta);
+      if (useTab2) {
+        tab2ReportAnchorDateStr = next;
+        persistTab2ReportAnchorDate();
+      } else {
+        tab3ReportAnchorDateStr = next;
+        persistTab3ReportAnchorDate();
+      }
       renderLayout();
     };
 
@@ -1066,38 +1503,57 @@ export function render() {
   function renderLayout() {
     layoutWrap.dataset.diaryTab = currentTabId;
     layoutWrap.innerHTML = "";
-    const isTabReport = currentTabId === "3";
-    topTools.classList.toggle("diary-top-tools--time-report-mode", isTabReport);
-    searchBar.hidden = isTabReport;
-    reportChrome.hidden = !isTabReport;
-    topToolsNavControls.hidden = isTabReport;
-    topAddBtn.hidden = isTabReport;
+    const showReportChrome = currentTabId === "2" || currentTabId === "3";
+    const isConsumptionTab = currentTabId === "3";
+    topTools.classList.toggle("diary-top-tools--time-report-mode", showReportChrome);
+    searchBar.hidden = showReportChrome;
+    reportChrome.hidden = !showReportChrome;
+    topToolsNavControls.hidden = isConsumptionTab;
+    /* 예산(탭4): 우선 빈 화면 — 새 글 + 숨김 */
+    topAddBtn.hidden = isConsumptionTab || currentTabId === "4";
 
     reportChromeDateRow.replaceChildren();
-    if (isTabReport) {
+    if (showReportChrome) {
       reportChromeDateRow.appendChild(buildTimeReportDateBar());
     }
-    if (!isTabReport) {
+    if (!showReportChrome) {
       searchInput.value = searchQuery;
       searchInput.placeholder = "날짜·내용 검색...";
     }
-    const gNow = tab3ViewGranularity === "month" ? "month" : "day";
+    let gNow = "day";
+    if (currentTabId === "2") {
+      gNow = tab2ViewGranularity === "month" ? "month" : "day";
+    } else if (currentTabId === "3") {
+      gNow = tab3ViewGranularity === "month" ? "month" : "day";
+    }
     granularityDayBtn.classList.toggle("is-active", gNow === "day");
     granularityMonthBtn.classList.toggle("is-active", gNow === "month");
     granularityDayBtn.setAttribute("aria-pressed", gNow === "day" ? "true" : "false");
     granularityMonthBtn.setAttribute("aria-pressed", gNow === "month" ? "true" : "false");
-    if (isTabReport) {
+
+    delete layoutWrap.dataset.tab2Granularity;
+    delete layoutWrap.dataset.tab2SelectedDate;
+    delete layoutWrap.dataset.tab3Granularity;
+    delete layoutWrap.dataset.tab3SelectedDate;
+
+    if (currentTabId === "2") {
+      layoutWrap.dataset.tab2Granularity = gNow;
+      let da2 = normalizeDiaryDateStr(tab2ReportAnchorDateStr);
+      if (!da2 || da2.length < 10) {
+        da2 = toDateStr(new Date());
+        tab2ReportAnchorDateStr = da2;
+        persistTab2ReportAnchorDate();
+      }
+      layoutWrap.dataset.tab2SelectedDate = da2;
+    } else if (currentTabId === "3") {
       layoutWrap.dataset.tab3Granularity = gNow;
-      let da = normalizeDiaryDateStr(tab3ReportAnchorDateStr);
-      if (!da || da.length < 10) {
-        da = toDateStr(new Date());
-        tab3ReportAnchorDateStr = da;
+      let da3 = normalizeDiaryDateStr(tab3ReportAnchorDateStr);
+      if (!da3 || da3.length < 10) {
+        da3 = toDateStr(new Date());
+        tab3ReportAnchorDateStr = da3;
         persistTab3ReportAnchorDate();
       }
-      layoutWrap.dataset.tab3SelectedDate = da;
-    } else {
-      delete layoutWrap.dataset.tab3Granularity;
-      delete layoutWrap.dataset.tab3SelectedDate;
+      layoutWrap.dataset.tab3SelectedDate = da3;
     }
 
     const mobile = isDiaryMobileViewport();
@@ -1125,6 +1581,13 @@ export function render() {
 
     const addPageHandler = () => {
       const today = toDateStr(new Date());
+      const tab2PickDate =
+        currentTabId === "2"
+          ? (() => {
+              const y = normalizeDiaryDateStr(tab2ReportAnchorDateStr);
+              return y && y.length >= 10 ? y : today;
+            })()
+          : null;
       ensureTabEntries(currentTabId);
       const rawList = getTabEntriesRaw(currentTabId);
       const id = newDiaryEntryId();
@@ -1133,10 +1596,13 @@ export function render() {
           ? { id, date: today, title: "제목없음", q1: "", q2: "", q3: "", q4: "" }
           : {
               id,
-              date: today,
+              date: currentTabId === "2" && tab2PickDate ? tab2PickDate : today,
               title: "제목없음",
               content: "",
-              qa: currentTabId === "2" ? Object.fromEntries(TAB2_QA_TEMPLATE.map((_, i) => [String(i), ""])) : undefined,
+              qa:
+                currentTabId === "2"
+                  ? Object.fromEntries(TAB2_QA_TEMPLATE.map((_, i) => [String(i), ""]))
+                  : undefined,
             };
       openDiaryComposeModal(newEntry, currentTabId, { draft: true });
     };
@@ -1150,13 +1616,131 @@ export function render() {
     contentArea.className = "diary-content-area";
     const scrollWrap = document.createElement("div");
     scrollWrap.className = "diary-content-scroll";
-    scrollWrap.setAttribute("data-lp-time-report-body", "");
+    const showTab3ConsumptionReport =
+      currentTabId === "3" &&
+      (tab3ViewGranularity === "day" || tab3ViewGranularity === "month");
+    const showTab2InvestReport =
+      currentTabId === "2" &&
+      (tab2ViewGranularity === "day" || tab2ViewGranularity === "month");
+
+    if (showTab3ConsumptionReport || showTab2InvestReport) {
+      scrollWrap.setAttribute("data-lp-time-report-body", "");
+    }
     contentArea.appendChild(scrollWrap);
-    if (currentTabId === "3" && tab3ViewGranularity === "day") {
-      mountTimeReportDayDonut(
-        scrollWrap,
-        layoutWrap.dataset.tab3SelectedDate || tab3ReportAnchorDateStr,
-      );
+
+    if (showTab2InvestReport) {
+      const ymd = layoutWrap.dataset.tab2SelectedDate || tab2ReportAnchorDateStr;
+      const g = tab2ViewGranularity === "month" ? "month" : "day";
+      mountTimeReportInvestBank(scrollWrap, ymd, g);
+      mountTimeReportProductiveBars(scrollWrap, ymd, g);
+
+      if (!reportLedgerRefreshFromPull) {
+        const k = readTimeLedgerPullRangeForKpiTabsYmd();
+        let rs = k.rangeStart;
+        let re = k.rangeEnd;
+        const yTen = normalizeDiaryDateStr(ymd);
+        if (g === "day") {
+          if (/^\d{4}-\d{2}-\d{2}$/.test(yTen)) {
+            if (yTen < rs) rs = yTen;
+            if (yTen > re) re = yTen;
+          }
+        } else if (/^\d{4}-\d{2}-\d{2}$/.test(yTen)) {
+          const monthRng = getTimeReportMonthInclusiveRange(yTen);
+          if (monthRng) {
+            if (monthRng.start < rs) rs = monthRng.start;
+            if (monthRng.end > re) re = monthRng.end;
+          }
+        }
+        const anchorsAtStart = {
+          tabId: currentTabId,
+          granularity: tab2ViewGranularity,
+          ymd: yTen,
+          monthYm:
+            g === "month" && /^\d{4}-\d{2}-\d{2}$/.test(yTen) ? yTen.slice(0, 7) : null,
+        };
+        void pullTimeLedgerEntriesForDateRange(rs, re).finally(() => {
+          if (
+            anchorsAtStart.tabId !== currentTabId ||
+            anchorsAtStart.granularity !== tab2ViewGranularity
+          ) {
+            return;
+          }
+          if (anchorsAtStart.monthYm) {
+            const curYm = normalizeDiaryDateStr(tab2ReportAnchorDateStr).slice(0, 7);
+            if (curYm !== anchorsAtStart.monthYm) return;
+          } else if (
+            anchorsAtStart.ymd &&
+            /^\d{4}-\d{2}-\d{2}$/.test(normalizeDiaryDateStr(tab2ReportAnchorDateStr)) &&
+            anchorsAtStart.ymd !== normalizeDiaryDateStr(tab2ReportAnchorDateStr)
+          ) {
+            return;
+          }
+          try {
+            reportLedgerRefreshFromPull = true;
+            renderLayout();
+          } finally {
+            reportLedgerRefreshFromPull = false;
+          }
+        });
+      }
+    }
+
+    if (showTab3ConsumptionReport) {
+      const ymd = layoutWrap.dataset.tab3SelectedDate || tab3ReportAnchorDateStr;
+      const g = tab3ViewGranularity === "month" ? "month" : "day";
+      mountTimeReportDonut(scrollWrap, ymd, g);
+      mountTimeReportConsumptionSectionHeader(scrollWrap);
+      mountTimeReportSummaryGrid(scrollWrap, ymd, g);
+
+      if (!reportLedgerRefreshFromPull) {
+        const k = readTimeLedgerPullRangeForKpiTabsYmd();
+        let rs = k.rangeStart;
+        let re = k.rangeEnd;
+        const yTen = normalizeDiaryDateStr(ymd);
+        if (g === "day") {
+          if (/^\d{4}-\d{2}-\d{2}$/.test(yTen)) {
+            if (yTen < rs) rs = yTen;
+            if (yTen > re) re = yTen;
+          }
+        } else if (/^\d{4}-\d{2}-\d{2}$/.test(yTen)) {
+          const monthRng = getTimeReportMonthInclusiveRange(yTen);
+          if (monthRng) {
+            if (monthRng.start < rs) rs = monthRng.start;
+            if (monthRng.end > re) re = monthRng.end;
+          }
+        }
+        const anchorsAtStart = {
+          tabId: currentTabId,
+          granularity: tab3ViewGranularity,
+          ymd: yTen,
+          monthYm:
+            g === "month" && /^\d{4}-\d{2}-\d{2}$/.test(yTen) ? yTen.slice(0, 7) : null,
+        };
+        void pullTimeLedgerEntriesForDateRange(rs, re).finally(() => {
+          if (
+            anchorsAtStart.tabId !== currentTabId ||
+            anchorsAtStart.granularity !== tab3ViewGranularity
+          ) {
+            return;
+          }
+          if (anchorsAtStart.monthYm) {
+            const curYm = normalizeDiaryDateStr(tab3ReportAnchorDateStr).slice(0, 7);
+            if (curYm !== anchorsAtStart.monthYm) return;
+          } else if (
+            anchorsAtStart.ymd &&
+            /^\d{4}-\d{2}-\d{2}$/.test(normalizeDiaryDateStr(tab3ReportAnchorDateStr)) &&
+            anchorsAtStart.ymd !== normalizeDiaryDateStr(tab3ReportAnchorDateStr)
+          ) {
+            return;
+          }
+          try {
+            reportLedgerRefreshFromPull = true;
+            renderLayout();
+          } finally {
+            reportLedgerRefreshFromPull = false;
+          }
+        });
+      }
     }
     layout.appendChild(contentArea);
     layoutWrap.appendChild(layout);
@@ -1165,11 +1749,13 @@ export function render() {
   }
 
     granularityDayBtn.addEventListener("click", () => {
-      tab3ViewGranularity = "day";
+      if (currentTabId === "2") tab2ViewGranularity = "day";
+      else tab3ViewGranularity = "day";
       renderLayout();
     });
     granularityMonthBtn.addEventListener("click", () => {
-      tab3ViewGranularity = "month";
+      if (currentTabId === "2") tab2ViewGranularity = "month";
+      else tab3ViewGranularity = "month";
       renderLayout();
     });
 

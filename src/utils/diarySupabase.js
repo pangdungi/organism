@@ -39,6 +39,7 @@ function emptyDiaryShape() {
     "1": { entries: [] },
     "2": { entries: [] },
     "3": { entries: [] },
+    "4": { entries: [] },
   };
 }
 
@@ -99,7 +100,7 @@ export function rowsToDiaryEntries(rows) {
     const entry = payloadToEntry(tabId, d, row.payload, row.id);
     out[tabId].entries.push(entry);
   }
-  for (const tid of ["1", "2", "3"]) {
+  for (const tid of ["1", "2", "3", "4"]) {
     out[tid].entries = sortEntriesList(out[tid].entries);
   }
   return out;
@@ -168,6 +169,10 @@ export function mergeDiaryFromServerSnapshot(local, serverRowsFlat) {
     }
     out[tabId].entries = sortEntriesList([...byId.values()]);
   }
+  const tab4List = Array.isArray(local?.["4"]?.entries)
+    ? local["4"].entries.map((e) => JSON.parse(JSON.stringify(e)))
+    : [];
+  out["4"] = { entries: sortEntriesList(tab4List) };
   return out;
 }
 

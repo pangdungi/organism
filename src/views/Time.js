@@ -2022,20 +2022,9 @@ export function getTodayTimeLedgerValueSum() {
 }
 
 /**
- * 시간사용 레포트(일별): 해당 날짜에서 수면·근무 기록을 제외하고,
- * 생산·비생산 세부(category)별 시간 — 도넛 차트용.
+ * 시간사용 레포트 도넛: 수면·근무 제외, 생산·비생산 카테고리별 시간(행 배열 동일 규칙).
  */
-export function getDailyTimeReportDonutSnapshot(ymdTen) {
-  const key = String(ymdTen || "")
-    .replace(/\//g, "-")
-    .slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) {
-    return { segments: [], totalHours: 0, totalMinutesRounded: 0 };
-  }
-  const rows = loadTimeRows().filter((r) => {
-    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
-    return d === key;
-  });
+function aggregateDailyTimeReportDonutFromLedgerRows(rows) {
   const byCat = {};
   rows.forEach((r) => {
     const { category, productivity } = resolveRowCategoryProductivityForAudit(r);
@@ -2070,6 +2059,389 @@ export function getDailyTimeReportDonutSnapshot(ymdTen) {
     totalHours,
     totalMinutesRounded: Math.round(totalHours * 60),
   };
+}
+
+/** 앵커 YYYY-MM-DD가 속한 달의 1일~말일(문자열, inclusive) — 동기화·월 집계용 */
+export function getTimeReportMonthInclusiveRange(ymdTen) {
+  const key = String(ymdTen || "")
+    .replace(/\//g, "-")
+    .slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return null;
+  const y = parseInt(key.slice(0, 4), 10);
+  const mo = parseInt(key.slice(5, 7), 10) - 1;
+  const lastDay = new Date(y, mo + 1, 0).getDate();
+  const ym = key.slice(0, 7);
+  return {
+    start: `${ym}-01`,
+    end: `${ym}-${String(lastDay).padStart(2, "0")}`,
+  };
+}
+
+/**
+ * 시간사용 레포트(일별): 해당 날짜에서 수면·근무 기록을 제외하고,
+ * 생산·비생산 세부(category)별 시간 — 도넛 차트용.
+ */
+export function getDailyTimeReportDonutSnapshot(ymdTen) {
+  const key = String(ymdTen || "")
+    .replace(/\//g, "-")
+    .slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) {
+    return { segments: [], totalHours: 0, totalMinutesRounded: 0 };
+  }
+  const rows = loadTimeRows().filter((r) => {
+    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    return d === key;
+  });
+  return aggregateDailyTimeReportDonutFromLedgerRows(rows);
+}
+
+/**
+ * 시간사용 레포트(월별): 해당 월 1일~말일 — 도넛(일별과 동일 집계 규칙).
+ */
+export function getMonthlyTimeReportDonutSnapshot(ymdTen) {
+  const range = getTimeReportMonthInclusiveRange(ymdTen);
+  if (!range) {
+    return { segments: [], totalHours: 0, totalMinutesRounded: 0 };
+  }
+  const rows = loadTimeRows().filter((r) => {
+    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    return d >= range.start && d <= range.end;
+  });
+  return aggregateDailyTimeReportDonutFromLedgerRows(rows);
+}
+
+function readUserHourlyRateNumber() {
+  try {
+    return (
+      parseFloat(
+        String(localStorage.getItem(USER_HOURLY_RATE_KEY) || "0").replace(
+          /,/g,
+          "",
+        ),
+      ) || 0
+    );
+  } catch (_) {
+    return 0;
+  }
+}
+
+function aggregateDailyTimeReportSummaryFromLedgerRows(rows) {
+  const hourlyRate = readUserHourlyRateNumber();
+  let workMinutes = 0;
+  let sleepMinutes = 0;
+  let mediaMinutes = 0;
+  let mediaLossWon = 0;
+  let pleasureMinutes = 0;
+  let pleasureLossWon = 0;
+  let unhealthyMinutes = 0;
+  const unhealthyMealDetails = [];
+  let moneylosingMinutes = 0;
+  let moneylosingLossWon = 0;
+
+  rows.forEach((r) => {
+    const hrs = parseTimeToHours(r.timeTracked);
+    if (hrs <= 0 || !Number.isFinite(hrs)) return;
+    const { category: catRaw, productivity: prodRaw } =
+      resolveRowCategoryProductivityForAudit(r);
+    const cat = String(catRaw || "").trim();
+    const pv = (
+      String(prodRaw || "")
+        .trim()
+        .toLowerCase() ||
+      String(getProductivityFromCategory(cat) || "")
+        .trim()
+        .toLowerCase()
+    ).trim();
+    const mins = Math.round(hrs * 60);
+    const wonMag =
+      hourlyRate > 0 && Number.isFinite(hrs * hourlyRate)
+        ? Math.round(hrs * hourlyRate)
+        : 0;
+    const countsLoss = pv === "nonproductive";
+
+    if (cat === "work") {
+      workMinutes += mins;
+      return;
+    }
+    if (cat === "sleep") {
+      sleepMinutes += mins;
+      return;
+    }
+    if (cat === "media_watch") {
+      mediaMinutes += mins;
+      if (countsLoss) mediaLossWon += wonMag;
+      return;
+    }
+    if (cat === "pleasure") {
+      pleasureMinutes += mins;
+      if (countsLoss) pleasureLossWon += wonMag;
+      return;
+    }
+    if (cat === "unhealthy") {
+      unhealthyMinutes += mins;
+      const tn = String(r.taskName || "").trim();
+      if (tn === "건강하지 않은 식사") {
+        const md = String(r.mealDetail || "").trim();
+        if (md) unhealthyMealDetails.push(md);
+      }
+      return;
+    }
+    if (cat === "moneylosing") {
+      moneylosingMinutes += mins;
+      if (countsLoss) moneylosingLossWon += wonMag;
+    }
+  });
+
+  return {
+    workMinutes,
+    sleepMinutes,
+    mediaMinutes,
+    mediaLossWon,
+    pleasureMinutes,
+    pleasureLossWon,
+    unhealthyMinutes,
+    unhealthyMealDetails: [...new Set(unhealthyMealDetails)],
+    moneylosingMinutes,
+    moneylosingLossWon,
+    hourlyRate,
+  };
+}
+
+/**
+ * 시간사용 레포트(일별): 근무·수면·미디어 시청·쾌락충족·비건강·돈을 잃는 일 집계(시급×시간은 비생산과 동일).
+ * 식단 목록은 「건강하지 않은 식사」 과제의 mealDetail 만.
+ */
+export function getDailyTimeReportSummaryGrid(ymdTen) {
+  const key = String(ymdTen || "")
+    .replace(/\//g, "-")
+    .slice(0, 10);
+  const empty = () => ({
+    workMinutes: 0,
+    sleepMinutes: 0,
+    mediaMinutes: 0,
+    mediaLossWon: 0,
+    pleasureMinutes: 0,
+    pleasureLossWon: 0,
+    unhealthyMinutes: 0,
+    unhealthyMealDetails: [],
+    moneylosingMinutes: 0,
+    moneylosingLossWon: 0,
+    hourlyRate: 0,
+  });
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return empty();
+
+  const rows = loadTimeRows().filter((r) => {
+    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    return d === key;
+  });
+  return aggregateDailyTimeReportSummaryFromLedgerRows(rows);
+}
+
+/**
+ * 시간사용 레포트(월별): 해당 월 1일~말일 요약 카드 그리드(일별과 동일 규칙).
+ */
+export function getMonthlyTimeReportSummaryGrid(ymdTen) {
+  const empty = () => ({
+    workMinutes: 0,
+    sleepMinutes: 0,
+    mediaMinutes: 0,
+    mediaLossWon: 0,
+    pleasureMinutes: 0,
+    pleasureLossWon: 0,
+    unhealthyMinutes: 0,
+    unhealthyMealDetails: [],
+    moneylosingMinutes: 0,
+    moneylosingLossWon: 0,
+    hourlyRate: 0,
+  });
+  const range = getTimeReportMonthInclusiveRange(ymdTen);
+  if (!range) return empty();
+  const rows = loadTimeRows().filter((r) => {
+    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    return d >= range.start && d <= range.end;
+  });
+  return aggregateDailyTimeReportSummaryFromLedgerRows(rows);
+}
+
+/** 소비·투자 레포트: 가계부 「다시 받을 금액」 라인 「+₩ n」 표기 */
+export function formatInvestReclaimWonDisplay(won) {
+  const w = Math.round(Number(won) || 0);
+  return `+₩ ${formatLedgerWonInteger(w)}`;
+}
+
+/** 가계부 잔고 카드와 동일 규칙 — 구간 시간·진행 행 포함 */
+export function getLedgerEffectiveHoursForReclaim(rowData) {
+  return getMobileCardEffectiveHoursForPrice(rowData);
+}
+
+function taskLikeFromLedgerRowForInvestSnapshot(r) {
+  const name = (r.taskName || "").trim();
+  const opt = name ? getTaskOptionByName(name) : null;
+  if (opt) return opt;
+  return {
+    name,
+    category: r.category || "",
+    productivity: r.productivity || "",
+  };
+}
+
+function aggregateInvestReclaimSnapshotFromRows(rows) {
+  const hourlyRate = readUserHourlyRateNumber();
+  let reclaimHrs = 0;
+  rows.forEach((r) => {
+    const h = getMobileCardEffectiveHoursForPrice(r);
+    if (!(h > 0) || !Number.isFinite(h)) return;
+    if (!taskAllowedForLedgerPreset(taskLikeFromLedgerRowForInvestSnapshot(r), "invest")) {
+      return;
+    }
+    reclaimHrs += h;
+  });
+  const reclaimMinutesRounded = Math.round(reclaimHrs * 60);
+  return {
+    reclaimHours: reclaimHrs,
+    reclaimMinutesRounded,
+    reclaimWon: Math.round(reclaimHrs * hourlyRate),
+    hourlyRate,
+  };
+}
+
+export function getDailyInvestReclaimSnapshot(ymdTen) {
+  const key = String(ymdTen || "")
+    .replace(/\//g, "-")
+    .slice(0, 10);
+  const empty = () => ({
+    reclaimHours: 0,
+    reclaimMinutesRounded: 0,
+    reclaimWon: 0,
+    hourlyRate: readUserHourlyRateNumber(),
+  });
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return empty();
+  const rows = loadTimeRows().filter((r) => {
+    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    return d === key;
+  });
+  return aggregateInvestReclaimSnapshotFromRows(rows);
+}
+
+export function getMonthlyInvestReclaimSnapshot(ymdTen) {
+  const empty = () => ({
+    reclaimHours: 0,
+    reclaimMinutesRounded: 0,
+    reclaimWon: 0,
+    hourlyRate: readUserHourlyRateNumber(),
+  });
+  const range = getTimeReportMonthInclusiveRange(ymdTen);
+  if (!range) return empty();
+  const rows = loadTimeRows().filter((r) => {
+    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    return d >= range.start && d <= range.end;
+  });
+  return aggregateInvestReclaimSnapshotFromRows(rows);
+}
+
+function productiveCategoryLabelForReport(catKey) {
+  const row = CATEGORY_OPTIONS.find((x) => x.value === catKey);
+  return row?.label || catKey || "";
+}
+
+function aggregateProductiveCategoryInvestBarsFromRows(rows) {
+  const hourlyRate = readUserHourlyRateNumber();
+  const KEYS = ["dream", "happiness", "sideincome", "health"];
+  const hoursBy = Object.fromEntries(KEYS.map((k) => [k, 0]));
+  let otherProdHours = 0;
+  rows.forEach((r) => {
+    const h = getMobileCardEffectiveHoursForPrice(r);
+    if (!(h > 0) || !Number.isFinite(h)) return;
+    const { category, productivity } = resolveRowCategoryProductivityForAudit(r);
+    const cat = String(category || "").trim().toLowerCase();
+    const pv = (
+      String(productivity || "")
+        .trim()
+        .toLowerCase() ||
+      String(getProductivityFromCategory(cat) || "")
+        .trim()
+        .toLowerCase()
+    ).trim();
+    if (pv !== "productive") return;
+    if (KEYS.includes(cat)) hoursBy[cat] += h;
+    else otherProdHours += h;
+  });
+  /** @type {{ categoryKey: string, label: string, hours: number, won: number, pct: number, pctRounded: number }[]} */
+  const segments = KEYS.filter((k) => hoursBy[k] > 1e-9).map((k) => ({
+    categoryKey: k,
+    label: productiveCategoryLabelForReport(k),
+    hours: hoursBy[k],
+    won: Math.round(hoursBy[k] * hourlyRate),
+    pct: 0,
+    pctRounded: 0,
+  }));
+  if (otherProdHours > 1e-9) {
+    segments.push({
+      categoryKey: "other_prod",
+      label: "그 외(생산)",
+      hours: otherProdHours,
+      won: Math.round(otherProdHours * hourlyRate),
+      pct: 0,
+      pctRounded: 0,
+    });
+  }
+  const totalHrs = segments.reduce((s, x) => s + x.hours, 0);
+  segments.forEach((s) => {
+    s.pct = totalHrs > 0 ? (s.hours / totalHrs) * 100 : 0;
+    s.pctRounded = Math.round(s.pct);
+  });
+  segments.sort((a, b) => b.hours - a.hours);
+  return {
+    segments,
+    totalProductiveHours: totalHrs,
+    hourlyRate,
+  };
+}
+
+export function getDailyProductiveCategoryInvestBarsSnapshot(ymdTen) {
+  const key = String(ymdTen || "")
+    .replace(/\//g, "-")
+    .slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key))
+    return { segments: [], totalProductiveHours: 0, hourlyRate: readUserHourlyRateNumber() };
+  const rows = loadTimeRows().filter((r) => {
+    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    return d === key;
+  });
+  return aggregateProductiveCategoryInvestBarsFromRows(rows);
+}
+
+export function getMonthlyProductiveCategoryInvestBarsSnapshot(ymdTen) {
+  const range = getTimeReportMonthInclusiveRange(ymdTen);
+  if (!range)
+    return { segments: [], totalProductiveHours: 0, hourlyRate: readUserHourlyRateNumber() };
+  const rows = loadTimeRows().filter((r) => {
+    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    return d >= range.start && d <= range.end;
+  });
+  return aggregateProductiveCategoryInvestBarsFromRows(rows);
+}
+
+/** YYYY-MM-DD → "2026. 05. 18(화)" — 레포트 날짜 줄 */
+export function formatYmdDotsWithWeekdayKo(ymdTen) {
+  const dStr = String(ymdTen || "")
+    .replace(/\//g, "-")
+    .slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return "";
+  const [y, mo, d] = dStr.split("-").map(Number);
+  const dt = new Date(y, mo - 1, d);
+  const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+  const yy = String(y);
+  const mm = String(mo).padStart(2, "0");
+  const dd = String(d).padStart(2, "0");
+  return `${yy}. ${mm}. ${dd}(${weekdays[dt.getDay()]})`;
+}
+
+/** 비생산 손실(원): 양수 크기를 넣으면 「-₩n」 표기 */
+export function formatLedgerLossKrwDisplay(wonPositiveMagnitude) {
+  const w = Math.abs(Math.round(Number(wonPositiveMagnitude) || 0));
+  const parts = getHomeMenuLedgerKrwParts(-w);
+  return `-₩${parts.digits}`;
 }
 
 /** 홈 메뉴 금액: 부호·₩·숫자를 나눠 간격·접근성 라벨 제공 */

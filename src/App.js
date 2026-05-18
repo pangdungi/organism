@@ -39,6 +39,7 @@ import { attachSideincomeKpiMapSaveListener } from "./utils/sideincomeKpiMapSupa
 import {
   attachTimeLedgerEntriesSaveListener,
   pullTimeLedgerEntriesForDateRange,
+  readTimeLedgerPullRangeForKpiTabsYmd,
   timeLedgerLocalTodayYmd,
   timeLedgerLocalYesterdayYmd,
   resetTimeLedgerSessionFilterToToday,
@@ -279,6 +280,10 @@ async function pullDataForActiveTab(tabId, opts = {}) {
       break;
     case "diary":
       await pullAllDiaryFromCloud();
+      try {
+        const { rangeStart, rangeEnd } = readTimeLedgerPullRangeForKpiTabsYmd();
+        await pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd);
+      } catch (_) {}
       break;
     case "workschedule":
       await hydrateWorkScheduleFromCloud();

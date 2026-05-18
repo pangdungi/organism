@@ -49,7 +49,7 @@ export const TAB3_EMOTION_PLACEHOLDERS = [
 
 function stripUpdatedAtFromDiaryEntries(data) {
   if (!data || typeof data !== "object") return;
-  for (const tid of ["1", "2", "3"]) {
+  for (const tid of ["1", "2", "3", "4"]) {
     const tab = data[tid];
     const list = tab?.entries;
     if (!Array.isArray(list)) continue;
