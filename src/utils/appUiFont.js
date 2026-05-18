@@ -5,28 +5,18 @@
 
 export const LP_APP_UI_FONT_STORAGE_KEY = "lp_app_ui_font_id";
 
-/** 시스템·애플 계열 기본 스택 (한글 보조: 산돌고딕/Noto) */
+/** 앱에서 「시스템 기본」: 폰트 설정 도입 전 모달에 쓰던 스택과 동일 */
 export const LP_APP_SYSTEM_FONT_STACK =
-  '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", Roboto, sans-serif';
+  'system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", sans-serif';
 
-const LP_APP_FONT_FALLBACK =
-  '-apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+/** 커스텀 글꼴 뒤에 붙는 공통 폴백 */
+const LP_APP_FONT_FALLBACK = LP_APP_SYSTEM_FONT_STACK;
 
 /** @typedef {{ id: string, label: string, stack: string }} LpAppFontOption */
 
 /** @type {LpAppFontOption[]} */
 export const LP_APP_FONT_OPTIONS = [
-  { id: "system", label: "시스템 기본 (애플)", stack: LP_APP_SYSTEM_FONT_STACK },
-  {
-    id: "donoun",
-    label: "Donoun Medium",
-    stack: `"LP Donoun Medium", ${LP_APP_FONT_FALLBACK}`,
-  },
-  {
-    id: "adultkid",
-    label: "Adultkid",
-    stack: `"LP Adultkid", ${LP_APP_FONT_FALLBACK}`,
-  },
+  { id: "system", label: "시스템 기본", stack: LP_APP_SYSTEM_FONT_STACK },
   {
     id: "leeseoyun",
     label: "Lee Seoyun",

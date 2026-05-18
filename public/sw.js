@@ -5,6 +5,38 @@ const ASSET_CACHE = "organism-assets-v3";
 const HTML_CACHE = "organism-html-v1";
 
 self.addEventListener("install", (event) => {
+  event.waitUntil(
+    (async () => {
+      /* 첫 방문 직후에도 재실행 시 HTML·아이콘·매니페스트를 즉시 줄 수 있게 미리 채움 */
+      try {
+        const htmlCache = await caches.open(HTML_CACHE);
+        const shell = await fetch(new Request(self.location.origin + "/", { cache: "reload" }));
+        if (shell && shell.ok) {
+          await htmlCache.put(new Request(self.location.origin + "/"), shell.clone());
+        }
+      } catch (_e) {}
+      try {
+        const assetCache = await caches.open(ASSET_CACHE);
+        const urls = [
+          "/manifest.json",
+          "/icon-192.png?v=organism-icon-3",
+          "/toolbaricons/dashboard.svg",
+          "/toolbaricons/timer.svg",
+          "/toolbaricons/todolist.svg",
+          "/toolbaricons/calendar-alt.svg",
+        ];
+        await Promise.all(
+          urls.map(async (path) => {
+            try {
+              const u = self.location.origin + path;
+              const r = await fetch(u);
+              if (r && r.ok) await assetCache.put(u, r.clone());
+            } catch (_e) {}
+          }),
+        );
+      } catch (_e) {}
+    })(),
+  );
   self.skipWaiting();
 });
 

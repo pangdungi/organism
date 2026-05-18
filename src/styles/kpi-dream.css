@@ -38,6 +38,25 @@
   padding: 0.65rem var(--lp-kpi-inset) 0.85rem;
   border-bottom: 1px solid #e5e7eb;
   background: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.15rem;
+}
+
+.lp-kpi-dream-page .dream-view-header-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.lp-kpi-dream-page .dream-view-header-title-row .dream-view-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
 }
 
 .lp-kpi-dream-page .dream-view-label {
@@ -164,7 +183,7 @@
   justify-content: center;
   width: 2.25rem;
   height: 2.25rem;
-  margin: 0 0 0 0.15rem;
+  margin: 0;
   padding: 0;
   color: #6b7280;
   background: #fff;
@@ -1007,13 +1026,16 @@
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
+  min-width: 0;
   padding: 0 1rem 1rem;
   overflow: auto;
+  box-sizing: border-box;
 }
 
 .dream-kpi-form-body {
   flex: 1 1 auto;
   min-height: 0;
+  min-width: 0;
 }
 
 /* 타임 모달 필드 간격과 맞춤(lp-modals 단일 선택자보다 구체성 높임) */
@@ -1021,7 +1043,15 @@
   margin-bottom: 0.85rem;
 }
 
-.dream-kpi-field[data-legacy~="time-add-task-field"]:last-child {
+/*
+ * :last-child 를 필드에 직접 두면 목표값/단위 행에서 「단위」만 :last-child 가 되어
+ * margin 이 0이 되고 다음 필드(필요시간) 라벨이 딱 붙음 — 행에만 하단 여백 부여
+ */
+.dream-kpi-form-body > .dream-kpi-row {
+  margin-bottom: 0.85rem;
+}
+
+.dream-kpi-row .dream-kpi-field[data-legacy~="time-add-task-field"] {
   margin-bottom: 0;
 }
 
@@ -1029,7 +1059,7 @@
   margin-bottom: 0.85rem;
 }
 
-.dream-kpi-period-block[data-legacy~="time-add-task-field"]:last-child {
+.dream-kpi-form-body > :last-child {
   margin-bottom: 0;
 }
 
@@ -1094,6 +1124,8 @@
 .dream-kpi-field input:not([type]),
 .dream-kpi-field textarea {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   box-sizing: border-box;
   padding: 0.55rem 0.65rem;
   font: inherit;
@@ -1124,6 +1156,13 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.5rem;
+  min-width: 0;
+}
+
+.dream-kpi-period-block {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
 }
 
 @media (max-width: 26rem) {
@@ -1165,6 +1204,7 @@
 
 .dream-kpi-period-block .dream-kpi-row .dream-kpi-field {
   margin-bottom: 0;
+  min-width: 0;
 }
 
 .dream-kpi-period-block .dream-kpi-deadline-quick {

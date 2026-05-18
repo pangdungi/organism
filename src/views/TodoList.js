@@ -935,6 +935,8 @@ export function saveTodoListBeforeUnmount(container) {
 /** 할일/일정 메인 화면에서 마지막으로 본 카테고리 탭 인덱스(「전체」포함) — 전역 리렌더 후 탭 유지 */
 const SESSION_TODO_FIXED_TAB_INDEX = "lp-todo-main-fixed-tab-index-v2";
 const SESSION_TODO_FIXED_TAB_INDEX_LEGACY = "lp-todo-main-fixed-tab-index";
+/** 일정·할일 세그먼트 탭: pull·renderMain 후에도 검색어 유지 */
+const SESSION_TODO_LIST_SEARCH_QUERY = "lp-todo-list-search-query-v1";
 
 const TODO_CATEGORY_OPTIONS_KEY = "todo_category_options";
 const DEFAULT_CATEGORIES = ["학업", "잡무", "사이드프로젝트", "회사"];
@@ -2206,6 +2208,8 @@ function createTaskRow(taskData = {}, options = {}) {
   doneCheck.type = "checkbox";
   doneCheck.className = "todo-done-check";
   doneCheck.checked = done;
+  doneCheck.disabled =
+    String(itemType || "todo").toLowerCase() === "schedule";
   doneCheck.addEventListener("change", () => {
     const secId =
       (
@@ -2249,6 +2253,8 @@ function createTaskRow(taskData = {}, options = {}) {
   const setItemType = (type) => {
     tr.dataset.itemType = type;
     doneTd.dataset.itemType = type;
+    doneCheck.disabled =
+      String(type || "todo").toLowerCase() === "schedule";
   };
 
   const nameTd = document.createElement("td");
@@ -2845,6 +2851,7 @@ function mirrorTodoCardElementFromPrimary(duplicateCard, primaryCard) {
   if (cb && pcb) {
     cb.checked = pcb.checked;
     cb.hidden = false;
+    cb.disabled = pcb.disabled;
   }
 }
 
@@ -2939,6 +2946,8 @@ function createTaskCard(taskData, options = {}) {
   doneCheck.type = "checkbox";
   doneCheck.className = "todo-done-check todo-card-done";
   doneCheck.checked = done;
+  doneCheck.disabled =
+    String(itemType || "todo").toLowerCase() === "schedule";
   const chkFace = document.createElement("span");
   chkFace.className = "todo-card-checkbox-face";
   chkFace.setAttribute("aria-hidden", "true");
@@ -2949,7 +2958,7 @@ function createTaskCard(taskData, options = {}) {
   const typeIconImg = document.createElement("img");
   typeIconImg.alt = "";
   typeIconImg.className = "todo-card-type-icon-img";
-  typeIconImg.decoding = "async";
+  typeIconImg.decoding = "sync";
   typeIconWrap.appendChild(typeIconImg);
 
   chkLabel.appendChild(doneCheck);
@@ -3166,11 +3175,17 @@ function createTaskCard(taskData, options = {}) {
     priorityEl.textContent = priorityText;
     priorityEl.hidden = !priorityText;
     updateTodoCardTypeIconColumn(card);
+    doneCheck.disabled =
+      String(card.dataset.itemType || "todo").toLowerCase() === "schedule";
   }
 
   contentCol.addEventListener("click", (e) => {
-    /* 체크박스는 편집 모달과 분리 */
-    if (e.target.closest(".todo-card-checkbox-label")) return;
+    /* 할 일: 체크박스 열은 편집 모달과 분리. 일정: 캘린더 아이콘 클릭도 수정만(라벨 안 퀵완료 없음) */
+    if (e.target.closest(".todo-card-checkbox-label")) {
+      const isSched =
+        String(card.dataset.itemType || "todo").toLowerCase() === "schedule";
+      if (!isSched) return;
+    }
     e.preventDefault();
     e.stopPropagation();
     showTodoTaskModal({
@@ -4820,6 +4835,22 @@ export function render(options = {}) {
   /** 「전체」+ 돋보기 열림일 때만 검색 필드 표시 */
   let todoSearchPanelOpen = false;
 
+  function persistTodoListSearchQueryToSession(q) {
+    if (!categoryToolbarRightActions) return;
+    try {
+      sessionStorage.setItem(SESSION_TODO_LIST_SEARCH_QUERY, String(q ?? ""));
+    } catch (_) {}
+  }
+
+  function readTodoListSearchQueryFromSession() {
+    if (!categoryToolbarRightActions) return "";
+    try {
+      return sessionStorage.getItem(SESSION_TODO_LIST_SEARCH_QUERY) || "";
+    } catch (_) {
+      return "";
+    }
+  }
+
   function mountTodoListSegmentFooterActions() {
     clearTodoListFooterActions();
     if (!categoryToolbarRightActions || !quickAddBtn || !searchToggleBtn)
@@ -4892,6 +4923,7 @@ export function render(options = {}) {
           todoSearchPanelOpen = false;
           if (todoMobileSearchInput) todoMobileSearchInput.value = "";
           todoMobileSearchQuery = "";
+          persistTodoListSearchQueryToSession("");
           applyTodoListMobileSearchFilter(el, "");
         } else {
           todoSearchPanelOpen = true;
@@ -4927,7 +4959,12 @@ export function render(options = {}) {
   }
   el.appendChild(toolbarRow);
 
-  let todoMobileSearchQuery = "";
+  let todoMobileSearchQuery = categoryToolbarRightActions
+    ? readTodoListSearchQueryFromSession()
+    : "";
+  if (categoryToolbarRightActions && todoMobileSearchQuery.trim()) {
+    todoSearchPanelOpen = true;
+  }
   let todoMobileSearchInput = null;
   let todoMobileSearchSync = () => {};
   /** 세그먼트 할일: 「전체」 탭에서만 표시(기본 숨김) */
@@ -4944,9 +4981,11 @@ export function render(options = {}) {
     todoMobileSearchInput.placeholder = "날짜·내용 검색...";
     todoMobileSearchInput.setAttribute("aria-label", "할 일 검색");
     todoMobileSearchInput.autocomplete = "off";
+    if (todoMobileSearchQuery) todoMobileSearchInput.value = todoMobileSearchQuery;
     let searchComposing = false;
     todoMobileSearchSync = () => {
       todoMobileSearchQuery = todoMobileSearchInput?.value ?? "";
+      persistTodoListSearchQueryToSession(todoMobileSearchQuery);
       applyTodoListMobileSearchFilter(el, todoMobileSearchQuery);
     };
     todoMobileSearchInput.addEventListener("compositionstart", () => {
@@ -4955,6 +4994,7 @@ export function render(options = {}) {
     todoMobileSearchInput.addEventListener("compositionend", (e) => {
       searchComposing = false;
       todoMobileSearchQuery = e.target.value;
+      persistTodoListSearchQueryToSession(todoMobileSearchQuery);
       applyTodoListMobileSearchFilter(el, todoMobileSearchQuery);
     });
     todoMobileSearchInput.addEventListener("input", () => {
@@ -5137,6 +5177,7 @@ export function render(options = {}) {
       }
       if (todoMobileSearchInput) todoMobileSearchInput.value = "";
       todoMobileSearchQuery = "";
+      persistTodoListSearchQueryToSession("");
       applyTodoListMobileSearchFilter(el, "");
     } else {
       mobileSearchBar.hidden = !todoSearchPanelOpen;
@@ -5175,14 +5216,13 @@ export function render(options = {}) {
       syncTodoListSegmentThumb();
       syncTodoAllTabSearchBarVisibility();
 
-      if (categoryToolbarRightActions) todoMobileSearchSync();
-
       if (
         sectionsWrap &&
         (btn.dataset.section || "").trim() === TODO_ALL_TAB_SECTION_ID
       ) {
         refreshTodoAllTabSectionDom(sectionsWrap);
       }
+      if (categoryToolbarRightActions) todoMobileSearchSync();
 
       const subView = (btn.dataset.section || "").trim();
       void (async () => {

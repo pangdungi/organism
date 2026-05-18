@@ -152,7 +152,7 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
         lpSetClasses(iconEl, "time-task-log-task-dropdown-option-icon");
         iconEl.src = iconSrc;
         iconEl.alt = "";
-        iconEl.decoding = "async";
+        iconEl.decoding = "sync";
       }
       const textWrap = document.createElement("span");
       lpSetClasses(textWrap, "time-task-log-task-dropdown-option-text");

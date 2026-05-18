@@ -43,10 +43,11 @@ body {
 #signin-page {
   flex-direction: column;
   box-sizing: border-box;
+  /* vh: 폴백 · svh: 모바일 주소창 등에 덜 출렁여 하단 푸터가 떠 보이는 현상 완화 */
   height: 100vh;
-  height: 100dvh;
   max-height: 100vh;
-  max-height: 100dvh;
+  height: 100svh;
+  max-height: 100svh;
   min-height: 0;
   overflow: hidden;
 }
@@ -81,7 +82,7 @@ body {
 }
 
 .app-main {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -93,6 +94,11 @@ body {
   padding-bottom: var(--lp-safe-bottom);
   padding-left: var(--lp-safe-left);
   padding-right: var(--lp-safe-right);
+}
+
+/* 탭 푸터가 보일 때: 하단 세이프 존은 .app-footer-menu 한 곳만(이중 패딩으로 푸터가 위로 뜨는 느낌 방지) */
+#signin-page.lp-tab-footer-visible .app-main {
+  padding-bottom: 0;
 }
 
 .app-tab-panel {
@@ -109,8 +115,14 @@ body {
 }
 
 /* 하단 고정: 한 슬롯 안에서 뒤로 + 탭 액션을 칸 단위로 균등 분할 */
+/* [hidden] 은 display:flex 규칙에 밀리지 않도록(메인·오늘 탭에서 푸터 완전 숨김) */
+.app-footer-menu[hidden] {
+  display: none !important;
+}
+
 .app-footer-menu {
   flex-shrink: 0;
+  align-self: stretch;
   display: flex;
   justify-content: stretch;
   align-items: stretch;
@@ -491,6 +503,10 @@ table {
   gap: 0.75rem;
 }
 
+.idea-view .idea-font-settings-row {
+  align-items: center;
+}
+
 .idea-view .idea-form-label {
   flex-shrink: 0;
   font-size: 0.75rem;
@@ -506,27 +522,23 @@ table {
   word-break: break-all;
 }
 
-.idea-view .idea-app-font-select {
+.idea-view .idea-app-font-dropdown-slot {
   flex: 1 1 auto;
   min-width: 0;
-  max-width: 16rem;
-  margin: 0;
-  padding: 0.4rem 0.15rem 0.4rem 0;
-  font: inherit;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--idea-navy);
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid var(--idea-bubble);
-  border-radius: 0;
-  outline: none;
-  cursor: pointer;
+  max-width: 18rem;
+  width: 100%;
 }
 
-.idea-view .idea-app-font-select:focus {
-  border-bottom-width: 1.5px;
-  border-bottom-color: var(--idea-ocean);
+.idea-view .idea-app-font-dropdown-slot .time-task-log-task-dropdown {
+  width: 100%;
+}
+
+.idea-view
+  .idea-app-font-dropdown-slot
+  .time-task-log-task-dropdown-trigger:focus-visible {
+  border-color: rgba(30, 77, 123, 0.45);
+  box-shadow: 0 0 0 3px rgba(30, 77, 123, 0.12);
+  outline: none;
 }
 
 .idea-view .idea-logout-row {

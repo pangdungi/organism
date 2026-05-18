@@ -284,7 +284,8 @@
   [data-legacy~="time-mobile-card-center-col"]
   [data-legacy~="time-mobile-card-task"] {
   font-size: 0.9375rem;
-  font-weight: 600;
+  /* 커스텀 전역 폰트(단일 웨이트) 합성 굵게 방지 — 시각적 선명도 우선 */
+  font-weight: 500;
   color: #2d3b2e;
   line-height: 1.25;
   word-break: break-word;
@@ -316,7 +317,7 @@
   [data-legacy~="time-mobile-card-right-col"]
   [data-legacy~="time-mobile-card-tracked"] {
   font-size: 0.9375rem;
-  font-weight: 700;
+  font-weight: 600;
   color: #2d3b2e;
   letter-spacing: -0.02em;
   white-space: nowrap;
@@ -324,7 +325,7 @@
 .time-ledger-view [data-legacy~="time-mobile-card-price"],
 [data-legacy~="time-ledger-view"] [data-legacy~="time-mobile-card-price"] {
   font-size: 0.8125rem;
-  font-weight: 600;
+  font-weight: 500;
   color: #5c665d;
   white-space: nowrap;
 }

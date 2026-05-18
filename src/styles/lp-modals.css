@@ -132,7 +132,6 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   padding: 1rem;
   box-sizing: border-box;
   font-family: var(--lp-modal-font);
-  -webkit-font-smoothing: antialiased;
 }
 .time-task-setup-modal.time-add-task-modal,
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-add-task-modal"] {
@@ -622,6 +621,9 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   align-items: center;
   gap: clamp(0.12rem, 1.2vw, 0.35rem);
   width: 100%;
+  /* 라벨 제거 후: 상·하 여백 동일(하단과 같은 값으로 상단 패딩) */
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
 }
 .time-task-log-time-adjust-btn,
 [data-legacy~="time-task-log-time-adjust-btn"] {
@@ -1719,7 +1721,6 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   padding: 1rem;
   box-sizing: border-box;
   font-family: var(--lp-modal-font);
-  -webkit-font-smoothing: antialiased;
 }
 .asset-settings-modal[hidden] {
   display: none !important;

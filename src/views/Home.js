@@ -249,6 +249,8 @@ function createHomeTodoCard(item) {
   doneCheck.type = "checkbox";
   doneCheck.className = "todo-done-check todo-card-done";
   doneCheck.checked = item.done;
+  doneCheck.disabled =
+    String(item.itemType || "todo").toLowerCase() === "schedule";
   const chkFace = document.createElement("span");
   chkFace.className = "todo-card-checkbox-face";
   chkFace.setAttribute("aria-hidden", "true");
@@ -261,7 +263,7 @@ function createHomeTodoCard(item) {
   const typeIconImg = document.createElement("img");
   typeIconImg.alt = "";
   typeIconImg.className = "todo-card-type-icon-img";
-  typeIconImg.decoding = "async";
+  typeIconImg.decoding = "sync";
   typeIconWrap.appendChild(typeIconImg);
 
   chkLabel.appendChild(typeIconWrap);

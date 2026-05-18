@@ -3118,7 +3118,7 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
     .replace(/>/g, "&gt;");
   const iconSrc = timeLedgerListRowIconSrc(rowData);
   const iconSlotInner = iconSrc
-    ? `<img data-legacy="time-mobile-card-icon" src="${iconSrc}" alt="" decoding="async" />`
+    ? `<img data-legacy="time-mobile-card-icon" src="${iconSrc}" alt="" decoding="sync" />`
     : "";
   const iconSlotLegacy =
     "time-mobile-card-icon-slot" +
@@ -3273,21 +3273,21 @@ export function render() {
         <div data-legacy="time-filter-date-field">
           <input type="date" data-legacy="time-filter-start-date" name="time-filter-start" aria-label="시작일" />
           <span data-legacy="time-filter-date-label time-filter-date-label--start" aria-hidden="true"></span>
-          <img src="/toolbaricons/calendar-alt.svg" alt="" data-legacy="time-filter-date-cal-icon" width="14" height="14" aria-hidden="true" />
+          <img src="/toolbaricons/calendar-alt.svg" alt="" data-legacy="time-filter-date-cal-icon" width="14" height="14" decoding="sync" aria-hidden="true" />
         </div>
         <span data-legacy="time-filter-range-sep" data-audit-range-hidden>~</span>
         <div data-legacy="time-filter-date-field">
           <input type="date" data-legacy="time-filter-end-date" name="time-filter-end" data-audit-range-hidden aria-label="종료일" />
           <span data-legacy="time-filter-date-label time-filter-date-label--end" aria-hidden="true"></span>
-          <img src="/toolbaricons/calendar-alt.svg" alt="" data-legacy="time-filter-date-cal-icon" width="14" height="14" aria-hidden="true" />
+          <img src="/toolbaricons/calendar-alt.svg" alt="" data-legacy="time-filter-date-cal-icon" width="14" height="14" decoding="sync" aria-hidden="true" />
         </div>
       </div>
       <div data-legacy="time-filter-day-nav">
         <button type="button" data-legacy="time-filter-day-prev" aria-label="이전 날짜">
-          <img src="/toolbaricons/caret-left-circle.svg" alt="" data-legacy="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
+          <img src="/toolbaricons/caret-left-circle.svg" alt="" data-legacy="time-btn-icon time-filter-day-nav-icon" width="20" height="20" decoding="sync" aria-hidden="true" />
         </button>
         <button type="button" data-legacy="time-filter-day-next" aria-label="다음 날짜">
-          <img src="/toolbaricons/caret-right-circle.svg" alt="" data-legacy="time-btn-icon time-filter-day-nav-icon" width="20" height="20" aria-hidden="true" />
+          <img src="/toolbaricons/caret-right-circle.svg" alt="" data-legacy="time-btn-icon time-filter-day-nav-icon" width="20" height="20" decoding="sync" aria-hidden="true" />
         </button>
       </div>
     </div>
@@ -3742,7 +3742,6 @@ export function render() {
             </div>
             <p data-legacy="time-task-log-time-order-warning" hidden role="alert">마감시간은 시작시간보다 빠를 수 없습니다.</p>
             <div data-legacy="time-task-log-quick-block">
-            <span data-legacy="time-task-log-section-label time-task-log-quick-section-label">빠른 선택</span>
             <div data-legacy="time-task-log-time-adjust-btns">
               <button type="button" data-legacy="time-task-log-time-adjust-btn time-task-log-time-adjust-now" data-now="true">지금</button>
               <button type="button" data-legacy="time-task-log-time-adjust-btn time-task-log-time-adjust-last" data-last="true">마지막</button>
@@ -5943,7 +5942,7 @@ export function render() {
           productivity: t.productivity,
         });
         const iconBlock = iconSrc
-          ? `<span data-legacy="time-task-setup-item-icon-wrap"><img data-legacy="time-task-setup-item-icon" src="${iconSrc}" alt="" decoding="async" /></span>`
+          ? `<span data-legacy="time-task-setup-item-icon-wrap"><img data-legacy="time-task-setup-item-icon" src="${iconSrc}" alt="" decoding="sync" /></span>`
           : "";
         const builtinBadge = isTimeTaskBuiltinTemplate(t)
           ? `<span data-legacy="lp-task-badge lp-task-badge--builtin" title="앱에서 제공하는 기본 과제입니다. 과제 설정에서 삭제할 수 없습니다.">기본</span>`

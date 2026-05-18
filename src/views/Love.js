@@ -255,24 +255,37 @@ export function render() {
   const el = document.createElement("div");
   el.className = "app-tab-panel-content happiness-view dream-view lp-kpi-dream-page";
 
-  const title = document.createElement("h2");
-  title.className = "dream-view-title";
-  title.textContent = "행복";
-  el.appendChild(title);
-
-  const tabsWrap = document.createElement("div");
-  tabsWrap.className = "dream-tabs-wrap";
-  const tabs = document.createElement("div");
-  tabs.className = "dream-tabs";
   const addBtn = document.createElement("button");
   addBtn.type = "button";
   addBtn.className = "dream-add-icon-btn";
   addBtn.title = "행복 목표 추가";
+  addBtn.setAttribute("aria-label", "행복 목표 추가");
   addBtn.innerHTML = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="dream-add-icon" aria-hidden="true" width="24" height="24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m12 8v8"/><path d="m8 12h8"/><path d="m18 22h-12c-2.209 0-4-1.791-4-4v-12c0-2.209 1.791-4 4-4h12c2.209 0 4 1.791 4 4v12c0 2.209-1.791 4-4 4z"/></g></svg>`;
   addBtn.addEventListener("click", () => {
     if (happinessAddModalJustClosed) return;
     showHappinessAddModal();
   });
+
+  const header = document.createElement("header");
+  header.className = "dream-view-header";
+  const label = document.createElement("span");
+  label.className = "dream-view-label";
+  label.textContent = "LOVE";
+  const titleRow = document.createElement("div");
+  titleRow.className = "dream-view-header-title-row";
+  const title = document.createElement("h1");
+  title.className = "dream-view-title";
+  title.textContent = "행복";
+  titleRow.appendChild(title);
+  titleRow.appendChild(addBtn);
+  header.appendChild(label);
+  header.appendChild(titleRow);
+  el.appendChild(header);
+
+  const tabsWrap = document.createElement("div");
+  tabsWrap.className = "dream-tabs-wrap";
+  const tabs = document.createElement("div");
+  tabs.className = "dream-tabs";
   tabsWrap.appendChild(tabs);
   el.appendChild(tabsWrap);
 
@@ -1408,7 +1421,6 @@ export function render() {
       });
       tabs.appendChild(tab);
     });
-    tabs.appendChild(addBtn);
   }
 
   function updateTitleAndContent() {

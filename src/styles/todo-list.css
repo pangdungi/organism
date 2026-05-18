@@ -19,6 +19,15 @@
   flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
+  font-family: var(--lp-app-font-family);
+}
+
+/* 리스트·탭: 별도 font-family 없이 상속만 하던 구간 — 전역 변수를 루트에 명시해 모바일 폼 기본 글꼴과 차이 나지 않게 */
+.todo-list-view button,
+.todo-list-view input,
+.todo-list-view textarea,
+.todo-list-view select {
+  font-family: inherit;
 }
 
 .todo-list-view > .lp-search-bar:not([hidden]) {
@@ -39,7 +48,7 @@
 .todo-list-view .todo-list-tab-header-row {
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-end;
   padding: 0.35rem 0.5rem 0;
   border-bottom: 1px solid rgba(42, 56, 40, 0.08);
 }
@@ -67,6 +76,10 @@
   width: 100%;
   max-width: 36rem;
   margin: 0 auto;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
 }
 
 .todo-list-view .todo-list-segment-tabs.todo-category-tabs {
@@ -100,10 +113,11 @@
 .todo-list-view .todo-list-segment-tabs .todo-category-tab.time-view-tab {
   flex: 1 1 0;
   min-width: 0;
-  margin: 0;
-  padding: 0.45rem 0.2rem 0.5rem;
+  margin: 0 0 -1px;
+  padding: 0.5rem 0.2rem 0.3rem;
   border: none !important;
   border-radius: 0;
+  border-bottom: 2px solid transparent !important;
   background: transparent !important;
   box-shadow: none;
   font-size: 0.8125rem;
@@ -115,7 +129,8 @@
   -webkit-tap-highlight-color: transparent;
   transition:
     color 0.15s ease,
-    font-weight 0.15s ease;
+    font-weight 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .todo-list-view .todo-list-segment-tabs .todo-category-tab.time-view-tab:hover {
@@ -125,7 +140,7 @@
 .todo-list-view .todo-list-segment-tabs .todo-category-tab.time-view-tab.active {
   font-weight: 600;
   color: #2a3828;
-  box-shadow: inset 0 -2px 0 0 #2a3828;
+  border-bottom-color: #2a3828 !important;
 }
 
 .todo-list-view .todo-list-segment-tabs .todo-category-tab-label {

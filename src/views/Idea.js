@@ -12,6 +12,7 @@ import {
   getStoredAppFontId,
   setAppFontId,
 } from "../utils/appUiFont.js";
+import { buildModalSimpleSelect } from "../utils/todoModalSimpleSelect.js";
 import { showToast } from "../utils/showToast.js";
 
 export { USER_HOURLY_RATE_KEY, applyAppFont };
@@ -45,6 +46,8 @@ function addDaysFromIso(iso, days) {
 export function render() {
   const el = document.createElement("div");
   el.className = "app-tab-panel-content idea-view";
+  const tabAbort = new AbortController();
+  el._lpTabAbortController = tabAbort;
 
   const mobileViewport =
     typeof window !== "undefined" && window.matchMedia("(max-width: 48rem)").matches;
@@ -52,20 +55,17 @@ export function render() {
     el.classList.add("idea-view--mobile");
   }
 
-  if (!mobileViewport) {
-    const header = document.createElement("header");
-    header.className = "dream-view-header";
-    const label = document.createElement("span");
-    label.className = "dream-view-label";
-    label.textContent = "MY ACCOUNT";
-    const title = document.createElement("h1");
-    title.className = "dream-view-title idea-view-title";
-    title.textContent = "나의 계정";
-    header.appendChild(label);
-    header.appendChild(title);
-    el.appendChild(header);
-  }
-  /* 모바일: 상단 MY ACCOUNT·나의 계정 제거 — 위젯 그리드부터 */
+  const header = document.createElement("header");
+  header.className = "dream-view-header";
+  const label = document.createElement("span");
+  label.className = "dream-view-label";
+  label.textContent = "MY ACCOUNT";
+  const title = document.createElement("h1");
+  title.className = "dream-view-title idea-view-title";
+  title.textContent = "나의 계정";
+  header.appendChild(label);
+  header.appendChild(title);
+  el.appendChild(header);
 
   const grid = document.createElement("div");
   grid.className = "time-dashboard-view idea-widget-grid";
@@ -81,8 +81,8 @@ export function render() {
         <span class="idea-user-id-value" id="idea-user-id">—</span>
       </div>
       <div class="idea-basic-row idea-font-settings-row">
-        <label class="idea-form-label" for="idea-app-font-select">화면 글꼴</label>
-        <select id="idea-app-font-select" class="idea-app-font-select" aria-label="앱 화면 글꼴"></select>
+        <span class="idea-form-label" id="idea-app-font-label">화면 글꼴</span>
+        <div class="idea-app-font-dropdown-slot" id="idea-app-font-dropdown-slot"></div>
       </div>
       <div class="idea-logout-row">
         <button type="button" class="idea-btn-logout">로그아웃</button>
@@ -95,18 +95,17 @@ export function render() {
   `;
   grid.appendChild(basicSettingsWidget);
 
-  const fontSelect = basicSettingsWidget.querySelector("#idea-app-font-select");
-  if (fontSelect) {
-    LP_APP_FONT_OPTIONS.forEach((opt) => {
-      const o = document.createElement("option");
-      o.value = opt.id;
-      o.textContent = opt.label;
-      fontSelect.appendChild(o);
+  const fontSlot = basicSettingsWidget.querySelector("#idea-app-font-dropdown-slot");
+  if (fontSlot) {
+    const fontDd = buildModalSimpleSelect({
+      items: LP_APP_FONT_OPTIONS.map((o) => ({ value: o.id, label: o.label })),
+      value: getStoredAppFontId(),
+      placeholder: "글꼴 선택",
+      ariaLabel: "앱 화면 글꼴",
+      abortSignal: tabAbort.signal,
+      onChange: (id) => setAppFontId(id),
     });
-    fontSelect.value = getStoredAppFontId();
-    fontSelect.addEventListener("change", () => {
-      setAppFontId(fontSelect.value);
-    });
+    fontSlot.appendChild(fontDd);
   }
 
   basicSettingsWidget.querySelector(".idea-btn-logout").addEventListener("click", () => {

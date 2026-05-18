@@ -2387,6 +2387,24 @@ function renderMonthlyView(tabsElement) {
     });
   }
 
+  function goPrevMonth() {
+    currentMonth--;
+    if (currentMonth < 0) {
+      currentMonth = 11;
+      currentYear--;
+    }
+    renderCalendar();
+  }
+
+  function goNextMonth() {
+    currentMonth++;
+    if (currentMonth > 11) {
+      currentMonth = 0;
+      currentYear++;
+    }
+    renderCalendar();
+  }
+
   lpCalendarNavQ(nav, wrap, ".calendar-nav-today").addEventListener(
     "click",
     () => {
@@ -2398,25 +2416,55 @@ function renderMonthlyView(tabsElement) {
   );
   lpCalendarNavQ(nav, wrap, ".calendar-nav-prev").addEventListener(
     "click",
-    () => {
-      currentMonth--;
-      if (currentMonth < 0) {
-        currentMonth = 11;
-        currentYear--;
-      }
-      renderCalendar();
-    },
+    goPrevMonth,
   );
   lpCalendarNavQ(nav, wrap, ".calendar-nav-next").addEventListener(
     "click",
-    () => {
-      currentMonth++;
-      if (currentMonth > 11) {
-        currentMonth = 0;
-        currentYear++;
-      }
-      renderCalendar();
+    goNextMonth,
+  );
+
+  /* 모바일: 월 그리드 좌·우 스와이프 = 이전/다음 달 (< > 와 동일). 왼쪽으로 밀면 이전 달 */
+  const LP_MONTHLY_SWIPE_MIN_DX = 56;
+  const LP_MONTHLY_SWIPE_DOMINANCE = 1.25;
+  let _monthlySwipeStart = null;
+  calendarGrid.addEventListener(
+    "touchstart",
+    (e) => {
+      if (!window.matchMedia("(max-width: 48rem)").matches) return;
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      _monthlySwipeStart = { x: t.clientX, y: t.clientY };
     },
+    { passive: true },
+  );
+  calendarGrid.addEventListener(
+    "touchcancel",
+    () => {
+      _monthlySwipeStart = null;
+    },
+    { passive: true },
+  );
+  calendarGrid.addEventListener(
+    "touchend",
+    (e) => {
+      if (!window.matchMedia("(max-width: 48rem)").matches) {
+        _monthlySwipeStart = null;
+        return;
+      }
+      if (!_monthlySwipeStart || e.changedTouches.length !== 1) {
+        _monthlySwipeStart = null;
+        return;
+      }
+      const t = e.changedTouches[0];
+      const dx = t.clientX - _monthlySwipeStart.x;
+      const dy = t.clientY - _monthlySwipeStart.y;
+      _monthlySwipeStart = null;
+      if (Math.abs(dx) < LP_MONTHLY_SWIPE_MIN_DX) return;
+      if (Math.abs(dx) < Math.abs(dy) * LP_MONTHLY_SWIPE_DOMINANCE) return;
+      if (dx < 0) goPrevMonth();
+      else goNextMonth();
+    },
+    { passive: true },
   );
 
   calendarSection.appendChild(nav);
@@ -4342,7 +4390,7 @@ function render1WeekView(tabsElement) {
       execRow.appendChild(cell);
     });
     execStrip.appendChild(execRow);
-    calendarSection.appendChild(execStrip);
+    flowHScrollInner.appendChild(execStrip);
   }
 
   lpCalendarNavQ(nav, wrap, ".calendar-nav-today").addEventListener(
@@ -4466,6 +4514,30 @@ function renderAnnualView(tabsElement) {
   gridWrap.className = "calendar-annual-grid-wrap";
   const table = document.createElement("div");
   table.className = "calendar-annual-table";
+
+  /** 현재 표시 연도가 올해면 가로 스크롤을 오늘 날짜 셀이 보이도록 (첫 진입 시 스와이프 불필요) */
+  function scrollAnnualGridToTodayIfNeeded() {
+    if (currentYear !== new Date().getFullYear()) return;
+    const tk = formatDateKey(new Date());
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!gridWrap.isConnected) return;
+        const cell =
+          table.querySelector(".calendar-annual-cell.today") ||
+          table.querySelector(`.calendar-annual-cell[data-date-key="${tk}"]`);
+        if (!cell) return;
+        try {
+          cell.scrollIntoView({
+            block: "nearest",
+            inline: "center",
+            behavior: "auto",
+          });
+        } catch (_) {
+          cell.scrollIntoView(false);
+        }
+      });
+    });
+  }
 
   function renderYear() {
     cancelAnnualDayExpandHideTimer();
@@ -4626,12 +4698,13 @@ function renderAnnualView(tabsElement) {
       row.appendChild(daysRow);
       table.appendChild(row);
     }
+    scrollAnnualGridToTodayIfNeeded();
   }
 
-  renderYear();
   gridWrap.appendChild(table);
   calendarSection.appendChild(gridWrap);
   wrap.appendChild(calendarSection);
+  renderYear();
 
   lpCalendarNavQ(nav, wrap, ".calendar-nav-today").addEventListener(
     "click",

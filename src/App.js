@@ -395,6 +395,12 @@ export async function mountApp(container) {
 
   function syncAppFooterVisibility() {
     footerNav.hidden = currentTabId === "home";
+    try {
+      const root = document.getElementById("signin-page");
+      if (root) {
+        root.classList.toggle("lp-tab-footer-visible", !footerNav.hidden);
+      }
+    } catch (_) {}
   }
   syncAppFooterVisibility();
 
@@ -405,6 +411,7 @@ export async function mountApp(container) {
     if (fromTab !== tabId) flushAllPendingTimeDailyBudgetSync();
     currentTabId = tabId;
     persistActiveTabId(tabId);
+    syncAppFooterVisibility();
     logTodoScheduleTabOnNavigate(tabId, fromTab);
     logTabSync("tab_switch", { from: fromTab, to: tabId });
     /* 렌더·pull은 빠른 연속 탭 전환 시 마지막 탭만 처리하도록 디바운스(80ms) */
@@ -746,17 +753,45 @@ export async function mountApp(container) {
 
   /* 서버 pull 은 상위 탭 전환(setActiveTab)·최초 진입 시에만 수행. 포커스 복귀 등에서는 pull 하지 않음. */
 
-  logTabSync("boot", { tab: currentTabId, phase: "pull_then_first_render" });
+  logTabSync("boot", { tab: currentTabId, phase: "render_local_then_pull" });
   appScreen.appendChild(main);
   appScreen.appendChild(footerNav);
   appPage.appendChild(appScreen);
   container.appendChild(appPage);
   void (async () => {
     await syncAdminMenuVisibility();
-    try {
-      await pullDataForActiveTab(currentTabId, { fromBoot: true });
-    } catch (_) {}
+    const bootTabId = currentTabId;
+    if (bootTabId === "time") {
+      try {
+        resetTimeLedgerSessionFilterToToday();
+      } catch (_) {}
+    }
+    /* 로컬·메모리 상태로 먼저 화면 표시 — PWA 재실행·탭 복귀 후 네트워크 대기로 빈 화면이 길게 보이지 않게 */
     renderMain(main);
+    try {
+      await pullDataForActiveTab(bootTabId, { fromBoot: true });
+    } catch (_) {}
+    if (currentTabId !== bootTabId) return;
+    if (bootTabId === "time") {
+      try {
+        window.__lpTimeLedgerSoftRefresh?.();
+      } catch (_) {}
+    } else if (bootTabId === "calendar" || bootTabId === "schedulecalendar") {
+      try {
+        window.__lpCalendarSoftRefresh?.();
+      } catch (_) {}
+    } else if (bootTabId === "idea") {
+      try {
+        window.__lpIdeaSoftRefresh?.();
+      } catch (_) {}
+    } else {
+      renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
+    }
+    if (bootTabId === "idea" || bootTabId === "admin" || bootTabId === "home") {
+      requestAnimationFrame(() => {
+        main.scrollTop = 0;
+      });
+    }
   })();
   if (window.matchMedia("(max-width: 48rem)").matches) {
     initMobileVisualViewportKeyboardInset();

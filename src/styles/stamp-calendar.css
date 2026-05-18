@@ -26,18 +26,37 @@
   max-width: min(96vw, 32rem);
 }
 
-/* —— 스탬프 설정 / 등록 모달 내부: lp-modals 토큰·유틸 클래스와 맞춤 —— */
+/* —— 스탬프 설정 / 등록 모달 내부: .time-task-log-scroll-area 와 동일한 필드 간격(0.85rem) —— */
 
-.work-schedule-type-settings-modal.todo-list-modal .work-schedule-type-settings-add-block {
-  margin-bottom: 0.75rem;
+.work-schedule-type-settings-modal.todo-list-modal .work-schedule-type-settings-body-single.todo-list-modal-body {
+  padding: 0.85rem 1rem 0.5rem;
+}
+
+.work-schedule-type-settings-modal.todo-list-modal .work-schedule-type-settings-add-block.time-task-log-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-bottom: 0;
 }
 
 .work-schedule-type-settings-modal.todo-list-modal .work-schedule-type-settings-add-one {
-  margin-top: 0.25rem;
+  margin-top: 0;
 }
 
 .work-schedule-type-settings-modal.todo-list-modal .work-schedule-type-settings-name-row {
+  display: flex;
+  flex-direction: row;
   align-items: center;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+}
+
+.work-schedule-type-settings-modal.todo-list-modal
+  .work-schedule-type-settings-name-row
+  .work-schedule-type-settings-input-name.time-add-task-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
 }
 
 .work-schedule-type-settings-modal.todo-list-modal
@@ -105,10 +124,22 @@
 
 .work-schedule-type-settings-modal.todo-list-modal .work-schedule-type-settings-stamp-edit-body {
   padding-bottom: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.work-schedule-type-settings-modal.todo-list-modal .work-schedule-type-settings-stamp-edit-body .todo-task-edit-label {
+  margin-bottom: 0;
+}
+
+.work-schedule-type-settings-modal.todo-list-modal .work-schedule-type-settings-stamp-edit-label .work-schedule-day-entry-label-text {
+  display: block;
+  margin-bottom: 0.35rem;
 }
 
 .work-schedule-type-settings-modal.todo-list-modal .work-schedule-type-settings-stamp-edit-hint {
-  margin: 0.5rem 0 0;
+  margin: 0;
   font-size: 0.8125rem;
   line-height: 1.35;
   color: var(--lp-modal-navy-muted);
@@ -124,11 +155,26 @@
   background: var(--lp-modal-danger-soft) !important;
 }
 
-/* 일자·유형 모달 본문 — 필드 간 간격 */
+/* 일자·스탬프 등록/수정 본문 — 타임레거 .time-task-log-field 행 간격과 동일 */
+.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+  .work-schedule-day-entry-body.todo-list-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 0.85rem 1rem 0.5rem;
+}
+
 .work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
   .work-schedule-day-entry-body.todo-list-modal-body
-  > * + * {
-  margin-top: 0.65rem;
+  .todo-task-edit-label {
+  margin-bottom: 0;
+}
+
+.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+  .work-schedule-day-entry-body
+  .work-schedule-day-entry-label-text {
+  display: block;
+  margin-bottom: 0.35rem;
 }
 
 /* -------------------------------------------------------------------------- */
