@@ -1,8 +1,7 @@
 /**
  * 로그인·비번재설정 게이트 + 오늘(메인) + 시간가계부 탭: 노치·상태줄 뒤 상단 밴드 네이비.
  * — html/body 클래스 + main.css 그라데이션
- * — iOS standalone 에서는 index.html 의 apple-mobile-web-app-status-bar-style 이
- *   black-translucent 일 때 웹 배경이 상태줄 뒤까지 그려짐(default 이면 흰 칸 고정).
+ * — iOS standalone translucent 일 때 세로 세이프는 #signin-page(및 로그인 게이트)에서만 처리.
  */
 const CLASS = "lp-top-safe-chrome-navy";
 

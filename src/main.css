@@ -54,10 +54,12 @@ body {
   width: 100%;
 }
 
-/* 로그인 후 메인 셸: 뷰포트 높이 고정 → 본문(.app-main)만 스크롤, 앱 푸터는 항상 하단 */
+/* 로그인 후 메인 셸: 높이 고정 · 상·하 세이프는 이 박스에서만 한 번(내부 .app-main·푸터와 이중 적용 안 함) */
 #signin-page {
   flex-direction: column;
   box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   /* vh: 폴백 · svh: 모바일 주소창 등에 덜 출렁여 하단 푸터가 떠 보이는 현상 완화 */
   height: 100vh;
   max-height: 100vh;
@@ -104,15 +106,15 @@ body {
   overflow: auto;
   -webkit-overflow-scrolling: touch;
   width: 100%;
-  /* 노치 패딩은 탭 패널 직속 첫 블록에 둠 — 상단 줄이 헤더·탭 배경색과 같은 박스 안에서 채워짐 */
+  /* 노치 패딩: #signin-page 가 상단 세이프 처리 → 여기서는 내용 간격만 */
   padding-top: 0;
-  padding-bottom: var(--lp-safe-bottom);
+  padding-bottom: 0;
   padding-left: var(--lp-safe-left);
   padding-right: var(--lp-safe-right);
 }
 
 .app-main > .app-tab-panel > :first-child {
-  padding-top: max(0.75rem, var(--lp-safe-top));
+  padding-top: 0.75rem;
   box-sizing: border-box;
 }
 
@@ -121,13 +123,8 @@ body {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  /* 상단 살짝 여유 — 약 20vh (작은 화면·큰 화면 상한) */
-  padding-top: calc(var(--lp-safe-top) + clamp(1.15rem, 20vh, 5rem));
-}
-
-/* 탭 푸터가 보일 때: 하단 세이프 존은 .app-footer-menu 한 곳만(이중 패딩으로 푸터가 위로 뜨는 느낌 방지) */
-#signin-page.lp-tab-footer-visible .app-main {
-  padding-bottom: 0;
+  /* 상단 살짝 여유 — 약 20vh (작은 화면·큰 화면 상한); 세이프는 #signin-page padding-top */
+  padding-top: clamp(1.15rem, 20vh, 5rem);
 }
 
 .app-tab-panel {
@@ -157,7 +154,7 @@ body {
   align-items: stretch;
   gap: 0;
   width: 100%;
-  padding: 0.45rem 0.75rem calc(0.5rem + var(--lp-safe-bottom));
+  padding: 0.45rem 0.75rem 0.5rem;
   padding-left: calc(0.75rem + var(--lp-safe-left));
   padding-right: calc(0.75rem + var(--lp-safe-right));
   border-top: 1px solid #e2e8f0;
@@ -289,8 +286,7 @@ body {
   min-height: 0;
   width: 100%;
   box-sizing: border-box;
-  padding: 0.65rem max(0.85rem, var(--lp-safe-left)) calc(0.75rem + var(--lp-safe-bottom))
-    max(0.85rem, var(--lp-safe-right));
+  padding: 0.65rem max(0.85rem, var(--lp-safe-left)) 0.75rem max(0.85rem, var(--lp-safe-right));
 }
 
 .app-home-menu-launcher-card .app-home-menu-launcher-section-grid {
@@ -1349,6 +1345,7 @@ table {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0);
   font-family: "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
   color: var(--auth-ink);
@@ -1360,7 +1357,7 @@ table {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: max(1rem, calc(0.85rem + env(safe-area-inset-top, 0))) 1.25rem 1.5rem;
+  padding: max(1rem, 0.85rem) 1.25rem 1.5rem;
   box-sizing: border-box;
 }
 
