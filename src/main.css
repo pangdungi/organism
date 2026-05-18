@@ -22,11 +22,11 @@
 }
 
 /**
- * 오늘·시간가계부 탭만: 노치 위쪽이 흰색으로 비치지 않게 상단 밴드 네이비.
- * App.js → syncLpHomeTimeSafeTopChrome 가 html·body 에 클래스 토글.
+ * 로그인·비번재설정 게이트 + 오늘(메인) + 시간가계부: 상단 세이프 존까지 네이비로 이어 보이게.
+ * syncLpTopSafeChromeLoginGate / syncLpTopSafeChromeFromTab 가 html·body 클래스 토글.
  */
-html.lp-home-time-safe-top-navy.lp-app-bg,
-body.lp-home-time-safe-top-navy.lp-app-bg {
+html.lp-top-safe-chrome-navy.lp-app-bg,
+body.lp-top-safe-chrome-navy.lp-app-bg {
   background-color: #fff;
   background-image: linear-gradient(
     #1e4d7b 0,

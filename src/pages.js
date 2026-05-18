@@ -1,4 +1,4 @@
-import { clearLpHomeTimeSafeTopChrome } from "./utils/syncLpHomeTimeSafeTopChrome.js";
+import { syncLpTopSafeChromeLoginGate } from "./utils/syncLpHomeTimeSafeTopChrome.js";
 
 export function showOnly(pageId) {
   if (pageId !== "login") {
@@ -21,7 +21,7 @@ export function showOnly(pageId) {
       p.style.display = "none";
     }
   });
-  if (pageId === "login" || pageId === "reset-password") {
-    clearLpHomeTimeSafeTopChrome();
-  }
+  syncLpTopSafeChromeLoginGate(
+    pageId === "login" || pageId === "reset-password",
+  );
 }

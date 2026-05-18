@@ -69,7 +69,7 @@ import { logLpRender, logLpRenderStack } from "./utils/lpRenderDebugLog.js";
 import { initDomPulseDebug } from "./utils/domPulseDebug.js";
 import { initMobileVisualViewportKeyboardInset } from "./utils/mobileViewportKeyboard.js";
 import { logTodoScheduleTabOnNavigate } from "./utils/lpTabDataSourceLog.js";
-import { syncLpHomeTimeSafeTopChrome } from "./utils/syncLpHomeTimeSafeTopChrome.js";
+import { syncLpTopSafeChromeFromTab } from "./utils/syncLpHomeTimeSafeTopChrome.js";
 
 /** 상위 탭 메타(아이콘·메뉴 런처 구역 순서) */
 const TABS = [
@@ -207,12 +207,13 @@ function validAppTabIdSet() {
   return new Set([...TABS.map((t) => t.id), "idea", "admin"]);
 }
 
+/** @returns {boolean} 저장된 마지막 탭을 적용했으면 true */
 function applyPersistedTabIdFromSessionStorage() {
   try {
     const fromSession = sessionStorage.getItem(LP_LAST_TAB_SESSION_KEY);
     if (fromSession && validAppTabIdSet().has(fromSession)) {
       currentTabId = fromSession;
-      return;
+      return true;
     }
   } catch (_) {}
   try {
@@ -222,8 +223,10 @@ function applyPersistedTabIdFromSessionStorage() {
       try {
         sessionStorage.setItem(LP_LAST_TAB_SESSION_KEY, fromLocal);
       } catch (_) {}
+      return true;
     }
   } catch (_) {}
+  return false;
 }
 
 function persistActiveTabId(tabId) {
@@ -327,7 +330,8 @@ function migrateRemoveRoutineTasks() {
 
 export async function mountApp(container) {
   if (!container) return;
-  applyPersistedTabIdFromSessionStorage();
+  /* 로그아웃 등으로 저장소가 비었는데 메모리 탭만 남으면 크롬·첫 화면이 어긋남 → 오늘로 고정 */
+  if (!applyPersistedTabIdFromSessionStorage()) currentTabId = "home";
   if (currentTabId === "admin" && supabase) {
     try {
       const { data: { session } = {} } = await supabase.auth.getSession();
@@ -344,7 +348,7 @@ export async function mountApp(container) {
   } else if (currentTabId === "admin" && !supabase) {
     currentTabId = "home";
   }
-  syncLpHomeTimeSafeTopChrome(currentTabId);
+  syncLpTopSafeChromeFromTab(currentTabId);
   initPushReminderInAppPopup();
   migrateRemoveRoutineTasks();
   try {
@@ -447,7 +451,7 @@ export async function mountApp(container) {
     if (fromTab !== tabId) flushAllPendingTimeDailyBudgetSync();
     currentTabId = tabId;
     persistActiveTabId(tabId);
-    syncLpHomeTimeSafeTopChrome(tabId);
+    syncLpTopSafeChromeFromTab(tabId);
     syncAppFooterVisibility();
     logTodoScheduleTabOnNavigate(tabId, fromTab);
     logTabSync("tab_switch", { from: fromTab, to: tabId });
