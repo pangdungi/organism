@@ -10,8 +10,6 @@
   font-display: swap;
 }
 
-.time-ledger-view [data-legacy~="time-ledger-header-total"],
-[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-header-total"],
 .calendar-nav-date .calendar-nav-month,
 .calendar-nav-date .calendar-nav-year,
 .calendar-monthly-day-num,

@@ -295,21 +295,6 @@
   text-align: center;
 }
 
-.calendar-1day-timeline-remaining-label {
-  font-size: 0.8125rem;
-  font-weight: 650;
-  letter-spacing: -0.02em;
-  color: var(--cal-text-muted);
-}
-
-.calendar-1day-timeline-remaining-value {
-  font-size: 0.875rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-  color: var(--cal-text);
-}
-
 /* 일간 타임라인: 예상 타임카드 */
 .calendar-1day-timeline-wrap {
   width: 100%;

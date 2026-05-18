@@ -629,11 +629,17 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 [data-legacy~="time-task-log-time-adjust-btn"] {
   flex: 1 1 0;
   min-width: 0;
+  margin: 0;
   box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   padding: 0.3rem clamp(0.22rem, 1.8vw, 0.55rem);
   font-size: clamp(0.62rem, 2.9vw, 0.75rem);
   font-weight: 500;
   font-family: inherit;
+  line-height: 1.2;
   color: var(--lp-modal-navy-muted);
   background: #fff;
   border: 1px solid var(--lp-modal-border);

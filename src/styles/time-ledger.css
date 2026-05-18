@@ -6,20 +6,331 @@
  */
 
 /* [auto] data-legacy 병기 선택자 — scripts/time-js-main-only-classes.mjs */
-.time-ledger-view .time-ledger-top-title,
-[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-top-title"] {
+
+/* 시간가계부 탭만: 스크롤 본문(.app-main) 네이비 — 하단 푸터는 형제 요소라 영향 없음 */
+#signin-page
+  .app-main:has(
+    > .app-tab-panel > .app-tab-panel-content[data-legacy~="time-ledger-view"]
+  ) {
+  background: #1e4d7b;
+  /* 본문 전체 스크롤 대신「시간 사용내역」목록만 내부 스크롤 */
+  overflow: hidden;
+}
+
+/* 시간가계부 상단 잔고: 가로 풀폭(안전영역은 패딩으로만) */
+/* 숨김 .time-hourly-input 이 첫 자식이므로 :first-child 는 쓰면 안 됨 */
+.time-ledger-view > .time-ledger-tabs-filter-row,
+[data-legacy~="time-ledger-view"] > [data-legacy~="time-ledger-tabs-filter-row"] {
+  width: calc(100% + var(--lp-safe-left) + var(--lp-safe-right));
+  max-width: none;
+  margin-left: calc(-1 * var(--lp-safe-left));
+  margin-right: calc(-1 * var(--lp-safe-right));
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.time-ledger-tab-header-row,
+[data-legacy~="time-ledger-tab-header-row"] {
   width: 100%;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.time-ledger-view .time-ledger-top-strip__center,
+[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-top-strip__center"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: none;
+  width: 100%;
+  display: flex;
+  justify-content: stretch;
+  align-self: stretch;
+  box-sizing: border-box;
+  padding: 0 calc(0.85rem + var(--lp-safe-right)) 0.5rem
+    calc(0.85rem + var(--lp-safe-left));
+  background: transparent;
+}
+.time-ledger-view .time-ledger-top-title.time-ledger-bank-card,
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-top-title"][data-legacy~="time-ledger-bank-card"] {
+  width: 100%;
+  max-width: none;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  box-sizing: border-box;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    "Noto Sans KR",
+    "Apple SD Gothic Neo",
+    sans-serif;
+}
+.time-ledger-view .time-ledger-bank-card-inner,
+[data-legacy~="time-ledger-view"] .time-ledger-bank-card-inner {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   text-align: center;
-  font-size: 3.45rem;
+  padding: 0.85rem 1.1rem 0.75rem;
+  background: linear-gradient(
+    168deg,
+    #feffff 0%,
+    #f3f8fc 38%,
+    #e8eef6 100%
+  );
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 0 0 1px rgba(30, 77, 123, 0.08),
+    0 10px 32px rgba(15, 23, 42, 0.14),
+    0 2px 10px rgba(15, 23, 42, 0.07);
+  box-sizing: border-box;
+}
+/* 상단 광택 — 위 레이어는 텍스트 아래(z-index) */
+.time-ledger-view .time-ledger-bank-card-inner::before,
+[data-legacy~="time-ledger-view"] .time-ledger-bank-card-inner::before {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  inset: 0;
+  border-radius: inherit;
+  z-index: 0;
+  background: linear-gradient(
+    118deg,
+    rgba(255, 255, 255, 0.88) 0%,
+    rgba(255, 255, 255, 0.22) 32%,
+    rgba(255, 255, 255, 0) 52%
+  );
+  opacity: 0.92;
+}
+.time-ledger-view .time-ledger-bank-card-inner::after,
+[data-legacy~="time-ledger-view"] .time-ledger-bank-card-inner::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  left: 8%;
+  right: 8%;
+  bottom: 0;
+  height: 38%;
+  z-index: 0;
+  border-radius: 0 0 0.85rem 0.85rem;
+  background: linear-gradient(
+    to top,
+    rgba(30, 77, 123, 0.04) 0%,
+    transparent 72%
+  );
+  opacity: 0.85;
+}
+.time-ledger-view .time-ledger-bank-card-inner > *,
+[data-legacy~="time-ledger-view"] .time-ledger-bank-card-inner > * {
+  position: relative;
+  z-index: 1;
+}
+.time-ledger-view .time-ledger-bank-date,
+[data-legacy~="time-ledger-view"] .time-ledger-bank-date {
+  margin: 0 0 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+.time-ledger-view .time-ledger-bank-eyebrow--balance,
+[data-legacy~="time-ledger-view"] .time-ledger-bank-eyebrow--balance {
+  font-size: 0.75rem;
   font-weight: 600;
-  line-height: 1.12;
-  letter-spacing: -0.03em;
+  color: #94a3b8;
+  text-transform: none;
+  letter-spacing: 0.02em;
+  margin-top: 0;
+}
+.time-ledger-view .time-ledger-bank-balance-hero,
+[data-legacy~="time-ledger-view"] .time-ledger-bank-balance-hero {
+  margin: 0.12rem 0 0;
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.1rem 0.22rem;
+  line-height: 1;
+}
+.time-ledger-view .time-ledger-bank-won-mark,
+[data-legacy~="time-ledger-view"] .time-ledger-bank-won-mark {
+  font-size: clamp(1.1rem, 4.2vw, 1.4rem);
+  font-weight: 600;
+  color: #64748b;
+  vertical-align: baseline;
+}
+.time-ledger-view .time-ledger-bank-won-num,
+[data-legacy~="time-ledger-view"] .time-ledger-bank-won-num {
+  font-size: clamp(1.85rem, 7.2vw, 2.45rem);
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  color: #030712;
+  font-variant-numeric: tabular-nums;
+}
+.time-ledger-view .time-ledger-bank-time-strip,
+[data-legacy~="time-ledger-view"] .time-ledger-bank-time-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem 0.5rem;
+  margin: 0.6rem 0 0;
+  padding: 0.45rem 0.75rem;
+  background: #f8fafc;
+  border-radius: 0.65rem;
+  border: 1px solid #e8ecf2;
+  box-sizing: border-box;
+}
+.time-ledger-view .time-ledger-bank-time-strip-label,
+[data-legacy~="time-ledger-view"] .time-ledger-bank-time-strip-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+}
+.time-ledger-view .time-ledger-bank-balance-time,
+[data-legacy~="time-ledger-view"] .time-ledger-bank-balance-time {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   color: #1e4d7b;
+  font-variant-numeric: tabular-nums;
+}
+.time-ledger-view .time-ledger-bank-invest-block,
+[data-legacy~="time-ledger-view"] .time-ledger-bank-invest-block {
+  margin: 0.55rem 0 0;
+  padding-top: 0.45rem;
+  border-top: 1px solid rgba(226, 232, 240, 0.95);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: center;
+  text-align: center;
+  box-sizing: border-box;
+}
+.time-ledger-view .time-ledger-bank-invest-line,
+[data-legacy~="time-ledger-view"] .time-ledger-bank-invest-line {
+  margin: 0;
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.35rem 0.5rem;
+  line-height: 1.35;
+}
+.time-ledger-view .time-ledger-bank-invest-caption,
+[data-legacy~="time-ledger-view"] .time-ledger-bank-invest-caption {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #64748b;
+}
+.time-ledger-view .time-ledger-bank-invest-amount,
+[data-legacy~="time-ledger-view"] .time-ledger-bank-invest-amount {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #dc2626;
+  font-variant-numeric: tabular-nums;
+}
+/* 시간가계부 루트: 본문(잔고+사용내역 시트)이 남은 높이 채움 */
+.app-tab-panel-content[data-legacy~="time-ledger-view"] {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+/* 본문: 은행앱 '자금 사용내역'처럼 흰 시트 + 상단 라운드 */
+[data-legacy~="time-ledger-view"] [data-legacy~="time-view-content-wrap"] {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+  box-sizing: border-box;
+}
+/* 잔액 카드와 시간 사용내역 시트 사이 — 컴팩트 2버튼 */
+[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-quick-actions"] {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: stretch;
+  gap: 0.45rem;
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0.15rem calc(0.85rem + var(--lp-safe-right)) 0.2rem
+    calc(0.85rem + var(--lp-safe-left));
+  margin: 0;
+}
+[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-quick-action-btn"] {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  padding: 0.38rem 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 0.45rem;
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset;
+}
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-quick-action-btn"]:active {
+  background: rgba(255, 255, 255, 0.22);
+}
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-quick-action-btn"]:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.75);
+  outline-offset: 2px;
+}
+[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-usage-sheet"] {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin-top: 0.2rem;
+  background: #fff;
+  border-radius: 1rem 1rem 0 0;
+  box-shadow:
+    0 -4px 24px rgba(15, 23, 42, 0.06),
+    0 -1px 0 rgba(15, 23, 42, 0.04);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-usage-history-heading"] {
+  margin: 0;
+  padding: 1rem 1rem 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: #0f172a;
+  line-height: 1.25;
+  border-bottom: 1px solid #f1f5f9;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 .time-ledger-tabs-filter-row,
 [data-legacy~="time-ledger-tabs-filter-row"] {
   /* app-main 이 이미 safe-top 반영 — 여기서는 추가 간격만 (중복 inset 방지) */
-  padding-top: 0.55rem;
+  padding-top: 0.45rem;
   box-sizing: border-box;
 }
 .time-ledger-filter-add-row,
@@ -168,10 +479,15 @@
   gap: 0.85rem;
   width: 100%;
   box-sizing: border-box;
-  /* 날짜 픽커 구분선과 첫 줄(헤더·카드)만 띄움 */
-  padding-top: 0.5rem;
-  padding-left: 0.5rem;
-  padding-right: 0.5rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  /* 소제목 아래 목록 — 좌우는 시트 안에서 통일 */
+  padding: 0.65rem 0.75rem 1rem;
 }
 /* 같은 날짜 안 카드 여백 — 카드마다 마진 대신 스택 gap */
 .time-ledger-view [data-legacy~="time-ledger-day-card-stack"],

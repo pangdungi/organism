@@ -63,38 +63,61 @@ function appendTaskDropdownBadges(textWrap, task, opts = {}) {
   }
 }
 
+/** 드롭다운 상단 칩 순서(전체 모드) — 꿈·행복·부수입·건강·비생산·그외 */
+const LEDGER_BUCKET_CHIPS = [
+  { id: "dream", label: "꿈" },
+  { id: "happiness", label: "행복" },
+  { id: "sideincome", label: "부수입" },
+  { id: "health", label: "건강" },
+  { id: "nonproductive", label: "비생산" },
+  { id: "other", label: "그외" },
+];
+
+const LEDGER_BUCKET_PRESET_EXPENSE = new Set(["nonproductive", "other"]);
+const LEDGER_BUCKET_PRESET_INVEST = new Set([
+  "dream",
+  "happiness",
+  "sideincome",
+  "health",
+  "other",
+]);
+
+export function timeLedgerTaskLogPickerBucket(t) {
+  let prod = String(t?.productivity ?? "")
+    .trim()
+    .toLowerCase();
+  if (!prod) {
+    prod = String(
+      getProductivityFromCategory(String(t?.category ?? "").trim()) || "",
+    ).toLowerCase();
+  }
+  if (prod === "nonproductive") return "nonproductive";
+  if (prod === "other") return "other";
+  const cat = String(t?.category ?? "")
+    .trim()
+    .toLowerCase();
+  if (cat === "dream") return "dream";
+  if (cat === "happiness") return "happiness";
+  if (cat === "sideincome") return "sideincome";
+  if (cat === "health") return "health";
+  return "other";
+}
+
+export function getAllowedBucketsForLedgerPreset(preset) {
+  if (preset === "expense") return LEDGER_BUCKET_PRESET_EXPENSE;
+  if (preset === "invest") return LEDGER_BUCKET_PRESET_INVEST;
+  return null;
+}
+
+/** 지출하기(expense): 그외+비생산 / 투자하기(invest): 그외+꿈·행복·부수입·건강 */
+export function taskAllowedForLedgerPreset(task, preset) {
+  const allowed = getAllowedBucketsForLedgerPreset(preset);
+  if (!allowed) return true;
+  return allowed.has(timeLedgerTaskLogPickerBucket(task));
+}
+
 export function buildTimeTaskLogPickerDropdown(options = {}) {
   const { abortSignal, onTaskSelected = () => {} } = options;
-
-  const LEDGER_BUCKET_CHIPS = [
-    { id: "dream", label: "꿈" },
-    { id: "happiness", label: "행복" },
-    { id: "sideincome", label: "부수입" },
-    { id: "health", label: "건강" },
-    { id: "nonproductive", label: "비생산" },
-    { id: "other", label: "그외" },
-  ];
-
-  function timeLedgerTaskLogPickerBucket(t) {
-    let prod = String(t?.productivity ?? "")
-      .trim()
-      .toLowerCase();
-    if (!prod) {
-      prod = String(
-        getProductivityFromCategory(String(t?.category ?? "").trim()) || "",
-      ).toLowerCase();
-    }
-    if (prod === "nonproductive") return "nonproductive";
-    if (prod === "other") return "other";
-    const cat = String(t?.category ?? "")
-      .trim()
-      .toLowerCase();
-    if (cat === "dream") return "dream";
-    if (cat === "happiness") return "happiness";
-    if (cat === "sideincome") return "sideincome";
-    if (cat === "health") return "health";
-    return "other";
-  }
 
   const wrap = document.createElement("div");
   lpSetClasses(wrap, "time-task-log-task-dropdown");
@@ -111,12 +134,34 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
   let value = "";
   let searchQuery = "";
   let pickerBucket = "dream";
+  let ledgerBucketPreset =
+    options.ledgerBucketPreset === "expense" ||
+    options.ledgerBucketPreset === "invest"
+      ? options.ledgerBucketPreset
+      : null;
+
+  function getVisibleChips() {
+    const allowed = getAllowedBucketsForLedgerPreset(ledgerBucketPreset);
+    if (!allowed) return LEDGER_BUCKET_CHIPS;
+    return LEDGER_BUCKET_CHIPS.filter((c) => allowed.has(c.id));
+  }
+
+  function ensurePickerBucketInAllowed() {
+    const ids = new Set(getVisibleChips().map((c) => c.id));
+    if (!ids.has(pickerBucket)) pickerBucket = getVisibleChips()[0]?.id || "dream";
+  }
 
   function renderOptions(container, filter) {
     container.innerHTML = "";
     const q = (filter || "").trim().toLowerCase();
+    const bucketAllow = getAllowedBucketsForLedgerPreset(ledgerBucketPreset);
     const allTasks = getFullTaskOptions();
     let tasks = allTasks.filter((t) => !(t.name || "").includes(" > "));
+    if (bucketAllow) {
+      tasks = tasks.filter((t) =>
+        bucketAllow.has(timeLedgerTaskLogPickerBucket(t)),
+      );
+    }
     if (!q) {
       tasks = tasks.filter(
         (t) => timeLedgerTaskLogPickerBucket(t) === pickerBucket,
@@ -187,6 +232,7 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
   function renderPanel() {
     panel.innerHTML = "";
     let optionsContainer = null;
+    ensurePickerBucketInAllowed();
 
     const searchWrap = document.createElement("div");
     lpSetClasses(searchWrap, "time-task-log-task-dropdown-search-wrap");
@@ -203,7 +249,7 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
     lpSetClasses(chipsWrap, "time-task-log-task-dropdown-buckets");
     chipsWrap.setAttribute("role", "tablist");
     chipsWrap.setAttribute("aria-label", "과제 구역");
-    LEDGER_BUCKET_CHIPS.forEach(({ id, label: chipLabel }) => {
+    getVisibleChips().forEach(({ id, label: chipLabel }) => {
       const b = document.createElement("button");
       b.type = "button";
       lpSetClasses(b, "time-task-log-task-dropdown-bucket");
@@ -247,7 +293,7 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
 
   trigger.addEventListener("click", () => {
     searchQuery = "";
-    pickerBucket = "dream";
+    ensurePickerBucketInAllowed();
     renderPanel();
     panel.hidden = !panel.hidden;
     if (!panel.hidden)
@@ -271,5 +317,15 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
     trigger.textContent = value || "과제를 선택하세요";
     onTaskSelected(value);
   };
+  wrap._setLedgerBucketPreset = (preset) => {
+    ledgerBucketPreset =
+      preset === "expense" || preset === "invest" ? preset : null;
+    searchQuery = "";
+    ensurePickerBucketInAllowed();
+    value = "";
+    trigger.textContent = "과제를 선택하세요";
+    panel.hidden = true;
+  };
+  wrap._getLedgerBucketPreset = () => ledgerBucketPreset;
   return wrap;
 }

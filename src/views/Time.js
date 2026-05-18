@@ -46,7 +46,10 @@ import { pullKpiMapsForTaskLogModalOpen } from "../utils/kpiTabCloudRefresh.js";
 import {
   scheduleTimeDailyBudgetSyncPush,
 } from "../utils/timeDailyBudgetSupabase.js";
-import { buildTimeTaskLogPickerDropdown } from "../utils/timeTaskLogPickerDropdown.js";
+import {
+  buildTimeTaskLogPickerDropdown,
+  taskAllowedForLedgerPreset,
+} from "../utils/timeTaskLogPickerDropdown.js";
 import { getTimeTaskListIconSrc } from "../utils/timeTaskIconUrls.js";
 import {
   ensureTimeLedgerEntryIds,
@@ -59,7 +62,6 @@ import {
   deleteTimeLedgerEntryFromSupabase,
   pullTimeLedgerEntriesForDateRange,
   pushDirtyTimeLedgerEntriesToSupabase,
-  readTimeLedgerSessionFilterRangeYmd,
   readTimeLedgerCombinedPullRangeYmd,
   timeLedgerLocalTodayYmd,
 } from "../utils/timeLedgerEntriesSupabase.js";
@@ -92,6 +94,10 @@ const TIME_LEDGER_TOOLBAR_SETTINGS_ICON_SVG =
 const TIME_LEDGER_TOOLBAR_FILTER_ICON_SVG =
   '<svg data-legacy="time-btn-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" d="m20.988 2h-17.976c-1.664 0-2.606 1.899-1.595 3.216l7.583 9.784v7l4.853-2.101c.731-.318 1.147-1.037 1.147-1.832v-3.067l7.583-9.784c1.011-1.317.069-3.216-1.595-3.216z"/></svg>';
 
+/** 앱 푸터 날짜 아이콘 — settings/필터/+ 와 동일 currentColor (main.css .app-footer-icon-btn) */
+const TIME_LEDGER_FOOTER_DATE_ICON_SVG =
+  '<svg data-legacy="time-btn-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></g></svg>';
+
 const PRODUCTIVITY_OPTIONS = [
   { value: "productive", label: "생산적", color: "prod-pink" },
   { value: "nonproductive", label: "비생산적", color: "prod-blue" },
@@ -100,6 +106,8 @@ const PRODUCTIVITY_OPTIONS = [
 
 const BUDGET_GOALS_KEY = "time_daily_budget_goals";
 const BUDGET_EXCLUDED_KEY = "time_budget_excluded";
+/** 하루 기록 상한(홈 목표·시간 잔액): 23시간 59분 */
+const TIME_LEDGER_DAILY_RECORD_CAP_HOURS = 23 + 59 / 60;
 
 function notifyTimeDailyBudgetSaved(dateStr) {
   if (!(dateStr || "").trim()) return;
@@ -1151,6 +1159,23 @@ function formatHoursDisplay(hours) {
   return `${h}h ${m}m`;
 }
 
+/** 은행 앱 잔고 카드용 시·분 표시 (한도 초과 시 음수 가능) */
+function formatHoursDisplayHhMmColon(hours) {
+  if (!isFinite(hours)) return "00 : 00";
+  const neg = hours < 0;
+  const totalMins = Math.round(Math.abs(hours) * 60);
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+  const core = `${String(h).padStart(2, "0")} : ${String(m).padStart(2, "0")}`;
+  return neg ? `-${core}` : core;
+}
+
+function formatLedgerWonInteger(n) {
+  const v = Math.round(Number(n) || 0);
+  const abs = Math.abs(v);
+  return abs.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
 /** 모바일 시간기록 카드: 진행 중(마감 없음)일 때 경과 시간 갱신용 타이머 정리 */
 function clearTimeLedgerMobileElapsedTimer(viewEl) {
   if (!viewEl?._timeLedgerMobileElapsedIntervalId) return;
@@ -1939,7 +1964,7 @@ export function getTodayTimeSummary() {
       ? "0h 0m"
       : formatHoursDisplay(productiveHrs);
   /** 홈 오늘 통계: 총 기록 목표(고정) */
-  const totalRecordGoalHours = 23 + 59 / 60;
+  const totalRecordGoalHours = TIME_LEDGER_DAILY_RECORD_CAP_HOURS;
   const totalRecordGoalDisplay = formatHoursDisplay(totalRecordGoalHours);
   /** 24h − 근무 − 수면 = 가용 시간(당일 기록 기준) */
   const availableHrsToday = Math.max(0, 24 - workHrsToday - sleepHrsToday);
@@ -3273,70 +3298,63 @@ export function render() {
 
   const hourlyAddSlot = document.createElement("div");
   lpSetClasses(hourlyAddSlot, "time-hourly-add-slot");
-  const ledgerTopHeading = document.createElement("div");
-  lpSetClasses(ledgerTopHeading, "time-ledger-top-title");
-  ledgerTopHeading.innerHTML =
-    '<span data-legacy="time-ledger-header-total" aria-label="필터 구간 전체 기록 시간">0h 0m</span>';
 
   const now = new Date();
+  function getLedgerFilterTodayYmd() {
+    return timeLedgerLocalTodayYmd();
+  }
+
+  /** YYYY-MM-DD → "2026. 05. 05(화)" — 목록 일자·잔고 카드 공통 */
+  function formatTimeFilterDateDotsWithWeekday(dStr) {
+    if (!dStr || !/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return "";
+    const [y, mo, d] = dStr.split("-").map(Number);
+    const dt = new Date(y, mo - 1, d);
+    const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+    const yy = String(y);
+    const mm = String(mo).padStart(2, "0");
+    const dd = String(d).padStart(2, "0");
+    return `${yy}. ${mm}. ${dd}(${weekdays[dt.getDay()]})`;
+  }
+
+  const ledgerTopHeading = document.createElement("div");
+  lpSetClasses(ledgerTopHeading, "time-ledger-top-title time-ledger-bank-card");
+  const todayYmdInit = getLedgerFilterTodayYmd();
+  ledgerTopHeading.innerHTML = `
+    <div class="time-ledger-bank-card-inner" data-legacy="time-ledger-bank-inner" role="region" aria-label="오늘 시간 잔액">
+      <p class="time-ledger-bank-date" data-legacy="time-ledger-bank-today-date">${formatTimeFilterDateDotsWithWeekday(todayYmdInit)}</p>
+      <p class="time-ledger-bank-eyebrow time-ledger-bank-eyebrow--balance">잔액</p>
+      <p class="time-ledger-bank-balance-hero" data-legacy="time-ledger-balance-krw-remain">
+        <span class="time-ledger-bank-won-mark" aria-hidden="true">₩</span><span class="time-ledger-bank-won-num" data-legacy="time-ledger-balance-won-digits">0</span>
+      </p>
+      <div class="time-ledger-bank-time-strip">
+        <span class="time-ledger-bank-time-strip-label">남은 시간</span>
+        <span class="time-ledger-bank-balance-time" data-legacy="time-ledger-balance-time-remain">${formatHoursDisplayHhMmColon(TIME_LEDGER_DAILY_RECORD_CAP_HOURS)}</span>
+      </div>
+      <div class="time-ledger-bank-invest-block" aria-label="오늘 투자로 기록한 시간의 가치">
+        <p class="time-ledger-bank-invest-line">
+          <span class="time-ledger-bank-invest-caption">다시 받을 금액 :</span>
+          <span class="time-ledger-bank-invest-amount" data-legacy="time-ledger-invest-reclaim-won">+₩ 0</span>
+        </p>
+      </div>
+    </div>`;
+
   const filterType = "range";
   let filterYear = now.getFullYear();
   let filterMonth = now.getMonth() + 1;
-  const { rangeStart: filterStartDateInit, rangeEnd: filterEndDateInit } =
-    readTimeLedgerSessionFilterRangeYmd();
-  let filterStartDate = filterStartDateInit;
-  let filterEndDate = filterEndDateInit;
+  let filterStartDate = getLedgerFilterTodayYmd();
+  let filterEndDate = filterStartDate;
 
   function persistActiveViewTimeFilterToSession() {
-    const start = pickYmdFromFilter(startDateInput.value, filterStartDate);
-    const end = pickYmdFromFilter(endDateInput.value, filterEndDate);
+    const t = getLedgerFilterTodayYmd();
     try {
       if (typeof sessionStorage === "undefined") return;
-      sessionStorage.setItem("lp_time_filter_start", start);
-      sessionStorage.setItem("lp_time_filter_end", end);
+      sessionStorage.setItem("lp_time_filter_start", t);
+      sessionStorage.setItem("lp_time_filter_end", t);
     } catch (_) {}
   }
   /** 과제 필터: null = 전체, string[] = 선택한 과제만 표시 (히스토리 기준) */
   let selectedTaskNamesForFilter = null;
 
-  const filterBar = document.createElement("div");
-  lpSetClasses(filterBar, "time-filter-bar lp-date-range-host");
-  filterBar.innerHTML = `
-    <div data-legacy="time-filter-nav-cluster lp-date-range-cluster" data-filter-for="all">
-      <div data-legacy="time-filter-range-wrap" data-filter-wrap="range">
-        <div data-legacy="time-filter-date-field">
-          <input type="date" data-legacy="time-filter-start-date" name="time-filter-start" aria-label="시작일" />
-          <span data-legacy="time-filter-date-label time-filter-date-label--start" aria-hidden="true"></span>
-          <img src="/toolbaricons/calendar-alt.svg" alt="" data-legacy="time-filter-date-cal-icon" width="14" height="14" decoding="sync" aria-hidden="true" />
-        </div>
-        <span data-legacy="time-filter-range-sep" data-audit-range-hidden>~</span>
-        <div data-legacy="time-filter-date-field">
-          <input type="date" data-legacy="time-filter-end-date" name="time-filter-end" data-audit-range-hidden aria-label="종료일" />
-          <span data-legacy="time-filter-date-label time-filter-date-label--end" aria-hidden="true"></span>
-          <img src="/toolbaricons/calendar-alt.svg" alt="" data-legacy="time-filter-date-cal-icon" width="14" height="14" decoding="sync" aria-hidden="true" />
-        </div>
-      </div>
-      <div data-legacy="time-filter-day-nav">
-        <button type="button" data-legacy="time-filter-day-prev" aria-label="이전 날짜">
-          <img src="/toolbaricons/caret-left-circle.svg" alt="" data-legacy="time-btn-icon time-filter-day-nav-icon" width="20" height="20" decoding="sync" aria-hidden="true" />
-        </button>
-        <button type="button" data-legacy="time-filter-day-next" aria-label="다음 날짜">
-          <img src="/toolbaricons/caret-right-circle.svg" alt="" data-legacy="time-btn-icon time-filter-day-nav-icon" width="20" height="20" decoding="sync" aria-hidden="true" />
-        </button>
-      </div>
-    </div>
-  `;
-
-  const startDateInput = filterBar.querySelector(
-    '[data-legacy~="time-filter-start-date"]',
-  );
-  const endDateInput = filterBar.querySelector(
-    '[data-legacy~="time-filter-end-date"]',
-  );
-  const rangeWrap = filterBar.querySelector("[data-filter-wrap='range']");
-  const filterNavCluster = filterBar.querySelector(
-    '[data-legacy~="time-filter-nav-cluster"]',
-  );
   const taskSetupBtn = document.createElement("button");
   taskSetupBtn.type = "button";
   lpSetClasses(taskSetupBtn, "time-task-setup-btn");
@@ -3360,53 +3378,25 @@ export function render() {
   taskSelectBtn.innerHTML = TIME_LEDGER_TOOLBAR_FILTER_ICON_SVG;
   lpTokenAdd(taskSelectBtn, APP_FOOTER_ICON_BTN_CLASS);
 
-  /** YYYY-MM-DD → "2026. 05. 05(화)" — 필터·목록 일자(모바일·데스크탑 공통) */
-  function formatTimeFilterDateDotsWithWeekday(dStr) {
-    if (!dStr || !/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return "";
-    const [y, mo, d] = dStr.split("-").map(Number);
-    const dt = new Date(y, mo - 1, d);
-    const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
-    const yy = String(y);
-    const mm = String(mo).padStart(2, "0");
-    const dd = String(d).padStart(2, "0");
-    return `${yy}. ${mm}. ${dd}(${weekdays[dt.getDay()]})`;
-  }
+  const footerDateBtn = document.createElement("button");
+  footerDateBtn.type = "button";
+  lpSetClasses(footerDateBtn, "time-ledger-footer-date-btn");
+  footerDateBtn.title = "날짜·잔액 카드로 이동";
+  footerDateBtn.setAttribute("aria-label", "날짜");
+  footerDateBtn.innerHTML = TIME_LEDGER_FOOTER_DATE_ICON_SVG;
+  lpTokenAdd(footerDateBtn, APP_FOOTER_ICON_BTN_CLASS);
+  footerDateBtn.addEventListener("click", () => {
+    try {
+      const main = document.querySelector("#signin-page .app-main");
+      if (main) main.scrollTo({ top: 0, behavior: "smooth" });
+      else ledgerTopHeading?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (_) {}
+  });
 
-  function syncTimeFilterDateLabels() {
-    /* 모바일: navCluster가 contentWrap 툴바로 옮겨져도 같은 노드 — filterBar로 찾으면 라벨이 끊김 */
-    const labelRoot = filterNavCluster || filterBar;
-    const startLabel = labelRoot?.querySelector(
-      '[data-legacy~="time-filter-date-label--start"]',
-    );
-    const endLabel = labelRoot?.querySelector(
-      '[data-legacy~="time-filter-date-label--end"]',
-    );
-    const fmt = formatTimeFilterDateDotsWithWeekday;
-    if (startLabel) {
-      startLabel.textContent = fmt(startDateInput.value || filterStartDate);
-    }
-    if (endLabel) {
-      endLabel.textContent = fmt(endDateInput.value || filterEndDate);
-    }
-  }
-
-  startDateInput.value = filterStartDate;
-  endDateInput.value = filterEndDate;
-  syncTimeFilterDateLabels();
-
-  function pickYmdFromFilter(raw, fallback) {
-    const a = (raw && String(raw).trim()) || "";
-    if (/^\d{4}-\d{2}-\d{2}$/.test(a)) return a;
-    const b = (fallback && String(fallback).trim()) || "";
-    if (/^\d{4}-\d{2}-\d{2}$/.test(b)) return b;
-    return toDateStr(new Date());
-  }
-
-  /** 날짜 피커 구간이 바뀌면 서버에서 그 구간만 다시 받기 */
+  /** 날짜 피커 제거 후: 항상 오늘만 동기화 */
   function computePickerRangeKeyForPull() {
-    const a = pickYmdFromFilter(startDateInput.value, filterStartDate);
-    const b = pickYmdFromFilter(endDateInput.value, filterEndDate);
-    return a <= b ? `${a}|${b}` : `${b}|${a}`;
+    const t = getLedgerFilterTodayYmd();
+    return `${t}|${t}`;
   }
   let _pickerRangeKeyAtLastPullIntent = computePickerRangeKeyForPull();
   let _timeLedgerFilterPullTimer = null;
@@ -3422,77 +3412,17 @@ export function render() {
     }, 400);
   }
 
-  function shiftFilterRangeByDays(delta) {
-    const s0 = pickYmdFromFilter(startDateInput.value, filterStartDate);
-    const e0 = pickYmdFromFilter(endDateInput.value, filterEndDate);
-    const sd = new Date(`${s0}T12:00:00`);
-    const ed = new Date(`${e0}T12:00:00`);
-    if (Number.isNaN(sd.getTime()) || Number.isNaN(ed.getTime())) return;
-    sd.setDate(sd.getDate() + delta);
-    ed.setDate(ed.getDate() + delta);
-    filterStartDate = toDateStr(sd);
-    filterEndDate = toDateStr(ed);
-    startDateInput.value = filterStartDate;
-    endDateInput.value = filterEndDate;
-    persistActiveViewTimeFilterToSession();
-  }
-
-  /* 모바일에서 툴바로 DOM만 옮겨지므로, 클러스터에 위임해 < > 탭이 항상 동일하게 동작 */
-  filterNavCluster?.addEventListener("click", (e) => {
-    const prev = e.target.closest('[data-legacy~="time-filter-day-prev"]');
-    const next = e.target.closest('[data-legacy~="time-filter-day-next"]');
-    if (!prev && !next) return;
-    e.preventDefault();
-    shiftFilterRangeByDays(prev ? -1 : 1);
-    onFilterChange();
-  });
-
-  function openTimeLedgerFilterDateInput(inp) {
-    if (!inp) return;
-    try {
-      inp.focus({ preventScroll: true });
-    } catch (_) {
-      inp.focus();
-    }
-    if (typeof inp.showPicker === "function") {
-      try {
-        inp.showPicker();
-        return;
-      } catch (_) {}
-    }
-    inp.click();
-  }
-  filterNavCluster
-    ?.querySelectorAll('[data-legacy~="time-filter-date-field"]')
-    .forEach((field) => {
-      const inp = field.querySelector('input[type="date"]');
-      if (!inp) return;
-      field.addEventListener("click", () => {
-        openTimeLedgerFilterDateInput(inp);
-      });
-    });
-
-  startDateInput.addEventListener("change", () => {
-    const v = startDateInput.value;
-    if (v) filterStartDate = v;
-    onFilterChange();
-  });
-  startDateInput.addEventListener("input", syncTimeFilterDateLabels);
-  endDateInput.addEventListener("change", () => {
-    const v = endDateInput.value;
-    if (v) filterEndDate = v;
-    onFilterChange();
-  });
-  endDateInput.addEventListener("input", syncTimeFilterDateLabels);
-
   function onFilterChange(skipMerge = false) {
+    const today = getLedgerFilterTodayYmd();
+    filterStartDate = today;
+    filterEndDate = today;
     const type = filterType;
     const rows = getFullRowsForFilter(skipMerge);
     cachedRows = rows;
     const y = filterYear;
     const m = filterMonth;
-    const start = startDateInput.value || filterStartDate;
-    const end = endDateInput.value || filterEndDate;
+    const start = today;
+    const end = today;
     let filtered = filterRowsByFilterType(rows, type, y, m, start, end);
     if (
       selectedTaskNamesForFilter != null &&
@@ -3503,7 +3433,6 @@ export function render() {
     }
     renderAll(filtered);
     updateTotal();
-    syncTimeFilterDateLabels();
     persistActiveViewTimeFilterToSession();
     const pickerKeyNow = computePickerRangeKeyForPull();
     if (pickerKeyNow !== _pickerRangeKeyAtLastPullIntent) {
@@ -3512,10 +3441,9 @@ export function render() {
     }
   }
 
-  /* filterBar는 월 드롭다운 패널이 세로로 열리므로 상단 탭 줄(overflow) 밖에 둠 */
+  /* 상단: 은행 앱식 잔고 카드 + 탭 제목 줄 */
   const tabsFilterRow = document.createElement("div");
   lpSetClasses(tabsFilterRow, "time-ledger-tabs-filter-row");
-  window.addEventListener("resize", syncTimeFilterDateLabels, { signal });
   const tabsTopMargin = document.createElement("div");
   lpSetClasses(tabsTopMargin, "time-ledger-tabs-top-margin");
   const ledgerTopCenter = document.createElement("div");
@@ -3526,7 +3454,7 @@ export function render() {
   function syncAppFooterLedgerActions() {
     const slot = getAppFooterActionsSlot();
     if (!slot) return;
-    const nodes = [taskSetupBtn, taskSelectBtn, hourlyAddSlot];
+    const nodes = [taskSetupBtn, taskSelectBtn, hourlyAddSlot, footerDateBtn];
     for (const node of nodes) {
       if (node && node.parentElement !== slot) slot.appendChild(node);
     }
@@ -3539,13 +3467,7 @@ export function render() {
   tabsFilterRow.appendChild(tabsTopMargin);
   tabsFilterRow.appendChild(tabHeaderRow);
 
-  /* 2행: 날짜·필터 */
-  const filterAddRow = document.createElement("div");
-  lpSetClasses(filterAddRow, "time-ledger-filter-add-row");
-  filterAddRow.appendChild(filterBar);
-
   el.appendChild(tabsFilterRow);
-  el.appendChild(filterAddRow);
 
   const taskSetupModal = document.createElement("div");
   lpSetClasses(taskSetupModal, "time-task-setup-modal");
@@ -5221,9 +5143,14 @@ export function render() {
     const v = (taskLogTaskDropdown?._getValue?.() || "").trim();
     if (v) onTaskSelectedForLog(v);
     else {
-      const mainTasks = getFullTaskOptions().filter(
+      const preset = taskLogAddContext?.ledgerBucketPreset;
+      let mainTasks = getFullTaskOptions().filter(
         (t) => !(t.name || "").includes(" > "),
       );
+      if (preset)
+        mainTasks = mainTasks.filter((t) =>
+          taskAllowedForLedgerPreset(t, preset),
+        );
       const first = mainTasks[0]?.name || "";
       if (first) {
         taskLogTaskDropdown?._setValue?.(first);
@@ -5266,14 +5193,22 @@ export function render() {
       taskLogTaskWrap.innerHTML = "";
       taskLogTaskWrap.appendChild(taskLogTaskDropdown);
     }
+    taskLogTaskDropdown._setLedgerBucketPreset?.(
+      addContext?.ledgerBucketPreset ?? null,
+    );
     const taskDropdownPanel = taskLogTaskDropdown?.querySelector(
       '[data-legacy~="time-task-log-task-dropdown-panel"]',
     );
     if (taskDropdownPanel) taskDropdownPanel.hidden = true;
-    const mainTasks = getFullTaskOptions().filter(
+    const presetAdd = addContext?.ledgerBucketPreset;
+    let pickTasks = getFullTaskOptions().filter(
       (t) => !(t.name || "").includes(" > "),
     );
-    const firstTask = mainTasks[0]?.name || "";
+    if (presetAdd)
+      pickTasks = pickTasks.filter((t) =>
+        taskAllowedForLedgerPreset(t, presetAdd),
+      );
+    const firstTask = pickTasks[0]?.name || "";
     if (taskLogFeedbackInput) taskLogFeedbackInput.value = "";
     if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
     taskLogMemoTags = [];
@@ -5386,6 +5321,7 @@ export function render() {
       taskLogTaskWrap.innerHTML = "";
       taskLogTaskWrap.appendChild(taskLogTaskDropdown);
     }
+    taskLogTaskDropdown._setLedgerBucketPreset?.(null);
     taskLogTaskDropdown._setValue?.(data.taskName || "");
     setStartFromDatetime(startTime || "");
     setEndFromDatetime(endTime || "");
@@ -6285,6 +6221,31 @@ export function render() {
     return [...allRowsCache];
   }
 
+  /** 잔액 카드: 오늘·과제필터 동일 기준 */
+  function isTodayRowForBankHeader(r, todayKey) {
+    if (!r || isEmptyTimeRow(r)) return false;
+    if ((r.date || "").toString().slice(0, 10) !== todayKey) return false;
+    if (
+      selectedTaskNamesForFilter != null &&
+      selectedTaskNamesForFilter.length > 0 &&
+      !selectedTaskNamesForFilter.includes((r.taskName || "").trim())
+    ) {
+      return false;
+    }
+    return true;
+  }
+
+  function taskLikeFromLedgerRowForInvest(r) {
+    const name = (r.taskName || "").trim();
+    const opt = name ? getTaskOptionByName(name) : null;
+    if (opt) return opt;
+    return {
+      name,
+      category: r.category || "",
+      productivity: r.productivity || "",
+    };
+  }
+
   function updateTotal() {
     const allTable = contentWrap.querySelector(
       '[data-legacy~="time-ledger-container"] [data-legacy~="time-ledger-table"]',
@@ -6374,35 +6335,60 @@ export function render() {
         );
       });
 
-    const headerTotalVal = ledgerTopHeading.querySelector(
-      '[data-legacy~="time-ledger-header-total"]',
+    mergeRowsIntoCache();
+    const todayKey = timeLedgerLocalTodayYmd();
+    const hourlyRateHdr =
+      parseFloat(
+        String(
+          el.querySelector('[data-legacy~="time-hourly-input"]')?.value || "0",
+        ).replace(/,/g, ""),
+      ) || 0;
+    /** 잔액: (하루 한도 × 시급) − (시간사용내역과 동일한 실제 사용 시간 × 시급). 생산/비생산 가격 부호는 무시. */
+    let todaySpentHrsHdr = 0;
+    let todayInvestHrsHdr = 0;
+    for (const r of allRowsCache) {
+      if (!isTodayRowForBankHeader(r, todayKey)) continue;
+      const hrs = getMobileCardEffectiveHoursForPrice(r);
+      todaySpentHrsHdr += hrs;
+      if (taskAllowedForLedgerPreset(taskLikeFromLedgerRowForInvest(r), "invest"))
+        todayInvestHrsHdr += hrs;
+    }
+    const capHrs = TIME_LEDGER_DAILY_RECORD_CAP_HOURS;
+    const remainHrs = capHrs - todaySpentHrsHdr;
+    const dailyValueWon = Math.round(capHrs * hourlyRateHdr);
+    const spentValueWon = Math.round(todaySpentHrsHdr * hourlyRateHdr);
+    const remainWon = dailyValueWon - spentValueWon;
+    const investWonHdr = Math.round(todayInvestHrsHdr * hourlyRateHdr);
+    const investWonFormatted = `+₩ ${formatLedgerWonInteger(investWonHdr)}`;
+
+    const bankInner = ledgerTopHeading.querySelector(
+      '[data-legacy~="time-ledger-bank-inner"]',
     );
-    if (headerTotalVal) {
-      let totalHrsHdr = 0;
-      const allTableHdr = contentWrap.querySelector(
-        '[data-legacy~="time-ledger-container"] [data-legacy~="time-ledger-table"]',
+    const bankDateEl = ledgerTopHeading.querySelector(
+      '[data-legacy~="time-ledger-bank-today-date"]',
+    );
+    const timeRemainEl = ledgerTopHeading.querySelector(
+      '[data-legacy~="time-ledger-balance-time-remain"]',
+    );
+    const wonDigitsEl = ledgerTopHeading.querySelector(
+      '[data-legacy~="time-ledger-balance-won-digits"]',
+    );
+    const investReclaimWonEl = ledgerTopHeading.querySelector(
+      '[data-legacy~="time-ledger-invest-reclaim-won"]',
+    );
+    if (bankDateEl) bankDateEl.textContent = formatTimeFilterDateDotsWithWeekday(todayKey);
+    if (timeRemainEl) timeRemainEl.textContent = formatHoursDisplayHhMmColon(remainHrs);
+    if (wonDigitsEl) {
+      const wonSign = remainWon < 0 ? "-" : "";
+      wonDigitsEl.textContent = wonSign + formatLedgerWonInteger(remainWon);
+    }
+    if (investReclaimWonEl)
+      investReclaimWonEl.textContent = investWonFormatted;
+    if (bankInner) {
+      bankInner.setAttribute(
+        "aria-label",
+        `오늘 ${formatTimeFilterDateDotsWithWeekday(todayKey)}. 남은 시간 ${formatHoursDisplayHhMmColon(remainHrs).replace(/\s/g, "")}. 남은 가치 ${remainWon}원. 다시 받을 금액 ${investWonHdr}원.`,
       );
-      if (allTableHdr) {
-        const tbodyHdr = allTableHdr.querySelector("tbody");
-        tbodyHdr
-          ?.querySelectorAll('[data-legacy~="time-row"]')
-          .forEach((tr) => {
-            const timeEl =
-              tr.querySelector('[data-legacy~="time-input-tracked"]') ||
-              tr.querySelector('[data-legacy~="time-display-tracked"]');
-            const val = (timeEl?.value ?? timeEl?.textContent ?? "").trim();
-            totalHrsHdr += parseTimeToHours(val) || 0;
-          });
-      } else {
-        contentWrap
-          .querySelectorAll('[data-legacy~="time-ledger-mobile-card"]')
-          .forEach((card) => {
-            const rd = card._rowData;
-            if (!rd || isEmptyTimeRow(rd)) return;
-            totalHrsHdr += getMobileCardEffectiveHoursForPrice(rd);
-          });
-      }
-      headerTotalVal.textContent = formatHoursDisplay(totalHrsHdr);
     }
   }
   el._updateTotal = updateTotal;
@@ -6453,12 +6439,7 @@ export function render() {
 
   updateTotal();
 
-  /** 모바일 툴바에 붙였던 날짜·네비·필터 묶음을 비우기 전 filterBar로 되돌림 (DOM 유실 방지) */
-  function rescueTimeFilterControlsToFilterBar() {
-    if (filterNavCluster && !filterBar.contains(filterNavCluster)) {
-      filterBar.appendChild(filterNavCluster);
-    }
-  }
+  function rescueTimeFilterControlsToFilterBar() {}
 
   /** 시간 기록(전체) 카드 목록: 행 기준일 YYYY-MM-DD */
   function timeLedgerRowYmd(r) {
@@ -6472,9 +6453,7 @@ export function render() {
   }
 
   function timeLedgerFilterSpansMultipleDays() {
-    const a = pickYmdFromFilter(startDateInput.value, filterStartDate);
-    const b = pickYmdFromFilter(endDateInput.value, filterEndDate);
-    return !!(a && b && a !== b);
+    return false;
   }
 
   /** 날짜 구간이 이틀 이상이거나, 화면에 실제로 이틀 이상의 기록이 있을 때 일자 헤더 표시 */
@@ -6545,6 +6524,42 @@ export function render() {
     const hiddenTbody = hiddenTable.querySelector("tbody");
     hiddenTableWrap.appendChild(hiddenTable);
     contentWrap.appendChild(hiddenTableWrap);
+
+    const quickActionsRow = document.createElement("div");
+    lpSetClasses(quickActionsRow, "time-ledger-quick-actions");
+    quickActionsRow.setAttribute("role", "group");
+    quickActionsRow.setAttribute("aria-label", "시간 잔액 다음 동작");
+    const spendBtn = document.createElement("button");
+    spendBtn.type = "button";
+    lpSetClasses(spendBtn, "time-ledger-quick-action-btn");
+    spendBtn.textContent = "지출하기";
+    spendBtn.setAttribute("aria-label", "지출하기");
+    const investBtn = document.createElement("button");
+    investBtn.type = "button";
+    lpSetClasses(investBtn, "time-ledger-quick-action-btn");
+    investBtn.textContent = "투자하기";
+    investBtn.setAttribute("aria-label", "투자하기");
+    quickActionsRow.appendChild(spendBtn);
+    quickActionsRow.appendChild(investBtn);
+    const openTaskLogFromQuick = (ledgerBucketPreset) => {
+      openTaskLogModal({
+        ledgerBucketPreset,
+        productivity: null,
+        tbody: hiddenTbody,
+        addRow: null,
+        onRowUpdate: () => {
+          updateTotal();
+          onFilterChange();
+        },
+        viewEl: el,
+        createRow,
+        handleRowDelete: handleCardDelete,
+        handleRowEdit: handleCardEdit,
+      });
+    };
+    spendBtn.addEventListener("click", () => openTaskLogFromQuick("expense"));
+    investBtn.addEventListener("click", () => openTaskLogFromQuick("invest"));
+    contentWrap.appendChild(quickActionsRow);
 
     const cardsWrap = document.createElement("div");
     lpSetClasses(cardsWrap, "time-ledger-mobile-cards");
@@ -6632,7 +6647,7 @@ export function render() {
           handleRowEdit: handleCardEdit,
         });
       } else {
-        const dateStr = startDateInput.value || filterStartDate;
+        const dateStr = getLedgerFilterTodayYmd();
         const card = createMobileTimeCard(
           { date: dateStr },
           handleCardEdit,
@@ -6646,7 +6661,14 @@ export function render() {
     };
 
     const ledgerContainer = document.createElement("div");
-    lpSetClasses(ledgerContainer, "time-ledger-container");
+    lpSetClasses(
+      ledgerContainer,
+      "time-ledger-container time-ledger-usage-sheet",
+    );
+    const usageHistoryHeading = document.createElement("h2");
+    lpSetClasses(usageHistoryHeading, "time-ledger-usage-history-heading");
+    usageHistoryHeading.textContent = "시간 사용내역";
+    ledgerContainer.appendChild(usageHistoryHeading);
     ledgerContainer.appendChild(cardsWrap);
     contentWrap.appendChild(ledgerContainer);
 
@@ -6687,24 +6709,16 @@ export function render() {
   }
 
   function updateFilterBarVisibility() {
-    /* 모바일에서 navCluster가 contentWrap 툴바로 붙으면 버튼이 filterBar 밖에 있음 */
-    if (filterNavCluster) filterNavCluster.style.display = "";
     if (taskSetupBtn) taskSetupBtn.style.display = "";
     if (taskSelectBtn) taskSelectBtn.style.display = "";
-    filterBar.querySelectorAll("[data-audit-range-hidden]").forEach((node) => {
-      node.style.display = "";
-    });
-    if (startDateInput) delete startDateInput.dataset.hideDeleteBtn;
-    syncTimeFilterDateLabels();
   }
 
   function getFilteredRows(rows) {
     const type = filterType;
     const y = filterYear;
     const m = filterMonth;
-    const start = startDateInput.value || filterStartDate;
-    const end = endDateInput.value || filterEndDate;
-    return filterRowsByFilterType(rows, type, y, m, start, end);
+    const t = getLedgerFilterTodayYmd();
+    return filterRowsByFilterType(rows, type, y, m, t, t);
   }
 
   function syncTimeLedgerContent(opts = {}) {
@@ -6715,7 +6729,7 @@ export function render() {
     const rowsToUse = getFilteredRows(cachedRows);
     renderAll(rowsToUse);
     updateTotal();
-    syncTimeFilterDateLabels();
+    persistActiveViewTimeFilterToSession();
     updateFilterBarVisibility();
     if (userSubTabClick) {
       const gen = (el._lpTimeSubTabPullGen =
@@ -6742,12 +6756,15 @@ export function render() {
     if (!el.isConnected) return;
     /* App 탭 진입 pull 직후 session 만 오늘 등으로 바뀌고 DOM 날짜는 옛값일 수 있음 → 통째로 renderMain 하지 않고 갱신할 때 맞춤 */
     try {
-      const { rangeStart, rangeEnd } = readTimeLedgerSessionFilterRangeYmd();
-      filterStartDate = rangeStart;
-      filterEndDate = rangeEnd;
-      if (startDateInput) startDateInput.value = rangeStart;
-      if (endDateInput) endDateInput.value = rangeEnd;
-      syncTimeFilterDateLabels();
+      const t = getLedgerFilterTodayYmd();
+      filterStartDate = t;
+      filterEndDate = t;
+      try {
+        if (typeof sessionStorage !== "undefined") {
+          sessionStorage.setItem("lp_time_filter_start", t);
+          sessionStorage.setItem("lp_time_filter_end", t);
+        }
+      } catch (_) {}
       _pickerRangeKeyAtLastPullIntent = computePickerRangeKeyForPull();
     } catch (_) {}
     allRowsCache = loadTimeRows();
@@ -6788,5 +6805,6 @@ if (typeof document !== "undefined") {
     if (!root) return;
     const inp = root.querySelector('[data-legacy~="time-hourly-input"]');
     if (inp) inp.value = String(rate);
+    if (typeof root._updateTotal === "function") root._updateTotal();
   });
 }
