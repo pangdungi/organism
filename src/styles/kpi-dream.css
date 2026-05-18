@@ -910,7 +910,9 @@
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
-  overflow: hidden;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: hidden;
   padding: 0;
 }
 
@@ -966,6 +968,8 @@
   display: flex;
   flex-direction: column;
   width: min(100%, 26rem);
+  max-width: 100%;
+  min-width: 0;
   max-height: min(88dvh, 36rem);
   overflow: hidden;
   background: var(--lp-modal-surface);
@@ -1028,7 +1032,8 @@
   min-height: 0;
   min-width: 0;
   padding: 0 1rem 1rem;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   box-sizing: border-box;
 }
 
@@ -1036,6 +1041,8 @@
   flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /* 타임 모달 필드 간격과 맞춤(lp-modals 단일 선택자보다 구체성 높임) */
@@ -1136,6 +1143,10 @@
   border-radius: 8px;
 }
 
+.dream-kpi-field input[type="date"]::-webkit-datetime-edit {
+  max-width: 100%;
+}
+
 .dream-kpi-field textarea {
   height: var(--lp-modal-textarea-height);
   min-height: var(--lp-modal-textarea-height);
@@ -1154,7 +1165,8 @@
 
 .dream-kpi-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* 1fr 만 쓰면 자식(min-content) 때문에 그리드가 모달 밖으로 밀림 — 모바일 date 필드 대응 */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 0.5rem;
   min-width: 0;
 }
@@ -1165,9 +1177,16 @@
   min-width: 0;
 }
 
+/* 26rem 초과 폰(plus 등)에서도 날짜 2열은 자주 넘침 → 기한 블록만 태블릿·폰 폭에서 1열 */
+@media (max-width: 48rem) {
+  .dream-kpi-period-block .dream-kpi-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 26rem) {
   .dream-kpi-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

@@ -114,9 +114,19 @@ function normalizeTodoListMobileSearchQuery(raw) {
 function applyTodoListMobileSearchFilter(listRoot, queryRaw) {
   const q = normalizeTodoListMobileSearchQuery(queryRaw);
   const qSlash = q.replace(/-/g, "/");
-  listRoot.querySelectorAll(".todo-card").forEach((card) => {
+  const root =
+    listRoot && listRoot.querySelector
+      ? listRoot.querySelector(".todo-sections-wrap") || listRoot
+      : listRoot;
+  if (!root || !root.querySelectorAll) return;
+
+  root.querySelectorAll(".todo-card").forEach((card) => {
+    const clearHide = () => {
+      card.removeAttribute("hidden");
+      card.classList.remove("todo-card--search-hidden");
+    };
     if (!q) {
-      card.hidden = false;
+      clearHide();
       return;
     }
     const raw = [
@@ -127,25 +137,50 @@ function applyTodoListMobileSearchFilter(listRoot, queryRaw) {
     ]
       .filter(Boolean)
       .join(" ");
-    const n = normalizeTodoListMobileSearchQuery(raw);
-    const nSlash = normalizeTodoListMobileSearchQuery(raw.replace(/-/g, "/"));
+    const nameEl = card.querySelector(".todo-card-name");
+    const rawVisible = [raw, (nameEl && nameEl.textContent) || ""].join(" ");
+    const n = normalizeTodoListMobileSearchQuery(rawVisible);
+    const nSlash = normalizeTodoListMobileSearchQuery(
+      rawVisible.replace(/-/g, "/"),
+    );
     const match =
       n.includes(q) ||
       nSlash.includes(q) ||
       n.includes(qSlash) ||
       nSlash.includes(qSlash);
-    card.hidden = !match;
+    if (match) {
+      clearHide();
+    } else {
+      card.hidden = true;
+      card.classList.add("todo-card--search-hidden");
+    }
   });
 }
 
 // 나의 계정·환경설정에서 색 저장 시 탭 버튼·행 배경 즉시 반영
 window.addEventListener("app-colors-changed", () => {
-  const container = document.querySelector(".todo-category-tabs");
-  if (container) {
+  document.querySelectorAll(".todo-category-tabs").forEach((container) => {
     container
       .querySelectorAll(".todo-category-tab[data-section]")
       .forEach((btn) => {
         const c = getSectionColor(btn.dataset.section);
+        const isSegmentTab = !!btn.closest(".todo-list-segment-tabs");
+        if (isSegmentTab) {
+          /* 미니멀 탭 밑줄은 CSS만 쓰기 — 인라인 border-bottom 이 기준선과 어긋남 유발 */
+          if (c) {
+            btn.style.borderLeft = `0.1875rem solid ${c}`;
+            btn.style.borderTop = "";
+            btn.style.borderRight = "";
+            btn.style.borderBottom = "";
+            btn.style.backgroundColor = "";
+          } else {
+            btn.style.borderLeft = "";
+            btn.style.borderTop = "";
+            btn.style.borderRight = "";
+            btn.style.borderBottom = "";
+          }
+          return;
+        }
         if (c) {
           btn.style.borderLeft = `0.0625rem solid ${c}`;
           btn.style.borderTop = `0.0625rem solid ${c}`;
@@ -159,7 +194,7 @@ window.addEventListener("app-colors-changed", () => {
           btn.style.borderBottom = "";
         }
       });
-  }
+  });
 
   document.querySelectorAll(".todo-task-row").forEach((tr) => {
     const sid = (tr.dataset.sectionId || "").trim();
@@ -4982,23 +5017,13 @@ export function render(options = {}) {
     todoMobileSearchInput.setAttribute("aria-label", "할 일 검색");
     todoMobileSearchInput.autocomplete = "off";
     if (todoMobileSearchQuery) todoMobileSearchInput.value = todoMobileSearchQuery;
-    let searchComposing = false;
     todoMobileSearchSync = () => {
       todoMobileSearchQuery = todoMobileSearchInput?.value ?? "";
       persistTodoListSearchQueryToSession(todoMobileSearchQuery);
       applyTodoListMobileSearchFilter(el, todoMobileSearchQuery);
     };
-    todoMobileSearchInput.addEventListener("compositionstart", () => {
-      searchComposing = true;
-    });
-    todoMobileSearchInput.addEventListener("compositionend", (e) => {
-      searchComposing = false;
-      todoMobileSearchQuery = e.target.value;
-      persistTodoListSearchQueryToSession(todoMobileSearchQuery);
-      applyTodoListMobileSearchFilter(el, todoMobileSearchQuery);
-    });
     todoMobileSearchInput.addEventListener("input", () => {
-      if (!searchComposing) todoMobileSearchSync();
+      todoMobileSearchSync();
     });
     searchRow.appendChild(todoMobileSearchInput);
     mobileSearchBar.appendChild(searchRow);

@@ -54,8 +54,7 @@
 }
 
 /* 전체·꿈·부수입… 카테고리 줄: 본문 세로 스크롤과 같이 움직이지 않고 상단 고정 — 카드가 위로 겹쳐 보이지 않게 z-index·배경 */
-.todo-list-view .todo-list-toolbar-row,
-.todo-list-view .todo-list-tabs-filter-row {
+.todo-list-view .todo-list-toolbar-row {
   position: sticky;
   top: 0;
   z-index: 30;
@@ -63,6 +62,17 @@
   background: #fff;
   flex-shrink: 0;
   box-shadow: 0 1px 0 rgba(42, 56, 40, 0.07);
+}
+
+/* 세그먼트 탭: .todo-list-tab-header-row 의 border-bottom 한 줄만 쓰고 box-shadow 제거(이중선·밑줄 어긋남 방지) */
+.todo-list-view .todo-list-tabs-filter-row {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  isolation: isolate;
+  background: #fff;
+  flex-shrink: 0;
+  box-shadow: none;
 }
 
 .todo-list-view .todo-list-tab-header-row,
@@ -113,8 +123,9 @@
 .todo-list-view .todo-list-segment-tabs .todo-category-tab.time-view-tab {
   flex: 1 1 0;
   min-width: 0;
+  /* 활성 2px 밑줄이 헤더 1px border-bottom 과 맞물리도록 */
   margin: 0 0 -1px;
-  padding: 0.5rem 0.2rem 0.3rem;
+  padding: 0.5rem 0.2rem 0.35rem;
   border: none !important;
   border-radius: 0;
   border-bottom: 2px solid transparent !important;
@@ -204,6 +215,15 @@
 /* -------------------------------------------------------------------------- */
 
 .todo-list-view.hide-completed .todo-card.is-done {
+  display: none !important;
+}
+
+/* 검색 필터: [hidden] + 클래스 둘 다 대비(display:grid 가 더 강한 경우) */
+.todo-list-view .todo-card.todo-card--search-hidden {
+  display: none !important;
+}
+
+.todo-list-view .todo-cards-wrap > .todo-card[hidden] {
   display: none !important;
 }
 

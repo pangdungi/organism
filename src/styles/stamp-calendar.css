@@ -177,6 +177,80 @@
   margin-bottom: 0.35rem;
 }
 
+/* 스탬프 등록·수정: 일자(date) 기본 최소 너비가 넓어 모달 밖으로 나가지 않게 */
+.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+  .work-schedule-day-entry-modal-panel.todo-list-modal-panel {
+  min-width: 0;
+  max-width: min(96vw, 26rem);
+}
+
+.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+  .work-schedule-day-entry-body.todo-list-modal-body {
+  min-width: 0;
+}
+
+.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+  .work-schedule-day-entry-label.todo-task-edit-label {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+  .work-schedule-day-entry-custom-select {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+  .work-schedule-day-entry-date.time-add-task-name {
+  max-width: 100%;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 모바일: date 피커 최소 너비·내부 편집 영역이 패딩 밖으로 삐져나감 방지 */
+@media (max-width: 48rem) {
+  .work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+    .work-schedule-day-entry-modal-panel.todo-list-modal-panel {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+    .work-schedule-day-entry-body.todo-list-modal-body {
+    overflow-x: hidden;
+    min-width: 0;
+  }
+
+  .work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+    .work-schedule-day-entry-date.time-add-task-name {
+    max-width: 100%;
+    min-width: 0;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  .work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+    .work-schedule-day-entry-date.time-add-task-name::-webkit-datetime-edit {
+    max-width: 100%;
+    padding: 0;
+  }
+
+  .work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+    .work-schedule-day-entry-date.time-add-task-name::-webkit-datetime-edit-fields-wrapper {
+    max-width: 100%;
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /* 스탬프 캘린더 — 날짜 칸 안 유형(스탬프) 칩 */
 /* -------------------------------------------------------------------------- */

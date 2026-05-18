@@ -801,6 +801,12 @@
   opacity: 0.72;
 }
 
+.calendar-monthly-span-bar.is-completed .calendar-monthly-span-bar-text {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.12em;
+}
+
 .calendar-monthly-span-bar--dragging {
   opacity: 0.85;
   z-index: 10;
