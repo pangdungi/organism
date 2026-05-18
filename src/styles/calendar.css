@@ -432,7 +432,7 @@
   align-self: stretch;
 }
 
-.calendar-1day-timeline-card-bar {
+.calendar-1day-timeline-card-bar-track {
   width: 100%;
   height: 6px;
   min-height: 6px;
@@ -441,7 +441,27 @@
   border-radius: 2px;
   background: #f0f4fa;
   align-self: stretch;
-  opacity: 1;
+  overflow: hidden;
+}
+
+.calendar-1day-timeline-card-head-bar-fill {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  border-radius: 2px;
+  width: 0%;
+  max-width: 100%;
+  background: color-mix(
+    in srgb,
+    var(--calendar-timeline-progress-fill, #64748b) 82%,
+    white
+  );
+  transition: width 0.25s ease-out;
+}
+
+.calendar-1day-timeline-card--progress-over
+  .calendar-1day-timeline-card-head-bar-fill {
+  background: color-mix(in srgb, #ea580c 78%, #fbbf24);
 }
 
 .calendar-1day-timeline-card-title-row {

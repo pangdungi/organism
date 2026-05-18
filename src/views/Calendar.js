@@ -23,6 +23,9 @@ import {
   isTimeLedgerRowLiveRecording,
   formatIntegerMinutesDurationKo,
   findBudgetScheduleSlotIndex,
+  getRowStartInstantForMobileCard,
+  getRowEndInstantForMobileCard,
+  rowHasEndTimeForMobileCard,
 } from "./Time.js";
 import { showToast } from "../utils/showToast.js";
 import { supabase } from "../supabase.js";
@@ -2929,6 +2932,59 @@ function weekFlowSpanHasMatchingLiveRecording(dayRows, span) {
   return false;
 }
 
+/**
+ * 같은 과제명·taskId 기록이 예상 블록 시각 구간과 겹치는 분 합(진행 중은 now까지).
+ * 일간 타임라인 헤더 프로그레스바용.
+ */
+function sumLedgerOverlapMinutesWithExpectedSpan(
+  dayRows,
+  span,
+  targetKeyYmd,
+  nowDate,
+) {
+  if (!Array.isArray(dayRows) || !span || !targetKeyYmd) return 0;
+  const expStart = Number(span.startMin);
+  const expEnd = Number(span.endMin);
+  if (
+    !Number.isFinite(expStart) ||
+    !Number.isFinite(expEnd) ||
+    expEnd <= expStart
+  ) {
+    return 0;
+  }
+  const parts = String(targetKeyYmd).split("-").map(Number);
+  if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) return 0;
+  const [yy, mo, dd] = parts;
+  const dayBaseMs = new Date(yy, mo - 1, dd, 0, 0, 0, 0).getTime();
+  const spanStartMs = dayBaseMs + expStart * 60000;
+  const spanEndMs = dayBaseMs + expEnd * 60000;
+  const nowMs = nowDate.getTime();
+  let sumMs = 0;
+  for (const r of dayRows) {
+    const expName = normTaskNameForWeekFlowMatch(span.taskName);
+    const expTid = String(span._task?.taskId || "").trim();
+    const rtid = String(r?.taskId || "").trim();
+    const rn = normTaskNameForWeekFlowMatch(r?.taskName);
+    const nameMatch =
+      (expTid && rtid && expTid === rtid) ||
+      !!(expName && rn && expName === rn);
+    if (!nameMatch) continue;
+    const startMs = getRowStartInstantForMobileCard(r)?.getTime();
+    if (!Number.isFinite(startMs)) continue;
+    let endMs;
+    if (rowHasEndTimeForMobileCard(r)) {
+      endMs = getRowEndInstantForMobileCard(r)?.getTime();
+      if (!Number.isFinite(endMs)) continue;
+    } else {
+      endMs = nowMs;
+    }
+    const lo = Math.max(startMs, spanStartMs);
+    const hi = Math.min(endMs, spanEndMs);
+    if (hi > lo) sumMs += hi - lo;
+  }
+  return sumMs / 60000;
+}
+
 /** 예상 블록 종료 시각이 지났거나(당일) 날짜가 지났는데 실제 기록이 없을 때만 미이행 표시 */
 function weekFlowExpectedSpanLedgerMissed(
   dayKeyYmd,
@@ -3173,6 +3229,21 @@ function render1DayView(tabsElement = null) {
             span,
           );
 
+        const actualOverlapMinRaw = sumLedgerOverlapMinutesWithExpectedSpan(
+          dayLedgerRowsTL,
+          span,
+          targetKey,
+          nowForTimeline,
+        );
+        const expectedMinProg = durMin;
+        const progressRatio =
+          expectedMinProg > 0 ? actualOverlapMinRaw / expectedMinProg : 0;
+        const progressPctFill = Math.min(
+          100,
+          Math.max(0, progressRatio * 100),
+        );
+        const progressOverExpected = progressRatio > 1.0001;
+
         const sidRaw = String(span.sectionId || "").trim();
         let sectionAccent = "";
         if (sidRaw && !sidRaw.startsWith("custom-")) {
@@ -3208,6 +3279,20 @@ function render1DayView(tabsElement = null) {
         if (!ledgerMissed) {
           card.style.setProperty("--calendar-timeline-stripe", c.leftStripe);
         }
+        if (progressOverExpected && !ledgerMissed) {
+          card.classList.add("calendar-1day-timeline-card--progress-over");
+        }
+        if (!ledgerMissed) {
+          card.style.setProperty(
+            "--calendar-timeline-progress-fill",
+            c.border || c.leftStripe || "#64748b",
+          );
+        } else {
+          card.style.setProperty(
+            "--calendar-timeline-progress-fill",
+            "#94a3b8",
+          );
+        }
 
         const startEl = document.createElement("span");
         startEl.className = "calendar-1day-timeline-card-start";
@@ -3215,10 +3300,14 @@ function render1DayView(tabsElement = null) {
 
         const headBarCell = document.createElement("div");
         headBarCell.className = "calendar-1day-timeline-card-head-bar";
-        const barEl = document.createElement("div");
-        barEl.className = "calendar-1day-timeline-card-bar";
-        barEl.setAttribute("aria-hidden", "true");
-        headBarCell.appendChild(barEl);
+        const trackEl = document.createElement("div");
+        trackEl.className = "calendar-1day-timeline-card-bar-track";
+        trackEl.setAttribute("aria-hidden", "true");
+        const fillEl = document.createElement("div");
+        fillEl.className = "calendar-1day-timeline-card-head-bar-fill";
+        fillEl.style.width = `${progressPctFill}%`;
+        trackEl.appendChild(fillEl);
+        headBarCell.appendChild(trackEl);
 
         const timeConnector = document.createElement("span");
         timeConnector.className = "calendar-1day-timeline-card-time-connector";
@@ -3297,6 +3386,10 @@ function render1DayView(tabsElement = null) {
         card.appendChild(body);
 
         card.appendChild(endEl);
+
+        if (expectedMinProg > 0) {
+          card.title = `${card.title}\n예상 대비 실제(겹침): ${formatIntegerMinutesDurationKo(Math.round(actualOverlapMinRaw))} / ${formatIntegerMinutesDurationKo(expectedMinProg)}`;
+        }
 
         if (!ledgerMissed && !ledgerMatched) {
           startEl.style.color = c.accentMuted;

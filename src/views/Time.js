@@ -1183,12 +1183,12 @@ function clearTimeLedgerMobileElapsedTimer(viewEl) {
   viewEl._timeLedgerMobileElapsedIntervalId = null;
 }
 
-function rowHasEndTimeForMobileCard(rowData) {
+export function rowHasEndTimeForMobileCard(rowData) {
   return !!(rowData?.endTime && String(rowData.endTime).trim());
 }
 
 /** 행의 시작 시각을 로컬 Date로 (없으면 null) */
-function getRowStartInstantForMobileCard(rowData) {
+export function getRowStartInstantForMobileCard(rowData) {
   if (!rowData) return null;
   const st = (rowData.startTime || "").trim();
   if (!st) return null;
@@ -1235,6 +1235,19 @@ function getRowStartInstantForMobileCard(rowData) {
     0,
     0,
   );
+}
+
+/** 행의 마감 시각을 로컬 Date로 (마감 없으면 null) */
+export function getRowEndInstantForMobileCard(rowData) {
+  if (!rowHasEndTimeForMobileCard(rowData)) return null;
+  const merged = mergeEndTimeWithStartDate(
+    rowData.startTime || "",
+    rowData.endTime || "",
+  );
+  return getRowStartInstantForMobileCard({
+    ...rowData,
+    startTime: merged || rowData.endTime,
+  });
 }
 
 function formatElapsedDurationForMobileCard(ms) {
