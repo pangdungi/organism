@@ -36,7 +36,10 @@ import {
 import { showKpiTodoAddModal } from "../utils/kpiTodoAddModal.js";
 import { formatKpiCardHeroHtml } from "../utils/kpiViewModal.js";
 import { showKpiTodoEditModal } from "../utils/kpiTodoEditModal.js";
-import { KPI_TAB_EDIT_PENCIL_HTML } from "../utils/kpiTabNameEditIcon.js";
+import {
+  KPI_CARD_EDIT_PENCIL_HTML,
+  KPI_TAB_EDIT_PENCIL_HTML,
+} from "../utils/kpiTabNameEditIcon.js";
 import { sortKpiLogsNewestFirst, getLatestKpiLogWithExplicitValue } from "../utils/kpiLogsSort.js";
 import {
   deletedRefsKpiTodosLen,
@@ -260,7 +263,6 @@ export function render() {
   title.className = "dream-view-title";
   title.textContent = "부수입";
   titleRow.appendChild(title);
-  titleRow.appendChild(addBtn);
   header.appendChild(label);
   header.appendChild(titleRow);
   el.appendChild(header);
@@ -269,6 +271,7 @@ export function render() {
   tabsWrap.className = "dream-tabs-wrap";
   const tabs = document.createElement("div");
   tabs.className = "dream-tabs";
+  tabsWrap.appendChild(addBtn);
   tabsWrap.appendChild(tabs);
   el.appendChild(tabsWrap);
 
@@ -1100,7 +1103,7 @@ export function render() {
       card.draggable = true;
       card.innerHTML = `
         <div class="dream-kpi-card-inner">
-          <button type="button" class="dream-kpi-card-edit" title="KPI 수정">수정</button>
+          ${KPI_CARD_EDIT_PENCIL_HTML}
           <div class="dream-kpi-card-name">${escapeHtml(kpi.name)}${lowerBetter ? '<span class="dream-kpi-card-direction-badge" title="낮을수록 좋음 KPI">↓낮음</span>' : ""}</div>
           <div class="dream-kpi-card-target-num">${formatKpiCardHeroHtml(lowerBetter, currentStr, kpi.unit)}</div>
           ${(kpi.targetStartDate || kpi.targetDeadline) ? `<div class="dream-kpi-card-deadline">${escapeHtml(formatDeadlineRangeCompact(kpi.targetStartDate, kpi.targetDeadline))}</div>` : ""}

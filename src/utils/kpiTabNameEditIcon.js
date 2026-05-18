@@ -8,3 +8,11 @@ export const KPI_TAB_EDIT_PENCIL_HTML = `
     <path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
   </svg>
 </button>`;
+
+/** KPI 카드 우측 상단 — 탭 연필과 동일 SVG·`.dream-tab-edit` 스타일, 위치만 `.dream-kpi-card-edit` */
+export const KPI_CARD_EDIT_PENCIL_HTML = `
+<button type="button" class="dream-kpi-card-edit dream-tab-edit" title="KPI 수정" aria-label="KPI 수정">
+  <svg class="dream-tab-edit-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="14" height="14" aria-hidden="true">
+    <path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+  </svg>
+</button>`;
