@@ -1,6 +1,6 @@
 /* PWA 서비스 워커 — 앱 설치·오프라인 + Web Push(할일 리마인더) */
 /** 번들·아이콘 등 캐시 버전 (전략 바꿀 때만 올리면 이전 캐시 정리됨) */
-const ASSET_CACHE = "tip-assets-v6";
+const ASSET_CACHE = "tip-assets-v7";
 /** HTML 셸 캐시 — 홈 화면에서 열 때 즉시 표시용 */
 const HTML_CACHE = "tip-html-v1";
 
@@ -29,7 +29,7 @@ self.addEventListener("install", (event) => {
           "/toolbaricons/menu-sideincome.png",
           "/toolbaricons/menu-happiness.png",
           "/toolbaricons/menu-health.png",
-          "/toolbaricons/menu-diary.png",
+          "/toolbaricons/menu-time-report.png",
           "/toolbaricons/menu-stamp.png",
           "/toolbaricons/menu-account.png",
         ];

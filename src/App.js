@@ -113,7 +113,7 @@ const TABS = [
     /** 모바일 하단·데스크톱 사이드바 동일 — 할일 목록 아이콘 */
     icon: "/toolbaricons/menu-todo.png",
     sidebarSection: "main",
-    sidebarOrder: 2,
+    sidebarOrder: 4,
   },
   {
     id: "schedulecalendar",
@@ -145,23 +145,23 @@ const TABS = [
     id: "diary",
     label: "시간 레포트",
     mobileLabel: "시간 레포트",
-    icon: "/toolbaricons/menu-diary.png",
+    icon: "/toolbaricons/menu-time-report.png",
     sidebarSection: "main",
-    sidebarOrder: 4,
+    sidebarOrder: 2,
   },
 ];
 
 /** 홈 메뉴: 섹션 제목 없이 한 그리드 순서 */
 const HOME_MENU_TAB_ORDER = [
   "time",
-  "calendar",
+  "diary",
   "schedulecalendar",
   "workschedule",
   "health",
   "happiness",
   "dream",
   "sideincome",
-  "diary",
+  "calendar",
   "idea",
 ];
 

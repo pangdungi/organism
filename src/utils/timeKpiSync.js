@@ -34,10 +34,12 @@ function loadTimeRows() {
 }
 
 /**
- * KPI id 기준 누적 시간(분). 과제 옵션의 kpiId·taskId·표시명(레거시)으로 매칭.
- * @param {string} kpiId - map_kpis / KPI 카드의 id
+ * KPI id 기준 시간 합(분). rowsForSum 에 포함된 가계부 줄만 합산한다.
+ * 과제 표시명 별칭은 전체 가계부에서 확장해 레거시 과제명 매칭을 유지한다.
+ * @param {string} kpiId
+ * @param {Array<object>} rowsForSum
  */
-export function getAccumulatedMinutesForKpiId(kpiId) {
+function accumulateMinutesForKpiFromRows(kpiId, rowsForSum) {
   const kid = String(kpiId || "").trim();
   if (!kid) return 0;
 
@@ -60,8 +62,8 @@ export function getAccumulatedMinutesForKpiId(kpiId) {
     if (isUuid(tid) && k) taskIdToKpiId.set(tid, k);
   }
 
-  const rows = loadTimeRows();
-  for (const r of rows) {
+  const allRows = loadTimeRows();
+  for (const r of allRows) {
     const tid = String(r.taskId || "").trim();
     if (isUuid(tid) && idsForKpi.has(tid)) {
       const tn = String(r.taskName || "").trim();
@@ -70,7 +72,7 @@ export function getAccumulatedMinutesForKpiId(kpiId) {
   }
 
   let totalHours = 0;
-  for (const r of rows) {
+  for (const r of rowsForSum) {
     if (!(r.timeTracked || "").trim()) continue;
     const tid = String(r.taskId || "").trim();
     const tn = String(r.taskName || "").trim();
@@ -87,6 +89,36 @@ export function getAccumulatedMinutesForKpiId(kpiId) {
     }
   }
   return Math.round(totalHours * 60);
+}
+
+/**
+ * KPI id 기준 누적 시간(분). 과제 옵션의 kpiId·taskId·표시명(레거시)으로 매칭.
+ * @param {string} kpiId - map_kpis / KPI 카드의 id
+ */
+export function getAccumulatedMinutesForKpiId(kpiId) {
+  return accumulateMinutesForKpiFromRows(kpiId, loadTimeRows());
+}
+
+/**
+ * KPI id 기준 · 날짜 구간(포함) 안 가계부 줄만 합산한 시간(분).
+ * @param {string} kpiId
+ * @param {string} startYmdTen - YYYY-MM-DD
+ * @param {string} endYmdTenInclusive - YYYY-MM-DD
+ */
+export function getAccumulatedMinutesForKpiIdInDateRange(
+  kpiId,
+  startYmdTen,
+  endYmdTenInclusive,
+) {
+  const s = String(startYmdTen || "").replace(/\//g, "-").slice(0, 10);
+  const e = String(endYmdTenInclusive || "").replace(/\//g, "-").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || !/^\d{4}-\d{2}-\d{2}$/.test(e)) return 0;
+  if (s > e) return 0;
+  const filtered = loadTimeRows().filter((r) => {
+    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= s && d <= e;
+  });
+  return accumulateMinutesForKpiFromRows(kpiId, filtered);
 }
 
 /**

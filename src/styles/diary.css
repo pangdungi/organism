@@ -217,6 +217,9 @@
   > .diary-tr-invest-quote-shell,
 .diary-layout--feed-only
   .diary-content-scroll[data-lp-time-report-body]:not(:empty)
+  > .diary-tr-routine-kpi-shell,
+.diary-layout--feed-only
+  .diary-content-scroll[data-lp-time-report-body]:not(:empty)
   > .diary-tr-donut-shell,
 .diary-layout--feed-only
   .diary-content-scroll[data-lp-time-report-body]:not(:empty)
@@ -342,6 +345,7 @@
 .diary-tr-invest-shell,
 .diary-tr-prod-bars-shell,
 .diary-tr-invest-quote-shell,
+.diary-tr-routine-kpi-shell,
 .diary-tr-summary-shell {
   box-sizing: border-box;
   width: 100%;
@@ -366,6 +370,12 @@
 .diary-tr-invest-quote-shell {
   padding-top: 0.3rem;
   padding-bottom: 0.72rem;
+}
+
+/* 투자 탭 루틴트랙커: 매일 반복 KPI 과제별 시간 카드 그리드 */
+.diary-tr-routine-kpi-shell {
+  padding-top: 0.25rem;
+  padding-bottom: 0.65rem;
 }
 
 .diary-tr-invest-quote-headline {
@@ -646,6 +656,23 @@
 .diary-tr-summary-icon-slot--empty {
   background: transparent !important;
   border: 1px dashed rgba(148, 163, 184, 0.75);
+}
+
+/* 시간 레포트 카드 — PNG 아이콘(루틴·소비·투자 요약) */
+.diary-tr-summary-icon-slot--img {
+  border: none !important;
+  background: transparent !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.diary-tr-summary-icon-img {
+  width: 2.35rem;
+  height: 2.35rem;
+  object-fit: contain;
+  display: block;
 }
 
 .diary-tr-summary-title {

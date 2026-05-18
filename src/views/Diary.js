@@ -18,6 +18,8 @@ import {
   pullTimeLedgerEntriesForDateRange,
   readTimeLedgerPullRangeForKpiTabsYmd,
 } from "../utils/timeLedgerEntriesSupabase.js";
+import { KPI_MAP_STORAGE_KEYS } from "../utils/kpiMapLocalStorage.js";
+import { getAccumulatedMinutesForKpiIdInDateRange } from "../utils/timeKpiSync.js";
 import { getAppFooterActionsSlot, APP_FOOTER_ICON_BTN_CLASS } from "../utils/appFooterShell.js";
 import {
   formatIntegerMinutesDurationKo,
@@ -48,6 +50,39 @@ const REPORT_DONUT_PASTELS = [
   "#FDBA74",
   "#DDD6FE",
 ];
+
+/** 시간 레포트 요약 카드용 PNG (public/diary-tr-icons) — 사용자 제공 순서 1~12 */
+const DIARY_TR_ICON_BASE = "/diary-tr-icons";
+const DIARY_TR_ICON = {
+  routineDone: `${DIARY_TR_ICON_BASE}/01-routine-done.png`,
+  routineZero: `${DIARY_TR_ICON_BASE}/02-routine-zero.png`,
+  healthExist: `${DIARY_TR_ICON_BASE}/03-health-exist.png`,
+  happinessLive: `${DIARY_TR_ICON_BASE}/04-happiness-live.png`,
+  dreamCloser: `${DIARY_TR_ICON_BASE}/05-dream-closer.png`,
+  sideincomeValue: `${DIARY_TR_ICON_BASE}/06-sideincome-value.png`,
+  work: `${DIARY_TR_ICON_BASE}/07-work.png`,
+  sleep: `${DIARY_TR_ICON_BASE}/08-sleep.png`,
+  media: `${DIARY_TR_ICON_BASE}/09-media.png`,
+  pleasure: `${DIARY_TR_ICON_BASE}/10-pleasure.png`,
+  unhealthy: `${DIARY_TR_ICON_BASE}/11-unhealthy.png`,
+  moneylosing: `${DIARY_TR_ICON_BASE}/12-moneylosing.png`,
+  /** 불행 비생산 카테고리 — 사용자 제공 아이콘 */
+  unhappiness: `${DIARY_TR_ICON_BASE}/13-unhappiness.png`,
+};
+
+/** 아이콘 슬롯에 PNG 채우기(점선 빈 슬롯 대체) */
+function fillDiaryTrSummaryIconSlot(iconSlot, src) {
+  iconSlot.textContent = "";
+  iconSlot.classList.remove("diary-tr-summary-icon-slot--empty");
+  iconSlot.classList.add("diary-tr-summary-icon-slot--img");
+  const img = document.createElement("img");
+  img.className = "diary-tr-summary-icon-img";
+  img.src = src;
+  img.alt = "";
+  img.decoding = "async";
+  img.loading = "lazy";
+  iconSlot.appendChild(img);
+}
 
 /** 투자 탭 레포트 — 생산 카테고리 막대 채색(소비 도넛과 같은 톤) */
 const DIARY_PROD_CAT_BAR_FILL = {
@@ -929,8 +964,8 @@ export function render() {
     document.body.appendChild(modal);
   }
 
-  /** 소비 · 투자 · 메모 · 예산(메모 옆, 우선 빈 화면) */
-  const DIARY_FOOTER_TAB_ORDER = ["3", "2", "1", "4"];
+  /** 소비 · 투자 · 예산 — 메모 탭(1)은 메뉴에서 제외 */
+  const DIARY_FOOTER_TAB_ORDER = ["3", "2", "4"];
 
   function syncDiaryFooterSubtabs() {
     document.querySelectorAll("[data-diary-subtab]").forEach((b) => {
@@ -1125,10 +1160,30 @@ export function render() {
     grid.className = "diary-tr-summary-grid diary-tr-invest-quote-grid";
 
     const defs = [
-      { key: "dream", headline: "꿈에 더 가까이", subtitle: null },
-      { key: "sideincome", headline: "내 시간의 가치는 내가 올린다", subtitle: null },
-      { key: "health", headline: "내가 더 존재할 수 있게!", subtitle: "건강한 식단" },
-      { key: "happiness", headline: "행복하려고 사는거지!", subtitle: null },
+      {
+        key: "dream",
+        headline: "꿈에 더 가까이",
+        subtitle: null,
+        iconSrc: DIARY_TR_ICON.dreamCloser,
+      },
+      {
+        key: "sideincome",
+        headline: "내 시간의 가치는 내가 올린다",
+        subtitle: null,
+        iconSrc: DIARY_TR_ICON.sideincomeValue,
+      },
+      {
+        key: "health",
+        headline: "내가 더 존재할 수 있게!",
+        subtitle: "건강한 식단",
+        iconSrc: DIARY_TR_ICON.healthExist,
+      },
+      {
+        key: "happiness",
+        headline: "행복하려고 사는거지!",
+        subtitle: null,
+        iconSrc: DIARY_TR_ICON.happinessLive,
+      },
     ];
 
     defs.forEach((def) => {
@@ -1139,6 +1194,7 @@ export function render() {
       const iconSlot = document.createElement("div");
       iconSlot.className = "diary-tr-summary-icon-slot diary-tr-summary-icon-slot--empty";
       iconSlot.setAttribute("aria-hidden", "true");
+      if (def.iconSrc) fillDiaryTrSummaryIconSlot(iconSlot, def.iconSrc);
 
       const h = document.createElement("h3");
       h.className = "diary-tr-summary-title diary-tr-invest-quote-headline";
@@ -1178,10 +1234,9 @@ export function render() {
     const grid = document.createElement("div");
     grid.className = "diary-tr-summary-grid";
 
-    /** 근무·수면 카드 — 아이콘 미정: 점선 원(투자 탭 요약과 동일) */
     [
-      { title: "근무시간", minutes: g.workMinutes },
-      { title: "수면시간", minutes: g.sleepMinutes },
+      { title: "근무시간", minutes: g.workMinutes, iconSrc: DIARY_TR_ICON.work },
+      { title: "수면시간", minutes: g.sleepMinutes, iconSrc: DIARY_TR_ICON.sleep },
     ].forEach((c) => {
       const art = document.createElement("article");
       art.className = "diary-tr-summary-card";
@@ -1189,6 +1244,7 @@ export function render() {
       const iconSlot = document.createElement("div");
       iconSlot.className = "diary-tr-summary-icon-slot diary-tr-summary-icon-slot--empty";
       iconSlot.setAttribute("aria-hidden", "true");
+      if (c.iconSrc) fillDiaryTrSummaryIconSlot(iconSlot, c.iconSrc);
 
       const h = document.createElement("h3");
       h.className = "diary-tr-summary-title";
@@ -1233,22 +1289,30 @@ export function render() {
         title: "미디어 시청시간",
         minutes: g.mediaMinutes,
         lossWon: showMoney ? g.mediaLossWon : null,
+        iconSrc: DIARY_TR_ICON.media,
       },
-      { title: "쾌락만 쫓은 시간", minutes: g.pleasureMinutes },
+      {
+        title: "도파민 충전료",
+        minutes: g.pleasureMinutes,
+        iconSrc: DIARY_TR_ICON.pleasure,
+      },
       {
         title: "건강을 해치는데 쓴 시간",
         minutes: g.unhealthyMinutes,
         meals: g.unhealthyMealDetails.length ? g.unhealthyMealDetails : undefined,
+        iconSrc: DIARY_TR_ICON.unhealthy,
       },
       {
         title: "시간도 잃고, 돈도 잃고",
         minutes: g.moneylosingMinutes,
         lossWon: showMoney ? g.moneylosingLossWon : null,
+        iconSrc: DIARY_TR_ICON.moneylosing,
       },
       {
-        title: "도파민 충전료",
-        minutes: g.pleasureMinutes,
-        lossWon: showMoney ? g.pleasureLossWon : null,
+        title: "불행해지는데 쓴 시간",
+        minutes: g.unhappinessMinutes,
+        lossWon: showMoney ? g.unhappinessLossWon : null,
+        iconSrc: DIARY_TR_ICON.unhappiness,
       },
     ];
 
@@ -1259,6 +1323,7 @@ export function render() {
       const iconSlot = document.createElement("div");
       iconSlot.className = "diary-tr-summary-icon-slot diary-tr-summary-icon-slot--empty";
       iconSlot.setAttribute("aria-hidden", "true");
+      if (c.iconSrc) fillDiaryTrSummaryIconSlot(iconSlot, c.iconSrc);
 
       const h = document.createElement("h3");
       h.className = "diary-tr-summary-title";
@@ -1349,6 +1414,91 @@ export function render() {
     block.appendChild(rule);
     block.appendChild(h2);
     scrollWrap.appendChild(block);
+  }
+
+  /** 맵 로컬 스토리지에서 매일 반복(습관 트래커) KPI 목록 — id·표시명 */
+  function collectDailyRepeatKpisFromLocalMaps() {
+    /** @type {Array<{ id: string, name: string }>} */
+    const out = [];
+    KPI_MAP_STORAGE_KEYS.forEach((key) => {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        const kpis = parsed?.kpis || [];
+        for (const k of kpis) {
+          if (!k || !k.needHabitTracker) continue;
+          const id = String(k.id || "").trim();
+          const name = String(k.name || "").trim();
+          if (!id || !name) continue;
+          out.push({ id, name });
+        }
+      } catch (_) {}
+    });
+    const seen = new Set();
+    return out
+      .filter((row) => {
+        if (seen.has(row.id)) return false;
+        seen.add(row.id);
+        return true;
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  }
+
+  /** 루틴트랙커 제목 아래: KPI별 일·월 구간 합산 시간 — 1분 이상 체크 원, 0분 취소 원 */
+  function mountTimeReportInvestRoutineKpiTimeCards(scrollWrap, ymdTen, granularity) {
+    const kpis = collectDailyRepeatKpisFromLocalMaps();
+    if (kpis.length === 0) return;
+
+    let start;
+    let end;
+    if (granularity === "month") {
+      const range = getTimeReportMonthInclusiveRange(ymdTen);
+      if (!range) return;
+      start = range.start;
+      end = range.end;
+    } else {
+      const d = normalizeDiaryDateStr(ymdTen);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+      start = end = d;
+    }
+
+    const section = document.createElement("section");
+    section.className = "diary-tr-routine-kpi-shell";
+    section.setAttribute("aria-label", "매일 반복 KPI 과제 시간");
+
+    const grid = document.createElement("div");
+    grid.className = "diary-tr-summary-grid";
+
+    kpis.forEach((k) => {
+      const mins = getAccumulatedMinutesForKpiIdInDateRange(k.id, start, end);
+      const art = document.createElement("article");
+      art.className = "diary-tr-summary-card";
+
+      const iconSlot = document.createElement("div");
+      iconSlot.className = "diary-tr-summary-icon-slot diary-tr-summary-icon-slot--empty";
+      iconSlot.setAttribute("aria-hidden", "true");
+      fillDiaryTrSummaryIconSlot(
+        iconSlot,
+        mins >= 1 ? DIARY_TR_ICON.routineDone : DIARY_TR_ICON.routineZero,
+      );
+
+      const h = document.createElement("h3");
+      h.className = "diary-tr-summary-title";
+      h.textContent = k.name;
+
+      const timeEl = document.createElement("p");
+      timeEl.className = "diary-tr-summary-time";
+      timeEl.textContent = formatIntegerMinutesDurationKo(mins);
+
+      art.appendChild(iconSlot);
+      art.appendChild(h);
+      art.appendChild(timeEl);
+      grid.appendChild(art);
+    });
+
+    section.appendChild(grid);
+    scrollWrap.appendChild(section);
   }
 
   /** 「시간 소비 리포트」 제목 직후 · 카드 그리드 직전: 비생산 합(컴팩트) */
@@ -1812,6 +1962,7 @@ export function render() {
       mountTimeReportInvestMini(scrollWrap, ymd, g);
       mountTimeReportInvestMotivationCards(scrollWrap, ymd, g);
       mountTimeReportInvestRoutineTrackerHeader(scrollWrap);
+      mountTimeReportInvestRoutineKpiTimeCards(scrollWrap, ymd, g);
 
       if (!reportLedgerRefreshFromPull) {
         const k = readTimeLedgerPullRangeForKpiTabsYmd();

@@ -2133,6 +2133,8 @@ function aggregateDailyTimeReportSummaryFromLedgerRows(rows) {
   let mediaLossWon = 0;
   let pleasureMinutes = 0;
   let pleasureLossWon = 0;
+  let unhappinessMinutes = 0;
+  let unhappinessLossWon = 0;
   let unhealthyMinutes = 0;
   const unhealthyMealDetails = [];
   let moneylosingMinutes = 0;
@@ -2177,6 +2179,11 @@ function aggregateDailyTimeReportSummaryFromLedgerRows(rows) {
       if (countsLoss) pleasureLossWon += wonMag;
       return;
     }
+    if (cat === "unhappiness") {
+      unhappinessMinutes += mins;
+      if (countsLoss) unhappinessLossWon += wonMag;
+      return;
+    }
     if (cat === "unhealthy") {
       unhealthyMinutes += mins;
       const tn = String(r.taskName || "").trim();
@@ -2199,6 +2206,8 @@ function aggregateDailyTimeReportSummaryFromLedgerRows(rows) {
     mediaLossWon,
     pleasureMinutes,
     pleasureLossWon,
+    unhappinessMinutes,
+    unhappinessLossWon,
     unhealthyMinutes,
     unhealthyMealDetails: [...new Set(unhealthyMealDetails)],
     moneylosingMinutes,
@@ -2208,7 +2217,7 @@ function aggregateDailyTimeReportSummaryFromLedgerRows(rows) {
 }
 
 /**
- * 시간사용 레포트(일별): 근무·수면·미디어 시청·쾌락충족·비건강·돈을 잃는 일 집계(시급×시간은 비생산과 동일).
+ * 시간사용 레포트(일별): 근무·수면·미디어·쾌락충족·불행·비건강·돈을 잃는 일 집계(시급×시간은 비생산과 동일).
  * 식단 목록은 「건강하지 않은 식사」 과제의 mealDetail 만.
  */
 export function getDailyTimeReportSummaryGrid(ymdTen) {
@@ -2222,6 +2231,8 @@ export function getDailyTimeReportSummaryGrid(ymdTen) {
     mediaLossWon: 0,
     pleasureMinutes: 0,
     pleasureLossWon: 0,
+    unhappinessMinutes: 0,
+    unhappinessLossWon: 0,
     unhealthyMinutes: 0,
     unhealthyMealDetails: [],
     moneylosingMinutes: 0,
@@ -2248,6 +2259,8 @@ export function getMonthlyTimeReportSummaryGrid(ymdTen) {
     mediaLossWon: 0,
     pleasureMinutes: 0,
     pleasureLossWon: 0,
+    unhappinessMinutes: 0,
+    unhappinessLossWon: 0,
     unhealthyMinutes: 0,
     unhealthyMealDetails: [],
     moneylosingMinutes: 0,
