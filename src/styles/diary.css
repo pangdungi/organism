@@ -204,16 +204,25 @@
 
 .diary-layout--feed-only
   .diary-content-scroll[data-lp-time-report-body]:not(:empty)
+  > .diary-tr-work-sleep-shell,
+.diary-layout--feed-only
+  .diary-content-scroll[data-lp-time-report-body]:not(:empty)
   > .diary-tr-invest-shell,
 .diary-layout--feed-only
   .diary-content-scroll[data-lp-time-report-body]:not(:empty)
   > .diary-tr-prod-bars-shell,
 .diary-layout--feed-only
   .diary-content-scroll[data-lp-time-report-body]:not(:empty)
+  > .diary-tr-invest-quote-shell,
+.diary-layout--feed-only
+  .diary-content-scroll[data-lp-time-report-body]:not(:empty)
   > .diary-tr-donut-shell,
 .diary-layout--feed-only
   .diary-content-scroll[data-lp-time-report-body]:not(:empty)
   > .diary-tr-consumption-section-header,
+.diary-layout--feed-only
+  .diary-content-scroll[data-lp-time-report-body]:not(:empty)
+  > .diary-tr-waste-mini-shell,
 .diary-layout--feed-only
   .diary-content-scroll[data-lp-time-report-body]:not(:empty)
   > .diary-tr-summary-shell {
@@ -324,8 +333,10 @@
 
 /* 시간 레포트 — 투자(바이백)·생산 막대·도넛·요약 행 너비 통일 */
 .diary-tr-donut-shell,
+.diary-tr-work-sleep-shell,
 .diary-tr-invest-shell,
 .diary-tr-prod-bars-shell,
+.diary-tr-invest-quote-shell,
 .diary-tr-summary-shell {
   box-sizing: border-box;
   width: 100%;
@@ -344,6 +355,32 @@
 .diary-tr-prod-bars-shell {
   padding-top: 0.38rem;
   padding-bottom: 0.38rem;
+}
+
+/* 투자 탭 생산 카테고리 메시지 카드 그리드(막대 아래, 아이콘 미정) */
+.diary-tr-invest-quote-shell {
+  padding-top: 0.3rem;
+  padding-bottom: 0.72rem;
+}
+
+.diary-tr-invest-quote-headline {
+  margin-bottom: 0.22rem !important;
+  font-size: 0.72rem !important;
+  line-height: 1.42 !important;
+}
+
+.diary-tr-invest-quote-subtitle {
+  margin: 0;
+  padding: 0 0.1rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  line-height: 1.38;
+  color: #94a3b8;
+}
+
+.diary-tr-invest-quote-card .diary-tr-summary-time {
+  margin-top: 0.38rem !important;
 }
 
 /* 투자 탭 바이백 카드 — 시간가계부 잔고 톤 */
@@ -507,6 +544,12 @@
   padding-bottom: 0.55rem;
 }
 
+/* 소비: 도넛 아래 근무·수면 한 줄 — 「시간 소비 리포트」 위쪽 */
+.diary-tr-work-sleep-shell {
+  padding-top: 0.25rem;
+  padding-bottom: 0.55rem;
+}
+
 .diary-tr-summary-shell {
   margin-bottom: 0.9rem;
   padding-top: 0.55rem;
@@ -522,6 +565,30 @@
   line-height: 1.35;
   color: var(--cal-text, #1a2d45);
   text-align: left;
+}
+
+/* 월별: 「이번 달 시간 사용」 등 도넛 구멍 안 가운데 */
+.diary-tr-donut-center-heading {
+  margin: 0 0 0.1rem;
+  padding: 0;
+  max-width: 5.85rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.28;
+  color: var(--cal-text, #1a2d45);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.diary-tr-donut-shell--month-center-heading .diary-tr-donut-center-caption {
+  font-size: 0.66rem;
+  margin-bottom: 0.08rem;
+}
+
+.diary-tr-donut-shell--month-center-heading .diary-tr-donut-center-value {
+  font-size: 0.92rem;
+  line-height: 1.2;
 }
 
 .diary-tr-consumption-section-header {
@@ -549,6 +616,38 @@
   letter-spacing: 0.06em;
   line-height: 1.35;
   color: #64748b;
+}
+
+/* 「시간 소비 리포트」 제목 직후: 비생산 합 시간(작게) */
+.diary-tr-waste-mini-shell {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 28rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: calc(0.5rem + var(--lp-safe-left, 0px));
+  padding-right: calc(0.5rem + var(--lp-safe-right, 0px));
+  padding-top: 0.12rem;
+  padding-bottom: 0.35rem;
+  text-align: center;
+}
+
+.diary-tr-waste-mini-title {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  line-height: 1.38;
+  color: #64748b;
+}
+
+.diary-tr-waste-mini-value {
+  margin: 0.14rem 0 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: #475569;
 }
 
 .diary-tr-summary-grid {
@@ -580,6 +679,11 @@
   margin: 0 auto 0.48rem;
   border-radius: 999px;
   box-sizing: border-box;
+}
+
+.diary-tr-summary-icon-slot--empty {
+  background: transparent !important;
+  border: 1px dashed rgba(148, 163, 184, 0.75);
 }
 
 .diary-tr-summary-title {

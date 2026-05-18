@@ -26,27 +26,17 @@ import {
   formatYmdDotsWithWeekdayKo,
   getDailyInvestReclaimSnapshot,
   getDailyProductiveCategoryInvestBarsSnapshot,
+  getDailyNonproductiveWastedMinutesRounded,
   getDailyTimeReportDonutSnapshot,
   getDailyTimeReportSummaryGrid,
   getMonthlyInvestReclaimSnapshot,
   getMonthlyProductiveCategoryInvestBarsSnapshot,
   getMonthlyTimeReportDonutSnapshot,
   getMonthlyTimeReportSummaryGrid,
+  getMonthlyNonproductiveWastedMinutesRounded,
   getTimeReportMonthInclusiveRange,
 } from "./Time.js";
 
-/** 요약 카드 아이콘 자리 — 파스텔(실제 아이콘은 사용자가 채움) */
-const SUMMARY_ICON_PASTELS = [
-  "#C7E2FF",
-  "#CDE8F7",
-  "#FBCFE8",
-  "#FDE68A",
-  "#BBF7D0",
-  "#DDD6FE",
-  "#FECACA",
-];
-
-/** 시간 레포트 일별 도넛 — 파스텔 순환 */
 const REPORT_DONUT_PASTELS = [
   "#93C5FD",
   "#FCA5A5",
@@ -68,6 +58,13 @@ const DIARY_PROD_CAT_BAR_FILL = {
   health: "#C4B5FD",
   other_prod: "#CBD5E1",
 };
+
+/** 생산 카테고리 막대 스냅샷과 동일 출처로 분 단위 시간(카드 그리드용) */
+function investProdCategoryMinutesRounded(snap, categoryKey) {
+  const seg = (snap?.segments ?? []).find((s) => s.categoryKey === categoryKey);
+  if (!seg || !(seg.hours > 0) || !Number.isFinite(seg.hours)) return 0;
+  return Math.round(seg.hours * 60);
+}
 
 /** 탭 2 통제일기 Q&A 템플릿 */
 const TAB2_QA_TEMPLATE = [
@@ -141,6 +138,23 @@ function timeReportMonthDonutBlockTitle(ymdTen) {
   if (ymAnchor === today.slice(0, 7)) return "이번 달 시간 사용";
   const disp = formatMonthSlashFromYmd(ten);
   return disp ? `${disp} 시간 사용` : "월별 시간 사용";
+}
+
+/** 「시간 소비 리포트」 아래 — 비생산 합 시간 문구 타이틀 */
+function timeReportWasteMiniTitle(ymdTen, granularity) {
+  const ten = normalizeDiaryDateStr(ymdTen);
+  if (granularity === "month") {
+    const ym = ten.length >= 7 ? ten.slice(0, 7) : "";
+    const today = toDateStr(new Date());
+    const disp = formatMonthSlashFromYmd(ten);
+    if (!disp) return "내가 낭비한 시간";
+    if (ym && ym === today.slice(0, 7)) return "이번 달 내가 낭비한 시간";
+    return `${disp} 내가 낭비한 시간`;
+  }
+  if (!ten || ten.length < 10) return "내가 낭비한 시간";
+  if (ten === toDateStr(new Date())) return "오늘 내가 낭비한 시간";
+  const disp = formatDateDisplay(ten);
+  return disp ? `${disp} 내가 낭비한 시간` : "그날 내가 낭비한 시간";
 }
 
 /** 투자 탭 레포트 — 바이백 카드 기준 줄(일·월) */
@@ -1125,7 +1139,105 @@ export function render() {
     scrollWrap.appendChild(section);
   }
 
-  /** 소비 탭 일·월 공통: 아이콘 자리(파스텔) + 제목 + 시간·(원) 요약 카드 그리드 */
+  /** 투자 탭: 생산 카테고리 막대 아래 메시지형 카드(아이콘 미정) — 꿈·부수입·건강·행복 순 */
+  function mountTimeReportInvestMotivationCards(scrollWrap, ymdTen, granularity) {
+    const snap =
+      granularity === "month"
+        ? getMonthlyProductiveCategoryInvestBarsSnapshot(ymdTen)
+        : getDailyProductiveCategoryInvestBarsSnapshot(ymdTen);
+
+    const section = document.createElement("section");
+    section.className = "diary-tr-invest-quote-shell";
+    section.setAttribute("aria-label", "투자 카테고리별 메시지와 생산 과제 시간");
+
+    const grid = document.createElement("div");
+    grid.className = "diary-tr-summary-grid diary-tr-invest-quote-grid";
+
+    const defs = [
+      { key: "dream", headline: "꿈에 더 가까이", subtitle: null },
+      { key: "sideincome", headline: "내 시간의 가치는 내가 올린다", subtitle: null },
+      { key: "health", headline: "내가 더 존재할 수 있게!", subtitle: "건강한 식단" },
+      { key: "happiness", headline: "행복하려고 사는거지!", subtitle: null },
+    ];
+
+    defs.forEach((def) => {
+      const mins = investProdCategoryMinutesRounded(snap, def.key);
+      const art = document.createElement("article");
+      art.className = "diary-tr-summary-card diary-tr-invest-quote-card";
+
+      const iconSlot = document.createElement("div");
+      iconSlot.className = "diary-tr-summary-icon-slot diary-tr-summary-icon-slot--empty";
+      iconSlot.setAttribute("aria-hidden", "true");
+
+      const h = document.createElement("h3");
+      h.className = "diary-tr-summary-title diary-tr-invest-quote-headline";
+      h.textContent = def.headline;
+
+      art.appendChild(iconSlot);
+      art.appendChild(h);
+      if (def.subtitle) {
+        const sub = document.createElement("p");
+        sub.className = "diary-tr-invest-quote-subtitle";
+        sub.textContent = def.subtitle;
+        art.appendChild(sub);
+      }
+
+      const timeEl = document.createElement("p");
+      timeEl.className = "diary-tr-summary-time";
+      timeEl.textContent = formatIntegerMinutesDurationKo(mins);
+      art.appendChild(timeEl);
+      grid.appendChild(art);
+    });
+
+    section.appendChild(grid);
+    scrollWrap.appendChild(section);
+  }
+
+  /** 소비 탭: 도넛 아래 근무·수면 한 줄 — 소비 리포트와 구분 */
+  function mountTimeReportWorkSleepStrip(scrollWrap, ymdTen, granularity) {
+    const g =
+      granularity === "month"
+        ? getMonthlyTimeReportSummaryGrid(ymdTen)
+        : getDailyTimeReportSummaryGrid(ymdTen);
+
+    const section = document.createElement("section");
+    section.className = "diary-tr-work-sleep-shell";
+    section.setAttribute("aria-label", "근무 시간과 수면 시간");
+
+    const grid = document.createElement("div");
+    grid.className = "diary-tr-summary-grid";
+
+    /** 근무·수면 카드 — 아이콘 미정: 점선 원(투자 탭 요약과 동일) */
+    [
+      { title: "근무시간", minutes: g.workMinutes },
+      { title: "수면시간", minutes: g.sleepMinutes },
+    ].forEach((c) => {
+      const art = document.createElement("article");
+      art.className = "diary-tr-summary-card";
+
+      const iconSlot = document.createElement("div");
+      iconSlot.className = "diary-tr-summary-icon-slot diary-tr-summary-icon-slot--empty";
+      iconSlot.setAttribute("aria-hidden", "true");
+
+      const h = document.createElement("h3");
+      h.className = "diary-tr-summary-title";
+      h.textContent = c.title;
+
+      const timeEl = document.createElement("p");
+      timeEl.className = "diary-tr-summary-time";
+      timeEl.textContent = formatIntegerMinutesDurationKo(c.minutes);
+
+      art.appendChild(iconSlot);
+      art.appendChild(h);
+      art.appendChild(timeEl);
+      grid.appendChild(art);
+    });
+
+    section.appendChild(grid);
+    scrollWrap.appendChild(section);
+  }
+
+  /** 소비 탭 일·월 공통: 아이콘 자리(점선 원) + 제목 + 시간·(원) 요약 카드 그리드(근무·수면 제외) */
   function mountTimeReportSummaryGrid(scrollWrap, ymdTen, granularity) {
     const g =
       granularity === "month"
@@ -1135,7 +1247,9 @@ export function render() {
     section.className = "diary-tr-summary-shell";
     section.setAttribute(
       "aria-label",
-      granularity === "month" ? "선택한 달의 시간·행동 요약" : "선택한 날의 시간·행동 요약",
+      granularity === "month"
+        ? "선택한 달의 시간 소비 카테고리 요약"
+        : "선택한 날의 시간 소비 카테고리 요약",
     );
 
     const grid = document.createElement("div");
@@ -1144,8 +1258,6 @@ export function render() {
     const showMoney = g.hourlyRate > 0;
     /** @type {Array<{ title: string, minutes: number, lossWon?: number | null, meals?: string[] }>} */
     const specs = [
-      { title: "근무시간", minutes: g.workMinutes },
-      { title: "수면시간", minutes: g.sleepMinutes },
       {
         title: "미디어 시청시간",
         minutes: g.mediaMinutes,
@@ -1169,13 +1281,12 @@ export function render() {
       },
     ];
 
-    specs.forEach((c, i) => {
+    specs.forEach((c) => {
       const art = document.createElement("article");
       art.className = "diary-tr-summary-card";
 
       const iconSlot = document.createElement("div");
-      iconSlot.className = "diary-tr-summary-icon-slot";
-      iconSlot.style.backgroundColor = SUMMARY_ICON_PASTELS[i % SUMMARY_ICON_PASTELS.length];
+      iconSlot.className = "diary-tr-summary-icon-slot diary-tr-summary-icon-slot--empty";
       iconSlot.setAttribute("aria-hidden", "true");
 
       const h = document.createElement("h3");
@@ -1233,6 +1344,30 @@ export function render() {
     scrollWrap.appendChild(block);
   }
 
+  /** 「시간 소비 리포트」 제목 직후 · 카드 그리드 직전: 비생산 합(컴팩트) */
+  function mountTimeReportNonproductiveWasteMini(scrollWrap, ymdTen, granularity) {
+    const mins =
+      granularity === "month"
+        ? getMonthlyNonproductiveWastedMinutesRounded(ymdTen)
+        : getDailyNonproductiveWastedMinutesRounded(ymdTen);
+
+    const shell = document.createElement("div");
+    shell.className = "diary-tr-waste-mini-shell";
+    shell.setAttribute("aria-label", "비생산적 활동 시간 합");
+
+    const ttl = document.createElement("p");
+    ttl.className = "diary-tr-waste-mini-title";
+    ttl.textContent = timeReportWasteMiniTitle(ymdTen, granularity);
+
+    const val = document.createElement("p");
+    val.className = "diary-tr-waste-mini-value";
+    val.textContent = formatIntegerMinutesDurationKo(mins);
+
+    shell.appendChild(ttl);
+    shell.appendChild(val);
+    scrollWrap.appendChild(shell);
+  }
+
   /** 소비 탭 일·월 공통 본문: 수면·근무 제외 세부 카테고리 도넛 */
   function mountTimeReportDonut(scrollWrap, ymdTen, granularity) {
     const snap =
@@ -1241,19 +1376,28 @@ export function render() {
         : getDailyTimeReportDonutSnapshot(ymdTen);
     const section = document.createElement("section");
     section.className = "diary-tr-donut-shell";
+    if (granularity === "month") {
+      section.classList.add("diary-tr-donut-shell--month-center-heading");
+    }
 
     const headingId =
       granularity === "month"
         ? "diary-time-report-month-donut-heading"
         : "diary-time-report-day-donut-heading";
-    const blockTitle = document.createElement("h2");
-    blockTitle.className = "diary-tr-donut-block-heading";
-    blockTitle.id = headingId;
-    blockTitle.textContent =
+    const blockHeadingText =
       granularity === "month"
         ? timeReportMonthDonutBlockTitle(ymdTen)
         : timeReportDayDonutBlockTitle(ymdTen);
     section.setAttribute("aria-labelledby", headingId);
+
+    /** 일별만 도넛 위에 제목 · 월별는 도넛 중앙으로 옮김 */
+    let blockTitleOutside = null;
+    if (granularity !== "month") {
+      blockTitleOutside = document.createElement("h2");
+      blockTitleOutside.className = "diary-tr-donut-block-heading";
+      blockTitleOutside.id = headingId;
+      blockTitleOutside.textContent = blockHeadingText;
+    }
 
     const card = document.createElement("div");
     card.className = "diary-tr-donut-card";
@@ -1271,6 +1415,14 @@ export function render() {
 
     const center = document.createElement("div");
     center.className = "diary-tr-donut-center";
+
+    if (granularity === "month") {
+      const innerTitle = document.createElement("h2");
+      innerTitle.className = "diary-tr-donut-center-heading";
+      innerTitle.id = headingId;
+      innerTitle.textContent = blockHeadingText;
+      center.appendChild(innerTitle);
+    }
 
     const cap = document.createElement("span");
     cap.className = "diary-tr-donut-center-caption";
@@ -1368,7 +1520,7 @@ export function render() {
 
     card.appendChild(viz);
     card.appendChild(legend);
-    section.appendChild(blockTitle);
+    if (blockTitleOutside) section.appendChild(blockTitleOutside);
     section.appendChild(card);
     scrollWrap.appendChild(section);
   }
@@ -1633,6 +1785,7 @@ export function render() {
       const g = tab2ViewGranularity === "month" ? "month" : "day";
       mountTimeReportInvestBank(scrollWrap, ymd, g);
       mountTimeReportProductiveBars(scrollWrap, ymd, g);
+      mountTimeReportInvestMotivationCards(scrollWrap, ymd, g);
 
       if (!reportLedgerRefreshFromPull) {
         const k = readTimeLedgerPullRangeForKpiTabsYmd();
@@ -1689,7 +1842,9 @@ export function render() {
       const ymd = layoutWrap.dataset.tab3SelectedDate || tab3ReportAnchorDateStr;
       const g = tab3ViewGranularity === "month" ? "month" : "day";
       mountTimeReportDonut(scrollWrap, ymd, g);
+      mountTimeReportWorkSleepStrip(scrollWrap, ymd, g);
       mountTimeReportConsumptionSectionHeader(scrollWrap);
+      mountTimeReportNonproductiveWasteMini(scrollWrap, ymd, g);
       mountTimeReportSummaryGrid(scrollWrap, ymd, g);
 
       if (!reportLedgerRefreshFromPull) {

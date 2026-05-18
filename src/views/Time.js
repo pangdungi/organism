@@ -2422,6 +2422,52 @@ export function getMonthlyProductiveCategoryInvestBarsSnapshot(ymdTen) {
   return aggregateProductiveCategoryInvestBarsFromRows(rows);
 }
 
+/** 비생산(nonproductive)으로 기록된 사용시간(분 단위 합) — 카테고리 도넛·요약과 동일 산술 규칙 */
+function aggregateNonproductiveMinutesFromLedgerRows(rows) {
+  let total = 0;
+  rows.forEach((r) => {
+    const hrs = parseTimeToHours(r.timeTracked);
+    if (!(hrs > 0) || !Number.isFinite(hrs)) return;
+    const { category, productivity } = resolveRowCategoryProductivityForAudit(r);
+    const cat = String(category || "").trim().toLowerCase();
+    const pv = (
+      String(productivity || "")
+        .trim()
+        .toLowerCase() ||
+      String(getProductivityFromCategory(cat) || "")
+        .trim()
+        .toLowerCase()
+    ).trim();
+    if (pv !== "nonproductive") return;
+    total += Math.round(hrs * 60);
+  });
+  return total;
+}
+
+/** 일별: 비생산적 활동 시간(분 합 → 표시 시 formatIntegerMinutesDurationKo 등) */
+export function getDailyNonproductiveWastedMinutesRounded(ymdTen) {
+  const key = String(ymdTen || "")
+    .replace(/\//g, "-")
+    .slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return 0;
+  const rows = loadTimeRows().filter((r) => {
+    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    return d === key;
+  });
+  return aggregateNonproductiveMinutesFromLedgerRows(rows);
+}
+
+/** 월별: 비생산적 활동 시간 합산 */
+export function getMonthlyNonproductiveWastedMinutesRounded(ymdTen) {
+  const range = getTimeReportMonthInclusiveRange(ymdTen);
+  if (!range) return 0;
+  const rows = loadTimeRows().filter((r) => {
+    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    return d >= range.start && d <= range.end;
+  });
+  return aggregateNonproductiveMinutesFromLedgerRows(rows);
+}
+
 /** YYYY-MM-DD → "2026. 05. 18(화)" — 레포트 날짜 줄 */
 export function formatYmdDotsWithWeekdayKo(ymdTen) {
   const dStr = String(ymdTen || "")
