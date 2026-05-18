@@ -99,9 +99,29 @@ export function readTimeLedgerSessionFilterRangeYmd() {
   return { rangeStart: t, rangeEnd: t };
 }
 
-/** 서버 당겨오기·실시간: 시간「기록」세션 피커 구간과 동일 */
+/**
+ * 서버 당겨오기·실시간: 기록 탭 세션 구간(기본 오늘) ∪ 사용내역 조회 구간.
+ * 사용내역만 과거로 넓혀도 오늘 잔액용 행이 당겨지도록 합집합으로 둠.
+ */
 export function readTimeLedgerCombinedPullRangeYmd() {
-  return readTimeLedgerSessionFilterRangeYmd();
+  const base = readTimeLedgerSessionFilterRangeYmd();
+  try {
+    if (typeof sessionStorage === "undefined") return base;
+    const us = sessionStorage.getItem("lp_time_usage_list_start");
+    const ue = sessionStorage.getItem("lp_time_usage_list_end");
+    if (!us || !YMD_RE.test(us)) return base;
+    let rs = us;
+    let re = ue && YMD_RE.test(ue) ? ue : us;
+    if (rs > re) {
+      const t = rs;
+      rs = re;
+      re = t;
+    }
+    const outStart = base.rangeStart < rs ? base.rangeStart : rs;
+    const outEnd = base.rangeEnd > re ? base.rangeEnd : re;
+    return { rangeStart: outStart, rangeEnd: outEnd };
+  } catch (_) {}
+  return base;
 }
 
 /** KPI 탭용 시간기록 pull: 오늘 기준 뒤로 약 6개월 + 기록 세션 구간과 합침 */

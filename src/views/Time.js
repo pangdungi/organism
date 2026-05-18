@@ -3316,6 +3316,24 @@ export function render() {
     return `${yy}. ${mm}. ${dd}(${weekdays[dt.getDay()]})`;
   }
 
+  /** 목록 조회 구간 캡션 (짧게, 제목 오른쪽용) */
+  function formatUsageRangeCaption(startYmd, endYmd) {
+    if (
+      !startYmd ||
+      !endYmd ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(startYmd) ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(endYmd)
+    ) {
+      return "";
+    }
+    const short = (d) => {
+      const [y, mo, da] = d.split("-");
+      return `${String(y).slice(2)}.${mo}.${da}`;
+    };
+    if (startYmd === endYmd) return short(startYmd);
+    return `${short(startYmd)} ~ ${short(endYmd)}`;
+  }
+
   const ledgerTopHeading = document.createElement("div");
   lpSetClasses(ledgerTopHeading, "time-ledger-top-title time-ledger-bank-card");
   const todayYmdInit = getLedgerFilterTodayYmd();
@@ -3341,13 +3359,37 @@ export function render() {
   const filterType = "range";
   let filterYear = now.getFullYear();
   let filterMonth = now.getMonth() + 1;
-  let filterStartDate = getLedgerFilterTodayYmd();
-  let filterEndDate = filterStartDate;
+
+  function readUsageListRangeFromSession() {
+    try {
+      if (typeof sessionStorage === "undefined") return null;
+      const us = sessionStorage.getItem("lp_time_usage_list_start");
+      const ue = sessionStorage.getItem("lp_time_usage_list_end");
+      if (!us || !/^\d{4}-\d{2}-\d{2}$/.test(us)) return null;
+      let rs = us;
+      let re = ue && /^\d{4}-\d{2}-\d{2}$/.test(ue) ? ue : us;
+      if (rs > re) {
+        const x = rs;
+        rs = re;
+        re = x;
+      }
+      return { start: rs, end: re };
+    } catch (_) {
+      return null;
+    }
+  }
+  const _usageListFromSession = readUsageListRangeFromSession();
+  const _todayForUsageRange = getLedgerFilterTodayYmd();
+  let usageHistoryRangeStartYmd =
+    _usageListFromSession?.start ?? _todayForUsageRange;
+  let usageHistoryRangeEndYmd = _usageListFromSession?.end ?? _todayForUsageRange;
 
   function persistActiveViewTimeFilterToSession() {
     const t = getLedgerFilterTodayYmd();
     try {
       if (typeof sessionStorage === "undefined") return;
+      sessionStorage.setItem("lp_time_usage_list_start", usageHistoryRangeStartYmd);
+      sessionStorage.setItem("lp_time_usage_list_end", usageHistoryRangeEndYmd);
       sessionStorage.setItem("lp_time_filter_start", t);
       sessionStorage.setItem("lp_time_filter_end", t);
     } catch (_) {}
@@ -3381,22 +3423,24 @@ export function render() {
   const footerDateBtn = document.createElement("button");
   footerDateBtn.type = "button";
   lpSetClasses(footerDateBtn, "time-ledger-footer-date-btn");
-  footerDateBtn.title = "날짜·잔액 카드로 이동";
-  footerDateBtn.setAttribute("aria-label", "날짜");
+  footerDateBtn.title = "시간 사용내역 조회 기간";
+  footerDateBtn.setAttribute("aria-label", "시간 사용내역 조회 기간");
   footerDateBtn.innerHTML = TIME_LEDGER_FOOTER_DATE_ICON_SVG;
   lpTokenAdd(footerDateBtn, APP_FOOTER_ICON_BTN_CLASS);
-  footerDateBtn.addEventListener("click", () => {
-    try {
-      const main = document.querySelector("#signin-page .app-main");
-      if (main) main.scrollTo({ top: 0, behavior: "smooth" });
-      else ledgerTopHeading?.scrollIntoView({ behavior: "smooth", block: "start" });
-    } catch (_) {}
-  });
 
-  /** 날짜 피커 제거 후: 항상 오늘만 동기화 */
+  /** 풀 범위: 오늘 ∪ 사용내역 조회 구간 (readTimeLedgerCombinedPullRangeYmd 와 동일 합집합) */
   function computePickerRangeKeyForPull() {
     const t = getLedgerFilterTodayYmd();
-    return `${t}|${t}`;
+    let rs = usageHistoryRangeStartYmd;
+    let re = usageHistoryRangeEndYmd;
+    if (rs > re) {
+      const x = rs;
+      rs = re;
+      re = x;
+    }
+    const outStart = t < rs ? t : rs;
+    const outEnd = t > re ? t : re;
+    return `${outStart}|${outEnd}`;
   }
   let _pickerRangeKeyAtLastPullIntent = computePickerRangeKeyForPull();
   let _timeLedgerFilterPullTimer = null;
@@ -3413,16 +3457,13 @@ export function render() {
   }
 
   function onFilterChange(skipMerge = false) {
-    const today = getLedgerFilterTodayYmd();
-    filterStartDate = today;
-    filterEndDate = today;
     const type = filterType;
     const rows = getFullRowsForFilter(skipMerge);
     cachedRows = rows;
     const y = filterYear;
     const m = filterMonth;
-    const start = today;
-    const end = today;
+    const start = usageHistoryRangeStartYmd;
+    const end = usageHistoryRangeEndYmd;
     let filtered = filterRowsByFilterType(rows, type, y, m, start, end);
     if (
       selectedTaskNamesForFilter != null &&
@@ -3624,6 +3665,75 @@ export function render() {
       closeTaskSelectModal();
       onFilterChange();
       lpTokenRemove(taskSelectBtn, "is-active");
+    });
+  })();
+
+  const usageRangeModal = document.createElement("div");
+  lpSetClasses(usageRangeModal, "time-task-setup-modal time-usage-range-modal");
+  usageRangeModal.innerHTML = `
+    <div data-legacy="time-task-setup-backdrop"></div>
+    <div data-legacy="time-task-setup-panel" class="time-usage-range-panel">
+      <div data-legacy="time-task-setup-header">
+        <h3 data-legacy="time-task-setup-title">조회 기간</h3>
+        <button type="button" data-legacy="time-task-setup-close" aria-label="닫기">&times;</button>
+      </div>
+      <div data-legacy="time-task-setup-body" class="time-usage-range-body">
+        <label class="time-usage-range-field">
+          <span class="time-usage-range-label">시작</span>
+          <input type="date" class="time-usage-range-date" data-usage-range-start />
+        </label>
+        <label class="time-usage-range-field">
+          <span class="time-usage-range-label">마감</span>
+          <input type="date" class="time-usage-range-date" data-usage-range-end />
+        </label>
+        <button type="button" class="time-usage-range-apply" data-usage-range-apply>조회</button>
+      </div>
+    </div>`;
+  usageRangeModal.hidden = true;
+  el.appendChild(usageRangeModal);
+
+  (function initUsageRangeModal() {
+    const usageRangeBackdrop = usageRangeModal.querySelector(
+      '[data-legacy~="time-task-setup-backdrop"]',
+    );
+    const usageRangeClose = usageRangeModal.querySelector(
+      '[data-legacy~="time-task-setup-header"] [data-legacy~="time-task-setup-close"]',
+    );
+    const usageRangeStartInp = usageRangeModal.querySelector(
+      "[data-usage-range-start]",
+    );
+    const usageRangeEndInp = usageRangeModal.querySelector("[data-usage-range-end]");
+    const usageRangeApplyBtn = usageRangeModal.querySelector(
+      "[data-usage-range-apply]",
+    );
+
+    function openUsageRangeModal() {
+      if (usageRangeStartInp) usageRangeStartInp.value = usageHistoryRangeStartYmd;
+      if (usageRangeEndInp) usageRangeEndInp.value = usageHistoryRangeEndYmd;
+      usageRangeModal.hidden = false;
+    }
+    function closeUsageRangeModal() {
+      usageRangeModal.hidden = true;
+    }
+
+    footerDateBtn?.addEventListener("click", openUsageRangeModal);
+    usageRangeBackdrop?.addEventListener("click", closeUsageRangeModal);
+    usageRangeClose?.addEventListener("click", closeUsageRangeModal);
+    usageRangeApplyBtn?.addEventListener("click", () => {
+      const fallback = getLedgerFilterTodayYmd();
+      let s = String(usageRangeStartInp?.value || "").trim();
+      let e = String(usageRangeEndInp?.value || "").trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) s = fallback;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(e)) e = s;
+      if (s > e) {
+        const x = s;
+        s = e;
+        e = x;
+      }
+      usageHistoryRangeStartYmd = s;
+      usageHistoryRangeEndYmd = e;
+      closeUsageRangeModal();
+      onFilterChange();
     });
   })();
 
@@ -6665,10 +6775,33 @@ export function render() {
       ledgerContainer,
       "time-ledger-container time-ledger-usage-sheet",
     );
+    const usageHistoryHeadingRow = document.createElement("div");
+    lpSetClasses(
+      usageHistoryHeadingRow,
+      "time-ledger-usage-history-heading-row",
+    );
+    const usageHistoryHeadingMain = document.createElement("div");
+    lpSetClasses(
+      usageHistoryHeadingMain,
+      "time-ledger-usage-history-heading-main",
+    );
     const usageHistoryHeading = document.createElement("h2");
     lpSetClasses(usageHistoryHeading, "time-ledger-usage-history-heading");
     usageHistoryHeading.textContent = "시간 사용내역";
-    ledgerContainer.appendChild(usageHistoryHeading);
+    const usageHistoryRangeCaption = document.createElement("span");
+    lpSetClasses(
+      usageHistoryRangeCaption,
+      "time-ledger-usage-range-caption",
+    );
+    usageHistoryRangeCaption.setAttribute("data-usage-range-caption", "");
+    usageHistoryRangeCaption.textContent = formatUsageRangeCaption(
+      usageHistoryRangeStartYmd,
+      usageHistoryRangeEndYmd,
+    );
+    usageHistoryHeadingMain.appendChild(usageHistoryHeading);
+    usageHistoryHeadingMain.appendChild(usageHistoryRangeCaption);
+    usageHistoryHeadingRow.appendChild(usageHistoryHeadingMain);
+    ledgerContainer.appendChild(usageHistoryHeadingRow);
     ledgerContainer.appendChild(cardsWrap);
     contentWrap.appendChild(ledgerContainer);
 
@@ -6717,8 +6850,14 @@ export function render() {
     const type = filterType;
     const y = filterYear;
     const m = filterMonth;
-    const t = getLedgerFilterTodayYmd();
-    return filterRowsByFilterType(rows, type, y, m, t, t);
+    return filterRowsByFilterType(
+      rows,
+      type,
+      y,
+      m,
+      usageHistoryRangeStartYmd,
+      usageHistoryRangeEndYmd,
+    );
   }
 
   function syncTimeLedgerContent(opts = {}) {
@@ -6757,8 +6896,6 @@ export function render() {
     /* App 탭 진입 pull 직후 session 만 오늘 등으로 바뀌고 DOM 날짜는 옛값일 수 있음 → 통째로 renderMain 하지 않고 갱신할 때 맞춤 */
     try {
       const t = getLedgerFilterTodayYmd();
-      filterStartDate = t;
-      filterEndDate = t;
       try {
         if (typeof sessionStorage !== "undefined") {
           sessionStorage.setItem("lp_time_filter_start", t);
