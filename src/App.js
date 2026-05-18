@@ -13,7 +13,7 @@ import { saveTodoListBeforeUnmount } from "./views/TodoList.js";
 import {
   render as renderTime,
   getTodayTimeLedgerValueSum,
-  formatHomeMenuLedgerKrw,
+  getHomeMenuLedgerKrwParts,
 } from "./views/Time.js";
 import { render as renderWorkSchedule } from "./views/WorkSchedule.js";
 import { render as renderDream } from "./views/Dream.js";
@@ -536,6 +536,13 @@ export async function mountApp(container) {
     const root = document.createElement("div");
     root.className = "app-home-menu-launcher";
 
+    const brandBar = document.createElement("div");
+    brandBar.className = "app-home-menu-launcher-brand";
+    const titleEl = document.createElement("h1");
+    titleEl.className = "app-home-menu-launcher-title";
+    titleEl.textContent = "Time is Price";
+    brandBar.appendChild(titleEl);
+
     const card = document.createElement("div");
     card.className = "app-home-menu-launcher-card";
 
@@ -552,7 +559,25 @@ export async function mountApp(container) {
 
     function paintHomeMenuBalance() {
       const sum = getTodayTimeLedgerValueSum();
-      balanceAmount.textContent = formatHomeMenuLedgerKrw(sum);
+      const parts = getHomeMenuLedgerKrwParts(sum);
+      balanceAmount.replaceChildren();
+      balanceAmount.setAttribute("aria-label", parts.ariaLabel);
+      if (parts.sign) {
+        const signEl = document.createElement("span");
+        signEl.className = "app-home-menu-balance-sign";
+        signEl.textContent = parts.sign;
+        signEl.setAttribute("aria-hidden", "true");
+        balanceAmount.appendChild(signEl);
+      }
+      const wonEl = document.createElement("span");
+      wonEl.className = "app-home-menu-balance-currency";
+      wonEl.textContent = "₩";
+      wonEl.setAttribute("aria-hidden", "true");
+      const digitsEl = document.createElement("span");
+      digitsEl.className = "app-home-menu-balance-digits";
+      digitsEl.textContent = parts.digits;
+      digitsEl.setAttribute("aria-hidden", "true");
+      balanceAmount.append(wonEl, digitsEl);
       balanceMeta.textContent = `${timeLedgerLocalTodayYmd()} · 시간가계부 오늘 기록 합계`;
     }
     paintHomeMenuBalance();
@@ -601,7 +626,7 @@ export async function mountApp(container) {
     void syncAdminMenuVisibility();
 
     card.append(balanceWrap, body);
-    root.append(card, launcherAdminBtn);
+    root.append(brandBar, card, launcherAdminBtn);
     return root;
   }
 

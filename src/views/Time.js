@@ -1996,14 +1996,18 @@ export function getTodayTimeLedgerValueSum() {
   return calcPeriodValueFromFiltered(rows, hourlyRate);
 }
 
-/** 홈 메뉴 등: +₩ / -₩ / ₩0 (부호는 원화 기호 앞) */
-export function formatHomeMenuLedgerKrw(n) {
+/** 홈 메뉴 금액: 부호·₩·숫자를 나눠 간격·접근성 라벨 제공 */
+export function getHomeMenuLedgerKrwParts(n) {
   const v = Number(n) || 0;
   const abs = Math.abs(Math.round(v));
-  const str = abs.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  if (v === 0) return `₩${str}`;
-  if (v < 0) return `-₩${str}`;
-  return `+₩${str}`;
+  const digits = abs.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  if (v === 0) {
+    return { sign: null, digits, ariaLabel: `${digits}원` };
+  }
+  if (v < 0) {
+    return { sign: "-", digits, ariaLabel: `마이너스 ${digits}원` };
+  }
+  return { sign: "+", digits, ariaLabel: `플러스 ${digits}원` };
 }
 
 /** 카테고리 라벨 조회 */

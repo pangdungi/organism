@@ -269,13 +269,33 @@ body {
 }
 
 .app-home-menu-balance-amount {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
   margin: 0 0 0.45rem;
   font-family: "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
   font-size: clamp(1.7rem, 6.8vw, 2.15rem);
   font-weight: 800;
-  letter-spacing: -0.03em;
+  letter-spacing: normal;
   color: #1e4d7b;
   line-height: 1.12;
+}
+
+.app-home-menu-balance-sign {
+  margin-right: 0.22em;
+  font-weight: 800;
+}
+
+.app-home-menu-balance-currency {
+  margin-right: 0.12em;
+  font-weight: 800;
+}
+
+.app-home-menu-balance-digits {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
 .app-home-menu-balance-meta {
