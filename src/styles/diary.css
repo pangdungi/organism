@@ -236,6 +236,9 @@
   > .diary-tr-routine-kpi-shell,
 .diary-layout--feed-only
   .diary-content-scroll[data-lp-time-report-body]:not(:empty)
+  > .diary-tab5-ledger-log-wrap,
+.diary-layout--feed-only
+  .diary-content-scroll[data-lp-time-report-body]:not(:empty)
   > .diary-tr-budget-day-section-shell,
 .diary-layout--feed-only
   .diary-content-scroll[data-lp-time-report-body]:not(:empty)
@@ -251,6 +254,70 @@
   > .diary-tr-summary-shell {
   flex-shrink: 0;
   width: 100%;
+}
+
+/* 시간 레포트 로그 탭: 일간 타임라인 카드와 동일 톤, 헤더는 진행률 없이 단색 바 */
+.diary-tab5-ledger-log-wrap .calendar-1day-timeline-card {
+  cursor: default;
+}
+
+/* 타임라인 좌측·하단 시각 + 소요시간 — 연한 회색 */
+.diary-tab5-ledger-log-wrap .calendar-1day-timeline-card-start,
+.diary-tab5-ledger-log-wrap .calendar-1day-timeline-card-end,
+.diary-tab5-ledger-log-wrap .calendar-1day-timeline-card-duration {
+  color: #94a3b8;
+}
+
+.diary-tab5-ledger-log-wrap .diary-tab5-timeline-title-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: 0.15rem;
+  flex-shrink: 0;
+  margin-left: auto;
+  min-width: 0;
+  text-align: right;
+}
+
+/* 모바일 일간 카드와 동일: 우측 소요시간 위·가격 아래 (duration의 margin-left:auto는 래퍼가 대신 담당) */
+.diary-tab5-ledger-log-wrap
+  .diary-tab5-timeline-title-right
+  .calendar-1day-timeline-card-duration {
+  margin-left: 0;
+}
+
+/* 시간가계부 모바일 카드와 동일 금액 색 규칙 */
+.diary-tab5-ledger-log-wrap .diary-tab5-timeline-price.time-mobile-card-price {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.diary-tab5-ledger-log-wrap
+  .diary-tab5-timeline-price.time-mobile-card-price--productive {
+  color: #c02b2b;
+}
+
+.diary-tab5-ledger-log-wrap
+  .diary-tab5-timeline-price.time-mobile-card-price--nonproductive {
+  color: #1a5fa8;
+}
+
+.diary-tab5-ledger-log-wrap .diary-tab5-timeline-price.time-mobile-card-price--other {
+  color: #64748b;
+}
+
+.diary-tab5-ledger-log-wrap .calendar-1day-timeline-card-head-bar-plain {
+  width: 100%;
+  height: 6px;
+  min-height: 6px;
+  flex: 0 0 auto;
+  border: none;
+  border-radius: 2px;
+  align-self: stretch;
+  /* 과제별 색 대신 통일된 연한 회색 막대 */
+  background: #e9eef4;
 }
 
 /* 시간사용 레포트: 데이·먼스 아래 — Time 탭과 동일 lp-modal-datetime-card + date-native-wrap */

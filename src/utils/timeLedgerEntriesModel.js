@@ -419,6 +419,31 @@ export function writeTimeLedgerEntriesRaw(rows) {
   _ledgerRowsMem = arr;
 }
 
+/** Calendar 일간 ledger 필터와 동일한 날짜 정규화(YYYY-MM-DD) */
+export function normalizeLedgerRowDateYmdTen(s) {
+  return String(s || "").replace(/\//g, "-").trim().slice(0, 10);
+}
+
+/** 시작 시각 문자열 앞부분에서 YYYY-MM-DD 추출 */
+export function parseYmdTenFromLedgerStartTimeStr(str) {
+  if (!str || typeof str !== "string") return "";
+  const m = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  return m
+    ? `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`
+    : "";
+}
+
+/** 해당 일(YYYY-MM-DD)의 시간가계부 행만 — Calendar `ledgerRowsForCalendarYmd`와 동일 규칙 */
+export function filterTimeLedgerEntriesByYmdTen(allRows, ymdTen) {
+  if (!ymdTen || !Array.isArray(allRows)) return [];
+  return allRows.filter((r) => {
+    const d = normalizeLedgerRowDateYmdTen(
+      r?.date || parseYmdTenFromLedgerStartTimeStr(r?.startTime),
+    );
+    return d === ymdTen;
+  });
+}
+
 /**
  * 시간기록 행의 메모(feedback)만 갱신. 행 삭제 없음. 호출 쪽에서 Supabase 반영(pushDirty) 필요.
  * @returns {{ ok: boolean, msg?: string }}

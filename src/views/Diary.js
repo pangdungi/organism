@@ -21,6 +21,11 @@ import {
   pullTimeLedgerEntriesForDateRange,
   readTimeLedgerPullRangeForKpiTabsYmd,
 } from "../utils/timeLedgerEntriesSupabase.js";
+import { filterTimeLedgerEntriesByYmdTen } from "../utils/timeLedgerEntriesModel.js";
+import {
+  getSectionColor,
+  getTimeCategoryColorsForTimetableExpected,
+} from "../utils/todoSettings.js";
 import { KPI_MAP_STORAGE_KEYS } from "../utils/kpiMapLocalStorage.js";
 import { getAccumulatedMinutesForKpiIdInDateRange } from "../utils/timeKpiSync.js";
 import { getBudgetDayReportForDay } from "../utils/diaryBudgetDayReport.js";
@@ -42,6 +47,14 @@ import {
   getMonthlyTimeReportTopTasksByMinutes,
   getMonthlyNonproductiveWastedMinutesRounded,
   getTimeReportMonthInclusiveRange,
+  loadTimeRows,
+  getRowStartInstantForMobileCard,
+  getRowEndInstantForMobileCard,
+  rowHasEndTimeForMobileCard,
+  getMobileCardEffectiveHoursForPrice,
+  getTimeLedgerRowDisplayProductivity,
+  isTimeLedgerRowLiveRecording,
+  getTimeLedgerRowMobilePriceDisplay,
 } from "./Time.js";
 
 const REPORT_DONUT_PASTELS = [
@@ -280,6 +293,223 @@ function getTabEntriesList(tabId, all) {
   const tab = all[tabId];
   const list = migrateToEntries(tab);
   return list.sort(compareDiaryEntriesNewestFirst);
+}
+
+/** 로그 탭 일간 카드 — Calendar 일간 예상 타임라인과 동일 섹션 키 */
+const DIARY_TAB5_TL_SECTION_LABELS = {
+  dream: "꿈",
+  sideincome: "부수입",
+  health: "건강",
+  happy: "행복",
+};
+
+function diaryTab5WithMoreTransparency(color, alpha = 0.82) {
+  const m = String(color || "").match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (m) return `rgba(${m[1]}, ${m[2]}, ${m[3]}, ${alpha})`;
+  return color;
+}
+
+function diaryTab5AccentTextFromRgba(accentRgba) {
+  const m = String(accentRgba || "").match(
+    /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/,
+  );
+  if (!m) return "";
+  return `rgb(${m[1]}, ${m[2]}, ${m[3]})`;
+}
+
+function diaryTab5FormatLedgerClockHHmm(inst) {
+  if (!inst || !(inst instanceof Date)) return "";
+  return `${String(inst.getHours()).padStart(2, "0")}:${String(inst.getMinutes()).padStart(2, "0")}`;
+}
+
+function diaryTab5FormatLedgerEndClock(row) {
+  if (rowHasEndTimeForMobileCard(row)) {
+    const inst = getRowEndInstantForMobileCard(row);
+    return diaryTab5FormatLedgerClockHHmm(inst) || "—";
+  }
+  if (isTimeLedgerRowLiveRecording(row)) return "진행 중";
+  return "—";
+}
+
+function buildDiaryTab5LedgerTimelineCard(row, prodPalette) {
+  const sidRaw = String(row.sectionId || "").trim();
+  let sectionAccent = "";
+  if (sidRaw && !sidRaw.startsWith("custom-")) {
+    try {
+      sectionAccent = getSectionColor(sidRaw) || "";
+    } catch (_) {
+      sectionAccent = "";
+    }
+  }
+
+  const prodKey = getTimeLedgerRowDisplayProductivity(row);
+  const pk =
+    prodKey === "productive"
+      ? "productive"
+      : prodKey === "nonproductive"
+        ? "nonproductive"
+        : "other";
+  const c = prodPalette[pk] || prodPalette.other;
+
+  const item = document.createElement("div");
+  item.className = "calendar-1day-timeline-item";
+
+  const card = document.createElement("div");
+  card.className = "calendar-1day-timeline-card";
+
+  const taskLabel = String(row.taskName || "").trim() || "(제목 없음)";
+  const memoText = String(row.feedback || "").trim();
+  const startInst = getRowStartInstantForMobileCard(row);
+  const startClock = diaryTab5FormatLedgerClockHHmm(startInst) || "—";
+  const endClock = diaryTab5FormatLedgerEndClock(row);
+
+  const durMin = Math.max(
+    0,
+    Math.round((getMobileCardEffectiveHoursForPrice(row) || 0) * 60),
+  );
+
+  card.title = memoText
+    ? `${taskLabel} (${startClock} ~ ${endClock})\n${memoText}`
+    : `${taskLabel} (${startClock} ~ ${endClock})`;
+
+  if (isTimeLedgerRowLiveRecording(row)) {
+    card.classList.add("calendar-1day-timeline-card--in-progress");
+  }
+
+  const startEl = document.createElement("span");
+  startEl.className = "calendar-1day-timeline-card-start";
+  startEl.textContent = startClock;
+
+  const headBarCell = document.createElement("div");
+  headBarCell.className = "calendar-1day-timeline-card-head-bar";
+  const plainBar = document.createElement("div");
+  plainBar.className = "calendar-1day-timeline-card-head-bar-plain";
+  plainBar.setAttribute("aria-hidden", "true");
+  headBarCell.appendChild(plainBar);
+
+  const timeConnector = document.createElement("span");
+  timeConnector.className = "calendar-1day-timeline-card-time-connector";
+  timeConnector.setAttribute("aria-hidden", "true");
+
+  const endEl = document.createElement("span");
+  endEl.className = "calendar-1day-timeline-card-end";
+  endEl.textContent = endClock;
+
+  card.appendChild(startEl);
+  card.appendChild(headBarCell);
+  card.appendChild(timeConnector);
+
+  const body = document.createElement("div");
+  body.className = "calendar-1day-timeline-card-body";
+
+  const durRow = document.createElement("span");
+  durRow.className = "calendar-1day-timeline-card-duration";
+  durRow.textContent = formatIntegerMinutesDurationKo(durMin);
+
+  const priceDisp = getTimeLedgerRowMobilePriceDisplay(row);
+  const priceEl = document.createElement("span");
+  priceEl.className =
+    "diary-tab5-timeline-price time-mobile-card-price time-mobile-card-price--" +
+    priceDisp.slot;
+  priceEl.textContent = priceDisp.text;
+
+  const titleRight = document.createElement("div");
+  titleRight.className = "diary-tab5-timeline-title-right";
+  titleRight.appendChild(durRow);
+  titleRight.appendChild(priceEl);
+
+  const titleRow = document.createElement("div");
+  titleRow.className = "calendar-1day-timeline-card-title-row";
+  const titleEl = document.createElement("div");
+  titleEl.className = "calendar-1day-timeline-card-title";
+  titleEl.textContent = taskLabel;
+  titleRow.appendChild(titleEl);
+  titleRow.appendChild(titleRight);
+  body.appendChild(titleRow);
+
+  let badgeText = "";
+  if (sidRaw && DIARY_TAB5_TL_SECTION_LABELS[sidRaw]) {
+    badgeText = DIARY_TAB5_TL_SECTION_LABELS[sidRaw];
+  } else if (sidRaw.startsWith("custom-")) {
+    badgeText = "커스텀";
+  }
+
+  const meta = document.createElement("div");
+  meta.className = "calendar-1day-timeline-card-meta";
+  if (badgeText) {
+    const badge = document.createElement("span");
+    badge.className = "calendar-1day-timeline-card-badge";
+    badge.textContent = badgeText;
+    if (sectionAccent) {
+      badge.style.backgroundColor = diaryTab5WithMoreTransparency(
+        sectionAccent,
+        0.22,
+      );
+      const ink = diaryTab5AccentTextFromRgba(sectionAccent);
+      if (ink) badge.style.color = ink;
+    }
+    meta.appendChild(badge);
+  }
+  if (isTimeLedgerRowLiveRecording(row)) {
+    const prog = document.createElement("span");
+    prog.className = "calendar-1day-timeline-card-progress";
+    prog.textContent = "진행 중";
+    prog.style.color = c.accentText;
+    meta.appendChild(prog);
+  }
+  if (meta.childNodes.length) body.appendChild(meta);
+
+  if (memoText) {
+    const memoEl = document.createElement("div");
+    memoEl.className = "calendar-1day-timeline-card-memo";
+    memoEl.textContent = memoText;
+    body.appendChild(memoEl);
+  }
+
+  card.appendChild(body);
+  card.appendChild(endEl);
+
+  item.appendChild(card);
+  return item;
+}
+
+function mountDiaryTab5LedgerDayLog(scrollWrap, ymdTen) {
+  const prodPalette = getTimeCategoryColorsForTimetableExpected();
+  const wrap = document.createElement("div");
+  wrap.className = "diary-tab5-ledger-log-wrap calendar-1day-timeline-wrap";
+
+  const list = document.createElement("div");
+  list.className = "calendar-1day-timeline-list";
+
+  const rows = filterTimeLedgerEntriesByYmdTen(loadTimeRows(), ymdTen);
+  const decorated = rows
+    .map((r) => ({
+      row: r,
+      startInst: getRowStartInstantForMobileCard(r),
+    }))
+    .sort((a, b) => {
+      const ta = a.startInst ? a.startInst.getTime() : Infinity;
+      const tb = b.startInst ? b.startInst.getTime() : Infinity;
+      if (ta !== tb) return ta - tb;
+      return String(a.row.taskName || "").localeCompare(
+        String(b.row.taskName || ""),
+        "ko",
+      );
+    });
+
+  if (decorated.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "calendar-1day-timeline-empty";
+    empty.textContent = "이 날짜에 시간가계부 기록이 없습니다.";
+    list.appendChild(empty);
+  } else {
+    for (const { row } of decorated) {
+      list.appendChild(buildDiaryTab5LedgerTimelineCard(row, prodPalette));
+    }
+  }
+
+  wrap.appendChild(list);
+  scrollWrap.appendChild(wrap);
 }
 
 export function render() {
@@ -2417,7 +2647,9 @@ export function render() {
       const ymdL = normalizeDiaryDateStr(
         layoutWrap.dataset.tab5SelectedDate || tab5ReportAnchorDateStr,
       );
-      /* 예산 탭과 동일 레이아웃 껍데기만 — 본문 블록은 추후 실제 시간 기록 목록으로 채움 */
+      if (/^\d{4}-\d{2}-\d{2}$/.test(ymdL)) {
+        mountDiaryTab5LedgerDayLog(scrollWrap, ymdL);
+      }
 
       if (
         !reportLedgerRefreshFromPull &&

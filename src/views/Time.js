@@ -1448,6 +1448,17 @@ export function formatIntegerMinutesDurationKo(totalMinutes) {
   return `${h}시간 ${m}분`;
 }
 
+/** Diary 로그 타임라인 등: 저장된 시급 기준 모바일 카드와 동일한 「행동의 가치」표시 */
+export function getTimeLedgerRowMobilePriceDisplay(rowData) {
+  const hourlyRate = readUserHourlyRateNumber();
+  const slot = getMobileCardPriceProductivitySlot(rowData);
+  const value = computeMobileCardPriceValue(rowData, hourlyRate);
+  return {
+    slot,
+    text: formatTimeLedgerActionPriceDisplay(value, slot),
+  };
+}
+
 /** 홈 타임트래커: 시작 시각 (짧은 h:mm) */
 export function formatHomeLiveStartClock(row) {
   if (!row) return "";
