@@ -98,6 +98,11 @@ body {
   overflow: hidden;
 }
 
+/* 상단 세이프만큼 레이아웃이 붙어 보일 때 — 하단 패딩은 건드리지 않고 main·푸터 사이만 벌림 */
+#signin-page.lp-tab-footer-visible #app-screen-inner {
+  gap: env(safe-area-inset-top, 0px);
+}
+
 .app-main {
   flex: 1 1 0;
   min-height: 0;
