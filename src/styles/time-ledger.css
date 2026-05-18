@@ -541,6 +541,10 @@
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
 }
+.time-ledger-view [data-legacy~="time-ledger-mobile-card"][data-legacy~="time-ledger-mobile-card--in-progress"],
+[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-mobile-card"][data-legacy~="time-ledger-mobile-card--in-progress"] {
+  background: #f0f4fa;
+}
 .time-ledger-view [data-legacy~="time-mobile-card-leading"],
 [data-legacy~="time-ledger-view"] [data-legacy~="time-mobile-card-leading"] {
   display: flex;

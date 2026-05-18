@@ -1328,7 +1328,7 @@ function hoursBetweenRowStartEnd(rowData) {
 }
 
 /** 행동의 가치 계산용 유효 시간(h): 사용시간 입력 > 마감 있음(구간) > 진행 중(경과) */
-function getMobileCardEffectiveHoursForPrice(rowData) {
+export function getMobileCardEffectiveHoursForPrice(rowData) {
   const tracked = (rowData.timeTracked || "").trim();
   if (tracked) return parseTimeToHours(tracked) || 0;
   if (rowHasEndTimeForMobileCard(rowData))

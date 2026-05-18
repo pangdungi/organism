@@ -26,6 +26,7 @@ import {
   getRowStartInstantForMobileCard,
   getRowEndInstantForMobileCard,
   rowHasEndTimeForMobileCard,
+  getMobileCardEffectiveHoursForPrice,
 } from "./Time.js";
 import { showToast } from "../utils/showToast.js";
 import { supabase } from "../supabase.js";
@@ -2933,10 +2934,10 @@ function weekFlowSpanHasMatchingLiveRecording(dayRows, span) {
 }
 
 /**
- * 같은 과제명·taskId 기록이 예상 블록 시각 구간과 겹치는 분 합(진행 중은 now까지).
- * 일간 타임라인 헤더 프로그레스바용.
+ * 예상 블록 시각과 겹치는 같은 과제 기록만 골라, 시간가계부와 동일한 유효 소요(h)→분을 합산.
+ * 프로그레스 = 합계 분 / 예상 블록 분.
  */
-function sumLedgerOverlapMinutesWithExpectedSpan(
+function sumLedgerEffectiveMinutesForExpectedSpan(
   dayRows,
   span,
   targetKeyYmd,
@@ -2959,7 +2960,7 @@ function sumLedgerOverlapMinutesWithExpectedSpan(
   const spanStartMs = dayBaseMs + expStart * 60000;
   const spanEndMs = dayBaseMs + expEnd * 60000;
   const nowMs = nowDate.getTime();
-  let sumMs = 0;
+  let sumMin = 0;
   for (const r of dayRows) {
     const expName = normTaskNameForWeekFlowMatch(span.taskName);
     const expTid = String(span._task?.taskId || "").trim();
@@ -2980,9 +2981,29 @@ function sumLedgerOverlapMinutesWithExpectedSpan(
     }
     const lo = Math.max(startMs, spanStartMs);
     const hi = Math.min(endMs, spanEndMs);
-    if (hi > lo) sumMs += hi - lo;
+    if (hi <= lo) continue;
+    const hours = getMobileCardEffectiveHoursForPrice(r);
+    sumMin += Math.max(0, hours * 60);
   }
-  return sumMs / 60000;
+  return sumMin;
+}
+
+/** 같은 날·같은 과제명/taskId 기록의 유효 소요(분) 합 — 시각대가 예상 블록과 어긋나도 진행률 표시용 */
+function sumLedgerEffectiveMinutesMatchingTaskOnDay(dayRows, span) {
+  if (!Array.isArray(dayRows) || !span) return 0;
+  let sumMin = 0;
+  for (const r of dayRows) {
+    const expName = normTaskNameForWeekFlowMatch(span.taskName);
+    const expTid = String(span._task?.taskId || "").trim();
+    const rtid = String(r?.taskId || "").trim();
+    const rn = normTaskNameForWeekFlowMatch(r?.taskName);
+    const nameMatch =
+      (expTid && rtid && expTid === rtid) ||
+      !!(expName && rn && expName === rn);
+    if (!nameMatch) continue;
+    sumMin += Math.max(0, getMobileCardEffectiveHoursForPrice(r) * 60);
+  }
+  return sumMin;
 }
 
 /** 예상 블록 종료 시각이 지났거나(당일) 날짜가 지났는데 실제 기록이 없을 때만 미이행 표시 */
@@ -3229,15 +3250,25 @@ function render1DayView(tabsElement = null) {
             span,
           );
 
-        const actualOverlapMinRaw = sumLedgerOverlapMinutesWithExpectedSpan(
+        const actualMinutesRawOverlap = sumLedgerEffectiveMinutesForExpectedSpan(
           dayLedgerRowsTL,
           span,
           targetKey,
           nowForTimeline,
         );
+        let actualMinutesRaw = actualMinutesRawOverlap;
+        if (
+          actualMinutesRaw < 0.5 &&
+          weekFlowExpectedSpanHasLedgerMatch(dayLedgerRowsTL, span)
+        ) {
+          actualMinutesRaw = sumLedgerEffectiveMinutesMatchingTaskOnDay(
+            dayLedgerRowsTL,
+            span,
+          );
+        }
         const expectedMinProg = durMin;
         const progressRatio =
-          expectedMinProg > 0 ? actualOverlapMinRaw / expectedMinProg : 0;
+          expectedMinProg > 0 ? actualMinutesRaw / expectedMinProg : 0;
         const progressPctFill = Math.min(
           100,
           Math.max(0, progressRatio * 100),
@@ -3388,7 +3419,7 @@ function render1DayView(tabsElement = null) {
         card.appendChild(endEl);
 
         if (expectedMinProg > 0) {
-          card.title = `${card.title}\n예상 대비 실제(겹침): ${formatIntegerMinutesDurationKo(Math.round(actualOverlapMinRaw))} / ${formatIntegerMinutesDurationKo(expectedMinProg)}`;
+          card.title = `${card.title}\n실제 소요 / 예상: ${formatIntegerMinutesDurationKo(Math.round(actualMinutesRaw))} / ${formatIntegerMinutesDurationKo(expectedMinProg)}`;
         }
 
         if (!ledgerMissed && !ledgerMatched) {
