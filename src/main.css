@@ -89,11 +89,16 @@ body {
   overflow: auto;
   -webkit-overflow-scrolling: touch;
   width: 100%;
-  /* 상태 표시줄·노치 아래 최소 여백 — safe-area가 0인 브라우저에서도 살짝 띄움 */
-  padding-top: max(0.75rem, var(--lp-safe-top));
+  /* 노치 패딩은 탭 패널 직속 첫 블록에 둠 — 상단 줄이 헤더·탭 배경색과 같은 박스 안에서 채워짐 */
+  padding-top: 0;
   padding-bottom: var(--lp-safe-bottom);
   padding-left: var(--lp-safe-left);
   padding-right: var(--lp-safe-right);
+}
+
+.app-main > .app-tab-panel > :first-child {
+  padding-top: max(0.75rem, var(--lp-safe-top));
+  box-sizing: border-box;
 }
 
 /* 탭 푸터가 보일 때: 하단 세이프 존은 .app-footer-menu 한 곳만(이중 패딩으로 푸터가 위로 뜨는 느낌 방지) */
