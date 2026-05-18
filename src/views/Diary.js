@@ -23,7 +23,6 @@ import {
   formatIntegerMinutesDurationKo,
   formatInvestReclaimWonDisplay,
   formatLedgerLossKrwDisplay,
-  formatYmdDotsWithWeekdayKo,
   getDailyInvestReclaimSnapshot,
   getDailyProductiveCategoryInvestBarsSnapshot,
   getDailyNonproductiveWastedMinutesRounded,
@@ -157,22 +156,21 @@ function timeReportWasteMiniTitle(ymdTen, granularity) {
   return disp ? `${disp} 내가 낭비한 시간` : "그날 내가 낭비한 시간";
 }
 
-/** 투자 탭 레포트 — 바이백 카드 기준 줄(일·월) */
-function timeReportInvestPeriodCaption(ymdTen, granularity) {
+/** 「시간 투자 리포트」 아래 — 투자 집계 시간 문구 타이틀(소비 낭비 미니와 동형) */
+function timeReportInvestMiniTitle(ymdTen, granularity) {
   const ten = normalizeDiaryDateStr(ymdTen);
   if (granularity === "month") {
     const ym = ten.length >= 7 ? ten.slice(0, 7) : "";
     const today = toDateStr(new Date());
     const disp = formatMonthSlashFromYmd(ten);
-    if (!disp) return "조회 기간";
-    if (ym && ym === today.slice(0, 7)) return `이번 달 · ${disp}`;
-    return disp;
+    if (!disp) return "내가 투자한 시간";
+    if (ym && ym === today.slice(0, 7)) return "이번 달 내가 투자한 시간";
+    return `${disp} 내가 투자한 시간`;
   }
-  return (
-    formatYmdDotsWithWeekdayKo(ten) ||
-    (ten.length >= 10 ? formatDateDisplay(ten) : "") ||
-    "조회일"
-  );
+  if (!ten || ten.length < 10) return "내가 투자한 시간";
+  if (ten === toDateStr(new Date())) return "내가 오늘 투자한 시간";
+  const disp = formatDateDisplay(ten);
+  return disp ? `${disp} 내가 투자한 시간` : "그날 내가 투자한 시간";
 }
 
 /** 앵커 날짜에서 ±N달(일은 해당 월 말일에 맞춤) */
@@ -1026,7 +1024,7 @@ export function render() {
     ].join(" ");
   }
 
-  /** 투자 탭: 가계부와 동일 바이백(다시 받을 금액) + 집계 시간 */
+  /** 투자 탭: 다시 받을 금액(생산 막대 차트 바로 아래 · 투자 시간은 아래 waste-mini 블록) */
   function mountTimeReportInvestBank(scrollWrap, ymdTen, granularity) {
     const snap =
       granularity === "month"
@@ -1035,18 +1033,10 @@ export function render() {
 
     const section = document.createElement("section");
     section.className = "diary-tr-invest-shell";
-    section.setAttribute("aria-label", "투자 바이백 요약");
+    section.setAttribute("aria-label", "투자 바이백 금액");
 
     const card = document.createElement("div");
     card.className = "diary-tr-invest-card";
-
-    const eyebrow = document.createElement("p");
-    eyebrow.className = "diary-tr-invest-eyebrow";
-    eyebrow.textContent = "시간 가계부 · 투자(바이백)";
-
-    const period = document.createElement("p");
-    period.className = "diary-tr-invest-period";
-    period.textContent = timeReportInvestPeriodCaption(ymdTen, granularity);
 
     const reclaimLbl = document.createElement("p");
     reclaimLbl.className = "diary-tr-invest-reclaim-caption";
@@ -1056,22 +1046,8 @@ export function render() {
     reclaimAmt.className = "diary-tr-invest-reclaim-amount";
     reclaimAmt.textContent = formatInvestReclaimWonDisplay(snap.reclaimWon);
 
-    const timeStrip = document.createElement("div");
-    timeStrip.className = "diary-tr-invest-time-strip";
-    const tsl = document.createElement("span");
-    tsl.className = "diary-tr-invest-time-strip-label";
-    tsl.textContent = "투자로 집계된 시간 합계";
-    const tsv = document.createElement("span");
-    tsv.className = "diary-tr-invest-time-strip-value";
-    tsv.textContent = formatIntegerMinutesDurationKo(snap.reclaimMinutesRounded);
-    timeStrip.appendChild(tsl);
-    timeStrip.appendChild(tsv);
-
-    card.appendChild(eyebrow);
-    card.appendChild(period);
     card.appendChild(reclaimLbl);
     card.appendChild(reclaimAmt);
-    card.appendChild(timeStrip);
     if (!(snap.hourlyRate > 0)) {
       const hint = document.createElement("p");
       hint.className = "diary-tr-invest-hint";
@@ -1092,10 +1068,6 @@ export function render() {
     const section = document.createElement("section");
     section.className = "diary-tr-prod-bars-shell";
     section.setAttribute("aria-label", "생산 과제 카테고리별 투자 비중");
-
-    const h2 = document.createElement("h2");
-    h2.className = "diary-tr-prod-bars-heading";
-    h2.textContent = "생산 과제 · 카테고리별 투자 비중";
 
     const card = document.createElement("div");
     card.className = "diary-tr-prod-bars-card";
@@ -1134,7 +1106,6 @@ export function render() {
       });
     }
 
-    section.appendChild(h2);
     section.appendChild(card);
     scrollWrap.appendChild(section);
   }
@@ -1344,6 +1315,24 @@ export function render() {
     scrollWrap.appendChild(block);
   }
 
+  /** 생산 막대·바이백 카드 아래 · 동기 카드 그리드 바로 위 — 소비와 동일 클래스·구조 */
+  function mountTimeReportInvestSectionHeader(scrollWrap) {
+    const block = document.createElement("div");
+    block.className = "diary-tr-consumption-section-header";
+
+    const rule = document.createElement("hr");
+    rule.className = "diary-tr-consumption-section-rule";
+    rule.setAttribute("aria-hidden", "true");
+
+    const h2 = document.createElement("h2");
+    h2.className = "diary-tr-consumption-section-title";
+    h2.textContent = "시간 투자 리포트";
+
+    block.appendChild(rule);
+    block.appendChild(h2);
+    scrollWrap.appendChild(block);
+  }
+
   /** 「시간 소비 리포트」 제목 직후 · 카드 그리드 직전: 비생산 합(컴팩트) */
   function mountTimeReportNonproductiveWasteMini(scrollWrap, ymdTen, granularity) {
     const mins =
@@ -1362,6 +1351,30 @@ export function render() {
     const val = document.createElement("p");
     val.className = "diary-tr-waste-mini-value";
     val.textContent = formatIntegerMinutesDurationKo(mins);
+
+    shell.appendChild(ttl);
+    shell.appendChild(val);
+    scrollWrap.appendChild(shell);
+  }
+
+  /** 「시간 투자 리포트」 직후 · 동기 카드 그리드 직전 — 투자 집계 시간(소비 낭비 미니와 동일 클래스) */
+  function mountTimeReportInvestMini(scrollWrap, ymdTen, granularity) {
+    const snap =
+      granularity === "month"
+        ? getMonthlyInvestReclaimSnapshot(ymdTen)
+        : getDailyInvestReclaimSnapshot(ymdTen);
+
+    const shell = document.createElement("div");
+    shell.className = "diary-tr-waste-mini-shell";
+    shell.setAttribute("aria-label", "투자로 집계된 시간 합");
+
+    const ttl = document.createElement("p");
+    ttl.className = "diary-tr-waste-mini-title";
+    ttl.textContent = timeReportInvestMiniTitle(ymdTen, granularity);
+
+    const val = document.createElement("p");
+    val.className = "diary-tr-waste-mini-value";
+    val.textContent = formatIntegerMinutesDurationKo(snap.reclaimMinutesRounded);
 
     shell.appendChild(ttl);
     shell.appendChild(val);
@@ -1390,17 +1403,13 @@ export function render() {
         : timeReportDayDonutBlockTitle(ymdTen);
     section.setAttribute("aria-labelledby", headingId);
 
-    /** 일별만 도넛 위에 제목 · 월별는 도넛 중앙으로 옮김 */
-    let blockTitleOutside = null;
-    if (granularity !== "month") {
-      blockTitleOutside = document.createElement("h2");
-      blockTitleOutside.className = "diary-tr-donut-block-heading";
-      blockTitleOutside.id = headingId;
-      blockTitleOutside.textContent = blockHeadingText;
-    }
-
     const card = document.createElement("div");
     card.className = "diary-tr-donut-card";
+
+    const cardHeading = document.createElement("h2");
+    cardHeading.className = "diary-tr-consumption-section-title";
+    cardHeading.id = headingId;
+    cardHeading.textContent = blockHeadingText;
 
     const viz = document.createElement("div");
     viz.className = "diary-tr-donut-viz";
@@ -1415,14 +1424,6 @@ export function render() {
 
     const center = document.createElement("div");
     center.className = "diary-tr-donut-center";
-
-    if (granularity === "month") {
-      const innerTitle = document.createElement("h2");
-      innerTitle.className = "diary-tr-donut-center-heading";
-      innerTitle.id = headingId;
-      innerTitle.textContent = blockHeadingText;
-      center.appendChild(innerTitle);
-    }
 
     const cap = document.createElement("span");
     cap.className = "diary-tr-donut-center-caption";
@@ -1518,9 +1519,13 @@ export function render() {
       });
     }
 
-    card.appendChild(viz);
-    card.appendChild(legend);
-    if (blockTitleOutside) section.appendChild(blockTitleOutside);
+    const cardRow = document.createElement("div");
+    cardRow.className = "diary-tr-donut-card-row";
+    cardRow.appendChild(viz);
+    cardRow.appendChild(legend);
+
+    card.appendChild(cardHeading);
+    card.appendChild(cardRow);
     section.appendChild(card);
     scrollWrap.appendChild(section);
   }
@@ -1783,8 +1788,10 @@ export function render() {
     if (showTab2InvestReport) {
       const ymd = layoutWrap.dataset.tab2SelectedDate || tab2ReportAnchorDateStr;
       const g = tab2ViewGranularity === "month" ? "month" : "day";
-      mountTimeReportInvestBank(scrollWrap, ymd, g);
       mountTimeReportProductiveBars(scrollWrap, ymd, g);
+      mountTimeReportInvestBank(scrollWrap, ymd, g);
+      mountTimeReportInvestSectionHeader(scrollWrap);
+      mountTimeReportInvestMini(scrollWrap, ymd, g);
       mountTimeReportInvestMotivationCards(scrollWrap, ymd, g);
 
       if (!reportLedgerRefreshFromPull) {

@@ -383,7 +383,7 @@
   margin-top: 0.38rem !important;
 }
 
-/* 투자 탭 바이백 카드 — 시간가계부 잔고 톤 */
+/* 투자 탭 요약 카드 — 다시 받을 금액 + 총 투자 시간 */
 .diary-tr-invest-card {
   box-sizing: border-box;
   width: 100%;
@@ -396,25 +396,8 @@
   text-align: center;
 }
 
-.diary-tr-invest-eyebrow {
-  margin: 0;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: #64748b;
-  text-transform: none;
-}
-
-.diary-tr-invest-period {
-  margin: 0.28rem 0 0;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: -0.015em;
-  color: var(--cal-text, #1a2d45);
-}
-
 .diary-tr-invest-reclaim-caption {
-  margin: 0.75rem 0 0;
+  margin: 0;
   font-size: 0.6875rem;
   font-weight: 600;
   color: #64748b;
@@ -463,17 +446,6 @@
   font-size: 0.6875rem;
   line-height: 1.4;
   color: #94a3b8;
-}
-
-/* 투자 탭 생산 카테고리 가로 막대 */
-.diary-tr-prod-bars-heading {
-  margin: 0 0 0.45rem;
-  font-size: 0.9375rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.35;
-  color: var(--cal-text, #1a2d45);
-  text-align: left;
 }
 
 .diary-tr-prod-bars-card {
@@ -556,27 +528,12 @@
   padding-bottom: 0;
 }
 
-/* 소비 레포트: 도넛 위 제목 · 도넛–카드 구간 소제목 */
-.diary-tr-donut-block-heading {
-  margin: 0 0 0.5rem;
-  font-size: 0.9375rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.35;
-  color: var(--cal-text, #1a2d45);
-  text-align: left;
-}
-
-/* 월별: 「이번 달 시간 사용」 등 도넛 구멍 안 가운데 */
-.diary-tr-donut-center-heading {
-  margin: 0 0 0.1rem;
-  padding: 0;
-  max-width: 5.85rem;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  line-height: 1.28;
-  color: var(--cal-text, #1a2d45);
+/* 소비 도넛 카드 상단 제목 — 「시간 소비 리포트」와 동일 클래스, 차트 영역 위 가운데 */
+.diary-tr-donut-card > .diary-tr-consumption-section-title {
+  margin: 0;
+  padding: 0 0.35rem;
+  width: 100%;
+  box-sizing: border-box;
   text-align: center;
   overflow-wrap: anywhere;
 }
@@ -732,11 +689,9 @@
 /* 시간 레포트 — 일별 카테고리 도넛(파스텔) 카드 레이아웃 */
 .diary-tr-donut-card {
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: nowrap;
-  gap: 0.95rem 0.62rem;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.55rem;
   max-width: 100%;
   width: 100%;
   margin: 0 auto;
@@ -746,6 +701,17 @@
   border: none;
   box-shadow: 0 2px 14px rgba(30, 61, 93, 0.08);
   box-sizing: border-box;
+}
+
+.diary-tr-donut-card-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 0.95rem 0.62rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .diary-tr-donut-viz {
