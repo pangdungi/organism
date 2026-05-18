@@ -720,6 +720,22 @@
   color: #64748b;
 }
 
+.diary-tr-consumption-section-title--leading-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.38rem;
+  flex-wrap: wrap;
+}
+
+.diary-tr-consumption-section-title__leading-img {
+  width: 1.15rem;
+  height: 1.15rem;
+  object-fit: contain;
+  flex-shrink: 0;
+  display: block;
+}
+
 /* 「시간 소비 리포트」 제목 직후: 비생산 합 시간(작게) */
 .diary-tr-waste-mini-shell {
   box-sizing: border-box;

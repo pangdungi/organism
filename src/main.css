@@ -101,6 +101,15 @@ body {
   box-sizing: border-box;
 }
 
+.app-main:has(.app-home-menu-launcher) > .app-tab-panel > :first-child {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  /* 상단 살짝 여유 — 약 20vh (작은 화면·큰 화면 상한) */
+  padding-top: calc(var(--lp-safe-top) + clamp(1.15rem, 20vh, 5rem));
+}
+
 /* 탭 푸터가 보일 때: 하단 세이프 존은 .app-footer-menu 한 곳만(이중 패딩으로 푸터가 위로 뜨는 느낌 방지) */
 #signin-page.lp-tab-footer-visible .app-main {
   padding-bottom: 0;
@@ -203,26 +212,27 @@ body {
   src: url("/fonts/Vellmarie-Regular.otf") format("opentype");
 }
 
-/* 메인(오늘) 뷰 — 메뉴 페이지 배경, 메뉴 블록을 뷰포트 안 세로·가로 가운데 */
+/* 메인(오늘) 뷰 — 메뉴 페이지 배경(네이비), 본문은 위부터 풀너비·풀높이 */
 .app-main:has(.app-home-menu-launcher) {
-  background: #f0f4fa;
+  background: #1e4d7b;
 }
 
 .app-main:has(.app-home-menu-launcher) .app-tab-panel {
   flex: 1 1 0;
   min-height: 0;
-  justify-content: center;
-  align-items: center;
+  justify-content: flex-start;
+  align-items: stretch;
 }
 
 .app-main:has(.app-home-menu-launcher) .app-home-menu-launcher {
   width: 100%;
   max-width: none;
   margin: 0;
-  flex-shrink: 0;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
-/* 홈(오늘) — 오늘 시간가치 요약 + 흰 메뉴 카드 */
+/* 홈(오늘) — 네이비 히어로(로고·시간가치) + 하단 풀블리드 흰 메뉴 시트 */
 .app-home-menu-launcher {
   display: flex;
   flex-direction: column;
@@ -230,31 +240,50 @@ body {
   box-sizing: border-box;
   width: 100%;
   max-width: none;
-  margin: 0 auto;
-  padding: 0 0.75rem 1.75rem;
+  margin: 0;
+  padding: 0;
 }
 
 .app-home-menu-launcher-brand {
   box-sizing: border-box;
   width: 100%;
-  margin: 0 0 0.65rem;
-  padding: 0.85rem 0.5rem 0.65rem;
+  margin: 0 0 0.35rem;
+  padding: 0.85rem max(0.5rem, var(--lp-safe-left)) 0.5rem max(0.5rem, var(--lp-safe-right));
   background: transparent;
   text-align: center;
 }
 
 .app-home-menu-launcher-card {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   box-sizing: border-box;
   width: 100%;
-  max-width: 28rem;
-  margin: 0 auto;
-  padding: 1.1rem 1rem 1.2rem;
+  max-width: none;
+  margin: 0;
+  padding: 0.35rem 0 0;
   background: #fff;
-  border: 1px solid #d8dee8;
-  border-radius: 16px;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  border: none;
+  border-radius: 1rem 1rem 0 0;
+  box-shadow: 0 -6px 28px rgba(0, 0, 0, 0.12);
 }
 
+.app-home-menu-launcher-card .app-home-menu-launcher-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.65rem max(0.85rem, var(--lp-safe-left)) calc(0.75rem + var(--lp-safe-bottom))
+    max(0.85rem, var(--lp-safe-right));
+}
+
+.app-home-menu-launcher-card .app-home-menu-launcher-section-grid {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+/* 카드 안 잔액 없음 — 아래 규칙은 레거시·타 화면 호환용 */
 .app-home-menu-balance {
   margin: 0 0 1.05rem;
   padding: 1rem 0.9rem 1.05rem;
@@ -265,12 +294,25 @@ body {
   text-align: center;
 }
 
+.app-home-menu-launcher > .app-home-menu-balance {
+  margin: 0;
+  padding: 0.2rem max(0.65rem, var(--lp-safe-left)) 1rem max(0.65rem, var(--lp-safe-right));
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
 .app-home-menu-balance-label {
   margin: 0 0 0.4rem;
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: rgba(30, 77, 123, 0.52);
+}
+
+.app-home-menu-launcher > .app-home-menu-balance .app-home-menu-balance-label {
+  color: rgba(255, 255, 255, 0.78);
 }
 
 .app-home-menu-balance-amount {
@@ -285,6 +327,10 @@ body {
   letter-spacing: normal;
   color: #1e4d7b;
   line-height: 1.12;
+}
+
+.app-home-menu-launcher > .app-home-menu-balance .app-home-menu-balance-amount {
+  color: #fff;
 }
 
 .app-home-menu-balance-sign {
@@ -312,6 +358,10 @@ body {
   word-break: keep-all;
 }
 
+.app-home-menu-launcher > .app-home-menu-balance .app-home-menu-balance-meta {
+  color: rgba(255, 255, 255, 0.58);
+}
+
 .app-home-menu-launcher-title {
   margin: 0;
   padding: 0;
@@ -319,7 +369,7 @@ body {
   font-size: clamp(1.85rem, 6.5vw, 2.45rem);
   font-weight: 400;
   letter-spacing: 0.085em;
-  color: #1e4d7b;
+  color: #fff;
   line-height: 1.15;
 }
 

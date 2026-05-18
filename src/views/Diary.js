@@ -71,6 +71,12 @@ const DIARY_TR_ICON = {
   moneylosing: `${DIARY_TR_ICON_BASE}/12-moneylosing.png`,
   /** 불행 비생산 카테고리 — 사용자 제공 아이콘 */
   unhappiness: `${DIARY_TR_ICON_BASE}/13-unhappiness.png`,
+  /** 예산 「잘했어요!」 */
+  budgetWellDone: `${DIARY_TR_ICON_BASE}/budget-well-done.png`,
+  /** 예산 「생산성이 좋았을까요?」 */
+  budgetProductivity: `${DIARY_TR_ICON_BASE}/budget-productivity.png`,
+  /** 예산 「안하기로 했는데 한거겠죠?」 */
+  budgetUnplanned: `${DIARY_TR_ICON_BASE}/budget-unplanned.png`,
 };
 
 /** 아이콘 슬롯에 PNG 채우기(점선 빈 슬롯 대체) */
@@ -1165,8 +1171,10 @@ export function render() {
     scrollWrap.appendChild(section);
   }
 
-  /** 예산 탭(데이): 일간예산 대비 실제 — 소비·투자와 동일 섹션 헤더 + 미니 막대 */
-  function mountBudgetDaySectionTitle(scrollWrap, titleText) {
+  /** 예산 탭(데이): 일간예산 대비 실제 — 소비·투자와 동일 섹션 헤더 + 미니 막대
+   * @param {{ leadingIconSrc?: string }} [titleOpts]
+   */
+  function mountBudgetDaySectionTitle(scrollWrap, titleText, titleOpts) {
     const block = document.createElement("div");
     block.className = "diary-tr-consumption-section-header";
 
@@ -1176,7 +1184,22 @@ export function render() {
 
     const h2 = document.createElement("h2");
     h2.className = "diary-tr-consumption-section-title";
-    h2.textContent = titleText;
+    const iconSrc = titleOpts?.leadingIconSrc;
+    if (iconSrc) {
+      h2.classList.add("diary-tr-consumption-section-title--leading-icon");
+      const img = document.createElement("img");
+      img.className = "diary-tr-consumption-section-title__leading-img";
+      img.src = iconSrc;
+      img.alt = "";
+      img.decoding = "async";
+      img.loading = "lazy";
+      const span = document.createElement("span");
+      span.textContent = titleText;
+      h2.appendChild(img);
+      h2.appendChild(span);
+    } else {
+      h2.textContent = titleText;
+    }
 
     block.appendChild(rule);
     block.appendChild(h2);
@@ -1187,9 +1210,9 @@ export function render() {
     const snap = getBudgetDayReportForDay(ymdTen);
     const barColor = "#93C5FD";
 
-    function appendBarSection(title, rows) {
+    function appendBarSection(title, rows, sectionTitleOpts) {
       if (!rows.length) return;
-      mountBudgetDaySectionTitle(scrollWrap, title);
+      mountBudgetDaySectionTitle(scrollWrap, title, sectionTitleOpts);
       const section = document.createElement("section");
       section.className = "diary-tr-budget-day-section-shell";
       section.setAttribute("aria-label", title);
@@ -1228,11 +1251,17 @@ export function render() {
       scrollWrap.appendChild(section);
     }
 
-    appendBarSection("잘했어요!", snap.wellDone);
-    appendBarSection("생산성이 좋았을까요?", snap.productivity);
+    appendBarSection("잘했어요!", snap.wellDone, {
+      leadingIconSrc: DIARY_TR_ICON.budgetWellDone,
+    });
+    appendBarSection("생산성이 좋았을까요?", snap.productivity, {
+      leadingIconSrc: DIARY_TR_ICON.budgetProductivity,
+    });
 
     if (snap.unplannedNonproductive.length > 0) {
-      mountBudgetDaySectionTitle(scrollWrap, "안하기로 했는데 한거겠죠?");
+      mountBudgetDaySectionTitle(scrollWrap, "안하기로 했는데 한거겠죠?", {
+        leadingIconSrc: DIARY_TR_ICON.budgetUnplanned,
+      });
       const section = document.createElement("section");
       section.className = "diary-tr-budget-day-section-shell";
       section.setAttribute("aria-label", "예상에 없던 비생산 기록");

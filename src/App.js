@@ -630,8 +630,8 @@ export async function mountApp(container) {
 
     void syncAdminMenuVisibility();
 
-    card.append(balanceWrap, body);
-    root.append(brandBar, card, launcherAdminBtn);
+    card.appendChild(body);
+    root.append(brandBar, balanceWrap, card, launcherAdminBtn);
     return root;
   }
 
