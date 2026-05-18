@@ -395,29 +395,14 @@
   width: 100%;
 }
 
-.calendar-1day-timeline-card-split {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.45rem;
-  align-items: stretch;
-  min-width: 0;
-  width: 100%;
-}
-
-.calendar-1day-timeline-card-pane {
+.calendar-1day-timeline-card-body {
   display: flex;
   flex-direction: column;
   gap: 0.28rem;
+  align-items: stretch;
   min-width: 0;
+  width: 100%;
   box-sizing: border-box;
-}
-
-.calendar-1day-timeline-card-pane-label {
-  font-size: 0.6875rem;
-  font-weight: 750;
-  letter-spacing: 0.06em;
-  color: var(--cal-text-muted);
-  line-height: 1.2;
 }
 
 .calendar-1day-timeline-card-pane-times {
@@ -464,12 +449,6 @@
     white
   );
   transition: width 0.25s ease-out;
-}
-
-.calendar-1day-timeline-card--progress-over
-  .calendar-1day-timeline-card-pane--actual
-  .calendar-1day-timeline-card-head-bar-fill {
-  background: color-mix(in srgb, #ea580c 78%, #fbbf24);
 }
 
 .calendar-1day-timeline-card-title-row {

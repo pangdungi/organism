@@ -61,11 +61,6 @@ body {
   overflow: hidden;
 }
 
-/* 탭 푸터 표시 시: 홈 인디케이터 여백은 이 한 줄만(env). 푸터 박스 padding 과 겹치면 하단이 거의 두 배로 보임 */
-#signin-page.lp-tab-footer-visible {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-}
-
 #signin-page #app-screen {
   flex: 1 1 0;
   min-height: 0;
@@ -124,7 +119,7 @@ body {
   padding-top: calc(var(--lp-safe-top) + clamp(1.15rem, 20vh, 5rem));
 }
 
-/* 탭 푸터가 보일 때: 하단 세이프 존은 .app-footer-menu 한 곳만(이중 패딩으로 푸터가 두껍게 보임 방지) */
+/* 탭 푸터가 보일 때: 본문 하단 세이프 패딩 없음 — 하단 env는 .app-footer-menu 의 padding-bottom 한 번만 */
 #signin-page.lp-tab-footer-visible .app-main,
 #app-screen.lp-app-footer-visible .app-main {
   padding-bottom: 0 !important;
@@ -157,8 +152,8 @@ body {
   align-items: stretch;
   gap: 0;
   width: 100%;
-  /* 하단 env(safe-area)는 #signin-page.lp-tab-footer-visible padding 한 곳만 — 여기서는 고정 여백만 */
-  padding: 0.35rem 0.75rem 0.35rem;
+  /* 홈 인디케이터: 페이지 padding 과 분리하지 않고 푸터 한 블록 안에서만 calc(고정 + env) */
+  padding: 0.35rem 0.75rem calc(0.35rem + env(safe-area-inset-bottom, 0px));
   padding-left: calc(0.75rem + var(--lp-safe-left));
   padding-right: calc(0.75rem + var(--lp-safe-right));
   border-top: 1px solid #e2e8f0;

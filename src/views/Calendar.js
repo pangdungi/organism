@@ -19,14 +19,9 @@ import {
   getTaskOptionByName,
   loadTimeRows,
   formatGoalDiff,
-  parseTimeToHours,
   isTimeLedgerRowLiveRecording,
   formatIntegerMinutesDurationKo,
   findBudgetScheduleSlotIndex,
-  getRowStartInstantForMobileCard,
-  getRowEndInstantForMobileCard,
-  rowHasEndTimeForMobileCard,
-  getMobileCardEffectiveHoursForPrice,
 } from "./Time.js";
 import { showToast } from "../utils/showToast.js";
 import { supabase } from "../supabase.js";
@@ -2933,162 +2928,6 @@ function weekFlowSpanHasMatchingLiveRecording(dayRows, span) {
   return false;
 }
 
-/**
- * 예상 블록 시각과 겹치는 같은 과제 기록만 골라, 시간가계부와 동일한 유효 소요(h)→분을 합산.
- * 프로그레스 = 합계 분 / 예상 블록 분.
- */
-function sumLedgerEffectiveMinutesForExpectedSpan(
-  dayRows,
-  span,
-  targetKeyYmd,
-  nowDate,
-) {
-  if (!Array.isArray(dayRows) || !span || !targetKeyYmd) return 0;
-  const expStart = Number(span.startMin);
-  const expEnd = Number(span.endMin);
-  if (
-    !Number.isFinite(expStart) ||
-    !Number.isFinite(expEnd) ||
-    expEnd <= expStart
-  ) {
-    return 0;
-  }
-  const parts = String(targetKeyYmd).split("-").map(Number);
-  if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) return 0;
-  const [yy, mo, dd] = parts;
-  const dayBaseMs = new Date(yy, mo - 1, dd, 0, 0, 0, 0).getTime();
-  const spanStartMs = dayBaseMs + expStart * 60000;
-  const spanEndMs = dayBaseMs + expEnd * 60000;
-  const nowMs = nowDate.getTime();
-  let sumMin = 0;
-  for (const r of dayRows) {
-    const expName = normTaskNameForWeekFlowMatch(span.taskName);
-    const expTid = String(span._task?.taskId || "").trim();
-    const rtid = String(r?.taskId || "").trim();
-    const rn = normTaskNameForWeekFlowMatch(r?.taskName);
-    const nameMatch =
-      (expTid && rtid && expTid === rtid) ||
-      !!(expName && rn && expName === rn);
-    if (!nameMatch) continue;
-    const startMs = getRowStartInstantForMobileCard(r)?.getTime();
-    if (!Number.isFinite(startMs)) continue;
-    let endMs;
-    if (rowHasEndTimeForMobileCard(r)) {
-      endMs = getRowEndInstantForMobileCard(r)?.getTime();
-      if (!Number.isFinite(endMs)) continue;
-    } else {
-      endMs = nowMs;
-    }
-    const lo = Math.max(startMs, spanStartMs);
-    const hi = Math.min(endMs, spanEndMs);
-    if (hi <= lo) continue;
-    const hours = getMobileCardEffectiveHoursForPrice(r);
-    sumMin += Math.max(0, hours * 60);
-  }
-  return sumMin;
-}
-
-/** 같은 날·같은 과제명/taskId 기록의 유효 소요(분) 합 — 시각대가 예상 블록과 어긋나도 진행률 표시용 */
-function sumLedgerEffectiveMinutesMatchingTaskOnDay(dayRows, span) {
-  if (!Array.isArray(dayRows) || !span) return 0;
-  let sumMin = 0;
-  for (const r of dayRows) {
-    const expName = normTaskNameForWeekFlowMatch(span.taskName);
-    const expTid = String(span._task?.taskId || "").trim();
-    const rtid = String(r?.taskId || "").trim();
-    const rn = normTaskNameForWeekFlowMatch(r?.taskName);
-    const nameMatch =
-      (expTid && rtid && expTid === rtid) ||
-      !!(expName && rn && expName === rn);
-    if (!nameMatch) continue;
-    sumMin += Math.max(0, getMobileCardEffectiveHoursForPrice(r) * 60);
-  }
-  return sumMin;
-}
-
-function ledgerRowNameMatchesSpan(r, span) {
-  const expName = normTaskNameForWeekFlowMatch(span.taskName);
-  const expTid = String(span._task?.taskId || "").trim();
-  const rtid = String(r?.taskId || "").trim();
-  const rn = normTaskNameForWeekFlowMatch(r?.taskName);
-  return (
-    (expTid && rtid && expTid === rtid) ||
-    !!(expName && rn && expName === rn)
-  );
-}
-
-/** 프로그레스·실제 칸 표시에 쓸 같은 과제 기록 목록(겹침 우선, 없으면 당일 매칭) */
-function getLedgerRowsContributingToActualDisplay(
-  dayRows,
-  span,
-  targetKeyYmd,
-  nowDate,
-) {
-  if (!Array.isArray(dayRows) || !span || !targetKeyYmd) return [];
-  const expStart = Number(span.startMin);
-  const expEnd = Number(span.endMin);
-  if (
-    !Number.isFinite(expStart) ||
-    !Number.isFinite(expEnd) ||
-    expEnd <= expStart
-  ) {
-    return [];
-  }
-  const parts = String(targetKeyYmd).split("-").map(Number);
-  if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) return [];
-  const [yy, mo, dd] = parts;
-  const dayBaseMs = new Date(yy, mo - 1, dd, 0, 0, 0, 0).getTime();
-  const spanStartMs = dayBaseMs + expStart * 60000;
-  const spanEndMs = dayBaseMs + expEnd * 60000;
-  const nowMs = nowDate.getTime();
-  const overlapRows = [];
-  for (const r of dayRows) {
-    if (!ledgerRowNameMatchesSpan(r, span)) continue;
-    const startMs = getRowStartInstantForMobileCard(r)?.getTime();
-    if (!Number.isFinite(startMs)) continue;
-    let endMs;
-    if (rowHasEndTimeForMobileCard(r)) {
-      endMs = getRowEndInstantForMobileCard(r)?.getTime();
-      if (!Number.isFinite(endMs)) continue;
-    } else {
-      endMs = nowMs;
-    }
-    const lo = Math.max(startMs, spanStartMs);
-    const hi = Math.min(endMs, spanEndMs);
-    if (hi > lo) overlapRows.push(r);
-  }
-  if (overlapRows.length) return overlapRows;
-  if (weekFlowExpectedSpanHasLedgerMatch(dayRows, span)) {
-    return dayRows.filter((r) => ledgerRowNameMatchesSpan(r, span));
-  }
-  return [];
-}
-
-function formatClockHmFromDate(d) {
-  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "";
-  return `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
-
-function formatActualLedgerTimeRangeLine(rows) {
-  if (!Array.isArray(rows) || rows.length === 0) return "—";
-  const sorted = [...rows].sort((a, b) => {
-    const ta = getRowStartInstantForMobileCard(a)?.getTime() ?? 0;
-    const tb = getRowStartInstantForMobileCard(b)?.getTime() ?? 0;
-    return ta - tb;
-  });
-  const first = sorted[0];
-  const last = sorted[sorted.length - 1];
-  const sInst = getRowStartInstantForMobileCard(first);
-  const sStr = formatClockHmFromDate(sInst);
-  if (!sStr) return "—";
-  if (!rowHasEndTimeForMobileCard(last)) {
-    return `${sStr} ~ 진행 중`;
-  }
-  const eInst = getRowEndInstantForMobileCard(last);
-  const eStr = formatClockHmFromDate(eInst);
-  return eStr ? `${sStr} ~ ${eStr}` : `${sStr} ~ —`;
-}
-
 /** 예상 블록 종료 시각이 지났거나(당일) 날짜가 지났는데 실제 기록이 없을 때만 미이행 표시 */
 function weekFlowExpectedSpanLedgerMissed(
   dayKeyYmd,
@@ -3333,40 +3172,6 @@ function render1DayView(tabsElement = null) {
             span,
           );
 
-        const actualMinutesRawOverlap = sumLedgerEffectiveMinutesForExpectedSpan(
-          dayLedgerRowsTL,
-          span,
-          targetKey,
-          nowForTimeline,
-        );
-        let actualMinutesRaw = actualMinutesRawOverlap;
-        if (
-          actualMinutesRaw < 0.5 &&
-          weekFlowExpectedSpanHasLedgerMatch(dayLedgerRowsTL, span)
-        ) {
-          actualMinutesRaw = sumLedgerEffectiveMinutesMatchingTaskOnDay(
-            dayLedgerRowsTL,
-            span,
-          );
-        }
-        const expectedMinProg = durMin;
-        const progressRatio =
-          expectedMinProg > 0 ? actualMinutesRaw / expectedMinProg : 0;
-        const progressPctFill = Math.min(
-          100,
-          Math.max(0, progressRatio * 100),
-        );
-        const progressOverExpected = progressRatio > 1.0001;
-
-        const actualRowsForDisplay = getLedgerRowsContributingToActualDisplay(
-          dayLedgerRowsTL,
-          span,
-          targetKey,
-          nowForTimeline,
-        );
-        const actualRangeLine =
-          formatActualLedgerTimeRangeLine(actualRowsForDisplay);
-
         const sidRaw = String(span.sectionId || "").trim();
         let sectionAccent = "";
         if (sidRaw && !sidRaw.startsWith("custom-")) {
@@ -3401,9 +3206,6 @@ function render1DayView(tabsElement = null) {
         }
         if (!ledgerMissed) {
           card.style.setProperty("--calendar-timeline-stripe", c.leftStripe);
-        }
-        if (progressOverExpected && !ledgerMissed) {
-          card.classList.add("calendar-1day-timeline-card--progress-over");
         }
         if (!ledgerMissed) {
           card.style.setProperty(
@@ -3474,15 +3276,9 @@ function render1DayView(tabsElement = null) {
           cardHead.appendChild(memoEl);
         }
 
-        const split = document.createElement("div");
-        split.className = "calendar-1day-timeline-card-split";
+        const cardBody = document.createElement("div");
+        cardBody.className = "calendar-1day-timeline-card-body";
 
-        const paneExpected = document.createElement("div");
-        paneExpected.className =
-          "calendar-1day-timeline-card-pane calendar-1day-timeline-card-pane--expected";
-        const labExp = document.createElement("div");
-        labExp.className = "calendar-1day-timeline-card-pane-label";
-        labExp.textContent = "예상";
         const timesExp = document.createElement("div");
         timesExp.className = "calendar-1day-timeline-card-pane-times";
         timesExp.textContent = `${span.startDisplay} ~ ${span.endDisplay}`;
@@ -3496,53 +3292,17 @@ function render1DayView(tabsElement = null) {
         const durExp = document.createElement("div");
         durExp.className = "calendar-1day-timeline-card-pane-dur";
         durExp.textContent = formatIntegerMinutesDurationKo(durMin);
-        paneExpected.appendChild(labExp);
-        paneExpected.appendChild(timesExp);
-        paneExpected.appendChild(trackExp);
-        paneExpected.appendChild(durExp);
 
-        const paneActual = document.createElement("div");
-        paneActual.className =
-          "calendar-1day-timeline-card-pane calendar-1day-timeline-card-pane--actual";
-        const labAct = document.createElement("div");
-        labAct.className = "calendar-1day-timeline-card-pane-label";
-        labAct.textContent = "실제";
-        const timesAct = document.createElement("div");
-        timesAct.className = "calendar-1day-timeline-card-pane-times";
-        timesAct.textContent = actualRangeLine;
-        const trackAct = document.createElement("div");
-        trackAct.className = "calendar-1day-timeline-card-bar-track";
-        trackAct.setAttribute("aria-hidden", "true");
-        const fillAct = document.createElement("div");
-        fillAct.className = "calendar-1day-timeline-card-head-bar-fill";
-        fillAct.style.width = `${progressPctFill}%`;
-        trackAct.appendChild(fillAct);
-        const durAct = document.createElement("div");
-        durAct.className = "calendar-1day-timeline-card-pane-dur";
-        durAct.textContent =
-          actualMinutesRaw >= 0.5
-            ? formatIntegerMinutesDurationKo(Math.round(actualMinutesRaw))
-            : "—";
-        paneActual.appendChild(labAct);
-        paneActual.appendChild(timesAct);
-        paneActual.appendChild(trackAct);
-        paneActual.appendChild(durAct);
-
-        split.appendChild(paneExpected);
-        split.appendChild(paneActual);
+        cardBody.appendChild(timesExp);
+        cardBody.appendChild(trackExp);
+        cardBody.appendChild(durExp);
 
         card.appendChild(cardHead);
-        card.appendChild(split);
-
-        if (expectedMinProg > 0) {
-          card.title = `${card.title}\n실제 소요 / 예상: ${formatIntegerMinutesDurationKo(Math.round(actualMinutesRaw))} / ${formatIntegerMinutesDurationKo(expectedMinProg)}`;
-        }
+        card.appendChild(cardBody);
 
         if (!ledgerMissed && !ledgerMatched) {
           timesExp.style.color = c.accentMuted;
           durExp.style.color = c.accentMuted;
-          timesAct.style.color = c.accentMuted;
-          durAct.style.color = c.accentMuted;
         }
 
         card.setAttribute("role", "button");
