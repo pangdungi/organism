@@ -4013,7 +4013,6 @@ export function render(opts = {}) {
       filtered = filtered.filter((r) => set.has((r.taskName || "").trim()));
     }
     renderAll(filtered);
-    updateTotal();
     persistActiveViewTimeFilterToSession();
     const pickerKeyNow = computePickerRangeKeyForPull();
     if (pickerKeyNow !== _pickerRangeKeyAtLastPullIntent) {
@@ -6858,7 +6857,6 @@ export function render(opts = {}) {
   } catch (_) {}
   allRowsCache = loadTimeRows();
   cachedRows = getFullRowsForFilter(true);
-  syncTimeLedgerContent();
 
   function mergeRowsIntoCache() {
     const fromDom = collectRowsFromDOM(contentWrap);
@@ -7428,7 +7426,6 @@ export function render(opts = {}) {
     cachedRows = getFullRowsForFilter(true);
     const rowsToUse = getFilteredRows(cachedRows);
     renderAll(rowsToUse);
-    updateTotal();
     persistActiveViewTimeFilterToSession();
     updateFilterBarVisibility();
     if (userSubTabClick) {
@@ -7452,22 +7449,34 @@ export function render(opts = {}) {
 
   onFilterChange(true);
 
+  /** 서버·픽커 pull 등이 연달아 와도 한 번만 목록·잔액을 다시 그림 */
+  const TIME_LEDGER_REMOTE_REFRESH_DEBOUNCE_MS = 200;
   function refreshTimeLedgerFromRemotePull() {
     if (!el.isConnected) return;
-    /* App 탭 진입 pull 직후 session 만 오늘 등으로 바뀌고 DOM 날짜는 옛값일 수 있음 → 통째로 renderMain 하지 않고 갱신할 때 맞춤 */
     try {
-      const t = getLedgerFilterTodayYmd();
-      try {
-        if (typeof sessionStorage !== "undefined") {
-          sessionStorage.setItem("lp_time_filter_start", t);
-          sessionStorage.setItem("lp_time_filter_end", t);
-        }
-      } catch (_) {}
-      _pickerRangeKeyAtLastPullIntent = computePickerRangeKeyForPull();
+      if (el._lpRefreshPullTimer != null) {
+        clearTimeout(el._lpRefreshPullTimer);
+        el._lpRefreshPullTimer = null;
+      }
     } catch (_) {}
-    allRowsCache = loadTimeRows();
-    cachedRows = getFullRowsForFilter(true);
-    syncTimeLedgerContent();
+    el._lpRefreshPullTimer = setTimeout(() => {
+      el._lpRefreshPullTimer = null;
+      if (!el.isConnected) return;
+      /* App 탭 진입 pull 직후 session 만 오늘 등으로 바뀌고 DOM 날짜는 옛값일 수 있음 → 통째로 renderMain 하지 않고 갱신할 때 맞춤 */
+      try {
+        const t = getLedgerFilterTodayYmd();
+        try {
+          if (typeof sessionStorage !== "undefined") {
+            sessionStorage.setItem("lp_time_filter_start", t);
+            sessionStorage.setItem("lp_time_filter_end", t);
+          }
+        } catch (_) {}
+        _pickerRangeKeyAtLastPullIntent = computePickerRangeKeyForPull();
+      } catch (_) {}
+      allRowsCache = loadTimeRows();
+      cachedRows = getFullRowsForFilter(true);
+      syncTimeLedgerContent();
+    }, TIME_LEDGER_REMOTE_REFRESH_DEBOUNCE_MS);
   }
 
   function openTaskLogModalFromExternal(partial = {}) {
@@ -7502,6 +7511,12 @@ export function render(opts = {}) {
   signal.addEventListener(
     "abort",
     () => {
+      try {
+        if (el._lpRefreshPullTimer != null) {
+          clearTimeout(el._lpRefreshPullTimer);
+          el._lpRefreshPullTimer = null;
+        }
+      } catch (_) {}
       try {
         closeTaskLogModal();
       } catch (_) {}

@@ -61,12 +61,23 @@ export async function pullUserPrefsFromSupabase() {
   if (data.hourly_rate != null) {
     const n = Number(data.hourly_rate);
     if (!Number.isNaN(n) && n > 0) {
+      let prevRaw = "";
+      try {
+        prevRaw = localStorage.getItem(USER_HOURLY_RATE_KEY) ?? "";
+      } catch (_) {}
+      const prevNum = parseFloat(String(prevRaw).replace(/,/g, ""));
+      const unchanged =
+        prevRaw !== "" &&
+        !Number.isNaN(prevNum) &&
+        Math.abs(prevNum - n) < 1e-6;
       try {
         localStorage.setItem(USER_HOURLY_RATE_KEY, String(n));
       } catch (_) {}
-      document.dispatchEvent(
-        new CustomEvent("app-hourly-rate-changed", { detail: { rate: n } }),
-      );
+      if (!unchanged) {
+        document.dispatchEvent(
+          new CustomEvent("app-hourly-rate-changed", { detail: { rate: n } }),
+        );
+      }
     }
   }
 

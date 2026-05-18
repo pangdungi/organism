@@ -119,8 +119,9 @@ body {
   padding-top: calc(var(--lp-safe-top) + clamp(1.15rem, 20vh, 5rem));
 }
 
-/* 탭 푸터가 보일 때: 하단 세이프 존은 .app-footer-menu 한 곳만(이중 패딩으로 푸터가 위로 뜨는 느낌 방지) */
-#signin-page.lp-tab-footer-visible .app-main {
+/* 탭 푸터가 보일 때: 하단 세이프 존은 .app-footer-menu 한 곳만(이중 패딩으로 푸터가 두껍게 보임 방지) */
+#signin-page.lp-tab-footer-visible .app-main,
+#app-screen.lp-app-footer-visible .app-main {
   padding-bottom: 0;
 }
 
@@ -151,7 +152,8 @@ body {
   align-items: stretch;
   gap: 0;
   width: 100%;
-  padding: 0.45rem 0.75rem calc(0.5rem + var(--lp-safe-bottom));
+  /* 세이프 존은 한 번만 반영: 고정 여백 + inset 합이 아니라 둘 중 큰 값 */
+  padding: 0.35rem 0.75rem max(0.35rem, var(--lp-safe-bottom));
   padding-left: calc(0.75rem + var(--lp-safe-left));
   padding-right: calc(0.75rem + var(--lp-safe-right));
   border-top: 1px solid #e2e8f0;
@@ -1348,7 +1350,7 @@ table {
   padding-bottom: env(safe-area-inset-bottom, 0);
   font-family: "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
   color: var(--auth-ink);
-  background: linear-gradient(165deg, #e9f0fb 0%, #f2f6fc 42%, #fafcfe 100%);
+  background: var(--auth-navy);
 }
 
 .auth-gate-body {

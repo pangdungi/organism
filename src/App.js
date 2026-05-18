@@ -430,10 +430,18 @@ export async function mountApp(container) {
 
   function syncAppFooterVisibility() {
     footerNav.hidden = currentTabId === "home";
+    const footerShown = !footerNav.hidden;
     try {
       const root = document.getElementById("signin-page");
       if (root) {
-        root.classList.toggle("lp-tab-footer-visible", !footerNav.hidden);
+        root.classList.toggle("lp-tab-footer-visible", footerShown);
+      }
+    } catch (_) {}
+    /* id 충돌·마운트 순서와 무관하게: 본문 하단 세이프 패딩은 푸터 한 곳만 */
+    try {
+      const shell = document.getElementById("app-screen");
+      if (shell) {
+        shell.classList.toggle("lp-app-footer-visible", footerShown);
       }
     } catch (_) {}
   }
