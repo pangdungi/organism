@@ -16,7 +16,7 @@
   margin: 0;
   padding: 0.95rem 1rem 1rem;
   background: #fff;
-  border: 1px solid rgba(42, 56, 40, 0.08);
+  border: 1px solid rgba(26, 45, 69, 0.08);
   border-radius: 10px;
   box-shadow: 0 1px 0 rgba(26, 34, 24, 0.03);
 }
@@ -38,7 +38,7 @@
   gap: 0.5rem;
   margin: 0 0 0.7rem;
   padding-bottom: 0.55rem;
-  border-bottom: 1px solid rgba(42, 56, 40, 0.06);
+  border-bottom: 1px solid rgba(26, 45, 69, 0.06);
 }
 
 .diary-layout--feed-only .diary-feed-card-title,
@@ -48,7 +48,7 @@
   font-size: 0.8125rem;
   font-weight: 600;
   letter-spacing: -0.02em;
-  color: #3d4a3e;
+  color: #1e4d7b;
 }
 
 /* 연필 수정 */
@@ -62,15 +62,15 @@
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: rgba(61, 74, 62, 0.45);
+  color: rgba(30, 61, 93, 0.45);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
 .diary-layout--feed-only .diary-paper-edit-btn:hover,
 .diary-layout--feed-only .diary-paper-edit-btn-qa:hover {
-  color: #2a3828;
-  background: rgba(61, 74, 62, 0.06);
+  color: #1e4d7b;
+  background: rgba(30, 61, 93, 0.06);
 }
 
 /* 통제 Q&A 블록 */
@@ -133,7 +133,7 @@
   font: inherit;
   font-size: 0.875rem;
   line-height: 1.55;
-  color: #2a3229;
+  color: #1a2d45;
   resize: none;
   overflow: hidden;
 }
@@ -150,7 +150,7 @@
   margin: 0;
   font-size: 0.9375rem;
   line-height: 1.65;
-  color: #2a3229;
+  color: #1a2d45;
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -161,5 +161,5 @@
   padding: 1rem;
   text-align: center;
   font-size: 0.875rem;
-  color: rgba(61, 74, 62, 0.45);
+  color: rgba(30, 61, 93, 0.45);
 }

@@ -8,13 +8,13 @@
 /* -------------------------------------------------------------------------- */
 
 .calendar-monthly-layout {
-  --cal-line: rgba(61, 74, 62, 0.12);
-  --cal-line-strong: rgba(61, 74, 62, 0.18);
+  --cal-line: rgba(58, 110, 168, 0.14);
+  --cal-line-strong: rgba(58, 110, 168, 0.22);
   --cal-surface: #fff;
-  --cal-surface-muted: rgba(61, 74, 62, 0.04);
-  --cal-text: #2a3229;
-  --cal-text-muted: rgba(42, 50, 41, 0.55);
-  --cal-today-accent: #3d4a3e;
+  --cal-surface-muted: rgba(58, 110, 168, 0.06);
+  --cal-text: #1a2d45;
+  --cal-text-muted: rgba(30, 61, 93, 0.52);
+  --cal-today-accent: #1e4d7b;
   /** 오늘 날짜 숫자 원형 — 진한 블루 배경 + 흰 글자 */
   --cal-today-circle-bg: #3a6ea8;
   --cal-today-circle-fg: #fff;
@@ -336,7 +336,7 @@
 }
 
 .calendar-1day-timeline-card {
-  --calendar-timeline-stripe: rgba(42, 56, 40, 0.35);
+  --calendar-timeline-stripe: rgba(26, 45, 69, 0.35);
   display: grid;
   grid-template-columns: auto 1fr;
   column-gap: 0.45rem;
@@ -755,8 +755,8 @@
 
 /* 드래그 타깃 */
 .calendar-monthly-day.calendar-day-drag-over {
-  background: rgba(61, 74, 62, 0.1);
-  outline: 2px solid rgba(61, 74, 62, 0.35);
+  background: rgba(30, 61, 93, 0.1);
+  outline: 2px solid rgba(30, 61, 93, 0.35);
   outline-offset: -2px;
   z-index: 2;
 }
@@ -1244,11 +1244,11 @@
 .calendar-annual-cell--pad {
   pointer-events: none;
   cursor: default;
-  background: rgba(61, 74, 62, 0.045);
+  background: rgba(30, 61, 93, 0.045);
 }
 
 .calendar-annual-cell.weekend {
-  background: rgba(61, 74, 62, 0.035);
+  background: rgba(30, 61, 93, 0.035);
 }
 
 .calendar-annual-cell.today {
@@ -1256,7 +1256,7 @@
 }
 
 .calendar-annual-cell.weekend:not(.today) .calendar-annual-cell-num {
-  color: rgba(42, 50, 41, 0.45);
+  color: rgba(26, 45, 69, 0.45);
 }
 
 .calendar-annual-cell-num {
@@ -1799,14 +1799,14 @@
   font-weight: 600;
   padding: 0.45rem 0.75rem;
   border-radius: 8px;
-  border: 1px solid var(--cal-line-strong, #c4bea8);
+  border: 1px solid var(--cal-line-strong, #cbd5e1);
   background: var(--cal-surface, #fff);
   color: #8b5c3a;
   cursor: pointer;
 }
 
 .lp-calendar-budget-add-modal .lp-calendar-expected-delete-btn:hover {
-  background: var(--cal-surface-muted, #f7f4ec);
+  background: var(--cal-surface-muted, #f1f5f9);
 }
 
 /* -------------------------------------------------------------------------- */

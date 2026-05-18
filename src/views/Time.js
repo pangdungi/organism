@@ -789,8 +789,8 @@ function saveTimeRows(rows) {
 }
 
 const TASK_BAR_COLORS = [
-  "#a8e6cf",
-  "#dcedc1",
+  "#a8c8e8",
+  "#dce4f4",
   "#ffd3b6",
   "#ffaaa5",
   "#ff8b94",
@@ -798,16 +798,16 @@ const TASK_BAR_COLORS = [
   "#b8a9c9",
   "#d4a5a5",
   "#92a8d1",
-  "#88b04b",
+  "#6b8eb8",
   "#f7cac9",
   "#92c5de",
   "#f4a460",
-  "#98d8c8",
+  "#98b4d8",
   "#f7dc6f",
   "#bb8fce",
   "#85c1e9",
   "#f8b500",
-  "#2ecc71",
+  "#3498db",
   "#e74c3c",
 ];
 
@@ -3123,7 +3123,7 @@ function timeLedgerListRowIconSrc(rowData) {
 function getProductivityBarColor(prod) {
   if (prod === "productive") return "#FFABAB";
   if (prod === "nonproductive") return "#AFCBE6";
-  return "#A8D5A2";
+  return "#93B4E6";
 }
 
 /** 모바일 시간가계부 카드 생성 */

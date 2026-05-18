@@ -229,7 +229,7 @@ function escapeHtml(str) {
 }
 
 const CATEGORY_ICONS = { 꿈: "✨", 부수입: "💰", 행복: "😊", 건강: "💪" };
-const CATEGORY_COLORS = { 꿈: "#3b82f6", 부수입: "#10b981", 행복: "#f59e0b", 건강: "#22c55e" };
+const CATEGORY_COLORS = { 꿈: "#3b82f6", 부수입: "#0ea5e9", 행복: "#f59e0b", 건강: "#6366f1" };
 
 export function showGanttModal() {
   const items = collectAllKpis();

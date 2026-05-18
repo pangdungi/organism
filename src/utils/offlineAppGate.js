@@ -64,10 +64,10 @@ export function initOfflineAppGate() {
 <div class="lp-offline-gate__body">
   <div class="lp-offline-gate__art" aria-hidden="true">
     <svg class="lp-offline-gate__svg" viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg">
-      <ellipse cx="100" cy="38" rx="52" ry="18" fill="#7CB342" opacity="0.9"/>
-      <ellipse cx="100" cy="42" rx="28" ry="10" fill="#AED581"/>
-      <circle cx="82" cy="40" r="5" fill="#E8F5E9"/><circle cx="100" cy="36" r="5" fill="#E8F5E9"/><circle cx="118" cy="40" r="5" fill="#E8F5E9"/>
-      <path d="M100 56 L100 92" stroke="#9CCC65" stroke-width="3"/>
+      <ellipse cx="100" cy="38" rx="52" ry="18" fill="#1565C0" opacity="0.9"/>
+      <ellipse cx="100" cy="42" rx="28" ry="10" fill="#64B5F6"/>
+      <circle cx="82" cy="40" r="5" fill="#E3F2FD"/><circle cx="100" cy="36" r="5" fill="#E3F2FD"/><circle cx="118" cy="40" r="5" fill="#E3F2FD"/>
+      <path d="M100 56 L100 92" stroke="#42A5F5" stroke-width="3"/>
       <rect x="78" y="92" width="44" height="32" rx="4" fill="#B39DDB" stroke="#7E57C2" stroke-width="2"/>
       <rect x="84" y="98" width="32" height="18" rx="2" fill="#EDE7F6"/>
       <circle cx="100" cy="106" r="3" fill="#5E35B1"/>

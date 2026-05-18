@@ -5,32 +5,31 @@ const TODO_SETTINGS_KEY = "todo-settings";
 const CUSTOM_SECTIONS_KEY = "todo-custom-sections";
 
 /**
- * 앱 정체성용 프리셋 (hex) — 기본 10색 + Behr 세이지/클래식/올리브 차트 12색 (공개 RGB·hex 근사값)
- * Fertile Green은 차트 코드 오기 가능 → Behr 명칭 기준 S340-6 반영
+ * 앱 정체성용 프리셋 (hex) — 웜 악센트 + 슬레이트·네이비 계열 (녹색 톤 미사용)
  */
 export const APP_PRESET_COLORS = [
   { id: "rose", name: "테라코타 레드", hex: "#C97A6A" },
   { id: "peach", name: "오렌지 브라운 · 피치", hex: "#C4906A" },
   { id: "sand", name: "오렌지 브라운 · 샌드", hex: "#B89A6A" },
-  { id: "sage", name: "그린 · 세이지", hex: "#8A9E82" },
-  { id: "mint", name: "그린 · 민트", hex: "#6B7A6E" },
+  { id: "sage", name: "슬레이트 · 스톤", hex: "#8B90A8" },
+  { id: "mint", name: "쿨 그레이", hex: "#6B7280" },
   { id: "sky", name: "슬레이트 블루", hex: "#7A8E9A" },
   { id: "lavender", name: "머브", hex: "#8A7A9E" },
   { id: "mauve", name: "로즈", hex: "#9E8A8A" },
-  { id: "smoke", name: "그린 · 포레스트", hex: "#3D4A3E" },
-  { id: "slate", name: "뉴트럴", hex: "#C4BEA8" },
-  { id: "behr-chinese-jade", name: "Behr · Chinese Jade (PPU10-09)", hex: "#CBD1BA" },
-  { id: "behr-laurel-mist", name: "Behr · Laurel Mist (430E-3)", hex: "#ACB5A1" },
-  { id: "behr-cameroon-green", name: "Behr · Cameroon Green (PPU12-17)", hex: "#60746D" },
-  { id: "behr-secluded-woods", name: "Behr · Secluded Woods (S420-7)", hex: "#41534A" },
-  { id: "behr-cavan", name: "Behr · Cavan (M380-1)", hex: "#DCE2CE" },
-  { id: "behr-chopped-dill", name: "Behr · Chopped Dill (M380-4)", hex: "#B3C09F" },
-  { id: "behr-greener-pastures", name: "Behr · Greener Pastures (S410-6)", hex: "#637C65" },
-  { id: "behr-deep-jungle", name: "Behr · Deep Jungle (470F-7)", hex: "#3F564A" },
-  { id: "behr-bay-water", name: "Behr · Bay Water (S380-4)", hex: "#AAAD94" },
-  { id: "behr-fertile-green", name: "Behr · Fertile Green (S340-6)", hex: "#8B8757" },
-  { id: "behr-amazon-jungle", name: "Behr · Amazon Jungle (PPU9-24)", hex: "#686747" },
-  { id: "behr-down-to-earth", name: "Behr · Down-to-Earth (S360-7)", hex: "#5C6242" },
+  { id: "smoke", name: "딥 네이비", hex: "#2C3E50" },
+  { id: "slate", name: "뉴트럴", hex: "#C8D0DC" },
+  { id: "behr-mist-blue", name: "미스트 블루", hex: "#CBD4E8" },
+  { id: "behr-pale-blue-gray", name: "페일 블루그레이", hex: "#ACB5CA" },
+  { id: "behr-stone-blue", name: "스톤 블루", hex: "#5C6B80" },
+  { id: "behr-deep-slate", name: "딥 슬레이트", hex: "#3F4F64" },
+  { id: "behr-cavan", name: "아이스 블루", hex: "#DCE8F4" },
+  { id: "behr-soft-slate", name: "소프트 슬레이트", hex: "#B3BCC9" },
+  { id: "behr-castle-blue", name: "캐슬 블루", hex: "#5B7A9A" },
+  { id: "behr-midnight-slate", name: "미드나잇 슬레이트", hex: "#3D4F66" },
+  { id: "behr-pale-lavender-gray", name: "페일 라벤더그레이", hex: "#A8ADC4" },
+  { id: "behr-warm-gray", name: "웜 그레이", hex: "#8B8580" },
+  { id: "behr-charcoal-blue", name: "차콜 블루", hex: "#4A5568" },
+  { id: "behr-steel-gray", name: "스틸 그레이", hex: "#5C6272" },
 ];
 
 export function hexToRgba(hex, alpha = 0.6) {
@@ -142,7 +141,7 @@ function pillTextColorForRgbaBg(rgbaStr) {
   const g = parseInt(m[2], 10) / 255;
   const b = parseInt(m[3], 10) / 255;
   const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  return lum > 0.62 ? "#3D4A3E" : "#ffffff";
+  return lum > 0.62 ? "#334155" : "#ffffff";
 }
 
 /** 할일 분류 칩 등 프리셋 rgba 배경 위 글자색 */
@@ -158,13 +157,13 @@ export function pickRandomPresetRgba(alpha = 0.6) {
 
 /**
  * KPI 고정 리스트색 (코드 고정)
- * 브레인 덤프 빨강 · 꿈·부수입·행복·건강 = 차가운 파스텔(Mist·Seafoam·Periwinkle·Sage Mist)
+ * 브레인 덤프 빨강 · 나머지는 차가운 블루·슬레이트 파스텔
  */
 export const DEFAULT_SECTION_COLORS = {
   braindump: hexToRgba("#FF6B6B", 0.6),
   dream: hexToRgba("#D8EEF2", 0.6),
-  sideincome: hexToRgba("#D6EBE8", 0.6),
-  health: hexToRgba("#E4EEE8", 0.6),
+  sideincome: hexToRgba("#D6E4F0", 0.6),
+  health: hexToRgba("#E8EDF5", 0.6),
   happy: hexToRgba("#D8E4F0", 0.6),
 };
 
@@ -172,19 +171,19 @@ export const DEFAULT_SECTION_COLORS = {
  * 시간가계부 생산성 3분류 기본 색 — 홈「지금 진행 중」·막대·태그·리스트 카드와 통일
  * - 생산: #FFABAB
  * - 비생산: #AFCBE6
- * - 기타: #A8D5A2 (Foam Green 계열)
+ * - 기타: #93B4E6 (더스티 블루)
  */
 export const DEFAULT_TIME_CATEGORY_COLORS = {
   productive: hexToRgba("#FFABAB", 0.94),
   nonproductive: hexToRgba("#AFCBE6", 0.94),
-  other: hexToRgba("#A8D5A2", 0.94),
+  other: hexToRgba("#93B4E6", 0.94),
 };
 
 /** 생산성 색 프리셋 개편 시 버전 올리면, 저장값 없거나 구버전이면 아래 기본으로 일괄 적용 */
-const TIME_CATEGORY_PRESET_VERSION = 4;
+const TIME_CATEGORY_PRESET_VERSION = 5;
 
 /** 고정 리스트(브레인덤프·꿈·부수입·건강·행복) 기본색 재배치 시 버전 증가 */
-const SECTION_LIST_PRESET_VERSION = 3;
+const SECTION_LIST_PRESET_VERSION = 4;
 
 /**
  * 작업(세부) 카테고리 기본색 — 꿈/부수입/행복/건강은 리스트 KPI색과 동일(폴백용),
@@ -193,21 +192,21 @@ const SECTION_LIST_PRESET_VERSION = 3;
 export const DEFAULT_TASK_CATEGORY_COLORS = {
   "": hexToRgba("#C97A6A", 0.5),
   dream: hexToRgba("#D8EEF2", 0.7),
-  sideincome: hexToRgba("#D6EBE8", 0.7),
+  sideincome: hexToRgba("#D6E4F0", 0.7),
   happiness: hexToRgba("#D8E4F0", 0.7),
-  health: hexToRgba("#E4EEE8", 0.7),
+  health: hexToRgba("#E8EDF5", 0.7),
   pleasure: hexToRgba("#C4906A", 0.7),
   dreamblocking: hexToRgba("#B89A6A", 0.7),
   media_watch: hexToRgba("#A67C8A", 0.72),
-  unhappiness: hexToRgba("#8A9E82", 0.65),
-  unhealthy: hexToRgba("#6B7A6E", 0.7),
+  unhappiness: hexToRgba("#8B90A8", 0.65),
+  unhealthy: hexToRgba("#6B7280", 0.7),
   moneylosing: hexToRgba("#7A8E9A", 0.65),
-  work: hexToRgba("#60746D", 0.7),
-  sleep: hexToRgba("#B3C09F", 0.75),
+  work: hexToRgba("#5C6B80", 0.7),
+  sleep: hexToRgba("#B3BCC9", 0.75),
 };
 
 /** 작업 세부 기본색 일괄 갱신(구버전 로컬 덮어쓰기) */
-const TASK_SUBCATEGORY_PRESET_VERSION = 2;
+const TASK_SUBCATEGORY_PRESET_VERSION = 3;
 
 /** 커스텀 리스트용 기본 색상 풀 (프리셋 전체) */
 const CUSTOM_SECTION_COLOR_POOL = APP_PRESET_RGBA_LIST;
@@ -465,7 +464,7 @@ function rgbStringToHex6(rgbStr) {
 
 /**
  * 생산/비생산/기타 — 홈 과제 막대·제목 등에 쓰는 불투명 6자리 hex
- * (설정의 rgba를 rgb로 올린 뒤 변환; 기본 #FFABAB / #AFCBE6 / #A8D5A2)
+ * (설정의 rgba를 rgb로 올린 뒤 변환; 기본 #FFABAB / #AFCBE6 / #93B4E6)
  */
 export function getTimeCategorySolidHex(prodKey) {
   const k =
@@ -485,12 +484,12 @@ export function getTimeCategorySolidHex(prodKey) {
     ? "#FFABAB"
     : k === "nonproductive"
       ? "#AFCBE6"
-      : "#A8D5A2";
+      : "#93B4E6";
 }
 
 /**
  * 타임블록 면 스펙 — 홈 타임라인 카드·시간 마커 배경·글자
- * 왼쪽 강조 막대는 시간가계부 리스트 카드 컬러바와 동일 톤(#FFABAB / #AFCBE6 / #A8D5A2)
+ * 왼쪽 강조 막대는 시간가계부 리스트 카드 컬러바와 동일 톤(#FFABAB / #AFCBE6 / #93B4E6)
  */
 export const TIMETABLE_SURFACE_SPECS = {
   productive: {
@@ -509,11 +508,11 @@ export const TIMETABLE_SURFACE_SPECS = {
     textSecondary: "#083560",
   },
   other: {
-    bg: "#F2F8F0",
-    border: "#5E8A52",
-    leftStripe: "#A8D5A2",
-    textPrimary: "#2D4A28",
-    textSecondary: "#1E3F08",
+    bg: "#F4F7FC",
+    border: "#7A96B8",
+    leftStripe: "#93B4E6",
+    textPrimary: "#2E4666",
+    textSecondary: "#1A3050",
   },
 };
 

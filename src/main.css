@@ -131,7 +131,7 @@ body {
   padding: 0.45rem 0.75rem calc(0.5rem + var(--lp-safe-bottom));
   padding-left: calc(0.75rem + var(--lp-safe-left));
   padding-right: calc(0.75rem + var(--lp-safe-right));
-  border-top: 1px solid #e8e2d2;
+  border-top: 1px solid #e2e8f0;
   background: #fff;
   box-sizing: border-box;
 }
@@ -173,7 +173,7 @@ body {
   background: transparent;
   font: inherit;
   line-height: 0;
-  color: #3d4a3e;
+  color: #1e4d7b;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
@@ -460,7 +460,7 @@ body {
   max-width: 36rem;
   margin: 0 auto;
   padding: 0.15rem 0.75rem;
-  border: 1px solid rgba(42, 56, 40, 0.14);
+  border: 1px solid rgba(26, 45, 69, 0.14);
   border-radius: 9999px;
   background: rgba(255, 255, 255, 0.78);
   backdrop-filter: blur(10px);
@@ -473,7 +473,7 @@ body {
 }
 
 .lp-search-bar__row:focus-within {
-  border-color: rgba(42, 56, 40, 0.28);
+  border-color: rgba(26, 45, 69, 0.28);
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 1px 4px rgba(26, 34, 24, 0.08);
 }
@@ -500,7 +500,7 @@ body {
 }
 
 .lp-search-bar__input::placeholder {
-  color: #c4bea8;
+  color: #94a3b8;
   opacity: 1;
 }
 
@@ -1083,7 +1083,7 @@ table {
 
 .admin-view .admin-view-header {
   padding: 0.65rem 1rem 0.85rem;
-  border-bottom: 1px solid rgba(42, 56, 40, 0.08);
+  border-bottom: 1px solid rgba(26, 45, 69, 0.08);
   background: #fff;
 }
 
@@ -1092,7 +1092,7 @@ table {
   font-size: 1.2rem;
   font-weight: 600;
   letter-spacing: -0.02em;
-  color: #2a3828;
+  color: #1e4d7b;
   line-height: 1.25;
 }
 
@@ -1111,7 +1111,7 @@ table {
   margin: 0 0 0.85rem;
   font-size: 0.78rem;
   line-height: 1.45;
-  color: #a8a290;
+  color: #64748b;
 }
 
 .admin-view .admin-subs-toolbar {
@@ -1126,7 +1126,7 @@ table {
 .admin-view .admin-subs-toolbar-label {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #3d4a3e;
+  color: #1e4d7b;
   letter-spacing: -0.01em;
 }
 
@@ -1135,29 +1135,29 @@ table {
   font: inherit;
   font-size: 0.8125rem;
   font-weight: 500;
-  color: #2a3828;
+  color: #1e4d7b;
   background: #fff;
-  border: 1px solid rgba(42, 56, 40, 0.18);
+  border: 1px solid rgba(26, 45, 69, 0.18);
   border-radius: 8px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
 .admin-view .admin-subs-refresh:hover {
-  background: rgba(42, 56, 40, 0.04);
+  background: rgba(26, 45, 69, 0.04);
 }
 
 .admin-view .admin-subs-statusline {
   margin: 0 0 0.65rem;
   font-size: 0.78rem;
   min-height: 1.2em;
-  color: #6b7268;
+  color: #6b7280;
 }
 
 .admin-view .admin-subs-table-wrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  border: 1px solid rgba(42, 56, 40, 0.1);
+  border: 1px solid rgba(26, 45, 69, 0.1);
   border-radius: 10px;
   background: #fff;
   box-shadow: 0 1px 0 rgba(26, 34, 24, 0.04);
@@ -1174,9 +1174,9 @@ table {
   padding: 0.55rem 0.65rem;
   text-align: left;
   font-weight: 600;
-  color: #3d4a3e;
-  background: rgba(42, 56, 40, 0.04);
-  border-bottom: 1px solid rgba(42, 56, 40, 0.08);
+  color: #1e4d7b;
+  background: rgba(26, 45, 69, 0.04);
+  border-bottom: 1px solid rgba(26, 45, 69, 0.08);
   white-space: nowrap;
 }
 
@@ -1184,7 +1184,7 @@ table {
   padding: 0.5rem 0.65rem;
   vertical-align: middle;
   color: #1a2218;
-  border-bottom: 1px solid rgba(42, 56, 40, 0.06);
+  border-bottom: 1px solid rgba(26, 45, 69, 0.06);
 }
 
 .admin-view .admin-subs-tr:last-child td {
@@ -1199,12 +1199,12 @@ table {
 .admin-view .admin-subs-td--uid {
   font-family: ui-monospace, monospace;
   font-size: 0.74rem;
-  color: #5a6358;
+  color: #64748b;
 }
 
 .admin-view .admin-subs-td--dt {
   white-space: nowrap;
-  color: #5a6358;
+  color: #64748b;
 }
 
 .admin-view .admin-subs-status,
@@ -1216,7 +1216,7 @@ table {
   font-size: 0.76rem;
   color: #1a2218;
   background: #fff;
-  border: 1px solid rgba(42, 56, 40, 0.14);
+  border: 1px solid rgba(26, 45, 69, 0.14);
   border-radius: 6px;
 }
 
@@ -1239,18 +1239,18 @@ table {
 }
 
 .admin-view .admin-subs-btn--year {
-  color: #2a3828;
-  background: rgba(42, 56, 40, 0.06);
-  border: 1px solid rgba(42, 56, 40, 0.16);
+  color: #1e4d7b;
+  background: rgba(26, 45, 69, 0.06);
+  border: 1px solid rgba(26, 45, 69, 0.16);
 }
 
 .admin-view .admin-subs-btn--year:hover {
-  background: rgba(42, 56, 40, 0.1);
+  background: rgba(26, 45, 69, 0.1);
 }
 
 .admin-view .admin-subs-btn--save {
   color: #fff;
-  background: #2a3828;
+  background: #1e4d7b;
   border: none;
 }
 
@@ -1406,7 +1406,7 @@ table {
 .login-form--auth-gate .login-label {
   font-size: 0.8125rem;
   font-weight: 500;
-  color: #a8a290;
+  color: #64748b;
   letter-spacing: -0.01em;
 }
 
@@ -1417,43 +1417,43 @@ table {
   padding: 0.45rem 0 0.5rem;
   font: inherit;
   font-size: 0.9375rem;
-  color: #3d4a3e;
+  color: #1e4d7b;
   background: transparent;
   border: none;
-  border-bottom: 1px solid #c4bea8;
+  border-bottom: 1px solid #cbd5e1;
   border-radius: 0;
   outline: none;
   box-sizing: border-box;
 }
 
 .login-input--auth::placeholder {
-  color: #c4bea8;
+  color: #94a3b8;
 }
 
 .login-field--auth:focus-within .login-label {
-  color: #2a3828;
+  color: #1e4d7b;
 }
 
 .login-input--auth:focus {
   border-bottom-width: 1.5px;
-  border-bottom-color: #2a3828;
+  border-bottom-color: #1e4d7b;
   color: #1a2218;
 }
 
 .login-input--auth:not(:placeholder-shown):not(:focus) {
-  color: #3d4a3e;
+  color: #1e4d7b;
 }
 
 .login-password-row {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  border-bottom: 1px solid #c4bea8;
+  border-bottom: 1px solid #cbd5e1;
 }
 
 .login-password-row:focus-within {
   border-bottom-width: 1.5px;
-  border-bottom-color: #2a3828;
+  border-bottom-color: #1e4d7b;
 }
 
 .login-password-row .login-input--auth,

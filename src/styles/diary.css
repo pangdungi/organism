@@ -5,12 +5,12 @@
 
 /* 상단 한 줄: 캘린더 일간 네비와 동일 토큰(var) — .calendar-nav-controls 버튼에 사용 */
 .diary-top-tools {
-  --cal-line: rgba(61, 74, 62, 0.12);
-  --cal-line-strong: rgba(61, 74, 62, 0.18);
+  --cal-line: rgba(58, 110, 168, 0.14);
+  --cal-line-strong: rgba(58, 110, 168, 0.22);
   --cal-surface: #fff;
-  --cal-surface-muted: rgba(61, 74, 62, 0.04);
-  --cal-text: #2a3229;
-  --cal-text-muted: rgba(42, 50, 41, 0.55);
+  --cal-surface-muted: rgba(58, 110, 168, 0.06);
+  --cal-text: #1a2d45;
+  --cal-text-muted: rgba(30, 61, 93, 0.52);
   display: flex;
   flex-direction: row;
   align-items: center;

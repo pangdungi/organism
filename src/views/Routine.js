@@ -16,13 +16,13 @@ const STORAGE_KEY = "routine-track-list";
 
 const ROUTINE_PASTEL_COLORS = [
   "#e07a5f",
-  "#81b29a",
+  "#7496b8",
   "#f2cc8f",
   "#a8dadc",
   "#e9c46a",
   "#b8b5ff",
   "#ffb4a2",
-  "#95d5b2",
+  "#95b4d8",
   "#ffd6a5",
   "#a0c4ff",
 ];
