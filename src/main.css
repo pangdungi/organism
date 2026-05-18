@@ -506,6 +506,29 @@ table {
   word-break: break-all;
 }
 
+.idea-view .idea-app-font-select {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 16rem;
+  margin: 0;
+  padding: 0.4rem 0.15rem 0.4rem 0;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--idea-navy);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--idea-bubble);
+  border-radius: 0;
+  outline: none;
+  cursor: pointer;
+}
+
+.idea-view .idea-app-font-select:focus {
+  border-bottom-width: 1.5px;
+  border-bottom-color: var(--idea-ocean);
+}
+
 .idea-view .idea-logout-row {
   margin-top: 0.15rem;
 }

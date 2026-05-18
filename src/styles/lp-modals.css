@@ -16,8 +16,7 @@
   --lp-modal-danger: #b91c1c;
   --lp-modal-danger-soft: #fef2f2;
   --lp-modal-radius: 12px;
-  --lp-modal-font:
-    system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+  --lp-modal-font: var(--lp-app-font-family);
   --lp-modal-textarea-height: 4.5rem;
 }
 .lp-task-badge,

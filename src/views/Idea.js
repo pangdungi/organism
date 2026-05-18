@@ -6,18 +6,15 @@ import { signOut } from "../auth.js";
 import { supabase } from "../supabase.js";
 import { deleteMyAccountViaEdgeFunction } from "../utils/deleteMyAccount.js";
 import { USER_HOURLY_RATE_KEY, applyAppearanceFromServer } from "../utils/userHourlySync.js";
-
-export { USER_HOURLY_RATE_KEY };
+import {
+  LP_APP_FONT_OPTIONS,
+  applyAppFont,
+  getStoredAppFontId,
+  setAppFontId,
+} from "../utils/appUiFont.js";
 import { showToast } from "../utils/showToast.js";
 
-/** 앱 전역 폰트 스택 (CSS :root 와 동일하게 유지) */
-export function applyAppFont() {
-  try {
-    const stack =
-      '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", Roboto, sans-serif';
-    document.documentElement.style.setProperty("--app-font-family", stack);
-  } catch (_) {}
-}
+export { USER_HOURLY_RATE_KEY, applyAppFont };
 
 function formatPrice(amount) {
   if (amount == null || Number.isNaN(amount)) return "—";
@@ -73,7 +70,7 @@ export function render() {
   const grid = document.createElement("div");
   grid.className = "time-dashboard-view idea-widget-grid";
 
-  // ----- 기본 설정 위젯 (아이디, 로그아웃) — 웹사이트 폰트 설정 제거(한글 NEXON 고정) -----
+  // ----- 기본 설정 위젯 (아이디, 화면 글꼴, 로그아웃) -----
   const basicSettingsWidget = document.createElement("div");
   basicSettingsWidget.className = "time-dashboard-widget idea-widget idea-widget-basic-settings";
   basicSettingsWidget.innerHTML = `
@@ -82,6 +79,10 @@ export function render() {
       <div class="idea-basic-row">
         <span class="idea-form-label">아이디</span>
         <span class="idea-user-id-value" id="idea-user-id">—</span>
+      </div>
+      <div class="idea-basic-row idea-font-settings-row">
+        <label class="idea-form-label" for="idea-app-font-select">화면 글꼴</label>
+        <select id="idea-app-font-select" class="idea-app-font-select" aria-label="앱 화면 글꼴"></select>
       </div>
       <div class="idea-logout-row">
         <button type="button" class="idea-btn-logout">로그아웃</button>
@@ -93,6 +94,20 @@ export function render() {
     </div>
   `;
   grid.appendChild(basicSettingsWidget);
+
+  const fontSelect = basicSettingsWidget.querySelector("#idea-app-font-select");
+  if (fontSelect) {
+    LP_APP_FONT_OPTIONS.forEach((opt) => {
+      const o = document.createElement("option");
+      o.value = opt.id;
+      o.textContent = opt.label;
+      fontSelect.appendChild(o);
+    });
+    fontSelect.value = getStoredAppFontId();
+    fontSelect.addEventListener("change", () => {
+      setAppFontId(fontSelect.value);
+    });
+  }
 
   basicSettingsWidget.querySelector(".idea-btn-logout").addEventListener("click", () => {
     signOut();

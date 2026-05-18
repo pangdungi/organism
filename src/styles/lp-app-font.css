@@ -1,0 +1,55 @@
+/**
+ * 전역 UI 글꼴 변수 + 사용자 선택 커스텀 폰트 (@font-face)
+ * 기본값은 애플·시스템 스택 — 적용/저장은 utils/appUiFont.js
+ */
+
+:root {
+  --lp-app-font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "SF Pro Display", "Helvetica Neue", "Apple SD Gothic Neo", "Noto Sans KR",
+    "Segoe UI", Roboto, sans-serif;
+}
+
+@font-face {
+  font-family: "LP Donoun Medium";
+  src: url("/fonts/LP-Donoun-Medium.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "LP Adultkid";
+  src: url("/fonts/LP-Adultkid.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "LP Lee Seoyun";
+  src: url("/fonts/LP-LeeSeoyun.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "LP Omu Dayeppemche";
+  src: url("/fonts/LP-Omu-Dayeppemche.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "LP IM Hyemin";
+  src: url("/fonts/LP-IM-Hyemin-Regular.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+html,
+body {
+  font-family: var(--lp-app-font-family);
+}

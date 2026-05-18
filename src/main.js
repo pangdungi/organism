@@ -1,4 +1,5 @@
 import "./main.css";
+import "./styles/lp-app-font.css";
 import "./styles/lp-corsica-display.css";
 import "./styles/diary.css";
 import "./styles/daily.css";
@@ -21,7 +22,7 @@ import {
 import { mountApp, LP_LAST_TAB_LOCAL_KEY, LP_LAST_TAB_SESSION_KEY } from "./App.js";
 import { initOfflineAppGate } from "./utils/offlineAppGate.js";
 import { supabase } from "./supabase.js";
-import { applyAppFont } from "./views/Idea.js";
+import { applyAppFont } from "./utils/appUiFont.js";
 import { pullUserPrefsFromSupabase } from "./utils/userHourlySync.js";
 import { applyTimeCategoryColors, applyTaskCategoryColors } from "./utils/todoSettings.js";
 import { showToast } from "./utils/showToast.js";
