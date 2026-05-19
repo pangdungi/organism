@@ -482,6 +482,9 @@ export function render(opts = {}) {
 
     function detachTypeSettingsModal() {
       document.removeEventListener("keydown", onTypeSettingsModalKeyDown);
+      try {
+        window.dispatchEvent(new CustomEvent("work-schedule-settings-closed"));
+      } catch (_) {}
       modal.remove();
     }
 
@@ -840,48 +843,40 @@ export function render(opts = {}) {
     let dayEntrySelectListOpen = false;
 
     function onDayEntrySelectDocDown(ev) {
-      if (!selectWrap.contains(ev.target)) closeDayEntrySelectList();
+      if (selectWrap.contains(ev.target) || listEl.contains(ev.target)) return;
+      closeDayEntrySelectList();
     }
 
     function syncDayEntrySelectListPosition() {
       if (!dayEntrySelectListOpen || listEl.hidden) return;
-      const r = triggerBtn.getBoundingClientRect();
-      if (r.width < 1 && r.height < 1) return;
-      const vh = window.innerHeight;
-      const vw = window.innerWidth;
+      const tR = triggerBtn.getBoundingClientRect();
+      if (tR.width < 1 && tR.height < 1) return;
       const gap = 4;
+      const vpH =
+        typeof window !== "undefined" && Number.isFinite(window.innerHeight)
+          ? window.innerHeight
+          : 0;
       const remPx = parseFloat(
         getComputedStyle(document.documentElement).fontSize || "16",
       );
       const maxListPx = 14 * (Number.isFinite(remPx) ? remPx : 16);
-      const spaceBelow = vh - r.bottom - gap - 8;
-      const spaceAbove = r.top - gap - 8;
-      const openUp = spaceBelow < 100 && spaceAbove > spaceBelow;
-      const maxH = Math.max(
-        72,
-        Math.min(maxListPx, openUp ? spaceAbove : spaceBelow),
-      );
-      let w = r.width;
-      let left = r.left;
-      if (left + w > vw - 8) left = Math.max(8, vw - w - 8);
-      if (left < 8) left = 8;
-      w = Math.min(w, vw - 16);
+      /* 모달·패널 밖으로 나가도 보이게 fixed + 트리거 바로 아래만(제목 안 가림) */
+      const spaceBelowVp =
+        vpH > 0 ? Math.max(0, vpH - tR.bottom - gap) : maxListPx;
+      const maxH = Math.max(72, Math.min(maxListPx, spaceBelowVp));
 
       listEl.style.position = "fixed";
       listEl.style.boxSizing = "border-box";
-      listEl.style.left = `${left}px`;
-      listEl.style.width = `${w}px`;
+      listEl.style.left = `${Math.round(tR.left)}px`;
+      listEl.style.width = `${Math.round(tR.width)}px`;
       listEl.style.right = "auto";
-      listEl.style.zIndex = "10002";
-      listEl.style.maxHeight = `${maxH}px`;
+      listEl.style.top = `${Math.round(tR.bottom + gap)}px`;
+      listEl.style.bottom = "auto";
+      listEl.style.zIndex = "10070";
+      listEl.style.maxHeight = `${Math.round(maxH)}px`;
       listEl.style.overflowY = "auto";
-      if (openUp) {
-        listEl.style.top = "auto";
-        listEl.style.bottom = `${vh - r.top + gap}px`;
-      } else {
-        listEl.style.bottom = "auto";
-        listEl.style.top = `${r.bottom + gap}px`;
-      }
+      listEl.style.marginTop = "";
+      listEl.style.marginBottom = "";
     }
 
     const onDayEntrySelectReposition = () => syncDayEntrySelectListPosition();
@@ -889,6 +884,9 @@ export function render(opts = {}) {
     function closeDayEntrySelectList() {
       if (!dayEntrySelectListOpen) return;
       dayEntrySelectListOpen = false;
+      try {
+        selectWrap.appendChild(listEl);
+      } catch (_) {}
       listEl.hidden = true;
       triggerBtn.setAttribute("aria-expanded", "false");
       try {
@@ -908,6 +906,8 @@ export function render(opts = {}) {
       listEl.style.bottom = "";
       listEl.style.width = "";
       listEl.style.right = "";
+      listEl.style.marginTop = "";
+      listEl.style.marginBottom = "";
       listEl.style.maxHeight = "";
       listEl.style.zIndex = "";
       listEl.style.overflowY = "";
@@ -918,6 +918,9 @@ export function render(opts = {}) {
       if (dayEntrySelectListOpen) return;
       dayEntrySelectListOpen = true;
       listEl.hidden = false;
+      try {
+        document.body.appendChild(listEl);
+      } catch (_) {}
       triggerBtn.setAttribute("aria-expanded", "true");
       document.addEventListener("pointerdown", onDayEntrySelectDocDown, true);
       window.addEventListener("resize", onDayEntrySelectReposition, true);
@@ -1012,6 +1015,19 @@ export function render(opts = {}) {
         : "",
     );
 
+    function onWorkScheduleSettingsClosedRefreshEntryTypes() {
+      try {
+        if (!modal.isConnected) return;
+      } catch (_) {
+        return;
+      }
+      fillDayEntrySelect(dayEntryTypeValue);
+    }
+    window.addEventListener(
+      "work-schedule-settings-closed",
+      onWorkScheduleSettingsClosedRefreshEntryTypes,
+    );
+
     labelType.appendChild(spanType);
     labelType.appendChild(selectWrap);
 
@@ -1048,6 +1064,12 @@ export function render(opts = {}) {
 
     function closeModal() {
       closeDayEntrySelectList();
+      try {
+        window.removeEventListener(
+          "work-schedule-settings-closed",
+          onWorkScheduleSettingsClosedRefreshEntryTypes,
+        );
+      } catch (_) {}
       try {
         document.removeEventListener("keydown", onKeyDown);
       } catch (_) {}

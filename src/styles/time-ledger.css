@@ -754,54 +754,12 @@
   color: #64748b;
 }
 
-/* 시간 사용내역 조회 기간 모달 — 미니멀 */
-.time-ledger-view .time-usage-range-modal [data-legacy~="time-task-setup-panel"],
-[data-legacy~="time-ledger-view"] .time-usage-range-modal [data-legacy~="time-task-setup-panel"] {
+/* 시간 사용내역 조회 기간 모달 — 패널 너비만 유지 (날짜 UI는 스탬프 등록과 동일 · stamp-calendar.css) */
+[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] [data-legacy~="time-task-setup-panel"] {
   max-width: 18rem;
   width: calc(100vw - 2.5rem);
 }
-.time-ledger-view .time-usage-range-body,
-[data-legacy~="time-ledger-view"] .time-usage-range-body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-  padding-top: 0.25rem;
-}
-.time-ledger-view .time-usage-range-field,
-[data-legacy~="time-ledger-view"] .time-usage-range-field {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.25rem;
-  margin: 0;
-  font-family: var(--lp-modal-font, inherit);
-}
-.time-ledger-view .time-usage-range-label,
-[data-legacy~="time-ledger-view"] .time-usage-range-label {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--lp-modal-muted, #64748b);
-}
-.time-ledger-view .time-usage-range-date,
-[data-legacy~="time-ledger-view"] .time-usage-range-date {
-  width: 100%;
-  margin: 0;
-  padding: 0.2rem 0;
-  font-size: 0.9375rem;
-  color: #1a2218;
-  border: none;
-  border-bottom: 1px solid #cbd5e1;
-  border-radius: 0;
-  background: transparent;
-  box-sizing: border-box;
-}
-.time-ledger-view .time-usage-range-date:focus,
-[data-legacy~="time-ledger-view"] .time-usage-range-date:focus {
-  outline: none;
-  border-bottom: 1.5px solid #1e4d7b;
-}
-.time-ledger-view .time-usage-range-apply,
-[data-legacy~="time-ledger-view"] .time-usage-range-apply {
+[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-apply"] {
   margin: 0.35rem 0 0;
   padding: 0.5rem 0.75rem;
   width: 100%;
@@ -814,7 +772,6 @@
   cursor: pointer;
   font-family: var(--lp-modal-font, inherit);
 }
-.time-ledger-view .time-usage-range-apply:hover,
-[data-legacy~="time-ledger-view"] .time-usage-range-apply:hover {
+[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-apply"]:hover {
   background: var(--lp-modal-accent-hover, #173c5f);
 }

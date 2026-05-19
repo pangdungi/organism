@@ -74,13 +74,23 @@ function parseLocalTypes() {
 
 function normalizeTypeEntry(o) {
   if (typeof o === "string")
-    return { name: (o || "").trim(), start: "", end: "", kind: "work" };
+    return {
+      name: (o || "").trim(),
+      start: "",
+      end: "",
+      kind: "work",
+      addedAt: 0,
+    };
   void o.kind;
+  const ar = o?.addedAt;
+  const addedAt =
+    typeof ar === "number" && Number.isFinite(ar) ? ar : 0;
   return {
     name: (o.name || "").trim(),
     start: (o.start != null ? String(o.start) : "").trim(),
     end: (o.end != null ? String(o.end) : "").trim(),
     kind: "work",
+    addedAt,
   };
 }
 
@@ -278,13 +288,20 @@ async function pullWorkScheduleFromSupabaseImpl(opts = {}) {
       const extras = [];
       if (Array.isArray(localRaw)) {
         for (const entry of localRaw) {
-          const name =
-            typeof entry === "string"
-              ? String(entry || "").trim()
-              : String(entry?.name || "").trim();
+          const norm = normalizeTypeEntry(entry);
+          const name = (norm.name || "").trim();
           if (!name || DEFAULT_TYPE_SEED.some((d) => d.name === name)) continue;
           if (serverCustomNames.has(name) || namesInMerged.has(name)) continue;
-          extras.push({ name, start, end, kind: "work", addedAt });
+          extras.push({
+            name,
+            start: (norm.start != null ? String(norm.start) : "").trim(),
+            end: (norm.end != null ? String(norm.end) : "").trim(),
+            kind: "work",
+            addedAt:
+              typeof norm.addedAt === "number" && Number.isFinite(norm.addedAt)
+                ? norm.addedAt
+                : 0,
+          });
           namesInMerged.add(name);
         }
       }

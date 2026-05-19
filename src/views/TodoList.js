@@ -62,6 +62,10 @@ import {
   stripTodoTaskSyncMetaForCompare,
 } from "../utils/todoSectionTasksModel.js";
 import {
+  todoQualifiesCalendarShortSpanBarAccent,
+  CALENDAR_SHORT_SPAN_BAR_HEX,
+} from "../utils/calendarShortSpanBar.js";
+import {
   patchTodoDomTaskIdsForSectionElement,
   patchAllTodoDomTaskIdsFromStorage,
 } from "../utils/todoDomTaskIdPatch.js";
@@ -206,6 +210,16 @@ window.addEventListener("app-colors-changed", () => {
           ? (tr.dataset.sourceSectionId || "").trim() || sid
           : sid;
       tr.style.setProperty("--row-section-color", getSectionColor(rowColorSid));
+      return;
+    }
+    const startEl = tr.querySelector('input[name="todo-start-date"]');
+    const dueEl = tr.querySelector(".todo-due-input-hidden");
+    const sVal = String(startEl?.value || "").trim().slice(0, 10);
+    const dVal = String(dueEl?.value || "").trim().slice(0, 10);
+    if (todoQualifiesCalendarShortSpanBarAccent(sVal, dVal)) {
+      tr.style.setProperty("--row-section-color", CALENDAR_SHORT_SPAN_BAR_HEX);
+    } else {
+      tr.style.removeProperty("--row-section-color");
     }
   });
 });
@@ -2221,11 +2235,18 @@ function createTaskRow(taskData = {}, options = {}) {
   if (sourceSectionIdForRow) tr.dataset.sourceSectionId = sourceSectionIdForRow;
   const hasDates = !!((startDate || "").trim() || (dueDate || "").trim());
   tr.dataset.hasDates = hasDates ? "true" : "false";
-  if (!hasDates && (taskData.sectionId || "").trim()) {
-    const rowSid = (taskData.sectionId || "").trim();
+  const rowSid = (taskData.sectionId || "").trim();
+  if (!hasDates && rowSid) {
     const colorSid =
       rowSid === "overdue" ? sourceSectionIdForRow || rowSid : rowSid;
     tr.style.setProperty("--row-section-color", getSectionColor(colorSid));
+  } else if (
+    hasDates &&
+    todoQualifiesCalendarShortSpanBarAccent(startDate, dueDate)
+  ) {
+    tr.style.setProperty("--row-section-color", CALENDAR_SHORT_SPAN_BAR_HEX);
+  } else {
+    tr.style.removeProperty("--row-section-color");
   }
   if (!isSubtask) tr.dataset.taskId = taskId;
   tr.dataset.startTime = startTime || "";
@@ -2424,11 +2445,19 @@ function createTaskRow(taskData = {}, options = {}) {
       (startInput.value || "").trim() || (dueInput.value || "").trim()
     );
     tr.dataset.hasDates = hasDates ? "true" : "false";
-    if (!hasDates && (taskData.sectionId || "")) {
-      tr.style.setProperty(
-        "--row-section-color",
-        getSectionColor(taskData.sectionId),
-      );
+    const sid = String(taskData.sectionId || "").trim();
+    if (!hasDates && sid) {
+      const srcOver =
+        String(
+          taskData.sourceSectionId || tr.dataset.sourceSectionId || "",
+        ).trim();
+      const colorSid = sid === "overdue" ? srcOver || sid : sid;
+      tr.style.setProperty("--row-section-color", getSectionColor(colorSid));
+    } else if (
+      hasDates &&
+      todoQualifiesCalendarShortSpanBarAccent(startInput.value, dueInput.value)
+    ) {
+      tr.style.setProperty("--row-section-color", CALENDAR_SHORT_SPAN_BAR_HEX);
     } else {
       tr.style.removeProperty("--row-section-color");
     }
@@ -2841,6 +2870,17 @@ const EISENHOWER_LABELS = {
   "not-urgent-not-important": "여유+안중요",
 };
 
+/** 캘린더 단일열 막대·데스크톱 행 컬러바와 동일 기준(#C8DCF0) — 마감만·시작=마감일 */
+function syncTodoCardCalShortSpanAccentClass(card) {
+  if (!card) return;
+  const s = (card.dataset.startDate || "").trim().slice(0, 10);
+  const d = (card.dataset.dueDate || "").trim().slice(0, 10);
+  card.classList.toggle(
+    "todo-card--cal-short-span-accent",
+    todoQualifiesCalendarShortSpanBarAccent(s, d),
+  );
+}
+
 /** 우선순위 탭과 동일 할 일이 꿈/행복 등에도 있을 때 표시만 맞춤 */
 function mirrorTodoCardElementFromPrimary(duplicateCard, primaryCard) {
   const p = primaryCard;
@@ -2881,6 +2921,7 @@ function mirrorTodoCardElementFromPrimary(duplicateCard, primaryCard) {
     });
   }
   updateTodoCardTypeIconColumn(d);
+  syncTodoCardCalShortSpanAccentClass(d);
   const cb = d.querySelector(".todo-done-check.todo-card-done");
   const pcb = p.querySelector(".todo-done-check.todo-card-done");
   if (cb && pcb) {
@@ -3083,6 +3124,7 @@ function createTaskCard(taskData, options = {}) {
   const datesEl = document.createElement("div");
   datesEl.className = "todo-card-dates";
   renderTodoCardDatesEl(datesEl, taskData);
+  syncTodoCardCalShortSpanAccentClass(card);
 
   const dateCol = document.createElement("div");
   dateCol.className = "todo-card-col todo-card-col--date";
@@ -3210,6 +3252,7 @@ function createTaskCard(taskData, options = {}) {
     priorityEl.textContent = priorityText;
     priorityEl.hidden = !priorityText;
     updateTodoCardTypeIconColumn(card);
+    syncTodoCardCalShortSpanAccentClass(card);
     doneCheck.disabled =
       String(card.dataset.itemType || "todo").toLowerCase() === "schedule";
   }

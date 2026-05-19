@@ -53,6 +53,10 @@ import {
   pullTimeDailyBudgetFromSupabase,
 } from "../utils/timeDailyBudgetSupabase.js";
 import { openCalendarExpectedScheduleModal } from "../utils/calendarExpectedScheduleModal.js";
+import {
+  todoQualifiesCalendarShortSpanBarAccent,
+  CALENDAR_SHORT_SPAN_BAR_HEX,
+} from "../utils/calendarShortSpanBar.js";
 import { logLpRender } from "../utils/lpRenderDebugLog.js";
 import { FIXED_OTHER_TASKS } from "../utils/timeTaskOptionsConstants.js";
 import {
@@ -459,7 +463,7 @@ function getSectionTasksForDate(dateKey) {
   return out;
 }
 
-/** 시작·마감 날짜가 모두 있고 서로 다른 날일 때만 월간 기간 막대(컬러 바)로 그린다. 같은 날이면 하루짜리로 취급 */
+/** 시작·마감 날짜가 모두 있고 서로 다른 날 → 월간 가로 여러 칸 기간 막대. 같은 날·마감만 등은 단일 칸 막대 + 짧은기간색(CALENDAR_SHORT_SPAN_BAR_HEX) */
 function calendarTaskIsMultiDayDateSpan(t) {
   const s = (t?.startDate || "").trim().slice(0, 10);
   const d = (t?.dueDate || "").trim().slice(0, 10);
@@ -2090,7 +2094,12 @@ function renderMonthlyView(tabsElement) {
           const left = (dayIdx / 7) * 100 + CELL_GAP / 7;
           const width = (1 / 7) * 100 - (CELL_GAP * 2) / 7;
           const baseColor = getSectionColor(t.sectionId);
-          const color = withMoreTransparency(baseColor);
+          const color = todoQualifiesCalendarShortSpanBarAccent(
+            t.startDate,
+            t.dueDate || dateKey,
+          )
+            ? CALENDAR_SHORT_SPAN_BAR_HEX
+            : withMoreTransparency(baseColor);
           allBars.push({
             left,
             width,
@@ -4031,7 +4040,12 @@ function render1WeekView(tabsElement) {
         const left = (dayIdx / 7) * 100 + CELL_GAP / 7;
         const width = (1 / 7) * 100 - (CELL_GAP * 2) / 7;
         const baseColor = getSectionColor(t.sectionId);
-        const color = withMoreTransparency(baseColor);
+        const color = todoQualifiesCalendarShortSpanBarAccent(
+          t.startDate,
+          t.dueDate || dateKey,
+        )
+          ? CALENDAR_SHORT_SPAN_BAR_HEX
+          : withMoreTransparency(baseColor);
         allBars.push({
           left,
           width,

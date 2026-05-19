@@ -4213,21 +4213,21 @@ export function render(opts = {}) {
   lpSetClasses(usageRangeModal, "time-task-setup-modal time-usage-range-modal");
   usageRangeModal.innerHTML = `
     <div data-legacy="time-task-setup-backdrop"></div>
-    <div data-legacy="time-task-setup-panel time-usage-range-panel">
+    <div data-legacy="time-task-setup-panel time-usage-range-panel todo-list-modal-panel work-schedule-day-entry-modal-panel">
       <div data-legacy="time-task-setup-header">
         <h3 data-legacy="time-task-setup-title">조회 기간</h3>
         <button type="button" data-legacy="time-task-setup-close" aria-label="닫기">&times;</button>
       </div>
-      <div data-legacy="time-task-setup-body" class="time-usage-range-body">
-        <label class="time-usage-range-field">
-          <span class="time-usage-range-label">시작</span>
-          <input type="date" class="time-usage-range-date" data-usage-range-start />
+      <div data-legacy="time-task-setup-body todo-list-modal-body work-schedule-day-entry-body time-usage-range-body">
+        <label data-legacy="todo-task-edit-label work-schedule-day-entry-label time-usage-range-field">
+          <span data-legacy="work-schedule-day-entry-label-text time-usage-range-label">시작</span>
+          <input type="date" data-legacy="time-add-task-name work-schedule-day-entry-date" data-usage-range-start />
         </label>
-        <label class="time-usage-range-field">
-          <span class="time-usage-range-label">마감</span>
-          <input type="date" class="time-usage-range-date" data-usage-range-end />
+        <label data-legacy="todo-task-edit-label work-schedule-day-entry-label time-usage-range-field">
+          <span data-legacy="work-schedule-day-entry-label-text time-usage-range-label">마감</span>
+          <input type="date" data-legacy="time-add-task-name work-schedule-day-entry-date" data-usage-range-end />
         </label>
-        <button type="button" class="time-usage-range-apply" data-usage-range-apply>조회</button>
+        <button type="button" data-legacy="time-usage-range-apply" data-usage-range-apply>조회</button>
       </div>
     </div>`;
   usageRangeModal.hidden = true;

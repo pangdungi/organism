@@ -184,9 +184,23 @@
   max-width: min(96vw, 26rem);
 }
 
+/* 선택 목록 잘림 방지(panel/body)·열린 줄은 저장 버튼 줄보다 위 */
+.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+  .work-schedule-day-entry-modal-panel.todo-list-modal-panel {
+  overflow: visible;
+}
+
 .work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
   .work-schedule-day-entry-body.todo-list-modal-body {
   min-width: 0;
+  overflow: visible;
+}
+
+.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+  .work-schedule-day-entry-custom-select:has(
+    .work-schedule-day-entry-custom-select-trigger[aria-expanded="true"]
+  ) {
+  z-index: 10;
 }
 
 .work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
@@ -201,18 +215,50 @@
 
 .work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
   .work-schedule-day-entry-custom-select {
+  position: relative;
   min-width: 0;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
 }
 
+/* 스탬프 선택 목록은 상자 기준 안쪽(패널·본문 영역 안, 스크롤 가능) */
+.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+  .work-schedule-day-entry-custom-select-list.time-task-select-list {
+  margin: 0;
+}
+
+.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+  .work-schedule-day-entry-body.todo-list-modal-body
+  > label.todo-task-edit-label:first-of-type {
+  /* flex 자식 기본 min-width:auto 가 native date 최소폭으로 오른쪽 밀림 유발 방지 */
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 .work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
   .work-schedule-day-entry-date.time-add-task-name {
+  display: block;
+  flex: 0 1 auto;
+  align-self: stretch;
   max-width: 100%;
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
+}
+
+/* WebKit 날짜 칩: 피더 내부 최소폭이 모달 밖으로 빠져나오지 않게 */
+.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+  .work-schedule-day-entry-date.time-add-task-name::-webkit-datetime-edit {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+  .work-schedule-day-entry-date.time-add-task-name::-webkit-datetime-edit-fields-wrapper {
+  max-width: 100%;
+  min-width: 0;
 }
 
 /* 모바일: date 피커 최소 너비·내부 편집 영역이 패딩 밖으로 삐져나감 방지 */
@@ -222,32 +268,106 @@
     width: 100%;
     max-width: 100%;
     min-width: 0;
-    overflow-x: hidden;
+    overflow: visible;
   }
 
   .work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
     .work-schedule-day-entry-body.todo-list-modal-body {
-    overflow-x: hidden;
     min-width: 0;
+    overflow: visible;
   }
 
   .work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
     .work-schedule-day-entry-date.time-add-task-name {
-    max-width: 100%;
-    min-width: 0;
     padding-left: 0.5rem;
     padding-right: 0.5rem;
   }
 
   .work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
     .work-schedule-day-entry-date.time-add-task-name::-webkit-datetime-edit {
-    max-width: 100%;
     padding: 0;
   }
+}
 
-  .work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
-    .work-schedule-day-entry-date.time-add-task-name::-webkit-datetime-edit-fields-wrapper {
-    max-width: 100%;
+/* 시간가계부 · 조회 기간 모달: 스탬프 등록 일자 필드와 동일(data-legacy 토큰; Time.js lpSetClasses 규약) */
+[data-legacy~="time-usage-range-modal"] [data-legacy~="todo-list-modal-body"][data-legacy~="work-schedule-day-entry-body"] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 0.85rem 1rem 0.5rem;
+  min-width: 0;
+}
+
+[data-legacy~="time-usage-range-modal"]
+  [data-legacy~="todo-list-modal-body"][data-legacy~="work-schedule-day-entry-body"]
+  [data-legacy~="todo-task-edit-label"] {
+  margin-bottom: 0;
+}
+
+[data-legacy~="time-usage-range-modal"]
+  [data-legacy~="work-schedule-day-entry-body"]
+  [data-legacy~="work-schedule-day-entry-label-text"] {
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+[data-legacy~="time-usage-range-modal"]
+  [data-legacy~="work-schedule-day-entry-label"][data-legacy~="todo-task-edit-label"] {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+[data-legacy~="time-usage-range-modal"]
+  [data-legacy~="todo-list-modal-body"][data-legacy~="work-schedule-day-entry-body"]
+  > [data-legacy~="todo-task-edit-label"] {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+[data-legacy~="time-usage-range-modal"]
+  [data-legacy~="work-schedule-day-entry-date"][data-legacy~="time-add-task-name"] {
+  display: block;
+  flex: 0 1 auto;
+  align-self: stretch;
+  max-width: 100%;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+[data-legacy~="time-usage-range-modal"]
+  [data-legacy~="work-schedule-day-entry-date"][data-legacy~="time-add-task-name"]::-webkit-datetime-edit {
+  max-width: 100%;
+  min-width: 0;
+}
+
+[data-legacy~="time-usage-range-modal"]
+  [data-legacy~="work-schedule-day-entry-date"][data-legacy~="time-add-task-name"]::-webkit-datetime-edit-fields-wrapper {
+  max-width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 48rem) {
+  [data-legacy~="time-usage-range-modal"]
+    [data-legacy~="todo-list-modal-body"][data-legacy~="work-schedule-day-entry-body"] {
+    overflow-x: hidden;
+    min-width: 0;
+  }
+
+  [data-legacy~="time-usage-range-modal"]
+    [data-legacy~="work-schedule-day-entry-date"][data-legacy~="time-add-task-name"] {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  [data-legacy~="time-usage-range-modal"]
+    [data-legacy~="work-schedule-day-entry-date"][data-legacy~="time-add-task-name"]::-webkit-datetime-edit {
+    padding: 0;
   }
 }
 
