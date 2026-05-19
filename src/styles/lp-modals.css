@@ -1462,6 +1462,15 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   border: 1px solid var(--lp-modal-border);
   border-radius: 8px;
   background: #fff;
+  outline: none;
+}
+.time-task-log-task-dropdown-search:focus,
+.time-task-log-task-dropdown-search:focus-visible,
+[data-legacy~="time-task-log-task-dropdown-search"]:focus,
+[data-legacy~="time-task-log-task-dropdown-search"]:focus-visible {
+  outline: none;
+  box-shadow: none;
+  border-color: var(--lp-modal-border);
 }
 .time-task-log-task-dropdown-buckets,
 [data-legacy~="time-task-log-task-dropdown-buckets"] {

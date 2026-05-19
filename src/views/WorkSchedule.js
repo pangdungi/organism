@@ -766,39 +766,34 @@ export function render(opts = {}) {
     document.querySelectorAll(".work-schedule-day-entry-modal").forEach((n) => n.remove());
 
     const modal = document.createElement("div");
-    modal.className =
-      "work-schedule-type-settings-modal work-schedule-day-entry-modal todo-list-modal";
+    modal.className = "todo-list-modal work-schedule-day-entry-modal";
     modal.setAttribute("role", "dialog");
     modal.setAttribute("aria-modal", "true");
     modal.setAttribute("aria-labelledby", "work-schedule-day-entry-title");
 
     const backdrop = document.createElement("div");
-    backdrop.className =
-      "work-schedule-type-settings-backdrop todo-list-modal-backdrop";
+    backdrop.className = "todo-list-modal-backdrop";
 
     const panel = document.createElement("div");
     panel.className =
-      "work-schedule-type-settings-panel work-schedule-day-entry-modal-panel todo-list-modal-panel";
+      "todo-list-modal-panel work-schedule-day-entry-modal-panel";
 
     const header = document.createElement("div");
-    header.className =
-      "work-schedule-type-settings-header todo-list-modal-header";
+    header.className = "todo-list-modal-header";
     const title = document.createElement("h3");
     title.id = "work-schedule-day-entry-title";
-    title.className =
-      "work-schedule-type-settings-title todo-list-modal-title";
+    title.className = "todo-list-modal-title";
     title.textContent = resolvedEditId ? "스탬프 수정" : "스탬프 등록";
     const closeBtn = document.createElement("button");
     closeBtn.type = "button";
-    closeBtn.className =
-      "work-schedule-type-settings-close todo-list-modal-close";
+    closeBtn.className = "todo-list-modal-close";
     closeBtn.setAttribute("aria-label", "닫기");
     closeBtn.innerHTML = "&times;";
     header.appendChild(title);
     header.appendChild(closeBtn);
 
     const body = document.createElement("div");
-    body.className = "work-schedule-day-entry-body todo-list-modal-body";
+    body.className = "todo-list-modal-body work-schedule-day-entry-body";
 
     const labelDate = document.createElement("label");
     labelDate.className =
@@ -952,8 +947,7 @@ export function render(opts = {}) {
           "aria-selected",
           opt.value === dayEntryTypeValue ? "true" : "false",
         );
-        li.className =
-          "work-schedule-day-entry-custom-select-option time-task-select-item";
+        li.className = "time-task-select-item";
         if (!opt.value) li.classList.add("is-placeholder");
         li.dataset.value = opt.value;
         li.textContent = opt.label;
@@ -1035,26 +1029,20 @@ export function render(opts = {}) {
     body.appendChild(labelType);
 
     const footer = document.createElement("div");
-    footer.className = "todo-list-modal-footer work-schedule-day-entry-footer";
-    const footerPrimary = document.createElement("div");
-    footerPrimary.className = "work-schedule-day-entry-footer-primary";
-    const saveBtn = document.createElement("button");
-    saveBtn.type = "button";
-    saveBtn.className = "todo-list-modal-confirm work-schedule-day-entry-save";
-    saveBtn.textContent = "저장";
-    footerPrimary.appendChild(saveBtn);
-    const deleteWrap = document.createElement("div");
-    deleteWrap.className = "work-schedule-day-entry-delete-wrap";
-    deleteWrap.hidden = !resolvedEditId;
+    footer.className =
+      "todo-list-modal-footer todo-task-edit-footer--actions";
     const deleteBtn = document.createElement("button");
     deleteBtn.type = "button";
-    deleteBtn.className =
-      "work-schedule-day-entry-delete-link todo-list-modal-cancel";
+    deleteBtn.className = "time-task-log-delete-btn";
     deleteBtn.textContent = "삭제";
     deleteBtn.setAttribute("aria-label", "이 스탬프 일정 삭제");
-    deleteWrap.appendChild(deleteBtn);
-    footer.appendChild(footerPrimary);
-    footer.appendChild(deleteWrap);
+    deleteBtn.hidden = !resolvedEditId;
+    const saveBtn = document.createElement("button");
+    saveBtn.type = "button";
+    saveBtn.className = "todo-list-modal-confirm";
+    saveBtn.textContent = "저장";
+    footer.appendChild(deleteBtn);
+    footer.appendChild(saveBtn);
 
     panel.appendChild(header);
     panel.appendChild(body);

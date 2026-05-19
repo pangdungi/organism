@@ -155,55 +155,43 @@
   background: var(--lp-modal-danger-soft) !important;
 }
 
-/* 일자·스탬프 등록/수정 본문 — 타임레거 .time-task-log-field 행 간격과 동일 */
-.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+/* 일자·스탬프 등록/수정 — 전역 todo-list-modal 토큰만 병기, 패널은 lp-modals 의 radius·overflow:hidden 유지(목록은 JS에서 body 포털) */
+.todo-list-modal.work-schedule-day-entry-modal
   .work-schedule-day-entry-body.todo-list-modal-body {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
   padding: 0.85rem 1rem 0.5rem;
+  min-width: 0;
 }
 
-.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+.todo-list-modal.work-schedule-day-entry-modal
   .work-schedule-day-entry-body.todo-list-modal-body
   .todo-task-edit-label {
   margin-bottom: 0;
 }
 
-.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+.todo-list-modal.work-schedule-day-entry-modal
   .work-schedule-day-entry-body
   .work-schedule-day-entry-label-text {
   display: block;
   margin-bottom: 0.35rem;
 }
 
-/* 스탬프 등록·수정: 일자(date) 기본 최소 너비가 넓어 모달 밖으로 나가지 않게 */
-.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+.todo-list-modal.work-schedule-day-entry-modal
   .work-schedule-day-entry-modal-panel.todo-list-modal-panel {
   min-width: 0;
   max-width: min(96vw, 26rem);
 }
 
-/* 선택 목록 잘림 방지(panel/body)·열린 줄은 저장 버튼 줄보다 위 */
-.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
-  .work-schedule-day-entry-modal-panel.todo-list-modal-panel {
-  overflow: visible;
-}
-
-.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
-  .work-schedule-day-entry-body.todo-list-modal-body {
-  min-width: 0;
-  overflow: visible;
-}
-
-.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+.todo-list-modal.work-schedule-day-entry-modal
   .work-schedule-day-entry-custom-select:has(
     .work-schedule-day-entry-custom-select-trigger[aria-expanded="true"]
   ) {
   z-index: 10;
 }
 
-.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+.todo-list-modal.work-schedule-day-entry-modal
   .work-schedule-day-entry-label.todo-task-edit-label {
   display: flex;
   flex-direction: column;
@@ -213,7 +201,7 @@
   box-sizing: border-box;
 }
 
-.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+.todo-list-modal.work-schedule-day-entry-modal
   .work-schedule-day-entry-custom-select {
   position: relative;
   min-width: 0;
@@ -222,13 +210,12 @@
   box-sizing: border-box;
 }
 
-/* 스탬프 선택 목록은 상자 기준 안쪽(패널·본문 영역 안, 스크롤 가능) */
-.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+.todo-list-modal.work-schedule-day-entry-modal
   .work-schedule-day-entry-custom-select-list.time-task-select-list {
   margin: 0;
 }
 
-.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+.todo-list-modal.work-schedule-day-entry-modal
   .work-schedule-day-entry-body.todo-list-modal-body
   > label.todo-task-edit-label:first-of-type {
   /* flex 자식 기본 min-width:auto 가 native date 최소폭으로 오른쪽 밀림 유발 방지 */
@@ -237,7 +224,7 @@
   overflow-x: hidden;
 }
 
-.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+.todo-list-modal.work-schedule-day-entry-modal
   .work-schedule-day-entry-date.time-add-task-name {
   display: block;
   flex: 0 1 auto;
@@ -248,42 +235,38 @@
   box-sizing: border-box;
 }
 
-/* WebKit 날짜 칩: 피더 내부 최소폭이 모달 밖으로 빠져나오지 않게 */
-.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+.todo-list-modal.work-schedule-day-entry-modal
   .work-schedule-day-entry-date.time-add-task-name::-webkit-datetime-edit {
   max-width: 100%;
   min-width: 0;
 }
 
-.work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+.todo-list-modal.work-schedule-day-entry-modal
   .work-schedule-day-entry-date.time-add-task-name::-webkit-datetime-edit-fields-wrapper {
   max-width: 100%;
   min-width: 0;
 }
 
-/* 모바일: date 피커 최소 너비·내부 편집 영역이 패딩 밖으로 삐져나감 방지 */
 @media (max-width: 48rem) {
-  .work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+  .todo-list-modal.work-schedule-day-entry-modal
     .work-schedule-day-entry-modal-panel.todo-list-modal-panel {
     width: 100%;
     max-width: 100%;
     min-width: 0;
-    overflow: visible;
   }
 
-  .work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+  .todo-list-modal.work-schedule-day-entry-modal
     .work-schedule-day-entry-body.todo-list-modal-body {
     min-width: 0;
-    overflow: visible;
   }
 
-  .work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+  .todo-list-modal.work-schedule-day-entry-modal
     .work-schedule-day-entry-date.time-add-task-name {
     padding-left: 0.5rem;
     padding-right: 0.5rem;
   }
 
-  .work-schedule-type-settings-modal.todo-list-modal.work-schedule-day-entry-modal
+  .todo-list-modal.work-schedule-day-entry-modal
     .work-schedule-day-entry-date.time-add-task-name::-webkit-datetime-edit {
     padding: 0;
   }
