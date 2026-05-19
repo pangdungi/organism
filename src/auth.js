@@ -13,6 +13,7 @@ import {
   getPasswordRecoveryRedirectUrl,
   getSignupEmailRedirectUrl,
 } from "./utils/authEmailRedirect.js";
+import { clearSubscriptionAccessAutoSignOutSchedule } from "./utils/subscriptionAccess.js";
 
 /**
  * 로그아웃 시 sessionStorage·localStorage 전부 비움(키 누락으로 이전 사용자 데이터가 남는 것 방지).
@@ -111,6 +112,7 @@ export async function login(email, password) {
 }
 
 export async function signOut() {
+  clearSubscriptionAccessAutoSignOutSchedule();
   try {
     flushAllPendingTimeDailyBudgetSync();
   } catch (_) {}

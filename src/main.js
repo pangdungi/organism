@@ -35,15 +35,26 @@ import { showToast } from "./utils/showToast.js";
 import { ensureTimeLedgerStorageReady } from "./utils/timeLedgerEntriesModel.js";
 import { flushAllPendingTimeDailyBudgetSync } from "./utils/timeDailyBudgetSupabase.js";
 import {
-  enforceSubscriptionAccessOrSignOut,
-  SUBSCRIPTION_EXPIRED_MESSAGE,
-} from "./utils/subscriptionAccess.js";
-import {
   hasPasswordRecoveryUrlHint,
   isPasswordRecoveryPathname,
   isPasswordRecoverySession,
 } from "./utils/authRecoverySession.js";
 import { consumeSupabaseAuthRedirectErrors } from "./utils/authRedirectErrorUi.js";
+import {
+  enforceSubscriptionAccessOrSignOut,
+  SUBSCRIPTION_EXPIRED_MESSAGE,
+  fetchSubscriptionGateSnapshot,
+  subscriptionInactiveAccessEnded,
+  syncSubscriptionAccessAutoSignOut,
+} from "./utils/subscriptionAccess.js";
+
+/** 구독 이용 종료일(access_until) 도래 시 자동 로그아웃 — 브라우저 타이머 한도로 분할 예약 */
+function wireSubscriptionDeadlineAutoLogout() {
+  void syncSubscriptionAccessAutoSignOut(async () => {
+    window.alert(SUBSCRIPTION_EXPIRED_MESSAGE);
+    await signOut();
+  });
+}
 
 /**
  * IndexedDB 시간기록은 user_id가 없어 계정과 묶이지 않음.
@@ -358,18 +369,23 @@ function init() {
         goToPasswordResetUi();
         return;
       }
-      const blockedBySubscription = await enforceSubscriptionAccessOrSignOut();
-      if (blockedBySubscription) {
-        window.alert(SUBSCRIPTION_EXPIRED_MESSAGE);
-        showOnly("login");
-        setAuthGatePanel("login");
-        return;
-      }
       showOnly("signin");
       /* 시급·appearance·타임존 RPC는 네트워크 지연 시 스플래시가 멈추지 않도록 비동기로만 실행 */
       void pullUserPrefsFromSupabase().catch(() => {});
       await prepareTimeLedgerStorageForCurrentSession();
       await mountApp(document.getElementById("app-screen"));
+      /* 구독 스냅샷은 스플래시를 막지 않도록 마운트 뒤 확인·자동 로그아웃 예약 */
+      void (async () => {
+        try {
+          const snapPre = await fetchSubscriptionGateSnapshot();
+          if (subscriptionInactiveAccessEnded(snapPre)) {
+            window.alert(SUBSCRIPTION_EXPIRED_MESSAGE);
+            await signOut();
+            return;
+          }
+          wireSubscriptionDeadlineAutoLogout();
+        } catch (_) {}
+      })();
       return;
     }
     showOnly("login");
@@ -378,8 +394,8 @@ function init() {
 
   async function dismissAppSplash() {
     const splash = document.getElementById("app-splash");
-    /* 너무 짧으면 스플래시가 깜빡이고, 너무 길면 PWA 재실행이 답답해짐 */
-    const minVisibleMs = 380;
+    /* 0: 기동 직후 바로 본화면 — 인위적 대기 없음 */
+    const minVisibleMs = 0;
     const t0 =
       typeof performance !== "undefined" ? performance.now() : Date.now();
     try {
@@ -410,6 +426,25 @@ function init() {
       setTimeout(done, 520);
     }
   }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    void (async () => {
+      if (!supabase) return;
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return;
+      const snap = await fetchSubscriptionGateSnapshot();
+      if (subscriptionInactiveAccessEnded(snap)) {
+        window.alert(SUBSCRIPTION_EXPIRED_MESSAGE);
+        await signOut();
+        return;
+      }
+      wireSubscriptionDeadlineAutoLogout();
+    })();
+  });
+
   dismissAppSplash();
 }
 
@@ -421,14 +456,14 @@ async function doLogin() {
     const blockedBySubscription = await enforceSubscriptionAccessOrSignOut();
     if (blockedBySubscription) {
       window.alert(SUBSCRIPTION_EXPIRED_MESSAGE);
-      showOnly("login");
-      setAuthGatePanel("login");
+      await signOut();
       return;
     }
     showOnly("signin");
     void pullUserPrefsFromSupabase().catch(() => {});
     await prepareTimeLedgerStorageForCurrentSession();
     await mountApp(document.getElementById("app-screen"));
+    wireSubscriptionDeadlineAutoLogout();
   } else {
     showToast(result.msg);
   }
@@ -454,18 +489,12 @@ async function doSignUp() {
   // 이메일 확인(Confirm email)이 켜져 있으면 signUp 직후 session 은 null → 메일 안내
   const session = result.data?.session;
   if (session) {
-    const blockedBySubscription = await enforceSubscriptionAccessOrSignOut();
-    if (blockedBySubscription) {
-      window.alert(SUBSCRIPTION_EXPIRED_MESSAGE);
-      showOnly("login");
-      setAuthGatePanel("signup");
-      return;
-    }
     showOnly("signin");
     void pullUserPrefsFromSupabase().catch(() => {});
     await prepareTimeLedgerStorageForCurrentSession();
     await mountApp(document.getElementById("app-screen"));
     showToast("가입이 완료됐어요.", "메인 화면으로 들어갔어요.");
+    wireSubscriptionDeadlineAutoLogout();
     return;
   }
   showToast(

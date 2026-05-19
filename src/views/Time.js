@@ -2357,26 +2357,14 @@ export function getLedgerEffectiveHoursForReclaim(rowData) {
   return getMobileCardEffectiveHoursForPrice(rowData);
 }
 
-function taskLikeFromLedgerRowForInvestSnapshot(r) {
-  const name = (r.taskName || "").trim();
-  const opt = name ? getTaskOptionByName(name) : null;
-  if (opt) return opt;
-  return {
-    name,
-    category: r.category || "",
-    productivity: r.productivity || "",
-  };
-}
-
+/** 다시 받을 금액·투자 레포트: 해당 기간 **표시 생산적** 과제 기록의 유효 시간 합 × 시급(행동의 가치 +와 일치) */
 function aggregateInvestReclaimSnapshotFromRows(rows) {
   const hourlyRate = readUserHourlyRateNumber();
   let reclaimHrs = 0;
   rows.forEach((r) => {
+    if (getTimeLedgerRowDisplayProductivity(r) !== "productive") return;
     const h = getLedgerEffectiveHoursForReclaim(r);
     if (!(h > 0) || !Number.isFinite(h)) return;
-    if (!taskAllowedForLedgerPreset(taskLikeFromLedgerRowForInvestSnapshot(r), "invest")) {
-      return;
-    }
     reclaimHrs += h;
   });
   const reclaimMinutesRounded = Math.round(reclaimHrs * 60);
@@ -6909,17 +6897,6 @@ export function render(opts = {}) {
     return true;
   }
 
-  function taskLikeFromLedgerRowForInvest(r) {
-    const name = (r.taskName || "").trim();
-    const opt = name ? getTaskOptionByName(name) : null;
-    if (opt) return opt;
-    return {
-      name,
-      category: r.category || "",
-      productivity: r.productivity || "",
-    };
-  }
-
   function updateTotal() {
     const allTable = contentWrap.querySelector(
       '[data-legacy~="time-ledger-container"] [data-legacy~="time-ledger-table"]',
@@ -7024,7 +7001,7 @@ export function render(opts = {}) {
       if (!isTodayRowForBankHeader(r, todayKey)) continue;
       const hrs = getMobileCardEffectiveHoursForPrice(r);
       todaySpentHrsHdr += hrs;
-      if (taskAllowedForLedgerPreset(taskLikeFromLedgerRowForInvest(r), "invest"))
+      if (getTimeLedgerRowDisplayProductivity(r) === "productive")
         todayInvestHrsHdr += getLedgerEffectiveHoursForReclaim(r);
     }
     const capHrs = TIME_LEDGER_DAILY_RECORD_CAP_HOURS;
