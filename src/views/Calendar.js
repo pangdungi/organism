@@ -4317,16 +4317,6 @@ function render1WeekView(tabsElement) {
     const colsWrap = document.createElement("div");
     colsWrap.className = "calendar-1week-google-cols";
 
-    const weekFlowMobileHoursOnly =
-      typeof window !== "undefined" &&
-      window.matchMedia("(max-width: 48rem)").matches;
-    const weekFlowHourToken = (hhmm) => {
-      const m = String(hhmm || "")
-        .trim()
-        .match(/^(\d{1,2})/);
-      return m != null ? String(parseInt(m[1], 10)) : String(hhmm || "");
-    };
-
     week.forEach((date) => {
       if (!date) return;
       const key = formatDateKey(date);
@@ -4358,9 +4348,7 @@ function render1WeekView(tabsElement) {
         const c = prodColors[pk] || prodColors.other;
         const taskLabel = String(span.taskName || "").trim();
         const memoTextStored = String(span.scheduleMemo || "").trim();
-        const rangeHuman = weekFlowMobileHoursOnly
-          ? `${weekFlowHourToken(span.startDisplay)} - ${weekFlowHourToken(span.endDisplay)}`
-          : `${span.startDisplay} - ${span.endDisplay}`;
+        const rangeHuman = `${span.startDisplay} - ${span.endDisplay}`;
 
         const ledgerMatched = weekFlowExpectedSpanHasLedgerMatch(
           dayLedgerRows,
