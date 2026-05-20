@@ -247,11 +247,6 @@
   margin-top: 0.5rem;
 }
 
-/* 짧은 기간 할일 카드 왼쪽 강조(마감만·시작=마감) — 월간 막대 단일열 색(#C8DCF0)과 동일 */
-.todo-list-view .todo-cards-wrap > .todo-card.todo-card--cal-short-span-accent {
-  box-shadow: inset 4px 0 0 0 #c8dcf0;
-}
-
 /* 목록 래퍼: 3열 너비를 모든 행이 공유(subgrid), 날짜 열은 가장 긴 셀 기준으로 통일 */
 .todo-cards-wrap {
   display: grid;

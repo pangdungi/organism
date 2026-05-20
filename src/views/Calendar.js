@@ -263,6 +263,47 @@ function lpCalendarMonthlyWeekRowTargetMinHeightRem(
   return Math.max(floor, stackHeight);
 }
 
+/** 월간 막대 행 배치: 같은 날 단일 칸 막대는 항상 세로로 쌓음(두 줄 이상일 때 겹침 방지) */
+function calendarMonthlyBarsOverlapForRow(a, b) {
+  if (
+    a.isSingleDay &&
+    b.isSingleDay &&
+    Number.isFinite(a.dayIdx) &&
+    a.dayIdx === b.dayIdx
+  ) {
+    return true;
+  }
+  return a.left < b.left + b.width && b.left < a.left + a.width;
+}
+
+function lpCalendarAssignMonthlyBarRows(allBars) {
+  const rowBars = [];
+  allBars.forEach((b) => {
+    let row = 0;
+    while (
+      rowBars[row] &&
+      rowBars[row].some((r) => calendarMonthlyBarsOverlapForRow(r, b))
+    ) {
+      row += 1;
+    }
+    if (!rowBars[row]) rowBars[row] = [];
+    rowBars[row].push(b);
+    b.row = row;
+  });
+}
+
+function lpCalendarMeasureMonthlySpanBarHeightPx(el) {
+  if (!el) return 0;
+  let h = 0;
+  try {
+    h = el.getBoundingClientRect().height;
+  } catch (_) {}
+  if (!(h > 0.5)) {
+    h = el.offsetHeight || el.scrollHeight || 0;
+  }
+  return h;
+}
+
 function snapshotCalendarGridPaintSignature(viewContext = "") {
   let ledger = "";
   try {
@@ -335,7 +376,7 @@ function lpCalendarFinalizeBarRowLayout(
     for (const b of barsWithRow) {
       const el = b._barEl;
       if (!el || !el.isConnected) continue;
-      const h = el.getBoundingClientRect().height;
+      const h = lpCalendarMeasureMonthlySpanBarHeightPx(el);
       const r = b.row;
       rowMaxPx[r] = Math.max(rowMaxPx[r] || 0, h);
     }
@@ -515,7 +556,7 @@ function getSectionTasksForDate(dateKey) {
   return out;
 }
 
-/** 시작·마감 날짜가 모두 있고 서로 다른 날 → 월간 가로 여러 칸 기간 막대. 같은 날·마감만 등은 단일 칸 막대 + 짧은기간색(CALENDAR_SHORT_SPAN_BAR_HEX) */
+/** 시작·마감 날짜가 모두 있고 서로 다른 날 → 월간 가로 여러 칸 기간 막대. 같은 날·마감만 등은 단일 칸 점선 테두리 막대 */
 function calendarTaskIsMultiDayDateSpan(t) {
   const s = (t?.startDate || "").trim().slice(0, 10);
   const d = (t?.dueDate || "").trim().slice(0, 10);
@@ -2106,8 +2147,6 @@ function renderMonthlyView(tabsElement) {
       const { BARS_TOP, BAR_HEIGHT, BOTTOM_PAD, ROW_GAP, WEEK_ROW_MIN } =
         lpCalendarWeekBarLayoutMetrics(weekRow);
       const baseBarTop = BARS_TOP + 0.1;
-      const overlaps = (a, b) =>
-        a.left < b.left + b.width && b.left < a.left + a.width;
       const allBars = [];
       const CELL_GAP = 3.5;
       rangeTasks.forEach((t) => {
@@ -2147,17 +2186,17 @@ function renderMonthlyView(tabsElement) {
           const left = (dayIdx / 7) * 100 + CELL_GAP / 7;
           const width = (1 / 7) * 100 - (CELL_GAP * 2) / 7;
           const baseColor = getSectionColor(t.sectionId);
-          const color = todoQualifiesCalendarShortSpanBarAccent(
+          const borderColor = todoQualifiesCalendarShortSpanBarAccent(
             t.startDate,
             t.dueDate || dateKey,
           )
             ? CALENDAR_SHORT_SPAN_BAR_HEX
-            : withMoreTransparency(baseColor);
+            : timetableAccentTextColor(baseColor) || baseColor;
           allBars.push({
             left,
             width,
             name: t.name,
-            color,
+            borderColor,
             isSingleDay: true,
             dayIdx,
             dateKey,
@@ -2174,14 +2213,7 @@ function renderMonthlyView(tabsElement) {
           });
         });
       });
-      const rowBars = [];
-      allBars.forEach((b) => {
-        let row = 0;
-        while (rowBars[row] && rowBars[row].some((r) => overlaps(r, b))) row++;
-        if (!rowBars[row]) rowBars[row] = [];
-        rowBars[row].push(b);
-        b.row = row;
-      });
+      lpCalendarAssignMonthlyBarRows(allBars);
       const barsPerDay = weekDateKeys.map((_, dayIdx) =>
         allBars
           .filter((b) => b.isSingleDay && b.dayIdx === dayIdx)
@@ -2218,7 +2250,10 @@ function renderMonthlyView(tabsElement) {
             ? " calendar-monthly-span-bar--schedule-strip"
             : "");
         bar.title = b.name;
-        bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${baseBarTop + b.row * (BAR_HEIGHT + ROW_GAP)}rem`;
+        const barStyleVars = b.isSingleDay
+          ? `--bar-border:${b.borderColor || CALENDAR_SHORT_SPAN_BAR_HEX}`
+          : `--bar-bg:${b.color || ""}`;
+        bar.style.cssText = `left:${b.left}%;width:${b.width}%;${barStyleVars};top:${baseBarTop + b.row * (BAR_HEIGHT + ROW_GAP)}rem`;
         lpApplyCalendarMultiDaySpanBarBackground(bar, b);
         bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
         if (isTodo && b.done) {
@@ -4057,8 +4092,6 @@ function render1WeekView(tabsElement) {
     const { BARS_TOP, BAR_HEIGHT, BOTTOM_PAD, ROW_GAP, WEEK_ROW_MIN } =
       lpCalendarWeekBarLayoutMetrics(weekRow);
     const baseBarTop = BARS_TOP + 0.1;
-    const overlaps = (a, b) =>
-      a.left < b.left + b.width && b.left < a.left + a.width;
     const allBars = [];
     const CELL_GAP = 3.5;
     rangeTasks.forEach((t) => {
@@ -4098,17 +4131,17 @@ function render1WeekView(tabsElement) {
         const left = (dayIdx / 7) * 100 + CELL_GAP / 7;
         const width = (1 / 7) * 100 - (CELL_GAP * 2) / 7;
         const baseColor = getSectionColor(t.sectionId);
-        const color = todoQualifiesCalendarShortSpanBarAccent(
+        const borderColor = todoQualifiesCalendarShortSpanBarAccent(
           t.startDate,
           t.dueDate || dateKey,
         )
           ? CALENDAR_SHORT_SPAN_BAR_HEX
-          : withMoreTransparency(baseColor);
+          : timetableAccentTextColor(baseColor) || baseColor;
         allBars.push({
           left,
           width,
           name: t.name,
-          color,
+          borderColor,
           isSingleDay: true,
           dayIdx,
           dateKey,
@@ -4124,14 +4157,7 @@ function render1WeekView(tabsElement) {
         });
       });
     });
-    const rowBars = [];
-    allBars.forEach((b) => {
-      let row = 0;
-      while (rowBars[row] && rowBars[row].some((r) => overlaps(r, b))) row++;
-      if (!rowBars[row]) rowBars[row] = [];
-      rowBars[row].push(b);
-      b.row = row;
-    });
+    lpCalendarAssignMonthlyBarRows(allBars);
     allBars.forEach((b) => {
       b.isOverflow = false;
     });
@@ -4162,7 +4188,10 @@ function render1WeekView(tabsElement) {
           ? " calendar-monthly-span-bar--schedule-strip"
           : "");
       bar.title = b.name;
-      bar.style.cssText = `left:${b.left}%;width:${b.width}%;--bar-bg:${b.color};top:${baseBarTop + b.row * (BAR_HEIGHT + ROW_GAP)}rem`;
+      const barStyleVars = b.isSingleDay
+        ? `--bar-border:${b.borderColor || CALENDAR_SHORT_SPAN_BAR_HEX}`
+        : `--bar-bg:${b.color || ""}`;
+      bar.style.cssText = `left:${b.left}%;width:${b.width}%;${barStyleVars};top:${baseBarTop + b.row * (BAR_HEIGHT + ROW_GAP)}rem`;
       lpApplyCalendarMultiDaySpanBarBackground(bar, b);
       bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
       if (isTodo && b.done) {

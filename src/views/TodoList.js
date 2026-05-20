@@ -2871,17 +2871,6 @@ const EISENHOWER_LABELS = {
   "not-urgent-not-important": "여유+안중요",
 };
 
-/** 캘린더 단일열 막대·데스크톱 행 컬러바와 동일 기준(#C8DCF0) — 마감만·시작=마감일 */
-function syncTodoCardCalShortSpanAccentClass(card) {
-  if (!card) return;
-  const s = (card.dataset.startDate || "").trim().slice(0, 10);
-  const d = (card.dataset.dueDate || "").trim().slice(0, 10);
-  card.classList.toggle(
-    "todo-card--cal-short-span-accent",
-    todoQualifiesCalendarShortSpanBarAccent(s, d),
-  );
-}
-
 /** 우선순위 탭과 동일 할 일이 꿈/행복 등에도 있을 때 표시만 맞춤 */
 function mirrorTodoCardElementFromPrimary(duplicateCard, primaryCard) {
   const p = primaryCard;
@@ -2922,7 +2911,6 @@ function mirrorTodoCardElementFromPrimary(duplicateCard, primaryCard) {
     });
   }
   updateTodoCardTypeIconColumn(d);
-  syncTodoCardCalShortSpanAccentClass(d);
   const cb = d.querySelector(".todo-done-check.todo-card-done");
   const pcb = p.querySelector(".todo-done-check.todo-card-done");
   if (cb && pcb) {
@@ -3125,8 +3113,6 @@ function createTaskCard(taskData, options = {}) {
   const datesEl = document.createElement("div");
   datesEl.className = "todo-card-dates";
   renderTodoCardDatesEl(datesEl, taskData);
-  syncTodoCardCalShortSpanAccentClass(card);
-
   const dateCol = document.createElement("div");
   dateCol.className = "todo-card-col todo-card-col--date";
   dateCol.appendChild(datesEl);
@@ -3253,7 +3239,6 @@ function createTaskCard(taskData, options = {}) {
     priorityEl.textContent = priorityText;
     priorityEl.hidden = !priorityText;
     updateTodoCardTypeIconColumn(card);
-    syncTodoCardCalShortSpanAccentClass(card);
     doneCheck.disabled =
       String(card.dataset.itemType || "todo").toLowerCase() === "schedule";
   }

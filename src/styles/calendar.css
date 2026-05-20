@@ -20,8 +20,8 @@
   --cal-today-circle-fg: #fff;
   /** 기간 막대(시작≠마감): 리스트(섹션) 색과 무관하게 동일 */
   --cal-range-span-bar-bg: #d6e8f4;
-  /** 단일 칸 막대 — 마감만·시작=마감일(짧은 기간) 배경과 할일 목록 컬러바와 통일 */
-  --cal-short-span-bar-bg: #c8dcf0;
+  /** 단일 칸 막대(마감만·시작=마감) 점선 테두리 색 */
+  --cal-short-span-bar-border: #c8dcf0;
   --cal-radius: 0;
   --cal-cell-pad: 0.35rem;
   --cal-weekday-pad-y: 0.45rem;
@@ -867,7 +867,9 @@
 
 .calendar-monthly-span-bar--todo {
   z-index: 2;
-  background-color: var(--bar-bg, var(--cal-short-span-bar-bg));
+  background: transparent;
+  background-color: transparent;
+  border: 1px dashed var(--bar-border, var(--cal-short-span-bar-border));
 }
 
 .calendar-monthly-span-bar.is-completed {
