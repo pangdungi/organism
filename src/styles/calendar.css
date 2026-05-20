@@ -633,6 +633,14 @@
   background: var(--cal-surface);
 }
 
+/* 막대 줄 높이 재측정 전: 갭이 넓어 보였다 줄어드는 깜빡임 완화 */
+.calendar-monthly-grid.calendar-monthly-grid--layout-pending {
+  visibility: hidden;
+}
+.calendar-monthly-grid.calendar-monthly-grid--layout-ready {
+  visibility: visible;
+}
+
 /* 월별 뷰만: 그리드 카드 전체의 아래 외곽 보더 제거(연간 등은 유지) */
 .calendar-monthly-layout.calendar-subview-monthly
   > .calendar-monthly-main

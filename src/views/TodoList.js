@@ -43,6 +43,7 @@ import {
   upsertCalendarSectionTaskDirectFromModal,
   upsertCalendarSectionTaskRowFromSessionMemory,
 } from "../utils/todoSectionTasksSupabase.js";
+import { snapshotSectionTasksSemanticForCompare } from "../utils/todoSectionTasksModel.js";
 import { logLpRender } from "../utils/lpRenderDebugLog.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
@@ -5143,6 +5144,7 @@ export function render(options = {}) {
   };
 
   let sectionResults = renderSections(sectionsWrap, allTasks, sectionOpts);
+  el._lpLastTodoSectionsPaintSig = snapshotSectionTasksSemanticForCompare();
 
   function taskItemPassesSectionListFilter(domEl) {
     const t = String(domEl?.dataset?.itemType || "todo").toLowerCase();
@@ -5353,6 +5355,8 @@ export function render(options = {}) {
   /** 캘린더 할일 본문: App pull 후 __lpCalendarSoftRefresh가 통째 새로 그리며 상단 탭까지 깜빡임 → 패널만 교체할 때 호출 */
   function remountTodoSectionsAfterCalendarPull() {
     if (!el.isConnected || !sectionsWrap.isConnected) return;
+    const sig = snapshotSectionTasksSemanticForCompare();
+    if (sig === el._lpLastTodoSectionsPaintSig) return;
     sectionResults = renderSections(
       sectionsWrap,
       gatherAllTasksForTodoListPanels(),
@@ -5368,6 +5372,7 @@ export function render(options = {}) {
     reconnectTodoSectionsMutationObserver();
     updateTabLabels();
     if (categoryToolbarRightActions) todoMobileSearchSync();
+    el._lpLastTodoSectionsPaintSig = snapshotSectionTasksSemanticForCompare();
   }
   el._lpRemountTodoSectionsAfterCalendarPull =
     remountTodoSectionsAfterCalendarPull;

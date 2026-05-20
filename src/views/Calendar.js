@@ -37,6 +37,8 @@ import {
   upsertCalendarSectionTaskDirectFromModal,
   upsertCalendarSectionTaskRowFromSessionMemory,
 } from "../utils/todoSectionTasksSupabase.js";
+import { snapshotSectionTasksSemanticForCompare } from "../utils/todoSectionTasksModel.js";
+import { TIME_LEDGER_ENTRIES_KEY } from "../utils/timeLedgerEntriesModel.js";
 import {
   pullTimeLedgerEntriesForDateRange,
   timeLedgerLocalTodayYmd,
@@ -261,6 +263,50 @@ function lpCalendarMonthlyWeekRowTargetMinHeightRem(
   return Math.max(floor, stackHeight);
 }
 
+function snapshotCalendarGridPaintSignature(viewContext = "") {
+  let ledger = "";
+  try {
+    ledger = localStorage.getItem(TIME_LEDGER_ENTRIES_KEY) ?? "";
+  } catch (_) {}
+  return `${snapshotSectionTasksSemanticForCompare()}\x1e${ledger}\x1e${viewContext}`;
+}
+
+/** pull·소프트 갱신: 할일 데이터가 같으면 renderCalendar 생략 */
+function lpAttachCalendarGridRefreshGuard(wrap, runRender, viewContextFn = () => "") {
+  wrap._lpRefreshCalendarView = () => {
+    const sig = snapshotCalendarGridPaintSignature(viewContextFn());
+    if (sig === wrap._lpLastCalendarGridPaintSig) return;
+    runRender();
+  };
+  wrap._lpRememberCalendarGridPaintSig = () => {
+    wrap._lpLastCalendarGridPaintSig = snapshotCalendarGridPaintSignature(
+      viewContextFn(),
+    );
+  };
+}
+
+/** 막대 top·주 행 높이 재측정이 끝날 때까지 격자 깜빡임(큰 갭→좁아짐) 완화 */
+function lpBeginCalendarGridLayoutPass(calendarGrid) {
+  if (!calendarGrid) {
+    return { trackWeek: () => () => {} };
+  }
+  calendarGrid.classList.add("calendar-monthly-grid--layout-pending");
+  calendarGrid.classList.remove("calendar-monthly-grid--layout-ready");
+  let pending = 0;
+  const finishWeek = () => {
+    pending -= 1;
+    if (pending > 0 || !calendarGrid.isConnected) return;
+    calendarGrid.classList.remove("calendar-monthly-grid--layout-pending");
+    calendarGrid.classList.add("calendar-monthly-grid--layout-ready");
+  };
+  return {
+    trackWeek() {
+      pending += 1;
+      return finishWeek;
+    },
+  };
+}
+
 /** 월간 막대: 줄바꿈 반영 후 행별 실제 높이로 top·주 행 minHeight 맞춤(행 겹침 방지). */
 function lpCalendarFinalizeBarRowLayout(
   barsWithRow,
@@ -269,9 +315,13 @@ function lpCalendarFinalizeBarRowLayout(
   BARS_TOP,
   BOTTOM_PAD,
   ROW_GAP,
+  onSettled,
 ) {
   const gap = Number.isFinite(ROW_GAP) ? Math.max(0, ROW_GAP) : 0;
-  if (!barsWithRow.length || !weekRow) return;
+  if (!barsWithRow.length || !weekRow) {
+    onSettled?.();
+    return;
+  }
   const { WEEK_ROW_MIN } = lpCalendarWeekBarLayoutMetrics(weekRow);
   const maxRow = Math.max(...barsWithRow.map((b) => b.row), 0);
   const baseTop = BARS_TOP + 0.1;
@@ -317,6 +367,8 @@ function lpCalendarFinalizeBarRowLayout(
     pass += 1;
     if (pass < maxPasses && barsWithRow.some((b) => b._barEl?.isConnected)) {
       requestAnimationFrame(step);
+    } else {
+      onSettled?.();
     }
   };
   requestAnimationFrame(step);
@@ -1846,6 +1898,7 @@ function renderMonthlyView(tabsElement) {
       String(currentYear);
 
     calendarGrid.innerHTML = "";
+    const layoutPass = lpBeginCalendarGridLayoutPass(calendarGrid);
 
     const dayHeader = document.createElement("div");
     dayHeader.className = "calendar-monthly-weekdays";
@@ -2213,6 +2266,7 @@ function renderMonthlyView(tabsElement) {
         b._barEl = bar;
         barsEl.appendChild(bar);
       });
+      const weekLayoutDone = layoutPass.trackWeek();
       lpCalendarFinalizeBarRowLayout(
         barsWithRow,
         weekRow,
@@ -2220,6 +2274,7 @@ function renderMonthlyView(tabsElement) {
         BARS_TOP,
         BOTTOM_PAD,
         ROW_GAP,
+        weekLayoutDone,
       );
       const moreEl = document.createElement("div");
       moreEl.className = "calendar-day-more-overlay";
@@ -2371,6 +2426,7 @@ function renderMonthlyView(tabsElement) {
       weekWrap.appendChild(moreEl);
       calendarGrid.appendChild(weekWrap);
     });
+    wrap._lpRememberCalendarGridPaintSig?.();
   }
 
   function goPrevMonth() {
@@ -2463,11 +2519,12 @@ function renderMonthlyView(tabsElement) {
       .forEach((el) => el.classList.remove("calendar-day-drag-over"));
   });
 
+  lpAttachCalendarGridRefreshGuard(
+    wrap,
+    renderCalendar,
+    () => `${currentYear}-${currentMonth}`,
+  );
   renderCalendar();
-
-  wrap._lpRefreshCalendarView = () => {
-    renderCalendar();
-  };
 
   return wrap;
 }
@@ -3783,6 +3840,7 @@ function render1WeekView(tabsElement) {
     calendarGrid.innerHTML = "";
     calendarGrid.className =
       "calendar-monthly-grid calendar-monthly-grid--1week-timegrid";
+    const layoutPass = lpBeginCalendarGridLayoutPass(calendarGrid);
 
     const todayYmd = timeLedgerLocalTodayYmd();
     const prodColorsExpected = getTimeCategoryColorsForTimetableExpected();
@@ -4147,6 +4205,7 @@ function render1WeekView(tabsElement) {
       b._barEl = bar;
       barsEl.appendChild(bar);
     });
+    const weekLayoutDone = layoutPass.trackWeek();
     lpCalendarFinalizeBarRowLayout(
       barsWithRow,
       weekRow,
@@ -4154,6 +4213,7 @@ function render1WeekView(tabsElement) {
       BARS_TOP,
       BOTTOM_PAD,
       ROW_GAP,
+      weekLayoutDone,
     );
     const moreEl = document.createElement("div");
     moreEl.className = "calendar-day-more-overlay";
@@ -4517,6 +4577,7 @@ function render1WeekView(tabsElement) {
     });
     execStrip.appendChild(execRow);
     flowHScrollInner.appendChild(execStrip);
+    wrap._lpRememberCalendarGridPaintSig?.();
   }
 
   lpCalendarNavQ(nav, wrap, ".calendar-nav-today").addEventListener(
@@ -4552,11 +4613,14 @@ function render1WeekView(tabsElement) {
   });
 
   /* 상위 renderSubView 가 같은 주간에 이미 시간·예산을 pull 한 뒤 호출함 — 여기서 또 pull 하면 전체 격자가 연달아 다시 그려져 줄이 여러 번 튐 */
+  lpAttachCalendarGridRefreshGuard(
+    wrap,
+    () => {
+      void renderCalendar({ skipWeekPull: true });
+    },
+    () => `1week-${weekOffset}`,
+  );
   void renderCalendar({ skipWeekPull: true });
-
-  wrap._lpRefreshCalendarView = () => {
-    void renderCalendar({ skipWeekPull: true });
-  };
 
   return wrap;
 }
@@ -5037,9 +5101,25 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
     }
     localStorage.setItem(storageKey, subViewId);
 
-    if (skipPull) return;
+    if (skipPull) {
+      if (gen !== _nestedSubViewGen) return;
+      const layout = contentArea.querySelector(".calendar-monthly-layout");
+      try {
+        layout?._lpRefreshCalendarView?.();
+      } catch (_) {}
+      return;
+    }
 
     void (async () => {
+      if (
+        typeof window !== "undefined" &&
+        window.__lpCalendarGridPrefetchedForTabSwitch
+      ) {
+        try {
+          window.__lpCalendarGridPrefetchedForTabSwitch = false;
+        } catch (_) {}
+        return;
+      }
       if (subViewId === "1day") {
         try {
           await pullTimeLedgerTasksFromSupabase();
@@ -5106,8 +5186,15 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
   mountScheduleSubViewFooterActions();
   void renderSubView(initialSubView);
 
-  /** App.setActiveTab 에서 이미 pull 한 뒤 — contentWrap 통째 remount 대신 현재 월별/주 뷰만 다시 그림(상단·서브탭 DOM 유지) */
+  /** App.setActiveTab 에서 이미 pull 한 뒤 — 격자만 갱신(서브뷰 통째 remount·행 높이 재튐 방지) */
   wrap._lpCalendarSoftPullRefresh = () => {
+    const layout = contentArea.querySelector(".calendar-monthly-layout");
+    if (layout?._lpRefreshCalendarView) {
+      try {
+        layout._lpRefreshCalendarView();
+      } catch (_) {}
+      return;
+    }
     void renderSubView(activeSubViewId, { skipPull: true });
   };
 

@@ -475,6 +475,14 @@ export async function mountApp(container) {
             window.__lpDiaryLedgerPrefetchedForTabSwitch = true;
           } catch (_) {}
         }
+        if (
+          targetTabId === "calendar" ||
+          targetTabId === "schedulecalendar"
+        ) {
+          try {
+            window.__lpCalendarGridPrefetchedForTabSwitch = true;
+          } catch (_) {}
+        }
         const pullPromise = pullDataForActiveTab(targetTabId, {
           fromBoot: false,
         });
@@ -485,6 +493,7 @@ export async function mountApp(container) {
         if (currentTabId !== targetTabId) {
           try {
             window.__lpDiaryLedgerPrefetchedForTabSwitch = false;
+            window.__lpCalendarGridPrefetchedForTabSwitch = false;
           } catch (_) {}
           return;
         }
@@ -885,6 +894,11 @@ export async function mountApp(container) {
         window.__lpDiaryLedgerPrefetchedForTabSwitch = true;
       } catch (_) {}
     }
+    if (bootTabId === "calendar" || bootTabId === "schedulecalendar") {
+      try {
+        window.__lpCalendarGridPrefetchedForTabSwitch = true;
+      } catch (_) {}
+    }
     /* 로컬·메모리 상태로 먼저 화면 표시 — PWA 재실행·탭 복귀 후 네트워크 대기로 빈 화면이 길게 보이지 않게 */
     const pullPromise = pullDataForActiveTab(bootTabId, { fromBoot: true });
     renderMain(main);
@@ -894,6 +908,7 @@ export async function mountApp(container) {
     if (currentTabId !== bootTabId) {
       try {
         window.__lpDiaryLedgerPrefetchedForTabSwitch = false;
+        window.__lpCalendarGridPrefetchedForTabSwitch = false;
       } catch (_) {}
       return;
     }

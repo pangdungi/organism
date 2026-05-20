@@ -10,6 +10,7 @@ import {
   ensureTab3Entries,
   newDiaryEntryId,
   isDiaryEntryUuid,
+  snapshotDiarySessionForRefresh,
   TAB3_EMOTION_TEMPLATE,
   TAB3_EMOTION_PLACEHOLDERS,
 } from "../diaryData.js";
@@ -21,7 +22,11 @@ import {
   pullTimeLedgerEntriesForDateRange,
   readTimeLedgerPullRangeForKpiTabsYmd,
 } from "../utils/timeLedgerEntriesSupabase.js";
-import { filterTimeLedgerEntriesByYmdTen } from "../utils/timeLedgerEntriesModel.js";
+import {
+  filterTimeLedgerEntriesByYmdTen,
+  TIME_LEDGER_ENTRIES_KEY,
+} from "../utils/timeLedgerEntriesModel.js";
+import { TIME_DAILY_BUDGET_GOALS_KEY } from "../utils/timeDailyBudgetModel.js";
 import {
   getSectionColor,
   getTimeCategoryColorsForTimetableExpected,
@@ -612,6 +617,8 @@ export function render() {
 
   /** pull 완료 후 renderLayout 한 번 — 동기화 루프 방지 */
   let reportLedgerRefreshFromPull = false;
+  /** 탭 pull 직후: 로컬 지문이 같으면 renderLayout 생략(아이콘·본문 이중 그림 방지) */
+  let lastTimeReportDataSignature = "";
   const LP_TAB3_REPORT_DATE_KEY = "lp_tab3_report_anchor_date";
   let tab3ReportAnchorDateStr = (() => {
     try {
@@ -2293,6 +2300,41 @@ export function render() {
     return bar;
   }
 
+  function snapshotTimeReportDataSignature() {
+    let ledger = "";
+    try {
+      ledger = [
+        localStorage.getItem(TIME_LEDGER_ENTRIES_KEY) ?? "",
+        localStorage.getItem(TIME_DAILY_BUDGET_GOALS_KEY) ?? "",
+      ].join("\n");
+    } catch (_) {}
+    let diary = "";
+    try {
+      diary = snapshotDiarySessionForRefresh();
+    } catch (_) {}
+    return [
+      currentTabId,
+      tab2ViewGranularity,
+      tab3ViewGranularity,
+      tab4ViewGranularity,
+      tab5ViewGranularity,
+      tab2ReportAnchorDateStr,
+      tab3ReportAnchorDateStr,
+      tab4ReportAnchorDateStr,
+      tab5ReportAnchorDateStr,
+      layoutWrap.dataset.tab2SelectedDate ?? "",
+      layoutWrap.dataset.tab3SelectedDate ?? "",
+      layoutWrap.dataset.tab4SelectedDate ?? "",
+      layoutWrap.dataset.tab5SelectedDate ?? "",
+      diary,
+      ledger,
+    ].join("\x1e");
+  }
+
+  function rememberTimeReportDataSignature() {
+    lastTimeReportDataSignature = snapshotTimeReportDataSignature();
+  }
+
   function renderLayout() {
     /* 앱 탭 진입 시 이미 시간기록 범위 pull 예정·진행 중이면 본문에서 같은 pull 을 또 걸지 않음(연속 깜빡임 방지) */
     const skipDupLedgerPull =
@@ -2694,6 +2736,14 @@ export function render() {
     layoutWrap.appendChild(layout);
 
     syncDiaryFooterSubtabs();
+    if (
+      currentTabId === "2" ||
+      currentTabId === "3" ||
+      currentTabId === "4" ||
+      currentTabId === "5"
+    ) {
+      rememberTimeReportDataSignature();
+    }
   }
 
     function diarySoftRefreshAfterTabPull() {
@@ -2703,6 +2753,8 @@ export function render() {
         if (currentEntryId && !alist.some((e) => e.id === currentEntryId)) {
           currentEntryId = alist.length > 0 ? alist[0].id : null;
         }
+        const sig = snapshotTimeReportDataSignature();
+        if (sig === lastTimeReportDataSignature) return;
         renderLayout();
       } catch (_) {}
     }

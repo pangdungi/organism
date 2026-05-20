@@ -272,6 +272,12 @@ body {
 }
 
 .app-home-menu-launcher-card {
+  --lp-home-menu-tile-bg: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.97) 0%,
+    #f9fbfd 52%,
+    #f4f7fb 100%
+  );
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
@@ -281,17 +287,10 @@ body {
   max-width: none;
   margin: 0;
   padding: 0.35rem 0 0;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.97) 0%,
-    #f9fbfd 52%,
-    #f4f7fb 100%
-  );
+  background: #fff;
   border: none;
-  border-radius: 1rem;
-  box-shadow:
-    0 -10px 40px rgba(15, 35, 70, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  border-radius: 1rem 1rem 0 0;
+  box-shadow: 0 -10px 40px rgba(15, 35, 70, 0.14);
 }
 
 .app-home-menu-launcher-card .app-home-menu-launcher-body {
@@ -445,18 +444,12 @@ body {
   letter-spacing: -0.03em;
   text-align: left;
   color: #2b3240;
-  background: linear-gradient(
-    165deg,
-    rgba(255, 255, 255, 0.98) 0%,
-    rgba(252, 253, 255, 0.96) 45%,
-    rgba(246, 249, 253, 0.98) 100%
-  );
-  border: 1px solid rgba(255, 255, 255, 0.65);
+  background: var(--lp-home-menu-tile-bg);
+  border: 1px solid rgba(58, 110, 168, 0.14);
   border-radius: 12px;
   box-shadow:
     0 2px 10px rgba(30, 77, 123, 0.07),
-    0 1px 0 rgba(255, 255, 255, 0.95) inset,
-    0 -1px 0 rgba(30, 77, 123, 0.05) inset;
+    0 1px 0 rgba(255, 255, 255, 0.92) inset;
   transition:
     color 0.12s ease,
     background 0.12s ease,
@@ -467,17 +460,11 @@ body {
 
 .app-home-menu-launcher-btn:hover {
   color: #1a2330;
-  background: linear-gradient(
-    165deg,
-    #ffffff 0%,
-    rgba(252, 254, 255, 1) 50%,
-    rgba(247, 250, 254, 1) 100%
-  );
-  border-color: rgba(210, 226, 242, 0.95);
+  background: linear-gradient(180deg, #fff 0%, #f6f9fc 55%, #eef3f8 100%);
+  border-color: rgba(58, 110, 168, 0.22);
   box-shadow:
     0 4px 14px rgba(30, 77, 123, 0.1),
-    0 1px 0 rgba(255, 255, 255, 1) inset,
-    0 -1px 0 rgba(30, 77, 123, 0.04) inset;
+    0 1px 0 rgba(255, 255, 255, 0.95) inset;
 }
 
 .app-home-menu-launcher-btn:focus-visible {
