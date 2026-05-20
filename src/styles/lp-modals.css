@@ -2059,3 +2059,21 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
     grid-template-columns: 1fr;
   }
 }
+
+/* 모바일·좁은 화면: 모달을 상단부터 (내용이 잘 보이도록) */
+@media (max-width: 48rem) {
+  .time-task-setup-modal,
+  .todo-list-modal,
+  .diary-desktop-compose-modal,
+  [data-legacy~="time-task-setup-modal"],
+  [data-legacy~="todo-list-modal"],
+  [data-legacy~="diary-desktop-compose-modal"],
+  .time-task-log-todo-inner-modal,
+  .time-task-log-expense-inner-modal,
+  [data-legacy~="time-task-log-todo-inner-modal"],
+  [data-legacy~="time-task-log-expense-inner-modal"] {
+    align-items: flex-start;
+    padding-top: max(1rem, env(safe-area-inset-top, 0px));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  }
+}
