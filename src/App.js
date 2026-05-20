@@ -330,6 +330,7 @@ function migrateRemoveRoutineTasks() {
 
 export async function mountApp(container) {
   if (!container) return;
+  if (container.querySelector(".app-page")) return;
   /* 로그아웃 등으로 저장소가 비었는데 메모리 탭만 남으면 크롬·첫 화면이 어긋남 → 오늘로 고정 */
   if (!applyPersistedTabIdFromSessionStorage()) currentTabId = "home";
   if (currentTabId === "admin" && supabase) {
@@ -873,8 +874,9 @@ export async function mountApp(container) {
   appScreen.appendChild(footerNav);
   appPage.appendChild(appScreen);
   container.appendChild(appPage);
+  /* 로컬·메모리로 먼저 한 프레임 그림 — 스플래시·서버 pull 대기와 분리 */
+  renderMain(main);
   void (async () => {
-    await syncAdminMenuVisibility();
     const bootTabId = currentTabId;
     if (bootTabId === "time") {
       try {
@@ -891,14 +893,13 @@ export async function mountApp(container) {
         window.__lpCalendarGridPrefetchedForTabSwitch = true;
       } catch (_) {}
     }
-    /* 로컬·메모리 상태로 먼저 화면 표시 — PWA 재실행·탭 복귀 후 네트워크 대기로 빈 화면이 길게 보이지 않게 */
     const pullPromise = Promise.all([
+      syncAdminMenuVisibility(),
       pullDataForActiveTab(bootTabId, { fromBoot: true }),
       supabase
         ? pullTimeLedgerTasksFromSupabase().catch(() => {})
         : Promise.resolve(),
     ]);
-    renderMain(main);
     try {
       await pullPromise;
     } catch (_) {}

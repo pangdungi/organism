@@ -43,8 +43,6 @@ import { consumeSupabaseAuthRedirectErrors } from "./utils/authRedirectErrorUi.j
 import {
   enforceSubscriptionAccessOrSignOut,
   SUBSCRIPTION_EXPIRED_MESSAGE,
-  fetchSubscriptionGateSnapshot,
-  subscriptionInactiveAccessEnded,
   syncSubscriptionAccessAutoSignOut,
 } from "./utils/subscriptionAccess.js";
 
@@ -95,9 +93,15 @@ function setLpAuthBootPending(on) {
   } catch (_) {}
 }
 
-/** 저장된 세션·자동 로그인: 로그인 폼 없이 앱만 연다. 구독은 기본적으로 마운트 뒤 비동기 확인 */
+/** 저장된 세션·자동 로그인: 로그인 폼 없이 앱만 연다. 구독 조회는 수동 로그인 때만( enforceSubscriptionBeforeMount ) */
 async function enterAuthenticatedApp(opts = {}) {
   const { enforceSubscriptionBeforeMount = false } = opts;
+  const screen = document.getElementById("app-screen");
+  if (screen?.querySelector(".app-page")) {
+    lpAppMounted = true;
+    showOnly("signin");
+    return;
+  }
   if (lpAppMounted) return;
   if (lpEnterAppPromise) return lpEnterAppPromise;
 
@@ -113,23 +117,13 @@ async function enterAuthenticatedApp(opts = {}) {
     lpAppMounted = true;
     showOnly("signin");
     void pullUserPrefsFromSupabase().catch(() => {});
-    await prepareTimeLedgerStorageForCurrentSession();
-    await mountApp(document.getElementById("app-screen"));
+    await Promise.all([
+      prepareTimeLedgerStorageForCurrentSession(),
+      mountApp(screen),
+    ]);
     if (enforceSubscriptionBeforeMount) {
       wireSubscriptionDeadlineAutoLogout();
-      return;
     }
-    void (async () => {
-      try {
-        const snapPre = await fetchSubscriptionGateSnapshot();
-        if (subscriptionInactiveAccessEnded(snapPre)) {
-          window.alert(SUBSCRIPTION_EXPIRED_MESSAGE);
-          await signOut();
-          return;
-        }
-        wireSubscriptionDeadlineAutoLogout();
-      } catch (_) {}
-    })();
   })();
 
   try {
@@ -437,7 +431,8 @@ function init() {
           goToPasswordResetUi();
           return;
         }
-        await enterAuthenticatedApp();
+        showOnly("signin");
+        void enterAuthenticatedApp();
         return;
       }
       showOnly("login");
@@ -447,57 +442,39 @@ function init() {
     }
   }
 
-  async function dismissAppSplash() {
+  function hideAppSplashNow() {
     const splash = document.getElementById("app-splash");
-    /* 0: 기동 직후 바로 본화면 — 인위적 대기 없음 */
-    const minVisibleMs = 0;
-    const t0 =
-      typeof performance !== "undefined" ? performance.now() : Date.now();
+    if (!splash || splash.hasAttribute("hidden")) return;
+    splash.classList.add("app-splash--exiting");
+    splash.setAttribute("aria-busy", "false");
+    let finished = false;
+    const done = () => {
+      if (finished) return;
+      finished = true;
+      splash.removeEventListener("transitionend", onTransitionEnd);
+      splash.setAttribute("hidden", "");
+      splash.setAttribute("aria-hidden", "true");
+    };
+    const onTransitionEnd = (ev) => {
+      if (ev.target === splash && ev.propertyName === "opacity") done();
+    };
+    splash.addEventListener("transitionend", onTransitionEnd);
+    setTimeout(done, 280);
+  }
+
+  async function dismissAppSplash() {
     try {
       await showInitialPage();
     } catch (_e) {
     } finally {
-      const elapsed =
-        (typeof performance !== "undefined" ? performance.now() : Date.now()) -
-        t0;
-      const rest = Math.max(0, minVisibleMs - elapsed);
-      if (rest > 0) {
-        await new Promise((r) => setTimeout(r, rest));
-      }
-      if (!splash) return;
-      splash.classList.add("app-splash--exiting");
-      let finished = false;
-      const done = () => {
-        if (finished) return;
-        finished = true;
-        splash.removeEventListener("transitionend", onTransitionEnd);
-        splash.setAttribute("hidden", "");
-        splash.setAttribute("aria-hidden", "true");
-      };
-      const onTransitionEnd = (ev) => {
-        if (ev.target === splash && ev.propertyName === "opacity") done();
-      };
-      splash.addEventListener("transitionend", onTransitionEnd);
-      setTimeout(done, 520);
+      hideAppSplashNow();
     }
   }
 
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState !== "visible") return;
-    void (async () => {
-      if (!supabase) return;
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) return;
-      const snap = await fetchSubscriptionGateSnapshot();
-      if (subscriptionInactiveAccessEnded(snap)) {
-        window.alert(SUBSCRIPTION_EXPIRED_MESSAGE);
-        await signOut();
-        return;
-      }
-      wireSubscriptionDeadlineAutoLogout();
-    })();
+  window.addEventListener("pageshow", (ev) => {
+    if (!ev.persisted) return;
+    hideAppSplashNow();
+    setLpAuthBootPending(false);
   });
 
   dismissAppSplash();
