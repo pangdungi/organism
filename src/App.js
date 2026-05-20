@@ -351,14 +351,6 @@ export async function mountApp(container) {
   syncLpTopSafeChromeFromTab(currentTabId);
   initPushReminderInAppPopup();
   migrateRemoveRoutineTasks();
-  try {
-    if (supabase) {
-      const {
-        data: { session } = {},
-      } = await supabase.auth.getSession();
-      if (session?.user?.id) await pullTimeLedgerTasksFromSupabase();
-    }
-  } catch (_) {}
   attachHealthKpiMapSaveListener();
   attachHappinessKpiMapSaveListener();
   attachDreamKpiMapSaveListener();
@@ -900,7 +892,12 @@ export async function mountApp(container) {
       } catch (_) {}
     }
     /* 로컬·메모리 상태로 먼저 화면 표시 — PWA 재실행·탭 복귀 후 네트워크 대기로 빈 화면이 길게 보이지 않게 */
-    const pullPromise = pullDataForActiveTab(bootTabId, { fromBoot: true });
+    const pullPromise = Promise.all([
+      pullDataForActiveTab(bootTabId, { fromBoot: true }),
+      supabase
+        ? pullTimeLedgerTasksFromSupabase().catch(() => {})
+        : Promise.resolve(),
+    ]);
     renderMain(main);
     try {
       await pullPromise;

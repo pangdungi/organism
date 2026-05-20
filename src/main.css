@@ -22,6 +22,11 @@
   background: #fff;
 }
 
+/** 앱 기동·세션 복구 중: 로그인 폼·자동완성이 스플래시 뒤에 보이지 않게 */
+html.lp-auth-booting #app > .page {
+  display: none !important;
+}
+
 /**
  * 로그인·비번재설정 게이트 + 오늘(메인) + 시간가계부: 상단 세이프 존까지 네이비로 이어 보이게.
  * syncLpTopSafeChromeLoginGate / syncLpTopSafeChromeFromTab 가 html·body 클래스 토글.

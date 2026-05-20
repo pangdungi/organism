@@ -86,6 +86,61 @@ async function prepareTimeLedgerStorageForCurrentSession() {
   await ensureTimeLedgerStorageReady();
 }
 
+let lpAppMounted = false;
+let lpEnterAppPromise = null;
+
+function setLpAuthBootPending(on) {
+  try {
+    document.documentElement.classList.toggle("lp-auth-booting", !!on);
+  } catch (_) {}
+}
+
+/** 저장된 세션·자동 로그인: 로그인 폼 없이 앱만 연다. 구독은 기본적으로 마운트 뒤 비동기 확인 */
+async function enterAuthenticatedApp(opts = {}) {
+  const { enforceSubscriptionBeforeMount = false } = opts;
+  if (lpAppMounted) return;
+  if (lpEnterAppPromise) return lpEnterAppPromise;
+
+  lpEnterAppPromise = (async () => {
+    if (enforceSubscriptionBeforeMount) {
+      const blocked = await enforceSubscriptionAccessOrSignOut();
+      if (blocked) {
+        window.alert(SUBSCRIPTION_EXPIRED_MESSAGE);
+        await signOut();
+        return;
+      }
+    }
+    lpAppMounted = true;
+    showOnly("signin");
+    void pullUserPrefsFromSupabase().catch(() => {});
+    await prepareTimeLedgerStorageForCurrentSession();
+    await mountApp(document.getElementById("app-screen"));
+    if (enforceSubscriptionBeforeMount) {
+      wireSubscriptionDeadlineAutoLogout();
+      return;
+    }
+    void (async () => {
+      try {
+        const snapPre = await fetchSubscriptionGateSnapshot();
+        if (subscriptionInactiveAccessEnded(snapPre)) {
+          window.alert(SUBSCRIPTION_EXPIRED_MESSAGE);
+          await signOut();
+          return;
+        }
+        wireSubscriptionDeadlineAutoLogout();
+      } catch (_) {}
+    })();
+  })();
+
+  try {
+    await lpEnterAppPromise;
+  } catch (_e) {
+    lpAppMounted = false;
+  } finally {
+    lpEnterAppPromise = null;
+  }
+}
+
 function setAuthGatePanel(mode) {
   closeAuthPwRecoveryModal();
   const signupEl = document.getElementById("auth-panel-signup");
@@ -130,6 +185,7 @@ function closeAuthPwRecoveryModal() {
 }
 
 function init() {
+  setLpAuthBootPending(true);
   consumeSupabaseAuthRedirectErrors();
 
   const app = document.getElementById("app");
@@ -243,7 +299,17 @@ function init() {
       goToPasswordResetUi();
       return;
     }
+    if (
+      (event === "SIGNED_IN" || event === "INITIAL_SESSION") &&
+      session &&
+      !lpAppMounted
+    ) {
+      void enterAuthenticatedApp();
+      return;
+    }
     if (event === "SIGNED_OUT") {
+      lpAppMounted = false;
+      lpEnterAppPromise = null;
       try {
         sessionStorage.removeItem(LP_LAST_TAB_SESSION_KEY);
         localStorage.removeItem(LP_LAST_TAB_LOCAL_KEY);
@@ -342,54 +408,43 @@ function init() {
   const AUTH_GET_SESSION_MS = 30_000;
 
   async function showInitialPage() {
-    if (!supabase) {
-      showOnly("login");
-      setAuthGatePanel("login");
-      return;
-    }
-    let session = null;
+    setLpAuthBootPending(true);
     try {
-      const res = await Promise.race([
-        supabase.auth.getSession(),
-        new Promise((_, reject) =>
-          setTimeout(
-            () => reject(new Error("auth_get_session_timeout")),
-            AUTH_GET_SESSION_MS,
-          ),
-        ),
-      ]);
-      session = res?.data?.session ?? null;
-    } catch (_e) {
-      showOnly("login");
-      setAuthGatePanel("login");
-      return;
-    }
-    if (session) {
-      if (isPasswordRecoverySession(session) || hasPasswordRecoveryUrlHint()) {
-        goToPasswordResetUi();
+      if (!supabase) {
+        showOnly("login");
+        setAuthGatePanel("login");
         return;
       }
-      showOnly("signin");
-      /* 시급·appearance·타임존 RPC는 네트워크 지연 시 스플래시가 멈추지 않도록 비동기로만 실행 */
-      void pullUserPrefsFromSupabase().catch(() => {});
-      await prepareTimeLedgerStorageForCurrentSession();
-      await mountApp(document.getElementById("app-screen"));
-      /* 구독 스냅샷은 스플래시를 막지 않도록 마운트 뒤 확인·자동 로그아웃 예약 */
-      void (async () => {
-        try {
-          const snapPre = await fetchSubscriptionGateSnapshot();
-          if (subscriptionInactiveAccessEnded(snapPre)) {
-            window.alert(SUBSCRIPTION_EXPIRED_MESSAGE);
-            await signOut();
-            return;
-          }
-          wireSubscriptionDeadlineAutoLogout();
-        } catch (_) {}
-      })();
-      return;
+      let session = null;
+      try {
+        const res = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error("auth_get_session_timeout")),
+              AUTH_GET_SESSION_MS,
+            ),
+          ),
+        ]);
+        session = res?.data?.session ?? null;
+      } catch (_e) {
+        showOnly("login");
+        setAuthGatePanel("login");
+        return;
+      }
+      if (session) {
+        if (isPasswordRecoverySession(session) || hasPasswordRecoveryUrlHint()) {
+          goToPasswordResetUi();
+          return;
+        }
+        await enterAuthenticatedApp();
+        return;
+      }
+      showOnly("login");
+      setAuthGatePanel("login");
+    } finally {
+      setLpAuthBootPending(false);
     }
-    showOnly("login");
-    setAuthGatePanel("login");
   }
 
   async function dismissAppSplash() {
@@ -453,17 +508,12 @@ async function doLogin() {
   const pw = document.getElementById("login-pw")?.value || "";
   const result = await login(id, pw);
   if (result.ok) {
-    const blockedBySubscription = await enforceSubscriptionAccessOrSignOut();
-    if (blockedBySubscription) {
-      window.alert(SUBSCRIPTION_EXPIRED_MESSAGE);
-      await signOut();
-      return;
+    setLpAuthBootPending(true);
+    try {
+      await enterAuthenticatedApp({ enforceSubscriptionBeforeMount: true });
+    } finally {
+      setLpAuthBootPending(false);
     }
-    showOnly("signin");
-    void pullUserPrefsFromSupabase().catch(() => {});
-    await prepareTimeLedgerStorageForCurrentSession();
-    await mountApp(document.getElementById("app-screen"));
-    wireSubscriptionDeadlineAutoLogout();
   } else {
     showToast(result.msg);
   }
@@ -489,12 +539,13 @@ async function doSignUp() {
   // 이메일 확인(Confirm email)이 켜져 있으면 signUp 직후 session 은 null → 메일 안내
   const session = result.data?.session;
   if (session) {
-    showOnly("signin");
-    void pullUserPrefsFromSupabase().catch(() => {});
-    await prepareTimeLedgerStorageForCurrentSession();
-    await mountApp(document.getElementById("app-screen"));
+    setLpAuthBootPending(true);
+    try {
+      await enterAuthenticatedApp({ enforceSubscriptionBeforeMount: true });
+    } finally {
+      setLpAuthBootPending(false);
+    }
     showToast("가입이 완료됐어요.", "메인 화면으로 들어갔어요.");
-    wireSubscriptionDeadlineAutoLogout();
     return;
   }
   showToast(
