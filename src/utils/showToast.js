@@ -3,13 +3,22 @@
  * @param {string} message - 메인 메시지
  * @param {string} [subMessage] - 서브 메시지 (작게 회색으로 표시)
  */
+const TOAST_AUTO_DISMISS_MS = 5200;
+const TOAST_AUTO_DISMISS_WITH_SUB_MS = 6800;
+
+/** 열려 있는 토스트만 제거(다른 UI는 건드리지 않음) */
+export function dismissAppToast() {
+  try {
+    document.querySelector(".app-toast-modal")?.remove();
+  } catch (_) {}
+}
+
 export function showToast(message, subMessage) {
-  let overlay = document.querySelector(".app-toast-modal");
-  if (overlay) overlay.remove();
+  dismissAppToast();
 
   const mainHtml = formatToastMainHtml(message);
   const subHtml = subMessage ? `<p class="app-toast-sub">${escapeHtml(subMessage)}</p>` : "";
-  overlay = document.createElement("div");
+  const overlay = document.createElement("div");
   overlay.className = "app-toast-modal";
   overlay.setAttribute("role", "alertdialog");
   overlay.setAttribute("aria-modal", "true");
@@ -23,12 +32,24 @@ export function showToast(message, subMessage) {
     </div>
   `;
 
-  const close = () => overlay.remove();
+  let autoTimer = null;
+  const close = () => {
+    if (autoTimer != null) {
+      clearTimeout(autoTimer);
+      autoTimer = null;
+    }
+    try {
+      overlay.remove();
+    } catch (_) {}
+  };
 
   overlay.querySelector(".app-toast-backdrop").addEventListener("click", close);
   overlay.querySelector(".app-toast-btn").addEventListener("click", close);
 
   document.body.appendChild(overlay);
+
+  const autoMs = subMessage ? TOAST_AUTO_DISMISS_WITH_SUB_MS : TOAST_AUTO_DISMISS_MS;
+  autoTimer = setTimeout(close, autoMs);
 }
 
 function formatToastMainHtml(message) {

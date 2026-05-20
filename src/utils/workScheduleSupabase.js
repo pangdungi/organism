@@ -1,16 +1,13 @@
 /**
- * 근무·식단표 ↔ Supabase
+ * 스탬프 캘린더 ↔ Supabase
  *
- * 테이블 (로컬 필드 → 컬럼):
- * - work_schedule_settings     daily_work_hours
- * - work_schedule_types        name, start_time, end_time, sort_order, kind (stored as 'work')
- * - work_schedule_entries      work_date, start/end_time, work_type, memo, hours, hours_worked, id
+ * - stamp_types              사용자별 스탬프 정의 (id, name, sort_order, is_builtin)
+ * - stamp_calendar_entries   날짜별 스탬프 (stamp_id FK)
  *
- * 스키마: supabase/migrations/20260419120000_work_schedule_meal_schema.sql (Supabase SQL Editor에 실행)
+ * 스키마: supabase/migrations/20260520120000_stamp_calendar_tables.sql
  *
- * pull(읽기): App 탭 전환(근무-식단표) 시, 그리고 유형 설정 모달을 열 때만.
- * **서버에 쓰기(push)는** `work-schedule-saved` 이벤트로만 — 일정 저장/삭제, 유형 설정 모달에서 **「저장」** 을 눌렀을 때만 dispatch.
- * 탭에서 로컬을 서버에 임의로 올리거나, 푸시 직후 자동 pull로 덮어쓰지 않음.
+ * pull: 탭 진입·설정·날짜/스탬프 모달 열 때 (types / entries 옵션)
+ * push: work-schedule-saved 이벤트 — types(설정 저장·스탬프 편집 저장), entries(날짜 모달 저장·삭제)
  */
 
 import { supabase } from "../supabase.js";
@@ -20,16 +17,34 @@ import {
   writeWorkScheduleRowsToMem,
   readWorkScheduleTypeOptionsRawFromMem,
   writeWorkScheduleTypeOptionsRawToMem,
-  readWorkScheduleDailyHoursFromMem,
-  writeWorkScheduleDailyHoursToMem,
 } from "./workScheduleModel.js";
 import { runWorkScheduleSerialized } from "./workScheduleServerSyncSerial.js";
 import { workScheduleDiagLog } from "./workScheduleDiag.js";
 import { lpPullDebug } from "./lpPullDebug.js";
 import { showToast } from "./showToast.js";
 
+const TYPES_TABLE = "stamp_types";
+const ENTRIES_TABLE = "stamp_calendar_entries";
+
+const STAMP_SCHEMA_MIGRATION =
+  "20260520120000_stamp_calendar_tables.sql";
+
+const DEFAULT_BUILTIN_NAMES = ["연차", "휴가", "정규근무"];
+
+const DEFAULT_TYPE_SEED = DEFAULT_BUILTIN_NAMES.map((name) => ({
+  name,
+  is_builtin: true,
+}));
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function wsSyncLog(...args) {
   workScheduleDiagLog("[sync]", ...args);
+}
+
+function isUuid(s) {
+  return typeof s === "string" && UUID_RE.test(s.trim());
 }
 
 function snapshotWorkScheduleMemForCompare() {
@@ -43,104 +58,10 @@ function snapshotWorkScheduleMemForCompare() {
     return JSON.stringify({
       rows,
       types: readWorkScheduleTypeOptionsRawFromMem(),
-      dh: readWorkScheduleDailyHoursFromMem(),
     });
   } catch (_) {
     return "";
   }
-}
-
-const SETTINGS_TABLE = "work_schedule_settings";
-const TYPES_TABLE = "work_schedule_types";
-const ENTRIES_TABLE = "work_schedule_entries";
-
-const DEFAULT_TYPE_SEED = [
-  { name: "연차", start: "", end: "", kind: "work" },
-  { name: "휴가", start: "", end: "", kind: "work" },
-  { name: "정규근무", start: "", end: "", kind: "work" },
-];
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-function isUuid(s) {
-  return typeof s === "string" && UUID_RE.test(s.trim());
-}
-
-function parseLocalTypes() {
-  const raw = readWorkScheduleTypeOptionsRawFromMem();
-  return Array.isArray(raw) ? raw : [];
-}
-
-function normalizeTypeEntry(o) {
-  if (typeof o === "string")
-    return {
-      name: (o || "").trim(),
-      start: "",
-      end: "",
-      kind: "work",
-      addedAt: 0,
-    };
-  void o.kind;
-  const ar = o?.addedAt;
-  const addedAt =
-    typeof ar === "number" && Number.isFinite(ar) ? ar : 0;
-  return {
-    name: (o.name || "").trim(),
-    start: (o.start != null ? String(o.start) : "").trim(),
-    end: (o.end != null ? String(o.end) : "").trim(),
-    kind: "work",
-    addedAt,
-  };
-}
-
-/** 서버 근무유형 행 → 로컬 옵션 배열(기본 순서 + 서버 정렬) */
-function typeOptionsFromServerRows(serverRows) {
-  const rows = Array.isArray(serverRows) ? serverRows : [];
-  const byName = new Map(
-    rows.map((r) => [
-      r.name,
-      {
-        name: r.name,
-        start: (r.start_time != null ? String(r.start_time) : "").trim(),
-        end: (r.end_time != null ? String(r.end_time) : "").trim(),
-        kind: "work",
-      },
-    ]),
-  );
-  const out = [];
-  for (const d of DEFAULT_TYPE_SEED) {
-    const s = byName.get(d.name);
-    out.push(
-      s
-        ? {
-            name: d.name,
-            start: s.start,
-            end: s.end,
-            kind: "work",
-          }
-        : { name: d.name, start: d.start, end: d.end, kind: "work" },
-    );
-    byName.delete(d.name);
-  }
-  const rest = [...rows]
-    .filter((r) => r && r.name && !DEFAULT_TYPE_SEED.some((d) => d.name === r.name))
-    .sort((a, b) => {
-      const so = (a.sort_order ?? 0) - (b.sort_order ?? 0);
-      if (so !== 0) return so;
-      return String(a.name).localeCompare(String(b.name));
-    })
-    .map((r) => ({
-      name: r.name,
-      start: (r.start_time != null ? String(r.start_time) : "").trim(),
-      end: (r.end_time != null ? String(r.end_time) : "").trim(),
-      kind: "work",
-    }));
-  return [...out, ...rest];
-}
-
-function loadLocalRows() {
-  return readWorkScheduleRowsFromMem();
 }
 
 function formatLocalYmdFromDate(d) {
@@ -150,36 +71,127 @@ function formatLocalYmdFromDate(d) {
   return `${y}-${m}-${day}`;
 }
 
-function serverEntryToLocal(row) {
-  const d = row.work_date;
+function normalizeLocalTypeEntry(o) {
+  if (!o || typeof o !== "object") return null;
+  const name = (o.name || "").trim();
+  if (!name) return null;
+  const id = (o.id != null ? String(o.id).trim() : "") || "";
+  const ar = o.addedAt;
+  const addedAt =
+    typeof ar === "number" && Number.isFinite(ar) ? ar : 0;
+  return {
+    id: isUuid(id) ? id : "",
+    name,
+    start: "",
+    end: "",
+    kind: "work",
+    isBuiltin: !!o.isBuiltin || DEFAULT_BUILTIN_NAMES.includes(name),
+    addedAt,
+  };
+}
+
+/** 서버 stamp_types → 로컬 옵션(기본 3개 병합) */
+function typeOptionsFromServerRows(serverRows) {
+  const rows = Array.isArray(serverRows) ? serverRows : [];
+  const byName = new Map(
+    rows.map((r) => [
+      r.name,
+      {
+        id: r.id,
+        name: r.name,
+        isBuiltin: !!r.is_builtin,
+        addedAt: 0,
+      },
+    ]),
+  );
+  const out = [];
+  for (const d of DEFAULT_TYPE_SEED) {
+    const s = byName.get(d.name);
+    out.push(
+      s
+        ? {
+            id: s.id,
+            name: d.name,
+            start: "",
+            end: "",
+            kind: "work",
+            isBuiltin: true,
+            addedAt: 0,
+          }
+        : {
+            id: "",
+            name: d.name,
+            start: "",
+            end: "",
+            kind: "work",
+            isBuiltin: true,
+            addedAt: 0,
+          },
+    );
+    byName.delete(d.name);
+  }
+  const rest = [...rows]
+    .filter((r) => r && r.name && !DEFAULT_BUILTIN_NAMES.includes(r.name))
+    .sort((a, b) => {
+      const so = (a.sort_order ?? 0) - (b.sort_order ?? 0);
+      if (so !== 0) return so;
+      return String(a.name).localeCompare(String(b.name), "ko");
+    })
+    .map((r) => ({
+      id: r.id,
+      name: r.name,
+      start: "",
+      end: "",
+      kind: "work",
+      isBuiltin: !!r.is_builtin,
+      addedAt: 0,
+    }));
+  return [...out, ...rest];
+}
+
+function buildTypeNameByIdMap(types) {
+  const m = new Map();
+  (Array.isArray(types) ? types : []).forEach((t) => {
+    const norm = normalizeLocalTypeEntry(t);
+    if (norm?.id) m.set(norm.id, norm.name);
+  });
+  return m;
+}
+
+function serverEntryToLocal(row, nameByStampId) {
+  const d = row.entry_date;
   const workDate =
     typeof d === "string"
       ? d.slice(0, 10)
       : d instanceof Date
         ? formatLocalYmdFromDate(d)
         : String(d || "").slice(0, 10);
+  const stampId = row.stamp_id != null ? String(row.stamp_id) : "";
+  const workType =
+    (stampId && nameByStampId.get(stampId)) ||
+    (row.stamp_types?.name != null ? String(row.stamp_types.name) : "") ||
+    "";
   return {
     id: row.id,
-    startTime: row.start_time != null ? String(row.start_time) : "",
-    endTime: row.end_time != null ? String(row.end_time) : "",
-    workType: row.work_type != null ? String(row.work_type) : "",
-    memo: row.memo != null ? String(row.memo) : "",
-    hours: row.hours != null ? String(row.hours) : "",
-    hoursWorked: row.hours_worked != null ? String(row.hours_worked) : "",
+    stampId,
+    workType,
+    startTime: "",
+    endTime: "",
+    memo: "",
+    hours: "",
+    hoursWorked: "",
     workDate,
   };
 }
 
-function rowHasAnyPayload(r) {
-  return !!(
-    String(r.startTime || "").trim() ||
-    String(r.endTime || "").trim() ||
-    String(r.workType || "").trim() ||
-    String(r.hoursWorked || "").trim() ||
-    String(r.workDate || "").trim() ||
-    String(r.hours || "").trim() ||
-    String(r.memo || "").trim()
-  );
+function parseLocalTypes() {
+  const raw = readWorkScheduleTypeOptionsRawFromMem();
+  if (!Array.isArray(raw)) return [];
+  return raw.map(normalizeLocalTypeEntry).filter(Boolean);
+}
+
+function loadLocalRows() {
+  return readWorkScheduleRowsFromMem();
 }
 
 function normalizeWorkDateStr(r) {
@@ -190,39 +202,26 @@ function isValidYmd(s) {
   return /^\d{4}-\d{2}-\d{2}$/.test(s);
 }
 
-/** @param {string} userId @param {Array<{ name: string, start?: string, end?: string, kind?: string }>} typeList */
-async function upsertWorkScheduleTypesToSupabase(userId, typeList) {
-  const typeUpserts = typeList.map((t, i) => ({
-    user_id: userId,
-    name: t.name,
-    start_time: t.start || "",
-    end_time: t.end || "",
-    kind: "work",
-    sort_order: i,
-  }));
-  if (typeUpserts.length === 0) {
-    return { ok: true, count: 0 };
+function rowHasStampPayload(r, nameById) {
+  const wd = normalizeWorkDateStr(r);
+  if (!isValidYmd(wd)) return false;
+  const stampId = String(r.stampId || "").trim();
+  if (isUuid(stampId)) return true;
+  const wt = String(r.workType || "").trim();
+  if (!wt) return false;
+  for (const [id, name] of nameById) {
+    if (name === wt) return true;
   }
-  const { error } = await supabase
-    .from(TYPES_TABLE)
-    .upsert(typeUpserts, { onConflict: "user_id,name" });
-  if (error) return { ok: false, error };
-  return { ok: true, count: typeUpserts.length };
+  return false;
 }
 
-/** 유형 upsert 성공 후에만 호출: 로컬 목록에 없는 원격 유형만 삭제 */
-async function deleteOrphanWorkScheduleTypesRemote(userId, localTypeNames) {
-  const typeNames = new Set(localTypeNames);
-  const { data: remoteTypes, error: rtErr } = await supabase
-    .from(TYPES_TABLE)
-    .select("name")
-    .eq("user_id", userId);
-  if (rtErr || !remoteTypes) return;
-  for (const r of remoteTypes) {
-    if (!typeNames.has(r.name)) {
-      await supabase.from(TYPES_TABLE).delete().eq("user_id", userId).eq("name", r.name);
-    }
-  }
+function resolveStampIdForRow(r, types) {
+  const direct = String(r?.stampId || "").trim();
+  if (isUuid(direct)) return direct;
+  const wt = String(r?.workType || "").trim();
+  if (!wt) return "";
+  const hit = types.find((t) => t.name === wt);
+  return hit?.id && isUuid(hit.id) ? hit.id : "";
 }
 
 async function getSessionUserId() {
@@ -234,278 +233,227 @@ async function getSessionUserId() {
 }
 
 /**
- * @param {{ includeTypes?: boolean }} [opts]
- * - includeTypes: true일 때만 서버에서 근무·식단 유형을 가져와 메모에 반영 (유형 설정 모달을 열 때만 사용)
+ * @param {{ includeTypes?: boolean, includeEntries?: boolean }} [opts]
  */
 async function pullWorkScheduleFromSupabaseImpl(opts = {}) {
-  const includeTypes = !!opts.includeTypes;
+  const includeTypes = opts.includeTypes !== false;
+  const includeEntries = opts.includeEntries !== false;
   const userId = await getSessionUserId();
   if (!userId || !supabase) return null;
 
-  const pulls = [
-    supabase.from(SETTINGS_TABLE).select("daily_work_hours").eq("user_id", userId).maybeSingle(),
-    supabase
-      .from(ENTRIES_TABLE)
-      .select("id, work_date, start_time, end_time, work_type, memo, hours, hours_worked")
-      .eq("user_id", userId)
-      .order("work_date", { ascending: true })
-      .order("start_time", { ascending: true }),
-  ];
-  if (includeTypes) {
-    pulls.splice(
-      1,
-      0,
-      supabase
-        .from(TYPES_TABLE)
-        .select("name, start_time, end_time, sort_order, kind")
-        .eq("user_id", userId)
-        .order("sort_order", { ascending: true })
-        .order("name", { ascending: true }),
-    );
-  }
-  const results = await Promise.all(pulls);
-  const settingsRes = results[0];
-  const typesRes = includeTypes ? results[1] : { data: null, error: null };
-  const entriesRes = includeTypes ? results[2] : results[1];
+  let typesForMem = null;
+  let nameByStampId = buildTypeNameByIdMap(parseLocalTypes());
 
   if (includeTypes) {
+    const typesRes = await supabase
+      .from(TYPES_TABLE)
+      .select("id, name, sort_order, is_builtin")
+      .eq("user_id", userId)
+      .order("sort_order", { ascending: true })
+      .order("name", { ascending: true });
+
     if (!typesRes.error) {
       const serverRows = Array.isArray(typesRes.data) ? typesRes.data : [];
-      const localRaw = readWorkScheduleTypeOptionsRawFromMem();
-      let typesForMem = typeOptionsFromServerRows(serverRows);
-      const serverCustomNames = new Set(
-        serverRows
-          .filter(
-            (r) =>
-              r &&
-              r.name &&
-              !DEFAULT_TYPE_SEED.some((d) => d.name === r.name),
-          )
-          .map((r) => String(r.name).trim())
-          .filter(Boolean),
-      );
-      const namesInMerged = new Set(typesForMem.map((t) => t.name));
-      const extras = [];
-      if (Array.isArray(localRaw)) {
-        for (const entry of localRaw) {
-          const norm = normalizeTypeEntry(entry);
-          const name = (norm.name || "").trim();
-          if (!name || DEFAULT_TYPE_SEED.some((d) => d.name === name)) continue;
-          if (serverCustomNames.has(name) || namesInMerged.has(name)) continue;
-          extras.push({
-            name,
-            start: (norm.start != null ? String(norm.start) : "").trim(),
-            end: (norm.end != null ? String(norm.end) : "").trim(),
-            kind: "work",
-            addedAt:
-              typeof norm.addedAt === "number" && Number.isFinite(norm.addedAt)
-                ? norm.addedAt
-                : 0,
-          });
-          namesInMerged.add(name);
-        }
-      }
-      if (extras.length > 0) {
-        wsSyncLog(
-          "pull: work_schedule_types — 서버에 없는 로컬·미러 커스텀 유형 병합",
-          extras.length,
-        );
-        typesForMem = [...typesForMem, ...extras];
-      }
+      typesForMem = typeOptionsFromServerRows(serverRows);
       writeWorkScheduleTypeOptionsRawToMem(typesForMem);
-      wsSyncLog("pull: types → mem", serverRows.length, "merged", typesForMem.length);
+      nameByStampId = buildTypeNameByIdMap(typesForMem);
+      wsSyncLog("pull: stamp_types → mem", serverRows.length);
     } else {
-      wsSyncLog("pull: work_schedule_types 조회 오류 — 유형 메모 유지", typesRes.error);
+      wsSyncLog("pull: stamp_types error", typesRes.error);
       try {
         console.warn(
-          "[근무-식단표 동기화] 유형 불러오기 실패:",
+          "[스탬프 캘린더] 유형 불러오기 실패:",
           typesRes.error?.message || typesRes.error,
-          "(kind 컬럼 없으면 마이그레이션 적용 필요)",
+          `(SQL: ${STAMP_SCHEMA_MIGRATION})`,
         );
       } catch (_) {}
     }
-  } else {
-    wsSyncLog("pull: work_schedule_types — 생략 (includeTypes false)");
   }
 
   let resolvedRows = loadLocalRows();
-  if (!entriesRes.error) {
-    const rowsFromServer = (entriesRes.data || []).map(serverEntryToLocal);
-    resolvedRows = applyWorkScheduleRowTimesFromTypes(rowsFromServer);
-    writeWorkScheduleRowsToMem(resolvedRows);
-    wsSyncLog(
-      "pull: server snapshot → mem",
-      "entries",
-      (entriesRes.data || []).length,
-      "resolved",
-      resolvedRows.length,
-    );
-  } else {
-    wsSyncLog("pull: entries error — rows mem unchanged", loadLocalRows().length);
-  }
+  if (includeEntries) {
+    const entriesRes = await supabase
+      .from(ENTRIES_TABLE)
+      .select("id, entry_date, stamp_id, stamp_types ( name )")
+      .eq("user_id", userId)
+      .order("entry_date", { ascending: true });
 
-  if (!settingsRes.error) {
-    const serverHours = settingsRes.data?.daily_work_hours;
-    if (serverHours != null && !Number.isNaN(Number(serverHours))) {
-      writeWorkScheduleDailyHoursToMem(Number(serverHours));
+    if (!entriesRes.error) {
+      const rowsFromServer = (entriesRes.data || []).map((row) =>
+        serverEntryToLocal(row, nameByStampId),
+      );
+      resolvedRows = applyWorkScheduleRowTimesFromTypes(rowsFromServer);
+      writeWorkScheduleRowsToMem(resolvedRows);
+      wsSyncLog(
+        "pull: stamp_calendar_entries → mem",
+        (entriesRes.data || []).length,
+      );
+    } else {
+      wsSyncLog("pull: entries error", entriesRes.error);
     }
   }
 
-  return { rows: resolvedRows };
+  return { rows: resolvedRows, types: typesForMem };
 }
 
-/** 로그인·동기화 시 서버 스냅샷 → 세션 메모리 (opts.includeTypes 기본 false) */
 export async function pullWorkScheduleFromSupabase(opts = {}) {
   return runWorkScheduleSerialized(() => pullWorkScheduleFromSupabaseImpl(opts));
 }
 
+/** 스탬프 목록만 서버에서 pull (모달·설정용) */
+export async function pullStampTypesFromSupabase() {
+  return pullWorkScheduleFromSupabase({
+    includeTypes: true,
+    includeEntries: false,
+  });
+}
+
+async function upsertStampTypesToSupabase(userId, typeList) {
+  const upserts = [];
+  typeList.forEach((t, i) => {
+    let id = (t.id != null ? String(t.id).trim() : "") || "";
+    if (!isUuid(id)) id = crypto.randomUUID();
+    upserts.push({
+      id,
+      user_id: userId,
+      name: t.name,
+      sort_order: i,
+      is_builtin: !!t.isBuiltin || DEFAULT_BUILTIN_NAMES.includes(t.name),
+    });
+  });
+  if (upserts.length === 0) return { ok: true, count: 0, upserts: [] };
+  const { error } = await supabase
+    .from(TYPES_TABLE)
+    .upsert(upserts, { onConflict: "id" });
+  if (error) return { ok: false, error, upserts: [] };
+  return { ok: true, count: upserts.length, upserts };
+}
+
+async function deleteOrphanStampTypesRemote(userId, localTypeIds) {
+  const keep = new Set(localTypeIds.filter(isUuid));
+  const { data: remoteTypes, error: rtErr } = await supabase
+    .from(TYPES_TABLE)
+    .select("id")
+    .eq("user_id", userId);
+  if (rtErr || !remoteTypes) return;
+  for (const r of remoteTypes) {
+    const rid = String(r.id || "");
+    if (!rid || keep.has(rid)) continue;
+    await supabase
+      .from(ENTRIES_TABLE)
+      .delete()
+      .eq("user_id", userId)
+      .eq("stamp_id", rid);
+    await supabase.from(TYPES_TABLE).delete().eq("user_id", userId).eq("id", rid);
+  }
+}
+
 /**
  * @param {{ syncTypes?: boolean, syncEntries?: boolean }} [opts]
- * - syncTypes: 유형 설정에서 추가/삭제한 경우만 true
- * - syncEntries: 캘린더 행 저장 등 — 설정·일정 행만 서버 반영
  */
 async function syncWorkScheduleToSupabaseImpl(opts = {}) {
   const syncTypes = !!opts.syncTypes;
   const syncEntries = !!opts.syncEntries;
-  if (!syncTypes && !syncEntries) {
-    wsSyncLog("push: skip (syncTypes/syncEntries 모두 false)");
-    return;
-  }
+  if (!syncTypes && !syncEntries) return;
 
   const userId = await getSessionUserId();
   if (!userId || !supabase) return;
 
-  let daily_work_hours = 8.5;
-  if (syncEntries) {
-    let dailyStr = "8.5";
-    const dhMem = readWorkScheduleDailyHoursFromMem();
-    if (dhMem != null && !Number.isNaN(dhMem)) dailyStr = String(dhMem);
-    const dailyNum = parseFloat(dailyStr);
-    daily_work_hours = !Number.isNaN(dailyNum) && dailyNum >= 0 ? dailyNum : 8.5;
-  }
-
-  const rawTypes = parseLocalTypes();
-  let typeList =
-    rawTypes.length > 0
-      ? rawTypes.map(normalizeTypeEntry).filter((t) => t.name)
-      : typeOptionsFromServerRows([]);
-  if (typeList.length === 0) {
-    typeList = typeOptionsFromServerRows([]);
-  }
-
-  let rows = loadLocalRows();
-  rows = rows.map((r) => {
-    const id = r.id != null ? String(r.id).trim() : "";
-    if (isUuid(id)) return r;
-    return { ...r, id: crypto.randomUUID() };
-  });
-  rows = applyWorkScheduleRowTimesFromTypes(rows);
-  writeWorkScheduleRowsToMem(rows);
-
-  const idsStillInLocal = new Set(rows.map((r) => String(r.id || "").trim()).filter((id) => isUuid(id)));
-
-  const entryPayloads = syncEntries
-    ? rows
-        .filter(rowHasAnyPayload)
-        .map((r) => {
-          const wd = normalizeWorkDateStr(r);
-          if (!isValidYmd(wd)) return null;
-          const id = String(r.id || "").trim();
-          return {
-            id,
-            user_id: userId,
-            work_date: wd,
-            start_time: String(r.startTime || "").trim(),
-            end_time: String(r.endTime || "").trim(),
-            work_type: String(r.workType || "").trim(),
-            memo: String(r.memo || "").trim(),
-            hours: String(r.hours != null ? r.hours : "").trim(),
-            hours_worked: String(r.hoursWorked != null ? r.hoursWorked : "").trim(),
-          };
-        })
-        .filter(Boolean)
-    : [];
-
-  if (syncEntries) {
-    const { error: setErr } = await supabase.from(SETTINGS_TABLE).upsert(
-      { user_id: userId, daily_work_hours },
-      { onConflict: "user_id" },
-    );
+  let types = parseLocalTypes();
+  if (types.length === 0) {
+    types = typeOptionsFromServerRows([]).map(normalizeLocalTypeEntry).filter(Boolean);
   }
 
   if (syncTypes) {
-    const pushTypes = await upsertWorkScheduleTypesToSupabase(userId, typeList);
+    const pushTypes = await upsertStampTypesToSupabase(userId, types);
     if (!pushTypes.ok) {
       const tErr = pushTypes.error;
-      wsSyncLog(
-        "push: work_schedule_types upsert 실패 — 스키마·RLS·네트워크 확인",
-        tErr?.message || String(tErr),
-      );
-      try {
-        console.warn(
-          "[근무-식단표 동기화] 유형 저장 실패:",
-          tErr?.message || tErr,
-          "→ Supabase SQL에 supabase/migrations/20260419120000_work_schedule_meal_schema.sql 실행",
-        );
-      } catch (_) {}
+      wsSyncLog("push: stamp_types 실패", tErr?.message || String(tErr));
       try {
         showToast(
-          "서버에 근무·식단 유형을 저장하지 못했습니다.",
-          "Supabase 대시보드 → SQL에서 프로젝트 파일 20260419120000_work_schedule_meal_schema.sql 내용을 실행한 뒤 다시 시도해 주세요.",
+          "서버에 스탬프 목록을 저장하지 못했습니다.",
+          `Supabase SQL에서 ${STAMP_SCHEMA_MIGRATION} 내용을 실행한 뒤 다시 시도해 주세요.`,
         );
       } catch (_) {}
     } else {
-      if (pushTypes.count > 0) {
-        wsSyncLog("push: work_schedule_types upsert OK", pushTypes.count);
+      if (pushTypes.upserts?.length) {
+        writeWorkScheduleTypeOptionsRawToMem(
+          types.map((t, i) => ({
+            ...t,
+            id: pushTypes.upserts[i]?.id || t.id,
+          })),
+        );
+        types = parseLocalTypes();
       }
-      await deleteOrphanWorkScheduleTypesRemote(
+      await deleteOrphanStampTypesRemote(
         userId,
-        typeList.map((t) => t.name),
+        types.map((t) => t.id).filter(isUuid),
       );
     }
   }
 
-  if (syncEntries && entryPayloads.length > 0) {
-    await supabase.from(ENTRIES_TABLE).upsert(entryPayloads, { onConflict: "id" });
-  }
-
-  /* 원격에만 있는 work_schedule_entries 삭제(로컬 id 집합과 diff).
-   * 예전: entryPayloads.length > 0 일 때만 돌렸는데, 전부 지운 경우(로컬 [])는 payload가 비어
-   * 고아 삭제가 스킵되어, 직후 pull이 삭제한 행을 “부활”시킬 수 있음. */
   if (syncEntries) {
+    const nameById = buildTypeNameByIdMap(types);
+    let rows = loadLocalRows();
+    rows = rows.map((r) => {
+      const id = r.id != null ? String(r.id).trim() : "";
+      const stampId = resolveStampIdForRow(r, types);
+      const workType =
+        String(r.workType || "").trim() ||
+        (stampId ? nameById.get(stampId) : "") ||
+        "";
+      return {
+        ...r,
+        id: isUuid(id) ? id : crypto.randomUUID(),
+        stampId,
+        workType,
+      };
+    });
+    writeWorkScheduleRowsToMem(rows);
+
+    const idsStillInLocal = new Set(
+      rows.map((r) => String(r.id || "").trim()).filter(isUuid),
+    );
+
+    const entryPayloads = rows
+      .filter((r) => rowHasStampPayload(r, nameById))
+      .map((r) => {
+        const wd = normalizeWorkDateStr(r);
+        const stampId = resolveStampIdForRow(r, types);
+        if (!isUuid(stampId)) return null;
+        return {
+          id: String(r.id || "").trim(),
+          user_id: userId,
+          stamp_id: stampId,
+          entry_date: wd,
+        };
+      })
+      .filter(Boolean);
+
+    if (entryPayloads.length > 0) {
+      await supabase
+        .from(ENTRIES_TABLE)
+        .upsert(entryPayloads, { onConflict: "id" });
+    }
+
     const { data: remoteEntries, error: reErr } = await supabase
       .from(ENTRIES_TABLE)
       .select("id")
       .eq("user_id", userId);
-    const allowOrphanEntryDelete =
-      !reErr &&
-      Array.isArray(remoteEntries) &&
-      (entryPayloads.length > 0 ||
-        (rows.length === 0 && idsStillInLocal.size === 0) ||
-        (idsStillInLocal.size > 0 && entryPayloads.length === 0));
-    if (allowOrphanEntryDelete) {
-      wsSyncLog(
-        "push: orphan entry delete check, remote",
-        remoteEntries.length,
-        "local ids",
-        idsStillInLocal.size,
-        "entryPayloads",
-        entryPayloads.length,
-      );
+    if (!reErr && Array.isArray(remoteEntries)) {
       for (const r of remoteEntries) {
         if (!idsStillInLocal.has(r.id)) {
-          await supabase.from(ENTRIES_TABLE).delete().eq("user_id", userId).eq("id", r.id);
+          await supabase
+            .from(ENTRIES_TABLE)
+            .delete()
+            .eq("user_id", userId)
+            .eq("id", r.id);
         }
       }
-    } else if (!reErr && remoteEntries?.length) {
-      wsSyncLog("push: SKIP orphan entry delete (safety), rows", rows.length, "entries", entryPayloads.length);
     }
   }
-
-  /* 푸시 직후 자동 pull 제거: 서버 쓰기는 위에서 끝난 것이고, pull은 탭/모달에서만(읽기). */
 }
 
-/** 세션 메모리를 서버에 반영 (직렬 큐). opts 생략 시 types+entries 모두 (초기 빈 서버 업로드 등) */
 export async function syncWorkScheduleToSupabase(opts) {
   const o =
     opts && typeof opts === "object"
@@ -519,7 +467,6 @@ let _listenerAttached = false;
 export function attachWorkScheduleSaveListener() {
   if (_listenerAttached) return;
   _listenerAttached = true;
-  /* 근무-식단표: 서버에 반영은 이 이벤트로만(일정 저장·삭제, 유형 추가·삭제). */
   window.addEventListener("work-schedule-saved", (e) => {
     const d = (e && e.detail) || {};
     const syncTypes = !!d.types;
@@ -529,21 +476,18 @@ export function attachWorkScheduleSaveListener() {
   });
 }
 
-/**
- * App 근무-식단표 탭: 서버 **읽기**만(자동 push 없음). 메모·UI는 이후에 저장 시에만 서버에 올라감.
- * @returns {Promise<{ anyChanged: boolean }>}
- */
 export async function hydrateWorkScheduleFromCloud() {
-  lpPullDebug("hydrateWorkScheduleFromCloud", {});
-  wsSyncLog("tab: pull work_schedule (read only, no auto-push)");
+  lpPullDebug("hydrateStampCalendarFromCloud", {});
+  wsSyncLog("tab: pull stamp calendar (types+entries)");
   attachWorkScheduleSaveListener();
   if (!supabase) {
     return { anyChanged: false };
   }
   const beforeSnap = snapshotWorkScheduleMemForCompare();
-  await pullWorkScheduleFromSupabase({ includeTypes: false });
+  await pullWorkScheduleFromSupabase({
+    includeTypes: true,
+    includeEntries: true,
+  });
   const afterSnap = snapshotWorkScheduleMemForCompare();
-  const anyChanged = beforeSnap !== afterSnap;
-  wsSyncLog("tab: pull done", { anyChanged });
-  return { anyChanged };
+  return { anyChanged: beforeSnap !== afterSnap };
 }

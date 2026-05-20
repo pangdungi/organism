@@ -5843,7 +5843,6 @@ export function render(opts = {}) {
     if (taskLogFooterEl) taskLogFooterEl.style.display = "";
     if (taskLogDeleteBtn) taskLogDeleteBtn.hidden = true;
     taskLogModal.hidden = false;
-    taskLogModal.style.zIndex = "1002";
     document.body.style.overflow = "hidden";
     closeDateTimePicker();
     const bodyEl = taskLogModal.querySelector(
@@ -5971,7 +5970,6 @@ export function render(opts = {}) {
     if (taskLogDeleteBtn) taskLogDeleteBtn.hidden = false;
     setTaskLogQuickAdjustActive(null);
     taskLogModal.hidden = false;
-    taskLogModal.style.zIndex = "1002";
     document.body.style.overflow = "hidden";
     closeDateTimePicker();
     const bodyEl = taskLogModal.querySelector(

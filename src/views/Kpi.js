@@ -4,6 +4,8 @@
  * 부수입 탭: 부수입 목표 → 부수입 방법 → 할 일
  */
 
+import { showConfirmModal } from "../utils/confirmModal.js";
+
 const DREAM_MAP_STORAGE_KEY = "kpi-dream-map";
 const SIDEINCOME_MAP_STORAGE_KEY = "kpi-sideincome-map";
 const UNDO_MAX = 5;
@@ -74,34 +76,14 @@ function pushSideincomeHistory() {
   if (sideincomeHistory.length > UNDO_MAX) sideincomeHistory.shift();
 }
 
-function showConfirmModal(message) {
-  return new Promise((resolve) => {
-    let overlay = document.querySelector(".kpi-confirm-modal");
-    if (overlay) overlay.remove();
-
-    overlay = document.createElement("div");
-    overlay.className = "kpi-confirm-modal";
-    overlay.innerHTML = `
-      <div class="kpi-confirm-backdrop"></div>
-      <div class="kpi-confirm-panel">
-        <p class="kpi-confirm-message">${message}</p>
-        <p class="kpi-confirm-warn">삭제 시 복구 불가</p>
-        <div class="kpi-confirm-actions">
-          <button type="button" class="kpi-confirm-cancel">취소</button>
-          <button type="button" class="kpi-confirm-ok">삭제</button>
-        </div>
-      </div>
-    `;
-
-    const close = (result) => {
-      overlay.remove();
-      resolve(result);
-    };
-
-    overlay.querySelector(".kpi-confirm-cancel").addEventListener("click", () => close(false));
-    overlay.querySelector(".kpi-confirm-ok").addEventListener("click", () => close(true));
-
-    document.body.appendChild(overlay);
+function confirmKpiMindmapDelete(message) {
+  return showConfirmModal({
+    title: "삭제",
+    message,
+    warnMessage: "삭제 시 복구 불가",
+    confirmText: "삭제",
+    cancelText: "취소",
+    confirmDanger: true,
   });
 }
 
@@ -337,7 +319,7 @@ function renderDreamPanel(panel) {
     const goalIds = data.goals.filter((g) => g.dreamId === dreamId).map((g) => g.id);
     const childCount = goalIds.length + data.tasks.filter((t) => goalIds.includes(t.goalId)).length;
     if (childCount > 0) {
-      const ok = await showConfirmModal(`하위 항목 ${childCount}개도 함께 삭제됩니다. 삭제할까요?`);
+      const ok = await confirmKpiMindmapDelete(`하위 항목 ${childCount}개도 함께 삭제됩니다. 삭제할까요?`);
       if (!ok) return;
     }
     pushDreamHistory();
@@ -352,7 +334,7 @@ function renderDreamPanel(panel) {
     const data = loadDreamMap();
     const taskCount = data.tasks.filter((t) => t.goalId === goalId).length;
     if (taskCount > 0) {
-      const ok = await showConfirmModal(`하위 할 일 ${taskCount}개도 함께 삭제됩니다. 삭제할까요?`);
+      const ok = await confirmKpiMindmapDelete(`하위 할 일 ${taskCount}개도 함께 삭제됩니다. 삭제할까요?`);
       if (!ok) return;
     }
     pushDreamHistory();
@@ -510,7 +492,7 @@ function renderSideincomePanel(panel) {
     const methodIds = data.methods.filter((m) => m.goalId === goalId).map((m) => m.id);
     const childCount = methodIds.length + data.tasks.filter((t) => methodIds.includes(t.methodId)).length;
     if (childCount > 0) {
-      const ok = await showConfirmModal(`하위 항목 ${childCount}개도 함께 삭제됩니다. 삭제할까요?`);
+      const ok = await confirmKpiMindmapDelete(`하위 항목 ${childCount}개도 함께 삭제됩니다. 삭제할까요?`);
       if (!ok) return;
     }
     pushSideincomeHistory();
@@ -525,7 +507,7 @@ function renderSideincomePanel(panel) {
     const data = loadSideincomeMap();
     const taskCount = data.tasks.filter((t) => t.methodId === methodId).length;
     if (taskCount > 0) {
-      const ok = await showConfirmModal(`하위 할 일 ${taskCount}개도 함께 삭제됩니다. 삭제할까요?`);
+      const ok = await confirmKpiMindmapDelete(`하위 할 일 ${taskCount}개도 함께 삭제됩니다. 삭제할까요?`);
       if (!ok) return;
     }
     pushSideincomeHistory();

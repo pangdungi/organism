@@ -31,6 +31,11 @@ import {
 import { refreshEisenhowerQuadrantsIfActive } from "../utils/eisenhowerQuadrantsBridge.js";
 import { createTodoCheckboxTypeMenu } from "../utils/todoCheckboxTypeMenu.js";
 import { buildModalSimpleSelect } from "../utils/todoModalSimpleSelect.js";
+import { dismissAppToast } from "../utils/showToast.js";
+import {
+  LP_CONFIRM_STACK_CLASS,
+  syncBodyOverflowAfterModalClose,
+} from "../utils/lpModalStack.js";
 import {
   persistSectionTasksAndSchedule,
   persistCustomSectionTasksAndSchedule,
@@ -1079,6 +1084,82 @@ const TODO_TOOLBAR_SEARCH_ICON =
 const LIST_ICON =
   '<img src="/toolbaricons/list.svg" alt="세부 할 일" class="todo-list-icon" width="20" height="20">';
 
+/** 할일 탭당 document click 1개 — 행마다 리스너가 쌓이지 않게 */
+const categoryDropdownOutsideByTab = new WeakMap();
+
+function bindCategoryDropdownOutsideListeners(
+  tabSignal,
+  wrap,
+  panel,
+  closePanel,
+  updatePanelPosition,
+) {
+  const scrollResizeHandler = () => {
+    if (panel.hidden) return;
+    if (!wrap.isConnected) return;
+    updatePanelPosition();
+  };
+
+  if (!tabSignal) {
+    const ac = new AbortController();
+    const docClickClose = (e) => {
+      if (!wrap.isConnected) {
+        ac.abort();
+        return;
+      }
+      if (!wrap.contains(e.target)) closePanel();
+    };
+    document.addEventListener("click", docClickClose, { signal: ac.signal });
+    window.addEventListener("scroll", scrollResizeHandler, {
+      capture: true,
+      signal: ac.signal,
+    });
+    window.addEventListener("resize", scrollResizeHandler, { signal: ac.signal });
+    return;
+  }
+
+  let tabEntry = categoryDropdownOutsideByTab.get(tabSignal);
+  if (!tabEntry) {
+    const entries = [];
+    const docClickClose = (e) => {
+      for (let i = entries.length - 1; i >= 0; i--) {
+        const ent = entries[i];
+        if (!ent.wrap.isConnected) {
+          entries.splice(i, 1);
+          continue;
+        }
+        if (!ent.wrap.contains(e.target)) ent.closePanel();
+      }
+    };
+    const onScrollResize = () => {
+      for (let i = entries.length - 1; i >= 0; i--) {
+        const ent = entries[i];
+        if (!ent.wrap.isConnected) {
+          entries.splice(i, 1);
+          continue;
+        }
+        if (!ent.panel.hidden) ent.updatePanelPosition();
+      }
+    };
+    document.addEventListener("click", docClickClose);
+    window.addEventListener("scroll", onScrollResize, true);
+    window.addEventListener("resize", onScrollResize);
+    tabSignal.addEventListener(
+      "abort",
+      () => {
+        document.removeEventListener("click", docClickClose);
+        window.removeEventListener("scroll", onScrollResize, true);
+        window.removeEventListener("resize", onScrollResize);
+        categoryDropdownOutsideByTab.delete(tabSignal);
+      },
+      { once: true },
+    );
+    tabEntry = { entries };
+    categoryDropdownOutsideByTab.set(tabSignal, tabEntry);
+  }
+  tabEntry.entries.push({ wrap, panel, closePanel, updatePanelPosition });
+}
+
 /** @param {AbortSignal} [tabSignal] 할일 탭 이탈 시 document/window 리스너 정리 */
 function createCategoryDropdown(initialValue, onUpdate, tabSignal) {
   const wrap = document.createElement("div");
@@ -1305,26 +1386,13 @@ function createCategoryDropdown(initialValue, onUpdate, tabSignal) {
     }
   });
 
-  const docClickClose = (e) => {
-    if (!wrap.contains(e.target)) closePanel();
-  };
-  const scrollResizeHandler = () => {
-    if (!panel.hidden) updatePanelPosition();
-  };
-  if (tabSignal) {
-    document.addEventListener("click", docClickClose, { signal: tabSignal });
-    window.addEventListener("scroll", scrollResizeHandler, {
-      capture: true,
-      signal: tabSignal,
-    });
-    window.addEventListener("resize", scrollResizeHandler, {
-      signal: tabSignal,
-    });
-  } else {
-    document.addEventListener("click", docClickClose);
-    window.addEventListener("scroll", scrollResizeHandler, true);
-    window.addEventListener("resize", scrollResizeHandler);
-  }
+  bindCategoryDropdownOutsideListeners(
+    tabSignal,
+    wrap,
+    panel,
+    closePanel,
+    updatePanelPosition,
+  );
 
   wrap.appendChild(inputWrap);
   wrap.appendChild(panel);
@@ -1352,6 +1420,7 @@ function escapeConfirmHtml(s) {
 }
 
 function showConfirmModal(options = {}) {
+  dismissAppToast();
   const {
     title = "확인",
     message,
@@ -1362,7 +1431,7 @@ function showConfirmModal(options = {}) {
     onConfirm,
   } = options;
   const modal = document.createElement("div");
-  modal.className = "time-task-setup-modal";
+  modal.className = `time-task-setup-modal ${LP_CONFIRM_STACK_CLASS}`;
   const confirmBtnClass = confirmDanger
     ? "todo-list-modal-confirm todo-list-confirm-btn--danger"
     : "todo-list-modal-confirm todo-list-confirm-delete";
@@ -1390,7 +1459,7 @@ function showConfirmModal(options = {}) {
 
   function close() {
     modal.remove();
-    document.body.style.overflow = "";
+    syncBodyOverflowAfterModalClose();
   }
 
   confirmBtn.addEventListener("click", () => {
@@ -1405,7 +1474,7 @@ function showConfirmModal(options = {}) {
   });
 
   document.body.appendChild(modal);
-  document.body.style.overflow = "hidden";
+  if (!document.body.style.overflow) document.body.style.overflow = "hidden";
 }
 
 /** 모바일 전용: 날짜 선택 모달. 모달 안 input을 탭하면 네이티브 날짜 픽커가 열림 */

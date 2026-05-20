@@ -9,7 +9,9 @@ import {
 import { supabase } from "../supabase.js";
 import {
   attachWorkScheduleSaveListener,
+  pullStampTypesFromSupabase,
   pullWorkScheduleFromSupabase,
+  syncWorkScheduleToSupabase,
 } from "../utils/workScheduleSupabase.js";
 import { showToast } from "../utils/showToast.js";
 import { workScheduleDiagLog } from "../utils/workScheduleDiag.js";
@@ -76,23 +78,36 @@ const WORK_TYPE_DISPLAY_ORDER = DEFAULT_WORK_TYPE_OPTIONS.map((o) => o.name);
 const WORK_SCHEDULE_SETTINGS_ICON_SVG =
   '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m19.845 13.561c.1-.505.155-1.027.155-1.561s-.055-1.056-.155-1.561l1.806-1.489c.502-.414.632-1.132.307-1.696l-.869-1.508c-.325-.564-1.011-.811-1.62-.582l-2.198.825c-.779-.684-1.689-1.218-2.691-1.559l-.385-2.316c-.108-.643-.663-1.114-1.314-1.114h-1.738c-.651 0-1.206.471-1.313 1.114l-.386 2.316c-1.002.341-1.912.875-2.691 1.559l-2.198-.825c-.61-.228-1.295.018-1.62.582l-.87 1.508c-.325.564-.195 1.282.307 1.696l1.806 1.489c-.1.505-.155 1.026-.155 1.561s.055 1.056.155 1.561l-1.806 1.489c-.502.414-.632 1.132-.307 1.696l.869 1.508c.325.564 1.011.811 1.62.582l2.198-.825c.779.684 1.689 1.218 2.691 1.559l.385 2.316c.109.643.664 1.114 1.315 1.114h1.738c.651 0 1.206-.471 1.313-1.114l.385-2.316c1.002-.341 1.913-.875 2.691-1.559l2.198.825c.609.229 1.295-.017 1.62-.582l.869-1.508c.325-.564.196-1.282-.307-1.696z"/><circle cx="12.012" cy="12" r="3"/></g></svg>';
 
+const ENTRY_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isStampUuid(s) {
+  return typeof s === "string" && ENTRY_ID_RE.test(s.trim());
+}
+
 function normalizeTypeEntry(o) {
   if (typeof o === "string")
     return {
+      id: "",
       name: (o || "").trim(),
       start: "",
       end: "",
       kind: TYPE_KIND_WORK,
+      isBuiltin: DEFAULT_TYPE_NAMES.has((o || "").trim()),
       addedAt: 0,
     };
   const ar = o.addedAt;
   const addedAt =
     typeof ar === "number" && Number.isFinite(ar) ? ar : 0;
+  const name = (o.name || "").trim();
+  const id = (o.id != null ? String(o.id).trim() : "") || "";
   return {
-    name: (o.name || "").trim(),
+    id: isStampUuid(id) ? id : "",
+    name,
     start: (o.start != null ? String(o.start) : "").trim(),
     end: (o.end != null ? String(o.end) : "").trim(),
     kind: TYPE_KIND_WORK,
+    isBuiltin: !!o.isBuiltin || DEFAULT_TYPE_NAMES.has(name),
     addedAt,
   };
 }
@@ -124,10 +139,13 @@ function compareTypeEntriesForPersist(a, b) {
 
 function getWorkTypeOptionsFull() {
   const defaultFull = DEFAULT_WORK_TYPE_OPTIONS.map((o) => ({
+    id: "",
     name: o.name,
     start: o.start || "",
     end: o.end || "",
     kind: TYPE_KIND_WORK,
+    isBuiltin: true,
+    addedAt: 0,
   }));
   try {
     const arr = readWorkScheduleTypeOptionsRawFromMem();
@@ -140,10 +158,9 @@ function getWorkTypeOptionsFull() {
         merged.push(
           fromStorage
             ? {
+                ...fromStorage,
                 name: d.name,
-                start: fromStorage.start || d.start,
-                end: fromStorage.end || d.end,
-                kind: TYPE_KIND_WORK,
+                isBuiltin: true,
               }
             : { ...d },
         );
@@ -151,16 +168,7 @@ function getWorkTypeOptionsFull() {
       }
       for (const o of normalized) {
         if (seen.has(o.name)) continue;
-        merged.push({
-          name: o.name,
-          start: o.start || "",
-          end: o.end || "",
-          kind: TYPE_KIND_WORK,
-          addedAt:
-            typeof o.addedAt === "number" && Number.isFinite(o.addedAt)
-              ? o.addedAt
-              : 0,
-        });
+        merged.push({ ...o });
         seen.add(o.name);
       }
       merged.sort(compareTypeEntriesForPersist);
@@ -177,10 +185,12 @@ function sortTypeOptionsList(list) {
 /** 표시 목록 스냅샷과 동일한 객체로 유형 목록만 복제(모달 드래프트용). */
 function cloneWorkTypeOptionsForDraft() {
   return getWorkTypeOptionsFull().map((o) => ({
+    id: o.id || "",
     name: o.name,
     start: (o.start || "").trim(),
     end: (o.end || "").trim(),
     kind: TYPE_KIND_WORK,
+    isBuiltin: !!o.isBuiltin,
     addedAt:
       typeof o.addedAt === "number" && Number.isFinite(o.addedAt)
         ? o.addedAt
@@ -190,70 +200,31 @@ function cloneWorkTypeOptionsForDraft() {
 
 function persistWorkTypeDraftToMemAndSync(rawList) {
   const next = sortTypeOptionsList(
-    rawList.map((o) => ({
-      name: (o.name || "").trim(),
-      start: (o.start || "").trim(),
-      end: (o.end || "").trim(),
-      kind: TYPE_KIND_WORK,
-      addedAt:
-        typeof o.addedAt === "number" && Number.isFinite(o.addedAt)
-          ? o.addedAt
-          : 0,
-    })),
+    rawList.map((o) => {
+      const name = (o.name || "").trim();
+      let id = (o.id != null ? String(o.id).trim() : "") || "";
+      if (!isStampUuid(id)) {
+        id =
+          typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID()
+            : "";
+      }
+      return {
+        id,
+        name,
+        start: (o.start || "").trim(),
+        end: (o.end || "").trim(),
+        kind: TYPE_KIND_WORK,
+        isBuiltin: !!o.isBuiltin || DEFAULT_TYPE_NAMES.has(name),
+        addedAt:
+          typeof o.addedAt === "number" && Number.isFinite(o.addedAt)
+            ? o.addedAt
+            : 0,
+      };
+    }),
   );
   writeWorkScheduleTypeOptionsRawToMem(next);
   notifyWorkScheduleSaved({ types: true });
-}
-
-/** 유형 표시명 변경 시 일정 행의 workType 문자열이 옛 이름을 가리키면 캘린더가 안 바뀜 → 저장 시 같이 갱신 */
-function cascadeWorkScheduleEntriesWorkTypeRenames(renamePairs) {
-  if (!Array.isArray(renamePairs) || renamePairs.length === 0) return false;
-  let next = readWorkScheduleRowsFromMem();
-  let changed = false;
-  for (const pair of renamePairs) {
-    const from = String(pair?.from || "").trim();
-    const to = String(pair?.to || "").trim();
-    if (!from || !to || from === to) continue;
-    next = next.map((r) => {
-      const wt = String(r?.workType || "").trim();
-      if (wt !== from) return r;
-      changed = true;
-      return { ...r, workType: to };
-    });
-  }
-  if (changed) {
-    saveRows(next);
-  }
-  return changed;
-}
-
-/**
- * 예: 일정은 "생리"인데 유형만 "🩸 생리"로 바뀐 뒤 저장된 경우 — 유일한 후보면 행 문자열을 맞춤
- * (두 유형이 같은 짧은 문자열을 포함하면 스킵)
- */
-function repairWorkScheduleRowsWorkTypeByUniqueSuperstring(typeNameList) {
-  const names = Array.from(
-    new Set(
-      (Array.isArray(typeNameList) ? typeNameList : [])
-        .map((n) => String(n || "").trim())
-        .filter(Boolean),
-    ),
-  );
-  if (!names.length) return false;
-  const rows = readWorkScheduleRowsFromMem();
-  let changed = false;
-  const next = rows.map((r) => {
-    const wt = String(r?.workType || "").trim();
-    if (!wt || names.includes(wt)) return r;
-    const candidates = names.filter((n) => n.includes(wt));
-    if (candidates.length !== 1) return r;
-    changed = true;
-    return { ...r, workType: candidates[0] };
-  });
-  if (changed) {
-    saveRows(next);
-  }
-  return changed;
 }
 
 function loadRows() {
@@ -325,10 +296,18 @@ export function render(opts = {}) {
   settingsBtn.title = "스탬프 설정";
   settingsBtn.innerHTML = WORK_SCHEDULE_SETTINGS_ICON_SVG;
 
-  async function openWorkTypeSettingsModal() {
+  async function pullStampCalendarForUi() {
+    if (!supabase) return;
     try {
-      await pullWorkScheduleFromSupabase({ includeTypes: true });
+      await pullWorkScheduleFromSupabase({
+        includeTypes: true,
+        includeEntries: true,
+      });
     } catch (_) {}
+  }
+
+  async function openWorkTypeSettingsModal() {
+    await pullStampCalendarForUi();
     const modal = document.createElement("div");
     modal.className =
       "work-schedule-type-settings-modal todo-list-modal";
@@ -407,20 +386,9 @@ export function render(opts = {}) {
     /** 모달 안에서만 조작하고, 「저장」 시에 한 번 메모 반영 → 서버 동기화 */
     const draftTypes = cloneWorkTypeOptionsForDraft();
     draftTypes.sort(compareTypeEntriesForPersist);
-    const pendingWorkTypeRenames = [];
-
     function normalizeDraftPersistShape(arr = draftTypes) {
       return sortTypeOptionsList(
-        arr.map((o) => ({
-          name: (o.name || "").trim(),
-          start: (o.start || "").trim(),
-          end: (o.end || "").trim(),
-          kind: TYPE_KIND_WORK,
-          addedAt:
-            typeof o.addedAt === "number" && Number.isFinite(o.addedAt)
-              ? o.addedAt
-              : 0,
-        })),
+        arr.map((o) => normalizeTypeEntry(o)).filter((o) => o.name),
       );
     }
 
@@ -450,7 +418,10 @@ export function render(opts = {}) {
       stampEditHint.hidden = true;
     }
 
-    function openStampEditPopover(entryName, isProtected) {
+    async function openStampEditPopover(entryName, isProtected) {
+      try {
+        await pullStampTypesFromSupabase();
+      } catch (_) {}
       stampEditOrigName = entryName;
       stampEditName.value = entryName;
       if (isProtected) {
@@ -512,6 +483,8 @@ export function render(opts = {}) {
       draftTypes.splice(idx, 1);
       closeStampEditPopover();
       renderTypeListsFromDraft();
+      persistWorkTypeDraftToMemAndSync(draftTypes);
+      lastSavedComparable = draftComparableSnapshot();
     });
     stampEditSave.addEventListener("click", () => {
       const origName = stampEditOrigName;
@@ -563,10 +536,12 @@ export function render(opts = {}) {
         return;
       }
       t.name = newName;
-      pendingWorkTypeRenames.push({ from: origName, to: newName });
+      t.isBuiltin = DEFAULT_TYPE_NAMES.has(newName);
       draftTypes.sort(compareTypeEntriesForPersist);
       closeStampEditPopover();
       renderTypeListsFromDraft();
+      persistWorkTypeDraftToMemAndSync(draftTypes);
+      lastSavedComparable = draftComparableSnapshot();
     });
     stampEditName.addEventListener("keydown", (e) => {
       if (e.key !== "Enter") return;
@@ -643,10 +618,15 @@ export function render(opts = {}) {
         return;
       }
       draftTypes.push({
+        id:
+          typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID()
+            : "",
         name,
         start: "",
         end: "",
         kind: TYPE_KIND_WORK,
+        isBuiltin: false,
         addedAt: Date.now(),
       });
       draftTypes.sort(compareTypeEntriesForPersist);
@@ -684,14 +664,8 @@ export function render(opts = {}) {
         } catch (_) {}
         return;
       }
-      const renamesSnapshot = pendingWorkTypeRenames.slice();
       try {
         persistWorkTypeDraftToMemAndSync(draftTypes);
-        pendingWorkTypeRenames.length = 0;
-        cascadeWorkScheduleEntriesWorkTypeRenames(renamesSnapshot);
-        repairWorkScheduleRowsWorkTypeByUniqueSuperstring(
-          draftTypes.map((t) => String(t?.name || "").trim()).filter(Boolean),
-        );
         lastSavedComparable = draftComparableSnapshot();
         detachTypeSettingsModal();
       } catch (err) {
@@ -739,7 +713,7 @@ export function render(opts = {}) {
   }
 
 
-  settingsBtn.addEventListener("click", openWorkTypeSettingsModal);
+  settingsBtn.addEventListener("click", () => void openWorkTypeSettingsModal());
   const footerSlot = getAppFooterActionsSlot();
   if (footerSlot) {
     settingsBtn.className = APP_FOOTER_ICON_BTN_CLASS;
@@ -751,7 +725,8 @@ export function render(opts = {}) {
   el.appendChild(contentWrap);
 
   /** 월별보기: 날짜 셀 → 새 행 추가 / 근무 칩 → 해당 행 수정·삭제 */
-  function openMonthlyDayEntryModal(initialDateKey, editRowId = null) {
+  async function openMonthlyDayEntryModal(initialDateKey, editRowId = null) {
+    await pullStampCalendarForUi();
     const rowsAll = getMergedInitialRows();
     const existingRow =
       editRowId != null && String(editRowId).trim()
@@ -978,7 +953,7 @@ export function render(opts = {}) {
     selectWrap.appendChild(triggerBtn);
     selectWrap.appendChild(listEl);
 
-    function typeNamesForStampDayEntry() {
+    function stampOptionsForDayEntry() {
       const full = getWorkTypeOptionsFull();
       const out = [];
       const seen = new Set();
@@ -986,26 +961,43 @@ export function render(opts = {}) {
         const n = (o.name || "").trim();
         if (!n || seen.has(n)) return;
         seen.add(n);
-        out.push(n);
+        const id = (o.id || "").trim();
+        out.push({
+          value: isStampUuid(id) ? id : n,
+          label: n,
+        });
       });
       return out;
+    }
+
+    function resolveStampSelectValueFromRow(row) {
+      if (!row) return "";
+      const sid = String(row.stampId || "").trim();
+      if (isStampUuid(sid)) return sid;
+      const wt = String(row.workType || "").trim();
+      if (!wt) return "";
+      const hit = getWorkTypeOptionsFull().find((o) => o.name === wt);
+      if (hit?.id && isStampUuid(hit.id)) return hit.id;
+      return wt;
     }
 
     function fillDayEntrySelect(preserveValue) {
       closeDayEntrySelectList();
       spanType.textContent = "스탬프";
       triggerBtn.setAttribute("aria-label", "스탬프 유형");
-      const names = typeNamesForStampDayEntry();
-      dayEntryTypeOptions = names.map((n) => ({ value: n, label: n }));
+      dayEntryTypeOptions = stampOptionsForDayEntry();
       const pv = (preserveValue || "").trim();
-      dayEntryTypeValue = pv && names.includes(pv) ? pv : "";
+      const match = dayEntryTypeOptions.find(
+        (o) => o.value === pv || o.label === pv,
+      );
+      dayEntryTypeValue = match ? match.value : "";
       renderDayEntryTypeListOptions();
       updateDayEntryTriggerLabel();
     }
 
     fillDayEntrySelect(
       resolvedEditId && existingRow
-        ? (existingRow.workType || "").trim()
+        ? resolveStampSelectValueFromRow(existingRow)
         : "",
     );
 
@@ -1075,20 +1067,44 @@ export function render(opts = {}) {
       }
     }
 
-    function onSave() {
+    async function onSave() {
       const wd = normalizeWorkDateKey(dateInput.value || "");
-      const typeName = (getDayEntryTypeSelectValue() || "").trim();
+      const sel = (getDayEntryTypeSelectValue() || "").trim();
+      const typeHit = getWorkTypeOptionsFull().find(
+        (o) => o.id === sel || o.name === sel,
+      );
+      const typeName = (typeHit?.name || sel).trim();
+      let stampId =
+        typeHit?.id && isStampUuid(typeHit.id) ? typeHit.id : "";
       if (!wd || wd.length < 10) {
         window.alert("일자를 선택해 주세요.");
         return;
       }
       if (!typeName) {
-        window.alert("스탬프 유형을 선택해 주세요.");
+        window.alert("스탬프를 선택해 주세요.");
         return;
+      }
+      if (!stampId) {
+        stampId =
+          typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID()
+            : "";
+        if (!stampId) {
+          window.alert("스탬프를 선택해 주세요.");
+          return;
+        }
+        const nextTypes = getWorkTypeOptionsFull().map((t) =>
+          t.name === typeName ? { ...normalizeTypeEntry(t), id: stampId } : t,
+        );
+        writeWorkScheduleTypeOptionsRawToMem(nextTypes);
+        try {
+          await syncWorkScheduleToSupabase({ syncTypes: true });
+        } catch (_) {}
       }
       const baseFields = {
         workDate: wd,
         workType: typeName,
+        stampId,
         startTime: "",
         endTime: "",
         hoursWorked: "",
@@ -1156,7 +1172,7 @@ export function render(opts = {}) {
       closeModal();
       renderMonthlyView();
     });
-    saveBtn.addEventListener("click", onSave);
+    saveBtn.addEventListener("click", () => void onSave());
     document.addEventListener("keydown", onKeyDown);
 
     document.body.appendChild(modal);
@@ -1172,11 +1188,14 @@ export function render(opts = {}) {
       renderMonthlyContent({
         typeOnly: true,
         typePillClassForName: workTypePillClassForName,
-        onDayClick: (key) => openMonthlyDayEntryModal(key, null),
+        onDayClick: (key) => void openMonthlyDayEntryModal(key, null),
         onEntryClick: ({ dateKey: dk, rowId }) =>
-          openMonthlyDayEntryModal(dk, rowId),
+          void openMonthlyDayEntryModal(dk, rowId),
         onMonthLabelClick: ({ year, month }) =>
-          openMonthlyDayEntryModal(defaultDateKeyForCalendarMonth(year, month), null),
+          void openMonthlyDayEntryModal(
+            defaultDateKeyForCalendarMonth(year, month),
+            null,
+          ),
       }),
     );
   }
@@ -1186,7 +1205,7 @@ export function render(opts = {}) {
     renderMonthlyView();
   }
 
-  /* 서버 pull 은 App 탭 전환(hydrateWorkScheduleFromCloud) 시에만. 본화면은 mem·DOM만, 서버 쓰기는 저장/삭제/유형 변경. */
+  /* 서버 pull: 탭 진입·설정·날짜/스탬프 모달. push: 저장·삭제·유형 확정 시. */
   if (supabase) {
     refreshMonthlyView("mount-initial-supabase");
   } else {

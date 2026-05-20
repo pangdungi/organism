@@ -7,8 +7,8 @@ export const WORK_SCHEDULE_ROWS_LS_LEGACY_KEY = "work_schedule_rows";
 export const WORK_SCHEDULE_TYPE_OPTIONS_LS_LEGACY_KEY = "work_schedule_type_options";
 export const WORK_SCHEDULE_DAILY_HOURS_LS_LEGACY_KEY = "work_schedule_daily_hours";
 
-/** 새로고침 후에도 유형 목록 유지(설정 모달·서버 풀 전까지). 로그아웃 시 삭제. */
-const WORK_SCHEDULE_TYPES_MIRROR_KEY = "lp_work_schedule_types_mirror_v1";
+/** 새로고침 후에도 스탬프 목록 유지. 로그아웃 시 삭제. */
+const WORK_SCHEDULE_TYPES_MIRROR_KEY = "lp_stamp_types_mirror_v1";
 
 function readTypesMirrorFromStorage() {
   try {

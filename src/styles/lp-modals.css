@@ -137,6 +137,11 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-add-task-modal"] {
   z-index: 10060;
 }
+/* 삭제·완료 제거 등 확인 — 과제 추가(10060)·내부 모달(11000) 위 */
+.time-task-setup-modal.lp-confirm-stack-modal,
+[data-legacy~="time-task-setup-modal"].lp-confirm-stack-modal {
+  z-index: 11010;
+}
 .time-task-setup-modal[hidden],
 .todo-list-modal[hidden],
 .diary-desktop-compose-modal[hidden],

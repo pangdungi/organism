@@ -1,3 +1,9 @@
+import { dismissAppToast } from "./showToast.js";
+import {
+  LP_CONFIRM_STACK_CLASS,
+  syncBodyOverflowAfterModalClose,
+} from "./lpModalStack.js";
+
 /**
  * 할 일·타임레저와 동일한 `time-task-setup-modal` 셸로 확인창을 띄우고, Promise로 결과를 돌려줍니다.
  * @param {{ title?: string, message: string, warnMessage?: string, confirmText?: string, cancelText?: string, confirmDanger?: boolean }} options
@@ -17,6 +23,8 @@ export function showConfirmModal(options = {}) {
     return Promise.resolve(false);
   }
 
+  dismissAppToast();
+
   return new Promise((resolve) => {
     function escapeHtml(s) {
       return String(s || "")
@@ -27,7 +35,7 @@ export function showConfirmModal(options = {}) {
     }
 
     const modal = document.createElement("div");
-    modal.className = "time-task-setup-modal";
+    modal.className = `time-task-setup-modal ${LP_CONFIRM_STACK_CLASS}`;
     const confirmBtnClass = confirmDanger
       ? "todo-list-modal-confirm todo-list-confirm-btn--danger"
       : "todo-list-modal-confirm todo-list-confirm-delete";
@@ -55,7 +63,7 @@ export function showConfirmModal(options = {}) {
 
     function finish(value) {
       modal.remove();
-      document.body.style.overflow = "";
+      syncBodyOverflowAfterModalClose();
       resolve(value);
     }
 
