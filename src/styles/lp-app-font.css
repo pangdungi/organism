@@ -29,6 +29,12 @@ body {
   font-family: var(--lp-app-font-family);
 }
 
+/* 로고·캘린더 등 — 전역 UI 글꼴과 동일 (별도 디스플레이 폰트 없음) */
+.lp-app-font,
+[data-legacy~="lp-app-font"] {
+  font-family: var(--lp-app-font-family);
+}
+
 @font-face {
   font-family: "LP Lee Seoyun";
   src: url("/fonts/LP-LeeSeoyun.otf") format("opentype");

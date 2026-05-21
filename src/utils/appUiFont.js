@@ -1,6 +1,6 @@
 /**
  * 앱 전역 UI 글꼴 — localStorage + --lp-app-font-family
- * Corsica 전용 구간은 lp-corsica-display.css 의 font-family !important 가 우선합니다.
+ * 로고·캘린더 포함 UI는 .lp-app-font / --lp-app-font-family 로 통일합니다.
  */
 
 export const LP_APP_UI_FONT_STORAGE_KEY = "lp_app_ui_font_id";

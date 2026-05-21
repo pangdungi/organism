@@ -1,6 +1,5 @@
 import "./main.css";
 import "./styles/lp-app-font.css";
-import "./styles/lp-corsica-display.css";
 import "./styles/diary.css";
 import "./styles/daily.css";
 import "./styles/time-ledger.css";

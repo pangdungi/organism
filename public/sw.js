@@ -19,7 +19,6 @@ self.addEventListener("install", (event) => {
         const assetCache = await caches.open(ASSET_CACHE);
         const urls = [
           "/manifest.json",
-          "/fonts/Vellmarie-Regular.otf",
           "/icon-192.png?v=timeisprice-icon-2",
           "/toolbaricons/dashboard.svg",
           "/toolbaricons/menu-time.png",

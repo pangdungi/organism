@@ -575,7 +575,7 @@ export async function mountApp(container) {
     const brandBar = document.createElement("div");
     brandBar.className = "app-home-menu-launcher-brand";
     const titleEl = document.createElement("h1");
-    titleEl.className = "app-home-menu-launcher-title";
+    titleEl.className = "app-home-menu-launcher-title lp-app-font";
     titleEl.textContent = "Time = Money";
     brandBar.appendChild(titleEl);
 
