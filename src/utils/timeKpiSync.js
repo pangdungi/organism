@@ -13,6 +13,7 @@ import {
   KPI_LOG_SOURCE_TIME_LEDGER,
   defaultManualKpiLogMeta,
 } from "./kpiLogFields.js";
+
 export {
   getKpiSyncedTaskNames,
   getKpiSyncActiveKpiIds,
@@ -313,9 +314,7 @@ export function getHabitTrackerDailyCompletedForDate(storageKey, kpiId, dateRaw)
         l.kpiId === kpiId &&
         normalizeLogDate(l.dateRaw || l.date || "") === normDate,
     );
-    return Array.isArray(log?.dailyCompleted)
-      ? dedupeDailyCompletedList(log.dailyCompleted)
-      : [];
+    return Array.isArray(log?.dailyCompleted) ? dedupeDailyCompletedList(log.dailyCompleted) : [];
   } catch (_) {
     return [];
   }

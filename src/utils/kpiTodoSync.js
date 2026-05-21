@@ -533,32 +533,9 @@ export function getKpiTodosByKpiName(kpiName) {
 }
 
 /**
- * KPI id로 매일 반복 여부·매일 할일 목록 (과제 기록 모달 — time_ledger_tasks.kpiId 기준)
- * @param {string} kpiId
+ * KPI 이름으로 해당 KPI의 매일 반복 여부와 매일 할일 목록 반환 (과제 기록 모달용)
+ * @param {string} kpiName - KPI 이름
  * @returns {{ storageKey: string, kpiId: string, needHabitTracker: boolean, dailyTodos: Array<{ id: string, text: string, completed: boolean }> } | null}
- */
-export function getKpiDailyRepeatInfoByKpiId(kpiId) {
-  const kid = String(kpiId || "").trim();
-  if (!kid) return null;
-  for (const storageKey of STORAGE_KEYS) {
-    const data = loadJson(storageKey, { kpis: [], kpiDailyRepeatTodos: [] });
-    const kpi = (data.kpis || []).find((k) => String(k.id || "").trim() === kid);
-    if (!kpi) continue;
-    const needHabitTracker = !!kpi.needHabitTracker;
-    const dailyTodos = (data.kpiDailyRepeatTodos || [])
-      .filter((t) => String(t.kpiId) === kid && (t.text || "").trim() !== "")
-      .map((t) => ({
-        id: t.id,
-        text: (t.text || "").trim(),
-        completed: false,
-      }));
-    return { storageKey, kpiId: kpi.id, needHabitTracker, dailyTodos };
-  }
-  return null;
-}
-
-/**
- * @deprecated 과제명=KPI이름 매칭 — getKpiDailyRepeatInfoByKpiId + 과제 kpiId 사용 권장
  */
 export function getKpiDailyRepeatInfoByKpiName(kpiName) {
   const name = (kpiName || "").trim();
@@ -567,7 +544,16 @@ export function getKpiDailyRepeatInfoByKpiName(kpiName) {
     const data = loadJson(storageKey, { kpis: [], kpiDailyRepeatTodos: [] });
     const kpi = (data.kpis || []).find((k) => (k.name || "").trim() === name);
     if (!kpi) continue;
-    return getKpiDailyRepeatInfoByKpiId(kpi.id);
+    const needHabitTracker = !!kpi.needHabitTracker;
+    const dailyTodos = (data.kpiDailyRepeatTodos || [])
+      .filter((t) => String(t.kpiId) === String(kpi.id) && (t.text || "").trim() !== "")
+      .map((t) => ({
+        id: t.id,
+        text: (t.text || "").trim(),
+        /* 체크 표시는 kpiLogs 해당 날짜 dailyCompleted만 사용 (템플릿 completed 미사용) */
+        completed: false,
+      }));
+    return { storageKey, kpiId: kpi.id, needHabitTracker, dailyTodos };
   }
   return null;
 }

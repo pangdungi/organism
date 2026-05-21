@@ -12,7 +12,7 @@ import {
 } from "../utils/timeKpiSync.js";
 import {
   getKpiTodosAsTasks,
-  getKpiDailyRepeatInfoByKpiId,
+  getKpiDailyRepeatInfoByKpiName,
 } from "../utils/kpiTodoSync.js";
 import { kpiTodoFineTrace } from "../utils/kpiTodoFineTrace.js";
 import {
@@ -5610,14 +5610,6 @@ export function render(opts = {}) {
     };
   }
 
-  /** 과제 기록 모달: 선택 과제의 kpiId → 매일 할일 (이름 매칭 없음) */
-  function getKpiDailyRepeatInfoForTaskLog(taskName) {
-    const opt = getTaskOptionByName((taskName || "").trim());
-    const kpiId = String(opt?.kpiId || "").trim();
-    if (!kpiId) return null;
-    return getKpiDailyRepeatInfoByKpiId(kpiId);
-  }
-
   function onTaskSelectedForLog(taskName) {
     refreshKpiTodosInLogModal(taskName);
     updateTaskLogMealDetailVisibility(taskName);
@@ -5646,7 +5638,7 @@ export function render(opts = {}) {
     }
 
     const dateYmd = normalizeTaskLogPickerDateYmd();
-    const dailyInfo = getKpiDailyRepeatInfoForTaskLog(name);
+    const dailyInfo = getKpiDailyRepeatInfoByKpiName(name);
 
     if (dailyInfo && dailyInfo.needHabitTracker) {
       if (taskLogDailyTodosTitle)
@@ -6350,16 +6342,14 @@ export function render(opts = {}) {
           allRowsCache.push(editTr._rowData);
         }
       }
-      const dailyInfoSubmit = getKpiDailyRepeatInfoForTaskLog(taskName);
-      const hasCheckedInUi = Boolean(
-        taskLogDailyTodosList?.querySelector(
-          'label[data-legacy~="time-task-log-daily-todo-row"] input[type="checkbox"]:checked',
-        ),
-      );
+      const dailyInfoSubmit = getKpiDailyRepeatInfoByKpiName(taskName);
       if (
         dailyInfoSubmit?.needHabitTracker &&
         taskLogDailyTodosList &&
-        ((timeTracked || "").trim() || hasCheckedInUi)
+        ((timeTracked || "").trim() ||
+          taskLogDailyTodosList.querySelector(
+            'label.time-task-log-daily-todo-row input[type="checkbox"]:checked',
+          ))
       ) {
         const completed = [];
         taskLogDailyTodosList
