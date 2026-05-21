@@ -5230,7 +5230,7 @@ function renderCalendarView(tabsElement) {
 export function renderMobileScheduleCalendar() {
   const el = document.createElement("div");
   el.className =
-    "app-tab-panel-content calendar-view calendar-view--mobile-schedule";
+    "app-tab-panel-content calendar-view calendar-view--mobile-schedule lp-app-font";
 
   /* 하단 「일정」탭: 사이드/상단 라벨로 구분 가능 — SCHEDULE·대제목 줄 없음 (태블릿 너비만 보이던 헤더 갭 방지) */
 
@@ -5295,7 +5295,7 @@ function renderPlaceholderView(tabsElement, label) {
 
 export function render() {
   const el = document.createElement("div");
-  el.className = "app-tab-panel-content calendar-view";
+  el.className = "app-tab-panel-content calendar-view lp-app-font";
 
   /* 할일 탭: 사이드/하단 메뉴로 구분 — SCHEDULE·대제목 줄 없음 */
 
