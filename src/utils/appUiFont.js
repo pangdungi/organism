@@ -22,6 +22,11 @@ export const LP_APP_FONT_OPTIONS = [
     label: "Lee Seoyun",
     stack: `"LP Lee Seoyun", ${LP_APP_FONT_FALLBACK}`,
   },
+  {
+    id: "pakyongjun",
+    label: "Pak Yong jun",
+    stack: `"LP Pak Yong jun", ${LP_APP_FONT_FALLBACK}`,
+  },
 ];
 
 /**

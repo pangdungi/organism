@@ -42,3 +42,11 @@ body {
   font-style: normal;
   font-display: swap;
 }
+
+@font-face {
+  font-family: "LP Pak Yong jun";
+  src: url("/fonts/LP-PakYongJun.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
