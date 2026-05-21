@@ -585,22 +585,41 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   white-space: nowrap;
   pointer-events: none;
 }
+/* 모달 날짜(할일 수정·조회 기간·스탬프 일자 등): native-wrap 전체 너비 */
+.time-task-setup-panel .time-task-log-field > .time-task-log-date-native-wrap,
+.todo-list-modal-panel .time-task-log-field > .time-task-log-date-native-wrap,
 .time-add-task-panel .time-task-log-field > .time-task-log-date-native-wrap,
+[data-legacy~="time-task-setup-panel"]
+  [data-legacy~="time-task-log-field"]
+  > [data-legacy~="time-task-log-date-native-wrap"],
+[data-legacy~="todo-list-modal-panel"]
+  [data-legacy~="time-task-log-field"]
+  > [data-legacy~="time-task-log-date-native-wrap"],
 [data-legacy~="time-add-task-panel"]
   [data-legacy~="time-task-log-field"]
   > [data-legacy~="time-task-log-date-native-wrap"] {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   display: flex;
   align-items: stretch;
+  box-sizing: border-box;
 }
-.time-add-task-panel
-  .time-task-log-date-native-wrap
-  .time-task-log-date-overlay,
+.time-task-setup-panel .time-task-log-date-native-wrap .time-task-log-date-overlay,
+.todo-list-modal-panel .time-task-log-date-native-wrap .time-task-log-date-overlay,
+.time-add-task-panel .time-task-log-date-native-wrap .time-task-log-date-overlay,
+[data-legacy~="time-task-setup-panel"]
+  [data-legacy~="time-task-log-date-native-wrap"]
+  [data-legacy~="time-task-log-date-overlay"],
+[data-legacy~="todo-list-modal-panel"]
+  [data-legacy~="time-task-log-date-native-wrap"]
+  [data-legacy~="time-task-log-date-overlay"],
 [data-legacy~="time-add-task-panel"]
   [data-legacy~="time-task-log-date-native-wrap"]
   [data-legacy~="time-task-log-date-overlay"] {
   flex: 1 1 auto;
   min-width: 0;
+  max-width: 100%;
   justify-content: flex-start;
 }
 .time-task-log-quick-block,

@@ -33,6 +33,10 @@ import { createTodoCheckboxTypeMenu } from "../utils/todoCheckboxTypeMenu.js";
 import { buildModalSimpleSelect } from "../utils/todoModalSimpleSelect.js";
 import { dismissAppToast } from "../utils/showToast.js";
 import {
+  bindModalNativeDateRange,
+  initModalNativeDateFieldsIn,
+} from "../utils/modalNativeDateField.js";
+import {
   LP_CONFIRM_STACK_CLASS,
   syncBodyOverflowAfterModalClose,
 } from "../utils/lpModalStack.js";
@@ -1585,30 +1589,6 @@ function clearTodoItemModalSelection() {
   } catch (_) {}
 }
 
-/** 달력·시계 영역 탭 시에도 시스템 date/time 픽커가 열리게 (입력창은 동일 외형으로 통일) */
-function wireTodoTaskModalNativeSlot(slotEl, inputEl) {
-  if (!(slotEl instanceof HTMLElement) || !inputEl) return;
-  slotEl.addEventListener("click", (e) => {
-    const t = e.target;
-    if (
-      t === inputEl ||
-      (inputEl.contains && t instanceof Node && inputEl.contains(t))
-    )
-      return;
-    try {
-      inputEl.focus({ preventScroll: true });
-    } catch (_) {
-      inputEl.focus();
-    }
-    try {
-      if (typeof inputEl.showPicker === "function") inputEl.showPicker();
-      else inputEl.click();
-    } catch (_) {
-      inputEl.click();
-    }
-  });
-}
-
 /** 할일 추가/수정 통합 모달. 카드 레이아웃에서 사용. onSave(폼값 객체), onDelete(수정 시만) */
 function showTodoTaskModal(options) {
   const {
@@ -1714,8 +1694,6 @@ function showTodoTaskModal(options) {
   const nameInput = modal.querySelector(".time-add-task-name");
   const startInput = modal.querySelector(".todo-task-edit-start");
   const dueInput = modal.querySelector(".todo-task-edit-due");
-  const startSlot = startInput?.closest(".time-task-log-date-native-wrap");
-  const dueSlot = dueInput?.closest(".time-task-log-date-native-wrap");
   const eisenhowerMount = modal.querySelector(
     '[data-legacy~="todo-task-edit-eisenhower-wrap"]',
   );
@@ -1741,35 +1719,6 @@ function showTodoTaskModal(options) {
   });
   eisenhowerMount?.appendChild(eisenhowerDd);
   sectionMount?.appendChild(sectionDd);
-
-  function formatTodoModalNativeOverlayYmd(isoTen) {
-    const m = String(isoTen || "")
-      .trim()
-      .match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!m) return "";
-    const y = m[1];
-    const mo = String(parseInt(m[2], 10));
-    const da = String(parseInt(m[3], 10));
-    return `${y}. ${mo}. ${da}`;
-  }
-
-  function syncNativeDateFilled(inp) {
-    if (!inp) return;
-    const v = (inp.value || "").trim().slice(0, 10);
-    const has = !!v;
-    const wrap = inp.closest(".time-task-log-date-native-wrap");
-    if (!wrap) return;
-    wrap.classList.toggle("has-value", has);
-    const ov = wrap.querySelector(".time-task-log-date-overlay");
-    if (ov) ov.textContent = has ? formatTodoModalNativeOverlayYmd(v) : "";
-  }
-
-  function syncStartDueMinMax() {
-    const s = (startInput?.value || "").trim().slice(0, 10);
-    const d = (dueInput?.value || "").trim().slice(0, 10);
-    if (startInput) startInput.max = d || "";
-    if (dueInput) dueInput.min = s || "";
-  }
 
   function close() {
     try {
@@ -1836,20 +1785,8 @@ function showTodoTaskModal(options) {
   document.body.appendChild(modal);
   document.body.style.overflow = "hidden";
 
-  [startInput, dueInput].forEach((inp) => {
-    if (!inp) return;
-    syncNativeDateFilled(inp);
-    const bump = () => {
-      syncNativeDateFilled(inp);
-      if (inp === startInput || inp === dueInput) syncStartDueMinMax();
-    };
-    inp.addEventListener("input", bump);
-    inp.addEventListener("change", bump);
-  });
-  syncStartDueMinMax();
-
-  wireTodoTaskModalNativeSlot(startSlot, startInput);
-  wireTodoTaskModalNativeSlot(dueSlot, dueInput);
+  initModalNativeDateFieldsIn(modal);
+  bindModalNativeDateRange(startInput, dueInput);
 
   /* X에 포커스 두면 iOS PWA에서 파란 포커스 링이 생김 → 할일 이름 입력으로 */
   requestAnimationFrame(() => nameInput?.focus());

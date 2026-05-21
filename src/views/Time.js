@@ -16,6 +16,10 @@ import {
 } from "../utils/kpiTodoSync.js";
 import { kpiTodoFineTrace } from "../utils/kpiTodoFineTrace.js";
 import {
+  bindModalNativeDateRange,
+  initModalNativeDateFieldsIn,
+} from "../utils/modalNativeDateField.js";
+import {
   getCustomSections,
   getCategoryColorForReport,
 } from "../utils/todoSettings.js";
@@ -4218,15 +4222,21 @@ export function render(opts = {}) {
         <h3 data-legacy="time-task-setup-title">조회 기간</h3>
         <button type="button" data-legacy="time-task-setup-close" aria-label="닫기">&times;</button>
       </div>
-      <div data-legacy="time-task-setup-body todo-list-modal-body work-schedule-day-entry-body time-usage-range-body">
-        <label data-legacy="todo-task-edit-label work-schedule-day-entry-label time-usage-range-field">
-          <span data-legacy="work-schedule-day-entry-label-text time-usage-range-label">시작</span>
-          <input type="date" data-legacy="time-add-task-name work-schedule-day-entry-date" data-usage-range-start />
-        </label>
-        <label data-legacy="todo-task-edit-label work-schedule-day-entry-label time-usage-range-field">
-          <span data-legacy="work-schedule-day-entry-label-text time-usage-range-label">마감</span>
-          <input type="date" data-legacy="time-add-task-name work-schedule-day-entry-date" data-usage-range-end />
-        </label>
+      <div data-legacy="time-task-setup-body time-usage-range-body">
+        <div class="time-task-log-field">
+          <label>시작</label>
+          <div class="time-task-log-date-native-wrap">
+            <input type="date" class="todo-task-edit-start" data-usage-range-start aria-label="시작" />
+            <span class="time-task-log-date-overlay" aria-hidden="true"></span>
+          </div>
+        </div>
+        <div class="time-task-log-field">
+          <label>마감</label>
+          <div class="time-task-log-date-native-wrap">
+            <input type="date" class="todo-task-edit-due" data-usage-range-end aria-label="마감" />
+            <span class="time-task-log-date-overlay" aria-hidden="true"></span>
+          </div>
+        </div>
         <button type="button" data-legacy="time-usage-range-apply" data-usage-range-apply>조회</button>
       </div>
     </div>`;
@@ -4251,6 +4261,8 @@ export function render(opts = {}) {
     function openUsageRangeModal() {
       if (usageRangeStartInp) usageRangeStartInp.value = usageHistoryRangeStartYmd;
       if (usageRangeEndInp) usageRangeEndInp.value = usageHistoryRangeEndYmd;
+      initModalNativeDateFieldsIn(usageRangeModal);
+      bindModalNativeDateRange(usageRangeStartInp, usageRangeEndInp);
       usageRangeModal.hidden = false;
     }
     function closeUsageRangeModal() {

@@ -34,6 +34,10 @@ import {
 } from "../utils/kpiGridScrollRestore.js";
 import { setupDeadlineQuickButtons } from "../utils/deadlineQuickButtons.js";
 import {
+  buildModalNativeDateFieldMarkup,
+  initModalNativeDateFieldsIn,
+} from "../utils/modalNativeDateField.js";
+import {
   afterKpiTodoListMutationScroll,
 } from "../utils/kpiTodoInputScroll.js";
 import {
@@ -358,11 +362,19 @@ export function render() {
               <div class="dream-kpi-row">
                 <div class="dream-kpi-field">
                   <label>시작기한</label>
-                  <input type="date" name="targetStartDate" />
+                  ${buildModalNativeDateFieldMarkup({
+                    name: "targetStartDate",
+                    ariaLabel: "시작기한",
+                    inputClass: "todo-task-edit-start",
+                  })}
                 </div>
                 <div class="dream-kpi-field">
                   <label>달성기한</label>
-                  <input type="date" name="targetDeadline" />
+                  ${buildModalNativeDateFieldMarkup({
+                    name: "targetDeadline",
+                    ariaLabel: "달성기한",
+                    inputClass: "todo-task-edit-due",
+                  })}
                 </div>
               </div>
               <div class="dream-kpi-deadline-quick">
@@ -451,11 +463,21 @@ export function render() {
               <div class="dream-kpi-row">
                 <div class="dream-kpi-field">
                   <label>시작기한</label>
-                  <input type="date" name="targetStartDate" value="${escapeHtml(toDateInputValue(kpi.targetStartDate))}" />
+                  ${buildModalNativeDateFieldMarkup({
+                    name: "targetStartDate",
+                    ariaLabel: "시작기한",
+                    value: escapeHtml(toDateInputValue(kpi.targetStartDate)),
+                    inputClass: "todo-task-edit-start",
+                  })}
                 </div>
                 <div class="dream-kpi-field">
                   <label>달성기한</label>
-                  <input type="date" name="targetDeadline" value="${escapeHtml(toDateInputValue(kpi.targetDeadline))}" />
+                  ${buildModalNativeDateFieldMarkup({
+                    name: "targetDeadline",
+                    ariaLabel: "달성기한",
+                    value: escapeHtml(toDateInputValue(kpi.targetDeadline)),
+                    inputClass: "todo-task-edit-due",
+                  })}
                 </div>
               </div>
               <div class="dream-kpi-deadline-quick">
@@ -587,7 +609,11 @@ export function render() {
             <div class="dream-kpi-log-row">
               <div class="dream-kpi-log-field">
                 <label>날짜</label>
-                <input type="date" name="date" value="${dateVal}" />
+                ${buildModalNativeDateFieldMarkup({
+                  name: "date",
+                  ariaLabel: "날짜",
+                  value: dateVal,
+                })}
               </div>
               <div class="dream-kpi-log-field">
                 <label>KPI 항목</label>
@@ -669,6 +695,7 @@ export function render() {
     }
     document.body.appendChild(modal);
     setupNumericOnlyInput(modal.querySelector('input[name="value"]'));
+    initModalNativeDateFieldsIn(modal);
   }
 
   function clearLoveKpiFooterActions() {

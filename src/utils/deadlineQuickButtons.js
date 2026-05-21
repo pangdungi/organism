@@ -1,3 +1,8 @@
+import {
+  bindModalNativeDateRange,
+  initModalNativeDateFieldsIn,
+} from "./modalNativeDateField.js";
+
 /**
  * KPI 모달 날짜 퀵 버튼(오늘, +14일, +30일) 설정
  * 마지막으로 포커스된 날짜 입력(시작기한/달성기한)에 적용됨
@@ -25,6 +30,7 @@ export function setupDeadlineQuickButtons(modal) {
       if (lastFocusedDateInput) {
         lastFocusedDateInput.value = todayStr();
         lastFocusedDateInput.dispatchEvent(new Event("input", { bubbles: true }));
+        lastFocusedDateInput.dispatchEvent(new Event("change", { bubbles: true }));
       }
     });
   });
@@ -49,6 +55,10 @@ export function setupDeadlineQuickButtons(modal) {
       const d = String(result.getDate()).padStart(2, "0");
       lastFocusedDateInput.value = `${y}-${m}-${d}`;
       lastFocusedDateInput.dispatchEvent(new Event("input", { bubbles: true }));
+      lastFocusedDateInput.dispatchEvent(new Event("change", { bubbles: true }));
     });
   });
+
+  initModalNativeDateFieldsIn(modal);
+  bindModalNativeDateRange(startInput, deadlineInput);
 }

@@ -1189,7 +1189,6 @@
 }
 
 .dream-kpi-field input[type="text"],
-.dream-kpi-field input[type="date"],
 .dream-kpi-field input:not([type]),
 .dream-kpi-field textarea {
   width: 100%;
@@ -1205,8 +1204,12 @@
   border-radius: 8px;
 }
 
-.dream-kpi-field input[type="date"]::-webkit-datetime-edit {
+.dream-kpi-field .time-task-log-date-native-wrap,
+.dream-kpi-log-field .time-task-log-date-native-wrap {
+  width: 100%;
   max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .dream-kpi-field textarea {

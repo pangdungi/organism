@@ -754,10 +754,20 @@
   color: #64748b;
 }
 
-/* 시간 사용내역 조회 기간 모달 — 패널 너비만 유지 (날짜 UI는 스탬프 등록과 동일 · stamp-calendar.css) */
+/* 시간 사용내역 조회 기간 모달 — 패널·날짜 너비는 할일 수정 모달과 동일(lp-modals 26rem) */
 [data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] [data-legacy~="time-task-setup-panel"] {
-  max-width: 18rem;
-  width: calc(100vw - 2.5rem);
+  max-width: 26rem;
+  width: 100%;
+  min-width: 0;
+}
+[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] [data-legacy~="time-usage-range-body"] {
+  min-width: 0;
+}
+[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] .time-task-log-field {
+  margin-bottom: 0.85rem;
+}
+[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] .time-task-log-field:last-of-type {
+  margin-bottom: 0;
 }
 [data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-apply"] {
   margin: 0.35rem 0 0;

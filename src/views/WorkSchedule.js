@@ -14,6 +14,7 @@ import {
   syncWorkScheduleToSupabase,
 } from "../utils/workScheduleSupabase.js";
 import { showToast } from "../utils/showToast.js";
+import { initModalNativeDateFieldsIn } from "../utils/modalNativeDateField.js";
 import { workScheduleDiagLog } from "../utils/workScheduleDiag.js";
 import { applyWorkScheduleRowTimesFromTypes, normalizeWorkDateKey } from "../utils/workScheduleEntryResolve.js";
 import {
@@ -770,19 +771,24 @@ export function render(opts = {}) {
     const body = document.createElement("div");
     body.className = "todo-list-modal-body work-schedule-day-entry-body";
 
-    const labelDate = document.createElement("label");
-    labelDate.className =
-      "work-schedule-day-entry-label todo-task-edit-label";
-    const spanDate = document.createElement("span");
-    spanDate.className = "work-schedule-day-entry-label-text";
-    spanDate.textContent = "일자";
+    const fieldDate = document.createElement("div");
+    fieldDate.className = "time-task-log-field";
+    const labelDateText = document.createElement("label");
+    labelDateText.textContent = "일자";
+    const dateWrap = document.createElement("div");
+    dateWrap.className = "time-task-log-date-native-wrap";
     const dateInput = document.createElement("input");
     dateInput.type = "date";
-    dateInput.className =
-      "work-schedule-day-entry-date time-add-task-name";
+    dateInput.className = "todo-task-edit-start";
+    dateInput.setAttribute("aria-label", "일자");
     dateInput.value = dateKey;
-    labelDate.appendChild(spanDate);
-    labelDate.appendChild(dateInput);
+    const dateOverlay = document.createElement("span");
+    dateOverlay.className = "time-task-log-date-overlay";
+    dateOverlay.setAttribute("aria-hidden", "true");
+    dateWrap.appendChild(dateInput);
+    dateWrap.appendChild(dateOverlay);
+    fieldDate.appendChild(labelDateText);
+    fieldDate.appendChild(dateWrap);
 
     const labelType = document.createElement("label");
     labelType.className =
@@ -1017,7 +1023,7 @@ export function render(opts = {}) {
     labelType.appendChild(spanType);
     labelType.appendChild(selectWrap);
 
-    body.appendChild(labelDate);
+    body.appendChild(fieldDate);
     body.appendChild(labelType);
 
     const footer = document.createElement("div");
@@ -1176,6 +1182,7 @@ export function render(opts = {}) {
     document.addEventListener("keydown", onKeyDown);
 
     document.body.appendChild(modal);
+    initModalNativeDateFieldsIn(modal);
     requestAnimationFrame(() => {
       triggerBtn.focus();
     });
