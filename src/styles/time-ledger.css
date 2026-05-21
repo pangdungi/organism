@@ -755,6 +755,7 @@
 }
 
 /* 시간 사용내역 조회 기간 모달 — 패널·날짜 너비는 할일 수정 모달과 동일(lp-modals 26rem) */
+[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] .time-task-setup-panel,
 [data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] [data-legacy~="time-task-setup-panel"] {
   max-width: 26rem;
   width: 100%;
@@ -769,19 +770,23 @@
 [data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] .time-task-log-field:last-of-type {
   margin-bottom: 0;
 }
-[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-apply"] {
-  margin: 0.35rem 0 0;
-  padding: 0.5rem 0.75rem;
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-task-log-field
+  > .time-task-log-date-native-wrap {
   width: 100%;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #fff;
-  background: var(--lp-modal-accent, #1e4d7b);
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-family: var(--lp-modal-font, inherit);
+  max-width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  box-sizing: border-box;
 }
-[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-apply"]:hover {
-  background: var(--lp-modal-accent-hover, #173c5f);
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-task-log-date-native-wrap
+  .time-task-log-date-overlay {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  justify-content: flex-start;
 }

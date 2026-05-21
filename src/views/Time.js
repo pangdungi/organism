@@ -4217,7 +4217,7 @@ export function render(opts = {}) {
   lpSetClasses(usageRangeModal, "time-task-setup-modal time-usage-range-modal");
   usageRangeModal.innerHTML = `
     <div data-legacy="time-task-setup-backdrop"></div>
-    <div data-legacy="time-task-setup-panel time-usage-range-panel todo-list-modal-panel work-schedule-day-entry-modal-panel">
+    <div class="time-task-setup-panel todo-list-modal-panel" data-legacy="time-usage-range-panel work-schedule-day-entry-modal-panel">
       <div data-legacy="time-task-setup-header">
         <h3 data-legacy="time-task-setup-title">조회 기간</h3>
         <button type="button" data-legacy="time-task-setup-close" aria-label="닫기">&times;</button>
@@ -4237,7 +4237,9 @@ export function render(opts = {}) {
             <span class="time-task-log-date-overlay" aria-hidden="true"></span>
           </div>
         </div>
-        <button type="button" data-legacy="time-usage-range-apply" data-usage-range-apply>조회</button>
+      </div>
+      <div class="time-task-log-footer" data-legacy="time-usage-range-footer">
+        <button type="button" class="time-task-log-submit" data-legacy="time-usage-range-apply" data-usage-range-apply>조회</button>
       </div>
     </div>`;
   usageRangeModal.hidden = true;

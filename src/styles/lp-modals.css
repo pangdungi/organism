@@ -585,10 +585,13 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   white-space: nowrap;
   pointer-events: none;
 }
-/* 모달 날짜(할일 수정·조회 기간·스탬프 일자 등): native-wrap 전체 너비 */
+/* 모달 날짜(할일 수정·조회 기간·스탬프 일자 등): native-wrap 전체 너비 — class·data-legacy 혼용 */
 .time-task-setup-panel .time-task-log-field > .time-task-log-date-native-wrap,
 .todo-list-modal-panel .time-task-log-field > .time-task-log-date-native-wrap,
 .time-add-task-panel .time-task-log-field > .time-task-log-date-native-wrap,
+[data-legacy~="time-task-setup-panel"] .time-task-log-field > .time-task-log-date-native-wrap,
+[data-legacy~="todo-list-modal-panel"] .time-task-log-field > .time-task-log-date-native-wrap,
+[data-legacy~="time-add-task-panel"] .time-task-log-field > .time-task-log-date-native-wrap,
 [data-legacy~="time-task-setup-panel"]
   [data-legacy~="time-task-log-field"]
   > [data-legacy~="time-task-log-date-native-wrap"],
@@ -597,7 +600,12 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   > [data-legacy~="time-task-log-date-native-wrap"],
 [data-legacy~="time-add-task-panel"]
   [data-legacy~="time-task-log-field"]
-  > [data-legacy~="time-task-log-date-native-wrap"] {
+  > [data-legacy~="time-task-log-date-native-wrap"],
+.time-task-setup-modal .time-task-log-field > .time-task-log-date-native-wrap,
+.todo-list-modal .time-task-log-field > .time-task-log-date-native-wrap,
+[data-legacy~="time-task-setup-modal"] .time-task-log-field > .time-task-log-date-native-wrap,
+[data-legacy~="todo-list-modal"] .time-task-log-field > .time-task-log-date-native-wrap,
+[data-legacy~="time-usage-range-modal"] .time-task-log-field > .time-task-log-date-native-wrap {
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -608,6 +616,9 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 .time-task-setup-panel .time-task-log-date-native-wrap .time-task-log-date-overlay,
 .todo-list-modal-panel .time-task-log-date-native-wrap .time-task-log-date-overlay,
 .time-add-task-panel .time-task-log-date-native-wrap .time-task-log-date-overlay,
+[data-legacy~="time-task-setup-panel"] .time-task-log-date-native-wrap .time-task-log-date-overlay,
+[data-legacy~="todo-list-modal-panel"] .time-task-log-date-native-wrap .time-task-log-date-overlay,
+[data-legacy~="time-add-task-panel"] .time-task-log-date-native-wrap .time-task-log-date-overlay,
 [data-legacy~="time-task-setup-panel"]
   [data-legacy~="time-task-log-date-native-wrap"]
   [data-legacy~="time-task-log-date-overlay"],
@@ -616,7 +627,18 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   [data-legacy~="time-task-log-date-overlay"],
 [data-legacy~="time-add-task-panel"]
   [data-legacy~="time-task-log-date-native-wrap"]
-  [data-legacy~="time-task-log-date-overlay"] {
+  [data-legacy~="time-task-log-date-overlay"],
+.time-task-setup-modal .time-task-log-date-native-wrap .time-task-log-date-overlay,
+.todo-list-modal .time-task-log-date-native-wrap .time-task-log-date-overlay,
+[data-legacy~="time-task-setup-modal"]
+  .time-task-log-date-native-wrap
+  .time-task-log-date-overlay,
+[data-legacy~="todo-list-modal"]
+  .time-task-log-date-native-wrap
+  .time-task-log-date-overlay,
+[data-legacy~="time-usage-range-modal"]
+  .time-task-log-date-native-wrap
+  .time-task-log-date-overlay {
   flex: 1 1 auto;
   min-width: 0;
   max-width: 100%;
@@ -749,6 +771,58 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--lp-modal-navy-muted);
+}
+.time-task-log-kpi-todos-section,
+.time-task-log-daily-todos-section,
+[data-legacy~="time-task-log-kpi-todos-section"],
+[data-legacy~="time-task-log-daily-todos-section"] {
+  margin-top: 0.35rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--lp-modal-border);
+}
+.time-task-log-kpi-todos-list,
+.time-task-log-daily-todos-list,
+[data-legacy~="time-task-log-kpi-todos-list"],
+[data-legacy~="time-task-log-daily-todos-list"] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.time-task-log-kpi-todo-row,
+.time-task-log-daily-todo-row,
+[data-legacy~="time-task-log-kpi-todo-row"],
+[data-legacy~="time-task-log-daily-todo-row"] {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.25rem 0;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: var(--lp-modal-navy);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.time-task-log-kpi-todo-row input[type="checkbox"],
+.time-task-log-daily-todo-row input[type="checkbox"],
+[data-legacy~="time-task-log-kpi-todo-row"] input[type="checkbox"],
+[data-legacy~="time-task-log-daily-todo-row"] input[type="checkbox"] {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  margin: 0.2rem 0 0;
+}
+.time-task-log-kpi-todo-text,
+[data-legacy~="time-task-log-kpi-todo-text"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  word-break: break-word;
+}
+.time-task-log-kpi-todo-text.is-done,
+[data-legacy~="time-task-log-kpi-todo-text"][data-legacy~="is-done"] {
+  text-decoration: line-through;
+  opacity: 0.65;
 }
 .time-task-log-footer,
 .todo-list-modal-footer,

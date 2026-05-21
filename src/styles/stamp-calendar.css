@@ -224,6 +224,28 @@
   box-sizing: border-box;
 }
 
+.todo-list-modal.work-schedule-day-entry-modal
+  .work-schedule-day-entry-body
+  .time-task-log-field
+  > .time-task-log-date-native-wrap {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  box-sizing: border-box;
+}
+
+.todo-list-modal.work-schedule-day-entry-modal
+  .work-schedule-day-entry-body
+  .time-task-log-date-native-wrap
+  .time-task-log-date-overlay {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  justify-content: flex-start;
+}
+
 @media (max-width: 48rem) {
   .todo-list-modal.work-schedule-day-entry-modal
     .work-schedule-day-entry-modal-panel.todo-list-modal-panel {
