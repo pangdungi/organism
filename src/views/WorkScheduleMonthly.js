@@ -462,6 +462,62 @@ export function renderMonthlyContent(opts = {}) {
     renderCalendar();
   });
 
+  /* 모바일: 월 그리드 좌·우 스와이프 = 이전/다음 달 (일정 탭·< > 와 동일) */
+  const LP_MONTHLY_SWIPE_MIN_DX = 56;
+  const LP_MONTHLY_SWIPE_DOMINANCE = 1.25;
+  let _monthlySwipeStart = null;
+  calendarWrap.addEventListener(
+    "touchstart",
+    (e) => {
+      if (!window.matchMedia("(max-width: 48rem)").matches) return;
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      _monthlySwipeStart = { x: t.clientX, y: t.clientY };
+    },
+    { passive: true },
+  );
+  calendarWrap.addEventListener(
+    "touchcancel",
+    () => {
+      _monthlySwipeStart = null;
+    },
+    { passive: true },
+  );
+  calendarWrap.addEventListener(
+    "touchend",
+    (e) => {
+      if (!window.matchMedia("(max-width: 48rem)").matches) {
+        _monthlySwipeStart = null;
+        return;
+      }
+      if (!_monthlySwipeStart || e.changedTouches.length !== 1) {
+        _monthlySwipeStart = null;
+        return;
+      }
+      const t = e.changedTouches[0];
+      const dx = t.clientX - _monthlySwipeStart.x;
+      const dy = t.clientY - _monthlySwipeStart.y;
+      _monthlySwipeStart = null;
+      if (Math.abs(dx) < LP_MONTHLY_SWIPE_MIN_DX) return;
+      if (Math.abs(dx) < Math.abs(dy) * LP_MONTHLY_SWIPE_DOMINANCE) return;
+      if (dx < 0) {
+        currentMonth--;
+        if (currentMonth < 0) {
+          currentMonth = 11;
+          currentYear--;
+        }
+      } else {
+        currentMonth++;
+        if (currentMonth > 11) {
+          currentMonth = 0;
+          currentYear++;
+        }
+      }
+      renderCalendar();
+    },
+    { passive: true },
+  );
+
   renderCalendar();
 
   return el;
