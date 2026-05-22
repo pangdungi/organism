@@ -562,7 +562,7 @@
   overscroll-behavior: contain;
   touch-action: pan-y;
   /* 소제목 아래 목록 — 좌우는 시트 안에서 통일 */
-  padding: 0.65rem 0.75rem 0.2rem;
+  padding: 0.65rem 0.75rem 1rem;
 }
 /* 같은 날짜 안 카드 여백 — 카드마다 마진 대신 스택 gap */
 .time-ledger-view [data-legacy~="time-ledger-day-card-stack"],
