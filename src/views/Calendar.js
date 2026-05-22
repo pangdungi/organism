@@ -29,6 +29,7 @@ import {
   getMobileCardEffectiveHoursForPrice,
 } from "./Time.js";
 import { showToast } from "../utils/showToast.js";
+import { bindLpHorizontalPanNavigate } from "../utils/lpHorizontalPanNavigate.js";
 import { supabase } from "../supabase.js";
 import {
   persistSectionTasksAndSchedule,
@@ -2497,49 +2498,15 @@ function renderMonthlyView(tabsElement) {
     goNextMonth,
   );
 
-  /* 모바일: 월 그리드 스와이프 — 왼쪽으로 밀면 다음 달, 오른쪽으로 밀면 이전 달 */
-  const LP_MONTHLY_SWIPE_MIN_DX = 56;
-  const LP_MONTHLY_SWIPE_DOMINANCE = 1.25;
-  let _monthlySwipeStart = null;
-  calendarGrid.addEventListener(
-    "touchstart",
-    (e) => {
-      if (!window.matchMedia("(max-width: 48rem)").matches) return;
-      if (e.touches.length !== 1) return;
-      const t = e.touches[0];
-      _monthlySwipeStart = { x: t.clientX, y: t.clientY };
-    },
-    { passive: true },
-  );
-  calendarGrid.addEventListener(
-    "touchcancel",
-    () => {
-      _monthlySwipeStart = null;
-    },
-    { passive: true },
-  );
-  calendarGrid.addEventListener(
-    "touchend",
-    (e) => {
-      if (!window.matchMedia("(max-width: 48rem)").matches) {
-        _monthlySwipeStart = null;
-        return;
-      }
-      if (!_monthlySwipeStart || e.changedTouches.length !== 1) {
-        _monthlySwipeStart = null;
-        return;
-      }
-      const t = e.changedTouches[0];
-      const dx = t.clientX - _monthlySwipeStart.x;
-      const dy = t.clientY - _monthlySwipeStart.y;
-      _monthlySwipeStart = null;
-      if (Math.abs(dx) < LP_MONTHLY_SWIPE_MIN_DX) return;
-      if (Math.abs(dx) < Math.abs(dy) * LP_MONTHLY_SWIPE_DOMINANCE) return;
-      if (dx < 0) goNextMonth();
-      else goPrevMonth();
-    },
-    { passive: true },
-  );
+  /* 월 그리드: 왼쪽=다음 달, 오른쪽=이전 달 (터치·마우스·트랙패드 가로) */
+  bindLpHorizontalPanNavigate(calendarGrid, {
+    onNext: goNextMonth,
+    onPrev: goPrevMonth,
+    minDx: 56,
+    dominance: 1.25,
+    shouldIgnoreTarget: (target) =>
+      !!target?.closest?.("input, textarea, select, button, a, [role='dialog']"),
+  });
 
   calendarSection.appendChild(nav);
   calendarSection.appendChild(calendarGrid);
@@ -3757,44 +3724,13 @@ function render1DayView(tabsElement = null) {
     renderCalendar();
   }
 
-  /* 데일리(1일) 뷰: 왼쪽 스와이프=다음 날, 오른쪽=이전 날 */
-  const LP_1DAY_SWIPE_MIN_DX = 56;
-  const LP_1DAY_SWIPE_DOMINANCE = 1.25;
-  let oneDaySwipeStart = null;
-  contentRow.addEventListener(
-    "touchstart",
-    (e) => {
-      if (e.touches.length !== 1) return;
-      const t = e.touches[0];
-      oneDaySwipeStart = { x: t.clientX, y: t.clientY };
-    },
-    { passive: true },
-  );
-  contentRow.addEventListener(
-    "touchcancel",
-    () => {
-      oneDaySwipeStart = null;
-    },
-    { passive: true },
-  );
-  contentRow.addEventListener(
-    "touchend",
-    (e) => {
-      if (!oneDaySwipeStart || e.changedTouches.length !== 1) {
-        oneDaySwipeStart = null;
-        return;
-      }
-      const t = e.changedTouches[0];
-      const dx = t.clientX - oneDaySwipeStart.x;
-      const dy = t.clientY - oneDaySwipeStart.y;
-      oneDaySwipeStart = null;
-      if (Math.abs(dx) < LP_1DAY_SWIPE_MIN_DX) return;
-      if (Math.abs(dx) < Math.abs(dy) * LP_1DAY_SWIPE_DOMINANCE) return;
-      if (dx < 0) goNextDay();
-      else goPrevDay();
-    },
-    { passive: true },
-  );
+  /* 데일리(1일) 뷰: 왼쪽=다음 날, 오른쪽=이전 날 (터치·마우스·트랙패드 가로) */
+  bindLpHorizontalPanNavigate(contentRow, {
+    onNext: goNextDay,
+    onPrev: goPrevDay,
+    shouldIgnoreTarget: (target) =>
+      !!target?.closest?.("input, textarea, select, button, a, [role='dialog']"),
+  });
 
   return wrap;
 }

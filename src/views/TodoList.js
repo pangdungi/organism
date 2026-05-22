@@ -32,6 +32,7 @@ import { refreshEisenhowerQuadrantsIfActive } from "../utils/eisenhowerQuadrants
 import { createTodoCheckboxTypeMenu } from "../utils/todoCheckboxTypeMenu.js";
 import { buildModalSimpleSelect } from "../utils/todoModalSimpleSelect.js";
 import { dismissAppToast } from "../utils/showToast.js";
+import { bindLpHorizontalPanNavigate } from "../utils/lpHorizontalPanNavigate.js";
 import {
   bindModalNativeDateRange,
   initModalNativeDateFieldsIn,
@@ -5340,50 +5341,19 @@ export function render(options = {}) {
   tabButtons.forEach((b, i) => b.classList.toggle("active", i === safeIndex));
   syncTodoListSegmentThumb();
 
-  /** 목록 스와이프 — 왼쪽으로 밀면 다음 탭(리스트가 오른쪽으로), 오른쪽으로 밀면 이전 탭 */
-  const LP_TODO_LIST_SWIPE_MIN_DX = 56;
-  const LP_TODO_LIST_SWIPE_DOMINANCE = 1.25;
-  let todoListSwipeStart = null;
+  /** 목록 가로 이동 — 왼쪽=다음 탭, 오른쪽=이전 (터치·마우스·트랙패드) */
   function shiftTodoCategoryTab(delta) {
     const next = activeSectionIndex + delta;
     if (next < 0 || next >= tabButtons.length) return;
     tabButtons[next].click();
   }
-  const todoListSwipeOpts = { passive: true, signal: listUiSignal };
-  sectionsWrap.addEventListener(
-    "touchstart",
-    (e) => {
-      if (e.touches.length !== 1) return;
-      const t = e.touches[0];
-      todoListSwipeStart = { x: t.clientX, y: t.clientY };
-    },
-    todoListSwipeOpts,
-  );
-  sectionsWrap.addEventListener(
-    "touchcancel",
-    () => {
-      todoListSwipeStart = null;
-    },
-    todoListSwipeOpts,
-  );
-  sectionsWrap.addEventListener(
-    "touchend",
-    (e) => {
-      if (!todoListSwipeStart || e.changedTouches.length !== 1) {
-        todoListSwipeStart = null;
-        return;
-      }
-      const t = e.changedTouches[0];
-      const dx = t.clientX - todoListSwipeStart.x;
-      const dy = t.clientY - todoListSwipeStart.y;
-      todoListSwipeStart = null;
-      if (Math.abs(dx) < LP_TODO_LIST_SWIPE_MIN_DX) return;
-      if (Math.abs(dx) < Math.abs(dy) * LP_TODO_LIST_SWIPE_DOMINANCE) return;
-      if (dx < 0) shiftTodoCategoryTab(1);
-      else shiftTodoCategoryTab(-1);
-    },
-    todoListSwipeOpts,
-  );
+  bindLpHorizontalPanNavigate(sectionsWrap, {
+    signal: listUiSignal,
+    minDx: 56,
+    dominance: 1.25,
+    onNext: () => shiftTodoCategoryTab(1),
+    onPrev: () => shiftTodoCategoryTab(-1),
+  });
 
   el.appendChild(sectionsWrap);
   syncTodoAllTabSearchBarVisibility();

@@ -537,6 +537,11 @@ export async function mountApp(container) {
           try {
             window.__lpDiaryLedgerPrefetchedForTabSwitch = false;
           } catch (_) {}
+        } else if (targetTabId === "workschedule") {
+          /* 스탬프 캘린더: pull 후 통째 renderMain 하면 스와이프한 달이 늦게·두 번 바뀌는 것처럼 보임 */
+          try {
+            window.__lpWorkScheduleSoftRefresh?.();
+          } catch (_) {}
         } else {
           renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
         }
@@ -949,6 +954,10 @@ export async function mountApp(container) {
       } catch (_) {}
       try {
         window.__lpDiaryLedgerPrefetchedForTabSwitch = false;
+      } catch (_) {}
+    } else if (bootTabId === "workschedule") {
+      try {
+        window.__lpWorkScheduleSoftRefresh?.();
       } catch (_) {}
     } else {
       renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });

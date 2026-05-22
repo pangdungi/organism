@@ -909,7 +909,6 @@ export function render() {
         return ia - ib;
       });
     }
-    /* KPI 완료 시 과제 목록에서 제거하지 않음 — 사용자가 KPI를 삭제할 때만 remove (syncKpiToTimeTask remove) */
     const completedKpis = dreamKpis.filter((k) => getKpiProgress(k).isCompleted);
     const activeKpis = dreamKpis.filter((k) => !getKpiProgress(k).isCompleted);
 
@@ -936,7 +935,12 @@ export function render() {
 
     const grid = document.createElement("div");
     grid.className = "dream-kpi-grid";
-    const listToShow = kpiFilter === "active" ? activeKpis : kpiFilter === "completed" ? completedKpis : dreamKpis;
+    const listToShow =
+      kpiFilter === "active"
+        ? activeKpis
+        : kpiFilter === "completed"
+          ? completedKpis
+          : dreamKpis;
     let historyAnchoredUnderCard = false;
     listToShow.forEach((kpi) => {
       const {

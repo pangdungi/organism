@@ -167,6 +167,10 @@
   min-width: 0;
 }
 
+.diary-view-inner.diary-view-inner--time-report-pan {
+  touch-action: pan-y;
+}
+
 .diary-layout-wrap {
   flex: 1 1 auto;
   min-height: 0;
@@ -196,6 +200,11 @@
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+/* 시간 레포트: 세로만 브라우저 스크롤, 가로는 스와이프로 날짜·월 이동 */
+.diary-content-scroll.diary-content-scroll--time-report-swipe {
+  touch-action: pan-y;
 }
 
 /* 시간 레포트(일별) 본문: 짧을 때 가운데 정렬 — 자식 flex-shrink:0 으로 도넛이 세로로 눌리지 않게 */

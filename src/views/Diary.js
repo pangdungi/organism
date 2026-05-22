@@ -35,6 +35,7 @@ import { KPI_MAP_STORAGE_KEYS } from "../utils/kpiMapLocalStorage.js";
 import { getAccumulatedMinutesForKpiIdInDateRange } from "../utils/timeKpiSync.js";
 import { getBudgetDayReportForDay } from "../utils/diaryBudgetDayReport.js";
 import { getAppFooterActionsSlot, APP_FOOTER_ICON_BTN_CLASS } from "../utils/appFooterShell.js";
+import { bindLpHorizontalPanNavigate } from "../utils/lpHorizontalPanNavigate.js";
 import {
   formatIntegerMinutesDurationKo,
   formatInvestReclaimWonDisplay,
@@ -690,10 +691,17 @@ export function render() {
     } catch (_) {}
   }
 
+  let lastTimeReportAnchorShiftMs = 0;
+  /** mountDiary 안에서 할당 — 스와이프 핸들러는 그보다 위에 둠 */
+  let renderLayout = () => {};
+
   /** 투자·소비·예산·로그: step +1=다음(왼쪽 스와이프), -1=이전(오른쪽 스와이프) */
   function shiftActiveTimeReportAnchor(step) {
     if (step !== 1 && step !== -1) return;
+    const now = Date.now();
+    if (now - lastTimeReportAnchorShiftMs < 400) return;
     if (!["2", "3", "4", "5"].includes(currentTabId)) return;
+    lastTimeReportAnchorShiftMs = now;
 
     const isMonth =
       (currentTabId === "2" && tab2ViewGranularity === "month") ||
@@ -725,43 +733,20 @@ export function render() {
     renderLayout();
   }
 
-  const LP_REPORT_SWIPE_MIN_DX = 56;
-  const LP_REPORT_SWIPE_DOMINANCE = 1.25;
-  let diaryReportSwipeStart = null;
-  layoutWrap.addEventListener(
-    "touchstart",
-    (e) => {
-      if (e.touches.length !== 1) return;
-      const t = e.touches[0];
-      diaryReportSwipeStart = { x: t.clientX, y: t.clientY };
-    },
-    { passive: true },
-  );
-  layoutWrap.addEventListener(
-    "touchcancel",
-    () => {
-      diaryReportSwipeStart = null;
-    },
-    { passive: true },
-  );
-  layoutWrap.addEventListener(
-    "touchend",
-    (e) => {
-      if (!diaryReportSwipeStart || e.changedTouches.length !== 1) {
-        diaryReportSwipeStart = null;
-        return;
-      }
-      const t = e.changedTouches[0];
-      const dx = t.clientX - diaryReportSwipeStart.x;
-      const dy = t.clientY - diaryReportSwipeStart.y;
-      diaryReportSwipeStart = null;
-      if (Math.abs(dx) < LP_REPORT_SWIPE_MIN_DX) return;
-      if (Math.abs(dx) < Math.abs(dy) * LP_REPORT_SWIPE_DOMINANCE) return;
-      if (dx < 0) shiftActiveTimeReportAnchor(1);
-      else shiftActiveTimeReportAnchor(-1);
-    },
-    { passive: true },
-  );
+  function isDiaryTimeReportFooterTab() {
+    return ["2", "3", "4", "5"].includes(currentTabId);
+  }
+
+  bindLpHorizontalPanNavigate(inner, {
+    isActive: isDiaryTimeReportFooterTab,
+    shouldIgnoreTarget: (target) =>
+      !!target?.closest?.(
+        "input, textarea, select, [role='dialog'], .time-task-setup-modal, .diary-tr-invest-detail-modal",
+      ),
+    onNext: () => shiftActiveTimeReportAnchor(1),
+    onPrev: () => shiftActiveTimeReportAnchor(-1),
+    lockMs: 400,
+  });
 
   let entries = loadDiaryEntries();
 
@@ -2598,7 +2583,7 @@ export function render() {
     lastTimeReportDataSignature = snapshotTimeReportDataSignature();
   }
 
-  function renderLayout() {
+  renderLayout = function renderLayout() {
     /* 앱 탭 진입 시 이미 시간기록 범위 pull 예정·진행 중이면 본문에서 같은 pull 을 또 걸지 않음(연속 깜빡임 방지) */
     const skipDupLedgerPull =
       typeof window !== "undefined" &&
@@ -2614,6 +2599,7 @@ export function render() {
       currentTabId === "5";
     const isConsumptionTab = currentTabId === "3";
     topTools.classList.toggle("diary-top-tools--time-report-mode", showReportChrome);
+    inner.classList.toggle("diary-view-inner--time-report-pan", showReportChrome);
     searchBar.hidden = showReportChrome;
     reportChrome.hidden = !showReportChrome;
     topToolsNavControls.hidden =
@@ -2772,6 +2758,7 @@ export function render() {
       showTab5LogDayShell
     ) {
       scrollWrap.setAttribute("data-lp-time-report-body", "");
+      scrollWrap.classList.add("diary-content-scroll--time-report-swipe");
     }
     if (showTab4BudgetDayReport || showTab5LogDayShell) {
       scrollWrap.setAttribute("data-lp-time-report-vertical-start", "");

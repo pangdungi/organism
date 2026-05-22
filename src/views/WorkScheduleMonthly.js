@@ -10,6 +10,7 @@
 import { applyWorkScheduleRowTimesFromTypes } from "../utils/workScheduleEntryResolve.js";
 import { readWorkScheduleRowsFromMem } from "../utils/workScheduleModel.js";
 import { workScheduleDiagLog } from "../utils/workScheduleDiag.js";
+import { bindLpHorizontalPanNavigate } from "../utils/lpHorizontalPanNavigate.js";
 
 let _workScheduleMonthlyRerender = null;
 
@@ -437,12 +438,19 @@ export function renderMonthlyContent(opts = {}) {
     storeMonthlyYm(currentYear, currentMonth);
   }
 
+  function syncMonthNavLabels() {
+    if (navMonth) navMonth.textContent = MONTH_NAMES_EN[currentMonth];
+    if (navYear) navYear.textContent = String(currentYear);
+    storeMonthlyYm(currentYear, currentMonth);
+  }
+
   function goPrevMonth() {
     currentMonth--;
     if (currentMonth < 0) {
       currentMonth = 11;
       currentYear--;
     }
+    syncMonthNavLabels();
     renderCalendar();
   }
 
@@ -452,6 +460,7 @@ export function renderMonthlyContent(opts = {}) {
       currentMonth = 0;
       currentYear++;
     }
+    syncMonthNavLabels();
     renderCalendar();
   }
 
@@ -462,49 +471,26 @@ export function renderMonthlyContent(opts = {}) {
     renderCalendar();
   });
 
-  prevBtn.addEventListener("click", goPrevMonth);
-  nextBtn.addEventListener("click", goNextMonth);
+  prevBtn.addEventListener("click", () => goPrevMonth());
+  nextBtn.addEventListener("click", () => goNextMonth());
 
-  /* 터치 스와이프: 왼쪽으로 밀면 다음 달, 오른쪽으로 밀면 이전 달 */
-  const LP_MONTHLY_SWIPE_MIN_DX = 56;
-  const LP_MONTHLY_SWIPE_DOMINANCE = 1.25;
-  let monthlySwipeStart = null;
-  calendarWrap.addEventListener(
-    "touchstart",
-    (e) => {
-      if (e.touches.length !== 1) return;
-      const t = e.touches[0];
-      monthlySwipeStart = { x: t.clientX, y: t.clientY };
-    },
-    { passive: true },
-  );
-  calendarWrap.addEventListener(
-    "touchcancel",
-    () => {
-      monthlySwipeStart = null;
-    },
-    { passive: true },
-  );
-  calendarWrap.addEventListener(
-    "touchend",
-    (e) => {
-      if (!monthlySwipeStart || e.changedTouches.length !== 1) {
-        monthlySwipeStart = null;
-        return;
-      }
-      const t = e.changedTouches[0];
-      const dx = t.clientX - monthlySwipeStart.x;
-      const dy = t.clientY - monthlySwipeStart.y;
-      monthlySwipeStart = null;
-      if (Math.abs(dx) < LP_MONTHLY_SWIPE_MIN_DX) return;
-      if (Math.abs(dx) < Math.abs(dy) * LP_MONTHLY_SWIPE_DOMINANCE) return;
-      if (dx < 0) goNextMonth();
-      else goPrevMonth();
-    },
-    { passive: true },
-  );
+  /* 캘린더 월 그리드와 동일: 그리드만 — 왼쪽=다음 달, 오른쪽=이전 달 */
+  bindLpHorizontalPanNavigate(calendarWrap, {
+    onNext: () => goNextMonth(),
+    onPrev: () => goPrevMonth(),
+    minDx: 56,
+    dominance: 1.25,
+    shouldIgnoreTarget: (target) =>
+      !!target?.closest?.("input, textarea, select, button, a, [role='dialog']"),
+  });
 
   renderCalendar();
+
+  /** App pull 후: 월 커서·스와이프 핸들러 유지, 그리드만 다시 그림(통째 renderMain 방지) */
+  el._lpSoftRefreshAfterPull = () => {
+    if (!el.isConnected) return;
+    renderCalendar();
+  };
 
   return el;
 }

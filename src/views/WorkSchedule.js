@@ -1212,6 +1212,15 @@ export function render(opts = {}) {
     renderMonthlyView();
   }
 
+  /** App.setActiveTab: pull 후 두 번째 renderMain 대신 — 같은 달·스와이프 상태 유지 */
+  window.__lpWorkScheduleSoftRefresh = () => {
+    if (!el.isConnected) return;
+    const monthly = contentWrap.querySelector(".work-schedule-monthly-content");
+    if (typeof monthly?._lpSoftRefreshAfterPull === "function") {
+      monthly._lpSoftRefreshAfterPull();
+    }
+  };
+
   /* 서버 pull: 탭 진입·설정·날짜/스탬프 모달. push: 저장·삭제·유형 확정 시. */
   if (supabase) {
     refreshMonthlyView("mount-initial-supabase");
