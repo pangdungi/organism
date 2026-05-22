@@ -2215,7 +2215,7 @@ function aggregateDailyTimeReportSummaryFromLedgerRows(rows) {
     if (cat === "unhealthy") {
       unhealthyMinutes += mins;
       const tn = String(r.taskName || "").trim();
-      if (tn === "건강하지 않은 식사") {
+      if (TTC.isUnhealthyMealDetailTaskName(tn)) {
         const md = String(r.mealDetail || "").trim();
         if (md) unhealthyMealDetails.push(md);
       }
@@ -2246,7 +2246,7 @@ function aggregateDailyTimeReportSummaryFromLedgerRows(rows) {
 
 /**
  * 시간사용 레포트(일별): 근무·수면·미디어·쾌락충족·불행·비건강·돈을 잃는 일 집계(시급×시간은 비생산과 동일).
- * 식단 목록은 「건강하지 않은 식사」 과제의 mealDetail 만.
+ * 식단 목록은 「건강하지 않은 섭취」 과제의 mealDetail 만.
  */
 export function getDailyTimeReportSummaryGrid(ymdTen) {
   const key = String(ymdTen || "")
@@ -2495,6 +2495,136 @@ export function getMonthlyProductiveCategoryInvestBarsSnapshot(ymdTen) {
     return d >= range.start && d <= range.end;
   });
   return aggregateProductiveCategoryInvestBarsFromRows(rows);
+}
+
+const PROD_INVEST_CATEGORY_KEYS = ["dream", "happiness", "sideincome", "health"];
+
+/**
+ * 투자 레포트: 생산 카테고리(꿈·행복·부수입·건강)별 과제명·기록 시간 합
+ * @param {object[]} rows
+ * @param {string} categoryKey
+ * @param {number} [limit]
+ * @returns {{ taskName: string, minutes: number }[]}
+ */
+function aggregateProductiveTasksByCategoryFromRows(rows, categoryKey, limit = 200) {
+  const cat = String(categoryKey || "").trim().toLowerCase();
+  if (!PROD_INVEST_CATEGORY_KEYS.includes(cat)) return [];
+  const cap = Math.max(1, Math.min(200, Number(limit) || 200));
+  /** @type {Map<string, number>} */
+  const map = new Map();
+  rows.forEach((r) => {
+    const h = getMobileCardEffectiveHoursForPrice(r);
+    if (!(h > 0) || !Number.isFinite(h)) return;
+    const { category, productivity } = resolveRowCategoryProductivityForAudit(r);
+    const rowCat = String(category || "").trim().toLowerCase();
+    const pv = (
+      String(productivity || "")
+        .trim()
+        .toLowerCase() ||
+      String(getProductivityFromCategory(rowCat) || "")
+        .trim()
+        .toLowerCase()
+    ).trim();
+    if (pv !== "productive" || rowCat !== cat) return;
+    const name = String(r.taskName || "").trim();
+    if (!name) return;
+    const mins = Math.round(h * 60);
+    map.set(name, (map.get(name) || 0) + mins);
+  });
+  const arr = [...map.entries()].map(([taskName, minutes]) => ({ taskName, minutes }));
+  arr.sort((a, b) => {
+    if (b.minutes !== a.minutes) return b.minutes - a.minutes;
+    return String(a.taskName).localeCompare(String(b.taskName), "ko");
+  });
+  return arr.slice(0, cap);
+}
+
+/** 투자 레포트: 해당 일 · 생산 카테고리별 과제 시간 */
+export function getDailyProductiveCategoryTaskBreakdown(ymdTen, categoryKey, limit = 200) {
+  const key = String(ymdTen || "")
+    .replace(/\//g, "-")
+    .slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return [];
+  const rows = loadTimeRows().filter((r) => {
+    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    return d === key;
+  });
+  return aggregateProductiveTasksByCategoryFromRows(rows, categoryKey, limit);
+}
+
+/** 투자 레포트: 해당 월 · 생산 카테고리별 과제 시간 */
+export function getMonthlyProductiveCategoryTaskBreakdown(ymdTen, categoryKey, limit = 200) {
+  const range = getTimeReportMonthInclusiveRange(ymdTen);
+  if (!range) return [];
+  const rows = loadTimeRows().filter((r) => {
+    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    return d >= range.start && d <= range.end;
+  });
+  return aggregateProductiveTasksByCategoryFromRows(rows, categoryKey, limit);
+}
+
+const CONSUMPTION_REPORT_CATEGORY_KEYS = [
+  "media_watch",
+  "pleasure",
+  "unhealthy",
+  "moneylosing",
+  "unhappiness",
+];
+
+/**
+ * 소비 레포트: 카테고리별 과제명·기록 시간(요약 그리드와 동일 — parseTimeToHours)
+ * @param {object[]} rows
+ * @param {string} categoryKey
+ * @param {number} [limit]
+ * @returns {{ taskName: string, minutes: number }[]}
+ */
+function aggregateConsumptionCategoryTasksFromRows(rows, categoryKey, limit = 200) {
+  const cat = String(categoryKey || "").trim();
+  if (!CONSUMPTION_REPORT_CATEGORY_KEYS.includes(cat)) return [];
+  const cap = Math.max(1, Math.min(200, Number(limit) || 200));
+  /** @type {Map<string, number>} */
+  const map = new Map();
+  rows.forEach((r) => {
+    const hrs = parseTimeToHours(r.timeTracked);
+    if (!(hrs > 0) || !Number.isFinite(hrs)) return;
+    const { category: catRaw } = resolveRowCategoryProductivityForAudit(r);
+    const rowCat = String(catRaw || "").trim();
+    if (rowCat !== cat) return;
+    const name = String(r.taskName || "").trim();
+    if (!name) return;
+    const mins = Math.round(hrs * 60);
+    map.set(name, (map.get(name) || 0) + mins);
+  });
+  const arr = [...map.entries()].map(([taskName, minutes]) => ({ taskName, minutes }));
+  arr.sort((a, b) => {
+    if (b.minutes !== a.minutes) return b.minutes - a.minutes;
+    return String(a.taskName).localeCompare(String(b.taskName), "ko");
+  });
+  return arr.slice(0, cap);
+}
+
+/** 소비 레포트: 해당 일 · 카테고리별 과제 시간 */
+export function getDailyConsumptionCategoryTaskBreakdown(ymdTen, categoryKey, limit = 200) {
+  const key = String(ymdTen || "")
+    .replace(/\//g, "-")
+    .slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return [];
+  const rows = loadTimeRows().filter((r) => {
+    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    return d === key;
+  });
+  return aggregateConsumptionCategoryTasksFromRows(rows, categoryKey, limit);
+}
+
+/** 소비 레포트: 해당 월 · 카테고리별 과제 시간 */
+export function getMonthlyConsumptionCategoryTaskBreakdown(ymdTen, categoryKey, limit = 200) {
+  const range = getTimeReportMonthInclusiveRange(ymdTen);
+  if (!range) return [];
+  const rows = loadTimeRows().filter((r) => {
+    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    return d >= range.start && d <= range.end;
+  });
+  return aggregateConsumptionCategoryTasksFromRows(rows, categoryKey, limit);
 }
 
 /** 비생산(nonproductive)으로 기록된 사용시간(분 단위 합) — 카테고리 도넛·요약과 동일 산술 규칙 */
@@ -4494,7 +4624,7 @@ export function render(opts = {}) {
     '[data-legacy~="time-task-log-meal-detail-input"]',
   );
   function updateTaskLogMealDetailVisibility(taskName) {
-    const show = TTC.MEAL_DETAIL_TASK_NAMES.has((taskName || "").trim());
+    const show = TTC.isMealDetailTaskName((taskName || "").trim());
     if (taskLogMealDetailSection) {
       taskLogMealDetailSection.hidden = !show;
       if (!show && taskLogMealDetailInput) taskLogMealDetailInput.value = "";
@@ -6011,7 +6141,7 @@ export function render(opts = {}) {
     let mealDetailVal = String(data.mealDetail || "").trim();
     let feedbackRaw = String(data.feedback || "").trim();
     const tnForMemo = (data.taskName || "").trim();
-    if (TTC.MEAL_DETAIL_TASK_NAMES.has(tnForMemo)) {
+    if (TTC.isMealDetailTaskName(tnForMemo)) {
       if (!mealDetailVal && feedbackRaw.startsWith("[식단] ")) {
         const sp = splitUnhealthyMealMemoFromDb(feedbackRaw);
         mealDetailVal = sp.mealDetail;
@@ -6147,7 +6277,7 @@ export function render(opts = {}) {
       return;
     }
     const feedbackBody = (taskLogFeedbackInput?.value || "").trim();
-    const mealDetailForRow = TTC.MEAL_DETAIL_TASK_NAMES.has(taskName)
+    const mealDetailForRow = TTC.isMealDetailTaskName(taskName)
       ? (taskLogMealDetailInput?.value || "").trim()
       : "";
     const feedback = feedbackBody;

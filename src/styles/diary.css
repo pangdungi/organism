@@ -595,6 +595,94 @@
   margin-top: 0.38rem !important;
 }
 
+.diary-tr-invest-quote-card--action {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.diary-tr-invest-quote-card--action:focus-visible {
+  outline: 2px solid var(--idea-navy, #1e4d7b);
+  outline-offset: 2px;
+}
+
+.diary-tr-invest-detail-modal {
+  z-index: 1200;
+}
+
+.diary-tr-invest-detail-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.diary-tr-invest-detail-modal-panel {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+  width: min(22rem, calc(100vw - 2rem));
+  max-height: min(70vh, 28rem);
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 1rem;
+  box-shadow: 0 8px 32px rgba(30, 61, 93, 0.18);
+  overflow: hidden;
+}
+
+.diary-tr-invest-detail-modal-header {
+  position: relative;
+  padding: 0.85rem 2.25rem 0.65rem 0.9rem;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.95);
+}
+
+.diary-tr-invest-detail-modal-title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--cal-text, #1a2d45);
+}
+
+.diary-tr-invest-detail-modal-meta {
+  margin: 0.2rem 0 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.diary-tr-invest-detail-modal-close {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  border: none;
+  background: transparent;
+  font-size: 1.35rem;
+  line-height: 1;
+  color: #64748b;
+  cursor: pointer;
+  padding: 0.15rem 0.35rem;
+}
+
+.diary-tr-invest-detail-modal-body {
+  padding: 0.65rem 0.75rem 0.85rem;
+  overflow-y: auto;
+}
+
+.diary-tr-invest-detail-list {
+  margin: 0;
+}
+
+.diary-tr-invest-detail-empty {
+  margin: 0;
+  padding: 0.5rem 0.15rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #64748b;
+  text-align: center;
+}
+
 /* 투자 탭 요약 카드 — 다시 받을 금액 + 총 투자 시간 */
 .diary-tr-invest-card {
   box-sizing: border-box;

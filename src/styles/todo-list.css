@@ -216,10 +216,20 @@
 }
 
 /* -------------------------------------------------------------------------- */
-/* 설정: 완료 항목 숨기기 — 루트에 .hide-completed(JS)가 있을 때 완료 카드 비표시 */
+/* 설정: 완료 할일 숨기기 — 루트에 .hide-completed(JS)가 있을 때 완료 카드 비표시 */
 /* -------------------------------------------------------------------------- */
 
 .todo-list-view.hide-completed .todo-card.is-done {
+  display: none !important;
+}
+
+/* 환경설정: 할 일만 / 일정만 보기 */
+.todo-list-view.section-task-filter-todo-only .todo-card.todo-card--schedule {
+  display: none !important;
+}
+
+.todo-list-view.section-task-filter-schedule-only
+  .todo-card:not(.todo-card--schedule) {
   display: none !important;
 }
 
@@ -357,16 +367,21 @@
   background: url("/todo-card-icons/checkbox.png") center / contain no-repeat;
 }
 
-.todo-card-checkbox-label:has(.todo-done-check:checked) .todo-card-checkbox-face {
+/* 할일: 체크 시 네모 완료 체크만 */
+.todo-card:not(.todo-card--schedule)
+  .todo-card-checkbox-label:has(.todo-done-check:checked)
+  .todo-card-checkbox-face {
   background-image: url("/todo-card-icons/check-done.png");
 }
 
-/* 일정: 미완료는 캘린더만(할 일 네모 숨김), 완료는 체크만 */
-.todo-card--schedule:not(.is-done) .todo-card-checkbox-face {
-  display: none;
+/* 일정: 할일용 네모 체크는 쓰지 않음 — 캘린더/캘린더+체크 아이콘만(클릭 영역은 투명 체크박스) */
+.todo-card--schedule .todo-card-checkbox-face {
+  display: none !important;
+  background-image: none !important;
 }
 
-.todo-card--schedule.is-done .todo-card-type-icon {
+/* 과거 일정: 목록에서는 숨김 — 검색 중(.todo-list-search-active)에는 검색 필터가 표시 */
+.todo-list-view:not(.todo-list-search-active) .todo-card.todo-card--past-schedule {
   display: none !important;
 }
 

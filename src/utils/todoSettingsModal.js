@@ -1,6 +1,6 @@
 /**
  * 할 일 목록 환경 설정 모달
- * - 할 일만 / 일정만 보기, 완료 항목 숨기기, 완료 일괄 제거
+ * - 할 일만 / 일정만 보기, 완료 할일 숨기기, 완료된 할일 모두 제거
  */
 
 import {
@@ -249,7 +249,7 @@ export function createTodoSettingsModal(options = {}) {
   togglesEl.appendChild(todoOnlyToggle.row);
   togglesEl.appendChild(scheduleOnlyToggle.row);
 
-  const hideToggle = createToggleRow("완료 항목 숨기기", hideCompleted, (v) => {
+  const hideToggle = createToggleRow("완료 할일 숨기기", hideCompleted, (v) => {
     hideCompleted = v;
     const cur = getTodoSettings();
     saveTodoSettings({ ...cur, hideCompleted: v });
@@ -261,7 +261,7 @@ export function createTodoSettingsModal(options = {}) {
   const clearBtnRow = document.createElement("div");
   clearBtnRow.className = "todo-settings-clear-row";
   clearBtnRow.innerHTML = `
-    <span class="todo-settings-toggle-label">완료 항목 모두 제거</span>
+    <span class="todo-settings-toggle-label">완료된 할일 모두 제거</span>
     <button type="button" class="todo-settings-clear-btn">제거</button>
   `;
   clearBtnRow.querySelector(".todo-settings-clear-btn").addEventListener("click", () => {

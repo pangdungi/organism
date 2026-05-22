@@ -41,12 +41,16 @@ import {
   formatLedgerLossKrwDisplay,
   getDailyInvestReclaimSnapshot,
   getDailyProductiveCategoryInvestBarsSnapshot,
+  getDailyProductiveCategoryTaskBreakdown,
+  getDailyConsumptionCategoryTaskBreakdown,
   getDailyNonproductiveWastedMinutesRounded,
   getDailyTimeReportDonutSnapshot,
   getDailyTimeReportSummaryGrid,
   getDailyTimeReportTopTasksByMinutes,
   getMonthlyInvestReclaimSnapshot,
   getMonthlyProductiveCategoryInvestBarsSnapshot,
+  getMonthlyProductiveCategoryTaskBreakdown,
+  getMonthlyConsumptionCategoryTaskBreakdown,
   getMonthlyTimeReportDonutSnapshot,
   getMonthlyTimeReportSummaryGrid,
   getMonthlyTimeReportTopTasksByMinutes,
@@ -253,6 +257,18 @@ function shiftCalendarMonthBy(ymdTen, deltaMonths) {
   const lastDay = new Date(y2, m2 + 1, 0).getDate();
   const dayClamped = Math.min(Number.isFinite(d) ? d : 1, lastDay);
   return toDateStr(new Date(y2, m2, dayClamped));
+}
+
+/** 앵커 날짜에서 ±N일 */
+function shiftCalendarDayBy(ymdTen, deltaDays) {
+  const n = normalizeDiaryDateStr(ymdTen);
+  if (!n || n.length < 10) return toDateStr(new Date());
+  const y = parseInt(n.slice(0, 4), 10);
+  const mo = parseInt(n.slice(5, 7), 10) - 1;
+  const d = parseInt(n.slice(8, 10), 10);
+  const dt = new Date(y, mo, d);
+  dt.setDate(dt.getDate() + deltaDays);
+  return toDateStr(dt);
 }
 
 /** 일기 날짜 내림차순, 같은 날짜면 id 내림차순 */
@@ -673,6 +689,79 @@ export function render() {
       sessionStorage.setItem(LP_TAB2_REPORT_DATE_KEY, tab2ReportAnchorDateStr);
     } catch (_) {}
   }
+
+  /** 투자·소비·예산·로그: step +1=다음(왼쪽 스와이프), -1=이전(오른쪽 스와이프) */
+  function shiftActiveTimeReportAnchor(step) {
+    if (step !== 1 && step !== -1) return;
+    if (!["2", "3", "4", "5"].includes(currentTabId)) return;
+
+    const isMonth =
+      (currentTabId === "2" && tab2ViewGranularity === "month") ||
+      (currentTabId === "3" && tab3ViewGranularity === "month");
+
+    let anchor = toDateStr(new Date());
+    if (currentTabId === "2") anchor = tab2ReportAnchorDateStr;
+    else if (currentTabId === "3") anchor = tab3ReportAnchorDateStr;
+    else if (currentTabId === "4") anchor = tab4ReportAnchorDateStr;
+    else if (currentTabId === "5") anchor = tab5ReportAnchorDateStr;
+
+    const next = isMonth
+      ? shiftCalendarMonthBy(anchor, step)
+      : shiftCalendarDayBy(anchor, step);
+
+    if (currentTabId === "2") {
+      tab2ReportAnchorDateStr = next;
+      persistTab2ReportAnchorDate();
+    } else if (currentTabId === "3") {
+      tab3ReportAnchorDateStr = next;
+      persistTab3ReportAnchorDate();
+    } else if (currentTabId === "4") {
+      tab4ReportAnchorDateStr = next;
+      persistTab4ReportAnchorDate();
+    } else if (currentTabId === "5") {
+      tab5ReportAnchorDateStr = next;
+      persistTab5ReportAnchorDate();
+    }
+    renderLayout();
+  }
+
+  const LP_REPORT_SWIPE_MIN_DX = 56;
+  const LP_REPORT_SWIPE_DOMINANCE = 1.25;
+  let diaryReportSwipeStart = null;
+  layoutWrap.addEventListener(
+    "touchstart",
+    (e) => {
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      diaryReportSwipeStart = { x: t.clientX, y: t.clientY };
+    },
+    { passive: true },
+  );
+  layoutWrap.addEventListener(
+    "touchcancel",
+    () => {
+      diaryReportSwipeStart = null;
+    },
+    { passive: true },
+  );
+  layoutWrap.addEventListener(
+    "touchend",
+    (e) => {
+      if (!diaryReportSwipeStart || e.changedTouches.length !== 1) {
+        diaryReportSwipeStart = null;
+        return;
+      }
+      const t = e.changedTouches[0];
+      const dx = t.clientX - diaryReportSwipeStart.x;
+      const dy = t.clientY - diaryReportSwipeStart.y;
+      diaryReportSwipeStart = null;
+      if (Math.abs(dx) < LP_REPORT_SWIPE_MIN_DX) return;
+      if (Math.abs(dx) < Math.abs(dy) * LP_REPORT_SWIPE_DOMINANCE) return;
+      if (dx < 0) shiftActiveTimeReportAnchor(1);
+      else shiftActiveTimeReportAnchor(-1);
+    },
+    { passive: true },
+  );
 
   let entries = loadDiaryEntries();
 
@@ -1553,6 +1642,100 @@ export function render() {
     }
   }
 
+  /** 시간 레포트 카드 탭 → 해당 카테고리 과제·시간 목록(투자·소비 공통) */
+  function openTimeReportCategoryTaskDetailModal(opts) {
+    const {
+      headline,
+      categoryLabel,
+      rows,
+      periodLabel,
+      emptyMessage = "이 기간에 해당하는 과제 기록이 없습니다.",
+    } = opts;
+    document.querySelectorAll(".diary-tr-invest-detail-modal").forEach((m) => m.remove());
+
+    const modal = document.createElement("div");
+    modal.className = "time-task-setup-modal diary-tr-invest-detail-modal";
+    modal.removeAttribute("hidden");
+
+    const backdrop = document.createElement("div");
+    backdrop.className = "diary-tr-invest-detail-modal-backdrop";
+    backdrop.setAttribute("aria-hidden", "true");
+
+    const panel = document.createElement("div");
+    panel.className = "diary-tr-invest-detail-modal-panel";
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-modal", "true");
+    panel.setAttribute(
+      "aria-labelledby",
+      "diary-tr-invest-detail-modal-title",
+    );
+
+    const header = document.createElement("div");
+    header.className = "diary-tr-invest-detail-modal-header";
+
+    const title = document.createElement("h3");
+    title.id = "diary-tr-invest-detail-modal-title";
+    title.className = "diary-tr-invest-detail-modal-title";
+    title.textContent = headline;
+
+    const meta = document.createElement("p");
+    meta.className = "diary-tr-invest-detail-modal-meta";
+    meta.textContent = `${periodLabel} · 카테고리 ${categoryLabel}`;
+
+    const closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.className = "diary-tr-invest-detail-modal-close";
+    closeBtn.setAttribute("aria-label", "닫기");
+    closeBtn.textContent = "×";
+
+    header.appendChild(title);
+    header.appendChild(meta);
+    header.appendChild(closeBtn);
+
+    const body = document.createElement("div");
+    body.className = "diary-tr-invest-detail-modal-body";
+
+    const list = document.createElement("div");
+    list.className = "diary-budget-unplanned-card diary-tr-invest-detail-list";
+
+    if (!rows.length) {
+      const empty = document.createElement("p");
+      empty.className = "diary-tr-invest-detail-empty";
+      empty.textContent = emptyMessage;
+      body.appendChild(empty);
+    } else {
+      rows.forEach((row) => {
+        const line = document.createElement("div");
+        line.className = "diary-budget-unplanned-row";
+        const nameEl = document.createElement("span");
+        nameEl.className = "diary-budget-unplanned-name";
+        nameEl.textContent = row.taskName;
+        const timeEl = document.createElement("span");
+        timeEl.className = "diary-budget-unplanned-time";
+        timeEl.textContent = formatIntegerMinutesDurationKo(row.minutes);
+        line.appendChild(nameEl);
+        line.appendChild(timeEl);
+        list.appendChild(line);
+      });
+      body.appendChild(list);
+    }
+
+    panel.appendChild(header);
+    panel.appendChild(body);
+    modal.appendChild(backdrop);
+    modal.appendChild(panel);
+
+    const close = () => {
+      modal.remove();
+      document.body.style.overflow = "";
+    };
+    closeBtn.addEventListener("click", close);
+    backdrop.addEventListener("click", close);
+    document.body.style.overflow = "hidden";
+    document.body.appendChild(modal);
+    closeBtn.focus();
+  }
+
   /** 투자 탭: 생산 카테고리 막대 아래 메시지형 카드(아이콘 미정) — 꿈·부수입·건강·행복 순 */
   function mountTimeReportInvestMotivationCards(scrollWrap, ymdTen, granularity) {
     const snap =
@@ -1567,27 +1750,36 @@ export function render() {
     const grid = document.createElement("div");
     grid.className = "diary-tr-summary-grid diary-tr-invest-quote-grid";
 
+    const periodLabel =
+      granularity === "month"
+        ? formatMonthSlashFromYmd(ymdTen)
+        : formatDateDisplay(String(ymdTen || "").slice(0, 10));
+
     const defs = [
       {
         key: "dream",
+        categoryLabel: "꿈",
         headline: "꿈에 더 가까이",
         subtitle: null,
         iconSrc: DIARY_TR_ICON.dreamCloser,
       },
       {
         key: "sideincome",
+        categoryLabel: "부수입",
         headline: "내 시간의 가치는 내가 올린다",
         subtitle: null,
         iconSrc: DIARY_TR_ICON.sideincomeValue,
       },
       {
         key: "health",
+        categoryLabel: "건강",
         headline: "내가 더 존재할 수 있게!",
         subtitle: "건강한 식단",
         iconSrc: DIARY_TR_ICON.healthExist,
       },
       {
         key: "happiness",
+        categoryLabel: "행복",
         headline: "행복하려고 사는거지!",
         subtitle: null,
         iconSrc: DIARY_TR_ICON.happinessLive,
@@ -1597,7 +1789,14 @@ export function render() {
     defs.forEach((def) => {
       const mins = investProdCategoryMinutesRounded(snap, def.key);
       const art = document.createElement("article");
-      art.className = "diary-tr-summary-card diary-tr-invest-quote-card";
+      art.className =
+        "diary-tr-summary-card diary-tr-invest-quote-card diary-tr-invest-quote-card--action";
+      art.setAttribute("role", "button");
+      art.setAttribute("tabindex", "0");
+      art.setAttribute(
+        "aria-label",
+        `${def.headline}, ${formatIntegerMinutesDurationKo(mins)}. 탭하면 과제별 시간 목록`,
+      );
 
       const iconSlot = document.createElement("div");
       iconSlot.className = "diary-tr-summary-icon-slot diary-tr-summary-icon-slot--empty";
@@ -1621,6 +1820,28 @@ export function render() {
       timeEl.className = "diary-tr-summary-time";
       timeEl.textContent = formatIntegerMinutesDurationKo(mins);
       art.appendChild(timeEl);
+
+      const openDetail = () => {
+        const taskRows =
+          granularity === "month"
+            ? getMonthlyProductiveCategoryTaskBreakdown(ymdTen, def.key)
+            : getDailyProductiveCategoryTaskBreakdown(ymdTen, def.key);
+        openTimeReportCategoryTaskDetailModal({
+          headline: def.headline,
+          categoryLabel: def.categoryLabel,
+          rows: taskRows,
+          periodLabel,
+          emptyMessage: "이 기간에 해당하는 생산 과제 기록이 없습니다.",
+        });
+      };
+      art.addEventListener("click", openDetail);
+      art.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openDetail();
+        }
+      });
+
       grid.appendChild(art);
     });
 
@@ -1734,32 +1955,47 @@ export function render() {
     grid.className = "diary-tr-summary-grid";
 
     const showMoney = g.hourlyRate > 0;
-    /** @type {Array<{ title: string, minutes: number, lossWon?: number | null, meals?: string[] }>} */
+    const periodLabel =
+      granularity === "month"
+        ? formatMonthSlashFromYmd(ymdTen)
+        : formatDateDisplay(String(ymdTen || "").slice(0, 10));
+
+    /** @type {Array<{ categoryKey: string, categoryLabel: string, title: string, minutes: number, lossWon?: number | null, meals?: string[] }>} */
     const specs = [
       {
+        categoryKey: "media_watch",
+        categoryLabel: "미디어 시청",
         title: "미디어 시청시간",
         minutes: g.mediaMinutes,
         lossWon: showMoney ? g.mediaLossWon : null,
         iconSrc: DIARY_TR_ICON.media,
       },
       {
+        categoryKey: "pleasure",
+        categoryLabel: "쾌락",
         title: "도파민 충전료",
         minutes: g.pleasureMinutes,
         iconSrc: DIARY_TR_ICON.pleasure,
       },
       {
+        categoryKey: "unhealthy",
+        categoryLabel: "비건강",
         title: "건강을 해치는데 쓴 시간",
         minutes: g.unhealthyMinutes,
         meals: g.unhealthyMealDetails.length ? g.unhealthyMealDetails : undefined,
         iconSrc: DIARY_TR_ICON.unhealthy,
       },
       {
+        categoryKey: "moneylosing",
+        categoryLabel: "돈을 잃는 일",
         title: "시간도 잃고, 돈도 잃고",
         minutes: g.moneylosingMinutes,
         lossWon: showMoney ? g.moneylosingLossWon : null,
         iconSrc: DIARY_TR_ICON.moneylosing,
       },
       {
+        categoryKey: "unhappiness",
+        categoryLabel: "불행",
         title: "불행해지는데 쓴 시간",
         minutes: g.unhappinessMinutes,
         lossWon: showMoney ? g.unhappinessLossWon : null,
@@ -1769,7 +2005,14 @@ export function render() {
 
     specs.forEach((c) => {
       const art = document.createElement("article");
-      art.className = "diary-tr-summary-card";
+      art.className =
+        "diary-tr-summary-card diary-tr-invest-quote-card--action";
+      art.setAttribute("role", "button");
+      art.setAttribute("tabindex", "0");
+      art.setAttribute(
+        "aria-label",
+        `${c.title}, ${formatIntegerMinutesDurationKo(c.minutes)}. 탭하면 과제별 시간 목록`,
+      );
 
       const iconSlot = document.createElement("div");
       iconSlot.className = "diary-tr-summary-icon-slot diary-tr-summary-icon-slot--empty";
@@ -1805,6 +2048,26 @@ export function render() {
         });
         art.appendChild(ul);
       }
+
+      const openDetail = () => {
+        const taskRows =
+          granularity === "month"
+            ? getMonthlyConsumptionCategoryTaskBreakdown(ymdTen, c.categoryKey)
+            : getDailyConsumptionCategoryTaskBreakdown(ymdTen, c.categoryKey);
+        openTimeReportCategoryTaskDetailModal({
+          headline: c.title,
+          categoryLabel: c.categoryLabel,
+          rows: taskRows,
+          periodLabel,
+        });
+      };
+      art.addEventListener("click", openDetail);
+      art.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openDetail();
+        }
+      });
 
       grid.appendChild(art);
     });

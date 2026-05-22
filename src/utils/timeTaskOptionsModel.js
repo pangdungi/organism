@@ -161,6 +161,10 @@ const BUILTIN_BY_NAME = new Map();
 for (const t of C.getBuiltinTaskTemplates()) {
   BUILTIN_BY_NAME.set(t.name, t);
 }
+for (const { from, to } of C.MEAL_TASK_NAME_RENAMES) {
+  const canon = BUILTIN_BY_NAME.get(to);
+  if (canon) BUILTIN_BY_NAME.set(from, canon);
+}
 
 function findBuiltinByName(name) {
   return BUILTIN_BY_NAME.get(name) || null;
@@ -371,16 +375,30 @@ export function getFullTaskOptions() {
     const fixedNonProdNames = new Set(
       C.FIXED_NONPRODUCTIVE_TASKS.map((t) => t.name),
     );
-    const others = arr.filter(
-      (o) =>
-        !fixedOtherNames.has(o.name) &&
-        !fixedProdNames.has(o.name) &&
-        !fixedNonProdNames.has(o.name),
+    const legacyMealNames = new Set(
+      C.MEAL_TASK_NAME_RENAMES.map((r) => r.from),
     );
+    const others = arr.filter((o) => {
+      const n = (o.name || "").trim();
+      if (legacyMealNames.has(n)) return false;
+      return (
+        !fixedOtherNames.has(n) &&
+        !fixedProdNames.has(n) &&
+        !fixedNonProdNames.has(n)
+      );
+    });
     /* 이름별로 저장본이 있으면 id·memo 등 유지 (상수만 쓰면 id가 비어 매번 dirty → 저장·동기화 루프) */
     const byName = new Map(arr.map((o) => [o.name, o]));
     const hydrateFixed = (t) => {
-      const s = byName.get(t.name);
+      let s = byName.get(t.name);
+      if (!s) {
+        for (const { from, to } of C.MEAL_TASK_NAME_RENAMES) {
+          if (to === t.name) {
+            s = byName.get(from);
+            if (s) break;
+          }
+        }
+      }
       if (!s) return { ...t, memo: "" };
       const kid = String(s.kpiId || "").trim();
       return {
@@ -665,14 +683,21 @@ export function migrateTimeLogRowsTaskIds() {
     if (!Array.isArray(arr) || arr.length === 0) return;
     let changed = false;
     const next = arr.map((r) => {
-      if ((r.taskId || "").trim()) return r;
-      const n = (r.taskName || "").trim();
+      let row = r;
+      const rawName = (r.taskName || "").trim();
+      const canonName = C.canonicalMealTaskDisplayName(rawName);
+      if (canonName && canonName !== rawName) {
+        changed = true;
+        row = { ...row, taskName: canonName };
+      }
+      if ((row.taskId || "").trim()) return row;
+      const n = (row.taskName || "").trim();
       const o = byName.get(n);
       if (o?.id && isUuid(String(o.id))) {
         changed = true;
-        return { ...r, taskId: String(o.id).trim() };
+        return { ...row, taskId: String(o.id).trim() };
       }
-      return r;
+      return row;
     });
     if (changed) {
       writeTimeLedgerEntriesRaw(next);
@@ -713,26 +738,40 @@ export function applyTimeLedgerTasksFromServer(
     localRows.map((r) => [String(r.id || "").trim(), r]).filter(([k]) => k),
   );
   const builtinTemplates = C.getBuiltinTaskTemplates();
-  const builtInIdSet = new Set(
-    builtinTemplates.map((t) =>
-      deterministicTaskId(t.name, t.productivity, t.category),
-    ),
-  );
+  const builtInIdSet = new Set();
+  for (const t of builtinTemplates) {
+    builtInIdSet.add(deterministicTaskId(t.name, t.productivity, t.category));
+    for (const { from, to } of C.MEAL_TASK_NAME_RENAMES) {
+      if (to === t.name) {
+        builtInIdSet.add(
+          deterministicTaskId(from, t.productivity, t.category),
+        );
+      }
+    }
+  }
   const out = [];
   for (const t of builtinTemplates) {
     const id = deterministicTaskId(t.name, t.productivity, t.category);
-    const s = byId.get(id);
+    let s = byId.get(id);
+    if (!s) {
+      for (const { from, to } of C.MEAL_TASK_NAME_RENAMES) {
+        if (to !== t.name) continue;
+        const oldId = deterministicTaskId(from, t.productivity, t.category);
+        s = byId.get(oldId);
+        if (s) break;
+      }
+    }
     if (s) {
       const skpi = String(s.kpi_id ?? "").trim();
       let cat =
         s.category != null && String(s.category).trim() !== ""
           ? String(s.category).trim()
           : t.category;
-      let dispName = ((s.name || "").trim() || t.name).trim();
+      let dispName = t.name;
       const resolved = resolveFromKpiLink(skpi, dispName, cat);
       out.push({
         id: String(s.id || id).trim(),
-        name: resolved.name,
+        name: resolved.name || t.name,
         category: resolved.category,
         productivity: normalizeProductivity(s.productivity || t.productivity),
         memo: (s.memo || "").trim(),

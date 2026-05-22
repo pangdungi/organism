@@ -123,6 +123,8 @@ const HOME_CARD_EISENHOWER_LABELS = {
 };
 
 const HOME_TODO_CARD_ICON_URL_CALENDAR = "/todo-card-icons/calendar-schedule.png";
+const HOME_TODO_CARD_ICON_URL_CALENDAR_DONE =
+  "/todo-card-icons/calendar-check-done.png";
 
 function isHomeDueOverdue(dueStr) {
   if (!dueStr || dueStr.length < 10) return false;
@@ -249,8 +251,6 @@ function createHomeTodoCard(item) {
   doneCheck.type = "checkbox";
   doneCheck.className = "todo-done-check todo-card-done";
   doneCheck.checked = item.done;
-  doneCheck.disabled =
-    String(item.itemType || "todo").toLowerCase() === "schedule";
   const chkFace = document.createElement("span");
   chkFace.className = "todo-card-checkbox-face";
   chkFace.setAttribute("aria-hidden", "true");
@@ -273,8 +273,11 @@ function createHomeTodoCard(item) {
       String(card.dataset.itemType || "todo").toLowerCase() === "schedule";
     card.classList.toggle("todo-card--schedule", isSched);
     if (isSched) {
-      typeIconImg.src = HOME_TODO_CARD_ICON_URL_CALENDAR;
-      typeIconWrap.hidden = card.dataset.done === "true";
+      typeIconImg.src =
+        card.dataset.done === "true"
+          ? HOME_TODO_CARD_ICON_URL_CALENDAR_DONE
+          : HOME_TODO_CARD_ICON_URL_CALENDAR;
+      typeIconWrap.hidden = false;
     } else {
       typeIconWrap.hidden = true;
     }

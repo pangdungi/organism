@@ -329,6 +329,7 @@ function taskRowMarkedDone(t) {
   return false;
 }
 
+/** 완료 일괄 제거 — item_type schedule(일정) 행은 done 여부와 무관하게 유지(수정 모달 삭제만) */
 export function purgeAllCompletedSectionAndCustomTasks() {
   const fixed = readSectionTasksObject();
   const custom = readCustomSectionTasksObject();

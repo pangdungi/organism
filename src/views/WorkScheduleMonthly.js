@@ -437,6 +437,24 @@ export function renderMonthlyContent(opts = {}) {
     storeMonthlyYm(currentYear, currentMonth);
   }
 
+  function goPrevMonth() {
+    currentMonth--;
+    if (currentMonth < 0) {
+      currentMonth = 11;
+      currentYear--;
+    }
+    renderCalendar();
+  }
+
+  function goNextMonth() {
+    currentMonth++;
+    if (currentMonth > 11) {
+      currentMonth = 0;
+      currentYear++;
+    }
+    renderCalendar();
+  }
+
   todayBtn.addEventListener("click", () => {
     const now = new Date();
     currentYear = now.getFullYear();
@@ -444,23 +462,47 @@ export function renderMonthlyContent(opts = {}) {
     renderCalendar();
   });
 
-  prevBtn.addEventListener("click", () => {
-    currentMonth--;
-    if (currentMonth < 0) {
-      currentMonth = 11;
-      currentYear--;
-    }
-    renderCalendar();
-  });
+  prevBtn.addEventListener("click", goPrevMonth);
+  nextBtn.addEventListener("click", goNextMonth);
 
-  nextBtn.addEventListener("click", () => {
-    currentMonth++;
-    if (currentMonth > 11) {
-      currentMonth = 0;
-      currentYear++;
-    }
-    renderCalendar();
-  });
+  /* 터치 스와이프: 왼쪽으로 밀면 다음 달, 오른쪽으로 밀면 이전 달 */
+  const LP_MONTHLY_SWIPE_MIN_DX = 56;
+  const LP_MONTHLY_SWIPE_DOMINANCE = 1.25;
+  let monthlySwipeStart = null;
+  calendarWrap.addEventListener(
+    "touchstart",
+    (e) => {
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      monthlySwipeStart = { x: t.clientX, y: t.clientY };
+    },
+    { passive: true },
+  );
+  calendarWrap.addEventListener(
+    "touchcancel",
+    () => {
+      monthlySwipeStart = null;
+    },
+    { passive: true },
+  );
+  calendarWrap.addEventListener(
+    "touchend",
+    (e) => {
+      if (!monthlySwipeStart || e.changedTouches.length !== 1) {
+        monthlySwipeStart = null;
+        return;
+      }
+      const t = e.changedTouches[0];
+      const dx = t.clientX - monthlySwipeStart.x;
+      const dy = t.clientY - monthlySwipeStart.y;
+      monthlySwipeStart = null;
+      if (Math.abs(dx) < LP_MONTHLY_SWIPE_MIN_DX) return;
+      if (Math.abs(dx) < Math.abs(dy) * LP_MONTHLY_SWIPE_DOMINANCE) return;
+      if (dx < 0) goNextMonth();
+      else goPrevMonth();
+    },
+    { passive: true },
+  );
 
   renderCalendar();
 

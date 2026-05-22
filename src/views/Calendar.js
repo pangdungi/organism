@@ -681,8 +681,6 @@ function updateSectionTaskDone(sectionId, taskId, done) {
     if (!Array.isArray(arr)) return false;
     const t = arr.find((x) => (x.taskId || "") === taskId);
     if (t) {
-      if (String(t.itemType || "todo").toLowerCase() === "schedule")
-        return false;
       t.done = !!done;
       persistSectionTasksAndSchedule(obj);
       upsertCalendarSectionTaskRowFromSessionMemory(sectionId, taskId, null);
@@ -986,7 +984,6 @@ function updateCustomSectionTaskDone(sectionId, taskId, done) {
     if (!Array.isArray(arr)) return;
     const t = arr.find((x) => (x.taskId || "") === taskId);
     if (t) {
-      if (String(t.itemType || "todo").toLowerCase() === "schedule") return;
       t.done = !!done;
       persistCustomSectionTasksAndSchedule(obj);
       upsertCalendarSectionTaskRowFromSessionMemory(sectionId, taskId, null);
@@ -2500,7 +2497,7 @@ function renderMonthlyView(tabsElement) {
     goNextMonth,
   );
 
-  /* 모바일: 월 그리드 좌·우 스와이프 = 이전/다음 달 (< > 와 동일). 왼쪽으로 밀면 이전 달 */
+  /* 모바일: 월 그리드 스와이프 — 왼쪽으로 밀면 다음 달, 오른쪽으로 밀면 이전 달 */
   const LP_MONTHLY_SWIPE_MIN_DX = 56;
   const LP_MONTHLY_SWIPE_DOMINANCE = 1.25;
   let _monthlySwipeStart = null;
@@ -2538,8 +2535,8 @@ function renderMonthlyView(tabsElement) {
       _monthlySwipeStart = null;
       if (Math.abs(dx) < LP_MONTHLY_SWIPE_MIN_DX) return;
       if (Math.abs(dx) < Math.abs(dy) * LP_MONTHLY_SWIPE_DOMINANCE) return;
-      if (dx < 0) goPrevMonth();
-      else goNextMonth();
+      if (dx < 0) goNextMonth();
+      else goPrevMonth();
     },
     { passive: true },
   );
@@ -3749,6 +3746,55 @@ function render1DayView(tabsElement = null) {
   wrap._lpRefreshCalendarView = () => {
     renderCalendar();
   };
+
+  function goPrevDay() {
+    dayOffset -= 1;
+    renderCalendar();
+  }
+
+  function goNextDay() {
+    dayOffset += 1;
+    renderCalendar();
+  }
+
+  /* 데일리(1일) 뷰: 왼쪽 스와이프=다음 날, 오른쪽=이전 날 */
+  const LP_1DAY_SWIPE_MIN_DX = 56;
+  const LP_1DAY_SWIPE_DOMINANCE = 1.25;
+  let oneDaySwipeStart = null;
+  contentRow.addEventListener(
+    "touchstart",
+    (e) => {
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      oneDaySwipeStart = { x: t.clientX, y: t.clientY };
+    },
+    { passive: true },
+  );
+  contentRow.addEventListener(
+    "touchcancel",
+    () => {
+      oneDaySwipeStart = null;
+    },
+    { passive: true },
+  );
+  contentRow.addEventListener(
+    "touchend",
+    (e) => {
+      if (!oneDaySwipeStart || e.changedTouches.length !== 1) {
+        oneDaySwipeStart = null;
+        return;
+      }
+      const t = e.changedTouches[0];
+      const dx = t.clientX - oneDaySwipeStart.x;
+      const dy = t.clientY - oneDaySwipeStart.y;
+      oneDaySwipeStart = null;
+      if (Math.abs(dx) < LP_1DAY_SWIPE_MIN_DX) return;
+      if (Math.abs(dx) < Math.abs(dy) * LP_1DAY_SWIPE_DOMINANCE) return;
+      if (dx < 0) goNextDay();
+      else goPrevDay();
+    },
+    { passive: true },
+  );
 
   return wrap;
 }

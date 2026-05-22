@@ -462,7 +462,8 @@ export function updateTimeLedgerEntryFeedbackById(entryId, feedbackText) {
     const prevMeal = String(r.mealDetail ?? "").trim();
     let mealNext = prevMeal;
     if (
-      String(r.taskName || "").trim() === "건강하지 않은 식사" &&
+      (String(r.taskName || "").trim() === "건강하지 않은 섭취" ||
+        String(r.taskName || "").trim() === "건강하지 않은 식사") &&
       !newFb
     ) {
       mealNext = "";

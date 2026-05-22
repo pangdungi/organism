@@ -1,4 +1,5 @@
 import { supabase } from "../supabase.js";
+import { applyAppFontIdFromServer } from "./appUiFont.js";
 import {
   getTodoSettings,
   saveTodoSettings,
@@ -44,7 +45,7 @@ export async function syncUserIanaTimezoneToSupabase() {
   const { error } = await supabase.rpc("set_my_iana_timezone", { p_tz: tz });
 }
 
-/** 로그인 직후: 시급 + appearance → localStorage, UI 변수 반영 */
+/** 로그인·앱 진입: 시급 + appearance + 화면 글꼴 → localStorage·UI 반영 */
 export async function pullUserPrefsFromSupabase() {
   if (!supabase) return;
   const {
@@ -53,10 +54,12 @@ export async function pullUserPrefsFromSupabase() {
   if (!session?.user?.id) return;
   const { data, error } = await supabase
     .from("user_subscriptions")
-    .select("hourly_rate, appearance")
+    .select("hourly_rate, appearance, ui_font_id")
     .eq("user_id", session.user.id)
     .maybeSingle();
   if (error || !data) return;
+
+  applyAppFontIdFromServer(data.ui_font_id);
 
   if (data.hourly_rate != null) {
     const n = Number(data.hourly_rate);

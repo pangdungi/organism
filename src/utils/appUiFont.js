@@ -1,7 +1,9 @@
 /**
- * 앱 전역 UI 글꼴 — localStorage + --lp-app-font-family
+ * 앱 전역 UI 글꼴 — localStorage + 서버(user_subscriptions.ui_font_id) + --lp-app-font-family
  * 로고·캘린더 포함 UI는 .lp-app-font / --lp-app-font-family 로 통일합니다.
  */
+
+import { supabase } from "../supabase.js";
 
 export const LP_APP_UI_FONT_STORAGE_KEY = "lp_app_ui_font_id";
 
@@ -29,12 +31,23 @@ export const LP_APP_FONT_OPTIONS = [
   },
 ];
 
+const LP_APP_FONT_ID_SET = new Set(LP_APP_FONT_OPTIONS.map((o) => o.id));
+
+/**
+ * @param {unknown} id
+ * @returns {string}
+ */
+export function normalizeAppFontId(id) {
+  const v = String(id ?? "").trim().toLowerCase();
+  return LP_APP_FONT_ID_SET.has(v) ? v : "system";
+}
+
 /**
  * @param {string} id
  * @returns {string}
  */
 export function getAppFontStackForId(id) {
-  const opt = LP_APP_FONT_OPTIONS.find((o) => o.id === id);
+  const opt = LP_APP_FONT_OPTIONS.find((o) => o.id === normalizeAppFontId(id));
   return opt ? opt.stack : LP_APP_SYSTEM_FONT_STACK;
 }
 
@@ -44,9 +57,25 @@ export function getAppFontStackForId(id) {
 export function getStoredAppFontId() {
   try {
     const v = localStorage.getItem(LP_APP_UI_FONT_STORAGE_KEY);
-    if (v && LP_APP_FONT_OPTIONS.some((o) => o.id === v)) return v;
+    if (v && LP_APP_FONT_ID_SET.has(v)) return v;
   } catch (_) {}
   return "system";
+}
+
+function persistAppFontIdLocal(id) {
+  const use = normalizeAppFontId(id);
+  try {
+    localStorage.setItem(LP_APP_UI_FONT_STORAGE_KEY, use);
+  } catch (_) {}
+  return use;
+}
+
+function emitAppFontChanged(use) {
+  try {
+    window.dispatchEvent(
+      new CustomEvent("lp-app-font-changed", { detail: { id: use } }),
+    );
+  } catch (_) {}
 }
 
 export function applyAppFont() {
@@ -59,18 +88,39 @@ export function applyAppFont() {
 }
 
 /**
- * @param {string} id
+ * 서버에서 받은 글꼴 id → 로컬·화면 (push 없음)
+ * @param {unknown} id
+ * @returns {boolean} 반영 여부
  */
-export function setAppFontId(id) {
-  const ok = LP_APP_FONT_OPTIONS.some((o) => o.id === id);
-  const use = ok ? id : "system";
-  try {
-    localStorage.setItem(LP_APP_UI_FONT_STORAGE_KEY, use);
-  } catch (_) {}
+export function applyAppFontIdFromServer(id) {
+  if (id == null || String(id).trim() === "") return false;
+  const use = persistAppFontIdLocal(id);
   applyAppFont();
+  emitAppFontChanged(use);
+  return true;
+}
+
+/** 로그인·계정 설정 변경 시 서버에 글꼴 id 저장 */
+export async function pushAppFontIdToSupabase(id) {
+  if (!supabase) return;
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session?.user?.id) return;
+  const use = normalizeAppFontId(id);
   try {
-    window.dispatchEvent(
-      new CustomEvent("lp-app-font-changed", { detail: { id: use } }),
-    );
+    await supabase.rpc("set_my_ui_font_id", { p_font_id: use });
   } catch (_) {}
+}
+
+/**
+ * @param {string} id
+ * @param {{ pushServer?: boolean }} [opts]
+ */
+export function setAppFontId(id, opts = {}) {
+  const pushServer = opts.pushServer !== false;
+  const use = persistAppFontIdLocal(id);
+  applyAppFont();
+  emitAppFontChanged(use);
+  if (pushServer) void pushAppFontIdToSupabase(use);
 }

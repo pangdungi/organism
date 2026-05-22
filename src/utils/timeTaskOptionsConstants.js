@@ -49,8 +49,8 @@ export const FIXED_PRODUCTIVE_TASKS = [
   { name: "구강케어", category: "health", productivity: "productive" },
   { name: "샤워 및 씻기", category: "health", productivity: "productive" },
   { name: "바디케어", category: "health", productivity: "productive" },
-  { name: "건강한 식사", category: "health", productivity: "productive" },
-  { name: "건강한 식사 준비", category: "health", productivity: "productive" },
+  { name: "건강한 섭취", category: "health", productivity: "productive" },
+  { name: "건강한 섭취 준비", category: "health", productivity: "productive" },
   { name: "감정 기록하기", category: "happiness", productivity: "productive" },
   {
     name: "의미 있는 영상 시청",
@@ -104,12 +104,12 @@ export const FIXED_NONPRODUCTIVE_TASKS = [
     productivity: "nonproductive",
   },
   {
-    name: "건강하지 않은 식사",
+    name: "건강하지 않은 섭취",
     category: "unhealthy",
     productivity: "nonproductive",
   },
   {
-    name: "건강하지 않은 식사 준비",
+    name: "건강하지 않은 섭취 준비",
     category: "unhealthy",
     productivity: "nonproductive",
   },
@@ -159,8 +159,43 @@ export const FIXED_NONPRODUCTIVE_TASKS = [
   },
 ];
 
-/** 건강한·건강하지 않은 「식사」 과제만 — 「준비」 과제는 식단명 미표시 · meal_detail 은 동일 컬럼 저장 */
-export const MEAL_DETAIL_TASK_NAMES = new Set(["건강한 식사", "건강하지 않은 식사"]);
+/** 구버전 기본 과제명(식사 → 섭취) — 기존 기록·서버 과제 목록 호환 */
+export const MEAL_TASK_NAME_RENAMES = [
+  { from: "건강한 식사", to: "건강한 섭취" },
+  { from: "건강한 식사 준비", to: "건강한 섭취 준비" },
+  { from: "건강하지 않은 식사", to: "건강하지 않은 섭취" },
+  { from: "건강하지 않은 식사 준비", to: "건강하지 않은 섭취 준비" },
+];
+
+/** 표시·저장 기준 이름(구이름이면 새 이름으로 치환) */
+export function canonicalMealTaskDisplayName(name) {
+  const n = String(name || "").trim();
+  if (!n) return n;
+  for (const { from, to } of MEAL_TASK_NAME_RENAMES) {
+    if (n === from) return to;
+  }
+  return n;
+}
+
+/** 건강한·건강하지 않은 「섭취」 과제만 — 「준비」 과제는 식단명 미표시 · meal_detail 은 동일 컬럼 저장 */
+export const MEAL_DETAIL_TASK_NAMES = new Set([
+  "건강한 섭취",
+  "건강하지 않은 섭취",
+]);
+
+/** @param {string} name */
+export function isMealDetailTaskName(name) {
+  const n = canonicalMealTaskDisplayName(name);
+  if (MEAL_DETAIL_TASK_NAMES.has(n)) return true;
+  const raw = String(name || "").trim();
+  return raw === "건강한 식사" || raw === "건강하지 않은 식사";
+}
+
+/** @param {string} name */
+export function isUnhealthyMealDetailTaskName(name) {
+  const n = canonicalMealTaskDisplayName(name);
+  return n === "건강하지 않은 섭취";
+}
 
 export const TASKS_LOCKED_FOR_EDIT = [NAP_TASK_NAME];
 

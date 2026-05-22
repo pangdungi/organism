@@ -106,6 +106,11 @@ export function render() {
       onChange: (id) => setAppFontId(id),
     });
     fontSlot.appendChild(fontDd);
+    window.addEventListener(
+      "lp-app-font-changed",
+      () => fontDd._setValue?.(getStoredAppFontId()),
+      { signal: tabAbort.signal },
+    );
   }
 
   basicSettingsWidget.querySelector(".idea-btn-logout").addEventListener("click", () => {

@@ -79,6 +79,7 @@ import {
   patchTodoDomTaskIdsForSectionElement,
   patchAllTodoDomTaskIdsFromStorage,
 } from "../utils/todoDomTaskIdPatch.js";
+import { markTodoCardPastScheduleState } from "../utils/todoScheduleListRules.js";
 export const DRAG_TYPE_TODO_TO_CALENDAR = "todo-task-to-calendar";
 export const DRAG_TYPE_TODO_TO_EISENHOWER = "todo-task-to-eisenhower";
 
@@ -90,8 +91,18 @@ function todoDebug(..._args) {
 const TODO_LIST_FOOTER_ACTION_ATTR = "data-lp-todo-list-footer-action";
 const TODO_LIST_SETTINGS_BTN_ATTR = "data-lp-todo-list-settings-btn";
 
-/** 할 일 카드 — 보내주신 PNG만 사용: checkbox.png, check-done.png(CSS), calendar-schedule.png(일정만) */
+/** 할 일 카드 — checkbox.png, check-done.png, calendar-schedule.png, calendar-check-done.png(일정 완료) */
 const TODO_CARD_ICON_URL_CALENDAR = "/todo-card-icons/calendar-schedule.png";
+const TODO_CARD_ICON_URL_CALENDAR_DONE =
+  "/todo-card-icons/calendar-check-done.png";
+
+function getTodoListTodayYmd() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
 
 function updateTodoCardTypeIconColumn(card) {
   if (!card) return;
@@ -102,11 +113,44 @@ function updateTodoCardTypeIconColumn(card) {
   const img = wrap?.querySelector(".todo-card-type-icon-img");
   if (!wrap || !img) return;
   if (isSched) {
-    img.src = TODO_CARD_ICON_URL_CALENDAR;
-    wrap.hidden = card.dataset.done === "true";
+    img.src =
+      card.dataset.done === "true"
+        ? TODO_CARD_ICON_URL_CALENDAR_DONE
+        : TODO_CARD_ICON_URL_CALENDAR;
+    wrap.hidden = false;
   } else {
     wrap.hidden = true;
   }
+  markTodoCardPastScheduleState(card, getTodoListTodayYmd());
+}
+
+function readTodoListSearchQueryFromSessionStore() {
+  try {
+    return sessionStorage.getItem(SESSION_TODO_LIST_SEARCH_QUERY) || "";
+  } catch (_) {
+    return "";
+  }
+}
+
+function refreshTodoListPastScheduleFromWrap(sectionsWrap) {
+  const listView = sectionsWrap?.closest(".todo-list-view");
+  if (!listView) return;
+  const q = readTodoListSearchQueryFromSessionStore();
+  applyTodoListPastScheduleVisibility(listView, q);
+  applyTodoListMobileSearchFilter(listView, q);
+}
+
+/** 과거 일정: 검색 없을 때 목록에서 숨김 — 검색 중에는 applyTodoListMobileSearchFilter 가 표시 */
+function applyTodoListPastScheduleVisibility(listRoot, queryRaw) {
+  const root =
+    listRoot?.classList?.contains?.("todo-list-view") ? listRoot : null;
+  if (!root) return;
+  const q = normalizeTodoListMobileSearchQuery(queryRaw);
+  root.classList.toggle("todo-list-search-active", !!q);
+  const today = getTodoListTodayYmd();
+  root.querySelectorAll(".todo-card").forEach((card) => {
+    markTodoCardPastScheduleState(card, today);
+  });
 }
 
 function clearTodoListFooterActions() {
@@ -128,6 +172,10 @@ function normalizeTodoListMobileSearchQuery(raw) {
 function applyTodoListMobileSearchFilter(listRoot, queryRaw) {
   const q = normalizeTodoListMobileSearchQuery(queryRaw);
   const qSlash = q.replace(/-/g, "/");
+  const listView = listRoot?.classList?.contains?.("todo-list-view")
+    ? listRoot
+    : listRoot?.closest?.(".todo-list-view");
+  if (listView) applyTodoListPastScheduleVisibility(listView, queryRaw);
   const root =
     listRoot && listRoot.querySelector
       ? listRoot.querySelector(".todo-sections-wrap") || listRoot
@@ -269,8 +317,6 @@ function updateSectionTaskDone(sectionId, taskId, done) {
     if (!Array.isArray(arr)) return false;
     const t = arr.find((x) => (x.taskId || "") === taskId);
     if (t) {
-      if (String(t.itemType || "todo").toLowerCase() === "schedule")
-        return false;
       t.done = !!done;
       persistSectionTasksAndSchedule(obj);
       upsertCalendarSectionTaskRowFromSessionMemory(sectionId, taskId, null);
@@ -287,8 +333,6 @@ function updateCustomSectionTaskDone(sectionId, taskId, done) {
     if (!Array.isArray(arr)) return false;
     const t = arr.find((x) => (x.taskId || "") === taskId);
     if (t) {
-      if (String(t.itemType || "todo").toLowerCase() === "schedule")
-        return false;
       t.done = !!done;
       persistCustomSectionTasksAndSchedule(obj);
       upsertCalendarSectionTaskRowFromSessionMemory(sectionId, taskId, null);
@@ -739,8 +783,6 @@ function persistOverdueListCardEditToStorage(
         .toLowerCase();
       if (payload.itemType != null)
         t.itemType = it === "schedule" ? "schedule" : "todo";
-      if (String(t.itemType || "todo").toLowerCase() === "schedule")
-        t.done = false;
       persistCustomSectionTasksAndSchedule(obj);
     } catch (_) {}
     return;
@@ -763,8 +805,6 @@ function persistOverdueListCardEditToStorage(
       .toLowerCase();
     if (payload.itemType != null)
       t.itemType = it === "schedule" ? "schedule" : "todo";
-    if (String(t.itemType || "todo").toLowerCase() === "schedule")
-      t.done = false;
     persistSectionTasksAndSchedule(obj);
   } catch (_) {}
 }
@@ -871,10 +911,7 @@ function collectAndSaveSectionTasksFromDOM(sectionsWrap) {
         const name = (sourceCard.dataset.name || "").trim();
         if (name !== "") {
           const it = sourceCard.dataset.itemType || "todo";
-          const rowDone =
-            String(it || "todo").toLowerCase() === "schedule"
-              ? false
-              : sourceCard.dataset.done === "true";
+          const rowDone = sourceCard.dataset.done === "true";
           sectionTasks.push({
             taskId: sourceCard.dataset.taskId || "",
             name,
@@ -907,10 +944,7 @@ function collectAndSaveSectionTasksFromDOM(sectionsWrap) {
           const eisenhower =
             eisenhowerSelect?.value || row.dataset.eisenhower || "";
           const itemType = row.dataset.itemType || "todo";
-          const done =
-            String(itemType || "todo").toLowerCase() === "schedule"
-              ? false
-              : !!doneCheck?.checked;
+          const done = !!doneCheck?.checked;
           if (name !== "") {
             sectionTasks.push({
               taskId: row.dataset.taskId || "",
@@ -1755,7 +1789,6 @@ function showTodoTaskModal(options) {
       sectionId: chosenSectionId,
       sectionLabel: chosenSection?.label ?? sectionLabel,
       itemType: itemTypeResolved,
-      ...(itemTypeResolved === "schedule" ? { done: false } : {}),
     };
   }
 
@@ -1898,7 +1931,7 @@ export function openTodoTaskEditFromCalendarBarModel(barModel, options = {}) {
                     startTime: "",
                     endTime: "",
                     eisenhower: (payload.eisenhower || "").trim() || "",
-                    done: rowItemType === "schedule" ? false : completed,
+                    done: !!completed,
                     itemType: rowItemType,
                     reminderDate: "",
                     reminderTime: "",
@@ -1921,7 +1954,7 @@ export function openTodoTaskEditFromCalendarBarModel(barModel, options = {}) {
                     startTime: "",
                     endTime: "",
                     eisenhower: (payload.eisenhower || "").trim() || "",
-                    done: rowItemType === "schedule" ? false : !!completed,
+                    done: !!completed,
                     itemType: rowItemType,
                     reminderDate: "",
                     reminderTime: "",
@@ -2007,7 +2040,7 @@ export function openTodoTaskEditFromCalendarBarModel(barModel, options = {}) {
           reminderTime: "",
           eisenhower: (payload.eisenhower || "").trim() || "",
           itemType: itemTypeResolved,
-          done: itemTypeResolved === "schedule" ? false : baseDone,
+          done: baseDone,
         };
       };
 
@@ -2271,8 +2304,6 @@ function createTaskRow(taskData = {}, options = {}) {
   doneCheck.type = "checkbox";
   doneCheck.className = "todo-done-check";
   doneCheck.checked = done;
-  doneCheck.disabled =
-    String(itemType || "todo").toLowerCase() === "schedule";
   doneCheck.addEventListener("change", () => {
     const secId =
       (
@@ -2316,8 +2347,6 @@ function createTaskRow(taskData = {}, options = {}) {
   const setItemType = (type) => {
     tr.dataset.itemType = type;
     doneTd.dataset.itemType = type;
-    doneCheck.disabled =
-      String(type || "todo").toLowerCase() === "schedule";
   };
 
   const nameTd = document.createElement("td");
@@ -3017,8 +3046,6 @@ function createTaskCard(taskData, options = {}) {
   doneCheck.type = "checkbox";
   doneCheck.className = "todo-done-check todo-card-done";
   doneCheck.checked = done;
-  doneCheck.disabled =
-    String(itemType || "todo").toLowerCase() === "schedule";
   const chkFace = document.createElement("span");
   chkFace.className = "todo-card-checkbox-face";
   chkFace.setAttribute("aria-hidden", "true");
@@ -3245,17 +3272,11 @@ function createTaskCard(taskData, options = {}) {
     priorityEl.textContent = priorityText;
     priorityEl.hidden = !priorityText;
     updateTodoCardTypeIconColumn(card);
-    doneCheck.disabled =
-      String(card.dataset.itemType || "todo").toLowerCase() === "schedule";
   }
 
   contentCol.addEventListener("click", (e) => {
-    /* 할 일: 체크박스 열은 편집 모달과 분리. 일정: 캘린더 아이콘 클릭도 수정만(라벨 안 퀵완료 없음) */
-    if (e.target.closest(".todo-card-checkbox-label")) {
-      const isSched =
-        String(card.dataset.itemType || "todo").toLowerCase() === "schedule";
-      if (!isSched) return;
-    }
+    /* 체크 영역은 완료 토글만 — 행 본문 클릭 시 수정 모달 */
+    if (e.target.closest(".todo-card-checkbox-label")) return;
     e.preventDefault();
     e.stopPropagation();
     showTodoTaskModal({
@@ -3457,6 +3478,7 @@ function createTaskCard(taskData, options = {}) {
     });
   });
 
+  markTodoCardPastScheduleState(card, getTodoListTodayYmd());
   return card;
 }
 
@@ -4314,6 +4336,7 @@ function refreshTodoDateTabSectionDom(sectionsWrap) {
       }
     });
   updateCount();
+  refreshTodoListPastScheduleFromWrap(sectionsWrap);
 }
 
 /** 우선순위 탭: 아이젠하워 변경 후 카드가 옛 사분면에 남는 문제 방지 */
@@ -4414,6 +4437,7 @@ function refreshTodoPriorityTabSectionDom(sectionsWrap) {
     }
   });
   updateCount();
+  refreshTodoListPastScheduleFromWrap(sectionsWrap);
 }
 
 function createPriorityTabSection(section, allTasksForList, options) {
@@ -4621,6 +4645,7 @@ function refreshTodoAllTabSectionDom(sectionsWrap) {
     }
   }
   updateCount();
+  refreshTodoListPastScheduleFromWrap(sectionsWrap);
 }
 
 function renderSections(container, tasksData = [], options = {}) {
@@ -4767,18 +4792,26 @@ export function render(options = {}) {
 
   const initialSettings = getTodoSettings();
   let hideCompleted = initialSettings.hideCompleted;
-  el.classList.toggle("hide-completed", hideCompleted);
-  const initialListFilter = normalizeSectionTaskListFilter(
+  let sectionTaskListFilter = normalizeSectionTaskListFilter(
     initialSettings.sectionTaskListFilter,
   );
-  el.classList.toggle(
-    "section-task-filter-todo-only",
-    initialListFilter === "todo_only",
-  );
-  el.classList.toggle(
-    "section-task-filter-schedule-only",
-    initialListFilter === "schedule_only",
-  );
+
+  function applyTodoListSectionTaskListFilterClasses() {
+    el.classList.toggle("hide-completed", hideCompleted);
+    const m = normalizeSectionTaskListFilter(sectionTaskListFilter);
+    el.classList.toggle("section-task-filter-todo-only", m === "todo_only");
+    el.classList.toggle("section-task-filter-schedule-only", m === "schedule_only");
+  }
+
+  applyTodoListSectionTaskListFilterClasses();
+
+  function syncTodoListFilterDependentUi() {
+    applyTodoListSectionTaskListFilterClasses();
+    updateTabLabels?.();
+    const q = readTodoListSearchQueryFromSessionStore();
+    applyTodoListPastScheduleVisibility(el, q);
+    applyTodoListMobileSearchFilter(el, q);
+  }
 
   async function runClearCompletedConfirmed() {
     /* 완료 표시가 저장소와 어긋나도 DOM 기준으로 잡기 위해 먼저 한 번 저장 */
@@ -4814,7 +4847,7 @@ export function render(options = {}) {
 
   function promptClearCompleted() {
     showConfirmModal({
-      title: "완료 항목 모두 제거",
+      title: "완료된 할일 모두 제거",
       message: "삭제 후에는 복구할 수 없습니다.",
       confirmText: "제거",
       cancelText: "취소",
@@ -4829,19 +4862,11 @@ export function render(options = {}) {
       createTodoSettingsModal({
         onHideCompletedChange: (v) => {
           hideCompleted = v;
-          el.classList.toggle("hide-completed", hideCompleted);
+          applyTodoListSectionTaskListFilterClasses();
         },
         onSectionTaskListFilterChange: (mode) => {
-          const m = normalizeSectionTaskListFilter(mode);
-          el.classList.toggle(
-            "section-task-filter-todo-only",
-            m === "todo_only",
-          );
-          el.classList.toggle(
-            "section-task-filter-schedule-only",
-            m === "schedule_only",
-          );
-          updateTabLabels();
+          sectionTaskListFilter = normalizeSectionTaskListFilter(mode);
+          syncTodoListFilterDependentUi();
         },
         onClearCompleted: promptClearCompleted,
       });
@@ -5136,6 +5161,7 @@ export function render(options = {}) {
 
   let sectionResults = renderSections(sectionsWrap, allTasks, sectionOpts);
   el._lpLastTodoSectionsPaintSig = snapshotSectionTasksSemanticForCompare();
+  applyTodoListPastScheduleVisibility(el, todoMobileSearchQuery);
 
   function taskItemPassesSectionListFilter(domEl) {
     const t = String(domEl?.dataset?.itemType || "todo").toLowerCase();
@@ -5148,6 +5174,12 @@ export function render(options = {}) {
     if (
       el.classList.contains("section-task-filter-schedule-only") &&
       t !== "schedule"
+    ) {
+      return false;
+    }
+    if (
+      domEl?.classList?.contains("todo-card--past-schedule") &&
+      !el.classList.contains("todo-list-search-active")
     ) {
       return false;
     }
@@ -5308,6 +5340,51 @@ export function render(options = {}) {
   tabButtons.forEach((b, i) => b.classList.toggle("active", i === safeIndex));
   syncTodoListSegmentThumb();
 
+  /** 목록 스와이프 — 왼쪽으로 밀면 다음 탭(리스트가 오른쪽으로), 오른쪽으로 밀면 이전 탭 */
+  const LP_TODO_LIST_SWIPE_MIN_DX = 56;
+  const LP_TODO_LIST_SWIPE_DOMINANCE = 1.25;
+  let todoListSwipeStart = null;
+  function shiftTodoCategoryTab(delta) {
+    const next = activeSectionIndex + delta;
+    if (next < 0 || next >= tabButtons.length) return;
+    tabButtons[next].click();
+  }
+  const todoListSwipeOpts = { passive: true, signal: listUiSignal };
+  sectionsWrap.addEventListener(
+    "touchstart",
+    (e) => {
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      todoListSwipeStart = { x: t.clientX, y: t.clientY };
+    },
+    todoListSwipeOpts,
+  );
+  sectionsWrap.addEventListener(
+    "touchcancel",
+    () => {
+      todoListSwipeStart = null;
+    },
+    todoListSwipeOpts,
+  );
+  sectionsWrap.addEventListener(
+    "touchend",
+    (e) => {
+      if (!todoListSwipeStart || e.changedTouches.length !== 1) {
+        todoListSwipeStart = null;
+        return;
+      }
+      const t = e.changedTouches[0];
+      const dx = t.clientX - todoListSwipeStart.x;
+      const dy = t.clientY - todoListSwipeStart.y;
+      todoListSwipeStart = null;
+      if (Math.abs(dx) < LP_TODO_LIST_SWIPE_MIN_DX) return;
+      if (Math.abs(dx) < Math.abs(dy) * LP_TODO_LIST_SWIPE_DOMINANCE) return;
+      if (dx < 0) shiftTodoCategoryTab(1);
+      else shiftTodoCategoryTab(-1);
+    },
+    todoListSwipeOpts,
+  );
+
   el.appendChild(sectionsWrap);
   syncTodoAllTabSearchBarVisibility();
   if (categoryToolbarRightActions) todoMobileSearchSync();
@@ -5363,10 +5440,13 @@ export function render(options = {}) {
     reconnectTodoSectionsMutationObserver();
     updateTabLabels();
     if (categoryToolbarRightActions) todoMobileSearchSync();
+    else syncTodoListFilterDependentUi();
     el._lpLastTodoSectionsPaintSig = snapshotSectionTasksSemanticForCompare();
   }
-  el._lpRemountTodoSectionsAfterCalendarPull =
-    remountTodoSectionsAfterCalendarPull;
+  el._lpRemountTodoSectionsAfterCalendarPull = () => {
+    remountTodoSectionsAfterCalendarPull();
+    syncTodoListFilterDependentUi();
+  };
 
   listUiSignal.addEventListener("abort", () => {
     delete el._lpRemountTodoSectionsAfterCalendarPull;
@@ -5379,7 +5459,7 @@ export function render(options = {}) {
     } catch (_) {}
   });
 
-  if (categoryToolbarRightActions) todoMobileSearchSync();
+  syncTodoListFilterDependentUi();
 
   return el;
 }
