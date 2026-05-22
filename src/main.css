@@ -116,6 +116,9 @@ body {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  /* 본문 전체 스크롤 대신 탭 안쪽만 스크롤 — 가로 스와이프가 main에 삼켜지지 않게 */
+  overflow: hidden;
+  touch-action: pan-y;
 }
 
 #signin-page.lp-tab-footer-visible .app-tab-panel {
@@ -165,6 +168,11 @@ body {
 .app-tab-panel > * {
   width: 100%;
   max-width: 100%;
+}
+
+/* 손가락 가로 스와이프(캘린더·할일·시간레포트 등) — 세로 스크롤만 브라우저, 가로는 JS */
+.lp-horizontal-pan-navigate {
+  touch-action: pan-y;
 }
 
 /* 하단 고정: 한 슬롯 안에서 뒤로 + 탭 액션을 칸 단위로 균등 분할 */

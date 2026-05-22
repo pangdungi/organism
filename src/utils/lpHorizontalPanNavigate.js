@@ -19,6 +19,12 @@ export function bindLpHorizontalPanNavigate(root, opts) {
   const ac = new AbortController();
   const signal = opts.signal ?? ac.signal;
   const passive = { passive: true, signal };
+  const passiveFalse = { passive: false, signal };
+
+  /* iOS PWA: 부모 스크롤이 가로 제스처를 먹지 않게 */
+  root.classList.add("lp-horizontal-pan-navigate");
+  const prevTouchAction = root.style.touchAction;
+  if (!prevTouchAction) root.style.touchAction = "pan-y";
 
   const isActive = () => opts.isActive?.() !== false;
   const shouldIgnore = (target) => opts.shouldIgnoreTarget?.(target) ?? false;
@@ -26,6 +32,7 @@ export function bindLpHorizontalPanNavigate(root, opts) {
   let panStart = null;
   let activePointerId = null;
   let touchPanActive = false;
+  let touchHorizontalLock = false;
   let navLockUntil = 0;
   let wheelNavBlockedUntil = 0;
   let wheelAccum = 0;
@@ -50,12 +57,14 @@ export function bindLpHorizontalPanNavigate(root, opts) {
     panStart = null;
     activePointerId = null;
     touchPanActive = false;
+    touchHorizontalLock = false;
   }
 
   function onPanStart(clientX, clientY, target) {
     if (!isActive()) return;
     if (shouldIgnore(target)) return;
     panStart = { x: clientX, y: clientY };
+    touchHorizontalLock = false;
   }
 
   function onPanEnd(clientX, clientY) {
@@ -75,6 +84,27 @@ export function bindLpHorizontalPanNavigate(root, opts) {
       onPanStart(t.clientX, t.clientY, e.target);
     },
     passive,
+  );
+  root.addEventListener(
+    "touchmove",
+    (e) => {
+      if (!panStart || e.touches.length !== 1) return;
+      if (!isActive()) return;
+      const t = e.touches[0];
+      const dx = t.clientX - panStart.x;
+      const dy = t.clientY - panStart.y;
+      if (
+        !touchHorizontalLock &&
+        Math.abs(dx) > 10 &&
+        Math.abs(dx) > Math.abs(dy) * dominance
+      ) {
+        touchHorizontalLock = true;
+      }
+      if (touchHorizontalLock) {
+        e.preventDefault();
+      }
+    },
+    passiveFalse,
   );
   root.addEventListener("touchcancel", clearPan, passive);
   root.addEventListener(
@@ -118,10 +148,8 @@ export function bindLpHorizontalPanNavigate(root, opts) {
     root.addEventListener(
       "pointerup",
       (e) => {
-        if (e.pointerType === "touch") {
-          clearPan();
-          return;
-        }
+        /* 터치는 touchend가 처리 — pointerup에서 panStart를 지우면 스와이프가 씹힘 */
+        if (e.pointerType === "touch") return;
         if (activePointerId != null && e.pointerId !== activePointerId) return;
         onPanEnd(e.clientX, e.clientY);
         try {
@@ -159,5 +187,9 @@ export function bindLpHorizontalPanNavigate(root, opts) {
     );
   }
 
-  return () => ac.abort();
+  return () => {
+    root.classList.remove("lp-horizontal-pan-navigate");
+    if (!prevTouchAction) root.style.touchAction = "";
+    ac.abort();
+  };
 }
