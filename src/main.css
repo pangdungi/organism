@@ -66,11 +66,13 @@ body {
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: 0;
-  /* vh: 폴백 · svh: 모바일 주소창 등에 덜 출렁여 하단 푸터가 떠 보이는 현상 완화 */
+  /* dvh: PWA·모바일 실제 보이는 높이 · svh/vh 폴백 */
   height: 100vh;
   max-height: 100vh;
   height: 100svh;
   max-height: 100svh;
+  height: 100dvh;
+  max-height: 100dvh;
   min-height: 0;
   overflow: hidden;
 }
@@ -104,9 +106,23 @@ body {
   overflow: hidden;
 }
 
-/* 상단 세이프만큼 레이아웃이 붙어 보일 때 — 하단 패딩은 건드리지 않고 main·푸터 사이만 벌림 */
+/* 푸터 탭: 본문이 푸터 상단 보더까지 채우도록(상단 safe-area를 gap으로 넣지 않음 — PWA에서 전 탭 본문이 ~1cm 위에서 끊김) */
 #signin-page.lp-tab-footer-visible #app-screen-inner {
-  gap: env(safe-area-inset-top, 0px);
+  gap: 0;
+}
+
+#signin-page.lp-tab-footer-visible .app-main {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+#signin-page.lp-tab-footer-visible .app-tab-panel {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .app-main {
