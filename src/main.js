@@ -23,6 +23,7 @@ import {
   LP_LAST_TAB_SESSION_KEY,
 } from "./App.js";
 import { initOfflineAppGate } from "./utils/offlineAppGate.js";
+import { initLpAppShellViewportLock } from "./utils/lpAppShellViewport.js";
 import { supabase } from "./supabase.js";
 import { applyAppFont } from "./utils/appUiFont.js";
 import { pullUserPrefsFromSupabase } from "./utils/userHourlySync.js";
@@ -185,6 +186,7 @@ function init() {
   if (app) app.style.display = "block";
 
   initOfflineAppGate();
+  initLpAppShellViewportLock();
 
   applyAppFont();
   applyTimeCategoryColors();

@@ -15,6 +15,8 @@
   --lp-safe-bottom: calc(env(safe-area-inset-bottom, 0px) * 0.3);
   --lp-safe-left: env(safe-area-inset-left, 0px);
   --lp-safe-right: env(safe-area-inset-right, 0px);
+  /** iOS PWA: JS lpAppShellViewport 가 innerHeight 로 세팅 — dvh 바운스 후 푸터 높이 변동 방지 */
+  --lp-app-shell-h: 100svh;
 }
 
 /** 앱 전체 배경 — index.html 의 html·body 에 `class="lp-app-bg"` */
@@ -60,21 +62,23 @@ body {
   width: 100%;
 }
 
-/* 로그인 후 메인 셸: 상단 세이프만 유지 · 하단 세이프 패딩은 제거(푸터 바만 두고 빈 줄 최소화) */
+/* 로그인 후 메인 셸: 상단 세이프만 유지 · 높이는 JS 고정(svh 폴백) — 100dvh는 바운스 후 푸터가 내려감 */
 #signin-page {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
   flex-direction: column;
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: 0;
-  /* dvh: PWA·모바일 실제 보이는 높이 · svh/vh 폴백 */
-  height: 100vh;
-  max-height: 100vh;
-  height: 100svh;
-  max-height: 100svh;
-  height: 100dvh;
-  max-height: 100dvh;
+  height: var(--lp-app-shell-h, 100svh);
+  max-height: var(--lp-app-shell-h, 100svh);
   min-height: 0;
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 #signin-page #app-screen {
@@ -189,7 +193,7 @@ body {
   align-items: stretch;
   gap: 0;
   width: 100%;
-  padding: 0.45rem 0.75rem 0.5rem;
+  padding: 0.45rem 0.75rem calc(0.5rem + env(safe-area-inset-bottom, 0px));
   padding-left: calc(0.75rem + var(--lp-safe-left));
   padding-right: calc(0.75rem + var(--lp-safe-right));
   border-top: 1px solid #e2e8f0;
