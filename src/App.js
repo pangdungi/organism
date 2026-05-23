@@ -68,6 +68,7 @@ import { hydrateWorkScheduleFromCloud } from "./utils/workScheduleSupabase.js";
 import { logLpRender, logLpRenderStack } from "./utils/lpRenderDebugLog.js";
 import { initDomPulseDebug } from "./utils/domPulseDebug.js";
 import { initMobileVisualViewportKeyboardInset } from "./utils/mobileViewportKeyboard.js";
+import { syncLpAppShellViewportHeight } from "./utils/lpAppShellViewport.js";
 import { logTodoScheduleTabOnNavigate } from "./utils/lpTabDataSourceLog.js";
 import { syncLpTopSafeChromeFromTab } from "./utils/syncLpHomeTimeSafeTopChrome.js";
 
@@ -971,6 +972,10 @@ export async function mountApp(container) {
   if (window.matchMedia("(max-width: 48rem)").matches) {
     initMobileVisualViewportKeyboardInset();
   }
+  syncLpAppShellViewportHeight();
+  requestAnimationFrame(() => {
+    syncLpAppShellViewportHeight();
+  });
   if (!window.matchMedia("(max-width: 48rem)").matches) {
     observeDatePickerInit(panel);
   }

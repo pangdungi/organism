@@ -15,7 +15,7 @@
   --lp-safe-bottom: calc(env(safe-area-inset-bottom, 0px) * 0.3);
   --lp-safe-left: env(safe-area-inset-left, 0px);
   --lp-safe-right: env(safe-area-inset-right, 0px);
-  /** iOS PWA: JS lpAppShellViewport 가 innerHeight 로 세팅 — dvh 바운스 후 푸터 높이 변동 방지 */
+  /** iOS PWA: syncLpAppShellViewportHeight — visualViewport 기준, svh 폴백 */
   --lp-app-shell-h: 100svh;
 }
 
@@ -62,13 +62,12 @@ body {
   width: 100%;
 }
 
-/* 로그인 후 메인 셸: 상단 세이프만 유지 · 높이는 JS 고정(svh 폴백) — 100dvh는 바운스 후 푸터가 내려감 */
+/* 로그인 후 메인 셸: 상단 세이프만 · 높이는 visualViewport 기준 JS 고정(svh 폴백) */
 #signin-page {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  bottom: 0;
   width: 100%;
   flex-direction: column;
   box-sizing: border-box;
