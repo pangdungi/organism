@@ -15,8 +15,23 @@
   --lp-safe-bottom: calc(env(safe-area-inset-bottom, 0px) * 0.3);
   --lp-safe-left: env(safe-area-inset-left, 0px);
   --lp-safe-right: env(safe-area-inset-right, 0px);
-  /** iOS PWA: syncLpAppShellViewportHeight — visualViewport 기준, svh 폴백 */
+  /** 브라우저 탭: svh. PWA는 아래 @media standalone 에서 lvh */
   --lp-app-shell-h: 100svh;
+}
+
+/** 홈 화면 앱: 첫 페인트부터 lvh(812). svh(762)면 하단 빈칸 — JS px 덮어쓰지 않음 */
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  :root {
+    --lp-app-shell-h: 100lvh;
+  }
+}
+
+@supports not (height: 100lvh) {
+  @media (display-mode: standalone), (display-mode: fullscreen) {
+    :root {
+      --lp-app-shell-h: 100dvh;
+    }
+  }
 }
 
 /** 앱 전체 배경 — index.html 의 html·body 에 `class="lp-app-bg"` */
@@ -62,7 +77,7 @@ body {
   width: 100%;
 }
 
-/* 로그인 후 메인 셸: 상단 세이프만 · 높이는 visualViewport 기준 JS 고정(svh 폴백) */
+/* 로그인 후 메인 셸: 상단 세이프만 · PWA=lvh CSS, 브라우저=JS px(svh 폴백) */
 #signin-page {
   position: fixed;
   top: 0;

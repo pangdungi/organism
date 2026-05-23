@@ -1,8 +1,22 @@
 /**
- * iOS PWA: 앱 껍데(#signin-page) 높이.
- * — 첫 진입 시 innerHeight 는 실제보다 크게 잡히는 경우가 많아 visualViewport 로 보이는 높이 사용.
- * — visualViewport.scroll(바운스)에는 반응하지 않고 resize·orientation·pageshow 만.
+ * 앱 껍데(#signin-page) 높이 — lp-app-shell-h
+ * — PWA(standalone): CSS 100lvh 만. JS px 덮어쓰면 iOS 첫 진입 762 등 작은 값으로 하단 빈칸.
+ * — 브라우저 탭: visualViewport 기준 px. scroll(바운스)에는 반응하지 않음.
  */
+
+function isLpPwaStandaloneShell() {
+  try {
+    if (typeof window.matchMedia === "function") {
+      if (window.matchMedia("(display-mode: standalone)").matches) return true;
+      if (window.matchMedia("(display-mode: fullscreen)").matches) return true;
+    }
+  } catch (_) {}
+  try {
+    if (/** @type {Navigator & { standalone?: boolean }} */ (navigator).standalone)
+      return true;
+  } catch (_) {}
+  return false;
+}
 
 function readLpAppShellHeightPx() {
   const ih = window.innerHeight;
@@ -17,6 +31,12 @@ function readLpAppShellHeightPx() {
 /** CSS 변수 --lp-app-shell-h 갱신 (mountApp 직후 등에서도 호출) */
 export function syncLpAppShellViewportHeight() {
   if (typeof window === "undefined") return;
+  if (isLpPwaStandaloneShell()) {
+    try {
+      document.documentElement.style.removeProperty("--lp-app-shell-h");
+    } catch (_) {}
+    return;
+  }
   const h = readLpAppShellHeightPx();
   if (!(h > 0)) return;
   try {
@@ -30,6 +50,8 @@ export function initLpAppShellViewportLock() {
   const apply = () => syncLpAppShellViewportHeight();
 
   apply();
+  if (isLpPwaStandaloneShell()) return;
+
   requestAnimationFrame(() => {
     apply();
     requestAnimationFrame(apply);
