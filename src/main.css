@@ -87,24 +87,53 @@ body {
 }
 
 /**
- * PWA: base #signin-page height(100svh)보다 뒤 — inset:0 으로 실제 화면 끝까지(50px 틈 방지).
- * html/body 100dvh(위쪽 규칙)와 껍데 svh(762) 불일치로 푸터 밖 빈칸 생기던 문제.
+ * PWA: 상단(viewport-fit+cover·배경 침범)과 대칭 — layout innerHeight(svh) 아래 홈바 영역까지
+ * html/body·fixed 덮개는 100lvh 로 연장. #signin-page 는 inset:0 유지(푸터 lvh 잘림 방지).
  */
 @media (display-mode: standalone), (display-mode: fullscreen) {
   html,
   body {
     min-height: -webkit-fill-available;
+    min-height: 100lvh;
     height: -webkit-fill-available;
   }
 
   #app {
     min-height: -webkit-fill-available;
+    min-height: 100lvh;
   }
 
   #signin-page {
     bottom: 0;
     height: auto;
     max-height: none;
+  }
+
+  .login-page.login-page--gate {
+    min-height: 100lvh;
+  }
+
+  /* body 포털 fixed 전체화면 — inset:0(762) 아래까지 어두운 덮개·배경 연장 */
+  .time-task-setup-modal,
+  .todo-list-modal,
+  .diary-desktop-compose-modal,
+  [data-legacy~="time-task-setup-modal"],
+  [data-legacy~="todo-list-modal"],
+  [data-legacy~="diary-desktop-compose-modal"],
+  .time-task-log-todo-inner-modal,
+  .time-task-log-expense-inner-modal,
+  [data-legacy~="time-task-log-todo-inner-modal"],
+  [data-legacy~="time-task-log-expense-inner-modal"],
+  .asset-expense-transaction-modal,
+  .asset-settings-modal,
+  .dream-kpi-modal,
+  .dream-kpi-log-modal,
+  .calendar-day-expand-overlay,
+  .diary-tr-invest-detail-modal-backdrop,
+  .idea-delete-account-modal,
+  .app-toast-modal,
+  .auth-pw-modal {
+    min-height: 100lvh;
   }
 }
 
