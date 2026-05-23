@@ -211,7 +211,7 @@ body {
   align-items: stretch;
   gap: 0;
   width: 100%;
-  padding: 0.45rem 0.75rem calc(0.5rem + env(safe-area-inset-bottom, 0px));
+  padding: 0.45rem 0.75rem calc(0.5rem + var(--lp-safe-bottom));
   padding-left: calc(0.75rem + var(--lp-safe-left));
   padding-right: calc(0.75rem + var(--lp-safe-right));
   border-top: 1px solid #e2e8f0;
