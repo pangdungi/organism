@@ -36,6 +36,7 @@ export function setKpiHistoryBottomTab(namespace, kpiId, tab) {
  * @param {HTMLElement} panelTodo
  * @param {HTMLElement | null} panelDaily
  * @param {boolean} hasDailyTab
+ * @param {((tab: string) => void) | null} [onTabChange]
  */
 export function wireKpiHistoryBottomTabs(
   namespace,
@@ -47,6 +48,7 @@ export function wireKpiHistoryBottomTabs(
   panelTodo,
   panelDaily,
   hasDailyTab,
+  onTabChange,
 ) {
   const apply = (which) => {
     let w = which;
@@ -66,6 +68,7 @@ export function wireKpiHistoryBottomTabs(
       btnDaily.setAttribute("aria-selected", showDaily ? "true" : "false");
       panelDaily.hidden = !showDaily;
     }
+    onTabChange?.(w);
   };
 
   let initial = getKpiHistoryBottomTab(namespace, kpiId);

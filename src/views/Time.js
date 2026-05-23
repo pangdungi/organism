@@ -3846,9 +3846,8 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   const taskName = (rowData.taskName || "")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
-  const memo = (rowData.feedback || "")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  const memoSrc = rowData.feedback || "";
+  const memo = memoSrc ? escapeHtml(String(memoSrc)) : "";
   const iconSrc = timeLedgerListRowIconSrc(rowData);
   const iconSlotInner = iconSrc
     ? `<img data-legacy="time-mobile-card-icon" src="${iconSrc}" alt="" decoding="sync" />`

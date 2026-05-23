@@ -16,8 +16,13 @@ import {
 import { toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDisplay, formatDeadlineRangeCompact } from "../utils/ganttModal.js";
 import { getAccumulatedMinutesForKpiId, minutesToHhMm, hhMmToMinutes, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
 import { defaultManualKpiLogMeta, kpiLogSourceBadgeHtml, formatKpiHistoryValueText } from "../utils/kpiLogFields.js";
-import { createKpiHabitGridElement } from "../utils/kpiHabitTrackerGrid.js";
-import { wireKpiHistoryHabitTabs } from "../utils/kpiHistoryHabitTabs.js";
+import {
+  wireKpiHistoryBottomTabs,
+  getKpiHistoryBottomTab,
+  KPI_BOTTOM_TAB_LOG,
+  KPI_BOTTOM_TAB_TODO,
+  KPI_BOTTOM_TAB_DAILY,
+} from "../utils/kpiHistoryBottomTabs.js";
 import {
   applyKpiGridScrollRestore,
   readKpiGridScrollToRestore,
@@ -58,8 +63,8 @@ import {
 
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
 
-const HAPPINESS_FOOTER_LOG_ICON = `<img src="/toolbaricons/list.svg" alt="" width="22" height="22" aria-hidden="true" />`;
-const HAPPINESS_FOOTER_TODO_ICON = `<img src="/toolbaricons/todolist.svg" alt="" width="22" height="22" aria-hidden="true" />`;
+const KPI_FOOTER_ADD_ICON =
+  '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>';
 
 function defaultDeletedRefs() {
   return {
@@ -729,59 +734,92 @@ export function render() {
       .forEach((n) => n.remove());
   }
 
-  function syncAppFooterHappinessKpiActions() {
-    clearHappinessKpiFooterActions();
-    const slot = getAppFooterActionsSlot();
-    if (!slot) return;
-    if (!selectedKpiId || !activeHappinessId) return;
-    const data = loadHappinessMap();
-    const kpiNow = (data.kpis || []).find((k) => k.id === selectedKpiId);
-    if (!kpiNow || kpiNow.happinessId !== activeHappinessId) return;
+  function happinessKpiFooterAddLabel(tab) {
+    if (tab === KPI_BOTTOM_TAB_TODO) return "할 일 추가";
+    if (tab === KPI_BOTTOM_TAB_DAILY) return "매일 할 일 추가";
+    return "로그 추가";
+  }
 
-    const logBtn = document.createElement("button");
-    logBtn.type = "button";
-    logBtn.className = APP_FOOTER_ICON_BTN_CLASS;
-    logBtn.setAttribute("data-lp-dream-kpi-footer-action", "");
-    logBtn.title = "로그 추가";
-    logBtn.setAttribute("aria-label", "로그 추가");
-    logBtn.innerHTML = HAPPINESS_FOOTER_LOG_ICON;
-    logBtn.addEventListener("click", () => {
-      const d = loadHappinessMap();
-      const k = (d.kpis || []).find((x) => x.id === selectedKpiId);
-      if (k) showKpiLogModal(k);
-    });
-
-    const todoBtn = document.createElement("button");
-    todoBtn.type = "button";
-    todoBtn.className = APP_FOOTER_ICON_BTN_CLASS;
-    todoBtn.setAttribute("data-lp-dream-kpi-footer-action", "");
-    todoBtn.title = "할 일 추가";
-    todoBtn.setAttribute("aria-label", "할 일 추가");
-    todoBtn.innerHTML = HAPPINESS_FOOTER_TODO_ICON;
-    todoBtn.addEventListener("click", async () => {
-      const d = loadHappinessMap();
-      const k = (d.kpis || []).find((x) => x.id === selectedKpiId);
-      if (!k) return;
+  async function runHappinessKpiFooterAddAction() {
+    const d = loadHappinessMap();
+    const k = (d.kpis || []).find((x) => x.id === selectedKpiId);
+    if (!k) return;
+    const tab = getKpiHistoryBottomTab("happiness", selectedKpiId);
+    if (tab === KPI_BOTTOM_TAB_TODO) {
       const text = await showKpiTodoAddModal({
         kpiName: k.name,
         placeholder: "할 일 입력",
       });
       if (!text) return;
       const d2 = loadHappinessMap();
-      const todo = {
+      d2.kpiTodos = d2.kpiTodos || [];
+      d2.kpiTodos.push({
         id: nextId(),
         kpiId: String(selectedKpiId),
         text,
         completed: false,
-      };
-      d2.kpiTodos = d2.kpiTodos || [];
-      d2.kpiTodos.push(todo);
+      });
       saveHappinessMap(d2);
       renderKpiHistory({ scrollTodoAfterMutation: true });
-    });
+      return;
+    }
+    if (tab === KPI_BOTTOM_TAB_DAILY) {
+      const text = await showKpiTodoAddModal({
+        kpiName: k.name,
+        title: "매일 할 일 추가",
+        placeholder: "할 일 입력 (매일 반복)",
+      });
+      if (!text) return;
+      const d2 = loadHappinessMap();
+      d2.kpiDailyRepeatTodos = d2.kpiDailyRepeatTodos || [];
+      d2.kpiDailyRepeatTodos.push({
+        id: nextId(),
+        kpiId: String(selectedKpiId),
+        text,
+        completed: false,
+      });
+      saveHappinessMap(d2);
+      renderKpiHistory({ scrollTodoAfterMutation: true });
+      return;
+    }
+    showKpiLogModal(k);
+  }
 
-    slot.appendChild(logBtn);
-    slot.appendChild(todoBtn);
+  function syncAppFooterHappinessKpiActions() {
+    clearHappinessKpiFooterActions();
+    const slot = getAppFooterActionsSlot();
+    if (!slot) return;
+    if (!activeHappinessId) return;
+
+    const addBtn = document.createElement("button");
+    addBtn.type = "button";
+    addBtn.className = APP_FOOTER_ICON_BTN_CLASS;
+    addBtn.setAttribute("data-lp-dream-kpi-footer-action", "");
+    addBtn.innerHTML = KPI_FOOTER_ADD_ICON;
+
+    if (!selectedKpiId) {
+      addBtn.title = "KPI 추가";
+      addBtn.setAttribute("aria-label", "KPI 추가");
+      addBtn.addEventListener("click", () => {
+        if (!activeHappinessId) return;
+        showKpiModal();
+      });
+      slot.appendChild(addBtn);
+      return;
+    }
+
+    const data = loadHappinessMap();
+    const kpiNow = (data.kpis || []).find((k) => k.id === selectedKpiId);
+    if (!kpiNow || kpiNow.happinessId !== activeHappinessId) return;
+
+    const tab = getKpiHistoryBottomTab("happiness", selectedKpiId);
+    const addLabel = happinessKpiFooterAddLabel(tab);
+    addBtn.title = addLabel;
+    addBtn.setAttribute("aria-label", addLabel);
+    addBtn.addEventListener("click", () => {
+      void runHappinessKpiFooterAddAction();
+    });
+    slot.appendChild(addBtn);
   }
 
   function getKpiLogs(kpiId) {
@@ -1021,17 +1059,6 @@ export function render() {
     if (!historyAnchoredUnderCard) {
       grid.appendChild(historyWrap);
     }
-    if (!selectedKpiId) {
-      const addCard = document.createElement("button");
-      addCard.type = "button";
-      addCard.className = "dream-kpi-add-card";
-      addCard.innerHTML = '<span class="dream-kpi-add-card-text">+ KPI 추가하기</span>';
-      addCard.addEventListener("click", () => {
-        if (!activeHappinessId) return;
-        showKpiModal();
-      });
-      grid.appendChild(addCard);
-    }
     contentWrap.appendChild(grid);
 
     applyKpiGridScrollRestore(contentWrap, savedGridScroll);
@@ -1065,19 +1092,7 @@ export function render() {
     );
     historyWrap.hidden = false;
 
-    const headerRow = document.createElement("div");
-    headerRow.className = "dream-kpi-history-header";
-    headerRow.innerHTML = `
-      <h4 class="dream-kpi-history-title">${escapeHtml(kpi.name)} 기록</h4>
-    `;
-    historyWrap.appendChild(headerRow);
-
-    const dailyTodosForGrid = needHabitTracker
-      ? (data.kpiDailyRepeatTodos || []).filter(
-          (t) => String(t.kpiId) === selKpi && (t.text || "").trim() !== "",
-        )
-      : [];
-    const useHabitTabs = needHabitTracker && dailyTodosForGrid.length > 0;
+    const hasDailyTab = needHabitTracker;
 
     const appendKpiDailyLogBlock = (parentEl) => {
       const div = document.createElement("div");
@@ -1127,53 +1142,49 @@ export function render() {
       }
     };
 
-    if (useHabitTabs) {
-      const tabsRow = document.createElement("div");
-      tabsRow.className = "dream-kpi-filter-bar dream-kpi-history-habit-subtabs";
-      tabsRow.setAttribute("role", "tablist");
-      const btnLog = document.createElement("button");
-      btnLog.type = "button";
-      btnLog.className = "dream-kpi-filter-btn";
-      btnLog.textContent = "로그보기";
-      btnLog.setAttribute("role", "tab");
-      const btnTr = document.createElement("button");
-      btnTr.type = "button";
-      btnTr.className = "dream-kpi-filter-btn";
-      btnTr.textContent = "트랙커보기";
-      btnTr.setAttribute("role", "tab");
-      tabsRow.appendChild(btnLog);
-      tabsRow.appendChild(btnTr);
-      historyWrap.appendChild(tabsRow);
+    const segBar = document.createElement("div");
+    segBar.className = "dream-kpi-bottom-seg-bar";
+    segBar.setAttribute("role", "tablist");
+    segBar.setAttribute("aria-label", "로그·할 일·매일 할 일 전환");
 
-      const panelLog = document.createElement("div");
-      panelLog.className = "dream-kpi-history-tab-panel dream-kpi-history-tab-panel--log";
-      panelLog.setAttribute("role", "tabpanel");
-      const panelTr = document.createElement("div");
-      panelTr.className = "dream-kpi-history-tab-panel dream-kpi-history-tab-panel--tracker";
-      panelTr.setAttribute("role", "tabpanel");
+    const btnSegLog = document.createElement("button");
+    btnSegLog.type = "button";
+    btnSegLog.className = "dream-kpi-bottom-seg-btn";
+    btnSegLog.textContent = "로그";
+    btnSegLog.setAttribute("role", "tab");
 
-      appendKpiDailyLogBlock(panelLog);
-      const gridEl = createKpiHabitGridElement(selKpi, dailyTodosForGrid, data.kpiLogs || []);
-      if (gridEl) panelTr.appendChild(gridEl);
+    const btnSegTodo = document.createElement("button");
+    btnSegTodo.type = "button";
+    btnSegTodo.className = "dream-kpi-bottom-seg-btn";
+    btnSegTodo.textContent = "할 일";
+    btnSegTodo.setAttribute("role", "tab");
 
-      wireKpiHistoryHabitTabs("happiness", selectedKpiId, btnLog, btnTr, panelLog, panelTr);
-      historyWrap.appendChild(panelLog);
-      historyWrap.appendChild(panelTr);
-    } else {
-      appendKpiDailyLogBlock(historyWrap);
+    let btnSegDaily = null;
+    if (hasDailyTab) {
+      btnSegDaily = document.createElement("button");
+      btnSegDaily.type = "button";
+      btnSegDaily.className = "dream-kpi-bottom-seg-btn";
+      btnSegDaily.textContent = "매일할일";
+      btnSegDaily.setAttribute("role", "tab");
     }
 
-    const todoHeader = document.createElement("div");
-    todoHeader.className = "dream-kpi-todo-header";
-    todoHeader.innerHTML = `<span class="dream-kpi-todo-title">할일 목록</span>`;
-    historyWrap.appendChild(todoHeader);
+    segBar.appendChild(btnSegLog);
+    segBar.appendChild(btnSegTodo);
+    if (btnSegDaily) segBar.appendChild(btnSegDaily);
 
-    const todoDivider = document.createElement("div");
-    todoDivider.className = "dream-kpi-todo-divider";
-    historyWrap.appendChild(todoDivider);
+    const panelLogSeg = document.createElement("div");
+    panelLogSeg.className =
+      "dream-kpi-bottom-seg-panel dream-kpi-bottom-seg-panel--log";
+    panelLogSeg.setAttribute("role", "tabpanel");
+    appendKpiDailyLogBlock(panelLogSeg);
+
+    const panelTodoSeg = document.createElement("div");
+    panelTodoSeg.className =
+      "dream-kpi-bottom-seg-panel dream-kpi-bottom-seg-panel--todo";
+    panelTodoSeg.setAttribute("role", "tabpanel");
 
     const todoList = document.createElement("div");
-    todoList.className = "dream-kpi-todo-list";
+    todoList.className = "dream-kpi-todo-list dream-kpi-todo-list--seg-panel";
     todos.forEach((todo) => {
       const item = document.createElement("div");
       const completed = !!todo.completed;
@@ -1256,24 +1267,38 @@ export function render() {
       todoList.appendChild(item);
     });
 
-    historyWrap.appendChild(todoList);
+    if (todos.length === 0) {
+      const emptyTodo = document.createElement("p");
+      emptyTodo.className = "dream-kpi-history-empty";
+      emptyTodo.textContent = "등록된 할 일이 없습니다.";
+      panelTodoSeg.appendChild(emptyTodo);
+    } else {
+      panelTodoSeg.appendChild(todoList);
+    }
 
-    if (needHabitTracker) {
+    let panelDailySeg = null;
+    if (hasDailyTab) {
+      panelDailySeg = document.createElement("div");
+      panelDailySeg.className =
+        "dream-kpi-bottom-seg-panel dream-kpi-bottom-seg-panel--daily";
+      panelDailySeg.setAttribute("role", "tabpanel");
+
       const dailyHeader = document.createElement("div");
       dailyHeader.className = "dream-kpi-todo-header";
-      dailyHeader.innerHTML = `<span class="dream-kpi-todo-title">매일 반복되는 할일 목록</span><button type="button" class="dream-kpi-history-log-btn dream-kpi-todo-header-add-btn dream-kpi-todo-header-add-btn--daily">+ 추가</button>`;
-      historyWrap.appendChild(dailyHeader);
+      dailyHeader.innerHTML = `<span class="dream-kpi-todo-title">매일 반복되는 할일 목록</span>`;
+      panelDailySeg.appendChild(dailyHeader);
       const dailyDivider = document.createElement("div");
       dailyDivider.className = "dream-kpi-todo-divider";
-      historyWrap.appendChild(dailyDivider);
+      panelDailySeg.appendChild(dailyDivider);
       const dailyList = document.createElement("div");
-      dailyList.className = "dream-kpi-todo-list";
+      dailyList.className = "dream-kpi-todo-list dream-kpi-todo-list--seg-panel";
       const dailyTodos = (data.kpiDailyRepeatTodos || []).filter(
         (t) => String(t.kpiId) === selKpi && (t.text || "").trim() !== "",
       );
       dailyTodos.forEach((todo) => {
         const item = document.createElement("div");
         item.className = "dream-kpi-todo-item dream-kpi-daily-repeat-ref";
+        item.dataset.todoId = todo.id;
         const label = document.createElement("label");
         label.className = "dream-kpi-todo-check-wrap";
         const check = document.createElement("input");
@@ -1322,21 +1347,26 @@ export function render() {
         item.appendChild(textPreview);
         dailyList.appendChild(item);
       });
-      dailyHeader.querySelector(".dream-kpi-todo-header-add-btn--daily")?.addEventListener("click", async () => {
-        const text = await showKpiTodoAddModal({
-          kpiName: kpi.name,
-          title: "매일 할 일 추가",
-          placeholder: "할 일 입력 (매일 반복)",
-        });
-        if (!text) return;
-        const d = loadHappinessMap();
-        d.kpiDailyRepeatTodos = d.kpiDailyRepeatTodos || [];
-        d.kpiDailyRepeatTodos.push({ id: nextId(), kpiId: selKpi, text, completed: false });
-        saveHappinessMap(d);
-        renderKpiHistory({ scrollTodoAfterMutation: true });
-      });
-      historyWrap.appendChild(dailyList);
+      panelDailySeg.appendChild(dailyList);
     }
+
+    historyWrap.appendChild(segBar);
+    historyWrap.appendChild(panelLogSeg);
+    historyWrap.appendChild(panelTodoSeg);
+    if (panelDailySeg) historyWrap.appendChild(panelDailySeg);
+
+    wireKpiHistoryBottomTabs(
+      "happiness",
+      selectedKpiId,
+      btnSegLog,
+      btnSegTodo,
+      btnSegDaily,
+      panelLogSeg,
+      panelTodoSeg,
+      panelDailySeg,
+      hasDailyTab,
+      () => syncAppFooterHappinessKpiActions(),
+    );
     if (scrollTodoAfterMutation) {
       afterKpiTodoListMutationScroll(historyWrap);
     }

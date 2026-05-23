@@ -25,8 +25,13 @@ import {
 } from "../utils/kpiTodoInputScroll.js";
 import { getAccumulatedMinutesForKpiId, minutesToHhMm, hhMmToMinutes, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
 import { defaultManualKpiLogMeta, kpiLogSourceBadgeHtml, formatKpiHistoryValueText } from "../utils/kpiLogFields.js";
-import { createKpiHabitGridElement } from "../utils/kpiHabitTrackerGrid.js";
-import { wireKpiHistoryBottomTabs } from "../utils/kpiHistoryBottomTabs.js";
+import {
+  wireKpiHistoryBottomTabs,
+  getKpiHistoryBottomTab,
+  KPI_BOTTOM_TAB_LOG,
+  KPI_BOTTOM_TAB_TODO,
+  KPI_BOTTOM_TAB_DAILY,
+} from "../utils/kpiHistoryBottomTabs.js";
 import {
   applyKpiGridScrollRestore,
   readKpiGridScrollToRestore,
@@ -59,8 +64,8 @@ import {
 
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
 
-const SIDEINCOME_FOOTER_LOG_ICON = `<img src="/toolbaricons/list.svg" alt="" width="22" height="22" aria-hidden="true" />`;
-const SIDEINCOME_FOOTER_TODO_ICON = `<img src="/toolbaricons/todolist.svg" alt="" width="22" height="22" aria-hidden="true" />`;
+const KPI_FOOTER_ADD_ICON =
+  '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>';
 
 function defaultDeletedRefs() {
   return {
@@ -848,59 +853,92 @@ export function render() {
       .forEach((n) => n.remove());
   }
 
-  function syncAppFooterSideincomeKpiActions() {
-    clearSideincomeKpiFooterActions();
-    const slot = getAppFooterActionsSlot();
-    if (!slot) return;
-    if (!selectedKpiId || !activePathId) return;
-    const data = loadSideincomeMap();
-    const kpiNow = (data.kpis || []).find((k) => k.id === selectedKpiId);
-    if (!kpiNow || kpiNow.pathId !== activePathId) return;
+  function sideincomeKpiFooterAddLabel(tab) {
+    if (tab === KPI_BOTTOM_TAB_TODO) return "할 일 추가";
+    if (tab === KPI_BOTTOM_TAB_DAILY) return "매일 할 일 추가";
+    return "로그 추가";
+  }
 
-    const logBtn = document.createElement("button");
-    logBtn.type = "button";
-    logBtn.className = APP_FOOTER_ICON_BTN_CLASS;
-    logBtn.setAttribute("data-lp-dream-kpi-footer-action", "");
-    logBtn.title = "로그 추가";
-    logBtn.setAttribute("aria-label", "로그 추가");
-    logBtn.innerHTML = SIDEINCOME_FOOTER_LOG_ICON;
-    logBtn.addEventListener("click", () => {
-      const d = loadSideincomeMap();
-      const k = (d.kpis || []).find((x) => x.id === selectedKpiId);
-      if (k) showKpiLogModal(k);
-    });
-
-    const todoBtn = document.createElement("button");
-    todoBtn.type = "button";
-    todoBtn.className = APP_FOOTER_ICON_BTN_CLASS;
-    todoBtn.setAttribute("data-lp-dream-kpi-footer-action", "");
-    todoBtn.title = "할 일 추가";
-    todoBtn.setAttribute("aria-label", "할 일 추가");
-    todoBtn.innerHTML = SIDEINCOME_FOOTER_TODO_ICON;
-    todoBtn.addEventListener("click", async () => {
-      const d = loadSideincomeMap();
-      const k = (d.kpis || []).find((x) => x.id === selectedKpiId);
-      if (!k) return;
+  async function runSideincomeKpiFooterAddAction() {
+    const d = loadSideincomeMap();
+    const k = (d.kpis || []).find((x) => x.id === selectedKpiId);
+    if (!k) return;
+    const tab = getKpiHistoryBottomTab("sideincome", selectedKpiId);
+    if (tab === KPI_BOTTOM_TAB_TODO) {
       const text = await showKpiTodoAddModal({
         kpiName: k.name,
         placeholder: "할 일 입력",
       });
       if (!text) return;
       const d2 = loadSideincomeMap();
-      const todo = {
+      d2.kpiTodos = d2.kpiTodos || [];
+      d2.kpiTodos.push({
         id: nextId(),
         kpiId: String(selectedKpiId),
         text,
         completed: false,
-      };
-      d2.kpiTodos = d2.kpiTodos || [];
-      d2.kpiTodos.push(todo);
+      });
       saveSideincomeMap(d2);
       renderKpiHistory({ scrollTodoAfterMutation: true });
-    });
+      return;
+    }
+    if (tab === KPI_BOTTOM_TAB_DAILY) {
+      const text = await showKpiTodoAddModal({
+        kpiName: k.name,
+        title: "매일 할 일 추가",
+        placeholder: "할 일 입력 (매일 반복)",
+      });
+      if (!text) return;
+      const d2 = loadSideincomeMap();
+      d2.kpiDailyRepeatTodos = d2.kpiDailyRepeatTodos || [];
+      d2.kpiDailyRepeatTodos.push({
+        id: nextId(),
+        kpiId: String(selectedKpiId),
+        text,
+        completed: false,
+      });
+      saveSideincomeMap(d2);
+      renderKpiHistory({ scrollTodoAfterMutation: true });
+      return;
+    }
+    showKpiLogModal(k);
+  }
 
-    slot.appendChild(logBtn);
-    slot.appendChild(todoBtn);
+  function syncAppFooterSideincomeKpiActions() {
+    clearSideincomeKpiFooterActions();
+    const slot = getAppFooterActionsSlot();
+    if (!slot) return;
+    if (!activePathId) return;
+
+    const addBtn = document.createElement("button");
+    addBtn.type = "button";
+    addBtn.className = APP_FOOTER_ICON_BTN_CLASS;
+    addBtn.setAttribute("data-lp-dream-kpi-footer-action", "");
+    addBtn.innerHTML = KPI_FOOTER_ADD_ICON;
+
+    if (!selectedKpiId) {
+      addBtn.title = "KPI 추가";
+      addBtn.setAttribute("aria-label", "KPI 추가");
+      addBtn.addEventListener("click", () => {
+        if (!activePathId) return;
+        showKpiModal();
+      });
+      slot.appendChild(addBtn);
+      return;
+    }
+
+    const data = loadSideincomeMap();
+    const kpiNow = (data.kpis || []).find((k) => k.id === selectedKpiId);
+    if (!kpiNow || kpiNow.pathId !== activePathId) return;
+
+    const tab = getKpiHistoryBottomTab("sideincome", selectedKpiId);
+    const addLabel = sideincomeKpiFooterAddLabel(tab);
+    addBtn.title = addLabel;
+    addBtn.setAttribute("aria-label", addLabel);
+    addBtn.addEventListener("click", () => {
+      void runSideincomeKpiFooterAddAction();
+    });
+    slot.appendChild(addBtn);
   }
 
   function getKpiLogs(kpiId) {
@@ -1202,17 +1240,6 @@ export function render() {
     if (!historyAnchoredUnderCard) {
       grid.appendChild(historyWrap);
     }
-    if (!selectedKpiId) {
-      const addCard = document.createElement("button");
-      addCard.type = "button";
-      addCard.className = "dream-kpi-add-card";
-      addCard.innerHTML = '<span class="dream-kpi-add-card-text">+ KPI 추가하기</span>';
-      addCard.addEventListener("click", () => {
-        if (!activePathId) return;
-        showKpiModal();
-      });
-      grid.appendChild(addCard);
-    }
     contentWrap.appendChild(grid);
 
     applyKpiGridScrollRestore(contentWrap, savedGridScroll);
@@ -1246,11 +1273,6 @@ export function render() {
     );
     historyWrap.hidden = false;
 
-    const dailyTodosForGrid = needHabitTracker
-      ? (data.kpiDailyRepeatTodos || []).filter(
-          (t) => String(t.kpiId) === selKpi && (t.text || "").trim() !== "",
-        )
-      : [];
     const hasDailyTab = needHabitTracker;
 
     const appendKpiDailyLogBlock = (parentEl) => {
@@ -1323,7 +1345,7 @@ export function render() {
       btnSegDaily = document.createElement("button");
       btnSegDaily.type = "button";
       btnSegDaily.className = "dream-kpi-bottom-seg-btn";
-      btnSegDaily.textContent = "매일";
+      btnSegDaily.textContent = "매일할일";
       btnSegDaily.setAttribute("role", "tab");
     }
 
@@ -1442,16 +1464,9 @@ export function render() {
         "dream-kpi-bottom-seg-panel dream-kpi-bottom-seg-panel--daily";
       panelDailySeg.setAttribute("role", "tabpanel");
 
-      const habitGridEl = createKpiHabitGridElement(
-        selKpi,
-        dailyTodosForGrid,
-        data.kpiLogs || [],
-      );
-      if (habitGridEl) panelDailySeg.appendChild(habitGridEl);
-
       const dailyHeader = document.createElement("div");
       dailyHeader.className = "dream-kpi-todo-header";
-      dailyHeader.innerHTML = `<span class="dream-kpi-todo-title">매일 반복되는 할일 목록</span><button type="button" class="dream-kpi-history-log-btn dream-kpi-todo-header-add-btn dream-kpi-todo-header-add-btn--daily">+ 추가</button>`;
+      dailyHeader.innerHTML = `<span class="dream-kpi-todo-title">매일 반복되는 할일 목록</span>`;
       panelDailySeg.appendChild(dailyHeader);
       const dailyDivider = document.createElement("div");
       dailyDivider.className = "dream-kpi-todo-divider";
@@ -1513,19 +1528,6 @@ export function render() {
         item.appendChild(textPreview);
         dailyList.appendChild(item);
       });
-      dailyHeader.querySelector(".dream-kpi-todo-header-add-btn--daily")?.addEventListener("click", async () => {
-        const text = await showKpiTodoAddModal({
-          kpiName: kpi.name,
-          title: "매일 할 일 추가",
-          placeholder: "할 일 입력 (매일 반복)",
-        });
-        if (!text) return;
-        const d = loadSideincomeMap();
-        d.kpiDailyRepeatTodos = d.kpiDailyRepeatTodos || [];
-        d.kpiDailyRepeatTodos.push({ id: nextId(), kpiId: selKpi, text, completed: false });
-        saveSideincomeMap(d);
-        renderKpiHistory({ scrollTodoAfterMutation: true });
-      });
       panelDailySeg.appendChild(dailyList);
     }
 
@@ -1544,6 +1546,7 @@ export function render() {
       panelTodoSeg,
       panelDailySeg,
       hasDailyTab,
+      () => syncAppFooterSideincomeKpiActions(),
     );
     if (scrollTodoAfterMutation) {
       afterKpiTodoListMutationScroll(historyWrap);
