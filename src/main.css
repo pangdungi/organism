@@ -1412,12 +1412,9 @@ table {
 .login-page.login-page--gate {
   --auth-navy: #1e4d7b;
   --auth-blue: #3a6ea8;
-  --auth-track: rgba(255, 255, 255, 0.14);
-  --auth-seg-muted: rgba(255, 255, 255, 0.55);
-  --auth-ink: #fff;
-  --auth-label: rgba(255, 255, 255, 0.72);
-  --auth-border: rgba(255, 255, 255, 0.42);
-  --auth-placeholder: rgba(255, 255, 255, 0.45);
+  --auth-track: rgba(58, 110, 168, 0.14);
+  --auth-seg-muted: rgba(30, 77, 123, 0.55);
+  --auth-ink: #1a2d45;
   min-height: 100vh;
   min-height: 100dvh;
   width: 100%;
@@ -1446,21 +1443,23 @@ table {
   margin: 0 auto;
 }
 
-.login-page.login-page--gate .login-card.login-card--brand {
+.login-card.login-card--brand {
   position: relative;
-  background: transparent;
-  border-radius: 0;
-  padding: 1rem 0 0.75rem;
-  box-shadow: none;
+  background: #fff;
+  border-radius: 20px;
+  padding: 1.6rem 1.35rem 1rem;
+  box-shadow:
+    0 12px 40px rgba(30, 77, 123, 0.09),
+    0 1px 0 rgba(255, 255, 255, 0.9) inset;
   box-sizing: border-box;
 }
 
-.login-page.login-page--gate .auth-gate-heading.login-title {
+.auth-gate-heading.login-title {
   margin: 0 0 1.1rem;
   font-size: 1.35rem;
   font-weight: 700;
   letter-spacing: -0.03em;
-  color: #fff;
+  color: var(--auth-navy);
   line-height: 1.25;
 }
 
@@ -1478,7 +1477,7 @@ table {
   box-sizing: border-box;
 }
 
-.login-page.login-page--gate .auth-gate-segments::before {
+.auth-gate-segments::before {
   content: "";
   position: absolute;
   top: var(--ag-pad);
@@ -1486,8 +1485,10 @@ table {
   left: var(--ag-pad);
   width: calc((100% - 2 * var(--ag-pad)) / 2);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.22);
-  box-shadow: none;
+  background: #fff;
+  box-shadow:
+    0 2px 8px rgba(30, 77, 123, 0.1),
+    0 1px 2px rgba(30, 77, 123, 0.06);
   transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 0;
   pointer-events: none;
@@ -1520,8 +1521,8 @@ table {
   -webkit-tap-highlight-color: transparent;
 }
 
-.login-page.login-page--gate .auth-gate-seg.is-active {
-  color: #fff;
+.auth-gate-seg.is-active {
+  color: var(--auth-navy);
 }
 
 .auth-gate-seg:focus-visible {
@@ -1545,57 +1546,57 @@ table {
   gap: 0.35rem;
 }
 
-.login-page.login-page--gate .login-form--auth-gate .login-label {
+.login-form--auth-gate .login-label {
   font-size: 0.8125rem;
   font-weight: 500;
-  color: var(--auth-label);
+  color: #64748b;
   letter-spacing: -0.01em;
 }
 
-.login-page.login-page--gate .login-input--auth {
+.login-input--auth {
   display: block;
   width: 100%;
   margin: 0;
   padding: 0.45rem 0 0.5rem;
   font: inherit;
   font-size: 0.9375rem;
-  color: #fff;
+  color: #1e4d7b;
   background: transparent;
   border: none;
-  border-bottom: 1px solid var(--auth-border);
+  border-bottom: 1px solid #cbd5e1;
   border-radius: 0;
   outline: none;
   box-sizing: border-box;
 }
 
-.login-page.login-page--gate .login-input--auth::placeholder {
-  color: var(--auth-placeholder);
+.login-input--auth::placeholder {
+  color: #94a3b8;
 }
 
-.login-page.login-page--gate .login-field--auth:focus-within .login-label {
-  color: #fff;
+.login-field--auth:focus-within .login-label {
+  color: #1e4d7b;
 }
 
-.login-page.login-page--gate .login-input--auth:focus {
+.login-input--auth:focus {
   border-bottom-width: 1.5px;
-  border-bottom-color: #fff;
-  color: #fff;
+  border-bottom-color: #1e4d7b;
+  color: #1a2218;
 }
 
-.login-page.login-page--gate .login-input--auth:not(:placeholder-shown):not(:focus) {
-  color: rgba(255, 255, 255, 0.92);
+.login-input--auth:not(:placeholder-shown):not(:focus) {
+  color: #1e4d7b;
 }
 
-.login-page.login-page--gate .login-password-row {
+.login-password-row {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  border-bottom: 1px solid var(--auth-border);
+  border-bottom: 1px solid #cbd5e1;
 }
 
-.login-page.login-page--gate .login-password-row:focus-within {
+.login-password-row:focus-within {
   border-bottom-width: 1.5px;
-  border-bottom-color: #fff;
+  border-bottom-color: #1e4d7b;
 }
 
 .login-password-row .login-input--auth,
@@ -1610,7 +1611,7 @@ table {
   border-bottom: none;
 }
 
-.login-page.login-page--gate .login-pw-toggle {
+.login-pw-toggle {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
@@ -1618,7 +1619,7 @@ table {
   width: 2.35rem;
   height: 2.35rem;
   padding: 0;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--auth-blue);
   background: transparent;
   border: none;
   border-radius: 8px;
@@ -1626,16 +1627,16 @@ table {
   -webkit-tap-highlight-color: transparent;
 }
 
-.login-page.login-page--gate .login-pw-toggle:hover {
-  background: rgba(255, 255, 255, 0.1);
+.login-pw-toggle:hover {
+  background: rgba(58, 110, 168, 0.06);
 }
 
-.login-page.login-page--gate .login-pw-toggle:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.7);
+.login-pw-toggle:focus-visible {
+  outline: 2px solid var(--auth-blue);
   outline-offset: 1px;
 }
 
-.login-page.login-page--gate .login-btn-cta {
+.login-btn-cta {
   margin-top: 0.25rem;
   width: 100%;
   padding: 0.85rem 1rem;
@@ -1643,34 +1644,34 @@ table {
   font-size: 0.9375rem;
   font-weight: 600;
   letter-spacing: -0.02em;
-  color: var(--auth-navy);
-  background: #fff;
+  color: #fff;
+  background: var(--auth-navy);
   border: none;
   border-radius: 12px;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 14px rgba(30, 77, 123, 0.22);
   -webkit-tap-highlight-color: transparent;
   transition: opacity 0.15s ease, transform 0.12s ease;
 }
 
-.login-page.login-page--gate .login-btn-cta:hover {
+.login-btn-cta:hover {
   opacity: 0.95;
 }
 
-.login-page.login-page--gate .login-btn-cta:active {
+.login-btn-cta:active {
   transform: scale(0.99);
 }
 
-.login-page.login-page--gate .login-btn-cta:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.85);
+.login-btn-cta:focus-visible {
+  outline: 2px solid var(--auth-blue);
   outline-offset: 3px;
 }
 
-.login-page.login-page--gate .login-btn-cta.login-btn-sm {
+.login-btn-cta.login-btn-sm {
   padding: 0.65rem 0.9rem;
   font-size: 0.875rem;
   margin-top: 0;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 10px rgba(30, 77, 123, 0.18);
 }
 
 .login-auth-switch {
@@ -1682,12 +1683,12 @@ table {
   margin-top: 1rem;
 }
 
-.login-page.login-page--gate .login-link {
+.login-link {
   margin: 0;
   padding: 0;
   font: inherit;
   font-size: 0.8125rem;
-  color: rgba(255, 255, 255, 0.88);
+  color: var(--auth-blue);
   text-decoration: underline;
   text-underline-offset: 0.15em;
   background: none;
@@ -1701,37 +1702,26 @@ table {
   font-weight: 500;
 }
 
-.login-page.login-page--gate .login-link:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.75);
+.login-link:focus-visible {
+  outline: 2px solid var(--auth-blue);
   outline-offset: 2px;
   border-radius: 2px;
 }
 
-.login-page.login-page--gate .login-show-pw {
-  color: rgba(255, 255, 255, 0.72);
-}
-
 /* 비밀번호 재설정 풀페이지 카드 */
-#reset-password-page.login-page--gate .login-title {
+#reset-password-page .login-title {
   margin: 0 0 0.5rem;
   font-size: 1.35rem;
   font-weight: 700;
   letter-spacing: -0.03em;
-  color: #fff;
+  color: var(--auth-navy);
 }
 
-#reset-password-page.login-page--gate .login-desc {
+#reset-password-page .login-desc {
   margin: 0 0 1.15rem;
   font-size: 0.8125rem;
   line-height: 1.5;
-  color: rgba(255, 255, 255, 0.72);
-}
-
-.login-page.login-page--gate .login-forgot-desc {
-  margin: 0 0 0.35rem;
-  font-size: 0.8125rem;
-  line-height: 1.5;
-  color: rgba(255, 255, 255, 0.72);
+  color: rgba(30, 77, 123, 0.6);
 }
 
 /* 앱 전역 알림 — 스플래시(2147483646)·비밀번호 모달 위에 표시 */
