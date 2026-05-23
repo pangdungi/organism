@@ -19,25 +19,6 @@
   --lp-app-shell-h: 100svh;
 }
 
-/** 홈 화면 앱: lvh(812)·dvh 는 innerHeight(762)보다 커서 푸터 잘림. svh + inset:0 으로 통일 */
-@media (display-mode: standalone), (display-mode: fullscreen) {
-  html,
-  body {
-    height: 100svh;
-    min-height: 100svh;
-  }
-
-  #signin-page {
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    width: auto;
-    height: auto;
-    max-height: none;
-  }
-}
-
 /** 앱 전체 배경 — index.html 의 html·body 에 `class="lp-app-bg"` */
 .lp-app-bg {
   background: #fff;
@@ -97,6 +78,28 @@ body {
   min-height: 0;
   overflow: hidden;
   overscroll-behavior: none;
+}
+
+/**
+ * PWA: base #signin-page height(100svh)보다 뒤 — inset:0 으로 실제 화면 끝까지(50px 틈 방지).
+ * html/body 100dvh(위쪽 규칙)와 껍데 svh(762) 불일치로 푸터 밖 빈칸 생기던 문제.
+ */
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  html,
+  body {
+    min-height: -webkit-fill-available;
+    height: -webkit-fill-available;
+  }
+
+  #app {
+    min-height: -webkit-fill-available;
+  }
+
+  #signin-page {
+    bottom: 0;
+    height: auto;
+    max-height: none;
+  }
 }
 
 #signin-page #app-screen {
@@ -211,7 +214,7 @@ body {
   align-items: stretch;
   gap: 0;
   width: 100%;
-  padding: 0.45rem 0.75rem calc(0.5rem + var(--lp-safe-bottom));
+  padding: 0.45rem 0.75rem max(0.25rem, var(--lp-safe-bottom));
   padding-left: calc(0.75rem + var(--lp-safe-left));
   padding-right: calc(0.75rem + var(--lp-safe-right));
   border-top: 1px solid #e2e8f0;

@@ -1,6 +1,6 @@
 /**
  * 앱 껍데(#signin-page) 높이 — lp-app-shell-h
- * — PWA(standalone): CSS inset:0 + html/body 100svh. lvh/dvh(812)는 innerHeight(762)보다 커서 푸터 잘림.
+ * — PWA(standalone): CSS inset:0 — height var 는 standalone @media 가 덮음. JS px 덮어쓰기 없음.
  * — 브라우저 탭: visualViewport 기준 px. scroll(바운스)에는 반응하지 않음.
  */
 
