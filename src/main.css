@@ -30,8 +30,8 @@ html.lp-auth-booting #app > .page {
 }
 
 /**
- * 로그인·비번재설정 게이트 + 오늘(메인) + 시간가계부: 상단 세이프 존까지 네이비로 이어 보이게.
- * syncLpTopSafeChromeLoginGate / syncLpTopSafeChromeFromTab 가 html·body 클래스 토글.
+ * 오늘(메인) + 시간가계부: 상단 세이프 존까지 네이비 그라데이션.
+ * 로그인·비번재설정 게이트는 lp-auth-gate-chrome(전체 네이비).
  */
 html.lp-top-safe-chrome-navy.lp-app-bg,
 body.lp-top-safe-chrome-navy.lp-app-bg {
@@ -42,6 +42,12 @@ body.lp-top-safe-chrome-navy.lp-app-bg {
     #fff calc(env(safe-area-inset-top, 0px) + 1px),
     #fff 100%
   );
+}
+
+html.lp-auth-gate-chrome.lp-app-bg,
+body.lp-auth-gate-chrome.lp-app-bg {
+  background-color: #1e4d7b;
+  background-image: none;
 }
 
 html {
