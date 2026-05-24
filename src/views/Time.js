@@ -1311,6 +1311,45 @@ function getMobileCardProductivityValue(rowData) {
   );
 }
 
+const MOBILE_CARD_TIME_SLOT_CLASSES = [
+  "calendar-1day-timeline-card--usage-slot-productive",
+  "calendar-1day-timeline-card--usage-slot-nonproductive",
+  "calendar-1day-timeline-card--usage-slot-sleep",
+];
+
+/** 사용내역 카드 — 시작·마감 시각 칸 배경(생산/비생산/수면) */
+function getMobileCardTimeSlotBgClass(rowData) {
+  if (!rowData) return "";
+  const { category, productivity } =
+    resolveRowCategoryProductivityForAudit(rowData);
+  const cat = String(category || "").trim();
+  if (cat === "sleep") {
+    return "calendar-1day-timeline-card--usage-slot-sleep";
+  }
+  const pv = (
+    String(productivity || "").trim().toLowerCase() ||
+    String(getProductivityFromCategory(cat) || "")
+      .trim()
+      .toLowerCase()
+  );
+  if (pv === "productive") {
+    return "calendar-1day-timeline-card--usage-slot-productive";
+  }
+  if (pv === "nonproductive") {
+    return "calendar-1day-timeline-card--usage-slot-nonproductive";
+  }
+  return "";
+}
+
+function applyMobileCardTimeSlotBgClass(card, rowData) {
+  if (!card) return;
+  for (const cls of MOBILE_CARD_TIME_SLOT_CLASSES) {
+    card.classList.remove(cls);
+  }
+  const slotClass = getMobileCardTimeSlotBgClass(rowData);
+  if (slotClass) card.classList.add(slotClass);
+}
+
 function hoursBetweenRowStartEnd(rowData) {
   let startTime =
     formatDateTimeInput(rowData.startTime) ||
@@ -2321,6 +2360,9 @@ function aggregateTopTasksByTrackedMinutesFromRows(rows, limit) {
   /** @type {Map<string, number>} */
   const map = new Map();
   rows.forEach((r) => {
+    const { category: catRaw } = resolveRowCategoryProductivityForAudit(r);
+    const cat = String(catRaw || "").trim();
+    if (cat === "work" || cat === "sleep") return;
     const name = String(r.taskName || "").trim();
     if (!name) return;
     const hrs = parseTimeToHours(r.timeTracked);
@@ -2336,7 +2378,7 @@ function aggregateTopTasksByTrackedMinutesFromRows(rows, limit) {
   return arr.slice(0, cap);
 }
 
-/** 소비 레포트: 해당 일 기준 과제명별 기록 시간 합 → 상위 N개(분 내림차순) */
+/** 소비 레포트: 해당 일 기준 과제명별 기록 시간 합 → 상위 N개(근무·수면 제외) */
 export function getDailyTimeReportTopTasksByMinutes(ymdTen, limit = 3) {
   const key = String(ymdTen || "")
     .replace(/\//g, "-")
@@ -2349,7 +2391,7 @@ export function getDailyTimeReportTopTasksByMinutes(ymdTen, limit = 3) {
   return aggregateTopTasksByTrackedMinutesFromRows(rows, limit);
 }
 
-/** 소비 레포트: 해당 월 기준 과제명별 기록 시간 합 → 상위 N개 */
+/** 소비 레포트: 해당 월 기준 과제명별 기록 시간 합 → 상위 N개(근무·수면 제외) */
 export function getMonthlyTimeReportTopTasksByMinutes(ymdTen, limit = 3) {
   const range = getTimeReportMonthInclusiveRange(ymdTen);
   if (!range) return [];
@@ -3886,6 +3928,7 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   );
   card.classList.add("calendar-1day-timeline-card");
   card.classList.add("calendar-1day-timeline-card--usage-layout");
+  applyMobileCardTimeSlotBgClass(card, rowData);
   if (live) card.classList.add("calendar-1day-timeline-card--in-progress");
   card._rowData = rowData;
   card._timeLedgerViewEl = viewEl || null;
@@ -6632,6 +6675,7 @@ export function render(opts = {}) {
           );
         }
       }
+      if (addCtx) requestUsageListScrollToBottomOnce();
       onFilterChange();
       saveTimeRows(getFullRowsForFilter(true));
     } else {
