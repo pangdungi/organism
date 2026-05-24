@@ -22,7 +22,7 @@ function paint() {
   } catch (_) {}
 }
 
-/** 앱 안 탭 전환(App.js) */
+/** 앱 안 탭 전환 — App.js renderMain(본문 그린 뒤)에서 호출 */
 export function syncLpTopSafeChromeFromTab(tabId) {
   lastTabId = tabId ?? "";
   paint();

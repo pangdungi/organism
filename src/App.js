@@ -351,7 +351,6 @@ export async function mountApp(container) {
   } else if (currentTabId === "admin" && !supabase) {
     currentTabId = "home";
   }
-  syncLpTopSafeChromeFromTab(currentTabId);
   initPushReminderInAppPopup();
   migrateRemoveRoutineTasks();
   attachHealthKpiMapSaveListener();
@@ -448,7 +447,6 @@ export async function mountApp(container) {
     if (fromTab !== tabId) flushAllPendingTimeDailyBudgetSync();
     currentTabId = tabId;
     persistActiveTabId(tabId);
-    syncLpTopSafeChromeFromTab(tabId);
     syncAppFooterVisibility();
     logTodoScheduleTabOnNavigate(tabId, fromTab);
     logTabSync("tab_switch", { from: fromTab, to: tabId });
@@ -500,6 +498,7 @@ export async function mountApp(container) {
             try {
               window.__lpHomeMenuSoftRefresh?.();
             } catch (_) {}
+            syncLpTopSafeChromeFromTab(targetTabId);
             return;
           }
         }
@@ -878,6 +877,8 @@ export async function mountApp(container) {
       });
     }
     syncAppFooterVisibility();
+    /* 본문 replaceChildren 직후에 맞춤 — 탭 클릭 즉시 바꾸면 상단 세이프만 먼저 깜빡임 */
+    syncLpTopSafeChromeFromTab(currentTabId);
   }
 
   window.__lpRenderMain = (opts) => renderMain(main, opts || {});
