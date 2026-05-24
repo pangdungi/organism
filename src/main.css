@@ -30,7 +30,7 @@ html.lp-auth-booting #app > .page {
 }
 
 /**
- * 오늘(메인) + 시간가계부: 상단 세이프 존까지 네이비 그라데이션.
+ * 오늘(메인): 상단 세이프 존까지 네이비 그라데이션.
  * 로그인·비번재설정 게이트는 lp-auth-gate-chrome(전체 네이비).
  */
 html.lp-top-safe-chrome-navy.lp-app-bg,

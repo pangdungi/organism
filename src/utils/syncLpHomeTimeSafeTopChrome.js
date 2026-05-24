@@ -1,6 +1,7 @@
 /**
- * 로그인·비번재설정 게이트 + 오늘(메인) + 시간가계부: 노치·상태줄 뒤 상단 밴드 네이비.
+ * 로그인·비번재설정 게이트 + 오늘(메인): 노치·상태줄 뒤 상단 밴드 네이비.
  * — html/body 클래스 + main.css 그라데이션
+ * — 시간가계부는 본문 전체 흰색(상단 세이프 포함).
  * — iOS standalone translucent 일 때 세로 세이프는 #signin-page(및 로그인 게이트)에서만 처리.
  */
 const CLASS = "lp-top-safe-chrome-navy";
@@ -12,7 +13,7 @@ let lastTabId = "";
 
 function paint() {
   const gate = loginGateVisible;
-  const navyTopTab = lastTabId === "home" || lastTabId === "time";
+  const navyTopTab = lastTabId === "home";
   try {
     document.documentElement.classList.toggle(GATE_CLASS, gate);
     document.documentElement.classList.toggle(CLASS, !gate && navyTopTab);
