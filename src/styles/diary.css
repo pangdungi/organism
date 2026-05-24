@@ -329,6 +329,15 @@
   background: #e9eef4;
 }
 
+/* 과제명 앞 아이콘 — 글자 크기(1em) */
+.diary-tab5-ledger-log-wrap .calendar-1day-timeline-card-title-row > img {
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
+  object-fit: contain;
+  display: block;
+}
+
 /* 시간사용 레포트: 데이·먼스 아래 — Time 탭과 동일 lp-modal-datetime-card + date-native-wrap */
 .diary-time-report-date-bar {
   flex-shrink: 0;

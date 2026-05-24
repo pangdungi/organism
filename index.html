@@ -169,12 +169,6 @@
         background: #1e4d7b;
         color: #fff;
       }
-      #lp-boot-fallback .lp-boot-cache-btn {
-        background: transparent;
-        color: #64748b;
-        text-decoration: underline;
-        text-underline-offset: 0.2em;
-      }
     </style>
     <link rel="stylesheet" href="/src/main.css" />
   </head>
@@ -217,10 +211,8 @@
     </div>
     <div id="lp-boot-fallback" hidden aria-hidden="true" role="alertdialog" aria-labelledby="lp-boot-fallback-title">
       <p class="lp-boot-fallback-title" id="lp-boot-fallback-title">앱을 불러오지 못했습니다</p>
-      <p>연결이 잠시 불안정하거나 저장된 파일이 오래되었을 수 있습니다.</p>
       <div class="lp-boot-fallback-actions">
         <button type="button" class="lp-boot-retry-btn" id="lp-boot-retry-btn">다시 시도</button>
-        <button type="button" class="lp-boot-cache-btn" id="lp-boot-cache-btn">저장된 파일 지우고 다시</button>
       </div>
     </div>
     <!-- 태블릿(아이패드 미니 등) 세로: 가로 전환 안내 (CSS로 표시 구간 제어) -->
@@ -532,25 +524,6 @@
           }
         }
 
-        function clearCacheAndReload() {
-          var done = function () {
-            hardReload();
-          };
-          if ("serviceWorker" in navigator && navigator.serviceWorker.getRegistrations) {
-            navigator.serviceWorker
-              .getRegistrations()
-              .then(function (regs) {
-                return Promise.all(regs.map(function (r) {
-                  return r.unregister();
-                }));
-              })
-              .catch(function () {})
-              .then(done);
-            return;
-          }
-          done();
-        }
-
         function bootStillStuck() {
           if (window.__lpBootReady) return false;
           var splash = document.getElementById("app-splash");
@@ -614,7 +587,6 @@
         );
 
         document.getElementById("lp-boot-retry-btn")?.addEventListener("click", hardReload);
-        document.getElementById("lp-boot-cache-btn")?.addEventListener("click", clearCacheAndReload);
 
         bootTimer = setTimeout(onBootWatchdog, BOOT_MS);
       })();

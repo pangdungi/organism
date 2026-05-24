@@ -1382,8 +1382,10 @@ function applyMobileCardPriceEl(priceEl, rowData, hourlyRate) {
     "is-negative",
   ]) {
     lpTokenRemove(priceEl, t);
+    priceEl.classList.remove(t);
   }
   lpTokenAdd(priceEl, `time-mobile-card-price--${slot}`);
+  priceEl.classList.add(`time-mobile-card-price--${slot}`);
   if (slot === "other") {
     priceEl.textContent = "";
     return;
@@ -1488,23 +1490,21 @@ function updateMobileTimeCardLiveFields(card) {
   if (!card?._rowData) return;
   const live = mobileCardNeedsLiveClock(card._rowData);
   lpTokenToggle(card, "time-ledger-mobile-card--in-progress", live);
+  card.classList.toggle("calendar-1day-timeline-card--in-progress", live);
   if (!live) return;
   const rd = card._rowData;
   const viewEl = card._timeLedgerViewEl;
-  const trackedEl = card.querySelector(
-    '[data-legacy~="time-mobile-card-tracked"]',
-  );
-  const timeEl = card.querySelector('[data-legacy~="time-mobile-card-time"]');
-  const priceEl = card.querySelector('[data-legacy~="time-mobile-card-price"]');
+  const trackedEl = card.querySelector(".calendar-1day-timeline-card-duration");
+  const endEl = card.querySelector(".calendar-1day-timeline-card-end");
+  const priceEl = card.querySelector(".diary-tab5-timeline-price");
   const start = getRowStartInstantForMobileCard(rd);
   if (!start) return;
   const ms = Date.now() - start.getTime();
-  if (trackedEl)
-    trackedEl.textContent =
-      ms < 0 ? "0h" : formatElapsedDurationForMobileCard(ms);
-  if (timeEl) {
-    timeEl.innerHTML = getMobileCardTimeRangeHtmlForRow(rd) || "—";
+  if (trackedEl) {
+    const mins = ms < 0 ? 0 : Math.floor(ms / 60000);
+    trackedEl.textContent = formatIntegerMinutesDurationKo(mins);
   }
+  if (endEl) endEl.textContent = TIME_LEDGER_IN_PROGRESS_LABEL;
   if (priceEl && viewEl) {
     const hourlyInput = viewEl.querySelector(
       '[data-legacy~="time-hourly-input"]',
@@ -1817,15 +1817,15 @@ export function getNextTaskLogStartHhMmFromLedger(
   return `${String(h).padStart(2, "0")}:${String(mi).padStart(2, "0")}`;
 }
 
-/** 날짜·시작시간 기준 최신 먼저 (최근 날짜 위, 같은 날은 늦은 시각→이른 시각) */
+/** 날짜·시작시간 기준 과거→최근 (이른 날짜·이른 시각이 위, 시간레포트 로그와 동일) */
 function sortRowsByDateTime(rows) {
   return [...rows].sort((a, b) => {
     const dateA = normalizeDateForCompare(a.date || "") || a.date || "";
     const dateB = normalizeDateForCompare(b.date || "") || b.date || "";
-    if (dateA !== dateB) return dateB.localeCompare(dateA);
+    if (dateA !== dateB) return dateA.localeCompare(dateB);
     const startA = parseDateTimeToHours(a.startTime) ?? 0;
     const startB = parseDateTimeToHours(b.startTime) ?? 0;
-    return startB - startA;
+    return startA - startB;
   });
 }
 
@@ -3837,13 +3837,31 @@ function getProductivityBarColor(prod) {
   return "#93B4E6";
 }
 
-/** 모바일 시간가계부 카드 생성 */
+function formatLedgerTimelineClockHHmm(inst) {
+  if (!inst || !(inst instanceof Date)) return "";
+  return `${String(inst.getHours()).padStart(2, "0")}:${String(inst.getMinutes()).padStart(2, "0")}`;
+}
+
+function formatLedgerTimelineEndClock(row) {
+  if (rowHasEndTimeForMobileCard(row)) {
+    const inst = getRowEndInstantForMobileCard(row);
+    return formatLedgerTimelineClockHHmm(inst) || "—";
+  }
+  if (mobileCardNeedsLiveClock(row)) return TIME_LEDGER_IN_PROGRESS_LABEL;
+  return "—";
+}
+
+/** 모바일 시간가계부 카드 — 4열(시간|아이콘|과제·메모|소요·가격) */
 function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
-  const prod =
-    rowData.productivity || getProductivityFromCategory(rowData.category) || "";
-  const color = getProductivityBarColor(prod);
-  const tracked = getMobileCardTrackedDisplayForRow(rowData);
-  const timeRangeHtml = getMobileCardTimeRangeHtmlForRow(rowData) || "—";
+  const taskLabel = String(rowData.taskName || "").trim() || "(제목 없음)";
+  const memoText = String(rowData.feedback || "").trim();
+  const startInst = getRowStartInstantForMobileCard(rowData);
+  const startClock = formatLedgerTimelineClockHHmm(startInst) || "—";
+  const endClock = formatLedgerTimelineEndClock(rowData);
+  const durMin = Math.max(
+    0,
+    Math.round((getMobileCardEffectiveHoursForPrice(rowData) || 0) * 60),
+  );
   const hourlyRate =
     parseFloat(
       String(
@@ -3854,57 +3872,98 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   const priceVal = computeMobileCardPriceValue(rowData, hourlyRate);
   const priceSlot = getMobileCardPriceProductivitySlot(rowData);
   const priceText = formatTimeLedgerActionPriceDisplay(priceVal, priceSlot);
-  const priceLegacy = `time-mobile-card-price time-mobile-card-price--${priceSlot}`;
-  const taskName = (rowData.taskName || "")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-  const memoSrc = rowData.feedback || "";
-  const memo = memoSrc ? escapeHtml(String(memoSrc)) : "";
   const iconSrc = timeLedgerListRowIconSrc(rowData);
-  const iconSlotInner = iconSrc
-    ? `<img data-legacy="time-mobile-card-icon" src="${iconSrc}" alt="" loading="eager" decoding="sync" />`
-    : "";
-  const iconSlotLegacy =
-    "time-mobile-card-icon-slot" +
-    (iconSrc ? "" : " time-mobile-card-icon-slot--empty");
+  const live = mobileCardNeedsLiveClock(rowData);
+
+  const item = document.createElement("div");
+  item.className = "calendar-1day-timeline-item";
 
   const card = document.createElement("div");
   lpSetClasses(
     card,
     "time-ledger-mobile-card" +
-      (mobileCardNeedsLiveClock(rowData)
-        ? " time-ledger-mobile-card--in-progress"
-        : ""),
+      (live ? " time-ledger-mobile-card--in-progress" : ""),
   );
+  card.classList.add("calendar-1day-timeline-card");
+  card.classList.add("calendar-1day-timeline-card--usage-layout");
+  if (live) card.classList.add("calendar-1day-timeline-card--in-progress");
   card._rowData = rowData;
   card._timeLedgerViewEl = viewEl || null;
   card._onRowDelete = onDelete;
-  card.innerHTML = `
-    <div data-legacy="time-mobile-card-leading">
-      <div data-legacy="time-mobile-card-color-bar" style="background:${color}"></div>
-    </div>
-    <div data-legacy="time-mobile-card-body">
-      <div data-legacy="time-mobile-card-top-grid">
-        <div data-legacy="${iconSlotLegacy}">
-          ${iconSlotInner}
-        </div>
-        <div data-legacy="time-mobile-card-center-col">
-          <span data-legacy="time-mobile-card-task">${taskName}</span>
-          <span data-legacy="time-mobile-card-time">${timeRangeHtml}</span>
-        </div>
-        <div data-legacy="time-mobile-card-right-col">
-          <span data-legacy="time-mobile-card-tracked">${tracked}</span>
-          <span data-legacy="${priceLegacy}">${priceText}</span>
-        </div>
-      </div>
-      ${memo ? `<div data-legacy="time-mobile-card-memo">${memo}</div>` : ""}
-    </div>
-  `;
+  card.title = memoText
+    ? `${taskLabel} (${startClock} ~ ${endClock})\n${memoText}`
+    : `${taskLabel} (${startClock} ~ ${endClock})`;
+
+  const startEl = document.createElement("span");
+  startEl.className = "calendar-1day-timeline-card-start";
+  startEl.textContent = startClock;
+
+  const timeConnector = document.createElement("span");
+  timeConnector.className = "calendar-1day-timeline-card-time-connector";
+  timeConnector.setAttribute("aria-hidden", "true");
+
+  const endEl = document.createElement("span");
+  endEl.className = "calendar-1day-timeline-card-end";
+  endEl.textContent = endClock;
+
+  card.appendChild(startEl);
+  card.appendChild(timeConnector);
+
+  const iconCell = document.createElement("div");
+  iconCell.className = "time-ledger-usage-icon-cell";
+  if (iconSrc) {
+    const iconImg = document.createElement("img");
+    iconImg.src = iconSrc;
+    iconImg.alt = "";
+    iconImg.loading = "eager";
+    iconImg.decoding = "sync";
+    iconCell.appendChild(iconImg);
+  }
+
+  const titleEl = document.createElement("div");
+  titleEl.className = "calendar-1day-timeline-card-title";
+  titleEl.textContent = taskLabel;
+
+  const titleRow = document.createElement("div");
+  titleRow.className = "time-ledger-usage-title-row";
+  titleRow.appendChild(iconCell);
+  titleRow.appendChild(titleEl);
+
+  const durRow = document.createElement("span");
+  durRow.className = "calendar-1day-timeline-card-duration";
+  durRow.textContent = formatIntegerMinutesDurationKo(durMin);
+
+  const priceEl = document.createElement("span");
+  priceEl.className =
+    "diary-tab5-timeline-price time-mobile-card-price time-mobile-card-price--" +
+    priceSlot;
+  priceEl.textContent = priceText;
+
+  card.appendChild(titleRow);
+  card.appendChild(durRow);
+  card.appendChild(priceEl);
+  if (memoText) {
+    const memoEl = document.createElement("div");
+    memoEl.className = "calendar-1day-timeline-card-memo";
+    memoEl.textContent = memoText;
+    card.appendChild(memoEl);
+  }
+
+  card.appendChild(endEl);
+
   card.addEventListener("click", (e) => {
-    if (e.target.closest('[data-legacy~="time-mobile-card-body"]'))
-      onEdit(card, rowData);
+    if (
+      e.target.closest(
+        ".calendar-1day-timeline-card-start, .calendar-1day-timeline-card-end, .calendar-1day-timeline-card-time-connector",
+      )
+    ) {
+      return;
+    }
+    onEdit(card, rowData);
   });
-  return card;
+
+  item.appendChild(card);
+  return item;
 }
 
 /** 과제명 열 너비 변경 시 sticky left 위치 동기화 */
@@ -3961,6 +4020,8 @@ export function render(opts = {}) {
   const el = document.createElement("div");
   lpSetClasses(el, "app-tab-panel-content time-ledger-view");
   el.dataset.timeContentView = "all";
+  el._lpUsageListScrollToBottomPending = false;
+  requestUsageListScrollToBottomOnce();
   const timeTabAbort = new AbortController();
   el._lpTabAbortController = timeTabAbort;
   const signal = timeTabAbort.signal;
@@ -4199,6 +4260,7 @@ export function render(opts = {}) {
     usageHistoryRangeEndYmd = next;
     persistActiveViewTimeFilterToSession();
     patchUsageRangeHeadingOnly();
+    requestUsageListScrollToBottomOnce();
     requestTimeLedgerPullForUserQueryChange("swipe");
   }
 
@@ -4520,6 +4582,7 @@ export function render(opts = {}) {
       usageHistoryRangeEndYmd = e;
       closeUsageRangeModal();
       persistActiveViewTimeFilterToSession();
+      requestUsageListScrollToBottomOnce();
       onFilterChange();
       requestTimeLedgerPullForUserQueryChange("usage_range_modal");
     });
@@ -7265,6 +7328,21 @@ export function render(opts = {}) {
     return s;
   }
 
+  /** 사용내역 목록 — 진입·날짜 변경 시 1회만 맨 아래(최근 기록)로 스크롤 */
+  function requestUsageListScrollToBottomOnce() {
+    el._lpUsageListScrollToBottomPending = true;
+  }
+
+  function applyUsageListScrollToBottomIfPending(cardsWrap) {
+    if (!cardsWrap || !el._lpUsageListScrollToBottomPending) return;
+    el._lpUsageListScrollToBottomPending = false;
+    const scrollToBottom = () => {
+      if (!cardsWrap.isConnected) return;
+      cardsWrap.scrollTop = cardsWrap.scrollHeight;
+    };
+    requestAnimationFrame(() => requestAnimationFrame(scrollToBottom));
+  }
+
   function renderAll(rows = []) {
     clearTimeLedgerMobileElapsedTimer(el);
     rescueTimeFilterControlsToFilterBar();
@@ -7308,6 +7386,13 @@ export function render(opts = {}) {
 
     const cardsWrap = document.createElement("div");
     lpSetClasses(cardsWrap, "time-ledger-mobile-cards");
+    const timelineWrap = document.createElement("div");
+    timelineWrap.className =
+      "diary-tab5-ledger-log-wrap calendar-1day-timeline-wrap";
+    const timelineList = document.createElement("div");
+    timelineList.className = "calendar-1day-timeline-list";
+    timelineWrap.appendChild(timelineList);
+    cardsWrap.appendChild(timelineWrap);
     const showDayGroups = timeLedgerShouldShowDayGroups(rows);
     const appendCardTo = (parent, d) => {
       const card = createMobileTimeCard(
@@ -7322,14 +7407,10 @@ export function render(opts = {}) {
 
     /** 새 카드는 마지막 일별 스택에 붙임 */
     function appendNewCardToLedgerCardsWrap(card) {
-      let stack = cardsWrap.querySelector(
+      let stack = timelineList.querySelector(
         '[data-legacy~="time-ledger-day-card-stack"]:last-of-type',
       );
-      if (!stack) {
-        stack = document.createElement("div");
-        lpSetClasses(stack, "time-ledger-day-card-stack");
-        cardsWrap.appendChild(stack);
-      }
+      if (!stack) stack = timelineList;
       stack.appendChild(card);
     }
 
@@ -7350,30 +7431,21 @@ export function render(opts = {}) {
           );
           header.appendChild(label);
           header.appendChild(totalEl);
-          cardsWrap.appendChild(header);
+          timelineList.appendChild(header);
         }
         const cardParent =
           g.rows.length > 0
             ? (() => {
                 const stack = document.createElement("div");
                 lpSetClasses(stack, "time-ledger-day-card-stack");
-                cardsWrap.appendChild(stack);
+                timelineList.appendChild(stack);
                 return stack;
               })()
-            : cardsWrap;
+            : timelineList;
         for (const d of g.rows) appendCardTo(cardParent, d);
       }
     } else {
-      const cardParent =
-        rows.length > 0
-          ? (() => {
-              const stack = document.createElement("div");
-              lpSetClasses(stack, "time-ledger-day-card-stack");
-              cardsWrap.appendChild(stack);
-              return stack;
-            })()
-          : cardsWrap;
-      rows.forEach((d) => appendCardTo(cardParent, d));
+      rows.forEach((d) => appendCardTo(timelineList, d));
     }
 
     const ledgerContainer = document.createElement("div");
@@ -7445,6 +7517,7 @@ export function render(opts = {}) {
       };
     } catch (_) {}
     updateTotal();
+    applyUsageListScrollToBottomIfPending(cardsWrap);
   }
 
   function updateFilterBarVisibility() {
@@ -7497,8 +7570,11 @@ export function render(opts = {}) {
 
   onFilterChange(true);
 
-  function refreshTimeLedgerFromRemotePull() {
+  function refreshTimeLedgerFromRemotePull(opts = {}) {
     if (!el.isConnected) return;
+    if (opts.scrollUsageListToBottom) {
+      requestUsageListScrollToBottomOnce();
+    }
     /* App 탭 진입 pull 직후 session 만 오늘 등으로 바뀌고 DOM 날짜는 옛값일 수 있음 → 통째로 renderMain 하지 않고 갱신할 때 맞춤 */
     try {
       const t = getLedgerFilterTodayYmd();
@@ -7542,7 +7618,8 @@ export function render(opts = {}) {
   window.__lpOpenTimeTaskLog = openTaskLogModalFromExternal;
 
   /** App.setActiveTab 에서 pull 후 두 번째 renderMain 대신 호출 — 패널 통째 교체 없이 위 갱신만 */
-  window.__lpTimeLedgerSoftRefresh = refreshTimeLedgerFromRemotePull;
+  window.__lpTimeLedgerSoftRefresh = () =>
+    refreshTimeLedgerFromRemotePull({ scrollUsageListToBottom: true });
 
   signal.addEventListener(
     "abort",
@@ -7568,7 +7645,7 @@ export function render(opts = {}) {
 
   document.addEventListener(
     "lp-time-ledger-remote-updated",
-    refreshTimeLedgerFromRemotePull,
+    () => refreshTimeLedgerFromRemotePull(),
     { signal },
   );
 
