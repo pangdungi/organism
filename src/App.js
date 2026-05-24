@@ -578,13 +578,6 @@ export async function mountApp(container) {
     const root = document.createElement("div");
     root.className = "app-home-menu-launcher";
 
-    const brandBar = document.createElement("div");
-    brandBar.className = "app-home-menu-launcher-brand";
-    const titleEl = document.createElement("h1");
-    titleEl.className = "app-home-menu-launcher-title lp-app-font";
-    titleEl.textContent = "TIME=MONEY";
-    brandBar.appendChild(titleEl);
-
     const card = document.createElement("div");
     card.className = "app-home-menu-launcher-card";
 
@@ -668,7 +661,7 @@ export async function mountApp(container) {
     void syncAdminMenuVisibility();
 
     card.appendChild(body);
-    root.append(brandBar, balanceWrap, card, launcherAdminBtn);
+    root.append(balanceWrap, card, launcherAdminBtn);
     return root;
   }
 

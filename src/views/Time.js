@@ -73,6 +73,7 @@ import { pullTimeLedgerTabEnterFromCloud } from "../utils/timeLedgerCloudRefresh
 import { timeLedgerSyncLog } from "../utils/timeLedgerSyncDebug.js";
 import { lpSaveDebug } from "../utils/lpSaveDebug.js";
 import { logTabSync } from "../utils/lpTabSyncDebug.js";
+import { bindLpHorizontalPanNavigate } from "../utils/lpHorizontalPanNavigate.js";
 
 import {
   lpSetClasses,
@@ -4008,28 +4009,6 @@ export function render(opts = {}) {
     return `${short(startYmd)} ~ ${short(endYmd)}`;
   }
 
-  const ledgerTopHeading = document.createElement("div");
-  lpSetClasses(ledgerTopHeading, "time-ledger-top-title time-ledger-bank-card");
-  const todayYmdInit = getLedgerFilterTodayYmd();
-  ledgerTopHeading.innerHTML = `
-    <div class="time-ledger-bank-card-inner" data-legacy="time-ledger-bank-inner" role="region" aria-label="오늘 시간 잔액">
-      <p class="time-ledger-bank-date" data-legacy="time-ledger-bank-today-date">${formatTimeFilterDateDotsWithWeekday(todayYmdInit)}</p>
-      <p class="time-ledger-bank-eyebrow time-ledger-bank-eyebrow--balance">잔액</p>
-      <p class="time-ledger-bank-balance-hero" data-legacy="time-ledger-balance-krw-remain">
-        <span class="time-ledger-bank-won-mark" aria-hidden="true">₩</span><span class="time-ledger-bank-won-num" data-legacy="time-ledger-balance-won-digits">0</span>
-      </p>
-      <div class="time-ledger-bank-time-strip">
-        <span class="time-ledger-bank-time-strip-label">남은 시간</span>
-        <span class="time-ledger-bank-balance-time" data-legacy="time-ledger-balance-time-remain">${formatHoursDisplayHhMmColon(TIME_LEDGER_DAILY_RECORD_CAP_HOURS)}</span>
-      </div>
-      <div class="time-ledger-bank-invest-block" aria-label="오늘 투자로 기록한 시간의 가치">
-        <p class="time-ledger-bank-invest-line">
-          <span class="time-ledger-bank-invest-caption">다시 받을 금액 :</span>
-          <span class="time-ledger-bank-invest-amount" data-legacy="time-ledger-invest-reclaim-won">+₩ 0</span>
-        </p>
-      </div>
-    </div>`;
-
   const filterType = "range";
   let filterYear = now.getFullYear();
   let filterMonth = now.getMonth() + 1;
@@ -4156,14 +4135,33 @@ export function render(opts = {}) {
     }
   }
 
-  /* 상단: 은행 앱식 잔고 카드 + 탭 제목 줄 */
-  const tabsFilterRow = document.createElement("div");
-  lpSetClasses(tabsFilterRow, "time-ledger-tabs-filter-row");
-  const tabsTopMargin = document.createElement("div");
-  lpSetClasses(tabsTopMargin, "time-ledger-tabs-top-margin");
-  const ledgerTopCenter = document.createElement("div");
-  lpSetClasses(ledgerTopCenter, "time-ledger-top-strip__center");
-  ledgerTopCenter.appendChild(ledgerTopHeading);
+  function shiftYmdTenByDays(ymdTen, deltaDays) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ymdTen)) return ymdTen;
+    const [y, mo, d] = ymdTen.split("-").map(Number);
+    const dt = new Date(y, mo - 1, d);
+    dt.setDate(dt.getDate() + deltaDays);
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+  }
+
+  function getUsageHistoryAnchorYmd() {
+    let s = usageHistoryRangeStartYmd;
+    let e = usageHistoryRangeEndYmd;
+    if (s > e) {
+      const x = s;
+      s = e;
+      e = x;
+    }
+    return e;
+  }
+
+  /** 왼쪽 스와이프=다음날, 오른쪽 스와이프=전날 */
+  function shiftUsageHistoryDay(step) {
+    if (step !== 1 && step !== -1) return;
+    const next = shiftYmdTenByDays(getUsageHistoryAnchorYmd(), step);
+    usageHistoryRangeStartYmd = next;
+    usageHistoryRangeEndYmd = next;
+    onFilterChange();
+  }
 
   /** 설정·필터·과제 기록(+) — 앱 푸터 공통: appFooterShell + main.css; 시간가계부 전용 래핑은 time-ledger.css */
   function syncAppFooterLedgerActions() {
@@ -4175,14 +4173,6 @@ export function render(opts = {}) {
     }
   }
   if (!taskLogBridgeMode) syncAppFooterLedgerActions();
-
-  const tabHeaderRow = document.createElement("div");
-  lpSetClasses(tabHeaderRow, "time-ledger-tab-header-row");
-  tabHeaderRow.appendChild(ledgerTopCenter);
-  tabsFilterRow.appendChild(tabsTopMargin);
-  tabsFilterRow.appendChild(tabHeaderRow);
-
-  el.appendChild(tabsFilterRow);
 
   const taskSetupModal = document.createElement("div");
   lpSetClasses(taskSetupModal, "time-task-setup-modal");
@@ -7001,6 +6991,17 @@ export function render(opts = {}) {
   lpSetClasses(contentWrap, "time-view-content-wrap");
   el.appendChild(contentWrap);
 
+  bindLpHorizontalPanNavigate(contentWrap, {
+    signal,
+    onNext: () => shiftUsageHistoryDay(1),
+    onPrev: () => shiftUsageHistoryDay(-1),
+    shouldIgnoreTarget: (target) =>
+      !!target?.closest?.(
+        "input, textarea, select, button, a, [role='dialog'], .time-task-setup-modal",
+      ),
+    lockMs: 400,
+  });
+
   let allRowsCache = loadTimeRows();
   let cachedRows = [];
 
@@ -7032,20 +7033,6 @@ export function render(opts = {}) {
   function getFullRowsForFilter(skipMerge = false) {
     if (!skipMerge) mergeRowsIntoCache();
     return [...allRowsCache];
-  }
-
-  /** 잔액 카드: 오늘·과제필터 동일 기준 */
-  function isTodayRowForBankHeader(r, todayKey) {
-    if (!r || isEmptyTimeRow(r)) return false;
-    if ((r.date || "").toString().slice(0, 10) !== todayKey) return false;
-    if (
-      selectedTaskNamesForFilter != null &&
-      selectedTaskNamesForFilter.length > 0 &&
-      !selectedTaskNamesForFilter.includes((r.taskName || "").trim())
-    ) {
-      return false;
-    }
-    return true;
   }
 
   function updateTotal() {
@@ -7138,60 +7125,6 @@ export function render(opts = {}) {
       });
 
     mergeRowsIntoCache();
-    const todayKey = timeLedgerLocalTodayYmd();
-    const hourlyRateHdr =
-      parseFloat(
-        String(
-          el.querySelector('[data-legacy~="time-hourly-input"]')?.value || "0",
-        ).replace(/,/g, ""),
-      ) || 0;
-    /** 잔액: (하루 한도 × 시급) − (시간사용내역과 동일한 실제 사용 시간 × 시급). 생산/비생산 가격 부호는 무시. */
-    let todaySpentHrsHdr = 0;
-    let todayInvestHrsHdr = 0;
-    for (const r of allRowsCache) {
-      if (!isTodayRowForBankHeader(r, todayKey)) continue;
-      const hrs = getMobileCardEffectiveHoursForPrice(r);
-      todaySpentHrsHdr += hrs;
-      if (getTimeLedgerRowDisplayProductivity(r) === "productive")
-        todayInvestHrsHdr += getLedgerEffectiveHoursForReclaim(r);
-    }
-    const capHrs = TIME_LEDGER_DAILY_RECORD_CAP_HOURS;
-    const remainHrs = capHrs - todaySpentHrsHdr;
-    const dailyValueWon = Math.round(capHrs * hourlyRateHdr);
-    const spentValueWon = Math.round(todaySpentHrsHdr * hourlyRateHdr);
-    const remainWon = dailyValueWon - spentValueWon;
-    const investWonHdr = Math.round(todayInvestHrsHdr * hourlyRateHdr);
-    const investWonFormatted = `+₩ ${formatLedgerWonInteger(investWonHdr)}`;
-
-    const bankInner = ledgerTopHeading.querySelector(
-      '[data-legacy~="time-ledger-bank-inner"]',
-    );
-    const bankDateEl = ledgerTopHeading.querySelector(
-      '[data-legacy~="time-ledger-bank-today-date"]',
-    );
-    const timeRemainEl = ledgerTopHeading.querySelector(
-      '[data-legacy~="time-ledger-balance-time-remain"]',
-    );
-    const wonDigitsEl = ledgerTopHeading.querySelector(
-      '[data-legacy~="time-ledger-balance-won-digits"]',
-    );
-    const investReclaimWonEl = ledgerTopHeading.querySelector(
-      '[data-legacy~="time-ledger-invest-reclaim-won"]',
-    );
-    if (bankDateEl) bankDateEl.textContent = formatTimeFilterDateDotsWithWeekday(todayKey);
-    if (timeRemainEl) timeRemainEl.textContent = formatHoursDisplayHhMmColon(remainHrs);
-    if (wonDigitsEl) {
-      const wonSign = remainWon < 0 ? "-" : "";
-      wonDigitsEl.textContent = wonSign + formatLedgerWonInteger(remainWon);
-    }
-    if (investReclaimWonEl)
-      investReclaimWonEl.textContent = investWonFormatted;
-    if (bankInner) {
-      bankInner.setAttribute(
-        "aria-label",
-        `오늘 ${formatTimeFilterDateDotsWithWeekday(todayKey)}. 남은 시간 ${formatHoursDisplayHhMmColon(remainHrs).replace(/\s/g, "")}. 남은 가치 ${remainWon}원. 다시 받을 금액 ${investWonHdr}원.`,
-      );
-    }
   }
   el._updateTotal = updateTotal;
 
@@ -7330,48 +7263,6 @@ export function render(opts = {}) {
     hiddenTableWrap.appendChild(hiddenTable);
     contentWrap.appendChild(hiddenTableWrap);
 
-    const quickActionsRow = document.createElement("div");
-    lpSetClasses(quickActionsRow, "time-ledger-quick-actions");
-    quickActionsRow.setAttribute("role", "group");
-    quickActionsRow.setAttribute("aria-label", "시간 잔액 다음 동작");
-    const spendBtn = document.createElement("button");
-    spendBtn.type = "button";
-    lpSetClasses(
-      spendBtn,
-      "time-ledger-quick-action-btn time-ledger-quick-action-btn--spend",
-    );
-    spendBtn.textContent = "지출하기";
-    spendBtn.setAttribute("aria-label", "지출하기");
-    const investBtn = document.createElement("button");
-    investBtn.type = "button";
-    lpSetClasses(
-      investBtn,
-      "time-ledger-quick-action-btn time-ledger-quick-action-btn--invest",
-    );
-    investBtn.textContent = "투자하기";
-    investBtn.setAttribute("aria-label", "투자하기");
-    quickActionsRow.appendChild(spendBtn);
-    quickActionsRow.appendChild(investBtn);
-    const openTaskLogFromQuick = (ledgerBucketPreset) => {
-      openTaskLogModal({
-        ledgerBucketPreset,
-        productivity: null,
-        tbody: hiddenTbody,
-        addRow: null,
-        onRowUpdate: () => {
-          updateTotal();
-          onFilterChange();
-        },
-        viewEl: el,
-        createRow,
-        handleRowDelete: handleCardDelete,
-        handleRowEdit: handleCardEdit,
-      });
-    };
-    spendBtn.addEventListener("click", () => openTaskLogFromQuick("expense"));
-    investBtn.addEventListener("click", () => openTaskLogFromQuick("invest"));
-    contentWrap.appendChild(quickActionsRow);
-
     const cardsWrap = document.createElement("div");
     lpSetClasses(cardsWrap, "time-ledger-mobile-cards");
     const showDayGroups = timeLedgerShouldShowDayGroups(rows);
@@ -7481,10 +7372,10 @@ export function render(opts = {}) {
       usageHistoryHeadingRow,
       "time-ledger-usage-history-heading-row",
     );
-    const usageHistoryHeadingMain = document.createElement("div");
+    const usageHistoryHeadingLeft = document.createElement("div");
     lpSetClasses(
-      usageHistoryHeadingMain,
-      "time-ledger-usage-history-heading-main",
+      usageHistoryHeadingLeft,
+      "time-ledger-usage-history-heading-left",
     );
     const usageHistoryHeading = document.createElement("h2");
     lpSetClasses(usageHistoryHeading, "time-ledger-usage-history-heading");
@@ -7499,9 +7390,16 @@ export function render(opts = {}) {
       usageHistoryRangeStartYmd,
       usageHistoryRangeEndYmd,
     );
-    usageHistoryHeadingMain.appendChild(usageHistoryHeading);
-    usageHistoryHeadingMain.appendChild(usageHistoryRangeCaption);
-    usageHistoryHeadingRow.appendChild(usageHistoryHeadingMain);
+    usageHistoryHeadingLeft.appendChild(usageHistoryHeading);
+    usageHistoryHeadingLeft.appendChild(usageHistoryRangeCaption);
+    const usageHistoryTotalTime = document.createElement("span");
+    lpSetClasses(usageHistoryTotalTime, "time-ledger-usage-history-total");
+    usageHistoryTotalTime.setAttribute("data-usage-total-time", "");
+    usageHistoryTotalTime.textContent = formatHoursToHHMM(
+      sumTimeLedgerDayHours(rows),
+    );
+    usageHistoryHeadingRow.appendChild(usageHistoryHeadingLeft);
+    usageHistoryHeadingRow.appendChild(usageHistoryTotalTime);
     ledgerContainer.appendChild(usageHistoryHeadingRow);
     ledgerContainer.appendChild(cardsWrap);
     contentWrap.appendChild(ledgerContainer);
@@ -7530,6 +7428,12 @@ export function render(opts = {}) {
       cardsWrap
         .querySelectorAll('[data-legacy~="time-ledger-mobile-card"]')
         .forEach(updateMobileTimeCardLiveFields);
+      const totalEl = contentWrap.querySelector("[data-usage-total-time]");
+      if (totalEl) {
+        totalEl.textContent = formatHoursToHHMM(
+          sumTimeLedgerDayHours(getFilteredRows(getFullRowsForFilter(true))),
+        );
+      }
       updateTotal();
     };
     if (rows.some((d) => mobileCardNeedsLiveClock(d))) {

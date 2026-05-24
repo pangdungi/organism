@@ -7,12 +7,12 @@
 
 /* [auto] data-legacy 병기 선택자 — scripts/time-js-main-only-classes.mjs */
 
-/* 시간가계부 탭만: 스크롤 본문(.app-main) 네이비 — 하단 푸터는 형제 요소라 영향 없음 */
+/* 시간가계부 탭만: 본문 흰 배경 — 시간 사용내역만 표시 */
 #signin-page
   .app-main:has(
     > .app-tab-panel > .app-tab-panel-content[data-legacy~="time-ledger-view"]
   ) {
-  background: #1e4d7b;
+  background: #fff;
   /* 본문 전체 스크롤 대신「시간 사용내역」목록만 내부 스크롤 */
   overflow: hidden;
 }
@@ -348,35 +348,52 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  margin-top: 0.2rem;
+  margin-top: 0;
   background: #fff;
-  border-radius: 1rem 1rem 0 0;
-  box-shadow:
-    0 -4px 24px rgba(15, 23, 42, 0.06),
-    0 -1px 0 rgba(15, 23, 42, 0.04);
+  border-radius: 0;
+  box-shadow: none;
   box-sizing: border-box;
   overflow: hidden;
 }
 [data-legacy~="time-ledger-view"]
   [data-legacy~="time-ledger-usage-history-heading-row"] {
   margin: 0;
-  padding: 1rem 1rem 0.5rem;
+  padding: 0.625rem 1rem;
   border-bottom: 1px solid #f1f5f9;
   flex-shrink: 0;
   box-sizing: border-box;
-  min-width: 0;
-}
-.time-ledger-view .time-ledger-usage-history-heading-main,
-[data-legacy~="time-ledger-view"] .time-ledger-usage-history-heading-main {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-items: baseline;
-  justify-content: flex-start;
   width: 100%;
   min-width: 0;
-  gap: 0.4rem;
+  min-height: 3.25rem;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.625rem;
+}
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-usage-history-heading-left"] {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.2rem;
   box-sizing: border-box;
+}
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-usage-history-total"] {
+  flex: 0 0 auto;
+  margin-left: auto;
+  align-self: center;
+  font-size: clamp(1.75rem, 9vw, 2.375rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: #1a2d45;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  line-height: 1;
+  text-align: right;
 }
 [data-legacy~="time-ledger-view"]
   [data-legacy~="time-ledger-usage-history-heading"] {
@@ -387,14 +404,10 @@
   letter-spacing: -0.03em;
   color: #0f172a;
   line-height: 1.25;
-  flex: 0 1 auto;
-  min-width: 0;
   box-sizing: border-box;
 }
 [data-legacy~="time-ledger-view"]
   [data-legacy~="time-ledger-usage-range-caption"] {
-  flex: 0 0 auto;
-  margin-left: auto;
   font-size: 0.625rem;
   font-weight: 400;
   letter-spacing: -0.01em;
