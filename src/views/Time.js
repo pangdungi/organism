@@ -63,6 +63,7 @@ import {
   TIME_LEDGER_ENTRIES_KEY,
   writeTimeLedgerEntriesRaw,
 } from "../utils/timeLedgerEntriesModel.js";
+import { closeStaleInProgressTimeLedgerRows, timeLedgerRowIsActiveLiveInProgress } from "../utils/timeLedgerStaleInProgressClose.js";
 import {
   deleteTimeLedgerEntryFromSupabase,
   pullTimeLedgerEntriesForDateRange,
@@ -731,7 +732,12 @@ function removeFromBudgetExcluded(dateStr, taskName) {
 /** 과제 기록 로컬 저장 — IndexedDB(+미러) 경로는 timeLedgerEntriesModel */
 export function loadTimeRows() {
   try {
-    const arr = readTimeLedgerEntriesRaw();
+    let arr = readTimeLedgerEntriesRaw();
+    const closed = closeStaleInProgressTimeLedgerRows(arr);
+    if (closed.changed) {
+      saveTimeRows(closed.rows);
+      arr = readTimeLedgerEntriesRaw();
+    }
     const { rows, dirty } = ensureTimeLedgerEntryIds(arr);
     if (dirty) {
       writeTimeLedgerEntriesRaw(rows);
@@ -1385,9 +1391,7 @@ function applyMobileCardPriceEl(priceEl, rowData, hourlyRate) {
 }
 
 function mobileCardNeedsLiveClock(rowData) {
-  if (!rowData) return false;
-  if ((rowData.timeTracked || "").trim()) return false;
-  if (rowHasEndTimeForMobileCard(rowData)) return false;
+  if (!timeLedgerRowIsActiveLiveInProgress(rowData)) return false;
   return !!getRowStartInstantForMobileCard(rowData);
 }
 

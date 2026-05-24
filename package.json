@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/write-vapid-build-json.mjs && vite build",
+    "build": "node scripts/generate-app-icon-prefetch.mjs && node scripts/write-vapid-build-json.mjs && vite build",
+    "gen:icons": "node scripts/generate-app-icon-prefetch.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

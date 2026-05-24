@@ -1,6 +1,6 @@
 /* PWA 서비스 워커 — 앱 설치·오프라인 + Web Push(할일 리마인더) */
 /** 번들·아이콘 등 캐시 버전 (전략 바꿀 때만 올리면 이전 캐시 정리됨) */
-const ASSET_CACHE = "tip-assets-v8";
+const ASSET_CACHE = "tip-assets-v10";
 /** HTML 셸 캐시 — 홈 화면에서 열 때 즉시 표시용 */
 const HTML_CACHE = "tip-html-v2";
 
@@ -17,30 +17,26 @@ self.addEventListener("install", (event) => {
       } catch (_e) {}
       try {
         const assetCache = await caches.open(ASSET_CACHE);
-        const urls = [
-          "/manifest.json",
-          "/icon-192.png?v=timeisprice-icon-2",
-          "/toolbaricons/dashboard.svg",
-          "/toolbaricons/menu-time.png",
-          "/toolbaricons/menu-todo.png",
-          "/toolbaricons/menu-schedule.png",
-          "/toolbaricons/menu-dream.png",
-          "/toolbaricons/menu-sideincome.png",
-          "/toolbaricons/menu-happiness.png",
-          "/toolbaricons/menu-health.png",
-          "/toolbaricons/menu-time-report.png",
-          "/toolbaricons/menu-stamp.png",
-          "/toolbaricons/menu-account.png",
-        ];
-        await Promise.all(
-          urls.map(async (path) => {
-            try {
-              const u = self.location.origin + path;
-              const r = await fetch(u);
-              if (r && r.ok) await assetCache.put(u, r.clone());
-            } catch (_e) {}
-          }),
+        const manifestRes = await fetch(
+          self.location.origin + "/app-icon-prefetch.json",
         );
+        if (manifestRes && manifestRes.ok) {
+          const iconPaths = await manifestRes.json();
+          const paths = Array.isArray(iconPaths)
+            ? ["/manifest.json", ...iconPaths]
+            : ["/manifest.json"];
+          await Promise.all(
+            paths.map(async (path) => {
+              try {
+                const p = String(path || "").trim();
+                if (!p.startsWith("/")) return;
+                const u = self.location.origin + p;
+                const r = await fetch(u);
+                if (r && r.ok) await assetCache.put(u, r.clone());
+              } catch (_e) {}
+            }),
+          );
+        }
       } catch (_e) {}
     })(),
   );

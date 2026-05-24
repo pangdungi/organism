@@ -21,6 +21,7 @@ import {
   timeLedgerRowNeedsPush,
   writeTimeLedgerEntriesRaw,
 } from "./timeLedgerEntriesModel.js";
+import { closeStaleInProgressTimeLedgerRows } from "./timeLedgerStaleInProgressClose.js";
 import { timeLedgerSyncLog } from "./timeLedgerSyncDebug.js";
 import { upsertTimeLedgerTaskRowsFromLocalByIds } from "./timeLedgerTasksSupabase.js";
 import { isUuid } from "./idUtils.js";
@@ -229,6 +230,11 @@ async function pullTimeLedgerEntriesForDateRangeCore(
 
   const rows = data ?? [];
   applyTimeLedgerServerRangeSnapshot(rows, rs, re);
+  const closed = closeStaleInProgressTimeLedgerRows(readTimeLedgerEntriesRaw());
+  if (closed.changed) {
+    writeTimeLedgerEntriesRaw(closed.rows);
+    await pushDirtyTimeLedgerEntriesToSupabase({ skipPull: true });
+  }
   timeLedgerSyncLog("pull_done", {
     range: `${rs}..${re}`,
     trigger,

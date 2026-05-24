@@ -26,6 +26,7 @@ import { initOfflineAppGate } from "./utils/offlineAppGate.js";
 import { initLpAppShellViewportLock } from "./utils/lpAppShellViewport.js";
 import { supabase } from "./supabase.js";
 import { applyAppFont } from "./utils/appUiFont.js";
+import { prefetchAppIconAssets } from "./utils/appIconPrefetch.js";
 import { pullUserPrefsFromSupabase } from "./utils/userHourlySync.js";
 import {
   applyTimeCategoryColors,
@@ -116,6 +117,7 @@ async function enterAuthenticatedApp(opts = {}) {
     }
     lpAppMounted = true;
     showOnly("signin");
+    prefetchAppIconAssets();
     void pullUserPrefsFromSupabase().catch(() => {});
     await Promise.all([
       prepareTimeLedgerStorageForCurrentSession(),
@@ -180,6 +182,7 @@ function closeAuthPwRecoveryModal() {
 
 function init() {
   setLpAuthBootPending(true);
+  prefetchAppIconAssets();
   consumeSupabaseAuthRedirectErrors();
 
   const app = document.getElementById("app");
