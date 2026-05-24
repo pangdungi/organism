@@ -823,8 +823,7 @@ export function render(opts = {}) {
       closeDayEntrySelectList();
     }
 
-    function syncDayEntrySelectListPosition() {
-      if (!dayEntrySelectListOpen || listEl.hidden) return;
+    function applyDayEntrySelectListFixedLayout() {
       const tR = triggerBtn.getBoundingClientRect();
       if (tR.width < 1 && tR.height < 1) return;
       const gap = 4;
@@ -836,7 +835,7 @@ export function render(opts = {}) {
         getComputedStyle(document.documentElement).fontSize || "16",
       );
       const maxListPx = 14 * (Number.isFinite(remPx) ? remPx : 16);
-      /* 모달·패널 밖으로 나가도 보이게 fixed + 트리거 바로 아래만(제목 안 가림) */
+      /* 패널 overflow:hidden 을 벗어나도록 fixed — body 포털 없이 할 일 모달과 동일 */
       const spaceBelowVp =
         vpH > 0 ? Math.max(0, vpH - tR.bottom - gap) : maxListPx;
       const maxH = Math.max(72, Math.min(maxListPx, spaceBelowVp));
@@ -855,14 +854,16 @@ export function render(opts = {}) {
       listEl.style.marginBottom = "";
     }
 
+    function syncDayEntrySelectListPosition() {
+      if (!dayEntrySelectListOpen) return;
+      applyDayEntrySelectListFixedLayout();
+    }
+
     const onDayEntrySelectReposition = () => syncDayEntrySelectListPosition();
 
     function closeDayEntrySelectList() {
       if (!dayEntrySelectListOpen) return;
       dayEntrySelectListOpen = false;
-      try {
-        selectWrap.appendChild(listEl);
-      } catch (_) {}
       listEl.hidden = true;
       triggerBtn.setAttribute("aria-expanded", "false");
       try {
@@ -893,19 +894,15 @@ export function render(opts = {}) {
     function openDayEntrySelectList() {
       if (dayEntrySelectListOpen) return;
       dayEntrySelectListOpen = true;
-      listEl.hidden = false;
-      try {
-        document.body.appendChild(listEl);
-      } catch (_) {}
       triggerBtn.setAttribute("aria-expanded", "true");
+      applyDayEntrySelectListFixedLayout();
+      listEl.hidden = false;
       document.addEventListener("pointerdown", onDayEntrySelectDocDown, true);
       window.addEventListener("resize", onDayEntrySelectReposition, true);
       window.addEventListener("scroll", onDayEntrySelectReposition, true);
       panel.addEventListener("scroll", onDayEntrySelectReposition, true);
       body.addEventListener("scroll", onDayEntrySelectReposition, true);
-      requestAnimationFrame(() => {
-        requestAnimationFrame(syncDayEntrySelectListPosition);
-      });
+      requestAnimationFrame(syncDayEntrySelectListPosition);
     }
 
     function toggleDayEntrySelectList() {
@@ -1184,6 +1181,8 @@ export function render(opts = {}) {
     document.body.appendChild(modal);
     initModalNativeDateFieldsIn(modal);
     requestAnimationFrame(() => {
+      const panelH = panel.offsetHeight;
+      if (panelH > 0) panel.style.minHeight = `${panelH}px`;
       triggerBtn.focus();
     });
   }

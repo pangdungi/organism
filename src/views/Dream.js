@@ -23,6 +23,7 @@ import {
   syncHabitTrackerLogs,
 } from "../utils/timeKpiSync.js";
 import { defaultManualKpiLogMeta, kpiLogSourceBadgeHtml, formatKpiHistoryValueText } from "../utils/kpiLogFields.js";
+import { kpiUnitSubchecksRowHtml } from "../utils/kpiTimeUnitKpi.js";
 import {
   wireKpiHistoryBottomTabs,
   getKpiHistoryBottomTab,
@@ -62,6 +63,7 @@ import {
 } from "../utils/kpiTodoLifecycleDebug.js";
 import { kpiTodoFineTrace } from "../utils/kpiTodoFineTrace.js";
 import { pullKpiMapSubViewFromCloud } from "../utils/kpiTabCloudRefresh.js";
+import { readKpiMapLocalStorageSignature } from "../utils/kpiMapLocalStorage.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
   getAppFooterActionsSlot,
@@ -367,12 +369,7 @@ export function render() {
     return `
     <label>단위</label>
     <input type="text" name="unit"${unitAttrs} placeholder="예) %(완성도), 일" />
-    <div class="lp-modal-field-subcheck" data-legacy="lp-modal-field-subcheck">
-      <label class="lp-modal-field-subcheck__label" data-legacy="lp-modal-field-subcheck__label">
-        <input type="checkbox" name="unitIsTime" class="lp-modal-field-subcheck__input" data-legacy="lp-modal-field-subcheck__input"${useTime ? " checked" : ""} />
-        <span class="lp-modal-field-subcheck__text" data-legacy="lp-modal-field-subcheck__text">시간</span>
-      </label>
-    </div>
+    ${kpiUnitSubchecksRowHtml(kpi)}
   `;
   }
 
@@ -540,12 +537,6 @@ export function render() {
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
               </div>
             </div>
-            <div class="dream-kpi-field dream-kpi-field-checkbox" data-legacy="time-add-task-field">
-              <label class="dream-kpi-checkbox-label">
-                매일 반복
-                <input type="checkbox" name="needHabitTracker" />
-              </label>
-            </div>
           </div>
           <div data-legacy="time-task-log-footer">
             <button type="submit" data-legacy="time-task-log-submit">KPI 등록하기</button>
@@ -661,12 +652,6 @@ export function render() {
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
               </div>
-            </div>
-            <div class="dream-kpi-field dream-kpi-field-checkbox" data-legacy="time-add-task-field">
-              <label class="dream-kpi-checkbox-label">
-                매일 반복
-                <input type="checkbox" name="needHabitTracker" ${kpi.needHabitTracker ? "checked" : ""} />
-              </label>
             </div>
             <div class="dream-kpi-delete-wrap">
               <button type="button" class="dream-kpi-delete-btn">KPI 삭제하기</button>
@@ -1809,6 +1794,19 @@ export function render() {
     }
   }
 
+  function reconcileScopeWithStoredMap(data) {
+    const dreams = data?.dreams || [];
+    const kpis = data?.kpis || [];
+    if (!dreams.some((d) => d.id === activeDreamId)) {
+      activeDreamId = dreams[0]?.id || null;
+      if (!activeDreamId) selectedKpiId = null;
+    }
+    if (selectedKpiId && !kpis.some((k) => k.id === selectedKpiId)) {
+      selectedKpiId = null;
+    }
+  }
+
+  reconcileScopeWithStoredMap(_dreamInitData);
   renderTabs();
   updateDesiredLifeDisplay();
   if (activeDreamId) {
@@ -1816,9 +1814,15 @@ export function render() {
   } else {
     contentWrap.hidden = true;
   }
+  let lastKpiMapPaintSig = readKpiMapLocalStorageSignature(
+    DREAM_KPI_MAP_STORAGE_KEY,
+  );
 
   function syncDreamUiFromStoredMap() {
     if (!el.isConnected) return;
+    const nextSig = readKpiMapLocalStorageSignature(DREAM_KPI_MAP_STORAGE_KEY);
+    if (nextSig === lastKpiMapPaintSig) return;
+    lastKpiMapPaintSig = nextSig;
     const data = loadDreamMap();
     if (!data.dreams.some((d) => d.id === activeDreamId)) {
       activeDreamId = data.dreams[0]?.id || null;

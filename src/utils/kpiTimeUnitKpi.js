@@ -38,6 +38,27 @@ export function kpiTargetValueFieldHtml(kpi, escapeHtml, opts = {}) {
     `;
 }
 
+export function kpiUnitSubchecksRowHtml(kpi = null) {
+  const useTime = !!(kpi && kpi.useTimeAsUnit);
+  const habitChecked = !!(kpi && kpi.needHabitTracker);
+  return `
+    <div class="lp-modal-field-subcheck-row" data-legacy="lp-modal-field-subcheck-row">
+      <div class="lp-modal-field-subcheck" data-legacy="lp-modal-field-subcheck">
+        <label class="lp-modal-field-subcheck__label" data-legacy="lp-modal-field-subcheck__label">
+          <input type="checkbox" name="unitIsTime" class="lp-modal-field-subcheck__input" data-legacy="lp-modal-field-subcheck__input"${useTime ? " checked" : ""} />
+          <span class="lp-modal-field-subcheck__text" data-legacy="lp-modal-field-subcheck__text">시간</span>
+        </label>
+      </div>
+      <div class="lp-modal-field-subcheck" data-legacy="lp-modal-field-subcheck">
+        <label class="lp-modal-field-subcheck__label" data-legacy="lp-modal-field-subcheck__label">
+          <input type="checkbox" name="needHabitTracker" class="lp-modal-field-subcheck__input" data-legacy="lp-modal-field-subcheck__input"${habitChecked ? " checked" : ""} />
+          <span class="lp-modal-field-subcheck__text" data-legacy="lp-modal-field-subcheck__text">매일 반복</span>
+        </label>
+      </div>
+    </div>
+  `;
+}
+
 export function kpiUnitFieldHtml(kpi, escapeHtml, opts = {}) {
   const unitPlaceholder = opts.unitPlaceholder ?? "예) %(완성도), 일";
   const useTime = !!(kpi && kpi.useTimeAsUnit);
@@ -50,12 +71,7 @@ export function kpiUnitFieldHtml(kpi, escapeHtml, opts = {}) {
   return `
     <label>단위</label>
     <input type="text" name="unit"${unitAttrs} placeholder="${escapeHtml(unitPlaceholder)}" />
-    <div class="lp-modal-field-subcheck" data-legacy="lp-modal-field-subcheck">
-      <label class="lp-modal-field-subcheck__label" data-legacy="lp-modal-field-subcheck__label">
-        <input type="checkbox" name="unitIsTime" class="lp-modal-field-subcheck__input" data-legacy="lp-modal-field-subcheck__input"${useTime ? " checked" : ""} />
-        <span class="lp-modal-field-subcheck__text" data-legacy="lp-modal-field-subcheck__text">시간</span>
-      </label>
-    </div>
+    ${kpiUnitSubchecksRowHtml(kpi)}
   `;
 }
 

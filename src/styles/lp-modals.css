@@ -482,7 +482,19 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   color: var(--lp-modal-navy-muted);
 }
 
-/* 필드 입력 아래 — 작은 서브 체크 (꿈 KPI 단위 「시간」 등) */
+/* 필드 입력 아래 — 작은 서브 체크 (꿈 KPI 단위 「시간」·「매일 반복」 등) */
+.lp-modal-field-subcheck-row,
+[data-legacy~="lp-modal-field-subcheck-row"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1rem;
+  margin-top: 0.4rem;
+}
+.lp-modal-field-subcheck-row > .lp-modal-field-subcheck,
+[data-legacy~="lp-modal-field-subcheck-row"] > [data-legacy~="lp-modal-field-subcheck"] {
+  margin-top: 0;
+}
 .lp-modal-field-subcheck,
 [data-legacy~="lp-modal-field-subcheck"] {
   margin-top: 0.4rem;

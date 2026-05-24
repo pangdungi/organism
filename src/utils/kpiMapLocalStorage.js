@@ -10,6 +10,15 @@ export const KPI_MAP_STORAGE_KEYS = [
   "kpi-health-map",
 ];
 
+/** KPI 맵 pull·소프트 갱신 — localStorage 원문 지문(변경 없으면 카드 재그림 생략) */
+export function readKpiMapLocalStorageSignature(storageKey) {
+  try {
+    return localStorage.getItem(storageKey) || "";
+  } catch (_) {
+    return "";
+  }
+}
+
 /**
  * KPI에서 추가된 과제명 집합 (꿈/부수입/행복/건강)
  */

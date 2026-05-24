@@ -65,6 +65,7 @@ import {
   kpiTodosCompletionBrief,
 } from "../utils/kpiTodoLifecycleDebug.js";
 import { pullKpiMapSubViewFromCloud } from "../utils/kpiTabCloudRefresh.js";
+import { readKpiMapLocalStorageSignature } from "../utils/kpiMapLocalStorage.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
   getAppFooterActionsSlot,
@@ -457,12 +458,6 @@ export function render() {
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
               </div>
             </div>
-            <div class="dream-kpi-field dream-kpi-field-checkbox" data-legacy="time-add-task-field">
-              <label class="dream-kpi-checkbox-label">
-                매일 반복
-                <input type="checkbox" name="needHabitTracker" />
-              </label>
-            </div>
           </div>
           <div data-legacy="time-task-log-footer">
             <button type="submit" data-legacy="time-task-log-submit">KPI 등록하기</button>
@@ -578,12 +573,6 @@ export function render() {
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
               </div>
-            </div>
-            <div class="dream-kpi-field dream-kpi-field-checkbox" data-legacy="time-add-task-field">
-              <label class="dream-kpi-checkbox-label">
-                매일 반복
-                <input type="checkbox" name="needHabitTracker" ${kpi.needHabitTracker ? "checked" : ""} />
-              </label>
             </div>
             <div class="dream-kpi-delete-wrap">
               <button type="button" class="dream-kpi-delete-btn">KPI 삭제하기</button>
@@ -1788,15 +1777,36 @@ export function render() {
     bindPathTargetAmountMode(form);
   }
 
+  function reconcileScopeWithStoredMap(data) {
+    const paths = data?.paths || [];
+    const kpis = data?.kpis || [];
+    if (!paths.some((p) => p.id === activePathId)) {
+      activePathId = paths[0]?.id || null;
+      if (!activePathId) selectedKpiId = null;
+    }
+    if (selectedKpiId && !kpis.some((k) => k.id === selectedKpiId)) {
+      selectedKpiId = null;
+    }
+  }
+
+  reconcileScopeWithStoredMap(_sideincomeInitData);
   renderTabs();
   if (activePathId) {
     updateTitleAndContent();
   } else {
     contentWrap.hidden = true;
   }
+  let lastKpiMapPaintSig = readKpiMapLocalStorageSignature(
+    SIDEINCOME_KPI_MAP_STORAGE_KEY,
+  );
 
   function syncSideincomeUiFromStoredMap() {
     if (!el.isConnected) return;
+    const nextSig = readKpiMapLocalStorageSignature(
+      SIDEINCOME_KPI_MAP_STORAGE_KEY,
+    );
+    if (nextSig === lastKpiMapPaintSig) return;
+    lastKpiMapPaintSig = nextSig;
     const data = loadSideincomeMap();
     if (!data.paths.some((p) => p.id === activePathId)) {
       activePathId = data.paths[0]?.id || null;

@@ -240,8 +240,18 @@ function persistActiveTabId(tabId) {
   } catch (_) {}
 }
 
+/** KPI 탭: pull 로 로컬 맵이 바뀐 경우에만 소프트 갱신(동일하면 카드 재그림·1초 깜빡임 방지) */
+function kpiSoftRefreshIfPullChanged(tabId, pullResult) {
+  if (!pullResult?.localChanged) return;
+  try {
+    if (tabId === "dream") window.__lpDreamSoftRefresh?.();
+    else if (tabId === "health") window.__lpHealthSoftRefresh?.();
+    else if (tabId === "happiness") window.__lpHappinessSoftRefresh?.();
+    else if (tabId === "sideincome") window.__lpSideincomeSoftRefresh?.();
+  } catch (_) {}
+}
+
 /**
- * 상위 탭 전환(및 앱 최초 진입 시 현재 탭)에서 서버와 맞춤.
  * 시간가계부 **과제 목록**(time_ledger_tasks) pull: (1) 앱 상위 **시간가계부 탭** 클릭 시 `App.js`에서만
  * (2) 시간가계부 안 **과제설정** 모달 열 때 `Time.js`에서만.
  * @param {{ fromBoot?: boolean }} [opts] — (예약) 부팅 전용 분기; 시간가계부 날짜는 탭 전환 시 메뉴 진입마다 오늘로 맞춤.
@@ -283,8 +293,7 @@ async function pullDataForActiveTab(tabId, opts = {}) {
     case "health":
     case "happiness":
     case "sideincome":
-      await pullKpiTabFromCloud(tabId);
-      break;
+      return await pullKpiTabFromCloud(tabId);
     case "diary":
       await pullAllDiaryFromCloud();
       try {
@@ -503,8 +512,9 @@ export async function mountApp(container) {
           }
         }
         renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
+        let pullResult;
         try {
-          await pullPromise;
+          pullResult = await pullPromise;
         } catch (_) {}
         if (currentTabId !== targetTabId) {
           try {
@@ -544,14 +554,7 @@ export async function mountApp(container) {
           targetTabId === "happiness" ||
           targetTabId === "sideincome"
         ) {
-          /* KPI 탭: pull 후 통째 renderMain 하면 패널 비움 → 소프트 갱신만 */
-          try {
-            if (targetTabId === "dream") window.__lpDreamSoftRefresh?.();
-            else if (targetTabId === "health") window.__lpHealthSoftRefresh?.();
-            else if (targetTabId === "happiness")
-              window.__lpHappinessSoftRefresh?.();
-            else window.__lpSideincomeSoftRefresh?.();
-          } catch (_) {}
+          kpiSoftRefreshIfPullChanged(targetTabId, pullResult);
         } else if (targetTabId === "diary") {
           /* 시간 레포트: 두 번째 renderMain·본문 중복 pull 로 카드·아이콘이 연달아 깜빡임 → 소프트 갱신만 */
           try {
@@ -929,15 +932,16 @@ export async function mountApp(container) {
         window.__lpCalendarGridPrefetchedForTabSwitch = true;
       } catch (_) {}
     }
-    const pullPromise = Promise.all([
-      syncAdminMenuVisibility(),
-      pullDataForActiveTab(bootTabId, { fromBoot: true }),
-      supabase
-        ? pullTimeLedgerTasksFromSupabase().catch(() => {})
-        : Promise.resolve(),
-    ]);
+    let pullResult;
     try {
-      await pullPromise;
+      const [, pr] = await Promise.all([
+        syncAdminMenuVisibility(),
+        pullDataForActiveTab(bootTabId, { fromBoot: true }),
+        supabase
+          ? pullTimeLedgerTasksFromSupabase().catch(() => {})
+          : Promise.resolve(),
+      ]);
+      pullResult = pr;
     } catch (_) {}
     if (currentTabId !== bootTabId) {
       try {
@@ -964,13 +968,7 @@ export async function mountApp(container) {
       bootTabId === "happiness" ||
       bootTabId === "sideincome"
     ) {
-      try {
-        if (bootTabId === "dream") window.__lpDreamSoftRefresh?.();
-        else if (bootTabId === "health") window.__lpHealthSoftRefresh?.();
-        else if (bootTabId === "happiness")
-          window.__lpHappinessSoftRefresh?.();
-        else window.__lpSideincomeSoftRefresh?.();
-      } catch (_) {}
+      kpiSoftRefreshIfPullChanged(bootTabId, pullResult);
     } else if (bootTabId === "home") {
       /* 메뉴 런처: 시간기록 pull 후 로컬 캐시가 채워지므로 잔액만 소프트 갱신(두 번째 renderMain은 아이콘 깜빡임 유발) */
       try {

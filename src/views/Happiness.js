@@ -64,6 +64,7 @@ import {
   kpiTodosCompletionBrief,
 } from "../utils/kpiTodoLifecycleDebug.js";
 import { pullKpiMapSubViewFromCloud } from "../utils/kpiTabCloudRefresh.js";
+import { readKpiMapLocalStorageSignature } from "../utils/kpiMapLocalStorage.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
   getAppFooterActionsSlot,
@@ -396,12 +397,6 @@ export function render() {
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
               </div>
             </div>
-            <div class="dream-kpi-field dream-kpi-field-checkbox" data-legacy="time-add-task-field">
-              <label class="dream-kpi-checkbox-label">
-                매일 반복
-                <input type="checkbox" name="needHabitTracker" />
-              </label>
-            </div>
           </div>
           <div data-legacy="time-task-log-footer">
             <button type="submit" data-legacy="time-task-log-submit">KPI 등록하기</button>
@@ -517,12 +512,6 @@ export function render() {
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
               </div>
-            </div>
-            <div class="dream-kpi-field dream-kpi-field-checkbox" data-legacy="time-add-task-field">
-              <label class="dream-kpi-checkbox-label">
-                매일 반복
-                <input type="checkbox" name="needHabitTracker" ${kpi.needHabitTracker ? "checked" : ""} />
-              </label>
             </div>
             <div class="dream-kpi-delete-wrap">
               <button type="button" class="dream-kpi-delete-btn">KPI 삭제하기</button>
@@ -1514,15 +1503,36 @@ export function render() {
     }
   }
 
+  function reconcileScopeWithStoredMap(data) {
+    const happinesses = data?.happinesses || [];
+    const kpis = data?.kpis || [];
+    if (!happinesses.some((h) => h.id === activeHappinessId)) {
+      activeHappinessId = happinesses[0]?.id || null;
+      if (!activeHappinessId) selectedKpiId = null;
+    }
+    if (selectedKpiId && !kpis.some((k) => k.id === selectedKpiId)) {
+      selectedKpiId = null;
+    }
+  }
+
+  reconcileScopeWithStoredMap(_happinessInitData);
   renderTabs();
   if (activeHappinessId) {
     updateTitleAndContent();
   } else {
     contentWrap.hidden = true;
   }
+  let lastKpiMapPaintSig = readKpiMapLocalStorageSignature(
+    HAPPINESS_KPI_MAP_STORAGE_KEY,
+  );
 
   function syncHappinessUiFromStoredMap() {
     if (!el.isConnected) return;
+    const nextSig = readKpiMapLocalStorageSignature(
+      HAPPINESS_KPI_MAP_STORAGE_KEY,
+    );
+    if (nextSig === lastKpiMapPaintSig) return;
+    lastKpiMapPaintSig = nextSig;
     const data = loadHappinessMap();
     if (!data.happinesses.some((h) => h.id === activeHappinessId)) {
       activeHappinessId = data.happinesses[0]?.id || null;

@@ -155,7 +155,7 @@
   background: var(--lp-modal-danger-soft) !important;
 }
 
-/* 일자·스탬프 등록/수정 — 전역 todo-list-modal 토큰만 병기, 패널은 lp-modals 의 radius·overflow:hidden 유지(목록은 JS에서 body 포털) */
+/* 일자·스탬프 등록/수정 — 전역 todo-list-modal 토큰만 병기, 패널은 lp-modals 의 radius·overflow:hidden 유지(목록은 JS fixed) */
 .todo-list-modal.work-schedule-day-entry-modal
   .work-schedule-day-entry-body.todo-list-modal-body {
   display: flex;
@@ -213,6 +213,16 @@
 .todo-list-modal.work-schedule-day-entry-modal
   .work-schedule-day-entry-custom-select-list.time-task-select-list {
   margin: 0;
+}
+
+.todo-list-modal.work-schedule-day-entry-modal
+  .work-schedule-day-entry-custom-select-list.time-task-select-list[hidden] {
+  display: none !important;
+}
+
+.todo-list-modal.work-schedule-day-entry-modal
+  .work-schedule-day-entry-custom-select-list.time-task-select-list:not([hidden]) {
+  box-shadow: 0 16px 40px rgba(21, 43, 69, 0.18);
 }
 
 .todo-list-modal.work-schedule-day-entry-modal
