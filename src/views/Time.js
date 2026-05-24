@@ -7384,7 +7384,9 @@ export function render(opts = {}) {
       if (!cardsWrap.isConnected) return;
       cardsWrap.scrollTop = cardsWrap.scrollHeight;
     };
-    requestAnimationFrame(() => requestAnimationFrame(scrollToBottom));
+    /* DOM 붙인 직후 동기 스크롤 — rAF 2회만 쓰면 위 화면이 잠깐 보임 */
+    scrollToBottom();
+    requestAnimationFrame(scrollToBottom);
   }
 
   function renderAll(rows = []) {
@@ -7631,7 +7633,17 @@ export function render(opts = {}) {
     } catch (_) {}
     allRowsCache = loadTimeRows();
     cachedRows = getFullRowsForFilter(true);
-    syncTimeLedgerContent({ force: true });
+    const prevSig = el._lpLastTimeLedgerPaintSig;
+    syncTimeLedgerContent({ force: false });
+    /* pull 후 기록이 같으면 renderAll 생략 — 다르면 같은 턴에 맨 아래(재그림 1회만) */
+    if (el._lpLastTimeLedgerPaintSig !== prevSig) {
+      const cardsWrap = contentWrap.querySelector(
+        '[data-legacy~="time-ledger-mobile-cards"]',
+      );
+      if (cardsWrap?.isConnected) {
+        cardsWrap.scrollTop = cardsWrap.scrollHeight;
+      }
+    }
   }
 
   function openTaskLogModalFromExternal(partial = {}) {
@@ -7662,8 +7674,7 @@ export function render(opts = {}) {
   window.__lpOpenTimeTaskLog = openTaskLogModalFromExternal;
 
   /** App.setActiveTab 에서 pull 후 두 번째 renderMain 대신 호출 — 패널 통째 교체 없이 위 갱신만 */
-  window.__lpTimeLedgerSoftRefresh = () =>
-    refreshTimeLedgerFromRemotePull({ scrollUsageListToBottom: true });
+  window.__lpTimeLedgerSoftRefresh = () => refreshTimeLedgerFromRemotePull();
 
   signal.addEventListener(
     "abort",
