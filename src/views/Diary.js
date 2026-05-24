@@ -536,6 +536,10 @@ function mountDiaryTab5LedgerDayLog(scrollWrap, ymdTen) {
 
 export function render() {
   attachDiarySaveListener();
+  /** 소비 · 투자 · 로그 · 예산 — 메모 탭(1)은 메뉴에서 제외 */
+  const DIARY_FOOTER_TAB_ORDER = ["3", "2", "5", "4"];
+  const DIARY_DEFAULT_REPORT_TAB = "3";
+
   const el = document.createElement("div");
   el.className = "app-tab-panel-content diary-view";
   const mobileViewport =
@@ -615,7 +619,7 @@ export function render() {
   layoutWrap.className = "diary-layout-wrap";
   inner.appendChild(layoutWrap);
 
-  let currentTabId = "2";
+  let currentTabId = DIARY_DEFAULT_REPORT_TAB;
   let currentEntryId = null;
   let searchQuery = "";
   let isComposing = false;
@@ -1331,9 +1335,6 @@ export function render() {
     modal.appendChild(panel);
     document.body.appendChild(modal);
   }
-
-  /** 소비 · 투자 · 로그 · 예산 — 메모 탭(1)은 메뉴에서 제외 */
-  const DIARY_FOOTER_TAB_ORDER = ["3", "2", "5", "4"];
 
   function syncDiaryFooterSubtabs() {
     document.querySelectorAll("[data-diary-subtab]").forEach((b) => {
@@ -2705,7 +2706,7 @@ export function render() {
     }
 
     if (!DIARY_FOOTER_TAB_ORDER.includes(currentTabId)) {
-      currentTabId = "2";
+      currentTabId = DIARY_DEFAULT_REPORT_TAB;
     }
 
     const fullEntryList = ensureTabEntries(currentTabId);
@@ -3040,13 +3041,7 @@ export function render() {
     mountDiaryFooterSubtabs();
     const initialList = ensureTabEntries(currentTabId);
     currentEntryId = initialList.length > 0 ? initialList[0].id : null;
-    /* App 탭 진입: pull 전 로컬로 한 번 + pull 후 소프트 갱신으로 두 번 그리면 diary-tr-icons 재로드 — pull 뒤 한 번만 */
-    const skipInitialLayoutForTabPull =
-      typeof window !== "undefined" &&
-      !!window.__lpDiaryLedgerPrefetchedForTabSwitch;
-    if (!skipInitialLayoutForTabPull) {
-      renderLayout();
-    }
+    renderLayout();
   })();
 
   return el;
