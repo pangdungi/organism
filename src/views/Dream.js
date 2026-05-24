@@ -14,7 +14,14 @@ import {
   getFullTaskOptions,
 } from "../utils/timeTaskOptionsModel.js";
 import { toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDisplay, formatDeadlineRangeCompact } from "../utils/ganttModal.js";
-import { getAccumulatedMinutesForKpiId, minutesToHhMm, hhMmToMinutes, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
+import {
+  getAccumulatedMinutesForKpiId,
+  minutesToHhMm,
+  parseKpiTargetTimeRequiredToMinutes,
+  formatMinutesToKoreanHm,
+  formatKpiTargetTimeRequiredDisplay,
+  syncHabitTrackerLogs,
+} from "../utils/timeKpiSync.js";
 import { defaultManualKpiLogMeta, kpiLogSourceBadgeHtml, formatKpiHistoryValueText } from "../utils/kpiLogFields.js";
 import {
   wireKpiHistoryBottomTabs,
@@ -93,6 +100,7 @@ function loadDreamMap() {
       const kpis = (parsed.kpis || []).map((k) => ({
         ...k,
         needHabitTracker: !!k.needHabitTracker,
+        useTimeAsUnit: !!k.useTimeAsUnit,
         direction: k.direction === "lower" ? "lower" : "higher",
       }));
       return {
@@ -331,6 +339,142 @@ export function render() {
     });
   }
 
+  function dreamKpiTargetValueFieldHtml(kpi = null) {
+    const useTime = !!(kpi && kpi.useTimeAsUnit);
+    const val = kpi
+      ? useTime
+        ? kpi.targetTimeRequired || ""
+        : sanitizeNumericInput(kpi.targetValue)
+      : "";
+    const valueAttr = kpi ? ` value="${escapeHtml(val)}"` : "";
+    const inputAttrs = useTime
+      ? ' placeholder="예) 25:00"'
+      : ' placeholder="예) 99" inputmode="numeric"';
+    return `
+      <label><span class="dream-kpi-target-label-text">${useTime ? "목표 시간" : "목표값"}</span></label>
+      <input type="text" name="targetValue"${valueAttr}${inputAttrs} />
+    `;
+  }
+
+  function dreamKpiUnitFieldHtml(kpi = null) {
+    const useTime = !!(kpi && kpi.useTimeAsUnit);
+    const unitVal = useTime ? "시간" : kpi?.unit || "";
+    const unitAttrs = useTime
+      ? ' value="시간" readonly aria-readonly="true" class="dream-kpi-input-readonly"'
+      : kpi
+        ? ` value="${escapeHtml(unitVal)}"`
+        : "";
+    return `
+    <label>단위</label>
+    <input type="text" name="unit"${unitAttrs} placeholder="예) %(완성도), 일" />
+    <div class="lp-modal-field-subcheck" data-legacy="lp-modal-field-subcheck">
+      <label class="lp-modal-field-subcheck__label" data-legacy="lp-modal-field-subcheck__label">
+        <input type="checkbox" name="unitIsTime" class="lp-modal-field-subcheck__input" data-legacy="lp-modal-field-subcheck__input"${useTime ? " checked" : ""} />
+        <span class="lp-modal-field-subcheck__text" data-legacy="lp-modal-field-subcheck__text">시간</span>
+      </label>
+    </div>
+  `;
+  }
+
+  function readDreamKpiFormFields(form) {
+    const useTimeAsUnit = !!form.querySelector('input[name="unitIsTime"]')?.checked;
+    const targetRaw = (form.targetValue?.value || "").trim();
+    if (useTimeAsUnit) {
+      return {
+        useTimeAsUnit: true,
+        unit: "시간",
+        targetValue: "",
+        targetTimeRequired: targetRaw,
+      };
+    }
+    return {
+      useTimeAsUnit: false,
+      unit: (form.unit?.value || "").trim(),
+      targetValue: sanitizeNumericInput(targetRaw) || "",
+      targetTimeRequired: "",
+    };
+  }
+
+  function bindDreamKpiUnitTimeMode(form, kpi = null) {
+    if (!form) return;
+    const unitInput = form.querySelector('input[name="unit"]');
+    const useTimeCheck = form.querySelector('input[name="unitIsTime"]');
+    const targetInput = form.querySelector('input[name="targetValue"]');
+    const labelSpan = form.querySelector(".dream-kpi-target-label-text");
+    const directionField = form.querySelector(".dream-kpi-direction-field");
+    const directionRadios = form.querySelectorAll('input[name="direction"]');
+    let savedUnit = (kpi?.useTimeAsUnit ? "" : kpi?.unit || unitInput?.value || "").trim();
+    if (savedUnit === "시간") savedUnit = "";
+
+    const syncTargetLabelForDirection = () => {
+      if (useTimeCheck?.checked) {
+        if (labelSpan) labelSpan.textContent = "목표 시간";
+        if (targetInput) targetInput.placeholder = "예) 25:00";
+        return;
+      }
+      const lower =
+        form.querySelector('input[name="direction"]:checked')?.value === "lower";
+      if (labelSpan) labelSpan.textContent = lower ? "허용 상한" : "목표값";
+      if (targetInput) targetInput.placeholder = lower ? "예) 5" : "예) 99";
+    };
+
+    const sync = () => {
+      const on = !!useTimeCheck?.checked;
+      syncTargetLabelForDirection();
+      if (unitInput) {
+        if (on) {
+          const cur = (unitInput.value || "").trim();
+          if (cur && cur !== "시간") savedUnit = cur;
+          unitInput.value = "시간";
+          unitInput.readOnly = true;
+          unitInput.setAttribute("aria-readonly", "true");
+          unitInput.classList.add("dream-kpi-input-readonly");
+        } else {
+          unitInput.readOnly = false;
+          unitInput.removeAttribute("aria-readonly");
+          unitInput.classList.remove("dream-kpi-input-readonly");
+          if ((unitInput.value || "").trim() === "시간") {
+            unitInput.value = savedUnit;
+          }
+        }
+      }
+      if (targetInput) {
+        if (on) {
+          targetInput.removeAttribute("inputmode");
+        } else {
+          targetInput.setAttribute("inputmode", "numeric");
+        }
+      }
+      if (directionField) directionField.hidden = on;
+      if (on) {
+        const higherRadio = form.querySelector('input[name="direction"][value="higher"]');
+        if (higherRadio) higherRadio.checked = true;
+      }
+    };
+
+    useTimeCheck?.addEventListener("change", sync);
+    directionRadios.forEach((r) => r.addEventListener("change", syncTargetLabelForDirection));
+    sync();
+
+    if (targetInput && !targetInput.dataset.dreamKpiTargetBound) {
+      targetInput.dataset.dreamKpiTargetBound = "1";
+      targetInput.addEventListener("input", () => {
+        const pos = targetInput.selectionStart;
+        const on = !!useTimeCheck?.checked;
+        const sanitized = on
+          ? sanitizeTimeInput(targetInput.value)
+          : sanitizeNumericInput(targetInput.value);
+        if (targetInput.value !== sanitized) {
+          targetInput.value = sanitized;
+          targetInput.setSelectionRange(
+            Math.min(pos, sanitized.length),
+            Math.min(pos, sanitized.length),
+          );
+        }
+      });
+    }
+  }
+
   function showKpiModal() {
     if (!activeDreamId) return;
     const modal = document.createElement("div");
@@ -365,17 +509,11 @@ export function render() {
             </div>
             <div class="dream-kpi-row">
               <div class="dream-kpi-field" data-legacy="time-add-task-field">
-                <label><span class="dream-kpi-target-label-text">목표값</span></label>
-                <input type="text" name="targetValue" placeholder="예) 99" inputmode="numeric" />
+                ${dreamKpiTargetValueFieldHtml()}
               </div>
               <div class="dream-kpi-field" data-legacy="time-add-task-field">
-                <label>단위</label>
-                <input type="text" name="unit" placeholder="예) %(완성도), 일" />
+                ${dreamKpiUnitFieldHtml()}
               </div>
-            </div>
-            <div class="dream-kpi-field" data-legacy="time-add-task-field">
-              <label>필요시간</label>
-              <input type="text" name="targetTimeRequired" placeholder="예) 25:00" />
             </div>
             <div class="dream-kpi-period-block" data-legacy="time-add-task-field">
               <div class="dream-kpi-row">
@@ -425,16 +563,18 @@ export function render() {
         form.querySelector('input[name="direction"]:checked')?.value === "lower"
           ? "lower"
           : "higher";
+      const fields = readDreamKpiFormFields(form);
       const kpi = {
         id: nextId(),
         dreamId: activeDreamId,
         name: (form.name.value || "").trim() || "행동",
-        unit: (form.unit.value || "").trim() || "",
-        targetValue: sanitizeNumericInput(form.targetValue.value) || "",
-        targetTimeRequired: (form.targetTimeRequired?.value || "").trim() || "",
+        unit: fields.unit,
+        targetValue: fields.targetValue,
+        targetTimeRequired: fields.targetTimeRequired,
         targetStartDate: (form.targetStartDate?.value || "").trim() || "",
         targetDeadline: (form.targetDeadline.value || "").trim() || "",
         needHabitTracker: needHabitChecked,
+        useTimeAsUnit: fields.useTimeAsUnit,
         direction: dir,
       };
       const data = loadDreamMap();
@@ -451,24 +591,9 @@ export function render() {
       renderKpiHistory();
     });
     document.body.appendChild(modal);
-    setupNumericOnlyInput(modal.querySelector('input[name="targetValue"]'));
+    initModalNativeDateFieldsIn(modal);
     setupDeadlineQuickButtons(modal);
-    bindDreamKpiDirectionTargetLabels(modal.querySelector(".dream-kpi-form"));
-  }
-
-  function bindDreamKpiDirectionTargetLabels(form) {
-    if (!form) return;
-    const labelSpan = form.querySelector(".dream-kpi-target-label-text");
-    const targetInput = form.querySelector('input[name="targetValue"]');
-    const radios = form.querySelectorAll('input[name="direction"]');
-    const sync = () => {
-      const lower =
-        form.querySelector('input[name="direction"]:checked')?.value === "lower";
-      if (labelSpan) labelSpan.textContent = lower ? "허용 상한" : "목표값";
-      if (targetInput) targetInput.placeholder = lower ? "예) 5" : "예) 99";
-    };
-    radios.forEach((r) => r.addEventListener("change", sync));
-    sync();
+    bindDreamKpiUnitTimeMode(modal.querySelector(".dream-kpi-form"));
   }
 
   function showKpiEditModal(kpi) {
@@ -504,17 +629,11 @@ export function render() {
             </div>
             <div class="dream-kpi-row">
               <div class="dream-kpi-field" data-legacy="time-add-task-field">
-                <label><span class="dream-kpi-target-label-text">목표값</span></label>
-                <input type="text" name="targetValue" value="${escapeHtml(sanitizeNumericInput(kpi.targetValue))}" placeholder="예) 99" inputmode="numeric" />
+                ${dreamKpiTargetValueFieldHtml(kpi)}
               </div>
               <div class="dream-kpi-field" data-legacy="time-add-task-field">
-                <label>단위</label>
-                <input type="text" name="unit" value="${escapeHtml(kpi.unit || "")}" placeholder="예) %(완성도), 일" />
+                ${dreamKpiUnitFieldHtml(kpi)}
               </div>
-            </div>
-            <div class="dream-kpi-field" data-legacy="time-add-task-field">
-              <label>필요시간</label>
-              <input type="text" name="targetTimeRequired" value="${escapeHtml(kpi.targetTimeRequired || "")}" placeholder="예) 25:00" />
             </div>
             <div class="dream-kpi-period-block" data-legacy="time-add-task-field">
               <div class="dream-kpi-row">
@@ -585,13 +704,15 @@ export function render() {
       const target = data.kpis.find((k) => k.id === kpi.id);
       if (target) {
         const oldName = target.name;
+        const fields = readDreamKpiFormFields(form);
         target.name = (form.name.value || "").trim() || "행동";
-        target.unit = (form.unit.value || "").trim() || "";
-        target.targetValue = sanitizeNumericInput(form.targetValue.value) || "";
-        target.targetTimeRequired = (form.targetTimeRequired?.value || "").trim() || "";
+        target.unit = fields.unit;
+        target.targetValue = fields.targetValue;
+        target.targetTimeRequired = fields.targetTimeRequired;
         target.targetStartDate = (form.targetStartDate?.value || "").trim() || "";
         target.targetDeadline = (form.targetDeadline.value || "").trim() || "";
         target.needHabitTracker = !!form.querySelector('input[name="needHabitTracker"]')?.checked;
+        target.useTimeAsUnit = fields.useTimeAsUnit;
         target.direction =
           form.querySelector('input[name="direction"]:checked')?.value === "lower"
             ? "lower"
@@ -604,9 +725,9 @@ export function render() {
       renderKpiHistory();
     });
     document.body.appendChild(modal);
-    setupNumericOnlyInput(modal.querySelector('input[name="targetValue"]'));
+    initModalNativeDateFieldsIn(modal);
     setupDeadlineQuickButtons(modal);
-    bindDreamKpiDirectionTargetLabels(modal.querySelector(".dream-kpi-form"));
+    bindDreamKpiUnitTimeMode(modal.querySelector(".dream-kpi-form"), kpi);
   }
 
   function toDateStr(d) {
@@ -864,6 +985,33 @@ export function render() {
   function getKpiProgress(kpi) {
     const lower = kpi.direction === "lower";
     const data = loadDreamMap();
+    const todayKey = toDateKey(new Date());
+    const startKey = (kpi.targetStartDate || "").slice(0, 10);
+    const endKey = (kpi.targetDeadline || "").slice(0, 10);
+    const hasStart = startKey.length >= 10;
+
+    if (kpi.useTimeAsUnit) {
+      const targetMins = parseKpiTargetTimeRequiredToMinutes(kpi.targetTimeRequired);
+      const accumulatedMins = getAccumulatedMinutesForKpiId(kpi.id, kpi.name);
+      const timeProgress =
+        targetMins > 0 ? Math.min(100, (accumulatedMins / targetMins) * 100) : 0;
+      const isCompleted = targetMins > 0 && timeProgress >= 100;
+      const isInProgress =
+        hasStart && startKey <= todayKey && (!endKey || endKey >= todayKey) && !isCompleted;
+      return {
+        progress: timeProgress,
+        timeProgress,
+        currentVal: accumulatedMins,
+        targetVal: targetMins,
+        targetMins,
+        accumulatedMins,
+        isCompleted,
+        isInProgress,
+        lowerBetter: false,
+        useTimeAsUnit: true,
+      };
+    }
+
     const latestLog = lower
       ? getLatestKpiLogWithExplicitValue(kpi.id, data.kpiLogs)
       : null;
@@ -878,7 +1026,6 @@ export function render() {
           const c = Math.max(currentVal, 1e-9);
           progress = Math.min(100, (targetVal / c) * 100);
         } else if (targetVal === 0) {
-          /* 상한 0(예: 오류 0건): 최근값이 0이면 100%, 넘치면 0% */
           progress = currentVal <= 0 ? 100 : 0;
         }
       }
@@ -887,31 +1034,25 @@ export function render() {
       progress =
         targetVal > 0 ? Math.min(100, (currentVal / targetVal) * 100) : 0;
     }
-    const targetMins = kpi.targetTimeRequired ? hhMmToMinutes(kpi.targetTimeRequired) : 0;
-    const accumulatedMins = targetMins > 0 ? getAccumulatedMinutesForKpiId(kpi.id) : 0;
-    const timeProgress = targetMins > 0 ? Math.min(100, (accumulatedMins / targetMins) * 100) : 0;
     const valueComplete = lower
       ? latestLog != null &&
         currentVal != null &&
         currentVal <= targetVal
       : progress >= 100;
-    const isCompleted = valueComplete || (targetMins > 0 && timeProgress >= 100);
-    const todayKey = toDateKey(new Date());
-    const startKey = (kpi.targetStartDate || "").slice(0, 10);
-    const endKey = (kpi.targetDeadline || "").slice(0, 10);
-    const hasStart = startKey.length >= 10;
+    const isCompleted = valueComplete;
     const isInProgress =
       hasStart && startKey <= todayKey && (!endKey || endKey >= todayKey) && !isCompleted;
     return {
       progress,
-      timeProgress,
+      timeProgress: 0,
       currentVal,
       targetVal,
-      targetMins,
-      accumulatedMins,
+      targetMins: 0,
+      accumulatedMins: 0,
       isCompleted,
       isInProgress,
       lowerBetter: lower,
+      useTimeAsUnit: false,
     };
   }
 
@@ -989,40 +1130,47 @@ export function render() {
         targetMins,
         accumulatedMins,
         lowerBetter,
+        useTimeAsUnit,
       } = getKpiProgress(kpi);
-      const investedMins = getAccumulatedMinutesForKpiId(kpi.id);
       const unitSuffix = kpi.unit ? " " + kpi.unit : "";
       const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
       const currentStr = formatNum(currentVal);
       const targetStr = kpi.targetValue ? escapeHtml(String(kpi.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) : "—";
-      const progressText = lowerBetter
-        ? `최근 ${currentStr} / 상한 ${targetStr}${unitSuffix}`
-        : `${currentStr} / ${targetStr}${unitSuffix}`;
-      const remainingMins = Math.max(0, targetMins - accumulatedMins);
+      const targetTimeLabel =
+        useTimeAsUnit && kpi.targetTimeRequired
+          ? formatKpiTargetTimeRequiredDisplay(kpi.targetTimeRequired)
+          : "—";
+      const accumulatedLabel = useTimeAsUnit
+        ? formatMinutesToKoreanHm(accumulatedMins)
+        : "";
+      const displayProgress = useTimeAsUnit ? timeProgress : progress;
+      const progressText = useTimeAsUnit
+        ? `${accumulatedLabel} / ${targetTimeLabel}`
+        : lowerBetter
+          ? `최근 ${currentStr} / 상한 ${targetStr}${unitSuffix}`
+          : `${currentStr} / ${targetStr}${unitSuffix}`;
       const card = document.createElement("div");
       card.className =
         "dream-kpi-card" +
         (lowerBetter ? " dream-kpi-card--lower-better" : "") +
+        (useTimeAsUnit ? " dream-kpi-card--time-unit" : "") +
         (selectedKpiId === kpi.id ? " is-selected" : "");
       card.dataset.kpiId = kpi.id;
       card.draggable = true;
-      const targetTimeDisplay = kpi.targetTimeRequired
-        ? minutesToHhMm(String(kpi.targetTimeRequired).includes(":") ? hhMmToMinutes(kpi.targetTimeRequired) : (parseInt(kpi.targetTimeRequired, 10) || 0))
-        : "";
-      const investedTimeHtml = targetTimeDisplay
-        ? `지금까지 투자한 시간 <span class="dream-kpi-card-invested-value">${minutesToHhMm(investedMins)}</span> / <span class="dream-kpi-card-invested-value">${targetTimeDisplay}</span>`
-        : `지금까지 투자한 시간 <span class="dream-kpi-card-invested-value">${minutesToHhMm(investedMins)}</span>`;
+      const investedTimeHtml = "";
+      const heroStr = useTimeAsUnit ? accumulatedLabel : currentStr;
+      const heroUnit = useTimeAsUnit ? "" : kpi.unit;
       card.innerHTML = `
         <div class="dream-kpi-card-inner">
           ${KPI_CARD_EDIT_PENCIL_HTML}
           <div class="dream-kpi-card-name">${escapeHtml(kpi.name)}${lowerBetter ? '<span class="dream-kpi-card-direction-badge" title="낮을수록 좋음 KPI">↓낮음</span>' : ""}</div>
-          <div class="dream-kpi-card-target-num">${formatKpiCardHeroHtml(lowerBetter, currentStr, kpi.unit)}</div>
+          <div class="dream-kpi-card-target-num">${formatKpiCardHeroHtml(lowerBetter, heroStr, heroUnit)}</div>
           ${(kpi.targetStartDate || kpi.targetDeadline) ? `<div class="dream-kpi-card-deadline">${escapeHtml(formatDeadlineRangeCompact(kpi.targetStartDate, kpi.targetDeadline))}</div>` : ""}
           <div class="dream-kpi-card-progress">
-            <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${progress}%"></div></div>
+            <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${displayProgress}%"></div></div>
             <div class="dream-kpi-card-progress-text">${escapeHtml(progressText)}</div>
           </div>
-          <div class="dream-kpi-card-invested">${investedTimeHtml}</div>
+          ${investedTimeHtml ? `<div class="dream-kpi-card-invested">${investedTimeHtml}</div>` : ""}
         </div>
       `;
       card.querySelector(".dream-kpi-card-edit").addEventListener("click", (e) => {

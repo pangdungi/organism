@@ -2,6 +2,10 @@
 
 import { readTimeLedgerEntriesRaw } from "./timeLedgerEntriesModel.js";
 import { isUuid } from "./idUtils.js";
+import {
+  formatMinutesToKoreanHm,
+  parseKpiTargetTimeRequiredToMinutes,
+} from "./timeKpiSync.js";
 
 export const KPI_LOG_SOURCE_MANUAL = "manual";
 export const KPI_LOG_SOURCE_TIME_LEDGER = "time_ledger";
@@ -53,9 +57,19 @@ export function formatMinutesToShortHm(totalMin) {
  */
 export function formatKpiHistoryValueText(log, kpi, opts) {
   const shortHm = Boolean(opts && opts.durationShortHm);
-  const v = String(log?.value ?? "").trim();
   const u = kpi?.unit ? String(kpi.unit).trim() : "";
+  if (kpi?.useTimeAsUnit && kpiLogIsTimeLinked(log)) {
+    const mins = sumLinkedLedgerMinutesFromLog(log);
+    if (mins > 0) {
+      return shortHm ? formatMinutesToShortHm(mins) : formatMinutesToKoreanHm(mins);
+    }
+  }
+  const v = String(log?.value ?? "").trim();
   if (v) {
+    if (kpi?.useTimeAsUnit) {
+      const mins = parseKpiTargetTimeRequiredToMinutes(v);
+      return mins > 0 ? formatMinutesToKoreanHm(mins) : `${v} 시간`;
+    }
     return u ? `${v} ${u}` : v;
   }
   if (kpiLogIsTimeLinked(log)) {

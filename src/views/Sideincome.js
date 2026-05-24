@@ -23,7 +23,15 @@ import {
 import {
   afterKpiTodoListMutationScroll,
 } from "../utils/kpiTodoInputScroll.js";
-import { getAccumulatedMinutesForKpiId, minutesToHhMm, hhMmToMinutes, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
+import { minutesToHhMm, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
+import {
+  kpiTargetValueFieldHtml,
+  kpiUnitFieldHtml,
+  readKpiTimeUnitFormFields,
+  bindKpiUnitTimeMode,
+  computeKpiProgress,
+  buildKpiCardTimePresentation,
+} from "../utils/kpiTimeUnitKpi.js";
 import { defaultManualKpiLogMeta, kpiLogSourceBadgeHtml, formatKpiHistoryValueText } from "../utils/kpiLogFields.js";
 import {
   wireKpiHistoryBottomTabs,
@@ -49,7 +57,7 @@ import {
   KPI_CARD_EDIT_PENCIL_HTML,
   KPI_TAB_EDIT_PENCIL_HTML,
 } from "../utils/kpiTabNameEditIcon.js";
-import { sortKpiLogsNewestFirst, getLatestKpiLogWithExplicitValue } from "../utils/kpiLogsSort.js";
+import { sortKpiLogsNewestFirst } from "../utils/kpiLogsSort.js";
 import {
   deletedRefsKpiTodosLen,
   kpiTodoLifecycleLog,
@@ -87,6 +95,20 @@ function appendDeletedRef(data, kind, id) {
   data.deletedRefs[kind] = arr;
 }
 
+function normalizeSideincomePath(path) {
+  if (!path || typeof path !== "object") return path;
+  const hasLegacyAmount =
+    !!String(path.targetAmount ?? "").trim() || !!String(path.unit ?? "").trim();
+  const trackTargetAmount =
+    path.trackTargetAmount != null ? !!path.trackTargetAmount : hasLegacyAmount;
+  return {
+    ...path,
+    trackTargetAmount,
+    targetAmount: trackTargetAmount ? String(path.targetAmount ?? "").trim() : "",
+    unit: trackTargetAmount ? (String(path.unit ?? "").trim() || "원") : "",
+  };
+}
+
 function loadSideincomeMap() {
   try {
     const raw = localStorage.getItem(SIDEINCOME_KPI_MAP_STORAGE_KEY);
@@ -95,10 +117,11 @@ function loadSideincomeMap() {
       const kpis = (parsed.kpis || []).map((k) => ({
         ...k,
         needHabitTracker: !!k.needHabitTracker,
+        useTimeAsUnit: !!k.useTimeAsUnit,
         direction: k.direction === "lower" ? "lower" : "higher",
       }));
       return {
-        paths: parsed.paths || [],
+        paths: (parsed.paths || []).map(normalizeSideincomePath),
         kpis,
         kpiLogs: parsed.kpiLogs || [],
         kpiTodos: parsed.kpiTodos || [],
@@ -246,6 +269,49 @@ function setupActionUnitTimeCalc(modal) {
   });
 }
 
+function bindPathTargetAmountMode(form, path = null) {
+  if (!form) return;
+  const trackCheck = form.querySelector('input[name="trackTargetAmount"]');
+  const amountField = form.querySelector(".sideincome-target-amount-field");
+  const amountInput = form.querySelector('input[name="targetAmount"]');
+  const sync = () => {
+    const on = !!trackCheck?.checked;
+    if (amountField) amountField.hidden = !on;
+    if (amountInput) {
+      if (on) amountInput.setAttribute("inputmode", "numeric");
+      else amountInput.removeAttribute("inputmode");
+    }
+  };
+  trackCheck?.addEventListener("change", sync);
+  sync();
+  if (amountInput && !amountInput.dataset.sideincomeTargetBound) {
+    amountInput.dataset.sideincomeTargetBound = "1";
+    amountInput.addEventListener("input", () => {
+      const pos = amountInput.selectionStart;
+      const sanitized = sanitizeNumericInput(amountInput.value);
+      if (amountInput.value !== sanitized) {
+        amountInput.value = sanitized;
+        amountInput.setSelectionRange(
+          Math.min(pos, sanitized.length),
+          Math.min(pos, sanitized.length),
+        );
+      }
+    });
+  }
+}
+
+function readPathTargetAmountFields(form) {
+  const trackTargetAmount = !!form.querySelector('input[name="trackTargetAmount"]')?.checked;
+  if (!trackTargetAmount) {
+    return { trackTargetAmount: false, targetAmount: "", unit: "" };
+  }
+  return {
+    trackTargetAmount: true,
+    targetAmount: sanitizeNumericInput(form.targetAmount?.value) || "",
+    unit: "원",
+  };
+}
+
 export function render() {
   const el = document.createElement("div");
   el.className = "app-tab-panel-content sideincome-view dream-view lp-kpi-dream-page";
@@ -319,6 +385,13 @@ export function render() {
     });
   }
 
+  const kpiTimeFormOpts = {
+    unitPlaceholder: "예) 게시물",
+    higherPlaceholder: "예) 100",
+    lowerPlaceholder: "예) 5",
+    timePlaceholder: "예) 25:00",
+  };
+
   function showKpiModal() {
     if (!activePathId) return;
     const modal = document.createElement("div");
@@ -353,17 +426,11 @@ export function render() {
             </div>
             <div class="dream-kpi-row">
               <div class="dream-kpi-field" data-legacy="time-add-task-field">
-                <label><span class="dream-kpi-target-label-text">목표값</span></label>
-                <input type="text" name="targetValue" placeholder="예) 100" inputmode="numeric" />
+                ${kpiTargetValueFieldHtml(null, escapeHtml, kpiTimeFormOpts)}
               </div>
               <div class="dream-kpi-field" data-legacy="time-add-task-field">
-                <label>단위</label>
-                <input type="text" name="unit" placeholder="예) 게시물" />
+                ${kpiUnitFieldHtml(null, escapeHtml, kpiTimeFormOpts)}
               </div>
-            </div>
-            <div class="dream-kpi-field" data-legacy="time-add-task-field">
-              <label>필요시간</label>
-              <input type="text" name="targetTimeRequired" placeholder="예) 25:00" />
             </div>
             <div class="dream-kpi-period-block" data-legacy="time-add-task-field">
               <div class="dream-kpi-row">
@@ -413,16 +480,18 @@ export function render() {
         form.querySelector('input[name="direction"]:checked')?.value === "lower"
           ? "lower"
           : "higher";
+      const fields = readKpiTimeUnitFormFields(form, sanitizeNumericInput);
       const kpi = {
         id: nextId(),
         pathId: activePathId,
         name: (form.name.value || "").trim() || "행동",
-        unit: (form.unit.value || "").trim() || "",
-        targetValue: sanitizeNumericInput(form.targetValue.value) || "",
-        targetTimeRequired: (form.targetTimeRequired?.value || "").trim() || "",
+        unit: fields.unit,
+        targetValue: fields.targetValue,
+        targetTimeRequired: fields.targetTimeRequired,
         targetStartDate: (form.targetStartDate?.value || "").trim() || "",
         targetDeadline: (form.targetDeadline.value || "").trim() || "",
         needHabitTracker: needHabitChecked,
+        useTimeAsUnit: fields.useTimeAsUnit,
         direction: dir,
       };
       const data = loadSideincomeMap();
@@ -439,24 +508,9 @@ export function render() {
       renderKpiHistory();
     });
     document.body.appendChild(modal);
-    setupNumericOnlyInput(modal.querySelector('input[name="targetValue"]'));
+    initModalNativeDateFieldsIn(modal);
     setupDeadlineQuickButtons(modal);
-    bindDreamKpiDirectionTargetLabels(modal.querySelector(".dream-kpi-form"));
-  }
-
-  function bindDreamKpiDirectionTargetLabels(form) {
-    if (!form) return;
-    const labelSpan = form.querySelector(".dream-kpi-target-label-text");
-    const targetInput = form.querySelector('input[name="targetValue"]');
-    const radios = form.querySelectorAll('input[name="direction"]');
-    const sync = () => {
-      const lower =
-        form.querySelector('input[name="direction"]:checked')?.value === "lower";
-      if (labelSpan) labelSpan.textContent = lower ? "허용 상한" : "목표값";
-      if (targetInput) targetInput.placeholder = lower ? "예) 5" : "예) 100";
-    };
-    radios.forEach((r) => r.addEventListener("change", sync));
-    sync();
+    bindKpiUnitTimeMode(modal.querySelector(".dream-kpi-form"), null, kpiTimeFormOpts);
   }
 
   function showKpiEditModal(kpi) {
@@ -492,17 +546,11 @@ export function render() {
             </div>
             <div class="dream-kpi-row">
               <div class="dream-kpi-field" data-legacy="time-add-task-field">
-                <label><span class="dream-kpi-target-label-text">목표값</span></label>
-                <input type="text" name="targetValue" value="${escapeHtml(sanitizeNumericInput(kpi.targetValue))}" placeholder="예) 100" inputmode="numeric" />
+                ${kpiTargetValueFieldHtml(kpi, escapeHtml, kpiTimeFormOpts)}
               </div>
               <div class="dream-kpi-field" data-legacy="time-add-task-field">
-                <label>단위</label>
-                <input type="text" name="unit" value="${escapeHtml(kpi.unit || "")}" placeholder="예) 게시물" />
+                ${kpiUnitFieldHtml(kpi, escapeHtml, kpiTimeFormOpts)}
               </div>
-            </div>
-            <div class="dream-kpi-field" data-legacy="time-add-task-field">
-              <label>필요시간</label>
-              <input type="text" name="targetTimeRequired" value="${escapeHtml(kpi.targetTimeRequired || "")}" placeholder="예) 25:00" />
             </div>
             <div class="dream-kpi-period-block" data-legacy="time-add-task-field">
               <div class="dream-kpi-row">
@@ -573,13 +621,15 @@ export function render() {
       const target = data.kpis.find((k) => k.id === kpi.id);
       if (target) {
         const oldName = target.name;
+        const fields = readKpiTimeUnitFormFields(form, sanitizeNumericInput);
         target.name = (form.name.value || "").trim() || "행동";
-        target.unit = (form.unit.value || "").trim() || "";
-        target.targetValue = sanitizeNumericInput(form.targetValue.value) || "";
-        target.targetTimeRequired = (form.targetTimeRequired?.value || "").trim() || "";
+        target.unit = fields.unit;
+        target.targetValue = fields.targetValue;
+        target.targetTimeRequired = fields.targetTimeRequired;
         target.targetStartDate = (form.targetStartDate?.value || "").trim() || "";
         target.targetDeadline = (form.targetDeadline.value || "").trim() || "";
         target.needHabitTracker = !!form.querySelector('input[name="needHabitTracker"]')?.checked;
+        target.useTimeAsUnit = fields.useTimeAsUnit;
         target.direction =
           form.querySelector('input[name="direction"]:checked')?.value === "lower"
             ? "lower"
@@ -592,9 +642,9 @@ export function render() {
       renderKpiHistory();
     });
     document.body.appendChild(modal);
-    setupNumericOnlyInput(modal.querySelector('input[name="targetValue"]'));
+    initModalNativeDateFieldsIn(modal);
     setupDeadlineQuickButtons(modal);
-    bindDreamKpiDirectionTargetLabels(modal.querySelector(".dream-kpi-form"));
+    bindKpiUnitTimeMode(modal.querySelector(".dream-kpi-form"), kpi, kpiTimeFormOpts);
   }
 
   function toDateStr(d) {
@@ -769,7 +819,7 @@ export function render() {
               </div>
               <div class="dream-kpi-log-field">
                 <label>경로</label>
-                <input type="text" value="${escapeHtml(path.name || "")}${path.unit ? " (" + escapeHtml(path.unit) + ")" : ""}" readonly class="dream-kpi-log-readonly" />
+                <input type="text" value="${escapeHtml(path.name || "")}${path.trackTargetAmount ? " (원)" : ""}" readonly class="dream-kpi-log-readonly" />
               </div>
             </div>
             <div class="dream-kpi-log-row">
@@ -965,56 +1015,12 @@ export function render() {
   }
 
   function getKpiProgress(kpi) {
-    const lower = kpi.direction === "lower";
-    const data = loadSideincomeMap();
-    const latestLog = lower
-      ? getLatestKpiLogWithExplicitValue(kpi.id, data.kpiLogs)
-      : null;
-    const targetVal = parseNum(kpi.targetValue);
-    let currentVal;
-    let progress = 0;
-    if (lower) {
-      currentVal =
-        latestLog != null ? parseNum(latestLog.value) : null;
-      if (latestLog != null && currentVal != null) {
-        if (targetVal > 0) {
-          const c = Math.max(currentVal, 1e-9);
-          progress = Math.min(100, (targetVal / c) * 100);
-        } else if (targetVal === 0) {
-          progress = currentVal <= 0 ? 100 : 0;
-        }
-      }
-    } else {
-      currentVal = getAccumulatedKpiValue(kpi.id);
-      progress =
-        targetVal > 0 ? Math.min(100, (currentVal / targetVal) * 100) : 0;
-    }
-    const targetMins = kpi.targetTimeRequired ? hhMmToMinutes(kpi.targetTimeRequired) : 0;
-    const accumulatedMins = targetMins > 0 ? getAccumulatedMinutesForKpiId(kpi.id) : 0;
-    const timeProgress = targetMins > 0 ? Math.min(100, (accumulatedMins / targetMins) * 100) : 0;
-    const valueComplete = lower
-      ? latestLog != null &&
-        currentVal != null &&
-        currentVal <= targetVal
-      : progress >= 100;
-    const isCompleted = valueComplete || (targetMins > 0 && timeProgress >= 100);
-    const todayKey = toDateKey(new Date());
-    const startKey = (kpi.targetStartDate || "").slice(0, 10);
-    const endKey = (kpi.targetDeadline || "").slice(0, 10);
-    const hasStart = startKey.length >= 10;
-    const isInProgress =
-      hasStart && startKey <= todayKey && (!endKey || endKey >= todayKey) && !isCompleted;
-    return {
-      progress,
-      timeProgress,
-      currentVal,
-      targetVal,
-      targetMins,
-      accumulatedMins,
-      isCompleted,
-      isInProgress,
-      lowerBetter: lower,
-    };
+    return computeKpiProgress(kpi, {
+      toDateKey,
+      getAllKpiLogs: () => loadSideincomeMap().kpiLogs || [],
+      getAccumulatedKpiValue,
+      parseNum,
+    });
   }
 
   function renderKpiList() {
@@ -1059,20 +1065,19 @@ export function render() {
     const pathTargetVal = parseNum(path?.targetAmount);
     const pathProgress = pathTargetVal > 0 ? Math.min(100, (pathCurrentVal / pathTargetVal) * 100) : 0;
     const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
-    const pathUnit = path?.unit ? " " + path.unit : "";
-    const pathUnitTrim = (path?.unit || "").trim();
-    const targetDisp = path.targetAmount
-      ? escapeHtml(String(path.targetAmount).replace(/\B(?=(\d{3})+(?!\d))/g, ","))
-      : "—";
-
-    if (path) {
+    if (path && path.trackTargetAmount) {
+      const pathUnitTrim = (path.unit || "원").trim();
+      const pathUnit = pathUnitTrim ? ` ${pathUnitTrim}` : "";
+      const targetDisp = path.targetAmount
+        ? escapeHtml(String(path.targetAmount).replace(/\B(?=(\d{3})+(?!\d))/g, ","))
+        : "—";
       const pathSummary = document.createElement("div");
       pathSummary.className = "dream-kpi-path-summary";
       pathSummary.innerHTML = `
         <div class="dream-kpi-path-summary-inner">
           <div class="dream-kpi-path-summary-top">
             <h2 class="dream-kpi-path-summary-name">${escapeHtml(path.name || "부수입 경로")}</h2>
-            <button type="button" class="dream-kpi-path-summary-log-btn dream-kpi-todo-header-add-btn">+ 로그</button>
+            <button type="button" class="dream-kpi-path-summary-log-btn dream-kpi-todo-header-add-btn">+ 금액</button>
           </div>
           <div class="dream-kpi-path-summary-hero">
             <span class="dream-kpi-path-summary-hero-current">${formatNum(pathCurrentVal)}</span><span class="dream-kpi-path-summary-hero-slash">/</span><span class="dream-kpi-path-summary-hero-denom">${targetDisp}</span>${pathUnitTrim ? `<span class="dream-kpi-path-summary-hero-unit">${escapeHtml(pathUnitTrim)}</span>` : ""}
@@ -1141,33 +1146,16 @@ export function render() {
     const listToShow = kpiFilter === "active" ? activeKpis : kpiFilter === "completed" ? completedKpis : pathKpis;
     let historyAnchoredUnderCard = false;
     listToShow.forEach((kpi) => {
-      const {
-        progress,
-        timeProgress,
-        currentVal,
-        targetVal,
-        targetMins,
-        accumulatedMins,
-        lowerBetter,
-      } = getKpiProgress(kpi);
-      const investedMins = getAccumulatedMinutesForKpiId(kpi.id);
-      const unitSuffix = kpi.unit ? " " + kpi.unit : "";
+      const progressResult = getKpiProgress(kpi);
+      const { lowerBetter } = progressResult;
       const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
-      const currentStr = formatNum(currentVal);
-      const targetStr = kpi.targetValue ? escapeHtml(String(kpi.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) : "—";
-      const progressText = lowerBetter
-        ? `최근 ${currentStr} / 상한 ${targetStr}${unitSuffix}`
-        : `${currentStr} / ${targetStr}${unitSuffix}`;
-      const targetTimeDisplay = kpi.targetTimeRequired
-        ? minutesToHhMm(String(kpi.targetTimeRequired).includes(":") ? hhMmToMinutes(kpi.targetTimeRequired) : (parseInt(kpi.targetTimeRequired, 10) || 0))
-        : "";
-      const investedTimeHtml = targetTimeDisplay
-        ? `지금까지 투자한 시간 <span class="dream-kpi-card-invested-value">${minutesToHhMm(investedMins)}</span> / <span class="dream-kpi-card-invested-value">${targetTimeDisplay}</span>`
-        : `지금까지 투자한 시간 <span class="dream-kpi-card-invested-value">${minutesToHhMm(investedMins)}</span>`;
+      const { displayProgress, progressText, heroStr, heroUnit, cardExtraClass } =
+        buildKpiCardTimePresentation(kpi, progressResult, formatNum);
       const card = document.createElement("div");
       card.className =
         "dream-kpi-card" +
         (lowerBetter ? " dream-kpi-card--lower-better" : "") +
+        cardExtraClass +
         (selectedKpiId === kpi.id ? " is-selected" : "");
       card.dataset.kpiId = kpi.id;
       card.draggable = true;
@@ -1175,13 +1163,12 @@ export function render() {
         <div class="dream-kpi-card-inner">
           ${KPI_CARD_EDIT_PENCIL_HTML}
           <div class="dream-kpi-card-name">${escapeHtml(kpi.name)}${lowerBetter ? '<span class="dream-kpi-card-direction-badge" title="낮을수록 좋음 KPI">↓낮음</span>' : ""}</div>
-          <div class="dream-kpi-card-target-num">${formatKpiCardHeroHtml(lowerBetter, currentStr, kpi.unit)}</div>
+          <div class="dream-kpi-card-target-num">${formatKpiCardHeroHtml(lowerBetter, heroStr, heroUnit)}</div>
           ${(kpi.targetStartDate || kpi.targetDeadline) ? `<div class="dream-kpi-card-deadline">${escapeHtml(formatDeadlineRangeCompact(kpi.targetStartDate, kpi.targetDeadline))}</div>` : ""}
           <div class="dream-kpi-card-progress">
-            <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${progress}%"></div></div>
+            <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${displayProgress}%"></div></div>
             <div class="dream-kpi-card-progress-text">${escapeHtml(progressText)}</div>
           </div>
-          <div class="dream-kpi-card-invested">${investedTimeHtml}</div>
         </div>
       `;
       card.querySelector(".dream-kpi-card-edit").addEventListener("click", (e) => {
@@ -1632,15 +1619,15 @@ export function render() {
               <label>경로 이름</label>
               <input type="text" name="name" value="${escapeHtml(path.name || "")}" placeholder="홈페이지 디자인 외주" />
             </div>
-            <div class="dream-kpi-row">
-              <div class="dream-kpi-field" data-legacy="time-add-task-field">
-                <label>목표 부수입</label>
-                <input type="text" name="targetAmount" value="${escapeHtml(path.targetAmount || "")}" placeholder="예) 1000000" inputmode="numeric" />
-              </div>
-              <div class="dream-kpi-field" data-legacy="time-add-task-field">
-                <label>단위</label>
-                <input type="text" name="unit" value="${escapeHtml(path.unit || "")}" placeholder="예) 원, 만원" />
-              </div>
+            <div class="dream-kpi-field dream-kpi-field-checkbox" data-legacy="time-add-task-field">
+              <label class="dream-kpi-checkbox-label">
+                목표부수입 금액 입력하기
+                <input type="checkbox" name="trackTargetAmount"${path.trackTargetAmount ? " checked" : ""} />
+              </label>
+            </div>
+            <div class="dream-kpi-field sideincome-target-amount-field" data-legacy="time-add-task-field"${path.trackTargetAmount ? "" : " hidden"}>
+              <label>목표 부수입 (원)</label>
+              <input type="text" name="targetAmount" value="${escapeHtml(path.targetAmount || "")}" placeholder="예) 1000000" inputmode="numeric" />
             </div>
             <div class="dream-kpi-delete-wrap">
               <button type="button" class="dream-kpi-delete-btn" data-action="delete">부수입 경로 삭제</button>
@@ -1658,21 +1645,21 @@ export function render() {
     modal.querySelector("form").addEventListener("submit", (e) => {
       e.preventDefault();
       const val = (e.target.name.value || "").trim() || "새 경로";
-      const targetAmount = sanitizeNumericInput(e.target.targetAmount?.value) || "";
-      const unit = (e.target.unit?.value || "").trim() || "";
+      const amountFields = readPathTargetAmountFields(e.target);
       const d = loadSideincomeMap();
       const target = d.paths.find((x) => x.id === path.id);
       if (target) {
         target.name = val;
-        target.targetAmount = targetAmount;
-        target.unit = unit;
+        target.trackTargetAmount = amountFields.trackTargetAmount;
+        target.targetAmount = amountFields.targetAmount;
+        target.unit = amountFields.unit;
         saveSideincomeMap(d);
         renderTabs();
         renderKpiList();
       }
       close();
     });
-    setupNumericOnlyInput(modal.querySelector('input[name="targetAmount"]'));
+    bindPathTargetAmountMode(modal.querySelector("form"), path);
     modal.querySelector('[data-action="delete"]').addEventListener("click", () => {
       close();
       showPathDeleteConfirmModal(path.id);
@@ -1748,15 +1735,15 @@ export function render() {
               <label>부수입 경로 이름</label>
               <input type="text" name="name" placeholder="홈페이지 디자인 외주" />
             </div>
-            <div class="dream-kpi-row">
-              <div class="dream-kpi-field" data-legacy="time-add-task-field">
-                <label>목표 부수입</label>
-                <input type="text" name="targetAmount" placeholder="예) 1000000" inputmode="numeric" />
-              </div>
-              <div class="dream-kpi-field" data-legacy="time-add-task-field">
-                <label>단위</label>
-                <input type="text" name="unit" placeholder="예) 원, 만원" />
-              </div>
+            <div class="dream-kpi-field dream-kpi-field-checkbox" data-legacy="time-add-task-field">
+              <label class="dream-kpi-checkbox-label">
+                목표부수입 금액 입력하기
+                <input type="checkbox" name="trackTargetAmount" />
+              </label>
+            </div>
+            <div class="dream-kpi-field sideincome-target-amount-field" data-legacy="time-add-task-field" hidden>
+              <label>목표 부수입 (원)</label>
+              <input type="text" name="targetAmount" placeholder="예) 1000000" inputmode="numeric" />
             </div>
           </div>
           <div data-legacy="time-task-log-footer">
@@ -1771,10 +1758,15 @@ export function render() {
     const confirmBtn = modal.querySelector(".dream-add-confirm-btn");
     const doSubmit = () => {
       const val = (form.name.value || "").trim() || "새 경로";
-      const targetAmount = sanitizeNumericInput(form.targetAmount?.value) || "";
-      const unit = (form.unit?.value || "").trim() || "";
+      const amountFields = readPathTargetAmountFields(form);
       const data = loadSideincomeMap();
-      const path = { id: nextId(), name: val, targetAmount, unit };
+      const path = {
+        id: nextId(),
+        name: val,
+        trackTargetAmount: amountFields.trackTargetAmount,
+        targetAmount: amountFields.targetAmount,
+        unit: amountFields.unit,
+      };
       data.paths.push(path);
       saveSideincomeMap(data);
       activePathId = path.id;
@@ -1793,7 +1785,7 @@ export function render() {
       doSubmit();
     });
     document.body.appendChild(modal);
-    setupNumericOnlyInput(modal.querySelector('input[name="targetAmount"]'));
+    bindPathTargetAmountMode(form);
   }
 
   renderTabs();

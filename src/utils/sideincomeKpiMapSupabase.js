@@ -159,11 +159,16 @@ async function getSessionUserId() {
 }
 
 function rowToPath(r) {
+  const trackFromDb = r.track_target_amount;
+  const hasLegacyAmount =
+    !!String(r.target_amount ?? "").trim() || !!String(r.unit ?? "").trim();
+  const trackTargetAmount = trackFromDb != null ? !!trackFromDb : hasLegacyAmount;
   return {
     id: r.id,
     name: r.name || "",
-    targetAmount: r.target_amount ?? "",
-    unit: r.unit || "",
+    trackTargetAmount,
+    targetAmount: trackTargetAmount ? String(r.target_amount ?? "").trim() : "",
+    unit: trackTargetAmount ? (String(r.unit || "").trim() || "원") : "",
     serverUpdatedAt: serverUpdatedAtFromRow(r),
   };
 }
@@ -192,6 +197,7 @@ function rowToKpi(r) {
     targetDeadline: r.target_deadline ?? "",
     targetTimeRequired: r.target_time_required ?? "",
     needHabitTracker: !!r.need_habit_tracker,
+    useTimeAsUnit: !!r.use_time_as_unit,
     direction: r.direction === "lower" ? "lower" : "higher",
     serverUpdatedAt: serverUpdatedAtFromRow(r),
   };
@@ -369,12 +375,18 @@ function shouldInsertMetaRow(p) {
 }
 
 function pathToRow(userId, path, sortOrder) {
+  const trackTargetAmount = !!path.trackTargetAmount;
   return {
     user_id: userId,
     id: String(path.id),
     name: (path.name || "").trim(),
-    target_amount: path.targetAmount != null ? String(path.targetAmount) : "",
-    unit: (path.unit || "").trim(),
+    target_amount: trackTargetAmount
+      ? path.targetAmount != null
+        ? String(path.targetAmount)
+        : ""
+      : "",
+    unit: trackTargetAmount ? (String(path.unit || "").trim() || "원") : "",
+    track_target_amount: trackTargetAmount,
     sort_order: sortOrder,
   };
 }
@@ -404,6 +416,7 @@ function kpiToRow(userId, k) {
     target_deadline: (k.targetDeadline || "").trim(),
     target_time_required: (k.targetTimeRequired || "").trim(),
     need_habit_tracker: !!k.needHabitTracker,
+    use_time_as_unit: !!k.useTimeAsUnit,
     direction: k.direction === "lower" ? "lower" : "higher",
   };
 }

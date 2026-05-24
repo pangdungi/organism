@@ -371,6 +371,135 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   font-weight: 600;
   color: var(--lp-modal-navy-muted);
 }
+
+/* 필드 입력 아래 — 작은 서브 체크 (꿈 KPI 단위 「시간」 등) */
+.lp-modal-field-subcheck,
+[data-legacy~="lp-modal-field-subcheck"] {
+  margin-top: 0.4rem;
+}
+.lp-modal-field-subcheck__label,
+[data-legacy~="lp-modal-field-subcheck__label"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  margin: 0;
+  font-family: var(--lp-modal-font);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  color: var(--lp-modal-muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.lp-modal-field-subcheck__label:has(input:checked),
+[data-legacy~="lp-modal-field-subcheck__label"]:has(input:checked) {
+  color: var(--lp-modal-accent);
+}
+.lp-modal-field-subcheck__input,
+[data-legacy~="lp-modal-field-subcheck__input"] {
+  width: 0.75rem;
+  height: 0.75rem;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--lp-modal-accent);
+  cursor: pointer;
+}
+.lp-modal-field-subcheck__text,
+[data-legacy~="lp-modal-field-subcheck__text"] {
+  display: inline;
+}
+
+/*
+ * 모달 — label + 체크·라디오 세로 가운데 (iOS·모바일)
+ * 할 일 목록 행(.time-task-log-*-todo-row)은 전체 너비 flex 유지 → :not 으로 제외
+ */
+.time-task-setup-modal
+  label:has(> input[type="checkbox"]):not(.time-task-log-kpi-todo-row):not(
+    .time-task-log-daily-todo-row
+  ),
+.time-task-setup-modal
+  label:has(> input[type="radio"]):not(.time-task-log-kpi-todo-row):not(
+    .time-task-log-daily-todo-row
+  ),
+.todo-list-modal
+  label:has(> input[type="checkbox"]):not(.time-task-log-kpi-todo-row):not(
+    .time-task-log-daily-todo-row
+  ),
+.todo-list-modal
+  label:has(> input[type="radio"]):not(.time-task-log-kpi-todo-row):not(
+    .time-task-log-daily-todo-row
+  ),
+[data-legacy~="time-task-setup-modal"]
+  label:has(> input[type="checkbox"]):not([data-legacy~="time-task-log-kpi-todo-row"]):not(
+    [data-legacy~="time-task-log-daily-todo-row"]
+  ),
+[data-legacy~="time-task-setup-modal"]
+  label:has(> input[type="radio"]):not([data-legacy~="time-task-log-kpi-todo-row"]):not(
+    [data-legacy~="time-task-log-daily-todo-row"]
+  ),
+[data-legacy~="todo-list-modal"]
+  label:has(> input[type="checkbox"]):not([data-legacy~="time-task-log-kpi-todo-row"]):not(
+    [data-legacy~="time-task-log-daily-todo-row"]
+  ),
+[data-legacy~="todo-list-modal"]
+  label:has(> input[type="radio"]):not([data-legacy~="time-task-log-kpi-todo-row"]):not(
+    [data-legacy~="time-task-log-daily-todo-row"]
+  ) {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  line-height: 1.25;
+  vertical-align: middle;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.time-task-setup-modal
+  label:has(> input[type="checkbox"]):not(.time-task-log-kpi-todo-row):not(
+    .time-task-log-daily-todo-row
+  )
+  > input[type="checkbox"],
+.time-task-setup-modal
+  label:has(> input[type="radio"]):not(.time-task-log-kpi-todo-row):not(
+    .time-task-log-daily-todo-row
+  )
+  > input[type="radio"],
+.todo-list-modal
+  label:has(> input[type="checkbox"]):not(.time-task-log-kpi-todo-row):not(
+    .time-task-log-daily-todo-row
+  )
+  > input[type="checkbox"],
+.todo-list-modal
+  label:has(> input[type="radio"]):not(.time-task-log-kpi-todo-row):not(
+    .time-task-log-daily-todo-row
+  )
+  > input[type="radio"],
+[data-legacy~="time-task-setup-modal"]
+  label:has(> input[type="checkbox"]):not([data-legacy~="time-task-log-kpi-todo-row"]):not(
+    [data-legacy~="time-task-log-daily-todo-row"]
+  )
+  > input[type="checkbox"],
+[data-legacy~="time-task-setup-modal"]
+  label:has(> input[type="radio"]):not([data-legacy~="time-task-log-kpi-todo-row"]):not(
+    [data-legacy~="time-task-log-daily-todo-row"]
+  )
+  > input[type="radio"],
+[data-legacy~="todo-list-modal"]
+  label:has(> input[type="checkbox"]):not([data-legacy~="time-task-log-kpi-todo-row"]):not(
+    [data-legacy~="time-task-log-daily-todo-row"]
+  )
+  > input[type="checkbox"],
+[data-legacy~="todo-list-modal"]
+  label:has(> input[type="radio"]):not([data-legacy~="time-task-log-kpi-todo-row"]):not(
+    [data-legacy~="time-task-log-daily-todo-row"]
+  )
+  > input[type="radio"] {
+  flex-shrink: 0;
+  margin: 0;
+  vertical-align: middle;
+}
 .time-add-task-name,
 .time-task-log-todo-inner-name,
 .time-task-log-expense-name,
@@ -811,7 +940,8 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   flex-shrink: 0;
   width: 1rem;
   height: 1rem;
-  margin: 0.2rem 0 0;
+  margin: 0;
+  align-self: center;
 }
 .time-task-log-kpi-todo-text,
 [data-legacy~="time-task-log-kpi-todo-text"] {

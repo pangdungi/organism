@@ -38,7 +38,7 @@ function loadTimeRows() {
  * @param {string} kpiId
  * @param {Array<object>} rowsForSum
  */
-function accumulateMinutesForKpiFromRows(kpiId, rowsForSum) {
+function accumulateMinutesForKpiFromRows(kpiId, rowsForSum, extraNameAliases = []) {
   const kid = String(kpiId || "").trim();
   if (!kid) return 0;
 
@@ -47,6 +47,10 @@ function accumulateMinutesForKpiFromRows(kpiId, rowsForSum) {
   );
   const idsForKpi = new Set();
   const nameAliases = new Set();
+  for (const n of extraNameAliases) {
+    const t = String(n || "").trim();
+    if (t) nameAliases.add(t);
+  }
   for (const o of opts) {
     const id = String(o.id || "").trim();
     const n = String(o.name || "").trim();
@@ -93,9 +97,11 @@ function accumulateMinutesForKpiFromRows(kpiId, rowsForSum) {
 /**
  * KPI id 기준 누적 시간(분). 과제 옵션의 kpiId·taskId·표시명(레거시)으로 매칭.
  * @param {string} kpiId - map_kpis / KPI 카드의 id
+ * @param {string=} kpiName - KPI 행동 이름(과제명 레거시 매칭)
  */
-export function getAccumulatedMinutesForKpiId(kpiId) {
-  return accumulateMinutesForKpiFromRows(kpiId, loadTimeRows());
+export function getAccumulatedMinutesForKpiId(kpiId, kpiName) {
+  const extra = kpiName ? [String(kpiName).trim()] : [];
+  return accumulateMinutesForKpiFromRows(kpiId, loadTimeRows(), extra);
 }
 
 /**
@@ -117,7 +123,7 @@ export function getAccumulatedMinutesForKpiIdInDateRange(
     const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
     return /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= s && d <= e;
   });
-  return accumulateMinutesForKpiFromRows(kpiId, filtered);
+  return accumulateMinutesForKpiFromRows(kpiId, filtered, []);
 }
 
 /**
@@ -159,6 +165,44 @@ export function hhMmToMinutes(str) {
   const h = parseInt(parts[0], 10) || 0;
   const m = parseInt(parts[1], 10) || 0;
   return h * 60 + m;
+}
+
+/**
+ * KPI 목표 시간(단위=시간): "20" → 20시간, "25:00" → 25시간 0분
+ */
+export function parseKpiTargetTimeRequiredToMinutes(str) {
+  const raw = String(str || "").trim();
+  if (!raw) return 0;
+  if (raw.includes(":")) return hhMmToMinutes(raw);
+  const n = parseFloat(raw.replace(/[^\d.]/g, ""));
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.round(n * 60);
+}
+
+/** 분 → "20시간" / "1시간 30분" / "30분" */
+export function formatMinutesToKoreanHm(minutes) {
+  const m = Math.max(0, Math.round(Number(minutes) || 0));
+  if (m === 0) return "0분";
+  const h = Math.floor(m / 60);
+  const min = m % 60;
+  if (h === 0) return `${min}분`;
+  if (min === 0) return `${h}시간`;
+  return `${h}시간 ${min}분`;
+}
+
+/** targetTimeRequired 저장값 → 카드·진행 표시 */
+export function formatKpiTargetTimeRequiredDisplay(str) {
+  const raw = String(str || "").trim();
+  if (!raw) return "—";
+  if (!raw.includes(":")) {
+    const n = parseFloat(raw.replace(/[^\d.]/g, ""));
+    if (Number.isFinite(n) && n >= 0) {
+      const whole = Math.round(n);
+      if (Math.abs(n - whole) < 1e-9) return `${whole}시간`;
+      return `${n}시간`;
+    }
+  }
+  return formatMinutesToKoreanHm(parseKpiTargetTimeRequiredToMinutes(raw));
 }
 
 /** YYYY-MM-DD → "YYYY. MM. DD." */

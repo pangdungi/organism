@@ -1174,8 +1174,8 @@
   margin-bottom: 0.65rem;
 }
 
-.dream-kpi-field label,
-.dream-kpi-field .dream-kpi-field-label {
+.dream-kpi-field > label,
+.dream-kpi-field > .dream-kpi-field-label {
   display: block;
   margin-bottom: 0.35rem;
   font-size: 0.8125rem;
@@ -1247,6 +1247,12 @@
   outline: none;
   border-color: rgba(30, 77, 123, 0.45);
   box-shadow: 0 0 0 3px rgba(30, 77, 123, 0.12);
+}
+
+.dream-kpi-field input.dream-kpi-input-readonly {
+  background: #f8fafc !important;
+  color: var(--lp-modal-muted) !important;
+  cursor: default;
 }
 
 .dream-kpi-row {

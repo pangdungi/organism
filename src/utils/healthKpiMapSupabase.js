@@ -163,6 +163,7 @@ function rowToKpi(r) {
     targetDeadline: r.target_deadline ?? "",
     targetTimeRequired: r.target_time_required ?? "",
     needHabitTracker: !!r.need_habit_tracker,
+    useTimeAsUnit: !!r.use_time_as_unit,
     direction: r.direction === "lower" ? "lower" : "higher",
     serverUpdatedAt: serverUpdatedAtFromRow(r),
   };
@@ -365,6 +366,7 @@ function kpiToRow(userId, k) {
     target_deadline: (k.targetDeadline || "").trim(),
     target_time_required: (k.targetTimeRequired || "").trim(),
     need_habit_tracker: !!k.needHabitTracker,
+    use_time_as_unit: !!k.useTimeAsUnit,
     direction: k.direction === "lower" ? "lower" : "higher",
   };
 }
