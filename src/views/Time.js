@@ -60,6 +60,7 @@ import {
   readTimeLedgerEntriesRaw,
   splitUnhealthyMealMemoFromDb,
   stripTimeLedgerSyncMetaForCompare,
+  TIME_LEDGER_ENTRIES_KEY,
   writeTimeLedgerEntriesRaw,
 } from "../utils/timeLedgerEntriesModel.js";
 import {
@@ -4126,6 +4127,7 @@ export function render(opts = {}) {
       filtered = filtered.filter((r) => set.has((r.taskName || "").trim()));
     }
     renderAll(filtered);
+    rememberTimeLedgerPaintSignature();
     updateTotal();
     persistActiveViewTimeFilterToSession();
     const pickerKeyNow = computePickerRangeKeyForPull();
@@ -4163,8 +4165,78 @@ export function render(opts = {}) {
     onFilterChange();
   }
 
+  /** pull·소프트 갱신: 기록·조회 구간이 같으면 renderAll 생략(아이콘 재로드 깜빡임 방지) */
+  function snapshotTimeLedgerPaintSignature() {
+    let ledger = "";
+    try {
+      ledger = localStorage.getItem(TIME_LEDGER_ENTRIES_KEY) ?? "";
+    } catch (_) {}
+    const taskFilter =
+      selectedTaskNamesForFilter == null
+        ? ""
+        : selectedTaskNamesForFilter.join("\x1e");
+    return `${usageHistoryRangeStartYmd}|${usageHistoryRangeEndYmd}|${taskFilter}|${ledger}`;
+  }
+
+  function rememberTimeLedgerPaintSignature() {
+    el._lpLastTimeLedgerPaintSig = snapshotTimeLedgerPaintSignature();
+  }
+
+  function patchTimeLedgerUsageHeadingInPlace(rows) {
+    const cap = contentWrap.querySelector("[data-usage-range-caption]");
+    if (cap) {
+      cap.textContent = formatUsageRangeCaption(
+        usageHistoryRangeStartYmd,
+        usageHistoryRangeEndYmd,
+      );
+    }
+    const total = contentWrap.querySelector("[data-usage-total-time]");
+    if (total) {
+      total.textContent = formatHoursToHHMM(sumTimeLedgerDayHours(rows));
+    }
+  }
+
+  /** 푸터 + 버튼은 renderAll 마다 innerHTML 비우지 않음 — 한 번만 붙임 */
+  function ensureHourlyAddFooterButton() {
+    if (!hourlyAddSlot || hourlyAddSlot.dataset.lpFooterAddBound === "1") return;
+    hourlyAddSlot.dataset.lpFooterAddBound = "1";
+    hourlyAddSlot.innerHTML = "";
+    const addInner = document.createElement("div");
+    lpSetClasses(
+      addInner,
+      "time-hourly-add-inner time-ledger-add-inner--icon-only",
+    );
+    const addBtnEl = document.createElement("button");
+    addBtnEl.type = "button";
+    lpSetClasses(addBtnEl, APP_FOOTER_ICON_BTN_CLASS);
+    addBtnEl.title = "과제 기록";
+    addBtnEl.setAttribute("aria-label", "과제 기록");
+    addBtnEl.innerHTML = TIME_LEDGER_ADD_PLUS_ICON_SVG;
+    addInner.appendChild(addBtnEl);
+    hourlyAddSlot.appendChild(addInner);
+    addBtnEl.addEventListener("click", () => {
+      const refs = el._lpTaskLogModalLedgerRefs;
+      if (openTaskLogModal && refs?.hiddenTbody) {
+        openTaskLogModal({
+          productivity: null,
+          tbody: refs.hiddenTbody,
+          addRow: null,
+          onRowUpdate: () => {
+            updateTotal();
+            onFilterChange();
+          },
+          viewEl: el,
+          createRow,
+          handleRowDelete: refs.handleCardDelete,
+          handleRowEdit: refs.handleCardEdit,
+        });
+      }
+    });
+  }
+
   /** 설정·필터·과제 기록(+) — 앱 푸터 공통: appFooterShell + main.css; 시간가계부 전용 래핑은 time-ledger.css */
   function syncAppFooterLedgerActions() {
+    ensureHourlyAddFooterButton();
     const slot = getAppFooterActionsSlot();
     if (!slot) return;
     const nodes = [taskSetupBtn, taskSelectBtn, hourlyAddSlot, footerDateBtn];
@@ -7011,7 +7083,6 @@ export function render(opts = {}) {
   } catch (_) {}
   allRowsCache = loadTimeRows();
   cachedRows = getFullRowsForFilter(true);
-  syncTimeLedgerContent();
 
   function mergeRowsIntoCache() {
     const fromDom = collectRowsFromDOM(contentWrap);
@@ -7333,35 +7404,6 @@ export function render(opts = {}) {
       rows.forEach((d) => appendCardTo(cardParent, d));
     }
 
-    const openAdd = () => {
-      if (openTaskLogModal) {
-        openTaskLogModal({
-          productivity: null,
-          tbody: hiddenTbody,
-          addRow: null,
-          onRowUpdate: () => {
-            updateTotal();
-            onFilterChange();
-          },
-          viewEl: el,
-          createRow,
-          handleRowDelete: handleCardDelete,
-          handleRowEdit: handleCardEdit,
-        });
-      } else {
-        const dateStr = getLedgerFilterTodayYmd();
-        const card = createMobileTimeCard(
-          { date: dateStr },
-          handleCardEdit,
-          handleCardDelete,
-          el,
-        );
-        card._onRowDelete = handleCardDelete;
-        appendNewCardToLedgerCardsWrap(card);
-        updateTotal();
-      }
-    };
-
     const ledgerContainer = document.createElement("div");
     lpSetClasses(
       ledgerContainer,
@@ -7403,26 +7445,6 @@ export function render(opts = {}) {
     ledgerContainer.appendChild(usageHistoryHeadingRow);
     ledgerContainer.appendChild(cardsWrap);
     contentWrap.appendChild(ledgerContainer);
-
-    {
-      if (hourlyAddSlot) {
-        hourlyAddSlot.innerHTML = "";
-        const addInner = document.createElement("div");
-        lpSetClasses(
-          addInner,
-          "time-hourly-add-inner time-ledger-add-inner--icon-only",
-        );
-        const addBtnEl = document.createElement("button");
-        addBtnEl.type = "button";
-        lpSetClasses(addBtnEl, APP_FOOTER_ICON_BTN_CLASS);
-        addBtnEl.title = "과제 기록";
-        addBtnEl.setAttribute("aria-label", "과제 기록");
-        addBtnEl.innerHTML = TIME_LEDGER_ADD_PLUS_ICON_SVG;
-        addInner.appendChild(addBtnEl);
-        hourlyAddSlot.appendChild(addInner);
-        addInner.addEventListener("click", openAdd);
-      }
-    }
 
     const refreshCardLiveFields = () => {
       cardsWrap
@@ -7478,10 +7500,19 @@ export function render(opts = {}) {
     mergeRowsIntoCache();
     cachedRows = getFullRowsForFilter(true);
     const rowsToUse = getFilteredRows(cachedRows);
-    renderAll(rowsToUse);
-    updateTotal();
-    persistActiveViewTimeFilterToSession();
-    updateFilterBarVisibility();
+    const nextSig = snapshotTimeLedgerPaintSignature();
+    if (!opts.force && nextSig === el._lpLastTimeLedgerPaintSig) {
+      patchTimeLedgerUsageHeadingInPlace(rowsToUse);
+      updateTotal();
+      persistActiveViewTimeFilterToSession();
+      updateFilterBarVisibility();
+    } else {
+      renderAll(rowsToUse);
+      rememberTimeLedgerPaintSignature();
+      updateTotal();
+      persistActiveViewTimeFilterToSession();
+      updateFilterBarVisibility();
+    }
     if (userSubTabClick) {
       const gen = (el._lpTimeSubTabPullGen =
         (el._lpTimeSubTabPullGen || 0) + 1);

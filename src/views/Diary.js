@@ -2583,7 +2583,15 @@ export function render() {
     lastTimeReportDataSignature = snapshotTimeReportDataSignature();
   }
 
-  renderLayout = function renderLayout() {
+  renderLayout = function renderLayout(opts = {}) {
+    const force = !!opts.force;
+    if (!force && !reportLedgerRefreshFromPull) {
+      const sigNow = snapshotTimeReportDataSignature();
+      if (sigNow === lastTimeReportDataSignature) {
+        syncDiaryFooterSubtabs();
+        return;
+      }
+    }
     /* 앱 탭 진입 시 이미 시간기록 범위 pull 예정·진행 중이면 본문에서 같은 pull 을 또 걸지 않음(연속 깜빡임 방지) */
     const skipDupLedgerPull =
       typeof window !== "undefined" &&
@@ -3005,7 +3013,12 @@ export function render() {
         }
         const sig = snapshotTimeReportDataSignature();
         if (sig === lastTimeReportDataSignature) return;
-        renderLayout();
+        reportLedgerRefreshFromPull = true;
+        try {
+          renderLayout();
+        } finally {
+          reportLedgerRefreshFromPull = false;
+        }
       } catch (_) {}
     }
     window.__lpDiarySoftRefresh = diarySoftRefreshAfterTabPull;
@@ -3027,7 +3040,13 @@ export function render() {
     mountDiaryFooterSubtabs();
     const initialList = ensureTabEntries(currentTabId);
     currentEntryId = initialList.length > 0 ? initialList[0].id : null;
-    renderLayout();
+    /* App 탭 진입: pull 전 로컬로 한 번 + pull 후 소프트 갱신으로 두 번 그리면 diary-tr-icons 재로드 — pull 뒤 한 번만 */
+    const skipInitialLayoutForTabPull =
+      typeof window !== "undefined" &&
+      !!window.__lpDiaryLedgerPrefetchedForTabSwitch;
+    if (!skipInitialLayoutForTabPull) {
+      renderLayout();
+    }
   })();
 
   return el;

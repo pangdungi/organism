@@ -5331,8 +5331,12 @@ export function render(options = {}) {
           });
         } catch (_) {}
         try {
-          if (typeof window !== "undefined" && window.__lpRenderMain) {
-            window.__lpRenderMain({ skipTodoSaveBeforeUnmount: true });
+          /* 통째 renderMain 하면 푸터·툴바 아이콘이 매번 다시 붙어 깜빡임 — 본문(섹션)만 갱신 */
+          if (
+            el.isConnected &&
+            typeof el._lpRemountTodoSectionsAfterCalendarPull === "function"
+          ) {
+            el._lpRemountTodoSectionsAfterCalendarPull();
           }
         } catch (_) {}
       })();
