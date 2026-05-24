@@ -119,6 +119,62 @@
         z-index: 2147483647;
         box-sizing: border-box;
       }
+      #lp-boot-fallback {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: max(1.5rem, env(safe-area-inset-top, 0)) 1.5rem
+          max(2rem, env(safe-area-inset-bottom, 0));
+        box-sizing: border-box;
+        background: #f0f4fa;
+        color: #1a5fa8;
+        font-family: "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+        text-align: center;
+      }
+      #lp-boot-fallback[hidden] {
+        display: none !important;
+      }
+      #lp-boot-fallback p {
+        margin: 0 0 1rem;
+        line-height: 1.6;
+        font-size: 0.9375rem;
+        color: #475569;
+      }
+      #lp-boot-fallback .lp-boot-fallback-title {
+        margin: 0 0 0.5rem;
+        font-size: 1.0625rem;
+        font-weight: 600;
+        color: #1e4d7b;
+      }
+      #lp-boot-fallback .lp-boot-fallback-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.625rem;
+        width: min(16rem, 100%);
+      }
+      #lp-boot-fallback button {
+        appearance: none;
+        border: none;
+        border-radius: 0.5rem;
+        padding: 0.75rem 1rem;
+        font: inherit;
+        font-size: 0.9375rem;
+        cursor: pointer;
+      }
+      #lp-boot-fallback .lp-boot-retry-btn {
+        background: #1e4d7b;
+        color: #fff;
+      }
+      #lp-boot-fallback .lp-boot-cache-btn {
+        background: transparent;
+        color: #64748b;
+        text-decoration: underline;
+        text-underline-offset: 0.2em;
+      }
     </style>
     <link rel="stylesheet" href="/src/main.css" />
   </head>
@@ -157,6 +213,14 @@
         <div class="app-splash-bar-track" aria-hidden="true">
           <div class="app-splash-bar-fill"></div>
         </div>
+      </div>
+    </div>
+    <div id="lp-boot-fallback" hidden aria-hidden="true" role="alertdialog" aria-labelledby="lp-boot-fallback-title">
+      <p class="lp-boot-fallback-title" id="lp-boot-fallback-title">앱을 불러오지 못했습니다</p>
+      <p>연결이 잠시 불안정하거나 저장된 파일이 오래되었을 수 있습니다.</p>
+      <div class="lp-boot-fallback-actions">
+        <button type="button" class="lp-boot-retry-btn" id="lp-boot-retry-btn">다시 시도</button>
+        <button type="button" class="lp-boot-cache-btn" id="lp-boot-cache-btn">저장된 파일 지우고 다시</button>
       </div>
     </div>
     <!-- 태블릿(아이패드 미니 등) 세로: 가로 전환 안내 (CSS로 표시 구간 제어) -->
@@ -424,6 +488,137 @@
         <div id="app-screen"></div>
       </div>
     </div>
+    <script>
+      (function () {
+        var BOOT_MS = 16000;
+        var bootTimer = null;
+
+        function hideSplashNow() {
+          var splash = document.getElementById("app-splash");
+          if (!splash || splash.hasAttribute("hidden")) return;
+          splash.classList.add("app-splash--exiting");
+          splash.setAttribute("aria-busy", "false");
+          setTimeout(function () {
+            splash.setAttribute("hidden", "");
+            splash.setAttribute("aria-hidden", "true");
+          }, 280);
+        }
+
+        function showBootFallback() {
+          if (window.__lpBootReady) return;
+          hideSplashNow();
+          try {
+            document.documentElement.classList.remove("lp-auth-booting");
+          } catch (_e) {}
+          var app = document.getElementById("app");
+          if (app) app.style.display = "block";
+          var fb = document.getElementById("lp-boot-fallback");
+          if (fb) {
+            fb.removeAttribute("hidden");
+            fb.setAttribute("aria-hidden", "false");
+          }
+        }
+
+        function hardReload() {
+          try {
+            sessionStorage.removeItem("lp_boot_autoretry");
+          } catch (_e) {}
+          try {
+            var u = new URL(window.location.href);
+            u.searchParams.set("_boot", String(Date.now()));
+            window.location.replace(u.toString());
+          } catch (_e2) {
+            window.location.reload();
+          }
+        }
+
+        function clearCacheAndReload() {
+          var done = function () {
+            hardReload();
+          };
+          if ("serviceWorker" in navigator && navigator.serviceWorker.getRegistrations) {
+            navigator.serviceWorker
+              .getRegistrations()
+              .then(function (regs) {
+                return Promise.all(regs.map(function (r) {
+                  return r.unregister();
+                }));
+              })
+              .catch(function () {})
+              .then(done);
+            return;
+          }
+          done();
+        }
+
+        function bootStillStuck() {
+          if (window.__lpBootReady) return false;
+          var splash = document.getElementById("app-splash");
+          if (splash && splash.hasAttribute("hidden")) return false;
+          var app = document.getElementById("app");
+          if (app && app.style.display === "block") return false;
+          return true;
+        }
+
+        function onBootWatchdog() {
+          if (!bootStillStuck()) return;
+          var retried = false;
+          try {
+            retried = sessionStorage.getItem("lp_boot_autoretry") === "1";
+          } catch (_e) {}
+          if (!retried) {
+            try {
+              sessionStorage.setItem("lp_boot_autoretry", "1");
+            } catch (_e2) {}
+            hardReload();
+            return;
+          }
+          showBootFallback();
+        }
+
+        window.__lpMarkBootReady = function () {
+          window.__lpBootReady = true;
+          if (bootTimer) {
+            clearTimeout(bootTimer);
+            bootTimer = null;
+          }
+          try {
+            sessionStorage.removeItem("lp_boot_autoretry");
+          } catch (_e) {}
+          var fb = document.getElementById("lp-boot-fallback");
+          if (fb) {
+            fb.setAttribute("hidden", "");
+            fb.setAttribute("aria-hidden", "true");
+          }
+        };
+
+        window.__lpShowBootFailure = function () {
+          if (window.__lpBootReady) return;
+          if (bootTimer) {
+            clearTimeout(bootTimer);
+            bootTimer = null;
+          }
+          showBootFallback();
+        };
+
+        window.addEventListener(
+          "error",
+          function (ev) {
+            if (window.__lpBootReady) return;
+            var t = ev && ev.target;
+            if (t && t.tagName === "SCRIPT") {
+              window.__lpShowBootFailure();
+            }
+          },
+          true,
+        );
+
+        document.getElementById("lp-boot-retry-btn")?.addEventListener("click", hardReload);
+        document.getElementById("lp-boot-cache-btn")?.addEventListener("click", clearCacheAndReload);
+
+        bootTimer = setTimeout(onBootWatchdog, BOOT_MS);
+      })();
+    </script>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

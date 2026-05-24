@@ -1,8 +1,8 @@
 /* PWA 서비스 워커 — 앱 설치·오프라인 + Web Push(할일 리마인더) */
 /** 번들·아이콘 등 캐시 버전 (전략 바꿀 때만 올리면 이전 캐시 정리됨) */
-const ASSET_CACHE = "tip-assets-v7";
+const ASSET_CACHE = "tip-assets-v8";
 /** HTML 셸 캐시 — 홈 화면에서 열 때 즉시 표시용 */
-const HTML_CACHE = "tip-html-v1";
+const HTML_CACHE = "tip-html-v2";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -75,52 +75,38 @@ function shouldUseAssetCache(url) {
   return false;
 }
 
-/** 캐시 먼저로 재방문·홈화면 실행 시 큰 JS/CSS 즉시 응답, 백그라운드에서 네트워크로 갱신 */
-async function staleWhileRevalidate(event, request) {
+/** JS/CSS·아이콘 — 네트워크 우선(배포 직후 구 HTML·빈 캐시로 실행 실패·무한 로딩 방지) */
+async function networkFirstAsset(request) {
   const cache = await caches.open(ASSET_CACHE);
-  const cached = await cache.match(request);
-  const networkPromise = fetch(request)
-    .then((response) => {
-      if (response && response.ok) {
-        try {
-          cache.put(request, response.clone());
-        } catch (_e) {}
-      }
+  try {
+    const response = await fetch(request);
+    if (response && response.ok) {
+      try {
+        await cache.put(request, response.clone());
+      } catch (_e) {}
       return response;
-    })
-    .catch(() => undefined);
-
-  if (cached) {
-    event.waitUntil(networkPromise);
-    return cached;
-  }
-  const live = await networkPromise;
-  if (live) return live;
-  return new Response("", { status: 504, statusText: "Offline" });
+    }
+  } catch (_e) {}
+  const cached = await cache.match(request);
+  if (cached) return cached;
+  return fetch(request);
 }
 
-/** HTML 셸(/) — 캐시 먼저 즉시 반환 후 백그라운드에서 최신 갱신 */
-async function staleWhileRevalidateHtml(event, request) {
+/** HTML 셸(/) — 네트워크 우선 후 오프라인일 때만 캐시 */
+async function networkFirstHtml(request) {
   const cache = await caches.open(HTML_CACHE);
-  const cached = await cache.match(request);
-  const networkPromise = fetch(request)
-    .then((response) => {
-      if (response && response.ok) {
-        try {
-          cache.put(request, response.clone());
-        } catch (_e) {}
-      }
+  try {
+    const response = await fetch(request);
+    if (response && response.ok) {
+      try {
+        await cache.put(request, response.clone());
+      } catch (_e) {}
       return response;
-    })
-    .catch(() => undefined);
-
-  if (cached) {
-    event.waitUntil(networkPromise);
-    return cached;
-  }
-  const live = await networkPromise;
-  if (live) return live;
-  return new Response("", { status: 504, statusText: "Offline" });
+    }
+  } catch (_e) {}
+  const cached = await cache.match(request);
+  if (cached) return cached;
+  return fetch(request);
 }
 
 self.addEventListener("fetch", (event) => {
@@ -140,16 +126,16 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(fetch(req));
     return;
   }
-  /* 내비게이션 요청(HTML 페이지) — 홈 화면에서 열 때 캐시로 즉시 표시 */
+  /* 내비게이션 요청(HTML 페이지) */
   if (req.mode === "navigate") {
-    event.respondWith(staleWhileRevalidateHtml(event, req));
+    event.respondWith(networkFirstHtml(req));
     return;
   }
   if (!shouldUseAssetCache(url)) {
     event.respondWith(fetch(req));
     return;
   }
-  event.respondWith(staleWhileRevalidate(event, req));
+  event.respondWith(networkFirstAsset(req));
 });
 
 self.addEventListener("push", (event) => {

@@ -455,6 +455,9 @@ function init() {
       splash.removeEventListener("transitionend", onTransitionEnd);
       splash.setAttribute("hidden", "");
       splash.setAttribute("aria-hidden", "true");
+      try {
+        window.__lpMarkBootReady?.();
+      } catch (_) {}
     };
     const onTransitionEnd = (ev) => {
       if (ev.target === splash && ev.propertyName === "opacity") done();
