@@ -345,9 +345,17 @@ export function stripTimeLedgerSyncMetaForCompare(row) {
 }
 
 function rowEntryDateInInclusiveRange(row, startYmd, endYmd) {
-  const d = normalizeEntryDate(row.date);
+  const d = ledgerRowEntryDateYmd(row);
   if (!d) return false;
   return d >= startYmd && d <= endYmd;
+}
+
+/** 필터·구간 병합용 — date 없으면 startTime에서 YYYY-MM-DD */
+export function ledgerRowEntryDateYmd(row) {
+  const d = normalizeEntryDate(row?.date);
+  if (d) return d;
+  const fromStart = parseYmdTenFromLedgerStartTimeStr(row?.startTime || "");
+  return fromStart || "";
 }
 
 /**

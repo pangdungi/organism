@@ -57,6 +57,8 @@ import {
 import { getTimeTaskListIconSrc } from "../utils/timeTaskIconUrls.js";
 import {
   ensureTimeLedgerEntryIds,
+  ledgerRowEntryDateYmd,
+  parseYmdTenFromLedgerStartTimeStr,
   readTimeLedgerEntriesRaw,
   splitUnhealthyMealMemoFromDb,
   stripTimeLedgerSyncMetaForCompare,
@@ -68,7 +70,6 @@ import {
   deleteTimeLedgerEntryFromSupabase,
   pullTimeLedgerEntriesForDateRange,
   pushDirtyTimeLedgerEntriesToSupabase,
-  readTimeLedgerCombinedPullRangeYmd,
   timeLedgerLocalTodayYmd,
 } from "../utils/timeLedgerEntriesSupabase.js";
 import { pullTimeLedgerTabEnterFromCloud } from "../utils/timeLedgerCloudRefresh.js";
@@ -1828,6 +1829,11 @@ function sortRowsByDateTime(rows) {
   });
 }
 
+/** 필터·목록용 행 날짜 (date 없으면 startTime에서 추출) */
+function ledgerRowDateYmdForFilter(r) {
+  return ledgerRowEntryDateYmd(r);
+}
+
 /** 필터 타입에 따른 행 필터링 (기록날짜 기준) */
 function filterRowsByFilterType(rows, type, year, month, start, end) {
   const { start: s, end: e } = getDateRangeForFilterType(
@@ -1840,7 +1846,7 @@ function filterRowsByFilterType(rows, type, year, month, start, end) {
   const normStart = normalizeDateForCompare(s) || s;
   const normEnd = normalizeDateForCompare(e) || e;
   const filtered = rows.filter((r) => {
-    const d = normalizeDateForCompare(r.date || "");
+    const d = ledgerRowDateYmdForFilter(r);
     if (!d) return false;
     if (!normStart || !normEnd) return true;
     return d >= normStart && d <= normEnd;
@@ -4086,43 +4092,65 @@ export function render(opts = {}) {
   footerDateBtn.innerHTML = TIME_LEDGER_FOOTER_DATE_ICON_SVG;
   lpTokenAdd(footerDateBtn, APP_FOOTER_ICON_BTN_CLASS);
 
-  /** 풀 범위: 오늘 ∪ 사용내역 조회 구간 (readTimeLedgerCombinedPullRangeYmd 와 동일 합집합) */
-  function computePickerRangeKeyForPull() {
-    const t = getLedgerFilterTodayYmd();
-    let rs = usageHistoryRangeStartYmd;
-    let re = usageHistoryRangeEndYmd;
-    if (rs > re) {
-      const x = rs;
-      rs = re;
-      re = x;
-    }
-    const outStart = t < rs ? t : rs;
-    const outEnd = t > re ? t : re;
-    return `${outStart}|${outEnd}`;
-  }
-  let _pickerRangeKeyAtLastPullIntent = computePickerRangeKeyForPull();
   let _timeLedgerFilterPullTimer = null;
+  let _usageListPullGen = 0;
+
+  function patchUsageRangeHeadingOnly() {
+    const cap = contentWrap.querySelector("[data-usage-range-caption]");
+    if (cap) {
+      cap.textContent = formatUsageRangeCaption(
+        usageHistoryRangeStartYmd,
+        usageHistoryRangeEndYmd,
+      );
+    }
+  }
 
   function schedulePullTimeLedgerForPickerRange() {
+    const pullGen = ++_usageListPullGen;
     if (_timeLedgerFilterPullTimer) clearTimeout(_timeLedgerFilterPullTimer);
-    _timeLedgerFilterPullTimer = setTimeout(async () => {
-      _timeLedgerFilterPullTimer = null;
+    _timeLedgerFilterPullTimer = null;
+    void (async () => {
       if (!el.isConnected) return;
-      const { rangeStart, rangeEnd } = readTimeLedgerCombinedPullRangeYmd();
-      const ok = await pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd);
-      if (ok && el.isConnected) refreshTimeLedgerFromRemotePull();
-    }, 400);
+      persistActiveViewTimeFilterToSession();
+      let rs = String(usageHistoryRangeStartYmd || "").trim();
+      let re = String(usageHistoryRangeEndYmd || "").trim();
+      if (rs > re) {
+        const x = rs;
+        rs = re;
+        re = x;
+      }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(rs) || !/^\d{4}-\d{2}-\d{2}$/.test(re)) {
+        return;
+      }
+      const ok = await pullTimeLedgerEntriesForDateRange(rs, re);
+      if (pullGen !== _usageListPullGen) return;
+      if (!el.isConnected) return;
+      const cacheRows = loadTimeRows();
+      const filtered = applyUsageListFilters(cacheRows);
+      if (!ok) return;
+      allRowsCache = cacheRows;
+      cachedRows = [...cacheRows];
+      renderAll(filtered);
+      rememberTimeLedgerPaintSignature();
+      updateTotal();
+      persistActiveViewTimeFilterToSession();
+    })();
   }
 
-  function onFilterChange(skipMerge = false) {
-    const type = filterType;
-    const rows = getFullRowsForFilter(skipMerge);
-    cachedRows = rows;
-    const y = filterYear;
-    const m = filterMonth;
-    const start = usageHistoryRangeStartYmd;
-    const end = usageHistoryRangeEndYmd;
-    let filtered = filterRowsByFilterType(rows, type, y, m, start, end);
+  /** 조회 기간·과제 필터 등 사용자가 명시적으로 조회 조건을 바꾼 직후에만 서버 pull */
+  function requestTimeLedgerPullForUserQueryChange(_source = "unknown") {
+    schedulePullTimeLedgerForPickerRange();
+  }
+
+  function applyUsageListFilters(rows) {
+    let filtered = filterRowsByFilterType(
+      rows,
+      filterType,
+      filterYear,
+      filterMonth,
+      usageHistoryRangeStartYmd,
+      usageHistoryRangeEndYmd,
+    );
     if (
       selectedTaskNamesForFilter != null &&
       selectedTaskNamesForFilter.length > 0
@@ -4130,15 +4158,17 @@ export function render(opts = {}) {
       const set = new Set(selectedTaskNamesForFilter);
       filtered = filtered.filter((r) => set.has((r.taskName || "").trim()));
     }
+    return filtered;
+  }
+
+  function onFilterChange(skipMerge = false) {
+    const rows = getFullRowsForFilter(skipMerge);
+    cachedRows = rows;
+    const filtered = applyUsageListFilters(rows);
     renderAll(filtered);
     rememberTimeLedgerPaintSignature();
     updateTotal();
     persistActiveViewTimeFilterToSession();
-    const pickerKeyNow = computePickerRangeKeyForPull();
-    if (pickerKeyNow !== _pickerRangeKeyAtLastPullIntent) {
-      _pickerRangeKeyAtLastPullIntent = pickerKeyNow;
-      schedulePullTimeLedgerForPickerRange();
-    }
   }
 
   function shiftYmdTenByDays(ymdTen, deltaDays) {
@@ -4163,17 +4193,21 @@ export function render(opts = {}) {
   /** 왼쪽 스와이프=다음날, 오른쪽 스와이프=전날 */
   function shiftUsageHistoryDay(step) {
     if (step !== 1 && step !== -1) return;
-    const next = shiftYmdTenByDays(getUsageHistoryAnchorYmd(), step);
+    const anchorBefore = getUsageHistoryAnchorYmd();
+    const next = shiftYmdTenByDays(anchorBefore, step);
     usageHistoryRangeStartYmd = next;
     usageHistoryRangeEndYmd = next;
-    onFilterChange();
+    persistActiveViewTimeFilterToSession();
+    patchUsageRangeHeadingOnly();
+    requestTimeLedgerPullForUserQueryChange("swipe");
   }
 
   /** pull·소프트 갱신: 기록·조회 구간이 같으면 renderAll 생략(아이콘 재로드 깜빡임 방지) */
   function snapshotTimeLedgerPaintSignature() {
     let ledger = "";
     try {
-      ledger = localStorage.getItem(TIME_LEDGER_ENTRIES_KEY) ?? "";
+      /* 기록 행은 메모리(_ledgerRowsMem)만 사용 — localStorage 키는 비어 있음 */
+      ledger = JSON.stringify(loadTimeRows());
     } catch (_) {}
     const taskFilter =
       selectedTaskNamesForFilter == null
@@ -4392,6 +4426,7 @@ export function render(opts = {}) {
       selectedTaskNamesForFilter = checked.length === 0 ? null : checked;
       closeTaskSelectModal();
       onFilterChange();
+      requestTimeLedgerPullForUserQueryChange("task_filter_apply");
       if (taskSelectBtn)
         lpTokenToggle(
           taskSelectBtn,
@@ -4404,6 +4439,7 @@ export function render(opts = {}) {
       selectedTaskNamesForFilter = null;
       closeTaskSelectModal();
       onFilterChange();
+      requestTimeLedgerPullForUserQueryChange("task_filter_clear");
       lpTokenRemove(taskSelectBtn, "is-active");
     });
   })();
@@ -4483,7 +4519,9 @@ export function render(opts = {}) {
       usageHistoryRangeStartYmd = s;
       usageHistoryRangeEndYmd = e;
       closeUsageRangeModal();
+      persistActiveViewTimeFilterToSession();
       onFilterChange();
+      requestTimeLedgerPullForUserQueryChange("usage_range_modal");
     });
   })();
 
@@ -4587,13 +4625,6 @@ export function render(opts = {}) {
             <div data-legacy="time-task-log-field">
               <textarea data-legacy="time-task-log-feedback time-task-log-memo-input" rows="3" placeholder="메모를 입력하세요"></textarea>
             </div>
-            <div data-legacy="time-task-log-field">
-              <span data-legacy="time-task-log-section-label">태그</span>
-              <div data-legacy="time-task-log-tags-wrap">
-                <input type="text" data-legacy="time-task-log-tag-input" placeholder="태그 입력 후 Enter" />
-                <div data-legacy="time-task-log-tag-list"></div>
-              </div>
-            </div>
           </div>
         </div>
         </div>
@@ -4695,45 +4726,7 @@ export function render(opts = {}) {
       if (!show && taskLogMealDetailInput) taskLogMealDetailInput.value = "";
     }
   }
-  const taskLogTagInput = taskLogModal.querySelector(
-    '[data-legacy~="time-task-log-tag-input"]',
-  );
-  const taskLogTagListEl = taskLogModal.querySelector(
-    '[data-legacy~="time-task-log-tag-list"]',
-  );
   let taskLogMemoTags = [];
-
-  function renderTaskLogTagPills() {
-    if (!taskLogTagListEl) return;
-    taskLogTagListEl.innerHTML = "";
-    taskLogMemoTags.forEach((tag, i) => {
-      const pill = document.createElement("span");
-      lpSetClasses(pill, "time-memo-tag-chip time-task-log-tag-pill");
-      pill.setAttribute("data-tag", tag);
-      pill.innerHTML = `<span data-legacy="time-memo-tag-chip-text">${escapeHtml(tag)}</span><button type="button" data-legacy="time-memo-tag-chip-remove" aria-label="태그 삭제">&times;</button>`;
-      pill
-        .querySelector('[data-legacy~="time-memo-tag-chip-remove"]')
-        ?.addEventListener("click", (e) => {
-          e.preventDefault();
-          taskLogMemoTags = taskLogMemoTags.filter((_, idx) => idx !== i);
-          renderTaskLogTagPills();
-        });
-      taskLogTagListEl.appendChild(pill);
-    });
-  }
-
-  taskLogTagInput?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === ",") {
-      if (e.isComposing) return;
-      e.preventDefault();
-      const val = (taskLogTagInput?.value || "").trim().replace(/^#/, "");
-      if (val && !taskLogMemoTags.includes(val)) {
-        taskLogMemoTags.push(val);
-        renderTaskLogTagPills();
-        if (taskLogTagInput) taskLogTagInput.value = "";
-      }
-    }
-  });
 
   /* 메모 + 버튼 → 내부 모달 (레거시, 미사용) */
   const taskLogMemoAddBtn = taskLogModal.querySelector(
@@ -4803,7 +4796,6 @@ export function render(opts = {}) {
     if (taskLogFeedbackInput)
       taskLogFeedbackInput.value = (taskLogMemoInnerInput?.value || "").trim();
     taskLogMemoTags = taskLogMemoModalTags.slice();
-    renderTaskLogTagPills();
     closeMemoInnerModal();
   });
 
@@ -4818,20 +4810,6 @@ export function render(opts = {}) {
         taskLogMemoModalTags.push(val);
         renderMemoModalTagPills();
         taskLogMemoInnerTagInput.value = "";
-      }
-    }
-  });
-
-  /* 메모 & 태그: 태그 입력 후 Enter → pill 추가 */
-  taskLogTagInput?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === ",") {
-      if (e.isComposing) return;
-      e.preventDefault();
-      const val = (taskLogTagInput.value || "").trim().replace(/^#/, "");
-      if (val && !taskLogMemoTags.includes(val)) {
-        taskLogMemoTags.push(val);
-        renderTaskLogTagPills();
-        taskLogTagInput.value = "";
       }
     }
   });
@@ -6090,7 +6068,6 @@ export function render(opts = {}) {
     if (taskLogFeedbackInput) taskLogFeedbackInput.value = "";
     if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
     taskLogMemoTags = [];
-    renderTaskLogTagPills();
     taskLogModal
       .querySelectorAll('[data-legacy~="time-task-log-accordion-item"]')
       .forEach((item) => {
@@ -6222,8 +6199,6 @@ export function render(opts = {}) {
     taskLogMemoTags = userMemoTagsFromLedgerRaw(rawMemoTagsForEdit)
       .map((t) => String(t ?? "").trim())
       .filter(Boolean);
-    renderTaskLogTagPills();
-    if (taskLogTagInput) taskLogTagInput.value = "";
     const tnSync = (data.taskName || "").trim();
     refreshKpiTodosInLogModal(tnSync);
     const lockedName = (data.taskName || "").trim();
@@ -7082,9 +7057,6 @@ export function render(opts = {}) {
   let cachedRows = [];
 
   logTabSync("time_tab_hydrate", {});
-  try {
-    _pickerRangeKeyAtLastPullIntent = computePickerRangeKeyForPull();
-  } catch (_) {}
   allRowsCache = loadTimeRows();
   cachedRows = getFullRowsForFilter(true);
 
@@ -7253,17 +7225,13 @@ export function render(opts = {}) {
 
   /** 시간 기록(전체) 카드 목록: 행 기준일 YYYY-MM-DD */
   function timeLedgerRowYmd(r) {
-    const y = normalizeDateForCompare(r?.date || "");
-    if (y) return y;
-    const raw = String(r?.date || "")
-      .trim()
-      .replace(/\//g, "-")
-      .slice(0, 10);
-    return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : "";
+    return ledgerRowDateYmdForFilter(r);
   }
 
   function timeLedgerFilterSpansMultipleDays() {
-    return false;
+    const s = usageHistoryRangeStartYmd;
+    const e = usageHistoryRangeEndYmd;
+    return !!(s && e && s !== e);
   }
 
   /** 날짜 구간이 이틀 이상이거나, 화면에 실제로 이틀 이상의 기록이 있을 때 일자 헤더 표시 */
@@ -7425,17 +7393,17 @@ export function render(opts = {}) {
     );
     const usageHistoryHeading = document.createElement("h2");
     lpSetClasses(usageHistoryHeading, "time-ledger-usage-history-heading");
-    usageHistoryHeading.textContent = "시간 사용내역";
+    usageHistoryHeading.setAttribute("data-usage-range-caption", "");
+    usageHistoryHeading.textContent = formatUsageRangeCaption(
+      usageHistoryRangeStartYmd,
+      usageHistoryRangeEndYmd,
+    );
     const usageHistoryRangeCaption = document.createElement("span");
     lpSetClasses(
       usageHistoryRangeCaption,
       "time-ledger-usage-range-caption",
     );
-    usageHistoryRangeCaption.setAttribute("data-usage-range-caption", "");
-    usageHistoryRangeCaption.textContent = formatUsageRangeCaption(
-      usageHistoryRangeStartYmd,
-      usageHistoryRangeEndYmd,
-    );
+    usageHistoryRangeCaption.textContent = "시간 사용내역";
     usageHistoryHeadingLeft.appendChild(usageHistoryHeading);
     usageHistoryHeadingLeft.appendChild(usageHistoryRangeCaption);
     const usageHistoryTotalTime = document.createElement("span");
@@ -7485,17 +7453,7 @@ export function render(opts = {}) {
   }
 
   function getFilteredRows(rows) {
-    const type = filterType;
-    const y = filterYear;
-    const m = filterMonth;
-    return filterRowsByFilterType(
-      rows,
-      type,
-      y,
-      m,
-      usageHistoryRangeStartYmd,
-      usageHistoryRangeEndYmd,
-    );
+    return applyUsageListFilters(rows);
   }
 
   function syncTimeLedgerContent(opts = {}) {
@@ -7505,7 +7463,8 @@ export function render(opts = {}) {
     cachedRows = getFullRowsForFilter(true);
     const rowsToUse = getFilteredRows(cachedRows);
     const nextSig = snapshotTimeLedgerPaintSignature();
-    if (!opts.force && nextSig === el._lpLastTimeLedgerPaintSig) {
+    const sigSame = !opts.force && nextSig === el._lpLastTimeLedgerPaintSig;
+    if (sigSame) {
       patchTimeLedgerUsageHeadingInPlace(rowsToUse);
       updateTotal();
       persistActiveViewTimeFilterToSession();
@@ -7549,11 +7508,10 @@ export function render(opts = {}) {
           sessionStorage.setItem("lp_time_filter_end", t);
         }
       } catch (_) {}
-      _pickerRangeKeyAtLastPullIntent = computePickerRangeKeyForPull();
     } catch (_) {}
     allRowsCache = loadTimeRows();
     cachedRows = getFullRowsForFilter(true);
-    syncTimeLedgerContent();
+    syncTimeLedgerContent({ force: true });
   }
 
   function openTaskLogModalFromExternal(partial = {}) {
@@ -7585,6 +7543,7 @@ export function render(opts = {}) {
 
   /** App.setActiveTab 에서 pull 후 두 번째 renderMain 대신 호출 — 패널 통째 교체 없이 위 갱신만 */
   window.__lpTimeLedgerSoftRefresh = refreshTimeLedgerFromRemotePull;
+
   signal.addEventListener(
     "abort",
     () => {

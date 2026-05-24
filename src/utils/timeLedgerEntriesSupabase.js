@@ -55,13 +55,15 @@ export function timeLedgerLocalMonthFirstYmd() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`;
 }
 
-/** 세션 피커를 오늘 하루로 강제 맞출 때만 사용. 탭 진입마다 호출하면 사용자가 고른 날짜가 덮어써짐. */
+/** 시간가계부 탭 재진입 시: 기록 피커·시간 사용내역 조회 구간을 오늘 하루로 맞춤 (App.setActiveTab time). */
 export function resetTimeLedgerSessionFilterToToday() {
   try {
     if (typeof sessionStorage === "undefined") return;
     const t = timeLedgerLocalTodayYmd();
     sessionStorage.setItem("lp_time_filter_start", t);
     sessionStorage.setItem("lp_time_filter_end", t);
+    sessionStorage.setItem("lp_time_usage_list_start", t);
+    sessionStorage.setItem("lp_time_usage_list_end", t);
   } catch (_) {}
 }
 
@@ -209,31 +211,40 @@ async function pullTimeLedgerEntriesForDateRangeCore(
 
   timeLedgerSyncLog("pull_start", { range: `${rs}..${re}`, trigger });
 
-  const { data, error } = await supabase
-    .from(TABLE)
-    .select(LEDGER_ENTRY_SELECT)
-    .eq("user_id", userId)
-    .gte("entry_date", rs)
-    .lte("entry_date", re)
-    .order("entry_date", { ascending: false })
-    .order("start_time", { ascending: false });
+  const pageSize = 1000;
+  const rows = [];
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await supabase
+      .from(TABLE)
+      .select(LEDGER_ENTRY_SELECT)
+      .eq("user_id", userId)
+      .gte("entry_date", rs)
+      .lte("entry_date", re)
+      .order("entry_date", { ascending: false })
+      .order("start_time", { ascending: false })
+      .range(offset, offset + pageSize - 1);
 
-  if (error) {
-    timeLedgerSyncLog("pull_done", {
-      range: `${rs}..${re}`,
-      trigger,
-      ok: false,
-      error: error.message,
-    });
-    return false;
+    if (error) {
+      timeLedgerSyncLog("pull_done", {
+        range: `${rs}..${re}`,
+        trigger,
+        ok: false,
+        error: error.message,
+      });
+      return false;
+    }
+
+    const batch = data ?? [];
+    rows.push(...batch);
+    if (batch.length < pageSize) break;
   }
 
-  const rows = data ?? [];
   applyTimeLedgerServerRangeSnapshot(rows, rs, re);
   const closed = closeStaleInProgressTimeLedgerRows(readTimeLedgerEntriesRaw());
   if (closed.changed) {
     writeTimeLedgerEntriesRaw(closed.rows);
-    await pushDirtyTimeLedgerEntriesToSupabase({ skipPull: true });
+    /* pull 직렬 큐 안에서 pushDirty를 다시 큐에 넣으면 데드락 — core 직접 호출 */
+    await pushDirtyTimeLedgerEntriesToSupabaseCore({ skipPull: true });
   }
   timeLedgerSyncLog("pull_done", {
     range: `${rs}..${re}`,
@@ -293,137 +304,142 @@ export async function deleteTimeLedgerEntryFromSupabase(entryId) {
 
 /**
  * 로컬에서 «이번에 사용자가 저장해 바뀐 행»만 서버 upsert 후, 피커 구간을 서버 기준으로 pull.
+ * @param {{ skipPull?: boolean, rangeStart?: string, rangeEnd?: string, _insideSerializedOp?: boolean }} opts
  */
-export async function pushDirtyTimeLedgerEntriesToSupabase(opts = {}) {
-  return runSerializedLedgerServerOp(async () => {
-    const userId = await getSessionUserId();
-    if (!userId || !supabase) {
-      timeLedgerSyncLog("push_dirty_skipped", { reason: "no_session" });
-      return;
-    }
+async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) {
+    timeLedgerSyncLog("push_dirty_skipped", { reason: "no_session" });
+    return;
+  }
 
-    let rows = readTimeLedgerEntriesRaw();
-    const ensured = ensureTimeLedgerEntryIds(rows);
-    if (ensured.dirty) {
-      rows = ensured.rows;
-      writeTimeLedgerEntriesRaw(rows);
-    }
+  let rows = readTimeLedgerEntriesRaw();
+  const ensured = ensureTimeLedgerEntryIds(rows);
+  if (ensured.dirty) {
+    rows = ensured.rows;
+    writeTimeLedgerEntriesRaw(rows);
+  }
 
-    const substantive = rows.filter((r) => timeLedgerRowIsSyncable(r));
-    const toUpload = substantive.filter((r) => timeLedgerRowNeedsPush(r));
+  const substantive = rows.filter((r) => timeLedgerRowIsSyncable(r));
+  const toUpload = substantive.filter((r) => timeLedgerRowNeedsPush(r));
 
-    if (toUpload.length === 0) {
-      timeLedgerSyncLog("push_dirty_skipped", { reason: "no_rows_to_upload" });
-      return;
-    }
+  if (toUpload.length === 0) {
+    timeLedgerSyncLog("push_dirty_skipped", { reason: "no_rows_to_upload" });
+    return;
+  }
 
-    const idPreviews = toUpload.map((r) =>
-      String(r.id || "")
-        .trim()
-        .slice(0, 8),
-    );
-    timeLedgerSyncLog("server_upsert_start", {
-      rowCount: toUpload.length,
-      idPreviews,
-    });
-
-    const payloads = toUpload
-      .map((r) => localTimeLedgerRowToDbPayload(userId, r))
-      .filter(Boolean);
-    if (payloads.length === 0) {
-      timeLedgerSyncLog("push_dirty_skipped", { reason: "payloads_empty" });
-      return;
-    }
-
-    /* time_ledger_entries.task_id → time_ledger_tasks(id) FK: 로컬에만 있는 과제 id면 먼저 과제 행 upsert */
-    const taskIdsToEnsure = [
-      ...new Set(
-        toUpload
-          .map((r) => String(r.taskId || "").trim())
-          .filter((id) => isUuid(id)),
-      ),
-    ];
-    if (taskIdsToEnsure.length > 0) {
-      await upsertTimeLedgerTaskRowsFromLocalByIds(taskIdsToEnsure);
-    }
-
-    let { data, error } = await supabase
-      .from(TABLE)
-      .upsert(payloads, { onConflict: "id" })
-      .select(LEDGER_ENTRY_SELECT);
-
-    const fkTask =
-      error &&
-      String(error.code || "") === "23503" &&
-      /task_id_fkey/i.test(String(error.message || ""));
-    if (fkTask) {
-      timeLedgerSyncLog("server_upsert_retry", {
-        reason: "task_id_fkey",
-        taskIdStripAll: true,
-      });
-      const payloadsNoTid = payloads.map((p) => ({
-        ...p,
-        task_id: null,
-      }));
-      ({ data, error } = await supabase
-        .from(TABLE)
-        .upsert(payloadsNoTid, { onConflict: "id" })
-        .select(LEDGER_ENTRY_SELECT));
-    }
-
-    if (error) {
-      timeLedgerSyncLog("server_upsert_done", {
-        ok: false,
-        message: error.message,
-      });
-      lpSaveDebug("시간행 upsert 실패", {
-        message: error.message,
-        code: error.code,
-        hint: error.hint,
-      });
-      return;
-    }
-
-    if (Array.isArray(data) && data.length > 0) {
-      mergeTimeLedgerEntriesPushedServerTimes(data);
-    } else {
-      mergeTimeLedgerEntriesPushedServerTimes(
-        toUpload.map((r) => ({
-          id: String(r.id || "").trim(),
-          updated_at: new Date().toISOString(),
-        })),
-      );
-    }
-
-    timeLedgerSyncLog("server_upsert_done", {
-      ok: true,
-      returnedRowCount: Array.isArray(data) ? data.length : 0,
-    });
-    lpSaveDebug("시간행 upsert 성공", {
-      rowCount: toUpload.length,
-      returned: Array.isArray(data) ? data.length : 0,
-    });
-
-    if (opts.skipPull) {
-      timeLedgerSyncLog("pull_after_push_skipped", {
-        reason: "skipPull_option",
-      });
-      return;
-    }
-
-    const rs = opts.rangeStart;
-    const re = opts.rangeEnd;
-    if (rs && re && YMD_RE.test(rs) && YMD_RE.test(re)) {
-      await pullTimeLedgerEntriesForDateRangeCore(rs, re, {
-        trigger: "after_push",
-      });
-    } else {
-      const { rangeStart, rangeEnd } = readTimeLedgerCombinedPullRangeYmd();
-      await pullTimeLedgerEntriesForDateRangeCore(rangeStart, rangeEnd, {
-        trigger: "after_push",
-      });
-    }
+  const idPreviews = toUpload.map((r) =>
+    String(r.id || "")
+      .trim()
+      .slice(0, 8),
+  );
+  timeLedgerSyncLog("server_upsert_start", {
+    rowCount: toUpload.length,
+    idPreviews,
   });
+
+  const payloads = toUpload
+    .map((r) => localTimeLedgerRowToDbPayload(userId, r))
+    .filter(Boolean);
+  if (payloads.length === 0) {
+    timeLedgerSyncLog("push_dirty_skipped", { reason: "payloads_empty" });
+    return;
+  }
+
+  /* time_ledger_entries.task_id → time_ledger_tasks(id) FK: 로컬에만 있는 과제 id면 먼저 과제 행 upsert */
+  const taskIdsToEnsure = [
+    ...new Set(
+      toUpload
+        .map((r) => String(r.taskId || "").trim())
+        .filter((id) => isUuid(id)),
+    ),
+  ];
+  if (taskIdsToEnsure.length > 0) {
+    await upsertTimeLedgerTaskRowsFromLocalByIds(taskIdsToEnsure);
+  }
+
+  let { data, error } = await supabase
+    .from(TABLE)
+    .upsert(payloads, { onConflict: "id" })
+    .select(LEDGER_ENTRY_SELECT);
+
+  const fkTask =
+    error &&
+    String(error.code || "") === "23503" &&
+    /task_id_fkey/i.test(String(error.message || ""));
+  if (fkTask) {
+    timeLedgerSyncLog("server_upsert_retry", {
+      reason: "task_id_fkey",
+      taskIdStripAll: true,
+    });
+    const payloadsNoTid = payloads.map((p) => ({
+      ...p,
+      task_id: null,
+    }));
+    ({ data, error } = await supabase
+      .from(TABLE)
+      .upsert(payloadsNoTid, { onConflict: "id" })
+      .select(LEDGER_ENTRY_SELECT));
+  }
+
+  if (error) {
+    timeLedgerSyncLog("server_upsert_done", {
+      ok: false,
+      message: error.message,
+    });
+    lpSaveDebug("시간행 upsert 실패", {
+      message: error.message,
+      code: error.code,
+      hint: error.hint,
+    });
+    return;
+  }
+
+  if (Array.isArray(data) && data.length > 0) {
+    mergeTimeLedgerEntriesPushedServerTimes(data);
+  } else {
+    mergeTimeLedgerEntriesPushedServerTimes(
+      toUpload.map((r) => ({
+        id: String(r.id || "").trim(),
+        updated_at: new Date().toISOString(),
+      })),
+    );
+  }
+
+  timeLedgerSyncLog("server_upsert_done", {
+    ok: true,
+    returnedRowCount: Array.isArray(data) ? data.length : 0,
+  });
+  lpSaveDebug("시간행 upsert 성공", {
+    rowCount: toUpload.length,
+    returned: Array.isArray(data) ? data.length : 0,
+  });
+
+  if (opts.skipPull) {
+    timeLedgerSyncLog("pull_after_push_skipped", {
+      reason: "skipPull_option",
+    });
+    return;
+  }
+
+  const rs = opts.rangeStart;
+  const re = opts.rangeEnd;
+  if (rs && re && YMD_RE.test(rs) && YMD_RE.test(re)) {
+    await pullTimeLedgerEntriesForDateRangeCore(rs, re, {
+      trigger: "after_push",
+    });
+  } else {
+    const { rangeStart, rangeEnd } = readTimeLedgerCombinedPullRangeYmd();
+    await pullTimeLedgerEntriesForDateRangeCore(rangeStart, rangeEnd, {
+      trigger: "after_push",
+    });
+  }
+}
+
+export async function pushDirtyTimeLedgerEntriesToSupabase(opts = {}) {
+  return runSerializedLedgerServerOp(() =>
+    pushDirtyTimeLedgerEntriesToSupabaseCore(opts),
+  );
 }
 
 /** 시간 탭에서 쓰는 pull: 계정 + 시간「기록」세션 구간 entry_date만 조회 */

@@ -877,7 +877,7 @@ export async function mountApp(container) {
       });
     }
     syncAppFooterVisibility();
-    /* 본문 replaceChildren 직후에 맞춤 — 탭 클릭 즉시 바꾸면 상단 세이프만 먼저 깜빡임 */
+    /* 본문 replaceChildren 직후 — 푸터·상단 세이프를 같이 맞춤(탭 클릭 즉시 바꾸면 깜빡임) */
     syncLpTopSafeChromeFromTab(currentTabId);
   }
 

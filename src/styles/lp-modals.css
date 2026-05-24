@@ -414,39 +414,40 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 /*
  * 모달 — label + 체크·라디오 세로 가운데 (iOS·모바일)
  * 할 일 목록 행(.time-task-log-*-todo-row)은 전체 너비 flex 유지 → :not 으로 제외
+ * 과제 선택 목록(.time-task-select-item)도 한 줄 한 항목 → :not 으로 제외
  */
 .time-task-setup-modal
   label:has(> input[type="checkbox"]):not(.time-task-log-kpi-todo-row):not(
     .time-task-log-daily-todo-row
-  ),
+  ):not(.time-task-select-item),
 .time-task-setup-modal
   label:has(> input[type="radio"]):not(.time-task-log-kpi-todo-row):not(
     .time-task-log-daily-todo-row
-  ),
+  ):not(.time-task-select-item),
 .todo-list-modal
   label:has(> input[type="checkbox"]):not(.time-task-log-kpi-todo-row):not(
     .time-task-log-daily-todo-row
-  ),
+  ):not(.time-task-select-item),
 .todo-list-modal
   label:has(> input[type="radio"]):not(.time-task-log-kpi-todo-row):not(
     .time-task-log-daily-todo-row
-  ),
+  ):not(.time-task-select-item),
 [data-legacy~="time-task-setup-modal"]
   label:has(> input[type="checkbox"]):not([data-legacy~="time-task-log-kpi-todo-row"]):not(
     [data-legacy~="time-task-log-daily-todo-row"]
-  ),
+  ):not([data-legacy~="time-task-select-item"]),
 [data-legacy~="time-task-setup-modal"]
   label:has(> input[type="radio"]):not([data-legacy~="time-task-log-kpi-todo-row"]):not(
     [data-legacy~="time-task-log-daily-todo-row"]
-  ),
+  ):not([data-legacy~="time-task-select-item"]),
 [data-legacy~="todo-list-modal"]
   label:has(> input[type="checkbox"]):not([data-legacy~="time-task-log-kpi-todo-row"]):not(
     [data-legacy~="time-task-log-daily-todo-row"]
-  ),
+  ):not([data-legacy~="time-task-select-item"]),
 [data-legacy~="todo-list-modal"]
   label:has(> input[type="radio"]):not([data-legacy~="time-task-log-kpi-todo-row"]):not(
     [data-legacy~="time-task-log-daily-todo-row"]
-  ) {
+  ):not([data-legacy~="time-task-select-item"]) {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -1209,6 +1210,8 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 }
 .time-task-select-list,
 [data-legacy~="time-task-select-list"] {
+  display: flex;
+  flex-direction: column;
   border: 1px solid var(--lp-modal-border);
   border-radius: 10px;
   overflow: hidden;
@@ -1219,8 +1222,10 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 .time-task-select-item,
 [data-legacy~="time-task-select-item"] {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.5rem;
+  width: 100%;
+  box-sizing: border-box;
   padding: 0.55rem 0.65rem;
   border-bottom: 1px solid var(--lp-modal-border);
   font-size: 0.875rem;
@@ -1782,10 +1787,23 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 [data-legacy~="time-task-select-item-text"] {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.28rem;
   min-width: 0;
   flex: 1;
+}
+.time-task-select-item-name-part,
+[data-legacy~="time-task-select-item-name-part"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.time-task-select-item-text .lp-task-badge:first-of-type,
+[data-legacy~="time-task-select-item-text"]
+  [data-legacy~="lp-task-badge"]:first-of-type {
+  margin-left: auto;
 }
 .time-task-setup-item-icon-wrap,
 [data-legacy~="time-task-setup-item-icon-wrap"] {
