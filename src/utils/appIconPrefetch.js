@@ -12,7 +12,7 @@ export function prefetchAppIconAssets() {
   try {
     for (const path of appIconPrefetchPaths) {
       const img = new Image();
-      img.decoding = "async";
+      img.decoding = "sync";
       img.src = path;
     }
   } catch (_) {}

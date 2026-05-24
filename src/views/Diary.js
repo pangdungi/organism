@@ -4,6 +4,7 @@
  * - 같은 날짜에 여러 페이지(항목) 가능
  */
 
+import { applyStaticAppIconImg } from "../utils/staticAppIconImg.js";
 import {
   loadDiaryEntries,
   saveDiaryEntries,
@@ -114,8 +115,7 @@ function fillDiaryTrSummaryIconSlot(iconSlot, src) {
   img.className = "diary-tr-summary-icon-img";
   img.src = src;
   img.alt = "";
-  img.decoding = "async";
-  img.loading = "lazy";
+  applyStaticAppIconImg(img);
   iconSlot.appendChild(img);
 }
 
@@ -1534,8 +1534,7 @@ export function render() {
       img.className = "diary-tr-consumption-section-title__leading-img";
       img.src = iconSrc;
       img.alt = "";
-      img.decoding = "async";
-      img.loading = "lazy";
+      applyStaticAppIconImg(img);
       const span = document.createElement("span");
       span.textContent = titleText;
       h2.appendChild(img);

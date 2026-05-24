@@ -3,6 +3,7 @@
  * 캘린더 막대의 KPI 할 일은 openTodoTaskEditFromCalendarBarModel·모달에서만 kpiTodoSync로 처리.
  */
 
+import { applyStaticAppIconImg } from "../utils/staticAppIconImg.js";
 import {
   getKpiDisplayNameForTodo,
   moveKpiTodoToSection,
@@ -3057,7 +3058,7 @@ function createTaskCard(taskData, options = {}) {
   const typeIconImg = document.createElement("img");
   typeIconImg.alt = "";
   typeIconImg.className = "todo-card-type-icon-img";
-  typeIconImg.decoding = "sync";
+  applyStaticAppIconImg(typeIconImg);
   typeIconWrap.appendChild(typeIconImg);
 
   chkLabel.appendChild(doneCheck);

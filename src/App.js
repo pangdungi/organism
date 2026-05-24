@@ -1,3 +1,4 @@
+import { applyStaticAppIconImg } from "./utils/staticAppIconImg.js";
 import { signOut } from "./auth.js";
 import {
   observeDatePickerInit,
@@ -370,6 +371,8 @@ export async function mountApp(container) {
   appScreen.id = "app-screen-inner";
 
   let launcherAdminBtn = null;
+  /** 메뉴 그리드 DOM 재사용 — 탭 복귀 시 img 재생성 깜빡임 방지 */
+  let homeMenuLauncherEl = null;
 
   async function syncAdminMenuVisibility() {
     let show = false;
@@ -480,6 +483,26 @@ export async function mountApp(container) {
         const pullPromise = pullDataForActiveTab(targetTabId, {
           fromBoot: false,
         });
+        if (targetTabId === "home") {
+          const panelEl = main.querySelector(".app-tab-panel");
+          if (
+            panelEl &&
+            homeMenuLauncherEl &&
+            panelEl.firstElementChild === homeMenuLauncherEl
+          ) {
+            try {
+              await pullPromise;
+            } catch (_) {}
+            if (currentTabId !== targetTabId) return;
+            try {
+              await syncAdminMenuVisibility();
+            } catch (_) {}
+            try {
+              window.__lpHomeMenuSoftRefresh?.();
+            } catch (_) {}
+            return;
+          }
+        }
         renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
         try {
           await pullPromise;
@@ -567,12 +590,23 @@ export async function mountApp(container) {
     img.alt = "";
     img.width = 28;
     img.height = 28;
-    img.loading = "lazy";
+    applyStaticAppIconImg(img);
     iconWrap.appendChild(img);
     btn.appendChild(iconWrap);
   }
 
+  function bindHomeMenuLauncherAdminBtn(root) {
+    launcherAdminBtn = root.querySelector(".app-home-menu-launcher-admin-fab");
+  }
+
   function renderHomeMenuLauncher() {
+    if (homeMenuLauncherEl) {
+      window.__lpHomeMenuSoftRefresh?.();
+      bindHomeMenuLauncherAdminBtn(homeMenuLauncherEl);
+      void syncAdminMenuVisibility();
+      return homeMenuLauncherEl;
+    }
+
     launcherAdminBtn = null;
 
     const root = document.createElement("div");
@@ -662,6 +696,8 @@ export async function mountApp(container) {
 
     card.appendChild(body);
     root.append(balanceWrap, card, launcherAdminBtn);
+    homeMenuLauncherEl = root;
+    bindHomeMenuLauncherAdminBtn(root);
     return root;
   }
 

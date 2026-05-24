@@ -3856,7 +3856,7 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   const memo = memoSrc ? escapeHtml(String(memoSrc)) : "";
   const iconSrc = timeLedgerListRowIconSrc(rowData);
   const iconSlotInner = iconSrc
-    ? `<img data-legacy="time-mobile-card-icon" src="${iconSrc}" alt="" decoding="sync" />`
+    ? `<img data-legacy="time-mobile-card-icon" src="${iconSrc}" alt="" loading="eager" decoding="sync" />`
     : "";
   const iconSlotLegacy =
     "time-mobile-card-icon-slot" +
@@ -6785,7 +6785,7 @@ export function render(opts = {}) {
           productivity: t.productivity,
         });
         const iconBlock = iconSrc
-          ? `<span data-legacy="time-task-setup-item-icon-wrap"><img data-legacy="time-task-setup-item-icon" src="${iconSrc}" alt="" decoding="sync" /></span>`
+          ? `<span data-legacy="time-task-setup-item-icon-wrap"><img data-legacy="time-task-setup-item-icon" src="${iconSrc}" alt="" loading="eager" decoding="sync" /></span>`
           : "";
         const builtinBadge = isTimeTaskBuiltinTemplate(t)
           ? `<span data-legacy="lp-task-badge lp-task-badge--builtin" title="앱에서 제공하는 기본 과제입니다. 과제 설정에서 삭제할 수 없습니다.">기본</span>`
