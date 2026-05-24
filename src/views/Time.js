@@ -2402,10 +2402,10 @@ export function getMonthlyTimeReportTopTasksByMinutes(ymdTen, limit = 3) {
   return aggregateTopTasksByTrackedMinutesFromRows(rows, limit);
 }
 
-/** 소비·투자 레포트: 가계부 「다시 받을 금액」 라인 「+₩ n」 표기 */
+/** 소비·투자 레포트: 투자·다시 받을 금액 「+₩n」 표기(소비 -₩n 과 동일 간격) */
 export function formatInvestReclaimWonDisplay(won) {
   const w = Math.round(Number(won) || 0);
-  return `+₩ ${formatLedgerWonInteger(w)}`;
+  return `+₩${formatLedgerWonInteger(w)}`;
 }
 
 /** 다시 받을 금액: 마감·사용시간 입력 등 확정된 기록만. 진행 중(경과) 행은 제외해 금액이 실시간으로 변하지 않게 함 */
@@ -2703,28 +2703,58 @@ function aggregateNonproductiveMinutesFromLedgerRows(rows) {
   return total;
 }
 
+function aggregateNonproductiveWasteSnapshotFromRows(rows) {
+  const wastedMinutesRounded = aggregateNonproductiveMinutesFromLedgerRows(rows);
+  const hourlyRate = readUserHourlyRateNumber();
+  const wastedWon =
+    hourlyRate > 0 && wastedMinutesRounded > 0
+      ? Math.round((wastedMinutesRounded / 60) * hourlyRate)
+      : 0;
+  return { wastedMinutesRounded, wastedWon, hourlyRate };
+}
+
 /** 일별: 비생산적 활동 시간(분 합 → 표시 시 formatIntegerMinutesDurationKo 등) */
 export function getDailyNonproductiveWastedMinutesRounded(ymdTen) {
+  return getDailyNonproductiveWastedSnapshot(ymdTen).wastedMinutesRounded;
+}
+
+/** 일별: 비생산적 활동 시간·낭비 금액(시급×시간) */
+export function getDailyNonproductiveWastedSnapshot(ymdTen) {
   const key = String(ymdTen || "")
     .replace(/\//g, "-")
     .slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return 0;
+  const empty = () => ({
+    wastedMinutesRounded: 0,
+    wastedWon: 0,
+    hourlyRate: readUserHourlyRateNumber(),
+  });
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return empty();
   const rows = loadTimeRows().filter((r) => {
     const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
     return d === key;
   });
-  return aggregateNonproductiveMinutesFromLedgerRows(rows);
+  return aggregateNonproductiveWasteSnapshotFromRows(rows);
 }
 
 /** 월별: 비생산적 활동 시간 합산 */
 export function getMonthlyNonproductiveWastedMinutesRounded(ymdTen) {
+  return getMonthlyNonproductiveWastedSnapshot(ymdTen).wastedMinutesRounded;
+}
+
+/** 월별: 비생산적 활동 시간·낭비 금액(시급×시간) */
+export function getMonthlyNonproductiveWastedSnapshot(ymdTen) {
+  const empty = () => ({
+    wastedMinutesRounded: 0,
+    wastedWon: 0,
+    hourlyRate: readUserHourlyRateNumber(),
+  });
   const range = getTimeReportMonthInclusiveRange(ymdTen);
-  if (!range) return 0;
+  if (!range) return empty();
   const rows = loadTimeRows().filter((r) => {
     const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
     return d >= range.start && d <= range.end;
   });
-  return aggregateNonproductiveMinutesFromLedgerRows(rows);
+  return aggregateNonproductiveWasteSnapshotFromRows(rows);
 }
 
 /** YYYY-MM-DD → "2026. 05. 18(화)" — 레포트 날짜 줄 */

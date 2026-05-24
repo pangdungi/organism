@@ -40,7 +40,7 @@ import {
   getDailyProductiveCategoryInvestBarsSnapshot,
   getDailyProductiveCategoryTaskBreakdown,
   getDailyConsumptionCategoryTaskBreakdown,
-  getDailyNonproductiveWastedMinutesRounded,
+  getDailyNonproductiveWastedSnapshot,
   getDailyTimeReportDonutSnapshot,
   getDailyTimeReportSummaryGrid,
   getDailyTimeReportTopTasksByMinutes,
@@ -51,7 +51,7 @@ import {
   getMonthlyTimeReportDonutSnapshot,
   getMonthlyTimeReportSummaryGrid,
   getMonthlyTimeReportTopTasksByMinutes,
-  getMonthlyNonproductiveWastedMinutesRounded,
+  getMonthlyNonproductiveWastedSnapshot,
   getTimeReportMonthInclusiveRange,
 } from "./Time.js";
 
@@ -120,6 +120,13 @@ function investProdCategoryMinutesRounded(snap, categoryKey) {
   const seg = (snap?.segments ?? []).find((s) => s.categoryKey === categoryKey);
   if (!seg || !(seg.hours > 0) || !Number.isFinite(seg.hours)) return 0;
   return Math.round(seg.hours * 60);
+}
+
+/** 생산 카테고리별 투자 금액(시급×시간) — 카드 그리드용 */
+function investProdCategoryWon(snap, categoryKey) {
+  const seg = (snap?.segments ?? []).find((s) => s.categoryKey === categoryKey);
+  if (!seg || !(seg.won > 0)) return 0;
+  return seg.won;
 }
 
 /** 탭 2 통제일기 Q&A 템플릿 */
@@ -1217,7 +1224,8 @@ export function render() {
     reclaimLbl.textContent = "다시 받을 금액";
 
     const reclaimAmt = document.createElement("p");
-    reclaimAmt.className = "diary-tr-invest-reclaim-amount";
+    reclaimAmt.className =
+      "diary-tr-summary-money diary-tr-summary-money--gain";
     reclaimAmt.textContent = formatInvestReclaimWonDisplay(snap.reclaimWon);
 
     card.appendChild(reclaimLbl);
@@ -1543,6 +1551,8 @@ export function render() {
 
     defs.forEach((def) => {
       const mins = investProdCategoryMinutesRounded(snap, def.key);
+      const showMoney = (snap?.hourlyRate ?? 0) > 0;
+      const gainWon = showMoney ? investProdCategoryWon(snap, def.key) : 0;
       const art = document.createElement("article");
       art.className =
         "diary-tr-summary-card diary-tr-invest-quote-card diary-tr-invest-quote-card--action";
@@ -1575,6 +1585,14 @@ export function render() {
       timeEl.className = "diary-tr-summary-time";
       timeEl.textContent = formatIntegerMinutesDurationKo(mins);
       art.appendChild(timeEl);
+
+      if (gainWon > 0) {
+        appendTimeReportSummaryMoney(
+          art,
+          formatInvestReclaimWonDisplay(gainWon),
+          "gain",
+        );
+      }
 
       const openDetail = () => {
         const taskRows =
@@ -1787,10 +1805,11 @@ export function render() {
       art.appendChild(timeEl);
 
       if (c.lossWon != null) {
-        const moneyEl = document.createElement("p");
-        moneyEl.className = "diary-tr-summary-money";
-        moneyEl.textContent = formatLedgerLossKrwDisplay(c.lossWon);
-        art.appendChild(moneyEl);
+        appendTimeReportSummaryMoney(
+          art,
+          formatLedgerLossKrwDisplay(c.lossWon),
+          "loss",
+        );
       }
 
       if (Array.isArray(c.meals) && c.meals.length > 0) {
@@ -1970,12 +1989,23 @@ export function render() {
     scrollWrap.appendChild(section);
   }
 
+  /** 시간 레포트 가격 — 소비·투자 공통 클래스, 색만 --loss(파랑) / --gain(빨강) */
+  function appendTimeReportSummaryMoney(parent, text, polarity) {
+    const money = document.createElement("p");
+    money.className =
+      polarity === "gain"
+        ? "diary-tr-summary-money diary-tr-summary-money--gain"
+        : "diary-tr-summary-money diary-tr-summary-money--loss";
+    money.textContent = text;
+    parent.appendChild(money);
+  }
+
   /** 「시간 소비 리포트」 제목 직후 · 카드 그리드 직전: 비생산 합(컴팩트) */
   function mountTimeReportNonproductiveWasteMini(scrollWrap, ymdTen, granularity) {
-    const mins =
+    const snap =
       granularity === "month"
-        ? getMonthlyNonproductiveWastedMinutesRounded(ymdTen)
-        : getDailyNonproductiveWastedMinutesRounded(ymdTen);
+        ? getMonthlyNonproductiveWastedSnapshot(ymdTen)
+        : getDailyNonproductiveWastedSnapshot(ymdTen);
 
     const shell = document.createElement("div");
     shell.className = "diary-tr-waste-mini-shell";
@@ -1987,10 +2017,17 @@ export function render() {
 
     const val = document.createElement("p");
     val.className = "diary-tr-waste-mini-value";
-    val.textContent = formatIntegerMinutesDurationKo(mins);
+    val.textContent = formatIntegerMinutesDurationKo(snap.wastedMinutesRounded);
 
     shell.appendChild(ttl);
     shell.appendChild(val);
+    if (snap.hourlyRate > 0 && snap.wastedWon > 0) {
+      appendTimeReportSummaryMoney(
+        shell,
+        formatLedgerLossKrwDisplay(snap.wastedWon),
+        "loss",
+      );
+    }
     scrollWrap.appendChild(shell);
   }
 
@@ -2015,6 +2052,13 @@ export function render() {
 
     shell.appendChild(ttl);
     shell.appendChild(val);
+    if (snap.hourlyRate > 0 && snap.reclaimWon > 0) {
+      appendTimeReportSummaryMoney(
+        shell,
+        formatInvestReclaimWonDisplay(snap.reclaimWon),
+        "gain",
+      );
+    }
     scrollWrap.appendChild(shell);
   }
 
