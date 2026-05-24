@@ -447,7 +447,6 @@ export async function mountApp(container) {
     if (fromTab !== tabId) flushAllPendingTimeDailyBudgetSync();
     currentTabId = tabId;
     persistActiveTabId(tabId);
-    syncAppFooterVisibility();
     logTodoScheduleTabOnNavigate(tabId, fromTab);
     logTabSync("tab_switch", { from: fromTab, to: tabId });
     /* 렌더·pull은 빠른 연속 탭 전환 시 마지막 탭만 처리하도록 짧게 디바운스 */
@@ -498,6 +497,7 @@ export async function mountApp(container) {
             try {
               window.__lpHomeMenuSoftRefresh?.();
             } catch (_) {}
+            syncAppFooterVisibility();
             syncLpTopSafeChromeFromTab(targetTabId);
             return;
           }
