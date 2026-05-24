@@ -35,13 +35,18 @@ html.lp-auth-booting #app > .page {
  */
 html.lp-top-safe-chrome-navy.lp-app-bg,
 body.lp-top-safe-chrome-navy.lp-app-bg {
-  background-color: #fff;
+  /* iOS 바운스 시 background-color 가 세이프 존까지 비치므로 네이비 — 그라데이션은 본문 흰 전환용 */
+  background-color: #1e4d7b;
   background-image: linear-gradient(
     #1e4d7b 0,
     #1e4d7b calc(env(safe-area-inset-top, 0px) + 1px),
     #fff calc(env(safe-area-inset-top, 0px) + 1px),
     #fff 100%
   );
+}
+
+html.lp-top-safe-chrome-navy.lp-app-bg #signin-page {
+  background-color: #1e4d7b;
 }
 
 html.lp-auth-gate-chrome.lp-app-bg,
