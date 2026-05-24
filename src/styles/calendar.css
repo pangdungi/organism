@@ -134,7 +134,7 @@
 .calendar-nav {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-end;
   /* space-between은 자식 1개(연간·일간)일 때 왼쪽에 붙음 → 컨트롤은 margin-left: auto로 우측 정렬 */
   justify-content: flex-start;
   gap: var(--cal-nav-gap);
@@ -171,7 +171,7 @@
 .calendar-nav-controls {
   display: inline-flex;
   align-items: center;
-  align-self: center;
+  align-self: flex-end;
   gap: 0.25rem;
   margin-left: auto;
 }
