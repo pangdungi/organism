@@ -828,6 +828,7 @@
   font-size: 0.6875rem;
   line-height: 1.35;
   color: var(--cal-text-muted);
+  pointer-events: none;
 }
 
 /* 드래그 타깃 */
@@ -864,6 +865,9 @@
   line-height: 1.25;
   padding: 0.12rem 0.3rem;
   box-sizing: border-box;
+  min-height: var(--cal-bar-row-min);
+  cursor: pointer;
+  touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   white-space: normal;
   overflow-wrap: break-word;
@@ -872,6 +876,7 @@
 
 .calendar-monthly-span-bar-text {
   display: block;
+  pointer-events: none;
 }
 
 .calendar-monthly-span-bar--todo,
@@ -1547,7 +1552,7 @@
   border: 1px solid var(--lp-modal-border);
   border-radius: var(--lp-modal-radius);
   box-shadow: 0 20px 50px rgba(21, 43, 69, 0.2);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .calendar-event-bubble-tail {
@@ -1618,7 +1623,10 @@
   color: var(--lp-modal-navy-muted);
 }
 
-.calendar-event-bubble-select,
+.calendar-event-bubble-category-mount {
+  width: 100%;
+}
+
 .calendar-event-bubble-input {
   width: 100%;
   box-sizing: border-box;
@@ -1636,7 +1644,6 @@
     box-shadow 0.12s ease;
 }
 
-.calendar-event-bubble-select:focus,
 .calendar-event-bubble-input:focus {
   border-color: rgba(30, 77, 123, 0.45);
   box-shadow: 0 0 0 3px rgba(30, 77, 123, 0.12);

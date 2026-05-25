@@ -27,6 +27,7 @@ import {
   getMobileCardEffectiveHoursForPrice,
 } from "./Time.js";
 import { showToast } from "../utils/showToast.js";
+import { buildModalSimpleSelect } from "../utils/todoModalSimpleSelect.js";
 import {
   calendar1WeekDiagLog,
   calendar1WeekDiagSnapshot,
@@ -272,26 +273,18 @@ function lpCalendarMonthlyWeekRowTargetMinHeightRem(
   return Math.max(floor, stackHeight);
 }
 
-/** 월간 막대 행 배치: 같은 날 단일 칸 막대는 항상 세로로 쌓음(두 줄 이상일 때 겹침 방지) */
-function calendarMonthlyBarsOverlapForRow(a, b) {
-  if (
-    a.isSingleDay &&
-    b.isSingleDay &&
-    Number.isFinite(a.dayIdx) &&
-    a.dayIdx === b.dayIdx
-  ) {
-    return true;
-  }
+/** 월간 여러 날 막대: 가로 구간이 겹치면 다른 줄 */
+function calendarMonthlyRangeBarsOverlap(a, b) {
   return a.left < b.left + b.width && b.left < a.left + a.width;
 }
 
-function lpCalendarAssignMonthlyBarRows(allBars) {
+function lpCalendarAssignMonthlyRangeBarRows(rangeBars) {
   const rowBars = [];
-  allBars.forEach((b) => {
+  rangeBars.forEach((b) => {
     let row = 0;
     while (
       rowBars[row] &&
-      rowBars[row].some((r) => calendarMonthlyBarsOverlapForRow(r, b))
+      rowBars[row].some((r) => calendarMonthlyRangeBarsOverlap(r, b))
     ) {
       row += 1;
     }
@@ -299,6 +292,70 @@ function lpCalendarAssignMonthlyBarRows(allBars) {
     rowBars[row].push(b);
     b.row = row;
   });
+}
+
+/** 단일일 막대: 날짜 칸마다 0부터 추가 순서대로 쌓음(주 전역 row와 분리) */
+function lpCalendarAssignMonthlySingleDayLocalRows(singleDayBars) {
+  const perDay = [];
+  singleDayBars.forEach((b) => {
+    const d = b.dayIdx;
+    if (!Number.isFinite(d) || d < 0) return;
+    b.localRow = perDay[d] != null ? perDay[d] : 0;
+    perDay[d] = b.localRow + 1;
+  });
+}
+
+function lpCalendarAssignMonthlyBarLayout(allBars) {
+  const rangeBars = [];
+  const singleBars = [];
+  allBars.forEach((b) => {
+    if (b.isSingleDay) singleBars.push(b);
+    else rangeBars.push(b);
+  });
+  lpCalendarAssignMonthlyRangeBarRows(rangeBars);
+  lpCalendarAssignMonthlySingleDayLocalRows(singleBars);
+}
+
+function lpCalendarMonthlyRangeRowCountOnDay(rangeBars, dayIdx) {
+  let maxRow = -1;
+  for (const b of rangeBars) {
+    const s = b.startIdx;
+    const e = b.endIdx;
+    if (!Number.isFinite(s) || !Number.isFinite(e)) continue;
+    if (dayIdx >= s && dayIdx <= e) maxRow = Math.max(maxRow, b.row);
+  }
+  return maxRow + 1;
+}
+
+function lpCalendarMonthlyEstimateSingleDayBarTopRem(
+  baseBarTop,
+  rangeBars,
+  dayIdx,
+  localRow,
+  BAR_HEIGHT,
+  ROW_GAP,
+) {
+  const rangeRows = lpCalendarMonthlyRangeRowCountOnDay(rangeBars, dayIdx);
+  const gap = Number.isFinite(ROW_GAP) ? Math.max(0, ROW_GAP) : 0;
+  const singleSlot = BAR_HEIGHT + gap;
+  let offset = 0;
+  if (rangeRows > 0) {
+    offset = rangeRows * BAR_HEIGHT + (rangeRows - 1) * gap + gap;
+  }
+  return baseBarTop + offset + localRow * singleSlot;
+}
+
+function lpCalendarMonthlyWeekStackSlotCount(allBars, dayCount = 7) {
+  const rangeBars = allBars.filter((b) => !b.isSingleDay);
+  let maxSlots = 0;
+  for (let d = 0; d < dayCount; d++) {
+    const rangeRows = lpCalendarMonthlyRangeRowCountOnDay(rangeBars, d);
+    const singleCount = allBars.filter(
+      (b) => b.isSingleDay && b.dayIdx === d,
+    ).length;
+    maxSlots = Math.max(maxSlots, rangeRows + singleCount);
+  }
+  return maxSlots;
 }
 
 function lpCalendarMeasureMonthlySpanBarHeightPx(el) {
@@ -419,7 +476,11 @@ function lpCalendarFinalizeBarRowLayout(
     return;
   }
   const { WEEK_ROW_MIN } = lpCalendarWeekBarLayoutMetrics(weekRow);
-  const maxRow = Math.max(...barsWithRow.map((b) => b.row), 0);
+  const rangeBars = barsWithRow.filter((b) => !b.isSingleDay);
+  const singleBars = barsWithRow.filter((b) => b.isSingleDay);
+  const maxRangeRow = rangeBars.length
+    ? Math.max(...rangeBars.map((b) => b.row), 0)
+    : -1;
   const baseTop = BARS_TOP + 0.1;
 
   const run = () => {
@@ -428,7 +489,7 @@ function lpCalendarFinalizeBarRowLayout(
       parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
     const pxToRem = (px) => px / rootFont;
     const rowMaxPx = [];
-    for (const b of barsWithRow) {
+    for (const b of rangeBars) {
       const el = b._barEl;
       if (!el || !el.isConnected) continue;
       const h = lpCalendarMeasureMonthlySpanBarHeightPx(el);
@@ -437,22 +498,65 @@ function lpCalendarFinalizeBarRowLayout(
     }
     let topAcc = baseTop;
     const rowTopRem = [];
-    for (let r = 0; r <= maxRow; r++) {
+    const rowSlotRem = [];
+    for (let r = 0; r <= maxRangeRow; r++) {
       rowTopRem[r] = topAcc;
       const slotRem = Math.max(
         BAR_HEIGHT,
         rowMaxPx[r] != null ? pxToRem(rowMaxPx[r]) : BAR_HEIGHT,
       );
+      rowSlotRem[r] = slotRem;
       topAcc += slotRem;
-      if (r < maxRow) topAcc += gap;
+      if (r < maxRangeRow) topAcc += gap;
     }
-    for (const b of barsWithRow) {
+    const rangeStackBottomOnDay = (dayIdx) => {
+      let maxRow = -1;
+      for (const b of rangeBars) {
+        const s = b.startIdx;
+        const e = b.endIdx;
+        if (!Number.isFinite(s) || !Number.isFinite(e)) continue;
+        if (dayIdx >= s && dayIdx <= e) maxRow = Math.max(maxRow, b.row);
+      }
+      if (maxRow < 0) return baseTop;
+      return rowTopRem[maxRow] + rowSlotRem[maxRow];
+    };
+    for (const b of rangeBars) {
       if (b._barEl?.isConnected) {
         b._barEl.style.top = `${rowTopRem[b.row]}rem`;
+        b._barEl.style.minHeight = `${rowSlotRem[b.row]}rem`;
       }
     }
+    const singleByDay = {};
+    for (const b of singleBars) {
+      const d = b.dayIdx;
+      if (!Number.isFinite(d) || d < 0) continue;
+      if (!singleByDay[d]) singleByDay[d] = [];
+      singleByDay[d].push(b);
+    }
+    let maxBottomRem = baseTop;
+    Object.keys(singleByDay).forEach((dKey) => {
+      const dayIdx = Number(dKey);
+      const list = singleByDay[dayIdx].sort(
+        (a, b) => (a.localRow || 0) - (b.localRow || 0),
+      );
+      const hasRange = lpCalendarMonthlyRangeRowCountOnDay(rangeBars, dayIdx) > 0;
+      let acc = hasRange ? rangeStackBottomOnDay(dayIdx) + gap : baseTop;
+      list.forEach((b, i) => {
+        if (!b._barEl?.isConnected) return;
+        b._barEl.style.top = `${acc}rem`;
+        const h = lpCalendarMeasureMonthlySpanBarHeightPx(b._barEl);
+        const slotRem = Math.max(BAR_HEIGHT, pxToRem(h));
+        b._barEl.style.minHeight = `${slotRem}rem`;
+        acc += slotRem;
+        if (i < list.length - 1) acc += gap;
+      });
+      maxBottomRem = Math.max(maxBottomRem, acc);
+    });
+    if (rangeBars.length) {
+      maxBottomRem = Math.max(maxBottomRem, topAcc);
+    }
     const subPxSlackRem = 0.12;
-    const requiredHeight = topAcc + BOTTOM_PAD + subPxSlackRem;
+    const requiredHeight = maxBottomRem + BOTTOM_PAD + subPxSlackRem;
     weekRow.style.minHeight = `${Math.max(WEEK_ROW_MIN, requiredHeight)}rem`;
   };
 
@@ -1237,6 +1341,15 @@ function calendarSpanBarPayloadJson(b) {
 }
 
 /** 할일·일정 막대 클릭 → 할 일 목록과 동일 수정 모달(셀 빈 곳 클릭 추가 모달과 구분: stopPropagation) */
+function lpCalendarClickHitsMonthlySpanBar(e) {
+  return !!e.target?.closest?.(".calendar-monthly-span-bar");
+}
+
+/** 날짜 칸 클릭이 막대 위면 할 일 추가 모달 대신 막대 수정으로 처리 */
+function lpCalendarGuardCellClickFromMonthlyBar(e) {
+  return lpCalendarClickHitsMonthlySpanBar(e);
+}
+
 function lpAttachCalendarBarOpenTodoEdit(
   bar,
   b,
@@ -1246,7 +1359,20 @@ function lpAttachCalendarBarOpenTodoEdit(
   const sid = String(b.sectionId || "").trim();
   const tid = String(b.taskId || "").trim();
   if (!tid || !sid) return;
-  bar.addEventListener("click", (e) => {
+  bar.setAttribute("role", "button");
+  bar.tabIndex = 0;
+  let suppressClickAfterDrag = false;
+  bar.addEventListener("dragstart", () => {
+    suppressClickAfterDrag = true;
+  });
+  bar.addEventListener("dragend", () => {
+    requestAnimationFrame(() => {
+      suppressClickAfterDrag = false;
+    });
+  });
+  const openEdit = (e) => {
+    if (suppressClickAfterDrag) return;
+    e.preventDefault();
     e.stopPropagation();
     openTodoTaskEditFromCalendarBarModel(b, {
       selectionEl: bar,
@@ -1259,6 +1385,12 @@ function lpAttachCalendarBarOpenTodoEdit(
         } catch (_) {}
       },
     });
+  };
+  bar.addEventListener("click", openEdit);
+  bar.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      openEdit(e);
+    }
   });
 }
 
@@ -1485,9 +1617,7 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
       </div>
       <div class="calendar-event-bubble-category">
         <label class="calendar-event-bubble-label">카테고리</label>
-        <select class="calendar-event-bubble-select">
-          ${CALENDAR_CATEGORIES.map((c) => `<option value="${c.id}">${c.label}</option>`).join("")}
-        </select>
+        <div class="calendar-event-bubble-category-mount"></div>
       </div>
       <div class="calendar-event-bubble-name">
         <input type="text" name="calendar-event-name" class="calendar-event-bubble-input" placeholder="할일을 입력하세요" />
@@ -1500,7 +1630,24 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
     </div>
   `;
 
+  const bubbleAbort = new AbortController();
+  const categoryMount = bubble.querySelector(".calendar-event-bubble-category-mount");
+  const categoryDd = buildModalSimpleSelect({
+    items: CALENDAR_CATEGORIES.map((c) => ({ value: c.id, label: c.label })),
+    value: CALENDAR_CATEGORIES[0]?.id || "dream",
+    placeholder: "카테고리",
+    ariaLabel: "카테고리",
+    abortSignal: bubbleAbort.signal,
+  });
+  categoryMount?.appendChild(categoryDd);
+
   const close = () => {
+    try {
+      categoryDd._closePanel?.();
+    } catch (_) {}
+    try {
+      bubbleAbort.abort();
+    } catch (_) {}
     detachCalendarEventBubbleOutsideListener();
     overlayEl.remove();
     bubble.remove();
@@ -1521,9 +1668,7 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
       const name = (
         bubble.querySelector(".calendar-event-bubble-input").value || ""
       ).trim();
-      const categoryId = bubble.querySelector(
-        ".calendar-event-bubble-select",
-      ).value;
+      const categoryId = categoryDd._getValue?.() || CALENDAR_CATEGORIES[0]?.id || "dream";
       if (!name) return;
       const asSchedule = !!scheduleCheckbox?.checked;
       const itemType = asSchedule ? "schedule" : "todo";
@@ -1564,7 +1709,9 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
 
   setTimeout(() => {
     _calendarEventBubbleOutsideHandler = (e) => {
-      if (bubble.contains(e.target)) return;
+      const t = e.target;
+      if (bubble.contains(t)) return;
+      if (categoryDd._isPanelNode?.(t)) return;
       close();
     };
     document.addEventListener(
@@ -2052,7 +2199,7 @@ function renderMonthlyView(tabsElement) {
         cell.addEventListener(
           "click",
           (e) => {
-            if (e.target.closest?.(".calendar-monthly-span-bar")) return;
+            if (lpCalendarGuardCellClickFromMonthlyBar(e)) return;
             if (
               window.matchMedia("(max-width: 48rem)").matches &&
               cell.contains(e.target)
@@ -2086,6 +2233,7 @@ function renderMonthlyView(tabsElement) {
         );
         cell.addEventListener("click", (e) => {
           if (e.target.closest(".calendar-event-bubble")) return;
+          if (lpCalendarGuardCellClickFromMonthlyBar(e)) return;
           e.stopPropagation();
           const rect = cell.getBoundingClientRect();
           const isMobile = window.matchMedia("(max-width: 48rem)").matches;
@@ -2207,7 +2355,7 @@ function renderMonthlyView(tabsElement) {
       const baseBarTop = BARS_TOP + 0.1;
       const allBars = [];
       const CELL_GAP = 3.5;
-      rangeTasks.forEach((t) => {
+      orderSingleDayTasksForMonthlyBarStack(rangeTasks).forEach((t) => {
         const barStart = t.startDate > firstDayKey ? t.startDate : firstDayKey;
         const barEnd = t.dueDate < lastDayKey ? t.dueDate : lastDayKey;
         if (barStart > barEnd) return;
@@ -2222,6 +2370,8 @@ function renderMonthlyView(tabsElement) {
         allBars.push({
           left,
           width,
+          startIdx,
+          endIdx,
           name: t.name,
           color,
           isSingleDay: false,
@@ -2271,20 +2421,16 @@ function renderMonthlyView(tabsElement) {
           });
         });
       });
-      lpCalendarAssignMonthlyBarRows(allBars);
-      const barsPerDay = weekDateKeys.map((_, dayIdx) =>
-        allBars
-          .filter((b) => b.isSingleDay && b.dayIdx === dayIdx)
-          .sort((a, b) => a.row - b.row),
-      );
+      lpCalendarAssignMonthlyBarLayout(allBars);
+      const rangeBarsOnly = allBars.filter((b) => !b.isSingleDay);
       /* 막대 줄 수에 맞춰 해당 주 행만 높이 확장(빈 주는 최소 높이만) */
       allBars.forEach((b) => {
         b.isOverflow = false;
       });
-      const maxRow = allBars.length
-        ? Math.max(...allBars.map((b) => b.row), 0)
-        : -1;
-      const rowsNeeded = allBars.length ? maxRow + 1 : 0;
+      const rowsNeeded = lpCalendarMonthlyWeekStackSlotCount(
+        allBars,
+        weekDateKeys.length,
+      );
       weekRow.style.minHeight = `${lpCalendarMonthlyWeekRowTargetMinHeightRem(
         baseBarTop,
         rowsNeeded,
@@ -2311,7 +2457,17 @@ function renderMonthlyView(tabsElement) {
         const barStyleVars = b.isSingleDay
           ? `--bar-border:${b.borderColor || CALENDAR_SHORT_SPAN_BAR_HEX}`
           : `--bar-bg:${b.color || ""}`;
-        bar.style.cssText = `left:${b.left}%;width:${b.width}%;${barStyleVars};top:${baseBarTop + b.row * (BAR_HEIGHT + ROW_GAP)}rem`;
+        const topRem = b.isSingleDay
+          ? lpCalendarMonthlyEstimateSingleDayBarTopRem(
+              baseBarTop,
+              rangeBarsOnly,
+              b.dayIdx,
+              b.localRow || 0,
+              BAR_HEIGHT,
+              ROW_GAP,
+            )
+          : baseBarTop + b.row * (BAR_HEIGHT + ROW_GAP);
+        bar.style.cssText = `left:${b.left}%;width:${b.width}%;${barStyleVars};top:${topRem}rem;min-height:${BAR_HEIGHT}rem`;
         lpApplyCalendarMultiDaySpanBarBackground(bar, b);
         bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
         if (isTodo && b.done) {
@@ -2565,7 +2721,9 @@ function renderMonthlyView(tabsElement) {
     minDx: 56,
     dominance: 1.25,
     shouldIgnoreTarget: (target) =>
-      !!target?.closest?.("input, textarea, select, button, a, [role='dialog']"),
+      !!target?.closest?.(
+        "input, textarea, select, button, a, [role='dialog'], .calendar-monthly-span-bar",
+      ),
   });
 
   calendarSection.appendChild(nav);
@@ -4006,7 +4164,7 @@ function render1WeekView(tabsElement) {
       cell.addEventListener(
         "click",
         (e) => {
-          if (e.target.closest?.(".calendar-monthly-span-bar")) return;
+          if (lpCalendarGuardCellClickFromMonthlyBar(e)) return;
           if (
             window.matchMedia("(max-width: 48rem)").matches &&
             cell.contains(e.target)
@@ -4040,6 +4198,7 @@ function render1WeekView(tabsElement) {
       );
       cell.addEventListener("click", (e) => {
         if (e.target.closest(".calendar-event-bubble")) return;
+        if (lpCalendarGuardCellClickFromMonthlyBar(e)) return;
         e.stopPropagation();
         const rect = cell.getBoundingClientRect();
         const isMobile = window.matchMedia("(max-width: 48rem)").matches;
@@ -4090,7 +4249,7 @@ function render1WeekView(tabsElement) {
     const baseBarTop = BARS_TOP + 0.1;
     const allBars = [];
     const CELL_GAP = 3.5;
-    rangeTasks.forEach((t) => {
+    orderSingleDayTasksForMonthlyBarStack(rangeTasks).forEach((t) => {
       const barStart = t.startDate > firstDayKey ? t.startDate : firstDayKey;
       const barEnd = t.dueDate < lastDayKey ? t.dueDate : lastDayKey;
       if (barStart > barEnd) return;
@@ -4105,6 +4264,8 @@ function render1WeekView(tabsElement) {
       allBars.push({
         left,
         width,
+        startIdx,
+        endIdx,
         name: t.name,
         color,
         isSingleDay: false,
@@ -4153,14 +4314,15 @@ function render1WeekView(tabsElement) {
         });
       });
     });
-    lpCalendarAssignMonthlyBarRows(allBars);
+    lpCalendarAssignMonthlyBarLayout(allBars);
+    const rangeBarsOnly = allBars.filter((b) => !b.isSingleDay);
     allBars.forEach((b) => {
       b.isOverflow = false;
     });
-    const maxRow = allBars.length
-      ? Math.max(...allBars.map((b) => b.row), 0)
-      : -1;
-    const rowsNeeded = allBars.length ? maxRow + 1 : 0;
+    const rowsNeeded = lpCalendarMonthlyWeekStackSlotCount(
+      allBars,
+      weekDateKeys.length,
+    );
     weekRow.style.minHeight = `${lpCalendarMonthlyWeekRowTargetMinHeightRem(
       baseBarTop,
       rowsNeeded,
@@ -4187,7 +4349,17 @@ function render1WeekView(tabsElement) {
       const barStyleVars = b.isSingleDay
         ? `--bar-border:${b.borderColor || CALENDAR_SHORT_SPAN_BAR_HEX}`
         : `--bar-bg:${b.color || ""}`;
-      bar.style.cssText = `left:${b.left}%;width:${b.width}%;${barStyleVars};top:${baseBarTop + b.row * (BAR_HEIGHT + ROW_GAP)}rem`;
+      const topRem = b.isSingleDay
+        ? lpCalendarMonthlyEstimateSingleDayBarTopRem(
+            baseBarTop,
+            rangeBarsOnly,
+            b.dayIdx,
+            b.localRow || 0,
+            BAR_HEIGHT,
+            ROW_GAP,
+          )
+        : baseBarTop + b.row * (BAR_HEIGHT + ROW_GAP);
+      bar.style.cssText = `left:${b.left}%;width:${b.width}%;${barStyleVars};top:${topRem}rem;min-height:${BAR_HEIGHT}rem`;
       lpApplyCalendarMultiDaySpanBarBackground(bar, b);
       bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
       if (isTodo && b.done) {

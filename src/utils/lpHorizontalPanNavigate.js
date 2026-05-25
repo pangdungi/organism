@@ -40,6 +40,7 @@ export function bindLpHorizontalPanNavigate(root, opts) {
   let activePointerId = null;
   let touchPanActive = false;
   let touchHorizontalLock = false;
+  let pointerHorizontalLock = false;
   let navLockUntil = 0;
   let wheelNavBlockedUntil = 0;
   let wheelAccum = 0;
@@ -66,6 +67,7 @@ export function bindLpHorizontalPanNavigate(root, opts) {
     activePointerId = null;
     touchPanActive = false;
     touchHorizontalLock = false;
+    pointerHorizontalLock = false;
   }
 
   function onPanStart(clientX, clientY, target) {
@@ -73,6 +75,7 @@ export function bindLpHorizontalPanNavigate(root, opts) {
     if (shouldIgnore(target)) return;
     panStart = { x: clientX, y: clientY };
     touchHorizontalLock = false;
+    pointerHorizontalLock = false;
   }
 
   function onPanEnd(clientX, clientY) {
@@ -137,11 +140,30 @@ export function bindLpHorizontalPanNavigate(root, opts) {
         if (e.button !== 0) return;
         activePointerId = e.pointerId;
         onPanStart(e.clientX, e.clientY, e.target);
-        try {
-          if (panStart && typeof root.setPointerCapture === "function") {
-            root.setPointerCapture(e.pointerId);
-          }
-        } catch (_) {}
+        /* 클릭 직후 pointer capture를 잡으면 날짜 셀 click이 씹힘 → 가로 드래그 확정 후에만 capture */
+      },
+      passive,
+    );
+    root.addEventListener(
+      "pointermove",
+      (e) => {
+        if (e.pointerType === "touch") return;
+        if (activePointerId == null || e.pointerId !== activePointerId) return;
+        if (!panStart || !isActive()) return;
+        const dx = e.clientX - panStart.x;
+        const dy = e.clientY - panStart.y;
+        if (
+          !pointerHorizontalLock &&
+          Math.abs(dx) > 10 &&
+          Math.abs(dx) > Math.abs(dy) * dominance
+        ) {
+          pointerHorizontalLock = true;
+          try {
+            if (typeof root.setPointerCapture === "function") {
+              root.setPointerCapture(e.pointerId);
+            }
+          } catch (_) {}
+        }
       },
       passive,
     );
@@ -159,12 +181,12 @@ export function bindLpHorizontalPanNavigate(root, opts) {
         /* 터치는 touchend가 처리 — pointerup에서 panStart를 지우면 스와이프가 씹힘 */
         if (e.pointerType === "touch") return;
         if (activePointerId != null && e.pointerId !== activePointerId) return;
-        onPanEnd(e.clientX, e.clientY);
         try {
           if (typeof root.releasePointerCapture === "function") {
             root.releasePointerCapture(e.pointerId);
           }
         } catch (_) {}
+        onPanEnd(e.clientX, e.clientY);
       },
       passive,
     );

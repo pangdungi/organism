@@ -31,6 +31,12 @@ function layoutFixedPanel(trigger, panel) {
   panel.style.zIndex = String(PANEL_Z);
 }
 
+function isModalSimpleSelectPanelNode(node) {
+  return !!node?.closest?.(
+    ".time-task-log-task-dropdown-panel, [data-legacy~='time-task-log-task-dropdown-panel']",
+  );
+}
+
 /**
  * @param {object} options
  * @param {{ value: string, label: string }[]} options.items
@@ -96,10 +102,7 @@ export function buildModalSimpleSelect(options = {}) {
       row.appendChild(lab);
       const pick = () => {
         value = String(it.value);
-        panel.hidden = true;
-        resetPanelBox(panel);
-        syncTrigger();
-        renderOptionRows();
+        closePanel();
         onChange?.(value);
       };
       row.addEventListener("mousedown", (e) => {
@@ -119,30 +122,41 @@ export function buildModalSimpleSelect(options = {}) {
   renderOptionRows();
   syncTrigger();
 
+  function dockPanel() {
+    if (panel.parentElement !== wrap) wrap.appendChild(panel);
+  }
+
   function closePanel() {
-    if (!panel.hidden) {
-      panel.hidden = true;
-      resetPanelBox(panel);
-      syncTrigger();
+    if (panel.hidden) return;
+    panel.hidden = true;
+    resetPanelBox(panel);
+    dockPanel();
+    syncTrigger();
+    renderOptionRows();
+  }
+
+  function openPanel() {
+    panel.hidden = false;
+    if (panel.parentElement !== document.body) {
+      document.body.appendChild(panel);
     }
+    layoutFixedPanel(trigger, panel);
+    syncTrigger();
+    renderOptionRows();
   }
 
   trigger.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (panel.hidden) {
-      panel.hidden = false;
-      layoutFixedPanel(trigger, panel);
-      syncTrigger();
-      renderOptionRows();
-    } else {
-      closePanel();
-    }
+    if (panel.hidden) openPanel();
+    else closePanel();
   });
 
   const closePanelOnOutside = (e) => {
     if (panel.hidden) return;
-    if (!wrap.contains(e.target)) closePanel();
+    const t = e.target;
+    if (wrap.contains(t) || panel.contains(t)) return;
+    closePanel();
   };
 
   const closeOnScrollOrResize = () => closePanel();
@@ -164,9 +178,9 @@ export function buildModalSimpleSelect(options = {}) {
   wrap._setValue = (v) => {
     value = v === undefined || v === null ? "" : String(v);
     closePanel();
-    syncTrigger();
-    renderOptionRows();
   };
+  wrap._closePanel = closePanel;
+  wrap._isPanelNode = isModalSimpleSelectPanelNode;
 
   return wrap;
 }

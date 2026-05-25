@@ -14,6 +14,7 @@ import {
   syncWorkScheduleToSupabase,
 } from "../utils/workScheduleSupabase.js";
 import { showToast } from "../utils/showToast.js";
+import { showConfirmModal } from "../utils/confirmModal.js";
 import { initModalNativeDateFieldsIn } from "../utils/modalNativeDateField.js";
 import { workScheduleDiagLog } from "../utils/workScheduleDiag.js";
 import { applyWorkScheduleRowTimesFromTypes, normalizeWorkDateKey } from "../utils/workScheduleEntryResolve.js";
@@ -679,18 +680,20 @@ export function render(opts = {}) {
       }
     });
 
-    function tryCloseModal() {
+    async function tryCloseModal() {
       if (!stampPopover.hidden) {
         closeStampEditPopover();
         return;
       }
       if (draftComparableSnapshot() !== lastSavedComparable) {
-        if (
-          !window.confirm(
-            "저장하지 않은 변경이 있습니다. 저장 없이 닫으면 버려집니다. 닫을까요?",
-          )
-        )
-          return;
+        const ok = await showConfirmModal({
+          title: "저장하지 않고 닫기",
+          message: "저장하지 않은 변경이 있습니다.",
+          warnMessage: "저장 없이 닫으면 변경 내용이 버려집니다.",
+          confirmText: "닫기",
+          cancelText: "취소",
+        });
+        if (!ok) return;
       }
       detachTypeSettingsModal();
     }
