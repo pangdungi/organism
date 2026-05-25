@@ -40,6 +40,7 @@ import {
   getDailyProductiveCategoryInvestBarsSnapshot,
   getDailyProductiveCategoryTaskBreakdown,
   getDailyConsumptionCategoryTaskBreakdown,
+  getDailyHealthyMealDetails,
   getDailyNonproductiveWastedSnapshot,
   getDailyTimeReportDonutSnapshot,
   getDailyTimeReportSummaryGrid,
@@ -48,6 +49,7 @@ import {
   getMonthlyProductiveCategoryInvestBarsSnapshot,
   getMonthlyProductiveCategoryTaskBreakdown,
   getMonthlyConsumptionCategoryTaskBreakdown,
+  getMonthlyHealthyMealDetails,
   getMonthlyTimeReportDonutSnapshot,
   getMonthlyTimeReportSummaryGrid,
   getMonthlyTimeReportTopTasksByMinutes,
@@ -1518,6 +1520,11 @@ export function render() {
         ? formatMonthSlashFromYmd(ymdTen)
         : formatDateDisplay(String(ymdTen || "").slice(0, 10));
 
+    const healthyMeals =
+      granularity === "month"
+        ? getMonthlyHealthyMealDetails(ymdTen)
+        : getDailyHealthyMealDetails(ymdTen);
+
     const defs = [
       {
         key: "dream",
@@ -1592,6 +1599,17 @@ export function render() {
           formatInvestReclaimWonDisplay(gainWon),
           "gain",
         );
+      }
+
+      if (def.key === "health" && healthyMeals.length > 0) {
+        const ul = document.createElement("ul");
+        ul.className = "diary-tr-summary-meals";
+        healthyMeals.forEach((line) => {
+          const li = document.createElement("li");
+          li.textContent = line;
+          ul.appendChild(li);
+        });
+        art.appendChild(ul);
       }
 
       const openDetail = () => {

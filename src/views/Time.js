@@ -2631,6 +2631,47 @@ export function getMonthlyProductiveCategoryTaskBreakdown(ymdTen, categoryKey, l
   return aggregateProductiveTasksByCategoryFromRows(rows, categoryKey, limit);
 }
 
+/** 투자 레포트: 「건강한 섭취」 과제 mealDetail 목록(중복 제거) */
+function aggregateHealthyMealDetailsFromRows(rows) {
+  const healthyMealDetails = [];
+  rows.forEach((r) => {
+    const hrs = parseTimeToHours(r.timeTracked);
+    if (hrs <= 0 || !Number.isFinite(hrs)) return;
+    const { category: catRaw } = resolveRowCategoryProductivityForAudit(r);
+    const cat = String(catRaw || "").trim();
+    if (cat !== "health") return;
+    const tn = String(r.taskName || "").trim();
+    if (!TTC.isHealthyMealDetailTaskName(tn)) return;
+    const md = String(r.mealDetail || "").trim();
+    if (md) healthyMealDetails.push(md);
+  });
+  return [...new Set(healthyMealDetails)];
+}
+
+/** 투자 레포트(일별): 건강 카드 식단 목록 */
+export function getDailyHealthyMealDetails(ymdTen) {
+  const key = String(ymdTen || "")
+    .replace(/\//g, "-")
+    .slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return [];
+  const rows = loadTimeRows().filter((r) => {
+    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    return d === key;
+  });
+  return aggregateHealthyMealDetailsFromRows(rows);
+}
+
+/** 투자 레포트(월별): 건강 카드 식단 목록 */
+export function getMonthlyHealthyMealDetails(ymdTen) {
+  const range = getTimeReportMonthInclusiveRange(ymdTen);
+  if (!range) return [];
+  const rows = loadTimeRows().filter((r) => {
+    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    return d >= range.start && d <= range.end;
+  });
+  return aggregateHealthyMealDetailsFromRows(rows);
+}
+
 const CONSUMPTION_REPORT_CATEGORY_KEYS = [
   "media_watch",
   "pleasure",

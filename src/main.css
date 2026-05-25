@@ -351,7 +351,8 @@ body {
   box-sizing: border-box;
   width: 100%;
   margin: 0 0 0.35rem;
-  padding: 0.85rem max(0.5rem, var(--lp-safe-left)) 0.5rem max(0.5rem, var(--lp-safe-right));
+  padding: 0.85rem max(0.5rem, var(--lp-safe-left)) 0.5rem
+    max(0.5rem, var(--lp-safe-right));
   background: transparent;
   text-align: center;
 }
@@ -383,7 +384,8 @@ body {
   min-height: 0;
   width: 100%;
   box-sizing: border-box;
-  padding: 0.65rem max(0.85rem, var(--lp-safe-left)) 0.75rem max(0.85rem, var(--lp-safe-right));
+  padding: 0.65rem max(0.85rem, var(--lp-safe-left)) 0.75rem
+    max(0.85rem, var(--lp-safe-right));
 }
 
 .app-home-menu-launcher-card .app-home-menu-launcher-section-grid {
@@ -403,7 +405,8 @@ body {
 }
 
 .app-home-menu-launcher > .app-home-menu-balance {
-  margin: 0 max(0.5rem, var(--lp-safe-left)) 0.75rem max(0.5rem, var(--lp-safe-right));
+  margin: 0 max(0.5rem, var(--lp-safe-left)) 0.75rem
+    max(0.5rem, var(--lp-safe-right));
   padding: 0.85rem 1rem 1rem;
   box-sizing: border-box;
   background: linear-gradient(
@@ -1728,7 +1731,9 @@ table {
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(30, 77, 123, 0.22);
   -webkit-tap-highlight-color: transparent;
-  transition: opacity 0.15s ease, transform 0.12s ease;
+  transition:
+    opacity 0.15s ease,
+    transform 0.12s ease;
 }
 
 .login-btn-cta:hover {
@@ -1809,7 +1814,8 @@ table {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: max(1rem, env(safe-area-inset-top, 0)) 1rem max(1rem, env(safe-area-inset-bottom, 0));
+  padding: max(1rem, env(safe-area-inset-top, 0)) 1rem
+    max(1rem, env(safe-area-inset-bottom, 0));
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
 }
@@ -1895,7 +1901,8 @@ table {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: max(1rem, env(safe-area-inset-top, 0)) 1rem max(1rem, env(safe-area-inset-bottom, 0));
+  padding: max(1rem, env(safe-area-inset-top, 0)) 1rem
+    max(1rem, env(safe-area-inset-bottom, 0));
   box-sizing: border-box;
 }
 

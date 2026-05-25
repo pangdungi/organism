@@ -3268,9 +3268,211 @@ function dayKeyYmdCompare(a, b) {
   return String(a || "").localeCompare(String(b || ""));
 }
 
-function render1DayView(tabsElement = null) {
+/** 15분 칸 시작 분(0~1425) → "0:00" 표기 */
+function formatCalendar1DaySlotClockLabel(slotMin) {
+  const m = Math.max(0, Math.min(24 * 60 - 15, Math.floor(Number(slotMin) || 0)));
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  return `${h}:${String(r).padStart(2, "0")}`;
+}
+
+const CAL_1DAY_SLOT_COL_LABELS = [":15", ":30", ":45", ":60"];
+
+function slotMinToHhMm(slotMin) {
+  const m = Math.max(0, Math.min(24 * 60 - 15, Math.floor(Number(slotMin) || 0)));
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  return `${String(h).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
+}
+
+function calendarSlotCellOverlapsSpan(slotMin, span) {
+  const cellStart = Number(slotMin);
+  const cellEnd = cellStart + 15;
+  const spanStart = Number(span?.startMin);
+  const spanEnd = Number(span?.endMin);
+  if (![cellStart, cellEnd, spanStart, spanEnd].every(Number.isFinite)) return false;
+  return cellStart < spanEnd && cellEnd > spanStart;
+}
+
+function calendarSlotFirstCellMin(span) {
+  const sm = Number(span?.startMin);
+  if (!Number.isFinite(sm)) return null;
+  return Math.floor(sm / 15) * 15;
+}
+
+function paintCalendar1DaySlotGrid(root, dateKey) {
+  if (!root || !dateKey) return;
+  const { spans } = buildExpectedScheduleSpansForDateKey(dateKey);
+  const sorted = [...spans].sort(
+    (a, b) => Number(a.startMin) - Number(b.startMin),
+  );
+  root.querySelectorAll(".calendar-1day-slot-grid-cell").forEach((cell) => {
+    const slotMin = Number(cell.dataset.slotMin);
+    cell.className = "calendar-1day-slot-grid-cell";
+    cell.textContent = "";
+    const span = sorted.find((s) => calendarSlotCellOverlapsSpan(slotMin, s));
+    if (!span) {
+      cell.title = formatCalendar1DaySlotClockLabel(slotMin);
+      return;
+    }
+    const pk = prodKeyForWeekExpectedSpan(span);
+    cell.classList.add(`calendar-1day-slot-grid-cell--${pk}`);
+    const taskName = String(span.taskName || "").trim();
+    if (calendarSlotFirstCellMin(span) === slotMin && taskName) {
+      cell.textContent = taskName.slice(0, 2);
+      cell.classList.add("calendar-1day-slot-grid-cell--labeled");
+    }
+    cell.title = taskName
+      ? `${taskName} (${span.startDisplay || ""} ~ ${span.endDisplay || ""})`
+      : formatCalendar1DaySlotClockLabel(slotMin);
+  });
+}
+
+function findExpectedSpanAtSlotMin(dateKey, slotMin) {
+  const { spans } = buildExpectedScheduleSpansForDateKey(dateKey);
+  const sorted = [...spans].sort(
+    (a, b) => Number(a.startMin) - Number(b.startMin),
+  );
+  return sorted.find((s) => calendarSlotCellOverlapsSpan(slotMin, s)) || null;
+}
+
+function wireCalendar1DaySlotGridCells(root, dateKey, onSaved) {
+  if (!root || !dateKey) return;
+  root.querySelectorAll(".calendar-1day-slot-grid-cell").forEach((cell) => {
+    cell.setAttribute("role", "button");
+    cell.tabIndex = 0;
+    cell.addEventListener("click", () => {
+      const slotMin = Number(cell.dataset.slotMin);
+      const refresh = () => {
+        paintCalendar1DaySlotGrid(root, dateKey);
+        if (typeof onSaved === "function") onSaved();
+      };
+      const span = findExpectedSpanAtSlotMin(dateKey, slotMin);
+      if (span) {
+        const slotIdx = findBudgetScheduleSlotIndex(
+          dateKey,
+          span.taskName,
+          span.startMin,
+          span.endMin,
+        );
+        if (slotIdx < 0) {
+          showToast(
+            "일간 예산에서 추가한 예상 일정만 여기서 수정할 수 있습니다.",
+          );
+          return;
+        }
+        openCalendarExpectedScheduleModal({
+          dateKey,
+          edit: { taskName: span.taskName, timeIdx: slotIdx },
+          title: "예상 일정 수정",
+          submitLabel: "저장",
+          onSaved: refresh,
+        });
+        return;
+      }
+      openCalendarExpectedScheduleModal({
+        dateKey,
+        defaultStartHhMm: slotMinToHhMm(slotMin),
+        onSaved: refresh,
+      });
+    });
+    cell.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        cell.click();
+      }
+    });
+  });
+}
+
+function appendCalendar1DaySlotGridHalf(parent, startHour, endHourExclusive, periodLabel) {
+  const half = document.createElement("div");
+  half.className = "calendar-1day-slot-grid-half";
+
+  const titleRow = document.createElement("div");
+  titleRow.className = "calendar-1day-slot-grid-half-title-row";
+  const titleSpacer = document.createElement("span");
+  titleSpacer.className = "calendar-1day-slot-grid-corner";
+  titleSpacer.setAttribute("aria-hidden", "true");
+  titleRow.appendChild(titleSpacer);
+  const title = document.createElement("div");
+  title.className = "calendar-1day-slot-grid-half-title";
+  title.textContent = periodLabel;
+  titleRow.appendChild(title);
+  half.appendChild(titleRow);
+
+  const head = document.createElement("div");
+  head.className = "calendar-1day-slot-grid-head";
+  head.setAttribute("aria-hidden", "true");
+  const headCorner = document.createElement("span");
+  headCorner.className = "calendar-1day-slot-grid-corner";
+  head.appendChild(headCorner);
+  CAL_1DAY_SLOT_COL_LABELS.forEach((label) => {
+    const span = document.createElement("span");
+    span.className = "calendar-1day-slot-grid-col-label";
+    span.textContent = label;
+    head.appendChild(span);
+  });
+  half.appendChild(head);
+
+  const grid = document.createElement("div");
+  grid.className = "calendar-1day-slot-grid";
+  grid.setAttribute("role", "grid");
+  grid.setAttribute(
+    "aria-label",
+    `${periodLabel} ${startHour}시~${endHourExclusive}시 15분 단위`,
+  );
+
+  for (let hour = startHour; hour < endHourExclusive; hour++) {
+    const rowEl = document.createElement("div");
+    rowEl.className = "calendar-1day-slot-grid-row";
+    rowEl.setAttribute("role", "row");
+    const rowLabel = document.createElement("span");
+    rowLabel.className = "calendar-1day-slot-grid-row-label";
+    rowLabel.textContent = String(hour).padStart(2, "0");
+    rowEl.appendChild(rowLabel);
+    for (let col = 0; col < 4; col++) {
+      const slotMin = hour * 60 + col * 15;
+      const cell = document.createElement("span");
+      cell.className = "calendar-1day-slot-grid-cell";
+      cell.setAttribute("role", "gridcell");
+      cell.dataset.slotMin = String(slotMin);
+      cell.title = formatCalendar1DaySlotClockLabel(slotMin);
+      rowEl.appendChild(cell);
+    }
+    grid.appendChild(rowEl);
+  }
+  half.appendChild(grid);
+  parent.appendChild(half);
+}
+
+/** 캘린더 일간뷰 — 오전·오후 각 12행×4열(15분 칸) */
+function createCalendar1DaySlotGrid(dateKey, onSaved) {
+  const scroll = document.createElement("div");
+  scroll.className = "calendar-1day-slot-grid-scroll";
+
+  const wrap = document.createElement("div");
+  wrap.className = "calendar-1day-slot-grid-wrap";
+
+  const dual = document.createElement("div");
+  dual.className = "calendar-1day-slot-grid-dual";
+  appendCalendar1DaySlotGridHalf(dual, 0, 12, "오전");
+  appendCalendar1DaySlotGridHalf(dual, 12, 24, "오후");
+  wrap.appendChild(dual);
+
+  scroll.appendChild(wrap);
+  wireCalendar1DaySlotGridCells(scroll, dateKey, onSaved);
+  paintCalendar1DaySlotGrid(scroll, dateKey);
+  return scroll;
+}
+
+function render1DayView(tabsElement = null, viewOpts = {}) {
+  const hideTimelineCards = !!viewOpts.hideTimelineCards;
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout calendar-1day-view";
+  if (hideTimelineCards) {
+    wrap.classList.add("calendar-1day-view--slot-grid");
+  }
   wrap.dataset.lpHomeTodayTimeline = "1";
 
   let dayOffset = 0;
@@ -3430,6 +3632,11 @@ function render1DayView(tabsElement = null) {
 
     timeColumn.appendChild(remainingBar);
 
+    if (hideTimelineCards) {
+      timeColumn.appendChild(
+        createCalendar1DaySlotGrid(targetKey, () => renderCalendar()),
+      );
+    } else {
     const nowForTimeline = new Date();
     const nowMinuteClockTL =
       nowForTimeline.getHours() * 60 + nowForTimeline.getMinutes();
@@ -3696,6 +3903,7 @@ function render1DayView(tabsElement = null) {
       "calendar-1day-time-table-inner calendar-1day-time-table-inner--timeline-only";
     timeTableInnerStub.setAttribute("aria-hidden", "true");
     timeColumn.appendChild(timeTableInnerStub);
+    }
 
     wrap.dataset.dateStr = targetKey;
     /* 날짜 이동 등 renderCalendar만 다시 돌 때도 1일 열 레이아웃이 깨지지 않게 모바일 일정 탭에서 재스탬프 */
@@ -3721,15 +3929,38 @@ function render1DayView(tabsElement = null) {
           const el = split?.querySelector(".calendar-1day-time-column");
           if (el) {
             try {
-              el.style.setProperty("flex", "0 0 auto", "important");
-              el.style.setProperty("min-height", "min-content", "important");
-              el.style.setProperty("max-height", "none", "important");
               el.style.setProperty("width", "100%", "important");
               el.style.setProperty("max-width", "100%", "important");
               el.style.setProperty("min-width", "0", "important");
               el.style.setProperty("box-sizing", "border-box", "important");
-              el.style.setProperty("overflow", "visible", "important");
-              el.style.setProperty("overflow-x", "hidden", "important");
+              if (hideTimelineCards) {
+                el.style.setProperty("flex", "1 1 auto", "important");
+                el.style.setProperty("min-height", "0", "important");
+                el.style.setProperty("max-height", "none", "important");
+                el.style.setProperty("overflow", "hidden", "important");
+                el.style.setProperty("display", "flex", "important");
+                el.style.setProperty("flex-direction", "column", "important");
+                const scrollEl = el.querySelector(
+                  ".calendar-1day-slot-grid-scroll",
+                );
+                if (scrollEl) {
+                  scrollEl.style.setProperty("flex", "1 1 auto", "important");
+                  scrollEl.style.setProperty("min-height", "0", "important");
+                  scrollEl.style.setProperty("overflow-y", "auto", "important");
+                  scrollEl.style.setProperty(
+                    "-webkit-overflow-scrolling",
+                    "touch",
+                    "important",
+                  );
+                  scrollEl.style.setProperty("touch-action", "pan-y", "important");
+                }
+              } else {
+                el.style.setProperty("flex", "0 0 auto", "important");
+                el.style.setProperty("min-height", "min-content", "important");
+                el.style.setProperty("max-height", "none", "important");
+                el.style.setProperty("overflow", "visible", "important");
+                el.style.setProperty("overflow-x", "hidden", "important");
+              }
             } catch (_) {}
           }
         });
@@ -5129,15 +5360,15 @@ function renderAnnualView(tabsElement) {
 const CALENDAR_SUB_VIEWS = [
   { id: "monthly", label: "월별" },
   { id: "1week", label: "1주" },
-  { id: "annual", label: "연간" },
   { id: "1day", label: "타임블록" },
+  { id: "annual", label: "연간" },
 ];
 
 const MOBILE_SCHEDULE_CAL_SUB_VIEWS = [
   { id: "monthly", label: "월별", footerShortLabel: "월" },
   { id: "1week", label: "1주", footerShortLabel: "주" },
-  { id: "annual", label: "연간", footerShortLabel: "연" },
   { id: "1day", label: "타임블록", footerShortLabel: "일" },
+  { id: "annual", label: "연간", footerShortLabel: "연" },
 ];
 
 /**
@@ -5302,7 +5533,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
     } else if (subViewId === "annual") {
       contentArea.appendChild(renderAnnualView(null));
     } else if (subViewId === "1day") {
-      contentArea.appendChild(render1DayView(null));
+      contentArea.appendChild(render1DayView(null, { hideTimelineCards: true }));
     }
     if (scheduleSubViewsInFooter) {
       syncScheduleSubViewFooterActive(subViewId);

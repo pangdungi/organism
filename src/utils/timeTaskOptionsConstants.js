@@ -197,6 +197,12 @@ export function isUnhealthyMealDetailTaskName(name) {
   return n === "건강하지 않은 섭취";
 }
 
+/** @param {string} name */
+export function isHealthyMealDetailTaskName(name) {
+  const n = canonicalMealTaskDisplayName(name);
+  return n === "건강한 섭취";
+}
+
 export const TASKS_LOCKED_FOR_EDIT = [NAP_TASK_NAME];
 
 export const DEFAULT_TASK_OPTIONS = [
