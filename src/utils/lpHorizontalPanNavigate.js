@@ -2,6 +2,13 @@
  * 가로 이동으로 이전/다음 — 터치 스와이프, 마우스 드래그, 트랙패드·매직마우스 가로 휠(deltaX).
  * 왼쪽으로 밀기(손가락·포인터 dx<0, 휠 deltaX>0) = onNext, 오른쪽 = onPrev.
  */
+let lastLpHorizontalPanNavigateAt = 0;
+
+/** 방금 가로 스와이프·휠로 페이지를 넘겼으면 true — 카드 click 오동작 방지용 */
+export function lpHorizontalPanNavigateRecentlyFired(withinMs = 450) {
+  return Date.now() - lastLpHorizontalPanNavigateAt < withinMs;
+}
+
 export function bindLpHorizontalPanNavigate(root, opts) {
   if (!root || typeof opts?.onNext !== "function" || typeof opts?.onPrev !== "function") {
     return () => {};
@@ -42,6 +49,7 @@ export function bindLpHorizontalPanNavigate(root, opts) {
     if (now < navLockUntil) return;
     if (!isActive()) return;
     navLockUntil = now + lockMs;
+    lastLpHorizontalPanNavigateAt = now;
     if (dxSign < 0) opts.onNext();
     else opts.onPrev();
   }

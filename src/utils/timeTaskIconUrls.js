@@ -165,3 +165,12 @@ export function getTimeTaskListIconSrc(taskName, opts = {}) {
   if (prod) return prod;
   return nonproductiveCategoryFallbackIcon(opts.category, opts.productivity);
 }
+
+/** 리스트·일간 일정 등 — 과제명 매칭 + category/productivity fallback + 수면 예외 */
+export function resolveTimeTaskDisplayIconSrc(taskName, opts = {}) {
+  const t = String(taskName || "").trim();
+  const listed = getTimeTaskListIconSrc(t, opts);
+  if (listed) return listed;
+  if (t === "수면하기" || /수면/.test(t)) return `${BASE}/sleep-bed.png`;
+  return "";
+}

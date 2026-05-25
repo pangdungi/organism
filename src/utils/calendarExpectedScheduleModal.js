@@ -816,9 +816,7 @@ export function openCalendarExpectedScheduleModal(options) {
     document.body.style.overflow = "";
   };
 
-  modal
-    .querySelector('[data-legacy~="time-task-setup-backdrop"]')
-    ?.addEventListener("click", close, { signal });
+  /* 배경 탭으로 닫지 않음 — 입력 중 실수로 닫히는 것 방지 (닫기는 ×만) */
   modal
     .querySelector('[data-legacy~="time-task-setup-close"]')
     ?.addEventListener("click", close, { signal });

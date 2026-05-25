@@ -54,7 +54,10 @@ import {
   buildTimeTaskLogPickerDropdown,
   taskAllowedForLedgerPreset,
 } from "../utils/timeTaskLogPickerDropdown.js";
-import { getTimeTaskListIconSrc } from "../utils/timeTaskIconUrls.js";
+import {
+  getTimeTaskListIconSrc,
+  resolveTimeTaskDisplayIconSrc,
+} from "../utils/timeTaskIconUrls.js";
 import {
   ensureTimeLedgerEntryIds,
   ledgerRowEntryDateYmd,
@@ -3888,18 +3891,11 @@ function collectRowsFromDOM(container) {
   return rows;
 }
 
-/** 시간기록 리스트 왼쪽 컬러바·수면 행 아이콘(임시 팔레트·아이콘은 이후 확장) */
-const TIME_LEDGER_LIST_SLEEP_ICON_SRC = "/toolbaricons/time-task/sleep-bed.png";
-
 function timeLedgerListRowIconSrc(rowData) {
-  const t = (rowData?.taskName || "").trim();
-  const listed = getTimeTaskListIconSrc(t, {
+  return resolveTimeTaskDisplayIconSrc(rowData?.taskName, {
     category: rowData?.category,
     productivity: rowData?.productivity,
   });
-  if (listed) return listed;
-  if (t === "수면하기" || /수면/.test(t)) return TIME_LEDGER_LIST_SLEEP_ICON_SRC;
-  return "";
 }
 
 /** 모바일 리스트 왼쪽 컬러바 — 기본 생산성 3색(테이블 막대·DEFAULT_TIME_CATEGORY_COLORS와 동일 톤) */

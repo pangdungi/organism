@@ -24,27 +24,29 @@ export function syncModalNativeDateFilled(inputEl) {
   if (ov) ov.textContent = has ? formatModalNativeDateOverlayYmd(v) : "";
 }
 
+/** native date input에 포커스 후 시스템 date 피커 열기 */
+export function openModalNativeDateInput(inputEl) {
+  if (!inputEl) return;
+  try {
+    inputEl.focus({ preventScroll: true });
+  } catch (_) {
+    try {
+      inputEl.focus();
+    } catch (_) {}
+  }
+  try {
+    if (typeof inputEl.showPicker === "function") inputEl.showPicker();
+    else inputEl.click();
+  } catch (_) {
+    inputEl.click();
+  }
+}
+
 /** 달력·오버레이 영역 탭 시 시스템 date 피커 열기 */
 export function wireModalNativeDateSlot(slotEl, inputEl) {
   if (!(slotEl instanceof HTMLElement) || !inputEl) return;
-  slotEl.addEventListener("click", (e) => {
-    const t = e.target;
-    if (
-      t === inputEl ||
-      (inputEl.contains && t instanceof Node && inputEl.contains(t))
-    )
-      return;
-    try {
-      inputEl.focus({ preventScroll: true });
-    } catch (_) {
-      inputEl.focus();
-    }
-    try {
-      if (typeof inputEl.showPicker === "function") inputEl.showPicker();
-      else inputEl.click();
-    } catch (_) {
-      inputEl.click();
-    }
+  slotEl.addEventListener("click", () => {
+    openModalNativeDateInput(inputEl);
   });
 }
 

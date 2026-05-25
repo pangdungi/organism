@@ -118,7 +118,7 @@
   gap: 0.35rem;
 }
 
-/* 모바일 일정 탭: 푸터 서브뷰 전환 — 짧은 라벨(M·W·Y·D), 툴팁·aria-label 은 전체 한글명 */
+/* 일정 탭: 푸터 서브뷰 전환 — 짧은 라벨(월·주·연·일), title·aria-label 은 전체 한글명 */
 .app-footer-actions .app-footer-icon-btn[data-lp-schedule-cal-subview] {
   line-height: 1;
   font-size: 0.8125rem;
@@ -223,11 +223,6 @@
   line-height: 1;
   padding-inline: 0.5rem;
   min-width: 2.25rem;
-}
-
-.calendar-nav-controls .calendar-1day-nav-time-log {
-  white-space: nowrap;
-  font-weight: 650;
 }
 
 /* 일간 남은 시간 줄: 예상 일정 추가 — 라벨 「+ 계획」 */
@@ -366,7 +361,7 @@
 }
 
 .calendar-1day-timeline-card {
-  --calendar-timeline-stripe: rgba(26, 45, 69, 0.35);
+  --calendar-timeline-progress-fill: var(--cal-today-accent, #1e4d7b);
   display: grid;
   grid-template-columns: auto 1fr;
   column-gap: 0.45rem;
@@ -455,7 +450,7 @@
   max-width: 100%;
   background: color-mix(
     in srgb,
-    var(--calendar-timeline-progress-fill, #64748b) 82%,
+    var(--calendar-timeline-progress-fill, #1e4d7b) 82%,
     white
   );
   transition: width 0.25s ease-out;
@@ -463,16 +458,38 @@
 
 .calendar-1day-timeline-card--progress-over
   .calendar-1day-timeline-card-head-bar-fill {
-  background: color-mix(in srgb, #ea580c 78%, #fbbf24);
+  background: color-mix(
+    in srgb,
+    var(--cal-today-accent, #1e4d7b) 88%,
+    #173c5f
+  );
+}
+
+.calendar-1day-timeline-card--ledger-missed {
+  --calendar-timeline-progress-fill: #94a3b8;
 }
 
 .calendar-1day-timeline-card-title-row {
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.35rem;
   min-width: 0;
+}
+
+.calendar-1day-view .time-ledger-usage-icon-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.calendar-1day-view .time-ledger-usage-icon-cell > img {
+  width: 1em;
+  height: 1em;
+  object-fit: contain;
+  display: block;
 }
 
 .calendar-1day-timeline-card-title {
@@ -545,6 +562,7 @@
 .calendar-1day-timeline-card-progress {
   font-size: 0.75rem;
   font-weight: 650;
+  color: var(--cal-today-accent, #1e4d7b);
 }
 
 .calendar-1day-timeline-card--ledger-missed .calendar-1day-timeline-card-start,
