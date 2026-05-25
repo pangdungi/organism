@@ -415,6 +415,62 @@
   line-height: 1.25;
   white-space: nowrap;
 }
+
+/* 시간 사용내역 — 하루 0~24시 생산성 요약 바(헤더·목록 사이) */
+[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-day-overview-bar-wrap"] {
+  flex-shrink: 0;
+  padding: 0.5rem 1rem 0.625rem;
+  border-bottom: 1px solid #f1f5f9;
+  box-sizing: border-box;
+}
+[data-legacy~="time-ledger-view"] .time-ledger-day-group-header + [data-legacy~="time-ledger-day-overview-bar-wrap"] {
+  margin-top: -0.15rem;
+  padding-top: 0.25rem;
+  border-bottom: none;
+}
+[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-day-overview-bar-track"] {
+  position: relative;
+  width: 100%;
+  height: 0.6875rem;
+  border-radius: 999px;
+  background: #eef2f7;
+  overflow: hidden;
+}
+[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-day-overview-bar-grid"] {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  pointer-events: none;
+}
+[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-day-overview-bar-hour"] {
+  border-right: 1px solid rgba(255, 255, 255, 0.45);
+  box-sizing: border-box;
+}
+[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-day-overview-bar-hour"]:last-child {
+  border-right: none;
+}
+[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-day-overview-bar-segments"] {
+  position: absolute;
+  inset: 0;
+}
+[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-day-overview-bar-seg"] {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 1px;
+  border-radius: 1px;
+}
+[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-day-overview-bar-seg--productive"] {
+  background: #f44336;
+}
+[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-day-overview-bar-seg--nonproductive"] {
+  background: #2979ff;
+}
+[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-day-overview-bar-seg--other"] {
+  background: #2ecc71;
+}
+
 .time-ledger-tabs-filter-row,
 [data-legacy~="time-ledger-tabs-filter-row"] {
   /* app-main 이 이미 safe-top 반영 — 여기서는 추가 간격만 (중복 inset 방지) */

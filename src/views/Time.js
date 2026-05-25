@@ -3918,6 +3918,124 @@ function getProductivityBarColor(prod) {
   return "#93B4E6";
 }
 
+const TIME_LEDGER_DAY_OVERVIEW_MINUTES = 24 * 60;
+
+function getLedgerDayBarProductivityKey(rowData) {
+  const pv = String(getMobileCardProductivityValue(rowData) || "")
+    .trim()
+    .toLowerCase();
+  if (pv === "productive") return "productive";
+  if (pv === "nonproductive") return "nonproductive";
+  return "other";
+}
+
+/** 하루 24h 바에 그릴 시작·끝(분) — 시작 없으면 null */
+function getLedgerRowDayBarSegmentMinutes(rowData) {
+  const startInst = getRowStartInstantForMobileCard(rowData);
+  if (!startInst) return null;
+  let endInst = getRowEndInstantForMobileCard(rowData);
+  if (!endInst) {
+    const tracked = String(rowData.timeTracked || "").trim();
+    if (tracked) {
+      const hrs = parseTimeToHours(tracked) || 0;
+      if (hrs > 0) {
+        endInst = new Date(startInst.getTime() + hrs * 3600000);
+      }
+    }
+  }
+  if (!endInst && mobileCardNeedsLiveClock(rowData)) {
+    endInst = new Date();
+  }
+  if (!endInst) return null;
+  const startMin =
+    startInst.getHours() * 60 +
+    startInst.getMinutes() +
+    startInst.getSeconds() / 60;
+  let endMin =
+    endInst.getHours() * 60 + endInst.getMinutes() + endInst.getSeconds() / 60;
+  if (
+    endInst.getFullYear() !== startInst.getFullYear() ||
+    endInst.getMonth() !== startInst.getMonth() ||
+    endInst.getDate() !== startInst.getDate() ||
+    endInst <= startInst
+  ) {
+    endMin = TIME_LEDGER_DAY_OVERVIEW_MINUTES;
+  }
+  endMin = Math.min(TIME_LEDGER_DAY_OVERVIEW_MINUTES, endMin);
+  if (endMin <= startMin) return null;
+  return { startMin, endMin, prod: getLedgerDayBarProductivityKey(rowData) };
+}
+
+function populateTimeLedgerDayOverviewBarSegments(segmentsLayer, dayRows) {
+  if (!segmentsLayer) return;
+  segmentsLayer.replaceChildren();
+  const segments = [];
+  for (const r of dayRows || []) {
+    const seg = getLedgerRowDayBarSegmentMinutes(r);
+    if (seg) segments.push(seg);
+  }
+  segments.sort((a, b) => a.startMin - b.startMin);
+  segments.forEach((seg, i) => {
+    const el = document.createElement("span");
+    lpSetClasses(
+      el,
+      `time-ledger-day-overview-bar-seg time-ledger-day-overview-bar-seg--${seg.prod}`,
+    );
+    el.style.left = `${(seg.startMin / TIME_LEDGER_DAY_OVERVIEW_MINUTES) * 100}%`;
+    el.style.width = `${((seg.endMin - seg.startMin) / TIME_LEDGER_DAY_OVERVIEW_MINUTES) * 100}%`;
+    el.style.zIndex = String(i + 1);
+    segmentsLayer.appendChild(el);
+  });
+}
+
+/** 시간 사용내역 — 하루 0~24시 생산성 컬러 바(헤더·목록 사이) */
+function createTimeLedgerDayOverviewBar(dayRows, dayKeyYmd = "") {
+  const wrap = document.createElement("div");
+  lpSetClasses(wrap, "time-ledger-day-overview-bar-wrap");
+  if (dayKeyYmd) wrap.dataset.dayKey = dayKeyYmd;
+
+  const track = document.createElement("div");
+  lpSetClasses(track, "time-ledger-day-overview-bar-track");
+  track.setAttribute("role", "img");
+  track.setAttribute(
+    "aria-label",
+    "하루 시간대별 생산적·비생산적·그 외 기록",
+  );
+
+  const grid = document.createElement("div");
+  lpSetClasses(grid, "time-ledger-day-overview-bar-grid");
+  grid.setAttribute("aria-hidden", "true");
+  for (let h = 0; h < 24; h++) {
+    const cell = document.createElement("span");
+    lpSetClasses(cell, "time-ledger-day-overview-bar-hour");
+    grid.appendChild(cell);
+  }
+  track.appendChild(grid);
+
+  const segmentsLayer = document.createElement("div");
+  lpSetClasses(segmentsLayer, "time-ledger-day-overview-bar-segments");
+  populateTimeLedgerDayOverviewBarSegments(segmentsLayer, dayRows);
+  track.appendChild(segmentsLayer);
+  wrap.appendChild(track);
+  return wrap;
+}
+
+function refreshTimeLedgerDayOverviewBars(root, rowsForDay) {
+  if (!root) return;
+  root
+    .querySelectorAll('[data-legacy~="time-ledger-day-overview-bar-wrap"]')
+    .forEach((wrap) => {
+      const key = String(wrap.dataset.dayKey || "").trim();
+      const dayRows = key
+        ? rowsForDay.filter((r) => ledgerRowDateYmdForFilter(r) === key)
+        : rowsForDay;
+      const layer = wrap.querySelector(
+        '[data-legacy~="time-ledger-day-overview-bar-segments"]',
+      );
+      populateTimeLedgerDayOverviewBarSegments(layer, dayRows);
+    });
+}
+
 function formatLedgerTimelineClockHHmm(inst) {
   if (!inst || !(inst instanceof Date)) return "";
   return `${String(inst.getHours()).padStart(2, "0")}:${String(inst.getMinutes()).padStart(2, "0")}`;
@@ -7562,6 +7680,9 @@ export function render(opts = {}) {
           header.appendChild(label);
           header.appendChild(totalEl);
           timelineList.appendChild(header);
+          timelineList.appendChild(
+            createTimeLedgerDayOverviewBar(g.rows, g.key),
+          );
         }
         const cardParent =
           g.rows.length > 0
@@ -7617,6 +7738,15 @@ export function render(opts = {}) {
     usageHistoryHeadingRow.appendChild(usageHistoryHeadingLeft);
     usageHistoryHeadingRow.appendChild(usageHistoryTotalTime);
     ledgerContainer.appendChild(usageHistoryHeadingRow);
+    if (!timeLedgerShouldShowDayGroups(rows)) {
+      const dayKey =
+        usageHistoryRangeStartYmd === usageHistoryRangeEndYmd
+          ? usageHistoryRangeStartYmd
+          : "";
+      ledgerContainer.appendChild(
+        createTimeLedgerDayOverviewBar(rows, dayKey),
+      );
+    }
     ledgerContainer.appendChild(cardsWrap);
     contentWrap.appendChild(ledgerContainer);
 
@@ -7624,6 +7754,10 @@ export function render(opts = {}) {
       cardsWrap
         .querySelectorAll('[data-legacy~="time-ledger-mobile-card"]')
         .forEach(updateMobileTimeCardLiveFields);
+      refreshTimeLedgerDayOverviewBars(
+        ledgerContainer,
+        getFilteredRows(getFullRowsForFilter(true)),
+      );
       const totalEl = contentWrap.querySelector("[data-usage-total-time]");
       if (totalEl) {
         totalEl.textContent = formatHoursToHHMM(
