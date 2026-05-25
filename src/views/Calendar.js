@@ -29,6 +29,10 @@ import {
   getMobileCardEffectiveHoursForPrice,
 } from "./Time.js";
 import { showToast } from "../utils/showToast.js";
+import {
+  calendar1WeekDiagLog,
+  calendar1WeekDiagSnapshot,
+} from "../utils/calendar1WeekDiag.js";
 import { bindLpHorizontalPanNavigate } from "../utils/lpHorizontalPanNavigate.js";
 import { supabase } from "../supabase.js";
 import {
@@ -317,7 +321,13 @@ function snapshotCalendarGridPaintSignature(viewContext = "") {
 function lpAttachCalendarGridRefreshGuard(wrap, runRender, viewContextFn = () => "") {
   wrap._lpRefreshCalendarView = () => {
     const sig = snapshotCalendarGridPaintSignature(viewContextFn());
-    if (sig === wrap._lpLastCalendarGridPaintSig) return;
+    if (sig === wrap._lpLastCalendarGridPaintSig) {
+      calendar1WeekDiagLog("refreshGuard.skipSameSig", {
+        ctx: viewContextFn(),
+      });
+      return;
+    }
+    calendar1WeekDiagLog("refreshGuard.runRender", { ctx: viewContextFn() });
     runRender();
   };
   wrap._lpRememberCalendarGridPaintSig = () => {
@@ -325,6 +335,38 @@ function lpAttachCalendarGridRefreshGuard(wrap, runRender, viewContextFn = () =>
       viewContextFn(),
     );
   };
+}
+
+/** layout-pending → layout-ready (막대 재측정 후 표시) */
+function lpRevealCalendarGridLayout(calendarGrid, reason) {
+  if (!calendarGrid) return;
+  if (!calendarGrid.classList.contains("calendar-monthly-grid--layout-pending")) {
+    return;
+  }
+  calendarGrid.classList.remove("calendar-monthly-grid--layout-pending");
+  calendarGrid.classList.add("calendar-monthly-grid--layout-ready");
+  calendar1WeekDiagLog("layoutPass.reveal", {
+    reason,
+    connected: !!calendarGrid.isConnected,
+  });
+  calendar1WeekDiagSnapshot(calendarGrid, reason);
+}
+
+/** finishWeek가 DOM 붙기 전에 호출될 때(1주 첫 mount) rAF로 재시도 */
+function lpScheduleRevealCalendarGridLayout(calendarGrid, reason) {
+  if (!calendarGrid) return;
+  const tryReveal = (attempt) => {
+    if (calendarGrid.isConnected) {
+      lpRevealCalendarGridLayout(calendarGrid, reason);
+      return;
+    }
+    if (attempt >= 24) {
+      calendar1WeekDiagLog("layoutPass.reveal.gaveUp", { reason, attempt });
+      return;
+    }
+    requestAnimationFrame(() => tryReveal(attempt + 1));
+  };
+  tryReveal(0);
 }
 
 /** 막대 top·주 행 높이 재측정이 끝날 때까지 격자 깜빡임(큰 갭→좁아짐) 완화 */
@@ -337,9 +379,13 @@ function lpBeginCalendarGridLayoutPass(calendarGrid) {
   let pending = 0;
   const finishWeek = () => {
     pending -= 1;
-    if (pending > 0 || !calendarGrid.isConnected) return;
-    calendarGrid.classList.remove("calendar-monthly-grid--layout-pending");
-    calendarGrid.classList.add("calendar-monthly-grid--layout-ready");
+    calendar1WeekDiagLog("layoutPass.finishWeek", {
+      pending,
+      connected: !!calendarGrid?.isConnected,
+      classes: calendarGrid?.className || "",
+    });
+    if (pending > 0) return;
+    lpScheduleRevealCalendarGridLayout(calendarGrid, "finishWeek");
   };
   return {
     trackWeek() {
@@ -361,6 +407,10 @@ function lpCalendarFinalizeBarRowLayout(
 ) {
   const gap = Number.isFinite(ROW_GAP) ? Math.max(0, ROW_GAP) : 0;
   if (!barsWithRow.length || !weekRow) {
+    calendar1WeekDiagLog("finalizeBarRow.skip", {
+      bars: barsWithRow.length,
+      hasWeekRow: !!weekRow,
+    });
     onSettled?.();
     return;
   }
@@ -410,6 +460,12 @@ function lpCalendarFinalizeBarRowLayout(
     if (pass < maxPasses && barsWithRow.some((b) => b._barEl?.isConnected)) {
       requestAnimationFrame(step);
     } else {
+      calendar1WeekDiagLog("finalizeBarRow.settled", {
+        pass,
+        maxPasses,
+        bars: barsWithRow.length,
+        weekRowConnected: !!weekRow?.isConnected,
+      });
       onSettled?.();
     }
   };
@@ -3789,11 +3845,13 @@ function computeCalendar1WeekDayExecutionRate(dateKey, allLedgerRows) {
 }
 
 function render1WeekView(tabsElement) {
+  calendar1WeekDiagLog("render1WeekView.mount");
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout";
 
   let weekOffset = 0;
   let _1weekRenderGen = 0;
+  let _1weekRenderSeq = 0;
 
   const calendarSection = document.createElement("div");
   calendarSection.className = "calendar-monthly-main";
@@ -3827,6 +3885,12 @@ function render1WeekView(tabsElement) {
 
   async function renderCalendar(opts = {}) {
     const skipWeekPull = !!opts.skipWeekPull;
+    const renderSeq = ++_1weekRenderSeq;
+    calendar1WeekDiagLog("renderCalendar.start", {
+      skipWeekPull,
+      renderSeq,
+      weekOffset,
+    });
     const week = getCalendarGridFor1Week(weekOffset);
     const weekKeysForPull = week
       .map((d) => (d ? formatDateKey(d) : ""))
@@ -3835,11 +3899,25 @@ function render1WeekView(tabsElement) {
     const lastPullKey = weekKeysForPull[weekKeysForPull.length - 1] || "";
     if (!skipWeekPull && firstPullKey && lastPullKey) {
       const pullGen = ++_1weekRenderGen;
+      calendar1WeekDiagLog("renderCalendar.pull.start", {
+        pullGen,
+        renderSeq,
+        firstPullKey,
+        lastPullKey,
+      });
       try {
         await pullTimeLedgerEntriesForDateRange(firstPullKey, lastPullKey);
         await pullTimeDailyBudgetFromSupabase();
       } catch (_) {}
-      if (pullGen !== _1weekRenderGen) return;
+      if (pullGen !== _1weekRenderGen) {
+        calendar1WeekDiagLog("renderCalendar.pull.aborted", {
+          pullGen,
+          currentGen: _1weekRenderGen,
+          renderSeq,
+        });
+        return;
+      }
+      calendar1WeekDiagLog("renderCalendar.pull.done", { pullGen, renderSeq });
     }
 
     const monthIndex = week[0] ? week[0].getMonth() : new Date().getMonth();
@@ -3858,6 +3936,10 @@ function render1WeekView(tabsElement) {
     calendarGrid.className =
       "calendar-monthly-grid calendar-monthly-grid--1week-timegrid";
     const layoutPass = lpBeginCalendarGridLayoutPass(calendarGrid);
+    calendar1WeekDiagLog("renderCalendar.layoutPass.begin", {
+      renderSeq,
+      classes: calendarGrid.className,
+    });
 
     const todayYmd = timeLedgerLocalTodayYmd();
     const prodColorsExpected = getTimeCategoryColorsForTimetableExpected();
@@ -4577,6 +4659,22 @@ function render1WeekView(tabsElement) {
     execStrip.appendChild(execRow);
     flowHScrollInner.appendChild(execStrip);
     wrap._lpRememberCalendarGridPaintSig?.();
+    calendar1WeekDiagLog("renderCalendar.domBuilt", {
+      renderSeq,
+      bars: allBars.length,
+      cards: outer.querySelectorAll(".calendar-1week-flow-card").length,
+      layoutPending: calendarGrid.classList.contains(
+        "calendar-monthly-grid--layout-pending",
+      ),
+      layoutReady: calendarGrid.classList.contains(
+        "calendar-monthly-grid--layout-ready",
+      ),
+    });
+    calendar1WeekDiagSnapshot(wrap, `domBuilt-${renderSeq}`);
+    lpScheduleRevealCalendarGridLayout(calendarGrid, "domBuilt-fallback");
+    requestAnimationFrame(() => {
+      calendar1WeekDiagSnapshot(wrap, `rAF-after-domBuilt-${renderSeq}`);
+    });
   }
 
   lpCalendarNavQ(nav, wrap, ".calendar-nav-today").addEventListener(
@@ -5074,6 +5172,13 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
     activeSubViewId = subViewId;
     dismissCalendarDayExpandUI();
     const gen = ++_nestedSubViewGen;
+    if (subViewId === "1week") {
+      calendar1WeekDiagLog("renderSubView.start", {
+        gen,
+        skipPull,
+        prefetch: !!window.__lpCalendarGridPrefetchedForTabSwitch,
+      });
+    }
     dateDebug("renderSubView: saving before switch", {
       subViewId,
       hasSidebar: false,
@@ -5088,6 +5193,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
       contentArea.appendChild(renderMonthlyView(null));
     } else if (subViewId === "1week") {
       contentArea.appendChild(render1WeekView(null));
+      calendar1WeekDiagSnapshot(contentArea, "renderSubView.afterMount1week");
     } else if (subViewId === "annual") {
       contentArea.appendChild(renderAnnualView(null));
     } else if (subViewId === "1day") {
@@ -5114,9 +5220,14 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
         typeof window !== "undefined" &&
         window.__lpCalendarGridPrefetchedForTabSwitch
       ) {
+        calendar1WeekDiagLog("renderSubView.async.prefetchSkip", {
+          gen,
+          subViewId,
+        });
         try {
           window.__lpCalendarGridPrefetchedForTabSwitch = false;
         } catch (_) {}
+        calendar1WeekDiagSnapshot(contentArea, "prefetchSkip");
         return;
       }
       if (subViewId === "1day") {
@@ -5153,11 +5264,26 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
           }
         } catch (_) {}
       }
-      if (gen !== _nestedSubViewGen) return;
+      if (gen !== _nestedSubViewGen) {
+        if (subViewId === "1week") {
+          calendar1WeekDiagLog("renderSubView.async.staleGen", {
+            gen,
+            current: _nestedSubViewGen,
+          });
+        }
+        return;
+      }
       const layout = contentArea.querySelector(".calendar-monthly-layout");
+      if (subViewId === "1week") {
+        calendar1WeekDiagLog("renderSubView.async.refresh", { gen });
+        calendar1WeekDiagSnapshot(contentArea, "asyncRefreshBefore");
+      }
       try {
         layout?._lpRefreshCalendarView?.();
       } catch (_) {}
+      if (subViewId === "1week") {
+        calendar1WeekDiagSnapshot(contentArea, "asyncRefreshAfter");
+      }
     })();
   }
 
