@@ -133,6 +133,7 @@ function setLedgerTasksMemory(list) {
     memo: (o.memo || "").trim(),
     id: (o.id || "").trim(),
     kpiId: (o.kpiId && String(o.kpiId).trim()) || "",
+    iconKey: String(o.iconKey || "").trim(),
   }));
 }
 
@@ -363,6 +364,7 @@ export function getFullTaskOptions() {
       memo: o.memo || "",
       id: o.id || "",
       kpiId: (o.kpiId && String(o.kpiId).trim()) || "",
+      iconKey: String(o.iconKey || "").trim(),
     }));
   }
 
@@ -405,6 +407,7 @@ export function getFullTaskOptions() {
         ...t,
         memo: (s.memo || "").trim(),
         id: (s.id || "").trim(),
+        iconKey: String(s.iconKey || "").trim(),
         ...(kid ? { kpiId: kid } : {}),
       };
     };
@@ -476,6 +479,7 @@ export function addTaskOptionFull(task) {
     productivity: task.productivity || "productive",
     memo: task.memo || "",
     kpiId: (task.kpiId && String(task.kpiId).trim()) || "",
+    iconKey: String(task.iconKey || "").trim(),
     id:
       task.id && isUuid(String(task.id))
         ? String(task.id).trim()
@@ -524,6 +528,39 @@ export function updateTaskOption(oldName, task) {
     productivity: task.productivity || "productive",
     memo: task.memo || "",
     kpiId: prevKpi,
+    iconKey:
+      task.iconKey !== undefined
+        ? String(task.iconKey || "").trim()
+        : String(opts[idx].iconKey || "").trim(),
+  };
+  saveMergedList(opts, {
+    bumpPullSkip: true,
+    scheduleSyncPush: isUuid(newId),
+    upsertTaskIds: isUuid(newId) ? [newId] : [],
+  });
+  return opts;
+}
+
+/** KPI·기본 과제 등 — 이름·분류는 잠금, 아이콘만 변경 */
+export function updateTaskOptionIconByName(taskName, iconKey) {
+  const n = String(taskName || "").trim();
+  if (!n) return getFullTaskOptions();
+  const opts = getFullTaskOptions();
+  const idx = opts.findIndex((o) => (o.name || "").trim() === n);
+  if (idx < 0) return opts;
+  const prevId = String(opts[idx].id || "").trim();
+  let nextId = isUuid(prevId) ? prevId : opts[idx].id;
+  if (!isUuid(String(nextId || "").trim())) {
+    nextId =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `t-${Date.now()}`;
+  }
+  const newId = String(nextId).trim();
+  opts[idx] = {
+    ...opts[idx],
+    id: newId,
+    iconKey: String(iconKey || "").trim(),
   };
   saveMergedList(opts, {
     bumpPullSkip: true,
@@ -776,9 +813,10 @@ export function applyTimeLedgerTasksFromServer(
         productivity: normalizeProductivity(s.productivity || t.productivity),
         memo: (s.memo || "").trim(),
         kpiId: skpi,
+        iconKey: String(s.icon_key ?? "").trim(),
       });
     } else {
-      out.push({ ...t, memo: "", id, kpiId: "" });
+      out.push({ ...t, memo: "", id, kpiId: "", iconKey: "" });
     }
   }
   for (const r of serverRowsSafe) {
@@ -798,6 +836,7 @@ export function applyTimeLedgerTasksFromServer(
       productivity: normalizeProductivity(r.productivity),
       memo: (r.memo || "").trim(),
       kpiId: kid,
+      iconKey: String(r.icon_key ?? loc?.iconKey ?? "").trim(),
     });
   }
   const serverIdSet = new Set(
@@ -818,6 +857,7 @@ export function applyTimeLedgerTasksFromServer(
       productivity: normalizeProductivity(loc.productivity),
       memo: (loc.memo || "").trim(),
       kpiId: locKid,
+      iconKey: String(loc.iconKey || "").trim(),
     });
   }
   const order = new Map(
@@ -875,7 +915,14 @@ export function applyTimeLedgerTasksFromServer(
     const locName = (r.name || "").trim();
     const locKpi = String(r.kpiId || "").trim();
     const locCat = (r.category || "").trim();
-    if (srvName !== locName || srvKpi !== locKpi || srvCat !== locCat)
+    const srvIcon = String(sr.icon_key ?? "").trim();
+    const locIcon = String(r.iconKey || "").trim();
+    if (
+      srvName !== locName ||
+      srvKpi !== locKpi ||
+      srvCat !== locCat ||
+      srvIcon !== locIcon
+    )
       upsertSyncIds.push(id);
   }
   if (dupIdsToDelete.length) {
@@ -931,5 +978,6 @@ export function buildTimeLedgerTasksUpsertPayloads(userId) {
     sort_order,
     is_system: isBuiltinTaskName(t.name),
     kpi_id: String(t.kpiId || "").trim(),
+    icon_key: String(t.iconKey || "").trim(),
   }));
 }

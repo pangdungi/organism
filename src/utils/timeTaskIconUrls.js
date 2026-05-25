@@ -5,7 +5,20 @@
  * 3) 2에서 없음 + 비생산 버킷(쾌락/미디어/꿈방해/불행/비건강/돈손실) → 해당 카테고리 아이콘
  */
 
+import pickerSvgNames from "../../public/time-task-picker-icons.json";
+
 const BASE = "/toolbaricons/time-task";
+const PICKER_SVG_BASE = "/toolbaricons/time-task-picker";
+
+/** 아이콘 선택 모달 — 추가 PNG(사용자 제공) */
+const PICKER_PNG_EXTRAS = [
+  ["팔 올린 사람", "person-raisedarms"],
+  ["팔 벌린 사람", "person-spread"],
+  ["사람", "person-green"],
+  ["팀", "team"],
+  ["사용자 추가", "user-add"],
+  ["사용자 취소", "user-cancel"],
+];
 
 /** @type {readonly [string, string][]} [표시용 과제명(공백 포함), 파일 베이스명(.png)] */
 const ORDERED_PAIRS = [
@@ -83,6 +96,20 @@ const ORDERED_PAIRS = [
   ["단순 쾌락형 영상 시청", "pleasure-video"],
 ];
 
+/** 아이콘 선택 모달 — 카테고리 기본 아이콘(fallback) */
+const PICKER_CATEGORY_EXTRAS = [
+  ["꿈", "prod-cat-dream"],
+  ["부수입", "prod-cat-sideincome"],
+  ["행복", "prod-cat-happiness"],
+  ["건강", "prod-cat-health"],
+  ["쾌락", "nonprod-cat-pleasure"],
+  ["미디어", "nonprod-cat-media"],
+  ["꿈 방해", "nonprod-cat-dreamblock"],
+  ["불행", "nonprod-cat-unhappiness"],
+  ["비건강", "nonprod-cat-unhealthy"],
+  ["돈 손실", "nonprod-cat-moneylosing"],
+];
+
 function compactTaskName(name) {
   return String(name || "")
     .trim()
@@ -156,6 +183,11 @@ function nonproductiveCategoryFallbackIcon(category, productivity) {
  * @returns {string} URL 또는 빈 문자열
  */
 export function getTimeTaskListIconSrc(taskName, opts = {}) {
+  const iconKey = String(opts.iconKey || "").trim();
+  if (iconKey) {
+    const byKey = getTimeTaskIconSrcByKey(iconKey);
+    if (byKey) return byKey;
+  }
   const key = compactTaskName(taskName);
   if (key) {
     const byName = ICON_BY_COMPACT.get(key);
@@ -166,8 +198,120 @@ export function getTimeTaskListIconSrc(taskName, opts = {}) {
   return nonproductiveCategoryFallbackIcon(opts.category, opts.productivity);
 }
 
+/** @param {string} slug 파일 베이스명(확장자 없음) */
+export function getTimeTaskIconSrcBySlug(slug) {
+  const s = String(slug || "").trim();
+  if (!s) return "";
+  return `${BASE}/${s}.png`;
+}
+
+/**
+ * 아이콘 선택·저장용 key → URL (기본 PNG slug · `png:` · `svg:`).
+ * @param {string} key
+ */
+export function getTimeTaskIconSrcByKey(key) {
+  const k = String(key || "").trim();
+  if (!k) return "";
+  if (k.startsWith("svg:")) {
+    const name = k.slice(4).trim();
+    if (!name) return "";
+    return `${PICKER_SVG_BASE}/${name}.svg`;
+  }
+  if (k.startsWith("png:")) {
+    const name = k.slice(4).trim();
+    if (!name) return "";
+    return `${PICKER_SVG_BASE}/${name}.png`;
+  }
+  return getTimeTaskIconSrcBySlug(k);
+}
+
+function pickerIconLabelFromFilename(name) {
+  return String(name || "")
+    .trim()
+    .replace(/-/g, " ");
+}
+
+/** @param {string} text */
+function normalizePickerSearchHaystack(text) {
+  return String(text || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, " ");
+}
+
+/**
+ * 아이콘 선택 모달 검색 — 파일명·라벨 부분 일치(하이픈·공백 무시).
+ * @param {string} searchText
+ * @param {string} query
+ */
+export function matchTimeTaskPickerIconSearch(searchText, query) {
+  const q = String(query ?? "").trim().toLowerCase();
+  if (!q) return true;
+  const hay = normalizePickerSearchHaystack(searchText);
+  const qFlat = q.replace(/[\s_-]+/g, "");
+  if (qFlat && hay.replace(/\s/g, "").includes(qFlat)) return true;
+  if (hay.includes(q)) return true;
+  const tokens = q.split(/\s+/).filter(Boolean);
+  return tokens.every((t) => {
+    const tFlat = t.replace(/[\s_-]+/g, "");
+    return (
+      hay.includes(t) ||
+      (tFlat && hay.replace(/\s/g, "").includes(tFlat))
+    );
+  });
+}
+
+/**
+ * 아이콘 선택 모달용 — 기본 PNG + 추가 SVG(무제 폴더).
+ * @returns {{ key: string, label: string, src: string, searchText: string }[]}
+ */
+export function getTimeTaskPickableIcons() {
+  const seen = new Set();
+  /** @type {{ key: string, label: string, src: string, searchText: string }[]} */
+  const out = [];
+  for (const pair of [...ORDERED_PAIRS, ...PICKER_CATEGORY_EXTRAS]) {
+    const [label, slug] = pair;
+    if (seen.has(slug)) continue;
+    seen.add(slug);
+    out.push({
+      key: slug,
+      label,
+      src: getTimeTaskIconSrcBySlug(slug),
+      searchText: `${label} ${slug}`.replace(/-/g, " "),
+    });
+  }
+  for (const [label, slug] of PICKER_PNG_EXTRAS) {
+    const key = `png:${slug}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({
+      key,
+      label,
+      src: `${PICKER_SVG_BASE}/${slug}.png`,
+      searchText: `${label} ${slug}`.replace(/-/g, " "),
+    });
+  }
+  for (const name of pickerSvgNames) {
+    const key = `svg:${name}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({
+      key,
+      label: pickerIconLabelFromFilename(name),
+      src: `${PICKER_SVG_BASE}/${name}.svg`,
+      searchText: name.replace(/-/g, " "),
+    });
+  }
+  return out;
+}
+
 /** 리스트·일간 일정 등 — 과제명 매칭 + category/productivity fallback + 수면 예외 */
 export function resolveTimeTaskDisplayIconSrc(taskName, opts = {}) {
+  const iconKey = String(opts.iconKey || "").trim();
+  if (iconKey) {
+    const byKey = getTimeTaskIconSrcByKey(iconKey);
+    if (byKey) return byKey;
+  }
   const t = String(taskName || "").trim();
   const listed = getTimeTaskListIconSrc(t, opts);
   if (listed) return listed;

@@ -191,6 +191,7 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
       const iconSrc = getTimeTaskListIconSrc(t.name, {
         category: t.category,
         productivity: t.productivity,
+        iconKey: t.iconKey,
       });
       const iconEl = iconSrc ? document.createElement("img") : null;
       if (iconEl) {

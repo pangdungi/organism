@@ -19,15 +19,14 @@ import {
 const TABLE = "time_ledger_tasks";
 
 const SELECT_TASKS_WITH_KPI =
-  "id, name, productivity, category, memo, sort_order, is_system, kpi_id";
+  "id, name, productivity, category, memo, sort_order, is_system, kpi_id, icon_key";
 const SELECT_TASKS_BASE =
   "id, name, productivity, category, memo, sort_order, is_system";
 
-/** DB에 kpi_id 컬럼이 아직 없을 때(마이그레이션 미적용) SELECT/upsert 폴백 */
-function isMissingKpiIdColumnError(error) {
-  if (!error) return false;
+function isMissingOptionalTaskColumnError(error, column) {
+  if (!error || !column) return false;
   const blob = `${error.message || ""} ${error.details || ""} ${error.hint || ""}`.toLowerCase();
-  if (!blob.includes("kpi_id")) return false;
+  if (!blob.includes(String(column).toLowerCase())) return false;
   return (
     error.code === "42703" ||
     error.code === "PGRST204" ||
@@ -36,11 +35,43 @@ function isMissingKpiIdColumnError(error) {
   );
 }
 
+/** DB에 kpi_id 컬럼이 아직 없을 때(마이그레이션 미적용) SELECT/upsert 폴백 */
+function isMissingKpiIdColumnError(error) {
+  return isMissingOptionalTaskColumnError(error, "kpi_id");
+}
+
+function isMissingIconKeyColumnError(error) {
+  return isMissingOptionalTaskColumnError(error, "icon_key");
+}
+
 function payloadsWithoutKpiId(payloads) {
   return payloads.map((p) => {
     const { kpi_id: _drop, ...rest } = p;
     return rest;
   });
+}
+
+function payloadsWithoutIconKey(payloads) {
+  return payloads.map((p) => {
+    const { icon_key: _drop, ...rest } = p;
+    return rest;
+  });
+}
+
+async function upsertTaskPayloads(payloads) {
+  let batch = payloads;
+  let { error } = await supabase.from(TABLE).upsert(batch, {
+    onConflict: "id",
+  });
+  if (error && isMissingKpiIdColumnError(error)) {
+    batch = payloadsWithoutKpiId(batch);
+    ({ error } = await supabase.from(TABLE).upsert(batch, { onConflict: "id" }));
+  }
+  if (error && isMissingIconKeyColumnError(error)) {
+    batch = payloadsWithoutIconKey(batch);
+    ({ error } = await supabase.from(TABLE).upsert(batch, { onConflict: "id" }));
+  }
+  return error;
 }
 
 /** pull 시 KPI id → 표시명 + 시간가계부 과제설정 탭용 category(health 등) */
@@ -143,14 +174,7 @@ export async function upsertTimeLedgerTaskRowsFromLocalByIds(taskIds) {
     idSet.has(p.id),
   );
   if (payloads.length === 0) return;
-  let { error } = await supabase.from(TABLE).upsert(payloads, {
-    onConflict: "id",
-  });
-  if (error && isMissingKpiIdColumnError(error)) {
-    ({ error } = await supabase.from(TABLE).upsert(payloadsWithoutKpiId(payloads), {
-      onConflict: "id",
-    }));
-  }
+  const error = await upsertTaskPayloads(payloads);
   if (error) {
     try {
       console.warn("[lp-time-ledger-tasks] upsert(ids) 실패", {
@@ -198,15 +222,7 @@ export async function syncTimeLedgerTasksToSupabase() {
   }
 
   if (payloads.length > 0) {
-    let { error } = await supabase.from(TABLE).upsert(payloads, {
-      onConflict: "id",
-    });
-    if (error && isMissingKpiIdColumnError(error)) {
-      ({ error } = await supabase.from(TABLE).upsert(
-        payloadsWithoutKpiId(payloads),
-        { onConflict: "id" },
-      ));
-    }
+    const error = await upsertTaskPayloads(payloads);
     if (error) {
       try {
         console.warn("[lp-time-ledger-tasks] sync upsert 실패", {
@@ -253,7 +269,7 @@ export async function pullTimeLedgerTasksFromSupabase(opts = {}) {
     .eq("user_id", userId)
     .order("sort_order", { ascending: true });
   let { data, error } = tasksRes;
-  if (error && isMissingKpiIdColumnError(error)) {
+  if (error && (isMissingKpiIdColumnError(error) || isMissingIconKeyColumnError(error))) {
     tasksRes = await supabase
       .from(TABLE)
       .select(SELECT_TASKS_BASE)

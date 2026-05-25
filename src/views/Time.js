@@ -37,6 +37,7 @@ import {
   addTaskOption,
   addTaskOptionFull,
   updateTaskOption,
+  updateTaskOptionIconByName,
   removeTaskOption,
   getTaskOptionByName,
   migrateTimeLogRowsTaskIds,
@@ -58,6 +59,7 @@ import {
   getTimeTaskListIconSrc,
   resolveTimeTaskDisplayIconSrc,
 } from "../utils/timeTaskIconUrls.js";
+import { mountTimeAddTaskIconPicker } from "../utils/timeAddTaskIconPicker.js";
 import {
   ensureTimeLedgerEntryIds,
   ledgerRowEntryDateYmd,
@@ -205,6 +207,14 @@ const BUILTIN_TEMPLATE_NAMES = new Set([
 function isTimeTaskBuiltinTemplate(task) {
   const n = String(task?.name ?? "").trim();
   return Boolean(n && BUILTIN_TEMPLATE_NAMES.has(n));
+}
+
+/** KPI·기본 과제 — 과제명·생산성·카테고리 잠금, 아이콘만 수정 */
+function isTaskIconOnlyEditLocked(task) {
+  if (!task) return false;
+  const n = String(task.name || "").trim();
+  if (!n) return false;
+  return getLockedTaskNames().has(n) || isTimeTaskKpiLinked(task);
 }
 
 function appendTaskDropdownBadges(textWrap, task, opts = {}) {
@@ -3892,9 +3902,11 @@ function collectRowsFromDOM(container) {
 }
 
 function timeLedgerListRowIconSrc(rowData) {
+  const opt = rowData?.taskName ? getTaskOptionByName(rowData.taskName) : null;
   return resolveTimeTaskDisplayIconSrc(rowData?.taskName, {
-    category: rowData?.category,
-    productivity: rowData?.productivity,
+    category: rowData?.category ?? opt?.category,
+    productivity: rowData?.productivity ?? opt?.productivity,
+    iconKey: opt?.iconKey || "",
   });
 }
 
@@ -4671,6 +4683,10 @@ export function render(opts = {}) {
           <label>과제명</label>
           <input type="text" data-legacy="time-add-task-name" name="time-add-task-name" placeholder="과제명 입력" />
         </div>
+        <div data-legacy="time-add-task-field time-add-task-icon-field">
+          <label>아이콘</label>
+          <div data-legacy="time-add-task-icon-picker-mount"></div>
+        </div>
         <div data-legacy="time-add-task-field">
           <label>생산성</label>
           <div data-legacy="time-add-task-productivity">
@@ -4692,6 +4708,9 @@ export function render(opts = {}) {
   `;
   addTaskModal.hidden = true;
   el.appendChild(addTaskModal);
+  const addTaskIconPicker = mountTimeAddTaskIconPicker(
+    addTaskModal.querySelector('[data-legacy~="time-add-task-icon-picker-mount"]'),
+  );
 
   const taskLogModal = document.createElement("div");
   lpSetClasses(taskLogModal, "time-task-setup-modal time-task-log-modal");
@@ -6792,6 +6811,26 @@ export function render(opts = {}) {
   renderCategoryButtons(addTaskCatProd, PRODUCTIVE_CATEGORIES);
   renderCategoryButtons(addTaskCatNonProd, NONPRODUCTIVE_CATEGORIES);
 
+  function setAddTaskModalFieldsLocked(locked) {
+    addTaskNameInput.disabled = locked;
+    addTaskProdRadios.forEach((r) => {
+      r.disabled = locked;
+    });
+    const chips = [
+      ...addTaskCatProd.querySelectorAll('[data-legacy~="lp-choice-chip"]'),
+      ...addTaskCatNonProd.querySelectorAll('[data-legacy~="lp-choice-chip"]'),
+    ];
+    chips.forEach((b) => {
+      if (locked) {
+        b.disabled = true;
+        lpTokenAdd(b, "time-add-task-choice--locked");
+      } else {
+        b.disabled = false;
+        lpTokenRemove(b, "time-add-task-choice--locked");
+      }
+    });
+  }
+
   const ALL_CATEGORIES = [
     ...PRODUCTIVE_CATEGORIES,
     ...NONPRODUCTIVE_CATEGORIES,
@@ -6891,6 +6930,7 @@ export function render(opts = {}) {
         const iconSrc = getTimeTaskListIconSrc(t.name, {
           category: t.category,
           productivity: t.productivity,
+          iconKey: t.iconKey,
         });
         const iconBlock = iconSrc
           ? `<span data-legacy="time-task-setup-item-icon-wrap"><img data-legacy="time-task-setup-item-icon" src="${iconSrc}" alt="" loading="eager" decoding="sync" /></span>`
@@ -6909,23 +6949,17 @@ export function render(opts = {}) {
           </span>
           <span data-legacy="time-task-setup-item-cat">${catLabel}</span>
         `;
-        if (!isLocked) {
-          row.setAttribute("role", "button");
-          row.tabIndex = 0;
-          row.addEventListener("click", () => {
-            if (getLockedTaskNames().has(t.name) || isTimeTaskKpiLinked(t)) {
-              alert(MSG_TIME_TASK_KPI_LINKED);
-              return;
-            }
-            void openAddTaskModal(t);
-          });
-          row.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              row.click();
-            }
-          });
-        }
+        row.setAttribute("role", "button");
+        row.tabIndex = 0;
+        row.addEventListener("click", () => {
+          void openAddTaskModal(t);
+        });
+        row.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            row.click();
+          }
+        });
         container.appendChild(row);
       });
       if (list.length === 0) {
@@ -6944,6 +6978,11 @@ export function render(opts = {}) {
   let selectedCategory = "";
   function syncAddTaskSubmitState() {
     const name = (addTaskNameInput.value || "").trim();
+    const editName = (addTaskNameInput.dataset.editName || "").trim();
+    if (editName && isTaskIconOnlyEditLocked(getTaskOptionByName(editName))) {
+      addTaskSubmitBtn.disabled = false;
+      return;
+    }
     addTaskSubmitBtn.disabled = !(name && selectedCategory);
   }
   function openAddTaskModal(editTask) {
@@ -6951,17 +6990,15 @@ export function render(opts = {}) {
     addTaskModal.hidden = false;
     setupListSelectedTaskName = editTask ? editTask.name : "";
     const isEdit = Boolean(editTask);
+    const iconOnlyLocked = isEdit && isTaskIconOnlyEditLocked(editTask);
     if (addTaskModalTitle) {
       addTaskModalTitle.textContent = isEdit ? "과제 수정" : "과제 추가";
     }
     addTaskSubmitBtn.textContent = isEdit ? "저장" : "추가";
     if (addTaskDeleteBtn) {
-      const lockedEdit =
-        editTask &&
-        (getLockedTaskNames().has((editTask.name || "").trim()) ||
-          isTimeTaskKpiLinked(editTask));
-      addTaskDeleteBtn.hidden = !isEdit || lockedEdit;
+      addTaskDeleteBtn.hidden = !isEdit || iconOnlyLocked;
     }
+    setAddTaskModalFieldsLocked(iconOnlyLocked);
     addTaskNameInput.value = editTask ? editTask.name : "";
     addTaskNameInput.dataset.editName = editTask ? editTask.name : "";
     const prod =
@@ -6995,13 +7032,25 @@ export function render(opts = {}) {
         ),
       );
     syncAddTaskSubmitState();
+    if (editTask) {
+      addTaskIconPicker.setSelectedKey(editTask.iconKey || "");
+    } else {
+      addTaskIconPicker.reset();
+    }
     renderTaskSetupList();
-    addTaskNameInput.focus();
+    if (iconOnlyLocked) {
+      addTaskModal
+        .querySelector('[data-legacy~="time-add-task-icon-picker-mount"] button')
+        ?.focus?.();
+    } else {
+      addTaskNameInput.focus();
+    }
   }
 
   function closeAddTaskModal() {
     addTaskModal.hidden = true;
     setupListSelectedTaskName = "";
+    setAddTaskModalFieldsLocked(false);
     renderTaskSetupList();
   }
 
@@ -7049,19 +7098,27 @@ export function render(opts = {}) {
 
   addTaskSubmitBtn.addEventListener("click", () => {
     const name = (addTaskNameInput.value || "").trim();
+    const editName = (addTaskNameInput.dataset.editName || "").trim();
+    const iconKey = addTaskIconPicker.getSelectedKey();
+    if (editName && isTaskIconOnlyEditLocked(getTaskOptionByName(editName))) {
+      updateTaskOptionIconByName(editName, iconKey);
+      closeAddTaskModal();
+      renderTaskSetupList();
+      return;
+    }
     if (!name || !selectedCategory) {
       return;
     }
     const prod =
       addTaskModal.querySelector('input[name="addProd"]:checked')?.value ||
       "productive";
-    const editName = addTaskNameInput.dataset.editName || "";
     if (editName) {
       updateTaskOption(editName, {
         name,
         category: selectedCategory,
         productivity: prod,
         memo: "",
+        iconKey,
       });
     } else {
       addTaskOptionFull({
@@ -7069,6 +7126,7 @@ export function render(opts = {}) {
         category: selectedCategory,
         productivity: prod,
         memo: "",
+        iconKey,
       });
     }
     closeAddTaskModal();

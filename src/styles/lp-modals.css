@@ -481,6 +481,174 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   font-weight: 600;
   color: var(--lp-modal-navy-muted);
 }
+.time-task-setup-modal.time-add-task-modal input[name="time-add-task-name"]:disabled,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-add-task-modal"]
+  input[name="time-add-task-name"]:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  color: var(--text-body, #475569);
+}
+.time-task-setup-modal.time-add-task-modal input[name="addProd"]:disabled,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-add-task-modal"]
+  input[name="addProd"]:disabled {
+  cursor: not-allowed;
+}
+.time-add-task-choice--locked,
+[data-legacy~="time-add-task-choice--locked"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* 과제 추가·수정 — 아이콘 트리거(점선 1칸) */
+.time-add-task-icon-picker__trigger,
+[data-legacy~="time-add-task-icon-picker__trigger"] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  box-sizing: border-box;
+  border: 1px dashed var(--lp-modal-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease,
+    box-shadow 0.12s ease;
+}
+.time-add-task-icon-picker__trigger:hover,
+[data-legacy~="time-add-task-icon-picker__trigger"]:hover {
+  border-color: rgba(30, 77, 123, 0.35);
+  background: rgba(30, 77, 123, 0.04);
+}
+.time-add-task-icon-picker__trigger--selected,
+[data-legacy~="time-add-task-icon-picker__trigger--selected"] {
+  border-style: solid;
+  border-color: var(--lp-modal-accent);
+  background: rgba(30, 77, 123, 0.08);
+  box-shadow: 0 0 0 2px rgba(30, 77, 123, 0.12);
+}
+.time-add-task-icon-picker__trigger:focus-visible,
+[data-legacy~="time-add-task-icon-picker__trigger"]:focus-visible {
+  outline: none;
+  border-color: var(--lp-modal-accent);
+  box-shadow: 0 0 0 3px rgba(30, 77, 123, 0.18);
+}
+
+/* 과제 추가 모달 위 — 아이콘 선택 내부 모달 */
+.time-task-setup-modal.time-add-task-icon-modal,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-add-task-icon-modal"] {
+  z-index: 11000;
+}
+.time-task-setup-modal.time-add-task-icon-modal .time-add-task-panel,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-add-task-icon-modal"]
+  [data-legacy~="time-add-task-panel"] {
+  max-height: min(72vh, 28rem);
+}
+.time-add-task-icon-modal-body,
+[data-legacy~="time-add-task-icon-modal-body"] {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+.time-add-task-icon-modal-search-mount,
+[data-legacy~="time-add-task-icon-modal-search-mount"],
+.time-add-task-icon-modal-divider,
+[data-legacy~="time-add-task-icon-modal-divider"] {
+  flex-shrink: 0;
+}
+.time-add-task-icon-modal-body .lp-search-bar,
+[data-legacy~="time-add-task-icon-modal-body"] .lp-search-bar {
+  padding: 0 0 0.65rem;
+}
+.time-add-task-icon-modal-body .lp-search-bar__row,
+[data-legacy~="time-add-task-icon-modal-body"] .lp-search-bar__row {
+  max-width: none;
+  margin: 0;
+}
+.time-add-task-icon-modal-divider,
+[data-legacy~="time-add-task-icon-modal-divider"] {
+  height: 0;
+  margin: 0 0 0.65rem;
+  border: none;
+  border-top: 1px solid var(--lp-modal-border);
+}
+.time-add-task-icon-modal-grid-mount,
+[data-legacy~="time-add-task-icon-modal-grid-mount"] {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.time-add-task-icon-modal-grid,
+[data-legacy~="time-add-task-icon-modal-grid"] {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(2.75rem, 1fr));
+  gap: 0.45rem;
+}
+.time-add-task-icon-modal-item,
+[data-legacy~="time-add-task-icon-modal-item"] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 0.25rem;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease,
+    box-shadow 0.12s ease;
+}
+.time-add-task-icon-modal-item[hidden],
+[data-legacy~="time-add-task-icon-modal-item"][hidden] {
+  display: none !important;
+}
+.time-add-task-icon-modal-item:hover,
+[data-legacy~="time-add-task-icon-modal-item"]:hover {
+  border-color: rgba(30, 77, 123, 0.2);
+  background: rgba(30, 77, 123, 0.04);
+}
+.time-add-task-icon-modal-item--selected,
+[data-legacy~="time-add-task-icon-modal-item--selected"] {
+  border-color: var(--lp-modal-accent);
+  background: rgba(30, 77, 123, 0.08);
+  box-shadow: 0 0 0 2px rgba(30, 77, 123, 0.12);
+}
+.time-add-task-icon-modal-item:focus-visible,
+[data-legacy~="time-add-task-icon-modal-item"]:focus-visible {
+  outline: none;
+  border-color: var(--lp-modal-accent);
+  box-shadow: 0 0 0 3px rgba(30, 77, 123, 0.18);
+}
+.time-add-task-icon-modal-item-icon,
+[data-legacy~="time-add-task-icon-modal-item-icon"] {
+  width: 1.65rem;
+  height: 1.65rem;
+  max-width: none;
+  object-fit: contain;
+  display: block;
+}
+.time-add-task-icon-picker__trigger-icon,
+[data-legacy~="time-add-task-icon-picker__trigger-icon"] {
+  width: 1.65rem;
+  height: 1.65rem;
+  max-width: none;
+  object-fit: contain;
+  display: block;
+}
 
 /* 필드 입력 아래 — 작은 서브 체크 (꿈 KPI 단위 「시간」·「매일 반복」 등) */
 .lp-modal-field-subcheck-row,

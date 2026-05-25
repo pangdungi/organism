@@ -3577,6 +3577,7 @@ function render1DayView(tabsElement = null) {
         const iconSrc = resolveTimeTaskDisplayIconSrc(taskLabel, {
           category: taskOptForIcon?.category,
           productivity: taskOptForIcon?.productivity,
+          iconKey: taskOptForIcon?.iconKey || "",
         });
         const iconCell = document.createElement("div");
         iconCell.className = "time-ledger-usage-icon-cell";
