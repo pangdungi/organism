@@ -245,6 +245,9 @@
   > .diary-tr-routine-kpi-shell,
 .diary-layout--feed-only
   .diary-content-scroll[data-lp-time-report-body]:not(:empty)
+  > .diary-tr-log-memo-shell,
+.diary-layout--feed-only
+  .diary-content-scroll[data-lp-time-report-body]:not(:empty)
   > .diary-tab5-ledger-log-wrap,
 .diary-layout--feed-only
   .diary-content-scroll[data-lp-time-report-body]:not(:empty)
@@ -336,6 +339,64 @@
   flex-shrink: 0;
   object-fit: contain;
   display: block;
+}
+
+/* 로그 탭 — 과제 메모만 미니멀 목록 */
+.diary-tr-log-memo-shell {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 36rem;
+  margin: 0 auto;
+  padding: 0.35rem 0.15rem 1rem;
+}
+
+.diary-tr-log-memo-empty {
+  margin: 0;
+  padding: 1.25rem 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.diary-tr-log-memo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.diary-tr-log-memo-item {
+  margin: 0;
+  padding: 0.72rem 0;
+  border-bottom: 1px solid #e8ecf2;
+}
+
+.diary-tr-log-memo-item:first-child {
+  padding-top: 0.15rem;
+}
+
+.diary-tr-log-memo-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.diary-tr-log-memo-meta {
+  margin: 0 0 0.28rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.diary-tr-log-memo-body {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.65;
+  color: #475569;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 /* 시간사용 레포트: 데이·먼스 아래 — Time 탭과 동일 lp-modal-datetime-card + date-native-wrap */
@@ -591,6 +652,10 @@
 .diary-tr-routine-kpi-shell {
   padding-top: 0.25rem;
   padding-bottom: 0.65rem;
+}
+
+.diary-tr-routine-kpi-freq {
+  margin-top: 0.15rem !important;
 }
 
 .diary-tr-invest-quote-headline {

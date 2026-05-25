@@ -28,13 +28,21 @@ import {
 } from "../utils/timeLedgerEntriesModel.js";
 import { TIME_DAILY_BUDGET_GOALS_KEY } from "../utils/timeDailyBudgetModel.js";
 import { KPI_MAP_STORAGE_KEYS } from "../utils/kpiMapLocalStorage.js";
-import { getAccumulatedMinutesForKpiIdInDateRange } from "../utils/timeKpiSync.js";
+import {
+  countCalendarDaysInInclusiveRange,
+  countKpiDaysWithRecordedMinutesInDateRange,
+  getAccumulatedMinutesForKpiIdInDateRange,
+} from "../utils/timeKpiSync.js";
 import { getBudgetDayReportForDay } from "../utils/diaryBudgetDayReport.js";
+import {
+  getDailyTimeReportLogMemos,
+  getMonthlyTimeReportLogMemos,
+} from "../utils/diaryTimeReportLogMemos.js";
+import { getTaskOptionByName } from "../utils/timeTaskOptionsModel.js";
 import { getAppFooterActionsSlot, APP_FOOTER_ICON_BTN_CLASS } from "../utils/appFooterShell.js";
 import { bindLpHorizontalPanNavigate } from "../utils/lpHorizontalPanNavigate.js";
 import {
   formatIntegerMinutesDurationKo,
-  formatInvestReclaimWonDisplay,
   formatLedgerLossKrwDisplay,
   getDailyInvestReclaimSnapshot,
   getDailyProductiveCategoryInvestBarsSnapshot,
@@ -117,18 +125,31 @@ const DIARY_PROD_CAT_BAR_FILL = {
   other_prod: "#CBD5E1",
 };
 
+/** 예산·소비 막대 — 비생산 카테고리(도넛 파스텔 톤) */
+const DIARY_CONSUMPTION_CAT_BAR_FILL = {
+  media_watch: "#FCA5A5",
+  pleasure: "#FDBA74",
+  unhealthy: "#FCD34D",
+  moneylosing: "#5EEAD4",
+  unhappiness: "#F9A8D4",
+};
+
+/** 과제명 → 막대 색(투자·소비 레포트와 동일 카테고리 매핑, 없으면 파스텔 순환) */
+function diaryTrBarFillForTaskName(taskName, fallbackIndex = 0) {
+  const opt = getTaskOptionByName(String(taskName || "").trim());
+  const cat = String(opt?.category || "").trim().toLowerCase();
+  if (cat && DIARY_PROD_CAT_BAR_FILL[cat]) return DIARY_PROD_CAT_BAR_FILL[cat];
+  if (cat && DIARY_CONSUMPTION_CAT_BAR_FILL[cat]) return DIARY_CONSUMPTION_CAT_BAR_FILL[cat];
+  const prod = String(opt?.productivity || "").trim().toLowerCase();
+  if (prod === "productive") return DIARY_PROD_CAT_BAR_FILL.other_prod;
+  return REPORT_DONUT_PASTELS[fallbackIndex % REPORT_DONUT_PASTELS.length];
+}
+
 /** 생산 카테고리 막대 스냅샷과 동일 출처로 분 단위 시간(카드 그리드용) */
 function investProdCategoryMinutesRounded(snap, categoryKey) {
   const seg = (snap?.segments ?? []).find((s) => s.categoryKey === categoryKey);
   if (!seg || !(seg.hours > 0) || !Number.isFinite(seg.hours)) return 0;
   return Math.round(seg.hours * 60);
-}
-
-/** 생산 카테고리별 투자 금액(시급×시간) — 카드 그리드용 */
-function investProdCategoryWon(snap, categoryKey) {
-  const seg = (snap?.segments ?? []).find((s) => s.categoryKey === categoryKey);
-  if (!seg || !(seg.won > 0)) return 0;
-  return seg.won;
 }
 
 /** 탭 2 통제일기 Q&A 템플릿 */
@@ -445,7 +466,7 @@ export function render() {
     } catch (_) {}
   }
 
-  /** 탭 5 로그 — 예산과 동형: 데이만·날짜 앵커 별도 저장 (본문은 추후 실제 기록 UI) */
+  /** 탭 5 로그 — 데이/먼스·날짜 앵커(소비·투자와 동일 UI, 별도 저장) */
   let tab5ViewGranularity = "day";
   const LP_TAB5_REPORT_DATE_KEY = "lp_tab5_report_anchor_date";
   let tab5ReportAnchorDateStr = (() => {
@@ -487,8 +508,15 @@ export function render() {
     lastTimeReportAnchorShiftMs = now;
 
     const isMonth =
-      (currentTabId === "2" && tab2ViewGranularity === "month") ||
-      (currentTabId === "3" && tab3ViewGranularity === "month");
+      currentTabId === "4"
+        ? false
+        : currentTabId === "2"
+          ? tab2ViewGranularity === "month"
+          : currentTabId === "3"
+            ? tab3ViewGranularity === "month"
+            : currentTabId === "5"
+              ? tab5ViewGranularity === "month"
+              : false;
 
     let anchor = toDateStr(new Date());
     if (currentTabId === "2") anchor = tab2ReportAnchorDateStr;
@@ -1207,41 +1235,6 @@ export function render() {
     ].join(" ");
   }
 
-  /** 투자 탭: 다시 받을 금액(맨 위 · 아래에 생산 막대 차트 · 투자 시간은 waste-mini 블록) */
-  function mountTimeReportInvestBank(scrollWrap, ymdTen, granularity) {
-    const snap =
-      granularity === "month"
-        ? getMonthlyInvestReclaimSnapshot(ymdTen)
-        : getDailyInvestReclaimSnapshot(ymdTen);
-
-    const section = document.createElement("section");
-    section.className = "diary-tr-invest-shell";
-    section.setAttribute("aria-label", "투자 바이백 금액");
-
-    const card = document.createElement("div");
-    card.className = "diary-tr-invest-card";
-
-    const reclaimLbl = document.createElement("p");
-    reclaimLbl.className = "diary-tr-invest-reclaim-caption";
-    reclaimLbl.textContent = "다시 받을 금액";
-
-    const reclaimAmt = document.createElement("p");
-    reclaimAmt.className =
-      "diary-tr-summary-money diary-tr-summary-money--gain";
-    reclaimAmt.textContent = formatInvestReclaimWonDisplay(snap.reclaimWon);
-
-    card.appendChild(reclaimLbl);
-    card.appendChild(reclaimAmt);
-    if (!(snap.hourlyRate > 0)) {
-      const hint = document.createElement("p");
-      hint.className = "diary-tr-invest-hint";
-      hint.textContent = "시급을 입력하면 원화가 계산됩니다.";
-      card.appendChild(hint);
-    }
-    section.appendChild(card);
-    scrollWrap.appendChild(section);
-  }
-
   /** 투자 탭: 생산 과제 카테고리별 비중(가로 막대) */
   function mountTimeReportProductiveBars(scrollWrap, ymdTen, granularity) {
     const snap =
@@ -1330,7 +1323,6 @@ export function render() {
 
   function mountBudgetDayReportBlocks(scrollWrap, ymdTen) {
     const snap = getBudgetDayReportForDay(ymdTen);
-    const barColor = "#93C5FD";
 
     function appendBarSection(title, rows, sectionTitleOpts) {
       if (!rows.length) return;
@@ -1342,7 +1334,7 @@ export function render() {
       const card = document.createElement("div");
       card.className = "diary-tr-prod-bars-card";
 
-      rows.forEach((row) => {
+      rows.forEach((row, rowIndex) => {
         const rowEl = document.createElement("div");
         rowEl.className = "diary-tr-prod-bar-row";
         const meta = document.createElement("div");
@@ -1362,7 +1354,7 @@ export function render() {
         fill.className = "diary-tr-prod-bar-fill";
         const w = Math.min(100, Math.max(0, row.barPct));
         fill.style.width = `${w}%`;
-        fill.style.background = barColor;
+        fill.style.background = diaryTrBarFillForTaskName(row.taskName, rowIndex);
         track.appendChild(fill);
         rowEl.appendChild(meta);
         rowEl.appendChild(track);
@@ -1405,6 +1397,60 @@ export function render() {
       section.appendChild(card);
       scrollWrap.appendChild(section);
     }
+  }
+
+  /** 로그 탭: 해당 일·월 시간가계부 과제 메모만 — 미니멀 목록 */
+  function mountTimeReportLogMemos(scrollWrap, ymdTen, granularity) {
+    const rows =
+      granularity === "month"
+        ? getMonthlyTimeReportLogMemos(ymdTen)
+        : getDailyTimeReportLogMemos(ymdTen);
+
+    const section = document.createElement("section");
+    section.className = "diary-tr-log-memo-shell";
+    section.setAttribute(
+      "aria-label",
+      granularity === "month" ? "월별 과제 메모" : "일별 과제 메모",
+    );
+
+    if (!rows.length) {
+      const empty = document.createElement("p");
+      empty.className = "diary-tr-log-memo-empty";
+      empty.textContent =
+        granularity === "month"
+          ? "이 달에 남긴 과제 메모가 없습니다."
+          : "이 날 남긴 과제 메모가 없습니다.";
+      section.appendChild(empty);
+      scrollWrap.appendChild(section);
+      return;
+    }
+
+    const list = document.createElement("ul");
+    list.className = "diary-tr-log-memo-list";
+
+    rows.forEach((row) => {
+      const item = document.createElement("li");
+      item.className = "diary-tr-log-memo-item";
+
+      const meta = document.createElement("p");
+      meta.className = "diary-tr-log-memo-meta";
+      const metaParts = [];
+      if (granularity === "month") metaParts.push(formatDateDisplay(row.dateYmd));
+      if (row.timeLabel) metaParts.push(row.timeLabel);
+      metaParts.push(row.taskName);
+      meta.textContent = metaParts.join(" · ");
+
+      const body = document.createElement("p");
+      body.className = "diary-tr-log-memo-body";
+      body.textContent = row.memoText;
+
+      item.appendChild(meta);
+      item.appendChild(body);
+      list.appendChild(item);
+    });
+
+    section.appendChild(list);
+    scrollWrap.appendChild(section);
   }
 
   /** 시간 레포트 카드 탭 → 해당 카테고리 과제·시간 목록(투자·소비 공통) */
@@ -1558,8 +1604,6 @@ export function render() {
 
     defs.forEach((def) => {
       const mins = investProdCategoryMinutesRounded(snap, def.key);
-      const showMoney = (snap?.hourlyRate ?? 0) > 0;
-      const gainWon = showMoney ? investProdCategoryWon(snap, def.key) : 0;
       const art = document.createElement("article");
       art.className =
         "diary-tr-summary-card diary-tr-invest-quote-card diary-tr-invest-quote-card--action";
@@ -1592,14 +1636,6 @@ export function render() {
       timeEl.className = "diary-tr-summary-time";
       timeEl.textContent = formatIntegerMinutesDurationKo(mins);
       art.appendChild(timeEl);
-
-      if (gainWon > 0) {
-        appendTimeReportSummaryMoney(
-          art,
-          formatInvestReclaimWonDisplay(gainWon),
-          "gain",
-        );
-      }
 
       if (def.key === "health" && healthyMeals.length > 0) {
         const ul = document.createElement("ul");
@@ -1993,12 +2029,29 @@ export function render() {
       h.className = "diary-tr-summary-title";
       h.textContent = k.name;
 
+      if (granularity === "month") {
+        const daysInMonth = countCalendarDaysInInclusiveRange(start, end);
+        const activeDays = countKpiDaysWithRecordedMinutesInDateRange(
+          k.id,
+          start,
+          end,
+        );
+        const freqEl = document.createElement("p");
+        freqEl.className =
+          "diary-tr-invest-quote-subtitle diary-tr-routine-kpi-freq";
+        freqEl.textContent = `${daysInMonth}일 중 ${activeDays}일`;
+        art.appendChild(iconSlot);
+        art.appendChild(h);
+        art.appendChild(freqEl);
+      } else {
+        art.appendChild(iconSlot);
+        art.appendChild(h);
+      }
+
       const timeEl = document.createElement("p");
       timeEl.className = "diary-tr-summary-time";
       timeEl.textContent = formatIntegerMinutesDurationKo(mins);
 
-      art.appendChild(iconSlot);
-      art.appendChild(h);
       art.appendChild(timeEl);
       grid.appendChild(art);
     });
@@ -2070,13 +2123,6 @@ export function render() {
 
     shell.appendChild(ttl);
     shell.appendChild(val);
-    if (snap.hourlyRate > 0 && snap.reclaimWon > 0) {
-      appendTimeReportSummaryMoney(
-        shell,
-        formatInvestReclaimWonDisplay(snap.reclaimWon),
-        "gain",
-      );
-    }
     scrollWrap.appendChild(shell);
   }
 
@@ -2269,13 +2315,15 @@ export function render() {
     }
 
     const isMonth =
-      currentTabId === "4" || currentTabId === "5"
+      currentTabId === "4"
         ? false
         : currentTabId === "2"
           ? tab2ViewGranularity === "month"
           : currentTabId === "3"
             ? tab3ViewGranularity === "month"
-            : false;
+            : currentTabId === "5"
+              ? tab5ViewGranularity === "month"
+              : false;
 
     function persistAnchorFromInput(v) {
       if (!v) return;
@@ -2444,11 +2492,10 @@ export function render() {
     reportChrome.hidden = !showReportChrome;
     topToolsNavControls.hidden =
       isConsumptionTab || currentTabId === "4" || currentTabId === "5";
-    /* 예산·로그(탭4·5): 새 글 + 숨김, DAY/MONTH 토글 숨김 */
     topAddBtn.hidden =
       isConsumptionTab || currentTabId === "4" || currentTabId === "5";
-    reportChromeToggleRow.hidden =
-      currentTabId === "4" || currentTabId === "5";
+    /* 예산(탭4): DAY/MONTH 토글 숨김 · 로그(탭5)는 소비·투자와 동일 */
+    reportChromeToggleRow.hidden = currentTabId === "4";
 
     reportChromeDateRow.replaceChildren();
     if (showReportChrome) {
@@ -2467,8 +2514,7 @@ export function render() {
       tab4ViewGranularity = "day";
       gNow = "day";
     } else if (currentTabId === "5") {
-      tab5ViewGranularity = "day";
-      gNow = "day";
+      gNow = tab5ViewGranularity === "month" ? "month" : "day";
     }
     granularityDayBtn.classList.toggle("is-active", gNow === "day");
     granularityMonthBtn.classList.toggle("is-active", gNow === "month");
@@ -2589,18 +2635,20 @@ export function render() {
       currentTabId === "2" &&
       (tab2ViewGranularity === "day" || tab2ViewGranularity === "month");
     const showTab4BudgetDayReport = currentTabId === "4";
-    const showTab5LogDayShell = currentTabId === "5";
+    const showTab5LogReport =
+      currentTabId === "5" &&
+      (tab5ViewGranularity === "day" || tab5ViewGranularity === "month");
 
     if (
       showTab3ConsumptionReport ||
       showTab2InvestReport ||
       showTab4BudgetDayReport ||
-      showTab5LogDayShell
+      showTab5LogReport
     ) {
       scrollWrap.setAttribute("data-lp-time-report-body", "");
       scrollWrap.classList.add("diary-content-scroll--time-report-swipe");
     }
-    if (showTab4BudgetDayReport || showTab5LogDayShell) {
+    if (showTab4BudgetDayReport || showTab5LogReport) {
       scrollWrap.setAttribute("data-lp-time-report-vertical-start", "");
     }
     contentArea.appendChild(scrollWrap);
@@ -2608,7 +2656,6 @@ export function render() {
     if (showTab2InvestReport) {
       const ymd = layoutWrap.dataset.tab2SelectedDate || tab2ReportAnchorDateStr;
       const g = tab2ViewGranularity === "month" ? "month" : "day";
-      mountTimeReportInvestBank(scrollWrap, ymd, g);
       mountTimeReportProductiveBars(scrollWrap, ymd, g);
       mountTimeReportInvestSectionHeader(scrollWrap);
       mountTimeReportInvestMini(scrollWrap, ymd, g);
@@ -2775,8 +2822,60 @@ export function render() {
       }
     }
 
-    if (showTab5LogDayShell) {
-      /* 로그 탭 본문 — 추후 새 UI */
+    if (showTab5LogReport) {
+      const ymd = layoutWrap.dataset.tab5SelectedDate || tab5ReportAnchorDateStr;
+      const g = tab5ViewGranularity === "month" ? "month" : "day";
+      mountTimeReportLogMemos(scrollWrap, ymd, g);
+
+      if (!reportLedgerRefreshFromPull && !skipDupLedgerPull) {
+        const k = readTimeLedgerPullRangeForKpiTabsYmd();
+        let rs = k.rangeStart;
+        let re = k.rangeEnd;
+        const yTen = normalizeDiaryDateStr(ymd);
+        if (g === "day") {
+          if (/^\d{4}-\d{2}-\d{2}$/.test(yTen)) {
+            if (yTen < rs) rs = yTen;
+            if (yTen > re) re = yTen;
+          }
+        } else if (/^\d{4}-\d{2}-\d{2}$/.test(yTen)) {
+          const monthRng = getTimeReportMonthInclusiveRange(yTen);
+          if (monthRng) {
+            if (monthRng.start < rs) rs = monthRng.start;
+            if (monthRng.end > re) re = monthRng.end;
+          }
+        }
+        const anchorsAtStart = {
+          tabId: currentTabId,
+          granularity: tab5ViewGranularity,
+          ymd: yTen,
+          monthYm:
+            g === "month" && /^\d{4}-\d{2}-\d{2}$/.test(yTen) ? yTen.slice(0, 7) : null,
+        };
+        void pullTimeLedgerEntriesForDateRange(rs, re).finally(() => {
+          if (
+            anchorsAtStart.tabId !== currentTabId ||
+            anchorsAtStart.granularity !== tab5ViewGranularity
+          ) {
+            return;
+          }
+          if (anchorsAtStart.monthYm) {
+            const curYm = normalizeDiaryDateStr(tab5ReportAnchorDateStr).slice(0, 7);
+            if (curYm !== anchorsAtStart.monthYm) return;
+          } else if (
+            anchorsAtStart.ymd &&
+            /^\d{4}-\d{2}-\d{2}$/.test(normalizeDiaryDateStr(tab5ReportAnchorDateStr)) &&
+            anchorsAtStart.ymd !== normalizeDiaryDateStr(tab5ReportAnchorDateStr)
+          ) {
+            return;
+          }
+          try {
+            reportLedgerRefreshFromPull = true;
+            renderLayout();
+          } finally {
+            reportLedgerRefreshFromPull = false;
+          }
+        });
+      }
     }
 
     layout.appendChild(contentArea);
@@ -2820,9 +2919,10 @@ export function render() {
       renderLayout();
     });
     granularityMonthBtn.addEventListener("click", () => {
-      if (currentTabId === "4" || currentTabId === "5") return;
+      if (currentTabId === "4") return;
       if (currentTabId === "2") tab2ViewGranularity = "month";
       else if (currentTabId === "3") tab3ViewGranularity = "month";
+      else if (currentTabId === "5") tab5ViewGranularity = "month";
       renderLayout();
     });
 

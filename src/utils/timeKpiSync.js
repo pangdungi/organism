@@ -126,6 +126,57 @@ export function getAccumulatedMinutesForKpiIdInDateRange(
   return accumulateMinutesForKpiFromRows(kpiId, filtered, []);
 }
 
+function normalizeYmdTenForRange(raw) {
+  return String(raw || "").replace(/\//g, "-").slice(0, 10);
+}
+
+/** YYYY-MM-DD 구간(양끝 포함)의 달력 일 수 */
+export function countCalendarDaysInInclusiveRange(
+  startYmdTen,
+  endYmdTenInclusive,
+) {
+  const s = normalizeYmdTenForRange(startYmdTen);
+  const e = normalizeYmdTenForRange(endYmdTenInclusive);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || !/^\d{4}-\d{2}-\d{2}$/.test(e)) return 0;
+  if (s > e) return 0;
+  const sy = parseInt(s.slice(0, 4), 10);
+  const sm = parseInt(s.slice(5, 7), 10) - 1;
+  const sd = parseInt(s.slice(8, 10), 10);
+  const ey = parseInt(e.slice(0, 4), 10);
+  const em = parseInt(e.slice(5, 7), 10) - 1;
+  const ed = parseInt(e.slice(8, 10), 10);
+  const t0 = Date.UTC(sy, sm, sd);
+  const t1 = Date.UTC(ey, em, ed);
+  return Math.floor((t1 - t0) / 86400000) + 1;
+}
+
+/**
+ * KPI id · 구간 안에서 가계부 기록 1분 이상인 날짜 수(루틴트랙커 월별 「N일 중 M일」).
+ */
+export function countKpiDaysWithRecordedMinutesInDateRange(
+  kpiId,
+  startYmdTen,
+  endYmdTenInclusive,
+) {
+  const s = normalizeYmdTenForRange(startYmdTen);
+  const e = normalizeYmdTenForRange(endYmdTenInclusive);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || !/^\d{4}-\d{2}-\d{2}$/.test(e)) return 0;
+  if (s > e) return 0;
+  /** @type {Map<string, object[]>} */
+  const rowsByDay = new Map();
+  loadTimeRows().forEach((r) => {
+    const d = normalizeYmdTenForRange(r.date);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || d < s || d > e) return;
+    if (!rowsByDay.has(d)) rowsByDay.set(d, []);
+    rowsByDay.get(d).push(r);
+  });
+  let activeDays = 0;
+  for (const rows of rowsByDay.values()) {
+    if (accumulateMinutesForKpiFromRows(kpiId, rows, []) >= 1) activeDays++;
+  }
+  return activeDays;
+}
+
 /**
  * 과제명(태스크명)으로 누적 시간(분) — KPI가 아닌 일반 과제·레거시 호환용
  * @param {string} taskName
