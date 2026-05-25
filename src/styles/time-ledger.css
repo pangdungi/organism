@@ -620,7 +620,7 @@
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-/* 사용내역 — 1행 과제|소요 / 2행 가격(전체·우측) / 3행 메모 / 좌 시작·연결·마감 */
+/* 사용내역 — 좌 시작·연결·마감 | 우 1–2행 아이콘·과제명·소요/가격 · 3행~ 메모 */
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout,
@@ -628,11 +628,55 @@
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-rows: auto auto auto auto;
-  column-gap: 0.65rem;
-  row-gap: 0.35rem;
+  grid-template-columns: var(--time-ledger-usage-time-col-w, 2.85rem) auto minmax(0, 1fr) max-content;
+  grid-template-rows: auto 1fr auto;
+  column-gap: 0.5rem;
+  row-gap: 0;
   align-items: stretch;
+  --time-ledger-usage-header-min-h: 3.55rem;
+  --time-ledger-usage-card-inset: 0.65rem;
+  --time-ledger-usage-time-col-w: 2.85rem;
+  --time-ledger-usage-time-line-h: calc(0.8125rem * 1.2);
+}
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout:has(.calendar-1day-timeline-card-memo),
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout:has(.calendar-1day-timeline-card-memo) {
+  grid-template-rows: auto minmax(1.25rem, auto) auto;
+}
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout:not(:has(.calendar-1day-timeline-card-memo))::before,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout:not(:has(.calendar-1day-timeline-card-memo))::before,
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout:not(:has(.calendar-1day-timeline-card-memo))
+  > .time-ledger-usage-icon-cell,
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout:not(:has(.calendar-1day-timeline-card-memo))
+  > .calendar-1day-timeline-card-title,
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout:not(:has(.calendar-1day-timeline-card-memo))
+  > .time-ledger-usage-stats-col,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout:not(:has(.calendar-1day-timeline-card-memo))
+  > .time-ledger-usage-icon-cell,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout:not(:has(.calendar-1day-timeline-card-memo))
+  > .calendar-1day-timeline-card-title,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout:not(:has(.calendar-1day-timeline-card-memo))
+  > .time-ledger-usage-stats-col {
+  grid-row: 1 / 4;
 }
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
@@ -641,10 +685,10 @@
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout::before {
   content: "";
-  grid-column: 2 / 4;
-  grid-row: 1 / 5;
-  border: 1px dashed #cbd5e1;
-  border-radius: 0.55rem;
+  grid-column: 2 / 5;
+  grid-row: 1 / 4;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.65rem;
   pointer-events: none;
   z-index: 0;
   align-self: stretch;
@@ -668,79 +712,50 @@
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout.calendar-1day-timeline-card--in-progress
   .calendar-1day-timeline-card-end {
-  background: var(--idea-cloud, #f0f4fa);
-  color: #64748b;
+  color: #94a3b8;
 }
-/* 시작·마감 시각 칸 배경 — 생산 연빨강 · 비생산 연파랑 · 수면 그린 */
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout.calendar-1day-timeline-card--usage-slot-productive
-  .calendar-1day-timeline-card-start,
-.time-ledger-view
-  .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout.calendar-1day-timeline-card--usage-slot-productive
-  .calendar-1day-timeline-card-end,
+  > .time-ledger-usage-icon-cell,
 [data-legacy~="time-ledger-view"]
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout.calendar-1day-timeline-card--usage-slot-productive
-  .calendar-1day-timeline-card-start,
-[data-legacy~="time-ledger-view"]
-  .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout.calendar-1day-timeline-card--usage-slot-productive
-  .calendar-1day-timeline-card-end {
+  > .time-ledger-usage-icon-cell {
   background: #fceef0;
-  color: #a84248;
 }
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout.calendar-1day-timeline-card--usage-slot-nonproductive
-  .calendar-1day-timeline-card-start,
-.time-ledger-view
-  .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout.calendar-1day-timeline-card--usage-slot-nonproductive
-  .calendar-1day-timeline-card-end,
+  > .time-ledger-usage-icon-cell,
 [data-legacy~="time-ledger-view"]
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout.calendar-1day-timeline-card--usage-slot-nonproductive
-  .calendar-1day-timeline-card-start,
-[data-legacy~="time-ledger-view"]
-  .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout.calendar-1day-timeline-card--usage-slot-nonproductive
-  .calendar-1day-timeline-card-end {
+  > .time-ledger-usage-icon-cell {
   background: #f2f8fc;
-  color: #1a5fa8;
 }
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout.calendar-1day-timeline-card--usage-slot-sleep
-  .calendar-1day-timeline-card-start,
-.time-ledger-view
-  .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout.calendar-1day-timeline-card--usage-slot-sleep
-  .calendar-1day-timeline-card-end,
+  > .time-ledger-usage-icon-cell,
 [data-legacy~="time-ledger-view"]
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout.calendar-1day-timeline-card--usage-slot-sleep
-  .calendar-1day-timeline-card-start,
-[data-legacy~="time-ledger-view"]
-  .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout.calendar-1day-timeline-card--usage-slot-sleep
-  .calendar-1day-timeline-card-end {
+  > .time-ledger-usage-icon-cell {
   background: #eaf5ec;
-  color: #2f7a4a;
 }
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout
-  > .time-ledger-usage-title-row,
+  > .time-ledger-usage-icon-cell,
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout
-  > .calendar-1day-timeline-card-duration,
+  > .calendar-1day-timeline-card-title,
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout
-  > .diary-tab5-timeline-price,
+  > .time-ledger-usage-stats-col,
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout
@@ -748,61 +763,58 @@
 [data-legacy~="time-ledger-view"]
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout
-  > .time-ledger-usage-title-row,
+  > .time-ledger-usage-icon-cell,
 [data-legacy~="time-ledger-view"]
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout
-  > .calendar-1day-timeline-card-duration,
+  > .calendar-1day-timeline-card-title,
 [data-legacy~="time-ledger-view"]
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout
-  > .diary-tab5-timeline-price,
+  > .time-ledger-usage-stats-col,
 [data-legacy~="time-ledger-view"]
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout
   > .calendar-1day-timeline-card-memo {
   box-sizing: border-box;
-  padding-inline: 0.5rem;
   position: relative;
   z-index: 1;
 }
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout
-  > .time-ledger-usage-title-row,
+  > .time-ledger-usage-icon-cell,
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout
-  > .calendar-1day-timeline-card-duration,
-[data-legacy~="time-ledger-view"]
-  .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout
-  > .time-ledger-usage-title-row,
-[data-legacy~="time-ledger-view"]
-  .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout
-  > .calendar-1day-timeline-card-duration {
-  padding-top: 0.4rem;
-}
+  > .calendar-1day-timeline-card-title,
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout
-  > .calendar-1day-timeline-card-memo,
+  > .time-ledger-usage-stats-col,
 [data-legacy~="time-ledger-view"]
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout
-  > .calendar-1day-timeline-card-memo {
-  padding-bottom: 0.4rem;
+  > .time-ledger-usage-icon-cell,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout
+  > .calendar-1day-timeline-card-title,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout
+  > .time-ledger-usage-stats-col {
+  min-height: var(--time-ledger-usage-header-min-h);
 }
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout:not(:has(.calendar-1day-timeline-card-memo))
-  > .diary-tab5-timeline-price,
+  > .time-ledger-usage-stats-col,
 [data-legacy~="time-ledger-view"]
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout:not(:has(.calendar-1day-timeline-card-memo))
-  > .diary-tab5-timeline-price {
-  padding-bottom: 0.4rem;
+  > .time-ledger-usage-stats-col {
+  padding-bottom: calc(var(--time-ledger-usage-card-inset) + 0.05rem);
 }
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
@@ -814,17 +826,25 @@
   .calendar-1day-timeline-card-start {
   grid-column: 1;
   grid-row: 1;
-  align-self: center;
+  justify-self: center;
+  width: 100%;
+  text-align: center;
+  align-self: start;
   box-sizing: border-box;
-  padding: 0.12rem 0.38rem;
-  border: 1px dashed #cbd5e1;
-  border-radius: 0.45rem;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   font-size: 0.8125rem;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
   line-height: 1.2;
-  color: #5f6b7a;
+  color: #94a3b8;
+  position: relative;
+  z-index: 2;
+  background: #fff;
+  padding-bottom: 0.12rem;
 }
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
@@ -835,9 +855,17 @@
   .calendar-1day-timeline-card--usage-layout
   .calendar-1day-timeline-card-time-connector {
   grid-column: 1;
-  grid-row: 2 / 4;
+  grid-row: 1 / 4;
   align-self: stretch;
   justify-self: center;
+  width: 2px;
+  min-height: 0;
+  margin-top: var(--time-ledger-usage-time-line-h);
+  margin-bottom: var(--time-ledger-usage-time-line-h);
+  border: none;
+  border-radius: 1px;
+  background: #dbe3ec;
+  z-index: 1;
 }
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
@@ -848,30 +876,94 @@
   .calendar-1day-timeline-card--usage-layout
   .calendar-1day-timeline-card-end {
   grid-column: 1;
-  grid-row: 4;
-  align-self: center;
+  grid-row: 3;
+  justify-self: center;
+  width: 100%;
+  text-align: center;
+  align-self: end;
   box-sizing: border-box;
-  padding: 0.12rem 0.38rem;
-  border: 1px dashed #cbd5e1;
-  border-radius: 0.45rem;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   font-size: 0.8125rem;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
   line-height: 1.2;
   white-space: nowrap;
-  color: #5f6b7a;
+  color: #94a3b8;
+  position: relative;
+  z-index: 2;
+  background: #fff;
+  padding-top: 0.12rem;
 }
-.time-ledger-view .time-ledger-usage-title-row,
-[data-legacy~="time-ledger-view"] .time-ledger-usage-title-row {
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout
+  > .time-ledger-usage-icon-cell,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout
+  > .time-ledger-usage-icon-cell {
   grid-column: 2;
-  grid-row: 1;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.35rem;
-  min-width: 0;
+  grid-row: 1 / 3;
   align-self: center;
+  justify-self: start;
+  width: 2.5rem;
+  height: 2.5rem;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  max-height: 2.5rem;
+  margin: var(--time-ledger-usage-card-inset) 0 var(--time-ledger-usage-card-inset)
+    var(--time-ledger-usage-card-inset);
+  padding: 0.32rem;
+  border-radius: 0.55rem;
+  box-sizing: border-box;
+}
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout
+  > .calendar-1day-timeline-card-title,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout
+  > .calendar-1day-timeline-card-title {
+  grid-column: 3;
+  grid-row: 1 / 3;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  padding: var(--time-ledger-usage-card-inset) 0.25rem var(--time-ledger-usage-card-inset) 0.15rem;
+  font-size: 0.9375rem;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+  color: #1a1a1a;
+}
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout
+  > .time-ledger-usage-stats-col,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout
+  > .time-ledger-usage-stats-col {
+  grid-column: 4;
+  grid-row: 1 / 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  align-self: stretch;
+  gap: 0.15rem;
+  width: max-content;
+  max-width: 5.25rem;
+  padding: calc(var(--time-ledger-usage-card-inset) + 0.05rem)
+    calc(var(--time-ledger-usage-card-inset) + 0.05rem)
+    var(--time-ledger-usage-card-inset) 0.15rem;
+  box-sizing: border-box;
 }
 .time-ledger-view .time-ledger-usage-icon-cell,
 [data-legacy~="time-ledger-view"] .time-ledger-usage-icon-cell {
@@ -882,19 +974,53 @@
 }
 .time-ledger-view .time-ledger-usage-icon-cell > img,
 [data-legacy~="time-ledger-view"] .time-ledger-usage-icon-cell > img {
-  width: 1em;
-  height: 1em;
+  width: 1.2rem;
+  height: 1.2rem;
+  max-width: none;
   object-fit: contain;
   display: block;
 }
 .time-ledger-view
-  .time-ledger-usage-title-row
-  .calendar-1day-timeline-card-title,
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout
+  .time-ledger-usage-stats-col
+  .calendar-1day-timeline-card-duration,
 [data-legacy~="time-ledger-view"]
-  .time-ledger-usage-title-row
-  .calendar-1day-timeline-card-title {
-  flex: 1 1 auto;
-  min-width: 0;
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout
+  .time-ledger-usage-stats-col
+  .calendar-1day-timeline-card-duration {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1rem;
+  padding: 0.04rem 0.3rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.15;
+  white-space: nowrap;
+  text-align: right;
+}
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout
+  .time-ledger-usage-stats-col
+  .diary-tab5-timeline-price,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout
+  .time-ledger-usage-stats-col
+  .diary-tab5-timeline-price {
+  display: block;
+  min-height: 1rem;
+  line-height: 1.15;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
 }
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
@@ -904,44 +1030,17 @@
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout
   .calendar-1day-timeline-card-memo {
-  grid-column: 2 / 4;
+  grid-column: 2 / 5;
   grid-row: 3;
   min-width: 0;
   align-self: start;
   text-align: left;
-}
-.time-ledger-view
-  .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout
-  .calendar-1day-timeline-card-duration,
-[data-legacy~="time-ledger-view"]
-  .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout
-  .calendar-1day-timeline-card-duration {
-  grid-column: 3;
-  grid-row: 1;
-  margin-left: 0;
-  text-align: right;
-  white-space: nowrap;
-  align-self: center;
-  justify-self: end;
-}
-.time-ledger-view
-  .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout
-  .diary-tab5-timeline-price,
-[data-legacy~="time-ledger-view"]
-  .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout
-  .diary-tab5-timeline-price {
-  grid-column: 2 / 4;
-  grid-row: 2;
-  width: 100%;
-  box-sizing: border-box;
-  text-align: right;
-  white-space: nowrap;
-  align-self: center;
-  justify-self: stretch;
+  border-top: 1px solid #e2e8f0;
+  margin-inline: var(--time-ledger-usage-card-inset);
+  padding: 0.55rem 0 var(--time-ledger-usage-card-inset);
+  color: #94a3b8;
+  font-size: 0.8125rem;
+  line-height: 1.45;
 }
 
 /* 시간 사용내역 조회 기간 모달 — 패널·날짜 너비는 할일 수정 모달과 동일(lp-modals 26rem) */

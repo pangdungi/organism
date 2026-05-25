@@ -1439,10 +1439,11 @@ function applyMobileCardPriceEl(priceEl, rowData, hourlyRate) {
   lpTokenAdd(priceEl, `time-mobile-card-price--${slot}`);
   priceEl.classList.add(`time-mobile-card-price--${slot}`);
   if (slot === "other") {
-    priceEl.textContent = "";
+    priceEl.textContent = "\u00a0";
     return;
   }
-  priceEl.textContent = formatTimeLedgerActionPriceDisplay(value, slot);
+  const display = formatTimeLedgerActionPriceDisplay(value, slot);
+  priceEl.textContent = display || "\u00a0";
 }
 
 function mobileCardNeedsLiveClock(rowData) {
@@ -3931,7 +3932,7 @@ function formatLedgerTimelineEndClock(row) {
   return "—";
 }
 
-/** 모바일 시간가계부 카드 — 4열(시간|아이콘|과제·메모|소요·가격) */
+/** 모바일 시간가계부 카드 — 좌 시간열 | 우(아이콘·과제명 1–2행·소요/가격·메모) */
 function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   const taskLabel = String(rowData.taskName || "").trim() || "(제목 없음)";
   const memoText = String(rowData.feedback || "").trim();
@@ -3987,9 +3988,6 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   endEl.className = "calendar-1day-timeline-card-end";
   endEl.textContent = endClock;
 
-  card.appendChild(startEl);
-  card.appendChild(timeConnector);
-
   const iconCell = document.createElement("div");
   iconCell.className = "time-ledger-usage-icon-cell";
   if (iconSrc) {
@@ -4005,11 +4003,6 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   titleEl.className = "calendar-1day-timeline-card-title";
   titleEl.textContent = taskLabel;
 
-  const titleRow = document.createElement("div");
-  titleRow.className = "time-ledger-usage-title-row";
-  titleRow.appendChild(iconCell);
-  titleRow.appendChild(titleEl);
-
   const durRow = document.createElement("span");
   durRow.className = "calendar-1day-timeline-card-duration";
   durRow.textContent = formatIntegerMinutesDurationKo(durMin);
@@ -4018,11 +4011,18 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   priceEl.className =
     "diary-tab5-timeline-price time-mobile-card-price time-mobile-card-price--" +
     priceSlot;
-  priceEl.textContent = priceText;
+  priceEl.textContent = priceText || "\u00a0";
 
-  card.appendChild(titleRow);
-  card.appendChild(durRow);
-  card.appendChild(priceEl);
+  const statsCol = document.createElement("div");
+  statsCol.className = "time-ledger-usage-stats-col";
+  statsCol.appendChild(durRow);
+  statsCol.appendChild(priceEl);
+
+  card.appendChild(startEl);
+  card.appendChild(timeConnector);
+  card.appendChild(iconCell);
+  card.appendChild(titleEl);
+  card.appendChild(statsCol);
   if (memoText) {
     const memoEl = document.createElement("div");
     memoEl.className = "calendar-1day-timeline-card-memo";
