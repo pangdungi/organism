@@ -54,7 +54,7 @@ import { formatKpiCardHeroHtml } from "../utils/kpiViewModal.js";
 import { showKpiTodoEditModal } from "../utils/kpiTodoEditModal.js";
 import {
   KPI_CARD_EDIT_PENCIL_HTML,
-  KPI_TAB_EDIT_PENCIL_HTML,
+  HEALTH_GOAL_EDIT_PENCIL_HTML,
 } from "../utils/kpiTabNameEditIcon.js";
 import { sortKpiLogsNewestFirst, getLatestKpiLogWithExplicitValue } from "../utils/kpiLogsSort.js";
 import {
@@ -63,12 +63,15 @@ import {
   kpiTodoSnapshotBrief,
   kpiTodosCompletionBrief,
 } from "../utils/kpiTodoLifecycleDebug.js";
-import { pullKpiMapSubViewFromCloud } from "../utils/kpiTabCloudRefresh.js";
 import { readKpiMapLocalStorageSignature } from "../utils/kpiMapLocalStorage.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
   getAppFooterActionsSlot,
 } from "../utils/appFooterShell.js";
+import {
+  renderKpiMapSyncLoadingIfNeeded,
+  shouldShowKpiMapSyncLoading,
+} from "../utils/kpiMapSyncLoadingUi.js";
 
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
 
@@ -256,17 +259,6 @@ export function render() {
   const el = document.createElement("div");
   el.className = "app-tab-panel-content dream-view lp-kpi-dream-page";
 
-  const addBtn = document.createElement("button");
-  addBtn.type = "button";
-  addBtn.className = "dream-add-icon-btn";
-  addBtn.title = "건강 목표 추가";
-  addBtn.setAttribute("aria-label", "건강 목표 추가");
-  addBtn.innerHTML = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="dream-add-icon" aria-hidden="true" width="24" height="24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m12 8v8"/><path d="m8 12h8"/><path d="m18 22h-12c-2.209 0-4-1.791-4-4v-12c0-2.209 1.791-4 4-4h12c2.209 0 4 1.791 4 4v12c0 2.209-1.791 4-4 4z"/></g></svg>`;
-  addBtn.addEventListener("click", () => {
-    if (healthAddModalJustClosed) return;
-    showHealthAddModal();
-  });
-
   const header = document.createElement("header");
   header.className = "dream-view-header";
   const label = document.createElement("span");
@@ -282,14 +274,6 @@ export function render() {
   header.appendChild(titleRow);
   el.appendChild(header);
 
-  const tabsWrap = document.createElement("div");
-  tabsWrap.className = "dream-tabs-wrap";
-  const tabs = document.createElement("div");
-  tabs.className = "dream-tabs";
-  tabsWrap.appendChild(addBtn);
-  tabsWrap.appendChild(tabs);
-  el.appendChild(tabsWrap);
-
   const contentWrap = document.createElement("div");
   contentWrap.className = "dream-content-wrap";
   el.appendChild(contentWrap);
@@ -302,6 +286,7 @@ export function render() {
   let activeHealthId = null;
   let selectedKpiId = null;
   let kpiFilter = "all";
+  let healthViewScreen = "goals"; // "goals" | "kpis" | "kpiDetail"
   let kpiGridScrollPrevFilter = null;
   let kpiGridScrollPrevScopeId = null;
   let healthAddModalJustClosed = false;
@@ -313,16 +298,95 @@ export function render() {
     kpis: _healthInitData.kpis || [],
     foreignKey: "healthId",
   });
-  if (_healthRestored.tabId) activeHealthId = _healthRestored.tabId;
-  selectedKpiId = _healthRestored.selectedKpiId;
   kpiFilter = _healthRestored.kpiFilter;
+  /* 건강 메뉴 진입은 항상 목표 목록 — KPI 화면은 목표 클릭 후에만 */
+  healthViewScreen = "goals";
+  activeHealthId = null;
+  selectedKpiId = null;
 
   function persistKpiUiState() {
     writeKpiUiSession(KPI_UI_SESSION_KEYS.health, {
       tabId: activeHealthId,
       selectedKpiId,
       kpiFilter,
+      healthViewScreen,
     });
+  }
+
+  function syncHealthFooterBackLabel() {
+    if (!el.isConnected) return;
+    const footerBack = document.querySelector("[data-lp-app-footer-back]");
+    if (!footerBack) return;
+    if (healthViewScreen === "kpiDetail") {
+      footerBack.title = "KPI 목록으로";
+      footerBack.setAttribute("aria-label", "KPI 목록으로");
+    } else if (healthViewScreen === "kpis") {
+      footerBack.title = "건강 목표 목록으로";
+      footerBack.setAttribute("aria-label", "건강 목표 목록으로");
+    } else {
+      footerBack.title = "오늘(메인)으로";
+      footerBack.setAttribute("aria-label", "오늘(메인)으로");
+    }
+  }
+
+  function syncHealthHeader() {
+    const data = loadHealthMap();
+    const health = data.healths.find((h) => h.id === activeHealthId);
+    if (healthViewScreen === "kpiDetail" && selectedKpiId) {
+      const kpi = (data.kpis || []).find((k) => k.id === selectedKpiId);
+      title.textContent = kpi?.name || "KPI";
+    } else if (healthViewScreen === "kpis" && health) {
+      title.textContent = health.name || "건강";
+    } else {
+      title.textContent = "건강";
+    }
+    syncHealthFooterBackLabel();
+  }
+
+  function enterKpiView(healthId) {
+    if (!healthId) return;
+    activeHealthId = healthId;
+    selectedKpiId = null;
+    healthViewScreen = "kpis";
+    syncHealthHeader();
+    updateHealthView();
+  }
+
+  function enterKpiDetailView(kpiId) {
+    if (!kpiId || !activeHealthId) return;
+    selectedKpiId = kpiId;
+    healthViewScreen = "kpiDetail";
+    syncHealthHeader();
+    updateHealthView();
+  }
+
+  function exitToKpiList() {
+    selectedKpiId = null;
+    healthViewScreen = "kpis";
+    syncHealthHeader();
+    updateHealthView();
+    persistKpiUiState();
+  }
+
+  function refreshHealthAfterKpiDataChange(opts = {}) {
+    if (healthViewScreen === "kpiDetail") {
+      syncHealthHeader();
+      renderKpiDetailView(opts);
+    } else if (healthViewScreen === "kpis") {
+      renderKpiList();
+    } else {
+      updateHealthView();
+    }
+    persistKpiUiState();
+  }
+
+  function exitToHealthGoalsList() {
+    healthViewScreen = "goals";
+    activeHealthId = null;
+    selectedKpiId = null;
+    syncHealthHeader();
+    updateHealthView();
+    persistKpiUiState();
   }
 
   const kpiTimeFormOpts = {
@@ -437,9 +501,7 @@ export function render() {
       saveHealthMap(data);
       syncKpiToTimeTask(kpi, "add");
       close();
-      selectedKpiId = kpi.id;
-      renderKpiList();
-      renderKpiHistory();
+      enterKpiDetailView(kpi.id);
     });
     document.body.appendChild(modal);
     initModalNativeDateFieldsIn(modal);
@@ -537,10 +599,8 @@ export function render() {
       const order = (data.kpiOrder || {})[kpi.healthId] || [];
       data.kpiOrder = { ...data.kpiOrder, [kpi.healthId]: order.filter((id) => id !== kpi.id) };
       saveHealthMap(data);
-      selectedKpiId = null;
       close();
-      renderKpiList();
-      renderKpiHistory();
+      exitToKpiList();
     });
     modal.querySelector(".dream-kpi-form").addEventListener("submit", (e) => {
       e.preventDefault();
@@ -566,8 +626,7 @@ export function render() {
         if (oldName !== target.name) syncKpiToTimeTask(target, "update", oldName);
       }
       close();
-      renderKpiList();
-      renderKpiHistory();
+      refreshHealthAfterKpiDataChange();
     });
     document.body.appendChild(modal);
     initModalNativeDateFieldsIn(modal);
@@ -688,8 +747,7 @@ export function render() {
       }
       saveHealthMap(data);
       close();
-      renderKpiList();
-      renderKpiHistory();
+      refreshHealthAfterKpiDataChange();
     });
     const delBtn = modal.querySelector(".dream-kpi-log-modal-delete-btn");
     if (delBtn && isEdit) {
@@ -699,8 +757,7 @@ export function render() {
         d.kpiLogs = (d.kpiLogs || []).filter((l) => l.id !== editLog.id);
         saveHealthMap(d);
         close();
-        renderKpiList();
-        renderKpiHistory();
+        refreshHealthAfterKpiDataChange();
       });
     }
     document.body.appendChild(modal);
@@ -742,7 +799,7 @@ export function render() {
         completed: false,
       });
       saveHealthMap(d2);
-      renderKpiHistory({ scrollTodoAfterMutation: true });
+      renderKpiDetailView({ scrollTodoAfterMutation: true });
       return;
     }
     if (tab === KPI_BOTTOM_TAB_DAILY) {
@@ -761,7 +818,7 @@ export function render() {
         completed: false,
       });
       saveHealthMap(d2);
-      renderKpiHistory({ scrollTodoAfterMutation: true });
+      renderKpiDetailView({ scrollTodoAfterMutation: true });
       return;
     }
     showKpiLogModal(k);
@@ -771,7 +828,6 @@ export function render() {
     clearHealthKpiFooterActions();
     const slot = getAppFooterActionsSlot();
     if (!slot) return;
-    if (!activeHealthId) return;
 
     const addBtn = document.createElement("button");
     addBtn.type = "button";
@@ -779,7 +835,22 @@ export function render() {
     addBtn.setAttribute("data-lp-dream-kpi-footer-action", "");
     addBtn.innerHTML = KPI_FOOTER_ADD_ICON;
 
-    if (!selectedKpiId) {
+    if (healthViewScreen === "goals") {
+      const data = loadHealthMap();
+      if (shouldShowKpiMapSyncLoading("health", !data.healths?.length)) return;
+      addBtn.title = "건강 목표 추가";
+      addBtn.setAttribute("aria-label", "건강 목표 추가");
+      addBtn.addEventListener("click", () => {
+        if (healthAddModalJustClosed) return;
+        showHealthAddModal();
+      });
+      slot.appendChild(addBtn);
+      return;
+    }
+
+    if (!activeHealthId) return;
+
+    if (healthViewScreen === "kpis") {
       addBtn.title = "KPI 추가";
       addBtn.setAttribute("aria-label", "KPI 추가");
       addBtn.addEventListener("click", () => {
@@ -789,6 +860,8 @@ export function render() {
       slot.appendChild(addBtn);
       return;
     }
+
+    if (healthViewScreen !== "kpiDetail" || !selectedKpiId) return;
 
     const data = loadHealthMap();
     const kpiNow = (data.kpis || []).find((k) => k.id === selectedKpiId);
@@ -848,6 +921,7 @@ export function render() {
     );
     historyWrap.remove();
     contentWrap.innerHTML = "";
+    contentWrap.className = "dream-content-wrap";
     if (!activeHealthId) {
       kpiGridScrollPrevFilter = null;
       kpiGridScrollPrevScopeId = null;
@@ -872,6 +946,21 @@ export function render() {
     const completedKpis = healthKpis.filter((k) => getKpiProgress(k).isCompleted);
     const activeKpis = healthKpis.filter((k) => !getKpiProgress(k).isCompleted);
 
+    if (
+      renderKpiMapSyncLoadingIfNeeded({
+        tabId: "health",
+        container: contentWrap,
+        isEmpty: healthKpis.length === 0,
+        onLoading: () => {
+          historyWrap.hidden = true;
+          el.appendChild(historyWrap);
+          syncAppFooterHealthKpiActions();
+        },
+      })
+    ) {
+      return;
+    }
+
     const filterBar = document.createElement("div");
     filterBar.className = "dream-kpi-filter-bar";
     filterBar.innerHTML = `
@@ -882,13 +971,7 @@ export function render() {
     filterBar.querySelectorAll(".dream-kpi-filter-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         kpiFilter = btn.dataset.filter;
-        /* 필터 변경 시 선택된 KPI가 새 필터에 없으면 선택 해제 */
-        const listAfterFilter = kpiFilter === "active" ? activeKpis : kpiFilter === "completed" ? completedKpis : healthKpis;
-        if (selectedKpiId && !listAfterFilter.some((k) => k.id === selectedKpiId)) {
-          selectedKpiId = null;
-        }
         renderKpiList();
-        renderKpiHistory();
       });
     });
     contentWrap.appendChild(filterBar);
@@ -896,7 +979,6 @@ export function render() {
     const grid = document.createElement("div");
     grid.className = "dream-kpi-grid";
     const listToShow = kpiFilter === "active" ? activeKpis : kpiFilter === "completed" ? completedKpis : healthKpis;
-    let historyAnchoredUnderCard = false;
     listToShow.forEach((kpi) => {
       const progressResult = getKpiProgress(kpi);
       const { lowerBetter } = progressResult;
@@ -907,8 +989,7 @@ export function render() {
       card.className =
         "dream-kpi-card" +
         (lowerBetter ? " dream-kpi-card--lower-better" : "") +
-        cardExtraClass +
-        (selectedKpiId === kpi.id ? " is-selected" : "");
+        cardExtraClass;
       card.dataset.kpiId = kpi.id;
       card.draggable = true;
       card.innerHTML = `
@@ -929,9 +1010,7 @@ export function render() {
       });
       card.addEventListener("click", (e) => {
         if (e.target.closest(".dream-kpi-card-edit")) return;
-        selectedKpiId = selectedKpiId === kpi.id ? null : kpi.id;
-        renderKpiList();
-        renderKpiHistory();
+        enterKpiDetailView(kpi.id);
       });
       card.addEventListener("dragstart", (e) => {
         e.dataTransfer.effectAllowed = "move";
@@ -964,21 +1043,13 @@ export function render() {
           newOrder.splice(toIdx, 0, draggedId);
           reorderKpis(activeHealthId, newOrder);
           renderKpiList();
-          renderKpiHistory();
         }
       });
       grid.appendChild(card);
-      if (selectedKpiId === kpi.id) {
-        grid.appendChild(historyWrap);
-        historyAnchoredUnderCard = true;
-      }
     });
     grid.addEventListener("dragend", () => {
       grid.querySelectorAll(".dream-kpi-card-drag-over").forEach((c) => c.classList.remove("dream-kpi-card-drag-over"));
     });
-    if (!historyAnchoredUnderCard) {
-      grid.appendChild(historyWrap);
-    }
     contentWrap.appendChild(grid);
 
     applyKpiGridScrollRestore(contentWrap, savedGridScroll);
@@ -988,20 +1059,33 @@ export function render() {
     syncAppFooterHealthKpiActions();
   }
 
-  function renderKpiHistory(opts = {}) {
-    const { scrollTodoAfterMutation = false } = opts;
-    historyWrap.innerHTML = "";
+
+  function renderKpiDetailView(opts = {}) {
+    contentWrap.hidden = false;
+    contentWrap.className = "dream-content-wrap dream-kpi-detail-wrap";
+    contentWrap.innerHTML = "";
     if (!selectedKpiId) {
-      historyWrap.hidden = true;
+      exitToKpiList();
+      return;
+    }
+    renderKpiHistory({ ...opts, target: contentWrap });
+    syncAppFooterHealthKpiActions();
+    persistKpiUiState();
+  }
+
+  function renderKpiHistory(opts = {}) {
+    const { scrollTodoAfterMutation = false, target = historyWrap } = opts;
+    target.innerHTML = "";
+    if (!selectedKpiId) {
+      if (target === historyWrap) historyWrap.hidden = true;
       syncAppFooterHealthKpiActions();
       return;
     }
     const data = loadHealthMap();
     const kpi = (data.kpis || []).find((k) => k.id === selectedKpiId);
     if (!kpi) {
-      historyWrap.hidden = true;
-      selectedKpiId = null;
-      renderKpiList();
+      if (target === historyWrap) historyWrap.hidden = true;
+      exitToKpiList();
       return;
     }
     const needHabitTracker = !!kpi.needHabitTracker;
@@ -1010,7 +1094,7 @@ export function render() {
     const todos = (data.kpiTodos || []).filter(
       (t) => String(t.kpiId) === selKpi && (t.text || "").trim() !== "",
     );
-    historyWrap.hidden = false;
+    if (target === historyWrap) historyWrap.hidden = false;
 
     const hasDailyTab = needHabitTracker;
 
@@ -1147,7 +1231,7 @@ export function render() {
             삭제후: kpiTodoSnapshotBrief(after),
             삭제후dr: deletedRefsKpiTodosLen(after),
           });
-          renderKpiHistory({ scrollTodoAfterMutation: true });
+          renderKpiDetailView({ scrollTodoAfterMutation: true });
           return;
         }
         const d = loadHealthMap();
@@ -1155,7 +1239,7 @@ export function render() {
         if (!row) return;
         row.text = result.text;
         saveHealthMap(d);
-        renderKpiHistory({ scrollTodoAfterMutation: true });
+        renderKpiDetailView({ scrollTodoAfterMutation: true });
       };
 
       item.addEventListener("click", async (e) => {
@@ -1247,7 +1331,7 @@ export function render() {
             appendDeletedRef(d, "kpiDailyRepeatTodos", todo.id);
             d.kpiDailyRepeatTodos = (d.kpiDailyRepeatTodos || []).filter((x) => x.id !== todo.id);
             saveHealthMap(d);
-            renderKpiHistory({ scrollTodoAfterMutation: true });
+            renderKpiDetailView({ scrollTodoAfterMutation: true });
             return;
           }
           const d = loadHealthMap();
@@ -1255,7 +1339,7 @@ export function render() {
           if (!row) return;
           row.text = result.text;
           saveHealthMap(d);
-          renderKpiHistory({ scrollTodoAfterMutation: true });
+          renderKpiDetailView({ scrollTodoAfterMutation: true });
         };
 
         item.addEventListener("click", async (e) => {
@@ -1270,10 +1354,10 @@ export function render() {
       panelDailySeg.appendChild(dailyList);
     }
 
-    historyWrap.appendChild(segBar);
-    historyWrap.appendChild(panelLogSeg);
-    historyWrap.appendChild(panelTodoSeg);
-    if (panelDailySeg) historyWrap.appendChild(panelDailySeg);
+    target.appendChild(segBar);
+    target.appendChild(panelLogSeg);
+    target.appendChild(panelTodoSeg);
+    if (panelDailySeg) target.appendChild(panelDailySeg);
 
     wireKpiHistoryBottomTabs(
       "health",
@@ -1288,7 +1372,7 @@ export function render() {
       () => syncAppFooterHealthKpiActions(),
     );
     if (scrollTodoAfterMutation) {
-      afterKpiTodoListMutationScroll(historyWrap);
+      afterKpiTodoListMutationScroll(target);
     }
     syncAppFooterHealthKpiActions();
   }
@@ -1332,12 +1416,12 @@ export function render() {
       const health = { id: nextId(), name: val };
       data.healths.push(health);
       saveHealthMap(data);
-      activeHealthId = health.id;
       selectedKpiId = null;
       healthAddModalJustClosed = true;
       close();
-      renderTabs();
-      updateTitleAndContent();
+      healthViewScreen = "goals";
+      activeHealthId = null;
+      updateHealthView();
       setTimeout(() => { healthAddModalJustClosed = false; }, 300);
     };
     confirmBtn.addEventListener("click", doSubmit);
@@ -1396,9 +1480,10 @@ export function render() {
       if (activeHealthId === healthId) {
         activeHealthId = d.healths[0]?.id || null;
         selectedKpiId = null;
+        if (!activeHealthId) healthViewScreen = "goals";
       }
-      renderTabs();
-      updateTitleAndContent();
+      syncHealthHeader();
+      updateHealthView();
     });
     document.body.appendChild(modal);
   }
@@ -1440,7 +1525,8 @@ export function render() {
       if (target) {
         target.name = val;
         saveHealthMap(d);
-        renderTabs();
+        syncHealthHeader();
+        updateHealthView();
       }
       close();
     });
@@ -1451,77 +1537,110 @@ export function render() {
     document.body.appendChild(modal);
   }
 
-  function renderTabs() {
+  function renderHealthGoalsList() {
+    historyWrap.hidden = true;
+    historyWrap.innerHTML = "";
+    contentWrap.hidden = false;
+    contentWrap.className = "dream-content-wrap";
+    contentWrap.innerHTML = "";
+    syncAppFooterHealthKpiActions();
+
+    const list = document.createElement("div");
+    list.className = "dream-goals-list";
     const data = loadHealthMap();
-    tabs.innerHTML = "";
+
+    if (
+      renderKpiMapSyncLoadingIfNeeded({
+        tabId: "health",
+        container: contentWrap,
+        isEmpty: !data.healths.length,
+        onLoading: () => syncAppFooterHealthKpiActions(),
+      })
+    ) {
+      return;
+    }
+
+    if (!data.healths.length) {
+      const empty = document.createElement("p");
+      empty.className = "dream-goals-empty";
+      empty.textContent = "건강 목표를 추가해 보세요.";
+      list.appendChild(empty);
+    }
+
     data.healths.forEach((health) => {
-      const tab = document.createElement("div");
-      const isActive = health.id === activeHealthId;
-      tab.className = "dream-tab" + (isActive ? " active" : "");
-      tab.dataset.healthId = health.id;
-      tab.innerHTML = `<span class="dream-tab-text">${escapeHtml(health.name || "건강 이름")}</span>${
-        isActive ? KPI_TAB_EDIT_PENCIL_HTML : ""
-      }`;
-      if (isActive) {
-        tab.querySelector(".dream-tab-edit")?.addEventListener("click", (e) => {
-          e.stopPropagation();
-          e.preventDefault();
-          showHealthContextModal(health, tab);
-        });
-      }
-      tab.addEventListener("click", () => {
-        const switching = activeHealthId !== health.id;
-        if (switching) {
-          selectedKpiId = null;
-        }
-        activeHealthId = health.id;
-        renderTabs();
-        updateTitleAndContent();
-        if (switching) {
-          void pullKpiMapSubViewFromCloud("health").then((pullOk) => {
-            if (pullOk && el.isConnected) {
-              renderTabs();
-              updateTitleAndContent();
-            }
-          });
-        }
+      const kpiCount = (data.kpis || []).filter((k) => k.healthId === health.id)
+        .length;
+      const item = document.createElement("div");
+      item.className = "dream-goals-item dream-kpi-card";
+      item.innerHTML = `
+        <div class="dream-kpi-card-inner">
+          ${HEALTH_GOAL_EDIT_PENCIL_HTML}
+          <div class="dream-goals-item-name">${escapeHtml(health.name || "건강 이름")}</div>
+          <div class="dream-goals-item-meta">KPI ${kpiCount}개</div>
+        </div>
+      `;
+      item.querySelector(".dream-kpi-card-edit").addEventListener("click", (e) => {
+        e.stopPropagation();
+        showHealthContextModal(health, item);
       });
-      tabs.appendChild(tab);
+      item.addEventListener("click", (e) => {
+        if (e.target.closest(".dream-kpi-card-edit")) return;
+        enterKpiView(health.id);
+      });
+      list.appendChild(item);
     });
+
+    contentWrap.appendChild(list);
+    persistKpiUiState();
   }
 
-  function updateTitleAndContent() {
+  function updateHealthView() {
+    syncHealthHeader();
+    historyWrap.hidden = true;
+    historyWrap.innerHTML = "";
+    if (healthViewScreen === "goals") {
+      renderHealthGoalsList();
+      return;
+    }
     const data = loadHealthMap();
     const health = data.healths.find((h) => h.id === activeHealthId);
     if (health) {
-      contentWrap.hidden = false;
-      renderKpiList();
-      renderKpiHistory();
+      if (healthViewScreen === "kpiDetail") {
+        renderKpiDetailView();
+      } else {
+        contentWrap.hidden = false;
+        contentWrap.className = "dream-content-wrap";
+        renderKpiList();
+      }
     } else {
-      contentWrap.hidden = true;
-      persistKpiUiState();
+      exitToHealthGoalsList();
     }
+    persistKpiUiState();
   }
 
   function reconcileScopeWithStoredMap(data) {
     const healths = data?.healths || [];
     const kpis = data?.kpis || [];
-    if (!healths.some((h) => h.id === activeHealthId)) {
-      activeHealthId = healths[0]?.id || null;
-      if (!activeHealthId) selectedKpiId = null;
+    const inKpiFlow = healthViewScreen === "kpis" || healthViewScreen === "kpiDetail";
+    if (inKpiFlow) {
+      if (!healths.some((h) => h.id === activeHealthId)) {
+        activeHealthId = healths[0]?.id || null;
+        selectedKpiId = null;
+        healthViewScreen = activeHealthId ? "kpis" : "goals";
+      }
+    } else {
+      activeHealthId = null;
+      selectedKpiId = null;
     }
     if (selectedKpiId && !kpis.some((k) => k.id === selectedKpiId)) {
       selectedKpiId = null;
+      if (healthViewScreen === "kpiDetail") healthViewScreen = "kpis";
     }
   }
 
   reconcileScopeWithStoredMap(_healthInitData);
-  renderTabs();
-  if (activeHealthId) {
-    updateTitleAndContent();
-  } else {
-    contentWrap.hidden = true;
-  }
+  syncHealthHeader();
+  updateHealthView();
   let lastKpiMapPaintSig = readKpiMapLocalStorageSignature(
     HEALTH_KPI_MAP_STORAGE_KEY,
   );
@@ -1532,22 +1651,23 @@ export function render() {
     if (nextSig === lastKpiMapPaintSig) return;
     lastKpiMapPaintSig = nextSig;
     const data = loadHealthMap();
-    if (!data.healths.some((h) => h.id === activeHealthId)) {
-      activeHealthId = data.healths[0]?.id || null;
+    const inKpiFlow = healthViewScreen === "kpis" || healthViewScreen === "kpiDetail";
+    if (inKpiFlow) {
+      if (!data.healths.some((h) => h.id === activeHealthId)) {
+        activeHealthId = data.healths[0]?.id || null;
+        selectedKpiId = null;
+        healthViewScreen = activeHealthId ? "kpis" : "goals";
+      }
+    } else {
+      activeHealthId = null;
       selectedKpiId = null;
     }
     if (selectedKpiId && !data.kpis.some((k) => k.id === selectedKpiId)) {
       selectedKpiId = null;
+      if (healthViewScreen === "kpiDetail") healthViewScreen = "kpis";
     }
-    renderTabs();
-    const health = data.healths.find((h) => h.id === activeHealthId);
-    if (health) {
-      contentWrap.hidden = false;
-      renderKpiList();
-      renderKpiHistory();
-    } else {
-      contentWrap.hidden = true;
-    }
+    syncHealthHeader();
+    updateHealthView();
     persistKpiUiState();
   }
 
@@ -1559,7 +1679,23 @@ export function render() {
     syncHealthUiFromStoredMap();
   };
   window.addEventListener("health-kpi-map-saved", onMergedSync);
+  window.addEventListener("lp-kpi-tab-pull-settled", (e) => {
+    if (!el.isConnected || e.detail?.tabId !== "health") return;
+    updateHealthView();
+  });
   window.__lpHealthSoftRefresh = syncHealthUiFromStoredMap;
+  window.__lpHealthFooterBack = () => {
+    if (!el.isConnected) return false;
+    if (healthViewScreen === "kpiDetail") {
+      exitToKpiList();
+      return true;
+    }
+    if (healthViewScreen === "kpis") {
+      exitToHealthGoalsList();
+      return true;
+    }
+    return false;
+  };
 
   return el;
 }

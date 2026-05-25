@@ -70,7 +70,7 @@ export function render() {
   const grid = document.createElement("div");
   grid.className = "time-dashboard-view idea-widget-grid";
 
-  // ----- 기본 설정 위젯 (아이디, 화면 글꼴, 로그아웃) -----
+  // ----- 기본 설정 위젯 (아이디, 화면 글꼴) -----
   const basicSettingsWidget = document.createElement("div");
   basicSettingsWidget.className = "time-dashboard-widget idea-widget idea-widget-basic-settings";
   basicSettingsWidget.innerHTML = `
@@ -83,13 +83,6 @@ export function render() {
       <div class="idea-basic-row idea-font-settings-row">
         <span class="idea-form-label" id="idea-app-font-label">화면 글꼴</span>
         <div class="idea-app-font-dropdown-slot" id="idea-app-font-dropdown-slot"></div>
-      </div>
-      <div class="idea-logout-row">
-        <button type="button" class="idea-btn-logout">로그아웃</button>
-      </div>
-      <div class="idea-delete-account-block">
-        <button type="button" class="idea-btn-delete-account">회원 탈퇴</button>
-        <p class="idea-delete-account-hint">서버에 저장된 데이터가 모두 삭제되며 복구할 수 없습니다.</p>
       </div>
     </div>
   `;
@@ -112,10 +105,6 @@ export function render() {
       { signal: tabAbort.signal },
     );
   }
-
-  basicSettingsWidget.querySelector(".idea-btn-logout").addEventListener("click", () => {
-    signOut();
-  });
 
   function openDeleteAccountModal() {
     const wrap = document.createElement("div");
@@ -184,11 +173,7 @@ export function render() {
     pwInput?.focus();
   }
 
-  basicSettingsWidget.querySelector(".idea-btn-delete-account")?.addEventListener("click", () => {
-    openDeleteAccountModal();
-  });
-
-  // ----- 구독 (로그아웃 아래 구분선 다음 · 시급 위젯 위) -----
+  // ----- 구독 (시급 위젯 위) -----
   const subscriptionWidget = document.createElement("div");
   subscriptionWidget.className =
     "time-dashboard-widget idea-widget idea-widget-subscription";
@@ -333,6 +318,28 @@ export function render() {
     </form>
   `;
   grid.appendChild(hourlyWidget);
+
+  const logoutWidget = document.createElement("div");
+  logoutWidget.className = "time-dashboard-widget idea-widget idea-widget-logout";
+  logoutWidget.innerHTML = `
+    <button type="button" class="idea-btn-logout">로그아웃</button>
+  `;
+  grid.appendChild(logoutWidget);
+  logoutWidget.querySelector(".idea-btn-logout").addEventListener("click", () => {
+    signOut();
+  });
+
+  const deleteAccountWidget = document.createElement("div");
+  deleteAccountWidget.className = "idea-widget idea-widget-delete-account";
+  deleteAccountWidget.innerHTML = `
+    <button type="button" class="idea-btn-delete-account">회원 탈퇴</button>
+    <p class="idea-delete-account-hint">서버에 저장된 데이터가 모두 삭제되며 복구할 수 없습니다.</p>
+  `;
+  grid.appendChild(deleteAccountWidget);
+  deleteAccountWidget.querySelector(".idea-btn-delete-account")?.addEventListener("click", () => {
+    openDeleteAccountModal();
+  });
+
   el.appendChild(grid);
 
   // 시급 계산 로직

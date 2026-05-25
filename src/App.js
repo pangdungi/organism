@@ -47,6 +47,11 @@ import {
   resetTimeLedgerSessionFilterToToday,
 } from "./utils/timeLedgerEntriesSupabase.js";
 import { pullKpiTabFromCloud } from "./utils/kpiTabCloudRefresh.js";
+import {
+  clearKpiTabPullPending,
+  isKpiAppTabId,
+  setKpiTabPullPending,
+} from "./utils/kpiMapSyncLoadingUi.js";
 import { pullTimeLedgerTabEnterFromCloud } from "./utils/timeLedgerCloudRefresh.js";
 import {
   attachTimeLedgerTasksSaveListener,
@@ -240,6 +245,12 @@ function persistActiveTabId(tabId) {
   } catch (_) {}
 }
 
+/** KPI 탭: pull 완료 후 화면 갱신(동기화 로딩 해제·데이터 반영) */
+function kpiSoftRefreshAfterPull(tabId, pullResult) {
+  if (isKpiAppTabId(tabId)) clearKpiTabPullPending(tabId);
+  kpiSoftRefreshIfPullChanged(tabId, pullResult);
+}
+
 /** KPI 탭: pull 로 로컬 맵이 바뀐 경우에만 소프트 갱신(동일하면 카드 재그림·1초 깜빡임 방지) */
 function kpiSoftRefreshIfPullChanged(tabId, pullResult) {
   if (!pullResult?.localChanged) return;
@@ -430,7 +441,15 @@ export async function mountApp(container) {
   footerBackBtn.setAttribute("aria-label", "오늘(메인)으로");
   footerBackBtn.innerHTML =
     '<img src="/toolbaricons/caret-left-circle.svg" alt="" width="22" height="22" aria-hidden="true" />';
-  footerBackBtn.addEventListener("click", () => setActiveTab("home"));
+  footerBackBtn.addEventListener("click", () => {
+    try {
+      if (currentTabId === "dream" && window.__lpDreamFooterBack?.()) return;
+      if (currentTabId === "health" && window.__lpHealthFooterBack?.()) return;
+      if (currentTabId === "happiness" && window.__lpHappinessFooterBack?.()) return;
+      if (currentTabId === "sideincome" && window.__lpSideincomeFooterBack?.()) return;
+    } catch (_) {}
+    setActiveTab("home");
+  });
   footerBackBtn.setAttribute("data-lp-app-footer-back", "");
   const footerActionsSlot = document.createElement("div");
   footerActionsSlot.className = "app-footer-actions";
@@ -451,9 +470,24 @@ export async function mountApp(container) {
 
   let _tabSwitchTimer = null;
 
+  function resetAppFooterBackLabel() {
+    const footerBack = document.querySelector("[data-lp-app-footer-back]");
+    if (!footerBack) return;
+    footerBack.title = "오늘(메인)으로";
+    footerBack.setAttribute("aria-label", "오늘(메인)으로");
+  }
+
   function applySetActiveTab(tabId) {
     const fromTab = currentTabId;
     if (fromTab !== tabId) flushAllPendingTimeDailyBudgetSync();
+    if (
+      tabId !== "dream" &&
+      tabId !== "health" &&
+      tabId !== "happiness" &&
+      tabId !== "sideincome"
+    ) {
+      resetAppFooterBackLabel();
+    }
     currentTabId = tabId;
     persistActiveTabId(tabId);
     logTodoScheduleTabOnNavigate(tabId, fromTab);
@@ -486,9 +520,10 @@ export async function mountApp(container) {
             window.__lpCalendarGridPrefetchedForTabSwitch = true;
           } catch (_) {}
         }
-        const pullPromise = pullDataForActiveTab(targetTabId, {
-          fromBoot: false,
-        });
+        const pullPromise = (() => {
+          if (isKpiAppTabId(targetTabId)) setKpiTabPullPending(targetTabId);
+          return pullDataForActiveTab(targetTabId, { fromBoot: false });
+        })();
         if (targetTabId === "home") {
           const panelEl = main.querySelector(".app-tab-panel");
           if (
@@ -554,7 +589,7 @@ export async function mountApp(container) {
           targetTabId === "happiness" ||
           targetTabId === "sideincome"
         ) {
-          kpiSoftRefreshIfPullChanged(targetTabId, pullResult);
+          kpiSoftRefreshAfterPull(targetTabId, pullResult);
         } else if (targetTabId === "diary") {
           /* 시간 레포트: 두 번째 renderMain·본문 중복 pull 로 카드·아이콘이 연달아 깜빡임 → 소프트 갱신만 */
           try {
@@ -932,6 +967,7 @@ export async function mountApp(container) {
         window.__lpCalendarGridPrefetchedForTabSwitch = true;
       } catch (_) {}
     }
+    if (isKpiAppTabId(bootTabId)) setKpiTabPullPending(bootTabId);
     let pullResult;
     try {
       const [, pr] = await Promise.all([
@@ -968,7 +1004,7 @@ export async function mountApp(container) {
       bootTabId === "happiness" ||
       bootTabId === "sideincome"
     ) {
-      kpiSoftRefreshIfPullChanged(bootTabId, pullResult);
+      kpiSoftRefreshAfterPull(bootTabId, pullResult);
     } else if (bootTabId === "home") {
       /* 메뉴 런처: 시간기록 pull 후 로컬 캐시가 채워지므로 잔액만 소프트 갱신(두 번째 renderMain은 아이콘 깜빡임 유발) */
       try {

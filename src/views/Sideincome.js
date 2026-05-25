@@ -47,7 +47,6 @@ import {
 import {
   KPI_UI_SESSION_KEYS,
   readKpiUiSession,
-  writeKpiUiSession,
   restoreKpiTabFromSession,
 } from "../utils/kpiViewUiSession.js";
 import { showKpiTodoAddModal } from "../utils/kpiTodoAddModal.js";
@@ -55,7 +54,7 @@ import { formatKpiCardHeroHtml } from "../utils/kpiViewModal.js";
 import { showKpiTodoEditModal } from "../utils/kpiTodoEditModal.js";
 import {
   KPI_CARD_EDIT_PENCIL_HTML,
-  KPI_TAB_EDIT_PENCIL_HTML,
+  SIDEINCOME_GOAL_EDIT_PENCIL_HTML,
 } from "../utils/kpiTabNameEditIcon.js";
 import { sortKpiLogsNewestFirst } from "../utils/kpiLogsSort.js";
 import {
@@ -64,12 +63,15 @@ import {
   kpiTodoSnapshotBrief,
   kpiTodosCompletionBrief,
 } from "../utils/kpiTodoLifecycleDebug.js";
-import { pullKpiMapSubViewFromCloud } from "../utils/kpiTabCloudRefresh.js";
 import { readKpiMapLocalStorageSignature } from "../utils/kpiMapLocalStorage.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
   getAppFooterActionsSlot,
 } from "../utils/appFooterShell.js";
+import {
+  renderKpiMapSyncLoadingIfNeeded,
+  shouldShowKpiMapSyncLoading,
+} from "../utils/kpiMapSyncLoadingUi.js";
 
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
 
@@ -317,17 +319,6 @@ export function render() {
   const el = document.createElement("div");
   el.className = "app-tab-panel-content sideincome-view dream-view lp-kpi-dream-page";
 
-  const addBtn = document.createElement("button");
-  addBtn.type = "button";
-  addBtn.className = "dream-add-icon-btn";
-  addBtn.title = "부수입 목표 추가";
-  addBtn.setAttribute("aria-label", "부수입 목표 추가");
-  addBtn.innerHTML = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="dream-add-icon" aria-hidden="true" width="24" height="24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m12 8v8"/><path d="m8 12h8"/><path d="m18 22h-12c-2.209 0-4-1.791-4-4v-12c0-2.209 1.791-4 4-4h12c2.209 0 4 1.791 4 4v12c0 2.209-1.791 4-4 4z"/></g></svg>`;
-  addBtn.addEventListener("click", () => {
-    if (pathAddModalJustClosed) return;
-    showPathAddModal();
-  });
-
   const header = document.createElement("header");
   header.className = "dream-view-header";
   const label = document.createElement("span");
@@ -343,14 +334,6 @@ export function render() {
   header.appendChild(titleRow);
   el.appendChild(header);
 
-  const tabsWrap = document.createElement("div");
-  tabsWrap.className = "dream-tabs-wrap";
-  const tabs = document.createElement("div");
-  tabs.className = "dream-tabs";
-  tabsWrap.appendChild(addBtn);
-  tabsWrap.appendChild(tabs);
-  el.appendChild(tabsWrap);
-
   const contentWrap = document.createElement("div");
   contentWrap.className = "dream-content-wrap";
   el.appendChild(contentWrap);
@@ -363,6 +346,7 @@ export function render() {
   let activePathId = null;
   let selectedKpiId = null;
   let kpiFilter = "all";
+  let sideincomeViewScreen = "goals"; // "goals" | "kpis" | "kpiDetail"
   let kpiGridScrollPrevFilter = null;
   let kpiGridScrollPrevScopeId = null;
   let pathAddModalJustClosed = false;
@@ -374,16 +358,100 @@ export function render() {
     kpis: _sideincomeInitData.kpis || [],
     foreignKey: "pathId",
   });
-  if (_sideincomeRestored.tabId) activePathId = _sideincomeRestored.tabId;
-  selectedKpiId = _sideincomeRestored.selectedKpiId;
   kpiFilter = _sideincomeRestored.kpiFilter;
+  /* 부수입 메뉴 진입은 항상 목표 목록 — KPI 화면은 목표 클릭 후에만 */
+  sideincomeViewScreen = "goals";
+  activePathId = null;
+  selectedKpiId = null;
 
   function persistKpiUiState() {
-    writeKpiUiSession(KPI_UI_SESSION_KEYS.sideincome, {
-      tabId: activePathId,
-      selectedKpiId,
-      kpiFilter,
-    });
+    try {
+      sessionStorage.setItem(
+        KPI_UI_SESSION_KEYS.sideincome,
+        JSON.stringify({
+          tabId: activePathId,
+          selectedKpiId,
+          kpiFilter,
+          sideincomeViewScreen,
+        }),
+      );
+    } catch (_) {}
+  }
+
+  function syncSideincomeFooterBackLabel() {
+    if (!el.isConnected) return;
+    const footerBack = document.querySelector("[data-lp-app-footer-back]");
+    if (!footerBack) return;
+    if (sideincomeViewScreen === "kpiDetail") {
+      footerBack.title = "KPI 목록으로";
+      footerBack.setAttribute("aria-label", "KPI 목록으로");
+    } else if (sideincomeViewScreen === "kpis") {
+      footerBack.title = "부수입 목표 목록으로";
+      footerBack.setAttribute("aria-label", "부수입 목표 목록으로");
+    } else {
+      footerBack.title = "오늘(메인)으로";
+      footerBack.setAttribute("aria-label", "오늘(메인)으로");
+    }
+  }
+
+  function syncSideincomeHeader() {
+    const data = loadSideincomeMap();
+    const path = data.paths.find((p) => p.id === activePathId);
+    if (sideincomeViewScreen === "kpiDetail" && selectedKpiId) {
+      const kpi = (data.kpis || []).find((k) => k.id === selectedKpiId);
+      title.textContent = kpi?.name || "KPI";
+    } else if (sideincomeViewScreen === "kpis" && path) {
+      title.textContent = path.name || "부수입";
+    } else {
+      title.textContent = "부수입";
+    }
+    syncSideincomeFooterBackLabel();
+  }
+
+  function enterKpiView(pathId) {
+    if (!pathId) return;
+    activePathId = pathId;
+    selectedKpiId = null;
+    sideincomeViewScreen = "kpis";
+    syncSideincomeHeader();
+    updateSideincomeView();
+  }
+
+  function enterKpiDetailView(kpiId) {
+    if (!kpiId || !activePathId) return;
+    selectedKpiId = kpiId;
+    sideincomeViewScreen = "kpiDetail";
+    syncSideincomeHeader();
+    updateSideincomeView();
+  }
+
+  function exitToKpiList() {
+    selectedKpiId = null;
+    sideincomeViewScreen = "kpis";
+    syncSideincomeHeader();
+    updateSideincomeView();
+    persistKpiUiState();
+  }
+
+  function refreshSideincomeAfterKpiDataChange(opts = {}) {
+    if (sideincomeViewScreen === "kpiDetail") {
+      syncSideincomeHeader();
+      renderKpiDetailView(opts);
+    } else if (sideincomeViewScreen === "kpis") {
+      renderKpiList();
+    } else {
+      updateSideincomeView();
+    }
+    persistKpiUiState();
+  }
+
+  function exitToSideincomeGoalsList() {
+    sideincomeViewScreen = "goals";
+    activePathId = null;
+    selectedKpiId = null;
+    syncSideincomeHeader();
+    updateSideincomeView();
+    persistKpiUiState();
   }
 
   const kpiTimeFormOpts = {
@@ -498,9 +566,7 @@ export function render() {
       saveSideincomeMap(data);
       syncKpiToTimeTask(kpi, "add");
       close();
-      selectedKpiId = kpi.id;
-      renderKpiList();
-      renderKpiHistory();
+      enterKpiDetailView(kpi.id);
     });
     document.body.appendChild(modal);
     initModalNativeDateFieldsIn(modal);
@@ -598,10 +664,8 @@ export function render() {
       const order = (data.kpiOrder || {})[kpi.pathId] || [];
       data.kpiOrder = { ...data.kpiOrder, [kpi.pathId]: order.filter((id) => id !== kpi.id) };
       saveSideincomeMap(data);
-      selectedKpiId = null;
       close();
-      renderKpiList();
-      renderKpiHistory();
+      exitToKpiList();
     });
     modal.querySelector(".dream-kpi-form").addEventListener("submit", (e) => {
       e.preventDefault();
@@ -627,8 +691,7 @@ export function render() {
         if (oldName !== target.name) syncKpiToTimeTask(target, "update", oldName);
       }
       close();
-      renderKpiList();
-      renderKpiHistory();
+      refreshSideincomeAfterKpiDataChange();
     });
     document.body.appendChild(modal);
     initModalNativeDateFieldsIn(modal);
@@ -749,8 +812,7 @@ export function render() {
       }
       saveSideincomeMap(data);
       close();
-      renderKpiList();
-      renderKpiHistory();
+      refreshSideincomeAfterKpiDataChange();
     });
     const delBtn = modal.querySelector(".dream-kpi-log-modal-delete-btn");
     if (delBtn && isEdit) {
@@ -760,8 +822,7 @@ export function render() {
         d.kpiLogs = (d.kpiLogs || []).filter((l) => l.id !== editLog.id);
         saveSideincomeMap(d);
         close();
-        renderKpiList();
-        renderKpiHistory();
+        refreshSideincomeAfterKpiDataChange();
       });
     }
     document.body.appendChild(modal);
@@ -918,7 +979,7 @@ export function render() {
         completed: false,
       });
       saveSideincomeMap(d2);
-      renderKpiHistory({ scrollTodoAfterMutation: true });
+      renderKpiDetailView({ scrollTodoAfterMutation: true });
       return;
     }
     if (tab === KPI_BOTTOM_TAB_DAILY) {
@@ -937,7 +998,7 @@ export function render() {
         completed: false,
       });
       saveSideincomeMap(d2);
-      renderKpiHistory({ scrollTodoAfterMutation: true });
+      renderKpiDetailView({ scrollTodoAfterMutation: true });
       return;
     }
     showKpiLogModal(k);
@@ -947,7 +1008,6 @@ export function render() {
     clearSideincomeKpiFooterActions();
     const slot = getAppFooterActionsSlot();
     if (!slot) return;
-    if (!activePathId) return;
 
     const addBtn = document.createElement("button");
     addBtn.type = "button";
@@ -955,7 +1015,22 @@ export function render() {
     addBtn.setAttribute("data-lp-dream-kpi-footer-action", "");
     addBtn.innerHTML = KPI_FOOTER_ADD_ICON;
 
-    if (!selectedKpiId) {
+    if (sideincomeViewScreen === "goals") {
+      const data = loadSideincomeMap();
+      if (shouldShowKpiMapSyncLoading("sideincome", !data.paths?.length)) return;
+      addBtn.title = "부수입 목표 추가";
+      addBtn.setAttribute("aria-label", "부수입 목표 추가");
+      addBtn.addEventListener("click", () => {
+        if (pathAddModalJustClosed) return;
+        showPathAddModal();
+      });
+      slot.appendChild(addBtn);
+      return;
+    }
+
+    if (!activePathId) return;
+
+    if (sideincomeViewScreen === "kpis") {
       addBtn.title = "KPI 추가";
       addBtn.setAttribute("aria-label", "KPI 추가");
       addBtn.addEventListener("click", () => {
@@ -965,6 +1040,8 @@ export function render() {
       slot.appendChild(addBtn);
       return;
     }
+
+    if (sideincomeViewScreen !== "kpiDetail" || !selectedKpiId) return;
 
     const data = loadSideincomeMap();
     const kpiNow = (data.kpis || []).find((k) => k.id === selectedKpiId);
@@ -1024,6 +1101,7 @@ export function render() {
     );
     historyWrap.remove();
     contentWrap.innerHTML = "";
+    contentWrap.className = "dream-content-wrap";
     if (!activePathId) {
       kpiGridScrollPrevFilter = null;
       kpiGridScrollPrevScopeId = null;
@@ -1047,6 +1125,21 @@ export function render() {
     /* 진행중 = 미완료 KPI만(시작일 없는 새 KPI 포함) — 꿈 탭과 동일 */
     const completedKpis = pathKpis.filter((k) => getKpiProgress(k).isCompleted);
     const activeKpis = pathKpis.filter((k) => !getKpiProgress(k).isCompleted);
+
+    if (
+      renderKpiMapSyncLoadingIfNeeded({
+        tabId: "sideincome",
+        container: contentWrap,
+        isEmpty: pathKpis.length === 0,
+        onLoading: () => {
+          historyWrap.hidden = true;
+          el.appendChild(historyWrap);
+          syncAppFooterSideincomeKpiActions();
+        },
+      })
+    ) {
+      return;
+    }
 
     const path = data.paths.find((p) => p.id === activePathId);
     const pathLogs = (data.pathLogs || []).filter((l) => l.pathId === activePathId);
@@ -1119,13 +1212,7 @@ export function render() {
     filterBar.querySelectorAll(".dream-kpi-filter-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         kpiFilter = btn.dataset.filter;
-        /* 필터 변경 시 선택된 KPI가 새 필터에 없으면 선택 해제 */
-        const listAfterFilter = kpiFilter === "active" ? activeKpis : kpiFilter === "completed" ? completedKpis : pathKpis;
-        if (selectedKpiId && !listAfterFilter.some((k) => k.id === selectedKpiId)) {
-          selectedKpiId = null;
-        }
         renderKpiList();
-        renderKpiHistory();
       });
     });
     contentWrap.appendChild(filterBar);
@@ -1133,7 +1220,6 @@ export function render() {
     const grid = document.createElement("div");
     grid.className = "dream-kpi-grid";
     const listToShow = kpiFilter === "active" ? activeKpis : kpiFilter === "completed" ? completedKpis : pathKpis;
-    let historyAnchoredUnderCard = false;
     listToShow.forEach((kpi) => {
       const progressResult = getKpiProgress(kpi);
       const { lowerBetter } = progressResult;
@@ -1144,8 +1230,7 @@ export function render() {
       card.className =
         "dream-kpi-card" +
         (lowerBetter ? " dream-kpi-card--lower-better" : "") +
-        cardExtraClass +
-        (selectedKpiId === kpi.id ? " is-selected" : "");
+        cardExtraClass;
       card.dataset.kpiId = kpi.id;
       card.draggable = true;
       card.innerHTML = `
@@ -1166,9 +1251,7 @@ export function render() {
       });
       card.addEventListener("click", (e) => {
         if (e.target.closest(".dream-kpi-card-edit")) return;
-        selectedKpiId = selectedKpiId === kpi.id ? null : kpi.id;
-        renderKpiList();
-        renderKpiHistory();
+        enterKpiDetailView(kpi.id);
       });
       card.addEventListener("dragstart", (e) => {
         e.dataTransfer.effectAllowed = "move";
@@ -1201,21 +1284,13 @@ export function render() {
           newOrder.splice(toIdx, 0, draggedId);
           reorderKpis(activePathId, newOrder);
           renderKpiList();
-          renderKpiHistory();
         }
       });
       grid.appendChild(card);
-      if (selectedKpiId === kpi.id) {
-        grid.appendChild(historyWrap);
-        historyAnchoredUnderCard = true;
-      }
     });
     grid.addEventListener("dragend", () => {
       grid.querySelectorAll(".dream-kpi-card-drag-over").forEach((c) => c.classList.remove("dream-kpi-card-drag-over"));
     });
-    if (!historyAnchoredUnderCard) {
-      grid.appendChild(historyWrap);
-    }
     contentWrap.appendChild(grid);
 
     applyKpiGridScrollRestore(contentWrap, savedGridScroll);
@@ -1225,20 +1300,33 @@ export function render() {
     syncAppFooterSideincomeKpiActions();
   }
 
-  function renderKpiHistory(opts = {}) {
-    const { scrollTodoAfterMutation = false } = opts;
-    historyWrap.innerHTML = "";
+
+  function renderKpiDetailView(opts = {}) {
+    contentWrap.hidden = false;
+    contentWrap.className = "dream-content-wrap dream-kpi-detail-wrap";
+    contentWrap.innerHTML = "";
     if (!selectedKpiId) {
-      historyWrap.hidden = true;
+      exitToKpiList();
+      return;
+    }
+    renderKpiHistory({ ...opts, target: contentWrap });
+    syncAppFooterSideincomeKpiActions();
+    persistKpiUiState();
+  }
+
+  function renderKpiHistory(opts = {}) {
+    const { scrollTodoAfterMutation = false, target = historyWrap } = opts;
+    target.innerHTML = "";
+    if (!selectedKpiId) {
+      if (target === historyWrap) historyWrap.hidden = true;
       syncAppFooterSideincomeKpiActions();
       return;
     }
     const data = loadSideincomeMap();
     const kpi = (data.kpis || []).find((k) => k.id === selectedKpiId);
     if (!kpi) {
-      historyWrap.hidden = true;
-      selectedKpiId = null;
-      renderKpiList();
+      if (target === historyWrap) historyWrap.hidden = true;
+      exitToKpiList();
       return;
     }
     const needHabitTracker = !!kpi.needHabitTracker;
@@ -1247,7 +1335,7 @@ export function render() {
     const todos = (data.kpiTodos || []).filter(
       (t) => String(t.kpiId) === selKpi && (t.text || "").trim() !== "",
     );
-    historyWrap.hidden = false;
+    if (target === historyWrap) historyWrap.hidden = false;
 
     const hasDailyTab = needHabitTracker;
 
@@ -1384,7 +1472,7 @@ export function render() {
             삭제후: kpiTodoSnapshotBrief(after),
             삭제후dr: deletedRefsKpiTodosLen(after),
           });
-          renderKpiHistory({ scrollTodoAfterMutation: true });
+          renderKpiDetailView({ scrollTodoAfterMutation: true });
           return;
         }
         const d = loadSideincomeMap();
@@ -1392,7 +1480,7 @@ export function render() {
         if (!row) return;
         row.text = result.text;
         saveSideincomeMap(d);
-        renderKpiHistory({ scrollTodoAfterMutation: true });
+        renderKpiDetailView({ scrollTodoAfterMutation: true });
       };
 
       item.addEventListener("click", async (e) => {
@@ -1484,7 +1572,7 @@ export function render() {
             appendDeletedRef(d, "kpiDailyRepeatTodos", todo.id);
             d.kpiDailyRepeatTodos = (d.kpiDailyRepeatTodos || []).filter((x) => x.id !== todo.id);
             saveSideincomeMap(d);
-            renderKpiHistory({ scrollTodoAfterMutation: true });
+            renderKpiDetailView({ scrollTodoAfterMutation: true });
             return;
           }
           const d = loadSideincomeMap();
@@ -1492,7 +1580,7 @@ export function render() {
           if (!row) return;
           row.text = result.text;
           saveSideincomeMap(d);
-          renderKpiHistory({ scrollTodoAfterMutation: true });
+          renderKpiDetailView({ scrollTodoAfterMutation: true });
         };
 
         item.addEventListener("click", async (e) => {
@@ -1507,10 +1595,10 @@ export function render() {
       panelDailySeg.appendChild(dailyList);
     }
 
-    historyWrap.appendChild(segBar);
-    historyWrap.appendChild(panelLogSeg);
-    historyWrap.appendChild(panelTodoSeg);
-    if (panelDailySeg) historyWrap.appendChild(panelDailySeg);
+    target.appendChild(segBar);
+    target.appendChild(panelLogSeg);
+    target.appendChild(panelTodoSeg);
+    if (panelDailySeg) target.appendChild(panelDailySeg);
 
     wireKpiHistoryBottomTabs(
       "sideincome",
@@ -1525,7 +1613,7 @@ export function render() {
       () => syncAppFooterSideincomeKpiActions(),
     );
     if (scrollTodoAfterMutation) {
-      afterKpiTodoListMutationScroll(historyWrap);
+      afterKpiTodoListMutationScroll(target);
     }
     syncAppFooterSideincomeKpiActions();
   }
@@ -1585,14 +1673,15 @@ export function render() {
       if (activePathId === pathId) {
         activePathId = d.paths[0]?.id || null;
         selectedKpiId = null;
+        if (!activePathId) sideincomeViewScreen = "goals";
       }
-      renderTabs();
-      updateTitleAndContent();
+      syncSideincomeHeader();
+      updateSideincomeView();
     });
     document.body.appendChild(modal);
   }
 
-  function showPathContextModal(path, tabEl) {
+  function showPathContextModal(path) {
     const modal = document.createElement("div");
     modal.className = "time-task-setup-modal";
     modal.innerHTML = `
@@ -1643,8 +1732,8 @@ export function render() {
         target.targetAmount = amountFields.targetAmount;
         target.unit = amountFields.unit;
         saveSideincomeMap(d);
-        renderTabs();
-        renderKpiList();
+        syncSideincomeHeader();
+        updateSideincomeView();
       }
       close();
     });
@@ -1656,56 +1745,85 @@ export function render() {
     document.body.appendChild(modal);
   }
 
-  function renderTabs() {
+  function renderSideincomeGoalsList() {
+    historyWrap.hidden = true;
+    historyWrap.innerHTML = "";
+    contentWrap.hidden = false;
+    contentWrap.className = "dream-content-wrap";
+    contentWrap.innerHTML = "";
+    syncAppFooterSideincomeKpiActions();
+
+    const list = document.createElement("div");
+    list.className = "dream-goals-list";
     const data = loadSideincomeMap();
-    tabs.innerHTML = "";
+
+    if (
+      renderKpiMapSyncLoadingIfNeeded({
+        tabId: "sideincome",
+        container: contentWrap,
+        isEmpty: !data.paths.length,
+        onLoading: () => syncAppFooterSideincomeKpiActions(),
+      })
+    ) {
+      return;
+    }
+
+    if (!data.paths.length) {
+      const empty = document.createElement("p");
+      empty.className = "dream-goals-empty";
+      empty.textContent = "부수입 목표를 추가해 보세요.";
+      list.appendChild(empty);
+    }
+
     data.paths.forEach((path) => {
-      const tab = document.createElement("div");
-      const isActive = path.id === activePathId;
-      tab.className = "dream-tab" + (isActive ? " active" : "");
-      tab.dataset.pathId = path.id;
-      tab.innerHTML = `<span class="dream-tab-text">${escapeHtml(path.name || "새 경로")}</span>${
-        isActive ? KPI_TAB_EDIT_PENCIL_HTML : ""
-      }`;
-      if (isActive) {
-        tab.querySelector(".dream-tab-edit")?.addEventListener("click", (e) => {
-          e.stopPropagation();
-          e.preventDefault();
-          showPathContextModal(path, tab);
-        });
-      }
-      tab.addEventListener("click", () => {
-        const switching = activePathId !== path.id;
-        if (switching) {
-          selectedKpiId = null;
-        }
-        activePathId = path.id;
-        renderTabs();
-        updateTitleAndContent();
-        if (switching) {
-          void pullKpiMapSubViewFromCloud("sideincome").then((pullOk) => {
-            if (pullOk && el.isConnected) {
-              renderTabs();
-              updateTitleAndContent();
-            }
-          });
-        }
+      const kpiCount = (data.kpis || []).filter((k) => k.pathId === path.id)
+        .length;
+      const item = document.createElement("div");
+      item.className = "dream-goals-item dream-kpi-card";
+      item.innerHTML = `
+        <div class="dream-kpi-card-inner">
+          ${SIDEINCOME_GOAL_EDIT_PENCIL_HTML}
+          <div class="dream-goals-item-name">${escapeHtml(path.name || "새 경로")}</div>
+          <div class="dream-goals-item-meta">KPI ${kpiCount}개</div>
+        </div>
+      `;
+      item.querySelector(".dream-kpi-card-edit").addEventListener("click", (e) => {
+        e.stopPropagation();
+        showPathContextModal(path);
       });
-      tabs.appendChild(tab);
+      item.addEventListener("click", (e) => {
+        if (e.target.closest(".dream-kpi-card-edit")) return;
+        enterKpiView(path.id);
+      });
+      list.appendChild(item);
     });
+
+    contentWrap.appendChild(list);
+    persistKpiUiState();
   }
 
-  function updateTitleAndContent() {
-    const data = loadSideincomeMap();
-    const path = data.paths.find((d) => d.id === activePathId);
-    if (path) {
-      contentWrap.hidden = false;
-      renderKpiList();
-      renderKpiHistory();
-    } else {
-      contentWrap.hidden = true;
-      persistKpiUiState();
+  function updateSideincomeView() {
+    syncSideincomeHeader();
+    historyWrap.hidden = true;
+    historyWrap.innerHTML = "";
+    if (sideincomeViewScreen === "goals") {
+      renderSideincomeGoalsList();
+      return;
     }
+    const data = loadSideincomeMap();
+    const path = data.paths.find((p) => p.id === activePathId);
+    if (path) {
+      if (sideincomeViewScreen === "kpiDetail") {
+        renderKpiDetailView();
+      } else {
+        contentWrap.hidden = false;
+        contentWrap.className = "dream-content-wrap";
+        renderKpiList();
+      }
+    } else {
+      exitToSideincomeGoalsList();
+    }
+    persistKpiUiState();
   }
 
   function showPathAddModal() {
@@ -1758,12 +1876,12 @@ export function render() {
       };
       data.paths.push(path);
       saveSideincomeMap(data);
-      activePathId = path.id;
       selectedKpiId = null;
       pathAddModalJustClosed = true;
       close();
-      renderTabs();
-      updateTitleAndContent();
+      sideincomeViewScreen = "goals";
+      activePathId = null;
+      updateSideincomeView();
       setTimeout(() => {
         pathAddModalJustClosed = false;
       }, 300);
@@ -1780,9 +1898,15 @@ export function render() {
   function reconcileScopeWithStoredMap(data) {
     const paths = data?.paths || [];
     const kpis = data?.kpis || [];
-    if (!paths.some((p) => p.id === activePathId)) {
-      activePathId = paths[0]?.id || null;
-      if (!activePathId) selectedKpiId = null;
+    if (sideincomeViewScreen === "kpis") {
+      if (!paths.some((p) => p.id === activePathId)) {
+        activePathId = paths[0]?.id || null;
+        selectedKpiId = null;
+        if (!activePathId) sideincomeViewScreen = "goals";
+      }
+    } else {
+      activePathId = null;
+      selectedKpiId = null;
     }
     if (selectedKpiId && !kpis.some((k) => k.id === selectedKpiId)) {
       selectedKpiId = null;
@@ -1790,12 +1914,8 @@ export function render() {
   }
 
   reconcileScopeWithStoredMap(_sideincomeInitData);
-  renderTabs();
-  if (activePathId) {
-    updateTitleAndContent();
-  } else {
-    contentWrap.hidden = true;
-  }
+  syncSideincomeHeader();
+  updateSideincomeView();
   let lastKpiMapPaintSig = readKpiMapLocalStorageSignature(
     SIDEINCOME_KPI_MAP_STORAGE_KEY,
   );
@@ -1808,22 +1928,21 @@ export function render() {
     if (nextSig === lastKpiMapPaintSig) return;
     lastKpiMapPaintSig = nextSig;
     const data = loadSideincomeMap();
-    if (!data.paths.some((p) => p.id === activePathId)) {
-      activePathId = data.paths[0]?.id || null;
+    if (sideincomeViewScreen === "kpis") {
+      if (!data.paths.some((p) => p.id === activePathId)) {
+        activePathId = data.paths[0]?.id || null;
+        selectedKpiId = null;
+        if (!activePathId) sideincomeViewScreen = "goals";
+      }
+    } else {
+      activePathId = null;
       selectedKpiId = null;
     }
     if (selectedKpiId && !data.kpis.some((k) => k.id === selectedKpiId)) {
       selectedKpiId = null;
     }
-    renderTabs();
-    const path = data.paths.find((p) => p.id === activePathId);
-    if (path) {
-      contentWrap.hidden = false;
-      renderKpiList();
-      renderKpiHistory();
-    } else {
-      contentWrap.hidden = true;
-    }
+    syncSideincomeHeader();
+    updateSideincomeView();
     persistKpiUiState();
   }
 
@@ -1835,7 +1954,23 @@ export function render() {
     syncSideincomeUiFromStoredMap();
   };
   window.addEventListener("sideincome-kpi-map-saved", onMergedSync);
+  window.addEventListener("lp-kpi-tab-pull-settled", (e) => {
+    if (!el.isConnected || e.detail?.tabId !== "sideincome") return;
+    updateSideincomeView();
+  });
   window.__lpSideincomeSoftRefresh = syncSideincomeUiFromStoredMap;
+  window.__lpSideincomeFooterBack = () => {
+    if (!el.isConnected) return false;
+    if (sideincomeViewScreen === "kpiDetail") {
+      exitToKpiList();
+      return true;
+    }
+    if (sideincomeViewScreen === "kpis") {
+      exitToSideincomeGoalsList();
+      return true;
+    }
+    return false;
+  };
 
   return el;
 }

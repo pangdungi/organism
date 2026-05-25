@@ -44,7 +44,6 @@ import {
 import {
   KPI_UI_SESSION_KEYS,
   readKpiUiSession,
-  writeKpiUiSession,
   restoreKpiTabFromSession,
 } from "../utils/kpiViewUiSession.js";
 import { showKpiTodoAddModal } from "../utils/kpiTodoAddModal.js";
@@ -52,7 +51,7 @@ import { formatKpiCardHeroHtml } from "../utils/kpiViewModal.js";
 import { showKpiTodoEditModal } from "../utils/kpiTodoEditModal.js";
 import {
   KPI_CARD_EDIT_PENCIL_HTML,
-  KPI_TAB_EDIT_PENCIL_HTML,
+  DREAM_GOAL_EDIT_PENCIL_HTML,
 } from "../utils/kpiTabNameEditIcon.js";
 import { sortKpiLogsNewestFirst, getLatestKpiLogWithExplicitValue } from "../utils/kpiLogsSort.js";
 import {
@@ -62,12 +61,15 @@ import {
   kpiTodosCompletionBrief,
 } from "../utils/kpiTodoLifecycleDebug.js";
 import { kpiTodoFineTrace } from "../utils/kpiTodoFineTrace.js";
-import { pullKpiMapSubViewFromCloud } from "../utils/kpiTabCloudRefresh.js";
 import { readKpiMapLocalStorageSignature } from "../utils/kpiMapLocalStorage.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
   getAppFooterActionsSlot,
 } from "../utils/appFooterShell.js";
+import {
+  renderKpiMapSyncLoadingIfNeeded,
+  shouldShowKpiMapSyncLoading,
+} from "../utils/kpiMapSyncLoadingUi.js";
 
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
 
@@ -267,17 +269,6 @@ export function render() {
   const el = document.createElement("div");
   el.className = "app-tab-panel-content dream-view lp-kpi-dream-page";
 
-  const addBtn = document.createElement("button");
-  addBtn.type = "button";
-  addBtn.className = "dream-add-icon-btn";
-  addBtn.title = "꿈 목표 추가";
-  addBtn.setAttribute("aria-label", "꿈 목표 추가");
-  addBtn.innerHTML = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="dream-add-icon" aria-hidden="true" width="24" height="24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m12 8v8"/><path d="m8 12h8"/><path d="m18 22h-12c-2.209 0-4-1.791-4-4v-12c0-2.209 1.791-4 4-4h12c2.209 0 4 1.791 4 4v12c0 2.209-1.791 4-4 4z"/></g></svg>`;
-  addBtn.addEventListener("click", (e) => {
-    if (dreamAddModalJustClosed) return;
-    showDreamAddModal();
-  });
-
   const header = document.createElement("header");
   header.className = "dream-view-header";
   const label = document.createElement("span");
@@ -298,14 +289,6 @@ export function render() {
   desiredLifeWrap.hidden = true;
   el.appendChild(desiredLifeWrap);
 
-  const tabsWrap = document.createElement("div");
-  tabsWrap.className = "dream-tabs-wrap";
-  const tabs = document.createElement("div");
-  tabs.className = "dream-tabs";
-  tabsWrap.appendChild(addBtn);
-  tabsWrap.appendChild(tabs);
-  el.appendChild(tabsWrap);
-
   const contentWrap = document.createElement("div");
   contentWrap.className = "dream-content-wrap";
   el.appendChild(contentWrap);
@@ -318,6 +301,7 @@ export function render() {
   let activeDreamId = null;
   let selectedKpiId = null;
   let kpiFilter = "all"; // "all" | "active" | "completed"
+  let dreamViewScreen = "goals"; // "goals" | "kpis" | "kpiDetail"
   let kpiGridScrollPrevFilter = null;
   let kpiGridScrollPrevScopeId = null;
   let dreamAddModalJustClosed = false;
@@ -329,16 +313,100 @@ export function render() {
     kpis: _dreamInitData.kpis || [],
     foreignKey: "dreamId",
   });
-  if (_dreamRestored.tabId) activeDreamId = _dreamRestored.tabId;
-  selectedKpiId = _dreamRestored.selectedKpiId;
   kpiFilter = _dreamRestored.kpiFilter;
+  /* 꿈 메뉴 진입은 항상 목표 목록 — KPI 화면은 목표 클릭 후에만 */
+  dreamViewScreen = "goals";
+  activeDreamId = null;
+  selectedKpiId = null;
 
   function persistKpiUiState() {
-    writeKpiUiSession(KPI_UI_SESSION_KEYS.dream, {
-      tabId: activeDreamId,
-      selectedKpiId,
-      kpiFilter,
-    });
+    try {
+      sessionStorage.setItem(
+        KPI_UI_SESSION_KEYS.dream,
+        JSON.stringify({
+          tabId: activeDreamId,
+          selectedKpiId,
+          kpiFilter,
+          dreamViewScreen,
+        }),
+      );
+    } catch (_) {}
+  }
+
+  function syncDreamFooterBackLabel() {
+    if (!el.isConnected) return;
+    const footerBack = document.querySelector("[data-lp-app-footer-back]");
+    if (!footerBack) return;
+    if (dreamViewScreen === "kpiDetail") {
+      footerBack.title = "KPI 목록으로";
+      footerBack.setAttribute("aria-label", "KPI 목록으로");
+    } else if (dreamViewScreen === "kpis") {
+      footerBack.title = "꿈 목표 목록으로";
+      footerBack.setAttribute("aria-label", "꿈 목표 목록으로");
+    } else {
+      footerBack.title = "오늘(메인)으로";
+      footerBack.setAttribute("aria-label", "오늘(메인)으로");
+    }
+  }
+
+  function syncDreamHeader() {
+    const data = loadDreamMap();
+    const dream = data.dreams.find((d) => d.id === activeDreamId);
+    if (dreamViewScreen === "kpiDetail" && selectedKpiId) {
+      const kpi = (data.kpis || []).find((k) => k.id === selectedKpiId);
+      title.textContent = kpi?.name || "KPI";
+    } else if (dreamViewScreen === "kpis" && dream) {
+      title.textContent = dream.name || "꿈";
+    } else {
+      title.textContent = "꿈";
+    }
+    syncDreamFooterBackLabel();
+  }
+
+  function enterKpiView(dreamId) {
+    if (!dreamId) return;
+    activeDreamId = dreamId;
+    selectedKpiId = null;
+    dreamViewScreen = "kpis";
+    syncDreamHeader();
+    updateDreamView();
+  }
+
+  function enterKpiDetailView(kpiId) {
+    if (!kpiId || !activeDreamId) return;
+    selectedKpiId = kpiId;
+    dreamViewScreen = "kpiDetail";
+    syncDreamHeader();
+    updateDreamView();
+  }
+
+  function exitToKpiList() {
+    selectedKpiId = null;
+    dreamViewScreen = "kpis";
+    syncDreamHeader();
+    updateDreamView();
+    persistKpiUiState();
+  }
+
+  function exitToDreamGoalsList() {
+    dreamViewScreen = "goals";
+    activeDreamId = null;
+    selectedKpiId = null;
+    syncDreamHeader();
+    updateDreamView();
+    persistKpiUiState();
+  }
+
+  function refreshDreamAfterKpiDataChange(opts = {}) {
+    if (dreamViewScreen === "kpiDetail") {
+      syncDreamHeader();
+      renderKpiDetailView(opts);
+    } else if (dreamViewScreen === "kpis") {
+      renderKpiList();
+    } else {
+      updateDreamView();
+    }
+    persistKpiUiState();
   }
 
   function dreamKpiTargetValueFieldHtml(kpi = null) {
@@ -577,9 +645,7 @@ export function render() {
       saveDreamMap(data);
       syncKpiToTimeTask(kpi, "add");
       close();
-      selectedKpiId = kpi.id;
-      renderKpiList();
-      renderKpiHistory();
+      enterKpiDetailView(kpi.id);
     });
     document.body.appendChild(modal);
     initModalNativeDateFieldsIn(modal);
@@ -677,10 +743,8 @@ export function render() {
       const order = (data.kpiOrder || {})[kpi.dreamId] || [];
       data.kpiOrder = { ...data.kpiOrder, [kpi.dreamId]: order.filter((id) => id !== kpi.id) };
       saveDreamMap(data);
-      selectedKpiId = null;
       close();
-      renderKpiList();
-      renderKpiHistory();
+      exitToKpiList();
     });
     modal.querySelector(".dream-kpi-form").addEventListener("submit", (e) => {
       e.preventDefault();
@@ -706,8 +770,7 @@ export function render() {
         if (oldName !== target.name) syncKpiToTimeTask(target, "update", oldName);
       }
       close();
-      renderKpiList();
-      renderKpiHistory();
+      refreshDreamAfterKpiDataChange();
     });
     document.body.appendChild(modal);
     initModalNativeDateFieldsIn(modal);
@@ -828,8 +891,7 @@ export function render() {
       }
       saveDreamMap(data);
       close();
-      renderKpiList();
-      renderKpiHistory();
+      refreshDreamAfterKpiDataChange();
     });
     const delBtn = modal.querySelector(".dream-kpi-log-modal-delete-btn");
     if (delBtn && isEdit) {
@@ -839,8 +901,7 @@ export function render() {
         d.kpiLogs = (d.kpiLogs || []).filter((l) => l.id !== editLog.id);
         saveDreamMap(d);
         close();
-        renderKpiList();
-        renderKpiHistory();
+        refreshDreamAfterKpiDataChange();
       });
     }
     document.body.appendChild(modal);
@@ -882,7 +943,7 @@ export function render() {
         completed: false,
       });
       saveDreamMap(d2);
-      renderKpiHistory({ scrollTodoAfterMutation: true });
+      renderKpiDetailView({ scrollTodoAfterMutation: true });
       return;
     }
     if (tab === KPI_BOTTOM_TAB_DAILY) {
@@ -901,7 +962,7 @@ export function render() {
         completed: false,
       });
       saveDreamMap(d2);
-      renderKpiHistory({ scrollTodoAfterMutation: true });
+      renderKpiDetailView({ scrollTodoAfterMutation: true });
       return;
     }
     showKpiLogModal(k);
@@ -911,7 +972,6 @@ export function render() {
     clearDreamKpiFooterActions();
     const slot = getAppFooterActionsSlot();
     if (!slot) return;
-    if (!activeDreamId) return;
 
     const addBtn = document.createElement("button");
     addBtn.type = "button";
@@ -919,7 +979,22 @@ export function render() {
     addBtn.setAttribute("data-lp-dream-kpi-footer-action", "");
     addBtn.innerHTML = DREAM_FOOTER_ADD_ICON;
 
-    if (!selectedKpiId) {
+    if (dreamViewScreen === "goals") {
+      const data = loadDreamMap();
+      if (shouldShowKpiMapSyncLoading("dream", !data.dreams?.length)) return;
+      addBtn.title = "꿈 목표 추가";
+      addBtn.setAttribute("aria-label", "꿈 목표 추가");
+      addBtn.addEventListener("click", () => {
+        if (dreamAddModalJustClosed) return;
+        showDreamAddModal();
+      });
+      slot.appendChild(addBtn);
+      return;
+    }
+
+    if (!activeDreamId) return;
+
+    if (dreamViewScreen === "kpis") {
       addBtn.title = "KPI 추가";
       addBtn.setAttribute("aria-label", "KPI 추가");
       addBtn.addEventListener("click", () => {
@@ -929,6 +1004,8 @@ export function render() {
       slot.appendChild(addBtn);
       return;
     }
+
+    if (dreamViewScreen !== "kpiDetail" || !selectedKpiId) return;
 
     const data = loadDreamMap();
     const kpiNow = (data.kpis || []).find((k) => k.id === selectedKpiId);
@@ -1053,6 +1130,7 @@ export function render() {
     );
     historyWrap.remove();
     contentWrap.innerHTML = "";
+    contentWrap.className = "dream-content-wrap";
     if (!activeDreamId) {
       kpiGridScrollPrevFilter = null;
       kpiGridScrollPrevScopeId = null;
@@ -1076,6 +1154,21 @@ export function render() {
     const completedKpis = dreamKpis.filter((k) => getKpiProgress(k).isCompleted);
     const activeKpis = dreamKpis.filter((k) => !getKpiProgress(k).isCompleted);
 
+    if (
+      renderKpiMapSyncLoadingIfNeeded({
+        tabId: "dream",
+        container: contentWrap,
+        isEmpty: dreamKpis.length === 0,
+        onLoading: () => {
+          historyWrap.hidden = true;
+          el.appendChild(historyWrap);
+          syncAppFooterDreamKpiActions();
+        },
+      })
+    ) {
+      return;
+    }
+
     const filterBar = document.createElement("div");
     filterBar.className = "dream-kpi-filter-bar";
     filterBar.innerHTML = `
@@ -1086,13 +1179,7 @@ export function render() {
     filterBar.querySelectorAll(".dream-kpi-filter-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         kpiFilter = btn.dataset.filter;
-        /* 필터 변경 시 선택된 KPI가 새 필터에 없으면 선택 해제 */
-        const listAfterFilter = kpiFilter === "active" ? activeKpis : kpiFilter === "completed" ? completedKpis : dreamKpis;
-        if (selectedKpiId && !listAfterFilter.some((k) => k.id === selectedKpiId)) {
-          selectedKpiId = null;
-        }
         renderKpiList();
-        renderKpiHistory();
       });
     });
     contentWrap.appendChild(filterBar);
@@ -1105,7 +1192,6 @@ export function render() {
         : kpiFilter === "completed"
           ? completedKpis
           : dreamKpis;
-    let historyAnchoredUnderCard = false;
     listToShow.forEach((kpi) => {
       const {
         progress,
@@ -1138,8 +1224,7 @@ export function render() {
       card.className =
         "dream-kpi-card" +
         (lowerBetter ? " dream-kpi-card--lower-better" : "") +
-        (useTimeAsUnit ? " dream-kpi-card--time-unit" : "") +
-        (selectedKpiId === kpi.id ? " is-selected" : "");
+        (useTimeAsUnit ? " dream-kpi-card--time-unit" : "");
       card.dataset.kpiId = kpi.id;
       card.draggable = true;
       const investedTimeHtml = "";
@@ -1164,9 +1249,7 @@ export function render() {
       });
       card.addEventListener("click", (e) => {
         if (e.target.closest(".dream-kpi-card-edit")) return;
-        selectedKpiId = selectedKpiId === kpi.id ? null : kpi.id;
-        renderKpiList();
-        renderKpiHistory();
+        enterKpiDetailView(kpi.id);
       });
       card.addEventListener("dragstart", (e) => {
         e.dataTransfer.effectAllowed = "move";
@@ -1199,18 +1282,10 @@ export function render() {
           newOrder.splice(toIdx, 0, draggedId);
           reorderKpis(activeDreamId, newOrder);
           renderKpiList();
-          renderKpiHistory();
         }
       });
       grid.appendChild(card);
-      if (selectedKpiId === kpi.id) {
-        grid.appendChild(historyWrap);
-        historyAnchoredUnderCard = true;
-      }
     });
-    if (!historyAnchoredUnderCard) {
-      grid.appendChild(historyWrap);
-    }
     grid.addEventListener("dragend", () => {
       grid.querySelectorAll(".dream-kpi-card-drag-over").forEach((c) => c.classList.remove("dream-kpi-card-drag-over"));
     });
@@ -1223,11 +1298,24 @@ export function render() {
     syncAppFooterDreamKpiActions();
   }
 
-  function renderKpiHistory(opts = {}) {
-    const { scrollTodoAfterMutation = false } = opts;
-    historyWrap.innerHTML = "";
+  function renderKpiDetailView(opts = {}) {
+    contentWrap.hidden = false;
+    contentWrap.className = "dream-content-wrap dream-kpi-detail-wrap";
+    contentWrap.innerHTML = "";
     if (!selectedKpiId) {
-      historyWrap.hidden = true;
+      exitToKpiList();
+      return;
+    }
+    renderKpiHistory({ ...opts, target: contentWrap });
+    syncAppFooterDreamKpiActions();
+    persistKpiUiState();
+  }
+
+  function renderKpiHistory(opts = {}) {
+    const { scrollTodoAfterMutation = false, target = historyWrap } = opts;
+    target.innerHTML = "";
+    if (!selectedKpiId) {
+      if (target === historyWrap) historyWrap.hidden = true;
       syncAppFooterDreamKpiActions();
       return;
     }
@@ -1235,9 +1323,8 @@ export function render() {
     const kpi = (data.kpis || []).find((k) => k.id === selectedKpiId);
     const needHabitTracker = kpi ? !!kpi.needHabitTracker : false;
     if (!kpi) {
-      historyWrap.hidden = true;
-      selectedKpiId = null;
-      renderKpiList();
+      if (target === historyWrap) historyWrap.hidden = true;
+      exitToKpiList();
       return;
     }
     const logs = getKpiLogs(selectedKpiId);
@@ -1245,7 +1332,7 @@ export function render() {
     const todos = (data.kpiTodos || []).filter(
       (t) => String(t.kpiId) === selKpi && (t.text || "").trim() !== "",
     );
-    historyWrap.hidden = false;
+    if (target === historyWrap) historyWrap.hidden = false;
 
     const hasDailyTab = needHabitTracker;
 
@@ -1382,7 +1469,7 @@ export function render() {
             삭제후: kpiTodoSnapshotBrief(after),
             삭제후dr: deletedRefsKpiTodosLen(after),
           });
-          renderKpiHistory({ scrollTodoAfterMutation: true });
+          renderKpiDetailView({ scrollTodoAfterMutation: true });
           return;
         }
         const d = loadDreamMap();
@@ -1390,7 +1477,7 @@ export function render() {
         if (!row) return;
         row.text = result.text;
         saveDreamMap(d);
-        renderKpiHistory({ scrollTodoAfterMutation: true });
+        renderKpiDetailView({ scrollTodoAfterMutation: true });
       };
 
       item.addEventListener("click", async (e) => {
@@ -1482,7 +1569,7 @@ export function render() {
             appendDeletedRef(d, "kpiDailyRepeatTodos", todo.id);
             d.kpiDailyRepeatTodos = (d.kpiDailyRepeatTodos || []).filter((x) => x.id !== todo.id);
             saveDreamMap(d);
-            renderKpiHistory({ scrollTodoAfterMutation: true });
+            renderKpiDetailView({ scrollTodoAfterMutation: true });
             return;
           }
           const d = loadDreamMap();
@@ -1490,7 +1577,7 @@ export function render() {
           if (!row) return;
           row.text = result.text;
           saveDreamMap(d);
-          renderKpiHistory({ scrollTodoAfterMutation: true });
+          renderKpiDetailView({ scrollTodoAfterMutation: true });
         };
 
         item.addEventListener("click", async (e) => {
@@ -1505,10 +1592,10 @@ export function render() {
       panelDailySeg.appendChild(dailyList);
     }
 
-    historyWrap.appendChild(segBar);
-    historyWrap.appendChild(panelLogSeg);
-    historyWrap.appendChild(panelTodoSeg);
-    if (panelDailySeg) historyWrap.appendChild(panelDailySeg);
+    target.appendChild(segBar);
+    target.appendChild(panelLogSeg);
+    target.appendChild(panelTodoSeg);
+    if (panelDailySeg) target.appendChild(panelDailySeg);
 
     wireKpiHistoryBottomTabs(
       "dream",
@@ -1523,7 +1610,7 @@ export function render() {
       () => syncAppFooterDreamKpiActions(),
     );
     if (scrollTodoAfterMutation) {
-      afterKpiTodoListMutationScroll(historyWrap);
+      afterKpiTodoListMutationScroll(target);
     }
     syncAppFooterDreamKpiActions();
   }
@@ -1568,12 +1655,12 @@ export function render() {
       const dream = { id: nextId(), name: val };
       data.dreams.push(dream);
       saveDreamMap(data);
-      activeDreamId = dream.id;
       selectedKpiId = null;
       dreamAddModalJustClosed = true;
       close();
-      renderTabs();
-      updateTitleAndContent();
+      dreamViewScreen = "goals";
+      activeDreamId = null;
+      updateDreamView();
       setTimeout(() => { dreamAddModalJustClosed = false; }, 300);
     };
     confirmBtn.addEventListener("click", doSubmit);
@@ -1632,9 +1719,10 @@ export function render() {
       if (activeDreamId === dreamId) {
         activeDreamId = d.dreams[0]?.id || null;
         selectedKpiId = null;
+        if (!activeDreamId) dreamViewScreen = "goals";
       }
-      renderTabs();
-      updateTitleAndContent();
+      syncDreamHeader();
+      updateDreamView();
     });
     document.body.appendChild(modal);
   }
@@ -1676,7 +1764,8 @@ export function render() {
       if (target) {
         target.name = val;
         saveDreamMap(d);
-        renderTabs();
+        syncDreamHeader();
+        updateDreamView();
       }
       close();
     });
@@ -1742,78 +1831,111 @@ export function render() {
     desiredLifeWrap.innerHTML = "";
   }
 
-  function renderTabs() {
+  function renderDreamGoalsList() {
+    historyWrap.hidden = true;
+    historyWrap.innerHTML = "";
+    contentWrap.hidden = false;
+    contentWrap.className = "dream-content-wrap";
+    contentWrap.innerHTML = "";
+    syncAppFooterDreamKpiActions();
+
+    const list = document.createElement("div");
+    list.className = "dream-goals-list";
     const data = loadDreamMap();
-    tabs.innerHTML = "";
+
+    if (
+      renderKpiMapSyncLoadingIfNeeded({
+        tabId: "dream",
+        container: contentWrap,
+        isEmpty: !data.dreams.length,
+        onLoading: () => syncAppFooterDreamKpiActions(),
+      })
+    ) {
+      return;
+    }
+
+    if (!data.dreams.length) {
+      const empty = document.createElement("p");
+      empty.className = "dream-goals-empty";
+      empty.textContent = "꿈 목표를 추가해 보세요.";
+      list.appendChild(empty);
+    }
+
     data.dreams.forEach((dream) => {
-      const tab = document.createElement("div");
-      const isActive = dream.id === activeDreamId;
-      tab.className = "dream-tab" + (isActive ? " active" : "");
-      tab.dataset.dreamId = dream.id;
-      tab.innerHTML = `<span class="dream-tab-text">${escapeHtml(dream.name || "꿈 이름")}</span>${
-        isActive ? KPI_TAB_EDIT_PENCIL_HTML : ""
-      }`;
-      if (isActive) {
-        tab.querySelector(".dream-tab-edit")?.addEventListener("click", (e) => {
-          e.stopPropagation();
-          e.preventDefault();
-          showDreamContextModal(dream, tab);
-        });
-      }
-      tab.addEventListener("click", () => {
-        const switching = activeDreamId !== dream.id;
-        if (switching) {
-          selectedKpiId = null;
-        }
-        activeDreamId = dream.id;
-        renderTabs();
-        updateTitleAndContent();
-        if (switching) {
-          void pullKpiMapSubViewFromCloud("dream").then((pullOk) => {
-            if (pullOk && el.isConnected) {
-              renderTabs();
-              updateTitleAndContent();
-            }
-          });
-        }
+      const kpiCount = (data.kpis || []).filter((k) => k.dreamId === dream.id)
+        .length;
+      const item = document.createElement("div");
+      item.className = "dream-goals-item dream-kpi-card";
+      item.innerHTML = `
+        <div class="dream-kpi-card-inner">
+          ${DREAM_GOAL_EDIT_PENCIL_HTML}
+          <div class="dream-goals-item-name">${escapeHtml(dream.name || "꿈 이름")}</div>
+          <div class="dream-goals-item-meta">KPI ${kpiCount}개</div>
+        </div>
+      `;
+      item.querySelector(".dream-kpi-card-edit").addEventListener("click", (e) => {
+        e.stopPropagation();
+        showDreamContextModal(dream, item);
       });
-      tabs.appendChild(tab);
+      item.addEventListener("click", (e) => {
+        if (e.target.closest(".dream-kpi-card-edit")) return;
+        enterKpiView(dream.id);
+      });
+      list.appendChild(item);
     });
+
+    contentWrap.appendChild(list);
+    persistKpiUiState();
   }
 
-  function updateTitleAndContent() {
+  function updateDreamView() {
+    syncDreamHeader();
+    historyWrap.hidden = true;
+    historyWrap.innerHTML = "";
+    if (dreamViewScreen === "goals") {
+      renderDreamGoalsList();
+      return;
+    }
     const data = loadDreamMap();
     const dream = data.dreams.find((d) => d.id === activeDreamId);
     if (dream) {
-      contentWrap.hidden = false;
-      renderKpiList();
-      renderKpiHistory();
+      if (dreamViewScreen === "kpiDetail") {
+        renderKpiDetailView();
+      } else {
+        contentWrap.hidden = false;
+        contentWrap.className = "dream-content-wrap";
+        renderKpiList();
+      }
     } else {
-      contentWrap.hidden = true;
-      persistKpiUiState();
+      exitToDreamGoalsList();
     }
+    persistKpiUiState();
   }
 
   function reconcileScopeWithStoredMap(data) {
     const dreams = data?.dreams || [];
     const kpis = data?.kpis || [];
-    if (!dreams.some((d) => d.id === activeDreamId)) {
-      activeDreamId = dreams[0]?.id || null;
-      if (!activeDreamId) selectedKpiId = null;
+    const inKpiFlow = dreamViewScreen === "kpis" || dreamViewScreen === "kpiDetail";
+    if (inKpiFlow) {
+      if (!dreams.some((d) => d.id === activeDreamId)) {
+        activeDreamId = dreams[0]?.id || null;
+        selectedKpiId = null;
+        dreamViewScreen = activeDreamId ? "kpis" : "goals";
+      }
+    } else {
+      activeDreamId = null;
+      selectedKpiId = null;
     }
     if (selectedKpiId && !kpis.some((k) => k.id === selectedKpiId)) {
       selectedKpiId = null;
+      if (dreamViewScreen === "kpiDetail") dreamViewScreen = "kpis";
     }
   }
 
   reconcileScopeWithStoredMap(_dreamInitData);
-  renderTabs();
   updateDesiredLifeDisplay();
-  if (activeDreamId) {
-    updateTitleAndContent();
-  } else {
-    contentWrap.hidden = true;
-  }
+  syncDreamHeader();
+  updateDreamView();
   let lastKpiMapPaintSig = readKpiMapLocalStorageSignature(
     DREAM_KPI_MAP_STORAGE_KEY,
   );
@@ -1824,22 +1946,23 @@ export function render() {
     if (nextSig === lastKpiMapPaintSig) return;
     lastKpiMapPaintSig = nextSig;
     const data = loadDreamMap();
-    if (!data.dreams.some((d) => d.id === activeDreamId)) {
-      activeDreamId = data.dreams[0]?.id || null;
+    const inKpiFlow = dreamViewScreen === "kpis" || dreamViewScreen === "kpiDetail";
+    if (inKpiFlow) {
+      if (!data.dreams.some((d) => d.id === activeDreamId)) {
+        activeDreamId = data.dreams[0]?.id || null;
+        selectedKpiId = null;
+        dreamViewScreen = activeDreamId ? "kpis" : "goals";
+      }
+    } else {
+      activeDreamId = null;
       selectedKpiId = null;
     }
     if (selectedKpiId && !data.kpis.some((k) => k.id === selectedKpiId)) {
       selectedKpiId = null;
+      if (dreamViewScreen === "kpiDetail") dreamViewScreen = "kpis";
     }
-    renderTabs();
-    const dream = data.dreams.find((d) => d.id === activeDreamId);
-    if (dream) {
-      contentWrap.hidden = false;
-      renderKpiList();
-      renderKpiHistory();
-    } else {
-      contentWrap.hidden = true;
-    }
+    syncDreamHeader();
+    updateDreamView();
     updateDesiredLifeDisplay();
     persistKpiUiState();
   }
@@ -1852,7 +1975,23 @@ export function render() {
     syncDreamUiFromStoredMap();
   };
   window.addEventListener("dream-kpi-map-saved", onMergedSync);
+  window.addEventListener("lp-kpi-tab-pull-settled", (e) => {
+    if (!el.isConnected || e.detail?.tabId !== "dream") return;
+    updateDreamView();
+  });
   window.__lpDreamSoftRefresh = syncDreamUiFromStoredMap;
+  window.__lpDreamFooterBack = () => {
+    if (!el.isConnected) return false;
+    if (dreamViewScreen === "kpiDetail") {
+      exitToKpiList();
+      return true;
+    }
+    if (dreamViewScreen === "kpis") {
+      exitToDreamGoalsList();
+      return true;
+    }
+    return false;
+  };
 
   return el;
 }

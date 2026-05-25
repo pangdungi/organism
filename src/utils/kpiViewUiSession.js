@@ -25,14 +25,15 @@ export function readKpiUiSession(storageKey) {
 
 export function writeKpiUiSession(storageKey, state) {
   try {
-    sessionStorage.setItem(
-      storageKey,
-      JSON.stringify({
-        tabId: state.tabId ?? null,
-        selectedKpiId: state.selectedKpiId ?? null,
-        kpiFilter: state.kpiFilter ?? "all",
-      }),
-    );
+    const payload = {
+      tabId: state.tabId ?? null,
+      selectedKpiId: state.selectedKpiId ?? null,
+      kpiFilter: state.kpiFilter ?? "all",
+    };
+    if (state.healthViewScreen != null) {
+      payload.healthViewScreen = state.healthViewScreen;
+    }
+    sessionStorage.setItem(storageKey, JSON.stringify(payload));
   } catch (_) {}
 }
 

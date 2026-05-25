@@ -46,7 +46,6 @@ import {
 import {
   KPI_UI_SESSION_KEYS,
   readKpiUiSession,
-  writeKpiUiSession,
   restoreKpiTabFromSession,
 } from "../utils/kpiViewUiSession.js";
 import { showKpiTodoAddModal } from "../utils/kpiTodoAddModal.js";
@@ -54,7 +53,7 @@ import { formatKpiCardHeroHtml } from "../utils/kpiViewModal.js";
 import { showKpiTodoEditModal } from "../utils/kpiTodoEditModal.js";
 import {
   KPI_CARD_EDIT_PENCIL_HTML,
-  KPI_TAB_EDIT_PENCIL_HTML,
+  HAPPINESS_GOAL_EDIT_PENCIL_HTML,
 } from "../utils/kpiTabNameEditIcon.js";
 import { sortKpiLogsNewestFirst, getLatestKpiLogWithExplicitValue } from "../utils/kpiLogsSort.js";
 import {
@@ -63,12 +62,15 @@ import {
   kpiTodoSnapshotBrief,
   kpiTodosCompletionBrief,
 } from "../utils/kpiTodoLifecycleDebug.js";
-import { pullKpiMapSubViewFromCloud } from "../utils/kpiTabCloudRefresh.js";
 import { readKpiMapLocalStorageSignature } from "../utils/kpiMapLocalStorage.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
   getAppFooterActionsSlot,
 } from "../utils/appFooterShell.js";
+import {
+  renderKpiMapSyncLoadingIfNeeded,
+  shouldShowKpiMapSyncLoading,
+} from "../utils/kpiMapSyncLoadingUi.js";
 
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
 
@@ -254,18 +256,7 @@ function setupActionUnitTimeCalc(modal) {
 
 export function render() {
   const el = document.createElement("div");
-  el.className = "app-tab-panel-content happiness-view dream-view lp-kpi-dream-page";
-
-  const addBtn = document.createElement("button");
-  addBtn.type = "button";
-  addBtn.className = "dream-add-icon-btn";
-  addBtn.title = "행복 목표 추가";
-  addBtn.setAttribute("aria-label", "행복 목표 추가");
-  addBtn.innerHTML = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="dream-add-icon" aria-hidden="true" width="24" height="24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m12 8v8"/><path d="m8 12h8"/><path d="m18 22h-12c-2.209 0-4-1.791-4-4v-12c0-2.209 1.791-4 4-4h12c2.209 0 4 1.791 4 4v12c0 2.209-1.791 4-4 4z"/></g></svg>`;
-  addBtn.addEventListener("click", () => {
-    if (happinessAddModalJustClosed) return;
-    showHappinessAddModal();
-  });
+  el.className = "app-tab-panel-content dream-view lp-kpi-dream-page";
 
   const header = document.createElement("header");
   header.className = "dream-view-header";
@@ -282,13 +273,10 @@ export function render() {
   header.appendChild(titleRow);
   el.appendChild(header);
 
-  const tabsWrap = document.createElement("div");
-  tabsWrap.className = "dream-tabs-wrap";
-  const tabs = document.createElement("div");
-  tabs.className = "dream-tabs";
-  tabsWrap.appendChild(addBtn);
-  tabsWrap.appendChild(tabs);
-  el.appendChild(tabsWrap);
+  const kpiFilterStrip = document.createElement("div");
+  kpiFilterStrip.className = "dream-kpi-filter-strip";
+  kpiFilterStrip.hidden = true;
+  el.appendChild(kpiFilterStrip);
 
   const contentWrap = document.createElement("div");
   contentWrap.className = "dream-content-wrap";
@@ -302,6 +290,7 @@ export function render() {
   let activeHappinessId = null;
   let selectedKpiId = null;
   let kpiFilter = "all";
+  let happinessViewScreen = "goals"; // "goals" | "kpis" | "kpiDetail"
   let kpiGridScrollPrevFilter = null;
   let kpiGridScrollPrevScopeId = null;
   let happinessAddModalJustClosed = false;
@@ -313,16 +302,100 @@ export function render() {
     kpis: _happinessInitData.kpis || [],
     foreignKey: "happinessId",
   });
-  if (_happinessRestored.tabId) activeHappinessId = _happinessRestored.tabId;
-  selectedKpiId = _happinessRestored.selectedKpiId;
   kpiFilter = _happinessRestored.kpiFilter;
+  /* 행복 메뉴 진입은 항상 목표 목록 — KPI 화면은 목표 클릭 후에만 */
+  happinessViewScreen = "goals";
+  activeHappinessId = null;
+  selectedKpiId = null;
 
   function persistKpiUiState() {
-    writeKpiUiSession(KPI_UI_SESSION_KEYS.happiness, {
-      tabId: activeHappinessId,
-      selectedKpiId,
-      kpiFilter,
-    });
+    try {
+      sessionStorage.setItem(
+        KPI_UI_SESSION_KEYS.happiness,
+        JSON.stringify({
+          tabId: activeHappinessId,
+          selectedKpiId,
+          kpiFilter,
+          happinessViewScreen,
+        }),
+      );
+    } catch (_) {}
+  }
+
+  function syncHappinessFooterBackLabel() {
+    if (!el.isConnected) return;
+    const footerBack = document.querySelector("[data-lp-app-footer-back]");
+    if (!footerBack) return;
+    if (happinessViewScreen === "kpiDetail") {
+      footerBack.title = "KPI 목록으로";
+      footerBack.setAttribute("aria-label", "KPI 목록으로");
+    } else if (happinessViewScreen === "kpis") {
+      footerBack.title = "행복 목표 목록으로";
+      footerBack.setAttribute("aria-label", "행복 목표 목록으로");
+    } else {
+      footerBack.title = "오늘(메인)으로";
+      footerBack.setAttribute("aria-label", "오늘(메인)으로");
+    }
+  }
+
+  function syncHappinessHeader() {
+    const data = loadHappinessMap();
+    const happiness = data.happinesses.find((h) => h.id === activeHappinessId);
+    if (happinessViewScreen === "kpiDetail" && selectedKpiId) {
+      const kpi = (data.kpis || []).find((k) => k.id === selectedKpiId);
+      title.textContent = kpi?.name || "KPI";
+    } else if (happinessViewScreen === "kpis" && happiness) {
+      title.textContent = happiness.name || "행복";
+    } else {
+      title.textContent = "행복";
+    }
+    syncHappinessFooterBackLabel();
+  }
+
+  function enterKpiView(happinessId) {
+    if (!happinessId) return;
+    activeHappinessId = happinessId;
+    selectedKpiId = null;
+    happinessViewScreen = "kpis";
+    syncHappinessHeader();
+    updateHappinessView();
+  }
+
+  function enterKpiDetailView(kpiId) {
+    if (!kpiId || !activeHappinessId) return;
+    selectedKpiId = kpiId;
+    happinessViewScreen = "kpiDetail";
+    syncHappinessHeader();
+    updateHappinessView();
+  }
+
+  function exitToKpiList() {
+    selectedKpiId = null;
+    happinessViewScreen = "kpis";
+    syncHappinessHeader();
+    updateHappinessView();
+    persistKpiUiState();
+  }
+
+  function refreshHappinessAfterKpiDataChange(opts = {}) {
+    if (happinessViewScreen === "kpiDetail") {
+      syncHappinessHeader();
+      renderKpiDetailView(opts);
+    } else if (happinessViewScreen === "kpis") {
+      renderKpiList();
+    } else {
+      updateHappinessView();
+    }
+    persistKpiUiState();
+  }
+
+  function exitToHappinessGoalsList() {
+    happinessViewScreen = "goals";
+    activeHappinessId = null;
+    selectedKpiId = null;
+    syncHappinessHeader();
+    updateHappinessView();
+    persistKpiUiState();
   }
 
   const kpiTimeFormOpts = {
@@ -437,9 +510,7 @@ export function render() {
       saveHappinessMap(data);
       syncKpiToTimeTask(kpi, "add");
       close();
-      selectedKpiId = kpi.id;
-      renderKpiList();
-      renderKpiHistory();
+      enterKpiDetailView(kpi.id);
     });
     document.body.appendChild(modal);
     initModalNativeDateFieldsIn(modal);
@@ -537,10 +608,8 @@ export function render() {
       const order = (data.kpiOrder || {})[kpi.happinessId] || [];
       data.kpiOrder = { ...data.kpiOrder, [kpi.happinessId]: order.filter((id) => id !== kpi.id) };
       saveHappinessMap(data);
-      selectedKpiId = null;
       close();
-      renderKpiList();
-      renderKpiHistory();
+      exitToKpiList();
     });
     modal.querySelector(".dream-kpi-form").addEventListener("submit", (e) => {
       e.preventDefault();
@@ -566,8 +635,7 @@ export function render() {
         if (oldName !== target.name) syncKpiToTimeTask(target, "update", oldName);
       }
       close();
-      renderKpiList();
-      renderKpiHistory();
+      refreshHappinessAfterKpiDataChange();
     });
     document.body.appendChild(modal);
     initModalNativeDateFieldsIn(modal);
@@ -688,8 +756,7 @@ export function render() {
       }
       saveHappinessMap(data);
       close();
-      renderKpiList();
-      renderKpiHistory();
+      refreshHappinessAfterKpiDataChange();
     });
     const delBtn = modal.querySelector(".dream-kpi-log-modal-delete-btn");
     if (delBtn && isEdit) {
@@ -699,8 +766,7 @@ export function render() {
         d.kpiLogs = (d.kpiLogs || []).filter((l) => l.id !== editLog.id);
         saveHappinessMap(d);
         close();
-        renderKpiList();
-        renderKpiHistory();
+        refreshHappinessAfterKpiDataChange();
       });
     }
     document.body.appendChild(modal);
@@ -742,7 +808,7 @@ export function render() {
         completed: false,
       });
       saveHappinessMap(d2);
-      renderKpiHistory({ scrollTodoAfterMutation: true });
+      renderKpiDetailView({ scrollTodoAfterMutation: true });
       return;
     }
     if (tab === KPI_BOTTOM_TAB_DAILY) {
@@ -761,7 +827,7 @@ export function render() {
         completed: false,
       });
       saveHappinessMap(d2);
-      renderKpiHistory({ scrollTodoAfterMutation: true });
+      renderKpiDetailView({ scrollTodoAfterMutation: true });
       return;
     }
     showKpiLogModal(k);
@@ -771,7 +837,6 @@ export function render() {
     clearHappinessKpiFooterActions();
     const slot = getAppFooterActionsSlot();
     if (!slot) return;
-    if (!activeHappinessId) return;
 
     const addBtn = document.createElement("button");
     addBtn.type = "button";
@@ -779,7 +844,22 @@ export function render() {
     addBtn.setAttribute("data-lp-dream-kpi-footer-action", "");
     addBtn.innerHTML = KPI_FOOTER_ADD_ICON;
 
-    if (!selectedKpiId) {
+    if (happinessViewScreen === "goals") {
+      const data = loadHappinessMap();
+      if (shouldShowKpiMapSyncLoading("happiness", !data.happinesses?.length)) return;
+      addBtn.title = "행복 목표 추가";
+      addBtn.setAttribute("aria-label", "행복 목표 추가");
+      addBtn.addEventListener("click", () => {
+        if (happinessAddModalJustClosed) return;
+        showHappinessAddModal();
+      });
+      slot.appendChild(addBtn);
+      return;
+    }
+
+    if (!activeHappinessId) return;
+
+    if (happinessViewScreen === "kpis") {
       addBtn.title = "KPI 추가";
       addBtn.setAttribute("aria-label", "KPI 추가");
       addBtn.addEventListener("click", () => {
@@ -789,6 +869,8 @@ export function render() {
       slot.appendChild(addBtn);
       return;
     }
+
+    if (happinessViewScreen !== "kpiDetail" || !selectedKpiId) return;
 
     const data = loadHappinessMap();
     const kpiNow = (data.kpis || []).find((k) => k.id === selectedKpiId);
@@ -836,6 +918,30 @@ export function render() {
     });
   }
 
+  function hideKpiFilterStrip() {
+    kpiFilterStrip.hidden = true;
+    kpiFilterStrip.replaceChildren();
+  }
+
+  function renderKpiFilterStrip(activeKpis, completedKpis, allKpis) {
+    hideKpiFilterStrip();
+    kpiFilterStrip.hidden = false;
+    const filterBar = document.createElement("div");
+    filterBar.className = "dream-kpi-filter-bar";
+    filterBar.innerHTML = `
+      <button type="button" class="dream-kpi-filter-btn ${kpiFilter === "all" ? "active" : ""}" data-filter="all">전체</button>
+      <button type="button" class="dream-kpi-filter-btn ${kpiFilter === "active" ? "active" : ""}" data-filter="active">진행중</button>
+      <button type="button" class="dream-kpi-filter-btn ${kpiFilter === "completed" ? "active" : ""}" data-filter="completed">완료</button>
+    `;
+    filterBar.querySelectorAll(".dream-kpi-filter-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        kpiFilter = btn.dataset.filter;
+        renderKpiList();
+      });
+    });
+    kpiFilterStrip.appendChild(filterBar);
+  }
+
   function renderKpiList() {
     syncHabitTrackerLogs();
     const scopeId = activeHappinessId;
@@ -848,6 +954,8 @@ export function render() {
     );
     historyWrap.remove();
     contentWrap.innerHTML = "";
+    contentWrap.className = "dream-content-wrap";
+    hideKpiFilterStrip();
     if (!activeHappinessId) {
       kpiGridScrollPrevFilter = null;
       kpiGridScrollPrevScopeId = null;
@@ -872,31 +980,26 @@ export function render() {
     const completedKpis = happinessKpis.filter((k) => getKpiProgress(k).isCompleted);
     const activeKpis = happinessKpis.filter((k) => !getKpiProgress(k).isCompleted);
 
-    const filterBar = document.createElement("div");
-    filterBar.className = "dream-kpi-filter-bar";
-    filterBar.innerHTML = `
-      <button type="button" class="dream-kpi-filter-btn ${kpiFilter === "all" ? "active" : ""}" data-filter="all">전체</button>
-      <button type="button" class="dream-kpi-filter-btn ${kpiFilter === "active" ? "active" : ""}" data-filter="active">진행중</button>
-      <button type="button" class="dream-kpi-filter-btn ${kpiFilter === "completed" ? "active" : ""}" data-filter="completed">완료</button>
-    `;
-    filterBar.querySelectorAll(".dream-kpi-filter-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        kpiFilter = btn.dataset.filter;
-        /* 필터 변경 시 선택된 KPI가 새 필터에 없으면 선택 해제 */
-        const listAfterFilter = kpiFilter === "active" ? activeKpis : kpiFilter === "completed" ? completedKpis : happinessKpis;
-        if (selectedKpiId && !listAfterFilter.some((k) => k.id === selectedKpiId)) {
-          selectedKpiId = null;
-        }
-        renderKpiList();
-        renderKpiHistory();
-      });
-    });
-    contentWrap.appendChild(filterBar);
+    if (
+      renderKpiMapSyncLoadingIfNeeded({
+        tabId: "happiness",
+        container: contentWrap,
+        isEmpty: happinessKpis.length === 0,
+        onLoading: () => {
+          historyWrap.hidden = true;
+          el.appendChild(historyWrap);
+          syncAppFooterHappinessKpiActions();
+        },
+      })
+    ) {
+      return;
+    }
+
+    renderKpiFilterStrip(activeKpis, completedKpis, happinessKpis);
 
     const grid = document.createElement("div");
     grid.className = "dream-kpi-grid";
     const listToShow = kpiFilter === "active" ? activeKpis : kpiFilter === "completed" ? completedKpis : happinessKpis;
-    let historyAnchoredUnderCard = false;
     listToShow.forEach((kpi) => {
       const progressResult = getKpiProgress(kpi);
       const { lowerBetter } = progressResult;
@@ -907,8 +1010,7 @@ export function render() {
       card.className =
         "dream-kpi-card" +
         (lowerBetter ? " dream-kpi-card--lower-better" : "") +
-        cardExtraClass +
-        (selectedKpiId === kpi.id ? " is-selected" : "");
+        cardExtraClass;
       card.dataset.kpiId = kpi.id;
       card.draggable = true;
       card.innerHTML = `
@@ -929,9 +1031,7 @@ export function render() {
       });
       card.addEventListener("click", (e) => {
         if (e.target.closest(".dream-kpi-card-edit")) return;
-        selectedKpiId = selectedKpiId === kpi.id ? null : kpi.id;
-        renderKpiList();
-        renderKpiHistory();
+        enterKpiDetailView(kpi.id);
       });
       card.addEventListener("dragstart", (e) => {
         e.dataTransfer.effectAllowed = "move";
@@ -964,21 +1064,13 @@ export function render() {
           newOrder.splice(toIdx, 0, draggedId);
           reorderKpis(activeHappinessId, newOrder);
           renderKpiList();
-          renderKpiHistory();
         }
       });
       grid.appendChild(card);
-      if (selectedKpiId === kpi.id) {
-        grid.appendChild(historyWrap);
-        historyAnchoredUnderCard = true;
-      }
     });
     grid.addEventListener("dragend", () => {
       grid.querySelectorAll(".dream-kpi-card-drag-over").forEach((c) => c.classList.remove("dream-kpi-card-drag-over"));
     });
-    if (!historyAnchoredUnderCard) {
-      grid.appendChild(historyWrap);
-    }
     contentWrap.appendChild(grid);
 
     applyKpiGridScrollRestore(contentWrap, savedGridScroll);
@@ -988,20 +1080,34 @@ export function render() {
     syncAppFooterHappinessKpiActions();
   }
 
-  function renderKpiHistory(opts = {}) {
-    const { scrollTodoAfterMutation = false } = opts;
-    historyWrap.innerHTML = "";
+
+  function renderKpiDetailView(opts = {}) {
+    contentWrap.hidden = false;
+    contentWrap.className = "dream-content-wrap dream-kpi-detail-wrap";
+    contentWrap.innerHTML = "";
+    hideKpiFilterStrip();
     if (!selectedKpiId) {
-      historyWrap.hidden = true;
+      exitToKpiList();
+      return;
+    }
+    renderKpiHistory({ ...opts, target: contentWrap });
+    syncAppFooterHappinessKpiActions();
+    persistKpiUiState();
+  }
+
+  function renderKpiHistory(opts = {}) {
+    const { scrollTodoAfterMutation = false, target = historyWrap } = opts;
+    target.innerHTML = "";
+    if (!selectedKpiId) {
+      if (target === historyWrap) historyWrap.hidden = true;
       syncAppFooterHappinessKpiActions();
       return;
     }
     const data = loadHappinessMap();
     const kpi = (data.kpis || []).find((k) => k.id === selectedKpiId);
     if (!kpi) {
-      historyWrap.hidden = true;
-      selectedKpiId = null;
-      renderKpiList();
+      if (target === historyWrap) historyWrap.hidden = true;
+      exitToKpiList();
       return;
     }
     const needHabitTracker = !!kpi.needHabitTracker;
@@ -1010,7 +1116,7 @@ export function render() {
     const todos = (data.kpiTodos || []).filter(
       (t) => String(t.kpiId) === selKpi && (t.text || "").trim() !== "",
     );
-    historyWrap.hidden = false;
+    if (target === historyWrap) historyWrap.hidden = false;
 
     const hasDailyTab = needHabitTracker;
 
@@ -1147,7 +1253,7 @@ export function render() {
             삭제후: kpiTodoSnapshotBrief(after),
             삭제후dr: deletedRefsKpiTodosLen(after),
           });
-          renderKpiHistory({ scrollTodoAfterMutation: true });
+          renderKpiDetailView({ scrollTodoAfterMutation: true });
           return;
         }
         const d = loadHappinessMap();
@@ -1155,7 +1261,7 @@ export function render() {
         if (!row) return;
         row.text = result.text;
         saveHappinessMap(d);
-        renderKpiHistory({ scrollTodoAfterMutation: true });
+        renderKpiDetailView({ scrollTodoAfterMutation: true });
       };
 
       item.addEventListener("click", async (e) => {
@@ -1247,7 +1353,7 @@ export function render() {
             appendDeletedRef(d, "kpiDailyRepeatTodos", todo.id);
             d.kpiDailyRepeatTodos = (d.kpiDailyRepeatTodos || []).filter((x) => x.id !== todo.id);
             saveHappinessMap(d);
-            renderKpiHistory({ scrollTodoAfterMutation: true });
+            renderKpiDetailView({ scrollTodoAfterMutation: true });
             return;
           }
           const d = loadHappinessMap();
@@ -1255,7 +1361,7 @@ export function render() {
           if (!row) return;
           row.text = result.text;
           saveHappinessMap(d);
-          renderKpiHistory({ scrollTodoAfterMutation: true });
+          renderKpiDetailView({ scrollTodoAfterMutation: true });
         };
 
         item.addEventListener("click", async (e) => {
@@ -1270,10 +1376,10 @@ export function render() {
       panelDailySeg.appendChild(dailyList);
     }
 
-    historyWrap.appendChild(segBar);
-    historyWrap.appendChild(panelLogSeg);
-    historyWrap.appendChild(panelTodoSeg);
-    if (panelDailySeg) historyWrap.appendChild(panelDailySeg);
+    target.appendChild(segBar);
+    target.appendChild(panelLogSeg);
+    target.appendChild(panelTodoSeg);
+    if (panelDailySeg) target.appendChild(panelDailySeg);
 
     wireKpiHistoryBottomTabs(
       "happiness",
@@ -1288,7 +1394,7 @@ export function render() {
       () => syncAppFooterHappinessKpiActions(),
     );
     if (scrollTodoAfterMutation) {
-      afterKpiTodoListMutationScroll(historyWrap);
+      afterKpiTodoListMutationScroll(target);
     }
     syncAppFooterHappinessKpiActions();
   }
@@ -1332,12 +1438,12 @@ export function render() {
       const happiness = { id: nextId(), name: val };
       data.happinesses.push(happiness);
       saveHappinessMap(data);
-      activeHappinessId = happiness.id;
       selectedKpiId = null;
       happinessAddModalJustClosed = true;
       close();
-      renderTabs();
-      updateTitleAndContent();
+      happinessViewScreen = "goals";
+      activeHappinessId = null;
+      updateHappinessView();
       setTimeout(() => { happinessAddModalJustClosed = false; }, 300);
     };
     confirmBtn.addEventListener("click", doSubmit);
@@ -1396,9 +1502,10 @@ export function render() {
       if (activeHappinessId === happinessId) {
         activeHappinessId = d.happinesses[0]?.id || null;
         selectedKpiId = null;
+        if (!activeHappinessId) happinessViewScreen = "goals";
       }
-      renderTabs();
-      updateTitleAndContent();
+      syncHappinessHeader();
+      updateHappinessView();
     });
     document.body.appendChild(modal);
   }
@@ -1440,7 +1547,8 @@ export function render() {
       if (target) {
         target.name = val;
         saveHappinessMap(d);
-        renderTabs();
+        syncHappinessHeader();
+        updateHappinessView();
       }
       close();
     });
@@ -1451,77 +1559,109 @@ export function render() {
     document.body.appendChild(modal);
   }
 
-  function renderTabs() {
+  function renderHappinessGoalsList() {
+    historyWrap.hidden = true;
+    hideKpiFilterStrip();
+    contentWrap.hidden = false;
+    contentWrap.innerHTML = "";
+    syncAppFooterHappinessKpiActions();
+
+    const list = document.createElement("div");
+    list.className = "dream-goals-list";
     const data = loadHappinessMap();
-    tabs.innerHTML = "";
+
+    if (
+      renderKpiMapSyncLoadingIfNeeded({
+        tabId: "happiness",
+        container: contentWrap,
+        isEmpty: !data.happinesses.length,
+        onLoading: () => syncAppFooterHappinessKpiActions(),
+      })
+    ) {
+      return;
+    }
+
+    if (!data.happinesses.length) {
+      const empty = document.createElement("p");
+      empty.className = "dream-goals-empty";
+      empty.textContent = "행복 목표를 추가해 보세요.";
+      list.appendChild(empty);
+    }
+
     data.happinesses.forEach((happiness) => {
-      const tab = document.createElement("div");
-      const isActive = happiness.id === activeHappinessId;
-      tab.className = "dream-tab" + (isActive ? " active" : "");
-      tab.dataset.happinessId = happiness.id;
-      tab.innerHTML = `<span class="dream-tab-text">${escapeHtml(happiness.name || "행복 이름")}</span>${
-        isActive ? KPI_TAB_EDIT_PENCIL_HTML : ""
-      }`;
-      if (isActive) {
-        tab.querySelector(".dream-tab-edit")?.addEventListener("click", (e) => {
-          e.stopPropagation();
-          e.preventDefault();
-          showHappinessContextModal(happiness, tab);
-        });
-      }
-      tab.addEventListener("click", () => {
-        const switching = activeHappinessId !== happiness.id;
-        if (switching) {
-          selectedKpiId = null;
-        }
-        activeHappinessId = happiness.id;
-        renderTabs();
-        updateTitleAndContent();
-        if (switching) {
-          void pullKpiMapSubViewFromCloud("happiness").then((pullOk) => {
-            if (pullOk && el.isConnected) {
-              renderTabs();
-              updateTitleAndContent();
-            }
-          });
-        }
+      const kpiCount = (data.kpis || []).filter((k) => k.happinessId === happiness.id)
+        .length;
+      const item = document.createElement("div");
+      item.className = "dream-goals-item dream-kpi-card";
+      item.innerHTML = `
+        <div class="dream-kpi-card-inner">
+          ${HAPPINESS_GOAL_EDIT_PENCIL_HTML}
+          <div class="dream-goals-item-name">${escapeHtml(happiness.name || "행복 이름")}</div>
+          <div class="dream-goals-item-meta">KPI ${kpiCount}개</div>
+        </div>
+      `;
+      item.querySelector(".dream-kpi-card-edit").addEventListener("click", (e) => {
+        e.stopPropagation();
+        showHappinessContextModal(happiness, item);
       });
-      tabs.appendChild(tab);
+      item.addEventListener("click", (e) => {
+        if (e.target.closest(".dream-kpi-card-edit")) return;
+        enterKpiView(happiness.id);
+      });
+      list.appendChild(item);
     });
+
+    contentWrap.appendChild(list);
+    persistKpiUiState();
   }
 
-  function updateTitleAndContent() {
+  function updateHappinessView() {
+    syncHappinessHeader();
+    historyWrap.hidden = true;
+    historyWrap.innerHTML = "";
+    if (happinessViewScreen === "goals") {
+      renderHappinessGoalsList();
+      return;
+    }
     const data = loadHappinessMap();
     const happiness = data.happinesses.find((h) => h.id === activeHappinessId);
     if (happiness) {
-      contentWrap.hidden = false;
-      renderKpiList();
-      renderKpiHistory();
+      if (happinessViewScreen === "kpiDetail") {
+        renderKpiDetailView();
+      } else {
+        contentWrap.hidden = false;
+        contentWrap.className = "dream-content-wrap";
+        renderKpiList();
+      }
     } else {
-      contentWrap.hidden = true;
-      persistKpiUiState();
+      exitToHappinessGoalsList();
     }
+    persistKpiUiState();
   }
 
   function reconcileScopeWithStoredMap(data) {
     const happinesses = data?.happinesses || [];
     const kpis = data?.kpis || [];
-    if (!happinesses.some((h) => h.id === activeHappinessId)) {
-      activeHappinessId = happinesses[0]?.id || null;
-      if (!activeHappinessId) selectedKpiId = null;
+    const inKpiFlow = happinessViewScreen === "kpis" || happinessViewScreen === "kpiDetail";
+    if (inKpiFlow) {
+      if (!happinesses.some((h) => h.id === activeHappinessId)) {
+        activeHappinessId = happinesses[0]?.id || null;
+        selectedKpiId = null;
+        happinessViewScreen = activeHappinessId ? "kpis" : "goals";
+      }
+    } else {
+      activeHappinessId = null;
+      selectedKpiId = null;
     }
     if (selectedKpiId && !kpis.some((k) => k.id === selectedKpiId)) {
       selectedKpiId = null;
+      if (happinessViewScreen === "kpiDetail") happinessViewScreen = "kpis";
     }
   }
 
   reconcileScopeWithStoredMap(_happinessInitData);
-  renderTabs();
-  if (activeHappinessId) {
-    updateTitleAndContent();
-  } else {
-    contentWrap.hidden = true;
-  }
+  syncHappinessHeader();
+  updateHappinessView();
   let lastKpiMapPaintSig = readKpiMapLocalStorageSignature(
     HAPPINESS_KPI_MAP_STORAGE_KEY,
   );
@@ -1534,22 +1674,23 @@ export function render() {
     if (nextSig === lastKpiMapPaintSig) return;
     lastKpiMapPaintSig = nextSig;
     const data = loadHappinessMap();
-    if (!data.happinesses.some((h) => h.id === activeHappinessId)) {
-      activeHappinessId = data.happinesses[0]?.id || null;
+    const inKpiFlow = happinessViewScreen === "kpis" || happinessViewScreen === "kpiDetail";
+    if (inKpiFlow) {
+      if (!data.happinesses.some((h) => h.id === activeHappinessId)) {
+        activeHappinessId = data.happinesses[0]?.id || null;
+        selectedKpiId = null;
+        happinessViewScreen = activeHappinessId ? "kpis" : "goals";
+      }
+    } else {
+      activeHappinessId = null;
       selectedKpiId = null;
     }
     if (selectedKpiId && !data.kpis.some((k) => k.id === selectedKpiId)) {
       selectedKpiId = null;
+      if (happinessViewScreen === "kpiDetail") happinessViewScreen = "kpis";
     }
-    renderTabs();
-    const happiness = data.happinesses.find((h) => h.id === activeHappinessId);
-    if (happiness) {
-      contentWrap.hidden = false;
-      renderKpiList();
-      renderKpiHistory();
-    } else {
-      contentWrap.hidden = true;
-    }
+    syncHappinessHeader();
+    updateHappinessView();
     persistKpiUiState();
   }
 
@@ -1561,7 +1702,23 @@ export function render() {
     syncHappinessUiFromStoredMap();
   };
   window.addEventListener("happiness-kpi-map-saved", onMergedSync);
+  window.addEventListener("lp-kpi-tab-pull-settled", (e) => {
+    if (!el.isConnected || e.detail?.tabId !== "happiness") return;
+    updateHappinessView();
+  });
   window.__lpHappinessSoftRefresh = syncHappinessUiFromStoredMap;
+  window.__lpHappinessFooterBack = () => {
+    if (!el.isConnected) return false;
+    if (happinessViewScreen === "kpiDetail") {
+      exitToKpiList();
+      return true;
+    }
+    if (happinessViewScreen === "kpis") {
+      exitToHappinessGoalsList();
+      return true;
+    }
+    return false;
+  };
 
   return el;
 }

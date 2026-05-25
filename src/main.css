@@ -770,6 +770,7 @@ table {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
   flex: 1 1 auto;
   background: var(--idea-cloud);
   color: var(--idea-navy);
@@ -777,9 +778,10 @@ table {
 }
 
 .idea-view .dream-view-header {
+  flex-shrink: 0;
   padding: 0.65rem 1rem 0.85rem;
-  border-bottom: 1px solid var(--idea-border-soft);
-  background: var(--idea-surface);
+  border-bottom: none;
+  background: var(--idea-cloud);
 }
 
 .idea-view .dream-view-label {
@@ -806,6 +808,13 @@ table {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding: 1rem;
   padding-bottom: 1.75rem;
   max-width: 36rem;
@@ -851,6 +860,24 @@ table {
 
 .idea-view .idea-font-settings-row {
   align-items: center;
+  padding-bottom: 0.15rem;
+}
+
+.idea-view .idea-widget-logout {
+  margin-top: 0.15rem;
+}
+
+.idea-view .idea-widget-logout .idea-btn-logout {
+  margin-top: 0;
+}
+
+.idea-view .idea-widget-delete-account {
+  margin-top: 1rem;
+  padding: 0.25rem 0 0.5rem;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  text-align: center;
 }
 
 .idea-view .idea-form-label {
@@ -920,6 +947,16 @@ table {
   margin-top: 0.35rem;
   padding-top: 0.85rem;
   border-top: 1px solid var(--idea-border-soft);
+}
+
+.idea-view .idea-widget-delete-account .idea-btn-delete-account {
+  display: inline-block;
+}
+
+.idea-view .idea-widget-delete-account .idea-delete-account-hint {
+  max-width: 18rem;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .idea-view .idea-btn-delete-account {
