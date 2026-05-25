@@ -837,6 +837,54 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   white-space: nowrap;
   pointer-events: none;
 }
+.time-task-log-date-native-wrap--clearable.has-value input[type="date"],
+[data-legacy~="time-task-log-date-native-wrap"].time-task-log-date-native-wrap--clearable.has-value
+  input[type="date"] {
+  width: calc(100% - 1.75rem);
+}
+.time-task-log-date-native-wrap--clearable.has-value .time-task-log-date-overlay,
+[data-legacy~="time-task-log-date-native-wrap"].time-task-log-date-native-wrap--clearable.has-value
+  .time-task-log-date-overlay,
+[data-legacy~="time-task-log-date-native-wrap"].time-task-log-date-native-wrap--clearable.has-value
+  [data-legacy~="time-task-log-date-overlay"] {
+  padding-right: 0.2rem;
+}
+.time-task-log-date-clear,
+[data-legacy~="time-task-log-date-clear"] {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0 6px 6px 0;
+  background: transparent;
+  color: var(--lp-modal-navy-muted, #64748b);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.time-task-log-date-clear[hidden],
+[data-legacy~="time-task-log-date-clear"][hidden] {
+  display: none !important;
+}
+.time-task-log-date-clear:hover,
+[data-legacy~="time-task-log-date-clear"]:hover {
+  color: var(--lp-modal-navy, #152b45);
+  background: rgba(30, 77, 123, 0.06);
+}
+.time-task-log-date-clear:focus-visible,
+[data-legacy~="time-task-log-date-clear"]:focus-visible {
+  outline: 2px solid rgba(30, 77, 123, 0.35);
+  outline-offset: -2px;
+}
 /* 모달 날짜(할일 수정·조회 기간·스탬프 일자 등): native-wrap 전체 너비 — class·data-legacy 혼용 */
 .time-task-setup-panel .time-task-log-field > .time-task-log-date-native-wrap,
 .todo-list-modal-panel .time-task-log-field > .time-task-log-date-native-wrap,

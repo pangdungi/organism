@@ -1820,7 +1820,7 @@ function showTodoTaskModal(options) {
   document.body.appendChild(modal);
   document.body.style.overflow = "hidden";
 
-  initModalNativeDateFieldsIn(modal);
+  initModalNativeDateFieldsIn(modal, { clearable: true });
   bindModalNativeDateRange(startInput, dueInput);
 
   /* X에 포커스 두면 iOS PWA에서 파란 포커스 링이 생김 → 할일 이름 입력으로 */

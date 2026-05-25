@@ -59,6 +59,6 @@ export function setupDeadlineQuickButtons(modal) {
     });
   });
 
-  initModalNativeDateFieldsIn(modal);
+  initModalNativeDateFieldsIn(modal, { clearable: true });
   bindModalNativeDateRange(startInput, deadlineInput);
 }
