@@ -213,7 +213,7 @@ function dateDebug(_tag, ..._args) {
 const CAL_1DAY_TIMETABLE_SLOTS_PER_DAY = 24;
 const CAL_1DAY_TIMETABLE_MIN_PER_SLOT = 60;
 /** 일간 타임라인 프로그레스: 예상 시작과 실제 기록 시작 허용 차(분) */
-const CAL_1DAY_TIMELINE_PROGRESS_START_TOLERANCE_MIN = 10;
+const CAL_1DAY_TIMELINE_PROGRESS_START_TOLERANCE_MIN = 30;
 /** 타임블록: 칼럼 좌우 안쪽 여백·상하·반열(동시 일정) 사이 간격(px) */
 const CAL_1DAY_TIMEBLOCK_INSET_X = 3;
 const CAL_1DAY_TIMEBLOCK_INSET_Y = 2;
