@@ -1,8 +1,16 @@
 /**
- * 할일목록 환경설정 - localStorage
+ * 할일목록 환경설정 - localStorage (계정별 스코프)
  */
+import {
+  getScopedLocalStorageItem,
+  removeScopedLocalStorageItem,
+  setScopedLocalStorageItem,
+} from "./clientStorageScope.js";
+
 const TODO_SETTINGS_KEY = "todo-settings";
 const CUSTOM_SECTIONS_KEY = "todo-custom-sections";
+const TODO_CATEGORY_OPTIONS_KEY = "todo_category_options";
+const LP_TODO_MAIN_FIXED_TAB_INDEX_KEY = "lp-todo-main-fixed-tab-index";
 
 /**
  * 앱 정체성용 프리셋 (hex) — 웜 악센트 + 슬레이트·네이비 계열 (녹색 톤 미사용)
@@ -221,7 +229,7 @@ function resolveSectionListColor(sectionId) {
 
 export function getCustomSections() {
   try {
-    const raw = localStorage.getItem(CUSTOM_SECTIONS_KEY);
+    const raw = getScopedLocalStorageItem(CUSTOM_SECTIONS_KEY);
     if (raw) {
       const arr = JSON.parse(raw);
       if (Array.isArray(arr)) return arr;
@@ -239,7 +247,7 @@ export function addCustomSection(label) {
   const newSection = { id, label: trimmed };
   existing.push(newSection);
   try {
-    localStorage.setItem(CUSTOM_SECTIONS_KEY, JSON.stringify(existing));
+    setScopedLocalStorageItem(CUSTOM_SECTIONS_KEY, JSON.stringify(existing));
   } catch (_) {
     return null;
   }
@@ -249,7 +257,7 @@ export function addCustomSection(label) {
 export function removeCustomSection(sectionId) {
   const existing = getCustomSections().filter((s) => s.id !== sectionId);
   try {
-    localStorage.setItem(CUSTOM_SECTIONS_KEY, JSON.stringify(existing));
+    setScopedLocalStorageItem(CUSTOM_SECTIONS_KEY, JSON.stringify(existing));
   } catch (_) {}
   return existing;
 }
@@ -263,7 +271,7 @@ export function updateCustomSectionLabel(sectionId, newLabel) {
   if (existing.some((s) => s.label === trimmed && s.id !== sectionId)) return null;
   existing[idx] = { ...existing[idx], label: trimmed };
   try {
-    localStorage.setItem(CUSTOM_SECTIONS_KEY, JSON.stringify(existing));
+    setScopedLocalStorageItem(CUSTOM_SECTIONS_KEY, JSON.stringify(existing));
   } catch (_) {
     return null;
   }
@@ -279,7 +287,7 @@ export const PASTEL_PRESETS = APP_PRESET_RGBA_LIST;
 
 export function getTodoSettings() {
   try {
-    const raw = localStorage.getItem(TODO_SETTINGS_KEY);
+    const raw = getScopedLocalStorageItem(TODO_SETTINGS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       const timePresetOk =
@@ -328,7 +336,7 @@ export function getTodoSettings() {
         needPersistTaskSub
       ) {
         try {
-          localStorage.setItem(
+          setScopedLocalStorageItem(
             TODO_SETTINGS_KEY,
             JSON.stringify({
               hideCompleted: settings.hideCompleted,
@@ -357,7 +365,7 @@ export function getTodoSettings() {
 
 export function saveTodoSettings(settings) {
   try {
-    localStorage.setItem(
+    setScopedLocalStorageItem(
       TODO_SETTINGS_KEY,
       JSON.stringify({
         ...settings,
@@ -630,12 +638,12 @@ export function applyTaskCategoryColors() {
   styleEl.textContent = rules.join("\n");
 }
 
-/** 로그아웃·계정 전환 — 할일 환경설정·커스텀 리스트·분류 칩 캐시가 다른 계정과 섞이지 않게 */
+/** 로그아웃·계정 전환 — 해당 계정 scoped 할일 설정·카테고리만 제거 */
 export function clearTodoSettingsAndCustomSectionsOnSignOut() {
   try {
-    localStorage.removeItem(TODO_SETTINGS_KEY);
-    localStorage.removeItem(CUSTOM_SECTIONS_KEY);
-    localStorage.removeItem("todo_category_options");
-    localStorage.removeItem("lp-todo-main-fixed-tab-index");
+    removeScopedLocalStorageItem(TODO_SETTINGS_KEY);
+    removeScopedLocalStorageItem(CUSTOM_SECTIONS_KEY);
+    removeScopedLocalStorageItem(TODO_CATEGORY_OPTIONS_KEY);
+    removeScopedLocalStorageItem(LP_TODO_MAIN_FIXED_TAB_INDEX_KEY);
   } catch (_) {}
 }

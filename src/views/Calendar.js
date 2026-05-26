@@ -46,6 +46,7 @@ import {
 } from "../utils/todoSectionTasksSupabase.js";
 import { snapshotSectionTasksSemanticForCompare } from "../utils/todoSectionTasksModel.js";
 import { TIME_LEDGER_ENTRIES_KEY } from "../utils/timeLedgerEntriesModel.js";
+import { getScopedLocalStorageItem } from "../utils/clientStorageScope.js";
 import {
   pullTimeLedgerEntriesForDateRange,
   timeLedgerLocalTodayYmd,
@@ -59,7 +60,7 @@ import {
 import { markTodoAddPendingServerLog } from "../utils/lpTabDataSourceLog.js";
 import {
   flushAllPendingTimeDailyBudgetSync,
-  pullTimeDailyBudgetFromSupabase,
+  pullTimeDailyBudgetForDateRange,
 } from "../utils/timeDailyBudgetSupabase.js";
 import { openCalendarExpectedScheduleModal } from "../utils/calendarExpectedScheduleModal.js";
 import { resolveTimeTaskDisplayIconSrc } from "../utils/timeTaskIconUrls.js";
@@ -373,7 +374,7 @@ function lpCalendarMeasureMonthlySpanBarHeightPx(el) {
 function snapshotCalendarGridPaintSignature(viewContext = "") {
   let ledger = "";
   try {
-    ledger = localStorage.getItem(TIME_LEDGER_ENTRIES_KEY) ?? "";
+    ledger = getScopedLocalStorageItem(TIME_LEDGER_ENTRIES_KEY) ?? "";
   } catch (_) {}
   return `${snapshotSectionTasksSemanticForCompare()}\x1e${ledger}\x1e${viewContext}`;
 }
@@ -4229,7 +4230,7 @@ function render1WeekView(tabsElement) {
       });
       try {
         await pullTimeLedgerEntriesForDateRange(firstPullKey, lastPullKey);
-        await pullTimeDailyBudgetFromSupabase();
+        await pullTimeDailyBudgetForDateRange(firstPullKey, lastPullKey);
       } catch (_) {}
       if (pullGen !== _1weekRenderGen) {
         calendar1WeekDiagLog("renderCalendar.pull.aborted", {
@@ -5583,7 +5584,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
           const yStart = timeLedgerLocalYesterdayYmd();
           await Promise.all([
             pullTimeLedgerEntriesForDateRange(yStart, yEnd),
-            pullTimeDailyBudgetFromSupabase(),
+            pullTimeDailyBudgetForDateRange(yStart, yEnd),
           ]);
         } catch (_) {}
       } else if (subViewId === "1week") {
@@ -5595,7 +5596,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
           if (rs0 && re0) {
             await Promise.all([
               pullTimeLedgerEntriesForDateRange(rs0, re0),
-              pullTimeDailyBudgetFromSupabase(),
+              pullTimeDailyBudgetForDateRange(rs0, re0),
             ]);
           }
         } catch (_) {}
@@ -5772,7 +5773,7 @@ export function render() {
         const yStart = timeLedgerLocalYesterdayYmd();
         await Promise.all([
           pullTimeLedgerEntriesForDateRange(yStart, yEnd),
-          pullTimeDailyBudgetFromSupabase(),
+          pullTimeDailyBudgetForDateRange(yStart, yEnd),
         ]);
       } catch (_) {}
     }

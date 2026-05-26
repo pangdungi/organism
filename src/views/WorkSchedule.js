@@ -8,10 +8,11 @@ import {
 } from "./WorkScheduleMonthly.js";
 import { supabase } from "../supabase.js";
 import {
-  attachWorkScheduleSaveListener,
   pullStampTypesFromSupabase,
   pullWorkScheduleFromSupabase,
-  syncWorkScheduleToSupabase,
+  pushStampTypesAfterSettingsSave,
+  upsertStampCalendarEntryFromModal,
+  deleteStampCalendarEntryFromModal,
 } from "../utils/workScheduleSupabase.js";
 import { showToast } from "../utils/showToast.js";
 import { showConfirmModal } from "../utils/confirmModal.js";
@@ -31,14 +32,6 @@ import {
 
 function wsUiLog(...args) {
   workScheduleDiagLog("[ui]", ...args);
-}
-
-function notifyWorkScheduleSaved(detail) {
-  try {
-    window.dispatchEvent(
-      new CustomEvent("work-schedule-saved", { detail: detail || {} }),
-    );
-  } catch (_) {}
 }
 
 /** 로컬 Date → YYYY-MM-DD (월별 캘린더와 동일 규칙) */
@@ -200,7 +193,7 @@ function cloneWorkTypeOptionsForDraft() {
   }));
 }
 
-function persistWorkTypeDraftToMemAndSync(rawList) {
+function persistWorkTypeDraftToMem(rawList) {
   const next = sortTypeOptionsList(
     rawList.map((o) => {
       const name = (o.name || "").trim();
@@ -226,17 +219,14 @@ function persistWorkTypeDraftToMemAndSync(rawList) {
     }),
   );
   writeWorkScheduleTypeOptionsRawToMem(next);
-  notifyWorkScheduleSaved({ types: true });
 }
 
 function loadRows() {
   return readWorkScheduleRowsFromMem();
 }
 
-function saveRows(rows) {
-  const withIds = writeWorkScheduleRowsToMem(rows);
-  notifyWorkScheduleSaved({ entries: true });
-  return withIds;
+function saveRowsToMem(rows) {
+  return writeWorkScheduleRowsToMem(rows);
 }
 
 /** "09:00~18:00" 형태에서 [시작, 마감] 파싱. 하위 호환용 */
@@ -284,7 +274,6 @@ function getMergedInitialRows() {
 }
 
 export function render(opts = {}) {
-  attachWorkScheduleSaveListener();
   const mobile = !!opts.mobile;
   wsUiLog("render() enter", { mobile });
   const el = document.createElement("div");
@@ -485,8 +474,6 @@ export function render(opts = {}) {
       draftTypes.splice(idx, 1);
       closeStampEditPopover();
       renderTypeListsFromDraft();
-      persistWorkTypeDraftToMemAndSync(draftTypes);
-      lastSavedComparable = draftComparableSnapshot();
     });
     stampEditSave.addEventListener("click", () => {
       const origName = stampEditOrigName;
@@ -542,8 +529,6 @@ export function render(opts = {}) {
       draftTypes.sort(compareTypeEntriesForPersist);
       closeStampEditPopover();
       renderTypeListsFromDraft();
-      persistWorkTypeDraftToMemAndSync(draftTypes);
-      lastSavedComparable = draftComparableSnapshot();
     });
     stampEditName.addEventListener("keydown", (e) => {
       if (e.key !== "Enter") return;
@@ -666,18 +651,28 @@ export function render(opts = {}) {
         } catch (_) {}
         return;
       }
-      try {
-        persistWorkTypeDraftToMemAndSync(draftTypes);
-        lastSavedComparable = draftComparableSnapshot();
-        detachTypeSettingsModal();
-      } catch (err) {
+      void (async () => {
         try {
-          showToast(
-            "저장에 실패했습니다.",
-            String(err?.message || err || "다시 시도해 주세요."),
-          );
-        } catch (_) {}
-      }
+          persistWorkTypeDraftToMem(draftTypes);
+          const res = await pushStampTypesAfterSettingsSave();
+          if (res && res.ok === false && res.error) {
+            showToast(
+              "저장에 실패했습니다.",
+              String(res.error?.message || res.error || "다시 시도해 주세요."),
+            );
+            return;
+          }
+          lastSavedComparable = draftComparableSnapshot();
+          detachTypeSettingsModal();
+        } catch (err) {
+          try {
+            showToast(
+              "저장에 실패했습니다.",
+              String(err?.message || err || "다시 시도해 주세요."),
+            );
+          } catch (_) {}
+        }
+      })();
     });
 
     async function tryCloseModal() {
@@ -1090,7 +1085,7 @@ export function render(opts = {}) {
         (o) => o.id === sel || o.name === sel,
       );
       const typeName = (typeHit?.name || sel).trim();
-      let stampId =
+      const stampId =
         typeHit?.id && isStampUuid(typeHit.id) ? typeHit.id : "";
       if (!wd || wd.length < 10) {
         window.alert("일자를 선택해 주세요.");
@@ -1101,21 +1096,10 @@ export function render(opts = {}) {
         return;
       }
       if (!stampId) {
-        stampId =
-          typeof crypto !== "undefined" && crypto.randomUUID
-            ? crypto.randomUUID()
-            : "";
-        if (!stampId) {
-          window.alert("스탬프를 선택해 주세요.");
-          return;
-        }
-        const nextTypes = getWorkTypeOptionsFull().map((t) =>
-          t.name === typeName ? { ...normalizeTypeEntry(t), id: stampId } : t,
+        window.alert(
+          "스탬프 설정에서 «저장»한 뒤 다시 시도해 주세요. (스탬프 목록이 서버와 맞지 않습니다.)",
         );
-        writeWorkScheduleTypeOptionsRawToMem(nextTypes);
-        try {
-          await syncWorkScheduleToSupabase({ syncTypes: true });
-        } catch (_) {}
+        return;
       }
       const baseFields = {
         workDate: wd,
@@ -1125,6 +1109,7 @@ export function render(opts = {}) {
         endTime: "",
         hoursWorked: "",
       };
+      let rowToPush;
       let rows;
       if (resolvedEditId && existingRow) {
         rows = getMergedInitialRows().map((r) =>
@@ -1138,6 +1123,7 @@ export function render(opts = {}) {
               }
             : r,
         );
+        rowToPush = rows.find((r) => String(r.id) === resolvedEditId);
       } else {
         const newRow = {
           id:
@@ -1150,8 +1136,19 @@ export function render(opts = {}) {
         };
         rows = [...getMergedInitialRows(), newRow];
         rows.sort(compareWorkScheduleRowsByDateTimeAsc);
+        rowToPush = newRow;
       }
-      saveRows(rows);
+      saveRowsToMem(rows);
+      const pushRes = await upsertStampCalendarEntryFromModal(rowToPush);
+      if (!pushRes?.ok) {
+        try {
+          showToast(
+            "서버에 저장하지 못했습니다.",
+            "잠시 후 다시 시도해 주세요.",
+          );
+        } catch (_) {}
+        return;
+      }
       /* 저장한 근무일이 속한 달로 커서 고정 — 모달 직후 월별보기가 오늘 달로 돌아가는 현상 방지 */
       const dp = wd.split("-");
       if (dp.length === 3) {
@@ -1169,10 +1166,21 @@ export function render(opts = {}) {
     closeBtn.addEventListener("click", closeModal);
     deleteBtn.addEventListener("click", () => {
       if (!resolvedEditId) return;
-      const rows = getMergedInitialRows().filter(
-        (r) => String(r.id) !== resolvedEditId,
-      );
-      saveRows(rows);
+      void (async () => {
+        const rows = getMergedInitialRows().filter(
+          (r) => String(r.id) !== resolvedEditId,
+        );
+        saveRowsToMem(rows);
+        const delRes = await deleteStampCalendarEntryFromModal(resolvedEditId);
+        if (!delRes?.ok) {
+          try {
+            showToast(
+              "서버에서 삭제하지 못했습니다.",
+              "잠시 후 다시 시도해 주세요.",
+            );
+          } catch (_) {}
+          return;
+        }
       const keepWd =
         normalizeWorkDateKey(dateInput.value || "") ||
         normalizeWorkDateKey(initialDateKey || "") ||
@@ -1187,6 +1195,7 @@ export function render(opts = {}) {
       }
       closeModal();
       renderMonthlyView();
+      })();
     });
     saveBtn.addEventListener("click", () => void onSave());
     document.addEventListener("keydown", onKeyDown);

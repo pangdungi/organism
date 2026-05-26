@@ -36,9 +36,15 @@ export async function fetchSubscriptionGateSnapshot() {
 
   if (error || !data) return null;
 
+  return subscriptionSnapFromPrefsRow(data);
+}
+
+/** user_subscriptions 행 → 구독 게이트 스냅샷 */
+export function subscriptionSnapFromPrefsRow(row) {
+  if (!row || typeof row !== "object") return null;
   return {
-    status: String(data.subscription_status || "").toLowerCase(),
-    accessUntil: data.access_until ?? null,
+    status: String(row.subscription_status || "").toLowerCase(),
+    accessUntil: row.access_until ?? null,
   };
 }
 
@@ -62,10 +68,11 @@ export async function enforceSubscriptionAccessOrSignOut() {
  * inactive + access_until 이 아직 미래면 그 시각까지 자동 로그아웃 예약(분할 타이머).
  * 기한 도래 또는 이미 지난 경우 signOutFn 호출.
  * @param {() => Promise<void>} signOutFn — 보통 auth.signOut (세션 정리 포함)
+ * @param {{ status: string, accessUntil: string | null } | null} [snapOpt] — 있으면 재조회 생략
  */
-export async function syncSubscriptionAccessAutoSignOut(signOutFn) {
+export async function syncSubscriptionAccessAutoSignOut(signOutFn, snapOpt) {
   clearSubscriptionAccessAutoSignOutSchedule();
-  const snap = await fetchSubscriptionGateSnapshot();
+  const snap = snapOpt ?? (await fetchSubscriptionGateSnapshot());
   if (!snap) return;
 
   if (subscriptionInactiveAccessEnded(snap)) {
@@ -90,4 +97,19 @@ export async function syncSubscriptionAccessAutoSignOut(signOutFn) {
     subscriptionSignOutTimerId = null;
     void syncSubscriptionAccessAutoSignOut(signOutFn);
   }, delay);
+}
+
+/**
+ * 앱 연 뒤 설정 pull 응답으로 구독 확인(추가 네트워크 없음). 만료 시 signOutFn, 아니면 기한 타이머 예약.
+ * @param {Record<string, unknown> | null | undefined} row
+ * @param {() => Promise<void>} signOutFn
+ */
+export async function runBackgroundSubscriptionGateFromPrefsRow(row, signOutFn) {
+  const snap = subscriptionSnapFromPrefsRow(row);
+  if (!snap) return;
+  if (subscriptionInactiveAccessEnded(snap)) {
+    await signOutFn();
+    return;
+  }
+  await syncSubscriptionAccessAutoSignOut(signOutFn, snap);
 }

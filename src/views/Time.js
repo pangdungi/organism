@@ -30,7 +30,7 @@ import {
   clearAppFooterActions,
   getAppFooterActionsSlot,
 } from "../utils/appFooterShell.js";
-import { USER_HOURLY_RATE_KEY } from "../utils/userHourlySync.js";
+import { USER_HOURLY_RATE_KEY, readUserHourlyRateLocal } from "../utils/userHourlySync.js";
 import * as TTC from "../utils/timeTaskOptionsConstants.js";
 import {
   getFullTaskOptions,
@@ -42,6 +42,7 @@ import {
   removeTaskOption,
   getTaskOptionByName,
   migrateTimeLogRowsTaskIds,
+  patchKpiLinkedTasksFromKpiMaps,
   isUuid,
 } from "../utils/timeTaskOptionsModel.js";
 import {
@@ -52,6 +53,12 @@ import { pullKpiMapsForTaskLogModalOpen } from "../utils/kpiTabCloudRefresh.js";
 import {
   scheduleTimeDailyBudgetSyncPush,
 } from "../utils/timeDailyBudgetSupabase.js";
+import {
+  readTimeDailyBudgetGoalsRaw,
+  readTimeDailyBudgetExcludedRaw,
+  writeTimeDailyBudgetGoalsRaw,
+  writeTimeDailyBudgetExcludedRaw,
+} from "../utils/timeDailyBudgetModel.js";
 import {
   buildTimeTaskLogPickerDropdown,
   taskAllowedForLedgerPreset,
@@ -284,7 +291,7 @@ const NONPRODUCTIVE_CATEGORIES = [
 /** 일간시간예산 목표 시간 저장/불러오기 - { "YYYY-MM-DD": { "과제명": { goalTime: "08:00", scheduledTime: "hh:mm-hh:mm", isInvest: true } } } */
 export function getBudgetGoals(dateStr) {
   try {
-    const raw = localStorage.getItem(BUDGET_GOALS_KEY);
+    const raw = readTimeDailyBudgetGoalsRaw();
     if (raw) {
       const all = JSON.parse(raw);
       const result = all[dateStr] || {};
@@ -304,7 +311,7 @@ export function saveBudgetGoal(dateStr, taskName, goalTime, isInvest) {
   if (!(taskName || "").trim()) return;
   try {
     removeFromBudgetExcluded(dateStr, taskName);
-    const raw = localStorage.getItem(BUDGET_GOALS_KEY);
+    const raw = readTimeDailyBudgetGoalsRaw();
     const all = raw ? JSON.parse(raw) : {};
     if (!all[dateStr]) all[dateStr] = {};
     const key = String(taskName).trim();
@@ -318,7 +325,7 @@ export function saveBudgetGoal(dateStr, taskName, goalTime, isInvest) {
         ? { ...rest, isInvest }
         : { isInvest };
     }
-    localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
+    writeTimeDailyBudgetGoalsRaw(JSON.stringify(all));
     notifyTimeDailyBudgetSaved(dateStr);
   } catch (_) {}
 }
@@ -390,7 +397,7 @@ export function appendBudgetScheduleBlock(
   }
   try {
     removeFromBudgetExcluded(dk, name);
-    const raw = localStorage.getItem(BUDGET_GOALS_KEY);
+    const raw = readTimeDailyBudgetGoalsRaw();
     const all = raw ? JSON.parse(raw) : {};
     if (!all[dk]) all[dk] = {};
     const existing = all[dk][name] || {};
@@ -427,7 +434,7 @@ export function appendBudgetScheduleBlock(
     };
     delete next.scheduledTime;
     all[dk][name] = next;
-    localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
+    writeTimeDailyBudgetGoalsRaw(JSON.stringify(all));
     notifyTimeDailyBudgetSaved(dk);
     return { ok: true };
   } catch (_) {
@@ -496,7 +503,7 @@ export function removeBudgetScheduleBlockAtIndex(dateStr, taskName, timeIdx) {
     return { ok: false, error: "항목을 찾지 못했습니다." };
   }
   try {
-    const raw = localStorage.getItem(BUDGET_GOALS_KEY);
+    const raw = readTimeDailyBudgetGoalsRaw();
     const all = raw ? JSON.parse(raw) : {};
     if (!all[dk] || !all[dk][name]) {
       return { ok: false, error: "항목을 찾지 못했습니다." };
@@ -545,7 +552,7 @@ export function removeBudgetScheduleBlockAtIndex(dateStr, taskName, timeIdx) {
     if (all[dk] && Object.keys(all[dk]).length === 0) {
       delete all[dk];
     }
-    localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
+    writeTimeDailyBudgetGoalsRaw(JSON.stringify(all));
     notifyTimeDailyBudgetSaved(dk);
     return { ok: true };
   } catch (_) {
@@ -600,7 +607,7 @@ export function updateBudgetScheduleBlockAtIndex(
   const newMemo = String(memo || "").trim();
   try {
     removeFromBudgetExcluded(dk, nextKey);
-    const raw = localStorage.getItem(BUDGET_GOALS_KEY);
+    const raw = readTimeDailyBudgetGoalsRaw();
     const all = raw ? JSON.parse(raw) : {};
     if (!all[dk]) all[dk] = {};
     if (!all[dk][prevKey]) {
@@ -682,7 +689,7 @@ export function updateBudgetScheduleBlockAtIndex(
       delete nextObj.scheduledTime;
       all[dk][nextKey] = nextObj;
     }
-    localStorage.setItem(BUDGET_GOALS_KEY, JSON.stringify(all));
+    writeTimeDailyBudgetGoalsRaw(JSON.stringify(all));
     notifyTimeDailyBudgetSaved(dk);
     return { ok: true };
   } catch (_) {
@@ -737,7 +744,7 @@ export function getLatestBudgetScheduleEndHhMm(dateStr) {
 
 function getBudgetExcluded(dateStr) {
   try {
-    const raw = localStorage.getItem(BUDGET_EXCLUDED_KEY);
+    const raw = readTimeDailyBudgetExcludedRaw();
     const excl = raw ? JSON.parse(raw) : {};
     return new Set(excl[dateStr] || []);
   } catch (_) {}
@@ -749,12 +756,12 @@ function removeFromBudgetExcluded(dateStr, taskName) {
   const key = (taskName || "").trim();
   if (!key) return;
   try {
-    const raw = localStorage.getItem(BUDGET_EXCLUDED_KEY);
+    const raw = readTimeDailyBudgetExcludedRaw();
     const excl = raw ? JSON.parse(raw) : {};
     if (excl[dateStr]) {
       excl[dateStr] = excl[dateStr].filter((n) => n !== key);
       if (excl[dateStr].length === 0) delete excl[dateStr];
-      localStorage.setItem(BUDGET_EXCLUDED_KEY, JSON.stringify(excl));
+      writeTimeDailyBudgetExcludedRaw(JSON.stringify(excl));
       notifyTimeDailyBudgetSaved(dateStr);
     }
   } catch (_) {}
@@ -777,6 +784,20 @@ export function loadTimeRows() {
   } catch (_) {
     return [];
   }
+}
+
+let _syncHabitTrackerLogsTimer = null;
+
+function scheduleSyncHabitTrackerLogs() {
+  if (_syncHabitTrackerLogsTimer != null) {
+    clearTimeout(_syncHabitTrackerLogsTimer);
+  }
+  _syncHabitTrackerLogsTimer = setTimeout(() => {
+    _syncHabitTrackerLogsTimer = null;
+    try {
+      syncHabitTrackerLogs();
+    } catch (_) {}
+  }, 450);
 }
 
 function saveTimeRows(rows) {
@@ -825,7 +846,7 @@ function saveTimeRows(rows) {
       totalRows: toSave.length,
       note: "로컬 저장 완료 → 곧 서버 반영(push) 시도",
     });
-    syncHabitTrackerLogs();
+    scheduleSyncHabitTrackerLogs();
     if (typeof document !== "undefined") {
       document.dispatchEvent(
         new CustomEvent("calendar-time-rows-updated", { detail: {} }),
@@ -2034,7 +2055,7 @@ export function getTodayTimeSummary() {
   try {
     hourlyRate =
       parseFloat(
-        String(localStorage.getItem(USER_HOURLY_RATE_KEY) || "0").replace(
+        String(readUserHourlyRateLocal() || "0").replace(
           /,/g,
           "",
         ),
@@ -2122,7 +2143,7 @@ export function getTodayTimeLedgerValueSum() {
   try {
     hourlyRate =
       parseFloat(
-        String(localStorage.getItem(USER_HOURLY_RATE_KEY) || "0").replace(
+        String(readUserHourlyRateLocal() || "0").replace(
           /,/g,
           "",
         ),
@@ -2224,7 +2245,7 @@ function readUserHourlyRateNumber() {
   try {
     return (
       parseFloat(
-        String(localStorage.getItem(USER_HOURLY_RATE_KEY) || "0").replace(
+        String(readUserHourlyRateLocal() || "0").replace(
           /,/g,
           "",
         ),
@@ -2994,7 +3015,7 @@ function createTagDropdown(
     const opt = options.find((o) => o.value === value);
     const label = opt ? opt.label : value || "—";
     const colorClass = opt ? opt.color : "";
-    trigger.innerHTML = `<span data-legacy="time-tag-pill ${optionClass} ${colorClass}">${label}</span>`;
+    trigger.innerHTML = `<span data-legacy="time-tag-pill ${optionClass} ${colorClass}">${escapeHtml(label)}</span>`;
     trigger.setAttribute("aria-label", `선택: ${label}. 클릭 시 메뉴 열기`);
   }
   updateTrigger();
@@ -3050,7 +3071,7 @@ function createTagDropdown(
       "time-tag-option" +
         (String(o.value ?? "") === String(value ?? "") ? " is-selected" : ""),
     );
-    opt.innerHTML = `<span data-legacy="time-tag-pill ${o.color || ""}">${o.label}</span>`;
+    opt.innerHTML = `<span data-legacy="time-tag-pill ${o.color || ""}">${escapeHtml(o.label)}</span>`;
     opt.setAttribute(
       "data-option-value",
       o.value === undefined || o.value === null ? "" : String(o.value),
@@ -3263,7 +3284,7 @@ function createTaskNameInput(initialValue, onTaskSelect, tabSignal) {
       const isLocked = lockedNames.has(name);
       const row = document.createElement("div");
       lpSetClasses(row, "time-task-name-option");
-      row.innerHTML = `<span data-legacy="time-task-tag">${name}</span>${isLocked ? "" : `<button type="button" data-legacy="time-task-delete-btn" title="삭제">${DELETE_ICON}</button>`}`;
+      row.innerHTML = `<span data-legacy="time-task-tag">${escapeHtml(name)}</span>${isLocked ? "" : `<button type="button" data-legacy="time-task-delete-btn" title="삭제">${DELETE_ICON}</button>`}`;
       row.dataset.value = name;
       const delBtn = row.querySelector('[data-legacy~="time-task-delete-btn"]');
       row.addEventListener("click", (e) => {
@@ -3293,7 +3314,7 @@ function createTaskNameInput(initialValue, onTaskSelect, tabSignal) {
     if (showCreate) {
       const createRow = document.createElement("div");
       lpSetClasses(createRow, "time-task-name-option time-task-name-create");
-      createRow.innerHTML = `<span data-legacy="time-task-create-label">Create</span><span data-legacy="time-task-tag">${(query || "").trim()}</span>`;
+      createRow.innerHTML = `<span data-legacy="time-task-create-label">Create</span><span data-legacy="time-task-tag">${escapeHtml((query || "").trim())}</span>`;
       createRow.dataset.value = (query || "").trim();
       createRow.dataset.isCreate = "true";
       createRow.addEventListener("click", () => {
@@ -4277,7 +4298,7 @@ export function render(opts = {}) {
 
   const storedRate = (() => {
     try {
-      const v = localStorage.getItem(USER_HOURLY_RATE_KEY);
+      const v = readUserHourlyRateLocal();
       const n = parseFloat(v);
       return Number.isNaN(n) ? 0 : n;
     } catch (_) {
@@ -4414,35 +4435,37 @@ export function render(opts = {}) {
   }
 
   function schedulePullTimeLedgerForPickerRange() {
-    const pullGen = ++_usageListPullGen;
     if (_timeLedgerFilterPullTimer) clearTimeout(_timeLedgerFilterPullTimer);
-    _timeLedgerFilterPullTimer = null;
-    void (async () => {
-      if (!el.isConnected) return;
-      persistActiveViewTimeFilterToSession();
-      let rs = String(usageHistoryRangeStartYmd || "").trim();
-      let re = String(usageHistoryRangeEndYmd || "").trim();
-      if (rs > re) {
-        const x = rs;
-        rs = re;
-        re = x;
-      }
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(rs) || !/^\d{4}-\d{2}-\d{2}$/.test(re)) {
-        return;
-      }
-      const ok = await pullTimeLedgerEntriesForDateRange(rs, re);
-      if (pullGen !== _usageListPullGen) return;
-      if (!el.isConnected) return;
-      const cacheRows = loadTimeRows();
-      const filtered = applyUsageListFilters(cacheRows);
-      if (!ok) return;
-      allRowsCache = cacheRows;
-      cachedRows = [...cacheRows];
-      renderAll(filtered);
-      rememberTimeLedgerPaintSignature();
-      updateTotal();
-      persistActiveViewTimeFilterToSession();
-    })();
+    _timeLedgerFilterPullTimer = setTimeout(() => {
+      _timeLedgerFilterPullTimer = null;
+      const pullGen = ++_usageListPullGen;
+      void (async () => {
+        if (!el.isConnected) return;
+        persistActiveViewTimeFilterToSession();
+        let rs = String(usageHistoryRangeStartYmd || "").trim();
+        let re = String(usageHistoryRangeEndYmd || "").trim();
+        if (rs > re) {
+          const x = rs;
+          rs = re;
+          re = x;
+        }
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(rs) || !/^\d{4}-\d{2}-\d{2}$/.test(re)) {
+          return;
+        }
+        const ok = await pullTimeLedgerEntriesForDateRange(rs, re);
+        if (pullGen !== _usageListPullGen) return;
+        if (!el.isConnected) return;
+        const cacheRows = loadTimeRows();
+        const filtered = applyUsageListFilters(cacheRows);
+        if (!ok) return;
+        allRowsCache = cacheRows;
+        cachedRows = [...cacheRows];
+        renderAll(filtered);
+        rememberTimeLedgerPaintSignature();
+        updateTotal();
+        persistActiveViewTimeFilterToSession();
+      })();
+    }, 400);
   }
 
   /** 조회 기간·과제 필터 등 사용자가 명시적으로 조회 조건을 바꾼 직후에만 서버 pull */
@@ -6292,6 +6315,7 @@ export function render(opts = {}) {
       await pullTimeLedgerTasksFromSupabase();
     } catch (_) {}
     try {
+      patchKpiLinkedTasksFromKpiMaps();
       getFullTaskOptions();
       migrateTimeLogRowsTaskIds();
     } catch (_) {}
@@ -6306,6 +6330,7 @@ export function render(opts = {}) {
       pullKpiMapsForTaskLogModalOpen().catch(() => {}),
     ]);
     try {
+      patchKpiLinkedTasksFromKpiMaps();
       getFullTaskOptions();
       migrateTimeLogRowsTaskIds();
     } catch (_) {}
@@ -7823,6 +7848,10 @@ export function render(opts = {}) {
     contentWrap.appendChild(ledgerContainer);
 
     const refreshCardLiveFields = () => {
+      if (!el.isConnected) {
+        clearTimeLedgerMobileElapsedTimer(el);
+        return;
+      }
       cardsWrap
         .querySelectorAll('[data-legacy~="time-ledger-mobile-card"]')
         .forEach(updateMobileTimeCardLiveFields);
@@ -7969,6 +7998,11 @@ export function render(opts = {}) {
   signal.addEventListener(
     "abort",
     () => {
+      if (_timeLedgerFilterPullTimer) {
+        clearTimeout(_timeLedgerFilterPullTimer);
+        _timeLedgerFilterPullTimer = null;
+      }
+      clearTimeLedgerMobileElapsedTimer(el);
       try {
         closeTaskLogModal();
       } catch (_) {}

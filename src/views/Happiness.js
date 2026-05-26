@@ -62,7 +62,11 @@ import {
   kpiTodoSnapshotBrief,
   kpiTodosCompletionBrief,
 } from "../utils/kpiTodoLifecycleDebug.js";
-import { readKpiMapLocalStorageSignature } from "../utils/kpiMapLocalStorage.js";
+import {
+  readKpiMapLocalStorageSignature,
+  readKpiMapScopedStorageRaw,
+  writeKpiMapScopedStorageRaw,
+} from "../utils/kpiMapLocalStorage.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
   getAppFooterActionsSlot,
@@ -98,7 +102,7 @@ function appendDeletedRef(data, kind, id) {
 
 function loadHappinessMap() {
   try {
-    const raw = localStorage.getItem(HAPPINESS_KPI_MAP_STORAGE_KEY);
+    const raw = readKpiMapScopedStorageRaw(HAPPINESS_KPI_MAP_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       const kpis = (parsed.kpis || []).map((k) => ({
@@ -163,11 +167,11 @@ function syncKpiToTimeTask(kpi, action, oldName) {
   }
 }
 
-function saveHappinessMap(data) {
+function saveHappinessMap(data, opts) {
   try {
     let prev = null;
     try {
-      const raw = localStorage.getItem(HAPPINESS_KPI_MAP_STORAGE_KEY);
+      const raw = readKpiMapScopedStorageRaw(HAPPINESS_KPI_MAP_STORAGE_KEY);
       prev = raw ? JSON.parse(raw) : null;
     } catch (_) {
       prev = null;
@@ -180,10 +184,14 @@ function saveHappinessMap(data) {
       toSave.kpiDailyRepeatTodos = toSave.kpiDailyRepeatTodos.filter((t) => (t.text || "").trim() !== "");
     }
     const stamped = applyHappinessKpiTimestampsOnSave(prev, toSave);
-    localStorage.setItem(HAPPINESS_KPI_MAP_STORAGE_KEY, JSON.stringify(stamped));
-    try {
-      window.dispatchEvent(new CustomEvent("happiness-kpi-map-saved"));
-    } catch (_) {}
+    writeKpiMapScopedStorageRaw(HAPPINESS_KPI_MAP_STORAGE_KEY, JSON.stringify(stamped));
+    if (opts?.pushServer) {
+      try {
+        window.dispatchEvent(
+          new CustomEvent("happiness-kpi-map-saved", { detail: { pushServer: true } }),
+        );
+      } catch (_) {}
+    }
   } catch (_) {}
 }
 
@@ -507,7 +515,7 @@ export function render() {
       data.kpis.push(kpi);
       data.kpiOrder = data.kpiOrder || {};
       data.kpiOrder[activeHappinessId] = [...existingOrder, kpi.id];
-      saveHappinessMap(data);
+      saveHappinessMap(data, { pushServer: true });
       syncKpiToTimeTask(kpi, "add");
       close();
       enterKpiDetailView(kpi.id);
@@ -607,7 +615,7 @@ export function render() {
       data.kpiDailyRepeatTodos = (data.kpiDailyRepeatTodos || []).filter((t) => t.kpiId !== kpi.id);
       const order = (data.kpiOrder || {})[kpi.happinessId] || [];
       data.kpiOrder = { ...data.kpiOrder, [kpi.happinessId]: order.filter((id) => id !== kpi.id) };
-      saveHappinessMap(data);
+      saveHappinessMap(data, { pushServer: true });
       close();
       exitToKpiList();
     });
@@ -631,7 +639,7 @@ export function render() {
           form.querySelector('input[name="direction"]:checked')?.value === "lower"
             ? "lower"
             : "higher";
-        saveHappinessMap(data);
+        saveHappinessMap(data, { pushServer: true });
         if (oldName !== target.name) syncKpiToTimeTask(target, "update", oldName);
       }
       close();
@@ -754,7 +762,7 @@ export function render() {
         data.kpiLogs = data.kpiLogs || [];
         data.kpiLogs.push(log);
       }
-      saveHappinessMap(data);
+      saveHappinessMap(data, { pushServer: true });
       close();
       refreshHappinessAfterKpiDataChange();
     });
@@ -764,7 +772,7 @@ export function render() {
         const d = loadHappinessMap();
         appendDeletedRef(d, "kpiLogs", editLog.id);
         d.kpiLogs = (d.kpiLogs || []).filter((l) => l.id !== editLog.id);
-        saveHappinessMap(d);
+        saveHappinessMap(d, { pushServer: true });
         close();
         refreshHappinessAfterKpiDataChange();
       });
@@ -807,7 +815,7 @@ export function render() {
         text,
         completed: false,
       });
-      saveHappinessMap(d2);
+      saveHappinessMap(d2, { pushServer: true });
       renderKpiDetailView({ scrollTodoAfterMutation: true });
       return;
     }
@@ -826,7 +834,7 @@ export function render() {
         text,
         completed: false,
       });
-      saveHappinessMap(d2);
+      saveHappinessMap(d2, { pushServer: true });
       renderKpiDetailView({ scrollTodoAfterMutation: true });
       return;
     }
@@ -1246,7 +1254,7 @@ export function render() {
           });
           appendDeletedRef(d, "kpiTodos", todo.id);
           d.kpiTodos = (d.kpiTodos || []).filter((x) => x.id !== todo.id);
-          saveHappinessMap(d);
+          saveHappinessMap(d, { pushServer: true });
           const after = loadHappinessMap();
           kpiTodoLifecycleLog("행복KPI탭_모달삭제_saveHappinessMap후", {
             todoId: String(todo.id),
@@ -1260,7 +1268,7 @@ export function render() {
         const row = (d.kpiTodos || []).find((x) => x.id === todo.id);
         if (!row) return;
         row.text = result.text;
-        saveHappinessMap(d);
+        saveHappinessMap(d, { pushServer: true });
         renderKpiDetailView({ scrollTodoAfterMutation: true });
       };
 
@@ -1279,7 +1287,7 @@ export function render() {
             요청완료: !!check.checked,
           });
           t.completed = !!check.checked;
-          saveHappinessMap(d);
+          saveHappinessMap(d, { pushServer: true });
           kpiTodoLifecycleLog("행복KPI탭_체크_save후", {
             todoId: String(todo.id),
             completion: kpiTodosCompletionBrief(loadHappinessMap(), 20),
@@ -1352,7 +1360,7 @@ export function render() {
             const d = loadHappinessMap();
             appendDeletedRef(d, "kpiDailyRepeatTodos", todo.id);
             d.kpiDailyRepeatTodos = (d.kpiDailyRepeatTodos || []).filter((x) => x.id !== todo.id);
-            saveHappinessMap(d);
+            saveHappinessMap(d, { pushServer: true });
             renderKpiDetailView({ scrollTodoAfterMutation: true });
             return;
           }
@@ -1360,7 +1368,7 @@ export function render() {
           const row = (d.kpiDailyRepeatTodos || []).find((x) => x.id === todo.id);
           if (!row) return;
           row.text = result.text;
-          saveHappinessMap(d);
+          saveHappinessMap(d, { pushServer: true });
           renderKpiDetailView({ scrollTodoAfterMutation: true });
         };
 
@@ -1437,7 +1445,7 @@ export function render() {
       const data = loadHappinessMap();
       const happiness = { id: nextId(), name: val };
       data.happinesses.push(happiness);
-      saveHappinessMap(data);
+      saveHappinessMap(data, { pushServer: true });
       selectedKpiId = null;
       happinessAddModalJustClosed = true;
       close();
@@ -1498,7 +1506,7 @@ export function render() {
       delete d.kpiOrder?.[happinessId];
       d.kpiTaskSync = d.kpiTaskSync || {};
       kpiIds.forEach((id) => delete d.kpiTaskSync[id]);
-      saveHappinessMap(d);
+      saveHappinessMap(d, { pushServer: true });
       if (activeHappinessId === happinessId) {
         activeHappinessId = d.happinesses[0]?.id || null;
         selectedKpiId = null;
@@ -1546,7 +1554,7 @@ export function render() {
       const target = d.happinesses.find((x) => x.id === happiness.id);
       if (target) {
         target.name = val;
-        saveHappinessMap(d);
+        saveHappinessMap(d, { pushServer: true });
         syncHappinessHeader();
         updateHappinessView();
       }

@@ -34,9 +34,11 @@ import { kpiTodoCountInStorage, kpiTodoLifecycleOn, kpiTodoLifecycleLog } from "
 import { kpiTodoFineTrace } from "./kpiTodoFineTrace.js";
 import {
   pullTimeLedgerEntriesForDateRange,
-  readTimeLedgerPullRangeForKpiTabsYmd,
+  timeLedgerLocalTodayYmd,
 } from "./timeLedgerEntriesSupabase.js";
 import { syncHabitTrackerLogs } from "./timeKpiSync.js";
+import { patchKpiLinkedTasksFromKpiMaps } from "./timeTaskOptionsModel.js";
+import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
 const KPI_LOCAL_STORAGE_KEYS = {
   dream: DREAM_KPI_MAP_STORAGE_KEY,
   health: HEALTH_KPI_MAP_STORAGE_KEY,
@@ -44,11 +46,11 @@ const KPI_LOCAL_STORAGE_KEYS = {
   sideincome: SIDEINCOME_KPI_MAP_STORAGE_KEY,
 };
 
-/** KPI 탭 진입 시 시간기록 구간 pull — 도메인 맵 pull 과 네트워크 대기 합산을 줄이기 위해 병렬에 사용 */
-async function pullLedgerRangeForKpiTabs() {
+/** KPI 탭 진입 시 — 오늘 기록만 서버와 맞춤(캐시·습관 연동). 6개월 일괄 pull 없음 */
+async function pullLedgerTodayForKpiTabEnter() {
   try {
-    const { rangeStart, rangeEnd } = readTimeLedgerPullRangeForKpiTabsYmd();
-    await pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd);
+    const t = timeLedgerLocalTodayYmd();
+    await pullTimeLedgerEntriesForDateRange(t, t);
   } catch (_) {}
 }
 
@@ -60,7 +62,7 @@ export async function pullKpiTabFromCloud(tabId) {
   kpiTodoFineTrace("cloud.pullKpiTab:시작", { tabId });
   lpPullDebug("pullKpiTabFromCloud", { tabId });
   const key = KPI_LOCAL_STORAGE_KEYS[tabId];
-  const before = key ? localStorage.getItem(key) : null;
+  const before = key ? readKpiMapScopedStorageRaw(key) : null;
 
   let domainPull = Promise.resolve(false);
   switch (tabId) {
@@ -81,15 +83,16 @@ export async function pullKpiTabFromCloud(tabId) {
   }
 
   const [, pullOk] = await Promise.all([
-    pullLedgerRangeForKpiTabs(),
+    pullLedgerTodayForKpiTabEnter(),
     domainPull,
   ]);
 
   try {
+    patchKpiLinkedTasksFromKpiMaps();
     syncHabitTrackerLogs();
   } catch (_) {}
 
-  const after = key ? localStorage.getItem(key) : null;
+  const after = key ? readKpiMapScopedStorageRaw(key) : null;
   const localChanged = pullOk && before !== after;
   kpiTodoFineTrace("cloud.pullKpiTab:끝", { tabId, pullOk, localChanged });
   if (kpiTodoLifecycleOn() && key) {
@@ -138,12 +141,10 @@ export async function pullKpiMapSubViewFromCloud(tabId) {
       return false;
   }
 
-  const [, pullOk] = await Promise.all([
-    pullLedgerRangeForKpiTabs(),
-    domainPull,
-  ]);
+  const pullOk = await domainPull;
 
   try {
+    patchKpiLinkedTasksFromKpiMaps();
     syncHabitTrackerLogs();
   } catch (_) {}
   kpiTodoFineTrace("cloud.pullKpiSubView:끝", { tabId, pullOk });
@@ -172,7 +173,7 @@ export async function pullAllKpiMapsFromCloud(getCurrentTabId) {
   });
   let before = [];
   try {
-    before = ALL_KPI_STORAGE_KEYS.map((k) => localStorage.getItem(k));
+    before = ALL_KPI_STORAGE_KEYS.map((k) => readKpiMapScopedStorageRaw(k));
   } catch (_) {}
 
   const skipDream =
@@ -198,7 +199,7 @@ export async function pullAllKpiMapsFromCloud(getCurrentTabId) {
 
   let after = [];
   try {
-    after = ALL_KPI_STORAGE_KEYS.map((k) => localStorage.getItem(k));
+    after = ALL_KPI_STORAGE_KEYS.map((k) => readKpiMapScopedStorageRaw(k));
   } catch (_) {}
 
   const anyChanged =
@@ -245,7 +246,7 @@ export async function pullKpiMapsForTaskLogModalOpen() {
   let pullOk = false;
   try {
     const [, mapsOk] = await Promise.all([
-      pullLedgerRangeForKpiTabs(),
+      pullLedgerTodayForKpiTabEnter(),
       Promise.all([
         pullDreamKpiMapFromSupabase({ force: true }),
         pullHealthKpiMapFromSupabase({ force: true }),
@@ -257,6 +258,7 @@ export async function pullKpiMapsForTaskLogModalOpen() {
   } catch (_) {}
 
   try {
+    patchKpiLinkedTasksFromKpiMaps();
     syncHabitTrackerLogs();
   } catch (_) {}
 

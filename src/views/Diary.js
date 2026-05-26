@@ -21,13 +21,17 @@ import {
 } from "../utils/diarySupabase.js";
 import {
   pullTimeLedgerEntriesForDateRange,
-  readTimeLedgerPullRangeForKpiTabsYmd,
+  timeLedgerLocalTodayYmd,
 } from "../utils/timeLedgerEntriesSupabase.js";
 import {
   TIME_LEDGER_ENTRIES_KEY,
 } from "../utils/timeLedgerEntriesModel.js";
-import { TIME_DAILY_BUDGET_GOALS_KEY } from "../utils/timeDailyBudgetModel.js";
-import { KPI_MAP_STORAGE_KEYS } from "../utils/kpiMapLocalStorage.js";
+import {
+  TIME_DAILY_BUDGET_GOALS_KEY,
+  readTimeDailyBudgetGoalsRaw,
+} from "../utils/timeDailyBudgetModel.js";
+import { getScopedLocalStorageItem } from "../utils/clientStorageScope.js";
+import { KPI_MAP_STORAGE_KEYS, readKpiMapScopedStorageRaw } from "../utils/kpiMapLocalStorage.js";
 import {
   countCalendarDaysInInclusiveRange,
   countKpiDaysWithRecordedMinutesInDateRange,
@@ -206,6 +210,20 @@ function formatMonthSlashFromYmd(ymd) {
 function normalizeDiaryDateStr(dateVal) {
   if (!dateVal) return "";
   return String(dateVal).replace(/\//g, "-").slice(0, 10);
+}
+
+/** 시간 리포트 — 화면에 보이는 날/월 구간만 서버에서 pull */
+function diaryReportLedgerPullRange(ymd, granularity) {
+  const yTen = normalizeDiaryDateStr(ymd);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(yTen)) {
+    const t = timeLedgerLocalTodayYmd();
+    return { rangeStart: t, rangeEnd: t };
+  }
+  if (granularity === "month") {
+    const monthRng = getTimeReportMonthInclusiveRange(yTen);
+    if (monthRng) return monthRng;
+  }
+  return { rangeStart: yTen, rangeEnd: yTen };
 }
 
 /** 소비 탭 일별 도넛 위 제목 — 오늘이면 「오늘」, 아니면 날짜표기 포함 */
@@ -1964,7 +1982,7 @@ export function render() {
     const out = [];
     KPI_MAP_STORAGE_KEYS.forEach((key) => {
       try {
-        const raw = localStorage.getItem(key);
+        const raw = readKpiMapScopedStorageRaw(key);
         if (!raw) return;
         const parsed = JSON.parse(raw);
         const kpis = parsed?.kpis || [];
@@ -2432,8 +2450,8 @@ export function render() {
     let ledger = "";
     try {
       ledger = [
-        localStorage.getItem(TIME_LEDGER_ENTRIES_KEY) ?? "",
-        localStorage.getItem(TIME_DAILY_BUDGET_GOALS_KEY) ?? "",
+        getScopedLocalStorageItem(TIME_LEDGER_ENTRIES_KEY) ?? "",
+        readTimeDailyBudgetGoalsRaw() ?? "",
       ].join("\n");
     } catch (_) {}
     let diary = "";
@@ -2664,22 +2682,8 @@ export function render() {
       mountTimeReportInvestRoutineKpiTimeCards(scrollWrap, ymd, g);
 
       if (!reportLedgerRefreshFromPull && !skipDupLedgerPull) {
-        const k = readTimeLedgerPullRangeForKpiTabsYmd();
-        let rs = k.rangeStart;
-        let re = k.rangeEnd;
+        const { rangeStart: rs, rangeEnd: re } = diaryReportLedgerPullRange(ymd, g);
         const yTen = normalizeDiaryDateStr(ymd);
-        if (g === "day") {
-          if (/^\d{4}-\d{2}-\d{2}$/.test(yTen)) {
-            if (yTen < rs) rs = yTen;
-            if (yTen > re) re = yTen;
-          }
-        } else if (/^\d{4}-\d{2}-\d{2}$/.test(yTen)) {
-          const monthRng = getTimeReportMonthInclusiveRange(yTen);
-          if (monthRng) {
-            if (monthRng.start < rs) rs = monthRng.start;
-            if (monthRng.end > re) re = monthRng.end;
-          }
-        }
         const anchorsAtStart = {
           tabId: currentTabId,
           granularity: tab2ViewGranularity,
@@ -2725,22 +2729,8 @@ export function render() {
       mountTimeReportSummaryGrid(scrollWrap, ymd, g);
 
       if (!reportLedgerRefreshFromPull && !skipDupLedgerPull) {
-        const k = readTimeLedgerPullRangeForKpiTabsYmd();
-        let rs = k.rangeStart;
-        let re = k.rangeEnd;
+        const { rangeStart: rs, rangeEnd: re } = diaryReportLedgerPullRange(ymd, g);
         const yTen = normalizeDiaryDateStr(ymd);
-        if (g === "day") {
-          if (/^\d{4}-\d{2}-\d{2}$/.test(yTen)) {
-            if (yTen < rs) rs = yTen;
-            if (yTen > re) re = yTen;
-          }
-        } else if (/^\d{4}-\d{2}-\d{2}$/.test(yTen)) {
-          const monthRng = getTimeReportMonthInclusiveRange(yTen);
-          if (monthRng) {
-            if (monthRng.start < rs) rs = monthRng.start;
-            if (monthRng.end > re) re = monthRng.end;
-          }
-        }
         const anchorsAtStart = {
           tabId: currentTabId,
           granularity: tab3ViewGranularity,
@@ -2788,11 +2778,8 @@ export function render() {
         !skipDupLedgerPull &&
         /^\d{4}-\d{2}-\d{2}$/.test(ymdB)
       ) {
-        const k = readTimeLedgerPullRangeForKpiTabsYmd();
-        let rs = k.rangeStart;
-        let re = k.rangeEnd;
-        if (ymdB < rs) rs = ymdB;
-        if (ymdB > re) re = ymdB;
+        const rs = ymdB;
+        const re = ymdB;
         const anchorsAtStart = {
           tabId: currentTabId,
           granularity: tab4ViewGranularity,
@@ -2828,22 +2815,8 @@ export function render() {
       mountTimeReportLogMemos(scrollWrap, ymd, g);
 
       if (!reportLedgerRefreshFromPull && !skipDupLedgerPull) {
-        const k = readTimeLedgerPullRangeForKpiTabsYmd();
-        let rs = k.rangeStart;
-        let re = k.rangeEnd;
+        const { rangeStart: rs, rangeEnd: re } = diaryReportLedgerPullRange(ymd, g);
         const yTen = normalizeDiaryDateStr(ymd);
-        if (g === "day") {
-          if (/^\d{4}-\d{2}-\d{2}$/.test(yTen)) {
-            if (yTen < rs) rs = yTen;
-            if (yTen > re) re = yTen;
-          }
-        } else if (/^\d{4}-\d{2}-\d{2}$/.test(yTen)) {
-          const monthRng = getTimeReportMonthInclusiveRange(yTen);
-          if (monthRng) {
-            if (monthRng.start < rs) rs = monthRng.start;
-            if (monthRng.end > re) re = monthRng.end;
-          }
-        }
         const anchorsAtStart = {
           tabId: currentTabId,
           granularity: tab5ViewGranularity,

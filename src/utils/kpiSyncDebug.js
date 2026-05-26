@@ -4,6 +4,8 @@
  * payload·로컬 스냅샷 요약 유틸만 유지.
  */
 
+import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
+
 const KPI_LOCAL_KEYS = {
   dream: "kpi-dream-map",
   health: "kpi-health-map",
@@ -109,7 +111,7 @@ export function snapshotKpiLocalStorageBrief() {
   const out = {};
   for (const [name, key] of Object.entries(KPI_LOCAL_KEYS)) {
     try {
-      const raw = localStorage.getItem(key);
+      const raw = readKpiMapScopedStorageRaw(key);
       const bytes = raw ? raw.length : 0;
       const row = { storageKey: key, bytes };
       if (!raw) {

@@ -1,8 +1,12 @@
 import { supabase } from "./supabase.js";
 import { showOnly } from "./pages.js";
-import { purgeTimeLedgerLocalData } from "./utils/timeLedgerEntriesModel.js";
+import {
+  purgeTimeLedgerLocalData,
+  reloadTimeLedgerStorageForActiveUser,
+  resetTimeLedgerMemoryForAccountSwitch,
+} from "./utils/timeLedgerEntriesModel.js";
 import { clearTimeLedgerTaskOptionsLocalStorage } from "./utils/timeTaskOptionsModel.js";
-import { clearWorkScheduleMemAndLegacy } from "./utils/workScheduleModel.js";
+import { clearWorkScheduleMemAndLegacy, resetWorkScheduleMemory } from "./utils/workScheduleModel.js";
 import { clearDiaryMemAndLegacy } from "./diaryData.js";
 import { clearTodoSectionTasksMemAndLegacy } from "./utils/todoSectionTasksModel.js";
 import { clearTodoSubtasksMemAndLegacy } from "./utils/todoSubtasks.js";
@@ -13,32 +17,163 @@ import {
   getPasswordRecoveryRedirectUrl,
   getSignupEmailRedirectUrl,
 } from "./utils/authEmailRedirect.js";
+import { clearSupabaseSessionCache, primeSupabaseSession } from "./utils/supabaseSession.js";
 import { clearSubscriptionAccessAutoSignOutSchedule } from "./utils/subscriptionAccess.js";
+import { clearUserHourlyRateLocal } from "./utils/userHourlySync.js";
+import {
+  getActiveClientStorageUserId,
+  migrateAllRegisteredLegacyLocalStorage,
+  removeLegacyUnscopedLocalStorageKeys,
+  setActiveClientStorageUserId,
+} from "./utils/clientStorageScope.js";
 
-/**
- * 로그아웃 시 sessionStorage·localStorage 전부 비움(키 누락으로 이전 사용자 데이터가 남는 것 방지).
- * 반드시 IndexedDB purge(시간가계부)·모듈별 mem 정리 뒤 마지막에 호출할 것.
- */
-function nukeClientWebStorageOnSignOut() {
-  try {
-    sessionStorage.clear();
-  } catch (_) {}
-  try {
-    localStorage.clear();
-  } catch (_) {}
+async function resetInMemoryClientDataForAccountSwitch() {
+  clearTimeLedgerTaskOptionsLocalStorage();
+  resetWorkScheduleMemory();
+  clearDiaryMemAndLegacy();
+  clearTodoSectionTasksMemAndLegacy();
+  clearTodoSubtasksMemAndLegacy();
+  clearAllKpiUiSessions();
+  await reloadTimeLedgerStorageForActiveUser();
 }
 
-/** 로그아웃·세션 만료·구독 만료 signOut 시 로컬 시간가계부·과제 캐시 제거 (다른 계정과 섞임 방지) */
+/** 로그아웃·세션 만료 시 해당 계정 로컬 캐시·메모리 정리 (다른 계정 캐시는 유지) */
 export async function purgeTimeLedgerLocalOnSignOut() {
-  await purgeTimeLedgerLocalData();
+  let uid = "";
+  try {
+    uid =
+      getActiveClientStorageUserId() ||
+      localStorage.getItem(LP_LAST_AUTH_UID_KEY) ||
+      sessionStorage.getItem(LP_LEDGER_UID_SESSION_KEY) ||
+      "";
+  } catch (_) {}
+  try {
+    flushAllPendingTimeDailyBudgetSync();
+  } catch (_) {}
+  if (uid) {
+    /* 계정별 localStorage 캐시(KPI 등)는 유지 — 재로그인·서버 pull 표시용 */
+    await purgeTimeLedgerLocalData(uid);
+  } else {
+    resetTimeLedgerMemoryForAccountSwitch();
+  }
   clearTimeLedgerTaskOptionsLocalStorage();
   clearWorkScheduleMemAndLegacy();
   clearDiaryMemAndLegacy();
   clearTodoSectionTasksMemAndLegacy();
   clearTodoSubtasksMemAndLegacy();
   clearTodoSettingsAndCustomSectionsOnSignOut();
+  clearUserHourlyRateLocal();
   clearAllKpiUiSessions();
-  nukeClientWebStorageOnSignOut();
+  setActiveClientStorageUserId("");
+  try {
+    sessionStorage.clear();
+  } catch (_) {}
+  /* lp_last_auth_uid 는 유지 — 다음 로그인 시 prev≠next 로 계정 전환·옛 공용 키 이전 차단 */
+}
+
+const LP_LAST_AUTH_UID_KEY = "lp_last_auth_uid";
+const LP_LEDGER_UID_SESSION_KEY = "lp_ledger_uid";
+const LP_AUTH_CROSS_TAB_CHANNEL = "lp-auth-user-changed";
+
+/** 이 탭에서 앱을 연 때의 로그인 사용자 id (다른 탭에서 계정만 바뀌면 감지) */
+let tabBootAuthUid = "";
+let authSwitchReloading = false;
+
+export function markTabBootAuthUid(uid) {
+  tabBootAuthUid = String(uid || "").trim();
+}
+
+export function getTabBootAuthUid() {
+  return tabBootAuthUid;
+}
+
+function reloadForAuthUserChange() {
+  if (authSwitchReloading) return;
+  authSwitchReloading = true;
+  try {
+    flushAllPendingTimeDailyBudgetSync();
+  } catch (_) {}
+  try {
+    const ch = new BroadcastChannel(LP_AUTH_CROSS_TAB_CHANNEL);
+    ch.postMessage({ type: "reload", ts: Date.now() });
+    ch.close();
+  } catch (_) {}
+  location.reload();
+}
+
+/**
+ * 다른 탭·같은 탭에서 로그인 사용자 id가 바뀌면 즉시 새로고침(메모리·화면 초기화).
+ * @returns {boolean} 새로고침을 시작했으면 true
+ */
+export function maybeReloadForAuthUserChange(session, { appMounted }) {
+  const uid = String(session?.user?.id || "").trim();
+  if (!uid || !appMounted) return false;
+  const boot = getTabBootAuthUid();
+  if (!boot || boot === uid) return false;
+  reloadForAuthUserChange();
+  return true;
+}
+
+/** storage·BroadcastChannel — 다른 탭에서 계정 전환·로컬 비울 때 이 탭도 새로고침 */
+export function initAuthUserCrossTabGuard({ isAppMounted }) {
+  if (typeof window === "undefined") return;
+
+  window.addEventListener("storage", (e) => {
+    if (!isAppMounted()) return;
+    const boot = getTabBootAuthUid();
+    if (!boot) return;
+    if (e.key === null) {
+      reloadForAuthUserChange();
+      return;
+    }
+    if (e.key === LP_LAST_AUTH_UID_KEY) {
+      const next = String(e.newValue || "").trim();
+      if (next && next !== boot) reloadForAuthUserChange();
+    }
+  });
+
+  try {
+    const ch = new BroadcastChannel(LP_AUTH_CROSS_TAB_CHANNEL);
+    ch.addEventListener("message", (ev) => {
+      if (!isAppMounted()) return;
+      if (ev?.data?.type === "reload") reloadForAuthUserChange();
+    });
+  } catch (_) {}
+}
+
+/**
+ * 로그인·자동 로그인 시 활성 계정 id 설정. 로컬 데이터는 계정별 키로 분리 저장.
+ * lp_last_auth_uid 는 localStorage 에 두어 탭·재접속 후에도 이전 사용자와 구분.
+ */
+export async function ensureClientStorageForAuthUser(uid) {
+  const next = String(uid || "").trim();
+  if (!next) {
+    setActiveClientStorageUserId("");
+    return;
+  }
+  let prev = "";
+  try {
+    prev =
+      localStorage.getItem(LP_LAST_AUTH_UID_KEY) ||
+      sessionStorage.getItem(LP_LEDGER_UID_SESSION_KEY) ||
+      "";
+  } catch (_) {}
+  if (prev && prev !== next) {
+    removeLegacyUnscopedLocalStorageKeys();
+  }
+  setActiveClientStorageUserId(next);
+  if (prev && prev !== next) {
+    await resetInMemoryClientDataForAccountSwitch();
+  } else if (prev === next) {
+    migrateAllRegisteredLegacyLocalStorage(next);
+  } else {
+    /* prev 없음(최초 설치 등) — 공용 키만 현재 계정으로 1회 이전 */
+    migrateAllRegisteredLegacyLocalStorage(next);
+  }
+  try {
+    localStorage.setItem(LP_LAST_AUTH_UID_KEY, next);
+    sessionStorage.setItem(LP_LEDGER_UID_SESSION_KEY, next);
+  } catch (_) {}
 }
 
 /** Supabase Auth 가 넘기는 영문 메시지를 사용자용 한국어로 */
@@ -94,6 +229,11 @@ export async function signUp(email, password) {
   if (error) {
     return { ok: false, msg: toKoAuthError(error.message) };
   }
+  const uid = data?.session?.user?.id || data?.user?.id;
+  if (uid) {
+    await ensureClientStorageForAuthUser(uid);
+    primeSupabaseSession(data?.session ?? null);
+  }
   return { ok: true, data };
 }
 
@@ -108,11 +248,53 @@ export async function login(email, password) {
   if (error) {
     return { ok: false, msg: "아이디(이메일) 또는 현재 비밀번호가 틀려요." };
   }
+  const uid = data?.session?.user?.id || data?.user?.id;
+  if (uid) {
+    await ensureClientStorageForAuthUser(uid);
+    primeSupabaseSession(data?.session ?? null);
+  }
   return { ok: true, data };
+}
+
+function resetAuthGatePasswordToggle(buttonId, inputId, labelShow) {
+  const btn = document.getElementById(buttonId);
+  const input = document.getElementById(inputId);
+  const iconShow = btn?.querySelector(".login-pw-toggle__icon--show");
+  const iconHide = btn?.querySelector(".login-pw-toggle__icon--hide");
+  if (!input) return;
+  input.type = "password";
+  if (!btn) return;
+  btn.setAttribute("aria-pressed", "false");
+  btn.setAttribute("aria-label", labelShow);
+  iconShow?.removeAttribute("hidden");
+  iconHide?.setAttribute("hidden", "");
+}
+
+/** 로그아웃·세션 종료 후 로그인·가입 입력칸 비움 (이전 계정 정보 잔留 방지) */
+export function clearAuthGateForms() {
+  const ids = [
+    "login-id",
+    "login-pw",
+    "signup-email",
+    "signup-pw",
+    "signup-pw-confirm",
+  ];
+  ids.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
+  });
+  resetAuthGatePasswordToggle("login-pw-toggle", "login-pw", "비밀번호 보기");
+  resetAuthGatePasswordToggle("signup-pw-toggle", "signup-pw", "비밀번호 보기");
+  resetAuthGatePasswordToggle(
+    "signup-pw-confirm-toggle",
+    "signup-pw-confirm",
+    "비밀번호 확인란 보기",
+  );
 }
 
 export async function signOut() {
   clearSubscriptionAccessAutoSignOutSchedule();
+  clearSupabaseSessionCache();
   try {
     flushAllPendingTimeDailyBudgetSync();
   } catch (_) {}
@@ -121,6 +303,7 @@ export async function signOut() {
     if (el) el.innerHTML = "";
   } catch (_) {}
   showOnly("login");
+  clearAuthGateForms();
   if (supabase) await supabase.auth.signOut();
   await purgeTimeLedgerLocalOnSignOut();
 }

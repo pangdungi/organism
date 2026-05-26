@@ -3,6 +3,7 @@
  */
 
 import * as C from "./timeTaskOptionsConstants.js";
+import { removeScopedLocalStorageItem } from "./clientStorageScope.js";
 import {
   getActiveKpiTaskKeepersById,
   getKpiSyncedTaskNames,
@@ -43,7 +44,7 @@ let _pendingTaskDeleteIds = new Set();
 let _taskDeleteFlushTimer = null;
 let _taskDeleteFlushRunning = false;
 
-function readTaskOptionsMemRows() {
+export function readTaskOptionsMemRows() {
   if (!_ledgerTasksMem || !Array.isArray(_ledgerTasksMem)) return [];
   return _ledgerTasksMem.map((o) => ({
     name: (o.name || "").trim(),
@@ -193,7 +194,7 @@ function normalizeKpiLinkedTaskRows(rows) {
 }
 
 /** KPI 화면(kpis[])의 현재 이름·kpiId당 1행으로 메모리 정리(서버 upsert는 하지 않음) */
-function patchKpiLinkedTasksFromKpiMaps() {
+export function patchKpiLinkedTasksFromKpiMaps() {
   if (!_ledgerTasksMem || !Array.isArray(_ledgerTasksMem)) return;
   if (_patchKpiLinkedFromMapsDepth > 4) return;
   _patchKpiLinkedFromMapsDepth++;
@@ -444,6 +445,7 @@ function assignIdsToMergedList(merged) {
 export function clearTimeLedgerTaskOptionsLocalStorage() {
   _ledgerTasksMem = null;
   try {
+    removeScopedLocalStorageItem(TASK_OPTIONS_KEY);
     if (typeof localStorage !== "undefined") {
       localStorage.removeItem(TASK_OPTIONS_KEY);
     }
@@ -451,7 +453,6 @@ export function clearTimeLedgerTaskOptionsLocalStorage() {
 }
 
 export function getFullTaskOptions() {
-  patchKpiLinkedTasksFromKpiMaps();
   let arr = [];
   if (_ledgerTasksMem !== null && Array.isArray(_ledgerTasksMem)) {
     arr = _ledgerTasksMem.map((o) => ({
@@ -520,6 +521,7 @@ export function getFullTaskOptions() {
 
 /** 외부에서 과제 메모리를 건드린 뒤 알림(예: KPI 연동 경로). UUID 부여·푸시는 getFullTaskOptions·별도 save 경로에서 처리 */
 export function notifyTimeLedgerTasksChanged() {
+  patchKpiLinkedTasksFromKpiMaps();
   getFullTaskOptions();
   notifySaved({ bumpPullSkip: true, scheduleSyncPush: false });
 }

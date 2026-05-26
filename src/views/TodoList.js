@@ -82,12 +82,23 @@ import {
   patchAllTodoDomTaskIdsFromStorage,
 } from "../utils/todoDomTaskIdPatch.js";
 import { markTodoCardPastScheduleState } from "../utils/todoScheduleListRules.js";
+import {
+  getScopedLocalStorageItem,
+  setScopedLocalStorageItem,
+} from "../utils/clientStorageScope.js";
+import { readKpiMapScopedStorageRaw } from "../utils/kpiMapLocalStorage.js";
 export const DRAG_TYPE_TODO_TO_CALENDAR = "todo-task-to-calendar";
 export const DRAG_TYPE_TODO_TO_EISENHOWER = "todo-task-to-eisenhower";
 
 const TODO_DEBUG = false;
 function todoDebug(..._args) {
   void TODO_DEBUG;
+}
+
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s ?? "";
+  return d.innerHTML;
 }
 
 const TODO_LIST_FOOTER_ACTION_ATTR = "data-lp-todo-list-footer-action";
@@ -1054,14 +1065,14 @@ function migrateCategoryOptionsToPresetPalette(arr) {
 
 function getCategoryOptions() {
   try {
-    const raw = localStorage.getItem(TODO_CATEGORY_OPTIONS_KEY);
+    const raw = getScopedLocalStorageItem(TODO_CATEGORY_OPTIONS_KEY);
     if (raw) {
       const arr = JSON.parse(raw);
       if (Array.isArray(arr) && arr.length > 0) {
         const { out, changed } = migrateCategoryOptionsToPresetPalette(arr);
         if (changed) {
           try {
-            localStorage.setItem(
+            setScopedLocalStorageItem(
               TODO_CATEGORY_OPTIONS_KEY,
               JSON.stringify(out),
             );
@@ -1076,7 +1087,7 @@ function getCategoryOptions() {
     ...randomTodoCategoryChipPair(),
   }));
   try {
-    localStorage.setItem(TODO_CATEGORY_OPTIONS_KEY, JSON.stringify(defaults));
+    setScopedLocalStorageItem(TODO_CATEGORY_OPTIONS_KEY, JSON.stringify(defaults));
   } catch (_) {}
   return defaults;
 }
@@ -1088,7 +1099,7 @@ function addCategoryOption(name) {
   const pair = randomTodoCategoryChipPair();
   opts.unshift({ name: trimmed, bg: pair.bg, text: pair.text });
   try {
-    localStorage.setItem(TODO_CATEGORY_OPTIONS_KEY, JSON.stringify(opts));
+    setScopedLocalStorageItem(TODO_CATEGORY_OPTIONS_KEY, JSON.stringify(opts));
   } catch (_) {}
   return opts;
 }
@@ -1096,7 +1107,7 @@ function addCategoryOption(name) {
 function removeCategoryOption(name) {
   const opts = getCategoryOptions().filter((o) => o.name !== name);
   try {
-    localStorage.setItem(TODO_CATEGORY_OPTIONS_KEY, JSON.stringify(opts));
+    setScopedLocalStorageItem(TODO_CATEGORY_OPTIONS_KEY, JSON.stringify(opts));
   } catch (_) {}
   return opts;
 }
@@ -1354,7 +1365,7 @@ function createCategoryDropdown(initialValue, onUpdate, tabSignal) {
     if (showCreate) {
       const createRow = document.createElement("div");
       createRow.className = "todo-category-option todo-category-create";
-      createRow.innerHTML = `<span class="todo-category-create-label">Create</span><span class="todo-category-tag">${(query || "").trim()}</span>`;
+      createRow.innerHTML = `<span class="todo-category-create-label">Create</span><span class="todo-category-tag">${escapeHtml((query || "").trim())}</span>`;
       createRow.dataset.value = (query || "").trim();
       createRow.dataset.isCreate = "true";
       createRow.addEventListener("click", () => {
@@ -1863,7 +1874,7 @@ export function openTodoTaskEditFromCalendarBarModel(barModel, options = {}) {
   if (kpiTodoId && storageKey) {
     let todo = null;
     try {
-      const raw = localStorage.getItem(storageKey);
+      const raw = readKpiMapScopedStorageRaw(storageKey);
       if (raw) {
         const data = JSON.parse(raw);
         const arr = data.kpiTodos || [];
@@ -3516,12 +3527,12 @@ function createSection(section, options = {}) {
       (isOverdueSection ? " todo-section-header--no-collapse" : "");
     header.innerHTML = isOverdueSection
       ? `
-      <span class="todo-section-label">${section.label}</span>
+      <span class="todo-section-label">${escapeHtml(section.label)}</span>
       <span class="todo-section-count">0</span>
     `
       : `
       <span class="todo-section-arrow">▼</span>
-      <span class="todo-section-label">${section.label}</span>
+      <span class="todo-section-label">${escapeHtml(section.label)}</span>
       <span class="todo-section-count">0</span>
     `;
   } else {
@@ -4922,7 +4933,7 @@ export function render(options = {}) {
     btn.dataset.section = section.id;
     btn.setAttribute("aria-label", section.label);
     btn.title = section.label;
-    btn.innerHTML = `<span class="todo-category-tab-label">${section.label}</span> <span class="todo-category-tab-count">0</span>`;
+    btn.innerHTML = `<span class="todo-category-tab-label">${escapeHtml(section.label)}</span> <span class="todo-category-tab-count">0</span>`;
     tabButtons.push(btn);
     categoryTabs.appendChild(btn);
   });

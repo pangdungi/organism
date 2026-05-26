@@ -16,6 +16,11 @@ import {
   resetPasswordRequest,
   updatePasswordForRecovery,
   purgeTimeLedgerLocalOnSignOut,
+  clearAuthGateForms,
+  ensureClientStorageForAuthUser,
+  markTabBootAuthUid,
+  maybeReloadForAuthUserChange,
+  initAuthUserCrossTabGuard,
 } from "./auth.js";
 import {
   mountApp,
@@ -25,6 +30,7 @@ import {
 import { initOfflineAppGate } from "./utils/offlineAppGate.js";
 import { initLpAppShellViewportLock } from "./utils/lpAppShellViewport.js";
 import { supabase } from "./supabase.js";
+import { getSupabaseSession } from "./utils/supabaseSession.js";
 import { applyAppFont } from "./utils/appUiFont.js";
 import { prefetchAppIconAssets } from "./utils/appIconPrefetch.js";
 import { pullUserPrefsFromSupabase } from "./utils/userHourlySync.js";
@@ -44,20 +50,31 @@ import { consumeSupabaseAuthRedirectErrors } from "./utils/authRedirectErrorUi.j
 import {
   enforceSubscriptionAccessOrSignOut,
   SUBSCRIPTION_EXPIRED_MESSAGE,
-  syncSubscriptionAccessAutoSignOut,
+  runBackgroundSubscriptionGateFromPrefsRow,
 } from "./utils/subscriptionAccess.js";
+import {
+  isLpEnterAppDebugEnabled,
+  lpEnterAppDebugMark,
+  lpEnterAppDebugSummary,
+} from "./utils/lpEnterAppDebug.js";
 
-/** 구독 이용 종료일(access_until) 도래 시 자동 로그아웃 — 브라우저 타이머 한도로 분할 예약 */
-function wireSubscriptionDeadlineAutoLogout() {
-  void syncSubscriptionAccessAutoSignOut(async () => {
-    window.alert(SUBSCRIPTION_EXPIRED_MESSAGE);
-    await signOut();
-  });
+async function signOutForSubscriptionExpired() {
+  window.alert(SUBSCRIPTION_EXPIRED_MESSAGE);
+  await signOut();
+}
+
+/** 앱 연 뒤 설정 pull 과 같은 응답으로 구독·기한 타이머 처리(첫 로딩 블로킹 없음) */
+function scheduleBackgroundSubscriptionGateAfterPrefsPull() {
+  void pullUserPrefsFromSupabase()
+    .then((row) =>
+      runBackgroundSubscriptionGateFromPrefsRow(row, signOutForSubscriptionExpired),
+    )
+    .catch(() => {});
 }
 
 /**
  * IndexedDB 시간기록은 user_id가 없어 계정과 묶이지 않음.
- * 이전에 sessionStorage에 남은 계정 id와 현재 세션이 다르면 로컬을 비운 뒤 로드한다.
+ * 이전 계정 id와 현재 세션이 다르면 로컬을 비운 뒤 로드한다.
  */
 async function prepareTimeLedgerStorageForCurrentSession() {
   if (!supabase) {
@@ -66,22 +83,13 @@ async function prepareTimeLedgerStorageForCurrentSession() {
   }
   const {
     data: { session },
-  } = await supabase.auth.getSession();
+  } = await getSupabaseSession();
   const uid = session?.user?.id;
   if (!uid) {
     await ensureTimeLedgerStorageReady();
     return;
   }
-  let prev = "";
-  try {
-    prev = sessionStorage.getItem("lp_ledger_uid") || "";
-  } catch (_) {}
-  if (prev && prev !== uid) {
-    await purgeTimeLedgerLocalOnSignOut();
-  }
-  try {
-    sessionStorage.setItem("lp_ledger_uid", uid);
-  } catch (_) {}
+  await ensureClientStorageForAuthUser(uid);
   await ensureTimeLedgerStorageReady();
 }
 
@@ -94,37 +102,97 @@ function setLpAuthBootPending(on) {
   } catch (_) {}
 }
 
-/** 저장된 세션·자동 로그인: 로그인 폼 없이 앱만 연다. 구독 조회는 수동 로그인 때만( enforceSubscriptionBeforeMount ) */
+function showAppSplashNow() {
+  const splash = document.getElementById("app-splash");
+  if (!splash) return;
+  splash.classList.remove("app-splash--exiting");
+  splash.removeAttribute("hidden");
+  splash.setAttribute("aria-hidden", "false");
+  splash.setAttribute("aria-busy", "true");
+  splash.setAttribute("aria-label", "앱을 불러오는 중");
+}
+
+function hideAppSplashNow() {
+  const splash = document.getElementById("app-splash");
+  if (!splash || splash.hasAttribute("hidden")) return;
+  splash.classList.add("app-splash--exiting");
+  splash.setAttribute("aria-busy", "false");
+  let finished = false;
+  const done = () => {
+    if (finished) return;
+    finished = true;
+    splash.removeEventListener("transitionend", onTransitionEnd);
+    splash.setAttribute("hidden", "");
+    splash.setAttribute("aria-hidden", "true");
+    try {
+      window.__lpMarkBootReady?.();
+    } catch (_) {}
+  };
+  const onTransitionEnd = (ev) => {
+    if (ev.target === splash && ev.propertyName === "opacity") done();
+  };
+  splash.addEventListener("transitionend", onTransitionEnd);
+  setTimeout(done, 280);
+}
+
+/** 저장된 세션·자동 로그인: 앱 먼저 연다. 구독은 설정 pull 뒤 백그라운드( enforceSubscriptionBeforeMount 는 로그인 직후 선차단) */
 async function enterAuthenticatedApp(opts = {}) {
   const { enforceSubscriptionBeforeMount = false } = opts;
   const screen = document.getElementById("app-screen");
   if (screen?.querySelector(".app-page")) {
     lpAppMounted = true;
     showOnly("signin");
+    void getSupabaseSession().then(({ data: { session } }) => {
+      markTabBootAuthUid(session?.user?.id);
+    });
     return;
   }
   if (lpAppMounted) return;
   if (lpEnterAppPromise) return lpEnterAppPromise;
 
+  const t0 = performance.now();
+  const timings = [];
+  let stepStart = performance.now();
+  const finishStep = (label) => {
+    const ms = Math.round(performance.now() - stepStart);
+    timings.push({ label, ms });
+    lpEnterAppDebugMark(`${label} +${ms}ms`, t0);
+    stepStart = performance.now();
+  };
+
   lpEnterAppPromise = (async () => {
-    if (enforceSubscriptionBeforeMount) {
-      const blocked = await enforceSubscriptionAccessOrSignOut();
-      if (blocked) {
-        window.alert(SUBSCRIPTION_EXPIRED_MESSAGE);
-        await signOut();
-        return;
+    showAppSplashNow();
+    try {
+      if (enforceSubscriptionBeforeMount) {
+        const blocked = await enforceSubscriptionAccessOrSignOut();
+        finishStep("구독 확인(서버)");
+        if (blocked) {
+          window.alert(SUBSCRIPTION_EXPIRED_MESSAGE);
+          await signOut();
+          return;
+        }
       }
-    }
-    lpAppMounted = true;
-    showOnly("signin");
-    prefetchAppIconAssets();
-    void pullUserPrefsFromSupabase().catch(() => {});
-    await Promise.all([
-      prepareTimeLedgerStorageForCurrentSession(),
-      mountApp(screen),
-    ]);
-    if (enforceSubscriptionBeforeMount) {
-      wireSubscriptionDeadlineAutoLogout();
+      lpAppMounted = true;
+      showOnly("signin");
+      prefetchAppIconAssets();
+      await prepareTimeLedgerStorageForCurrentSession();
+      finishStep("시간기록 저장소 준비");
+      await mountApp(screen);
+      finishStep("메인 화면 조립(mountApp)");
+      const {
+        data: { session: bootSession },
+      } = await getSupabaseSession();
+      markTabBootAuthUid(bootSession?.user?.id);
+      finishStep("세션·탭 표시");
+      scheduleBackgroundSubscriptionGateAfterPrefsPull();
+      timings.push({
+        label: "진입 합계",
+        ms: Math.round(performance.now() - t0),
+      });
+      lpEnterAppDebugMark("진입 합계", t0);
+      lpEnterAppDebugSummary(timings);
+    } finally {
+      hideAppSplashNow();
     }
   })();
 
@@ -182,6 +250,7 @@ function closeAuthPwRecoveryModal() {
 
 function init() {
   setLpAuthBootPending(true);
+  initAuthUserCrossTabGuard({ isAppMounted: () => lpAppMounted });
   prefetchAppIconAssets();
   consumeSupabaseAuthRedirectErrors();
 
@@ -290,6 +359,14 @@ function init() {
       return;
     }
     if (
+      session?.user?.id &&
+      lpAppMounted &&
+      maybeReloadForAuthUserChange(session, { appMounted: true })
+    ) {
+      lpAppMounted = false;
+      return;
+    }
+    if (
       (event === "SIGNED_IN" || event === "INITIAL_SESSION") &&
       session &&
       (isPasswordRecoverySession(session) || hasPasswordRecoveryUrlHint())
@@ -307,6 +384,7 @@ function init() {
     }
     if (event === "SIGNED_OUT") {
       lpAppMounted = false;
+      markTabBootAuthUid("");
       lpEnterAppPromise = null;
       try {
         sessionStorage.removeItem(LP_LAST_TAB_SESSION_KEY);
@@ -322,6 +400,7 @@ function init() {
         } catch (_) {}
         showOnly("login");
         setAuthGatePanel("login");
+        clearAuthGateForms();
         try {
           await purgeTimeLedgerLocalOnSignOut();
         } catch (_) {}
@@ -416,7 +495,7 @@ function init() {
       let session = null;
       try {
         const res = await Promise.race([
-          supabase.auth.getSession(),
+          getSupabaseSession(),
           new Promise((_, reject) =>
             setTimeout(
               () => reject(new Error("auth_get_session_timeout")),
@@ -446,29 +525,6 @@ function init() {
     }
   }
 
-  function hideAppSplashNow() {
-    const splash = document.getElementById("app-splash");
-    if (!splash || splash.hasAttribute("hidden")) return;
-    splash.classList.add("app-splash--exiting");
-    splash.setAttribute("aria-busy", "false");
-    let finished = false;
-    const done = () => {
-      if (finished) return;
-      finished = true;
-      splash.removeEventListener("transitionend", onTransitionEnd);
-      splash.setAttribute("hidden", "");
-      splash.setAttribute("aria-hidden", "true");
-      try {
-        window.__lpMarkBootReady?.();
-      } catch (_) {}
-    };
-    const onTransitionEnd = (ev) => {
-      if (ev.target === splash && ev.propertyName === "opacity") done();
-    };
-    splash.addEventListener("transitionend", onTransitionEnd);
-    setTimeout(done, 280);
-  }
-
   async function dismissAppSplash() {
     try {
       await showInitialPage();
@@ -490,13 +546,19 @@ function init() {
 async function doLogin() {
   const id = document.getElementById("login-id")?.value?.trim() || "";
   const pw = document.getElementById("login-pw")?.value || "";
+  const t0 = performance.now();
+  lpEnterAppDebugMark("서버 로그인 시작", t0);
   const result = await login(id, pw);
+  lpEnterAppDebugMark("서버 로그인 완료", t0);
   if (result.ok) {
     setLpAuthBootPending(true);
     try {
       await enterAuthenticatedApp({ enforceSubscriptionBeforeMount: true });
     } finally {
       setLpAuthBootPending(false);
+    }
+    if (isLpEnterAppDebugEnabled()) {
+      lpEnterAppDebugMark("로그인 버튼→메인 표시 합계", t0);
     }
   } else {
     showToast(result.msg);

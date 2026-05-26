@@ -63,7 +63,11 @@ import {
   kpiTodoSnapshotBrief,
   kpiTodosCompletionBrief,
 } from "../utils/kpiTodoLifecycleDebug.js";
-import { readKpiMapLocalStorageSignature } from "../utils/kpiMapLocalStorage.js";
+import {
+  readKpiMapLocalStorageSignature,
+  readKpiMapScopedStorageRaw,
+  writeKpiMapScopedStorageRaw,
+} from "../utils/kpiMapLocalStorage.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
   getAppFooterActionsSlot,
@@ -114,7 +118,7 @@ function normalizeSideincomePath(path) {
 
 function loadSideincomeMap() {
   try {
-    const raw = localStorage.getItem(SIDEINCOME_KPI_MAP_STORAGE_KEY);
+    const raw = readKpiMapScopedStorageRaw(SIDEINCOME_KPI_MAP_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       const kpis = (parsed.kpis || []).map((k) => ({
@@ -181,11 +185,11 @@ function syncKpiToTimeTask(kpi, action, oldName) {
   }
 }
 
-function saveSideincomeMap(data) {
+function saveSideincomeMap(data, opts) {
   try {
     let prev = null;
     try {
-      const raw = localStorage.getItem(SIDEINCOME_KPI_MAP_STORAGE_KEY);
+      const raw = readKpiMapScopedStorageRaw(SIDEINCOME_KPI_MAP_STORAGE_KEY);
       prev = raw ? JSON.parse(raw) : null;
     } catch (_) {
       prev = null;
@@ -198,10 +202,14 @@ function saveSideincomeMap(data) {
       toSave.kpiDailyRepeatTodos = toSave.kpiDailyRepeatTodos.filter((t) => (t.text || "").trim() !== "");
     }
     const stamped = applySideincomeKpiTimestampsOnSave(prev, toSave);
-    localStorage.setItem(SIDEINCOME_KPI_MAP_STORAGE_KEY, JSON.stringify(stamped));
-    try {
-      window.dispatchEvent(new CustomEvent("sideincome-kpi-map-saved"));
-    } catch (_) {}
+    writeKpiMapScopedStorageRaw(SIDEINCOME_KPI_MAP_STORAGE_KEY, JSON.stringify(stamped));
+    if (opts?.pushServer) {
+      try {
+        window.dispatchEvent(
+          new CustomEvent("sideincome-kpi-map-saved", { detail: { pushServer: true } }),
+        );
+      } catch (_) {}
+    }
   } catch (_) {}
 }
 
@@ -563,7 +571,7 @@ export function render() {
       data.kpis.push(kpi);
       data.kpiOrder = data.kpiOrder || {};
       data.kpiOrder[activePathId] = [...existingOrder, kpi.id];
-      saveSideincomeMap(data);
+      saveSideincomeMap(data, { pushServer: true });
       syncKpiToTimeTask(kpi, "add");
       close();
       enterKpiDetailView(kpi.id);
@@ -663,7 +671,7 @@ export function render() {
       data.kpiDailyRepeatTodos = (data.kpiDailyRepeatTodos || []).filter((t) => t.kpiId !== kpi.id);
       const order = (data.kpiOrder || {})[kpi.pathId] || [];
       data.kpiOrder = { ...data.kpiOrder, [kpi.pathId]: order.filter((id) => id !== kpi.id) };
-      saveSideincomeMap(data);
+      saveSideincomeMap(data, { pushServer: true });
       close();
       exitToKpiList();
     });
@@ -687,7 +695,7 @@ export function render() {
           form.querySelector('input[name="direction"]:checked')?.value === "lower"
             ? "lower"
             : "higher";
-        saveSideincomeMap(data);
+        saveSideincomeMap(data, { pushServer: true });
         if (oldName !== target.name) syncKpiToTimeTask(target, "update", oldName);
       }
       close();
@@ -810,7 +818,7 @@ export function render() {
         data.kpiLogs = data.kpiLogs || [];
         data.kpiLogs.push(log);
       }
-      saveSideincomeMap(data);
+      saveSideincomeMap(data, { pushServer: true });
       close();
       refreshSideincomeAfterKpiDataChange();
     });
@@ -820,7 +828,7 @@ export function render() {
         const d = loadSideincomeMap();
         appendDeletedRef(d, "kpiLogs", editLog.id);
         d.kpiLogs = (d.kpiLogs || []).filter((l) => l.id !== editLog.id);
-        saveSideincomeMap(d);
+        saveSideincomeMap(d, { pushServer: true });
         close();
         refreshSideincomeAfterKpiDataChange();
       });
@@ -925,7 +933,7 @@ export function render() {
         data.pathLogs = data.pathLogs || [];
         data.pathLogs.push(log);
       }
-      saveSideincomeMap(data);
+      saveSideincomeMap(data, { pushServer: true });
       close();
       renderKpiList();
     });
@@ -935,7 +943,7 @@ export function render() {
         const d = loadSideincomeMap();
         appendDeletedRef(d, "pathLogs", editLog.id);
         d.pathLogs = (d.pathLogs || []).filter((l) => l.id !== editLog.id);
-        saveSideincomeMap(d);
+        saveSideincomeMap(d, { pushServer: true });
         close();
         renderKpiList();
       });
@@ -978,7 +986,7 @@ export function render() {
         text,
         completed: false,
       });
-      saveSideincomeMap(d2);
+      saveSideincomeMap(d2, { pushServer: true });
       renderKpiDetailView({ scrollTodoAfterMutation: true });
       return;
     }
@@ -997,7 +1005,7 @@ export function render() {
         text,
         completed: false,
       });
-      saveSideincomeMap(d2);
+      saveSideincomeMap(d2, { pushServer: true });
       renderKpiDetailView({ scrollTodoAfterMutation: true });
       return;
     }
@@ -1194,7 +1202,7 @@ export function render() {
           const d = loadSideincomeMap();
           appendDeletedRef(d, "pathLogs", log.id);
           d.pathLogs = (d.pathLogs || []).filter((l) => l.id !== log.id);
-          saveSideincomeMap(d);
+          saveSideincomeMap(d, { pushServer: true });
           renderKpiList();
         });
         logsContainer.appendChild(item);
@@ -1465,7 +1473,7 @@ export function render() {
           });
           appendDeletedRef(d, "kpiTodos", todo.id);
           d.kpiTodos = (d.kpiTodos || []).filter((x) => x.id !== todo.id);
-          saveSideincomeMap(d);
+          saveSideincomeMap(d, { pushServer: true });
           const after = loadSideincomeMap();
           kpiTodoLifecycleLog("부수입KPI탭_모달삭제_saveSideincomeMap후", {
             todoId: String(todo.id),
@@ -1479,7 +1487,7 @@ export function render() {
         const row = (d.kpiTodos || []).find((x) => x.id === todo.id);
         if (!row) return;
         row.text = result.text;
-        saveSideincomeMap(d);
+        saveSideincomeMap(d, { pushServer: true });
         renderKpiDetailView({ scrollTodoAfterMutation: true });
       };
 
@@ -1498,7 +1506,7 @@ export function render() {
             요청완료: !!check.checked,
           });
           t.completed = !!check.checked;
-          saveSideincomeMap(d);
+          saveSideincomeMap(d, { pushServer: true });
           kpiTodoLifecycleLog("부수입KPI탭_체크_save후", {
             todoId: String(todo.id),
             completion: kpiTodosCompletionBrief(loadSideincomeMap(), 20),
@@ -1571,7 +1579,7 @@ export function render() {
             const d = loadSideincomeMap();
             appendDeletedRef(d, "kpiDailyRepeatTodos", todo.id);
             d.kpiDailyRepeatTodos = (d.kpiDailyRepeatTodos || []).filter((x) => x.id !== todo.id);
-            saveSideincomeMap(d);
+            saveSideincomeMap(d, { pushServer: true });
             renderKpiDetailView({ scrollTodoAfterMutation: true });
             return;
           }
@@ -1579,7 +1587,7 @@ export function render() {
           const row = (d.kpiDailyRepeatTodos || []).find((x) => x.id === todo.id);
           if (!row) return;
           row.text = result.text;
-          saveSideincomeMap(d);
+          saveSideincomeMap(d, { pushServer: true });
           renderKpiDetailView({ scrollTodoAfterMutation: true });
         };
 
@@ -1669,7 +1677,7 @@ export function render() {
       delete d.kpiOrder?.[pathId];
       d.kpiTaskSync = (d.kpiTaskSync || {});
       kpiIds.forEach((id) => delete d.kpiTaskSync[id]);
-      saveSideincomeMap(d);
+      saveSideincomeMap(d, { pushServer: true });
       if (activePathId === pathId) {
         activePathId = d.paths[0]?.id || null;
         selectedKpiId = null;
@@ -1731,7 +1739,7 @@ export function render() {
         target.trackTargetAmount = amountFields.trackTargetAmount;
         target.targetAmount = amountFields.targetAmount;
         target.unit = amountFields.unit;
-        saveSideincomeMap(d);
+        saveSideincomeMap(d, { pushServer: true });
         syncSideincomeHeader();
         updateSideincomeView();
       }
@@ -1875,7 +1883,7 @@ export function render() {
         unit: amountFields.unit,
       };
       data.paths.push(path);
-      saveSideincomeMap(data);
+      saveSideincomeMap(data, { pushServer: true });
       selectedKpiId = null;
       pathAddModalJustClosed = true;
       close();

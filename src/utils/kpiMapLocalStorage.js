@@ -1,7 +1,12 @@
 /**
- * 꿈/부수입/행복/건강 KPI 맵 localStorage 키 — timeKpiSync·과제 옵션 등에서 공통 사용
+ * 꿈/부수입/행복/건강 KPI 맵 localStorage — 계정별 스코프
  * (timeTaskOptionsModel ↔ timeKpiSync 순환 import 방지)
  */
+
+import {
+  getScopedLocalStorageItem,
+  setScopedLocalStorageItem,
+} from "./clientStorageScope.js";
 
 export const KPI_MAP_STORAGE_KEYS = [
   "kpi-dream-map",
@@ -10,10 +15,18 @@ export const KPI_MAP_STORAGE_KEYS = [
   "kpi-health-map",
 ];
 
+export function readKpiMapScopedStorageRaw(storageKey) {
+  return getScopedLocalStorageItem(storageKey);
+}
+
+export function writeKpiMapScopedStorageRaw(storageKey, raw) {
+  setScopedLocalStorageItem(storageKey, raw);
+}
+
 /** KPI 맵 pull·소프트 갱신 — localStorage 원문 지문(변경 없으면 카드 재그림 생략) */
 export function readKpiMapLocalStorageSignature(storageKey) {
   try {
-    return localStorage.getItem(storageKey) || "";
+    return readKpiMapScopedStorageRaw(storageKey) || "";
   } catch (_) {
     return "";
   }
@@ -26,7 +39,7 @@ export function getKpiSyncedTaskNames() {
   const names = new Set();
   KPI_MAP_STORAGE_KEYS.forEach((key) => {
     try {
-      const raw = localStorage.getItem(key);
+      const raw = readKpiMapScopedStorageRaw(key);
       if (!raw) return;
       const parsed = JSON.parse(raw);
       const sync = parsed?.kpiTaskSync || {};
@@ -53,7 +66,7 @@ export function getKpiSyncActiveKpiIds() {
   const ids = new Set();
   KPI_MAP_STORAGE_KEYS.forEach((key) => {
     try {
-      const raw = localStorage.getItem(key);
+      const raw = readKpiMapScopedStorageRaw(key);
       if (!raw) return;
       const parsed = JSON.parse(raw);
       const sync = parsed?.kpiTaskSync || {};
@@ -79,7 +92,7 @@ export function getActiveKpiTaskKeepersById() {
   KPI_MAP_STORAGE_KEYS.forEach((key) => {
     const ledgerCat = KPI_MAP_KEY_TO_LEDGER_CATEGORY[key] || "";
     try {
-      const raw = localStorage.getItem(key);
+      const raw = readKpiMapScopedStorageRaw(key);
       if (!raw) return;
       const parsed = JSON.parse(raw);
       const sync = parsed?.kpiTaskSync || {};

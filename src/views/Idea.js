@@ -5,7 +5,8 @@
 import { signOut } from "../auth.js";
 import { supabase } from "../supabase.js";
 import { deleteMyAccountViaEdgeFunction } from "../utils/deleteMyAccount.js";
-import { USER_HOURLY_RATE_KEY, applyAppearanceFromServer } from "../utils/userHourlySync.js";
+import { USER_HOURLY_RATE_KEY, readUserHourlyRateLocal, applyAppearanceFromServer } from "../utils/userHourlySync.js";
+import { setScopedLocalStorageItem } from "../utils/clientStorageScope.js";
 import {
   LP_APP_FONT_OPTIONS,
   applyAppFont,
@@ -223,7 +224,7 @@ export function render() {
           const hr = data.hourly_rate != null ? Number(data.hourly_rate) : NaN;
           if (!Number.isNaN(hr) && hr > 0) {
             try {
-              localStorage.setItem(USER_HOURLY_RATE_KEY, String(hr));
+              setScopedLocalStorageItem(USER_HOURLY_RATE_KEY, String(hr));
             } catch (_) {}
             const rv = document.querySelector(".idea-hourly-result-value");
             const ru = document.querySelector(".idea-hourly-result-unit");
@@ -416,7 +417,7 @@ export function render() {
 
   async function saveHourlyToAccount(hourly) {
     try {
-      localStorage.setItem(USER_HOURLY_RATE_KEY, String(hourly));
+      setScopedLocalStorageItem(USER_HOURLY_RATE_KEY, String(hourly));
     } catch (_) {}
     document.dispatchEvent(
       new CustomEvent("app-hourly-rate-changed", { detail: { rate: hourly } }),
@@ -458,7 +459,7 @@ export function render() {
 
   // 저장된 시급 로드
   try {
-    const saved = localStorage.getItem(USER_HOURLY_RATE_KEY);
+    const saved = readUserHourlyRateLocal();
     if (saved) {
       const n = parseFloat(saved);
       if (!Number.isNaN(n) && n > 0) setHourlyResult(n);
@@ -487,7 +488,7 @@ export function render() {
   window.__lpIdeaSoftRefresh = () => {
     try {
       if (!el.isConnected) return;
-      const saved = localStorage.getItem(USER_HOURLY_RATE_KEY);
+      const saved = readUserHourlyRateLocal();
       const rv = el.querySelector(".idea-hourly-result-value");
       const ru = el.querySelector(".idea-hourly-result-unit");
       if (!rv) return;

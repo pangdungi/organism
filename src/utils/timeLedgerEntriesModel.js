@@ -1,23 +1,32 @@
 /**
- * 시간가계부 기록 행 — 이 모듈은 프로세스 메모리만 유지. 영속 복구는 Supabase pull.
- * (구버전 IndexedDB·localStorage 잔여물은 기동·purge 시 비움)
+ * 시간가계부 기록 행 — 메모리 + 계정별 IndexedDB/localStorage.
+ * 로그아웃·계정 전환 시 purge. 새로고침 시 계정 캐시 복구.
  */
 
 import { isUuid, UUID_RE } from "./idUtils.js";
 import { lpSaveDebug } from "./lpSaveDebug.js";
+import { getActiveClientStorageUserId } from "./clientStorageScope.js";
 import {
+  readAllRowsFromIdb,
   writeAllRowsToIdb,
+  purgeTimeLedgerIdbForUser,
   TIME_LEDGER_STORAGE_KEY,
+  tryMirrorTimeLedgerToLocalStorage,
 } from "./timeLedgerEntriesStore.js";
+import {
+  removeScopedLocalStorageItem,
+} from "./clientStorageScope.js";
 
 /**
- * 로그아웃·계정 전환 시 호출. 구버전 로컬 저장소 잔여를 비우고 메모리를 초기화합니다.
+ * 로그아웃·계정 전환 시 호출. 해당 계정 로컬 저장·메모리 초기화.
  */
-export async function purgeTimeLedgerLocalData() {
+export async function purgeTimeLedgerLocalData(uid = getActiveClientStorageUserId()) {
+  const u = String(uid || "").trim();
   try {
-    await writeAllRowsToIdb([]);
+    await purgeTimeLedgerIdbForUser(u);
   } catch (_) {}
   try {
+    removeScopedLocalStorageItem(TIME_LEDGER_STORAGE_KEY, u);
     if (typeof localStorage !== "undefined") {
       localStorage.removeItem(TIME_LEDGER_STORAGE_KEY);
       localStorage.removeItem(TIME_LEDGER_DELETE_TOMBSTONES_LS_LEGACY_KEY);
@@ -26,6 +35,10 @@ export async function purgeTimeLedgerLocalData() {
   _deletionTombstonesObj = {};
   _ledgerRowsMem = [];
   _storageReadyPromise = null;
+  if (_persistTimer != null) {
+    clearTimeout(_persistTimer);
+    _persistTimer = null;
+  }
 }
 
 export const TIME_LEDGER_ENTRIES_KEY = TIME_LEDGER_STORAGE_KEY;
@@ -74,25 +87,59 @@ let _ledgerRowsMem = null;
 /** @type {Promise<void> | null} */
 let _storageReadyPromise = null;
 
+/** @type {ReturnType<typeof setTimeout> | null} */
+let _persistTimer = null;
+
+function schedulePersistTimeLedgerRowsToDisk() {
+  const uid = getActiveClientStorageUserId();
+  if (!uid) return;
+  if (_persistTimer != null) clearTimeout(_persistTimer);
+  _persistTimer = setTimeout(() => {
+    _persistTimer = null;
+    const rows = readTimeLedgerEntriesRaw();
+    void writeAllRowsToIdb(rows, uid).catch(() => {});
+  }, 350);
+}
+
 /**
- * 앱 본 화면(mountApp) 전에 반드시 await. 메모리는 빈 배열로 시작합니다.
+ * 앱 본 화면(mountApp) 전에 await. 로그인 계정 캐시를 메모리로 복구(없으면 빈 배열).
  */
 export function ensureTimeLedgerStorageReady() {
   if (!_storageReadyPromise) {
     _storageReadyPromise = (async () => {
-      _ledgerRowsMem = [];
+      const uid = getActiveClientStorageUserId();
+      if (!uid) {
+        _ledgerRowsMem = [];
+        return;
+      }
       try {
-        await writeAllRowsToIdb([]);
-      } catch (_) {}
-      try {
-        if (typeof localStorage !== "undefined") {
-          localStorage.removeItem(TIME_LEDGER_STORAGE_KEY);
-          localStorage.removeItem(TIME_LEDGER_DELETE_TOMBSTONES_LS_LEGACY_KEY);
-        }
-      } catch (_) {}
+        const rows = await readAllRowsFromIdb(uid);
+        const { rows: withIds, dirty } = ensureTimeLedgerEntryIds(rows);
+        _ledgerRowsMem = withIds;
+        if (dirty) schedulePersistTimeLedgerRowsToDisk();
+      } catch (_) {
+        _ledgerRowsMem = [];
+      }
     })();
   }
   return _storageReadyPromise;
+}
+
+/** 계정 전환: 메모리만 비우고 스토리지 ready 플래그 리셋 */
+export function resetTimeLedgerMemoryForAccountSwitch() {
+  _deletionTombstonesObj = {};
+  _ledgerRowsMem = [];
+  _storageReadyPromise = null;
+  if (_persistTimer != null) {
+    clearTimeout(_persistTimer);
+    _persistTimer = null;
+  }
+}
+
+/** 활성 계정 id 기준 캐시 다시 로드 */
+export async function reloadTimeLedgerStorageForActiveUser() {
+  resetTimeLedgerMemoryForAccountSwitch();
+  await ensureTimeLedgerStorageReady();
 }
 
 /** Time.js parseFocusEvents 와 동일 (순환 import 방지) */
@@ -425,6 +472,7 @@ export function readTimeLedgerEntriesRaw() {
 export function writeTimeLedgerEntriesRaw(rows) {
   const arr = Array.isArray(rows) ? rows.slice() : [];
   _ledgerRowsMem = arr;
+  schedulePersistTimeLedgerRowsToDisk();
 }
 
 /** Calendar 일간 ledger 필터와 동일한 날짜 정규화(YYYY-MM-DD) */

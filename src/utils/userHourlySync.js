@@ -1,5 +1,11 @@
 import { supabase } from "../supabase.js";
+import { getSupabaseSession } from "./supabaseSession.js";
 import { applyAppFontIdFromServer } from "./appUiFont.js";
+import {
+  getScopedLocalStorageItem,
+  removeScopedLocalStorageItem,
+  setScopedLocalStorageItem,
+} from "./clientStorageScope.js";
 import {
   getTodoSettings,
   saveTodoSettings,
@@ -7,6 +13,18 @@ import {
 } from "./todoSettings.js";
 
 export const USER_HOURLY_RATE_KEY = "user_hourly_rate";
+
+/** 계정별 scoped 시급 캐시 읽기 */
+export function readUserHourlyRateLocal() {
+  return getScopedLocalStorageItem(USER_HOURLY_RATE_KEY) || "";
+}
+
+export function clearUserHourlyRateLocal() {
+  removeScopedLocalStorageItem(USER_HOURLY_RATE_KEY);
+  try {
+    localStorage.removeItem(USER_HOURLY_RATE_KEY);
+  } catch (_) {}
+}
 
 /**
  * DB appearance JSON → 로컬 할일 설정 중 동기화 대상만 반영 (완료 숨김·표시 필터).
@@ -30,12 +48,12 @@ export function applyAppearanceFromServer(a) {
   return changed;
 }
 
-/** 브라우저/OS 타임존 → DB (리마인더 푸시가 사용자 로컬 시각과 맞도록) */
+/** 브라우저/OS 타임존 → DB (사용자 로컬 시각 기록) */
 export async function syncUserIanaTimezoneToSupabase() {
   if (!supabase) return;
   const {
     data: { session },
-  } = await supabase.auth.getSession();
+  } = await getSupabaseSession();
   if (!session?.user?.id) return;
   let tz = "";
   try {
@@ -45,19 +63,21 @@ export async function syncUserIanaTimezoneToSupabase() {
   const { error } = await supabase.rpc("set_my_iana_timezone", { p_tz: tz });
 }
 
-/** 로그인·앱 진입: 시급 + appearance + 화면 글꼴 → localStorage·UI 반영 */
+/** 로그인·앱 진입: 시급 + appearance + 화면 글꼴 + 구독 필드 → localStorage·UI 반영 */
 export async function pullUserPrefsFromSupabase() {
-  if (!supabase) return;
+  if (!supabase) return null;
   const {
     data: { session },
-  } = await supabase.auth.getSession();
-  if (!session?.user?.id) return;
+  } = await getSupabaseSession();
+  if (!session?.user?.id) return null;
   const { data, error } = await supabase
     .from("user_subscriptions")
-    .select("hourly_rate, appearance, ui_font_id")
+    .select(
+      "hourly_rate, appearance, ui_font_id, subscription_status, access_until",
+    )
     .eq("user_id", session.user.id)
     .maybeSingle();
-  if (error || !data) return;
+  if (error || !data) return null;
 
   applyAppFontIdFromServer(data.ui_font_id);
 
@@ -65,7 +85,7 @@ export async function pullUserPrefsFromSupabase() {
     const n = Number(data.hourly_rate);
     if (!Number.isNaN(n) && n > 0) {
       try {
-        localStorage.setItem(USER_HOURLY_RATE_KEY, String(n));
+      setScopedLocalStorageItem(USER_HOURLY_RATE_KEY, String(n));
       } catch (_) {}
       document.dispatchEvent(
         new CustomEvent("app-hourly-rate-changed", { detail: { rate: n } }),
@@ -79,6 +99,7 @@ export async function pullUserPrefsFromSupabase() {
     } catch (_) {}
   }
   await syncUserIanaTimezoneToSupabase();
+  return data;
 }
 
 /** @deprecated 이름 호환 — pullUserPrefsFromSupabase 와 동일 */
@@ -91,7 +112,7 @@ export async function pushAppearanceToSupabase() {
   if (!supabase) return;
   const {
     data: { session },
-  } = await supabase.auth.getSession();
+  } = await getSupabaseSession();
   if (!session?.user?.id) return;
   const s = getTodoSettings();
   const { error } = await supabase.rpc("set_my_appearance", {

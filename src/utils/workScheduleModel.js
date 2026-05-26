@@ -1,7 +1,12 @@
 /**
- * 근무표 — 세션 메모리만 유지. 영속 복구는 Supabase pull.
- * 이전 localStorage 값은 최초 접근 시 한 번 읽힌 뒤 제거됩니다.
+ * 근무표 — 세션 메모리 + 계정별 localStorage 미러.
  */
+
+import {
+  getScopedLocalStorageItem,
+  removeScopedLocalStorageItem,
+  setScopedLocalStorageItem,
+} from "./clientStorageScope.js";
 
 export const WORK_SCHEDULE_ROWS_LS_LEGACY_KEY = "work_schedule_rows";
 export const WORK_SCHEDULE_TYPE_OPTIONS_LS_LEGACY_KEY = "work_schedule_type_options";
@@ -12,8 +17,7 @@ const WORK_SCHEDULE_TYPES_MIRROR_KEY = "lp_stamp_types_mirror_v1";
 
 function readTypesMirrorFromStorage() {
   try {
-    if (typeof localStorage === "undefined") return null;
-    const raw = localStorage.getItem(WORK_SCHEDULE_TYPES_MIRROR_KEY);
+    const raw = getScopedLocalStorageItem(WORK_SCHEDULE_TYPES_MIRROR_KEY);
     if (!raw) return null;
     const arr = JSON.parse(raw);
     if (!Array.isArray(arr) || arr.length === 0) return null;
@@ -25,12 +29,11 @@ function readTypesMirrorFromStorage() {
 
 function persistWorkScheduleTypesMirror(arr) {
   try {
-    if (typeof localStorage === "undefined") return;
     if (!Array.isArray(arr) || arr.length === 0) {
-      localStorage.removeItem(WORK_SCHEDULE_TYPES_MIRROR_KEY);
+      removeScopedLocalStorageItem(WORK_SCHEDULE_TYPES_MIRROR_KEY);
       return;
     }
-    localStorage.setItem(WORK_SCHEDULE_TYPES_MIRROR_KEY, JSON.stringify(arr));
+    setScopedLocalStorageItem(WORK_SCHEDULE_TYPES_MIRROR_KEY, JSON.stringify(arr));
   } catch (_) {}
 }
 
@@ -52,23 +55,6 @@ let _dailyHoursMem = null;
 function migrateFromLegacyLocalStorageOnce() {
   if (_legacyMigrated) return;
   _legacyMigrated = true;
-  try {
-    const rawRows = localStorage.getItem(WORK_SCHEDULE_ROWS_LS_LEGACY_KEY);
-    if (rawRows) {
-      const arr = JSON.parse(rawRows);
-      if (Array.isArray(arr)) _rowsMem = arr;
-    }
-    const rawTypes = localStorage.getItem(WORK_SCHEDULE_TYPE_OPTIONS_LS_LEGACY_KEY);
-    if (rawTypes) {
-      const arr = JSON.parse(rawTypes);
-      if (Array.isArray(arr) && arr.length > 0) _typeOptionsMem = arr;
-    }
-    const rawH = localStorage.getItem(WORK_SCHEDULE_DAILY_HOURS_LS_LEGACY_KEY);
-    if (rawH != null && rawH !== "") {
-      const n = parseFloat(rawH);
-      if (!Number.isNaN(n) && n >= 0) _dailyHoursMem = n;
-    }
-  } catch (_) {}
   try {
     localStorage.removeItem(WORK_SCHEDULE_ROWS_LS_LEGACY_KEY);
     localStorage.removeItem(WORK_SCHEDULE_TYPE_OPTIONS_LS_LEGACY_KEY);
@@ -137,6 +123,13 @@ export function writeWorkScheduleDailyHoursToMem(n) {
   _dailyHoursMem = v;
 }
 
+export function resetWorkScheduleMemory() {
+  _legacyMigrated = false;
+  _rowsMem = [];
+  _typeOptionsMem = null;
+  _dailyHoursMem = null;
+}
+
 /**
  * 로그아웃·계정 전환 시: 메모리 초기화 및 구버전 LS 키 제거
  */
@@ -145,10 +138,7 @@ export function clearWorkScheduleMemAndLegacy() {
     localStorage.removeItem(WORK_SCHEDULE_ROWS_LS_LEGACY_KEY);
     localStorage.removeItem(WORK_SCHEDULE_TYPE_OPTIONS_LS_LEGACY_KEY);
     localStorage.removeItem(WORK_SCHEDULE_DAILY_HOURS_LS_LEGACY_KEY);
-    localStorage.removeItem(WORK_SCHEDULE_TYPES_MIRROR_KEY);
+    removeScopedLocalStorageItem(WORK_SCHEDULE_TYPES_MIRROR_KEY);
   } catch (_) {}
-  _legacyMigrated = false;
-  _rowsMem = [];
-  _typeOptionsMem = null;
-  _dailyHoursMem = null;
+  resetWorkScheduleMemory();
 }

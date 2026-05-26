@@ -17,6 +17,10 @@ import {
 } from "./kpiTodoLifecycleDebug.js";
 import { sortNormalizedKpiTodoRows } from "./kpiMapTodoListOrder.js";
 import { KPI_LOG_SOURCE_MANUAL, KPI_LOG_SOURCE_TIME_LEDGER, kpiLogMetaFromDbRow } from "./kpiLogFields.js";
+import {
+  readKpiMapScopedStorageRaw,
+  writeKpiMapScopedStorageRaw,
+} from "./kpiMapLocalStorage.js";
 
 export const SIDEINCOME_KPI_MAP_STORAGE_KEY = "kpi-sideincome-paths";
 
@@ -60,7 +64,7 @@ function sideincomeKpiUploadLog(phase, detail) {
 
 function readLocalPayload() {
   try {
-    const raw = localStorage.getItem(SIDEINCOME_KPI_MAP_STORAGE_KEY);
+    const raw = readKpiMapScopedStorageRaw(SIDEINCOME_KPI_MAP_STORAGE_KEY);
     if (!raw) return emptyPayload();
     const p = JSON.parse(raw);
     return normalizePayload(p);
@@ -70,7 +74,7 @@ function readLocalPayload() {
 }
 
 function readLocalPayloadStrictForSync() {
-  const raw = localStorage.getItem(SIDEINCOME_KPI_MAP_STORAGE_KEY);
+  const raw = readKpiMapScopedStorageRaw(SIDEINCOME_KPI_MAP_STORAGE_KEY);
   if (raw == null) {
     return { ok: true, payload: emptyPayload(), rawMissing: true };
   }
@@ -132,7 +136,7 @@ export function applySideincomeKpiMapToLocalStorage(dbRow) {
   if (!dbRow || typeof dbRow !== "object") return;
   const payload = dbRow.payload != null ? normalizePayload(dbRow.payload) : normalizePayload(dbRow);
   try {
-    localStorage.setItem(SIDEINCOME_KPI_MAP_STORAGE_KEY, JSON.stringify(payload));
+    writeKpiMapScopedStorageRaw(SIDEINCOME_KPI_MAP_STORAGE_KEY, JSON.stringify(payload));
   } catch (_) {}
 }
 
@@ -576,36 +580,6 @@ async function fetchSideincomeMapPayloadFromSupabase(userId) {
   return { ok: true, payload: normalizePayload(buildPayloadFromRows([], [], [], [], [], [], null)) };
 }
 
-async function deleteOrphanRowsForUser(userId, p, allowEmptyOrphans) {
-  const deletedByTable = {};
-  const tables = [
-    {
-      table: "sideincome_map_kpi_daily_todos",
-      localIds: (p.kpiDailyRepeatTodos || []).map((x) => String(x.id)),
-    },
-    { table: "sideincome_map_kpi_todos", localIds: (p.kpiTodos || []).map((x) => String(x.id)) },
-    { table: "sideincome_map_kpi_logs", localIds: (p.kpiLogs || []).map((x) => String(x.id)) },
-    { table: "sideincome_map_path_logs", localIds: (p.pathLogs || []).map((x) => String(x.id)) },
-    { table: "sideincome_map_kpis", localIds: (p.kpis || []).map((x) => String(x.id)) },
-    { table: "sideincome_map_paths", localIds: (p.paths || []).map((x) => String(x.id)) },
-  ];
-  for (const { table, localIds } of tables) {
-    const set = new Set(localIds);
-    const { data: rows, error } = await supabase.from(table).select("id").eq("user_id", userId);
-    if (error) throw new Error(`${table} orphan select: ${error.message}`);
-    const serverIds = (rows || []).map((r) => String(r.id));
-    const toDelete = serverIds.filter((id) => !set.has(id));
-    if (toDelete.length === 0) continue;
-    if (localIds.length === 0 && !allowEmptyOrphans) continue;
-    for (const id of toDelete) {
-      const { error: dErr } = await supabase.from(table).delete().eq("user_id", userId).eq("id", id);
-      if (dErr) throw new Error(`${table} orphan delete ${id}: ${dErr.message}`);
-      deletedByTable[table] = (deletedByTable[table] || 0) + 1;
-    }
-  }
-  return deletedByTable;
-}
-
 function localPayloadHasAnythingToPersist(p) {
   return (
     p.paths.length > 0 ||
@@ -726,7 +700,7 @@ async function pullSideincomeKpiMapFromSupabaseImpl(force = false) {
       emptyTodos: kpiTodoSnapshotBrief(emptyPayload),
     });
     try {
-      localStorage.setItem(SIDEINCOME_KPI_MAP_STORAGE_KEY, JSON.stringify(emptyPayload));
+      writeKpiMapScopedStorageRaw(SIDEINCOME_KPI_MAP_STORAGE_KEY, JSON.stringify(emptyPayload));
     } catch (_) {}
     logKpiServerSnapshot("sideincome", {
       op: "pull",
@@ -749,7 +723,7 @@ async function pullSideincomeKpiMapFromSupabaseImpl(force = false) {
     { dbKpiTodoRows: todos.length },
   );
   try {
-    localStorage.setItem(SIDEINCOME_KPI_MAP_STORAGE_KEY, JSON.stringify(snapshot));
+    writeKpiMapScopedStorageRaw(SIDEINCOME_KPI_MAP_STORAGE_KEY, JSON.stringify(snapshot));
   } catch (_) {}
   kpiSyncDebugLog("부수입 pull → 완료", {
     source: "Supabase sideincome_map_* (서버 스냅샷만 반영)",
@@ -880,18 +854,10 @@ async function runSideincomeKpiMapSyncOnce() {
 
     if (localPayloadHasAnythingToPersist(toSync)) {
       await upsertNormalizedFromPayloadWithRetry(userId, toSync);
-      if (mergedFromServer) {
-        const orphanDel = await deleteOrphanRowsForUser(userId, toSync, true);
-        kpiSyncTrace("sideincome", "sync:4-orphanDelete", {
-          deletedByTable: orphanDel,
-          meaning: "서버에만 남은 id를 DB에서 제거한 개수",
-        });
-      } else {
-        kpiSyncTrace("sideincome", "sync:4-orphanDelete", {
-          skipped: true,
-          reason: "서버 fetch 실패 시 고아 삭제 안 함",
-        });
-      }
+      kpiSyncTrace("sideincome", "sync:4-orphanDelete", {
+        skipped: true,
+        reason: "로컬 기준 고아 삭제 없음 — 모달·체크 저장 시 upsert만",
+      });
     } else {
       let metaEmptyErr = null;
       const drEmpty = normalizeDeletedRefs(toSync.deletedRefs);
@@ -910,12 +876,10 @@ async function runSideincomeKpiMapSyncOnce() {
         if (attempt < 2) await new Promise((r) => setTimeout(r, 350 * (attempt + 1)));
       }
       if (metaEmptyErr) throw new Error(`sideincome_map_meta(empty): ${metaEmptyErr.message}`);
-      if (mergedFromServer) {
-        const orphanDel = await deleteOrphanRowsForUser(userId, toSync, true);
-        kpiSyncTrace("sideincome", "sync:4-orphanDelete(emptyPayloadBranch)", { deletedByTable: orphanDel });
-      } else {
-        kpiSyncTrace("sideincome", "sync:4-orphanDelete", { skipped: true, reason: "서버 fetch 실패" });
-      }
+      kpiSyncTrace("sideincome", "sync:4-orphanDelete(emptyPayloadBranch)", {
+        skipped: true,
+        reason: "로컬 기준 고아 삭제 없음",
+      });
     }
 
     if (mergedFromServer) {
@@ -999,6 +963,7 @@ export function attachSideincomeKpiMapSaveListener() {
   _listenerAttached = true;
   window.addEventListener("sideincome-kpi-map-saved", (e) => {
     if (e.detail?.fromServerMerge) return;
+    if (!e.detail?.pushServer) return;
     syncSideincomeKpiMapToSupabase().catch((err) => {
       sideincomeKpiUploadLog("error", { phase: "immediate_push", message: err?.message || String(err) });
     });

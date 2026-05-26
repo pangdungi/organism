@@ -14,13 +14,6 @@ function migrateLegacyOnce() {
   _legacyMigrated = true;
   _subtasksMem = {};
   try {
-    const raw = localStorage.getItem(TODO_SUBTASKS_KEY);
-    if (raw) {
-      const o = JSON.parse(raw);
-      if (o && typeof o === "object") _subtasksMem = o;
-    }
-  } catch (_) {}
-  try {
     localStorage.removeItem(TODO_SUBTASKS_KEY);
   } catch (_) {}
 }

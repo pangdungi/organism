@@ -7,7 +7,7 @@
  * 스키마: supabase/migrations/20260520120000_stamp_calendar_tables.sql
  *
  * pull: 탭 진입·설정·날짜/스탬프 모달 열 때 (types / entries 옵션)
- * push: work-schedule-saved 이벤트 — types(설정 저장·스탬프 편집 저장), entries(날짜 모달 저장·삭제)
+ * push: 사용자가 모달에서 «저장»·«삭제»를 눌렀을 때만 (설정=types, 날짜 모달=entry 1건 upsert/delete)
  */
 
 import { supabase } from "../supabase.js";
@@ -331,6 +331,7 @@ async function upsertStampTypesToSupabase(userId, typeList) {
 
 async function deleteOrphanStampTypesRemote(userId, localTypeIds) {
   const keep = new Set(localTypeIds.filter(isUuid));
+  if (keep.size === 0) return;
   const { data: remoteTypes, error: rtErr } = await supabase
     .from(TYPES_TABLE)
     .select("id")
@@ -348,138 +349,149 @@ async function deleteOrphanStampTypesRemote(userId, localTypeIds) {
   }
 }
 
-/**
- * @param {{ syncTypes?: boolean, syncEntries?: boolean }} [opts]
- */
-async function syncWorkScheduleToSupabaseImpl(opts = {}) {
-  const syncTypes = !!opts.syncTypes;
-  const syncEntries = !!opts.syncEntries;
-  if (!syncTypes && !syncEntries) return;
-
+/** 스탬프 설정 모달 «저장» — types upsert + 사용자가 지운 유형만 원격 삭제 */
+async function pushStampTypesAfterSettingsSaveImpl() {
   const userId = await getSessionUserId();
-  if (!userId || !supabase) return;
+  if (!userId || !supabase) return { ok: false };
 
   let types = parseLocalTypes();
   if (types.length === 0) {
     types = typeOptionsFromServerRows([]).map(normalizeLocalTypeEntry).filter(Boolean);
   }
 
-  if (syncTypes) {
-    const pushTypes = await upsertStampTypesToSupabase(userId, types);
-    if (!pushTypes.ok) {
-      const tErr = pushTypes.error;
-      wsSyncLog("push: stamp_types 실패", tErr?.message || String(tErr));
-      try {
-        showToast(
-          "서버에 스탬프 목록을 저장하지 못했습니다.",
-          `Supabase SQL에서 ${STAMP_SCHEMA_MIGRATION} 내용을 실행한 뒤 다시 시도해 주세요.`,
-        );
-      } catch (_) {}
-    } else {
-      if (pushTypes.upserts?.length) {
-        writeWorkScheduleTypeOptionsRawToMem(
-          types.map((t, i) => ({
-            ...t,
-            id: pushTypes.upserts[i]?.id || t.id,
-          })),
-        );
-        types = parseLocalTypes();
-      }
-      await deleteOrphanStampTypesRemote(
-        userId,
-        types.map((t) => t.id).filter(isUuid),
+  const pushTypes = await upsertStampTypesToSupabase(userId, types);
+  if (!pushTypes.ok) {
+    const tErr = pushTypes.error;
+    wsSyncLog("push: stamp_types 실패", tErr?.message || String(tErr));
+    try {
+      showToast(
+        "서버에 스탬프 목록을 저장하지 못했습니다.",
+        `Supabase SQL에서 ${STAMP_SCHEMA_MIGRATION} 내용을 실행한 뒤 다시 시도해 주세요.`,
       );
-    }
+    } catch (_) {}
+    return { ok: false, error: tErr };
   }
 
-  if (syncEntries) {
-    const nameById = buildTypeNameByIdMap(types);
-    let rows = loadLocalRows();
-    rows = rows.map((r) => {
-      const id = r.id != null ? String(r.id).trim() : "";
-      const stampId = resolveStampIdForRow(r, types);
-      const workType =
-        String(r.workType || "").trim() ||
-        (stampId ? nameById.get(stampId) : "") ||
-        "";
-      return {
-        ...r,
-        id: isUuid(id) ? id : crypto.randomUUID(),
-        stampId,
-        workType,
-      };
-    });
-    writeWorkScheduleRowsToMem(rows);
-
-    const idsStillInLocal = new Set(
-      rows.map((r) => String(r.id || "").trim()).filter(isUuid),
+  if (pushTypes.upserts?.length) {
+    writeWorkScheduleTypeOptionsRawToMem(
+      types.map((t, i) => ({
+        ...t,
+        id: pushTypes.upserts[i]?.id || t.id,
+      })),
     );
-
-    const entryPayloads = rows
-      .filter((r) => rowHasStampPayload(r, nameById))
-      .map((r) => {
-        const wd = normalizeWorkDateStr(r);
-        const stampId = resolveStampIdForRow(r, types);
-        if (!isUuid(stampId)) return null;
-        return {
-          id: String(r.id || "").trim(),
-          user_id: userId,
-          stamp_id: stampId,
-          entry_date: wd,
-        };
-      })
-      .filter(Boolean);
-
-    if (entryPayloads.length > 0) {
-      await supabase
-        .from(ENTRIES_TABLE)
-        .upsert(entryPayloads, { onConflict: "id" });
-    }
-
-    const { data: remoteEntries, error: reErr } = await supabase
-      .from(ENTRIES_TABLE)
-      .select("id")
-      .eq("user_id", userId);
-    if (!reErr && Array.isArray(remoteEntries)) {
-      for (const r of remoteEntries) {
-        if (!idsStillInLocal.has(r.id)) {
-          await supabase
-            .from(ENTRIES_TABLE)
-            .delete()
-            .eq("user_id", userId)
-            .eq("id", r.id);
-        }
-      }
-    }
+    types = parseLocalTypes();
   }
+
+  await deleteOrphanStampTypesRemote(
+    userId,
+    types.map((t) => t.id).filter(isUuid),
+  );
+  return { ok: true };
 }
 
+/** 스탬프 등록·수정 모달 «저장» — 해당 날짜 entry 1건만 upsert (전체 동기화·고아 삭제 없음) */
+async function upsertStampCalendarEntryFromModalImpl(row) {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase || !row || typeof row !== "object") {
+    return { ok: false, reason: "no_session" };
+  }
+
+  let types = parseLocalTypes();
+  if (types.length === 0) {
+    types = typeOptionsFromServerRows([]).map(normalizeLocalTypeEntry).filter(Boolean);
+  }
+
+  let r = { ...row };
+  let id = String(r.id || "").trim();
+  if (!isUuid(id)) id = crypto.randomUUID();
+  r.id = id;
+
+  const stampId = resolveStampIdForRow(r, types);
+  if (!isUuid(stampId)) {
+    wsSyncLog("push entry skip: stamp_id 없음", r);
+    return { ok: false, reason: "no_stamp_id" };
+  }
+
+  const wd = normalizeWorkDateStr(r);
+  if (!isValidYmd(wd)) {
+    return { ok: false, reason: "bad_date" };
+  }
+
+  const payload = {
+    id,
+    user_id: userId,
+    stamp_id: stampId,
+    entry_date: wd,
+  };
+
+  const { error } = await supabase
+    .from(ENTRIES_TABLE)
+    .upsert([payload], { onConflict: "id" });
+  if (error) {
+    wsSyncLog("push entry fail", error.message || error);
+    return { ok: false, error };
+  }
+
+  const nameById = buildTypeNameByIdMap(types);
+  const workType =
+    String(r.workType || "").trim() || nameById.get(stampId) || "";
+  const rows = loadLocalRows();
+  const nextRow = {
+    ...r,
+    id,
+    stampId,
+    workType,
+    workDate: wd,
+  };
+  const idx = rows.findIndex((x) => String(x.id || "") === id);
+  if (idx >= 0) rows[idx] = { ...rows[idx], ...nextRow };
+  else rows.push(nextRow);
+  writeWorkScheduleRowsToMem(rows);
+  wsSyncLog("push entry ok", id);
+  return { ok: true, id };
+}
+
+/** 스탬프 수정 모달 «삭제» — entry 1건만 DELETE */
+async function deleteStampCalendarEntryFromModalImpl(entryId) {
+  const id = String(entryId || "").trim();
+  if (!isUuid(id)) return { ok: false, reason: "bad_id" };
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) return { ok: false, reason: "no_session" };
+
+  const { error } = await supabase
+    .from(ENTRIES_TABLE)
+    .delete()
+    .eq("user_id", userId)
+    .eq("id", id);
+  if (error) {
+    wsSyncLog("delete entry fail", error.message || error);
+    return { ok: false, error };
+  }
+  wsSyncLog("delete entry ok", id);
+  return { ok: true };
+}
+
+export async function pushStampTypesAfterSettingsSave() {
+  return runWorkScheduleSerialized(() => pushStampTypesAfterSettingsSaveImpl());
+}
+
+export async function upsertStampCalendarEntryFromModal(row) {
+  return runWorkScheduleSerialized(() => upsertStampCalendarEntryFromModalImpl(row));
+}
+
+export async function deleteStampCalendarEntryFromModal(entryId) {
+  return runWorkScheduleSerialized(() => deleteStampCalendarEntryFromModalImpl(entryId));
+}
+
+/** @deprecated entries 일괄 sync 제거 — pushStampTypesAfterSettingsSave 만 사용 */
 export async function syncWorkScheduleToSupabase(opts) {
-  const o =
-    opts && typeof opts === "object"
-      ? opts
-      : { syncTypes: true, syncEntries: true };
-  return runWorkScheduleSerialized(() => syncWorkScheduleToSupabaseImpl(o));
-}
-
-let _listenerAttached = false;
-
-export function attachWorkScheduleSaveListener() {
-  if (_listenerAttached) return;
-  _listenerAttached = true;
-  window.addEventListener("work-schedule-saved", (e) => {
-    const d = (e && e.detail) || {};
-    const syncTypes = !!d.types;
-    const syncEntries = !!d.entries;
-    if (!syncTypes && !syncEntries) return;
-    syncWorkScheduleToSupabase({ syncTypes, syncEntries }).catch(() => {});
-  });
+  void opts;
+  return pushStampTypesAfterSettingsSave();
 }
 
 export async function hydrateWorkScheduleFromCloud() {
   lpPullDebug("hydrateStampCalendarFromCloud", {});
   wsSyncLog("tab: pull stamp calendar (types+entries)");
-  attachWorkScheduleSaveListener();
   if (!supabase) {
     return { anyChanged: false };
   }

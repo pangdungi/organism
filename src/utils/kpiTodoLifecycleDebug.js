@@ -9,6 +9,8 @@
  * 필터: [KPI할일추적]
  */
 
+import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
+
 const KEY = "debug_kpi_todo_lifecycle";
 
 let _seq = 0;
@@ -93,7 +95,7 @@ export function deletedRefsKpiTodosLen(payload) {
 export function kpiTodoCountInStorage(storageKey) {
   if (!kpiTodoLifecycleOn()) return null;
   try {
-    const raw = typeof localStorage !== "undefined" ? localStorage.getItem(storageKey) : null;
+    const raw = readKpiMapScopedStorageRaw(storageKey);
     if (!raw) return 0;
     const p = JSON.parse(raw);
     return Array.isArray(p?.kpiTodos) ? p.kpiTodos.length : 0;

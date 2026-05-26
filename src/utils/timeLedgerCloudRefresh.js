@@ -7,25 +7,29 @@ import {
   ensureTimeLedgerStorageReady,
   TIME_LEDGER_ENTRIES_KEY,
 } from "./timeLedgerEntriesModel.js";
+import { pullTimeDailyBudgetForDateRange } from "./timeDailyBudgetSupabase.js";
 import {
   pullTimeLedgerEntriesFromSupabase,
+  readTimeLedgerCombinedPullRangeYmd,
 } from "./timeLedgerEntriesSupabase.js";
-import { pullTimeDailyBudgetFromSupabase } from "./timeDailyBudgetSupabase.js";
 import { getLedgerTasksMemSnapshotString, TIME_TASK_LOG_ROWS_KEY } from "./timeTaskOptionsModel.js";
 import {
   TIME_DAILY_BUDGET_GOALS_KEY,
   TIME_BUDGET_EXCLUDED_KEY,
+  readTimeDailyBudgetGoalsRaw,
+  readTimeDailyBudgetExcludedRaw,
 } from "./timeDailyBudgetModel.js";
 import { lpPullDebug } from "./lpPullDebug.js";
+import { getScopedLocalStorageItem } from "./clientStorageScope.js";
 
 function snapshotTimeLedgerLocalStorage() {
   try {
     return [
-      localStorage.getItem(TIME_LEDGER_ENTRIES_KEY) ?? "",
+      getScopedLocalStorageItem(TIME_LEDGER_ENTRIES_KEY) ?? "",
       getLedgerTasksMemSnapshotString(),
-      localStorage.getItem(TIME_TASK_LOG_ROWS_KEY) ?? "",
-      localStorage.getItem(TIME_DAILY_BUDGET_GOALS_KEY) ?? "",
-      localStorage.getItem(TIME_BUDGET_EXCLUDED_KEY) ?? "",
+      getScopedLocalStorageItem(TIME_TASK_LOG_ROWS_KEY) ?? "",
+      readTimeDailyBudgetGoalsRaw() ?? "",
+      readTimeDailyBudgetExcludedRaw() ?? "",
     ].join("\n");
   } catch (_) {
     return "";
@@ -44,7 +48,8 @@ export async function pullAllTimeLedgerFromCloud(opts = {}) {
   const before = snapshotTimeLedgerLocalStorage();
   const jobs = [];
   if (!skipEntries) jobs.push(pullTimeLedgerEntriesFromSupabase());
-  jobs.push(pullTimeDailyBudgetFromSupabase());
+  const { rangeStart, rangeEnd } = readTimeLedgerCombinedPullRangeYmd();
+  jobs.push(pullTimeDailyBudgetForDateRange(rangeStart, rangeEnd));
   await Promise.all(jobs);
   const after = snapshotTimeLedgerLocalStorage();
   const anyChanged = before !== after;
@@ -59,9 +64,10 @@ export async function pullTimeLedgerTabEnterFromCloud() {
   lpPullDebug("pullTimeLedgerTabEnterFromCloud", {});
   await ensureTimeLedgerStorageReady();
   const before = snapshotTimeLedgerLocalStorage();
+  const { rangeStart, rangeEnd } = readTimeLedgerCombinedPullRangeYmd();
   await Promise.all([
     pullTimeLedgerEntriesFromSupabase(),
-    pullTimeDailyBudgetFromSupabase(),
+    pullTimeDailyBudgetForDateRange(rangeStart, rangeEnd),
   ]);
   const after = snapshotTimeLedgerLocalStorage();
   return { anyChanged: before !== after };

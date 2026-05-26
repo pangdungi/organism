@@ -1,5 +1,5 @@
 {
-  "buildCommand": "node scripts/write-vapid-build-json.mjs && vite build",
+  "buildCommand": "node scripts/generate-app-icon-prefetch.mjs && vite build",
   "outputDirectory": "dist",
   "rewrites": [
     { "source": "/auth/:path*", "destination": "/index.html" }
@@ -7,15 +7,6 @@
   "headers": [
     {
       "source": "/index.html",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=0, must-revalidate"
-        }
-      ]
-    },
-    {
-      "source": "/vapid-public.json",
       "headers": [
         {
           "key": "Cache-Control",

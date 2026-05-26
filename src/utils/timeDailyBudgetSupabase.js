@@ -4,10 +4,10 @@
 
 import { supabase } from "../supabase.js";
 import {
-  TIME_DAILY_BUDGET_GOALS_KEY,
-  TIME_BUDGET_EXCLUDED_KEY,
   mergeTimeDailyBudgetRowsFromServer,
   buildAllLocalTimeDailyBudgetPayloadsForSync,
+  readTimeDailyBudgetGoalsRaw,
+  readTimeDailyBudgetExcludedRaw,
 } from "./timeDailyBudgetModel.js";
 import { lpPullDebug } from "./lpPullDebug.js";
 
@@ -43,13 +43,13 @@ export async function syncTimeDailyBudgetDateToSupabase(dateKey) {
   let goals = {};
   let excluded_names = [];
   try {
-    const rawG = localStorage.getItem(TIME_DAILY_BUDGET_GOALS_KEY);
+    const rawG = readTimeDailyBudgetGoalsRaw();
     const all = rawG ? JSON.parse(rawG) : {};
     const g = all[dk];
     if (g && typeof g === "object" && !Array.isArray(g)) {
       goals = JSON.parse(JSON.stringify(g));
     }
-    const rawE = localStorage.getItem(TIME_BUDGET_EXCLUDED_KEY);
+    const rawE = readTimeDailyBudgetExcludedRaw();
     const excl = rawE ? JSON.parse(rawE) : {};
     const er = excl[dk];
     if (Array.isArray(er)) {
@@ -61,6 +61,30 @@ export async function syncTimeDailyBudgetDateToSupabase(dateKey) {
   });
 }
 
+export async function pullTimeDailyBudgetForDateRange(rangeStart, rangeEnd) {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) return false;
+  const rs = normalizeDateKey(rangeStart);
+  const re = normalizeDateKey(rangeEnd);
+  if (!rs || !re) return false;
+  let q = supabase
+    .from(TABLE)
+    .select("user_id, plan_date, goals, excluded_names, updated_at")
+    .eq("user_id", userId);
+  if (rs === re) {
+    q = q.eq("plan_date", rs);
+  } else {
+    q = q.gte("plan_date", rs).lte("plan_date", re);
+  }
+  const { data, error } = await q.order("plan_date", { ascending: false });
+  if (error) return false;
+  if (!data?.length) return false;
+  const selfRows = data.filter((r) => r && r.user_id === userId);
+  if (selfRows.length === 0) return false;
+  return mergeTimeDailyBudgetRowsFromServer(selfRows);
+}
+
+/** @deprecated 탭 진입 등에서는 `pullTimeDailyBudgetForDateRange` 사용 */
 export async function pullTimeDailyBudgetFromSupabase() {
   const userId = await getSessionUserId();
   if (!userId || !supabase) return false;

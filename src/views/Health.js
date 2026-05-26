@@ -63,7 +63,11 @@ import {
   kpiTodoSnapshotBrief,
   kpiTodosCompletionBrief,
 } from "../utils/kpiTodoLifecycleDebug.js";
-import { readKpiMapLocalStorageSignature } from "../utils/kpiMapLocalStorage.js";
+import {
+  readKpiMapLocalStorageSignature,
+  readKpiMapScopedStorageRaw,
+  writeKpiMapScopedStorageRaw,
+} from "../utils/kpiMapLocalStorage.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
   getAppFooterActionsSlot,
@@ -99,7 +103,7 @@ function appendDeletedRef(data, kind, id) {
 
 function loadHealthMap() {
   try {
-    const raw = localStorage.getItem(HEALTH_KPI_MAP_STORAGE_KEY);
+    const raw = readKpiMapScopedStorageRaw(HEALTH_KPI_MAP_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       const kpis = (parsed.kpis || []).map((k) => ({
@@ -164,11 +168,11 @@ function syncKpiToTimeTask(kpi, action, oldName) {
   }
 }
 
-function saveHealthMap(data) {
+function saveHealthMap(data, opts) {
   try {
     let prev = null;
     try {
-      const raw = localStorage.getItem(HEALTH_KPI_MAP_STORAGE_KEY);
+      const raw = readKpiMapScopedStorageRaw(HEALTH_KPI_MAP_STORAGE_KEY);
       prev = raw ? JSON.parse(raw) : null;
     } catch (_) {
       prev = null;
@@ -181,10 +185,14 @@ function saveHealthMap(data) {
       toSave.kpiDailyRepeatTodos = toSave.kpiDailyRepeatTodos.filter((t) => (t.text || "").trim() !== "");
     }
     const stamped = applyHealthKpiTimestampsOnSave(prev, toSave);
-    localStorage.setItem(HEALTH_KPI_MAP_STORAGE_KEY, JSON.stringify(stamped));
-    try {
-      window.dispatchEvent(new CustomEvent("health-kpi-map-saved"));
-    } catch (_) {}
+    writeKpiMapScopedStorageRaw(HEALTH_KPI_MAP_STORAGE_KEY, JSON.stringify(stamped));
+    if (opts?.pushServer) {
+      try {
+        window.dispatchEvent(
+          new CustomEvent("health-kpi-map-saved", { detail: { pushServer: true } }),
+        );
+      } catch (_) {}
+    }
   } catch (_) {}
 }
 
@@ -498,7 +506,7 @@ export function render() {
       data.kpis.push(kpi);
       data.kpiOrder = data.kpiOrder || {};
       data.kpiOrder[activeHealthId] = [...existingOrder, kpi.id];
-      saveHealthMap(data);
+      saveHealthMap(data, { pushServer: true });
       syncKpiToTimeTask(kpi, "add");
       close();
       enterKpiDetailView(kpi.id);
@@ -598,7 +606,7 @@ export function render() {
       data.kpiDailyRepeatTodos = (data.kpiDailyRepeatTodos || []).filter((t) => t.kpiId !== kpi.id);
       const order = (data.kpiOrder || {})[kpi.healthId] || [];
       data.kpiOrder = { ...data.kpiOrder, [kpi.healthId]: order.filter((id) => id !== kpi.id) };
-      saveHealthMap(data);
+      saveHealthMap(data, { pushServer: true });
       close();
       exitToKpiList();
     });
@@ -622,7 +630,7 @@ export function render() {
           form.querySelector('input[name="direction"]:checked')?.value === "lower"
             ? "lower"
             : "higher";
-        saveHealthMap(data);
+        saveHealthMap(data, { pushServer: true });
         if (oldName !== target.name) syncKpiToTimeTask(target, "update", oldName);
       }
       close();
@@ -745,7 +753,7 @@ export function render() {
         data.kpiLogs = data.kpiLogs || [];
         data.kpiLogs.push(log);
       }
-      saveHealthMap(data);
+      saveHealthMap(data, { pushServer: true });
       close();
       refreshHealthAfterKpiDataChange();
     });
@@ -755,7 +763,7 @@ export function render() {
         const d = loadHealthMap();
         appendDeletedRef(d, "kpiLogs", editLog.id);
         d.kpiLogs = (d.kpiLogs || []).filter((l) => l.id !== editLog.id);
-        saveHealthMap(d);
+        saveHealthMap(d, { pushServer: true });
         close();
         refreshHealthAfterKpiDataChange();
       });
@@ -798,7 +806,7 @@ export function render() {
         text,
         completed: false,
       });
-      saveHealthMap(d2);
+      saveHealthMap(d2, { pushServer: true });
       renderKpiDetailView({ scrollTodoAfterMutation: true });
       return;
     }
@@ -817,7 +825,7 @@ export function render() {
         text,
         completed: false,
       });
-      saveHealthMap(d2);
+      saveHealthMap(d2, { pushServer: true });
       renderKpiDetailView({ scrollTodoAfterMutation: true });
       return;
     }
@@ -1224,7 +1232,7 @@ export function render() {
           });
           appendDeletedRef(d, "kpiTodos", todo.id);
           d.kpiTodos = (d.kpiTodos || []).filter((x) => x.id !== todo.id);
-          saveHealthMap(d);
+          saveHealthMap(d, { pushServer: true });
           const after = loadHealthMap();
           kpiTodoLifecycleLog("건강KPI탭_모달삭제_saveHealthMap후", {
             todoId: String(todo.id),
@@ -1238,7 +1246,7 @@ export function render() {
         const row = (d.kpiTodos || []).find((x) => x.id === todo.id);
         if (!row) return;
         row.text = result.text;
-        saveHealthMap(d);
+        saveHealthMap(d, { pushServer: true });
         renderKpiDetailView({ scrollTodoAfterMutation: true });
       };
 
@@ -1257,7 +1265,7 @@ export function render() {
             요청완료: !!check.checked,
           });
           t.completed = !!check.checked;
-          saveHealthMap(d);
+          saveHealthMap(d, { pushServer: true });
           kpiTodoLifecycleLog("건강KPI탭_체크_save후", {
             todoId: String(todo.id),
             completion: kpiTodosCompletionBrief(loadHealthMap(), 20),
@@ -1330,7 +1338,7 @@ export function render() {
             const d = loadHealthMap();
             appendDeletedRef(d, "kpiDailyRepeatTodos", todo.id);
             d.kpiDailyRepeatTodos = (d.kpiDailyRepeatTodos || []).filter((x) => x.id !== todo.id);
-            saveHealthMap(d);
+            saveHealthMap(d, { pushServer: true });
             renderKpiDetailView({ scrollTodoAfterMutation: true });
             return;
           }
@@ -1338,7 +1346,7 @@ export function render() {
           const row = (d.kpiDailyRepeatTodos || []).find((x) => x.id === todo.id);
           if (!row) return;
           row.text = result.text;
-          saveHealthMap(d);
+          saveHealthMap(d, { pushServer: true });
           renderKpiDetailView({ scrollTodoAfterMutation: true });
         };
 
@@ -1415,7 +1423,7 @@ export function render() {
       const data = loadHealthMap();
       const health = { id: nextId(), name: val };
       data.healths.push(health);
-      saveHealthMap(data);
+      saveHealthMap(data, { pushServer: true });
       selectedKpiId = null;
       healthAddModalJustClosed = true;
       close();
@@ -1476,7 +1484,7 @@ export function render() {
       delete d.kpiOrder?.[healthId];
       d.kpiTaskSync = d.kpiTaskSync || {};
       kpiIds.forEach((id) => delete d.kpiTaskSync[id]);
-      saveHealthMap(d);
+      saveHealthMap(d, { pushServer: true });
       if (activeHealthId === healthId) {
         activeHealthId = d.healths[0]?.id || null;
         selectedKpiId = null;
@@ -1524,7 +1532,7 @@ export function render() {
       const target = d.healths.find((x) => x.id === health.id);
       if (target) {
         target.name = val;
-        saveHealthMap(d);
+        saveHealthMap(d, { pushServer: true });
         syncHealthHeader();
         updateHealthView();
       }

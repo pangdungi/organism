@@ -1,7 +1,15 @@
 /**
  * 시간가계부 기록 행(time_task_log_rows) 영속화 — IndexedDB 우선 (용량 한도 대비).
- * localStorage는 1회 마이그레이션·선택적 미러링(용량 초과 시 생략).
+ * 계정별 키(`lp:u:{uid}:time_task_log_rows`). localStorage는 선택적 미러.
  */
+
+import {
+  clientScopedStorageKey,
+  getActiveClientStorageUserId,
+  getScopedLocalStorageItem,
+  migrateLegacyLocalStorageToScoped,
+  setScopedLocalStorageItem,
+} from "./clientStorageScope.js";
 
 export const TIME_LEDGER_STORAGE_KEY = "time_task_log_rows";
 
@@ -9,13 +17,16 @@ const DB_NAME = "lp-time-ledger-v1";
 const DB_VERSION = 1;
 const STORE = "ledger";
 
-const RECORD_KEY = "time_task_log_rows";
-
 /** @type {IDBDatabase | null} */
 let _db = null;
 
 /** @type {Promise<void> | null} */
 let _opening = null;
+
+function resolveIdbRecordKey(uid = getActiveClientStorageUserId()) {
+  const scoped = clientScopedStorageKey(TIME_LEDGER_STORAGE_KEY, uid);
+  return scoped || TIME_LEDGER_STORAGE_KEY;
+}
 
 function openDatabase() {
   if (_opening) return _opening;
@@ -43,14 +54,14 @@ function openDatabase() {
 /**
  * @returns {Promise<{ rows: unknown[] } | undefined>}
  */
-function idbGetRecord() {
+function idbGetRecord(recordKey) {
   return new Promise((resolve, reject) => {
     if (!_db) {
       resolve(undefined);
       return;
     }
     const tx = _db.transaction(STORE, "readonly");
-    const q = tx.objectStore(STORE).get(RECORD_KEY);
+    const q = tx.objectStore(STORE).get(recordKey);
     q.onerror = () => reject(q.error);
     q.onsuccess = () => resolve(q.result);
   });
@@ -59,13 +70,13 @@ function idbGetRecord() {
 /**
  * @param {unknown[]} rows
  */
-function idbPutRecord(rows) {
+function idbPutRecord(recordKey, rows) {
   return new Promise((resolve, reject) => {
     if (!_db) {
       resolve();
       return;
     }
-    const rec = { key: RECORD_KEY, rows };
+    const rec = { key: recordKey, rows };
     const tx = _db.transaction(STORE, "readwrite");
     const q = tx.objectStore(STORE).put(rec);
     q.onerror = () => reject(q.error);
@@ -73,10 +84,22 @@ function idbPutRecord(rows) {
   });
 }
 
-function readLocalStorageRows() {
+function idbDeleteRecord(recordKey) {
+  return new Promise((resolve, reject) => {
+    if (!_db) {
+      resolve();
+      return;
+    }
+    const tx = _db.transaction(STORE, "readwrite");
+    const q = tx.objectStore(STORE).delete(recordKey);
+    q.onerror = () => reject(q.error);
+    tx.oncomplete = () => resolve();
+  });
+}
+
+function readLocalStorageRows(uid = getActiveClientStorageUserId()) {
   try {
-    if (typeof localStorage === "undefined") return [];
-    const raw = localStorage.getItem(TIME_LEDGER_STORAGE_KEY);
+    const raw = getScopedLocalStorageItem(TIME_LEDGER_STORAGE_KEY, uid);
     if (!raw) return [];
     const p = JSON.parse(raw);
     return Array.isArray(p) ? p : [];
@@ -86,24 +109,29 @@ function readLocalStorageRows() {
 }
 
 /**
- * IndexedDB에 없으면 localStorage → IDB 1회 이전
+ * IndexedDB에 없으면 localStorage(계정 스코프) → IDB 1회 이전
  */
-export async function migrateFromLocalStorageIfNeeded() {
+export async function migrateFromLocalStorageIfNeeded(uid = getActiveClientStorageUserId()) {
+  if (!String(uid || "").trim()) return;
+  migrateLegacyLocalStorageToScoped(TIME_LEDGER_STORAGE_KEY, uid);
   await openDatabase();
-  const rec = await idbGetRecord();
-  /* 스냅샷이 이미 있으면(빈 배열 포함) 덮어쓰지 않음 */
+  const recordKey = resolveIdbRecordKey(uid);
+  const rec = await idbGetRecord(recordKey);
   if (rec && Array.isArray(rec.rows)) return;
-  const fromLs = readLocalStorageRows();
+  const fromLs = readLocalStorageRows(uid);
   if (fromLs.length === 0) return;
-  await idbPutRecord(fromLs);
+  await idbPutRecord(recordKey, fromLs);
 }
 
 /**
  * @returns {Promise<unknown[]>}
  */
-export async function readAllRowsFromIdb() {
+export async function readAllRowsFromIdb(uid = getActiveClientStorageUserId()) {
+  const u = String(uid || "").trim();
+  if (!u) return [];
+  await migrateFromLocalStorageIfNeeded(u);
   await openDatabase();
-  const rec = await idbGetRecord();
+  const rec = await idbGetRecord(resolveIdbRecordKey(u));
   if (rec && Array.isArray(rec.rows)) return rec.rows;
   return [];
 }
@@ -111,10 +139,23 @@ export async function readAllRowsFromIdb() {
 /**
  * @param {unknown[]} rows
  */
-export async function writeAllRowsToIdb(rows) {
+export async function writeAllRowsToIdb(rows, uid = getActiveClientStorageUserId()) {
+  const u = String(uid || "").trim();
+  if (!u) return;
   await openDatabase();
   const arr = Array.isArray(rows) ? rows : [];
-  await idbPutRecord(arr);
+  await idbPutRecord(resolveIdbRecordKey(u), arr);
+  tryMirrorTimeLedgerToLocalStorage(arr, u);
+}
+
+/** 로그아웃 등 — 해당 계정 IDB 스냅샷만 제거 */
+export async function purgeTimeLedgerIdbForUser(uid) {
+  const u = String(uid || "").trim();
+  if (!u) return;
+  try {
+    await openDatabase();
+    await idbDeleteRecord(resolveIdbRecordKey(u));
+  } catch (_) {}
 }
 
 let _lsMirrorWarned = false;
@@ -123,10 +164,16 @@ let _lsMirrorWarned = false;
  * 동일 키로 localStorage 미러(용량·호환). 실패 시 한 번만 안내.
  * @param {unknown[]} rows
  */
-export function tryMirrorTimeLedgerToLocalStorage(rows) {
+export function tryMirrorTimeLedgerToLocalStorage(
+  rows,
+  uid = getActiveClientStorageUserId(),
+) {
   try {
-    if (typeof localStorage === "undefined") return;
-    localStorage.setItem(TIME_LEDGER_STORAGE_KEY, JSON.stringify(rows));
+    setScopedLocalStorageItem(
+      TIME_LEDGER_STORAGE_KEY,
+      JSON.stringify(rows),
+      uid,
+    );
   } catch (_) {
     if (!_lsMirrorWarned) _lsMirrorWarned = true;
   }

@@ -1,9 +1,30 @@
 /**
- * 일간 시간 예산 localStorage — Time.js 의 BUDGET_* 키와 동일
+ * 일간 시간 예산 localStorage — Time.js 의 BUDGET_* 키와 동일, 계정별 스코프
  */
+
+import {
+  getScopedLocalStorageItem,
+  setScopedLocalStorageItem,
+} from "./clientStorageScope.js";
 
 export const TIME_DAILY_BUDGET_GOALS_KEY = "time_daily_budget_goals";
 export const TIME_BUDGET_EXCLUDED_KEY = "time_budget_excluded";
+
+export function readTimeDailyBudgetGoalsRaw() {
+  return getScopedLocalStorageItem(TIME_DAILY_BUDGET_GOALS_KEY);
+}
+
+export function readTimeDailyBudgetExcludedRaw() {
+  return getScopedLocalStorageItem(TIME_BUDGET_EXCLUDED_KEY);
+}
+
+export function writeTimeDailyBudgetGoalsRaw(raw) {
+  setScopedLocalStorageItem(TIME_DAILY_BUDGET_GOALS_KEY, raw);
+}
+
+export function writeTimeDailyBudgetExcludedRaw(raw) {
+  setScopedLocalStorageItem(TIME_BUDGET_EXCLUDED_KEY, raw);
+}
 
 function normalizeDateKey(s) {
   const d = String(s || "").replace(/\//g, "-").slice(0, 10);
@@ -14,9 +35,9 @@ function normalizeDateKey(s) {
 export function mergeTimeDailyBudgetRowsFromServer(rows) {
   if (!Array.isArray(rows) || rows.length === 0) return false;
   try {
-    const rawG = localStorage.getItem(TIME_DAILY_BUDGET_GOALS_KEY);
+    const rawG = readTimeDailyBudgetGoalsRaw();
     const all = rawG && typeof rawG === "string" ? JSON.parse(rawG) : {};
-    const rawE = localStorage.getItem(TIME_BUDGET_EXCLUDED_KEY);
+    const rawE = readTimeDailyBudgetExcludedRaw();
     const excl = rawE && typeof rawE === "string" ? JSON.parse(rawE) : {};
     let changed = false;
     for (const r of rows) {
@@ -31,7 +52,6 @@ export function mergeTimeDailyBudgetRowsFromServer(rows) {
             : {};
         const incomingEmpty = Object.keys(incoming).length === 0;
         const existingKeys = Object.keys(existing).length;
-        /* 서버에 빈 goals만 있으면 로컬(4. 오늘 해치우기 예상·목표)을 덮어쓰지 않음 */
         if (incomingEmpty && existingKeys > 0) continue;
         all[dk] = incoming;
         changed = true;
@@ -45,8 +65,8 @@ export function mergeTimeDailyBudgetRowsFromServer(rows) {
       }
     }
     if (changed) {
-      localStorage.setItem(TIME_DAILY_BUDGET_GOALS_KEY, JSON.stringify(all));
-      localStorage.setItem(TIME_BUDGET_EXCLUDED_KEY, JSON.stringify(excl));
+      writeTimeDailyBudgetGoalsRaw(JSON.stringify(all));
+      writeTimeDailyBudgetExcludedRaw(JSON.stringify(excl));
     }
     return changed;
   } catch (_) {
@@ -58,9 +78,9 @@ export function mergeTimeDailyBudgetRowsFromServer(rows) {
 export function buildAllLocalTimeDailyBudgetPayloadsForSync() {
   const out = [];
   try {
-    const rawG = localStorage.getItem(TIME_DAILY_BUDGET_GOALS_KEY);
+    const rawG = readTimeDailyBudgetGoalsRaw();
     const all = rawG ? JSON.parse(rawG) : {};
-    const rawE = localStorage.getItem(TIME_BUDGET_EXCLUDED_KEY);
+    const rawE = readTimeDailyBudgetExcludedRaw();
     const excl = rawE ? JSON.parse(rawE) : {};
     if (!all || typeof all !== "object" || Array.isArray(all)) return out;
     for (const dateKey of Object.keys(all)) {

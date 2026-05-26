@@ -5,9 +5,13 @@
  */
 
 import { showConfirmModal } from "../utils/confirmModal.js";
+import {
+  readKpiMapScopedStorageRaw,
+  writeKpiMapScopedStorageRaw,
+} from "../utils/kpiMapLocalStorage.js";
 
 const DREAM_MAP_STORAGE_KEY = "kpi-dream-map";
-const SIDEINCOME_MAP_STORAGE_KEY = "kpi-sideincome-map";
+const SIDEINCOME_MAP_STORAGE_KEY = "kpi-sideincome-paths";
 const UNDO_MAX = 5;
 
 let dreamHistory = [];
@@ -15,7 +19,7 @@ let sideincomeHistory = [];
 
 function loadDreamMap() {
   try {
-    const raw = localStorage.getItem(DREAM_MAP_STORAGE_KEY);
+    const raw = readKpiMapScopedStorageRaw(DREAM_MAP_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       return {
@@ -35,13 +39,13 @@ function loadDreamMap() {
 
 function saveDreamMap(data) {
   try {
-    localStorage.setItem(DREAM_MAP_STORAGE_KEY, JSON.stringify(data));
+    writeKpiMapScopedStorageRaw(DREAM_MAP_STORAGE_KEY, JSON.stringify(data));
   } catch (_) {}
 }
 
 function loadSideincomeMap() {
   try {
-    const raw = localStorage.getItem(SIDEINCOME_MAP_STORAGE_KEY);
+    const raw = readKpiMapScopedStorageRaw(SIDEINCOME_MAP_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       return {
@@ -56,7 +60,7 @@ function loadSideincomeMap() {
 
 function saveSideincomeMap(data) {
   try {
-    localStorage.setItem(SIDEINCOME_MAP_STORAGE_KEY, JSON.stringify(data));
+    writeKpiMapScopedStorageRaw(SIDEINCOME_MAP_STORAGE_KEY, JSON.stringify(data));
   } catch (_) {}
 }
 

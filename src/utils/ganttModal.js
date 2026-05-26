@@ -3,6 +3,8 @@
  * Dream, Sideincome, Happiness의 KPI를 통합 표시
  */
 
+import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
+
 const DREAM_MAP_KEY = "kpi-dream-map";
 const SIDEINCOME_KEY = "kpi-sideincome-paths";
 const HAPPINESS_KEY = "kpi-happiness-map";
@@ -10,7 +12,7 @@ const HEALTH_KEY = "kpi-health-map";
 
 function loadJson(key, defaultVal) {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = readKpiMapScopedStorageRaw(key);
     return raw ? JSON.parse(raw) : defaultVal;
   } catch (_) {
     return defaultVal;

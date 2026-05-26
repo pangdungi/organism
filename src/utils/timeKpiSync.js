@@ -6,7 +6,7 @@
 
 import { readTimeLedgerEntriesRaw } from "./timeLedgerEntriesModel.js";
 import { stampAndPersistKpiMap } from "./kpiTodoSync.js";
-import { getFullTaskOptions } from "./timeTaskOptionsModel.js";
+import { readTaskOptionsMemRows } from "./timeTaskOptionsModel.js";
 import { isUuid } from "./idUtils.js";
 import {
   KPI_LOG_SOURCE_MANUAL,
@@ -16,6 +16,7 @@ import {
 export {
   getKpiSyncedTaskNames,
   getKpiSyncActiveKpiIds,
+  readKpiMapScopedStorageRaw,
 } from "./kpiMapLocalStorage.js";
 
 function parseTimeToHours(str) {
@@ -42,7 +43,7 @@ function accumulateMinutesForKpiFromRows(kpiId, rowsForSum, extraNameAliases = [
   const kid = String(kpiId || "").trim();
   if (!kid) return 0;
 
-  const opts = getFullTaskOptions().filter(
+  const opts = readTaskOptionsMemRows().filter(
     (o) => String(o.kpiId || "").trim() === kid,
   );
   const idsForKpi = new Set();
@@ -59,7 +60,7 @@ function accumulateMinutesForKpiFromRows(kpiId, rowsForSum, extraNameAliases = [
   }
 
   const taskIdToKpiId = new Map();
-  for (const o of getFullTaskOptions()) {
+  for (const o of readTaskOptionsMemRows()) {
     const tid = String(o.id || "").trim();
     const k = String(o.kpiId || "").trim();
     if (isUuid(tid) && k) taskIdToKpiId.set(tid, k);
@@ -345,7 +346,7 @@ export function removeKpiHabitLogsForTimeLedgerEntry(entryId) {
   if (!isUuid(eid)) return;
   STORAGE_CONFIG.forEach(({ key }) => {
     try {
-      const raw = localStorage.getItem(key);
+      const raw = readKpiMapScopedStorageRaw(key);
       if (!raw) return;
       const prev = JSON.parse(raw);
       const data = JSON.parse(raw);
@@ -382,7 +383,7 @@ function findStorageKeyForKpiId(kpiId) {
   if (!kid) return null;
   for (const { key } of STORAGE_CONFIG) {
     try {
-      const raw = localStorage.getItem(key);
+      const raw = readKpiMapScopedStorageRaw(key);
       if (!raw) continue;
       const data = JSON.parse(raw);
       if ((data.kpis || []).some((k) => String(k.id || "").trim() === kid))
@@ -398,7 +399,7 @@ function findStorageKeyForKpiId(kpiId) {
 export function getHabitTrackerDailyCompletedForDate(storageKey, kpiId, dateRaw) {
   if (!storageKey || !kpiId || !dateRaw || String(dateRaw).length < 10) return [];
   try {
-    const raw = localStorage.getItem(storageKey);
+    const raw = readKpiMapScopedStorageRaw(storageKey);
     if (!raw) return [];
     const data = JSON.parse(raw);
     const normDate = normalizeLogDate(dateRaw);
@@ -429,7 +430,7 @@ export function replaceHabitTrackerLogDailyCompleted(
 ) {
   if (!storageKey || !kpiId || !dateRaw || dateRaw.length < 10) return;
   try {
-    const raw = localStorage.getItem(storageKey);
+    const raw = readKpiMapScopedStorageRaw(storageKey);
     if (!raw) return;
     const prev = JSON.parse(raw);
     const data = JSON.parse(raw);
@@ -501,7 +502,7 @@ export function upsertHabitTrackerLogWithDailyState(
 ) {
   if (!storageKey || !kpiId || !dateRaw || dateRaw.length < 10) return;
   try {
-    const raw = localStorage.getItem(storageKey);
+    const raw = readKpiMapScopedStorageRaw(storageKey);
     if (!raw) return;
     const prev = JSON.parse(raw);
     const data = JSON.parse(raw);
@@ -567,7 +568,7 @@ export function upsertHabitTrackerLogWithDailyState(
 export function syncHabitTrackerLogs() {
   const rows = loadTimeRows();
   const taskIdToKpiId = new Map();
-  for (const o of getFullTaskOptions()) {
+  for (const o of readTaskOptionsMemRows()) {
     const tid = String(o.id || "").trim();
     const kid = String(o.kpiId || "").trim();
     if (isUuid(tid) && kid) taskIdToKpiId.set(tid, kid);
@@ -611,7 +612,7 @@ export function syncHabitTrackerLogs() {
 
     for (const { key } of STORAGE_CONFIG) {
       try {
-        const raw = localStorage.getItem(key);
+        const raw = readKpiMapScopedStorageRaw(key);
         if (!raw) continue;
         const data = JSON.parse(raw);
         const kpis = data.kpis || [];
@@ -649,7 +650,7 @@ export function syncHabitTrackerLogs() {
     const perDay = byStorage.get(key);
     if (!perDay || perDay.size === 0) return;
     try {
-      const raw = localStorage.getItem(key);
+      const raw = readKpiMapScopedStorageRaw(key);
       if (!raw) return;
       const prev = JSON.parse(raw);
       const data = JSON.parse(raw);

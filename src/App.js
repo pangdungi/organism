@@ -26,6 +26,7 @@ import { render as renderDiary } from "./views/Diary.js";
 import { render as renderIdea } from "./views/Idea.js";
 import { render as renderAdmin } from "./views/Admin.js";
 import { supabase } from "./supabase.js";
+import { getSupabaseSession } from "./utils/supabaseSession.js";
 import { isAppAdminUser } from "./utils/adminAccess.js";
 import { showToast } from "./utils/showToast.js";
 import {
@@ -33,7 +34,6 @@ import {
   clearAppFooterActions,
 } from "./utils/appFooterShell.js";
 import { pullCalendarSectionTasksFromSupabase } from "./utils/todoSectionTasksSupabase.js";
-import { initPushReminderInAppPopup } from "./utils/initPushReminderInAppPopup.js";
 import { attachHealthKpiMapSaveListener } from "./utils/healthKpiMapSupabase.js";
 import { attachHappinessKpiMapSaveListener } from "./utils/happinessKpiMapSupabase.js";
 import { attachDreamKpiMapSaveListener } from "./utils/dreamKpiMapSupabase.js";
@@ -41,7 +41,6 @@ import { attachSideincomeKpiMapSaveListener } from "./utils/sideincomeKpiMapSupa
 import {
   attachTimeLedgerEntriesSaveListener,
   pullTimeLedgerEntriesForDateRange,
-  readTimeLedgerPullRangeForKpiTabsYmd,
   timeLedgerLocalTodayYmd,
   timeLedgerLocalYesterdayYmd,
   resetTimeLedgerSessionFilterToToday,
@@ -62,7 +61,7 @@ import {
   saveLedgerTaskList,
 } from "./utils/timeTaskOptionsModel.js";
 import {
-  pullTimeDailyBudgetFromSupabase,
+  pullTimeDailyBudgetForDateRange,
   flushAllPendingTimeDailyBudgetSync,
 } from "./utils/timeDailyBudgetSupabase.js";
 import { pullAllDiaryFromCloud } from "./utils/diaryCloudRefresh.js";
@@ -263,20 +262,16 @@ function kpiSoftRefreshIfPullChanged(tabId, pullResult) {
 }
 
 /**
- * 시간가계부 **과제 목록**(time_ledger_tasks) pull: (1) 앱 상위 **시간가계부 탭** 클릭 시 `App.js`에서만
- * (2) 시간가계부 안 **과제설정** 모달 열 때 `Time.js`에서만.
- * @param {{ fromBoot?: boolean }} [opts] — (예약) 부팅 전용 분기; 시간가계부 날짜는 탭 전환 시 메뉴 진입마다 오늘로 맞춤.
+ * 탭 진입(클릭·부팅 시 해당 탭) 시에만 서버 pull — 다른 탭 데이터는 가져오지 않음.
+ * 시간가계부 **과제 목록**(time_ledger_tasks): `time` 탭 진입 + Time.js 과제설정/기록 모달, 캘린더 1일 뷰 등 해당 화면만.
  */
 async function pullDataForActiveTab(tabId, opts = {}) {
-  const fromBoot = !!opts.fromBoot;
+  void opts;
   switch (tabId) {
     case "home": {
-      await pullCalendarSectionTasksFromSupabase({ reason: "app_tab_home" });
+      /* 메뉴「오늘의 시간 가치」만 — 할일·일간예산·과제 목록은 각 탭 진입 시 */
       const ymd = timeLedgerLocalTodayYmd();
-      await Promise.all([
-        pullTimeLedgerEntriesForDateRange(ymd, ymd),
-        pullTimeDailyBudgetFromSupabase(),
-      ]);
+      await pullTimeLedgerEntriesForDateRange(ymd, ymd);
       break;
     }
     case "calendar":
@@ -289,7 +284,7 @@ async function pullDataForActiveTab(tabId, opts = {}) {
       const yStart = timeLedgerLocalYesterdayYmd();
       await Promise.all([
         pullTimeLedgerEntriesForDateRange(yStart, yEnd),
-        pullTimeDailyBudgetFromSupabase(),
+        pullTimeDailyBudgetForDateRange(yStart, yEnd),
       ]);
       break;
     }
@@ -307,10 +302,6 @@ async function pullDataForActiveTab(tabId, opts = {}) {
       return await pullKpiTabFromCloud(tabId);
     case "diary":
       await pullAllDiaryFromCloud();
-      try {
-        const { rangeStart, rangeEnd } = readTimeLedgerPullRangeForKpiTabsYmd();
-        await pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd);
-      } catch (_) {}
       break;
     case "workschedule":
       await hydrateWorkScheduleFromCloud();
@@ -357,7 +348,7 @@ export async function mountApp(container) {
   if (!applyPersistedTabIdFromSessionStorage()) currentTabId = "home";
   if (currentTabId === "admin" && supabase) {
     try {
-      const { data: { session } = {} } = await supabase.auth.getSession();
+      const { data: { session } = {} } = await getSupabaseSession();
       if (!isAppAdminUser(session?.user)) {
         currentTabId = "home";
         try {
@@ -371,7 +362,6 @@ export async function mountApp(container) {
   } else if (currentTabId === "admin" && !supabase) {
     currentTabId = "home";
   }
-  initPushReminderInAppPopup();
   migrateRemoveRoutineTasks();
   attachHealthKpiMapSaveListener();
   attachHappinessKpiMapSaveListener();
@@ -397,7 +387,7 @@ export async function mountApp(container) {
     let show = false;
     if (supabase) {
       try {
-        const { data: { session } = {} } = await supabase.auth.getSession();
+        const { data: { session } = {} } = await getSupabaseSession();
         show = isAppAdminUser(session?.user);
       } catch (_) {}
     }
@@ -416,7 +406,7 @@ export async function mountApp(container) {
       void (async () => {
         if (!supabase) return;
         try {
-          const { data: { session } = {} } = await supabase.auth.getSession();
+          const { data: { session } = {} } = await getSupabaseSession();
           if (!isAppAdminUser(session?.user)) {
             showToast("관리자만 접근할 수 있어요.");
             return;
@@ -531,33 +521,48 @@ export async function mountApp(container) {
             homeMenuLauncherEl &&
             panelEl.firstElementChild === homeMenuLauncherEl
           ) {
-            try {
-              await pullPromise;
-            } catch (_) {}
-            if (currentTabId !== targetTabId) return;
-            try {
-              await syncAdminMenuVisibility();
-            } catch (_) {}
-            try {
-              window.__lpHomeMenuSoftRefresh?.();
-            } catch (_) {}
             syncAppFooterVisibility();
             syncLpTopSafeChromeFromTab(targetTabId);
+            void (async () => {
+              try {
+                await pullPromise;
+              } catch (_) {}
+              if (currentTabId !== targetTabId) return;
+              try {
+                await syncAdminMenuVisibility();
+              } catch (_) {}
+              try {
+                window.__lpHomeMenuSoftRefresh?.();
+              } catch (_) {}
+            })();
             return;
           }
         }
         renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
-        let pullResult;
-        try {
-          pullResult = await pullPromise;
-        } catch (_) {}
-        if (currentTabId !== targetTabId) {
-          try {
-            window.__lpDiaryLedgerPrefetchedForTabSwitch = false;
-            window.__lpCalendarGridPrefetchedForTabSwitch = false;
-          } catch (_) {}
-          return;
+        syncAppFooterVisibility();
+        syncLpTopSafeChromeFromTab(targetTabId);
+        if (
+          targetTabId === "idea" ||
+          targetTabId === "admin" ||
+          targetTabId === "home"
+        ) {
+          requestAnimationFrame(() => {
+            main.scrollTop = 0;
+          });
         }
+        void (async () => {
+          let pullResult;
+          try {
+            pullResult = await pullPromise;
+          } catch (_) {}
+          if (currentTabId !== targetTabId) {
+            try {
+              window.__lpDiaryLedgerPrefetchedForTabSwitch = false;
+              window.__lpCalendarGridPrefetchedForTabSwitch = false;
+            } catch (_) {}
+            if (isKpiAppTabId(targetTabId)) clearKpiTabPullPending(targetTabId);
+            return;
+          }
         /* 시간가계부: pull 뒤 통째 renderMain 하면 화면이 한 번 비워졌다 다시 그려져 깜빡임 — 같은 인스턴스에서만 소프트 갱신 */
         if (targetTabId === "time") {
           try {
@@ -599,22 +604,13 @@ export async function mountApp(container) {
             window.__lpDiaryLedgerPrefetchedForTabSwitch = false;
           } catch (_) {}
         } else if (targetTabId === "workschedule") {
-          /* 스탬프 캘린더: pull 후 통째 renderMain 하면 스와이프한 달이 늦게·두 번 바뀌는 것처럼 보임 */
           try {
             window.__lpWorkScheduleSoftRefresh?.();
           } catch (_) {}
         } else {
           renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
         }
-        if (
-          targetTabId === "idea" ||
-          targetTabId === "admin" ||
-          targetTabId === "home"
-        ) {
-          requestAnimationFrame(() => {
-            main.scrollTop = 0;
-          });
-        }
+        })();
       })();
     }, 24);
   }
@@ -973,9 +969,6 @@ export async function mountApp(container) {
       const [, pr] = await Promise.all([
         syncAdminMenuVisibility(),
         pullDataForActiveTab(bootTabId, { fromBoot: true }),
-        supabase
-          ? pullTimeLedgerTasksFromSupabase().catch(() => {})
-          : Promise.resolve(),
       ]);
       pullResult = pr;
     } catch (_) {}

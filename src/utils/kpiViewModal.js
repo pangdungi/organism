@@ -5,6 +5,7 @@
 import { formatDeadlineRangeCompact } from "./ganttModal.js";
 import { getLatestKpiLogWithExplicitValue } from "./kpiLogsSort.js";
 import { getAccumulatedMinutesForKpiId, minutesToHhMm, hhMmToMinutes } from "./timeKpiSync.js";
+import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
 
 const DREAM_MAP_KEY = "kpi-dream-map";
 const SIDEINCOME_KEY = "kpi-sideincome-paths";
@@ -13,7 +14,7 @@ const HEALTH_KEY = "kpi-health-map";
 
 function loadJson(key, fallback = {}) {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = readKpiMapScopedStorageRaw(key);
     return raw ? JSON.parse(raw) : fallback;
   } catch (_) {
     return fallback;

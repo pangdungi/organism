@@ -61,7 +61,11 @@ import {
   kpiTodosCompletionBrief,
 } from "../utils/kpiTodoLifecycleDebug.js";
 import { kpiTodoFineTrace } from "../utils/kpiTodoFineTrace.js";
-import { readKpiMapLocalStorageSignature } from "../utils/kpiMapLocalStorage.js";
+import {
+  readKpiMapLocalStorageSignature,
+  readKpiMapScopedStorageRaw,
+  writeKpiMapScopedStorageRaw,
+} from "../utils/kpiMapLocalStorage.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
   getAppFooterActionsSlot,
@@ -98,7 +102,7 @@ function appendDeletedRef(data, kind, id) {
 
 function loadDreamMap() {
   try {
-    const raw = localStorage.getItem(DREAM_KPI_MAP_STORAGE_KEY);
+    const raw = readKpiMapScopedStorageRaw(DREAM_KPI_MAP_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       const kpis = (parsed.kpis || []).map((k) => ({
@@ -169,11 +173,11 @@ function syncKpiToTimeTask(kpi, action, oldName) {
   }
 }
 
-function saveDreamMap(data) {
+function saveDreamMap(data, opts) {
   try {
     let prev = null;
     try {
-      const raw = localStorage.getItem(DREAM_KPI_MAP_STORAGE_KEY);
+      const raw = readKpiMapScopedStorageRaw(DREAM_KPI_MAP_STORAGE_KEY);
       prev = raw ? JSON.parse(raw) : null;
     } catch (_) {
       prev = null;
@@ -189,12 +193,17 @@ function saveDreamMap(data) {
     kpiTodoFineTrace("Dream.saveDreamMap:저장직전요약", {
       kpiTodos: (stamped.kpiTodos || []).length,
       idsSample: (stamped.kpiTodos || []).slice(0, 8).map((t) => ({ id: t.id, c: !!t.completed })),
+      pushServer: !!opts?.pushServer,
     });
-    localStorage.setItem(DREAM_KPI_MAP_STORAGE_KEY, JSON.stringify(stamped));
-    try {
-      window.dispatchEvent(new CustomEvent("dream-kpi-map-saved"));
-      kpiTodoFineTrace("Dream.saveDreamMap:dream-kpi-map-saved_발송");
-    } catch (_) {}
+    writeKpiMapScopedStorageRaw(DREAM_KPI_MAP_STORAGE_KEY, JSON.stringify(stamped));
+    if (opts?.pushServer) {
+      try {
+        window.dispatchEvent(
+          new CustomEvent("dream-kpi-map-saved", { detail: { pushServer: true } }),
+        );
+        kpiTodoFineTrace("Dream.saveDreamMap:dream-kpi-map-saved_발송");
+      } catch (_) {}
+    }
   } catch (_) {}
 }
 
@@ -642,7 +651,7 @@ export function render() {
       data.kpis.push(kpi);
       data.kpiOrder = data.kpiOrder || {};
       data.kpiOrder[activeDreamId] = [...existingOrder, kpi.id];
-      saveDreamMap(data);
+      saveDreamMap(data, { pushServer: true });
       syncKpiToTimeTask(kpi, "add");
       close();
       enterKpiDetailView(kpi.id);
@@ -742,7 +751,7 @@ export function render() {
       data.kpiDailyRepeatTodos = (data.kpiDailyRepeatTodos || []).filter((t) => t.kpiId !== kpi.id);
       const order = (data.kpiOrder || {})[kpi.dreamId] || [];
       data.kpiOrder = { ...data.kpiOrder, [kpi.dreamId]: order.filter((id) => id !== kpi.id) };
-      saveDreamMap(data);
+      saveDreamMap(data, { pushServer: true });
       close();
       exitToKpiList();
     });
@@ -766,7 +775,7 @@ export function render() {
           form.querySelector('input[name="direction"]:checked')?.value === "lower"
             ? "lower"
             : "higher";
-        saveDreamMap(data);
+        saveDreamMap(data, { pushServer: true });
         if (oldName !== target.name) syncKpiToTimeTask(target, "update", oldName);
       }
       close();
@@ -889,7 +898,7 @@ export function render() {
         data.kpiLogs = data.kpiLogs || [];
         data.kpiLogs.push(log);
       }
-      saveDreamMap(data);
+      saveDreamMap(data, { pushServer: true });
       close();
       refreshDreamAfterKpiDataChange();
     });
@@ -899,7 +908,7 @@ export function render() {
         const d = loadDreamMap();
         appendDeletedRef(d, "kpiLogs", editLog.id);
         d.kpiLogs = (d.kpiLogs || []).filter((l) => l.id !== editLog.id);
-        saveDreamMap(d);
+        saveDreamMap(d, { pushServer: true });
         close();
         refreshDreamAfterKpiDataChange();
       });
@@ -942,7 +951,7 @@ export function render() {
         text,
         completed: false,
       });
-      saveDreamMap(d2);
+      saveDreamMap(d2, { pushServer: true });
       renderKpiDetailView({ scrollTodoAfterMutation: true });
       return;
     }
@@ -961,7 +970,7 @@ export function render() {
         text,
         completed: false,
       });
-      saveDreamMap(d2);
+      saveDreamMap(d2, { pushServer: true });
       renderKpiDetailView({ scrollTodoAfterMutation: true });
       return;
     }
@@ -1462,7 +1471,7 @@ export function render() {
           });
           appendDeletedRef(d, "kpiTodos", todo.id);
           d.kpiTodos = (d.kpiTodos || []).filter((x) => x.id !== todo.id);
-          saveDreamMap(d);
+          saveDreamMap(d, { pushServer: true });
           const after = loadDreamMap();
           kpiTodoLifecycleLog("꿈KPI탭_모달삭제_saveDreamMap후", {
             todoId: String(todo.id),
@@ -1476,7 +1485,7 @@ export function render() {
         const row = (d.kpiTodos || []).find((x) => x.id === todo.id);
         if (!row) return;
         row.text = result.text;
-        saveDreamMap(d);
+        saveDreamMap(d, { pushServer: true });
         renderKpiDetailView({ scrollTodoAfterMutation: true });
       };
 
@@ -1495,7 +1504,7 @@ export function render() {
             요청완료: !!check.checked,
           });
           t.completed = !!check.checked;
-          saveDreamMap(d);
+          saveDreamMap(d, { pushServer: true });
           kpiTodoLifecycleLog("꿈KPI탭_체크_saveDreamMap후", {
             todoId: String(todo.id),
             completion: kpiTodosCompletionBrief(loadDreamMap(), 20),
@@ -1568,7 +1577,7 @@ export function render() {
             const d = loadDreamMap();
             appendDeletedRef(d, "kpiDailyRepeatTodos", todo.id);
             d.kpiDailyRepeatTodos = (d.kpiDailyRepeatTodos || []).filter((x) => x.id !== todo.id);
-            saveDreamMap(d);
+            saveDreamMap(d, { pushServer: true });
             renderKpiDetailView({ scrollTodoAfterMutation: true });
             return;
           }
@@ -1576,7 +1585,7 @@ export function render() {
           const row = (d.kpiDailyRepeatTodos || []).find((x) => x.id === todo.id);
           if (!row) return;
           row.text = result.text;
-          saveDreamMap(d);
+          saveDreamMap(d, { pushServer: true });
           renderKpiDetailView({ scrollTodoAfterMutation: true });
         };
 
@@ -1654,7 +1663,7 @@ export function render() {
       const data = loadDreamMap();
       const dream = { id: nextId(), name: val };
       data.dreams.push(dream);
-      saveDreamMap(data);
+      saveDreamMap(data, { pushServer: true });
       selectedKpiId = null;
       dreamAddModalJustClosed = true;
       close();
@@ -1715,7 +1724,7 @@ export function render() {
       delete d.kpiOrder?.[dreamId];
       d.kpiTaskSync = (d.kpiTaskSync || {});
       kpiIds.forEach((id) => delete d.kpiTaskSync[id]);
-      saveDreamMap(d);
+      saveDreamMap(d, { pushServer: true });
       if (activeDreamId === dreamId) {
         activeDreamId = d.dreams[0]?.id || null;
         selectedKpiId = null;
@@ -1763,7 +1772,7 @@ export function render() {
       const target = d.dreams.find((x) => x.id === dream.id);
       if (target) {
         target.name = val;
-        saveDreamMap(d);
+        saveDreamMap(d, { pushServer: true });
         syncDreamHeader();
         updateDreamView();
       }
@@ -1809,7 +1818,7 @@ export function render() {
       const val = (e.target.desiredLife.value || "").trim();
       const d = loadDreamMap();
       d.desiredLife = val;
-      saveDreamMap(d);
+      saveDreamMap(d, { pushServer: true });
       close();
       updateDesiredLifeDisplay();
     });
@@ -1818,7 +1827,7 @@ export function render() {
       deleteBtn.addEventListener("click", () => {
         const d = loadDreamMap();
         d.desiredLife = "";
-        saveDreamMap(d);
+        saveDreamMap(d, { pushServer: true });
         close();
         updateDesiredLifeDisplay();
       });

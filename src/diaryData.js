@@ -1,8 +1,14 @@
 /**
  * 감정일기 데이터 - Diary.js와 Time.js에서 공유
  * 탭3: 날짜별 q1~q4 (같은 날짜 여러 항목 가능)
- * 세션 메모리만 유지. 영속 복구는 Supabase pull. 구버전 localStorage는 최초 접근 시 읽은 뒤 제거합니다.
+ * 세션 메모리 + 계정별 scoped localStorage. 영속 복구는 Supabase pull.
  */
+
+import {
+  getScopedLocalStorageItem,
+  removeScopedLocalStorageItem,
+  setScopedLocalStorageItem,
+} from "./utils/clientStorageScope.js";
 
 const DIARY_ENTRIES_KEY = "diary_entries";
 const DIARY_SERVER_HAD_ROWS_KEY = "diary_server_had_rows_v1";
@@ -72,7 +78,7 @@ function migrateDiaryFromLegacyOnce() {
   _diaryInited = true;
   _diaryEntriesMem = {};
   try {
-    const raw = localStorage.getItem(DIARY_ENTRIES_KEY);
+    const raw = getScopedLocalStorageItem(DIARY_ENTRIES_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === "object") {
@@ -81,14 +87,11 @@ function migrateDiaryFromLegacyOnce() {
         _diaryEntriesMem = parsed;
       }
     }
-    _diaryServerHadRows = localStorage.getItem(DIARY_SERVER_HAD_ROWS_KEY) === "1";
+    _diaryServerHadRows =
+      getScopedLocalStorageItem(DIARY_SERVER_HAD_ROWS_KEY) === "1";
   } catch (_) {
     _diaryEntriesMem = {};
   }
-  try {
-    localStorage.removeItem(DIARY_ENTRIES_KEY);
-    localStorage.removeItem(DIARY_SERVER_HAD_ROWS_KEY);
-  } catch (_) {}
 }
 
 export function loadDiaryEntries() {
@@ -103,10 +106,6 @@ export function loadDiaryEntries() {
 export function saveDiaryEntries(data, opts = {}) {
   migrateDiaryFromLegacyOnce();
   _diaryEntriesMem = data && typeof data === "object" ? data : {};
-  try {
-    localStorage.removeItem(DIARY_ENTRIES_KEY);
-    localStorage.removeItem(DIARY_SERVER_HAD_ROWS_KEY);
-  } catch (_) {}
   if (opts.skipCloud) return;
   try {
     window.dispatchEvent(
@@ -124,6 +123,13 @@ export function getDiaryServerHadRowsFlag() {
 export function setDiaryServerHadRowsFlag(on) {
   migrateDiaryFromLegacyOnce();
   _diaryServerHadRows = !!on;
+  try {
+    if (_diaryServerHadRows) {
+      setScopedLocalStorageItem(DIARY_SERVER_HAD_ROWS_KEY, "1");
+    } else {
+      removeScopedLocalStorageItem(DIARY_SERVER_HAD_ROWS_KEY);
+    }
+  } catch (_) {}
 }
 
 /** diaryCloudRefresh: 변경 감지용 스냅샷 */
@@ -141,8 +147,8 @@ export function snapshotDiarySessionForRefresh() {
  */
 export function clearDiaryMemAndLegacy() {
   try {
-    localStorage.removeItem(DIARY_ENTRIES_KEY);
-    localStorage.removeItem(DIARY_SERVER_HAD_ROWS_KEY);
+    removeScopedLocalStorageItem(DIARY_ENTRIES_KEY);
+    removeScopedLocalStorageItem(DIARY_SERVER_HAD_ROWS_KEY);
   } catch (_) {}
   _diaryInited = false;
   _diaryEntriesMem = {};
