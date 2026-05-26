@@ -821,6 +821,12 @@ export function render(opts = {}) {
     let dayEntryTypeValue = "";
     let dayEntrySelectListOpen = false;
 
+    function dockDayEntrySelectList() {
+      if (listEl.parentElement !== selectWrap) {
+        selectWrap.appendChild(listEl);
+      }
+    }
+
     function onDayEntrySelectDocDown(ev) {
       if (selectWrap.contains(ev.target) || listEl.contains(ev.target)) return;
       closeDayEntrySelectList();
@@ -892,12 +898,16 @@ export function render(opts = {}) {
       listEl.style.zIndex = "";
       listEl.style.overflowY = "";
       listEl.style.boxSizing = "";
+      dockDayEntrySelectList();
     }
 
     function openDayEntrySelectList() {
       if (dayEntrySelectListOpen) return;
       dayEntrySelectListOpen = true;
       triggerBtn.setAttribute("aria-expanded", "true");
+      if (listEl.parentElement !== document.body) {
+        document.body.appendChild(listEl);
+      }
       applyDayEntrySelectListFixedLayout();
       listEl.hidden = false;
       document.addEventListener("pointerdown", onDayEntrySelectDocDown, true);
