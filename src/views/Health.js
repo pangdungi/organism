@@ -158,9 +158,9 @@ function syncKpiToTimeTask(kpi, action, oldName) {
     const newName = (kpi.name || "").trim();
     const oldNm = (oldName || "").trim();
     if (!newName || oldNm === newName) return;
+    kpiTimeTaskRename(kpi, oldNm);
     data.kpiTaskSync[kpi.id] = newName;
     saveHealthMap(data);
-    void kpiTimeTaskRename(kpi, oldNm);
   }
 }
 

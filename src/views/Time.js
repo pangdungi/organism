@@ -24,6 +24,7 @@ import {
   getCategoryColorForReport,
 } from "../utils/todoSettings.js";
 import { showToast } from "../utils/showToast.js";
+import { showConfirmModal } from "../utils/confirmModal.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
   clearAppFooterActions,
@@ -217,6 +218,22 @@ function isTaskIconOnlyEditLocked(task) {
   return getLockedTaskNames().has(n) || isTimeTaskKpiLinked(task);
 }
 
+/** 과제 설정 수정 모달 — 삭제 버튼 비활성화 (KPI·기본 과제) */
+function isTaskDeleteLockedInSetup(task) {
+  if (!task) return false;
+  const n = String(task.name || "").trim();
+  if (!n) return false;
+  return isTimeTaskKpiLinked(task) || getLockedTaskNames().has(n);
+}
+
+function getTaskDeleteLockedInSetupMessage(task) {
+  if (isTimeTaskKpiLinked(task)) return MSG_TIME_TASK_KPI_LINKED;
+  if (isTimeTaskBuiltinTemplate(task)) {
+    return "앱에서 제공하는 기본 과제입니다. 과제 설정에서 삭제할 수 없습니다.";
+  }
+  return "이 과제는 과제 설정에서 삭제할 수 없습니다.";
+}
+
 function appendTaskDropdownBadges(textWrap, task, opts = {}) {
   if (opts.omitBadges) return;
   if (isTimeTaskBuiltinTemplate(task)) {
@@ -231,7 +248,7 @@ function appendTaskDropdownBadges(textWrap, task, opts = {}) {
     const kb = document.createElement("span");
     lpSetClasses(kb, "lp-task-badge lp-task-badge--kpi");
     kb.textContent = "KPI";
-    kb.title = "KPI(맵)에서 연결된 과제입니다";
+    kb.title = "KPI와 연결된 과제입니다. 이름·삭제는 KPI 화면에서만 변경할 수 있습니다.";
     textWrap.appendChild(kb);
   }
 }
@@ -3970,7 +3987,7 @@ function getLedgerDayBarProductivityKey(rowData) {
   return "other";
 }
 
-/** 하루 24h 바에 그릴 시작·끝(분) — 시작 없으면 null */
+/** 하루 24h 바 — 시작·끝(분, 0=자정). 시작 없으면 null */
 function getLedgerRowDayBarSegmentMinutes(rowData) {
   const startInst = getRowStartInstantForMobileCard(rowData);
   if (!startInst) return null;
@@ -4029,7 +4046,7 @@ function populateTimeLedgerDayOverviewBarSegments(segmentsLayer, dayRows) {
   });
 }
 
-/** 시간 사용내역 — 하루 0~24시 생산성 컬러 바(헤더·목록 사이) */
+/** 시간 사용내역 — 0시~24시 타임라인 바(기록 구간·길이 = 24h 대비 비율) */
 function createTimeLedgerDayOverviewBar(dayRows, dayKeyYmd = "") {
   const wrap = document.createElement("div");
   lpSetClasses(wrap, "time-ledger-day-overview-bar-wrap");
@@ -4040,18 +4057,8 @@ function createTimeLedgerDayOverviewBar(dayRows, dayKeyYmd = "") {
   track.setAttribute("role", "img");
   track.setAttribute(
     "aria-label",
-    "하루 시간대별 생산적·비생산적·그 외 기록",
+    "하루 0시부터 24시까지 시간대별 생산적·비생산적·그 외 기록",
   );
-
-  const grid = document.createElement("div");
-  lpSetClasses(grid, "time-ledger-day-overview-bar-grid");
-  grid.setAttribute("aria-hidden", "true");
-  for (let h = 0; h < 24; h++) {
-    const cell = document.createElement("span");
-    lpSetClasses(cell, "time-ledger-day-overview-bar-hour");
-    grid.appendChild(cell);
-  }
-  track.appendChild(grid);
 
   const segmentsLayer = document.createElement("div");
   lpSetClasses(segmentsLayer, "time-ledger-day-overview-bar-segments");
@@ -6902,9 +6909,18 @@ export function render(opts = {}) {
   const taskLogDeleteBtn = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-delete-btn"]',
   );
-  taskLogDeleteBtn?.addEventListener("click", () => {
+  taskLogDeleteBtn?.addEventListener("click", async () => {
     const tr = taskLogEditTr;
     if (!tr) return;
+    const ok = await showConfirmModal({
+      title: "시간 기록 삭제",
+      message: "이 시간 기록을 삭제할까요?",
+      warnMessage: "삭제 후에는 복구할 수 없습니다.",
+      confirmText: "삭제",
+      cancelText: "취소",
+      confirmDanger: true,
+    });
+    if (!ok) return;
     const rowData = tr._rowData || collectRowFromTR(tr);
     if (tr._onRowDelete) tr._onRowDelete(tr, rowData);
     closeTaskLogModal();
@@ -7155,7 +7171,16 @@ export function render(opts = {}) {
     }
     addTaskSubmitBtn.textContent = isEdit ? "저장" : "추가";
     if (addTaskDeleteBtn) {
-      addTaskDeleteBtn.hidden = !isEdit || iconOnlyLocked;
+      const deleteLocked = isEdit && isTaskDeleteLockedInSetup(editTask);
+      addTaskDeleteBtn.hidden = !isEdit;
+      addTaskDeleteBtn.disabled = deleteLocked;
+      addTaskDeleteBtn.title = deleteLocked
+        ? getTaskDeleteLockedInSetupMessage(editTask)
+        : "";
+      addTaskDeleteBtn.setAttribute(
+        "aria-disabled",
+        deleteLocked ? "true" : "false",
+      );
     }
     setAddTaskModalFieldsLocked(iconOnlyLocked);
     addTaskNameInput.value = editTask ? editTask.name : "";
@@ -7210,6 +7235,11 @@ export function render(opts = {}) {
     addTaskModal.hidden = true;
     setupListSelectedTaskName = "";
     setAddTaskModalFieldsLocked(false);
+    if (addTaskDeleteBtn) {
+      addTaskDeleteBtn.disabled = false;
+      addTaskDeleteBtn.title = "";
+      addTaskDeleteBtn.setAttribute("aria-disabled", "false");
+    }
     renderTaskSetupList();
   }
 
@@ -7293,11 +7323,12 @@ export function render(opts = {}) {
 
   addTaskDeleteBtn?.addEventListener("click", async () => {
     const editName = (addTaskNameInput.dataset.editName || "").trim();
-    if (!editName) {
+    if (!editName || addTaskDeleteBtn.disabled) {
       return;
     }
-    if (getLockedTaskNames().has(editName)) {
-      alert(MSG_TIME_TASK_KPI_LINKED);
+    const editTask = getTaskOptionByName(editName);
+    if (editTask && isTaskDeleteLockedInSetup(editTask)) {
+      alert(getTaskDeleteLockedInSetupMessage(editTask));
       return;
     }
     if (!(await removeTaskOption(editName))) {

@@ -64,3 +64,40 @@ export function getKpiSyncActiveKpiIds() {
   });
   return ids;
 }
+
+const KPI_MAP_KEY_TO_LEDGER_CATEGORY = {
+  "kpi-dream-map": "dream",
+  "kpi-sideincome-paths": "sideincome",
+  "kpi-happiness-map": "happiness",
+  "kpi-health-map": "health",
+};
+
+/** 활성 KPI id → 현재 표시명·시간가계부 category (이름 변경·중복 정리용) */
+export function getActiveKpiTaskKeepersById() {
+  /** @type {Map<string, { name: string, category: string }>} */
+  const out = new Map();
+  KPI_MAP_STORAGE_KEYS.forEach((key) => {
+    const ledgerCat = KPI_MAP_KEY_TO_LEDGER_CATEGORY[key] || "";
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const sync = parsed?.kpiTaskSync || {};
+      const kpis = parsed?.kpis || [];
+      const byId = new Map(
+        kpis.map((k) => [String(k?.id || "").trim(), k]).filter(([id]) => id),
+      );
+      Object.keys(sync).forEach((kid) => {
+        const id = String(kid || "").trim();
+        if (!id) return;
+        const row = byId.get(id);
+        const name =
+          (row && String(row.name || "").trim()) ||
+          String(sync[kid] || "").trim();
+        if (!name) return;
+        out.set(id, { name, category: ledgerCat });
+      });
+    } catch (_) {}
+  });
+  return out;
+}

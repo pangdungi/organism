@@ -671,12 +671,14 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 [data-legacy~="lp-modal-field-subcheck__label"] {
   display: inline-flex;
   align-items: center;
-  gap: 0.28rem;
+  gap: 0.45rem;
+  min-height: 1.875rem;
+  padding: 0.12rem 0.1rem;
   margin: 0;
   font-family: var(--lp-modal-font);
-  font-size: 0.6875rem;
+  font-size: 0.8125rem;
   font-weight: 500;
-  line-height: 1.2;
+  line-height: 1.25;
   letter-spacing: 0.01em;
   color: var(--lp-modal-muted);
   cursor: pointer;
@@ -689,8 +691,8 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 }
 .lp-modal-field-subcheck__input,
 [data-legacy~="lp-modal-field-subcheck__input"] {
-  width: 0.75rem;
-  height: 0.75rem;
+  width: 1.0625rem;
+  height: 1.0625rem;
   margin: 0;
   flex-shrink: 0;
   accent-color: var(--lp-modal-accent);
@@ -1454,9 +1456,17 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 }
 /* display:inline-flex 규칙이 [hidden] 기본 display:none 을 덮어 추가 모드에서도 삭제 버튼이 보이던 문제 */
 .time-task-log-delete-btn[hidden],
+.time-add-task-delete[hidden],
 .asset-expense-inline-panel-btn--danger[hidden],
-[data-legacy~="time-task-log-delete-btn"][hidden] {
+[data-legacy~="time-task-log-delete-btn"][hidden],
+[data-legacy~="time-add-task-delete"][hidden] {
   display: none !important;
+}
+.time-add-task-delete:disabled,
+[data-legacy~="time-add-task-delete"]:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 /* main.css 의 svg { max-width:100%; height:auto } 가 풀폭 버튼 안에서 아이콘을 가로로 늘려 거대하게 만듦 */
 .time-task-log-delete-btn svg,

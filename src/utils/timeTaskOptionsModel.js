@@ -3,7 +3,10 @@
  */
 
 import * as C from "./timeTaskOptionsConstants.js";
-import { getKpiSyncedTaskNames } from "./kpiMapLocalStorage.js";
+import {
+  getActiveKpiTaskKeepersById,
+  getKpiSyncedTaskNames,
+} from "./kpiMapLocalStorage.js";
 import { isUuid, UUID_RE } from "./idUtils.js";
 import {
   readTimeLedgerEntriesRaw,
@@ -28,91 +31,185 @@ function taskRowsIdentitySig(rows) {
   }
 }
 
-let _patchKpiLinkedFromMapsDepth = 0;
+const KPI_LINKED_LEDGER_CATEGORIES = new Set([
+  "dream",
+  "health",
+  "happiness",
+  "sideincome",
+]);
 
-/** KPI 화면(kpis[])의 현재 이름·kpiId당 1행으로 메모리·서버 time_ledger_tasks 정리 */
+let _patchKpiLinkedFromMapsDepth = 0;
+let _pendingTaskDeleteIds = new Set();
+let _taskDeleteFlushTimer = null;
+let _taskDeleteFlushRunning = false;
+
+function readTaskOptionsMemRows() {
+  if (!_ledgerTasksMem || !Array.isArray(_ledgerTasksMem)) return [];
+  return _ledgerTasksMem.map((o) => ({
+    name: (o.name || "").trim(),
+    category: (o.category || "").trim(),
+    productivity: o.productivity || "productive",
+    memo: (o.memo || "").trim(),
+    id: (o.id || "").trim(),
+    kpiId: String(o.kpiId || "").trim(),
+    iconKey: String(o.iconKey || "").trim(),
+  }));
+}
+
+/** KPI·과제 정리 시 서버 delete — 한 줄씩 순서대로(동시 요청·락 폭주 방지) */
+function queueTimeLedgerTaskRowDeletes(ids) {
+  for (const id of ids || []) {
+    const s = String(id || "").trim();
+    if (isUuid(s)) _pendingTaskDeleteIds.add(s);
+  }
+  if (_taskDeleteFlushTimer != null) return;
+  _taskDeleteFlushTimer = setTimeout(() => {
+    _taskDeleteFlushTimer = null;
+    void flushPendingTimeLedgerTaskRowDeletes();
+  }, 450);
+}
+
+async function flushPendingTimeLedgerTaskRowDeletes() {
+  if (_taskDeleteFlushRunning) return;
+  if (!_pendingTaskDeleteIds.size) return;
+  _taskDeleteFlushRunning = true;
+  notifySaved({ bumpPullSkip: true, scheduleSyncPush: false });
+  try {
+    const m = await import("./timeLedgerTasksSupabase.js");
+    while (_pendingTaskDeleteIds.size) {
+      const batch = [..._pendingTaskDeleteIds];
+      _pendingTaskDeleteIds.clear();
+      for (const id of batch) {
+        try {
+          await m.deleteTimeLedgerTaskRowForCurrentUser(id);
+        } catch (_) {}
+      }
+    }
+  } finally {
+    _taskDeleteFlushRunning = false;
+    notifySaved({ bumpPullSkip: true, scheduleSyncPush: false });
+  }
+}
+
+/** KPI id당 1행·현재 표시명 — 메모리 행 + KPI 맵 기준 */
+function buildKpiKeeperContext(rows) {
+  const keepersById = getActiveKpiTaskKeepersById();
+  const namesByCat = new Map();
+  const syncNames = getKpiSyncedTaskNames();
+
+  for (const row of rows || []) {
+    const kid = String(row.kpiId || "").trim();
+    const cat = String(row.category || "").trim();
+    const n = String(row.name || "").trim();
+    if (!KPI_LINKED_LEDGER_CATEGORIES.has(cat) || !n) continue;
+    if (!namesByCat.has(cat)) namesByCat.set(cat, new Set());
+    namesByCat.get(cat).add(n);
+  }
+
+  for (const [kid, meta] of keepersById) {
+    const cat = String(meta.category || "").trim();
+    const n = String(meta.name || "").trim();
+    if (!kid || !KPI_LINKED_LEDGER_CATEGORIES.has(cat) || !n) continue;
+    if (!namesByCat.has(cat)) namesByCat.set(cat, new Set());
+    namesByCat.get(cat).add(n);
+  }
+
+  return { keepersById, namesByCat };
+}
+
+function normalizeKpiLinkedTaskRows(rows) {
+  const dupIds = [];
+  const { keepersById, namesByCat } = buildKpiKeeperContext(rows);
+  const seenKpi = new Set();
+  const next = [];
+
+  for (const o of rows || []) {
+    const kid = String(o.kpiId || "").trim();
+    let name = String(o.name || "").trim();
+    let category = String(o.category || "").trim();
+    const row = {
+      name,
+      category,
+      productivity: o.productivity || "productive",
+      memo: (o.memo || "").trim(),
+      id: String(o.id || "").trim(),
+      kpiId: kid,
+      iconKey: String(o.iconKey || "").trim(),
+    };
+
+    if (kid) {
+      if (seenKpi.has(kid)) {
+        if (isUuid(row.id)) dupIds.push(row.id);
+        continue;
+      }
+      seenKpi.add(kid);
+      const meta = keepersById.get(kid);
+      if (meta?.name) row.name = meta.name;
+      if (meta?.category) row.category = meta.category;
+      next.push(row);
+      continue;
+    }
+
+    if (
+      KPI_LINKED_LEDGER_CATEGORIES.has(category) &&
+      namesByCat.get(category)?.size
+    ) {
+      const cur = namesByCat.get(category);
+      if (name && !cur.has(name)) {
+        if (isUuid(row.id)) dupIds.push(row.id);
+        continue;
+      }
+    }
+
+    next.push(row);
+  }
+
+  const nameByKpiKeeper = new Map();
+  for (const row of next) {
+    const kid = String(row.kpiId || "").trim();
+    if (!kid) continue;
+    const n = String(row.name || "").trim();
+    if (n) nameByKpiKeeper.set(n, row);
+  }
+
+  const nextSansNameDup = [];
+  for (const row of next) {
+    const kid = String(row.kpiId || "").trim();
+    if (kid) {
+      nextSansNameDup.push(row);
+      continue;
+    }
+    const n = String(row.name || "").trim();
+    if (n && nameByKpiKeeper.has(n)) {
+      const oid = String(row.id || "").trim();
+      const keepId = String(nameByKpiKeeper.get(n).id || "").trim();
+      if (isUuid(oid) && oid !== keepId) dupIds.push(oid);
+      continue;
+    }
+    nextSansNameDup.push(row);
+  }
+
+  return { next: nextSansNameDup, dupIds: [...new Set(dupIds)] };
+}
+
+/** KPI 화면(kpis[])의 현재 이름·kpiId당 1행으로 메모리 정리(서버 upsert는 하지 않음) */
 function patchKpiLinkedTasksFromKpiMaps() {
   if (!_ledgerTasksMem || !Array.isArray(_ledgerTasksMem)) return;
   if (_patchKpiLinkedFromMapsDepth > 4) return;
   _patchKpiLinkedFromMapsDepth++;
   try {
-    const dupIds = [];
-    const seenKpi = new Set();
-    const next = [];
-    for (const o of _ledgerTasksMem) {
-      const kid = String(o.kpiId || "").trim();
-      const name = (o.name || "").trim();
-      const row = {
-        name,
-        category: (o.category || "").trim(),
-        productivity: o.productivity || "productive",
-        memo: (o.memo || "").trim(),
-        id: (o.id || "").trim(),
-        kpiId: kid,
-      };
-      if (!kid) {
-        next.push(row);
-        continue;
-      }
-      if (seenKpi.has(kid)) {
-        const oid = String(row.id || "").trim();
-        if (isUuid(oid)) dupIds.push(oid);
-        continue;
-      }
-      seenKpi.add(kid);
-      next.push(row);
-    }
-    const nameByKpiKeeper = new Map();
-    for (const row of next) {
-      const kid = String(row.kpiId || "").trim();
-      if (!kid) continue;
-      const n = (row.name || "").trim();
-      if (n) nameByKpiKeeper.set(n, row);
-    }
-    const nextSansNameDup = [];
-    for (const row of next) {
-      const kid = String(row.kpiId || "").trim();
-      if (kid) {
-        nextSansNameDup.push(row);
-        continue;
-      }
-      const n = (row.name || "").trim();
-      if (n && nameByKpiKeeper.has(n)) {
-        const oid = String(row.id || "").trim();
-        const keepId = String(nameByKpiKeeper.get(n).id || "").trim();
-        if (isUuid(oid) && oid !== keepId) dupIds.push(oid);
-        continue;
-      }
-      nextSansNameDup.push(row);
-    }
+    const { next, dupIds } = normalizeKpiLinkedTaskRows(_ledgerTasksMem);
     if (
       dupIds.length === 0 &&
-      taskRowsIdentitySig(nextSansNameDup) === taskRowsIdentitySig(_ledgerTasksMem)
+      taskRowsIdentitySig(next) === taskRowsIdentitySig(_ledgerTasksMem)
     ) {
       return;
     }
-    const upsertIds = [
-      ...new Set(
-        nextSansNameDup
-          .filter((o) => String(o.kpiId || "").trim())
-          .map((o) => String(o.id || "").trim())
-          .filter((id) => isUuid(id)),
-      ),
-    ];
-    saveLedgerTaskList(nextSansNameDup, {
+    saveLedgerTaskList(next, {
       bumpPullSkip: true,
-      scheduleSyncPush: upsertIds.length > 0,
-      upsertTaskIds: upsertIds.length ? upsertIds : null,
+      scheduleSyncPush: false,
     });
-    if (dupIds.length) {
-      void import("./timeLedgerTasksSupabase.js").then(async (m) => {
-        for (const id of dupIds) {
-          try {
-            await m.deleteTimeLedgerTaskRowForCurrentUser(id);
-          } catch (_) {}
-        }
-      });
-    }
+    if (dupIds.length) queueTimeLedgerTaskRowDeletes(dupIds);
   } finally {
     _patchKpiLinkedFromMapsDepth--;
   }
@@ -210,7 +307,7 @@ function getLockedTaskNamesStatic() {
   ]);
   /* KPI id로 연동된 행(이름이 바뀌어도 잠금 유지) */
   try {
-    for (const o of getFullTaskOptions()) {
+    for (const o of readTaskOptionsMemRows()) {
       if ((o.kpiId || "").trim() && (o.name || "").trim()) {
         locked.add(String(o.name).trim());
       }
@@ -620,66 +717,97 @@ export function kpiTimeTaskRemove(kpi, syncNameFromMap) {
 }
 
 /**
- * KPI 표시명 변경 → 같은 kpiId 과제는 한 줄만 유지, 나머지 id는 서버에서 삭제 후 메모리 반영.
+ * KPI 표시명 변경 → kpiId 기준 한 줄만 유지·이름 갱신·옛 이름 잔재 제거.
+ * KPI 맵 저장(서버 트리거)보다 **먼저** 호출해야 pull 전에 로컬이 맞음.
  */
-export async function kpiTimeTaskRename(kpi, oldNameFromKpi) {
+export function kpiTimeTaskRename(kpi, oldNameFromKpi) {
   const kpiId = (kpi && kpi.id && String(kpi.id).trim()) || "";
   const newName = (kpi && (kpi.name || "").trim()) || "";
   if (!kpiId || !newName) return;
   const oldNm = (oldNameFromKpi || "").trim();
-  const opts = getFullTaskOptions();
-  let idx = -1;
-  if (oldNm) {
+  patchKpiLinkedTasksFromKpiMaps();
+  const opts = readTaskOptionsMemRows();
+  const mapKeeper = getActiveKpiTaskKeepersById().get(kpiId);
+  let idx = opts.findIndex((o) => String(o.kpiId || "").trim() === kpiId);
+  if (idx < 0 && oldNm) {
     idx = opts.findIndex(
       (o) =>
         String(o.kpiId || "").trim() === kpiId &&
         (o.name || "").trim() === oldNm,
     );
   }
-  if (idx < 0) {
-    idx = opts.findIndex((o) => String(o.kpiId || "").trim() === kpiId);
+  if (idx < 0 && oldNm) {
+    idx = opts.findIndex(
+      (o) =>
+        !String(o.kpiId || "").trim() && (o.name || "").trim() === oldNm,
+    );
   }
   if (idx < 0 && oldNm) {
     idx = opts.findIndex((o) => (o.name || "").trim() === oldNm);
   }
   if (idx < 0) return;
+
   const row = opts[idx];
-  const canonicalId = String(row.id || "").trim();
-  const dupIds = [];
-  for (const o of opts) {
-    if (String(o.kpiId || "").trim() !== kpiId) continue;
-    const oid = String(o.id || "").trim();
-    if (oid && oid !== canonicalId && isUuid(oid)) dupIds.push(oid);
+  let canonicalId = String(row.id || "").trim();
+  if (!isUuid(canonicalId)) {
+    canonicalId =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `t-${Date.now()}`;
   }
-  const on = (row.name || "").trim();
-  const needNameFix = on !== newName;
+
+  const deleteIds = new Set();
+  for (const o of opts) {
+    const oid = String(o.id || "").trim();
+    if (!isUuid(oid) || oid === canonicalId) continue;
+    const kid = String(o.kpiId || "").trim();
+    const n = (o.name || "").trim();
+    if (kid === kpiId) {
+      deleteIds.add(oid);
+      continue;
+    }
+    if (oldNm && n === oldNm && kid !== kpiId) deleteIds.add(oid);
+    if (!kid && n === newName) deleteIds.add(oid);
+  }
+
+  const keeperCat =
+    String(row.category || "").trim() ||
+    String(mapKeeper?.category || "").trim();
   const next = opts
     .filter((o) => {
-      if (String(o.kpiId || "").trim() !== kpiId) return true;
-      return String(o.id || "").trim() === canonicalId;
+      const oid = String(o.id || "").trim();
+      if (deleteIds.has(oid)) return false;
+      const kid = String(o.kpiId || "").trim();
+      if (kid === kpiId && oid !== canonicalId) return false;
+      return true;
     })
-    .map((o) =>
-      needNameFix &&
-      String(o.kpiId || "").trim() === kpiId &&
-      String(o.id || "").trim() === canonicalId
-        ? { ...o, name: newName }
-        : o,
-    );
-  if (!needNameFix && dupIds.length === 0) return;
+    .map((o) => {
+      const oid = String(o.id || "").trim();
+      if (oid !== canonicalId && String(o.kpiId || "").trim() !== kpiId) {
+        return o;
+      }
+      return {
+        ...o,
+        id: canonicalId,
+        name: newName,
+        kpiId,
+        category: keeperCat || o.category || "",
+        productivity: o.productivity || "productive",
+      };
+    });
+
+  const prevSig = taskRowsIdentitySig(opts);
+  if (taskRowsIdentitySig(next) === prevSig && deleteIds.size === 0) return;
+
   saveMergedList(next, {
     bumpPullSkip: true,
-    scheduleSyncPush: needNameFix && isUuid(canonicalId),
-    upsertTaskIds:
-      needNameFix && isUuid(canonicalId) ? [canonicalId] : null,
+    scheduleSyncPush: isUuid(canonicalId),
+    upsertTaskIds: isUuid(canonicalId) ? [canonicalId] : [],
   });
-  if (!dupIds.length) return;
-  try {
-    const m = await import("./timeLedgerTasksSupabase.js");
-    for (const id of dupIds) {
-      await m.deleteTimeLedgerTaskRowForCurrentUser(id);
-    }
-  } catch (_) {}
-  notifySaved({ bumpPullSkip: true, scheduleSyncPush: false });
+
+  if (deleteIds.size) queueTimeLedgerTaskRowDeletes([...deleteIds]);
+
+  patchKpiLinkedTasksFromKpiMaps();
 }
 
 /**
@@ -864,45 +992,8 @@ export function applyTimeLedgerTasksFromServer(
     serverRowsSafe.map((r, i) => [String(r.id || "").trim(), r.sort_order ?? i]),
   );
   out.sort((a, b) => (order.get(a.id) ?? 9999) - (order.get(b.id) ?? 9999));
-  const seenKpi = new Set();
-  const deduped = [];
-  const dupIdsToDelete = [];
-  for (const r of out) {
-    const kid = String(r.kpiId || "").trim();
-    if (kid) {
-      if (seenKpi.has(kid)) {
-        const rid = String(r.id || "").trim();
-        if (isUuid(rid)) dupIdsToDelete.push(rid);
-        continue;
-      }
-      seenKpi.add(kid);
-    }
-    deduped.push(r);
-  }
-  /** kpi_id 있는 행(트리거 등)과 동일 표시명인 옛 행(kpi_id 빈 클라 산물) 제거 */
-  const nameByKpiKeeper = new Map();
-  for (const r of deduped) {
-    const kid = String(r.kpiId || "").trim();
-    if (!kid) continue;
-    const n = (r.name || "").trim();
-    if (n) nameByKpiKeeper.set(n, r);
-  }
-  const dedupedSansOrphanNameDup = [];
-  for (const r of deduped) {
-    const kid = String(r.kpiId || "").trim();
-    if (kid) {
-      dedupedSansOrphanNameDup.push(r);
-      continue;
-    }
-    const n = (r.name || "").trim();
-    if (n && nameByKpiKeeper.has(n)) {
-      const rid = String(r.id || "").trim();
-      const keepId = String(nameByKpiKeeper.get(n).id || "").trim();
-      if (isUuid(rid) && rid !== keepId) dupIdsToDelete.push(rid);
-      continue;
-    }
-    dedupedSansOrphanNameDup.push(r);
-  }
+  const { next: dedupedSansOrphanNameDup, dupIds: dupIdsToDelete } =
+    normalizeKpiLinkedTaskRows(out);
   const upsertSyncIds = [];
   for (const r of dedupedSansOrphanNameDup) {
     const id = String(r.id || "").trim();
@@ -926,13 +1017,7 @@ export function applyTimeLedgerTasksFromServer(
       upsertSyncIds.push(id);
   }
   if (dupIdsToDelete.length) {
-    void import("./timeLedgerTasksSupabase.js").then((m) =>
-      Promise.all(
-        dupIdsToDelete.map((id) =>
-          m.deleteTimeLedgerTaskRowForCurrentUser(id).catch(() => {}),
-        ),
-      ),
-    );
+    queueTimeLedgerTaskRowDeletes(dupIdsToDelete);
   }
   saveMergedList(dedupedSansOrphanNameDup, {
     bumpPullSkip: false,
