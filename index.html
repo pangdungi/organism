@@ -524,13 +524,20 @@
           }
         }
 
+        function isAnyAppPageVisible() {
+          var pages = document.querySelectorAll("#app > .page");
+          for (var i = 0; i < pages.length; i++) {
+            if (getComputedStyle(pages[i]).display !== "none") return true;
+          }
+          return false;
+        }
+
         function bootStillStuck() {
           if (window.__lpBootReady) return false;
           var splash = document.getElementById("app-splash");
-          if (splash && splash.hasAttribute("hidden")) return false;
-          var app = document.getElementById("app");
-          if (app && app.style.display === "block") return false;
-          return true;
+          var splashVisible = splash && !splash.hasAttribute("hidden");
+          if (splashVisible) return true;
+          return !isAnyAppPageVisible();
         }
 
         function onBootWatchdog() {

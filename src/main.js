@@ -61,6 +61,7 @@ import {
   lpEnterAppDebugMark,
   lpEnterAppDebugSummary,
 } from "./utils/lpEnterAppDebug.js";
+import { initLpShellStuckGuard, runLpShellVisibilityGuard } from "./utils/lpShellRecovery.js";
 
 async function signOutForSubscriptionExpired() {
   window.alert(SUBSCRIPTION_EXPIRED_MESSAGE);
@@ -159,9 +160,32 @@ function hideAppSplashNow() {
   setTimeout(done, 280);
 }
 
+/** @type {null | (() => Promise<void>)} */
+let lpRerouteInitialPage = null;
+
+function lpShellRecoveryDeps() {
+  return {
+    hasAppMounted: () => lpAppMounted,
+    restorePage: (pageId) => {
+      showOnly(pageId);
+      if (pageId === "login") setAuthGatePanel("login");
+    },
+    hideSplash: () => hideAppSplashNow(),
+    rerouteInitial: async () => {
+      if (typeof lpRerouteInitialPage === "function") {
+        await lpRerouteInitialPage();
+        return;
+      }
+      showOnly("login");
+      setAuthGatePanel("login");
+      hideAppSplashNow();
+    },
+  };
+}
+
 /** 저장된 세션·자동 로그인: 앱 먼저 연다. 구독은 설정 pull 뒤 백그라운드( enforceSubscriptionBeforeMount 는 로그인 직후 선차단) */
 async function enterAuthenticatedApp(opts = {}) {
-  const { enforceSubscriptionBeforeMount = false } = opts;
+  const { enforceSubscriptionBeforeMount = false, showSplash = false } = opts;
   const screen = document.getElementById("app-screen");
   if (screen?.querySelector(".app-page")) {
     lpAppMounted = true;
@@ -185,7 +209,7 @@ async function enterAuthenticatedApp(opts = {}) {
   };
 
   lpEnterAppPromise = (async () => {
-    showAppSplashNow();
+    if (showSplash) showAppSplashNow();
     try {
       if (enforceSubscriptionBeforeMount) {
         const blocked = await enforceSubscriptionAccessOrSignOut();
@@ -539,7 +563,7 @@ function init() {
           return;
         }
         showOnly("signin");
-        void enterAuthenticatedApp();
+        await enterAuthenticatedApp();
         return;
       }
       showOnly("login");
@@ -549,20 +573,19 @@ function init() {
     }
   }
 
+  lpRerouteInitialPage = showInitialPage;
+
   async function dismissAppSplash() {
     try {
       await showInitialPage();
     } catch (_e) {
+      runLpShellVisibilityGuard(lpShellRecoveryDeps());
     } finally {
       hideAppSplashNow();
     }
   }
 
-  window.addEventListener("pageshow", (ev) => {
-    if (!ev.persisted) return;
-    hideAppSplashNow();
-    setLpAuthBootPending(false);
-  });
+  initLpShellStuckGuard(lpShellRecoveryDeps());
 
   dismissAppSplash();
 }
@@ -577,7 +600,10 @@ async function doLogin() {
   if (result.ok) {
     setLpAuthBootPending(true);
     try {
-      await enterAuthenticatedApp({ enforceSubscriptionBeforeMount: true });
+      await enterAuthenticatedApp({
+        enforceSubscriptionBeforeMount: true,
+        showSplash: true,
+      });
     } finally {
       setLpAuthBootPending(false);
     }
@@ -611,7 +637,10 @@ async function doSignUp() {
   if (session) {
     setLpAuthBootPending(true);
     try {
-      await enterAuthenticatedApp({ enforceSubscriptionBeforeMount: true });
+      await enterAuthenticatedApp({
+        enforceSubscriptionBeforeMount: true,
+        showSplash: true,
+      });
     } finally {
       setLpAuthBootPending(false);
     }
