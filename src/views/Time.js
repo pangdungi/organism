@@ -91,6 +91,10 @@ import { timeLedgerSyncLog } from "../utils/timeLedgerSyncDebug.js";
 import { lpSaveDebug } from "../utils/lpSaveDebug.js";
 import { logTabSync } from "../utils/lpTabSyncDebug.js";
 import { bindLpHorizontalPanNavigate } from "../utils/lpHorizontalPanNavigate.js";
+import {
+  createTimeLedgerDayTimeboxElement,
+  refreshTimeLedgerDayTimeboxScroll,
+} from "../utils/timeLedgerDayTimebox.js";
 
 import {
   lpSetClasses,
@@ -4134,6 +4138,53 @@ function getLedgerRowDayBarSegmentMinutes(rowData) {
   return { startMin, endMin, prod: getLedgerDayBarProductivityKey(rowData) };
 }
 
+function formatLedgerSlotGridClockMin(minOfDay) {
+  const m = Math.max(0, Math.floor(Number(minOfDay) || 0));
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  return `${String(h).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
+}
+
+/** 타임박스뷰 — 실제 시작·끝(분) 구간 목록 */
+function buildTimeLedgerDayTimeboxBlocks(dayRows) {
+  const blocks = [];
+  for (const r of dayRows || []) {
+    const seg = getLedgerRowDayBarSegmentMinutes(r);
+    if (!seg) continue;
+    blocks.push({
+      startMin: seg.startMin,
+      endMin: seg.endMin,
+      prod: seg.prod,
+      taskName: String(r.taskName || "").trim(),
+      startDisplay: formatLedgerSlotGridClockMin(seg.startMin),
+      endDisplay: formatLedgerSlotGridClockMin(seg.endMin),
+      rowData: r,
+    });
+  }
+  return blocks;
+}
+
+function mountTimeLedgerTimeboxView(timeboxShell, { dayRows, isMultiDay }) {
+  if (!timeboxShell) return;
+  timeboxShell.replaceChildren();
+  timeboxShell.className = "time-ledger-timebox-view-shell";
+  if (isMultiDay) {
+    const msg = document.createElement("p");
+    msg.className = "time-ledger-timebox-multi-day-msg";
+    msg.textContent = "타임박스 뷰는 하루 조회에서만 표시됩니다.";
+    timeboxShell.appendChild(msg);
+    return;
+  }
+  const blocks = buildTimeLedgerDayTimeboxBlocks(dayRows);
+  timeboxShell.appendChild(createTimeLedgerDayTimeboxElement(blocks));
+}
+
+function refreshTimeLedgerTimeboxSlotGrid(timeboxShell, dayRows) {
+  const scroll = timeboxShell?.querySelector(".time-ledger-day-timebox-scroll");
+  if (!scroll) return;
+  refreshTimeLedgerDayTimeboxScroll(scroll, buildTimeLedgerDayTimeboxBlocks(dayRows));
+}
+
 function populateTimeLedgerDayOverviewBarSegments(segmentsLayer, dayRows) {
   if (!segmentsLayer) return;
   segmentsLayer.replaceChildren();
@@ -4175,6 +4226,47 @@ function createTimeLedgerDayOverviewBar(dayRows, dayKeyYmd = "") {
   populateTimeLedgerDayOverviewBarSegments(segmentsLayer, dayRows);
   track.appendChild(segmentsLayer);
   wrap.appendChild(track);
+  return wrap;
+}
+
+/** 시간가계부 상단 — 타임라인뷰 / 타임박스뷰 (시간레포트 DAY·MONTH와 동일 세그먼트 스타일) */
+function createTimeLedgerViewModeBar(onViewChange) {
+  const wrap = document.createElement("div");
+  wrap.className = "time-ledger-view-mode-bar-wrap";
+
+  const bar = document.createElement("div");
+  bar.className = "diary-report-granularity time-ledger-view-mode-bar";
+  bar.setAttribute("role", "toolbar");
+  bar.setAttribute("aria-label", "타임라인 · 타임박스 보기");
+
+  const timelineBtn = document.createElement("button");
+  timelineBtn.type = "button";
+  timelineBtn.className = "diary-report-granularity__seg";
+  timelineBtn.textContent = "타임라인뷰";
+  timelineBtn.title = "타임라인 보기";
+
+  const timeboxBtn = document.createElement("button");
+  timeboxBtn.type = "button";
+  timeboxBtn.className = "diary-report-granularity__seg";
+  timeboxBtn.textContent = "타임박스뷰";
+  timeboxBtn.title = "타임박스 보기";
+
+  bar.appendChild(timelineBtn);
+  bar.appendChild(timeboxBtn);
+  wrap.appendChild(bar);
+
+  function syncUi(view) {
+    const isTimeline = view === "timeline";
+    timelineBtn.classList.toggle("is-active", isTimeline);
+    timeboxBtn.classList.toggle("is-active", !isTimeline);
+    timelineBtn.setAttribute("aria-pressed", isTimeline ? "true" : "false");
+    timeboxBtn.setAttribute("aria-pressed", isTimeline ? "false" : "true");
+  }
+
+  timelineBtn.addEventListener("click", () => onViewChange("timeline"));
+  timeboxBtn.addEventListener("click", () => onViewChange("timebox"));
+
+  wrap._syncTimeLedgerViewModeUi = syncUi;
   return wrap;
 }
 
@@ -4466,6 +4558,21 @@ export function render(opts = {}) {
     _usageListFromSession?.start ?? _todayForUsageRange;
   let usageHistoryRangeEndYmd = _usageListFromSession?.end ?? _todayForUsageRange;
 
+  const LP_TIME_LEDGER_LAYOUT_VIEW_KEY = "lp_time_ledger_layout_view";
+  /** 시간가계부 본문: 타임라인(기록 목록) | 타임박스(준비 중) */
+  let timeLedgerLayoutView = (() => {
+    try {
+      const raw = sessionStorage.getItem(LP_TIME_LEDGER_LAYOUT_VIEW_KEY);
+      if (raw === "timeline" || raw === "timebox") return raw;
+    } catch (_) {}
+    return "timeline";
+  })();
+  function persistTimeLedgerLayoutView() {
+    try {
+      sessionStorage.setItem(LP_TIME_LEDGER_LAYOUT_VIEW_KEY, timeLedgerLayoutView);
+    } catch (_) {}
+  }
+
   function persistActiveViewTimeFilterToSession() {
     const t = getLedgerFilterTodayYmd();
     try {
@@ -4634,7 +4741,7 @@ export function render(opts = {}) {
       selectedTaskNamesForFilter == null
         ? ""
         : selectedTaskNamesForFilter.join("\x1e");
-    return `${usageHistoryRangeStartYmd}|${usageHistoryRangeEndYmd}|${taskFilter}|${ledger}`;
+    return `${usageHistoryRangeStartYmd}|${usageHistoryRangeEndYmd}|${taskFilter}|${timeLedgerLayoutView}|${ledger}`;
   }
 
   function rememberTimeLedgerPaintSignature() {
@@ -7945,9 +8052,6 @@ export function render(opts = {}) {
           header.appendChild(label);
           header.appendChild(totalEl);
           timelineList.appendChild(header);
-          timelineList.appendChild(
-            createTimeLedgerDayOverviewBar(g.rows, g.key),
-          );
         }
         const cardParent =
           g.rows.length > 0
@@ -8003,16 +8107,32 @@ export function render(opts = {}) {
     usageHistoryHeadingRow.appendChild(usageHistoryHeadingLeft);
     usageHistoryHeadingRow.appendChild(usageHistoryTotalTime);
     ledgerContainer.appendChild(usageHistoryHeadingRow);
-    if (!timeLedgerShouldShowDayGroups(rows)) {
-      const dayKey =
-        usageHistoryRangeStartYmd === usageHistoryRangeEndYmd
-          ? usageHistoryRangeStartYmd
-          : "";
-      ledgerContainer.appendChild(
-        createTimeLedgerDayOverviewBar(rows, dayKey),
-      );
+
+    const viewModeBarWrap = createTimeLedgerViewModeBar((nextView) => {
+      if (timeLedgerLayoutView === nextView) return;
+      timeLedgerLayoutView = nextView;
+      persistTimeLedgerLayoutView();
+      renderAll(getFilteredRows(getFullRowsForFilter(true)));
+    });
+    viewModeBarWrap._syncTimeLedgerViewModeUi?.(timeLedgerLayoutView);
+    ledgerContainer.appendChild(viewModeBarWrap);
+
+    const showTimelineLedgerContent = timeLedgerLayoutView !== "timebox";
+
+    if (showTimelineLedgerContent) {
+      ledgerContainer.appendChild(cardsWrap);
+    } else {
+      const timeboxShell = document.createElement("div");
+      timeboxShell.className = "time-ledger-timebox-view-shell";
+      timeboxShell.setAttribute("aria-label", "타임박스 뷰");
+      ledgerContainer.appendChild(timeboxShell);
+      const dayKey = usageHistoryRangeStartYmd;
+      const dayRows = rows.filter((r) => timeLedgerRowYmd(r) === dayKey);
+      mountTimeLedgerTimeboxView(timeboxShell, {
+        dayRows,
+        isMultiDay: timeLedgerFilterSpansMultipleDays(),
+      });
     }
-    ledgerContainer.appendChild(cardsWrap);
     contentWrap.appendChild(ledgerContainer);
 
     const refreshCardLiveFields = () => {
@@ -8020,17 +8140,23 @@ export function render(opts = {}) {
         clearTimeLedgerMobileElapsedTimer(el);
         return;
       }
-      cardsWrap
-        .querySelectorAll('[data-legacy~="time-ledger-mobile-card"]')
-        .forEach(updateMobileTimeCardLiveFields);
-      refreshTimeLedgerDayOverviewBars(
-        ledgerContainer,
-        getFilteredRows(getFullRowsForFilter(true)),
-      );
+      const liveRows = getFilteredRows(getFullRowsForFilter(true));
+      if (showTimelineLedgerContent) {
+        cardsWrap
+          .querySelectorAll('[data-legacy~="time-ledger-mobile-card"]')
+          .forEach(updateMobileTimeCardLiveFields);
+      } else if (!timeLedgerFilterSpansMultipleDays()) {
+        const shell = contentWrap.querySelector(".time-ledger-timebox-view-shell");
+        if (shell) {
+          const dayKey = usageHistoryRangeStartYmd;
+          const dayRows = liveRows.filter((r) => timeLedgerRowYmd(r) === dayKey);
+          refreshTimeLedgerTimeboxSlotGrid(shell, dayRows);
+        }
+      }
       const totalEl = contentWrap.querySelector("[data-usage-total-time]");
       if (totalEl) {
         totalEl.textContent = formatHoursToHHMM(
-          sumTimeLedgerDayHours(getFilteredRows(getFullRowsForFilter(true))),
+          sumTimeLedgerDayHours(liveRows),
         );
       }
       updateTotal();
