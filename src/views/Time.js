@@ -95,6 +95,7 @@ import {
   createTimeLedgerDayTimeboxElement,
   refreshTimeLedgerDayTimeboxScroll,
 } from "../utils/timeLedgerDayTimebox.js";
+import { createTimeLedgerVerticalProductivityHeatmap } from "../utils/timeLedgerProductivityHeatmap.js";
 
 import {
   lpSetClasses,
@@ -4164,15 +4165,58 @@ function buildTimeLedgerDayTimeboxBlocks(dayRows) {
   return blocks;
 }
 
-function mountTimeLedgerTimeboxView(timeboxShell, { dayRows, isMultiDay }) {
+/** 다일 타임박스 — 날짜별 생산적 시간 비율 */
+function buildDayProductivityStatsMap(rows) {
+  const byDay = new Map();
+  for (const r of rows || []) {
+    const ymd = ledgerRowDateYmdForFilter(r);
+    if (!ymd) continue;
+    if (!byDay.has(ymd)) byDay.set(ymd, []);
+    byDay.get(ymd).push(r);
+  }
+  const stats = new Map();
+  for (const [ymd, dayRows] of byDay) {
+    let productive = 0;
+    let nonproductive = 0;
+    let other = 0;
+    for (const r of dayRows) {
+      const hrs = getMobileCardEffectiveHoursForPrice(r);
+      if (hrs <= 0) continue;
+      const p = getMobileCardProductivityValue(r);
+      if (p === "productive") productive += hrs;
+      else if (p === "nonproductive") nonproductive += hrs;
+      else other += hrs;
+    }
+    const total = productive + nonproductive + other;
+    stats.set(ymd, {
+      ymd,
+      productiveHrs: productive,
+      nonproductiveHrs: nonproductive,
+      otherHrs: other,
+      totalHrs: total,
+      pct: total > 0 ? (productive / total) * 100 : 0,
+    });
+  }
+  return stats;
+}
+
+function mountTimeLedgerTimeboxView(
+  timeboxShell,
+  { dayRows, isMultiDay, rangeStartYmd, rangeEndYmd, allRowsInRange },
+) {
   if (!timeboxShell) return;
   timeboxShell.replaceChildren();
   timeboxShell.className = "time-ledger-timebox-view-shell";
   if (isMultiDay) {
-    const msg = document.createElement("p");
-    msg.className = "time-ledger-timebox-multi-day-msg";
-    msg.textContent = "타임박스 뷰는 하루 조회에서만 표시됩니다.";
-    timeboxShell.appendChild(msg);
+    timeboxShell.appendChild(
+      createTimeLedgerVerticalProductivityHeatmap({
+        rangeStartYmd,
+        rangeEndYmd,
+        dayProductivityMap: buildDayProductivityStatsMap(
+          allRowsInRange || dayRows,
+        ),
+      }),
+    );
     return;
   }
   const blocks = buildTimeLedgerDayTimeboxBlocks(dayRows);
@@ -8131,6 +8175,9 @@ export function render(opts = {}) {
       mountTimeLedgerTimeboxView(timeboxShell, {
         dayRows,
         isMultiDay: timeLedgerFilterSpansMultipleDays(),
+        rangeStartYmd: usageHistoryRangeStartYmd,
+        rangeEndYmd: usageHistoryRangeEndYmd,
+        allRowsInRange: rows,
       });
     }
     contentWrap.appendChild(ledgerContainer);

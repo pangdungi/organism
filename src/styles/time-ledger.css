@@ -651,6 +651,238 @@
   line-height: 1.45;
 }
 
+/* 다일 타임박스 — 세로 GitHub 잔디형 생산성 히트맵 */
+.time-ledger-productivity-heatmap-scroll,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0.35rem 0.55rem 0.45rem;
+  box-sizing: border-box;
+}
+
+.time-ledger-productivity-heatmap,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 0.35rem;
+}
+
+.time-ledger-productivity-heatmap-year,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-year {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.time-ledger-productivity-heatmap-year-title,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-year-title {
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #334155;
+  text-align: center;
+}
+
+.time-ledger-productivity-heatmap-body,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-body {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0.2rem;
+}
+
+.time-ledger-productivity-heatmap-month-col,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-month-col {
+  flex: 0 0 1.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+}
+
+.time-ledger-productivity-heatmap-month-corner,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-month-corner {
+  flex: 0 0 auto;
+  height: 0.75rem;
+}
+
+.time-ledger-productivity-heatmap-month,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-month {
+  flex: 1 1 0;
+  min-height: 0;
+  font-size: 0.5rem;
+  font-weight: 700;
+  color: #64748b;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 0.15rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.time-ledger-productivity-heatmap-grid-wrap,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-grid-wrap {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.time-ledger-productivity-heatmap-day-head,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-day-head {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(31, minmax(0, 1fr));
+  gap: 2px;
+  height: 0.75rem;
+  align-items: center;
+}
+
+.time-ledger-productivity-heatmap-day-label,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-day-label {
+  font-size: 0.375rem;
+  font-weight: 600;
+  color: #94a3b8;
+  line-height: 1;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.time-ledger-productivity-heatmap-grid,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-grid {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.time-ledger-productivity-heatmap-month-row,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-month-row {
+  flex: 1 1 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(31, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.time-ledger-productivity-heatmap-cell,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-cell {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 2px;
+  box-sizing: border-box;
+  background: #ebedf0;
+  cursor: default;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.time-ledger-productivity-heatmap-cell--empty,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-cell--empty {
+  background: transparent;
+  pointer-events: none;
+}
+
+.time-ledger-productivity-heatmap-cell--out-range,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-cell--out-range {
+  background: #f8fafc;
+  opacity: 0.55;
+}
+
+.time-ledger-productivity-heatmap-cell--no-data:not(.time-ledger-productivity-heatmap-cell--out-range),
+[data-legacy~="time-ledger-view"]
+  .time-ledger-productivity-heatmap-cell--no-data:not(.time-ledger-productivity-heatmap-cell--out-range) {
+  background: #e2e8f0;
+}
+
+.time-ledger-productivity-heatmap-cell--lv1,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-cell--lv1 {
+  background: #ffe0e0;
+  cursor: pointer;
+}
+
+.time-ledger-productivity-heatmap-cell--lv2,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-cell--lv2 {
+  background: #fecaca;
+  cursor: pointer;
+}
+
+.time-ledger-productivity-heatmap-cell--lv3,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-cell--lv3 {
+  background: #f87171;
+  cursor: pointer;
+}
+
+.time-ledger-productivity-heatmap-cell--lv4,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-cell--lv4 {
+  background: #c0392b;
+  cursor: pointer;
+}
+
+.time-ledger-productivity-heatmap-cell--lv1:focus-visible,
+.time-ledger-productivity-heatmap-cell--lv2:focus-visible,
+.time-ledger-productivity-heatmap-cell--lv3:focus-visible,
+.time-ledger-productivity-heatmap-cell--lv4:focus-visible,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-cell--lv1:focus-visible,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-cell--lv2:focus-visible,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-cell--lv3:focus-visible,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-cell--lv4:focus-visible {
+  outline: 2px solid #1e4d7b;
+  outline-offset: 1px;
+}
+
+.time-ledger-productivity-heatmap-legend,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-legend {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.2rem;
+  font-size: 0.5625rem;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.time-ledger-productivity-heatmap-legend-category,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-legend-category {
+  margin-right: 0.15rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #64748b;
+}
+
+.time-ledger-productivity-heatmap-legend-end,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-legend-end {
+  font-weight: 500;
+}
+
+.time-ledger-productivity-heatmap-legend-swatch,
+[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-legend-swatch {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
 .time-ledger-tabs-filter-row,
 [data-legacy~="time-ledger-tabs-filter-row"] {
   /* app-main 이 이미 safe-top 반영 — 여기서는 추가 간격만 (중복 inset 방지) */
