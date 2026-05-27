@@ -53,6 +53,8 @@ import {
   getDailyProductiveCategoryTaskBreakdown,
   getDailyConsumptionCategoryTaskBreakdown,
   getDailyHealthyMealDetails,
+  getDailyHealthyMealIntakeMinutes,
+  getDailyUnhealthyMealIntakeMinutes,
   getDailyNonproductiveWastedSnapshot,
   getDailyTimeReportDonutSnapshot,
   getDailyTimeReportSummaryGrid,
@@ -62,6 +64,8 @@ import {
   getMonthlyProductiveCategoryTaskBreakdown,
   getMonthlyConsumptionCategoryTaskBreakdown,
   getMonthlyHealthyMealDetails,
+  getMonthlyHealthyMealIntakeMinutes,
+  getMonthlyUnhealthyMealIntakeMinutes,
   getMonthlyTimeReportDonutSnapshot,
   getMonthlyTimeReportSummaryGrid,
   getMonthlyTimeReportTopTasksByMinutes,
@@ -99,6 +103,10 @@ const DIARY_TR_ICON = {
   moneylosing: `${DIARY_TR_ICON_BASE}/12-moneylosing.png`,
   /** 불행 비생산 카테고리 — 사용자 제공 아이콘 */
   unhappiness: `${DIARY_TR_ICON_BASE}/13-unhappiness.png`,
+  /** 건강하지 않은 섭취 식단 카드 */
+  unhealthyMealIntake: `${DIARY_TR_ICON_BASE}/14-unhealthy-meal-intake.png`,
+  /** 건강한 섭취 식단 카드 */
+  healthyMealIntake: `${DIARY_TR_ICON_BASE}/15-healthy-meal-intake.png`,
   /** 예산 「잘했어요!」 */
   budgetWellDone: `${DIARY_TR_ICON_BASE}/budget-well-done.png`,
   /** 예산 「생산성이 좋았을까요?」 */
@@ -118,6 +126,43 @@ function fillDiaryTrSummaryIconSlot(iconSlot, src) {
   img.alt = "";
   applyStaticAppIconImg(img);
   iconSlot.appendChild(img);
+}
+
+/** 소비·투자 레포트 — 섭취 식단 전용 카드(탭 상세 없음) */
+function appendTimeReportMealIntakeCard(grid, { title, iconSrc, minutes, meals }) {
+  const art = document.createElement("article");
+  art.className = "diary-tr-summary-card diary-tr-meal-intake-card";
+  art.setAttribute("aria-label", title);
+
+  const iconSlot = document.createElement("div");
+  iconSlot.className = "diary-tr-summary-icon-slot diary-tr-summary-icon-slot--empty";
+  iconSlot.setAttribute("aria-hidden", "true");
+  if (iconSrc) fillDiaryTrSummaryIconSlot(iconSlot, iconSrc);
+
+  const h = document.createElement("h3");
+  h.className = "diary-tr-summary-title";
+  h.textContent = title;
+
+  const timeEl = document.createElement("p");
+  timeEl.className = "diary-tr-summary-time";
+  timeEl.textContent = formatIntegerMinutesDurationKo(minutes);
+
+  art.appendChild(iconSlot);
+  art.appendChild(h);
+  art.appendChild(timeEl);
+
+  if (Array.isArray(meals) && meals.length > 0) {
+    const ul = document.createElement("ul");
+    ul.className = "diary-tr-summary-meals";
+    meals.forEach((line) => {
+      const li = document.createElement("li");
+      li.textContent = line;
+      ul.appendChild(li);
+    });
+    art.appendChild(ul);
+  }
+
+  grid.appendChild(art);
 }
 
 /** 투자 탭 레포트 — 생산 카테고리 막대 채색(소비 도넛과 같은 톤) */
@@ -1608,7 +1653,7 @@ export function render() {
         key: "health",
         categoryLabel: "건강",
         headline: "내가 더 존재할 수 있게!",
-        subtitle: "건강한 식단",
+        subtitle: null,
         iconSrc: DIARY_TR_ICON.healthExist,
       },
       {
@@ -1655,17 +1700,6 @@ export function render() {
       timeEl.textContent = formatIntegerMinutesDurationKo(mins);
       art.appendChild(timeEl);
 
-      if (def.key === "health" && healthyMeals.length > 0) {
-        const ul = document.createElement("ul");
-        ul.className = "diary-tr-summary-meals";
-        healthyMeals.forEach((line) => {
-          const li = document.createElement("li");
-          li.textContent = line;
-          ul.appendChild(li);
-        });
-        art.appendChild(ul);
-      }
-
       const openDetail = () => {
         const taskRows =
           granularity === "month"
@@ -1688,6 +1722,16 @@ export function render() {
       });
 
       grid.appendChild(art);
+    });
+
+    appendTimeReportMealIntakeCard(grid, {
+      title: "건강한 섭취",
+      iconSrc: DIARY_TR_ICON.healthyMealIntake,
+      minutes:
+        granularity === "month"
+          ? getMonthlyHealthyMealIntakeMinutes(ymdTen)
+          : getDailyHealthyMealIntakeMinutes(ymdTen),
+      meals: healthyMeals,
     });
 
     section.appendChild(grid);
@@ -1805,7 +1849,7 @@ export function render() {
         ? formatMonthSlashFromYmd(ymdTen)
         : formatDateDisplay(String(ymdTen || "").slice(0, 10));
 
-    /** @type {Array<{ categoryKey: string, categoryLabel: string, title: string, minutes: number, lossWon?: number | null, meals?: string[] }>} */
+    /** @type {Array<{ categoryKey: string, categoryLabel: string, title: string, minutes: number, lossWon?: number | null }>} */
     const specs = [
       {
         categoryKey: "media_watch",
@@ -1827,7 +1871,6 @@ export function render() {
         categoryLabel: "비건강",
         title: "건강을 해치는데 쓴 시간",
         minutes: g.unhealthyMinutes,
-        meals: g.unhealthyMealDetails.length ? g.unhealthyMealDetails : undefined,
         iconSrc: DIARY_TR_ICON.unhealthy,
       },
       {
@@ -1884,17 +1927,6 @@ export function render() {
         );
       }
 
-      if (Array.isArray(c.meals) && c.meals.length > 0) {
-        const ul = document.createElement("ul");
-        ul.className = "diary-tr-summary-meals";
-        c.meals.forEach((line) => {
-          const li = document.createElement("li");
-          li.textContent = line;
-          ul.appendChild(li);
-        });
-        art.appendChild(ul);
-      }
-
       const openDetail = () => {
         const taskRows =
           granularity === "month"
@@ -1916,6 +1948,16 @@ export function render() {
       });
 
       grid.appendChild(art);
+    });
+
+    appendTimeReportMealIntakeCard(grid, {
+      title: "건강하지 않은 섭취",
+      iconSrc: DIARY_TR_ICON.unhealthyMealIntake,
+      minutes:
+        granularity === "month"
+          ? getMonthlyUnhealthyMealIntakeMinutes(ymdTen)
+          : getDailyUnhealthyMealIntakeMinutes(ymdTen),
+      meals: g.unhealthyMealDetails,
     });
 
     section.appendChild(grid);

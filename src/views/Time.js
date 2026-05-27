@@ -2350,7 +2350,7 @@ function aggregateDailyTimeReportSummaryFromLedgerRows(rows) {
 
 /**
  * 시간사용 레포트(일별): 근무·수면·미디어·쾌락충족·불행·비건강·돈을 잃는 일 집계(시급×시간은 비생산과 동일).
- * 식단 목록은 「건강하지 않은 섭취」 과제의 mealDetail 만.
+ * 식단 목록은 소비 탭 「건강하지 않은 섭취」 카드에서 표시(「건강하지 않은 섭취」 과제 mealDetail).
  */
 export function getDailyTimeReportSummaryGrid(ymdTen) {
   const key = String(ymdTen || "")
@@ -2709,6 +2709,91 @@ export function getMonthlyHealthyMealDetails(ymdTen) {
     return d >= range.start && d <= range.end;
   });
   return aggregateHealthyMealDetailsFromRows(rows);
+}
+
+/** 소비 레포트: 「건강하지 않은 섭취」 과제 기록 시간(분) */
+function aggregateUnhealthyMealIntakeMinutesFromRows(rows) {
+  let minutes = 0;
+  rows.forEach((r) => {
+    const hrs = parseTimeToHours(r.timeTracked);
+    if (hrs <= 0 || !Number.isFinite(hrs)) return;
+    const { category: catRaw } = resolveRowCategoryProductivityForAudit(r);
+    if (String(catRaw || "").trim() !== "unhealthy") return;
+    const tn = String(r.taskName || "").trim();
+    if (!TTC.isUnhealthyMealDetailTaskName(tn)) return;
+    minutes += Math.round(hrs * 60);
+  });
+  return minutes;
+}
+
+/** 투자 레포트: 「건강한 섭취」 과제 기록 시간(분) */
+function aggregateHealthyMealIntakeMinutesFromRows(rows) {
+  let minutes = 0;
+  rows.forEach((r) => {
+    const hrs = parseTimeToHours(r.timeTracked);
+    if (hrs <= 0 || !Number.isFinite(hrs)) return;
+    const { category: catRaw, productivity: prodRaw } =
+      resolveRowCategoryProductivityForAudit(r);
+    const cat = String(catRaw || "").trim();
+    if (cat !== "health") return;
+    const pv = (
+      String(prodRaw || "")
+        .trim()
+        .toLowerCase() ||
+      String(getProductivityFromCategory(cat) || "")
+        .trim()
+        .toLowerCase()
+    ).trim();
+    if (pv !== "productive") return;
+    const tn = String(r.taskName || "").trim();
+    if (!TTC.isHealthyMealDetailTaskName(tn)) return;
+    minutes += Math.round(hrs * 60);
+  });
+  return minutes;
+}
+
+export function getDailyUnhealthyMealIntakeMinutes(ymdTen) {
+  const key = String(ymdTen || "")
+    .replace(/\//g, "-")
+    .slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return 0;
+  const rows = loadTimeRows().filter((r) => {
+    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    return d === key;
+  });
+  return aggregateUnhealthyMealIntakeMinutesFromRows(rows);
+}
+
+export function getMonthlyUnhealthyMealIntakeMinutes(ymdTen) {
+  const range = getTimeReportMonthInclusiveRange(ymdTen);
+  if (!range) return 0;
+  const rows = loadTimeRows().filter((r) => {
+    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    return d >= range.start && d <= range.end;
+  });
+  return aggregateUnhealthyMealIntakeMinutesFromRows(rows);
+}
+
+export function getDailyHealthyMealIntakeMinutes(ymdTen) {
+  const key = String(ymdTen || "")
+    .replace(/\//g, "-")
+    .slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return 0;
+  const rows = loadTimeRows().filter((r) => {
+    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    return d === key;
+  });
+  return aggregateHealthyMealIntakeMinutesFromRows(rows);
+}
+
+export function getMonthlyHealthyMealIntakeMinutes(ymdTen) {
+  const range = getTimeReportMonthInclusiveRange(ymdTen);
+  if (!range) return 0;
+  const rows = loadTimeRows().filter((r) => {
+    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    return d >= range.start && d <= range.end;
+  });
+  return aggregateHealthyMealIntakeMinutesFromRows(rows);
 }
 
 const CONSUMPTION_REPORT_CATEGORY_KEYS = [

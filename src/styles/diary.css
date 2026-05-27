@@ -1018,6 +1018,10 @@
   min-width: 0;
 }
 
+.diary-tr-meal-intake-card {
+  cursor: default;
+}
+
 .diary-tr-summary-icon-slot {
   flex-shrink: 0;
   width: 3rem;
