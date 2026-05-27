@@ -97,6 +97,11 @@ function idbDeleteRecord(recordKey) {
   });
 }
 
+/** 부팅용 동기 읽기 — IndexedDB 대기 없이 localStorage 미러만 */
+export function readTimeLedgerRowsLocalMirrorSync(uid = getActiveClientStorageUserId()) {
+  return readLocalStorageRows(uid);
+}
+
 function readLocalStorageRows(uid = getActiveClientStorageUserId()) {
   try {
     const raw = getScopedLocalStorageItem(TIME_LEDGER_STORAGE_KEY, uid);

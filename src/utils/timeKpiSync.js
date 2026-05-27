@@ -274,6 +274,13 @@ function normalizeLogDate(val) {
   return s.slice(0, 10);
 }
 
+function parseDateFromLedgerStartTime(startTime) {
+  if (!startTime || typeof startTime !== "string") return "";
+  const m = startTime.trim().match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  if (!m) return "";
+  return `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`;
+}
+
 function nextLogId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
@@ -396,25 +403,63 @@ function findStorageKeyForKpiId(kpiId) {
 /**
  * 해당 날짜 KPI 로그에 저장된 매일 할 일 체크 목록 (과제 기록 모달 표시용)
  */
-export function getHabitTrackerDailyCompletedForDate(storageKey, kpiId, dateRaw) {
-  if (!storageKey || !kpiId || !dateRaw || String(dateRaw).length < 10) return [];
+function kpiLogMatchesDay(log, kpiId, normDate) {
+  return (
+    String(log?.kpiId || "").trim() === String(kpiId || "").trim() &&
+    normalizeLogDate(log?.dateRaw || log?.date || "") === normDate
+  );
+}
+
+/**
+ * 시간기록 행 id에 연결된 KPI 로그의 매일할일 체크(없으면 해당 날짜·KPI 로그 fallback)
+ */
+export function getHabitTrackerDailyCompletedForLedgerEntry(
+  storageKey,
+  kpiId,
+  dateRaw,
+  entryId,
+) {
+  const normDate = normalizeLogDate(dateRaw);
+  const eid = String(entryId || "").trim();
+  if (!storageKey || !kpiId || normDate.length < 10) return [];
   try {
     const raw = readKpiMapScopedStorageRaw(storageKey);
     if (!raw) return [];
     const data = JSON.parse(raw);
-    const normDate = normalizeLogDate(dateRaw);
     const logs = data.kpiLogs || [];
-    const log = logs.find(
-      (l) =>
-        l.kpiId === kpiId &&
-        normalizeLogDate(l.dateRaw || l.date || "") === normDate,
-    );
-    return Array.isArray(log?.dailyCompleted)
-      ? dedupeDailyCompletedList(log.dailyCompleted)
-      : [];
+
+    if (isUuid(eid)) {
+      for (const l of logs) {
+        if (!kpiLogMatchesDay(l, kpiId, normDate)) continue;
+        const ids = Array.isArray(l.timeLedgerEntryIds)
+          ? l.timeLedgerEntryIds.map((x) => String(x || "").trim())
+          : [];
+        if (!ids.includes(eid)) continue;
+        if (Array.isArray(l.dailyCompleted) && l.dailyCompleted.length > 0) {
+          return dedupeDailyCompletedList(l.dailyCompleted);
+        }
+      }
+    }
+
+    for (const l of logs) {
+      if (!kpiLogMatchesDay(l, kpiId, normDate)) continue;
+      if (Array.isArray(l.dailyCompleted) && l.dailyCompleted.length > 0) {
+        return dedupeDailyCompletedList(l.dailyCompleted);
+      }
+    }
+    return [];
   } catch (_) {
     return [];
   }
+}
+
+export function getHabitTrackerDailyCompletedForDate(storageKey, kpiId, dateRaw) {
+  return getHabitTrackerDailyCompletedForLedgerEntry(
+    storageKey,
+    kpiId,
+    dateRaw,
+    "",
+  );
 }
 
 /**
@@ -435,7 +480,9 @@ export function replaceHabitTrackerLogDailyCompleted(
     const prev = JSON.parse(raw);
     const data = JSON.parse(raw);
     const kpis = data.kpis || [];
-    const kpi = kpis.find((k) => k.id === kpiId);
+    const kpi = kpis.find(
+      (k) => String(k.id || "").trim() === String(kpiId || "").trim(),
+    );
     if (!kpi || !kpi.needHabitTracker) return;
     const config = STORAGE_CONFIG.find((c) => c.key === storageKey);
     if (!config) return;
@@ -444,9 +491,7 @@ export function replaceHabitTrackerLogDailyCompleted(
     const idValue = kpi[config.kpiKey];
     const logs = data.kpiLogs || [];
     const normDate = normalizeLogDate(dateRaw);
-    const existingIdx = logs.findIndex(
-      (l) => l.kpiId === kpiId && normalizeLogDate(l.dateRaw || l.date || "") === normDate,
-    );
+    const existingIdx = logs.findIndex((l) => kpiLogMatchesDay(l, kpiId, normDate));
 
     const list = dedupeDailyCompletedList(
       Array.isArray(completed) ? completed : [],
@@ -481,7 +526,7 @@ export function replaceHabitTrackerLogDailyCompleted(
       return;
     }
     data.kpiLogs = logs;
-    stampAndPersistKpiMap(storageKey, prev, data);
+    stampAndPersistKpiMap(storageKey, prev, data, { pushServer: true });
   } catch (_) {}
 }
 
@@ -507,7 +552,9 @@ export function upsertHabitTrackerLogWithDailyState(
     const prev = JSON.parse(raw);
     const data = JSON.parse(raw);
     const kpis = data.kpis || [];
-    const kpi = kpis.find((k) => k.id === kpiId);
+    const kpi = kpis.find(
+      (k) => String(k.id || "").trim() === String(kpiId || "").trim(),
+    );
     if (!kpi || !kpi.needHabitTracker) return;
     const config = STORAGE_CONFIG.find((c) => c.key === storageKey);
     if (!config) return;
@@ -516,9 +563,7 @@ export function upsertHabitTrackerLogWithDailyState(
     const idValue = kpi[config.kpiKey];
     const logs = data.kpiLogs || [];
     const normDate = normalizeLogDate(dateRaw);
-    const existingIdx = logs.findIndex(
-      (l) => l.kpiId === kpiId && normalizeLogDate(l.dateRaw || l.date || "") === normDate,
-    );
+    const existingIdx = logs.findIndex((l) => kpiLogMatchesDay(l, kpiId, normDate));
 
     const dailyCompleted = Array.isArray(dailyState?.completed)
       ? dailyState.completed
@@ -554,7 +599,7 @@ export function upsertHabitTrackerLogWithDailyState(
       logs.push(row);
     }
     data.kpiLogs = logs;
-    stampAndPersistKpiMap(storageKey, prev, data);
+    stampAndPersistKpiMap(storageKey, prev, data, { pushServer: true });
   } catch (_) {}
 }
 
@@ -591,7 +636,9 @@ export function syncHabitTrackerLogs() {
   };
 
   rows.forEach((r) => {
-    const dateRaw = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    const dateRaw = normalizeLogDate(
+      (r.date || "").toString() || parseDateFromLedgerStartTime(r.startTime),
+    );
     if (!dateRaw || dateRaw.length < 10) return;
     if (!(r.timeTracked || "").trim()) return;
     const entryId = String(r.id || "").trim();

@@ -6,8 +6,9 @@
 import {
   getKpiSyncedTaskNames,
   syncHabitTrackerLogs,
-  upsertHabitTrackerLogWithDailyState,
+  replaceHabitTrackerLogDailyCompleted,
   getHabitTrackerDailyCompletedForDate,
+  getHabitTrackerDailyCompletedForLedgerEntry,
   removeKpiHabitLogsForTimeLedgerEntry,
 } from "../utils/timeKpiSync.js";
 import {
@@ -3444,6 +3445,9 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
     memoTags: Array.isArray(initialData?.memoTags) ? initialData.memoTags : [],
     linkedExpenseIds: [],
     focus: String(initialData?.focus || "").trim(),
+    habitDailyCompleted: Array.isArray(initialData?.habitDailyCompleted)
+      ? initialData.habitDailyCompleted
+      : [],
   };
   tr._rowData = rowData;
 
@@ -6136,6 +6140,18 @@ export function render(opts = {}) {
     updateTaskLogMealDetailVisibility(taskName);
   }
 
+  function isHabitDailyTodoChecked(todo, completedList) {
+    const tid = String(todo?.id || "").trim();
+    const ttext = String(todo?.text || "").trim();
+    return (completedList || []).some((x) => {
+      const xid = String(x?.id || "").trim();
+      const xtext = String(x?.text || "").trim();
+      if (tid && xid && tid === xid) return true;
+      if (ttext && xtext && ttext === xtext) return true;
+      return false;
+    });
+  }
+
   function refreshKpiTodosInLogModal(taskName) {
     const name = (taskName || "").trim();
     if (taskLogKpiTodosSection) {
@@ -6171,17 +6187,21 @@ export function render(opts = {}) {
         kpiId: dailyKpiId,
         dailyTodos,
       } = dailyInfo;
+      const editRow = taskLogEditTr?._rowData;
+      const ledgerEntryId = String(editRow?.id || "").trim();
+      const fromRow = Array.isArray(editRow?.habitDailyCompleted)
+        ? editRow.habitDailyCompleted
+        : [];
       const fromLog =
         dateYmd.length >= 10
-          ? getHabitTrackerDailyCompletedForDate(
+          ? getHabitTrackerDailyCompletedForLedgerEntry(
               dailyStorageKey,
               dailyKpiId,
               dateYmd,
+              ledgerEntryId,
             )
           : [];
-      const logCheckedIds = new Set(
-        fromLog.map((x) => String(x.id || "").trim()).filter(Boolean),
-      );
+      const checkedSource = fromRow.length > 0 ? fromRow : fromLog;
       dailyTodos.forEach((todo) => {
         const label = document.createElement("label");
         lpSetClasses(
@@ -6190,7 +6210,7 @@ export function render(opts = {}) {
         );
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
-        checkbox.checked = logCheckedIds.has(String(todo.id || "").trim());
+        checkbox.checked = isHabitDailyTodoChecked(todo, checkedSource);
         checkbox.dataset.todoId = todo.id;
         const span = document.createElement("span");
         lpSetClasses(span, "time-task-log-kpi-todo-text");
@@ -6505,6 +6525,61 @@ export function render(opts = {}) {
     if (taskLogFooterEl) taskLogFooterEl.style.display = "";
     if (taskLogDeleteBtn) taskLogDeleteBtn.hidden = false;
     setTaskLogQuickAdjustActive(null);
+    const recordDateYmd =
+      recordDate ||
+      normalizeDateForCompare(data.date || "") ||
+      String(data.date || "")
+        .trim()
+        .replace(/\//g, "-")
+        .slice(0, 10);
+    const tnForDaily = (data.taskName || "").trim();
+    const dailyInfoForEdit = getKpiDailyRepeatInfoForTaskLog(tnForDaily);
+    const dailyCompletedBeforeCloudPull =
+      dailyInfoForEdit?.needHabitTracker && recordDateYmd.length >= 10
+        ? (Array.isArray(data.habitDailyCompleted) &&
+          data.habitDailyCompleted.length > 0
+            ? data.habitDailyCompleted
+            : getHabitTrackerDailyCompletedForLedgerEntry(
+                dailyInfoForEdit.storageKey,
+                dailyInfoForEdit.kpiId,
+                recordDateYmd,
+                String(data.id || "").trim(),
+              ))
+        : [];
+    function restoreDailyCompletedIfCloudPullWiped(taskName, ledgerEntryId) {
+      if (!dailyCompletedBeforeCloudPull.length) return;
+      const info = getKpiDailyRepeatInfoForTaskLog((taskName || "").trim());
+      if (!info?.needHabitTracker) return;
+      const raw = (taskLogDateStart?.value || "").trim();
+      const m = raw.match(/(\d{4})[.\-\s/]*(\d{1,2})[.\-\s/]*(\d{1,2})/);
+      const ymd = m
+        ? `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`
+        : recordDateYmd;
+      if (ymd.length < 10) return;
+      const afterPull = getHabitTrackerDailyCompletedForLedgerEntry(
+        info.storageKey,
+        info.kpiId,
+        ymd,
+        String(ledgerEntryId || "").trim(),
+      );
+      const rowStill = Array.isArray(taskLogEditTr?._rowData?.habitDailyCompleted)
+        ? taskLogEditTr._rowData.habitDailyCompleted
+        : [];
+      if (afterPull.length === 0 && rowStill.length === 0) {
+        replaceHabitTrackerLogDailyCompleted(
+          info.storageKey,
+          info.kpiId,
+          ymd,
+          dailyCompletedBeforeCloudPull,
+          isUuid(ledgerEntryId) ? ledgerEntryId : undefined,
+        );
+        if (taskLogEditTr?._rowData) {
+          taskLogEditTr._rowData.habitDailyCompleted = [
+            ...dailyCompletedBeforeCloudPull,
+          ];
+        }
+      }
+    }
     taskLogModal.hidden = false;
     document.body.style.overflow = "hidden";
     closeDateTimePicker();
@@ -6541,9 +6616,9 @@ export function render(opts = {}) {
     taskLogMemoTags = userMemoTagsFromLedgerRaw(rawMemoTagsForEdit)
       .map((t) => String(t ?? "").trim())
       .filter(Boolean);
-    const tnSync = (data.taskName || "").trim();
+    const tnSync = tnForDaily;
     refreshKpiTodosInLogModal(tnSync);
-    const lockedName = (data.taskName || "").trim();
+    const lockedName = tnForDaily;
     if (taskLogTaskDropdown && lockedName) {
       taskLogTaskDropdown._setValue?.(lockedName);
       refreshKpiTodosInLogModal(lockedName);
@@ -6558,7 +6633,8 @@ export function render(opts = {}) {
           getFullTaskOptions();
           migrateTimeLogRowsTaskIds();
         } catch (_) {}
-        const tnPost = (data.taskName || "").trim();
+        const tnPost = tnForDaily;
+        restoreDailyCompletedIfCloudPullWiped(tnPost, data.id);
         refreshKpiTodosInLogModal(tnPost);
         if (taskLogTaskDropdown && tnPost) {
           taskLogTaskDropdown._setValue?.(tnPost);
@@ -6723,6 +6799,9 @@ export function render(opts = {}) {
         memoTags,
         linkedExpenseIds: [],
         focus: focusValue,
+        habitDailyCompleted: Array.isArray(prevRow.habitDailyCompleted)
+          ? prevRow.habitDailyCompleted
+          : [],
       };
       editTr._rowData = newRowData;
       const isMobileCard = lpTokenHas(editTr, "time-ledger-mobile-card");
@@ -6834,6 +6913,7 @@ export function render(opts = {}) {
         memoTags,
         linkedExpenseIds: [],
         focus: focusValue,
+        habitDailyCompleted: [],
       };
       const tr = createRow(
         newRowData,
@@ -6902,13 +6982,19 @@ export function render(opts = {}) {
           const habitLedgerId = String(
             (editTr?._rowData?.id || addLedgerTr?._rowData?.id || "").trim(),
           );
-          upsertHabitTrackerLogWithDailyState(
+          replaceHabitTrackerLogDailyCompleted(
             dailyInfoSubmit.storageKey,
             dailyInfoSubmit.kpiId,
             normalizedDateRaw,
-            { completed },
+            completed,
             isUuid(habitLedgerId) ? habitLedgerId : undefined,
           );
+          if (editTr?._rowData) {
+            editTr._rowData.habitDailyCompleted = completed;
+          }
+          if (addLedgerTr?._rowData) {
+            addLedgerTr._rowData.habitDailyCompleted = completed;
+          }
         }
       }
       if (addCtx) requestUsageListScrollToBottomOnce();

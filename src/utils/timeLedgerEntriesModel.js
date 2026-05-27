@@ -8,6 +8,7 @@ import { lpSaveDebug } from "./lpSaveDebug.js";
 import { getActiveClientStorageUserId } from "./clientStorageScope.js";
 import {
   readAllRowsFromIdb,
+  readTimeLedgerRowsLocalMirrorSync,
   writeAllRowsToIdb,
   purgeTimeLedgerIdbForUser,
   TIME_LEDGER_STORAGE_KEY,
@@ -101,28 +102,84 @@ function schedulePersistTimeLedgerRowsToDisk() {
   }, 350);
 }
 
+function applyTimeLedgerRowsToMemory(rows) {
+  const arr = Array.isArray(rows) ? rows : [];
+  const { rows: withIds, dirty } = ensureTimeLedgerEntryIds(arr);
+  _ledgerRowsMem = withIds;
+  if (dirty) schedulePersistTimeLedgerRowsToDisk();
+}
+
+function dispatchTimeLedgerRowsHydratedFromIdb() {
+  try {
+    if (typeof document !== "undefined") {
+      document.dispatchEvent(
+        new CustomEvent("calendar-time-rows-updated", {
+          detail: { fromIdbHydrate: true },
+        }),
+      );
+    }
+  } catch (_) {}
+}
+
 /**
- * 앱 본 화면(mountApp) 전에 await. 로그인 계정 캐시를 메모리로 복구(없으면 빈 배열).
+ * mountApp 직전: localStorage 미러만 동기 로드(IndexedDB open 대기 없음).
+ * @returns {boolean} 미러에서 1건 이상 복구했으면 true
+ */
+export function hydrateTimeLedgerFromLocalMirrorForBoot() {
+  const uid = getActiveClientStorageUserId();
+  if (!uid) {
+    _ledgerRowsMem = [];
+    return false;
+  }
+  try {
+    const rows = readTimeLedgerRowsLocalMirrorSync(uid);
+    applyTimeLedgerRowsToMemory(rows);
+    return rows.length > 0;
+  } catch (_) {
+    if (_ledgerRowsMem == null) _ledgerRowsMem = [];
+    return false;
+  }
+}
+
+async function hydrateTimeLedgerFromIdbAuthoritative() {
+  const uid = getActiveClientStorageUserId();
+  if (!uid) {
+    _ledgerRowsMem = [];
+    return;
+  }
+  let prevSig = "";
+  try {
+    prevSig = JSON.stringify(_ledgerRowsMem || []);
+  } catch (_) {}
+  try {
+    const rows = await readAllRowsFromIdb(uid);
+    applyTimeLedgerRowsToMemory(rows);
+  } catch (_) {
+    if (_ledgerRowsMem == null) _ledgerRowsMem = [];
+  }
+  let nextSig = "";
+  try {
+    nextSig = JSON.stringify(_ledgerRowsMem || []);
+  } catch (_) {}
+  if (prevSig !== nextSig) dispatchTimeLedgerRowsHydratedFromIdb();
+}
+
+/**
+ * IndexedDB 기준 전체 복구(백그라운드). mountApp 은 await 하지 않음.
  */
 export function ensureTimeLedgerStorageReady() {
   if (!_storageReadyPromise) {
-    _storageReadyPromise = (async () => {
-      const uid = getActiveClientStorageUserId();
-      if (!uid) {
-        _ledgerRowsMem = [];
-        return;
-      }
-      try {
-        const rows = await readAllRowsFromIdb(uid);
-        const { rows: withIds, dirty } = ensureTimeLedgerEntryIds(rows);
-        _ledgerRowsMem = withIds;
-        if (dirty) schedulePersistTimeLedgerRowsToDisk();
-      } catch (_) {
-        _ledgerRowsMem = [];
-      }
-    })();
+    _storageReadyPromise = hydrateTimeLedgerFromIdbAuthoritative();
   }
   return _storageReadyPromise;
+}
+
+/**
+ * 앱 진입: 미러로 즉시 메모리 채운 뒤 IDB 정합은 백그라운드.
+ */
+export function prepareTimeLedgerStorageForBoot() {
+  hydrateTimeLedgerFromLocalMirrorForBoot();
+  void ensureTimeLedgerStorageReady();
 }
 
 /** 계정 전환: 메모리만 비우고 스토리지 ready 플래그 리셋 */
@@ -289,6 +346,24 @@ export function splitUnhealthyMealMemoFromDb(memo) {
   return { mealDetail, feedback: rest.trim() };
 }
 
+/** 과제 기록 모달 매일할일 체크 [{ id, text }] */
+function normalizeHabitDailyCompletedForRow(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const t of raw) {
+    if (!t || typeof t !== "object") continue;
+    const id = String(t.id || "").trim();
+    const text = String(t.text || "").trim();
+    const key = id || `text:${text}`;
+    if (!id && !text) continue;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ id: id || key, text: text || id });
+  }
+  return out;
+}
+
 export function localTimeLedgerRowToDbPayload(userId, row) {
   const entry_date = normalizeEntryDate(row.date);
   if (!entry_date) return null;
@@ -329,6 +404,9 @@ export function localTimeLedgerRowToDbPayload(userId, row) {
     meal_detail: String(row.mealDetail || "").trim(),
     memo_tags: memoTagsClean,
     linked_expense_ids,
+    habit_daily_completed: normalizeHabitDailyCompletedForRow(
+      row.habitDailyCompleted,
+    ),
   };
 }
 
@@ -371,6 +449,9 @@ export function dbRowToLocalTimeLedgerRow(db) {
     mealDetail,
     memoTags: memoTagsClean,
     linkedExpenseIds,
+    habitDailyCompleted: normalizeHabitDailyCompletedForRow(
+      db.habit_daily_completed,
+    ),
     /** Supabase updated_at — 병합 시 last-write-wins */
     /** Supabase updated_at — 서버 스냅샷·동기화 표시용 */
     serverUpdatedAt:
@@ -446,10 +527,37 @@ export function applyTimeLedgerServerRangeSnapshot(
   const serverLocals = serverRowsFiltered.map((r) =>
     dbRowToLocalTimeLedgerRow(r),
   );
-  const { rows: insideFromServer } = ensureTimeLedgerEntryIds(serverLocals);
+  const { rows: insideFromServerRaw } = ensureTimeLedgerEntryIds(serverLocals);
   const { rows: localWithIds } = ensureTimeLedgerEntryIds(
     readTimeLedgerEntriesRaw(),
   );
+  const localById = new Map(
+    localWithIds
+      .map((r) => [String(r?.id || "").trim(), r])
+      .filter(([id]) => id),
+  );
+  const insideFromServer = insideFromServerRaw.map((serverRow) => {
+    const id = String(serverRow?.id || "").trim();
+    const local = id ? localById.get(id) : null;
+    if (!local) return serverRow;
+    const serverHabit = Array.isArray(serverRow.habitDailyCompleted)
+      ? serverRow.habitDailyCompleted
+      : [];
+    const localHabit = Array.isArray(local.habitDailyCompleted)
+      ? local.habitDailyCompleted
+      : [];
+    if (serverHabit.length === 0 && localHabit.length > 0) {
+      return {
+        ...serverRow,
+        habitDailyCompleted: localHabit,
+        localModifiedAt:
+          typeof local.localModifiedAt === "number"
+            ? local.localModifiedAt
+            : Date.now(),
+      };
+    }
+    return serverRow;
+  });
   const outside = localWithIds.filter(
     (r) => !rowEntryDateInInclusiveRange(r, rs, re),
   );

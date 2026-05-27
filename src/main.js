@@ -39,7 +39,11 @@ import {
   applyTaskCategoryColors,
 } from "./utils/todoSettings.js";
 import { showToast } from "./utils/showToast.js";
-import { ensureTimeLedgerStorageReady } from "./utils/timeLedgerEntriesModel.js";
+import { prepareTimeLedgerStorageForBoot, resetTimeLedgerMemoryForAccountSwitch } from "./utils/timeLedgerEntriesModel.js";
+import {
+  migrateAllRegisteredLegacyLocalStorage,
+  setActiveClientStorageUserId,
+} from "./utils/clientStorageScope.js";
 import { flushAllPendingTimeDailyBudgetSync } from "./utils/timeDailyBudgetSupabase.js";
 import {
   hasPasswordRecoveryUrlHint,
@@ -78,19 +82,39 @@ function scheduleBackgroundSubscriptionGateAfterPrefsPull() {
  */
 async function prepareTimeLedgerStorageForCurrentSession() {
   if (!supabase) {
-    await ensureTimeLedgerStorageReady();
+    prepareTimeLedgerStorageForBoot();
     return;
   }
+
+  let cachedUid = "";
+  try {
+    cachedUid = localStorage.getItem("lp_last_auth_uid") || "";
+  } catch (_) {}
+
+  if (cachedUid) {
+    setActiveClientStorageUserId(cachedUid);
+    migrateAllRegisteredLegacyLocalStorage(cachedUid);
+    prepareTimeLedgerStorageForBoot();
+  }
+
   const {
     data: { session },
   } = await getSupabaseSession();
   const uid = session?.user?.id;
   if (!uid) {
-    await ensureTimeLedgerStorageReady();
+    if (!cachedUid) prepareTimeLedgerStorageForBoot();
     return;
   }
+
+  if (uid !== cachedUid) {
+    resetTimeLedgerMemoryForAccountSwitch();
+    await ensureClientStorageForAuthUser(uid);
+    prepareTimeLedgerStorageForBoot();
+    return;
+  }
+
   await ensureClientStorageForAuthUser(uid);
-  await ensureTimeLedgerStorageReady();
+  if (!cachedUid) prepareTimeLedgerStorageForBoot();
 }
 
 let lpAppMounted = false;
