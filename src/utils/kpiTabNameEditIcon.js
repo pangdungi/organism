@@ -1,47 +1,52 @@
 /**
- * 꿈·건강·행복·부수입 등 KPI 상위 탭 — 활성 탭에만 삽입.
- * 활성 탭 이름 수정 모달 열기용 — 인라인 SVG(currentColor + kpi-dream.css)
+ * 꿈·건강·행복·부수입 등 KPI — 목표·카드·활성 탭 수정 버튼
+ * 아이콘: public/toolbaricons/kpi-edit-modify.png (대화창 첨부 ellipsis-vertical)
+ * 색: kpi-dream.css `.dream-tab-edit` currentColor (#c4c9d1 → hover #94a3b8)
  */
-export const KPI_TAB_EDIT_PENCIL_HTML = `
-<button type="button" class="dream-tab-edit" title="이름 수정" aria-label="이름 수정">
-  <svg class="dream-tab-edit-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="14" height="14" aria-hidden="true">
-    <path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-  </svg>
-</button>`;
 
-/** KPI 카드 우측 상단 — 탭 연필과 동일 SVG·`.dream-tab-edit` 스타일, 위치만 `.dream-kpi-card-edit` */
-export const KPI_CARD_EDIT_PENCIL_HTML = `
-<button type="button" class="dream-kpi-card-edit dream-tab-edit" title="KPI 수정" aria-label="KPI 수정">
-  <svg class="dream-tab-edit-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="14" height="14" aria-hidden="true">
-    <path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-  </svg>
-</button>`;
+const KPI_EDIT_MODIFY_ICON_HTML = `<span class="dream-tab-edit-icon dream-tab-edit-icon-mask" aria-hidden="true"></span>`;
 
-/** 꿈 목표 목록 카드 — KPI 카드 연필과 동일 클래스·스타일 */
-export const DREAM_GOAL_EDIT_PENCIL_HTML = `
-<button type="button" class="dream-kpi-card-edit dream-tab-edit" title="꿈 목표 수정" aria-label="꿈 목표 수정">
-  <svg class="dream-tab-edit-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="14" height="14" aria-hidden="true">
-    <path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-  </svg>
+function kpiEditButtonHtml(className, title, ariaLabel) {
+  return `<button type="button" class="${className}" title="${title}" aria-label="${ariaLabel}">
+  ${KPI_EDIT_MODIFY_ICON_HTML}
 </button>`;
+}
 
-export const HEALTH_GOAL_EDIT_PENCIL_HTML = `
-<button type="button" class="dream-kpi-card-edit dream-tab-edit" title="건강 목표 수정" aria-label="건강 목표 수정">
-  <svg class="dream-tab-edit-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="14" height="14" aria-hidden="true">
-    <path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-  </svg>
-</button>`;
+/** KPI 상위 탭 — 활성 탭 이름 수정 */
+export const KPI_TAB_EDIT_PENCIL_HTML = kpiEditButtonHtml(
+  "dream-tab-edit",
+  "이름 수정",
+  "이름 수정",
+);
 
-export const HAPPINESS_GOAL_EDIT_PENCIL_HTML = `
-<button type="button" class="dream-kpi-card-edit dream-tab-edit" title="행복 목표 수정" aria-label="행복 목표 수정">
-  <svg class="dream-tab-edit-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="14" height="14" aria-hidden="true">
-    <path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-  </svg>
-</button>`;
+/** KPI 카드 우측 상단 */
+export const KPI_CARD_EDIT_PENCIL_HTML = kpiEditButtonHtml(
+  "dream-kpi-card-edit dream-tab-edit",
+  "KPI 수정",
+  "KPI 수정",
+);
 
-export const SIDEINCOME_GOAL_EDIT_PENCIL_HTML = `
-<button type="button" class="dream-kpi-card-edit dream-tab-edit" title="부수입 목표 수정" aria-label="부수입 목표 수정">
-  <svg class="dream-tab-edit-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="14" height="14" aria-hidden="true">
-    <path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-  </svg>
-</button>`;
+/** 꿈 목표 목록 카드 */
+export const DREAM_GOAL_EDIT_PENCIL_HTML = kpiEditButtonHtml(
+  "dream-kpi-card-edit dream-tab-edit",
+  "꿈 목표 수정",
+  "꿈 목표 수정",
+);
+
+export const HEALTH_GOAL_EDIT_PENCIL_HTML = kpiEditButtonHtml(
+  "dream-kpi-card-edit dream-tab-edit",
+  "건강 목표 수정",
+  "건강 목표 수정",
+);
+
+export const HAPPINESS_GOAL_EDIT_PENCIL_HTML = kpiEditButtonHtml(
+  "dream-kpi-card-edit dream-tab-edit",
+  "행복 목표 수정",
+  "행복 목표 수정",
+);
+
+export const SIDEINCOME_GOAL_EDIT_PENCIL_HTML = kpiEditButtonHtml(
+  "dream-kpi-card-edit dream-tab-edit",
+  "부수입 목표 수정",
+  "부수입 목표 수정",
+);

@@ -2019,8 +2019,52 @@
 }
 
 .calendar-event-bubble-category,
+.calendar-event-bubble-type,
 .calendar-event-bubble-name {
   margin: 0 1rem 0.85rem;
+}
+
+.calendar-event-bubble-type-seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.calendar-event-bubble-type-btn {
+  min-height: 2.75rem;
+  margin: 0;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--lp-modal-navy-muted);
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.25;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease,
+    color 0.12s ease;
+}
+
+.calendar-event-bubble-type-btn:hover {
+  border-color: rgba(30, 77, 123, 0.35);
+  color: var(--lp-modal-navy);
+}
+
+.calendar-event-bubble-type-btn.active {
+  border-color: rgba(30, 77, 123, 0.55);
+  background: rgba(30, 77, 123, 0.08);
+  color: var(--lp-modal-navy);
+  font-weight: 600;
+}
+
+.calendar-event-bubble-type-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(30, 77, 123, 0.12);
 }
 
 .calendar-event-bubble-label {
@@ -2057,17 +2101,6 @@
 .calendar-event-bubble-input:focus {
   border-color: rgba(30, 77, 123, 0.45);
   box-shadow: 0 0 0 3px rgba(30, 77, 123, 0.12);
-}
-
-.calendar-event-bubble-schedule-check {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin-top: 0.45rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--lp-modal-navy-muted);
-  cursor: pointer;
 }
 
 .calendar-event-bubble-save {

@@ -1559,7 +1559,7 @@ export function render() {
       document.body.style.overflow = "";
     };
     closeBtn.addEventListener("click", close);
-    backdrop.addEventListener("click", close);
+    /* 배경 탭으로 닫지 않음 (닫기는 ×만) */
     document.body.style.overflow = "hidden";
     document.body.appendChild(modal);
     closeBtn.focus();

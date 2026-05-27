@@ -1620,12 +1620,29 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
         <label class="calendar-event-bubble-label">카테고리</label>
         <div class="calendar-event-bubble-category-mount"></div>
       </div>
+      <div class="calendar-event-bubble-type">
+        <span class="calendar-event-bubble-label" id="calendar-event-bubble-type-label">형식</span>
+        <div
+          class="calendar-event-bubble-type-seg"
+          role="group"
+          aria-labelledby="calendar-event-bubble-type-label"
+        >
+          <button
+            type="button"
+            class="calendar-event-bubble-type-btn active"
+            data-item-type="todo"
+            aria-pressed="true"
+          >할일</button>
+          <button
+            type="button"
+            class="calendar-event-bubble-type-btn"
+            data-item-type="schedule"
+            aria-pressed="false"
+          >일정</button>
+        </div>
+      </div>
       <div class="calendar-event-bubble-name">
         <input type="text" name="calendar-event-name" class="calendar-event-bubble-input" placeholder="할일을 입력하세요" />
-        <label class="calendar-event-bubble-schedule-check">
-          <input type="checkbox" class="calendar-event-bubble-schedule-checkbox" />
-          <span>일정으로 변경</span>
-        </label>
       </div>
       <button type="button" class="calendar-event-bubble-save">추가</button>
     </div>
@@ -1659,9 +1676,19 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
     .querySelector(".calendar-event-bubble-close")
     .addEventListener("click", close);
 
-  const scheduleCheckbox = bubble.querySelector(
-    ".calendar-event-bubble-schedule-checkbox",
-  );
+  const typeSeg = bubble.querySelector(".calendar-event-bubble-type-seg");
+  let selectedItemType = "todo";
+  typeSeg?.querySelectorAll(".calendar-event-bubble-type-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      selectedItemType =
+        btn.dataset.itemType === "schedule" ? "schedule" : "todo";
+      typeSeg.querySelectorAll(".calendar-event-bubble-type-btn").forEach((b) => {
+        const on = b === btn;
+        b.classList.toggle("active", on);
+        b.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+    });
+  });
 
   bubble
     .querySelector(".calendar-event-bubble-save")
@@ -1671,8 +1698,7 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
       ).trim();
       const categoryId = categoryDd._getValue?.() || CALENDAR_CATEGORIES[0]?.id || "dream";
       if (!name) return;
-      const asSchedule = !!scheduleCheckbox?.checked;
-      const itemType = asSchedule ? "schedule" : "todo";
+      const itemType = selectedItemType;
       if (
         !addSectionTodoFromCalendarBubble(categoryId, dateKey, name, itemType)
       ) {

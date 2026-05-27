@@ -352,9 +352,6 @@ export function render(opts = {}) {
     const stampPopover = modal.querySelector(
       ".work-schedule-type-settings-stamp-edit-popover",
     );
-    const stampEditBackdrop = modal.querySelector(
-      ".work-schedule-type-settings-stamp-edit-backdrop",
-    );
     const stampEditName = modal.querySelector(
       ".work-schedule-type-settings-stamp-edit-name",
     );
@@ -461,7 +458,6 @@ export function render(opts = {}) {
     }
     document.addEventListener("keydown", onTypeSettingsModalKeyDown);
 
-    stampEditBackdrop.addEventListener("click", closeStampEditPopover);
     stampEditDismiss.addEventListener("click", closeStampEditPopover);
     stampEditDelete.addEventListener("click", () => {
       if (!stampEditOrigName || DEFAULT_TYPE_NAMES.has(stampEditOrigName))

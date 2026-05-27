@@ -68,7 +68,7 @@ export function showKpiTodoAddModal(opts = {}) {
     const form = modal.querySelector("form");
 
     modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", () => finish(null));
-    modal.querySelector('[data-legacy~="time-task-setup-backdrop"]').addEventListener("click", () => finish(null));
+    /* 배경 탭으로 닫지 않음 — 입력 중 실수 닫힘 방지 (닫기는 ×만) */
     form.addEventListener("submit", (e) => {
       e.preventDefault();
       const val = (input.value || "").trim();
@@ -77,13 +77,6 @@ export function showKpiTodoAddModal(opts = {}) {
         return;
       }
       finish(val);
-    });
-
-    modal.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        finish(null);
-      }
     });
 
     document.body.appendChild(modal);

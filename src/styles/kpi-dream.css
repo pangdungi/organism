@@ -254,6 +254,15 @@
   flex-shrink: 0;
 }
 
+.lp-kpi-dream-page .dream-tab-edit-icon-mask {
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  background-color: currentColor;
+  -webkit-mask: url("/toolbaricons/kpi-edit-modify.png") center / contain no-repeat;
+  mask: url("/toolbaricons/kpi-edit-modify.png") center / contain no-repeat;
+}
+
 .lp-kpi-dream-page .dream-tab:hover {
   color: #374151;
   background: rgba(30, 77, 123, 0.07);
@@ -540,14 +549,16 @@
 
 .lp-kpi-dream-page .dream-kpi-card-inner {
   position: relative;
-  padding: 0.95rem 1rem 1rem;
+  --dream-kpi-card-pad-top: 0.95rem;
+  --dream-kpi-card-pad-x: 1rem;
+  padding: var(--dream-kpi-card-pad-top) var(--dream-kpi-card-pad-x) 1rem;
 }
 
-/* 카드 연필: 시각은 `.dream-tab-edit` 공유, 우측 상단 고정만 여기서 */
+/* 카드 수정: inner 패딩과 동일 inset → 콘텐츠 영역 우상단 */
 .lp-kpi-dream-page .dream-kpi-card-inner > .dream-kpi-card-edit.dream-tab-edit {
   position: absolute;
-  top: 0.55rem;
-  right: 0.55rem;
+  top: var(--dream-kpi-card-pad-top);
+  right: var(--dream-kpi-card-pad-x);
   z-index: 1;
 }
 

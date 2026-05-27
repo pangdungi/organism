@@ -4813,9 +4813,6 @@ export function render(opts = {}) {
   el.appendChild(usageRangeModal);
 
   (function initUsageRangeModal() {
-    const usageRangeBackdrop = usageRangeModal.querySelector(
-      '[data-legacy~="time-task-setup-backdrop"]',
-    );
     const usageRangeClose = usageRangeModal.querySelector(
       '[data-legacy~="time-task-setup-header"] [data-legacy~="time-task-setup-close"]',
     );
@@ -4839,7 +4836,7 @@ export function render(opts = {}) {
     }
 
     footerDateBtn?.addEventListener("click", openUsageRangeModal);
-    usageRangeBackdrop?.addEventListener("click", closeUsageRangeModal);
+    /* 배경 탭으로 닫지 않음 (닫기는 ×·적용만) */
     usageRangeClose?.addEventListener("click", closeUsageRangeModal);
     usageRangeApplyBtn?.addEventListener("click", () => {
       const fallback = getLedgerFilterTodayYmd();

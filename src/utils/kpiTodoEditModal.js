@@ -72,7 +72,7 @@ export function showKpiTodoEditModal(opts = {}) {
     const deleteBtn = modal.querySelector(".dream-kpi-todo-edit-modal-delete");
 
     modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", () => finish(null));
-    modal.querySelector('[data-legacy~="time-task-setup-backdrop"]').addEventListener("click", () => finish(null));
+    /* 배경 탭으로 닫지 않음 — 입력 중 실수 닫힘 방지 (닫기는 ×만) */
 
     form.addEventListener("submit", (e) => {
       e.preventDefault();
@@ -87,13 +87,6 @@ export function showKpiTodoEditModal(opts = {}) {
     deleteBtn.addEventListener("click", async () => {
       if (!(await confirmKpiTodoDelete())) return;
       finish({ action: "delete" });
-    });
-
-    modal.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        finish(null);
-      }
     });
 
     document.body.appendChild(modal);

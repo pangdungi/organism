@@ -186,19 +186,10 @@ export function mountTimeAddTaskIconPicker(mountEl) {
 
     renderIconGrid();
 
-    modalEl
-      .querySelector('[data-legacy~="time-task-setup-backdrop"]')
-      ?.addEventListener("click", closeIconModal);
+    /* 배경 탭으로 닫지 않음 — 아이콘 선택 중 실수 닫힘 방지 (닫기는 ×만) */
     modalEl
       .querySelector('[data-legacy~="time-task-setup-close"]')
       ?.addEventListener("click", closeIconModal);
-    modalEl.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        e.stopPropagation();
-        closeIconModal();
-      }
-    });
     return modalEl;
   }
 
