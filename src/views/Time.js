@@ -104,6 +104,10 @@ import {
   lpTokenToggle,
   lpTokenHas,
 } from "../utils/timeLedgerClassPolicy.js";
+import {
+  isLpTabPullPending,
+  mountLpTabSyncLoading,
+} from "../utils/lpTabSyncLoadingUi.js";
 export { getTaskOptionByName };
 
 /** 모바일 과제 기록 FAB — TodoList ADD_TASK_ICON과 동일 */
@@ -2139,23 +2143,17 @@ export function getTodayTimeSummary() {
   };
 }
 
-/** 오늘(로컬 달력) 시간기록 행동가치 합 — 시간가계부와 동일 규칙(시급·생산성) */
+/** 오늘(로컬 달력) 시간기록 행동가치 합 — 시간가계부 카드와 동일(유효 시간·시급·생산성) */
 export function getTodayTimeLedgerValueSum() {
   const todayKey = timeLedgerLocalTodayYmd();
   const rows = loadTimeRows().filter(
     (r) => (r.date || "").toString().slice(0, 10) === todayKey,
   );
-  let hourlyRate = 0;
-  try {
-    hourlyRate =
-      parseFloat(
-        String(readUserHourlyRateLocal() || "0").replace(
-          /,/g,
-          "",
-        ),
-      ) || 0;
-  } catch (_) {}
-  return calcPeriodValueFromFiltered(rows, hourlyRate);
+  const hourlyRate = readUserHourlyRateNumber();
+  return rows.reduce(
+    (sum, r) => sum + computeMobileCardPriceValue(r, hourlyRate),
+    0,
+  );
 }
 
 /**
@@ -8058,6 +8056,7 @@ export function render(opts = {}) {
     timelineWrap.appendChild(timelineList);
     cardsWrap.appendChild(timelineWrap);
     const showDayGroups = timeLedgerShouldShowDayGroups(rows);
+    const showSyncLoading = rows.length === 0 && isLpTabPullPending("time");
     const appendCardTo = (parent, d) => {
       const card = createMobileTimeCard(
         d,
@@ -8164,21 +8163,29 @@ export function render(opts = {}) {
     const showTimelineLedgerContent = timeLedgerLayoutView !== "timebox";
 
     if (showTimelineLedgerContent) {
+      if (showSyncLoading) {
+        cardsWrap.classList.add("time-ledger-mobile-cards--syncing");
+        mountLpTabSyncLoading(cardsWrap, "시간 기록 불러오는 중…");
+      }
       ledgerContainer.appendChild(cardsWrap);
     } else {
       const timeboxShell = document.createElement("div");
       timeboxShell.className = "time-ledger-timebox-view-shell";
       timeboxShell.setAttribute("aria-label", "타임박스 뷰");
       ledgerContainer.appendChild(timeboxShell);
-      const dayKey = usageHistoryRangeStartYmd;
-      const dayRows = rows.filter((r) => timeLedgerRowYmd(r) === dayKey);
-      mountTimeLedgerTimeboxView(timeboxShell, {
-        dayRows,
-        isMultiDay: timeLedgerFilterSpansMultipleDays(),
-        rangeStartYmd: usageHistoryRangeStartYmd,
-        rangeEndYmd: usageHistoryRangeEndYmd,
-        allRowsInRange: rows,
-      });
+      if (showSyncLoading) {
+        mountLpTabSyncLoading(timeboxShell, "시간 기록 불러오는 중…");
+      } else {
+        const dayKey = usageHistoryRangeStartYmd;
+        const dayRows = rows.filter((r) => timeLedgerRowYmd(r) === dayKey);
+        mountTimeLedgerTimeboxView(timeboxShell, {
+          dayRows,
+          isMultiDay: timeLedgerFilterSpansMultipleDays(),
+          rangeStartYmd: usageHistoryRangeStartYmd,
+          rangeEndYmd: usageHistoryRangeEndYmd,
+          allRowsInRange: rows,
+        });
+      }
     }
     contentWrap.appendChild(ledgerContainer);
 
@@ -8368,6 +8375,18 @@ export function render(opts = {}) {
     () => refreshTimeLedgerFromRemotePull(),
     { signal },
   );
+
+  function onLpTabPullSyncEvent(ev) {
+    const tabId = ev?.detail?.tabId;
+    if (tabId !== "time" || !el.isConnected) return;
+    syncTimeLedgerContent({ force: isLpTabPullPending("time") });
+  }
+  window.addEventListener("lp-tab-pull-pending", onLpTabPullSyncEvent, {
+    signal,
+  });
+  window.addEventListener("lp-tab-pull-settled", onLpTabPullSyncEvent, {
+    signal,
+  });
 
   return el;
 }

@@ -5,9 +5,16 @@
 import { showToast } from "./showToast.js";
 
 const DISMISS_KEY = "lp_pwa_install_dismissed";
+const INSTALL_WAIT_MS = 120000;
 
 /** @type {BeforeInstallPromptEvent | null} */
 let deferredPrompt = null;
+
+/** @type {"idle" | "prompting" | "downloading" | "done"} */
+let installPhase = "idle";
+let installWaitTimer = null;
+/** 설치 중 사용자가 배너만 닫은 경우 재표시 방지 */
+let installUiCollapsed = false;
 
 function isStandaloneDisplayMode() {
   try {
@@ -33,7 +40,6 @@ function isAndroidDevice() {
   return typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
 }
 
-/** 뷰포트가 아니라 기기 UA 기준 (모바일 Chrome·Safari 모두 포함) */
 function isMobileDevice() {
   if (typeof navigator === "undefined") return false;
   if (isIosDevice() || isAndroidDevice()) return true;
@@ -72,6 +78,9 @@ function markDismissed() {
 function shouldOfferInstallBanner() {
   if (isStandaloneDisplayMode()) return false;
   if (!isMobileDevice()) return false;
+  if (installPhase === "downloading" || installPhase === "prompting" || installPhase === "done") {
+    return !installUiCollapsed;
+  }
   if (wasDismissedRecently()) return false;
   return true;
 }
@@ -81,6 +90,43 @@ function isPageVisible(pageId) {
   if (!page) return false;
   const display = page.style.display;
   return display === "flex" || display === "block";
+}
+
+function clearInstallWaitTimer() {
+  if (installWaitTimer != null) {
+    clearTimeout(installWaitTimer);
+    installWaitTimer = null;
+  }
+}
+
+function resetInstallFlow() {
+  clearInstallWaitTimer();
+  installUiCollapsed = false;
+  installPhase = "idle";
+}
+
+function setInstallPhase(phase) {
+  installPhase = phase;
+  if (phase === "idle" || phase === "done") {
+    clearInstallWaitTimer();
+  }
+  if (phase === "downloading" || phase === "prompting") {
+    installUiCollapsed = false;
+  }
+  repaintInstallSurfaces();
+}
+
+function startInstallWaitTimer() {
+  clearInstallWaitTimer();
+  installWaitTimer = setTimeout(() => {
+    if (installPhase !== "downloading") return;
+    showToast(
+      "설치가 오래 걸리고 있어요",
+      "홈 화면에 Time is Price 아이콘이 생겼는지 확인해 주세요. 네트워크가 느리면 1~2분 걸릴 수 있어요.",
+    );
+    resetInstallFlow();
+    refreshLpPwaInstall();
+  }, INSTALL_WAIT_MS);
 }
 
 function ensureBodyInstallRoot() {
@@ -112,6 +158,30 @@ function hideAllInstallRoots() {
 }
 
 function getInstallInstructions() {
+  if (installPhase === "prompting") {
+    return {
+      title: "설치 확인 중",
+      desc: "브라우저 설치 창이 뜨면 「설치」를 눌러 주세요.",
+      busy: true,
+      statusText: "설치 창을 여는 중…",
+    };
+  }
+  if (installPhase === "downloading") {
+    return {
+      title: "앱 설치 중",
+      desc: "다운로드가 끝날 때까지 잠시만 기다려 주세요. 화면을 닫아도 설치는 계속됩니다.",
+      busy: true,
+      statusText: "설치 파일 받는 중…",
+    };
+  }
+  if (installPhase === "done") {
+    return {
+      title: "설치 완료",
+      desc: "홈 화면의 Time is Price 아이콘을 눌러 앱처럼 열 수 있어요.",
+      statusText: "설치가 완료되었습니다",
+    };
+  }
+
   const canNativePrompt = !!deferredPrompt;
   const ios = isIosDevice();
   const android = isAndroidDevice();
@@ -139,7 +209,7 @@ function getInstallInstructions() {
   if (android) {
     return {
       title: "앱 설치 / 홈 화면 추가",
-      desc: "① 주소창 오른쪽 ⊕(설치) 아이콘 또는 ② ⋮ 더보기 → 「앱 설치」·「홈 화면에 추가」를 선택해 주세요. 메뉴에 없으면 페이지를 30초 정도 사용한 뒤 새로고침해 보세요.",
+      desc: "① 주소창 오른쪽 ⊕(설치) 아이콘 또는 ② ⋮ 더보기 → 「앱 설치」·「홈 화면에 추가」를 선택해 주세요.",
     };
   }
   return {
@@ -148,16 +218,59 @@ function getInstallInstructions() {
   };
 }
 
+async function runNativeInstall() {
+  if (!deferredPrompt || installPhase === "prompting" || installPhase === "downloading") {
+    return;
+  }
+
+  setInstallPhase("prompting");
+  showToast("설치 창을 확인해 주세요", "브라우저 팝업에서 「설치」를 눌러 주세요.");
+
+  const promptEvent = deferredPrompt;
+  deferredPrompt = null;
+
+  try {
+    await promptEvent.prompt();
+    const { outcome } = await promptEvent.userChoice;
+
+    if (outcome === "accepted") {
+      installPhase = "downloading";
+      startInstallWaitTimer();
+      showToast(
+        "앱 설치 중입니다",
+        "완료까지 잠시만 기다려 주세요. 여러 번 누르지 않아도 됩니다.",
+      );
+      repaintInstallSurfaces();
+      return;
+    }
+
+    resetInstallFlow();
+    showToast("설치가 취소되었습니다", "다시 설치하려면 「앱 설치」를 눌러 주세요.");
+  } catch (_) {
+    resetInstallFlow();
+    showToast("설치를 시작하지 못했습니다", "잠시 후 다시 시도해 주세요.");
+  } finally {
+    refreshLpPwaInstall();
+  }
+}
+
 function buildInstallCard(opts = {}) {
   const { onDismiss, dismissLabel = "닫기" } = opts;
   const info = getInstallInstructions();
   const canNativePrompt = !!deferredPrompt;
+  const busy = !!info.busy;
+  const allowDismissWhileBusy = installPhase === "downloading" || installPhase === "done";
 
   const card = document.createElement("div");
   card.className = "lp-pwa-install-card";
+  if (busy) {
+    card.classList.add("lp-pwa-install-card--busy");
+    card.setAttribute("aria-busy", "true");
+  }
 
   const title = document.createElement("p");
   title.className = "lp-pwa-install-title";
+  title.id = "lp-pwa-install-modal-title";
   title.textContent = info.title;
 
   const desc = document.createElement("p");
@@ -167,62 +280,125 @@ function buildInstallCard(opts = {}) {
   card.appendChild(title);
   card.appendChild(desc);
 
+  if (info.statusText) {
+    const status = document.createElement("div");
+    status.className = "lp-pwa-install-status";
+    status.setAttribute("role", "status");
+    const text = document.createElement("span");
+    text.textContent = info.statusText;
+    const spinner = document.createElement("span");
+    spinner.className = "lp-pwa-install-spinner";
+    spinner.setAttribute("aria-hidden", "true");
+    status.appendChild(spinner);
+    status.appendChild(text);
+    card.appendChild(status);
+  }
+
   const actions = document.createElement("div");
   actions.className = "lp-pwa-install-actions";
 
-  if (info.showInstallBtn && canNativePrompt) {
+  if (info.showInstallBtn && canNativePrompt && installPhase === "idle") {
     const installBtn = document.createElement("button");
     installBtn.type = "button";
     installBtn.className = "lp-pwa-install-btn lp-pwa-install-btn--primary";
     installBtn.textContent = "앱 설치";
     installBtn.addEventListener("click", () => {
-      void (async () => {
-        if (!deferredPrompt) return;
-        try {
-          await deferredPrompt.prompt();
-          const { outcome } = await deferredPrompt.userChoice;
-          if (outcome === "accepted") {
-            hideAllInstallRoots();
-            closeLpPwaInstallHelpModal();
-          }
-        } catch (_) {}
-        deferredPrompt = null;
-        refreshLpPwaInstall();
-      })();
+      void runNativeInstall();
     });
     actions.appendChild(installBtn);
   }
 
-  if (info.showCopyUrl) {
+  if (info.showCopyUrl && installPhase === "idle") {
     const copyBtn = document.createElement("button");
     copyBtn.type = "button";
     copyBtn.className = "lp-pwa-install-btn lp-pwa-install-btn--primary";
     copyBtn.textContent = "주소 복사";
     copyBtn.addEventListener("click", () => {
       void (async () => {
+        copyBtn.disabled = true;
+        copyBtn.textContent = "복사 중…";
         const url = "https://timeisprice.com/";
         try {
           await navigator.clipboard.writeText(url);
-          showToast("주소를 복사했습니다. Safari에 붙여넣어 열어 주세요.");
+          showToast("주소를 복사했습니다", "Safari에 붙여넣어 열어 주세요.");
         } catch (_) {
           showToast(url);
+        } finally {
+          copyBtn.disabled = false;
+          copyBtn.textContent = "주소 복사";
         }
       })();
     });
     actions.appendChild(copyBtn);
   }
 
-  const dismissBtn = document.createElement("button");
-  dismissBtn.type = "button";
-  dismissBtn.className = "lp-pwa-install-btn lp-pwa-install-btn--ghost";
-  dismissBtn.textContent = dismissLabel;
-  dismissBtn.addEventListener("click", () => {
-    onDismiss?.();
-  });
-  actions.appendChild(dismissBtn);
+  if (!busy || allowDismissWhileBusy) {
+    const dismissBtn = document.createElement("button");
+    dismissBtn.type = "button";
+    dismissBtn.className = "lp-pwa-install-btn lp-pwa-install-btn--ghost";
+    dismissBtn.textContent =
+      installPhase === "downloading"
+        ? "닫기 (설치는 계속)"
+        : installPhase === "done"
+          ? "확인"
+          : dismissLabel;
+    dismissBtn.addEventListener("click", () => {
+      if (installPhase === "downloading") {
+        installUiCollapsed = true;
+        hideAllInstallRoots();
+        closeLpPwaInstallHelpModal();
+        showToast("백그라운드에서 설치 중", "완료되면 홈 화면 아이콘을 확인해 주세요.");
+        return;
+      }
+      if (installPhase === "done") {
+        resetInstallFlow();
+        hideAllInstallRoots();
+        closeLpPwaInstallHelpModal();
+        return;
+      }
+      markDismissed();
+      onDismiss?.();
+    });
+    actions.appendChild(dismissBtn);
+  }
 
-  card.appendChild(actions);
+  if (actions.childElementCount) card.appendChild(actions);
   return card;
+}
+
+function mountInstallCard(root, cardOpts) {
+  root.innerHTML = "";
+  root.appendChild(buildInstallCard(cardOpts));
+}
+
+function repaintInstallSurfaces() {
+  if (installPhase === "downloading" || installPhase === "prompting" || installPhase === "done") {
+    if (installUiCollapsed && installPhase === "downloading") return;
+
+    const root = ensureBodyInstallRoot();
+    root.hidden = false;
+    mountInstallCard(root, {
+      dismissLabel: deferredPrompt ? "나중에" : "닫기",
+      onDismiss: () => {
+        markDismissed();
+        hideAllInstallRoots();
+      },
+    });
+
+    const panel = helpModalEl?.querySelector(".lp-pwa-install-modal__panel");
+    if (panel) {
+      panel.innerHTML = "";
+      panel.appendChild(
+        buildInstallCard({
+          dismissLabel: "닫기",
+          onDismiss: closeLpPwaInstallHelpModal,
+        }),
+      );
+    }
+    return;
+  }
+
+  renderInstallBanner(getActiveInstallRoot());
 }
 
 function renderInstallBanner(root) {
@@ -238,16 +414,13 @@ function renderInstallBanner(root) {
 
   hideAllInstallRoots();
   root.hidden = false;
-  root.innerHTML = "";
-  root.appendChild(
-    buildInstallCard({
-      dismissLabel: deferredPrompt ? "나중에" : "닫기",
-      onDismiss: () => {
-        markDismissed();
-        hideAllInstallRoots();
-      },
-    }),
-  );
+  mountInstallCard(root, {
+    dismissLabel: deferredPrompt ? "나중에" : "닫기",
+    onDismiss: () => {
+      markDismissed();
+      hideAllInstallRoots();
+    },
+  });
 }
 
 function getActiveInstallRoot() {
@@ -293,13 +466,26 @@ export function showLpPwaInstallHelp() {
     }),
   );
   wrap.appendChild(panel);
-  wrap.querySelector(".lp-pwa-install-modal__backdrop")?.addEventListener("click", closeLpPwaInstallHelpModal);
+  wrap.querySelector(".lp-pwa-install-modal__backdrop")?.addEventListener("click", () => {
+    if (installPhase === "downloading") {
+      installUiCollapsed = true;
+      hideAllInstallRoots();
+      closeLpPwaInstallHelpModal();
+      showToast("백그라운드에서 설치 중", "완료되면 홈 화면 아이콘을 확인해 주세요.");
+      return;
+    }
+    closeLpPwaInstallHelpModal();
+  });
   document.body.appendChild(wrap);
   helpModalEl = wrap;
   document.body.classList.add("lp-pwa-install-modal-open");
 }
 
 export function refreshLpPwaInstall() {
+  if (installPhase === "prompting" || installPhase === "downloading" || installPhase === "done") {
+    repaintInstallSurfaces();
+    return;
+  }
   renderInstallBanner(getActiveInstallRoot());
 }
 
@@ -307,13 +493,23 @@ export function initLpPwaInstall() {
   window.addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    refreshLpPwaInstall();
+    if (installPhase === "idle") refreshLpPwaInstall();
   });
 
   window.addEventListener("appinstalled", () => {
+    clearInstallWaitTimer();
     deferredPrompt = null;
-    hideAllInstallRoots();
-    closeLpPwaInstallHelpModal();
+    installPhase = "done";
+    installUiCollapsed = false;
+    showToast("설치가 완료되었습니다", "홈 화면에서 Time is Price 아이콘을 눌러 열어 주세요.");
+    repaintInstallSurfaces();
+    setTimeout(() => {
+      if (installPhase === "done") {
+        resetInstallFlow();
+        hideAllInstallRoots();
+        closeLpPwaInstallHelpModal();
+      }
+    }, 5000);
   });
 
   window.addEventListener("resize", () => {

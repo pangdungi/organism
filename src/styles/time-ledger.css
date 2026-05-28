@@ -1045,6 +1045,16 @@
   /* 소제목 아래 목록 — 좌우는 시트 안에서 통일 */
   padding: 0.65rem 0.75rem 1rem;
 }
+
+.time-ledger-view .time-ledger-mobile-cards--syncing {
+  justify-content: center;
+  min-height: 10rem;
+}
+
+.time-ledger-view .time-ledger-timebox-view-shell .lp-tab-sync-loading {
+  min-height: 10rem;
+}
+
 /* 조회기간 여러 날 — 날짜 줄만 연하늘 */
 .time-ledger-view [data-legacy~="time-ledger-day-group-header"],
 [data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-day-group-header"] {

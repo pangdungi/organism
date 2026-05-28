@@ -21,34 +21,27 @@
 
 /** 앱 전체 배경 — index.html 의 html·body 에 `class="lp-app-bg"` */
 .lp-app-bg {
-  background: #fff;
+  --lp-shell-chrome-bg: #ffffff;
+  background-color: #fff;
+  background-image: none;
+}
+
+/**
+ * 오늘(메인)·로그인: 상단 세이프 존까지 네이비.
+ * 그라데이션(+1px)은 Android/iOS에서 상태줄 아래 회색·흰 hairline 으로 보여 제거.
+ */
+html.lp-top-safe-chrome-navy.lp-app-bg,
+body.lp-top-safe-chrome-navy.lp-app-bg,
+html.lp-auth-gate-chrome.lp-app-bg,
+body.lp-auth-gate-chrome.lp-app-bg {
+  --lp-shell-chrome-bg: #1e4d7b;
+  background-color: #1e4d7b;
+  background-image: none;
 }
 
 /** 앱 기동·세션 복구 중: 로그인 폼·자동완성이 스플래시 뒤에 보이지 않게 */
 html.lp-auth-booting #app > .page {
   display: none !important;
-}
-
-/**
- * 오늘(메인): 상단 세이프 존까지 네이비 그라데이션.
- * 로그인·비번재설정 게이트는 lp-auth-gate-chrome(전체 네이비).
- */
-html.lp-top-safe-chrome-navy.lp-app-bg,
-body.lp-top-safe-chrome-navy.lp-app-bg {
-  /* iOS 바운스 시 background-color 가 세이프 존까지 비치므로 네이비 — 그라데이션은 본문 흰 전환용 */
-  background-color: #1e4d7b;
-  background-image: linear-gradient(
-    #1e4d7b 0,
-    #1e4d7b calc(env(safe-area-inset-top, 0px) + 1px),
-    #fff calc(env(safe-area-inset-top, 0px) + 1px),
-    #fff 100%
-  );
-}
-
-html.lp-auth-gate-chrome.lp-app-bg,
-body.lp-auth-gate-chrome.lp-app-bg {
-  background-color: #1e4d7b;
-  background-image: none;
 }
 
 html {
@@ -69,7 +62,7 @@ body {
   width: 100%;
 }
 
-/* 로그인 후 메인 셸: 상단 세이프만 · PWA=inset:0+svh, 브라우저=JS px(svh 폴백) */
+/* 로그인 후 메인 셸: 상단 세이프는 .app-page 한 곳만 — #signin-page padding 은 hairline 유발 */
 #signin-page {
   position: fixed;
   top: 0;
@@ -78,20 +71,21 @@ body {
   width: 100%;
   flex-direction: column;
   box-sizing: border-box;
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: 0;
   padding-bottom: 0;
   height: var(--lp-app-shell-h, 100svh);
   max-height: var(--lp-app-shell-h, 100svh);
   min-height: 0;
   overflow: hidden;
   overscroll-behavior: none;
-  /* Android: theme-color 네이비와 본문 경계선(흰 띠) 방지 — 오늘 탭은 html 클래스와 함께 네이비 */
-  background-color: #fff;
+  border: none;
+  box-shadow: none;
+  background-color: var(--lp-shell-chrome-bg, #fff);
 }
 
 html.lp-top-safe-chrome-navy.lp-app-bg #signin-page,
 html.lp-auth-gate-chrome.lp-app-bg #signin-page {
-  background-color: #1e4d7b;
+  background-color: var(--lp-shell-chrome-bg, #1e4d7b);
 }
 
 /**
@@ -152,6 +146,7 @@ html.lp-auth-gate-chrome.lp-app-bg #signin-page {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background-color: inherit;
 }
 
 /* --- App.js: .app-page > #app-screen-inner --- */
@@ -163,6 +158,11 @@ html.lp-auth-gate-chrome.lp-app-bg #signin-page {
   width: 100%;
   max-width: 100%;
   overflow: hidden;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  background-color: var(--lp-shell-chrome-bg, #fff);
+  border: none;
+  box-shadow: none;
 }
 
 #app-screen-inner {
@@ -172,6 +172,7 @@ html.lp-auth-gate-chrome.lp-app-bg #signin-page {
   flex-direction: column;
   width: 100%;
   overflow: hidden;
+  background-color: inherit;
 }
 
 /* 푸터 탭: 본문이 푸터 상단 보더까지 채우도록(상단 safe-area를 gap으로 넣지 않음 — PWA에서 전 탭 본문이 ~1cm 위에서 끊김) */
@@ -204,7 +205,7 @@ html.lp-auth-gate-chrome.lp-app-bg #signin-page {
   overflow: auto;
   -webkit-overflow-scrolling: touch;
   width: 100%;
-  /* 노치 패딩: #signin-page 가 상단 세이프 처리 → 여기서는 내용 간격만 */
+  /* 세이프 inset: .app-page padding-top — 여기서는 좌우만 */
   padding-top: 0;
   padding-bottom: 0;
   padding-left: var(--lp-safe-left);
@@ -221,7 +222,7 @@ html.lp-auth-gate-chrome.lp-app-bg #signin-page {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  /* 상단 살짝 여유 — 약 20vh (작은 화면·큰 화면 상한); 세이프는 #signin-page padding-top */
+  /* 상단 살짝 여유 — 약 20vh (작은 화면·큰 화면 상한); 세이프는 .app-page padding-top */
   padding-top: clamp(1.15rem, 20vh, 5rem);
 }
 
@@ -488,6 +489,88 @@ html.lp-auth-gate-chrome.lp-app-bg #signin-page {
 .app-home-menu-launcher > .app-home-menu-balance .app-home-menu-balance-meta {
   color: rgba(255, 255, 255, 0.72);
   text-shadow: 0 1px 2px rgba(0, 30, 60, 0.18);
+}
+
+.app-home-menu-balance-amount--loading {
+  min-height: 2.35rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: rgba(30, 77, 123, 0.58);
+}
+
+.app-home-menu-launcher > .app-home-menu-balance .app-home-menu-balance-amount--loading {
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 2px rgba(0, 30, 60, 0.22);
+}
+
+.app-home-menu-balance-loading-text {
+  display: inline-block;
+  animation: app-home-menu-balance-loading-pulse 1.35s ease-in-out infinite;
+}
+
+@keyframes app-home-menu-balance-loading-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+.app-home-menu-launcher-card--syncing {
+  pointer-events: none;
+}
+
+.app-home-menu-launcher-card--syncing .app-home-menu-launcher-btn {
+  opacity: 0.72;
+}
+
+.lp-tab-sync-loading.dream-kpi-map-sync-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  min-height: 9rem;
+  padding: 2rem 1rem 2.5rem;
+  box-sizing: border-box;
+}
+
+.lp-tab-sync-loading-text.dream-kpi-map-sync-loading-text {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #64748b;
+  letter-spacing: -0.01em;
+}
+
+.lp-tab-sync-loading .dream-kpi-map-sync-loading-bar {
+  width: min(12rem, 72%);
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e8f0f8;
+}
+
+.lp-tab-sync-loading .dream-kpi-map-sync-loading-bar-fill {
+  width: 42%;
+  height: 100%;
+  border-radius: inherit;
+  background: #1e4d7b;
+  animation: dream-kpi-map-sync-loading-indeterminate 1.15s ease-in-out infinite;
+}
+
+@keyframes dream-kpi-map-sync-loading-indeterminate {
+  0% {
+    transform: translateX(-120%);
+  }
+
+  100% {
+    transform: translateX(320%);
+  }
 }
 
 .app-home-menu-launcher-title {

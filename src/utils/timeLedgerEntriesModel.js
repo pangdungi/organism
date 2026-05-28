@@ -147,13 +147,17 @@ async function hydrateTimeLedgerFromIdbAuthoritative() {
     _ledgerRowsMem = [];
     return;
   }
+  const memBeforeHydrate = Array.isArray(_ledgerRowsMem) ? _ledgerRowsMem : [];
   let prevSig = "";
   try {
-    prevSig = JSON.stringify(_ledgerRowsMem || []);
+    prevSig = JSON.stringify(memBeforeHydrate);
   } catch (_) {}
   try {
     const rows = await readAllRowsFromIdb(uid);
-    applyTimeLedgerRowsToMemory(rows);
+    /* IDB open 중 서버 pull이 메모리를 채운 뒤 빈 IDB로 덮어쓰면 홈「시간 가치」0 고착 */
+    if (rows.length > 0 || memBeforeHydrate.length === 0) {
+      applyTimeLedgerRowsToMemory(rows);
+    }
   } catch (_) {
     if (_ledgerRowsMem == null) _ledgerRowsMem = [];
   }

@@ -74,6 +74,41 @@ body.lp-pwa-install-modal-open {
   color: #475569;
 }
 
+.lp-pwa-install-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.65rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #1e4d7b;
+}
+
+.lp-pwa-install-spinner {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid rgba(30, 77, 123, 0.22);
+  border-top-color: #1e4d7b;
+  border-radius: 50%;
+  animation: lp-pwa-install-spin 0.75s linear infinite;
+}
+
+@keyframes lp-pwa-install-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.lp-pwa-install-card--busy .lp-pwa-install-btn--primary {
+  display: none;
+}
+
+.lp-pwa-install-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .lp-pwa-install-actions {
   display: flex;
   flex-wrap: wrap;

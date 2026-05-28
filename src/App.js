@@ -76,6 +76,12 @@ import { initMobileVisualViewportKeyboardInset } from "./utils/mobileViewportKey
 import { syncLpAppShellViewportHeight } from "./utils/lpAppShellViewport.js";
 import { logTodoScheduleTabOnNavigate } from "./utils/lpTabDataSourceLog.js";
 import { syncLpTopSafeChromeFromTab } from "./utils/syncLpHomeTimeSafeTopChrome.js";
+import { ensureTimeLedgerStorageReady } from "./utils/timeLedgerEntriesModel.js";
+import {
+  setLpTabPullPending,
+  clearLpTabPullPending,
+  isLpTabPullPending,
+} from "./utils/lpTabSyncLoadingUi.js";
 
 /** 상위 탭 메타(아이콘·메뉴 런처 구역 순서) */
 const TABS = [
@@ -269,9 +275,12 @@ async function pullDataForActiveTab(tabId, opts = {}) {
   void opts;
   switch (tabId) {
     case "home": {
-      /* 메뉴「오늘의 시간 가치」만 — 할일·일간예산·과제 목록은 각 탭 진입 시 */
+      /* 오늘의 시간 가치 = 오늘 entry + 시급(나의 계정) */
       const ymd = timeLedgerLocalTodayYmd();
-      await pullTimeLedgerEntriesForDateRange(ymd, ymd);
+      await Promise.all([
+        pullTimeLedgerEntriesForDateRange(ymd, ymd),
+        pullUserPrefsFromSupabase(),
+      ]);
       break;
     }
     case "calendar":
@@ -488,6 +497,10 @@ export async function mountApp(container) {
       _tabSwitchTimer = null;
       void (async () => {
         const targetTabId = currentTabId;
+        if (isKpiAppTabId(targetTabId)) setKpiTabPullPending(targetTabId);
+        else if (targetTabId === "home" || targetTabId === "time") {
+          setLpTabPullPending(targetTabId);
+        }
         /* 그 외 탭: 메뉴·사이드바로 시간가계부에 들어올 때는 항상 오늘 구간(세션 피커 초기화) 후 렌더 */
         if (targetTabId === "time") {
           try {
@@ -510,10 +523,7 @@ export async function mountApp(container) {
             window.__lpCalendarGridPrefetchedForTabSwitch = true;
           } catch (_) {}
         }
-        const pullPromise = (() => {
-          if (isKpiAppTabId(targetTabId)) setKpiTabPullPending(targetTabId);
-          return pullDataForActiveTab(targetTabId, { fromBoot: false });
-        })();
+        const pullPromise = pullDataForActiveTab(targetTabId, { fromBoot: false });
         if (targetTabId === "home") {
           const panelEl = main.querySelector(".app-tab-panel");
           if (
@@ -523,11 +533,15 @@ export async function mountApp(container) {
           ) {
             syncAppFooterVisibility();
             syncLpTopSafeChromeFromTab(targetTabId);
+            try {
+              window.__lpHomeMenuSoftRefresh?.();
+            } catch (_) {}
             void (async () => {
               try {
                 await pullPromise;
               } catch (_) {}
               if (currentTabId !== targetTabId) return;
+              clearLpTabPullPending("home");
               try {
                 await syncAdminMenuVisibility();
               } catch (_) {}
@@ -561,10 +575,14 @@ export async function mountApp(container) {
               window.__lpCalendarGridPrefetchedForTabSwitch = false;
             } catch (_) {}
             if (isKpiAppTabId(targetTabId)) clearKpiTabPullPending(targetTabId);
+            if (targetTabId === "home" || targetTabId === "time") {
+              clearLpTabPullPending(targetTabId);
+            }
             return;
           }
         /* 시간가계부: pull 뒤 통째 renderMain 하면 화면이 한 번 비워졌다 다시 그려져 깜빡임 — 같은 인스턴스에서만 소프트 갱신 */
         if (targetTabId === "time") {
+          clearLpTabPullPending("time");
           try {
             window.__lpTimeLedgerSoftRefresh?.();
           } catch (_) {}
@@ -582,6 +600,7 @@ export async function mountApp(container) {
             window.__lpIdeaSoftRefresh?.();
           } catch (_) {}
         } else if (targetTabId === "home") {
+          clearLpTabPullPending("home");
           try {
             await syncAdminMenuVisibility();
           } catch (_) {}
@@ -633,12 +652,13 @@ export async function mountApp(container) {
   }
 
   function renderHomeMenuLauncher() {
-    if (homeMenuLauncherEl) {
+    if (homeMenuLauncherEl?.isConnected) {
       window.__lpHomeMenuSoftRefresh?.();
       bindHomeMenuLauncherAdminBtn(homeMenuLauncherEl);
       void syncAdminMenuVisibility();
       return homeMenuLauncherEl;
     }
+    homeMenuLauncherEl = null;
 
     launcherAdminBtn = null;
 
@@ -660,6 +680,23 @@ export async function mountApp(container) {
     balanceMeta.className = "app-home-menu-balance-meta";
 
     function paintHomeMenuBalance() {
+      if (isLpTabPullPending("home")) {
+        balanceAmount.className =
+          "app-home-menu-balance-amount app-home-menu-balance-amount--loading";
+        balanceAmount.setAttribute("aria-busy", "true");
+        balanceAmount.setAttribute("aria-label", "오늘의 시간 가치 불러오는 중");
+        balanceAmount.replaceChildren();
+        const loadingText = document.createElement("span");
+        loadingText.className = "app-home-menu-balance-loading-text";
+        loadingText.textContent = "불러오는 중…";
+        balanceAmount.appendChild(loadingText);
+        balanceMeta.textContent = "오늘 시간 기록을 가져오고 있어요";
+        card.classList.add("app-home-menu-launcher-card--syncing");
+        return;
+      }
+      card.classList.remove("app-home-menu-launcher-card--syncing");
+      balanceAmount.className = "app-home-menu-balance-amount";
+      balanceAmount.removeAttribute("aria-busy");
       const sum = getTodayTimeLedgerValueSum();
       const parts = getHomeMenuLedgerKrwParts(sum);
       balanceAmount.replaceChildren();
@@ -937,6 +974,18 @@ export async function mountApp(container) {
     window.__lpSyncWatchHelp = printSyncWatchHelp;
   }
 
+  /** 시급·시간기록 pull/IDB 복구 후 메인「오늘의 시간 가치」 재계산 */
+  if (typeof document !== "undefined" && !window.__lpHomeMenuBalanceListenersBound) {
+    window.__lpHomeMenuBalanceListenersBound = true;
+    const refreshHomeMenuBalance = () => {
+      try {
+        window.__lpHomeMenuSoftRefresh?.();
+      } catch (_) {}
+    };
+    document.addEventListener("app-hourly-rate-changed", refreshHomeMenuBalance);
+    document.addEventListener("calendar-time-rows-updated", refreshHomeMenuBalance);
+  }
+
   /* 서버 pull 은 상위 탭 전환(setActiveTab)·최초 진입 시에만 수행. 포커스 복귀 등에서는 pull 하지 않음. */
 
   logTabSync("boot", { tab: currentTabId, phase: "render_local_then_pull" });
@@ -944,15 +993,20 @@ export async function mountApp(container) {
   appScreen.appendChild(footerNav);
   appPage.appendChild(appScreen);
   container.appendChild(appPage);
-  /* 로컬·메모리로 먼저 한 프레임 그림 — 스플래시·서버 pull 대기와 분리 */
+  const bootTabIdForRender = currentTabId;
+  if (isKpiAppTabId(bootTabIdForRender)) setKpiTabPullPending(bootTabIdForRender);
+  else if (bootTabIdForRender === "home" || bootTabIdForRender === "time") {
+    setLpTabPullPending(bootTabIdForRender);
+  }
+  if (bootTabIdForRender === "time") {
+    try {
+      resetTimeLedgerSessionFilterToToday();
+    } catch (_) {}
+  }
+  /* 로컬·메모리로 먼저 한 프레임 그림 — pull 중에는 로딩 UI 표시 */
   renderMain(main);
   void (async () => {
     const bootTabId = currentTabId;
-    if (bootTabId === "time") {
-      try {
-        resetTimeLedgerSessionFilterToToday();
-      } catch (_) {}
-    }
     if (bootTabId === "diary") {
       try {
         window.__lpDiaryLedgerPrefetchedForTabSwitch = true;
@@ -963,9 +1017,9 @@ export async function mountApp(container) {
         window.__lpCalendarGridPrefetchedForTabSwitch = true;
       } catch (_) {}
     }
-    if (isKpiAppTabId(bootTabId)) setKpiTabPullPending(bootTabId);
     let pullResult;
     try {
+      await ensureTimeLedgerStorageReady();
       const [, pr] = await Promise.all([
         syncAdminMenuVisibility(),
         pullDataForActiveTab(bootTabId, { fromBoot: true }),
@@ -977,9 +1031,14 @@ export async function mountApp(container) {
         window.__lpDiaryLedgerPrefetchedForTabSwitch = false;
         window.__lpCalendarGridPrefetchedForTabSwitch = false;
       } catch (_) {}
+      if (bootTabId === "home" || bootTabId === "time") {
+        clearLpTabPullPending(bootTabId);
+      }
+      if (isKpiAppTabId(bootTabId)) clearKpiTabPullPending(bootTabId);
       return;
     }
     if (bootTabId === "time") {
+      clearLpTabPullPending("time");
       try {
         window.__lpTimeLedgerSoftRefresh?.();
       } catch (_) {}
@@ -999,6 +1058,7 @@ export async function mountApp(container) {
     ) {
       kpiSoftRefreshAfterPull(bootTabId, pullResult);
     } else if (bootTabId === "home") {
+      clearLpTabPullPending("home");
       /* 메뉴 런처: 시간기록 pull 후 로컬 캐시가 채워지므로 잔액만 소프트 갱신(두 번째 renderMain은 아이콘 깜빡임 유발) */
       try {
         await syncAdminMenuVisibility();
