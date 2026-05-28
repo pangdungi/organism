@@ -462,7 +462,7 @@ export async function mountApp(container) {
   footerBackBtn.title = "오늘(메인)으로";
   footerBackBtn.setAttribute("aria-label", "오늘(메인)으로");
   footerBackBtn.innerHTML =
-    '<img src="/toolbaricons/caret-left-circle.svg" alt="" width="22" height="22" aria-hidden="true" />';
+    '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m14 7-6 5 6 5"/><circle cx="12" cy="12" r="10"/></g></svg>';
   footerBackBtn.addEventListener("click", () => {
     try {
       if (currentTabId === "dream" && window.__lpDreamFooterBack?.()) return;

@@ -117,16 +117,13 @@ const TIME_LEDGER_ADD_FAB_SVG =
 
 /** 상단 툴바: 라벨 없는 단순 + (설정·필터 아이콘과 동일 20px 박스) */
 const TIME_LEDGER_ADD_PLUS_ICON_SVG =
-  '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>';
+  '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m12 8v8"/><path d="m8 12h8"/><path d="m18 22h-12c-2.209 0-4-1.791-4-4v-12c0-2.209 1.791-4 4-4h12c2.209 0 4 1.791 4 4v12c0 2.209-1.791 4-4 4z"/></g></svg>';
 
 /** 툴바 설정·필터: img 필터 대신 +와 동일 currentColor (버튼 color #dc2626 상속) */
 const TIME_LEDGER_TOOLBAR_SETTINGS_ICON_SVG =
   '<svg data-legacy="time-btn-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m19.845 13.561c.1-.505.155-1.027.155-1.561s-.055-1.056-.155-1.561l1.806-1.489c.502-.414.632-1.132.307-1.696l-.869-1.508c-.325-.564-1.011-.811-1.62-.582l-2.198.825c-.779-.684-1.689-1.218-2.691-1.559l-.385-2.316c-.108-.643-.663-1.114-1.314-1.114h-1.738c-.651 0-1.206.471-1.313 1.114l-.386 2.316c-1.002.341-1.912.875-2.691 1.559l-2.198-.825c-.61-.228-1.295.018-1.62.582l-.87 1.508c-.325.564-.195 1.282.307 1.696l1.806 1.489c-.1.505-.155 1.026-.155 1.561s.055 1.056.155 1.561l-1.806 1.489c-.502.414-.632 1.132-.307 1.696l.869 1.508c.325.564 1.011.811 1.62.582l2.198-.825c.779.684 1.689 1.218 2.691 1.559l.385 2.316c.109.643.664 1.114 1.315 1.114h1.738c.651 0 1.206-.471 1.313-1.114l.385-2.316c1.002-.341 1.913-.875 2.691-1.559l2.198.825c.609.229 1.295-.017 1.62-.582l.869-1.508c.325-.564.196-1.282-.307-1.696z"/><circle cx="12.012" cy="12" r="3"/></g></svg>';
 
-const TIME_LEDGER_TOOLBAR_FILTER_ICON_SVG =
-  '<svg data-legacy="time-btn-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" d="m20.988 2h-17.976c-1.664 0-2.606 1.899-1.595 3.216l7.583 9.784v7l4.853-2.101c.731-.318 1.147-1.037 1.147-1.832v-3.067l7.583-9.784c1.011-1.317.069-3.216-1.595-3.216z"/></svg>';
-
-/** 앱 푸터 날짜 아이콘 — settings/필터/+ 와 동일 currentColor (main.css .app-footer-icon-btn) */
+/** 앱 푸터 날짜(조회) 아이콘 — settings/+ 와 동일 currentColor (main.css .app-footer-icon-btn) */
 const TIME_LEDGER_FOOTER_DATE_ICON_SVG =
   '<svg data-legacy="time-btn-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></g></svg>';
 
@@ -4656,23 +4653,11 @@ export function render(opts = {}) {
   lpTokenAdd(taskSetupBtn, "time-ledger-toolbar-icon-btn");
   lpTokenAdd(taskSetupBtn, APP_FOOTER_ICON_BTN_CLASS);
 
-  const taskSelectBtn = document.createElement("button");
-  taskSelectBtn.type = "button";
-  lpSetClasses(
-    taskSelectBtn,
-    "time-task-setup-btn time-filter-task-select-btn time-ledger-toolbar-icon-btn",
-  );
-  taskSelectBtn.id = "time-task-select-btn";
-  taskSelectBtn.title = "과제 선택";
-  taskSelectBtn.setAttribute("aria-label", "과제 선택");
-  taskSelectBtn.innerHTML = TIME_LEDGER_TOOLBAR_FILTER_ICON_SVG;
-  lpTokenAdd(taskSelectBtn, APP_FOOTER_ICON_BTN_CLASS);
-
   const footerDateBtn = document.createElement("button");
   footerDateBtn.type = "button";
   lpSetClasses(footerDateBtn, "time-ledger-footer-date-btn");
-  footerDateBtn.title = "시간 사용내역 조회 기간";
-  footerDateBtn.setAttribute("aria-label", "시간 사용내역 조회 기간");
+  footerDateBtn.title = "조회 기간·과제 필터";
+  footerDateBtn.setAttribute("aria-label", "조회 기간·과제 필터");
   footerDateBtn.innerHTML = TIME_LEDGER_FOOTER_DATE_ICON_SVG;
   lpTokenAdd(footerDateBtn, APP_FOOTER_ICON_BTN_CLASS);
 
@@ -4859,12 +4844,12 @@ export function render(opts = {}) {
     });
   }
 
-  /** 설정·필터·과제 기록(+) — 앱 푸터 공통: appFooterShell + main.css; 시간가계부 전용 래핑은 time-ledger.css */
+  /** 설정·과제 기록(+)·조회 — 앱 푸터 공통: appFooterShell + main.css; 시간가계부 전용 래핑은 time-ledger.css */
   function syncAppFooterLedgerActions() {
     ensureHourlyAddFooterButton();
     const slot = getAppFooterActionsSlot();
     if (!slot) return;
-    const nodes = [taskSetupBtn, taskSelectBtn, hourlyAddSlot, footerDateBtn];
+    const nodes = [taskSetupBtn, hourlyAddSlot, footerDateBtn];
     for (const node of nodes) {
       if (node && node.parentElement !== slot) slot.appendChild(node);
     }
@@ -4903,55 +4888,87 @@ export function render(opts = {}) {
   taskSetupModal.hidden = true;
   el.appendChild(taskSetupModal);
 
-  const taskSelectModal = document.createElement("div");
-  lpSetClasses(taskSelectModal, "time-task-setup-modal time-task-select-modal");
-  taskSelectModal.innerHTML = `
+  const usageRangeModal = document.createElement("div");
+  lpSetClasses(
+    usageRangeModal,
+    "time-task-setup-modal time-usage-range-modal time-task-select-modal",
+  );
+  usageRangeModal.innerHTML = `
     <div data-legacy="time-task-setup-backdrop"></div>
-    <div data-legacy="time-task-setup-panel time-task-select-panel">
+    <div class="time-task-setup-panel todo-list-modal-panel" data-legacy="time-usage-range-panel time-task-select-panel work-schedule-day-entry-modal-panel">
       <div data-legacy="time-task-setup-header">
-        <h3 data-legacy="time-task-setup-title">과제 선택</h3>
+        <h3 data-legacy="time-task-setup-title">조회</h3>
         <button type="button" data-legacy="time-task-setup-close" aria-label="닫기">&times;</button>
       </div>
-      <div data-legacy="time-task-setup-body">
-        <div data-legacy="time-task-select-actions">
-          <button type="button" data-legacy="time-task-select-all-btn">전체 선택</button>
-          <button type="button" data-legacy="time-task-select-none-btn">전체 해제</button>
+      <div data-legacy="time-task-setup-body time-usage-range-body">
+        <div class="time-task-log-field">
+          <label>시작</label>
+          <div class="time-task-log-date-native-wrap">
+            <input type="date" class="todo-task-edit-start" data-usage-range-start aria-label="시작" />
+            <span class="time-task-log-date-overlay" aria-hidden="true"></span>
+          </div>
         </div>
-        <div data-legacy="time-task-select-list" data-task-select-list></div>
+        <div class="time-task-log-field">
+          <label>마감</label>
+          <div class="time-task-log-date-native-wrap">
+            <input type="date" class="todo-task-edit-due" data-usage-range-end aria-label="마감" />
+            <span class="time-task-log-date-overlay" aria-hidden="true"></span>
+          </div>
+        </div>
+        <div class="time-usage-range-task-section">
+          <label class="time-usage-range-task-label">과제</label>
+          <div data-legacy="time-task-select-actions">
+            <button type="button" data-legacy="time-task-select-all-btn">전체 선택</button>
+            <button type="button" data-legacy="time-task-select-none-btn">전체 해제</button>
+          </div>
+          <div data-legacy="time-task-select-list" data-task-select-list></div>
+        </div>
       </div>
-      <div data-legacy="time-task-select-footer time-task-log-footer">
+      <div class="time-task-log-footer" data-legacy="time-usage-range-footer time-task-select-footer">
         <button type="button" data-legacy="time-task-select-clear-btn">필터 해제</button>
-        <button type="button" data-legacy="time-task-select-apply-btn">적용</button>
+        <button type="button" class="time-task-log-submit" data-legacy="time-usage-range-apply" data-usage-range-apply>조회</button>
       </div>
-    </div>
-  `;
-  taskSelectModal.hidden = true;
-  el.appendChild(taskSelectModal);
+    </div>`;
+  usageRangeModal.hidden = true;
+  el.appendChild(usageRangeModal);
 
-  (function initTaskSelectModal() {
-    const taskSelectList = taskSelectModal.querySelector(
+  (function initUsageRangeModal() {
+    const taskSelectList = usageRangeModal.querySelector(
       "[data-task-select-list]",
     );
-    const taskSelectBackdrop = taskSelectModal.querySelector(
-      '[data-legacy~="time-task-setup-backdrop"]',
-    );
-    const taskSelectClose = taskSelectModal.querySelector(
+    const usageRangeClose = usageRangeModal.querySelector(
       '[data-legacy~="time-task-setup-header"] [data-legacy~="time-task-setup-close"]',
     );
-    const taskSelectAllBtn = taskSelectModal.querySelector(
+    const usageRangeStartInp = usageRangeModal.querySelector(
+      "[data-usage-range-start]",
+    );
+    const usageRangeEndInp = usageRangeModal.querySelector(
+      "[data-usage-range-end]",
+    );
+    const usageRangeApplyBtn = usageRangeModal.querySelector(
+      "[data-usage-range-apply]",
+    );
+    const taskSelectAllBtn = usageRangeModal.querySelector(
       '[data-legacy~="time-task-select-all-btn"]',
     );
-    const taskSelectNoneBtn = taskSelectModal.querySelector(
+    const taskSelectNoneBtn = usageRangeModal.querySelector(
       '[data-legacy~="time-task-select-none-btn"]',
     );
-    const taskSelectApplyBtn = taskSelectModal.querySelector(
-      '[data-legacy~="time-task-select-apply-btn"]',
-    );
-    const taskSelectClearBtn = taskSelectModal.querySelector(
+    const taskSelectClearBtn = usageRangeModal.querySelector(
       '[data-legacy~="time-task-select-clear-btn"]',
     );
 
-    function openTaskSelectModal() {
+    function syncFooterDateBtnActiveState() {
+      if (!footerDateBtn) return;
+      lpTokenToggle(
+        footerDateBtn,
+        "is-active",
+        selectedTaskNamesForFilter != null &&
+          selectedTaskNamesForFilter.length > 0,
+      );
+    }
+
+    function populateTaskSelectList() {
       const rows = getFullRowsForFilter(true);
       const names = [
         ...new Set(rows.map((r) => (r.taskName || "").trim()).filter(Boolean)),
@@ -4978,117 +4995,62 @@ export function render(opts = {}) {
           return `<label data-legacy="time-task-select-item"><input type="checkbox" data-legacy="time-task-select-cb" data-task-name="${attrEsc}" ${selectedSet === null || selectedSet.has(name) ? "checked" : ""} /><span data-legacy="time-task-select-item-text"><span data-legacy="time-task-select-item-name-part">${nameHtml}</span>${builtinMark}${kpiMark}</span></label>`;
         })
         .join("");
-      if (names.length === 0)
+      if (names.length === 0) {
         taskSelectList.innerHTML =
           '<p data-legacy="time-task-select-empty">기록된 과제가 없습니다.</p>';
-      taskSelectModal.hidden = false;
+      }
     }
 
-    function closeTaskSelectModal() {
-      taskSelectModal.hidden = true;
+    function openUsageRangeModal() {
+      if (usageRangeStartInp) {
+        usageRangeStartInp.value = usageHistoryRangeStartYmd;
+      }
+      if (usageRangeEndInp) {
+        usageRangeEndInp.value = usageHistoryRangeEndYmd;
+      }
+      populateTaskSelectList();
+      initModalNativeDateFieldsIn(usageRangeModal);
+      bindModalNativeDateRange(usageRangeStartInp, usageRangeEndInp);
+      usageRangeModal.hidden = false;
     }
 
-    taskSelectBtn?.addEventListener("click", openTaskSelectModal);
-    taskSelectClose?.addEventListener("click", closeTaskSelectModal);
+    function closeUsageRangeModal() {
+      usageRangeModal.hidden = true;
+    }
+
+    function applyTaskFilterFromModal() {
+      const checked = [
+        ...usageRangeModal.querySelectorAll(
+          '[data-legacy~="time-task-select-cb"]:checked',
+        ),
+      ].map((cb) => cb.dataset.taskName || "");
+      selectedTaskNamesForFilter = checked.length === 0 ? null : checked;
+      syncFooterDateBtnActiveState();
+    }
+
+    footerDateBtn?.addEventListener("click", openUsageRangeModal);
+    usageRangeClose?.addEventListener("click", closeUsageRangeModal);
     taskSelectAllBtn?.addEventListener("click", () => {
-      taskSelectModal
+      usageRangeModal
         .querySelectorAll('[data-legacy~="time-task-select-cb"]')
         .forEach((cb) => {
           cb.checked = true;
         });
     });
     taskSelectNoneBtn?.addEventListener("click", () => {
-      taskSelectModal
+      usageRangeModal
         .querySelectorAll('[data-legacy~="time-task-select-cb"]')
         .forEach((cb) => {
           cb.checked = false;
         });
     });
-    taskSelectApplyBtn?.addEventListener("click", () => {
-      const checked = [
-        ...taskSelectModal.querySelectorAll(
-          '[data-legacy~="time-task-select-cb"]:checked',
-        ),
-      ].map((cb) => cb.dataset.taskName || "");
-      selectedTaskNamesForFilter = checked.length === 0 ? null : checked;
-      closeTaskSelectModal();
-      onFilterChange();
-      requestTimeLedgerPullForUserQueryChange("task_filter_apply");
-      if (taskSelectBtn)
-        lpTokenToggle(
-          taskSelectBtn,
-          "is-active",
-          selectedTaskNamesForFilter != null &&
-            selectedTaskNamesForFilter.length > 0,
-        );
-    });
     taskSelectClearBtn?.addEventListener("click", () => {
       selectedTaskNamesForFilter = null;
-      closeTaskSelectModal();
+      populateTaskSelectList();
       onFilterChange();
       requestTimeLedgerPullForUserQueryChange("task_filter_clear");
-      lpTokenRemove(taskSelectBtn, "is-active");
+      syncFooterDateBtnActiveState();
     });
-  })();
-
-  const usageRangeModal = document.createElement("div");
-  lpSetClasses(usageRangeModal, "time-task-setup-modal time-usage-range-modal");
-  usageRangeModal.innerHTML = `
-    <div data-legacy="time-task-setup-backdrop"></div>
-    <div class="time-task-setup-panel todo-list-modal-panel" data-legacy="time-usage-range-panel work-schedule-day-entry-modal-panel">
-      <div data-legacy="time-task-setup-header">
-        <h3 data-legacy="time-task-setup-title">조회 기간</h3>
-        <button type="button" data-legacy="time-task-setup-close" aria-label="닫기">&times;</button>
-      </div>
-      <div data-legacy="time-task-setup-body time-usage-range-body">
-        <div class="time-task-log-field">
-          <label>시작</label>
-          <div class="time-task-log-date-native-wrap">
-            <input type="date" class="todo-task-edit-start" data-usage-range-start aria-label="시작" />
-            <span class="time-task-log-date-overlay" aria-hidden="true"></span>
-          </div>
-        </div>
-        <div class="time-task-log-field">
-          <label>마감</label>
-          <div class="time-task-log-date-native-wrap">
-            <input type="date" class="todo-task-edit-due" data-usage-range-end aria-label="마감" />
-            <span class="time-task-log-date-overlay" aria-hidden="true"></span>
-          </div>
-        </div>
-      </div>
-      <div class="time-task-log-footer" data-legacy="time-usage-range-footer">
-        <button type="button" class="time-task-log-submit" data-legacy="time-usage-range-apply" data-usage-range-apply>조회</button>
-      </div>
-    </div>`;
-  usageRangeModal.hidden = true;
-  el.appendChild(usageRangeModal);
-
-  (function initUsageRangeModal() {
-    const usageRangeClose = usageRangeModal.querySelector(
-      '[data-legacy~="time-task-setup-header"] [data-legacy~="time-task-setup-close"]',
-    );
-    const usageRangeStartInp = usageRangeModal.querySelector(
-      "[data-usage-range-start]",
-    );
-    const usageRangeEndInp = usageRangeModal.querySelector("[data-usage-range-end]");
-    const usageRangeApplyBtn = usageRangeModal.querySelector(
-      "[data-usage-range-apply]",
-    );
-
-    function openUsageRangeModal() {
-      if (usageRangeStartInp) usageRangeStartInp.value = usageHistoryRangeStartYmd;
-      if (usageRangeEndInp) usageRangeEndInp.value = usageHistoryRangeEndYmd;
-      initModalNativeDateFieldsIn(usageRangeModal);
-      bindModalNativeDateRange(usageRangeStartInp, usageRangeEndInp);
-      usageRangeModal.hidden = false;
-    }
-    function closeUsageRangeModal() {
-      usageRangeModal.hidden = true;
-    }
-
-    footerDateBtn?.addEventListener("click", openUsageRangeModal);
-    /* 배경 탭으로 닫지 않음 (닫기는 ×·적용만) */
-    usageRangeClose?.addEventListener("click", closeUsageRangeModal);
     usageRangeApplyBtn?.addEventListener("click", () => {
       const fallback = getLedgerFilterTodayYmd();
       let s = String(usageRangeStartInp?.value || "").trim();
@@ -5102,12 +5064,15 @@ export function render(opts = {}) {
       }
       usageHistoryRangeStartYmd = s;
       usageHistoryRangeEndYmd = e;
+      applyTaskFilterFromModal();
       closeUsageRangeModal();
       persistActiveViewTimeFilterToSession();
       requestUsageListScrollToBottomOnce();
       onFilterChange();
       requestTimeLedgerPullForUserQueryChange("usage_range_modal");
     });
+
+    syncFooterDateBtnActiveState();
   })();
 
   const addTaskModal = document.createElement("div");
@@ -8271,7 +8236,6 @@ export function render(opts = {}) {
 
   function updateFilterBarVisibility() {
     if (taskSetupBtn) taskSetupBtn.style.display = "";
-    if (taskSelectBtn) taskSelectBtn.style.display = "";
   }
 
   function getFilteredRows(rows) {

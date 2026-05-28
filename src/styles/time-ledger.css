@@ -1536,9 +1536,15 @@
   max-width: 26rem;
   width: 100%;
   min-width: 0;
+  max-height: min(92vh, 36rem);
+  display: flex;
+  flex-direction: column;
 }
 [data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] [data-legacy~="time-usage-range-body"] {
   min-width: 0;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 [data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] .time-task-log-field {
   margin-bottom: 0.85rem;
@@ -1565,4 +1571,25 @@
   min-width: 0;
   max-width: 100%;
   justify-content: flex-start;
+}
+
+[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] .time-usage-range-task-section {
+  margin-top: 0.35rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(30, 61, 93, 0.1);
+  min-width: 0;
+}
+
+[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] .time-usage-range-task-label {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--lp-modal-navy, #1e3d5d);
+}
+
+[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] [data-legacy~="time-task-select-list"] {
+  max-height: min(40vh, 14rem);
+  overflow-y: auto;
+  margin-top: 0.35rem;
 }
