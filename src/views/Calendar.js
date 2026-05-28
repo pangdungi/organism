@@ -87,6 +87,11 @@ import {
   APP_FOOTER_ICON_BTN_CLASS,
   getAppFooterActionsSlot,
 } from "../utils/appFooterShell.js";
+import {
+  openWorkScheduleTypeSettingsModal,
+  openCalendarStampTodoModal,
+  WORK_SCHEDULE_SETTINGS_ICON_SVG,
+} from "./WorkSchedule.js";
 function isStoredCalendarSectionId(sectionId) {
   const sid = String(sectionId || "").trim();
   return isCalendarFixedSectionKey(sid) || sid.startsWith("custom-");
@@ -94,6 +99,8 @@ function isStoredCalendarSectionId(sectionId) {
 
 /** 모바일 일정 탭: 푸터 서브뷰 전환 버튼(탭 이탈 시 clearAppFooterActions로 제거) */
 const LP_SCHEDULE_CAL_SUBVIEW_FOOTER_ATTR = "data-lp-schedule-cal-subview";
+const LP_SCHEDULE_CAL_STAMP_SETTINGS_FOOTER_ATTR =
+  "data-lp-schedule-cal-stamp-settings";
 
 const LP_SCHEDULE_SUBVIEW_FOOTER_ICONS = {
   monthly: "/toolbaricons/calendar-alt.svg",
@@ -1594,6 +1601,21 @@ function addSectionTodoFromCalendarBubble(
   return false;
 }
 
+/** 캘린더 날짜 버블: 스탬프 선택 → 해당 날짜 할일 추가(스탬프 캘린더 테이블 X) */
+function openCalendarDayStampTodoModal(dateKey, onAfterSave) {
+  void openCalendarStampTodoModal(dateKey, {
+    onSaved: ({ dateKey: dk, name }) => {
+      if (addSectionTodoFromCalendarBubble(dk, dk, name)) {
+        try {
+          onAfterSave?.();
+        } catch (_) {}
+        return;
+      }
+      alert("할 일을 추가하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    },
+  });
+}
+
 /** 할일 추가 버블(날짜 칸 클릭): document 바깥 클릭 시 닫기 — 리스너 정리용 */
 let _calendarEventBubbleOutsideHandler = null;
 
@@ -1760,6 +1782,7 @@ function createCalendarDayExpandBubble(
   const {
     positionBelow = false,
     onAdd = null,
+    onAddStamp = null,
     /** 할일·일정 항목에서 수정 모달 저장/삭제 후 그리드 갱신 */
     onAfterTaskEdit = null,
     /** 연간 뷰 등: × 숨김 */
@@ -1809,9 +1832,18 @@ function createCalendarDayExpandBubble(
   `;
     })
     .join("");
-  const addBtnHtml = onAdd
-    ? '<button type="button" class="calendar-day-expand-add-btn">할일/일정 추가</button>'
-    : "";
+  const addActionsHtml =
+    onAdd || onAddStamp
+      ? `<div class="calendar-day-expand-actions">${
+          onAdd
+            ? '<button type="button" class="calendar-day-expand-add-btn">할일/일정 추가</button>'
+            : ""
+        }${
+          onAddStamp
+            ? '<button type="button" class="calendar-day-expand-stamp-btn">스탬프 추가</button>'
+            : ""
+        }</div>`
+      : "";
   const closeBtnHtml = hideCloseButton
     ? ""
     : '<button type="button" class="calendar-event-bubble-close" title="닫기">×</button>';
@@ -1822,7 +1854,7 @@ function createCalendarDayExpandBubble(
         ${closeBtnHtml}
       </div>
       <div class="calendar-day-expand-list">${taskItems || "<div class='calendar-day-expand-empty'>할일 / 일정 없음</div>"}</div>
-      ${addBtnHtml}
+      ${addActionsHtml}
     </div>
   `;
 
@@ -1835,7 +1867,8 @@ function createCalendarDayExpandBubble(
     itemEl.addEventListener("click", (e) => {
       if (
         e.target.closest(".calendar-event-bubble-close") ||
-        e.target.closest(".calendar-day-expand-add-btn")
+        e.target.closest(".calendar-day-expand-add-btn") ||
+        e.target.closest(".calendar-day-expand-stamp-btn")
       )
         return;
       e.stopPropagation();
@@ -1876,6 +1909,14 @@ function createCalendarDayExpandBubble(
       ?.addEventListener("click", () => {
         close();
         onAdd();
+      });
+  }
+  if (onAddStamp) {
+    bubble
+      .querySelector(".calendar-day-expand-stamp-btn")
+      ?.addEventListener("click", () => {
+        close();
+        onAddStamp();
       });
   }
   if (dismissOnOutsideClick) {
@@ -2250,6 +2291,12 @@ function renderMonthlyView(tabsElement) {
                     },
                     () => {},
                   );
+                },
+                onAddStamp: () => {
+                  openCalendarDayStampTodoModal(key, () => {
+                    renderCalendar();
+                    refreshTodoList();
+                  });
                 },
               });
               return;
@@ -4475,6 +4522,12 @@ function render1WeekView(tabsElement) {
                   () => {},
                 );
               },
+              onAddStamp: () => {
+                openCalendarDayStampTodoModal(key, () => {
+                  void renderCalendar();
+                  refreshTodoList();
+                });
+              },
             });
             return;
           }
@@ -5285,6 +5338,23 @@ function renderAnnualView(tabsElement) {
               dismissOnOutsideClick: false,
               useMobileOverlay: false,
               positionBelow: true,
+              onAdd: () => {
+                createCalendarEventBubble(
+                  rect,
+                  key,
+                  () => {
+                    renderYear();
+                    refreshTodoList();
+                  },
+                  () => {},
+                );
+              },
+              onAddStamp: () => {
+                openCalendarDayStampTodoModal(key, () => {
+                  renderYear();
+                  refreshTodoList();
+                });
+              },
               onAfterTaskEdit: () => {
                 renderYear();
                 refreshTodoList();
@@ -5355,6 +5425,12 @@ function renderAnnualView(tabsElement) {
                     },
                     () => {},
                   );
+                },
+                onAddStamp: () => {
+                  openCalendarDayStampTodoModal(key, () => {
+                    renderYear();
+                    refreshTodoList();
+                  });
                 },
                 onAfterTaskEdit: () => {
                   renderYear();
@@ -5483,7 +5559,9 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
     if (!slot) return;
     try {
       slot
-        .querySelectorAll(`[${LP_SCHEDULE_CAL_SUBVIEW_FOOTER_ATTR}]`)
+        .querySelectorAll(
+          `[${LP_SCHEDULE_CAL_SUBVIEW_FOOTER_ATTR}], [${LP_SCHEDULE_CAL_STAMP_SETTINGS_FOOTER_ATTR}]`,
+        )
         .forEach((n) => n.remove());
     } catch (_) {}
     footerSubViewSwitchers.length = 0;
@@ -5509,6 +5587,17 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
       slot.appendChild(btn);
       footerSubViewSwitchers.push({ id: v.id, btn });
     }
+    const stampSettingsBtn = document.createElement("button");
+    stampSettingsBtn.type = "button";
+    stampSettingsBtn.className = APP_FOOTER_ICON_BTN_CLASS;
+    stampSettingsBtn.setAttribute(LP_SCHEDULE_CAL_STAMP_SETTINGS_FOOTER_ATTR, "1");
+    stampSettingsBtn.setAttribute("aria-label", "스탬프 설정");
+    stampSettingsBtn.title = "스탬프 설정";
+    stampSettingsBtn.innerHTML = WORK_SCHEDULE_SETTINGS_ICON_SVG;
+    stampSettingsBtn.addEventListener("click", () =>
+      void openWorkScheduleTypeSettingsModal(),
+    );
+    slot.appendChild(stampSettingsBtn);
   }
 
   function syncScheduleSubViewFooterActive(subViewId) {

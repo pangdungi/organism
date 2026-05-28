@@ -46,6 +46,10 @@ import {
 import { showToast } from "./utils/showToast.js";
 import { prepareTimeLedgerStorageForBoot, resetTimeLedgerMemoryForAccountSwitch } from "./utils/timeLedgerEntriesModel.js";
 import {
+  prepareTimeLedgerTasksStorageForBoot,
+  resetTimeLedgerTasksMemoryForAccountSwitch,
+} from "./utils/timeTaskOptionsModel.js";
+import {
   migrateAllRegisteredLegacyLocalStorage,
   setActiveClientStorageUserId,
 } from "./utils/clientStorageScope.js";
@@ -90,6 +94,7 @@ function scheduleBackgroundSubscriptionGateAfterPrefsPull() {
 async function prepareTimeLedgerStorageForCurrentSession() {
   if (!supabase) {
     prepareTimeLedgerStorageForBoot();
+    prepareTimeLedgerTasksStorageForBoot();
     return;
   }
 
@@ -102,6 +107,7 @@ async function prepareTimeLedgerStorageForCurrentSession() {
     setActiveClientStorageUserId(cachedUid);
     migrateAllRegisteredLegacyLocalStorage(cachedUid);
     prepareTimeLedgerStorageForBoot();
+    prepareTimeLedgerTasksStorageForBoot();
   }
 
   const {
@@ -109,19 +115,27 @@ async function prepareTimeLedgerStorageForCurrentSession() {
   } = await getSupabaseSession();
   const uid = session?.user?.id;
   if (!uid) {
-    if (!cachedUid) prepareTimeLedgerStorageForBoot();
+    if (!cachedUid) {
+      prepareTimeLedgerStorageForBoot();
+      prepareTimeLedgerTasksStorageForBoot();
+    }
     return;
   }
 
   if (uid !== cachedUid) {
     resetTimeLedgerMemoryForAccountSwitch();
+    resetTimeLedgerTasksMemoryForAccountSwitch();
     await ensureClientStorageForAuthUser(uid);
     prepareTimeLedgerStorageForBoot();
+    prepareTimeLedgerTasksStorageForBoot();
     return;
   }
 
   await ensureClientStorageForAuthUser(uid);
-  if (!cachedUid) prepareTimeLedgerStorageForBoot();
+  if (!cachedUid) {
+    prepareTimeLedgerStorageForBoot();
+    prepareTimeLedgerTasksStorageForBoot();
+  }
 }
 
 let lpAppMounted = false;
@@ -204,6 +218,7 @@ function primeTimeLedgerStorageFromCachedSession() {
     } catch (_) {}
   }
   prepareTimeLedgerStorageForBoot();
+  prepareTimeLedgerTasksStorageForBoot();
 }
 
 /** 저장된 세션·자동 로그인: 앱 먼저 연다. 구독·IDB 정합은 mountApp 뒤 백그라운드 */

@@ -1,9 +1,14 @@
 /**
- * 시간가계부 과제 옵션 — **표시·편집 소스는 메모리 + 서버 pull**. localStorage(time_task_options) 미사용.
+ * 시간가계부 과제 옵션 — 메모리 + 서버 pull, **iconKey 등은 계정별 localStorage 미러로 부팅 즉시 복구**.
  */
 
 import * as C from "./timeTaskOptionsConstants.js";
-import { removeScopedLocalStorageItem } from "./clientStorageScope.js";
+import {
+  getActiveClientStorageUserId,
+  getScopedLocalStorageItem,
+  removeScopedLocalStorageItem,
+  setScopedLocalStorageItem,
+} from "./clientStorageScope.js";
 import {
   getActiveKpiTaskKeepersById,
   getKpiSyncedTaskNames,
@@ -216,12 +221,21 @@ export function patchKpiLinkedTasksFromKpiMaps() {
   }
 }
 
-/** pull/저장으로만 채움. null = 아직 서버에서 로드 전(내장만 표시) */
+/** pull/저장으로만 채움. null = 아직 로컬·서버에서 로드 전(내장만 표시) */
 let _ledgerTasksMem = null;
+
+function mirrorTaskOptionsToLocalStorage() {
+  const uid = getActiveClientStorageUserId();
+  if (!uid || _ledgerTasksMem == null || !Array.isArray(_ledgerTasksMem)) return;
+  try {
+    setScopedLocalStorageItem(TASK_OPTIONS_KEY, JSON.stringify(_ledgerTasksMem), uid);
+  } catch (_) {}
+}
 
 function setLedgerTasksMemory(list) {
   if (!Array.isArray(list)) {
     _ledgerTasksMem = [];
+    mirrorTaskOptionsToLocalStorage();
     return;
   }
   _ledgerTasksMem = list.map((o) => ({
@@ -233,6 +247,45 @@ function setLedgerTasksMemory(list) {
     kpiId: (o.kpiId && String(o.kpiId).trim()) || "",
     iconKey: String(o.iconKey || "").trim(),
   }));
+  mirrorTaskOptionsToLocalStorage();
+}
+
+/**
+ * mountApp 직전: localStorage 미러만 동기 로드 — 새로고침 직후 iconKey 깜빡임 방지.
+ * @returns {boolean} 미러에서 1건 이상 복구했으면 true
+ */
+export function hydrateTaskOptionsFromLocalMirrorForBoot() {
+  if (_ledgerTasksMem !== null) {
+    return Array.isArray(_ledgerTasksMem) && _ledgerTasksMem.length > 0;
+  }
+  const uid = getActiveClientStorageUserId();
+  if (!uid) return false;
+  try {
+    const raw = getScopedLocalStorageItem(TASK_OPTIONS_KEY, uid);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) return false;
+    setLedgerTasksMemory(parsed);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+export function prepareTimeLedgerTasksStorageForBoot() {
+  hydrateTaskOptionsFromLocalMirrorForBoot();
+  void import("./timeLedgerTasksSupabase.js")
+    .then((m) => {
+      m.attachTimeLedgerTasksSaveListener();
+      return m.pullTimeLedgerTasksFromSupabase();
+    })
+    .catch(() => {});
+}
+
+/** 계정 전환: 과제 메모리만 비운 뒤 새 계정 미러로 다시 채움 */
+export function resetTimeLedgerTasksMemoryForAccountSwitch() {
+  _ledgerTasksMem = null;
+  hydrateTaskOptionsFromLocalMirrorForBoot();
 }
 
 /** 스냅샷 비교용(예: timeLedgerCloudRefresh) */

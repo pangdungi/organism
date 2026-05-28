@@ -2276,15 +2276,35 @@
 
 .calendar-day-expand-bubble .calendar-day-expand-list,
 .calendar-day-expand-bubble .calendar-day-expand-empty,
-.calendar-day-expand-bubble .calendar-day-expand-add-btn {
+.calendar-day-expand-bubble .calendar-day-expand-actions {
   margin-left: 1rem;
   margin-right: 1rem;
   width: auto;
 }
 
-.calendar-day-expand-bubble .calendar-day-expand-add-btn {
+.calendar-day-expand-actions {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+}
+
+.calendar-day-expand-bubble .calendar-day-expand-add-btn,
+.calendar-day-expand-bubble .calendar-day-expand-stamp-btn {
   display: block;
   box-sizing: border-box;
+  margin-top: 0;
+}
+
+.calendar-day-expand-add-btn {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.calendar-day-expand-stamp-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .calendar-day-expand-list {
@@ -2363,8 +2383,8 @@
   font-variant-numeric: tabular-nums;
 }
 
-.calendar-day-expand-add-btn {
-  margin-top: 0.55rem;
+.calendar-day-expand-add-btn,
+.calendar-day-expand-stamp-btn {
   padding: 0.52rem 0.65rem;
   border: 1px dashed var(--lp-modal-border);
   border-radius: 10px;
@@ -2381,7 +2401,8 @@
     color 0.12s ease;
 }
 
-.calendar-day-expand-add-btn:hover {
+.calendar-day-expand-add-btn:hover,
+.calendar-day-expand-stamp-btn:hover {
   border-color: rgba(30, 77, 123, 0.35);
   background: rgba(30, 77, 123, 0.04);
   color: var(--lp-modal-accent-hover);

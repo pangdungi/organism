@@ -70,7 +70,7 @@ const PROTECTED_WORK_TYPES = READONLY_WORK_TYPES;
 const WORK_TYPE_DISPLAY_ORDER = DEFAULT_WORK_TYPE_OPTIONS.map((o) => o.name);
 
 /** 툴바 설정(톱니): 아이콘은 currentColor · 푸터는 APP_FOOTER_ICON_BTN_CLASS 만 사용 */
-const WORK_SCHEDULE_SETTINGS_ICON_SVG =
+export const WORK_SCHEDULE_SETTINGS_ICON_SVG =
   '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m19.845 13.561c.1-.505.155-1.027.155-1.561s-.055-1.056-.155-1.561l1.806-1.489c.502-.414.632-1.132.307-1.696l-.869-1.508c-.325-.564-1.011-.811-1.62-.582l-2.198.825c-.779-.684-1.689-1.218-2.691-1.559l-.385-2.316c-.108-.643-.663-1.114-1.314-1.114h-1.738c-.651 0-1.206.471-1.313 1.114l-.386 2.316c-1.002.341-1.912.875-2.691 1.559l-2.198-.825c-.61-.228-1.295.018-1.62.582l-.87 1.508c-.325.564-.195 1.282.307 1.696l1.806 1.489c-.1.505-.155 1.026-.155 1.561s.055 1.056.155 1.561l-1.806 1.489c-.502.414-.632 1.132-.307 1.696l.869 1.508c.325.564 1.011.811 1.62.582l2.198-.825c.779.684 1.689 1.218 2.691 1.559l.385 2.316c.109.643.664 1.114 1.315 1.114h1.738c.651 0 1.206-.471 1.313-1.114l.385-2.316c1.002-.341 1.913-.875 2.691-1.559l2.198.825c.609.229 1.295-.017 1.62-.582l.869-1.508c.325-.564.196-1.282-.307-1.696z"/><circle cx="12.012" cy="12" r="3"/></g></svg>';
 
 const ENTRY_ID_RE =
@@ -273,31 +273,17 @@ function getMergedInitialRows() {
   return merged;
 }
 
-export function render(opts = {}) {
-  const mobile = !!opts.mobile;
-  wsUiLog("render() enter", { mobile });
-  const el = document.createElement("div");
-  el.className = mobile
-    ? "app-tab-panel-content work-schedule-view calendar-view calendar-view--mobile-workschedule"
-    : "app-tab-panel-content work-schedule-view";
+async function pullStampCalendarForUi() {
+  if (!supabase) return;
+  try {
+    await pullWorkScheduleFromSupabase({
+      includeTypes: true,
+      includeEntries: true,
+    });
+  } catch (_) {}
+}
 
-  const settingsBtn = document.createElement("button");
-  settingsBtn.type = "button";
-  settingsBtn.setAttribute("aria-label", "스탬프 설정");
-  settingsBtn.title = "스탬프 설정";
-  settingsBtn.innerHTML = WORK_SCHEDULE_SETTINGS_ICON_SVG;
-
-  async function pullStampCalendarForUi() {
-    if (!supabase) return;
-    try {
-      await pullWorkScheduleFromSupabase({
-        includeTypes: true,
-        includeEntries: true,
-      });
-    } catch (_) {}
-  }
-
-  async function openWorkTypeSettingsModal() {
+export async function openWorkScheduleTypeSettingsModal() {
     await pullStampCalendarForUi();
     const modal = document.createElement("div");
     modal.className =
@@ -696,487 +682,481 @@ export function render(opts = {}) {
     renderTypeListsFromDraft();
     document.body.appendChild(modal);
     addInput.focus();
+}
+
+/**
+ * 스탬프 등록/수정 모달.
+ * saveAsCalendarTodo: true면 스탬프 캘린더가 아니라 onCalendarTodoSaved 콜백만 호출(캘린더 할일 추가).
+ */
+export async function openWorkScheduleDayEntryModal(initialDateKey, opts = {}) {
+  const {
+    editRowId = null,
+    saveAsCalendarTodo = false,
+    onCalendarTodoSaved = null,
+    onAfterStampSave = null,
+  } = opts;
+  await pullStampCalendarForUi();
+  const rowsAll = getMergedInitialRows();
+  const existingRow =
+    editRowId != null && String(editRowId).trim()
+      ? rowsAll.find((r) => String(r.id) === String(editRowId).trim())
+      : null;
+  const resolvedEditId = existingRow ? String(existingRow.id) : null;
+
+  const dateKey =
+    normalizeWorkDateKey(
+      existingRow?.workDate || initialDateKey || "",
+    ) || formatLocalYmd(new Date());
+  document.querySelectorAll(".work-schedule-day-entry-modal").forEach((n) => n.remove());
+
+  const modal = document.createElement("div");
+  modal.className = "todo-list-modal work-schedule-day-entry-modal";
+  modal.setAttribute("role", "dialog");
+  modal.setAttribute("aria-modal", "true");
+  modal.setAttribute("aria-labelledby", "work-schedule-day-entry-title");
+
+  const backdrop = document.createElement("div");
+  backdrop.className = "todo-list-modal-backdrop";
+
+  const panel = document.createElement("div");
+  panel.className =
+    "todo-list-modal-panel work-schedule-day-entry-modal-panel";
+
+  const header = document.createElement("div");
+  header.className = "todo-list-modal-header";
+  const title = document.createElement("h3");
+  title.id = "work-schedule-day-entry-title";
+  title.className = "todo-list-modal-title";
+  title.textContent = resolvedEditId ? "스탬프 수정" : "스탬프 등록";
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "todo-list-modal-close";
+  closeBtn.setAttribute("aria-label", "닫기");
+  closeBtn.innerHTML = "&times;";
+  header.appendChild(title);
+  header.appendChild(closeBtn);
+
+  const body = document.createElement("div");
+  body.className = "todo-list-modal-body work-schedule-day-entry-body";
+
+  const fieldDate = document.createElement("div");
+  fieldDate.className = "time-task-log-field";
+  const labelDateText = document.createElement("label");
+  labelDateText.textContent = "일자";
+  const dateWrap = document.createElement("div");
+  dateWrap.className = "time-task-log-date-native-wrap";
+  const dateInput = document.createElement("input");
+  dateInput.type = "date";
+  dateInput.className = "todo-task-edit-start";
+  dateInput.setAttribute("aria-label", "일자");
+  dateInput.value = dateKey;
+  const dateOverlay = document.createElement("span");
+  dateOverlay.className = "time-task-log-date-overlay";
+  dateOverlay.setAttribute("aria-hidden", "true");
+  dateWrap.appendChild(dateInput);
+  dateWrap.appendChild(dateOverlay);
+  fieldDate.appendChild(labelDateText);
+  fieldDate.appendChild(dateWrap);
+
+  const labelType = document.createElement("label");
+  labelType.className =
+    "work-schedule-day-entry-label todo-task-edit-label";
+  const spanType = document.createElement("span");
+  spanType.className = "work-schedule-day-entry-label-text";
+
+  const selectWrap = document.createElement("div");
+  selectWrap.className = "work-schedule-day-entry-custom-select";
+  const triggerBtn = document.createElement("button");
+  triggerBtn.type = "button";
+  triggerBtn.className =
+    "work-schedule-day-entry-custom-select-trigger time-add-task-name";
+  triggerBtn.id = "work-schedule-day-entry-type-trigger";
+  triggerBtn.setAttribute("aria-haspopup", "listbox");
+  triggerBtn.setAttribute("aria-expanded", "false");
+  const listEl = document.createElement("ul");
+  listEl.className =
+    "work-schedule-day-entry-custom-select-list time-task-select-list";
+  listEl.id = "work-schedule-day-entry-type-list";
+  listEl.setAttribute("role", "listbox");
+  listEl.setAttribute("aria-labelledby", triggerBtn.id);
+  triggerBtn.setAttribute("aria-controls", listEl.id);
+  listEl.hidden = true;
+
+  let dayEntryTypeOptions = [];
+  let dayEntryTypeValue = "";
+  let dayEntrySelectListOpen = false;
+
+  function dockDayEntrySelectList() {
+    if (listEl.parentElement !== selectWrap) {
+      selectWrap.appendChild(listEl);
+    }
   }
 
-  function workTypePillClassForName(typeName) {
-    const n = (typeName || "").trim();
-    if (!n) return "";
-    const entry = getWorkTypeOptionsFull().find((o) => o.name === n);
-    if (!entry) return "is-ws-pill-default";
-    if (DEFAULT_TYPE_NAMES.has(n)) return "is-ws-pill-builtin";
-    return "is-ws-pill-work";
+  function onDayEntrySelectDocDown(ev) {
+    if (selectWrap.contains(ev.target) || listEl.contains(ev.target)) return;
+    closeDayEntrySelectList();
   }
 
+  function applyDayEntrySelectListFixedLayout() {
+    const tR = triggerBtn.getBoundingClientRect();
+    if (tR.width < 1 && tR.height < 1) return;
+    const gap = 4;
+    const vpH =
+      typeof window !== "undefined" && Number.isFinite(window.innerHeight)
+        ? window.innerHeight
+        : 0;
+    const remPx = parseFloat(
+      getComputedStyle(document.documentElement).fontSize || "16",
+    );
+    const maxListPx = 14 * (Number.isFinite(remPx) ? remPx : 16);
+    const spaceBelowVp =
+      vpH > 0 ? Math.max(0, vpH - tR.bottom - gap) : maxListPx;
+    const maxH = Math.max(72, Math.min(maxListPx, spaceBelowVp));
 
-  settingsBtn.addEventListener("click", () => void openWorkTypeSettingsModal());
-  const footerSlot = getAppFooterActionsSlot();
-  if (footerSlot) {
-    settingsBtn.className = APP_FOOTER_ICON_BTN_CLASS;
-    footerSlot.appendChild(settingsBtn);
+    listEl.style.position = "fixed";
+    listEl.style.boxSizing = "border-box";
+    listEl.style.left = `${Math.round(tR.left)}px`;
+    listEl.style.width = `${Math.round(tR.width)}px`;
+    listEl.style.right = "auto";
+    listEl.style.top = `${Math.round(tR.bottom + gap)}px`;
+    listEl.style.bottom = "auto";
+    listEl.style.zIndex = "10070";
+    listEl.style.maxHeight = `${Math.round(maxH)}px`;
+    listEl.style.overflowY = "auto";
+    listEl.style.marginTop = "";
+    listEl.style.marginBottom = "";
   }
 
-  const contentWrap = document.createElement("div");
-  contentWrap.className = "work-schedule-content-wrap calendar-content-wrap";
-  el.appendChild(contentWrap);
+  function syncDayEntrySelectListPosition() {
+    if (!dayEntrySelectListOpen) return;
+    applyDayEntrySelectListFixedLayout();
+  }
 
-  /** 월별보기: 날짜 셀 → 새 행 추가 / 근무 칩 → 해당 행 수정·삭제 */
-  async function openMonthlyDayEntryModal(initialDateKey, editRowId = null) {
-    await pullStampCalendarForUi();
-    const rowsAll = getMergedInitialRows();
-    const existingRow =
-      editRowId != null && String(editRowId).trim()
-        ? rowsAll.find((r) => String(r.id) === String(editRowId).trim())
-        : null;
-    const resolvedEditId = existingRow ? String(existingRow.id) : null;
+  const onDayEntrySelectReposition = () => syncDayEntrySelectListPosition();
 
-    const dateKey =
-      normalizeWorkDateKey(
-        existingRow?.workDate || initialDateKey || "",
-      ) || formatLocalYmd(new Date());
-    document.querySelectorAll(".work-schedule-day-entry-modal").forEach((n) => n.remove());
-
-    const modal = document.createElement("div");
-    modal.className = "todo-list-modal work-schedule-day-entry-modal";
-    modal.setAttribute("role", "dialog");
-    modal.setAttribute("aria-modal", "true");
-    modal.setAttribute("aria-labelledby", "work-schedule-day-entry-title");
-
-    const backdrop = document.createElement("div");
-    backdrop.className = "todo-list-modal-backdrop";
-
-    const panel = document.createElement("div");
-    panel.className =
-      "todo-list-modal-panel work-schedule-day-entry-modal-panel";
-
-    const header = document.createElement("div");
-    header.className = "todo-list-modal-header";
-    const title = document.createElement("h3");
-    title.id = "work-schedule-day-entry-title";
-    title.className = "todo-list-modal-title";
-    title.textContent = resolvedEditId ? "스탬프 수정" : "스탬프 등록";
-    const closeBtn = document.createElement("button");
-    closeBtn.type = "button";
-    closeBtn.className = "todo-list-modal-close";
-    closeBtn.setAttribute("aria-label", "닫기");
-    closeBtn.innerHTML = "&times;";
-    header.appendChild(title);
-    header.appendChild(closeBtn);
-
-    const body = document.createElement("div");
-    body.className = "todo-list-modal-body work-schedule-day-entry-body";
-
-    const fieldDate = document.createElement("div");
-    fieldDate.className = "time-task-log-field";
-    const labelDateText = document.createElement("label");
-    labelDateText.textContent = "일자";
-    const dateWrap = document.createElement("div");
-    dateWrap.className = "time-task-log-date-native-wrap";
-    const dateInput = document.createElement("input");
-    dateInput.type = "date";
-    dateInput.className = "todo-task-edit-start";
-    dateInput.setAttribute("aria-label", "일자");
-    dateInput.value = dateKey;
-    const dateOverlay = document.createElement("span");
-    dateOverlay.className = "time-task-log-date-overlay";
-    dateOverlay.setAttribute("aria-hidden", "true");
-    dateWrap.appendChild(dateInput);
-    dateWrap.appendChild(dateOverlay);
-    fieldDate.appendChild(labelDateText);
-    fieldDate.appendChild(dateWrap);
-
-    const labelType = document.createElement("label");
-    labelType.className =
-      "work-schedule-day-entry-label todo-task-edit-label";
-    const spanType = document.createElement("span");
-    spanType.className = "work-schedule-day-entry-label-text";
-
-    const selectWrap = document.createElement("div");
-    selectWrap.className = "work-schedule-day-entry-custom-select";
-    const triggerBtn = document.createElement("button");
-    triggerBtn.type = "button";
-    triggerBtn.className =
-      "work-schedule-day-entry-custom-select-trigger time-add-task-name";
-    triggerBtn.id = "work-schedule-day-entry-type-trigger";
-    triggerBtn.setAttribute("aria-haspopup", "listbox");
-    triggerBtn.setAttribute("aria-expanded", "false");
-    const listEl = document.createElement("ul");
-    listEl.className =
-      "work-schedule-day-entry-custom-select-list time-task-select-list";
-    listEl.id = "work-schedule-day-entry-type-list";
-    listEl.setAttribute("role", "listbox");
-    listEl.setAttribute("aria-labelledby", triggerBtn.id);
-    triggerBtn.setAttribute("aria-controls", listEl.id);
+  function closeDayEntrySelectList() {
+    if (!dayEntrySelectListOpen) return;
+    dayEntrySelectListOpen = false;
     listEl.hidden = true;
+    triggerBtn.setAttribute("aria-expanded", "false");
+    try {
+      document.removeEventListener("pointerdown", onDayEntrySelectDocDown, true);
+    } catch (_) {}
+    window.removeEventListener("resize", onDayEntrySelectReposition, true);
+    window.removeEventListener("scroll", onDayEntrySelectReposition, true);
+    try {
+      panel.removeEventListener("scroll", onDayEntrySelectReposition, true);
+    } catch (_) {}
+    try {
+      body.removeEventListener("scroll", onDayEntrySelectReposition, true);
+    } catch (_) {}
+    listEl.style.position = "";
+    listEl.style.left = "";
+    listEl.style.top = "";
+    listEl.style.bottom = "";
+    listEl.style.width = "";
+    listEl.style.right = "";
+    listEl.style.marginTop = "";
+    listEl.style.marginBottom = "";
+    listEl.style.maxHeight = "";
+    listEl.style.zIndex = "";
+    listEl.style.overflowY = "";
+    listEl.style.boxSizing = "";
+    dockDayEntrySelectList();
+  }
 
-    let dayEntryTypeOptions = [];
-    let dayEntryTypeValue = "";
-    let dayEntrySelectListOpen = false;
-
-    function dockDayEntrySelectList() {
-      if (listEl.parentElement !== selectWrap) {
-        selectWrap.appendChild(listEl);
-      }
+  function openDayEntrySelectList() {
+    if (dayEntrySelectListOpen) return;
+    dayEntrySelectListOpen = true;
+    triggerBtn.setAttribute("aria-expanded", "true");
+    if (listEl.parentElement !== document.body) {
+      document.body.appendChild(listEl);
     }
+    applyDayEntrySelectListFixedLayout();
+    listEl.hidden = false;
+    document.addEventListener("pointerdown", onDayEntrySelectDocDown, true);
+    window.addEventListener("resize", onDayEntrySelectReposition, true);
+    window.addEventListener("scroll", onDayEntrySelectReposition, true);
+    panel.addEventListener("scroll", onDayEntrySelectReposition, true);
+    body.addEventListener("scroll", onDayEntrySelectReposition, true);
+    requestAnimationFrame(syncDayEntrySelectListPosition);
+  }
 
-    function onDayEntrySelectDocDown(ev) {
-      if (selectWrap.contains(ev.target) || listEl.contains(ev.target)) return;
-      closeDayEntrySelectList();
-    }
+  function toggleDayEntrySelectList() {
+    if (dayEntrySelectListOpen) closeDayEntrySelectList();
+    else openDayEntrySelectList();
+  }
 
-    function applyDayEntrySelectListFixedLayout() {
-      const tR = triggerBtn.getBoundingClientRect();
-      if (tR.width < 1 && tR.height < 1) return;
-      const gap = 4;
-      const vpH =
-        typeof window !== "undefined" && Number.isFinite(window.innerHeight)
-          ? window.innerHeight
-          : 0;
-      const remPx = parseFloat(
-        getComputedStyle(document.documentElement).fontSize || "16",
+  function updateDayEntryTriggerLabel() {
+    const opt = dayEntryTypeOptions.find((o) => o.value === dayEntryTypeValue);
+    triggerBtn.textContent = opt ? opt.label : "선택";
+    triggerBtn.classList.toggle("is-placeholder-choice", !dayEntryTypeValue);
+  }
+
+  function renderDayEntryTypeListOptions() {
+    listEl.innerHTML = "";
+    dayEntryTypeOptions.forEach((opt) => {
+      const li = document.createElement("li");
+      li.setAttribute("role", "option");
+      li.setAttribute(
+        "aria-selected",
+        opt.value === dayEntryTypeValue ? "true" : "false",
       );
-      const maxListPx = 14 * (Number.isFinite(remPx) ? remPx : 16);
-      /* 패널 overflow:hidden 을 벗어나도록 fixed — body 포털 없이 할 일 모달과 동일 */
-      const spaceBelowVp =
-        vpH > 0 ? Math.max(0, vpH - tR.bottom - gap) : maxListPx;
-      const maxH = Math.max(72, Math.min(maxListPx, spaceBelowVp));
-
-      listEl.style.position = "fixed";
-      listEl.style.boxSizing = "border-box";
-      listEl.style.left = `${Math.round(tR.left)}px`;
-      listEl.style.width = `${Math.round(tR.width)}px`;
-      listEl.style.right = "auto";
-      listEl.style.top = `${Math.round(tR.bottom + gap)}px`;
-      listEl.style.bottom = "auto";
-      listEl.style.zIndex = "10070";
-      listEl.style.maxHeight = `${Math.round(maxH)}px`;
-      listEl.style.overflowY = "auto";
-      listEl.style.marginTop = "";
-      listEl.style.marginBottom = "";
-    }
-
-    function syncDayEntrySelectListPosition() {
-      if (!dayEntrySelectListOpen) return;
-      applyDayEntrySelectListFixedLayout();
-    }
-
-    const onDayEntrySelectReposition = () => syncDayEntrySelectListPosition();
-
-    function closeDayEntrySelectList() {
-      if (!dayEntrySelectListOpen) return;
-      dayEntrySelectListOpen = false;
-      listEl.hidden = true;
-      triggerBtn.setAttribute("aria-expanded", "false");
-      try {
-        document.removeEventListener("pointerdown", onDayEntrySelectDocDown, true);
-      } catch (_) {}
-      window.removeEventListener("resize", onDayEntrySelectReposition, true);
-      window.removeEventListener("scroll", onDayEntrySelectReposition, true);
-      try {
-        panel.removeEventListener("scroll", onDayEntrySelectReposition, true);
-      } catch (_) {}
-      try {
-        body.removeEventListener("scroll", onDayEntrySelectReposition, true);
-      } catch (_) {}
-      listEl.style.position = "";
-      listEl.style.left = "";
-      listEl.style.top = "";
-      listEl.style.bottom = "";
-      listEl.style.width = "";
-      listEl.style.right = "";
-      listEl.style.marginTop = "";
-      listEl.style.marginBottom = "";
-      listEl.style.maxHeight = "";
-      listEl.style.zIndex = "";
-      listEl.style.overflowY = "";
-      listEl.style.boxSizing = "";
-      dockDayEntrySelectList();
-    }
-
-    function openDayEntrySelectList() {
-      if (dayEntrySelectListOpen) return;
-      dayEntrySelectListOpen = true;
-      triggerBtn.setAttribute("aria-expanded", "true");
-      if (listEl.parentElement !== document.body) {
-        document.body.appendChild(listEl);
-      }
-      applyDayEntrySelectListFixedLayout();
-      listEl.hidden = false;
-      document.addEventListener("pointerdown", onDayEntrySelectDocDown, true);
-      window.addEventListener("resize", onDayEntrySelectReposition, true);
-      window.addEventListener("scroll", onDayEntrySelectReposition, true);
-      panel.addEventListener("scroll", onDayEntrySelectReposition, true);
-      body.addEventListener("scroll", onDayEntrySelectReposition, true);
+      li.className = "time-task-select-item";
+      if (!opt.value) li.classList.add("is-placeholder");
+      li.dataset.value = opt.value;
+      li.textContent = opt.label;
+      li.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dayEntryTypeValue = opt.value;
+        closeDayEntrySelectList();
+        renderDayEntryTypeListOptions();
+        updateDayEntryTriggerLabel();
+      });
+      listEl.appendChild(li);
+    });
+    if (dayEntrySelectListOpen) {
       requestAnimationFrame(syncDayEntrySelectListPosition);
     }
+  }
 
-    function toggleDayEntrySelectList() {
-      if (dayEntrySelectListOpen) closeDayEntrySelectList();
-      else openDayEntrySelectList();
-    }
+  function getDayEntryTypeSelectValue() {
+    return dayEntryTypeValue;
+  }
 
-    function updateDayEntryTriggerLabel() {
-      const opt = dayEntryTypeOptions.find((o) => o.value === dayEntryTypeValue);
-      triggerBtn.textContent = opt ? opt.label : "선택";
-      triggerBtn.classList.toggle("is-placeholder-choice", !dayEntryTypeValue);
-    }
+  triggerBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    toggleDayEntrySelectList();
+  });
 
-    function renderDayEntryTypeListOptions() {
-      listEl.innerHTML = "";
-      dayEntryTypeOptions.forEach((opt) => {
-        const li = document.createElement("li");
-        li.setAttribute("role", "option");
-        li.setAttribute(
-          "aria-selected",
-          opt.value === dayEntryTypeValue ? "true" : "false",
-        );
-        li.className = "time-task-select-item";
-        if (!opt.value) li.classList.add("is-placeholder");
-        li.dataset.value = opt.value;
-        li.textContent = opt.label;
-        li.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          dayEntryTypeValue = opt.value;
-          closeDayEntrySelectList();
-          renderDayEntryTypeListOptions();
-          updateDayEntryTriggerLabel();
-        });
-        listEl.appendChild(li);
+  selectWrap.appendChild(triggerBtn);
+  selectWrap.appendChild(listEl);
+
+  function stampOptionsForDayEntry() {
+    const full = getWorkTypeOptionsFull();
+    const out = [];
+    const seen = new Set();
+    full.forEach((o) => {
+      const n = (o.name || "").trim();
+      if (!n || seen.has(n)) return;
+      seen.add(n);
+      const id = (o.id || "").trim();
+      out.push({
+        value: isStampUuid(id) ? id : n,
+        label: n,
       });
-      if (dayEntrySelectListOpen) {
-        requestAnimationFrame(syncDayEntrySelectListPosition);
-      }
-    }
-
-    function getDayEntryTypeSelectValue() {
-      return dayEntryTypeValue;
-    }
-
-    triggerBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      toggleDayEntrySelectList();
     });
+    return out;
+  }
 
-    selectWrap.appendChild(triggerBtn);
-    selectWrap.appendChild(listEl);
+  function resolveStampSelectValueFromRow(row) {
+    if (!row) return "";
+    const sid = String(row.stampId || "").trim();
+    if (isStampUuid(sid)) return sid;
+    const wt = String(row.workType || "").trim();
+    if (!wt) return "";
+    const hit = getWorkTypeOptionsFull().find((o) => o.name === wt);
+    if (hit?.id && isStampUuid(hit.id)) return hit.id;
+    return wt;
+  }
 
-    function stampOptionsForDayEntry() {
-      const full = getWorkTypeOptionsFull();
-      const out = [];
-      const seen = new Set();
-      full.forEach((o) => {
-        const n = (o.name || "").trim();
-        if (!n || seen.has(n)) return;
-        seen.add(n);
-        const id = (o.id || "").trim();
-        out.push({
-          value: isStampUuid(id) ? id : n,
-          label: n,
-        });
-      });
-      return out;
-    }
-
-    function resolveStampSelectValueFromRow(row) {
-      if (!row) return "";
-      const sid = String(row.stampId || "").trim();
-      if (isStampUuid(sid)) return sid;
-      const wt = String(row.workType || "").trim();
-      if (!wt) return "";
-      const hit = getWorkTypeOptionsFull().find((o) => o.name === wt);
-      if (hit?.id && isStampUuid(hit.id)) return hit.id;
-      return wt;
-    }
-
-    function fillDayEntrySelect(preserveValue) {
-      closeDayEntrySelectList();
-      spanType.textContent = "스탬프";
-      triggerBtn.setAttribute("aria-label", "스탬프 유형");
-      dayEntryTypeOptions = stampOptionsForDayEntry();
-      const pv = (preserveValue || "").trim();
-      const match = dayEntryTypeOptions.find(
-        (o) => o.value === pv || o.label === pv,
-      );
-      dayEntryTypeValue = match ? match.value : "";
-      renderDayEntryTypeListOptions();
-      updateDayEntryTriggerLabel();
-    }
-
-    fillDayEntrySelect(
-      resolvedEditId && existingRow
-        ? resolveStampSelectValueFromRow(existingRow)
-        : "",
+  function fillDayEntrySelect(preserveValue) {
+    closeDayEntrySelectList();
+    spanType.textContent = "스탬프";
+    triggerBtn.setAttribute("aria-label", "스탬프 유형");
+    dayEntryTypeOptions = stampOptionsForDayEntry();
+    const pv = (preserveValue || "").trim();
+    const match = dayEntryTypeOptions.find(
+      (o) => o.value === pv || o.label === pv,
     );
+    dayEntryTypeValue = match ? match.value : "";
+    renderDayEntryTypeListOptions();
+    updateDayEntryTriggerLabel();
+  }
 
-    function onWorkScheduleSettingsClosedRefreshEntryTypes() {
-      try {
-        if (!modal.isConnected) return;
-      } catch (_) {
-        return;
-      }
-      fillDayEntrySelect(dayEntryTypeValue);
+  fillDayEntrySelect(
+    resolvedEditId && existingRow
+      ? resolveStampSelectValueFromRow(existingRow)
+      : "",
+  );
+
+  function onWorkScheduleSettingsClosedRefreshEntryTypes() {
+    try {
+      if (!modal.isConnected) return;
+    } catch (_) {
+      return;
     }
-    window.addEventListener(
-      "work-schedule-settings-closed",
-      onWorkScheduleSettingsClosedRefreshEntryTypes,
-    );
+    fillDayEntrySelect(dayEntryTypeValue);
+  }
+  window.addEventListener(
+    "work-schedule-settings-closed",
+    onWorkScheduleSettingsClosedRefreshEntryTypes,
+  );
 
-    labelType.appendChild(spanType);
-    labelType.appendChild(selectWrap);
+  labelType.appendChild(spanType);
+  labelType.appendChild(selectWrap);
 
-    body.appendChild(fieldDate);
-    body.appendChild(labelType);
+  body.appendChild(fieldDate);
+  body.appendChild(labelType);
 
-    const footer = document.createElement("div");
-    footer.className =
-      "todo-list-modal-footer todo-task-edit-footer--actions";
-    const deleteBtn = document.createElement("button");
-    deleteBtn.type = "button";
-    deleteBtn.className = "time-task-log-delete-btn";
-    deleteBtn.textContent = "삭제";
-    deleteBtn.setAttribute("aria-label", "이 스탬프 일정 삭제");
-    deleteBtn.hidden = !resolvedEditId;
-    const saveBtn = document.createElement("button");
-    saveBtn.type = "button";
-    saveBtn.className = "todo-list-modal-confirm";
-    saveBtn.textContent = "저장";
-    footer.appendChild(deleteBtn);
-    footer.appendChild(saveBtn);
+  const footer = document.createElement("div");
+  footer.className =
+    "todo-list-modal-footer todo-task-edit-footer--actions";
+  const deleteBtn = document.createElement("button");
+  deleteBtn.type = "button";
+  deleteBtn.className = "time-task-log-delete-btn";
+  deleteBtn.textContent = "삭제";
+  deleteBtn.setAttribute("aria-label", "이 스탬프 일정 삭제");
+  deleteBtn.hidden = saveAsCalendarTodo || !resolvedEditId;
+  const saveBtn = document.createElement("button");
+  saveBtn.type = "button";
+  saveBtn.className = "todo-list-modal-confirm";
+  saveBtn.textContent = "저장";
+  footer.appendChild(deleteBtn);
+  footer.appendChild(saveBtn);
 
-    panel.appendChild(header);
-    panel.appendChild(body);
-    panel.appendChild(footer);
-    modal.appendChild(backdrop);
-    modal.appendChild(panel);
+  panel.appendChild(header);
+  panel.appendChild(body);
+  panel.appendChild(footer);
+  modal.appendChild(backdrop);
+  modal.appendChild(panel);
 
-    function closeModal() {
-      closeDayEntrySelectList();
-      try {
-        window.removeEventListener(
-          "work-schedule-settings-closed",
-          onWorkScheduleSettingsClosedRefreshEntryTypes,
-        );
-      } catch (_) {}
-      try {
-        document.removeEventListener("keydown", onKeyDown);
-      } catch (_) {}
-      modal.remove();
-    }
-
-    function onKeyDown(e) {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        if (dayEntrySelectListOpen) {
-          closeDayEntrySelectList();
-          return;
-        }
-        closeModal();
-      }
-    }
-
-    async function onSave() {
-      const wd = normalizeWorkDateKey(dateInput.value || "");
-      const sel = (getDayEntryTypeSelectValue() || "").trim();
-      const typeHit = getWorkTypeOptionsFull().find(
-        (o) => o.id === sel || o.name === sel,
+  function closeModal() {
+    closeDayEntrySelectList();
+    try {
+      window.removeEventListener(
+        "work-schedule-settings-closed",
+        onWorkScheduleSettingsClosedRefreshEntryTypes,
       );
-      const typeName = (typeHit?.name || sel).trim();
-      const stampId =
-        typeHit?.id && isStampUuid(typeHit.id) ? typeHit.id : "";
-      if (!wd || wd.length < 10) {
-        window.alert("일자를 선택해 주세요.");
+    } catch (_) {}
+    try {
+      document.removeEventListener("keydown", onKeyDown);
+    } catch (_) {}
+    modal.remove();
+  }
+
+  function onKeyDown(e) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      if (dayEntrySelectListOpen) {
+        closeDayEntrySelectList();
         return;
       }
-      if (!typeName) {
-        window.alert("스탬프를 선택해 주세요.");
-        return;
-      }
-      if (!stampId) {
-        window.alert(
-          "스탬프 설정에서 «저장»한 뒤 다시 시도해 주세요. (스탬프 목록이 서버와 맞지 않습니다.)",
-        );
-        return;
-      }
-      const baseFields = {
-        workDate: wd,
-        workType: typeName,
-        stampId,
-        startTime: "",
-        endTime: "",
-        hoursWorked: "",
+      closeModal();
+    }
+  }
+
+  async function onSave() {
+    const wd = normalizeWorkDateKey(dateInput.value || "");
+    const sel = (getDayEntryTypeSelectValue() || "").trim();
+    const typeHit = getWorkTypeOptionsFull().find(
+      (o) => o.id === sel || o.name === sel,
+    );
+    const typeName = (typeHit?.name || sel).trim();
+    if (!wd || wd.length < 10) {
+      window.alert("일자를 선택해 주세요.");
+      return;
+    }
+    if (!typeName) {
+      window.alert("스탬프를 선택해 주세요.");
+      return;
+    }
+    if (saveAsCalendarTodo) {
+      try {
+        onCalendarTodoSaved?.({ dateKey: wd, name: typeName });
+      } catch (_) {}
+      closeModal();
+      return;
+    }
+    const stampId =
+      typeHit?.id && isStampUuid(typeHit.id) ? typeHit.id : "";
+    if (!stampId) {
+      window.alert(
+        "스탬프 설정에서 «저장»한 뒤 다시 시도해 주세요. (스탬프 목록이 서버와 맞지 않습니다.)",
+      );
+      return;
+    }
+    const baseFields = {
+      workDate: wd,
+      workType: typeName,
+      stampId,
+      startTime: "",
+      endTime: "",
+      hoursWorked: "",
+    };
+    let rowToPush;
+    let rows;
+    if (resolvedEditId && existingRow) {
+      rows = getMergedInitialRows().map((r) =>
+        String(r.id) === resolvedEditId
+          ? {
+              ...r,
+              ...baseFields,
+              id: r.id,
+              hours: r.hours != null ? r.hours : "",
+              memo: r.memo != null ? r.memo : "",
+            }
+          : r,
+      );
+      rowToPush = rows.find((r) => String(r.id) === resolvedEditId);
+    } else {
+      const newRow = {
+        id:
+          typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID()
+            : undefined,
+        ...baseFields,
+        hours: "",
+        memo: "",
       };
-      let rowToPush;
-      let rows;
-      if (resolvedEditId && existingRow) {
-        rows = getMergedInitialRows().map((r) =>
-          String(r.id) === resolvedEditId
-            ? {
-                ...r,
-                ...baseFields,
-                id: r.id,
-                hours: r.hours != null ? r.hours : "",
-                memo: r.memo != null ? r.memo : "",
-              }
-            : r,
+      rows = [...getMergedInitialRows(), newRow];
+      rows.sort(compareWorkScheduleRowsByDateTimeAsc);
+      rowToPush = newRow;
+    }
+    saveRowsToMem(rows);
+    const pushRes = await upsertStampCalendarEntryFromModal(rowToPush);
+    if (!pushRes?.ok) {
+      try {
+        showToast(
+          "서버에 저장하지 못했습니다.",
+          "잠시 후 다시 시도해 주세요.",
         );
-        rowToPush = rows.find((r) => String(r.id) === resolvedEditId);
-      } else {
-        const newRow = {
-          id:
-            typeof crypto !== "undefined" && crypto.randomUUID
-              ? crypto.randomUUID()
-              : undefined,
-          ...baseFields,
-          hours: "",
-          memo: "",
-        };
-        rows = [...getMergedInitialRows(), newRow];
-        rows.sort(compareWorkScheduleRowsByDateTimeAsc);
-        rowToPush = newRow;
+      } catch (_) {}
+      return;
+    }
+    const dp = wd.split("-");
+    if (dp.length === 3) {
+      const cy = parseInt(dp[0], 10);
+      const cm = parseInt(dp[1], 10) - 1;
+      if (Number.isFinite(cy) && Number.isFinite(cm) && cm >= 0 && cm <= 11) {
+        setWorkScheduleMonthlyViewCursor(cy, cm);
       }
+    }
+    closeModal();
+    try {
+      onAfterStampSave?.();
+    } catch (_) {}
+  }
+
+  closeBtn.addEventListener("click", closeModal);
+  deleteBtn.addEventListener("click", () => {
+    if (!resolvedEditId || saveAsCalendarTodo) return;
+    void (async () => {
+      const rows = getMergedInitialRows().filter(
+        (r) => String(r.id) !== resolvedEditId,
+      );
       saveRowsToMem(rows);
-      const pushRes = await upsertStampCalendarEntryFromModal(rowToPush);
-      if (!pushRes?.ok) {
+      const delRes = await deleteStampCalendarEntryFromModal(resolvedEditId);
+      if (!delRes?.ok) {
         try {
           showToast(
-            "서버에 저장하지 못했습니다.",
+            "서버에서 삭제하지 못했습니다.",
             "잠시 후 다시 시도해 주세요.",
           );
         } catch (_) {}
         return;
       }
-      /* 저장한 근무일이 속한 달로 커서 고정 — 모달 직후 월별보기가 오늘 달로 돌아가는 현상 방지 */
-      const dp = wd.split("-");
-      if (dp.length === 3) {
-        const cy = parseInt(dp[0], 10);
-        const cm = parseInt(dp[1], 10) - 1;
-        if (Number.isFinite(cy) && Number.isFinite(cm) && cm >= 0 && cm <= 11) {
-          setWorkScheduleMonthlyViewCursor(cy, cm);
-        }
-      }
-      closeModal();
-
-      renderMonthlyView();
-    }
-
-    closeBtn.addEventListener("click", closeModal);
-    deleteBtn.addEventListener("click", () => {
-      if (!resolvedEditId) return;
-      void (async () => {
-        const rows = getMergedInitialRows().filter(
-          (r) => String(r.id) !== resolvedEditId,
-        );
-        saveRowsToMem(rows);
-        const delRes = await deleteStampCalendarEntryFromModal(resolvedEditId);
-        if (!delRes?.ok) {
-          try {
-            showToast(
-              "서버에서 삭제하지 못했습니다.",
-              "잠시 후 다시 시도해 주세요.",
-            );
-          } catch (_) {}
-          return;
-        }
       const keepWd =
         normalizeWorkDateKey(dateInput.value || "") ||
         normalizeWorkDateKey(initialDateKey || "") ||
@@ -1190,18 +1170,69 @@ export function render(opts = {}) {
         }
       }
       closeModal();
-      renderMonthlyView();
-      })();
-    });
-    saveBtn.addEventListener("click", () => void onSave());
-    document.addEventListener("keydown", onKeyDown);
+      try {
+        onAfterStampSave?.();
+      } catch (_) {}
+    })();
+  });
+  saveBtn.addEventListener("click", () => void onSave());
+  document.addEventListener("keydown", onKeyDown);
 
-    document.body.appendChild(modal);
-    initModalNativeDateFieldsIn(modal);
-    requestAnimationFrame(() => {
-      const panelH = panel.offsetHeight;
-      if (panelH > 0) panel.style.minHeight = `${panelH}px`;
-      triggerBtn.focus();
+  document.body.appendChild(modal);
+  initModalNativeDateFieldsIn(modal);
+  requestAnimationFrame(() => {
+    const panelH = panel.offsetHeight;
+    if (panelH > 0) panel.style.minHeight = `${panelH}px`;
+    triggerBtn.focus();
+  });
+}
+
+/** 캘린더 날짜 버블: 스탬프 선택 후 해당 날짜 할일로 추가 */
+export async function openCalendarStampTodoModal(dateKey, opts = {}) {
+  await openWorkScheduleDayEntryModal(dateKey, {
+    saveAsCalendarTodo: true,
+    onCalendarTodoSaved: opts.onSaved,
+  });
+}
+
+export function render(opts = {}) {
+  const mobile = !!opts.mobile;
+  wsUiLog("render() enter", { mobile });
+  const el = document.createElement("div");
+  el.className = mobile
+    ? "app-tab-panel-content work-schedule-view calendar-view calendar-view--mobile-workschedule"
+    : "app-tab-panel-content work-schedule-view";
+
+  const settingsBtn = document.createElement("button");
+  settingsBtn.type = "button";
+  settingsBtn.setAttribute("aria-label", "스탬프 설정");
+  settingsBtn.title = "스탬프 설정";
+  settingsBtn.innerHTML = WORK_SCHEDULE_SETTINGS_ICON_SVG;
+
+  settingsBtn.addEventListener("click", () => void openWorkScheduleTypeSettingsModal());
+  const footerSlot = getAppFooterActionsSlot();
+  if (footerSlot) {
+    settingsBtn.className = APP_FOOTER_ICON_BTN_CLASS;
+    footerSlot.appendChild(settingsBtn);
+  }
+
+  function workTypePillClassForName(typeName) {
+    const n = (typeName || "").trim();
+    if (!n) return "";
+    const entry = getWorkTypeOptionsFull().find((o) => o.name === n);
+    if (!entry) return "is-ws-pill-default";
+    if (DEFAULT_TYPE_NAMES.has(n)) return "is-ws-pill-builtin";
+    return "is-ws-pill-work";
+  }
+
+  const contentWrap = document.createElement("div");
+  contentWrap.className = "work-schedule-content-wrap calendar-content-wrap";
+  el.appendChild(contentWrap);
+
+  async function openMonthlyDayEntryModal(initialDateKey, editRowId = null) {
+    await openWorkScheduleDayEntryModal(initialDateKey, {
+      editRowId,
+      onAfterStampSave: renderMonthlyView,
     });
   }
 
