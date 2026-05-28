@@ -209,7 +209,10 @@ function getInstallInstructions() {
   if (android) {
     return {
       title: "앱 설치 / 홈 화면 추가",
-      desc: "① 주소창 오른쪽 ⊕(설치) 아이콘 또는 ② ⋮ 더보기 → 「앱 설치」·「홈 화면에 추가」를 선택해 주세요.",
+      desc: deferredPrompt
+        ? "Time is Price를 홈 화면에 설치하면 앱처럼 전체 화면으로 열 수 있어요."
+        : "앱 설치 준비 중이에요. 잠시 후 「앱 설치」가 뜨거나, ⋮ → 「앱 설치」·「홈 화면에 추가」를 눌러 주세요.",
+      showInstallBtn: !!deferredPrompt,
     };
   }
   return {
@@ -495,6 +498,12 @@ export function initLpPwaInstall() {
     deferredPrompt = e;
     if (installPhase === "idle") refreshLpPwaInstall();
   });
+
+  if ("serviceWorker" in navigator) {
+    void navigator.serviceWorker.ready.then(() => {
+      if (installPhase === "idle") refreshLpPwaInstall();
+    });
+  }
 
   window.addEventListener("appinstalled", () => {
     clearInstallWaitTimer();

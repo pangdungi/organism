@@ -19,23 +19,10 @@
   --lp-app-shell-h: 100svh;
 }
 
-/** 앱 전체 배경 — index.html 의 html·body 에 `class="lp-app-bg"` */
+/** 앱 전체 배경 — index.html 의 html·body 에 `class="lp-app-bg"` (항상 흰색) */
 .lp-app-bg {
   --lp-shell-chrome-bg: #ffffff;
   background-color: #fff;
-  background-image: none;
-}
-
-/**
- * 오늘(메인)·로그인: 상단 세이프 존까지 네이비.
- * 그라데이션(+1px)은 Android/iOS에서 상태줄 아래 회색·흰 hairline 으로 보여 제거.
- */
-html.lp-top-safe-chrome-navy.lp-app-bg,
-body.lp-top-safe-chrome-navy.lp-app-bg,
-html.lp-auth-gate-chrome.lp-app-bg,
-body.lp-auth-gate-chrome.lp-app-bg {
-  --lp-shell-chrome-bg: #1e4d7b;
-  background-color: #1e4d7b;
   background-image: none;
 }
 
@@ -80,12 +67,7 @@ body {
   overscroll-behavior: none;
   border: none;
   box-shadow: none;
-  background-color: var(--lp-shell-chrome-bg, #fff);
-}
-
-html.lp-top-safe-chrome-navy.lp-app-bg #signin-page,
-html.lp-auth-gate-chrome.lp-app-bg #signin-page {
-  background-color: var(--lp-shell-chrome-bg, #1e4d7b);
+  background-color: #fff;
 }
 
 /**
@@ -160,7 +142,7 @@ html.lp-auth-gate-chrome.lp-app-bg #signin-page {
   overflow: hidden;
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
-  background-color: var(--lp-shell-chrome-bg, #fff);
+  background-color: #fff;
   border: none;
   box-shadow: none;
 }
@@ -210,6 +192,7 @@ html.lp-auth-gate-chrome.lp-app-bg #signin-page {
   padding-bottom: 0;
   padding-left: var(--lp-safe-left);
   padding-right: var(--lp-safe-right);
+  background-color: #fff;
 }
 
 .app-main > .app-tab-panel > :first-child {
@@ -319,9 +302,9 @@ html.lp-auth-gate-chrome.lp-app-bg #signin-page {
   background: #e8f0f8;
 }
 
-/* 메인(오늘) 뷰 — 메뉴 페이지 배경(네이비), 본문은 위부터 풀너비·풀높이 */
+/* 메인(오늘) 뷰 — 배경 흰색, 하단 메뉴 시트만 카드 */
 .app-main:has(.app-home-menu-launcher) {
-  background: #1e4d7b;
+  background: #fff;
 }
 
 .app-main:has(.app-home-menu-launcher) .app-tab-panel {
@@ -339,7 +322,7 @@ html.lp-auth-gate-chrome.lp-app-bg #signin-page {
   min-height: 0;
 }
 
-/* 홈(오늘) — 네이비 히어로(로고·시간가치) + 하단 풀블리드 흰 메뉴 시트 */
+/* 홈(오늘) — 로고·시간가치 + 하단 풀블리드 흰 메뉴 시트 */
 .app-home-menu-launcher {
   display: flex;
   flex-direction: column;
@@ -413,20 +396,10 @@ html.lp-auth-gate-chrome.lp-app-bg #signin-page {
     max(0.5rem, var(--lp-safe-right));
   padding: 0.85rem 1rem 1rem;
   box-sizing: border-box;
-  background: linear-gradient(
-    155deg,
-    rgba(255, 255, 255, 0.22) 0%,
-    rgba(255, 255, 255, 0.09) 48%,
-    rgba(230, 242, 255, 0.12) 100%
-  );
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border: 1px solid rgba(255, 255, 255, 0.42);
+  background: linear-gradient(155deg, #f4f7fc 0%, #e8f0fa 100%);
+  border: 1px solid rgba(58, 110, 168, 0.14);
   border-radius: 1rem;
-  box-shadow:
-    0 12px 36px rgba(0, 25, 55, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    inset 0 -1px 0 rgba(30, 77, 123, 0.08);
+  box-shadow: 0 4px 16px rgba(15, 35, 70, 0.06);
 }
 
 .app-home-menu-balance-label {
@@ -435,11 +408,6 @@ html.lp-auth-gate-chrome.lp-app-bg #signin-page {
   font-weight: 600;
   letter-spacing: -0.01em;
   color: rgba(30, 77, 123, 0.52);
-}
-
-.app-home-menu-launcher > .app-home-menu-balance .app-home-menu-balance-label {
-  color: rgba(255, 255, 255, 0.88);
-  text-shadow: 0 1px 2px rgba(0, 30, 60, 0.22);
 }
 
 .app-home-menu-balance-amount {
@@ -454,11 +422,6 @@ html.lp-auth-gate-chrome.lp-app-bg #signin-page {
   letter-spacing: normal;
   color: #1e4d7b;
   line-height: 1.12;
-}
-
-.app-home-menu-launcher > .app-home-menu-balance .app-home-menu-balance-amount {
-  color: #fff;
-  text-shadow: 0 2px 14px rgba(0, 35, 70, 0.35);
 }
 
 .app-home-menu-balance-sign {
@@ -486,22 +449,12 @@ html.lp-auth-gate-chrome.lp-app-bg #signin-page {
   word-break: keep-all;
 }
 
-.app-home-menu-launcher > .app-home-menu-balance .app-home-menu-balance-meta {
-  color: rgba(255, 255, 255, 0.72);
-  text-shadow: 0 1px 2px rgba(0, 30, 60, 0.18);
-}
-
 .app-home-menu-balance-amount--loading {
   min-height: 2.35rem;
   font-size: 1.05rem;
   font-weight: 600;
   letter-spacing: -0.02em;
   color: rgba(30, 77, 123, 0.58);
-}
-
-.app-home-menu-launcher > .app-home-menu-balance .app-home-menu-balance-amount--loading {
-  color: rgba(255, 255, 255, 0.92);
-  text-shadow: 0 1px 2px rgba(0, 30, 60, 0.22);
 }
 
 .app-home-menu-balance-loading-text {
@@ -571,7 +524,7 @@ html.lp-auth-gate-chrome.lp-app-bg #signin-page {
   font-size: clamp(1.85rem, 6.5vw, 2.45rem);
   font-weight: 400;
   letter-spacing: 0.085em;
-  color: #fff;
+  color: #1e4d7b;
   line-height: 1.15;
 }
 
@@ -1584,7 +1537,7 @@ table {
   padding-bottom: var(--lp-safe-bottom);
   font-family: "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
   color: var(--auth-ink);
-  background: #1e4d7b;
+  background: #fff;
 }
 
 .auth-gate-body {

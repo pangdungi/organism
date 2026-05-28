@@ -1,4 +1,3 @@
-import { syncLpTopSafeChromeLoginGate } from "./utils/syncLpHomeTimeSafeTopChrome.js";
 import { refreshLpPwaInstall } from "./utils/lpPwaInstall.js";
 
 export function showOnly(pageId) {
@@ -22,8 +21,5 @@ export function showOnly(pageId) {
       p.style.display = "none";
     }
   });
-  syncLpTopSafeChromeLoginGate(
-    pageId === "login" || pageId === "reset-password",
-  );
   refreshLpPwaInstall();
 }

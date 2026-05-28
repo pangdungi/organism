@@ -1,13 +1,19 @@
 /* PWA 서비스 워커 — 앱 설치·오프라인 */
 /** 번들·아이콘 등 캐시 버전 (전략 바꿀 때만 올리면 이전 캐시 정리됨) */
-const ASSET_CACHE = "tip-assets-v12";
+const ASSET_CACHE = "tip-assets-v13";
 /** HTML 셸 캐시 — 홈 화면에서 열 때 즉시 표시용 */
 const HTML_CACHE = "tip-html-v2";
+
+/** install 단계: PWA 설치 조건만 빠르게 — 887개 아이콘은 클라이언트 idle prefetch */
+const PWA_INSTALL_CORE_PATHS = [
+  "/manifest.json",
+  "/icon-192.png",
+  "/icon-512.png",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
-      /* 첫 방문 직후에도 재실행 시 HTML·아이콘·매니페스트를 즉시 줄 수 있게 미리 채움 */
       try {
         const htmlCache = await caches.open(HTML_CACHE);
         const shell = await fetch(new Request(self.location.origin + "/", { cache: "reload" }));
@@ -17,26 +23,15 @@ self.addEventListener("install", (event) => {
       } catch (_e) {}
       try {
         const assetCache = await caches.open(ASSET_CACHE);
-        const manifestRes = await fetch(
-          self.location.origin + "/app-icon-prefetch.json",
+        await Promise.all(
+          PWA_INSTALL_CORE_PATHS.map(async (path) => {
+            try {
+              const u = self.location.origin + path;
+              const r = await fetch(u);
+              if (r && r.ok) await assetCache.put(u, r.clone());
+            } catch (_e) {}
+          }),
         );
-        if (manifestRes && manifestRes.ok) {
-          const iconPaths = await manifestRes.json();
-          const paths = Array.isArray(iconPaths)
-            ? ["/manifest.json", ...iconPaths]
-            : ["/manifest.json"];
-          await Promise.all(
-            paths.map(async (path) => {
-              try {
-                const p = String(path || "").trim();
-                if (!p.startsWith("/")) return;
-                const u = self.location.origin + p;
-                const r = await fetch(u);
-                if (r && r.ok) await assetCache.put(u, r.clone());
-              } catch (_e) {}
-            }),
-          );
-        }
       } catch (_e) {}
     })(),
   );

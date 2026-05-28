@@ -739,12 +739,10 @@ async function doResetPassword() {
 
 init();
 
-// PWA: 서비스 워커 등록 (앱 설치·홈 화면 추가 가능)
+// PWA: 서비스 워커 — load 대기 없이 즉시 등록(첫 방문 설치 가능 조건 빠르게 충족)
 if (
   "serviceWorker" in navigator &&
   (location.protocol === "https:" || location.hostname === "localhost")
 ) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {});
-  });
+  navigator.serviceWorker.register("/sw.js").catch(() => {});
 }

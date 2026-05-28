@@ -75,7 +75,6 @@ import { initDomPulseDebug } from "./utils/domPulseDebug.js";
 import { initMobileVisualViewportKeyboardInset } from "./utils/mobileViewportKeyboard.js";
 import { syncLpAppShellViewportHeight } from "./utils/lpAppShellViewport.js";
 import { logTodoScheduleTabOnNavigate } from "./utils/lpTabDataSourceLog.js";
-import { syncLpTopSafeChromeFromTab } from "./utils/syncLpHomeTimeSafeTopChrome.js";
 import { ensureTimeLedgerStorageReady } from "./utils/timeLedgerEntriesModel.js";
 import {
   setLpTabPullPending,
@@ -531,7 +530,6 @@ export async function mountApp(container) {
             panelEl.firstElementChild === homeMenuLauncherEl
           ) {
             syncAppFooterVisibility();
-            syncLpTopSafeChromeFromTab(targetTabId);
             try {
               window.__lpHomeMenuSoftRefresh?.();
             } catch (_) {}
@@ -553,7 +551,6 @@ export async function mountApp(container) {
         }
         renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
         syncAppFooterVisibility();
-        syncLpTopSafeChromeFromTab(targetTabId);
         if (
           targetTabId === "idea" ||
           targetTabId === "admin" ||
@@ -933,8 +930,7 @@ export async function mountApp(container) {
       });
     }
     syncAppFooterVisibility();
-    /* 본문 replaceChildren 직후 — 푸터·상단 세이프를 같이 맞춤(탭 클릭 즉시 바꾸면 깜빡임) */
-    syncLpTopSafeChromeFromTab(currentTabId);
+    /* 본문 replaceChildren 직후 — 푸터 맞춤(탭 클릭 즉시 바꾸면 깜빡임) */
   }
 
   window.__lpRenderMain = (opts) => renderMain(main, opts || {});
