@@ -66,8 +66,15 @@ function rowSortInstantMs(row) {
  * @typedef {{ dateYmd: string, taskName: string, memoText: string, timeLabel: string, sortMs: number }} TimeReportLogMemoRow
  */
 
+function formatDateSlashYmd(ymdTen) {
+  const n = normYmd(ymdTen);
+  if (!n || n.length < 10) return "";
+  const [y, m, d] = n.split("-");
+  return `${y}/${m}/${d}`;
+}
+
 /** @param {unknown[]} rows */
-function mapLedgerRowsToLogMemos(rows) {
+export function mapLedgerRowsToLogMemos(rows) {
   /** @type {TimeReportLogMemoRow[]} */
   const out = [];
   for (const row of rows) {
@@ -105,4 +112,64 @@ export function getMonthlyTimeReportLogMemos(ymdTen) {
     return d >= range.start && d <= range.end;
   });
   return mapLedgerRowsToLogMemos(rows);
+}
+
+/** @param {unknown} row */
+export function ledgerRowHasDisplayableMemo(row) {
+  return mapLedgerRowsToLogMemos([row]).length > 0;
+}
+
+/**
+ * 시간 레포트·시간가계부 공통 — 과제 메모 미니멀 목록
+ * @param {HTMLElement} parentEl
+ * @param {TimeReportLogMemoRow[]} memoRows
+ * @param {{ emptyMessage?: string, showDateInMeta?: boolean, ariaLabel?: string }} [opts]
+ */
+export function mountTimeReportLogMemoList(parentEl, memoRows, opts = {}) {
+  const {
+    emptyMessage = "남긴 과제 메모가 없습니다.",
+    showDateInMeta = false,
+    ariaLabel = "과제 메모",
+  } = opts;
+
+  const section = document.createElement("section");
+  section.className = "diary-tr-log-memo-shell";
+  section.setAttribute("aria-label", ariaLabel);
+
+  if (!memoRows.length) {
+    const empty = document.createElement("p");
+    empty.className = "diary-tr-log-memo-empty";
+    empty.textContent = emptyMessage;
+    section.appendChild(empty);
+    parentEl.appendChild(section);
+    return section;
+  }
+
+  const list = document.createElement("ul");
+  list.className = "diary-tr-log-memo-list";
+
+  memoRows.forEach((row) => {
+    const item = document.createElement("li");
+    item.className = "diary-tr-log-memo-item";
+
+    const meta = document.createElement("p");
+    meta.className = "diary-tr-log-memo-meta";
+    const metaParts = [];
+    if (showDateInMeta) metaParts.push(formatDateSlashYmd(row.dateYmd));
+    if (row.timeLabel) metaParts.push(row.timeLabel);
+    metaParts.push(row.taskName);
+    meta.textContent = metaParts.join(" · ");
+
+    const body = document.createElement("p");
+    body.className = "diary-tr-log-memo-body";
+    body.textContent = row.memoText;
+
+    item.appendChild(meta);
+    item.appendChild(body);
+    list.appendChild(item);
+  });
+
+  section.appendChild(list);
+  parentEl.appendChild(section);
+  return section;
 }

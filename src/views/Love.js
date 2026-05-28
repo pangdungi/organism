@@ -29,7 +29,11 @@ import {
   hhMmToMinutes,
   syncHabitTrackerLogs,
 } from "../utils/timeKpiSync.js";
-import { resolveKpiDetailLogEntriesPrepared } from "../utils/kpiTimeLedgerLogs.js";
+import {
+  resolveKpiDetailLogEntriesPrepared,
+  resolveKpiDetailLogEntriesLocal,
+  kpiDetailLogsNeedCloudPull,
+} from "../utils/kpiTimeLedgerLogs.js";
 import { defaultManualKpiLogMeta, kpiLogSourceBadgeHtml, formatKpiHistoryValueText } from "../utils/kpiLogFields.js";
 import { createKpiHabitGridElement } from "../utils/kpiHabitTrackerGrid.js";
 import { wireKpiHistoryHabitTabs } from "../utils/kpiHistoryHabitTabs.js";
@@ -1053,10 +1057,8 @@ export function render() {
       return;
     }
     const needHabitTracker = !!kpi.needHabitTracker;
-    const logs = await resolveKpiDetailLogEntriesPrepared(
-      kpi,
-      getKpiLogs(selectedKpiId),
-    );
+    const storedLogs = getKpiLogs(selectedKpiId);
+    const logs = resolveKpiDetailLogEntriesLocal(kpi, storedLogs);
     const selKpi = String(selectedKpiId);
     const todos = (data.kpiTodos || []).filter(
       (t) => String(t.kpiId) === selKpi && (t.text || "").trim() !== "",
@@ -1076,12 +1078,13 @@ export function render() {
         )
       : [];
     const useHabitTabs = needHabitTracker && dailyTodosForGrid.length > 0;
+    let loveLogPanelEl = null;
 
-    const appendKpiDailyLogBlock = (parentEl) => {
+    const appendKpiDailyLogBlock = (parentEl, logEntries) => {
       const div = document.createElement("div");
       div.className = "dream-kpi-history-divider";
       parentEl.appendChild(div);
-      if (logs.length === 0) {
+      if (logEntries.length === 0) {
         const empty = document.createElement("p");
         empty.className = "dream-kpi-history-empty";
         empty.textContent = "아직 기록이 없습니다.";
@@ -1089,7 +1092,7 @@ export function render() {
       } else {
         const list = document.createElement("div");
         list.className = "dream-kpi-history-list";
-        logs.forEach((log) => {
+        logEntries.forEach((log) => {
           const item = document.createElement("div");
           item.className = "dream-kpi-history-item";
           const completed = log.dailyCompleted || [];
@@ -1150,7 +1153,8 @@ export function render() {
       panelTr.className = "dream-kpi-history-tab-panel dream-kpi-history-tab-panel--tracker";
       panelTr.setAttribute("role", "tabpanel");
 
-      appendKpiDailyLogBlock(panelLog);
+      loveLogPanelEl = panelLog;
+      appendKpiDailyLogBlock(panelLog, logs);
       const gridEl = createKpiHabitGridElement(selKpi, dailyTodosForGrid, data.kpiLogs || []);
       if (gridEl) panelTr.appendChild(gridEl);
 
@@ -1158,7 +1162,7 @@ export function render() {
       historyWrap.appendChild(panelLog);
       historyWrap.appendChild(panelTr);
     } else {
-      appendKpiDailyLogBlock(historyWrap);
+      appendKpiDailyLogBlock(historyWrap, logs);
     }
 
     const todoHeader = document.createElement("div");
@@ -1260,6 +1264,14 @@ export function render() {
       afterKpiTodoListMutationScroll(historyWrap);
     }
     syncAppFooterLoveKpiActions();
+
+    if (loveLogPanelEl && kpiDetailLogsNeedCloudPull(kpi, storedLogs)) {
+      void resolveKpiDetailLogEntriesPrepared(kpi, storedLogs).then((freshLogs) => {
+        if (!loveLogPanelEl.isConnected) return;
+        loveLogPanelEl.replaceChildren();
+        appendKpiDailyLogBlock(loveLogPanelEl, freshLogs);
+      });
+    }
   }
 
   function escapeHtml(str) {

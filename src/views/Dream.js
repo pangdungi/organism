@@ -28,7 +28,11 @@ import {
   computeKpiProgress,
   buildKpiCardTimePresentation,
 } from "../utils/kpiTimeUnitKpi.js";
-import { resolveKpiDetailLogEntriesPrepared } from "../utils/kpiTimeLedgerLogs.js";
+import {
+  resolveKpiDetailLogEntriesPrepared,
+  resolveKpiDetailLogEntriesLocal,
+  kpiDetailLogsNeedCloudPull,
+} from "../utils/kpiTimeLedgerLogs.js";
 import {
   wireKpiHistoryBottomTabs,
   getKpiHistoryBottomTab,
@@ -1234,8 +1238,8 @@ export function render() {
   function renderKpiDetailView(opts = {}) {
     contentWrap.hidden = false;
     contentWrap.className = "dream-content-wrap dream-kpi-detail-wrap";
-    contentWrap.innerHTML = "";
     if (!selectedKpiId) {
+      contentWrap.innerHTML = "";
       exitToKpiList();
       return;
     }
@@ -1261,10 +1265,8 @@ export function render() {
       exitToKpiList();
       return;
     }
-    const logs = await resolveKpiDetailLogEntriesPrepared(
-      kpi,
-      getKpiLogs(selectedKpiId),
-    );
+    const storedLogs = getKpiLogs(selectedKpiId);
+    const logs = resolveKpiDetailLogEntriesLocal(kpi, storedLogs);
     const selKpi = String(selectedKpiId);
     const todos = (data.kpiTodos || []).filter(
       (t) => String(t.kpiId) === selKpi && (t.text || "").trim() !== "",
@@ -1273,11 +1275,11 @@ export function render() {
 
     const hasDailyTab = needHabitTracker;
 
-    const appendKpiDailyLogBlock = (parentEl) => {
+    const appendKpiDailyLogBlock = (parentEl, logEntries) => {
       const div = document.createElement("div");
       div.className = "dream-kpi-history-divider";
       parentEl.appendChild(div);
-      if (logs.length === 0) {
+      if (logEntries.length === 0) {
         const empty = document.createElement("p");
         empty.className = "dream-kpi-history-empty";
         empty.textContent = "아직 기록이 없습니다.";
@@ -1285,7 +1287,7 @@ export function render() {
       } else {
         const list = document.createElement("div");
         list.className = "dream-kpi-history-list";
-        logs.forEach((log) => {
+        logEntries.forEach((log) => {
           const item = document.createElement("div");
           item.className = "dream-kpi-history-item";
           const completed = log.dailyCompleted || [];
@@ -1355,7 +1357,7 @@ export function render() {
     panelLogSeg.className =
       "dream-kpi-bottom-seg-panel dream-kpi-bottom-seg-panel--log";
     panelLogSeg.setAttribute("role", "tabpanel");
-    appendKpiDailyLogBlock(panelLogSeg);
+    appendKpiDailyLogBlock(panelLogSeg, logs);
 
     const panelTodoSeg = document.createElement("div");
     panelTodoSeg.className =
@@ -1550,6 +1552,14 @@ export function render() {
       afterKpiTodoListMutationScroll(target);
     }
     syncAppFooterDreamKpiActions();
+
+    if (kpiDetailLogsNeedCloudPull(kpi, storedLogs)) {
+      void resolveKpiDetailLogEntriesPrepared(kpi, storedLogs).then((freshLogs) => {
+        if (!panelLogSeg.isConnected) return;
+        panelLogSeg.replaceChildren();
+        appendKpiDailyLogBlock(panelLogSeg, freshLogs);
+      });
+    }
   }
 
   function escapeHtml(str) {

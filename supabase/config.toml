@@ -386,3 +386,6 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # 로그인 사용자 JWT 필수 (게이트웨이에서 먼저 검증)
 [functions.delete-my-account]
 verify_jwt = true
+
+[functions.time-report-analyze]
+verify_jwt = true

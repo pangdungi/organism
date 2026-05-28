@@ -84,6 +84,17 @@ export function resolveKpiDetailLogEntries(kpi, storedLogs = []) {
   return out;
 }
 
+/** 로그 탭 — 서버 pull 없이 로컬만 (할일 추가 등 UI 즉시 갱신용) */
+export function resolveKpiDetailLogEntriesLocal(kpi, storedLogs = []) {
+  return resolveKpiDetailLogEntries(kpi, storedLogs);
+}
+
+/** 시간가계부 pull 이 필요한 KPI 인지 */
+export function kpiDetailLogsNeedCloudPull(kpi, storedLogs = []) {
+  const logs = Array.isArray(storedLogs) ? storedLogs : [];
+  return kpiShouldUseTimeLedgerLogs(kpi) || logs.some((l) => kpiLogIsTimeLinked(l));
+}
+
 /**
  * 서버에서 KPI 목표 구간 가계부 pull 후 로그 목록 반환
  * @param {object} kpi
