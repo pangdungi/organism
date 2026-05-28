@@ -37,16 +37,45 @@
     <title>Time is Price</title>
     <!-- manifest 캐시로 예전 앱 이름이 남는 경우 방지: 쿼리 변경 시 브라우저가 다시 받음 -->
     <link rel="manifest" href="/manifest.json?v=timeisprice-brand-3" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;500&family=Noto+Sans+KR:wght@300;400;500;600&family=Space+Grotesk:wght@500;600&display=swap"
-      rel="stylesheet"
-    />
+    <link rel="preload" href="/fonts/LP-SejongGeulggot.otf" as="font" type="font/otf" crossorigin />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=timeisprice-icon-2" />
     <link rel="apple-touch-icon" href="/icon-192.png?v=timeisprice-icon-2" />
-    <!-- FOUC 방지 + main.css 도착 전에도 스플래시가 완전한 모습으로 첫 페인트되도록 인라인에 전부 포함 -->
+    <!-- FOUC 방지 + 첫 페인트부터 세종 글꽃(또는 저장된 화면 글꼴) -->
     <style>
+      @font-face {
+        font-family: "LP Sejong Geulggot";
+        src: url("/fonts/LP-SejongGeulggot.otf") format("opentype");
+        font-weight: normal;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: "LP Lee Seoyun";
+        src: url("/fonts/LP-LeeSeoyun.otf") format("opentype");
+        font-weight: normal;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: "LP Kyobo Handwriting";
+        src: url("/fonts/LP-KyoboHandwriting2025.otf") format("opentype");
+        font-weight: normal;
+        font-style: normal;
+        font-display: swap;
+      }
+      :root {
+        --lp-app-font-family: "LP Sejong Geulggot", system-ui, -apple-system, "Segoe UI",
+          Roboto, sans-serif;
+      }
+      html {
+        font-family: var(--lp-app-font-family);
+      }
+      button,
+      input,
+      select,
+      textarea {
+        font-family: inherit;
+      }
       html,
       body {
         margin: 0;
@@ -132,7 +161,7 @@
         box-sizing: border-box;
         background: #f0f4fa;
         color: #1a5fa8;
-        font-family: "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+        font-family: inherit;
         text-align: center;
       }
       #lp-boot-fallback[hidden] {
@@ -170,6 +199,29 @@
         color: #fff;
       }
     </style>
+    <script>
+      (function () {
+        var FALLBACK =
+          'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+        var STACKS = {
+          pakyongjun: '"LP Sejong Geulggot", ' + FALLBACK,
+          leeseoyun: '"LP Lee Seoyun", ' + FALLBACK,
+          kyobohandwriting: '"LP Kyobo Handwriting", ' + FALLBACK,
+          system: FALLBACK,
+        };
+        var KEY = "lp_app_ui_font_id";
+        var DEF = "pakyongjun";
+        try {
+          var id = localStorage.getItem(KEY);
+          if (id === "parkdahyun") id = "kyobohandwriting";
+          if (!id || !STACKS[id]) id = DEF;
+          document.documentElement.style.setProperty(
+            "--lp-app-font-family",
+            STACKS[id],
+          );
+        } catch (_) {}
+      })();
+    </script>
     <link rel="stylesheet" href="/src/main.css" />
   </head>
   <body class="lp-app-bg">
@@ -179,7 +231,7 @@
           padding: 1.5rem;
           max-width: 40rem;
           margin: 0 auto;
-          font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif;
+          font-family: inherit;
           line-height: 1.65;
           color: #1d1d1f;
           background: #fff;

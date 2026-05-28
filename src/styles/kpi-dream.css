@@ -1259,7 +1259,7 @@
   justify-content: center;
   padding: max(1rem, var(--lp-safe-top)) 1rem max(1rem, var(--lp-safe-bottom));
   box-sizing: border-box;
-  font-family: var(--lp-modal-font);
+  font-family: inherit;
 }
 
 .dream-kpi-backdrop,

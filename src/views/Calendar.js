@@ -951,20 +951,11 @@ function timetableUsesHexSurface(c) {
 }
 
 const DAY_NAMES = ["월", "화", "수", "목", "금", "토", "일"];
-const MONTH_NAMES_EN = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
+function formatCalendarMonthLabel(monthIndex) {
+  const m = Number(monthIndex);
+  if (!Number.isFinite(m) || m < 0 || m > 11) return "";
+  return `${m + 1}월`;
+}
 
 /** 월요일 시작 (0=월, 6=일) */
 function getMondayBasedDow(date) {
@@ -2160,7 +2151,7 @@ function renderMonthlyView(tabsElement) {
     </span>
     <div class="calendar-nav-controls">
       <button type="button" class="calendar-nav-prev" title="이전 달">&lt;</button>
-      <button type="button" class="calendar-nav-today" title="Today">Today</button>
+      <button type="button" class="calendar-nav-today" title="오늘">오늘</button>
       <button type="button" class="calendar-nav-next" title="다음 달">&gt;</button>
     </div>
   `;
@@ -2173,7 +2164,7 @@ function renderMonthlyView(tabsElement) {
   function renderCalendar() {
     const grid = getCalendarGrid(currentYear, currentMonth);
     lpCalendarNavQ(nav, wrap, ".calendar-nav-month").textContent =
-      MONTH_NAMES_EN[currentMonth];
+      formatCalendarMonthLabel(currentMonth);
     lpCalendarNavQ(nav, wrap, ".calendar-nav-year").textContent =
       String(currentYear);
 
@@ -4101,7 +4092,7 @@ function render1WeekView(tabsElement) {
     </span>
     <div class="calendar-nav-controls">
       <button type="button" class="calendar-nav-prev" title="이전 주">&lt;</button>
-      <button type="button" class="calendar-nav-today" title="이번 주">Today</button>
+      <button type="button" class="calendar-nav-today" title="오늘">오늘</button>
       <button type="button" class="calendar-nav-next" title="다음 주">&gt;</button>
     </div>
   `;
@@ -4152,7 +4143,7 @@ function render1WeekView(tabsElement) {
     const monthIndex = week[0] ? week[0].getMonth() : new Date().getMonth();
     const navMonth = lpCalendarNavQ(nav, wrap, ".calendar-nav-month");
     const navYear = lpCalendarNavQ(nav, wrap, ".calendar-nav-year");
-    if (navMonth) navMonth.textContent = MONTH_NAMES_EN[monthIndex];
+    if (navMonth) navMonth.textContent = formatCalendarMonthLabel(monthIndex);
     if (navYear)
       navYear.textContent = week[0] ? String(week[0].getFullYear()) : "";
 
@@ -5086,7 +5077,7 @@ function renderAnnualView(tabsElement) {
 
       const monthLabel = document.createElement("div");
       monthLabel.className = "calendar-annual-row-month";
-      monthLabel.textContent = MONTH_NAMES_EN[month];
+      monthLabel.textContent = formatCalendarMonthLabel(month);
       row.appendChild(monthLabel);
 
       const daysRow = document.createElement("div");
@@ -5581,7 +5572,7 @@ function renderCalendarView(tabsElement) {
 export function renderMobileScheduleCalendar() {
   const el = document.createElement("div");
   el.className =
-    "app-tab-panel-content calendar-view calendar-view--mobile-schedule lp-app-font";
+    "app-tab-panel-content calendar-view calendar-view--mobile-schedule";
 
   /* 하단 「일정」탭: 사이드/상단 라벨로 구분 가능 — SCHEDULE·대제목 줄 없음 (태블릿 너비만 보이던 헤더 갭 방지) */
 
@@ -5646,7 +5637,7 @@ function renderPlaceholderView(tabsElement, label) {
 
 export function render() {
   const el = document.createElement("div");
-  el.className = "app-tab-panel-content calendar-view lp-app-font";
+  el.className = "app-tab-panel-content calendar-view";
 
   /* 할일 탭: 사이드/하단 메뉴로 구분 — SCHEDULE·대제목 줄 없음 */
 

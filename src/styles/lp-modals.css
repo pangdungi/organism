@@ -16,7 +16,6 @@
   --lp-modal-danger: #b91c1c;
   --lp-modal-danger-soft: #fef2f2;
   --lp-modal-radius: 12px;
-  --lp-modal-font: var(--lp-app-font-family);
   --lp-modal-textarea-height: 4.5rem;
 }
 .lp-task-badge,
@@ -30,7 +29,7 @@
   line-height: 1.2;
   letter-spacing: 0.04em;
   text-transform: none;
-  font-family: var(--lp-modal-font);
+  font-family: inherit;
   color: var(--lp-modal-navy-muted);
   background: #f1f5f9;
   border: 1px solid var(--lp-modal-border);
@@ -62,7 +61,7 @@ button.lp-choice-chip,
 button[data-legacy~="lp-choice-chip"] {
   margin: 0;
   padding: 0.38rem 0.65rem;
-  font-family: var(--lp-modal-font);
+  font-family: inherit;
   font-size: 0.8125rem;
   font-weight: 500;
   line-height: 1.25;
@@ -131,7 +130,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   justify-content: center;
   padding: 1rem;
   box-sizing: border-box;
-  font-family: var(--lp-modal-font);
+  font-family: inherit;
 }
 .time-task-setup-modal.time-add-task-modal,
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-add-task-modal"] {
@@ -675,7 +674,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   min-height: 1.875rem;
   padding: 0.12rem 0.1rem;
   margin: 0;
-  font-family: var(--lp-modal-font);
+  font-family: inherit;
   font-size: 0.8125rem;
   font-weight: 500;
   line-height: 1.25;
@@ -1637,7 +1636,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   justify-content: center;
   padding: 1rem;
   box-sizing: border-box;
-  font-family: var(--lp-modal-font);
+  font-family: inherit;
 }
 .time-task-log-todo-inner-modal[hidden],
 .time-task-log-expense-inner-modal[hidden],
@@ -2329,7 +2328,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   justify-content: center;
   padding: 1rem;
   box-sizing: border-box;
-  font-family: var(--lp-modal-font);
+  font-family: inherit;
 }
 .asset-settings-modal[hidden] {
   display: none !important;
@@ -2466,7 +2465,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 .asset-asset-modal-tab {
   margin: 0;
   padding: 0.38rem 0.65rem;
-  font-family: var(--lp-modal-font);
+  font-family: inherit;
   font-size: 0.8125rem;
   font-weight: 500;
   line-height: 1.25;
@@ -2519,7 +2518,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 .asset-settings-tab-btn {
   margin: 0;
   padding: 0.38rem 0.65rem;
-  font-family: var(--lp-modal-font);
+  font-family: inherit;
   font-size: 0.8125rem;
   font-weight: 500;
   color: var(--lp-modal-navy-muted);

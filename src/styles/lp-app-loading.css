@@ -2,7 +2,7 @@
 
 .app-splash-label {
   margin: 0 0 1.15rem;
-  font-family: "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
+  font-family: inherit;
   font-size: 0.9375rem;
   font-weight: 500;
   letter-spacing: -0.02em;
@@ -42,7 +42,7 @@
 
 .lp-app-loading-overlay__text {
   margin: 0;
-  font-family: "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
+  font-family: inherit;
   font-size: 0.9375rem;
   font-weight: 500;
   letter-spacing: -0.02em;

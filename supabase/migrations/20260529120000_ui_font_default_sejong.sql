@@ -1,11 +1,7 @@
--- ui_font_id: 교보 손글씨(kyobohandwriting) — parkdahyun 대체
+-- ui_font_id 기본값: 세종 글꽃(pakyongjun). 잘못된 id는 system 대신 pakyongjun.
 
 comment on column public.user_subscriptions.ui_font_id is
-  '앱 화면 글꼴 id; system | leeseoyun | pakyongjun | kyobohandwriting';
-
-update public.user_subscriptions
-set ui_font_id = 'kyobohandwriting'
-where ui_font_id = 'parkdahyun';
+  '앱 화면 글꼴 id; system | leeseoyun | pakyongjun | kyobohandwriting (기본 pakyongjun)';
 
 create or replace function public.set_my_ui_font_id (p_font_id text)
   returns void

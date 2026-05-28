@@ -416,7 +416,7 @@ body {
   justify-content: center;
   flex-wrap: wrap;
   margin: 0 0 0.45rem;
-  font-family: var(--lp-app-font-family);
+  font-family: inherit;
   font-size: clamp(1.7rem, 6.8vw, 2.15rem);
   font-weight: 800;
   letter-spacing: normal;
@@ -1535,7 +1535,7 @@ table {
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: var(--lp-safe-bottom);
-  font-family: "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
+  font-family: inherit;
   color: var(--auth-ink);
   background: #fff;
 }
@@ -1875,7 +1875,7 @@ table {
 
 .app-toast-message {
   margin: 0 0 0.5rem;
-  font-family: "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+  font-family: inherit;
   font-size: 0.97rem;
   font-weight: 600;
   line-height: 1.6;
@@ -1888,7 +1888,7 @@ table {
 
 .app-toast-sub {
   margin: 0 0 1.05rem;
-  font-family: "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+  font-family: inherit;
   font-size: 0.8125rem;
   font-weight: 500;
   line-height: 1.55;
@@ -1905,7 +1905,7 @@ table {
 .app-toast-btn {
   width: 100%;
   padding: 0.72rem 1rem;
-  font-family: "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+  font-family: inherit;
   font-size: 0.9rem;
   font-weight: 600;
   color: #fff;

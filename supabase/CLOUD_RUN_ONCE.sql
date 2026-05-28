@@ -143,7 +143,7 @@ begin
     v_id := 'kyobohandwriting';
   end if;
   if v_id not in ('system', 'leeseoyun', 'pakyongjun', 'kyobohandwriting') then
-    v_id := 'system';
+    v_id := 'pakyongjun';
   end if;
   update public.user_subscriptions
   set ui_font_id = v_id

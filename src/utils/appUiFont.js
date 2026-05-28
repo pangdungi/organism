@@ -1,6 +1,6 @@
 /**
  * 앱 전역 UI 글꼴 — localStorage + 서버(user_subscriptions.ui_font_id) + --lp-app-font-family
- * 로고·캘린더 포함 UI는 .lp-app-font / --lp-app-font-family 로 통일합니다.
+ * 앱 전역은 html 의 --lp-app-font-family 하나만 사용합니다.
  */
 
 import { supabase } from "../supabase.js";
@@ -10,9 +10,9 @@ export const LP_APP_UI_FONT_STORAGE_KEY = "lp_app_ui_font_id";
 /** 앱 기본 글꼴 (localStorage·서버 값 없을 때) */
 export const LP_APP_DEFAULT_FONT_ID = "pakyongjun";
 
-/** 앱에서 「시스템 기본」: 폰트 설정 도입 전 모달에 쓰던 스택과 동일 */
+/** 앱에서 「시스템 기본」 선택 시만 사용 */
 export const LP_APP_SYSTEM_FONT_STACK =
-  'system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", sans-serif';
+  'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 
 /** 커스텀 글꼴 뒤에 붙는 공통 폴백 */
 const LP_APP_FONT_FALLBACK = LP_APP_SYSTEM_FONT_STACK;
@@ -95,7 +95,6 @@ export function applyAppFont() {
     const id = getStoredAppFontId();
     const stack = getAppFontStackForId(id);
     document.documentElement.style.setProperty("--lp-app-font-family", stack);
-    document.documentElement.style.setProperty("--app-font-family", stack);
   } catch (_) {}
 }
 

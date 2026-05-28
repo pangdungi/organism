@@ -37,6 +37,7 @@ import { getSupabaseSession } from "./utils/supabaseSession.js";
 import { applyAppFont } from "./utils/appUiFont.js";
 import { prefetchCriticalAppIconAssets } from "./utils/appIconPrefetch.js";
 import { setAppSplashMessage } from "./utils/lpAppLoading.js";
+applyAppFont();
 import { pullUserPrefsFromSupabase } from "./utils/userHourlySync.js";
 import {
   applyTimeCategoryColors,
