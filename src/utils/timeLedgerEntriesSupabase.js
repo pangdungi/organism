@@ -67,6 +67,8 @@ export function resetTimeLedgerSessionFilterToToday() {
     sessionStorage.setItem("lp_time_usage_memo_only", "0");
     sessionStorage.removeItem("lp_time_usage_task_filter");
     sessionStorage.setItem("lp_time_ledger_layout_view", "timeline");
+    sessionStorage.setItem("lp_time_report_range_start", t);
+    sessionStorage.setItem("lp_time_report_range_end", t);
   } catch (_) {}
 }
 
@@ -125,6 +127,21 @@ export function readTimeLedgerCombinedPullRangeYmd() {
     }
     const outStart = base.rangeStart < rs ? base.rangeStart : rs;
     const outEnd = base.rangeEnd > re ? base.rangeEnd : re;
+    const prs = sessionStorage.getItem("lp_time_report_range_start");
+    const pre = sessionStorage.getItem("lp_time_report_range_end");
+    if (prs && YMD_RE.test(prs)) {
+      let rrs = prs;
+      let rre = pre && YMD_RE.test(pre) ? pre : prs;
+      if (rrs > rre) {
+        const t = rrs;
+        rrs = rre;
+        rre = t;
+      }
+      return {
+        rangeStart: outStart < rrs ? outStart : rrs,
+        rangeEnd: outEnd > rre ? outEnd : rre,
+      };
+    }
     return { rangeStart: outStart, rangeEnd: outEnd };
   } catch (_) {}
   return base;

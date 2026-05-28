@@ -102,6 +102,12 @@ import {
   mapLedgerRowsToLogMemos,
 } from "../utils/diaryTimeReportLogMemos.js";
 import { mountTimeLedgerMemoFeed } from "../utils/timeLedgerMemoFeed.js";
+import {
+  mountTimeLedgerAiReport,
+  persistTimeLedgerReportRangeToSession,
+  readTimeLedgerReportRangeFromSession,
+  resolveTimeReportTargetFromRange,
+} from "../utils/timeLedgerReportView.js";
 
 import {
   lpSetClasses,
@@ -4394,15 +4400,16 @@ function createTimeLedgerDayOverviewBar(dayRows, dayKeyYmd = "") {
   return wrap;
 }
 
-/** 시간가계부 상단 — 타임라인뷰 / 타임박스뷰 (시간레포트 DAY·MONTH와 동일 세그먼트 스타일) */
+/** 시간가계부 상단 — 타임라인 · 타임박스 · 레포트 */
 function createTimeLedgerViewModeBar(onViewChange) {
   const wrap = document.createElement("div");
   wrap.className = "time-ledger-view-mode-bar-wrap";
 
   const bar = document.createElement("div");
   bar.className = "diary-report-granularity time-ledger-view-mode-bar";
+  bar.style.setProperty("--lp-seg-count", "3");
   bar.setAttribute("role", "toolbar");
-  bar.setAttribute("aria-label", "타임라인 · 타임박스 보기");
+  bar.setAttribute("aria-label", "타임라인 · 타임박스 · 레포트");
 
   const timelineBtn = document.createElement("button");
   timelineBtn.type = "button";
@@ -4416,20 +4423,29 @@ function createTimeLedgerViewModeBar(onViewChange) {
   timeboxBtn.textContent = "타임박스";
   timeboxBtn.title = "타임박스 보기";
 
+  const reportBtn = document.createElement("button");
+  reportBtn.type = "button";
+  reportBtn.className = "diary-report-granularity__seg";
+  reportBtn.textContent = "레포트";
+  reportBtn.title = "시간 레포트";
+
   bar.appendChild(timelineBtn);
   bar.appendChild(timeboxBtn);
+  bar.appendChild(reportBtn);
   wrap.appendChild(bar);
 
   function syncUi(view) {
-    const isTimeline = view === "timeline";
-    timelineBtn.classList.toggle("is-active", isTimeline);
-    timeboxBtn.classList.toggle("is-active", !isTimeline);
-    timelineBtn.setAttribute("aria-pressed", isTimeline ? "true" : "false");
-    timeboxBtn.setAttribute("aria-pressed", isTimeline ? "false" : "true");
+    timelineBtn.classList.toggle("is-active", view === "timeline");
+    timeboxBtn.classList.toggle("is-active", view === "timebox");
+    reportBtn.classList.toggle("is-active", view === "report");
+    timelineBtn.setAttribute("aria-pressed", view === "timeline" ? "true" : "false");
+    timeboxBtn.setAttribute("aria-pressed", view === "timebox" ? "true" : "false");
+    reportBtn.setAttribute("aria-pressed", view === "report" ? "true" : "false");
   }
 
   timelineBtn.addEventListener("click", () => onViewChange("timeline"));
   timeboxBtn.addEventListener("click", () => onViewChange("timebox"));
+  reportBtn.addEventListener("click", () => onViewChange("report"));
 
   wrap._syncTimeLedgerViewModeUi = syncUi;
   return wrap;
@@ -4786,11 +4802,11 @@ export function render(opts = {}) {
   }
 
   const LP_TIME_LEDGER_LAYOUT_VIEW_KEY = "lp_time_ledger_layout_view";
-  /** 시간가계부 본문: 타임라인(기록 목록) | 타임박스(준비 중) */
+  /** 시간가계부 본문: 타임라인 | 타임박스 | 레포트 */
   let timeLedgerLayoutView = (() => {
     try {
       const raw = sessionStorage.getItem(LP_TIME_LEDGER_LAYOUT_VIEW_KEY);
-      if (raw === "timeline" || raw === "timebox") return raw;
+      if (raw === "timeline" || raw === "timebox" || raw === "report") return raw;
     } catch (_) {}
     return "timeline";
   })();
@@ -4798,6 +4814,18 @@ export function render(opts = {}) {
     try {
       sessionStorage.setItem(LP_TIME_LEDGER_LAYOUT_VIEW_KEY, timeLedgerLayoutView);
     } catch (_) {}
+  }
+
+  const _reportRangeFromSession = readTimeLedgerReportRangeFromSession(
+    _todayForUsageRange,
+  );
+  let reportRangeStartYmd = _reportRangeFromSession.start;
+  let reportRangeEndYmd = _reportRangeFromSession.end;
+  function persistReportRangeToSession() {
+    persistTimeLedgerReportRangeToSession(
+      reportRangeStartYmd,
+      reportRangeEndYmd,
+    );
   }
 
   const taskSetupBtn = document.createElement("button");
@@ -4840,8 +4868,15 @@ export function render(opts = {}) {
       void (async () => {
         if (!el.isConnected) return;
         persistActiveViewTimeFilterToSession();
-        let rs = String(usageHistoryRangeStartYmd || "").trim();
-        let re = String(usageHistoryRangeEndYmd || "").trim();
+        let rs;
+        let re;
+        if (timeLedgerLayoutView === "report") {
+          rs = String(reportRangeStartYmd || "").trim();
+          re = String(reportRangeEndYmd || "").trim();
+        } else {
+          rs = String(usageHistoryRangeStartYmd || "").trim();
+          re = String(usageHistoryRangeEndYmd || "").trim();
+        }
         if (rs > re) {
           const x = rs;
           rs = re;
@@ -4880,7 +4915,10 @@ export function render(opts = {}) {
       usageHistoryRangeStartYmd,
       usageHistoryRangeEndYmd,
     );
-    if (timeLedgerLayoutView !== "timebox") {
+    if (
+      timeLedgerLayoutView !== "timebox" &&
+      timeLedgerLayoutView !== "report"
+    ) {
       if (selectedTaskNamesForFilter != null) {
         if (selectedTaskNamesForFilter.length === 0) {
           filtered = [];
@@ -4949,7 +4987,7 @@ export function render(opts = {}) {
       selectedTaskNamesForFilter == null
         ? ""
         : selectedTaskNamesForFilter.join("\x1e");
-    return `${usageHistoryRangeStartYmd}|${usageHistoryRangeEndYmd}|${taskFilter}|${usageHistoryMemoOnlyFilter ? "1" : "0"}|${timeLedgerLayoutView}|${ledger}`;
+    return `${usageHistoryRangeStartYmd}|${usageHistoryRangeEndYmd}|${reportRangeStartYmd}|${reportRangeEndYmd}|${taskFilter}|${usageHistoryMemoOnlyFilter ? "1" : "0"}|${timeLedgerLayoutView}|${isLpTabPullPending("time") ? "pull" : "ok"}|${ledger}`;
   }
 
   function rememberTimeLedgerPaintSignature() {
@@ -5155,22 +5193,45 @@ export function render(opts = {}) {
       "[data-usage-range-filter-section]",
     );
 
+    function isUsageRangeModalDateOnlyMode() {
+      return (
+        timeLedgerLayoutView === "timebox" || timeLedgerLayoutView === "report"
+      );
+    }
+
     function isUsageRangeModalTimeboxMode() {
-      return timeLedgerLayoutView === "timebox";
+      return isUsageRangeModalDateOnlyMode();
+    }
+
+    function activeRangeYmdForModal() {
+      if (timeLedgerLayoutView === "report") {
+        return { start: reportRangeStartYmd, end: reportRangeEndYmd };
+      }
+      return {
+        start: usageHistoryRangeStartYmd,
+        end: usageHistoryRangeEndYmd,
+      };
     }
 
     function syncUsageRangeModalForLayoutView() {
-      const timeboxMode = isUsageRangeModalTimeboxMode();
-      if (usageFilterSection) usageFilterSection.hidden = timeboxMode;
-      lpTokenToggle(usageRangeModal, "time-usage-range-modal--timebox", timeboxMode);
+      const dateOnlyMode = isUsageRangeModalDateOnlyMode();
+      if (usageFilterSection) usageFilterSection.hidden = dateOnlyMode;
+      lpTokenToggle(
+        usageRangeModal,
+        "time-usage-range-modal--timebox",
+        dateOnlyMode,
+      );
       if (footerDateBtn) {
-        footerDateBtn.title = timeboxMode ? "조회 기간" : "조회 기간·필터";
-        footerDateBtn.setAttribute(
-          "aria-label",
-          timeboxMode ? "조회 기간" : "조회 기간·필터",
-        );
+        const label =
+          timeLedgerLayoutView === "report"
+            ? "조회 기간"
+            : timeLedgerLayoutView === "timebox"
+              ? "조회 기간"
+              : "조회 기간·필터";
+        footerDateBtn.title = label;
+        footerDateBtn.setAttribute("aria-label", label);
       }
-      if (!timeboxMode && !usageRangeModal.hidden) {
+      if (!dateOnlyMode && !usageRangeModal.hidden) {
         if (usageFilterMemoOnlyCb) {
           usageFilterMemoOnlyCb.checked = usageHistoryMemoOnlyFilter;
         }
@@ -5218,10 +5279,18 @@ export function render(opts = {}) {
     function syncFooterDateBtnActiveState() {
       if (!footerDateBtn) return;
       const today = getLedgerFilterTodayYmd();
-      const active = isUsageRangeModalTimeboxMode()
-        ? usageHistoryRangeStartYmd !== today ||
-          usageHistoryRangeEndYmd !== today
-        : usageHistoryMemoOnlyFilter || selectedTaskNamesForFilter != null;
+      let active = false;
+      if (timeLedgerLayoutView === "report") {
+        active =
+          reportRangeStartYmd !== today || reportRangeEndYmd !== today;
+      } else if (isUsageRangeModalTimeboxMode()) {
+        active =
+          usageHistoryRangeStartYmd !== today ||
+          usageHistoryRangeEndYmd !== today;
+      } else {
+        active =
+          usageHistoryMemoOnlyFilter || selectedTaskNamesForFilter != null;
+      }
       lpTokenToggle(footerDateBtn, "is-active", active);
     }
 
@@ -5270,11 +5339,12 @@ export function render(opts = {}) {
     }
 
     function openUsageRangeModal() {
+      const { start, end } = activeRangeYmdForModal();
       if (usageRangeStartInp) {
-        usageRangeStartInp.value = usageHistoryRangeStartYmd;
+        usageRangeStartInp.value = start;
       }
       if (usageRangeEndInp) {
-        usageRangeEndInp.value = usageHistoryRangeEndYmd;
+        usageRangeEndInp.value = end;
       }
       syncUsageRangeModalForLayoutView();
       if (!isUsageRangeModalTimeboxMode()) {
@@ -5377,19 +5447,28 @@ export function render(opts = {}) {
         s = e;
         e = x;
       }
-      usageHistoryRangeStartYmd = s;
-      usageHistoryRangeEndYmd = e;
-      if (isUsageRangeModalTimeboxMode()) {
-        timeLedgerLayoutView = "timebox";
-        persistTimeLedgerLayoutView();
+      if (timeLedgerLayoutView === "report") {
+        reportRangeStartYmd = s;
+        reportRangeEndYmd = e;
+        persistReportRangeToSession();
       } else {
-        applyTaskFilterFromModal();
+        usageHistoryRangeStartYmd = s;
+        usageHistoryRangeEndYmd = e;
+        if (timeLedgerLayoutView === "timebox") {
+          persistTimeLedgerLayoutView();
+        } else {
+          applyTaskFilterFromModal();
+        }
+        persistActiveViewTimeFilterToSession();
       }
       closeUsageRangeModal();
-      persistActiveViewTimeFilterToSession();
-      requestUsageListScrollToBottomOnce();
+      if (timeLedgerLayoutView !== "report") {
+        requestUsageListScrollToBottomOnce();
+      }
       onFilterChange();
-      requestTimeLedgerPullForUserQueryChange("usage_range_modal");
+      requestTimeLedgerPullForUserQueryChange(
+        timeLedgerLayoutView === "report" ? "report_range_modal" : "usage_range_modal",
+      );
     });
 
     syncUsageRangeModalForLayoutView();
@@ -8447,6 +8526,15 @@ export function render(opts = {}) {
       ledgerContainer.appendChild(viewModeBarWrap);
     }
 
+    const showReportView =
+      !showMemoOnlyLogView && timeLedgerLayoutView === "report";
+    const headingRangeStart = showReportView
+      ? reportRangeStartYmd
+      : usageHistoryRangeStartYmd;
+    const headingRangeEnd = showReportView
+      ? reportRangeEndYmd
+      : usageHistoryRangeEndYmd;
+
     const usageHistoryHeadingRow = document.createElement("div");
     lpSetClasses(
       usageHistoryHeadingRow,
@@ -8461,13 +8549,15 @@ export function render(opts = {}) {
     lpSetClasses(usageHistoryEyebrow, "time-ledger-usage-history-eyebrow");
     usageHistoryEyebrow.textContent = showMemoOnlyLogView
       ? "과제 메모"
-      : "시간 사용내역";
+      : showReportView
+        ? "레포트"
+        : "시간 사용내역";
     const usageHistoryDate = document.createElement("p");
     lpSetClasses(usageHistoryDate, "time-ledger-usage-history-date");
     usageHistoryDate.setAttribute("data-usage-range-caption", "");
     usageHistoryDate.textContent = formatUsageHistoryDateLabel(
-      usageHistoryRangeStartYmd,
-      usageHistoryRangeEndYmd,
+      headingRangeStart,
+      headingRangeEnd,
     );
     usageHistoryHeadingLeft.appendChild(usageHistoryEyebrow);
     usageHistoryHeadingLeft.appendChild(usageHistoryDate);
@@ -8491,13 +8581,16 @@ export function render(opts = {}) {
       : formatHoursToHHMM(sumTimeLedgerDayHours(rows));
     usageHistoryTotalWrap.appendChild(usageHistoryTotalLabel);
     usageHistoryTotalWrap.appendChild(usageHistoryTotalTime);
+    if (showReportView) usageHistoryTotalWrap.hidden = true;
 
     usageHistoryHeadingRow.appendChild(usageHistoryHeadingLeft);
     usageHistoryHeadingRow.appendChild(usageHistoryTotalWrap);
     ledgerContainer.appendChild(usageHistoryHeadingRow);
 
     const showTimelineLedgerContent =
-      !showMemoOnlyLogView && timeLedgerLayoutView !== "timebox";
+      !showMemoOnlyLogView &&
+      timeLedgerLayoutView !== "timebox" &&
+      timeLedgerLayoutView !== "report";
 
     if (showMemoOnlyLogView) {
       const memoWrap = document.createElement("div");
@@ -8513,6 +8606,22 @@ export function render(opts = {}) {
         });
       }
       ledgerContainer.appendChild(memoWrap);
+    } else if (showReportView) {
+      const reportShell = document.createElement("div");
+      reportShell.className =
+        "time-ledger-report-view-shell diary-content-scroll diary-content-scroll--time-report-swipe";
+      reportShell.setAttribute("data-lp-time-report-body", "");
+      reportShell.setAttribute("aria-label", "시간 레포트");
+      ledgerContainer.appendChild(reportShell);
+      if (showSyncLoading) {
+        mountLpTabSyncLoading(reportShell, "레포트 불러오는 중…");
+      } else {
+        const { ymdTen, granularity } = resolveTimeReportTargetFromRange(
+          reportRangeStartYmd,
+          reportRangeEndYmd,
+        );
+        mountTimeLedgerAiReport(reportShell, { ymdTen, granularity });
+      }
     } else if (showTimelineLedgerContent) {
       if (showSyncLoading) {
         cardsWrap.classList.add("time-ledger-mobile-cards--syncing");
@@ -8733,7 +8842,10 @@ export function render(opts = {}) {
   function onLpTabPullSyncEvent(ev) {
     const tabId = ev?.detail?.tabId;
     if (tabId !== "time" || !el.isConnected) return;
-    syncTimeLedgerContent({ force: isLpTabPullPending("time") });
+    syncTimeLedgerContent({
+      force:
+        ev?.type === "lp-tab-pull-settled" || isLpTabPullPending("time"),
+    });
   }
   window.addEventListener("lp-tab-pull-pending", onLpTabPullSyncEvent, {
     signal,

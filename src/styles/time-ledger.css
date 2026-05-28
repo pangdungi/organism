@@ -463,8 +463,8 @@
   background: #2e9e5e;
 }
 
-/* 시간가계부 — 타임라인/타임박스 보기 (시간레포트 DAY·MONTH 세그먼트와 동일 클래스) */
-[data-legacy~="time-ledger-view"] .time-ledger-view-mode-bar-wrap {
+[data-legacy~="time-ledger-view"] .time-ledger-view-mode-bar-wrap,
+.time-ledger-view .time-ledger-view-mode-bar-wrap {
   flex-shrink: 0;
   display: flex;
   justify-content: center;
@@ -473,13 +473,52 @@
   box-sizing: border-box;
 }
 
-[data-legacy~="time-ledger-view"] .time-ledger-view-mode-bar.diary-report-granularity {
-  width: min(100%, 15.5rem);
+/* 시간가계부 — 타임라인 / 타임박스 / 레포트 (3칸 슬라이딩 칩) */
+[data-legacy~="time-ledger-view"] .time-ledger-view-mode-bar.diary-report-granularity,
+.time-ledger-view .time-ledger-view-mode-bar.diary-report-granularity {
+  --lp-seg-count: 3;
+  width: min(100%, 22.5rem);
+  min-width: min(100%, 16.5rem);
 }
 
-[data-legacy~="time-ledger-view"] .time-ledger-view-mode-bar .diary-report-granularity__seg {
-  padding-inline: 0.85rem;
+[data-legacy~="time-ledger-view"] .time-ledger-view-mode-bar .diary-report-granularity__seg,
+.time-ledger-view .time-ledger-view-mode-bar .diary-report-granularity__seg {
+  flex: 1 1 0;
+  min-width: 0;
+  padding-inline: 0.5rem;
   letter-spacing: -0.02em;
+}
+
+[data-legacy~="time-ledger-view"]
+  .time-ledger-view-mode-bar.diary-report-granularity:has(
+    .diary-report-granularity__seg:nth-child(2).is-active
+  )::before,
+.time-ledger-view
+  .time-ledger-view-mode-bar.diary-report-granularity:has(
+    .diary-report-granularity__seg:nth-child(2).is-active
+  )::before {
+  transform: translateX(100%);
+}
+
+[data-legacy~="time-ledger-view"]
+  .time-ledger-view-mode-bar.diary-report-granularity:has(
+    .diary-report-granularity__seg:nth-child(3).is-active
+  )::before,
+.time-ledger-view
+  .time-ledger-view-mode-bar.diary-report-granularity:has(
+    .diary-report-granularity__seg:nth-child(3).is-active
+  )::before {
+  transform: translateX(200%);
+}
+
+[data-legacy~="time-ledger-view"] .time-ledger-report-view-shell {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.35rem 0.75rem 1rem;
+  box-sizing: border-box;
 }
 
 [data-legacy~="time-ledger-view"] .time-ledger-timebox-view-shell {

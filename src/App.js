@@ -22,7 +22,6 @@ import { render as renderDream } from "./views/Dream.js";
 import { render as renderSideincome } from "./views/Sideincome.js";
 import { render as renderHappiness } from "./views/Happiness.js";
 import { render as renderHealth } from "./views/Health.js";
-import { render as renderDiary } from "./views/Diary.js";
 import { render as renderIdea } from "./views/Idea.js";
 import { render as renderAdmin } from "./views/Admin.js";
 import { supabase } from "./supabase.js";
@@ -64,7 +63,6 @@ import {
   pullTimeDailyBudgetForDateRange,
   flushAllPendingTimeDailyBudgetSync,
 } from "./utils/timeDailyBudgetSupabase.js";
-import { pullAllDiaryFromCloud } from "./utils/diaryCloudRefresh.js";
 import { pullUserPrefsFromSupabase } from "./utils/userHourlySync.js";
 import { initSupabaseRealtimeSync } from "./utils/supabaseRealtimeSync.js";
 import { printSyncWatchHelp } from "./utils/syncWatchLog.js";
@@ -99,14 +97,6 @@ const TABS = [
     icon: "/toolbaricons/menu-time.png",
     sidebarSection: "main",
     sidebarOrder: 0,
-  },
-  {
-    id: "diary",
-    label: "시간레포트",
-    mobileLabel: "시간레포트",
-    icon: "/toolbaricons/menu-time-report.png",
-    sidebarSection: "main",
-    sidebarOrder: 1,
   },
   {
     id: "schedulecalendar",
@@ -168,7 +158,6 @@ const TABS = [
 /** 홈 메뉴: 섹션 제목 없이 한 그리드 순서 */
 const HOME_MENU_TAB_ORDER = [
   "time",
-  "diary",
   "schedulecalendar",
   "workschedule",
   "calendar",
@@ -203,7 +192,6 @@ const RENDERERS = {
   sideincome: renderSideincome,
   happiness: renderHappiness,
   health: renderHealth,
-  diary: renderDiary,
   idea: renderIdea,
   admin: renderAdmin,
 };
@@ -244,20 +232,35 @@ function validAppTabIdSet() {
 
 /** @returns {boolean} 저장된 마지막 탭을 적용했으면 true */
 function applyPersistedTabIdFromSessionStorage() {
+  const migrateDiaryToTimeReport = (tabId) => {
+    if (tabId !== "diary") return tabId;
+    try {
+      sessionStorage.setItem("lp_time_ledger_layout_view", "report");
+    } catch (_) {}
+    return "time";
+  };
   try {
     const fromSession = sessionStorage.getItem(LP_LAST_TAB_SESSION_KEY);
-    if (fromSession && validAppTabIdSet().has(fromSession)) {
-      currentTabId = fromSession;
+    const migratedSession = fromSession ? migrateDiaryToTimeReport(fromSession) : null;
+    if (migratedSession && validAppTabIdSet().has(migratedSession)) {
+      currentTabId = migratedSession;
+      if (migratedSession !== fromSession) {
+        persistActiveTabId(migratedSession);
+      }
       return true;
     }
   } catch (_) {}
   try {
     const fromLocal = localStorage.getItem(LP_LAST_TAB_LOCAL_KEY);
-    if (fromLocal && validAppTabIdSet().has(fromLocal)) {
-      currentTabId = fromLocal;
+    const migratedLocal = fromLocal ? migrateDiaryToTimeReport(fromLocal) : null;
+    if (migratedLocal && validAppTabIdSet().has(migratedLocal)) {
+      currentTabId = migratedLocal;
       try {
-        sessionStorage.setItem(LP_LAST_TAB_SESSION_KEY, fromLocal);
+        sessionStorage.setItem(LP_LAST_TAB_SESSION_KEY, migratedLocal);
       } catch (_) {}
+      if (migratedLocal !== fromLocal) {
+        persistActiveTabId(migratedLocal);
+      }
       return true;
     }
   } catch (_) {}
@@ -332,9 +335,6 @@ async function pullDataForActiveTab(tabId, opts = {}) {
     case "happiness":
     case "sideincome":
       return await pullKpiTabFromCloud(tabId);
-    case "diary":
-      await pullAllDiaryFromCloud();
-      break;
     case "workschedule":
       await hydrateWorkScheduleFromCloud();
       break;
@@ -533,11 +533,6 @@ export async function mountApp(container) {
             resetTimeLedgerSessionFilterToToday();
           } catch (_) {}
         }
-        if (targetTabId === "diary") {
-          try {
-            window.__lpDiaryLedgerPrefetchedForTabSwitch = true;
-          } catch (_) {}
-        }
         if (
           targetTabId === "calendar" ||
           targetTabId === "schedulecalendar"
@@ -592,7 +587,6 @@ export async function mountApp(container) {
           } catch (_) {}
           if (currentTabId !== targetTabId) {
             try {
-              window.__lpDiaryLedgerPrefetchedForTabSwitch = false;
               window.__lpCalendarGridPrefetchedForTabSwitch = false;
             } catch (_) {}
             if (isKpiAppTabId(targetTabId)) clearKpiTabPullPending(targetTabId);
@@ -635,14 +629,6 @@ export async function mountApp(container) {
           targetTabId === "sideincome"
         ) {
           kpiSoftRefreshAfterPull(targetTabId, pullResult);
-        } else if (targetTabId === "diary") {
-          /* 시간 레포트: 두 번째 renderMain·본문 중복 pull 로 카드·아이콘이 연달아 깜빡임 → 소프트 갱신만 */
-          try {
-            window.__lpDiarySoftRefresh?.();
-          } catch (_) {}
-          try {
-            window.__lpDiaryLedgerPrefetchedForTabSwitch = false;
-          } catch (_) {}
         } else if (targetTabId === "workschedule") {
           try {
             window.__lpWorkScheduleSoftRefresh?.();
@@ -1017,11 +1003,6 @@ export async function mountApp(container) {
   void (async () => {
     const bootTabId = currentTabId;
     try {
-      if (bootTabId === "diary") {
-        try {
-          window.__lpDiaryLedgerPrefetchedForTabSwitch = true;
-        } catch (_) {}
-      }
       if (bootTabId === "calendar" || bootTabId === "schedulecalendar") {
         try {
           window.__lpCalendarGridPrefetchedForTabSwitch = true;
@@ -1054,7 +1035,6 @@ export async function mountApp(container) {
       } catch (_) {}
       if (currentTabId !== bootTabId) {
         try {
-          window.__lpDiaryLedgerPrefetchedForTabSwitch = false;
           window.__lpCalendarGridPrefetchedForTabSwitch = false;
         } catch (_) {}
         if (bootTabId === "home" || bootTabId === "time") {
@@ -1083,13 +1063,6 @@ export async function mountApp(container) {
         bootTabId === "sideincome"
       ) {
         kpiSoftRefreshAfterPull(bootTabId, pullResult);
-      } else if (bootTabId === "diary") {
-        try {
-          window.__lpDiarySoftRefresh?.();
-        } catch (_) {}
-        try {
-          window.__lpDiaryLedgerPrefetchedForTabSwitch = false;
-        } catch (_) {}
       } else if (bootTabId === "workschedule") {
         try {
           window.__lpWorkScheduleSoftRefresh?.();

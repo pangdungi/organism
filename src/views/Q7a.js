@@ -10,7 +10,7 @@ const DEFAULT_SIDEBAR = {
       { id: "4", label: "인정욕구가 심하다", icon: "😞" },
       { id: "5", label: "극도의 불안, 하지만 불안이 살려냄", icon: "😰" },
       { id: "6", label: "무시받는다는 느낌, 내 평판이 흔들릴...", icon: "🏎️" },
-      { id: "diary", label: "시간 레포트", icon: "📄" },
+      { id: "time", label: "시간가계부", icon: "⏱" },
     ],
   },
   "Q&A 데일리일기": {
