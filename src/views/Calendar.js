@@ -648,6 +648,7 @@ function ensureOneDayTimetableDocumentListeners() {
     oneDayTimetableRefreshHandler?.(e);
   };
   document.addEventListener("calendar-time-rows-updated", run);
+  window.addEventListener("time-ledger-tasks-saved", run);
 }
 
 /** 같은 마감일·같은 섹션: 세션 배열 순서 그대로(뒤에 push된 할 일이 캘린더에서도 아래행). */
@@ -3170,6 +3171,23 @@ function prodKeyForWeekExpectedSpan(span) {
   return "other";
 }
 
+/** 예상 span — 과제 마스터(생산성·아이콘)를 렌더 시점에 다시 조회 */
+function resolveExpectedSpanProdKey(span) {
+  const taskName = String(span?.taskName || "").trim();
+  const fromOpt = getTaskOptionByName(taskName)?.productivity;
+  if (fromOpt) return fromOpt;
+  const fromTask = String(span?._task?.productivity || "").trim();
+  if (fromTask) return fromTask;
+  return span?.prod || "other";
+}
+
+function expectedSpansWithFreshProd(spans) {
+  return (spans || []).map((span) => ({
+    ...span,
+    prod: resolveExpectedSpanProdKey(span),
+  }));
+}
+
 /** 주간 플로우만: 수면하기(sleep) 카드 숨김 — 일간 타임라인은 그대로 표시 */
 const WEEK_FLOW_EXCLUDED_TASK_NAMES = new Set(
   FIXED_OTHER_TASKS.filter((t) => t.category === "sleep").map((t) => t.name),
@@ -3295,7 +3313,7 @@ function dayKeyYmdCompare(a, b) {
 function paintCalendar1DaySlotGrid(root, dateKey) {
   if (!root || !dateKey) return;
   const { spans } = buildExpectedScheduleSpansForDateKey(dateKey);
-  paintCalendar1DaySlotGridFromSpans(root, spans);
+  paintCalendar1DaySlotGridFromSpans(root, expectedSpansWithFreshProd(spans));
 }
 
 function findExpectedSpanAtSlotMin(dateKey, slotMin) {
@@ -3381,9 +3399,12 @@ function createCalendar1DayExpectedCardsPanel(dateKey, spans, onSaved) {
     list.appendChild(empty);
   } else {
     for (const span of sorted) {
-      const pk = prodKeyForWeekExpectedSpan(span);
       const taskLabel = String(span.taskName || "").trim();
       const memoText = String(span.scheduleMemo || "").trim();
+      const taskOpt = getTaskOptionByName(taskLabel);
+      const pk = prodKeyForWeekExpectedSpan({
+        prod: resolveExpectedSpanProdKey(span),
+      });
 
       const card = document.createElement("button");
       card.type = "button";
@@ -3426,7 +3447,6 @@ function createCalendar1DayExpectedCardsPanel(dateKey, spans, onSaved) {
 
       card.appendChild(main);
 
-      const taskOpt = getTaskOptionByName(taskLabel);
       const iconSrc = resolveTimeTaskDisplayIconSrc(taskLabel, {
         category: taskOpt?.category,
         productivity: taskOpt?.productivity,
@@ -3439,8 +3459,8 @@ function createCalendar1DayExpectedCardsPanel(dateKey, spans, onSaved) {
         const iconImg = document.createElement("img");
         iconImg.src = iconSrc;
         iconImg.alt = "";
-        iconImg.loading = "lazy";
-        iconImg.decoding = "async";
+        iconImg.loading = "eager";
+        iconImg.decoding = "sync";
         iconBadge.appendChild(iconImg);
       }
       card.appendChild(iconBadge);
@@ -3632,7 +3652,7 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
       cardsPane.appendChild(
         createCalendar1DayExpectedCardsPanel(
           targetKey,
-          daySpansTl,
+          expectedSpansWithFreshProd(daySpansTl),
           () => renderCalendar(),
         ),
       );
@@ -4073,6 +4093,10 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
     );
     void source;
     if (!wrapInDoc) return;
+    if (hideTimelineCards || e?.type === "time-ledger-tasks-saved") {
+      renderCalendar();
+      return;
+    }
     if (
       timeTableInner?.classList.contains(
         "calendar-1day-time-table-inner--timeline-only",
@@ -4109,11 +4133,21 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
   ensureOneDayTimetableDocumentListeners();
   oneDayTimetableRefreshHandler = (e) => refreshTimetableOverlays(e);
 
-  try {
-    renderCalendar();
-  } catch (err) {
-    throw err;
-  }
+  const runInitialRender = async () => {
+    if (hideTimelineCards) {
+      try {
+        await pullTimeLedgerTasksFromSupabase();
+      } catch (_) {}
+    }
+    if (!document.contains(wrap)) return;
+    try {
+      renderCalendar();
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  void runInitialRender();
 
   wrap._lpRefreshCalendarView = () => {
     renderCalendar();
