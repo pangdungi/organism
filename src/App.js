@@ -76,12 +76,7 @@ import { initMobileVisualViewportKeyboardInset } from "./utils/mobileViewportKey
 import { syncLpAppShellViewportHeight } from "./utils/lpAppShellViewport.js";
 import { logTodoScheduleTabOnNavigate } from "./utils/lpTabDataSourceLog.js";
 import { ensureTimeLedgerStorageReady } from "./utils/timeLedgerEntriesModel.js";
-import {
-  showLpTabLoading,
-  hideLpTabLoading,
-  tabLoadingMessage,
-  afterLpTabPaint,
-} from "./utils/lpAppLoading.js";
+import { afterLpTabPaint } from "./utils/lpAppLoading.js";
 import { prefetchIconsForTab } from "./utils/appIconPrefetch.js";
 import {
   setLpTabPullPending,
@@ -579,16 +574,6 @@ export async function mountApp(container) {
             return;
           }
         }
-        const panelEl = main.querySelector(".app-tab-panel");
-        const skipRenderOverlay =
-          targetTabId === "home" &&
-          panelEl &&
-          homeMenuLauncherEl &&
-          panelEl.firstElementChild === homeMenuLauncherEl;
-
-        if (!skipRenderOverlay) {
-          showLpTabLoading(tabLoadingMessage(targetTabId));
-        }
         renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
         syncAppFooterVisibility();
         if (
@@ -606,7 +591,6 @@ export async function mountApp(container) {
             pullResult = await pullPromise;
           } catch (_) {}
           if (currentTabId !== targetTabId) {
-            if (!skipRenderOverlay) hideLpTabLoading();
             try {
               window.__lpDiaryLedgerPrefetchedForTabSwitch = false;
               window.__lpCalendarGridPrefetchedForTabSwitch = false;
@@ -666,14 +650,9 @@ export async function mountApp(container) {
         } else {
           renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
         }
-        if (!skipRenderOverlay) {
-          afterLpTabPaint(() => {
-            hideLpTabLoading();
-            void prefetchIconsForTab(targetTabId);
-          });
-        } else {
+        afterLpTabPaint(() => {
           void prefetchIconsForTab(targetTabId);
-        }
+        });
         })();
       })();
     }, 24);
