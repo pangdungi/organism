@@ -26,8 +26,13 @@ export const LP_APP_FONT_OPTIONS = [
   },
   {
     id: "pakyongjun",
-    label: "Pak Yong jun",
-    stack: `"LP Pak Yong jun", ${LP_APP_FONT_FALLBACK}`,
+    label: "세종 글꽃",
+    stack: `"LP Sejong Geulggot", ${LP_APP_FONT_FALLBACK}`,
+  },
+  {
+    id: "kyobohandwriting",
+    label: "교보 손글씨",
+    stack: `"LP Kyobo Handwriting", ${LP_APP_FONT_FALLBACK}`,
   },
 ];
 
@@ -39,6 +44,7 @@ const LP_APP_FONT_ID_SET = new Set(LP_APP_FONT_OPTIONS.map((o) => o.id));
  */
 export function normalizeAppFontId(id) {
   const v = String(id ?? "").trim().toLowerCase();
+  if (v === "parkdahyun") return "kyobohandwriting";
   return LP_APP_FONT_ID_SET.has(v) ? v : "system";
 }
 

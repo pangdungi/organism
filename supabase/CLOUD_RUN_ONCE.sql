@@ -124,7 +124,7 @@ alter table public.user_subscriptions
   add column if not exists ui_font_id text;
 
 comment on column public.user_subscriptions.ui_font_id is
-  '앱 화면 글꼴 id; system | leeseoyun | pakyongjun';
+  '앱 화면 글꼴 id; system | leeseoyun | pakyongjun | kyobohandwriting';
 
 create or replace function public.set_my_ui_font_id (p_font_id text)
   returns void
@@ -139,7 +139,10 @@ begin
     raise exception 'not authenticated';
   end if;
   v_id := lower(trim(coalesce(p_font_id, '')));
-  if v_id not in ('system', 'leeseoyun', 'pakyongjun') then
+  if v_id = 'parkdahyun' then
+    v_id := 'kyobohandwriting';
+  end if;
+  if v_id not in ('system', 'leeseoyun', 'pakyongjun', 'kyobohandwriting') then
     v_id := 'system';
   end if;
   update public.user_subscriptions
