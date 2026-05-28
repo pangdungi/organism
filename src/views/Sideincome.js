@@ -578,7 +578,6 @@ export function render() {
       enterKpiDetailView(kpi.id);
     });
     document.body.appendChild(modal);
-    initModalNativeDateFieldsIn(modal);
     setupDeadlineQuickButtons(modal);
     bindKpiUnitTimeMode(modal.querySelector(".dream-kpi-form"), null, kpiTimeFormOpts);
   }
@@ -703,7 +702,6 @@ export function render() {
       refreshSideincomeAfterKpiDataChange();
     });
     document.body.appendChild(modal);
-    initModalNativeDateFieldsIn(modal);
     setupDeadlineQuickButtons(modal);
     bindKpiUnitTimeMode(modal.querySelector(".dream-kpi-form"), kpi, kpiTimeFormOpts);
   }

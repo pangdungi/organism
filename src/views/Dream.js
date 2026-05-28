@@ -662,7 +662,6 @@ export function render() {
       enterKpiDetailView(kpi.id);
     });
     document.body.appendChild(modal);
-    initModalNativeDateFieldsIn(modal);
     setupDeadlineQuickButtons(modal);
     bindDreamKpiUnitTimeMode(modal.querySelector(".dream-kpi-form"));
   }
@@ -787,7 +786,6 @@ export function render() {
       refreshDreamAfterKpiDataChange();
     });
     document.body.appendChild(modal);
-    initModalNativeDateFieldsIn(modal);
     setupDeadlineQuickButtons(modal);
     bindDreamKpiUnitTimeMode(modal.querySelector(".dream-kpi-form"), kpi);
   }

@@ -27,7 +27,7 @@ import {
   getMobileCardEffectiveHoursForPrice,
 } from "./Time.js";
 import { showToast } from "../utils/showToast.js";
-import { buildModalSimpleSelect } from "../utils/todoModalSimpleSelect.js";
+import { initModalStandardDateFields } from "../utils/modalNativeDateField.js";
 import {
   calendar1WeekDiagLog,
   calendar1WeekDiagSnapshot,
@@ -1519,16 +1519,21 @@ function getAllTasksWithDateRange() {
  */
 function addSectionTodoFromCalendarBubble(
   sectionId,
+  startYmd,
   dueYmd,
   name,
   itemType = "todo",
 ) {
   const sid = String(sectionId || "").trim();
+  const start = String(startYmd || "")
+    .trim()
+    .slice(0, 10);
   const due = String(dueYmd || "")
     .trim()
     .slice(0, 10);
   const todoName = String(name || "").trim();
   if (!sid || !due || !todoName || !KPI_SECTION_IDS.includes(sid)) return false;
+  if (start && start > due) return false;
   const it =
     String(itemType || "todo").toLowerCase() === "schedule"
       ? "schedule"
@@ -1547,7 +1552,7 @@ function addSectionTodoFromCalendarBubble(
     arr.push({
       taskId,
       name: todoName,
-      startDate: "",
+      startDate: start,
       dueDate: due,
       startTime: "",
       endTime: "",
@@ -1560,7 +1565,7 @@ function addSectionTodoFromCalendarBubble(
     const task = {
       taskId,
       name: todoName,
-      startDate: "",
+      startDate: start,
       dueDate: due,
       startTime: "",
       endTime: "",
@@ -1598,6 +1603,9 @@ function detachCalendarEventBubbleOutsideListener() {
 
 function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
   void cellRect;
+  const initialYmd = String(dateKey || "")
+    .trim()
+    .slice(0, 10);
   detachCalendarEventBubbleOutsideListener();
   document
     .querySelectorAll(".calendar-event-bubble, .calendar-day-expand-overlay")
@@ -1611,59 +1619,41 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
     <div class="calendar-event-bubble-tail"></div>
     <div class="calendar-event-bubble-body">
       <div class="calendar-event-bubble-header">
-        <span class="calendar-event-bubble-date">${dateKey.replace(/-/g, ". ")}</span>
+        <div class="calendar-event-bubble-heading">
+          <span class="calendar-event-bubble-title">할일/일정 추가</span>
+          <span class="calendar-event-bubble-date">${dateKey.replace(/-/g, ". ")}</span>
+        </div>
         <button type="button" class="calendar-event-bubble-close" title="닫기">×</button>
       </div>
-      <div class="calendar-event-bubble-category">
-        <label class="calendar-event-bubble-label">카테고리</label>
-        <div class="calendar-event-bubble-category-mount"></div>
+      <div class="calendar-event-bubble-name">
+        <label class="calendar-event-bubble-label" for="calendar-event-name-input">할일 / 일정 이름</label>
+        <input
+          type="text"
+          id="calendar-event-name-input"
+          name="calendar-event-name"
+          class="calendar-event-bubble-input"
+          placeholder="할일/일정 입력"
+        />
       </div>
-      <div class="calendar-event-bubble-type">
-        <span class="calendar-event-bubble-label" id="calendar-event-bubble-type-label">형식</span>
-        <div
-          class="calendar-event-bubble-type-seg"
-          role="group"
-          aria-labelledby="calendar-event-bubble-type-label"
-        >
-          <button
-            type="button"
-            class="calendar-event-bubble-type-btn active"
-            data-item-type="todo"
-            aria-pressed="true"
-          >할일</button>
-          <button
-            type="button"
-            class="calendar-event-bubble-type-btn"
-            data-item-type="schedule"
-            aria-pressed="false"
-          >일정</button>
+      <div class="time-task-log-field">
+        <label>시작일</label>
+        <div class="time-task-log-date-native-wrap">
+          <input type="date" class="todo-task-edit-start" aria-label="시작일" value="${initialYmd}" />
+          <span class="time-task-log-date-overlay" aria-hidden="true"></span>
         </div>
       </div>
-      <div class="calendar-event-bubble-name">
-        <input type="text" name="calendar-event-name" class="calendar-event-bubble-input" placeholder="할일을 입력하세요" />
+      <div class="time-task-log-field">
+        <label>마감일</label>
+        <div class="time-task-log-date-native-wrap">
+          <input type="date" class="todo-task-edit-due" aria-label="마감일" value="${initialYmd}" />
+          <span class="time-task-log-date-overlay" aria-hidden="true"></span>
+        </div>
       </div>
       <button type="button" class="calendar-event-bubble-save">추가</button>
     </div>
   `;
 
-  const bubbleAbort = new AbortController();
-  const categoryMount = bubble.querySelector(".calendar-event-bubble-category-mount");
-  const categoryDd = buildModalSimpleSelect({
-    items: CALENDAR_CATEGORIES.map((c) => ({ value: c.id, label: c.label })),
-    value: CALENDAR_CATEGORIES[0]?.id || "dream",
-    placeholder: "카테고리",
-    ariaLabel: "카테고리",
-    abortSignal: bubbleAbort.signal,
-  });
-  categoryMount?.appendChild(categoryDd);
-
   const close = () => {
-    try {
-      categoryDd._closePanel?.();
-    } catch (_) {}
-    try {
-      bubbleAbort.abort();
-    } catch (_) {}
     detachCalendarEventBubbleOutsideListener();
     overlayEl.remove();
     bubble.remove();
@@ -1674,19 +1664,9 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
     .querySelector(".calendar-event-bubble-close")
     .addEventListener("click", close);
 
-  const typeSeg = bubble.querySelector(".calendar-event-bubble-type-seg");
-  let selectedItemType = "todo";
-  typeSeg?.querySelectorAll(".calendar-event-bubble-type-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      selectedItemType =
-        btn.dataset.itemType === "schedule" ? "schedule" : "todo";
-      typeSeg.querySelectorAll(".calendar-event-bubble-type-btn").forEach((b) => {
-        const on = b === btn;
-        b.classList.toggle("active", on);
-        b.setAttribute("aria-pressed", on ? "true" : "false");
-      });
-    });
-  });
+  const startInput = bubble.querySelector(".todo-task-edit-start");
+  const dueInput = bubble.querySelector(".todo-task-edit-due");
+  initModalStandardDateFields(bubble);
 
   bubble
     .querySelector(".calendar-event-bubble-save")
@@ -1694,18 +1674,35 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
       const name = (
         bubble.querySelector(".calendar-event-bubble-input").value || ""
       ).trim();
-      const categoryId = categoryDd._getValue?.() || CALENDAR_CATEGORIES[0]?.id || "dream";
+      const startDate = (startInput?.value || "").trim().slice(0, 10);
+      const dueDate = (dueInput?.value || "").trim().slice(0, 10);
+      const categoryId = CALENDAR_CATEGORIES[0]?.id || "dream";
       if (!name) return;
-      const itemType = selectedItemType;
+      if (!dueDate) {
+        alert("마감일을 입력해 주세요.");
+        return;
+      }
+      if (startDate && startDate > dueDate) {
+        alert("시작일은 마감일보다 이전이어야 합니다.");
+        return;
+      }
+      const itemType = "todo";
       if (
-        !addSectionTodoFromCalendarBubble(categoryId, dateKey, name, itemType)
+        !addSectionTodoFromCalendarBubble(
+          categoryId,
+          startDate,
+          dueDate,
+          name,
+          itemType,
+        )
       ) {
         alert("할 일을 추가하지 못했습니다. 잠시 후 다시 시도해 주세요.");
         return;
       }
       onSave?.({
         name,
-        dueDate: dateKey,
+        startDate,
+        dueDate,
         sectionId: categoryId,
         itemType,
       });
@@ -1736,7 +1733,6 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
     _calendarEventBubbleOutsideHandler = (e) => {
       const t = e.target;
       if (bubble.contains(t)) return;
-      if (categoryDd._isPanelNode?.(t)) return;
       close();
     };
     document.addEventListener(
@@ -1809,7 +1805,7 @@ function createCalendarDayExpandBubble(
     })
     .join("");
   const addBtnHtml = onAdd
-    ? '<button type="button" class="calendar-day-expand-add-btn">할일 추가</button>'
+    ? '<button type="button" class="calendar-day-expand-add-btn">할일/일정 추가</button>'
     : "";
   const closeBtnHtml = hideCloseButton
     ? ""
@@ -1820,7 +1816,7 @@ function createCalendarDayExpandBubble(
         <span class="calendar-event-bubble-date">${dateKey.replace(/-/g, ". ")}</span>
         ${closeBtnHtml}
       </div>
-      <div class="calendar-day-expand-list">${taskItems || "<div class='calendar-day-expand-empty'>할일 없음</div>"}</div>
+      <div class="calendar-day-expand-list">${taskItems || "<div class='calendar-day-expand-empty'>할일 / 일정 없음</div>"}</div>
       ${addBtnHtml}
     </div>
   `;

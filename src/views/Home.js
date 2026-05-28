@@ -114,14 +114,6 @@ function updateHomeTaskDone(item, done) {
   } catch (_) {}
 }
 
-const HOME_CARD_EISENHOWER_LABELS = {
-  "urgent-important": "긴급+중요",
-  "important-not-urgent": "중요+여유",
-  "urgent-not-important": "긴급+덜중요",
-  "not-urgent-not-important": "여유+안중요",
-  "not-urgent-": "여유+안중요",
-};
-
 const HOME_TODO_CARD_ICON_URL_CALENDAR = "/todo-card-icons/calendar-schedule.png";
 const HOME_TODO_CARD_ICON_URL_CALENDAR_DONE =
   "/todo-card-icons/calendar-check-done.png";
@@ -298,12 +290,6 @@ function createHomeTodoCard(item) {
   const nameEl = document.createElement("span");
   nameEl.className = "todo-card-name";
   nameEl.textContent = item.name;
-  const priorityEl = document.createElement("span");
-  priorityEl.className = "todo-card-priority";
-  priorityEl.textContent = item.eisenhower
-    ? HOME_CARD_EISENHOWER_LABELS[item.eisenhower] || item.eisenhower
-    : "";
-  priorityEl.hidden = !item.eisenhower;
 
   const kpiEl = document.createElement("div");
   kpiEl.className = "todo-card-kpi";
@@ -314,8 +300,7 @@ function createHomeTodoCard(item) {
   const textStack = document.createElement("div");
   textStack.className = "todo-card-text-stack";
   textStack.appendChild(nameEl);
-  textStack.appendChild(priorityEl);
-  textStack.appendChild(kpiEl);
+  if (!kpiEl.hidden) textStack.appendChild(kpiEl);
 
   const textCol = document.createElement("div");
   textCol.className = "todo-card-col todo-card-col--text";

@@ -513,7 +513,6 @@ export function render() {
       enterKpiDetailView(kpi.id);
     });
     document.body.appendChild(modal);
-    initModalNativeDateFieldsIn(modal);
     setupDeadlineQuickButtons(modal);
     bindKpiUnitTimeMode(modal.querySelector(".dream-kpi-form"), null, kpiTimeFormOpts);
   }
@@ -638,7 +637,6 @@ export function render() {
       refreshHealthAfterKpiDataChange();
     });
     document.body.appendChild(modal);
-    initModalNativeDateFieldsIn(modal);
     setupDeadlineQuickButtons(modal);
     bindKpiUnitTimeMode(modal.querySelector(".dream-kpi-form"), kpi, kpiTimeFormOpts);
   }

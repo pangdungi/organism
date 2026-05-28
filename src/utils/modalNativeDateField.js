@@ -49,7 +49,8 @@ export function openModalNativeDateInput(inputEl) {
 }
 
 function shouldEnableModalDateClear(inputEl, opts) {
-  if (!opts?.clearable || !(inputEl instanceof HTMLInputElement)) return false;
+  if (!(inputEl instanceof HTMLInputElement)) return false;
+  if (opts?.clearable === false) return false;
   try {
     return inputEl.matches(MODAL_CLEARABLE_DATE_INPUT_SELECTOR);
   } catch (_) {
@@ -149,6 +150,24 @@ export function bindModalNativeDateRange(startInput, endInput) {
     inp.addEventListener("change", sync);
   });
   sync();
+}
+
+/**
+ * 할일·KPI 모달 — 시작·마감(또는 시작·달성) 날짜 필드 공통 초기화
+ * @param {HTMLElement|null|undefined} root
+ */
+export function initModalStandardDateFields(root) {
+  initModalNativeDateFieldsIn(root, { clearable: true });
+  if (!root) return;
+  const startInput =
+    root.querySelector('input[name="targetStartDate"]') ||
+    root.querySelector(".todo-task-edit-start");
+  const endInput =
+    root.querySelector('input[name="targetDeadline"]') ||
+    root.querySelector(".todo-task-edit-due");
+  if (startInput || endInput) {
+    bindModalNativeDateRange(startInput, endInput);
+  }
 }
 
 /**

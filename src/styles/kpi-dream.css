@@ -1452,10 +1452,14 @@
 
 .dream-kpi-field .time-task-log-date-native-wrap,
 .dream-kpi-log-field .time-task-log-date-native-wrap {
+  position: relative;
+  display: flex;
+  align-items: stretch;
   width: 100%;
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
+  overflow: visible;
 }
 
 .dream-kpi-field textarea {

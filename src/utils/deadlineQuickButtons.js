@@ -1,7 +1,4 @@
-import {
-  bindModalNativeDateRange,
-  initModalNativeDateFieldsIn,
-} from "./modalNativeDateField.js";
+import { initModalStandardDateFields } from "./modalNativeDateField.js";
 
 /**
  * KPI 모달 날짜 퀵 버튼(오늘, +14일, +30일) 설정
@@ -59,6 +56,5 @@ export function setupDeadlineQuickButtons(modal) {
     });
   });
 
-  initModalNativeDateFieldsIn(modal, { clearable: true });
-  bindModalNativeDateRange(startInput, deadlineInput);
+  initModalStandardDateFields(modal);
 }

@@ -34,10 +34,7 @@ import { createTodoCheckboxTypeMenu } from "../utils/todoCheckboxTypeMenu.js";
 import { buildModalSimpleSelect } from "../utils/todoModalSimpleSelect.js";
 import { dismissAppToast } from "../utils/showToast.js";
 import { bindLpHorizontalPanNavigate } from "../utils/lpHorizontalPanNavigate.js";
-import {
-  bindModalNativeDateRange,
-  initModalNativeDateFieldsIn,
-} from "../utils/modalNativeDateField.js";
+import { initModalStandardDateFields } from "../utils/modalNativeDateField.js";
 import {
   LP_CONFIRM_STACK_CLASS,
   syncBodyOverflowAfterModalClose,
@@ -1594,14 +1591,6 @@ function showMobileDateModal(options) {
   });
 }
 
-const EISENHOWER_OPTIONS = [
-  { value: "", label: "선택 안 함" },
-  { value: "urgent-important", label: "긴급+중요" },
-  { value: "important-not-urgent", label: "중요+여유" },
-  { value: "urgent-not-important", label: "긴급+덜중요" },
-  { value: "not-urgent-not-important", label: "여유+안중요" },
-];
-
 const EISENHOWER_SORT_KEYS = [
   "urgent-important",
   "important-not-urgent",
@@ -1643,6 +1632,9 @@ function showTodoTaskModal(options) {
     sectionId = "",
     sectionLabel = "",
     mode = "add",
+    modalTitle = null,
+    nameFieldLabel = null,
+    namePlaceholder = null,
     onSave,
     onDelete,
     selectionEl = null,
@@ -1657,7 +1649,10 @@ function showTodoTaskModal(options) {
   const initialAsSchedule =
     String(taskItemType || "todo").toLowerCase() === "schedule";
 
-  const title = mode === "add" ? "할 일 추가" : "할 일 수정";
+  const title =
+    modalTitle ?? (mode === "add" ? "할 일 추가" : "할 일 수정");
+  const nameLabel = nameFieldLabel ?? "할 일 이름";
+  const namePh = namePlaceholder ?? "할 일 입력";
   const currentSectionId = (taskData.sectionId || sectionId || "").trim();
   const sections = getSections();
   const hideScheduleToggle = !!taskData.isKpiTodo;
@@ -1683,8 +1678,8 @@ function showTodoTaskModal(options) {
       </div>
       <div class="time-task-setup-body">
         <div class="time-task-log-field">
-          <label>할 일 이름</label>
-          <input type="text" class="time-add-task-name" placeholder="할 일 입력" value="${escapeHtml(name)}" maxlength="500" />
+          <label>${escapeHtml(nameLabel)}</label>
+          <input type="text" class="time-add-task-name" placeholder="${escapeHtml(namePh)}" value="${escapeHtml(name)}" maxlength="500" />
         </div>
         ${
           hideScheduleToggle
@@ -1709,10 +1704,6 @@ function showTodoTaskModal(options) {
             <input type="date" class="todo-task-edit-due" aria-label="마감일" value="${escapeHtml((dueDate || "").slice(0, 10))}" />
             <span class="time-task-log-date-overlay" aria-hidden="true"></span>
           </div>
-        </div>
-        <div class="time-task-log-field">
-          <label>우선순위</label>
-          <div data-legacy="todo-task-edit-eisenhower-wrap"></div>
         </div>
         <div class="time-task-log-field">
           <label>리스트</label>
@@ -1741,22 +1732,12 @@ function showTodoTaskModal(options) {
   const nameInput = modal.querySelector(".time-add-task-name");
   const startInput = modal.querySelector(".todo-task-edit-start");
   const dueInput = modal.querySelector(".todo-task-edit-due");
-  const eisenhowerMount = modal.querySelector(
-    '[data-legacy~="todo-task-edit-eisenhower-wrap"]',
-  );
   const sectionMount = modal.querySelector(
     '[data-legacy~="todo-task-edit-section-wrap"]',
   );
   const asScheduleInput = modal.querySelector(".todo-task-edit-as-schedule");
 
   const modalAbort = new AbortController();
-  const eisenhowerDd = buildModalSimpleSelect({
-    items: EISENHOWER_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
-    value: eisenhower,
-    placeholder: "선택 안 함",
-    ariaLabel: "우선순위",
-    abortSignal: modalAbort.signal,
-  });
   const sectionDd = buildModalSimpleSelect({
     items: sections.map((s) => ({ value: s.id, label: s.label })),
     value: currentSectionId,
@@ -1764,7 +1745,6 @@ function showTodoTaskModal(options) {
     ariaLabel: "리스트",
     abortSignal: modalAbort.signal,
   });
-  eisenhowerMount?.appendChild(eisenhowerDd);
   sectionMount?.appendChild(sectionDd);
 
   function close() {
@@ -1798,7 +1778,7 @@ function showTodoTaskModal(options) {
       dueDate: dueVal,
       reminderDate: "",
       reminderTime: "",
-      eisenhower: eisenhowerDd._getValue?.() ?? "",
+      eisenhower: "",
       sectionId: chosenSectionId,
       sectionLabel: chosenSection?.label ?? sectionLabel,
       itemType: itemTypeResolved,
@@ -1831,8 +1811,7 @@ function showTodoTaskModal(options) {
   document.body.appendChild(modal);
   document.body.style.overflow = "hidden";
 
-  initModalNativeDateFieldsIn(modal, { clearable: true });
-  bindModalNativeDateRange(startInput, dueInput);
+  initModalStandardDateFields(modal);
 
   /* X에 포커스 두면 iOS PWA에서 파란 포커스 링이 생김 → 할일 이름 입력으로 */
   requestAnimationFrame(() => nameInput?.focus());
@@ -1852,6 +1831,12 @@ function todoModalSectionLabel(sectionId) {
   }
   return sid;
 }
+
+const CALENDAR_TODO_EDIT_MODAL_LABELS = {
+  modalTitle: "할일/일정 수정",
+  nameFieldLabel: "할일/일정 이름",
+  namePlaceholder: "할일/일정 입력",
+};
 
 /**
  * 캘린더 막대 메타(b)로 할일 목록과 동일한 수정 모달을 연다.
@@ -1908,6 +1893,7 @@ export function openTodoTaskEditFromCalendarBarModel(barModel, options = {}) {
       sectionId,
       sectionLabel: todoModalSectionLabel(sectionId),
       mode: "edit",
+      ...CALENDAR_TODO_EDIT_MODAL_LABELS,
       selectionEl,
       onSave: (payload) => {
         const newSectionId = (payload.sectionId || "").trim();
@@ -2034,6 +2020,7 @@ export function openTodoTaskEditFromCalendarBarModel(barModel, options = {}) {
     sectionId: storageSectionId,
     sectionLabel,
     mode: "edit",
+    ...CALENDAR_TODO_EDIT_MODAL_LABELS,
     selectionEl,
     onSave: (payload) => {
       const newSectionId = (payload.sectionId || "").trim();
@@ -2682,25 +2669,6 @@ function createTaskRow(taskData = {}, options = {}) {
     );
   };
 
-  const EISENHOWER_LABELS = {
-    "urgent-important": "긴급+중요",
-    "important-not-urgent": "중요+여유",
-    "urgent-not-important": "긴급+덜중요",
-    "not-urgent-not-important": "여유+안중요",
-    "not-urgent-": "여유+안중요",
-  };
-  const eisenhowerTd = document.createElement("td");
-  eisenhowerTd.className =
-    "todo-cell-eisenhower" +
-    (!eisenhower ? " todo-cell-eisenhower--empty" : "");
-  tr.dataset.eisenhower = eisenhower || "";
-  const eisenhowerSpan = document.createElement("span");
-  eisenhowerSpan.className = "todo-eisenhower-display";
-  eisenhowerSpan.textContent = eisenhower
-    ? EISENHOWER_LABELS[eisenhower] || eisenhower
-    : "";
-  eisenhowerTd.appendChild(eisenhowerSpan);
-
   const delTd = document.createElement("td");
   delTd.className = "todo-cell-delete";
   const delBtn = document.createElement("button");
@@ -2738,6 +2706,7 @@ function createTaskRow(taskData = {}, options = {}) {
   });
   delTd.appendChild(delBtn);
 
+  tr.dataset.eisenhower = eisenhower || "";
   tr.appendChild(doneTd);
   tr.appendChild(nameTd);
   if (overdueColumnOrder) {
@@ -2748,7 +2717,6 @@ function createTaskRow(taskData = {}, options = {}) {
   if (!overdueColumnOrder) {
     tr.appendChild(overdueTd);
   }
-  tr.appendChild(eisenhowerTd);
   if (!options.hideCategoryCol) {
     const lastColTd = document.createElement("td");
     lastColTd.className = "todo-cell-category";
@@ -2912,13 +2880,6 @@ function formatCardDates(taskData) {
   return info.text || "";
 }
 
-const EISENHOWER_LABELS = {
-  "urgent-important": "긴급+중요",
-  "important-not-urgent": "중요+여유",
-  "urgent-not-important": "긴급+덜중요",
-  "not-urgent-not-important": "여유+안중요",
-};
-
 /** 우선순위 탭과 동일 할 일이 꿈/행복 등에도 있을 때 표시만 맞춤 */
 function mirrorTodoCardElementFromPrimary(duplicateCard, primaryCard) {
   const p = primaryCard;
@@ -2943,13 +2904,6 @@ function mirrorTodoCardElementFromPrimary(duplicateCard, primaryCard) {
   const nameEl = d.querySelector(".todo-card-name");
   if (nameEl) {
     nameEl.textContent = (p.dataset.name || "").trim() || "(제목 없음)";
-  }
-  const priorityEl = d.querySelector(".todo-card-priority");
-  const eis = (p.dataset.eisenhower || "").trim();
-  if (priorityEl) {
-    const pt = eis ? EISENHOWER_LABELS[eis] || eis : "";
-    priorityEl.textContent = pt;
-    priorityEl.hidden = !pt;
   }
   const datesEl = d.querySelector(".todo-card-dates");
   if (datesEl) {
@@ -3107,12 +3061,9 @@ function createTaskCard(taskData, options = {}) {
     const hideCompletedUi = listRoot?.classList.contains("hide-completed");
     if (enableDragToCalendar) {
       const allow = taskAllowsCalendarDrag(card.dataset.itemType, newDone);
-      if (enableDragToEisenhower) {
-        const hasP = (card.dataset.eisenhower || "").trim() !== "";
-        card.draggable = allow || !hasP;
-      } else {
-        card.draggable = allow;
-      }
+      card.draggable = allow;
+    } else if (enableDragToEisenhower) {
+      card.draggable = true;
     }
     if (newDone) {
       refreshEisenhowerQuadrantsIfActive();
@@ -3140,21 +3091,9 @@ function createTaskCard(taskData, options = {}) {
   nameEl.className = "todo-card-name";
   nameEl.textContent = name || "(제목 없음)";
 
-  const priorityEl = document.createElement("span");
-  priorityEl.className = "todo-card-priority";
-  priorityEl.textContent = eisenhower
-    ? EISENHOWER_LABELS[eisenhower] || eisenhower
-    : "";
-  if (!eisenhower) priorityEl.hidden = true;
-
-  const textStack = document.createElement("div");
-  textStack.className = "todo-card-text-stack";
-  textStack.appendChild(nameEl);
-  textStack.appendChild(priorityEl);
-
   const textCol = document.createElement("div");
   textCol.className = "todo-card-col todo-card-col--text";
-  textCol.appendChild(textStack);
+  textCol.appendChild(nameEl);
 
   const datesEl = document.createElement("div");
   datesEl.className = "todo-card-dates";
@@ -3181,14 +3120,8 @@ function createTaskCard(taskData, options = {}) {
   updateTodoCardTypeIconColumn(card);
 
   if (enableDragToEisenhower) {
-    const hasPriority = (eisenhower || "").trim() !== "";
-    card.draggable = !hasPriority;
-    if (hasPriority) card.classList.add("todo-card--priority-assigned");
+    card.draggable = true;
     card.addEventListener("dragstart", (e) => {
-      if (card.classList.contains("todo-card--priority-assigned")) {
-        e.preventDefault();
-        return;
-      }
       e.stopPropagation();
       const payload = {
         taskId,
@@ -3215,12 +3148,7 @@ function createTaskCard(taskData, options = {}) {
   const allowCalendarDrag = taskAllowsCalendarDrag(itemType, done);
 
   if (enableDragToCalendar) {
-    if (enableDragToEisenhower) {
-      const hasPriority = (eisenhower || "").trim() !== "";
-      card.draggable = allowCalendarDrag || !hasPriority;
-    } else {
-      card.draggable = allowCalendarDrag;
-    }
+    card.draggable = allowCalendarDrag;
     if (hasDueDate) card.classList.add("todo-card--has-due");
     card.addEventListener("dragstart", (e) => {
       const liveAllowCal = taskAllowsCalendarDrag(
@@ -3279,11 +3207,6 @@ function createTaskCard(taskData, options = {}) {
     }
     nameEl.textContent = n;
     renderTodoCardDatesEl(datesEl, data);
-    const priorityText = data.eisenhower
-      ? EISENHOWER_LABELS[data.eisenhower] || data.eisenhower
-      : "";
-    priorityEl.textContent = priorityText;
-    priorityEl.hidden = !priorityText;
     updateTodoCardTypeIconColumn(card);
   }
 
@@ -3663,7 +3586,6 @@ function createSection(section, options = {}) {
       <col class="todo-col-overdue" style="width: 5rem">
       <col class="todo-col-start" style="width: 4.5rem">
       <col class="todo-col-due" style="width: 4.5rem">
-      <col class="todo-col-eisenhower" style="width: 6rem">
       <col class="todo-col-delete" style="width: 2.5rem">
     </colgroup>`
       : `<colgroup>
@@ -3672,7 +3594,6 @@ function createSection(section, options = {}) {
       <col class="todo-col-overdue" style="width: 5rem">
       <col class="todo-col-start" style="width: 4.5rem">
       <col class="todo-col-due" style="width: 4.5rem">
-      <col class="todo-col-eisenhower" style="width: 6rem">
       <col class="todo-col-category" style="width: 5rem">
       <col class="todo-col-delete" style="width: 2.5rem">
     </colgroup>`
@@ -3684,7 +3605,6 @@ function createSection(section, options = {}) {
       <col class="todo-col-start" style="width: 4.5rem">
       <col class="todo-col-due" style="width: 4.5rem">
       <col class="todo-col-overdue" style="width: 5rem">
-      <col class="todo-col-eisenhower" style="width: 6rem">
       <col class="todo-col-delete" style="width: 2.5rem">
     </colgroup>`
     : `<colgroup>
@@ -3693,7 +3613,6 @@ function createSection(section, options = {}) {
       <col class="todo-col-start" style="width: 4.5rem">
       <col class="todo-col-due" style="width: 4.5rem">
       <col class="todo-col-overdue" style="width: 5rem">
-      <col class="todo-col-eisenhower" style="width: 6rem">
       <col class="todo-col-category" style="width: 5rem">
       <col class="todo-col-delete" style="width: 2.5rem">
     </colgroup>`;
@@ -3708,7 +3627,6 @@ function createSection(section, options = {}) {
         <th class="todo-th-overdue">기한</th>
         <th class="todo-th-start">시작일</th>
         <th class="todo-th-due">마감일</th>
-        <th class="todo-th-eisenhower">우선순위</th>
         ${theadCategoryTh}
         <th class="todo-th-delete"></th>
       </tr>`
@@ -3718,7 +3636,6 @@ function createSection(section, options = {}) {
         <th class="todo-th-start">시작일</th>
         <th class="todo-th-due">마감일</th>
         <th class="todo-th-overdue">기한</th>
-        <th class="todo-th-eisenhower">우선순위</th>
         ${theadCategoryTh}
         <th class="todo-th-delete"></th>
       </tr>`;
@@ -3760,7 +3677,7 @@ function createSection(section, options = {}) {
 
   const addRow = document.createElement("tr");
   addRow.className = "todo-add-row";
-  const addColspan = hideCategoryCol ? 8 : 9;
+  const addColspan = hideCategoryCol ? 7 : 8;
   addRow.innerHTML = `
     <td class="todo-add-cell todo-add-cell-btn">
       <button type="button" class="todo-add-btn" title="할 일 추가">${ADD_TASK_ICON}</button>
