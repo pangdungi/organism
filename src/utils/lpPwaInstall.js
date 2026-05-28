@@ -121,7 +121,7 @@ function startInstallWaitTimer() {
   installWaitTimer = setTimeout(() => {
     if (installPhase !== "downloading") return;
     showToast(
-      "설치가 오래 걸리고 있어요",
+      "아직 추가 중일 수 있어요",
       "홈 화면에 Time is Price 아이콘이 생겼는지 확인해 주세요. 네트워크가 느리면 1~2분 걸릴 수 있어요.",
     );
     resetInstallFlow();
@@ -168,17 +168,16 @@ function getInstallInstructions() {
   }
   if (installPhase === "downloading") {
     return {
-      title: "앱 설치 중",
-      desc: "다운로드가 끝날 때까지 잠시만 기다려 주세요. 화면을 닫아도 설치는 계속됩니다.",
+      title: "홈 화면에 추가 중…",
+      desc: "브라우저가 앱을 받는 동안 잠시만 기다려 주세요. 이 화면을 닫아도 추가는 계속됩니다.",
       busy: true,
-      statusText: "설치 파일 받는 중…",
+      statusText: "추가 파일 받는 중…",
     };
   }
   if (installPhase === "done") {
     return {
-      title: "설치 완료",
-      desc: "홈 화면의 Time is Price 아이콘을 눌러 앱처럼 열 수 있어요.",
-      statusText: "설치가 완료되었습니다",
+      title: "홈 화면에 추가 중…",
+      desc: "홈 화면에 Time is Price 아이콘이 생기면 눌러 주세요. 아직 안 보이면 1~2분 정도 기다린 뒤 다시 확인해 주세요.",
     };
   }
 
@@ -240,8 +239,8 @@ async function runNativeInstall() {
       installPhase = "downloading";
       startInstallWaitTimer();
       showToast(
-        "앱 설치 중입니다",
-        "완료까지 잠시만 기다려 주세요. 여러 번 누르지 않아도 됩니다.",
+        "홈 화면에 추가 중",
+        "아이콘이 생길 때까지 잠시만 기다려 주세요.",
       );
       repaintInstallSurfaces();
       return;
@@ -289,11 +288,13 @@ function buildInstallCard(opts = {}) {
     status.setAttribute("role", "status");
     const text = document.createElement("span");
     text.textContent = info.statusText;
-    const spinner = document.createElement("span");
-    spinner.className = "lp-pwa-install-spinner";
-    spinner.setAttribute("aria-hidden", "true");
-    status.appendChild(spinner);
     status.appendChild(text);
+    if (busy) {
+      const spinner = document.createElement("span");
+      spinner.className = "lp-pwa-install-spinner";
+      spinner.setAttribute("aria-hidden", "true");
+      status.insertBefore(spinner, text);
+    }
     card.appendChild(status);
   }
 
@@ -341,16 +342,16 @@ function buildInstallCard(opts = {}) {
     dismissBtn.className = "lp-pwa-install-btn lp-pwa-install-btn--ghost";
     dismissBtn.textContent =
       installPhase === "downloading"
-        ? "닫기 (설치는 계속)"
+        ? "닫기 (추가는 계속)"
         : installPhase === "done"
-          ? "확인"
+          ? "아이콘 확인함"
           : dismissLabel;
     dismissBtn.addEventListener("click", () => {
       if (installPhase === "downloading") {
         installUiCollapsed = true;
         hideAllInstallRoots();
         closeLpPwaInstallHelpModal();
-        showToast("백그라운드에서 설치 중", "완료되면 홈 화면 아이콘을 확인해 주세요.");
+        showToast("백그라운드에서 추가 중", "아이콘이 생기면 홈 화면에서 확인해 주세요.");
         return;
       }
       if (installPhase === "done") {
@@ -474,7 +475,7 @@ export function showLpPwaInstallHelp() {
       installUiCollapsed = true;
       hideAllInstallRoots();
       closeLpPwaInstallHelpModal();
-      showToast("백그라운드에서 설치 중", "완료되면 홈 화면 아이콘을 확인해 주세요.");
+      showToast("백그라운드에서 추가 중", "아이콘이 생기면 홈 화면에서 확인해 주세요.");
       return;
     }
     closeLpPwaInstallHelpModal();
@@ -510,15 +511,11 @@ export function initLpPwaInstall() {
     deferredPrompt = null;
     installPhase = "done";
     installUiCollapsed = false;
-    showToast("설치가 완료되었습니다", "홈 화면에서 Time is Price 아이콘을 눌러 열어 주세요.");
+    showToast(
+      "홈 화면을 확인해 주세요",
+      "Time is Price 아이콘이 생겼는지 봐 주세요. 아직 없으면 잠시 후 다시 확인해 주세요.",
+    );
     repaintInstallSurfaces();
-    setTimeout(() => {
-      if (installPhase === "done") {
-        resetInstallFlow();
-        hideAllInstallRoots();
-        closeLpPwaInstallHelpModal();
-      }
-    }, 5000);
   });
 
   window.addEventListener("resize", () => {
