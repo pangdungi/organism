@@ -55,7 +55,7 @@ export function timeLedgerLocalMonthFirstYmd() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`;
 }
 
-/** 시간가계부 탭 재진입 시: 기록 피커·시간 사용내역 조회 구간을 오늘 하루로 맞춤 (App.setActiveTab time). */
+/** 시간가계부 탭 재진입 시: 오늘 날짜·기본 타임라인·필터 없음 (App.setActiveTab time). */
 export function resetTimeLedgerSessionFilterToToday() {
   try {
     if (typeof sessionStorage === "undefined") return;
@@ -64,6 +64,9 @@ export function resetTimeLedgerSessionFilterToToday() {
     sessionStorage.setItem("lp_time_filter_end", t);
     sessionStorage.setItem("lp_time_usage_list_start", t);
     sessionStorage.setItem("lp_time_usage_list_end", t);
+    sessionStorage.setItem("lp_time_usage_memo_only", "0");
+    sessionStorage.removeItem("lp_time_usage_task_filter");
+    sessionStorage.setItem("lp_time_ledger_layout_view", "timeline");
   } catch (_) {}
 }
 

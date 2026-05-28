@@ -524,7 +524,7 @@ export async function mountApp(container) {
         else if (targetTabId === "time") {
           setLpTabPullPending(targetTabId);
         }
-        /* 그 외 탭: 메뉴·사이드바로 시간가계부에 들어올 때는 항상 오늘 구간(세션 피커 초기화) 후 렌더 */
+        /* 메뉴에서 시간가계부 진입: 오늘·타임라인·필터 없음(세션 조회 상태 초기화) 후 렌더 */
         if (targetTabId === "time") {
           try {
             teardownDetachedTimeLedgerTaskLogBridge();
