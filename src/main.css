@@ -30,7 +30,7 @@
 
 /**
  * 오늘(메인)·로그인: 상단 세이프 존까지 네이비.
- * 그라데이션(+1px)은 Android/iOS에서 상태줄 아래 회색·흰 hairline 으로 보여 제거.
+ * 별도 fixed/::before 밴드 없이 html→#signin-page→.app-main 배경만 맞춤(hairline 방지).
  */
 html.lp-top-safe-chrome-navy.lp-app-bg,
 body.lp-top-safe-chrome-navy.lp-app-bg,
@@ -42,21 +42,14 @@ body.lp-auth-gate-chrome.lp-app-bg {
   background-image: none;
 }
 
-/**
- * 상태줄·노치 뒤 상단 밴드 — fixed 로 한 겹만 칠함(padding 경계 hairline 방지).
- * 레이아웃 offset 은 .app-page::before / .login-page::before 스페이서.
- */
-html.lp-app-bg::before {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  width: 100%;
-  height: var(--lp-safe-top);
+html.lp-app-bg,
+body.lp-app-bg,
+#app,
+#signin-page,
+#signin-page #app-screen,
+.app-page,
+#app-screen-inner {
   background-color: var(--lp-shell-chrome-bg, #ffffff);
-  pointer-events: none;
-  z-index: 2147483000;
 }
 
 /** 앱 기동·세션 복구 중: 로그인 폼·자동완성이 스플래시 뒤에 보이지 않게 */
@@ -180,20 +173,8 @@ html.lp-auth-gate-chrome.lp-app-bg #signin-page {
   overflow: hidden;
   box-sizing: border-box;
   padding-top: 0;
-  background-color: var(--lp-shell-chrome-bg, #fff);
   border: none;
   box-shadow: none;
-}
-
-/* padding-top 대신 flex 스페이서 — 세이프/본문 경계 subpixel hairline 제거 */
-.app-page::before {
-  content: "";
-  display: block;
-  flex: 0 0 var(--lp-safe-top);
-  width: 100%;
-  height: var(--lp-safe-top);
-  background-color: var(--lp-shell-chrome-bg, #fff);
-  box-shadow: 0 1px 0 0 var(--lp-shell-chrome-bg, #fff);
 }
 
 #app-screen-inner {
@@ -203,9 +184,6 @@ html.lp-auth-gate-chrome.lp-app-bg #signin-page {
   flex-direction: column;
   width: 100%;
   overflow: hidden;
-  margin-top: -1px;
-  padding-top: 1px;
-  background-color: var(--lp-body-top-bg, var(--lp-shell-chrome-bg, #fff));
 }
 
 /* 푸터 탭: 본문이 푸터 상단 보더까지 채우도록(상단 safe-area를 gap으로 넣지 않음 — PWA에서 전 탭 본문이 ~1cm 위에서 끊김) */
@@ -238,12 +216,12 @@ html.lp-auth-gate-chrome.lp-app-bg #signin-page {
   overflow: auto;
   -webkit-overflow-scrolling: touch;
   width: 100%;
-  /* 세이프 inset: .app-page::before — 여기서는 좌우만 */
-  padding-top: 0;
+  /* 세이프 inset: 본문 한 곳만 — 셸(html~.app-page)은 동일 배경으로 이어짐 */
+  padding-top: var(--lp-safe-top);
   padding-bottom: 0;
   padding-left: var(--lp-safe-left);
   padding-right: var(--lp-safe-right);
-  background-color: var(--lp-body-top-bg, #fff);
+  background-color: var(--lp-body-top-bg, var(--lp-shell-chrome-bg, #fff));
 }
 
 .app-main > .app-tab-panel > :first-child {
@@ -256,7 +234,7 @@ html.lp-auth-gate-chrome.lp-app-bg #signin-page {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  /* 상단 살짝 여유 — 약 20vh (작은 화면·큰 화면 상한); 세이프는 .app-page::before */
+  /* 상단 살짝 여유 — 약 20vh; 세이프는 .app-main padding-top */
   padding-top: clamp(1.15rem, 20vh, 5rem);
 }
 
@@ -1614,21 +1592,11 @@ table {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  padding-top: 0;
+  padding-top: var(--lp-safe-top);
   padding-bottom: var(--lp-safe-bottom);
   font-family: "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
   color: var(--auth-ink);
   background: #1e4d7b;
-}
-
-.login-page.login-page--gate::before {
-  content: "";
-  display: block;
-  flex: 0 0 var(--lp-safe-top);
-  width: 100%;
-  height: var(--lp-safe-top);
-  background-color: var(--lp-shell-chrome-bg, #1e4d7b);
-  box-shadow: 0 1px 0 0 var(--lp-shell-chrome-bg, #1e4d7b);
 }
 
 .auth-gate-body {
@@ -1636,9 +1604,7 @@ table {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  margin-top: -1px;
   padding: max(1rem, 0.85rem) 1.25rem 1.5rem;
-  padding-top: calc(max(1rem, 0.85rem) + 1px);
   box-sizing: border-box;
 }
 
