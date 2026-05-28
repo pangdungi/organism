@@ -1,11 +1,11 @@
 /**
  * 전역 UI 글꼴 변수 + 사용자 선택 커스텀 폰트 (@font-face)
- * 기본값은 「시스템 기본」= 예전 --lp-modal-font 스택. 적용/저장은 utils/appUiFont.js
+ * 기본값은 「세종 글꽃」— localStorage·서버 값 없을 때. 「시스템 기본」은 옵션.
  */
 
 :root {
-  --lp-app-font-family: system-ui, -apple-system, "Segoe UI", Roboto,
-    "Noto Sans KR", sans-serif;
+  --lp-app-font-family: "LP Sejong Geulggot", system-ui, -apple-system, "Segoe UI",
+    Roboto, "Noto Sans KR", sans-serif;
 }
 
 /* 전역 본문: --lp-app-font-family 는 JS(applyAppFont)가 html 에 심음 */

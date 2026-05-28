@@ -7,6 +7,9 @@ import { supabase } from "../supabase.js";
 
 export const LP_APP_UI_FONT_STORAGE_KEY = "lp_app_ui_font_id";
 
+/** 앱 기본 글꼴 (localStorage·서버 값 없을 때) */
+export const LP_APP_DEFAULT_FONT_ID = "pakyongjun";
+
 /** 앱에서 「시스템 기본」: 폰트 설정 도입 전 모달에 쓰던 스택과 동일 */
 export const LP_APP_SYSTEM_FONT_STACK =
   'system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", sans-serif';
@@ -18,22 +21,22 @@ const LP_APP_FONT_FALLBACK = LP_APP_SYSTEM_FONT_STACK;
 
 /** @type {LpAppFontOption[]} */
 export const LP_APP_FONT_OPTIONS = [
-  { id: "system", label: "시스템 기본", stack: LP_APP_SYSTEM_FONT_STACK },
-  {
-    id: "leeseoyun",
-    label: "Lee Seoyun",
-    stack: `"LP Lee Seoyun", ${LP_APP_FONT_FALLBACK}`,
-  },
   {
     id: "pakyongjun",
     label: "세종 글꽃",
     stack: `"LP Sejong Geulggot", ${LP_APP_FONT_FALLBACK}`,
   },
   {
+    id: "leeseoyun",
+    label: "Lee Seoyun",
+    stack: `"LP Lee Seoyun", ${LP_APP_FONT_FALLBACK}`,
+  },
+  {
     id: "kyobohandwriting",
     label: "교보 손글씨",
     stack: `"LP Kyobo Handwriting", ${LP_APP_FONT_FALLBACK}`,
   },
+  { id: "system", label: "시스템 기본", stack: LP_APP_SYSTEM_FONT_STACK },
 ];
 
 const LP_APP_FONT_ID_SET = new Set(LP_APP_FONT_OPTIONS.map((o) => o.id));
@@ -45,7 +48,7 @@ const LP_APP_FONT_ID_SET = new Set(LP_APP_FONT_OPTIONS.map((o) => o.id));
 export function normalizeAppFontId(id) {
   const v = String(id ?? "").trim().toLowerCase();
   if (v === "parkdahyun") return "kyobohandwriting";
-  return LP_APP_FONT_ID_SET.has(v) ? v : "system";
+  return LP_APP_FONT_ID_SET.has(v) ? v : LP_APP_DEFAULT_FONT_ID;
 }
 
 /**
@@ -53,8 +56,11 @@ export function normalizeAppFontId(id) {
  * @returns {string}
  */
 export function getAppFontStackForId(id) {
-  const opt = LP_APP_FONT_OPTIONS.find((o) => o.id === normalizeAppFontId(id));
-  return opt ? opt.stack : LP_APP_SYSTEM_FONT_STACK;
+  const normalized = normalizeAppFontId(id);
+  const opt = LP_APP_FONT_OPTIONS.find((o) => o.id === normalized);
+  if (opt) return opt.stack;
+  const def = LP_APP_FONT_OPTIONS.find((o) => o.id === LP_APP_DEFAULT_FONT_ID);
+  return def?.stack ?? LP_APP_SYSTEM_FONT_STACK;
 }
 
 /**
@@ -65,7 +71,7 @@ export function getStoredAppFontId() {
     const v = localStorage.getItem(LP_APP_UI_FONT_STORAGE_KEY);
     if (v && LP_APP_FONT_ID_SET.has(v)) return v;
   } catch (_) {}
-  return "system";
+  return LP_APP_DEFAULT_FONT_ID;
 }
 
 function persistAppFontIdLocal(id) {

@@ -109,7 +109,7 @@
   flex: 0 0 auto;
   align-items: stretch;
   gap: 0;
-  border-radius: 0.5rem;
+  border-radius: 0.5625rem;
   border: 1px solid var(--cal-line-strong, rgba(58, 110, 168, 0.22));
   background: var(--cal-surface-muted, rgba(58, 110, 168, 0.06));
   overflow: hidden;
@@ -119,10 +119,11 @@
   appearance: none;
   border: none;
   margin: 0;
-  padding: 0.28rem 0.55rem;
-  font-size: 0.68rem;
+  padding: 0.35rem 0.72rem;
+  min-height: 2.125rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   line-height: 1.2;
   cursor: pointer;
   color: var(--cal-text-muted, rgba(30, 61, 93, 0.52));
@@ -132,6 +133,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .diary-report-granularity__seg + .diary-report-granularity__seg {

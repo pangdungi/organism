@@ -468,8 +468,7 @@
 }
 
 [data-legacy~="time-ledger-view"] .time-ledger-view-mode-bar .diary-report-granularity__seg {
-  padding: 0.28rem 0.62rem;
-  font-size: 0.65rem;
+  padding-inline: 0.65rem;
   letter-spacing: -0.01em;
 }
 
