@@ -103,30 +103,68 @@
   margin: 0;
 }
 
-/* 시간사용 레포트(탭3): DAY / MONTH 토글 — 캘린더 상단 버튼과 톤 통일 */
+/* 시간사용 레포트(탭3): DAY / MONTH 토글 — 슬라이딩 흰 칩 (로그인 세그먼트와 동일 패턴) */
 .diary-report-granularity {
+  --lp-seg-pad: 3px;
+  --lp-seg-count: 2;
+  position: relative;
   display: inline-flex;
   flex: 0 0 auto;
   align-items: stretch;
   gap: 0;
+  padding: var(--lp-seg-pad);
   border-radius: 0.5625rem;
   border: 1px solid var(--cal-line-strong, rgba(58, 110, 168, 0.22));
-  background: var(--cal-surface-muted, rgba(58, 110, 168, 0.06));
+  background: rgba(30, 77, 123, 0.08);
+  box-sizing: border-box;
   overflow: hidden;
+  min-width: min(100%, 15.5rem);
+}
+
+.diary-report-granularity::before {
+  content: "";
+  position: absolute;
+  top: var(--lp-seg-pad);
+  bottom: var(--lp-seg-pad);
+  left: var(--lp-seg-pad);
+  width: calc((100% - 2 * var(--lp-seg-pad)) / var(--lp-seg-count));
+  border-radius: calc(0.5625rem - var(--lp-seg-pad));
+  background: #fff;
+  box-shadow:
+    0 1px 2px rgba(30, 77, 123, 0.08);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.diary-report-granularity:has(
+    .diary-report-granularity__seg:nth-child(2).is-active
+  )::before {
+  transform: translateX(100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .diary-report-granularity::before {
+    transition: none;
+  }
 }
 
 .diary-report-granularity__seg {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 50%;
   appearance: none;
   border: none;
   margin: 0;
-  padding: 0.35rem 0.72rem;
+  padding: 0.35rem 0.85rem;
   min-height: 2.125rem;
   font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.03em;
+  letter-spacing: -0.02em;
   line-height: 1.2;
+  white-space: nowrap;
   cursor: pointer;
-  color: var(--cal-text-muted, rgba(30, 61, 93, 0.52));
+  color: var(--cal-text-muted, rgba(30, 61, 93, 0.48));
   background: transparent;
   font-family: inherit;
   text-align: center;
@@ -134,21 +172,23 @@
   align-items: center;
   justify-content: center;
   -webkit-tap-highlight-color: transparent;
+  transition: color 0.2s ease;
 }
 
 .diary-report-granularity__seg + .diary-report-granularity__seg {
-  box-shadow: inset 1px 0 0 var(--cal-line, rgba(58, 110, 168, 0.14));
+  box-shadow: none;
 }
 
 .diary-report-granularity__seg.is-active {
-  color: var(--cal-text, #1a2d45);
-  background: var(--cal-surface, #fff);
+  color: var(--idea-navy, #1e4d7b);
+  font-weight: 700;
+  background: transparent;
 }
 
 .diary-report-granularity__seg:focus-visible {
   outline: 2px solid var(--idea-navy, #1e4d7b);
   outline-offset: 1px;
-  z-index: 1;
+  z-index: 2;
 }
 
 /* 일기 탭 루트: 본문 스크롤까지 flex 체인 */

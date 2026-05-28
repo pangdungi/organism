@@ -5,6 +5,9 @@ import { isUuid } from "./idUtils.js";
 import {
   formatMinutesToKoreanHm,
   parseKpiTargetTimeRequiredToMinutes,
+  getAccumulatedMinutesForKpiIdOnDate,
+  normalizeKpiLogDateYmd,
+  kpiShouldUseTimeLedgerLogs,
 } from "./timeKpiSync.js";
 
 export const KPI_LOG_SOURCE_MANUAL = "manual";
@@ -51,6 +54,24 @@ export function formatMinutesToShortHm(totalMin) {
   return `${h}h ${m}m`;
 }
 
+/** @param {object} log @param {object} [kpi] */
+export function getKpiLogDisplayMinutes(log, kpi) {
+  const cached = Number(log?.__ledgerMinutes);
+  if (Number.isFinite(cached) && cached > 0) return Math.round(cached);
+
+  const fromIds = sumLinkedLedgerMinutesFromLog(log);
+  if (fromIds > 0) return fromIds;
+
+  const shouldLookupLedger =
+    kpiShouldUseTimeLedgerLogs(kpi) || kpiLogIsTimeLinked(log);
+  if (!shouldLookupLedger) return 0;
+  const kpiId = String(kpi?.id || "").trim();
+  if (!kpiId) return 0;
+  const dateRaw = normalizeKpiLogDateYmd(log?.dateRaw || log?.date || "");
+  if (dateRaw.length < 10) return 0;
+  return getAccumulatedMinutesForKpiIdOnDate(kpiId, kpi?.name, dateRaw);
+}
+
 /**
  * 로그에 입력된 value·unit (수동) 또는 시간기록 연동 행들의 합산 분
  * @param {{ durationShortHm?: boolean }} [opts] durationShortHm이면 합산 시간을 h/m로 (회고 표만)
@@ -58,12 +79,14 @@ export function formatMinutesToShortHm(totalMin) {
 export function formatKpiHistoryValueText(log, kpi, opts) {
   const shortHm = Boolean(opts && opts.durationShortHm);
   const u = kpi?.unit ? String(kpi.unit).trim() : "";
-  if (kpi?.useTimeAsUnit && kpiLogIsTimeLinked(log)) {
-    const mins = sumLinkedLedgerMinutesFromLog(log);
-    if (mins > 0) {
-      return shortHm ? formatMinutesToShortHm(mins) : formatMinutesToKoreanHm(mins);
-    }
+  const ledgerMins = getKpiLogDisplayMinutes(log, kpi);
+
+  if ((kpi?.useTimeAsUnit || kpiLogIsTimeLinked(log)) && ledgerMins > 0) {
+    return shortHm
+      ? formatMinutesToShortHm(ledgerMins)
+      : formatMinutesToKoreanHm(ledgerMins);
   }
+
   const v = String(log?.value ?? "").trim();
   if (v) {
     if (kpi?.useTimeAsUnit) {
@@ -72,12 +95,15 @@ export function formatKpiHistoryValueText(log, kpi, opts) {
     }
     return u ? `${v} ${u}` : v;
   }
-  if (kpiLogIsTimeLinked(log)) {
-    const mins = sumLinkedLedgerMinutesFromLog(log);
-    if (mins > 0) {
-      return shortHm ? formatMinutesToShortHm(mins) : `${mins}분`;
-    }
+
+  if (ledgerMins > 0) {
+    return shortHm ? formatMinutesToShortHm(ledgerMins) : `${ledgerMins}분`;
   }
+
+  if (kpiLogIsTimeLinked(log)) {
+    return kpi?.useTimeAsUnit ? "0분" : formatMinutesToShortHm(0);
+  }
+
   return "—";
 }
 

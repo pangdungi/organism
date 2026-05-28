@@ -467,9 +467,13 @@
   box-sizing: border-box;
 }
 
+[data-legacy~="time-ledger-view"] .time-ledger-view-mode-bar.diary-report-granularity {
+  width: min(100%, 15.5rem);
+}
+
 [data-legacy~="time-ledger-view"] .time-ledger-view-mode-bar .diary-report-granularity__seg {
-  padding-inline: 0.65rem;
-  letter-spacing: -0.01em;
+  padding-inline: 0.85rem;
+  letter-spacing: -0.02em;
 }
 
 [data-legacy~="time-ledger-view"] .time-ledger-timebox-view-shell {

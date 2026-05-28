@@ -24,11 +24,12 @@ import {
   formatDeadlineRangeCompact,
 } from "../utils/ganttModal.js";
 import {
-  getAccumulatedMinutesForKpiId,
+  getAccumulatedMinutesForKpi,
   minutesToHhMm,
   hhMmToMinutes,
   syncHabitTrackerLogs,
 } from "../utils/timeKpiSync.js";
+import { resolveKpiDetailLogEntriesPrepared } from "../utils/kpiTimeLedgerLogs.js";
 import { defaultManualKpiLogMeta, kpiLogSourceBadgeHtml, formatKpiHistoryValueText } from "../utils/kpiLogFields.js";
 import { createKpiHabitGridElement } from "../utils/kpiHabitTrackerGrid.js";
 import { wireKpiHistoryHabitTabs } from "../utils/kpiHistoryHabitTabs.js";
@@ -809,7 +810,7 @@ export function render() {
       ? hhMmToMinutes(kpi.targetTimeRequired)
       : 0;
     const accumulatedMins =
-      targetMins > 0 ? getAccumulatedMinutesForKpiId(kpi.id) : 0;
+      targetMins > 0 ? getAccumulatedMinutesForKpi(kpi) : 0;
     const timeProgress =
       targetMins > 0 ? Math.min(100, (accumulatedMins / targetMins) * 100) : 0;
     const isCompleted =
@@ -916,7 +917,7 @@ export function render() {
         targetMins,
         accumulatedMins,
       } = getKpiProgress(kpi);
-      const investedMins = getAccumulatedMinutesForKpiId(kpi.id);
+      const investedMins = getAccumulatedMinutesForKpi(kpi);
       const unitSuffix = kpi.unit ? " " + kpi.unit : "";
       const formatNum = (n) =>
         n == null || Number.isNaN(n)
@@ -1034,7 +1035,8 @@ export function render() {
     syncAppFooterLoveKpiActions();
   }
 
-  function renderKpiHistory(opts = {}) {
+  async function renderKpiHistory(opts = {}) {
+    syncHabitTrackerLogs();
     const { scrollTodoAfterMutation = false } = opts;
     historyWrap.innerHTML = "";
     if (!selectedKpiId) {
@@ -1051,7 +1053,10 @@ export function render() {
       return;
     }
     const needHabitTracker = !!kpi.needHabitTracker;
-    const logs = getKpiLogs(selectedKpiId);
+    const logs = await resolveKpiDetailLogEntriesPrepared(
+      kpi,
+      getKpiLogs(selectedKpiId),
+    );
     const selKpi = String(selectedKpiId);
     const todos = (data.kpiTodos || []).filter(
       (t) => String(t.kpiId) === selKpi && (t.text || "").trim() !== "",

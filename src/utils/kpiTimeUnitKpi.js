@@ -3,7 +3,7 @@
  */
 
 import {
-  getAccumulatedMinutesForKpiId,
+  getAccumulatedMinutesForKpi,
   parseKpiTargetTimeRequiredToMinutes,
   formatMinutesToKoreanHm,
   formatKpiTargetTimeRequiredDisplay,
@@ -191,9 +191,9 @@ export function computeKpiProgress(kpi, deps) {
   const endKey = (kpi.targetDeadline || "").slice(0, 10);
   const hasStart = startKey.length >= 10;
 
-  if (kpi.useTimeAsUnit) {
+    if (kpi.useTimeAsUnit) {
     const targetMins = parseKpiTargetTimeRequiredToMinutes(kpi.targetTimeRequired);
-    const accumulatedMins = getAccumulatedMinutesForKpiId(kpi.id, kpi.name);
+    const accumulatedMins = getAccumulatedMinutesForKpi(kpi);
     const timeProgress =
       targetMins > 0 ? Math.min(100, (accumulatedMins / targetMins) * 100) : 0;
     const isCompleted = targetMins > 0 && timeProgress >= 100;

@@ -12,10 +12,10 @@ import {
   kpiTimeTaskRemove,
   kpiTimeTaskRename,
   getFullTaskOptions,
+  patchKpiLinkedTasksFromKpiMaps,
 } from "../utils/timeTaskOptionsModel.js";
 import { toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDisplay, formatDeadlineRangeCompact } from "../utils/ganttModal.js";
 import {
-  getAccumulatedMinutesForKpiId,
   minutesToHhMm,
   parseKpiTargetTimeRequiredToMinutes,
   formatMinutesToKoreanHm,
@@ -23,7 +23,12 @@ import {
   syncHabitTrackerLogs,
 } from "../utils/timeKpiSync.js";
 import { defaultManualKpiLogMeta, kpiLogSourceBadgeHtml, formatKpiHistoryValueText } from "../utils/kpiLogFields.js";
-import { kpiUnitSubchecksRowHtml } from "../utils/kpiTimeUnitKpi.js";
+import {
+  kpiUnitSubchecksRowHtml,
+  computeKpiProgress,
+  buildKpiCardTimePresentation,
+} from "../utils/kpiTimeUnitKpi.js";
+import { resolveKpiDetailLogEntriesPrepared } from "../utils/kpiTimeLedgerLogs.js";
 import {
   wireKpiHistoryBottomTabs,
   getKpiHistoryBottomTab,
@@ -1054,80 +1059,16 @@ export function render() {
   }
 
   function getKpiProgress(kpi) {
-    const lower = kpi.direction === "lower";
-    const data = loadDreamMap();
-    const todayKey = toDateKey(new Date());
-    const startKey = (kpi.targetStartDate || "").slice(0, 10);
-    const endKey = (kpi.targetDeadline || "").slice(0, 10);
-    const hasStart = startKey.length >= 10;
-
-    if (kpi.useTimeAsUnit) {
-      const targetMins = parseKpiTargetTimeRequiredToMinutes(kpi.targetTimeRequired);
-      const accumulatedMins = getAccumulatedMinutesForKpiId(kpi.id, kpi.name);
-      const timeProgress =
-        targetMins > 0 ? Math.min(100, (accumulatedMins / targetMins) * 100) : 0;
-      const isCompleted = targetMins > 0 && timeProgress >= 100;
-      const isInProgress =
-        hasStart && startKey <= todayKey && (!endKey || endKey >= todayKey) && !isCompleted;
-      return {
-        progress: timeProgress,
-        timeProgress,
-        currentVal: accumulatedMins,
-        targetVal: targetMins,
-        targetMins,
-        accumulatedMins,
-        isCompleted,
-        isInProgress,
-        lowerBetter: false,
-        useTimeAsUnit: true,
-      };
-    }
-
-    const latestLog = lower
-      ? getLatestKpiLogWithExplicitValue(kpi.id, data.kpiLogs)
-      : null;
-    const targetVal = parseNum(kpi.targetValue);
-    let currentVal;
-    let progress = 0;
-    if (lower) {
-      currentVal =
-        latestLog != null ? parseNum(latestLog.value) : null;
-      if (latestLog != null && currentVal != null) {
-        if (targetVal > 0) {
-          const c = Math.max(currentVal, 1e-9);
-          progress = Math.min(100, (targetVal / c) * 100);
-        } else if (targetVal === 0) {
-          progress = currentVal <= 0 ? 100 : 0;
-        }
-      }
-    } else {
-      currentVal = getAccumulatedKpiValue(kpi.id);
-      progress =
-        targetVal > 0 ? Math.min(100, (currentVal / targetVal) * 100) : 0;
-    }
-    const valueComplete = lower
-      ? latestLog != null &&
-        currentVal != null &&
-        currentVal <= targetVal
-      : progress >= 100;
-    const isCompleted = valueComplete;
-    const isInProgress =
-      hasStart && startKey <= todayKey && (!endKey || endKey >= todayKey) && !isCompleted;
-    return {
-      progress,
-      timeProgress: 0,
-      currentVal,
-      targetVal,
-      targetMins: 0,
-      accumulatedMins: 0,
-      isCompleted,
-      isInProgress,
-      lowerBetter: lower,
-      useTimeAsUnit: false,
-    };
+    return computeKpiProgress(kpi, {
+      toDateKey,
+      getAllKpiLogs: () => loadDreamMap().kpiLogs || [],
+      getAccumulatedKpiValue: getAccumulatedKpiValue,
+      parseNum,
+    });
   }
 
   function renderKpiList() {
+    patchKpiLinkedTasksFromKpiMaps();
     syncHabitTrackerLogs();
     const scopeId = activeDreamId;
     const savedGridScroll = readKpiGridScrollToRestore(
@@ -1202,48 +1143,33 @@ export function render() {
           ? completedKpis
           : dreamKpis;
     listToShow.forEach((kpi) => {
+      const progressResult = getKpiProgress(kpi);
       const {
         progress,
         timeProgress,
         currentVal,
-        targetVal,
-        targetMins,
-        accumulatedMins,
         lowerBetter,
         useTimeAsUnit,
-      } = getKpiProgress(kpi);
+        accumulatedMins,
+      } = progressResult;
       const unitSuffix = kpi.unit ? " " + kpi.unit : "";
       const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
-      const currentStr = formatNum(currentVal);
-      const targetStr = kpi.targetValue ? escapeHtml(String(kpi.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")) : "—";
-      const targetTimeLabel =
-        useTimeAsUnit && kpi.targetTimeRequired
-          ? formatKpiTargetTimeRequiredDisplay(kpi.targetTimeRequired)
-          : "—";
-      const accumulatedLabel = useTimeAsUnit
-        ? formatMinutesToKoreanHm(accumulatedMins)
-        : "";
-      const displayProgress = useTimeAsUnit ? timeProgress : progress;
-      const progressText = useTimeAsUnit
-        ? `${accumulatedLabel} / ${targetTimeLabel}`
-        : lowerBetter
-          ? `최근 ${currentStr} / 상한 ${targetStr}${unitSuffix}`
-          : `${currentStr} / ${targetStr}${unitSuffix}`;
+      const { displayProgress, progressText, heroStr, heroUnit, cardExtraClass } =
+        buildKpiCardTimePresentation(kpi, progressResult, formatNum);
       const card = document.createElement("div");
       card.className =
         "dream-kpi-card" +
         (lowerBetter ? " dream-kpi-card--lower-better" : "") +
-        (useTimeAsUnit ? " dream-kpi-card--time-unit" : "");
+        cardExtraClass;
       card.dataset.kpiId = kpi.id;
       card.draggable = true;
       const investedTimeHtml = "";
-      const heroStr = useTimeAsUnit ? accumulatedLabel : currentStr;
-      const heroUnit = useTimeAsUnit ? "" : kpi.unit;
+      const heroUnitFinal = heroUnit;
       card.innerHTML = `
         <div class="dream-kpi-card-inner">
           ${KPI_CARD_EDIT_PENCIL_HTML}
           <div class="dream-kpi-card-name">${escapeHtml(kpi.name)}${lowerBetter ? '<span class="dream-kpi-card-direction-badge" title="낮을수록 좋음 KPI">↓낮음</span>' : ""}</div>
-          <div class="dream-kpi-card-target-num">${formatKpiCardHeroHtml(lowerBetter, heroStr, heroUnit)}</div>
+          <div class="dream-kpi-card-target-num">${formatKpiCardHeroHtml(lowerBetter, heroStr, heroUnitFinal)}</div>
           ${(kpi.targetStartDate || kpi.targetDeadline) ? `<div class="dream-kpi-card-deadline">${escapeHtml(formatDeadlineRangeCompact(kpi.targetStartDate, kpi.targetDeadline))}</div>` : ""}
           <div class="dream-kpi-card-progress">
             <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${displayProgress}%"></div></div>
@@ -1315,12 +1241,13 @@ export function render() {
       exitToKpiList();
       return;
     }
-    renderKpiHistory({ ...opts, target: contentWrap });
+    void renderKpiHistory({ ...opts, target: contentWrap });
     syncAppFooterDreamKpiActions();
     persistKpiUiState();
   }
 
-  function renderKpiHistory(opts = {}) {
+  async function renderKpiHistory(opts = {}) {
+    syncHabitTrackerLogs();
     const { scrollTodoAfterMutation = false, target = historyWrap } = opts;
     target.innerHTML = "";
     if (!selectedKpiId) {
@@ -1336,7 +1263,10 @@ export function render() {
       exitToKpiList();
       return;
     }
-    const logs = getKpiLogs(selectedKpiId);
+    const logs = await resolveKpiDetailLogEntriesPrepared(
+      kpi,
+      getKpiLogs(selectedKpiId),
+    );
     const selKpi = String(selectedKpiId);
     const todos = (data.kpiTodos || []).filter(
       (t) => String(t.kpiId) === selKpi && (t.text || "").trim() !== "",

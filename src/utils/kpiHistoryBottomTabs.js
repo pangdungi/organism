@@ -12,8 +12,14 @@ function storageKey(namespace, kpiId) {
 
 export function getKpiHistoryBottomTab(namespace, kpiId) {
   const v = subByKey.get(storageKey(namespace, kpiId));
-  if (v === KPI_BOTTOM_TAB_TODO || v === KPI_BOTTOM_TAB_DAILY) return v;
-  return KPI_BOTTOM_TAB_LOG;
+  if (
+    v === KPI_BOTTOM_TAB_TODO ||
+    v === KPI_BOTTOM_TAB_DAILY ||
+    v === KPI_BOTTOM_TAB_LOG
+  ) {
+    return v;
+  }
+  return KPI_BOTTOM_TAB_TODO;
 }
 
 export function setKpiHistoryBottomTab(namespace, kpiId, tab) {
@@ -52,7 +58,7 @@ export function wireKpiHistoryBottomTabs(
 ) {
   const apply = (which) => {
     let w = which;
-    if (!hasDailyTab && w === KPI_BOTTOM_TAB_DAILY) w = KPI_BOTTOM_TAB_LOG;
+    if (!hasDailyTab && w === KPI_BOTTOM_TAB_DAILY) w = KPI_BOTTOM_TAB_TODO;
     setKpiHistoryBottomTab(namespace, kpiId, w);
     const showLog = w === KPI_BOTTOM_TAB_LOG;
     const showTodo = w === KPI_BOTTOM_TAB_TODO;
@@ -72,7 +78,7 @@ export function wireKpiHistoryBottomTabs(
   };
 
   let initial = getKpiHistoryBottomTab(namespace, kpiId);
-  if (!hasDailyTab && initial === KPI_BOTTOM_TAB_DAILY) initial = KPI_BOTTOM_TAB_LOG;
+  if (!hasDailyTab && initial === KPI_BOTTOM_TAB_DAILY) initial = KPI_BOTTOM_TAB_TODO;
   apply(initial);
 
   btnLog.addEventListener("click", () => apply(KPI_BOTTOM_TAB_LOG));

@@ -23,6 +23,7 @@ import {
   computeKpiProgress,
   buildKpiCardTimePresentation,
 } from "../utils/kpiTimeUnitKpi.js";
+import { resolveKpiDetailLogEntriesPrepared } from "../utils/kpiTimeLedgerLogs.js";
 import { defaultManualKpiLogMeta, kpiLogSourceBadgeHtml, formatKpiHistoryValueText } from "../utils/kpiLogFields.js";
 import {
   wireKpiHistoryBottomTabs,
@@ -1098,12 +1099,13 @@ export function render() {
       exitToKpiList();
       return;
     }
-    renderKpiHistory({ ...opts, target: contentWrap });
+    void renderKpiHistory({ ...opts, target: contentWrap });
     syncAppFooterHappinessKpiActions();
     persistKpiUiState();
   }
 
-  function renderKpiHistory(opts = {}) {
+  async function renderKpiHistory(opts = {}) {
+    syncHabitTrackerLogs();
     const { scrollTodoAfterMutation = false, target = historyWrap } = opts;
     target.innerHTML = "";
     if (!selectedKpiId) {
@@ -1119,7 +1121,10 @@ export function render() {
       return;
     }
     const needHabitTracker = !!kpi.needHabitTracker;
-    const logs = getKpiLogs(selectedKpiId);
+    const logs = await resolveKpiDetailLogEntriesPrepared(
+      kpi,
+      getKpiLogs(selectedKpiId),
+    );
     const selKpi = String(selectedKpiId);
     const todos = (data.kpiTodos || []).filter(
       (t) => String(t.kpiId) === selKpi && (t.text || "").trim() !== "",

@@ -269,8 +269,11 @@ function compactTaskName(name) {
 }
 
 const ICON_BY_COMPACT = new Map();
+const SLUG_BY_COMPACT = new Map();
 for (const [label, slug] of ORDERED_PAIRS) {
-  ICON_BY_COMPACT.set(compactTaskName(label), `${BASE}/${slug}.png`);
+  const compact = compactTaskName(label);
+  ICON_BY_COMPACT.set(compact, `${BASE}/${slug}.png`);
+  SLUG_BY_COMPACT.set(compact, slug);
 }
 
 const PRODUCTIVE_LEDGER_BUCKETS = new Set([
@@ -284,7 +287,7 @@ const PRODUCTIVE_LEDGER_BUCKETS = new Set([
  * 생산 과제 중 카테고리만 KPI/사용자 정의인 경우 — 꿈·부수입·행복·건강 아이콘.
  * productivity가 비어 있어도 category가 위 넷이면 생산 버킷으로 간주(행 데이터 등).
  */
-function productiveCategoryFallbackIcon(category, productivity) {
+function productiveCategoryFallbackSlug(category, productivity) {
   const cat = String(category || "")
     .trim()
     .toLowerCase();
@@ -293,15 +296,18 @@ function productiveCategoryFallbackIcon(category, productivity) {
     .trim()
     .toLowerCase();
   if (p === "nonproductive" || p === "other") return "";
-  const slug =
-    cat === "dream"
-      ? "prod-cat-dream"
-      : cat === "sideincome"
-        ? "prod-cat-sideincome"
-        : cat === "happiness"
-          ? "prod-cat-happiness"
-          : "prod-cat-health";
-  return `${BASE}/${slug}.png`;
+  return cat === "dream"
+    ? "prod-cat-dream"
+    : cat === "sideincome"
+      ? "prod-cat-sideincome"
+      : cat === "happiness"
+        ? "prod-cat-happiness"
+        : "prod-cat-health";
+}
+
+function productiveCategoryFallbackIcon(category, productivity) {
+  const slug = productiveCategoryFallbackSlug(category, productivity);
+  return slug ? `${BASE}/${slug}.png` : "";
 }
 
 const NONPRODUCTIVE_LEDGER_BUCKETS = new Map([
@@ -316,7 +322,7 @@ const NONPRODUCTIVE_LEDGER_BUCKETS = new Map([
 /**
  * 비생산 카테고리 사용자 추가·KPI 과제 — 쾌락·미디어·꿈 방해·불행·비건강·돈 손실.
  */
-function nonproductiveCategoryFallbackIcon(category, productivity) {
+function nonproductiveCategoryFallbackSlug(category, productivity) {
   const cat = String(category || "")
     .trim()
     .toLowerCase();
@@ -326,7 +332,12 @@ function nonproductiveCategoryFallbackIcon(category, productivity) {
     .trim()
     .toLowerCase();
   if (p === "productive" || p === "other") return "";
-  return `${BASE}/${slug}.png`;
+  return slug;
+}
+
+function nonproductiveCategoryFallbackIcon(category, productivity) {
+  const slug = nonproductiveCategoryFallbackSlug(category, productivity);
+  return slug ? `${BASE}/${slug}.png` : "";
 }
 
 /**
@@ -348,6 +359,41 @@ export function getTimeTaskListIconSrc(taskName, opts = {}) {
   const prod = productiveCategoryFallbackIcon(opts.category, opts.productivity);
   if (prod) return prod;
   return nonproductiveCategoryFallbackIcon(opts.category, opts.productivity);
+}
+
+/**
+ * 과제 수정 모달 — 리스트에 보이는 아이콘과 동일한 picker key.
+ * 저장된 iconKey가 없어도 과제명·카테고리 fallback을 key로 환산한다.
+ * @param {string} taskName
+ * @param {{ category?: string, productivity?: string, iconKey?: string }} [opts]
+ * @returns {string}
+ */
+export function resolveTimeTaskIconKey(taskName, opts = {}) {
+  const iconKey = String(opts.iconKey || "").trim();
+  if (iconKey && getTimeTaskIconSrcByKey(iconKey)) return iconKey;
+
+  const compact = compactTaskName(taskName);
+  if (compact) {
+    const slug = SLUG_BY_COMPACT.get(compact);
+    if (slug) return slug;
+  }
+
+  const prodSlug = productiveCategoryFallbackSlug(
+    opts.category,
+    opts.productivity,
+  );
+  if (prodSlug) return prodSlug;
+
+  const nonProdSlug = nonproductiveCategoryFallbackSlug(
+    opts.category,
+    opts.productivity,
+  );
+  if (nonProdSlug) return nonProdSlug;
+
+  const t = String(taskName || "").trim();
+  if (t === "수면하기" || /수면/.test(t)) return "sleep-bed";
+
+  return "";
 }
 
 /** @param {string} slug 파일 베이스명(확장자 없음) */

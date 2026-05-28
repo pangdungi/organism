@@ -36,7 +36,8 @@ import {
   pullTimeLedgerEntriesForDateRange,
   timeLedgerLocalTodayYmd,
 } from "./timeLedgerEntriesSupabase.js";
-import { syncHabitTrackerLogs } from "./timeKpiSync.js";
+import { pullTimeLedgerTasksFromSupabase } from "./timeLedgerTasksSupabase.js";
+import { syncHabitTrackerLogs, getKpiTargetDateRange } from "./timeKpiSync.js";
 import { patchKpiLinkedTasksFromKpiMaps } from "./timeTaskOptionsModel.js";
 import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
 const KPI_LOCAL_STORAGE_KEYS = {
@@ -46,12 +47,55 @@ const KPI_LOCAL_STORAGE_KEYS = {
   sideincome: SIDEINCOME_KPI_MAP_STORAGE_KEY,
 };
 
-/** KPI 탭 진입 시 — 오늘 기록만 서버와 맞춤(캐시·습관 연동). 6개월 일괄 pull 없음 */
-async function pullLedgerTodayForKpiTabEnter() {
+/** KPI 탭 진입 시 — 최근 6개월 가계부 + 과제(taskId↔kpiId) pull */
+async function pullLedgerForKpiTabEnter() {
   try {
-    const t = timeLedgerLocalTodayYmd();
-    await pullTimeLedgerEntriesForDateRange(t, t);
+    const today = timeLedgerLocalTodayYmd();
+    const d = new Date();
+    d.setMonth(d.getMonth() - 6);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    await Promise.all([
+      pullTimeLedgerEntriesForDateRange(`${y}-${m}-${day}`, today),
+      pullTimeLedgerTasksFromSupabase(),
+    ]);
+    patchKpiLinkedTasksFromKpiMaps();
   } catch (_) {}
+}
+
+/**
+ * KPI 상세(시간 단위) — 목표 기간 또는 최근 2년 가계부 pull
+ * @param {object} kpi
+ * @returns {Promise<boolean>}
+ */
+export async function pullTimeLedgerForKpi(kpi) {
+  const kid = String(kpi?.id || "").trim();
+  if (!kid) return false;
+  try {
+    const today = timeLedgerLocalTodayYmd();
+    const { start, end } = getKpiTargetDateRange(kpi);
+    let rangeStart = start;
+    let rangeEnd = end || today;
+    if (!rangeStart) {
+      const d = new Date();
+      d.setFullYear(d.getFullYear() - 2);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      rangeStart = `${y}-${m}-${day}`;
+    }
+    if (rangeEnd > today) rangeEnd = today;
+    if (rangeStart > rangeEnd) rangeEnd = rangeStart;
+    await Promise.all([
+      pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd),
+      pullTimeLedgerTasksFromSupabase(),
+    ]);
+    patchKpiLinkedTasksFromKpiMaps();
+    return true;
+  } catch (_) {
+    return false;
+  }
 }
 
 /**
@@ -83,7 +127,7 @@ export async function pullKpiTabFromCloud(tabId) {
   }
 
   const [, pullOk] = await Promise.all([
-    pullLedgerTodayForKpiTabEnter(),
+    pullLedgerForKpiTabEnter(),
     domainPull,
   ]);
 
@@ -246,7 +290,7 @@ export async function pullKpiMapsForTaskLogModalOpen() {
   let pullOk = false;
   try {
     const [, mapsOk] = await Promise.all([
-      pullLedgerTodayForKpiTabEnter(),
+      pullLedgerForKpiTabEnter(),
       Promise.all([
         pullDreamKpiMapFromSupabase({ force: true }),
         pullHealthKpiMapFromSupabase({ force: true }),

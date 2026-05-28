@@ -67,6 +67,7 @@ import {
 import {
   getTimeTaskListIconSrc,
   resolveTimeTaskDisplayIconSrc,
+  resolveTimeTaskIconKey,
 } from "../utils/timeTaskIconUrls.js";
 import { mountTimeAddTaskIconPicker } from "../utils/timeAddTaskIconPicker.js";
 import {
@@ -4284,13 +4285,13 @@ function createTimeLedgerViewModeBar(onViewChange) {
   const timelineBtn = document.createElement("button");
   timelineBtn.type = "button";
   timelineBtn.className = "diary-report-granularity__seg";
-  timelineBtn.textContent = "타임라인뷰";
+  timelineBtn.textContent = "타임라인";
   timelineBtn.title = "타임라인 보기";
 
   const timeboxBtn = document.createElement("button");
   timeboxBtn.type = "button";
   timeboxBtn.className = "diary-report-granularity__seg";
-  timeboxBtn.textContent = "타임박스뷰";
+  timeboxBtn.textContent = "타임박스";
   timeboxBtn.title = "타임박스 보기";
 
   bar.appendChild(timelineBtn);
@@ -7559,7 +7560,13 @@ export function render(opts = {}) {
       );
     syncAddTaskSubmitState();
     if (editTask) {
-      addTaskIconPicker.setSelectedKey(editTask.iconKey || "");
+      addTaskIconPicker.setSelectedKey(
+        resolveTimeTaskIconKey(editTask.name, {
+          category: editTask.category,
+          productivity: editTask.productivity,
+          iconKey: editTask.iconKey,
+        }),
+      );
     } else {
       addTaskIconPicker.reset();
     }

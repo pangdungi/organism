@@ -6,7 +6,10 @@
 
 import { readTimeLedgerEntriesRaw } from "./timeLedgerEntriesModel.js";
 import { stampAndPersistKpiMap } from "./kpiTodoSync.js";
-import { readTaskOptionsMemRows } from "./timeTaskOptionsModel.js";
+import {
+  getFullTaskOptions,
+  readTaskOptionsMemRows,
+} from "./timeTaskOptionsModel.js";
 import { isUuid } from "./idUtils.js";
 import {
   KPI_LOG_SOURCE_MANUAL,
@@ -33,19 +36,51 @@ function loadTimeRows() {
   return readTimeLedgerEntriesRaw();
 }
 
+/** taskId↔kpiId 매칭용 — mem 미로드 시 getFullTaskOptions fallback */
+function readTaskRowsForKpiMatch() {
+  const mem = readTaskOptionsMemRows();
+  if (mem.length > 0) return mem;
+  try {
+    return getFullTaskOptions().filter(
+      (o) => String(o.kpiId || "").trim() || String(o.id || "").trim(),
+    );
+  } catch (_) {
+    return [];
+  }
+}
+
+/** KPI에 time_ledger_tasks.kpiId 로 연결된 과제가 있는지 */
+export function kpiHasLinkedTimeTask(kpiOrId) {
+  const kid =
+    kpiOrId && typeof kpiOrId === "object"
+      ? String(kpiOrId.id || "").trim()
+      : String(kpiOrId || "").trim();
+  if (!kid) return false;
+  for (const o of readTaskRowsForKpiMatch()) {
+    if (String(o.kpiId || "").trim() === kid) return true;
+  }
+  return false;
+}
+
+/** 시간 단위 KPI 또는 가계부 과제 연동 KPI — 로그·누적에 가계부 사용 */
+export function kpiShouldUseTimeLedgerLogs(kpi) {
+  if (!kpi) return false;
+  if (kpi.useTimeAsUnit) return true;
+  return kpiHasLinkedTimeTask(kpi);
+}
+
 /**
  * KPI id 기준 시간 합(분). rowsForSum 에 포함된 가계부 줄만 합산한다.
  * 과제 표시명 별칭은 전체 가계부에서 확장해 레거시 과제명 매칭을 유지한다.
  * @param {string} kpiId
  * @param {Array<object>} rowsForSum
  */
-function accumulateMinutesForKpiFromRows(kpiId, rowsForSum, extraNameAliases = []) {
+function getMatchingLedgerRowsForKpi(kpiId, rowsForSum, extraNameAliases = []) {
   const kid = String(kpiId || "").trim();
-  if (!kid) return 0;
+  if (!kid) return [];
 
-  const opts = readTaskOptionsMemRows().filter(
-    (o) => String(o.kpiId || "").trim() === kid,
-  );
+  const taskRows = readTaskRowsForKpiMatch();
+  const opts = taskRows.filter((o) => String(o.kpiId || "").trim() === kid);
   const idsForKpi = new Set();
   const nameAliases = new Set();
   for (const n of extraNameAliases) {
@@ -60,7 +95,7 @@ function accumulateMinutesForKpiFromRows(kpiId, rowsForSum, extraNameAliases = [
   }
 
   const taskIdToKpiId = new Map();
-  for (const o of readTaskOptionsMemRows()) {
+  for (const o of taskRows) {
     const tid = String(o.id || "").trim();
     const k = String(o.kpiId || "").trim();
     if (isUuid(tid) && k) taskIdToKpiId.set(tid, k);
@@ -75,22 +110,34 @@ function accumulateMinutesForKpiFromRows(kpiId, rowsForSum, extraNameAliases = [
     }
   }
 
-  let totalHours = 0;
+  const matched = [];
   for (const r of rowsForSum) {
     if (!(r.timeTracked || "").trim()) continue;
     const tid = String(r.taskId || "").trim();
     const tn = String(r.taskName || "").trim();
     if (isUuid(tid)) {
-      if (idsForKpi.has(tid)) {
-        totalHours += parseTimeToHours(r.timeTracked);
+      const mappedKpi = taskIdToKpiId.get(tid);
+      if (idsForKpi.has(tid) || mappedKpi === kid) {
+        matched.push(r);
         continue;
       }
-      const mapped = taskIdToKpiId.get(tid);
-      if (mapped && mapped !== kid) continue;
+      if (mappedKpi && mappedKpi !== kid) continue;
     }
     if (tn && nameAliases.has(tn)) {
-      totalHours += parseTimeToHours(r.timeTracked);
+      matched.push(r);
     }
+  }
+  return matched;
+}
+
+function accumulateMinutesForKpiFromRows(kpiId, rowsForSum, extraNameAliases = []) {
+  let totalHours = 0;
+  for (const r of getMatchingLedgerRowsForKpi(
+    kpiId,
+    rowsForSum,
+    extraNameAliases,
+  )) {
+    totalHours += parseTimeToHours(r.timeTracked);
   }
   return Math.round(totalHours * 60);
 }
@@ -115,16 +162,98 @@ export function getAccumulatedMinutesForKpiIdInDateRange(
   kpiId,
   startYmdTen,
   endYmdTenInclusive,
+  kpiName = "",
 ) {
   const s = String(startYmdTen || "").replace(/\//g, "-").slice(0, 10);
   const e = String(endYmdTenInclusive || "").replace(/\//g, "-").slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || !/^\d{4}-\d{2}-\d{2}$/.test(e)) return 0;
   if (s > e) return 0;
+  const extra = kpiName ? [String(kpiName).trim()] : [];
   const filtered = loadTimeRows().filter((r) => {
-    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    const d = ledgerRowDateYmd(r);
     return /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= s && d <= e;
   });
-  return accumulateMinutesForKpiFromRows(kpiId, filtered, []);
+  return accumulateMinutesForKpiFromRows(kpiId, filtered, extra);
+}
+
+/** KPI 목표 기간(시작·마감) — YYYY-MM-DD 또는 빈 문자열 */
+export function getKpiTargetDateRange(kpi) {
+  const start = normalizeYmdTenForRange(kpi?.targetStartDate);
+  const end = normalizeYmdTenForRange(kpi?.targetDeadline);
+  return {
+    start: /^\d{4}-\d{2}-\d{2}$/.test(start) ? start : "",
+    end: /^\d{4}-\d{2}-\d{2}$/.test(end) ? end : "",
+  };
+}
+
+/** 시간 단위 KPI — 목표 기간이 있으면 그 구간만, 없으면 전체 누적(분) */
+export function getAccumulatedMinutesForKpi(kpi) {
+  const id = String(kpi?.id || "").trim();
+  const name = String(kpi?.name || "").trim();
+  if (!id) return 0;
+  const { start, end } = getKpiTargetDateRange(kpi);
+  if (start && end) {
+    return getAccumulatedMinutesForKpiIdInDateRange(id, start, end, name);
+  }
+  if (start) {
+    return getAccumulatedMinutesForKpiIdInDateRange(id, start, "9999-12-31", name);
+  }
+  if (end) {
+    return getAccumulatedMinutesForKpiIdInDateRange(id, "1970-01-01", end, name);
+  }
+  return getAccumulatedMinutesForKpiId(id, name);
+}
+
+/** 특정 일자 KPI 연결 가계부 시간(분) */
+export function getAccumulatedMinutesForKpiIdOnDate(kpiId, kpiName, ymdTen) {
+  const d = normalizeYmdTenForRange(ymdTen);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return 0;
+  return getAccumulatedMinutesForKpiIdInDateRange(kpiId, d, d, kpiName);
+}
+
+/** 가계부 행 → YYYY-MM-DD (date·startTime) */
+export function ledgerRowDateYmd(row) {
+  return normalizeLogDate(
+    (row?.date || "").toString() || parseDateFromLedgerStartTime(row?.startTime),
+  );
+}
+
+/**
+ * KPI 연결 가계부 — 일별 합산(분·entry id)
+ * @param {{ startYmd?: string, endYmd?: string }} [opts]
+ */
+export function getKpiDailyLedgerSummaries(kpiId, kpiName, opts = {}) {
+  const startYmd = normalizeYmdTenForRange(opts.startYmd);
+  const endYmd = normalizeYmdTenForRange(opts.endYmd);
+  const extra = kpiName ? [String(kpiName).trim()] : [];
+  const matched = getMatchingLedgerRowsForKpi(kpiId, loadTimeRows(), extra);
+  /** @type {Map<string, { dateRaw: string, dateDisplay: string, minutes: number, entryIds: string[] }>} */
+  const byDay = new Map();
+  for (const r of matched) {
+    const d = ledgerRowDateYmd(r);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) continue;
+    if (startYmd && d < startYmd) continue;
+    if (endYmd && d > endYmd) continue;
+    if (!byDay.has(d)) {
+      byDay.set(d, {
+        dateRaw: d,
+        dateDisplay: toDisplayDate(d),
+        minutes: 0,
+        entryIds: [],
+      });
+    }
+    const bucket = byDay.get(d);
+    bucket.minutes += Math.round(parseTimeToHours(r.timeTracked) * 60);
+    const eid = String(r.id || "").trim();
+    if (isUuid(eid) && !bucket.entryIds.includes(eid)) {
+      bucket.entryIds.push(eid);
+    }
+  }
+  return [...byDay.values()].sort((a, b) => b.dateRaw.localeCompare(a.dateRaw));
+}
+
+export function normalizeKpiLogDateYmd(val) {
+  return normalizeLogDate(val);
 }
 
 function normalizeYmdTenForRange(raw) {
@@ -613,7 +742,7 @@ export function upsertHabitTrackerLogWithDailyState(
 export function syncHabitTrackerLogs() {
   const rows = loadTimeRows();
   const taskIdToKpiId = new Map();
-  for (const o of readTaskOptionsMemRows()) {
+  for (const o of readTaskRowsForKpiMatch()) {
     const tid = String(o.id || "").trim();
     const kid = String(o.kpiId || "").trim();
     if (isUuid(tid) && kid) taskIdToKpiId.set(tid, kid);
@@ -671,9 +800,10 @@ export function syncHabitTrackerLogs() {
     }
   });
 
-  /** 직접 입력-only·레거시 로그는 시간가계부 id 자동 병합 제외 */
-  const logBlocksTimeLedgerIdMerge = (log) => {
+  /** 직접 입력-only·레거시 로그는 시간가계부 id 자동 병합 제외 (시간 단위 KPI는 항상 병합) */
+  const logBlocksTimeLedgerIdMerge = (log, kpi) => {
     if (!log || typeof log !== "object") return true;
+    if (kpi?.useTimeAsUnit) return false;
     if (log.kpiLogSource === KPI_LOG_SOURCE_TIME_LEDGER) return false;
     if (Array.isArray(log.timeLedgerEntryIds) && log.timeLedgerEntryIds.length > 0)
       return false;
@@ -724,7 +854,7 @@ export function syncHabitTrackerLogs() {
 
         if (idx >= 0) {
           const log = logs[idx];
-          if (logBlocksTimeLedgerIdMerge(log)) continue;
+          if (logBlocksTimeLedgerIdMerge(log, kpi)) continue;
           const before = JSON.stringify([
             log.kpiLogSource,
             (log.timeLedgerEntryIds || []).slice().sort(),
