@@ -2,7 +2,7 @@
  * 로그인·비번재설정 게이트 + 오늘(메인): 노치·상태줄 뒤 상단 밴드 네이비.
  * — html/body 클래스 + CSS 변수(--lp-shell-chrome-bg)
  * — 시간가계부는 본문 전체 흰색(상단 세이프 포함).
- * — iOS standalone translucent: 세로 세이프는 .app-page padding-top 한 곳만.
+ * — iOS standalone translucent: 세로 세이프는 html fixed 밴드 + .app-page::before 스페이서.
  */
 const CLASS = "lp-top-safe-chrome-navy";
 /** 로그인·비번재설정: html/body 전체 네이비 (그라데이션 흰 하단 제거) */
