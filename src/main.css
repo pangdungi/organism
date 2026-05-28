@@ -217,8 +217,9 @@ body {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  /* 상단 살짝 여유 — 약 20vh (작은 화면·큰 화면 상한); 세이프는 .app-page padding-top */
-  padding-top: clamp(1.15rem, 20vh, 5rem);
+  justify-content: center;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
 }
 
 .app-tab-panel {
@@ -314,7 +315,7 @@ body {
   background: #e8f0f8;
 }
 
-/* 메인(오늘) 뷰 — 배경 흰색, 하단 메뉴 시트만 카드 */
+/* 메인(오늘) 뷰 — 흰 배경 + 메뉴 그리드만 */
 .app-main:has(.app-home-menu-launcher) {
   background: #fff;
 }
@@ -322,28 +323,32 @@ body {
 .app-main:has(.app-home-menu-launcher) .app-tab-panel {
   flex: 1 1 0;
   min-height: 0;
-  justify-content: flex-start;
+  justify-content: center;
   align-items: stretch;
+  background: #fff;
 }
 
 .app-main:has(.app-home-menu-launcher) .app-home-menu-launcher {
   width: 100%;
   max-width: none;
   margin: 0;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
+  justify-content: center;
 }
 
-/* 홈(오늘) — 로고·시간가치 + 하단 풀블리드 흰 메뉴 시트 */
+/* 홈(오늘) — 메뉴 그리드 */
 .app-home-menu-launcher {
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  justify-content: center;
   box-sizing: border-box;
   width: 100%;
   max-width: none;
   margin: 0;
   padding: 0;
+  background: #fff;
 }
 
 .app-home-menu-launcher-brand {
@@ -357,132 +362,32 @@ body {
 }
 
 .app-home-menu-launcher-card {
-  --lp-home-menu-tile-bg: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.97) 0%,
-    #f9fbfd 52%,
-    #f4f7fb 100%
-  );
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 0.35rem 0 0;
-  background: #fff;
+  padding: 0;
+  background: transparent;
   border: none;
-  border-radius: 1rem 1rem 0 0;
-  box-shadow: 0 -10px 40px rgba(15, 35, 70, 0.14);
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .app-home-menu-launcher-card .app-home-menu-launcher-body {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
   width: 100%;
   box-sizing: border-box;
-  padding: 0.65rem max(0.85rem, var(--lp-safe-left)) 0.75rem
+  padding: 0 max(0.85rem, var(--lp-safe-left)) 0
     max(0.85rem, var(--lp-safe-right));
 }
 
 .app-home-menu-launcher-card .app-home-menu-launcher-section-grid {
   box-sizing: border-box;
   width: 100%;
-}
-
-/* 카드 안 잔액 없음 — 아래 규칙은 레거시·타 화면 호환용 */
-.app-home-menu-balance {
-  margin: 0 0 1.05rem;
-  padding: 1rem 0.9rem 1.05rem;
-  border-radius: 14px;
-  background: linear-gradient(155deg, #f4f7fc 0%, #e8f0fa 100%);
-  border: 1px solid rgba(58, 110, 168, 0.14);
-  box-sizing: border-box;
-  text-align: center;
-}
-
-.app-home-menu-launcher > .app-home-menu-balance {
-  margin: 0 max(0.5rem, var(--lp-safe-left)) 0.75rem
-    max(0.5rem, var(--lp-safe-right));
-  padding: 0.85rem 1rem 1rem;
-  box-sizing: border-box;
-  background: linear-gradient(155deg, #f4f7fc 0%, #e8f0fa 100%);
-  border: 1px solid rgba(58, 110, 168, 0.14);
-  border-radius: 1rem;
-  box-shadow: 0 4px 16px rgba(15, 35, 70, 0.06);
-}
-
-.app-home-menu-balance-label {
-  margin: 0 0 0.4rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: rgba(30, 77, 123, 0.52);
-}
-
-.app-home-menu-balance-amount {
-  display: inline-flex;
-  align-items: baseline;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin: 0 0 0.45rem;
-  font-family: inherit;
-  font-size: clamp(1.7rem, 6.8vw, 2.15rem);
-  font-weight: 800;
-  letter-spacing: normal;
-  color: #1e4d7b;
-  line-height: 1.12;
-}
-
-.app-home-menu-balance-sign {
-  margin-right: 0.22em;
-  font-weight: 800;
-}
-
-.app-home-menu-balance-currency {
-  margin-right: 0.12em;
-  font-weight: 800;
-}
-
-.app-home-menu-balance-digits {
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-
-.app-home-menu-balance-meta {
-  margin: 0;
-  font-size: 0.7rem;
-  font-weight: 500;
-  line-height: 1.4;
-  color: rgba(30, 77, 123, 0.46);
-  word-break: keep-all;
-}
-
-.app-home-menu-balance-amount--loading {
-  min-height: 2.35rem;
-  font-size: 1.05rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  color: rgba(30, 77, 123, 0.58);
-}
-
-.app-home-menu-balance-loading-text {
-  display: inline-block;
-  animation: app-home-menu-balance-loading-pulse 1.35s ease-in-out infinite;
-}
-
-@keyframes app-home-menu-balance-loading-pulse {
-  0%,
-  100% {
-    opacity: 0.55;
-  }
-
-  50% {
-    opacity: 1;
-  }
 }
 
 .lp-tab-sync-loading.dream-kpi-map-sync-loading {
@@ -575,27 +480,21 @@ body {
   letter-spacing: -0.03em;
   text-align: left;
   color: #2b3240;
-  background: var(--lp-home-menu-tile-bg);
-  border: 1px solid rgba(58, 110, 168, 0.14);
+  background: #fff;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
-  box-shadow:
-    0 2px 10px rgba(30, 77, 123, 0.07),
-    0 1px 0 rgba(255, 255, 255, 0.92) inset;
+  box-shadow: none;
   transition:
     color 0.12s ease,
     background 0.12s ease,
-    border-color 0.12s ease,
-    box-shadow 0.12s ease;
+    border-color 0.12s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
 .app-home-menu-launcher-btn:hover {
   color: #1a2330;
-  background: linear-gradient(180deg, #fff 0%, #f6f9fc 55%, #eef3f8 100%);
-  border-color: rgba(58, 110, 168, 0.22);
-  box-shadow:
-    0 4px 14px rgba(30, 77, 123, 0.1),
-    0 1px 0 rgba(255, 255, 255, 0.95) inset;
+  background: #f8fafc;
+  border-color: #cbd5e1;
 }
 
 .app-home-menu-launcher-btn:focus-visible {

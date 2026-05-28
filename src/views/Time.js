@@ -1518,50 +1518,6 @@ export function isTimeLedgerRowLiveRecording(row) {
   return timeLedgerRowIsLiveInProgress(row);
 }
 
-/**
- * 오늘 날짜 기준, 현재 진행 중인 시간기록 행 하나(시작 최신 순).
- * 없으면 null.
- */
-export function getTodayLiveTimeLedgerRow() {
-  const now = new Date();
-  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const rows = loadTimeRows().filter(
-    (r) => (r.date || "").toString().slice(0, 10) === todayKey,
-  );
-  const live = rows.filter(timeLedgerRowIsLiveInProgress);
-  if (!live.length) return null;
-  live.sort((a, b) => {
-    const sa = getRowStartInstantForMobileCard(a)?.getTime() ?? 0;
-    const sb = getRowStartInstantForMobileCard(b)?.getTime() ?? 0;
-    return sb - sa;
-  });
-  return live[0];
-}
-
-/** 갱신 타이머용 행 식별 (id 또는 날짜·시작·과제명) */
-export function getTimeLedgerRowLiveStableKey(row) {
-  if (!row) return "";
-  const id = String(row.id || "").trim();
-  if (id) return `id:${id}`;
-  return `k:${(row.date || "").slice(0, 10)}|${(row.startTime || "").trim()}|${(row.taskName || "").trim()}`;
-}
-
-export function getTimeLedgerRowLiveElapsedMs(row) {
-  const start = getRowStartInstantForMobileCard(row);
-  if (!start) return 0;
-  return Date.now() - start.getTime();
-}
-
-/** 홈 타임트래커 부가 문구: 「N분째」(60분 미만) 또는 「h시간 m분째」 */
-export function formatHomeLiveElapsedMinutesPhrase(ms) {
-  const m = Math.floor(ms / 60000);
-  if (m <= 0) return "방금 시작";
-  if (m < 60) return `${m}분째`;
-  const h = Math.floor(m / 60);
-  const r = m % 60;
-  return `${h}시간 ${r}분째`;
-}
-
 /** 정수 분 소요 시간: 60분 미만 「N분」, 이상 「h시간 m분」(예: 480 → 8시간 0분) */
 export function formatIntegerMinutesDurationKo(totalMinutes) {
   const n = Math.max(0, Math.round(Number(totalMinutes) || 0));
@@ -1580,20 +1536,6 @@ export function getTimeLedgerRowMobilePriceDisplay(rowData) {
     slot,
     text: formatTimeLedgerActionPriceDisplay(value, slot),
   };
-}
-
-/** 홈 타임트래커: 시작 시각 (짧은 h:mm) */
-export function formatHomeLiveStartClock(row) {
-  if (!row) return "";
-  const fromStart = toDisplayTimeOnly(row.startTime || "");
-  if (fromStart) {
-    const parts = fromStart.split(":");
-    if (parts.length >= 2)
-      return `${parseInt(parts[0], 10)}:${parts[1].padStart(2, "0")}`;
-  }
-  const inst = getRowStartInstantForMobileCard(row);
-  if (!inst) return "";
-  return `${inst.getHours()}:${String(inst.getMinutes()).padStart(2, "0")}`;
 }
 
 function updateMobileTimeCardLiveFields(card) {
@@ -2061,108 +2003,6 @@ function calcPeriodValueFromFiltered(filtered, hourlyRate) {
     sum += price;
   });
   return sum;
-}
-
-/** 오늘 날짜 시간 기록 요약 (홈/오늘 뷰 4분면용) */
-export function getTodayTimeSummary() {
-  const now = new Date();
-  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const rows = loadTimeRows().filter(
-    (r) => (r.date || "").toString().slice(0, 10) === todayKey,
-  );
-  let hourlyRate = 0;
-  try {
-    hourlyRate =
-      parseFloat(
-        String(readUserHourlyRateLocal() || "0").replace(
-          /,/g,
-          "",
-        ),
-      ) || 0;
-  } catch (_) {}
-  let totalHrs = 0;
-  let productiveHrs = 0;
-  let investedPrice = 0;
-  let wastedValue = 0;
-  let workHrsToday = 0;
-  let sleepHrsToday = 0;
-  rows.forEach((r) => {
-    const hrs = parseTimeToHours(r.timeTracked) || 0;
-    totalHrs += hrs;
-    const cat = (r.category || "").trim();
-    if (cat === "work") workHrsToday += hrs;
-    else if (cat === "sleep") sleepHrsToday += hrs;
-    const pv = (
-      r.productivity ||
-      getProductivityFromCategory(r.category) ||
-      ""
-    ).trim();
-    if (pv === "productive") {
-      productiveHrs += hrs;
-      investedPrice += hrs * hourlyRate;
-    }
-    if (pv === "nonproductive") {
-      wastedValue += hrs * hourlyRate;
-    }
-  });
-  const trackedDisplay =
-    totalHrs <= 0 || !isFinite(totalHrs)
-      ? "0h 0m"
-      : formatHoursDisplay(totalHrs);
-  const productiveDisplay =
-    productiveHrs <= 0 || !isFinite(productiveHrs)
-      ? "0h 0m"
-      : formatHoursDisplay(productiveHrs);
-  /** 홈 오늘 통계: 총 기록 목표(고정) */
-  const totalRecordGoalHours = TIME_LEDGER_DAILY_RECORD_CAP_HOURS;
-  const totalRecordGoalDisplay = formatHoursDisplay(totalRecordGoalHours);
-  /** 24h − 근무 − 수면 = 가용 시간(당일 기록 기준) */
-  const availableHrsToday = Math.max(0, 24 - workHrsToday - sleepHrsToday);
-  /** 홈 통계 푸터: 짧은 한 줄(가용 시·분 + '중'은 줄바꿈 유발) */
-  const productiveContextDisplay = "가용 시간의";
-  /** 홈 요약 막대: 하루 24시간 기준… (호환용) */
-  const trackedPct24 = Math.min(100, Math.max(0, (totalHrs / 24) * 100));
-  const productivePct24 = Math.min(
-    100,
-    Math.max(0, (productiveHrs / 24) * 100),
-  );
-  /** 총기록 막대: 고정 목표(23h59m) 대비 */
-  const trackedPctOfGoal = Math.min(
-    100,
-    Math.max(0, (totalHrs / totalRecordGoalHours) * 100),
-  );
-  /** 생산적 막대: 당일 가용 시간 대비 */
-  const productivePctOfAvailable =
-    availableHrsToday > 0 && isFinite(availableHrsToday)
-      ? Math.min(100, Math.max(0, (productiveHrs / availableHrsToday) * 100))
-      : 0;
-  return {
-    trackedDisplay,
-    productiveDisplay,
-    priceDisplay: `+${formatPrice(investedPrice)}`,
-    wastedDisplay: `-${formatPrice(wastedValue)}`,
-    totalRecordGoalDisplay,
-    productiveContextDisplay,
-    trackedPct24,
-    productivePct24,
-    trackedPctOfGoal,
-    productivePctOfAvailable,
-    trackedGoalPercentLabel: `${Math.round(trackedPctOfGoal)}%`,
-    productiveOfAvailablePercentLabel: `${Math.round(productivePctOfAvailable)}%`,
-  };
-}
-
-/** 오늘(로컬 달력) 시간기록 행동가치 합 — 시간가계부 카드와 동일(유효 시간·시급·생산성) */
-export function getTodayTimeLedgerValueSum() {
-  const todayKey = timeLedgerLocalTodayYmd();
-  const rows = loadTimeRows().filter(
-    (r) => (r.date || "").toString().slice(0, 10) === todayKey,
-  );
-  const hourlyRate = readUserHourlyRateNumber();
-  return rows.reduce(
-    (sum, r) => sum + computeMobileCardPriceValue(r, hourlyRate),
-    0,
-  );
 }
 
 /**
@@ -3085,7 +2925,7 @@ export function formatLedgerLossKrwDisplay(wonPositiveMagnitude) {
   return `-₩${parts.digits}`;
 }
 
-/** 홈 메뉴 금액: 부호·₩·숫자를 나눠 간격·접근성 라벨 제공 */
+/** 금액 표기: 부호·₩·숫자를 나눠 간격·접근성 라벨 제공 */
 export function getHomeMenuLedgerKrwParts(n) {
   const v = Number(n) || 0;
   const abs = Math.abs(Math.round(v));

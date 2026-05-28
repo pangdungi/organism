@@ -6,15 +6,12 @@ import {
 } from "./utils/datePickerInit.js";
 import { getRoutineSyncedTaskNames } from "./utils/routineTimeSync.js";
 import {
-  render as renderCalendar,
   renderMobileScheduleCalendar,
   dismissCalendarDayExpandUI,
 } from "./views/Calendar.js";
 import { saveTodoListBeforeUnmount } from "./views/TodoList.js";
 import {
   render as renderTime,
-  getTodayTimeLedgerValueSum,
-  getHomeMenuLedgerKrwParts,
   teardownDetachedTimeLedgerTaskLogBridge,
 } from "./views/Time.js";
 import { render as renderWorkSchedule } from "./views/WorkSchedule.js";
@@ -117,15 +114,6 @@ const TABS = [
     sidebarOrder: 3,
   },
   {
-    id: "calendar",
-    label: "할일",
-    mobileLabel: "할일",
-    /** 모바일 하단·데스크톱 사이드바 동일 — 할일 목록 아이콘 */
-    icon: "/toolbaricons/menu-todo.png",
-    sidebarSection: "main",
-    sidebarOrder: 4,
-  },
-  {
     id: "dream",
     label: "꿈",
     icon: "/toolbaricons/menu-dream.png",
@@ -160,7 +148,6 @@ const HOME_MENU_TAB_ORDER = [
   "time",
   "schedulecalendar",
   "workschedule",
-  "calendar",
   "dream",
   "sideincome",
   "health",
@@ -180,7 +167,6 @@ function tabMetaById(tabId) {
 }
 
 const RENDERERS = {
-  calendar: renderCalendar,
   time: renderTime,
   workschedule: () =>
     typeof window !== "undefined" &&
@@ -232,16 +218,19 @@ function validAppTabIdSet() {
 
 /** @returns {boolean} 저장된 마지막 탭을 적용했으면 true */
 function applyPersistedTabIdFromSessionStorage() {
-  const migrateDiaryToTimeReport = (tabId) => {
-    if (tabId !== "diary") return tabId;
-    try {
-      sessionStorage.setItem("lp_time_ledger_layout_view", "report");
-    } catch (_) {}
-    return "time";
+  const migrateLegacyTabId = (tabId) => {
+    if (tabId === "diary") {
+      try {
+        sessionStorage.setItem("lp_time_ledger_layout_view", "report");
+      } catch (_) {}
+      return "time";
+    }
+    if (tabId === "calendar") return "schedulecalendar";
+    return tabId;
   };
   try {
     const fromSession = sessionStorage.getItem(LP_LAST_TAB_SESSION_KEY);
-    const migratedSession = fromSession ? migrateDiaryToTimeReport(fromSession) : null;
+    const migratedSession = fromSession ? migrateLegacyTabId(fromSession) : null;
     if (migratedSession && validAppTabIdSet().has(migratedSession)) {
       currentTabId = migratedSession;
       if (migratedSession !== fromSession) {
@@ -252,7 +241,7 @@ function applyPersistedTabIdFromSessionStorage() {
   } catch (_) {}
   try {
     const fromLocal = localStorage.getItem(LP_LAST_TAB_LOCAL_KEY);
-    const migratedLocal = fromLocal ? migrateDiaryToTimeReport(fromLocal) : null;
+    const migratedLocal = fromLocal ? migrateLegacyTabId(fromLocal) : null;
     if (migratedLocal && validAppTabIdSet().has(migratedLocal)) {
       currentTabId = migratedLocal;
       try {
@@ -300,16 +289,6 @@ function kpiSoftRefreshIfPullChanged(tabId, pullResult) {
 async function pullDataForActiveTab(tabId, opts = {}) {
   void opts;
   switch (tabId) {
-    case "home": {
-      /* 오늘의 시간 가치 = 오늘 entry + 시급(나의 계정) */
-      const ymd = timeLedgerLocalTodayYmd();
-      await Promise.all([
-        pullTimeLedgerEntriesForDateRange(ymd, ymd),
-        pullUserPrefsFromSupabase(),
-      ]);
-      break;
-    }
-    case "calendar":
     case "schedulecalendar": {
       await pullCalendarSectionTasksFromSupabase({
         reason: `app_setActiveTab_${tabId}`,
@@ -533,10 +512,7 @@ export async function mountApp(container) {
             resetTimeLedgerSessionFilterToToday();
           } catch (_) {}
         }
-        if (
-          targetTabId === "calendar" ||
-          targetTabId === "schedulecalendar"
-        ) {
+        if (targetTabId === "schedulecalendar") {
           try {
             window.__lpCalendarGridPrefetchedForTabSwitch = true;
           } catch (_) {}
@@ -550,22 +526,7 @@ export async function mountApp(container) {
             panelEl.firstElementChild === homeMenuLauncherEl
           ) {
             syncAppFooterVisibility();
-            try {
-              window.__lpHomeMenuSoftRefresh?.();
-            } catch (_) {}
-            void (async () => {
-              try {
-                await pullPromise;
-              } catch (_) {}
-              if (currentTabId !== targetTabId) return;
-              clearLpTabPullPending("home");
-              try {
-                await syncAdminMenuVisibility();
-              } catch (_) {}
-              try {
-                window.__lpHomeMenuSoftRefresh?.();
-              } catch (_) {}
-            })();
+            void syncAdminMenuVisibility();
             return;
           }
         }
@@ -601,10 +562,7 @@ export async function mountApp(container) {
           try {
             window.__lpTimeLedgerSoftRefresh?.();
           } catch (_) {}
-        } else if (
-          targetTabId === "calendar" ||
-          targetTabId === "schedulecalendar"
-        ) {
+        } else if (targetTabId === "schedulecalendar") {
           /* 할일/일정·사이드 캘린더: 두 번째 renderMain 시 상단 탭·설정 아이콘이 통째로 다시 붙으며 깜빡임 — 패널 유지 후 본문만 갱신 */
           try {
             window.__lpCalendarSoftRefresh?.();
@@ -615,12 +573,8 @@ export async function mountApp(container) {
             window.__lpIdeaSoftRefresh?.();
           } catch (_) {}
         } else if (targetTabId === "home") {
-          clearLpTabPullPending("home");
           try {
             await syncAdminMenuVisibility();
-          } catch (_) {}
-          try {
-            window.__lpHomeMenuSoftRefresh?.();
           } catch (_) {}
         } else if (
           targetTabId === "dream" ||
@@ -663,7 +617,6 @@ export async function mountApp(container) {
 
   function renderHomeMenuLauncher() {
     if (homeMenuLauncherEl?.isConnected) {
-      window.__lpHomeMenuSoftRefresh?.();
       bindHomeMenuLauncherAdminBtn(homeMenuLauncherEl);
       void syncAdminMenuVisibility();
       return homeMenuLauncherEl;
@@ -677,48 +630,6 @@ export async function mountApp(container) {
 
     const card = document.createElement("div");
     card.className = "app-home-menu-launcher-card";
-
-    const balanceWrap = document.createElement("div");
-    balanceWrap.className = "app-home-menu-balance";
-    const balanceLabel = document.createElement("p");
-    balanceLabel.className = "app-home-menu-balance-label";
-    balanceLabel.textContent = "오늘의 시간 가치";
-    const balanceAmount = document.createElement("p");
-    balanceAmount.className = "app-home-menu-balance-amount";
-    balanceAmount.setAttribute("aria-live", "polite");
-    const balanceMeta = document.createElement("p");
-    balanceMeta.className = "app-home-menu-balance-meta";
-
-    function paintHomeMenuBalance() {
-      card.classList.remove("app-home-menu-launcher-card--syncing");
-      balanceAmount.className = "app-home-menu-balance-amount";
-      balanceAmount.removeAttribute("aria-busy");
-      const sum = getTodayTimeLedgerValueSum();
-      const parts = getHomeMenuLedgerKrwParts(sum);
-      balanceAmount.replaceChildren();
-      balanceAmount.setAttribute("aria-label", parts.ariaLabel);
-      if (parts.sign) {
-        const signEl = document.createElement("span");
-        signEl.className = "app-home-menu-balance-sign";
-        signEl.textContent = parts.sign;
-        signEl.setAttribute("aria-hidden", "true");
-        balanceAmount.appendChild(signEl);
-      }
-      const wonEl = document.createElement("span");
-      wonEl.className = "app-home-menu-balance-currency";
-      wonEl.textContent = "₩";
-      wonEl.setAttribute("aria-hidden", "true");
-      const digitsEl = document.createElement("span");
-      digitsEl.className = "app-home-menu-balance-digits";
-      digitsEl.textContent = parts.digits;
-      digitsEl.setAttribute("aria-hidden", "true");
-      balanceAmount.append(wonEl, digitsEl);
-      balanceMeta.textContent = `${timeLedgerLocalTodayYmd()} · 시간가계부 오늘 기록 합계`;
-    }
-    paintHomeMenuBalance();
-    window.__lpHomeMenuSoftRefresh = paintHomeMenuBalance;
-
-    balanceWrap.append(balanceLabel, balanceAmount, balanceMeta);
 
     const body = document.createElement("div");
     body.className = "app-home-menu-launcher-body";
@@ -761,7 +672,7 @@ export async function mountApp(container) {
     void syncAdminMenuVisibility();
 
     card.appendChild(body);
-    root.append(balanceWrap, card, launcherAdminBtn);
+    root.append(card, launcherAdminBtn);
     homeMenuLauncherEl = root;
     bindHomeMenuLauncherAdminBtn(root);
     return root;
@@ -892,11 +803,6 @@ export async function mountApp(container) {
     }
     launcherAdminBtn = null;
     clearAppFooterActions();
-    if (currentTabId !== "home") {
-      try {
-        window.__lpHomeMenuSoftRefresh = null;
-      } catch (_) {}
-    }
     const tabRenderer = RENDERERS[currentTabId];
     /** @type {Node[]} */
     let mountNodes;
@@ -969,18 +875,6 @@ export async function mountApp(container) {
     window.__lpSyncWatchHelp = printSyncWatchHelp;
   }
 
-  /** 시급·시간기록 pull/IDB 복구 후 메인「오늘의 시간 가치」 재계산 */
-  if (typeof document !== "undefined" && !window.__lpHomeMenuBalanceListenersBound) {
-    window.__lpHomeMenuBalanceListenersBound = true;
-    const refreshHomeMenuBalance = () => {
-      try {
-        window.__lpHomeMenuSoftRefresh?.();
-      } catch (_) {}
-    };
-    document.addEventListener("app-hourly-rate-changed", refreshHomeMenuBalance);
-    document.addEventListener("calendar-time-rows-updated", refreshHomeMenuBalance);
-  }
-
   /* 서버 pull 은 상위 탭 전환(setActiveTab)·최초 진입 시에만 수행. 포커스 복귀 등에서는 pull 하지 않음. */
 
   logTabSync("boot", { tab: currentTabId, phase: "render_local_then_pull" });
@@ -1003,7 +897,7 @@ export async function mountApp(container) {
   void (async () => {
     const bootTabId = currentTabId;
     try {
-      if (bootTabId === "calendar" || bootTabId === "schedulecalendar") {
+      if (bootTabId === "schedulecalendar") {
         try {
           window.__lpCalendarGridPrefetchedForTabSwitch = true;
         } catch (_) {}
@@ -1013,14 +907,7 @@ export async function mountApp(container) {
 
       if (bootTabId === "home") {
         try {
-          await pullDataForActiveTab("home", { fromBoot: true });
-        } catch (_) {}
-        if (currentTabId !== "home") return;
-        try {
           await syncAdminMenuVisibility();
-        } catch (_) {}
-        try {
-          window.__lpHomeMenuSoftRefresh?.();
         } catch (_) {}
         return;
       }
@@ -1048,7 +935,7 @@ export async function mountApp(container) {
         try {
           window.__lpTimeLedgerSoftRefresh?.();
         } catch (_) {}
-      } else if (bootTabId === "calendar" || bootTabId === "schedulecalendar") {
+      } else if (bootTabId === "schedulecalendar") {
         try {
           window.__lpCalendarSoftRefresh?.();
         } catch (_) {}
