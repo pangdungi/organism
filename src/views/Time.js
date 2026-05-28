@@ -4573,6 +4573,22 @@ export function render(opts = {}) {
     return `${short(startYmd)} ~ ${short(endYmd)}`;
   }
 
+  /** 사용내역 헤더 — 하루면 요일 포함, 여러 날이면 짧은 구간 */
+  function formatUsageHistoryDateLabel(startYmd, endYmd) {
+    if (
+      !startYmd ||
+      !endYmd ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(startYmd) ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(endYmd)
+    ) {
+      return "";
+    }
+    if (startYmd === endYmd) {
+      return formatTimeFilterDateDotsWithWeekday(startYmd);
+    }
+    return formatUsageRangeCaption(startYmd, endYmd);
+  }
+
   const filterType = "range";
   let filterYear = now.getFullYear();
   let filterMonth = now.getMonth() + 1;
@@ -4666,7 +4682,7 @@ export function render(opts = {}) {
   function patchUsageRangeHeadingOnly() {
     const cap = contentWrap.querySelector("[data-usage-range-caption]");
     if (cap) {
-      cap.textContent = formatUsageRangeCaption(
+      cap.textContent = formatUsageHistoryDateLabel(
         usageHistoryRangeStartYmd,
         usageHistoryRangeEndYmd,
       );
@@ -4794,7 +4810,7 @@ export function render(opts = {}) {
   function patchTimeLedgerUsageHeadingInPlace(rows) {
     const cap = contentWrap.querySelector("[data-usage-range-caption]");
     if (cap) {
-      cap.textContent = formatUsageRangeCaption(
+      cap.textContent = formatUsageHistoryDateLabel(
         usageHistoryRangeStartYmd,
         usageHistoryRangeEndYmd,
       );
@@ -8123,6 +8139,16 @@ export function render(opts = {}) {
       ledgerContainer,
       "time-ledger-container time-ledger-usage-sheet",
     );
+
+    const viewModeBarWrap = createTimeLedgerViewModeBar((nextView) => {
+      if (timeLedgerLayoutView === nextView) return;
+      timeLedgerLayoutView = nextView;
+      persistTimeLedgerLayoutView();
+      renderAll(getFilteredRows(getFullRowsForFilter(true)));
+    });
+    viewModeBarWrap._syncTimeLedgerViewModeUi?.(timeLedgerLayoutView);
+    ledgerContainer.appendChild(viewModeBarWrap);
+
     const usageHistoryHeadingRow = document.createElement("div");
     lpSetClasses(
       usageHistoryHeadingRow,
@@ -8133,39 +8159,42 @@ export function render(opts = {}) {
       usageHistoryHeadingLeft,
       "time-ledger-usage-history-heading-left",
     );
-    const usageHistoryHeading = document.createElement("h2");
-    lpSetClasses(usageHistoryHeading, "time-ledger-usage-history-heading");
-    usageHistoryHeading.setAttribute("data-usage-range-caption", "");
-    usageHistoryHeading.textContent = formatUsageRangeCaption(
+    const usageHistoryEyebrow = document.createElement("span");
+    lpSetClasses(usageHistoryEyebrow, "time-ledger-usage-history-eyebrow");
+    usageHistoryEyebrow.textContent = "시간 사용내역";
+    const usageHistoryDate = document.createElement("p");
+    lpSetClasses(usageHistoryDate, "time-ledger-usage-history-date");
+    usageHistoryDate.setAttribute("data-usage-range-caption", "");
+    usageHistoryDate.textContent = formatUsageHistoryDateLabel(
       usageHistoryRangeStartYmd,
       usageHistoryRangeEndYmd,
     );
-    const usageHistoryRangeCaption = document.createElement("span");
+    usageHistoryHeadingLeft.appendChild(usageHistoryEyebrow);
+    usageHistoryHeadingLeft.appendChild(usageHistoryDate);
+
+    const usageHistoryTotalWrap = document.createElement("div");
     lpSetClasses(
-      usageHistoryRangeCaption,
-      "time-ledger-usage-range-caption",
+      usageHistoryTotalWrap,
+      "time-ledger-usage-history-total-wrap",
     );
-    usageHistoryRangeCaption.textContent = "시간 사용내역";
-    usageHistoryHeadingLeft.appendChild(usageHistoryHeading);
-    usageHistoryHeadingLeft.appendChild(usageHistoryRangeCaption);
+    const usageHistoryTotalLabel = document.createElement("span");
+    lpSetClasses(
+      usageHistoryTotalLabel,
+      "time-ledger-usage-history-total-label",
+    );
+    usageHistoryTotalLabel.textContent = "총 기록";
     const usageHistoryTotalTime = document.createElement("span");
     lpSetClasses(usageHistoryTotalTime, "time-ledger-usage-history-total");
     usageHistoryTotalTime.setAttribute("data-usage-total-time", "");
     usageHistoryTotalTime.textContent = formatHoursToHHMM(
       sumTimeLedgerDayHours(rows),
     );
-    usageHistoryHeadingRow.appendChild(usageHistoryHeadingLeft);
-    usageHistoryHeadingRow.appendChild(usageHistoryTotalTime);
-    ledgerContainer.appendChild(usageHistoryHeadingRow);
+    usageHistoryTotalWrap.appendChild(usageHistoryTotalLabel);
+    usageHistoryTotalWrap.appendChild(usageHistoryTotalTime);
 
-    const viewModeBarWrap = createTimeLedgerViewModeBar((nextView) => {
-      if (timeLedgerLayoutView === nextView) return;
-      timeLedgerLayoutView = nextView;
-      persistTimeLedgerLayoutView();
-      renderAll(getFilteredRows(getFullRowsForFilter(true)));
-    });
-    viewModeBarWrap._syncTimeLedgerViewModeUi?.(timeLedgerLayoutView);
-    ledgerContainer.appendChild(viewModeBarWrap);
+    usageHistoryHeadingRow.appendChild(usageHistoryHeadingLeft);
+    usageHistoryHeadingRow.appendChild(usageHistoryTotalWrap);
+    ledgerContainer.appendChild(usageHistoryHeadingRow);
 
     const showTimelineLedgerContent = timeLedgerLayoutView !== "timebox";
 

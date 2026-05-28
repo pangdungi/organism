@@ -1,17 +1,43 @@
-/** 캘린더 1일뷰 · 시간가계부 타임박스뷰 공통 15분 슬롯 그리드 */
+/** 캘린더 1일뷰 — 시간가계부 타임박스와 동일 24행×12열(5분 칸) 그리드 */
 
-export const CAL_1DAY_SLOT_COL_LABELS = [":15", ":30", ":45", ":60"];
+export const CAL_1DAY_SLOT_MINUTES = 5;
+export const CAL_1DAY_SLOT_COLS = 12;
+export const CAL_1DAY_SLOT_ROWS = 24;
+export const CAL_1DAY_SLOT_COL_LABELS = [
+  "5",
+  "10",
+  "15",
+  "20",
+  "25",
+  "30",
+  "35",
+  "40",
+  "45",
+  "50",
+  "55",
+  "60",
+];
 
-/** 15분 칸 시작 분(0~1425) → "0:00" 표기 */
+function slotMinForCell(row, col) {
+  return row * 60 + col * CAL_1DAY_SLOT_MINUTES;
+}
+
+/** 5분 칸 시작 분(0~1435) → "0:00" 표기 */
 export function formatCalendar1DaySlotClockLabel(slotMin) {
-  const m = Math.max(0, Math.min(24 * 60 - 15, Math.floor(Number(slotMin) || 0)));
+  const m = Math.max(
+    0,
+    Math.min(24 * 60 - CAL_1DAY_SLOT_MINUTES, Math.floor(Number(slotMin) || 0)),
+  );
   const h = Math.floor(m / 60);
   const r = m % 60;
   return `${h}:${String(r).padStart(2, "0")}`;
 }
 
 export function slotMinToHhMm(slotMin) {
-  const m = Math.max(0, Math.min(24 * 60 - 15, Math.floor(Number(slotMin) || 0)));
+  const m = Math.max(
+    0,
+    Math.min(24 * 60 - CAL_1DAY_SLOT_MINUTES, Math.floor(Number(slotMin) || 0)),
+  );
   const h = Math.floor(m / 60);
   const r = m % 60;
   return `${String(h).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
@@ -19,17 +45,21 @@ export function slotMinToHhMm(slotMin) {
 
 export function calendarSlotCellOverlapsSpan(slotMin, span) {
   const cellStart = Number(slotMin);
-  const cellEnd = cellStart + 15;
+  const cellEnd = cellStart + CAL_1DAY_SLOT_MINUTES;
   const spanStart = Number(span?.startMin);
   const spanEnd = Number(span?.endMin);
   if (![cellStart, cellEnd, spanStart, spanEnd].every(Number.isFinite)) return false;
   return cellStart < spanEnd && cellEnd > spanStart;
 }
 
-export function calendarSlotFirstCellMin(span) {
+export function findCalendarSlotSpanAtMin(slotMin, spans) {
+  return findSpanForCell(Number(slotMin), normalizeSpans(spans));
+}
+
+function spanStartsInCell(span, slotMin) {
   const sm = Number(span?.startMin);
-  if (!Number.isFinite(sm)) return null;
-  return Math.floor(sm / 15) * 15;
+  if (!Number.isFinite(sm)) return false;
+  return sm >= slotMin && sm < slotMin + CAL_1DAY_SLOT_MINUTES;
 }
 
 export function prodKeyForSlotGridSpan(span) {
@@ -38,59 +68,73 @@ export function prodKeyForSlotGridSpan(span) {
   return "other";
 }
 
-export function appendCalendar1DaySlotGridHalf(
-  parent,
-  startHour,
-  endHourExclusive,
-  periodLabel,
-) {
-  const half = document.createElement("div");
-  half.className = "calendar-1day-slot-grid-half";
+function normalizeSpans(spans) {
+  return (spans || [])
+    .filter(
+      (s) =>
+        Number.isFinite(s.startMin) &&
+        Number.isFinite(s.endMin) &&
+        s.endMin > s.startMin,
+    )
+    .sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin);
+}
 
-  const titleRow = document.createElement("div");
-  titleRow.className = "calendar-1day-slot-grid-half-title-row";
-  const titleSpacer = document.createElement("span");
-  titleSpacer.className = "calendar-1day-slot-grid-corner";
-  titleSpacer.setAttribute("aria-hidden", "true");
-  titleRow.appendChild(titleSpacer);
-  const title = document.createElement("div");
-  title.className = "calendar-1day-slot-grid-half-title";
-  title.textContent = periodLabel;
-  titleRow.appendChild(title);
-  half.appendChild(titleRow);
+/** 겹치는 구간 중 가장 짧은 것 우선 */
+function findSpanForCell(slotMin, spans) {
+  let best = null;
+  for (const span of spans) {
+    if (!calendarSlotCellOverlapsSpan(slotMin, span)) continue;
+    if (!best) {
+      best = span;
+      continue;
+    }
+    const dur = span.endMin - span.startMin;
+    const bestDur = best.endMin - best.startMin;
+    if (dur < bestDur) best = span;
+    else if (dur === bestDur && span.startMin > best.startMin) best = span;
+  }
+  return best;
+}
+
+/** 24행×12열(5분 칸) 스크롤 래퍼 */
+export function createCalendar1DaySlotGridScroll() {
+  const scroll = document.createElement("div");
+  scroll.className = "calendar-1day-slot-grid-scroll";
+
+  const matrix = document.createElement("div");
+  matrix.className = "calendar-1day-slot-grid-matrix";
+  matrix.setAttribute("role", "grid");
+  matrix.setAttribute("aria-label", "하루 24행 12열 5분 단위");
 
   const head = document.createElement("div");
   head.className = "calendar-1day-slot-grid-head";
-  head.setAttribute("aria-hidden", "true");
+  head.setAttribute("role", "row");
   const headCorner = document.createElement("span");
   headCorner.className = "calendar-1day-slot-grid-corner";
+  headCorner.setAttribute("aria-hidden", "true");
   head.appendChild(headCorner);
   CAL_1DAY_SLOT_COL_LABELS.forEach((label) => {
-    const span = document.createElement("span");
-    span.className = "calendar-1day-slot-grid-col-label";
-    span.textContent = label;
-    head.appendChild(span);
+    const col = document.createElement("span");
+    col.className = "calendar-1day-slot-grid-col-label";
+    col.textContent = label;
+    head.appendChild(col);
   });
-  half.appendChild(head);
+  matrix.appendChild(head);
 
-  const grid = document.createElement("div");
-  grid.className = "calendar-1day-slot-grid";
-  grid.setAttribute("role", "grid");
-  grid.setAttribute(
-    "aria-label",
-    `${periodLabel} ${startHour}시~${endHourExclusive}시 15분 단위`,
-  );
-
-  for (let hour = startHour; hour < endHourExclusive; hour++) {
+  const body = document.createElement("div");
+  body.className = "calendar-1day-slot-grid-body";
+  for (let row = 0; row < CAL_1DAY_SLOT_ROWS; row++) {
     const rowEl = document.createElement("div");
     rowEl.className = "calendar-1day-slot-grid-row";
     rowEl.setAttribute("role", "row");
+
     const rowLabel = document.createElement("span");
     rowLabel.className = "calendar-1day-slot-grid-row-label";
-    rowLabel.textContent = String(hour).padStart(2, "0");
+    rowLabel.textContent = String(row).padStart(2, "0");
     rowEl.appendChild(rowLabel);
-    for (let col = 0; col < 4; col++) {
-      const slotMin = hour * 60 + col * 15;
+
+    for (let col = 0; col < CAL_1DAY_SLOT_COLS; col++) {
+      const slotMin = slotMinForCell(row, col);
       const cell = document.createElement("span");
       cell.className = "calendar-1day-slot-grid-cell";
       cell.setAttribute("role", "gridcell");
@@ -98,56 +142,32 @@ export function appendCalendar1DaySlotGridHalf(
       cell.title = formatCalendar1DaySlotClockLabel(slotMin);
       rowEl.appendChild(cell);
     }
-    grid.appendChild(rowEl);
+    body.appendChild(rowEl);
   }
-  half.appendChild(grid);
-  parent.appendChild(half);
-}
-
-/** 오전·오후 12행×4열(15분 칸) 스크롤 래퍼 */
-export function createCalendar1DaySlotGridScroll() {
-  const scroll = document.createElement("div");
-  scroll.className = "calendar-1day-slot-grid-scroll";
-
-  const wrap = document.createElement("div");
-  wrap.className = "calendar-1day-slot-grid-wrap";
-
-  const dual = document.createElement("div");
-  dual.className = "calendar-1day-slot-grid-dual";
-  appendCalendar1DaySlotGridHalf(dual, 0, 12, "오전");
-  appendCalendar1DaySlotGridHalf(dual, 12, 24, "오후");
-  wrap.appendChild(dual);
-
-  scroll.appendChild(wrap);
+  matrix.appendChild(body);
+  scroll.appendChild(matrix);
   return scroll;
 }
 
-/**
- * @param {HTMLElement} root
- * @param {Array<{ startMin: number, endMin: number, prod?: string, taskName?: string, startDisplay?: string, endDisplay?: string }>} spans
- * @param {{ firstLabeledCellMin?: (span: object) => number | null }} [options]
- */
-export function paintCalendar1DaySlotGridFromSpans(root, spans, options = {}) {
+export function paintCalendar1DaySlotGridFromSpans(root, spans) {
   if (!root) return;
-  const getFirstCellMin =
-    options.firstLabeledCellMin || calendarSlotFirstCellMin;
-  const sorted = [...(spans || [])].sort(
-    (a, b) => Number(a.startMin) - Number(b.startMin),
-  );
+  const sorted = normalizeSpans(spans);
+
   root.querySelectorAll(".calendar-1day-slot-grid-cell").forEach((cell) => {
     const slotMin = Number(cell.dataset.slotMin);
     cell.className = "calendar-1day-slot-grid-cell";
     cell.textContent = "";
-    const span = sorted.find((s) => calendarSlotCellOverlapsSpan(slotMin, s));
+
+    const span = findSpanForCell(slotMin, sorted);
     if (!span) {
       cell.title = formatCalendar1DaySlotClockLabel(slotMin);
       return;
     }
+
     const pk = prodKeyForSlotGridSpan(span);
     cell.classList.add(`calendar-1day-slot-grid-cell--${pk}`);
     const taskName = String(span.taskName || "").trim();
-    const labelMin = getFirstCellMin(span);
-    if (labelMin === slotMin && taskName) {
+    if (spanStartsInCell(span, slotMin) && taskName) {
       cell.textContent = taskName.slice(0, 2);
       cell.classList.add("calendar-1day-slot-grid-cell--labeled");
     }

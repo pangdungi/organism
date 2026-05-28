@@ -37,11 +37,10 @@ import {
   lpHorizontalPanNavigateRecentlyFired,
 } from "../utils/lpHorizontalPanNavigate.js";
 import {
-  formatCalendar1DaySlotClockLabel,
   slotMinToHhMm,
-  calendarSlotCellOverlapsSpan,
   createCalendar1DaySlotGridScroll,
   paintCalendar1DaySlotGridFromSpans,
+  findCalendarSlotSpanAtMin,
 } from "../utils/calendar1DaySlotGrid.js";
 import { supabase } from "../supabase.js";
 import {
@@ -3301,10 +3300,7 @@ function paintCalendar1DaySlotGrid(root, dateKey) {
 
 function findExpectedSpanAtSlotMin(dateKey, slotMin) {
   const { spans } = buildExpectedScheduleSpansForDateKey(dateKey);
-  const sorted = [...spans].sort(
-    (a, b) => Number(a.startMin) - Number(b.startMin),
-  );
-  return sorted.find((s) => calendarSlotCellOverlapsSpan(slotMin, s)) || null;
+  return findCalendarSlotSpanAtMin(slotMin, spans);
 }
 
 function wireCalendar1DaySlotGridCells(root, dateKey, onSaved) {
@@ -3356,7 +3352,7 @@ function wireCalendar1DaySlotGridCells(root, dateKey, onSaved) {
   });
 }
 
-/** 캘린더 일간뷰 — 오전·오후 각 12행×4열(15분 칸) */
+/** 캘린더 일간뷰 — 24행×12열(5분 칸, 시간가계부 타임박스와 동형) */
 function createCalendar1DaySlotGrid(dateKey, onSaved) {
   const scroll = createCalendar1DaySlotGridScroll();
   wireCalendar1DaySlotGridCells(scroll, dateKey, onSaved);
@@ -3398,10 +3394,9 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
   nav.className = "calendar-1day-nav";
   nav.innerHTML = `
     <div class="calendar-nav-controls">
-      <div class="time-filter-date-field calendar-1day-nav-date-field" role="button" tabindex="0" aria-label="날짜 선택">
-        <input type="date" class="calendar-1day-nav-date-input" aria-label="날짜 선택" />
-        <img src="/toolbaricons/calendar-alt.svg" alt="" class="time-filter-date-cal-icon" width="18" height="18" aria-hidden="true" />
-      </div>
+      <button type="button" class="calendar-nav-prev" title="전날">&lt;</button>
+      <button type="button" class="calendar-nav-today" title="오늘">오늘</button>
+      <button type="button" class="calendar-nav-next" title="다음날">&gt;</button>
     </div>
   `;
   nav.classList.add("calendar-monthly-nav");
@@ -3427,26 +3422,6 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
     const wKo = NAV_WEEKDAYS_SUN0[targetDate.getDay()] || "";
     const mdPart = `${m}/${d}`;
     const dowPart = wKo ? `(${wKo})` : "";
-
-    const dateFieldEl = lpCalendarNavQ(
-      nav,
-      wrap,
-      ".calendar-1day-nav-date-field",
-    );
-    const dateInp = lpCalendarNavQ(nav, wrap, ".calendar-1day-nav-date-input");
-    if (dateInp) {
-      const nextKey = formatDateKey(targetDate);
-      if (dateInp.value !== nextKey) dateInp.value = nextKey;
-      const label =
-        dayOffset === 0
-          ? `오늘 · ${y}년 ${m}월 ${d}일. 날짜 선택`
-          : `${y}년 ${m}월 ${d}일. 날짜 선택`;
-      dateInp.setAttribute("aria-label", label);
-      if (dateFieldEl) {
-        dateFieldEl.title = label;
-        dateFieldEl.setAttribute("aria-label", label);
-      }
-    }
 
     topBarLeft.replaceChildren();
     const dateHeading = document.createElement("div");
@@ -3856,37 +3831,31 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
     }
   }
 
-  {
-    const dateFieldOpen = lpCalendarNavQ(
-      nav,
-      wrap,
-      ".calendar-1day-nav-date-field",
-    );
-    const dateInpOpen = lpCalendarNavQ(
-      nav,
-      wrap,
-      ".calendar-1day-nav-date-input",
-    );
-    if (dateFieldOpen && dateInpOpen) {
-      dateFieldOpen.addEventListener("click", () =>
-        lpOpenNativeDateInput(dateInpOpen),
-      );
-      dateFieldOpen.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          lpOpenNativeDateInput(dateInpOpen);
-        }
-      });
-      dateInpOpen.addEventListener("change", () => {
-        const v = dateInpOpen.value;
-        if (!v) return;
-        const off = lpCalendarDayOffsetFromYmd(v);
-        if (off === null) return;
-        dayOffset = off;
-        renderCalendar();
-      });
-    }
+  function goPrevDay() {
+    dayOffset -= 1;
+    renderCalendar();
   }
+
+  function goNextDay() {
+    dayOffset += 1;
+    renderCalendar();
+  }
+
+  lpCalendarNavQ(nav, wrap, ".calendar-nav-today")?.addEventListener(
+    "click",
+    () => {
+      dayOffset = 0;
+      renderCalendar();
+    },
+  );
+  lpCalendarNavQ(nav, wrap, ".calendar-nav-prev")?.addEventListener(
+    "click",
+    goPrevDay,
+  );
+  lpCalendarNavQ(nav, wrap, ".calendar-nav-next")?.addEventListener(
+    "click",
+    goNextDay,
+  );
 
   const topBar = document.createElement("div");
   topBar.className = "calendar-monthly-top-bar";
@@ -3976,16 +3945,6 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
   wrap._lpRefreshCalendarView = () => {
     renderCalendar();
   };
-
-  function goPrevDay() {
-    dayOffset -= 1;
-    renderCalendar();
-  }
-
-  function goNextDay() {
-    dayOffset += 1;
-    renderCalendar();
-  }
 
   /* 일간 뷰: 왼쪽 스와이프=다음 날, 오른쪽=이전 날 (손가락·마우스 드래그·트랙패드 가로) */
   bindLpHorizontalPanNavigate(wrap, {

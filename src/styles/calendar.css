@@ -343,65 +343,47 @@
   min-width: 0;
 }
 
-/* 일간뷰(캘린더 탭): 오전·오후 각 12행×4열 15분 슬롯 — 데스크탑 기본은 뷰포트 가·세로 채움 */
-.calendar-1day-slot-grid-wrap {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.calendar-1day-slot-grid-dual {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-items: stretch;
-  justify-content: stretch;
-  gap: 1rem;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.calendar-1day-slot-grid-half {
+/* 일간뷰(캘린더 탭): 24행×12열 5분 슬롯 — 시간가계부 타임박스와 동형 */
+.calendar-1day-view--slot-grid .calendar-1day-slot-grid-scroll {
   flex: 1 1 0;
-  min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  padding: 0.3rem 0.55rem 0.45rem;
+  box-sizing: border-box;
 }
 
-.calendar-1day-slot-grid-half-title-row {
+.calendar-1day-slot-grid-matrix {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  margin-bottom: 0.25rem;
-  flex-shrink: 0;
+  box-sizing: border-box;
 }
 
-.calendar-1day-slot-grid-half-title {
-  margin: 0;
-  font-size: 0.8125rem;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-  color: #64748b;
-  text-align: center;
-  line-height: 1.2;
-}
-
-.calendar-1day-view--slot-grid .calendar-1day-slot-grid-half-title-row,
-.calendar-1day-view--slot-grid .calendar-1day-slot-grid-head,
-.calendar-1day-view--slot-grid .calendar-1day-slot-grid-row {
+.calendar-1day-slot-grid-head,
+.calendar-1day-slot-grid-row {
   display: grid;
-  width: 100%;
-  margin-inline: 0;
-  grid-template-columns: 2.25rem repeat(4, minmax(0, 1fr));
-  gap: 0.3rem;
+  grid-template-columns: 1.35rem repeat(12, minmax(0, 1fr));
+  gap: 0.12rem;
   align-items: stretch;
-}
-
-.calendar-1day-view--slot-grid .calendar-1day-slot-grid-half-title {
-  grid-column: 2 / -1;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .calendar-1day-slot-grid-head {
   flex-shrink: 0;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.12rem;
+}
+
+.calendar-1day-slot-grid-body {
+  flex: 1 1 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: repeat(24, minmax(0, 1fr));
+  gap: 0.12rem;
 }
 
 .calendar-1day-slot-grid-corner {
@@ -410,9 +392,9 @@
 
 .calendar-1day-slot-grid-col-label,
 .calendar-1day-slot-grid-row-label {
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0.02em;
+  font-size: 0.4375rem;
+  font-weight: 600;
+  letter-spacing: 0;
   color: #94a3b8;
   text-align: center;
   line-height: 1;
@@ -423,23 +405,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 2.25rem;
-  padding-right: 0.15rem;
-}
-
-.calendar-1day-slot-grid {
-  flex: 1 1 0;
-  min-height: 0;
-  display: grid;
-  grid-template-rows: repeat(12, minmax(0, 1fr));
-  gap: 0.3rem;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.calendar-1day-slot-grid-row {
-  min-height: 0;
-  height: 100%;
 }
 
 .calendar-1day-slot-grid-cell {
@@ -447,32 +412,14 @@
   width: 100%;
   height: 100%;
   min-height: 0;
+  min-width: 0;
   box-sizing: border-box;
-  border-radius: 8px;
-  border: 1px dashed #a8cce4;
+  border-radius: 3px;
+  border: 1px dashed #c5d9ea;
   background: #edf6fc;
 }
 
-.calendar-1day-view--slot-grid .calendar-1day-slot-grid-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  flex: 1 1 0;
-  min-height: 0;
-  width: 100%;
-  padding: 0.35rem 1rem 0.5rem;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.calendar-1day-view--slot-grid .calendar-1day-slot-grid-dual {
-  flex: 1 1 0;
-  min-height: 0;
-  overflow: visible;
-}
-
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell {
-  border-radius: 8px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
@@ -502,7 +449,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: clamp(0.6875rem, 1.1vw, 1rem);
+  font-size: clamp(0.4375rem, 1.4vw, 0.5625rem);
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1;
@@ -513,6 +460,10 @@
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell:focus-visible {
   outline: 2px solid #1e4d7b;
   outline-offset: 1px;
+}
+
+.calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell:active {
+  filter: brightness(0.94);
 }
 
 .calendar-view-content-area > .calendar-1day-view--slot-grid,
@@ -547,14 +498,14 @@
   min-height: 0;
 }
 
-/* 데스크탑·마우스: 그리드 영역 높이 고정 → 12행 균등 분할 */
+/* 데스크탑·마우스: 그리드 영역 높이 고정 → 24행 균등 분할 */
 @media (min-width: 40.0625rem), (pointer: fine) {
   .calendar-1day-view--slot-grid .calendar-1day-slot-grid-scroll {
     flex: 1 1 0;
     min-height: 0;
     height: calc(var(--lp-app-shell-h, 100dvh) - 10.5rem);
     max-height: calc(var(--lp-app-shell-h, 100dvh) - 10.5rem);
-    overflow-y: hidden;
+    overflow: hidden;
   }
 
   .calendar-1day-view--slot-grid .calendar-1day-timeline-remaining {
@@ -569,118 +520,19 @@
   .calendar-1day-view--slot-grid .calendar-monthly-top-bar-date-num {
     font-size: clamp(1.75rem, 3vw, 2.75rem);
   }
-
-  .calendar-1day-view--slot-grid .calendar-1day-slot-grid-half-title {
-    font-size: 0.9375rem;
-  }
-
-  .calendar-1day-slot-grid-col-label,
-  .calendar-1day-slot-grid-row-label {
-    font-size: clamp(0.6875rem, 0.9vw, 0.875rem);
-  }
-
-  .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--labeled {
-    font-size: clamp(0.75rem, 1.25vw, 1.125rem);
-  }
 }
 
-/* 좁은 터치 화면만: 2rem 고정 칸(기존 모바일) */
+/* 좁은 터치 화면: 화면 높이에 맞춰 24행 균등 분할 */
 @media (max-width: 40rem) and (pointer: coarse) {
-  .calendar-1day-slot-grid-dual {
-    align-items: flex-start;
-    justify-content: center;
-    gap: 0.45rem;
-    width: max-content;
-    max-width: 100%;
-    margin-inline: auto;
-  }
-
-  .calendar-1day-slot-grid-half {
-    flex: 0 0 auto;
-    min-height: auto;
-    display: block;
-  }
-
-  .calendar-1day-slot-grid-half-title-row {
-    width: max-content;
-    max-width: 100%;
-    margin-inline: auto;
-    margin-bottom: 0.125rem;
-  }
-
-  .calendar-1day-slot-grid-half-title {
-    font-size: 0.625rem;
-  }
-
-  .calendar-1day-view--slot-grid .calendar-1day-slot-grid-half-title-row,
-  .calendar-1day-view--slot-grid .calendar-1day-slot-grid-head,
-  .calendar-1day-view--slot-grid .calendar-1day-slot-grid-row {
-    grid-template-columns: 1.35rem repeat(4, 2rem);
-    gap: 0.125rem;
-    align-items: center;
-    width: max-content;
-    max-width: 100%;
-    margin-inline: auto;
-  }
-
-  .calendar-1day-slot-grid-col-label,
-  .calendar-1day-slot-grid-row-label {
-    font-size: 0.5rem;
-  }
-
-  .calendar-1day-slot-grid-row-label {
-    min-width: 1.35rem;
-  }
-
-  .calendar-1day-slot-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 0.125rem;
-    flex: none;
-    min-height: auto;
-  }
-
-  .calendar-1day-slot-grid-row {
-    height: auto;
-  }
-
-  .calendar-1day-slot-grid-cell {
-    aspect-ratio: 1;
-    height: auto;
-  }
-
-  .calendar-1day-view--slot-grid .calendar-1day-slot-grid-wrap {
-    flex: none;
-    align-items: center;
-    padding: 0.45rem 0.65rem 0.75rem;
-    overflow: visible;
-  }
-
   .calendar-1day-view--slot-grid .calendar-1day-slot-grid-scroll {
-    flex: 1 1 auto;
-    overflow-y: auto;
-  }
-
-  .calendar-1day-view--slot-grid .calendar-1day-slot-grid-dual {
-    flex: none;
-    min-height: auto;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell {
-    width: 100%;
-    height: 2rem;
-    aspect-ratio: 1;
-    border-radius: 5px;
-  }
-
-  .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--labeled {
-    font-size: 0.5rem;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+    padding-inline: 0.45rem;
   }
 }
 
-/* 일간뷰: 남은 시간 고정 + 슬롯 그리드 세로 스크롤 */
+/* 일간뷰: 남은 시간 고정 + 5분 슬롯 그리드 */
 .calendar-monthly-layout.calendar-1day-view {
   flex: 1 1 auto;
   min-height: 0;

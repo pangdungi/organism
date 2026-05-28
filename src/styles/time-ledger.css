@@ -351,62 +351,75 @@
 [data-legacy~="time-ledger-view"]
   [data-legacy~="time-ledger-usage-history-heading-row"] {
   margin: 0;
-  padding: 0.625rem 1rem;
+  padding: 0.45rem 1rem 0.5rem;
   border-bottom: 1px solid #f1f5f9;
   flex-shrink: 0;
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  min-height: 3.25rem;
   display: flex;
   flex-direction: row;
-  align-items: center;
-  gap: 0.625rem;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 [data-legacy~="time-ledger-view"]
   [data-legacy~="time-ledger-usage-history-heading-left"] {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  justify-content: center;
-  gap: 0.2rem;
+  justify-content: flex-end;
+  gap: 0.12rem;
+  box-sizing: border-box;
+}
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-usage-history-eyebrow"],
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-usage-history-total-label"] {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #94a3b8;
+  line-height: 1.2;
+}
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-usage-history-date"] {
+  margin: 0;
+  padding: 0;
+  font-size: 0.9375rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-usage-history-total-wrap"] {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 0.12rem;
   box-sizing: border-box;
 }
 [data-legacy~="time-ledger-view"]
   [data-legacy~="time-ledger-usage-history-total"] {
-  flex: 0 0 auto;
-  margin-left: auto;
-  align-self: center;
-  font-size: clamp(1.75rem, 9vw, 2.375rem);
+  font-size: 1.0625rem;
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
   color: #1a2d45;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  line-height: 1;
+  line-height: 1.15;
   text-align: right;
-}
-[data-legacy~="time-ledger-view"]
-  [data-legacy~="time-ledger-usage-history-heading"] {
-  margin: 0;
-  padding: 0;
-  font-size: 0.9375rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  color: #0f172a;
-  line-height: 1.25;
-  box-sizing: border-box;
-}
-[data-legacy~="time-ledger-view"]
-  [data-legacy~="time-ledger-usage-range-caption"] {
-  font-size: 0.625rem;
-  font-weight: 400;
-  letter-spacing: -0.01em;
-  color: #94a3b8;
-  line-height: 1.25;
-  white-space: nowrap;
 }
 
 /* 시간 사용내역 — 0시~24시 타임라인 바(구간 길이 = 24h 대비 비율) */
@@ -455,8 +468,8 @@
   flex-shrink: 0;
   display: flex;
   justify-content: center;
-  padding: 0.5rem 1rem 0.625rem;
-  border-bottom: 1px solid #f1f5f9;
+  padding: 0.5rem 1rem 0.45rem;
+  border-bottom: 1px solid #f8fafc;
   box-sizing: border-box;
 }
 
