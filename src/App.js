@@ -988,7 +988,7 @@ export async function mountApp(container) {
       resetTimeLedgerSessionFilterToToday();
     } catch (_) {}
   }
-  /* 로컬·메모리로 먼저 한 프레임 그림 — pull 중에는 로딩 UI 표시 */
+  /* 로컬·메모리로 먼저 한 프레임 그림 — pull 은 탭별 백그라운드 */
   renderMain(main);
   void (async () => {
     const bootTabId = currentTabId;
@@ -1002,10 +1002,27 @@ export async function mountApp(container) {
         window.__lpCalendarGridPrefetchedForTabSwitch = true;
       } catch (_) {}
     }
+
+    void ensureTimeLedgerStorageReady();
+
+    if (bootTabId === "home") {
+      void (async () => {
+        try {
+          await pullDataForActiveTab("home", { fromBoot: true });
+        } catch (_) {}
+        if (currentTabId !== "home") return;
+        try {
+          await syncAdminMenuVisibility();
+        } catch (_) {}
+        try {
+          window.__lpHomeMenuSoftRefresh?.();
+        } catch (_) {}
+      })();
+      return;
+    }
+
     let pullResult;
     try {
-      /* IDB 전체 복구는 백그라운드 — 홈은 로컬 미러로 즉시 표시, pull 은 오늘·시급만 */
-      void ensureTimeLedgerStorageReady();
       const [, pr] = await Promise.all([
         syncAdminMenuVisibility(),
         pullDataForActiveTab(bootTabId, { fromBoot: true }),
@@ -1043,14 +1060,6 @@ export async function mountApp(container) {
       bootTabId === "sideincome"
     ) {
       kpiSoftRefreshAfterPull(bootTabId, pullResult);
-    } else if (bootTabId === "home") {
-      /* 메뉴 런처: 로컬 캐시로 먼저 그린 뒤 pull 완료 시 잔액만 소프트 갱신 */
-      try {
-        await syncAdminMenuVisibility();
-      } catch (_) {}
-      try {
-        window.__lpHomeMenuSoftRefresh?.();
-      } catch (_) {}
     } else if (bootTabId === "diary") {
       try {
         window.__lpDiarySoftRefresh?.();

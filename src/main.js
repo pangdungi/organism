@@ -185,7 +185,24 @@ function lpShellRecoveryDeps() {
   };
 }
 
-/** 저장된 세션·자동 로그인: 앱 먼저 연다. 구독은 설정 pull 뒤 백그라운드( enforceSubscriptionBeforeMount 는 로그인 직후 선차단) */
+/**
+ * 로그인·자동 로그인 직후: lp_last_auth_uid 캐시로 미러만 즉시 — IDB·세션 정합은 mountApp 뒤
+ */
+function primeTimeLedgerStorageFromCachedSession() {
+  let cachedUid = "";
+  try {
+    cachedUid = localStorage.getItem("lp_last_auth_uid") || "";
+  } catch (_) {}
+  if (cachedUid) {
+    setActiveClientStorageUserId(cachedUid);
+    try {
+      migrateAllRegisteredLegacyLocalStorage(cachedUid);
+    } catch (_) {}
+  }
+  prepareTimeLedgerStorageForBoot();
+}
+
+/** 저장된 세션·자동 로그인: 앱 먼저 연다. 구독·IDB 정합은 mountApp 뒤 백그라운드 */
 async function enterAuthenticatedApp(opts = {}) {
   const { enforceSubscriptionBeforeMount = false, showSplash = false } = opts;
   const screen = document.getElementById("app-screen");
@@ -214,29 +231,35 @@ async function enterAuthenticatedApp(opts = {}) {
   lpEnterAppPromise = (async () => {
     if (showSplash) showAppSplashNow();
     try {
-      if (enforceSubscriptionBeforeMount) {
-        const blocked = await enforceSubscriptionAccessOrSignOut();
-        finishStep("구독 확인(서버)");
-        if (blocked) {
-          window.alert(SUBSCRIPTION_EXPIRED_MESSAGE);
-          await signOut();
-          return;
-        }
-      }
       lpAppMounted = true;
       showOnly("signin");
-      prefetchAppIconAssets();
-      await prepareTimeLedgerStorageForCurrentSession();
-      finishStep("시간기록 저장소 준비");
+      primeTimeLedgerStorageFromCachedSession();
+      finishStep("로컬 캐시 준비");
       await mountApp(screen);
       finishStep("메인 화면 조립(mountApp)");
       refreshLpPwaInstall();
-      const {
-        data: { session: bootSession },
-      } = await getSupabaseSession();
-      markTabBootAuthUid(bootSession?.user?.id);
+      prefetchAppIconAssets();
+
+      void getSupabaseSession().then(({ data: { session } }) => {
+        markTabBootAuthUid(session?.user?.id);
+      });
       finishStep("세션·탭 표시");
-      scheduleBackgroundSubscriptionGateAfterPrefsPull();
+
+      void (async () => {
+        try {
+          if (enforceSubscriptionBeforeMount) {
+            const blocked = await enforceSubscriptionAccessOrSignOut();
+            if (blocked) {
+              window.alert(SUBSCRIPTION_EXPIRED_MESSAGE);
+              await signOut();
+              return;
+            }
+          }
+          await prepareTimeLedgerStorageForCurrentSession();
+          scheduleBackgroundSubscriptionGateAfterPrefsPull();
+        } catch (_) {}
+      })();
+
       timings.push({
         label: "진입 합계",
         ms: Math.round(performance.now() - t0),
@@ -606,7 +629,6 @@ async function doLogin() {
     setLpAuthBootPending(true);
     try {
       await enterAuthenticatedApp({
-        enforceSubscriptionBeforeMount: true,
         showSplash: true,
       });
     } finally {
@@ -643,7 +665,6 @@ async function doSignUp() {
     setLpAuthBootPending(true);
     try {
       await enterAuthenticatedApp({
-        enforceSubscriptionBeforeMount: true,
         showSplash: true,
       });
     } finally {
