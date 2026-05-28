@@ -1,20 +1,14 @@
-/** 캘린더 1일뷰 — 시간가계부 타임박스와 동일 24행×12열(5분 칸) 그리드 */
+/** 캘린더 1일뷰 — 24행×6열(10분 칸) 그리드 */
 
-export const CAL_1DAY_SLOT_MINUTES = 5;
-export const CAL_1DAY_SLOT_COLS = 12;
+export const CAL_1DAY_SLOT_MINUTES = 10;
+export const CAL_1DAY_SLOT_COLS = 6;
 export const CAL_1DAY_SLOT_ROWS = 24;
 export const CAL_1DAY_SLOT_COL_LABELS = [
-  "5",
   "10",
-  "15",
   "20",
-  "25",
   "30",
-  "35",
   "40",
-  "45",
   "50",
-  "55",
   "60",
 ];
 
@@ -22,7 +16,7 @@ function slotMinForCell(row, col) {
   return row * 60 + col * CAL_1DAY_SLOT_MINUTES;
 }
 
-/** 5분 칸 시작 분(0~1435) → "0:00" 표기 */
+/** 10분 칸 시작 분(0~1430) → "0:00" 표기 */
 export function formatCalendar1DaySlotClockLabel(slotMin) {
   const m = Math.max(
     0,
@@ -96,7 +90,7 @@ function findSpanForCell(slotMin, spans) {
   return best;
 }
 
-/** 24행×12열(5분 칸) 스크롤 래퍼 */
+/** 24행×6열(10분 칸) 스크롤 래퍼 */
 export function createCalendar1DaySlotGridScroll() {
   const scroll = document.createElement("div");
   scroll.className = "calendar-1day-slot-grid-scroll";
@@ -104,7 +98,7 @@ export function createCalendar1DaySlotGridScroll() {
   const matrix = document.createElement("div");
   matrix.className = "calendar-1day-slot-grid-matrix";
   matrix.setAttribute("role", "grid");
-  matrix.setAttribute("aria-label", "하루 24행 12열 5분 단위");
+  matrix.setAttribute("aria-label", "하루 24행 6열 10분 단위");
 
   const head = document.createElement("div");
   head.className = "calendar-1day-slot-grid-head";

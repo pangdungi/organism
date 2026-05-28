@@ -3352,11 +3352,133 @@ function wireCalendar1DaySlotGridCells(root, dateKey, onSaved) {
   });
 }
 
-/** 캘린더 일간뷰 — 24행×12열(5분 칸, 시간가계부 타임박스와 동형) */
+/** 캘린더 일간뷰 — 24행×6열(10분 칸) */
 function createCalendar1DaySlotGrid(dateKey, onSaved) {
   const scroll = createCalendar1DaySlotGridScroll();
   wireCalendar1DaySlotGridCells(scroll, dateKey, onSaved);
   paintCalendar1DaySlotGrid(scroll, dateKey);
+  return scroll;
+}
+
+/** 캘린더 일간뷰(슬롯 그리드 모드) — 예상 일정 카드 목록 */
+function createCalendar1DayExpectedCardsPanel(dateKey, spans, onSaved) {
+  const scroll = document.createElement("div");
+  scroll.className = "calendar-1day-expected-cards-scroll";
+
+  const list = document.createElement("div");
+  list.className = "calendar-1day-expected-cards-list";
+
+  const sorted = [...(spans || [])].sort(
+    (a, b) =>
+      a.startMin - b.startMin ||
+      String(a.taskName || "").localeCompare(String(b.taskName || ""), "ko"),
+  );
+
+  if (!sorted.length) {
+    const empty = document.createElement("p");
+    empty.className = "calendar-1day-expected-cards-empty";
+    empty.textContent = "예상 일정이 없습니다.";
+    list.appendChild(empty);
+  } else {
+    for (const span of sorted) {
+      const pk = prodKeyForWeekExpectedSpan(span);
+      const taskLabel = String(span.taskName || "").trim();
+      const memoText = String(span.scheduleMemo || "").trim();
+
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = `calendar-1day-expected-card calendar-1day-expected-card--${pk}`;
+
+      const timeRail = document.createElement("div");
+      timeRail.className = "calendar-1day-expected-card-time-rail";
+
+      const startEl = document.createElement("span");
+      startEl.className = "calendar-1day-expected-card-start";
+      startEl.textContent = span.startDisplay || "";
+
+      const timeLine = document.createElement("span");
+      timeLine.className = "calendar-1day-expected-card-time-line";
+      timeLine.setAttribute("aria-hidden", "true");
+
+      const endEl = document.createElement("span");
+      endEl.className = "calendar-1day-expected-card-end";
+      endEl.textContent = span.endDisplay || "";
+
+      timeRail.appendChild(startEl);
+      timeRail.appendChild(timeLine);
+      timeRail.appendChild(endEl);
+      card.appendChild(timeRail);
+
+      const main = document.createElement("div");
+      main.className = "calendar-1day-expected-card-main";
+
+      const titleEl = document.createElement("div");
+      titleEl.className = "calendar-1day-expected-card-title";
+      titleEl.textContent = taskLabel || "—";
+      main.appendChild(titleEl);
+
+      if (memoText) {
+        const memoEl = document.createElement("div");
+        memoEl.className = "calendar-1day-expected-card-memo";
+        memoEl.textContent = memoText;
+        main.appendChild(memoEl);
+      }
+
+      card.appendChild(main);
+
+      const taskOpt = getTaskOptionByName(taskLabel);
+      const iconSrc = resolveTimeTaskDisplayIconSrc(taskLabel, {
+        category: taskOpt?.category,
+        productivity: taskOpt?.productivity,
+        iconKey: taskOpt?.iconKey || "",
+      });
+      const iconBadge = document.createElement("div");
+      iconBadge.className = `calendar-1day-expected-card-icon-badge calendar-1day-expected-card-icon-badge--${pk}`;
+      iconBadge.setAttribute("aria-hidden", "true");
+      if (iconSrc) {
+        const iconImg = document.createElement("img");
+        iconImg.src = iconSrc;
+        iconImg.alt = "";
+        iconImg.loading = "lazy";
+        iconImg.decoding = "async";
+        iconBadge.appendChild(iconImg);
+      }
+      card.appendChild(iconBadge);
+
+      card.title = memoText
+        ? `${taskLabel} (${span.startDisplay} ~ ${span.endDisplay})\n${memoText}`
+        : `${taskLabel} (${span.startDisplay} ~ ${span.endDisplay})`;
+
+      card.addEventListener("click", () => {
+        if (lpHorizontalPanNavigateRecentlyFired()) return;
+        const slotIdx = findBudgetScheduleSlotIndex(
+          dateKey,
+          span.taskName,
+          span.startMin,
+          span.endMin,
+        );
+        if (slotIdx < 0) {
+          showToast(
+            "일간 예산에서 추가한 예상 일정만 여기서 수정할 수 있습니다.",
+          );
+          return;
+        }
+        openCalendarExpectedScheduleModal({
+          dateKey,
+          edit: { taskName: span.taskName, timeIdx: slotIdx },
+          title: "예상 일정 수정",
+          submitLabel: "저장",
+          onSaved: () => {
+            if (typeof onSaved === "function") onSaved();
+          },
+        });
+      });
+
+      list.appendChild(card);
+    }
+  }
+
+  scroll.appendChild(list);
   return scroll;
 }
 
@@ -3496,9 +3618,28 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
     timeColumn.appendChild(remainingBar);
 
     if (hideTimelineCards) {
-      timeColumn.appendChild(
+      const dualPane = document.createElement("div");
+      dualPane.className = "calendar-1day-dual-pane";
+
+      const gridPane = document.createElement("div");
+      gridPane.className = "calendar-1day-dual-pane__grid";
+      gridPane.appendChild(
         createCalendar1DaySlotGrid(targetKey, () => renderCalendar()),
       );
+
+      const cardsPane = document.createElement("div");
+      cardsPane.className = "calendar-1day-dual-pane__cards";
+      cardsPane.appendChild(
+        createCalendar1DayExpectedCardsPanel(
+          targetKey,
+          daySpansTl,
+          () => renderCalendar(),
+        ),
+      );
+
+      dualPane.appendChild(gridPane);
+      dualPane.appendChild(cardsPane);
+      timeColumn.appendChild(dualPane);
     } else {
     const nowForTimeline = new Date();
     const nowMinuteClockTL =
@@ -3803,6 +3944,12 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
                 el.style.setProperty("overflow", "hidden", "important");
                 el.style.setProperty("display", "flex", "important");
                 el.style.setProperty("flex-direction", "column", "important");
+                const dualPaneEl = el.querySelector(".calendar-1day-dual-pane");
+                if (dualPaneEl) {
+                  dualPaneEl.style.setProperty("flex", "1 1 auto", "important");
+                  dualPaneEl.style.setProperty("min-height", "0", "important");
+                  dualPaneEl.style.setProperty("overflow", "hidden", "important");
+                }
                 const scrollEl = el.querySelector(
                   ".calendar-1day-slot-grid-scroll",
                 );
@@ -3816,6 +3963,32 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
                     "important",
                   );
                   scrollEl.style.setProperty("touch-action", "pan-y", "important");
+                }
+                const cardsScrollEl = el.querySelector(
+                  ".calendar-1day-expected-cards-scroll",
+                );
+                if (cardsScrollEl) {
+                  cardsScrollEl.style.setProperty(
+                    "flex",
+                    "1 1 auto",
+                    "important",
+                  );
+                  cardsScrollEl.style.setProperty("min-height", "0", "important");
+                  cardsScrollEl.style.setProperty(
+                    "overflow-y",
+                    "auto",
+                    "important",
+                  );
+                  cardsScrollEl.style.setProperty(
+                    "-webkit-overflow-scrolling",
+                    "touch",
+                    "important",
+                  );
+                  cardsScrollEl.style.setProperty(
+                    "touch-action",
+                    "pan-y",
+                    "important",
+                  );
                 }
               } else {
                 el.style.setProperty("flex", "0 0 auto", "important");

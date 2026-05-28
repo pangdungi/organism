@@ -343,7 +343,28 @@
   min-width: 0;
 }
 
-/* 일간뷰(캘린더 탭): 24행×12열 5분 슬롯 — 시간가계부 타임박스와 동형 */
+/* 일간뷰(캘린더 탭): 24행×6열 10분 슬롯 + 예상 일정 카드 */
+.calendar-1day-view--slot-grid .calendar-1day-dual-pane {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0.45rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.calendar-1day-view--slot-grid .calendar-1day-dual-pane__grid,
+.calendar-1day-view--slot-grid .calendar-1day-dual-pane__cards {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-scroll {
   flex: 1 1 0;
   min-height: 0;
@@ -366,7 +387,7 @@
 .calendar-1day-slot-grid-head,
 .calendar-1day-slot-grid-row {
   display: grid;
-  grid-template-columns: 1.35rem repeat(12, minmax(0, 1fr));
+  grid-template-columns: 1.35rem repeat(6, minmax(0, 1fr));
   gap: 0.12rem;
   align-items: stretch;
   width: 100%;
@@ -466,6 +487,157 @@
   filter: brightness(0.94);
 }
 
+.calendar-1day-expected-cards-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  padding: 0.35rem 0.45rem 0.5rem;
+  box-sizing: border-box;
+}
+
+.calendar-1day-expected-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.calendar-1day-expected-cards-empty {
+  margin: 0.5rem 0 0;
+  padding: 0.75rem 0.35rem;
+  font-size: 0.8125rem;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.calendar-1day-expected-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  column-gap: 0.55rem;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+  min-height: 4.25rem;
+  margin: 0;
+  padding: 0.7rem 0.75rem 0.7rem 0.6rem;
+  box-sizing: border-box;
+  border: none;
+  border-radius: 0.5rem;
+  background: #fff;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.05),
+    0 4px 14px rgba(15, 23, 42, 0.07);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  font: inherit;
+  color: inherit;
+}
+
+.calendar-1day-expected-card:focus-visible {
+  outline: 2px solid #1e4d7b;
+  outline-offset: 1px;
+}
+
+.calendar-1day-expected-card:active {
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 2px 8px rgba(15, 23, 42, 0.05);
+  transform: translateY(1px);
+}
+
+.calendar-1day-expected-card-time-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-shrink: 0;
+  align-self: stretch;
+  gap: 0.12rem;
+  padding: 0.05rem 0.35rem 0.05rem 0;
+}
+
+.calendar-1day-expected-card-start,
+.calendar-1day-expected-card-end {
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.calendar-1day-expected-card-time-line {
+  flex: 1 1 auto;
+  width: 2px;
+  min-height: 1.1rem;
+  margin-left: 0.05em;
+  border-radius: 1px;
+  background: #cbd5e1;
+  align-self: flex-start;
+}
+
+.calendar-1day-expected-card-main {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.22rem;
+  min-width: 0;
+  padding-block: 0.05rem;
+}
+
+.calendar-1day-expected-card-title {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #0f172a;
+  word-break: break-word;
+}
+
+.calendar-1day-expected-card-memo {
+  font-size: 0.6875rem;
+  line-height: 1.35;
+  color: #94a3b8;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.calendar-1day-expected-card-icon-badge {
+  flex-shrink: 0;
+  align-self: center;
+  width: 2.65rem;
+  height: 2.65rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.55);
+}
+
+.calendar-1day-expected-card-icon-badge--productive {
+  background: #ffcaca;
+}
+
+.calendar-1day-expected-card-icon-badge--nonproductive {
+  background: #c5dcf2;
+}
+
+.calendar-1day-expected-card-icon-badge--other {
+  background: #b8e8c8;
+}
+
+.calendar-1day-expected-card-icon-badge > img {
+  width: 1.45rem;
+  height: 1.45rem;
+  object-fit: contain;
+}
+
 .calendar-view-content-area > .calendar-1day-view--slot-grid,
 .calendar-1day-view--slot-grid > .calendar-view-1day-content-row,
 .calendar-1day-view--slot-grid > .calendar-view-1day-content-row > .calendar-monthly-main,
@@ -498,13 +670,19 @@
   min-height: 0;
 }
 
-/* 데스크탑·마우스: 그리드 영역 높이 고정 → 24행 균등 분할 */
+/* 데스크탑·마우스: 듀얼 패널 영역 높이 고정 → 24행 균등 분할 */
 @media (min-width: 40.0625rem), (pointer: fine) {
-  .calendar-1day-view--slot-grid .calendar-1day-slot-grid-scroll {
+  .calendar-1day-view--slot-grid .calendar-1day-dual-pane {
     flex: 1 1 0;
     min-height: 0;
     height: calc(var(--lp-app-shell-h, 100dvh) - 10.5rem);
     max-height: calc(var(--lp-app-shell-h, 100dvh) - 10.5rem);
+    overflow: hidden;
+  }
+
+  .calendar-1day-view--slot-grid .calendar-1day-slot-grid-scroll {
+    flex: 1 1 0;
+    min-height: 0;
     overflow: hidden;
   }
 
@@ -524,6 +702,12 @@
 
 /* 좁은 터치 화면: 화면 높이에 맞춰 24행 균등 분할 */
 @media (max-width: 40rem) and (pointer: coarse) {
+  .calendar-1day-view--slot-grid .calendar-1day-dual-pane {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+
   .calendar-1day-view--slot-grid .calendar-1day-slot-grid-scroll {
     flex: 1 1 0;
     min-height: 0;
@@ -532,7 +716,7 @@
   }
 }
 
-/* 일간뷰: 남은 시간 고정 + 5분 슬롯 그리드 */
+/* 일간뷰: 남은 시간 고정 + 10분 슬롯 그리드·예상 카드 */
 .calendar-monthly-layout.calendar-1day-view {
   flex: 1 1 auto;
   min-height: 0;
