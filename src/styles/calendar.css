@@ -1322,11 +1322,24 @@
   white-space: normal;
   overflow-wrap: break-word;
   word-break: break-word;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.18rem;
+}
+
+.calendar-monthly-span-bar-check {
+  width: 0.85rem;
+  height: 0.85rem;
+  flex-shrink: 0;
+  margin-top: 0.02rem;
+  background: url("/todo-card-icons/check-done.png") center / contain no-repeat;
 }
 
 .calendar-monthly-span-bar-text {
   display: block;
   pointer-events: none;
+  flex: 1;
+  min-width: 0;
 }
 
 .calendar-monthly-span-bar--todo,
@@ -1346,14 +1359,24 @@
   border: 1px dashed var(--bar-border, var(--cal-short-span-bar-border));
 }
 
-.calendar-monthly-span-bar.is-completed {
-  opacity: 0.72;
+.calendar-monthly-span-bar.is-past,
+.calendar-monthly-span-bar.is-past .calendar-monthly-span-bar-text {
+  color: rgba(30, 61, 93, 0.58);
 }
 
-.calendar-monthly-span-bar.is-completed .calendar-monthly-span-bar-text {
-  text-decoration: line-through;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 0.12em;
+.calendar-monthly-span-bar.is-past .calendar-monthly-span-bar-check {
+  background: none;
+  background-color: rgba(30, 61, 93, 0.58);
+  -webkit-mask: url("/todo-card-icons/check-done.png") center / contain no-repeat;
+  mask: url("/todo-card-icons/check-done.png") center / contain no-repeat;
+}
+
+.calendar-monthly-span-bar.is-past.calendar-monthly-span-bar--todo {
+  border-color: color-mix(
+    in srgb,
+    var(--bar-border, var(--cal-short-span-bar-border)) 45%,
+    transparent
+  );
 }
 
 .calendar-monthly-span-bar--dragging {
@@ -2283,7 +2306,7 @@
 .calendar-day-expand-item {
   display: flex;
   align-items: flex-start;
-  gap: 0;
+  gap: 0.35rem;
   padding: 0.5rem 0.55rem;
   border: 1px solid var(--lp-modal-border);
   border-radius: 8px;
@@ -2294,15 +2317,24 @@
     border-color 0.1s ease;
 }
 
-.calendar-day-expand-item--done {
-  opacity: 0.72;
+.calendar-day-expand-check {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+  background: url("/todo-card-icons/check-done.png") center / contain no-repeat;
 }
 
-.calendar-day-expand-item--done .calendar-day-expand-text,
-.calendar-day-expand-item--done .calendar-day-expand-time {
-  text-decoration: line-through;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 0.12em;
+.calendar-day-expand-item.is-past .calendar-day-expand-text,
+.calendar-day-expand-item.is-past .calendar-day-expand-time {
+  color: rgba(30, 61, 93, 0.58);
+}
+
+.calendar-day-expand-item.is-past .calendar-day-expand-check {
+  background: none;
+  background-color: rgba(30, 61, 93, 0.58);
+  -webkit-mask: url("/todo-card-icons/check-done.png") center / contain no-repeat;
+  mask: url("/todo-card-icons/check-done.png") center / contain no-repeat;
 }
 
 .calendar-day-expand-item:hover {
@@ -2510,4 +2542,47 @@
   font-size: 0.75rem;
   line-height: 1.4;
   opacity: 0.9;
+}
+
+/* 캘린더 할일/일정 수정 모달 — 완료 체크 */
+.calendar-task-edit-done-field {
+  margin-top: -0.15rem;
+}
+
+.calendar-task-edit-done-label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--lp-modal-navy, #1e3d5d);
+}
+
+.calendar-task-edit-done-check {
+  position: absolute;
+  opacity: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  cursor: pointer;
+}
+
+.calendar-task-edit-done-face {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  background: url("/todo-card-icons/checkbox.png") center / contain no-repeat;
+}
+
+.calendar-task-edit-done-label:has(.calendar-task-edit-done-check:checked)
+  .calendar-task-edit-done-face {
+  background-image: url("/todo-card-icons/check-done.png");
+}
+
+.calendar-task-edit-active {
+  outline: 2px solid rgba(30, 77, 123, 0.35);
+  outline-offset: 1px;
 }

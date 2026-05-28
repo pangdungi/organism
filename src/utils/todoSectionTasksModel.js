@@ -20,6 +20,15 @@ export const CALENDAR_FIXED_SECTION_IDS = [
   "happy",
 ];
 
+/** UI 리스트 없이 할일/일정을 모을 고정 저장 키 (DB section_key) */
+export const TODO_UNIFIED_SECTION_KEY = "braindump";
+
+export function isCalendarFixedSectionKey(sectionKey) {
+  return CALENDAR_FIXED_SECTION_IDS.includes(
+    String(sectionKey || "").trim(),
+  );
+}
+
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -165,10 +174,7 @@ export function localTaskToDbPayload(userId, sectionKey, isCustom, sortOrder, t)
     reminder_date: normalizeDate(t.reminderDate),
     reminder_time: String(t.reminderTime || "").trim(),
     eisenhower: String(t.eisenhower || "").trim(),
-    done:
-      String(t.itemType || "todo").toLowerCase() === "schedule"
-        ? false
-        : !!t.done,
+    done: !!t.done,
     item_type: String(t.itemType || "todo").trim() || "todo",
   };
 }

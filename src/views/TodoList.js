@@ -31,7 +31,6 @@ import {
 } from "../utils/todoSubtasks.js";
 import { refreshEisenhowerQuadrantsIfActive } from "../utils/eisenhowerQuadrantsBridge.js";
 import { createTodoCheckboxTypeMenu } from "../utils/todoCheckboxTypeMenu.js";
-import { buildModalSimpleSelect } from "../utils/todoModalSimpleSelect.js";
 import { dismissAppToast } from "../utils/showToast.js";
 import { bindLpHorizontalPanNavigate } from "../utils/lpHorizontalPanNavigate.js";
 import { initModalStandardDateFields } from "../utils/modalNativeDateField.js";
@@ -69,6 +68,7 @@ import {
   writeCustomSectionTasksObject,
   purgeAllCompletedSectionAndCustomTasks,
   stripTodoTaskSyncMetaForCompare,
+  TODO_UNIFIED_SECTION_KEY,
 } from "../utils/todoSectionTasksModel.js";
 import {
   todoQualifiesCalendarShortSpanBarAccent,
@@ -1635,6 +1635,7 @@ function showTodoTaskModal(options) {
     modalTitle = null,
     nameFieldLabel = null,
     namePlaceholder = null,
+    deleteLabel = null,
     onSave,
     onDelete,
     selectionEl = null,
@@ -1643,19 +1644,14 @@ function showTodoTaskModal(options) {
     name = "",
     startDate = "",
     dueDate = "",
-    eisenhower = "",
-    itemType: taskItemType = "todo",
   } = taskData;
-  const initialAsSchedule =
-    String(taskItemType || "todo").toLowerCase() === "schedule";
 
   const title =
     modalTitle ?? (mode === "add" ? "할 일 추가" : "할 일 수정");
   const nameLabel = nameFieldLabel ?? "할 일 이름";
   const namePh = namePlaceholder ?? "할 일 입력";
+  const deleteLbl = deleteLabel ?? "할 일 삭제";
   const currentSectionId = (taskData.sectionId || sectionId || "").trim();
-  const sections = getSections();
-  const hideScheduleToggle = !!taskData.isKpiTodo;
   const escapeHtml = (s) => {
     const d = document.createElement("div");
     d.textContent = s ?? "";
@@ -1681,16 +1677,6 @@ function showTodoTaskModal(options) {
           <label>${escapeHtml(nameLabel)}</label>
           <input type="text" class="time-add-task-name" placeholder="${escapeHtml(namePh)}" value="${escapeHtml(name)}" maxlength="500" />
         </div>
-        ${
-          hideScheduleToggle
-            ? ""
-            : `<div class="time-task-log-field">
-            <label>형식</label>
-            <div class="time-add-task-productivity">
-              <label class="time-add-task-radio"><input type="checkbox" class="todo-task-edit-as-schedule"${initialAsSchedule ? " checked" : ""} /> 일정으로 변경</label>
-            </div>
-          </div>`
-        }
         <div class="time-task-log-field">
           <label>시작일</label>
           <div class="time-task-log-date-native-wrap">
@@ -1705,19 +1691,15 @@ function showTodoTaskModal(options) {
             <span class="time-task-log-date-overlay" aria-hidden="true"></span>
           </div>
         </div>
-        <div class="time-task-log-field">
-          <label>리스트</label>
-          <div data-legacy="todo-task-edit-section-wrap"></div>
-        </div>
       </div>
       <div class="time-task-log-footer todo-task-edit-footer todo-task-edit-footer--actions">
         ${
           mode === "edit"
-            ? `<button type="button" class="time-add-task-delete todo-task-edit-footer-delete" aria-label="할 일 삭제">
+            ? `<button type="button" class="time-add-task-delete todo-task-edit-footer-delete" aria-label="${escapeHtml(deleteLbl)}">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" aria-hidden="true" class="todo-task-edit-footer-delete-icon">
             <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
           </svg>
-          <span class="todo-task-edit-footer-delete-label">할 일 삭제</span>
+          <span class="todo-task-edit-footer-delete-label">${escapeHtml(deleteLbl)}</span>
         </button>`
             : ""
         }
@@ -1732,25 +1714,8 @@ function showTodoTaskModal(options) {
   const nameInput = modal.querySelector(".time-add-task-name");
   const startInput = modal.querySelector(".todo-task-edit-start");
   const dueInput = modal.querySelector(".todo-task-edit-due");
-  const sectionMount = modal.querySelector(
-    '[data-legacy~="todo-task-edit-section-wrap"]',
-  );
-  const asScheduleInput = modal.querySelector(".todo-task-edit-as-schedule");
-
-  const modalAbort = new AbortController();
-  const sectionDd = buildModalSimpleSelect({
-    items: sections.map((s) => ({ value: s.id, label: s.label })),
-    value: currentSectionId,
-    placeholder: "리스트",
-    ariaLabel: "리스트",
-    abortSignal: modalAbort.signal,
-  });
-  sectionMount?.appendChild(sectionDd);
 
   function close() {
-    try {
-      modalAbort.abort();
-    } catch (_) {}
     try {
       if (selectionEl?.classList && selectionEl.isConnected) {
         selectionEl.classList.remove(TODO_ITEM_MODAL_ACTIVE_CLASS);
@@ -1763,15 +1728,11 @@ function showTodoTaskModal(options) {
   function gatherForm() {
     const startVal = (startInput?.value || "").trim().slice(0, 10);
     const dueVal = (dueInput?.value || "").trim().slice(0, 10);
-    const chosenSectionId =
-      (sectionDd._getValue?.() || "").trim() || sectionId;
-    const chosenSection = sections.find((s) => s.id === chosenSectionId);
-    const asSched = hideScheduleToggle ? false : !!asScheduleInput?.checked;
-    const itemTypeResolved = hideScheduleToggle
-      ? "todo"
-      : asSched
-        ? "schedule"
-        : "todo";
+    const storageSectionId =
+      mode === "add"
+        ? TODO_UNIFIED_SECTION_KEY
+        : (currentSectionId || TODO_UNIFIED_SECTION_KEY).trim() ||
+          TODO_UNIFIED_SECTION_KEY;
     return {
       name: (nameInput?.value || "").trim(),
       startDate: startVal,
@@ -1779,9 +1740,9 @@ function showTodoTaskModal(options) {
       reminderDate: "",
       reminderTime: "",
       eisenhower: "",
-      sectionId: chosenSectionId,
-      sectionLabel: chosenSection?.label ?? sectionLabel,
-      itemType: itemTypeResolved,
+      sectionId: storageSectionId,
+      sectionLabel: "",
+      itemType: "todo",
     };
   }
 
@@ -1836,6 +1797,7 @@ const CALENDAR_TODO_EDIT_MODAL_LABELS = {
   modalTitle: "할일/일정 수정",
   nameFieldLabel: "할일/일정 이름",
   namePlaceholder: "할일/일정 입력",
+  deleteLabel: "삭제",
 };
 
 /**

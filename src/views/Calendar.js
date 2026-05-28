@@ -9,6 +9,10 @@ import {
   DRAG_TYPE_TODO_TO_CALENDAR,
   openTodoTaskEditFromCalendarBarModel,
 } from "./TodoList.js";
+import { openCalendarTaskEditFromBarModel } from "../utils/calendarTaskEditModal.js";
+import {
+  isPastCalendarTask,
+} from "../utils/calendarTaskDisplayRules.js";
 import {
   getSectionColor,
   getCustomSections,
@@ -50,7 +54,14 @@ import {
   upsertCalendarSectionTaskDirectFromModal,
   upsertCalendarSectionTaskRowFromSessionMemory,
 } from "../utils/todoSectionTasksSupabase.js";
-import { snapshotSectionTasksSemanticForCompare } from "../utils/todoSectionTasksModel.js";
+import {
+  readSectionTasksObject,
+  readCustomSectionTasksObject,
+  snapshotSectionTasksSemanticForCompare,
+  CALENDAR_FIXED_SECTION_IDS,
+  TODO_UNIFIED_SECTION_KEY,
+  isCalendarFixedSectionKey,
+} from "../utils/todoSectionTasksModel.js";
 import { TIME_LEDGER_ENTRIES_KEY } from "../utils/timeLedgerEntriesModel.js";
 import { getScopedLocalStorageItem } from "../utils/clientStorageScope.js";
 import {
@@ -59,10 +70,6 @@ import {
   timeLedgerLocalYesterdayYmd,
 } from "../utils/timeLedgerEntriesSupabase.js";
 import { pullTimeLedgerTasksFromSupabase } from "../utils/timeLedgerTasksSupabase.js";
-import {
-  readSectionTasksObject,
-  readCustomSectionTasksObject,
-} from "../utils/todoSectionTasksModel.js";
 import { markTodoAddPendingServerLog } from "../utils/lpTabDataSourceLog.js";
 import {
   flushAllPendingTimeDailyBudgetSync,
@@ -80,8 +87,10 @@ import {
   APP_FOOTER_ICON_BTN_CLASS,
   getAppFooterActionsSlot,
 } from "../utils/appFooterShell.js";
-/** 꿈·부수입·건강·행복 탭 — 섹션 할일(`readSectionTasksObject`) 키. KPI 탭 할일과 별도 */
-const KPI_SECTION_IDS = ["dream", "sideincome", "health", "happy"];
+function isStoredCalendarSectionId(sectionId) {
+  const sid = String(sectionId || "").trim();
+  return isCalendarFixedSectionKey(sid) || sid.startsWith("custom-");
+}
 
 /** 모바일 일정 탭: 푸터 서브뷰 전환 버튼(탭 이탈 시 clearAppFooterActions로 제거) */
 const LP_SCHEDULE_CAL_SUBVIEW_FOOTER_ATTR = "data-lp-schedule-cal-subview";
@@ -692,16 +701,10 @@ function getSectionTasksForDate(dateKey) {
   const out = [];
   try {
     const obj = readSectionTasksObject();
-    KPI_SECTION_IDS.forEach((sectionId) => {
+    CALENDAR_FIXED_SECTION_IDS.forEach((sectionId) => {
       const arr = obj[sectionId];
       if (!Array.isArray(arr)) return;
-      const sectionLabel =
-        {
-          dream: "꿈",
-          sideincome: "부수입",
-          health: "건강",
-          happy: "행복",
-        }[sectionId] || sectionId;
+      const sectionLabel = "";
       tasksForCalendarSameDayInStorageOrder(arr, dateKey).forEach((t) =>
         out.push({
           name: t.name,
@@ -711,7 +714,7 @@ function getSectionTasksForDate(dateKey) {
           endTime: t.endTime || "",
           sectionId,
           sectionLabel,
-          itemType: t.itemType || "todo",
+          itemType: "todo",
           done: !!t.done,
           taskId: t.taskId || "",
           eisenhower: (t.eisenhower || "").trim() || "",
@@ -740,16 +743,10 @@ function getSectionTasksWithDateRange() {
   const out = [];
   try {
     const obj = readSectionTasksObject();
-    KPI_SECTION_IDS.forEach((sectionId) => {
+    CALENDAR_FIXED_SECTION_IDS.forEach((sectionId) => {
       const arr = obj[sectionId];
       if (!Array.isArray(arr)) return;
-      const sectionLabel =
-        {
-          dream: "꿈",
-          sideincome: "부수입",
-          health: "건강",
-          happy: "행복",
-        }[sectionId] || sectionId;
+      const sectionLabel = "";
       arr
         .filter(
           (t) =>
@@ -767,7 +764,7 @@ function getSectionTasksWithDateRange() {
             endTime: t.endTime || "",
             sectionId,
             sectionLabel,
-            itemType: t.itemType || "todo",
+            itemType: "todo",
             done: !!t.done,
             taskId: t.taskId || "",
             eisenhower: (t.eisenhower || "").trim() || "",
@@ -1031,6 +1028,28 @@ function escapeHtml(s) {
   return div.innerHTML;
 }
 
+/** KPI 할일은 TodoList 경로, 일반 할일/일정은 캘린더 전용 수정 모달 */
+function lpOpenCalendarTaskEdit(barModel, options = {}) {
+  const b = barModel || {};
+  if (String(b.kpiTodoId || "").trim() && String(b.storageKey || "").trim()) {
+    openTodoTaskEditFromCalendarBarModel(b, options);
+    return;
+  }
+  openCalendarTaskEditFromBarModel(b, options);
+}
+
+function lpBuildCalendarSpanBarInnerHtml(name, done) {
+  const check = done
+    ? `<span class="calendar-monthly-span-bar-check" aria-hidden="true"></span>`
+    : "";
+  return `${check}<span class="calendar-monthly-span-bar-text">${escapeHtml(name || "")}</span>`;
+}
+
+function lpApplyCalendarSpanBarDonePastClasses(bar, b, todayYmd) {
+  if (b.done) bar.classList.add("is-completed");
+  if (isPastCalendarTask(b, todayYmd)) bar.classList.add("is-past");
+}
+
 let _lpTimeBlockHoverTipHideTimer = null;
 let _lpTimeBlockTipScrollBound = false;
 
@@ -1133,13 +1152,6 @@ function lpAttachColoredTimeBlockTooltip(el, opts) {
     }
   } catch (_) {}
 }
-
-const CALENDAR_CATEGORIES = [
-  { id: "dream", label: "꿈" },
-  { id: "sideincome", label: "부수입" },
-  { id: "health", label: "건강" },
-  { id: "happy", label: "행복" },
-];
 
 function updateCustomSectionTaskDone(sectionId, taskId, done) {
   try {
@@ -1271,7 +1283,7 @@ function revertTaskToTodoList(barData) {
       .trim()
       .slice(0, 10) || "";
   let ok = false;
-  if (KPI_SECTION_IDS.includes(barData.sectionId) && barData.taskId) {
+  if (isCalendarFixedSectionKey(barData.sectionId) && barData.taskId) {
     ok = updateSectionTaskDates(barData.sectionId, barData.taskId, revS, revD);
     if (ok) {
       clearSectionTaskCalendarRevertSnapshot(barData.sectionId, barData.taskId);
@@ -1373,7 +1385,7 @@ function lpAttachCalendarBarOpenTodoEdit(
     if (suppressClickAfterDrag) return;
     e.preventDefault();
     e.stopPropagation();
-    openTodoTaskEditFromCalendarBarModel(b, {
+    lpOpenCalendarTaskEdit(b, {
       selectionEl: bar,
       onAfterApply: () => {
         try {
@@ -1518,13 +1530,11 @@ function getAllTasksWithDateRange() {
  * 세션 섹션 할일 + `calendar_section_tasks` upsert (날짜 칸 버블 전용).
  */
 function addSectionTodoFromCalendarBubble(
-  sectionId,
   startYmd,
   dueYmd,
   name,
-  itemType = "todo",
 ) {
-  const sid = String(sectionId || "").trim();
+  const sid = TODO_UNIFIED_SECTION_KEY;
   const start = String(startYmd || "")
     .trim()
     .slice(0, 10);
@@ -1532,12 +1542,9 @@ function addSectionTodoFromCalendarBubble(
     .trim()
     .slice(0, 10);
   const todoName = String(name || "").trim();
-  if (!sid || !due || !todoName || !KPI_SECTION_IDS.includes(sid)) return false;
+  if (!due || !todoName || !isCalendarFixedSectionKey(sid)) return false;
   if (start && start > due) return false;
-  const it =
-    String(itemType || "todo").toLowerCase() === "schedule"
-      ? "schedule"
-      : "todo";
+  const it = "todo";
   const taskId =
     typeof crypto !== "undefined" && crypto.randomUUID
       ? crypto.randomUUID()
@@ -1676,7 +1683,6 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
       ).trim();
       const startDate = (startInput?.value || "").trim().slice(0, 10);
       const dueDate = (dueInput?.value || "").trim().slice(0, 10);
-      const categoryId = CALENDAR_CATEGORIES[0]?.id || "dream";
       if (!name) return;
       if (!dueDate) {
         alert("마감일을 입력해 주세요.");
@@ -1686,15 +1692,8 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
         alert("시작일은 마감일보다 이전이어야 합니다.");
         return;
       }
-      const itemType = "todo";
       if (
-        !addSectionTodoFromCalendarBubble(
-          categoryId,
-          startDate,
-          dueDate,
-          name,
-          itemType,
-        )
+        !addSectionTodoFromCalendarBubble(startDate, dueDate, name)
       ) {
         alert("할 일을 추가하지 못했습니다. 잠시 후 다시 시도해 주세요.");
         return;
@@ -1703,8 +1702,8 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
         name,
         startDate,
         dueDate,
-        sectionId: categoryId,
-        itemType,
+        sectionId: TODO_UNIFIED_SECTION_KEY,
+        itemType: "todo",
       });
       close();
     });
@@ -1771,6 +1770,7 @@ function createCalendarDayExpandBubble(
     useMobileOverlay = true,
   } = options;
   const isMobile = window.matchMedia("(max-width: 48rem)").matches;
+  const todayYmd = timeLedgerLocalTodayYmd();
   if (_calendarDayExpandOutsideHandler) {
     document.removeEventListener("click", _calendarDayExpandOutsideHandler);
     _calendarDayExpandOutsideHandler = null;
@@ -1792,10 +1792,15 @@ function createCalendarDayExpandBubble(
     (hideCloseButton ? " calendar-day-expand-bubble--no-close" : "");
   const taskItems = tasks
     .map((t) => {
-      const isSchedule =
-        String(t.itemType || "todo").toLowerCase() === "schedule";
+      const isPast = isPastCalendarTask(t, todayYmd);
+      const checkHtml = t.done
+        ? `<span class="calendar-day-expand-check" aria-hidden="true"></span>`
+        : "";
+      const pastCls = isPast ? " is-past" : "";
+      const doneCls = t.done ? " is-completed" : "";
       return `
-    <div class="calendar-day-expand-item${isSchedule ? " calendar-day-expand-item--schedule" : ""}${t.done ? " calendar-day-expand-item--done" : ""}" data-done="${!!t.done}" data-item-type="${isSchedule ? "schedule" : "todo"}">
+    <div class="calendar-day-expand-item${doneCls}${pastCls}" data-done="${!!t.done}">
+      ${checkHtml}
       <div class="calendar-day-expand-main">
         <span class="calendar-day-expand-text">${escapeHtml(t.name || "")}</span>
         ${t.startTime || t.endTime ? `<span class="calendar-day-expand-time">${[t.startTime, t.endTime].filter(Boolean).join(" ~ ")}</span>` : ""}
@@ -1837,7 +1842,7 @@ function createCalendarDayExpandBubble(
       try {
         close();
       } catch (_) {}
-      openTodoTaskEditFromCalendarBarModel(t, {
+      lpOpenCalendarTaskEdit(t, {
         selectionEl: itemEl,
         onAfterApply: () => {
           try {
@@ -2068,7 +2073,7 @@ function createCalendarBarDateEditBubble(
         return;
       }
       let ok = false;
-      if (KPI_SECTION_IDS.includes(barData.sectionId) && barData.taskId) {
+      if (isCalendarFixedSectionKey(barData.sectionId) && barData.taskId) {
         ok = updateSectionTaskDates(
           barData.sectionId,
           barData.taskId,
@@ -2329,7 +2334,7 @@ function renderMonthlyView(tabsElement) {
               });
             }
           } else if (
-            KPI_SECTION_IDS.includes(payload.sectionId) &&
+            isCalendarFixedSectionKey(payload.sectionId) &&
             ((payload.taskId || "").trim() || (payload.name || "").trim())
           ) {
             ok =
@@ -2461,8 +2466,8 @@ function renderMonthlyView(tabsElement) {
         WEEK_ROW_MIN,
       )}rem`;
       const barsWithRow = allBars;
+      const calendarBarTodayYmd = timeLedgerLocalTodayYmd();
       barsWithRow.forEach((b) => {
-        const isTodo = (b.itemType || "todo").toLowerCase() === "todo";
         const bar = document.createElement("div");
         bar.className =
           "calendar-monthly-span-bar" +
@@ -2490,10 +2495,8 @@ function renderMonthlyView(tabsElement) {
           : baseBarTop + b.row * (BAR_HEIGHT + ROW_GAP);
         bar.style.cssText = `left:${b.left}%;width:${b.width}%;${barStyleVars};top:${topRem}rem;min-height:${BAR_HEIGHT}rem`;
         lpApplyCalendarMultiDaySpanBarBackground(bar, b);
-        bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
-        if (isTodo && b.done) {
-          bar.classList.add("is-completed");
-        }
+        bar.innerHTML = lpBuildCalendarSpanBarInnerHtml(b.name, !!b.done);
+        lpApplyCalendarSpanBarDonePastClasses(bar, b, calendarBarTodayYmd);
         lpAttachCalendarBarOpenTodoEdit(
           bar,
           b,
@@ -2663,7 +2666,7 @@ function renderMonthlyView(tabsElement) {
             });
           }
         } else if (
-          KPI_SECTION_IDS.includes(payload.sectionId) &&
+          isCalendarFixedSectionKey(payload.sectionId) &&
           ((payload.taskId || "").trim() || (payload.name || "").trim())
         ) {
           ok =
@@ -4362,7 +4365,7 @@ function render1WeekView(tabsElement) {
           });
         }
       } else if (
-        KPI_SECTION_IDS.includes(payload.sectionId) &&
+        isCalendarFixedSectionKey(payload.sectionId) &&
         ((payload.taskId || "").trim() || (payload.name || "").trim())
       ) {
         ok =
@@ -4614,8 +4617,8 @@ function render1WeekView(tabsElement) {
       WEEK_ROW_MIN,
     )}rem`;
     const barsWithRow = allBars;
+    const calendarBarTodayYmd = timeLedgerLocalTodayYmd();
     barsWithRow.forEach((b) => {
-      const isTodo = (b.itemType || "todo").toLowerCase() === "todo";
       const bar = document.createElement("div");
       bar.className =
         "calendar-monthly-span-bar" +
@@ -4643,10 +4646,8 @@ function render1WeekView(tabsElement) {
         : baseBarTop + b.row * (BAR_HEIGHT + ROW_GAP);
       bar.style.cssText = `left:${b.left}%;width:${b.width}%;${barStyleVars};top:${topRem}rem;min-height:${BAR_HEIGHT}rem`;
       lpApplyCalendarMultiDaySpanBarBackground(bar, b);
-      bar.innerHTML = `<span class="calendar-monthly-span-bar-text">${escapeHtml(b.name || "")}</span>`;
-      if (isTodo && b.done) {
-        bar.classList.add("is-completed");
-      }
+      bar.innerHTML = lpBuildCalendarSpanBarInnerHtml(b.name, !!b.done);
+      lpApplyCalendarSpanBarDonePastClasses(bar, b, calendarBarTodayYmd);
       lpAttachCalendarBarOpenTodoEdit(bar, b, renderCalendar, refreshTodoList);
       if (!b.isSingleDay && b.startDate && b.dueDate) {
         bar.addEventListener("contextmenu", (e) => {
