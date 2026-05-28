@@ -58,10 +58,18 @@
 .lp-kpi-dream-page .dream-view-header-title-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 0.5rem;
   width: 100%;
   min-width: 0;
+}
+
+.lp-kpi-dream-page .dream-view-header-title-row .dream-view-header-category-icon {
+  flex: 0 0 auto;
+  width: 1.75rem;
+  height: 1.75rem;
+  object-fit: contain;
+  display: block;
 }
 
 .lp-kpi-dream-page .dream-view-header-title-row .dream-view-title {

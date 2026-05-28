@@ -218,6 +218,7 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
   padding-top: 0.75rem;
   padding-bottom: 0.75rem;
 }
@@ -328,16 +329,22 @@ body {
   background: #fff;
 }
 
+.app-main:has(.app-home-menu-launcher) .app-tab-panel > .app-home-menu-launcher {
+  width: 100%;
+  max-width: 100%;
+}
+
 .app-main:has(.app-home-menu-launcher) .app-home-menu-launcher {
   width: 100%;
   max-width: none;
   margin: 0;
   flex: 0 0 auto;
   min-height: 0;
+  align-items: stretch;
   justify-content: center;
 }
 
-/* 홈(오늘) — 메뉴 그리드 */
+/* 홈(오늘) — 메뉴 리스트 */
 .app-home-menu-launcher {
   display: flex;
   flex-direction: column;
@@ -367,8 +374,8 @@ body {
   flex-direction: column;
   box-sizing: border-box;
   width: 100%;
-  max-width: none;
-  margin: 0;
+  max-width: min(22rem, 100%);
+  margin: 0 auto;
   padding: 0;
   background: transparent;
   border: none;
@@ -385,7 +392,7 @@ body {
     max(0.85rem, var(--lp-safe-right));
 }
 
-.app-home-menu-launcher-card .app-home-menu-launcher-section-grid {
+.app-home-menu-launcher-card .app-home-menu-launcher-section-list {
   box-sizing: border-box;
   width: 100%;
 }
@@ -452,11 +459,12 @@ body {
   margin-top: 0;
 }
 
-.app-home-menu-launcher-section-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.95rem 0.8rem;
+.app-home-menu-launcher-section-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
   width: 100%;
+  margin: 0;
   align-items: stretch;
 }
 

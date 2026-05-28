@@ -60,6 +60,7 @@ import {
   KPI_CARD_EDIT_PENCIL_HTML,
   HAPPINESS_GOAL_EDIT_PENCIL_HTML,
 } from "../utils/kpiTabNameEditIcon.js";
+import { prependKpiCategoryHeaderIcon } from "../utils/kpiCategoryHeaderIcon.js";
 import { sortKpiLogsNewestFirst, getLatestKpiLogWithExplicitValue } from "../utils/kpiLogsSort.js";
 import {
   deletedRefsKpiTodosLen,
@@ -282,6 +283,7 @@ export function render() {
   title.className = "dream-view-title";
   title.textContent = "행복";
   titleRow.appendChild(title);
+  prependKpiCategoryHeaderIcon(titleRow, "happiness");
   header.appendChild(label);
   header.appendChild(titleRow);
   el.appendChild(header);

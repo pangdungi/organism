@@ -62,6 +62,7 @@ import {
   KPI_CARD_EDIT_PENCIL_HTML,
   DREAM_GOAL_EDIT_PENCIL_HTML,
 } from "../utils/kpiTabNameEditIcon.js";
+import { prependKpiCategoryHeaderIcon } from "../utils/kpiCategoryHeaderIcon.js";
 import { sortKpiLogsNewestFirst, getLatestKpiLogWithExplicitValue } from "../utils/kpiLogsSort.js";
 import {
   deletedRefsKpiTodosLen,
@@ -298,6 +299,7 @@ export function render() {
   title.className = "dream-view-title";
   title.textContent = "꿈";
   titleRow.appendChild(title);
+  prependKpiCategoryHeaderIcon(titleRow, "dream");
   header.appendChild(label);
   header.appendChild(titleRow);
   el.appendChild(header);

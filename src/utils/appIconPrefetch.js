@@ -80,16 +80,15 @@ function prefetchPathsChunked(paths, startIndex = 0) {
 /** 홈 메뉴·푸터 등 첫 화면에 필요한 아이콘만 즉시(소량) */
 const CRITICAL_HOME_ICON_PATHS = [
   "/toolbaricons/dashboard.svg",
+  "/toolbaricons/menu-home-calendar-time.png",
+  "/toolbaricons/menu-home-calendar.png",
+  "/toolbaricons/menu-home-account.png",
+  "/toolbaricons/time-task/prod-cat-dream.png",
+  "/toolbaricons/time-task/prod-cat-sideincome.png",
+  "/toolbaricons/time-task/prod-cat-health.png",
+  "/toolbaricons/time-task/prod-cat-happiness.png",
   "/toolbaricons/menu-time.png",
-  "/toolbaricons/menu-time-report.png",
   "/toolbaricons/menu-schedule.png",
-  "/toolbaricons/menu-stamp.png",
-  "/toolbaricons/menu-todo.png",
-  "/toolbaricons/menu-dream.png",
-  "/toolbaricons/menu-sideincome.png",
-  "/toolbaricons/menu-health.png",
-  "/toolbaricons/menu-happiness.png",
-  "/toolbaricons/menu-account.png",
   "/toolbaricons/caret-left-circle.svg",
 ];
 

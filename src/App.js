@@ -144,6 +144,17 @@ const HOME_MENU_TAB_ORDER = [
   "idea",
 ];
 
+/** 홈 정사각형 타일 전용 아이콘(사이드바·푸터는 TABS.icon 유지) */
+const HOME_MENU_ICON = {
+  time: "/toolbaricons/menu-home-calendar-time.png",
+  schedulecalendar: "/toolbaricons/menu-home-calendar.png",
+  dream: "/toolbaricons/time-task/prod-cat-dream.png",
+  sideincome: "/toolbaricons/time-task/prod-cat-sideincome.png",
+  health: "/toolbaricons/time-task/prod-cat-health.png",
+  happiness: "/toolbaricons/time-task/prod-cat-happiness.png",
+  idea: "/toolbaricons/menu-home-account.png",
+};
+
 function tabMetaById(tabId) {
   if (tabId === "idea") {
     return {
@@ -582,8 +593,8 @@ export async function mountApp(container) {
     const img = document.createElement("img");
     img.src = iconSrc;
     img.alt = "";
-    img.width = 28;
-    img.height = 28;
+    img.width = 30;
+    img.height = 30;
     applyStaticAppIconImg(img);
     iconWrap.appendChild(img);
     btn.appendChild(iconWrap);
@@ -621,7 +632,9 @@ export async function mountApp(container) {
       }
       btn.dataset.tabId = tab.id;
       btn.title = tab.label;
-      appendLauncherIcon(btn, tab.iconDesktop ?? tab.icon);
+      const iconSrc =
+        HOME_MENU_ICON[tab.id] ?? tab.iconDesktop ?? tab.icon;
+      appendLauncherIcon(btn, iconSrc);
       const labelSpan = document.createElement("span");
       labelSpan.className = "app-home-menu-launcher-label";
       labelSpan.textContent = tab.homeMenuLabel ?? tab.label;
@@ -630,13 +643,13 @@ export async function mountApp(container) {
       return btn;
     }
 
-    const grid = document.createElement("div");
-    grid.className = "app-home-menu-launcher-section-grid";
+    const list = document.createElement("div");
+    list.className = "app-home-menu-launcher-section-list";
     HOME_MENU_TAB_ORDER.forEach((tid) => {
       const tab = tabMetaById(tid);
-      if (tab) grid.appendChild(navButtonFromTab(tab));
+      if (tab) list.appendChild(navButtonFromTab(tab));
     });
-    body.appendChild(grid);
+    body.appendChild(list);
 
     launcherAdminBtn = document.createElement("button");
     launcherAdminBtn.type = "button";
