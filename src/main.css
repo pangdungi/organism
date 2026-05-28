@@ -35,6 +35,18 @@ html {
   font-size: 16px;
 }
 
+@media (min-width: 48rem) and (max-width: 64rem) {
+  html {
+    font-size: 17px;
+  }
+}
+
+@media (min-width: 64.0625rem) {
+  html {
+    font-size: 18px;
+  }
+}
+
 html,
 body {
   margin: 0;

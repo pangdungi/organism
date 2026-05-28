@@ -1810,10 +1810,10 @@
 }
 
 /* -------------------------------------------------------------------------- */
-/* 모바일: 동일 레이아웃 유지, 타이포·막대 스택만 소폭 축소(가독·밀도) */
+/* 폰(480px↓): 타이포·막대 스택만 소폭 축소 — 태블릿(mini 등)은 기본 rem 유지 */
 /* -------------------------------------------------------------------------- */
 
-@media (max-width: 48rem) {
+@media (max-width: 30rem) {
   .calendar-monthly-layout {
     --cal-bar-stack-offset: 2rem;
     --cal-bar-row-min: 1.1rem;
@@ -1944,6 +1944,35 @@
   .calendar-annual-cell-dot {
     width: 0.28rem;
     height: 0.28rem;
+  }
+}
+
+/* 태블릿(768~1024px): mini·iPad — 손글씨체 가독용 소폭 확대 */
+@media (min-width: 48rem) and (max-width: 64rem) {
+  .calendar-1week-flow-card {
+    font-size: 0.8125rem;
+    padding: 0.4rem 0.48rem 0.42rem;
+  }
+
+  .calendar-1week-flow-card-title {
+    font-size: 0.8125rem;
+  }
+
+  .calendar-1week-flow-card-meta {
+    font-size: 0.6875rem;
+  }
+
+  .calendar-1week-flow-card-badge,
+  .calendar-1week-flow-card-progress {
+    font-size: 0.625rem;
+  }
+
+  .calendar-monthly-span-bar {
+    font-size: 0.6875rem;
+  }
+
+  .calendar-monthly-day-entries {
+    font-size: 0.6875rem;
   }
 }
 
