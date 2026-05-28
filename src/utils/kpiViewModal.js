@@ -6,6 +6,7 @@ import { formatDeadlineRangeCompact } from "./ganttModal.js";
 import { getLatestKpiLogWithExplicitValue } from "./kpiLogsSort.js";
 import { getAccumulatedMinutesForKpiId, minutesToHhMm, hhMmToMinutes } from "./timeKpiSync.js";
 import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
+import { kpiCardHeadHtml, wireKpiCardIconsIn } from "./kpiCardIcon.js";
 
 const DREAM_MAP_KEY = "kpi-dream-map";
 const SIDEINCOME_KEY = "kpi-sideincome-paths";
@@ -146,6 +147,12 @@ export function getKpisByCategory() {
 
 const CATEGORY_LABELS = { 꿈: "꿈", 부수입: "부수입", 행복: "행복", 건강: "건강" };
 const CATEGORY_ICONS = { 꿈: "✨", 부수입: "💰", 행복: "😊", 건강: "💪" };
+const CATEGORY_LEDGER = {
+  꿈: "dream",
+  부수입: "sideincome",
+  행복: "happiness",
+  건강: "health",
+};
 
 export function showKpiViewModal() {
   const byCategory = getKpisByCategory();
@@ -156,6 +163,7 @@ export function showKpiViewModal() {
     const list = byCategory[cat] || [];
     const label = CATEGORY_LABELS[cat] || cat;
     const icon = CATEGORY_ICONS[cat] || "";
+    const ledgerCategory = CATEGORY_LEDGER[cat] || "dream";
 
     let cardsHtml = "";
     if (list.length === 0) {
@@ -188,10 +196,11 @@ export function showKpiViewModal() {
               </div>
             `
                 : "";
+            const nameHtml = `${escapeHtml(k.name)}${k.directionLower ? '<span class="dream-kpi-card-direction-badge" title="낮을수록 좋음 KPI">↓낮음</span>' : ""}`;
             return `
           <div class="kpi-view-card dream-kpi-card${k.directionLower ? " dream-kpi-card--lower-better" : ""}">
             <div class="dream-kpi-card-inner">
-              <div class="dream-kpi-card-name">${escapeHtml(k.name)}${k.directionLower ? '<span class="dream-kpi-card-direction-badge" title="낮을수록 좋음 KPI">↓낮음</span>' : ""}</div>
+              ${kpiCardHeadHtml({ id: k.kpiId, name: k.name }, ledgerCategory, nameHtml)}
               <div class="dream-kpi-card-target-num">${k.heroValueHtml}</div>
               ${(k.targetStartDate || k.targetDeadline) ? `<div class="dream-kpi-card-deadline">${escapeHtml(formatDeadlineRangeCompact(k.targetStartDate, k.targetDeadline))}</div>` : ""}
               <div class="dream-kpi-card-progress">
@@ -249,5 +258,6 @@ export function showKpiViewModal() {
 
   const close = () => modal.remove();
   modal.querySelector(".kpi-view-close").addEventListener("click", close);
+  wireKpiCardIconsIn(modal);
   document.body.appendChild(modal);
 }

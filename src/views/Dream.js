@@ -62,7 +62,7 @@ import {
   KPI_CARD_EDIT_PENCIL_HTML,
   DREAM_GOAL_EDIT_PENCIL_HTML,
 } from "../utils/kpiTabNameEditIcon.js";
-import { prependKpiCategoryHeaderIcon } from "../utils/kpiCategoryHeaderIcon.js";
+import { kpiCardHeadHtml, wireKpiCardIconsIn } from "../utils/kpiCardIcon.js";
 import { sortKpiLogsNewestFirst, getLatestKpiLogWithExplicitValue } from "../utils/kpiLogsSort.js";
 import {
   deletedRefsKpiTodosLen,
@@ -299,7 +299,6 @@ export function render() {
   title.className = "dream-view-title";
   title.textContent = "꿈";
   titleRow.appendChild(title);
-  prependKpiCategoryHeaderIcon(titleRow, "dream");
   header.appendChild(label);
   header.appendChild(titleRow);
   el.appendChild(header);
@@ -1169,10 +1168,11 @@ export function render() {
       card.draggable = true;
       const investedTimeHtml = "";
       const heroUnitFinal = heroUnit;
+      const nameHtml = `${escapeHtml(kpi.name)}${lowerBetter ? '<span class="dream-kpi-card-direction-badge" title="낮을수록 좋음 KPI">↓낮음</span>' : ""}`;
       card.innerHTML = `
         <div class="dream-kpi-card-inner">
           ${KPI_CARD_EDIT_PENCIL_HTML}
-          <div class="dream-kpi-card-name">${escapeHtml(kpi.name)}${lowerBetter ? '<span class="dream-kpi-card-direction-badge" title="낮을수록 좋음 KPI">↓낮음</span>' : ""}</div>
+          ${kpiCardHeadHtml(kpi, "dream", nameHtml)}
           <div class="dream-kpi-card-target-num">${formatKpiCardHeroHtml(lowerBetter, heroStr, heroUnitFinal)}</div>
           ${(kpi.targetStartDate || kpi.targetDeadline) ? `<div class="dream-kpi-card-deadline">${escapeHtml(formatDeadlineRangeCompact(kpi.targetStartDate, kpi.targetDeadline))}</div>` : ""}
           <div class="dream-kpi-card-progress">
@@ -1225,6 +1225,7 @@ export function render() {
       });
       grid.appendChild(card);
     });
+    wireKpiCardIconsIn(grid);
     grid.addEventListener("dragend", () => {
       grid.querySelectorAll(".dream-kpi-card-drag-over").forEach((c) => c.classList.remove("dream-kpi-card-drag-over"));
     });
