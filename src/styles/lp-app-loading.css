@@ -1,0 +1,85 @@
+/* 앱 준비·탭 전환 로딩 — 스플래시와 톤 맞춤(추후 디자인 에셋으로 교체) */
+
+.app-splash-label {
+  margin: 0 0 1.15rem;
+  font-family: "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--app-splash-ink, #1a5fa8);
+  text-align: center;
+}
+
+.lp-app-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(1rem, env(safe-area-inset-top, 0)) 1.25rem
+    max(1rem, env(safe-area-inset-bottom, 0));
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.82);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.lp-app-loading-overlay[hidden] {
+  display: none !important;
+}
+
+.lp-app-loading-overlay__panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+  max-width: 16rem;
+  text-align: center;
+}
+
+.lp-app-loading-overlay__text {
+  margin: 0;
+  font-family: "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: #1a5fa8;
+  line-height: 1.45;
+}
+
+.lp-app-loading-spinner {
+  width: 2.75rem;
+  height: 2.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lp-app-loading-spinner-ring {
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 50%;
+  border: 3px solid rgba(26, 95, 168, 0.16);
+  border-top-color: #1a5fa8;
+  animation: lp-app-loading-spin 0.85s linear infinite;
+}
+
+@keyframes lp-app-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+html.lp-tab-loading-active {
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-app-loading-spinner-ring {
+    animation: none;
+    border-top-color: rgba(26, 95, 168, 0.45);
+  }
+}

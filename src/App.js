@@ -77,6 +77,13 @@ import { syncLpAppShellViewportHeight } from "./utils/lpAppShellViewport.js";
 import { logTodoScheduleTabOnNavigate } from "./utils/lpTabDataSourceLog.js";
 import { ensureTimeLedgerStorageReady } from "./utils/timeLedgerEntriesModel.js";
 import {
+  showLpTabLoading,
+  hideLpTabLoading,
+  tabLoadingMessage,
+  afterLpTabPaint,
+} from "./utils/lpAppLoading.js";
+import { prefetchIconsForTab } from "./utils/appIconPrefetch.js";
+import {
   setLpTabPullPending,
   clearLpTabPullPending,
 } from "./utils/lpTabSyncLoadingUi.js";
@@ -207,6 +214,29 @@ const RENDERERS = {
 };
 
 let currentTabId = "home";
+
+const APP_BOOT_READY_TIMEOUT_MS = 22000;
+
+/** @type {(() => void) | null} */
+let resolveAppBootReady = null;
+
+export const appBootReadyPromise = new Promise((resolve) => {
+  resolveAppBootReady = resolve;
+});
+
+export function waitForAppBootReady() {
+  return Promise.race([
+    appBootReadyPromise,
+    new Promise((r) => setTimeout(r, APP_BOOT_READY_TIMEOUT_MS)),
+  ]);
+}
+
+function finishAppBootReady() {
+  if (resolveAppBootReady) {
+    resolveAppBootReady();
+    resolveAppBootReady = null;
+  }
+}
 
 /** 세션 유지 중 마지막 탭(백그라운드 복귀 시 유지). 로그아웃 시 main.js 에서 제거 */
 export const LP_LAST_TAB_SESSION_KEY = "lp_active_tab_id";
@@ -549,6 +579,16 @@ export async function mountApp(container) {
             return;
           }
         }
+        const panelEl = main.querySelector(".app-tab-panel");
+        const skipRenderOverlay =
+          targetTabId === "home" &&
+          panelEl &&
+          homeMenuLauncherEl &&
+          panelEl.firstElementChild === homeMenuLauncherEl;
+
+        if (!skipRenderOverlay) {
+          showLpTabLoading(tabLoadingMessage(targetTabId));
+        }
         renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
         syncAppFooterVisibility();
         if (
@@ -566,6 +606,7 @@ export async function mountApp(container) {
             pullResult = await pullPromise;
           } catch (_) {}
           if (currentTabId !== targetTabId) {
+            if (!skipRenderOverlay) hideLpTabLoading();
             try {
               window.__lpDiaryLedgerPrefetchedForTabSwitch = false;
               window.__lpCalendarGridPrefetchedForTabSwitch = false;
@@ -624,6 +665,14 @@ export async function mountApp(container) {
           } catch (_) {}
         } else {
           renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
+        }
+        if (!skipRenderOverlay) {
+          afterLpTabPaint(() => {
+            hideLpTabLoading();
+            void prefetchIconsForTab(targetTabId);
+          });
+        } else {
+          void prefetchIconsForTab(targetTabId);
         }
         })();
       })();
@@ -984,25 +1033,25 @@ export async function mountApp(container) {
       resetTimeLedgerSessionFilterToToday();
     } catch (_) {}
   }
-  /* 로컬·메모리로 먼저 한 프레임 그림 — pull 은 탭별 백그라운드 */
+  /* 로컬·메모리로 먼저 한 프레임 그림 — pull 완료 후 스플래시 내림(main.js) */
   renderMain(main);
   void (async () => {
     const bootTabId = currentTabId;
-    if (bootTabId === "diary") {
-      try {
-        window.__lpDiaryLedgerPrefetchedForTabSwitch = true;
-      } catch (_) {}
-    }
-    if (bootTabId === "calendar" || bootTabId === "schedulecalendar") {
-      try {
-        window.__lpCalendarGridPrefetchedForTabSwitch = true;
-      } catch (_) {}
-    }
+    try {
+      if (bootTabId === "diary") {
+        try {
+          window.__lpDiaryLedgerPrefetchedForTabSwitch = true;
+        } catch (_) {}
+      }
+      if (bootTabId === "calendar" || bootTabId === "schedulecalendar") {
+        try {
+          window.__lpCalendarGridPrefetchedForTabSwitch = true;
+        } catch (_) {}
+      }
 
-    void ensureTimeLedgerStorageReady();
+      await ensureTimeLedgerStorageReady();
 
-    if (bootTabId === "home") {
-      void (async () => {
+      if (bootTabId === "home") {
         try {
           await pullDataForActiveTab("home", { fromBoot: true });
         } catch (_) {}
@@ -1013,67 +1062,70 @@ export async function mountApp(container) {
         try {
           window.__lpHomeMenuSoftRefresh?.();
         } catch (_) {}
-      })();
-      return;
-    }
-
-    let pullResult;
-    try {
-      const [, pr] = await Promise.all([
-        syncAdminMenuVisibility(),
-        pullDataForActiveTab(bootTabId, { fromBoot: true }),
-      ]);
-      pullResult = pr;
-    } catch (_) {}
-    if (currentTabId !== bootTabId) {
-      try {
-        window.__lpDiaryLedgerPrefetchedForTabSwitch = false;
-        window.__lpCalendarGridPrefetchedForTabSwitch = false;
-      } catch (_) {}
-      if (bootTabId === "home" || bootTabId === "time") {
-        clearLpTabPullPending(bootTabId);
+        return;
       }
-      if (isKpiAppTabId(bootTabId)) clearKpiTabPullPending(bootTabId);
-      return;
-    }
-    if (bootTabId === "time") {
-      clearLpTabPullPending("time");
+
+      let pullResult;
       try {
-        window.__lpTimeLedgerSoftRefresh?.();
+        const [, pr] = await Promise.all([
+          syncAdminMenuVisibility(),
+          pullDataForActiveTab(bootTabId, { fromBoot: true }),
+        ]);
+        pullResult = pr;
       } catch (_) {}
-    } else if (bootTabId === "calendar" || bootTabId === "schedulecalendar") {
-      try {
-        window.__lpCalendarSoftRefresh?.();
-      } catch (_) {}
-    } else if (bootTabId === "idea") {
-      try {
-        window.__lpIdeaSoftRefresh?.();
-      } catch (_) {}
-    } else if (
-      bootTabId === "dream" ||
-      bootTabId === "health" ||
-      bootTabId === "happiness" ||
-      bootTabId === "sideincome"
-    ) {
-      kpiSoftRefreshAfterPull(bootTabId, pullResult);
-    } else if (bootTabId === "diary") {
-      try {
-        window.__lpDiarySoftRefresh?.();
-      } catch (_) {}
-      try {
-        window.__lpDiaryLedgerPrefetchedForTabSwitch = false;
-      } catch (_) {}
-    } else if (bootTabId === "workschedule") {
-      try {
-        window.__lpWorkScheduleSoftRefresh?.();
-      } catch (_) {}
-    } else {
-      renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
-    }
-    if (bootTabId === "idea" || bootTabId === "admin" || bootTabId === "home") {
-      requestAnimationFrame(() => {
-        main.scrollTop = 0;
-      });
+      if (currentTabId !== bootTabId) {
+        try {
+          window.__lpDiaryLedgerPrefetchedForTabSwitch = false;
+          window.__lpCalendarGridPrefetchedForTabSwitch = false;
+        } catch (_) {}
+        if (bootTabId === "home" || bootTabId === "time") {
+          clearLpTabPullPending(bootTabId);
+        }
+        if (isKpiAppTabId(bootTabId)) clearKpiTabPullPending(bootTabId);
+        return;
+      }
+      if (bootTabId === "time") {
+        clearLpTabPullPending("time");
+        try {
+          window.__lpTimeLedgerSoftRefresh?.();
+        } catch (_) {}
+      } else if (bootTabId === "calendar" || bootTabId === "schedulecalendar") {
+        try {
+          window.__lpCalendarSoftRefresh?.();
+        } catch (_) {}
+      } else if (bootTabId === "idea") {
+        try {
+          window.__lpIdeaSoftRefresh?.();
+        } catch (_) {}
+      } else if (
+        bootTabId === "dream" ||
+        bootTabId === "health" ||
+        bootTabId === "happiness" ||
+        bootTabId === "sideincome"
+      ) {
+        kpiSoftRefreshAfterPull(bootTabId, pullResult);
+      } else if (bootTabId === "diary") {
+        try {
+          window.__lpDiarySoftRefresh?.();
+        } catch (_) {}
+        try {
+          window.__lpDiaryLedgerPrefetchedForTabSwitch = false;
+        } catch (_) {}
+      } else if (bootTabId === "workschedule") {
+        try {
+          window.__lpWorkScheduleSoftRefresh?.();
+        } catch (_) {}
+      } else {
+        renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
+      }
+      if (bootTabId === "idea" || bootTabId === "admin" || bootTabId === "home") {
+        requestAnimationFrame(() => {
+          main.scrollTop = 0;
+        });
+      }
+      void prefetchIconsForTab(bootTabId);
+    } finally {
+      finishAppBootReady();
     }
   })();
   if (window.matchMedia("(max-width: 48rem)").matches) {

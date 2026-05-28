@@ -9,6 +9,7 @@ import "./styles/stamp-calendar.css";
 import "./styles/todo-list.css";
 import "./styles/kpi-dream.css";
 import "./styles/lp-pwa-install.css";
+import "./styles/lp-app-loading.css";
 import { showOnly } from "./pages.js";
 import {
   login,
@@ -27,13 +28,15 @@ import {
   mountApp,
   LP_LAST_TAB_LOCAL_KEY,
   LP_LAST_TAB_SESSION_KEY,
+  waitForAppBootReady,
 } from "./App.js";
 import { initOfflineAppGate } from "./utils/offlineAppGate.js";
 import { initLpAppShellViewportLock } from "./utils/lpAppShellViewport.js";
 import { supabase } from "./supabase.js";
 import { getSupabaseSession } from "./utils/supabaseSession.js";
 import { applyAppFont } from "./utils/appUiFont.js";
-import { prefetchAppIconAssets } from "./utils/appIconPrefetch.js";
+import { prefetchCriticalAppIconAssets } from "./utils/appIconPrefetch.js";
+import { setAppSplashMessage } from "./utils/lpAppLoading.js";
 import { pullUserPrefsFromSupabase } from "./utils/userHourlySync.js";
 import {
   applyTimeCategoryColors,
@@ -136,7 +139,7 @@ function showAppSplashNow() {
   splash.removeAttribute("hidden");
   splash.setAttribute("aria-hidden", "false");
   splash.setAttribute("aria-busy", "true");
-  splash.setAttribute("aria-label", "앱을 불러오는 중");
+  splash.setAttribute("aria-label", "앱 준비 중");
 }
 
 function hideAppSplashNow() {
@@ -237,8 +240,10 @@ async function enterAuthenticatedApp(opts = {}) {
       finishStep("로컬 캐시 준비");
       await mountApp(screen);
       finishStep("메인 화면 조립(mountApp)");
+      setAppSplashMessage("데이터 불러오는 중…");
+      await waitForAppBootReady();
+      prefetchCriticalAppIconAssets();
       refreshLpPwaInstall();
-      prefetchAppIconAssets();
 
       void getSupabaseSession().then(({ data: { session } }) => {
         markTabBootAuthUid(session?.user?.id);
@@ -326,7 +331,6 @@ function closeAuthPwRecoveryModal() {
 function init() {
   setLpAuthBootPending(true);
   initAuthUserCrossTabGuard({ isAppMounted: () => lpAppMounted });
-  prefetchAppIconAssets();
   consumeSupabaseAuthRedirectErrors();
 
   const app = document.getElementById("app");

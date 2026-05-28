@@ -1,33 +1,79 @@
 /**
- * 앱 정적 아이콘 prefetch — 기동 직후 887장 sync 디코드는 메인 스레드 멈춤 유발
- * 목록: public/app-icon-prefetch.json
+ * 앱 정적 아이콘 prefetch — 탭 진입 시에만 해당 경로(전량 887장 기동 prefetch 금지)
  */
 import appIconPrefetchPaths from "../../public/app-icon-prefetch.json";
 
-const CHUNK_SIZE = 32;
-let prefetchScheduled = false;
+const CHUNK_SIZE = 24;
+/** @type {Set<string>} */
+const prefetchedPaths = new Set();
 
-export function getAllAppIconPrefetchPaths() {
-  return appIconPrefetchPaths;
+/** @type {Map<string, Promise<void>>} */
+const tabPrefetchJobs = new Map();
+
+/** @param {string} tabId @returns {((path: string) => boolean) | null} */
+function matcherForTab(tabId) {
+  const id = String(tabId || "").trim();
+  switch (id) {
+    case "time":
+      return (p) => p.startsWith("/toolbaricons/time-task-picker/");
+    case "diary":
+      return (p) => p.startsWith("/diary-tr-icons/");
+    case "calendar":
+    case "schedulecalendar":
+      return (p) =>
+        p.startsWith("/todo-card-icons/") ||
+        p.startsWith("/todo-tab-icons/") ||
+        p.startsWith("/toolbaricons/calendar") ||
+        p.startsWith("/toolbaricons/menu-schedule") ||
+        p.startsWith("/toolbaricons/menu-todo");
+    case "dream":
+      return (p) =>
+        p.startsWith("/retrospect-kpi/") ||
+        p.startsWith("/toolbaricons/menu-dream");
+    case "health":
+      return (p) =>
+        p.startsWith("/retrospect-kpi/") ||
+        p.startsWith("/toolbaricons/menu-health");
+    case "happiness":
+      return (p) =>
+        p.startsWith("/retrospect-kpi/") ||
+        p.startsWith("/toolbaricons/menu-happiness");
+    case "sideincome":
+      return (p) =>
+        p.startsWith("/retrospect-kpi/") ||
+        p.startsWith("/toolbaricons/menu-sideincome");
+    case "workschedule":
+      return (p) => p.startsWith("/toolbaricons/menu-schedule");
+    case "idea":
+      return (p) => p.startsWith("/toolbaricons/menu-account");
+    case "home":
+      return null;
+    default:
+      return null;
+  }
 }
 
 function scheduleIdle(fn) {
   if (typeof requestIdleCallback === "function") {
-    requestIdleCallback(fn, { timeout: 4000 });
+    requestIdleCallback(fn, { timeout: 3000 });
     return;
   }
-  setTimeout(fn, 150);
+  setTimeout(fn, 120);
+}
+
+function prefetchPath(path) {
+  if (!path || prefetchedPaths.has(path)) return;
+  prefetchedPaths.add(path);
+  const img = new Image();
+  img.decoding = "async";
+  img.src = path;
 }
 
 function prefetchPathsChunked(paths, startIndex = 0) {
   const list = Array.isArray(paths) ? paths : [];
   let i = startIndex;
   const end = Math.min(i + CHUNK_SIZE, list.length);
-  for (; i < end; i++) {
-    const img = new Image();
-    img.decoding = "async";
-    img.src = list[i];
-  }
+  for (; i < end; i++) prefetchPath(list[i]);
   if (i < list.length) {
     scheduleIdle(() => prefetchPathsChunked(list, i));
   }
@@ -49,18 +95,42 @@ const CRITICAL_HOME_ICON_PATHS = [
   "/toolbaricons/caret-left-circle.svg",
 ];
 
+export function getAllAppIconPrefetchPaths() {
+  return appIconPrefetchPaths;
+}
+
 export function prefetchCriticalAppIconAssets() {
   for (const path of CRITICAL_HOME_ICON_PATHS) {
-    const img = new Image();
-    img.decoding = "async";
-    img.src = path;
+    prefetchPath(path);
   }
 }
 
-/** 전체 목록 — idle 에서 청크 단위(메인 프레임 블로킹 방지) */
+/** @param {string} tabId */
+export function prefetchIconsForTab(tabId) {
+  const id = String(tabId || "").trim();
+  if (!id || id === "home") return Promise.resolve();
+  const existing = tabPrefetchJobs.get(id);
+  if (existing) return existing;
+
+  const match = matcherForTab(id);
+  if (!match) {
+    const done = Promise.resolve();
+    tabPrefetchJobs.set(id, done);
+    return done;
+  }
+
+  const paths = appIconPrefetchPaths.filter((p) => match(p));
+  const job = new Promise((resolve) => {
+    scheduleIdle(() => {
+      prefetchPathsChunked(paths);
+      resolve();
+    });
+  });
+  tabPrefetchJobs.set(id, job);
+  return job;
+}
+
+/** @deprecated 기동 시 전량 prefetch — 사용 금지. 호환용으로 critical 만 */
 export function prefetchAppIconAssets() {
-  if (prefetchScheduled) return;
-  prefetchScheduled = true;
   prefetchCriticalAppIconAssets();
-  scheduleIdle(() => prefetchPathsChunked(appIconPrefetchPaths));
 }
