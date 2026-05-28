@@ -45,10 +45,6 @@ body.lp-top-safe-chrome-navy.lp-app-bg {
   );
 }
 
-html.lp-top-safe-chrome-navy.lp-app-bg #signin-page {
-  background-color: #1e4d7b;
-}
-
 html.lp-auth-gate-chrome.lp-app-bg,
 body.lp-auth-gate-chrome.lp-app-bg {
   background-color: #1e4d7b;
@@ -89,6 +85,13 @@ body {
   min-height: 0;
   overflow: hidden;
   overscroll-behavior: none;
+  /* Android: theme-color 네이비와 본문 경계선(흰 띠) 방지 — 오늘 탭은 html 클래스와 함께 네이비 */
+  background-color: #fff;
+}
+
+html.lp-top-safe-chrome-navy.lp-app-bg #signin-page,
+html.lp-auth-gate-chrome.lp-app-bg #signin-page {
+  background-color: #1e4d7b;
 }
 
 /**

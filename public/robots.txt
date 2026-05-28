@@ -2,4 +2,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://organismplanner.com/sitemap.xml
+Sitemap: https://timeisprice.com/sitemap.xml

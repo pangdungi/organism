@@ -1,0 +1,117 @@
+.lp-pwa-install-root--login {
+  width: 100%;
+  max-width: 22rem;
+  margin: 0.85rem auto 0;
+  padding: 0 1rem;
+  box-sizing: border-box;
+}
+
+.lp-pwa-install-root--app {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
+  z-index: 2500;
+  margin: 0;
+  padding: 0 0.75rem 0.35rem;
+  pointer-events: none;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.lp-pwa-install-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 0.75rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+}
+
+.lp-pwa-install-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.lp-pwa-install-modal__panel {
+  position: relative;
+  width: 100%;
+  max-width: 22rem;
+  z-index: 1;
+}
+
+body.lp-pwa-install-modal-open {
+  overflow: hidden;
+}
+
+.lp-pwa-install-root--app .lp-pwa-install-card {
+  pointer-events: auto;
+}
+
+.lp-pwa-install-card {
+  border-radius: 0.75rem;
+  border: 1px solid rgba(30, 77, 123, 0.18);
+  background: rgba(255, 255, 255, 0.92);
+  padding: 0.85rem 0.9rem;
+  box-shadow: 0 0.35rem 1rem rgba(30, 77, 123, 0.08);
+}
+
+.lp-pwa-install-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #1e4d7b;
+}
+
+.lp-pwa-install-desc {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #475569;
+}
+
+.lp-pwa-install-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.65rem;
+}
+
+.lp-pwa-install-btn {
+  flex: 1 1 auto;
+  min-height: 2.25rem;
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lp-pwa-install-btn--primary {
+  border: none;
+  background: #1e4d7b;
+  color: #fff;
+}
+
+.lp-pwa-install-btn--ghost {
+  border: 1px solid rgba(100, 116, 139, 0.35);
+  background: transparent;
+  color: #64748b;
+}
+
+.idea-pwa-install-btn {
+  border: 1px solid rgba(30, 77, 123, 0.35);
+  background: #fff;
+  color: #1e4d7b;
+  border-radius: 0.5rem;
+  min-height: 2.125rem;
+  padding: 0 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}

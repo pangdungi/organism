@@ -8,6 +8,7 @@ import "./styles/calendar.css";
 import "./styles/stamp-calendar.css";
 import "./styles/todo-list.css";
 import "./styles/kpi-dream.css";
+import "./styles/lp-pwa-install.css";
 import { showOnly } from "./pages.js";
 import {
   login,
@@ -62,6 +63,7 @@ import {
   lpEnterAppDebugSummary,
 } from "./utils/lpEnterAppDebug.js";
 import { initLpShellStuckGuard, runLpShellVisibilityGuard } from "./utils/lpShellRecovery.js";
+import { initLpPwaInstall, refreshLpPwaInstall } from "./utils/lpPwaInstall.js";
 
 async function signOutForSubscriptionExpired() {
   window.alert(SUBSCRIPTION_EXPIRED_MESSAGE);
@@ -190,6 +192,7 @@ async function enterAuthenticatedApp(opts = {}) {
   if (screen?.querySelector(".app-page")) {
     lpAppMounted = true;
     showOnly("signin");
+    refreshLpPwaInstall();
     void getSupabaseSession().then(({ data: { session } }) => {
       markTabBootAuthUid(session?.user?.id);
     });
@@ -227,6 +230,7 @@ async function enterAuthenticatedApp(opts = {}) {
       finishStep("시간기록 저장소 준비");
       await mountApp(screen);
       finishStep("메인 화면 조립(mountApp)");
+      refreshLpPwaInstall();
       const {
         data: { session: bootSession },
       } = await getSupabaseSession();
@@ -307,6 +311,7 @@ function init() {
 
   initOfflineAppGate();
   initLpAppShellViewportLock();
+  initLpPwaInstall();
 
   applyAppFont();
   applyTimeCategoryColors();

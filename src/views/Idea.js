@@ -15,6 +15,7 @@ import {
 } from "../utils/appUiFont.js";
 import { buildModalSimpleSelect } from "../utils/todoModalSimpleSelect.js";
 import { showToast } from "../utils/showToast.js";
+import { showLpPwaInstallHelp } from "../utils/lpPwaInstall.js";
 
 export { USER_HOURLY_RATE_KEY, applyAppFont };
 
@@ -85,6 +86,10 @@ export function render() {
         <span class="idea-form-label" id="idea-app-font-label">화면 글꼴</span>
         <div class="idea-app-font-dropdown-slot" id="idea-app-font-dropdown-slot"></div>
       </div>
+      <div class="idea-basic-row idea-pwa-install-row" id="idea-pwa-install-row" hidden>
+        <span class="idea-form-label">앱 설치</span>
+        <button type="button" class="idea-pwa-install-btn" id="idea-pwa-install-btn">설치 방법 보기</button>
+      </div>
     </div>
   `;
   grid.appendChild(basicSettingsWidget);
@@ -103,6 +108,21 @@ export function render() {
     window.addEventListener(
       "lp-app-font-changed",
       () => fontDd._setValue?.(getStoredAppFontId()),
+      { signal: tabAbort.signal },
+    );
+  }
+
+  const pwaRow = basicSettingsWidget.querySelector("#idea-pwa-install-row");
+  const pwaBtn = basicSettingsWidget.querySelector("#idea-pwa-install-btn");
+  const inStandalone =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.matchMedia("(display-mode: fullscreen)").matches ||
+    /** @type {Navigator & { standalone?: boolean }} */ (navigator).standalone;
+  if (pwaRow && mobileViewport && !inStandalone) {
+    pwaRow.hidden = false;
+    pwaBtn?.addEventListener(
+      "click",
+      () => showLpPwaInstallHelp(),
       { signal: tabAbort.signal },
     );
   }

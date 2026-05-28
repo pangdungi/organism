@@ -7,18 +7,38 @@
 const CLASS = "lp-top-safe-chrome-navy";
 /** 로그인·비번재설정: html/body 전체 네이비 (그라데이션 흰 하단 제거) */
 const GATE_CLASS = "lp-auth-gate-chrome";
+const NAVY = "#1e4d7b";
+const WHITE = "#ffffff";
 
 let loginGateVisible = false;
 let lastTabId = "";
 
+/** Android Chrome·PWA: 상태줄 색은 CSS가 아니라 theme-color 메타로만 칠해짐 */
+function syncThemeColorMeta(navyTop) {
+  const color = navyTop ? NAVY : WHITE;
+  try {
+    let meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.setAttribute("name", "theme-color");
+      document.head.appendChild(meta);
+    }
+    if (meta.getAttribute("content") !== color) {
+      meta.setAttribute("content", color);
+    }
+  } catch (_) {}
+}
+
 function paint() {
   const gate = loginGateVisible;
   const navyTopTab = lastTabId === "home";
+  const navyTop = gate || navyTopTab;
   try {
     document.documentElement.classList.toggle(GATE_CLASS, gate);
     document.documentElement.classList.toggle(CLASS, !gate && navyTopTab);
     document.body?.classList.toggle(GATE_CLASS, gate);
     document.body?.classList.toggle(CLASS, !gate && navyTopTab);
+    syncThemeColorMeta(navyTop);
   } catch (_) {}
 }
 
