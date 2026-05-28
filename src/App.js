@@ -14,7 +14,6 @@ import {
   render as renderTime,
   teardownDetachedTimeLedgerTaskLogBridge,
 } from "./views/Time.js";
-import { render as renderWorkSchedule } from "./views/WorkSchedule.js";
 import { render as renderDream } from "./views/Dream.js";
 import { render as renderSideincome } from "./views/Sideincome.js";
 import { render as renderHappiness } from "./views/Happiness.js";
@@ -64,7 +63,6 @@ import { pullUserPrefsFromSupabase } from "./utils/userHourlySync.js";
 import { initSupabaseRealtimeSync } from "./utils/supabaseRealtimeSync.js";
 import { printSyncWatchHelp } from "./utils/syncWatchLog.js";
 import { getTabSyncCounts, logTabSync } from "./utils/lpTabSyncDebug.js";
-import { hydrateWorkScheduleFromCloud } from "./utils/workScheduleSupabase.js";
 import { logLpRender, logLpRenderStack } from "./utils/lpRenderDebugLog.js";
 import { initDomPulseDebug } from "./utils/domPulseDebug.js";
 import { initMobileVisualViewportKeyboardInset } from "./utils/mobileViewportKeyboard.js";
@@ -106,14 +104,6 @@ const TABS = [
     sidebarOrder: 2,
   },
   {
-    id: "workschedule",
-    label: "스탬프 캘린더",
-    mobileLabel: "스탬프 캘린더",
-    icon: "/toolbaricons/menu-stamp.png",
-    sidebarSection: "main",
-    sidebarOrder: 3,
-  },
-  {
     id: "dream",
     label: "꿈",
     icon: "/toolbaricons/menu-dream.png",
@@ -147,7 +137,6 @@ const TABS = [
 const HOME_MENU_TAB_ORDER = [
   "time",
   "schedulecalendar",
-  "workschedule",
   "dream",
   "sideincome",
   "health",
@@ -168,11 +157,6 @@ function tabMetaById(tabId) {
 
 const RENDERERS = {
   time: renderTime,
-  workschedule: () =>
-    typeof window !== "undefined" &&
-    window.matchMedia("(max-width: 48rem)").matches
-      ? renderWorkSchedule({ mobile: true })
-      : renderWorkSchedule(),
   schedulecalendar: renderMobileScheduleCalendar,
   dream: renderDream,
   sideincome: renderSideincome,
@@ -226,6 +210,7 @@ function applyPersistedTabIdFromSessionStorage() {
       return "time";
     }
     if (tabId === "calendar") return "schedulecalendar";
+    if (tabId === "workschedule") return "schedulecalendar";
     return tabId;
   };
   try {
@@ -314,9 +299,6 @@ async function pullDataForActiveTab(tabId, opts = {}) {
     case "happiness":
     case "sideincome":
       return await pullKpiTabFromCloud(tabId);
-    case "workschedule":
-      await hydrateWorkScheduleFromCloud();
-      break;
     case "idea":
       await pullUserPrefsFromSupabase().catch(() => {});
       break;
@@ -583,10 +565,6 @@ export async function mountApp(container) {
           targetTabId === "sideincome"
         ) {
           kpiSoftRefreshAfterPull(targetTabId, pullResult);
-        } else if (targetTabId === "workschedule") {
-          try {
-            window.__lpWorkScheduleSoftRefresh?.();
-          } catch (_) {}
         } else {
           renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
         }
@@ -950,10 +928,6 @@ export async function mountApp(container) {
         bootTabId === "sideincome"
       ) {
         kpiSoftRefreshAfterPull(bootTabId, pullResult);
-      } else if (bootTabId === "workschedule") {
-        try {
-          window.__lpWorkScheduleSoftRefresh?.();
-        } catch (_) {}
       } else {
         renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
       }

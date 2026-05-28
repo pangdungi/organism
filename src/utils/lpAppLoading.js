@@ -75,7 +75,6 @@ export function tabLoadingMessage(tabId) {
     health: "건강 KPI 불러오는 중…",
     happiness: "행복 KPI 불러오는 중…",
     sideincome: "부수입 KPI 불러오는 중…",
-    workschedule: "근무표 불러오는 중…",
     idea: "계정 설정 불러오는 중…",
     admin: "관리 화면 불러오는 중…",
   };

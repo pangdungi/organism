@@ -42,8 +42,6 @@ function matcherForTab(tabId) {
       return (p) =>
         p.startsWith("/retrospect-kpi/") ||
         p.startsWith("/toolbaricons/menu-sideincome");
-    case "workschedule":
-      return (p) => p.startsWith("/toolbaricons/menu-schedule");
     case "idea":
       return (p) => p.startsWith("/toolbaricons/menu-account");
     case "home":

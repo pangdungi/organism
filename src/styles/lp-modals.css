@@ -2684,7 +2684,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   }
 }
 
-/* 모바일·좁은 화면: 모달을 상단부터 (내용이 잘 보이도록) */
+/* 모바일·좁은 화면: safe-area 여백 + 화면 정중앙 */
 @media (max-width: 48rem) {
   .time-task-setup-modal,
   .todo-list-modal,
@@ -2696,8 +2696,11 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   .time-task-log-expense-inner-modal,
   [data-legacy~="time-task-log-todo-inner-modal"],
   [data-legacy~="time-task-log-expense-inner-modal"] {
-    align-items: flex-start;
+    align-items: center;
+    justify-content: center;
     padding-top: max(1rem, env(safe-area-inset-top, 0px));
     padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
   }
 }
