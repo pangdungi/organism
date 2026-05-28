@@ -4,7 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
     <!-- Android 상태줄: JS(syncLpHomeTimeSafeTopChrome)가 로그인·오늘=네이비 / 그 외=흰색으로 갱신 -->
-    <meta name="theme-color" content="#1e4d7b" />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#1e4d7b" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1e4d7b" media="(prefers-color-scheme: dark)" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <!-- translucent + viewport-fit=cover: 세로 세이프는 .app-main padding-top + 셸 동일 배경 -->
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -37,7 +39,7 @@
     />
     <title>Time is Price</title>
     <!-- manifest 캐시로 예전 앱 이름이 남는 경우 방지: 쿼리 변경 시 브라우저가 다시 받음 -->
-    <link rel="manifest" href="/manifest.json?v=timeisprice-brand-3" />
+    <link rel="manifest" href="/manifest.json?v=timeisprice-brand-4" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

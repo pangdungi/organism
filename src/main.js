@@ -30,6 +30,7 @@ import {
 } from "./App.js";
 import { initOfflineAppGate } from "./utils/offlineAppGate.js";
 import { initLpAppShellViewportLock } from "./utils/lpAppShellViewport.js";
+import { initLpAndroidStatusBarChrome, bindLpAndroidStatusBarChromeListeners } from "./utils/syncLpHomeTimeSafeTopChrome.js";
 import { supabase } from "./supabase.js";
 import { getSupabaseSession } from "./utils/supabaseSession.js";
 import { applyAppFont } from "./utils/appUiFont.js";
@@ -334,6 +335,8 @@ function init() {
 
   initOfflineAppGate();
   initLpAppShellViewportLock();
+  initLpAndroidStatusBarChrome();
+  bindLpAndroidStatusBarChromeListeners();
   initLpPwaInstall();
 
   applyAppFont();

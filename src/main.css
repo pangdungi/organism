@@ -224,6 +224,40 @@ html.lp-auth-gate-chrome.lp-app-bg #signin-page {
   background-color: var(--lp-body-top-bg, var(--lp-shell-chrome-bg, #fff));
 }
 
+/**
+ * Android PWA: Chrome 이 상태줄 아래에서 WebView 를 시작(env inset≈0).
+ * safe padding 을 또 주면 상태줄·본문 사이 회색/흰 1px hairline 이 생김.
+ */
+html.lp-android {
+  color-scheme: light;
+}
+
+html.lp-android.lp-pwa-standalone.lp-android-no-top-inset .app-main {
+  padding-top: 0;
+}
+
+html.lp-android.lp-pwa-standalone.lp-android-no-top-inset .login-page.login-page--gate {
+  padding-top: 0;
+}
+
+/* Android: OS 상태줄·웹뷰 경계 scrim(1px) — theme-color 와 동일색으로 덮음 */
+html.lp-android.lp-app-bg::after {
+  content: "";
+  position: fixed;
+  top: max(0px, calc(env(safe-area-inset-top, 0px) - 1px));
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 3px;
+  background-color: var(--lp-shell-chrome-bg, #ffffff);
+  pointer-events: none;
+  z-index: 2147482000;
+}
+
+html.lp-android.lp-pwa-standalone.lp-android-no-top-inset.lp-app-bg::after {
+  top: 0;
+}
+
 .app-main > .app-tab-panel > :first-child {
   padding-top: 0.75rem;
   box-sizing: border-box;
