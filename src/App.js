@@ -80,7 +80,6 @@ import { ensureTimeLedgerStorageReady } from "./utils/timeLedgerEntriesModel.js"
 import {
   setLpTabPullPending,
   clearLpTabPullPending,
-  isLpTabPullPending,
 } from "./utils/lpTabSyncLoadingUi.js";
 
 /** 상위 탭 메타(아이콘·메뉴 런처 구역 순서) */
@@ -498,7 +497,7 @@ export async function mountApp(container) {
       void (async () => {
         const targetTabId = currentTabId;
         if (isKpiAppTabId(targetTabId)) setKpiTabPullPending(targetTabId);
-        else if (targetTabId === "home" || targetTabId === "time") {
+        else if (targetTabId === "time") {
           setLpTabPullPending(targetTabId);
         }
         /* 그 외 탭: 메뉴·사이드바로 시간가계부에 들어올 때는 항상 오늘 구간(세션 피커 초기화) 후 렌더 */
@@ -680,20 +679,6 @@ export async function mountApp(container) {
     balanceMeta.className = "app-home-menu-balance-meta";
 
     function paintHomeMenuBalance() {
-      if (isLpTabPullPending("home")) {
-        balanceAmount.className =
-          "app-home-menu-balance-amount app-home-menu-balance-amount--loading";
-        balanceAmount.setAttribute("aria-busy", "true");
-        balanceAmount.setAttribute("aria-label", "오늘의 시간 가치 불러오는 중");
-        balanceAmount.replaceChildren();
-        const loadingText = document.createElement("span");
-        loadingText.className = "app-home-menu-balance-loading-text";
-        loadingText.textContent = "불러오는 중…";
-        balanceAmount.appendChild(loadingText);
-        balanceMeta.textContent = "오늘 시간 기록을 가져오고 있어요";
-        card.classList.add("app-home-menu-launcher-card--syncing");
-        return;
-      }
       card.classList.remove("app-home-menu-launcher-card--syncing");
       balanceAmount.className = "app-home-menu-balance-amount";
       balanceAmount.removeAttribute("aria-busy");
@@ -995,7 +980,7 @@ export async function mountApp(container) {
   container.appendChild(appPage);
   const bootTabIdForRender = currentTabId;
   if (isKpiAppTabId(bootTabIdForRender)) setKpiTabPullPending(bootTabIdForRender);
-  else if (bootTabIdForRender === "home" || bootTabIdForRender === "time") {
+  else if (bootTabIdForRender === "time") {
     setLpTabPullPending(bootTabIdForRender);
   }
   if (bootTabIdForRender === "time") {
@@ -1019,7 +1004,8 @@ export async function mountApp(container) {
     }
     let pullResult;
     try {
-      await ensureTimeLedgerStorageReady();
+      /* IDB 전체 복구는 백그라운드 — 홈은 로컬 미러로 즉시 표시, pull 은 오늘·시급만 */
+      void ensureTimeLedgerStorageReady();
       const [, pr] = await Promise.all([
         syncAdminMenuVisibility(),
         pullDataForActiveTab(bootTabId, { fromBoot: true }),
@@ -1058,8 +1044,7 @@ export async function mountApp(container) {
     ) {
       kpiSoftRefreshAfterPull(bootTabId, pullResult);
     } else if (bootTabId === "home") {
-      clearLpTabPullPending("home");
-      /* 메뉴 런처: 시간기록 pull 후 로컬 캐시가 채워지므로 잔액만 소프트 갱신(두 번째 renderMain은 아이콘 깜빡임 유발) */
+      /* 메뉴 런처: 로컬 캐시로 먼저 그린 뒤 pull 완료 시 잔액만 소프트 갱신 */
       try {
         await syncAdminMenuVisibility();
       } catch (_) {}

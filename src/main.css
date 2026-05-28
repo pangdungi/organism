@@ -520,14 +520,6 @@ html.lp-auth-gate-chrome.lp-app-bg #signin-page {
   }
 }
 
-.app-home-menu-launcher-card--syncing {
-  pointer-events: none;
-}
-
-.app-home-menu-launcher-card--syncing .app-home-menu-launcher-btn {
-  opacity: 0.72;
-}
-
 .lp-tab-sync-loading.dream-kpi-map-sync-loading {
   display: flex;
   flex-direction: column;
