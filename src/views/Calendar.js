@@ -3375,15 +3375,6 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
 
   let dayOffset = 0;
   /** Date#getDay() 용 (0=일) — 네비 날짜 옆 요일 표기 */
-  const NAV_WEEKDAYS_EN_SUN0 = [
-    "sun",
-    "mon",
-    "tue",
-    "wed",
-    "thu",
-    "fri",
-    "sat",
-  ];
   const NAV_WEEKDAYS_SUN0 = ["일", "월", "화", "수", "목", "금", "토"];
 
   /* 1번 레이아웃: 탭을 최상단 전체 영역에 배치 */
@@ -3434,9 +3425,8 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
     const m = targetDate.getMonth() + 1;
     const d = targetDate.getDate();
     const wKo = NAV_WEEKDAYS_SUN0[targetDate.getDay()] || "";
-    const wEn = NAV_WEEKDAYS_EN_SUN0[targetDate.getDay()] || "";
     const mdPart = `${m}/${d}`;
-    const dowPart = `(${wEn})`;
+    const dowPart = wKo ? `(${wKo})` : "";
 
     const dateFieldEl = lpCalendarNavQ(
       nav,

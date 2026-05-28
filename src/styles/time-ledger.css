@@ -447,7 +447,7 @@
   background: #1d4ed8;
 }
 [data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-day-overview-bar-seg--other"] {
-  background: #3a6ea8;
+  background: #2e9e5e;
 }
 
 /* 시간가계부 — 타임라인/타임박스 보기 (시간레포트 DAY·MONTH 세그먼트와 동일 클래스) */
@@ -584,10 +584,10 @@
 
 .time-ledger-day-timebox-matrix-cell--other,
 [data-legacy~="time-ledger-view"] .time-ledger-day-timebox-matrix-cell--other {
-  background: #edf6fc;
-  border-color: #c8dcf0;
+  background: #e8f8ef;
+  border-color: #e8f8ef;
   border-style: solid;
-  color: #1e4d7b;
+  color: #2e9e5e;
 }
 
 .time-ledger-day-timebox-matrix-cell--labeled,

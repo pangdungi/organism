@@ -26,10 +26,10 @@
   --cal-missed-surface: #f0f4fa;
   --cal-missed-border: rgba(58, 110, 168, 0.24);
   --cal-missed-text: rgba(30, 77, 123, 0.48);
-  /** 생산성 「그 외」 — 녹색 대신 스카이 블루 */
-  --cal-other-surface: #edf6fc;
-  --cal-other-border: #c8dcf0;
-  --cal-other-text: #1e4d7b;
+  /** 생산성 「그 외」(수면·근무 등) — 과제 칸·타임박스 전용 녹색 */
+  --cal-other-surface: #e8f8ef;
+  --cal-other-border: #e8f8ef;
+  --cal-other-text: #2e9e5e;
   --cal-radius: 0;
   --cal-cell-pad: 0.35rem;
   --cal-weekday-pad-y: 0.45rem;
