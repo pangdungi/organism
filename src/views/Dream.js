@@ -1396,7 +1396,7 @@ export function render() {
     const segBar = document.createElement("div");
     segBar.className = "dream-kpi-bottom-seg-bar";
     segBar.setAttribute("role", "tablist");
-    segBar.setAttribute("aria-label", "로그·할 일·매일 할 일 전환");
+    segBar.setAttribute("aria-label", "할 일·매일 할 일·로그 전환");
 
     const btnSegLog = document.createElement("button");
     btnSegLog.type = "button";
@@ -1419,9 +1419,9 @@ export function render() {
       btnSegDaily.setAttribute("role", "tab");
     }
 
-    segBar.appendChild(btnSegLog);
     segBar.appendChild(btnSegTodo);
     if (btnSegDaily) segBar.appendChild(btnSegDaily);
+    segBar.appendChild(btnSegLog);
 
     const panelLogSeg = document.createElement("div");
     panelLogSeg.className =

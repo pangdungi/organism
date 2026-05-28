@@ -1,4 +1,4 @@
-/** KPI 카드 확장 영역 — 로그 / 할 일 / 매일(습관 KPI일 때만) 단일 패널 토글 */
+/** KPI 카드 확장 영역 — 할 일 / 매일(습관 KPI일 때만) / 로그 단일 패널 토글 */
 
 export const KPI_BOTTOM_TAB_LOG = "log";
 export const KPI_BOTTOM_TAB_TODO = "todo";
