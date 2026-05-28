@@ -62,6 +62,10 @@ import {
   HEALTH_GOAL_EDIT_PENCIL_HTML,
 } from "../utils/kpiTabNameEditIcon.js";
 import { kpiCardHeadHtml, wireKpiCardIconsIn } from "../utils/kpiCardIcon.js";
+import {
+  setupKpiCategoryHeaderIcon,
+  setKpiCategoryHeaderIconVisible,
+} from "../utils/kpiCategoryHeaderIcon.js";
 import { sortKpiLogsNewestFirst, getLatestKpiLogWithExplicitValue } from "../utils/kpiLogsSort.js";
 import {
   deletedRefsKpiTodosLen,
@@ -284,6 +288,7 @@ export function render() {
   title.className = "dream-view-title";
   title.textContent = "건강";
   titleRow.appendChild(title);
+  setupKpiCategoryHeaderIcon(titleRow, "health");
   header.appendChild(label);
   header.appendChild(titleRow);
   el.appendChild(header);
@@ -354,6 +359,7 @@ export function render() {
     } else {
       title.textContent = "건강";
     }
+    setKpiCategoryHeaderIconVisible(titleRow, healthViewScreen === "goals");
     syncHealthFooterBackLabel();
   }
 

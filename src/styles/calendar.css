@@ -1322,24 +1322,22 @@
   white-space: normal;
   overflow-wrap: break-word;
   word-break: break-word;
-  display: flex;
-  align-items: flex-start;
-  gap: 0.18rem;
 }
 
-.calendar-monthly-span-bar-check {
-  width: 0.85rem;
-  height: 0.85rem;
-  flex-shrink: 0;
-  margin-top: 0.02rem;
-  background: url("/todo-card-icons/check-done.png") center / contain no-repeat;
+.calendar-task-done-mark {
+  display: inline;
+  font-weight: 700;
+  opacity: 0.72;
+  user-select: none;
 }
 
 .calendar-monthly-span-bar-text {
-  display: block;
+  display: inline;
   pointer-events: none;
-  flex: 1;
-  min-width: 0;
+}
+
+.calendar-monthly-span-bar.is-past .calendar-task-done-mark {
+  opacity: 0.55;
 }
 
 .calendar-monthly-span-bar--todo,
@@ -1362,13 +1360,6 @@
 .calendar-monthly-span-bar.is-past,
 .calendar-monthly-span-bar.is-past .calendar-monthly-span-bar-text {
   color: rgba(30, 61, 93, 0.58);
-}
-
-.calendar-monthly-span-bar.is-past .calendar-monthly-span-bar-check {
-  background: none;
-  background-color: rgba(30, 61, 93, 0.58);
-  -webkit-mask: url("/todo-card-icons/check-done.png") center / contain no-repeat;
-  mask: url("/todo-card-icons/check-done.png") center / contain no-repeat;
 }
 
 .calendar-monthly-span-bar.is-past.calendar-monthly-span-bar--todo {
@@ -2324,9 +2315,6 @@
 }
 
 .calendar-day-expand-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.35rem;
   padding: 0.5rem 0.55rem;
   border: 1px solid var(--lp-modal-border);
   border-radius: 8px;
@@ -2337,24 +2325,14 @@
     border-color 0.1s ease;
 }
 
-.calendar-day-expand-check {
-  width: 1.1rem;
-  height: 1.1rem;
-  flex-shrink: 0;
-  margin-top: 0.05rem;
-  background: url("/todo-card-icons/check-done.png") center / contain no-repeat;
-}
-
 .calendar-day-expand-item.is-past .calendar-day-expand-text,
-.calendar-day-expand-item.is-past .calendar-day-expand-time {
+.calendar-day-expand-item.is-past .calendar-day-expand-time,
+.calendar-day-expand-item.is-past .calendar-task-done-mark {
   color: rgba(30, 61, 93, 0.58);
 }
 
-.calendar-day-expand-item.is-past .calendar-day-expand-check {
-  background: none;
-  background-color: rgba(30, 61, 93, 0.58);
-  -webkit-mask: url("/todo-card-icons/check-done.png") center / contain no-repeat;
-  mask: url("/todo-card-icons/check-done.png") center / contain no-repeat;
+.calendar-day-expand-item.is-past .calendar-task-done-mark {
+  opacity: 0.55;
 }
 
 .calendar-day-expand-item:hover {

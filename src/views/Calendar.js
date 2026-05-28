@@ -1045,11 +1045,14 @@ function lpOpenCalendarTaskEdit(barModel, options = {}) {
   openCalendarTaskEditFromBarModel(b, options);
 }
 
-function lpBuildCalendarSpanBarInnerHtml(name, done) {
-  const check = done
-    ? `<span class="calendar-monthly-span-bar-check" aria-hidden="true"></span>`
+function calendarTaskDoneMarkHtml(done) {
+  return done
+    ? `<span class="calendar-task-done-mark" aria-hidden="true">✓ </span>`
     : "";
-  return `${check}<span class="calendar-monthly-span-bar-text">${escapeHtml(name || "")}</span>`;
+}
+
+function lpBuildCalendarSpanBarInnerHtml(name, done) {
+  return `<span class="calendar-monthly-span-bar-text">${calendarTaskDoneMarkHtml(!!done)}${escapeHtml(name || "")}</span>`;
 }
 
 function lpApplyCalendarSpanBarDonePastClasses(bar, b, todayYmd) {
@@ -1816,16 +1819,13 @@ function createCalendarDayExpandBubble(
   const taskItems = tasks
     .map((t) => {
       const isPast = isPastCalendarTask(t, todayYmd);
-      const checkHtml = t.done
-        ? `<span class="calendar-day-expand-check" aria-hidden="true"></span>`
-        : "";
       const pastCls = isPast ? " is-past" : "";
       const doneCls = t.done ? " is-completed" : "";
+      const nameHtml = `${calendarTaskDoneMarkHtml(!!t.done)}${escapeHtml(t.name || "")}`;
       return `
     <div class="calendar-day-expand-item${doneCls}${pastCls}" data-done="${!!t.done}">
-      ${checkHtml}
       <div class="calendar-day-expand-main">
-        <span class="calendar-day-expand-text">${escapeHtml(t.name || "")}</span>
+        <span class="calendar-day-expand-text">${nameHtml}</span>
         ${t.startTime || t.endTime ? `<span class="calendar-day-expand-time">${[t.startTime, t.endTime].filter(Boolean).join(" ~ ")}</span>` : ""}
       </div>
     </div>
