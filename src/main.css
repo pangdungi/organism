@@ -217,10 +217,10 @@ body {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: safe center;
   align-items: center;
   padding-top: 0.75rem;
-  padding-bottom: 0.75rem;
+  padding-bottom: max(1.25rem, calc(0.75rem + var(--lp-safe-bottom)));
 }
 
 .app-tab-panel {
@@ -331,7 +331,7 @@ body {
   isolation: isolate;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 0.15rem 0 0.5rem;
+  padding: 0.15rem 0 max(1rem, calc(0.5rem + var(--lp-safe-bottom)));
   background: #fff;
 }
 
@@ -370,20 +370,21 @@ body {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  justify-content: center;
+  justify-content: safe center;
   box-sizing: border-box;
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 0;
+  padding: 0 0 max(0.5rem, var(--lp-safe-bottom));
   background: transparent;
 }
 
 .app-home-menu-launcher-brand {
   box-sizing: border-box;
+  flex: 0 0 auto;
   width: 100%;
-  margin: 0 0 0.35rem;
-  padding: 0.35rem max(0.5rem, var(--lp-safe-left)) 0
+  margin: 0 0 1rem;
+  padding: 0.55rem max(0.5rem, var(--lp-safe-left)) 0
     max(0.5rem, var(--lp-safe-right));
   background: transparent;
   text-align: center;
@@ -394,9 +395,10 @@ body {
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
+  flex: 0 0 auto;
   width: 100%;
-  min-height: calc(clamp(12.5rem, 60vw, 17.5rem) + 0.75rem);
-  padding: 0.3rem 0 0.15rem;
+  min-height: calc(clamp(12.5rem, 60vw, 17.5rem) + 1.2rem);
+  padding: 0.55rem 0 0.35rem;
 }
 
 .app-home-menu-launcher-logo {
@@ -449,7 +451,8 @@ body {
   min-height: 0;
   width: 100%;
   box-sizing: border-box;
-  padding: 0 max(0.85rem, var(--lp-safe-left)) 0
+  padding: 0 max(0.85rem, var(--lp-safe-left))
+    max(0.85rem, calc(0.35rem + var(--lp-safe-bottom)))
     max(0.85rem, var(--lp-safe-right));
 }
 
