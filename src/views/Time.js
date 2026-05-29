@@ -5413,15 +5413,19 @@ export function render(opts = {}) {
           </div>
           <div data-legacy="time-task-log-field time-task-log-datetime-onerow">
             <div data-legacy="time-task-log-datetime-card lp-modal-datetime-card">
-              <div data-legacy="time-task-log-datetime-input-row time-task-log-datetime-main-row">
+              <div data-legacy="time-task-log-datetime-date-row">
                 <div data-legacy="time-task-log-date-native-wrap">
                   <input type="date" data-legacy="time-task-log-date-start" name="time-task-log-date" data-hide-delete-btn="true" data-use-native-mobile="true" aria-label="기록 날짜" />
                   <span data-legacy="time-task-log-date-overlay" aria-hidden="true"></span>
                 </div>
-                <span data-legacy="time-task-log-datetime-sep" aria-hidden="true">–</span>
+              </div>
+              <div data-legacy="time-task-log-datetime-time-row">
                 <input type="text" data-legacy="time-task-log-time-start" name="time-task-log-time-start" lang="en" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="--:--" maxlength="5" autocomplete="off" inputmode="numeric" pattern="[0-9]*" aria-label="시작 시각" />
                 <span data-legacy="time-task-log-datetime-sep" aria-hidden="true">–</span>
-                <input type="text" data-legacy="time-task-log-time-end" name="time-task-log-time-end" lang="en" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="--:--" maxlength="5" autocomplete="off" inputmode="numeric" pattern="[0-9]*" aria-label="마감 시각" />
+                <div data-legacy="time-task-log-datetime-wrap-end">
+                  <input type="text" data-legacy="time-task-log-time-end" name="time-task-log-time-end" lang="en" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="--:--" maxlength="5" autocomplete="off" inputmode="numeric" pattern="[0-9]*" aria-label="마감 시각" />
+                  <button type="button" class="time-task-log-date-clear" data-legacy="time-task-log-date-clear" aria-label="마감 시각 지우기" title="마감 시각 지우기" hidden><span aria-hidden="true">×</span></button>
+                </div>
               </div>
             </div>
             <p data-legacy="time-task-log-time-order-warning" hidden role="alert">마감시간은 시작시간보다 빠를 수 없습니다.</p>
@@ -5456,7 +5460,7 @@ export function render(opts = {}) {
               <input type="text" id="time-task-log-meal-detail" data-legacy="time-task-log-meal-detail-input time-task-log-memo-input" placeholder="무엇을 드셨는지 한 줄로 적어 주세요" autocomplete="off" />
             </div>
             <div data-legacy="time-task-log-field">
-              <textarea data-legacy="time-task-log-feedback time-task-log-memo-input" rows="3" placeholder="메모를 입력하세요"></textarea>
+              <textarea data-legacy="time-task-log-feedback time-task-log-memo-input" rows="2" placeholder="메모를 입력하세요"></textarea>
             </div>
           </div>
         </div>
@@ -5542,6 +5546,9 @@ export function render(opts = {}) {
   let taskLogEditTr = null;
   const taskLogEndWrap = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-datetime-wrap-end"]',
+  );
+  const taskLogTimeEndClearBtn = taskLogEndWrap?.querySelector(
+    ".time-task-log-date-clear",
   );
   const taskLogFeedbackInput = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-feedback"]',
@@ -5861,9 +5868,19 @@ export function render(opts = {}) {
     syncEndToHidden();
   }
 
+  let taskLogTimeEndInputFocused = false;
+
   function updateEndTimeClearVisibility() {
-    const hasValue = (taskLogEndInput.value || "").trim().length > 0;
-    if (taskLogEndWrap) lpTokenToggle(taskLogEndWrap, "has-value", hasValue);
+    const hasValue = (taskLogTimeEnd?.value || "").trim().length > 0;
+    const showClear = taskLogTimeEndInputFocused && hasValue;
+    if (taskLogEndWrap) lpTokenToggle(taskLogEndWrap, "has-value", showClear);
+    if (taskLogTimeEndClearBtn) taskLogTimeEndClearBtn.hidden = !showClear;
+  }
+
+  function clearTaskLogEndTime() {
+    if (taskLogTimeEnd) taskLogTimeEnd.value = "";
+    syncEndToHidden();
+    setTaskLogQuickAdjustActive(null);
   }
 
   const beforeInputTimeDigitsOnly = (e) => {
@@ -5973,7 +5990,10 @@ export function render(opts = {}) {
 
   taskLogTimeEnd?.addEventListener("change", syncEndToHidden);
   taskLogTimeEnd?.addEventListener("focusout", (ev) => {
+    if (ev.relatedTarget === taskLogTimeEndClearBtn) return;
     if (taskLogFocusOutTargetIsTimeAdjustBtn(ev)) return;
+    taskLogTimeEndInputFocused = false;
+    updateEndTimeClearVisibility();
     const preformatted =
       autoFormatDigitsToHhMm(taskLogTimeEnd.value) || taskLogTimeEnd.value;
     taskLogTimeEnd.value = normalizeHhMm(preformatted) || preformatted;
@@ -5982,6 +6002,7 @@ export function render(opts = {}) {
   taskLogTimeEnd?.addEventListener("beforeinput", beforeInputTimeDigitsOnly);
   taskLogTimeEnd?.addEventListener("input", () => {
     sanitizeTaskLogTimeField(taskLogTimeEnd);
+    updateEndTimeClearVisibility();
     updateTaskLogTimeOrderWarning();
   });
   taskLogTimeEnd?.addEventListener("compositionend", (ev) => {
@@ -5991,6 +6012,15 @@ export function render(opts = {}) {
   taskLogTimeEnd?.addEventListener("keydown", restrictToTimeChars);
   taskLogTimeEnd?.addEventListener("paste", filterPastedTime);
 
+  taskLogTimeEndClearBtn?.addEventListener("mousedown", (e) => {
+    if (e.button === 0) e.preventDefault();
+  });
+  taskLogTimeEndClearBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    clearTaskLogEndTime();
+  });
+
   let lastFocusedTimeField = "end";
   [taskLogTimeStart, taskLogDateStart].forEach((el) => {
     if (!el) return;
@@ -5999,6 +6029,8 @@ export function render(opts = {}) {
     });
   });
   taskLogTimeEnd?.addEventListener("focus", () => {
+    taskLogTimeEndInputFocused = true;
+    updateEndTimeClearVisibility();
     lastFocusedTimeField = "end";
   });
 

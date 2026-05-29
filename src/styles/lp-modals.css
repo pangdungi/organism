@@ -879,6 +879,50 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   [data-legacy~="lp-modal-datetime-card"] {
   margin-bottom: 0.35rem;
 }
+.time-task-log-datetime-card,
+[data-legacy~="time-task-log-datetime-card"] {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
+}
+.time-task-log-datetime-date-row,
+[data-legacy~="time-task-log-datetime-date-row"] {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+.time-task-log-datetime-time-row,
+[data-legacy~="time-task-log-datetime-time-row"] {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+}
+.time-task-log-datetime-wrap-end,
+[data-legacy~="time-task-log-datetime-wrap-end"] {
+  position: relative;
+  flex: 0 0 auto;
+  width: 8.2rem;
+  min-width: 8.2rem;
+  max-width: 8.2rem;
+}
+.time-task-log-datetime-wrap-end.has-value
+  [data-legacy~="time-task-log-time-end"] {
+  padding-right: calc(0.4rem + 1rem);
+}
+.time-task-log-datetime-time-row .time-task-log-datetime-sep,
+[data-legacy~="time-task-log-datetime-time-row"]
+  [data-legacy~="time-task-log-datetime-sep"] {
+  display: flex;
+  align-items: center;
+  color: #cbd5e1;
+  font-weight: 300;
+  user-select: none;
+  flex-shrink: 0;
+}
 .time-task-log-time-order-warning,
 [data-legacy~="time-task-log-time-order-warning"] {
   margin: 0 0 0.5rem;
@@ -952,6 +996,30 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 [data-legacy~="time-task-log-time-end"]:focus {
   border-color: rgba(30, 77, 123, 0.45);
   box-shadow: 0 0 0 2px rgba(30, 77, 123, 0.1);
+}
+/* 과제 기록·예상 일정 — 시작·마감 입력 동일 너비, 마감 X는 입력창 내부 */
+.time-task-log-datetime-time-row .time-task-log-time-start,
+.time-task-log-datetime-time-row .time-task-log-time-end,
+[data-legacy~="time-task-log-datetime-time-row"]
+  [data-legacy~="time-task-log-time-start"],
+[data-legacy~="time-task-log-datetime-time-row"]
+  [data-legacy~="time-task-log-time-end"],
+.time-task-log-datetime-wrap-end .time-task-log-time-end,
+.time-task-log-datetime-wrap-end [data-legacy~="time-task-log-time-end"],
+[data-legacy~="time-task-log-datetime-wrap-end"]
+  [data-legacy~="time-task-log-time-end"] {
+  width: 8.2rem;
+  min-width: 8.2rem;
+  max-width: 8.2rem;
+  box-sizing: border-box;
+}
+.time-task-log-datetime-wrap-end .time-task-log-date-clear,
+.time-task-log-datetime-wrap-end [data-legacy~="time-task-log-date-clear"] {
+  position: absolute;
+  right: 0.35rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
 }
 .time-task-log-date-native-wrap,
 [data-legacy~="time-task-log-date-native-wrap"] {

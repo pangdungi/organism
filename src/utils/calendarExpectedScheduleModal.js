@@ -239,8 +239,31 @@ function attachExpectedScheduleDatetimeUI(panel, ctx) {
     } else {
       taskLogEndInput.value = "";
     }
+    updateEndTimeClearVisibility();
     syncTaskLogDateOverlay();
     updateTaskLogTimeOrderWarning();
+  }
+
+  const taskLogEndWrap = panel.querySelector(
+    '[data-legacy~="time-task-log-datetime-wrap-end"]',
+  );
+  const taskLogTimeEndClearBtn = taskLogEndWrap?.querySelector(
+    ".time-task-log-date-clear",
+  );
+
+  let taskLogTimeEndInputFocused = false;
+
+  function updateEndTimeClearVisibility() {
+    const hasValue = (taskLogTimeEnd?.value || "").trim().length > 0;
+    const showClear = taskLogTimeEndInputFocused && hasValue;
+    if (taskLogEndWrap) lpTokenToggle(taskLogEndWrap, "has-value", showClear);
+    if (taskLogTimeEndClearBtn) taskLogTimeEndClearBtn.hidden = !showClear;
+  }
+
+  function clearTaskLogEndTime() {
+    if (taskLogTimeEnd) taskLogTimeEnd.value = "";
+    syncEndToHidden();
+    setTaskLogQuickAdjustActive(null);
   }
 
   const beforeInputTimeDigitsOnly = (e) => {
@@ -383,7 +406,10 @@ function attachExpectedScheduleDatetimeUI(panel, ctx) {
   taskLogTimeEnd?.addEventListener(
     "focusout",
     (ev) => {
+      if (ev.relatedTarget === taskLogTimeEndClearBtn) return;
       if (taskLogFocusOutTargetIsTimeAdjustBtn(ev)) return;
+      taskLogTimeEndInputFocused = false;
+      updateEndTimeClearVisibility();
       const preformatted =
         autoFormatDigitsToHhMm(taskLogTimeEnd.value) || taskLogTimeEnd.value;
       taskLogTimeEnd.value = normalizeHhMm(preformatted) || preformatted;
@@ -398,6 +424,7 @@ function attachExpectedScheduleDatetimeUI(panel, ctx) {
     "input",
     () => {
       sanitizeTaskLogTimeField(taskLogTimeEnd);
+      updateEndTimeClearVisibility();
       updateTaskLogTimeOrderWarning();
     },
     { signal },
@@ -415,6 +442,23 @@ function attachExpectedScheduleDatetimeUI(panel, ctx) {
   });
   taskLogTimeEnd?.addEventListener("paste", filterPastedTime, { signal });
 
+  taskLogTimeEndClearBtn?.addEventListener(
+    "mousedown",
+    (e) => {
+      if (e.button === 0) e.preventDefault();
+    },
+    { signal },
+  );
+  taskLogTimeEndClearBtn?.addEventListener(
+    "click",
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      clearTaskLogEndTime();
+    },
+    { signal },
+  );
+
   let lastFocusedTimeField = "end";
   [taskLogTimeStart, taskLogDateStart].forEach((el) => {
     if (!el) return;
@@ -425,6 +469,8 @@ function attachExpectedScheduleDatetimeUI(panel, ctx) {
   taskLogTimeEnd?.addEventListener(
     "focus",
     () => {
+      taskLogTimeEndInputFocused = true;
+      updateEndTimeClearVisibility();
       lastFocusedTimeField = "end";
     },
     { signal },
@@ -670,15 +716,19 @@ export function openCalendarExpectedScheduleModal(options) {
             </div>
             <div data-legacy="time-task-log-field time-task-log-datetime-onerow">
               <div data-legacy="time-task-log-datetime-card lp-modal-datetime-card">
-                <div data-legacy="time-task-log-datetime-input-row time-task-log-datetime-main-row">
+                <div data-legacy="time-task-log-datetime-date-row">
                   <div data-legacy="time-task-log-date-native-wrap">
                     <input type="date" data-legacy="time-task-log-date-start" data-hide-delete-btn="true" data-use-native-mobile="true" aria-label="기록 날짜" />
                     <span data-legacy="time-task-log-date-overlay" aria-hidden="true"></span>
                   </div>
-                  <span data-legacy="time-task-log-datetime-sep" aria-hidden="true">–</span>
+                </div>
+                <div data-legacy="time-task-log-datetime-time-row">
                   <input type="text" data-legacy="time-task-log-time-start" lang="en" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="--:--" maxlength="5" autocomplete="off" inputmode="numeric" pattern="[0-9]*" aria-label="시작 시각" />
                   <span data-legacy="time-task-log-datetime-sep" aria-hidden="true">–</span>
-                  <input type="text" data-legacy="time-task-log-time-end" lang="en" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="--:--" maxlength="5" autocomplete="off" inputmode="numeric" pattern="[0-9]*" aria-label="마감 시각" />
+                  <div data-legacy="time-task-log-datetime-wrap-end">
+                    <input type="text" data-legacy="time-task-log-time-end" lang="en" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="--:--" maxlength="5" autocomplete="off" inputmode="numeric" pattern="[0-9]*" aria-label="마감 시각" />
+                    <button type="button" class="time-task-log-date-clear" data-legacy="time-task-log-date-clear" aria-label="마감 시각 지우기" title="마감 시각 지우기" hidden><span aria-hidden="true">×</span></button>
+                  </div>
                 </div>
               </div>
               <p data-legacy="time-task-log-time-order-warning" hidden role="alert">마감시간은 시작시간보다 빠를 수 없습니다.</p>
@@ -701,7 +751,7 @@ export function openCalendarExpectedScheduleModal(options) {
             <span data-legacy="time-task-log-section-label time-task-log-memo-section-label">메모</span>
             <div data-legacy="time-task-log-memo-fields">
               <div data-legacy="time-task-log-field">
-                <textarea data-legacy="time-task-log-feedback time-task-log-memo-input" rows="3" placeholder="메모를 입력하세요"></textarea>
+                <textarea data-legacy="time-task-log-feedback time-task-log-memo-input" rows="2" placeholder="메모를 입력하세요"></textarea>
               </div>
             </div>
           </div>
