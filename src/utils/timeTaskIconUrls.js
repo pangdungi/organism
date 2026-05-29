@@ -41,6 +41,14 @@ const OTHER_CATEGORY_PICKER_PNG = {
   work: "work-new",
 };
 
+const PICKER_PNG_SET = new Set(Object.values(OTHER_CATEGORY_PICKER_PNG));
+
+/** 아이콘 선택 모달 — PNG(수면·근무) */
+const PICKER_PNG_EXTRAS = [
+  ["수면", OTHER_CATEGORY_PICKER_PNG.sleep, "sleep 수면하기"],
+  ["근무", OTHER_CATEGORY_PICKER_PNG.work, "work 근무하기"],
+];
+
 /** @param {string} pngBase */
 function pickerPngSrc(pngBase) {
   const name = String(pngBase || "").trim();
@@ -167,10 +175,7 @@ export function getTimeTaskIconSrcByKey(key) {
   }
   if (k.startsWith("png:")) {
     const name = k.slice(4).trim();
-    if (
-      name === OTHER_CATEGORY_PICKER_PNG.sleep ||
-      name === OTHER_CATEGORY_PICKER_PNG.work
-    ) {
+    if (PICKER_PNG_SET.has(name)) {
       return pickerPngSrc(name);
     }
     return "";
@@ -199,6 +204,10 @@ export function getTimeTaskListIconSrc(taskName, opts = {}) {
 function normalizeStoredPickerIconKey(iconKey) {
   const k = String(iconKey || "").trim();
   if (!k) return "";
+  if (k.startsWith("png:")) {
+    const name = k.slice(4).trim();
+    return PICKER_PNG_SET.has(name) ? `png:${name}` : "";
+  }
   if (k.startsWith("svg:")) {
     const fileName = resolvePickerSvgFileName(k.slice(4).trim());
     return fileName ? `svg:${fileName}` : "";
@@ -274,6 +283,14 @@ export function matchTimeTaskPickerIconSearch(searchText, query) {
 export function getTimeTaskPickableIcons() {
   /** @type {{ key: string, label: string, src: string, searchText: string }[]} */
   const out = [];
+  for (const [label, slug, searchExtra] of PICKER_PNG_EXTRAS) {
+    out.push({
+      key: `png:${slug}`,
+      label,
+      src: pickerPngSrc(slug),
+      searchText: `${label} ${slug} ${searchExtra}`.replace(/-/g, " "),
+    });
+  }
   for (const name of pickerSvgNames) {
     out.push({
       key: `svg:${name}`,
