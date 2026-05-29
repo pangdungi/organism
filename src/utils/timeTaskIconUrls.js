@@ -396,10 +396,20 @@ export function resolveTimeTaskIconKey(taskName, opts = {}) {
   return "";
 }
 
+/** KPI·생산 카테고리 기본 아이콘 — 메인 메뉴 손그림 SVG (`menu-home/*-new.svg`와 동일) */
+const PROD_CAT_SVG_SLUG = {
+  "prod-cat-dream": "prod-cat-dream-new",
+  "prod-cat-sideincome": "prod-cat-sideincome-new",
+  "prod-cat-happiness": "prod-cat-happiness-new",
+  "prod-cat-health": "prod-cat-health-new",
+};
+
 /** @param {string} slug 파일 베이스명(확장자 없음) */
 export function getTimeTaskIconSrcBySlug(slug) {
   const s = String(slug || "").trim();
   if (!s) return "";
+  const svgSlug = PROD_CAT_SVG_SLUG[s];
+  if (svgSlug) return `${BASE}/${svgSlug}.svg`;
   return `${BASE}/${s}.png`;
 }
 
