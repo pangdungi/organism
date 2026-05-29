@@ -4051,6 +4051,40 @@ function timeLedgerListRowIconSrc(rowData) {
   });
 }
 
+/** 과제 설정에서 iconKey만 바뀐 뒤 — renderAll 없이 기록 카드 아이콘만 갱신 */
+function patchTimeLedgerTaskIconsForTaskName(root, taskName) {
+  const name = String(taskName || "").trim();
+  if (!name || !root) return;
+  const iconSrc = timeLedgerListRowIconSrc({ taskName: name });
+  root.querySelectorAll(".time-ledger-mobile-card").forEach((card) => {
+    if (String(card._rowData?.taskName || "").trim() !== name) return;
+    const cell = card.querySelector(".time-ledger-usage-icon-cell");
+    if (!cell) return;
+    if (!iconSrc) {
+      cell.replaceChildren();
+      return;
+    }
+    let img = cell.querySelector("img");
+    if (!img) {
+      img = document.createElement("img");
+      img.alt = "";
+      img.loading = "lazy";
+      cell.appendChild(img);
+    }
+    if (img.getAttribute("src") !== iconSrc) img.setAttribute("src", iconSrc);
+  });
+}
+
+function refreshTimeLedgerTaskIconsFromOptions(root) {
+  if (!root) return;
+  const names = new Set();
+  root.querySelectorAll(".time-ledger-mobile-card").forEach((card) => {
+    const n = String(card._rowData?.taskName || "").trim();
+    if (n) names.add(n);
+  });
+  names.forEach((n) => patchTimeLedgerTaskIconsForTaskName(root, n));
+}
+
 /** 모바일 리스트 왼쪽 컬러바 — 기본 생산성 3색(테이블 막대·DEFAULT_TIME_CATEGORY_COLORS와 동일 톤) */
 function getProductivityBarColor(prod) {
   if (prod === "productive") return "#FFABAB";
@@ -7621,7 +7655,7 @@ export function render(opts = {}) {
     setupSubcatBar.style.display = "flex";
   }
 
-  function renderTaskSetupList() {
+  function renderTaskSetupList(opts = {}) {
     const allTasks = getFullTaskOptions();
     const mainTasksOnly = allTasks.filter(
       (t) => !(t.name || "").includes(" > "),
@@ -7674,7 +7708,7 @@ export function render(opts = {}) {
           iconKey: t.iconKey,
         });
         const iconBlock = iconSrc
-          ? `<span data-legacy="time-task-setup-item-icon-wrap"><img data-legacy="time-task-setup-item-icon" src="${iconSrc}" alt="" loading="eager" decoding="sync" /></span>`
+          ? `<span data-legacy="time-task-setup-item-icon-wrap"><img data-legacy="time-task-setup-item-icon" src="${iconSrc}" alt="" loading="lazy" decoding="async" /></span>`
           : "";
         const builtinBadge = isTimeTaskBuiltinTemplate(t)
           ? `<span data-legacy="lp-task-badge lp-task-badge--builtin" title="앱에서 제공하는 기본 과제입니다. 과제 설정에서 삭제할 수 없습니다.">기본</span>`
@@ -7710,10 +7744,66 @@ export function render(opts = {}) {
         container.appendChild(empty);
       }
     }
-    renderList(setupListAll, mainTasksOnly);
-    renderList(setupListProd, prodTasks);
-    renderList(setupListNonProd, nonProdTasks);
-    renderList(setupListOther, otherTasks);
+    if (opts.allTabs) {
+      renderList(setupListAll, mainTasksOnly);
+      renderList(setupListProd, prodTasks);
+      renderList(setupListNonProd, nonProdTasks);
+      renderList(setupListOther, otherTasks);
+    } else if (activeSetupTab === "productive") {
+      renderList(setupListProd, prodTasks);
+    } else if (activeSetupTab === "nonproductive") {
+      renderList(setupListNonProd, nonProdTasks);
+    } else if (activeSetupTab === "other") {
+      renderList(setupListOther, otherTasks);
+    } else {
+      renderList(setupListAll, mainTasksOnly);
+    }
+  }
+
+  function patchTaskSetupListIconForTaskName(taskName) {
+    const name = String(taskName || "").trim();
+    if (!name) return;
+    const opt = getTaskOptionByName(name);
+    if (!opt) return;
+    const iconSrc = getTimeTaskListIconSrc(name, {
+      category: opt.category,
+      productivity: opt.productivity,
+      iconKey: opt.iconKey,
+    });
+    taskSetupModal
+      .querySelectorAll('[data-legacy~="time-task-setup-item"]')
+      .forEach((row) => {
+        const nameEl = row.querySelector(
+          '[data-legacy~="time-task-setup-item-name"]',
+        );
+        if ((nameEl?.textContent || "").trim() !== name) return;
+        let wrap = row.querySelector(
+          '[data-legacy~="time-task-setup-item-icon-wrap"]',
+        );
+        if (!iconSrc) {
+          wrap?.remove();
+          return;
+        }
+        let img = row.querySelector('[data-legacy~="time-task-setup-item-icon"]');
+        if (!img) {
+          wrap = document.createElement("span");
+          wrap.setAttribute("data-legacy", "time-task-setup-item-icon-wrap");
+          img = document.createElement("img");
+          img.setAttribute("data-legacy", "time-task-setup-item-icon");
+          img.alt = "";
+          img.loading = "lazy";
+          img.decoding = "async";
+          wrap.appendChild(img);
+          row.insertBefore(wrap, row.firstChild);
+        }
+        if (img.getAttribute("src") !== iconSrc) img.setAttribute("src", iconSrc);
+      });
+  }
+
+  function clearTaskSetupListSelection() {
+    taskSetupModal
+      .querySelectorAll('[data-legacy~="time-task-setup-item--selected"]')
+      .forEach((row) => lpTokenRemove(row, "time-task-setup-item--selected"));
   }
 
   let selectedCategory = "";
@@ -7803,7 +7893,7 @@ export function render(opts = {}) {
     }
   }
 
-  function closeAddTaskModal() {
+  function closeAddTaskModal(opts = {}) {
     addTaskModal.hidden = true;
     setupListSelectedTaskName = "";
     setAddTaskModalFieldsLocked(false);
@@ -7811,6 +7901,13 @@ export function render(opts = {}) {
       addTaskDeleteBtn.disabled = false;
       addTaskDeleteBtn.title = "";
       addTaskDeleteBtn.setAttribute("aria-disabled", "false");
+    }
+    if (opts.skipSetupListRender) {
+      clearTaskSetupListSelection();
+      if (opts.patchedTaskName) {
+        patchTaskSetupListIconForTaskName(opts.patchedTaskName);
+      }
+      return;
     }
     renderTaskSetupList();
   }
@@ -7863,8 +7960,11 @@ export function render(opts = {}) {
     const iconKey = addTaskIconPicker.getSelectedKey();
     if (editName && isTaskIconOnlyEditLocked(getTaskOptionByName(editName))) {
       updateTaskOptionIconByName(editName, iconKey);
-      closeAddTaskModal();
-      renderTaskSetupList();
+      patchTimeLedgerTaskIconsForTaskName(el, editName);
+      closeAddTaskModal({
+        skipSetupListRender: true,
+        patchedTaskName: editName,
+      });
       return;
     }
     if (!name || !selectedCategory) {
@@ -7891,6 +7991,7 @@ export function render(opts = {}) {
       });
     }
     closeAddTaskModal();
+    patchTimeLedgerTaskIconsForTaskName(el, name);
   });
 
   addTaskDeleteBtn?.addEventListener("click", async () => {
@@ -8676,6 +8777,15 @@ export function render(opts = {}) {
   document.addEventListener(
     "lp-time-ledger-remote-updated",
     () => refreshTimeLedgerFromRemotePull(),
+    { signal },
+  );
+
+  window.addEventListener(
+    "time-ledger-tasks-saved",
+    () => {
+      if (!el.isConnected) return;
+      refreshTimeLedgerTaskIconsFromOptions(el);
+    },
     { signal },
   );
 

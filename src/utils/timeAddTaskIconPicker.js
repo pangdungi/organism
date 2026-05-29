@@ -56,12 +56,20 @@ export function mountTimeAddTaskIconPicker(mountEl) {
   function syncGridSelection() {
     if (!modalEl) return;
     modalEl
-      .querySelectorAll('[data-legacy~="time-add-task-icon-modal-item"]')
+      .querySelectorAll(
+        '[data-legacy~="time-add-task-icon-modal-item--selected"]',
+      )
       .forEach((btn) => {
-        const on = btn.getAttribute("data-icon-key") === selectedKey;
-        lpTokenToggle(btn, "time-add-task-icon-modal-item--selected", on);
-        btn.setAttribute("aria-pressed", on ? "true" : "false");
+        lpTokenToggle(btn, "time-add-task-icon-modal-item--selected", false);
+        btn.setAttribute("aria-pressed", "false");
       });
+    if (!selectedKey) return;
+    const btn = modalEl.querySelector(
+      `[data-legacy~="time-add-task-icon-modal-item"][data-icon-key="${CSS.escape(selectedKey)}"]`,
+    );
+    if (!btn) return;
+    lpTokenToggle(btn, "time-add-task-icon-modal-item--selected", true);
+    btn.setAttribute("aria-pressed", "true");
   }
 
   function applyIconSearchFilter() {

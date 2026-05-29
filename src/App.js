@@ -146,13 +146,13 @@ const HOME_MENU_TAB_ORDER = [
 
 /** 홈 정사각형 타일 전용 아이콘(사이드바·푸터는 TABS.icon 유지) */
 const HOME_MENU_ICON = {
-  time: "/toolbaricons/menu-home-calendar-time.png",
-  schedulecalendar: "/toolbaricons/menu-home-calendar.png",
-  dream: "/toolbaricons/time-task/prod-cat-dream.png",
-  sideincome: "/toolbaricons/time-task/prod-cat-sideincome.png",
-  health: "/toolbaricons/time-task/prod-cat-health.png",
-  happiness: "/toolbaricons/time-task/prod-cat-happiness.png",
-  idea: "/toolbaricons/menu-home-account.png",
+  time: "/toolbaricons/menu-home/time-new.svg",
+  schedulecalendar: "/toolbaricons/menu-home/calendar-new.svg",
+  dream: "/toolbaricons/menu-home/dream-new.svg",
+  sideincome: "/toolbaricons/menu-home/sideincome-new.svg",
+  health: "/toolbaricons/menu-home/health-new.svg",
+  happiness: "/toolbaricons/menu-home/happiness-new.svg",
+  idea: "/toolbaricons/menu-home/account-new.svg",
 };
 
 function tabMetaById(tabId) {
