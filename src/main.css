@@ -460,6 +460,8 @@ body {
 }
 
 .app-home-menu-launcher-section-list {
+  --home-menu-pen-stroke: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 50' preserveAspectRatio='none'%3E%3Cpath fill='none' stroke='%233a5878' stroke-opacity='0.36' stroke-width='1.15' stroke-linecap='round' stroke-linejoin='round' d='M12.5 2.8 58 1.7 108 2.5 158 1.6 208 2.3 258 2 308 2.7 352 3.1 388 3.8 396.5 11.5 397.5 25 396 38.5 391.5 45.8 352 48.5 302 47.6 252 49 202 48.2 152 49.3 102 48.5 52 49.6 16 46.8 5.5 37.5 3.4 26 4.2 15.5 7.8 8.5Z'/%3E%3Cpath fill='none' stroke='%231e4d7b' stroke-opacity='0.7' stroke-width='0.88' stroke-linecap='round' stroke-linejoin='round' d='M13 3.2 58.5 2.1 109 2.9 159 2 209 2.7 259 2.4 309 3.1 353 3.5 389 4.2 397 12 398 25.5 396.5 39 392 46.2 353 49 303 48.1 253 49.5 203 48.7 153 49.8 103 48.9 53 50 17 47.3 6.2 38 4 26.5 4.8 16 8.2 9Z'/%3E%3C/svg%3E");
+  --home-menu-pen-stroke-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 50' preserveAspectRatio='none'%3E%3Cpath fill='none' stroke='%231e4d7b' stroke-opacity='0.42' stroke-width='1.15' stroke-linecap='round' stroke-linejoin='round' d='M12.5 2.8 58 1.7 108 2.5 158 1.6 208 2.3 258 2 308 2.7 352 3.1 388 3.8 396.5 11.5 397.5 25 396 38.5 391.5 45.8 352 48.5 302 47.6 252 49 202 48.2 152 49.3 102 48.5 52 49.6 16 46.8 5.5 37.5 3.4 26 4.2 15.5 7.8 8.5Z'/%3E%3Cpath fill='none' stroke='%23152845' stroke-opacity='0.78' stroke-width='0.88' stroke-linecap='round' stroke-linejoin='round' d='M13 3.2 58.5 2.1 109 2.9 159 2 209 2.7 259 2.4 309 3.1 353 3.5 389 4.2 397 12 398 25.5 396.5 39 392 46.2 353 49 303 48.1 253 49.5 203 48.7 153 49.8 103 48.9 53 50 17 47.3 6.2 38 4 26.5 4.8 16 8.2 9Z'/%3E%3C/svg%3E");
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
@@ -469,6 +471,8 @@ body {
 }
 
 .app-home-menu-launcher-btn {
+  position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -478,7 +482,7 @@ body {
   min-width: 0;
   min-height: 3.125rem;
   margin: 0;
-  padding: 0.72rem 0.62rem;
+  padding: 0.82rem 0.7rem 0.82rem 0.88rem;
   box-sizing: border-box;
   cursor: pointer;
   font: inherit;
@@ -489,20 +493,37 @@ body {
   text-align: left;
   color: #2b3240;
   background: #fff;
-  border: 1px solid #e2e8f0;
+  border: none;
   border-radius: 12px;
   box-shadow: none;
   transition:
     color 0.12s ease,
-    background 0.12s ease,
-    border-color 0.12s ease;
+    background 0.12s ease;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* 손으로 그린 볼펜 테두리 — 고정 SVG 경로, 떨림·애니메이션 없음 */
+.app-home-menu-launcher-btn::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  pointer-events: none;
+  z-index: 1;
+  background: var(--home-menu-pen-stroke) center / 100% 100% no-repeat;
+}
+
+.app-home-menu-launcher-btn > * {
+  position: relative;
+  z-index: 2;
 }
 
 .app-home-menu-launcher-btn:hover {
   color: #1a2330;
   background: #f8fafc;
-  border-color: #cbd5e1;
+}
+
+.app-home-menu-launcher-btn:hover::before {
+  background-image: var(--home-menu-pen-stroke-hover);
 }
 
 .app-home-menu-launcher-btn:focus-visible {
@@ -527,6 +548,8 @@ body {
   justify-content: center;
   width: 2rem;
   height: 2rem;
+  padding: 0.1rem 0 0.1rem 0.06rem;
+  box-sizing: border-box;
   line-height: 0;
 }
 
