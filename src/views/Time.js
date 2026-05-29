@@ -103,7 +103,7 @@ import {
 } from "../utils/diaryTimeReportLogMemos.js";
 import { mountTimeLedgerMemoFeed } from "../utils/timeLedgerMemoFeed.js";
 import {
-  mountTimeLedgerAiReport,
+  mountTimeLedgerReport,
   persistTimeLedgerReportRangeToSession,
   readTimeLedgerReportRangeFromSession,
   resolveTimeReportTargetFromRange,
@@ -8597,7 +8597,7 @@ export function render(opts = {}) {
           reportRangeStartYmd,
           reportRangeEndYmd,
         );
-        mountTimeLedgerAiReport(reportShell, { ymdTen, granularity });
+        mountTimeLedgerReport(reportShell, { ymdTen, granularity });
       }
     } else if (showTimelineLedgerContent) {
       if (showSyncLoading) {

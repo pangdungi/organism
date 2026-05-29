@@ -1,20 +1,17 @@
 /**
  * PWA 설치 — Android Chrome beforeinstallprompt + iOS Safari 안내.
+ * 설치 진행·완료 후에는 토스트만 (추가 중 모달 없음).
  */
 
 import { showToast } from "./showToast.js";
 
 const DISMISS_KEY = "lp_pwa_install_dismissed";
-const INSTALL_WAIT_MS = 120000;
 
 /** @type {BeforeInstallPromptEvent | null} */
 let deferredPrompt = null;
 
-/** @type {"idle" | "prompting" | "downloading" | "done"} */
-let installPhase = "idle";
-let installWaitTimer = null;
-/** 설치 중 사용자가 배너만 닫은 경우 재표시 방지 */
-let installUiCollapsed = false;
+/** 네이티브 설치 창이 떠 있는 동안 중복 prompt 방지 */
+let installPromptOpen = false;
 
 function isStandaloneDisplayMode() {
   try {
@@ -78,9 +75,7 @@ function markDismissed() {
 function shouldOfferInstallBanner() {
   if (isStandaloneDisplayMode()) return false;
   if (!isMobileDevice()) return false;
-  if (installPhase === "downloading" || installPhase === "prompting" || installPhase === "done") {
-    return !installUiCollapsed;
-  }
+  if (installPromptOpen) return false;
   if (wasDismissedRecently()) return false;
   return true;
 }
@@ -92,41 +87,17 @@ function isPageVisible(pageId) {
   return display === "flex" || display === "block";
 }
 
-function clearInstallWaitTimer() {
-  if (installWaitTimer != null) {
-    clearTimeout(installWaitTimer);
-    installWaitTimer = null;
-  }
-}
-
-function resetInstallFlow() {
-  clearInstallWaitTimer();
-  installUiCollapsed = false;
-  installPhase = "idle";
-}
-
-function setInstallPhase(phase) {
-  installPhase = phase;
-  if (phase === "idle" || phase === "done") {
-    clearInstallWaitTimer();
-  }
-  if (phase === "downloading" || phase === "prompting") {
-    installUiCollapsed = false;
-  }
-  repaintInstallSurfaces();
-}
-
-function startInstallWaitTimer() {
-  clearInstallWaitTimer();
-  installWaitTimer = setTimeout(() => {
-    if (installPhase !== "downloading") return;
-    showToast(
-      "아직 추가 중일 수 있어요",
-      "홈 화면에 Time is Price 아이콘이 생겼는지 확인해 주세요. 네트워크가 느리면 1~2분 걸릴 수 있어요.",
-    );
-    resetInstallFlow();
-    refreshLpPwaInstall();
-  }, INSTALL_WAIT_MS);
+function hideAllInstallRoots() {
+  const bodyRoot = document.getElementById("lp-pwa-install-root-body");
+  if (bodyRoot) bodyRoot.hidden = true;
+  [
+    document.getElementById("lp-pwa-install-root-login"),
+    document.getElementById("lp-pwa-install-root-app"),
+  ]
+    .filter(Boolean)
+    .forEach((root) => {
+      root.hidden = true;
+    });
 }
 
 function ensureBodyInstallRoot() {
@@ -142,45 +113,7 @@ function ensureBodyInstallRoot() {
   return root;
 }
 
-function getLegacyInstallRoots() {
-  return [
-    document.getElementById("lp-pwa-install-root-login"),
-    document.getElementById("lp-pwa-install-root-app"),
-  ].filter(Boolean);
-}
-
-function hideAllInstallRoots() {
-  const bodyRoot = document.getElementById("lp-pwa-install-root-body");
-  if (bodyRoot) bodyRoot.hidden = true;
-  getLegacyInstallRoots().forEach((root) => {
-    root.hidden = true;
-  });
-}
-
 function getInstallInstructions() {
-  if (installPhase === "prompting") {
-    return {
-      title: "설치 확인 중",
-      desc: "브라우저 설치 창이 뜨면 「설치」를 눌러 주세요.",
-      busy: true,
-      statusText: "설치 창을 여는 중…",
-    };
-  }
-  if (installPhase === "downloading") {
-    return {
-      title: "홈 화면에 추가 중…",
-      desc: "브라우저가 앱을 받는 동안 잠시만 기다려 주세요. 이 화면을 닫아도 추가는 계속됩니다.",
-      busy: true,
-      statusText: "추가 파일 받는 중…",
-    };
-  }
-  if (installPhase === "done") {
-    return {
-      title: "홈 화면에 추가 중…",
-      desc: "홈 화면에 Time is Price 아이콘이 생기면 눌러 주세요. 아직 안 보이면 1~2분 정도 기다린 뒤 다시 확인해 주세요.",
-    };
-  }
-
   const canNativePrompt = !!deferredPrompt;
   const ios = isIosDevice();
   const android = isAndroidDevice();
@@ -221,11 +154,11 @@ function getInstallInstructions() {
 }
 
 async function runNativeInstall() {
-  if (!deferredPrompt || installPhase === "prompting" || installPhase === "downloading") {
-    return;
-  }
+  if (!deferredPrompt || installPromptOpen) return;
 
-  setInstallPhase("prompting");
+  installPromptOpen = true;
+  hideAllInstallRoots();
+  closeLpPwaInstallHelpModal();
   showToast("설치 창을 확인해 주세요", "브라우저 팝업에서 「설치」를 눌러 주세요.");
 
   const promptEvent = deferredPrompt;
@@ -236,22 +169,21 @@ async function runNativeInstall() {
     const { outcome } = await promptEvent.userChoice;
 
     if (outcome === "accepted") {
-      installPhase = "downloading";
-      startInstallWaitTimer();
+      markDismissed();
+      hideAllInstallRoots();
+      closeLpPwaInstallHelpModal();
       showToast(
-        "홈 화면에 추가 중",
-        "아이콘이 생길 때까지 잠시만 기다려 주세요.",
+        "홈 화면을 확인해 주세요",
+        "Time is Price 아이콘이 생겼는지 봐 주세요. 아직 없으면 잠시 후 다시 확인해 주세요.",
       );
-      repaintInstallSurfaces();
       return;
     }
 
-    resetInstallFlow();
     showToast("설치가 취소되었습니다", "다시 설치하려면 「앱 설치」를 눌러 주세요.");
   } catch (_) {
-    resetInstallFlow();
     showToast("설치를 시작하지 못했습니다", "잠시 후 다시 시도해 주세요.");
   } finally {
+    installPromptOpen = false;
     refreshLpPwaInstall();
   }
 }
@@ -260,15 +192,9 @@ function buildInstallCard(opts = {}) {
   const { onDismiss, dismissLabel = "닫기" } = opts;
   const info = getInstallInstructions();
   const canNativePrompt = !!deferredPrompt;
-  const busy = !!info.busy;
-  const allowDismissWhileBusy = installPhase === "downloading" || installPhase === "done";
 
   const card = document.createElement("div");
   card.className = "lp-pwa-install-card";
-  if (busy) {
-    card.classList.add("lp-pwa-install-card--busy");
-    card.setAttribute("aria-busy", "true");
-  }
 
   const title = document.createElement("p");
   title.className = "lp-pwa-install-title";
@@ -282,26 +208,10 @@ function buildInstallCard(opts = {}) {
   card.appendChild(title);
   card.appendChild(desc);
 
-  if (info.statusText) {
-    const status = document.createElement("div");
-    status.className = "lp-pwa-install-status";
-    status.setAttribute("role", "status");
-    const text = document.createElement("span");
-    text.textContent = info.statusText;
-    status.appendChild(text);
-    if (busy) {
-      const spinner = document.createElement("span");
-      spinner.className = "lp-pwa-install-spinner";
-      spinner.setAttribute("aria-hidden", "true");
-      status.insertBefore(spinner, text);
-    }
-    card.appendChild(status);
-  }
-
   const actions = document.createElement("div");
   actions.className = "lp-pwa-install-actions";
 
-  if (info.showInstallBtn && canNativePrompt && installPhase === "idle") {
+  if (info.showInstallBtn && canNativePrompt) {
     const installBtn = document.createElement("button");
     installBtn.type = "button";
     installBtn.className = "lp-pwa-install-btn lp-pwa-install-btn--primary";
@@ -312,7 +222,7 @@ function buildInstallCard(opts = {}) {
     actions.appendChild(installBtn);
   }
 
-  if (info.showCopyUrl && installPhase === "idle") {
+  if (info.showCopyUrl) {
     const copyBtn = document.createElement("button");
     copyBtn.type = "button";
     copyBtn.className = "lp-pwa-install-btn lp-pwa-install-btn--primary";
@@ -336,73 +246,23 @@ function buildInstallCard(opts = {}) {
     actions.appendChild(copyBtn);
   }
 
-  if (!busy || allowDismissWhileBusy) {
-    const dismissBtn = document.createElement("button");
-    dismissBtn.type = "button";
-    dismissBtn.className = "lp-pwa-install-btn lp-pwa-install-btn--ghost";
-    dismissBtn.textContent =
-      installPhase === "downloading"
-        ? "닫기 (추가는 계속)"
-        : installPhase === "done"
-          ? "아이콘 확인함"
-          : dismissLabel;
-    dismissBtn.addEventListener("click", () => {
-      if (installPhase === "downloading") {
-        installUiCollapsed = true;
-        hideAllInstallRoots();
-        closeLpPwaInstallHelpModal();
-        showToast("백그라운드에서 추가 중", "아이콘이 생기면 홈 화면에서 확인해 주세요.");
-        return;
-      }
-      if (installPhase === "done") {
-        resetInstallFlow();
-        hideAllInstallRoots();
-        closeLpPwaInstallHelpModal();
-        return;
-      }
-      markDismissed();
-      onDismiss?.();
-    });
-    actions.appendChild(dismissBtn);
-  }
+  const dismissBtn = document.createElement("button");
+  dismissBtn.type = "button";
+  dismissBtn.className = "lp-pwa-install-btn lp-pwa-install-btn--ghost";
+  dismissBtn.textContent = dismissLabel;
+  dismissBtn.addEventListener("click", () => {
+    markDismissed();
+    onDismiss?.();
+  });
+  actions.appendChild(dismissBtn);
 
-  if (actions.childElementCount) card.appendChild(actions);
+  card.appendChild(actions);
   return card;
 }
 
 function mountInstallCard(root, cardOpts) {
   root.innerHTML = "";
   root.appendChild(buildInstallCard(cardOpts));
-}
-
-function repaintInstallSurfaces() {
-  if (installPhase === "downloading" || installPhase === "prompting" || installPhase === "done") {
-    if (installUiCollapsed && installPhase === "downloading") return;
-
-    const root = ensureBodyInstallRoot();
-    root.hidden = false;
-    mountInstallCard(root, {
-      dismissLabel: deferredPrompt ? "나중에" : "닫기",
-      onDismiss: () => {
-        markDismissed();
-        hideAllInstallRoots();
-      },
-    });
-
-    const panel = helpModalEl?.querySelector(".lp-pwa-install-modal__panel");
-    if (panel) {
-      panel.innerHTML = "";
-      panel.appendChild(
-        buildInstallCard({
-          dismissLabel: "닫기",
-          onDismiss: closeLpPwaInstallHelpModal,
-        }),
-      );
-    }
-    return;
-  }
-
-  renderInstallBanner(getActiveInstallRoot());
 }
 
 function renderInstallBanner(root) {
@@ -421,7 +281,6 @@ function renderInstallBanner(root) {
   mountInstallCard(root, {
     dismissLabel: deferredPrompt ? "나중에" : "닫기",
     onDismiss: () => {
-      markDismissed();
       hideAllInstallRoots();
     },
   });
@@ -471,13 +330,6 @@ export function showLpPwaInstallHelp() {
   );
   wrap.appendChild(panel);
   wrap.querySelector(".lp-pwa-install-modal__backdrop")?.addEventListener("click", () => {
-    if (installPhase === "downloading") {
-      installUiCollapsed = true;
-      hideAllInstallRoots();
-      closeLpPwaInstallHelpModal();
-      showToast("백그라운드에서 추가 중", "아이콘이 생기면 홈 화면에서 확인해 주세요.");
-      return;
-    }
     closeLpPwaInstallHelpModal();
   });
   document.body.appendChild(wrap);
@@ -486,8 +338,8 @@ export function showLpPwaInstallHelp() {
 }
 
 export function refreshLpPwaInstall() {
-  if (installPhase === "prompting" || installPhase === "downloading" || installPhase === "done") {
-    repaintInstallSurfaces();
+  if (installPromptOpen) {
+    hideAllInstallRoots();
     return;
   }
   renderInstallBanner(getActiveInstallRoot());
@@ -497,25 +349,25 @@ export function initLpPwaInstall() {
   window.addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    if (installPhase === "idle") refreshLpPwaInstall();
+    refreshLpPwaInstall();
   });
 
   if ("serviceWorker" in navigator) {
     void navigator.serviceWorker.ready.then(() => {
-      if (installPhase === "idle") refreshLpPwaInstall();
+      refreshLpPwaInstall();
     });
   }
 
   window.addEventListener("appinstalled", () => {
-    clearInstallWaitTimer();
     deferredPrompt = null;
-    installPhase = "done";
-    installUiCollapsed = false;
+    installPromptOpen = false;
+    markDismissed();
+    hideAllInstallRoots();
+    closeLpPwaInstallHelpModal();
     showToast(
       "홈 화면을 확인해 주세요",
       "Time is Price 아이콘이 생겼는지 봐 주세요. 아직 없으면 잠시 후 다시 확인해 주세요.",
     );
-    repaintInstallSurfaces();
   });
 
   window.addEventListener("resize", () => {
