@@ -155,7 +155,7 @@ const HOME_MENU_ICON = {
   idea: "/toolbaricons/menu-home/account-new.svg",
 };
 
-const HOME_MENU_LOGO = "/toolbaricons/menu-home/mainlogo-heart-new.svg";
+const HOME_MENU_LOGO = "/toolbaricons/menu-home/mainlogo-otter-new.svg";
 
 function tabMetaById(tabId) {
   if (tabId === "idea") {
