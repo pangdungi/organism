@@ -155,6 +155,8 @@ const HOME_MENU_ICON = {
   idea: "/toolbaricons/menu-home/account-new.svg",
 };
 
+const HOME_MENU_LOGO = "/toolbaricons/menu-home/mainlogo-new.svg";
+
 function tabMetaById(tabId) {
   if (tabId === "idea") {
     return {
@@ -623,6 +625,20 @@ export async function mountApp(container) {
     const body = document.createElement("div");
     body.className = "app-home-menu-launcher-body";
 
+    const brand = document.createElement("div");
+    brand.className = "app-home-menu-launcher-brand";
+    const logoShell = document.createElement("div");
+    logoShell.className = "app-home-menu-launcher-logo-float-shell";
+    const logo = document.createElement("img");
+    logo.className = "app-home-menu-launcher-logo";
+    logo.src = HOME_MENU_LOGO;
+    logo.alt = "";
+    logo.width = 256;
+    logo.height = 256;
+    applyStaticAppIconImg(logo);
+    logoShell.appendChild(logo);
+    brand.appendChild(logoShell);
+
     function navButtonFromTab(tab) {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -662,6 +678,7 @@ export async function mountApp(container) {
 
     void syncAdminMenuVisibility();
 
+    card.appendChild(brand);
     card.appendChild(body);
     root.append(card, launcherAdminBtn);
     homeMenuLauncherEl = root;

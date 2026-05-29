@@ -316,8 +316,9 @@ body {
   background: #e8f0f8;
 }
 
-/* 메인(오늘) 뷰 — 흰 배경 + 메뉴 그리드만 */
+/* 메인(오늘) 뷰 — 흰 배경 + 물결 패턴(타일 반복) + 메뉴 그리드 */
 .app-main:has(.app-home-menu-launcher) {
+  --home-menu-pattern: url("/toolbaricons/menu-home/home-pattern-new.svg");
   background: #fff;
 }
 
@@ -326,10 +327,27 @@ body {
   min-height: 0;
   justify-content: center;
   align-items: stretch;
+  position: relative;
+  isolation: isolate;
   background: #fff;
 }
 
+.app-main:has(.app-home-menu-launcher) .app-tab-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.38;
+  background-image: var(--home-menu-pattern);
+  background-repeat: repeat;
+  background-size: 6rem 6rem;
+  background-position: center;
+}
+
 .app-main:has(.app-home-menu-launcher) .app-tab-panel > .app-home-menu-launcher {
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-width: 100%;
 }
@@ -355,17 +373,57 @@ body {
   max-width: none;
   margin: 0;
   padding: 0;
-  background: #fff;
+  background: transparent;
 }
 
 .app-home-menu-launcher-brand {
   box-sizing: border-box;
   width: 100%;
-  margin: 0 0 0.35rem;
-  padding: 0.85rem max(0.5rem, var(--lp-safe-left)) 0.5rem
+  margin: 0 0 1.15rem;
+  padding: 0.75rem max(0.5rem, var(--lp-safe-left)) 0
     max(0.5rem, var(--lp-safe-right));
   background: transparent;
   text-align: center;
+}
+
+.app-home-menu-launcher-logo-float-shell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: calc(clamp(12.5rem, 60vw, 17.5rem) + 1.35rem);
+  padding: 0.65rem 0;
+}
+
+.app-home-menu-launcher-logo {
+  display: block;
+  width: auto;
+  height: clamp(12.5rem, 60vw, 17.5rem);
+  max-width: min(20rem, 94%);
+  margin: 0;
+  object-fit: contain;
+  transform-origin: center center;
+  animation: app-home-menu-logo-float 3.4s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes app-home-menu-logo-float {
+  0%,
+  100% {
+    transform: translateY(0.35rem);
+  }
+
+  50% {
+    transform: translateY(-0.35rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-home-menu-launcher-logo {
+    animation: none;
+    will-change: auto;
+  }
 }
 
 .app-home-menu-launcher-card {
