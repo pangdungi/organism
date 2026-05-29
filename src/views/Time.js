@@ -8723,12 +8723,19 @@ export function render(opts = {}) {
 
   onFilterChange(true);
 
+  function syncUsageHistoryRangeFromSession() {
+    const fromSession = readUsageListRangeFromSession();
+    const today = getLedgerFilterTodayYmd();
+    usageHistoryRangeStartYmd = fromSession?.start ?? today;
+    usageHistoryRangeEndYmd = fromSession?.end ?? today;
+  }
+
   function refreshTimeLedgerFromRemotePull(opts = {}) {
     if (!el.isConnected) return;
     if (opts.scrollUsageListToBottom) {
       requestUsageListScrollToBottomOnce();
     }
-    /* App 탭 진입 pull 직후 session 만 오늘 등으로 바뀌고 DOM 날짜는 옛값일 수 있음 → 통째로 renderMain 하지 않고 갱신할 때 맞춤 */
+    syncUsageHistoryRangeFromSession();
     try {
       const t = getLedgerFilterTodayYmd();
       try {
@@ -8741,8 +8748,7 @@ export function render(opts = {}) {
     allRowsCache = loadTimeRows();
     cachedRows = getFullRowsForFilter(true);
     const prevSig = el._lpLastTimeLedgerPaintSig;
-    syncTimeLedgerContent({ force: false });
-    /* pull 후 기록이 같으면 renderAll 생략 — 다르면 같은 턴에 맨 아래(재그림 1회만) */
+    syncTimeLedgerContent({ force: true });
     if (el._lpLastTimeLedgerPaintSig !== prevSig) {
       const cardsWrap = contentWrap.querySelector(
         '[data-legacy~="time-ledger-mobile-cards"]',
@@ -8782,10 +8788,6 @@ export function render(opts = {}) {
 
   /** App.setActiveTab 에서 pull 후 두 번째 renderMain 대신 호출 — 패널 통째 교체 없이 위 갱신만 */
   window.__lpTimeLedgerSoftRefresh = () => refreshTimeLedgerFromRemotePull();
-  /* pull 이 Time.js render() 도중 끝나면 App soft refresh 가 등록 전에 지나갈 수 있음 */
-  if (!isLpTabPullPending("time")) {
-    refreshTimeLedgerFromRemotePull();
-  }
 
   signal.addEventListener(
     "abort",

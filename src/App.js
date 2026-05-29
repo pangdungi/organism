@@ -494,19 +494,33 @@ export async function mountApp(container) {
       _tabSwitchTimer = null;
       void (async () => {
         const targetTabId = currentTabId;
-        if (isKpiAppTabId(targetTabId)) setKpiTabPullPending(targetTabId);
-        else if (targetTabId === "time") {
-          setLpTabPullPending(targetTabId);
-        }
-        /* 메뉴에서 시간가계부 진입: 오늘·타임라인·필터 없음(세션 조회 상태 초기화) 후 렌더 */
+        /* 시간가계부: 탭 클릭 시 pull 먼저 — pull 전 render 하면 첫 진입 타임라인이 비는 경우가 있음 */
         if (targetTabId === "time") {
+          setLpTabPullPending(targetTabId);
           try {
             teardownDetachedTimeLedgerTaskLogBridge();
           } catch (_) {}
           try {
             resetTimeLedgerSessionFilterToToday();
           } catch (_) {}
+          if (currentTabId !== targetTabId) return;
+          try {
+            await ensureTimeLedgerStorageReady();
+            await pullDataForActiveTab(targetTabId, { fromBoot: false });
+          } catch (_) {}
+          if (currentTabId !== targetTabId) {
+            clearLpTabPullPending(targetTabId);
+            return;
+          }
+          clearLpTabPullPending(targetTabId);
+          renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
+          syncAppFooterVisibility();
+          afterLpTabPaint(() => {
+            void prefetchIconsForTab(targetTabId);
+          });
+          return;
         }
+        if (isKpiAppTabId(targetTabId)) setKpiTabPullPending(targetTabId);
         if (targetTabId === "schedulecalendar") {
           try {
             window.__lpCalendarGridPrefetchedForTabSwitch = true;
@@ -551,13 +565,7 @@ export async function mountApp(container) {
             }
             return;
           }
-        /* 시간가계부: pull 뒤 통째 renderMain 하면 화면이 한 번 비워졌다 다시 그려져 깜빡임 — 같은 인스턴스에서만 소프트 갱신 */
-        if (targetTabId === "time") {
-          clearLpTabPullPending("time");
-          try {
-            window.__lpTimeLedgerSoftRefresh?.();
-          } catch (_) {}
-        } else if (targetTabId === "schedulecalendar") {
+        if (targetTabId === "schedulecalendar") {
           /* 할일/일정·사이드 캘린더: 두 번째 renderMain 시 상단 탭·설정 아이콘이 통째로 다시 붙으며 깜빡임 — 패널 유지 후 본문만 갱신 */
           try {
             window.__lpCalendarSoftRefresh?.();
@@ -900,8 +908,10 @@ export async function mountApp(container) {
       resetTimeLedgerSessionFilterToToday();
     } catch (_) {}
   }
-  /* 로컬·메모리로 먼저 한 프레임 그림 — pull 완료 후 스플래시 내림(main.js) */
-  renderMain(main);
+  /* 시간가계부 cold start: pull 전 빈 타임라인 방지 — pull 후 첫 render */
+  if (bootTabIdForRender !== "time") {
+    renderMain(main);
+  }
   void (async () => {
     const bootTabId = currentTabId;
     try {
@@ -940,9 +950,9 @@ export async function mountApp(container) {
       }
       if (bootTabId === "time") {
         clearLpTabPullPending("time");
-        try {
-          window.__lpTimeLedgerSoftRefresh?.();
-        } catch (_) {}
+        if (currentTabId === bootTabId) {
+          renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
+        }
       } else if (bootTabId === "schedulecalendar") {
         try {
           window.__lpCalendarSoftRefresh?.();
