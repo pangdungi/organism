@@ -4809,6 +4809,10 @@ export function render(opts = {}) {
   }
 
   function onFilterChange(skipMerge = false) {
+    /* mount 직후·pull 선완료: allRowsCache 는 render 초반 스냅샷일 수 있음 */
+    if (skipMerge) {
+      allRowsCache = loadTimeRows();
+    }
     const rows = getFullRowsForFilter(skipMerge);
     cachedRows = rows;
     const filtered = applyUsageListFilters(rows);
@@ -8778,6 +8782,10 @@ export function render(opts = {}) {
 
   /** App.setActiveTab 에서 pull 후 두 번째 renderMain 대신 호출 — 패널 통째 교체 없이 위 갱신만 */
   window.__lpTimeLedgerSoftRefresh = () => refreshTimeLedgerFromRemotePull();
+  /* pull 이 Time.js render() 도중 끝나면 App soft refresh 가 등록 전에 지나갈 수 있음 */
+  if (!isLpTabPullPending("time")) {
+    refreshTimeLedgerFromRemotePull();
+  }
 
   signal.addEventListener(
     "abort",

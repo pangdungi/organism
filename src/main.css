@@ -215,12 +215,15 @@ body {
 .app-main:has(.app-home-menu-launcher) > .app-tab-panel > :first-child {
   flex: 1 1 auto;
   min-height: 0;
+  height: 100%;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: safe center;
+  justify-content: center;
   align-items: center;
-  padding-top: 0.75rem;
-  padding-bottom: max(1.25rem, calc(0.75rem + var(--lp-safe-bottom)));
+  overflow: hidden;
+  padding-top: clamp(0.25rem, 1.2dvh, 0.65rem);
+  padding-bottom: max(0.65rem, var(--lp-safe-bottom));
 }
 
 .app-tab-panel {
@@ -319,7 +322,11 @@ body {
 /* 메인(오늘) 뷰 — 흰 배경 + 물결 패턴(타일 반복) + 메뉴 그리드 */
 .app-main:has(.app-home-menu-launcher) {
   --home-menu-pattern: url("/toolbaricons/menu-home/home-pattern-new.svg");
+  --home-menu-logo-h: clamp(7.5rem, 24dvh, 17.5rem);
+  --home-menu-btn-min-h: clamp(2.35rem, 5.8dvh, 3.125rem);
+  --home-menu-btn-gap: clamp(0.3rem, 0.75dvh, 0.55rem);
   background: #fff;
+  overflow: hidden;
 }
 
 .app-main:has(.app-home-menu-launcher) .app-tab-panel {
@@ -329,9 +336,9 @@ body {
   align-items: stretch;
   position: relative;
   isolation: isolate;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  padding: 0.15rem 0 max(1rem, calc(0.5rem + var(--lp-safe-bottom)));
+  overflow: hidden;
+  padding: clamp(0.15rem, 0.8dvh, 0.35rem) 0
+    max(0.65rem, var(--lp-safe-bottom));
   background: #fff;
 }
 
@@ -359,8 +366,10 @@ body {
   width: 100%;
   max-width: none;
   margin: 0;
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
   align-items: stretch;
   justify-content: center;
 }
@@ -370,21 +379,24 @@ body {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  justify-content: safe center;
+  justify-content: center;
   box-sizing: border-box;
   width: 100%;
   max-width: none;
+  max-height: 100%;
   margin: 0;
-  padding: 0 0 max(0.5rem, var(--lp-safe-bottom));
+  padding: 0;
+  overflow: hidden;
   background: transparent;
 }
 
 .app-home-menu-launcher-brand {
   box-sizing: border-box;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-height: 0;
   width: 100%;
-  margin: 0 0 1rem;
-  padding: 0.55rem max(0.5rem, var(--lp-safe-left)) 0
+  margin: 0 0 clamp(0.35rem, 1dvh, 0.85rem);
+  padding: clamp(0.2rem, 0.8dvh, 0.55rem) max(0.5rem, var(--lp-safe-left)) 0
     max(0.5rem, var(--lp-safe-right));
   background: transparent;
   text-align: center;
@@ -395,16 +407,18 @@ body {
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-height: 0;
   width: 100%;
-  min-height: calc(clamp(12.5rem, 60vw, 17.5rem) + 1.2rem);
-  padding: 0.55rem 0 0.35rem;
+  max-height: calc(var(--home-menu-logo-h) + 0.75rem);
+  padding: 0.2rem 0 0.15rem;
 }
 
 .app-home-menu-launcher-logo {
   display: block;
   width: auto;
-  height: clamp(12.5rem, 60vw, 17.5rem);
+  height: var(--home-menu-logo-h);
+  max-height: 100%;
   max-width: min(20rem, 94%);
   margin: 0;
   object-fit: contain;
@@ -432,7 +446,9 @@ body {
 }
 
 .app-home-menu-launcher-card {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
@@ -440,6 +456,7 @@ body {
   max-width: min(22rem, 100%);
   margin: 0 auto;
   padding: 0;
+  overflow: hidden;
   background: transparent;
   border: none;
   border-radius: 0;
@@ -447,12 +464,16 @@ body {
 }
 
 .app-home-menu-launcher-card .app-home-menu-launcher-body {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   min-height: 0;
   width: 100%;
   box-sizing: border-box;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   padding: 0 max(0.85rem, var(--lp-safe-left))
-    max(0.85rem, calc(0.35rem + var(--lp-safe-bottom)))
+    max(0.35rem, var(--lp-safe-bottom))
     max(0.85rem, var(--lp-safe-right));
 }
 
@@ -528,10 +549,19 @@ body {
   --home-menu-pen-stroke-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 50' preserveAspectRatio='none'%3E%3Cpath fill='none' stroke='%231e4d7b' stroke-opacity='0.42' stroke-width='1.15' stroke-linecap='round' stroke-linejoin='round' d='M12.5 2.8 58 1.7 108 2.5 158 1.6 208 2.3 258 2 308 2.7 352 3.1 388 3.8 396.5 11.5 397.5 25 396 38.5 391.5 45.8 352 48.5 302 47.6 252 49 202 48.2 152 49.3 102 48.5 52 49.6 16 46.8 5.5 37.5 3.4 26 4.2 15.5 7.8 8.5Z'/%3E%3Cpath fill='none' stroke='%23152845' stroke-opacity='0.78' stroke-width='0.88' stroke-linecap='round' stroke-linejoin='round' d='M13 3.2 58.5 2.1 109 2.9 159 2 209 2.7 259 2.4 309 3.1 353 3.5 389 4.2 397 12 398 25.5 396.5 39 392 46.2 353 49 303 48.1 253 49.5 203 48.7 153 49.8 103 48.9 53 50 17 47.3 6.2 38 4 26.5 4.8 16 8.2 9Z'/%3E%3C/svg%3E");
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: var(--home-menu-btn-gap, 0.55rem);
   width: 100%;
   margin: 0;
   align-items: stretch;
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-main:has(.app-home-menu-launcher) .app-home-menu-launcher-btn {
+  min-height: var(--home-menu-btn-min-h, 3.125rem);
+  padding-top: clamp(0.45rem, 1dvh, 0.82rem);
+  padding-bottom: clamp(0.45rem, 1dvh, 0.82rem);
 }
 
 .app-home-menu-launcher-btn {
