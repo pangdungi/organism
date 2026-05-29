@@ -1,6 +1,6 @@
 /* PWA 서비스 워커 — 앱 설치·오프라인 */
 /** 번들·아이콘 등 캐시 버전 (전략 바꿀 때만 올리면 이전 캐시 정리됨) */
-const ASSET_CACHE = "tip-assets-v13";
+const ASSET_CACHE = "tip-assets-v14";
 /** HTML 셸 캐시 — 홈 화면에서 열 때 즉시 표시용 */
 const HTML_CACHE = "tip-html-v2";
 

@@ -80,7 +80,7 @@ function prefetchPathsChunked(paths, startIndex = 0) {
 /** 홈 메뉴·푸터 등 첫 화면에 필요한 아이콘만 즉시(소량) */
 const CRITICAL_HOME_ICON_PATHS = [
   "/toolbaricons/dashboard.svg",
-  "/toolbaricons/menu-home/mainlogo-new.svg",
+  "/toolbaricons/menu-home/mainlogo-heart-new.svg",
   "/toolbaricons/menu-home-calendar-time.png",
   "/toolbaricons/menu-home-calendar.png",
   "/toolbaricons/menu-home-account.png",

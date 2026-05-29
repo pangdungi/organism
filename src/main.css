@@ -325,10 +325,13 @@ body {
 .app-main:has(.app-home-menu-launcher) .app-tab-panel {
   flex: 1 1 0;
   min-height: 0;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: stretch;
   position: relative;
   isolation: isolate;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.15rem 0 0.5rem;
   background: #fff;
 }
 
@@ -379,8 +382,8 @@ body {
 .app-home-menu-launcher-brand {
   box-sizing: border-box;
   width: 100%;
-  margin: 0 0 1.15rem;
-  padding: 0.75rem max(0.5rem, var(--lp-safe-left)) 0
+  margin: 0 0 0.35rem;
+  padding: 0.35rem max(0.5rem, var(--lp-safe-left)) 0
     max(0.5rem, var(--lp-safe-right));
   background: transparent;
   text-align: center;
@@ -392,8 +395,8 @@ body {
   justify-content: center;
   box-sizing: border-box;
   width: 100%;
-  min-height: calc(clamp(12.5rem, 60vw, 17.5rem) + 1.35rem);
-  padding: 0.65rem 0;
+  min-height: calc(clamp(12.5rem, 60vw, 17.5rem) + 0.75rem);
+  padding: 0.3rem 0 0.15rem;
 }
 
 .app-home-menu-launcher-logo {
