@@ -2,6 +2,8 @@
  * 홈·시간가계부 — 서버 pull 대기 중 빈 화면/0원 오해 방지
  */
 
+import { renderLpUnifiedLoadingMarkup } from "./lpUnifiedLoadingUi.js";
+
 const TAB_IDS = new Set(["home", "time"]);
 
 /** @type {Set<string>} */
@@ -31,29 +33,14 @@ function dispatch(name, detail) {
   } catch (_) {}
 }
 
-export function renderLpTabSyncLoadingMarkup(
-  message = "데이터 불러오는 중…",
-) {
-  const text = String(message || "데이터 불러오는 중…");
-  return `
-    <div class="lp-tab-sync-loading dream-kpi-map-sync-loading" role="status" aria-live="polite" aria-busy="true">
-      <p class="dream-kpi-map-sync-loading-text lp-tab-sync-loading-text">${escapeHtml(text)}</p>
-      <div class="dream-kpi-map-sync-loading-bar" aria-hidden="true">
-        <div class="dream-kpi-map-sync-loading-bar-fill"></div>
-      </div>
-    </div>
-  `;
+export function renderLpTabSyncLoadingMarkup(_message) {
+  return renderLpUnifiedLoadingMarkup({
+    variant: "inline",
+    extraClass: "lp-tab-sync-loading",
+  });
 }
 
-export function mountLpTabSyncLoading(container, message) {
+export function mountLpTabSyncLoading(container, _message) {
   if (!container) return;
-  container.innerHTML = renderLpTabSyncLoadingMarkup(message);
-}
-
-function escapeHtml(str) {
-  return String(str ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+  container.innerHTML = renderLpTabSyncLoadingMarkup();
 }

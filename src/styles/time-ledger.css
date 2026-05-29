@@ -1099,7 +1099,7 @@
   min-height: 10rem;
 }
 
-.time-ledger-view .time-ledger-timebox-view-shell .lp-tab-sync-loading {
+.time-ledger-view .time-ledger-timebox-view-shell .lp-tab-sync-loading.lp-unified-loading--inline {
   min-height: 10rem;
 }
 

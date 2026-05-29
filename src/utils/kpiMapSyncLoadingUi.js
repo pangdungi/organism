@@ -1,5 +1,7 @@
 /** KPI 탭(꿈·건강·행복·부수입) — 서버 pull 대기 중 빈 화면 오해 방지 */
 
+import { renderLpUnifiedLoadingMarkup } from "./lpUnifiedLoadingUi.js";
+
 const KPI_APP_TAB_IDS = new Set(["dream", "health", "happiness", "sideincome"]);
 
 let pendingTabId = null;
@@ -32,14 +34,10 @@ export function shouldShowKpiMapSyncLoading(tabId, isContentEmpty) {
 }
 
 export function renderKpiMapSyncLoadingMarkup() {
-  return `
-    <div class="dream-kpi-map-sync-loading" role="status" aria-live="polite" aria-busy="true">
-      <p class="dream-kpi-map-sync-loading-text">데이터 동기화중...</p>
-      <div class="dream-kpi-map-sync-loading-bar" aria-hidden="true">
-        <div class="dream-kpi-map-sync-loading-bar-fill"></div>
-      </div>
-    </div>
-  `;
+  return renderLpUnifiedLoadingMarkup({
+    variant: "inline",
+    extraClass: "dream-kpi-map-sync-loading",
+  });
 }
 
 export function mountKpiMapSyncLoading(container) {

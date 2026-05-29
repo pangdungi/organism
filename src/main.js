@@ -154,7 +154,7 @@ function showAppSplashNow() {
   splash.removeAttribute("hidden");
   splash.setAttribute("aria-hidden", "false");
   splash.setAttribute("aria-busy", "true");
-  splash.setAttribute("aria-label", "앱 준비 중");
+  splash.setAttribute("aria-label", "조금만 기다리세요 다들 미안 ❤︎");
 }
 
 function hideAppSplashNow() {

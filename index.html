@@ -39,6 +39,8 @@
     <!-- manifest 캐시로 예전 앱 이름이 남는 경우 방지: 쿼리 변경 시 브라우저가 다시 받음 -->
     <link rel="manifest" href="/manifest.json?v=timeisprice-brand-3" />
     <link rel="preload" href="/fonts/LP-SejongGeulggot.otf" as="font" type="font/otf" crossorigin />
+    <link rel="preload" href="/toolbaricons/splash/splash-pattern-wave.png" as="image" />
+    <link rel="preload" href="/toolbaricons/splash/splash-mascot.png" as="image" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=timeisprice-icon-3" />
     <link rel="apple-touch-icon" href="/icon-192.png?v=timeisprice-icon-3" />
     <!-- FOUC 방지 + 첫 페인트부터 세종 글꽃(또는 저장된 화면 글꼴) -->
@@ -89,9 +91,8 @@
         display: none;
         background-color: #fff;
       }
-      .app-splash {
-        --app-splash-bg: #ffffff;
-        --app-splash-ink: #1e4d7b;
+      /* 부팅 스플래시 — JS 번들 전 첫 페인트용(본문은 lp-app-loading.css와 동일) */
+      .app-splash.lp-unified-loading {
         position: fixed;
         inset: 0;
         z-index: 2147483646;
@@ -99,10 +100,13 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: max(1.5rem, env(safe-area-inset-top, 0)) 1.5rem max(2rem, env(safe-area-inset-bottom, 0));
+        padding: max(1.5rem, env(safe-area-inset-top, 0)) 1.5rem
+          max(2rem, env(safe-area-inset-bottom, 0));
         box-sizing: border-box;
-        background: var(--app-splash-bg);
-        color: var(--app-splash-ink);
+        overflow: hidden;
+        isolation: isolate;
+        background: #fff;
+        color: #1e4d7b;
         -webkit-tap-highlight-color: transparent;
         transition: opacity 0.38s ease;
       }
@@ -110,37 +114,60 @@
         opacity: 0;
         pointer-events: none;
       }
-      .app-splash-bar-wrap {
-        width: min(11rem, 48vw);
-        max-width: 100%;
+      .app-splash .lp-unified-loading__pattern {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        opacity: 0.38;
+        background-image: url("/toolbaricons/splash/splash-pattern-wave.png");
+        background-repeat: repeat;
+        background-size: 3rem 3rem;
+        background-position: center;
       }
-      .app-splash-bar-track {
-        height: 3px;
-        border-radius: 999px;
-        background: rgba(26, 95, 168, 0.18);
-        overflow: hidden;
+      .app-splash .lp-unified-loading__content {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        gap: clamp(0.65rem, 2dvh, 1rem);
+        padding: 1rem;
+        box-sizing: border-box;
       }
-      .app-splash-bar-fill {
-        width: 40%;
-        height: 100%;
-        border-radius: inherit;
-        background: var(--app-splash-ink);
-        animation: app-splash-bar-slide 1.25s ease-in-out infinite;
+      .app-splash .lp-unified-loading__mascot {
+        display: block;
+        width: auto;
+        height: clamp(6.5rem, 22dvh, 9.5rem);
+        max-width: min(14rem, 72vw);
+        object-fit: contain;
+        transform-origin: center center;
+        animation: lp-unified-loading-mascot-float 3.4s ease-in-out infinite;
       }
-      @keyframes app-splash-bar-slide {
-        0% {
-          transform: translateX(-100%);
-        }
+      @keyframes lp-unified-loading-mascot-float {
+        0%,
         100% {
-          transform: translateX(275%);
+          transform: translateY(0.35rem);
         }
+        50% {
+          transform: translateY(-0.35rem);
+        }
+      }
+      .app-splash .lp-unified-loading__message {
+        margin: 0;
+        font-family: inherit;
+        font-size: clamp(0.875rem, 2.8vw, 0.9375rem);
+        font-weight: 500;
+        letter-spacing: -0.02em;
+        color: #1e4d7b;
+        line-height: 1.5;
+        max-width: 18rem;
       }
       @media (prefers-reduced-motion: reduce) {
-        .app-splash-bar-fill {
+        .app-splash .lp-unified-loading__mascot {
           animation: none;
-          width: 100%;
-          transform: none;
-          opacity: 0.55;
         }
       }
       .app-tablet-landscape-hint,
@@ -252,17 +279,25 @@
     </noscript>
     <div
       id="app-splash"
-      class="app-splash"
+      class="app-splash lp-unified-loading lp-unified-loading--fullscreen"
       role="status"
       aria-live="polite"
       aria-busy="true"
-      aria-label="앱 준비 중"
+      aria-label="조금만 기다리세요 다들 미안 ❤︎"
     >
-      <p class="app-splash-label">앱 준비 중…</p>
-      <div class="app-splash-bar-wrap">
-        <div class="app-splash-bar-track" aria-hidden="true">
-          <div class="app-splash-bar-fill"></div>
+      <div class="lp-unified-loading__pattern" aria-hidden="true"></div>
+      <div class="lp-unified-loading__content">
+        <div class="lp-unified-loading__mascot-shell">
+          <img
+            class="lp-unified-loading__mascot"
+            src="/toolbaricons/splash/splash-mascot.png"
+            alt=""
+            width="192"
+            height="192"
+            decoding="async"
+          />
         </div>
+        <p class="lp-unified-loading__message">조금만 기다리세요 다들 미안 ❤︎</p>
       </div>
     </div>
     <div id="lp-boot-fallback" hidden aria-hidden="true" role="alertdialog" aria-labelledby="lp-boot-fallback-title">
