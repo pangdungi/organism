@@ -143,6 +143,7 @@ export function mountTimeAddTaskIconPicker(mountEl) {
 
   function openIconModal() {
     if (!modalEl) return;
+    renderIconGrid();
     modalEl.hidden = false;
     trigger.setAttribute("aria-expanded", "true");
     syncGridSelection();

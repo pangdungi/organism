@@ -936,8 +936,8 @@
 }
 
 .calendar-1day-view .time-ledger-usage-icon-cell > img {
-  width: 1em;
-  height: 1em;
+  width: 1.15em;
+  height: 1.15em;
   object-fit: contain;
   display: block;
 }

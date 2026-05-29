@@ -1,349 +1,189 @@
 /**
- * 시간가계부 과제 아이콘(URL 고정 경로).
- * 1) 과제명 정확 매칭 → 전용 아이콘
- * 2) 없음 + 생산 버킷(dream/sideincome/happiness/health) → 해당 카테고리 아이콘
- * 3) 2에서 없음 + 비생산 버킷(쾌락/미디어/꿈방해/불행/비건강/돈손실) → 해당 카테고리 아이콘
+ * 시간가계부 과제 아이콘 — time-task-picker 손그림 SVG + 카테고리 기본 fallback.
+ * 사용자 iconKey(`svg:파일명`)가 있으면 우선, 없으면 카테고리별 기본 아이콘.
  */
 
 import pickerSvgNames from "../../public/time-task-picker-icons.json";
 
-const BASE = "/toolbaricons/time-task";
 const PICKER_SVG_BASE = "/toolbaricons/time-task-picker";
+const MENU_HOME_BASE = "/toolbaricons/menu-home";
 
-/** 아이콘 선택 모달 — 추가 PNG(사용자 제공) */
-const PICKER_PNG_EXTRAS = [
-  ["팔 올린 사람", "person-raisedarms"],
-  ["팔 벌린 사람", "person-spread"],
-  ["사람", "person-green"],
-  ["팀", "team"],
-  ["사용자 추가", "user-add"],
-  ["사용자 취소", "user-cancel"],
-  ["캡슐", "capsules"],
-  ["비커", "beaker"],
-  ["의료 클립보드", "clipboard-medicine"],
-  ["반창고", "first-aid"],
-  ["알약", "pills"],
-  ["전구", "lightbulb-alt"],
-  ["자동차 배터리", "battery-car"],
-  ["플러그", "plug"],
-  ["플러그(물)", "plug-water"],
-  ["비디오", "video"],
-  ["VHS", "vhs"],
-  ["TV", "tv"],
-  ["별", "star"],
-  ["영화 티켓", "ticket-movie"],
-  ["프로젝터", "projector"],
-  ["필름", "film-strip"],
-  ["클래퍼보드", "clapboard"],
-  ["감독 의자", "chair-director"],
-  ["영화 카메라", "camera-movie"],
-  ["캠코더", "camcorder"],
-  ["3D 안경", "3d-glasses"],
-  ["계산기", "calculator"],
-  ["은행", "bank"],
-  ["돈 가방", "bag-money"],
-  ["신용카드", "credit-card-alt"],
-  ["다이아몬드", "diamond"],
-  ["저금통", "piggy-bank"],
-  ["핸드백", "purse"],
-  ["지갑", "wallet"],
-  ["베이컨", "bacon"],
-  ["뜨거운 그릇", "bowl-hot"],
-  ["아침 샌드위치", "breakfast-sandwich"],
-  ["부리토", "burrito"],
-  ["스위스 치즈", "cheese-swiss"],
-  ["치즈", "cheese"],
-  ["닭다리(한입)", "drumstick-bite"],
-  ["닭다리", "drumstick"],
-  ["중국 요리 포장", "chinese-take-out"],
-  ["달걀", "egg"],
-  ["달걀 깨기", "egg-crack"],
-  ["계란 프라이", "egg-fried"],
-  ["감자튀김", "french-fries"],
-  ["고기 꼬치", "meat-stick"],
-  ["미트볼", "meatball"],
-  ["피자(치즈)", "pizza-drip"],
-  ["면 그릇", "noodle-bowl"],
-  ["면", "noodles"],
-  ["피자", "pizza"],
-  ["가금류", "poultry"],
-  ["밥그릇", "rice-bowl"],
-  ["소시지", "sausages"],
-  ["팝콘", "popcorn"],
-  ["샌드위치", "sandwich"],
-  ["수프 캔", "soup-can"],
-  ["스파게티", "spaghetti"],
-  ["스시", "sushi"],
-  ["나초", "tortilla-chips"],
-  ["T본 스테이크", "t-bone-steak"],
-  ["타코", "taco"],
-  ["블루베리(여러)", "blueberries"],
-  ["블루베리", "blueberry"],
-  ["사과(심)", "apple-core"],
-  ["체리(여러)", "cherries"],
-  ["사과", "apple"],
-  ["체리", "cherry"],
-  ["감귤 조각", "citrus-wedge"],
-  ["아보카도", "avocado"],
-  ["코코넛", "coconut"],
-  ["바나나", "banana"],
-  ["멜론", "melon"],
-  ["멜론 조각", "melon-slice"],
-  ["바나나(여러)", "bananas"],
-  ["포도", "grapes"],
-  ["오렌지", "orange"],
-  ["딸기", "strawberry"],
-  ["자두", "plum"],
-  ["토마토", "tomato"],
-  ["파파야", "papaya"],
-  ["복숭아", "peach"],
-  ["수박", "watermelon"],
-  ["배", "pear"],
-  ["망고", "mango"],
-  ["키위", "kiwi"],
-  ["파인애플", "pineapple"],
-  ["라즈베리", "raspberry"],
-  ["스타과일", "starfruit"],
-  ["수박 조각", "watermelon-slice"],
-  ["레몬", "lemon"],
-  ["석류", "pomegranate"],
-  ["푸츠볼", "foosball"],
-  ["탁구", "ping-pong"],
-  ["체스", "chess-pawn"],
-  ["다트", "dart"],
-  ["주사위", "dice-six"],
-  ["퍼즐", "puzzle"],
-  ["안드로이드 태블릿", "android-tablet"],
-  ["기기(여러)", "devices"],
-  ["마우스", "mouse-ball"],
-  ["휴대폰·연필", "phone-pencil"],
-  ["태블릿", "tablet"],
-  ["수영", "swimming"],
-  ["체중계", "scale"],
-  ["덤벨", "dumbbell"],
-  ["물방울", "drop"],
-  ["자전거", "biking"],
-  ["케멕스", "chemex"],
-  ["안경", "glasses-alt"],
-  ["서류가방", "portfolio"],
-  ["무지개", "rainbow"],
-  ["타자기", "typewriter"],
-  ["턴테이블", "turntable"],
-  ["에어팟", "airpods"],
-  ["옛날 컴퓨터", "computer-retro"],
-  ["카세트", "cassette-tape"],
-  ["풍선", "balloon"],
-  ["크리스마스 트리", "christmas-tree"],
-  ["샴페인", "champagne-toast"],
-  ["종", "bells"],
-  ["다이아몬드 반지", "diamond-ring"],
-  ["하트", "hearts"],
-  ["파티", "party-bell"],
-  ["파티 폭죽", "party-horn"],
-  ["안락 의자", "chair-easy"],
-  ["각도 의자", "chair-angle"],
-  ["싱글 침대", "bed-single"],
-  ["침대", "bed"],
-  ["각도 주방 의자", "chair-kitchen-angle"],
-  ["주방 의자", "chair-kitchen"],
-  ["이층 침대", "bunkbed"],
-  ["의자", "chair"],
-  ["옛날 시계", "clock-retro"],
-  ["커튼", "curtains"],
-  ["소화기", "fire-extinguisher"],
-  ["벽난로", "fireplace"],
-  ["화분", "flower-pot"],
-  ["어항", "fishbowl"],
-  ["서랍장", "dresser"],
-  ["액자(풍경)", "frame-image"],
-  ["액자(인물)", "frame-portrait"],
-  ["액자", "frame"],
-  ["플로어 램프", "lamp-floor"],
-  ["책상 램프", "lamp-desk"],
-  ["베개", "pillows"],
-  ["펜던트 조명", "light-hanging"],
-  ["램프", "lamp"],
-  ["사이드 테이블", "table-side"],
-  ["소파", "sofa"],
-  ["튤립 화분", "tulip-pot"],
-  ["옷장", "wardrobe"],
-  ["창틀", "window-sill"],
-  ["사다리", "ladder"],
-  ["커튼 창문", "window-curtain"],
-];
+/** KPI 탭 헤더 — 메인 메뉴 손그림 (picker 세트와 별도) */
+export const KPI_CATEGORY_ICON_SRC = {
+  dream: `${MENU_HOME_BASE}/dream-new.svg`,
+  sideincome: `${MENU_HOME_BASE}/sideincome-new.svg`,
+  happiness: `${MENU_HOME_BASE}/happiness-new.svg`,
+  health: `${MENU_HOME_BASE}/health-new.svg`,
+};
 
-/** @type {readonly [string, string][]} [표시용 과제명(공백 포함), 파일 베이스명(.png)] */
-const ORDERED_PAIRS = [
-  ["근무하기", "work"],
-  ["수면하기", "sleep-bed"],
-  ["감정적이기(긍정적)", "emotion-positive"],
-  ["생산적 소비", "productive-consumption"],
-  ["돈 관리", "money-manage"],
-  ["경제 공부", "econ-study"],
-  ["경력 개발", "career"],
-  ["아이디어 작업하기", "idea"],
-  ["독서하기", "reading"],
-  ["독서노트 작성", "reading-notes"],
-  ["시간기록", "time-log"],
-  ["시간기록 점검", "time-log-review"],
-  ["병원 방문", "hospital"],
-  ["마사지", "massage"],
-  ["스킨케어", "skincare"],
-  /* 건강·행복 계열 (순서: 사용자 제공 이미지와 대응) */
-  ["낮잠(30분 이내)", "nap"],
-  ["낮잠", "nap"],
-  ["낮잠 (30분 이상은 수면으로 기록)", "nap"],
-  ["구강케어", "oral-care"],
-  ["샤워 및 씻기", "shower"],
-  ["샤워 씻기", "shower"],
-  ["바디케어", "body-care"],
-  ["건강한 섭취", "meal-healthy"],
-  ["건강한 섭취 준비", "meal-prep"],
-  ["건강한 식사", "meal-healthy"],
-  ["건강한 식사 준비", "meal-prep"],
-  ["감정 기록하기", "emotion-log"],
-  ["의미 있는 영상 시청", "meaningful-video"],
-  ["생산적 대화", "productive-talk"],
-  ["의미 있는 모임 참석", "meaningful-meeting"],
-  ["의식적 콘텐츠 소비", "conscious-content"],
-  /* 일상·비생산 과제 (사용자 제공 이미지 순서) */
-  ["의식적 검색", "conscious-search"],
-  ["음악 듣기", "music-listen"],
-  ["음악듣기", "music-listen"],
-  ["잡동사니 일 해결하기", "junk-chores"],
-  ["커피 마시기", "coffee"],
-  ["커피마시기", "coffee"],
-  ["다이어리 쓰기", "diary"],
-  ["다이어리쓰기", "diary"],
-  ["메모하기", "memo"],
-  ["집안일 및 청소", "housework"],
-  ["빨래 및 옷 정리", "laundry"],
-  ["화장 및 헤어", "makeup-hair"],
-  ["화장및 헤어", "makeup-hair"],
-  ["감정적이기(부정적)", "emotion-negative"],
-  ["감정적이기(붇정적)", "emotion-negative"],
-  ["비생산적 소비", "nonproductive-consumption"],
-  ["구매 고민", "shopping-dither"],
-  ["구매고민", "shopping-dither"],
-  ["뭐 살지 고민하기", "shopping-dither"],
-  ["건강하지 않은 섭취", "unhealthy-meal"],
-  ["건강하지 않은 식사", "unhealthy-meal"],
-  /* 추가 비생산·방해 과제 */
-  ["건강하지 않은 섭취 준비", "unhealthy-meal-prep"],
-  ["건강하지 않은 식사 준비", "unhealthy-meal-prep"],
-  ["술 마시기", "alcohol"],
-  ["술마시기", "alcohol"],
-  ["비생산적 대화", "unproductive-conversation"],
-  ["논쟁하기", "argue"],
-  ["중요하지 않은 통화", "call-unimportant"],
-  ["물건 찾기", "find-things"],
-  ["무의식적 폰 사용", "mindless-phone"],
-  ["무의식적 검색", "mindless-search"],
-  ["단순 이동", "simple-travel"],
-  ["단순이동", "simple-travel"],
-  ["쇼츠/릴스 피드 보기", "shorts-reels-feed"],
-  ["쇼츠 릴스 피드 보기", "shorts-reels-feed"],
-  ["쾌락성 모임 참석", "pleasure-gathering"],
-  ["게임", "game"],
-  ["단순 쾌락형 영상 시청", "pleasure-video"],
-];
+const PICKER_SVG_SET = new Set(pickerSvgNames);
 
-/** 아이콘 선택 모달 — 카테고리 기본 아이콘(fallback) */
-const PICKER_CATEGORY_EXTRAS = [
-  ["꿈", "prod-cat-dream"],
-  ["부수입", "prod-cat-sideincome"],
-  ["행복", "prod-cat-happiness"],
-  ["건강", "prod-cat-health"],
-  ["쾌락", "nonprod-cat-pleasure"],
-  ["미디어", "nonprod-cat-media"],
-  ["꿈 방해", "nonprod-cat-dreamblock"],
-  ["불행", "nonprod-cat-unhappiness"],
-  ["비건강", "nonprod-cat-unhealthy"],
-  ["돈 손실", "nonprod-cat-moneylosing"],
-];
-
-function compactTaskName(name) {
-  return String(name || "")
-    .trim()
-    .replace(/\s+/g, "");
-}
-
-const ICON_BY_COMPACT = new Map();
-const SLUG_BY_COMPACT = new Map();
-for (const [label, slug] of ORDERED_PAIRS) {
-  const compact = compactTaskName(label);
-  ICON_BY_COMPACT.set(compact, `${BASE}/${slug}.png`);
-  SLUG_BY_COMPACT.set(compact, slug);
-}
-
-const PRODUCTIVE_LEDGER_BUCKETS = new Set([
+const PRODUCTIVE_CATEGORIES = new Set([
   "dream",
   "sideincome",
   "happiness",
   "health",
 ]);
 
+/** iconKey 없을 때 — 비생산 카테고리 기본 (picker 손그림) */
+const NONPRODUCTIVE_CATEGORY_PICKER_ICON = {
+  unhealthy: "potato-new",
+  unhappiness: "emotionsad-2-new",
+  dreamblocking: "emotionsad-4-new",
+  media_watch: "youtube-new",
+  pleasure: "beer-new",
+  moneylosing: "emotionsad-5-new",
+};
+
+/** iconKey 없을 때 — 근무·수면 (other) */
+const OTHER_CATEGORY_PICKER_PNG = {
+  sleep: "sleep-new",
+  work: "work-new",
+};
+
+/** @param {string} pngBase */
+function pickerPngSrc(pngBase) {
+  const name = String(pngBase || "").trim();
+  if (!name) return "";
+  return `${PICKER_SVG_BASE}/${name}.png`;
+}
+
 /**
- * 생산 과제 중 카테고리만 KPI/사용자 정의인 경우 — 꿈·부수입·행복·건강 아이콘.
- * productivity가 비어 있어도 category가 위 넷이면 생산 버킷으로 간주(행 데이터 등).
+ * @param {string} [taskName]
+ * @param {string} [category]
+ * @returns {string}
  */
-function productiveCategoryFallbackSlug(category, productivity) {
+function fixedSleepWorkIconSrc(taskName, category) {
+  const t = String(taskName || "").trim();
   const cat = String(category || "")
     .trim()
     .toLowerCase();
-  if (!PRODUCTIVE_LEDGER_BUCKETS.has(cat)) return "";
+  if (t === "수면하기" || /수면/.test(t) || cat === "sleep") {
+    return pickerPngSrc(OTHER_CATEGORY_PICKER_PNG.sleep);
+  }
+  if (t === "근무하기" || cat === "work") {
+    return pickerPngSrc(OTHER_CATEGORY_PICKER_PNG.work);
+  }
+  return "";
+}
+
+/**
+ * @param {string} [taskName]
+ * @param {string} [category]
+ * @returns {string}
+ */
+function fixedSleepWorkIconKey(taskName, category) {
+  const t = String(taskName || "").trim();
+  const cat = String(category || "")
+    .trim()
+    .toLowerCase();
+  if (t === "수면하기" || /수면/.test(t) || cat === "sleep") {
+    return `png:${OTHER_CATEGORY_PICKER_PNG.sleep}`;
+  }
+  if (t === "근무하기" || cat === "work") {
+    return `png:${OTHER_CATEGORY_PICKER_PNG.work}`;
+  }
+  return "";
+}
+
+/**
+ * @param {string} [category]
+ * @param {string} [productivity]
+ * @returns {string}
+ */
+function productiveCategoryFallbackSrc(category, productivity) {
+  const cat = String(category || "")
+    .trim()
+    .toLowerCase();
+  if (!PRODUCTIVE_CATEGORIES.has(cat)) return "";
   const p = String(productivity || "")
     .trim()
     .toLowerCase();
   if (p === "nonproductive" || p === "other") return "";
-  return cat === "dream"
-    ? "prod-cat-dream"
-    : cat === "sideincome"
-      ? "prod-cat-sideincome"
-      : cat === "happiness"
-        ? "prod-cat-happiness"
-        : "prod-cat-health";
+  return KPI_CATEGORY_ICON_SRC[cat] || "";
 }
-
-function productiveCategoryFallbackIcon(category, productivity) {
-  const slug = productiveCategoryFallbackSlug(category, productivity);
-  return slug ? `${BASE}/${slug}.png` : "";
-}
-
-const NONPRODUCTIVE_LEDGER_BUCKETS = new Map([
-  ["pleasure", "nonprod-cat-pleasure"],
-  ["media_watch", "nonprod-cat-media"],
-  ["dreamblocking", "nonprod-cat-dreamblock"],
-  ["unhappiness", "nonprod-cat-unhappiness"],
-  ["unhealthy", "nonprod-cat-unhealthy"],
-  ["moneylosing", "nonprod-cat-moneylosing"],
-]);
 
 /**
- * 비생산 카테고리 사용자 추가·KPI 과제 — 쾌락·미디어·꿈 방해·불행·비건강·돈 손실.
+ * @param {string} [category]
+ * @param {string} [productivity]
+ * @returns {string}
  */
-function nonproductiveCategoryFallbackSlug(category, productivity) {
+function nonproductiveCategoryFallbackKey(category, productivity) {
   const cat = String(category || "")
     .trim()
     .toLowerCase();
-  const slug = NONPRODUCTIVE_LEDGER_BUCKETS.get(cat);
-  if (!slug) return "";
+  const name = NONPRODUCTIVE_CATEGORY_PICKER_ICON[cat];
+  if (!name || !PICKER_SVG_SET.has(name)) return "";
   const p = String(productivity || "")
     .trim()
     .toLowerCase();
   if (p === "productive" || p === "other") return "";
-  return slug;
-}
-
-function nonproductiveCategoryFallbackIcon(category, productivity) {
-  const slug = nonproductiveCategoryFallbackSlug(category, productivity);
-  return slug ? `${BASE}/${slug}.png` : "";
+  return `svg:${name}`;
 }
 
 /**
- * @param {string} taskName
- * @param {{ category?: string, productivity?: string }} [opts]
- * @returns {string} URL 또는 빈 문자열
+ * @param {string} [category]
+ * @param {string} [productivity]
+ * @returns {string}
+ */
+function resolveCategoryFallbackIconSrc(category, productivity) {
+  const prod = productiveCategoryFallbackSrc(category, productivity);
+  if (prod) return prod;
+  const key = nonproductiveCategoryFallbackKey(category, productivity);
+  return key ? getTimeTaskIconSrcByKey(key) : "";
+}
+
+/**
+ * @param {string} [category]
+ * @param {string} [productivity]
+ * @returns {string}
+ */
+function resolveCategoryFallbackIconKey(category, productivity) {
+  if (productiveCategoryFallbackSrc(category, productivity)) return "";
+  return nonproductiveCategoryFallbackKey(category, productivity);
+}
+
+/** 구 picker 파일명(`apple`) → 손그림 `-new` 파일명 */
+function resolvePickerSvgFileName(name) {
+  const n = String(name || "").trim();
+  if (!n) return "";
+  if (PICKER_SVG_SET.has(n)) return n;
+  const migrated = n.endsWith("-new") ? "" : `${n}-new`;
+  if (migrated && PICKER_SVG_SET.has(migrated)) return migrated;
+  return "";
+}
+
+/**
+ * @param {string} key
+ * @returns {string}
+ */
+export function getTimeTaskIconSrcByKey(key) {
+  const k = String(key || "").trim();
+  if (!k) return "";
+  if (k.startsWith("svg:")) {
+    const fileName = resolvePickerSvgFileName(k.slice(4).trim());
+    if (!fileName) return "";
+    return `${PICKER_SVG_BASE}/${fileName}.svg`;
+  }
+  if (k.startsWith("png:")) {
+    const name = k.slice(4).trim();
+    if (
+      name === OTHER_CATEGORY_PICKER_PNG.sleep ||
+      name === OTHER_CATEGORY_PICKER_PNG.work
+    ) {
+      return pickerPngSrc(name);
+    }
+    return "";
+  }
+  const bare = resolvePickerSvgFileName(k);
+  if (bare) return `${PICKER_SVG_BASE}/${bare}.svg`;
+  return "";
+}
+
+/**
+ * @param {string} _taskName
+ * @param {{ iconKey?: string, category?: string, productivity?: string }} [opts]
+ * @returns {string}
  */
 export function getTimeTaskListIconSrc(taskName, opts = {}) {
   const iconKey = String(opts.iconKey || "").trim();
@@ -351,86 +191,46 @@ export function getTimeTaskListIconSrc(taskName, opts = {}) {
     const byKey = getTimeTaskIconSrcByKey(iconKey);
     if (byKey) return byKey;
   }
-  const key = compactTaskName(taskName);
-  if (key) {
-    const byName = ICON_BY_COMPACT.get(key);
-    if (byName) return byName;
+  const sleepWork = fixedSleepWorkIconSrc(taskName, opts.category);
+  if (sleepWork) return sleepWork;
+  return resolveCategoryFallbackIconSrc(opts.category, opts.productivity);
+}
+
+function normalizeStoredPickerIconKey(iconKey) {
+  const k = String(iconKey || "").trim();
+  if (!k) return "";
+  if (k.startsWith("svg:")) {
+    const fileName = resolvePickerSvgFileName(k.slice(4).trim());
+    return fileName ? `svg:${fileName}` : "";
   }
-  const prod = productiveCategoryFallbackIcon(opts.category, opts.productivity);
-  if (prod) return prod;
-  return nonproductiveCategoryFallbackIcon(opts.category, opts.productivity);
+  const fileName = resolvePickerSvgFileName(k);
+  return fileName ? `svg:${fileName}` : "";
 }
 
 /**
- * 과제 수정 모달 — 리스트에 보이는 아이콘과 동일한 picker key.
- * 저장된 iconKey가 없어도 과제명·카테고리 fallback을 key로 환산한다.
  * @param {string} taskName
- * @param {{ category?: string, productivity?: string, iconKey?: string }} [opts]
+ * @param {{ iconKey?: string, category?: string, productivity?: string }} [opts]
  * @returns {string}
  */
 export function resolveTimeTaskIconKey(taskName, opts = {}) {
   const iconKey = String(opts.iconKey || "").trim();
-  if (iconKey && getTimeTaskIconSrcByKey(iconKey)) return iconKey;
-
-  const compact = compactTaskName(taskName);
-  if (compact) {
-    const slug = SLUG_BY_COMPACT.get(compact);
-    if (slug) return slug;
+  const normalized = normalizeStoredPickerIconKey(iconKey);
+  if (normalized && getTimeTaskIconSrcByKey(normalized)) return normalized;
+  if (iconKey && getTimeTaskIconSrcByKey(iconKey)) {
+    return normalizeStoredPickerIconKey(iconKey) || iconKey;
   }
-
-  const prodSlug = productiveCategoryFallbackSlug(
-    opts.category,
-    opts.productivity,
-  );
-  if (prodSlug) return prodSlug;
-
-  const nonProdSlug = nonproductiveCategoryFallbackSlug(
-    opts.category,
-    opts.productivity,
-  );
-  if (nonProdSlug) return nonProdSlug;
-
-  const t = String(taskName || "").trim();
-  if (t === "수면하기" || /수면/.test(t)) return "sleep-bed";
-
-  return "";
-}
-
-/** KPI·생산 카테고리 기본 아이콘 — 메인 메뉴 손그림 SVG (`menu-home/*-new.svg`와 동일) */
-const PROD_CAT_SVG_SLUG = {
-  "prod-cat-dream": "prod-cat-dream-new",
-  "prod-cat-sideincome": "prod-cat-sideincome-new",
-  "prod-cat-happiness": "prod-cat-happiness-new",
-  "prod-cat-health": "prod-cat-health-new",
-};
-
-/** @param {string} slug 파일 베이스명(확장자 없음) */
-export function getTimeTaskIconSrcBySlug(slug) {
-  const s = String(slug || "").trim();
-  if (!s) return "";
-  const svgSlug = PROD_CAT_SVG_SLUG[s];
-  if (svgSlug) return `${BASE}/${svgSlug}.svg`;
-  return `${BASE}/${s}.png`;
+  const sleepWork = fixedSleepWorkIconKey(taskName, opts.category);
+  if (sleepWork) return sleepWork;
+  return resolveCategoryFallbackIconKey(opts.category, opts.productivity);
 }
 
 /**
- * 아이콘 선택·저장용 key → URL (기본 PNG slug · `png:` · `svg:`).
- * @param {string} key
+ * @param {string} taskName
+ * @param {{ iconKey?: string, category?: string, productivity?: string }} [opts]
+ * @returns {string}
  */
-export function getTimeTaskIconSrcByKey(key) {
-  const k = String(key || "").trim();
-  if (!k) return "";
-  if (k.startsWith("svg:")) {
-    const name = k.slice(4).trim();
-    if (!name) return "";
-    return `${PICKER_SVG_BASE}/${name}.svg`;
-  }
-  if (k.startsWith("png:")) {
-    const name = k.slice(4).trim();
-    if (!name) return "";
-    return `${PICKER_SVG_BASE}/${name}.png`;
-  }
-  return getTimeTaskIconSrcBySlug(k);
+export function resolveTimeTaskDisplayIconSrc(taskName, opts = {}) {
+  return getTimeTaskListIconSrc(taskName, opts);
 }
 
 function pickerIconLabelFromFilename(name) {
@@ -448,7 +248,6 @@ function normalizePickerSearchHaystack(text) {
 }
 
 /**
- * 아이콘 선택 모달 검색 — 파일명·라벨 부분 일치(하이픈·공백 무시).
  * @param {string} searchText
  * @param {string} query
  */
@@ -470,59 +269,18 @@ export function matchTimeTaskPickerIconSearch(searchText, query) {
 }
 
 /**
- * 아이콘 선택 모달용 — 기본 PNG + 추가 SVG(무제 폴더).
  * @returns {{ key: string, label: string, src: string, searchText: string }[]}
  */
 export function getTimeTaskPickableIcons() {
-  const seen = new Set();
   /** @type {{ key: string, label: string, src: string, searchText: string }[]} */
   const out = [];
-  for (const pair of [...ORDERED_PAIRS, ...PICKER_CATEGORY_EXTRAS]) {
-    const [label, slug] = pair;
-    if (seen.has(slug)) continue;
-    seen.add(slug);
-    out.push({
-      key: slug,
-      label,
-      src: getTimeTaskIconSrcBySlug(slug),
-      searchText: `${label} ${slug}`.replace(/-/g, " "),
-    });
-  }
-  for (const [label, slug] of PICKER_PNG_EXTRAS) {
-    const key = `png:${slug}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push({
-      key,
-      label,
-      src: `${PICKER_SVG_BASE}/${slug}.png`,
-      searchText: `${label} ${slug}`.replace(/-/g, " "),
-    });
-  }
   for (const name of pickerSvgNames) {
-    const key = `svg:${name}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
     out.push({
-      key,
+      key: `svg:${name}`,
       label: pickerIconLabelFromFilename(name),
       src: `${PICKER_SVG_BASE}/${name}.svg`,
       searchText: name.replace(/-/g, " "),
     });
   }
   return out;
-}
-
-/** 리스트·일간 일정 등 — 과제명 매칭 + category/productivity fallback + 수면 예외 */
-export function resolveTimeTaskDisplayIconSrc(taskName, opts = {}) {
-  const iconKey = String(opts.iconKey || "").trim();
-  if (iconKey) {
-    const byKey = getTimeTaskIconSrcByKey(iconKey);
-    if (byKey) return byKey;
-  }
-  const t = String(taskName || "").trim();
-  const listed = getTimeTaskListIconSrc(t, opts);
-  if (listed) return listed;
-  if (t === "수면하기" || /수면/.test(t)) return `${BASE}/sleep-bed.png`;
-  return "";
 }

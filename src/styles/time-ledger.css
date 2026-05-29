@@ -1500,8 +1500,8 @@
 }
 .time-ledger-view .time-ledger-usage-icon-cell > img,
 [data-legacy~="time-ledger-view"] .time-ledger-usage-icon-cell > img {
-  width: 1.2rem;
-  height: 1.2rem;
+  width: 1.65rem;
+  height: 1.65rem;
   max-width: none;
   object-fit: contain;
   display: block;
