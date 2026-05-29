@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#ffffff" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <!-- viewport-fit=cover: 세로 세이프는 .app-page padding-top 한 곳만 -->
@@ -82,13 +83,15 @@
         overflow-x: hidden;
         min-height: 100vh;
         min-height: 100dvh;
+        background-color: #fff;
       }
       #app {
         display: none;
+        background-color: #fff;
       }
       .app-splash {
-        --app-splash-bg: #f0f4fa;
-        --app-splash-ink: #1a5fa8;
+        --app-splash-bg: #ffffff;
+        --app-splash-ink: #1e4d7b;
         position: fixed;
         inset: 0;
         z-index: 2147483646;
@@ -159,8 +162,8 @@
         padding: max(1.5rem, env(safe-area-inset-top, 0)) 1.5rem
           max(2rem, env(safe-area-inset-bottom, 0));
         box-sizing: border-box;
-        background: #f0f4fa;
-        color: #1a5fa8;
+        background: #fff;
+        color: #1e4d7b;
         font-family: inherit;
         text-align: center;
       }
