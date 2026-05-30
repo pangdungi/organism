@@ -8,7 +8,6 @@ import {
 } from "./WorkScheduleMonthly.js";
 import { supabase } from "../supabase.js";
 import {
-  pullStampTypesFromSupabase,
   pullWorkScheduleFromSupabase,
   pushStampTypesAfterSettingsSave,
   upsertStampCalendarEntryFromModal,
@@ -283,8 +282,8 @@ async function pullStampCalendarForUi() {
   } catch (_) {}
 }
 
-export async function openWorkScheduleTypeSettingsModal() {
-    await pullStampCalendarForUi();
+export function openWorkScheduleTypeSettingsModal() {
+    if (document.querySelector(".work-schedule-type-settings-modal")) return;
     const modal = document.createElement("div");
     modal.className =
       "work-schedule-type-settings-modal todo-list-modal";
@@ -392,10 +391,7 @@ export async function openWorkScheduleTypeSettingsModal() {
       stampEditHint.hidden = true;
     }
 
-    async function openStampEditPopover(entryName, isProtected) {
-      try {
-        await pullStampTypesFromSupabase();
-      } catch (_) {}
+    function openStampEditPopover(entryName, isProtected) {
       stampEditOrigName = entryName;
       stampEditName.value = entryName;
       if (isProtected) {
@@ -661,6 +657,16 @@ export async function openWorkScheduleTypeSettingsModal() {
 
     renderTypeListsFromDraft();
     document.body.appendChild(modal);
+    void pullStampCalendarForUi()
+      .catch(() => {})
+      .then(() => {
+        if (!modal.isConnected) return;
+        const fresh = cloneWorkTypeOptionsForDraft();
+        fresh.sort(compareTypeEntriesForPersist);
+        draftTypes.splice(0, draftTypes.length, ...fresh);
+        lastSavedComparable = draftComparableSnapshot();
+        renderTypeListsFromDraft();
+      });
 }
 
 /**

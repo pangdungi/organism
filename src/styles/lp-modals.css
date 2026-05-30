@@ -387,6 +387,38 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
     ) {
     padding-bottom: max(1rem, var(--vv-keyboard, 0px));
   }
+
+  /* 갤럭시 등: 키보드 시 화면 전체가 눌리지 않게 visualViewport 기준으로 모달만 맞춤 */
+  html.lp-keyboard-open.lp-task-log-modal-open
+    .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal),
+  html.lp-keyboard-open.lp-task-log-modal-open
+    [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+      .lp-calendar-budget-add-modal
+    ) {
+    top: var(--vv-offset-top, 0px);
+    left: 0;
+    right: 0;
+    bottom: auto;
+    height: var(--vv-visible-height, 100dvh);
+    max-height: var(--vv-visible-height, 100dvh);
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding-top: max(0.35rem, env(safe-area-inset-top, 0px));
+    padding-bottom: 0.35rem;
+  }
+
+  html.lp-keyboard-open.lp-task-log-modal-open
+    .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+    .time-task-setup-panel.time-task-log-panel,
+  html.lp-keyboard-open.lp-task-log-modal-open
+    [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+      .lp-calendar-budget-add-modal
+    )
+    [data-legacy~="time-task-setup-panel"][data-legacy~="time-task-log-panel"] {
+    height: auto;
+    min-height: 0;
+    max-height: min(calc(var(--vv-visible-height, 100dvh) - 0.75rem), 41rem);
+  }
 }
 .time-task-select-panel,
 .time-add-task-panel,

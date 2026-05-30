@@ -6,6 +6,8 @@ import { applyStaticAppIconImg } from "./staticAppIconImg.js";
 import {
   getTimeTaskIconSrcByKey,
   getTimeTaskPickableIcons,
+  getTimeTaskListIconSrc,
+  resolveTimeTaskIconKey,
   matchTimeTaskPickerIconSearch,
 } from "./timeTaskIconUrls.js";
 import { lpSetClasses, lpTokenToggle } from "./timeLedgerClassPolicy.js";
@@ -18,12 +20,17 @@ export function mountTimeAddTaskIconPicker(mountEl) {
   const noop = {
     getSelectedKey: () => "",
     setSelectedKey: () => {},
+    setFromTaskDisplay: () => {},
+    refreshDefaultPreview: () => {},
     reset: () => {},
   };
   if (!mountEl) return noop;
 
   mountEl.innerHTML = "";
   let selectedKey = "";
+  /** picker key 없이 카테고리·KPI 기본 아이콘만 쓸 때 트리거 미리보기 */
+  let previewSrc = "";
+  let userPickedIcon = false;
   let modalEl = null;
   let iconSearchInput = null;
 
@@ -35,7 +42,11 @@ export function mountTimeAddTaskIconPicker(mountEl) {
   trigger.setAttribute("aria-label", "아이콘 선택");
 
   function syncTrigger() {
-    const has = selectedKey !== "";
+    const src =
+      (selectedKey && getTimeTaskIconSrcByKey(selectedKey)) ||
+      previewSrc ||
+      "";
+    const has = !!src;
     lpTokenToggle(trigger, "time-add-task-icon-picker__trigger--selected", has);
     trigger.setAttribute(
       "aria-label",
@@ -43,8 +54,6 @@ export function mountTimeAddTaskIconPicker(mountEl) {
     );
     trigger.replaceChildren();
     if (!has) return;
-    const src = getTimeTaskIconSrcByKey(selectedKey);
-    if (!src) return;
     const img = document.createElement("img");
     img.src = src;
     img.alt = "";
@@ -115,6 +124,8 @@ export function mountTimeAddTaskIconPicker(mountEl) {
         e.preventDefault();
         e.stopPropagation();
         selectedKey = key;
+        previewSrc = "";
+        userPickedIcon = true;
         syncTrigger();
         syncGridSelection();
         closeIconModal();
@@ -147,9 +158,6 @@ export function mountTimeAddTaskIconPicker(mountEl) {
     modalEl.hidden = false;
     trigger.setAttribute("aria-expanded", "true");
     syncGridSelection();
-    try {
-      iconSearchInput?.focus?.();
-    } catch (_) {}
   }
 
   function ensureIconModal() {
@@ -216,11 +224,33 @@ export function mountTimeAddTaskIconPicker(mountEl) {
     getSelectedKey: () => selectedKey,
     setSelectedKey: (key) => {
       selectedKey = String(key || "").trim();
+      previewSrc = selectedKey ? "" : previewSrc;
+      if (selectedKey) userPickedIcon = true;
+      syncTrigger();
+      syncGridSelection();
+    },
+    /** 수정 모달 — 저장된 key + 카테고리 기본 아이콘 미리보기 */
+    setFromTaskDisplay(taskName, opts = {}) {
+      selectedKey = resolveTimeTaskIconKey(taskName, opts);
+      previewSrc = selectedKey
+        ? ""
+        : getTimeTaskListIconSrc(taskName, opts) || "";
+      userPickedIcon = false;
+      syncTrigger();
+      syncGridSelection();
+    },
+    /** 카테고리·생산성만 바꿨을 때(사용자가 picker로 고른 적 없으면) 기본 아이콘 갱신 */
+    refreshDefaultPreview(taskName, opts = {}) {
+      if (userPickedIcon) return;
+      selectedKey = "";
+      previewSrc = getTimeTaskListIconSrc(taskName, opts) || "";
       syncTrigger();
       syncGridSelection();
     },
     reset: () => {
       selectedKey = "";
+      previewSrc = "";
+      userPickedIcon = false;
       closeIconModal();
       syncTrigger();
     },

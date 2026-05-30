@@ -4864,7 +4864,7 @@ export function render(opts = {}) {
       selectedTaskNamesForFilter == null
         ? ""
         : selectedTaskNamesForFilter.join("\x1e");
-    return `${usageHistoryRangeStartYmd}|${usageHistoryRangeEndYmd}|${reportRangeStartYmd}|${reportRangeEndYmd}|${taskFilter}|${usageHistoryMemoOnlyFilter ? "1" : "0"}|${timeLedgerLayoutView}|${isLpTabPullPending("time") ? "pull" : "ok"}|${ledger}`;
+    return `${usageHistoryRangeStartYmd}|${usageHistoryRangeEndYmd}|${reportRangeStartYmd}|${reportRangeEndYmd}|${taskFilter}|${usageHistoryMemoOnlyFilter ? "1" : "0"}|${timeLedgerLayoutView}|${ledger}`;
   }
 
   function rememberTimeLedgerPaintSignature() {
@@ -4995,6 +4995,12 @@ export function render(opts = {}) {
             <input type="date" class="todo-task-edit-due" data-usage-range-end aria-label="마감" />
             <span class="time-task-log-date-overlay" aria-hidden="true"></span>
           </div>
+        </div>
+        <div class="todo-task-date-quick time-usage-range-quick" role="group" aria-label="기간 빠른 선택">
+          <button type="button" class="todo-task-date-quick-btn" data-usage-range-preset="last-week">지난주</button>
+          <button type="button" class="todo-task-date-quick-btn" data-usage-range-preset="last-month">지난달</button>
+          <button type="button" class="todo-task-date-quick-btn" data-usage-range-preset="this-week">이번주</button>
+          <button type="button" class="todo-task-date-quick-btn" data-usage-range-preset="this-month">이번달</button>
         </div>
         <div class="time-usage-range-task-section" data-usage-range-filter-section>
           <div class="time-usage-range-filter-head">
@@ -5136,6 +5142,56 @@ export function render(opts = {}) {
         e = x;
       }
       return { start: s, end: e };
+    }
+
+    function formatUsageRangeModalYmdFromDate(d) {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }
+
+    function getUsageRangeModalMondayBasedDow(date) {
+      return (date.getDay() + 6) % 7;
+    }
+
+    function resolveUsageRangeModalPresetYmd(preset) {
+      const today = new Date();
+      if (preset === "this-week" || preset === "last-week") {
+        const weekOffset = preset === "this-week" ? 0 : -1;
+        const mondayDow = getUsageRangeModalMondayBasedDow(today);
+        const firstMonday = new Date(today);
+        firstMonday.setDate(today.getDate() - mondayDow + weekOffset * 7);
+        const lastSunday = new Date(firstMonday);
+        lastSunday.setDate(firstMonday.getDate() + 6);
+        return {
+          start: formatUsageRangeModalYmdFromDate(firstMonday),
+          end: formatUsageRangeModalYmdFromDate(lastSunday),
+        };
+      }
+      if (preset === "this-month" || preset === "last-month") {
+        const monthOffset = preset === "this-month" ? 0 : -1;
+        const anchor = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+        const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+        const last = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0);
+        return {
+          start: formatUsageRangeModalYmdFromDate(first),
+          end: formatUsageRangeModalYmdFromDate(last),
+        };
+      }
+      return null;
+    }
+
+    function applyYmdToUsageRangeInput(inputEl, ymd) {
+      if (!(inputEl instanceof HTMLInputElement)) return;
+      inputEl.value = ymd;
+      inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+      inputEl.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+
+    function applyUsageRangePresetToInputs(preset) {
+      const range = resolveUsageRangeModalPresetYmd(preset);
+      if (!range) return;
+      applyYmdToUsageRangeInput(usageRangeStartInp, range.start);
+      applyYmdToUsageRangeInput(usageRangeEndInp, range.end);
+      if (usageFilterByTaskCb?.checked) populateTaskSelectList();
     }
 
     function syncFilterModeUi() {
@@ -5287,6 +5343,11 @@ export function render(opts = {}) {
     usageRangeEndInp?.addEventListener("change", () => {
       if (usageFilterByTaskCb?.checked) populateTaskSelectList();
     });
+    usageRangeModal.querySelectorAll("[data-usage-range-preset]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        applyUsageRangePresetToInputs(btn.dataset.usageRangePreset || "");
+      });
+    });
     taskSelectAllBtn?.addEventListener("click", () => {
       if (!usageFilterByTaskCb?.checked) return;
       usageRangeModal
@@ -5314,15 +5375,21 @@ export function render(opts = {}) {
       syncFooterDateBtnActiveState();
     });
     usageRangeApplyBtn?.addEventListener("click", () => {
-      const fallback = getLedgerFilterTodayYmd();
       let s = String(usageRangeStartInp?.value || "").trim();
       let e = String(usageRangeEndInp?.value || "").trim();
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) s = fallback;
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(e)) e = s;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+        void showAlertModal({ message: "시작일을 입력해 주세요." });
+        return;
+      }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(e)) {
+        void showAlertModal({ message: "마감일을 입력해 주세요." });
+        return;
+      }
       if (s > e) {
-        const x = s;
-        s = e;
-        e = x;
+        void showAlertModal({
+          message: "시작일은 마감일보다 이전이어야 합니다.",
+        });
+        return;
       }
       if (timeLedgerLayoutView === "report") {
         reportRangeStartYmd = s;
@@ -7044,6 +7111,12 @@ export function render(opts = {}) {
       });
   }
 
+  function setTaskLogModalShellOpen(open) {
+    try {
+      document.documentElement.classList.toggle("lp-task-log-modal-open", !!open);
+    } catch (_) {}
+  }
+
   function openTaskLogModalAfterPull(addContext) {
     taskLogAddContext = addContext;
     taskLogEditTr = null;
@@ -7054,6 +7127,7 @@ export function render(opts = {}) {
     if (taskLogFooterEl) taskLogFooterEl.style.display = "";
     if (taskLogDeleteBtn) taskLogDeleteBtn.hidden = true;
     taskLogModal.hidden = false;
+    setTaskLogModalShellOpen(true);
     document.body.style.overflow = "hidden";
     exitTaskLogMemoScroll();
     closeDateTimePicker();
@@ -7233,6 +7307,7 @@ export function render(opts = {}) {
       }
     }
     taskLogModal.hidden = false;
+    setTaskLogModalShellOpen(true);
     document.body.style.overflow = "hidden";
     exitTaskLogMemoScroll();
     closeDateTimePicker();
@@ -7299,6 +7374,7 @@ export function render(opts = {}) {
 
   function closeTaskLogModal() {
     taskLogModal.hidden = true;
+    setTaskLogModalShellOpen(false);
     exitTaskLogMemoScroll();
     if (taskLogFooterEl) taskLogFooterEl.style.display = "none";
     closeDateTimePicker();
@@ -8037,13 +8113,11 @@ export function render(opts = {}) {
       );
     syncAddTaskSubmitState();
     if (editTask) {
-      addTaskIconPicker.setSelectedKey(
-        resolveTimeTaskIconKey(editTask.name, {
-          category: editTask.category,
-          productivity: editTask.productivity,
-          iconKey: editTask.iconKey,
-        }),
-      );
+      addTaskIconPicker.setFromTaskDisplay(editTask.name, {
+        category: editTask.category,
+        productivity: editTask.productivity,
+        iconKey: editTask.iconKey,
+      });
     } else {
       addTaskIconPicker.reset();
     }
@@ -8071,6 +8145,19 @@ export function render(opts = {}) {
 
   addTaskNameInput.addEventListener("input", syncAddTaskSubmitState);
 
+  function refreshAddTaskIconPreviewFromForm() {
+    if (addTaskModal.hidden) return;
+    const name = (addTaskNameInput.value || "").trim();
+    if (!name || !selectedCategory) return;
+    const prod =
+      addTaskModal.querySelector('input[name="addProd"]:checked')?.value ||
+      "productive";
+    addTaskIconPicker.refreshDefaultPreview(name, {
+      category: selectedCategory,
+      productivity: prod,
+    });
+  }
+
   addTaskProdRadios.forEach((r) => {
     r.addEventListener("change", () => {
       const prod = r.value;
@@ -8096,6 +8183,7 @@ export function render(opts = {}) {
         lpTokenAdd(b, "lp-choice-chip--on");
         selectedCategory = b.dataset.value;
         syncAddTaskSubmitState();
+        refreshAddTaskIconPreviewFromForm();
       });
     });
   addTaskCatNonProd
@@ -8108,6 +8196,7 @@ export function render(opts = {}) {
         lpTokenAdd(b, "lp-choice-chip--on");
         selectedCategory = b.dataset.value;
         syncAddTaskSubmitState();
+        refreshAddTaskIconPreviewFromForm();
       });
     });
 
@@ -8192,19 +8281,23 @@ export function render(opts = {}) {
   });
 
   taskSetupBtn?.addEventListener("click", () => {
-    void (async () => {
-      await pullTimeLedgerTasksWhenSetupModalOpens();
-      if (!el.isConnected) return;
-      taskSetupModal.hidden = false;
-      document.body.style.overflow = "hidden";
-      activeSetupTab =
-        taskSetupModal.querySelector(
-          '[data-legacy~="time-task-setup-tab"][data-legacy~="active"]',
-        )?.dataset?.tab || "all";
-      selectedSubcat = "";
-      renderSubcatButtons(activeSetupTab);
-      renderTaskSetupList();
-    })();
+    if (!el.isConnected) return;
+    taskSetupModal.hidden = false;
+    document.body.style.overflow = "hidden";
+    activeSetupTab =
+      taskSetupModal.querySelector(
+        '[data-legacy~="time-task-setup-tab"][data-legacy~="active"]',
+      )?.dataset?.tab || "all";
+    selectedSubcat = "";
+    renderSubcatButtons(activeSetupTab);
+    renderTaskSetupList();
+    void pullTimeLedgerTasksWhenSetupModalOpens()
+      .catch(() => {})
+      .then(() => {
+        if (!el.isConnected || taskSetupModal.hidden) return;
+        renderSubcatButtons(activeSetupTab);
+        renderTaskSetupList();
+      });
   });
   function closeTaskSetupModal() {
     taskSetupModal.hidden = true;
@@ -8491,8 +8584,23 @@ export function render(opts = {}) {
     el._lpUsageListScrollToBottomPending = true;
   }
 
+  function shouldApplyUsageListScrollToBottom() {
+    return (
+      !!el._lpUsageListScrollToBottomPending ||
+      !!el._lpUsageListEnterScrollArmed
+    );
+  }
+
+  function dismissTimeLedgerPullLoadingUi() {
+    if (!el.isConnected) return;
+    contentWrap
+      .querySelectorAll(".time-ledger-mobile-cards--syncing")
+      .forEach((n) => n.classList.remove("time-ledger-mobile-cards--syncing"));
+    contentWrap.querySelectorAll(".lp-tab-sync-loading").forEach((n) => n.remove());
+  }
+
   function applyUsageListScrollToBottomIfPending(cardsWrap) {
-    if (!cardsWrap || !el._lpUsageListScrollToBottomPending) return;
+    if (!cardsWrap || !shouldApplyUsageListScrollToBottom()) return;
     el._lpUsageListScrollToBottomPending = false;
     const scrollToBottom = () => {
       if (!cardsWrap.isConnected) return;
@@ -8503,6 +8611,15 @@ export function render(opts = {}) {
       scrollToBottom();
       requestAnimationFrame(scrollToBottom);
     });
+  }
+
+  function finishUsageListEnterScroll() {
+    if (!el._lpUsageListEnterScrollArmed) return;
+    const cardsWrap = contentWrap.querySelector(
+      '[data-legacy~="time-ledger-mobile-cards"]',
+    );
+    requestUsageListScrollToBottomOnce();
+    applyUsageListScrollToBottomIfPending(cardsWrap);
     el._lpUsageListEnterScrollArmed = false;
   }
 
@@ -8874,15 +8991,12 @@ export function render(opts = {}) {
     } catch (_) {}
     allRowsCache = loadTimeRows();
     cachedRows = getFullRowsForFilter(true);
-    const prevSig = el._lpLastTimeLedgerPaintSig;
-    syncTimeLedgerContent({ force: true });
-    if (el._lpLastTimeLedgerPaintSig !== prevSig) {
+    syncTimeLedgerContent({ force: false });
+    if (el._lpUsageListEnterScrollArmed) {
       const cardsWrap = contentWrap.querySelector(
         '[data-legacy~="time-ledger-mobile-cards"]',
       );
-      if (cardsWrap?.isConnected) {
-        cardsWrap.scrollTop = cardsWrap.scrollHeight;
-      }
+      applyUsageListScrollToBottomIfPending(cardsWrap);
     }
   }
 
@@ -8961,16 +9075,13 @@ export function render(opts = {}) {
   function onLpTabPullSyncEvent(ev) {
     const tabId = ev?.detail?.tabId;
     if (tabId !== "time" || !el.isConnected) return;
-    syncTimeLedgerContent({
-      force:
-        ev?.type === "lp-tab-pull-settled" || isLpTabPullPending("time"),
-    });
-    if (ev?.type === "lp-tab-pull-settled" && el._lpUsageListEnterScrollArmed) {
-      requestUsageListScrollToBottomOnce();
-      const cardsWrap = contentWrap.querySelector(
-        '[data-legacy~="time-ledger-mobile-cards"]',
-      );
-      applyUsageListScrollToBottomIfPending(cardsWrap);
+    if (ev?.type === "lp-tab-pull-pending") {
+      syncTimeLedgerContent({ force: true });
+      return;
+    }
+    if (ev?.type === "lp-tab-pull-settled") {
+      dismissTimeLedgerPullLoadingUi();
+      finishUsageListEnterScroll();
     }
   }
   window.addEventListener("lp-tab-pull-pending", onLpTabPullSyncEvent, {

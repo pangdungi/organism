@@ -274,6 +274,16 @@ body {
   box-sizing: border-box;
 }
 
+/* 과제 기록·수정 모달 — 키보드 올라와도 하단 탭 메뉴가 키보드 위에 겹치지 않게 */
+html.lp-task-log-modal-open #signin-page .app-footer-menu {
+  display: none !important;
+}
+
+html.lp-task-log-modal-open #signin-page {
+  height: var(--lp-app-shell-h, 100svh);
+  max-height: var(--lp-app-shell-h, 100svh);
+}
+
 .app-footer-spacer {
   display: none;
 }

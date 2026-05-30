@@ -17,6 +17,7 @@ export function syncVisualViewportKeyboardInset() {
       document.documentElement.style.setProperty("--vv-keyboard", "0px");
       document.documentElement.style.setProperty("--vv-visible-height", "100vh");
       document.documentElement.style.setProperty("--vv-offset-top", "0px");
+      document.documentElement.classList.remove("lp-keyboard-open");
     } catch (_) {}
     return 0;
   }
@@ -29,6 +30,7 @@ export function syncVisualViewportKeyboardInset() {
       "--vv-offset-top",
       `${vv.offsetTop || 0}px`,
     );
+    document.documentElement.classList.toggle("lp-keyboard-open", kb > 60);
   } catch (_) {}
   return kb;
 }

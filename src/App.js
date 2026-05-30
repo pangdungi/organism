@@ -494,7 +494,6 @@ export async function mountApp(container) {
       _tabSwitchTimer = null;
       void (async () => {
         const targetTabId = currentTabId;
-        /* 시간가계부: 탭 클릭 시 pull 먼저 — pull 전 render 하면 첫 진입 타임라인이 비는 경우가 있음 */
         if (targetTabId === "time") {
           setLpTabPullPending(targetTabId);
           try {
@@ -503,22 +502,6 @@ export async function mountApp(container) {
           try {
             resetTimeLedgerSessionFilterToToday();
           } catch (_) {}
-          if (currentTabId !== targetTabId) return;
-          try {
-            await ensureTimeLedgerStorageReady();
-            await pullDataForActiveTab(targetTabId, { fromBoot: false });
-          } catch (_) {}
-          if (currentTabId !== targetTabId) {
-            clearLpTabPullPending(targetTabId);
-            return;
-          }
-          clearLpTabPullPending(targetTabId);
-          renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
-          syncAppFooterVisibility();
-          afterLpTabPaint(() => {
-            void prefetchIconsForTab(targetTabId);
-          });
-          return;
         }
         if (isKpiAppTabId(targetTabId)) setKpiTabPullPending(targetTabId);
         if (targetTabId === "schedulecalendar") {
@@ -586,6 +569,11 @@ export async function mountApp(container) {
           targetTabId === "sideincome"
         ) {
           kpiSoftRefreshAfterPull(targetTabId, pullResult);
+        } else if (targetTabId === "time") {
+          try {
+            window.__lpTimeLedgerSoftRefresh?.();
+          } catch (_) {}
+          clearLpTabPullPending(targetTabId);
         } else {
           renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
         }
@@ -908,10 +896,7 @@ export async function mountApp(container) {
       resetTimeLedgerSessionFilterToToday();
     } catch (_) {}
   }
-  /* 시간가계부 cold start: pull 전 빈 타임라인 방지 — pull 후 첫 render */
-  if (bootTabIdForRender !== "time") {
-    renderMain(main);
-  }
+  renderMain(main);
   void (async () => {
     const bootTabId = currentTabId;
     try {
@@ -949,10 +934,10 @@ export async function mountApp(container) {
         return;
       }
       if (bootTabId === "time") {
+        try {
+          window.__lpTimeLedgerSoftRefresh?.();
+        } catch (_) {}
         clearLpTabPullPending("time");
-        if (currentTabId === bootTabId) {
-          renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
-        }
       } else if (bootTabId === "schedulecalendar") {
         try {
           window.__lpCalendarSoftRefresh?.();
