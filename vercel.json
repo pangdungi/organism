@@ -1,6 +1,20 @@
 {
   "buildCommand": "node scripts/generate-app-icon-prefetch.mjs && node scripts/generate-pwa-splash-icons.mjs && vite build",
   "outputDirectory": "dist",
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "organismplanner.com" }],
+      "destination": "https://timeisprice.com/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "www.organismplanner.com" }],
+      "destination": "https://timeisprice.com/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     { "source": "/auth/:path*", "destination": "/index.html" }
   ],
