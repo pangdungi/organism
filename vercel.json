@@ -1,5 +1,5 @@
 {
-  "buildCommand": "node scripts/generate-app-icon-prefetch.mjs && vite build",
+  "buildCommand": "node scripts/generate-app-icon-prefetch.mjs && node scripts/generate-pwa-splash-icons.mjs && vite build",
   "outputDirectory": "dist",
   "rewrites": [
     { "source": "/auth/:path*", "destination": "/index.html" }
