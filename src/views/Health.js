@@ -80,6 +80,8 @@ import {
 } from "../utils/kpiMapLocalStorage.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
+  appendKpiFooterHomeButton,
+  clearKpiMapFooterActionButtons,
   getAppFooterActionsSlot,
 } from "../utils/appFooterShell.js";
 import {
@@ -784,11 +786,7 @@ export function render() {
   }
 
   function clearHealthKpiFooterActions() {
-    const slot = getAppFooterActionsSlot();
-    if (!slot) return;
-    slot
-      .querySelectorAll("[data-lp-dream-kpi-footer-action]")
-      .forEach((n) => n.remove());
+    clearKpiMapFooterActionButtons();
   }
 
   function healthKpiFooterAddLabel(tab) {
@@ -875,6 +873,7 @@ export function render() {
         if (!activeHealthId) return;
         showKpiModal();
       });
+      appendKpiFooterHomeButton(slot);
       slot.appendChild(addBtn);
       return;
     }
@@ -892,6 +891,7 @@ export function render() {
     addBtn.addEventListener("click", () => {
       void runHealthKpiFooterAddAction();
     });
+    appendKpiFooterHomeButton(slot);
     slot.appendChild(addBtn);
   }
 

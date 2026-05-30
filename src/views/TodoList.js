@@ -35,6 +35,10 @@ import { dismissAppToast } from "../utils/showToast.js";
 import { bindLpHorizontalPanNavigate } from "../utils/lpHorizontalPanNavigate.js";
 import { initModalStandardDateFields } from "../utils/modalNativeDateField.js";
 import {
+  closeDuplicateTodoAddModals,
+  wireModalEnterToConfirm,
+} from "../utils/modalNoAutoFocus.js";
+import {
   LP_CONFIRM_STACK_CLASS,
   syncBodyOverflowAfterModalClose,
 } from "../utils/lpModalStack.js";
@@ -69,6 +73,7 @@ import {
   purgeAllCompletedSectionAndCustomTasks,
   stripTodoTaskSyncMetaForCompare,
   TODO_UNIFIED_SECTION_KEY,
+  newTaskId,
 } from "../utils/todoSectionTasksModel.js";
 import {
   todoQualifiesCalendarShortSpanBarAccent,
@@ -1585,10 +1590,6 @@ function showMobileDateModal(options) {
 
   document.body.appendChild(modal);
   document.body.style.overflow = "hidden";
-  // 모달만 보이게: 입력 포커스 시 날짜 피커가 같이 뜨지 않도록 X 버튼에 포커스
-  requestAnimationFrame(() => {
-    closeBtn.focus();
-  });
 }
 
 const EISENHOWER_SORT_KEYS = [
@@ -1659,6 +1660,7 @@ function showTodoTaskModal(options) {
   };
 
   clearTodoItemModalSelection();
+  closeDuplicateTodoAddModals();
   if (selectionEl?.classList) {
     selectionEl.classList.add(TODO_ITEM_MODAL_ACTIVE_CLASS);
   }
@@ -1722,7 +1724,7 @@ function showTodoTaskModal(options) {
       }
     } catch (_) {}
     modal.remove();
-    document.body.style.overflow = "";
+    syncBodyOverflowAfterModalClose();
   }
 
   function gatherForm() {
@@ -1746,7 +1748,10 @@ function showTodoTaskModal(options) {
     };
   }
 
+  let saving = false;
   confirmBtn?.addEventListener("click", () => {
+    if (saving) return;
+    saving = true;
     try {
       const payload = { ...taskData, ...gatherForm() };
       onSave?.(payload);
@@ -1754,6 +1759,8 @@ function showTodoTaskModal(options) {
       console.error("todo task modal onSave", err);
       alert("저장 중 문제가 생겼습니다. 잠시 후 다시 시도해 주세요.");
       return;
+    } finally {
+      saving = false;
     }
     close();
   });
@@ -1772,10 +1779,8 @@ function showTodoTaskModal(options) {
   document.body.appendChild(modal);
   document.body.style.overflow = "hidden";
 
+  wireModalEnterToConfirm(modal, confirmBtn);
   initModalStandardDateFields(modal);
-
-  /* X에 포커스 두면 iOS PWA에서 파란 포커스 링이 생김 → 할일 이름 입력으로 */
-  requestAnimationFrame(() => nameInput?.focus());
 }
 
 function todoModalSectionLabel(sectionId) {
@@ -3478,11 +3483,7 @@ function createSection(section, options = {}) {
         sectionLabel: section.label,
         mode: "add",
         onSave: (payload) => {
-          const taskId =
-            typeof crypto !== "undefined" &&
-            typeof crypto.randomUUID === "function"
-              ? crypto.randomUUID()
-              : getTaskId(payload);
+          const taskId = newTaskId();
           const newTask = { ...payload, taskId, done: false };
           const card = createTaskCard(newTask, {
             updateCount,
@@ -3681,10 +3682,6 @@ function createSection(section, options = {}) {
       });
       tbody.appendChild(tr);
       updateCount();
-      const nameInput = tr.querySelector(".todo-task-name-field");
-      if (nameInput) {
-        nameInput.focus();
-      }
       const sectionsWrap = tbody.closest(".todo-sections-wrap");
       if (sectionsWrap) flushSaveSectionTasksFromDOM(sectionsWrap);
     });

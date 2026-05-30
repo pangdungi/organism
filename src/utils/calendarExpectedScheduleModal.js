@@ -4,6 +4,7 @@
  */
 
 import { showToast } from "./showToast.js";
+import { allowModalInputFocus } from "./modalNoAutoFocus.js";
 import { showConfirmModal } from "./confirmModal.js";
 import {
   lpTokenToggle,
@@ -59,6 +60,7 @@ function formatTaskLogDateOverlayYmd(isoTen) {
 
 function openNativeDateInput(inp) {
   if (!inp) return;
+  allowModalInputFocus(inp);
   try {
     inp.focus({ preventScroll: true });
   } catch (_) {

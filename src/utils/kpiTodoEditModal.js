@@ -1,4 +1,5 @@
 import { confirmKpiTodoDelete } from "./confirmModal.js";
+import { allowModalInputFocus } from "./modalNoAutoFocus.js";
 
 /**
  * KPI 할 일 수정·삭제 모달 (저장·삭제 버튼을 눌렀을 때만 결과 반환).
@@ -78,6 +79,7 @@ export function showKpiTodoEditModal(opts = {}) {
       e.preventDefault();
       const val = ta.value.trim();
       if (!val) {
+        allowModalInputFocus(ta);
         ta.focus();
         return;
       }
@@ -91,6 +93,5 @@ export function showKpiTodoEditModal(opts = {}) {
 
     document.body.appendChild(modal);
     document.body.style.overflow = "hidden";
-    queueMicrotask(() => ta?.focus());
   });
 }

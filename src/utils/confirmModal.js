@@ -77,7 +77,6 @@ export function showConfirmModal(options = {}) {
 
     document.body.appendChild(modal);
     document.body.style.overflow = "hidden";
-    cancelBtn.focus?.();
   });
 }
 

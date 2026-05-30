@@ -297,10 +297,7 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
     ensurePickerBucketInAllowed();
     renderPanel();
     panel.hidden = !panel.hidden;
-    if (!panel.hidden)
-      panel
-        .querySelector('[data-legacy~="time-task-log-task-dropdown-search"]')
-        ?.focus();
+    /* 과제 검색 — 사용자가 입력칸을 직접 탭할 때만 키보드(드롭다운 열기만으로 포커스 금지) */
   });
   const closePanelOnOutside = (e) => {
     if (panel.hidden) return;

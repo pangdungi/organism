@@ -411,18 +411,6 @@ export async function openWorkScheduleTypeSettingsModal() {
         stampEditFooterEditable.hidden = false;
       }
       stampPopover.hidden = false;
-      if (!isProtected) {
-        requestAnimationFrame(() => {
-          try {
-            stampEditName.focus();
-            stampEditName.select();
-          } catch (_) {}
-        });
-      } else {
-        try {
-          stampEditDismiss.focus();
-        } catch (_) {}
-      }
     }
 
     function detachTypeSettingsModal() {
@@ -603,11 +591,6 @@ export async function openWorkScheduleTypeSettingsModal() {
       addInput.blur();
       renderTypeListsFromDraft();
       workListEl.scrollTop = 0;
-      requestAnimationFrame(() => {
-        try {
-          addInput.focus();
-        } catch (_) {}
-      });
     }
 
     addBtn.addEventListener("click", () => {
@@ -627,9 +610,6 @@ export async function openWorkScheduleTypeSettingsModal() {
             "스탬프 편집을 마쳐 주세요.",
             "작은 창에서 저장 또는 취소를 눌러 닫은 뒤 다시 시도해 주세요.",
           );
-        } catch (_) {}
-        try {
-          stampEditName.focus();
         } catch (_) {}
         return;
       }
@@ -681,7 +661,6 @@ export async function openWorkScheduleTypeSettingsModal() {
 
     renderTypeListsFromDraft();
     document.body.appendChild(modal);
-    addInput.focus();
 }
 
 /**

@@ -7,8 +7,38 @@
  */
 export const APP_FOOTER_ICON_BTN_CLASS = "app-footer-icon-btn";
 
+/** KPI 서브뷰(kpis·kpiDetail) 푸터 — 메인 메뉴(홈) — 첨부 dashboard 아이콘(윤곽 집) */
+export const APP_FOOTER_HOME_ICON =
+  '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m8 23v-6c0-2.209 1.791-4 4-4 2.209 0 4 1.791 4 4v6"/><path d="m1 21v-11l11-9 11 9v11c0 1.105-.895 2-2 2h-18c-1.105 0-2-.895-2-2z"/></g></svg>';
+
 export function getAppFooterActionsSlot() {
   return document.querySelector("[data-lp-app-footer-actions]");
+}
+
+/** KPI 탭 푸터 — +·홈 등 탭이 붙인 버튼만 제거(뒤로가기는 App이 유지) */
+export function clearKpiMapFooterActionButtons() {
+  const slot = getAppFooterActionsSlot();
+  if (!slot) return;
+  slot
+    .querySelectorAll("[data-lp-dream-kpi-footer-action], [data-lp-kpi-footer-home]")
+    .forEach((n) => n.remove());
+}
+
+/** @param {HTMLElement} slot */
+export function appendKpiFooterHomeButton(slot) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = APP_FOOTER_ICON_BTN_CLASS;
+  btn.setAttribute("data-lp-kpi-footer-home", "");
+  btn.title = "메인 메뉴";
+  btn.setAttribute("aria-label", "메인 메뉴");
+  btn.innerHTML = APP_FOOTER_HOME_ICON;
+  btn.addEventListener("click", () => {
+    try {
+      window.__lpSetTab?.("home");
+    } catch (_) {}
+  });
+  slot.appendChild(btn);
 }
 
 /** 탭을 떠날 때 이전 탭 버튼이 남지 않게 비웁니다. (뒤로가기는 App이 유지) */

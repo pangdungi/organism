@@ -79,6 +79,8 @@ import {
 } from "../utils/kpiMapLocalStorage.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
+  appendKpiFooterHomeButton,
+  clearKpiMapFooterActionButtons,
   getAppFooterActionsSlot,
 } from "../utils/appFooterShell.js";
 import {
@@ -793,11 +795,7 @@ export function render() {
   }
 
   function clearHappinessKpiFooterActions() {
-    const slot = getAppFooterActionsSlot();
-    if (!slot) return;
-    slot
-      .querySelectorAll("[data-lp-dream-kpi-footer-action]")
-      .forEach((n) => n.remove());
+    clearKpiMapFooterActionButtons();
   }
 
   function happinessKpiFooterAddLabel(tab) {
@@ -884,6 +882,7 @@ export function render() {
         if (!activeHappinessId) return;
         showKpiModal();
       });
+      appendKpiFooterHomeButton(slot);
       slot.appendChild(addBtn);
       return;
     }
@@ -901,6 +900,7 @@ export function render() {
     addBtn.addEventListener("click", () => {
       void runHappinessKpiFooterAddAction();
     });
+    appendKpiFooterHomeButton(slot);
     slot.appendChild(addBtn);
   }
 

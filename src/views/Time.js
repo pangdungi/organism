@@ -3217,9 +3217,6 @@ function createTagDropdown(
     syncPanelToTrigger();
     requestAnimationFrame(() => syncPanelToTrigger());
     resetPanelFilter();
-    if (enablePanelFilter && filterInput) {
-      requestAnimationFrame(() => filterInput.focus());
-    }
   }
 
   trigger.addEventListener("click", () => {
@@ -5626,7 +5623,6 @@ export function render(opts = {}) {
     taskLogMemoModalTags = taskLogMemoTags.slice();
     renderMemoModalTagPills();
     if (taskLogMemoInnerTagInput) taskLogMemoInnerTagInput.value = "";
-    taskLogMemoInnerInput?.focus();
   }
 
   function closeMemoInnerModal() {
@@ -7920,13 +7916,6 @@ export function render(opts = {}) {
       addTaskIconPicker.reset();
     }
     renderTaskSetupList();
-    if (iconOnlyLocked) {
-      addTaskModal
-        .querySelector('[data-legacy~="time-add-task-icon-picker-mount"] button')
-        ?.focus?.();
-    } else {
-      addTaskNameInput.focus();
-    }
   }
 
   function closeAddTaskModal(opts = {}) {

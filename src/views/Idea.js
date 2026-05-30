@@ -171,7 +171,6 @@ export function render() {
       }
     });
     document.body.appendChild(wrap);
-    pwInput?.focus();
   }
 
   // ----- 구독 (시급 위젯 위) -----

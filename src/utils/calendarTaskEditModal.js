@@ -4,6 +4,11 @@
  */
 
 import { initModalStandardDateFields } from "./modalNativeDateField.js";
+import {
+  closeDuplicateTodoAddModals,
+  wireModalEnterToConfirm,
+} from "./modalNoAutoFocus.js";
+import { syncBodyOverflowAfterModalClose } from "./lpModalStack.js";
 import { clearSubtasks } from "./todoSubtasks.js";
 import {
   readSectionTasksObject,
@@ -117,6 +122,7 @@ function showCalendarTaskEditModal(options) {
   const storageSectionId = String(taskData.sectionId || "").trim();
 
   clearCalendarTaskEditSelection();
+  closeDuplicateTodoAddModals();
   if (selectionEl?.classList) {
     selectionEl.classList.add(CALENDAR_TASK_EDIT_ACTIVE_CLASS);
   }
@@ -185,7 +191,7 @@ function showCalendarTaskEditModal(options) {
       }
     } catch (_) {}
     modal.remove();
-    document.body.style.overflow = "";
+    syncBodyOverflowAfterModalClose();
   }
 
   function gatherForm() {
@@ -198,13 +204,18 @@ function showCalendarTaskEditModal(options) {
     };
   }
 
+  let saving = false;
   confirmBtn?.addEventListener("click", () => {
+    if (saving) return;
+    saving = true;
     try {
       onSave?.({ ...taskData, ...gatherForm() });
     } catch (err) {
       console.error("calendar task edit onSave", err);
       alert("저장 중 문제가 생겼습니다. 잠시 후 다시 시도해 주세요.");
       return;
+    } finally {
+      saving = false;
     }
     close();
   });
@@ -220,8 +231,8 @@ function showCalendarTaskEditModal(options) {
 
   document.body.appendChild(modal);
   document.body.style.overflow = "hidden";
+  wireModalEnterToConfirm(modal, confirmBtn);
   initModalStandardDateFields(modal);
-  requestAnimationFrame(() => nameInput?.focus());
 }
 
 /**

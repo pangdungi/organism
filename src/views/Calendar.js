@@ -32,6 +32,7 @@ import {
 } from "./Time.js";
 import { showToast } from "../utils/showToast.js";
 import { initModalStandardDateFields } from "../utils/modalNativeDateField.js";
+import { allowModalInputFocus } from "../utils/modalNoAutoFocus.js";
 import {
   calendar1WeekDiagLog,
   calendar1WeekDiagSnapshot,
@@ -61,6 +62,7 @@ import {
   CALENDAR_FIXED_SECTION_IDS,
   TODO_UNIFIED_SECTION_KEY,
   isCalendarFixedSectionKey,
+  newTaskId,
 } from "../utils/todoSectionTasksModel.js";
 import { TIME_LEDGER_ENTRIES_KEY } from "../utils/timeLedgerEntriesModel.js";
 import { getScopedLocalStorageItem } from "../utils/clientStorageScope.js";
@@ -153,6 +155,7 @@ function lpCalendarNavQ(localNav, calendarInnerWrap, selector) {
 
 function lpOpenNativeDateInput(inp) {
   if (!inp) return;
+  allowModalInputFocus(inp);
   try {
     inp.focus({ preventScroll: true });
   } catch (_) {
@@ -1555,10 +1558,7 @@ function addSectionTodoFromCalendarBubble(
   if (!due || !todoName || !isCalendarFixedSectionKey(sid)) return false;
   if (start && start > due) return false;
   const it = "todo";
-  const taskId =
-    typeof crypto !== "undefined" && crypto.randomUUID
-      ? crypto.randomUUID()
-      : "";
+  const taskId = newTaskId();
   if (!taskId) return false;
   try {
     const obj = readSectionTasksObject();
@@ -1700,26 +1700,28 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
   const dueInput = bubble.querySelector(".todo-task-edit-due");
   initModalStandardDateFields(bubble);
 
-  bubble
-    .querySelector(".calendar-event-bubble-save")
-    .addEventListener("click", () => {
-      const name = (
-        bubble.querySelector(".calendar-event-bubble-input").value || ""
-      ).trim();
-      const startDate = (startInput?.value || "").trim().slice(0, 10);
-      const dueDate = (dueInput?.value || "").trim().slice(0, 10);
-      if (!name) return;
-      if (!dueDate) {
-        alert("마감일을 입력해 주세요.");
-        return;
-      }
-      if (startDate && startDate > dueDate) {
-        alert("시작일은 마감일보다 이전이어야 합니다.");
-        return;
-      }
-      if (
-        !addSectionTodoFromCalendarBubble(startDate, dueDate, name)
-      ) {
+  let saving = false;
+  const saveBtn = bubble.querySelector(".calendar-event-bubble-save");
+
+  function runSave() {
+    if (saving) return;
+    const name = (
+      bubble.querySelector(".calendar-event-bubble-input").value || ""
+    ).trim();
+    const startDate = (startInput?.value || "").trim().slice(0, 10);
+    const dueDate = (dueInput?.value || "").trim().slice(0, 10);
+    if (!name) return;
+    if (!dueDate) {
+      alert("마감일을 입력해 주세요.");
+      return;
+    }
+    if (startDate && startDate > dueDate) {
+      alert("시작일은 마감일보다 이전이어야 합니다.");
+      return;
+    }
+    saving = true;
+    try {
+      if (!addSectionTodoFromCalendarBubble(startDate, dueDate, name)) {
         alert("할 일을 추가하지 못했습니다. 잠시 후 다시 시도해 주세요.");
         return;
       }
@@ -1731,13 +1733,20 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
         itemType: "todo",
       });
       close();
-    });
+    } finally {
+      saving = false;
+    }
+  }
+
+  saveBtn?.addEventListener("click", runSave);
 
   bubble
     .querySelector(".calendar-event-bubble-input")
     .addEventListener("keydown", (e) => {
-      if (e.key === "Enter")
-        bubble.querySelector(".calendar-event-bubble-save").click();
+      if (e.key !== "Enter" || e.isComposing) return;
+      e.preventDefault();
+      e.stopPropagation();
+      runSave();
     });
 
   Object.assign(bubble.style, {
@@ -1765,7 +1774,6 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
     );
   }, 0);
 
-  bubble.querySelector(".calendar-event-bubble-input").focus();
   return bubble;
 }
 
@@ -2163,7 +2171,6 @@ function createCalendarBarDateEditBubble(
   });
 
   document.body.appendChild(bubble);
-  bubble.querySelector('input[data-field="start"]')?.focus();
   return bubble;
 }
 

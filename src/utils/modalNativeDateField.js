@@ -2,6 +2,8 @@
  * 모달 날짜 입력 — 할일 수정 모달과 동일: native-wrap + overlay
  */
 
+import { allowModalInputFocus } from "./modalNoAutoFocus.js";
+
 /** 할일 시작·마감, KPI 시작·달성기한만 날짜 지우기(X) 노출 */
 export const MODAL_CLEARABLE_DATE_INPUT_SELECTOR =
   ".todo-task-edit-start, .todo-task-edit-due, input[name=\"targetStartDate\"], input[name=\"targetDeadline\"]";
@@ -33,6 +35,7 @@ export function syncModalNativeDateFilled(inputEl) {
 /** native date input에 포커스 후 시스템 date 피커 열기 */
 export function openModalNativeDateInput(inputEl) {
   if (!inputEl) return;
+  allowModalInputFocus(inputEl);
   try {
     inputEl.focus({ preventScroll: true });
   } catch (_) {

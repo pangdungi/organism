@@ -62,10 +62,15 @@ function migrateLegacyLocalStorageOnce() {
 }
 
 function newTaskId() {
-  return typeof crypto !== "undefined" && crypto.randomUUID
-    ? crypto.randomUUID()
-    : "";
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    try {
+      return crypto.randomUUID();
+    } catch (_) {}
+  }
+  return `task-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 }
+
+export { newTaskId };
 
 export function readSectionTasksObject() {
   migrateLegacyLocalStorageOnce();

@@ -11,6 +11,7 @@ import {
   removeRoutineFromTimeTasks,
   syncRoutineRenameToTimeTasks,
 } from "../utils/routineTimeSync.js";
+import { allowModalInputFocus } from "../utils/modalNoAutoFocus.js";
 
 const STORAGE_KEY = "routine-track-list";
 
@@ -197,7 +198,6 @@ function createAddRoutineModal(onAdd) {
     });
     modal.hidden = false;
     document.body.style.overflow = "hidden";
-    nameInput.focus();
   }
 
   function handleConfirm() {
@@ -205,15 +205,22 @@ function createAddRoutineModal(onAdd) {
     const start = startInput.value;
     const end = endInput.value;
     if (!name) {
+      allowModalInputFocus(nameInput);
       nameInput.focus();
       return;
     }
     if (!start || !end) {
-      if (!start) startInput.focus();
-      else endInput.focus();
+      if (!start) {
+        allowModalInputFocus(startInput);
+        startInput.focus();
+      } else {
+        allowModalInputFocus(endInput);
+        endInput.focus();
+      }
       return;
     }
     if (new Date(end) < new Date(start)) {
+      allowModalInputFocus(endInput);
       endInput.focus();
       return;
     }
@@ -315,7 +322,6 @@ function createEditRoutineModal(onSave, onDelete) {
     });
     modal.hidden = false;
     document.body.style.overflow = "hidden";
-    nameInput.focus();
   }
 
   function handleConfirm() {
@@ -325,15 +331,22 @@ function createEditRoutineModal(onSave, onDelete) {
     const start = startInput.value;
     const end = endInput.value;
     if (!name) {
+      allowModalInputFocus(nameInput);
       nameInput.focus();
       return;
     }
     if (!start || !end) {
-      if (!start) startInput.focus();
-      else endInput.focus();
+      if (!start) {
+        allowModalInputFocus(startInput);
+        startInput.focus();
+      } else {
+        allowModalInputFocus(endInput);
+        endInput.focus();
+      }
       return;
     }
     if (new Date(end) < new Date(start)) {
+      allowModalInputFocus(endInput);
       endInput.focus();
       return;
     }

@@ -31,13 +31,13 @@ import {
   waitForAppBootReady,
 } from "./App.js";
 import { initOfflineAppGate } from "./utils/offlineAppGate.js";
+import { initModalNoAutoFocus } from "./utils/modalNoAutoFocus.js";
 import { initLpAppShellViewportLock } from "./utils/lpAppShellViewport.js";
 import { supabase } from "./supabase.js";
 import { getSupabaseSession } from "./utils/supabaseSession.js";
 import { applyAppFont } from "./utils/appUiFont.js";
 import { prefetchCriticalAppIconAssets } from "./utils/appIconPrefetch.js";
 import { setAppSplashMessage } from "./utils/lpAppLoading.js";
-applyAppFont();
 import { pullUserPrefsFromSupabase } from "./utils/userHourlySync.js";
 import {
   applyTimeCategoryColors,
@@ -332,8 +332,6 @@ function openAuthPwRecoveryModal() {
   modal.removeAttribute("hidden");
   modal.setAttribute("aria-hidden", "false");
   document.body.classList.add("auth-pw-modal-open");
-  const focusEl = document.getElementById("forgot-pw-email");
-  requestAnimationFrame(() => focusEl?.focus?.());
 }
 
 function closeAuthPwRecoveryModal() {
@@ -353,6 +351,7 @@ function init() {
   if (app) app.style.display = "block";
 
   initOfflineAppGate();
+  initModalNoAutoFocus();
   initLpAppShellViewportLock();
   initLpPwaInstall();
 
@@ -540,42 +539,6 @@ function init() {
     });
   });
 
-  // 모바일: 모달 열릴 때 자동 포커스(키보드) 방지 — 사용자가 입력창 탭할 때만 키보드
-  (function initMobileModalNoAutoFocus() {
-    const isMobile = () => window.matchMedia("(max-width: 48rem)").matches;
-    const blurInput = () => {
-      const a = document.activeElement;
-      if (
-        a &&
-        (a.tagName === "INPUT" ||
-          a.tagName === "TEXTAREA" ||
-          a.tagName === "SELECT")
-      )
-        a.blur();
-    };
-    const observer = new MutationObserver((mutations) => {
-      if (!isMobile()) return;
-      for (const m of mutations) {
-        if (m.type === "attributes" && m.attributeName === "hidden") {
-          const el = m.target;
-          if (
-            !el.hasAttribute?.("hidden") &&
-            el.getAttribute?.("class")?.includes("modal")
-          ) {
-            blurInput();
-            [0, 50, 150, 300].forEach((ms) => setTimeout(blurInput, ms));
-            break;
-          }
-        }
-      }
-    });
-    observer.observe(document.body, {
-      subtree: true,
-      childList: true,
-      attributes: true,
-      attributeFilter: ["hidden"],
-    });
-  })();
 
   /** 느린 네트워크에서 세션 로드가 잘리며 로그인 화면만 보이는 일 줄이기 */
   const AUTH_GET_SESSION_MS = 30_000;

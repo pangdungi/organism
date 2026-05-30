@@ -713,7 +713,6 @@ function openTimeReportCategoryTaskDetailModal(opts) {
   /* 배경 탭으로 닫지 않음 (닫기는 ×만) */
   document.body.style.overflow = "hidden";
   document.body.appendChild(modal);
-  closeBtn.focus();
 }
 
 /** 투자 탭: 생산 카테고리 막대 아래 메시지형 카드(아이콘 미정) — 꿈·부수입·건강·행복 순 */

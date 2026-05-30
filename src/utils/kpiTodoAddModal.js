@@ -1,12 +1,7 @@
+import { allowModalInputFocus } from "./modalNoAutoFocus.js";
+
 /**
  * KPI 할 일 / 매일 반복 할 일 — 추가 전용 모달(확인 시에만 저장 로직으로 이어지게 할 때 사용).
- * @param {{
- *   title?: string,
- *   kpiName?: string,
- *   inputLabel?: string,
- *   placeholder?: string,
- *   submitLabel?: string,
- * }} opts
  * @returns {Promise<string|null>} 확인 시 trim된 텍스트, 닫기·취소 시 null
  */
 export function showKpiTodoAddModal(opts = {}) {
@@ -73,6 +68,7 @@ export function showKpiTodoAddModal(opts = {}) {
       e.preventDefault();
       const val = (input.value || "").trim();
       if (!val) {
+        allowModalInputFocus(input);
         input.focus();
         return;
       }
@@ -81,6 +77,5 @@ export function showKpiTodoAddModal(opts = {}) {
 
     document.body.appendChild(modal);
     document.body.style.overflow = "hidden";
-    queueMicrotask(() => input?.focus());
   });
 }
