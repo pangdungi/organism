@@ -26,6 +26,7 @@ import {
   removeLegacyUnscopedLocalStorageKeys,
   setActiveClientStorageUserId,
 } from "./utils/clientStorageScope.js";
+import { setAuthRememberMePreference } from "./utils/authRememberMe.js";
 
 async function resetInMemoryClientDataForAccountSwitch() {
   clearTimeLedgerTaskOptionsLocalStorage();
@@ -237,13 +238,15 @@ export async function signUp(email, password) {
   return { ok: true, data };
 }
 
-export async function login(email, password) {
+export async function login(email, password, options = {}) {
+  const rememberMe = options.rememberMe !== false;
   if (!email?.trim() || !password) {
     return { ok: false, msg: "아이디와 비밀번호를 입력하세요." };
   }
   if (!supabase) {
     return { ok: false, msg: "서버를 재시작해 주세요. (.env가 로드되지 않았습니다)" };
   }
+  setAuthRememberMePreference(rememberMe);
   const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
   if (error) {
     return { ok: false, msg: "아이디(이메일) 또는 현재 비밀번호가 틀려요." };

@@ -10,6 +10,11 @@ function storageKey(namespace, kpiId) {
   return `${String(namespace || "kpi")}::${String(kpiId || "")}`;
 }
 
+/** KPI「매일 반복」— 일반 할 일 없이 매일 할 일·로그만 사용 */
+export function kpiUsesDailyTodosOnly(kpi) {
+  return !!(kpi && kpi.needHabitTracker);
+}
+
 export function getKpiHistoryBottomTab(namespace, kpiId) {
   const v = subByKey.get(storageKey(namespace, kpiId));
   if (
@@ -20,6 +25,15 @@ export function getKpiHistoryBottomTab(namespace, kpiId) {
     return v;
   }
   return KPI_BOTTOM_TAB_TODO;
+}
+
+/** 매일 반복 KPI에서 할 일 탭·푸터 추가 등에 쓸 실제 탭 */
+export function effectiveKpiHistoryBottomTab(tab, kpi) {
+  const t = tab || KPI_BOTTOM_TAB_TODO;
+  if (kpiUsesDailyTodosOnly(kpi) && t === KPI_BOTTOM_TAB_TODO) {
+    return KPI_BOTTOM_TAB_DAILY;
+  }
+  return t;
 }
 
 export function setKpiHistoryBottomTab(namespace, kpiId, tab) {
@@ -36,13 +50,14 @@ export function setKpiHistoryBottomTab(namespace, kpiId, tab) {
  * @param {string} namespace 예: dream
  * @param {string} kpiId
  * @param {HTMLButtonElement} btnLog
- * @param {HTMLButtonElement} btnTodo
+ * @param {HTMLButtonElement | null} btnTodo 매일 반복 전용 KPI면 null
  * @param {HTMLButtonElement | null} btnDaily 매일 탭 없으면 null
  * @param {HTMLElement} panelLog
- * @param {HTMLElement} panelTodo
+ * @param {HTMLElement | null} panelTodo 매일 반복 전용 KPI면 null
  * @param {HTMLElement | null} panelDaily
  * @param {boolean} hasDailyTab
  * @param {((tab: string) => void) | null} [onTabChange]
+ * @param {{ dailyTodosOnly?: boolean }} [options]
  */
 export function wireKpiHistoryBottomTabs(
   namespace,
@@ -55,20 +70,25 @@ export function wireKpiHistoryBottomTabs(
   panelDaily,
   hasDailyTab,
   onTabChange,
+  options = {},
 ) {
+  const dailyTodosOnly = !!options.dailyTodosOnly;
   const apply = (which) => {
     let w = which;
+    if (dailyTodosOnly && w === KPI_BOTTOM_TAB_TODO) w = KPI_BOTTOM_TAB_DAILY;
     if (!hasDailyTab && w === KPI_BOTTOM_TAB_DAILY) w = KPI_BOTTOM_TAB_TODO;
     setKpiHistoryBottomTab(namespace, kpiId, w);
     const showLog = w === KPI_BOTTOM_TAB_LOG;
-    const showTodo = w === KPI_BOTTOM_TAB_TODO;
+    const showTodo = !dailyTodosOnly && w === KPI_BOTTOM_TAB_TODO;
     const showDaily = hasDailyTab && w === KPI_BOTTOM_TAB_DAILY;
     btnLog.classList.toggle("active", showLog);
-    btnTodo.classList.toggle("active", showTodo);
     btnLog.setAttribute("aria-selected", showLog ? "true" : "false");
-    btnTodo.setAttribute("aria-selected", showTodo ? "true" : "false");
     panelLog.hidden = !showLog;
-    panelTodo.hidden = !showTodo;
+    if (btnTodo && panelTodo) {
+      btnTodo.classList.toggle("active", showTodo);
+      btnTodo.setAttribute("aria-selected", showTodo ? "true" : "false");
+      panelTodo.hidden = !showTodo;
+    }
     if (btnDaily && panelDaily) {
       btnDaily.classList.toggle("active", showDaily);
       btnDaily.setAttribute("aria-selected", showDaily ? "true" : "false");
@@ -78,10 +98,13 @@ export function wireKpiHistoryBottomTabs(
   };
 
   let initial = getKpiHistoryBottomTab(namespace, kpiId);
+  if (dailyTodosOnly && initial === KPI_BOTTOM_TAB_TODO) {
+    initial = KPI_BOTTOM_TAB_DAILY;
+  }
   if (!hasDailyTab && initial === KPI_BOTTOM_TAB_DAILY) initial = KPI_BOTTOM_TAB_TODO;
   apply(initial);
 
   btnLog.addEventListener("click", () => apply(KPI_BOTTOM_TAB_LOG));
-  btnTodo.addEventListener("click", () => apply(KPI_BOTTOM_TAB_TODO));
+  if (btnTodo) btnTodo.addEventListener("click", () => apply(KPI_BOTTOM_TAB_TODO));
   if (btnDaily) btnDaily.addEventListener("click", () => apply(KPI_BOTTOM_TAB_DAILY));
 }

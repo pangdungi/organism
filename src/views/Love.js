@@ -269,7 +269,6 @@ function setupActionUnitTimeCalc(modal) {
     inp?.addEventListener("change", updateTotal);
   });
 }
-}
 
 export function render() {
   const el = document.createElement("div");
@@ -770,8 +769,41 @@ export function render() {
       renderKpiHistory({ scrollTodoAfterMutation: true });
     });
 
+    const dailyTodoBtn = document.createElement("button");
+    dailyTodoBtn.type = "button";
+    dailyTodoBtn.className = APP_FOOTER_ICON_BTN_CLASS;
+    dailyTodoBtn.setAttribute("data-lp-dream-kpi-footer-action", "");
+    dailyTodoBtn.title = "매일 할 일 추가";
+    dailyTodoBtn.setAttribute("aria-label", "매일 할 일 추가");
+    dailyTodoBtn.innerHTML = LOVE_FOOTER_TODO_ICON;
+    dailyTodoBtn.addEventListener("click", async () => {
+      const d = loadHappinessMap();
+      const k = (d.kpis || []).find((x) => x.id === selectedKpiId);
+      if (!k) return;
+      const text = await showKpiTodoAddModal({
+        kpiName: k.name,
+        title: "매일 할 일 추가",
+        placeholder: "할 일 입력 (매일 반복)",
+      });
+      if (!text) return;
+      const d2 = loadHappinessMap();
+      d2.kpiDailyRepeatTodos = d2.kpiDailyRepeatTodos || [];
+      d2.kpiDailyRepeatTodos.push({
+        id: nextId(),
+        kpiId: String(selectedKpiId),
+        text,
+        completed: false,
+      });
+      saveHappinessMap(d2, { pushServer: true });
+      renderKpiHistory({ scrollTodoAfterMutation: true });
+    });
+
     slot.appendChild(logBtn);
-    slot.appendChild(todoBtn);
+    if (kpiNow.needHabitTracker) {
+      slot.appendChild(dailyTodoBtn);
+    } else {
+      slot.appendChild(todoBtn);
+    }
   }
 
   function getLatestKpiLog(kpiId) {
@@ -1165,101 +1197,103 @@ export function render() {
       appendKpiDailyLogBlock(historyWrap, logs);
     }
 
-    const todoHeader = document.createElement("div");
-    todoHeader.className = "dream-kpi-todo-header";
-    todoHeader.innerHTML = `<span class="dream-kpi-todo-title">할일 목록</span>`;
-    historyWrap.appendChild(todoHeader);
+    if (!needHabitTracker) {
+      const todoHeader = document.createElement("div");
+      todoHeader.className = "dream-kpi-todo-header";
+      todoHeader.innerHTML = `<span class="dream-kpi-todo-title">할일 목록</span>`;
+      historyWrap.appendChild(todoHeader);
 
-    const todoDivider = document.createElement("div");
-    todoDivider.className = "dream-kpi-todo-divider";
-    historyWrap.appendChild(todoDivider);
+      const todoDivider = document.createElement("div");
+      todoDivider.className = "dream-kpi-todo-divider";
+      historyWrap.appendChild(todoDivider);
 
-    const todoList = document.createElement("div");
-    todoList.className = "dream-kpi-todo-list";
-    todos.forEach((todo) => {
-      const item = document.createElement("div");
-      const completed = !!todo.completed;
-      item.className =
-        "dream-kpi-todo-item" + (completed ? " is-completed" : "");
-      item.dataset.todoId = todo.id;
+      const todoList = document.createElement("div");
+      todoList.className = "dream-kpi-todo-list";
+      todos.forEach((todo) => {
+        const item = document.createElement("div");
+        const completed = !!todo.completed;
+        item.className =
+          "dream-kpi-todo-item" + (completed ? " is-completed" : "");
+        item.dataset.todoId = todo.id;
 
-      const label = document.createElement("label");
-      label.className = "dream-kpi-todo-check-wrap";
-      const check = document.createElement("input");
-      check.type = "checkbox";
-      check.className = "dream-kpi-todo-check";
-      check.checked = completed;
-      label.appendChild(check);
+        const label = document.createElement("label");
+        label.className = "dream-kpi-todo-check-wrap";
+        const check = document.createElement("input");
+        check.type = "checkbox";
+        check.className = "dream-kpi-todo-check";
+        check.checked = completed;
+        label.appendChild(check);
 
-      const textPreview = document.createElement("div");
-      textPreview.className = "dream-kpi-todo-list-preview";
-      textPreview.textContent = todo.text || "";
-      textPreview.title = "눌러서 수정·삭제";
+        const textPreview = document.createElement("div");
+        textPreview.className = "dream-kpi-todo-list-preview";
+        textPreview.textContent = todo.text || "";
+        textPreview.title = "눌러서 수정·삭제";
 
-      const openTodoEdit = async () => {
-        const result = await showKpiTodoEditModal({
-          kpiName: kpi.name,
-          initialText: todo.text || "",
-          title: "할 일 수정",
-        });
-        if (!result) return;
-        if (result.action === "delete") {
+        const openTodoEdit = async () => {
+          const result = await showKpiTodoEditModal({
+            kpiName: kpi.name,
+            initialText: todo.text || "",
+            title: "할 일 수정",
+          });
+          if (!result) return;
+          if (result.action === "delete") {
+            const d = loadHappinessMap();
+            kpiTodoLifecycleLog("러브KPI탭_모달삭제", {
+              todoId: String(todo.id),
+              삭제전: kpiTodoSnapshotBrief(d),
+              삭제전dr: deletedRefsKpiTodosLen(d),
+            });
+            appendDeletedRef(d, "kpiTodos", todo.id);
+            d.kpiTodos = (d.kpiTodos || []).filter((x) => x.id !== todo.id);
+            saveHappinessMap(d, { pushServer: true });
+            const after = loadHappinessMap();
+            kpiTodoLifecycleLog("러브KPI탭_모달삭제_saveHappinessMap후", {
+              todoId: String(todo.id),
+              삭제후: kpiTodoSnapshotBrief(after),
+              삭제후dr: deletedRefsKpiTodosLen(after),
+            });
+            renderKpiHistory({ scrollTodoAfterMutation: true });
+            return;
+          }
           const d = loadHappinessMap();
-          kpiTodoLifecycleLog("러브KPI탭_모달삭제", {
-            todoId: String(todo.id),
-            삭제전: kpiTodoSnapshotBrief(d),
-            삭제전dr: deletedRefsKpiTodosLen(d),
-          });
-          appendDeletedRef(d, "kpiTodos", todo.id);
-          d.kpiTodos = (d.kpiTodos || []).filter((x) => x.id !== todo.id);
+          const row = (d.kpiTodos || []).find((x) => x.id === todo.id);
+          if (!row) return;
+          row.text = result.text;
           saveHappinessMap(d, { pushServer: true });
-          const after = loadHappinessMap();
-          kpiTodoLifecycleLog("러브KPI탭_모달삭제_saveHappinessMap후", {
-            todoId: String(todo.id),
-            삭제후: kpiTodoSnapshotBrief(after),
-            삭제후dr: deletedRefsKpiTodosLen(after),
-          });
           renderKpiHistory({ scrollTodoAfterMutation: true });
-          return;
-        }
-        const d = loadHappinessMap();
-        const row = (d.kpiTodos || []).find((x) => x.id === todo.id);
-        if (!row) return;
-        row.text = result.text;
-        saveHappinessMap(d, { pushServer: true });
-        renderKpiHistory({ scrollTodoAfterMutation: true });
-      };
+        };
 
-      item.addEventListener("click", async (e) => {
-        if (e.target.closest(".dream-kpi-todo-check-wrap")) return;
-        await openTodoEdit();
+        item.addEventListener("click", async (e) => {
+          if (e.target.closest(".dream-kpi-todo-check-wrap")) return;
+          await openTodoEdit();
+        });
+
+        check.addEventListener("change", () => {
+          const d = loadHappinessMap();
+          const t = d.kpiTodos.find((x) => x.id === todo.id);
+          if (t) {
+            kpiTodoLifecycleLog("러브KPI탭_체크_완료토글", {
+              todoId: String(todo.id),
+              이전완료: !!t.completed,
+              요청완료: !!check.checked,
+            });
+            t.completed = !!check.checked;
+            saveHappinessMap(d, { pushServer: true });
+            kpiTodoLifecycleLog("러브KPI탭_체크_save후", {
+              todoId: String(todo.id),
+              completion: kpiTodosCompletionBrief(loadHappinessMap(), 20),
+            });
+            item.classList.toggle("is-completed", t.completed);
+          }
+        });
+
+        item.appendChild(label);
+        item.appendChild(textPreview);
+        todoList.appendChild(item);
       });
 
-      check.addEventListener("change", () => {
-        const d = loadHappinessMap();
-        const t = d.kpiTodos.find((x) => x.id === todo.id);
-        if (t) {
-          kpiTodoLifecycleLog("러브KPI탭_체크_완료토글", {
-            todoId: String(todo.id),
-            이전완료: !!t.completed,
-            요청완료: !!check.checked,
-          });
-          t.completed = !!check.checked;
-          saveHappinessMap(d, { pushServer: true });
-          kpiTodoLifecycleLog("러브KPI탭_체크_save후", {
-            todoId: String(todo.id),
-            completion: kpiTodosCompletionBrief(loadHappinessMap(), 20),
-          });
-          item.classList.toggle("is-completed", t.completed);
-        }
-      });
-
-      item.appendChild(label);
-      item.appendChild(textPreview);
-      todoList.appendChild(item);
-    });
-
-    historyWrap.appendChild(todoList);
+      historyWrap.appendChild(todoList);
+    }
     if (scrollTodoAfterMutation) {
       afterKpiTodoListMutationScroll(historyWrap);
     }

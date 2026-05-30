@@ -2036,3 +2036,29 @@ body.auth-pw-modal-open {
   color: rgba(30, 77, 123, 0.7);
   cursor: pointer;
 }
+
+.login-remember-me {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.1rem 0 0.15rem;
+  font-size: 0.8125rem;
+  color: rgba(30, 77, 123, 0.72);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.login-remember-me-checkbox {
+  width: 0.9375rem;
+  height: 0.9375rem;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--lp-modal-accent, #1e4d7b);
+  cursor: pointer;
+}
+
+.login-remember-me-label {
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}

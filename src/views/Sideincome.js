@@ -41,6 +41,8 @@ import { defaultManualKpiLogMeta, kpiLogSourceBadgeHtml, formatKpiHistoryValueTe
 import {
   wireKpiHistoryBottomTabs,
   getKpiHistoryBottomTab,
+  effectiveKpiHistoryBottomTab,
+  kpiUsesDailyTodosOnly,
   KPI_BOTTOM_TAB_LOG,
   KPI_BOTTOM_TAB_TODO,
   KPI_BOTTOM_TAB_DAILY,
@@ -969,9 +971,10 @@ export function render() {
     clearKpiMapFooterActionButtons();
   }
 
-  function sideincomeKpiFooterAddLabel(tab) {
-    if (tab === KPI_BOTTOM_TAB_TODO) return "할 일 추가";
-    if (tab === KPI_BOTTOM_TAB_DAILY) return "매일 할 일 추가";
+  function sideincomeKpiFooterAddLabel(tab, kpi) {
+    const t = effectiveKpiHistoryBottomTab(tab, kpi);
+    if (t === KPI_BOTTOM_TAB_TODO) return "할 일 추가";
+    if (t === KPI_BOTTOM_TAB_DAILY) return "매일 할 일 추가";
     return "로그 추가";
   }
 
@@ -979,7 +982,10 @@ export function render() {
     const d = loadSideincomeMap();
     const k = (d.kpis || []).find((x) => x.id === selectedKpiId);
     if (!k) return;
-    const tab = getKpiHistoryBottomTab("sideincome", selectedKpiId);
+    const tab = effectiveKpiHistoryBottomTab(
+      getKpiHistoryBottomTab("sideincome", selectedKpiId),
+      k,
+    );
     if (tab === KPI_BOTTOM_TAB_TODO) {
       const text = await showKpiTodoAddModal({
         kpiName: k.name,
@@ -1065,7 +1071,7 @@ export function render() {
     if (!kpiNow || kpiNow.pathId !== activePathId) return;
 
     const tab = getKpiHistoryBottomTab("sideincome", selectedKpiId);
-    const addLabel = sideincomeKpiFooterAddLabel(tab);
+    const addLabel = sideincomeKpiFooterAddLabel(tab, kpiNow);
     addBtn.title = addLabel;
     addBtn.setAttribute("aria-label", addLabel);
     addBtn.addEventListener("click", () => {
@@ -1360,6 +1366,7 @@ export function render() {
     if (target === historyWrap) historyWrap.hidden = false;
 
     const hasDailyTab = needHabitTracker;
+    const dailyTodosOnly = kpiUsesDailyTodosOnly(kpi);
 
     const appendKpiDailyLogBlock = (parentEl, logEntries) => {
       const div = document.createElement("div");
@@ -1435,7 +1442,9 @@ export function render() {
       btnSegDaily.setAttribute("role", "tab");
     }
 
-    segBar.appendChild(btnSegTodo);
+    if (!dailyTodosOnly) {
+      segBar.appendChild(btnSegTodo);
+    }
     if (btnSegDaily) segBar.appendChild(btnSegDaily);
     segBar.appendChild(btnSegLog);
 
@@ -1445,7 +1454,9 @@ export function render() {
     panelLogSeg.setAttribute("role", "tabpanel");
     appendKpiDailyLogBlock(panelLogSeg, logs);
 
-    const panelTodoSeg = document.createElement("div");
+    let panelTodoSeg = null;
+    if (!dailyTodosOnly) {
+      panelTodoSeg = document.createElement("div");
     panelTodoSeg.className =
       "dream-kpi-bottom-seg-panel dream-kpi-bottom-seg-panel--todo";
     panelTodoSeg.setAttribute("role", "tabpanel");
@@ -1542,6 +1553,7 @@ export function render() {
     } else {
       panelTodoSeg.appendChild(todoList);
     }
+    }
 
     let panelDailySeg = null;
     if (hasDailyTab) {
@@ -1619,20 +1631,21 @@ export function render() {
 
     target.appendChild(segBar);
     target.appendChild(panelLogSeg);
-    target.appendChild(panelTodoSeg);
+    if (panelTodoSeg) target.appendChild(panelTodoSeg);
     if (panelDailySeg) target.appendChild(panelDailySeg);
 
     wireKpiHistoryBottomTabs(
       "sideincome",
       selectedKpiId,
       btnSegLog,
-      btnSegTodo,
+      dailyTodosOnly ? null : btnSegTodo,
       btnSegDaily,
       panelLogSeg,
-      panelTodoSeg,
+      dailyTodosOnly ? null : panelTodoSeg,
       panelDailySeg,
       hasDailyTab,
       () => syncAppFooterSideincomeKpiActions(),
+      { dailyTodosOnly },
     );
     if (scrollTodoAfterMutation) {
       afterKpiTodoListMutationScroll(target);

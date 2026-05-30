@@ -4523,6 +4523,7 @@ export function render(opts = {}) {
   lpSetClasses(el, "app-tab-panel-content time-ledger-view");
   el.dataset.timeContentView = "all";
   el._lpUsageListScrollToBottomPending = false;
+  el._lpUsageListEnterScrollArmed = true;
   const timeTabAbort = new AbortController();
   el._lpTabAbortController = timeTabAbort;
   const signal = timeTabAbort.signal;
@@ -8497,9 +8498,12 @@ export function render(opts = {}) {
       if (!cardsWrap.isConnected) return;
       cardsWrap.scrollTop = cardsWrap.scrollHeight;
     };
-    /* DOM 붙인 직후 동기 스크롤 — rAF 2회만 쓰면 위 화면이 잠깐 보임 */
     scrollToBottom();
-    requestAnimationFrame(scrollToBottom);
+    requestAnimationFrame(() => {
+      scrollToBottom();
+      requestAnimationFrame(scrollToBottom);
+    });
+    el._lpUsageListEnterScrollArmed = false;
   }
 
   function renderAll(rows = []) {
@@ -8843,6 +8847,7 @@ export function render(opts = {}) {
   ledgerContainer.appendChild(tableWrap);
   contentWrap.appendChild(ledgerContainer);
 
+  requestUsageListScrollToBottomOnce();
   onFilterChange(true);
 
   function syncUsageHistoryRangeFromSession() {
@@ -8960,6 +8965,13 @@ export function render(opts = {}) {
       force:
         ev?.type === "lp-tab-pull-settled" || isLpTabPullPending("time"),
     });
+    if (ev?.type === "lp-tab-pull-settled" && el._lpUsageListEnterScrollArmed) {
+      requestUsageListScrollToBottomOnce();
+      const cardsWrap = contentWrap.querySelector(
+        '[data-legacy~="time-ledger-mobile-cards"]',
+      );
+      applyUsageListScrollToBottomIfPending(cardsWrap);
+    }
   }
   window.addEventListener("lp-tab-pull-pending", onLpTabPullSyncEvent, {
     signal,

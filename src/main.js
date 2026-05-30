@@ -72,7 +72,7 @@ import {
 } from "./utils/lpEnterAppDebug.js";
 import { initLpShellStuckGuard, runLpShellVisibilityGuard } from "./utils/lpShellRecovery.js";
 import { initLpPwaInstall, refreshLpPwaInstall } from "./utils/lpPwaInstall.js";
-import { showAlertModal } from "./utils/confirmModal.js";
+import { syncLoginRememberMeCheckbox } from "./utils/authRememberMe.js";
 
 async function signOutForSubscriptionExpired() {
   await showAlertModal({ title: "안내", message: SUBSCRIPTION_EXPIRED_MESSAGE });
@@ -328,6 +328,7 @@ function setAuthGatePanel(mode) {
   segSignup?.classList.toggle("is-active", isSignup);
   segLogin?.setAttribute("aria-selected", isSignup ? "false" : "true");
   segSignup?.setAttribute("aria-selected", isSignup ? "true" : "false");
+  if (!isSignup) syncLoginRememberMeCheckbox();
 }
 
 function openAuthPwRecoveryModal() {
@@ -412,6 +413,7 @@ function init() {
   })();
 
   document.getElementById("btn-do-login")?.addEventListener("click", doLogin);
+  syncLoginRememberMeCheckbox();
   document.getElementById("btn-do-signup")?.addEventListener("click", doSignUp);
   document
     .getElementById("auth-seg-login")
@@ -608,9 +610,11 @@ function init() {
 async function doLogin() {
   const id = document.getElementById("login-id")?.value?.trim() || "";
   const pw = document.getElementById("login-pw")?.value || "";
+  const rememberMe =
+    document.getElementById("login-remember-me")?.checked !== false;
   const t0 = performance.now();
   lpEnterAppDebugMark("서버 로그인 시작", t0);
-  const result = await login(id, pw);
+  const result = await login(id, pw, { rememberMe });
   lpEnterAppDebugMark("서버 로그인 완료", t0);
   if (result.ok) {
     setLpAuthBootPending(true);

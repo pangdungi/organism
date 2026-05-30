@@ -127,7 +127,7 @@ export function getKpiTodosAsTasks() {
     .filter((todo) => (todo.text || "").trim() !== "")
     .forEach((todo) => {
       const kpi = (dreamData.kpis || []).find((k) => k.id === todo.kpiId);
-      if (!kpi) return;
+      if (!kpi || kpi.needHabitTracker) return;
       const kpiName = kpi.name || "(KPI)";
       tasks.push({
         name: todo.text || "",
@@ -163,7 +163,7 @@ export function getKpiTodosAsTasks() {
     .filter((todo) => (todo.text || "").trim() !== "")
     .forEach((todo) => {
       const kpi = (sideData.kpis || []).find((k) => k.id === todo.kpiId);
-      if (!kpi) return;
+      if (!kpi || kpi.needHabitTracker) return;
       const kpiName = kpi.name || "(KPI)";
       tasks.push({
         name: todo.text || "",
@@ -199,7 +199,7 @@ export function getKpiTodosAsTasks() {
     .filter((todo) => (todo.text || "").trim() !== "")
     .forEach((todo) => {
       const kpi = (happyData.kpis || []).find((k) => k.id === todo.kpiId);
-      if (!kpi) return;
+      if (!kpi || kpi.needHabitTracker) return;
       const kpiName = kpi.name || "(KPI)";
       tasks.push({
         name: todo.text || "",
@@ -235,7 +235,7 @@ export function getKpiTodosAsTasks() {
     .filter((todo) => (todo.text || "").trim() !== "")
     .forEach((todo) => {
       const kpi = (healthData.kpis || []).find((k) => k.id === todo.kpiId);
-      if (!kpi) return;
+      if (!kpi || kpi.needHabitTracker) return;
       const kpiName = kpi.name || "(KPI)";
       tasks.push({
         name: todo.text || "",

@@ -523,6 +523,44 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 [data-legacy~="todo-task-edit-field"]:last-child {
   margin-bottom: 0;
 }
+.todo-task-date-block .time-task-log-field:last-of-type {
+  margin-bottom: 0.45rem;
+}
+.todo-task-date-quick {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.3rem;
+  margin: 0 0 0.85rem;
+}
+.todo-task-date-quick-btn {
+  margin: 0;
+  padding: 0.18rem 0.55rem;
+  font: inherit;
+  font-size: 0.71875rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+  color: var(--lp-modal-navy-muted);
+  background: transparent;
+  border: 1px solid rgba(30, 77, 123, 0.14);
+  border-radius: 999px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    border-color 0.12s ease,
+    color 0.12s ease,
+    background 0.12s ease;
+}
+.todo-task-date-quick-btn:hover {
+  border-color: rgba(30, 77, 123, 0.28);
+  color: var(--lp-modal-navy);
+  background: rgba(30, 77, 123, 0.05);
+}
+.todo-task-date-quick-btn:focus-visible {
+  outline: 2px solid rgba(30, 77, 123, 0.35);
+  outline-offset: 1px;
+}
 .time-task-log-expense-amount-name-row,
 [data-legacy~="time-task-log-expense-amount-name-row"] {
   display: flex;

@@ -36,6 +36,8 @@ import {
 import {
   wireKpiHistoryBottomTabs,
   getKpiHistoryBottomTab,
+  effectiveKpiHistoryBottomTab,
+  kpiUsesDailyTodosOnly,
   KPI_BOTTOM_TAB_LOG,
   KPI_BOTTOM_TAB_TODO,
   KPI_BOTTOM_TAB_DAILY,
@@ -938,9 +940,10 @@ export function render() {
     clearKpiMapFooterActionButtons();
   }
 
-  function dreamKpiFooterAddLabel(tab) {
-    if (tab === KPI_BOTTOM_TAB_TODO) return "할 일 추가";
-    if (tab === KPI_BOTTOM_TAB_DAILY) return "매일 할 일 추가";
+  function dreamKpiFooterAddLabel(tab, kpi) {
+    const t = effectiveKpiHistoryBottomTab(tab, kpi);
+    if (t === KPI_BOTTOM_TAB_TODO) return "할 일 추가";
+    if (t === KPI_BOTTOM_TAB_DAILY) return "매일 할 일 추가";
     return "로그 추가";
   }
 
@@ -948,7 +951,10 @@ export function render() {
     const d = loadDreamMap();
     const k = (d.kpis || []).find((x) => x.id === selectedKpiId);
     if (!k) return;
-    const tab = getKpiHistoryBottomTab("dream", selectedKpiId);
+    const tab = effectiveKpiHistoryBottomTab(
+      getKpiHistoryBottomTab("dream", selectedKpiId),
+      k,
+    );
     if (tab === KPI_BOTTOM_TAB_TODO) {
       const text = await showKpiTodoAddModal({
         kpiName: k.name,
@@ -1034,7 +1040,7 @@ export function render() {
     if (!kpiNow || kpiNow.dreamId !== activeDreamId) return;
 
     const tab = getKpiHistoryBottomTab("dream", selectedKpiId);
-    const addLabel = dreamKpiFooterAddLabel(tab);
+    const addLabel = dreamKpiFooterAddLabel(tab, kpiNow);
     addBtn.title = addLabel;
     addBtn.setAttribute("aria-label", addLabel);
     addBtn.addEventListener("click", () => {
@@ -1283,6 +1289,7 @@ export function render() {
     if (target === historyWrap) historyWrap.hidden = false;
 
     const hasDailyTab = needHabitTracker;
+    const dailyTodosOnly = kpiUsesDailyTodosOnly(kpi);
 
     const appendKpiDailyLogBlock = (parentEl, logEntries) => {
       const div = document.createElement("div");
@@ -1358,7 +1365,9 @@ export function render() {
       btnSegDaily.setAttribute("role", "tab");
     }
 
-    segBar.appendChild(btnSegTodo);
+    if (!dailyTodosOnly) {
+      segBar.appendChild(btnSegTodo);
+    }
     if (btnSegDaily) segBar.appendChild(btnSegDaily);
     segBar.appendChild(btnSegLog);
 
@@ -1368,102 +1377,105 @@ export function render() {
     panelLogSeg.setAttribute("role", "tabpanel");
     appendKpiDailyLogBlock(panelLogSeg, logs);
 
-    const panelTodoSeg = document.createElement("div");
-    panelTodoSeg.className =
-      "dream-kpi-bottom-seg-panel dream-kpi-bottom-seg-panel--todo";
-    panelTodoSeg.setAttribute("role", "tabpanel");
+    let panelTodoSeg = null;
+    if (!dailyTodosOnly) {
+      panelTodoSeg = document.createElement("div");
+      panelTodoSeg.className =
+        "dream-kpi-bottom-seg-panel dream-kpi-bottom-seg-panel--todo";
+      panelTodoSeg.setAttribute("role", "tabpanel");
 
-    const todoList = document.createElement("div");
-    todoList.className = "dream-kpi-todo-list dream-kpi-todo-list--seg-panel";
-    todos.forEach((todo) => {
-      const item = document.createElement("div");
-      const completed = !!todo.completed;
-      item.className = "dream-kpi-todo-item" + (completed ? " is-completed" : "");
-      item.dataset.todoId = todo.id;
+      const todoList = document.createElement("div");
+      todoList.className = "dream-kpi-todo-list dream-kpi-todo-list--seg-panel";
+      todos.forEach((todo) => {
+        const item = document.createElement("div");
+        const completed = !!todo.completed;
+        item.className = "dream-kpi-todo-item" + (completed ? " is-completed" : "");
+        item.dataset.todoId = todo.id;
 
-      const label = document.createElement("label");
-      label.className = "dream-kpi-todo-check-wrap";
-      const check = document.createElement("input");
-      check.type = "checkbox";
-      check.className = "dream-kpi-todo-check";
-      check.checked = completed;
-      label.appendChild(check);
+        const label = document.createElement("label");
+        label.className = "dream-kpi-todo-check-wrap";
+        const check = document.createElement("input");
+        check.type = "checkbox";
+        check.className = "dream-kpi-todo-check";
+        check.checked = completed;
+        label.appendChild(check);
 
-      const textPreview = document.createElement("div");
-      textPreview.className = "dream-kpi-todo-list-preview";
-      textPreview.textContent = todo.text || "";
-      textPreview.title = "눌러서 수정·삭제";
+        const textPreview = document.createElement("div");
+        textPreview.className = "dream-kpi-todo-list-preview";
+        textPreview.textContent = todo.text || "";
+        textPreview.title = "눌러서 수정·삭제";
 
-      const openTodoEdit = async () => {
-        const result = await showKpiTodoEditModal({
-          kpiName: kpi.name,
-          initialText: todo.text || "",
-          title: "할 일 수정",
-        });
-        if (!result) return;
-        if (result.action === "delete") {
+        const openTodoEdit = async () => {
+          const result = await showKpiTodoEditModal({
+            kpiName: kpi.name,
+            initialText: todo.text || "",
+            title: "할 일 수정",
+          });
+          if (!result) return;
+          if (result.action === "delete") {
+            const d = loadDreamMap();
+            kpiTodoLifecycleLog("꿈KPI탭_모달삭제", {
+              todoId: String(todo.id),
+              삭제전: kpiTodoSnapshotBrief(d),
+              삭제전dr: deletedRefsKpiTodosLen(d),
+            });
+            appendDeletedRef(d, "kpiTodos", todo.id);
+            d.kpiTodos = (d.kpiTodos || []).filter((x) => x.id !== todo.id);
+            saveDreamMap(d, { pushServer: true });
+            const after = loadDreamMap();
+            kpiTodoLifecycleLog("꿈KPI탭_모달삭제_saveDreamMap후", {
+              todoId: String(todo.id),
+              삭제후: kpiTodoSnapshotBrief(after),
+              삭제후dr: deletedRefsKpiTodosLen(after),
+            });
+            renderKpiDetailView({ scrollTodoAfterMutation: true });
+            return;
+          }
           const d = loadDreamMap();
-          kpiTodoLifecycleLog("꿈KPI탭_모달삭제", {
-            todoId: String(todo.id),
-            삭제전: kpiTodoSnapshotBrief(d),
-            삭제전dr: deletedRefsKpiTodosLen(d),
-          });
-          appendDeletedRef(d, "kpiTodos", todo.id);
-          d.kpiTodos = (d.kpiTodos || []).filter((x) => x.id !== todo.id);
+          const row = (d.kpiTodos || []).find((x) => x.id === todo.id);
+          if (!row) return;
+          row.text = result.text;
           saveDreamMap(d, { pushServer: true });
-          const after = loadDreamMap();
-          kpiTodoLifecycleLog("꿈KPI탭_모달삭제_saveDreamMap후", {
-            todoId: String(todo.id),
-            삭제후: kpiTodoSnapshotBrief(after),
-            삭제후dr: deletedRefsKpiTodosLen(after),
-          });
           renderKpiDetailView({ scrollTodoAfterMutation: true });
-          return;
-        }
-        const d = loadDreamMap();
-        const row = (d.kpiTodos || []).find((x) => x.id === todo.id);
-        if (!row) return;
-        row.text = result.text;
-        saveDreamMap(d, { pushServer: true });
-        renderKpiDetailView({ scrollTodoAfterMutation: true });
-      };
+        };
 
-      item.addEventListener("click", async (e) => {
-        if (e.target.closest(".dream-kpi-todo-check-wrap")) return;
-        await openTodoEdit();
+        item.addEventListener("click", async (e) => {
+          if (e.target.closest(".dream-kpi-todo-check-wrap")) return;
+          await openTodoEdit();
+        });
+
+        check.addEventListener("change", () => {
+          const d = loadDreamMap();
+          const t = d.kpiTodos.find((x) => x.id === todo.id);
+          if (t) {
+            kpiTodoLifecycleLog("꿈KPI탭_체크_완료토글", {
+              todoId: String(todo.id),
+              이전완료: !!t.completed,
+              요청완료: !!check.checked,
+            });
+            t.completed = !!check.checked;
+            saveDreamMap(d, { pushServer: true });
+            kpiTodoLifecycleLog("꿈KPI탭_체크_saveDreamMap후", {
+              todoId: String(todo.id),
+              completion: kpiTodosCompletionBrief(loadDreamMap(), 20),
+            });
+            item.classList.toggle("is-completed", t.completed);
+          }
+        });
+
+        item.appendChild(label);
+        item.appendChild(textPreview);
+        todoList.appendChild(item);
       });
 
-      check.addEventListener("change", () => {
-        const d = loadDreamMap();
-        const t = d.kpiTodos.find((x) => x.id === todo.id);
-        if (t) {
-          kpiTodoLifecycleLog("꿈KPI탭_체크_완료토글", {
-            todoId: String(todo.id),
-            이전완료: !!t.completed,
-            요청완료: !!check.checked,
-          });
-          t.completed = !!check.checked;
-          saveDreamMap(d, { pushServer: true });
-          kpiTodoLifecycleLog("꿈KPI탭_체크_saveDreamMap후", {
-            todoId: String(todo.id),
-            completion: kpiTodosCompletionBrief(loadDreamMap(), 20),
-          });
-          item.classList.toggle("is-completed", t.completed);
-        }
-      });
-
-      item.appendChild(label);
-      item.appendChild(textPreview);
-      todoList.appendChild(item);
-    });
-
-    if (todos.length === 0) {
-      const emptyTodo = document.createElement("p");
-      emptyTodo.className = "dream-kpi-history-empty";
-      emptyTodo.textContent = "등록된 할 일이 없습니다.";
-      panelTodoSeg.appendChild(emptyTodo);
-    } else {
-      panelTodoSeg.appendChild(todoList);
+      if (todos.length === 0) {
+        const emptyTodo = document.createElement("p");
+        emptyTodo.className = "dream-kpi-history-empty";
+        emptyTodo.textContent = "등록된 할 일이 없습니다.";
+        panelTodoSeg.appendChild(emptyTodo);
+      } else {
+        panelTodoSeg.appendChild(todoList);
+      }
     }
 
     let panelDailySeg = null;
@@ -1542,20 +1554,21 @@ export function render() {
 
     target.appendChild(segBar);
     target.appendChild(panelLogSeg);
-    target.appendChild(panelTodoSeg);
+    if (panelTodoSeg) target.appendChild(panelTodoSeg);
     if (panelDailySeg) target.appendChild(panelDailySeg);
 
     wireKpiHistoryBottomTabs(
       "dream",
       selectedKpiId,
       btnSegLog,
-      btnSegTodo,
+      dailyTodosOnly ? null : btnSegTodo,
       btnSegDaily,
       panelLogSeg,
-      panelTodoSeg,
+      dailyTodosOnly ? null : panelTodoSeg,
       panelDailySeg,
       hasDailyTab,
       () => syncAppFooterDreamKpiActions(),
+      { dailyTodosOnly },
     );
     if (scrollTodoAfterMutation) {
       afterKpiTodoListMutationScroll(target);

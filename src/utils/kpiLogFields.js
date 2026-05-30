@@ -81,7 +81,10 @@ export function formatKpiHistoryValueText(log, kpi, opts) {
   const u = kpi?.unit ? String(kpi.unit).trim() : "";
   const ledgerMins = getKpiLogDisplayMinutes(log, kpi);
 
-  if ((kpi?.useTimeAsUnit || kpiLogIsTimeLinked(log)) && ledgerMins > 0) {
+  if (
+    (kpi?.useTimeAsUnit || kpi?.needHabitTracker || kpiLogIsTimeLinked(log)) &&
+    ledgerMins > 0
+  ) {
     return shortHm
       ? formatMinutesToShortHm(ledgerMins)
       : formatMinutesToKoreanHm(ledgerMins);

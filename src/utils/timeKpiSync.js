@@ -62,10 +62,11 @@ export function kpiHasLinkedTimeTask(kpiOrId) {
   return false;
 }
 
-/** 시간 단위 KPI 또는 가계부 과제 연동 KPI — 로그·누적에 가계부 사용 */
+/** 시간 단위 KPI · 매일 반복 KPI · 가계부 과제 연동 — 로그·누적에 가계부 사용 */
 export function kpiShouldUseTimeLedgerLogs(kpi) {
   if (!kpi) return false;
   if (kpi.useTimeAsUnit) return true;
+  if (kpi.needHabitTracker) return true;
   return kpiHasLinkedTimeTask(kpi);
 }
 
@@ -227,7 +228,7 @@ export function getKpiDailyLedgerSummaries(kpiId, kpiName, opts = {}) {
   const endYmd = normalizeYmdTenForRange(opts.endYmd);
   const extra = kpiName ? [String(kpiName).trim()] : [];
   const matched = getMatchingLedgerRowsForKpi(kpiId, loadTimeRows(), extra);
-  /** @type {Map<string, { dateRaw: string, dateDisplay: string, minutes: number, entryIds: string[] }>} */
+  /** @type {Map<string, { dateRaw: string, dateDisplay: string, minutes: number, entryIds: string[], habitDailyCompleted: Array<{id:string,text:string}> }>} */
   const byDay = new Map();
   for (const r of matched) {
     const d = ledgerRowDateYmd(r);
@@ -240,6 +241,7 @@ export function getKpiDailyLedgerSummaries(kpiId, kpiName, opts = {}) {
         dateDisplay: toDisplayDate(d),
         minutes: 0,
         entryIds: [],
+        habitDailyCompleted: [],
       });
     }
     const bucket = byDay.get(d);
@@ -247,6 +249,13 @@ export function getKpiDailyLedgerSummaries(kpiId, kpiName, opts = {}) {
     const eid = String(r.id || "").trim();
     if (isUuid(eid) && !bucket.entryIds.includes(eid)) {
       bucket.entryIds.push(eid);
+    }
+    const habitRaw = Array.isArray(r.habitDailyCompleted) ? r.habitDailyCompleted : [];
+    if (habitRaw.length > 0) {
+      bucket.habitDailyCompleted = mergeDailyCompletedLists(
+        bucket.habitDailyCompleted,
+        habitRaw,
+      );
     }
   }
   return [...byDay.values()].sort((a, b) => b.dateRaw.localeCompare(a.dateRaw));
@@ -448,7 +457,7 @@ function logIsExplicitManual(log) {
 }
 
 /** dailyCompleted 병합: prev·next 를 id·텍스트 기준 합침 */
-function mergeDailyCompletedLists(prev, next) {
+export function mergeDailyCompletedLists(prev, next) {
   const seen = new Set();
   const out = [];
   const add = (t) => {
@@ -804,6 +813,7 @@ export function syncHabitTrackerLogs() {
   const logBlocksTimeLedgerIdMerge = (log, kpi) => {
     if (!log || typeof log !== "object") return true;
     if (kpi?.useTimeAsUnit) return false;
+    if (kpi?.needHabitTracker) return false;
     if (log.kpiLogSource === KPI_LOG_SOURCE_TIME_LEDGER) return false;
     if (Array.isArray(log.timeLedgerEntryIds) && log.timeLedgerEntryIds.length > 0)
       return false;

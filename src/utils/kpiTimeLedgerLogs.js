@@ -4,6 +4,7 @@
 
 import {
   KPI_LOG_SOURCE_TIME_LEDGER,
+  KPI_LOG_SOURCE_MANUAL,
   kpiLogIsTimeLinked,
 } from "./kpiLogFields.js";
 import { pullTimeLedgerForKpi } from "./kpiTabCloudRefresh.js";
@@ -14,10 +15,18 @@ import {
   normalizeKpiLogDateYmd,
   syncHabitTrackerLogs,
   kpiShouldUseTimeLedgerLogs,
+  mergeDailyCompletedLists,
 } from "./timeKpiSync.js";
 
+function mergeLogDailyCompleted(storedLog, ledgerHabitCompleted = []) {
+  return mergeDailyCompletedLists(
+    storedLog?.dailyCompleted || [],
+    ledgerHabitCompleted || [],
+  );
+}
+
 /**
- * KPI 상세 로그 탭 — 시간 단위면 **가계부(taskId 연동) 일별**만 표시
+ * KPI 상세 로그 탭 — 시간 단위·매일 반복이면 **가계부(taskId 연동) 일별** + 체크 항목 표시
  * @param {object} kpi
  * @param {object[]} storedLogs
  */
@@ -50,29 +59,49 @@ export function resolveKpiDetailLogEntries(kpi, storedLogs = []) {
   const out = [];
 
   for (const day of daily) {
-    if (day.minutes <= 0) continue;
     const stored = storedByDate.get(day.dateRaw);
-    storedByDate.delete(day.dateRaw);
+    if (stored) storedByDate.delete(day.dateRaw);
+
+    const dailyCompleted = mergeLogDailyCompleted(stored, day.habitDailyCompleted);
+    const hasTime = day.minutes > 0;
+    const hasChecks = dailyCompleted.length > 0;
+    if (!hasTime && !hasChecks) continue;
+
+    const entryIds =
+      Array.isArray(day.entryIds) && day.entryIds.length > 0
+        ? day.entryIds
+        : stored?.timeLedgerEntryIds || [];
+
     out.push({
       ...(stored || {}),
       id: stored?.id || `time-ledger-${kpi.id}-${day.dateRaw}`,
       kpiId: kpi.id,
       date: stored?.date || day.dateDisplay,
       dateRaw: day.dateRaw,
-      timeLedgerEntryIds: day.entryIds,
-      kpiLogSource: KPI_LOG_SOURCE_TIME_LEDGER,
+      timeLedgerEntryIds: entryIds,
+      kpiLogSource: hasTime
+        ? KPI_LOG_SOURCE_TIME_LEDGER
+        : stored?.kpiLogSource || KPI_LOG_SOURCE_MANUAL,
       __ledgerMinutes: day.minutes,
+      dailyCompleted,
     });
   }
 
   for (const log of storedByDate.values()) {
-    if (kpiLogIsTimeLinked(log)) continue;
+    const dailyCompleted = mergeLogDailyCompleted(log, []);
     const v = String(log?.value ?? "").trim();
     const memo = String(log?.memo ?? "").trim();
-    const dailyDone = Array.isArray(log?.dailyCompleted)
-      ? log.dailyCompleted.length
-      : 0;
-    if (v || memo || dailyDone > 0) out.push(log);
+    const hasChecks = dailyCompleted.length > 0;
+
+    if (kpiLogIsTimeLinked(log)) {
+      if (!hasChecks) continue;
+      out.push({ ...log, dailyCompleted });
+      continue;
+    }
+
+    if (v || memo || hasChecks) {
+      out.push(hasChecks ? { ...log, dailyCompleted } : log);
+    }
   }
 
   out.sort((a, b) => {

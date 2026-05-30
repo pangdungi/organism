@@ -35,6 +35,10 @@ import { dismissAppToast } from "../utils/showToast.js";
 import { bindLpHorizontalPanNavigate } from "../utils/lpHorizontalPanNavigate.js";
 import { initModalStandardDateFields } from "../utils/modalNativeDateField.js";
 import {
+  buildTodoTaskDateQuickMarkup,
+  setupTodoTaskDateQuickButtons,
+} from "../utils/deadlineQuickButtons.js";
+import {
   closeDuplicateTodoAddModals,
   wireModalEnterToConfirm,
 } from "../utils/modalNoAutoFocus.js";
@@ -1680,7 +1684,26 @@ function showTodoTaskModal(options) {
           <label>${escapeHtml(nameLabel)}</label>
           <input type="text" class="time-add-task-name" placeholder="${escapeHtml(namePh)}" value="${escapeHtml(name)}" maxlength="500" />
         </div>
-        <div class="time-task-log-field">
+        ${
+          mode === "edit"
+            ? `<div class="todo-task-date-block">
+          <div class="time-task-log-field">
+            <label>시작일</label>
+            <div class="time-task-log-date-native-wrap">
+              <input type="date" class="todo-task-edit-start" aria-label="시작일" value="${escapeHtml((startDate || "").slice(0, 10))}" />
+              <span class="time-task-log-date-overlay" aria-hidden="true"></span>
+            </div>
+          </div>
+          <div class="time-task-log-field">
+            <label>마감일</label>
+            <div class="time-task-log-date-native-wrap">
+              <input type="date" class="todo-task-edit-due" aria-label="마감일" value="${escapeHtml((dueDate || "").slice(0, 10))}" />
+              <span class="time-task-log-date-overlay" aria-hidden="true"></span>
+            </div>
+          </div>
+          ${buildTodoTaskDateQuickMarkup()}
+        </div>`
+            : `<div class="time-task-log-field">
           <label>시작일</label>
           <div class="time-task-log-date-native-wrap">
             <input type="date" class="todo-task-edit-start" aria-label="시작일" value="${escapeHtml((startDate || "").slice(0, 10))}" />
@@ -1693,7 +1716,8 @@ function showTodoTaskModal(options) {
             <input type="date" class="todo-task-edit-due" aria-label="마감일" value="${escapeHtml((dueDate || "").slice(0, 10))}" />
             <span class="time-task-log-date-overlay" aria-hidden="true"></span>
           </div>
-        </div>
+        </div>`
+        }
       </div>
       <div class="time-task-log-footer todo-task-edit-footer todo-task-edit-footer--actions">
         ${
@@ -1784,6 +1808,7 @@ function showTodoTaskModal(options) {
 
   wireModalEnterToConfirm(modal, confirmBtn);
   initModalStandardDateFields(modal);
+  if (mode === "edit") setupTodoTaskDateQuickButtons(modal);
 }
 
 function todoModalSectionLabel(sectionId) {

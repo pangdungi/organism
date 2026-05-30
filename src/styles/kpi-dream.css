@@ -413,8 +413,9 @@
   position: relative;
   display: inline-flex;
   flex-wrap: nowrap;
+  align-items: stretch;
   gap: 0;
-  width: fit-content;
+  width: min(100%, 18rem);
   max-width: 100%;
   margin: 0 auto 0.45rem;
   padding: var(--lp-seg-pad);
@@ -428,6 +429,7 @@
 .lp-kpi-dream-page
   .dream-kpi-bottom-seg-bar:has(> .dream-kpi-bottom-seg-btn:nth-child(2):last-child) {
   --lp-seg-count: 2;
+  width: min(100%, 13rem);
 }
 
 .lp-kpi-dream-page .dream-kpi-bottom-seg-bar::before {
@@ -466,15 +468,20 @@
 .lp-kpi-dream-page .dream-kpi-bottom-seg-btn {
   position: relative;
   z-index: 1;
-  flex: 0 0 auto;
+  flex: 1 1 0;
+  min-width: 0;
   margin: 0;
-  padding: 0.35rem 0.85rem;
+  padding: 0.35rem 0.45rem;
   min-height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font: inherit;
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.2;
+  text-align: center;
   white-space: nowrap;
   color: var(--cal-text-muted, rgba(30, 61, 93, 0.48));
   background: transparent;

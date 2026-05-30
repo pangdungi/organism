@@ -5,6 +5,10 @@
 
 import { initModalStandardDateFields } from "./modalNativeDateField.js";
 import {
+  buildTodoTaskDateQuickMarkup,
+  setupTodoTaskDateQuickButtons,
+} from "./deadlineQuickButtons.js";
+import {
   closeDuplicateTodoAddModals,
   wireModalEnterToConfirm,
 } from "./modalNoAutoFocus.js";
@@ -150,19 +154,22 @@ function showCalendarTaskEditModal(options) {
             <span class="calendar-task-edit-done-text">완료</span>
           </label>
         </div>
-        <div class="time-task-log-field">
-          <label>시작일</label>
-          <div class="time-task-log-date-native-wrap">
-            <input type="date" class="todo-task-edit-start" aria-label="시작일" value="${escapeHtml((startDate || "").slice(0, 10))}" />
-            <span class="time-task-log-date-overlay" aria-hidden="true"></span>
+        <div class="todo-task-date-block">
+          <div class="time-task-log-field">
+            <label>시작일</label>
+            <div class="time-task-log-date-native-wrap">
+              <input type="date" class="todo-task-edit-start" aria-label="시작일" value="${escapeHtml((startDate || "").slice(0, 10))}" />
+              <span class="time-task-log-date-overlay" aria-hidden="true"></span>
+            </div>
           </div>
-        </div>
-        <div class="time-task-log-field">
-          <label>마감일</label>
-          <div class="time-task-log-date-native-wrap">
-            <input type="date" class="todo-task-edit-due" aria-label="마감일" value="${escapeHtml((dueDate || "").slice(0, 10))}" />
-            <span class="time-task-log-date-overlay" aria-hidden="true"></span>
+          <div class="time-task-log-field">
+            <label>마감일</label>
+            <div class="time-task-log-date-native-wrap">
+              <input type="date" class="todo-task-edit-due" aria-label="마감일" value="${escapeHtml((dueDate || "").slice(0, 10))}" />
+              <span class="time-task-log-date-overlay" aria-hidden="true"></span>
+            </div>
           </div>
+          ${buildTodoTaskDateQuickMarkup()}
         </div>
       </div>
       <div class="time-task-log-footer todo-task-edit-footer todo-task-edit-footer--actions">
@@ -236,6 +243,7 @@ function showCalendarTaskEditModal(options) {
   document.body.style.overflow = "hidden";
   wireModalEnterToConfirm(modal, confirmBtn);
   initModalStandardDateFields(modal);
+  setupTodoTaskDateQuickButtons(modal);
 }
 
 /**
