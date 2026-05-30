@@ -6,7 +6,7 @@ import { signOut } from "../auth.js";
 import { supabase } from "../supabase.js";
 import { deleteMyAccountViaEdgeFunction } from "../utils/deleteMyAccount.js";
 import { USER_HOURLY_RATE_KEY, readUserHourlyRateLocal, applyAppearanceFromServer } from "../utils/userHourlySync.js";
-import { setScopedLocalStorageItem } from "../utils/clientStorageScope.js";
+import { setScopedLocalStorageItem, getScopedLocalStorageItem } from "../utils/clientStorageScope.js";
 import {
   LP_APP_FONT_OPTIONS,
   applyAppFont,
@@ -17,6 +17,8 @@ import { buildModalSimpleSelect } from "../utils/todoModalSimpleSelect.js";
 import { showToast } from "../utils/showToast.js";
 
 export { USER_HOURLY_RATE_KEY, applyAppFont };
+
+const USER_HOURLY_CALC_INPUTS_KEY = "user_hourly_calc_inputs";
 
 function formatPrice(amount) {
   if (amount == null || Number.isNaN(amount)) return "—";
@@ -253,10 +255,6 @@ export function render() {
     "time-dashboard-widget idea-widget idea-widget-hourly";
   hourlyWidget.innerHTML = `
     <div class="time-dashboard-widget-title">나의 시급 계산하기</div>
-    <div class="idea-hourly-tabs">
-      <button type="button" class="idea-hourly-tab active" data-mode="salary">월급직</button>
-      <button type="button" class="idea-hourly-tab" data-mode="freelance">프리랜서</button>
-    </div>
     <form class="idea-hourly-form">
       <div class="idea-hourly-row-inline">
         <div class="idea-form-row">
@@ -270,7 +268,7 @@ export function render() {
           <label class="idea-form-label">월 노동시간</label>
           <div class="idea-input-with-unit">
             <input type="text" class="idea-form-input idea-input-monthly-hours" placeholder="예: 160" inputmode="decimal" autocomplete="off" />
-            <span class="idea-input-unit">h</span>
+            <span class="idea-input-unit">시간</span>
           </div>
         </div>
       </div>
@@ -308,7 +306,6 @@ export function render() {
   el.appendChild(grid);
 
   // 시급 계산 로직
-  const tabs = hourlyWidget.querySelectorAll(".idea-hourly-tab");
   const monthlyIncomeInput = hourlyWidget.querySelector(
     ".idea-input-monthly-income",
   );
@@ -332,8 +329,6 @@ export function render() {
     }
   }
 
-  let mode = "salary"; // salary | freelance — 탭 UI 구분
-
   function parseNumber(str) {
     const cleaned = String(str || "")
       .replace(/,/g, "")
@@ -352,14 +347,50 @@ export function render() {
     if (!Number.isNaN(n)) input.value = n.toLocaleString("ko-KR");
   }
 
-  function switchMode(m) {
-    mode = m;
-    tabs.forEach((t) => t.classList.toggle("active", t.dataset.mode === m));
+  function formatHoursInput(input) {
+    const raw = String(input.value || "")
+      .replace(/,/g, "")
+      .trim();
+    if (!raw) {
+      input.value = "";
+      return;
+    }
+    const n = parseFloat(raw);
+    if (Number.isNaN(n)) {
+      input.value = "";
+      return;
+    }
+    input.value = Number.isInteger(n)
+      ? n.toLocaleString("ko-KR")
+      : String(n);
   }
 
-  tabs.forEach((t) => {
-    t.addEventListener("click", () => switchMode(t.dataset.mode));
-  });
+  function saveHourlyCalcInputs(income, hours) {
+    try {
+      setScopedLocalStorageItem(
+        USER_HOURLY_CALC_INPUTS_KEY,
+        JSON.stringify({ income, hours }),
+      );
+    } catch (_) {}
+  }
+
+  function loadHourlyCalcInputsIntoForm() {
+    try {
+      const raw = getScopedLocalStorageItem(USER_HOURLY_CALC_INPUTS_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      const income = Number(data?.income);
+      const hours = Number(data?.hours);
+      if (monthlyIncomeInput && Number.isFinite(income) && income > 0) {
+        monthlyIncomeInput.value = Math.round(income).toLocaleString("ko-KR");
+      }
+      if (monthlyHoursInput && Number.isFinite(hours) && hours > 0) {
+        monthlyHoursInput.value = Number.isInteger(hours)
+          ? hours.toLocaleString("ko-KR")
+          : String(hours);
+      }
+    } catch (_) {}
+  }
 
   if (monthlyIncomeInput) {
     monthlyIncomeInput.addEventListener("input", () =>
@@ -367,6 +398,14 @@ export function render() {
     );
     monthlyIncomeInput.addEventListener("blur", () =>
       formatNumberInput(monthlyIncomeInput),
+    );
+  }
+  if (monthlyHoursInput) {
+    monthlyHoursInput.addEventListener("input", () =>
+      formatHoursInput(monthlyHoursInput),
+    );
+    monthlyHoursInput.addEventListener("blur", () =>
+      formatHoursInput(monthlyHoursInput),
     );
   }
 
@@ -390,8 +429,13 @@ export function render() {
     }
     const hourly = income / hours;
     setHourlyResult(hourly);
+    saveHourlyCalcInputs(income, hours);
+    if (monthlyIncomeInput) formatNumberInput(monthlyIncomeInput);
+    if (monthlyHoursInput) formatHoursInput(monthlyHoursInput);
     void saveHourlyToAccount(hourly);
   }
+
+  loadHourlyCalcInputsIntoForm();
 
   // 저장된 시급 로드
   try {
@@ -417,6 +461,7 @@ export function render() {
   window.__lpIdeaSoftRefresh = () => {
     try {
       if (!el.isConnected) return;
+      loadHourlyCalcInputsIntoForm();
       const saved = readUserHourlyRateLocal();
       const rv = el.querySelector(".idea-hourly-result-value");
       const ru = el.querySelector(".idea-hourly-result-unit");
