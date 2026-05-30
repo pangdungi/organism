@@ -1,4 +1,5 @@
 [
+  "/apple-touch-icon.png",
   "/diary-tr-icons/01-routine-done.png",
   "/diary-tr-icons/02-routine-zero.png",
   "/diary-tr-icons/03-health-exist.png",
@@ -20,6 +21,8 @@
   "/diary-tr-icons/budget-well-done.png",
   "/icon-192.png",
   "/icon-512.png",
+  "/icon-maskable-192.png",
+  "/icon-maskable-512.png",
   "/icon.svg",
   "/retrospect-kpi/banknote-dollar.svg",
   "/retrospect-kpi/creature.svg",

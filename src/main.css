@@ -113,6 +113,11 @@ body {
   }
 
   /* body 포털 fixed 전체화면 — inset:0(762) 아래까지 어두운 덮개·배경 연장 */
+  #app-splash,
+  .app-splash,
+  .lp-unified-loading--fullscreen,
+  .lp-unified-loading--overlay,
+  #lp-boot-fallback,
   .time-task-setup-modal,
   .todo-list-modal,
   .diary-desktop-compose-modal,

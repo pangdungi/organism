@@ -28,7 +28,7 @@
     />
     <meta property="og:url" content="https://timeisprice.com/" />
     <meta property="og:locale" content="ko_KR" />
-    <meta property="og:image" content="https://timeisprice.com/icon-512.png?v=timeisprice-splash-unified-1" />
+    <meta property="og:image" content="https://timeisprice.com/icon-512.png?v=timeisprice-splash-unified-2" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Time is Price" />
     <meta
@@ -37,12 +37,13 @@
     />
     <title>Time is Price</title>
     <!-- manifest 캐시로 예전 앱 이름이 남는 경우 방지: 쿼리 변경 시 브라우저가 다시 받음 -->
-    <link rel="manifest" href="/manifest.json?v=timeisprice-splash-unified-1" />
+    <link rel="manifest" href="/manifest.json?v=timeisprice-splash-unified-2" />
     <link rel="preload" href="/fonts/LP-SejongGeulggot.otf" as="font" type="font/otf" crossorigin />
     <link rel="preload" href="/toolbaricons/splash/splash-pattern-wave.png" as="image" />
     <link rel="preload" href="/toolbaricons/splash/splash-mascot.png" as="image" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=timeisprice-splash-unified-1" />
-    <link rel="apple-touch-icon" href="/icon-192.png?v=timeisprice-splash-unified-1" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=timeisprice-splash-unified-2" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=timeisprice-splash-unified-2" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png?v=timeisprice-splash-unified-2" />
     <!-- FOUC 방지 + 첫 페인트부터 세종 글꽃(또는 저장된 화면 글꼴) -->
     <style>
       @font-face {
@@ -96,6 +97,9 @@
         position: fixed;
         inset: 0;
         z-index: 2147483646;
+        width: 100%;
+        min-height: 100%;
+        min-height: 100dvh;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -182,6 +186,9 @@
         position: fixed;
         inset: 0;
         z-index: 2147483647;
+        width: 100%;
+        min-height: 100%;
+        min-height: 100dvh;
         display: flex;
         flex-direction: column;
         align-items: center;

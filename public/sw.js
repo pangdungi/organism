@@ -1,14 +1,17 @@
 /* PWA 서비스 워커 — 앱 설치·오프라인 */
 /** 번들·아이콘 등 캐시 버전 (전략 바꿀 때만 올리면 이전 캐시 정리됨) */
-const ASSET_CACHE = "tip-assets-v16";
+const ASSET_CACHE = "tip-assets-v17";
 /** HTML 셸 캐시 — 홈 화면에서 열 때 즉시 표시용 */
-const HTML_CACHE = "tip-html-v3";
+const HTML_CACHE = "tip-html-v4";
 
 /** install 단계: PWA 설치 조건만 빠르게 — 887개 아이콘은 클라이언트 idle prefetch */
 const PWA_INSTALL_CORE_PATHS = [
   "/manifest.json",
   "/icon-192.png",
   "/icon-512.png",
+  "/icon-maskable-192.png",
+  "/icon-maskable-512.png",
+  "/apple-touch-icon.png",
   "/toolbaricons/splash/splash-pattern-wave.png",
   "/toolbaricons/splash/splash-mascot.png",
   "/fonts/LP-SejongGeulggot.otf",
