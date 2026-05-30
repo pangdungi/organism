@@ -122,7 +122,7 @@
   font-size: 0.9375rem;
   font-weight: 600;
   color: #111827;
-  padding-right: 2.35rem;
+  padding-right: 3.15rem;
   line-height: 1.35;
   word-break: break-word;
 }
@@ -627,12 +627,22 @@
   padding: var(--dream-kpi-card-pad-top) var(--dream-kpi-card-pad-x) 1rem;
 }
 
-/* 카드 수정: inner 패딩과 동일 inset → 콘텐츠 영역 우상단 */
+/* 카드 수정: inner 패딩과 동일 inset → 콘텐츠 영역 우상단 (터치 44px급) */
 .lp-kpi-dream-page .dream-kpi-card-inner > .dream-kpi-card-edit.dream-tab-edit {
   position: absolute;
-  top: var(--dream-kpi-card-pad-top);
-  right: var(--dream-kpi-card-pad-x);
-  z-index: 1;
+  top: calc(var(--dream-kpi-card-pad-top) - 0.45rem);
+  right: calc(var(--dream-kpi-card-pad-x) - 0.45rem);
+  z-index: 3;
+  box-sizing: border-box;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0.625rem;
+  touch-action: manipulation;
+}
+
+.lp-kpi-dream-page .dream-kpi-card-inner > .dream-kpi-card-edit.dream-tab-edit .dream-tab-edit-icon-mask {
+  width: 16px;
+  height: 16px;
 }
 
 :is(.lp-kpi-dream-page, .kpi-view-modal) .dream-kpi-card-head {
@@ -672,7 +682,7 @@
   font-size: 0.9375rem;
   font-weight: 600;
   color: #111827;
-  padding-right: 2.35rem;
+  padding-right: 3.15rem;
   line-height: 1.25;
 }
 
@@ -1575,6 +1585,65 @@
 
 .dream-kpi-period-block .dream-kpi-deadline-quick {
   margin-top: 0.35rem;
+}
+
+.dream-kpi-goal-mode-block {
+  margin-bottom: 0.85rem;
+}
+
+.dream-kpi-goal-mode-caption {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--lp-modal-navy, #1e3d5d);
+}
+
+.dream-kpi-goal-mode-row--single {
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  gap: 0.2rem 0.35rem;
+  margin-top: 0;
+}
+
+.dream-kpi-goal-mode-row--single .lp-modal-field-subcheck {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.dream-kpi-goal-mode-row--single .lp-modal-field-subcheck__label {
+  gap: 0.28rem;
+  min-height: 1.75rem;
+  padding: 0.08rem 0;
+  font-size: 0.71875rem;
+  justify-content: center;
+  width: 100%;
+}
+
+.dream-kpi-goal-mode-row--single .lp-modal-field-subcheck__input {
+  width: 0.9375rem;
+  height: 0.9375rem;
+}
+
+.dream-kpi-goal-mode-row--single .lp-modal-field-subcheck__text {
+  white-space: nowrap;
+  letter-spacing: -0.02em;
+}
+
+.dream-kpi-target-fields-row[hidden] {
+  display: none !important;
+}
+
+.dream-kpi-unit-field[hidden] {
+  display: none !important;
+}
+
+.dream-kpi-card-progress-bar--empty .dream-kpi-card-progress-fill {
+  width: 0 !important;
+}
+
+.dream-kpi-card-progress-bar--empty + .dream-kpi-card-progress-text {
+  color: #64748b;
 }
 
 .dream-kpi-today-btn,

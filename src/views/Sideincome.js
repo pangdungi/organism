@@ -25,10 +25,10 @@ import {
 } from "../utils/kpiTodoInputScroll.js";
 import { minutesToHhMm, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
 import {
-  kpiTargetValueFieldHtml,
-  kpiUnitFieldHtml,
-  readKpiTimeUnitFormFields,
-  bindKpiUnitTimeMode,
+  kpiFormGoalAndTargetSectionHtml,
+  readKpiGoalModeFormFields,
+  applyKpiFormGoalFieldsToKpi,
+  bindKpiGoalModeForm,
   computeKpiProgress,
   buildKpiCardTimePresentation,
 } from "../utils/kpiTimeUnitKpi.js";
@@ -62,6 +62,7 @@ import { showKpiTodoEditModal } from "../utils/kpiTodoEditModal.js";
 import {
   KPI_CARD_EDIT_PENCIL_HTML,
   SIDEINCOME_GOAL_EDIT_PENCIL_HTML,
+  bindKpiCardEditButton,
 } from "../utils/kpiTabNameEditIcon.js";
 import { kpiCardHeadHtml, wireKpiCardIconsIn } from "../utils/kpiCardIcon.js";
 import {
@@ -517,14 +518,7 @@ export function render() {
                 </div>
               </div>
             </div>
-            <div class="dream-kpi-row">
-              <div class="dream-kpi-field" data-legacy="time-add-task-field">
-                ${kpiTargetValueFieldHtml(null, escapeHtml, kpiTimeFormOpts)}
-              </div>
-              <div class="dream-kpi-field" data-legacy="time-add-task-field">
-                ${kpiUnitFieldHtml(null, escapeHtml, kpiTimeFormOpts)}
-              </div>
-            </div>
+            ${kpiFormGoalAndTargetSectionHtml(null, escapeHtml, kpiTimeFormOpts)}
             <div class="dream-kpi-period-block" data-legacy="time-add-task-field">
               <div class="dream-kpi-row">
                 <div class="dream-kpi-field">
@@ -552,7 +546,7 @@ export function render() {
             </div>
           </div>
           <div data-legacy="time-task-log-footer">
-            <button type="submit" data-legacy="time-task-log-submit">KPI 등록하기</button>
+            <button type="submit" data-legacy="time-task-log-submit">저장</button>
           </div>
         </form>
       </div>
@@ -562,24 +556,18 @@ export function render() {
     modal.querySelector(".dream-kpi-form").addEventListener("submit", (e) => {
       e.preventDefault();
       const form = e.target;
-      const needHabitChecked = !!(form.querySelector('input[name="needHabitTracker"]')?.checked);
-      const dir =
-        form.querySelector('input[name="direction"]:checked')?.value === "lower"
-          ? "lower"
-          : "higher";
-      const fields = readKpiTimeUnitFormFields(form, sanitizeNumericInput);
+      const fields = readKpiGoalModeFormFields(form, sanitizeNumericInput);
       const kpi = {
         id: nextId(),
         pathId: activePathId,
         name: (form.name.value || "").trim() || "행동",
-        unit: fields.unit,
-        targetValue: fields.targetValue,
-        targetTimeRequired: fields.targetTimeRequired,
         targetStartDate: (form.targetStartDate?.value || "").trim() || "",
         targetDeadline: (form.targetDeadline.value || "").trim() || "",
-        needHabitTracker: needHabitChecked,
-        useTimeAsUnit: fields.useTimeAsUnit,
-        direction: dir,
+        direction:
+          form.querySelector('input[name="direction"]:checked')?.value === "lower"
+            ? "lower"
+            : "higher",
+        ...fields,
       };
       const data = loadSideincomeMap();
       data.kpis = data.kpis || [];
@@ -594,7 +582,7 @@ export function render() {
     });
     document.body.appendChild(modal);
     setupDeadlineQuickButtons(modal);
-    bindKpiUnitTimeMode(modal.querySelector(".dream-kpi-form"), null, kpiTimeFormOpts);
+    bindKpiGoalModeForm(modal.querySelector(".dream-kpi-form"), null, kpiTimeFormOpts);
   }
 
   function showKpiEditModal(kpi) {
@@ -628,14 +616,7 @@ export function render() {
                 </div>
               </div>
             </div>
-            <div class="dream-kpi-row">
-              <div class="dream-kpi-field" data-legacy="time-add-task-field">
-                ${kpiTargetValueFieldHtml(kpi, escapeHtml, kpiTimeFormOpts)}
-              </div>
-              <div class="dream-kpi-field" data-legacy="time-add-task-field">
-                ${kpiUnitFieldHtml(kpi, escapeHtml, kpiTimeFormOpts)}
-              </div>
-            </div>
+            ${kpiFormGoalAndTargetSectionHtml(kpi, escapeHtml, kpiTimeFormOpts)}
             <div class="dream-kpi-period-block" data-legacy="time-add-task-field">
               <div class="dream-kpi-row">
                 <div class="dream-kpi-field">
@@ -697,15 +678,12 @@ export function render() {
       const target = data.kpis.find((k) => k.id === kpi.id);
       if (target) {
         const oldName = target.name;
-        const fields = readKpiTimeUnitFormFields(form, sanitizeNumericInput);
+        applyKpiFormGoalFieldsToKpi(target, form, {
+          sanitizeNumericInput,
+        });
         target.name = (form.name.value || "").trim() || "행동";
-        target.unit = fields.unit;
-        target.targetValue = fields.targetValue;
-        target.targetTimeRequired = fields.targetTimeRequired;
         target.targetStartDate = (form.targetStartDate?.value || "").trim() || "";
         target.targetDeadline = (form.targetDeadline.value || "").trim() || "";
-        target.needHabitTracker = !!form.querySelector('input[name="needHabitTracker"]')?.checked;
-        target.useTimeAsUnit = fields.useTimeAsUnit;
         target.direction =
           form.querySelector('input[name="direction"]:checked')?.value === "lower"
             ? "lower"
@@ -718,7 +696,7 @@ export function render() {
     });
     document.body.appendChild(modal);
     setupDeadlineQuickButtons(modal);
-    bindKpiUnitTimeMode(modal.querySelector(".dream-kpi-form"), kpi, kpiTimeFormOpts);
+    bindKpiGoalModeForm(modal.querySelector(".dream-kpi-form"), kpi, kpiTimeFormOpts);
   }
 
   function toDateStr(d) {
@@ -1109,6 +1087,8 @@ export function render() {
       toDateKey,
       getAllKpiLogs: () => loadSideincomeMap().kpiLogs || [],
       getAccumulatedKpiValue,
+      getKpiTodos: (kpiId) =>
+        (loadSideincomeMap().kpiTodos || []).filter((t) => t.kpiId === kpiId),
       parseNum,
     });
   }
@@ -1248,7 +1228,7 @@ export function render() {
       const progressResult = getKpiProgress(kpi);
       const { lowerBetter } = progressResult;
       const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
-      const { displayProgress, progressText, heroStr, heroUnit, cardExtraClass } =
+      const { displayProgress, progressText, heroStr, heroUnit, cardExtraClass, hideProgressFill } =
         buildKpiCardTimePresentation(kpi, progressResult, formatNum);
       const card = document.createElement("div");
       card.className =
@@ -1265,15 +1245,14 @@ export function render() {
           <div class="dream-kpi-card-target-num">${formatKpiCardHeroHtml(lowerBetter, heroStr, heroUnit)}</div>
           ${(kpi.targetStartDate || kpi.targetDeadline) ? `<div class="dream-kpi-card-deadline">${escapeHtml(formatDeadlineRangeCompact(kpi.targetStartDate, kpi.targetDeadline))}</div>` : ""}
           <div class="dream-kpi-card-progress">
-            <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${displayProgress}%"></div></div>
+            <div class="dream-kpi-card-progress-bar${hideProgressFill ? " dream-kpi-card-progress-bar--empty" : ""}"><div class="dream-kpi-card-progress-fill" style="width:${hideProgressFill ? 0 : displayProgress}%"></div></div>
             <div class="dream-kpi-card-progress-text">${escapeHtml(progressText)}</div>
           </div>
         </div>
       `;
-      card.querySelector(".dream-kpi-card-edit").addEventListener("click", (e) => {
-        e.stopPropagation();
-        showKpiEditModal(kpi);
-      });
+      bindKpiCardEditButton(card.querySelector(".dream-kpi-card-edit"), () =>
+        showKpiEditModal(kpi),
+      );
       card.addEventListener("click", (e) => {
         if (e.target.closest(".dream-kpi-card-edit")) return;
         enterKpiDetailView(kpi.id);
@@ -1830,10 +1809,9 @@ export function render() {
           <div class="dream-goals-item-meta">KPI ${kpiCount}개</div>
         </div>
       `;
-      item.querySelector(".dream-kpi-card-edit").addEventListener("click", (e) => {
-        e.stopPropagation();
-        showPathContextModal(path);
-      });
+      bindKpiCardEditButton(item.querySelector(".dream-kpi-card-edit"), () =>
+        showPathContextModal(path),
+      );
       item.addEventListener("click", (e) => {
         if (e.target.closest(".dream-kpi-card-edit")) return;
         enterKpiView(path.id);

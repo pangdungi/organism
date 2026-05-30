@@ -19,6 +19,24 @@ export const KPI_TAB_EDIT_PENCIL_HTML = kpiEditButtonHtml(
   "이름 수정",
 );
 
+/** KPI 카드·목표 카드 수정 버튼 — 터치 시 카드 진입 클릭과 겹치지 않게 */
+export function bindKpiCardEditButton(btn, onEdit) {
+  if (!btn || typeof onEdit !== "function") return;
+  if (btn.dataset.lpKpiCardEditBound === "1") return;
+  btn.dataset.lpKpiCardEditBound = "1";
+  const stopToCard = (e) => {
+    e.stopPropagation();
+  };
+  btn.addEventListener("pointerdown", stopToCard);
+  btn.addEventListener("pointerup", stopToCard);
+  btn.addEventListener("touchend", stopToCard);
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onEdit(e);
+  });
+}
+
 /** KPI 카드 우측 상단 */
 export const KPI_CARD_EDIT_PENCIL_HTML = kpiEditButtonHtml(
   "dream-kpi-card-edit dream-tab-edit",

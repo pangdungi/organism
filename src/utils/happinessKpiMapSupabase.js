@@ -109,6 +109,7 @@ function normalizePayload(p) {
   const kpis = (Array.isArray(p.kpis) ? p.kpis : []).map((k) => ({
     ...k,
     needHabitTracker: !!k.needHabitTracker,
+    useTaskCompletionGoal: !!k.useTaskCompletionGoal,
     direction: k.direction === "lower" ? "lower" : "higher",
   }));
   return {
@@ -171,6 +172,7 @@ function rowToKpi(r) {
     targetTimeRequired: r.target_time_required ?? "",
     needHabitTracker: !!r.need_habit_tracker,
     useTimeAsUnit: !!r.use_time_as_unit,
+    useTaskCompletionGoal: !!r.use_task_completion_goal,
     direction: r.direction === "lower" ? "lower" : "higher",
     serverUpdatedAt: serverUpdatedAtFromRow(r),
   };
@@ -355,6 +357,7 @@ function kpiToRow(userId, k) {
     target_time_required: (k.targetTimeRequired || "").trim(),
     need_habit_tracker: !!k.needHabitTracker,
     use_time_as_unit: !!k.useTimeAsUnit,
+    use_task_completion_goal: !!k.useTaskCompletionGoal,
     direction: k.direction === "lower" ? "lower" : "higher",
   };
 }

@@ -67,6 +67,7 @@ import { showKpiTodoEditModal } from "../utils/kpiTodoEditModal.js";
 import {
   KPI_CARD_EDIT_PENCIL_HTML,
   KPI_TAB_EDIT_PENCIL_HTML,
+  bindKpiCardEditButton,
 } from "../utils/kpiTabNameEditIcon.js";
 import { sortKpiLogsNewestFirst } from "../utils/kpiLogsSort.js";
 import {
@@ -403,7 +404,7 @@ export function render() {
             </div>
           </div>
           <div data-legacy="time-task-log-footer">
-            <button type="submit" data-legacy="time-task-log-submit">KPI 등록하기</button>
+            <button type="submit" data-legacy="time-task-log-submit">저장</button>
           </div>
         </form>
       </div>
@@ -990,12 +991,9 @@ export function render() {
           <div class="dream-kpi-card-invested">${investedTimeHtml}</div>
         </div>
       `;
-      card
-        .querySelector(".dream-kpi-card-edit")
-        .addEventListener("click", (e) => {
-          e.stopPropagation();
-          showKpiEditModal(kpi);
-        });
+      bindKpiCardEditButton(card.querySelector(".dream-kpi-card-edit"), () =>
+        showKpiEditModal(kpi),
+      );
       card.addEventListener("click", (e) => {
         if (e.target.closest(".dream-kpi-card-edit")) return;
         selectedKpiId = selectedKpiId === kpi.id ? null : kpi.id;
