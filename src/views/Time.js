@@ -25,6 +25,7 @@ import {
   getCategoryColorForReport,
 } from "../utils/todoSettings.js";
 import { showToast } from "../utils/showToast.js";
+import { syncVisualViewportKeyboardInset } from "../utils/mobileViewportKeyboard.js";
 import { showConfirmModal } from "../utils/confirmModal.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
@@ -5560,6 +5561,137 @@ export function render(opts = {}) {
   const taskLogMealDetailInput = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-meal-detail-input"]',
   );
+  const taskLogScrollArea = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-scroll-area"]',
+  );
+  let taskLogMemoVvAdjust = null;
+  let taskLogMemoActiveInput = null;
+  let taskLogScrollTopBeforeMemo = 0;
+  let taskLogMemoKeyboardOpen = false;
+  const TASK_LOG_KEYBOARD_OPEN_PX = 80;
+
+  function isTaskLogMobileMemoUi() {
+    return (
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(max-width: 48rem) and (pointer: coarse)").matches
+    );
+  }
+
+  function isTaskLogMemoInputFocused() {
+    return !!taskLogModal.querySelector(
+      '[data-legacy~="time-task-log-memo-input"]:focus',
+    );
+  }
+
+  /** 모달 내부 스크롤만 — 메모를 스크롤 영역 상단·키보드 위로 (모달 자체는 이동 안 함) */
+  function scrollTaskLogMemoInputIntoView(inputEl) {
+    if (!(inputEl instanceof HTMLElement)) return;
+    if (!(taskLogScrollArea instanceof HTMLElement)) return;
+
+    const memoSection = taskLogModal.querySelector(
+      '[data-legacy~="time-task-log-memo-section"]',
+    );
+    if (memoSection instanceof HTMLElement) {
+      const memoDelta =
+        memoSection.getBoundingClientRect().top -
+        taskLogScrollArea.getBoundingClientRect().top;
+      taskLogScrollArea.scrollTop = Math.max(
+        0,
+        taskLogScrollArea.scrollTop + memoDelta - 4,
+      );
+    }
+
+    const vv = window.visualViewport;
+    const visibleBottom = vv
+      ? vv.height + (vv.offsetTop || 0)
+      : window.innerHeight;
+    const margin = 16;
+    const rect = inputEl.getBoundingClientRect();
+    if (rect.bottom > visibleBottom - margin) {
+      taskLogScrollArea.scrollTop += rect.bottom - (visibleBottom - margin);
+    }
+  }
+
+  function setTaskLogMemoKeyboardScroll(on) {
+    taskLogScrollArea?.classList?.toggle("is-memo-keyboard-open", !!on);
+  }
+
+  function restoreTaskLogMemoScrollPosition() {
+    taskLogMemoKeyboardOpen = false;
+    taskLogMemoActiveInput = null;
+    setTaskLogMemoKeyboardScroll(false);
+    if (taskLogScrollArea instanceof HTMLElement) {
+      taskLogScrollArea.scrollTop = taskLogScrollTopBeforeMemo;
+    }
+  }
+
+  function enterTaskLogMemoScroll(inputEl) {
+    if (!isTaskLogMobileMemoUi()) return;
+    if (!(inputEl instanceof HTMLElement)) return;
+    if (!(taskLogScrollArea instanceof HTMLElement)) return;
+
+    taskLogMemoActiveInput = inputEl;
+    taskLogMemoKeyboardOpen = false;
+    taskLogScrollTopBeforeMemo = taskLogScrollArea.scrollTop;
+    scrollTaskLogMemoInputIntoView(inputEl);
+    syncVisualViewportKeyboardInset();
+
+    const adjust = () => {
+      const active = taskLogMemoActiveInput;
+      if (!active || !isTaskLogMemoInputFocused()) {
+        exitTaskLogMemoScroll();
+        return;
+      }
+      const kb = syncVisualViewportKeyboardInset();
+      if (kb > TASK_LOG_KEYBOARD_OPEN_PX) {
+        taskLogMemoKeyboardOpen = true;
+        setTaskLogMemoKeyboardScroll(true);
+        scrollTaskLogMemoInputIntoView(active);
+      } else if (taskLogMemoKeyboardOpen) {
+        setTaskLogMemoKeyboardScroll(false);
+        taskLogScrollArea.scrollTop = taskLogScrollTopBeforeMemo;
+        taskLogMemoKeyboardOpen = false;
+      } else {
+        scrollTaskLogMemoInputIntoView(active);
+      }
+    };
+
+    if (taskLogMemoVvAdjust && window.visualViewport) {
+      window.visualViewport.removeEventListener("resize", taskLogMemoVvAdjust);
+      window.visualViewport.removeEventListener("scroll", taskLogMemoVvAdjust);
+    }
+    taskLogMemoVvAdjust = adjust;
+    window.visualViewport?.addEventListener("resize", adjust, { passive: true });
+    window.visualViewport?.addEventListener("scroll", adjust, { passive: true });
+    adjust();
+    requestAnimationFrame(adjust);
+    window.setTimeout(adjust, 100);
+    window.setTimeout(adjust, 320);
+  }
+
+  function exitTaskLogMemoScroll() {
+    restoreTaskLogMemoScrollPosition();
+    if (taskLogMemoVvAdjust && window.visualViewport) {
+      window.visualViewport.removeEventListener("resize", taskLogMemoVvAdjust);
+      window.visualViewport.removeEventListener("scroll", taskLogMemoVvAdjust);
+    }
+    taskLogMemoVvAdjust = null;
+  }
+
+  function bindTaskLogMemoScrollMode(inputEl) {
+    if (!(inputEl instanceof HTMLElement)) return;
+    inputEl.addEventListener("focus", () => {
+      enterTaskLogMemoScroll(inputEl);
+    });
+    inputEl.addEventListener("blur", () => {
+      window.setTimeout(() => {
+        if (!isTaskLogMemoInputFocused()) exitTaskLogMemoScroll();
+      }, 0);
+    });
+  }
+  bindTaskLogMemoScrollMode(taskLogFeedbackInput);
+  bindTaskLogMemoScrollMode(taskLogMealDetailInput);
+
   function updateTaskLogMealDetailVisibility(taskName) {
     const show = TTC.isMealDetailTaskName((taskName || "").trim());
     if (taskLogMealDetailSection) {
@@ -6922,6 +7054,7 @@ export function render(opts = {}) {
     if (taskLogDeleteBtn) taskLogDeleteBtn.hidden = true;
     taskLogModal.hidden = false;
     document.body.style.overflow = "hidden";
+    exitTaskLogMemoScroll();
     closeDateTimePicker();
     const bodyEl = taskLogModal.querySelector(
       '[data-legacy~="time-task-setup-body"]',
@@ -6935,10 +7068,7 @@ export function render(opts = {}) {
     taskLogTaskDropdown._setLedgerBucketPreset?.(
       addContext?.ledgerBucketPreset ?? null,
     );
-    const taskDropdownPanel = taskLogTaskDropdown?.querySelector(
-      '[data-legacy~="time-task-log-task-dropdown-panel"]',
-    );
-    if (taskDropdownPanel) taskDropdownPanel.hidden = true;
+    taskLogTaskDropdown._closePanel?.();
     const presetAdd = addContext?.ledgerBucketPreset;
     let pickTasks = getFullTaskOptions().filter(
       (t) => !(t.name || "").includes(" > "),
@@ -7103,6 +7233,7 @@ export function render(opts = {}) {
     }
     taskLogModal.hidden = false;
     document.body.style.overflow = "hidden";
+    exitTaskLogMemoScroll();
     closeDateTimePicker();
     const bodyEl = taskLogModal.querySelector(
       '[data-legacy~="time-task-setup-body"]',
@@ -7167,12 +7298,10 @@ export function render(opts = {}) {
 
   function closeTaskLogModal() {
     taskLogModal.hidden = true;
+    exitTaskLogMemoScroll();
     if (taskLogFooterEl) taskLogFooterEl.style.display = "none";
     closeDateTimePicker();
-    const taskDropdownPanel = taskLogTaskDropdown?.querySelector(
-      '[data-legacy~="time-task-log-task-dropdown-panel"]',
-    );
-    if (taskDropdownPanel) taskDropdownPanel.hidden = true;
+    taskLogTaskDropdown?._closePanel?.();
     taskLogModal.style.zIndex = "";
     document.body.style.overflow = "";
     taskLogAddContext = null;

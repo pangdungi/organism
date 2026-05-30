@@ -140,6 +140,80 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
       ? options.ledgerBucketPreset
       : null;
 
+  function findTaskLogScrollArea() {
+    return wrap.closest(
+      ".time-task-log-scroll-area, [data-legacy~='time-task-log-scroll-area']",
+    );
+  }
+
+  function findTaskLogModalPanel() {
+    return wrap.closest(
+      ".time-task-log-panel, .time-task-setup-panel, [data-legacy~='time-task-log-panel']",
+    );
+  }
+
+  /** @type {AbortController | null} */
+  let panelLayoutAc = null;
+
+  function syncPanelMaxHeight() {
+    if (panel.hidden || !wrap.classList.contains("is-open")) {
+      panel.style.removeProperty("max-height");
+      return;
+    }
+    const modalPanel = findTaskLogModalPanel();
+    if (!(modalPanel instanceof HTMLElement)) return;
+    const footer = modalPanel.querySelector(
+      "[data-legacy~='time-task-log-footer'], [data-task-log-footer]",
+    );
+    const triggerRect = trigger.getBoundingClientRect();
+    const bottomLimit =
+      (footer instanceof HTMLElement
+        ? footer.getBoundingClientRect().top
+        : modalPanel.getBoundingClientRect().bottom) - 8;
+    const available = bottomLimit - triggerRect.bottom - 4;
+    panel.style.maxHeight = `${Math.max(140, Math.floor(available))}px`;
+  }
+
+  function bindPanelLayoutSync() {
+    panelLayoutAc?.abort();
+    panelLayoutAc = new AbortController();
+    const { signal } = panelLayoutAc;
+    const run = () => syncPanelMaxHeight();
+    window.addEventListener("resize", run, { passive: true, signal });
+    window.visualViewport?.addEventListener("resize", run, {
+      passive: true,
+      signal,
+    });
+    window.visualViewport?.addEventListener("scroll", run, {
+      passive: true,
+      signal,
+    });
+    run();
+    requestAnimationFrame(run);
+  }
+
+  function setPanelOpen(open) {
+    wrap.classList.toggle("is-open", !!open);
+    const scroll = findTaskLogScrollArea();
+    if (scroll instanceof HTMLElement) {
+      scroll.classList.toggle("is-task-picker-open", !!open);
+    }
+    trigger.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) {
+      bindPanelLayoutSync();
+    } else {
+      panelLayoutAc?.abort();
+      panelLayoutAc = null;
+      panel.style.removeProperty("max-height");
+    }
+  }
+
+  function closePanel() {
+    if (panel.hidden) return;
+    panel.hidden = true;
+    setPanelOpen(false);
+  }
+
   function getVisibleChips() {
     const allowed = getAllowedBucketsForLedgerPreset(ledgerBucketPreset);
     if (!allowed) return LEDGER_BUCKET_CHIPS;
@@ -213,7 +287,7 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
       const closePanelAndSelect = () => {
         value = t.name || "";
         trigger.textContent = value || "과제를 선택하세요";
-        panel.hidden = true;
+        closePanel();
         onTaskSelected(value);
       };
       row.addEventListener("mousedown", (e) => {
@@ -237,13 +311,31 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
 
     const searchWrap = document.createElement("div");
     lpSetClasses(searchWrap, "time-task-log-task-dropdown-search-wrap");
+    const searchInner = document.createElement("div");
+    lpSetClasses(searchInner, "time-task-log-task-dropdown-search-inner");
     const searchInput = document.createElement("input");
     searchInput.type = "text";
     searchInput.placeholder = "과제 검색...";
     lpSetClasses(searchInput, "time-task-log-task-dropdown-search");
     searchInput.value = searchQuery;
     searchInput.setAttribute("autocomplete", "off");
-    searchWrap.appendChild(searchInput);
+    const searchClearBtn = document.createElement("button");
+    searchClearBtn.type = "button";
+    lpSetClasses(searchClearBtn, "time-task-log-date-clear");
+    searchClearBtn.setAttribute("aria-label", "검색 지우기");
+    searchClearBtn.title = "검색 지우기";
+    searchClearBtn.hidden = true;
+    searchClearBtn.innerHTML = '<span aria-hidden="true">×</span>';
+
+    function syncSearchClearUi() {
+      const has = !!(searchInput.value || "").length;
+      lpTokenToggle(searchInner, "has-value", has);
+      searchClearBtn.hidden = !has;
+    }
+
+    searchInner.appendChild(searchInput);
+    searchInner.appendChild(searchClearBtn);
+    searchWrap.appendChild(searchInner);
     panel.appendChild(searchWrap);
 
     const chipsWrap = document.createElement("div");
@@ -285,23 +377,61 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
     panel.appendChild(optionsContainer);
     searchInput.addEventListener("input", () => {
       searchQuery = searchInput.value.trim();
+      syncSearchClearUi();
       renderOptions(optionsContainer, searchQuery);
     });
     searchInput.addEventListener("click", (e) => e.stopPropagation());
     searchInput.addEventListener("keydown", (e) => e.stopPropagation());
+    searchClearBtn.addEventListener("mousedown", (e) => {
+      e.stopPropagation();
+    });
+    searchClearBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      searchInput.value = "";
+      searchQuery = "";
+      syncSearchClearUi();
+      renderOptions(optionsContainer, searchQuery);
+      const dismissSearchKeyboard = () => {
+        try {
+          searchInput.blur();
+        } catch (_) {}
+        if (document.activeElement === searchInput) {
+          try {
+            trigger.focus({ preventScroll: true });
+            trigger.blur();
+          } catch (_) {}
+        }
+      };
+      dismissSearchKeyboard();
+      requestAnimationFrame(dismissSearchKeyboard);
+    });
+    syncSearchClearUi();
     renderOptions(optionsContainer, searchQuery);
   }
 
+  function openPanelAfterRender() {
+    panel.hidden = false;
+    setPanelOpen(true);
+    syncPanelMaxHeight();
+  }
+
+  trigger.setAttribute("aria-haspopup", "listbox");
+  trigger.setAttribute("aria-expanded", "false");
   trigger.addEventListener("click", () => {
     searchQuery = "";
     ensurePickerBucketInAllowed();
     renderPanel();
-    panel.hidden = !panel.hidden;
+    if (panel.hidden) {
+      openPanelAfterRender();
+    } else {
+      closePanel();
+    }
     /* 과제 검색 — 사용자가 입력칸을 직접 탭할 때만 키보드(드롭다운 열기만으로 포커스 금지) */
   });
   const closePanelOnOutside = (e) => {
     if (panel.hidden) return;
-    if (!wrap.contains(e.target)) panel.hidden = true;
+    if (!wrap.contains(e.target)) closePanel();
   };
   const opts = { capture: true };
   if (abortSignal) opts.signal = abortSignal;
@@ -322,8 +452,9 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
     ensurePickerBucketInAllowed();
     value = "";
     trigger.textContent = "과제를 선택하세요";
-    panel.hidden = true;
+    closePanel();
   };
+  wrap._closePanel = closePanel;
   wrap._getLedgerBucketPreset = () => ledgerBucketPreset;
   return wrap;
 }

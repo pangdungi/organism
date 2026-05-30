@@ -15,6 +15,8 @@ export function syncVisualViewportKeyboardInset() {
   if (!vv) {
     try {
       document.documentElement.style.setProperty("--vv-keyboard", "0px");
+      document.documentElement.style.setProperty("--vv-visible-height", "100vh");
+      document.documentElement.style.setProperty("--vv-offset-top", "0px");
     } catch (_) {}
     return 0;
   }
@@ -22,6 +24,11 @@ export function syncVisualViewportKeyboardInset() {
   const kb = Math.max(0, h - vv.height - (vv.offsetTop || 0));
   try {
     document.documentElement.style.setProperty("--vv-keyboard", `${kb}px`);
+    document.documentElement.style.setProperty("--vv-visible-height", `${vv.height}px`);
+    document.documentElement.style.setProperty(
+      "--vv-offset-top",
+      `${vv.offsetTop || 0}px`,
+    );
   } catch (_) {}
   return kb;
 }

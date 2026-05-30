@@ -148,13 +148,13 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 [data-legacy~="todo-list-modal"][hidden],
 [data-legacy~="diary-desktop-compose-modal"][hidden] {
   display: none !important;
-} /* 모달 내부 textarea: 높이 고정 + 리사이즈 금지(늘었다 줄었다 방지), 넘침은 스크롤 */
-.time-task-setup-modal textarea,
+} /* 모달 내부 textarea: 높이 고정 + 리사이즈 금지(늘었다 줄었다 방지), 넘침은 스크롤 — 과제 기록 메모 제외 */
+.time-task-setup-modal textarea:not([data-legacy~="time-task-log-memo-input"]),
 .todo-list-modal textarea,
 .diary-desktop-compose-modal textarea,
 .time-task-log-todo-inner-modal textarea,
 .time-task-log-expense-inner-modal textarea,
-[data-legacy~="time-task-setup-modal"] textarea,
+[data-legacy~="time-task-setup-modal"] textarea:not([data-legacy~="time-task-log-memo-input"]),
 [data-legacy~="todo-list-modal"] textarea,
 [data-legacy~="diary-desktop-compose-modal"] textarea,
 [data-legacy~="time-task-log-todo-inner-modal"] textarea,
@@ -217,7 +217,8 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
     .lp-calendar-budget-add-modal
   )
   [data-legacy~="time-task-setup-panel"][data-legacy~="time-task-log-panel"] {
-  max-height: min(94vh, 47rem);
+  height: min(86vh, 41rem);
+  max-height: min(86vh, 41rem);
   min-height: min(86vh, 41rem);
 }
 
@@ -231,39 +232,23 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 }
 
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
-  .time-task-log-scroll-area,
+  .time-task-log-scroll-area:not(.is-task-picker-open),
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
     .lp-calendar-budget-add-modal
   )
-  [data-legacy~="time-task-log-scroll-area"] {
-  overflow: visible;
+  [data-legacy~="time-task-log-scroll-area"]:not(.is-task-picker-open) {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding-bottom: 0.35rem;
 }
 
-.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
-  .time-task-log-datetime-fields-wrap,
-.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
-  [data-legacy~="time-task-log-kpi-todos-section"],
-.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
-  [data-legacy~="time-task-log-daily-todos-section"],
-[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
-    .lp-calendar-budget-add-modal
-  )
-  [data-legacy~="time-task-log-datetime-fields-wrap"],
-[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
-    .lp-calendar-budget-add-modal
-  )
-  [data-legacy~="time-task-log-kpi-todos-section"],
-[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
-    .lp-calendar-budget-add-modal
-  )
-  [data-legacy~="time-task-log-daily-todos-section"] {
-  flex-shrink: 0;
-}
-
+/* 과제 기록 — 메모가 모달 본문 남은 높이를 채움 */
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   .time-task-log-memo-section,
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
@@ -313,11 +298,95 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   [data-legacy~="time-task-log-memo-section"]
   [data-legacy~="time-task-log-feedback"] {
   flex: 1 1 auto;
-  height: auto;
+  width: 100%;
+  height: 100%;
   min-height: var(--lp-modal-textarea-height);
   max-height: none;
   overflow-y: auto;
+  box-sizing: border-box;
   field-sizing: normal;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-datetime-fields-wrap,
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-kpi-todos-section"],
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-daily-todos-section"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-datetime-fields-wrap"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-kpi-todos-section"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-daily-todos-section"] {
+  flex-shrink: 0;
+}
+
+/* 과제 기록 — 모바일: flex 줄어듦 방지, 스크롤로 메모를 키보드 위에 */
+@media (max-width: 48rem) and (pointer: coarse) {
+  .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+    .time-task-log-scroll-area:not(.is-task-picker-open),
+  [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+      .lp-calendar-budget-add-modal
+    )
+    [data-legacy~="time-task-log-scroll-area"]:not(.is-task-picker-open) {
+    display: block;
+  }
+  .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+    .time-task-log-memo-section,
+  .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+    .time-task-log-memo-fields,
+  .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+    .time-task-log-memo-section
+    .time-task-log-field:last-child,
+  [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+      .lp-calendar-budget-add-modal
+    )
+    [data-legacy~="time-task-log-memo-section"],
+  [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+      .lp-calendar-budget-add-modal
+    )
+    [data-legacy~="time-task-log-memo-fields"],
+  [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+      .lp-calendar-budget-add-modal
+    )
+    [data-legacy~="time-task-log-memo-section"]
+    [data-legacy~="time-task-log-field"]:last-child {
+    display: block;
+    flex: none;
+    min-height: auto;
+  }
+  .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+    .time-task-log-memo-section
+    .time-task-log-feedback,
+  [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+      .lp-calendar-budget-add-modal
+    )
+    [data-legacy~="time-task-log-memo-section"]
+    [data-legacy~="time-task-log-feedback"] {
+    display: block;
+    flex: none;
+    width: 100%;
+    height: auto;
+    min-height: 11rem;
+    max-height: none;
+  }
+  .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+    .time-task-log-scroll-area.is-memo-keyboard-open:not(.is-task-picker-open),
+  [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+      .lp-calendar-budget-add-modal
+    )
+    [data-legacy~="time-task-log-scroll-area"].is-memo-keyboard-open:not(
+      .is-task-picker-open
+    ) {
+    padding-bottom: max(1rem, var(--vv-keyboard, 0px));
+  }
 }
 .time-task-select-panel,
 .time-add-task-panel,
@@ -2125,12 +2194,142 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 [data-legacy~="time-task-log-task-dropdown-panel"][hidden] {
   display: none;
 }
+
+/* 과제 기록 모달 — 드롭다운 열림: 모달 높이 유지, 패널만 본문 위에 오버레이 */
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-scroll-area.is-task-picker-open,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-scroll-area"].is-task-picker-open {
+  position: relative;
+  overflow: hidden;
+}
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-scroll-area.is-task-picker-open
+  .time-task-log-datetime-fields-wrap
+  > .time-task-log-field:not(:first-child),
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-scroll-area.is-task-picker-open
+  [data-legacy~="time-task-log-memo-section"],
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-scroll-area.is-task-picker-open
+  [data-legacy~="time-task-log-kpi-todos-section"],
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-scroll-area.is-task-picker-open
+  [data-legacy~="time-task-log-daily-todos-section"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-scroll-area"].is-task-picker-open
+  [data-legacy~="time-task-log-datetime-fields-wrap"]
+  > [data-legacy~="time-task-log-field"]:not(:first-child),
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-scroll-area"].is-task-picker-open
+  [data-legacy~="time-task-log-memo-section"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-scroll-area"].is-task-picker-open
+  [data-legacy~="time-task-log-kpi-todos-section"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-scroll-area"].is-task-picker-open
+  [data-legacy~="time-task-log-daily-todos-section"] {
+  visibility: hidden;
+  pointer-events: none;
+}
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-scroll-area.is-task-picker-open
+  .time-task-log-datetime-fields-wrap
+  > .time-task-log-field:first-child,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-scroll-area"].is-task-picker-open
+  [data-legacy~="time-task-log-datetime-fields-wrap"]
+  > [data-legacy~="time-task-log-field"]:first-child {
+  position: relative;
+  z-index: 40;
+}
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-task-dropdown.is-open,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-task-dropdown.is-open {
+  position: relative;
+  z-index: 41;
+}
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-task-dropdown.is-open
+  .time-task-log-task-dropdown-trigger,
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-task-dropdown.is-open
+  [data-legacy~="time-task-log-task-dropdown-trigger"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-task-dropdown.is-open
+  [data-legacy~="time-task-log-task-dropdown-trigger"] {
+  border-color: rgba(30, 77, 123, 0.42);
+  box-shadow: 0 0 0 1px rgba(30, 77, 123, 0.1);
+}
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-task-dropdown.is-open
+  > .time-task-log-task-dropdown-panel,
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-task-dropdown.is-open
+  > [data-legacy~="time-task-log-task-dropdown-panel"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-task-dropdown.is-open
+  > [data-legacy~="time-task-log-task-dropdown-panel"] {
+  z-index: 42;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 10px 28px rgba(21, 43, 69, 0.16);
+}
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-task-dropdown.is-open
+  .time-task-log-task-dropdown-options,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-task-dropdown.is-open
+  [data-legacy~="time-task-log-task-dropdown-options"] {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
 .time-task-log-task-dropdown-search-wrap,
 [data-legacy~="time-task-log-task-dropdown-search-wrap"] {
   flex-shrink: 0;
   padding: 0.45rem 0.5rem;
   border-bottom: 1px solid var(--lp-modal-border);
   background: #f8fafc;
+}
+.time-task-log-task-dropdown-search-inner,
+[data-legacy~="time-task-log-task-dropdown-search-inner"] {
+  position: relative;
+  width: 100%;
+}
+.time-task-log-task-dropdown-search-inner.has-value .time-task-log-task-dropdown-search,
+[data-legacy~="time-task-log-task-dropdown-search-inner"].has-value
+  .time-task-log-task-dropdown-search,
+[data-legacy~="time-task-log-task-dropdown-search-inner"].has-value
+  [data-legacy~="time-task-log-task-dropdown-search"] {
+  padding-right: calc(0.55rem + 1rem);
 }
 .time-task-log-task-dropdown-search,
 [data-legacy~="time-task-log-task-dropdown-search"] {
