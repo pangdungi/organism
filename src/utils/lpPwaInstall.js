@@ -121,7 +121,7 @@ function getInstallInstructions() {
   if (canNativePrompt) {
     return {
       title: "앱 설치",
-      desc: "Time is Price를 홈 화면에 설치하면 앱처럼 전체 화면으로 열 수 있어요.",
+      desc: "Money is time를 홈 화면에 설치하면 앱처럼 전체 화면으로 열 수 있어요.",
       showInstallBtn: true,
     };
   }
@@ -142,7 +142,7 @@ function getInstallInstructions() {
     return {
       title: "앱 설치 / 홈 화면 추가",
       desc: deferredPrompt
-        ? "Time is Price를 홈 화면에 설치하면 앱처럼 전체 화면으로 열 수 있어요."
+        ? "Money is time를 홈 화면에 설치하면 앱처럼 전체 화면으로 열 수 있어요."
         : "앱 설치 준비 중이에요. 잠시 후 「앱 설치」가 뜨거나, ⋮ → 「앱 설치」·「홈 화면에 추가」를 눌러 주세요.",
       showInstallBtn: !!deferredPrompt,
     };
@@ -174,7 +174,7 @@ async function runNativeInstall() {
       closeLpPwaInstallHelpModal();
       showToast(
         "홈 화면을 확인해 주세요",
-        "Time is Price 아이콘이 생겼는지 봐 주세요. 아직 없으면 잠시 후 다시 확인해 주세요.",
+        "Money is time 아이콘이 생겼는지 봐 주세요. 아직 없으면 잠시 후 다시 확인해 주세요.",
       );
       return;
     }
@@ -309,7 +309,7 @@ export function showLpPwaInstallHelp() {
     return;
   }
   if (!isMobileDevice()) {
-    showToast("PC Chrome ⋮ 메뉴에서 「Time is Price 설치」를 선택해 주세요.");
+    showToast("PC Chrome ⋮ 메뉴에서 「Money is time 설치」를 선택해 주세요.");
     return;
   }
 
@@ -366,7 +366,7 @@ export function initLpPwaInstall() {
     closeLpPwaInstallHelpModal();
     showToast(
       "홈 화면을 확인해 주세요",
-      "Time is Price 아이콘이 생겼는지 봐 주세요. 아직 없으면 잠시 후 다시 확인해 주세요.",
+      "Money is time 아이콘이 생겼는지 봐 주세요. 아직 없으면 잠시 후 다시 확인해 주세요.",
     );
   });
 
