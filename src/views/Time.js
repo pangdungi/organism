@@ -26,7 +26,7 @@ import {
 } from "../utils/todoSettings.js";
 import { showToast } from "../utils/showToast.js";
 import { syncVisualViewportKeyboardInset } from "../utils/mobileViewportKeyboard.js";
-import { showConfirmModal } from "../utils/confirmModal.js";
+import { showConfirmModal, showAlertModal } from "../utils/confirmModal.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
   clearAppFooterActions,
@@ -3349,11 +3349,11 @@ function createTaskNameInput(initialValue, onTaskSelect, tabSignal) {
         delBtn.addEventListener("click", async (e) => {
           e.stopPropagation();
           if (getLockedTaskNames().has(name)) {
-            alert(MSG_TIME_TASK_KPI_LINKED);
+            void showAlertModal({ message: MSG_TIME_TASK_KPI_LINKED });
             return;
           }
           if (!(await removeTaskOption(name))) {
-            alert(MSG_TIME_TASK_KPI_LINKED);
+            void showAlertModal({ message: MSG_TIME_TASK_KPI_LINKED });
             return;
           }
           renderPanel(input.value);
@@ -7359,7 +7359,9 @@ export function render(opts = {}) {
         hasTaskName: Boolean(taskName),
         hasStartRaw: Boolean(startRaw),
       });
-      alert("과제 선택과 시작 시간을 입력해 주세요.");
+      void showAlertModal({
+        message: "과제 선택과 시작 시간을 입력해 주세요.",
+      });
       return;
     }
     let startTime = formatDateTimeInput(startRaw) || startRaw;
@@ -8155,11 +8157,13 @@ export function render(opts = {}) {
     }
     const editTask = getTaskOptionByName(editName);
     if (editTask && isTaskDeleteLockedInSetup(editTask)) {
-      alert(getTaskDeleteLockedInSetupMessage(editTask));
+      void showAlertModal({
+        message: getTaskDeleteLockedInSetupMessage(editTask),
+      });
       return;
     }
     if (!(await removeTaskOption(editName))) {
-      alert(MSG_TIME_TASK_KPI_LINKED);
+      void showAlertModal({ message: MSG_TIME_TASK_KPI_LINKED });
       return;
     }
     closeAddTaskModal();

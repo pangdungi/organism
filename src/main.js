@@ -72,9 +72,10 @@ import {
 } from "./utils/lpEnterAppDebug.js";
 import { initLpShellStuckGuard, runLpShellVisibilityGuard } from "./utils/lpShellRecovery.js";
 import { initLpPwaInstall, refreshLpPwaInstall } from "./utils/lpPwaInstall.js";
+import { showAlertModal } from "./utils/confirmModal.js";
 
 async function signOutForSubscriptionExpired() {
-  window.alert(SUBSCRIPTION_EXPIRED_MESSAGE);
+  await showAlertModal({ title: "안내", message: SUBSCRIPTION_EXPIRED_MESSAGE });
   await signOut();
 }
 
@@ -271,7 +272,10 @@ async function enterAuthenticatedApp(opts = {}) {
           if (enforceSubscriptionBeforeMount) {
             const blocked = await enforceSubscriptionAccessOrSignOut();
             if (blocked) {
-              window.alert(SUBSCRIPTION_EXPIRED_MESSAGE);
+              await showAlertModal({
+                title: "안내",
+                message: SUBSCRIPTION_EXPIRED_MESSAGE,
+              });
               await signOut();
               return;
             }

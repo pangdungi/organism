@@ -31,8 +31,14 @@ import {
   getMobileCardEffectiveHoursForPrice,
 } from "./Time.js";
 import { showToast } from "../utils/showToast.js";
+import { showAlertModal } from "../utils/confirmModal.js";
 import { initModalStandardDateFields } from "../utils/modalNativeDateField.js";
-import { allowModalInputFocus } from "../utils/modalNoAutoFocus.js";
+import {
+  allowModalInputFocus,
+  wireModalEnterToConfirm,
+  closeDuplicateTodoAddModals,
+} from "../utils/modalNoAutoFocus.js";
+import { syncBodyOverflowAfterModalClose } from "../utils/lpModalStack.js";
 import {
   calendar1WeekDiagLog,
   calendar1WeekDiagSnapshot,
@@ -1614,7 +1620,9 @@ function openCalendarDayStampTodoModal(dateKey, onAfterSave) {
         } catch (_) {}
         return;
       }
-      alert("할 일을 추가하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      void showAlertModal({
+        message: "할 일을 추가하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      });
     },
   });
 }
@@ -1638,91 +1646,105 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
   const initialYmd = String(dateKey || "")
     .trim()
     .slice(0, 10);
+  const dateLabel = initialYmd.replace(/-/g, ". ");
   detachCalendarEventBubbleOutsideListener();
+  closeDuplicateTodoAddModals();
   document
-    .querySelectorAll(".calendar-event-bubble, .calendar-day-expand-overlay")
+    .querySelectorAll(
+      ".calendar-event-bubble, .calendar-event-add-modal, .calendar-day-expand-overlay",
+    )
     .forEach((el) => el.remove());
-  const overlayEl = document.createElement("div");
-  overlayEl.className = "calendar-day-expand-overlay";
-  document.body.appendChild(overlayEl);
-  const bubble = document.createElement("div");
-  bubble.className = "calendar-event-bubble calendar-event-bubble--mobile";
-  bubble.innerHTML = `
-    <div class="calendar-event-bubble-tail"></div>
-    <div class="calendar-event-bubble-body">
-      <div class="calendar-event-bubble-header">
-        <div class="calendar-event-bubble-heading">
-          <span class="calendar-event-bubble-title">할일/일정 추가</span>
-          <span class="calendar-event-bubble-date">${dateKey.replace(/-/g, ". ")}</span>
+
+  const modal = document.createElement("div");
+  modal.className =
+    "time-task-setup-modal time-add-task-modal calendar-event-add-modal";
+  modal.innerHTML = `
+    <div class="time-task-setup-backdrop"></div>
+    <div class="time-task-setup-panel time-add-task-panel">
+      <div class="time-task-setup-header">
+        <div class="calendar-event-add-modal-heading">
+          <h3 class="time-task-setup-title">할일/일정 추가</h3>
+          <p class="calendar-event-add-modal-date">${dateLabel}</p>
         </div>
-        <button type="button" class="calendar-event-bubble-close" title="닫기">×</button>
+        <button type="button" class="time-task-setup-close" aria-label="닫기">&times;</button>
       </div>
-      <div class="calendar-event-bubble-name">
-        <label class="calendar-event-bubble-label" for="calendar-event-name-input">할일 / 일정 이름</label>
-        <input
-          type="text"
-          id="calendar-event-name-input"
-          name="calendar-event-name"
-          class="calendar-event-bubble-input"
-          placeholder="할일/일정 입력"
-        />
-      </div>
-      <div class="time-task-log-field">
-        <label>시작일</label>
-        <div class="time-task-log-date-native-wrap">
-          <input type="date" class="todo-task-edit-start" aria-label="시작일" value="${initialYmd}" />
-          <span class="time-task-log-date-overlay" aria-hidden="true"></span>
+      <div class="time-task-setup-body">
+        <div class="time-task-log-field">
+          <label for="calendar-event-name-input">할일 / 일정 이름</label>
+          <input
+            type="text"
+            id="calendar-event-name-input"
+            name="calendar-event-name"
+            class="time-add-task-name"
+            placeholder="할일/일정 입력"
+            maxlength="500"
+          />
+        </div>
+        <div class="time-task-log-field">
+          <label>시작일</label>
+          <div class="time-task-log-date-native-wrap">
+            <input type="date" class="todo-task-edit-start" aria-label="시작일" value="${initialYmd}" />
+            <span class="time-task-log-date-overlay" aria-hidden="true"></span>
+          </div>
+        </div>
+        <div class="time-task-log-field">
+          <label>마감일</label>
+          <div class="time-task-log-date-native-wrap">
+            <input type="date" class="todo-task-edit-due" aria-label="마감일" value="${initialYmd}" />
+            <span class="time-task-log-date-overlay" aria-hidden="true"></span>
+          </div>
         </div>
       </div>
-      <div class="time-task-log-field">
-        <label>마감일</label>
-        <div class="time-task-log-date-native-wrap">
-          <input type="date" class="todo-task-edit-due" aria-label="마감일" value="${initialYmd}" />
-          <span class="time-task-log-date-overlay" aria-hidden="true"></span>
-        </div>
+      <div class="time-task-log-footer">
+        <button type="button" class="time-add-task-submit">추가</button>
       </div>
-      <button type="button" class="calendar-event-bubble-save">추가</button>
     </div>
   `;
 
-  const close = () => {
+  const closeBtn = modal.querySelector(".time-task-setup-close");
+  const backdrop = modal.querySelector(".time-task-setup-backdrop");
+  const confirmBtn = modal.querySelector(".time-add-task-submit");
+  const nameInput = modal.querySelector(".time-add-task-name");
+  const startInput = modal.querySelector(".todo-task-edit-start");
+  const dueInput = modal.querySelector(".todo-task-edit-due");
+  initModalStandardDateFields(modal);
+
+  function close() {
     detachCalendarEventBubbleOutsideListener();
-    overlayEl.remove();
-    bubble.remove();
+    modal.remove();
+    syncBodyOverflowAfterModalClose();
     onClose?.();
-  };
+  }
 
-  bubble
-    .querySelector(".calendar-event-bubble-close")
-    .addEventListener("click", close);
-
-  const startInput = bubble.querySelector(".todo-task-edit-start");
-  const dueInput = bubble.querySelector(".todo-task-edit-due");
-  initModalStandardDateFields(bubble);
+  closeBtn?.addEventListener("click", close);
+  backdrop?.addEventListener("click", close);
+  modal.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") close();
+  });
 
   let saving = false;
-  const saveBtn = bubble.querySelector(".calendar-event-bubble-save");
-
   function runSave() {
     if (saving) return;
-    const name = (
-      bubble.querySelector(".calendar-event-bubble-input").value || ""
-    ).trim();
+    const name = (nameInput?.value || "").trim();
     const startDate = (startInput?.value || "").trim().slice(0, 10);
     const dueDate = (dueInput?.value || "").trim().slice(0, 10);
     if (!name) return;
     if (!dueDate) {
-      alert("마감일을 입력해 주세요.");
+      void showAlertModal({ message: "마감일을 입력해 주세요." });
       return;
     }
     if (startDate && startDate > dueDate) {
-      alert("시작일은 마감일보다 이전이어야 합니다.");
+      void showAlertModal({
+        message: "시작일은 마감일보다 이전이어야 합니다.",
+      });
       return;
     }
     saving = true;
     try {
       if (!addSectionTodoFromCalendarBubble(startDate, dueDate, name)) {
-        alert("할 일을 추가하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        void showAlertModal({
+        message: "할 일을 추가하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      });
         return;
       }
       onSave?.({
@@ -1738,43 +1760,13 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
     }
   }
 
-  saveBtn?.addEventListener("click", runSave);
+  confirmBtn?.addEventListener("click", runSave);
 
-  bubble
-    .querySelector(".calendar-event-bubble-input")
-    .addEventListener("keydown", (e) => {
-      if (e.key !== "Enter" || e.isComposing) return;
-      e.preventDefault();
-      e.stopPropagation();
-      runSave();
-    });
+  document.body.appendChild(modal);
+  document.body.style.overflow = "hidden";
+  wireModalEnterToConfirm(modal, confirmBtn);
 
-  Object.assign(bubble.style, {
-    position: "fixed",
-    zIndex: "1002",
-    left: "50%",
-    top: "50%",
-    transform: "translate(-50%, -50%)",
-    width: "min(22rem, calc(100vw - 1.25rem))",
-    maxHeight: "min(85vh, 520px)",
-    overflowY: "auto",
-  });
-
-  document.body.appendChild(bubble);
-
-  setTimeout(() => {
-    _calendarEventBubbleOutsideHandler = (e) => {
-      const t = e.target;
-      if (bubble.contains(t)) return;
-      close();
-    };
-    document.addEventListener(
-      "pointerdown",
-      _calendarEventBubbleOutsideHandler,
-    );
-  }, 0);
-
-  return bubble;
+  return modal;
 }
 
 /** 기본 행 높이는 이 개수(3개) 분량, 그 이상이면 행을 늘려 전부 표시 */
@@ -1811,7 +1803,9 @@ function createCalendarDayExpandBubble(
   }
   detachCalendarEventBubbleOutsideListener();
   document
-    .querySelectorAll(".calendar-event-bubble, .calendar-day-expand-overlay")
+    .querySelectorAll(
+      ".calendar-event-bubble, .calendar-event-add-modal, .calendar-day-expand-overlay",
+    )
     .forEach((el) => el.remove());
   let overlayEl = null;
   if (isMobile && useMobileOverlay) {
@@ -2114,11 +2108,13 @@ function createCalendarBarDateEditBubble(
       const newStart = (startInput?.value || "").trim().slice(0, 10);
       const newDue = (dueInput?.value || "").trim().slice(0, 10);
       if (!newDue) {
-        alert("마감일을 입력해 주세요.");
+        void showAlertModal({ message: "마감일을 입력해 주세요." });
         return;
       }
       if (newStart && newStart > newDue) {
-        alert("시작일은 마감일보다 이전이어야 합니다.");
+        void showAlertModal({
+        message: "시작일은 마감일보다 이전이어야 합니다.",
+      });
         return;
       }
       let ok = false;
@@ -2312,7 +2308,7 @@ function renderMonthlyView(tabsElement) {
           true,
         );
         cell.addEventListener("click", (e) => {
-          if (e.target.closest(".calendar-event-bubble")) return;
+          if (e.target.closest(".calendar-event-bubble, .calendar-event-add-modal")) return;
           if (lpCalendarGuardCellClickFromMonthlyBar(e)) return;
           e.stopPropagation();
           const rect = cell.getBoundingClientRect();
@@ -4542,7 +4538,7 @@ function render1WeekView(tabsElement) {
         true,
       );
       cell.addEventListener("click", (e) => {
-        if (e.target.closest(".calendar-event-bubble")) return;
+        if (e.target.closest(".calendar-event-bubble, .calendar-event-add-modal")) return;
         if (lpCalendarGuardCellClickFromMonthlyBar(e)) return;
         e.stopPropagation();
         const rect = cell.getBoundingClientRect();
@@ -5374,7 +5370,7 @@ function renderAnnualView(tabsElement) {
         };
 
         const openAnnualQuickAddModal = (e) => {
-          if (e.target.closest(".calendar-event-bubble")) return;
+          if (e.target.closest(".calendar-event-bubble, .calendar-event-add-modal")) return;
           e.stopPropagation();
           cancelAnnualDayExpandHideTimer();
           try {
@@ -5400,7 +5396,7 @@ function renderAnnualView(tabsElement) {
           cell.addEventListener("click", openAnnualQuickAddModal);
         } else {
           const openAnnualDayTouchPanel = (e) => {
-            if (e.target.closest(".calendar-event-bubble")) return;
+            if (e.target.closest(".calendar-event-bubble, .calendar-event-add-modal")) return;
             e.stopPropagation();
             cancelAnnualDayExpandHideTimer();
             try {

@@ -42,6 +42,7 @@ import {
   LP_CONFIRM_STACK_CLASS,
   syncBodyOverflowAfterModalClose,
 } from "../utils/lpModalStack.js";
+import { showAlertModal } from "../utils/confirmModal.js";
 import {
   persistSectionTasksAndSchedule,
   persistCustomSectionTasksAndSchedule,
@@ -1757,7 +1758,9 @@ function showTodoTaskModal(options) {
       onSave?.(payload);
     } catch (err) {
       console.error("todo task modal onSave", err);
-      alert("저장 중 문제가 생겼습니다. 잠시 후 다시 시도해 주세요.");
+      void showAlertModal({
+        message: "저장 중 문제가 생겼습니다. 잠시 후 다시 시도해 주세요.",
+      });
       return;
     } finally {
       saving = false;

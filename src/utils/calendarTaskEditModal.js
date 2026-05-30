@@ -9,6 +9,7 @@ import {
   wireModalEnterToConfirm,
 } from "./modalNoAutoFocus.js";
 import { syncBodyOverflowAfterModalClose } from "./lpModalStack.js";
+import { showAlertModal } from "./confirmModal.js";
 import { clearSubtasks } from "./todoSubtasks.js";
 import {
   readSectionTasksObject,
@@ -212,7 +213,9 @@ function showCalendarTaskEditModal(options) {
       onSave?.({ ...taskData, ...gatherForm() });
     } catch (err) {
       console.error("calendar task edit onSave", err);
-      alert("저장 중 문제가 생겼습니다. 잠시 후 다시 시도해 주세요.");
+      void showAlertModal({
+        message: "저장 중 문제가 생겼습니다. 잠시 후 다시 시도해 주세요.",
+      });
       return;
     } finally {
       saving = false;

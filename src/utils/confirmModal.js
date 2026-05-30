@@ -80,6 +80,68 @@ export function showConfirmModal(options = {}) {
   });
 }
 
+/**
+ * 확인만 있는 알림창(네이티브 alert 대체). `time-task-setup-modal` 셸.
+ * @param {{ title?: string, message: string, confirmText?: string }} options
+ * @returns {Promise<void>}
+ */
+export function showAlertModal(options = {}) {
+  const { title = "알림", message, confirmText = "확인" } = options;
+
+  if (typeof message !== "string" || !message.trim()) {
+    return Promise.resolve();
+  }
+
+  dismissAppToast();
+
+  return new Promise((resolve) => {
+    function escapeHtml(s) {
+      return String(s || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    const modal = document.createElement("div");
+    modal.className = `time-task-setup-modal ${LP_CONFIRM_STACK_CLASS} lp-alert-modal`;
+    modal.innerHTML = `
+      <div class="time-task-setup-backdrop"></div>
+      <div class="time-task-setup-panel time-add-task-panel">
+        <div class="time-task-setup-header">
+          <h3 class="time-task-setup-title">${escapeHtml(title)}</h3>
+          <button type="button" class="time-task-setup-close" aria-label="닫기">&times;</button>
+        </div>
+        <div class="time-task-setup-body todo-list-confirm-body">
+          <p class="todo-list-confirm-message">${escapeHtml(message)}</p>
+        </div>
+        <div class="time-task-log-footer">
+          <button type="button" class="todo-list-modal-confirm">${escapeHtml(confirmText)}</button>
+        </div>
+      </div>
+    `;
+
+    const closeBtn = modal.querySelector(".time-task-setup-close");
+    const confirmBtn = modal.querySelector(".todo-list-modal-confirm");
+
+    function finish() {
+      modal.remove();
+      syncBodyOverflowAfterModalClose();
+      resolve();
+    }
+
+    confirmBtn.addEventListener("click", finish);
+    closeBtn.addEventListener("click", finish);
+
+    modal.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") finish();
+    });
+
+    document.body.appendChild(modal);
+    document.body.style.overflow = "hidden";
+  });
+}
+
 /** 표 행 삭제 전 확인(복구 불가 안내). 확인 시에만 `onConfirm` 실행 */
 export function confirmDeleteRow(onConfirm) {
   return showConfirmModal({

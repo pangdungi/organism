@@ -15,7 +15,7 @@ import {
   deleteStampCalendarEntryFromModal,
 } from "../utils/workScheduleSupabase.js";
 import { showToast } from "../utils/showToast.js";
-import { showConfirmModal } from "../utils/confirmModal.js";
+import { showConfirmModal, showAlertModal } from "../utils/confirmModal.js";
 import { initModalNativeDateFieldsIn } from "../utils/modalNativeDateField.js";
 import { workScheduleDiagLog } from "../utils/workScheduleDiag.js";
 import { applyWorkScheduleRowTimesFromTypes, normalizeWorkDateKey } from "../utils/workScheduleEntryResolve.js";
@@ -1034,11 +1034,11 @@ export async function openWorkScheduleDayEntryModal(initialDateKey, opts = {}) {
     );
     const typeName = (typeHit?.name || sel).trim();
     if (!wd || wd.length < 10) {
-      window.alert("일자를 선택해 주세요.");
+      void showAlertModal({ message: "일자를 선택해 주세요." });
       return;
     }
     if (!typeName) {
-      window.alert("스탬프를 선택해 주세요.");
+      void showAlertModal({ message: "스탬프를 선택해 주세요." });
       return;
     }
     if (saveAsCalendarTodo) {
@@ -1051,9 +1051,10 @@ export async function openWorkScheduleDayEntryModal(initialDateKey, opts = {}) {
     const stampId =
       typeHit?.id && isStampUuid(typeHit.id) ? typeHit.id : "";
     if (!stampId) {
-      window.alert(
-        "스탬프 설정에서 «저장»한 뒤 다시 시도해 주세요. (스탬프 목록이 서버와 맞지 않습니다.)",
-      );
+      void showAlertModal({
+        message:
+          "스탬프 설정에서 «저장»한 뒤 다시 시도해 주세요. (스탬프 목록이 서버와 맞지 않습니다.)",
+      });
       return;
     }
     const baseFields = {
