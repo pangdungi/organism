@@ -258,53 +258,18 @@ export function render() {
       <button type="button" class="idea-hourly-tab" data-mode="freelance">프리랜서</button>
     </div>
     <form class="idea-hourly-form">
-      <div class="idea-salary-row-inline">
-        <div class="idea-form-row idea-row-salary">
-          <label class="idea-form-label">월급(원)</label>
+      <div class="idea-hourly-row-inline">
+        <div class="idea-form-row">
+          <label class="idea-form-label">월 근로소득</label>
           <div class="idea-input-with-unit">
-            <input type="text" class="idea-form-input idea-input-amount" placeholder="예: 3000000" inputmode="numeric" />
+            <input type="text" class="idea-form-input idea-input-monthly-income" placeholder="예: 3000000" inputmode="numeric" autocomplete="off" />
             <span class="idea-input-unit">원</span>
           </div>
         </div>
-        <div class="idea-form-row idea-row-salary">
-          <label class="idea-form-label">월 근무시간(시간)</label>
+        <div class="idea-form-row">
+          <label class="idea-form-label">월 노동시간</label>
           <div class="idea-input-with-unit">
-            <input type="text" class="idea-form-input idea-input-hours" placeholder="예: 160" inputmode="numeric" />
-            <span class="idea-input-unit">h</span>
-          </div>
-        </div>
-      </div>
-      <div class="idea-freelance-row-inline" style="display:none">
-        <div class="idea-form-row idea-row-freelance">
-          <label class="idea-form-label">월 예상 수입(원)</label>
-          <div class="idea-input-with-unit">
-            <input type="text" class="idea-form-input idea-input-monthly" placeholder="예: 5000000" inputmode="numeric" />
-            <span class="idea-input-unit">원</span>
-          </div>
-        </div>
-        <div class="idea-form-row idea-row-freelance">
-          <label class="idea-form-label">월 근무시간(시간)</label>
-          <div class="idea-input-with-unit">
-            <input type="text" class="idea-form-input idea-input-freelance-hours" placeholder="예: 160" inputmode="numeric" />
-            <span class="idea-input-unit">h</span>
-          </div>
-        </div>
-      </div>
-      <div class="idea-form-row idea-row-freelance idea-freelance-divider" style="display:none">
-        <span class="idea-form-hint">또는 건당 기준</span>
-      </div>
-      <div class="idea-freelance-row-inline idea-freelance-per-case" style="display:none">
-        <div class="idea-form-row idea-row-freelance">
-          <label class="idea-form-label">건당 금액(원)</label>
-          <div class="idea-input-with-unit">
-            <input type="text" class="idea-form-input idea-input-project-fee" placeholder="예: 500000" inputmode="numeric" />
-            <span class="idea-input-unit">원</span>
-          </div>
-        </div>
-        <div class="idea-form-row idea-row-freelance">
-          <label class="idea-form-label">예상 소요시간(시간)</label>
-          <div class="idea-input-with-unit">
-            <input type="text" class="idea-form-input idea-input-duration" placeholder="예: 20" inputmode="numeric" />
+            <input type="text" class="idea-form-input idea-input-monthly-hours" placeholder="예: 160" inputmode="decimal" autocomplete="off" />
             <span class="idea-input-unit">h</span>
           </div>
         </div>
@@ -344,17 +309,12 @@ export function render() {
 
   // 시급 계산 로직
   const tabs = hourlyWidget.querySelectorAll(".idea-hourly-tab");
-  const freelanceBlocks = hourlyWidget.querySelectorAll(
-    ".idea-freelance-row-inline, .idea-freelance-divider",
+  const monthlyIncomeInput = hourlyWidget.querySelector(
+    ".idea-input-monthly-income",
   );
-  const amountInput = hourlyWidget.querySelector(".idea-input-amount");
-  const hoursInput = hourlyWidget.querySelector(".idea-input-hours");
-  const monthlyInput = hourlyWidget.querySelector(".idea-input-monthly");
-  const freelanceHoursInput = hourlyWidget.querySelector(
-    ".idea-input-freelance-hours",
+  const monthlyHoursInput = hourlyWidget.querySelector(
+    ".idea-input-monthly-hours",
   );
-  const projectInput = hourlyWidget.querySelector(".idea-input-project-fee");
-  const durationInput = hourlyWidget.querySelector(".idea-input-duration");
   const resultValue = hourlyWidget.querySelector(".idea-hourly-result-value");
   const resultUnit = hourlyWidget.querySelector(".idea-hourly-result-unit");
   const calcBtn = hourlyWidget.querySelector(".idea-btn-calc");
@@ -372,7 +332,7 @@ export function render() {
     }
   }
 
-  let mode = "salary"; // salary | freelance
+  let mode = "salary"; // salary | freelance — 탭 UI 구분
 
   function parseNumber(str) {
     const cleaned = String(str || "")
@@ -395,24 +355,20 @@ export function render() {
   function switchMode(m) {
     mode = m;
     tabs.forEach((t) => t.classList.toggle("active", t.dataset.mode === m));
-    const salaryWrap = hourlyWidget.querySelector(".idea-salary-row-inline");
-    if (salaryWrap) salaryWrap.style.display = m === "salary" ? "" : "none";
-    freelanceBlocks.forEach(
-      (b) => (b.style.display = m === "freelance" ? "" : "none"),
-    );
-    setHourlyResult("—");
   }
 
   tabs.forEach((t) => {
     t.addEventListener("click", () => switchMode(t.dataset.mode));
   });
 
-  [amountInput, monthlyInput, projectInput].forEach((inp) => {
-    if (inp) {
-      inp.addEventListener("input", () => formatNumberInput(inp));
-      inp.addEventListener("blur", () => formatNumberInput(inp));
-    }
-  });
+  if (monthlyIncomeInput) {
+    monthlyIncomeInput.addEventListener("input", () =>
+      formatNumberInput(monthlyIncomeInput),
+    );
+    monthlyIncomeInput.addEventListener("blur", () =>
+      formatNumberInput(monthlyIncomeInput),
+    );
+  }
 
   async function saveHourlyToAccount(hourly) {
     try {
@@ -426,34 +382,15 @@ export function render() {
   }
 
   function calculateHourly() {
-    let hourly = 0;
-    if (mode === "salary") {
-      const amount = parseNumber(amountInput.value);
-      const hours = parseNumber(hoursInput.value);
-      if (amount <= 0 || hours <= 0) {
-        setHourlyResult("—");
-        return;
-      }
-      hourly = amount / hours;
-      setHourlyResult(hourly);
-    } else {
-      const fee = parseNumber(projectInput.value);
-      const duration = parseNumber(durationInput.value);
-      if (fee > 0 && duration > 0) {
-        hourly = fee / duration;
-        setHourlyResult(hourly);
-      } else {
-        const amount = parseNumber(monthlyInput.value);
-        const hours = parseNumber(freelanceHoursInput.value);
-        if (amount <= 0 || hours <= 0) {
-          setHourlyResult("—");
-          return;
-        }
-        hourly = amount / hours;
-        setHourlyResult(hourly);
-      }
+    const income = parseNumber(monthlyIncomeInput?.value);
+    const hours = parseNumber(monthlyHoursInput?.value);
+    if (income <= 0 || hours <= 0) {
+      setHourlyResult("—");
+      return;
     }
-    if (hourly > 0) void saveHourlyToAccount(hourly);
+    const hourly = income / hours;
+    setHourlyResult(hourly);
+    void saveHourlyToAccount(hourly);
   }
 
   // 저장된 시급 로드
@@ -466,14 +403,7 @@ export function render() {
   } catch (_) {}
 
   calcBtn.addEventListener("click", calculateHourly);
-  [
-    hoursInput,
-    amountInput,
-    monthlyInput,
-    freelanceHoursInput,
-    projectInput,
-    durationInput,
-  ].forEach((inp) => {
+  [monthlyIncomeInput, monthlyHoursInput].forEach((inp) => {
     if (inp) {
       inp.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
