@@ -9,6 +9,7 @@ import {
   formatKpiTargetTimeRequiredDisplay,
 } from "./timeKpiSync.js";
 import { getLatestKpiLogWithExplicitValue } from "./kpiLogsSort.js";
+import { computeKpiHabitCurrentStreak } from "./kpiHabitStreak.js";
 
 export function sanitizeKpiNumericInput(val) {
   return String(val || "").replace(/[^\d.-]/g, "");
@@ -400,6 +401,27 @@ export function computeKpiProgress(kpi, deps) {
   };
 }
 
+/** 매일하기 KPI — progressResult에 연속 일수 부가 */
+export function enrichKpiProgressWithHabitStreak(
+  kpi,
+  progressResult,
+  storedLogs,
+  todayYmd,
+) {
+  if (!kpi?.needHabitTracker) return progressResult;
+  return {
+    ...progressResult,
+    habitStreak: computeKpiHabitCurrentStreak(kpi, storedLogs, todayYmd),
+  };
+}
+
+function appendHabitStreakToProgressText(kpi, progressResult, progressText) {
+  if (!kpi?.needHabitTracker) return progressText;
+  const streak = Math.max(0, Number(progressResult?.habitStreak) || 0);
+  if (streak <= 0) return progressText;
+  return `${progressText} · 연속 ${streak}일째!`;
+}
+
 /** 카드 진행·히어로 문구 */
 export function buildKpiCardTimePresentation(kpi, progressResult, formatNum) {
   const {
@@ -451,6 +473,7 @@ export function buildKpiCardTimePresentation(kpi, progressResult, formatNum) {
     : lowerBetter
       ? `최근 ${currentStr} / 상한 ${targetStr}${unitSuffix}`
       : `${currentStr} / ${targetStr}${unitSuffix}`;
+  progressText = appendHabitStreakToProgressText(kpi, progressResult, progressText);
   const heroStr = useTimeAsUnit ? accumulatedLabel : currentStr;
   const heroUnit = useTimeAsUnit ? "" : kpi.unit;
   const cardExtraClass = useTimeAsUnit ? " dream-kpi-card--time-unit" : "";

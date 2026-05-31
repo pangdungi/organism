@@ -40,8 +40,8 @@ export function bindKpiCardEditButton(btn, onEdit) {
 /** KPI 카드 우측 상단 */
 export const KPI_CARD_EDIT_PENCIL_HTML = kpiEditButtonHtml(
   "dream-kpi-card-edit dream-tab-edit",
-  "KPI 수정",
-  "KPI 수정",
+  "행동 수정",
+  "행동 수정",
 );
 
 /** 꿈 목표 목록 카드 */

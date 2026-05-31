@@ -30,6 +30,7 @@ import {
   bindKpiGoalModeForm,
   computeKpiProgress,
   buildKpiCardTimePresentation,
+  enrichKpiProgressWithHabitStreak,
 } from "../utils/kpiTimeUnitKpi.js";
 import {
   resolveKpiDetailLogEntriesPrepared,
@@ -429,7 +430,7 @@ export function render() {
       <div data-legacy="time-task-setup-backdrop"></div>
       <div data-legacy="time-task-setup-panel">
         <div data-legacy="time-task-setup-header">
-          <h3 data-legacy="time-task-setup-title">새 KPI 추가</h3>
+          <h3 data-legacy="time-task-setup-title">새 행동 추가</h3>
           <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
         </div>
         <form class="dream-kpi-form">
@@ -527,7 +528,7 @@ export function render() {
       <div data-legacy="time-task-setup-backdrop"></div>
       <div data-legacy="time-task-setup-panel">
         <div data-legacy="time-task-setup-header">
-          <h3 data-legacy="time-task-setup-title">KPI 수정</h3>
+          <h3 data-legacy="time-task-setup-title">행동 수정</h3>
           <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
         </div>
         <form class="dream-kpi-form">
@@ -580,7 +581,7 @@ export function render() {
               </div>
             </div>
             <div class="dream-kpi-delete-wrap">
-              <button type="button" class="dream-kpi-delete-btn">KPI 삭제하기</button>
+              <button type="button" class="dream-kpi-delete-btn">이 행동 삭제하기</button>
               <p class="dream-kpi-delete-note">삭제 시 복구 불가</p>
             </div>
           </div>
@@ -903,7 +904,7 @@ export function render() {
   }
 
   function getKpiProgress(kpi) {
-    return computeKpiProgress(kpi, {
+    const result = computeKpiProgress(kpi, {
       toDateKey,
       getAllKpiLogs: () => loadHealthMap().kpiLogs || [],
       getAccumulatedKpiValue,
@@ -911,6 +912,13 @@ export function render() {
         (loadHealthMap().kpiTodos || []).filter((t) => t.kpiId === kpiId),
       parseNum,
     });
+    if (!kpi?.needHabitTracker) return result;
+    return enrichKpiProgressWithHabitStreak(
+      kpi,
+      result,
+      getKpiLogs(kpi.id),
+      toDateKey(new Date()),
+    );
   }
 
   function renderKpiList() {
