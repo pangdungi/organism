@@ -39,6 +39,7 @@ import {
 import { pullTimeLedgerTasksFromSupabase } from "./timeLedgerTasksSupabase.js";
 import { syncHabitTrackerLogs, getKpiTargetDateRange } from "./timeKpiSync.js";
 import { patchKpiLinkedTasksFromKpiMaps } from "./timeTaskOptionsModel.js";
+import { ensureHealthKpiTimeTasksFromStorage } from "./healthKpiTimeTaskSync.js";
 import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
 const KPI_LOCAL_STORAGE_KEYS = {
   dream: DREAM_KPI_MAP_STORAGE_KEY,
@@ -132,7 +133,11 @@ export async function pullKpiTabFromCloud(tabId) {
   ]);
 
   try {
-    patchKpiLinkedTasksFromKpiMaps();
+    if (tabId === "health") {
+      ensureHealthKpiTimeTasksFromStorage();
+    } else {
+      patchKpiLinkedTasksFromKpiMaps();
+    }
     syncHabitTrackerLogs();
   } catch (_) {}
 
@@ -188,7 +193,11 @@ export async function pullKpiMapSubViewFromCloud(tabId) {
   const pullOk = await domainPull;
 
   try {
-    patchKpiLinkedTasksFromKpiMaps();
+    if (tabId === "health") {
+      ensureHealthKpiTimeTasksFromStorage();
+    } else {
+      patchKpiLinkedTasksFromKpiMaps();
+    }
     syncHabitTrackerLogs();
   } catch (_) {}
   kpiTodoFineTrace("cloud.pullKpiSubView:끝", { tabId, pullOk });
@@ -302,7 +311,7 @@ export async function pullKpiMapsForTaskLogModalOpen() {
   } catch (_) {}
 
   try {
-    patchKpiLinkedTasksFromKpiMaps();
+    ensureHealthKpiTimeTasksFromStorage();
     syncHabitTrackerLogs();
   } catch (_) {}
 

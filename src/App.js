@@ -502,7 +502,6 @@ export async function mountApp(container) {
             resetTimeLedgerSessionFilterToToday();
           } catch (_) {}
         }
-        if (isKpiAppTabId(targetTabId)) setKpiTabPullPending(targetTabId);
         if (targetTabId === "schedulecalendar") {
           try {
             window.__lpCalendarGridPrefetchedForTabSwitch = true;
@@ -886,10 +885,6 @@ export async function mountApp(container) {
   appPage.appendChild(appScreen);
   container.appendChild(appPage);
   const bootTabIdForRender = currentTabId;
-  if (isKpiAppTabId(bootTabIdForRender)) setKpiTabPullPending(bootTabIdForRender);
-  else if (bootTabIdForRender === "time") {
-    setLpTabPullPending(bootTabIdForRender);
-  }
   if (bootTabIdForRender === "time") {
     try {
       resetTimeLedgerSessionFilterToToday();

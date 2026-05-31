@@ -753,6 +753,59 @@ export function kpiTimeTaskAdd(kpi, category) {
   });
 }
 
+/** KPI 과제 행이 없으면 추가, 같은 이름·category 행만 있으면 kpiId 연결 */
+export function kpiTimeTaskEnsure(kpi, category) {
+  const kpiId = (kpi && kpi.id && String(kpi.id).trim()) || "";
+  const name = (kpi && (kpi.name || "").trim()) || "";
+  const cat = String(category || "").trim();
+  if (!kpiId || !name) return;
+
+  const opts = getFullTaskOptions();
+  if (opts.some((o) => String(o.kpiId || "").trim() === kpiId)) {
+    patchKpiLinkedTasksFromKpiMaps();
+    return;
+  }
+
+  const nameIdx = opts.findIndex((o) => {
+    if ((o.name || "").trim() !== name) return false;
+    const rowCat = String(o.category || "").trim();
+    if (!cat) return true;
+    return !rowCat || rowCat === cat;
+  });
+  if (nameIdx >= 0 && !String(opts[nameIdx].kpiId || "").trim()) {
+    const row = opts[nameIdx];
+    let id = String(row.id || "").trim();
+    if (!isUuid(id)) {
+      id =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `t-${Date.now()}`;
+    }
+    const next = opts.map((o, i) =>
+      i === nameIdx
+        ? {
+            ...o,
+            id,
+            name,
+            kpiId,
+            category: cat || o.category || "",
+            productivity: o.productivity || "productive",
+          }
+        : o,
+    );
+    saveMergedList(next, {
+      bumpPullSkip: true,
+      scheduleSyncPush: isUuid(id),
+      upsertTaskIds: isUuid(id) ? [id] : [],
+    });
+    patchKpiLinkedTasksFromKpiMaps();
+    return;
+  }
+
+  kpiTimeTaskAdd(kpi, category);
+  patchKpiLinkedTasksFromKpiMaps();
+}
+
 export function kpiTimeTaskRemove(kpi, syncNameFromMap) {
   const kpiId = (kpi && kpi.id && String(kpi.id).trim()) || "";
   const nameFb = (syncNameFromMap || (kpi && (kpi.name || "")) || "").trim();

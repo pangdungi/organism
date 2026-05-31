@@ -51,6 +51,7 @@ import {
   patchKpiLinkedTasksFromKpiMaps,
   isUuid,
 } from "../utils/timeTaskOptionsModel.js";
+import { ensureHealthKpiTimeTasksFromStorage } from "../utils/healthKpiTimeTaskSync.js";
 import {
   attachTimeLedgerTasksSaveListener,
   pullTimeLedgerTasksFromSupabase,
@@ -124,11 +125,7 @@ import {
 import {
   dismissLpBlockingShellForTaskLogModal,
   hideLpTabLoading,
-  showLpTabLoading,
 } from "../utils/lpAppLoading.js";
-import {
-  isLpTabPullPending,
-} from "../utils/lpTabSyncLoadingUi.js";
 export { getTaskOptionByName };
 
 /** 모바일 과제 기록 FAB — TodoList ADD_TASK_ICON과 동일 */
@@ -7089,6 +7086,7 @@ export function render(opts = {}) {
       await pullTimeLedgerTasksFromSupabase();
     } catch (_) {}
     try {
+      ensureHealthKpiTimeTasksFromStorage();
       patchKpiLinkedTasksFromKpiMaps();
       getFullTaskOptions();
       migrateTimeLogRowsTaskIds();
@@ -7104,6 +7102,7 @@ export function render(opts = {}) {
       pullKpiMapsForTaskLogModalOpen().catch(() => {}),
     ]);
     try {
+      ensureHealthKpiTimeTasksFromStorage();
       patchKpiLinkedTasksFromKpiMaps();
       getFullTaskOptions();
       migrateTimeLogRowsTaskIds();
@@ -8712,9 +8711,6 @@ export function render(opts = {}) {
 
     const showMemoOnlyLogView = usageHistoryMemoOnlyFilter;
     const showDayGroups = timeLedgerShouldShowDayGroups(rows);
-    if (isLpTabPullPending("time")) {
-      showLpTabLoading();
-    }
     const memoLogRows = showMemoOnlyLogView ? mapLedgerRowsToLogMemos(rows) : [];
 
     const cardsWrap = document.createElement("div");
@@ -9104,22 +9100,6 @@ export function render(opts = {}) {
     },
     { signal },
   );
-
-  function onLpTabPullSyncEvent(ev) {
-    const tabId = ev?.detail?.tabId;
-    if (tabId !== "time" || !el.isConnected) return;
-    if (ev?.type === "lp-tab-pull-settled") {
-      dismissTimeLedgerPullLoadingUi();
-      syncTimeLedgerContent({ force: false });
-      finishUsageListEnterScroll();
-    }
-  }
-  window.addEventListener("lp-tab-pull-pending", onLpTabPullSyncEvent, {
-    signal,
-  });
-  window.addEventListener("lp-tab-pull-settled", onLpTabPullSyncEvent, {
-    signal,
-  });
 
   return el;
 }

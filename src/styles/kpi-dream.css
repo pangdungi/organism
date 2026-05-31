@@ -107,6 +107,397 @@
   gap: 0.65rem;
 }
 
+.lp-kpi-dream-page .health-main-view {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.lp-kpi-dream-page .health-main-kpi-section {
+  margin-top: 1.15rem;
+}
+
+.lp-kpi-dream-page .health-main-section-head {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.lp-kpi-dream-page .health-main-section-head .health-main-section-title {
+  margin: 0;
+}
+
+.lp-kpi-dream-page .health-main-section-add-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.625rem;
+  height: 1.625rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--cal-line-strong, rgba(58, 110, 168, 0.22));
+  border-radius: 999px;
+  background: rgba(30, 77, 123, 0.06);
+  color: #1e4d7b;
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lp-kpi-dream-page .health-main-section-add-btn:hover {
+  background: rgba(30, 77, 123, 0.12);
+}
+
+.lp-kpi-dream-page .health-main-kpi-filter-wrap {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-bottom: 0.65rem;
+}
+
+.lp-kpi-dream-page .health-main-section-title {
+  font-size: 0.8125rem;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+/* 건강 목표 — 가로 스크롤 네모 타일 */
+.lp-kpi-dream-page .health-main-goals-section {
+  min-width: 0;
+}
+
+.lp-kpi-dream-page .health-goals-scroll {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0.15rem 0 0.35rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+
+.lp-kpi-dream-page .health-goals-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.lp-kpi-dream-page .health-goals-empty {
+  flex: 1 1 auto;
+  margin: 0.35rem 0 0;
+  padding: 0;
+}
+
+.lp-kpi-dream-page .health-goal-tile {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 8.75rem;
+  width: 8.75rem;
+  height: auto;
+  min-height: 4.75rem;
+  scroll-snap-align: start;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.lp-kpi-dream-page .health-goal-tile-inner {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0.55rem 0.65rem;
+  gap: 0.2rem;
+}
+
+.lp-kpi-dream-page .health-goal-tile-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem;
+  min-height: 0;
+}
+
+.lp-kpi-dream-page .health-goal-tile-inner--plain {
+  justify-content: center;
+}
+
+.lp-kpi-dream-page .health-goal-tile .dream-kpi-card-edit.dream-tab-edit {
+  position: static;
+  flex-shrink: 0;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+  margin: 0;
+  padding: 0.25rem;
+}
+
+.lp-kpi-dream-page .health-goal-tile-name {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.28;
+  color: #111827;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  padding-right: 0;
+}
+
+.lp-kpi-dream-page .health-goal-tile-inner--plain .health-goal-tile-name {
+  -webkit-line-clamp: 3;
+}
+
+.lp-kpi-dream-page .health-goal-tile-target-only {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #334155;
+}
+
+.lp-kpi-dream-page .health-goal-tile-target-only .health-goal-tile-unit {
+  margin-left: 0.2rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.lp-kpi-dream-page .health-goal-tile-hero,
+.lp-kpi-dream-page .health-goal-logs-modal-hero {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lp-kpi-dream-page .health-goal-tile-current {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.lp-kpi-dream-page .health-goal-tile-slash,
+.lp-kpi-dream-page .health-goal-logs-modal-hero .health-goal-tile-slash {
+  margin: 0 0.12rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+.lp-kpi-dream-page .health-goal-tile-target {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.lp-kpi-dream-page .health-goal-tile-unit {
+  margin-left: 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.lp-kpi-dream-page .health-goal-tile-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 0.35rem;
+}
+
+.lp-kpi-dream-page .health-goal-tile-log-meta {
+  min-width: 0;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 건강 목표 통합 수정 모달 */
+.health-goal-edit-modal .health-goal-edit-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  max-height: min(70vh, 32rem);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.health-goal-edit-modal .health-goal-edit-form .dream-kpi-form-body {
+  margin-bottom: 0;
+}
+
+.health-goal-edit-modal .health-goal-edit-logs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding-top: 0.15rem;
+  border-top: 1px solid var(--lp-kpi-border-gray-soft, #e5e7eb);
+}
+
+.health-goal-edit-modal .health-goal-edit-logs[hidden] {
+  display: none !important;
+}
+
+.health-goal-edit-modal .health-goal-edit-logs-title {
+  margin: 0 0 0.45rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.health-goal-edit-modal .health-goal-edit-logs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 9rem;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.health-goal-edit-modal .health-goal-logs-empty {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #94a3b8;
+}
+
+.health-goal-edit-modal .health-goal-edit-logs-list .dream-kpi-path-log-item {
+  margin: 0;
+}
+
+.health-goal-edit-modal .health-goal-edit-modal-footer--save-only {
+  justify-content: flex-end;
+}
+
+.health-goal-edit-modal .health-goal-edit-modal-footer--save-only [data-legacy~="time-task-log-submit"] {
+  margin-left: 0;
+}
+
+/* 건강 목표 추가·수정 — 목표값 필드 */
+.health-goal-target-fields .dream-kpi-field:last-child {
+  margin-bottom: 0;
+}
+
+/* 건강 목표 — 로그 그래프 팝업 */
+.health-goal-graph-modal .health-goal-graph-panel {
+  max-width: min(22rem, calc(100vw - 2rem));
+}
+
+.health-goal-graph-modal .health-goal-graph-body {
+  padding: 0.35rem 0.85rem 0.65rem;
+}
+
+.health-goal-graph-modal .health-goal-graph-range-bar {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 0.55rem;
+  padding: 0.2rem;
+  border-radius: 10px;
+  background: #f1f5f9;
+}
+
+.health-goal-graph-modal .health-goal-graph-range-btn {
+  flex: 1 1 0;
+  min-height: 2rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.health-goal-graph-modal .health-goal-graph-range-btn.active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.health-goal-graph-modal .health-goal-graph-caption {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  color: #64748b;
+  text-align: center;
+}
+
+.health-goal-graph-modal .health-goal-graph-chart {
+  width: 100%;
+  min-height: 12.5rem;
+}
+
+.health-goal-graph-modal .health-goal-graph-chart-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.health-goal-graph-modal .health-goal-graph-chart-scroll--wide {
+  padding-bottom: 0.15rem;
+}
+
+.health-goal-graph-modal .health-goal-graph-chart-scroll .health-goal-graph-svg {
+  min-width: 100%;
+}
+
+.health-goal-graph-modal .health-goal-graph-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.health-goal-graph-modal .health-goal-graph-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: #b45309;
+}
+
+.health-goal-graph-modal .health-goal-graph-legend-line {
+  display: inline-block;
+  width: 1.25rem;
+  height: 0;
+  border-top: 2px dashed #f59e0b;
+}
+
+.health-goal-graph-modal .health-goal-graph-empty {
+  margin: 2rem 0;
+  font-size: 0.875rem;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.health-goal-graph-modal .health-goal-graph-add-btn {
+  width: 100%;
+}
+
+.health-goal-graph-modal [data-legacy~="time-task-log-footer"] {
+  justify-content: stretch;
+}
+
 .lp-kpi-dream-page .dream-goals-empty {
   margin: 0.5rem 0 0;
   font-size: 0.875rem;
@@ -1675,6 +2066,26 @@
 
 .dream-kpi-card--habit .dream-kpi-card-target-num {
   margin-bottom: 0.1rem;
+}
+
+.lp-kpi-dream-page .dream-kpi-card-target-num--habit-unit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.6rem;
+  margin-top: 0.2rem;
+}
+
+.lp-kpi-dream-page .dream-kpi-card-habit-streak-aside {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--lp-modal-accent, #1e4d7b);
+  white-space: nowrap;
+}
+
+.lp-kpi-dream-page .dream-kpi-card--habit-unit .dream-kpi-card-target-num .dream-kpi-card-unit {
+  font-weight: 600;
 }
 
 .dream-kpi-today-btn,

@@ -236,6 +236,36 @@ function sanitizeNumericInput(val) {
   return String(val || "").replace(/[^\d.-]/g, "");
 }
 
+function formatIntegerWithCommas(val) {
+  const digits = String(val || "").replace(/[^\d]/g, "");
+  if (!digits) return "";
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function setupWonAmountInput(inp) {
+  if (!inp || inp.dataset.sideincomeTargetBound) return;
+  inp.dataset.sideincomeTargetBound = "1";
+  inp.addEventListener("input", () => {
+    const raw = inp.value;
+    const sel = inp.selectionStart ?? raw.length;
+    const digitsBefore = raw.slice(0, sel).replace(/[^\d]/g, "").length;
+    const formatted = formatIntegerWithCommas(raw);
+    inp.value = formatted;
+    let digitCount = 0;
+    let newPos = formatted.length;
+    for (let i = 0; i < formatted.length; i++) {
+      if (/\d/.test(formatted[i])) {
+        digitCount += 1;
+        if (digitCount >= digitsBefore) {
+          newPos = i + 1;
+          break;
+        }
+      }
+    }
+    inp.setSelectionRange(newPos, newPos);
+  });
+}
+
 function setupNumericOnlyInput(inp) {
   inp.addEventListener("input", () => {
     const pos = inp.selectionStart;
@@ -310,20 +340,7 @@ function bindPathTargetAmountMode(form, path = null) {
   };
   trackCheck?.addEventListener("change", sync);
   sync();
-  if (amountInput && !amountInput.dataset.sideincomeTargetBound) {
-    amountInput.dataset.sideincomeTargetBound = "1";
-    amountInput.addEventListener("input", () => {
-      const pos = amountInput.selectionStart;
-      const sanitized = sanitizeNumericInput(amountInput.value);
-      if (amountInput.value !== sanitized) {
-        amountInput.value = sanitized;
-        amountInput.setSelectionRange(
-          Math.min(pos, sanitized.length),
-          Math.min(pos, sanitized.length),
-        );
-      }
-    });
-  }
+  setupWonAmountInput(amountInput);
 }
 
 function readPathTargetAmountFields(form) {
@@ -503,21 +520,6 @@ export function render() {
               <label>행동 이름</label>
               <input type="text" name="name" placeholder="예) 인스타 게시물 포스팅하기" />
             </div>
-            <div class="dream-kpi-field dream-kpi-direction-field" data-legacy="time-add-task-field">
-              <div class="dream-kpi-direction-inline">
-                <span class="dream-kpi-direction-caption">지표 방향</span>
-                <div class="dream-kpi-direction-options">
-                  <label class="dream-kpi-direction-option">
-                    <input type="radio" name="direction" value="higher" checked />
-                    <span>높을수록 좋음</span>
-                  </label>
-                  <label class="dream-kpi-direction-option">
-                    <input type="radio" name="direction" value="lower" />
-                    <span>낮을수록 좋음</span>
-                  </label>
-                </div>
-              </div>
-            </div>
             ${kpiFormGoalAndTargetSectionHtml(null, escapeHtml, kpiTimeFormOpts)}
           </div>
           <div data-legacy="time-task-log-footer">
@@ -532,15 +534,14 @@ export function render() {
       e.preventDefault();
       const form = e.target;
       if (!validateKpiActionForm(form, { sanitizeNumericInput })) return;
-      const fields = readKpiGoalModeFormFields(form, sanitizeNumericInput);
+      const fields = readKpiGoalModeFormFields(form, sanitizeNumericInput, {
+        isNewKpi: true,
+      });
       const kpi = {
         id: nextId(),
         pathId: activePathId,
         name: (form.name.value || "").trim(),
-        direction:
-          form.querySelector('input[name="direction"]:checked')?.value === "lower"
-            ? "lower"
-            : "higher",
+        direction: "higher",
         ...fields,
       };
       const data = loadSideincomeMap();
@@ -573,21 +574,6 @@ export function render() {
             <div class="dream-kpi-field" data-legacy="time-add-task-field">
               <label>행동 이름</label>
               <input type="text" name="name" value="${escapeHtml(kpi.name || "")}" placeholder="예) 인스타 게시물 포스팅하기" />
-            </div>
-            <div class="dream-kpi-field dream-kpi-direction-field" data-legacy="time-add-task-field">
-              <div class="dream-kpi-direction-inline">
-                <span class="dream-kpi-direction-caption">지표 방향</span>
-                <div class="dream-kpi-direction-options">
-                  <label class="dream-kpi-direction-option">
-                    <input type="radio" name="direction" value="higher" ${kpi.direction !== "lower" ? "checked" : ""} />
-                    <span>높을수록 좋음</span>
-                  </label>
-                  <label class="dream-kpi-direction-option">
-                    <input type="radio" name="direction" value="lower" ${kpi.direction === "lower" ? "checked" : ""} />
-                    <span>낮을수록 좋음</span>
-                  </label>
-                </div>
-              </div>
             </div>
             ${kpiFormGoalAndTargetSectionHtml(kpi, escapeHtml, kpiTimeFormOpts)}
             <div class="dream-kpi-delete-wrap">
@@ -629,10 +615,7 @@ export function render() {
           sanitizeNumericInput,
         });
         target.name = (form.name.value || "").trim();
-        target.direction =
-          form.querySelector('input[name="direction"]:checked')?.value === "lower"
-            ? "lower"
-            : "higher";
+        target.direction = kpi.direction === "lower" ? "lower" : "higher";
         saveSideincomeMap(data, { pushServer: true });
         if (oldName !== target.name) syncKpiToTimeTask(target, "update", oldName);
       }
@@ -1179,7 +1162,7 @@ export function render() {
       const progressResult = getKpiProgress(kpi);
       const { lowerBetter } = progressResult;
       const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
-      const { displayProgress, progressText, heroStr, heroUnit, cardExtraClass, hideProgressFill, hideProgressBar, heroPrefix } =
+      const { displayProgress, progressText, heroStr, heroUnit, cardExtraClass, hideProgressFill, hideProgressBar, heroPrefix, heroStreakAsideHtml } =
         buildKpiCardTimePresentation(kpi, progressResult, formatNum);
       const card = document.createElement("div");
       card.className =
@@ -1199,7 +1182,7 @@ export function render() {
         <div class="dream-kpi-card-inner">
           ${KPI_CARD_EDIT_PENCIL_HTML}
           ${kpiCardHeadHtml(kpi, "sideincome", nameHtml)}
-          <div class="dream-kpi-card-target-num">${formatKpiCardHeroHtml(lowerBetter, heroStr, heroUnit, heroPrefix)}</div>
+          <div class="dream-kpi-card-target-num${heroStreakAsideHtml ? " dream-kpi-card-target-num--habit-unit" : ""}">${formatKpiCardHeroHtml(lowerBetter, heroStr, heroUnit, heroPrefix)}${heroStreakAsideHtml || ""}</div>
           ${progressHtml}
         </div>
       `;
@@ -1680,7 +1663,7 @@ export function render() {
             </div>
             <div class="dream-kpi-field sideincome-target-amount-field" data-legacy="time-add-task-field"${path.trackTargetAmount ? "" : " hidden"}>
               <label>목표 부수입 (원)</label>
-              <input type="text" name="targetAmount" value="${escapeHtml(path.targetAmount || "")}" placeholder="예) 1000000" inputmode="numeric" />
+              <input type="text" name="targetAmount" value="${escapeHtml(formatIntegerWithCommas(path.targetAmount || ""))}" placeholder="예) 10,000" inputmode="numeric" />
             </div>
             <div class="dream-kpi-delete-wrap">
               <button type="button" class="dream-kpi-delete-btn" data-action="delete">부수입 경로 삭제</button>
@@ -1824,7 +1807,7 @@ export function render() {
             </div>
             <div class="dream-kpi-field sideincome-target-amount-field" data-legacy="time-add-task-field" hidden>
               <label>목표 부수입 (원)</label>
-              <input type="text" name="targetAmount" placeholder="예) 1000000" inputmode="numeric" />
+              <input type="text" name="targetAmount" placeholder="예) 10,000" inputmode="numeric" />
             </div>
           </div>
           <div data-legacy="time-task-log-footer">

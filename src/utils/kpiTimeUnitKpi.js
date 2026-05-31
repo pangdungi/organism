@@ -9,7 +9,21 @@ import {
   formatKpiTargetTimeRequiredDisplay,
 } from "./timeKpiSync.js";
 import { getLatestKpiLogWithExplicitValue } from "./kpiLogsSort.js";
-import { computeKpiHabitCurrentStreak, computeKpiHabitTotalDays } from "./kpiHabitStreak.js";
+import {
+  computeKpiHabitCurrentStreak,
+  computeKpiHabitTotalDays,
+  getKpiHabitTodayNumericValue,
+  kpiHasHabitUnitGoal,
+  buildKpiCardHabitStreakAsideMarkup,
+} from "./kpiHabitStreak.js";
+import { normalizeKpiLogDateYmd } from "./timeKpiSync.js";
+import { buildModalNativeDateFieldMarkup } from "./modalNativeDateField.js";
+import { setupDeadlineQuickButtons } from "./deadlineQuickButtons.js";
+
+function localTodayYmd() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 export function sanitizeKpiNumericInput(val) {
   return String(val || "").replace(/[^\d.-]/g, "");
@@ -83,6 +97,28 @@ export function kpiFormGoalAndTargetSectionHtml(kpi, escapeHtml, opts = {}) {
               <div class="dream-kpi-field dream-kpi-unit-field" data-legacy="time-add-task-field">
                 ${kpiUnitFieldHtml(kpi, escapeHtml, opts)}
               </div>
+            </div>
+            ${kpiFormManualDeadlineSectionHtml(kpi, escapeHtml, opts)}`;
+}
+
+function kpiFormManualDeadlineSectionHtml(kpi, escapeHtml, opts = {}) {
+  const mode = kpi ? resolveKpiGoalMode(kpi) : "";
+  const showInitially = mode === "manual";
+  const deadlineVal = (kpi?.targetDeadline || "").trim().slice(0, 10);
+  return `
+            <div class="dream-kpi-period-block" data-kpi-period-fields data-legacy="time-add-task-field"${showInitially ? "" : " hidden"}>
+              <div class="dream-kpi-field" data-legacy="time-add-task-field">
+                <label>마감기한</label>
+                ${buildModalNativeDateFieldMarkup({
+                  name: "targetDeadline",
+                  ariaLabel: "마감기한",
+                  value: escapeHtml(deadlineVal),
+                })}
+              </div>
+              <div class="dream-kpi-deadline-quick" role="group" aria-label="마감기한 빠른 입력">
+                <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
+                <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
+              </div>
             </div>`;
 }
 
@@ -113,7 +149,11 @@ export function kpiUnitSubchecksRowHtml(kpi = null) {
 }
 
 export function kpiUnitFieldHtml(kpi, escapeHtml, opts = {}) {
-  const unitPlaceholder = opts.unitPlaceholder ?? "예) %(완성도), 일";
+  const unitPlaceholder =
+    opts.unitPlaceholder ??
+    (resolveKpiGoalModeForForm(kpi) === "habit"
+      ? opts.habitUnitPlaceholder ?? "km"
+      : "km");
   const mode = resolveKpiGoalModeForForm(kpi);
   const useTime = mode === "time";
   const unitVal = useTime ? "시간" : kpi?.unit || "";
@@ -195,11 +235,20 @@ export function validateKpiActionForm(form, opts = {}) {
       } else if (parseKpiTargetTimeRequiredToMinutes(targetRaw) <= 0) {
         addError("targetValue", "올바른 목표 시간을 입력해 주세요.");
       }
-    } else if (mode === "manual") {
+    } else if (mode === "habit") {
       const targetValue = sanitizeNumericInput((form.targetValue?.value || "").trim());
       const unit = (form.unit?.value || "").trim();
       if (!targetValue) addError("targetValue", "목표값을 입력해 주세요.");
       if (!unit) addError("unit", "단위를 입력해 주세요.");
+    } else if (mode === "manual") {
+      const targetValue = sanitizeNumericInput((form.targetValue?.value || "").trim());
+      const unit = (form.unit?.value || "").trim();
+      const deadline = (
+        form.querySelector('input[name="targetDeadline"]')?.value || ""
+      ).trim();
+      if (!targetValue) addError("targetValue", "목표값을 입력해 주세요.");
+      if (!unit) addError("unit", "단위를 입력해 주세요.");
+      if (!deadline) addError("targetDeadline", "마감기한을 선택해 주세요.");
     }
   }
 
@@ -227,9 +276,27 @@ export function bindKpiFormValidationClear(form) {
   form.addEventListener("change", (e) => clearFieldError(e.target));
 }
 
+function readKpiPeriodFieldsFromForm(form, mode, opts = {}) {
+  if (mode !== "manual") {
+    return { targetStartDate: "", targetDeadline: "" };
+  }
+  const deadline = (
+    form.querySelector('input[name="targetDeadline"]')?.value || ""
+  )
+    .trim()
+    .slice(0, 10);
+  const existingStart = (opts.existingKpi?.targetStartDate || "")
+    .trim()
+    .slice(0, 10);
+  const targetStartDate =
+    opts.isNewKpi || !existingStart ? localTodayYmd() : existingStart;
+  return { targetStartDate, targetDeadline: deadline };
+}
+
 export function readKpiGoalModeFormFields(
   form,
   sanitizeNumericInput = sanitizeKpiNumericInput,
+  opts = {},
 ) {
   const mode =
     form.querySelector('input[name="kpiGoalMode"]:checked')?.value || "manual";
@@ -237,6 +304,7 @@ export function readKpiGoalModeFormFields(
   const needHabitTracker = mode === "habit";
   const useTaskCompletionGoal = mode === "task";
   const targetRaw = (form.targetValue?.value || "").trim();
+  const period = readKpiPeriodFieldsFromForm(form, mode, opts);
 
   if (useTimeAsUnit) {
     return {
@@ -246,16 +314,32 @@ export function readKpiGoalModeFormFields(
       unit: "시간",
       targetValue: "",
       targetTimeRequired: targetRaw,
+      targetStartDate: "",
+      targetDeadline: "",
     };
   }
-  if (needHabitTracker || useTaskCompletionGoal) {
+  if (useTaskCompletionGoal) {
     return {
       useTimeAsUnit: false,
-      needHabitTracker,
-      useTaskCompletionGoal,
+      needHabitTracker: false,
+      useTaskCompletionGoal: true,
       unit: "",
       targetValue: "",
       targetTimeRequired: "",
+      targetStartDate: "",
+      targetDeadline: "",
+    };
+  }
+  if (needHabitTracker) {
+    return {
+      useTimeAsUnit: false,
+      needHabitTracker: true,
+      useTaskCompletionGoal: false,
+      unit: (form.unit?.value || "").trim(),
+      targetValue: sanitizeNumericInput(targetRaw) || "",
+      targetTimeRequired: "",
+      targetStartDate: "",
+      targetDeadline: "",
     };
   }
   return {
@@ -265,6 +349,7 @@ export function readKpiGoalModeFormFields(
     unit: (form.unit?.value || "").trim(),
     targetValue: sanitizeNumericInput(targetRaw) || "",
     targetTimeRequired: "",
+    ...period,
   };
 }
 
@@ -274,34 +359,43 @@ export function readKpiTimeUnitFormFields(form, sanitizeNumericInput) {
 }
 
 export function applyKpiFormGoalFieldsToKpi(target, form, opts = {}) {
-  const fields = readKpiGoalModeFormFields(form, opts.sanitizeNumericInput);
+  const fields = readKpiGoalModeFormFields(form, opts.sanitizeNumericInput, {
+    isNewKpi: false,
+    existingKpi: target,
+  });
   target.useTimeAsUnit = fields.useTimeAsUnit;
   target.needHabitTracker = fields.needHabitTracker;
   target.useTaskCompletionGoal = fields.useTaskCompletionGoal;
   target.unit = fields.unit;
   target.targetValue = fields.targetValue;
   target.targetTimeRequired = fields.targetTimeRequired;
+  target.targetStartDate = fields.targetStartDate;
+  target.targetDeadline = fields.targetDeadline;
 }
 
 export function bindKpiGoalModeForm(form, kpi = null, opts = {}) {
   if (!form) return;
   const sanitizeNumericInput = opts.sanitizeNumericInput ?? sanitizeKpiNumericInput;
   const sanitizeTimeInput = opts.sanitizeTimeInput ?? sanitizeKpiTimeInput;
-  const lowerPlaceholder = opts.lowerPlaceholder ?? "예) 5";
-  const higherPlaceholder = opts.higherPlaceholder ?? "예) 99";
+  const higherPlaceholder = opts.higherPlaceholder ?? "30";
+  const habitTargetPlaceholder = opts.habitTargetPlaceholder ?? "5";
+  const habitUnitPlaceholder = opts.habitUnitPlaceholder ?? "km";
+  const unitPlaceholder = opts.unitPlaceholder ?? "km";
   const timePlaceholder = opts.timePlaceholder ?? "예) 25:00";
 
   const unitInput = form.querySelector('input[name="unit"]');
   const targetInput = form.querySelector('input[name="targetValue"]');
   const labelSpan = form.querySelector(".dream-kpi-target-label-text");
   const directionField = form.querySelector(".dream-kpi-direction-field");
-  const directionRadios = form.querySelectorAll('input[name="direction"]');
   const targetFieldsRow = form.querySelector("[data-kpi-target-fields]");
   const unitFieldWrap = form.querySelector(".dream-kpi-unit-field");
+  const periodFieldsBlock = form.querySelector("[data-kpi-period-fields]");
   const goalModeRadios = form.querySelectorAll('input[name="kpiGoalMode"]');
-  let savedUnit = (kpi && resolveKpiGoalMode(kpi) === "manual"
-    ? kpi?.unit || unitInput?.value || ""
-    : unitInput?.value || ""
+  const kpiMode = kpi ? resolveKpiGoalMode(kpi) : "";
+  let savedUnit = (
+    kpi && (kpiMode === "manual" || kpiMode === "habit")
+      ? kpi?.unit || unitInput?.value || ""
+      : unitInput?.value || ""
   ).trim();
   if (savedUnit === "시간") savedUnit = "";
 
@@ -309,28 +403,35 @@ export function bindKpiGoalModeForm(form, kpi = null, opts = {}) {
     form.querySelector('input[name="kpiGoalMode"]:checked')?.value || "manual";
 
   const syncTargetLabelForDirection = () => {
-    if (currentMode() === "time") {
+    const mode = currentMode();
+    if (mode === "time") {
       if (labelSpan) labelSpan.textContent = "목표 시간";
       if (targetInput) targetInput.placeholder = timePlaceholder;
       return;
     }
-    const lower =
-      form.querySelector('input[name="direction"]:checked')?.value === "lower";
-    if (labelSpan) labelSpan.textContent = lower ? "허용 상한" : "목표값";
-    if (targetInput) {
-      targetInput.placeholder = lower ? lowerPlaceholder : higherPlaceholder;
+    if (mode === "habit") {
+      if (labelSpan) labelSpan.textContent = "목표값";
+      if (targetInput) targetInput.placeholder = habitTargetPlaceholder;
+      if (unitInput) unitInput.placeholder = habitUnitPlaceholder;
+      return;
     }
+    if (labelSpan) labelSpan.textContent = "목표값";
+    if (targetInput) targetInput.placeholder = higherPlaceholder;
+    if (unitInput) unitInput.placeholder = unitPlaceholder;
   };
 
   const sync = () => {
     const mode = currentMode();
-    const showTargetFields = mode === "time" || mode === "manual";
+    const showTargetFields =
+      mode === "time" || mode === "manual" || mode === "habit";
+    const showUnitField = mode === "manual" || mode === "habit";
     if (targetFieldsRow) targetFieldsRow.hidden = !showTargetFields;
-    if (unitFieldWrap) unitFieldWrap.hidden = mode !== "manual";
+    if (unitFieldWrap) unitFieldWrap.hidden = !showUnitField;
+    if (periodFieldsBlock) periodFieldsBlock.hidden = mode !== "manual";
     syncTargetLabelForDirection();
 
     const onTime = mode === "time";
-    if (unitInput && mode === "manual") {
+    if (unitInput && showUnitField) {
       unitInput.readOnly = false;
       unitInput.removeAttribute("aria-readonly");
       unitInput.classList.remove("dream-kpi-input-readonly");
@@ -348,15 +449,11 @@ export function bindKpiGoalModeForm(form, kpi = null, opts = {}) {
 
     if (targetInput) {
       if (onTime) targetInput.removeAttribute("inputmode");
-      else if (mode === "manual") targetInput.setAttribute("inputmode", "numeric");
+      else if (mode === "manual" || mode === "habit") {
+        targetInput.setAttribute("inputmode", "numeric");
+      }
     }
-    if (directionField) {
-      directionField.hidden = mode !== "manual";
-    }
-    if (onTime) {
-      const higherRadio = form.querySelector('input[name="direction"][value="higher"]');
-      if (higherRadio) higherRadio.checked = true;
-    }
+    if (directionField) directionField.hidden = true;
   };
 
   goalModeRadios.forEach((r) =>
@@ -365,9 +462,14 @@ export function bindKpiGoalModeForm(form, kpi = null, opts = {}) {
       sync();
     }),
   );
-  directionRadios.forEach((r) => r.addEventListener("change", syncTargetLabelForDirection));
   sync();
   bindKpiFormValidationClear(form);
+
+  const modalRoot = form.closest(".time-task-setup-modal") || form;
+  if (!modalRoot.dataset.kpiDeadlineQuickBound) {
+    modalRoot.dataset.kpiDeadlineQuickBound = "1";
+    setupDeadlineQuickButtons(modalRoot);
+  }
 
   if (targetInput && !targetInput.dataset.kpiTargetBound) {
     targetInput.dataset.kpiTargetBound = "1";
@@ -453,6 +555,35 @@ export function computeKpiProgress(kpi, deps) {
     };
   }
 
+  if (kpi.needHabitTracker && kpiHasHabitUnitGoal(kpi)) {
+    const todayYmd =
+      deps.toDateKey?.(new Date()) ||
+      normalizeKpiLogDateYmd(new Date().toISOString().slice(0, 10));
+    const kpiLogs = (getAllKpiLogs() || []).filter(
+      (l) => String(l.kpiId || "").trim() === String(kpi.id || "").trim(),
+    );
+    const currentVal = getKpiHabitTodayNumericValue(kpi, kpiLogs, todayYmd);
+    const targetVal = parseNum(kpi.targetValue);
+    const progress =
+      targetVal > 0 ? Math.min(100, (currentVal / targetVal) * 100) : 0;
+    const isCompleted = targetVal > 0 && currentVal >= targetVal;
+    return {
+      progress,
+      timeProgress: 0,
+      currentVal,
+      targetVal,
+      targetMins: 0,
+      accumulatedMins: 0,
+      isCompleted,
+      isInProgress: !isCompleted,
+      lowerBetter: false,
+      useTimeAsUnit: false,
+      useTaskCompletionGoal: false,
+      taskCompletionEmpty: false,
+      habitUnitGoal: true,
+    };
+  }
+
   const latestLog = lower
     ? getLatestKpiLogWithExplicitValue(kpi.id, getAllKpiLogs())
     : null;
@@ -530,12 +661,36 @@ export function buildKpiCardTimePresentation(kpi, progressResult, formatNum) {
     const totalDays = Math.max(0, Number(habitTotalDays) || 0);
     const streak = Math.max(0, Number(habitStreak) || 0);
     const streakText = streak > 0 ? `연속 ${streak}일째!` : "연속 0일";
+    const hasUnitGoal = kpiHasHabitUnitGoal(kpi);
+
+    if (hasUnitGoal) {
+      const unitSuffix = kpi.unit ? " " + kpi.unit : "";
+      const currentStr = formatNum(currentVal);
+      const targetStr = kpi.targetValue
+        ? String(kpi.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+        : "—";
+      return {
+        displayProgress: progress,
+        progressText: `${currentStr} / ${targetStr}${unitSuffix} · 총 ${totalDays}일`,
+        heroStr: currentStr,
+        heroUnit: kpi.unit,
+        heroPrefix: "",
+        habitStatsHtml: "",
+        heroStreakAsideHtml: buildKpiCardHabitStreakAsideMarkup(streak),
+        cardExtraClass: " dream-kpi-card--habit dream-kpi-card--habit-unit",
+        hideProgressFill: false,
+        hideProgressBar: false,
+      };
+    }
+
     return {
       displayProgress: 0,
       progressText: streakText,
       heroStr: String(totalDays),
       heroUnit: "일",
       heroPrefix: "총 ",
+      habitStatsHtml: "",
+      heroStreakAsideHtml: "",
       cardExtraClass: " dream-kpi-card--habit",
       hideProgressFill: true,
       hideProgressBar: true,
@@ -573,6 +728,8 @@ export function buildKpiCardTimePresentation(kpi, progressResult, formatNum) {
       hideProgressFill,
       hideProgressBar: false,
       heroPrefix: "",
+      habitStatsHtml: "",
+      heroStreakAsideHtml: "",
     };
   }
 
@@ -593,5 +750,7 @@ export function buildKpiCardTimePresentation(kpi, progressResult, formatNum) {
     hideProgressFill,
     hideProgressBar: false,
     heroPrefix: "",
+    habitStatsHtml: "",
+    heroStreakAsideHtml: "",
   };
 }

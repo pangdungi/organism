@@ -447,21 +447,6 @@ export function render() {
               <label>행동 이름</label>
               <input type="text" name="name" placeholder="예) 독서하기" />
             </div>
-            <div class="dream-kpi-field dream-kpi-direction-field" data-legacy="time-add-task-field">
-              <div class="dream-kpi-direction-inline">
-                <span class="dream-kpi-direction-caption">지표 방향</span>
-                <div class="dream-kpi-direction-options">
-                  <label class="dream-kpi-direction-option">
-                    <input type="radio" name="direction" value="higher" checked />
-                    <span>높을수록 좋음</span>
-                  </label>
-                  <label class="dream-kpi-direction-option">
-                    <input type="radio" name="direction" value="lower" />
-                    <span>낮을수록 좋음</span>
-                  </label>
-                </div>
-              </div>
-            </div>
             ${kpiFormGoalAndTargetSectionHtml(null, escapeHtml, kpiTimeFormOpts)}
           </div>
           <div data-legacy="time-task-log-footer">
@@ -476,15 +461,14 @@ export function render() {
       e.preventDefault();
       const form = e.target;
       if (!validateKpiActionForm(form, { sanitizeNumericInput })) return;
-      const fields = readKpiGoalModeFormFields(form, sanitizeNumericInput);
+      const fields = readKpiGoalModeFormFields(form, sanitizeNumericInput, {
+        isNewKpi: true,
+      });
       const kpi = {
         id: nextId(),
         happinessId: activeHappinessId,
         name: (form.name.value || "").trim(),
-        direction:
-          form.querySelector('input[name="direction"]:checked')?.value === "lower"
-            ? "lower"
-            : "higher",
+        direction: "higher",
         ...fields,
       };
       const data = loadHappinessMap();
@@ -517,21 +501,6 @@ export function render() {
             <div class="dream-kpi-field" data-legacy="time-add-task-field">
               <label>행동 이름</label>
               <input type="text" name="name" value="${escapeHtml(kpi.name || "")}" placeholder="예) 독서하기" />
-            </div>
-            <div class="dream-kpi-field dream-kpi-direction-field" data-legacy="time-add-task-field">
-              <div class="dream-kpi-direction-inline">
-                <span class="dream-kpi-direction-caption">지표 방향</span>
-                <div class="dream-kpi-direction-options">
-                  <label class="dream-kpi-direction-option">
-                    <input type="radio" name="direction" value="higher" ${kpi.direction !== "lower" ? "checked" : ""} />
-                    <span>높을수록 좋음</span>
-                  </label>
-                  <label class="dream-kpi-direction-option">
-                    <input type="radio" name="direction" value="lower" ${kpi.direction === "lower" ? "checked" : ""} />
-                    <span>낮을수록 좋음</span>
-                  </label>
-                </div>
-              </div>
             </div>
             ${kpiFormGoalAndTargetSectionHtml(kpi, escapeHtml, kpiTimeFormOpts)}
             <div class="dream-kpi-delete-wrap">
@@ -573,10 +542,7 @@ export function render() {
           sanitizeNumericInput,
         });
         target.name = (form.name.value || "").trim();
-        target.direction =
-          form.querySelector('input[name="direction"]:checked')?.value === "lower"
-            ? "lower"
-            : "higher";
+        target.direction = kpi.direction === "lower" ? "lower" : "higher";
         saveHappinessMap(data, { pushServer: true });
         if (oldName !== target.name) syncKpiToTimeTask(target, "update", oldName);
       }
@@ -959,7 +925,7 @@ export function render() {
       const progressResult = getKpiProgress(kpi);
       const { lowerBetter } = progressResult;
       const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
-      const { displayProgress, progressText, heroStr, heroUnit, cardExtraClass, hideProgressFill, hideProgressBar, heroPrefix } =
+      const { displayProgress, progressText, heroStr, heroUnit, cardExtraClass, hideProgressFill, hideProgressBar, heroPrefix, heroStreakAsideHtml } =
         buildKpiCardTimePresentation(kpi, progressResult, formatNum);
       const card = document.createElement("div");
       card.className =
@@ -979,7 +945,7 @@ export function render() {
         <div class="dream-kpi-card-inner">
           ${KPI_CARD_EDIT_PENCIL_HTML}
           ${kpiCardHeadHtml(kpi, "happiness", nameHtml)}
-          <div class="dream-kpi-card-target-num">${formatKpiCardHeroHtml(lowerBetter, heroStr, heroUnit, heroPrefix)}</div>
+          <div class="dream-kpi-card-target-num${heroStreakAsideHtml ? " dream-kpi-card-target-num--habit-unit" : ""}">${formatKpiCardHeroHtml(lowerBetter, heroStr, heroUnit, heroPrefix)}${heroStreakAsideHtml || ""}</div>
           ${progressHtml}
         </div>
       `;

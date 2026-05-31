@@ -1,6 +1,6 @@
 /**
  * 건강 KPI 맵 ↔ Supabase 정규화 테이블 (health_map_*)
- * 로컬 키 kpi-health-map (healths, kpis, kpiLogs, …)
+ * 로컬 키 kpi-health-map (healths, healthGoalLogs, kpis, kpiLogs, …)
  */
 
 import { supabase } from "../supabase.js";
@@ -24,16 +24,248 @@ import {
 
 export const HEALTH_KPI_MAP_STORAGE_KEY = "kpi-health-map";
 
+/** 건강 KPI — 특정 건강 목표에 귀속하지 않는 공통 KPI (DB health_id NOT NULL 대응) */
+export const HEALTH_KPI_GLOBAL_SCOPE_ID = "__health_global__";
+
+/** 기본 건강 목표 — 삭제 불가, 수정만 가능 */
+export const DEFAULT_WEIGHT_HEALTH_GOAL_ID = "__lp_default_weight_goal__";
+export const DEFAULT_SLEEP_HEALTH_GOAL_ID = "__lp_default_sleep_goal__";
+export const DEFAULT_WATER_HEALTH_GOAL_ID = "__lp_default_water_goal__";
+
+const PROTECTED_DEFAULT_HEALTH_GOAL_IDS = new Set([
+  DEFAULT_WEIGHT_HEALTH_GOAL_ID,
+  DEFAULT_SLEEP_HEALTH_GOAL_ID,
+  DEFAULT_WATER_HEALTH_GOAL_ID,
+]);
+
+export function isProtectedDefaultHealthGoalId(id) {
+  return PROTECTED_DEFAULT_HEALTH_GOAL_IDS.has(String(id ?? ""));
+}
+
+export function createDefaultWeightHealthGoal() {
+  return {
+    id: DEFAULT_WEIGHT_HEALTH_GOAL_ID,
+    name: "몸무게 목표",
+    trackTargetValue: true,
+    targetValue: "50",
+    unit: "kg",
+  };
+}
+
+export function createDefaultSleepHealthGoal() {
+  return {
+    id: DEFAULT_SLEEP_HEALTH_GOAL_ID,
+    name: "수면 시간",
+    trackTargetValue: true,
+    targetValue: "7",
+    unit: "시간",
+  };
+}
+
+export function createDefaultWaterHealthGoal() {
+  return {
+    id: DEFAULT_WATER_HEALTH_GOAL_ID,
+    name: "수분섭취량",
+    trackTargetValue: true,
+    targetValue: "2",
+    unit: "L",
+  };
+}
+
+const DEFAULT_HEALTH_GOAL_FACTORIES = [
+  createDefaultWeightHealthGoal,
+  createDefaultSleepHealthGoal,
+  createDefaultWaterHealthGoal,
+];
+
+export function ensureDefaultHealthGoals(payload) {
+  const p = payload && typeof payload === "object" ? payload : emptyPayload();
+  const healths = Array.isArray(p.healths) ? [...p.healths] : [];
+  const existingIds = new Set(healths.map((h) => String(h.id)));
+
+  const toPrepend = [];
+  for (const create of DEFAULT_HEALTH_GOAL_FACTORIES) {
+    const def = create();
+    if (existingIds.has(def.id)) continue;
+    toPrepend.push(def);
+    existingIds.add(def.id);
+  }
+
+  const deletedRefs = normalizeDeletedRefs(p.deletedRefs);
+  const nextDeletedCategories = (deletedRefs.categories || []).filter(
+    (id) => !isProtectedDefaultHealthGoalId(id),
+  );
+  const deletedRefsChanged =
+    nextDeletedCategories.length !== (deletedRefs.categories || []).length;
+
+  if (!toPrepend.length && !deletedRefsChanged) return p;
+
+  return {
+    ...p,
+    deletedRefs: deletedRefsChanged
+      ? { ...deletedRefs, categories: nextDeletedCategories }
+      : deletedRefs,
+    healths: [...toPrepend, ...healths],
+  };
+}
+
+/** @deprecated ensureDefaultHealthGoals 사용 */
+export function ensureDefaultWeightHealthGoal(payload) {
+  return ensureDefaultHealthMapDefaults(payload);
+}
+
+/** 기본 건강 KPI — 삭제 불가, 수정 가능 */
+export const DEFAULT_AEROBIC_KPI_ID = "__lp_default_kpi_aerobic__";
+export const DEFAULT_SUPPLEMENT_KPI_ID = "__lp_default_kpi_supplement__";
+export const DEFAULT_CHECKUP_KPI_ID = "__lp_default_kpi_checkup__";
+
+const PROTECTED_DEFAULT_HEALTH_KPI_IDS = new Set([
+  DEFAULT_AEROBIC_KPI_ID,
+  DEFAULT_SUPPLEMENT_KPI_ID,
+  DEFAULT_CHECKUP_KPI_ID,
+]);
+
+export function isProtectedDefaultHealthKpiId(id) {
+  return PROTECTED_DEFAULT_HEALTH_KPI_IDS.has(String(id ?? ""));
+}
+
+function createDefaultHealthKpi(overrides) {
+  return {
+    healthId: HEALTH_KPI_GLOBAL_SCOPE_ID,
+    direction: "higher",
+    useTimeAsUnit: false,
+    needHabitTracker: false,
+    useTaskCompletionGoal: false,
+    unit: "",
+    targetValue: "",
+    targetStartDate: "",
+    targetDeadline: "",
+    targetTimeRequired: "",
+    ...overrides,
+  };
+}
+
+export function createDefaultAerobicKpi() {
+  return createDefaultHealthKpi({
+    id: DEFAULT_AEROBIC_KPI_ID,
+    name: "유산소 운동",
+    needHabitTracker: true,
+    unit: "km",
+    targetValue: "5",
+  });
+}
+
+/** 기존 로컬·서버에 직접입력으로 저장된 기본 유산소 KPI → 매일하기로 맞춤 */
+function migrateDefaultAerobicKpiToHabit(kpis) {
+  let changed = false;
+  const next = (kpis || []).map((k) => {
+    if (String(k?.id ?? "") !== DEFAULT_AEROBIC_KPI_ID) return k;
+    if (k.needHabitTracker) return k;
+    if (k.useTimeAsUnit || k.useTaskCompletionGoal) return k;
+    changed = true;
+    return {
+      ...k,
+      needHabitTracker: true,
+      useTimeAsUnit: false,
+      useTaskCompletionGoal: false,
+      unit: (k.unit || "").trim() || "km",
+      targetValue: String(k.targetValue ?? "").trim() || "5",
+      targetStartDate: "",
+      targetDeadline: "",
+      targetTimeRequired: "",
+    };
+  });
+  return { kpis: changed ? next : kpis, changed };
+}
+
+export function createDefaultSupplementKpi() {
+  return createDefaultHealthKpi({
+    id: DEFAULT_SUPPLEMENT_KPI_ID,
+    name: "영양제 섭취",
+    needHabitTracker: true,
+  });
+}
+
+export function createDefaultCheckupKpi() {
+  return createDefaultHealthKpi({
+    id: DEFAULT_CHECKUP_KPI_ID,
+    name: "건강 검진",
+    useTaskCompletionGoal: true,
+  });
+}
+
+const DEFAULT_HEALTH_KPI_FACTORIES = [
+  createDefaultAerobicKpi,
+  createDefaultSupplementKpi,
+  createDefaultCheckupKpi,
+];
+
+export function ensureDefaultHealthKpis(payload) {
+  const p = payload && typeof payload === "object" ? payload : emptyPayload();
+  const kpis = Array.isArray(p.kpis) ? [...p.kpis] : [];
+  const existingIds = new Set(kpis.map((k) => String(k.id)));
+
+  const toPrepend = [];
+  for (const create of DEFAULT_HEALTH_KPI_FACTORIES) {
+    const def = create();
+    if (existingIds.has(def.id)) continue;
+    toPrepend.push(def);
+    existingIds.add(def.id);
+  }
+
+  const deletedRefs = normalizeDeletedRefs(p.deletedRefs);
+  const nextDeletedKpis = (deletedRefs.kpis || []).filter(
+    (id) => !isProtectedDefaultHealthKpiId(id),
+  );
+  const deletedRefsChanged =
+    nextDeletedKpis.length !== (deletedRefs.kpis || []).length;
+
+  const mergedKpis = [...toPrepend, ...kpis];
+  const { kpis: migratedKpis, changed: aerobicMigrated } =
+    migrateDefaultAerobicKpiToHabit(mergedKpis);
+
+  if (!toPrepend.length && !deletedRefsChanged && !aerobicMigrated) return p;
+
+  const kpiOrder = { ...(p.kpiOrder && typeof p.kpiOrder === "object" ? p.kpiOrder : {}) };
+  if (toPrepend.length) {
+    const scopeId = HEALTH_KPI_GLOBAL_SCOPE_ID;
+    const prevOrder = Array.isArray(kpiOrder[scopeId]) ? [...kpiOrder[scopeId]] : [];
+    const newIds = toPrepend.map((k) => k.id);
+    kpiOrder[scopeId] = [...newIds, ...prevOrder.filter((id) => !newIds.includes(id))];
+  }
+
+  return {
+    ...p,
+    deletedRefs: deletedRefsChanged
+      ? { ...deletedRefs, kpis: nextDeletedKpis }
+      : deletedRefs,
+    kpis: migratedKpis,
+    kpiOrder,
+  };
+}
+
+export function ensureDefaultHealthMapDefaults(payload) {
+  return ensureDefaultHealthKpis(ensureDefaultHealthGoals(payload));
+}
+
 const LEGACY_TABLE = "health_user_kpi_map";
 
 let _warnedNoSupabaseClient = false;
 let _warnedNoAuthSession = false;
 
-const DELETED_REF_KEYS = ["categories", "kpis", "kpiLogs", "kpiTodos", "kpiDailyRepeatTodos"];
+const DELETED_REF_KEYS = [
+  "categories",
+  "healthGoalLogs",
+  "kpis",
+  "kpiLogs",
+  "kpiTodos",
+  "kpiDailyRepeatTodos",
+];
 
 function defaultDeletedRefs() {
   return {
     categories: [],
+    healthGoalLogs: [],
     kpis: [],
     kpiLogs: [],
     kpiTodos: [],
@@ -94,6 +326,7 @@ function readLocalPayloadStrictForSync() {
 function emptyPayload() {
   return {
     healths: [],
+    healthGoalLogs: [],
     kpis: [],
     kpiLogs: [],
     kpiTodos: [],
@@ -114,8 +347,9 @@ function normalizePayload(p) {
     useTaskCompletionGoal: !!k.useTaskCompletionGoal,
     direction: k.direction === "lower" ? "lower" : "higher",
   }));
-  return {
+  return ensureDefaultHealthMapDefaults({
     healths: Array.isArray(p.healths) ? p.healths : [],
+    healthGoalLogs: Array.isArray(p.healthGoalLogs) ? p.healthGoalLogs : [],
     kpis,
     kpiLogs: Array.isArray(p.kpiLogs) ? p.kpiLogs : [],
     kpiTodos: Array.isArray(p.kpiTodos) ? p.kpiTodos : [],
@@ -129,7 +363,7 @@ function normalizePayload(p) {
       typeof p.localMetaModifiedAt === "number" && Number.isFinite(p.localMetaModifiedAt)
         ? p.localMetaModifiedAt
         : undefined,
-  };
+  });
 }
 
 export function applyHealthKpiMapToLocalStorage(dbRow) {
@@ -155,6 +389,64 @@ async function getSessionUserId() {
     return null;
   }
   return user?.id ?? null;
+}
+
+function rowToHealth(c) {
+  const trackFromDb = c.track_target_value;
+  const hasLegacy =
+    !!String(c.target_value ?? "").trim() || !!String(c.unit ?? "").trim();
+  const trackTargetValue = trackFromDb != null ? !!trackFromDb : hasLegacy;
+  return {
+    id: c.id,
+    name: c.name || "",
+    trackTargetValue,
+    targetValue: trackTargetValue ? String(c.target_value ?? "").trim() : "",
+    unit: trackTargetValue ? String(c.unit ?? "").trim() : "",
+    serverUpdatedAt: serverUpdatedAtFromRow(c),
+  };
+}
+
+function rowToGoalLog(r) {
+  return {
+    id: r.id,
+    healthId: r.health_id,
+    date: r.date_display || "",
+    dateRaw: r.date_raw || "",
+    value: r.value ?? "",
+    status: r.status || "",
+    memo: r.memo || "",
+    serverUpdatedAt: serverUpdatedAtFromRow(r),
+  };
+}
+
+function healthToRow(userId, h, sortOrder) {
+  const trackTargetValue = !!h.trackTargetValue;
+  return {
+    user_id: userId,
+    id: String(h.id),
+    name: (h.name || "").trim(),
+    target_value: trackTargetValue
+      ? h.targetValue != null
+        ? String(h.targetValue)
+        : ""
+      : "",
+    unit: trackTargetValue ? String(h.unit || "").trim() : "",
+    track_target_value: trackTargetValue,
+    sort_order: sortOrder,
+  };
+}
+
+function goalLogToRow(userId, l) {
+  return {
+    user_id: userId,
+    id: String(l.id),
+    health_id: String(l.healthId),
+    date_display: (l.date || "").trim(),
+    date_raw: (l.dateRaw || "").trim(),
+    value: l.value != null ? String(l.value) : "",
+    status: (l.status || "").trim(),
+    memo: (l.memo || "").trim(),
+  };
 }
 
 function rowToKpi(r) {
@@ -224,16 +516,18 @@ function deletedRefsFromMetaRow(meta) {
   return defaultDeletedRefs();
 }
 
-function buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, meta) {
+function buildPayloadFromNormalizedRows(categories, goalLogs, kpis, logs, todos, daily, meta) {
   const dr = deletedRefsFromMetaRow(meta);
   const rawCounts = {
     categories: (categories || []).length,
+    goalLogs: (goalLogs || []).length,
     kpis: (kpis || []).length,
     logs: (logs || []).length,
     todos: (todos || []).length,
     daily: (daily || []).length,
   };
   const drCat = new Set(dr.categories);
+  const drGoalLog = new Set(dr.healthGoalLogs);
   const drKpi = new Set(dr.kpis);
   const drLog = new Set(dr.kpiLogs);
   const drTodo = new Set(dr.kpiTodos);
@@ -242,17 +536,15 @@ function buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, me
   const sortedCats = [...(categories || [])]
     .filter((c) => !drCat.has(String(c.id)))
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
-  const healths = sortedCats.map((c) => ({
-    id: c.id,
-    name: c.name || "",
-    serverUpdatedAt: serverUpdatedAtFromRow(c),
-  }));
+  const healths = sortedCats.map((c) => rowToHealth(c));
   const healthIds = new Set(healths.map((h) => String(h.id)));
 
-  const kpisFiltered = (kpis || []).filter((k) => {
-    if (drKpi.has(String(k.id))) return false;
-    return healthIds.has(String(k.health_id));
+  const goalLogsFiltered = (goalLogs || []).filter((l) => {
+    if (drGoalLog.has(String(l.id))) return false;
+    return healthIds.has(String(l.health_id));
   });
+
+  const kpisFiltered = (kpis || []).filter((k) => !drKpi.has(String(k.id)));
   const kpiIds = new Set(kpisFiltered.map((k) => String(k.id)));
 
   const logsFiltered = (logs || []).filter((l) => {
@@ -272,6 +564,7 @@ function buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, me
   const kpiTaskSync = meta?.kpi_task_sync && typeof meta.kpi_task_sync === "object" ? meta.kpi_task_sync : {};
   const out = normalizePayload({
     healths,
+    healthGoalLogs: goalLogsFiltered.map(rowToGoalLog),
     kpis: kpisFiltered.map(rowToKpi),
     kpiLogs: logsFiltered.map(rowToLog),
     kpiTodos: sortNormalizedKpiTodoRows(todosFiltered).map(rowToTodo),
@@ -283,6 +576,7 @@ function buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, me
   });
   if (kpiSyncDebugEnabled()) {
     const diff =
+      rawCounts.goalLogs !== out.healthGoalLogs.length ||
       rawCounts.kpis !== out.kpis.length ||
       rawCounts.logs !== out.kpiLogs.length ||
       rawCounts.todos !== out.kpiTodos.length ||
@@ -293,6 +587,7 @@ function buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, me
       rawDbRows: rawCounts,
       afterDeletedRefsFilter: {
         healths: out.healths.length,
+        healthGoalLogs: out.healthGoalLogs.length,
         kpis: out.kpis.length,
         kpiLogs: out.kpiLogs.length,
         kpiTodos: out.kpiTodos.length,
@@ -308,6 +603,11 @@ export function applyHealthKpiTimestampsOnSave(prev, next) {
   const out = { ...normalizePayload(next) };
   const prevN = prev ? normalizePayload(prev) : emptyPayload();
   out.healths = bumpEntityArrayLocalModified(prevN.healths, out.healths, (x) => x.id);
+  out.healthGoalLogs = bumpEntityArrayLocalModified(
+    prevN.healthGoalLogs,
+    out.healthGoalLogs,
+    (x) => x.id,
+  );
   out.kpis = bumpEntityArrayLocalModified(prevN.kpis, out.kpis, (x) => x.id);
   out.kpiLogs = bumpEntityArrayLocalModified(prevN.kpiLogs, out.kpiLogs, (x) => x.id);
   out.kpiTodos = bumpEntityArrayLocalModified(prevN.kpiTodos, out.kpiTodos, (x) => x.id);
@@ -335,12 +635,13 @@ function metaRowHasData(meta) {
   return false;
 }
 
-function hasAnyNormalizedData(categories, kpis, logs, todos, daily, meta) {
+function hasAnyNormalizedData(categories, goalLogs, kpis, logs, todos, daily, meta) {
   if (meta != null && typeof meta === "object" && meta.user_id) {
     return true;
   }
   if (
     (categories?.length || 0) +
+      (goalLogs?.length || 0) +
       (kpis?.length || 0) +
       (logs?.length || 0) +
       (todos?.length || 0) +
@@ -453,16 +754,19 @@ const UPSERT_CONFLICT_ROW = "user_id,id";
 
 async function upsertNormalizedFromPayload(userId, p) {
   if (p.healths.length) {
-    const rows = p.healths.map((h, i) => ({
-      user_id: userId,
-      id: String(h.id),
-      name: (h.name || "").trim(),
-      sort_order: i,
-    }));
+    const rows = p.healths.map((h, i) => healthToRow(userId, h, i));
     const { error } = await supabase
       .from("health_map_categories")
       .upsert(rows, { onConflict: UPSERT_CONFLICT_ROW });
     if (error) throw new Error(`health_map_categories: ${error.message}`);
+  }
+  if (p.healthGoalLogs.length) {
+    const { error } = await supabase
+      .from("health_map_goal_logs")
+      .upsert(p.healthGoalLogs.map((l) => goalLogToRow(userId, l)), {
+        onConflict: UPSERT_CONFLICT_ROW,
+      });
+    if (error) throw new Error(`health_map_goal_logs: ${error.message}`);
   }
   if (p.kpis.length) {
     const { error } = await supabase
@@ -509,6 +813,7 @@ async function upsertNormalizedFromPayload(userId, p) {
 function localPayloadHasAnythingToPersist(p) {
   return (
     p.healths.length > 0 ||
+    p.healthGoalLogs.length > 0 ||
     p.kpis.length > 0 ||
     p.kpiLogs.length > 0 ||
     p.kpiTodos.length > 0 ||
@@ -519,28 +824,44 @@ function localPayloadHasAnythingToPersist(p) {
 
 async function fetchHealthMapPayloadFromSupabase(userId) {
   if (!supabase || !userId) return { ok: false };
-  const [catRes, kpiRes, logRes, todoRes, dailyRes, metaRes] = await Promise.all([
+  const [catRes, goalLogRes, kpiRes, logRes, todoRes, dailyRes, metaRes] = await Promise.all([
     supabase.from("health_map_categories").select("*").eq("user_id", userId),
+    supabase.from("health_map_goal_logs").select("*").eq("user_id", userId),
     supabase.from("health_map_kpis").select("*").eq("user_id", userId),
     supabase.from("health_map_kpi_logs").select("*").eq("user_id", userId),
     supabase.from("health_map_kpi_todos").select("*").eq("user_id", userId),
     supabase.from("health_map_kpi_daily_todos").select("*").eq("user_id", userId),
     supabase.from("health_map_meta").select("*").eq("user_id", userId).maybeSingle(),
   ]);
-  for (const res of [catRes, kpiRes, logRes, todoRes, dailyRes]) {
+  for (const res of [catRes, goalLogRes, kpiRes, logRes, todoRes, dailyRes]) {
     if (res.error) return { ok: false };
   }
   if (metaRes.error) return { ok: false };
   const categories = catRes.data || [];
+  const goalLogs = goalLogRes.data || [];
   const kpis = kpiRes.data || [];
   const logs = logRes.data || [];
   const todos = todoRes.data || [];
   const daily = dailyRes.data || [];
   const meta = metaRes.data;
-  if (hasAnyNormalizedData(categories, kpis, logs, todos, daily, meta)) {
-    return { ok: true, payload: buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, meta) };
+  if (hasAnyNormalizedData(categories, goalLogs, kpis, logs, todos, daily, meta)) {
+    return {
+      ok: true,
+      payload: buildPayloadFromNormalizedRows(
+        categories,
+        goalLogs,
+        kpis,
+        logs,
+        todos,
+        daily,
+        meta,
+      ),
+    };
   }
-  return { ok: true, payload: normalizePayload(buildPayloadFromNormalizedRows([], [], [], [], [], null)) };
+  return {
+    ok: true,
+    payload: normalizePayload(buildPayloadFromNormalizedRows([], [], [], [], [], [], null)),
+  };
 }
 
 /** health_map_* pull·sync 직렬화 */
@@ -579,8 +900,9 @@ async function pullHealthKpiMapFromSupabaseImpl(force = false) {
     return false;
   }
 
-  const [catRes, kpiRes, logRes, todoRes, dailyRes, metaRes] = await Promise.all([
+  const [catRes, goalLogRes, kpiRes, logRes, todoRes, dailyRes, metaRes] = await Promise.all([
     supabase.from("health_map_categories").select("*").eq("user_id", userId),
+    supabase.from("health_map_goal_logs").select("*").eq("user_id", userId),
     supabase.from("health_map_kpis").select("*").eq("user_id", userId),
     supabase.from("health_map_kpi_logs").select("*").eq("user_id", userId),
     supabase.from("health_map_kpi_todos").select("*").eq("user_id", userId),
@@ -588,7 +910,7 @@ async function pullHealthKpiMapFromSupabaseImpl(force = false) {
     supabase.from("health_map_meta").select("*").eq("user_id", userId).maybeSingle(),
   ]);
 
-  for (const res of [catRes, kpiRes, logRes, todoRes, dailyRes]) {
+  for (const res of [catRes, goalLogRes, kpiRes, logRes, todoRes, dailyRes]) {
     if (res.error) {
       logKpiServerSnapshot("health", { op: "pull", ok: false, error: res.error.message, step: "table" });
       kpiSyncDebugLog("건강 pull", { ok: false, error: res.error.message });
@@ -602,6 +924,7 @@ async function pullHealthKpiMapFromSupabaseImpl(force = false) {
   }
 
   const categories = catRes.data || [];
+  const goalLogs = goalLogRes.data || [];
   const kpis = kpiRes.data || [];
   const logs = logRes.data || [];
   const todos = todoRes.data || [];
@@ -609,8 +932,16 @@ async function pullHealthKpiMapFromSupabaseImpl(force = false) {
   const meta = metaRes.data;
   const localBeforePull = readLocalPayload();
 
-  if (hasAnyNormalizedData(categories, kpis, logs, todos, daily, meta)) {
-    const serverPayload = buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, meta);
+  if (hasAnyNormalizedData(categories, goalLogs, kpis, logs, todos, daily, meta)) {
+    const serverPayload = buildPayloadFromNormalizedRows(
+      categories,
+      goalLogs,
+      kpis,
+      logs,
+      todos,
+      daily,
+      meta,
+    );
     const snapshot = normalizePayload(serverPayload);
     kpiTodoLifecyclePullCompare(
       "health",
@@ -864,6 +1195,7 @@ async function runHealthKpiMapSyncOnce() {
       mergedFromServer,
       counts: {
         healths: toSync.healths.length,
+        healthGoalLogs: toSync.healthGoalLogs.length,
         kpis: toSync.kpis.length,
         kpiLogs: toSync.kpiLogs.length,
         kpiTodos: toSync.kpiTodos.length,

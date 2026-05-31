@@ -1,18 +1,24 @@
 /**
- * 건강 페이지 - 꿈/부수입과 동일한 KPI 구조
- * 건강 추가 시 탭 형성, KPI 카드, 로그, 할일
+ * 건강 페이지 — 건강 목표와 KPI를 한 화면에 표시 (KPI는 목표별 귀속 없음)
  */
 
 import {
   HEALTH_KPI_MAP_STORAGE_KEY,
+  HEALTH_KPI_GLOBAL_SCOPE_ID,
   applyHealthKpiTimestampsOnSave,
+  ensureDefaultHealthMapDefaults,
+  DEFAULT_CHECKUP_KPI_ID,
+  DEFAULT_SUPPLEMENT_KPI_ID,
+  isProtectedDefaultHealthGoalId,
+  isProtectedDefaultHealthKpiId,
 } from "../utils/healthKpiMapSupabase.js";
 import {
-  kpiTimeTaskAdd,
+  kpiTimeTaskEnsure,
   kpiTimeTaskRemove,
   kpiTimeTaskRename,
-  getFullTaskOptions,
+  patchKpiLinkedTasksFromKpiMaps,
 } from "../utils/timeTaskOptionsModel.js";
+import { ensureHealthKpiTimeTasksForData } from "../utils/healthKpiTimeTaskSync.js";
 import {
   buildModalNativeDateFieldMarkup,
   initModalNativeDateFieldsIn,
@@ -91,15 +97,167 @@ import {
   renderKpiMapSyncLoadingIfNeeded,
   shouldShowKpiMapSyncLoading,
 } from "../utils/kpiMapSyncLoadingUi.js";
+import { resolveLpModalStackZIndex } from "../utils/lpModalStack.js";
+import {
+  buildHealthGoalChartPoints,
+  buildHealthGoalChartCaption,
+  filterHealthGoalChartPoints,
+  HEALTH_GOAL_CHART_RANGES,
+  renderHealthGoalLineChart,
+} from "../utils/healthGoalLogChart.js";
 
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
 
 const KPI_FOOTER_ADD_ICON =
   '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>';
 
+const HEALTH_KPI_LIST_SCOPE_ID = "__all__";
+
+function isHealthCheckupKpi(kpi) {
+  return String(kpi?.id ?? "") === DEFAULT_CHECKUP_KPI_ID;
+}
+
+function isHealthSupplementKpi(kpi) {
+  return String(kpi?.id ?? "") === DEFAULT_SUPPLEMENT_KPI_ID;
+}
+
+function healthKpiDailyTabLabel(kpi) {
+  if (isHealthSupplementKpi(kpi)) return "영양제 목록";
+  return "매일할일";
+}
+
+function healthKpiDailyListTitle(kpi) {
+  if (isHealthSupplementKpi(kpi)) return "영양제 목록";
+  return "매일 반복되는 할일 목록";
+}
+
+function isHealthFixedGoalModeKpi(kpi) {
+  const id = String(kpi?.id ?? "");
+  return id === DEFAULT_SUPPLEMENT_KPI_ID || id === DEFAULT_CHECKUP_KPI_ID;
+}
+
+function getOrderedAllHealthKpis(data) {
+  const kpis = data.kpis || [];
+  const orderKeys = [
+    HEALTH_KPI_GLOBAL_SCOPE_ID,
+    ...(data.healths || []).map((h) => h.id),
+  ];
+  const seen = new Set();
+  const orderedIds = [];
+  for (const key of orderKeys) {
+    for (const id of (data.kpiOrder || {})[key] || []) {
+      if (seen.has(id)) continue;
+      if (kpis.some((k) => k.id === id)) {
+        orderedIds.push(id);
+        seen.add(id);
+      }
+    }
+  }
+  for (const k of kpis) {
+    if (!seen.has(k.id)) orderedIds.push(k.id);
+  }
+  return orderedIds.map((id) => kpis.find((k) => k.id === id)).filter(Boolean);
+}
+
+function removeKpiIdFromKpiOrders(data, kpiId) {
+  const next = { ...(data.kpiOrder || {}) };
+  for (const key of Object.keys(next)) {
+    next[key] = (next[key] || []).filter((id) => id !== kpiId);
+  }
+  data.kpiOrder = next;
+}
+
+function normalizeHealthGoal(h) {
+  if (!h || typeof h !== "object") return h;
+  const hasLegacy =
+    !!String(h.targetValue ?? "").trim() || !!String(h.unit ?? "").trim();
+  const trackTargetValue =
+    h.trackTargetValue != null ? !!h.trackTargetValue : hasLegacy;
+  return {
+    ...h,
+    trackTargetValue,
+    targetValue: trackTargetValue ? String(h.targetValue ?? "").trim() : "",
+    unit: trackTargetValue ? String(h.unit ?? "").trim() : "",
+  };
+}
+
+function healthGoalTargetFieldsMarkup(health, escapeHtmlFn) {
+  const h = health ? normalizeHealthGoal(health) : null;
+  const checked = h?.trackTargetValue ? " checked" : "";
+  const hidden = h?.trackTargetValue ? "" : " hidden";
+  const targetVal = escapeHtmlFn(h?.targetValue || "");
+  const unitVal = escapeHtmlFn(h?.unit || "");
+  return `
+    <div class="dream-kpi-field dream-kpi-field-checkbox" data-legacy="time-add-task-field">
+      <label class="dream-kpi-checkbox-label">
+        목표값·단위 입력하기
+        <input type="checkbox" name="trackTargetValue"${checked} />
+      </label>
+    </div>
+    <div class="health-goal-target-fields${hidden}" data-legacy="time-add-task-field">
+      <div class="dream-kpi-field">
+        <label>목표값</label>
+        <input type="text" name="targetValue" value="${targetVal}" placeholder="예) 60" inputmode="decimal" />
+      </div>
+      <div class="dream-kpi-field">
+        <label>단위</label>
+        <input type="text" name="unit" value="${unitVal}" placeholder="예) kg" />
+      </div>
+    </div>
+  `;
+}
+
+function bindHealthGoalTargetFields(form) {
+  if (!form) return;
+  const trackCheck = form.querySelector('input[name="trackTargetValue"]');
+  const fieldsWrap = form.querySelector(".health-goal-target-fields");
+  const valueInput = form.querySelector('input[name="targetValue"]');
+  const sync = () => {
+    const on = !!trackCheck?.checked;
+    if (fieldsWrap) fieldsWrap.hidden = !on;
+    if (valueInput) {
+      if (on) valueInput.setAttribute("inputmode", "decimal");
+      else valueInput.removeAttribute("inputmode");
+    }
+  };
+  trackCheck?.addEventListener("change", sync);
+  sync();
+  setupNumericOnlyInput(valueInput);
+}
+
+function readHealthGoalTargetFields(form) {
+  const trackTargetValue = !!form.querySelector('input[name="trackTargetValue"]')?.checked;
+  if (!trackTargetValue) {
+    return { trackTargetValue: false, targetValue: "", unit: "" };
+  }
+  return {
+    trackTargetValue: true,
+    targetValue: sanitizeNumericInput(form.targetValue?.value) || "",
+    unit: (form.unit?.value || "").trim(),
+  };
+}
+
+function parseHealthGoalNum(str) {
+  const n = parseFloat(String(str || "").replace(/[^0-9.-]/g, ""));
+  return Number.isNaN(n) ? 0 : n;
+}
+
+function formatHealthGoalNum(n) {
+  if (n == null || Number.isNaN(n)) return "—";
+  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function getLatestHealthGoalLog(logs) {
+  const sorted = [...(logs || [])].sort((a, b) =>
+    (b.dateRaw || b.date || "").localeCompare(a.dateRaw || a.date || ""),
+  );
+  return sorted[0] || null;
+}
+
 function defaultDeletedRefs() {
   return {
     categories: [],
+    healthGoalLogs: [],
     kpis: [],
     kpiLogs: [],
     kpiTodos: [],
@@ -116,31 +274,26 @@ function appendDeletedRef(data, kind, id) {
   data.deletedRefs[kind] = arr;
 }
 
+function finalizeHealthMapDefaults(parsed, baseData) {
+  const prevHealthCount = (parsed?.healths || []).length;
+  const prevKpiIds = new Set((parsed?.kpis || []).map((k) => String(k.id)));
+  const data = ensureDefaultHealthMapDefaults(baseData);
+  const newKpis = (data.kpis || []).filter((k) => !prevKpiIds.has(String(k.id)));
+  const syncChanged = ensureHealthKpiTimeTasksForData(data);
+  const needsSave =
+    (data.healths || []).length > prevHealthCount ||
+    newKpis.length > 0 ||
+    syncChanged;
+  if (needsSave) {
+    saveHealthMap(data, { pushServer: true });
+  }
+  return data;
+}
+
 function loadHealthMap() {
-  try {
-    const raw = readKpiMapScopedStorageRaw(HEALTH_KPI_MAP_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      const kpis = (parsed.kpis || []).map((k) => ({
-        ...k,
-        needHabitTracker: !!k.needHabitTracker,
-        useTimeAsUnit: !!k.useTimeAsUnit,
-        direction: k.direction === "lower" ? "lower" : "higher",
-      }));
-      return {
-        healths: parsed.healths || [],
-        kpis,
-        kpiLogs: parsed.kpiLogs || [],
-        kpiTodos: parsed.kpiTodos || [],
-        kpiDailyRepeatTodos: parsed.kpiDailyRepeatTodos || [],
-        kpiOrder: parsed.kpiOrder || {},
-        kpiTaskSync: parsed.kpiTaskSync || {},
-        deletedRefs: parsed.deletedRefs && typeof parsed.deletedRefs === "object" ? parsed.deletedRefs : defaultDeletedRefs(),
-      };
-    }
-  } catch (_) {}
-  return {
+  const empty = {
     healths: [],
+    healthGoalLogs: [],
     kpis: [],
     kpiLogs: [],
     kpiTodos: [],
@@ -149,10 +302,34 @@ function loadHealthMap() {
     kpiTaskSync: {},
     deletedRefs: defaultDeletedRefs(),
   };
-}
-
-function getTaskName(o) {
-  return typeof o === "string" ? o : (o?.name || "");
+  try {
+    const raw = readKpiMapScopedStorageRaw(HEALTH_KPI_MAP_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      const kpis = (parsed.kpis || []).map((k) => ({
+        ...k,
+        needHabitTracker: !!k.needHabitTracker,
+        useTimeAsUnit: !!k.useTimeAsUnit,
+        useTaskCompletionGoal: !!k.useTaskCompletionGoal,
+        direction: k.direction === "lower" ? "lower" : "higher",
+      }));
+      return finalizeHealthMapDefaults(parsed, {
+        healths: (parsed.healths || []).map(normalizeHealthGoal),
+        healthGoalLogs: parsed.healthGoalLogs || [],
+        kpis,
+        kpiLogs: parsed.kpiLogs || [],
+        kpiTodos: parsed.kpiTodos || [],
+        kpiDailyRepeatTodos: parsed.kpiDailyRepeatTodos || [],
+        kpiOrder: parsed.kpiOrder || {},
+        kpiTaskSync: parsed.kpiTaskSync || {},
+        deletedRefs:
+          parsed.deletedRefs && typeof parsed.deletedRefs === "object"
+            ? parsed.deletedRefs
+            : defaultDeletedRefs(),
+      });
+    }
+  } catch (_) {}
+  return finalizeHealthMapDefaults(null, empty);
 }
 
 function syncKpiToTimeTask(kpi, action, oldName) {
@@ -161,11 +338,9 @@ function syncKpiToTimeTask(kpi, action, oldName) {
   if (action === "add") {
     const name = (kpi.name || "").trim();
     if (!name) return;
-    const opts = getFullTaskOptions();
-    if (opts.some((o) => getTaskName(o) === name)) return;
     data.kpiTaskSync[kpi.id] = name;
     saveHealthMap(data);
-    kpiTimeTaskAdd(kpi, "health");
+    kpiTimeTaskEnsure(kpi, "health");
   } else if (action === "remove") {
     const syncName = (data.kpiTaskSync[kpi.id] || kpi.name || "").trim();
     if (syncName) {
@@ -307,10 +482,9 @@ export function render() {
   historyWrap.hidden = true;
   el.appendChild(historyWrap);
 
-  let activeHealthId = null;
   let selectedKpiId = null;
   let kpiFilter = "all";
-  let healthViewScreen = "goals"; // "goals" | "kpis" | "kpiDetail"
+  let healthViewScreen = "main"; // "main" | "kpiDetail"
   let kpiGridScrollPrevFilter = null;
   let kpiGridScrollPrevScopeId = null;
   let healthAddModalJustClosed = false;
@@ -323,14 +497,28 @@ export function render() {
     foreignKey: "healthId",
   });
   kpiFilter = _healthRestored.kpiFilter;
-  /* 건강 메뉴 진입은 항상 목표 목록 — KPI 화면은 목표 클릭 후에만 */
-  healthViewScreen = "goals";
-  activeHealthId = null;
-  selectedKpiId = null;
+  const _sessScreen = _healthUiSession?.healthViewScreen;
+  const _sessKpiId =
+    _healthUiSession?.selectedKpiId != null
+      ? String(_healthUiSession.selectedKpiId)
+      : null;
+  const _sessKpiExists =
+    !!_sessKpiId &&
+    (_healthInitData.kpis || []).some((k) => String(k.id) === _sessKpiId);
+  if (
+    (_sessScreen === "kpiDetail" || _sessScreen === "kpis") &&
+    _sessKpiExists
+  ) {
+    healthViewScreen = "kpiDetail";
+    selectedKpiId = _sessKpiId;
+  } else {
+    healthViewScreen = "main";
+    selectedKpiId = null;
+  }
 
   function persistKpiUiState() {
     writeKpiUiSession(KPI_UI_SESSION_KEYS.health, {
-      tabId: activeHealthId,
+      tabId: null,
       selectedKpiId,
       kpiFilter,
       healthViewScreen,
@@ -342,11 +530,8 @@ export function render() {
     const footerBack = document.querySelector("[data-lp-app-footer-back]");
     if (!footerBack) return;
     if (healthViewScreen === "kpiDetail") {
-      footerBack.title = "KPI 목록으로";
-      footerBack.setAttribute("aria-label", "KPI 목록으로");
-    } else if (healthViewScreen === "kpis") {
-      footerBack.title = "건강 목표 목록으로";
-      footerBack.setAttribute("aria-label", "건강 목표 목록으로");
+      footerBack.title = "건강 목록으로";
+      footerBack.setAttribute("aria-label", "건강 목록으로");
     } else {
       footerBack.title = "오늘(메인)으로";
       footerBack.setAttribute("aria-label", "오늘(메인)으로");
@@ -355,39 +540,27 @@ export function render() {
 
   function syncHealthHeader() {
     const data = loadHealthMap();
-    const health = data.healths.find((h) => h.id === activeHealthId);
     if (healthViewScreen === "kpiDetail" && selectedKpiId) {
       const kpi = (data.kpis || []).find((k) => k.id === selectedKpiId);
       title.textContent = kpi?.name || "KPI";
-    } else if (healthViewScreen === "kpis" && health) {
-      title.textContent = health.name || "건강";
     } else {
       title.textContent = "건강";
     }
-    setKpiCategoryHeaderIconVisible(titleRow, healthViewScreen === "goals");
+    setKpiCategoryHeaderIconVisible(titleRow, healthViewScreen === "main");
     syncHealthFooterBackLabel();
   }
 
-  function enterKpiView(healthId) {
-    if (!healthId) return;
-    activeHealthId = healthId;
-    selectedKpiId = null;
-    healthViewScreen = "kpis";
-    syncHealthHeader();
-    updateHealthView();
-  }
-
   function enterKpiDetailView(kpiId) {
-    if (!kpiId || !activeHealthId) return;
+    if (!kpiId) return;
     selectedKpiId = kpiId;
     healthViewScreen = "kpiDetail";
     syncHealthHeader();
     updateHealthView();
   }
 
-  function exitToKpiList() {
+  function exitToHealthMain() {
     selectedKpiId = null;
-    healthViewScreen = "kpis";
+    healthViewScreen = "main";
     syncHealthHeader();
     updateHealthView();
     persistKpiUiState();
@@ -397,32 +570,22 @@ export function render() {
     if (healthViewScreen === "kpiDetail") {
       syncHealthHeader();
       renderKpiDetailView(opts);
-    } else if (healthViewScreen === "kpis") {
-      renderKpiList();
     } else {
       updateHealthView();
     }
     persistKpiUiState();
   }
 
-  function exitToHealthGoalsList() {
-    healthViewScreen = "goals";
-    activeHealthId = null;
-    selectedKpiId = null;
-    syncHealthHeader();
-    updateHealthView();
-    persistKpiUiState();
-  }
-
   const kpiTimeFormOpts = {
-    unitPlaceholder: "일",
+    unitPlaceholder: "km",
     higherPlaceholder: "30",
     lowerPlaceholder: "5",
+    habitTargetPlaceholder: "5",
+    habitUnitPlaceholder: "km",
     timePlaceholder: "예) 25:00",
   };
 
   function showKpiModal() {
-    if (!activeHealthId) return;
     const modal = document.createElement("div");
     modal.className = "time-task-setup-modal";
     modal.innerHTML = `
@@ -438,21 +601,6 @@ export function render() {
               <label>행동 이름</label>
               <input type="text" name="name" placeholder="예) 30분이상의 유산소 운동하기" />
             </div>
-            <div class="dream-kpi-field dream-kpi-direction-field" data-legacy="time-add-task-field">
-              <div class="dream-kpi-direction-inline">
-                <span class="dream-kpi-direction-caption">지표 방향</span>
-                <div class="dream-kpi-direction-options">
-                  <label class="dream-kpi-direction-option">
-                    <input type="radio" name="direction" value="higher" checked />
-                    <span>높을수록 좋음</span>
-                  </label>
-                  <label class="dream-kpi-direction-option">
-                    <input type="radio" name="direction" value="lower" />
-                    <span>낮을수록 좋음</span>
-                  </label>
-                </div>
-              </div>
-            </div>
             ${kpiFormGoalAndTargetSectionHtml(null, escapeHtml, kpiTimeFormOpts)}
           </div>
           <div data-legacy="time-task-log-footer">
@@ -467,23 +615,24 @@ export function render() {
       e.preventDefault();
       const form = e.target;
       if (!validateKpiActionForm(form, { sanitizeNumericInput })) return;
-      const fields = readKpiGoalModeFormFields(form, sanitizeNumericInput);
+      const fields = readKpiGoalModeFormFields(form, sanitizeNumericInput, {
+        isNewKpi: true,
+      });
       const kpi = {
         id: nextId(),
-        healthId: activeHealthId,
+        healthId: HEALTH_KPI_GLOBAL_SCOPE_ID,
         name: (form.name.value || "").trim(),
-        direction:
-          form.querySelector('input[name="direction"]:checked')?.value === "lower"
-            ? "lower"
-            : "higher",
+        direction: "higher",
         ...fields,
       };
       const data = loadHealthMap();
       data.kpis = data.kpis || [];
-      const existingOrder = (data.kpiOrder || {})[activeHealthId] || data.kpis.filter((k) => k.healthId === activeHealthId).map((k) => k.id);
+      const existingOrder =
+        (data.kpiOrder || {})[HEALTH_KPI_GLOBAL_SCOPE_ID] ||
+        getOrderedAllHealthKpis(data).map((k) => k.id);
       data.kpis.push(kpi);
       data.kpiOrder = data.kpiOrder || {};
-      data.kpiOrder[activeHealthId] = [...existingOrder, kpi.id];
+      data.kpiOrder[HEALTH_KPI_GLOBAL_SCOPE_ID] = [...existingOrder, kpi.id];
       saveHealthMap(data, { pushServer: true });
       syncKpiToTimeTask(kpi, "add");
       close();
@@ -494,6 +643,8 @@ export function render() {
   }
 
   function showKpiEditModal(kpi) {
+    const canDeleteKpi = !isProtectedDefaultHealthKpiId(kpi.id);
+    const nameOnlyEdit = isHealthFixedGoalModeKpi(kpi);
     const modal = document.createElement("div");
     modal.className = "time-task-setup-modal";
     modal.innerHTML = `
@@ -509,26 +660,19 @@ export function render() {
               <label>행동 이름</label>
               <input type="text" name="name" value="${escapeHtml(kpi.name || "")}" placeholder="예) 30분이상의 유산소 운동하기" />
             </div>
-            <div class="dream-kpi-field dream-kpi-direction-field" data-legacy="time-add-task-field">
-              <div class="dream-kpi-direction-inline">
-                <span class="dream-kpi-direction-caption">지표 방향</span>
-                <div class="dream-kpi-direction-options">
-                  <label class="dream-kpi-direction-option">
-                    <input type="radio" name="direction" value="higher" ${kpi.direction !== "lower" ? "checked" : ""} />
-                    <span>높을수록 좋음</span>
-                  </label>
-                  <label class="dream-kpi-direction-option">
-                    <input type="radio" name="direction" value="lower" ${kpi.direction === "lower" ? "checked" : ""} />
-                    <span>낮을수록 좋음</span>
-                  </label>
-                </div>
-              </div>
-            </div>
-            ${kpiFormGoalAndTargetSectionHtml(kpi, escapeHtml, kpiTimeFormOpts)}
-            <div class="dream-kpi-delete-wrap">
+            ${
+              nameOnlyEdit
+                ? ""
+                : kpiFormGoalAndTargetSectionHtml(kpi, escapeHtml, kpiTimeFormOpts)
+            }
+            ${
+              canDeleteKpi
+                ? `<div class="dream-kpi-delete-wrap">
               <button type="button" class="dream-kpi-delete-btn">이 행동 삭제하기</button>
               <p class="dream-kpi-delete-note">삭제 시 복구 불가</p>
-            </div>
+            </div>`
+                : ""
+            }
           </div>
           <div data-legacy="time-task-log-footer">
             <button type="submit" data-legacy="time-task-log-submit">수정</button>
@@ -538,7 +682,7 @@ export function render() {
     `;
     const close = () => modal.remove();
     modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
-    modal.querySelector(".dream-kpi-delete-btn").addEventListener("click", () => {
+    modal.querySelector(".dream-kpi-delete-btn")?.addEventListener("click", () => {
       syncKpiToTimeTask(kpi, "remove");
       const data = loadHealthMap();
       appendDeletedRef(data, "kpis", kpi.id);
@@ -546,36 +690,43 @@ export function render() {
       data.kpiLogs = (data.kpiLogs || []).filter((l) => l.kpiId !== kpi.id);
       data.kpiTodos = (data.kpiTodos || []).filter((t) => t.kpiId !== kpi.id);
       data.kpiDailyRepeatTodos = (data.kpiDailyRepeatTodos || []).filter((t) => t.kpiId !== kpi.id);
-      const order = (data.kpiOrder || {})[kpi.healthId] || [];
-      data.kpiOrder = { ...data.kpiOrder, [kpi.healthId]: order.filter((id) => id !== kpi.id) };
+      removeKpiIdFromKpiOrders(data, kpi.id);
       saveHealthMap(data, { pushServer: true });
       close();
-      exitToKpiList();
+      if (selectedKpiId === kpi.id) exitToHealthMain();
+      else refreshHealthAfterKpiDataChange();
     });
     modal.querySelector(".dream-kpi-form").addEventListener("submit", (e) => {
       e.preventDefault();
       const form = e.target;
-      if (!validateKpiActionForm(form, { sanitizeNumericInput })) return;
       const data = loadHealthMap();
       const target = data.kpis.find((k) => k.id === kpi.id);
-      if (target) {
-        const oldName = target.name;
+      if (!target) {
+        close();
+        return;
+      }
+      const oldName = target.name;
+      if (nameOnlyEdit) {
+        const newName = (form.name.value || "").trim();
+        if (!newName) return;
+        target.name = newName;
+      } else {
+        if (!validateKpiActionForm(form, { sanitizeNumericInput })) return;
         applyKpiFormGoalFieldsToKpi(target, form, {
           sanitizeNumericInput,
         });
         target.name = (form.name.value || "").trim();
-        target.direction =
-          form.querySelector('input[name="direction"]:checked')?.value === "lower"
-            ? "lower"
-            : "higher";
-        saveHealthMap(data, { pushServer: true });
-        if (oldName !== target.name) syncKpiToTimeTask(target, "update", oldName);
+        target.direction = kpi.direction === "lower" ? "lower" : "higher";
       }
+      saveHealthMap(data, { pushServer: true });
+      if (oldName !== target.name) syncKpiToTimeTask(target, "update", oldName);
       close();
       refreshHealthAfterKpiDataChange();
     });
     document.body.appendChild(modal);
-    bindKpiGoalModeForm(modal.querySelector(".dream-kpi-form"), kpi, kpiTimeFormOpts);
+    if (!nameOnlyEdit) {
+      bindKpiGoalModeForm(modal.querySelector(".dream-kpi-form"), kpi, kpiTimeFormOpts);
+    }
   }
 
   function toDateStr(d) {
@@ -715,8 +866,12 @@ export function render() {
 
   function healthKpiFooterAddLabel(tab, kpi) {
     const t = effectiveKpiHistoryBottomTab(tab, kpi);
-    if (t === KPI_BOTTOM_TAB_TODO) return "할 일 추가";
-    if (t === KPI_BOTTOM_TAB_DAILY) return "매일 할 일 추가";
+    if (t === KPI_BOTTOM_TAB_TODO) {
+      return isHealthCheckupKpi(kpi) ? "검진 추가" : "할 일 추가";
+    }
+    if (t === KPI_BOTTOM_TAB_DAILY) {
+      return isHealthSupplementKpi(kpi) ? "영양제 추가" : "매일 할 일 추가";
+    }
     return "로그 추가";
   }
 
@@ -749,8 +904,8 @@ export function render() {
     if (tab === KPI_BOTTOM_TAB_DAILY) {
       const text = await showKpiTodoAddModal({
         kpiName: k.name,
-        title: "매일 할 일 추가",
-        placeholder: "할 일 입력 (매일 반복)",
+        title: isHealthSupplementKpi(k) ? "영양제 추가" : "매일 할 일 추가",
+        placeholder: isHealthSupplementKpi(k) ? "영양제 입력" : "할 일 입력 (매일 반복)",
       });
       if (!text) return;
       const d2 = loadHealthMap();
@@ -773,44 +928,40 @@ export function render() {
     const slot = getAppFooterActionsSlot();
     if (!slot) return;
 
+    if (healthViewScreen === "main") {
+      const data = loadHealthMap();
+      if (
+        shouldShowKpiMapSyncLoading(
+          "health",
+          !data.healths?.length && !(data.kpis || []).length,
+        )
+      ) {
+        return;
+      }
+
+      const kpiAddBtn = document.createElement("button");
+      kpiAddBtn.type = "button";
+      kpiAddBtn.className = APP_FOOTER_ICON_BTN_CLASS;
+      kpiAddBtn.setAttribute("data-lp-dream-kpi-footer-action", "");
+      kpiAddBtn.innerHTML = KPI_FOOTER_ADD_ICON;
+      kpiAddBtn.title = "KPI 추가";
+      kpiAddBtn.setAttribute("aria-label", "KPI 추가");
+      kpiAddBtn.addEventListener("click", () => showKpiModal());
+      slot.appendChild(kpiAddBtn);
+      return;
+    }
+
+    if (healthViewScreen !== "kpiDetail" || !selectedKpiId) return;
+
     const addBtn = document.createElement("button");
     addBtn.type = "button";
     addBtn.className = APP_FOOTER_ICON_BTN_CLASS;
     addBtn.setAttribute("data-lp-dream-kpi-footer-action", "");
     addBtn.innerHTML = KPI_FOOTER_ADD_ICON;
 
-    if (healthViewScreen === "goals") {
-      const data = loadHealthMap();
-      if (shouldShowKpiMapSyncLoading("health", !data.healths?.length)) return;
-      addBtn.title = "건강 목표 추가";
-      addBtn.setAttribute("aria-label", "건강 목표 추가");
-      addBtn.addEventListener("click", () => {
-        if (healthAddModalJustClosed) return;
-        showHealthAddModal();
-      });
-      slot.appendChild(addBtn);
-      return;
-    }
-
-    if (!activeHealthId) return;
-
-    if (healthViewScreen === "kpis") {
-      addBtn.title = "KPI 추가";
-      addBtn.setAttribute("aria-label", "KPI 추가");
-      addBtn.addEventListener("click", () => {
-        if (!activeHealthId) return;
-        showKpiModal();
-      });
-      appendKpiFooterHomeButton(slot);
-      slot.appendChild(addBtn);
-      return;
-    }
-
-    if (healthViewScreen !== "kpiDetail" || !selectedKpiId) return;
-
     const data = loadHealthMap();
     const kpiNow = (data.kpis || []).find((k) => k.id === selectedKpiId);
-    if (!kpiNow || kpiNow.healthId !== activeHealthId) return;
+    if (!kpiNow) return;
 
     const tab = getKpiHistoryBottomTab("health", selectedKpiId);
     const addLabel = healthKpiFooterAddLabel(tab, kpiNow);
@@ -834,10 +985,10 @@ export function render() {
     return Number.isNaN(n) ? 0 : n;
   }
 
-  function reorderKpis(healthId, orderedKpiIds) {
+  function reorderKpis(orderedKpiIds) {
     const data = loadHealthMap();
     data.kpiOrder = data.kpiOrder || {};
-    data.kpiOrder[healthId] = orderedKpiIds;
+    data.kpiOrder[HEALTH_KPI_GLOBAL_SCOPE_ID] = orderedKpiIds;
     saveHealthMap(data);
   }
 
@@ -864,58 +1015,18 @@ export function render() {
     );
   }
 
-  function renderKpiList() {
-    syncHabitTrackerLogs();
-    const scopeId = activeHealthId;
-    const savedGridScroll = readKpiGridScrollToRestore(
-      contentWrap,
-      kpiFilter,
-      scopeId,
-      kpiGridScrollPrevFilter,
-      kpiGridScrollPrevScopeId,
-    );
-    historyWrap.remove();
-    contentWrap.innerHTML = "";
-    contentWrap.className = "dream-content-wrap";
-    if (!activeHealthId) {
-      kpiGridScrollPrevFilter = null;
-      kpiGridScrollPrevScopeId = null;
-      persistKpiUiState();
-      historyWrap.hidden = true;
-      el.appendChild(historyWrap);
-      syncAppFooterHealthKpiActions();
-      return;
-    }
-    const data = loadHealthMap();
-    let healthKpis = (data.kpis || []).filter((k) => k.healthId === activeHealthId);
-    const order = (data.kpiOrder || {})[activeHealthId];
-    if (order && order.length > 0) {
-      const orderMap = new Map(order.map((id, i) => [id, i]));
-      healthKpis = [...healthKpis].sort((a, b) => {
-        const ia = orderMap.has(a.id) ? orderMap.get(a.id) : 999;
-        const ib = orderMap.has(b.id) ? orderMap.get(b.id) : 999;
-        return ia - ib;
-      });
-    }
-    /* 진행중 = 목표 미달성, 완료 = 목표 달성 */
+  function appendHealthKpiGridSection(parentEl, data) {
+    const healthKpis = getOrderedAllHealthKpis(data);
     const completedKpis = healthKpis.filter((k) => getKpiProgress(k).isCompleted);
     const activeKpis = healthKpis.filter((k) => !getKpiProgress(k).isCompleted);
 
-    if (
-      renderKpiMapSyncLoadingIfNeeded({
-        tabId: "health",
-        container: contentWrap,
-        isEmpty: healthKpis.length === 0,
-        onLoading: () => {
-          historyWrap.hidden = true;
-          el.appendChild(historyWrap);
-          syncAppFooterHealthKpiActions();
-        },
-      })
-    ) {
-      return;
-    }
+    const kpiSection = document.createElement("section");
+    kpiSection.className = "health-main-kpi-section dream-kpi-section";
+    kpiSection.innerHTML = `<h3 class="health-main-section-title dream-kpi-section-title">KPI</h3>`;
+    parentEl.appendChild(kpiSection);
 
+    const filterBarWrap = document.createElement("div");
+    filterBarWrap.className = "health-main-kpi-filter-wrap";
     const filterBar = document.createElement("div");
     filterBar.className = "dream-kpi-filter-bar";
     filterBar.innerHTML = `
@@ -926,19 +1037,34 @@ export function render() {
     filterBar.querySelectorAll(".dream-kpi-filter-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         kpiFilter = btn.dataset.filter;
-        renderKpiList();
+        updateHealthView();
       });
     });
-    contentWrap.appendChild(filterBar);
+    filterBarWrap.appendChild(filterBar);
+    kpiSection.appendChild(filterBarWrap);
 
     const grid = document.createElement("div");
     grid.className = "dream-kpi-grid";
-    const listToShow = kpiFilter === "active" ? activeKpis : kpiFilter === "completed" ? completedKpis : healthKpis;
+    const listToShow =
+      kpiFilter === "active"
+        ? activeKpis
+        : kpiFilter === "completed"
+          ? completedKpis
+          : healthKpis;
+
+    if (!listToShow.length) {
+      const empty = document.createElement("p");
+      empty.className = "dream-goals-empty";
+      empty.textContent = "KPI를 추가해 보세요.";
+      kpiSection.appendChild(empty);
+      return;
+    }
+
     listToShow.forEach((kpi) => {
       const progressResult = getKpiProgress(kpi);
       const { lowerBetter } = progressResult;
       const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
-      const { displayProgress, progressText, heroStr, heroUnit, cardExtraClass, hideProgressFill, hideProgressBar, heroPrefix } =
+      const { displayProgress, progressText, heroStr, heroUnit, cardExtraClass, hideProgressFill, hideProgressBar, heroPrefix, heroStreakAsideHtml } =
         buildKpiCardTimePresentation(kpi, progressResult, formatNum);
       const card = document.createElement("div");
       card.className =
@@ -958,7 +1084,7 @@ export function render() {
         <div class="dream-kpi-card-inner">
           ${KPI_CARD_EDIT_PENCIL_HTML}
           ${kpiCardHeadHtml(kpi, "health", nameHtml)}
-          <div class="dream-kpi-card-target-num">${formatKpiCardHeroHtml(lowerBetter, heroStr, heroUnit, heroPrefix)}</div>
+          <div class="dream-kpi-card-target-num${heroStreakAsideHtml ? " dream-kpi-card-target-num--habit-unit" : ""}">${formatKpiCardHeroHtml(lowerBetter, heroStr, heroUnit, heroPrefix)}${heroStreakAsideHtml || ""}</div>
           ${progressHtml}
         </div>
       `;
@@ -998,8 +1124,8 @@ export function render() {
         if (fromIdx >= 0 && toIdx >= 0) {
           newOrder.splice(fromIdx, 1);
           newOrder.splice(toIdx, 0, draggedId);
-          reorderKpis(activeHealthId, newOrder);
-          renderKpiList();
+          reorderKpis(newOrder);
+          updateHealthView();
         }
       });
       grid.appendChild(card);
@@ -1008,7 +1134,144 @@ export function render() {
     grid.addEventListener("dragend", () => {
       grid.querySelectorAll(".dream-kpi-card-drag-over").forEach((c) => c.classList.remove("dream-kpi-card-drag-over"));
     });
-    contentWrap.appendChild(grid);
+    kpiSection.appendChild(grid);
+  }
+
+  function renderHealthMainView() {
+    patchKpiLinkedTasksFromKpiMaps();
+    syncHabitTrackerLogs();
+    const scopeId = HEALTH_KPI_LIST_SCOPE_ID;
+    const savedGridScroll = readKpiGridScrollToRestore(
+      contentWrap,
+      kpiFilter,
+      scopeId,
+      kpiGridScrollPrevFilter,
+      kpiGridScrollPrevScopeId,
+    );
+    historyWrap.hidden = true;
+    historyWrap.innerHTML = "";
+    contentWrap.hidden = false;
+    contentWrap.className = "dream-content-wrap health-main-view";
+    contentWrap.innerHTML = "";
+    syncAppFooterHealthKpiActions();
+
+    const data = loadHealthMap();
+    const healths = data.healths || [];
+    const kpis = data.kpis || [];
+
+    if (
+      renderKpiMapSyncLoadingIfNeeded({
+        tabId: "health",
+        container: contentWrap,
+        isEmpty: !healths.length && !kpis.length,
+        onLoading: () => syncAppFooterHealthKpiActions(),
+      })
+    ) {
+      return;
+    }
+
+    const goalsSection = document.createElement("section");
+    goalsSection.className = "health-main-goals-section dream-kpi-section";
+
+    const goalsHead = document.createElement("div");
+    goalsHead.className = "health-main-section-head";
+    const goalsTitle = document.createElement("h3");
+    goalsTitle.className = "health-main-section-title dream-kpi-section-title";
+    goalsTitle.textContent = "건강 목표";
+    const goalsAddBtn = document.createElement("button");
+    goalsAddBtn.type = "button";
+    goalsAddBtn.className = "health-main-section-add-btn";
+    goalsAddBtn.title = "건강 목표 추가";
+    goalsAddBtn.setAttribute("aria-label", "건강 목표 추가");
+    goalsAddBtn.textContent = "+";
+    goalsAddBtn.addEventListener("click", () => {
+      if (healthAddModalJustClosed) return;
+      showHealthAddModal();
+    });
+    goalsHead.appendChild(goalsTitle);
+    goalsHead.appendChild(goalsAddBtn);
+    goalsSection.appendChild(goalsHead);
+    contentWrap.appendChild(goalsSection);
+
+    const goalsList = document.createElement("div");
+    goalsList.className = "health-goals-scroll";
+    if (!healths.length) {
+      const empty = document.createElement("p");
+      empty.className = "dream-goals-empty health-goals-empty";
+      empty.textContent = "건강 목표를 추가해 보세요.";
+      goalsList.appendChild(empty);
+    }
+
+    healths.forEach((health) => {
+      const norm = normalizeHealthGoal(health);
+      const item = document.createElement("article");
+      item.className = "health-goal-tile dream-kpi-card";
+      item.setAttribute("role", "button");
+      item.tabIndex = 0;
+
+      if (norm.trackTargetValue) {
+        const goalLogs = (data.healthGoalLogs || []).filter(
+          (l) => l.healthId === health.id,
+        );
+        const latestLog = getLatestHealthGoalLog(goalLogs);
+        const latestDisp = latestLog
+          ? formatHealthGoalNum(parseHealthGoalNum(latestLog.value))
+          : "—";
+        const targetDisp = norm.targetValue
+          ? formatHealthGoalNum(parseHealthGoalNum(norm.targetValue))
+          : "—";
+        const unitTrim = (norm.unit || "").trim();
+        item.innerHTML = `
+          <div class="health-goal-tile-inner health-goal-tile-inner--plain">
+            <div class="health-goal-tile-head">
+              <h3 class="health-goal-tile-name">${escapeHtml(norm.name || "건강 이름")}</h3>
+              ${HEALTH_GOAL_EDIT_PENCIL_HTML}
+            </div>
+            <div class="health-goal-tile-hero">
+              <span class="health-goal-tile-current">${escapeHtml(latestDisp)}</span><span class="health-goal-tile-slash">/</span><span class="health-goal-tile-target">${escapeHtml(targetDisp)}</span>${unitTrim ? `<span class="health-goal-tile-unit">${escapeHtml(unitTrim)}</span>` : ""}
+            </div>
+          </div>
+        `;
+        bindKpiCardEditButton(item.querySelector(".dream-kpi-card-edit"), () =>
+          showHealthContextModal(health),
+        );
+        const openGraph = () => showHealthGoalGraphModal(health);
+        item.addEventListener("click", (e) => {
+          if (e.target.closest(".dream-kpi-card-edit")) return;
+          openGraph();
+        });
+        item.addEventListener("keydown", (e) => {
+          if (e.key !== "Enter" && e.key !== " ") return;
+          e.preventDefault();
+          openGraph();
+        });
+      } else {
+        item.innerHTML = `
+          <div class="health-goal-tile-inner health-goal-tile-inner--plain">
+            <div class="health-goal-tile-head">
+              <h3 class="health-goal-tile-name">${escapeHtml(norm.name || "건강 이름")}</h3>
+              ${HEALTH_GOAL_EDIT_PENCIL_HTML}
+            </div>
+          </div>
+        `;
+        bindKpiCardEditButton(item.querySelector(".dream-kpi-card-edit"), () =>
+          showHealthContextModal(health),
+        );
+        item.addEventListener("click", (e) => {
+          if (e.target.closest(".dream-kpi-card-edit")) return;
+          showHealthContextModal(health);
+        });
+        item.addEventListener("keydown", (e) => {
+          if (e.key !== "Enter" && e.key !== " ") return;
+          e.preventDefault();
+          showHealthContextModal(health);
+        });
+      }
+      goalsList.appendChild(item);
+    });
+    goalsSection.appendChild(goalsList);
+
+    appendHealthKpiGridSection(contentWrap, data);
 
     applyKpiGridScrollRestore(contentWrap, savedGridScroll);
     kpiGridScrollPrevFilter = kpiFilter;
@@ -1023,7 +1286,7 @@ export function render() {
     contentWrap.className = "dream-content-wrap dream-kpi-detail-wrap";
     if (!selectedKpiId) {
       contentWrap.innerHTML = "";
-      exitToKpiList();
+      exitToHealthMain();
       return;
     }
     void renderKpiHistory({ ...opts, target: contentWrap });
@@ -1044,7 +1307,7 @@ export function render() {
     const kpi = (data.kpis || []).find((k) => k.id === selectedKpiId);
     if (!kpi) {
       if (target === historyWrap) historyWrap.hidden = true;
-      exitToKpiList();
+      exitToHealthMain();
       return;
     }
     const needHabitTracker = !!kpi.needHabitTracker;
@@ -1121,7 +1384,7 @@ export function render() {
     const btnSegTodo = document.createElement("button");
     btnSegTodo.type = "button";
     btnSegTodo.className = "dream-kpi-bottom-seg-btn";
-    btnSegTodo.textContent = "할 일";
+    btnSegTodo.textContent = isHealthCheckupKpi(kpi) ? "검진 목록" : "할 일";
     btnSegTodo.setAttribute("role", "tab");
 
     let btnSegDaily = null;
@@ -1129,7 +1392,7 @@ export function render() {
       btnSegDaily = document.createElement("button");
       btnSegDaily.type = "button";
       btnSegDaily.className = "dream-kpi-bottom-seg-btn";
-      btnSegDaily.textContent = "매일할일";
+      btnSegDaily.textContent = healthKpiDailyTabLabel(kpi);
       btnSegDaily.setAttribute("role", "tab");
     }
 
@@ -1255,7 +1518,7 @@ export function render() {
 
       const dailyHeader = document.createElement("div");
       dailyHeader.className = "dream-kpi-todo-header";
-      dailyHeader.innerHTML = `<span class="dream-kpi-todo-title">매일 반복되는 할일 목록</span>`;
+      dailyHeader.innerHTML = `<span class="dream-kpi-todo-title">${escapeHtml(healthKpiDailyListTitle(kpi))}</span>`;
       panelDailySeg.appendChild(dailyHeader);
       const dailyDivider = document.createElement("div");
       dailyDivider.className = "dream-kpi-todo-divider";
@@ -1288,8 +1551,8 @@ export function render() {
           const result = await showKpiTodoEditModal({
             kpiName: kpi.name,
             initialText: todo.text || "",
-            title: "매일 할 일 수정",
-            placeholder: "매일 반복되는 할 일",
+            title: isHealthSupplementKpi(kpi) ? "영양제 수정" : "매일 할 일 수정",
+            placeholder: isHealthSupplementKpi(kpi) ? "영양제" : "매일 반복되는 할 일",
           });
           if (!result) return;
           if (result.action === "delete") {
@@ -1358,6 +1621,318 @@ export function render() {
     return div.innerHTML;
   }
 
+  function appendHealthGoalLogItems(container, norm, goalLogs, handlers = {}) {
+    container.innerHTML = "";
+    const unitTrim = (norm.unit || "").trim();
+    const unitSuffix = unitTrim ? ` ${unitTrim}` : "";
+    if (!goalLogs.length) {
+      const empty = document.createElement("p");
+      empty.className = "health-goal-logs-empty";
+      empty.textContent = "아직 기록이 없습니다.";
+      container.appendChild(empty);
+      return;
+    }
+    [...goalLogs]
+      .sort((a, b) =>
+        (b.dateRaw || b.date || "").localeCompare(a.dateRaw || a.date || ""),
+      )
+      .forEach((log) => {
+        const logItem = document.createElement("div");
+        logItem.className = "dream-kpi-path-log-item";
+        logItem.innerHTML = `
+          <div class="dream-kpi-path-log-body">
+            <span class="dream-kpi-path-log-date">${escapeHtml(log.date)}</span>
+            <span class="dream-kpi-path-log-value">${escapeHtml(log.value || "—")}${escapeHtml(unitSuffix)}</span>
+            ${log.memo ? `<div class="dream-kpi-path-log-memo">${escapeHtml(log.memo)}</div>` : ""}
+          </div>
+          <div class="dream-kpi-path-log-actions">
+            <button type="button" class="dream-kpi-path-log-edit">수정</button>
+            <button type="button" class="dream-kpi-path-log-del">삭제</button>
+          </div>
+        `;
+        logItem
+          .querySelector(".dream-kpi-path-log-edit")
+          .addEventListener("click", () => handlers.onEditLog?.(log));
+        logItem.querySelector(".dream-kpi-path-log-del").addEventListener("click", () => {
+          handlers.onDeleteLog?.(log);
+        });
+        container.appendChild(logItem);
+      });
+  }
+
+  function showHealthGoalGraphModal(health) {
+    const norm = normalizeHealthGoal(health);
+    const data = loadHealthMap();
+    const goalLogs = (data.healthGoalLogs || []).filter((l) => l.healthId === health.id);
+    const unitTrim = (norm.unit || "").trim();
+
+    const modal = document.createElement("div");
+    modal.className = "time-task-setup-modal health-goal-graph-modal";
+    modal.style.zIndex = String(resolveLpModalStackZIndex());
+
+    modal.innerHTML = `
+      <div data-legacy="time-task-setup-backdrop"></div>
+      <div data-legacy="time-task-setup-panel" class="health-goal-graph-panel">
+        <div data-legacy="time-task-setup-header">
+          <h3 data-legacy="time-task-setup-title">${escapeHtml(norm.name || "건강 목표")} 기록</h3>
+          <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
+        </div>
+        <div class="health-goal-graph-body" data-legacy="time-task-setup-body">
+          <div class="health-goal-graph-range-bar" role="tablist" aria-label="기록 기간">
+            ${HEALTH_GOAL_CHART_RANGES.map(
+              (r) =>
+                `<button type="button" class="health-goal-graph-range-btn${r.id === "week" ? " active" : ""}" data-range="${r.id}" role="tab" aria-selected="${r.id === "week"}">${r.label}</button>`,
+            ).join("")}
+          </div>
+          <div class="health-goal-graph-chart" aria-hidden="false"></div>
+        </div>
+        <div data-legacy="time-task-log-footer">
+          <button type="button" class="health-goal-graph-add-btn" data-legacy="time-task-log-submit">로그 추가</button>
+        </div>
+      </div>
+    `;
+
+    const close = () => modal.remove();
+    modal.querySelector('[data-legacy~="time-task-setup-backdrop"]').addEventListener("click", close);
+    modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
+
+    let chartRange = "week";
+
+    const refreshChart = () => {
+      const freshData = loadHealthMap();
+      const freshLogs = (freshData.healthGoalLogs || []).filter(
+        (l) => l.healthId === health.id,
+      );
+      const allPoints = buildHealthGoalChartPoints(freshLogs);
+      const points = filterHealthGoalChartPoints(allPoints, chartRange);
+      renderHealthGoalLineChart(modal.querySelector(".health-goal-graph-chart"), {
+        points,
+        targetValue: norm.trackTargetValue ? norm.targetValue : null,
+        unit: unitTrim,
+        caption: buildHealthGoalChartCaption(points),
+      });
+    };
+
+    modal.querySelectorAll(".health-goal-graph-range-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        chartRange = btn.getAttribute("data-range") || "week";
+        modal.querySelectorAll(".health-goal-graph-range-btn").forEach((b) => {
+          const on = b === btn;
+          b.classList.toggle("active", on);
+          b.setAttribute("aria-selected", on ? "true" : "false");
+        });
+        refreshChart();
+      });
+    });
+
+    refreshChart();
+
+    modal.querySelector(".health-goal-graph-add-btn")?.addEventListener("click", () => {
+      const freshNorm = normalizeHealthGoal(
+        loadHealthMap().healths.find((x) => x.id === health.id) || health,
+      );
+      showHealthGoalLogModal(freshNorm, null, {
+        onSaved: () => {
+          refreshChart();
+          updateHealthView();
+        },
+      });
+    });
+
+    document.body.appendChild(modal);
+  }
+
+  function showHealthGoalLogModal(health, editLog = null, opts = {}) {
+    const { onSaved } = opts;
+    const norm = normalizeHealthGoal(health);
+    const isEdit = !!editLog;
+    const modal = document.createElement("div");
+    modal.className = "time-task-setup-modal time-task-log-modal health-goal-log-modal";
+    modal.style.zIndex = String(resolveLpModalStackZIndex());
+    let dateVal = "";
+    let valueVal = "";
+    let memoVal = "";
+    if (editLog) {
+      if (editLog.dateRaw) {
+        dateVal = editLog.dateRaw;
+      } else if (editLog.date) {
+        const m = editLog.date.match(/(\d{4})\.?\s*(\d{1,2})\.?\s*(\d{1,2})/);
+        if (m) dateVal = `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+      }
+      valueVal = sanitizeNumericInput(editLog.value) || "";
+      memoVal = editLog.memo || "";
+    }
+    const unitLabel = (norm.unit || "").trim() || "값";
+    modal.innerHTML = `
+      <div data-legacy="time-task-setup-backdrop"></div>
+      <div data-legacy="time-task-setup-panel" class="time-task-log-panel">
+        <div data-legacy="time-task-setup-header">
+          <h3 data-legacy="time-task-setup-title">${isEdit ? "건강 목표 로그 수정" : "건강 목표 로그 추가"}</h3>
+          <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
+        </div>
+        <form class="dream-kpi-log-form">
+          <div data-legacy="time-task-setup-body">
+            <div class="dream-kpi-log-section">
+              <div class="dream-kpi-log-row">
+                <div class="dream-kpi-log-field">
+                  <label>날짜</label>
+                  ${buildModalNativeDateFieldMarkup({
+                    name: "date",
+                    ariaLabel: "날짜",
+                    value: dateVal,
+                  })}
+                </div>
+                <div class="dream-kpi-log-field">
+                  <label>건강 목표</label>
+                  <input type="text" value="${escapeHtml(norm.name || "")}" readonly class="dream-kpi-log-readonly" />
+                </div>
+              </div>
+              <div class="dream-kpi-log-row">
+                <div class="dream-kpi-log-field">
+                  <label>${escapeHtml(unitLabel)}</label>
+                  <input type="text" name="value" placeholder="숫자 입력" value="${escapeHtml(valueVal)}" inputmode="decimal" />
+                </div>
+              </div>
+              <div class="dream-kpi-log-field">
+                <label>메모 (선택)</label>
+                <textarea name="memo" placeholder="메모 등..." rows="3">${escapeHtml(memoVal)}</textarea>
+              </div>
+            </div>
+          </div>
+          <div data-legacy="time-task-log-footer" class="dream-kpi-log-modal-footer">
+            ${isEdit ? '<button type="button" class="dream-kpi-log-modal-delete-btn" data-legacy="time-task-log-delete-btn">삭제</button>' : ""}
+            <button type="submit" data-legacy="time-task-log-submit">${isEdit ? "수정 저장" : "로그 저장"}</button>
+          </div>
+        </form>
+      </div>
+    `;
+    const close = () => modal.remove();
+    modal.querySelector('[data-legacy~="time-task-setup-backdrop"]').addEventListener("click", close);
+    modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
+    modal.querySelector(".dream-kpi-log-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const dateFieldVal = form.date.value;
+      const dateStr = dateFieldVal
+        ? `${dateFieldVal.split("-")[0]}. ${dateFieldVal.split("-")[1]}. ${dateFieldVal.split("-")[2]}.`
+        : toDateStr(new Date());
+      const data = loadHealthMap();
+      if (isEdit) {
+        const idx = (data.healthGoalLogs || []).findIndex((l) => l.id === editLog.id);
+        if (idx >= 0) {
+          data.healthGoalLogs = data.healthGoalLogs || [];
+          data.healthGoalLogs[idx] = {
+            ...data.healthGoalLogs[idx],
+            date: dateStr,
+            dateRaw: dateFieldVal,
+            value: sanitizeNumericInput(form.value.value) || "",
+            memo: (form.memo.value || "").trim(),
+          };
+        }
+      } else {
+        data.healthGoalLogs = data.healthGoalLogs || [];
+        data.healthGoalLogs.push({
+          id: nextId(),
+          healthId: norm.id,
+          date: dateStr,
+          dateRaw: dateFieldVal,
+          value: sanitizeNumericInput(form.value.value) || "",
+          memo: (form.memo.value || "").trim(),
+        });
+      }
+      saveHealthMap(data, { pushServer: true });
+      close();
+      updateHealthView();
+      onSaved?.();
+    });
+    const delBtn = modal.querySelector(".dream-kpi-log-modal-delete-btn");
+    if (delBtn && isEdit) {
+      delBtn.addEventListener("click", () => {
+        const d = loadHealthMap();
+        appendDeletedRef(d, "healthGoalLogs", editLog.id);
+        d.healthGoalLogs = (d.healthGoalLogs || []).filter((l) => l.id !== editLog.id);
+        saveHealthMap(d, { pushServer: true });
+        close();
+        updateHealthView();
+        onSaved?.();
+      });
+    }
+    document.body.appendChild(modal);
+    setupNumericOnlyInput(modal.querySelector('input[name="value"]'));
+    initModalNativeDateFieldsIn(modal);
+  }
+
+  function showHealthContextModal(health) {
+    const modal = document.createElement("div");
+    modal.className = "time-task-setup-modal health-goal-edit-modal";
+
+    const getFreshHealth = () => {
+      const d = loadHealthMap();
+      return normalizeHealthGoal(d.healths.find((x) => x.id === health.id) || health);
+    };
+
+    const norm = getFreshHealth();
+    const canDelete = !isProtectedDefaultHealthGoalId(health.id);
+
+    modal.innerHTML = `
+      <div data-legacy="time-task-setup-backdrop"></div>
+      <div data-legacy="time-task-setup-panel" class="health-goal-edit-panel">
+        <div data-legacy="time-task-setup-header">
+          <h3 data-legacy="time-task-setup-title">건강 목표 수정</h3>
+          <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
+        </div>
+        <div class="health-goal-edit-modal-body" data-legacy="time-task-setup-body">
+          <form class="dream-kpi-form health-goal-edit-form" id="health-goal-edit-form">
+            <div class="dream-kpi-form-body">
+              <div class="dream-kpi-field">
+                <label>건강 이름</label>
+                <input type="text" name="name" value="${escapeHtml(norm.name || "")}" placeholder="신체적으로 건강해지기" />
+              </div>
+              ${healthGoalTargetFieldsMarkup(norm, escapeHtml)}
+            </div>
+          </form>
+        </div>
+        <div data-legacy="time-task-log-footer"${canDelete ? "" : ' class="health-goal-edit-modal-footer--save-only"'}>
+          ${canDelete ? '<button type="button" class="dream-kpi-log-modal-delete-btn" data-legacy="time-task-log-delete-btn" data-action="delete">건강 목표 삭제</button>' : ""}
+          <button type="submit" form="health-goal-edit-form" data-legacy="time-task-log-submit">저장</button>
+        </div>
+      </div>
+    `;
+
+    const close = () => modal.remove();
+    modal.querySelector('[data-legacy~="time-task-setup-backdrop"]').addEventListener("click", close);
+    modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
+
+    const goalForm = modal.querySelector(".health-goal-edit-form");
+
+    bindHealthGoalTargetFields(goalForm);
+
+    goalForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const val = (goalForm.name.value || "").trim() || "건강 이름";
+      const targetFields = readHealthGoalTargetFields(goalForm);
+      const d = loadHealthMap();
+      const target = d.healths.find((x) => x.id === health.id);
+      if (target) {
+        target.name = val;
+        target.trackTargetValue = targetFields.trackTargetValue;
+        target.targetValue = targetFields.targetValue;
+        target.unit = targetFields.unit;
+        saveHealthMap(d, { pushServer: true });
+        syncHealthHeader();
+        updateHealthView();
+      }
+      close();
+    });
+
+    modal.querySelector('[data-action="delete"]')?.addEventListener("click", () => {
+      close();
+      showHealthDeleteConfirmModal(health.id);
+    });
+
+    document.body.appendChild(modal);
+  }
+
   function showHealthAddModal() {
     const modal = document.createElement("div");
     modal.className = "time-task-setup-modal";
@@ -1374,6 +1949,7 @@ export function render() {
               <label>건강 이름</label>
               <input type="text" name="name" placeholder="신체적으로 건강해지기" />
             </div>
+            ${healthGoalTargetFieldsMarkup(null, escapeHtml)}
           </div>
           <div data-legacy="time-task-log-footer">
             <button type="button" data-legacy="time-task-log-submit" class="dream-add-confirm-btn">확인</button>
@@ -1387,15 +1963,19 @@ export function render() {
     const confirmBtn = modal.querySelector(".dream-add-confirm-btn");
     const doSubmit = () => {
       const val = (form.name.value || "").trim() || "새 건강";
+      const targetFields = readHealthGoalTargetFields(form);
       const data = loadHealthMap();
-      const health = { id: nextId(), name: val };
+      const health = {
+        id: nextId(),
+        name: val,
+        ...targetFields,
+      };
       data.healths.push(health);
       saveHealthMap(data, { pushServer: true });
       selectedKpiId = null;
       healthAddModalJustClosed = true;
       close();
-      healthViewScreen = "goals";
-      activeHealthId = null;
+      healthViewScreen = "main";
       updateHealthView();
       setTimeout(() => { healthAddModalJustClosed = false; }, 300);
     };
@@ -1405,9 +1985,11 @@ export function render() {
       doSubmit();
     });
     document.body.appendChild(modal);
+    bindHealthGoalTargetFields(form);
   }
 
   function showHealthDeleteConfirmModal(healthId) {
+    if (isProtectedDefaultHealthGoalId(healthId)) return;
     const data = loadHealthMap();
     const health = data.healths.find((h) => h.id === healthId);
     const healthName = health?.name || "이 건강";
@@ -1437,178 +2019,43 @@ export function render() {
       close();
       const d = loadHealthMap();
       appendDeletedRef(d, "categories", healthId);
-      const healthKpis = (d.kpis || []).filter((k) => k.healthId === healthId);
-      const kpiIds = healthKpis.map((k) => k.id);
-      healthKpis.forEach((k) => {
-        appendDeletedRef(d, "kpis", k.id);
-        syncKpiToTimeTask(k, "remove");
-      });
+      (d.healthGoalLogs || [])
+        .filter((l) => l.healthId === healthId)
+        .forEach((l) => appendDeletedRef(d, "healthGoalLogs", l.id));
+      d.healthGoalLogs = (d.healthGoalLogs || []).filter((l) => l.healthId !== healthId);
       d.healths = (d.healths || []).filter((x) => x.id !== healthId);
-      d.kpis = (d.kpis || []).filter((k) => k.healthId !== healthId);
-      d.kpiLogs = (d.kpiLogs || []).filter((l) => !kpiIds.includes(l.kpiId));
-      d.kpiTodos = (d.kpiTodos || []).filter((t) => !kpiIds.includes(t.kpiId));
-      d.kpiDailyRepeatTodos = (d.kpiDailyRepeatTodos || []).filter((t) => !kpiIds.includes(t.kpiId));
       delete d.kpiOrder?.[healthId];
-      d.kpiTaskSync = d.kpiTaskSync || {};
-      kpiIds.forEach((id) => delete d.kpiTaskSync[id]);
       saveHealthMap(d, { pushServer: true });
-      if (activeHealthId === healthId) {
-        activeHealthId = d.healths[0]?.id || null;
-        selectedKpiId = null;
-        if (!activeHealthId) healthViewScreen = "goals";
-      }
       syncHealthHeader();
       updateHealthView();
     });
     document.body.appendChild(modal);
   }
 
-  function showHealthContextModal(health, tabEl) {
-    const modal = document.createElement("div");
-    modal.className = "time-task-setup-modal";
-    modal.innerHTML = `
-      <div data-legacy="time-task-setup-backdrop"></div>
-      <div data-legacy="time-task-setup-panel" class="dream-path-context-panel">
-        <div data-legacy="time-task-setup-header">
-          <h3 data-legacy="time-task-setup-title">건강 수정</h3>
-          <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
-        </div>
-        <form class="dream-kpi-form dream-path-edit-form">
-          <div class="dream-kpi-form-body" data-legacy="time-task-setup-body">
-            <div class="dream-kpi-field" data-legacy="time-add-task-field">
-              <label>건강 이름</label>
-              <input type="text" name="name" value="${escapeHtml(health.name || "")}" placeholder="신체적으로 건강해지기" />
-            </div>
-            <div class="dream-kpi-delete-wrap">
-              <button type="button" class="dream-kpi-delete-btn" data-action="delete">건강 목표 삭제</button>
-              <p class="dream-kpi-delete-note">삭제 시 복구 불가</p>
-            </div>
-          </div>
-          <div data-legacy="time-task-log-footer">
-            <button type="submit" data-legacy="time-task-log-submit">수정</button>
-          </div>
-        </form>
-      </div>
-    `;
-    const close = () => modal.remove();
-    modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
-    modal.querySelector("form").addEventListener("submit", (e) => {
-      e.preventDefault();
-      const val = (e.target.name.value || "").trim() || "건강 이름";
-      const d = loadHealthMap();
-      const target = d.healths.find((x) => x.id === health.id);
-      if (target) {
-        target.name = val;
-        saveHealthMap(d, { pushServer: true });
-        syncHealthHeader();
-        updateHealthView();
-      }
-      close();
-    });
-    modal.querySelector('[data-action="delete"]').addEventListener("click", () => {
-      close();
-      showHealthDeleteConfirmModal(health.id);
-    });
-    document.body.appendChild(modal);
-  }
-
-  function renderHealthGoalsList() {
-    historyWrap.hidden = true;
-    historyWrap.innerHTML = "";
-    contentWrap.hidden = false;
-    contentWrap.className = "dream-content-wrap";
-    contentWrap.innerHTML = "";
-    syncAppFooterHealthKpiActions();
-
-    const list = document.createElement("div");
-    list.className = "dream-goals-list";
-    const data = loadHealthMap();
-
-    if (
-      renderKpiMapSyncLoadingIfNeeded({
-        tabId: "health",
-        container: contentWrap,
-        isEmpty: !data.healths.length,
-        onLoading: () => syncAppFooterHealthKpiActions(),
-      })
-    ) {
-      return;
-    }
-
-    if (!data.healths.length) {
-      const empty = document.createElement("p");
-      empty.className = "dream-goals-empty";
-      empty.textContent = "건강 목표를 추가해 보세요.";
-      list.appendChild(empty);
-    }
-
-    data.healths.forEach((health) => {
-      const kpiCount = (data.kpis || []).filter((k) => k.healthId === health.id)
-        .length;
-      const item = document.createElement("div");
-      item.className = "dream-goals-item dream-kpi-card";
-      item.innerHTML = `
-        <div class="dream-kpi-card-inner">
-          ${HEALTH_GOAL_EDIT_PENCIL_HTML}
-          <div class="dream-goals-item-name">${escapeHtml(health.name || "건강 이름")}</div>
-          <div class="dream-goals-item-meta">KPI ${kpiCount}개</div>
-        </div>
-      `;
-      bindKpiCardEditButton(item.querySelector(".dream-kpi-card-edit"), () =>
-        showHealthContextModal(health, item),
-      );
-      item.addEventListener("click", (e) => {
-        if (e.target.closest(".dream-kpi-card-edit")) return;
-        enterKpiView(health.id);
-      });
-      list.appendChild(item);
-    });
-
-    contentWrap.appendChild(list);
-    persistKpiUiState();
-  }
-
   function updateHealthView() {
     syncHealthHeader();
     historyWrap.hidden = true;
     historyWrap.innerHTML = "";
-    if (healthViewScreen === "goals") {
-      renderHealthGoalsList();
+    if (healthViewScreen === "main") {
+      renderHealthMainView();
       return;
     }
-    const data = loadHealthMap();
-    const health = data.healths.find((h) => h.id === activeHealthId);
-    if (health) {
-      if (healthViewScreen === "kpiDetail") {
-        renderKpiDetailView();
-      } else {
-        contentWrap.hidden = false;
-        contentWrap.className = "dream-content-wrap";
-        renderKpiList();
-      }
-    } else {
-      exitToHealthGoalsList();
+    if (healthViewScreen === "kpiDetail") {
+      contentWrap.hidden = false;
+      contentWrap.className = "dream-content-wrap dream-kpi-detail-wrap";
+      renderKpiDetailView();
+      return;
     }
+    healthViewScreen = "main";
+    renderHealthMainView();
     persistKpiUiState();
   }
 
   function reconcileScopeWithStoredMap(data) {
-    const healths = data?.healths || [];
     const kpis = data?.kpis || [];
-    const inKpiFlow = healthViewScreen === "kpis" || healthViewScreen === "kpiDetail";
-    if (inKpiFlow) {
-      if (!healths.some((h) => h.id === activeHealthId)) {
-        activeHealthId = healths[0]?.id || null;
-        selectedKpiId = null;
-        healthViewScreen = activeHealthId ? "kpis" : "goals";
-      }
-    } else {
-      activeHealthId = null;
-      selectedKpiId = null;
-    }
     if (selectedKpiId && !kpis.some((k) => k.id === selectedKpiId)) {
       selectedKpiId = null;
-      if (healthViewScreen === "kpiDetail") healthViewScreen = "kpis";
+      healthViewScreen = "main";
     }
   }
 
@@ -1625,20 +2072,9 @@ export function render() {
     if (nextSig === lastKpiMapPaintSig) return;
     lastKpiMapPaintSig = nextSig;
     const data = loadHealthMap();
-    const inKpiFlow = healthViewScreen === "kpis" || healthViewScreen === "kpiDetail";
-    if (inKpiFlow) {
-      if (!data.healths.some((h) => h.id === activeHealthId)) {
-        activeHealthId = data.healths[0]?.id || null;
-        selectedKpiId = null;
-        healthViewScreen = activeHealthId ? "kpis" : "goals";
-      }
-    } else {
-      activeHealthId = null;
-      selectedKpiId = null;
-    }
     if (selectedKpiId && !data.kpis.some((k) => k.id === selectedKpiId)) {
       selectedKpiId = null;
-      if (healthViewScreen === "kpiDetail") healthViewScreen = "kpis";
+      healthViewScreen = "main";
     }
     syncHealthHeader();
     updateHealthView();
@@ -1661,11 +2097,7 @@ export function render() {
   window.__lpHealthFooterBack = () => {
     if (!el.isConnected) return false;
     if (healthViewScreen === "kpiDetail") {
-      exitToKpiList();
-      return true;
-    }
-    if (healthViewScreen === "kpis") {
-      exitToHealthGoalsList();
+      exitToHealthMain();
       return true;
     }
     return false;

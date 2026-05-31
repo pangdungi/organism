@@ -1,4 +1,4 @@
-/** KPI 탭(꿈·건강·행복·부수입) — 서버 pull 대기 중 빈 화면 오해 방지 */
+/** KPI 탭(꿈·건강·행복·부수입) — pull 은 백그라운드, 화면 중앙 스플래시 UI 는 사용하지 않음 */
 
 import { renderLpUnifiedLoadingMarkup } from "./lpUnifiedLoadingUi.js";
 
@@ -29,8 +29,9 @@ export function isKpiTabPullPending(tabId) {
   return pendingTabId === tabId;
 }
 
-export function shouldShowKpiMapSyncLoading(tabId, isContentEmpty) {
-  return !!isContentEmpty && isKpiTabPullPending(tabId);
+export function shouldShowKpiMapSyncLoading(_tabId, _isContentEmpty) {
+  /* 탭·내부 화면 전환 시 본문 안 스플래시 금지 — 로컬 데이터 즉시 표시, pull 은 백그라운드 */
+  return false;
 }
 
 export function renderKpiMapSyncLoadingMarkup() {
