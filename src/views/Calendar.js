@@ -17,6 +17,7 @@ import {
   calendarDayHasIcon,
 } from "../utils/calendarDayIconsEditor.js";
 import { syncCalendarDayIconForDate, pullCalendarDayIconsFromSupabase } from "../utils/calendarDayIconsSupabase.js";
+import { readCalendarDayIconsSnapshot } from "../utils/calendarDayIconsModel.js";
 import {
   isPastCalendarTask,
 } from "../utils/calendarTaskDisplayRules.js";
@@ -433,12 +434,24 @@ function lpCalendarMeasureMonthlySpanBarHeightPx(el) {
   return h;
 }
 
+function snapshotCalendarDayIconsSemanticForCompare() {
+  try {
+    const snap = readCalendarDayIconsSnapshot();
+    return Object.keys(snap)
+      .sort()
+      .map((ymd) => `${ymd}:${snap[ymd]?.iconKey || ""}`)
+      .join("|");
+  } catch (_) {
+    return "";
+  }
+}
+
 function snapshotCalendarGridPaintSignature(viewContext = "") {
   let ledger = "";
   try {
     ledger = getScopedLocalStorageItem(TIME_LEDGER_ENTRIES_KEY) ?? "";
   } catch (_) {}
-  return `${snapshotSectionTasksSemanticForCompare()}\x1e${ledger}\x1e${viewContext}`;
+  return `${snapshotSectionTasksSemanticForCompare()}\x1e${ledger}\x1e${snapshotCalendarDayIconsSemanticForCompare()}\x1e${viewContext}`;
 }
 
 /** pull·소프트 갱신: 할일 데이터가 같으면 renderCalendar 생략 */
@@ -5854,14 +5867,23 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
 
   /** App.setActiveTab 에서 이미 pull 한 뒤 — 격자만 갱신(서브뷰 통째 remount·행 높이 재튐 방지) */
   wrap._lpCalendarSoftPullRefresh = () => {
-    const layout = contentArea.querySelector(".calendar-monthly-layout");
-    if (layout?._lpRefreshCalendarView) {
-      try {
-        layout._lpRefreshCalendarView();
-      } catch (_) {}
-      return;
-    }
-    void renderSubView(activeSubViewId, { skipPull: true });
+    void (async () => {
+      if (activeSubViewId === "monthly") {
+        try {
+          await pullCalendarDayIconsFromSupabase({
+            reason: "calendar_soft_pull_monthly",
+          });
+        } catch (_) {}
+      }
+      const layout = contentArea.querySelector(".calendar-monthly-layout");
+      if (layout?._lpRefreshCalendarView) {
+        try {
+          layout._lpRefreshCalendarView();
+        } catch (_) {}
+        return;
+      }
+      void renderSubView(activeSubViewId, { skipPull: true });
+    })();
   };
 
   return wrap;

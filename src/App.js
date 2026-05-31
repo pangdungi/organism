@@ -29,6 +29,7 @@ import {
   clearAppFooterActions,
 } from "./utils/appFooterShell.js";
 import { pullCalendarSectionTasksFromSupabase } from "./utils/todoSectionTasksSupabase.js";
+import { pullCalendarDayIconsFromSupabase } from "./utils/calendarDayIconsSupabase.js";
 import { attachHealthKpiMapSaveListener } from "./utils/healthKpiMapSupabase.js";
 import { attachHappinessKpiMapSaveListener } from "./utils/happinessKpiMapSupabase.js";
 import { attachDreamKpiMapSaveListener } from "./utils/dreamKpiMapSupabase.js";
@@ -288,13 +289,15 @@ async function pullDataForActiveTab(tabId, opts = {}) {
   void opts;
   switch (tabId) {
     case "schedulecalendar": {
-      await pullCalendarSectionTasksFromSupabase({
-        reason: `app_setActiveTab_${tabId}`,
-      });
-      /* 1일 뷰「오늘/어제 실제」: 어제~오늘 entry + 과제명(시간 탭 미방문 시에도 맞춤) */
       const yEnd = timeLedgerLocalTodayYmd();
       const yStart = timeLedgerLocalYesterdayYmd();
       await Promise.all([
+        pullCalendarSectionTasksFromSupabase({
+          reason: `app_setActiveTab_${tabId}`,
+        }),
+        pullCalendarDayIconsFromSupabase({
+          reason: `app_setActiveTab_${tabId}`,
+        }),
         pullTimeLedgerEntriesForDateRange(yStart, yEnd),
         pullTimeDailyBudgetForDateRange(yStart, yEnd),
       ]);

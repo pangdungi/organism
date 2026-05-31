@@ -30,12 +30,13 @@ export const HEALTH_KPI_GLOBAL_SCOPE_ID = "__health_global__";
 /** 기본 건강 목표 — 삭제 불가, 수정만 가능 */
 export const DEFAULT_WEIGHT_HEALTH_GOAL_ID = "__lp_default_weight_goal__";
 export const DEFAULT_SLEEP_HEALTH_GOAL_ID = "__lp_default_sleep_goal__";
-export const DEFAULT_WATER_HEALTH_GOAL_ID = "__lp_default_water_goal__";
+
+/** @deprecated 기본 목록에서 제거됨 — 기존 로컬·서버 데이터 정리용 */
+const RETIRED_DEFAULT_WATER_HEALTH_GOAL_ID = "__lp_default_water_goal__";
 
 const PROTECTED_DEFAULT_HEALTH_GOAL_IDS = new Set([
   DEFAULT_WEIGHT_HEALTH_GOAL_ID,
   DEFAULT_SLEEP_HEALTH_GOAL_ID,
-  DEFAULT_WATER_HEALTH_GOAL_ID,
 ]);
 
 export function isProtectedDefaultHealthGoalId(id) {
@@ -62,24 +63,51 @@ export function createDefaultSleepHealthGoal() {
   };
 }
 
-export function createDefaultWaterHealthGoal() {
-  return {
-    id: DEFAULT_WATER_HEALTH_GOAL_ID,
-    name: "수분섭취량",
-    trackTargetValue: true,
-    targetValue: "2",
-    unit: "L",
-  };
-}
-
 const DEFAULT_HEALTH_GOAL_FACTORIES = [
   createDefaultWeightHealthGoal,
   createDefaultSleepHealthGoal,
-  createDefaultWaterHealthGoal,
 ];
 
+/** 기본 목록에서 제거된 수분섭취량 — 로드·동기화 시 목록·로그에서 제거 */
+function stripRetiredDefaultWaterHealthGoal(p) {
+  const healths = Array.isArray(p.healths) ? p.healths : [];
+  const hasCategory = healths.some(
+    (h) => String(h?.id ?? "") === RETIRED_DEFAULT_WATER_HEALTH_GOAL_ID,
+  );
+  const logs = Array.isArray(p.healthGoalLogs) ? p.healthGoalLogs : [];
+  const logsForWater = logs.filter(
+    (l) => String(l?.healthId ?? "") === RETIRED_DEFAULT_WATER_HEALTH_GOAL_ID,
+  );
+  if (!hasCategory && !logsForWater.length) return p;
+
+  const deletedRefs = normalizeDeletedRefs(p.deletedRefs);
+  const catIds = new Set(deletedRefs.categories);
+  const logIds = new Set(deletedRefs.healthGoalLogs);
+  if (hasCategory) catIds.add(RETIRED_DEFAULT_WATER_HEALTH_GOAL_ID);
+  for (const l of logsForWater) {
+    if (l?.id != null) logIds.add(String(l.id));
+  }
+
+  return {
+    ...p,
+    healths: healths.filter(
+      (h) => String(h?.id ?? "") !== RETIRED_DEFAULT_WATER_HEALTH_GOAL_ID,
+    ),
+    healthGoalLogs: logs.filter(
+      (l) => String(l?.healthId ?? "") !== RETIRED_DEFAULT_WATER_HEALTH_GOAL_ID,
+    ),
+    deletedRefs: {
+      ...deletedRefs,
+      categories: [...catIds],
+      healthGoalLogs: [...logIds],
+    },
+  };
+}
+
 export function ensureDefaultHealthGoals(payload) {
-  const p = payload && typeof payload === "object" ? payload : emptyPayload();
+  const p = stripRetiredDefaultWaterHealthGoal(
+    payload && typeof payload === "object" ? payload : emptyPayload(),
+  );
   const healths = Array.isArray(p.healths) ? [...p.healths] : [];
   const existingIds = new Set(healths.map((h) => String(h.id)));
 
@@ -178,10 +206,23 @@ function migrateDefaultAerobicKpiToHabit(kpis) {
   return { kpis: changed ? next : kpis, changed };
 }
 
+/** 기존 로컬·서버 기본 보충제 KPI 표시명 — 영양제 → 보충제 */
+function migrateDefaultSupplementKpiLabel(kpis) {
+  let changed = false;
+  const next = (kpis || []).map((k) => {
+    if (String(k?.id ?? "") !== DEFAULT_SUPPLEMENT_KPI_ID) return k;
+    const name = String(k.name || "").trim();
+    if (name !== "영양제 섭취") return k;
+    changed = true;
+    return { ...k, name: "보충제 섭취" };
+  });
+  return { kpis: changed ? next : kpis, changed };
+}
+
 export function createDefaultSupplementKpi() {
   return createDefaultHealthKpi({
     id: DEFAULT_SUPPLEMENT_KPI_ID,
-    name: "영양제 섭취",
+    name: "보충제 섭취",
     needHabitTracker: true,
   });
 }
@@ -221,10 +262,19 @@ export function ensureDefaultHealthKpis(payload) {
     nextDeletedKpis.length !== (deletedRefs.kpis || []).length;
 
   const mergedKpis = [...toPrepend, ...kpis];
-  const { kpis: migratedKpis, changed: aerobicMigrated } =
+  const { kpis: afterAerobic, changed: aerobicMigrated } =
     migrateDefaultAerobicKpiToHabit(mergedKpis);
+  const { kpis: migratedKpis, changed: supplementLabelMigrated } =
+    migrateDefaultSupplementKpiLabel(afterAerobic);
 
-  if (!toPrepend.length && !deletedRefsChanged && !aerobicMigrated) return p;
+  if (
+    !toPrepend.length &&
+    !deletedRefsChanged &&
+    !aerobicMigrated &&
+    !supplementLabelMigrated
+  ) {
+    return p;
+  }
 
   const kpiOrder = { ...(p.kpiOrder && typeof p.kpiOrder === "object" ? p.kpiOrder : {}) };
   if (toPrepend.length) {

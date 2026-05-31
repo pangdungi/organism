@@ -6,6 +6,9 @@
 import {
   HAPPINESS_KPI_MAP_STORAGE_KEY,
   applyHappinessKpiTimestampsOnSave,
+  ensureHappinessMapDefaults,
+  HAPPINESS_KPI_GLOBAL_SCOPE_ID,
+  isProtectedDefaultHappinessKpiId,
 } from "../utils/happinessKpiMapSupabase.js";
 import {
   kpiTimeTaskAdd,
@@ -60,7 +63,6 @@ import { formatKpiCardHeroHtml } from "../utils/kpiViewModal.js";
 import { showKpiTodoEditModal } from "../utils/kpiTodoEditModal.js";
 import {
   KPI_CARD_EDIT_PENCIL_HTML,
-  HAPPINESS_GOAL_EDIT_PENCIL_HTML,
   bindKpiCardEditButton,
 } from "../utils/kpiTabNameEditIcon.js";
 import { kpiCardHeadHtml, wireKpiCardIconsIn } from "../utils/kpiCardIcon.js";
@@ -92,6 +94,25 @@ import {
 } from "../utils/kpiMapSyncLoadingUi.js";
 
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
+
+const HAPPINESS_KPI_LIST_SCOPE_ID = HAPPINESS_KPI_GLOBAL_SCOPE_ID;
+
+function happinessKpiInTabScope(kpi) {
+  const hid = String(kpi?.happinessId ?? "").trim();
+  return !hid || hid === HAPPINESS_KPI_GLOBAL_SCOPE_ID;
+}
+
+function getOrderedHappinessTabKpis(data) {
+  const all = (data?.kpis || []).filter(happinessKpiInTabScope);
+  const order = (data?.kpiOrder || {})[HAPPINESS_KPI_LIST_SCOPE_ID];
+  if (!order?.length) return all;
+  const orderMap = new Map(order.map((id, i) => [String(id), i]));
+  return [...all].sort((a, b) => {
+    const ia = orderMap.has(a.id) ? orderMap.get(a.id) : 999;
+    const ib = orderMap.has(b.id) ? orderMap.get(b.id) : 999;
+    return ia - ib;
+  });
+}
 
 const KPI_FOOTER_ADD_ICON =
   '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>';
@@ -126,7 +147,7 @@ function loadHappinessMap() {
         useTimeAsUnit: !!k.useTimeAsUnit,
         direction: k.direction === "lower" ? "lower" : "higher",
       }));
-      return {
+      return ensureHappinessMapDefaults({
         happinesses: parsed.happinesses || [],
         kpis,
         kpiLogs: parsed.kpiLogs || [],
@@ -135,10 +156,10 @@ function loadHappinessMap() {
         kpiOrder: parsed.kpiOrder || {},
         kpiTaskSync: parsed.kpiTaskSync || {},
         deletedRefs: parsed.deletedRefs && typeof parsed.deletedRefs === "object" ? parsed.deletedRefs : defaultDeletedRefs(),
-      };
+      });
     }
   } catch (_) {}
-  return {
+  return ensureHappinessMapDefaults({
     happinesses: [],
     kpis: [],
     kpiLogs: [],
@@ -147,7 +168,7 @@ function loadHappinessMap() {
     kpiOrder: {},
     kpiTaskSync: {},
     deletedRefs: defaultDeletedRefs(),
-  };
+  });
 }
 
 function getTaskName(o) {
@@ -311,33 +332,40 @@ export function render() {
   historyWrap.hidden = true;
   el.appendChild(historyWrap);
 
-  let activeHappinessId = null;
   let selectedKpiId = null;
   let kpiFilter = "all";
-  let happinessViewScreen = "goals"; // "goals" | "kpis" | "kpiDetail"
+  let happinessViewScreen = "kpis";
   let kpiGridScrollPrevFilter = null;
   let kpiGridScrollPrevScopeId = null;
-  let happinessAddModalJustClosed = false;
 
   const _happinessUiSession = readKpiUiSession(KPI_UI_SESSION_KEYS.happiness);
   const _happinessInitData = loadHappinessMap();
   const _happinessRestored = restoreKpiTabFromSession(_happinessUiSession, {
-    categoryIds: _happinessInitData.happinesses || [],
+    categoryIds: [{ id: HAPPINESS_KPI_LIST_SCOPE_ID }],
     kpis: _happinessInitData.kpis || [],
     foreignKey: "happinessId",
   });
   kpiFilter = _happinessRestored.kpiFilter;
-  /* 행복 메뉴 진입은 항상 목표 목록 — KPI 화면은 목표 클릭 후에만 */
-  happinessViewScreen = "goals";
-  activeHappinessId = null;
-  selectedKpiId = null;
+  selectedKpiId = _happinessRestored.selectedKpiId;
+  if (
+    _happinessUiSession?.happinessViewScreen === "kpiDetail" &&
+    selectedKpiId &&
+    (_happinessInitData.kpis || []).some(
+      (k) => k.id === selectedKpiId && happinessKpiInTabScope(k),
+    )
+  ) {
+    happinessViewScreen = "kpiDetail";
+  } else {
+    selectedKpiId = null;
+    happinessViewScreen = "kpis";
+  }
 
   function persistKpiUiState() {
     try {
       sessionStorage.setItem(
         KPI_UI_SESSION_KEYS.happiness,
         JSON.stringify({
-          tabId: activeHappinessId,
+          tabId: HAPPINESS_KPI_LIST_SCOPE_ID,
           selectedKpiId,
           kpiFilter,
           happinessViewScreen,
@@ -353,9 +381,6 @@ export function render() {
     if (happinessViewScreen === "kpiDetail") {
       footerBack.title = "KPI 목록으로";
       footerBack.setAttribute("aria-label", "KPI 목록으로");
-    } else if (happinessViewScreen === "kpis") {
-      footerBack.title = "행복 목표 목록으로";
-      footerBack.setAttribute("aria-label", "행복 목표 목록으로");
     } else {
       footerBack.title = "오늘(메인)으로";
       footerBack.setAttribute("aria-label", "오늘(메인)으로");
@@ -364,30 +389,18 @@ export function render() {
 
   function syncHappinessHeader() {
     const data = loadHappinessMap();
-    const happiness = data.happinesses.find((h) => h.id === activeHappinessId);
     if (happinessViewScreen === "kpiDetail" && selectedKpiId) {
       const kpi = (data.kpis || []).find((k) => k.id === selectedKpiId);
       title.textContent = kpi?.name || "KPI";
-    } else if (happinessViewScreen === "kpis" && happiness) {
-      title.textContent = happiness.name || "행복";
     } else {
       title.textContent = "행복";
     }
-    setKpiCategoryHeaderIconVisible(titleRow, happinessViewScreen === "goals");
+    setKpiCategoryHeaderIconVisible(titleRow, happinessViewScreen !== "kpiDetail");
     syncHappinessFooterBackLabel();
   }
 
-  function enterKpiView(happinessId) {
-    if (!happinessId) return;
-    activeHappinessId = happinessId;
-    selectedKpiId = null;
-    happinessViewScreen = "kpis";
-    syncHappinessHeader();
-    updateHappinessView();
-  }
-
   function enterKpiDetailView(kpiId) {
-    if (!kpiId || !activeHappinessId) return;
+    if (!kpiId) return;
     selectedKpiId = kpiId;
     happinessViewScreen = "kpiDetail";
     syncHappinessHeader();
@@ -414,15 +427,6 @@ export function render() {
     persistKpiUiState();
   }
 
-  function exitToHappinessGoalsList() {
-    happinessViewScreen = "goals";
-    activeHappinessId = null;
-    selectedKpiId = null;
-    syncHappinessHeader();
-    updateHappinessView();
-    persistKpiUiState();
-  }
-
   const kpiTimeFormOpts = {
     unitPlaceholder: "권",
     higherPlaceholder: "20",
@@ -431,7 +435,6 @@ export function render() {
   };
 
   function showKpiModal() {
-    if (!activeHappinessId) return;
     const modal = document.createElement("div");
     modal.className = "time-task-setup-modal";
     modal.innerHTML = `
@@ -466,17 +469,19 @@ export function render() {
       });
       const kpi = {
         id: nextId(),
-        happinessId: activeHappinessId,
+        happinessId: HAPPINESS_KPI_LIST_SCOPE_ID,
         name: (form.name.value || "").trim(),
         direction: "higher",
         ...fields,
       };
       const data = loadHappinessMap();
       data.kpis = data.kpis || [];
-      const existingOrder = (data.kpiOrder || {})[activeHappinessId] || data.kpis.filter((k) => k.happinessId === activeHappinessId).map((k) => k.id);
+      const existingOrder =
+        (data.kpiOrder || {})[HAPPINESS_KPI_LIST_SCOPE_ID] ||
+        getOrderedHappinessTabKpis(data).map((k) => k.id);
       data.kpis.push(kpi);
       data.kpiOrder = data.kpiOrder || {};
-      data.kpiOrder[activeHappinessId] = [...existingOrder, kpi.id];
+      data.kpiOrder[HAPPINESS_KPI_LIST_SCOPE_ID] = [...existingOrder, kpi.id];
       saveHappinessMap(data, { pushServer: true });
       syncKpiToTimeTask(kpi, "add");
       close();
@@ -487,6 +492,7 @@ export function render() {
   }
 
   function showKpiEditModal(kpi) {
+    const canDeleteKpi = !isProtectedDefaultHappinessKpiId(kpi.id);
     const modal = document.createElement("div");
     modal.className = "time-task-setup-modal";
     modal.innerHTML = `
@@ -503,10 +509,14 @@ export function render() {
               <input type="text" name="name" value="${escapeHtml(kpi.name || "")}" placeholder="예) 독서하기" />
             </div>
             ${kpiFormGoalAndTargetSectionHtml(kpi, escapeHtml, kpiTimeFormOpts)}
-            <div class="dream-kpi-delete-wrap">
+            ${
+              canDeleteKpi
+                ? `<div class="dream-kpi-delete-wrap">
               <button type="button" class="dream-kpi-delete-btn">이 행동 삭제하기</button>
               <p class="dream-kpi-delete-note">삭제 시 복구 불가</p>
-            </div>
+            </div>`
+                : ""
+            }
           </div>
           <div data-legacy="time-task-log-footer">
             <button type="submit" data-legacy="time-task-log-submit">수정</button>
@@ -516,7 +526,7 @@ export function render() {
     `;
     const close = () => modal.remove();
     modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
-    modal.querySelector(".dream-kpi-delete-btn").addEventListener("click", () => {
+    modal.querySelector(".dream-kpi-delete-btn")?.addEventListener("click", () => {
       syncKpiToTimeTask(kpi, "remove");
       const data = loadHappinessMap();
       appendDeletedRef(data, "kpis", kpi.id);
@@ -524,8 +534,11 @@ export function render() {
       data.kpiLogs = (data.kpiLogs || []).filter((l) => l.kpiId !== kpi.id);
       data.kpiTodos = (data.kpiTodos || []).filter((t) => t.kpiId !== kpi.id);
       data.kpiDailyRepeatTodos = (data.kpiDailyRepeatTodos || []).filter((t) => t.kpiId !== kpi.id);
-      const order = (data.kpiOrder || {})[kpi.happinessId] || [];
-      data.kpiOrder = { ...data.kpiOrder, [kpi.happinessId]: order.filter((id) => id !== kpi.id) };
+      const order = (data.kpiOrder || {})[HAPPINESS_KPI_LIST_SCOPE_ID] || [];
+      data.kpiOrder = {
+        ...data.kpiOrder,
+        [HAPPINESS_KPI_LIST_SCOPE_ID]: order.filter((id) => id !== kpi.id),
+      };
       saveHappinessMap(data, { pushServer: true });
       close();
       exitToKpiList();
@@ -754,26 +767,10 @@ export function render() {
     addBtn.setAttribute("data-lp-dream-kpi-footer-action", "");
     addBtn.innerHTML = KPI_FOOTER_ADD_ICON;
 
-    if (happinessViewScreen === "goals") {
-      const data = loadHappinessMap();
-      if (shouldShowKpiMapSyncLoading("happiness", !data.happinesses?.length)) return;
-      addBtn.title = "행복 목표 추가";
-      addBtn.setAttribute("aria-label", "행복 목표 추가");
-      addBtn.addEventListener("click", () => {
-        if (happinessAddModalJustClosed) return;
-        showHappinessAddModal();
-      });
-      slot.appendChild(addBtn);
-      return;
-    }
-
-    if (!activeHappinessId) return;
-
     if (happinessViewScreen === "kpis") {
       addBtn.title = "KPI 추가";
       addBtn.setAttribute("aria-label", "KPI 추가");
       addBtn.addEventListener("click", () => {
-        if (!activeHappinessId) return;
         showKpiModal();
       });
       appendKpiFooterHomeButton(slot);
@@ -785,7 +782,7 @@ export function render() {
 
     const data = loadHappinessMap();
     const kpiNow = (data.kpis || []).find((k) => k.id === selectedKpiId);
-    if (!kpiNow || kpiNow.happinessId !== activeHappinessId) return;
+    if (!kpiNow || !happinessKpiInTabScope(kpiNow)) return;
 
     const tab = getKpiHistoryBottomTab("happiness", selectedKpiId);
     const addLabel = happinessKpiFooterAddLabel(tab, kpiNow);
@@ -809,10 +806,10 @@ export function render() {
     return Number.isNaN(n) ? 0 : n;
   }
 
-  function reorderKpis(happinessId, orderedKpiIds) {
+  function reorderKpis(orderedKpiIds) {
     const data = loadHappinessMap();
     data.kpiOrder = data.kpiOrder || {};
-    data.kpiOrder[happinessId] = orderedKpiIds;
+    data.kpiOrder[HAPPINESS_KPI_LIST_SCOPE_ID] = orderedKpiIds;
     saveHappinessMap(data);
   }
 
@@ -865,7 +862,7 @@ export function render() {
 
   function renderKpiList() {
     syncHabitTrackerLogs();
-    const scopeId = activeHappinessId;
+    const scopeId = HAPPINESS_KPI_LIST_SCOPE_ID;
     const savedGridScroll = readKpiGridScrollToRestore(
       contentWrap,
       kpiFilter,
@@ -877,26 +874,8 @@ export function render() {
     contentWrap.innerHTML = "";
     contentWrap.className = "dream-content-wrap";
     hideKpiFilterStrip();
-    if (!activeHappinessId) {
-      kpiGridScrollPrevFilter = null;
-      kpiGridScrollPrevScopeId = null;
-      persistKpiUiState();
-      historyWrap.hidden = true;
-      el.appendChild(historyWrap);
-      syncAppFooterHappinessKpiActions();
-      return;
-    }
     const data = loadHappinessMap();
-    let happinessKpis = (data.kpis || []).filter((k) => k.happinessId === activeHappinessId);
-    const order = (data.kpiOrder || {})[activeHappinessId];
-    if (order && order.length > 0) {
-      const orderMap = new Map(order.map((id, i) => [id, i]));
-      happinessKpis = [...happinessKpis].sort((a, b) => {
-        const ia = orderMap.has(a.id) ? orderMap.get(a.id) : 999;
-        const ib = orderMap.has(b.id) ? orderMap.get(b.id) : 999;
-        return ia - ib;
-      });
-    }
+    const happinessKpis = getOrderedHappinessTabKpis(data);
     /* 진행중 = 목표 미달성, 완료 = 목표 달성 */
     const completedKpis = happinessKpis.filter((k) => getKpiProgress(k).isCompleted);
     const activeKpis = happinessKpis.filter((k) => !getKpiProgress(k).isCompleted);
@@ -985,7 +964,7 @@ export function render() {
         if (fromIdx >= 0 && toIdx >= 0) {
           newOrder.splice(fromIdx, 1);
           newOrder.splice(toIdx, 0, draggedId);
-          reorderKpis(activeHappinessId, newOrder);
+          reorderKpis(newOrder);
           renderKpiList();
         }
       });
@@ -1346,257 +1325,31 @@ export function render() {
     return div.innerHTML;
   }
 
-  function showHappinessAddModal() {
-    const modal = document.createElement("div");
-    modal.className = "time-task-setup-modal";
-    modal.innerHTML = `
-      <div data-legacy="time-task-setup-backdrop"></div>
-      <div data-legacy="time-task-setup-panel">
-        <div data-legacy="time-task-setup-header">
-          <h3 data-legacy="time-task-setup-title">행복 목표 추가</h3>
-          <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
-        </div>
-        <form class="dream-kpi-form">
-          <div class="dream-kpi-form-body" data-legacy="time-task-setup-body">
-            <div class="dream-kpi-field" data-legacy="time-add-task-field">
-              <label>행복 이름</label>
-              <input type="text" name="name" placeholder="성장과 기쁨 같이 누리기" />
-            </div>
-          </div>
-          <div data-legacy="time-task-log-footer">
-            <button type="button" data-legacy="time-task-log-submit" class="dream-add-confirm-btn">확인</button>
-          </div>
-        </form>
-      </div>
-    `;
-    const close = () => modal.remove();
-    modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
-    const form = modal.querySelector("form");
-    const confirmBtn = modal.querySelector(".dream-add-confirm-btn");
-    const doSubmit = () => {
-      const val = (form.name.value || "").trim() || "새 행복";
-      const data = loadHappinessMap();
-      const happiness = { id: nextId(), name: val };
-      data.happinesses.push(happiness);
-      saveHappinessMap(data, { pushServer: true });
-      selectedKpiId = null;
-      happinessAddModalJustClosed = true;
-      close();
-      happinessViewScreen = "goals";
-      activeHappinessId = null;
-      updateHappinessView();
-      setTimeout(() => { happinessAddModalJustClosed = false; }, 300);
-    };
-    confirmBtn.addEventListener("click", doSubmit);
-    form.addEventListener("submit", (e) => {
-      e.preventDefault();
-      doSubmit();
-    });
-    document.body.appendChild(modal);
-  }
-
-  function showHappinessDeleteConfirmModal(happinessId) {
-    const data = loadHappinessMap();
-    const happiness = data.happinesses.find((h) => h.id === happinessId);
-    const happinessName = happiness?.name || "이 행복";
-    const modal = document.createElement("div");
-    modal.className = "time-task-setup-modal dream-delete-confirm-modal";
-    modal.innerHTML = `
-      <div data-legacy="time-task-setup-backdrop"></div>
-      <div data-legacy="time-task-setup-panel" class="dream-delete-confirm-panel">
-        <div data-legacy="time-task-setup-header">
-          <h3 data-legacy="time-task-setup-title">행복 삭제</h3>
-          <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
-        </div>
-        <div data-legacy="time-task-setup-body">
-          <p class="dream-delete-confirm-msg">"${escapeHtml(happinessName)}"을(를) 정말 삭제하시겠습니까?</p>
-          <p class="dream-delete-confirm-warn">삭제 시 복구 불가</p>
-        </div>
-        <div data-legacy="time-task-log-footer" class="dream-delete-confirm-modal-footer">
-          <button type="button" class="dream-delete-confirm-cancel" data-legacy="todo-list-modal-cancel">취소</button>
-          <button type="button" class="dream-delete-confirm-submit">삭제</button>
-        </div>
-      </div>
-    `;
-    const close = () => modal.remove();
-    modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
-    modal.querySelector(".dream-delete-confirm-cancel").addEventListener("click", close);
-    modal.querySelector(".dream-delete-confirm-submit").addEventListener("click", () => {
-      close();
-      const d = loadHappinessMap();
-      appendDeletedRef(d, "categories", happinessId);
-      const happinessKpis = (d.kpis || []).filter((k) => k.happinessId === happinessId);
-      const kpiIds = happinessKpis.map((k) => k.id);
-      happinessKpis.forEach((k) => {
-        appendDeletedRef(d, "kpis", k.id);
-        syncKpiToTimeTask(k, "remove");
-      });
-      d.happinesses = (d.happinesses || []).filter((x) => x.id !== happinessId);
-      d.kpis = (d.kpis || []).filter((k) => k.happinessId !== happinessId);
-      d.kpiLogs = (d.kpiLogs || []).filter((l) => !kpiIds.includes(l.kpiId));
-      d.kpiTodos = (d.kpiTodos || []).filter((t) => !kpiIds.includes(t.kpiId));
-      d.kpiDailyRepeatTodos = (d.kpiDailyRepeatTodos || []).filter((t) => !kpiIds.includes(t.kpiId));
-      delete d.kpiOrder?.[happinessId];
-      d.kpiTaskSync = d.kpiTaskSync || {};
-      kpiIds.forEach((id) => delete d.kpiTaskSync[id]);
-      saveHappinessMap(d, { pushServer: true });
-      if (activeHappinessId === happinessId) {
-        activeHappinessId = d.happinesses[0]?.id || null;
-        selectedKpiId = null;
-        if (!activeHappinessId) happinessViewScreen = "goals";
-      }
-      syncHappinessHeader();
-      updateHappinessView();
-    });
-    document.body.appendChild(modal);
-  }
-
-  function showHappinessContextModal(happiness, tabEl) {
-    const modal = document.createElement("div");
-    modal.className = "time-task-setup-modal";
-    modal.innerHTML = `
-      <div data-legacy="time-task-setup-backdrop"></div>
-      <div data-legacy="time-task-setup-panel" class="dream-path-context-panel">
-        <div data-legacy="time-task-setup-header">
-          <h3 data-legacy="time-task-setup-title">행복 수정</h3>
-          <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
-        </div>
-        <form class="dream-kpi-form dream-path-edit-form">
-          <div class="dream-kpi-form-body" data-legacy="time-task-setup-body">
-            <div class="dream-kpi-field" data-legacy="time-add-task-field">
-              <label>행복 이름</label>
-              <input type="text" name="name" value="${escapeHtml(happiness.name || "")}" placeholder="성장과 기쁨 같이 누리기" />
-            </div>
-            <div class="dream-kpi-delete-wrap">
-              <button type="button" class="dream-kpi-delete-btn" data-action="delete">행복 목표 삭제</button>
-              <p class="dream-kpi-delete-note">삭제 시 복구 불가</p>
-            </div>
-          </div>
-          <div data-legacy="time-task-log-footer">
-            <button type="submit" data-legacy="time-task-log-submit">수정</button>
-          </div>
-        </form>
-      </div>
-    `;
-    const close = () => modal.remove();
-    modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
-    modal.querySelector("form").addEventListener("submit", (e) => {
-      e.preventDefault();
-      const val = (e.target.name.value || "").trim() || "행복 이름";
-      const d = loadHappinessMap();
-      const target = d.happinesses.find((x) => x.id === happiness.id);
-      if (target) {
-        target.name = val;
-        saveHappinessMap(d, { pushServer: true });
-        syncHappinessHeader();
-        updateHappinessView();
-      }
-      close();
-    });
-    modal.querySelector('[data-action="delete"]').addEventListener("click", () => {
-      close();
-      showHappinessDeleteConfirmModal(happiness.id);
-    });
-    document.body.appendChild(modal);
-  }
-
-  function renderHappinessGoalsList() {
-    historyWrap.hidden = true;
-    hideKpiFilterStrip();
-    contentWrap.hidden = false;
-    contentWrap.innerHTML = "";
-    syncAppFooterHappinessKpiActions();
-
-    const list = document.createElement("div");
-    list.className = "dream-goals-list";
-    const data = loadHappinessMap();
-
-    if (
-      renderKpiMapSyncLoadingIfNeeded({
-        tabId: "happiness",
-        container: contentWrap,
-        isEmpty: !data.happinesses.length,
-        onLoading: () => syncAppFooterHappinessKpiActions(),
-      })
-    ) {
-      return;
-    }
-
-    if (!data.happinesses.length) {
-      const empty = document.createElement("p");
-      empty.className = "dream-goals-empty";
-      empty.textContent = "행복 목표를 추가해 보세요.";
-      list.appendChild(empty);
-    }
-
-    data.happinesses.forEach((happiness) => {
-      const kpiCount = (data.kpis || []).filter((k) => k.happinessId === happiness.id)
-        .length;
-      const item = document.createElement("div");
-      item.className = "dream-goals-item dream-kpi-card";
-      item.innerHTML = `
-        <div class="dream-kpi-card-inner">
-          ${HAPPINESS_GOAL_EDIT_PENCIL_HTML}
-          <div class="dream-goals-item-name">${escapeHtml(happiness.name || "행복 이름")}</div>
-          <div class="dream-goals-item-meta">KPI ${kpiCount}개</div>
-        </div>
-      `;
-      bindKpiCardEditButton(item.querySelector(".dream-kpi-card-edit"), () =>
-        showHappinessContextModal(happiness, item),
-      );
-      item.addEventListener("click", (e) => {
-        if (e.target.closest(".dream-kpi-card-edit")) return;
-        enterKpiView(happiness.id);
-      });
-      list.appendChild(item);
-    });
-
-    contentWrap.appendChild(list);
-    persistKpiUiState();
-  }
-
   function updateHappinessView() {
     syncHappinessHeader();
     historyWrap.hidden = true;
     historyWrap.innerHTML = "";
-    if (happinessViewScreen === "goals") {
-      renderHappinessGoalsList();
-      return;
-    }
-    const data = loadHappinessMap();
-    const happiness = data.happinesses.find((h) => h.id === activeHappinessId);
-    if (happiness) {
-      if (happinessViewScreen === "kpiDetail") {
-        renderKpiDetailView();
-      } else {
-        contentWrap.hidden = false;
-        contentWrap.className = "dream-content-wrap";
-        renderKpiList();
-      }
+    if (happinessViewScreen === "kpiDetail" && selectedKpiId) {
+      renderKpiDetailView();
     } else {
-      exitToHappinessGoalsList();
+      if (happinessViewScreen === "kpiDetail") {
+        happinessViewScreen = "kpis";
+        selectedKpiId = null;
+      }
+      contentWrap.hidden = false;
+      contentWrap.className = "dream-content-wrap";
+      renderKpiList();
     }
     persistKpiUiState();
   }
 
   function reconcileScopeWithStoredMap(data) {
-    const happinesses = data?.happinesses || [];
     const kpis = data?.kpis || [];
-    const inKpiFlow = happinessViewScreen === "kpis" || happinessViewScreen === "kpiDetail";
-    if (inKpiFlow) {
-      if (!happinesses.some((h) => h.id === activeHappinessId)) {
-        activeHappinessId = happinesses[0]?.id || null;
-        selectedKpiId = null;
-        happinessViewScreen = activeHappinessId ? "kpis" : "goals";
-      }
-    } else {
-      activeHappinessId = null;
-      selectedKpiId = null;
-    }
     if (selectedKpiId && !kpis.some((k) => k.id === selectedKpiId)) {
       selectedKpiId = null;
       if (happinessViewScreen === "kpiDetail") happinessViewScreen = "kpis";
     }
+    if (happinessViewScreen === "goals") happinessViewScreen = "kpis";
   }
 
   reconcileScopeWithStoredMap(_happinessInitData);
@@ -1614,17 +1367,7 @@ export function render() {
     if (nextSig === lastKpiMapPaintSig) return;
     lastKpiMapPaintSig = nextSig;
     const data = loadHappinessMap();
-    const inKpiFlow = happinessViewScreen === "kpis" || happinessViewScreen === "kpiDetail";
-    if (inKpiFlow) {
-      if (!data.happinesses.some((h) => h.id === activeHappinessId)) {
-        activeHappinessId = data.happinesses[0]?.id || null;
-        selectedKpiId = null;
-        happinessViewScreen = activeHappinessId ? "kpis" : "goals";
-      }
-    } else {
-      activeHappinessId = null;
-      selectedKpiId = null;
-    }
+    if (happinessViewScreen === "goals") happinessViewScreen = "kpis";
     if (selectedKpiId && !data.kpis.some((k) => k.id === selectedKpiId)) {
       selectedKpiId = null;
       if (happinessViewScreen === "kpiDetail") happinessViewScreen = "kpis";
@@ -1654,8 +1397,7 @@ export function render() {
       return true;
     }
     if (happinessViewScreen === "kpis") {
-      exitToHappinessGoalsList();
-      return true;
+      return false;
     }
     return false;
   };

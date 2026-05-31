@@ -16,6 +16,7 @@ import {
   KPI_LOG_SOURCE_TIME_LEDGER,
   defaultManualKpiLogMeta,
 } from "./kpiLogFields.js";
+import { syncSleepHealthGoalLogsFromTimeLedger } from "./healthSleepGoalTimeLedgerSync.js";
 export {
   getKpiSyncedTaskNames,
   getKpiSyncActiveKpiIds,
@@ -1049,4 +1050,8 @@ export function syncHabitTrackerLogs() {
       }
     } catch (_) {}
   });
+
+  try {
+    syncSleepHealthGoalLogsFromTimeLedger();
+  } catch (_) {}
 }

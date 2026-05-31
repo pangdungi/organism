@@ -24,6 +24,277 @@ import {
 
 export const HAPPINESS_KPI_MAP_STORAGE_KEY = "kpi-happiness-map";
 
+/** 행복 탭 — 상위 「행복 목표」 없이 KPI만 (건강 KPI global scope 와 동일) */
+export const HAPPINESS_KPI_GLOBAL_SCOPE_ID = "__happiness_global__";
+
+/** @deprecated flattenHappinessMapForKpiOnlyTab 로 이전됨 */
+export const DEFAULT_HAPPINESS_CATEGORY_ID = "__lp_default_happiness__";
+
+function happinessKpiBelongsToTabScope(kpi) {
+  const hid = String(kpi?.happinessId ?? "").trim();
+  return !hid || hid === HAPPINESS_KPI_GLOBAL_SCOPE_ID;
+}
+
+/**
+ * happinesses(행복 목표) 제거 · 모든 KPI를 global scope 로 통합
+ */
+export function flattenHappinessMapForKpiOnlyTab(payload) {
+  const p = payload && typeof payload === "object" ? payload : emptyPayload();
+  const happinesses = Array.isArray(p.happinesses) ? p.happinesses : [];
+  const kpis = Array.isArray(p.kpis) ? [...p.kpis] : [];
+  const kpiOrderIn = p.kpiOrder && typeof p.kpiOrder === "object" ? { ...p.kpiOrder } : {};
+  const deletedRefs = normalizeDeletedRefs(p.deletedRefs);
+
+  const mergedOrder = [
+    ...(Array.isArray(kpiOrderIn[HAPPINESS_KPI_GLOBAL_SCOPE_ID])
+      ? kpiOrderIn[HAPPINESS_KPI_GLOBAL_SCOPE_ID]
+      : []),
+  ];
+  const seenOrder = new Set(mergedOrder.map(String));
+
+  for (const h of happinesses) {
+    const hid = String(h?.id ?? "").trim();
+    if (
+      hid &&
+      hid !== HAPPINESS_KPI_GLOBAL_SCOPE_ID &&
+      !deletedRefs.categories.includes(hid)
+    ) {
+      deletedRefs.categories.push(hid);
+    }
+    const ord = kpiOrderIn[hid];
+    if (Array.isArray(ord)) {
+      for (const kid of ord) {
+        const id = String(kid ?? "").trim();
+        if (id && !seenOrder.has(id)) {
+          mergedOrder.push(id);
+          seenOrder.add(id);
+        }
+      }
+    }
+  }
+
+  let kpisChanged = false;
+  const nextKpis = kpis.map((k) => {
+    if (happinessKpiBelongsToTabScope(k) && String(k.happinessId ?? "") === HAPPINESS_KPI_GLOBAL_SCOPE_ID) {
+      return k;
+    }
+    kpisChanged = true;
+    return { ...k, happinessId: HAPPINESS_KPI_GLOBAL_SCOPE_ID };
+  });
+  for (const k of nextKpis) {
+    const id = String(k?.id ?? "").trim();
+    if (id && !seenOrder.has(id)) {
+      mergedOrder.push(id);
+      seenOrder.add(id);
+    }
+  }
+
+  let logsChanged = false;
+  const nextLogs = (Array.isArray(p.kpiLogs) ? p.kpiLogs : []).map((l) => {
+    const hid = String(l?.happinessId ?? "").trim();
+    if (!hid || hid === HAPPINESS_KPI_GLOBAL_SCOPE_ID) return l;
+    logsChanged = true;
+    return { ...l, happinessId: HAPPINESS_KPI_GLOBAL_SCOPE_ID };
+  });
+
+  const kpiOrder = { [HAPPINESS_KPI_GLOBAL_SCOPE_ID]: mergedOrder };
+  const catsRemoved = happinesses.length > 0;
+  if (!kpisChanged && !logsChanged && !catsRemoved && mergedOrder.length === (kpiOrderIn[HAPPINESS_KPI_GLOBAL_SCOPE_ID]?.length || 0)) {
+    const onlyGlobal =
+      Object.keys(kpiOrderIn).length <= 1 &&
+      (!Object.keys(kpiOrderIn).length ||
+        (Object.keys(kpiOrderIn).length === 1 &&
+          HAPPINESS_KPI_GLOBAL_SCOPE_ID in kpiOrderIn));
+    if (onlyGlobal && !deletedRefs.categories.length) return p;
+  }
+
+  return {
+    ...p,
+    happinesses: [],
+    kpis: nextKpis,
+    kpiLogs: nextLogs,
+    kpiOrder,
+    deletedRefs,
+  };
+}
+
+/** 기본 행복 KPI — 삭제 불가, 수정 가능 */
+export const DEFAULT_MORNING_ROUTINE_KPI_ID = "__lp_default_kpi_morning_routine__";
+export const DEFAULT_MOVE_ROUTINE_KPI_ID = "__lp_default_kpi_move_routine__";
+export const DEFAULT_TIDY_ROUTINE_KPI_ID = "__lp_default_kpi_tidy_routine__";
+export const DEFAULT_OUT_PREP_ROUTINE_KPI_ID = "__lp_default_kpi_out_prep_routine__";
+export const DEFAULT_OUT_AFTER_ROUTINE_KPI_ID = "__lp_default_kpi_out_after_routine__";
+
+const PROTECTED_DEFAULT_HAPPINESS_KPI_IDS = new Set([
+  DEFAULT_MORNING_ROUTINE_KPI_ID,
+  DEFAULT_MOVE_ROUTINE_KPI_ID,
+  DEFAULT_TIDY_ROUTINE_KPI_ID,
+  DEFAULT_OUT_PREP_ROUTINE_KPI_ID,
+  DEFAULT_OUT_AFTER_ROUTINE_KPI_ID,
+]);
+
+export function isProtectedDefaultHappinessKpiId(id) {
+  return PROTECTED_DEFAULT_HAPPINESS_KPI_IDS.has(String(id ?? ""));
+}
+
+function createDefaultHappinessKpi(overrides) {
+  return {
+    happinessId: HAPPINESS_KPI_GLOBAL_SCOPE_ID,
+    direction: "higher",
+    useTimeAsUnit: false,
+    needHabitTracker: false,
+    useTaskCompletionGoal: false,
+    unit: "",
+    targetValue: "",
+    targetStartDate: "",
+    targetDeadline: "",
+    targetTimeRequired: "",
+    ...overrides,
+  };
+}
+
+/** 매일 반복 · 목표값 없음 */
+export function createDefaultMorningRoutineKpi() {
+  return createDefaultHappinessKpi({
+    id: DEFAULT_MORNING_ROUTINE_KPI_ID,
+    name: "모닝 루틴",
+    needHabitTracker: true,
+  });
+}
+
+export function createDefaultMoveRoutineKpi() {
+  return createDefaultHappinessKpi({
+    id: DEFAULT_MOVE_ROUTINE_KPI_ID,
+    name: "이동 루틴",
+    needHabitTracker: true,
+  });
+}
+
+export function createDefaultTidyRoutineKpi() {
+  return createDefaultHappinessKpi({
+    id: DEFAULT_TIDY_ROUTINE_KPI_ID,
+    name: "정리루틴",
+    needHabitTracker: true,
+  });
+}
+
+export function createDefaultOutPrepRoutineKpi() {
+  return createDefaultHappinessKpi({
+    id: DEFAULT_OUT_PREP_ROUTINE_KPI_ID,
+    name: "외출 준비 루틴",
+    needHabitTracker: true,
+  });
+}
+
+export function createDefaultOutAfterRoutineKpi() {
+  return createDefaultHappinessKpi({
+    id: DEFAULT_OUT_AFTER_ROUTINE_KPI_ID,
+    name: "외출 후 루틴",
+    needHabitTracker: true,
+  });
+}
+
+const DEFAULT_HAPPINESS_KPI_FACTORIES = [
+  createDefaultMorningRoutineKpi,
+  createDefaultMoveRoutineKpi,
+  createDefaultTidyRoutineKpi,
+  createDefaultOutPrepRoutineKpi,
+  createDefaultOutAfterRoutineKpi,
+];
+
+const DEFAULT_HAPPINESS_HABIT_KPI_MIGRATIONS = [
+  { id: DEFAULT_MORNING_ROUTINE_KPI_ID, name: "모닝 루틴" },
+  { id: DEFAULT_MOVE_ROUTINE_KPI_ID, name: "이동 루틴" },
+  { id: DEFAULT_TIDY_ROUTINE_KPI_ID, name: "정리루틴" },
+  { id: DEFAULT_OUT_PREP_ROUTINE_KPI_ID, name: "외출 준비 루틴" },
+  { id: DEFAULT_OUT_AFTER_ROUTINE_KPI_ID, name: "외출 후 루틴" },
+];
+
+/** 기본 루틴 KPI — 매일 반복·목표값 없음 유지 */
+function migrateDefaultHappinessHabitKpis(kpis) {
+  let changed = false;
+  let next = kpis || [];
+  for (const { id, name } of DEFAULT_HAPPINESS_HABIT_KPI_MIGRATIONS) {
+    next = next.map((k) => {
+      if (String(k?.id ?? "") !== id) return k;
+      const displayName = String(k.name || "").trim() || name;
+      const habit = !!k.needHabitTracker;
+      const noTarget =
+        !String(k.targetValue ?? "").trim() &&
+        !k.useTimeAsUnit &&
+        !k.useTaskCompletionGoal;
+      if (habit && noTarget && displayName === (k.name || "").trim()) return k;
+      changed = true;
+      return {
+        ...k,
+        name: displayName,
+        needHabitTracker: true,
+        useTimeAsUnit: false,
+        useTaskCompletionGoal: false,
+        unit: "",
+        targetValue: "",
+        targetStartDate: "",
+        targetDeadline: "",
+        targetTimeRequired: "",
+      };
+    });
+  }
+  return { kpis: changed ? next : kpis, changed };
+}
+
+export function ensureDefaultHappinessKpis(payload) {
+  const p = payload && typeof payload === "object" ? payload : emptyPayload();
+  const kpis = Array.isArray(p.kpis) ? [...p.kpis] : [];
+  const existingIds = new Set(kpis.map((k) => String(k.id)));
+
+  const toPrepend = [];
+  for (const create of DEFAULT_HAPPINESS_KPI_FACTORIES) {
+    const def = create();
+    if (existingIds.has(def.id)) continue;
+    toPrepend.push(def);
+    existingIds.add(def.id);
+  }
+
+  const deletedRefs = normalizeDeletedRefs(p.deletedRefs);
+  const nextDeletedKpis = (deletedRefs.kpis || []).filter(
+    (id) => !isProtectedDefaultHappinessKpiId(id),
+  );
+  const deletedRefsChanged =
+    nextDeletedKpis.length !== (deletedRefs.kpis || []).length;
+
+  const mergedKpis = [...toPrepend, ...kpis];
+  const { kpis: migratedKpis, changed: habitMigrated } =
+    migrateDefaultHappinessHabitKpis(mergedKpis);
+
+  if (!toPrepend.length && !deletedRefsChanged && !habitMigrated) return p;
+
+  const kpiOrder = { ...(p.kpiOrder && typeof p.kpiOrder === "object" ? p.kpiOrder : {}) };
+  if (toPrepend.length) {
+    const scopeId = HAPPINESS_KPI_GLOBAL_SCOPE_ID;
+    const prevOrder = Array.isArray(kpiOrder[scopeId]) ? [...kpiOrder[scopeId]] : [];
+    const newIds = toPrepend.map((k) => k.id);
+    kpiOrder[scopeId] = [...newIds, ...prevOrder.filter((id) => !newIds.includes(id))];
+  }
+
+  return {
+    ...p,
+    deletedRefs: deletedRefsChanged
+      ? { ...deletedRefs, kpis: nextDeletedKpis }
+      : deletedRefs,
+    kpis: migratedKpis,
+    kpiOrder,
+  };
+}
+
+export function ensureHappinessMapDefaults(payload) {
+  return ensureDefaultHappinessKpis(flattenHappinessMapForKpiOnlyTab(payload));
+}
+
+/** @deprecated ensureHappinessMapDefaults 사용 */
+export function ensureDefaultHappinessCategory(payload) {
+  return ensureHappinessMapDefaults(payload);
+}
+
 let _warnedNoSupabaseClient = false;
 let _warnedNoAuthSession = false;
 
@@ -112,7 +383,7 @@ function normalizePayload(p) {
     useTaskCompletionGoal: !!k.useTaskCompletionGoal,
     direction: k.direction === "lower" ? "lower" : "higher",
   }));
-  return {
+  return ensureHappinessMapDefaults({
     happinesses: Array.isArray(p.happinesses) ? p.happinesses : [],
     kpis,
     kpiLogs: Array.isArray(p.kpiLogs) ? p.kpiLogs : [],
@@ -127,7 +398,7 @@ function normalizePayload(p) {
       typeof p.localMetaModifiedAt === "number" && Number.isFinite(p.localMetaModifiedAt)
         ? p.localMetaModifiedAt
         : undefined,
-  };
+  });
 }
 
 export function applyHappinessKpiMapToLocalStorage(dbRow) {
@@ -245,17 +516,15 @@ function buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, me
   const sortedCats = [...(categories || [])]
     .filter((c) => !drCat.has(String(c.id)))
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
-  const happinesses = sortedCats.map((c) => ({
-    id: c.id,
-    name: c.name || "",
-    serverUpdatedAt: serverUpdatedAtFromRow(c),
-  }));
-  const happinessIds = new Set(happinesses.map((h) => String(h.id)));
+  const happinesses = sortedCats
+    .filter((c) => String(c.id) === HAPPINESS_KPI_GLOBAL_SCOPE_ID)
+    .map((c) => ({
+      id: c.id,
+      name: c.name || "",
+      serverUpdatedAt: serverUpdatedAtFromRow(c),
+    }));
 
-  const kpisFiltered = (kpis || []).filter((k) => {
-    if (drKpi.has(String(k.id))) return false;
-    return happinessIds.has(String(k.happiness_id));
-  });
+  const kpisFiltered = (kpis || []).filter((k) => !drKpi.has(String(k.id)));
   const kpiIds = new Set(kpisFiltered.map((k) => String(k.id)));
 
   const logsFiltered = (logs || []).filter((l) => {

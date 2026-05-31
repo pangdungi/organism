@@ -122,12 +122,12 @@ function isHealthSupplementKpi(kpi) {
 }
 
 function healthKpiDailyTabLabel(kpi) {
-  if (isHealthSupplementKpi(kpi)) return "영양제 목록";
+  if (isHealthSupplementKpi(kpi)) return "보충제 목록";
   return "매일할일";
 }
 
 function healthKpiDailyListTitle(kpi) {
-  if (isHealthSupplementKpi(kpi)) return "영양제 목록";
+  if (isHealthSupplementKpi(kpi)) return "보충제 목록";
   return "매일 반복되는 할일 목록";
 }
 
@@ -870,7 +870,7 @@ export function render() {
       return isHealthCheckupKpi(kpi) ? "검진 추가" : "할 일 추가";
     }
     if (t === KPI_BOTTOM_TAB_DAILY) {
-      return isHealthSupplementKpi(kpi) ? "영양제 추가" : "매일 할 일 추가";
+      return isHealthSupplementKpi(kpi) ? "보충제 추가" : "매일 할 일 추가";
     }
     return "로그 추가";
   }
@@ -904,8 +904,8 @@ export function render() {
     if (tab === KPI_BOTTOM_TAB_DAILY) {
       const text = await showKpiTodoAddModal({
         kpiName: k.name,
-        title: isHealthSupplementKpi(k) ? "영양제 추가" : "매일 할 일 추가",
-        placeholder: isHealthSupplementKpi(k) ? "영양제 입력" : "할 일 입력 (매일 반복)",
+        title: isHealthSupplementKpi(k) ? "보충제 추가" : "매일 할 일 추가",
+        placeholder: isHealthSupplementKpi(k) ? "보충제 입력" : "할 일 입력 (매일 반복)",
       });
       if (!text) return;
       const d2 = loadHealthMap();
@@ -1551,8 +1551,8 @@ export function render() {
           const result = await showKpiTodoEditModal({
             kpiName: kpi.name,
             initialText: todo.text || "",
-            title: isHealthSupplementKpi(kpi) ? "영양제 수정" : "매일 할 일 수정",
-            placeholder: isHealthSupplementKpi(kpi) ? "영양제" : "매일 반복되는 할 일",
+            title: isHealthSupplementKpi(kpi) ? "보충제 수정" : "매일 할 일 수정",
+            placeholder: isHealthSupplementKpi(kpi) ? "보충제" : "매일 반복되는 할 일",
           });
           if (!result) return;
           if (result.action === "delete") {
@@ -1749,9 +1749,8 @@ export function render() {
     const modal = document.createElement("div");
     modal.className = "time-task-setup-modal time-task-log-modal health-goal-log-modal";
     modal.style.zIndex = String(resolveLpModalStackZIndex());
-    let dateVal = "";
+    let dateVal = toDateKey(new Date());
     let valueVal = "";
-    let memoVal = "";
     if (editLog) {
       if (editLog.dateRaw) {
         dateVal = editLog.dateRaw;
@@ -1760,7 +1759,6 @@ export function render() {
         if (m) dateVal = `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
       }
       valueVal = sanitizeNumericInput(editLog.value) || "";
-      memoVal = editLog.memo || "";
     }
     const unitLabel = (norm.unit || "").trim() || "값";
     modal.innerHTML = `
@@ -1793,10 +1791,6 @@ export function render() {
                   <input type="text" name="value" placeholder="숫자 입력" value="${escapeHtml(valueVal)}" inputmode="decimal" />
                 </div>
               </div>
-              <div class="dream-kpi-log-field">
-                <label>메모 (선택)</label>
-                <textarea name="memo" placeholder="메모 등..." rows="3">${escapeHtml(memoVal)}</textarea>
-              </div>
             </div>
           </div>
           <div data-legacy="time-task-log-footer" class="dream-kpi-log-modal-footer">
@@ -1826,7 +1820,7 @@ export function render() {
             date: dateStr,
             dateRaw: dateFieldVal,
             value: sanitizeNumericInput(form.value.value) || "",
-            memo: (form.memo.value || "").trim(),
+            memo: "",
           };
         }
       } else {
@@ -1837,7 +1831,7 @@ export function render() {
           date: dateStr,
           dateRaw: dateFieldVal,
           value: sanitizeNumericInput(form.value.value) || "",
-          memo: (form.memo.value || "").trim(),
+          memo: "",
         });
       }
       saveHealthMap(data, { pushServer: true });
