@@ -11,9 +11,28 @@ import { getFullTaskOptions } from "./timeTaskOptionsModel.js";
 import * as TTC from "./timeTaskOptionsConstants.js";
 import { getTimeTaskListIconSrc } from "./timeTaskIconUrls.js";
 import {
+  isIosLikeMobile,
   lockPageScrollForModalKeyboard,
   syncVisualViewportKeyboardInset,
 } from "./mobileViewportKeyboard.js";
+
+function isTaskLogPickerMobile() {
+  return (
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(max-width: 48rem) and (pointer: coarse)").matches
+  );
+}
+
+function blurTaskPickerSearchInput(panelEl) {
+  const search = panelEl?.querySelector?.(
+    ".time-task-log-task-dropdown-search, [data-legacy~='time-task-log-task-dropdown-search']",
+  );
+  if (search instanceof HTMLElement && document.activeElement === search) {
+    try {
+      search.blur();
+    } catch (_) {}
+  }
+}
 
 function getProductivityFromCategory(categoryValue) {
   if (!categoryValue) return "";
@@ -214,6 +233,9 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
 
   function closePanel() {
     if (panel.hidden) return;
+    blurTaskPickerSearchInput(panel);
+    pickerSearchKeyboardAc?.abort();
+    pickerSearchKeyboardAc = null;
     panel.hidden = true;
     setPanelOpen(false);
   }
@@ -308,6 +330,9 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
     });
   }
 
+  /** @type {AbortController | null} */
+  let pickerSearchKeyboardAc = null;
+
   function renderPanel() {
     panel.innerHTML = "";
     let optionsContainer = null;
@@ -384,19 +409,57 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
       syncSearchClearUi();
       renderOptions(optionsContainer, searchQuery);
     });
-    searchInput.addEventListener("focus", () => {
-      syncVisualViewportKeyboardInset();
-      lockPageScrollForModalKeyboard();
-      requestAnimationFrame(() => {
+    function bindPickerSearchKeyboard(input) {
+      if (!isTaskLogPickerMobile()) return;
+
+      const bindIosScrollLock = () => {
+        pickerSearchKeyboardAc?.abort();
+        if (!isIosLikeMobile()) return;
+        pickerSearchKeyboardAc = new AbortController();
+        const { signal } = pickerSearchKeyboardAc;
+        const run = () => {
+          lockPageScrollForModalKeyboard();
+          syncPanelMaxHeight();
+        };
+        window.visualViewport?.addEventListener("resize", run, {
+          passive: true,
+          signal,
+        });
+        window.visualViewport?.addEventListener("scroll", run, {
+          passive: true,
+          signal,
+        });
+        run();
+      };
+
+      input.addEventListener("focus", () => {
+        bindIosScrollLock();
         syncVisualViewportKeyboardInset();
         lockPageScrollForModalKeyboard();
         syncPanelMaxHeight();
+        requestAnimationFrame(() => {
+          syncVisualViewportKeyboardInset();
+          lockPageScrollForModalKeyboard();
+          syncPanelMaxHeight();
+        });
+        window.setTimeout(() => {
+          syncVisualViewportKeyboardInset();
+          syncPanelMaxHeight();
+        }, 120);
       });
-      window.setTimeout(() => {
-        syncVisualViewportKeyboardInset();
-        syncPanelMaxHeight();
-      }, 120);
-    });
+
+      input.addEventListener("blur", () => {
+        pickerSearchKeyboardAc?.abort();
+        pickerSearchKeyboardAc = null;
+        window.setTimeout(() => {
+          if (document.activeElement === input) return;
+          syncVisualViewportKeyboardInset();
+          syncPanelMaxHeight();
+        }, 80);
+      });
+    }
+
+    bindPickerSearchKeyboard(searchInput);
     searchInput.addEventListener("click", (e) => e.stopPropagation());
     searchInput.addEventListener("keydown", (e) => e.stopPropagation());
     searchClearBtn.addEventListener("mousedown", (e) => {

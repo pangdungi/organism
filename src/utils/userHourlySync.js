@@ -13,16 +13,35 @@ import {
 } from "./todoSettings.js";
 
 export const USER_HOURLY_RATE_KEY = "user_hourly_rate";
+export const USER_HOURLY_RATE_MODE_KEY = "user_hourly_rate_mode";
+
+export const HOURLY_RATE_MODE_CALC = "calc";
+export const HOURLY_RATE_MODE_DIRECT = "direct";
 
 /** 계정별 scoped 시급 캐시 읽기 */
 export function readUserHourlyRateLocal() {
   return getScopedLocalStorageItem(USER_HOURLY_RATE_KEY) || "";
 }
 
+/** 계정별 scoped 시급 입력 방식 읽기 (calc | direct) */
+export function readUserHourlyRateModeLocal() {
+  const mode = getScopedLocalStorageItem(USER_HOURLY_RATE_MODE_KEY) || "";
+  return mode === HOURLY_RATE_MODE_DIRECT ? HOURLY_RATE_MODE_DIRECT : HOURLY_RATE_MODE_CALC;
+}
+
+export function setUserHourlyRateModeLocal(mode) {
+  const next =
+    mode === HOURLY_RATE_MODE_DIRECT ? HOURLY_RATE_MODE_DIRECT : HOURLY_RATE_MODE_CALC;
+  setScopedLocalStorageItem(USER_HOURLY_RATE_MODE_KEY, next);
+  return next;
+}
+
 export function clearUserHourlyRateLocal() {
   removeScopedLocalStorageItem(USER_HOURLY_RATE_KEY);
+  removeScopedLocalStorageItem(USER_HOURLY_RATE_MODE_KEY);
   try {
     localStorage.removeItem(USER_HOURLY_RATE_KEY);
+    localStorage.removeItem(USER_HOURLY_RATE_MODE_KEY);
   } catch (_) {}
 }
 
@@ -73,7 +92,7 @@ export async function pullUserPrefsFromSupabase() {
   const { data, error } = await supabase
     .from("user_subscriptions")
     .select(
-      "hourly_rate, appearance, ui_font_id, subscription_status, access_until",
+      "hourly_rate, hourly_rate_mode, appearance, ui_font_id, subscription_status, access_until",
     )
     .eq("user_id", session.user.id)
     .maybeSingle();
@@ -91,6 +110,12 @@ export async function pullUserPrefsFromSupabase() {
         new CustomEvent("app-hourly-rate-changed", { detail: { rate: n } }),
       );
     }
+  }
+
+  if (data.hourly_rate_mode === HOURLY_RATE_MODE_DIRECT || data.hourly_rate_mode === HOURLY_RATE_MODE_CALC) {
+    try {
+      setUserHourlyRateModeLocal(data.hourly_rate_mode);
+    } catch (_) {}
   }
 
   if (applyAppearanceFromServer(data.appearance)) {

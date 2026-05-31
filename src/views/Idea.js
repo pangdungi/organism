@@ -5,7 +5,7 @@
 import { signOut } from "../auth.js";
 import { supabase } from "../supabase.js";
 import { deleteMyAccountViaEdgeFunction } from "../utils/deleteMyAccount.js";
-import { USER_HOURLY_RATE_KEY, readUserHourlyRateLocal, applyAppearanceFromServer } from "../utils/userHourlySync.js";
+import { USER_HOURLY_RATE_KEY, readUserHourlyRateLocal, readUserHourlyRateModeLocal, setUserHourlyRateModeLocal, HOURLY_RATE_MODE_CALC, HOURLY_RATE_MODE_DIRECT, applyAppearanceFromServer } from "../utils/userHourlySync.js";
 import { setScopedLocalStorageItem, getScopedLocalStorageItem } from "../utils/clientStorageScope.js";
 import {
   LP_APP_FONT_OPTIONS,
@@ -202,7 +202,7 @@ export function render() {
       if (!session?.user?.id || !statusEl || !passEl) return;
       supabase
         .from("user_subscriptions")
-        .select("subscription_status, signup_at, hourly_rate")
+        .select("subscription_status, signup_at, hourly_rate, hourly_rate_mode, appearance")
         .eq("user_id", session.user.id)
         .maybeSingle()
         .then(({ data, error }) => {
@@ -227,18 +227,17 @@ export function render() {
             try {
               setScopedLocalStorageItem(USER_HOURLY_RATE_KEY, String(hr));
             } catch (_) {}
-            const rv = document.querySelector(".idea-hourly-result-value");
-            const ru = document.querySelector(".idea-hourly-result-unit");
-            if (rv) {
-              rv.textContent = new Intl.NumberFormat("ko-KR").format(Math.round(hr));
-              if (ru) {
-                ru.textContent = "원";
-                ru.style.visibility = "";
-              }
-            }
+            applyHourlyRateToUi(hr);
             document.dispatchEvent(
               new CustomEvent("app-hourly-rate-changed", { detail: { rate: hr } }),
             );
+          }
+          if (
+            data.hourly_rate_mode === HOURLY_RATE_MODE_DIRECT ||
+            data.hourly_rate_mode === HOURLY_RATE_MODE_CALC
+          ) {
+            setUserHourlyRateModeLocal(data.hourly_rate_mode);
+            setHourlyModeTab(data.hourly_rate_mode, { skipServer: true });
           }
           if (applyAppearanceFromServer(data.appearance)) {
             try {
@@ -249,36 +248,53 @@ export function render() {
     });
   }
 
-  // ----- 나의 시급계산하기 위젯 (모바일: 표시) -----
+  // ----- 나의 시급 (계산 / 직접입력) -----
   const hourlyWidget = document.createElement("div");
   hourlyWidget.className =
     "time-dashboard-widget idea-widget idea-widget-hourly";
   hourlyWidget.innerHTML = `
-    <div class="time-dashboard-widget-title">나의 시급 계산하기</div>
-    <form class="idea-hourly-form">
-      <div class="idea-hourly-row-inline">
-        <div class="idea-form-row">
-          <label class="idea-form-label">월 근로소득</label>
-          <div class="idea-input-with-unit">
-            <input type="text" class="idea-form-input idea-input-monthly-income" placeholder="예: 3000000" inputmode="numeric" autocomplete="off" />
-            <span class="idea-input-unit">원</span>
+    <div class="time-dashboard-widget-title">나의 시급</div>
+    <div class="idea-hourly-tabs" role="tablist" aria-label="시급 입력 방식">
+      <button type="button" class="idea-hourly-tab active" data-hourly-mode="calc" role="tab" aria-selected="true">나의 시급 계산하기</button>
+      <button type="button" class="idea-hourly-tab" data-hourly-mode="direct" role="tab" aria-selected="false">직접 입력하기</button>
+    </div>
+    <div class="idea-hourly-panel idea-hourly-panel--calc" data-hourly-panel="calc" role="tabpanel">
+      <form class="idea-hourly-form">
+        <div class="idea-hourly-row-inline">
+          <div class="idea-form-row">
+            <label class="idea-form-label">월 근로소득</label>
+            <div class="idea-input-with-unit">
+              <input type="text" class="idea-form-input idea-input-monthly-income" placeholder="예: 3000000" inputmode="numeric" autocomplete="off" />
+              <span class="idea-input-unit">원</span>
+            </div>
+          </div>
+          <div class="idea-form-row">
+            <label class="idea-form-label">월 노동시간</label>
+            <div class="idea-input-with-unit">
+              <input type="text" class="idea-form-input idea-input-monthly-hours" placeholder="예: 160" inputmode="decimal" autocomplete="off" />
+              <span class="idea-input-unit">시간</span>
+            </div>
           </div>
         </div>
-        <div class="idea-form-row">
-          <label class="idea-form-label">월 노동시간</label>
-          <div class="idea-input-with-unit">
-            <input type="text" class="idea-form-input idea-input-monthly-hours" placeholder="예: 160" inputmode="decimal" autocomplete="off" />
-            <span class="idea-input-unit">시간</span>
-          </div>
+        <button type="button" class="idea-btn-calc">계산하기</button>
+      </form>
+    </div>
+    <div class="idea-hourly-panel idea-hourly-panel--direct" data-hourly-panel="direct" role="tabpanel" hidden>
+      <div class="idea-form-row">
+        <label class="idea-form-label" for="idea-input-hourly-direct">시급</label>
+        <div class="idea-input-with-unit">
+          <input type="text" id="idea-input-hourly-direct" class="idea-form-input idea-input-hourly-direct" placeholder="예: 20000" inputmode="numeric" autocomplete="off" />
+          <span class="idea-input-unit">원</span>
         </div>
       </div>
-      <button type="button" class="idea-btn-calc">계산하기</button>
-      <div class="idea-hourly-result-wrap">
-        <span class="idea-hourly-result-label">나의 시급</span>
-        <span class="idea-hourly-result-value">—</span>
-        <span class="idea-hourly-result-unit">원</span>
-      </div>
-    </form>
+      <p class="idea-form-hint">원하는 시급을 직접 입력한 뒤 저장하세요.</p>
+      <button type="button" class="idea-btn-calc idea-btn-save-hourly-direct">저장하기</button>
+    </div>
+    <div class="idea-hourly-result-wrap">
+      <span class="idea-hourly-result-label">나의 시급</span>
+      <span class="idea-hourly-result-value">—</span>
+      <span class="idea-hourly-result-unit">원</span>
+    </div>
   `;
   grid.appendChild(hourlyWidget);
 
@@ -312,9 +328,30 @@ export function render() {
   const monthlyHoursInput = hourlyWidget.querySelector(
     ".idea-input-monthly-hours",
   );
+  const directHourlyInput = hourlyWidget.querySelector(
+    ".idea-input-hourly-direct",
+  );
+  const hourlyModeTabs = hourlyWidget.querySelectorAll(".idea-hourly-tab");
+  const hourlyCalcPanel = hourlyWidget.querySelector(
+    '[data-hourly-panel="calc"]',
+  );
+  const hourlyDirectPanel = hourlyWidget.querySelector(
+    '[data-hourly-panel="direct"]',
+  );
   const resultValue = hourlyWidget.querySelector(".idea-hourly-result-value");
   const resultUnit = hourlyWidget.querySelector(".idea-hourly-result-unit");
-  const calcBtn = hourlyWidget.querySelector(".idea-btn-calc");
+  const calcBtn = hourlyWidget.querySelector(".idea-btn-calc:not(.idea-btn-save-hourly-direct)");
+  const directSaveBtn = hourlyWidget.querySelector(".idea-btn-save-hourly-direct");
+
+  function applyHourlyRateToUi(val) {
+    setHourlyResult(val);
+    if (directHourlyInput && val != null && val !== "—") {
+      const n = Number(val);
+      if (Number.isFinite(n) && n > 0) {
+        directHourlyInput.value = Math.round(n).toLocaleString("ko-KR");
+      }
+    }
+  }
 
   function setHourlyResult(val) {
     if (val == null || val === "—") {
@@ -409,15 +446,47 @@ export function render() {
     );
   }
 
-  async function saveHourlyToAccount(hourly) {
+  async function saveHourlyToAccount(hourly, mode) {
     try {
       setScopedLocalStorageItem(USER_HOURLY_RATE_KEY, String(hourly));
     } catch (_) {}
+    if (mode === HOURLY_RATE_MODE_DIRECT || mode === HOURLY_RATE_MODE_CALC) {
+      setUserHourlyRateModeLocal(mode);
+    }
     document.dispatchEvent(
       new CustomEvent("app-hourly-rate-changed", { detail: { rate: hourly } }),
     );
     if (!supabase) return;
-    const { error } = await supabase.rpc("set_my_hourly_rate", { p_rate: hourly });
+    const payload = { p_rate: hourly };
+    if (mode === HOURLY_RATE_MODE_DIRECT || mode === HOURLY_RATE_MODE_CALC) {
+      payload.p_mode = mode;
+    }
+    const { error } = await supabase.rpc("set_my_hourly_rate", payload);
+    if (error) throw error;
+  }
+
+  async function saveHourlyModeOnly(mode) {
+    setUserHourlyRateModeLocal(mode);
+    if (!supabase) return;
+    const saved = readUserHourlyRateLocal();
+    const rate = saved ? parseFloat(saved) : null;
+    const payload = { p_mode: mode };
+    if (rate != null && !Number.isNaN(rate) && rate > 0) payload.p_rate = rate;
+    const { error } = await supabase.rpc("set_my_hourly_rate", payload);
+    if (error) throw error;
+  }
+
+  function setHourlyModeTab(mode, opts = {}) {
+    const next =
+      mode === HOURLY_RATE_MODE_DIRECT ? HOURLY_RATE_MODE_DIRECT : HOURLY_RATE_MODE_CALC;
+    hourlyModeTabs.forEach((tab) => {
+      const on = tab.dataset.hourlyMode === next;
+      tab.classList.toggle("active", on);
+      tab.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    if (hourlyCalcPanel) hourlyCalcPanel.hidden = next !== HOURLY_RATE_MODE_CALC;
+    if (hourlyDirectPanel) hourlyDirectPanel.hidden = next !== HOURLY_RATE_MODE_DIRECT;
+    if (!opts.skipServer) void saveHourlyModeOnly(next);
   }
 
   function calculateHourly() {
@@ -428,25 +497,64 @@ export function render() {
       return;
     }
     const hourly = income / hours;
-    setHourlyResult(hourly);
+    applyHourlyRateToUi(hourly);
     saveHourlyCalcInputs(income, hours);
     if (monthlyIncomeInput) formatNumberInput(monthlyIncomeInput);
     if (monthlyHoursInput) formatHoursInput(monthlyHoursInput);
-    void saveHourlyToAccount(hourly);
+    void saveHourlyToAccount(hourly, HOURLY_RATE_MODE_CALC).catch(() => {
+      showToast("시급 저장에 실패했습니다.");
+    });
+  }
+
+  function saveDirectHourly() {
+    const hourly = parseNumber(directHourlyInput?.value);
+    if (hourly <= 0) {
+      showToast("시급을 입력해 주세요.");
+      return;
+    }
+    if (directHourlyInput) formatNumberInput(directHourlyInput);
+    applyHourlyRateToUi(hourly);
+    void saveHourlyToAccount(hourly, HOURLY_RATE_MODE_DIRECT)
+      .then(() => showToast("시급이 저장되었습니다."))
+      .catch(() => showToast("시급 저장에 실패했습니다."));
   }
 
   loadHourlyCalcInputsIntoForm();
+  setHourlyModeTab(readUserHourlyRateModeLocal(), { skipServer: true });
 
   // 저장된 시급 로드
   try {
     const saved = readUserHourlyRateLocal();
     if (saved) {
       const n = parseFloat(saved);
-      if (!Number.isNaN(n) && n > 0) setHourlyResult(n);
+      if (!Number.isNaN(n) && n > 0) applyHourlyRateToUi(n);
     }
   } catch (_) {}
 
-  calcBtn.addEventListener("click", calculateHourly);
+  hourlyModeTabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const mode = tab.dataset.hourlyMode;
+      if (!mode) return;
+      setHourlyModeTab(mode);
+    });
+  });
+
+  calcBtn?.addEventListener("click", calculateHourly);
+  directSaveBtn?.addEventListener("click", saveDirectHourly);
+  if (directHourlyInput) {
+    directHourlyInput.addEventListener("input", () =>
+      formatNumberInput(directHourlyInput),
+    );
+    directHourlyInput.addEventListener("blur", () =>
+      formatNumberInput(directHourlyInput),
+    );
+    directHourlyInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        saveDirectHourly();
+      }
+    });
+  }
   [monthlyIncomeInput, monthlyHoursInput].forEach((inp) => {
     if (inp) {
       inp.addEventListener("keydown", (e) => {
@@ -462,9 +570,11 @@ export function render() {
     try {
       if (!el.isConnected) return;
       loadHourlyCalcInputsIntoForm();
+      setHourlyModeTab(readUserHourlyRateModeLocal(), { skipServer: true });
       const saved = readUserHourlyRateLocal();
       const rv = el.querySelector(".idea-hourly-result-value");
       const ru = el.querySelector(".idea-hourly-result-unit");
+      const directInp = el.querySelector(".idea-input-hourly-direct");
       if (!rv) return;
       if (saved) {
         const n = parseFloat(saved);
@@ -474,6 +584,7 @@ export function render() {
             ru.textContent = "원";
             ru.style.visibility = "";
           }
+          if (directInp) directInp.value = Math.round(n).toLocaleString("ko-KR");
           return;
         }
       }

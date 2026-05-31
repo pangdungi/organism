@@ -1,5 +1,17 @@
 /* 앱 전역 통일 로딩·스플래시 — 물결 패턴 + 떠다니는 마스코트 */
 
+html.lp-splash-active {
+  overflow: hidden;
+  height: 100%;
+  background: #fff;
+}
+
+html.lp-splash-active body {
+  overflow: hidden;
+  height: 100%;
+  background: #fff;
+}
+
 .lp-unified-loading {
   position: relative;
   isolation: isolate;
@@ -11,10 +23,17 @@
 
 .lp-unified-loading__pattern {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
   pointer-events: none;
   opacity: 0.38;
+  background-color: #fff;
   background-image: url("/toolbaricons/splash/splash-pattern-wave.png");
   background-repeat: repeat;
   background-size: 3rem 3rem;
@@ -35,19 +54,30 @@
   box-sizing: border-box;
 }
 
+#app-splash,
+.app-splash,
 .lp-unified-loading--fullscreen {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 2147483646;
   width: 100%;
-  min-height: 100%;
+  height: 100%;
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
   min-height: 100dvh;
+  max-height: none;
+  margin: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: max(1.5rem, env(safe-area-inset-top, 0)) 1.5rem
     max(2rem, env(safe-area-inset-bottom, 0));
+  box-sizing: border-box;
+  overflow: hidden;
   -webkit-tap-highlight-color: transparent;
   transition: opacity 0.38s ease;
 }
@@ -59,11 +89,17 @@
 
 .lp-unified-loading--overlay {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 2147483000;
   width: 100%;
-  min-height: 100%;
+  height: 100%;
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
   min-height: 100dvh;
+  max-height: none;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -145,6 +181,17 @@
 
 html.lp-tab-loading-active {
   overflow: hidden;
+}
+
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  #app-splash,
+  .app-splash,
+  .lp-unified-loading--fullscreen,
+  .lp-unified-loading--overlay,
+  #lp-boot-fallback {
+    height: 100lvh;
+    min-height: 100lvh;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

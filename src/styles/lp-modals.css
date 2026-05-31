@@ -330,6 +330,15 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 
 /* 과제 기록 — 모바일: flex 줄어듦 방지, 스크롤로 메모를 키보드 위에 */
 @media (max-width: 48rem) and (pointer: coarse) {
+  html.lp-task-log-modal-open
+    .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal),
+  html.lp-task-log-modal-open
+    [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+      .lp-calendar-budget-add-modal
+    ) {
+    z-index: 2147483647;
+  }
+
   .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
     .time-task-log-scroll-area:not(.is-task-picker-open),
   [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
@@ -388,7 +397,8 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
     padding-bottom: max(1rem, var(--vv-keyboard, 0px));
   }
 
-  /* 갤럭시·iOS: 키보드 시 화면 전체가 눌리지 않게 visualViewport·layout shrink 기준으로 모달만 맞춤 */
+  /* 갤럭시·iOS: 키보드 시 화면 전체가 눌리지 않게 visualViewport·layout shrink 기준으로 모달만 맞춤
+     (iOS 과제 검색은 shouldSkipTaskLogModalKeyboardReposition 으로 lp-keyboard-open 미적용) */
   html.lp-keyboard-open.lp-task-log-modal-open
     .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal),
   html.lp-keyboard-open.lp-task-log-modal-open
@@ -2404,6 +2414,8 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 }
 .time-task-log-task-dropdown-search,
 [data-legacy~="time-task-log-task-dropdown-search"] {
+  scroll-margin: 0;
+  scroll-margin-block: 0;
   width: 100%;
   box-sizing: border-box;
   padding: 0.45rem 0.55rem;

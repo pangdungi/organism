@@ -6,6 +6,10 @@ import {
   LP_UNIFIED_LOADING_MESSAGE,
   renderLpUnifiedLoadingInnerMarkup,
 } from "./lpUnifiedLoadingUi.js";
+import {
+  setAppSplashViewportLock,
+  syncFullscreenOverlayViewport,
+} from "./lpSplashViewport.js";
 
 /** @type {HTMLElement | null} */
 let tabOverlayEl = null;
@@ -36,21 +40,42 @@ function ensureTabOverlay() {
 
 /** @param {string} [_message] */
 export function showLpTabLoading(_message) {
+  try {
+    if (document.documentElement.classList.contains("lp-task-log-modal-open")) {
+      return;
+    }
+  } catch (_) {}
   const el = ensureTabOverlay();
   el.hidden = false;
   el.setAttribute("aria-busy", "true");
   try {
     document.documentElement.classList.add("lp-tab-loading-active");
   } catch (_) {}
+  syncFullscreenOverlayViewport(el);
+  requestAnimationFrame(() => syncFullscreenOverlayViewport(el));
 }
 
 export function hideLpTabLoading() {
-  if (!tabOverlayEl) return;
-  tabOverlayEl.hidden = true;
-  tabOverlayEl.setAttribute("aria-busy", "false");
+  const el =
+    tabOverlayEl || document.getElementById("lp-tab-loading-overlay");
+  if (el instanceof HTMLElement) {
+    el.hidden = true;
+    el.setAttribute("aria-busy", "false");
+    el.style.removeProperty("height");
+    el.style.removeProperty("min-height");
+  }
   try {
     document.documentElement.classList.remove("lp-tab-loading-active");
   } catch (_) {}
+}
+
+/** 과제 기록·수정 모달 — 탭 로딩 오버레이·스플래시 뷰포트 잠금이 입력·키보드를 막지 않게 */
+export function dismissLpBlockingShellForTaskLogModal() {
+  hideLpTabLoading();
+  const splash = document.getElementById("app-splash");
+  if (!splash || splash.hasAttribute("hidden")) {
+    setAppSplashViewportLock(false);
+  }
 }
 
 /** @param {string} tabId */

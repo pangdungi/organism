@@ -122,8 +122,12 @@ import {
   lpTokenHas,
 } from "../utils/timeLedgerClassPolicy.js";
 import {
+  dismissLpBlockingShellForTaskLogModal,
+  hideLpTabLoading,
+  showLpTabLoading,
+} from "../utils/lpAppLoading.js";
+import {
   isLpTabPullPending,
-  mountLpTabSyncLoading,
 } from "../utils/lpTabSyncLoadingUi.js";
 export { getTaskOptionByName };
 
@@ -7146,6 +7150,11 @@ export function render(opts = {}) {
     } catch (_) {}
   }
 
+  function prepareTaskLogModalForOpen() {
+    dismissLpBlockingShellForTaskLogModal();
+    taskLogModal.style.zIndex = "2147483647";
+  }
+
   function openTaskLogModalAfterPull(addContext) {
     taskLogAddContext = addContext;
     taskLogEditTr = null;
@@ -7156,6 +7165,7 @@ export function render(opts = {}) {
     if (taskLogFooterEl) taskLogFooterEl.style.display = "";
     if (taskLogDeleteBtn) taskLogDeleteBtn.hidden = true;
     taskLogModal.hidden = false;
+    prepareTaskLogModalForOpen();
     setTaskLogModalShellOpen(true);
     document.body.style.overflow = "hidden";
     bindTaskLogModalKeyboardShell();
@@ -7337,6 +7347,7 @@ export function render(opts = {}) {
       }
     }
     taskLogModal.hidden = false;
+    prepareTaskLogModalForOpen();
     setTaskLogModalShellOpen(true);
     document.body.style.overflow = "hidden";
     bindTaskLogModalKeyboardShell();
@@ -8625,10 +8636,7 @@ export function render(opts = {}) {
 
   function dismissTimeLedgerPullLoadingUi() {
     if (!el.isConnected) return;
-    contentWrap
-      .querySelectorAll(".time-ledger-mobile-cards--syncing")
-      .forEach((n) => n.classList.remove("time-ledger-mobile-cards--syncing"));
-    contentWrap.querySelectorAll(".lp-tab-sync-loading").forEach((n) => n.remove());
+    hideLpTabLoading();
   }
 
   function applyUsageListScrollToBottomIfPending(cardsWrap) {
@@ -8698,7 +8706,12 @@ export function render(opts = {}) {
 
     const showMemoOnlyLogView = usageHistoryMemoOnlyFilter;
     const showDayGroups = timeLedgerShouldShowDayGroups(rows);
-    const showSyncLoading = rows.length === 0 && isLpTabPullPending("time");
+    const showSyncLoading = isLpTabPullPending("time");
+    if (showSyncLoading) {
+      showLpTabLoading();
+    } else {
+      hideLpTabLoading();
+    }
     const memoLogRows = showMemoOnlyLogView ? mapLedgerRowsToLogMemos(rows) : [];
 
     const cardsWrap = document.createElement("div");
@@ -8847,16 +8860,12 @@ export function render(opts = {}) {
     if (showMemoOnlyLogView) {
       const memoWrap = document.createElement("div");
       lpSetClasses(memoWrap, "time-ledger-memo-log-wrap");
-      if (showSyncLoading) {
-        mountLpTabSyncLoading(memoWrap, "메모 불러오는 중…");
-      } else {
-        mountTimeLedgerMemoFeed(memoWrap, memoLogRows, {
-          emptyMessage: "선택 기간에 남긴 과제 메모가 없습니다.",
-          showDayDividers:
-            timeLedgerFilterSpansMultipleDays() || showDayGroups,
-          formatDayLabel: formatTimeFilterDateDotsWithWeekday,
-        });
-      }
+      mountTimeLedgerMemoFeed(memoWrap, memoLogRows, {
+        emptyMessage: "선택 기간에 남긴 과제 메모가 없습니다.",
+        showDayDividers:
+          timeLedgerFilterSpansMultipleDays() || showDayGroups,
+        formatDayLabel: formatTimeFilterDateDotsWithWeekday,
+      });
       ledgerContainer.appendChild(memoWrap);
     } else if (showReportView) {
       const reportShell = document.createElement("div");
@@ -8865,39 +8874,27 @@ export function render(opts = {}) {
       reportShell.setAttribute("data-lp-time-report-body", "");
       reportShell.setAttribute("aria-label", "시간 레포트");
       ledgerContainer.appendChild(reportShell);
-      if (showSyncLoading) {
-        mountLpTabSyncLoading(reportShell, "레포트 불러오는 중…");
-      } else {
-        const { ymdTen, granularity } = resolveTimeReportTargetFromRange(
-          reportRangeStartYmd,
-          reportRangeEndYmd,
-        );
-        mountTimeLedgerReport(reportShell, { ymdTen, granularity });
-      }
+      const { ymdTen, granularity } = resolveTimeReportTargetFromRange(
+        reportRangeStartYmd,
+        reportRangeEndYmd,
+      );
+      mountTimeLedgerReport(reportShell, { ymdTen, granularity });
     } else if (showTimelineLedgerContent) {
-      if (showSyncLoading) {
-        cardsWrap.classList.add("time-ledger-mobile-cards--syncing");
-        mountLpTabSyncLoading(cardsWrap, "시간 기록 불러오는 중…");
-      }
       ledgerContainer.appendChild(cardsWrap);
     } else {
       const timeboxShell = document.createElement("div");
       timeboxShell.className = "time-ledger-timebox-view-shell";
       timeboxShell.setAttribute("aria-label", "타임박스 뷰");
       ledgerContainer.appendChild(timeboxShell);
-      if (showSyncLoading) {
-        mountLpTabSyncLoading(timeboxShell, "시간 기록 불러오는 중…");
-      } else {
-        const dayKey = usageHistoryRangeStartYmd;
-        const dayRows = rows.filter((r) => timeLedgerRowYmd(r) === dayKey);
-        mountTimeLedgerTimeboxView(timeboxShell, {
-          dayRows,
-          isMultiDay: timeLedgerFilterSpansMultipleDays(),
-          rangeStartYmd: usageHistoryRangeStartYmd,
-          rangeEndYmd: usageHistoryRangeEndYmd,
-          allRowsInRange: rows,
-        });
-      }
+      const dayKey = usageHistoryRangeStartYmd;
+      const dayRows = rows.filter((r) => timeLedgerRowYmd(r) === dayKey);
+      mountTimeLedgerTimeboxView(timeboxShell, {
+        dayRows,
+        isMultiDay: timeLedgerFilterSpansMultipleDays(),
+        rangeStartYmd: usageHistoryRangeStartYmd,
+        rangeEndYmd: usageHistoryRangeEndYmd,
+        allRowsInRange: rows,
+      });
     }
     contentWrap.appendChild(ledgerContainer);
 
@@ -9113,6 +9110,7 @@ export function render(opts = {}) {
     }
     if (ev?.type === "lp-tab-pull-settled") {
       dismissTimeLedgerPullLoadingUi();
+      syncTimeLedgerContent({ force: true });
       finishUsageListEnterScroll();
     }
   }

@@ -33,6 +33,7 @@ export const CLIENT_STORAGE_SCOPED_BASE_KEYS = [
   "lp_stamp_types_mirror_v1",
   "user_hourly_rate",
   "user_hourly_calc_inputs",
+  "user_hourly_rate_mode",
 ];
 
 export function setActiveClientStorageUserId(uid) {

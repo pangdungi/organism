@@ -570,10 +570,10 @@ export async function mountApp(container) {
         ) {
           kpiSoftRefreshAfterPull(targetTabId, pullResult);
         } else if (targetTabId === "time") {
+          clearLpTabPullPending(targetTabId);
           try {
             window.__lpTimeLedgerSoftRefresh?.();
           } catch (_) {}
-          clearLpTabPullPending(targetTabId);
         } else {
           renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
         }
@@ -934,10 +934,10 @@ export async function mountApp(container) {
         return;
       }
       if (bootTabId === "time") {
+        clearLpTabPullPending("time");
         try {
           window.__lpTimeLedgerSoftRefresh?.();
         } catch (_) {}
-        clearLpTabPullPending("time");
       } else if (bootTabId === "schedulecalendar") {
         try {
           window.__lpCalendarSoftRefresh?.();

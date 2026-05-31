@@ -1,7 +1,8 @@
 /**
- * PWA 아이콘·Android 네이티브 스플래시
+ * PWA 아이콘·Android/iOS 네이티브 스플래시
  * — icon-* / apple-touch: app-icon-source.png (홈·검색용 수달 로고)
  * — pwa-splash-512: 물결 패턴 + splash-mascot (Chrome Android 설치 후 첫 화면)
+ * — pwa-splash-portrait-*: iOS apple-touch-startup-image (전체 화면)
  * — in-app #app-splash: 동일 에셋을 HTML/CSS로 표시
  */
 import sharp from "sharp";
@@ -17,6 +18,14 @@ const MASCOT = join(publicDir, "toolbaricons/splash/splash-mascot.png");
 
 const WAVE_TILE_PX = 48;
 const WAVE_OPACITY = 0.38;
+
+/** @type {{ filename: string, width: number, height: number }[]} */
+const PORTRAIT_SPLASHES = [
+  { filename: "pwa-splash-portrait-1179.png", width: 1179, height: 2556 },
+  { filename: "pwa-splash-portrait-1284.png", width: 1284, height: 2778 },
+  { filename: "pwa-splash-portrait-1170.png", width: 1170, height: 2532 },
+  { filename: "pwa-splash-portrait-1080.png", width: 1080, height: 1920 },
+];
 
 async function buildAnyIcon(size) {
   return sharp(SOURCE)
@@ -56,8 +65,8 @@ async function buildMaskableIcon(size) {
     .toBuffer();
 }
 
-/** Android PWA 네이티브 스플래시 — manifest 512 any 아이콘용 */
-async function buildPwaSplash512(size = 512) {
+/** 물결 타일 + 중앙 마스코트 — 임의 크기 전체 화면 스플래시 */
+async function buildSplashCanvas(width, height) {
   const tile = await sharp(WAVE)
     .resize(WAVE_TILE_PX, WAVE_TILE_PX, { fit: "cover" })
     .ensureAlpha()
@@ -65,8 +74,8 @@ async function buildPwaSplash512(size = 512) {
     .toBuffer();
 
   const waveComposites = [];
-  for (let y = 0; y < size; y += WAVE_TILE_PX) {
-    for (let x = 0; x < size; x += WAVE_TILE_PX) {
+  for (let y = 0; y < height; y += WAVE_TILE_PX) {
+    for (let x = 0; x < width; x += WAVE_TILE_PX) {
       waveComposites.push({
         input: tile,
         left: x,
@@ -77,7 +86,8 @@ async function buildPwaSplash512(size = 512) {
     }
   }
 
-  const mascotHeight = Math.round(size * 0.36);
+  const shortSide = Math.min(width, height);
+  const mascotHeight = Math.round(shortSide * (height > width ? 0.22 : 0.36));
   const mascot = await sharp(MASCOT)
     .resize({
       height: mascotHeight,
@@ -92,8 +102,8 @@ async function buildPwaSplash512(size = 512) {
 
   return sharp({
     create: {
-      width: size,
-      height: size,
+      width,
+      height,
       channels: 3,
       background: { r: 255, g: 255, b: 255 },
     },
@@ -102,12 +112,16 @@ async function buildPwaSplash512(size = 512) {
       ...waveComposites,
       {
         input: mascot,
-        left: Math.round((size - mascotW) / 2),
-        top: Math.round((size - mascotH) / 2),
+        left: Math.round((width - mascotW) / 2),
+        top: Math.round((height - mascotH) / 2),
       },
     ])
     .png()
     .toBuffer();
+}
+
+async function buildPwaSplash512(size = 512) {
+  return buildSplashCanvas(size, size);
 }
 
 async function writeIcon(filename, buffer) {
@@ -132,6 +146,10 @@ async function main() {
   await writeIcon("icon-maskable-512.png", await buildMaskableIcon(512));
   await writeIcon("icon-maskable-192.png", await buildMaskableIcon(192));
   await writeIcon("pwa-splash-512.png", await buildPwaSplash512(512));
+
+  for (const { filename, width, height } of PORTRAIT_SPLASHES) {
+    await writeIcon(filename, await buildSplashCanvas(width, height));
+  }
 }
 
 main().catch((e) => {

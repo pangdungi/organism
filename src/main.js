@@ -38,6 +38,11 @@ import { getSupabaseSession } from "./utils/supabaseSession.js";
 import { applyAppFont } from "./utils/appUiFont.js";
 import { prefetchCriticalAppIconAssets } from "./utils/appIconPrefetch.js";
 import { setAppSplashMessage } from "./utils/lpAppLoading.js";
+import {
+  initAppSplashViewportLock,
+  setAppSplashViewportLock,
+  syncAppSplashViewport,
+} from "./utils/lpSplashViewport.js";
 import { pullUserPrefsFromSupabase } from "./utils/userHourlySync.js";
 import {
   applyTimeCategoryColors,
@@ -156,6 +161,7 @@ function showAppSplashNow() {
   splash.setAttribute("aria-hidden", "false");
   splash.setAttribute("aria-busy", "true");
   splash.setAttribute("aria-label", "조금만 기다리세요 다들 미안 ❤︎");
+  setAppSplashViewportLock(true);
 }
 
 function hideAppSplashNow() {
@@ -170,6 +176,7 @@ function hideAppSplashNow() {
     splash.removeEventListener("transitionend", onTransitionEnd);
     splash.setAttribute("hidden", "");
     splash.setAttribute("aria-hidden", "true");
+    setAppSplashViewportLock(false);
     try {
       window.__lpMarkBootReady?.();
     } catch (_) {}
@@ -357,6 +364,7 @@ function init() {
 
   initOfflineAppGate();
   initModalNoAutoFocus();
+  initAppSplashViewportLock();
   initLpAppShellViewportLock();
   initLpPwaInstall();
 

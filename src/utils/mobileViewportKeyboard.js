@@ -18,7 +18,7 @@ function readInnerHeight() {
   return Number.isFinite(h) && h > 0 ? h : 0;
 }
 
-function isIosLikeMobile() {
+export function isIosLikeMobile() {
   if (typeof navigator === "undefined") return false;
   try {
     if (/iPad|iPhone|iPod/.test(navigator.userAgent || "")) return true;
@@ -28,6 +28,19 @@ function isIosLikeMobile() {
       return true;
   } catch (_) {}
   return false;
+}
+
+function isTaskLogPickerSearchFocused() {
+  const el = document.activeElement;
+  if (!(el instanceof HTMLElement)) return false;
+  return el.matches(
+    ".time-task-log-task-dropdown-search, [data-legacy~='time-task-log-task-dropdown-search']",
+  );
+}
+
+/** iOS 과제 검색: 모달 위치·크기 유지, 키보드만 표시(안드로이드는 lp-keyboard-open 유지) */
+export function shouldSkipTaskLogModalKeyboardReposition() {
+  return isIosLikeMobile() && isTaskLogPickerSearchFocused();
 }
 
 function isTextInputFocused() {
@@ -87,7 +100,10 @@ export function syncVisualViewportKeyboardInset() {
       "--vv-offset-top",
       `${vv.offsetTop || 0}px`,
     );
-    document.documentElement.classList.toggle("lp-keyboard-open", kb > KEYBOARD_OPEN_PX);
+    document.documentElement.classList.toggle(
+      "lp-keyboard-open",
+      kb > KEYBOARD_OPEN_PX && !shouldSkipTaskLogModalKeyboardReposition(),
+    );
   } catch (_) {}
   return kb;
 }

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko" class="lp-app-bg">
+<html lang="ko" class="lp-app-bg lp-splash-active">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=overlays-content" />
@@ -59,6 +59,12 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=money-is-time-logo-1" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=money-is-time-logo-1" />
     <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png?v=money-is-time-logo-1" />
+    <!-- iOS 홈 화면 실행 직후 네이티브 스플래시(전체 화면 물결+수달) -->
+    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1179.png?v=money-is-time-splash-1" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1179.png?v=money-is-time-splash-1" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1284.png?v=money-is-time-splash-1" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1170.png?v=money-is-time-splash-1" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1080.png?v=money-is-time-splash-1" media="(orientation: portrait)" />
     <!-- FOUC 방지 + 첫 페인트부터 세종 글꽃(또는 저장된 화면 글꼴) -->
     <style>
       @font-face {
@@ -100,21 +106,40 @@
         margin: 0;
         overflow-x: hidden;
         min-height: 100vh;
+        min-height: -webkit-fill-available;
         min-height: 100dvh;
         background-color: #fff;
+      }
+      html.lp-splash-active {
+        overflow: hidden;
+        height: 100%;
+        background: #fff;
+      }
+      html.lp-splash-active body {
+        overflow: hidden;
+        height: 100%;
+        background: #fff;
       }
       #app {
         display: none;
         background-color: #fff;
       }
       /* 부팅 스플래시 — JS 번들 전 첫 페인트용(본문은 lp-app-loading.css와 동일) */
+      #app-splash,
       .app-splash.lp-unified-loading {
         position: fixed;
-        inset: 0;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
         z-index: 2147483646;
         width: 100%;
-        min-height: 100%;
+        height: 100%;
+        min-height: 100vh;
+        min-height: -webkit-fill-available;
         min-height: 100dvh;
+        max-height: none;
+        margin: 0;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -135,10 +160,17 @@
       }
       .app-splash .lp-unified-loading__pattern {
         position: absolute;
-        inset: 0;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
         z-index: 0;
+        width: 100%;
+        height: 100%;
+        min-height: 100%;
         pointer-events: none;
         opacity: 0.38;
+        background-color: #fff;
         background-image: url("/toolbaricons/splash/splash-pattern-wave.png");
         background-repeat: repeat;
         background-size: 3rem 3rem;
@@ -199,11 +231,17 @@
       }
       #lp-boot-fallback {
         position: fixed;
-        inset: 0;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
         z-index: 2147483647;
         width: 100%;
-        min-height: 100%;
+        height: 100%;
+        min-height: 100vh;
+        min-height: -webkit-fill-available;
         min-height: 100dvh;
+        max-height: none;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -618,7 +656,36 @@
           setTimeout(function () {
             splash.setAttribute("hidden", "");
             splash.setAttribute("aria-hidden", "true");
+            try {
+              document.documentElement.classList.remove("lp-splash-active");
+            } catch (_e) {}
+            splash.style.removeProperty("height");
+            splash.style.removeProperty("min-height");
           }, 280);
+        }
+
+        function syncSplashViewportEarly() {
+          var splash = document.getElementById("app-splash");
+          if (!splash || splash.hasAttribute("hidden")) return;
+          var h = window.innerHeight || 0;
+          try {
+            var vv = window.visualViewport;
+            if (vv && vv.height > 0) {
+              h = Math.max(h, vv.height + (vv.offsetTop || 0));
+            }
+          } catch (_e) {}
+          if (h > 0) {
+            splash.style.height = h + "px";
+            splash.style.minHeight = h + "px";
+          }
+        }
+
+        syncSplashViewportEarly();
+        window.addEventListener("resize", syncSplashViewportEarly, { passive: true });
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener("resize", syncSplashViewportEarly, {
+            passive: true,
+          });
         }
 
         function showBootFallback() {
