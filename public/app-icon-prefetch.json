@@ -1,4 +1,5 @@
 [
+  "/app-icon-source.png",
   "/apple-touch-icon.png",
   "/diary-tr-icons/01-routine-done.png",
   "/diary-tr-icons/02-routine-zero.png",
@@ -24,6 +25,11 @@
   "/icon-maskable-192.png",
   "/icon-maskable-512.png",
   "/icon.svg",
+  "/pwa-splash-512.png",
+  "/pwa-splash-portrait-1080.png",
+  "/pwa-splash-portrait-1170.png",
+  "/pwa-splash-portrait-1179.png",
+  "/pwa-splash-portrait-1284.png",
   "/retrospect-kpi/banknote-dollar.svg",
   "/retrospect-kpi/creature.svg",
   "/retrospect-kpi/dumbbell.svg",

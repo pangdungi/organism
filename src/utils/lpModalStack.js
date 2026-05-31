@@ -3,6 +3,7 @@ export const LP_CONFIRM_STACK_CLASS = "lp-confirm-stack-modal";
 
 const BODY_BLOCKING_MODAL_SELECTOR = [
   "body > .time-task-setup-modal:not(.lp-confirm-stack-modal)",
+  "body > [data-legacy~='time-task-setup-modal']:not(.lp-confirm-stack-modal)",
   "body > .todo-list-modal",
   "body > .diary-desktop-compose-modal",
   "body > .work-schedule-day-entry-modal",

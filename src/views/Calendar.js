@@ -11,6 +11,13 @@ import {
 } from "./TodoList.js";
 import { openCalendarTaskEditFromBarModel } from "../utils/calendarTaskEditModal.js";
 import {
+  mountCalendarDayIconsEditor,
+  renderCalendarMonthlyDayIcons,
+  CALENDAR_MONTHLY_DAY_ICONS_STRIP_REM,
+  calendarDayHasIcon,
+} from "../utils/calendarDayIconsEditor.js";
+import { syncCalendarDayIconForDate, pullCalendarDayIconsFromSupabase } from "../utils/calendarDayIconsSupabase.js";
+import {
   isPastCalendarTask,
 } from "../utils/calendarTaskDisplayRules.js";
 import {
@@ -260,6 +267,30 @@ const CAL_EXPECTED_ROW_ONE_LINE_SLICE_PX = 22;
 /** 한 시간 행 px 상한 — 22×60÷5=264 */
 const CAL_EXPECTED_ROW_SHORT_SLOT_CEIL_PX = 264;
 /** 월간·1주 막대 스택: 레이아웃의 CSS 변수와 동기 (모바일/데스크톱 동일 수치) */
+/** 월간 주 행 — 날짜 아이콘 스트립 높이(rem). 아이콘은 셀 너비(정사각)만큼 표시 */
+function lpCalendarWeeklyDayIconsStripRem(weekRow) {
+  if (!(weekRow instanceof HTMLElement)) return 0;
+  const keys = [...weekRow.querySelectorAll(".calendar-monthly-day[data-date]")]
+    .map((el) => String(el.dataset.date || "").trim())
+    .filter(Boolean);
+  if (!keys.some((k) => calendarDayHasIcon(k))) return 0;
+  const dayEl = weekRow.querySelector(".calendar-monthly-day[data-date]");
+  if (dayEl) {
+    try {
+      const wPx = dayEl.getBoundingClientRect().width;
+      if (wPx > 0 && typeof getComputedStyle !== "undefined") {
+        const rootFs = parseFloat(
+          getComputedStyle(document.documentElement).fontSize,
+        );
+        if (Number.isFinite(rootFs) && rootFs > 0) {
+          return wPx / rootFs;
+        }
+      }
+    } catch (_) {}
+  }
+  return CALENDAR_MONTHLY_DAY_ICONS_STRIP_REM;
+}
+
 function lpCalendarWeekBarLayoutMetrics(weekRow) {
   const fallback = {
     BARS_TOP: 2.35,
@@ -588,7 +619,9 @@ function lpCalendarFinalizeBarRowLayout(
       maxBottomRem = Math.max(maxBottomRem, topAcc);
     }
     const subPxSlackRem = 0.12;
-    const requiredHeight = maxBottomRem + BOTTOM_PAD + subPxSlackRem;
+    const iconsStripRem = lpCalendarWeeklyDayIconsStripRem(weekRow);
+    const requiredHeight =
+      maxBottomRem + BOTTOM_PAD + iconsStripRem + subPxSlackRem;
     weekRow.style.minHeight = `${Math.max(WEEK_ROW_MIN, requiredHeight)}rem`;
   };
 
@@ -1372,7 +1405,9 @@ function calendarSpanBarPayloadJson(b) {
 
 /** 할일·일정 막대 클릭 → 할 일 목록과 동일 수정 모달(셀 빈 곳 클릭 추가 모달과 구분: stopPropagation) */
 function lpCalendarClickHitsMonthlySpanBar(e) {
-  return !!e.target?.closest?.(".calendar-monthly-span-bar");
+  return !!e.target?.closest?.(
+    ".calendar-monthly-span-bar, .calendar-monthly-day-icon-btn",
+  );
 }
 
 /** 날짜 칸 클릭이 막대 위면 할 일 추가 모달 대신 막대 수정으로 처리 */
@@ -1694,6 +1729,7 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
             <span class="time-task-log-date-overlay" aria-hidden="true"></span>
           </div>
         </div>
+        <div class="calendar-day-icons-editor-mount" data-calendar-day-icons-mount></div>
       </div>
       <div class="time-task-log-footer">
         <button type="button" class="time-add-task-submit">추가</button>
@@ -1708,6 +1744,10 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
   const startInput = modal.querySelector(".todo-task-edit-start");
   const dueInput = modal.querySelector(".todo-task-edit-due");
   initModalStandardDateFields(modal);
+  const dayIconsMount = modal.querySelector("[data-calendar-day-icons-mount]");
+  const dayIconsEditor = mountCalendarDayIconsEditor(dayIconsMount, {
+    dateKey: initialYmd,
+  });
 
   function close() {
     detachCalendarEventBubbleOutsideListener();
@@ -1728,7 +1768,10 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
     const name = (nameInput?.value || "").trim();
     const startDate = (startInput?.value || "").trim().slice(0, 10);
     const dueDate = (dueInput?.value || "").trim().slice(0, 10);
-    if (!name) return;
+    if (!name) {
+      void showAlertModal({ message: "할일/일정 이름을 입력해 주세요." });
+      return;
+    }
     if (!dueDate) {
       void showAlertModal({ message: "마감일을 입력해 주세요." });
       return;
@@ -1747,6 +1790,9 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
       });
         return;
       }
+      void syncCalendarDayIconForDate(initialYmd, dayIconsEditor.getIconKey()).catch(
+        () => {},
+      );
       onSave?.({
         name,
         startDate,
@@ -2264,6 +2310,16 @@ function renderMonthlyView(tabsElement) {
         const entriesEl = document.createElement("div");
         entriesEl.className = "calendar-monthly-day-entries";
         cell.appendChild(entriesEl);
+        const dayIconsEl = document.createElement("div");
+        dayIconsEl.className = "calendar-monthly-day-icons";
+        dayIconsEl.setAttribute("aria-hidden", "true");
+        renderCalendarMonthlyDayIcons(dayIconsEl, key, {
+          onAfterChange: () => {
+            renderCalendar();
+            refreshTodoList();
+          },
+        });
+        cell.appendChild(dayIconsEl);
 
         cell.style.cursor = "pointer";
         cell.addEventListener(
@@ -2507,12 +2563,13 @@ function renderMonthlyView(tabsElement) {
         allBars,
         weekDateKeys.length,
       );
+      const iconsStripRem = lpCalendarWeeklyDayIconsStripRem(weekRow);
       weekRow.style.minHeight = `${lpCalendarMonthlyWeekRowTargetMinHeightRem(
         baseBarTop,
         rowsNeeded,
         BAR_HEIGHT,
         ROW_GAP,
-        BOTTOM_PAD,
+        BOTTOM_PAD + iconsStripRem,
         WEEK_ROW_MIN,
       )}rem`;
       const barsWithRow = allBars;
@@ -5719,6 +5776,11 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
           reason: `calendar_nested_${subViewId}`,
           subView: "calendar",
         });
+        if (subViewId === "monthly") {
+          await pullCalendarDayIconsFromSupabase({
+            reason: `calendar_nested_${subViewId}`,
+          });
+        }
       } catch (_) {}
       if (subViewId === "1day") {
         try {

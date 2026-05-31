@@ -44,6 +44,8 @@
   --cal-bar-row-min: 1.32rem;
   --cal-bar-row-gap: 0.18rem;
   --cal-bar-bottom-pad: 0.36rem;
+  /** 날짜 아이콘 하단 스트립 — Calendar.js `CALENDAR_MONTHLY_DAY_ICONS_STRIP_REM` 과 동기 */
+  --cal-day-icon-strip-rem: 2.85rem;
   /** 막대 없는 주·최소 행 높이 — Calendar.js `lpCalendarMonthlyWeekRowTargetMinHeightRem` 과 동기 */
   --cal-week-row-min: 4.75rem;
   color: var(--cal-text);
@@ -1279,6 +1281,122 @@
   line-height: 1.35;
   color: var(--cal-text-muted);
   pointer-events: none;
+}
+
+.calendar-monthly-day-icons {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
+  display: block;
+  width: calc(100% + 2 * var(--cal-cell-pad));
+  min-height: 0;
+  margin-top: auto;
+  margin-left: calc(-1 * var(--cal-cell-pad));
+  margin-right: calc(-1 * var(--cal-cell-pad));
+  margin-bottom: calc(-1 * var(--cal-cell-pad));
+  padding-top: 0;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.calendar-monthly-day-icons[hidden] {
+  display: none !important;
+}
+
+.calendar-monthly-day-icon-btn {
+  pointer-events: auto;
+  display: block;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+
+.calendar-monthly-day-icon-btn:active {
+  background: rgba(30, 77, 123, 0.06);
+}
+
+.calendar-monthly-day-icons__img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: fill;
+  object-position: center;
+  pointer-events: none;
+}
+
+/* 할일 추가·수정 모달 — 날짜 아이콘(1개) */
+.calendar-day-icons-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.35rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--lp-modal-border, #e2e8f0);
+}
+
+.calendar-day-icons-editor__label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--lp-modal-navy, #1e4d7b);
+}
+
+.calendar-day-icons-editor__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.65rem;
+  height: 2.65rem;
+  padding: 0;
+  border: 1px dashed var(--lp-modal-border, #e2e8f0);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  font-size: 1.25rem;
+  font-family: inherit;
+  color: #64748b;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.calendar-day-icons-editor__trigger--selected {
+  border-style: solid;
+  border-color: rgba(30, 77, 123, 0.35);
+  background: #fff;
+}
+
+.calendar-day-icons-editor__trigger-icon {
+  width: 1.65rem;
+  height: 1.65rem;
+  object-fit: contain;
+}
+
+/* 할일 추가 모달 위 — 날짜 아이콘 picker (과제 아이콘 picker와 동일 z-index) */
+.calendar-day-icon-pick-modal.time-task-setup-modal.time-add-task-icon-modal {
+  z-index: 11000;
+}
+
+.calendar-day-icon-pick-actions {
+  flex-shrink: 0;
+}
+
+.calendar-day-icon-pick-remove {
+  width: 100%;
+  padding: 0.45rem 0.65rem;
+  margin-bottom: 0.35rem;
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  border-radius: 8px;
+  background: rgba(254, 242, 242, 0.9);
+  color: #b91c1c;
+  font-size: 0.8125rem;
+  font-family: inherit;
+  cursor: pointer;
 }
 
 /* 드래그 타깃 */

@@ -13,6 +13,7 @@ const MODAL_ROOT_SELECTOR = [
   '[role="dialog"]',
   '[role="alertdialog"]',
   ".time-task-setup-modal",
+  "[data-legacy~='time-task-setup-modal']",
   ".todo-list-modal",
   ".diary-desktop-compose-modal",
   ".auth-pw-modal",
