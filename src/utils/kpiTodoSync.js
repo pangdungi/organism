@@ -18,6 +18,7 @@ import { applySideincomeKpiTimestampsOnSave } from "./sideincomeKpiMapSupabase.j
 import { applyHappinessKpiTimestampsOnSave } from "./happinessKpiMapSupabase.js";
 import { applyHealthKpiTimestampsOnSave } from "./healthKpiMapSupabase.js";
 import { formatKpiHistoryValueText } from "./kpiLogFields.js";
+import { kpiHasHabitUnitGoal } from "./kpiHabitStreak.js";
 import {
   readKpiMapScopedStorageRaw,
   writeKpiMapScopedStorageRaw,
@@ -564,7 +565,36 @@ export function getKpiDailyRepeatInfoByKpiId(kpiId) {
         text: (t.text || "").trim(),
         completed: false,
       }));
-    return { storageKey, kpiId: kpi.id, needHabitTracker, dailyTodos };
+    return {
+      storageKey,
+      kpiId: kpi.id,
+      needHabitTracker,
+      dailyTodos,
+      hasUnitGoal: kpiHasHabitUnitGoal(kpi),
+      unit: String(kpi.unit || "").trim(),
+    };
+  }
+  return null;
+}
+
+/**
+ * KPI id — 목표값·단위(과제기록 «오늘의 수행값» 표시용)
+ * @returns {{ storageKey: string, kpiId: string, hasUnitGoal: boolean, unit: string, needHabitTracker: boolean } | null}
+ */
+export function getKpiMeasureInfoByKpiId(kpiId) {
+  const kid = String(kpiId || "").trim();
+  if (!kid) return null;
+  for (const storageKey of STORAGE_KEYS) {
+    const data = loadJson(storageKey, { kpis: [] });
+    const kpi = (data.kpis || []).find((k) => String(k.id || "").trim() === kid);
+    if (!kpi) continue;
+    return {
+      storageKey,
+      kpiId: kpi.id,
+      hasUnitGoal: kpiHasTargetValueAndUnit(kpi),
+      unit: String(kpi.unit || "").trim(),
+      needHabitTracker: !!kpi.needHabitTracker,
+    };
   }
   return null;
 }

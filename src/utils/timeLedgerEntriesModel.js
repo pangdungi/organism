@@ -350,6 +350,14 @@ export function splitUnhealthyMealMemoFromDb(memo) {
   return { mealDetail, feedback: rest.trim() };
 }
 
+/** 과제 기록 모달 «오늘의 수행값» */
+function normalizeKpiPerformedValueForRow(raw) {
+  const s = String(raw ?? "").trim();
+  if (!s) return "";
+  const n = parseFloat(s.replace(/[^0-9.-]/g, ""));
+  return Number.isNaN(n) ? "" : String(n);
+}
+
 /** 과제 기록 모달 매일할일 체크 [{ id, text }] */
 function normalizeHabitDailyCompletedForRow(raw) {
   if (!Array.isArray(raw)) return [];
@@ -411,6 +419,7 @@ export function localTimeLedgerRowToDbPayload(userId, row) {
     habit_daily_completed: normalizeHabitDailyCompletedForRow(
       row.habitDailyCompleted,
     ),
+    kpi_performed_value: normalizeKpiPerformedValueForRow(row.kpiPerformedValue),
   };
 }
 
@@ -456,6 +465,7 @@ export function dbRowToLocalTimeLedgerRow(db) {
     habitDailyCompleted: normalizeHabitDailyCompletedForRow(
       db.habit_daily_completed,
     ),
+    kpiPerformedValue: normalizeKpiPerformedValueForRow(db.kpi_performed_value),
     /** Supabase updated_at — 병합 시 last-write-wins */
     /** Supabase updated_at — 서버 스냅샷·동기화 표시용 */
     serverUpdatedAt:
@@ -550,10 +560,15 @@ export function applyTimeLedgerServerRangeSnapshot(
     const localHabit = Array.isArray(local.habitDailyCompleted)
       ? local.habitDailyCompleted
       : [];
-    if (serverHabit.length === 0 && localHabit.length > 0) {
+    const serverKpiVal = normalizeKpiPerformedValueForRow(serverRow.kpiPerformedValue);
+    const localKpiVal = normalizeKpiPerformedValueForRow(local.kpiPerformedValue);
+    const keepLocalHabit = serverHabit.length === 0 && localHabit.length > 0;
+    const keepLocalKpiVal = !serverKpiVal && !!localKpiVal;
+    if (keepLocalHabit || keepLocalKpiVal) {
       return {
         ...serverRow,
-        habitDailyCompleted: localHabit,
+        ...(keepLocalHabit ? { habitDailyCompleted: localHabit } : {}),
+        ...(keepLocalKpiVal ? { kpiPerformedValue: localKpiVal } : {}),
         localModifiedAt:
           typeof local.localModifiedAt === "number"
             ? local.localModifiedAt

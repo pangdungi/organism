@@ -600,9 +600,144 @@ export function getHabitTrackerDailyCompletedForDate(storageKey, kpiId, dateRaw)
   );
 }
 
+function habitKpiHasUnitGoal(kpi) {
+  if (!kpi?.needHabitTracker) return false;
+  const unit = String(kpi.unit || "").trim();
+  const target = String(kpi.targetValue ?? "").trim();
+  return !!unit && !!target;
+}
+
+function findHabitKpiLogForDay(logs, kpiId, normDate, entryId) {
+  const eid = String(entryId || "").trim();
+  if (isUuid(eid)) {
+    for (const l of logs) {
+      if (!kpiLogMatchesDay(l, kpiId, normDate)) continue;
+      const ids = Array.isArray(l.timeLedgerEntryIds)
+        ? l.timeLedgerEntryIds.map((x) => String(x || "").trim())
+        : [];
+      if (!ids.includes(eid)) continue;
+      return l;
+    }
+  }
+  for (const l of logs) {
+    if (kpiLogMatchesDay(l, kpiId, normDate)) return l;
+  }
+  return null;
+}
+
+/**
+ * 해당 날짜 KPI 로그 수행값(과제 기록 모달 — 매일하기+단위 목표)
+ */
+export function getHabitTrackerLogValueForLedgerEntry(
+  storageKey,
+  kpiId,
+  dateRaw,
+  entryId,
+) {
+  const normDate = normalizeLogDate(dateRaw);
+  if (!storageKey || !kpiId || normDate.length < 10) return "";
+  try {
+    const raw = readKpiMapScopedStorageRaw(storageKey);
+    if (!raw) return "";
+    const data = JSON.parse(raw);
+    const log = findHabitKpiLogForDay(data.kpiLogs || [], kpiId, normDate, entryId);
+    return log ? String(log.value ?? "").trim() : "";
+  } catch (_) {
+    return "";
+  }
+}
+
+function kpiHasTargetValueAndUnit(kpi) {
+  const tv = String(kpi?.targetValue ?? "").trim();
+  const u = String(kpi?.unit ?? "").trim();
+  return tv !== "" && u !== "";
+}
+
+function sanitizeKpiMeasureLogValue(val) {
+  const n = parseFloat(String(val || "").replace(/[^0-9.-]/g, ""));
+  return Number.isNaN(n) ? "" : String(n);
+}
+
+/**
+ * 직접입력 등 매일하기가 아닌 KPI — 과제기록 «오늘의 수행값»을 해당 날짜 kpiLogs에 반영
+ */
+export function upsertKpiMeasureLogValue(
+  storageKey,
+  kpiId,
+  dateRaw,
+  performedValue,
+  timeLedgerEntryId,
+) {
+  if (!storageKey || !kpiId || !dateRaw || dateRaw.length < 10) return false;
+  try {
+    const raw = readKpiMapScopedStorageRaw(storageKey);
+    if (!raw) return false;
+    const prev = JSON.parse(raw);
+    const data = JSON.parse(raw);
+    const kpi = (data.kpis || []).find(
+      (k) => String(k.id || "").trim() === String(kpiId || "").trim(),
+    );
+    if (!kpi || kpi.needHabitTracker || !kpiHasTargetValueAndUnit(kpi)) return false;
+
+    const config = STORAGE_CONFIG.find((c) => c.key === storageKey);
+    if (!config) return false;
+    const idKey = config.idKey;
+    const idValue = kpi[config.kpiKey];
+    const logs = data.kpiLogs || [];
+    const normDate = normalizeLogDate(dateRaw);
+    const existingIdx = logs.findIndex((l) =>
+      kpiLogMatchesDay(l, kpiId, normDate),
+    );
+    const v = sanitizeKpiMeasureLogValue(performedValue);
+    const hasLedger = isUuid(String(timeLedgerEntryId || "").trim());
+    const dateDisplay = toDisplayDate(dateRaw);
+
+    if (existingIdx >= 0) {
+      if (v !== "") logs[existingIdx].value = v;
+      logs[existingIdx].status = logs[existingIdx].status || "순항";
+      if (hasLedger) {
+        attachTimeLedgerEntryToLog(logs[existingIdx], timeLedgerEntryId);
+      }
+    } else if (v !== "" || hasLedger) {
+      const row = {
+        id: nextLogId(),
+        kpiId,
+        [idKey]: idValue,
+        date: dateDisplay,
+        dateRaw: normDate,
+        value: v,
+        status: "순항",
+        memo: "",
+        ...defaultManualKpiLogMeta(),
+      };
+      if (hasLedger) attachTimeLedgerEntryToLog(row, timeLedgerEntryId);
+      logs.push(row);
+    } else {
+      return false;
+    }
+    data.kpiLogs = logs;
+    stampAndPersistKpiMap(storageKey, prev, data, { pushServer: true });
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function resolveHabitLogValueForSave(kpi, performedValue, existingValue, hasActivity) {
+  if (habitKpiHasUnitGoal(kpi)) {
+    const trimmed = String(performedValue ?? "").trim();
+    if (!trimmed) return String(existingValue ?? "").trim();
+    const n = parseFloat(trimmed.replace(/[^0-9.-]/g, ""));
+    return Number.isNaN(n) ? String(existingValue ?? "").trim() : String(n);
+  }
+  if (hasActivity) return String(existingValue ?? "").trim() || "1";
+  return String(existingValue ?? "").trim();
+}
+
 /**
  * 해당 날짜 KPI 로그의 dailyCompleted를 모달 체크 상태와 동일하게 덮어씀 (템플릿 kpiDailyRepeatTodos.completed 미사용)
  * @param {string=} timeLedgerEntryId — 시간가계부 행 id가 있으면 로그에 연결(삭제 시 동기 제거용)
+ * @param {string=} performedValue — 매일하기+단위 목표 시 오늘 수행값
  */
 export function replaceHabitTrackerLogDailyCompleted(
   storageKey,
@@ -610,6 +745,7 @@ export function replaceHabitTrackerLogDailyCompleted(
   dateRaw,
   completed,
   timeLedgerEntryId,
+  performedValue,
 ) {
   if (!storageKey || !kpiId || !dateRaw || dateRaw.length < 10) return;
   try {
@@ -635,23 +771,33 @@ export function replaceHabitTrackerLogDailyCompleted(
       Array.isArray(completed) ? completed : [],
     );
     const dateDisplay = toDisplayDate(dateRaw);
+    const hasActivity =
+      list.length > 0 || !!String(timeLedgerEntryId || "").trim();
+    const hasPerformedInput =
+      habitKpiHasUnitGoal(kpi) && String(performedValue ?? "").trim() !== "";
 
     if (existingIdx >= 0) {
+      const prevVal = logs[existingIdx].value;
       logs[existingIdx].dailyCompleted = list;
       logs[existingIdx].dailyIncomplete = [];
-      logs[existingIdx].value = logs[existingIdx].value || "1";
+      logs[existingIdx].value = resolveHabitLogValueForSave(
+        kpi,
+        performedValue,
+        prevVal,
+        hasActivity,
+      );
       logs[existingIdx].status = logs[existingIdx].status || "순항";
       if (timeLedgerEntryId) {
         attachTimeLedgerEntryToLog(logs[existingIdx], timeLedgerEntryId);
       }
-    } else if (list.length > 0) {
+    } else if (hasActivity || hasPerformedInput) {
       const row = {
         id: nextLogId(),
         kpiId,
         [idKey]: idValue,
         date: dateDisplay,
         dateRaw,
-        value: "1",
+        value: resolveHabitLogValueForSave(kpi, performedValue, "", hasActivity),
         status: "순항",
         memo: "",
         dailyCompleted: list,

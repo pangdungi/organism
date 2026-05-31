@@ -1493,8 +1493,10 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 }
 .time-task-log-kpi-todos-section,
 .time-task-log-daily-todos-section,
+.time-task-log-kpi-value-section,
 [data-legacy~="time-task-log-kpi-todos-section"],
-[data-legacy~="time-task-log-daily-todos-section"] {
+[data-legacy~="time-task-log-daily-todos-section"],
+[data-legacy~="time-task-log-kpi-value-section"] {
   margin-top: 0.35rem;
   padding-top: 0.65rem;
   border-top: 1px solid var(--lp-modal-border);
@@ -1506,6 +1508,45 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+}
+.time-task-log-habit-value-row,
+[data-legacy~="time-task-log-habit-value-row"] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.time-task-log-habit-value-label,
+[data-legacy~="time-task-log-habit-value-label"] {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--lp-modal-navy-muted);
+}
+.time-task-log-habit-value-field,
+[data-legacy~="time-task-log-habit-value-field"] {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.time-task-log-habit-value-input,
+[data-legacy~="time-task-log-habit-value-input"] {
+  width: 4.25rem;
+  max-width: 35vw;
+  padding: 0.3rem 0.45rem;
+  font-size: 0.8125rem;
+  text-align: right;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 6px;
+  background: var(--lp-modal-surface, #fff);
+  color: inherit;
+}
+.time-task-log-habit-value-unit,
+[data-legacy~="time-task-log-habit-value-unit"] {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--lp-modal-navy-muted);
+  white-space: nowrap;
 }
 .time-task-log-kpi-todo-row,
 .time-task-log-daily-todo-row,
