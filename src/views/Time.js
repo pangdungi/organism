@@ -25,7 +25,11 @@ import {
   getCategoryColorForReport,
 } from "../utils/todoSettings.js";
 import { showToast } from "../utils/showToast.js";
-import { syncVisualViewportKeyboardInset } from "../utils/mobileViewportKeyboard.js";
+import {
+  lockPageScrollForModalKeyboard,
+  resetViewportKeyboardBaseline,
+  syncVisualViewportKeyboardInset,
+} from "../utils/mobileViewportKeyboard.js";
 import { showConfirmModal, showAlertModal } from "../utils/confirmModal.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
@@ -5636,7 +5640,32 @@ export function render(opts = {}) {
   let taskLogMemoActiveInput = null;
   let taskLogScrollTopBeforeMemo = 0;
   let taskLogMemoKeyboardOpen = false;
+  /** @type {AbortController | null} */
+  let taskLogKeyboardShellAc = null;
   const TASK_LOG_KEYBOARD_OPEN_PX = 80;
+
+  function bindTaskLogModalKeyboardShell() {
+    taskLogKeyboardShellAc?.abort();
+    if (!isTaskLogMobileMemoUi()) return;
+    taskLogKeyboardShellAc = new AbortController();
+    const { signal } = taskLogKeyboardShellAc;
+    resetViewportKeyboardBaseline();
+    const run = () => {
+      syncVisualViewportKeyboardInset();
+      lockPageScrollForModalKeyboard();
+    };
+    taskLogModal.addEventListener("focusin", run, { capture: true, signal });
+    window.visualViewport?.addEventListener("resize", run, { passive: true, signal });
+    window.visualViewport?.addEventListener("scroll", run, { passive: true, signal });
+    run();
+    requestAnimationFrame(run);
+    window.setTimeout(run, 120);
+  }
+
+  function unbindTaskLogModalKeyboardShell() {
+    taskLogKeyboardShellAc?.abort();
+    taskLogKeyboardShellAc = null;
+  }
 
   function isTaskLogMobileMemoUi() {
     return (
@@ -7129,6 +7158,7 @@ export function render(opts = {}) {
     taskLogModal.hidden = false;
     setTaskLogModalShellOpen(true);
     document.body.style.overflow = "hidden";
+    bindTaskLogModalKeyboardShell();
     exitTaskLogMemoScroll();
     closeDateTimePicker();
     const bodyEl = taskLogModal.querySelector(
@@ -7309,6 +7339,7 @@ export function render(opts = {}) {
     taskLogModal.hidden = false;
     setTaskLogModalShellOpen(true);
     document.body.style.overflow = "hidden";
+    bindTaskLogModalKeyboardShell();
     exitTaskLogMemoScroll();
     closeDateTimePicker();
     const bodyEl = taskLogModal.querySelector(
@@ -7375,6 +7406,7 @@ export function render(opts = {}) {
   function closeTaskLogModal() {
     taskLogModal.hidden = true;
     setTaskLogModalShellOpen(false);
+    unbindTaskLogModalKeyboardShell();
     exitTaskLogMemoScroll();
     if (taskLogFooterEl) taskLogFooterEl.style.display = "none";
     closeDateTimePicker();

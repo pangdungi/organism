@@ -388,13 +388,14 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
     padding-bottom: max(1rem, var(--vv-keyboard, 0px));
   }
 
-  /* 갤럭시 등: 키보드 시 화면 전체가 눌리지 않게 visualViewport 기준으로 모달만 맞춤 */
+  /* 갤럭시·iOS: 키보드 시 화면 전체가 눌리지 않게 visualViewport·layout shrink 기준으로 모달만 맞춤 */
   html.lp-keyboard-open.lp-task-log-modal-open
     .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal),
   html.lp-keyboard-open.lp-task-log-modal-open
     [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
       .lp-calendar-budget-add-modal
     ) {
+    inset: auto;
     top: var(--vv-offset-top, 0px);
     left: 0;
     right: 0;

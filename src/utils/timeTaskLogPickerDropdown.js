@@ -10,6 +10,10 @@ import {
 import { getFullTaskOptions } from "./timeTaskOptionsModel.js";
 import * as TTC from "./timeTaskOptionsConstants.js";
 import { getTimeTaskListIconSrc } from "./timeTaskIconUrls.js";
+import {
+  lockPageScrollForModalKeyboard,
+  syncVisualViewportKeyboardInset,
+} from "./mobileViewportKeyboard.js";
 
 function getProductivityFromCategory(categoryValue) {
   if (!categoryValue) return "";
@@ -379,6 +383,19 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
       searchQuery = searchInput.value.trim();
       syncSearchClearUi();
       renderOptions(optionsContainer, searchQuery);
+    });
+    searchInput.addEventListener("focus", () => {
+      syncVisualViewportKeyboardInset();
+      lockPageScrollForModalKeyboard();
+      requestAnimationFrame(() => {
+        syncVisualViewportKeyboardInset();
+        lockPageScrollForModalKeyboard();
+        syncPanelMaxHeight();
+      });
+      window.setTimeout(() => {
+        syncVisualViewportKeyboardInset();
+        syncPanelMaxHeight();
+      }, 120);
     });
     searchInput.addEventListener("click", (e) => e.stopPropagation());
     searchInput.addEventListener("keydown", (e) => e.stopPropagation());
