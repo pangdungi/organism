@@ -38,9 +38,24 @@ function isTaskLogPickerSearchFocused() {
   );
 }
 
-/** iOS 과제 검색: 모달 위치·크기 유지, 키보드만 표시(안드로이드는 lp-keyboard-open 유지) */
+export function isAndroidLikeMobile() {
+  if (typeof navigator === "undefined") return false;
+  return /Android/i.test(navigator.userAgent || "");
+}
+
+function isTaskLogMemoFieldFocused() {
+  const el = document.activeElement;
+  if (!(el instanceof HTMLElement)) return false;
+  return el.matches(
+    '[data-legacy~="time-task-log-memo-input"], [data-legacy~="time-task-log-feedback"], [data-legacy~="time-task-log-meal-detail-input"]',
+  );
+}
+
+/** iOS 과제 검색·Android 메모: 모달 크기는 유지하고 스크롤 영역만 조정(iOS와 동일) */
 export function shouldSkipTaskLogModalKeyboardReposition() {
-  return isIosLikeMobile() && isTaskLogPickerSearchFocused();
+  if (isIosLikeMobile() && isTaskLogPickerSearchFocused()) return true;
+  if (isAndroidLikeMobile() && isTaskLogMemoFieldFocused()) return true;
+  return false;
 }
 
 function isTextInputFocused() {

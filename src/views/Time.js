@@ -5756,10 +5756,38 @@ export function render(opts = {}) {
     );
   }
 
-  /** 모달 내부 스크롤만 — 메모를 스크롤 영역 상단·키보드 위로 (모달 자체는 이동 안 함) */
+  /** 메모 포커스 시 스크롤 맨 아래 여백(키보드 높이) — 위로 올릴 공간 확보 */
+  function applyTaskLogMemoScrollBottomSpace() {
+    if (!(taskLogScrollArea instanceof HTMLElement)) return 0;
+    const kb = syncVisualViewportKeyboardInset();
+    const vv = window.visualViewport;
+    const vvGap =
+      vv && vv.height > 0
+        ? Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0))
+        : 0;
+    const pad = Math.max(
+      kb,
+      vvGap,
+      Math.round(window.innerHeight * 0.45),
+      300,
+    );
+    taskLogScrollArea.style.setProperty(
+      "--task-log-memo-scroll-pad",
+      `${pad}px`,
+    );
+    return pad;
+  }
+
+  function clearTaskLogMemoScrollBottomSpace() {
+    taskLogScrollArea?.style.removeProperty("--task-log-memo-scroll-pad");
+  }
+
+  /** 스크롤 영역만 세로 스크롤 — 메모·입력란을 키보드 위로 */
   function scrollTaskLogMemoInputIntoView(inputEl) {
     if (!(inputEl instanceof HTMLElement)) return;
     if (!(taskLogScrollArea instanceof HTMLElement)) return;
+
+    applyTaskLogMemoScrollBottomSpace();
 
     const memoSection = taskLogModal.querySelector(
       '[data-legacy~="time-task-log-memo-section"]',
@@ -5770,29 +5798,42 @@ export function render(opts = {}) {
         taskLogScrollArea.getBoundingClientRect().top;
       taskLogScrollArea.scrollTop = Math.max(
         0,
-        taskLogScrollArea.scrollTop + memoDelta - 4,
+        taskLogScrollArea.scrollTop + memoDelta - 12,
       );
     }
 
     const vv = window.visualViewport;
-    const visibleBottom = vv
-      ? vv.height + (vv.offsetTop || 0)
-      : window.innerHeight;
-    const margin = 16;
+    let visibleBottom =
+      vv && vv.height > 0
+        ? vv.height + (vv.offsetTop || 0)
+        : window.innerHeight;
+    const margin = 20;
     const rect = inputEl.getBoundingClientRect();
     if (rect.bottom > visibleBottom - margin) {
       taskLogScrollArea.scrollTop += rect.bottom - (visibleBottom - margin);
     }
   }
 
+  function runTaskLogMemoScrollPasses(inputEl) {
+    applyTaskLogMemoScrollBottomSpace();
+    scrollTaskLogMemoInputIntoView(inputEl);
+    requestAnimationFrame(() => scrollTaskLogMemoInputIntoView(inputEl));
+    for (const ms of [50, 150, 350, 550, 850]) {
+      window.setTimeout(() => scrollTaskLogMemoInputIntoView(inputEl), ms);
+    }
+  }
+
   function setTaskLogMemoKeyboardScroll(on) {
     taskLogScrollArea?.classList?.toggle("is-memo-keyboard-open", !!on);
+    if (on) applyTaskLogMemoScrollBottomSpace();
+    else clearTaskLogMemoScrollBottomSpace();
   }
 
   function restoreTaskLogMemoScrollPosition() {
     taskLogMemoKeyboardOpen = false;
     taskLogMemoActiveInput = null;
     setTaskLogMemoKeyboardScroll(false);
+    clearTaskLogMemoScrollBottomSpace();
     if (taskLogScrollArea instanceof HTMLElement) {
       taskLogScrollArea.scrollTop = taskLogScrollTopBeforeMemo;
     }
@@ -5804,10 +5845,12 @@ export function render(opts = {}) {
     if (!(taskLogScrollArea instanceof HTMLElement)) return;
 
     taskLogMemoActiveInput = inputEl;
-    taskLogMemoKeyboardOpen = false;
+    taskLogMemoKeyboardOpen = true;
     taskLogScrollTopBeforeMemo = taskLogScrollArea.scrollTop;
-    scrollTaskLogMemoInputIntoView(inputEl);
+    setTaskLogMemoKeyboardScroll(true);
     syncVisualViewportKeyboardInset();
+    lockPageScrollForModalKeyboard();
+    runTaskLogMemoScrollPasses(inputEl);
 
     const adjust = () => {
       const active = taskLogMemoActiveInput;
@@ -5815,18 +5858,10 @@ export function render(opts = {}) {
         exitTaskLogMemoScroll();
         return;
       }
-      const kb = syncVisualViewportKeyboardInset();
-      if (kb > TASK_LOG_KEYBOARD_OPEN_PX) {
-        taskLogMemoKeyboardOpen = true;
-        setTaskLogMemoKeyboardScroll(true);
-        scrollTaskLogMemoInputIntoView(active);
-      } else if (taskLogMemoKeyboardOpen) {
-        setTaskLogMemoKeyboardScroll(false);
-        taskLogScrollArea.scrollTop = taskLogScrollTopBeforeMemo;
-        taskLogMemoKeyboardOpen = false;
-      } else {
-        scrollTaskLogMemoInputIntoView(active);
-      }
+      syncVisualViewportKeyboardInset();
+      lockPageScrollForModalKeyboard();
+      setTaskLogMemoKeyboardScroll(true);
+      scrollTaskLogMemoInputIntoView(active);
     };
 
     if (taskLogMemoVvAdjust && window.visualViewport) {
@@ -5836,17 +5871,16 @@ export function render(opts = {}) {
     taskLogMemoVvAdjust = adjust;
     window.visualViewport?.addEventListener("resize", adjust, { passive: true });
     window.visualViewport?.addEventListener("scroll", adjust, { passive: true });
+    window.addEventListener("resize", adjust, { passive: true });
     adjust();
-    requestAnimationFrame(adjust);
-    window.setTimeout(adjust, 100);
-    window.setTimeout(adjust, 320);
   }
 
   function exitTaskLogMemoScroll() {
     restoreTaskLogMemoScrollPosition();
-    if (taskLogMemoVvAdjust && window.visualViewport) {
-      window.visualViewport.removeEventListener("resize", taskLogMemoVvAdjust);
-      window.visualViewport.removeEventListener("scroll", taskLogMemoVvAdjust);
+    if (taskLogMemoVvAdjust) {
+      window.visualViewport?.removeEventListener("resize", taskLogMemoVvAdjust);
+      window.visualViewport?.removeEventListener("scroll", taskLogMemoVvAdjust);
+      window.removeEventListener("resize", taskLogMemoVvAdjust);
     }
     taskLogMemoVvAdjust = null;
   }

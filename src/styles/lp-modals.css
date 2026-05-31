@@ -386,6 +386,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
     min-height: 11rem;
     max-height: none;
   }
+  /* 메모 입력 시 하단 여백 = 키보드만큼 위로 스크롤 가능 (vv 0이어도 45vh 이상) */
   .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
     .time-task-log-scroll-area.is-memo-keyboard-open:not(.is-task-picker-open),
   [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
@@ -394,7 +395,37 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
     [data-legacy~="time-task-log-scroll-area"].is-memo-keyboard-open:not(
       .is-task-picker-open
     ) {
-    padding-bottom: max(1rem, var(--vv-keyboard, 0px));
+    padding-bottom: max(
+      var(--task-log-memo-scroll-pad, 0px),
+      var(--vv-keyboard, 0px),
+      45vh,
+      20rem
+    );
+    scroll-padding-bottom: max(
+      var(--task-log-memo-scroll-pad, 0px),
+      var(--vv-keyboard, 0px),
+      45vh,
+      20rem
+    );
+  }
+
+  .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+    .time-task-log-scroll-area.is-memo-keyboard-open:not(.is-task-picker-open)::after,
+  [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+      .lp-calendar-budget-add-modal
+    )
+    [data-legacy~="time-task-log-scroll-area"].is-memo-keyboard-open:not(
+      .is-task-picker-open
+    )::after {
+    content: "";
+    display: block;
+    height: max(
+      var(--task-log-memo-scroll-pad, 0px),
+      var(--vv-keyboard, 0px),
+      45vh,
+      20rem
+    );
+    pointer-events: none;
   }
 
   /* 갤럭시·iOS: 키보드 시 화면 전체가 눌리지 않게 visualViewport·layout shrink 기준으로 모달만 맞춤
