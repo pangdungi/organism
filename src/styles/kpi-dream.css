@@ -1435,6 +1435,22 @@
   margin-bottom: 0.65rem;
 }
 
+.dream-kpi-field-error {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--lp-modal-danger, #b91c1c);
+}
+
+.dream-kpi-field--invalid input[type="text"],
+.dream-kpi-field--invalid input:not([type]),
+.dream-kpi-field--invalid textarea,
+.dream-kpi-field--invalid .time-task-log-date-native-wrap {
+  border-color: var(--lp-modal-danger, #b91c1c);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--lp-modal-danger, #b91c1c) 35%, transparent);
+}
+
 .dream-kpi-field > label,
 .dream-kpi-field > .dream-kpi-field-label {
   display: block;
@@ -1644,6 +1660,21 @@
 
 .dream-kpi-card-progress-bar--empty + .dream-kpi-card-progress-text {
   color: #64748b;
+}
+
+.dream-kpi-card-progress--habit {
+  margin-top: 0.15rem;
+}
+
+.dream-kpi-card-progress--habit .dream-kpi-card-progress-text {
+  margin-top: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--lp-modal-navy-muted);
+}
+
+.dream-kpi-card--habit .dream-kpi-card-target-num {
+  margin-bottom: 0.1rem;
 }
 
 .dream-kpi-today-btn,

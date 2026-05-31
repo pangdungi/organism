@@ -495,7 +495,6 @@ export async function mountApp(container) {
       void (async () => {
         const targetTabId = currentTabId;
         if (targetTabId === "time") {
-          setLpTabPullPending(targetTabId);
           try {
             teardownDetachedTimeLedgerTaskLogBridge();
           } catch (_) {}

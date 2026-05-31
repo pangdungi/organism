@@ -2,6 +2,8 @@ import { dismissAppToast } from "./showToast.js";
 import {
   LP_CONFIRM_STACK_CLASS,
   syncBodyOverflowAfterModalClose,
+  resolveLpModalStackZIndex,
+  hasOpenLpConfirmModal,
 } from "./lpModalStack.js";
 
 /**
@@ -20,6 +22,10 @@ export function showConfirmModal(options = {}) {
   } = options;
 
   if (typeof message !== "string" || !message.trim()) {
+    return Promise.resolve(false);
+  }
+
+  if (hasOpenLpConfirmModal()) {
     return Promise.resolve(false);
   }
 
@@ -76,7 +82,11 @@ export function showConfirmModal(options = {}) {
     });
 
     document.body.appendChild(modal);
+    modal.style.zIndex = String(resolveLpModalStackZIndex());
     document.body.style.overflow = "hidden";
+    requestAnimationFrame(() => {
+      confirmBtn?.focus({ preventScroll: true });
+    });
   });
 }
 
@@ -138,6 +148,7 @@ export function showAlertModal(options = {}) {
     });
 
     document.body.appendChild(modal);
+    modal.style.zIndex = String(resolveLpModalStackZIndex());
     document.body.style.overflow = "hidden";
   });
 }

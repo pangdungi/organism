@@ -2,7 +2,6 @@
  * 캘린더용 KPI 보기 모달 - 카테고리별(꿈, 부수입, 행복, 건강) KPI 카드 세로 배치
  */
 
-import { formatDeadlineRangeCompact } from "./ganttModal.js";
 import { getLatestKpiLogWithExplicitValue } from "./kpiLogsSort.js";
 import { getAccumulatedMinutesForKpiId, minutesToHhMm, hhMmToMinutes } from "./timeKpiSync.js";
 import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
@@ -47,7 +46,7 @@ function escapeHtml(str) {
 }
 
 /** KPI 카드 상단 큰 숫자: 달성(누적) 또는 낮을수록 좋음이면 최근 값 */
-export function formatKpiCardHeroHtml(directionLower, formattedCurrentStr, unit) {
+export function formatKpiCardHeroHtml(directionLower, formattedCurrentStr, unit, prefix = "") {
   const unitHtml =
     unit && formattedCurrentStr !== "—"
       ? `<span class="dream-kpi-card-unit"> ${escapeHtml(unit)}</span>`
@@ -58,6 +57,9 @@ export function formatKpiCardHeroHtml(directionLower, formattedCurrentStr, unit)
       : `${escapeHtml(String(formattedCurrentStr))}${unitHtml}`;
   if (directionLower) {
     return `<span class="dream-kpi-card-target-prefix">최근 </span>${numHtml}`;
+  }
+  if (prefix) {
+    return `<span class="dream-kpi-card-target-prefix">${escapeHtml(prefix)}</span>${numHtml}`;
   }
   return numHtml;
 }
@@ -115,8 +117,6 @@ export function getKpisByCategory() {
       parentName,
       targetValue: kpi.targetValue,
       unit: kpi.unit,
-      targetStartDate: kpi.targetStartDate,
-      targetDeadline: kpi.targetDeadline,
       targetTimeRequired: kpi.targetTimeRequired,
       progress,
       progressText,
@@ -202,7 +202,6 @@ export function showKpiViewModal() {
             <div class="dream-kpi-card-inner">
               ${kpiCardHeadHtml({ id: k.kpiId, name: k.name }, ledgerCategory, nameHtml)}
               <div class="dream-kpi-card-target-num">${k.heroValueHtml}</div>
-              ${(k.targetStartDate || k.targetDeadline) ? `<div class="dream-kpi-card-deadline">${escapeHtml(formatDeadlineRangeCompact(k.targetStartDate, k.targetDeadline))}</div>` : ""}
               <div class="dream-kpi-card-progress">
                 <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${k.progress}%"></div></div>
                 <div class="dream-kpi-card-progress-text">${escapeHtml(k.progressText)}</div>

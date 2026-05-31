@@ -7794,15 +7794,21 @@ export function render(opts = {}) {
   );
   taskLogDeleteBtn?.addEventListener("click", async () => {
     const tr = taskLogEditTr;
-    if (!tr) return;
-    const ok = await showConfirmModal({
-      title: "시간 기록 삭제",
-      message: "이 시간 기록을 삭제할까요?",
-      warnMessage: "삭제 후에는 복구할 수 없습니다.",
-      confirmText: "삭제",
-      cancelText: "취소",
-      confirmDanger: true,
-    });
+    if (!tr || taskLogDeleteBtn.disabled) return;
+    taskLogDeleteBtn.disabled = true;
+    let ok = false;
+    try {
+      ok = await showConfirmModal({
+        title: "시간 기록 삭제",
+        message: "이 시간 기록을 삭제할까요?",
+        warnMessage: "삭제 후에는 복구할 수 없습니다.",
+        confirmText: "삭제",
+        cancelText: "취소",
+        confirmDanger: true,
+      });
+    } finally {
+      taskLogDeleteBtn.disabled = false;
+    }
     if (!ok) return;
     const rowData = tr._rowData || collectRowFromTR(tr);
     if (tr._onRowDelete) tr._onRowDelete(tr, rowData);
@@ -8706,11 +8712,8 @@ export function render(opts = {}) {
 
     const showMemoOnlyLogView = usageHistoryMemoOnlyFilter;
     const showDayGroups = timeLedgerShouldShowDayGroups(rows);
-    const showSyncLoading = isLpTabPullPending("time");
-    if (showSyncLoading) {
+    if (isLpTabPullPending("time")) {
       showLpTabLoading();
-    } else {
-      hideLpTabLoading();
     }
     const memoLogRows = showMemoOnlyLogView ? mapLedgerRowsToLogMemos(rows) : [];
 
@@ -9067,6 +9070,7 @@ export function render(opts = {}) {
         _timeLedgerFilterPullTimer = null;
       }
       clearTimeLedgerMobileElapsedTimer(el);
+      dismissTimeLedgerPullLoadingUi();
       try {
         closeTaskLogModal();
       } catch (_) {}
@@ -9104,13 +9108,9 @@ export function render(opts = {}) {
   function onLpTabPullSyncEvent(ev) {
     const tabId = ev?.detail?.tabId;
     if (tabId !== "time" || !el.isConnected) return;
-    if (ev?.type === "lp-tab-pull-pending") {
-      syncTimeLedgerContent({ force: true });
-      return;
-    }
     if (ev?.type === "lp-tab-pull-settled") {
       dismissTimeLedgerPullLoadingUi();
-      syncTimeLedgerContent({ force: true });
+      syncTimeLedgerContent({ force: false });
       finishUsageListEnterScroll();
     }
   }

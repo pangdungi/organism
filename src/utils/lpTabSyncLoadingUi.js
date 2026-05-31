@@ -1,5 +1,6 @@
 /**
- * 홈·시간가계부 — 서버 pull 대기 중 빈 화면/0원 오해 방지
+ * 홈·시간가계부 — 앱 최초 진입(부팅) 시 서버 pull 대기 중 빈 화면/0원 오해 방지.
+ * 탭 전환 시에는 pending 을 올리지 않음 — 로컬 데이터 즉시 표시 후 백그라운드 pull.
  */
 
 import { renderLpUnifiedLoadingMarkup } from "./lpUnifiedLoadingUi.js";

@@ -13,13 +13,13 @@ import {
   kpiTimeTaskRename,
   getFullTaskOptions,
 } from "../utils/timeTaskOptionsModel.js";
-import { toDateInputValue, formatDeadlineForDisplay, formatDeadlineRangeForDisplay, formatDeadlineRangeCompact } from "../utils/ganttModal.js";
 import { minutesToHhMm, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
 import {
   kpiFormGoalAndTargetSectionHtml,
   readKpiGoalModeFormFields,
   applyKpiFormGoalFieldsToKpi,
   bindKpiGoalModeForm,
+  validateKpiActionForm,
   computeKpiProgress,
   buildKpiCardTimePresentation,
   enrichKpiProgressWithHabitStreak,
@@ -43,7 +43,6 @@ import {
   applyKpiGridScrollRestore,
   readKpiGridScrollToRestore,
 } from "../utils/kpiGridScrollRestore.js";
-import { setupDeadlineQuickButtons } from "../utils/deadlineQuickButtons.js";
 import {
   buildModalNativeDateFieldMarkup,
   initModalNativeDateFieldsIn,
@@ -464,31 +463,6 @@ export function render() {
               </div>
             </div>
             ${kpiFormGoalAndTargetSectionHtml(null, escapeHtml, kpiTimeFormOpts)}
-            <div class="dream-kpi-period-block" data-legacy="time-add-task-field">
-              <div class="dream-kpi-row">
-                <div class="dream-kpi-field">
-                  <label>시작기한</label>
-                  ${buildModalNativeDateFieldMarkup({
-                    name: "targetStartDate",
-                    ariaLabel: "시작기한",
-                    inputClass: "todo-task-edit-start",
-                  })}
-                </div>
-                <div class="dream-kpi-field">
-                  <label>달성기한</label>
-                  ${buildModalNativeDateFieldMarkup({
-                    name: "targetDeadline",
-                    ariaLabel: "달성기한",
-                    inputClass: "todo-task-edit-due",
-                  })}
-                </div>
-              </div>
-              <div class="dream-kpi-deadline-quick">
-                <button type="button" class="dream-kpi-today-btn">오늘</button>
-                <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
-                <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
-              </div>
-            </div>
           </div>
           <div data-legacy="time-task-log-footer">
             <button type="submit" data-legacy="time-task-log-submit">저장</button>
@@ -501,13 +475,12 @@ export function render() {
     modal.querySelector(".dream-kpi-form").addEventListener("submit", (e) => {
       e.preventDefault();
       const form = e.target;
+      if (!validateKpiActionForm(form, { sanitizeNumericInput })) return;
       const fields = readKpiGoalModeFormFields(form, sanitizeNumericInput);
       const kpi = {
         id: nextId(),
         happinessId: activeHappinessId,
-        name: (form.name.value || "").trim() || "행동",
-        targetStartDate: (form.targetStartDate?.value || "").trim() || "",
-        targetDeadline: (form.targetDeadline.value || "").trim() || "",
+        name: (form.name.value || "").trim(),
         direction:
           form.querySelector('input[name="direction"]:checked')?.value === "lower"
             ? "lower"
@@ -526,7 +499,6 @@ export function render() {
       enterKpiDetailView(kpi.id);
     });
     document.body.appendChild(modal);
-    setupDeadlineQuickButtons(modal);
     bindKpiGoalModeForm(modal.querySelector(".dream-kpi-form"), null, kpiTimeFormOpts);
   }
 
@@ -562,33 +534,6 @@ export function render() {
               </div>
             </div>
             ${kpiFormGoalAndTargetSectionHtml(kpi, escapeHtml, kpiTimeFormOpts)}
-            <div class="dream-kpi-period-block" data-legacy="time-add-task-field">
-              <div class="dream-kpi-row">
-                <div class="dream-kpi-field">
-                  <label>시작기한</label>
-                  ${buildModalNativeDateFieldMarkup({
-                    name: "targetStartDate",
-                    ariaLabel: "시작기한",
-                    value: escapeHtml(toDateInputValue(kpi.targetStartDate)),
-                    inputClass: "todo-task-edit-start",
-                  })}
-                </div>
-                <div class="dream-kpi-field">
-                  <label>달성기한</label>
-                  ${buildModalNativeDateFieldMarkup({
-                    name: "targetDeadline",
-                    ariaLabel: "달성기한",
-                    value: escapeHtml(toDateInputValue(kpi.targetDeadline)),
-                    inputClass: "todo-task-edit-due",
-                  })}
-                </div>
-              </div>
-              <div class="dream-kpi-deadline-quick">
-                <button type="button" class="dream-kpi-today-btn">오늘</button>
-                <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
-                <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
-              </div>
-            </div>
             <div class="dream-kpi-delete-wrap">
               <button type="button" class="dream-kpi-delete-btn">이 행동 삭제하기</button>
               <p class="dream-kpi-delete-note">삭제 시 복구 불가</p>
@@ -619,6 +564,7 @@ export function render() {
     modal.querySelector(".dream-kpi-form").addEventListener("submit", (e) => {
       e.preventDefault();
       const form = e.target;
+      if (!validateKpiActionForm(form, { sanitizeNumericInput })) return;
       const data = loadHappinessMap();
       const target = data.kpis.find((k) => k.id === kpi.id);
       if (target) {
@@ -626,9 +572,7 @@ export function render() {
         applyKpiFormGoalFieldsToKpi(target, form, {
           sanitizeNumericInput,
         });
-        target.name = (form.name.value || "").trim() || "행동";
-        target.targetStartDate = (form.targetStartDate?.value || "").trim() || "";
-        target.targetDeadline = (form.targetDeadline.value || "").trim() || "";
+        target.name = (form.name.value || "").trim();
         target.direction =
           form.querySelector('input[name="direction"]:checked')?.value === "lower"
             ? "lower"
@@ -640,7 +584,6 @@ export function render() {
       refreshHappinessAfterKpiDataChange();
     });
     document.body.appendChild(modal);
-    setupDeadlineQuickButtons(modal);
     bindKpiGoalModeForm(modal.querySelector(".dream-kpi-form"), kpi, kpiTimeFormOpts);
   }
 
@@ -988,7 +931,7 @@ export function render() {
         return ia - ib;
       });
     }
-    /* 진행중 = 미완료 KPI만(시작일 없는 새 KPI 포함) — 꿈 탭과 동일 */
+    /* 진행중 = 목표 미달성, 완료 = 목표 달성 */
     const completedKpis = happinessKpis.filter((k) => getKpiProgress(k).isCompleted);
     const activeKpis = happinessKpis.filter((k) => !getKpiProgress(k).isCompleted);
 
@@ -1016,7 +959,7 @@ export function render() {
       const progressResult = getKpiProgress(kpi);
       const { lowerBetter } = progressResult;
       const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
-      const { displayProgress, progressText, heroStr, heroUnit, cardExtraClass, hideProgressFill } =
+      const { displayProgress, progressText, heroStr, heroUnit, cardExtraClass, hideProgressFill, hideProgressBar, heroPrefix } =
         buildKpiCardTimePresentation(kpi, progressResult, formatNum);
       const card = document.createElement("div");
       card.className =
@@ -1026,16 +969,18 @@ export function render() {
       card.dataset.kpiId = kpi.id;
       card.draggable = true;
       const nameHtml = `${escapeHtml(kpi.name)}${lowerBetter ? '<span class="dream-kpi-card-direction-badge" title="낮을수록 좋음 KPI">↓낮음</span>' : ""}`;
+      const progressHtml = hideProgressBar
+        ? `<div class="dream-kpi-card-progress dream-kpi-card-progress--habit"><div class="dream-kpi-card-progress-text">${escapeHtml(progressText)}</div></div>`
+        : `<div class="dream-kpi-card-progress">
+            <div class="dream-kpi-card-progress-bar${hideProgressFill ? " dream-kpi-card-progress-bar--empty" : ""}"><div class="dream-kpi-card-progress-fill" style="width:${hideProgressFill ? 0 : displayProgress}%"></div></div>
+            <div class="dream-kpi-card-progress-text">${escapeHtml(progressText)}</div>
+          </div>`;
       card.innerHTML = `
         <div class="dream-kpi-card-inner">
           ${KPI_CARD_EDIT_PENCIL_HTML}
           ${kpiCardHeadHtml(kpi, "happiness", nameHtml)}
-          <div class="dream-kpi-card-target-num">${formatKpiCardHeroHtml(lowerBetter, heroStr, heroUnit)}</div>
-          ${(kpi.targetStartDate || kpi.targetDeadline) ? `<div class="dream-kpi-card-deadline">${escapeHtml(formatDeadlineRangeCompact(kpi.targetStartDate, kpi.targetDeadline))}</div>` : ""}
-          <div class="dream-kpi-card-progress">
-            <div class="dream-kpi-card-progress-bar${hideProgressFill ? " dream-kpi-card-progress-bar--empty" : ""}"><div class="dream-kpi-card-progress-fill" style="width:${hideProgressFill ? 0 : displayProgress}%"></div></div>
-            <div class="dream-kpi-card-progress-text">${escapeHtml(progressText)}</div>
-          </div>
+          <div class="dream-kpi-card-target-num">${formatKpiCardHeroHtml(lowerBetter, heroStr, heroUnit, heroPrefix)}</div>
+          ${progressHtml}
         </div>
       `;
       bindKpiCardEditButton(card.querySelector(".dream-kpi-card-edit"), () =>

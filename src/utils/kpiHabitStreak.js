@@ -41,22 +41,26 @@ export function computeKpiHabitCurrentStreak(kpi, storedLogs = [], todayYmd = ""
   const today = normalizeKpiLogDateYmd(todayYmd || new Date().toISOString().slice(0, 10));
   if (!/^\d{4}-\d{2}-\d{2}$/.test(today)) return 0;
 
-  const startKey = normalizeKpiLogDateYmd(kpi?.targetStartDate || "");
-  const endKey = normalizeKpiLogDateYmd(kpi?.targetDeadline || "");
   const success = collectKpiHabitSuccessDateKeys(kpi, storedLogs);
 
   let cursor = today;
-  if (endKey && cursor > endKey) cursor = endKey;
   if (!success.has(cursor)) {
     cursor = addDaysToYmd(cursor, -1);
   }
 
   let streak = 0;
   while (/^\d{4}-\d{2}-\d{2}$/.test(cursor)) {
-    if (startKey && cursor < startKey) break;
     if (!success.has(cursor)) break;
     streak += 1;
     cursor = addDaysToYmd(cursor, -1);
   }
   return streak;
+}
+
+/**
+ * @param {object} kpi
+ * @param {object[]} storedLogs
+ */
+export function computeKpiHabitTotalDays(kpi, storedLogs = []) {
+  return collectKpiHabitSuccessDateKeys(kpi, storedLogs).size;
 }
