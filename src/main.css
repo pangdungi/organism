@@ -478,7 +478,7 @@ html.lp-task-log-modal-open #signin-page {
   flex-direction: column;
   box-sizing: border-box;
   width: 100%;
-  max-width: min(22rem, 100%);
+  max-width: min(max(22rem, 88vw), 40rem, 100%);
   margin: 0 auto;
   padding: 0;
   overflow: hidden;
@@ -639,6 +639,65 @@ html.lp-task-log-modal-open #signin-page {
   max-height: 100%;
   object-fit: contain;
   display: block;
+}
+
+/* 패드·데스크탑: 메뉴 카드·버튼을 넓은 화면에 맞게 확대(640px 이상 — 미니 패드 포함) */
+@media (min-width: 40rem) {
+  .app-main:has(.app-home-menu-launcher) {
+    --home-menu-logo-h: clamp(8.5rem, 22dvh, 16.5rem);
+    --home-menu-btn-min-h: clamp(3rem, 6.5dvh, 3.875rem);
+    --home-menu-btn-gap: clamp(0.45rem, 1dvh, 0.7rem);
+  }
+
+  .app-home-menu-launcher-card {
+    max-width: min(max(22rem, 88vw), 40rem, 100%);
+  }
+
+  .app-home-menu-launcher-logo {
+    max-width: min(26rem, 94%);
+  }
+
+  .app-home-menu-launcher-btn {
+    font-size: 1rem;
+    gap: 0.65rem;
+    padding: 0.9rem 0.85rem 0.9rem 1.05rem;
+    border-radius: 14px;
+  }
+
+  .app-home-menu-launcher-icon {
+    width: 2.35rem;
+    height: 2.35rem;
+  }
+
+  .app-home-menu-launcher-icon img {
+    width: 34px;
+    height: 34px;
+  }
+}
+
+@media (min-width: 64rem) {
+  .app-main:has(.app-home-menu-launcher) {
+    --home-menu-btn-min-h: clamp(3.25rem, 6dvh, 4.125rem);
+  }
+
+  .app-home-menu-launcher-card {
+    max-width: min(max(24rem, 85vw), 44rem, 100%);
+  }
+
+  .app-home-menu-launcher-btn {
+    font-size: 1.0625rem;
+    padding: 1rem 0.95rem 1rem 1.15rem;
+  }
+
+  .app-home-menu-launcher-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .app-home-menu-launcher-icon img {
+    width: 36px;
+    height: 36px;
+  }
 }
 
 .app-home-menu-launcher-btn--muted {

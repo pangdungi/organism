@@ -103,11 +103,6 @@ import {
   APP_FOOTER_ICON_BTN_CLASS,
   getAppFooterActionsSlot,
 } from "../utils/appFooterShell.js";
-import {
-  openWorkScheduleTypeSettingsModal,
-  openCalendarStampTodoModal,
-  WORK_SCHEDULE_SETTINGS_ICON_SVG,
-} from "./WorkSchedule.js";
 function isStoredCalendarSectionId(sectionId) {
   const sid = String(sectionId || "").trim();
   return isCalendarFixedSectionKey(sid) || sid.startsWith("custom-");
@@ -115,8 +110,6 @@ function isStoredCalendarSectionId(sectionId) {
 
 /** 모바일 일정 탭: 푸터 서브뷰 전환 버튼(탭 이탈 시 clearAppFooterActions로 제거) */
 const LP_SCHEDULE_CAL_SUBVIEW_FOOTER_ATTR = "data-lp-schedule-cal-subview";
-const LP_SCHEDULE_CAL_STAMP_SETTINGS_FOOTER_ATTR =
-  "data-lp-schedule-cal-stamp-settings";
 
 const LP_SCHEDULE_SUBVIEW_FOOTER_ICONS = {
   monthly: "/toolbaricons/calendar-alt.svg",
@@ -1658,23 +1651,6 @@ function addSectionTodoFromCalendarBubble(
   return false;
 }
 
-/** 캘린더 날짜 버블: 스탬프 선택 → 해당 날짜 할일 추가(스탬프 캘린더 테이블 X) */
-function openCalendarDayStampTodoModal(dateKey, onAfterSave) {
-  void openCalendarStampTodoModal(dateKey, {
-    onSaved: ({ dateKey: dk, name }) => {
-      if (addSectionTodoFromCalendarBubble(dk, dk, name)) {
-        try {
-          onAfterSave?.();
-        } catch (_) {}
-        return;
-      }
-      void showAlertModal({
-        message: "할 일을 추가하지 못했습니다. 잠시 후 다시 시도해 주세요.",
-      });
-    },
-  });
-}
-
 /** 할일 추가 버블(날짜 칸 클릭): document 바깥 클릭 시 닫기 — 리스너 정리용 */
 let _calendarEventBubbleOutsideHandler = null;
 
@@ -1826,7 +1802,7 @@ const MAX_VISIBLE_BARS_PER_DAY = 3;
 /** 이전 날짜 확대 버블의 document 클릭 리스너 제거(연간 연속 호버 등으로 close 미경유 DOM 제거 시 누수 방지) */
 let _calendarDayExpandOutsideHandler = null;
 
-/** 월간·1주 날짜 칸 클릭 — 할일/스탬프/아이콘 버튼 패널(빈 칸·할일 목록) */
+/** 월간·1주 날짜 칸 클릭 — 할일/아이콘 버튼 패널(빈 칸·할일 목록) */
 function lpOpenCalendarMonthlyDayActionBubble(cell, dateKey, onAfterChange) {
   const key = String(dateKey || "").trim().slice(0, 10);
   if (!key || !(cell instanceof HTMLElement)) return;
@@ -1843,9 +1819,6 @@ function lpOpenCalendarMonthlyDayActionBubble(cell, dateKey, onAfterChange) {
     onAdd: () => {
       createCalendarEventBubble(rect, key, refresh, () => {});
     },
-    onAddStamp: () => {
-      openCalendarDayStampTodoModal(key, refresh);
-    },
   });
 }
 
@@ -1859,7 +1832,6 @@ function createCalendarDayExpandBubble(
   const {
     positionBelow = false,
     onAdd = null,
-    onAddStamp = null,
     /** 할일·일정 항목에서 수정 모달 저장/삭제 후 그리드 갱신 */
     onAfterTaskEdit = null,
     /** 연간 뷰 등: × 숨김 */
@@ -1909,18 +1881,14 @@ function createCalendarDayExpandBubble(
     })
     .join("");
   const addActionsHtml =
-    onAdd || onAddStamp || dateKey
+    onAdd || dateKey
       ? `<div class="calendar-day-expand-actions">${
           onAdd
             ? '<button type="button" class="calendar-day-expand-add-btn">할일/일정 추가</button>'
             : ""
         }${
-          onAddStamp || dateKey
-            ? `<div class="calendar-day-expand-actions-side">${
-                onAddStamp
-                  ? '<button type="button" class="calendar-day-expand-stamp-btn">스탬프 추가</button>'
-                  : ""
-              }<span class="calendar-day-expand-icon-mount" data-calendar-day-icon-mount></span></div>`
+          dateKey
+            ? `<div class="calendar-day-expand-actions-side"><span class="calendar-day-expand-icon-mount" data-calendar-day-icon-mount></span></div>`
             : ""
         }</div>`
       : "";
@@ -1948,7 +1916,6 @@ function createCalendarDayExpandBubble(
       if (
         e.target.closest(".calendar-event-bubble-close") ||
         e.target.closest(".calendar-day-expand-add-btn") ||
-        e.target.closest(".calendar-day-expand-stamp-btn") ||
         e.target.closest(".calendar-day-expand-icon-btn")
       )
         return;
@@ -1990,14 +1957,6 @@ function createCalendarDayExpandBubble(
       ?.addEventListener("click", () => {
         close();
         onAdd();
-      });
-  }
-  if (onAddStamp) {
-    bubble
-      .querySelector(".calendar-day-expand-stamp-btn")
-      ?.addEventListener("click", () => {
-        close();
-        onAddStamp();
       });
   }
   const dayIconMount = bubble.querySelector("[data-calendar-day-icon-mount]");
@@ -5365,12 +5324,6 @@ function renderAnnualView(tabsElement) {
                   () => {},
                 );
               },
-              onAddStamp: () => {
-                openCalendarDayStampTodoModal(key, () => {
-                  renderYear();
-                  refreshTodoList();
-                });
-              },
               onAfterTaskEdit: () => {
                 renderYear();
                 refreshTodoList();
@@ -5441,12 +5394,6 @@ function renderAnnualView(tabsElement) {
                     },
                     () => {},
                   );
-                },
-                onAddStamp: () => {
-                  openCalendarDayStampTodoModal(key, () => {
-                    renderYear();
-                    refreshTodoList();
-                  });
                 },
                 onAfterTaskEdit: () => {
                   renderYear();
@@ -5575,9 +5522,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
     if (!slot) return;
     try {
       slot
-        .querySelectorAll(
-          `[${LP_SCHEDULE_CAL_SUBVIEW_FOOTER_ATTR}], [${LP_SCHEDULE_CAL_STAMP_SETTINGS_FOOTER_ATTR}]`,
-        )
+        .querySelectorAll(`[${LP_SCHEDULE_CAL_SUBVIEW_FOOTER_ATTR}]`)
         .forEach((n) => n.remove());
     } catch (_) {}
     footerSubViewSwitchers.length = 0;
@@ -5603,17 +5548,6 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
       slot.appendChild(btn);
       footerSubViewSwitchers.push({ id: v.id, btn });
     }
-    const stampSettingsBtn = document.createElement("button");
-    stampSettingsBtn.type = "button";
-    stampSettingsBtn.className = APP_FOOTER_ICON_BTN_CLASS;
-    stampSettingsBtn.setAttribute(LP_SCHEDULE_CAL_STAMP_SETTINGS_FOOTER_ATTR, "1");
-    stampSettingsBtn.setAttribute("aria-label", "스탬프 설정");
-    stampSettingsBtn.title = "스탬프 설정";
-    stampSettingsBtn.innerHTML = WORK_SCHEDULE_SETTINGS_ICON_SVG;
-    stampSettingsBtn.addEventListener("click", () =>
-      void openWorkScheduleTypeSettingsModal(),
-    );
-    slot.appendChild(stampSettingsBtn);
   }
 
   function syncScheduleSubViewFooterActive(subViewId) {

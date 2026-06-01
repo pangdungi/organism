@@ -1173,14 +1173,6 @@ export async function openWorkScheduleDayEntryModal(initialDateKey, opts = {}) {
   });
 }
 
-/** 캘린더 날짜 버블: 스탬프 선택 후 해당 날짜 할일로 추가 */
-export async function openCalendarStampTodoModal(dateKey, opts = {}) {
-  await openWorkScheduleDayEntryModal(dateKey, {
-    saveAsCalendarTodo: true,
-    onCalendarTodoSaved: opts.onSaved,
-  });
-}
-
 export function render(opts = {}) {
   const mobile = !!opts.mobile;
   wsUiLog("render() enter", { mobile });

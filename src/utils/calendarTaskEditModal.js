@@ -13,8 +13,6 @@ import {
   wireModalEnterToConfirm,
 } from "./modalNoAutoFocus.js";
 import { syncBodyOverflowAfterModalClose } from "./lpModalStack.js";
-import { syncCalendarDayIconForDate } from "./calendarDayIconsSupabase.js";
-import { mountCalendarDayIconsEditor } from "./calendarDayIconsEditor.js";
 import { showAlertModal } from "./confirmModal.js";
 import { clearSubtasks } from "./todoSubtasks.js";
 import {
@@ -119,7 +117,6 @@ function showCalendarTaskEditModal(options) {
     onSave,
     onDelete,
     selectionEl = null,
-    dayIconDateKey = "",
   } = options;
   const {
     name = "",
@@ -174,7 +171,6 @@ function showCalendarTaskEditModal(options) {
           </div>
           ${buildTodoTaskDateQuickMarkup()}
         </div>
-        <div class="calendar-day-icons-editor-mount" data-calendar-day-icons-mount></div>
       </div>
       <div class="time-task-log-footer todo-task-edit-footer todo-task-edit-footer--actions">
         <button type="button" class="time-add-task-delete todo-task-edit-footer-delete" aria-label="삭제">
@@ -195,14 +191,6 @@ function showCalendarTaskEditModal(options) {
   const doneCheck = modal.querySelector(".calendar-task-edit-done-check");
   const startInput = modal.querySelector(".todo-task-edit-start");
   const dueInput = modal.querySelector(".todo-task-edit-due");
-  const iconDateKey =
-    String(dayIconDateKey || startDate || dueDate || "")
-      .trim()
-      .slice(0, 10) || "";
-  const dayIconsEditor = mountCalendarDayIconsEditor(
-    modal.querySelector("[data-calendar-day-icons-mount]"),
-    { dateKey: iconDateKey },
-  );
 
   function close() {
     try {
@@ -230,12 +218,6 @@ function showCalendarTaskEditModal(options) {
     saving = true;
     try {
       onSave?.({ ...taskData, ...gatherForm() });
-      if (iconDateKey) {
-        void syncCalendarDayIconForDate(
-          iconDateKey,
-          dayIconsEditor.getIconKey(),
-        ).catch(() => {});
-      }
     } catch (err) {
       console.error("calendar task edit onSave", err);
       void showAlertModal({
@@ -316,9 +298,6 @@ export function openCalendarTaskEditFromBarModel(barModel, options = {}) {
       sectionId: storageSectionId,
       itemType,
     },
-    dayIconDateKey: String(b.dateKey || b.startDate || row.startDate || "")
-      .trim()
-      .slice(0, 10),
     selectionEl,
     onSave: (payload) => {
       const merged = {

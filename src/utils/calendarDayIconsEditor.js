@@ -24,7 +24,7 @@ export function showCalendarDayIconPickModal(opts = {}) {
 }
 
 /**
- * 월간 셀·모달 공통 — 날짜 아이콘 선택/수정
+ * 날짜 아이콘 선택/수정 (날짜 패널·월간 셀)
  * @param {string} dateKey
  * @param {{ onSaved?: () => void, onClose?: () => void }} [opts]
  */
@@ -52,81 +52,6 @@ export function openCalendarDayIconEditor(dateKey, opts = {}) {
       });
     },
   });
-}
-
-/**
- * @param {HTMLElement|null|undefined} mountEl
- * @param {{ dateKey: string }} opts
- * @returns {{ getIconKey: () => string }}
- */
-export function mountCalendarDayIconsEditor(mountEl, opts = {}) {
-  const noop = { getIconKey: () => "" };
-  if (!(mountEl instanceof HTMLElement)) return noop;
-
-  const dateKey = String(opts.dateKey || "").trim().slice(0, 10);
-  if (!dateKey) return noop;
-
-  let iconKey = getCalendarDayIconKeyForDate(dateKey);
-
-  mountEl.innerHTML = "";
-  mountEl.className = "calendar-day-icons-editor";
-
-  const label = document.createElement("span");
-  label.className = "calendar-day-icons-editor__label";
-  label.textContent = "날짜 아이콘";
-
-  const trigger = document.createElement("button");
-  trigger.type = "button";
-  trigger.className = "calendar-day-icons-editor__trigger";
-
-  function syncTrigger() {
-    const src = iconKey ? getTimeTaskIconSrcByKey(iconKey) : "";
-    trigger.replaceChildren();
-    if (src) {
-      trigger.setAttribute("aria-label", "날짜 아이콘 변경");
-      trigger.title = "탭하여 아이콘 변경";
-      trigger.classList.add("calendar-day-icons-editor__trigger--selected");
-      const img = document.createElement("img");
-      img.src = src;
-      img.alt = "";
-      applyStaticAppIconImg(img);
-      img.className = "calendar-day-icons-editor__trigger-icon";
-      trigger.appendChild(img);
-    } else {
-      trigger.setAttribute("aria-label", "날짜 아이콘 추가");
-      trigger.title = "탭하여 아이콘 선택";
-      trigger.classList.remove("calendar-day-icons-editor__trigger--selected");
-      trigger.textContent = "+";
-    }
-  }
-
-  function persistIconKey(nextKey) {
-    iconKey = String(nextKey || "").trim();
-    syncTrigger();
-    void syncCalendarDayIconForDate(dateKey, iconKey).catch(() => {});
-  }
-
-  trigger.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    showCalendarDayIconPickModal({
-      currentKey: iconKey,
-      onPick: (key) => {
-        persistIconKey(key);
-      },
-      onRemove: () => {
-        persistIconKey("");
-      },
-    });
-  });
-
-  mountEl.appendChild(label);
-  mountEl.appendChild(trigger);
-  syncTrigger();
-
-  return {
-    getIconKey: () => iconKey,
-  };
 }
 
 /**
@@ -166,7 +91,7 @@ export function renderCalendarMonthlyDayIcons(container, dateKey, opts = {}) {
 }
 
 /**
- * 날짜 확대 버블 — 스탬프 추가 옆 작은 아이콘 버튼(탭하면 선택·교체)
+ * 날짜 확대 버블 — 할일 추가 옆 작은 아이콘 버튼(탭하면 선택·교체)
  * @param {HTMLElement|null|undefined} mountEl
  * @param {string} dateKey
  * @param {{ onAfterChange?: () => void, onClose?: () => void }} [opts]
@@ -200,13 +125,13 @@ export function mountCalendarDayExpandIconBtn(mountEl, dateKey, opts = {}) {
       btn.appendChild(img);
     } else {
       btn.classList.remove("calendar-day-expand-icon-btn--selected");
-      btn.setAttribute("aria-label", "날짜 아이콘 추가");
-      btn.title = "아이콘 추가";
-      const plus = document.createElement("span");
-      plus.className = "calendar-day-expand-icon-btn__plus";
-      plus.textContent = "+";
-      plus.setAttribute("aria-hidden", "true");
-      btn.appendChild(plus);
+      btn.setAttribute("aria-label", "스탬프 추가");
+      btn.title = "스탬프 추가";
+      const label = document.createElement("span");
+      label.className = "calendar-day-expand-icon-btn__label";
+      label.textContent = "스탬프 추가";
+      label.setAttribute("aria-hidden", "true");
+      btn.appendChild(label);
     }
   }
 
