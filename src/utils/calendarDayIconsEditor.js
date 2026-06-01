@@ -26,7 +26,7 @@ export function showCalendarDayIconPickModal(opts = {}) {
 /**
  * 월간 셀·모달 공통 — 날짜 아이콘 선택/수정
  * @param {string} dateKey
- * @param {{ onSaved?: () => void }} [opts]
+ * @param {{ onSaved?: () => void, onClose?: () => void }} [opts]
  */
 export function openCalendarDayIconEditor(dateKey, opts = {}) {
   const ymd = String(dateKey || "").trim().slice(0, 10);
@@ -39,12 +39,14 @@ export function openCalendarDayIconEditor(dateKey, opts = {}) {
       const iconKey = String(key || "").trim();
       if (!iconKey) return;
       setCalendarDayIconKeyForDate(ymd, iconKey);
+      opts.onClose?.();
       void syncCalendarDayIconForDate(ymd, iconKey).then(() => {
         opts.onSaved?.();
       });
     },
     onRemove: () => {
       setCalendarDayIconKeyForDate(ymd, "");
+      opts.onClose?.();
       void syncCalendarDayIconForDate(ymd, "").then(() => {
         opts.onSaved?.();
       });
@@ -128,7 +130,6 @@ export function mountCalendarDayIconsEditor(mountEl, opts = {}) {
 }
 
 /**
- * 월간 셀 하단 — 아이콘 1개 (탭하면 수정)
  * @param {HTMLElement} container
  * @param {string} dateKey
  * @param {{ onAfterChange?: () => void }} [opts]
@@ -137,11 +138,7 @@ export function renderCalendarMonthlyDayIcons(container, dateKey, opts = {}) {
   if (!(container instanceof HTMLElement)) return;
   container.replaceChildren();
   const iconKey = getCalendarDayIconKeyForDate(dateKey);
-  if (!iconKey) {
-    container.hidden = true;
-    return;
-  }
-  const src = getTimeTaskIconSrcByKey(iconKey);
+  const src = iconKey ? getTimeTaskIconSrcByKey(iconKey) : "";
   if (!src) {
     container.hidden = true;
     return;
@@ -166,6 +163,67 @@ export function renderCalendarMonthlyDayIcons(container, dateKey, opts = {}) {
     openCalendarDayIconEditor(dateKey, { onSaved: opts.onAfterChange });
   });
   container.appendChild(btn);
+}
+
+/**
+ * 날짜 확대 버블 — 스탬프 추가 옆 작은 아이콘 버튼(탭하면 선택·교체)
+ * @param {HTMLElement|null|undefined} mountEl
+ * @param {string} dateKey
+ * @param {{ onAfterChange?: () => void, onClose?: () => void }} [opts]
+ */
+export function mountCalendarDayExpandIconBtn(mountEl, dateKey, opts = {}) {
+  if (!(mountEl instanceof HTMLElement)) return;
+  const ymd = String(dateKey || "").trim().slice(0, 10);
+  if (!ymd) {
+    mountEl.replaceChildren();
+    return;
+  }
+
+  mountEl.replaceChildren();
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "calendar-day-expand-icon-btn";
+
+  function syncBtn() {
+    const iconKey = getCalendarDayIconKeyForDate(ymd);
+    const src = iconKey ? getTimeTaskIconSrcByKey(iconKey) : "";
+    btn.replaceChildren();
+    if (src) {
+      btn.classList.add("calendar-day-expand-icon-btn--selected");
+      btn.setAttribute("aria-label", "날짜 아이콘 변경");
+      btn.title = "아이콘 변경";
+      const img = document.createElement("img");
+      img.src = src;
+      img.alt = "";
+      applyStaticAppIconImg(img);
+      img.className = "calendar-day-expand-icon-btn__img";
+      btn.appendChild(img);
+    } else {
+      btn.classList.remove("calendar-day-expand-icon-btn--selected");
+      btn.setAttribute("aria-label", "날짜 아이콘 추가");
+      btn.title = "아이콘 추가";
+      const plus = document.createElement("span");
+      plus.className = "calendar-day-expand-icon-btn__plus";
+      plus.textContent = "+";
+      plus.setAttribute("aria-hidden", "true");
+      btn.appendChild(plus);
+    }
+  }
+
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openCalendarDayIconEditor(ymd, {
+      onClose: opts.onClose,
+      onSaved: () => {
+        syncBtn();
+        opts.onAfterChange?.();
+      },
+    });
+  });
+
+  syncBtn();
+  mountEl.appendChild(btn);
 }
 
 /** @param {string} dateKey */

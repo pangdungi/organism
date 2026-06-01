@@ -11,12 +11,12 @@ import {
 } from "./TodoList.js";
 import { openCalendarTaskEditFromBarModel } from "../utils/calendarTaskEditModal.js";
 import {
-  mountCalendarDayIconsEditor,
   renderCalendarMonthlyDayIcons,
+  mountCalendarDayExpandIconBtn,
   CALENDAR_MONTHLY_DAY_ICONS_STRIP_REM,
   calendarDayHasIcon,
 } from "../utils/calendarDayIconsEditor.js";
-import { syncCalendarDayIconForDate, pullCalendarDayIconsFromSupabase } from "../utils/calendarDayIconsSupabase.js";
+import { pullCalendarDayIconsFromSupabase } from "../utils/calendarDayIconsSupabase.js";
 import { readCalendarDayIconsSnapshot } from "../utils/calendarDayIconsModel.js";
 import {
   isPastCalendarTask,
@@ -1742,7 +1742,6 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
             <span class="time-task-log-date-overlay" aria-hidden="true"></span>
           </div>
         </div>
-        <div class="calendar-day-icons-editor-mount" data-calendar-day-icons-mount></div>
       </div>
       <div class="time-task-log-footer">
         <button type="button" class="time-add-task-submit">추가</button>
@@ -1757,10 +1756,6 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
   const startInput = modal.querySelector(".todo-task-edit-start");
   const dueInput = modal.querySelector(".todo-task-edit-due");
   initModalStandardDateFields(modal);
-  const dayIconsMount = modal.querySelector("[data-calendar-day-icons-mount]");
-  const dayIconsEditor = mountCalendarDayIconsEditor(dayIconsMount, {
-    dateKey: initialYmd,
-  });
 
   function close() {
     detachCalendarEventBubbleOutsideListener();
@@ -1803,9 +1798,6 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
       });
         return;
       }
-      void syncCalendarDayIconForDate(initialYmd, dayIconsEditor.getIconKey()).catch(
-        () => {},
-      );
       onSave?.({
         name,
         startDate,
@@ -1833,6 +1825,29 @@ const MAX_VISIBLE_BARS_PER_DAY = 3;
 
 /** 이전 날짜 확대 버블의 document 클릭 리스너 제거(연간 연속 호버 등으로 close 미경유 DOM 제거 시 누수 방지) */
 let _calendarDayExpandOutsideHandler = null;
+
+/** 월간·1주 날짜 칸 클릭 — 할일/스탬프/아이콘 버튼 패널(빈 칸·할일 목록) */
+function lpOpenCalendarMonthlyDayActionBubble(cell, dateKey, onAfterChange) {
+  const key = String(dateKey || "").trim().slice(0, 10);
+  if (!key || !(cell instanceof HTMLElement)) return;
+  const rect = cell.getBoundingClientRect();
+  const tasks = getAllTasksForDateDisplay(key);
+  const refresh = () => {
+    try {
+      onAfterChange?.();
+    } catch (_) {}
+  };
+  createCalendarDayExpandBubble(rect, key, tasks, () => {}, {
+    positionBelow: true,
+    onAfterTaskEdit: refresh,
+    onAdd: () => {
+      createCalendarEventBubble(rect, key, refresh, () => {});
+    },
+    onAddStamp: () => {
+      openCalendarDayStampTodoModal(key, refresh);
+    },
+  });
+}
 
 function createCalendarDayExpandBubble(
   cellRect,
@@ -1894,14 +1909,18 @@ function createCalendarDayExpandBubble(
     })
     .join("");
   const addActionsHtml =
-    onAdd || onAddStamp
+    onAdd || onAddStamp || dateKey
       ? `<div class="calendar-day-expand-actions">${
           onAdd
             ? '<button type="button" class="calendar-day-expand-add-btn">할일/일정 추가</button>'
             : ""
         }${
-          onAddStamp
-            ? '<button type="button" class="calendar-day-expand-stamp-btn">스탬프 추가</button>'
+          onAddStamp || dateKey
+            ? `<div class="calendar-day-expand-actions-side">${
+                onAddStamp
+                  ? '<button type="button" class="calendar-day-expand-stamp-btn">스탬프 추가</button>'
+                  : ""
+              }<span class="calendar-day-expand-icon-mount" data-calendar-day-icon-mount></span></div>`
             : ""
         }</div>`
       : "";
@@ -1929,7 +1948,8 @@ function createCalendarDayExpandBubble(
       if (
         e.target.closest(".calendar-event-bubble-close") ||
         e.target.closest(".calendar-day-expand-add-btn") ||
-        e.target.closest(".calendar-day-expand-stamp-btn")
+        e.target.closest(".calendar-day-expand-stamp-btn") ||
+        e.target.closest(".calendar-day-expand-icon-btn")
       )
         return;
       e.stopPropagation();
@@ -1979,6 +1999,17 @@ function createCalendarDayExpandBubble(
         close();
         onAddStamp();
       });
+  }
+  const dayIconMount = bubble.querySelector("[data-calendar-day-icon-mount]");
+  if (dayIconMount && dateKey) {
+    mountCalendarDayExpandIconBtn(dayIconMount, dateKey, {
+      onClose: close,
+      onAfterChange: () => {
+        try {
+          onAfterTaskEdit?.();
+        } catch (_) {}
+      },
+    });
   }
   if (dismissOnOutsideClick) {
     setTimeout(() => {
@@ -2335,65 +2366,21 @@ function renderMonthlyView(tabsElement) {
         cell.appendChild(dayIconsEl);
 
         cell.style.cursor = "pointer";
-        cell.addEventListener(
-          "click",
-          (e) => {
-            if (lpCalendarGuardCellClickFromMonthlyBar(e)) return;
-            if (
-              window.matchMedia("(max-width: 48rem)").matches &&
-              cell.contains(e.target)
-            ) {
-              e.stopPropagation();
-              e.preventDefault();
-              const rect = cell.getBoundingClientRect();
-              const tasks = getAllTasksForDateDisplay(key);
-              createCalendarDayExpandBubble(rect, key, tasks, () => {}, {
-                positionBelow: true,
-                onAfterTaskEdit: () => {
-                  renderCalendar();
-                  refreshTodoList();
-                },
-                onAdd: () => {
-                  createCalendarEventBubble(
-                    rect,
-                    key,
-                    () => {
-                      renderCalendar();
-                      refreshTodoList();
-                    },
-                    () => {},
-                  );
-                },
-                onAddStamp: () => {
-                  openCalendarDayStampTodoModal(key, () => {
-                    renderCalendar();
-                    refreshTodoList();
-                  });
-                },
-              });
-              return;
-            }
-          },
-          true,
-        );
         cell.addEventListener("click", (e) => {
-          if (e.target.closest(".calendar-event-bubble, .calendar-event-add-modal")) return;
-          if (lpCalendarGuardCellClickFromMonthlyBar(e)) return;
-          e.stopPropagation();
-          const rect = cell.getBoundingClientRect();
-          const isMobile = window.matchMedia("(max-width: 48rem)").matches;
-          if (isMobile) {
+          if (
+            e.target.closest(
+              ".calendar-event-bubble, .calendar-event-add-modal, .calendar-day-expand-overlay",
+            )
+          ) {
             return;
           }
-          createCalendarEventBubble(
-            rect,
-            key,
-            () => {
-              void renderCalendar();
-              refreshTodoList();
-            },
-            () => {},
-          );
+          if (lpCalendarGuardCellClickFromMonthlyBar(e)) return;
+          e.stopPropagation();
+          e.preventDefault();
+          lpOpenCalendarMonthlyDayActionBubble(cell, key, () => {
+            renderCalendar();
+            refreshTodoList();
+          });
         });
         cell.addEventListener("dragover", (e) => {
           if (calendarDragTransferTypesAllowDrop(e.dataTransfer)) {
@@ -4566,65 +4553,21 @@ function render1WeekView(tabsElement) {
       cell.appendChild(entriesEl);
 
       cell.style.cursor = "pointer";
-      cell.addEventListener(
-        "click",
-        (e) => {
-          if (lpCalendarGuardCellClickFromMonthlyBar(e)) return;
-          if (
-            window.matchMedia("(max-width: 48rem)").matches &&
-            cell.contains(e.target)
-          ) {
-            e.stopPropagation();
-            e.preventDefault();
-            const rect = cell.getBoundingClientRect();
-            const tasks = getAllTasksForDateDisplay(key);
-            createCalendarDayExpandBubble(rect, key, tasks, () => {}, {
-              positionBelow: true,
-              onAfterTaskEdit: () => {
-                void renderCalendar();
-                refreshTodoList();
-              },
-              onAdd: () => {
-                createCalendarEventBubble(
-                  rect,
-                  key,
-                  () => {
-                    void renderCalendar();
-                    refreshTodoList();
-                  },
-                  () => {},
-                );
-              },
-              onAddStamp: () => {
-                openCalendarDayStampTodoModal(key, () => {
-                  void renderCalendar();
-                  refreshTodoList();
-                });
-              },
-            });
-            return;
-          }
-        },
-        true,
-      );
       cell.addEventListener("click", (e) => {
-        if (e.target.closest(".calendar-event-bubble, .calendar-event-add-modal")) return;
-        if (lpCalendarGuardCellClickFromMonthlyBar(e)) return;
-        e.stopPropagation();
-        const rect = cell.getBoundingClientRect();
-        const isMobile = window.matchMedia("(max-width: 48rem)").matches;
-        if (isMobile) {
+        if (
+          e.target.closest(
+            ".calendar-event-bubble, .calendar-event-add-modal, .calendar-day-expand-overlay",
+          )
+        ) {
           return;
         }
-        createCalendarEventBubble(
-          rect,
-          key,
-          () => {
-            void renderCalendar();
-            refreshTodoList();
-          },
-          () => {},
-        );
+        if (lpCalendarGuardCellClickFromMonthlyBar(e)) return;
+        e.stopPropagation();
+        e.preventDefault();
+        lpOpenCalendarMonthlyDayActionBubble(cell, key, () => {
+          void renderCalendar();
+          refreshTodoList();
+        });
       });
       cell.addEventListener("dragover", (e) => {
         if (calendarDragTransferTypesAllowDrop(e.dataTransfer)) {

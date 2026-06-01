@@ -1427,6 +1427,8 @@
 
 .calendar-monthly-span-bar {
   position: absolute;
+  display: flex;
+  align-items: center;
   border-radius: 4px;
   font-size: 0.6875rem;
   font-weight: 600;
@@ -2435,6 +2437,59 @@
 .calendar-day-expand-stamp-btn {
   flex: 0 0 auto;
   white-space: nowrap;
+}
+
+.calendar-day-expand-actions-side {
+  display: flex;
+  align-items: stretch;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+}
+
+.calendar-day-expand-icon-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  min-height: 2.35rem;
+  padding: 0.28rem;
+  border: 1px dashed var(--lp-modal-border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--lp-modal-accent);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease;
+}
+
+.calendar-day-expand-icon-btn--selected {
+  border-style: solid;
+  border-color: rgba(30, 77, 123, 0.28);
+}
+
+.calendar-day-expand-icon-btn:hover {
+  border-color: rgba(30, 77, 123, 0.35);
+  background: rgba(30, 77, 123, 0.04);
+}
+
+.calendar-day-expand-icon-btn__img {
+  display: block;
+  width: 1.35rem;
+  height: 1.35rem;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.calendar-day-expand-icon-btn__plus {
+  font-size: 1.05rem;
+  line-height: 1;
+  font-weight: 600;
+  color: var(--lp-modal-accent);
+  pointer-events: none;
 }
 
 .calendar-day-expand-list {
