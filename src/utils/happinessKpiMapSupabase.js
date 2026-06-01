@@ -119,6 +119,7 @@ export function flattenHappinessMapForKpiOnlyTab(payload) {
 }
 
 /** 기본 행복 KPI — 삭제 불가, 수정 가능 */
+export const DEFAULT_CHORE_TASK_KPI_ID = "__lp_default_kpi_chore_tasks__";
 export const DEFAULT_MORNING_ROUTINE_KPI_ID = "__lp_default_kpi_morning_routine__";
 export const DEFAULT_MOVE_ROUTINE_KPI_ID = "__lp_default_kpi_move_routine__";
 export const DEFAULT_TIDY_ROUTINE_KPI_ID = "__lp_default_kpi_tidy_routine__";
@@ -126,6 +127,7 @@ export const DEFAULT_OUT_PREP_ROUTINE_KPI_ID = "__lp_default_kpi_out_prep_routin
 export const DEFAULT_OUT_AFTER_ROUTINE_KPI_ID = "__lp_default_kpi_out_after_routine__";
 
 const PROTECTED_DEFAULT_HAPPINESS_KPI_IDS = new Set([
+  DEFAULT_CHORE_TASK_KPI_ID,
   DEFAULT_MORNING_ROUTINE_KPI_ID,
   DEFAULT_MOVE_ROUTINE_KPI_ID,
   DEFAULT_TIDY_ROUTINE_KPI_ID,
@@ -151,6 +153,15 @@ function createDefaultHappinessKpi(overrides) {
     targetTimeRequired: "",
     ...overrides,
   };
+}
+
+/** 태스크 완료형 — 고정 KPI 맨 위 */
+export function createDefaultChoreTaskKpi() {
+  return createDefaultHappinessKpi({
+    id: DEFAULT_CHORE_TASK_KPI_ID,
+    name: "잡무 처리하기",
+    useTaskCompletionGoal: true,
+  });
 }
 
 /** 매일 반복 · 목표값 없음 */
@@ -194,7 +205,18 @@ export function createDefaultOutAfterRoutineKpi() {
   });
 }
 
+/** 고정 KPI 목록 순서(맨 위 → 아래) */
+const DEFAULT_HAPPINESS_KPI_ORDER = [
+  DEFAULT_CHORE_TASK_KPI_ID,
+  DEFAULT_MORNING_ROUTINE_KPI_ID,
+  DEFAULT_MOVE_ROUTINE_KPI_ID,
+  DEFAULT_TIDY_ROUTINE_KPI_ID,
+  DEFAULT_OUT_PREP_ROUTINE_KPI_ID,
+  DEFAULT_OUT_AFTER_ROUTINE_KPI_ID,
+];
+
 const DEFAULT_HAPPINESS_KPI_FACTORIES = [
+  createDefaultChoreTaskKpi,
   createDefaultMorningRoutineKpi,
   createDefaultMoveRoutineKpi,
   createDefaultTidyRoutineKpi,
@@ -242,6 +264,61 @@ function migrateDefaultHappinessHabitKpis(kpis) {
   return { kpis: changed ? next : kpis, changed };
 }
 
+const DEFAULT_HAPPINESS_TASK_COMPLETION_KPI_MIGRATIONS = [
+  { id: DEFAULT_CHORE_TASK_KPI_ID, name: "잡무 처리하기" },
+];
+
+/** 기본 태스크 완료형 KPI — 과제 완료 목표 유지 */
+function migrateDefaultHappinessTaskCompletionKpis(kpis) {
+  let changed = false;
+  let next = kpis || [];
+  for (const { id, name } of DEFAULT_HAPPINESS_TASK_COMPLETION_KPI_MIGRATIONS) {
+    next = next.map((k) => {
+      if (String(k?.id ?? "") !== id) return k;
+      const displayName = String(k.name || "").trim() || name;
+      if (
+        k.useTaskCompletionGoal &&
+        !k.needHabitTracker &&
+        !k.useTimeAsUnit &&
+        displayName === (k.name || "").trim()
+      ) {
+        return k;
+      }
+      changed = true;
+      return {
+        ...k,
+        name: displayName,
+        needHabitTracker: false,
+        useTimeAsUnit: false,
+        useTaskCompletionGoal: true,
+        unit: "",
+        targetValue: "",
+        targetStartDate: "",
+        targetDeadline: "",
+        targetTimeRequired: "",
+      };
+    });
+  }
+  return { kpis: changed ? next : kpis, changed };
+}
+
+/** @param {string[]} orderIds @param {string[]} allKpiIds */
+function applyDefaultHappinessKpiOrder(orderIds, allKpiIds) {
+  const prev = Array.isArray(orderIds) ? [...orderIds] : [];
+  const allSet = new Set(allKpiIds.map(String));
+  const pinned = DEFAULT_HAPPINESS_KPI_ORDER.filter((id) => allSet.has(id));
+  const rest = [];
+  for (const id of prev) {
+    if (allSet.has(id) && !DEFAULT_HAPPINESS_KPI_ORDER.includes(id)) rest.push(id);
+  }
+  for (const id of allSet) {
+    if (!DEFAULT_HAPPINESS_KPI_ORDER.includes(id) && !prev.includes(id)) {
+      rest.push(id);
+    }
+  }
+  return [...pinned, ...rest];
+}
+
 export function ensureDefaultHappinessKpis(payload) {
   const p = payload && typeof payload === "object" ? payload : emptyPayload();
   const kpis = Array.isArray(p.kpis) ? [...p.kpis] : [];
@@ -263,17 +340,33 @@ export function ensureDefaultHappinessKpis(payload) {
     nextDeletedKpis.length !== (deletedRefs.kpis || []).length;
 
   const mergedKpis = [...toPrepend, ...kpis];
-  const { kpis: migratedKpis, changed: habitMigrated } =
+  const { kpis: afterHabit, changed: habitMigrated } =
     migrateDefaultHappinessHabitKpis(mergedKpis);
-
-  if (!toPrepend.length && !deletedRefsChanged && !habitMigrated) return p;
+  const { kpis: migratedKpis, changed: taskMigrated } =
+    migrateDefaultHappinessTaskCompletionKpis(afterHabit);
 
   const kpiOrder = { ...(p.kpiOrder && typeof p.kpiOrder === "object" ? p.kpiOrder : {}) };
+  const scopeId = HAPPINESS_KPI_GLOBAL_SCOPE_ID;
+  const allKpiIds = migratedKpis.map((k) => String(k?.id ?? "")).filter(Boolean);
+  let prevOrder = Array.isArray(kpiOrder[scopeId]) ? [...kpiOrder[scopeId]] : [];
   if (toPrepend.length) {
-    const scopeId = HAPPINESS_KPI_GLOBAL_SCOPE_ID;
-    const prevOrder = Array.isArray(kpiOrder[scopeId]) ? [...kpiOrder[scopeId]] : [];
     const newIds = toPrepend.map((k) => k.id);
-    kpiOrder[scopeId] = [...newIds, ...prevOrder.filter((id) => !newIds.includes(id))];
+    prevOrder = [...newIds, ...prevOrder.filter((id) => !newIds.includes(id))];
+  }
+  const ordered = applyDefaultHappinessKpiOrder(prevOrder, allKpiIds);
+  const orderChanged =
+    ordered.length !== prevOrder.length ||
+    ordered.some((id, i) => id !== prevOrder[i]);
+  if (orderChanged) kpiOrder[scopeId] = ordered;
+
+  if (
+    !toPrepend.length &&
+    !deletedRefsChanged &&
+    !habitMigrated &&
+    !taskMigrated &&
+    !orderChanged
+  ) {
+    return p;
   }
 
   return {

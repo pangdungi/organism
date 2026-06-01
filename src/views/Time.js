@@ -144,9 +144,9 @@ const TIME_LEDGER_ADD_PLUS_ICON_SVG =
 const TIME_LEDGER_TOOLBAR_SETTINGS_ICON_SVG =
   '<svg data-legacy="time-btn-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m19.845 13.561c.1-.505.155-1.027.155-1.561s-.055-1.056-.155-1.561l1.806-1.489c.502-.414.632-1.132.307-1.696l-.869-1.508c-.325-.564-1.011-.811-1.62-.582l-2.198.825c-.779-.684-1.689-1.218-2.691-1.559l-.385-2.316c-.108-.643-.663-1.114-1.314-1.114h-1.738c-.651 0-1.206.471-1.313 1.114l-.386 2.316c-1.002.341-1.912.875-2.691 1.559l-2.198-.825c-.61-.228-1.295.018-1.62.582l-.87 1.508c-.325.564-.195 1.282.307 1.696l1.806 1.489c-.1.505-.155 1.026-.155 1.561s.055 1.056.155 1.561l-1.806 1.489c-.502.414-.632 1.132-.307 1.696l.869 1.508c.325.564 1.011.811 1.62.582l2.198-.825c.779.684 1.689 1.218 2.691 1.559l.385 2.316c.109.643.664 1.114 1.315 1.114h1.738c.651 0 1.206-.471 1.313-1.114l.385-2.316c1.002-.341 1.913-.875 2.691-1.559l2.198.825c.609.229 1.295-.017 1.62-.582l.869-1.508c.325-.564.196-1.282-.307-1.696z"/><circle cx="12.012" cy="12" r="3"/></g></svg>';
 
-/** 앱 푸터 날짜(조회) 아이콘 — settings/+ 와 동일 currentColor (main.css .app-footer-icon-btn) */
-const TIME_LEDGER_FOOTER_DATE_ICON_SVG =
-  '<svg data-legacy="time-btn-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></g></svg>';
+/** 앱 푸터 조회·필터 — public/toolbaricons/time-ledger-footer-filter.svg 와 동일 (currentColor) */
+const TIME_LEDGER_FOOTER_FILTER_ICON_SVG =
+  '<svg data-legacy="time-btn-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4" width="17" height="16" rx="2"/><path d="M3.5 10h17"/><path d="M7.5 17V13"/><path d="M12 17V8.5"/><path d="M16.5 17V11"/></g></svg>';
 
 const PRODUCTIVITY_OPTIONS = [
   { value: "productive", label: "생산적", color: "prod-pink" },
@@ -4740,7 +4740,7 @@ export function render(opts = {}) {
   lpSetClasses(footerDateBtn, "time-ledger-footer-date-btn");
   footerDateBtn.title = "조회 기간·필터";
   footerDateBtn.setAttribute("aria-label", "조회 기간·필터");
-  footerDateBtn.innerHTML = TIME_LEDGER_FOOTER_DATE_ICON_SVG;
+  footerDateBtn.innerHTML = TIME_LEDGER_FOOTER_FILTER_ICON_SVG;
   lpTokenAdd(footerDateBtn, APP_FOOTER_ICON_BTN_CLASS);
 
   let _timeLedgerFilterPullTimer = null;
@@ -5852,10 +5852,24 @@ export function render(opts = {}) {
   bindTaskLogMemoScrollMode(taskLogMealDetailInput);
 
   function updateTaskLogMealDetailVisibility(taskName) {
-    const show = TTC.isMealDetailTaskName((taskName || "").trim());
+    const tn = (taskName || "").trim();
+    const kind = TTC.ledgerDetailTaskKind(tn);
+    const show = !!kind;
+    const labelEl = taskLogModal.querySelector(
+      '[data-legacy~="time-task-log-meal-detail-label"]',
+    );
     if (taskLogMealDetailSection) {
       taskLogMealDetailSection.hidden = !show;
       if (!show && taskLogMealDetailInput) taskLogMealDetailInput.value = "";
+    }
+    if (labelEl) {
+      labelEl.textContent = kind === "content" ? "콘텐츠" : "식단명";
+    }
+    if (taskLogMealDetailInput) {
+      taskLogMealDetailInput.placeholder =
+        kind === "content"
+          ? "무엇을 보거나 들었는지 한 줄로 적어 주세요"
+          : "무엇을 드셨는지 한 줄로 적어 주세요";
     }
   }
   let taskLogMemoTags = [];
@@ -7612,11 +7626,16 @@ export function render(opts = {}) {
     let mealDetailVal = String(data.mealDetail || "").trim();
     let feedbackRaw = String(data.feedback || "").trim();
     const tnForMemo = (data.taskName || "").trim();
-    if (TTC.isMealDetailTaskName(tnForMemo)) {
+    if (TTC.isLedgerDetailTaskName(tnForMemo)) {
       if (!mealDetailVal && feedbackRaw.startsWith("[식단] ")) {
         const sp = splitUnhealthyMealMemoFromDb(feedbackRaw);
         mealDetailVal = sp.mealDetail;
-        feedbackRaw = sp.feedback;
+      } else if (!mealDetailVal && feedbackRaw.startsWith("[콘텐츠] ")) {
+        const nl = feedbackRaw.indexOf("\n");
+        mealDetailVal = (feedbackRaw.split("\n")[0] || "")
+          .slice("[콘텐츠] ".length)
+          .trim();
+        feedbackRaw = nl >= 0 ? feedbackRaw.slice(nl + 1).trim() : "";
       }
     }
     const memoOnly = feedbackRaw.replace(/#[^\s#]+/g, "").trim();
@@ -7749,7 +7768,7 @@ export function render(opts = {}) {
       return;
     }
     const feedbackBody = (taskLogFeedbackInput?.value || "").trim();
-    const mealDetailForRow = TTC.isMealDetailTaskName(taskName)
+    const mealDetailForRow = TTC.isLedgerDetailTaskName(taskName)
       ? (taskLogMealDetailInput?.value || "").trim()
       : "";
     const feedback = feedbackBody;

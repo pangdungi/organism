@@ -1,38 +1,68 @@
 /**
- * 시간가계부 카드 메모 — 식단·KPI 매일할일·수행값 요약 (사용자 메모와 합쳐 표시)
+ * 시간가계부 카드 메모 — 식단·콘텐츠·KPI 매일할일·수행값 요약 (사용자 메모와 합쳐 표시)
  */
 
 import { getKpiMeasureInfoByKpiId } from "./kpiTodoSync.js";
 import { splitUnhealthyMealMemoFromDb } from "./timeLedgerEntriesModel.js";
 import * as TTC from "./timeTaskOptionsConstants.js";
 
-/** 건강한·건강하지 않은 섭취 — meal_detail(구버전 [식단] memo) */
-export function resolveLedgerRowMealDetail(rowData) {
+const CONTENT_MEMO_PREFIX = "[콘텐츠] ";
+
+/** @param {"meal" | "content"} kind */
+function ledgerDetailLinePrefix(kind) {
+  return kind === "content" ? "콘텐츠" : "식단";
+}
+
+/**
+ * @returns {{ kind: "meal" | "content" | null, text: string }}
+ */
+export function resolveLedgerRowDetail(rowData) {
   const taskName = String(rowData?.taskName || "").trim();
-  if (!TTC.isMealDetailTaskName(taskName)) return "";
-  let mealDetail = String(rowData?.mealDetail || "").trim();
-  if (!mealDetail) {
+  const kind = TTC.ledgerDetailTaskKind(taskName);
+  if (!kind) return { kind: null, text: "" };
+
+  let text = String(rowData?.mealDetail || "").trim();
+  if (!text) {
     const feedback = String(rowData?.feedback || "").trim();
-    if (feedback.startsWith("[식단] ")) {
-      mealDetail = splitUnhealthyMealMemoFromDb(feedback).mealDetail;
+    if (kind === "meal" && feedback.startsWith("[식단] ")) {
+      text = splitUnhealthyMealMemoFromDb(feedback).mealDetail;
+    } else if (kind === "content" && feedback.startsWith(CONTENT_MEMO_PREFIX)) {
+      const firstLine = feedback.split("\n")[0] || "";
+      text = firstLine.slice(CONTENT_MEMO_PREFIX.length).trim();
     }
   }
-  return mealDetail;
+  return { kind, text };
+}
+
+/** 건강 섭취 전용(레포트 집계) */
+export function resolveLedgerRowMealDetail(rowData) {
+  const { kind, text } = resolveLedgerRowDetail(rowData);
+  if (kind !== "meal") return "";
+  return text;
 }
 
 /** @param {object} rowData */
-export function formatTimeLedgerCardMealDetailLines(rowData) {
-  const mealDetail = resolveLedgerRowMealDetail(rowData);
-  if (!mealDetail) return [];
-  return [`식단 ${mealDetail}`];
+export function formatTimeLedgerCardDetailLines(rowData) {
+  const { kind, text } = resolveLedgerRowDetail(rowData);
+  if (!kind || !text) return [];
+  return [`${ledgerDetailLinePrefix(kind)} ${text}`];
 }
 
-/** 사용자 메모 본문(식단 접두·KPI 요약 제외) */
+/** @deprecated formatTimeLedgerCardDetailLines */
+export function formatTimeLedgerCardMealDetailLines(rowData) {
+  return formatTimeLedgerCardDetailLines(rowData);
+}
+
+/** 사용자 메모 본문(식단·콘텐츠 접두·KPI 요약 제외) */
 export function ledgerRowUserMemoFeedback(rowData) {
   let memo = String(rowData?.feedback || "").trim();
   const taskName = String(rowData?.taskName || "").trim();
-  if (TTC.isMealDetailTaskName(taskName) && memo.startsWith("[식단] ")) {
+  const kind = TTC.ledgerDetailTaskKind(taskName);
+  if (kind === "meal" && memo.startsWith("[식단] ")) {
     memo = splitUnhealthyMealMemoFromDb(memo).feedback;
+  } else if (kind === "content" && memo.startsWith(CONTENT_MEMO_PREFIX)) {
+    const nl = memo.indexOf("\n");
+    memo = nl >= 0 ? memo.slice(nl + 1).trim() : "";
   }
   return memo;
 }
@@ -63,10 +93,10 @@ export function formatTimeLedgerCardKpiMemoLines(rowData, kpiId) {
   return lines;
 }
 
-/** 식단·KPI 요약 + 사용자 메모 */
+/** 식단·콘텐츠·KPI 요약 + 사용자 메모 */
 export function buildTimeLedgerCardMemoText(rowData, kpiId) {
   const summary = [
-    ...formatTimeLedgerCardMealDetailLines(rowData),
+    ...formatTimeLedgerCardDetailLines(rowData),
     ...formatTimeLedgerCardKpiMemoLines(rowData, kpiId),
   ].join("\n");
   const memo = ledgerRowUserMemoFeedback(rowData);

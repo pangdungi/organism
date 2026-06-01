@@ -3,8 +3,9 @@
  */
 
 import {
+  formatTimeLedgerCardDetailLines,
   ledgerRowUserMemoFeedback,
-  resolveLedgerRowMealDetail,
+  resolveLedgerRowDetail,
 } from "./timeLedgerCardKpiMemo.js";
 import {
   formatIntegerMinutesDurationKo,
@@ -24,11 +25,9 @@ function formatClockHHmm(date) {
   return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
-/** 편집 모달·카드와 동일: 식단 + 해시태그 제외 사용자 메모 */
+/** 편집 모달·카드와 동일: 식단·콘텐츠 + 해시태그 제외 사용자 메모 */
 function ledgerMemoDisplayText(row) {
-  const parts = [];
-  const mealDetail = resolveLedgerRowMealDetail(row);
-  if (mealDetail) parts.push(`식단 ${mealDetail}`);
+  const parts = [...formatTimeLedgerCardDetailLines(row)];
   const feedbackRaw = ledgerRowUserMemoFeedback(row);
   if (feedbackRaw) {
     const memoOnly = feedbackRaw.replace(/#[^\s#]+/g, "").trim();
@@ -38,7 +37,7 @@ function ledgerMemoDisplayText(row) {
 }
 
 function ledgerRowHasMemo(row) {
-  return !!resolveLedgerRowMealDetail(row) || !!ledgerRowUserMemoFeedback(row);
+  return !!resolveLedgerRowDetail(row).text || !!ledgerRowUserMemoFeedback(row);
 }
 
 function buildLogMemoTimeLabel(row) {

@@ -56,6 +56,36 @@ export const RETIRED_BUILTIN_TASK_TEMPLATES = [
     category: "happiness",
     productivity: "productive",
   },
+  {
+    name: "의미 있는 영상 시청",
+    category: "happiness",
+    productivity: "productive",
+  },
+  {
+    name: "쇼츠/릴스 피드 보기",
+    category: "media_watch",
+    productivity: "nonproductive",
+  },
+  { name: "마사지", category: "health", productivity: "productive" },
+  { name: "스킨케어", category: "health", productivity: "productive" },
+  { name: "구강케어", category: "health", productivity: "productive" },
+  { name: "샤워 및 씻기", category: "health", productivity: "productive" },
+  { name: "바디케어", category: "health", productivity: "productive" },
+  { name: "병원 방문", category: "health", productivity: "productive" },
+  { name: "집안일 및 청소", category: "happiness", productivity: "productive" },
+  { name: "빨래 및 옷 정리", category: "happiness", productivity: "productive" },
+  { name: "화장 및 헤어", category: "happiness", productivity: "productive" },
+  { name: "커피 마시기", category: "happiness", productivity: "productive" },
+  { name: "잡동사니 일 해결하기", category: "happiness", productivity: "productive" },
+  { name: "감정 기록하기", category: "happiness", productivity: "productive" },
+  { name: "음악 듣기", category: "happiness", productivity: "productive" },
+  { name: "다이어리 쓰기", category: "happiness", productivity: "productive" },
+  { name: "아이디어 작업하기", category: "dream", productivity: "productive" },
+  { name: "시간기록", category: "dream", productivity: "productive" },
+  { name: "독서노트 작성", category: "dream", productivity: "productive" },
+  { name: "돈 관리", category: "sideincome", productivity: "productive" },
+  { name: "경제 공부", category: "sideincome", productivity: "productive" },
+  { name: "경력 개발", category: "sideincome", productivity: "productive" },
 ];
 
 /** 제거된 과제 세부 카테고리 — 기존 과제·기록 마이그레이션 */
@@ -84,33 +114,16 @@ export const FIXED_PRODUCTIVE_TASKS = [
     category: "sideincome",
     productivity: "productive",
   },
-  { name: "돈 관리", category: "sideincome", productivity: "productive" },
-  { name: "경제 공부", category: "sideincome", productivity: "productive" },
-  { name: "경력 개발", category: "sideincome", productivity: "productive" },
-  { name: "아이디어 작업하기", category: "dream", productivity: "productive" },
-  { name: "독서하기", category: "dream", productivity: "productive" },
-  { name: "독서노트 작성", category: "dream", productivity: "productive" },
-  { name: "시간기록", category: "dream", productivity: "productive" },
-  { name: "시간기록 점검", category: "dream", productivity: "productive" },
-  { name: "병원 방문", category: "health", productivity: "productive" },
-  { name: "마사지", category: "health", productivity: "productive" },
-  { name: "스킨케어", category: "health", productivity: "productive" },
+  { name: "독서 및 독서노트 작성", category: "dream", productivity: "productive" },
+  { name: "시간기록 및 점검", category: "dream", productivity: "productive" },
+  { name: "개인 위생", category: "health", productivity: "productive" },
   {
     name: NAP_TASK_NAME,
     category: "health",
     productivity: "productive",
   },
-  { name: "구강케어", category: "health", productivity: "productive" },
-  { name: "샤워 및 씻기", category: "health", productivity: "productive" },
-  { name: "바디케어", category: "health", productivity: "productive" },
   { name: "건강한 섭취", category: "health", productivity: "productive" },
   { name: "건강한 섭취 준비", category: "health", productivity: "productive" },
-  { name: "감정 기록하기", category: "happiness", productivity: "productive" },
-  {
-    name: "의미 있는 영상 시청",
-    category: "happiness",
-    productivity: "productive",
-  },
   {
     name: "의미 있는 대화 및 모임",
     category: "happiness",
@@ -121,18 +134,8 @@ export const FIXED_PRODUCTIVE_TASKS = [
     category: "happiness",
     productivity: "productive",
   },
-  { name: "음악 듣기", category: "happiness", productivity: "productive" },
-  {
-    name: "잡동사니 일 해결하기",
-    category: "happiness",
-    productivity: "productive",
-  },
-  { name: "커피 마시기", category: "happiness", productivity: "productive" },
-  { name: "다이어리 쓰기", category: "happiness", productivity: "productive" },
-  { name: "메모하기", category: "happiness", productivity: "productive" },
-  { name: "집안일 및 청소", category: "happiness", productivity: "productive" },
-  { name: "빨래 및 옷 정리", category: "happiness", productivity: "productive" },
-  { name: "화장 및 헤어", category: "happiness", productivity: "productive" },
+  { name: "기록하기", category: "happiness", productivity: "productive" },
+  { name: "외모관리", category: "happiness", productivity: "productive" },
 ];
 
 export const FIXED_NONPRODUCTIVE_TASKS = [
@@ -160,12 +163,7 @@ export const FIXED_NONPRODUCTIVE_TASKS = [
   { name: "단순 이동", category: "pleasure", productivity: "nonproductive" },
   { name: "게임", category: "pleasure", productivity: "nonproductive" },
   {
-    name: "쇼츠/릴스 피드 보기",
-    category: "media_watch",
-    productivity: "nonproductive",
-  },
-  {
-    name: "무의식적 영상 시청",
+    name: "무의식적 콘텐츠 소비",
     category: "media_watch",
     productivity: "nonproductive",
   },
@@ -181,7 +179,12 @@ export const MEAL_TASK_NAME_RENAMES = [
   { from: "생산적 대화 또는 모임", to: "의미 있는 대화 및 모임" },
   { from: "비생산적 대화", to: "의미 없는 대화 또는 모임" },
   { from: "비생산적 대화 또는 모임", to: "의미 없는 대화 또는 모임" },
-  { from: "단순 쾌락형 영상 시청", to: "무의식적 영상 시청" },
+  { from: "단순 쾌락형 영상 시청", to: "무의식적 콘텐츠 소비" },
+  { from: "무의식적 영상 시청", to: "무의식적 콘텐츠 소비" },
+  { from: "독서하기", to: "독서 및 독서노트 작성" },
+  { from: "독서노트 작성", to: "독서 및 독서노트 작성" },
+  { from: "시간기록 점검", to: "시간기록 및 점검" },
+  { from: "메모하기", to: "기록하기" },
 ];
 
 /** 표시·저장 기준 이름(구이름이면 새 이름으로 치환) */
@@ -194,10 +197,16 @@ export function canonicalMealTaskDisplayName(name) {
   return n;
 }
 
-/** 건강한·건강하지 않은 「섭취」 과제만 — 「준비」 과제는 식단명 미표시 · meal_detail 은 동일 컬럼 저장 */
+/** 건강한·건강하지 않은 「섭취」 과제만 — 「준비」 과제는 식단명 미표시 */
 export const MEAL_DETAIL_TASK_NAMES = new Set([
   "건강한 섭취",
   "건강하지 않은 섭취",
+]);
+
+/** 의식적·무의식적 콘텐츠 소비 — 과제 기록 시 소비 내용 입력 */
+export const CONTENT_DETAIL_TASK_NAMES = new Set([
+  "의식적 콘텐츠 소비",
+  "무의식적 콘텐츠 소비",
 ]);
 
 /** @param {string} name */
@@ -206,6 +215,24 @@ export function isMealDetailTaskName(name) {
   if (MEAL_DETAIL_TASK_NAMES.has(n)) return true;
   const raw = String(name || "").trim();
   return raw === "건강한 식사" || raw === "건강하지 않은 식사";
+}
+
+/** @param {string} name */
+export function isContentDetailTaskName(name) {
+  const n = String(name || "").trim();
+  return CONTENT_DETAIL_TASK_NAMES.has(n);
+}
+
+/** 섭취·콘텐츠 소비 — time_ledger_entries.meal_detail 에 저장 */
+export function isLedgerDetailTaskName(name) {
+  return isMealDetailTaskName(name) || isContentDetailTaskName(name);
+}
+
+/** @returns {"meal" | "content" | null} */
+export function ledgerDetailTaskKind(name) {
+  if (isMealDetailTaskName(name)) return "meal";
+  if (isContentDetailTaskName(name)) return "content";
+  return null;
 }
 
 /** @param {string} name */
