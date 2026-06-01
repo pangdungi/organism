@@ -420,7 +420,10 @@ function init() {
     mq.addEventListener("change", sync);
   })();
 
-  document.getElementById("btn-do-login")?.addEventListener("click", doLogin);
+  document.getElementById("login-form")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    void doLogin();
+  });
   syncLoginRememberMeCheckbox();
   document.getElementById("btn-do-signup")?.addEventListener("click", doSignUp);
   document

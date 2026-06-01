@@ -500,7 +500,7 @@
             </form>
             </div>
             <div id="auth-panel-login" class="auth-gate-panel">
-            <form class="login-form login-form--auth-gate" onsubmit="return false">
+            <form class="login-form login-form--auth-gate" id="login-form">
               <div class="login-field login-field--auth">
                 <label class="login-label" for="login-id">이메일</label>
                 <input
@@ -546,7 +546,7 @@
                 />
                 <span class="login-remember-me-label">자동 로그인</span>
               </label>
-              <button type="button" class="login-btn-cta" id="btn-do-login">로그인</button>
+              <button type="submit" class="login-btn-cta" id="btn-do-login">로그인</button>
             </form>
             <p class="login-auth-switch login-auth-switch--forgot">
               <button type="button" class="login-link login-link--forgot" id="btn-show-forgot-pw">

@@ -20,15 +20,23 @@ export async function deleteMyAccountViaEdgeFunction() {
     return { ok: false, msg: "앱 설정을 확인할 수 없습니다." };
   }
 
-  const res = await fetch(`${base}/functions/v1/delete-my-account`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-      apikey: anon,
-      "Content-Type": "application/json",
-    },
-    body: "{}",
-  });
+  let res;
+  try {
+    res = await fetch(`${base}/functions/v1/delete-my-account`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        apikey: anon,
+        "Content-Type": "application/json",
+      },
+      body: "{}",
+    });
+  } catch (_) {
+    return {
+      ok: false,
+      msg: "탈퇴 서버에 연결할 수 없습니다. 네트워크를 확인하거나 잠시 후 다시 시도해 주세요.",
+    };
+  }
 
   let body = {};
   try {
