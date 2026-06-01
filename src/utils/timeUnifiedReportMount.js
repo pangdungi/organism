@@ -1,541 +1,1026 @@
 /**
- * 시간 레포트 — 데이터 기반 통합 UI (AI 분석 없음)
+ * 시간 레포트 v2 — 조회 기간 전체 기준, 기록 내용 중심 UI
  */
 
-import { applyStaticAppIconImg } from "./staticAppIconImg.js";
-import { getBudgetDayReportForDay } from "./diaryBudgetDayReport.js";
-import { getTaskOptionByName } from "./timeTaskOptionsModel.js";
-import { resolveKpiCardIconSrc } from "./kpiCardIcon.js";
 import {
-  DEFAULT_AEROBIC_KPI_ID,
-  DEFAULT_SUPPLEMENT_KPI_ID,
-} from "./defaultKpiIconIds.js";
-import { getScopedLocalStorageItem } from "./clientStorageScope.js";
-import { KPI_MAP_STORAGE_KEYS, readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
-import {
-  countCalendarDaysInInclusiveRange,
-  countKpiDaysWithRecordedMinutesInDateRange,
-  getAccumulatedMinutesForKpiIdInDateRange,
-} from "./timeKpiSync.js";
-import {
-  TIME_DAILY_BUDGET_GOALS_KEY,
-  readTimeDailyBudgetGoalsRaw,
-} from "./timeDailyBudgetModel.js";
+  isHealthyMealDetailTaskName,
+  isUnhealthyMealDetailTaskName,
+} from "./timeTaskOptionsConstants.js";
 import {
   formatIntegerMinutesDurationKo,
-  formatLedgerLossKrwDisplay,
-  getDailyInvestReclaimSnapshot,
-  getDailyProductiveCategoryInvestBarsSnapshot,
-  getDailyProductiveCategoryTaskBreakdown,
-  getDailyConsumptionCategoryTaskBreakdown,
-  getDailyHealthyMealDetails,
-  getDailyHealthyMealIntakeMinutes,
-  getDailyUnhealthyMealIntakeMinutes,
-  getDailyNonproductiveWastedSnapshot,
-  getDailyTimeReportDonutSnapshot,
-  getDailyTimeReportSummaryGrid,
-  getDailyTimeReportTopTasksByMinutes,
-  getMonthlyInvestReclaimSnapshot,
-  getMonthlyProductiveCategoryInvestBarsSnapshot,
-  getMonthlyProductiveCategoryTaskBreakdown,
-  getMonthlyConsumptionCategoryTaskBreakdown,
-  getMonthlyHealthyMealDetails,
-  getMonthlyHealthyMealIntakeMinutes,
-  getMonthlyUnhealthyMealIntakeMinutes,
-  getMonthlyTimeReportDonutSnapshot,
-  getMonthlyTimeReportSummaryGrid,
-  getMonthlyTimeReportTopTasksByMinutes,
-  getMonthlyNonproductiveWastedSnapshot,
-  getDailyTimeReportHeroSnapshot,
-  getMonthlyTimeReportHeroSnapshot,
   formatInvestReclaimWonDisplay,
+  formatLedgerLossKrwDisplay,
   formatYmdDotsWithWeekdayKo,
+  getTimeReportDonutSnapshotForDateRange,
+  getTimeReportHeroSnapshotForDateRange,
+  getTimeReportSummaryGridForDateRange,
+  getTimeReportMonthInclusiveRange,
+  loadTimeRows,
+  parseTimeToHours,
 } from "../views/Time.js";
 
-const REPORT_DONUT_PASTELS = [
-  "#93C5FD",
-  "#FCA5A5",
-  "#86EFAC",
-  "#C4B5FD",
-  "#FCD34D",
-  "#5EEAD4",
-  "#F9A8D4",
-  "#A5B4FC",
-  "#FDBA74",
-  "#DDD6FE",
-];
-
-/** 시간 레포트 요약 카드용 PNG (public/diary-tr-icons) — 사용자 제공 순서 1~12 */
-const DIARY_TR_ICON_BASE = "/diary-tr-icons";
-const DIARY_TR_ICON = {
-  routineDone: `${DIARY_TR_ICON_BASE}/01-routine-done.png`,
-  routineZero: `${DIARY_TR_ICON_BASE}/02-routine-zero.png`,
-  healthExist: `${DIARY_TR_ICON_BASE}/03-health-exist.png`,
-  happinessLive: `${DIARY_TR_ICON_BASE}/04-happiness-live.png`,
-  dreamCloser: `${DIARY_TR_ICON_BASE}/05-dream-closer.png`,
-  sideincomeValue: `${DIARY_TR_ICON_BASE}/06-sideincome-value.png`,
-  work: `${DIARY_TR_ICON_BASE}/07-work.png`,
-  sleep: `${DIARY_TR_ICON_BASE}/08-sleep.png`,
-  media: `${DIARY_TR_ICON_BASE}/09-media.png`,
-  pleasure: `${DIARY_TR_ICON_BASE}/10-pleasure.png`,
-  unhealthy: `${DIARY_TR_ICON_BASE}/11-unhealthy.png`,
-  moneylosing: `${DIARY_TR_ICON_BASE}/12-moneylosing.png`,
-  /** 불행 비생산 카테고리 — 사용자 제공 아이콘 */
-  unhappiness: `${DIARY_TR_ICON_BASE}/13-unhappiness.png`,
-  /** 건강하지 않은 섭취 식단 카드 */
-  unhealthyMealIntake: `${DIARY_TR_ICON_BASE}/14-unhealthy-meal-intake.png`,
-  /** 건강한 섭취 식단 카드 */
-  healthyMealIntake: `${DIARY_TR_ICON_BASE}/15-healthy-meal-intake.png`,
+const SLEEP_TARGET_MIN = 7 * 60;
+const CHART_COLORS = {
+  sleep: "#818cf8",
+  healthy: "#16a34a",
+  unhealthy: "#ea580c",
+  media: "#9333ea",
 };
 
-/** 아이콘 슬롯에 PNG 채우기(점선 빈 슬롯 대체) */
-function fillDiaryTrSummaryIconSlot(iconSlot, src) {
-  iconSlot.textContent = "";
-  iconSlot.classList.remove("diary-tr-summary-icon-slot--empty");
-  iconSlot.classList.add("diary-tr-summary-icon-slot--img");
-  const img = document.createElement("img");
-  img.className = "diary-tr-summary-icon-img";
-  img.src = src;
-  img.alt = "";
-  applyStaticAppIconImg(img);
-  iconSlot.appendChild(img);
-}
-
-/** 소비·투자 레포트 — 섭취 식단 전용 카드(탭 상세 없음) */
-function appendTimeReportMealIntakeCard(grid, { title, iconSrc, minutes, meals }) {
-  const art = document.createElement("article");
-  art.className = "diary-tr-summary-card diary-tr-meal-intake-card";
-  art.setAttribute("aria-label", title);
-
-  const iconSlot = document.createElement("div");
-  iconSlot.className = "diary-tr-summary-icon-slot diary-tr-summary-icon-slot--empty";
-  iconSlot.setAttribute("aria-hidden", "true");
-  if (iconSrc) fillDiaryTrSummaryIconSlot(iconSlot, iconSrc);
-
-  const h = document.createElement("h3");
-  h.className = "diary-tr-summary-title";
-  h.textContent = title;
-
-  const timeEl = document.createElement("p");
-  timeEl.className = "diary-tr-summary-time";
-  timeEl.textContent = formatIntegerMinutesDurationKo(minutes);
-
-  art.appendChild(iconSlot);
-  art.appendChild(h);
-  art.appendChild(timeEl);
-
-  if (Array.isArray(meals) && meals.length > 0) {
-    const ul = document.createElement("ul");
-    ul.className = "diary-tr-summary-meals";
-    meals.forEach((line) => {
-      const li = document.createElement("li");
-      li.textContent = line;
-      ul.appendChild(li);
-    });
-    art.appendChild(ul);
-  }
-
-  grid.appendChild(art);
-}
-
-/** 투자 탭 레포트 — 생산 카테고리 막대 채색(소비 도넛과 같은 톤) */
-const DIARY_PROD_CAT_BAR_FILL = {
-  dream: "#93C5FD",
-  happiness: "#FCA5A5",
-  sideincome: "#86EFAC",
-  health: "#C4B5FD",
-  other_prod: "#CBD5E1",
+const DONUT_CAT_COLORS = {
+  dream: "#7BAFD4",
+  sideincome: "#6B9FD4",
+  happiness: "#8FAFD4",
+  health: "#A8BED4",
+  pleasure: "#C4906A",
+  media_watch: "#A67C8A",
+  unhappiness: "#8B90A8",
+  unhealthy: "#6B7280",
+  moneylosing: "#7A8E9A",
+  other: "#CBD5E1",
+  "": "#CBD5E1",
 };
 
-/** 예산·소비 막대 — 비생산 카테고리(도넛 파스텔 톤) */
-const DIARY_CONSUMPTION_CAT_BAR_FILL = {
-  media_watch: "#FCA5A5",
-  pleasure: "#FDBA74",
-  unhealthy: "#FCD34D",
-  moneylosing: "#5EEAD4",
-  unhappiness: "#F9A8D4",
-};
+const PROD_CATEGORY_KEYS = new Set([
+  "dream",
+  "sideincome",
+  "happiness",
+  "health",
+]);
 
-/** 과제명 → 막대 색(투자·소비 레포트와 동일 카테고리 매핑, 없으면 파스텔 순환) */
-function diaryTrBarFillForTaskName(taskName, fallbackIndex = 0) {
-  const opt = getTaskOptionByName(String(taskName || "").trim());
-  const cat = String(opt?.category || "").trim().toLowerCase();
-  if (cat && DIARY_PROD_CAT_BAR_FILL[cat]) return DIARY_PROD_CAT_BAR_FILL[cat];
-  if (cat && DIARY_CONSUMPTION_CAT_BAR_FILL[cat]) return DIARY_CONSUMPTION_CAT_BAR_FILL[cat];
-  const prod = String(opt?.productivity || "").trim().toLowerCase();
-  if (prod === "productive") return DIARY_PROD_CAT_BAR_FILL.other_prod;
-  return REPORT_DONUT_PASTELS[fallbackIndex % REPORT_DONUT_PASTELS.length];
+function donutCategoryColor(catKey) {
+  const k = String(catKey || "").trim() || "other";
+  return DONUT_CAT_COLORS[k] || DONUT_CAT_COLORS.other;
 }
 
-/** 생산 카테고리 막대 스냅샷과 동일 출처로 분 단위 시간(카드 그리드용) */
-function investProdCategoryMinutesRounded(snap, categoryKey) {
-  const seg = (snap?.segments ?? []).find((s) => s.categoryKey === categoryKey);
-  if (!seg || !(seg.hours > 0) || !Number.isFinite(seg.hours)) return 0;
-  return Math.round(seg.hours * 60);
+function isProductiveCategory(catKey) {
+  return PROD_CATEGORY_KEYS.has(String(catKey || "").trim());
 }
 
-/** 탭 2 통제일기 Q&A 템플릿 */
-const TAB2_QA_TEMPLATE = [
-  "오늘 내가 자제하지 못한 나쁜 습관은 무엇인가?",
-  "어떻게 해야 더 나아질 수 있는가?",
-  "지금 내 행동은 좋은 것인가?",
-  "어떻게 스스로를 향상시킬 것인가?",
-  "지금 이 순간에 대한 명확한 판단은?",
-  "지금 이 순간에 맞는 상식적 행동은?",
-  "일이 잘 되어갈 때의 감사한 태도",
-  "통제할 수 없는 것",
-  "통제할 수 있는 것",
-];
-
-/** 푸터·짧은 표기 */
-function diaryTabLabel(tabId) {
-  if (tabId === "2") return "레포트";
-  return "메모";
+function formatPctRounded(n) {
+  return `${Math.round(Number(n) || 0)}%`;
 }
 
-/** 모달 제목 등 긴 표기 */
-function diaryTabModalTitle(tabId) {
-  if (tabId === "2") return "레포트";
-  return "메모";
-}
-
-function toDateStr(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function formatDateDisplay(dateStr) {
-  if (!dateStr || dateStr.length < 10) return "";
-  const [y, m, d] = dateStr.split("-");
-  return `${y}/${m}/${d}`;
-}
-
-/** YYYY-MM-DD 또는 앞 7자 → YYYY/MM (먼스 모드 표시용) */
-function formatMonthSlashFromYmd(ymd) {
-  const n = normalizeDiaryDateStr(ymd);
-  if (!n || n.length < 7) return "";
-  return `${n.slice(0, 4)}/${n.slice(5, 7)}`;
-}
-
-function normalizeDiaryDateStr(dateVal) {
-  if (!dateVal) return "";
-  return String(dateVal).replace(/\//g, "-").slice(0, 10);
-}
-
-/** 시간 리포트 — 화면에 보이는 날/월 구간만 서버에서 pull */
-function diaryReportLedgerPullRange(ymd, granularity) {
-  const yTen = normalizeDiaryDateStr(ymd);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(yTen)) {
-    const t = timeLedgerLocalTodayYmd();
-    return { rangeStart: t, rangeEnd: t };
-  }
-  if (granularity === "month") {
-    const monthRng = getTimeReportMonthInclusiveRange(yTen);
-    if (monthRng) return monthRng;
-  }
-  return { rangeStart: yTen, rangeEnd: yTen };
-}
-
-/** 소비 탭 일별 도넛 위 제목 — 오늘이면 「오늘」, 아니면 날짜표기 포함 */
-function timeReportDayDonutBlockTitle(ymdTen) {
-  const ten = normalizeDiaryDateStr(ymdTen);
-  if (!ten || ten.length < 10) return "하루 시간 사용";
-  if (ten === toDateStr(new Date())) return "오늘 하루 시간 사용";
-  const disp = formatDateDisplay(ten);
-  return disp ? `${disp} 하루 시간 사용` : "하루 시간 사용";
-}
-
-/** 소비 탭 월별 도넛 위 제목 — 이번 달이면 「이번 달」, 아니면 YYYY/MM */
-function timeReportMonthDonutBlockTitle(ymdTen) {
-  const ten = normalizeDiaryDateStr(ymdTen);
-  if (!ten || ten.length < 10) return "월별 시간 사용";
-  const ymAnchor = ten.slice(0, 7);
-  const today = toDateStr(new Date());
-  if (ymAnchor === today.slice(0, 7)) return "이번 달 시간 사용";
-  const disp = formatMonthSlashFromYmd(ten);
-  return disp ? `${disp} 시간 사용` : "월별 시간 사용";
-}
-
-/** 「시간 소비 리포트」 아래 — 비생산 합 시간 문구 타이틀 */
-function timeReportWasteMiniTitle(ymdTen, granularity) {
-  const ten = normalizeDiaryDateStr(ymdTen);
-  if (granularity === "month") {
-    const ym = ten.length >= 7 ? ten.slice(0, 7) : "";
-    const today = toDateStr(new Date());
-    const disp = formatMonthSlashFromYmd(ten);
-    if (!disp) return "내가 낭비한 시간";
-    if (ym && ym === today.slice(0, 7)) return "이번 달 내가 낭비한 시간";
-    return `${disp} 내가 낭비한 시간`;
-  }
-  if (!ten || ten.length < 10) return "내가 낭비한 시간";
-  if (ten === toDateStr(new Date())) return "오늘 내가 낭비한 시간";
-  const disp = formatDateDisplay(ten);
-  return disp ? `${disp} 내가 낭비한 시간` : "그날 내가 낭비한 시간";
-}
-
-/** 「시간 투자 리포트」 아래 — 투자 집계 시간 문구 타이틀(소비 낭비 미니와 동형) */
-function timeReportInvestMiniTitle(ymdTen, granularity) {
-  const ten = normalizeDiaryDateStr(ymdTen);
-  if (granularity === "month") {
-    const ym = ten.length >= 7 ? ten.slice(0, 7) : "";
-    const today = toDateStr(new Date());
-    const disp = formatMonthSlashFromYmd(ten);
-    if (!disp) return "내가 투자한 시간";
-    if (ym && ym === today.slice(0, 7)) return "이번 달 내가 투자한 시간";
-    return `${disp} 내가 투자한 시간`;
-  }
-  if (!ten || ten.length < 10) return "내가 투자한 시간";
-  if (ten === toDateStr(new Date())) return "내가 오늘 투자한 시간";
-  const disp = formatDateDisplay(ten);
-  return disp ? `${disp} 내가 투자한 시간` : "그날 내가 투자한 시간";
-}
-
-/** 앵커 날짜에서 ±N달(일은 해당 월 말일에 맞춤) */
-function shiftCalendarMonthBy(ymdTen, deltaMonths) {
-  const n = normalizeDiaryDateStr(ymdTen);
-  if (!n || n.length < 10) return toDateStr(new Date());
-  const y = parseInt(n.slice(0, 4), 10);
-  const mo = parseInt(n.slice(5, 7), 10) - 1;
-  const d = parseInt(n.slice(8, 10), 10);
-  const first = new Date(y, mo + deltaMonths, 1);
-  const y2 = first.getFullYear();
-  const m2 = first.getMonth();
-  const lastDay = new Date(y2, m2 + 1, 0).getDate();
-  const dayClamped = Math.min(Number.isFinite(d) ? d : 1, lastDay);
-  return toDateStr(new Date(y2, m2, dayClamped));
-}
-
-/** 앵커 날짜에서 ±N일 */
-function shiftCalendarDayBy(ymdTen, deltaDays) {
-  const n = normalizeDiaryDateStr(ymdTen);
-  if (!n || n.length < 10) return toDateStr(new Date());
-  const y = parseInt(n.slice(0, 4), 10);
-  const mo = parseInt(n.slice(5, 7), 10) - 1;
-  const d = parseInt(n.slice(8, 10), 10);
-  const dt = new Date(y, mo, d);
-  dt.setDate(dt.getDate() + deltaDays);
-  return toDateStr(dt);
-}
-
-/** 일기 날짜 내림차순, 같은 날짜면 id 내림차순 */
-function compareDiaryEntriesNewestFirst(a, b) {
-  const byDate = (b.date || "").localeCompare(a.date || "");
-  if (byDate !== 0) return byDate;
-  return (b.id || "").localeCompare(a.id || "");
-}
-
-/** Q&A 답 영역: 폭 변경 시 autosize 재실행(내부 스크롤 없을 때 잘림 방지) */
-function attachDiaryQaAnswerResizeSync(ansEl, adjustHeight) {
-  if (!ansEl || typeof ResizeObserver === "undefined") return;
-  const block =
-    ansEl.closest(".diary-qa-block") ||
-    ansEl.closest(".time-task-log-field") ||
-    ansEl.closest("[data-lp-diary-qa-block]");
-  if (!block) return;
-  const ro = new ResizeObserver(() => {
-    if (!ansEl.isConnected) {
-      ro.disconnect();
-      return;
-    }
-    adjustHeight();
-  });
-  ro.observe(block);
-}
-
-/** 기존 날짜 기반 데이터를 entry 배열로 마이그레이션 */
-function migrateToEntries(tabData) {
-  if (Array.isArray(tabData)) return tabData;
-  if (tabData && typeof tabData === "object" && !tabData.entries) {
-    return Object.entries(tabData).map(([date, v]) => ({
-      id: date,
-      date,
-      title: "제목없음",
-      content: v?.content || "",
-    }));
-  }
-  return tabData?.entries || [];
-}
-
-function getTabEntriesList(tabId, all) {
-  const tab = all[tabId];
-  const list = migrateToEntries(tab);
-  return list.sort(compareDiaryEntriesNewestFirst);
-}
-
-
-/** 통합 레포트 히어로 — 점수·가용·투자·소비·순가치·예산 요약 */
-function mountTimeReportUnifiedHero(scrollWrap, ymdTen, granularity) {
-  const snap =
-    granularity === "month"
-      ? getMonthlyTimeReportHeroSnapshot(ymdTen)
-      : getDailyTimeReportHeroSnapshot(ymdTen);
-  const budgetSnap =
-    granularity === "day" ? getBudgetDayReportForDay(ymdTen) : null;
-
-  const shell = document.createElement("section");
-  shell.className = "diary-tr-report-hero-shell";
-  shell.setAttribute(
-    "aria-label",
-    granularity === "month" ? "월간 시간 레포트 요약" : "오늘 하루 시간 레포트 요약",
-  );
-
-  const card = document.createElement("div");
-  card.className = "diary-tr-report-hero-card";
-
-  const head = document.createElement("div");
-  head.className = "diary-tr-report-hero-head";
-
-  const scoreBlock = document.createElement("div");
-  scoreBlock.className = "diary-tr-report-hero-score";
-  const scoreVal = document.createElement("p");
-  scoreVal.className = "diary-tr-report-hero-score-value";
-  scoreVal.textContent = String(snap.score);
-  const scoreLbl = document.createElement("p");
-  scoreLbl.className = "diary-tr-report-hero-score-label";
-  scoreLbl.textContent = granularity === "month" ? "월간 점수" : "오늘 점수";
-  scoreBlock.appendChild(scoreVal);
-  scoreBlock.appendChild(scoreLbl);
-
-  const headText = document.createElement("div");
-  headText.className = "diary-tr-report-hero-head-text";
-  const title = document.createElement("h2");
-  title.className = "diary-tr-report-hero-title";
-  title.textContent =
-    granularity === "month"
-      ? timeReportMonthDonutBlockTitle(ymdTen)
-      : formatYmdDotsWithWeekdayKo(ymdTen) || timeReportDayDonutBlockTitle(ymdTen);
-  const subtitle = document.createElement("p");
-  subtitle.className = "diary-tr-report-hero-subtitle";
-  subtitle.textContent =
-    granularity === "month"
-      ? "가용시간 대비 생산적 투자 비율"
-      : "가용시간 대비 생산적 투자로 오늘을 평가해요";
-  headText.appendChild(title);
-  headText.appendChild(subtitle);
-
-  head.appendChild(scoreBlock);
-  head.appendChild(headText);
-  card.appendChild(head);
-
-  const stats = document.createElement("div");
-  stats.className = "diary-tr-report-hero-stats";
-
-  function appendStat(label, value, extraClass) {
-    const item = document.createElement("div");
-    item.className = "diary-tr-report-hero-stat";
-    const lbl = document.createElement("p");
-    lbl.className = "diary-tr-report-hero-stat-label";
-    lbl.textContent = label;
-    const val = document.createElement("p");
-    val.className =
-      "diary-tr-report-hero-stat-value" + (extraClass ? ` ${extraClass}` : "");
-    val.textContent = value;
-    item.appendChild(lbl);
-    item.appendChild(val);
-    stats.appendChild(item);
-  }
-
-  const availLabel = granularity === "month" ? "일평균 가용" : "가용 시간";
-  appendStat(availLabel, formatIntegerMinutesDurationKo(snap.availableMinutes));
-  appendStat("투자 시간", formatIntegerMinutesDurationKo(snap.productiveMinutes));
-  appendStat("소비(낭비)", formatIntegerMinutesDurationKo(snap.wasteMinutes));
-
-  let netText = "₩0";
-  let netClass = "diary-tr-report-hero-stat-value--neutral";
-  if (snap.netWon > 0) {
-    netText = formatInvestReclaimWonDisplay(snap.netWon);
-    netClass = "diary-tr-report-hero-stat-value--gain";
-  } else if (snap.netWon < 0) {
-    netText = formatLedgerLossKrwDisplay(Math.abs(snap.netWon));
-    netClass = "diary-tr-report-hero-stat-value--loss";
-  }
-  appendStat("순 가치", netText, netClass);
-
-  card.appendChild(stats);
-
-  if (snap.focusLabel && snap.focusPct > 0) {
-    const focus = document.createElement("p");
-    focus.className = "diary-tr-report-hero-focus";
-    focus.textContent = `집중 영역 · ${snap.focusLabel} ${snap.focusPct}%`;
-    card.appendChild(focus);
-  }
-
-  if (snap.mediaMinutes > 0) {
-    const media = document.createElement("p");
-    media.className = "diary-tr-report-hero-media";
-    media.textContent = `미디어 시청 ${formatIntegerMinutesDurationKo(snap.mediaMinutes)}`;
-    card.appendChild(media);
-  }
-
-  if (budgetSnap) {
-    const budgetLine = document.createElement("p");
-    budgetLine.className = "diary-tr-report-hero-budget";
-    const well = budgetSnap.wellDone.length;
-    const adjust = budgetSnap.productivity.length;
-    const unplanned = budgetSnap.unplannedNonproductive.length;
-    budgetLine.textContent = `예산 · 잘했어요 ${well} · 조정 ${adjust} · 계획外 ${unplanned}`;
-    card.appendChild(budgetLine);
-  }
-
-  shell.appendChild(card);
-  scrollWrap.appendChild(shell);
-}
-
-function mountTimeReportSubsectionHeader(scrollWrap, title) {
-  const block = document.createElement("div");
-  block.className = "diary-tr-report-subsection-header";
-  const h2 = document.createElement("h2");
-  h2.className = "diary-tr-report-subsection-title";
-  h2.textContent = title;
-  block.appendChild(h2);
-  scrollWrap.appendChild(block);
-}
-
-export function mountUnifiedTimeReport(scrollWrap, ymdTen, granularity) {
-mountTimeReportUnifiedHero(scrollWrap, ymdTen, granularity);
-mountTimeReportProductiveBars(scrollWrap, ymdTen, granularity);
-mountTimeReportInvestSectionHeader(scrollWrap);
-mountTimeReportInvestMini(scrollWrap, ymdTen, granularity);
-mountTimeReportInvestMotivationCards(scrollWrap, ymdTen, granularity);
-mountTimeReportInvestRoutineTrackerHeader(scrollWrap);
-mountTimeReportInvestRoutineKpiTimeCards(scrollWrap, ymdTen, granularity);
-mountTimeReportDonut(scrollWrap, ymdTen, granularity);
-mountTimeReportWorkSleepStrip(scrollWrap, ymdTen, granularity);
-mountTimeReportConsumptionTopTasks(scrollWrap, ymdTen, granularity);
-mountTimeReportConsumptionSectionHeader(scrollWrap);
-mountTimeReportNonproductiveWasteMini(scrollWrap, ymdTen, granularity);
-mountTimeReportSummaryGrid(scrollWrap, ymdTen, granularity);
-}
-
-/** 도넛 범례용 정수 % (합 100 근사) */
-function legendIntegerPercents(hoursList, totalHrs) {
-  if (!Array.isArray(hoursList) || totalHrs <= 0 || !hoursList.length) {
-    return hoursList.map(() => 0);
-  }
-  const exact = hoursList.map((h) => (h / totalHrs) * 100);
-  const out = exact.map((x) => Math.floor(x));
-  let rem = 100 - out.reduce((a, b) => a + b, 0);
-  const idxs = exact
-    .map((x, i) => ({ i, f: x - out[i] }))
-    .sort((a, b) => b.f - a.f);
-  if (idxs.length === 0) return out;
-  for (let k = 0; k < rem; k++) out[idxs[k % idxs.length].i] += 1;
-  return out;
+function orderDonutSegments(segments) {
+  const prod = segments
+    .filter((s) => isProductiveCategory(s.key))
+    .sort((a, b) => b.hours - a.hours);
+  const nonProd = segments
+    .filter((s) => !isProductiveCategory(s.key))
+    .sort((a, b) => b.hours - a.hours);
+  return { prod, nonProd, ordered: [...prod, ...nonProd] };
 }
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
-/** 도넛 윗점(-90°) 기준 반시계향 호 조각(path d). 전체 원(≈360°)은 두 번으로 나눔 */
+function normYmd(v) {
+  return String(v || "")
+    .replace(/\//g, "-")
+    .slice(0, 10);
+}
+
+function addDaysYmd(ymd, delta) {
+  const key = normYmd(ymd);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return key;
+  const [y, mo, d] = key.split("-").map(Number);
+  const dt = new Date(y, mo - 1, d + delta);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+}
+
+function listDatesInclusive(startYmd, endYmd) {
+  const out = [];
+  let cur = normYmd(startYmd);
+  const end = normYmd(endYmd);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(cur) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) {
+    return out;
+  }
+  while (cur <= end) {
+    out.push(cur);
+    cur = addDaysYmd(cur, 1);
+  }
+  return out;
+}
+
+function resolveMountRange(arg2, arg3) {
+  if (arg2 && typeof arg2 === "object" && arg2.rangeStart) {
+    const start = normYmd(arg2.rangeStart);
+    let end = normYmd(arg2.rangeEnd || arg2.rangeStart);
+    if (start > end) {
+      const x = start;
+      start = end;
+      end = x;
+    }
+    return { start, end };
+  }
+  const key = normYmd(arg2);
+  if (arg3 === "month") {
+    const r = getTimeReportMonthInclusiveRange(key);
+    if (r) return { start: r.start, end: r.end };
+  }
+  return { start: key, end: key };
+}
+
+function formatRangeLabel(startYmd, endYmd) {
+  const s = normYmd(startYmd);
+  const e = normYmd(endYmd);
+  if (s === e) return formatYmdDotsWithWeekdayKo(s);
+  return `${formatYmdDotsWithWeekdayKo(s)} ~ ${formatYmdDotsWithWeekdayKo(e)}`;
+}
+
+function rowsInRange(startYmd, endYmd) {
+  const rs = normYmd(startYmd);
+  const re = normYmd(endYmd);
+  return loadTimeRows().filter((r) => {
+    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    return d >= rs && d <= re;
+  });
+}
+
+function rowDateYmd(r) {
+  return (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+}
+
+function rowUserNote(r) {
+  return String(r.feedback || r.memo || "").trim();
+}
+
+function rowMinutes(r) {
+  const hrs = parseTimeToHours(r.timeTracked);
+  if (!(hrs > 0) || !Number.isFinite(hrs)) return 0;
+  return Math.round(hrs * 60);
+}
+
+function formatNetWon(netWon) {
+  const n = Math.round(Number(netWon) || 0);
+  if (n > 0) return formatInvestReclaimWonDisplay(n);
+  if (n < 0) return formatLedgerLossKrwDisplay(Math.abs(n));
+  return "₩0";
+}
+
+function createSection(title, subtitle) {
+  const sec = document.createElement("section");
+  sec.className = "lp-tr2-section";
+  const h = document.createElement("h2");
+  h.className = "lp-tr2-section-title";
+  h.textContent = title;
+  sec.appendChild(h);
+  if (subtitle) {
+    const p = document.createElement("p");
+    p.className = "lp-tr2-section-sub";
+    p.textContent = subtitle;
+    sec.appendChild(p);
+  }
+  return sec;
+}
+
+function createStatCard(label, value, hint) {
+  const card = document.createElement("article");
+  card.className = "lp-tr2-stat-card";
+  const lab = document.createElement("span");
+  lab.className = "lp-tr2-stat-label";
+  lab.textContent = label;
+  const val = document.createElement("strong");
+  val.className = "lp-tr2-stat-value";
+  val.textContent = value;
+  card.appendChild(lab);
+  card.appendChild(val);
+  if (hint) {
+    const h = document.createElement("span");
+    h.className = "lp-tr2-stat-hint";
+    h.textContent = hint;
+    card.appendChild(h);
+  }
+  return card;
+}
+
+function createBarRow(label, minutes, maxMinutes, color, title) {
+  const row = document.createElement("div");
+  row.className = "lp-tr2-bar-row";
+  if (title) row.title = title;
+  const lab = document.createElement("span");
+  lab.className = "lp-tr2-bar-label";
+  lab.textContent = label;
+  const track = document.createElement("div");
+  track.className = "lp-tr2-bar-track";
+  const fill = document.createElement("div");
+  fill.className = "lp-tr2-bar-fill";
+  const pct =
+    maxMinutes > 0 ? Math.min(100, (minutes / maxMinutes) * 100) : 0;
+  fill.style.width = `${pct}%`;
+  fill.style.background = color;
+  const val = document.createElement("span");
+  val.className = "lp-tr2-bar-value";
+  val.textContent =
+    minutes > 0 ? formatIntegerMinutesDurationKo(minutes) : "—";
+  track.appendChild(fill);
+  row.appendChild(lab);
+  row.appendChild(track);
+  row.appendChild(val);
+  return row;
+}
+
+function svgEl(tag, attrs = {}) {
+  const node = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    node.setAttribute(k, String(v));
+  }
+  return node;
+}
+
+function sleepChartDateLabel(dateYmd, totalDays) {
+  const mo = parseInt(dateYmd.slice(5, 7), 10);
+  const day = parseInt(dateYmd.slice(8, 10), 10);
+  if (totalDays <= 14) return String(day);
+  return `${mo}.${day}`;
+}
+
+function fmtSleepAxisHours(h) {
+  const rounded = Math.round(h);
+  return String(rounded);
+}
+
+function computeSleepYDomain(hoursValues, targetHours) {
+  let yMax = Math.max(...hoursValues, targetHours, 8);
+  yMax = Math.ceil((yMax + 0.5) / 3) * 3;
+  return { yMin: 0, yMax, yRange: yMax || 1 };
+}
+
+function sleepChartLayout(totalDays) {
+  const minSlot = totalDays <= 7 ? 34 : totalDays <= 14 ? 24 : 16;
+  const pad = { top: 18, right: 8, bottom: 24, left: 28 };
+  const W = Math.max(300, pad.left + pad.right + totalDays * minSlot);
+  const H = 128;
+  return { W, H, pad, minSlot, scroll: totalDays > 14 };
+}
+
+function formatCompactSleepBarLabel(minutes) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (m === 0) return `${h}시`;
+  if (h === 0) return `${m}분`;
+  return `${h}:${String(m).padStart(2, "0")}`;
+}
+
+/** @param {HTMLElement} canvas @param {Array<{date:string, minutes:number}>} sleepByDay */
+function renderSleepGoalBarChart(canvas, sleepByDay) {
+  const totalDays = sleepByDay.length;
+  const recorded = sleepByDay.filter((x) => x.minutes > 0);
+  if (!recorded.length) return { scroll: false };
+
+  const targetH = SLEEP_TARGET_MIN / 60;
+  const hoursValues = recorded.map((x) => x.minutes / 60);
+  const { yMin, yMax, yRange } = computeSleepYDomain(hoursValues, targetH);
+  const { W, H, pad, scroll } = sleepChartLayout(totalDays);
+  const plotW = W - pad.left - pad.right;
+  const plotH = H - pad.top - pad.bottom;
+  const plotBottom = pad.top + plotH;
+  const yAt = (h) => pad.top + plotH - ((h - yMin) / yRange) * plotH;
+
+  const svg = svgEl("svg", {
+    viewBox: `0 0 ${W} ${H}`,
+    class: "lp-tr2-sleep-chart-svg",
+    role: "img",
+    preserveAspectRatio: scroll ? "xMinYMid meet" : "xMidYMid meet",
+    "aria-label": "날짜별 수면 시간 막대 그래프 · 7시간 목표",
+  });
+  if (scroll) {
+    svg.style.minWidth = `${W}px`;
+  }
+
+  svg.appendChild(
+    svgEl("rect", {
+      x: pad.left,
+      y: pad.top,
+      width: plotW,
+      height: plotH,
+      fill: "#f8fafc",
+      rx: 6,
+    }),
+  );
+
+  const gridStep = yMax <= 9 ? 3 : Math.ceil(yMax / 4 / 3) * 3;
+  for (let v = 0; v <= yMax + 0.01; v += gridStep) {
+    const y = yAt(v);
+    const isTarget = Math.abs(v - targetH) < 0.01;
+    svg.appendChild(
+      svgEl("line", {
+        x1: pad.left,
+        x2: W - pad.right,
+        y1: y,
+        y2: y,
+        stroke: isTarget ? "#fde68a" : "#e2e8f0",
+        "stroke-width": isTarget ? 1.25 : 1,
+      }),
+    );
+    const tick = svgEl("text", {
+      x: pad.left - 5,
+      y: y + 3,
+      fill: isTarget ? "#d97706" : "#94a3b8",
+      "font-size": 8,
+      "font-weight": isTarget ? 600 : 400,
+      "text-anchor": "end",
+    });
+    tick.textContent = isTarget ? "7" : fmtSleepAxisHours(v);
+    svg.appendChild(tick);
+  }
+  if (Math.abs(yMax - targetH) > 0.01 && targetH % gridStep !== 0) {
+    const y = yAt(targetH);
+    const tick = svgEl("text", {
+      x: pad.left - 5,
+      y: y + 3,
+      fill: "#d97706",
+      "font-size": 8,
+      "font-weight": 600,
+      "text-anchor": "end",
+    });
+    tick.textContent = "7";
+    svg.appendChild(tick);
+  }
+
+  svg.appendChild(
+    svgEl("line", {
+      x1: pad.left,
+      x2: pad.left,
+      y1: pad.top,
+      y2: plotBottom,
+      stroke: "#cbd5e1",
+      "stroke-width": 1,
+    }),
+  );
+  svg.appendChild(
+    svgEl("line", {
+      x1: pad.left,
+      x2: W - pad.right,
+      y1: plotBottom,
+      y2: plotBottom,
+      stroke: "#cbd5e1",
+      "stroke-width": 1,
+    }),
+  );
+
+  const ty = yAt(targetH);
+  svg.appendChild(
+    svgEl("line", {
+      x1: pad.left,
+      x2: W - pad.right,
+      y1: ty,
+      y2: ty,
+      stroke: "#f59e0b",
+      "stroke-width": 1.75,
+      "stroke-dasharray": "5 3",
+    }),
+  );
+
+  const slotW = plotW / totalDays;
+  const barW = Math.max(4, Math.min(22, slotW * 0.52));
+  const goalTop = yAt(targetH);
+  const goalHeight = plotBottom - goalTop;
+
+  sleepByDay.forEach(({ date, minutes }, index) => {
+    const cx = pad.left + (index + 0.5) * slotW;
+    const label = sleepChartDateLabel(date, totalDays);
+    const showDate =
+      totalDays <= 10 ||
+      index === 0 ||
+      index === totalDays - 1 ||
+      (totalDays <= 20 && index % 2 === 0) ||
+      (totalDays > 20 && index % 3 === 0);
+
+    if (showDate) {
+      const dateLabel = svgEl("text", {
+        x: cx,
+        y: H - 6,
+        fill: "#94a3b8",
+        "font-size": 8,
+        "text-anchor": "middle",
+      });
+      dateLabel.textContent = label;
+      svg.appendChild(dateLabel);
+    }
+
+    if (minutes <= 0) return;
+
+    svg.appendChild(
+      svgEl("rect", {
+        x: cx - barW / 2,
+        y: goalTop,
+        width: barW,
+        height: Math.max(1, goalHeight),
+        fill: "#fff7ed",
+        rx: 2,
+      }),
+    );
+
+    const hours = minutes / 60;
+    const barTop = yAt(hours);
+    const barHeight = Math.max(2, plotBottom - barTop);
+    const metGoal = minutes >= SLEEP_TARGET_MIN;
+    const bar = svgEl("rect", {
+      x: cx - barW / 2,
+      y: barTop,
+      width: barW,
+      height: barHeight,
+      fill: metGoal ? "#22c55e" : "#818cf8",
+      opacity: metGoal ? 0.92 : 0.88,
+      rx: 2,
+    });
+    const tip = `${formatYmdDotsWithWeekdayKo(date)} · ${formatIntegerMinutesDurationKo(minutes)}${metGoal ? " · 목표 달성" : " · 목표 미달"}`;
+    const titleEl = svgEl("title");
+    titleEl.textContent = tip;
+    bar.appendChild(titleEl);
+    svg.appendChild(bar);
+
+    if (totalDays <= 10) {
+      const valLabel = svgEl("text", {
+        x: cx,
+        y: barTop - 4,
+        fill: metGoal ? "#15803d" : "#475569",
+        "font-size": 7.5,
+        "font-weight": 600,
+        "text-anchor": "middle",
+      });
+      valLabel.textContent = formatCompactSleepBarLabel(minutes);
+      svg.appendChild(valLabel);
+    }
+  });
+
+  canvas.appendChild(svg);
+  return { scroll };
+}
+
+function buildSleepChartLegend() {
+  const legend = document.createElement("div");
+  legend.className = "lp-tr2-sleep-chart-legend";
+  const items = [
+    { cls: "lp-tr2-sleep-chart-legend-target", text: "7시간 목표" },
+    { cls: "lp-tr2-sleep-chart-legend-met", text: "달성" },
+    { cls: "lp-tr2-sleep-chart-legend-miss", text: "미달" },
+  ];
+  items.forEach(({ cls, text }) => {
+    const item = document.createElement("span");
+    item.className = "lp-tr2-sleep-chart-legend-item";
+    const mark = document.createElement("span");
+    mark.className = cls;
+    mark.setAttribute("aria-hidden", "true");
+    item.appendChild(mark);
+    item.appendChild(document.createTextNode(text));
+    legend.appendChild(item);
+  });
+  return legend;
+}
+
+function buildSleepStatsGrid(daysWithSleep) {
+  const grid = document.createElement("div");
+  grid.className = "lp-tr2-sleep-stats";
+  const total = daysWithSleep.reduce((a, x) => a + x.minutes, 0);
+  const avg = formatIntegerMinutesDurationKo(
+    Math.round(total / daysWithSleep.length),
+  );
+  const mins = daysWithSleep.map((x) => x.minutes);
+  const metDays = daysWithSleep.filter(
+    (x) => x.minutes >= SLEEP_TARGET_MIN,
+  ).length;
+
+  const addStat = (label, value) => {
+    const cell = document.createElement("div");
+    cell.className = "lp-tr2-sleep-stat";
+    const lab = document.createElement("span");
+    lab.className = "lp-tr2-sleep-stat-label";
+    lab.textContent = label;
+    const val = document.createElement("strong");
+    val.className = "lp-tr2-sleep-stat-value";
+    val.textContent = value;
+    cell.appendChild(lab);
+    cell.appendChild(val);
+    grid.appendChild(cell);
+  };
+
+  addStat("평균", avg);
+  if (daysWithSleep.length > 1) {
+    addStat("최소", formatIntegerMinutesDurationKo(Math.min(...mins)));
+    addStat("최대", formatIntegerMinutesDurationKo(Math.max(...mins)));
+  }
+  addStat("목표 달성", `${metDays}/${daysWithSleep.length}일`);
+  return grid;
+}
+
+function formatCompactReportDate(ymd) {
+  const dStr = normYmd(ymd);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return "";
+  const [y, mo, d] = dStr.split("-").map(Number);
+  const dt = new Date(y, mo - 1, d);
+  const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+  return `${mo}.${d}(${weekdays[dt.getDay()]})`;
+}
+
+/** @param {Array<{date:string, main:string, sub:string}>} entries */
+function groupIntakeEntriesByDate(entries) {
+  const byDate = new Map();
+  entries.forEach((entry) => {
+    if (!byDate.has(entry.date)) byDate.set(entry.date, []);
+    byDate.get(entry.date).push(entry);
+  });
+  return [...byDate.entries()]
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([date, items]) => ({ date, items }));
+}
+
+/** @param {Array<{main:string, sub:string}>} items */
+function formatIntakeDayLine(items) {
+  return items
+    .map((item) => {
+      if (item.sub) return `${item.main} (${item.sub})`;
+      return item.main;
+    })
+    .join(" · ");
+}
+
+/**
+ * @param {Array<{date:string, main:string, sub:string}>} entries
+ * @param {"healthy"|"unhealthy"} tone
+ */
+function buildCompactIntakeFeed(entries, emptyText, tone) {
+  const ul = document.createElement("ul");
+  ul.className = "lp-tr2-intake-day-list";
+  if (!entries.length) {
+    const li = document.createElement("li");
+    li.className = "lp-tr2-intake-day-empty";
+    li.textContent = emptyText;
+    ul.appendChild(li);
+    return ul;
+  }
+  groupIntakeEntriesByDate(entries).forEach(({ date, items }) => {
+    const li = document.createElement("li");
+    li.className = "lp-tr2-intake-day-row";
+    const dateEl = document.createElement("span");
+    dateEl.className = "lp-tr2-intake-day-date";
+    dateEl.textContent = formatCompactReportDate(date);
+    dateEl.title = formatYmdDotsWithWeekdayKo(date);
+    const meals = document.createElement("span");
+    meals.className = `lp-tr2-intake-day-meals lp-tr2-intake-day-meals--${tone}`;
+    meals.textContent = formatIntakeDayLine(items);
+    li.appendChild(dateEl);
+    li.appendChild(meals);
+    ul.appendChild(li);
+  });
+  return ul;
+}
+
+function buildJournalList(items, emptyText) {
+  const ul = document.createElement("ul");
+  ul.className = "lp-tr2-journal-list";
+  if (!items.length) {
+    const li = document.createElement("li");
+    li.className = "lp-tr2-journal-empty";
+    li.textContent = emptyText;
+    ul.appendChild(li);
+    return ul;
+  }
+  items.forEach((item) => {
+    const li = document.createElement("li");
+    li.className = "lp-tr2-journal-item";
+    const dateEl = document.createElement("span");
+    dateEl.className = "lp-tr2-journal-date";
+    dateEl.textContent = formatYmdDotsWithWeekdayKo(item.date);
+    const body = document.createElement("div");
+    body.className = "lp-tr2-journal-body";
+    const main = document.createElement("p");
+    main.className = "lp-tr2-journal-main";
+    main.textContent = item.main;
+    body.appendChild(main);
+    if (item.sub) {
+      const sub = document.createElement("p");
+      sub.className = "lp-tr2-journal-sub";
+      sub.textContent = item.sub;
+      body.appendChild(sub);
+    }
+    li.appendChild(dateEl);
+    li.appendChild(body);
+    ul.appendChild(li);
+  });
+  return ul;
+}
+
+function collectIntakeLogs(rows) {
+  /** @type {{ date: string, main: string, sub: string }[]} */
+  const healthy = [];
+  /** @type {{ date: string, main: string, sub: string }[]} */
+  const unhealthy = [];
+  rows.forEach((r) => {
+    const tn = String(r.taskName || "").trim();
+    const md = String(r.mealDetail || "").trim();
+    const note = rowUserNote(r);
+    const date = rowDateYmd(r);
+    if (!date) return;
+    const main = md || note || tn;
+    if (!main) return;
+    const subParts = [];
+    if (md && note && note !== md) subParts.push(note);
+    const mins = rowMinutes(r);
+    if (mins > 0) subParts.push(formatIntegerMinutesDurationKo(mins));
+    const entry = { date, main, sub: subParts.join(" · ") };
+    if (isHealthyMealDetailTaskName(tn)) healthy.push(entry);
+    else if (isUnhealthyMealDetailTaskName(tn)) unhealthy.push(entry);
+  });
+  const sortDesc = (a, b) =>
+    b.date.localeCompare(a.date) || a.main.localeCompare(b.main, "ko");
+  healthy.sort(sortDesc);
+  unhealthy.sort(sortDesc);
+  return { healthy, unhealthy };
+}
+
+function getDayAvailableMinutes(ymd) {
+  const s = getTimeReportSummaryGridForDateRange(ymd, ymd);
+  return Math.max(0, Math.round(24 * 60 - s.workMinutes - s.sleepMinutes));
+}
+
+function mergeMediaEntriesByNote(entries) {
+  /** @type {Map<string, number>} */
+  const map = new Map();
+  entries.forEach(({ note, minutes }) => {
+    const key = String(note || "").trim() || "__empty__";
+    map.set(key, (map.get(key) || 0) + minutes);
+  });
+  return [...map.entries()]
+    .map(([key, minutes]) => ({
+      note: key === "__empty__" ? "" : key,
+      minutes,
+    }))
+    .sort((a, b) => b.minutes - a.minutes);
+}
+
+function buildMediaReportSnapshot(rows) {
+  /** @type {Map<string, { minutes: number, entries: Array<{ note: string, minutes: number }> }>} */
+  const byDate = new Map();
+  /** @type {Map<string, number>} */
+  const byNote = new Map();
+  let totalMinutes = 0;
+
+  rows.forEach((r) => {
+    if (String(r.category || "").trim() !== "media_watch") return;
+    const date = rowDateYmd(r);
+    if (!date) return;
+    const mins = rowMinutes(r);
+    if (mins <= 0) return;
+    const note = rowUserNote(r);
+
+    totalMinutes += mins;
+
+    if (!byDate.has(date)) byDate.set(date, { minutes: 0, entries: [] });
+    const day = byDate.get(date);
+    day.minutes += mins;
+    day.entries.push({ note, minutes: mins });
+
+    const noteKey = note.trim();
+    if (noteKey) {
+      byNote.set(noteKey, (byNote.get(noteKey) || 0) + mins);
+    }
+  });
+
+  const days = [...byDate.entries()]
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([date, { minutes, entries }]) => {
+      const avail = getDayAvailableMinutes(date);
+      const pct = avail > 0 ? Math.round((minutes / avail) * 100) : 0;
+      return {
+        date,
+        minutes,
+        availableMinutes: avail,
+        pct,
+        items: mergeMediaEntriesByNote(entries),
+      };
+    });
+
+  let totalAvailable = 0;
+  days.forEach((d) => {
+    totalAvailable += d.availableMinutes;
+  });
+  const periodPct =
+    totalAvailable > 0 ? Math.round((totalMinutes / totalAvailable) * 100) : 0;
+  const avgDayPct =
+    days.length > 0
+      ? Math.round(days.reduce((a, d) => a + d.pct, 0) / days.length)
+      : 0;
+
+  const topContent = [...byNote.entries()]
+    .map(([label, minutes]) => ({
+      label,
+      minutes,
+      pct: totalMinutes > 0 ? Math.round((minutes / totalMinutes) * 100) : 0,
+    }))
+    .sort((a, b) => b.minutes - a.minutes)
+    .slice(0, 5);
+
+  return {
+    totalMinutes,
+    periodPct,
+    avgDayPct,
+    totalAvailableMinutes: totalAvailable,
+    days,
+    topContent,
+    dayCount: days.length,
+  };
+}
+
+function buildMediaDayCard(day) {
+  const card = document.createElement("article");
+  card.className = "lp-tr2-media-day-card";
+
+  const head = document.createElement("div");
+  head.className = "lp-tr2-media-day-card-head";
+  const dateEl = document.createElement("span");
+  dateEl.className = "lp-tr2-media-day-card-date";
+  dateEl.textContent = formatCompactReportDate(day.date);
+  dateEl.title = formatYmdDotsWithWeekdayKo(day.date);
+  const timeEl = document.createElement("strong");
+  timeEl.className = "lp-tr2-media-day-card-time";
+  timeEl.textContent = formatIntegerMinutesDurationKo(day.minutes);
+  head.appendChild(dateEl);
+  head.appendChild(timeEl);
+
+  const avail = document.createElement("p");
+  avail.className = "lp-tr2-media-day-card-avail";
+  avail.textContent = `가용 ${formatIntegerMinutesDurationKo(day.availableMinutes)} 중 ${day.pct}%를 시청`;
+
+  const barTrack = document.createElement("div");
+  barTrack.className = "lp-tr2-media-day-card-bar";
+  barTrack.setAttribute("role", "img");
+  barTrack.setAttribute(
+    "aria-label",
+    `가용시간 대비 ${day.pct}%`,
+  );
+  const barFill = document.createElement("div");
+  barFill.className = "lp-tr2-media-day-card-bar-fill";
+  barFill.style.width = `${Math.min(100, Math.max(2, day.pct))}%`;
+  barTrack.appendChild(barFill);
+
+  const list = document.createElement("ul");
+  list.className = "lp-tr2-media-day-card-list";
+  day.items.forEach((item) => {
+    const li = document.createElement("li");
+    li.className = "lp-tr2-media-day-card-item";
+    const lab = document.createElement("span");
+    lab.className = "lp-tr2-media-day-card-label";
+    lab.textContent = item.note || "메모 없음";
+    if (!item.note) lab.classList.add("lp-tr2-media-day-card-label--empty");
+    const tm = document.createElement("span");
+    tm.className = "lp-tr2-media-day-card-item-time";
+    tm.textContent = formatIntegerMinutesDurationKo(item.minutes);
+    li.appendChild(lab);
+    li.appendChild(tm);
+    list.appendChild(li);
+  });
+
+  card.appendChild(head);
+  card.appendChild(avail);
+  card.appendChild(barTrack);
+  card.appendChild(list);
+  return card;
+}
+
+function mountMediaSection(scrollWrap, range, rows) {
+  const snap = buildMediaReportSnapshot(rows);
+  const rangeDayCount = listDatesInclusive(range.start, range.end).length;
+  const sec = createSection(
+    "콘텐츠·미디어 시청",
+    "날짜별 · 가용시간 대비 얼마나 봤는지 · 무엇을 봤는지",
+  );
+
+  if (snap.totalMinutes <= 0) {
+    const empty = document.createElement("p");
+    empty.className = "lp-tr2-media-empty";
+    empty.textContent = "미디어 시청 기록이 없습니다.";
+    sec.appendChild(empty);
+    scrollWrap.appendChild(sec);
+    return;
+  }
+
+  const hero = document.createElement("div");
+  hero.className = "lp-tr2-media-hero";
+  const heroMain = document.createElement("p");
+  heroMain.className = "lp-tr2-media-hero-main";
+  heroMain.textContent = `가용시간의 ${snap.periodPct}%를 미디어에 사용`;
+  const heroSub = document.createElement("p");
+  heroSub.className = "lp-tr2-media-hero-sub";
+  heroSub.textContent = `총 ${formatIntegerMinutesDurationKo(snap.totalMinutes)} · ${snap.dayCount}일 기록 · 하루 평균 ${snap.avgDayPct}%`;
+  hero.appendChild(heroMain);
+  hero.appendChild(heroSub);
+  sec.appendChild(hero);
+
+  const dayWrap = document.createElement("div");
+  dayWrap.className = "lp-tr2-media-days";
+  if (rangeDayCount >= 7 || snap.days.length > 4) {
+    dayWrap.classList.add("lp-tr2-media-days--scroll");
+  }
+  const dayTitle = document.createElement("p");
+  dayTitle.className = "lp-tr2-media-days-title";
+  dayTitle.textContent = "날짜별 — 이런 걸 이만큼 봤어요";
+  dayWrap.appendChild(dayTitle);
+
+  const dayList = document.createElement("div");
+  dayList.className = "lp-tr2-media-day-list";
+  snap.days.forEach((day) => {
+    dayList.appendChild(buildMediaDayCard(day));
+  });
+  dayWrap.appendChild(dayList);
+  sec.appendChild(dayWrap);
+
+  if (snap.topContent.length) {
+    const top = document.createElement("div");
+    top.className = "lp-tr2-media-top";
+    const topTitle = document.createElement("p");
+    topTitle.className = "lp-tr2-media-top-title";
+    topTitle.textContent = "이 기간에 자주 본 내용";
+    top.appendChild(topTitle);
+    const topList = document.createElement("ul");
+    topList.className = "lp-tr2-media-top-list";
+    snap.topContent.forEach(({ label, minutes, pct }) => {
+      const li = document.createElement("li");
+      li.className = "lp-tr2-media-top-item";
+      const lab = document.createElement("span");
+      lab.className = "lp-tr2-media-top-label";
+      lab.textContent = label;
+      const meta = document.createElement("span");
+      meta.className = "lp-tr2-media-top-meta";
+      meta.textContent = `${formatIntegerMinutesDurationKo(minutes)} · 전체의 ${pct}%`;
+      li.appendChild(lab);
+      li.appendChild(meta);
+      topList.appendChild(li);
+    });
+    top.appendChild(topList);
+    sec.appendChild(top);
+  }
+
+  scrollWrap.appendChild(sec);
+}
+
+function collectActionLogs(rows, keywords) {
+  const kws = keywords.map((k) => String(k).trim()).filter(Boolean);
+  if (!kws.length) return [];
+  /** @type {{ date: string, main: string, sub: string }[]} */
+  const out = [];
+  rows.forEach((r) => {
+    const tn = String(r.taskName || "").trim();
+    if (!tn || !kws.some((k) => tn.includes(k))) return;
+    const date = rowDateYmd(r);
+    if (!date) return;
+    const note = rowUserNote(r);
+    const main = note ? `${tn} — ${note}` : tn;
+    const mins = rowMinutes(r);
+    out.push({
+      date,
+      main,
+      sub: mins > 0 ? formatIntegerMinutesDurationKo(mins) : "",
+    });
+  });
+  out.sort(
+    (a, b) =>
+      b.date.localeCompare(a.date) || a.main.localeCompare(b.main, "ko"),
+  );
+  return out;
+}
+
+function mountHeroSection(scrollWrap, range) {
+  const hero = getTimeReportHeroSnapshotForDateRange(range.start, range.end);
+  const sec = createSection("한 장 요약", formatRangeLabel(range.start, range.end));
+  const grid = document.createElement("div");
+  grid.className = "lp-tr2-card-grid";
+  grid.appendChild(
+    createStatCard(
+      "가용 시간",
+      formatIntegerMinutesDurationKo(hero.availableMinutes),
+      hero.daysWithData > 1 ? `${hero.daysWithData}일 기준 평균` : "",
+    ),
+  );
+  grid.appendChild(
+    createStatCard(
+      "생산(투자)",
+      formatIntegerMinutesDurationKo(hero.productiveMinutes),
+      hero.focusLabel ? `${hero.focusLabel} ${hero.focusPct}%` : "",
+    ),
+  );
+  grid.appendChild(
+    createStatCard(
+      "비생산(소비)",
+      formatIntegerMinutesDurationKo(hero.wasteMinutes),
+      "",
+    ),
+  );
+  grid.appendChild(
+    createStatCard(
+      "시간의 가격(순가치)",
+      formatNetWon(hero.netWon),
+      `집중 점수 ${hero.score}`,
+    ),
+  );
+  sec.appendChild(grid);
+  scrollWrap.appendChild(sec);
+}
+
+function mountSleepSection(scrollWrap, range) {
+  const dates = listDatesInclusive(range.start, range.end);
+  const sec = createSection(
+    "수면 기록",
+    "막대=실제 수면 · 연한 주황=7시간까지 · 점선=목표선",
+  );
+  const sleepByDay = dates.map((d) => ({
+    date: d,
+    minutes: getTimeReportSummaryGridForDateRange(d, d).sleepMinutes,
+  }));
+
+  const daysWithSleep = sleepByDay.filter((x) => x.minutes > 0);
+  if (daysWithSleep.length) {
+    const chartWrap = document.createElement("div");
+    chartWrap.className = "lp-tr2-sleep-chart-wrap";
+    const canvas = document.createElement("div");
+    canvas.className = "lp-tr2-sleep-chart-canvas";
+    const { scroll } = renderSleepGoalBarChart(canvas, sleepByDay) || {};
+    if (scroll) canvas.classList.add("lp-tr2-sleep-chart-canvas--scroll");
+    chartWrap.appendChild(canvas);
+    chartWrap.appendChild(buildSleepChartLegend());
+    sec.appendChild(chartWrap);
+    sec.appendChild(buildSleepStatsGrid(daysWithSleep));
+  } else {
+    const note = document.createElement("p");
+    note.className = "lp-tr2-chart-note";
+    note.textContent = "이 기간에 수면 기록이 없습니다.";
+    sec.appendChild(note);
+  }
+
+  scrollWrap.appendChild(sec);
+}
+
+function mountIntakeSection(scrollWrap, range, rows) {
+  const { healthy, unhealthy } = collectIntakeLogs(rows);
+  const dayCount = listDatesInclusive(range.start, range.end).length;
+  const totalEntries = healthy.length + unhealthy.length;
+  const sec = createSection(
+    "섭취 기록",
+    dayCount > 1
+      ? "날짜별 한 줄 요약 · 길면 패널 안에서 스크롤"
+      : "무엇을 먹었는지(식단 메모)",
+  );
+  const counts = document.createElement("p");
+  counts.className = "lp-tr2-intake-counts";
+  counts.textContent = `건강 ${healthy.length}건 · 비건강 ${unhealthy.length}건 · ${new Set([...healthy, ...unhealthy].map((e) => e.date)).size}일`;
+
+  const panels = document.createElement("div");
+  panels.className = "lp-tr2-intake-panels";
+  if (dayCount >= 7 || totalEntries > 8) {
+    panels.classList.add("lp-tr2-intake-panels--scroll");
+  }
+
+  const makePanel = (title, count, entries, emptyText, tone) => {
+    const panel = document.createElement("div");
+    panel.className = "lp-tr2-intake-panel";
+    const head = document.createElement("div");
+    head.className = "lp-tr2-intake-panel-head";
+    const headTitle = document.createElement("span");
+    headTitle.textContent = title;
+    const headCount = document.createElement("span");
+    headCount.className = "lp-tr2-intake-panel-count";
+    headCount.textContent = `${count}건`;
+    head.appendChild(headTitle);
+    head.appendChild(headCount);
+    const body = document.createElement("div");
+    body.className = "lp-tr2-intake-panel-body";
+    body.appendChild(buildCompactIntakeFeed(entries, emptyText, tone));
+    panel.appendChild(head);
+    panel.appendChild(body);
+    return panel;
+  };
+
+  panels.appendChild(
+    makePanel(
+      "건강한 섭취",
+      healthy.length,
+      healthy,
+      "기록 없음",
+      "healthy",
+    ),
+  );
+  panels.appendChild(
+    makePanel(
+      "건강하지 않은 섭취",
+      unhealthy.length,
+      unhealthy,
+      "기록 없음",
+      "unhealthy",
+    ),
+  );
+
+  sec.appendChild(counts);
+  sec.appendChild(panels);
+  scrollWrap.appendChild(sec);
+}
+
 function annularSectorPath(cx, cy, rOut, rIn, a0, a1) {
   const span = a1 - a0;
   if (span <= 1e-9) return "";
   const twoPi = Math.PI * 2;
   if (span >= twoPi - 1e-5) {
-    const h = annularSectorPath(cx, cy, rOut, rIn, a0, a0 + Math.PI);
-    const h2 = annularSectorPath(cx, cy, rOut, rIn, a0 + Math.PI, a0 + twoPi);
-    return `${h} ${h2}`;
+    return `${annularSectorPath(cx, cy, rOut, rIn, a0, a0 + Math.PI)} ${annularSectorPath(cx, cy, rOut, rIn, a0 + Math.PI, a0 + twoPi)}`;
   }
   const large = span > Math.PI ? 1 : 0;
   const x1 = cx + rOut * Math.cos(a0);
@@ -546,916 +1031,266 @@ function annularSectorPath(cx, cy, rOut, rIn, a0, a1) {
   const y3 = cy + rIn * Math.sin(a1);
   const x4 = cx + rIn * Math.cos(a0);
   const y4 = cy + rIn * Math.sin(a0);
-  return [
-    "M",
-    x1,
-    y1,
-    "A",
-    rOut,
-    rOut,
-    0,
-    large,
-    1,
-    x2,
-    y2,
-    "L",
-    x3,
-    y3,
-    "A",
-    rIn,
-    rIn,
-    0,
-    large,
-    0,
-    x4,
-    y4,
-    "Z",
-  ].join(" ");
+  return `M ${x1} ${y1} A ${rOut} ${rOut} 0 ${large} 1 ${x2} ${y2} L ${x3} ${y3} A ${rIn} ${rIn} 0 ${large} 0 ${x4} ${y4} Z`;
 }
 
-/** 투자 탭: 생산 과제 카테고리별 비중(가로 막대) */
-function mountTimeReportProductiveBars(scrollWrap, ymdTen, granularity) {
-  const snap =
-    granularity === "month"
-      ? getMonthlyProductiveCategoryInvestBarsSnapshot(ymdTen)
-      : getDailyProductiveCategoryInvestBarsSnapshot(ymdTen);
+function mountDonutSection(scrollWrap, range) {
+  const snap = getTimeReportDonutSnapshotForDateRange(range.start, range.end);
+  const sec = createSection(
+    "생산 · 비생산 시간",
+    "수면·근무 제외 · 색=카테고리 · 막대=비율",
+  );
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-donut-wrap";
 
-  const section = document.createElement("section");
-  section.className = "diary-tr-prod-bars-shell";
-  section.setAttribute("aria-label", "생산 과제 카테고리별 투자 비중");
-
-  const card = document.createElement("div");
-  card.className = "diary-tr-prod-bars-card";
-  if (!snap.totalProductiveHours || snap.totalProductiveHours <= 0) {
+  if (!snap.totalHours || snap.totalHours <= 0) {
     const empty = document.createElement("p");
-    empty.className = "diary-tr-prod-bars-empty";
-    empty.textContent = "표시할 생산 과제 기록이 없습니다.";
-    card.appendChild(empty);
-  } else {
-    snap.segments.forEach((seg) => {
-      const row = document.createElement("div");
-      row.className = "diary-tr-prod-bar-row";
-      const meta = document.createElement("div");
-      meta.className = "diary-tr-prod-bar-meta";
-      const lab = document.createElement("span");
-      lab.className = "diary-tr-prod-bar-label";
-      lab.textContent = seg.label;
-      const pct = document.createElement("span");
-      pct.className = "diary-tr-prod-bar-pct";
-      pct.textContent = `${seg.pctRounded}%`;
-      meta.appendChild(lab);
-      meta.appendChild(pct);
-      const track = document.createElement("div");
-      track.className = "diary-tr-prod-bar-track";
-      track.setAttribute("aria-hidden", "true");
-      const fill = document.createElement("div");
-      fill.className = "diary-tr-prod-bar-fill";
-      const wPct = Math.min(100, Math.max(0, seg.pct));
-      fill.style.width = `${wPct}%`;
-      fill.style.background =
-        DIARY_PROD_CAT_BAR_FILL[seg.categoryKey] || DIARY_PROD_CAT_BAR_FILL.other_prod;
-      track.appendChild(fill);
-      row.appendChild(meta);
-      row.appendChild(track);
-      card.appendChild(row);
-    });
+    empty.className = "lp-tr2-donut-legend-empty";
+    empty.textContent = "집계할 생산·비생산 기록이 없습니다.";
+    wrap.appendChild(empty);
+    sec.appendChild(wrap);
+    scrollWrap.appendChild(sec);
+    return;
   }
 
-  section.appendChild(card);
-  scrollWrap.appendChild(section);
-}
+  const { prod, nonProd, ordered } = orderDonutSegments(snap.segments);
+  const prodHours = prod.reduce((a, s) => a + s.hours, 0);
+  const nonProdHours = nonProd.reduce((a, s) => a + s.hours, 0);
+  const prodPct = (prodHours / snap.totalHours) * 100;
+  const nonProdPct = (nonProdHours / snap.totalHours) * 100;
 
-/** 로그 탭 제거 — 과제 메모는 시간가계부 「메모만 보기」에서 조회 */
-
-/** 시간 레포트 카드 탭 → 해당 카테고리 과제·시간 목록(투자·소비 공통) */
-function openTimeReportCategoryTaskDetailModal(opts) {
-  const {
-    headline,
-    categoryLabel,
-    rows,
-    periodLabel,
-    emptyMessage = "이 기간에 해당하는 과제 기록이 없습니다.",
-  } = opts;
-  document.querySelectorAll(".diary-tr-invest-detail-modal").forEach((m) => m.remove());
-
-  const modal = document.createElement("div");
-  modal.className = "time-task-setup-modal diary-tr-invest-detail-modal";
-  modal.removeAttribute("hidden");
-
-  const backdrop = document.createElement("div");
-  backdrop.className = "diary-tr-invest-detail-modal-backdrop";
-  backdrop.setAttribute("aria-hidden", "true");
-
-  const panel = document.createElement("div");
-  panel.className = "diary-tr-invest-detail-modal-panel";
-  panel.setAttribute("role", "dialog");
-  panel.setAttribute("aria-modal", "true");
-  panel.setAttribute(
-    "aria-labelledby",
-    "diary-tr-invest-detail-modal-title",
-  );
-
-  const header = document.createElement("div");
-  header.className = "diary-tr-invest-detail-modal-header";
-
-  const title = document.createElement("h3");
-  title.id = "diary-tr-invest-detail-modal-title";
-  title.className = "diary-tr-invest-detail-modal-title";
-  title.textContent = headline;
-
-  const meta = document.createElement("p");
-  meta.className = "diary-tr-invest-detail-modal-meta";
-  meta.textContent = `${periodLabel} · 카테고리 ${categoryLabel}`;
-
-  const closeBtn = document.createElement("button");
-  closeBtn.type = "button";
-  closeBtn.className = "diary-tr-invest-detail-modal-close";
-  closeBtn.setAttribute("aria-label", "닫기");
-  closeBtn.textContent = "×";
-
-  header.appendChild(title);
-  header.appendChild(meta);
-  header.appendChild(closeBtn);
+  const split = document.createElement("div");
+  split.className = "lp-tr2-donut-split";
+  const prodChip = document.createElement("div");
+  prodChip.className = "lp-tr2-donut-split-chip lp-tr2-donut-split-chip--prod";
+  prodChip.innerHTML = `<span class="lp-tr2-donut-split-label">생산</span><strong>${formatIntegerMinutesDurationKo(Math.round(prodHours * 60))}</strong><span class="lp-tr2-donut-split-pct">${formatPctRounded(prodPct)}</span>`;
+  const nonProdChip = document.createElement("div");
+  nonProdChip.className =
+    "lp-tr2-donut-split-chip lp-tr2-donut-split-chip--nonprod";
+  nonProdChip.innerHTML = `<span class="lp-tr2-donut-split-label">비생산</span><strong>${formatIntegerMinutesDurationKo(Math.round(nonProdHours * 60))}</strong><span class="lp-tr2-donut-split-pct">${formatPctRounded(nonProdPct)}</span>`;
+  split.appendChild(prodChip);
+  split.appendChild(nonProdChip);
+  wrap.appendChild(split);
 
   const body = document.createElement("div");
-  body.className = "diary-tr-invest-detail-modal-body";
-
-  const list = document.createElement("div");
-  list.className = "diary-budget-unplanned-card diary-tr-invest-detail-list";
-
-  if (!rows.length) {
-    const empty = document.createElement("p");
-    empty.className = "diary-tr-invest-detail-empty";
-    empty.textContent = emptyMessage;
-    body.appendChild(empty);
-  } else {
-    rows.forEach((row) => {
-      const line = document.createElement("div");
-      line.className = "diary-budget-unplanned-row";
-      const nameEl = document.createElement("span");
-      nameEl.className = "diary-budget-unplanned-name";
-      nameEl.textContent = row.taskName;
-      const timeEl = document.createElement("span");
-      timeEl.className = "diary-budget-unplanned-time";
-      timeEl.textContent = formatIntegerMinutesDurationKo(row.minutes);
-      line.appendChild(nameEl);
-      line.appendChild(timeEl);
-      list.appendChild(line);
-    });
-    body.appendChild(list);
-  }
-
-  panel.appendChild(header);
-  panel.appendChild(body);
-  modal.appendChild(backdrop);
-  modal.appendChild(panel);
-
-  const close = () => {
-    modal.remove();
-    document.body.style.overflow = "";
-  };
-  closeBtn.addEventListener("click", close);
-  /* 배경 탭으로 닫지 않음 (닫기는 ×만) */
-  document.body.style.overflow = "hidden";
-  document.body.appendChild(modal);
-}
-
-/** 투자 탭: 생산 카테고리 막대 아래 메시지형 카드(아이콘 미정) — 꿈·부수입·건강·행복 순 */
-function mountTimeReportInvestMotivationCards(scrollWrap, ymdTen, granularity) {
-  const snap =
-    granularity === "month"
-      ? getMonthlyProductiveCategoryInvestBarsSnapshot(ymdTen)
-      : getDailyProductiveCategoryInvestBarsSnapshot(ymdTen);
-
-  const section = document.createElement("section");
-  section.className = "diary-tr-invest-quote-shell";
-  section.setAttribute("aria-label", "투자 카테고리별 메시지와 생산 과제 시간");
-
-  const grid = document.createElement("div");
-  grid.className = "diary-tr-summary-grid diary-tr-invest-quote-grid";
-
-  const periodLabel =
-    granularity === "month"
-      ? formatMonthSlashFromYmd(ymdTen)
-      : formatDateDisplay(String(ymdTen || "").slice(0, 10));
-
-  const healthyMeals =
-    granularity === "month"
-      ? getMonthlyHealthyMealDetails(ymdTen)
-      : getDailyHealthyMealDetails(ymdTen);
-
-  const defs = [
-    {
-      key: "dream",
-      categoryLabel: "꿈",
-      headline: "꿈에 더 가까이",
-      subtitle: null,
-      iconSrc: DIARY_TR_ICON.dreamCloser,
-    },
-    {
-      key: "sideincome",
-      categoryLabel: "부수입",
-      headline: "내 시간의 가치는 내가 올린다",
-      subtitle: null,
-      iconSrc: DIARY_TR_ICON.sideincomeValue,
-    },
-    {
-      key: "health",
-      categoryLabel: "건강",
-      headline: "내가 더 존재할 수 있게!",
-      subtitle: null,
-      iconSrc: DIARY_TR_ICON.healthExist,
-    },
-    {
-      key: "happiness",
-      categoryLabel: "행복",
-      headline: "행복하려고 사는거지!",
-      subtitle: null,
-      iconSrc: DIARY_TR_ICON.happinessLive,
-    },
-  ];
-
-  defs.forEach((def) => {
-    const mins = investProdCategoryMinutesRounded(snap, def.key);
-    const art = document.createElement("article");
-    art.className =
-      "diary-tr-summary-card diary-tr-invest-quote-card diary-tr-invest-quote-card--action";
-    art.setAttribute("role", "button");
-    art.setAttribute("tabindex", "0");
-    art.setAttribute(
-      "aria-label",
-      `${def.headline}, ${formatIntegerMinutesDurationKo(mins)}. 탭하면 과제별 시간 목록`,
-    );
-
-    const iconSlot = document.createElement("div");
-    iconSlot.className = "diary-tr-summary-icon-slot diary-tr-summary-icon-slot--empty";
-    iconSlot.setAttribute("aria-hidden", "true");
-    if (def.iconSrc) fillDiaryTrSummaryIconSlot(iconSlot, def.iconSrc);
-
-    const h = document.createElement("h3");
-    h.className = "diary-tr-summary-title diary-tr-invest-quote-headline";
-    h.textContent = def.headline;
-
-    art.appendChild(iconSlot);
-    art.appendChild(h);
-    if (def.subtitle) {
-      const sub = document.createElement("p");
-      sub.className = "diary-tr-invest-quote-subtitle";
-      sub.textContent = def.subtitle;
-      art.appendChild(sub);
-    }
-
-    const timeEl = document.createElement("p");
-    timeEl.className = "diary-tr-summary-time";
-    timeEl.textContent = formatIntegerMinutesDurationKo(mins);
-    art.appendChild(timeEl);
-
-    const openDetail = () => {
-      const taskRows =
-        granularity === "month"
-          ? getMonthlyProductiveCategoryTaskBreakdown(ymdTen, def.key)
-          : getDailyProductiveCategoryTaskBreakdown(ymdTen, def.key);
-      openTimeReportCategoryTaskDetailModal({
-        headline: def.headline,
-        categoryLabel: def.categoryLabel,
-        rows: taskRows,
-        periodLabel,
-        emptyMessage: "이 기간에 해당하는 생산 과제 기록이 없습니다.",
-      });
-    };
-    art.addEventListener("click", openDetail);
-    art.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        openDetail();
-      }
-    });
-
-    grid.appendChild(art);
-  });
-
-  appendTimeReportMealIntakeCard(grid, {
-    title: "건강한 섭취",
-    iconSrc: DIARY_TR_ICON.healthyMealIntake,
-    minutes:
-      granularity === "month"
-        ? getMonthlyHealthyMealIntakeMinutes(ymdTen)
-        : getDailyHealthyMealIntakeMinutes(ymdTen),
-    meals: healthyMeals,
-  });
-
-  section.appendChild(grid);
-  scrollWrap.appendChild(section);
-}
-
-/** 소비 탭: 도넛 아래 근무·수면 한 줄 — 소비 리포트와 구분 */
-function mountTimeReportWorkSleepStrip(scrollWrap, ymdTen, granularity) {
-  const g =
-    granularity === "month"
-      ? getMonthlyTimeReportSummaryGrid(ymdTen)
-      : getDailyTimeReportSummaryGrid(ymdTen);
-
-  const section = document.createElement("section");
-  section.className = "diary-tr-work-sleep-shell";
-  section.setAttribute("aria-label", "근무 시간과 수면 시간");
-
-  const grid = document.createElement("div");
-  grid.className = "diary-tr-summary-grid";
-
-  [
-    { title: "근무시간", minutes: g.workMinutes, iconSrc: DIARY_TR_ICON.work },
-    { title: "수면시간", minutes: g.sleepMinutes, iconSrc: DIARY_TR_ICON.sleep },
-  ].forEach((c) => {
-    const art = document.createElement("article");
-    art.className = "diary-tr-summary-card";
-
-    const iconSlot = document.createElement("div");
-    iconSlot.className = "diary-tr-summary-icon-slot diary-tr-summary-icon-slot--empty";
-    iconSlot.setAttribute("aria-hidden", "true");
-    if (c.iconSrc) fillDiaryTrSummaryIconSlot(iconSlot, c.iconSrc);
-
-    const h = document.createElement("h3");
-    h.className = "diary-tr-summary-title";
-    h.textContent = c.title;
-
-    const timeEl = document.createElement("p");
-    timeEl.className = "diary-tr-summary-time";
-    timeEl.textContent = formatIntegerMinutesDurationKo(c.minutes);
-
-    art.appendChild(iconSlot);
-    art.appendChild(h);
-    art.appendChild(timeEl);
-    grid.appendChild(art);
-  });
-
-  section.appendChild(grid);
-  scrollWrap.appendChild(section);
-}
-
-/** 소비 탭: 근무·수면 아래 — 해당 기간 과제별 기록 시간 Top 3 */
-function mountTimeReportConsumptionTopTasks(scrollWrap, ymdTen, granularity) {
-  const rows =
-    granularity === "month"
-      ? getMonthlyTimeReportTopTasksByMinutes(ymdTen, 3)
-      : getDailyTimeReportTopTasksByMinutes(ymdTen, 3);
-  if (!rows.length) return;
-
-  const section = document.createElement("section");
-  section.className = "diary-tr-consumption-top3-shell";
-  section.setAttribute("aria-label", "시간을 많이 쓴 과제 상위 3개");
-
-  const title = document.createElement("h3");
-  title.className = "diary-tr-consumption-top3-title";
-  title.textContent = "Top 3";
-
-  const card = document.createElement("div");
-  card.className = "diary-tr-consumption-top3-card";
-
-  card.appendChild(title);
-
-  rows.forEach((row, idx) => {
-    const line = document.createElement("div");
-    line.className = "diary-tr-consumption-top3-row";
-    const rank = document.createElement("span");
-    rank.className = "diary-tr-consumption-top3-rank";
-    rank.textContent = String(idx + 1);
-    const nameEl = document.createElement("span");
-    nameEl.className = "diary-tr-consumption-top3-name";
-    nameEl.textContent = row.taskName;
-    const timeEl = document.createElement("span");
-    timeEl.className = "diary-tr-consumption-top3-time";
-    timeEl.textContent = formatIntegerMinutesDurationKo(row.minutes);
-    line.appendChild(rank);
-    line.appendChild(nameEl);
-    line.appendChild(timeEl);
-    card.appendChild(line);
-  });
-
-  section.appendChild(card);
-  scrollWrap.appendChild(section);
-}
-
-/** 소비 탭 일·월 공통: 아이콘 자리(점선 원) + 제목 + 시간·(원) 요약 카드 그리드(근무·수면 제외) */
-function mountTimeReportSummaryGrid(scrollWrap, ymdTen, granularity) {
-  const g =
-    granularity === "month"
-      ? getMonthlyTimeReportSummaryGrid(ymdTen)
-      : getDailyTimeReportSummaryGrid(ymdTen);
-  const section = document.createElement("section");
-  section.className = "diary-tr-summary-shell";
-  section.setAttribute(
-    "aria-label",
-    granularity === "month"
-      ? "선택한 달의 시간 소비 카테고리 요약"
-      : "선택한 날의 시간 소비 카테고리 요약",
-  );
-
-  const grid = document.createElement("div");
-  grid.className = "diary-tr-summary-grid";
-
-  const showMoney = g.hourlyRate > 0;
-  const periodLabel =
-    granularity === "month"
-      ? formatMonthSlashFromYmd(ymdTen)
-      : formatDateDisplay(String(ymdTen || "").slice(0, 10));
-
-  /** @type {Array<{ categoryKey: string, categoryLabel: string, title: string, minutes: number, lossWon?: number | null }>} */
-  const specs = [
-    {
-      categoryKey: "media_watch",
-      categoryLabel: "미디어 시청",
-      title: "미디어 시청시간",
-      minutes: g.mediaMinutes,
-      lossWon: showMoney ? g.mediaLossWon : null,
-      iconSrc: DIARY_TR_ICON.media,
-    },
-    {
-      categoryKey: "pleasure",
-      categoryLabel: "쾌락",
-      title: "도파민 충전료",
-      minutes: g.pleasureMinutes,
-      iconSrc: DIARY_TR_ICON.pleasure,
-    },
-    {
-      categoryKey: "unhealthy",
-      categoryLabel: "비건강",
-      title: "건강을 해치는데 쓴 시간",
-      minutes: g.unhealthyMinutes,
-      iconSrc: DIARY_TR_ICON.unhealthy,
-    },
-    {
-      categoryKey: "moneylosing",
-      categoryLabel: "돈을 잃는 일",
-      title: "시간도 잃고, 돈도 잃고",
-      minutes: g.moneylosingMinutes,
-      lossWon: showMoney ? g.moneylosingLossWon : null,
-      iconSrc: DIARY_TR_ICON.moneylosing,
-    },
-    {
-      categoryKey: "unhappiness",
-      categoryLabel: "불행",
-      title: "불행해지는데 쓴 시간",
-      minutes: g.unhappinessMinutes,
-      lossWon: showMoney ? g.unhappinessLossWon : null,
-      iconSrc: DIARY_TR_ICON.unhappiness,
-    },
-  ];
-
-  specs.forEach((c) => {
-    const art = document.createElement("article");
-    art.className =
-      "diary-tr-summary-card diary-tr-invest-quote-card--action";
-    art.setAttribute("role", "button");
-    art.setAttribute("tabindex", "0");
-    art.setAttribute(
-      "aria-label",
-      `${c.title}, ${formatIntegerMinutesDurationKo(c.minutes)}. 탭하면 과제별 시간 목록`,
-    );
-
-    const iconSlot = document.createElement("div");
-    iconSlot.className = "diary-tr-summary-icon-slot diary-tr-summary-icon-slot--empty";
-    iconSlot.setAttribute("aria-hidden", "true");
-    if (c.iconSrc) fillDiaryTrSummaryIconSlot(iconSlot, c.iconSrc);
-
-    const h = document.createElement("h3");
-    h.className = "diary-tr-summary-title";
-    h.textContent = c.title;
-
-    const timeEl = document.createElement("p");
-    timeEl.className = "diary-tr-summary-time";
-    timeEl.textContent = formatIntegerMinutesDurationKo(c.minutes);
-
-    art.appendChild(iconSlot);
-    art.appendChild(h);
-    art.appendChild(timeEl);
-
-    if (c.lossWon != null) {
-      appendTimeReportSummaryMoney(
-        art,
-        formatLedgerLossKrwDisplay(c.lossWon),
-        "loss",
-      );
-    }
-
-    const openDetail = () => {
-      const taskRows =
-        granularity === "month"
-          ? getMonthlyConsumptionCategoryTaskBreakdown(ymdTen, c.categoryKey)
-          : getDailyConsumptionCategoryTaskBreakdown(ymdTen, c.categoryKey);
-      openTimeReportCategoryTaskDetailModal({
-        headline: c.title,
-        categoryLabel: c.categoryLabel,
-        rows: taskRows,
-        periodLabel,
-      });
-    };
-    art.addEventListener("click", openDetail);
-    art.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        openDetail();
-      }
-    });
-
-    grid.appendChild(art);
-  });
-
-  appendTimeReportMealIntakeCard(grid, {
-    title: "건강하지 않은 섭취",
-    iconSrc: DIARY_TR_ICON.unhealthyMealIntake,
-    minutes:
-      granularity === "month"
-        ? getMonthlyUnhealthyMealIntakeMinutes(ymdTen)
-        : getDailyUnhealthyMealIntakeMinutes(ymdTen),
-    meals: g.unhealthyMealDetails,
-  });
-
-  section.appendChild(grid);
-  scrollWrap.appendChild(section);
-}
-
-/** 도넛 카드 아래 · 요약 그리드 위 — 구분선 + 소제목 */
-function mountTimeReportConsumptionSectionHeader(scrollWrap) {
-  const block = document.createElement("div");
-  block.className = "diary-tr-consumption-section-header";
-
-  const rule = document.createElement("hr");
-  rule.className = "diary-tr-consumption-section-rule";
-  rule.setAttribute("aria-hidden", "true");
-
-  const h2 = document.createElement("h2");
-  h2.className = "diary-tr-consumption-section-title";
-  h2.textContent = "시간 소비 리포트";
-
-  block.appendChild(rule);
-  block.appendChild(h2);
-  scrollWrap.appendChild(block);
-}
-
-/** 생산 막대·바이백 카드 아래 · 동기 카드 그리드 바로 위 — 소비와 동일 클래스·구조 */
-function mountTimeReportInvestSectionHeader(scrollWrap) {
-  const block = document.createElement("div");
-  block.className = "diary-tr-consumption-section-header";
-
-  const rule = document.createElement("hr");
-  rule.className = "diary-tr-consumption-section-rule";
-  rule.setAttribute("aria-hidden", "true");
-
-  const h2 = document.createElement("h2");
-  h2.className = "diary-tr-consumption-section-title";
-  h2.textContent = "시간 투자 리포트";
-
-  block.appendChild(rule);
-  block.appendChild(h2);
-  scrollWrap.appendChild(block);
-}
-
-/** 동기 카드 그리드 아래 · 루틴 트래커 영역 제목만(소비·시간 투자 리포트 제목과 동일 클래스) */
-function mountTimeReportInvestRoutineTrackerHeader(scrollWrap) {
-  const block = document.createElement("div");
-  block.className = "diary-tr-consumption-section-header";
-
-  const rule = document.createElement("hr");
-  rule.className = "diary-tr-consumption-section-rule";
-  rule.setAttribute("aria-hidden", "true");
-
-  const h2 = document.createElement("h2");
-  h2.className = "diary-tr-consumption-section-title";
-  h2.textContent = "루틴트랙커";
-
-  block.appendChild(rule);
-  block.appendChild(h2);
-  scrollWrap.appendChild(block);
-}
-
-/** 맵 로컬 스토리지에서 매일 반복(습관 트래커) KPI 목록 — id·표시명 */
-function collectDailyRepeatKpisFromLocalMaps() {
-  /** @type {Array<{ id: string, name: string }>} */
-  const out = [];
-  KPI_MAP_STORAGE_KEYS.forEach((key) => {
-    try {
-      const raw = readKpiMapScopedStorageRaw(key);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      const kpis = parsed?.kpis || [];
-      for (const k of kpis) {
-        if (!k || !k.needHabitTracker) continue;
-        const id = String(k.id || "").trim();
-        const name = String(k.name || "").trim();
-        if (!id || !name) continue;
-        out.push({ id, name });
-      }
-    } catch (_) {}
-  });
-  const seen = new Set();
-  return out
-    .filter((row) => {
-      if (seen.has(row.id)) return false;
-      seen.add(row.id);
-      return true;
-    })
-    .sort((a, b) => a.name.localeCompare(b.name, "ko"));
-}
-
-/** @param {string} kpiId */
-function ledgerCategoryForRoutineKpiId(kpiId) {
-  const id = String(kpiId || "").trim();
-  if (id === DEFAULT_AEROBIC_KPI_ID || id === DEFAULT_SUPPLEMENT_KPI_ID) {
-    return "health";
-  }
-  return "happiness";
-}
-
-/** 루틴트랙커 제목 아래: KPI별 일·월 구간 합산 시간 — 1분 이상 체크 원, 0분 취소 원 */
-function mountTimeReportInvestRoutineKpiTimeCards(scrollWrap, ymdTen, granularity) {
-  const kpis = collectDailyRepeatKpisFromLocalMaps();
-  if (kpis.length === 0) return;
-
-  let start;
-  let end;
-  if (granularity === "month") {
-    const range = getTimeReportMonthInclusiveRange(ymdTen);
-    if (!range) return;
-    start = range.start;
-    end = range.end;
-  } else {
-    const d = normalizeDiaryDateStr(ymdTen);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
-    start = end = d;
-  }
-
-  const section = document.createElement("section");
-  section.className = "diary-tr-routine-kpi-shell";
-  section.setAttribute("aria-label", "매일 반복 KPI 과제 시간");
-
-  const grid = document.createElement("div");
-  grid.className = "diary-tr-summary-grid";
-
-  kpis.forEach((k) => {
-    const mins = getAccumulatedMinutesForKpiIdInDateRange(k.id, start, end);
-    const art = document.createElement("article");
-    art.className = "diary-tr-summary-card";
-
-    const iconSlot = document.createElement("div");
-    iconSlot.className = "diary-tr-summary-icon-slot diary-tr-summary-icon-slot--empty";
-    iconSlot.setAttribute("aria-hidden", "true");
-    const kpiIconSrc = resolveKpiCardIconSrc(
-      { id: k.id, name: k.name },
-      ledgerCategoryForRoutineKpiId(k.id),
-    );
-    fillDiaryTrSummaryIconSlot(
-      iconSlot,
-      kpiIconSrc ||
-        (mins >= 1 ? DIARY_TR_ICON.routineDone : DIARY_TR_ICON.routineZero),
-    );
-
-    const h = document.createElement("h3");
-    h.className = "diary-tr-summary-title";
-    h.textContent = k.name;
-
-    if (granularity === "month") {
-      const daysInMonth = countCalendarDaysInInclusiveRange(start, end);
-      const activeDays = countKpiDaysWithRecordedMinutesInDateRange(
-        k.id,
-        start,
-        end,
-      );
-      const freqEl = document.createElement("p");
-      freqEl.className =
-        "diary-tr-invest-quote-subtitle diary-tr-routine-kpi-freq";
-      freqEl.textContent = `${daysInMonth}일 중 ${activeDays}일`;
-      art.appendChild(iconSlot);
-      art.appendChild(h);
-      art.appendChild(freqEl);
-    } else {
-      art.appendChild(iconSlot);
-      art.appendChild(h);
-    }
-
-    const timeEl = document.createElement("p");
-    timeEl.className = "diary-tr-summary-time";
-    timeEl.textContent = formatIntegerMinutesDurationKo(mins);
-
-    art.appendChild(timeEl);
-    grid.appendChild(art);
-  });
-
-  section.appendChild(grid);
-  scrollWrap.appendChild(section);
-}
-
-/** 시간 레포트 가격 — 소비·투자 공통 클래스, 색만 --loss(파랑) / --gain(빨강) */
-function appendTimeReportSummaryMoney(parent, text, polarity) {
-  const money = document.createElement("p");
-  money.className =
-    polarity === "gain"
-      ? "diary-tr-summary-money diary-tr-summary-money--gain"
-      : "diary-tr-summary-money diary-tr-summary-money--loss";
-  money.textContent = text;
-  parent.appendChild(money);
-}
-
-/** 「시간 소비 리포트」 제목 직후 · 카드 그리드 직전: 비생산 합(컴팩트) */
-function mountTimeReportNonproductiveWasteMini(scrollWrap, ymdTen, granularity) {
-  const snap =
-    granularity === "month"
-      ? getMonthlyNonproductiveWastedSnapshot(ymdTen)
-      : getDailyNonproductiveWastedSnapshot(ymdTen);
-
-  const shell = document.createElement("div");
-  shell.className = "diary-tr-waste-mini-shell";
-  shell.setAttribute("aria-label", "비생산적 활동 시간 합");
-
-  const ttl = document.createElement("p");
-  ttl.className = "diary-tr-waste-mini-title";
-  ttl.textContent = timeReportWasteMiniTitle(ymdTen, granularity);
-
-  const val = document.createElement("p");
-  val.className = "diary-tr-waste-mini-value";
-  val.textContent = formatIntegerMinutesDurationKo(snap.wastedMinutesRounded);
-
-  shell.appendChild(ttl);
-  shell.appendChild(val);
-  if (snap.hourlyRate > 0 && snap.wastedWon > 0) {
-    appendTimeReportSummaryMoney(
-      shell,
-      formatLedgerLossKrwDisplay(snap.wastedWon),
-      "loss",
-    );
-  }
-  scrollWrap.appendChild(shell);
-}
-
-/** 「시간 투자 리포트」 직후 · 동기 카드 그리드 직전 — 투자 집계 시간(소비 낭비 미니와 동일 클래스) */
-function mountTimeReportInvestMini(scrollWrap, ymdTen, granularity) {
-  const snap =
-    granularity === "month"
-      ? getMonthlyInvestReclaimSnapshot(ymdTen)
-      : getDailyInvestReclaimSnapshot(ymdTen);
-
-  const shell = document.createElement("div");
-  shell.className = "diary-tr-waste-mini-shell";
-  shell.setAttribute("aria-label", "투자로 집계된 시간 합");
-
-  const ttl = document.createElement("p");
-  ttl.className = "diary-tr-waste-mini-title";
-  ttl.textContent = timeReportInvestMiniTitle(ymdTen, granularity);
-
-  const val = document.createElement("p");
-  val.className = "diary-tr-waste-mini-value";
-  val.textContent = formatIntegerMinutesDurationKo(snap.reclaimMinutesRounded);
-
-  shell.appendChild(ttl);
-  shell.appendChild(val);
-  scrollWrap.appendChild(shell);
-}
-
-/** 소비 탭 일·월 공통 본문: 수면·근무 제외 세부 카테고리 도넛 */
-function mountTimeReportDonut(scrollWrap, ymdTen, granularity) {
-  const snap =
-    granularity === "month"
-      ? getMonthlyTimeReportDonutSnapshot(ymdTen)
-      : getDailyTimeReportDonutSnapshot(ymdTen);
-  const section = document.createElement("section");
-  section.className = "diary-tr-donut-shell";
-  if (granularity === "month") {
-    section.classList.add("diary-tr-donut-shell--month-center-heading");
-  }
-
-  const headingId =
-    granularity === "month"
-      ? "diary-time-report-month-donut-heading"
-      : "diary-time-report-day-donut-heading";
-  const blockHeadingText =
-    granularity === "month"
-      ? timeReportMonthDonutBlockTitle(ymdTen)
-      : timeReportDayDonutBlockTitle(ymdTen);
-  section.setAttribute("aria-labelledby", headingId);
-
-  const card = document.createElement("div");
-  card.className = "diary-tr-donut-card";
-
-  const cardHeading = document.createElement("h2");
-  cardHeading.className = "diary-tr-consumption-section-title";
-  cardHeading.id = headingId;
-  cardHeading.textContent = blockHeadingText;
+  body.className = "lp-tr2-donut-body";
 
   const viz = document.createElement("div");
-  viz.className = "diary-tr-donut-viz";
-
-  const host = document.createElement("div");
-  host.className = "diary-tr-donut-ring-host";
-
+  viz.className = "lp-tr2-donut-viz";
   const svg = document.createElementNS(SVG_NS, "svg");
   svg.setAttribute("viewBox", "0 0 200 200");
-  svg.classList.add("diary-tr-donut-svg");
-  svg.setAttribute("aria-hidden", "true");
+  svg.classList.add("lp-tr2-donut-svg");
 
   const center = document.createElement("div");
-  center.className = "diary-tr-donut-center";
-
+  center.className = "lp-tr2-donut-center";
   const cap = document.createElement("span");
-  cap.className = "diary-tr-donut-center-caption";
-  cap.textContent = "전체";
-
+  cap.className = "lp-tr2-donut-cap";
+  cap.textContent = "합계";
   const strong = document.createElement("strong");
-  strong.className = "diary-tr-donut-center-value";
-
+  strong.className = "lp-tr2-donut-total";
+  strong.textContent = formatIntegerMinutesDurationKo(snap.totalMinutesRounded);
+  const sub = document.createElement("span");
+  sub.className = "lp-tr2-donut-sub";
+  sub.textContent = `생산 ${formatPctRounded(prodPct)}`;
   center.appendChild(cap);
   center.appendChild(strong);
+  center.appendChild(sub);
 
-  host.appendChild(svg);
-  host.appendChild(center);
-  viz.appendChild(host);
+  const SEG_GAP = 0.025;
+  const GROUP_GAP = prod.length && nonProd.length ? 0.06 : 0;
+  const totalGap =
+    ordered.length * SEG_GAP + (prod.length && nonProd.length ? GROUP_GAP : 0);
+  const availAngle = Math.PI * 2 - totalGap;
+  let angle = -Math.PI / 2;
 
-  const legend = document.createElement("ul");
-  legend.className = "diary-tr-donut-legend";
+  ordered.forEach((s, i) => {
+    if (i > 0 && prod.length && i === prod.length) {
+      angle += GROUP_GAP;
+    }
+    const span = (s.hours / snap.totalHours) * availAngle;
+    const color = donutCategoryColor(s.key);
+    const d = annularSectorPath(100, 100, 90, 52, angle, angle + span);
+    if (d) {
+      const path = document.createElementNS(SVG_NS, "path");
+      path.setAttribute("d", d);
+      path.setAttribute("fill", color);
+      path.setAttribute("stroke", "#ffffff");
+      path.setAttribute("stroke-width", "2");
+      path.setAttribute("stroke-linejoin", "round");
+      const titleEl = document.createElementNS(SVG_NS, "title");
+      titleEl.textContent = `${s.label} · ${formatIntegerMinutesDurationKo(Math.round(s.hours * 60))} · ${formatPctRounded((s.hours / snap.totalHours) * 100)}`;
+      path.appendChild(titleEl);
+      svg.appendChild(path);
+    }
+    angle += span + SEG_GAP;
+  });
 
-  const totalH = snap.totalHours;
-  if (!totalH || totalH <= 0) {
-    strong.textContent = "—";
-    const circ = document.createElementNS(SVG_NS, "circle");
-    circ.setAttribute("cx", "100");
-    circ.setAttribute("cy", "100");
-    circ.setAttribute("r", "71");
-    circ.setAttribute("fill", "none");
-    circ.setAttribute("stroke", "#e2e8f0");
-    circ.setAttribute("stroke-width", "42");
-    svg.appendChild(circ);
-    const li = document.createElement("li");
-    li.className = "diary-tr-donut-legend-empty";
-    li.textContent =
-      granularity === "month"
-        ? "수면·근무를 뺀 뒤 집계할 생산·비생산 카테고리 시간이 없습니다. 시간가계부에서 해당 달 기록을 모아 두면 여기 표시됩니다."
-        : "수면·근무를 뺀 뒤 집계할 생산·비생산 카테고리 시간이 없습니다. 시간가계부에서 해당 날짜를 기록해 보세요.";
-    legend.appendChild(li);
-  } else {
-    strong.textContent = formatIntegerMinutesDurationKo(snap.totalMinutesRounded);
-    const segs = snap.segments;
-    const colors = segs.map((_, i) => REPORT_DONUT_PASTELS[i % REPORT_DONUT_PASTELS.length]);
-    const pcts = legendIntegerPercents(
-      segs.map((s) => s.hours),
-      totalH,
-    );
+  viz.appendChild(svg);
+  viz.appendChild(center);
+  body.appendChild(viz);
 
-    const rOut = 92;
-    const rIn = 48;
-    let angle = -Math.PI / 2;
+  const legend = document.createElement("div");
+  legend.className = "lp-tr2-donut-legend";
 
-    segs.forEach((s, i) => {
-      const span = (s.hours / totalH) * 2 * Math.PI;
-      const a0 = angle;
-      const a1 = angle + span;
-      const d = annularSectorPath(100, 100, rOut, rIn, a0, a1);
-      if (d) {
-        const path = document.createElementNS(SVG_NS, "path");
-        path.setAttribute("d", d);
-        path.setAttribute("fill", colors[i]);
-        svg.appendChild(path);
-
-        const showPct =
-          span >= 0.18 && (pcts[i] >= 5 || (segs.length <= 3 && pcts[i] >= 1));
-        if (showPct) {
-          const mid = (a0 + a1) / 2;
-          const tr = (rOut + rIn) / 2;
-          const tx = 100 + tr * Math.cos(mid);
-          const ty = 100 + tr * Math.sin(mid);
-          const t = document.createElementNS(SVG_NS, "text");
-          t.setAttribute("x", String(tx));
-          t.setAttribute("y", String(ty));
-          t.setAttribute("text-anchor", "middle");
-          t.setAttribute("dominant-baseline", "middle");
-          t.classList.add("diary-tr-donut-slice-pct");
-          t.textContent = `${pcts[i]}%`;
-          svg.appendChild(t);
-        }
-      }
-      angle = a1;
-    });
-
-    segs.forEach((s, i) => {
+  const addLegendGroup = (title, items, tone) => {
+    if (!items.length) return;
+    const head = document.createElement("p");
+    head.className = `lp-tr2-donut-legend-group lp-tr2-donut-legend-group--${tone}`;
+    head.textContent = title;
+    legend.appendChild(head);
+    const list = document.createElement("ul");
+    list.className = "lp-tr2-donut-legend-list";
+    items.forEach((s) => {
+      const pct = (s.hours / snap.totalHours) * 100;
+      const mins = Math.round(s.hours * 60);
+      const color = donutCategoryColor(s.key);
       const li = document.createElement("li");
-      li.className = "diary-tr-donut-legend-item";
+      li.className = "lp-tr2-donut-legend-item";
       const dot = document.createElement("span");
-      dot.className = "diary-tr-donut-legend-dot";
-      dot.style.background = colors[i];
-      const lbl = document.createElement("span");
-      lbl.className = "diary-tr-donut-legend-label";
-      lbl.textContent = s.label;
+      dot.className = "lp-tr2-donut-legend-dot";
+      dot.style.background = color;
+      const bodyEl = document.createElement("div");
+      bodyEl.className = "lp-tr2-donut-legend-body";
+      const row = document.createElement("div");
+      row.className = "lp-tr2-donut-legend-head";
+      const lab = document.createElement("span");
+      lab.className = "lp-tr2-donut-legend-label";
+      lab.textContent = s.label;
+      const meta = document.createElement("span");
+      meta.className = "lp-tr2-donut-legend-meta";
+      meta.textContent = `${formatIntegerMinutesDurationKo(mins)} · ${formatPctRounded(pct)}`;
+      row.appendChild(lab);
+      row.appendChild(meta);
+      const barTrack = document.createElement("div");
+      barTrack.className = "lp-tr2-donut-legend-bar";
+      const barFill = document.createElement("div");
+      barFill.className = "lp-tr2-donut-legend-bar-fill";
+      barFill.style.width = `${Math.max(2, pct)}%`;
+      barFill.style.background = color;
+      barTrack.appendChild(barFill);
+      bodyEl.appendChild(row);
+      bodyEl.appendChild(barTrack);
       li.appendChild(dot);
-      li.appendChild(lbl);
-      legend.appendChild(li);
+      li.appendChild(bodyEl);
+      list.appendChild(li);
     });
-  }
+    legend.appendChild(list);
+  };
 
-  const cardRow = document.createElement("div");
-  cardRow.className = "diary-tr-donut-card-row";
-  cardRow.appendChild(viz);
-  cardRow.appendChild(legend);
+  addLegendGroup("생산", prod, "prod");
+  addLegendGroup("비생산", nonProd, "nonprod");
 
-  card.appendChild(cardHeading);
-  card.appendChild(cardRow);
-  section.appendChild(card);
-  scrollWrap.appendChild(section);
+  body.appendChild(legend);
+  wrap.appendChild(body);
+  sec.appendChild(wrap);
+  scrollWrap.appendChild(sec);
 }
 
+function mountActionSections(scrollWrap, range, rows) {
+  const hero = getTimeReportHeroSnapshotForDateRange(range.start, range.end);
+  const summary = getTimeReportSummaryGridForDateRange(range.start, range.end);
+
+  const blocks = [
+    {
+      title: "근무하기",
+      hint: "총 근무 시간",
+      summary: formatIntegerMinutesDurationKo(hero.workMinutes),
+      logs: [],
+    },
+    {
+      title: "감정·불행",
+      hint: "기록 목록",
+      summary: summary.unhappinessMinutes
+        ? formatIntegerMinutesDurationKo(summary.unhappinessMinutes)
+        : "",
+      logs: collectActionLogs(rows, ["불행", "감정"]),
+    },
+    {
+      title: "대화·모임",
+      hint: "직접 입력한 내용",
+      summary: "",
+      logs: collectActionLogs(rows, ["대화", "모임", "회의", "미팅"]),
+    },
+    {
+      title: "이동·통근",
+      hint: "기록 목록",
+      summary: "",
+      logs: collectActionLogs(rows, ["이동", "통근", "걸음"]),
+    },
+    {
+      title: "위생·외모",
+      hint: "기록 목록",
+      summary: "",
+      logs: collectActionLogs(rows, ["샤워", "세면", "스킨", "메이크", "외모"]),
+    },
+    {
+      title: "정리·청소",
+      hint: "기록 목록",
+      summary: "",
+      logs: collectActionLogs(rows, ["청소", "정리", "설거지", "빨래"]),
+    },
+  ];
+
+  const sec = createSection(
+    "구매할 수 있는 행동",
+    "행동별로 기록 내용을 모았습니다 · 막대 비교 없음",
+  );
+
+  blocks.forEach(({ title, hint, summary, logs }) => {
+    const block = document.createElement("article");
+    block.className = "lp-tr2-action-block";
+    const head = document.createElement("div");
+    head.className = "lp-tr2-action-block-head";
+    const h = document.createElement("h3");
+    h.className = "lp-tr2-action-block-title";
+    h.textContent = title;
+    head.appendChild(h);
+    if (summary) {
+      const sum = document.createElement("span");
+      sum.className = "lp-tr2-action-block-sum";
+      sum.textContent = summary;
+      head.appendChild(sum);
+    }
+    block.appendChild(head);
+    if (logs.length) {
+      block.appendChild(
+        buildJournalList(logs, `${title} 기록이 없습니다.`),
+      );
+    } else if (summary && summary !== "0분" && summary !== "—") {
+      const p = document.createElement("p");
+      p.className = "lp-tr2-action-block-only-time";
+      p.textContent = `${hint}: ${summary}`;
+      block.appendChild(p);
+    } else {
+      const p = document.createElement("p");
+      p.className = "lp-tr2-journal-empty";
+      p.textContent = `${title} 기록이 없습니다.`;
+      block.appendChild(p);
+    }
+    sec.appendChild(block);
+  });
+
+  scrollWrap.appendChild(sec);
+}
+
+/**
+ * @param {HTMLElement} scrollWrap
+ * @param {{ rangeStart: string, rangeEnd: string } | string} arg2
+ * @param {"day"|"month"} [arg3] — Diary 호환
+ */
+export function mountUnifiedTimeReport(scrollWrap, arg2, arg3) {
+  if (!scrollWrap) return;
+  const range = resolveMountRange(arg2, arg3);
+  const rows = rowsInRange(range.start, range.end);
+
+  scrollWrap.replaceChildren();
+  scrollWrap.classList.remove("lp-time-report-body--empty");
+  scrollWrap.classList.add("lp-tr2-root");
+
+  mountHeroSection(scrollWrap, range);
+  mountSleepSection(scrollWrap, range);
+  mountIntakeSection(scrollWrap, range, rows);
+  mountMediaSection(scrollWrap, range, rows);
+  mountDonutSection(scrollWrap, range);
+  mountActionSections(scrollWrap, range, rows);
+}

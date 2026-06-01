@@ -118,7 +118,6 @@ import {
   mountTimeLedgerReport,
   persistTimeLedgerReportRangeToSession,
   readTimeLedgerReportRangeFromSession,
-  resolveTimeReportTargetFromRange,
 } from "../utils/timeLedgerReportView.js";
 
 import {
@@ -2865,6 +2864,52 @@ export function getMonthlyTimeReportHeroSnapshot(ymdTen) {
     return d >= range.start && d <= range.end;
   });
   return aggregateTimeReportHeroFromRows(rows, "month");
+}
+
+function loadLedgerRowsForInclusiveDateRange(rangeStart, rangeEnd) {
+  const rs = String(rangeStart || "")
+    .replace(/\//g, "-")
+    .slice(0, 10);
+  const re = String(rangeEnd || "")
+    .replace(/\//g, "-")
+    .slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(rs) || !/^\d{4}-\d{2}-\d{2}$/.test(re)) {
+    return [];
+  }
+  return loadTimeRows().filter((r) => {
+    const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
+    return d >= rs && d <= re;
+  });
+}
+
+/** 조회 시작~끝(이번 주·지난달 등) 구간 집계 — 다일이면 월과 동일하게 가용·점수 계산 */
+export function getTimeReportHeroSnapshotForDateRange(rangeStart, rangeEnd) {
+  const rs = String(rangeStart || "")
+    .replace(/\//g, "-")
+    .slice(0, 10);
+  const re = String(rangeEnd || "")
+    .replace(/\//g, "-")
+    .slice(0, 10);
+  const rows = loadLedgerRowsForInclusiveDateRange(rs, re);
+  return aggregateTimeReportHeroFromRows(rows, rs === re ? "day" : "month");
+}
+
+export function getTimeReportSummaryGridForDateRange(rangeStart, rangeEnd) {
+  return aggregateDailyTimeReportSummaryFromLedgerRows(
+    loadLedgerRowsForInclusiveDateRange(rangeStart, rangeEnd),
+  );
+}
+
+export function getTimeReportDonutSnapshotForDateRange(rangeStart, rangeEnd) {
+  return aggregateDailyTimeReportDonutFromLedgerRows(
+    loadLedgerRowsForInclusiveDateRange(rangeStart, rangeEnd),
+  );
+}
+
+export function getHealthyMealDetailsForDateRange(rangeStart, rangeEnd) {
+  return aggregateHealthyMealDetailsFromRows(
+    loadLedgerRowsForInclusiveDateRange(rangeStart, rangeEnd),
+  );
 }
 
 /** YYYY-MM-DD → "2026. 05. 18(화)" — 레포트 날짜 줄 */
@@ -9195,11 +9240,10 @@ export function render(opts = {}) {
       reportShell.setAttribute("data-lp-time-report-body", "");
       reportShell.setAttribute("aria-label", "시간 레포트");
       ledgerContainer.appendChild(reportShell);
-      const { ymdTen, granularity } = resolveTimeReportTargetFromRange(
-        reportRangeStartYmd,
-        reportRangeEndYmd,
-      );
-      mountTimeLedgerReport(reportShell, { ymdTen, granularity });
+      mountTimeLedgerReport(reportShell, {
+        rangeStart: reportRangeStartYmd,
+        rangeEnd: reportRangeEndYmd,
+      });
     } else if (showTimelineLedgerContent) {
       ledgerContainer.appendChild(cardsWrap);
     } else {

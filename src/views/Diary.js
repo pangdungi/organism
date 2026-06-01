@@ -1342,7 +1342,16 @@ export function render() {
     if (showUnifiedTimeReport) {
       const ymd = layoutWrap.dataset.tab2SelectedDate || tab2ReportAnchorDateStr;
       const g = tab2ViewGranularity === "month" ? "month" : "day";
-      mountUnifiedTimeReport(scrollWrap, ymd, g);
+      let rangeStart = ymd;
+      let rangeEnd = ymd;
+      if (g === "month") {
+        const monthRng = getTimeReportMonthInclusiveRange(ymd);
+        if (monthRng) {
+          rangeStart = monthRng.start;
+          rangeEnd = monthRng.end;
+        }
+      }
+      mountUnifiedTimeReport(scrollWrap, { rangeStart, rangeEnd });
 
       if (!reportLedgerRefreshFromPull && !skipDupLedgerPull) {
         const { rangeStart: rs, rangeEnd: re } = diaryReportLedgerPullRange(ymd, g);

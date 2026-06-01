@@ -3,7 +3,6 @@
  */
 
 import { mountUnifiedTimeReport } from "./timeUnifiedReportMount.js";
-import { getTimeReportMonthInclusiveRange } from "../views/Time.js";
 
 export const LP_TIME_REPORT_RANGE_START_KEY = "lp_time_report_range_start";
 export const LP_TIME_REPORT_RANGE_END_KEY = "lp_time_report_range_end";
@@ -58,35 +57,13 @@ export function resetTimeLedgerReportRangeToToday(todayYmd) {
 }
 
 /**
- * 조회 시작·마감일 → 레포트 granularity·앵커 날짜
- * @returns {{ ymdTen: string, granularity: "day"|"month" }}
- */
-export function resolveTimeReportTargetFromRange(startYmd, endYmd) {
-  let s = normYmd(startYmd);
-  let e = normYmd(endYmd);
-  if (!YMD_RE.test(s)) s = localTodayYmd();
-  if (!YMD_RE.test(e)) e = s;
-  if (s > e) {
-    const x = s;
-    s = e;
-    e = x;
-  }
-  if (s === e) return { ymdTen: s, granularity: "day" };
-  if (s.slice(0, 7) === e.slice(0, 7)) {
-    const monthRng = getTimeReportMonthInclusiveRange(s);
-    if (monthRng && monthRng.start === s && monthRng.end === e) {
-      return { ymdTen: s, granularity: "month" };
-    }
-  }
-  return { ymdTen: e, granularity: "day" };
-}
-
-/**
  * @param {HTMLElement} scrollWrap
- * @param {{ ymdTen: string, granularity: "day"|"month" }} opts
+ * @param {{ rangeStart: string, rangeEnd: string }} opts
  */
-export function mountTimeLedgerReport(scrollWrap, { ymdTen, granularity }) {
-  mountUnifiedTimeReport(scrollWrap, ymdTen, granularity);
+export function mountTimeLedgerReport(scrollWrap, opts = {}) {
+  const rangeStart = normYmd(opts.rangeStart);
+  const rangeEnd = normYmd(opts.rangeEnd || opts.rangeStart);
+  mountUnifiedTimeReport(scrollWrap, { rangeStart, rangeEnd });
 }
 
 /** @deprecated AI 레포트 제거 — mountTimeLedgerReport 사용 */
