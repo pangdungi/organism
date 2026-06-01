@@ -1346,18 +1346,15 @@ function getMobileCardProductivityValue(rowData) {
 const MOBILE_CARD_TIME_SLOT_CLASSES = [
   "calendar-1day-timeline-card--usage-slot-productive",
   "calendar-1day-timeline-card--usage-slot-nonproductive",
-  "calendar-1day-timeline-card--usage-slot-sleep",
+  "calendar-1day-timeline-card--usage-slot-other",
 ];
 
-/** 사용내역 카드 — 시작·마감 시각 칸 배경(생산/비생산/수면) */
+/** 사용내역 카드 — 아이콘 배경(생산/비생산/그외) */
 function getMobileCardTimeSlotBgClass(rowData) {
   if (!rowData) return "";
   const { category, productivity } =
     resolveRowCategoryProductivityForAudit(rowData);
   const cat = String(category || "").trim();
-  if (cat === "sleep") {
-    return "calendar-1day-timeline-card--usage-slot-sleep";
-  }
   const pv = (
     String(productivity || "").trim().toLowerCase() ||
     String(getProductivityFromCategory(cat) || "")
@@ -1369,6 +1366,9 @@ function getMobileCardTimeSlotBgClass(rowData) {
   }
   if (pv === "nonproductive") {
     return "calendar-1day-timeline-card--usage-slot-nonproductive";
+  }
+  if (pv === "other") {
+    return "calendar-1day-timeline-card--usage-slot-other";
   }
   return "";
 }
@@ -4011,6 +4011,7 @@ function timeLedgerListRowIconSrc(rowData) {
     category: rowData?.category ?? opt?.category,
     productivity: rowData?.productivity ?? opt?.productivity,
     iconKey: opt?.iconKey || "",
+    kpiId: opt?.kpiId || "",
   });
 }
 
@@ -8285,7 +8286,7 @@ export function render(opts = {}) {
         row.setAttribute("role", "button");
         row.tabIndex = 0;
         row.addEventListener("click", () => {
-          void openAddTaskModal(t);
+          void openAddTaskModal(getTaskOptionByName(t.name) || t);
         });
         row.addEventListener("keydown", (e) => {
           if (e.key === "Enter" || e.key === " ") {
@@ -8431,10 +8432,11 @@ export function render(opts = {}) {
       );
     syncAddTaskSubmitState();
     if (editTask) {
-      addTaskIconPicker.setFromTaskDisplay(editTask.name, {
-        category: editTask.category,
-        productivity: editTask.productivity,
-        iconKey: editTask.iconKey,
+      const freshTask = getTaskOptionByName(editTask.name) || editTask;
+      addTaskIconPicker.setFromTaskDisplay(freshTask.name, {
+        category: freshTask.category,
+        productivity: freshTask.productivity,
+        iconKey: freshTask.iconKey,
       });
     } else {
       addTaskIconPicker.reset();
@@ -9367,6 +9369,7 @@ export function render(opts = {}) {
     () => {
       if (!el.isConnected) return;
       refreshTimeLedgerTaskIconsFromOptions(el);
+      if (!taskSetupModal.hidden) renderTaskSetupList();
     },
     { signal },
   );

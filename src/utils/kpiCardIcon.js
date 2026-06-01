@@ -1,5 +1,8 @@
 import { getFullTaskOptions } from "./timeTaskOptionsModel.js";
-import { resolveTimeTaskDisplayIconSrc } from "./timeTaskIconUrls.js";
+import {
+  resolveTimeTaskDisplayIconSrc,
+  resolveEffectiveTaskIconKey,
+} from "./timeTaskIconUrls.js";
 import { applyStaticAppIconImg } from "./staticAppIconImg.js";
 
 /** @param {object} kpi */
@@ -26,10 +29,17 @@ export function resolveKpiCardIconSrc(kpi, ledgerCategory) {
   const task = findLinkedTaskOptionForKpi(kpi);
   const name = String(task?.name || kpi?.name || "").trim();
   if (!name) return "";
+  const kpiId = String(kpi?.id || task?.kpiId || "").trim();
+  const iconKey = resolveEffectiveTaskIconKey({
+    iconKey: task?.iconKey,
+    kpiId,
+    taskName: name,
+  });
   return resolveTimeTaskDisplayIconSrc(name, {
     category: task?.category || ledgerCategory || "",
     productivity: task?.productivity || "productive",
-    iconKey: task?.iconKey || "",
+    iconKey,
+    kpiId,
   });
 }
 

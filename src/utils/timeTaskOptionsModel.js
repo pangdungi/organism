@@ -18,6 +18,10 @@ import {
   readTimeLedgerEntriesRaw,
   writeTimeLedgerEntriesRaw,
 } from "./timeLedgerEntriesModel.js";
+import {
+  getDefaultKpiIconKey,
+  resolveEffectiveTaskIconKey,
+} from "./timeTaskIconUrls.js";
 
 export { isUuid };
 export const TASK_OPTIONS_KEY = "time_task_options";
@@ -751,6 +755,7 @@ export function kpiTimeTaskAdd(kpi, category) {
     memo: "",
     kpiId,
     id,
+    iconKey: getDefaultKpiIconKey(kpiId, name) || "",
   };
   const next = [row, ...opts];
   const kid = String(row.id || "").trim();
@@ -798,6 +803,10 @@ export function kpiTimeTaskEnsure(kpi, category) {
             kpiId,
             category: cat || o.category || "",
             productivity: o.productivity || "productive",
+            iconKey:
+              String(o.iconKey || "").trim() ||
+              getDefaultKpiIconKey(kpiId, name) ||
+              "",
           }
         : o,
     );
@@ -1045,6 +1054,18 @@ export function applyTimeLedgerTasksFromServer(
       deterministicTaskId(t.name, t.productivity, t.category),
     );
   }
+  function localBuiltinIconKey(builtinId, taskName) {
+    const loc = localById.get(builtinId);
+    if (loc) return String(loc.iconKey || "").trim();
+    const canon = String(taskName || "").trim();
+    for (const row of localRows) {
+      if (C.canonicalMealTaskDisplayName(String(row.name || "").trim()) === canon) {
+        return String(row.iconKey || "").trim();
+      }
+    }
+    return "";
+  }
+
   const out = [];
   for (const t of builtinTemplates) {
     const id = deterministicTaskId(t.name, t.productivity, t.category);
@@ -1057,6 +1078,7 @@ export function applyTimeLedgerTasksFromServer(
         if (s) break;
       }
     }
+    const locIcon = localBuiltinIconKey(id, t.name);
     if (s) {
       const skpi = String(s.kpi_id ?? "").trim();
       let cat =
@@ -1072,10 +1094,27 @@ export function applyTimeLedgerTasksFromServer(
         productivity: normalizeProductivity(s.productivity || t.productivity),
         memo: (s.memo || "").trim(),
         kpiId: skpi,
-        iconKey: String(s.icon_key ?? "").trim(),
+        iconKey: String(
+          resolveEffectiveTaskIconKey({
+            iconKey: s.icon_key ?? locIcon,
+            kpiId: skpi,
+            taskName: resolved.name || t.name,
+          }) || "",
+        ).trim(),
       });
     } else {
-      out.push({ ...t, memo: "", id, kpiId: "", iconKey: "" });
+      out.push({
+        ...t,
+        memo: "",
+        id,
+        kpiId: "",
+        iconKey: String(
+          resolveEffectiveTaskIconKey({
+            iconKey: locIcon,
+            taskName: t.name,
+          }) || "",
+        ).trim(),
+      });
     }
   }
   for (const r of serverRowsSafe) {
@@ -1099,7 +1138,13 @@ export function applyTimeLedgerTasksFromServer(
       productivity: normalizeProductivity(r.productivity),
       memo: (r.memo || "").trim(),
       kpiId: kid,
-      iconKey: String(r.icon_key ?? loc?.iconKey ?? "").trim(),
+      iconKey: String(
+        resolveEffectiveTaskIconKey({
+          iconKey: r.icon_key ?? loc?.iconKey,
+          kpiId: kid,
+          taskName: merged.name,
+        }) || "",
+      ).trim(),
     });
   }
   const serverIdSet = new Set(

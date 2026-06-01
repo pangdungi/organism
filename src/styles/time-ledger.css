@@ -20,7 +20,8 @@
 /* 시간가계부 상단 잔고: 가로 풀폭(안전영역은 패딩으로만) */
 /* 숨김 .time-hourly-input 이 첫 자식이므로 :first-child 는 쓰면 안 됨 */
 .time-ledger-view > .time-ledger-tabs-filter-row,
-[data-legacy~="time-ledger-view"] > [data-legacy~="time-ledger-tabs-filter-row"] {
+[data-legacy~="time-ledger-view"]
+  > [data-legacy~="time-ledger-tabs-filter-row"] {
   width: calc(100% + var(--lp-safe-left) + var(--lp-safe-right));
   max-width: none;
   margin-left: calc(-1 * var(--lp-safe-left));
@@ -38,7 +39,8 @@
   box-sizing: border-box;
 }
 .time-ledger-view .time-ledger-top-strip__center,
-[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-top-strip__center"] {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-top-strip__center"] {
   flex: 1 1 auto;
   min-width: 0;
   max-width: none;
@@ -274,7 +276,8 @@
     calc(0.85rem + var(--lp-safe-left));
   margin: 0;
 }
-[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-quick-action-btn"] {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-quick-action-btn"] {
   flex: 1 1 0;
   min-width: 0;
   margin: 0;
@@ -423,18 +426,22 @@
 }
 
 /* 시간 사용내역 — 0시~24시 타임라인 바(구간 길이 = 24h 대비 비율) */
-[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-day-overview-bar-wrap"] {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-day-overview-bar-wrap"] {
   flex-shrink: 0;
   padding: 0.5rem 1rem 0.625rem;
   border-bottom: 1px solid #f1f5f9;
   box-sizing: border-box;
 }
-[data-legacy~="time-ledger-view"] .time-ledger-day-group-header + [data-legacy~="time-ledger-day-overview-bar-wrap"] {
+[data-legacy~="time-ledger-view"]
+  .time-ledger-day-group-header
+  + [data-legacy~="time-ledger-day-overview-bar-wrap"] {
   margin-top: -0.15rem;
   padding-top: 0.25rem;
   border-bottom: none;
 }
-[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-day-overview-bar-track"] {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-day-overview-bar-track"] {
   position: relative;
   width: 100%;
   height: 0.6875rem;
@@ -442,24 +449,29 @@
   background: #f1f5f9;
   overflow: hidden;
 }
-[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-day-overview-bar-segments"] {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-day-overview-bar-segments"] {
   position: absolute;
   inset: 0;
 }
-[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-day-overview-bar-seg"] {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-day-overview-bar-seg"] {
   position: absolute;
   top: 0;
   bottom: 0;
   min-width: 1px;
   border-radius: 1px;
 }
-[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-day-overview-bar-seg--productive"] {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-day-overview-bar-seg--productive"] {
   background: #c0392b;
 }
-[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-day-overview-bar-seg--nonproductive"] {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-day-overview-bar-seg--nonproductive"] {
   background: #1d4ed8;
 }
-[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-day-overview-bar-seg--other"] {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-day-overview-bar-seg--other"] {
   background: #2e9e5e;
 }
 
@@ -474,14 +486,17 @@
 }
 
 /* 시간가계부 — 타임라인 / 타임박스 / 레포트 (3칸 슬라이딩 칩) */
-[data-legacy~="time-ledger-view"] .time-ledger-view-mode-bar.diary-report-granularity,
+[data-legacy~="time-ledger-view"]
+  .time-ledger-view-mode-bar.diary-report-granularity,
 .time-ledger-view .time-ledger-view-mode-bar.diary-report-granularity {
   --lp-seg-count: 3;
   width: min(100%, 22.5rem);
   min-width: min(100%, 16.5rem);
 }
 
-[data-legacy~="time-ledger-view"] .time-ledger-view-mode-bar .diary-report-granularity__seg,
+[data-legacy~="time-ledger-view"]
+  .time-ledger-view-mode-bar
+  .diary-report-granularity__seg,
 .time-ledger-view .time-ledger-view-mode-bar .diary-report-granularity__seg {
   flex: 1 1 0;
   min-width: 0;
@@ -619,7 +634,8 @@
 }
 
 .time-ledger-day-timebox-matrix-cell--productive,
-[data-legacy~="time-ledger-view"] .time-ledger-day-timebox-matrix-cell--productive {
+[data-legacy~="time-ledger-view"]
+  .time-ledger-day-timebox-matrix-cell--productive {
   background: #ffe0e0;
   border-color: #ffe0e0;
   border-style: solid;
@@ -627,7 +643,8 @@
 }
 
 .time-ledger-day-timebox-matrix-cell--nonproductive,
-[data-legacy~="time-ledger-view"] .time-ledger-day-timebox-matrix-cell--nonproductive {
+[data-legacy~="time-ledger-view"]
+  .time-ledger-day-timebox-matrix-cell--nonproductive {
   background: #dbeafe;
   border-color: #dbeafe;
   border-style: solid;
@@ -643,7 +660,8 @@
 }
 
 .time-ledger-day-timebox-matrix-cell--labeled,
-[data-legacy~="time-ledger-view"] .time-ledger-day-timebox-matrix-cell--labeled {
+[data-legacy~="time-ledger-view"]
+  .time-ledger-day-timebox-matrix-cell--labeled {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -656,19 +674,22 @@
 }
 
 .time-ledger-day-timebox-matrix-cell--interactive,
-[data-legacy~="time-ledger-view"] .time-ledger-day-timebox-matrix-cell--interactive {
+[data-legacy~="time-ledger-view"]
+  .time-ledger-day-timebox-matrix-cell--interactive {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
 .time-ledger-day-timebox-matrix-cell--interactive:focus-visible,
-[data-legacy~="time-ledger-view"] .time-ledger-day-timebox-matrix-cell--interactive:focus-visible {
+[data-legacy~="time-ledger-view"]
+  .time-ledger-day-timebox-matrix-cell--interactive:focus-visible {
   outline: 2px solid #1e4d7b;
   outline-offset: 1px;
 }
 
 .time-ledger-day-timebox-matrix-cell--interactive:active,
-[data-legacy~="time-ledger-view"] .time-ledger-day-timebox-matrix-cell--interactive:active {
+[data-legacy~="time-ledger-view"]
+  .time-ledger-day-timebox-matrix-cell--interactive:active {
   filter: brightness(0.94);
 }
 
@@ -757,7 +778,8 @@
 }
 
 .time-ledger-productivity-heatmap-month-corner,
-[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-month-corner {
+[data-legacy~="time-ledger-view"]
+  .time-ledger-productivity-heatmap-month-corner {
   flex: 0 0 auto;
   height: 0.75rem;
 }
@@ -844,20 +866,26 @@
 }
 
 .time-ledger-productivity-heatmap-cell--empty,
-[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-cell--empty {
+[data-legacy~="time-ledger-view"]
+  .time-ledger-productivity-heatmap-cell--empty {
   background: transparent;
   pointer-events: none;
 }
 
 .time-ledger-productivity-heatmap-cell--out-range,
-[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-cell--out-range {
+[data-legacy~="time-ledger-view"]
+  .time-ledger-productivity-heatmap-cell--out-range {
   background: #f8fafc;
   opacity: 0.55;
 }
 
-.time-ledger-productivity-heatmap-cell--no-data:not(.time-ledger-productivity-heatmap-cell--out-range),
+.time-ledger-productivity-heatmap-cell--no-data:not(
+  .time-ledger-productivity-heatmap-cell--out-range
+),
 [data-legacy~="time-ledger-view"]
-  .time-ledger-productivity-heatmap-cell--no-data:not(.time-ledger-productivity-heatmap-cell--out-range) {
+  .time-ledger-productivity-heatmap-cell--no-data:not(
+    .time-ledger-productivity-heatmap-cell--out-range
+  ) {
   background: #e2e8f0;
 }
 
@@ -889,10 +917,14 @@
 .time-ledger-productivity-heatmap-cell--lv2:focus-visible,
 .time-ledger-productivity-heatmap-cell--lv3:focus-visible,
 .time-ledger-productivity-heatmap-cell--lv4:focus-visible,
-[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-cell--lv1:focus-visible,
-[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-cell--lv2:focus-visible,
-[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-cell--lv3:focus-visible,
-[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-cell--lv4:focus-visible {
+[data-legacy~="time-ledger-view"]
+  .time-ledger-productivity-heatmap-cell--lv1:focus-visible,
+[data-legacy~="time-ledger-view"]
+  .time-ledger-productivity-heatmap-cell--lv2:focus-visible,
+[data-legacy~="time-ledger-view"]
+  .time-ledger-productivity-heatmap-cell--lv3:focus-visible,
+[data-legacy~="time-ledger-view"]
+  .time-ledger-productivity-heatmap-cell--lv4:focus-visible {
   outline: 2px solid #1e4d7b;
   outline-offset: 1px;
 }
@@ -910,7 +942,8 @@
 }
 
 .time-ledger-productivity-heatmap-legend-category,
-[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-legend-category {
+[data-legacy~="time-ledger-view"]
+  .time-ledger-productivity-heatmap-legend-category {
   margin-right: 0.15rem;
   font-size: 0.625rem;
   font-weight: 700;
@@ -924,7 +957,8 @@
 }
 
 .time-ledger-productivity-heatmap-legend-swatch,
-[data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-legend-swatch {
+[data-legacy~="time-ledger-view"]
+  .time-ledger-productivity-heatmap-legend-swatch {
   width: 0.625rem;
   height: 0.625rem;
   border-radius: 2px;
@@ -947,8 +981,12 @@
   padding-bottom: 0.45rem;
 }
 /* 날짜 구간(시작~종료) 블록 바깥 — 위아래 살짝 여백 */
-.time-ledger-view .time-ledger-filter-add-row [data-legacy~="time-filter-range-wrap"],
-[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-filter-add-row"] [data-legacy~="time-filter-range-wrap"] {
+.time-ledger-view
+  .time-ledger-filter-add-row
+  [data-legacy~="time-filter-range-wrap"],
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-filter-add-row"]
+  [data-legacy~="time-filter-range-wrap"] {
   margin-top: 0.3rem;
   margin-bottom: 0.3rem;
 }
@@ -1099,13 +1137,16 @@
   min-height: 10rem;
 }
 
-.time-ledger-view .time-ledger-timebox-view-shell .lp-tab-sync-loading.lp-unified-loading--inline {
+.time-ledger-view
+  .time-ledger-timebox-view-shell
+  .lp-tab-sync-loading.lp-unified-loading--inline {
   min-height: 10rem;
 }
 
 /* 조회기간 여러 날 — 날짜 줄만 연하늘 */
 .time-ledger-view [data-legacy~="time-ledger-day-group-header"],
-[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-day-group-header"] {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-day-group-header"] {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1154,7 +1195,10 @@
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout {
   display: grid;
-  grid-template-columns: var(--time-ledger-usage-time-col-w, 2.85rem) auto minmax(0, 1fr) max-content;
+  grid-template-columns: var(
+      --time-ledger-usage-time-col-w,
+      2.85rem
+    ) auto minmax(0, 1fr) max-content;
   grid-template-rows: auto 1fr auto;
   column-gap: 0.5rem;
   row-gap: 0;
@@ -1166,41 +1210,61 @@
 }
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout:has(.calendar-1day-timeline-card-memo),
+  .calendar-1day-timeline-card--usage-layout:has(
+    .calendar-1day-timeline-card-memo
+  ),
 [data-legacy~="time-ledger-view"]
   .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout:has(.calendar-1day-timeline-card-memo) {
+  .calendar-1day-timeline-card--usage-layout:has(
+    .calendar-1day-timeline-card-memo
+  ) {
   grid-template-rows: auto minmax(1.25rem, auto) auto;
 }
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout:not(:has(.calendar-1day-timeline-card-memo))::before,
+  .calendar-1day-timeline-card--usage-layout:not(
+    :has(.calendar-1day-timeline-card-memo)
+  )::before,
 [data-legacy~="time-ledger-view"]
   .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout:not(:has(.calendar-1day-timeline-card-memo))::before,
+  .calendar-1day-timeline-card--usage-layout:not(
+    :has(.calendar-1day-timeline-card-memo)
+  )::before,
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout:not(:has(.calendar-1day-timeline-card-memo))
+  .calendar-1day-timeline-card--usage-layout:not(
+    :has(.calendar-1day-timeline-card-memo)
+  )
   > .time-ledger-usage-icon-cell,
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout:not(:has(.calendar-1day-timeline-card-memo))
+  .calendar-1day-timeline-card--usage-layout:not(
+    :has(.calendar-1day-timeline-card-memo)
+  )
   > .calendar-1day-timeline-card-title,
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout:not(:has(.calendar-1day-timeline-card-memo))
+  .calendar-1day-timeline-card--usage-layout:not(
+    :has(.calendar-1day-timeline-card-memo)
+  )
   > .time-ledger-usage-stats-col,
 [data-legacy~="time-ledger-view"]
   .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout:not(:has(.calendar-1day-timeline-card-memo))
+  .calendar-1day-timeline-card--usage-layout:not(
+    :has(.calendar-1day-timeline-card-memo)
+  )
   > .time-ledger-usage-icon-cell,
 [data-legacy~="time-ledger-view"]
   .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout:not(:has(.calendar-1day-timeline-card-memo))
+  .calendar-1day-timeline-card--usage-layout:not(
+    :has(.calendar-1day-timeline-card-memo)
+  )
   > .calendar-1day-timeline-card-title,
 [data-legacy~="time-ledger-view"]
   .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout:not(:has(.calendar-1day-timeline-card-memo))
+  .calendar-1day-timeline-card--usage-layout:not(
+    :has(.calendar-1day-timeline-card-memo)
+  )
   > .time-ledger-usage-stats-col {
   grid-row: 1 / 4;
 }
@@ -1262,11 +1326,11 @@
 }
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout.calendar-1day-timeline-card--usage-slot-sleep
+  .calendar-1day-timeline-card--usage-layout.calendar-1day-timeline-card--usage-slot-other
   > .time-ledger-usage-icon-cell,
 [data-legacy~="time-ledger-view"]
   .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout.calendar-1day-timeline-card--usage-slot-sleep
+  .calendar-1day-timeline-card--usage-layout.calendar-1day-timeline-card--usage-slot-other
   > .time-ledger-usage-icon-cell {
   background: #eaf5ec;
 }
@@ -1334,11 +1398,15 @@
 }
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout:not(:has(.calendar-1day-timeline-card-memo))
+  .calendar-1day-timeline-card--usage-layout:not(
+    :has(.calendar-1day-timeline-card-memo)
+  )
   > .time-ledger-usage-stats-col,
 [data-legacy~="time-ledger-view"]
   .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout:not(:has(.calendar-1day-timeline-card-memo))
+  .calendar-1day-timeline-card--usage-layout:not(
+    :has(.calendar-1day-timeline-card-memo)
+  )
   > .time-ledger-usage-stats-col {
   padding-bottom: calc(var(--time-ledger-usage-card-inset) + 0.05rem);
 }
@@ -1441,8 +1509,8 @@
   min-width: 2.5rem;
   min-height: 2.5rem;
   max-height: 2.5rem;
-  margin: var(--time-ledger-usage-card-inset) 0 var(--time-ledger-usage-card-inset)
-    var(--time-ledger-usage-card-inset);
+  margin: var(--time-ledger-usage-card-inset) 0
+    var(--time-ledger-usage-card-inset) var(--time-ledger-usage-card-inset);
   padding: 0.32rem;
   border-radius: 0.55rem;
   box-sizing: border-box;
@@ -1461,7 +1529,8 @@
   display: flex;
   align-items: center;
   align-self: stretch;
-  padding: var(--time-ledger-usage-card-inset) 0.25rem var(--time-ledger-usage-card-inset) 0.15rem;
+  padding: var(--time-ledger-usage-card-inset) 0.25rem
+    var(--time-ledger-usage-card-inset) 0.15rem;
   font-size: 0.9375rem;
   font-weight: 650;
   line-height: 1.35;
@@ -1570,8 +1639,12 @@
 }
 
 /* 시간 사용내역 조회 기간 모달 — 패널·날짜 너비는 할일 수정 모달과 동일(lp-modals 26rem) */
-[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] .time-task-setup-panel,
-[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] [data-legacy~="time-task-setup-panel"] {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-task-setup-panel,
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  [data-legacy~="time-task-setup-panel"] {
   max-width: 26rem;
   width: 100%;
   min-width: 0;
@@ -1579,19 +1652,27 @@
   display: flex;
   flex-direction: column;
 }
-[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] [data-legacy~="time-usage-range-body"] {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  [data-legacy~="time-usage-range-body"] {
   min-width: 0;
   overflow-y: auto;
   flex: 1 1 auto;
   min-height: 0;
 }
-[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] .time-task-log-field {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-task-log-field {
   margin-bottom: 0.85rem;
 }
-[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] .time-task-log-field:last-of-type {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-task-log-field:last-of-type {
   margin-bottom: 0;
 }
-[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] .time-usage-range-quick.todo-task-date-quick {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-usage-range-quick.todo-task-date-quick {
   justify-content: flex-start;
   margin-top: 0.15rem;
   margin-bottom: 0.85rem;
@@ -1617,14 +1698,18 @@
   justify-content: flex-start;
 }
 
-[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] .time-usage-range-task-section {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-usage-range-task-section {
   margin-top: 0;
   padding-top: 0.65rem;
   border-top: 1px solid rgba(30, 61, 93, 0.1);
   min-width: 0;
 }
 
-[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] .time-usage-range-task-label {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-usage-range-task-label {
   display: block;
   margin-bottom: 0;
   font-size: 0.8125rem;
@@ -1632,7 +1717,9 @@
   color: var(--lp-modal-navy, #1e3d5d);
 }
 
-[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] .time-usage-range-filter-head {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-usage-range-filter-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1641,15 +1728,21 @@
   margin-bottom: 0.45rem;
 }
 
-[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] .time-usage-range-task-filter-panel {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-usage-range-task-filter-panel {
   margin-top: 0.35rem;
 }
 
-[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] .time-usage-range-task-filter-panel[hidden] {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-usage-range-task-filter-panel[hidden] {
   display: none !important;
 }
 
-[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] .time-usage-range-filter-actions {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-usage-range-filter-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1657,7 +1750,9 @@
   margin-bottom: 0.4rem;
 }
 
-[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] .time-usage-range-filter-clear-link {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-usage-range-filter-clear-link {
   padding: 0.35rem 0.5rem;
   font-size: 0.8125rem;
   font-family: inherit;
@@ -1671,11 +1766,15 @@
   text-underline-offset: 2px;
 }
 
-[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] .time-usage-range-filter-clear-link:hover {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-usage-range-filter-clear-link:hover {
   color: var(--lp-modal-navy, #1e3d5d);
 }
 
-[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] .time-usage-range-filter-options {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-usage-range-filter-options {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1683,7 +1782,9 @@
   margin: 0.15rem 0 0.45rem;
 }
 
-[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] .time-usage-range-filter-option {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-usage-range-filter-option {
   display: flex;
   align-items: center;
   gap: 0.45rem;
@@ -1695,7 +1796,10 @@
   user-select: none;
 }
 
-[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] .time-usage-range-filter-option input[type="checkbox"] {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-usage-range-filter-option
+  input[type="checkbox"] {
   width: 1rem;
   height: 1rem;
   margin: 0;
@@ -1703,7 +1807,9 @@
   accent-color: var(--lp-modal-accent, #1e4d7b);
 }
 
-[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] .time-usage-range-task-list-wrap {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-usage-range-task-list-wrap {
   margin: 0 0 0.15rem 0.15rem;
   padding-left: 0.35rem;
   border-left: 2px solid rgba(30, 61, 93, 0.08);
@@ -1711,27 +1817,39 @@
   min-height: 0;
 }
 
-[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] .time-usage-range-task-list-wrap.is-disabled {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-usage-range-task-list-wrap.is-disabled {
   opacity: 0.45;
   pointer-events: none;
 }
 
-[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] .time-usage-range-footer {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-usage-range-footer {
   justify-content: stretch;
 }
 
-[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] .time-usage-range-footer .time-task-log-submit {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-usage-range-footer
+  .time-task-log-submit {
   flex: 1 1 auto;
   width: 100%;
 }
 
-[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"].time-usage-range-modal--timebox .time-task-setup-panel,
-[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"].time-usage-range-modal--timebox [data-legacy~="time-task-setup-panel"] {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"].time-usage-range-modal--timebox
+  .time-task-setup-panel,
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"].time-usage-range-modal--timebox
+  [data-legacy~="time-task-setup-panel"] {
   max-height: min(92vh, 22rem);
 }
 
 /* ── 메모만 보기: 미니멀 목록 + 스크롤 ── */
-[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-usage-sheet--memo-log"] {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-usage-sheet--memo-log"] {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
@@ -1835,7 +1953,9 @@
   overflow-wrap: anywhere;
 }
 
-[data-legacy~="time-ledger-view"] [data-legacy~="time-usage-range-modal"] [data-legacy~="time-task-select-list"] {
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  [data-legacy~="time-task-select-list"] {
   max-height: min(28vh, 8.5rem);
   overflow-y: auto;
   margin-top: 0.25rem;

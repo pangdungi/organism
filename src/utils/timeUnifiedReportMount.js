@@ -5,6 +5,11 @@
 import { applyStaticAppIconImg } from "./staticAppIconImg.js";
 import { getBudgetDayReportForDay } from "./diaryBudgetDayReport.js";
 import { getTaskOptionByName } from "./timeTaskOptionsModel.js";
+import { resolveKpiCardIconSrc } from "./kpiCardIcon.js";
+import {
+  DEFAULT_AEROBIC_KPI_ID,
+  DEFAULT_SUPPLEMENT_KPI_ID,
+} from "./defaultKpiIconIds.js";
 import { getScopedLocalStorageItem } from "./clientStorageScope.js";
 import { KPI_MAP_STORAGE_KEYS, readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
 import {
@@ -1152,6 +1157,15 @@ function collectDailyRepeatKpisFromLocalMaps() {
     .sort((a, b) => a.name.localeCompare(b.name, "ko"));
 }
 
+/** @param {string} kpiId */
+function ledgerCategoryForRoutineKpiId(kpiId) {
+  const id = String(kpiId || "").trim();
+  if (id === DEFAULT_AEROBIC_KPI_ID || id === DEFAULT_SUPPLEMENT_KPI_ID) {
+    return "health";
+  }
+  return "happiness";
+}
+
 /** 루틴트랙커 제목 아래: KPI별 일·월 구간 합산 시간 — 1분 이상 체크 원, 0분 취소 원 */
 function mountTimeReportInvestRoutineKpiTimeCards(scrollWrap, ymdTen, granularity) {
   const kpis = collectDailyRepeatKpisFromLocalMaps();
@@ -1185,9 +1199,14 @@ function mountTimeReportInvestRoutineKpiTimeCards(scrollWrap, ymdTen, granularit
     const iconSlot = document.createElement("div");
     iconSlot.className = "diary-tr-summary-icon-slot diary-tr-summary-icon-slot--empty";
     iconSlot.setAttribute("aria-hidden", "true");
+    const kpiIconSrc = resolveKpiCardIconSrc(
+      { id: k.id, name: k.name },
+      ledgerCategoryForRoutineKpiId(k.id),
+    );
     fillDiaryTrSummaryIconSlot(
       iconSlot,
-      mins >= 1 ? DIARY_TR_ICON.routineDone : DIARY_TR_ICON.routineZero,
+      kpiIconSrc ||
+        (mins >= 1 ? DIARY_TR_ICON.routineDone : DIARY_TR_ICON.routineZero),
     );
 
     const h = document.createElement("h3");
