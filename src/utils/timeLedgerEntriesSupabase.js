@@ -27,6 +27,7 @@ import { upsertTimeLedgerTaskRowsFromLocalByIds } from "./timeLedgerTasksSupabas
 import { isUuid } from "./idUtils.js";
 
 const TABLE = "time_ledger_entries";
+const UPSERT_CONFLICT_ROW = "user_id,id";
 
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -380,7 +381,7 @@ async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
 
   let { data, error } = await supabase
     .from(TABLE)
-    .upsert(payloads, { onConflict: "id" })
+    .upsert(payloads, { onConflict: UPSERT_CONFLICT_ROW })
     .select(LEDGER_ENTRY_SELECT);
 
   const fkTask =
@@ -398,7 +399,7 @@ async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
     }));
     ({ data, error } = await supabase
       .from(TABLE)
-      .upsert(payloadsNoTid, { onConflict: "id" })
+      .upsert(payloadsNoTid, { onConflict: UPSERT_CONFLICT_ROW })
       .select(LEDGER_ENTRY_SELECT));
   }
 

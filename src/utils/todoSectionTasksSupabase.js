@@ -26,6 +26,7 @@ import { consumeTodoAddPendingServerLog, logTodoScheduleAddStep3 } from "./lpTab
 import { logTodoServerCrud } from "./todoSectionTasksServerCrudDebug.js";
 
 const TABLE = "calendar_section_tasks";
+const UPSERT_CONFLICT_ROW = "user_id,id";
 
 const SERVER_TASK_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -70,7 +71,7 @@ export async function upsertCalendarSectionTaskDirectFromModal({ task, sectionKe
       sort_order: p.sort_order,
       안내: "지금부터 supabase.from(...).upsert — 세션 메모리 경유 아님",
     });
-    const { error } = await supabase.from(TABLE).upsert([p], { onConflict: "id" });
+    const { error } = await supabase.from(TABLE).upsert([p], { onConflict: UPSERT_CONFLICT_ROW });
     if (error) {
       logTodoServerCrud("UPSERT", { id: p.id, 결과: "실패", message: error.message || "upsert_failed" });
       return { ok: false, reason: error.message || "upsert_failed" };

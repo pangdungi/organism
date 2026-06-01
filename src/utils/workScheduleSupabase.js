@@ -25,6 +25,7 @@ import { showToast } from "./showToast.js";
 
 const TYPES_TABLE = "stamp_types";
 const ENTRIES_TABLE = "stamp_calendar_entries";
+const UPSERT_CONFLICT_ROW = "user_id,id";
 
 const STAMP_SCHEMA_MIGRATION =
   "20260520120000_stamp_calendar_tables.sql";
@@ -324,7 +325,7 @@ async function upsertStampTypesToSupabase(userId, typeList) {
   if (upserts.length === 0) return { ok: true, count: 0, upserts: [] };
   const { error } = await supabase
     .from(TYPES_TABLE)
-    .upsert(upserts, { onConflict: "id" });
+    .upsert(upserts, { onConflict: UPSERT_CONFLICT_ROW });
   if (error) return { ok: false, error, upserts: [] };
   return { ok: true, count: upserts.length, upserts };
 }
@@ -426,7 +427,7 @@ async function upsertStampCalendarEntryFromModalImpl(row) {
 
   const { error } = await supabase
     .from(ENTRIES_TABLE)
-    .upsert([payload], { onConflict: "id" });
+    .upsert([payload], { onConflict: UPSERT_CONFLICT_ROW });
   if (error) {
     wsSyncLog("push entry fail", error.message || error);
     return { ok: false, error };

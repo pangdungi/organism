@@ -18,6 +18,7 @@ import {
 import { lpPullDebug } from "./lpPullDebug.js";
 
 const TABLE = "diary_daily_entries";
+const UPSERT_CONFLICT_ROW = "user_id,id";
 
 const TAB_TO_KIND = { "1": "free", "2": "control", "3": "emotion" };
 const KIND_TO_TAB = { free: "1", control: "2", emotion: "3" };
@@ -272,7 +273,7 @@ export async function syncDiaryToSupabase(entries) {
 
   if (upserts.length > 0) {
     const { error } = await supabase.from(TABLE).upsert(upserts, {
-      onConflict: "id",
+      onConflict: UPSERT_CONFLICT_ROW,
     });
   }
 }

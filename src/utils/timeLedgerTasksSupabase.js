@@ -58,20 +58,78 @@ function payloadsWithoutIconKey(payloads) {
   });
 }
 
-async function upsertTaskPayloads(payloads) {
-  let batch = payloads;
-  let { error } = await supabase.from(TABLE).upsert(batch, {
-    onConflict: "id",
+function isOnConflictConstraintError(error) {
+  return error && String(error.code || "") === "42P10";
+}
+
+/** KPI 과제: 서버 트리거가 만든 행 id 사용 (로컬 uuid 와 다를 수 있음) */
+async function alignKpiTaskPayloadIdsWithServer(userId, payloads) {
+  const kpiIds = [
+    ...new Set(
+      payloads
+        .map((p) => String(p.kpi_id ?? "").trim())
+        .filter(Boolean),
+    ),
+  ];
+  if (!kpiIds.length || !supabase || !userId) return payloads;
+
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select("id,kpi_id")
+    .eq("user_id", userId)
+    .in("kpi_id", kpiIds);
+  if (error || !Array.isArray(data)) return payloads;
+
+  const serverIdByKpi = new Map();
+  for (const row of data) {
+    const k = String(row.kpi_id ?? "").trim();
+    const id = String(row.id || "").trim();
+    if (k && id) serverIdByKpi.set(k, id);
+  }
+  if (serverIdByKpi.size === 0) return payloads;
+
+  return payloads.map((p) => {
+    const kpiId = String(p.kpi_id ?? "").trim();
+    const serverId = serverIdByKpi.get(kpiId);
+    if (!serverId) return p;
+    const localId = String(p.id || "").trim();
+    if (localId === serverId) return p;
+    return { ...p, id: serverId };
   });
-  if (error && isMissingKpiIdColumnError(error)) {
-    batch = payloadsWithoutKpiId(batch);
-    ({ error } = await supabase.from(TABLE).upsert(batch, { onConflict: "id" }));
+}
+
+async function upsertTaskPayloads(payloads) {
+  if (!payloads.length) return null;
+  const userId = String(payloads[0]?.user_id || "").trim();
+  const aligned = userId
+    ? await alignKpiTaskPayloadIdsWithServer(userId, payloads)
+    : payloads;
+  return upsertWithConflictFallback(aligned, ["user_id,id", "id"]);
+}
+
+async function upsertWithConflictFallback(payloads, conflictKeys) {
+  let batch = payloads;
+  let lastError = null;
+  for (const onConflict of conflictKeys) {
+    let { error } = await supabase.from(TABLE).upsert(batch, { onConflict });
+    if (!error) return null;
+    if (isMissingKpiIdColumnError(error)) {
+      batch = payloadsWithoutKpiId(batch);
+      ({ error } = await supabase.from(TABLE).upsert(batch, { onConflict }));
+      if (!error) return null;
+    }
+    if (isMissingIconKeyColumnError(error)) {
+      batch = payloadsWithoutIconKey(batch);
+      ({ error } = await supabase.from(TABLE).upsert(batch, { onConflict }));
+      if (!error) return null;
+    }
+    if (isOnConflictConstraintError(error)) {
+      lastError = error;
+      continue;
+    }
+    return error;
   }
-  if (error && isMissingIconKeyColumnError(error)) {
-    batch = payloadsWithoutIconKey(batch);
-    ({ error } = await supabase.from(TABLE).upsert(batch, { onConflict: "id" }));
-  }
-  return error;
+  return lastError;
 }
 
 /** pull 시 KPI id → 표시명 + 시간가계부 과제설정 탭용 category(health 등) */
@@ -192,6 +250,7 @@ export async function upsertTimeLedgerTaskRowsFromLocalByIds(taskIds) {
     return;
   }
   _tasksPullSkipUntil = 0;
+  await pullTimeLedgerTasksFromSupabase({ ignoreSkip: true });
 }
 
 /** @deprecated 전체 목록 upsert — 서버가 비어 있을 때 시드(pushTimeLedgerTasksIfServerEmpty)에서만 사용. */

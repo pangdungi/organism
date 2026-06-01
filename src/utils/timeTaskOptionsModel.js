@@ -285,11 +285,19 @@ export function hydrateTaskOptionsFromLocalMirrorForBoot() {
 
 export function prepareTimeLedgerTasksStorageForBoot() {
   hydrateTaskOptionsFromLocalMirrorForBoot();
+  void import("./kpiTimeTaskSync.js")
+    .then((k) => k.ensureAllKpiTimeTasksFromStorage())
+    .catch(() => {});
   void import("./timeLedgerTasksSupabase.js")
     .then((m) => {
       m.attachTimeLedgerTasksSaveListener();
       return m.pullTimeLedgerTasksFromSupabase();
     })
+    .then(() =>
+      import("./kpiTimeTaskSync.js").then((k) =>
+        k.ensureAllKpiTimeTasksFromStorage(),
+      ),
+    )
     .catch(() => {});
 }
 
@@ -741,9 +749,19 @@ export function kpiTimeTaskAdd(kpi, category) {
   const kpiId = (kpi && kpi.id && String(kpi.id).trim()) || "";
   const name = (kpi && (kpi.name || "").trim()) || "";
   if (!kpiId || !name) return;
-  const opts = getFullTaskOptions();
-  if (opts.some((o) => o.kpiId && String(o.kpiId) === kpiId)) return;
-  if (opts.some((o) => (o.name || "").trim() === name)) return;
+  if (
+    getFullTaskOptions().some((o) => String(o.kpiId || "").trim() === kpiId)
+  ) {
+    return;
+  }
+  const mem = readTaskOptionsMemRows();
+  const memByName = mem.find((o) => (o.name || "").trim() === name);
+  if (memByName) {
+    const linked = String(memByName.kpiId || "").trim();
+    if (linked === kpiId || linked) return;
+    kpiTimeTaskEnsure(kpi, category);
+    return;
+  }
   const id =
     typeof crypto !== "undefined" && crypto.randomUUID
       ? crypto.randomUUID()
@@ -757,12 +775,9 @@ export function kpiTimeTaskAdd(kpi, category) {
     id,
     iconKey: getDefaultKpiIconKey(kpiId, name) || "",
   };
-  const next = [row, ...opts];
-  const kid = String(row.id || "").trim();
-  saveMergedList(next, {
+  saveMergedList([row, ...mem], {
     bumpPullSkip: true,
-    scheduleSyncPush: isUuid(kid),
-    upsertTaskIds: isUuid(kid) ? [kid] : [],
+    scheduleSyncPush: false,
   });
 }
 
@@ -773,20 +788,22 @@ export function kpiTimeTaskEnsure(kpi, category) {
   const cat = String(category || "").trim();
   if (!kpiId || !name) return;
 
-  const opts = getFullTaskOptions();
-  if (opts.some((o) => String(o.kpiId || "").trim() === kpiId)) {
+  if (
+    getFullTaskOptions().some((o) => String(o.kpiId || "").trim() === kpiId)
+  ) {
     patchKpiLinkedTasksFromKpiMaps();
     return;
   }
 
-  const nameIdx = opts.findIndex((o) => {
+  const mem = readTaskOptionsMemRows();
+  const nameIdx = mem.findIndex((o) => {
     if ((o.name || "").trim() !== name) return false;
     const rowCat = String(o.category || "").trim();
     if (!cat) return true;
     return !rowCat || rowCat === cat;
   });
-  if (nameIdx >= 0 && !String(opts[nameIdx].kpiId || "").trim()) {
-    const row = opts[nameIdx];
+  if (nameIdx >= 0 && !String(mem[nameIdx].kpiId || "").trim()) {
+    const row = mem[nameIdx];
     let id = String(row.id || "").trim();
     if (!isUuid(id)) {
       id =
@@ -794,7 +811,7 @@ export function kpiTimeTaskEnsure(kpi, category) {
           ? crypto.randomUUID()
           : `t-${Date.now()}`;
     }
-    const next = opts.map((o, i) =>
+    const next = mem.map((o, i) =>
       i === nameIdx
         ? {
             ...o,
@@ -812,8 +829,7 @@ export function kpiTimeTaskEnsure(kpi, category) {
     );
     saveMergedList(next, {
       bumpPullSkip: true,
-      scheduleSyncPush: isUuid(id),
-      upsertTaskIds: isUuid(id) ? [id] : [],
+      scheduleSyncPush: false,
     });
     patchKpiLinkedTasksFromKpiMaps();
     return;
@@ -926,8 +942,7 @@ export function kpiTimeTaskRename(kpi, oldNameFromKpi) {
 
   saveMergedList(next, {
     bumpPullSkip: true,
-    scheduleSyncPush: isUuid(canonicalId),
-    upsertTaskIds: isUuid(canonicalId) ? [canonicalId] : [],
+    scheduleSyncPush: false,
   });
 
   if (deleteIds.size) queueTimeLedgerTaskRowDeletes([...deleteIds]);
@@ -986,7 +1001,23 @@ export function migrateTimeLogRowsTaskIds() {
         changed = true;
         row = { ...row, category: canonCat };
       }
-      if ((row.taskId || "").trim()) return row;
+      if ((row.taskId || "").trim()) {
+        const tid = String(row.taskId || "").trim();
+        const byId = new Map(
+          opts
+            .map((o) => [String(o.id || "").trim(), o])
+            .filter(([k]) => k && isUuid(k)),
+        );
+        if (!byId.has(tid)) {
+          const n = (row.taskName || "").trim();
+          const o = byName.get(n);
+          if (o?.id && isUuid(String(o.id)) && String(o.id).trim() !== tid) {
+            changed = true;
+            return { ...row, taskId: String(o.id).trim() };
+          }
+        }
+        return row;
+      }
       const n = (row.taskName || "").trim();
       const o = byName.get(n);
       if (o?.id && isUuid(String(o.id))) {
@@ -1150,6 +1181,11 @@ export function applyTimeLedgerTasksFromServer(
   const serverIdSet = new Set(
     serverRowsSafe.map((r) => String(r.id || "").trim()).filter((k) => k),
   );
+  const serverKpiIdSet = new Set(
+    serverRowsSafe
+      .map((r) => String(r.kpi_id ?? "").trim())
+      .filter((k) => k),
+  );
   for (const loc of localRows) {
     const lid = String(loc.id || "").trim();
     if (!lid || !isUuid(lid) || builtInIdSet.has(lid) || serverIdSet.has(lid))
@@ -1159,6 +1195,7 @@ export function applyTimeLedgerTasksFromServer(
       continue;
     }
     const locKid = String(loc.kpiId || "").trim();
+    if (locKid && serverKpiIdSet.has(locKid)) continue;
     const locName0 = (loc.name || "").trim();
     const locCat0 = (loc.category || "").trim();
     const mergedLoc = resolveFromKpiLink(locKid, locName0, locCat0);
