@@ -7,6 +7,8 @@
 :root {
   --lp-modal-accent: #1e4d7b;
   --lp-modal-accent-hover: #173c5f;
+  --lp-modal-subcat-active-bg: #e3f2fa;
+  --lp-modal-subcat-active-border: #9ec5e6;
   --lp-modal-navy: #152b45;
   --lp-modal-navy-muted: #3d5670;
   --lp-modal-border: #e2e8f0;
@@ -1840,9 +1842,11 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   cursor: pointer;
 }
 .time-task-setup-tab.active,
+[data-legacy~="time-task-setup-tab"].active,
 [data-legacy~="time-task-setup-tab"][data-legacy~="active"] {
   color: #fff;
   background: var(--lp-modal-accent);
+  border-color: var(--lp-modal-accent);
 }
 .time-task-setup-subcats,
 [data-legacy~="time-task-setup-subcats"] {
@@ -1863,10 +1867,12 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   cursor: pointer;
 }
 .time-task-setup-subcat-btn.active,
+[data-legacy~="time-task-setup-subcat-btn"].active,
 [data-legacy~="time-task-setup-subcat-btn"][data-legacy~="active"] {
-  border-color: var(--lp-modal-accent);
   color: var(--lp-modal-accent);
-  background: rgba(30, 77, 123, 0.06);
+  font-weight: 600;
+  background: var(--lp-modal-subcat-active-bg);
+  border-color: var(--lp-modal-subcat-active-border);
 }
 .time-task-setup-list-scroll,
 [data-legacy~="time-task-setup-list-scroll"] {

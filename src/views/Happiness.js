@@ -66,6 +66,7 @@ import {
   bindKpiCardEditButton,
 } from "../utils/kpiTabNameEditIcon.js";
 import { kpiCardHeadHtml, wireKpiCardIconsIn } from "../utils/kpiCardIcon.js";
+import { appendKpiCardToGrid } from "../utils/kpiCardDeadlineFoot.js";
 import {
   setupKpiCategoryHeaderIcon,
   setKpiCategoryHeaderIconVisible,
@@ -485,7 +486,7 @@ export function render() {
       saveHappinessMap(data, { pushServer: true });
       syncKpiToTimeTask(kpi, "add");
       close();
-      enterKpiDetailView(kpi.id);
+      refreshHappinessAfterKpiDataChange();
     });
     document.body.appendChild(modal);
     bindKpiGoalModeForm(modal.querySelector(".dream-kpi-form"), null, kpiTimeFormOpts);
@@ -876,9 +877,17 @@ export function render() {
     hideKpiFilterStrip();
     const data = loadHappinessMap();
     const happinessKpis = getOrderedHappinessTabKpis(data);
+    const progressByKpiId = new Map();
+    const progressFor = (kpi) => {
+      const id = String(kpi?.id ?? "");
+      if (!progressByKpiId.has(id)) {
+        progressByKpiId.set(id, getKpiProgress(kpi));
+      }
+      return progressByKpiId.get(id);
+    };
     /* 진행중 = 목표 미달성, 완료 = 목표 달성 */
-    const completedKpis = happinessKpis.filter((k) => getKpiProgress(k).isCompleted);
-    const activeKpis = happinessKpis.filter((k) => !getKpiProgress(k).isCompleted);
+    const completedKpis = happinessKpis.filter((k) => progressFor(k).isCompleted);
+    const activeKpis = happinessKpis.filter((k) => !progressFor(k).isCompleted);
 
     if (
       renderKpiMapSyncLoadingIfNeeded({
@@ -901,7 +910,7 @@ export function render() {
     grid.className = "dream-kpi-grid";
     const listToShow = kpiFilter === "active" ? activeKpis : kpiFilter === "completed" ? completedKpis : happinessKpis;
     listToShow.forEach((kpi) => {
-      const progressResult = getKpiProgress(kpi);
+      const progressResult = progressFor(kpi);
       const { lowerBetter } = progressResult;
       const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
       const { displayProgress, progressText, heroStr, heroUnit, cardExtraClass, hideProgressFill, hideProgressBar, heroPrefix, heroStreakAsideHtml } =
@@ -968,7 +977,7 @@ export function render() {
           renderKpiList();
         }
       });
-      grid.appendChild(card);
+      appendKpiCardToGrid(grid, card, kpi, escapeHtml);
     });
     wireKpiCardIconsIn(grid);
     grid.addEventListener("dragend", () => {

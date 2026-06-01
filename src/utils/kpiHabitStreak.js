@@ -88,11 +88,10 @@ export function collectKpiHabitSuccessDateKeys(kpi, storedLogs = []) {
  * @param {object[]} storedLogs
  * @param {string} [todayYmd]
  */
-export function computeKpiHabitCurrentStreak(kpi, storedLogs = [], todayYmd = "") {
+/** @param {Set<string>} success */
+export function computeKpiHabitCurrentStreakFromSuccess(success, todayYmd = "") {
   const today = normalizeKpiLogDateYmd(todayYmd || new Date().toISOString().slice(0, 10));
   if (!/^\d{4}-\d{2}-\d{2}$/.test(today)) return 0;
-
-  const success = collectKpiHabitSuccessDateKeys(kpi, storedLogs);
 
   let cursor = today;
   if (!success.has(cursor)) {
@@ -106,6 +105,11 @@ export function computeKpiHabitCurrentStreak(kpi, storedLogs = [], todayYmd = ""
     cursor = addDaysToYmd(cursor, -1);
   }
   return streak;
+}
+
+export function computeKpiHabitCurrentStreak(kpi, storedLogs = [], todayYmd = "") {
+  const success = collectKpiHabitSuccessDateKeys(kpi, storedLogs);
+  return computeKpiHabitCurrentStreakFromSuccess(success, todayYmd);
 }
 
 /**

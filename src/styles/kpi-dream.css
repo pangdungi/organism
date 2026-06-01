@@ -1112,10 +1112,32 @@
   color: #0f172a;
 }
 
-.lp-kpi-dream-page .dream-kpi-card-deadline {
-  margin-top: 0.35rem;
-  font-size: 0.78rem;
-  color: #6b7280;
+:is(.lp-kpi-dream-page, .kpi-view-modal)
+  .dream-kpi-card-inner
+  > .dream-kpi-card-deadline-foot {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin: 0.55rem 0 0;
+  padding: 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: #64748b;
+}
+
+:is(.lp-kpi-dream-page, .kpi-view-modal) .dream-kpi-card-deadline-foot-corner {
+  flex-shrink: 0;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-top: 0.12rem;
+  border-left: 1.5px solid #94a3b8;
+  border-bottom: 1.5px solid #94a3b8;
+  border-radius: 0 0 0 1px;
+}
+
+:is(.lp-kpi-dream-page, .kpi-view-modal) .dream-kpi-card-deadline-foot-text {
+  font-weight: 500;
+  letter-spacing: -0.01em;
 }
 
 .lp-kpi-dream-page .dream-kpi-card-progress {

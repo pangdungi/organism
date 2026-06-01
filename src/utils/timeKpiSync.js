@@ -895,7 +895,19 @@ export function upsertHabitTrackerLogWithDailyState(
  * 우선순위: time_ledger_tasks ↔ 행의 taskId로 kpiId 조회(이름 변경에 안전).
  * taskId·kpiId 없으면 과제명=KPI 이름 매칭(레거시·내장 과제 등).
  */
+let _syncHabitTrackerInFlight = false;
+
 export function syncHabitTrackerLogs() {
+  if (_syncHabitTrackerInFlight) return;
+  _syncHabitTrackerInFlight = true;
+  try {
+    syncHabitTrackerLogsInner();
+  } finally {
+    _syncHabitTrackerInFlight = false;
+  }
+}
+
+function syncHabitTrackerLogsInner() {
   const rows = loadTimeRows();
   const taskIdToKpiId = new Map();
   for (const o of readTaskRowsForKpiMatch()) {

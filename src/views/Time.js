@@ -164,43 +164,6 @@ function notifyTimeDailyBudgetSaved(dateStr) {
   scheduleTimeDailyBudgetSyncPush(String(dateStr).trim().slice(0, 10));
 }
 
-/** 감정적이기 과제 선택 시 감정 드롭다운 필터 */
-const EMOTION_TASK_POSITIVE = "감정적이기(긍정적)";
-const EMOTION_TASK_NEGATIVE = "감정적이기(부정적)";
-const EMOTION_LIST_POSITIVE = [
-  "기쁨",
-  "행복",
-  "즐거움",
-  "고마움",
-  "기특함",
-  "감동",
-  "사랑",
-  "신뢰감",
-  "자신감",
-  "자부심",
-  "편안감",
-];
-const EMOTION_LIST_NEGATIVE = [
-  "공포",
-  "불안",
-  "걱정",
-  "자존심",
-  "자격지심",
-  "열등감",
-  "분노",
-  "억울함",
-  "괘씸함",
-  "서운함",
-  "미움",
-  "혐오",
-  "괴로움",
-  "부담감",
-  "죄책감",
-  "수치심",
-  "짜증",
-  "원망",
-];
-
 function collectKpiLinkedNamesFromFullTaskOptions() {
   const s = new Set();
   try {
@@ -306,11 +269,6 @@ const NONPRODUCTIVE_CATEGORIES = [
     value: "media_watch",
     label: "미디어 시청",
     color: "cat-media-watch",
-  },
-  {
-    value: "dreamblocking",
-    label: "꿈을 방해하는 일",
-    color: "cat-dreamblocking",
   },
   { value: "unhappiness", label: "불행", color: "cat-unhappiness" },
   { value: "unhealthy", label: "비건강", color: "cat-unhealthy" },
@@ -924,11 +882,6 @@ const CATEGORY_OPTIONS = [
     label: "미디어 시청",
     color: "cat-media-watch",
   },
-  {
-    value: "dreamblocking",
-    label: "꿈을 방해하는 일",
-    color: "cat-dreamblocking",
-  },
   { value: "unhappiness", label: "불행", color: "cat-unhappiness" },
   { value: "unhealthy", label: "비건강", color: "cat-unhealthy" },
   { value: "moneylosing", label: "돈을 잃는 일", color: "cat-moneylosing" },
@@ -949,7 +902,6 @@ function getProductivityFromCategory(categoryValue) {
     "unhappiness",
     "unhealthy",
     "moneylosing",
-    "dreamblocking",
     "pleasure",
     "media_watch",
   ];

@@ -41,7 +41,6 @@ function getProductivityFromCategory(categoryValue) {
     "unhappiness",
     "unhealthy",
     "moneylosing",
-    "dreamblocking",
     "pleasure",
     "media_watch",
   ];

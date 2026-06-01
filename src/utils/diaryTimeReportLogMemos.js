@@ -2,8 +2,10 @@
  * 시간 레포트 · 로그 탭 — 시간가계부 과제 메모(feedback)만 일·월별로 모음
  */
 
-import { splitUnhealthyMealMemoFromDb } from "./timeLedgerEntriesModel.js";
-import * as TTC from "./timeTaskOptionsConstants.js";
+import {
+  ledgerRowUserMemoFeedback,
+  resolveLedgerRowMealDetail,
+} from "./timeLedgerCardKpiMemo.js";
 import {
   formatIntegerMinutesDurationKo,
   getRowEndInstantForMobileCard,
@@ -22,21 +24,21 @@ function formatClockHHmm(date) {
   return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
-/** 편집 모달과 동일: 해시태그 제외 본문, 없으면 원문 */
+/** 편집 모달·카드와 동일: 식단 + 해시태그 제외 사용자 메모 */
 function ledgerMemoDisplayText(row) {
-  let feedbackRaw = String(row?.feedback || "").trim();
-  if (!feedbackRaw) return "";
-  const taskName = String(row?.taskName || "").trim();
-  if (TTC.isMealDetailTaskName(taskName) && feedbackRaw.startsWith("[식단] ")) {
-    const sp = splitUnhealthyMealMemoFromDb(feedbackRaw);
-    feedbackRaw = sp.feedback;
+  const parts = [];
+  const mealDetail = resolveLedgerRowMealDetail(row);
+  if (mealDetail) parts.push(`식단 ${mealDetail}`);
+  const feedbackRaw = ledgerRowUserMemoFeedback(row);
+  if (feedbackRaw) {
+    const memoOnly = feedbackRaw.replace(/#[^\s#]+/g, "").trim();
+    parts.push(memoOnly || feedbackRaw);
   }
-  const memoOnly = feedbackRaw.replace(/#[^\s#]+/g, "").trim();
-  return memoOnly || feedbackRaw;
+  return parts.join("\n");
 }
 
 function ledgerRowHasMemo(row) {
-  return !!String(row?.feedback || "").trim();
+  return !!resolveLedgerRowMealDetail(row) || !!ledgerRowUserMemoFeedback(row);
 }
 
 function buildLogMemoTimeLabel(row) {

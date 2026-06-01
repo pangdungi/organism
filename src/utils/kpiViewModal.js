@@ -6,6 +6,7 @@ import { getLatestKpiLogWithExplicitValue } from "./kpiLogsSort.js";
 import { getAccumulatedMinutesForKpiId, minutesToHhMm, hhMmToMinutes } from "./timeKpiSync.js";
 import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
 import { kpiCardHeadHtml, wireKpiCardIconsIn } from "./kpiCardIcon.js";
+import { buildKpiCardDeadlineFootHtml } from "./kpiCardDeadlineFoot.js";
 
 const DREAM_MAP_KEY = "kpi-dream-map";
 const SIDEINCOME_KEY = "kpi-sideincome-paths";
@@ -118,6 +119,8 @@ export function getKpisByCategory() {
       targetValue: kpi.targetValue,
       unit: kpi.unit,
       targetTimeRequired: kpi.targetTimeRequired,
+      targetStartDate: kpi.targetStartDate,
+      targetDeadline: kpi.targetDeadline,
       progress,
       progressText,
       heroValueHtml,
@@ -197,7 +200,8 @@ export function showKpiViewModal() {
             `
                 : "";
             const nameHtml = `${escapeHtml(k.name)}${k.directionLower ? '<span class="dream-kpi-card-direction-badge" title="낮을수록 좋음 KPI">↓낮음</span>' : ""}`;
-            return `
+            const deadlineFoot = buildKpiCardDeadlineFootHtml(k, escapeHtml);
+            const cardBlock = `
           <div class="kpi-view-card dream-kpi-card${k.directionLower ? " dream-kpi-card--lower-better" : ""}">
             <div class="dream-kpi-card-inner">
               ${kpiCardHeadHtml({ id: k.kpiId, name: k.name }, ledgerCategory, nameHtml)}
@@ -208,9 +212,10 @@ export function showKpiViewModal() {
               </div>
               <div class="dream-kpi-card-invested">지금까지 투자한 시간 <span class="dream-kpi-card-invested-value">${minutesToHhMm(investedMins)}</span></div>
               ${timeCircleHtml}
+              ${deadlineFoot}
             </div>
-          </div>
-        `;
+          </div>`;
+            return cardBlock;
           }
         )
         .join("");

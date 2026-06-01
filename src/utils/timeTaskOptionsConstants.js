@@ -19,12 +19,66 @@ export const FIXED_OTHER_TASKS = [
   { name: "근무하기", category: "work", productivity: "other" },
 ];
 
-export const FIXED_PRODUCTIVE_TASKS = [
+/** 기본 과제 목록에서 제거됨 — 기존 로컬·서버 행 정리용 */
+export const RETIRED_BUILTIN_TASK_TEMPLATES = [
+  { name: "감정적이기(긍정적)", category: "happiness", productivity: "productive" },
+  { name: "감정적이기(부정적)", category: "unhappiness", productivity: "nonproductive" },
+  { name: "구매 고민", category: "moneylosing", productivity: "nonproductive" },
+  { name: "술 마시기", category: "unhealthy", productivity: "nonproductive" },
+  { name: "논쟁하기", category: "unhappiness", productivity: "nonproductive" },
   {
-    name: "감정적이기(긍정적)",
+    name: "중요하지 않은 통화",
+    category: "unhappiness",
+    productivity: "nonproductive",
+  },
+  {
+    name: "의미 있는 모임 참석",
     category: "happiness",
     productivity: "productive",
   },
+  {
+    name: "무의식적 검색",
+    category: "dreamblocking",
+    productivity: "nonproductive",
+  },
+  {
+    name: "무의식적 폰 사용",
+    category: "dreamblocking",
+    productivity: "nonproductive",
+  },
+  {
+    name: "쾌락성 모임 참석",
+    category: "pleasure",
+    productivity: "nonproductive",
+  },
+  {
+    name: "의식적 검색",
+    category: "happiness",
+    productivity: "productive",
+  },
+];
+
+/** 제거된 과제 세부 카테고리 — 기존 과제·기록 마이그레이션 */
+export const RETIRED_TIME_TASK_CATEGORY_REMAP = {
+  dreamblocking: "pleasure",
+};
+
+/** @param {string} category */
+export function canonicalTimeTaskCategory(category) {
+  const c = String(category || "").trim();
+  return RETIRED_TIME_TASK_CATEGORY_REMAP[c] || c;
+}
+
+export const RETIRED_BUILTIN_TASK_NAMES = new Set(
+  RETIRED_BUILTIN_TASK_TEMPLATES.map((t) => t.name),
+);
+
+/** @param {string} name */
+export function isRetiredBuiltinTaskName(name) {
+  return RETIRED_BUILTIN_TASK_NAMES.has(String(name || "").trim());
+}
+
+export const FIXED_PRODUCTIVE_TASKS = [
   {
     name: "생산적 소비",
     category: "sideincome",
@@ -57,19 +111,13 @@ export const FIXED_PRODUCTIVE_TASKS = [
     category: "happiness",
     productivity: "productive",
   },
-  { name: "생산적 대화", category: "happiness", productivity: "productive" },
   {
-    name: "의미 있는 모임 참석",
+    name: "의미 있는 대화 및 모임",
     category: "happiness",
     productivity: "productive",
   },
   {
     name: "의식적 콘텐츠 소비",
-    category: "happiness",
-    productivity: "productive",
-  },
-  {
-    name: "의식적 검색",
     category: "happiness",
     productivity: "productive",
   },
@@ -89,17 +137,7 @@ export const FIXED_PRODUCTIVE_TASKS = [
 
 export const FIXED_NONPRODUCTIVE_TASKS = [
   {
-    name: "감정적이기(부정적)",
-    category: "unhappiness",
-    productivity: "nonproductive",
-  },
-  {
     name: "비생산적 소비",
-    category: "moneylosing",
-    productivity: "nonproductive",
-  },
-  {
-    name: "구매 고민",
     category: "moneylosing",
     productivity: "nonproductive",
   },
@@ -114,32 +152,11 @@ export const FIXED_NONPRODUCTIVE_TASKS = [
     productivity: "nonproductive",
   },
   {
-    name: "술 마시기",
-    category: "unhealthy",
-    productivity: "nonproductive",
-  },
-  {
-    name: "비생산적 대화",
-    category: "unhappiness",
-    productivity: "nonproductive",
-  },
-  { name: "논쟁하기", category: "unhappiness", productivity: "nonproductive" },
-  {
-    name: "중요하지 않은 통화",
+    name: "의미 없는 대화 또는 모임",
     category: "unhappiness",
     productivity: "nonproductive",
   },
   { name: "물건 찾기", category: "unhappiness", productivity: "nonproductive" },
-  {
-    name: "무의식적 폰 사용",
-    category: "dreamblocking",
-    productivity: "nonproductive",
-  },
-  {
-    name: "무의식적 검색",
-    category: "dreamblocking",
-    productivity: "nonproductive",
-  },
   { name: "단순 이동", category: "pleasure", productivity: "nonproductive" },
   { name: "게임", category: "pleasure", productivity: "nonproductive" },
   {
@@ -148,12 +165,7 @@ export const FIXED_NONPRODUCTIVE_TASKS = [
     productivity: "nonproductive",
   },
   {
-    name: "쾌락성 모임 참석",
-    category: "pleasure",
-    productivity: "nonproductive",
-  },
-  {
-    name: "단순 쾌락형 영상 시청",
+    name: "무의식적 영상 시청",
     category: "media_watch",
     productivity: "nonproductive",
   },
@@ -165,6 +177,11 @@ export const MEAL_TASK_NAME_RENAMES = [
   { from: "건강한 식사 준비", to: "건강한 섭취 준비" },
   { from: "건강하지 않은 식사", to: "건강하지 않은 섭취" },
   { from: "건강하지 않은 식사 준비", to: "건강하지 않은 섭취 준비" },
+  { from: "생산적 대화", to: "의미 있는 대화 및 모임" },
+  { from: "생산적 대화 또는 모임", to: "의미 있는 대화 및 모임" },
+  { from: "비생산적 대화", to: "의미 없는 대화 또는 모임" },
+  { from: "비생산적 대화 또는 모임", to: "의미 없는 대화 또는 모임" },
+  { from: "단순 쾌락형 영상 시청", to: "무의식적 영상 시청" },
 ];
 
 /** 표시·저장 기준 이름(구이름이면 새 이름으로 치환) */

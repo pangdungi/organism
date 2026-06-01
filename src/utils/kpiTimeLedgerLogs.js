@@ -13,7 +13,6 @@ import {
   getKpiDailyLedgerSummaries,
   getKpiTargetDateRange,
   normalizeKpiLogDateYmd,
-  syncHabitTrackerLogs,
   kpiShouldUseTimeLedgerLogs,
   mergeDailyCompletedLists,
 } from "./timeKpiSync.js";
@@ -31,13 +30,10 @@ function mergeLogDailyCompleted(storedLog, ledgerHabitCompleted = []) {
  * @param {object[]} storedLogs
  */
 export function resolveKpiDetailLogEntries(kpi, storedLogs = []) {
-  syncHabitTrackerLogs();
   const logs = Array.isArray(storedLogs) ? storedLogs : [];
   const useLedger = kpiShouldUseTimeLedgerLogs(kpi);
   const hasTimeLinkedStored = logs.some((l) => kpiLogIsTimeLinked(l));
   if (!useLedger && !hasTimeLinkedStored) return logs;
-
-  patchKpiLinkedTasksFromKpiMaps();
 
   const { start, end } = getKpiTargetDateRange(kpi);
   const daily = getKpiDailyLedgerSummaries(kpi.id, kpi.name, {

@@ -65,6 +65,7 @@ import {
   bindKpiCardEditButton,
 } from "../utils/kpiTabNameEditIcon.js";
 import { kpiCardHeadHtml, wireKpiCardIconsIn } from "../utils/kpiCardIcon.js";
+import { appendKpiCardToGrid } from "../utils/kpiCardDeadlineFoot.js";
 import {
   setupKpiCategoryHeaderIcon,
   setKpiCategoryHeaderIconVisible,
@@ -553,7 +554,7 @@ export function render() {
       saveSideincomeMap(data, { pushServer: true });
       syncKpiToTimeTask(kpi, "add");
       close();
-      enterKpiDetailView(kpi.id);
+      refreshSideincomeAfterKpiDataChange();
     });
     document.body.appendChild(modal);
     bindKpiGoalModeForm(modal.querySelector(".dream-kpi-form"), null, kpiTimeFormOpts);
@@ -1226,7 +1227,7 @@ export function render() {
           renderKpiList();
         }
       });
-      grid.appendChild(card);
+      appendKpiCardToGrid(grid, card, kpi, escapeHtml);
     });
     wireKpiCardIconsIn(grid);
     grid.addEventListener("dragend", () => {

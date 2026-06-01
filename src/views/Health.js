@@ -71,6 +71,7 @@ import {
   bindKpiCardEditButton,
 } from "../utils/kpiTabNameEditIcon.js";
 import { kpiCardHeadHtml, wireKpiCardIconsIn } from "../utils/kpiCardIcon.js";
+import { appendKpiCardToGrid } from "../utils/kpiCardDeadlineFoot.js";
 import {
   setupKpiCategoryHeaderIcon,
   setKpiCategoryHeaderIconVisible,
@@ -636,7 +637,7 @@ export function render() {
       saveHealthMap(data, { pushServer: true });
       syncKpiToTimeTask(kpi, "add");
       close();
-      enterKpiDetailView(kpi.id);
+      refreshHealthAfterKpiDataChange();
     });
     document.body.appendChild(modal);
     bindKpiGoalModeForm(modal.querySelector(".dream-kpi-form"), null, kpiTimeFormOpts);
@@ -1017,8 +1018,16 @@ export function render() {
 
   function appendHealthKpiGridSection(parentEl, data) {
     const healthKpis = getOrderedAllHealthKpis(data);
-    const completedKpis = healthKpis.filter((k) => getKpiProgress(k).isCompleted);
-    const activeKpis = healthKpis.filter((k) => !getKpiProgress(k).isCompleted);
+    const progressByKpiId = new Map();
+    const progressFor = (kpi) => {
+      const id = String(kpi?.id ?? "");
+      if (!progressByKpiId.has(id)) {
+        progressByKpiId.set(id, getKpiProgress(kpi));
+      }
+      return progressByKpiId.get(id);
+    };
+    const completedKpis = healthKpis.filter((k) => progressFor(k).isCompleted);
+    const activeKpis = healthKpis.filter((k) => !progressFor(k).isCompleted);
 
     const kpiSection = document.createElement("section");
     kpiSection.className = "health-main-kpi-section dream-kpi-section";
@@ -1061,7 +1070,7 @@ export function render() {
     }
 
     listToShow.forEach((kpi) => {
-      const progressResult = getKpiProgress(kpi);
+      const progressResult = progressFor(kpi);
       const { lowerBetter } = progressResult;
       const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
       const { displayProgress, progressText, heroStr, heroUnit, cardExtraClass, hideProgressFill, hideProgressBar, heroPrefix, heroStreakAsideHtml } =
@@ -1128,7 +1137,7 @@ export function render() {
           updateHealthView();
         }
       });
-      grid.appendChild(card);
+      appendKpiCardToGrid(grid, card, kpi, escapeHtml);
     });
     wireKpiCardIconsIn(grid);
     grid.addEventListener("dragend", () => {

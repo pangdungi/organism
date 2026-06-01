@@ -10,8 +10,8 @@ import {
 } from "./timeKpiSync.js";
 import { getLatestKpiLogWithExplicitValue } from "./kpiLogsSort.js";
 import {
-  computeKpiHabitCurrentStreak,
-  computeKpiHabitTotalDays,
+  collectKpiHabitSuccessDateKeys,
+  computeKpiHabitCurrentStreakFromSuccess,
   getKpiHabitTodayNumericValue,
   kpiHasHabitUnitGoal,
   buildKpiCardHabitStreakAsideMarkup,
@@ -633,10 +633,11 @@ export function enrichKpiProgressWithHabitStreak(
   todayYmd,
 ) {
   if (!kpi?.needHabitTracker) return progressResult;
+  const success = collectKpiHabitSuccessDateKeys(kpi, storedLogs);
   return {
     ...progressResult,
-    habitStreak: computeKpiHabitCurrentStreak(kpi, storedLogs, todayYmd),
-    habitTotalDays: computeKpiHabitTotalDays(kpi, storedLogs),
+    habitStreak: computeKpiHabitCurrentStreakFromSuccess(success, todayYmd),
+    habitTotalDays: success.size,
   };
 }
 

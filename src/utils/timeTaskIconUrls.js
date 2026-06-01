@@ -29,7 +29,6 @@ const PRODUCTIVE_CATEGORIES = new Set([
 const NONPRODUCTIVE_CATEGORY_PICKER_ICON = {
   unhealthy: "potato-new",
   unhappiness: "emotionsad-2-new",
-  dreamblocking: "emotionsad-4-new",
   media_watch: "youtube-new",
   pleasure: "beer-new",
   moneylosing: "emotionsad-5-new",

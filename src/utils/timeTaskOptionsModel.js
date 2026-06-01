@@ -49,6 +49,21 @@ let _pendingTaskDeleteIds = new Set();
 let _taskDeleteFlushTimer = null;
 let _taskDeleteFlushRunning = false;
 
+function normalizeBuiltinTaskRow(o) {
+  const rawName = String(o?.name ?? "").trim();
+  const name = C.canonicalMealTaskDisplayName(rawName);
+  return {
+    ...o,
+    name,
+    category: C.canonicalTimeTaskCategory(o?.category),
+    productivity: o?.productivity || "productive",
+    memo: (o?.memo || "").trim(),
+    id: String(o?.id || "").trim(),
+    kpiId: String(o?.kpiId || "").trim(),
+    iconKey: String(o?.iconKey || "").trim(),
+  };
+}
+
 export function readTaskOptionsMemRows() {
   if (!_ledgerTasksMem || !Array.isArray(_ledgerTasksMem)) return [];
   return _ledgerTasksMem.map((o) => ({
@@ -131,8 +146,8 @@ function normalizeKpiLinkedTaskRows(rows) {
 
   for (const o of rows || []) {
     const kid = String(o.kpiId || "").trim();
-    let name = String(o.name || "").trim();
-    let category = String(o.category || "").trim();
+    let name = C.canonicalMealTaskDisplayName(String(o.name || "").trim());
+    let category = C.canonicalTimeTaskCategory(o.category);
     const row = {
       name,
       category,
@@ -238,15 +253,7 @@ function setLedgerTasksMemory(list) {
     mirrorTaskOptionsToLocalStorage();
     return;
   }
-  _ledgerTasksMem = list.map((o) => ({
-    name: (o.name || "").trim(),
-    category: (o.category || "").trim(),
-    productivity: o.productivity || "productive",
-    memo: (o.memo || "").trim(),
-    id: (o.id || "").trim(),
-    kpiId: (o.kpiId && String(o.kpiId).trim()) || "",
-    iconKey: String(o.iconKey || "").trim(),
-  }));
+  _ledgerTasksMem = list.map((o) => normalizeBuiltinTaskRow(o));
   mirrorTaskOptionsToLocalStorage();
 }
 
@@ -533,6 +540,7 @@ export function getFullTaskOptions() {
     );
     const others = arr.filter((o) => {
       const n = (o.name || "").trim();
+      if (C.isRetiredBuiltinTaskName(n)) return false;
       if (legacyMealNames.has(n)) return false;
       return (
         !fixedOtherNames.has(n) &&
@@ -569,7 +577,7 @@ export function getFullTaskOptions() {
       ...others,
     ];
   }
-  return assignIdsToMergedList(merged);
+  return assignIdsToMergedList(merged.map((o) => normalizeBuiltinTaskRow(o)));
 }
 
 /** 외부에서 과제 메모리를 건드린 뒤 알림(예: KPI 연동 경로). UUID 부여·푸시는 getFullTaskOptions·별도 save 경로에서 처리 */
@@ -963,6 +971,12 @@ export function migrateTimeLogRowsTaskIds() {
         changed = true;
         row = { ...row, taskName: canonName };
       }
+      const rawCat = String(row.category || "").trim();
+      const canonCat = C.canonicalTimeTaskCategory(rawCat);
+      if (canonCat && canonCat !== rawCat) {
+        changed = true;
+        row = { ...row, category: canonCat };
+      }
       if ((row.taskId || "").trim()) return row;
       const n = (row.taskName || "").trim();
       const o = byName.get(n);
@@ -1022,6 +1036,15 @@ export function applyTimeLedgerTasksFromServer(
       }
     }
   }
+  for (const t of C.RETIRED_BUILTIN_TASK_TEMPLATES) {
+    builtInIdSet.add(deterministicTaskId(t.name, t.productivity, t.category));
+  }
+  const retiredTaskIdsToDelete = [];
+  for (const t of C.RETIRED_BUILTIN_TASK_TEMPLATES) {
+    retiredTaskIdsToDelete.push(
+      deterministicTaskId(t.name, t.productivity, t.category),
+    );
+  }
   const out = [];
   for (const t of builtinTemplates) {
     const id = deterministicTaskId(t.name, t.productivity, t.category);
@@ -1058,6 +1081,10 @@ export function applyTimeLedgerTasksFromServer(
   for (const r of serverRowsSafe) {
     const rid = String(r.id || "").trim();
     if (!rid || builtInIdSet.has(rid)) continue;
+    if (C.isRetiredBuiltinTaskName(r.name)) {
+      if (isUuid(rid)) retiredTaskIdsToDelete.push(rid);
+      continue;
+    }
     const loc = localById.get(rid);
     const fromServerKpi = String(r.kpi_id ?? "").trim();
     const kid =
@@ -1082,6 +1109,10 @@ export function applyTimeLedgerTasksFromServer(
     const lid = String(loc.id || "").trim();
     if (!lid || !isUuid(lid) || builtInIdSet.has(lid) || serverIdSet.has(lid))
       continue;
+    if (C.isRetiredBuiltinTaskName(loc.name)) {
+      retiredTaskIdsToDelete.push(lid);
+      continue;
+    }
     const locKid = String(loc.kpiId || "").trim();
     const locName0 = (loc.name || "").trim();
     const locCat0 = (loc.category || "").trim();
@@ -1124,8 +1155,12 @@ export function applyTimeLedgerTasksFromServer(
     )
       upsertSyncIds.push(id);
   }
-  if (dupIdsToDelete.length) {
-    queueTimeLedgerTaskRowDeletes(dupIdsToDelete);
+  const deleteIds = [
+    ...dupIdsToDelete,
+    ...retiredTaskIdsToDelete.filter((id) => isUuid(String(id || "").trim())),
+  ];
+  if (deleteIds.length) {
+    queueTimeLedgerTaskRowDeletes(deleteIds);
   }
   saveMergedList(dedupedSansOrphanNameDup, {
     bumpPullSkip: false,

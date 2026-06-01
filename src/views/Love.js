@@ -40,6 +40,7 @@ import {
   applyKpiGridScrollRestore,
   readKpiGridScrollToRestore,
 } from "../utils/kpiGridScrollRestore.js";
+import { appendKpiCardToGrid } from "../utils/kpiCardDeadlineFoot.js";
 import {
   buildModalNativeDateFieldMarkup,
   initModalNativeDateFieldsIn,
@@ -986,7 +987,7 @@ export function render() {
           renderKpiHistory();
         }
       });
-      grid.appendChild(card);
+      appendKpiCardToGrid(grid, card, kpi, escapeHtml);
       if (selectedKpiId === kpi.id) {
         grid.appendChild(historyWrap);
         historyAnchoredUnderCard = true;
