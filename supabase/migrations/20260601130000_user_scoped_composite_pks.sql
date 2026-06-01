@@ -32,11 +32,34 @@ where e.task_id is not null
       and t.id = e.task_id
   );
 
+-- ※ ON DELETE SET NULL 은 (user_id, task_id) 복합 FK 에서 user_id 까지 null → 23502
+--    실제 적용: 20260601140000_fix_time_ledger_task_delete_fkey.sql (트리거 + RESTRICT)
 alter table public.time_ledger_entries
   add constraint time_ledger_entries_task_fkey
   foreign key (user_id, task_id)
   references public.time_ledger_tasks (user_id, id)
-  on delete set null;
+  on delete restrict;
+
+create or replace function public.nullify_time_ledger_entries_task_on_task_delete()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.time_ledger_entries
+  set task_id = null
+  where user_id = old.user_id
+    and task_id = old.id;
+  return old;
+end;
+$$;
+
+drop trigger if exists time_ledger_tasks_nullify_entries_on_delete on public.time_ledger_tasks;
+create trigger time_ledger_tasks_nullify_entries_on_delete
+  before delete on public.time_ledger_tasks
+  for each row
+  execute function public.nullify_time_ledger_entries_task_on_task_delete();
 
 -- ③ calendar_section_tasks
 alter table public.calendar_section_tasks
@@ -55,6 +78,9 @@ alter table public.diary_daily_entries
 -- ⑤ stamp_types → stamp_calendar_entries
 alter table public.stamp_calendar_entries
   drop constraint if exists stamp_calendar_entries_stamp_id_fkey;
+
+alter table public.stamp_calendar_entries
+  drop constraint if exists stamp_calendar_entries_stamp_fkey;
 
 alter table public.stamp_types
   drop constraint if exists stamp_types_pkey;

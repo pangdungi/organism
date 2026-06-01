@@ -86,6 +86,7 @@ export const RETIRED_BUILTIN_TASK_TEMPLATES = [
   { name: "돈 관리", category: "sideincome", productivity: "productive" },
   { name: "경제 공부", category: "sideincome", productivity: "productive" },
   { name: "경력 개발", category: "sideincome", productivity: "productive" },
+  { name: "영상편집", category: "sideincome", productivity: "productive" },
 ];
 
 /** 제거된 과제 세부 카테고리 — 기존 과제·기록 마이그레이션 */
@@ -253,7 +254,6 @@ export const DEFAULT_TASK_OPTIONS = [
   ...FIXED_OTHER_TASKS,
   ...FIXED_PRODUCTIVE_TASKS,
   ...FIXED_NONPRODUCTIVE_TASKS,
-  { name: "영상편집", category: "sideincome", productivity: "productive" },
 ];
 
 /** 내장 과제(앱 코드) 목록 — 서버 병합·결정적 id용 */

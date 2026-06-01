@@ -8573,11 +8573,20 @@ export function render(opts = {}) {
       });
       return;
     }
+    const ok = await showConfirmModal({
+      title: "과제 삭제",
+      message: `"${editName}" 과제를 삭제할까요?`,
+      warnMessage: "삭제 후에는 복구할 수 없습니다.",
+      confirmText: "삭제",
+      cancelText: "취소",
+      confirmDanger: true,
+    });
+    if (!ok) return;
+    closeAddTaskModal();
     if (!(await removeTaskOption(editName))) {
       void showAlertModal({ message: MSG_TIME_TASK_KPI_LINKED });
-      return;
     }
-    closeAddTaskModal();
+    renderTaskSetupList();
   });
 
   syncAddTaskSubmitState();

@@ -4,7 +4,7 @@
  */
 
 import {
-  kpiTimeTaskAdd,
+  kpiTimeTaskEnsure,
   kpiTimeTaskRemove,
   kpiTimeTaskRename,
   getFullTaskOptions,
@@ -137,11 +137,9 @@ function syncKpiToTimeTask(kpi, action, oldName) {
   if (action === "add") {
     const name = (kpi.name || "").trim();
     if (!name) return;
-    const opts = getFullTaskOptions();
-    if (opts.some((o) => getTaskName(o) === name)) return;
     data.kpiTaskSync[kpi.id] = name;
     saveHappinessMap(data);
-    kpiTimeTaskAdd(kpi, "happiness");
+    kpiTimeTaskEnsure(kpi, "happiness");
   } else if (action === "remove") {
     const syncName = (data.kpiTaskSync[kpi.id] || kpi.name || "").trim();
     if (syncName) {

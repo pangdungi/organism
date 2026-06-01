@@ -187,32 +187,91 @@ async function getSessionUserId() {
 }
 
 /**
- * 과제설정에서 삭제한 행을 서버에서도 제거 (upsert만으로는 서버 행이 남아 pull·Realtime 시 부활함)
+ * 과제 삭제 전: 해당 과제를 가리키는 시간 기록의 task_id 해제 (과제명은 유지).
+ * 복합 FK ON DELETE SET NULL 은 user_id 까지 null 로 만들어 23502 가 난다.
  */
-export async function deleteTimeLedgerTaskRowForCurrentUser(taskId) {
+async function clearTimeLedgerTaskIdFromEntriesForCurrentUser(taskId, userId) {
   const id = String(taskId || "").trim();
-  if (!supabase || !isUuid(id)) {
-    return;
+  if (!supabase || !userId || !isUuid(id)) {
+    return null;
   }
+  const { error } = await supabase
+    .from("time_ledger_entries")
+    .update({ task_id: null })
+    .eq("user_id", userId)
+    .eq("task_id", id);
+  return error || null;
+}
+
+async function resolveTaskIdForDelete(userId, taskId, kpiId) {
+  const id = String(taskId || "").trim();
+  const kid = String(kpiId || "").trim();
+  if (isUuid(id)) return id;
+  if (!kid || !supabase || !userId) return "";
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select("id")
+    .eq("user_id", userId)
+    .eq("kpi_id", kid)
+    .maybeSingle();
+  if (error || !data?.id) return "";
+  return String(data.id).trim();
+}
+
+/**
+ * 과제설정·KPI 삭제 — task uuid 또는 kpi_id 로 서버 행 제거
+ * @param {{ taskId?: string, kpiId?: string }} opts
+ */
+export async function deleteTimeLedgerTaskForCurrentUser(opts = {}) {
   const userId = await getSessionUserId();
-  if (!userId) {
-    return;
+  if (!userId || !supabase) return;
+
+  const resolvedId = await resolveTaskIdForDelete(
+    userId,
+    opts.taskId,
+    opts.kpiId,
+  );
+  if (!resolvedId || !isUuid(resolvedId)) return;
+
+  const clearError = await clearTimeLedgerTaskIdFromEntriesForCurrentUser(
+    resolvedId,
+    userId,
+  );
+  if (clearError) {
+    try {
+      console.warn(
+        "[lp-time-ledger-tasks] time_ledger_entries task_id 해제 실패(삭제 계속 시도)",
+        {
+          id: resolvedId,
+          message: clearError.message,
+          code: clearError.code,
+        },
+      );
+    } catch (_) {}
   }
+
   const { error } = await supabase
     .from(TABLE)
     .delete()
     .eq("user_id", userId)
-    .eq("id", id);
+    .eq("id", resolvedId);
   if (error) {
     try {
       console.warn("[lp-time-ledger-tasks] time_ledger_tasks delete 실패", {
-        id,
+        id: resolvedId,
+        kpiId: String(opts.kpiId || "").trim() || undefined,
         message: error.message,
         code: error.code,
       });
     } catch (_) {}
-    return;
   }
+}
+
+/**
+ * @deprecated deleteTimeLedgerTaskForCurrentUser 사용
+ */
+export async function deleteTimeLedgerTaskRowForCurrentUser(taskId) {
+  await deleteTimeLedgerTaskForCurrentUser({ taskId });
 }
 
 /**
