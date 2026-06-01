@@ -11,12 +11,14 @@ import {
   getHabitTrackerDailyCompletedForLedgerEntry,
   getHabitTrackerLogValueForLedgerEntry,
   upsertKpiMeasureLogValue,
+  persistKpiPerformedValueFromTimeLedger,
   removeKpiHabitLogsForTimeLedgerEntry,
+  resolveKpiLinksForTaskName,
 } from "../utils/timeKpiSync.js";
 import {
   getKpiTodosAsTasks,
-  getKpiDailyRepeatInfoByKpiId,
-  getKpiMeasureInfoByKpiId,
+  getKpiDailyRepeatInfoByTaskName,
+  getKpiMeasureInfoByTaskName,
 } from "../utils/kpiTodoSync.js";
 import { kpiTodoFineTrace } from "../utils/kpiTodoFineTrace.js";
 import {
@@ -6967,20 +6969,14 @@ export function render(opts = {}) {
     };
   }
 
-  /** 과제 기록 모달: 선택 과제의 kpiId → 매일 할일 (이름 매칭 없음) */
+  /** 과제 기록 모달: 선택 과제 → KPI 매일 할일 */
   function getKpiDailyRepeatInfoForTaskLog(taskName) {
-    const opt = getTaskOptionByName((taskName || "").trim());
-    const kpiId = String(opt?.kpiId || "").trim();
-    if (!kpiId) return null;
-    return getKpiDailyRepeatInfoByKpiId(kpiId);
+    return getKpiDailyRepeatInfoByTaskName((taskName || "").trim());
   }
 
   /** 과제 기록 모달: KPI 과제 + 목표값·단위 */
   function getKpiMeasureInfoForTaskLog(taskName) {
-    const opt = getTaskOptionByName((taskName || "").trim());
-    const kpiId = String(opt?.kpiId || "").trim();
-    if (!kpiId) return null;
-    return getKpiMeasureInfoByKpiId(kpiId);
+    return getKpiMeasureInfoByTaskName((taskName || "").trim());
   }
 
   function normalizeTaskLogPickerDateYmd() {
@@ -7099,7 +7095,9 @@ export function render(opts = {}) {
   function syncTaskLogKpiValueField(taskName, dateYmd) {
     if (!taskLogKpiValueSection) return;
     const measure = getKpiMeasureInfoForTaskLog((taskName || "").trim());
-    if (!measure?.hasUnitGoal) {
+    const daily = getKpiDailyRepeatInfoForTaskLog((taskName || "").trim());
+    const showField = !!(measure?.hasUnitGoal || daily?.hasUnitGoal);
+    if (!showField) {
       taskLogKpiValueSection.hidden = true;
       if (taskLogHabitValueInput) taskLogHabitValueInput.value = "";
       if (taskLogHabitValueUnit) taskLogHabitValueUnit.textContent = "";
@@ -7107,14 +7105,17 @@ export function render(opts = {}) {
     }
     taskLogKpiValueSection.hidden = false;
     if (taskLogHabitValueUnit) {
-      taskLogHabitValueUnit.textContent = measure.unit || "";
+      taskLogHabitValueUnit.textContent = measure?.unit || daily?.unit || "";
     }
     if (!taskLogHabitValueInput) return;
     const editRow = taskLogEditTr?._rowData;
     const ledgerEntryId = String(editRow?.id || "").trim();
+    const storageKey = measure?.storageKey || daily?.storageKey;
+    const kpiId = measure?.kpiId || daily?.kpiId;
+    if (!storageKey || !kpiId) return;
     taskLogHabitValueInput.value = resolvePerformedValueForTaskLogEdit(
-      measure.storageKey,
-      measure.kpiId,
+      storageKey,
+      kpiId,
       dateYmd,
       ledgerEntryId,
       editRow,
@@ -7977,9 +7978,7 @@ export function render(opts = {}) {
       }
       const dailyInfoSubmit = getKpiDailyRepeatInfoForTaskLog(taskName);
       const measureInfoSubmit = getKpiMeasureInfoForTaskLog(taskName);
-      const kpiPerformedRaw = measureInfoSubmit?.hasUnitGoal
-        ? (taskLogHabitValueInput?.value || "").trim()
-        : "";
+      const kpiPerformedRaw = (taskLogHabitValueInput?.value || "").trim();
       const dateRawStr = (dateStr || "")
         .toString()
         .replace(/\//g, "-")
@@ -8003,11 +8002,19 @@ export function render(opts = {}) {
       if (ledgerRowForKpi) {
         applyKpiFieldsToLedgerRow(ledgerRowForKpi, {
           completed: completedForKpi,
-          performedValue: measureInfoSubmit?.hasUnitGoal
-            ? kpiPerformedRaw
-            : undefined,
+          performedValue: kpiPerformedRaw || undefined,
         });
       }
+      if (addCtx) requestUsageListScrollToBottomOnce();
+      onFilterChange();
+      saveTimeRows(getFullRowsForFilter(true));
+
+      const rowTaskId = String(ledgerRowForKpi?.taskId || "").trim();
+      const kpiLinks =
+        normalizedDateRaw.length >= 10
+          ? resolveKpiLinksForTaskName(taskName, rowTaskId)
+          : [];
+      const primaryKpiCtx = dailyInfoSubmit || measureInfoSubmit;
 
       if (
         dailyInfoSubmit?.needHabitTracker &&
@@ -8020,12 +8027,13 @@ export function render(opts = {}) {
           normalizedDateRaw,
           completed,
           ledgerIdForKpi,
-          dailyInfoSubmit.hasUnitGoal ? kpiPerformedRaw : undefined,
+          kpiPerformedRaw || undefined,
         );
       } else if (
-        measureInfoSubmit?.hasUnitGoal &&
+        measureInfoSubmit &&
         !measureInfoSubmit.needHabitTracker &&
-        normalizedDateRaw.length >= 10
+        normalizedDateRaw.length >= 10 &&
+        (kpiPerformedRaw || measureInfoSubmit.hasUnitGoal)
       ) {
         upsertKpiMeasureLogValue(
           measureInfoSubmit.storageKey,
@@ -8035,14 +8043,46 @@ export function render(opts = {}) {
           ledgerIdForKpi,
         );
       }
+
+      if (kpiPerformedRaw && normalizedDateRaw.length >= 10) {
+        const persistTargets = [];
+        const seenPersist = new Set();
+        const addPersistTarget = (storageKey, kpiId) => {
+          const sk = String(storageKey || "").trim();
+          const kid = String(kpiId || "").trim();
+          if (!sk || !kid) return;
+          const key = `${sk}|${kid}`;
+          if (seenPersist.has(key)) return;
+          seenPersist.add(key);
+          persistTargets.push({ storageKey: sk, kpiId: kid });
+        };
+        if (primaryKpiCtx?.storageKey && primaryKpiCtx?.kpiId) {
+          addPersistTarget(primaryKpiCtx.storageKey, primaryKpiCtx.kpiId);
+        }
+        for (const link of kpiLinks) {
+          addPersistTarget(link.storageKey, link.kpiId);
+        }
+        for (const { storageKey, kpiId } of persistTargets) {
+          persistKpiPerformedValueFromTimeLedger(
+            storageKey,
+            kpiId,
+            normalizedDateRaw,
+            kpiPerformedRaw,
+            ledgerIdForKpi,
+          );
+        }
+      }
+
+      if (dailyInfoSubmit || measureInfoSubmit || kpiPerformedRaw || kpiLinks.length > 0) {
+        try {
+          syncHabitTrackerLogs();
+        } catch (_) {}
+      }
       const rowForMemo = editTr?._rowData || addLedgerTr?._rowData;
       if (rowForMemo) {
         if (editTr) refreshTimeLedgerRowMemoDisplay(editTr, rowForMemo);
         if (addLedgerTr) refreshTimeLedgerRowMemoDisplay(addLedgerTr, rowForMemo);
       }
-      if (addCtx) requestUsageListScrollToBottomOnce();
-      onFilterChange();
-      saveTimeRows(getFullRowsForFilter(true));
     } else {
       console.warn("[lp-task-log]", "submit_no_row_context", {
         taskName: (taskName || "").slice(0, 80),

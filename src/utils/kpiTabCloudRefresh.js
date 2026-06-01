@@ -8,22 +8,10 @@
  * - pull로 서버가 비어 있을 때 자동 push 예약 없음(저장 시에만 서버 반영).
  */
 
-import {
-  DREAM_KPI_MAP_STORAGE_KEY,
-  pullDreamKpiMapFromSupabase,
-} from "./dreamKpiMapSupabase.js";
-import {
-  HEALTH_KPI_MAP_STORAGE_KEY,
-  pullHealthKpiMapFromSupabase,
-} from "./healthKpiMapSupabase.js";
-import {
-  HAPPINESS_KPI_MAP_STORAGE_KEY,
-  pullHappinessKpiMapFromSupabase,
-} from "./happinessKpiMapSupabase.js";
-import {
-  SIDEINCOME_KPI_MAP_STORAGE_KEY,
-  pullSideincomeKpiMapFromSupabase,
-} from "./sideincomeKpiMapSupabase.js";
+import { pullDreamKpiMapFromSupabase } from "./dreamKpiMapSupabase.js";
+import { pullHealthKpiMapFromSupabase } from "./healthKpiMapSupabase.js";
+import { pullHappinessKpiMapFromSupabase } from "./happinessKpiMapSupabase.js";
+import { pullSideincomeKpiMapFromSupabase } from "./sideincomeKpiMapSupabase.js";
 import {
   shouldDeferKpiPullForDomain,
   shouldSkipKpiDomainForBackgroundPullAll,
@@ -42,10 +30,10 @@ import { patchKpiLinkedTasksFromKpiMaps } from "./timeTaskOptionsModel.js";
 import { ensureAllKpiTimeTasksFromStorage } from "./kpiTimeTaskSync.js";
 import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
 const KPI_LOCAL_STORAGE_KEYS = {
-  dream: DREAM_KPI_MAP_STORAGE_KEY,
-  health: HEALTH_KPI_MAP_STORAGE_KEY,
-  happiness: HAPPINESS_KPI_MAP_STORAGE_KEY,
-  sideincome: SIDEINCOME_KPI_MAP_STORAGE_KEY,
+  dream: "kpi-dream-map",
+  health: "kpi-health-map",
+  happiness: "kpi-happiness-map",
+  sideincome: "kpi-sideincome-paths",
 };
 
 /** KPI 탭 진입 시 — 최근 6개월 가계부 + 과제(taskId↔kpiId) pull */
@@ -198,10 +186,10 @@ export async function pullKpiMapSubViewFromCloud(tabId) {
 }
 
 const ALL_KPI_STORAGE_KEYS = [
-  DREAM_KPI_MAP_STORAGE_KEY,
-  HEALTH_KPI_MAP_STORAGE_KEY,
-  HAPPINESS_KPI_MAP_STORAGE_KEY,
-  SIDEINCOME_KPI_MAP_STORAGE_KEY,
+  KPI_LOCAL_STORAGE_KEYS.dream,
+  KPI_LOCAL_STORAGE_KEYS.health,
+  KPI_LOCAL_STORAGE_KEYS.happiness,
+  KPI_LOCAL_STORAGE_KEYS.sideincome,
 ];
 
 /**
@@ -259,10 +247,10 @@ export async function pullAllKpiMapsFromCloud(getCurrentTabId) {
       skipHappiness,
       skipSideincome,
       todoCountsAfter: {
-        dream: kpiTodoCountInStorage(DREAM_KPI_MAP_STORAGE_KEY),
-        health: kpiTodoCountInStorage(HEALTH_KPI_MAP_STORAGE_KEY),
-        happiness: kpiTodoCountInStorage(HAPPINESS_KPI_MAP_STORAGE_KEY),
-        sideincome: kpiTodoCountInStorage(SIDEINCOME_KPI_MAP_STORAGE_KEY),
+        dream: kpiTodoCountInStorage(KPI_LOCAL_STORAGE_KEYS.dream),
+        health: kpiTodoCountInStorage(KPI_LOCAL_STORAGE_KEYS.health),
+        happiness: kpiTodoCountInStorage(KPI_LOCAL_STORAGE_KEYS.happiness),
+        sideincome: kpiTodoCountInStorage(KPI_LOCAL_STORAGE_KEYS.sideincome),
       },
     });
   }

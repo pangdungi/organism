@@ -20,9 +20,11 @@ import { applyHealthKpiTimestampsOnSave } from "./healthKpiMapSupabase.js";
 import { formatKpiHistoryValueText } from "./kpiLogFields.js";
 import { kpiHasHabitUnitGoal } from "./kpiHabitStreak.js";
 import {
+  getActiveKpiTaskKeepersById,
   readKpiMapScopedStorageRaw,
   writeKpiMapScopedStorageRaw,
 } from "./kpiMapLocalStorage.js";
+import { getTaskOptionByName } from "./timeTaskOptionsModel.js";
 
 const DREAM_MAP_KEY = "kpi-dream-map";
 const SIDEINCOME_KEY = "kpi-sideincome-paths";
@@ -468,6 +470,40 @@ export function kpiHasTargetValueAndUnit(kpi) {
   return tv !== "" && u !== "";
 }
 
+/** 과제명 → KPI id (task.kpiId · KPI 이름 · kpiTaskSync 표시명) */
+export function resolveKpiIdForTaskName(taskName) {
+  const n = (taskName || "").trim();
+  if (!n) return "";
+  try {
+    const fromOpt = String(getTaskOptionByName(n)?.kpiId || "").trim();
+    if (fromOpt) return fromOpt;
+  } catch (_) {}
+  const rec = getKpiRecordByTaskName(n);
+  if (rec?.kpi?.id) return String(rec.kpi.id).trim();
+  try {
+    for (const [kpiId, keeper] of getActiveKpiTaskKeepersById()) {
+      if ((keeper?.name || "").trim() === n) return String(kpiId).trim();
+    }
+  } catch (_) {}
+  return "";
+}
+
+/** @returns {{ storageKey: string, kpiId: string, needHabitTracker: boolean, dailyTodos: Array, hasUnitGoal: boolean, unit: string } | null} */
+export function getKpiDailyRepeatInfoByTaskName(taskName) {
+  const kpiId = resolveKpiIdForTaskName(taskName);
+  if (kpiId) return getKpiDailyRepeatInfoByKpiId(kpiId);
+  return getKpiDailyRepeatInfoByKpiName(taskName);
+}
+
+/** @returns {{ storageKey: string, kpiId: string, hasUnitGoal: boolean, unit: string, needHabitTracker: boolean } | null} */
+export function getKpiMeasureInfoByTaskName(taskName) {
+  const kpiId = resolveKpiIdForTaskName(taskName);
+  if (kpiId) return getKpiMeasureInfoByKpiId(kpiId);
+  const rec = getKpiRecordByTaskName(taskName);
+  if (rec?.kpi?.id) return getKpiMeasureInfoByKpiId(rec.kpi.id);
+  return null;
+}
+
 /** 높을수록 좋음(direction !== lower)이고 목표값·단위가 있을 때만 시간가계부에 수치 입력란 표시 */
 export function kpiShowTimeLedgerMeasureField(kpi) {
   if (!kpi) return false;
@@ -501,7 +537,6 @@ export function appendKpiValueLogFromTimeLedger(taskName, { dateRaw, value, memo
     date: dateStr,
     dateRaw: dr,
     value: v,
-    status: "순항",
     memo: (memo || "").trim(),
   };
   if (storageKey === DREAM_MAP_KEY) log.dreamId = kpi.dreamId;
@@ -588,10 +623,13 @@ export function getKpiMeasureInfoByKpiId(kpiId) {
     const data = loadJson(storageKey, { kpis: [] });
     const kpi = (data.kpis || []).find((k) => String(k.id || "").trim() === kid);
     if (!kpi) continue;
+    const hasUnitGoal = kpi.needHabitTracker
+      ? kpiHasHabitUnitGoal(kpi)
+      : kpiHasTargetValueAndUnit(kpi);
     return {
       storageKey,
       kpiId: kpi.id,
-      hasUnitGoal: kpiHasTargetValueAndUnit(kpi),
+      hasUnitGoal,
       unit: String(kpi.unit || "").trim(),
       needHabitTracker: !!kpi.needHabitTracker,
     };

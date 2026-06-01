@@ -9,6 +9,7 @@ import { stampAndPersistKpiMap } from "./kpiTodoSync.js";
 import {
   getFullTaskOptions,
   readTaskOptionsMemRows,
+  getTaskOptionByName,
 } from "./timeTaskOptionsModel.js";
 import { isUuid } from "./idUtils.js";
 import {
@@ -17,6 +18,7 @@ import {
   defaultManualKpiLogMeta,
 } from "./kpiLogFields.js";
 import { syncSleepHealthGoalLogsFromTimeLedger } from "./healthSleepGoalTimeLedgerSync.js";
+import { getActiveKpiTaskKeepersById } from "./kpiMapLocalStorage.js";
 export {
   getKpiSyncedTaskNames,
   getKpiSyncActiveKpiIds,
@@ -114,7 +116,11 @@ function getMatchingLedgerRowsForKpi(kpiId, rowsForSum, extraNameAliases = []) {
 
   const matched = [];
   for (const r of rowsForSum) {
-    if (!(r.timeTracked || "").trim()) continue;
+    const hasTime = !!(r.timeTracked || "").trim();
+    const hasPerf = !!sanitizeKpiMeasureLogValue(r.kpiPerformedValue);
+    const hasHabit =
+      Array.isArray(r.habitDailyCompleted) && r.habitDailyCompleted.length > 0;
+    if (!hasTime && !hasPerf && !hasHabit) continue;
     const tid = String(r.taskId || "").trim();
     const tn = String(r.taskName || "").trim();
     if (isUuid(tid)) {
@@ -243,6 +249,7 @@ export function getKpiDailyLedgerSummaries(kpiId, kpiName, opts = {}) {
         minutes: 0,
         entryIds: [],
         habitDailyCompleted: [],
+        performedValue: "",
       });
     }
     const bucket = byDay.get(d);
@@ -258,8 +265,78 @@ export function getKpiDailyLedgerSummaries(kpiId, kpiName, opts = {}) {
         habitRaw,
       );
     }
+    const perf = sanitizeKpiMeasureLogValue(r.kpiPerformedValue);
+    if (perf) bucket.performedValue = perf;
   }
   return [...byDay.values()].sort((a, b) => b.dateRaw.localeCompare(a.dateRaw));
+}
+
+/** KPI·날짜에 연결된 시간기록 «오늘의 수행값» (kpiLogs 없을 때 카드·로그 표시용) */
+export function getKpiLedgerPerformedValueOnDate(kpiId, kpiName, ymdTen) {
+  const d = normalizeYmdTenForRange(ymdTen);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return "";
+  const extra = kpiName ? [String(kpiName).trim()] : [];
+  let best = "";
+  for (const r of getMatchingLedgerRowsForKpi(kpiId, loadTimeRows(), extra)) {
+    if (ledgerRowDateYmd(r) !== d) continue;
+    const v = sanitizeKpiMeasureLogValue(r.kpiPerformedValue);
+    if (v) best = v;
+  }
+  return best;
+}
+
+function parseKpiMeasureNumeric(val) {
+  const n = parseFloat(String(val || "").replace(/[^0-9.-]/g, ""));
+  return Number.isNaN(n) ? 0 : n;
+}
+
+/**
+ * 직접입력 KPI 카드 — kpiLogs + 시간기록 «오늘의 수행값» (목표 기간 내 일별 합산)
+ * @param {object} kpi
+ * @param {object[]} [storedLogs]
+ */
+export function getKpiAccumulatedMeasureValue(kpi, storedLogs = []) {
+  const kid = String(kpi?.id || "").trim();
+  if (!kid || kpi?.useTimeAsUnit || kpi?.useTaskCompletionGoal || kpi?.needHabitTracker) {
+    return 0;
+  }
+  const { start, end } = getKpiTargetDateRange(kpi);
+  const logs = Array.isArray(storedLogs) ? storedLogs : [];
+
+  const inRange = (ymd) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return false;
+    if (start && ymd < start) return false;
+    if (end && ymd > end) return false;
+    return true;
+  };
+
+  /** @type {Map<string, number>} */
+  const byDay = new Map();
+  const setDayVal = (ymd, v) => {
+    if (!inRange(ymd) || v <= 0) return;
+    byDay.set(ymd, Math.max(byDay.get(ymd) || 0, v));
+  };
+
+  for (const log of logs) {
+    if (String(log?.kpiId || "").trim() !== kid) continue;
+    const d = normalizeKpiLogDateYmd(log?.dateRaw || log?.date || "");
+    setDayVal(d, parseKpiMeasureNumeric(log?.value));
+  }
+
+  const kpiName = String(kpi?.name || "").trim();
+  for (const day of getKpiDailyLedgerSummaries(kid, kpiName, {
+    startYmd: start,
+    endYmd: end,
+  })) {
+    const fromLedger = parseKpiMeasureNumeric(day.performedValue);
+    if (fromLedger > 0 && !(byDay.get(day.dateRaw) > 0)) {
+      setDayVal(day.dateRaw, fromLedger);
+    }
+  }
+
+  let sum = 0;
+  for (const v of byDay.values()) sum += v;
+  return sum;
 }
 
 export function normalizeKpiLogDateYmd(val) {
@@ -660,6 +737,67 @@ function sanitizeKpiMeasureLogValue(val) {
 }
 
 /**
+ * 시간기록 «오늘의 수행값» → 해당 날짜 kpiLogs.value (매일하기·직접입력)
+ */
+export function persistKpiPerformedValueFromTimeLedger(
+  storageKey,
+  kpiId,
+  dateRaw,
+  performedValue,
+  timeLedgerEntryId,
+) {
+  const v = sanitizeKpiMeasureLogValue(performedValue);
+  const eid = String(timeLedgerEntryId || "").trim();
+  const hasLedger = isUuid(eid);
+  if (!storageKey || !kpiId || !dateRaw || dateRaw.length < 10) return false;
+  if (!v && !hasLedger) return false;
+  try {
+    const raw = readKpiMapScopedStorageRaw(storageKey);
+    if (!raw) return false;
+    const prev = JSON.parse(raw);
+    const data = JSON.parse(raw);
+    const kpi = (data.kpis || []).find(
+      (k) => String(k.id || "").trim() === String(kpiId || "").trim(),
+    );
+    if (!kpi || kpi.useTimeAsUnit || kpi.useTaskCompletionGoal) return false;
+    const config = STORAGE_CONFIG.find((c) => c.key === storageKey);
+    if (!config) return false;
+
+    const logs = data.kpiLogs || [];
+    const normDate = normalizeLogDate(dateRaw);
+    const existingIdx = logs.findIndex((l) =>
+      kpiLogMatchesDay(l, kpiId, normDate),
+    );
+    const dateDisplay = toDisplayDate(normDate);
+
+    if (existingIdx >= 0) {
+      if (v) logs[existingIdx].value = v;
+      if (hasLedger) attachTimeLedgerEntryToLog(logs[existingIdx], eid);
+    } else {
+      const row = {
+        id: nextLogId(),
+        kpiId,
+        [config.idKey]: kpi[config.kpiKey],
+        date: dateDisplay,
+        dateRaw: normDate,
+        value: v,
+        memo: "",
+        dailyCompleted: [],
+        dailyIncomplete: [],
+        ...defaultManualKpiLogMeta(),
+      };
+      if (hasLedger) attachTimeLedgerEntryToLog(row, eid);
+      logs.push(row);
+    }
+    data.kpiLogs = logs;
+    stampAndPersistKpiMap(storageKey, prev, data, { pushServer: true });
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+/**
  * 직접입력 등 매일하기가 아닌 KPI — 과제기록 «오늘의 수행값»을 해당 날짜 kpiLogs에 반영
  */
 export function upsertKpiMeasureLogValue(
@@ -678,7 +816,9 @@ export function upsertKpiMeasureLogValue(
     const kpi = (data.kpis || []).find(
       (k) => String(k.id || "").trim() === String(kpiId || "").trim(),
     );
-    if (!kpi || kpi.needHabitTracker || !kpiHasTargetValueAndUnit(kpi)) return false;
+    if (!kpi || kpi.needHabitTracker) return false;
+    const vCheck = sanitizeKpiMeasureLogValue(performedValue);
+    if (!kpiHasTargetValueAndUnit(kpi) && !vCheck) return false;
 
     const config = STORAGE_CONFIG.find((c) => c.key === storageKey);
     if (!config) return false;
@@ -695,7 +835,6 @@ export function upsertKpiMeasureLogValue(
 
     if (existingIdx >= 0) {
       if (v !== "") logs[existingIdx].value = v;
-      logs[existingIdx].status = logs[existingIdx].status || "순항";
       if (hasLedger) {
         attachTimeLedgerEntryToLog(logs[existingIdx], timeLedgerEntryId);
       }
@@ -707,7 +846,6 @@ export function upsertKpiMeasureLogValue(
         date: dateDisplay,
         dateRaw: normDate,
         value: v,
-        status: "순항",
         memo: "",
         ...defaultManualKpiLogMeta(),
       };
@@ -725,11 +863,13 @@ export function upsertKpiMeasureLogValue(
 }
 
 function resolveHabitLogValueForSave(kpi, performedValue, existingValue, hasActivity) {
-  if (habitKpiHasUnitGoal(kpi)) {
-    const trimmed = String(performedValue ?? "").trim();
-    if (!trimmed) return String(existingValue ?? "").trim();
+  const trimmed = String(performedValue ?? "").trim();
+  if (trimmed) {
     const n = parseFloat(trimmed.replace(/[^0-9.-]/g, ""));
-    return Number.isNaN(n) ? String(existingValue ?? "").trim() : String(n);
+    if (!Number.isNaN(n)) return String(n);
+  }
+  if (habitKpiHasUnitGoal(kpi)) {
+    return String(existingValue ?? "").trim();
   }
   if (hasActivity) return String(existingValue ?? "").trim() || "1";
   return String(existingValue ?? "").trim();
@@ -774,8 +914,7 @@ export function replaceHabitTrackerLogDailyCompleted(
     const dateDisplay = toDisplayDate(dateRaw);
     const hasActivity =
       list.length > 0 || !!String(timeLedgerEntryId || "").trim();
-    const hasPerformedInput =
-      habitKpiHasUnitGoal(kpi) && String(performedValue ?? "").trim() !== "";
+    const hasPerformedInput = String(performedValue ?? "").trim() !== "";
 
     if (existingIdx >= 0) {
       const prevVal = logs[existingIdx].value;
@@ -787,7 +926,6 @@ export function replaceHabitTrackerLogDailyCompleted(
         prevVal,
         hasActivity,
       );
-      logs[existingIdx].status = logs[existingIdx].status || "순항";
       if (timeLedgerEntryId) {
         attachTimeLedgerEntryToLog(logs[existingIdx], timeLedgerEntryId);
       }
@@ -799,7 +937,6 @@ export function replaceHabitTrackerLogDailyCompleted(
         date: dateDisplay,
         dateRaw,
         value: resolveHabitLogValueForSave(kpi, performedValue, "", hasActivity),
-        status: "순항",
         memo: "",
         dailyCompleted: list,
         dailyIncomplete: [],
@@ -862,7 +999,6 @@ export function upsertHabitTrackerLogWithDailyState(
       );
       logs[existingIdx].dailyIncomplete = [];
       logs[existingIdx].value = "1";
-      logs[existingIdx].status = "순항";
       if (timeLedgerEntryId) {
         attachTimeLedgerEntryToLog(logs[existingIdx], timeLedgerEntryId);
       }
@@ -874,7 +1010,6 @@ export function upsertHabitTrackerLogWithDailyState(
         date: dateDisplay,
         dateRaw,
         value: "1",
-        status: "순항",
         memo: "",
         dailyCompleted: mergeDailyCompletedLists([], dailyCompleted),
         dailyIncomplete: [],
@@ -896,15 +1031,108 @@ export function upsertHabitTrackerLogWithDailyState(
  * taskId·kpiId 없으면 과제명=KPI 이름 매칭(레거시·내장 과제 등).
  */
 let _syncHabitTrackerInFlight = false;
+let _syncHabitTrackerPending = false;
 
 export function syncHabitTrackerLogs() {
-  if (_syncHabitTrackerInFlight) return;
+  if (_syncHabitTrackerInFlight) {
+    _syncHabitTrackerPending = true;
+    return;
+  }
   _syncHabitTrackerInFlight = true;
   try {
     syncHabitTrackerLogsInner();
   } finally {
     _syncHabitTrackerInFlight = false;
+    if (_syncHabitTrackerPending) {
+      _syncHabitTrackerPending = false;
+      syncHabitTrackerLogs();
+    }
   }
+}
+
+/** 과제명·taskId → 연결된 KPI(storageKey, kpiId) 목록 (과제 기록 저장·동기화 공통) */
+export function resolveKpiLinksForTaskName(taskName, rowTaskId = "") {
+  const taskIdToKpiId = new Map();
+  for (const o of readTaskRowsForKpiMatch()) {
+    const tid = String(o.id || "").trim();
+    const kid = String(o.kpiId || "").trim();
+    if (isUuid(tid) && kid) taskIdToKpiId.set(tid, kid);
+  }
+  return resolveKpiLinksForLedgerRow(
+    { taskName, taskId: rowTaskId },
+    taskIdToKpiId,
+  );
+}
+
+function ledgerRowPerformedValue(row) {
+  return sanitizeKpiMeasureLogValue(row?.kpiPerformedValue);
+}
+
+function ledgerRowDailyCompleted(row) {
+  return Array.isArray(row?.habitDailyCompleted) ? row.habitDailyCompleted : [];
+}
+
+/** 매일하기(단위 목표) · 직접입력(목표값·단위) — 시간기록 «오늘의 수행값» → KPI 로그 */
+function kpiAcceptsPerformedValueFromTimeLedger(kpi) {
+  if (!kpi) return false;
+  if (kpi.useTimeAsUnit || kpi.useTaskCompletionGoal) return false;
+  if (kpi.needHabitTracker) return habitKpiHasUnitGoal(kpi);
+  return kpiHasTargetValueAndUnit(kpi);
+}
+
+function resolveKpiLinksForLedgerRow(r, taskIdToKpiId) {
+  /** @type {Array<{ storageKey: string, kpiId: string }>} */
+  const links = [];
+  const seen = new Set();
+  const add = (storageKey, kpiId) => {
+    const kid = String(kpiId || "").trim();
+    const sk = String(storageKey || "").trim();
+    if (!kid || !sk) return;
+    const key = `${sk}|${kid}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    links.push({ storageKey: sk, kpiId: kid });
+  };
+
+  const taskId = String(r.taskId || "").trim();
+  if (isUuid(taskId)) {
+    const kpiId = taskIdToKpiId.get(taskId);
+    if (kpiId) {
+      const sk = findStorageKeyForKpiId(kpiId);
+      if (sk) add(sk, kpiId);
+    }
+  }
+
+  const taskName = (r.taskName || "").trim();
+  if (taskName) {
+    const opt = getTaskOptionByName(taskName);
+    const optKpiId = String(opt?.kpiId || "").trim();
+    if (optKpiId) {
+      const sk = findStorageKeyForKpiId(optKpiId);
+      if (sk) add(sk, optKpiId);
+    }
+
+    for (const { key } of STORAGE_CONFIG) {
+      try {
+        const raw = readKpiMapScopedStorageRaw(key);
+        if (!raw) continue;
+        const data = JSON.parse(raw);
+        for (const kpi of data.kpis || []) {
+          if ((kpi.name || "").trim() === taskName) add(key, kpi.id);
+        }
+      } catch (_) {}
+    }
+
+    try {
+      for (const [kpiId, keeper] of getActiveKpiTaskKeepersById()) {
+        if ((keeper?.name || "").trim() !== taskName) continue;
+        const sk = findStorageKeyForKpiId(kpiId);
+        if (sk) add(sk, kpiId);
+      }
+    } catch (_) {}
+  }
+
+  return links;
 }
 
 function syncHabitTrackerLogsInner() {
@@ -916,20 +1144,21 @@ function syncHabitTrackerLogsInner() {
     if (isUuid(tid) && kid) taskIdToKpiId.set(tid, kid);
   }
 
-  /** @type {Map<string, Map<string, Set<string>>>} storageKey → (kpiId|date → entry ids) */
+  /** @type {Map<string, Map<string, { entryIds: Set<string>, performedValue: string, dailyCompleted: object[] }>>} */
   const byStorage = new Map();
 
-  const addLedgerLink = (storageKey, kpiId, dateRaw, entryId) => {
-    const sk = storageKey;
-    const kid = String(kpiId || "").trim();
-    const nd = normalizeLogDate(dateRaw);
-    const eid = String(entryId || "").trim();
-    if (!sk || !kid || nd.length < 10 || !isUuid(eid)) return;
-    const combo = `${kid}|${nd}`;
-    if (!byStorage.has(sk)) byStorage.set(sk, new Map());
-    const inner = byStorage.get(sk);
-    if (!inner.has(combo)) inner.set(combo, new Set());
-    inner.get(combo).add(eid);
+  const getLedgerBucket = (storageKey, kpiId, normDate) => {
+    const combo = `${String(kpiId || "").trim()}|${normDate}`;
+    if (!byStorage.has(storageKey)) byStorage.set(storageKey, new Map());
+    const inner = byStorage.get(storageKey);
+    if (!inner.has(combo)) {
+      inner.set(combo, {
+        entryIds: new Set(),
+        performedValue: "",
+        dailyCompleted: [],
+      });
+    }
+    return inner.get(combo);
   };
 
   rows.forEach((r) => {
@@ -937,34 +1166,27 @@ function syncHabitTrackerLogsInner() {
       (r.date || "").toString() || parseDateFromLedgerStartTime(r.startTime),
     );
     if (!dateRaw || dateRaw.length < 10) return;
-    if (!(r.timeTracked || "").trim()) return;
+
+    const hasTime = !!(r.timeTracked || "").trim();
+    const performedValue = ledgerRowPerformedValue(r);
+    const dailyCompleted = ledgerRowDailyCompleted(r);
+    if (!hasTime && !performedValue && dailyCompleted.length === 0) return;
+
     const entryId = String(r.id || "").trim();
-
-    const taskId = String(r.taskId || "").trim();
-    if (isUuid(taskId)) {
-      const kpiId = taskIdToKpiId.get(taskId);
-      if (kpiId) {
-        const sk = findStorageKeyForKpiId(kpiId);
-        if (sk) addLedgerLink(sk, kpiId, dateRaw, entryId);
-        return;
+    for (const { storageKey, kpiId } of resolveKpiLinksForLedgerRow(
+      r,
+      taskIdToKpiId,
+    )) {
+      const nd = normalizeLogDate(dateRaw);
+      const bucket = getLedgerBucket(storageKey, kpiId, nd);
+      if (hasTime && isUuid(entryId)) bucket.entryIds.add(entryId);
+      if (performedValue) bucket.performedValue = performedValue;
+      if (dailyCompleted.length > 0) {
+        bucket.dailyCompleted = mergeDailyCompletedLists(
+          bucket.dailyCompleted,
+          dailyCompleted,
+        );
       }
-    }
-
-    const taskName = (r.taskName || "").trim();
-    if (!taskName) return;
-    const nd = normalizeLogDate(dateRaw);
-
-    for (const { key } of STORAGE_CONFIG) {
-      try {
-        const raw = readKpiMapScopedStorageRaw(key);
-        if (!raw) continue;
-        const data = JSON.parse(raw);
-        const kpis = data.kpis || [];
-        kpis.forEach((kpi) => {
-          if ((kpi.name || "").trim() !== taskName) return;
-          addLedgerLink(key, kpi.id, nd, entryId);
-        });
-      } catch (_) {}
     }
   });
 
@@ -992,6 +1214,67 @@ function syncHabitTrackerLogsInner() {
     log.kpiLogSource = KPI_LOG_SOURCE_TIME_LEDGER;
   };
 
+  const applyLedgerBucketToKpiLog = (log, kpi, bucket) => {
+    let touched = false;
+    const canMergeEntryIds =
+      bucket.entryIds.size > 0 &&
+      (!logBlocksTimeLedgerIdMerge(log, kpi) ||
+        kpi.needHabitTracker ||
+        kpiHasTargetValueAndUnit(kpi) ||
+        !!bucket.performedValue);
+
+    if (canMergeEntryIds) {
+      const before = JSON.stringify([
+        log.kpiLogSource,
+        (log.timeLedgerEntryIds || []).slice().sort(),
+      ]);
+      mergeEntryIdsIntoLog(log, bucket.entryIds);
+      const after = JSON.stringify([
+        log.kpiLogSource,
+        (log.timeLedgerEntryIds || []).slice().sort(),
+      ]);
+      if (before !== after) touched = true;
+    }
+
+    if (kpi.needHabitTracker && bucket.dailyCompleted.length > 0) {
+      const merged = mergeDailyCompletedLists(
+        log.dailyCompleted || [],
+        bucket.dailyCompleted,
+      );
+      if (JSON.stringify(merged) !== JSON.stringify(log.dailyCompleted || [])) {
+        log.dailyCompleted = merged;
+        log.dailyIncomplete = [];
+        touched = true;
+      }
+    }
+
+    const hasActivity =
+      bucket.entryIds.size > 0 || bucket.dailyCompleted.length > 0;
+    const prevVal = String(log.value ?? "").trim();
+    let nextVal = prevVal;
+
+    if (
+      bucket.performedValue &&
+      !kpi.useTimeAsUnit &&
+      !kpi.useTaskCompletionGoal
+    ) {
+      nextVal = bucket.performedValue;
+    } else if (kpi.needHabitTracker) {
+      nextVal = resolveHabitLogValueForSave(
+        kpi,
+        bucket.performedValue,
+        prevVal,
+        hasActivity,
+      );
+    }
+
+    if (nextVal !== prevVal) {
+      log.value = nextVal;
+      touched = true;
+    }
+    return touched;
+  };
+
   STORAGE_CONFIG.forEach(({ key, kpiKey, idKey }) => {
     const perDay = byStorage.get(key);
     if (!perDay || perDay.size === 0) return;
@@ -1007,7 +1290,7 @@ function syncHabitTrackerLogsInner() {
       const logs = data.kpiLogs || [];
       let changed = false;
 
-      for (const [comboKey, idSet] of perDay) {
+      for (const [comboKey, bucket] of perDay) {
         const pipe = comboKey.indexOf("|");
         if (pipe <= 0) continue;
         const kpiId = comboKey.slice(0, pipe);
@@ -1022,35 +1305,29 @@ function syncHabitTrackerLogsInner() {
         );
 
         if (idx >= 0) {
-          const log = logs[idx];
-          if (logBlocksTimeLedgerIdMerge(log, kpi)) continue;
-          const before = JSON.stringify([
-            log.kpiLogSource,
-            (log.timeLedgerEntryIds || []).slice().sort(),
-          ]);
-          mergeEntryIdsIntoLog(log, idSet);
-          const after = JSON.stringify([
-            log.kpiLogSource,
-            (log.timeLedgerEntryIds || []).slice().sort(),
-          ]);
-          if (before !== after) changed = true;
-        } else {
+          if (applyLedgerBucketToKpiLog(logs[idx], kpi, bucket)) {
+            changed = true;
+          }
+        } else if (
+          bucket.entryIds.size > 0 ||
+          bucket.performedValue ||
+          bucket.dailyCompleted.length > 0
+        ) {
           const dateDisplay = toDisplayDate(nd);
-          const habit = !!kpi.needHabitTracker;
           const row = {
             id: nextLogId(),
             kpiId: kpi.id,
             [idKey]: kpi[kpiKey],
             date: dateDisplay,
             dateRaw: nd,
-            value: habit ? "1" : "",
-            status: habit ? "순항" : "",
+            value: "",
+            status: "",
             memo: "",
             dailyCompleted: [],
             dailyIncomplete: [],
             ...defaultManualKpiLogMeta(),
           };
-          mergeEntryIdsIntoLog(row, idSet);
+          applyLedgerBucketToKpiLog(row, kpi, bucket);
           logs.push(row);
           changed = true;
         }
@@ -1058,7 +1335,7 @@ function syncHabitTrackerLogsInner() {
 
       if (changed) {
         data.kpiLogs = logs;
-        stampAndPersistKpiMap(key, prev, data);
+        stampAndPersistKpiMap(key, prev, data, { pushServer: true });
       }
     } catch (_) {}
   });

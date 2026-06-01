@@ -7,7 +7,6 @@ import {
   KPI_LOG_SOURCE_MANUAL,
   kpiLogIsTimeLinked,
 } from "./kpiLogFields.js";
-import { pullTimeLedgerForKpi } from "./kpiTabCloudRefresh.js";
 import { patchKpiLinkedTasksFromKpiMaps } from "./timeTaskOptionsModel.js";
 import {
   getKpiDailyLedgerSummaries,
@@ -61,7 +60,10 @@ export function resolveKpiDetailLogEntries(kpi, storedLogs = []) {
     const dailyCompleted = mergeLogDailyCompleted(stored, day.habitDailyCompleted);
     const hasTime = day.minutes > 0;
     const hasChecks = dailyCompleted.length > 0;
-    if (!hasTime && !hasChecks) continue;
+    const performedVal = String(
+      stored?.value ?? day.performedValue ?? "",
+    ).trim();
+    if (!hasTime && !hasChecks && !performedVal) continue;
 
     const entryIds =
       Array.isArray(day.entryIds) && day.entryIds.length > 0
@@ -74,6 +76,7 @@ export function resolveKpiDetailLogEntries(kpi, storedLogs = []) {
       kpiId: kpi.id,
       date: stored?.date || day.dateDisplay,
       dateRaw: day.dateRaw,
+      value: performedVal || String(stored?.value ?? "").trim(),
       timeLedgerEntryIds: entryIds,
       kpiLogSource: hasTime
         ? KPI_LOG_SOURCE_TIME_LEDGER
@@ -90,8 +93,8 @@ export function resolveKpiDetailLogEntries(kpi, storedLogs = []) {
     const hasChecks = dailyCompleted.length > 0;
 
     if (kpiLogIsTimeLinked(log)) {
-      if (!hasChecks) continue;
-      out.push({ ...log, dailyCompleted });
+      if (!hasChecks && !v && !memo) continue;
+      out.push(hasChecks ? { ...log, dailyCompleted } : log);
       continue;
     }
 
@@ -131,6 +134,7 @@ export async function resolveKpiDetailLogEntriesPrepared(kpi, storedLogs = []) {
   const needPull =
     kpiShouldUseTimeLedgerLogs(kpi) || logs.some((l) => kpiLogIsTimeLinked(l));
   if (needPull) {
+    const { pullTimeLedgerForKpi } = await import("./kpiTabCloudRefresh.js");
     await pullTimeLedgerForKpi(kpi);
     patchKpiLinkedTasksFromKpiMaps();
   }

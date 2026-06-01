@@ -164,7 +164,7 @@ export function createDefaultChoreTaskKpi() {
   });
 }
 
-/** 매일 반복 · 목표값 없음 */
+/** 매일 반복 · 목표값·단위는 선택(시간 기록 «오늘의 수행값» 연동) */
 export function createDefaultMorningRoutineKpi() {
   return createDefaultHappinessKpi({
     id: DEFAULT_MORNING_ROUTINE_KPI_ID,
@@ -232,7 +232,7 @@ const DEFAULT_HAPPINESS_HABIT_KPI_MIGRATIONS = [
   { id: DEFAULT_OUT_AFTER_ROUTINE_KPI_ID, name: "외출 후 루틴" },
 ];
 
-/** 기본 루틴 KPI — 매일 반복·목표값 없음 유지 */
+/** 기본 루틴 KPI — 매일하기 유지, 사용자가 넣은 목표값·단위는 지우지 않음 */
 function migrateDefaultHappinessHabitKpis(kpis) {
   let changed = false;
   let next = kpis || [];
@@ -240,12 +240,13 @@ function migrateDefaultHappinessHabitKpis(kpis) {
     next = next.map((k) => {
       if (String(k?.id ?? "") !== id) return k;
       const displayName = String(k.name || "").trim() || name;
-      const habit = !!k.needHabitTracker;
-      const noTarget =
-        !String(k.targetValue ?? "").trim() &&
+      const alreadyHabitMode =
+        !!k.needHabitTracker &&
         !k.useTimeAsUnit &&
         !k.useTaskCompletionGoal;
-      if (habit && noTarget && displayName === (k.name || "").trim()) return k;
+      if (alreadyHabitMode && displayName === String(k.name || "").trim()) {
+        return k;
+      }
       changed = true;
       return {
         ...k,
@@ -253,8 +254,8 @@ function migrateDefaultHappinessHabitKpis(kpis) {
         needHabitTracker: true,
         useTimeAsUnit: false,
         useTaskCompletionGoal: false,
-        unit: "",
-        targetValue: "",
+        unit: String(k.unit ?? "").trim(),
+        targetValue: String(k.targetValue ?? "").trim(),
         targetStartDate: "",
         targetDeadline: "",
         targetTimeRequired: "",

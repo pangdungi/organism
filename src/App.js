@@ -270,9 +270,9 @@ function kpiSoftRefreshAfterPull(tabId, pullResult) {
   kpiSoftRefreshIfPullChanged(tabId, pullResult);
 }
 
-/** KPI 탭: pull 로 로컬 맵이 바뀐 경우에만 소프트 갱신(동일하면 카드 재그림·1초 깜빡임 방지) */
+/** KPI 탭: pull·동기화 완료 후 화면 갱신 */
 function kpiSoftRefreshIfPullChanged(tabId, pullResult) {
-  if (!pullResult?.localChanged) return;
+  if (!pullResult?.pullOk && !pullResult?.localChanged) return;
   try {
     if (tabId === "dream") window.__lpDreamSoftRefresh?.();
     else if (tabId === "health") window.__lpHealthSoftRefresh?.();

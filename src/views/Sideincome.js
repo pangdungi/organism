@@ -987,7 +987,10 @@ export function render() {
 
   function getKpiLogs(kpiId) {
     const data = loadSideincomeMap();
-    const logs = (data.kpiLogs || []).filter((l) => l.kpiId === kpiId);
+    const kid = String(kpiId || "").trim();
+    const logs = (data.kpiLogs || []).filter(
+      (l) => String(l.kpiId || "").trim() === kid,
+    );
     return sortKpiLogsNewestFirst(logs, data.kpiLogs);
   }
 

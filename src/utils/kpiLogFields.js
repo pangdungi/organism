@@ -9,6 +9,7 @@ import {
   normalizeKpiLogDateYmd,
   kpiShouldUseTimeLedgerLogs,
 } from "./timeKpiSync.js";
+import { kpiHasHabitUnitGoal } from "./kpiHabitUnitGoal.js";
 
 export const KPI_LOG_SOURCE_MANUAL = "manual";
 export const KPI_LOG_SOURCE_TIME_LEDGER = "time_ledger";
@@ -80,6 +81,19 @@ export function formatKpiHistoryValueText(log, kpi, opts) {
   const shortHm = Boolean(opts && opts.durationShortHm);
   const u = kpi?.unit ? String(kpi.unit).trim() : "";
   const ledgerMins = getKpiLogDisplayMinutes(log, kpi);
+  const v = String(log?.value ?? "").trim();
+
+  /** 매일하기+단위·직접입력 수행값 — 시간 표시보다 우선 */
+  if (v && u && (kpiHasHabitUnitGoal(kpi) || (!kpi?.useTimeAsUnit && !kpi?.needHabitTracker))) {
+    return `${v} ${u}`;
+  }
+  if (v && !kpi?.useTimeAsUnit && !(kpi?.needHabitTracker && v === "1" && ledgerMins > 0)) {
+    if (kpi?.useTimeAsUnit) {
+      const mins = parseKpiTargetTimeRequiredToMinutes(v);
+      return mins > 0 ? formatMinutesToKoreanHm(mins) : `${v} 시간`;
+    }
+    return u ? `${v} ${u}` : v;
+  }
 
   if (
     (kpi?.useTimeAsUnit || kpi?.needHabitTracker || kpiLogIsTimeLinked(log)) &&
@@ -88,15 +102,6 @@ export function formatKpiHistoryValueText(log, kpi, opts) {
     return shortHm
       ? formatMinutesToShortHm(ledgerMins)
       : formatMinutesToKoreanHm(ledgerMins);
-  }
-
-  const v = String(log?.value ?? "").trim();
-  if (v) {
-    if (kpi?.useTimeAsUnit) {
-      const mins = parseKpiTargetTimeRequiredToMinutes(v);
-      return mins > 0 ? formatMinutesToKoreanHm(mins) : `${v} 시간`;
-    }
-    return u ? `${v} ${u}` : v;
   }
 
   if (ledgerMins > 0) {

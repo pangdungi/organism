@@ -7,6 +7,7 @@ import {
   parseKpiTargetTimeRequiredToMinutes,
   formatMinutesToKoreanHm,
   formatKpiTargetTimeRequiredDisplay,
+  getKpiAccumulatedMeasureValue,
 } from "./timeKpiSync.js";
 import { getLatestKpiLogWithExplicitValue } from "./kpiLogsSort.js";
 import {
@@ -86,9 +87,18 @@ export function kpiGoalModeOptionsHtml(kpi = null) {
 }
 
 export function kpiFormGoalAndTargetSectionHtml(kpi, escapeHtml, opts = {}) {
+  const habitMode = kpi ? resolveKpiGoalMode(kpi) === "habit" : false;
+  const trackHabitTarget =
+    habitMode && kpi ? kpiHasHabitUnitGoal(kpi) : false;
   return `
             <div class="dream-kpi-field dream-kpi-goal-mode-field" data-legacy="time-add-task-field">
               ${kpiGoalModeOptionsHtml(kpi)}
+            </div>
+            <div class="dream-kpi-field dream-kpi-field-checkbox dream-kpi-habit-target-toggle" data-kpi-habit-target-toggle data-legacy="time-add-task-field"${habitMode ? "" : " hidden"}>
+              <label class="dream-kpi-checkbox-label">
+                목표값·단위 입력하기
+                <input type="checkbox" name="trackHabitTargetValue"${trackHabitTarget ? " checked" : ""} />
+              </label>
             </div>
             <div class="dream-kpi-row dream-kpi-target-fields-row" data-kpi-target-fields data-legacy="time-add-task-field">
               <div class="dream-kpi-field" data-legacy="time-add-task-field">
@@ -236,10 +246,17 @@ export function validateKpiActionForm(form, opts = {}) {
         addError("targetValue", "올바른 목표 시간을 입력해 주세요.");
       }
     } else if (mode === "habit") {
-      const targetValue = sanitizeNumericInput((form.targetValue?.value || "").trim());
-      const unit = (form.unit?.value || "").trim();
-      if (!targetValue) addError("targetValue", "목표값을 입력해 주세요.");
-      if (!unit) addError("unit", "단위를 입력해 주세요.");
+      const trackHabitTarget = !!form.querySelector(
+        'input[name="trackHabitTargetValue"]',
+      )?.checked;
+      if (trackHabitTarget) {
+        const targetValue = sanitizeNumericInput(
+          (form.targetValue?.value || "").trim(),
+        );
+        const unit = (form.unit?.value || "").trim();
+        if (!targetValue) addError("targetValue", "목표값을 입력해 주세요.");
+        if (!unit) addError("unit", "단위를 입력해 주세요.");
+      }
     } else if (mode === "manual") {
       const targetValue = sanitizeNumericInput((form.targetValue?.value || "").trim());
       const unit = (form.unit?.value || "").trim();
@@ -331,6 +348,21 @@ export function readKpiGoalModeFormFields(
     };
   }
   if (needHabitTracker) {
+    const trackHabitTarget = !!form.querySelector(
+      'input[name="trackHabitTargetValue"]',
+    )?.checked;
+    if (!trackHabitTarget) {
+      return {
+        useTimeAsUnit: false,
+        needHabitTracker: true,
+        useTaskCompletionGoal: false,
+        unit: "",
+        targetValue: "",
+        targetTimeRequired: "",
+        targetStartDate: "",
+        targetDeadline: "",
+      };
+    }
     return {
       useTimeAsUnit: false,
       needHabitTracker: true,
@@ -389,6 +421,10 @@ export function bindKpiGoalModeForm(form, kpi = null, opts = {}) {
   const directionField = form.querySelector(".dream-kpi-direction-field");
   const targetFieldsRow = form.querySelector("[data-kpi-target-fields]");
   const unitFieldWrap = form.querySelector(".dream-kpi-unit-field");
+  const habitTargetToggle = form.querySelector("[data-kpi-habit-target-toggle]");
+  const trackHabitTargetCheck = form.querySelector(
+    'input[name="trackHabitTargetValue"]',
+  );
   const periodFieldsBlock = form.querySelector("[data-kpi-period-fields]");
   const goalModeRadios = form.querySelectorAll('input[name="kpiGoalMode"]');
   const kpiMode = kpi ? resolveKpiGoalMode(kpi) : "";
@@ -422,9 +458,14 @@ export function bindKpiGoalModeForm(form, kpi = null, opts = {}) {
 
   const sync = () => {
     const mode = currentMode();
+    const isHabit = mode === "habit";
+    const trackHabitTarget = !!trackHabitTargetCheck?.checked;
+    if (habitTargetToggle) habitTargetToggle.hidden = !isHabit;
     const showTargetFields =
-      mode === "time" || mode === "manual" || mode === "habit";
-    const showUnitField = mode === "manual" || mode === "habit";
+      mode === "time" ||
+      mode === "manual" ||
+      (isHabit && trackHabitTarget);
+    const showUnitField = mode === "manual" || (isHabit && trackHabitTarget);
     if (targetFieldsRow) targetFieldsRow.hidden = !showTargetFields;
     if (unitFieldWrap) unitFieldWrap.hidden = !showUnitField;
     if (periodFieldsBlock) periodFieldsBlock.hidden = mode !== "manual";
@@ -462,6 +503,10 @@ export function bindKpiGoalModeForm(form, kpi = null, opts = {}) {
       sync();
     }),
   );
+  trackHabitTargetCheck?.addEventListener("change", () => {
+    clearKpiFormFieldErrors(form);
+    sync();
+  });
   sync();
   bindKpiFormValidationClear(form);
 
@@ -601,7 +646,11 @@ export function computeKpiProgress(kpi, deps) {
       }
     }
   } else {
-    currentVal = getAccumulatedKpiValue(kpi.id);
+    const kid = String(kpi?.id || "").trim();
+    const relevantLogs = (getAllKpiLogs() || []).filter(
+      (l) => String(l?.kpiId || "").trim() === kid,
+    );
+    currentVal = getKpiAccumulatedMeasureValue(kpi, relevantLogs);
     progress = targetVal > 0 ? Math.min(100, (currentVal / targetVal) * 100) : 0;
   }
   const valueComplete = lower

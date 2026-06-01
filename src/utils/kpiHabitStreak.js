@@ -3,20 +3,17 @@
  */
 
 import { resolveKpiDetailLogEntriesLocal } from "./kpiTimeLedgerLogs.js";
-import { normalizeKpiLogDateYmd } from "./timeKpiSync.js";
+import {
+  normalizeKpiLogDateYmd,
+  getKpiLedgerPerformedValueOnDate,
+} from "./timeKpiSync.js";
 
 function parseKpiLogNumeric(val) {
   const n = parseFloat(String(val || "").replace(/[^0-9.-]/g, ""));
   return Number.isNaN(n) ? 0 : n;
 }
 
-/** @param {object} kpi */
-export function kpiHasHabitUnitGoal(kpi) {
-  if (!kpi?.needHabitTracker) return false;
-  const unit = String(kpi.unit || "").trim();
-  const target = String(kpi.targetValue ?? "").trim();
-  return !!unit && !!target;
-}
+export { kpiHasHabitUnitGoal } from "./kpiHabitUnitGoal.js";
 
 /**
  * @param {object} kpi
@@ -33,9 +30,14 @@ export function getKpiHabitTodayNumericValue(kpi, storedLogs = [], todayYmd = ""
   for (const log of storedLogs || []) {
     if (String(log?.kpiId || "").trim() !== kid) continue;
     const dk = normalizeKpiLogDateYmd(log?.dateRaw || log?.date || "");
-    if (dk === today) return parseKpiLogNumeric(log.value);
+    if (dk === today) {
+      const fromLog = parseKpiLogNumeric(log.value);
+      if (fromLog > 0) return fromLog;
+    }
   }
-  return 0;
+  return parseKpiLogNumeric(
+    getKpiLedgerPerformedValueOnDate(kpi?.id, kpi?.name, today),
+  );
 }
 
 /** @deprecated — 매일하기+단위 카드는 buildKpiCardHabitStreakAsideMarkup 사용 */
