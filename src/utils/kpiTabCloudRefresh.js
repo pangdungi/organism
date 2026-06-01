@@ -25,6 +25,7 @@ import {
   timeLedgerLocalTodayYmd,
 } from "./timeLedgerEntriesSupabase.js";
 import { pullTimeLedgerTasksFromSupabase } from "./timeLedgerTasksSupabase.js";
+import { coalesceInFlightPull } from "./timeLedgerPullCoalesce.js";
 import { syncHabitTrackerLogs, getKpiTargetDateRange } from "./timeKpiSync.js";
 import { patchKpiLinkedTasksFromKpiMaps } from "./timeTaskOptionsModel.js";
 import { ensureAllKpiTimeTasksFromStorage } from "./kpiTimeTaskSync.js";
@@ -38,19 +39,21 @@ const KPI_LOCAL_STORAGE_KEYS = {
 
 /** KPI 탭 진입 시 — 최근 6개월 가계부 + 과제(taskId↔kpiId) pull */
 async function pullLedgerForKpiTabEnter() {
-  try {
-    const today = timeLedgerLocalTodayYmd();
-    const d = new Date();
-    d.setMonth(d.getMonth() - 6);
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    await Promise.all([
-      pullTimeLedgerEntriesForDateRange(`${y}-${m}-${day}`, today),
-      pullTimeLedgerTasksFromSupabase(),
-    ]);
-    patchKpiLinkedTasksFromKpiMaps();
-  } catch (_) {}
+  return coalesceInFlightPull("kpi-tab-ledger-enter", async () => {
+    try {
+      const today = timeLedgerLocalTodayYmd();
+      const d = new Date();
+      d.setMonth(d.getMonth() - 6);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      await Promise.all([
+        pullTimeLedgerEntriesForDateRange(`${y}-${m}-${day}`, today),
+        pullTimeLedgerTasksFromSupabase(),
+      ]);
+      patchKpiLinkedTasksFromKpiMaps();
+    } catch (_) {}
+  });
 }
 
 /**

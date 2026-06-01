@@ -1555,44 +1555,6 @@
   overscroll-behavior-y: contain;
 }
 
-/* 1주 뷰: 앱 푸터 바로 위 — 요일별 예정 시간과제 대비 실제 기록 반영 비율 */
-.calendar-1week-execution-strip {
-  flex-shrink: 0;
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0.12rem 0 0.22rem;
-  background: transparent;
-  border-top: 1px solid var(--cal-line);
-}
-.calendar-1week-execution-strip__row {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 0;
-  align-items: stretch;
-}
-.calendar-1week-execution-strip__cell {
-  text-align: center;
-  font-size: 0.65rem;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  color: var(--cal-text-muted);
-  padding: 0.18rem 0.08rem;
-  line-height: 1.2;
-  border-radius: 6px;
-  min-width: 0;
-  background: transparent;
-}
-.calendar-1week-execution-strip__cell:not(:nth-child(7n)) {
-  border-right: 1px solid var(--cal-line);
-}
-/* 오늘 열: 실행률 숫자만 표시(파란 칩/배경 없음) */
-.calendar-1week-execution-strip__cell.is-today {
-  background: transparent !important;
-  background-color: transparent !important;
-  box-shadow: none;
-  color: var(--cal-text-muted);
-}
-
 .calendar-1week-google-body {
   flex: 1 1 auto;
   width: 100%;
@@ -1633,20 +1595,58 @@
 
 .calendar-1week-flow-stack {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 0.32rem;
   padding: 0.15rem 0.12rem 0.35rem;
+  min-height: 0;
+}
+
+.calendar-1week-flow-add-plan {
+  flex-shrink: 0;
+  margin-top: auto;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.28rem 0.4rem;
+  border: 1px dashed color-mix(in srgb, var(--cal-line) 72%, transparent);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--cal-text-muted);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1;
+  text-align: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.calendar-1week-flow-add-plan:hover {
+  border-color: color-mix(in srgb, var(--cal-today-accent) 35%, var(--cal-line));
+  color: var(--cal-text);
+  background: color-mix(in srgb, var(--cal-surface-muted) 55%, transparent);
 }
 
 .calendar-1week-flow-card {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  text-align: left;
+  cursor: pointer;
   border: 1px dashed color-mix(in srgb, var(--cal-line) 78%, transparent);
   border-radius: 6px;
   background: #fff;
   padding: 0.38rem 0.46rem 0.4rem;
+  font: inherit;
   font-size: 0.75rem;
   line-height: 1.35;
   color: var(--cal-text);
   -webkit-tap-highlight-color: transparent;
+}
+
+.calendar-1week-flow-card:hover {
+  border-color: color-mix(in srgb, var(--cal-today-accent) 32%, var(--cal-line));
 }
 
 /* 기록 완료 — 실선 테두리·선명한 텍스트(앞쪽 컬러 바 없음) */
@@ -2010,6 +2010,12 @@
   .calendar-1week-flow-stack {
     gap: 0.28rem;
     padding: 0.12rem 0.08rem 0.3rem;
+  }
+
+  .calendar-1week-flow-add-plan {
+    font-size: 0.875rem;
+    padding: 0.24rem 0.32rem;
+    border-radius: 7px;
   }
 
   .calendar-1week-flow-card {

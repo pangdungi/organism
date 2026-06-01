@@ -15,6 +15,7 @@ import {
   timeLedgerSyncDebugEnabled,
   timeLedgerSyncLog,
 } from "./timeLedgerSyncDebug.js";
+import { coalesceInFlightPull } from "./timeLedgerPullCoalesce.js";
 
 const TABLE = "time_ledger_tasks";
 
@@ -146,25 +147,29 @@ const KPI_LINK_SOURCE_TABLES = [
  * @returns {Promise<Map<string, { name: string, taskCategory: string }>>}
  */
 export async function fetchKpiTaskLinkMetaByIdFromSupabase(userId) {
+  const uid = String(userId || "").trim();
   const map = new Map();
-  if (!supabase || !userId) return map;
-  await Promise.all(
-    KPI_LINK_SOURCE_TABLES.map(async ({ table, taskCategory }) => {
-      try {
-        const { data, error } = await supabase
-          .from(table)
-          .select("id,name")
-          .eq("user_id", userId);
-        if (error || !Array.isArray(data)) return;
-        for (const row of data) {
-          const id = String(row.id || "").trim();
-          const name = String(row.name || "").trim();
-          if (id && name) map.set(id, { name, taskCategory });
-        }
-      } catch (_) {}
-    }),
-  );
-  return map;
+  if (!supabase || !uid) return map;
+  return coalesceInFlightPull(`kpi-link-meta:${uid}`, async () => {
+    const out = new Map();
+    await Promise.all(
+      KPI_LINK_SOURCE_TABLES.map(async ({ table, taskCategory }) => {
+        try {
+          const { data, error } = await supabase
+            .from(table)
+            .select("id,name")
+            .eq("user_id", uid);
+          if (error || !Array.isArray(data)) return;
+          for (const row of data) {
+            const id = String(row.id || "").trim();
+            const name = String(row.name || "").trim();
+            if (id && name) out.set(id, { name, taskCategory });
+          }
+        } catch (_) {}
+      }),
+    );
+    return out;
+  });
 }
 
 /**
@@ -380,6 +385,7 @@ export async function pullTimeLedgerTasksFromSupabase(opts = {}) {
     return false;
   }
 
+  return coalesceInFlightPull(`ledger-tasks:${userId}`, async () => {
   const kpiLinkPromise = fetchKpiTaskLinkMetaByIdFromSupabase(userId);
   let tasksRes = await supabase
     .from(TABLE)
@@ -411,6 +417,7 @@ export async function pullTimeLedgerTasksFromSupabase(opts = {}) {
   const applied = applyTimeLedgerTasksFromServer(rows, kpiLinkMetaById);
   if (applied) migrateTimeLogRowsTaskIds();
   return applied;
+  });
 }
 
 export async function pushTimeLedgerTasksIfServerEmpty() {

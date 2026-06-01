@@ -25,6 +25,7 @@ import { closeStaleInProgressTimeLedgerRows } from "./timeLedgerStaleInProgressC
 import { timeLedgerSyncLog } from "./timeLedgerSyncDebug.js";
 import { upsertTimeLedgerTaskRowsFromLocalByIds } from "./timeLedgerTasksSupabase.js";
 import { isUuid } from "./idUtils.js";
+import { coalesceInFlightPull } from "./timeLedgerPullCoalesce.js";
 
 const TABLE = "time_ledger_entries";
 const UPSERT_CONFLICT_ROW = "user_id,id";
@@ -473,10 +474,14 @@ export async function pullTimeLedgerEntriesFromSupabase() {
  * entry_date가 [rangeStart, rangeEnd] (포함)인 행만 서버에서 받아 해당 구간만 로컬에 반영(서버 기준).
  */
 export async function pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd) {
-  return runSerializedLedgerServerOp(() =>
-    pullTimeLedgerEntriesForDateRangeCore(rangeStart, rangeEnd, {
-      trigger: "direct",
-    }),
+  const rs = String(rangeStart || "").trim();
+  const re = String(rangeEnd || "").trim();
+  return coalesceInFlightPull(`ledger-entries:${rs}::${re}`, () =>
+    runSerializedLedgerServerOp(() =>
+      pullTimeLedgerEntriesForDateRangeCore(rangeStart, rangeEnd, {
+        trigger: "direct",
+      }),
+    ),
   );
 }
 

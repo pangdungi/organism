@@ -10,6 +10,7 @@ import {
   readTimeDailyBudgetExcludedRaw,
 } from "./timeDailyBudgetModel.js";
 import { lpPullDebug } from "./lpPullDebug.js";
+import { coalesceInFlightPull } from "./timeLedgerPullCoalesce.js";
 
 const TABLE = "time_daily_budget_days";
 
@@ -67,6 +68,7 @@ export async function pullTimeDailyBudgetForDateRange(rangeStart, rangeEnd) {
   const rs = normalizeDateKey(rangeStart);
   const re = normalizeDateKey(rangeEnd);
   if (!rs || !re) return false;
+  return coalesceInFlightPull(`daily-budget:${userId}:${rs}::${re}`, async () => {
   let q = supabase
     .from(TABLE)
     .select("user_id, plan_date, goals, excluded_names, updated_at")
@@ -82,6 +84,7 @@ export async function pullTimeDailyBudgetForDateRange(rangeStart, rangeEnd) {
   const selfRows = data.filter((r) => r && r.user_id === userId);
   if (selfRows.length === 0) return false;
   return mergeTimeDailyBudgetRowsFromServer(selfRows);
+  });
 }
 
 /** @deprecated 탭 진입 등에서는 `pullTimeDailyBudgetForDateRange` 사용 */

@@ -4264,26 +4264,6 @@ function renderTodoView(tabsElement) {
   return wrap;
 }
 
-/** 1주 플로우: 날짜별 예정 시간과제 수 대비 실제 기록 매칭 완료 수 → 실행률(%) */
-function computeCalendar1WeekDayExecutionRate(dateKey, allLedgerRows) {
-  const dayLedgerRows = ledgerRowsForCalendarYmd(allLedgerRows, dateKey);
-  const { spans: daySpans } = buildExpectedScheduleSpansForDateKey(dateKey);
-  const spansSorted = [...daySpans]
-    .filter((s) => !expectedSpanHiddenFromWeekFlowOnly(s))
-    .sort(
-      (a, b) =>
-        a.startMin - b.startMin ||
-        (a.lane ?? 0) - (b.lane ?? 0) ||
-        String(a.taskName || "").localeCompare(String(b.taskName || ""), "ko"),
-    );
-  const expected = spansSorted.length;
-  let completed = 0;
-  for (const span of spansSorted) {
-    if (weekFlowExpectedSpanHasLedgerMatch(dayLedgerRows, span)) completed++;
-  }
-  const pct = expected > 0 ? Math.round((completed / expected) * 100) : null;
-  return { expected, completed, pct };
-}
 
 function render1WeekView(tabsElement) {
   calendar1WeekDiagLog("render1WeekView.mount");
@@ -4324,6 +4304,11 @@ function render1WeekView(tabsElement) {
 
   function refreshTodoList() {}
 
+  /** 로컬 저장·편집 직후 — 방금 반영한 데이터로만 다시 그림(중복 pull 방지) */
+  function refreshCalendar1WeekLocal() {
+    void renderCalendar({ skipWeekPull: true });
+  }
+
   async function renderCalendar(opts = {}) {
     const skipWeekPull = !!opts.skipWeekPull;
     const renderSeq = ++_1weekRenderSeq;
@@ -4347,8 +4332,10 @@ function render1WeekView(tabsElement) {
         lastPullKey,
       });
       try {
-        await pullTimeLedgerEntriesForDateRange(firstPullKey, lastPullKey);
-        await pullTimeDailyBudgetForDateRange(firstPullKey, lastPullKey);
+        await Promise.all([
+          pullTimeLedgerEntriesForDateRange(firstPullKey, lastPullKey),
+          pullTimeDailyBudgetForDateRange(firstPullKey, lastPullKey),
+        ]);
       } catch (_) {}
       if (pullGen !== _1weekRenderGen) {
         calendar1WeekDiagLog("renderCalendar.pull.aborted", {
@@ -4524,7 +4511,7 @@ function render1WeekView(tabsElement) {
         e.stopPropagation();
         e.preventDefault();
         lpOpenCalendarMonthlyDayActionBubble(cell, key, () => {
-          void renderCalendar();
+          refreshCalendar1WeekLocal();
           refreshTodoList();
         });
       });
@@ -4676,7 +4663,12 @@ function render1WeekView(tabsElement) {
       lpApplyCalendarMultiDaySpanBarBackground(bar, b);
       bar.innerHTML = lpBuildCalendarSpanBarInnerHtml(b.name, !!b.done);
       lpApplyCalendarSpanBarDonePastClasses(bar, b, calendarBarTodayYmd);
-      lpAttachCalendarBarOpenTodoEdit(bar, b, renderCalendar, refreshTodoList);
+      lpAttachCalendarBarOpenTodoEdit(
+        bar,
+        b,
+        refreshCalendar1WeekLocal,
+        refreshTodoList,
+      );
       if (!b.isSingleDay && b.startDate && b.dueDate) {
         bar.addEventListener("contextmenu", (e) => {
           e.preventDefault();
@@ -4686,7 +4678,7 @@ function render1WeekView(tabsElement) {
             e.clientY,
             b,
             () => {
-              void renderCalendar();
+              refreshCalendar1WeekLocal();
               refreshTodoList();
             },
             () => {},
@@ -4703,7 +4695,7 @@ function render1WeekView(tabsElement) {
             e.clientY,
             b,
             () => {
-              void renderCalendar();
+              refreshCalendar1WeekLocal();
               refreshTodoList();
             },
             () => {},
@@ -4871,7 +4863,8 @@ function render1WeekView(tabsElement) {
           !hasLiveRecordingForSpan &&
           weekFlowExpectedSpanLedgerMissed(key, todayYmd, nowMinuteClock, span);
 
-        const card = document.createElement("div");
+        const card = document.createElement("button");
+        card.type = "button";
         card.className = "calendar-1week-flow-card";
         const titleBase = memoTextStored
           ? `${taskLabel} (${span.startDisplay} ~ ${span.endDisplay})\n${memoTextStored}`
@@ -4981,8 +4974,46 @@ function render1WeekView(tabsElement) {
           memoEl.textContent = memoTextStored;
           card.appendChild(memoEl);
         }
+        card.addEventListener("click", () => {
+          if (lpHorizontalPanNavigateRecentlyFired()) return;
+          const slotIdx = findBudgetScheduleSlotIndex(
+            key,
+            span.taskName,
+            span.startMin,
+            span.endMin,
+          );
+          if (slotIdx < 0) {
+            showToast(
+              "일간 예산에서 추가한 예상 일정만 여기서 수정할 수 있습니다.",
+            );
+            return;
+          }
+          openCalendarExpectedScheduleModal({
+            dateKey: key,
+            edit: { taskName: span.taskName, timeIdx: slotIdx },
+            title: "예상 일정 수정",
+            submitLabel: "저장",
+            onSaved: () => refreshCalendar1WeekLocal(),
+          });
+        });
         stack.appendChild(card);
       });
+
+      const addPlanBtn = document.createElement("button");
+      addPlanBtn.type = "button";
+      addPlanBtn.className = "calendar-1week-flow-add-plan";
+      addPlanBtn.textContent = "+";
+      addPlanBtn.title = "예상 일정(계획) 추가";
+      addPlanBtn.setAttribute("aria-label", `${key} 예상 일정 추가`);
+      addPlanBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openCalendarExpectedScheduleModal({
+          dateKey: key,
+          defaultStartHhMm: defaultStartHhMmForExpectedModalFromDateKey(key),
+          onSaved: () => refreshCalendar1WeekLocal(),
+        });
+      });
+      stack.appendChild(addPlanBtn);
 
       col.appendChild(stack);
       colsWrap.appendChild(col);
@@ -5045,34 +5076,6 @@ function render1WeekView(tabsElement) {
     calendarGrid.appendChild(outer);
     lpAttach1WeekMobileFlowBodyMinSync(wrap, scrollArea, bodyGrid);
 
-    calendarSection.querySelector(".calendar-1week-execution-strip")?.remove();
-    const execStrip = document.createElement("div");
-    execStrip.className = "calendar-1week-execution-strip";
-    execStrip.setAttribute("role", "region");
-    execStrip.setAttribute(
-      "aria-label",
-      "요일별 예정 시간과제 대비 실행률(실제 기록 반영 개수)",
-    );
-    const execRow = document.createElement("div");
-    execRow.className = "calendar-1week-execution-strip__row";
-    weekDateKeys.forEach((key) => {
-      const { expected, completed, pct } = computeCalendar1WeekDayExecutionRate(
-        key,
-        allLedgerRowsForWeek,
-      );
-      const cell = document.createElement("div");
-      cell.className = "calendar-1week-execution-strip__cell";
-      if (expected === 0) {
-        cell.textContent = "—";
-        cell.title = `${key}\n예정 시간과제 없음`;
-      } else {
-        cell.textContent = `${pct}%`;
-        cell.title = `${key}\n완료 ${completed}개 / 예정 ${expected}개`;
-      }
-      execRow.appendChild(cell);
-    });
-    execStrip.appendChild(execRow);
-    flowHScrollInner.appendChild(execStrip);
     wrap._lpRememberCalendarGridPaintSig?.();
     calendar1WeekDiagLog("renderCalendar.domBuilt", {
       renderSeq,
@@ -5652,6 +5655,30 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
         });
         try {
           window.__lpCalendarGridPrefetchedForTabSwitch = false;
+        } catch (_) {}
+        /* App pull 은 어제~오늘만 — 1주 뷰는 해당 주 구간을 여기서 당김(생략하지 않음) */
+        if (subViewId === "1week") {
+          try {
+            const wk = getCalendarGridFor1Week(0);
+            const ks = wk
+              .map((d) => (d ? formatDateKey(d) : ""))
+              .filter(Boolean);
+            const rs0 = ks[0];
+            const re0 = ks[ks.length - 1];
+            if (rs0 && re0) {
+              await Promise.all([
+                pullTimeLedgerEntriesForDateRange(rs0, re0),
+                pullTimeDailyBudgetForDateRange(rs0, re0),
+              ]);
+            }
+          } catch (_) {}
+        }
+        if (gen !== _nestedSubViewGen) return;
+        const layoutAfterPrefetch = contentArea.querySelector(
+          ".calendar-monthly-layout",
+        );
+        try {
+          layoutAfterPrefetch?._lpRefreshCalendarView?.();
         } catch (_) {}
         calendar1WeekDiagSnapshot(contentArea, "prefetchSkip");
         return;
