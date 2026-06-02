@@ -4,6 +4,7 @@
 
 import {
   canonicalMealTaskDisplayName,
+  contentTypeReportLabel,
   isHealthyMealDetailTaskName,
   isUnhealthyMealDetailTaskName,
 } from "./timeTaskOptionsConstants.js";
@@ -270,7 +271,15 @@ function createRatingBarRow(label, avgRating, meta) {
   fill.style.background = ratingBarColor(avgRating);
   const val = document.createElement("span");
   val.className = "lp-tr2-bar-value lp-tr2-bar-value--rating";
-  val.textContent = `${formatRatingAvg(avgRating)}★`;
+  const num = document.createElement("span");
+  num.className = "lp-tr2-bar-value-num";
+  num.textContent = formatRatingAvg(avgRating);
+  const star = document.createElement("span");
+  star.className = "lp-tr2-bar-value-star";
+  star.textContent = "★";
+  star.setAttribute("aria-hidden", "true");
+  val.appendChild(num);
+  val.appendChild(star);
   track.appendChild(fill);
   row.appendChild(lab);
   row.appendChild(track);
@@ -1165,19 +1174,93 @@ function getDayAvailableMinutes(ymd) {
   return Math.max(0, Math.round(24 * 60 - s.workMinutes - s.sleepMinutes));
 }
 
-function mergeMediaEntriesByNote(entries) {
-  /** @type {Map<string, number>} */
-  const map = new Map();
-  entries.forEach(({ note, minutes }) => {
-    const key = String(note || "").trim() || "__empty__";
-    map.set(key, (map.get(key) || 0) + minutes);
+function aggregateContentTypesFromEntries(entries, categoryTotalMinutes) {
+  /** @type {Map<string, { label: string, minutes: number }>} */
+  const byKey = new Map();
+  entries.forEach(({ label, minutes }) => {
+    const reportLabel = contentTypeReportLabel(label);
+    const cur = byKey.get(reportLabel) || { label: reportLabel, minutes: 0 };
+    cur.minutes += minutes;
+    byKey.set(reportLabel, cur);
   });
-  return [...map.entries()]
-    .map(([key, minutes]) => ({
-      note: key === "__empty__" ? "" : key,
-      minutes,
+
+  const list = [...byKey.values()]
+    .map(({ label, minutes }) => ({
+      label,
+      minutes: Math.round(minutes),
+      pct:
+        categoryTotalMinutes > 0
+          ? Math.round((minutes / categoryTotalMinutes) * 100)
+          : 0,
     }))
+    .filter((x) => x.minutes > 0)
     .sort((a, b) => b.minutes - a.minutes);
+
+  const TOP = 10;
+  if (list.length <= TOP) return list;
+  const top = list.slice(0, TOP);
+  const restMin = list.slice(TOP).reduce((a, x) => a + x.minutes, 0);
+  if (restMin > 0) {
+    top.push({
+      label: "기타",
+      minutes: restMin,
+      pct:
+        categoryTotalMinutes > 0
+          ? Math.round((restMin / categoryTotalMinutes) * 100)
+          : 0,
+    });
+  }
+  return top;
+}
+
+function createMediaTagBarRow(label, pct, minutes, color) {
+  const row = document.createElement("div");
+  row.className = "lp-tr2-bar-row lp-tr2-bar-row--media-tag";
+  row.title = `${label} · ${formatIntegerMinutesDurationKo(minutes)}`;
+  const lab = document.createElement("span");
+  lab.className = "lp-tr2-bar-label";
+  lab.textContent = label;
+  const track = document.createElement("div");
+  track.className = "lp-tr2-bar-track";
+  const fill = document.createElement("div");
+  fill.className = "lp-tr2-bar-fill";
+  fill.style.width = `${Math.min(100, Math.max(0, pct))}%`;
+  fill.style.background = color;
+  const val = document.createElement("span");
+  val.className = "lp-tr2-bar-value";
+  val.textContent = `${pct}%`;
+  track.appendChild(fill);
+  row.appendChild(lab);
+  row.appendChild(track);
+  row.appendChild(val);
+  return row;
+}
+
+function renderMediaTagBreakdown(title, subtitle, tags, kind) {
+  if (!tags.length) return null;
+  const block = document.createElement("article");
+  block.className = `lp-tr2-media-tag-block lp-tr2-media-tag-block--${kind}`;
+  const h = document.createElement("h3");
+  h.className = "lp-tr2-media-tag-block-title";
+  h.textContent = title;
+  block.appendChild(h);
+  if (subtitle) {
+    const p = document.createElement("p");
+    p.className = "lp-tr2-media-tag-block-sub";
+    p.textContent = subtitle;
+    block.appendChild(p);
+  }
+  const bars = document.createElement("div");
+  bars.className = "lp-tr2-bars";
+  const color =
+    kind === "conscious" ? MEDIA_CONSCIOUS_COLOR : MEDIA_UNCONSCIOUS_COLOR;
+  tags.forEach((item) => {
+    bars.appendChild(
+      createMediaTagBarRow(item.label, item.pct, item.minutes, color),
+    );
+  });
+  block.appendChild(bars);
+  return block;
 }
 
 function mediaContentKind(row) {
@@ -1193,14 +1276,18 @@ function rowContentLabel(row) {
   const fb = String(row.feedback || row.memo || "").trim();
   if (fb.startsWith("[콘텐츠] ")) {
     const first = fb.split("\n")[0] || "";
-    return first.slice("[콘텐츠] ".length).trim() || fb;
+    return first.slice("[콘텐츠] ".length).trim();
   }
-  return fb;
+  return "";
 }
 
 function buildMediaReportSnapshot(rows, range) {
-  /** @type {Map<string, { conscious: number, unconscious: number, consciousEntries: Array<{ note: string, minutes: number }>, unconsciousEntries: Array<{ note: string, minutes: number }> }>} */
+  /** @type {Map<string, { conscious: number, unconscious: number }>} */
   const byDate = new Map();
+  /** @type {{ label: string, minutes: number }[]} */
+  const consciousEntriesAll = [];
+  /** @type {{ label: string, minutes: number }[]} */
+  const unconsciousEntriesAll = [];
   let totalConscious = 0;
   let totalUnconscious = 0;
 
@@ -1211,165 +1298,67 @@ function buildMediaReportSnapshot(rows, range) {
     if (!date) return;
     const mins = rowMinutes(r);
     if (mins <= 0) return;
-    const note = rowContentLabel(r);
+    const label = rowContentLabel(r);
 
     if (!byDate.has(date)) {
-      byDate.set(date, {
-        conscious: 0,
-        unconscious: 0,
-        consciousEntries: [],
-        unconsciousEntries: [],
-      });
+      byDate.set(date, { conscious: 0, unconscious: 0 });
     }
     const day = byDate.get(date);
     if (kind === "conscious") {
       day.conscious += mins;
-      day.consciousEntries.push({ note, minutes: mins });
       totalConscious += mins;
+      consciousEntriesAll.push({ label, minutes: mins });
     } else {
       day.unconscious += mins;
-      day.unconsciousEntries.push({ note, minutes: mins });
       totalUnconscious += mins;
+      unconsciousEntriesAll.push({ label, minutes: mins });
     }
   });
 
   const totalMinutes = totalConscious + totalUnconscious;
-  const mapDay = (date) => {
-    const d = byDate.get(date);
-    const consciousMinutes = d?.conscious ?? 0;
-    const unconsciousMinutes = d?.unconscious ?? 0;
-    const minutes = consciousMinutes + unconsciousMinutes;
-    const avail = getDayAvailableMinutes(date);
-    const pct = avail > 0 ? Math.round((minutes / avail) * 100) : 0;
-    return {
-      date,
-      minutes,
-      consciousMinutes,
-      unconsciousMinutes,
-      availableMinutes: avail,
-      pct,
-      consciousItems: mergeMediaEntriesByNote(d?.consciousEntries ?? []),
-      unconsciousItems: mergeMediaEntriesByNote(d?.unconsciousEntries ?? []),
-    };
-  };
-
-  const listDays = [...byDate.keys()]
-    .sort((a, b) => b.localeCompare(a))
-    .map(mapDay);
   const chartDays = [...byDate.keys()]
     .sort((a, b) => a.localeCompare(b))
-    .map(mapDay);
+    .map((date) => {
+      const d = byDate.get(date);
+      const consciousMinutes = d?.conscious ?? 0;
+      const unconsciousMinutes = d?.unconscious ?? 0;
+      const minutes = consciousMinutes + unconsciousMinutes;
+      const avail = getDayAvailableMinutes(date);
+      const pct = avail > 0 ? Math.round((minutes / avail) * 100) : 0;
+      return {
+        date,
+        minutes,
+        consciousMinutes,
+        unconsciousMinutes,
+        availableMinutes: avail,
+        pct,
+      };
+    });
 
   let totalAvailable = 0;
-  listDays.forEach((d) => {
+  chartDays.forEach((d) => {
     totalAvailable += d.availableMinutes;
   });
   const periodPct =
     totalAvailable > 0 ? Math.round((totalMinutes / totalAvailable) * 100) : 0;
-  const avgDayPct =
-    listDays.length > 0
-      ? Math.round(listDays.reduce((a, d) => a + d.pct, 0) / listDays.length)
-      : 0;
 
   return {
     totalMinutes,
     totalConsciousMinutes: totalConscious,
     totalUnconsciousMinutes: totalUnconscious,
     periodPct,
-    avgDayPct,
     totalAvailableMinutes: totalAvailable,
-    listDays,
     chartDays,
-    dayCount: listDays.length,
+    dayCount: chartDays.length,
+    consciousTags: aggregateContentTypesFromEntries(
+      consciousEntriesAll,
+      totalConscious,
+    ),
+    unconsciousTags: aggregateContentTypesFromEntries(
+      unconsciousEntriesAll,
+      totalUnconscious,
+    ),
   };
-}
-
-function buildMediaKindList(title, items, totalMinutes, kind) {
-  const panel = document.createElement("div");
-  panel.className = `lp-tr2-media-kind-panel lp-tr2-media-kind-panel--${kind}`;
-  const head = document.createElement("div");
-  head.className = "lp-tr2-media-kind-panel-head";
-  const lab = document.createElement("span");
-  lab.className = "lp-tr2-media-kind-panel-title";
-  lab.textContent = title;
-  const sum = document.createElement("strong");
-  sum.className = "lp-tr2-media-kind-panel-time";
-  sum.textContent =
-    totalMinutes > 0 ? formatIntegerMinutesDurationKo(totalMinutes) : "—";
-  head.appendChild(lab);
-  head.appendChild(sum);
-  panel.appendChild(head);
-
-  const list = document.createElement("ul");
-  list.className = "lp-tr2-media-kind-panel-list";
-  if (!items.length) {
-    const empty = document.createElement("li");
-    empty.className = "lp-tr2-media-kind-panel-empty";
-    empty.textContent = "기록 없음";
-    list.appendChild(empty);
-  } else {
-    items.forEach((item) => {
-      const li = document.createElement("li");
-      li.className = "lp-tr2-media-kind-panel-item";
-      const note = document.createElement("span");
-      note.className = "lp-tr2-media-kind-panel-label";
-      note.textContent = item.note || "내용 미입력";
-      if (!item.note) note.classList.add("is-empty");
-      const tm = document.createElement("span");
-      tm.className = "lp-tr2-media-kind-panel-meta";
-      tm.textContent = formatIntegerMinutesDurationKo(item.minutes);
-      li.appendChild(note);
-      li.appendChild(tm);
-      list.appendChild(li);
-    });
-  }
-  panel.appendChild(list);
-  return panel;
-}
-
-function buildMediaDayBlock(day) {
-  const block = document.createElement("article");
-  block.className = "lp-tr2-media-day-block";
-
-  const head = document.createElement("div");
-  head.className = "lp-tr2-media-day-block-head";
-  const dateEl = document.createElement("span");
-  dateEl.className = "lp-tr2-media-day-block-date";
-  dateEl.textContent = formatCompactReportDate(day.date);
-  dateEl.title = formatYmdDotsWithWeekdayKo(day.date);
-  const timeEl = document.createElement("strong");
-  timeEl.className = "lp-tr2-media-day-block-time";
-  timeEl.textContent = formatIntegerMinutesDurationKo(day.minutes);
-  head.appendChild(dateEl);
-  head.appendChild(timeEl);
-
-  const avail = document.createElement("p");
-  avail.className = "lp-tr2-media-day-block-avail";
-  avail.textContent = `가용 ${formatIntegerMinutesDurationKo(day.availableMinutes)} 중 ${day.pct}%`;
-
-  const split = document.createElement("div");
-  split.className = "lp-tr2-media-day-split";
-  split.appendChild(
-    buildMediaKindList(
-      "의식적",
-      day.consciousItems,
-      day.consciousMinutes,
-      "conscious",
-    ),
-  );
-  split.appendChild(
-    buildMediaKindList(
-      "무의식적",
-      day.unconsciousItems,
-      day.unconsciousMinutes,
-      "unconscious",
-    ),
-  );
-
-  block.appendChild(head);
-  block.appendChild(avail);
-  block.appendChild(split);
-  return block;
 }
 
 function renderMediaCompareChart(chartDays) {
@@ -1433,7 +1422,7 @@ function mountMediaSection(scrollWrap, range, rows) {
   const snap = buildMediaReportSnapshot(rows, range);
   const sec = createSection(
     "콘텐츠·미디어 시청",
-    "의식적 vs 무의식적 · 날짜별 무엇을 봤는지 · 가용시간 대비 비율",
+    "기록에서 고른 콘텐츠 종류 · 의식적 vs 무의식적 비율",
   );
 
   if (snap.totalMinutes <= 0) {
@@ -1458,22 +1447,29 @@ function mountMediaSection(scrollWrap, range, rows) {
   hero.appendChild(heroSub);
   sec.appendChild(hero);
 
-  const dayWrap = document.createElement("div");
-  dayWrap.className = "lp-tr2-media-days";
-  const dayTitle = document.createElement("p");
-  dayTitle.className = "lp-tr2-media-days-title";
-  dayTitle.textContent = "날짜별 — 무엇을 봤는지";
-  dayWrap.appendChild(dayTitle);
+  const tagHint = document.createElement("p");
+  tagHint.className = "lp-tr2-media-tag-hint";
+  tagHint.textContent =
+    "시간 기록에서 선택한 콘텐츠 종류별 비율입니다. 메모는 여기에 반영되지 않습니다.";
+  sec.appendChild(tagHint);
 
-  const dayList = document.createElement("div");
-  dayList.className = "lp-tr2-media-day-list";
-  snap.listDays.forEach((day) => {
-    dayList.appendChild(buildMediaDayBlock(day));
-  });
-  dayWrap.appendChild(dayList);
-  sec.appendChild(dayWrap);
+  const unconsciousBlock = renderMediaTagBreakdown(
+    "무의식적 — 많이 본 내용",
+    "무의식적 콘텐츠 소비 시간 중 비율",
+    snap.unconsciousTags,
+    "unconscious",
+  );
+  if (unconsciousBlock) sec.appendChild(unconsciousBlock);
 
-  if (snap.chartDays.length) {
+  const consciousBlock = renderMediaTagBreakdown(
+    "의식적 — 많이 본 내용",
+    "의식적 콘텐츠 소비 시간 중 비율",
+    snap.consciousTags,
+    "conscious",
+  );
+  if (consciousBlock) sec.appendChild(consciousBlock);
+
+  if (snap.chartDays.length > 1) {
     const chartBlock = document.createElement("div");
     chartBlock.className = "lp-tr2-media-compare-block";
     const chartTitle = document.createElement("p");

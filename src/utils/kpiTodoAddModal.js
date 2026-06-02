@@ -1,4 +1,5 @@
 import { allowModalInputFocus } from "./modalNoAutoFocus.js";
+import { bindKpiTodoModalMobileKeyboard } from "./kpiTodoModalKeyboard.js";
 
 /**
  * KPI 할 일 / 매일 반복 할 일 — 추가 전용 모달(확인 시에만 저장 로직으로 이어지게 할 때 사용).
@@ -52,8 +53,10 @@ export function showKpiTodoAddModal(opts = {}) {
     `;
 
     const prevOverflow = document.body.style.overflow;
+    let unbindKeyboard = () => {};
 
     function finish(value) {
+      unbindKeyboard();
       modal.remove();
       document.body.style.overflow = prevOverflow;
       resolve(value);
@@ -77,5 +80,6 @@ export function showKpiTodoAddModal(opts = {}) {
 
     document.body.appendChild(modal);
     document.body.style.overflow = "hidden";
+    unbindKeyboard = bindKpiTodoModalMobileKeyboard(modal, input);
   });
 }

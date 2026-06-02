@@ -126,7 +126,7 @@ export const FIXED_PRODUCTIVE_TASKS = [
   { name: "건강한 섭취", category: "health", productivity: "productive" },
   { name: "건강한 섭취 준비", category: "health", productivity: "productive" },
   {
-    name: "의미 있는 대화 및 모임",
+    name: "생산적 대화 또는 모임",
     category: "happiness",
     productivity: "productive",
   },
@@ -156,7 +156,7 @@ export const FIXED_NONPRODUCTIVE_TASKS = [
     productivity: "nonproductive",
   },
   {
-    name: "의미 없는 대화 또는 모임",
+    name: "비생산적 대화 또는 모임",
     category: "unhappiness",
     productivity: "nonproductive",
   },
@@ -176,10 +176,10 @@ export const MEAL_TASK_NAME_RENAMES = [
   { from: "건강한 식사 준비", to: "건강한 섭취 준비" },
   { from: "건강하지 않은 식사", to: "건강하지 않은 섭취" },
   { from: "건강하지 않은 식사 준비", to: "건강하지 않은 섭취 준비" },
-  { from: "생산적 대화", to: "의미 있는 대화 및 모임" },
-  { from: "생산적 대화 또는 모임", to: "의미 있는 대화 및 모임" },
-  { from: "비생산적 대화", to: "의미 없는 대화 또는 모임" },
-  { from: "비생산적 대화 또는 모임", to: "의미 없는 대화 또는 모임" },
+  { from: "의미 있는 대화 및 모임", to: "생산적 대화 또는 모임" },
+  { from: "생산적 대화", to: "생산적 대화 또는 모임" },
+  { from: "의미 없는 대화 또는 모임", to: "비생산적 대화 또는 모임" },
+  { from: "비생산적 대화", to: "비생산적 대화 또는 모임" },
   { from: "단순 쾌락형 영상 시청", to: "무의식적 콘텐츠 소비" },
   { from: "무의식적 영상 시청", to: "무의식적 콘텐츠 소비" },
   { from: "독서하기", to: "독서 및 독서노트 작성" },
@@ -209,6 +209,49 @@ export const CONTENT_DETAIL_TASK_NAMES = new Set([
   "의식적 콘텐츠 소비",
   "무의식적 콘텐츠 소비",
 ]);
+
+/** 콘텐츠 소비 — time_ledger_entries.meal_detail 에 저장 (목록에서 1개 선택) */
+export const CONTENT_TYPE_OPTIONS = [
+  "인스타 릴스/피드",
+  "쇼츠",
+  "ebook",
+  "스레드",
+  "유튜브 영상(예능)",
+  "유튜브 영상(지식)",
+  "OTT",
+  "뉴스",
+  "팟캐스트",
+  "음악 스트리밍",
+  "블로그",
+  "커뮤니티",
+  "틱톡",
+  "라이브스트리밍",
+  "웹툰",
+  "웹소설",
+  "온라인 강좌",
+];
+
+/** @param {string} value @returns {{ label: string, known: boolean }} */
+export function resolveContentTypeLabel(value) {
+  const v = String(value || "").trim();
+  if (!v) return { label: "", known: false };
+  const found = CONTENT_TYPE_OPTIONS.find(
+    (opt) => opt === v || opt.toLowerCase() === v.toLowerCase(),
+  );
+  return found ? { label: found, known: true } : { label: v, known: false };
+}
+
+/** @param {string} value */
+export function isKnownContentType(value) {
+  return resolveContentTypeLabel(value).known;
+}
+
+/** 레포트 집계용 — 목록 외(구 자유텍스트)는 「기타」 */
+export function contentTypeReportLabel(value) {
+  const { label, known } = resolveContentTypeLabel(value);
+  if (!label) return "(미선택)";
+  return known ? label : "기타";
+}
 
 /** @param {string} name */
 export function isMealDetailTaskName(name) {

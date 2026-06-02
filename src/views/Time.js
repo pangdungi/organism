@@ -17,8 +17,9 @@ import {
 } from "../utils/timeKpiSync.js";
 import {
   getKpiTodosAsTasks,
-  getKpiDailyRepeatInfoByTaskName,
-  getKpiMeasureInfoByTaskName,
+  getKpiDailyRepeatInfoByKpiId,
+  getKpiMeasureInfoByKpiId,
+  resolveKpiIdForTaskName,
 } from "../utils/kpiTodoSync.js";
 import { kpiTodoFineTrace } from "../utils/kpiTodoFineTrace.js";
 import {
@@ -5620,10 +5621,6 @@ export function render(opts = {}) {
             <input type="hidden" data-legacy="time-task-log-end" />
           </div>
         </div>
-        <div data-legacy="time-task-log-kpi-todos-section" hidden>
-          <h4 data-legacy="time-task-log-kpi-todos-title">할일 목록</h4>
-          <div data-legacy="time-task-log-kpi-todos-list"></div>
-        </div>
         <div data-legacy="time-task-log-daily-todos-section" hidden>
           <h4 data-legacy="time-task-log-daily-todos-title">매일 할일 목록</h4>
           <div data-legacy="time-task-log-daily-todos-list"></div>
@@ -5636,6 +5633,10 @@ export function render(opts = {}) {
               <span data-legacy="time-task-log-habit-value-unit" aria-hidden="true"></span>
             </div>
           </div>
+        </div>
+        <div data-legacy="time-task-log-content-type-section" hidden>
+          <span data-legacy="time-task-log-section-label time-task-log-content-type-label">콘텐츠 종류</span>
+          <div data-legacy="time-task-log-content-type-chips lp-choice-chip-row"></div>
         </div>
         <div data-legacy="time-task-log-memo-section">
           <span data-legacy="time-task-log-section-label time-task-log-memo-section-label">메모</span>
@@ -5748,12 +5749,77 @@ export function render(opts = {}) {
   const taskLogFeedbackInput = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-feedback"]',
   );
+  const taskLogMemoSection = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-memo-section"]',
+  );
   const taskLogMealDetailSection = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-meal-detail-section"]',
   );
   const taskLogMealDetailInput = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-meal-detail-input"]',
   );
+  const taskLogContentTypeSection = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-content-type-section"]',
+  );
+  const taskLogContentTypeChips = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-content-type-chips"]',
+  );
+  let taskLogContentType = "";
+  let taskLogContentTypeLegacy = "";
+
+  function syncTaskLogContentTypeChips() {
+    if (!taskLogContentTypeChips) return;
+    taskLogContentTypeChips
+      .querySelectorAll('[data-legacy~="lp-choice-chip"]')
+      .forEach((btn) => {
+        const on =
+          !!taskLogContentType &&
+          btn.getAttribute("data-content-type") === taskLogContentType;
+        lpTokenToggle(btn, "lp-choice-chip--on", on);
+      });
+  }
+
+  function setTaskLogContentType(value) {
+    const resolved = TTC.resolveContentTypeLabel(value);
+    if (resolved.known) {
+      taskLogContentType = resolved.label;
+      taskLogContentTypeLegacy = "";
+    } else if (resolved.label) {
+      taskLogContentType = "";
+      taskLogContentTypeLegacy = resolved.label;
+    } else {
+      taskLogContentType = "";
+      taskLogContentTypeLegacy = "";
+    }
+    syncTaskLogContentTypeChips();
+  }
+
+  function getTaskLogContentTypeForSave() {
+    return (taskLogContentType || taskLogContentTypeLegacy || "").trim();
+  }
+
+  function clearTaskLogContentType() {
+    taskLogContentType = "";
+    taskLogContentTypeLegacy = "";
+    syncTaskLogContentTypeChips();
+  }
+
+  if (taskLogContentTypeChips) {
+    TTC.CONTENT_TYPE_OPTIONS.forEach((label) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      lpSetClasses(btn, "lp-choice-chip");
+      btn.setAttribute("data-content-type", label);
+      btn.textContent = label;
+      btn.addEventListener("click", () => {
+        taskLogContentType = label;
+        taskLogContentTypeLegacy = "";
+        syncTaskLogContentTypeChips();
+      });
+      taskLogContentTypeChips.appendChild(btn);
+    });
+  }
+
   const taskLogScrollArea = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-scroll-area"]',
   );
@@ -5983,23 +6049,25 @@ export function render(opts = {}) {
   function updateTaskLogMealDetailVisibility(taskName) {
     const tn = (taskName || "").trim();
     const kind = TTC.ledgerDetailTaskKind(tn);
-    const show = !!kind;
-    const labelEl = taskLogModal.querySelector(
-      '[data-legacy~="time-task-log-meal-detail-label"]',
-    );
+    const isContent = kind === "content";
     if (taskLogMealDetailSection) {
-      taskLogMealDetailSection.hidden = !show;
-      if (!show && taskLogMealDetailInput) taskLogMealDetailInput.value = "";
+      taskLogMealDetailSection.hidden = kind !== "meal";
+      if (kind !== "meal" && taskLogMealDetailInput) {
+        taskLogMealDetailInput.value = "";
+      }
     }
-    if (labelEl) {
-      labelEl.textContent = kind === "content" ? "콘텐츠" : "식단명";
+    if (taskLogContentTypeSection) {
+      taskLogContentTypeSection.hidden = !isContent;
+      if (!isContent) clearTaskLogContentType();
     }
-    if (taskLogMealDetailInput) {
-      taskLogMealDetailInput.placeholder =
-        kind === "content"
-          ? "무엇을 보거나 들었는지 한 줄로 적어 주세요"
-          : "무엇을 드셨는지 한 줄로 적어 주세요";
+    if (taskLogMemoSection) {
+      taskLogMemoSection.hidden = isContent;
+      if (isContent) {
+        if (taskLogFeedbackInput) taskLogFeedbackInput.value = "";
+        taskLogMemoTags = [];
+      }
     }
+    taskLogScrollArea?.classList?.toggle("is-content-detail-task", isContent);
   }
   let taskLogMemoTags = [];
 
@@ -6589,12 +6657,6 @@ export function render(opts = {}) {
       });
     });
 
-  const taskLogKpiTodosSection = taskLogModal.querySelector(
-    '[data-legacy~="time-task-log-kpi-todos-section"]',
-  );
-  const taskLogKpiTodosList = taskLogModal.querySelector(
-    '[data-legacy~="time-task-log-kpi-todos-list"]',
-  );
   const taskLogDailyTodosSection = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-daily-todos-section"]',
   );
@@ -7094,14 +7156,18 @@ export function render(opts = {}) {
     };
   }
 
-  /** 과제 기록 모달: 선택 과제 → KPI 매일 할일 */
+  /** 과제 기록 모달: KPI에 연결된 과제만 (task.kpiId) */
   function getKpiDailyRepeatInfoForTaskLog(taskName) {
-    return getKpiDailyRepeatInfoByTaskName((taskName || "").trim());
+    const kpiId = resolveKpiIdForTaskName((taskName || "").trim());
+    if (!kpiId) return null;
+    return getKpiDailyRepeatInfoByKpiId(kpiId);
   }
 
-  /** 과제 기록 모달: KPI 과제 + 목표값·단위 */
+  /** 과제 기록 모달: KPI에 연결된 과제만 (task.kpiId) */
   function getKpiMeasureInfoForTaskLog(taskName) {
-    return getKpiMeasureInfoByTaskName((taskName || "").trim());
+    const kpiId = resolveKpiIdForTaskName((taskName || "").trim());
+    if (!kpiId) return null;
+    return getKpiMeasureInfoByKpiId(kpiId);
   }
 
   function normalizeTaskLogPickerDateYmd() {
@@ -7220,8 +7286,7 @@ export function render(opts = {}) {
   function syncTaskLogKpiValueField(taskName, dateYmd) {
     if (!taskLogKpiValueSection) return;
     const measure = getKpiMeasureInfoForTaskLog((taskName || "").trim());
-    const daily = getKpiDailyRepeatInfoForTaskLog((taskName || "").trim());
-    const showField = !!(measure?.hasUnitGoal || daily?.hasUnitGoal);
+    const showField = !!measure?.hasUnitGoal;
     if (!showField) {
       taskLogKpiValueSection.hidden = true;
       if (taskLogHabitValueInput) taskLogHabitValueInput.value = "";
@@ -7230,13 +7295,13 @@ export function render(opts = {}) {
     }
     taskLogKpiValueSection.hidden = false;
     if (taskLogHabitValueUnit) {
-      taskLogHabitValueUnit.textContent = measure?.unit || daily?.unit || "";
+      taskLogHabitValueUnit.textContent = measure?.unit || "";
     }
     if (!taskLogHabitValueInput) return;
     const editRow = taskLogEditTr?._rowData;
     const ledgerEntryId = String(editRow?.id || "").trim();
-    const storageKey = measure?.storageKey || daily?.storageKey;
-    const kpiId = measure?.kpiId || daily?.kpiId;
+    const storageKey = measure?.storageKey;
+    const kpiId = measure?.kpiId;
     if (!storageKey || !kpiId) return;
     taskLogHabitValueInput.value = resolvePerformedValueForTaskLogEdit(
       storageKey,
@@ -7266,12 +7331,11 @@ export function render(opts = {}) {
 
   function refreshKpiTodosInLogModal(taskName) {
     const name = (taskName || "").trim();
-    if (taskLogKpiTodosSection) {
-      taskLogKpiTodosSection.hidden = true;
-      if (taskLogKpiTodosList) taskLogKpiTodosList.innerHTML = "";
-    }
 
-    if (!taskLogDailyTodosSection || !taskLogDailyTodosList) return;
+    if (!taskLogDailyTodosSection || !taskLogDailyTodosList) {
+      syncTaskLogKpiValueField(name, normalizeTaskLogPickerDateYmd());
+      return;
+    }
     const taskLogDailyTodosTitle = taskLogModal.querySelector(
       '[data-legacy~="time-task-log-daily-todos-title"]',
     );
@@ -7279,8 +7343,11 @@ export function render(opts = {}) {
 
     const dateYmd = normalizeTaskLogPickerDateYmd();
     const dailyInfo = getKpiDailyRepeatInfoForTaskLog(name);
+    const dailyTodos = dailyInfo?.dailyTodos || [];
+    const showDaily =
+      !!dailyInfo?.needHabitTracker && dailyTodos.length > 0;
 
-    if (dailyInfo && dailyInfo.needHabitTracker) {
+    if (showDaily) {
       if (taskLogDailyTodosTitle)
         taskLogDailyTodosTitle.textContent = DEFAULT_DAILY_TODOS_TITLE;
       taskLogDailyTodosSection.hidden = false;
@@ -7537,6 +7604,7 @@ export function render(opts = {}) {
     const firstTask = pickTasks[0]?.name || "";
     if (taskLogFeedbackInput) taskLogFeedbackInput.value = "";
     if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
+    clearTaskLogContentType();
     setTaskLogTimeRating(null);
     taskLogMemoTags = [];
     taskLogModal
@@ -7561,8 +7629,6 @@ export function render(opts = {}) {
         if (chevron) chevron.textContent = "▶";
         if (header) header.setAttribute("aria-expanded", "false");
       });
-    if (taskLogKpiTodosSection) taskLogKpiTodosSection.hidden = true;
-    if (taskLogKpiTodosList) taskLogKpiTodosList.innerHTML = "";
     applyTaskLogModalDefaultsForNewEntry();
     taskLogTaskDropdown._setValue?.(firstTask);
     requestAnimationFrame(() => {
@@ -7763,12 +7829,22 @@ export function render(opts = {}) {
       }
     }
     const memoOnly = feedbackRaw.replace(/#[^\s#]+/g, "").trim();
-    if (taskLogMealDetailInput) taskLogMealDetailInput.value = mealDetailVal;
-    if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
+    if (TTC.isContentDetailTaskName(tnForMemo)) {
+      setTaskLogContentType(mealDetailVal);
+      if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
+      if (taskLogFeedbackInput) taskLogFeedbackInput.value = "";
+      taskLogMemoTags = [];
+    } else {
+      if (taskLogMealDetailInput) taskLogMealDetailInput.value = mealDetailVal;
+      clearTaskLogContentType();
+      if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
+    }
     setTaskLogTimeRating(data.timeRating);
-    const rawMemoTagsForEdit = Array.isArray(data.memoTags)
-      ? [...data.memoTags]
-      : parseTagsFromFeedback(feedbackRaw);
+    const rawMemoTagsForEdit = TTC.isContentDetailTaskName(tnForMemo)
+      ? []
+      : Array.isArray(data.memoTags)
+        ? [...data.memoTags]
+        : parseTagsFromFeedback(feedbackRaw);
     taskLogMemoTags = userMemoTagsFromLedgerRaw(rawMemoTagsForEdit)
       .map((t) => String(t ?? "").trim())
       .filter(Boolean);
@@ -7892,13 +7968,21 @@ export function render(opts = {}) {
       );
       return;
     }
-    const feedbackBody = (taskLogFeedbackInput?.value || "").trim();
-    const mealDetailForRow = TTC.isLedgerDetailTaskName(taskName)
+    const feedbackBody = TTC.isContentDetailTaskName(taskName)
+      ? ""
+      : (taskLogFeedbackInput?.value || "").trim();
+    const mealDetailForRow = TTC.isMealDetailTaskName(taskName)
       ? (taskLogMealDetailInput?.value || "").trim()
-      : "";
+      : TTC.isContentDetailTaskName(taskName)
+        ? getTaskLogContentTypeForSave()
+        : "";
     const feedback = feedbackBody;
     const userTagsForSubmit = (
-      Array.isArray(taskLogMemoTags) ? taskLogMemoTags : []
+      TTC.isContentDetailTaskName(taskName)
+        ? []
+        : Array.isArray(taskLogMemoTags)
+          ? taskLogMemoTags
+          : []
     )
       .map((t) => String(t ?? "").trim())
       .filter(Boolean);

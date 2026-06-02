@@ -1,5 +1,6 @@
 import { confirmKpiTodoDelete } from "./confirmModal.js";
 import { allowModalInputFocus } from "./modalNoAutoFocus.js";
+import { bindKpiTodoModalMobileKeyboard } from "./kpiTodoModalKeyboard.js";
 
 /**
  * KPI 할 일 수정·삭제 모달 (저장·삭제 버튼을 눌렀을 때만 결과 반환).
@@ -62,8 +63,10 @@ export function showKpiTodoEditModal(opts = {}) {
     const prevOverflow = document.body.style.overflow;
     const ta = modal.querySelector('textarea[name="text"]');
     ta.value = opts.initialText ?? "";
+    let unbindKeyboard = () => {};
 
     function finish(value) {
+      unbindKeyboard();
       modal.remove();
       document.body.style.overflow = prevOverflow;
       resolve(value);
@@ -93,5 +96,6 @@ export function showKpiTodoEditModal(opts = {}) {
 
     document.body.appendChild(modal);
     document.body.style.overflow = "hidden";
+    unbindKeyboard = bindKpiTodoModalMobileKeyboard(modal, ta);
   });
 }
