@@ -11,7 +11,6 @@ import {
 } from "./timeLedgerClassPolicy.js";
 import { syncTimeDailyBudgetDateToSupabase } from "./timeDailyBudgetSupabase.js";
 import { buildTimeTaskLogPickerDropdown } from "./timeTaskLogPickerDropdown.js";
-import { pullTimeLedgerTasksFromSupabase } from "./timeLedgerTasksSupabase.js";
 import { pullKpiMapsForTaskLogModalOpen } from "./kpiTabCloudRefresh.js";
 import {
   getFullTaskOptions,
@@ -78,10 +77,7 @@ function openNativeDateInput(inp) {
 }
 
 async function ensureExpectedModalCloudData() {
-  await Promise.all([
-    pullTimeLedgerTasksFromSupabase().catch(() => {}),
-    pullKpiMapsForTaskLogModalOpen().catch(() => {}),
-  ]);
+  await Promise.all([pullKpiMapsForTaskLogModalOpen().catch(() => {})]);
   try {
     getFullTaskOptions();
     migrateTimeLogRowsTaskIds();

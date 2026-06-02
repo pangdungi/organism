@@ -358,6 +358,25 @@ function normalizeKpiPerformedValueForRow(raw) {
   return Number.isNaN(n) ? "" : String(n);
 }
 
+/** 시간기록 모달 «이 시간 평가» 1~5 (미선택 null) */
+export function normalizeTimeRatingForRow(raw) {
+  if (raw == null || raw === "") return null;
+  const n = Number.parseInt(String(raw), 10);
+  if (!Number.isInteger(n) || n < 1 || n > 5) return null;
+  return n;
+}
+
+/** 시간기록 카드 — 평가 별 HTML (미평가 null) */
+export function formatTimeLedgerCardRatingStarsHtml(raw) {
+  const n = normalizeTimeRatingForRow(raw);
+  if (n == null) return null;
+  let html = "";
+  for (let i = 1; i <= 5; i += 1) {
+    html += `<span class="${i <= n ? "is-on" : "is-off"}" aria-hidden="true">★</span>`;
+  }
+  return html;
+}
+
 /** 과제 기록 모달 매일할일 체크 [{ id, text }] */
 function normalizeHabitDailyCompletedForRow(raw) {
   if (!Array.isArray(raw)) return [];
@@ -420,6 +439,7 @@ export function localTimeLedgerRowToDbPayload(userId, row) {
       row.habitDailyCompleted,
     ),
     kpi_performed_value: normalizeKpiPerformedValueForRow(row.kpiPerformedValue),
+    time_rating: normalizeTimeRatingForRow(row.timeRating),
   };
 }
 
@@ -466,6 +486,7 @@ export function dbRowToLocalTimeLedgerRow(db) {
       db.habit_daily_completed,
     ),
     kpiPerformedValue: normalizeKpiPerformedValueForRow(db.kpi_performed_value),
+    timeRating: normalizeTimeRatingForRow(db.time_rating),
     /** Supabase updated_at — 병합 시 last-write-wins */
     /** Supabase updated_at — 서버 스냅샷·동기화 표시용 */
     serverUpdatedAt:
@@ -562,13 +583,17 @@ export function applyTimeLedgerServerRangeSnapshot(
       : [];
     const serverKpiVal = normalizeKpiPerformedValueForRow(serverRow.kpiPerformedValue);
     const localKpiVal = normalizeKpiPerformedValueForRow(local.kpiPerformedValue);
+    const serverRating = normalizeTimeRatingForRow(serverRow.timeRating);
+    const localRating = normalizeTimeRatingForRow(local.timeRating);
     const keepLocalHabit = serverHabit.length === 0 && localHabit.length > 0;
     const keepLocalKpiVal = !serverKpiVal && !!localKpiVal;
-    if (keepLocalHabit || keepLocalKpiVal) {
+    const keepLocalTimeRating = serverRating == null && localRating != null;
+    if (keepLocalHabit || keepLocalKpiVal || keepLocalTimeRating) {
       return {
         ...serverRow,
         ...(keepLocalHabit ? { habitDailyCompleted: localHabit } : {}),
         ...(keepLocalKpiVal ? { kpiPerformedValue: localKpiVal } : {}),
+        ...(keepLocalTimeRating ? { timeRating: localRating } : {}),
         localModifiedAt:
           typeof local.localModifiedAt === "number"
             ? local.localModifiedAt

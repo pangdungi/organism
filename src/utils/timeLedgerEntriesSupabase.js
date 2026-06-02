@@ -23,7 +23,6 @@ import {
 } from "./timeLedgerEntriesModel.js";
 import { closeStaleInProgressTimeLedgerRows } from "./timeLedgerStaleInProgressClose.js";
 import { timeLedgerSyncLog } from "./timeLedgerSyncDebug.js";
-import { upsertTimeLedgerTaskRowsFromLocalByIds } from "./timeLedgerTasksSupabase.js";
 import { isUuid } from "./idUtils.js";
 import { coalesceInFlightPull } from "./timeLedgerPullCoalesce.js";
 
@@ -32,8 +31,88 @@ const UPSERT_CONFLICT_ROW = "user_id,id";
 
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-const LEDGER_ENTRY_SELECT =
+const LEDGER_ENTRY_SELECT_BASE =
   "id, entry_date, task_id, task_name, start_time, end_time, productivity, category, time_tracked, focus_events, memo, meal_detail, memo_tags, linked_expense_ids, habit_daily_completed, kpi_performed_value, updated_at";
+
+/** null=미확인, true=있음, false=마이그레이션 전 서버 */
+let _supportsTimeRatingColumn = null;
+
+function ledgerEntrySelectColumns() {
+  if (_supportsTimeRatingColumn === false) return LEDGER_ENTRY_SELECT_BASE;
+  return `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, updated_at`;
+}
+
+function isMissingTimeRatingColumnError(error) {
+  const msg = `${error?.message || ""} ${error?.details || ""} ${error?.hint || ""}`;
+  return /time_rating/i.test(msg);
+}
+
+function markTimeRatingColumnSupported(ok) {
+  _supportsTimeRatingColumn = ok;
+}
+
+function stripTimeRatingFromPayloads(payloads) {
+  return payloads.map(({ time_rating: _drop, ...rest }) => rest);
+}
+
+async function fetchLedgerEntriesForRangePage(
+  userId,
+  rs,
+  re,
+  offset,
+  pageSize,
+) {
+  const selectCols = ledgerEntrySelectColumns();
+  let result = await supabase
+    .from(TABLE)
+    .select(selectCols)
+    .eq("user_id", userId)
+    .gte("entry_date", rs)
+    .lte("entry_date", re)
+    .order("entry_date", { ascending: false })
+    .order("start_time", { ascending: false })
+    .range(offset, offset + pageSize - 1);
+
+  if (result.error && isMissingTimeRatingColumnError(result.error)) {
+    markTimeRatingColumnSupported(false);
+    result = await supabase
+      .from(TABLE)
+      .select(LEDGER_ENTRY_SELECT_BASE)
+      .eq("user_id", userId)
+      .gte("entry_date", rs)
+      .lte("entry_date", re)
+      .order("entry_date", { ascending: false })
+      .order("start_time", { ascending: false })
+      .range(offset, offset + pageSize - 1);
+  } else if (!result.error && _supportsTimeRatingColumn === null) {
+    markTimeRatingColumnSupported(true);
+  }
+  return result;
+}
+
+async function upsertLedgerEntryPayloads(payloads) {
+  const selectCols = ledgerEntrySelectColumns();
+  let result = await supabase
+    .from(TABLE)
+    .upsert(payloads, { onConflict: UPSERT_CONFLICT_ROW })
+    .select(selectCols);
+
+  if (result.error && isMissingTimeRatingColumnError(result.error)) {
+    markTimeRatingColumnSupported(false);
+    result = await supabase
+      .from(TABLE)
+      .upsert(stripTimeRatingFromPayloads(payloads), {
+        onConflict: UPSERT_CONFLICT_ROW,
+      })
+      .select(LEDGER_ENTRY_SELECT_BASE);
+  } else if (!result.error && _supportsTimeRatingColumn === null) {
+    markTimeRatingColumnSupported(true);
+  }
+  return result;
+}
+
+/** @deprecated 내부 select 헬퍼 사용 — 호환용 */
+const LEDGER_ENTRY_SELECT = ledgerEntrySelectColumns();
 
 /** 로컬 달력 기준 오늘 YYYY-MM-DD */
 export function timeLedgerLocalTodayYmd() {
@@ -236,15 +315,13 @@ async function pullTimeLedgerEntriesForDateRangeCore(
   const pageSize = 1000;
   const rows = [];
   for (let offset = 0; ; offset += pageSize) {
-    const { data, error } = await supabase
-      .from(TABLE)
-      .select(LEDGER_ENTRY_SELECT)
-      .eq("user_id", userId)
-      .gte("entry_date", rs)
-      .lte("entry_date", re)
-      .order("entry_date", { ascending: false })
-      .order("start_time", { ascending: false })
-      .range(offset, offset + pageSize - 1);
+    const { data, error } = await fetchLedgerEntriesForRangePage(
+      userId,
+      rs,
+      re,
+      offset,
+      pageSize,
+    );
 
     if (error) {
       timeLedgerSyncLog("pull_done", {
@@ -368,22 +445,8 @@ async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
     return;
   }
 
-  /* time_ledger_entries.task_id → time_ledger_tasks(id) FK: 로컬에만 있는 과제 id면 먼저 과제 행 upsert */
-  const taskIdsToEnsure = [
-    ...new Set(
-      toUpload
-        .map((r) => String(r.taskId || "").trim())
-        .filter((id) => isUuid(id)),
-    ),
-  ];
-  if (taskIdsToEnsure.length > 0) {
-    await upsertTimeLedgerTaskRowsFromLocalByIds(taskIdsToEnsure);
-  }
-
-  let { data, error } = await supabase
-    .from(TABLE)
-    .upsert(payloads, { onConflict: UPSERT_CONFLICT_ROW })
-    .select(LEDGER_ENTRY_SELECT);
+  /* time_ledger_entries.task_id FK: 과제는 과제설정·KPI 저장 시에만 서버에 올림 — 기록 push에서 과제 upsert 안 함 */
+  let { data, error } = await upsertLedgerEntryPayloads(payloads);
 
   const fkTask =
     error &&
@@ -398,10 +461,7 @@ async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
       ...p,
       task_id: null,
     }));
-    ({ data, error } = await supabase
-      .from(TABLE)
-      .upsert(payloadsNoTid, { onConflict: UPSERT_CONFLICT_ROW })
-      .select(LEDGER_ENTRY_SELECT));
+    ({ data, error } = await upsertLedgerEntryPayloads(payloadsNoTid));
   }
 
   if (error) {

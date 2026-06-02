@@ -48,10 +48,7 @@ import {
   setKpiTabPullPending,
 } from "./utils/kpiMapSyncLoadingUi.js";
 import { pullTimeLedgerTabEnterFromCloud } from "./utils/timeLedgerCloudRefresh.js";
-import {
-  attachTimeLedgerTasksSaveListener,
-  pullTimeLedgerTasksFromSupabase,
-} from "./utils/timeLedgerTasksSupabase.js";
+import { attachTimeLedgerTasksSaveListener } from "./utils/timeLedgerTasksSupabase.js";
 import {
   getFullTaskOptions,
   saveLedgerTaskList,
@@ -306,9 +303,6 @@ async function pullDataForActiveTab(tabId, opts = {}) {
     case "time":
       /* 기록 탭 날짜는 메뉴 전환 직전 `resetTimeLedgerSessionFilterToToday` 로 맞춤. pull 은 그 구간 기준 */
       await pullTimeLedgerTabEnterFromCloud();
-      try {
-        await pullTimeLedgerTasksFromSupabase();
-      } catch (_) {}
       break;
     case "dream":
     case "health":

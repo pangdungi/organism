@@ -24,11 +24,9 @@ import {
   pullTimeLedgerEntriesForDateRange,
   timeLedgerLocalTodayYmd,
 } from "./timeLedgerEntriesSupabase.js";
-import { pullTimeLedgerTasksFromSupabase } from "./timeLedgerTasksSupabase.js";
 import { coalesceInFlightPull } from "./timeLedgerPullCoalesce.js";
 import { syncHabitTrackerLogs, getKpiTargetDateRange } from "./timeKpiSync.js";
 import { patchKpiLinkedTasksFromKpiMaps } from "./timeTaskOptionsModel.js";
-import { ensureAllKpiTimeTasksFromStorage } from "./kpiTimeTaskSync.js";
 import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
 const KPI_LOCAL_STORAGE_KEYS = {
   dream: "kpi-dream-map",
@@ -37,7 +35,7 @@ const KPI_LOCAL_STORAGE_KEYS = {
   sideincome: "kpi-sideincome-paths",
 };
 
-/** KPI 탭 진입 시 — 최근 6개월 가계부 + 과제(taskId↔kpiId) pull */
+/** KPI 탭 진입 시 — 최근 6개월 시간기록 pull (과제목록 pull은 과제설정 모달에서만). */
 async function pullLedgerForKpiTabEnter() {
   return coalesceInFlightPull("kpi-tab-ledger-enter", async () => {
     try {
@@ -49,7 +47,6 @@ async function pullLedgerForKpiTabEnter() {
       const day = String(d.getDate()).padStart(2, "0");
       await Promise.all([
         pullTimeLedgerEntriesForDateRange(`${y}-${m}-${day}`, today),
-        pullTimeLedgerTasksFromSupabase(),
       ]);
       patchKpiLinkedTasksFromKpiMaps();
     } catch (_) {}
@@ -81,7 +78,6 @@ export async function pullTimeLedgerForKpi(kpi) {
     if (rangeStart > rangeEnd) rangeEnd = rangeStart;
     await Promise.all([
       pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd),
-      pullTimeLedgerTasksFromSupabase(),
     ]);
     patchKpiLinkedTasksFromKpiMaps();
     return true;
@@ -124,7 +120,6 @@ export async function pullKpiTabFromCloud(tabId) {
   ]);
 
   try {
-    ensureAllKpiTimeTasksFromStorage();
     syncHabitTrackerLogs();
   } catch (_) {}
 
@@ -180,7 +175,6 @@ export async function pullKpiMapSubViewFromCloud(tabId) {
   const pullOk = await domainPull;
 
   try {
-    ensureAllKpiTimeTasksFromStorage();
     syncHabitTrackerLogs();
   } catch (_) {}
   kpiTodoFineTrace("cloud.pullKpiSubView:끝", { tabId, pullOk });
@@ -294,7 +288,6 @@ export async function pullKpiMapsForTaskLogModalOpen() {
   } catch (_) {}
 
   try {
-    ensureAllKpiTimeTasksFromStorage();
     syncHabitTrackerLogs();
   } catch (_) {}
 

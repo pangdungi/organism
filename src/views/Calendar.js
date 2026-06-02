@@ -85,7 +85,6 @@ import {
   timeLedgerLocalTodayYmd,
   timeLedgerLocalYesterdayYmd,
 } from "../utils/timeLedgerEntriesSupabase.js";
-import { pullTimeLedgerTasksFromSupabase } from "../utils/timeLedgerTasksSupabase.js";
 import { markTodoAddPendingServerLog } from "../utils/lpTabDataSourceLog.js";
 import {
   flushAllPendingTimeDailyBudgetSync,
@@ -4199,11 +4198,6 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
   oneDayTimetableRefreshHandler = (e) => refreshTimetableOverlays(e);
 
   const runInitialRender = async () => {
-    if (hideTimelineCards) {
-      try {
-        await pullTimeLedgerTasksFromSupabase();
-      } catch (_) {}
-    }
     if (!document.contains(wrap)) return;
     try {
       renderCalendar();
@@ -5682,11 +5676,6 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
         } catch (_) {}
         calendar1WeekDiagSnapshot(contentArea, "prefetchSkip");
         return;
-      }
-      if (subViewId === "1day") {
-        try {
-          await pullTimeLedgerTasksFromSupabase();
-        } catch (_) {}
       }
       try {
         await pullCalendarSectionTasksFromSupabase({

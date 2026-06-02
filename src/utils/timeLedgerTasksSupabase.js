@@ -1,5 +1,8 @@
 /**
  * 시간가계부 과제 마스터 ↔ Supabase (time_ledger_tasks)
+ *
+ * - pull: 과제설정 모달 열 때만 (탭·부팅·기록 모달에서는 localStorage 미러 사용)
+ * - push: 과제설정 모달 저장·KPI 연동·삭제만 (행 단위 upsert/delete, 전체 목록 덮어쓰기 없음)
  */
 
 import { supabase } from "../supabase.js";
@@ -314,7 +317,6 @@ export async function upsertTimeLedgerTaskRowsFromLocalByIds(taskIds) {
     return;
   }
   _tasksPullSkipUntil = 0;
-  await pullTimeLedgerTasksFromSupabase({ ignoreSkip: true });
 }
 
 /** @deprecated 전체 목록 upsert — 서버가 비어 있을 때 시드(pushTimeLedgerTasksIfServerEmpty)에서만 사용. */

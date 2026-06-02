@@ -18,6 +18,7 @@ import {
   loadTimeRows,
   parseTimeToHours,
 } from "../views/Time.js";
+import { normalizeTimeRatingForRow } from "./timeLedgerEntriesModel.js";
 
 const SLEEP_TARGET_MIN = 7 * 60;
 const CHART_COLORS = {
@@ -47,6 +48,14 @@ const PROD_CATEGORY_KEYS = new Set([
   "happiness",
   "health",
 ]);
+
+const RATING_REPORT_COLOR = "#1e4d7b";
+const RATING_REPORT_COLOR_MID = "#5b8ec2";
+const RATING_REPORT_COLOR_LOW = "#b8c9dc";
+const RATING_REPORT_COLOR_EMPTY = "#e8edf3";
+const RATING_REPORT_COLOR_PEAK = "#d97706";
+const WEEKDAY_LABELS_KO = ["일", "월", "화", "수", "목", "금", "토"];
+const WEEKDAY_CHART_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 function donutCategoryColor(catKey) {
   const k = String(catKey || "").trim() || "other";
@@ -218,6 +227,522 @@ function createBarRow(label, minutes, maxMinutes, color, title) {
   row.appendChild(track);
   row.appendChild(val);
   return row;
+}
+
+function formatRatingAvg(avg) {
+  const n = Number(avg);
+  if (!Number.isFinite(n) || n <= 0) return "—";
+  return `${n.toFixed(1)}`;
+}
+
+function ratingFillColor(avg) {
+  const n = Number(avg);
+  if (!Number.isFinite(n) || n <= 0) return RATING_REPORT_COLOR_EMPTY;
+  if (n >= 4.5) return RATING_REPORT_COLOR;
+  if (n >= 3.5) return "#3b6ea8";
+  if (n >= 2.5) return RATING_REPORT_COLOR_MID;
+  if (n >= 1.5) return RATING_REPORT_COLOR_LOW;
+  return "#cbd5e1";
+}
+
+function ratingBarColor(avg) {
+  return ratingFillColor(avg);
+}
+
+function createRatingBarRow(label, avgRating, meta) {
+  const row = document.createElement("div");
+  row.className = "lp-tr2-bar-row lp-tr2-bar-row--rating";
+  if (meta) row.title = meta;
+  const lab = document.createElement("span");
+  lab.className = "lp-tr2-bar-label";
+  lab.textContent = label;
+  const track = document.createElement("div");
+  track.className = "lp-tr2-bar-track";
+  const fill = document.createElement("div");
+  fill.className = "lp-tr2-bar-fill";
+  const pct = Math.min(100, (Math.max(0, avgRating) / 5) * 100);
+  fill.style.width = `${pct}%`;
+  fill.style.background = ratingBarColor(avgRating);
+  const val = document.createElement("span");
+  val.className = "lp-tr2-bar-value lp-tr2-bar-value--rating";
+  val.textContent = `${formatRatingAvg(avgRating)}★`;
+  track.appendChild(fill);
+  row.appendChild(lab);
+  row.appendChild(track);
+  row.appendChild(val);
+  return row;
+}
+
+function createRatingBlock(title, subtitle) {
+  const block = document.createElement("article");
+  block.className = "lp-tr2-rating-block";
+  const h = document.createElement("h3");
+  h.className = "lp-tr2-rating-block-title";
+  h.textContent = title;
+  block.appendChild(h);
+  if (subtitle) {
+    const p = document.createElement("p");
+    p.className = "lp-tr2-rating-block-sub";
+    p.textContent = subtitle;
+    block.appendChild(p);
+  }
+  return block;
+}
+
+function createRatingChartLegend(items) {
+  const leg = document.createElement("div");
+  leg.className = "lp-tr2-rating-chart-legend";
+  items.forEach(({ swatch, label, mod }) => {
+    const item = document.createElement("span");
+    item.className = `lp-tr2-rating-chart-legend-item${mod ? ` ${mod}` : ""}`;
+    const dot = document.createElement("span");
+    dot.className = "lp-tr2-rating-chart-legend-swatch";
+    if (swatch.startsWith("#")) dot.style.background = swatch;
+    else dot.classList.add(swatch);
+    item.appendChild(dot);
+    item.appendChild(document.createTextNode(label));
+    leg.appendChild(item);
+  });
+  return leg;
+}
+
+function render24HourRatingChart(hourGrid, peakHours) {
+  const peakSet = new Set((peakHours || []).map((h) => h.hour));
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-rating-hour-chart";
+  const cols = document.createElement("div");
+  cols.className = "lp-tr2-rating-hour-chart-cols";
+  cols.setAttribute("role", "img");
+  cols.setAttribute(
+    "aria-label",
+    "0시부터 23시까지 시간대별 만족도",
+  );
+
+  hourGrid.forEach((h) => {
+    const cell = document.createElement("div");
+    cell.className = "lp-tr2-rating-hour-cell";
+    const hasData = h.count > 0 && h.avg != null;
+    if (hasData && peakSet.has(h.hour)) {
+      cell.classList.add("lp-tr2-rating-hour-cell--peak");
+    }
+    const bar = document.createElement("div");
+    bar.className = "lp-tr2-rating-hour-bar";
+    if (hasData) {
+      const pct = Math.max(14, ((h.avg ?? 0) / 5) * 100);
+      bar.style.height = `${pct}%`;
+      bar.style.background = ratingFillColor(h.avg);
+      cell.title = `${formatHourLabel(h.hour)} · ${formatRatingAvg(h.avg)}점 · ${h.count}건 · ${formatIntegerMinutesDurationKo(h.minutes)}`;
+    } else {
+      bar.classList.add("is-empty");
+    }
+    cell.appendChild(bar);
+    cols.appendChild(cell);
+  });
+
+  const panel = document.createElement("div");
+  panel.className = "lp-tr2-rating-hour-chart-panel";
+  panel.appendChild(cols);
+
+  const axis = document.createElement("div");
+  axis.className = "lp-tr2-rating-hour-axis";
+  axis.setAttribute("aria-hidden", "true");
+  hourGrid.forEach((h) => {
+    const tick = document.createElement("span");
+    tick.className = "lp-tr2-rating-hour-axis-tick";
+    if (h.hour % 6 === 0) tick.classList.add("is-major");
+    tick.textContent = String(h.hour);
+    axis.appendChild(tick);
+  });
+  panel.appendChild(axis);
+  wrap.appendChild(panel);
+
+  wrap.appendChild(
+    createRatingChartLegend([
+      { swatch: RATING_REPORT_COLOR, label: "만족 높음" },
+      { swatch: RATING_REPORT_COLOR_MID, label: "보통" },
+      { swatch: RATING_REPORT_COLOR_EMPTY, label: "기록 없음" },
+      { swatch: "is-peak-ring", label: "피크 시간" },
+    ]),
+  );
+  return wrap;
+}
+
+function renderWeekdayRatingChart(weekdayGrid) {
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-rating-weekday-chart";
+  wrap.setAttribute("role", "img");
+  wrap.setAttribute("aria-label", "요일별 만족도");
+
+  weekdayGrid.forEach((w) => {
+    const col = document.createElement("div");
+    col.className = "lp-tr2-rating-weekday-col";
+    const hasData = w.count > 0 && w.avg != null;
+    const barWrap = document.createElement("div");
+    barWrap.className = "lp-tr2-rating-weekday-bar-wrap";
+    const bar = document.createElement("div");
+    bar.className = "lp-tr2-rating-weekday-bar";
+    if (hasData) {
+      const pct = Math.max(14, ((w.avg ?? 0) / 5) * 100);
+      bar.style.height = `${pct}%`;
+      bar.style.background = ratingFillColor(w.avg);
+      col.title = `${w.label}요일 · ${formatRatingAvg(w.avg)}점 · ${w.count}건`;
+      if ((w.avg ?? 0) >= 4) col.classList.add("lp-tr2-rating-weekday-col--high");
+    } else {
+      bar.classList.add("is-empty");
+    }
+    barWrap.appendChild(bar);
+    col.appendChild(barWrap);
+    const lab = document.createElement("span");
+    lab.className = "lp-tr2-rating-weekday-label";
+    lab.textContent = w.label;
+    col.appendChild(lab);
+    if (hasData) {
+      const score = document.createElement("span");
+      score.className = "lp-tr2-rating-weekday-score";
+      score.textContent = `${formatRatingAvg(w.avg)}`;
+      col.appendChild(score);
+    }
+    wrap.appendChild(col);
+  });
+  return wrap;
+}
+
+function rowStartHour(r) {
+  const st = String(r.startTime || "").trim();
+  if (!st) return null;
+  const m = st.match(/(?:^|\s|T|\.)(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  const h = Number.parseInt(m[1], 10);
+  return h >= 0 && h <= 23 ? h : null;
+}
+
+function rowWeekdayIndex(r) {
+  const d = rowDateYmd(r);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
+  const [y, mo, day] = d.split("-").map(Number);
+  return new Date(y, mo - 1, day).getDay();
+}
+
+function rowMonthKey(r) {
+  const d = rowDateYmd(r);
+  return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d.slice(0, 7) : null;
+}
+
+function formatHourLabel(hour) {
+  return `${String(hour).padStart(2, "0")}시`;
+}
+
+function buildTimeRatingReportSnapshot(rows) {
+  /** @type {{ rating: number, minutes: number, hour: number|null, weekday: number|null, month: string|null, task: string }[]} */
+  const entries = [];
+  for (const r of rows) {
+    const rating = normalizeTimeRatingForRow(r.timeRating);
+    if (rating == null) continue;
+    const mins = rowMinutes(r) || 15;
+    entries.push({
+      rating,
+      minutes: mins,
+      hour: rowStartHour(r),
+      weekday: rowWeekdayIndex(r),
+      month: rowMonthKey(r),
+      task: String(r.taskName || "").trim() || "(제목 없음)",
+    });
+  }
+  if (!entries.length) return null;
+
+  let weightedSum = 0;
+  let totalMinutes = 0;
+  for (const e of entries) {
+    weightedSum += e.rating * e.minutes;
+    totalMinutes += e.minutes;
+  }
+  const overallWeightedAvg =
+    totalMinutes > 0 ? weightedSum / totalMinutes : 0;
+
+  const hourBuckets = Array.from({ length: 24 }, () => ({
+    weighted: 0,
+    minutes: 0,
+    count: 0,
+  }));
+  for (const e of entries) {
+    if (e.hour == null) continue;
+    hourBuckets[e.hour].weighted += e.rating * e.minutes;
+    hourBuckets[e.hour].minutes += e.minutes;
+    hourBuckets[e.hour].count += 1;
+  }
+  const hourGrid = hourBuckets.map((b, hour) => ({
+    hour,
+    avg: b.minutes > 0 ? b.weighted / b.minutes : null,
+    count: b.count,
+    minutes: b.minutes,
+  }));
+  const hourScores = hourGrid.filter((h) => h.count > 0);
+
+  const hourScoresByAvg = [...hourScores].sort(
+    (a, b) => (b.avg ?? 0) - (a.avg ?? 0),
+  );
+  const peakHours = hourScoresByAvg.slice(0, 3);
+  const lowHours = [...hourScoresByAvg]
+    .reverse()
+    .slice(0, 3)
+    .filter((h) => (h.avg ?? 0) < overallWeightedAvg);
+
+  const wdBuckets = Array.from({ length: 7 }, () => ({
+    weighted: 0,
+    minutes: 0,
+    count: 0,
+  }));
+  for (const e of entries) {
+    if (e.weekday == null) continue;
+    wdBuckets[e.weekday].weighted += e.rating * e.minutes;
+    wdBuckets[e.weekday].minutes += e.minutes;
+    wdBuckets[e.weekday].count += 1;
+  }
+  const weekdayScores = wdBuckets
+    .map((b, i) => ({
+      weekday: i,
+      label: WEEKDAY_LABELS_KO[i],
+      avg: b.minutes > 0 ? b.weighted / b.minutes : null,
+      count: b.count,
+      minutes: b.minutes,
+    }))
+    .filter((w) => w.count > 0);
+  const weekdayGrid = WEEKDAY_CHART_ORDER.map((i) => {
+    const b = wdBuckets[i];
+    return {
+      weekday: i,
+      label: WEEKDAY_LABELS_KO[i],
+      avg: b.minutes > 0 ? b.weighted / b.minutes : null,
+      count: b.count,
+      minutes: b.minutes,
+    };
+  });
+
+  const taskMap = new Map();
+  for (const e of entries) {
+    if (!taskMap.has(e.task)) {
+      taskMap.set(e.task, { weighted: 0, minutes: 0, count: 0 });
+    }
+    const t = taskMap.get(e.task);
+    t.weighted += e.rating * e.minutes;
+    t.minutes += e.minutes;
+    t.count += 1;
+  }
+  const taskScores = [...taskMap.entries()]
+    .map(([name, b]) => ({
+      name,
+      avg: b.minutes > 0 ? b.weighted / b.minutes : 0,
+      count: b.count,
+      minutes: b.minutes,
+      roi: b.minutes > 0 ? b.weighted / (b.minutes / 60) : 0,
+    }))
+    .sort((a, b) => b.avg - a.avg);
+
+  const monthMap = new Map();
+  for (const e of entries) {
+    if (!e.month) continue;
+    if (!monthMap.has(e.month)) {
+      monthMap.set(e.month, { weighted: 0, minutes: 0, count: 0 });
+    }
+    const m = monthMap.get(e.month);
+    m.weighted += e.rating * e.minutes;
+    m.minutes += e.minutes;
+    m.count += 1;
+  }
+  const monthScores = [...monthMap.entries()]
+    .map(([key, b]) => ({
+      key,
+      label: `${key.slice(0, 4)}.${key.slice(5, 7)}`,
+      avg: b.minutes > 0 ? b.weighted / b.minutes : 0,
+      count: b.count,
+      minutes: b.minutes,
+    }))
+    .sort((a, b) => a.key.localeCompare(b.key));
+
+  const topTasks = taskScores
+    .filter((t) => t.minutes >= 15 || t.count >= 2)
+    .slice(0, 6);
+  const topRoiTasks = [...taskScores]
+    .filter((t) => t.minutes >= 30)
+    .sort((a, b) => b.roi - a.roi)
+    .slice(0, 5);
+
+  return {
+    ratedCount: entries.length,
+    totalMinutes,
+    overallWeightedAvg,
+    hourGrid,
+    hourScores,
+    peakHours,
+    lowHours,
+    weekdayScores,
+    weekdayGrid,
+    taskScores,
+    topTasks,
+    topRoiTasks,
+    monthScores,
+  };
+}
+
+function buildRatingInsightText(snap) {
+  const parts = [];
+  if (snap.peakHours.length) {
+    const labels = snap.peakHours
+      .map((h) => formatHourLabel(h.hour))
+      .join(" · ");
+    parts.push(`잘 맞는 시간 ${labels}`);
+  }
+  const wdSorted = [...snap.weekdayScores].sort(
+    (a, b) => (b.avg ?? 0) - (a.avg ?? 0),
+  );
+  if (wdSorted.length >= 2) {
+    parts.push(
+      `${wdSorted[0].label}요일이 가장 좋고 ${wdSorted[wdSorted.length - 1].label}요일이 낮아요`,
+    );
+  }
+  if (snap.topTasks.length) {
+    parts.push(`가장 만족스러운 활동은 「${snap.topTasks[0].name}」`);
+  }
+  return parts.join(" · ");
+}
+
+function mountTimeRatingReportSection(scrollWrap, _range, rows) {
+  const snap = buildTimeRatingReportSnapshot(rows);
+  const sec = createSection(
+    "시간 만족도 분석",
+    "별점 평가로 나만의 최적 시간·활동 패턴을 봅니다",
+  );
+
+  if (!snap) {
+    const note = document.createElement("p");
+    note.className = "lp-tr2-chart-note";
+    note.textContent =
+      "이 기간에 별점을 매긴 시간 기록이 없습니다. 기록 모달에서 「이 시간 평가」를 남겨 보세요.";
+    sec.appendChild(note);
+    scrollWrap.appendChild(sec);
+    return;
+  }
+
+  const hero = document.createElement("div");
+  hero.className = "lp-tr2-card-grid";
+  hero.appendChild(
+    createStatCard("평가한 기록", `${snap.ratedCount}건`, ""),
+  );
+  hero.appendChild(
+    createStatCard(
+      "평가한 시간",
+      formatIntegerMinutesDurationKo(snap.totalMinutes),
+      "",
+    ),
+  );
+  hero.appendChild(
+    createStatCard(
+      "평균 만족도",
+      `${formatRatingAvg(snap.overallWeightedAvg)}/5`,
+      "시간 가중 평균",
+    ),
+  );
+  hero.appendChild(
+    createStatCard(
+      "시간당 만족",
+      `${formatRatingAvg(snap.overallWeightedAvg)}점`,
+      "1시간 쓸 때 평균 별점",
+    ),
+  );
+  sec.appendChild(hero);
+
+  const insight = buildRatingInsightText(snap);
+  if (insight) {
+    const box = document.createElement("p");
+    box.className = "lp-tr2-rating-insight";
+    box.textContent = insight;
+    sec.appendChild(box);
+  }
+
+  if (snap.hourGrid.some((h) => h.count > 0)) {
+    const block = createRatingBlock(
+      "24시간 만족도",
+      "시작 시각 기준 · 막대 높이=별점 · 주황 테두리=피크 시간",
+    );
+    block.appendChild(render24HourRatingChart(snap.hourGrid, snap.peakHours));
+    if (snap.peakHours.length) {
+      const peakNote = document.createElement("p");
+      peakNote.className = "lp-tr2-rating-peak-note";
+      peakNote.textContent = `피크: ${snap.peakHours
+        .map((h) => `${formatHourLabel(h.hour)} (${formatRatingAvg(h.avg)}점)`)
+        .join(" · ")}`;
+      block.appendChild(peakNote);
+    }
+    sec.appendChild(block);
+  }
+
+  if (snap.weekdayGrid.some((w) => w.count > 0)) {
+    const block = createRatingBlock(
+      "요일별 패턴",
+      "월~일 요일별 평균 별점 · 막대가 높을수록 만족",
+    );
+    block.appendChild(renderWeekdayRatingChart(snap.weekdayGrid));
+    sec.appendChild(block);
+  }
+
+  if (snap.topTasks.length) {
+    const block = createRatingBlock(
+      "활동별 만족도",
+      "과제별 평균 별점 · 15분 이상 또는 2회 이상",
+    );
+    const bars = document.createElement("div");
+    bars.className = "lp-tr2-bars";
+    snap.topTasks.forEach((t) => {
+      bars.appendChild(
+        createRatingBarRow(
+          t.name,
+          t.avg,
+          `${t.count}회 · ${formatIntegerMinutesDurationKo(t.minutes)}`,
+        ),
+      );
+    });
+    block.appendChild(bars);
+    sec.appendChild(block);
+  }
+
+  if (snap.topRoiTasks.length) {
+    const block = createRatingBlock(
+      "시간 대비 만족 TOP",
+      "30분 이상 쓴 활동만 · 같은 1시간을 썼을 때 별점이 높은 순",
+    );
+    const bars = document.createElement("div");
+    bars.className = "lp-tr2-bars";
+    snap.topRoiTasks.forEach((t) => {
+      bars.appendChild(
+        createRatingBarRow(
+          t.name,
+          t.avg,
+          `${formatIntegerMinutesDurationKo(t.minutes)} · ${t.count}회 평가`,
+        ),
+      );
+    });
+    block.appendChild(bars);
+    sec.appendChild(block);
+  }
+
+  if (snap.monthScores.length > 1) {
+    const block = createRatingBlock("월별 추이", "기간이 여러 달일 때");
+    const bars = document.createElement("div");
+    bars.className = "lp-tr2-bars lp-tr2-bars--compact";
+    snap.monthScores.forEach((m) => {
+      bars.appendChild(
+        createRatingBarRow(
+          m.label,
+          m.avg,
+          `${m.count}건 · ${formatIntegerMinutesDurationKo(m.minutes)}`,
+        ),
+      );
+    });
+    block.appendChild(bars);
+    sec.appendChild(block);
+  }
+
+  scrollWrap.appendChild(sec);
 }
 
 function svgEl(tag, attrs = {}) {
@@ -855,32 +1380,6 @@ function mountMediaSection(scrollWrap, range, rows) {
   scrollWrap.appendChild(sec);
 }
 
-function collectActionLogs(rows, keywords) {
-  const kws = keywords.map((k) => String(k).trim()).filter(Boolean);
-  if (!kws.length) return [];
-  /** @type {{ date: string, main: string, sub: string }[]} */
-  const out = [];
-  rows.forEach((r) => {
-    const tn = String(r.taskName || "").trim();
-    if (!tn || !kws.some((k) => tn.includes(k))) return;
-    const date = rowDateYmd(r);
-    if (!date) return;
-    const note = rowUserNote(r);
-    const main = note ? `${tn} — ${note}` : tn;
-    const mins = rowMinutes(r);
-    out.push({
-      date,
-      main,
-      sub: mins > 0 ? formatIntegerMinutesDurationKo(mins) : "",
-    });
-  });
-  out.sort(
-    (a, b) =>
-      b.date.localeCompare(a.date) || a.main.localeCompare(b.main, "ko"),
-  );
-  return out;
-}
-
 function mountHeroSection(scrollWrap, range) {
   const hero = getTimeReportHeroSnapshotForDateRange(range.start, range.end);
   const sec = createSection("한 장 요약", formatRangeLabel(range.start, range.end));
@@ -1186,93 +1685,6 @@ function mountDonutSection(scrollWrap, range) {
   scrollWrap.appendChild(sec);
 }
 
-function mountActionSections(scrollWrap, range, rows) {
-  const hero = getTimeReportHeroSnapshotForDateRange(range.start, range.end);
-  const summary = getTimeReportSummaryGridForDateRange(range.start, range.end);
-
-  const blocks = [
-    {
-      title: "근무하기",
-      hint: "총 근무 시간",
-      summary: formatIntegerMinutesDurationKo(hero.workMinutes),
-      logs: [],
-    },
-    {
-      title: "감정·불행",
-      hint: "기록 목록",
-      summary: summary.unhappinessMinutes
-        ? formatIntegerMinutesDurationKo(summary.unhappinessMinutes)
-        : "",
-      logs: collectActionLogs(rows, ["불행", "감정"]),
-    },
-    {
-      title: "대화·모임",
-      hint: "직접 입력한 내용",
-      summary: "",
-      logs: collectActionLogs(rows, ["대화", "모임", "회의", "미팅"]),
-    },
-    {
-      title: "이동·통근",
-      hint: "기록 목록",
-      summary: "",
-      logs: collectActionLogs(rows, ["이동", "통근", "걸음"]),
-    },
-    {
-      title: "위생·외모",
-      hint: "기록 목록",
-      summary: "",
-      logs: collectActionLogs(rows, ["샤워", "세면", "스킨", "메이크", "외모"]),
-    },
-    {
-      title: "정리·청소",
-      hint: "기록 목록",
-      summary: "",
-      logs: collectActionLogs(rows, ["청소", "정리", "설거지", "빨래"]),
-    },
-  ];
-
-  const sec = createSection(
-    "구매할 수 있는 행동",
-    "행동별로 기록 내용을 모았습니다 · 막대 비교 없음",
-  );
-
-  blocks.forEach(({ title, hint, summary, logs }) => {
-    const block = document.createElement("article");
-    block.className = "lp-tr2-action-block";
-    const head = document.createElement("div");
-    head.className = "lp-tr2-action-block-head";
-    const h = document.createElement("h3");
-    h.className = "lp-tr2-action-block-title";
-    h.textContent = title;
-    head.appendChild(h);
-    if (summary) {
-      const sum = document.createElement("span");
-      sum.className = "lp-tr2-action-block-sum";
-      sum.textContent = summary;
-      head.appendChild(sum);
-    }
-    block.appendChild(head);
-    if (logs.length) {
-      block.appendChild(
-        buildJournalList(logs, `${title} 기록이 없습니다.`),
-      );
-    } else if (summary && summary !== "0분" && summary !== "—") {
-      const p = document.createElement("p");
-      p.className = "lp-tr2-action-block-only-time";
-      p.textContent = `${hint}: ${summary}`;
-      block.appendChild(p);
-    } else {
-      const p = document.createElement("p");
-      p.className = "lp-tr2-journal-empty";
-      p.textContent = `${title} 기록이 없습니다.`;
-      block.appendChild(p);
-    }
-    sec.appendChild(block);
-  });
-
-  scrollWrap.appendChild(sec);
-}
-
 /**
  * @param {HTMLElement} scrollWrap
  * @param {{ rangeStart: string, rangeEnd: string } | string} arg2
@@ -1292,5 +1704,5 @@ export function mountUnifiedTimeReport(scrollWrap, arg2, arg3) {
   mountIntakeSection(scrollWrap, range, rows);
   mountMediaSection(scrollWrap, range, rows);
   mountDonutSection(scrollWrap, range);
-  mountActionSections(scrollWrap, range, rows);
+  mountTimeRatingReportSection(scrollWrap, range, rows);
 }

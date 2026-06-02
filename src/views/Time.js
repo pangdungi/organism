@@ -56,12 +56,11 @@ import {
   patchKpiLinkedTasksFromKpiMaps,
   isUuid,
 } from "../utils/timeTaskOptionsModel.js";
-import { ensureAllKpiTimeTasksFromStorage } from "../utils/kpiTimeTaskSync.js";
+import { pullKpiMapsForTaskLogModalOpen } from "../utils/kpiTabCloudRefresh.js";
 import {
   attachTimeLedgerTasksSaveListener,
   pullTimeLedgerTasksFromSupabase,
 } from "../utils/timeLedgerTasksSupabase.js";
-import { pullKpiMapsForTaskLogModalOpen } from "../utils/kpiTabCloudRefresh.js";
 import {
   scheduleTimeDailyBudgetSyncPush,
 } from "../utils/timeDailyBudgetSupabase.js";
@@ -90,6 +89,8 @@ import {
   stripTimeLedgerSyncMetaForCompare,
   TIME_LEDGER_ENTRIES_KEY,
   writeTimeLedgerEntriesRaw,
+  normalizeTimeRatingForRow,
+  formatTimeLedgerCardRatingStarsHtml,
 } from "../utils/timeLedgerEntriesModel.js";
 import { closeStaleInProgressTimeLedgerRows, timeLedgerRowIsActiveLiveInProgress } from "../utils/timeLedgerStaleInProgressClose.js";
 import {
@@ -101,6 +102,7 @@ import {
 import { pullTimeLedgerTabEnterFromCloud } from "../utils/timeLedgerCloudRefresh.js";
 import { timeLedgerSyncLog } from "../utils/timeLedgerSyncDebug.js";
 import { lpSaveDebug } from "../utils/lpSaveDebug.js";
+import { lpPullDebug } from "../utils/lpPullDebug.js";
 import { logTabSync } from "../utils/lpTabSyncDebug.js";
 import { bindLpHorizontalPanNavigate } from "../utils/lpHorizontalPanNavigate.js";
 import {
@@ -3507,6 +3509,7 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
       ? initialData.habitDailyCompleted
       : [],
     kpiPerformedValue: String(initialData?.kpiPerformedValue ?? "").trim(),
+    timeRating: normalizeTimeRatingForRow(initialData?.timeRating),
   };
   tr._rowData = rowData;
 
@@ -4376,8 +4379,34 @@ function ledgerRowKpiIdFromTaskName(taskName) {
 function buildMobileTimeCardTitle(taskLabel, startClock, endClock, rowData) {
   const kpiId = ledgerRowKpiIdFromTaskName(rowData?.taskName);
   const memoBlock = buildTimeLedgerCardMemoText(rowData, kpiId);
+  const rating = normalizeTimeRatingForRow(rowData?.timeRating);
   const base = `${taskLabel} (${startClock} ~ ${endClock})`;
-  return memoBlock ? `${base}\n${memoBlock}` : base;
+  const ratingLine = rating != null ? `평가 ${rating}점` : "";
+  const parts = [base, ratingLine, memoBlock].filter(Boolean);
+  return parts.join("\n");
+}
+
+function syncMobileTimeCardRatingEl(card, rowData) {
+  if (!card) return;
+  const statsCol = card.querySelector(".time-ledger-usage-stats-col");
+  if (!statsCol) return;
+  const starsHtml = formatTimeLedgerCardRatingStarsHtml(rowData?.timeRating);
+  const rating = normalizeTimeRatingForRow(rowData?.timeRating);
+  let ratingEl = statsCol.querySelector(".time-ledger-usage-rating-stars");
+  if (!starsHtml) {
+    ratingEl?.remove();
+    return;
+  }
+  if (!ratingEl) {
+    ratingEl = document.createElement("span");
+    ratingEl.className = "time-ledger-usage-rating-stars";
+    statsCol.appendChild(ratingEl);
+  }
+  ratingEl.innerHTML = starsHtml;
+  ratingEl.setAttribute(
+    "aria-label",
+    rating != null ? `이 시간 평가 ${rating}점` : "",
+  );
 }
 
 function syncMobileTimeCardMemoEl(card, rowData) {
@@ -4406,6 +4435,7 @@ function refreshTimeLedgerRowMemoDisplay(tr, rowData) {
   const text = buildTimeLedgerCardMemoText(rowData, kpiId);
   if (lpTokenHas(tr, "time-ledger-mobile-card")) {
     syncMobileTimeCardMemoEl(tr, rowData);
+    syncMobileTimeCardRatingEl(tr, rowData);
     const taskLabel =
       String(rowData.taskName || "").trim() || "(제목 없음)";
     const startInst = getRowStartInstantForMobileCard(rowData);
@@ -4515,6 +4545,7 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   card.appendChild(iconCell);
   card.appendChild(titleEl);
   card.appendChild(statsCol);
+  syncMobileTimeCardRatingEl(card, rowData);
   if (cardMemoText) {
     const memoEl = document.createElement("div");
     memoEl.className = "calendar-1day-timeline-card-memo";
@@ -4834,14 +4865,16 @@ export function render(opts = {}) {
         if (pullGen !== _usageListPullGen) return;
         if (!el.isConnected) return;
         const cacheRows = loadTimeRows();
-        const filtered = applyUsageListFilters(cacheRows);
-        if (!ok) return;
         allRowsCache = cacheRows;
         cachedRows = [...cacheRows];
+        const filtered = applyUsageListFilters(cacheRows);
         renderAll(filtered);
         rememberTimeLedgerPaintSignature();
         updateTotal();
         persistActiveViewTimeFilterToSession();
+        if (!ok) {
+          lpPullDebug("time_ledger_range_pull_failed", { range: `${rs}..${re}` });
+        }
       })();
     }, 400);
   }
@@ -4921,6 +4954,7 @@ export function render(opts = {}) {
     usageHistoryRangeEndYmd = next;
     persistActiveViewTimeFilterToSession();
     patchUsageRangeHeadingOnly();
+    onFilterChange();
     requestUsageListScrollToBottomOnce();
     requestTimeLedgerPullForUserQueryChange("swipe");
   }
@@ -5615,6 +5649,16 @@ export function render(opts = {}) {
             </div>
           </div>
         </div>
+        <div data-legacy="time-task-log-rating-section">
+          <span data-legacy="time-task-log-section-label time-task-log-rating-section-label">이 시간 평가</span>
+          <div data-legacy="time-task-log-rating-stars" role="group" aria-label="이 시간 평가 1~5점">
+            <button type="button" data-legacy="time-task-log-rating-star" data-rating-value="1" aria-label="1점">★</button>
+            <button type="button" data-legacy="time-task-log-rating-star" data-rating-value="2" aria-label="2점">★</button>
+            <button type="button" data-legacy="time-task-log-rating-star" data-rating-value="3" aria-label="3점">★</button>
+            <button type="button" data-legacy="time-task-log-rating-star" data-rating-value="4" aria-label="4점">★</button>
+            <button type="button" data-legacy="time-task-log-rating-star" data-rating-value="5" aria-label="5점">★</button>
+          </div>
+        </div>
         </div>
       </div>
       <div data-legacy="time-task-log-footer" data-task-log-footer>
@@ -5713,6 +5757,42 @@ export function render(opts = {}) {
   const taskLogScrollArea = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-scroll-area"]',
   );
+  const taskLogRatingStars = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-rating-stars"]',
+  );
+  let taskLogTimeRating = null;
+
+  function getTaskLogTimeRating() {
+    return normalizeTimeRatingForRow(taskLogTimeRating);
+  }
+
+  function renderTaskLogTimeRating() {
+    const v = getTaskLogTimeRating();
+    taskLogRatingStars
+      ?.querySelectorAll('[data-rating-value]')
+      .forEach((btn) => {
+        const n = Number(btn.getAttribute("data-rating-value"));
+        const on = v != null && n <= v;
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+        if (on) lpTokenAdd(btn, "time-task-log-rating-star--on");
+        else lpTokenRemove(btn, "time-task-log-rating-star--on");
+      });
+  }
+
+  function setTaskLogTimeRating(value) {
+    taskLogTimeRating = normalizeTimeRatingForRow(value);
+    renderTaskLogTimeRating();
+  }
+
+  taskLogRatingStars
+    ?.querySelectorAll('[data-rating-value]')
+    .forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const n = Number(btn.getAttribute("data-rating-value"));
+        setTaskLogTimeRating(getTaskLogTimeRating() === n ? null : n);
+      });
+    });
+
   let taskLogMemoVvAdjust = null;
   let taskLogMemoActiveInput = null;
   let taskLogScrollTopBeforeMemo = 0;
@@ -7348,13 +7428,12 @@ export function render(opts = {}) {
     } catch (_) {}
   }
 
-  /** 과제설정 모달: 서버 과제 목록만 pull (업서트 없음). 시간 탭 진입 시에도 tabEnter 에서 pull. */
+  /** 과제설정 모달: 서버 과제 목록 pull만(로컬→서버 upsert 없음). */
   async function pullTimeLedgerTasksWhenSetupModalOpens() {
     try {
       await pullTimeLedgerTasksFromSupabase();
     } catch (_) {}
     try {
-      ensureAllKpiTimeTasksFromStorage();
       patchKpiLinkedTasksFromKpiMaps();
       getFullTaskOptions();
       migrateTimeLogRowsTaskIds();
@@ -7362,15 +7441,11 @@ export function render(opts = {}) {
   }
 
   /**
-   * 과제 기록/수정 모달: KPI 탭 미방문 상태에서도 매일 할일이 비지 않게 서버와 맞춤.
+   * 과제 기록/수정 모달: KPI 맵만 서버와 맞춤(과제목록 pull은 과제설정 모달에서만).
    */
   async function ensureTaskLogModalCloudData() {
-    await Promise.all([
-      pullTimeLedgerTasksFromSupabase().catch(() => {}),
-      pullKpiMapsForTaskLogModalOpen().catch(() => {}),
-    ]);
+    await Promise.all([pullKpiMapsForTaskLogModalOpen().catch(() => {})]);
     try {
-      ensureAllKpiTimeTasksFromStorage();
       patchKpiLinkedTasksFromKpiMaps();
       getFullTaskOptions();
       migrateTimeLogRowsTaskIds();
@@ -7462,6 +7537,7 @@ export function render(opts = {}) {
     const firstTask = pickTasks[0]?.name || "";
     if (taskLogFeedbackInput) taskLogFeedbackInput.value = "";
     if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
+    setTaskLogTimeRating(null);
     taskLogMemoTags = [];
     taskLogModal
       .querySelectorAll('[data-legacy~="time-task-log-accordion-item"]')
@@ -7689,6 +7765,7 @@ export function render(opts = {}) {
     const memoOnly = feedbackRaw.replace(/#[^\s#]+/g, "").trim();
     if (taskLogMealDetailInput) taskLogMealDetailInput.value = mealDetailVal;
     if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
+    setTaskLogTimeRating(data.timeRating);
     const rawMemoTagsForEdit = Array.isArray(data.memoTags)
       ? [...data.memoTags]
       : parseTagsFromFeedback(feedbackRaw);
@@ -7854,6 +7931,7 @@ export function render(opts = {}) {
     }
     const dateStr = parseDateFromDateTime(startTime) || toDateStr(new Date());
     const focusValue = "";
+    const timeRatingForRow = getTaskLogTimeRating();
 
     if (editTr) {
       oldRowDataToRemove = editTr._rowData ? { ...editTr._rowData } : null;
@@ -7884,6 +7962,7 @@ export function render(opts = {}) {
           ? prevRow.habitDailyCompleted
           : [],
         kpiPerformedValue: String(prevRow.kpiPerformedValue ?? "").trim(),
+        timeRating: timeRatingForRow,
       };
       editTr._rowData = newRowData;
       const isMobileCard = lpTokenHas(editTr, "time-ledger-mobile-card");
@@ -7993,6 +8072,7 @@ export function render(opts = {}) {
         focus: focusValue,
         habitDailyCompleted: [],
         kpiPerformedValue: "",
+        timeRating: timeRatingForRow,
       };
       const tr = createRow(
         newRowData,
@@ -9385,7 +9465,7 @@ export function render(opts = {}) {
     } catch (_) {}
     allRowsCache = loadTimeRows();
     cachedRows = getFullRowsForFilter(true);
-    syncTimeLedgerContent({ force: false });
+    syncTimeLedgerContent({ force: true });
     if (el._lpUsageListEnterScrollArmed) {
       const cardsWrap = contentWrap.querySelector(
         '[data-legacy~="time-ledger-mobile-cards"]',

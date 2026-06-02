@@ -283,21 +283,13 @@ export function hydrateTaskOptionsFromLocalMirrorForBoot() {
   }
 }
 
+/** 부팅: 계정별 localStorage 미러만(빠른 표시). 과제 pull·서버 쓰기는 과제설정 모달·KPI·모달 저장만. */
 export function prepareTimeLedgerTasksStorageForBoot() {
   hydrateTaskOptionsFromLocalMirrorForBoot();
-  void import("./kpiTimeTaskSync.js")
-    .then((k) => k.ensureAllKpiTimeTasksFromStorage())
-    .catch(() => {});
   void import("./timeLedgerTasksSupabase.js")
     .then((m) => {
       m.attachTimeLedgerTasksSaveListener();
-      return m.pullTimeLedgerTasksFromSupabase();
     })
-    .then(() =>
-      import("./kpiTimeTaskSync.js").then((k) =>
-        k.ensureAllKpiTimeTasksFromStorage(),
-      ),
-    )
     .catch(() => {});
 }
 
@@ -527,12 +519,10 @@ function assignIdsToMergedList(merged) {
     if (isUuid(uid)) upsertIds.push(uid);
     return { ...t, memo: t.memo || "", id: uid };
   });
-  if (dirty)
-    saveMergedList(out, {
-      bumpPullSkip: true,
-      scheduleSyncPush: upsertIds.length > 0,
-      upsertTaskIds: upsertIds,
-    });
+  if (dirty) {
+    writeTaskOptionListLocal(out);
+    notifySaved({ bumpPullSkip: true, scheduleSyncPush: false });
+  }
   return out;
 }
 
@@ -801,11 +791,12 @@ export function kpiTimeTaskAdd(kpi, category) {
     id,
     iconKey: getDefaultKpiIconKey(kpiId, name) || "",
   };
+  const rid = String(row.id || "").trim();
   saveMergedList([row, ...mem], {
     bumpPullSkip: true,
-    scheduleSyncPush: false,
+    scheduleSyncPush: isUuid(rid),
+    upsertTaskIds: isUuid(rid) ? [rid] : [],
   });
-  scheduleKpiTaskServerIdRealign(kpiId);
 }
 
 /** KPI 과제 행이 없으면 추가, 같은 이름·category 행만 있으면 kpiId 연결 */
@@ -856,16 +847,15 @@ export function kpiTimeTaskEnsure(kpi, category) {
     );
     saveMergedList(next, {
       bumpPullSkip: true,
-      scheduleSyncPush: false,
+      scheduleSyncPush: isUuid(id),
+      upsertTaskIds: isUuid(id) ? [id] : [],
     });
     patchKpiLinkedTasksFromKpiMaps();
-    scheduleKpiTaskServerIdRealign(kpiId);
     return;
   }
 
   kpiTimeTaskAdd(kpi, category);
   patchKpiLinkedTasksFromKpiMaps();
-  scheduleKpiTaskServerIdRealign(kpiId);
 }
 
 export function kpiTimeTaskRemove(kpi, syncNameFromMap) {
@@ -971,13 +961,13 @@ export function kpiTimeTaskRename(kpi, oldNameFromKpi) {
 
   saveMergedList(next, {
     bumpPullSkip: true,
-    scheduleSyncPush: false,
+    scheduleSyncPush: isUuid(canonicalId),
+    upsertTaskIds: isUuid(canonicalId) ? [canonicalId] : [],
   });
 
   if (deleteIds.size) queueTimeLedgerTaskRowDeletes([...deleteIds]);
 
   patchKpiLinkedTasksFromKpiMaps();
-  scheduleKpiTaskServerIdRealign(kpiId);
 }
 
 /**
@@ -1262,30 +1252,13 @@ export function applyTimeLedgerTasksFromServer(
     const lid = String(loc.id || "").trim();
     if (!lid || !isUuid(lid) || builtInIdSet.has(lid) || serverIdSet.has(lid))
       continue;
-    if (C.isRetiredBuiltinTaskName(loc.name)) {
-      retiredTaskIdsToDelete.push(lid);
-      continue;
-    }
     const locKid = String(loc.kpiId || "").trim();
     if (locKid && serverKpiIdSet.has(locKid)) {
       const serverId = serverTaskIdByKpiId.get(locKid);
       if (serverId && serverId !== lid) {
         entryTaskIdRemaps.push({ from: lid, to: serverId });
       }
-      continue;
     }
-    const locName0 = (loc.name || "").trim();
-    const locCat0 = (loc.category || "").trim();
-    const mergedLoc = resolveFromKpiLink(locKid, locName0, locCat0);
-    out.push({
-      id: lid,
-      name: mergedLoc.name,
-      category: mergedLoc.category,
-      productivity: normalizeProductivity(loc.productivity),
-      memo: (loc.memo || "").trim(),
-      kpiId: locKid,
-      iconKey: String(loc.iconKey || "").trim(),
-    });
   }
   const order = new Map(
     serverRowsSafe.map((r, i) => [String(r.id || "").trim(), r.sort_order ?? i]),
@@ -1293,28 +1266,6 @@ export function applyTimeLedgerTasksFromServer(
   out.sort((a, b) => (order.get(a.id) ?? 9999) - (order.get(b.id) ?? 9999));
   const { next: dedupedSansOrphanNameDup, dupIds: dupIdsToDelete } =
     normalizeKpiLinkedTaskRows(out);
-  const upsertSyncIds = [];
-  for (const r of dedupedSansOrphanNameDup) {
-    const id = String(r.id || "").trim();
-    if (!isUuid(id) || builtInIdSet.has(id)) continue;
-    const sr = byId.get(id);
-    if (!sr) continue;
-    const srvName = (sr.name || "").trim();
-    const srvKpi = String(sr.kpi_id ?? "").trim();
-    const srvCat = (sr.category || "").trim();
-    const locName = (r.name || "").trim();
-    const locKpi = String(r.kpiId || "").trim();
-    const locCat = (r.category || "").trim();
-    const srvIcon = String(sr.icon_key ?? "").trim();
-    const locIcon = String(r.iconKey || "").trim();
-    if (
-      srvName !== locName ||
-      srvKpi !== locKpi ||
-      srvCat !== locCat ||
-      srvIcon !== locIcon
-    )
-      upsertSyncIds.push(id);
-  }
   const deleteIds = [
     ...dupIdsToDelete,
     ...retiredTaskIdsToDelete.filter((id) => isUuid(String(id || "").trim())),
@@ -1324,8 +1275,7 @@ export function applyTimeLedgerTasksFromServer(
   }
   saveMergedList(dedupedSansOrphanNameDup, {
     bumpPullSkip: false,
-    scheduleSyncPush: upsertSyncIds.length > 0,
-    upsertTaskIds: upsertSyncIds.length ? upsertSyncIds : null,
+    scheduleSyncPush: false,
   });
   if (entryTaskIdRemaps.length) {
     remapTimeLedgerEntryTaskIds(entryTaskIdRemaps);
