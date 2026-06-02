@@ -3,6 +3,7 @@
  */
 
 import {
+  canonicalMealTaskDisplayName,
   isHealthyMealDetailTaskName,
   isUnhealthyMealDetailTaskName,
 } from "./timeTaskOptionsConstants.js";
@@ -56,6 +57,10 @@ const RATING_REPORT_COLOR_EMPTY = "#e8edf3";
 const RATING_REPORT_COLOR_PEAK = "#d97706";
 const WEEKDAY_LABELS_KO = ["일", "월", "화", "수", "목", "금", "토"];
 const WEEKDAY_CHART_ORDER = [1, 2, 3, 4, 5, 6, 0];
+const MEDIA_CONSCIOUS_TASK = "의식적 콘텐츠 소비";
+const MEDIA_UNCONSCIOUS_TASK = "무의식적 콘텐츠 소비";
+const MEDIA_CONSCIOUS_COLOR = "#1e4d7b";
+const MEDIA_UNCONSCIOUS_COLOR = "#7c3aed";
 
 function donutCategoryColor(catKey) {
   const k = String(catKey || "").trim() || "other";
@@ -1175,147 +1180,267 @@ function mergeMediaEntriesByNote(entries) {
     .sort((a, b) => b.minutes - a.minutes);
 }
 
-function buildMediaReportSnapshot(rows) {
-  /** @type {Map<string, { minutes: number, entries: Array<{ note: string, minutes: number }> }>} */
+function mediaContentKind(row) {
+  const tn = canonicalMealTaskDisplayName(String(row.taskName || "").trim());
+  if (tn === MEDIA_CONSCIOUS_TASK) return "conscious";
+  if (tn === MEDIA_UNCONSCIOUS_TASK) return "unconscious";
+  return null;
+}
+
+function rowContentLabel(row) {
+  const md = String(row.mealDetail || "").trim();
+  if (md) return md;
+  const fb = String(row.feedback || row.memo || "").trim();
+  if (fb.startsWith("[콘텐츠] ")) {
+    const first = fb.split("\n")[0] || "";
+    return first.slice("[콘텐츠] ".length).trim() || fb;
+  }
+  return fb;
+}
+
+function buildMediaReportSnapshot(rows, range) {
+  /** @type {Map<string, { conscious: number, unconscious: number, consciousEntries: Array<{ note: string, minutes: number }>, unconsciousEntries: Array<{ note: string, minutes: number }> }>} */
   const byDate = new Map();
-  /** @type {Map<string, number>} */
-  const byNote = new Map();
-  let totalMinutes = 0;
+  let totalConscious = 0;
+  let totalUnconscious = 0;
 
   rows.forEach((r) => {
-    if (String(r.category || "").trim() !== "media_watch") return;
+    const kind = mediaContentKind(r);
+    if (!kind) return;
     const date = rowDateYmd(r);
     if (!date) return;
     const mins = rowMinutes(r);
     if (mins <= 0) return;
-    const note = rowUserNote(r);
+    const note = rowContentLabel(r);
 
-    totalMinutes += mins;
-
-    if (!byDate.has(date)) byDate.set(date, { minutes: 0, entries: [] });
+    if (!byDate.has(date)) {
+      byDate.set(date, {
+        conscious: 0,
+        unconscious: 0,
+        consciousEntries: [],
+        unconsciousEntries: [],
+      });
+    }
     const day = byDate.get(date);
-    day.minutes += mins;
-    day.entries.push({ note, minutes: mins });
-
-    const noteKey = note.trim();
-    if (noteKey) {
-      byNote.set(noteKey, (byNote.get(noteKey) || 0) + mins);
+    if (kind === "conscious") {
+      day.conscious += mins;
+      day.consciousEntries.push({ note, minutes: mins });
+      totalConscious += mins;
+    } else {
+      day.unconscious += mins;
+      day.unconsciousEntries.push({ note, minutes: mins });
+      totalUnconscious += mins;
     }
   });
 
-  const days = [...byDate.entries()]
-    .sort((a, b) => b[0].localeCompare(a[0]))
-    .map(([date, { minutes, entries }]) => {
-      const avail = getDayAvailableMinutes(date);
-      const pct = avail > 0 ? Math.round((minutes / avail) * 100) : 0;
-      return {
-        date,
-        minutes,
-        availableMinutes: avail,
-        pct,
-        items: mergeMediaEntriesByNote(entries),
-      };
-    });
+  const totalMinutes = totalConscious + totalUnconscious;
+  const mapDay = (date) => {
+    const d = byDate.get(date);
+    const consciousMinutes = d?.conscious ?? 0;
+    const unconsciousMinutes = d?.unconscious ?? 0;
+    const minutes = consciousMinutes + unconsciousMinutes;
+    const avail = getDayAvailableMinutes(date);
+    const pct = avail > 0 ? Math.round((minutes / avail) * 100) : 0;
+    return {
+      date,
+      minutes,
+      consciousMinutes,
+      unconsciousMinutes,
+      availableMinutes: avail,
+      pct,
+      consciousItems: mergeMediaEntriesByNote(d?.consciousEntries ?? []),
+      unconsciousItems: mergeMediaEntriesByNote(d?.unconsciousEntries ?? []),
+    };
+  };
+
+  const listDays = [...byDate.keys()]
+    .sort((a, b) => b.localeCompare(a))
+    .map(mapDay);
+  const chartDays = [...byDate.keys()]
+    .sort((a, b) => a.localeCompare(b))
+    .map(mapDay);
 
   let totalAvailable = 0;
-  days.forEach((d) => {
+  listDays.forEach((d) => {
     totalAvailable += d.availableMinutes;
   });
   const periodPct =
     totalAvailable > 0 ? Math.round((totalMinutes / totalAvailable) * 100) : 0;
   const avgDayPct =
-    days.length > 0
-      ? Math.round(days.reduce((a, d) => a + d.pct, 0) / days.length)
+    listDays.length > 0
+      ? Math.round(listDays.reduce((a, d) => a + d.pct, 0) / listDays.length)
       : 0;
-
-  const topContent = [...byNote.entries()]
-    .map(([label, minutes]) => ({
-      label,
-      minutes,
-      pct: totalMinutes > 0 ? Math.round((minutes / totalMinutes) * 100) : 0,
-    }))
-    .sort((a, b) => b.minutes - a.minutes)
-    .slice(0, 5);
 
   return {
     totalMinutes,
+    totalConsciousMinutes: totalConscious,
+    totalUnconsciousMinutes: totalUnconscious,
     periodPct,
     avgDayPct,
     totalAvailableMinutes: totalAvailable,
-    days,
-    topContent,
-    dayCount: days.length,
+    listDays,
+    chartDays,
+    dayCount: listDays.length,
   };
 }
 
-function buildMediaDayCard(day) {
-  const card = document.createElement("article");
-  card.className = "lp-tr2-media-day-card";
+function buildMediaKindList(title, items, totalMinutes, kind) {
+  const panel = document.createElement("div");
+  panel.className = `lp-tr2-media-kind-panel lp-tr2-media-kind-panel--${kind}`;
+  const head = document.createElement("div");
+  head.className = "lp-tr2-media-kind-panel-head";
+  const lab = document.createElement("span");
+  lab.className = "lp-tr2-media-kind-panel-title";
+  lab.textContent = title;
+  const sum = document.createElement("strong");
+  sum.className = "lp-tr2-media-kind-panel-time";
+  sum.textContent =
+    totalMinutes > 0 ? formatIntegerMinutesDurationKo(totalMinutes) : "—";
+  head.appendChild(lab);
+  head.appendChild(sum);
+  panel.appendChild(head);
+
+  const list = document.createElement("ul");
+  list.className = "lp-tr2-media-kind-panel-list";
+  if (!items.length) {
+    const empty = document.createElement("li");
+    empty.className = "lp-tr2-media-kind-panel-empty";
+    empty.textContent = "기록 없음";
+    list.appendChild(empty);
+  } else {
+    items.forEach((item) => {
+      const li = document.createElement("li");
+      li.className = "lp-tr2-media-kind-panel-item";
+      const note = document.createElement("span");
+      note.className = "lp-tr2-media-kind-panel-label";
+      note.textContent = item.note || "내용 미입력";
+      if (!item.note) note.classList.add("is-empty");
+      const tm = document.createElement("span");
+      tm.className = "lp-tr2-media-kind-panel-meta";
+      tm.textContent = formatIntegerMinutesDurationKo(item.minutes);
+      li.appendChild(note);
+      li.appendChild(tm);
+      list.appendChild(li);
+    });
+  }
+  panel.appendChild(list);
+  return panel;
+}
+
+function buildMediaDayBlock(day) {
+  const block = document.createElement("article");
+  block.className = "lp-tr2-media-day-block";
 
   const head = document.createElement("div");
-  head.className = "lp-tr2-media-day-card-head";
+  head.className = "lp-tr2-media-day-block-head";
   const dateEl = document.createElement("span");
-  dateEl.className = "lp-tr2-media-day-card-date";
+  dateEl.className = "lp-tr2-media-day-block-date";
   dateEl.textContent = formatCompactReportDate(day.date);
   dateEl.title = formatYmdDotsWithWeekdayKo(day.date);
   const timeEl = document.createElement("strong");
-  timeEl.className = "lp-tr2-media-day-card-time";
+  timeEl.className = "lp-tr2-media-day-block-time";
   timeEl.textContent = formatIntegerMinutesDurationKo(day.minutes);
   head.appendChild(dateEl);
   head.appendChild(timeEl);
 
   const avail = document.createElement("p");
-  avail.className = "lp-tr2-media-day-card-avail";
-  avail.textContent = `가용 ${formatIntegerMinutesDurationKo(day.availableMinutes)} 중 ${day.pct}%를 시청`;
+  avail.className = "lp-tr2-media-day-block-avail";
+  avail.textContent = `가용 ${formatIntegerMinutesDurationKo(day.availableMinutes)} 중 ${day.pct}%`;
 
-  const barTrack = document.createElement("div");
-  barTrack.className = "lp-tr2-media-day-card-bar";
-  barTrack.setAttribute("role", "img");
-  barTrack.setAttribute(
-    "aria-label",
-    `가용시간 대비 ${day.pct}%`,
+  const split = document.createElement("div");
+  split.className = "lp-tr2-media-day-split";
+  split.appendChild(
+    buildMediaKindList(
+      "의식적",
+      day.consciousItems,
+      day.consciousMinutes,
+      "conscious",
+    ),
   );
-  const barFill = document.createElement("div");
-  barFill.className = "lp-tr2-media-day-card-bar-fill";
-  barFill.style.width = `${Math.min(100, Math.max(2, day.pct))}%`;
-  barTrack.appendChild(barFill);
+  split.appendChild(
+    buildMediaKindList(
+      "무의식적",
+      day.unconsciousItems,
+      day.unconsciousMinutes,
+      "unconscious",
+    ),
+  );
 
-  const list = document.createElement("ul");
-  list.className = "lp-tr2-media-day-card-list";
-  day.items.forEach((item) => {
-    const li = document.createElement("li");
-    li.className = "lp-tr2-media-day-card-item";
-    const lab = document.createElement("span");
-    lab.className = "lp-tr2-media-day-card-label";
-    lab.textContent = item.note || "메모 없음";
-    if (!item.note) lab.classList.add("lp-tr2-media-day-card-label--empty");
-    const tm = document.createElement("span");
-    tm.className = "lp-tr2-media-day-card-item-time";
-    tm.textContent = formatIntegerMinutesDurationKo(item.minutes);
-    li.appendChild(lab);
-    li.appendChild(tm);
-    list.appendChild(li);
+  block.appendChild(head);
+  block.appendChild(avail);
+  block.appendChild(split);
+  return block;
+}
+
+function renderMediaCompareChart(chartDays) {
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-media-compare-chart";
+  const maxMins = Math.max(
+    1,
+    ...chartDays.map((d) => Math.max(d.consciousMinutes, d.unconsciousMinutes)),
+  );
+
+  const cols = document.createElement("div");
+  cols.className = "lp-tr2-media-compare-cols";
+  if (chartDays.length >= 8) {
+    cols.classList.add("lp-tr2-media-compare-cols--scroll");
+  }
+  cols.setAttribute("role", "img");
+  cols.setAttribute("aria-label", "날짜별 의식적·무의식적 미디어 시청 비교");
+
+  chartDays.forEach((day) => {
+    const col = document.createElement("div");
+    col.className = "lp-tr2-media-compare-col";
+    const group = document.createElement("div");
+    group.className = "lp-tr2-media-compare-bars";
+
+    [
+      ["conscious", day.consciousMinutes, MEDIA_CONSCIOUS_COLOR, "의식적"],
+      ["unconscious", day.unconsciousMinutes, MEDIA_UNCONSCIOUS_COLOR, "무의식적"],
+    ].forEach(([kind, mins, color, labelKo]) => {
+      const bar = document.createElement("div");
+      bar.className = `lp-tr2-media-compare-bar lp-tr2-media-compare-bar--${kind}`;
+      const fill = document.createElement("div");
+      fill.className = "lp-tr2-media-compare-bar-fill";
+      const pct = mins > 0 ? Math.max(10, (mins / maxMins) * 100) : 0;
+      fill.style.height = `${pct}%`;
+      fill.style.background = color;
+      bar.title = `${labelKo} ${formatIntegerMinutesDurationKo(mins)}`;
+      bar.appendChild(fill);
+      group.appendChild(bar);
+    });
+
+    col.appendChild(group);
+    const dateLab = document.createElement("span");
+    dateLab.className = "lp-tr2-media-compare-date";
+    dateLab.textContent = formatCompactReportDate(day.date);
+    dateLab.title = formatYmdDotsWithWeekdayKo(day.date);
+    col.appendChild(dateLab);
+    cols.appendChild(col);
   });
 
-  card.appendChild(head);
-  card.appendChild(avail);
-  card.appendChild(barTrack);
-  card.appendChild(list);
-  return card;
+  wrap.appendChild(cols);
+  wrap.appendChild(
+    createRatingChartLegend([
+      { swatch: MEDIA_CONSCIOUS_COLOR, label: "의식적" },
+      { swatch: MEDIA_UNCONSCIOUS_COLOR, label: "무의식적" },
+    ]),
+  );
+  return wrap;
 }
 
 function mountMediaSection(scrollWrap, range, rows) {
-  const snap = buildMediaReportSnapshot(rows);
-  const rangeDayCount = listDatesInclusive(range.start, range.end).length;
+  const snap = buildMediaReportSnapshot(rows, range);
   const sec = createSection(
     "콘텐츠·미디어 시청",
-    "날짜별 · 가용시간 대비 얼마나 봤는지 · 무엇을 봤는지",
+    "의식적 vs 무의식적 · 날짜별 무엇을 봤는지 · 가용시간 대비 비율",
   );
 
   if (snap.totalMinutes <= 0) {
     const empty = document.createElement("p");
     empty.className = "lp-tr2-media-empty";
-    empty.textContent = "미디어 시청 기록이 없습니다.";
+    empty.textContent =
+      "의식적·무의식적 콘텐츠 소비 기록이 없습니다.";
     sec.appendChild(empty);
     scrollWrap.appendChild(sec);
     return;
@@ -1328,53 +1453,39 @@ function mountMediaSection(scrollWrap, range, rows) {
   heroMain.textContent = `가용시간의 ${snap.periodPct}%를 미디어에 사용`;
   const heroSub = document.createElement("p");
   heroSub.className = "lp-tr2-media-hero-sub";
-  heroSub.textContent = `총 ${formatIntegerMinutesDurationKo(snap.totalMinutes)} · ${snap.dayCount}일 기록 · 하루 평균 ${snap.avgDayPct}%`;
+  heroSub.textContent = `총 ${formatIntegerMinutesDurationKo(snap.totalMinutes)} · 의식적 ${formatIntegerMinutesDurationKo(snap.totalConsciousMinutes)} · 무의식적 ${formatIntegerMinutesDurationKo(snap.totalUnconsciousMinutes)} · ${snap.dayCount}일`;
   hero.appendChild(heroMain);
   hero.appendChild(heroSub);
   sec.appendChild(hero);
 
   const dayWrap = document.createElement("div");
   dayWrap.className = "lp-tr2-media-days";
-  if (rangeDayCount >= 7 || snap.days.length > 4) {
-    dayWrap.classList.add("lp-tr2-media-days--scroll");
-  }
   const dayTitle = document.createElement("p");
   dayTitle.className = "lp-tr2-media-days-title";
-  dayTitle.textContent = "날짜별 — 이런 걸 이만큼 봤어요";
+  dayTitle.textContent = "날짜별 — 무엇을 봤는지";
   dayWrap.appendChild(dayTitle);
 
   const dayList = document.createElement("div");
   dayList.className = "lp-tr2-media-day-list";
-  snap.days.forEach((day) => {
-    dayList.appendChild(buildMediaDayCard(day));
+  snap.listDays.forEach((day) => {
+    dayList.appendChild(buildMediaDayBlock(day));
   });
   dayWrap.appendChild(dayList);
   sec.appendChild(dayWrap);
 
-  if (snap.topContent.length) {
-    const top = document.createElement("div");
-    top.className = "lp-tr2-media-top";
-    const topTitle = document.createElement("p");
-    topTitle.className = "lp-tr2-media-top-title";
-    topTitle.textContent = "이 기간에 자주 본 내용";
-    top.appendChild(topTitle);
-    const topList = document.createElement("ul");
-    topList.className = "lp-tr2-media-top-list";
-    snap.topContent.forEach(({ label, minutes, pct }) => {
-      const li = document.createElement("li");
-      li.className = "lp-tr2-media-top-item";
-      const lab = document.createElement("span");
-      lab.className = "lp-tr2-media-top-label";
-      lab.textContent = label;
-      const meta = document.createElement("span");
-      meta.className = "lp-tr2-media-top-meta";
-      meta.textContent = `${formatIntegerMinutesDurationKo(minutes)} · 전체의 ${pct}%`;
-      li.appendChild(lab);
-      li.appendChild(meta);
-      topList.appendChild(li);
-    });
-    top.appendChild(topList);
-    sec.appendChild(top);
+  if (snap.chartDays.length) {
+    const chartBlock = document.createElement("div");
+    chartBlock.className = "lp-tr2-media-compare-block";
+    const chartTitle = document.createElement("p");
+    chartTitle.className = "lp-tr2-media-days-title";
+    chartTitle.textContent = "날짜별 의식적 vs 무의식적";
+    const chartSub = document.createElement("p");
+    chartSub.className = "lp-tr2-media-compare-sub";
+    chartSub.textContent = "하루마다 의식적(남색)·무의식적(보라) 시청 시간을 나란히 비교";
+    chartBlock.appendChild(chartTitle);
+    chartBlock.appendChild(chartSub);
+    chartBlock.appendChild(renderMediaCompareChart(snap.chartDays));
+    sec.appendChild(chartBlock);
   }
 
   scrollWrap.appendChild(sec);
