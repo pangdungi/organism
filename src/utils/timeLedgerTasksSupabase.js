@@ -1,7 +1,7 @@
 /**
  * 시간가계부 과제 마스터 ↔ Supabase (time_ledger_tasks)
  *
- * - pull: 과제설정 모달 열 때만 (탭·부팅·기록 모달에서는 localStorage 미러 사용)
+ * - pull: 과제설정·기록·수정·예상 일정 모달 열 때 (+ 탭·부팅은 미러·기록 행만)
  * - push: 과제설정 모달 저장·KPI 연동·삭제만 (행 단위 upsert/delete, 전체 목록 덮어쓰기 없음)
  */
 
@@ -12,7 +12,9 @@ import {
   getFullTaskOptions,
   isUuid,
   migrateTimeLogRowsTaskIds,
+  patchKpiLinkedTasksFromKpiMaps,
 } from "./timeTaskOptionsModel.js";
+import { ensureAllKpiTimeTasksFromStorage } from "./kpiTimeTaskSync.js";
 import { lpPullDebug } from "./lpPullDebug.js";
 import {
   timeLedgerSyncDebugEnabled,
@@ -444,6 +446,22 @@ export function scheduleTimeLedgerTasksSyncPush() {
 }
 
 let _listenerAttached = false;
+
+/**
+ * 과제설정·과제 기록·수정·예상 일정 모달 — 서버 과제 목록 pull + KPI 맵 기준 행 정리.
+ * (모달 확인을 늦추지 않고 비동기로 호출)
+ */
+export async function syncTimeLedgerTaskListForModalOpen() {
+  try {
+    await pullTimeLedgerTasksFromSupabase();
+  } catch (_) {}
+  try {
+    ensureAllKpiTimeTasksFromStorage();
+    patchKpiLinkedTasksFromKpiMaps();
+    getFullTaskOptions();
+    migrateTimeLogRowsTaskIds();
+  } catch (_) {}
+}
 
 export function attachTimeLedgerTasksSaveListener() {
   if (_listenerAttached) return;

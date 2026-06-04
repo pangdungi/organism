@@ -62,6 +62,7 @@ import { pullKpiMapsForTaskLogModalOpen } from "../utils/kpiTabCloudRefresh.js";
 import {
   attachTimeLedgerTasksSaveListener,
   pullTimeLedgerTasksFromSupabase,
+  syncTimeLedgerTaskListForModalOpen,
 } from "../utils/timeLedgerTasksSupabase.js";
 import {
   scheduleTimeDailyBudgetSyncPush,
@@ -7495,28 +7496,16 @@ export function render(opts = {}) {
     } catch (_) {}
   }
 
-  /** 과제설정 모달: 서버 과제 목록 pull만(로컬→서버 upsert 없음). */
   async function pullTimeLedgerTasksWhenSetupModalOpens() {
-    try {
-      await pullTimeLedgerTasksFromSupabase();
-    } catch (_) {}
-    try {
-      patchKpiLinkedTasksFromKpiMaps();
-      getFullTaskOptions();
-      migrateTimeLogRowsTaskIds();
-    } catch (_) {}
+    await syncTimeLedgerTaskListForModalOpen();
   }
 
-  /**
-   * 과제 기록/수정 모달: KPI 맵만 서버와 맞춤(과제목록 pull은 과제설정 모달에서만).
-   */
+  /** 과제 기록/수정 모달: KPI 맵 + 과제 목록을 서버에서 맞춤(과제설정을 열지 않아도 피커에 KPI 표시). */
   async function ensureTaskLogModalCloudData() {
-    await Promise.all([pullKpiMapsForTaskLogModalOpen().catch(() => {})]);
-    try {
-      patchKpiLinkedTasksFromKpiMaps();
-      getFullTaskOptions();
-      migrateTimeLogRowsTaskIds();
-    } catch (_) {}
+    await Promise.all([
+      pullKpiMapsForTaskLogModalOpen().catch(() => {}),
+      syncTimeLedgerTaskListForModalOpen().catch(() => {}),
+    ]);
   }
 
   /** 기록 모달이 이미 열린 뒤 서버 과제 목록이 도착했을 때 드롭다운·KPI 연동만 맞춤(즉시 열기용). */
@@ -7858,10 +7847,7 @@ export function render(opts = {}) {
       .catch(() => {})
       .then(() => {
         if (!el.isConnected || taskLogModal.hidden) return;
-        try {
-          getFullTaskOptions();
-          migrateTimeLogRowsTaskIds();
-        } catch (_) {}
+        afterTaskListSyncForTaskLogAddModal();
         const tnPost = tnForDaily;
         restoreKpiFieldsIfCloudPullWiped(tnPost, data.id);
         refreshKpiTodosInLogModal(tnPost);

@@ -2,7 +2,12 @@
  * 시간가계부「과제 기록」— 모바일 과제 선택 (하단 다이얼 시트 + 검색 모달).
  */
 
-import { lpSetClasses, lpTokenAdd, lpTokenRemove } from "./timeLedgerClassPolicy.js";
+import {
+  lpSetClasses,
+  lpTokenAdd,
+  lpTokenRemove,
+  lpTokenToggle,
+} from "./timeLedgerClassPolicy.js";
 import { getTimeTaskListIconSrc } from "./timeTaskIconUrls.js";
 
 function scrollItemToCenter(listEl, itemEl) {
@@ -38,6 +43,8 @@ function nearestWheelItem(listEl) {
 export function createMobileTaskLogPicker(options = {}) {
   const {
     getTasks,
+    getVisibleBucketChips,
+    getTaskBucket,
     getCurrentValue,
     onConfirm = () => {},
     abortSignal,
@@ -85,6 +92,12 @@ export function createMobileTaskLogPicker(options = {}) {
 
   toolbar.append(searchOpenBtn, toolbarTitle, confirmBtn);
 
+  const bucketChipRow = document.createElement("div");
+  lpSetClasses(bucketChipRow, "lp-task-log-mobile-picker-buckets");
+  bucketChipRow.setAttribute("role", "tablist");
+  bucketChipRow.setAttribute("aria-label", "과제 대분류");
+  bucketChipRow.hidden = true;
+
   const wheelWrap = document.createElement("div");
   lpSetClasses(wheelWrap, "lp-task-log-mobile-picker-wheel");
 
@@ -98,7 +111,7 @@ export function createMobileTaskLogPicker(options = {}) {
   wheelList.setAttribute("aria-label", "과제 선택");
 
   wheelWrap.append(highlight, wheelList);
-  sheet.append(toolbar, wheelWrap);
+  sheet.append(toolbar, bucketChipRow, wheelWrap);
   pickerRoot.append(backdrop, sheet);
 
   const searchRoot = document.createElement("div");
@@ -185,10 +198,85 @@ export function createMobileTaskLogPicker(options = {}) {
     }
   }
 
+  function bucketLabelForId(bucketId, chips) {
+    return chips.find((c) => c.id === bucketId)?.label || "";
+  }
+
+  function chipsWithTasks(tasks, chips) {
+    if (!chips.length || typeof getTaskBucket !== "function") return [];
+    const ids = new Set(tasks.map((t) => getTaskBucket(t)));
+    return chips.filter((c) => ids.has(c.id));
+  }
+
+  function scrollToBucket(bucketId) {
+    const anchor =
+      wheelList.querySelector(
+        `[data-bucket-anchor="${CSS.escape(bucketId)}"]`,
+      ) ||
+      wheelList.querySelector(
+        `.lp-task-log-mobile-picker-item[data-bucket="${CSS.escape(bucketId)}"]`,
+      );
+    if (anchor instanceof HTMLElement) {
+      scrollItemToCenter(wheelList, anchor);
+      const taskRow = anchor.classList.contains("lp-task-log-mobile-picker-item")
+        ? anchor
+        : anchor.nextElementSibling?.closest?.(
+            ".lp-task-log-mobile-picker-item",
+          );
+      if (taskRow instanceof HTMLElement && taskRow.dataset.taskName) {
+        selectWheelValue(taskRow.dataset.taskName, taskRow);
+      }
+    }
+    bucketChipRow.querySelectorAll(
+      ".lp-task-log-mobile-picker-bucket, [data-legacy~='lp-task-log-mobile-picker-bucket']",
+    ).forEach((btn) => {
+      const on = btn.dataset.bucket === bucketId;
+      lpTokenToggle(btn, "is-active", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+    });
+  }
+
+  function renderBucketChips(tasks) {
+    const chips = getVisibleBucketChips?.() || [];
+    const visible = chipsWithTasks(tasks, chips);
+    bucketChipRow.replaceChildren();
+    if (!visible.length) {
+      bucketChipRow.hidden = true;
+      return;
+    }
+    bucketChipRow.hidden = false;
+    visible.forEach(({ id, label }) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      lpSetClasses(btn, "lp-task-log-mobile-picker-bucket");
+      btn.dataset.bucket = id;
+      btn.textContent = label;
+      btn.setAttribute("role", "tab");
+      btn.setAttribute("aria-selected", "false");
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        scrollToBucket(id);
+      });
+      bucketChipRow.appendChild(btn);
+    });
+  }
+
+  function buildBucketHeader(label, bucketId) {
+    const row = document.createElement("div");
+    lpSetClasses(row, "lp-task-log-mobile-picker-bucket-header");
+    row.dataset.bucketAnchor = bucketId;
+    row.setAttribute("aria-hidden", "true");
+    row.textContent = label;
+    return row;
+  }
+
   function buildWheelItem(task) {
     const row = document.createElement("div");
     lpSetClasses(row, "lp-task-log-mobile-picker-item");
     row.dataset.taskName = task.name || "";
+    if (typeof getTaskBucket === "function") {
+      row.dataset.bucket = getTaskBucket(task) || "";
+    }
     row.setAttribute("role", "option");
 
     const iconSrc = getTimeTaskListIconSrc(task.name, {
@@ -217,8 +305,12 @@ export function createMobileTaskLogPicker(options = {}) {
 
   function renderWheel() {
     const tasks = getTasks?.() || [];
+    const chips = getVisibleBucketChips?.() || [];
+    const showHeaders =
+      typeof getTaskBucket === "function" && chips.length > 0;
     lastSelectedWheelRow = null;
     wheelList.replaceChildren();
+    renderBucketChips(tasks);
 
     const topSpacer = document.createElement("div");
     lpSetClasses(topSpacer, "lp-task-log-mobile-picker-spacer");
@@ -226,7 +318,18 @@ export function createMobileTaskLogPicker(options = {}) {
     lpSetClasses(bottomSpacer, "lp-task-log-mobile-picker-spacer");
     const frag = document.createDocumentFragment();
     frag.appendChild(topSpacer);
-    tasks.forEach((t) => frag.appendChild(buildWheelItem(t)));
+    let lastBucket = "";
+    tasks.forEach((t) => {
+      if (showHeaders) {
+        const bucketId = getTaskBucket(t) || "";
+        if (bucketId && bucketId !== lastBucket) {
+          lastBucket = bucketId;
+          const label = bucketLabelForId(bucketId, chips);
+          if (label) frag.appendChild(buildBucketHeader(label, bucketId));
+        }
+      }
+      frag.appendChild(buildWheelItem(t));
+    });
     frag.appendChild(bottomSpacer);
     wheelList.appendChild(frag);
 
@@ -237,8 +340,27 @@ export function createMobileTaskLogPicker(options = {}) {
         ".lp-task-log-mobile-picker-item, [data-legacy~='lp-task-log-mobile-picker-item']",
       );
     if (target instanceof HTMLElement) {
-      requestAnimationFrame(() => scrollItemToCenter(wheelList, target));
+      requestAnimationFrame(() => {
+        scrollItemToCenter(wheelList, target);
+        syncActiveBucketChip();
+      });
     }
+  }
+
+  function syncActiveBucketChip() {
+    if (bucketChipRow.hidden || !pendingValue) return;
+    const row = wheelList.querySelector(
+      `[data-task-name="${CSS.escape(pendingValue)}"]`,
+    );
+    const bucketId = row?.dataset?.bucket || "";
+    if (!bucketId) return;
+    bucketChipRow.querySelectorAll(
+      ".lp-task-log-mobile-picker-bucket, [data-legacy~='lp-task-log-mobile-picker-bucket']",
+    ).forEach((btn) => {
+      const on = btn.dataset.bucket === bucketId;
+      lpTokenToggle(btn, "is-active", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+    });
   }
 
   function onWheelScrollEnd() {
@@ -246,6 +368,7 @@ export function createMobileTaskLogPicker(options = {}) {
     if (!nearest?.dataset?.taskName) return;
     pendingValue = nearest.dataset.taskName;
     syncWheelSelectionClass();
+    syncActiveBucketChip();
   }
 
   function scheduleWheelScrollEnd() {
@@ -298,13 +421,33 @@ export function createMobileTaskLogPicker(options = {}) {
     return row;
   }
 
+  function buildSearchBucketHeader(label) {
+    const row = document.createElement("div");
+    lpSetClasses(row, "lp-task-log-mobile-search-bucket-header");
+    row.textContent = label;
+    return row;
+  }
+
   function renderSearchList() {
     const q = (searchQuery || "").trim().toLowerCase();
     const tasks = (getTasks?.() || []).filter((t) =>
       q ? (t.name || "").toLowerCase().includes(q) : true,
     );
+    const chips = getVisibleBucketChips?.() || [];
+    const showHeaders = !q && typeof getTaskBucket === "function" && chips.length;
     const frag = document.createDocumentFragment();
-    tasks.forEach((t) => frag.appendChild(buildSearchRow(t)));
+    let lastBucket = "";
+    tasks.forEach((t) => {
+      if (showHeaders) {
+        const bucketId = getTaskBucket(t) || "";
+        if (bucketId && bucketId !== lastBucket) {
+          lastBucket = bucketId;
+          const label = bucketLabelForId(bucketId, chips);
+          if (label) frag.appendChild(buildSearchBucketHeader(label));
+        }
+      }
+      frag.appendChild(buildSearchRow(t));
+    });
     searchList.replaceChildren(frag);
   }
 

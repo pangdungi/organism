@@ -3014,6 +3014,54 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   font-weight: 600;
   color: #fff;
 }
+.lp-task-log-mobile-picker-buckets,
+[data-legacy~="lp-task-log-mobile-picker-buckets"] {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+  padding: 0.45rem 0.65rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-bottom: 1px solid var(--lp-modal-border);
+  background: #fff;
+  scrollbar-width: none;
+}
+.lp-task-log-mobile-picker-buckets::-webkit-scrollbar,
+[data-legacy~="lp-task-log-mobile-picker-buckets"]::-webkit-scrollbar {
+  display: none;
+}
+.lp-task-log-mobile-picker-bucket,
+[data-legacy~="lp-task-log-mobile-picker-bucket"] {
+  flex-shrink: 0;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--lp-modal-navy-muted);
+  background: #f1f5f9;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.lp-task-log-mobile-picker-bucket.is-active,
+[data-legacy~="lp-task-log-mobile-picker-bucket"][data-legacy~="is-active"] {
+  color: #fff;
+  background: var(--lp-modal-accent);
+  border-color: var(--lp-modal-accent);
+}
+.lp-task-log-mobile-picker-bucket-header,
+[data-legacy~="lp-task-log-mobile-picker-bucket-header"] {
+  flex-shrink: 0;
+  padding: 0.35rem 1rem 0.15rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--lp-modal-navy-muted);
+  scroll-snap-align: none;
+  pointer-events: none;
+}
 .lp-task-log-mobile-picker-wheel,
 [data-legacy~="lp-task-log-mobile-picker-wheel"] {
   position: relative;
@@ -3182,6 +3230,14 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   padding: 0.25rem 0;
+}
+.lp-task-log-mobile-search-bucket-header,
+[data-legacy~="lp-task-log-mobile-search-bucket-header"] {
+  padding: 0.5rem 0.85rem 0.2rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--lp-modal-navy-muted);
 }
 .lp-task-log-mobile-search-item,
 [data-legacy~="lp-task-log-mobile-search-item"] {

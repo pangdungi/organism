@@ -88,15 +88,32 @@ function appendTaskDropdownBadges(textWrap, task, opts = {}) {
   }
 }
 
-/** 드롭다운 상단 칩 순서(전체 모드) — 꿈·행복·부수입·건강·비생산·그외 */
+/** 드롭다운·모바일 피커 대분류 순서 — 꿈·부수입·행복·건강·비생산·그외 */
 const LEDGER_BUCKET_CHIPS = [
   { id: "dream", label: "꿈" },
-  { id: "happiness", label: "행복" },
   { id: "sideincome", label: "부수입" },
+  { id: "happiness", label: "행복" },
   { id: "health", label: "건강" },
   { id: "nonproductive", label: "비생산" },
   { id: "other", label: "그외" },
 ];
+
+const LEDGER_BUCKET_SORT_ORDER = LEDGER_BUCKET_CHIPS.map((c) => c.id);
+
+function ledgerBucketSortIndex(task) {
+  const b = timeLedgerTaskLogPickerBucket(task);
+  const i = LEDGER_BUCKET_SORT_ORDER.indexOf(b);
+  return i >= 0 ? i : LEDGER_BUCKET_SORT_ORDER.length;
+}
+
+export function sortTasksForLedgerPicker(tasks) {
+  return [...tasks].sort((a, b) => {
+    const ba = ledgerBucketSortIndex(a);
+    const bb = ledgerBucketSortIndex(b);
+    if (ba !== bb) return ba - bb;
+    return (a.name || "").localeCompare(b.name || "", "ko");
+  });
+}
 
 const LEDGER_BUCKET_PRESET_EXPENSE = new Set(["nonproductive", "other"]);
 const LEDGER_BUCKET_PRESET_INVEST = new Set([
@@ -253,12 +270,13 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
         bucketAllow.has(timeLedgerTaskLogPickerBucket(t)),
       );
     }
-    tasks.sort((a, b) => (a.name || "").localeCompare(b.name || "", "ko"));
-    return tasks;
+    return sortTasksForLedgerPicker(tasks);
   }
 
   const mobilePicker = createMobileTaskLogPicker({
     getTasks: getAllPickerTasks,
+    getVisibleBucketChips: getVisibleChips,
+    getTaskBucket: timeLedgerTaskLogPickerBucket,
     getCurrentValue: () => value,
     onConfirm: (name) => {
       value = name || "";
@@ -298,7 +316,7 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
     if (q) {
       tasks = tasks.filter((t) => (t.name || "").toLowerCase().includes(q));
     }
-    tasks.sort((a, b) => (a.name || "").localeCompare(b.name || "", "ko"));
+    tasks = sortTasksForLedgerPicker(tasks);
     tasks.forEach((t) => {
       const row = document.createElement("div");
       lpSetClasses(row, "time-task-log-task-dropdown-option");

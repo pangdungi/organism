@@ -1,6 +1,6 @@
 /**
  * 시간가계부 — 기록 행·일간 예산 pull. **과제 마스터(time_ledger_tasks) pull 은 하지 않음**
- * (앱 상단「시간가계부」탭 클릭 시 App에서만, + 시간가계부 내 과제설정 모달 열 때 Time.js에서만).
+ * (앱 상단「시간가계부」탭 클릭 시 App에서만. 과제 목록 pull 은 과제설정·기록·수정·예상 일정 모달 열 때).
  */
 
 import {
@@ -58,7 +58,7 @@ export async function pullAllTimeLedgerFromCloud(opts = {}) {
 
 /**
  * 시간가계부 화면 안에서 호출 — **기록 행·일간 예산만** pull (과제 목록은 안 함).
- * 과제 목록은 앱 상단 시간가계부 탭 클릭 시(App) + 과제설정 모달(Time.js)만.
+ * 과제 목록은 과제설정·과제 기록·수정·예상 일정 모달에서 pull(탭 진입만으로는 안 함).
  */
 export async function pullTimeLedgerTabEnterFromCloud() {
   lpPullDebug("pullTimeLedgerTabEnterFromCloud", {});
