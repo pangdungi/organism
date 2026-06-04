@@ -613,30 +613,31 @@
 .calendar-1day-expected-card-icon-badge {
   flex-shrink: 0;
   align-self: center;
-  width: 2.65rem;
-  height: 2.65rem;
-  border-radius: 50%;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.55rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.55);
+  box-sizing: border-box;
+  padding: 0.32rem;
 }
 
 .calendar-1day-expected-card-icon-badge--productive {
-  background: #ffcaca;
+  background: #fceef0;
 }
 
 .calendar-1day-expected-card-icon-badge--nonproductive {
-  background: #c5dcf2;
+  background: #f2f8fc;
 }
 
 .calendar-1day-expected-card-icon-badge--other {
-  background: #b8e8c8;
+  background: #eaf5ec;
 }
 
 .calendar-1day-expected-card-icon-badge > img {
-  width: 1.45rem;
-  height: 1.45rem;
+  width: 1.65rem;
+  height: 1.65rem;
   object-fit: contain;
 }
 

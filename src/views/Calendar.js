@@ -1644,7 +1644,7 @@ function addSectionTodoFromCalendarBubble(
       sectionKey: sid,
       isCustom: false,
       sortOrder,
-    }).catch(() => {});
+    });
     return true;
   } catch (_) {}
   return false;

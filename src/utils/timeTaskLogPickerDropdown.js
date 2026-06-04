@@ -15,11 +15,14 @@ import {
   lockPageScrollForModalKeyboard,
   syncVisualViewportKeyboardInset,
 } from "./mobileViewportKeyboard.js";
+import { createMobileTaskLogPicker } from "./timeTaskLogPickerMobile.js";
 
-function isTaskLogPickerMobile() {
+/** 좁은 화면 또는 터치 기기(가로 모드 포함) — 드롭다운 대신 하단 다이얼 시트 */
+export function isTaskLogPickerMobile() {
+  if (typeof window.matchMedia !== "function") return false;
   return (
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(max-width: 48rem) and (pointer: coarse)").matches
+    window.matchMedia("(max-width: 48rem)").matches ||
+    window.matchMedia("(hover: none) and (pointer: coarse)").matches
   );
 }
 
@@ -217,8 +220,10 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
   function setPanelOpen(open) {
     wrap.classList.toggle("is-open", !!open);
     const scroll = findTaskLogScrollArea();
-    if (scroll instanceof HTMLElement) {
+    if (scroll instanceof HTMLElement && !isTaskLogPickerMobile()) {
       scroll.classList.toggle("is-task-picker-open", !!open);
+    } else if (scroll instanceof HTMLElement && !open) {
+      scroll.classList.remove("is-task-picker-open");
     }
     trigger.setAttribute("aria-expanded", open ? "true" : "false");
     if (open) {
@@ -231,13 +236,37 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
   }
 
   function closePanel() {
-    if (panel.hidden) return;
-    blurTaskPickerSearchInput(panel);
-    pickerSearchKeyboardAc?.abort();
-    pickerSearchKeyboardAc = null;
-    panel.hidden = true;
+    if (!panel.hidden) {
+      blurTaskPickerSearchInput(panel);
+      pickerSearchKeyboardAc?.abort();
+      pickerSearchKeyboardAc = null;
+      panel.hidden = true;
+    }
     setPanelOpen(false);
   }
+
+  function getAllPickerTasks() {
+    const bucketAllow = getAllowedBucketsForLedgerPreset(ledgerBucketPreset);
+    let tasks = getFullTaskOptions().filter((t) => !(t.name || "").includes(" > "));
+    if (bucketAllow) {
+      tasks = tasks.filter((t) =>
+        bucketAllow.has(timeLedgerTaskLogPickerBucket(t)),
+      );
+    }
+    tasks.sort((a, b) => (a.name || "").localeCompare(b.name || "", "ko"));
+    return tasks;
+  }
+
+  const mobilePicker = createMobileTaskLogPicker({
+    getTasks: getAllPickerTasks,
+    getCurrentValue: () => value,
+    onConfirm: (name) => {
+      value = name || "";
+      trigger.textContent = value || "과제를 선택하세요";
+      onTaskSelected(value);
+    },
+    abortSignal,
+  });
 
   function getVisibleChips() {
     const allowed = getAllowedBucketsForLedgerPreset(ledgerBucketPreset);
@@ -489,7 +518,20 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
     renderOptions(optionsContainer, searchQuery);
   }
 
+  function openMobileSheet() {
+    closePanel();
+    if (mobilePicker.isOpen()) {
+      mobilePicker.close();
+    } else {
+      mobilePicker.open();
+    }
+  }
+
   function openPanelAfterRender() {
+    if (isTaskLogPickerMobile()) {
+      openMobileSheet();
+      return;
+    }
     panel.hidden = false;
     setPanelOpen(true);
     syncPanelMaxHeight();
@@ -497,7 +539,13 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
 
   trigger.setAttribute("aria-haspopup", "listbox");
   trigger.setAttribute("aria-expanded", "false");
-  trigger.addEventListener("click", () => {
+  const onTriggerActivate = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isTaskLogPickerMobile()) {
+      openMobileSheet();
+      return;
+    }
     searchQuery = "";
     ensurePickerBucketInAllowed();
     renderPanel();
@@ -507,8 +555,10 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
       closePanel();
     }
     /* 과제 검색 — 사용자가 입력칸을 직접 탭할 때만 키보드(드롭다운 열기만으로 포커스 금지) */
-  });
+  };
+  trigger.addEventListener("click", onTriggerActivate);
   const closePanelOnOutside = (e) => {
+    if (isTaskLogPickerMobile()) return;
     if (panel.hidden) return;
     if (!wrap.contains(e.target)) closePanel();
   };
@@ -531,9 +581,14 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
     ensurePickerBucketInAllowed();
     value = "";
     trigger.textContent = "과제를 선택하세요";
-    closePanel();
+    wrap._closePanel?.();
   };
-  wrap._closePanel = closePanel;
+  wrap._closePanel = () => {
+    closePanel();
+    mobilePicker.close();
+    const scroll = findTaskLogScrollArea();
+    scroll?.classList?.remove?.("is-task-picker-open");
+  };
   wrap._getLedgerBucketPreset = () => ledgerBucketPreset;
   return wrap;
 }

@@ -1163,6 +1163,24 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   justify-content: center;
   width: 100%;
 }
+/* 과제 기록·일정 모달: iOS date input 터치 영역이 위 과제 필드까지 겹치는 문제 방지 */
+.time-task-log-datetime-fields-wrap > .time-task-log-field:first-child,
+[data-legacy~="time-task-log-datetime-fields-wrap"]
+  > [data-legacy~="time-task-log-field"]:first-child {
+  position: relative;
+  z-index: 2;
+}
+.time-task-log-datetime-date-row .time-task-log-date-native-wrap,
+[data-legacy~="time-task-log-datetime-date-row"]
+  [data-legacy~="time-task-log-date-native-wrap"] {
+  cursor: pointer;
+}
+.time-task-log-datetime-date-row .time-task-log-date-native-wrap input[type="date"],
+[data-legacy~="time-task-log-datetime-date-row"]
+  [data-legacy~="time-task-log-date-native-wrap"]
+  input[type="date"] {
+  pointer-events: none;
+}
 .time-task-log-datetime-time-row,
 [data-legacy~="time-task-log-datetime-time-row"] {
   display: flex;
@@ -1300,6 +1318,8 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   flex: 0 0 auto;
   min-width: 5.75rem;
   min-height: calc(0.55rem * 2 + 0.9375rem * 1.25 + 2px);
+  overflow: hidden;
+  isolation: isolate;
 }
 .time-task-log-date-native-wrap input[type="date"],
 [data-legacy~="time-task-log-date-native-wrap"] input[type="date"] {
@@ -2879,6 +2899,345 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   display: none;
   width: 0;
   height: 0;
+}
+
+/* 모바일·터치: 과제 드롭다운 금지 → 하단 다이얼 시트만 */
+@media (max-width: 48rem), (hover: none) and (pointer: coarse) {
+  .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+    .time-task-log-task-dropdown-panel,
+  .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+    .time-task-log-task-dropdown.is-open
+    > .time-task-log-task-dropdown-panel,
+  [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+      .lp-calendar-budget-add-modal
+    )
+    [data-legacy~="time-task-log-task-dropdown-panel"],
+  [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+      .lp-calendar-budget-add-modal
+    )
+    .time-task-log-task-dropdown.is-open
+    > [data-legacy~="time-task-log-task-dropdown-panel"] {
+    display: none !important;
+  }
+
+  /* 하단 시트 UI — 드롭다운 ▼ 화살표 제거(혼란 방지) */
+  .time-task-log-task-dropdown-trigger,
+  [data-legacy~="time-task-log-task-dropdown-trigger"] {
+    justify-content: flex-start;
+  }
+  .time-task-log-task-dropdown-trigger::after,
+  [data-legacy~="time-task-log-task-dropdown-trigger"]::after {
+    content: none !important;
+    display: none !important;
+  }
+}
+
+@keyframes lp-task-log-mobile-sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.lp-task-log-mobile-picker,
+[data-legacy~="lp-task-log-mobile-picker"] {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: block;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+.lp-task-log-mobile-picker[hidden],
+[data-legacy~="lp-task-log-mobile-picker"][hidden] {
+  display: none !important;
+}
+.lp-task-log-mobile-picker-backdrop,
+[data-legacy~="lp-task-log-mobile-picker-backdrop"] {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: rgba(21, 43, 69, 0.4);
+  cursor: default;
+  pointer-events: auto;
+}
+.lp-task-log-mobile-picker-sheet,
+[data-legacy~="lp-task-log-mobile-picker-sheet"] {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  max-height: min(62vh, 26rem);
+  background: var(--lp-modal-surface);
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 -12px 36px rgba(21, 43, 69, 0.18);
+  overflow: hidden;
+  box-sizing: border-box;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  pointer-events: auto;
+  animation: lp-task-log-mobile-sheet-in 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.lp-task-log-mobile-picker-toolbar,
+[data-legacy~="lp-task-log-mobile-picker-toolbar"] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  padding: 0.7rem 0.85rem;
+  background: #1a3348;
+  color: #fff;
+}
+.lp-task-log-mobile-picker-toolbar-btn,
+[data-legacy~="lp-task-log-mobile-picker-toolbar-btn"] {
+  border: none;
+  padding: 0.15rem 0.1rem;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  font-weight: 500;
+  color: #fff;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.lp-task-log-mobile-picker-toolbar-title,
+[data-legacy~="lp-task-log-mobile-picker-toolbar-title"] {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #fff;
+}
+.lp-task-log-mobile-picker-wheel,
+[data-legacy~="lp-task-log-mobile-picker-wheel"] {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 14.5rem;
+  overflow: hidden;
+}
+.lp-task-log-mobile-picker-highlight,
+[data-legacy~="lp-task-log-mobile-picker-highlight"] {
+  position: absolute;
+  left: 0.65rem;
+  right: 0.65rem;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 3rem;
+  border-radius: 10px;
+  background: rgba(148, 163, 184, 0.22);
+  pointer-events: none;
+  z-index: 1;
+}
+.lp-task-log-mobile-picker-list,
+[data-legacy~="lp-task-log-mobile-picker-list"] {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.lp-task-log-mobile-picker-list::-webkit-scrollbar,
+[data-legacy~="lp-task-log-mobile-picker-list"]::-webkit-scrollbar {
+  display: none;
+}
+.lp-task-log-mobile-picker-spacer,
+[data-legacy~="lp-task-log-mobile-picker-spacer"] {
+  height: calc(50% - 1.5rem);
+  flex-shrink: 0;
+  scroll-snap-align: none;
+  pointer-events: none;
+}
+.lp-task-log-mobile-picker-item,
+[data-legacy~="lp-task-log-mobile-picker-item"] {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 3rem;
+  padding: 0 1rem;
+  scroll-snap-align: center;
+  box-sizing: border-box;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.lp-task-log-mobile-picker-item.is-selected,
+[data-legacy~="lp-task-log-mobile-picker-item"][data-legacy~="is-selected"] {
+  font-weight: 600;
+}
+.lp-task-log-mobile-picker-item-icon,
+[data-legacy~="lp-task-log-mobile-picker-item-icon"] {
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+.lp-task-log-mobile-picker-item-label,
+[data-legacy~="lp-task-log-mobile-picker-item-label"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.9375rem;
+  color: var(--lp-modal-navy);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 모바일 과제 검색 모달 */
+.lp-task-log-mobile-search,
+[data-legacy~="lp-task-log-mobile-search"] {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: flex;
+  flex-direction: column;
+  background: var(--lp-modal-surface);
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.lp-task-log-mobile-search[hidden],
+[data-legacy~="lp-task-log-mobile-search"][hidden] {
+  display: none !important;
+}
+.lp-task-log-mobile-search-panel,
+[data-legacy~="lp-task-log-mobile-search-panel"] {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.lp-task-log-mobile-search-header,
+[data-legacy~="lp-task-log-mobile-search-header"] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  padding: 0.7rem 0.85rem;
+  background: #1a3348;
+  color: #fff;
+}
+.lp-task-log-mobile-search-header-btn,
+[data-legacy~="lp-task-log-mobile-search-header-btn"] {
+  border: none;
+  padding: 0.15rem 0.1rem;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  font-weight: 500;
+  color: #fff;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.lp-task-log-mobile-search-title,
+[data-legacy~="lp-task-log-mobile-search-title"] {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+.lp-task-log-mobile-search-input-wrap,
+[data-legacy~="lp-task-log-mobile-search-input-wrap"] {
+  flex-shrink: 0;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid var(--lp-modal-border);
+  background: #f8fafc;
+}
+.lp-task-log-mobile-search-input,
+[data-legacy~="lp-task-log-mobile-search-input"] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.55rem 0.75rem 0.55rem 2.1rem;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  color: var(--lp-modal-navy);
+  background-color: #fff;
+  background-image: url("/toolbaricons/search.svg");
+  background-repeat: no-repeat;
+  background-position: 0.65rem center;
+  background-size: 1rem 1rem;
+  border: none;
+  border-radius: 999px;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.lp-task-log-mobile-search-input:focus,
+[data-legacy~="lp-task-log-mobile-search-input"]:focus {
+  background-color: rgba(30, 77, 123, 0.08);
+}
+.lp-task-log-mobile-search-list,
+[data-legacy~="lp-task-log-mobile-search-list"] {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 0.25rem 0;
+}
+.lp-task-log-mobile-search-item,
+[data-legacy~="lp-task-log-mobile-search-item"] {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.85rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.lp-task-log-mobile-search-item:active,
+[data-legacy~="lp-task-log-mobile-search-item"]:active {
+  background: rgba(30, 77, 123, 0.06);
+}
+.lp-task-log-mobile-search-radio,
+[data-legacy~="lp-task-log-mobile-search-radio"] {
+  flex-shrink: 0;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0;
+  accent-color: #1e4d7b;
+}
+.lp-task-log-mobile-search-item-icon-wrap,
+[data-legacy~="lp-task-log-mobile-search-item-icon-wrap"] {
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lp-task-log-mobile-search-item-icon,
+[data-legacy~="lp-task-log-mobile-search-item-icon"] {
+  width: 1.75rem;
+  height: 1.75rem;
+  object-fit: contain;
+}
+.lp-task-log-mobile-search-item-label,
+[data-legacy~="lp-task-log-mobile-search-item-label"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.9375rem;
+  color: var(--lp-modal-navy);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 과제 다이얼 시트 열림 — 기록 모달보다 위에 */
+html.lp-task-log-mobile-picker-open
+  .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal),
+html.lp-task-log-mobile-picker-open
+  [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  ) {
+  z-index: 10050 !important;
 }
 
 /* --- 자산관리 모달: Time/Todo lp-modals 토큰과 동일 껍데기·권역 --- */

@@ -25,6 +25,7 @@ import { kpiTodoFineTrace } from "../utils/kpiTodoFineTrace.js";
 import {
   bindModalNativeDateRange,
   initModalNativeDateFieldsIn,
+  wireModalNativeDateSlot,
 } from "../utils/modalNativeDateField.js";
 import {
   getCustomSections,
@@ -6060,13 +6061,6 @@ export function render(opts = {}) {
       taskLogContentTypeSection.hidden = !isContent;
       if (!isContent) clearTaskLogContentType();
     }
-    if (taskLogMemoSection) {
-      taskLogMemoSection.hidden = isContent;
-      if (isContent) {
-        if (taskLogFeedbackInput) taskLogFeedbackInput.value = "";
-        taskLogMemoTags = [];
-      }
-    }
     taskLogScrollArea?.classList?.toggle("is-content-detail-task", isContent);
   }
   let taskLogMemoTags = [];
@@ -6478,6 +6472,12 @@ export function render(opts = {}) {
     });
   });
   taskLogDateStart?.addEventListener("input", syncTaskLogDateOverlay);
+  const taskLogDateWrap = taskLogDateStart?.closest?.(
+    '[data-legacy~="time-task-log-date-native-wrap"]',
+  );
+  if (taskLogDateWrap && taskLogDateStart) {
+    wireModalNativeDateSlot(taskLogDateWrap, taskLogDateStart);
+  }
   taskLogTimeStart?.addEventListener("beforeinput", beforeInputTimeDigitsOnly);
   taskLogTimeStart?.addEventListener("input", () => {
     sanitizeTaskLogTimeField(taskLogTimeStart);
@@ -7832,19 +7832,16 @@ export function render(opts = {}) {
     if (TTC.isContentDetailTaskName(tnForMemo)) {
       setTaskLogContentType(mealDetailVal);
       if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
-      if (taskLogFeedbackInput) taskLogFeedbackInput.value = "";
-      taskLogMemoTags = [];
+      if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
     } else {
       if (taskLogMealDetailInput) taskLogMealDetailInput.value = mealDetailVal;
       clearTaskLogContentType();
       if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
     }
     setTaskLogTimeRating(data.timeRating);
-    const rawMemoTagsForEdit = TTC.isContentDetailTaskName(tnForMemo)
-      ? []
-      : Array.isArray(data.memoTags)
-        ? [...data.memoTags]
-        : parseTagsFromFeedback(feedbackRaw);
+    const rawMemoTagsForEdit = Array.isArray(data.memoTags)
+      ? [...data.memoTags]
+      : parseTagsFromFeedback(feedbackRaw);
     taskLogMemoTags = userMemoTagsFromLedgerRaw(rawMemoTagsForEdit)
       .map((t) => String(t ?? "").trim())
       .filter(Boolean);
@@ -7884,6 +7881,7 @@ export function render(opts = {}) {
     if (taskLogFooterEl) taskLogFooterEl.style.display = "none";
     closeDateTimePicker();
     taskLogTaskDropdown?._closePanel?.();
+    document.documentElement.classList.remove("lp-task-log-mobile-picker-open");
     taskLogModal.style.zIndex = "";
     document.body.style.overflow = "";
     taskLogAddContext = null;
@@ -7968,9 +7966,7 @@ export function render(opts = {}) {
       );
       return;
     }
-    const feedbackBody = TTC.isContentDetailTaskName(taskName)
-      ? ""
-      : (taskLogFeedbackInput?.value || "").trim();
+    const feedbackBody = (taskLogFeedbackInput?.value || "").trim();
     const mealDetailForRow = TTC.isMealDetailTaskName(taskName)
       ? (taskLogMealDetailInput?.value || "").trim()
       : TTC.isContentDetailTaskName(taskName)
@@ -7978,11 +7974,7 @@ export function render(opts = {}) {
         : "";
     const feedback = feedbackBody;
     const userTagsForSubmit = (
-      TTC.isContentDetailTaskName(taskName)
-        ? []
-        : Array.isArray(taskLogMemoTags)
-          ? taskLogMemoTags
-          : []
+      Array.isArray(taskLogMemoTags) ? taskLogMemoTags : []
     )
       .map((t) => String(t ?? "").trim())
       .filter(Boolean);

@@ -22,6 +22,14 @@ import {
   CALENDAR_FIXED_SECTION_IDS,
 } from "./todoSectionTasksModel.js";
 import { runTodoSectionTasksSerialized } from "./todoSectionTasksServerSyncSerial.js";
+import {
+  trackPendingCalendarSectionTaskUpsert,
+  clearPendingCalendarSectionTaskUpsert,
+  mergePendingCalendarSectionTasksIntoSessionMemory,
+  shouldRetryCalendarSectionTaskUpsert,
+  schedulePendingCalendarSectionTaskUpsertRetry,
+  getPendingCalendarSectionTaskUpsertParams,
+} from "./todoSectionTasksPendingUpsert.js";
 import { consumeTodoAddPendingServerLog, logTodoScheduleAddStep3 } from "./lpTabDataSourceLog.js";
 import { logTodoServerCrud } from "./todoSectionTasksServerCrudDebug.js";
 
@@ -40,46 +48,80 @@ async function getSessionUserId() {
 }
 
 /**
+ * @param {{ task: object, sectionKey: string, isCustom: boolean, sortOrder: number }} params
+ */
+async function performCalendarSectionTaskUpsertOnce(params) {
+  const { task, sectionKey, isCustom, sortOrder } = params;
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) {
+    logTodoServerCrud("SKIP", {
+      이유: !supabase ? "no_supabase" : "no_session",
+      안내: "Supabase 요청 없음(세션/클라이언트 없음)",
+    });
+    return { ok: false, reason: !supabase ? "no_supabase" : "no_session" };
+  }
+  const sk = String(sectionKey || "").trim();
+  const so = typeof sortOrder === "number" && sortOrder >= 0 ? sortOrder : 0;
+  const p = localTaskToDbPayload(userId, sk, !!isCustom, so, task);
+  if (!p) {
+    logTodoServerCrud("SKIP", {
+      이유: "payload_null",
+      안내: "UUID 아닌 taskId 등으로 Supabase upsert 안 함",
+      section_key: sk,
+    });
+    return { ok: false, reason: "payload_null" };
+  }
+  logTodoServerCrud("UPSERT", {
+    id: p.id,
+    section_key: p.section_key,
+    제목일부: String(p.name || "").slice(0, 40),
+    sort_order: p.sort_order,
+    안내: "지금부터 supabase.from(...).upsert — 세션 메모리 경유 아님",
+  });
+  const { error } = await supabase.from(TABLE).upsert([p], { onConflict: UPSERT_CONFLICT_ROW });
+  if (error) {
+    logTodoServerCrud("UPSERT", { id: p.id, 결과: "실패", message: error.message || "upsert_failed" });
+    return { ok: false, reason: error.message || "upsert_failed" };
+  }
+  logTodoServerCrud("UPSERT", { id: p.id, 결과: "성공", section_key: p.section_key });
+  const addMeta = consumeTodoAddPendingServerLog();
+  if (addMeta) logTodoScheduleAddStep3(addMeta);
+  return { ok: true };
+}
+
+function finishCalendarSectionTaskUpsertAttempt(taskId, params, result) {
+  const id = String(taskId || "").trim();
+  if (!id) return result;
+  if (result?.ok) {
+    clearPendingCalendarSectionTaskUpsert(id);
+    return result;
+  }
+  if (!shouldRetryCalendarSectionTaskUpsert(result?.reason)) {
+    clearPendingCalendarSectionTaskUpsert(id);
+    return result;
+  }
+  schedulePendingCalendarSectionTaskUpsertRetry(id, () =>
+    runTodoSectionTasksSerialized(async () => {
+      const latest = getPendingCalendarSectionTaskUpsertParams(id);
+      if (!latest) return { ok: false, reason: "pending_cleared" };
+      const retryResult = await performCalendarSectionTaskUpsertOnce(latest);
+      return finishCalendarSectionTaskUpsertAttempt(id, latest, retryResult);
+    }),
+  );
+  return result;
+}
+
+/**
  * 모달에서 넘긴 task 객체로 곧바로 Supabase upsert — 세션 메모리·DOM collect 경유 없음.
- * (+)모달·카드 편집 모달 저장에서만 호출.
+ * 실패 시 알림 없이 백그라운드 재시도. (+)모달·카드 편집 모달 저장에서만 호출.
  */
 export async function upsertCalendarSectionTaskDirectFromModal({ task, sectionKey, isCustom, sortOrder }) {
+  const params = { task, sectionKey, isCustom, sortOrder };
+  const taskId = String(task?.taskId || "").trim();
+  trackPendingCalendarSectionTaskUpsert(params);
   return runTodoSectionTasksSerialized(async () => {
-    const userId = await getSessionUserId();
-    if (!userId || !supabase) {
-      logTodoServerCrud("SKIP", {
-        이유: !supabase ? "no_supabase" : "no_session",
-        안내: "Supabase 요청 없음(세션/클라이언트 없음)",
-      });
-      return { ok: false, reason: !supabase ? "no_supabase" : "no_session" };
-    }
-    const sk = String(sectionKey || "").trim();
-    const so = typeof sortOrder === "number" && sortOrder >= 0 ? sortOrder : 0;
-    const p = localTaskToDbPayload(userId, sk, !!isCustom, so, task);
-    if (!p) {
-      logTodoServerCrud("SKIP", {
-        이유: "payload_null",
-        안내: "UUID 아닌 taskId 등으로 Supabase upsert 안 함",
-        section_key: sk,
-      });
-      return { ok: false, reason: "payload_null" };
-    }
-    logTodoServerCrud("UPSERT", {
-      id: p.id,
-      section_key: p.section_key,
-      제목일부: String(p.name || "").slice(0, 40),
-      sort_order: p.sort_order,
-      안내: "지금부터 supabase.from(...).upsert — 세션 메모리 경유 아님",
-    });
-    const { error } = await supabase.from(TABLE).upsert([p], { onConflict: UPSERT_CONFLICT_ROW });
-    if (error) {
-      logTodoServerCrud("UPSERT", { id: p.id, 결과: "실패", message: error.message || "upsert_failed" });
-      return { ok: false, reason: error.message || "upsert_failed" };
-    }
-    logTodoServerCrud("UPSERT", { id: p.id, 결과: "성공", section_key: p.section_key });
-    const addMeta = consumeTodoAddPendingServerLog();
-    if (addMeta) logTodoScheduleAddStep3(addMeta);
-    return { ok: true };
+    const result = await performCalendarSectionTaskUpsertOnce(params);
+    return finishCalendarSectionTaskUpsertAttempt(taskId, params, result);
   });
 }
 
@@ -146,7 +188,7 @@ export function upsertCalendarSectionTaskRowFromSessionMemory(
     sectionKey: sid,
     isCustom,
     sortOrder,
-  }).catch(() => {});
+  });
 }
 
 /**
@@ -177,6 +219,7 @@ export async function deleteCalendarSectionTaskRowById(taskId) {
         이유: "비UUID_id",
         안내: "서버 calendar_section_tasks DELETE 안 함(로컬 전용 id)",
       });
+      clearPendingCalendarSectionTaskUpsert(id);
       return {
         ok: true,
         localOnlyId: true,
@@ -232,6 +275,7 @@ export async function deleteCalendarSectionTaskRowById(taskId) {
         결과: "완료",
         안내: "DELETE 영향 0행·서버에 원래 없음(이미 삭제됨)",
       });
+      clearPendingCalendarSectionTaskUpsert(id);
       return {
         ok: true,
         alreadyGone: true,
@@ -280,6 +324,7 @@ export async function deleteCalendarSectionTaskRowById(taskId) {
       DELETE영향행수: n,
       안내: "서버에서 해당 id 행 삭제됨(확인 SELECT로 없음)",
     });
+    clearPendingCalendarSectionTaskUpsert(id);
     return {
       ok: true,
       deleteRows: n,
@@ -398,6 +443,7 @@ export async function pullCalendarSectionTasksFromSupabase(opts = {}) {
     const rows = Array.isArray(data) ? data : [];
     const knownCustomSectionIds = getCustomSections().map((s) => s.id).filter(Boolean);
     applyCalendarSectionTasksServerSnapshot(rows, knownCustomSectionIds);
+    mergePendingCalendarSectionTasksIntoSessionMemory();
 
     logTodoServerCrud("PULL", {
       reason: String(reason || ""),
