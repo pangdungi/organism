@@ -84,6 +84,7 @@ const PICKER_SEARCH_EXTRA = {
   drug: "보충제",
   sun: "모닝루틴",
   vaccum: "정리루틴",
+  drycloth: "정리루틴",
   bag: "외출준비",
   sofa: "외출 후",
   gym: "유산소",

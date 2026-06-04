@@ -61,6 +61,10 @@ import {
   kpiTodosCompletionBrief,
 } from "../utils/kpiTodoLifecycleDebug.js";
 import { showKpiTodoAddModal } from "../utils/kpiTodoAddModal.js";
+import {
+  appendKpiDailyRepeatTodoAtEnd,
+  sortNormalizedKpiTodoRows,
+} from "../utils/kpiMapTodoListOrder.js";
 import { formatKpiCardHeroHtml } from "../utils/kpiViewModal.js";
 import { showKpiTodoEditModal } from "../utils/kpiTodoEditModal.js";
 import {
@@ -731,7 +735,7 @@ export function render() {
       if (!text) return;
       const d2 = loadHappinessMap();
       d2.kpiDailyRepeatTodos = d2.kpiDailyRepeatTodos || [];
-      d2.kpiDailyRepeatTodos.push({
+      appendKpiDailyRepeatTodoAtEnd(d2.kpiDailyRepeatTodos, {
         id: nextId(),
         kpiId: String(selectedKpiId),
         text,
@@ -1054,8 +1058,10 @@ export function render() {
     historyWrap.appendChild(headerRow);
 
     const dailyTodosForGrid = needHabitTracker
-      ? (data.kpiDailyRepeatTodos || []).filter(
-          (t) => String(t.kpiId) === selKpi && (t.text || "").trim() !== "",
+      ? sortNormalizedKpiTodoRows(
+          (data.kpiDailyRepeatTodos || []).filter(
+            (t) => String(t.kpiId) === selKpi && (t.text || "").trim() !== "",
+          ),
         )
       : [];
     const useHabitTabs = needHabitTracker && dailyTodosForGrid.length > 0;

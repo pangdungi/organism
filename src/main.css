@@ -344,6 +344,64 @@ html.lp-task-log-modal-open #signin-page {
   background: #e8f0f8;
 }
 
+/* 푸터 + 칸: flex 균등 분할만 (버튼은 안에서 고정 원형) */
+.app-footer-actions > .lp-app-footer-add-slot,
+.app-footer-actions > [data-lp-app-footer-add-slot] {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 푸터 + 버튼: 네이비 동그라미·흰 아이콘 (칸 너비만큼 늘리지 않음) */
+.app-footer-actions .lp-app-footer-add-slot .app-footer-icon-btn[data-lp-app-footer-add],
+.app-footer-actions .lp-app-footer-add-slot .app-footer-icon-btn.app-footer-icon-btn--add,
+.app-footer-actions [data-lp-app-footer-add-slot] .app-footer-icon-btn[data-lp-app-footer-add],
+.app-footer-actions [data-lp-app-footer-add-slot] .app-footer-icon-btn.app-footer-icon-btn--add,
+[data-legacy~="app-footer-actions"]
+  .lp-app-footer-add-slot
+  .app-footer-icon-btn[data-lp-app-footer-add],
+[data-legacy~="app-footer-actions"]
+  [data-lp-app-footer-add-slot]
+  .app-footer-icon-btn[data-lp-app-footer-add] {
+  flex: 0 0 auto;
+  align-self: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  min-width: 2.75rem;
+  max-width: 2.75rem;
+  min-height: 2.75rem;
+  margin: 0;
+  border-radius: 9999px;
+  background: var(--idea-navy, #1e4d7b);
+  color: #fff;
+}
+.app-footer-actions .lp-app-footer-add-slot .app-footer-icon-btn[data-lp-app-footer-add][aria-pressed="true"],
+.app-footer-actions [data-lp-app-footer-add-slot] .app-footer-icon-btn[data-lp-app-footer-add][aria-pressed="true"],
+[data-legacy~="app-footer-actions"]
+  [data-lp-app-footer-add-slot]
+  .app-footer-icon-btn[data-lp-app-footer-add][aria-pressed="true"] {
+  background: var(--idea-navy, #1e4d7b);
+  color: #fff;
+}
+.app-footer-actions .lp-app-footer-add-slot .app-footer-icon-btn[data-lp-app-footer-add] svg,
+.app-footer-actions [data-lp-app-footer-add-slot] .app-footer-icon-btn[data-lp-app-footer-add] svg,
+[data-legacy~="app-footer-actions"]
+  [data-lp-app-footer-add-slot]
+  .app-footer-icon-btn[data-lp-app-footer-add]
+  svg {
+  color: #fff;
+}
+.app-footer-actions .lp-app-footer-add-slot .app-footer-icon-btn[data-lp-app-footer-add] img,
+.app-footer-actions [data-lp-app-footer-add-slot] .app-footer-icon-btn[data-lp-app-footer-add] img,
+[data-legacy~="app-footer-actions"]
+  [data-lp-app-footer-add-slot]
+  .app-footer-icon-btn[data-lp-app-footer-add]
+  img {
+  filter: brightness(0) invert(1);
+}
+
 /* 메인(오늘) 뷰 — 흰 배경 + 물결 패턴(타일 반복) + 메뉴 그리드 */
 .app-main:has(.app-home-menu-launcher) {
   --home-menu-pattern: url("/toolbaricons/menu-home/home-pattern-new.svg");

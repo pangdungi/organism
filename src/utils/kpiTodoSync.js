@@ -13,6 +13,7 @@ import {
   kpiTodosCompletionBrief,
 } from "./kpiTodoLifecycleDebug.js";
 import { kpiTodoFineTrace } from "./kpiTodoFineTrace.js";
+import { sortNormalizedKpiTodoRows } from "./kpiMapTodoListOrder.js";
 import { applyDreamKpiTimestampsOnSave } from "./dreamKpiMapSupabase.js";
 import { applySideincomeKpiTimestampsOnSave } from "./sideincomeKpiMapSupabase.js";
 import { applyHappinessKpiTimestampsOnSave } from "./happinessKpiMapSupabase.js";
@@ -593,13 +594,15 @@ export function getKpiDailyRepeatInfoByKpiId(kpiId) {
     const kpi = (data.kpis || []).find((k) => String(k.id || "").trim() === kid);
     if (!kpi) continue;
     const needHabitTracker = !!kpi.needHabitTracker;
-    const dailyTodos = (data.kpiDailyRepeatTodos || [])
-      .filter((t) => String(t.kpiId) === kid && (t.text || "").trim() !== "")
-      .map((t) => ({
-        id: t.id,
-        text: (t.text || "").trim(),
-        completed: false,
-      }));
+    const dailyTodos = sortNormalizedKpiTodoRows(
+      (data.kpiDailyRepeatTodos || []).filter(
+        (t) => String(t.kpiId) === kid && (t.text || "").trim() !== "",
+      ),
+    ).map((t) => ({
+      id: t.id,
+      text: (t.text || "").trim(),
+      completed: false,
+    }));
     return {
       storageKey,
       kpiId: kpi.id,

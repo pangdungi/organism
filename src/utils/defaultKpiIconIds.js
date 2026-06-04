@@ -6,6 +6,7 @@ export const DEFAULT_MOVE_ROUTINE_KPI_ID = "__lp_default_kpi_move_routine__";
 export const DEFAULT_TIDY_ROUTINE_KPI_ID = "__lp_default_kpi_tidy_routine__";
 export const DEFAULT_OUT_PREP_ROUTINE_KPI_ID = "__lp_default_kpi_out_prep_routine__";
 export const DEFAULT_OUT_AFTER_ROUTINE_KPI_ID = "__lp_default_kpi_out_after_routine__";
+export const DEFAULT_BEDTIME_ROUTINE_KPI_ID = "__lp_default_kpi_bedtime_routine__";
 
 export const DEFAULT_AEROBIC_KPI_ID = "__lp_default_kpi_aerobic__";
 export const DEFAULT_SUPPLEMENT_KPI_ID = "__lp_default_kpi_supplement__";
@@ -16,9 +17,10 @@ export const DEFAULT_KPI_ICON_SLUG = {
   [DEFAULT_CHORE_TASK_KPI_ID]: "check",
   [DEFAULT_MORNING_ROUTINE_KPI_ID]: "sun",
   [DEFAULT_MOVE_ROUTINE_KPI_ID]: "car2",
-  [DEFAULT_TIDY_ROUTINE_KPI_ID]: "vaccum",
+  [DEFAULT_TIDY_ROUTINE_KPI_ID]: "drycloth",
   [DEFAULT_OUT_PREP_ROUTINE_KPI_ID]: "bag",
   [DEFAULT_OUT_AFTER_ROUTINE_KPI_ID]: "sofa",
+  [DEFAULT_BEDTIME_ROUTINE_KPI_ID]: "cream",
   [DEFAULT_AEROBIC_KPI_ID]: "gym",
   [DEFAULT_SUPPLEMENT_KPI_ID]: "drug",
   [DEFAULT_CHECKUP_KPI_ID]: "hospital",
@@ -29,9 +31,10 @@ export const DEFAULT_KPI_NAME_ICON_SLUG = {
   "잡무 처리하기": "check",
   "모닝 루틴": "sun",
   "이동 루틴": "car2",
-  "정리루틴": "vaccum",
+  "정리루틴": "drycloth",
   "외출 준비 루틴": "bag",
   "외출 후 루틴": "sofa",
+  "취침 루틴": "cream",
   "유산소 운동": "gym",
   "보충제 섭취": "drug",
   "건강 검진": "hospital",

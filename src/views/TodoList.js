@@ -63,6 +63,7 @@ import { snapshotSectionTasksSemanticForCompare } from "../utils/todoSectionTask
 import { logLpRender } from "../utils/lpRenderDebugLog.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
+  mountAppFooterAddButton,
   getAppFooterActionsSlot,
 } from "../utils/appFooterShell.js";
 import {
@@ -4877,7 +4878,7 @@ export function render(options = {}) {
     quickAddBtn.setAttribute(TODO_LIST_FOOTER_ACTION_ATTR, "");
     searchToggleBtn.setAttribute(TODO_LIST_FOOTER_ACTION_ATTR, "");
     slot.appendChild(settingsBtn);
-    slot.appendChild(quickAddBtn);
+    slot.appendChild(mountAppFooterAddButton(quickAddBtn));
     slot.appendChild(searchToggleBtn);
   }
 

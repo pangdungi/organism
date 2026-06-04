@@ -60,6 +60,10 @@ import {
   restoreKpiTabFromSession,
 } from "../utils/kpiViewUiSession.js";
 import { showKpiTodoAddModal } from "../utils/kpiTodoAddModal.js";
+import {
+  appendKpiDailyRepeatTodoAtEnd,
+  sortNormalizedKpiTodoRows,
+} from "../utils/kpiMapTodoListOrder.js";
 import { formatKpiCardHeroHtml } from "../utils/kpiViewModal.js";
 import { showKpiTodoEditModal } from "../utils/kpiTodoEditModal.js";
 import {
@@ -88,6 +92,7 @@ import {
 } from "../utils/kpiMapLocalStorage.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
+  mountAppFooterAddButton,
   appendKpiFooterHomeButton,
   clearKpiMapFooterActionButtons,
   getAppFooterActionsSlot,
@@ -744,7 +749,7 @@ export function render() {
       if (!text) return;
       const d2 = loadDreamMap();
       d2.kpiDailyRepeatTodos = d2.kpiDailyRepeatTodos || [];
-      d2.kpiDailyRepeatTodos.push({
+      appendKpiDailyRepeatTodoAtEnd(d2.kpiDailyRepeatTodos, {
         id: nextId(),
         kpiId: String(selectedKpiId),
         text,
@@ -777,7 +782,7 @@ export function render() {
         if (dreamAddModalJustClosed) return;
         showDreamAddModal();
       });
-      slot.appendChild(addBtn);
+      slot.appendChild(mountAppFooterAddButton(addBtn));
       return;
     }
 
@@ -791,7 +796,7 @@ export function render() {
         showKpiModal();
       });
       appendKpiFooterHomeButton(slot);
-      slot.appendChild(addBtn);
+      slot.appendChild(mountAppFooterAddButton(addBtn));
       return;
     }
 
@@ -809,7 +814,7 @@ export function render() {
       void runDreamKpiFooterAddAction();
     });
     appendKpiFooterHomeButton(slot);
-    slot.appendChild(addBtn);
+    slot.appendChild(mountAppFooterAddButton(addBtn));
   }
 
   function getKpiLogs(kpiId) {
@@ -1269,8 +1274,10 @@ export function render() {
       panelDailySeg.appendChild(dailyDivider);
       const dailyList = document.createElement("div");
       dailyList.className = "dream-kpi-todo-list dream-kpi-todo-list--seg-panel";
-      const dailyTodos = (data.kpiDailyRepeatTodos || []).filter(
-        (t) => String(t.kpiId) === selKpi && (t.text || "").trim() !== "",
+      const dailyTodos = sortNormalizedKpiTodoRows(
+        (data.kpiDailyRepeatTodos || []).filter(
+          (t) => String(t.kpiId) === selKpi && (t.text || "").trim() !== "",
+        ),
       );
       dailyTodos.forEach((todo) => {
         const item = document.createElement("div");

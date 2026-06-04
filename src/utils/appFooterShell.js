@@ -7,6 +7,35 @@
  */
 export const APP_FOOTER_ICON_BTN_CLASS = "app-footer-icon-btn";
 
+/** 푸터 +·추가 버튼 — main.css 네이비 동그라미·흰 아이콘 */
+export const APP_FOOTER_ADD_BTN_ATTR = "data-lp-app-footer-add";
+export const APP_FOOTER_ADD_BTN_CLASS = "app-footer-icon-btn--add";
+export const APP_FOOTER_ADD_SLOT_ATTR = "data-lp-app-footer-add-slot";
+export const APP_FOOTER_ADD_SLOT_CLASS = "lp-app-footer-add-slot";
+
+/** @param {HTMLElement} btn */
+export function markAppFooterAddButton(btn) {
+  if (!(btn instanceof HTMLElement)) return;
+  btn.classList.add(APP_FOOTER_ICON_BTN_CLASS, APP_FOOTER_ADD_BTN_CLASS);
+  btn.setAttribute(APP_FOOTER_ADD_BTN_ATTR, "");
+}
+
+/**
+ * + 버튼을 칸 래퍼에 넣어 푸터 flex 균등 분할(래퍼) + 동그라미 버튼(고정 2.75rem) 분리
+ * @param {HTMLElement} btn
+ * @returns {HTMLElement}
+ */
+export function mountAppFooterAddButton(btn) {
+  markAppFooterAddButton(btn);
+  const existing = btn.closest(`[${APP_FOOTER_ADD_SLOT_ATTR}]`);
+  if (existing instanceof HTMLElement) return existing;
+  const shell = document.createElement("div");
+  shell.className = APP_FOOTER_ADD_SLOT_CLASS;
+  shell.setAttribute(APP_FOOTER_ADD_SLOT_ATTR, "");
+  shell.appendChild(btn);
+  return shell;
+}
+
 /** KPI 서브뷰(kpis·kpiDetail) 푸터 — 메인 메뉴(홈) — 첨부 dashboard 아이콘(윤곽 집) */
 export const APP_FOOTER_HOME_ICON =
   '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m8 23v-6c0-2.209 1.791-4 4-4 2.209 0 4 1.791 4 4v6"/><path d="m1 21v-11l11-9 11 9v11c0 1.105-.895 2-2 2h-18c-1.105 0-2-.895-2-2z"/></g></svg>';
@@ -19,9 +48,12 @@ export function getAppFooterActionsSlot() {
 export function clearKpiMapFooterActionButtons() {
   const slot = getAppFooterActionsSlot();
   if (!slot) return;
-  slot
-    .querySelectorAll("[data-lp-dream-kpi-footer-action], [data-lp-kpi-footer-home]")
-    .forEach((n) => n.remove());
+  slot.querySelectorAll("[data-lp-dream-kpi-footer-action]").forEach((btn) => {
+    const wrap = btn.closest(`[${APP_FOOTER_ADD_SLOT_ATTR}]`);
+    if (wrap) wrap.remove();
+    else btn.remove();
+  });
+  slot.querySelectorAll("[data-lp-kpi-footer-home]").forEach((n) => n.remove());
 }
 
 /** @param {HTMLElement} slot */

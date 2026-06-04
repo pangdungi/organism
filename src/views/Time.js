@@ -40,6 +40,7 @@ import {
 import { showConfirmModal, showAlertModal } from "../utils/confirmModal.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
+  mountAppFooterAddButton,
   clearAppFooterActions,
   getAppFooterActionsSlot,
 } from "../utils/appFooterShell.js";
@@ -4650,8 +4651,31 @@ export function render(opts = {}) {
   hourlyInput.value = String(storedRate);
   el.appendChild(hourlyInput);
 
-  const hourlyAddSlot = document.createElement("div");
-  lpSetClasses(hourlyAddSlot, "time-hourly-add-slot");
+  const ledgerAddFooterBtn = document.createElement("button");
+  ledgerAddFooterBtn.type = "button";
+  lpSetClasses(ledgerAddFooterBtn, APP_FOOTER_ICON_BTN_CLASS);
+  const ledgerAddFooterBtnWrap = mountAppFooterAddButton(ledgerAddFooterBtn);
+  ledgerAddFooterBtn.title = "과제 기록";
+  ledgerAddFooterBtn.setAttribute("aria-label", "과제 기록");
+  ledgerAddFooterBtn.innerHTML = TIME_LEDGER_ADD_PLUS_ICON_SVG;
+  ledgerAddFooterBtn.addEventListener("click", () => {
+    const refs = el._lpTaskLogModalLedgerRefs;
+    if (openTaskLogModal && refs?.hiddenTbody) {
+      openTaskLogModal({
+        productivity: null,
+        tbody: refs.hiddenTbody,
+        addRow: null,
+        onRowUpdate: () => {
+          updateTotal();
+          onFilterChange();
+        },
+        viewEl: el,
+        createRow,
+        handleRowDelete: refs.handleCardDelete,
+        handleRowEdit: refs.handleCardEdit,
+      });
+    }
+  });
 
   const now = new Date();
   function getLedgerFilterTodayYmd() {
@@ -4996,50 +5020,11 @@ export function render(opts = {}) {
     }
   }
 
-  /** 푸터 + 버튼은 renderAll 마다 innerHTML 비우지 않음 — 한 번만 붙임 */
-  function ensureHourlyAddFooterButton() {
-    if (!hourlyAddSlot || hourlyAddSlot.dataset.lpFooterAddBound === "1") return;
-    hourlyAddSlot.dataset.lpFooterAddBound = "1";
-    hourlyAddSlot.innerHTML = "";
-    const addInner = document.createElement("div");
-    lpSetClasses(
-      addInner,
-      "time-hourly-add-inner time-ledger-add-inner--icon-only",
-    );
-    const addBtnEl = document.createElement("button");
-    addBtnEl.type = "button";
-    lpSetClasses(addBtnEl, APP_FOOTER_ICON_BTN_CLASS);
-    addBtnEl.title = "과제 기록";
-    addBtnEl.setAttribute("aria-label", "과제 기록");
-    addBtnEl.innerHTML = TIME_LEDGER_ADD_PLUS_ICON_SVG;
-    addInner.appendChild(addBtnEl);
-    hourlyAddSlot.appendChild(addInner);
-    addBtnEl.addEventListener("click", () => {
-      const refs = el._lpTaskLogModalLedgerRefs;
-      if (openTaskLogModal && refs?.hiddenTbody) {
-        openTaskLogModal({
-          productivity: null,
-          tbody: refs.hiddenTbody,
-          addRow: null,
-          onRowUpdate: () => {
-            updateTotal();
-            onFilterChange();
-          },
-          viewEl: el,
-          createRow,
-          handleRowDelete: refs.handleCardDelete,
-          handleRowEdit: refs.handleCardEdit,
-        });
-      }
-    });
-  }
-
-  /** 설정·과제 기록(+)·조회 — 앱 푸터 공통: appFooterShell + main.css; 시간가계부 전용 래핑은 time-ledger.css */
+  /** 설정·과제 기록(+)·조회 — 앱 푸터 공통: appFooterShell + main.css */
   function syncAppFooterLedgerActions() {
-    ensureHourlyAddFooterButton();
     const slot = getAppFooterActionsSlot();
     if (!slot) return;
-    const nodes = [taskSetupBtn, hourlyAddSlot, footerDateBtn];
+    const nodes = [taskSetupBtn, ledgerAddFooterBtnWrap, footerDateBtn];
     for (const node of nodes) {
       if (node && node.parentElement !== slot) slot.appendChild(node);
     }

@@ -15,7 +15,12 @@ import {
   kpiTodoSnapshotBrief,
   kpiTodosCompletionBrief,
 } from "./kpiTodoLifecycleDebug.js";
-import { sortNormalizedKpiTodoRows } from "./kpiMapTodoListOrder.js";
+import {
+  mapDbRowToKpiDailyTodo,
+  normalizeKpiDailyTodoIdentity,
+  scrubKpiIdsFromDailyTodoDeletedRefs,
+  sortNormalizedKpiTodoRows,
+} from "./kpiMapTodoListOrder.js";
 import { KPI_LOG_SOURCE_MANUAL, KPI_LOG_SOURCE_TIME_LEDGER, kpiLogMetaFromDbRow } from "./kpiLogFields.js";
 import {
   readKpiMapScopedStorageRaw,
@@ -242,10 +247,7 @@ function rowToTodo(r) {
 
 function rowToDaily(r) {
   return {
-    id: r.id,
-    kpiId: r.kpi_id,
-    text: r.text || "",
-    completed: !!r.completed,
+    ...mapDbRowToKpiDailyTodo(r),
     serverUpdatedAt: serverUpdatedAtFromRow(r),
   };
 }
@@ -259,7 +261,8 @@ function deletedRefsFromMetaRow(meta) {
 }
 
 function buildPayloadFromRows(pathRows, pathLogRows, kpiRows, kpiLogRows, todoRows, dailyRows, meta) {
-  const dr = deletedRefsFromMetaRow(meta);
+  const kpiIdsEarly = new Set((kpiRows || []).map((k) => String(k.id)));
+  const dr = scrubKpiIdsFromDailyTodoDeletedRefs(deletedRefsFromMetaRow(meta), kpiIdsEarly);
   const rawCounts = {
     paths: (pathRows || []).length,
     pathLogs: (pathLogRows || []).length,
@@ -313,7 +316,7 @@ function buildPayloadFromRows(pathRows, pathLogRows, kpiRows, kpiLogRows, todoRo
     kpis: kpisFiltered.map(rowToKpi),
     kpiLogs: kpiLogsFiltered.map(rowToKpiLog),
     kpiTodos: sortNormalizedKpiTodoRows(todosFiltered).map(rowToTodo),
-    kpiDailyRepeatTodos: dailyFiltered.map(rowToDaily),
+    kpiDailyRepeatTodos: sortNormalizedKpiTodoRows(dailyFiltered).map(rowToDaily),
     kpiOrder,
     kpiTaskSync,
     deletedRefs: dr,
@@ -473,13 +476,24 @@ function todoToRow(userId, t, sortIndex) {
   };
 }
 
-function dailyTodoToRow(userId, t) {
+function dailyTodoToRow(userId, t, sortIndex) {
+  const norm = normalizeKpiDailyTodoIdentity(t);
+  const {
+    id,
+    kpiId,
+    text,
+    completed,
+    sortOrder: _sortOrder,
+    serverUpdatedAt: _serverUpdatedAt,
+    ...rest
+  } = norm;
   return {
     user_id: userId,
-    id: String(t.id),
-    kpi_id: String(t.kpiId),
-    text: (t.text || "").trim(),
-    completed: !!t.completed,
+    id: String(id),
+    kpi_id: String(kpiId),
+    text: (text || "").trim(),
+    completed: !!completed,
+    extra: { ...rest, sortOrder: sortIndex },
   };
 }
 
@@ -537,7 +551,12 @@ async function upsertNormalizedFromPayload(userId, p) {
   if (p.kpiDailyRepeatTodos.length) {
     const { error } = await supabase
       .from("sideincome_map_kpi_daily_todos")
-      .upsert(p.kpiDailyRepeatTodos.map((t) => dailyTodoToRow(userId, t)), { onConflict: UPSERT_CONFLICT_ROW });
+      .upsert(
+        p.kpiDailyRepeatTodos.map((t, sortIndex) =>
+          dailyTodoToRow(userId, t, sortIndex),
+        ),
+        { onConflict: UPSERT_CONFLICT_ROW },
+      );
     if (error) throw new Error(`sideincome_map_kpi_daily_todos: ${error.message}`);
   }
   if (localPayloadHasAnythingToPersist(p)) {

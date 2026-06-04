@@ -15,7 +15,12 @@ import {
   kpiTodoSnapshotBrief,
   kpiTodosCompletionBrief,
 } from "./kpiTodoLifecycleDebug.js";
-import { sortNormalizedKpiTodoRows } from "./kpiMapTodoListOrder.js";
+import {
+  mapDbRowToKpiDailyTodo,
+  normalizeKpiDailyTodoIdentity,
+  scrubKpiIdsFromDailyTodoDeletedRefs,
+  sortNormalizedKpiTodoRows,
+} from "./kpiMapTodoListOrder.js";
 import { KPI_LOG_SOURCE_MANUAL, KPI_LOG_SOURCE_TIME_LEDGER, kpiLogMetaFromDbRow } from "./kpiLogFields.js";
 import {
   readKpiMapScopedStorageRaw,
@@ -125,6 +130,7 @@ export const DEFAULT_MOVE_ROUTINE_KPI_ID = "__lp_default_kpi_move_routine__";
 export const DEFAULT_TIDY_ROUTINE_KPI_ID = "__lp_default_kpi_tidy_routine__";
 export const DEFAULT_OUT_PREP_ROUTINE_KPI_ID = "__lp_default_kpi_out_prep_routine__";
 export const DEFAULT_OUT_AFTER_ROUTINE_KPI_ID = "__lp_default_kpi_out_after_routine__";
+export const DEFAULT_BEDTIME_ROUTINE_KPI_ID = "__lp_default_kpi_bedtime_routine__";
 
 const PROTECTED_DEFAULT_HAPPINESS_KPI_IDS = new Set([
   DEFAULT_CHORE_TASK_KPI_ID,
@@ -133,6 +139,7 @@ const PROTECTED_DEFAULT_HAPPINESS_KPI_IDS = new Set([
   DEFAULT_TIDY_ROUTINE_KPI_ID,
   DEFAULT_OUT_PREP_ROUTINE_KPI_ID,
   DEFAULT_OUT_AFTER_ROUTINE_KPI_ID,
+  DEFAULT_BEDTIME_ROUTINE_KPI_ID,
 ]);
 
 export function isProtectedDefaultHappinessKpiId(id) {
@@ -205,6 +212,14 @@ export function createDefaultOutAfterRoutineKpi() {
   });
 }
 
+export function createDefaultBedtimeRoutineKpi() {
+  return createDefaultHappinessKpi({
+    id: DEFAULT_BEDTIME_ROUTINE_KPI_ID,
+    name: "취침 루틴",
+    needHabitTracker: true,
+  });
+}
+
 /** 고정 KPI 목록 순서(맨 위 → 아래) */
 const DEFAULT_HAPPINESS_KPI_ORDER = [
   DEFAULT_CHORE_TASK_KPI_ID,
@@ -213,6 +228,7 @@ const DEFAULT_HAPPINESS_KPI_ORDER = [
   DEFAULT_TIDY_ROUTINE_KPI_ID,
   DEFAULT_OUT_PREP_ROUTINE_KPI_ID,
   DEFAULT_OUT_AFTER_ROUTINE_KPI_ID,
+  DEFAULT_BEDTIME_ROUTINE_KPI_ID,
 ];
 
 const DEFAULT_HAPPINESS_KPI_FACTORIES = [
@@ -222,6 +238,7 @@ const DEFAULT_HAPPINESS_KPI_FACTORIES = [
   createDefaultTidyRoutineKpi,
   createDefaultOutPrepRoutineKpi,
   createDefaultOutAfterRoutineKpi,
+  createDefaultBedtimeRoutineKpi,
 ];
 
 const DEFAULT_HAPPINESS_HABIT_KPI_MIGRATIONS = [
@@ -230,6 +247,7 @@ const DEFAULT_HAPPINESS_HABIT_KPI_MIGRATIONS = [
   { id: DEFAULT_TIDY_ROUTINE_KPI_ID, name: "정리루틴" },
   { id: DEFAULT_OUT_PREP_ROUTINE_KPI_ID, name: "외출 준비 루틴" },
   { id: DEFAULT_OUT_AFTER_ROUTINE_KPI_ID, name: "외출 후 루틴" },
+  { id: DEFAULT_BEDTIME_ROUTINE_KPI_ID, name: "취침 루틴" },
 ];
 
 /** 기본 루틴 KPI — 매일하기 유지, 사용자가 넣은 목표값·단위는 지우지 않음 */
@@ -576,10 +594,7 @@ function rowToTodo(r) {
 
 function rowToDaily(r) {
   return {
-    id: r.id,
-    kpiId: r.kpi_id,
-    text: r.text || "",
-    completed: !!r.completed,
+    ...mapDbRowToKpiDailyTodo(r),
     serverUpdatedAt: serverUpdatedAtFromRow(r),
   };
 }
@@ -593,7 +608,8 @@ function deletedRefsFromMetaRow(meta) {
 }
 
 function buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, meta) {
-  const dr = deletedRefsFromMetaRow(meta);
+  const kpiIdsEarly = new Set((kpis || []).map((k) => String(k.id)));
+  const dr = scrubKpiIdsFromDailyTodoDeletedRefs(deletedRefsFromMetaRow(meta), kpiIdsEarly);
   const rawCounts = {
     categories: (categories || []).length,
     kpis: (kpis || []).length,
@@ -641,7 +657,7 @@ function buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, me
     kpis: kpisFiltered.map(rowToKpi),
     kpiLogs: logsFiltered.map(rowToLog),
     kpiTodos: sortNormalizedKpiTodoRows(todosFiltered).map(rowToTodo),
-    kpiDailyRepeatTodos: dailyFiltered.map(rowToDaily),
+    kpiDailyRepeatTodos: sortNormalizedKpiTodoRows(dailyFiltered).map(rowToDaily),
     kpiOrder,
     kpiTaskSync,
     deletedRefs: dr,
@@ -770,13 +786,24 @@ function todoToRow(userId, t, sortIndex) {
   };
 }
 
-function dailyTodoToRow(userId, t) {
+function dailyTodoToRow(userId, t, sortIndex) {
+  const norm = normalizeKpiDailyTodoIdentity(t);
+  const {
+    id,
+    kpiId,
+    text,
+    completed,
+    sortOrder: _sortOrder,
+    serverUpdatedAt: _serverUpdatedAt,
+    ...rest
+  } = norm;
   return {
     user_id: userId,
-    id: String(t.id),
-    kpi_id: String(t.kpiId),
-    text: (t.text || "").trim(),
-    completed: !!t.completed,
+    id: String(id),
+    kpi_id: String(kpiId),
+    text: (text || "").trim(),
+    completed: !!completed,
+    extra: { ...rest, sortOrder: sortIndex },
   };
 }
 
@@ -835,7 +862,12 @@ async function upsertNormalizedFromPayload(userId, p) {
   if (p.kpiDailyRepeatTodos.length) {
     const { error } = await supabase
       .from("happiness_map_kpi_daily_todos")
-      .upsert(p.kpiDailyRepeatTodos.map((t) => dailyTodoToRow(userId, t)), { onConflict: UPSERT_CONFLICT_ROW });
+      .upsert(
+        p.kpiDailyRepeatTodos.map((t, sortIndex) =>
+          dailyTodoToRow(userId, t, sortIndex),
+        ),
+        { onConflict: UPSERT_CONFLICT_ROW },
+      );
     if (error) throw new Error(`happiness_map_kpi_daily_todos: ${error.message}`);
   }
   if (localPayloadHasAnythingToPersist(p)) {
