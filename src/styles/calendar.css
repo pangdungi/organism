@@ -982,7 +982,7 @@
   font-weight: 600;
   line-height: 1.35;
   letter-spacing: -0.02em;
-  color: var(--text-ink);
+  color: #1d40ba;
 }
 
 .calendar-1day-timeline-card-end {
@@ -1017,7 +1017,7 @@
   margin-top: 0;
   font-size: 0.8125rem;
   line-height: 1.5;
-  color: var(--text-ink);
+  color: #1d40ba;
   white-space: pre-wrap;
   word-break: break-word;
   min-width: 0;
@@ -1093,6 +1093,18 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
+}
+
+/* 할 일 목록 — 카드 제목·날짜 (색만 변경, 글꼴은 앱 기본 상속) */
+.calendar-view-todo .todo-card-name,
+.calendar-view-todo .todo-card-dates {
+  color: #1d40ba;
+}
+
+.calendar-monthly-span-bar--todo,
+.calendar-monthly-span-bar--range,
+.calendar-monthly-span-bar--schedule-strip {
+  color: #1d40ba;
 }
 
 .calendar-monthly-layout.calendar-view-with-subtabs > .calendar-view-top-row {
@@ -1446,11 +1458,6 @@
   opacity: 0.55;
 }
 
-.calendar-monthly-span-bar--todo,
-.calendar-monthly-span-bar--range {
-  color: var(--cal-text);
-}
-
 /* 기간 막대는 단일일 막대보다 아래 레이어 — 같은 열에서 겹칠 때 할 일 텍스트가 가리지 않게 */
 .calendar-monthly-span-bar--range {
   z-index: 1;
@@ -1465,7 +1472,7 @@
 
 .calendar-monthly-span-bar.is-past,
 .calendar-monthly-span-bar.is-past .calendar-monthly-span-bar-text {
-  color: rgba(30, 61, 93, 0.66);
+  color: #1d40ba;
 }
 
 .calendar-monthly-span-bar.is-past.calendar-monthly-span-bar--todo {
@@ -1672,7 +1679,7 @@
   font: inherit;
   font-size: 0.75rem;
   line-height: 1.35;
-  color: var(--cal-text);
+  color: #1d40ba;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -1685,10 +1692,6 @@
   border-style: solid;
   border-color: color-mix(in srgb, var(--cal-line-strong) 55%, transparent);
   background: #fff;
-}
-
-.calendar-1week-flow-card--ledger-done .calendar-1week-flow-card-title {
-  color: var(--cal-text);
 }
 
 /* 미이행 — 연한 하늘 배경·블루그레이 텍스트 */
@@ -2511,7 +2514,10 @@
     border-color 0.1s ease;
 }
 
-.calendar-day-expand-item.is-past .calendar-day-expand-text,
+.calendar-day-expand-item.is-past .calendar-day-expand-text {
+  color: #1d40ba;
+}
+
 .calendar-day-expand-item.is-past .calendar-day-expand-time,
 .calendar-day-expand-item.is-past .calendar-task-done-mark {
   color: rgba(30, 61, 93, 0.58);
@@ -2537,7 +2543,7 @@
 .calendar-day-expand-text {
   font-size: 0.8125rem;
   font-weight: 500;
-  color: var(--lp-modal-navy);
+  color: #1d40ba;
   word-break: break-word;
 }
 
