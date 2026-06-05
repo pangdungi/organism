@@ -707,7 +707,8 @@
   gap: 0.65rem;
 }
 
-.lp-kpi-dream-page .dream-kpi-detail-wrap .dream-kpi-bottom-seg-bar {
+.lp-kpi-dream-page .dream-kpi-detail-wrap .dream-kpi-bottom-seg-bar,
+.lp-kpi-dream-page .dream-kpi-detail-wrap .dream-kpi-bottom-seg-row {
   flex: 0 0 auto;
   flex-shrink: 0;
   align-self: center;
@@ -795,6 +796,53 @@
   margin-left: auto;
   margin-right: auto;
   margin-bottom: 0.35rem;
+}
+
+/* KPI 세그 바(가운데) + 완료 할 일 삭제 휴지통(줄 맨 오른쪽) */
+.lp-kpi-dream-page .dream-kpi-bottom-seg-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto 0.45rem;
+  box-sizing: border-box;
+}
+
+.lp-kpi-dream-page .dream-kpi-bottom-seg-bar-center {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.lp-kpi-dream-page .dream-kpi-bottom-seg-bar-center .dream-kpi-bottom-seg-bar {
+  margin: 0;
+}
+
+.lp-kpi-dream-page .dream-kpi-bottom-seg-clear-completed-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin: 0;
+  padding: 0.2rem;
+  border: none;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: var(--idea-navy, #1e4d7b);
+  cursor: pointer;
+}
+
+.lp-kpi-dream-page .dream-kpi-bottom-seg-clear-completed-btn:hover {
+  background: rgba(30, 77, 123, 0.08);
+}
+
+.lp-kpi-dream-page .dream-kpi-bottom-seg-clear-completed-btn:focus-visible {
+  outline: 2px solid var(--idea-navy, #1e4d7b);
+  outline-offset: 2px;
 }
 
 /* KPI 확장 패널: 로그·할 일·매일할일 — 슬라이딩 흰 칩 (시간가계부 세그먼트와 동일 compact) */

@@ -67,6 +67,7 @@ import {
   appendKpiDailyRepeatTodoAtEnd,
   sortNormalizedKpiTodoRows,
 } from "../utils/kpiMapTodoListOrder.js";
+import { mountKpiSegBarClearCompletedRow } from "../utils/kpiTodoBulkDeleteUi.js";
 import { formatKpiCardHeroHtml } from "../utils/kpiViewModal.js";
 import { showKpiTodoEditModal } from "../utils/kpiTodoEditModal.js";
 import {
@@ -1602,7 +1603,15 @@ export function render() {
       panelDailySeg.appendChild(dailyList);
     }
 
-    target.appendChild(segBar);
+    const segBarMount = mountKpiSegBarClearCompletedRow(segBar, {
+      showClearCompleted: !dailyTodosOnly,
+      kpiId: selKpi,
+      loadMap: loadHealthMap,
+      saveMap: saveHealthMap,
+      appendDeletedRef,
+      onAfterDelete: () => renderKpiDetailView({ scrollTodoAfterMutation: true }),
+    });
+    target.appendChild(segBarMount);
     target.appendChild(panelLogSeg);
     if (panelTodoSeg) target.appendChild(panelTodoSeg);
     if (panelDailySeg) target.appendChild(panelDailySeg);

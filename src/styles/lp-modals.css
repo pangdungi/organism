@@ -1168,7 +1168,25 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 [data-legacy~="time-task-log-datetime-fields-wrap"]
   > [data-legacy~="time-task-log-field"]:first-child {
   position: relative;
-  z-index: 2;
+  z-index: 6;
+  isolation: isolate;
+}
+.time-task-log-datetime-fields-wrap
+  > .time-task-log-field:first-child
+  .time-task-log-task-dropdown,
+[data-legacy~="time-task-log-datetime-fields-wrap"]
+  > [data-legacy~="time-task-log-field"]:first-child
+  [data-legacy~="time-task-log-task-dropdown"] {
+  position: relative;
+  z-index: 7;
+}
+.time-task-log-datetime-fields-wrap > .time-task-log-field:nth-child(2),
+[data-legacy~="time-task-log-datetime-fields-wrap"]
+  > [data-legacy~="time-task-log-field"]:nth-child(2) {
+  position: relative;
+  z-index: 1;
+  isolation: isolate;
+  overflow: hidden;
 }
 .time-task-log-datetime-date-row .time-task-log-date-native-wrap,
 [data-legacy~="time-task-log-datetime-date-row"]
@@ -2929,6 +2947,49 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   [data-legacy~="time-task-log-task-dropdown-trigger"]::after {
     content: none !important;
     display: none !important;
+  }
+
+  /* iOS: 날짜 native input 고스트 터치가 위「이 시간에 할 행동」버튼을 가리지 않게 */
+  .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+    .time-task-log-datetime-date-row
+    .time-task-log-date-native-wrap
+    input[type="date"],
+  .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+    .time-task-log-datetime-date-row
+    .time-task-log-date-native-wrap
+    input[type="date"]::-webkit-calendar-picker-indicator,
+  [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+      .lp-calendar-budget-add-modal
+    )
+    [data-legacy~="time-task-log-datetime-date-row"]
+    [data-legacy~="time-task-log-date-native-wrap"]
+    input[type="date"],
+  [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+      .lp-calendar-budget-add-modal
+    )
+    [data-legacy~="time-task-log-datetime-date-row"]
+    [data-legacy~="time-task-log-date-native-wrap"]
+    input[type="date"]::-webkit-calendar-picker-indicator {
+    pointer-events: none !important;
+  }
+  .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+    .time-task-log-datetime-date-row
+    .time-task-log-date-native-wrap,
+  [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+      .lp-calendar-budget-add-modal
+    )
+    [data-legacy~="time-task-log-datetime-date-row"]
+    [data-legacy~="time-task-log-date-native-wrap"] {
+    pointer-events: auto;
+    touch-action: manipulation;
+  }
+
+  /* 모바일 인라인 드롭다운 목록 — 터치 가로채기 방지(하단 시트만 사용) */
+  .time-task-log-task-dropdown-panel,
+  .time-task-log-task-dropdown-options,
+  [data-legacy~="time-task-log-task-dropdown-panel"],
+  [data-legacy~="time-task-log-task-dropdown-options"] {
+    pointer-events: none !important;
   }
 }
 

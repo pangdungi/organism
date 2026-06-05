@@ -557,10 +557,17 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
 
   trigger.setAttribute("aria-haspopup", "listbox");
   trigger.setAttribute("aria-expanded", "false");
-  const onTriggerActivate = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  let mobilePickerActivateLockUntil = 0;
+
+  function activateTaskPicker(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (isTaskLogPickerMobile()) {
+      const now = Date.now();
+      if (now < mobilePickerActivateLockUntil) return;
+      mobilePickerActivateLockUntil = now + 450;
       openMobileSheet();
       return;
     }
@@ -573,8 +580,33 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
       closePanel();
     }
     /* 과제 검색 — 사용자가 입력칸을 직접 탭할 때만 키보드(드롭다운 열기만으로 포커스 금지) */
-  };
+  }
+
+  const onTriggerActivate = (e) => activateTaskPicker(e);
+
   trigger.addEventListener("click", onTriggerActivate);
+  if (isTaskLogPickerMobile()) {
+    const taskField = wrap.closest(
+      ".time-task-log-field, [data-legacy~='time-task-log-field']",
+    );
+    if (taskField instanceof HTMLElement) {
+      const openFromTaskField = (e) => {
+        if (
+          e.target.closest(
+            ".time-task-log-task-dropdown-panel, [data-legacy~='time-task-log-task-dropdown-panel']",
+          )
+        ) {
+          return;
+        }
+        activateTaskPicker(e);
+      };
+      taskField.addEventListener("click", openFromTaskField, true);
+      taskField.addEventListener("touchstart", openFromTaskField, {
+        capture: true,
+        passive: false,
+      });
+    }
+  }
   const closePanelOnOutside = (e) => {
     if (isTaskLogPickerMobile()) return;
     if (panel.hidden) return;
