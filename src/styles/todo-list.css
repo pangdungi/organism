@@ -137,7 +137,7 @@
   background: transparent !important;
   box-shadow: none;
   font-size: 0.8125rem;
-  font-weight: 400;
+  font-weight: 500;
   letter-spacing: -0.02em;
   line-height: 1.2;
   color: rgba(30, 61, 93, 0.45);
@@ -412,7 +412,7 @@
 
 .todo-card-name {
   font-size: 0.9375rem;
-  font-weight: 400;
+  font-weight: 500;
   color: var(--text-ink);
   line-height: 1.35;
   word-break: break-word;

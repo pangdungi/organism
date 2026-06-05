@@ -28,7 +28,7 @@
   --cal-text-muted: rgba(30, 61, 93, 0.52);
   --cal-today-accent: #1e4d7b;
   /** 오늘 날짜 숫자 원형 — 진한 블루 배경 + 흰 글자 */
-  --cal-today-circle-bg: #3a6ea8;
+  --cal-today-circle-bg: #1d40ba;
   --cal-today-circle-fg: #fff;
   /** 기간 막대(시작≠마감): 리스트(섹션) 색과 무관하게 동일 */
   --cal-range-span-bar-bg: #d6e8f4;
@@ -137,6 +137,7 @@
   min-width: 2.75rem;
   padding: 0 0.4rem;
   font-family: var(--lp-calendar-month-font-family);
+  font-synthesis: none;
   font-size: 0.9375rem;
   font-weight: 700;
   line-height: 1.1;
@@ -186,6 +187,7 @@
 .calendar-view:not(.calendar-view--mobile-workschedule) .calendar-nav-month,
 .calendar-annual-row-month {
   font-family: var(--lp-calendar-month-font-family);
+  font-synthesis: none;
   color: #1d40ba;
 }
 
@@ -195,6 +197,7 @@
 
 .calendar-view:not(.calendar-view--mobile-workschedule) .calendar-monthly-top-bar-date-num {
   font-family: var(--lp-calendar-month-font-family);
+  font-synthesis: none;
   color: #1d40ba;
 }
 
@@ -1305,9 +1308,9 @@
   z-index: 1;
   flex: 1 1 auto;
   min-height: 0;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   line-height: 1.35;
-  color: var(--cal-text-muted);
+  color: rgba(30, 61, 93, 0.64);
   pointer-events: none;
 }
 
@@ -1413,7 +1416,7 @@
   display: flex;
   align-items: center;
   border-radius: 4px;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 600;
   line-height: 1.25;
   padding: 0.12rem 0.3rem;
@@ -1462,7 +1465,7 @@
 
 .calendar-monthly-span-bar.is-past,
 .calendar-monthly-span-bar.is-past .calendar-monthly-span-bar-text {
-  color: rgba(30, 61, 93, 0.58);
+  color: rgba(30, 61, 93, 0.66);
 }
 
 .calendar-monthly-span-bar.is-past.calendar-monthly-span-bar--todo {
@@ -2025,12 +2028,13 @@
   }
 
   .calendar-monthly-day-entries {
-    font-size: 0.625rem;
+    font-size: 0.6875rem;
     line-height: 1.32;
+    color: rgba(30, 61, 93, 0.62);
   }
 
   .calendar-monthly-span-bar {
-    font-size: 0.625rem;
+    font-size: 0.6875rem;
     line-height: 1.2;
     padding: 0.1rem 0.25rem;
   }
@@ -2127,11 +2131,11 @@
   }
 
   .calendar-monthly-span-bar {
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
   }
 
   .calendar-monthly-day-entries {
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
   }
 }
 

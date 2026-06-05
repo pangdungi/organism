@@ -6,10 +6,13 @@
 :root {
   --lp-app-font-family: "LP Kyobo Handwriting", system-ui, -apple-system, "Segoe UI",
     Roboto, sans-serif;
+  /* 앱 기본 글꼴(교보·시스템) — 본문이 너무 가늘지 않게 */
+  --lp-app-font-weight-base: 500;
 }
 
 html {
   font-family: var(--lp-app-font-family);
+  font-weight: var(--lp-app-font-weight-base);
   text-rendering: auto;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
@@ -20,7 +23,9 @@ html {
 body,
 #app {
   font-family: inherit;
-  font-synthesis: none;
+  font-weight: inherit;
+  /* 단일 굵기 OTF에서도 font-weight 600·700이 반영되도록 */
+  font-synthesis: weight;
 }
 
 button,
