@@ -4,7 +4,7 @@
  * — pwa-splash-*: splash-screen.svg 래스터 (iOS·Android 네이티브·in-app 스플래시)
  */
 import sharp from "sharp";
-import { existsSync } from "fs";
+import { existsSync, writeFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
@@ -80,6 +80,48 @@ async function writeIcon(filename, buffer) {
   console.log("wrote", outPath);
 }
 
+/** 탭·검색용 favicon.ico (PNG-in-ICO, 16·32·48) */
+function buildIcoFromPngs(entries) {
+  const count = entries.length;
+  const headerSize = 6 + count * 16;
+  let offset = headerSize;
+  const header = Buffer.alloc(6);
+  header.writeUInt16LE(0, 0);
+  header.writeUInt16LE(1, 2);
+  header.writeUInt16LE(count, 4);
+  const dirs = [];
+  const images = [];
+  for (const { size, buffer } of entries) {
+    const dir = Buffer.alloc(16);
+    dir.writeUInt8(size >= 256 ? 0 : size, 0);
+    dir.writeUInt8(size >= 256 ? 0 : size, 1);
+    dir.writeUInt8(0, 2);
+    dir.writeUInt8(0, 3);
+    dir.writeUInt16LE(1, 4);
+    dir.writeUInt16LE(32, 6);
+    dir.writeUInt32LE(buffer.length, 8);
+    dir.writeUInt32LE(offset, 12);
+    offset += buffer.length;
+    dirs.push(dir);
+    images.push(buffer);
+  }
+  return Buffer.concat([header, ...dirs, ...images]);
+}
+
+async function writeFaviconBundle() {
+  const sizes = [16, 32, 48];
+  const entries = [];
+  for (const size of sizes) {
+    entries.push({ size, buffer: await buildAnyIcon(size) });
+  }
+  const icoPath = join(publicDir, "favicon.ico");
+  writeFileSync(icoPath, buildIcoFromPngs(entries));
+  console.log("wrote", icoPath);
+  for (const size of sizes) {
+    await writeIcon(`icon-${size}.png`, entries.find((e) => e.size === size).buffer);
+  }
+}
+
 async function main() {
   if (!existsSync(SOURCE)) {
     console.error("app icon source missing:", SOURCE);
@@ -90,7 +132,10 @@ async function main() {
     process.exit(1);
   }
 
-  await writeIcon("icon-512.png", await buildAnyIcon(512));
+  await writeFaviconBundle();
+  const icon512 = await buildAnyIcon(512);
+  await writeIcon("icon-512.png", icon512);
+  await writeIcon("og-app-icon.png", icon512);
   await writeIcon("icon-192.png", await buildAnyIcon(192));
   await writeIcon("apple-touch-icon.png", await buildAnyIcon(180));
   await writeIcon("icon-maskable-512.png", await buildMaskableIcon(512));

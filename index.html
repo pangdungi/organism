@@ -8,8 +8,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <!-- viewport-fit=cover: 세로 세이프는 .app-page padding-top 한 곳만 -->
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="timeisprice.com" />
-    <meta name="application-name" content="timeisprice.com" />
+    <meta name="apple-mobile-web-app-title" content="Doodle" />
+    <meta name="application-name" content="Doodle" />
     <meta
       name="description"
       content="Money is time는 KPI·목표·시간 기록·일정·가계부·일지를 한곳에서 다루는 생산성 웹 서비스입니다. timeisprice.com에서 회원가입 후 데이터를 클라우드에 동기화할 수 있습니다."
@@ -20,44 +20,49 @@
     />
     <link rel="canonical" href="https://timeisprice.com/" />
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="Money is time" />
-    <meta property="og:title" content="Money is time" />
+    <meta property="og:site_name" content="Doodle" />
+    <meta property="og:title" content="Doodle" />
     <meta
       property="og:description"
       content="KPI·목표·시간 기록·일정·가계부를 연결하는 생산성 플래너 웹 서비스입니다."
     />
     <meta property="og:url" content="https://timeisprice.com/" />
     <meta property="og:locale" content="ko_KR" />
-    <meta property="og:image" content="https://timeisprice.com/icon-512.png?v=doodle-logo-3" />
+    <meta property="og:image" content="https://timeisprice.com/og-app-icon.png" />
     <meta property="og:image:width" content="512" />
     <meta property="og:image:height" content="512" />
-    <meta property="og:image:alt" content="Money is time 앱 로고" />
+    <meta property="og:image:alt" content="Doodle 앱 로고" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Money is time" />
-    <meta name="twitter:image" content="https://timeisprice.com/icon-512.png?v=doodle-logo-3" />
+    <meta name="twitter:title" content="Doodle" />
+    <meta name="twitter:image" content="https://timeisprice.com/og-app-icon.png" />
     <meta
       name="twitter:description"
       content="KPI·목표·시간 기록·일정을 한곳에서 관리하는 웹 서비스입니다."
     />
-    <title>Money is time</title>
+    <title>Doodle</title>
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "WebSite",
-        "name": "Money is time",
+        "name": "Doodle",
         "url": "https://timeisprice.com/",
         "description": "KPI·목표·시간 기록·일정·가계부를 연결하는 생산성 플래너 웹 서비스입니다.",
-        "image": "https://timeisprice.com/icon-512.png?v=doodle-logo-3"
+        "image": "https://timeisprice.com/icon-512.png?v=doodle-logo-5"
       }
     </script>
-    <!-- manifest·favicon·og:image 캐시: v= 쿼리 변경 시 검색·미리보기가 새 로고를 받음 -->
-    <link rel="manifest" href="/manifest.json?v=doodle-logo-3" />
+    <!-- manifest·favicon·og:image — 탭·검색은 favicon.ico·og-app-icon.png(별도 경로) -->
+    <link rel="manifest" href="/manifest.json?v=doodle-logo-5" />
     <link rel="preload" href="/fonts/LP-KyoboHandwriting2025.otf" as="font" type="font/otf" crossorigin />
     <link rel="preload" href="/toolbaricons/splash/splash-screen.png?v=good-things-splash-png-1" as="image" type="image/png" />
-    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png?v=doodle-logo-3" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=doodle-logo-3" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=doodle-logo-3" />
-    <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png?v=doodle-logo-3" />
+    <link rel="icon" href="/favicon.ico?v=doodle-logo-5" sizes="48x48" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/icon-48.png?v=doodle-logo-5" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png?v=doodle-logo-5" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icon-16.png?v=doodle-logo-5" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg?v=doodle-logo-5" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png?v=doodle-logo-5" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=doodle-logo-5" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=doodle-logo-5" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png?v=doodle-logo-5" />
     <!-- iOS 홈 화면 실행 직후 네이티브 스플래시(전체 화면 물결+수달) -->
     <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1179.png?v=good-things-splash-png-1" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
     <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1179.png?v=good-things-splash-png-1" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
@@ -271,14 +276,13 @@
           background: #fff;
         "
       >
-        <h1 style="font-size: 1.35rem; margin: 0 0 0.75rem">Money is time</h1>
+        <h1 style="font-size: 1.35rem; margin: 0 0 0.75rem">Doodle</h1>
         <p style="margin: 0 0 0.75rem">
           KPI·목표 관리, 시간 기반 기록, 일정·가계부·일지·습관 트래커를 하나의 웹 앱에서 사용하는 생산성 서비스입니다.
         </p>
         <p style="margin: 0 0 0.75rem">
           이 페이지를 이용하려면 브라우저에서 JavaScript를 켜 주세요. 모바일·데스크톱에서 회원가입·로그인 후 데이터가 동기화됩니다.
         </p>
-        <p style="margin: 0; font-size: 0.875rem; color: #6e6e73">공식 주소: timeisprice.com</p>
       </div>
     </noscript>
     <div

@@ -1,18 +1,24 @@
 /* PWA 서비스 워커 — 앱 설치·오프라인 */
 /** index.html·manifest 의 ?v= 와 동일하게 유지 */
-const PWA_BRAND = "doodle-logo-3";
+const PWA_BRAND = "doodle-logo-5";
 /** 번들·아이콘 등 캐시 버전 (전략·브랜드 바꿀 때 올리면 이전 캐시 정리됨) */
-const ASSET_CACHE = "tip-assets-v30";
+const ASSET_CACHE = "tip-assets-v32";
 /** HTML 셸 캐시 — 홈 화면에서 열 때 즉시 표시용 */
 const HTML_CACHE = "tip-html-v5";
 
 const PWA_BRAND_BASENAMES = new Set([
   "/manifest.json",
+  "/favicon.ico",
+  "/icon-16.png",
+  "/icon-32.png",
+  "/icon-48.png",
   "/icon-192.png",
   "/icon-512.png",
+  "/og-app-icon.png",
   "/icon-maskable-192.png",
   "/icon-maskable-512.png",
   "/apple-touch-icon.png",
+  "/icon.svg",
 ]);
 
 function isPwaBrandAsset(pathname) {
@@ -27,6 +33,9 @@ const PWA_INSTALL_CORE_PATHS = [
   `/icon-maskable-192.png?v=${PWA_BRAND}`,
   `/icon-maskable-512.png?v=${PWA_BRAND}`,
   `/apple-touch-icon.png?v=${PWA_BRAND}`,
+  `/favicon.ico?v=${PWA_BRAND}`,
+  `/icon-48.png?v=${PWA_BRAND}`,
+  `/og-app-icon.png`,
   "/pwa-splash-512.png",
   "/pwa-splash-portrait-1080.png",
   "/pwa-splash-portrait-1170.png",

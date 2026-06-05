@@ -121,28 +121,28 @@ function getInstallInstructions() {
   if (canNativePrompt) {
     return {
       title: "앱 설치",
-      desc: "Money is time를 홈 화면에 설치하면 앱처럼 전체 화면으로 열 수 있어요.",
+      desc: "Doodle을 홈 화면에 설치하면 앱처럼 전체 화면으로 열 수 있어요.",
       showInstallBtn: true,
     };
   }
   if (ios && isIosNonSafari()) {
     return {
       title: "Safari에서 설치",
-      desc: "iPhone·iPad의 Chrome 등에서는 「앱 설치」 메뉴가 없습니다. Safari로 timeisprice.com 을 연 뒤 하단 공유(↑) → 「홈 화면에 추가」를 눌러 주세요.",
+      desc: "iPhone·iPad의 Chrome 등에서는 「앱 설치」 메뉴가 없습니다. Safari로 이 사이트를 연 뒤 하단 공유(↑) → 「홈 화면에 추가」를 눌러 주세요.",
       showCopyUrl: true,
     };
   }
   if (ios) {
     return {
       title: "홈 화면에 추가",
-      desc: "Safari에서 timeisprice.com 을 연 뒤 공유(↑) → 「홈 화면에 추가」를 눌러 주세요. 예전 오가니즘플래너 아이콘이 있으면 삭제한 뒤 다시 추가해 주세요.",
+      desc: "Safari에서 공유(↑) → 「홈 화면에 추가」를 눌러 주세요. 예전 아이콘이 있으면 삭제한 뒤 다시 추가해 주세요.",
     };
   }
   if (android) {
     return {
       title: "앱 설치 / 홈 화면 추가",
       desc: deferredPrompt
-        ? "Money is time를 홈 화면에 설치하면 앱처럼 전체 화면으로 열 수 있어요."
+        ? "Doodle을 홈 화면에 설치하면 앱처럼 전체 화면으로 열 수 있어요."
         : "앱 설치 준비 중이에요. 잠시 후 「앱 설치」가 뜨거나, ⋮ → 「앱 설치」·「홈 화면에 추가」를 눌러 주세요.",
       showInstallBtn: !!deferredPrompt,
     };
@@ -174,7 +174,7 @@ async function runNativeInstall() {
       closeLpPwaInstallHelpModal();
       showToast(
         "홈 화면을 확인해 주세요",
-        "timeisprice.com 아이콘이 생겼는지 봐 주세요. 예전 아이콘이 남아 있으면 삭제 후 다시 추가해 주세요.",
+        "Doodle 아이콘이 생겼는지 봐 주세요. 예전 아이콘이 남아 있으면 삭제 후 다시 추가해 주세요.",
       );
       return;
     }
@@ -309,7 +309,7 @@ export function showLpPwaInstallHelp() {
     return;
   }
   if (!isMobileDevice()) {
-    showToast("PC Chrome ⋮ 메뉴에서 「Money is time 설치」를 선택해 주세요.");
+    showToast("PC Chrome ⋮ 메뉴에서 「Doodle 설치」를 선택해 주세요.");
     return;
   }
 
@@ -366,7 +366,7 @@ export function initLpPwaInstall() {
     closeLpPwaInstallHelpModal();
     showToast(
       "홈 화면을 확인해 주세요",
-      "Money is time 아이콘이 생겼는지 봐 주세요. 아직 없으면 잠시 후 다시 확인해 주세요.",
+      "Doodle 아이콘이 생겼는지 봐 주세요. 아직 없으면 잠시 후 다시 확인해 주세요.",
     );
   });
 
