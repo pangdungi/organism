@@ -20,11 +20,32 @@ function scrollItemToCenter(listEl, itemEl) {
   );
 }
 
+function scrollItemToTop(listEl, itemEl, pad = 2) {
+  if (!(listEl instanceof HTMLElement) || !(itemEl instanceof HTMLElement)) return;
+  const targetY = itemEl.offsetTop - pad;
+  listEl.scrollTop = Math.max(
+    0,
+    Math.min(targetY, listEl.scrollHeight - listEl.clientHeight),
+  );
+}
+
+const WHEEL_ITEM_SELECTOR =
+  ".lp-task-log-mobile-picker-item, [data-legacy~='lp-task-log-mobile-picker-item']";
+
+function queryWheelItemByBucket(listEl, bucketId) {
+  if (!(listEl instanceof HTMLElement) || !bucketId) return null;
+  const esc = CSS.escape(bucketId);
+  return (
+    listEl.querySelector(
+      `[data-legacy~="lp-task-log-mobile-picker-item"][data-bucket="${esc}"]`,
+    ) ||
+    listEl.querySelector(`.lp-task-log-mobile-picker-item[data-bucket="${esc}"]`)
+  );
+}
+
 function nearestWheelItem(listEl) {
   if (!(listEl instanceof HTMLElement)) return null;
-  const items = listEl.querySelectorAll(
-    ".lp-task-log-mobile-picker-item, [data-legacy~='lp-task-log-mobile-picker-item']",
-  );
+  const items = listEl.querySelectorAll(WHEEL_ITEM_SELECTOR);
   if (!items.length) return null;
   const centerY = listEl.scrollTop + listEl.clientHeight / 2;
   let best = items[0];
@@ -57,6 +78,7 @@ export function createMobileTaskLogPicker(options = {}) {
   let lastSelectedWheelRow = null;
   /** @type {ReturnType<typeof setTimeout> | null} */
   let wheelScrollTimer = null;
+  let bucketScrollLockUntil = 0;
   /** @type {ReturnType<typeof setTimeout> | null} */
   let searchRenderTimer = null;
   let mounted = false;
@@ -208,25 +230,7 @@ export function createMobileTaskLogPicker(options = {}) {
     return chips.filter((c) => ids.has(c.id));
   }
 
-  function scrollToBucket(bucketId) {
-    const anchor =
-      wheelList.querySelector(
-        `[data-bucket-anchor="${CSS.escape(bucketId)}"]`,
-      ) ||
-      wheelList.querySelector(
-        `.lp-task-log-mobile-picker-item[data-bucket="${CSS.escape(bucketId)}"]`,
-      );
-    if (anchor instanceof HTMLElement) {
-      scrollItemToCenter(wheelList, anchor);
-      const taskRow = anchor.classList.contains("lp-task-log-mobile-picker-item")
-        ? anchor
-        : anchor.nextElementSibling?.closest?.(
-            ".lp-task-log-mobile-picker-item",
-          );
-      if (taskRow instanceof HTMLElement && taskRow.dataset.taskName) {
-        selectWheelValue(taskRow.dataset.taskName, taskRow);
-      }
-    }
+  function syncBucketChipActive(bucketId) {
     bucketChipRow.querySelectorAll(
       ".lp-task-log-mobile-picker-bucket, [data-legacy~='lp-task-log-mobile-picker-bucket']",
     ).forEach((btn) => {
@@ -234,6 +238,22 @@ export function createMobileTaskLogPicker(options = {}) {
       lpTokenToggle(btn, "is-active", on);
       btn.setAttribute("aria-selected", on ? "true" : "false");
     });
+  }
+
+  function scrollToBucket(bucketId) {
+    syncBucketChipActive(bucketId);
+    const header = wheelList.querySelector(
+      `[data-bucket-anchor="${CSS.escape(bucketId)}"]`,
+    );
+    const firstItem = queryWheelItemByBucket(wheelList, bucketId);
+    if (!(firstItem instanceof HTMLElement)) return;
+
+    const scrollAnchor =
+      header instanceof HTMLElement ? header : firstItem;
+    bucketScrollLockUntil = Date.now() + 180;
+    scrollItemToTop(wheelList, scrollAnchor, 2);
+    pendingValue = firstItem.dataset.taskName || "";
+    syncWheelSelectionClass();
   }
 
   function renderBucketChips(tasks) {
@@ -253,10 +273,16 @@ export function createMobileTaskLogPicker(options = {}) {
       btn.textContent = label;
       btn.setAttribute("role", "tab");
       btn.setAttribute("aria-selected", "false");
-      btn.addEventListener("click", (e) => {
+      const pickBucket = (e) => {
         e.preventDefault();
+        e.stopPropagation();
         scrollToBucket(id);
+      };
+      btn.addEventListener("pointerdown", (e) => {
+        if (e.pointerType === "mouse" && e.button !== 0) return;
+        pickBucket(e);
       });
+      btn.addEventListener("click", pickBucket);
       bucketChipRow.appendChild(btn);
     });
   }
@@ -354,16 +380,11 @@ export function createMobileTaskLogPicker(options = {}) {
     );
     const bucketId = row?.dataset?.bucket || "";
     if (!bucketId) return;
-    bucketChipRow.querySelectorAll(
-      ".lp-task-log-mobile-picker-bucket, [data-legacy~='lp-task-log-mobile-picker-bucket']",
-    ).forEach((btn) => {
-      const on = btn.dataset.bucket === bucketId;
-      lpTokenToggle(btn, "is-active", on);
-      btn.setAttribute("aria-selected", on ? "true" : "false");
-    });
+    syncBucketChipActive(bucketId);
   }
 
   function onWheelScrollEnd() {
+    if (Date.now() < bucketScrollLockUntil) return;
     const nearest = nearestWheelItem(wheelList);
     if (!nearest?.dataset?.taskName) return;
     pendingValue = nearest.dataset.taskName;

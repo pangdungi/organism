@@ -2456,6 +2456,13 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 [data-legacy~="time-task-log-task-dropdown-trigger"]:hover {
   border-color: rgba(30, 77, 123, 0.35);
 }
+.time-task-log-task-dropdown-trigger.has-value,
+[data-legacy~="time-task-log-task-dropdown-trigger"][data-legacy~="has-value"] {
+  font-weight: 700;
+  color: var(--lp-modal-navy);
+  border-color: rgba(30, 77, 123, 0.42);
+  background: rgba(30, 77, 123, 0.04);
+}
 .time-task-log-task-dropdown-panel,
 [data-legacy~="time-task-log-task-dropdown-panel"] {
   position: absolute;
@@ -2661,24 +2668,31 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   padding: 0.45rem 0.5rem;
   border-bottom: 1px solid var(--lp-modal-border);
   background: #fff;
+  pointer-events: auto;
+  touch-action: manipulation;
 }
 .time-task-log-task-dropdown-bucket,
 [data-legacy~="time-task-log-task-dropdown-bucket"] {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.72rem;
-  font-weight: 500;
+  min-height: 2.15rem;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.875rem;
+  font-weight: 600;
   font-family: inherit;
+  line-height: 1.2;
   color: var(--lp-modal-navy-muted);
   background: #f1f5f9;
-  border: 1px solid transparent;
+  border: 1px solid rgba(30, 77, 123, 0.12);
   border-radius: 999px;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 .time-task-log-task-dropdown-bucket.is-active,
 [data-legacy~="time-task-log-task-dropdown-bucket"][data-legacy~="is-active"] {
   color: #fff;
+  font-weight: 700;
   background: var(--lp-modal-accent);
   border-color: var(--lp-modal-accent);
+  box-shadow: 0 2px 8px rgba(30, 77, 123, 0.22);
 }
 .time-task-log-task-dropdown-options,
 [data-legacy~="time-task-log-task-dropdown-options"] {
@@ -2940,6 +2954,9 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   .time-task-log-task-dropdown-trigger,
   [data-legacy~="time-task-log-task-dropdown-trigger"] {
     justify-content: flex-start;
+    min-height: 2.75rem;
+    padding: 0.7rem 0.75rem;
+    font-size: 1rem;
   }
   .time-task-log-task-dropdown-trigger::after,
   [data-legacy~="time-task-log-task-dropdown-trigger"]::after {
@@ -3083,6 +3100,8 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 }
 .lp-task-log-mobile-picker-buckets,
 [data-legacy~="lp-task-log-mobile-picker-buckets"] {
+  position: relative;
+  z-index: 3;
   flex-shrink: 0;
   display: flex;
   flex-wrap: nowrap;
@@ -3094,6 +3113,8 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   border-bottom: 1px solid var(--lp-modal-border);
   background: #fff;
   scrollbar-width: none;
+  pointer-events: auto;
+  touch-action: manipulation;
 }
 .lp-task-log-mobile-picker-buckets::-webkit-scrollbar,
 [data-legacy~="lp-task-log-mobile-picker-buckets"]::-webkit-scrollbar {
@@ -3102,13 +3123,15 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 .lp-task-log-mobile-picker-bucket,
 [data-legacy~="lp-task-log-mobile-picker-bucket"] {
   flex-shrink: 0;
-  padding: 0.3rem 0.55rem;
-  font-size: 0.75rem;
-  font-weight: 500;
+  min-height: 2.35rem;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 600;
   font-family: inherit;
+  line-height: 1.2;
   color: var(--lp-modal-navy-muted);
   background: #f1f5f9;
-  border: 1px solid transparent;
+  border: 1px solid rgba(30, 77, 123, 0.12);
   border-radius: 999px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -3116,17 +3139,19 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 .lp-task-log-mobile-picker-bucket.is-active,
 [data-legacy~="lp-task-log-mobile-picker-bucket"][data-legacy~="is-active"] {
   color: #fff;
+  font-weight: 700;
   background: var(--lp-modal-accent);
   border-color: var(--lp-modal-accent);
+  box-shadow: 0 2px 8px rgba(30, 77, 123, 0.22);
 }
 .lp-task-log-mobile-picker-bucket-header,
 [data-legacy~="lp-task-log-mobile-picker-bucket-header"] {
   flex-shrink: 0;
-  padding: 0.35rem 1rem 0.15rem;
-  font-size: 0.6875rem;
-  font-weight: 600;
+  padding: 0.55rem 1rem 0.2rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
   letter-spacing: 0.02em;
-  color: var(--lp-modal-navy-muted);
+  color: var(--lp-modal-navy);
   scroll-snap-align: none;
   pointer-events: none;
 }

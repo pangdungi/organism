@@ -164,14 +164,23 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
   const trigger = document.createElement("button");
   trigger.type = "button";
   lpSetClasses(trigger, "time-task-log-task-dropdown-trigger");
-  trigger.textContent = "과제를 선택하세요";
+  let value = "";
+  function syncTriggerLabel() {
+    const has = !!(value || "").trim();
+    trigger.textContent = has ? value : "과제를 선택하세요";
+    lpTokenToggle(trigger, "has-value", has);
+    trigger.setAttribute(
+      "aria-label",
+      has ? `선택한 과제: ${value}` : "과제 선택",
+    );
+  }
+  syncTriggerLabel();
   const panel = document.createElement("div");
   lpSetClasses(
     panel,
     "time-task-log-task-dropdown-panel time-task-log-task-dropdown-panel--ledger-buckets",
   );
   panel.hidden = true;
-  let value = "";
   let searchQuery = "";
   let pickerBucket = "sideincome";
   let ledgerBucketPreset =
@@ -278,7 +287,7 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
     getCurrentValue: () => value,
     onConfirm: (name) => {
       value = name || "";
-      trigger.textContent = value || "과제를 선택하세요";
+      syncTriggerLabel();
       onTaskSelected(value);
     },
     abortSignal,
@@ -356,7 +365,7 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
       row.appendChild(textWrap);
       const closePanelAndSelect = () => {
         value = t.name || "";
-        trigger.textContent = value || "과제를 선택하세요";
+        syncTriggerLabel();
         closePanel();
         onTaskSelected(value);
       };
@@ -424,13 +433,13 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
       b.setAttribute("role", "tab");
       b.setAttribute("aria-selected", id === pickerBucket ? "true" : "false");
       if (id === pickerBucket) lpTokenAdd(b, "is-active");
-      b.addEventListener("click", (e) => {
+      const pickBucket = (e) => {
         e.preventDefault();
         e.stopPropagation();
         pickerBucket = id;
         chipsWrap
           .querySelectorAll(
-            '[data-legacy~="time-task-log-task-dropdown-bucket"]',
+            ".time-task-log-task-dropdown-bucket, [data-legacy~='time-task-log-task-dropdown-bucket']",
           )
           .forEach((x) => {
             const on = x.dataset.bucket === id;
@@ -439,8 +448,14 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
           });
         if (optionsContainer) {
           renderOptions(optionsContainer, searchQuery);
+          optionsContainer.scrollTop = 0;
         }
+      };
+      b.addEventListener("pointerdown", (e) => {
+        if (e.pointerType === "mouse" && e.button !== 0) return;
+        pickBucket(e);
       });
+      b.addEventListener("click", pickBucket);
       chipsWrap.appendChild(b);
     });
     panel.appendChild(chipsWrap);
@@ -619,7 +634,7 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
   wrap._getValue = () => value;
   wrap._setValue = (v) => {
     value = v || "";
-    trigger.textContent = value || "과제를 선택하세요";
+    syncTriggerLabel();
     onTaskSelected(value);
   };
   wrap._setLedgerBucketPreset = (preset) => {
@@ -628,7 +643,7 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
     searchQuery = "";
     ensurePickerBucketInAllowed();
     value = "";
-    trigger.textContent = "과제를 선택하세요";
+    syncTriggerLabel();
     wrap._closePanel?.();
   };
   wrap._closePanel = () => {
