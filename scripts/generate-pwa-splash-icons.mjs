@@ -1,8 +1,7 @@
 /**
  * PWA 아이콘·Android/iOS 네이티브 스플래시
- * — icon-* / apple-touch: app-icon-source.png (홈·검색용 수달 로고)
- * — pwa-splash-*: splash-screen.svg 래스터 (iOS·Android 네이티브용)
- * — in-app #app-splash: 동일 에셋을 HTML/CSS로 표시
+ * — icon-* / apple-touch: app-icon-source.png (앱 로고 DOODLE — 스플래시와 별도)
+ * — pwa-splash-*: splash-screen.svg 래스터 (iOS·Android 네이티브·in-app 스플래시)
  */
 import sharp from "sharp";
 import { existsSync } from "fs";
