@@ -1574,6 +1574,18 @@ table {
   margin: 0 auto;
 }
 
+.login-brand-logo {
+  margin: 0 0 1.15rem;
+  font-family: "LP Pizza Club", system-ui, sans-serif;
+  font-size: clamp(2.1rem, 9vw, 2.65rem);
+  font-weight: normal;
+  font-synthesis: none;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-align: center;
+  color: var(--auth-navy);
+}
+
 .login-card.login-card--brand {
   position: relative;
   background: #fff;

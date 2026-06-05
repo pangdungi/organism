@@ -1,22 +1,37 @@
 /* PWA 서비스 워커 — 앱 설치·오프라인 */
-/** 번들·아이콘 등 캐시 버전 (전략 바꿀 때만 올리면 이전 캐시 정리됨) */
-const ASSET_CACHE = "tip-assets-v28";
+/** index.html·manifest 의 ?v= 와 동일하게 유지 */
+const PWA_BRAND = "doodle-logo-2";
+/** 번들·아이콘 등 캐시 버전 (전략·브랜드 바꿀 때 올리면 이전 캐시 정리됨) */
+const ASSET_CACHE = "tip-assets-v29";
 /** HTML 셸 캐시 — 홈 화면에서 열 때 즉시 표시용 */
-const HTML_CACHE = "tip-html-v4";
+const HTML_CACHE = "tip-html-v5";
 
-/** install 단계: PWA 설치 조건만 빠르게 — 887개 아이콘은 클라이언트 idle prefetch */
-const PWA_INSTALL_CORE_PATHS = [
+const PWA_BRAND_BASENAMES = new Set([
   "/manifest.json",
   "/icon-192.png",
   "/icon-512.png",
+  "/icon-maskable-192.png",
+  "/icon-maskable-512.png",
+  "/apple-touch-icon.png",
+]);
+
+function isPwaBrandAsset(pathname) {
+  return PWA_BRAND_BASENAMES.has(pathname);
+}
+
+/** install 단계: PWA 설치 조건만 빠르게 — 887개 아이콘은 클라이언트 idle prefetch */
+const PWA_INSTALL_CORE_PATHS = [
+  `/manifest.json?v=${PWA_BRAND}`,
+  `/icon-192.png?v=${PWA_BRAND}`,
+  `/icon-512.png?v=${PWA_BRAND}`,
+  `/icon-maskable-192.png?v=${PWA_BRAND}`,
+  `/icon-maskable-512.png?v=${PWA_BRAND}`,
+  `/apple-touch-icon.png?v=${PWA_BRAND}`,
   "/pwa-splash-512.png",
   "/pwa-splash-portrait-1080.png",
   "/pwa-splash-portrait-1170.png",
   "/pwa-splash-portrait-1179.png",
   "/pwa-splash-portrait-1284.png",
-  "/icon-maskable-192.png",
-  "/icon-maskable-512.png",
-  "/apple-touch-icon.png",
   "/toolbaricons/splash/splash-screen.png",
   "/fonts/LP-KyoboHandwriting2025.otf",
 ];
@@ -26,7 +41,9 @@ self.addEventListener("install", (event) => {
     (async () => {
       try {
         const htmlCache = await caches.open(HTML_CACHE);
-        const shell = await fetch(new Request(self.location.origin + "/", { cache: "reload" }));
+        const shell = await fetch(
+          new Request(self.location.origin + "/", { cache: "reload" }),
+        );
         if (shell && shell.ok) {
           await htmlCache.put(new Request(self.location.origin + "/"), shell.clone());
         }
@@ -58,7 +75,8 @@ self.addEventListener("activate", (event) => {
             (k) =>
               ((k.startsWith("organism-assets-") || k.startsWith("tip-assets-")) &&
                 k !== ASSET_CACHE) ||
-              ((k.startsWith("organism-html-") || k.startsWith("tip-html-")) && k !== HTML_CACHE),
+              ((k.startsWith("organism-html-") || k.startsWith("tip-html-")) &&
+                k !== HTML_CACHE),
           )
           .map((k) => caches.delete(k)),
       );
@@ -89,6 +107,23 @@ function isStaticImageAsset(pathname) {
 
 /** JS/CSS 번들 — 네트워크 우선(배포 직후 구 HTML·빈 캐시로 실행 실패·무한 로딩 방지) */
 async function networkFirstAsset(request) {
+  const cache = await caches.open(ASSET_CACHE);
+  try {
+    const response = await fetch(request);
+    if (response && response.ok) {
+      try {
+        await cache.put(request, response.clone());
+      } catch (_e) {}
+      return response;
+    }
+  } catch (_e) {}
+  const cached = await cache.match(request);
+  if (cached) return cached;
+  return fetch(request);
+}
+
+/** manifest·홈 화면 아이콘 — 네트워크 우선(구 로고·구 이름 캐시 방지) */
+async function networkFirstBrandAsset(request) {
   const cache = await caches.open(ASSET_CACHE);
   try {
     const response = await fetch(request);
@@ -168,7 +203,11 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(networkFirstAsset(req));
     return;
   }
-  if (isStaticImageAsset(url.pathname) || url.pathname === "/manifest.json") {
+  if (isPwaBrandAsset(url.pathname)) {
+    event.respondWith(networkFirstBrandAsset(req));
+    return;
+  }
+  if (isStaticImageAsset(url.pathname)) {
     event.respondWith(cacheFirstStaticAsset(req));
     return;
   }

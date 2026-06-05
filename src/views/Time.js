@@ -6820,8 +6820,19 @@ export function render(opts = {}) {
     return buildTimeTaskLogPickerDropdown({
       abortSignal: signal,
       onTaskSelected: onTaskSelectedForLog,
+      onDismissBlockingLayers: closeDateTimePicker,
     });
   }
+
+  /** 시간·과제 입력 시 남은 투명 막(하단 시트·시간 피커 배경) 제거 — X·기록 버튼 막힘 방지 */
+  function dismissTaskLogBlockingPickers() {
+    closeDateTimePicker();
+    taskLogTaskDropdown?._closePanel?.();
+  }
+
+  [taskLogTimeStart, taskLogTimeEnd, taskLogDateStart].forEach((input) => {
+    input?.addEventListener("focus", dismissTaskLogBlockingPickers);
+  });
 
   const taskLogPickerTitle = taskLogPickerWrap?.querySelector(
     '[data-legacy~="time-datetime-picker-title"]',
@@ -7927,14 +7938,14 @@ export function render(opts = {}) {
   }
 
   function closeTaskLogModal() {
+    dismissTaskLogBlockingPickers();
+    document.documentElement.classList.remove("lp-task-log-mobile-picker-open");
+    taskLogScrollArea?.classList?.remove?.("is-task-picker-open");
     taskLogModal.hidden = true;
     setTaskLogModalShellOpen(false);
     unbindTaskLogModalKeyboardShell();
     exitTaskLogMemoScroll();
     if (taskLogFooterEl) taskLogFooterEl.style.display = "none";
-    closeDateTimePicker();
-    taskLogTaskDropdown?._closePanel?.();
-    document.documentElement.classList.remove("lp-task-log-mobile-picker-open");
     taskLogModal.style.zIndex = "";
     document.body.style.overflow = "";
     taskLogAddContext = null;
@@ -7967,6 +7978,7 @@ export function render(opts = {}) {
   }
 
   taskLogSubmitBtn.addEventListener("click", () => {
+    dismissTaskLogBlockingPickers();
     flushTaskLogTimeInputsBeforeSubmit();
     console.log("[lp-task-log]", "submit_click", {
       mode: taskLogEditTr ? "edit" : taskLogAddContext ? "add" : "none",

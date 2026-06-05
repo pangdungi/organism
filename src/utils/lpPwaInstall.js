@@ -135,7 +135,7 @@ function getInstallInstructions() {
   if (ios) {
     return {
       title: "홈 화면에 추가",
-      desc: "Safari 하단 공유(↑) 버튼 → 「홈 화면에 추가」를 눌러 주세요. 추가 후 아이콘으로 열면 앱처럼 쓸 수 있어요.",
+      desc: "Safari에서 timeisprice.com 을 연 뒤 공유(↑) → 「홈 화면에 추가」를 눌러 주세요. 예전 오가니즘플래너 아이콘이 있으면 삭제한 뒤 다시 추가해 주세요.",
     };
   }
   if (android) {
@@ -174,7 +174,7 @@ async function runNativeInstall() {
       closeLpPwaInstallHelpModal();
       showToast(
         "홈 화면을 확인해 주세요",
-        "Money is time 아이콘이 생겼는지 봐 주세요. 아직 없으면 잠시 후 다시 확인해 주세요.",
+        "timeisprice.com 아이콘이 생겼는지 봐 주세요. 예전 아이콘이 남아 있으면 삭제 후 다시 추가해 주세요.",
       );
       return;
     }

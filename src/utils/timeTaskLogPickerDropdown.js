@@ -157,7 +157,11 @@ export function taskAllowedForLedgerPreset(task, preset) {
 }
 
 export function buildTimeTaskLogPickerDropdown(options = {}) {
-  const { abortSignal, onTaskSelected = () => {} } = options;
+  const {
+    abortSignal,
+    onTaskSelected = () => {},
+    onDismissBlockingLayers = () => {},
+  } = options;
 
   const wrap = document.createElement("div");
   lpSetClasses(wrap, "time-task-log-task-dropdown");
@@ -289,7 +293,9 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
       value = name || "";
       syncTriggerLabel();
       onTaskSelected(value);
+      onDismissBlockingLayers();
     },
+    onShellClose: onDismissBlockingLayers,
     abortSignal,
   });
 
@@ -551,6 +557,7 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
 
   function openMobileSheet() {
     closePanel();
+    onDismissBlockingLayers();
     if (mobilePicker.isOpen()) {
       mobilePicker.close();
     } else {
@@ -614,10 +621,6 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
         activateTaskPicker(e);
       };
       taskField.addEventListener("click", openFromTaskField, true);
-      taskField.addEventListener("touchstart", openFromTaskField, {
-        capture: true,
-        passive: false,
-      });
     }
   }
   const closePanelOnOutside = (e) => {
@@ -648,9 +651,11 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
   };
   wrap._closePanel = () => {
     closePanel();
-    mobilePicker.close();
+    mobilePicker.forceDismiss?.() || mobilePicker.close();
+    onDismissBlockingLayers();
     const scroll = findTaskLogScrollArea();
     scroll?.classList?.remove?.("is-task-picker-open");
+    document.documentElement.classList.remove("lp-task-log-mobile-picker-open");
   };
   wrap._getLedgerBucketPreset = () => ledgerBucketPreset;
   return wrap;

@@ -68,6 +68,7 @@ export function createMobileTaskLogPicker(options = {}) {
     getTaskBucket,
     getCurrentValue,
     onConfirm = () => {},
+    onShellClose = () => {},
     abortSignal,
   } = options;
 
@@ -79,6 +80,9 @@ export function createMobileTaskLogPicker(options = {}) {
   /** @type {ReturnType<typeof setTimeout> | null} */
   let wheelScrollTimer = null;
   let bucketScrollLockUntil = 0;
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let bucketScrollSnapTimer = null;
+  let wheelTasksCacheKey = "";
   /** @type {ReturnType<typeof setTimeout> | null} */
   let searchRenderTimer = null;
   let mounted = false;
@@ -216,7 +220,9 @@ export function createMobileTaskLogPicker(options = {}) {
     pendingValue = name || "";
     syncWheelSelectionClass();
     if (scrollToRow instanceof HTMLElement) {
-      scrollItemToCenter(wheelList, scrollToRow);
+      runProgrammaticBucketScroll(() => {
+        scrollItemToCenter(wheelList, scrollToRow);
+      });
     }
   }
 
@@ -240,7 +246,22 @@ export function createMobileTaskLogPicker(options = {}) {
     });
   }
 
+  function runProgrammaticBucketScroll(fn) {
+    if (bucketScrollSnapTimer) {
+      clearTimeout(bucketScrollSnapTimer);
+      bucketScrollSnapTimer = null;
+    }
+    lpTokenAdd(wheelList, "is-bucket-scrolling");
+    bucketScrollLockUntil = Date.now() + 360;
+    fn();
+    bucketScrollSnapTimer = setTimeout(() => {
+      bucketScrollSnapTimer = null;
+      lpTokenRemove(wheelList, "is-bucket-scrolling");
+    }, 360);
+  }
+
   function scrollToBucket(bucketId) {
+    if (!bucketId) return;
     syncBucketChipActive(bucketId);
     const header = wheelList.querySelector(
       `[data-bucket-anchor="${CSS.escape(bucketId)}"]`,
@@ -250,10 +271,11 @@ export function createMobileTaskLogPicker(options = {}) {
 
     const scrollAnchor =
       header instanceof HTMLElement ? header : firstItem;
-    bucketScrollLockUntil = Date.now() + 180;
-    scrollItemToTop(wheelList, scrollAnchor, 2);
-    pendingValue = firstItem.dataset.taskName || "";
-    syncWheelSelectionClass();
+    runProgrammaticBucketScroll(() => {
+      scrollItemToTop(wheelList, scrollAnchor, 2);
+      pendingValue = firstItem.dataset.taskName || "";
+      syncWheelSelectionClass();
+    });
   }
 
   function renderBucketChips(tasks) {
@@ -273,16 +295,11 @@ export function createMobileTaskLogPicker(options = {}) {
       btn.textContent = label;
       btn.setAttribute("role", "tab");
       btn.setAttribute("aria-selected", "false");
-      const pickBucket = (e) => {
+      btn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
         scrollToBucket(id);
-      };
-      btn.addEventListener("pointerdown", (e) => {
-        if (e.pointerType === "mouse" && e.button !== 0) return;
-        pickBucket(e);
       });
-      btn.addEventListener("click", pickBucket);
       bucketChipRow.appendChild(btn);
     });
   }
@@ -329,8 +346,45 @@ export function createMobileTaskLogPicker(options = {}) {
     return row;
   }
 
-  function renderWheel() {
+  function wheelTasksCacheKeyFrom(tasks) {
+    return tasks
+      .map((t) => {
+        const b =
+          typeof getTaskBucket === "function" ? getTaskBucket(t) || "" : "";
+        return `${t.name || ""}\x1f${t.id || ""}\x1f${b}`;
+      })
+      .join("\x1e");
+  }
+
+  function scrollWheelToPendingValue() {
+    const name = (pendingValue || getCurrentValue?.() || "").trim();
+    const row = name
+      ? wheelList.querySelector(`[data-task-name="${CSS.escape(name)}"]`)
+      : wheelList.querySelector(WHEEL_ITEM_SELECTOR);
+    if (!(row instanceof HTMLElement)) return;
+    runProgrammaticBucketScroll(() => {
+      scrollItemToCenter(wheelList, row);
+      pendingValue = row.dataset.taskName || pendingValue;
+      syncWheelSelectionClass();
+      syncActiveBucketChip();
+    });
+  }
+
+  function renderWheel(opts = {}) {
+    const force = opts.force === true;
     const tasks = getTasks?.() || [];
+    const cacheKey = wheelTasksCacheKeyFrom(tasks);
+    const hasWheel =
+      !!wheelList.querySelector(WHEEL_ITEM_SELECTOR);
+    if (!force && cacheKey === wheelTasksCacheKey && hasWheel) {
+      renderBucketChips(tasks);
+      pendingValue = getCurrentValue?.() || pendingValue;
+      syncWheelSelectionClass();
+      requestAnimationFrame(() => scrollWheelToPendingValue());
+      return;
+    }
+    wheelTasksCacheKey = cacheKey;
+
     const chips = getVisibleBucketChips?.() || [];
     const showHeaders =
       typeof getTaskBucket === "function" && chips.length > 0;
@@ -360,17 +414,7 @@ export function createMobileTaskLogPicker(options = {}) {
     wheelList.appendChild(frag);
 
     syncWheelSelectionClass();
-    const target =
-      lastSelectedWheelRow ||
-      wheelList.querySelector(
-        ".lp-task-log-mobile-picker-item, [data-legacy~='lp-task-log-mobile-picker-item']",
-      );
-    if (target instanceof HTMLElement) {
-      requestAnimationFrame(() => {
-        scrollItemToCenter(wheelList, target);
-        syncActiveBucketChip();
-      });
-    }
+    requestAnimationFrame(() => scrollWheelToPendingValue());
   }
 
   function syncActiveBucketChip() {
@@ -393,8 +437,9 @@ export function createMobileTaskLogPicker(options = {}) {
   }
 
   function scheduleWheelScrollEnd() {
+    if (Date.now() < bucketScrollLockUntil) return;
     if (wheelScrollTimer) clearTimeout(wheelScrollTimer);
-    wheelScrollTimer = setTimeout(onWheelScrollEnd, 80);
+    wheelScrollTimer = setTimeout(onWheelScrollEnd, 120);
   }
 
   function buildSearchRow(task) {
@@ -494,7 +539,7 @@ export function createMobileTaskLogPicker(options = {}) {
     searchInput.value = "";
     renderSearchList();
     bringSearchToFront();
-    searchRoot.hidden = false;
+    setSearchShellHidden(false);
     requestAnimationFrame(() => {
       try {
         searchInput.focus({ preventScroll: true });
@@ -503,7 +548,7 @@ export function createMobileTaskLogPicker(options = {}) {
   }
 
   function closeSearch(apply) {
-    searchRoot.hidden = true;
+    setSearchShellHidden(true);
     if (searchRenderTimer) {
       clearTimeout(searchRenderTimer);
       searchRenderTimer = null;
@@ -515,14 +560,10 @@ export function createMobileTaskLogPicker(options = {}) {
       const next = searchPendingValue;
       if (next !== pendingValue) {
         pendingValue = next;
-        renderWheel();
+        renderWheel({ force: true });
       } else {
         syncWheelSelectionClass();
-        if (lastSelectedWheelRow instanceof HTMLElement) {
-          requestAnimationFrame(() =>
-            scrollItemToCenter(wheelList, lastSelectedWheelRow),
-          );
-        }
+        requestAnimationFrame(() => scrollWheelToPendingValue());
       }
     }
   }
@@ -532,18 +573,44 @@ export function createMobileTaskLogPicker(options = {}) {
     closePicker();
   }
 
-  function closePicker() {
-    pickerRoot.hidden = true;
-    closeSearch(false);
-    document.documentElement.classList.remove("lp-task-log-mobile-picker-open");
+  function setPickerShellHidden(hidden) {
+    pickerRoot.hidden = hidden;
+    pickerRoot.setAttribute("aria-hidden", hidden ? "true" : "false");
+    if ("inert" in pickerRoot) pickerRoot.inert = hidden;
+  }
+
+  function setSearchShellHidden(hidden) {
+    searchRoot.hidden = hidden;
+    searchRoot.setAttribute("aria-hidden", hidden ? "true" : "false");
+    if ("inert" in searchRoot) searchRoot.inert = hidden;
+  }
+
+  function clearPickerTimers() {
     if (wheelScrollTimer) {
       clearTimeout(wheelScrollTimer);
       wheelScrollTimer = null;
     }
+    if (bucketScrollSnapTimer) {
+      clearTimeout(bucketScrollSnapTimer);
+      bucketScrollSnapTimer = null;
+    }
+    bucketScrollLockUntil = 0;
+    lpTokenRemove(wheelList, "is-bucket-scrolling");
     if (searchRenderTimer) {
       clearTimeout(searchRenderTimer);
       searchRenderTimer = null;
     }
+  }
+
+  function closePicker() {
+    setPickerShellHidden(true);
+    setSearchShellHidden(true);
+    try {
+      searchInput.blur();
+    } catch (_) {}
+    clearPickerTimers();
+    document.documentElement.classList.remove("lp-task-log-mobile-picker-open");
+    onShellClose();
   }
 
   function openPicker() {
@@ -551,7 +618,7 @@ export function createMobileTaskLogPicker(options = {}) {
     pendingValue = getCurrentValue?.() || "";
     renderWheel();
     bringPickerToFront();
-    pickerRoot.hidden = false;
+    setPickerShellHidden(false);
     document.documentElement.classList.add("lp-task-log-mobile-picker-open");
   }
 
@@ -600,6 +667,7 @@ export function createMobileTaskLogPicker(options = {}) {
   return {
     open: openPicker,
     close: closePicker,
+    forceDismiss: closePicker,
     isOpen: () => !pickerRoot.hidden || !searchRoot.hidden,
   };
 }
