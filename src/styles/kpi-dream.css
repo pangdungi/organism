@@ -1094,7 +1094,7 @@
 
 :is(.lp-kpi-dream-page, .kpi-view-modal) .dream-kpi-card-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.55rem;
   min-height: 2.35rem;
   max-height: 2.7rem;
@@ -1109,7 +1109,6 @@
   justify-content: center;
   width: 2.125rem;
   height: 2.125rem;
-  margin-top: 0.04rem;
   line-height: 0;
 }
 
