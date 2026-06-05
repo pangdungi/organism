@@ -80,9 +80,9 @@ export const RETIRED_BUILTIN_TASK_TEMPLATES = [
   { name: "감정 기록하기", category: "happiness", productivity: "productive" },
   { name: "음악 듣기", category: "happiness", productivity: "productive" },
   { name: "다이어리 쓰기", category: "happiness", productivity: "productive" },
-  { name: "아이디어 작업하기", category: "dream", productivity: "productive" },
-  { name: "시간기록", category: "dream", productivity: "productive" },
-  { name: "독서노트 작성", category: "dream", productivity: "productive" },
+  { name: "아이디어 작업하기", category: "sideincome", productivity: "productive" },
+  { name: "시간기록", category: "sideincome", productivity: "productive" },
+  { name: "독서노트 작성", category: "sideincome", productivity: "productive" },
   { name: "돈 관리", category: "sideincome", productivity: "productive" },
   { name: "경제 공부", category: "sideincome", productivity: "productive" },
   { name: "경력 개발", category: "sideincome", productivity: "productive" },
@@ -92,6 +92,7 @@ export const RETIRED_BUILTIN_TASK_TEMPLATES = [
 /** 제거된 과제 세부 카테고리 — 기존 과제·기록 마이그레이션 */
 export const RETIRED_TIME_TASK_CATEGORY_REMAP = {
   dreamblocking: "pleasure",
+  dream: "sideincome",
 };
 
 /** @param {string} category */
@@ -115,8 +116,8 @@ export const FIXED_PRODUCTIVE_TASKS = [
     category: "sideincome",
     productivity: "productive",
   },
-  { name: "독서 및 독서노트 작성", category: "dream", productivity: "productive" },
-  { name: "시간기록 및 점검", category: "dream", productivity: "productive" },
+  { name: "독서 및 독서노트 작성", category: "sideincome", productivity: "productive" },
+  { name: "시간기록 및 점검", category: "sideincome", productivity: "productive" },
   { name: "개인 위생", category: "health", productivity: "productive" },
   {
     name: NAP_TASK_NAME,

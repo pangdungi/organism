@@ -1,4 +1,4 @@
-/* 앱 전역 통일 로딩·스플래시 — 물결 패턴 + 떠다니는 마스코트 */
+/* 앱 전역 통일 로딩·스플래시 — splash-screen.svg 전체 화면 */
 
 html.lp-splash-active {
   overflow: hidden;
@@ -18,40 +18,20 @@ html.lp-splash-active body {
   overflow: hidden;
   box-sizing: border-box;
   background: #fff;
-  color: #1e4d7b;
+  color: #1d40ba;
 }
 
-.lp-unified-loading__pattern {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 0;
+.lp-unified-loading__screen-img {
+  display: block;
   width: 100%;
   height: 100%;
-  min-height: 100%;
-  pointer-events: none;
-  opacity: 0.38;
-  background-color: #fff;
-  background-image: url("/toolbaricons/splash/splash-pattern-wave.png");
-  background-repeat: repeat;
-  background-size: 3rem 3rem;
-  background-position: center;
-}
-
-.lp-unified-loading__content {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  gap: clamp(0.65rem, 2dvh, 1rem);
-  padding: 1rem max(1rem, env(safe-area-inset-left, 0)) 1rem
-    max(1rem, env(safe-area-inset-right, 0));
-  box-sizing: border-box;
+  max-width: 100%;
+  max-height: 100%;
+  margin: 0;
+  object-fit: contain;
+  object-position: center center;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 #app-splash,
@@ -74,8 +54,7 @@ html.lp-splash-active body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: max(1.5rem, env(safe-area-inset-top, 0)) 1.5rem
-    max(2rem, env(safe-area-inset-bottom, 0));
+  padding: 0;
   box-sizing: border-box;
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
@@ -104,8 +83,7 @@ html.lp-splash-active body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: max(1rem, env(safe-area-inset-top, 0)) 1.25rem
-    max(1rem, env(safe-area-inset-bottom, 0));
+  padding: 0;
   pointer-events: auto;
   touch-action: none;
 }
@@ -116,67 +94,20 @@ html.lp-splash-active body {
 
 .lp-unified-loading--inline {
   width: 100%;
-  min-height: 9rem;
+  min-height: 12rem;
   display: flex;
   flex-direction: column;
   align-items: stretch;
   justify-content: center;
+  background: #fff;
+  border-radius: 0.5rem;
 }
 
-.lp-unified-loading--inline .lp-unified-loading__content {
-  flex: 0 1 auto;
+.lp-unified-loading--inline .lp-unified-loading__screen-img {
   width: 100%;
-  min-height: 9rem;
-  padding: 2rem 1rem 2.5rem;
-}
-
-.lp-unified-loading__mascot-shell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-}
-
-.lp-unified-loading__mascot {
-  display: block;
-  width: auto;
+  height: auto;
+  max-height: min(70vh, 28rem);
   object-fit: contain;
-  transform-origin: center center;
-  animation: lp-unified-loading-mascot-float 3.4s ease-in-out infinite;
-  will-change: transform;
-}
-
-.lp-unified-loading--fullscreen .lp-unified-loading__mascot,
-.lp-unified-loading--overlay .lp-unified-loading__mascot {
-  height: clamp(6.5rem, 22dvh, 9.5rem);
-  max-width: min(14rem, 72vw);
-}
-
-.lp-unified-loading--inline .lp-unified-loading__mascot {
-  height: clamp(4.5rem, 16dvh, 6.5rem);
-  max-width: min(9rem, 58vw);
-}
-
-@keyframes lp-unified-loading-mascot-float {
-  0%,
-  100% {
-    transform: translateY(0.35rem);
-  }
-
-  50% {
-    transform: translateY(-0.35rem);
-  }
-}
-
-.lp-unified-loading__message {
-  margin: 0;
-  font-family: inherit;
-  font-size: clamp(0.875rem, 2.8vw, 0.9375rem);
-  font-weight: 500;
-  letter-spacing: -0.02em;
-  color: #1e4d7b;
-  line-height: 1.5;
-  max-width: 18rem;
 }
 
 html.lp-tab-loading-active {
@@ -191,12 +122,5 @@ html.lp-tab-loading-active {
   #lp-boot-fallback {
     height: 100lvh;
     min-height: 100lvh;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .lp-unified-loading__mascot {
-    animation: none;
-    will-change: auto;
   }
 }

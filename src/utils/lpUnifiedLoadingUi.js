@@ -1,9 +1,7 @@
 /** 앱 전역 통일 로딩·스플래시 UI */
 
-export const LP_UNIFIED_LOADING_MESSAGE = "조금만 기다리세요 다들 미안 ❤︎";
-export const LP_SPLASH_PATTERN_URL =
-  "/toolbaricons/splash/splash-pattern-wave.png";
-export const LP_SPLASH_MASCOT_URL = "/toolbaricons/splash/splash-mascot.png";
+export const LP_UNIFIED_LOADING_MESSAGE = "Good things are coming";
+export const LP_SPLASH_SCREEN_URL = "/toolbaricons/splash/splash-screen.svg";
 
 function escapeHtml(str) {
   return String(str ?? "")
@@ -14,22 +12,16 @@ function escapeHtml(str) {
 }
 
 export function renderLpUnifiedLoadingInnerMarkup() {
-  const msg = LP_UNIFIED_LOADING_MESSAGE;
   return `
-    <div class="lp-unified-loading__pattern" aria-hidden="true"></div>
-    <div class="lp-unified-loading__content">
-      <div class="lp-unified-loading__mascot-shell">
-        <img
-          class="lp-unified-loading__mascot"
-          src="${LP_SPLASH_MASCOT_URL}"
-          alt=""
-          width="192"
-          height="192"
-          decoding="async"
-        />
-      </div>
-      <p class="lp-unified-loading__message">${escapeHtml(msg)}</p>
-    </div>
+    <img
+      class="lp-unified-loading__screen-img"
+      src="${LP_SPLASH_SCREEN_URL}"
+      alt=""
+      width="1046"
+      height="1609"
+      decoding="async"
+      fetchpriority="high"
+    />
   `;
 }
 

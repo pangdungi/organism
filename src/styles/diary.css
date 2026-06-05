@@ -1142,7 +1142,7 @@
   font-weight: 700;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
-  color: #334155;
+  color: var(--text-ink);
 }
 
 .diary-tr-report-hero-stat-value--gain {
@@ -1355,7 +1355,7 @@
   padding-left: 1.1rem;
   font-size: 0.8125rem;
   line-height: 1.55;
-  color: #334155;
+  color: var(--text-ink);
 }
 
 .diary-tr-ai-checkup-list li + li {
@@ -1414,7 +1414,7 @@
 .diary-tr-ai-checkup-fallback-stat-value {
   font-size: 0.8125rem;
   font-weight: 700;
-  color: #334155;
+  color: var(--text-ink);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1668,7 +1668,7 @@
   gap: 0.4rem;
   font-size: 0.8125rem;
   line-height: 1.35;
-  color: #334155;
+  color: var(--text-ink);
 }
 
 .diary-tr-donut-legend-dot {

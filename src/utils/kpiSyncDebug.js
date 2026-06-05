@@ -140,4 +140,4 @@ export function kpiSyncDebugUserHint(uid) {
 }
 
 /** 꿈·부수입·행복·건강 탭 id */
-export const KPI_TAB_IDS = new Set(["dream", "sideincome", "happiness", "health"]);
+export const KPI_TAB_IDS = new Set(["sideincome", "happiness", "health"]);

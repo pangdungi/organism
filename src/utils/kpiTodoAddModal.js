@@ -22,7 +22,8 @@ export function showKpiTodoAddModal(opts = {}) {
     }
 
     const modal = document.createElement("div");
-    modal.className = "time-task-setup-modal dream-kpi-todo-add-modal";
+    modal.className =
+      "time-task-setup-modal dream-kpi-todo-add-modal lp-modal-compact";
     modal.innerHTML = `
       <div data-legacy="time-task-setup-backdrop"></div>
       <div data-legacy="time-task-setup-panel">

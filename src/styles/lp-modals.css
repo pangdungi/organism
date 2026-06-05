@@ -9,7 +9,7 @@
   --lp-modal-accent-hover: #173c5f;
   --lp-modal-subcat-active-bg: #e3f2fa;
   --lp-modal-subcat-active-border: #9ec5e6;
-  --lp-modal-navy: #152b45;
+  --lp-modal-navy: #1d40ba;
   --lp-modal-navy-muted: #3d5670;
   --lp-modal-border: #e2e8f0;
   --lp-modal-muted: #64748b;
@@ -500,56 +500,54 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
     max-height: min(calc(var(--vv-visible-height, 100dvh) - 0.75rem), 41rem);
   }
 
-  /* KPI 할 일 추가·수정 — 키보드 시 입력란 가림 방지 */
-  html.lp-kpi-todo-modal-open
-    .time-task-setup-modal.dream-kpi-todo-add-modal,
-  html.lp-kpi-todo-modal-open
-    .time-task-setup-modal.dream-kpi-todo-edit-modal {
+  /* ── 공통 컴팩트 모달 (KPI 할일 추가·수정 등 짧은 입력) — 키보드 시 가운데 유지 ── */
+  html.lp-modal-open .time-task-setup-modal.lp-modal-compact,
+  html.lp-modal-open .todo-list-modal.lp-modal-compact {
     z-index: 2147483647;
   }
 
-  html.lp-keyboard-open.lp-kpi-todo-modal-open
-    .time-task-setup-modal.dream-kpi-todo-add-modal,
-  html.lp-keyboard-open.lp-kpi-todo-modal-open
-    .time-task-setup-modal.dream-kpi-todo-edit-modal {
+  html.lp-keyboard-open.lp-modal-open .time-task-setup-modal.lp-modal-compact,
+  html.lp-keyboard-open.lp-modal-open .todo-list-modal.lp-modal-compact {
     inset: auto;
     top: var(--vv-offset-top, 0px);
     left: 0;
     right: 0;
     bottom: auto;
+    width: 100%;
     height: var(--vv-visible-height, 100dvh);
     max-height: var(--vv-visible-height, 100dvh);
-    align-items: flex-start;
-    justify-content: flex-start;
-    padding-top: max(0.35rem, env(safe-area-inset-top, 0px));
-    padding-bottom: 0.35rem;
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
+    min-height: 0;
+    align-items: center;
+    justify-content: center;
+    padding: max(0.5rem, env(safe-area-inset-top, 0px)) 0.75rem
+      max(0.5rem, env(safe-area-inset-bottom, 0px));
   }
 
-  html.lp-keyboard-open.lp-kpi-todo-modal-open
-    .time-task-setup-modal.dream-kpi-todo-add-modal
+  html.lp-keyboard-open.lp-modal-open
+    .time-task-setup-modal.lp-modal-compact
     [data-legacy~="time-task-setup-panel"],
-  html.lp-keyboard-open.lp-kpi-todo-modal-open
-    .time-task-setup-modal.dream-kpi-todo-edit-modal
-    [data-legacy~="time-task-setup-panel"] {
+  html.lp-keyboard-open.lp-modal-open
+    .todo-list-modal.lp-modal-compact
+    .todo-list-modal-panel,
+  html.lp-keyboard-open.lp-modal-open
+    .todo-list-modal.lp-modal-compact
+    [data-legacy~="todo-list-modal-panel"] {
     height: auto;
     min-height: 0;
-    max-height: min(calc(var(--vv-visible-height, 100dvh) - 0.75rem), 36rem);
+    max-height: min(calc(var(--vv-visible-height, 100dvh) - 1rem), 36rem);
   }
 
-  .time-task-setup-modal.dream-kpi-todo-add-modal.is-keyboard-open
-    .dream-kpi-form-body,
-  .time-task-setup-modal.dream-kpi-todo-edit-modal.is-keyboard-open
-    .dream-kpi-form-body,
-  .time-task-setup-modal.dream-kpi-todo-add-modal.is-keyboard-open
+  .time-task-setup-modal.lp-modal-compact.is-keyboard-open .dream-kpi-form-body,
+  .time-task-setup-modal.lp-modal-compact.is-keyboard-open
     [data-legacy~="time-task-setup-body"],
-  .time-task-setup-modal.dream-kpi-todo-edit-modal.is-keyboard-open
-    [data-legacy~="time-task-setup-body"] {
+  .todo-list-modal.lp-modal-compact.is-keyboard-open .todo-list-modal-body,
+  .todo-list-modal.lp-modal-compact.is-keyboard-open
+    [data-legacy~="todo-list-modal-body"] {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding-bottom: max(var(--vv-keyboard, 0px), 45vh, 12rem);
-    scroll-padding-bottom: max(var(--vv-keyboard, 0px), 45vh, 12rem);
+    overscroll-behavior: contain;
+    padding-bottom: 0.75rem;
+    scroll-padding-bottom: 0.75rem;
   }
 }
 .time-task-select-panel,
@@ -2984,11 +2982,19 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
     touch-action: manipulation;
   }
 
-  /* 모바일 인라인 드롭다운 목록 — 터치 가로채기 방지(하단 시트만 사용) */
-  .time-task-log-task-dropdown-panel,
-  .time-task-log-task-dropdown-options,
-  [data-legacy~="time-task-log-task-dropdown-panel"],
-  [data-legacy~="time-task-log-task-dropdown-options"] {
+  /* 모바일·과제 기록 모달만 — 인라인 패널 터치 차단(하단 시트만 사용). 나의 계정 글꼴 등은 제외 */
+  .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+    .time-task-log-task-dropdown-panel,
+  .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+    .time-task-log-task-dropdown-options,
+  [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+      .lp-calendar-budget-add-modal
+    )
+    [data-legacy~="time-task-log-task-dropdown-panel"],
+  [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+      .lp-calendar-budget-add-modal
+    )
+    [data-legacy~="time-task-log-task-dropdown-options"] {
     pointer-events: none !important;
   }
 }
@@ -3080,6 +3086,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   flex-shrink: 0;
   display: flex;
   flex-wrap: nowrap;
+  justify-content: center;
   gap: 0.35rem;
   padding: 0.45rem 0.65rem;
   overflow-x: auto;

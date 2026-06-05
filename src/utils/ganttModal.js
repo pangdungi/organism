@@ -4,7 +4,6 @@
  */
 
 import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
-
 const DREAM_MAP_KEY = "kpi-dream-map";
 const SIDEINCOME_KEY = "kpi-sideincome-paths";
 const HAPPINESS_KEY = "kpi-happiness-map";
@@ -119,7 +118,7 @@ function collectAllKpis() {
   const healthData = loadJson(HEALTH_KEY, { healths: [], kpis: [], kpiLogs: [] });
 
   const dreamNames = new Map((dreamData.dreams || []).map((d) => [d.id, d.name || "꿈"]));
-  const pathNamesSi = new Map((sideData.paths || []).map((p) => [p.id, p.name || "부수입"]));
+  const pathNamesSi = new Map((sideData.paths || []).map((p) => [p.id, p.name || "시급 상승"]));
   const happyNames = new Map((happyData.happinesses || []).map((h) => [h.id, h.name || "행복"]));
   const healthNames = new Map((healthData.healths || []).map((h) => [h.id, h.name || "건강"]));
 
@@ -150,7 +149,7 @@ function collectAllKpis() {
   });
 
   (sideData.kpis || []).forEach((k) => {
-    const parentName = pathNamesSi.get(k.pathId) || "부수입";
+    const parentName = pathNamesSi.get(k.pathId) || "시급 상승";
     const startDate = parseTargetDeadline(k.targetStartDate);
     const targetDate = parseTargetDeadline(k.targetDeadline);
     const logs = sideData.kpiLogs || [];

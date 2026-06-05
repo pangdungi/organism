@@ -39,7 +39,7 @@ function blurTaskPickerSearchInput(panelEl) {
 
 function getProductivityFromCategory(categoryValue) {
   if (!categoryValue) return "";
-  const productive = ["dream", "sideincome", "happiness", "health"];
+  const productive = ["sideincome", "happiness", "health"];
   const nonproductive = [
     "unhappiness",
     "unhealthy",
@@ -88,10 +88,9 @@ function appendTaskDropdownBadges(textWrap, task, opts = {}) {
   }
 }
 
-/** 드롭다운·모바일 피커 대분류 순서 — 꿈·부수입·행복·건강·비생산·그외 */
+/** 드롭다운·모바일 피커 대분류 순서 — 시급 상승·행복·건강·비생산·그외 */
 const LEDGER_BUCKET_CHIPS = [
-  { id: "dream", label: "꿈" },
-  { id: "sideincome", label: "부수입" },
+  { id: "sideincome", label: "시급 상승" },
   { id: "happiness", label: "행복" },
   { id: "health", label: "건강" },
   { id: "nonproductive", label: "비생산" },
@@ -117,7 +116,6 @@ export function sortTasksForLedgerPicker(tasks) {
 
 const LEDGER_BUCKET_PRESET_EXPENSE = new Set(["nonproductive", "other"]);
 const LEDGER_BUCKET_PRESET_INVEST = new Set([
-  "dream",
   "happiness",
   "sideincome",
   "health",
@@ -138,7 +136,7 @@ export function timeLedgerTaskLogPickerBucket(t) {
   const cat = String(t?.category ?? "")
     .trim()
     .toLowerCase();
-  if (cat === "dream") return "dream";
+  if (cat === "dream") return "sideincome";
   if (cat === "happiness") return "happiness";
   if (cat === "sideincome") return "sideincome";
   if (cat === "health") return "health";
@@ -175,7 +173,7 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
   panel.hidden = true;
   let value = "";
   let searchQuery = "";
-  let pickerBucket = "dream";
+  let pickerBucket = "sideincome";
   let ledgerBucketPreset =
     options.ledgerBucketPreset === "expense" ||
     options.ledgerBucketPreset === "invest"
@@ -294,7 +292,7 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
 
   function ensurePickerBucketInAllowed() {
     const ids = new Set(getVisibleChips().map((c) => c.id));
-    if (!ids.has(pickerBucket)) pickerBucket = getVisibleChips()[0]?.id || "dream";
+    if (!ids.has(pickerBucket)) pickerBucket = getVisibleChips()[0]?.id || "sideincome";
   }
 
   function renderOptions(container, filter) {

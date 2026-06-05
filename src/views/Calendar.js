@@ -38,6 +38,7 @@ import {
   getRowStartInstantForMobileCard,
   getMobileCardEffectiveHoursForPrice,
 } from "./Time.js";
+import { formatMonthAbbrEn } from "../utils/lpDateDisplay.js";
 import { showToast } from "../utils/showToast.js";
 import { showAlertModal } from "../utils/confirmModal.js";
 import { initModalStandardDateFields } from "../utils/modalNativeDateField.js";
@@ -1003,9 +1004,7 @@ function timetableUsesHexSurface(c) {
 
 const DAY_NAMES = ["월", "화", "수", "목", "금", "토", "일"];
 function formatCalendarMonthLabel(monthIndex) {
-  const m = Number(monthIndex);
-  if (!Number.isFinite(m) || m < 0 || m > 11) return "";
-  return `${m + 1}월`;
+  return formatMonthAbbrEn(monthIndex);
 }
 
 /** 월요일 시작 (0=월, 6=일) */
@@ -3732,8 +3731,7 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
     const dayLedgerRowsTL = ledgerRowsForCalendarYmd(loadTimeRows(), targetKey);
     const prodColorsTL = getTimeCategoryColorsForTimetableExpected();
     const TL_SECTION_LABELS = {
-      dream: "꿈",
-      sideincome: "부수입",
+      sideincome: "시급 상승",
       health: "건강",
       happy: "행복",
     };
@@ -4368,8 +4366,7 @@ function render1WeekView(tabsElement) {
     const nowForWeek = new Date();
     const nowMinuteClock = nowForWeek.getHours() * 60 + nowForWeek.getMinutes();
     const WEEK_FLOW_SECTION_LABELS = {
-      dream: "꿈",
-      sideincome: "부수입",
+      sideincome: "시급 상승",
       health: "건강",
       happy: "행복",
     };
@@ -5452,10 +5449,10 @@ const CALENDAR_SUB_VIEWS = [
 ];
 
 const MOBILE_SCHEDULE_CAL_SUB_VIEWS = [
-  { id: "monthly", label: "월별", footerShortLabel: "월" },
-  { id: "1week", label: "1주", footerShortLabel: "주" },
-  { id: "1day", label: "타임블록", footerShortLabel: "일" },
-  { id: "annual", label: "연간", footerShortLabel: "연" },
+  { id: "monthly", label: "Month", footerShortLabel: "Month" },
+  { id: "1week", label: "Week", footerShortLabel: "Week" },
+  { id: "1day", label: "Day", footerShortLabel: "Day" },
+  { id: "annual", label: "Year", footerShortLabel: "Year" },
 ];
 
 /**

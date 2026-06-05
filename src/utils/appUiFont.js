@@ -8,7 +8,7 @@ import { supabase } from "../supabase.js";
 export const LP_APP_UI_FONT_STORAGE_KEY = "lp_app_ui_font_id";
 
 /** 앱 기본 글꼴 (localStorage·서버 값 없을 때) */
-export const LP_APP_DEFAULT_FONT_ID = "pakyongjun";
+export const LP_APP_DEFAULT_FONT_ID = "kyobohandwriting";
 
 /** 앱에서 「시스템 기본」 선택 시만 사용 */
 export const LP_APP_SYSTEM_FONT_STACK =
@@ -22,16 +22,6 @@ const LP_APP_FONT_FALLBACK = LP_APP_SYSTEM_FONT_STACK;
 /** @type {LpAppFontOption[]} */
 export const LP_APP_FONT_OPTIONS = [
   {
-    id: "pakyongjun",
-    label: "세종 글꽃",
-    stack: `"LP Sejong Geulggot", ${LP_APP_FONT_FALLBACK}`,
-  },
-  {
-    id: "leeseoyun",
-    label: "Lee Seoyun",
-    stack: `"LP Lee Seoyun", ${LP_APP_FONT_FALLBACK}`,
-  },
-  {
     id: "kyobohandwriting",
     label: "교보 손글씨",
     stack: `"LP Kyobo Handwriting", ${LP_APP_FONT_FALLBACK}`,
@@ -41,13 +31,19 @@ export const LP_APP_FONT_OPTIONS = [
 
 const LP_APP_FONT_ID_SET = new Set(LP_APP_FONT_OPTIONS.map((o) => o.id));
 
+/** 나의 계정에서 글꼴 변경 직후 서버 pull 이 로컬 선택을 덮지 않도록 */
+const LP_LOCAL_FONT_CHANGE_GRACE_MS = 15_000;
+let _localFontChangedAt = 0;
+
 /**
  * @param {unknown} id
  * @returns {string}
  */
 export function normalizeAppFontId(id) {
   const v = String(id ?? "").trim().toLowerCase();
-  if (v === "parkdahyun") return "kyobohandwriting";
+  if (v === "parkdahyun" || v === "pakyongjun" || v === "leeseoyun") {
+    return "kyobohandwriting";
+  }
   return LP_APP_FONT_ID_SET.has(v) ? v : LP_APP_DEFAULT_FONT_ID;
 }
 
@@ -94,7 +90,9 @@ export function applyAppFont() {
   try {
     const id = getStoredAppFontId();
     const stack = getAppFontStackForId(id);
-    document.documentElement.style.setProperty("--lp-app-font-family", stack);
+    const root = document.documentElement;
+    root.style.setProperty("--lp-app-font-family", stack);
+    root.style.fontFamily = stack;
   } catch (_) {}
 }
 
@@ -105,7 +103,13 @@ export function applyAppFont() {
  */
 export function applyAppFontIdFromServer(id) {
   if (id == null || String(id).trim() === "") return false;
-  const use = persistAppFontIdLocal(id);
+  if (Date.now() - _localFontChangedAt < LP_LOCAL_FONT_CHANGE_GRACE_MS) return false;
+  const serverId = normalizeAppFontId(id);
+  if (serverId === getStoredAppFontId()) {
+    applyAppFont();
+    return true;
+  }
+  const use = persistAppFontIdLocal(serverId);
   applyAppFont();
   emitAppFontChanged(use);
   return true;
@@ -131,6 +135,7 @@ export async function pushAppFontIdToSupabase(id) {
 export function setAppFontId(id, opts = {}) {
   const pushServer = opts.pushServer !== false;
   const use = persistAppFontIdLocal(id);
+  _localFontChangedAt = Date.now();
   applyAppFont();
   emitAppFontChanged(use);
   if (pushServer) void pushAppFontIdToSupabase(use);

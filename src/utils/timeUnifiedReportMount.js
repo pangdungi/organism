@@ -45,7 +45,6 @@ const DONUT_CAT_COLORS = {
 };
 
 const PROD_CATEGORY_KEYS = new Set([
-  "dream",
   "sideincome",
   "happiness",
   "health",

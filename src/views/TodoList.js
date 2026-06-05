@@ -310,8 +310,7 @@ function loadSectionTasks(sectionId) {
     if (Array.isArray(arr)) {
       const sectionLabel =
         {
-          dream: "꿈",
-          sideincome: "부수입",
+          sideincome: "시급 상승",
           health: "건강",
           happy: "행복",
         }[sectionId] || sectionId;
@@ -648,7 +647,6 @@ function moveTaskOutOfCustomSectionStorageOnly(sectionId, taskId) {
 }
 
 const FIXED_SECTION_IDS_FOR_STORAGE = [
-  "dream",
   "sideincome",
   "health",
   "happy",
@@ -1460,8 +1458,7 @@ function createCategoryDropdown(initialValue, onUpdate, tabSignal) {
 }
 
 const FIXED_SECTIONS = [
-  { id: "dream", label: "꿈" },
-  { id: "sideincome", label: "부수입" },
+  { id: "sideincome", label: "시급 상승" },
   { id: "health", label: "건강" },
   { id: "happy", label: "행복" },
 ];
@@ -4600,7 +4597,7 @@ function renderSections(container, tasksData = [], options = {}) {
         section.id === TODO_ALL_TAB_SECTION_ID
           ? null
           : section.id === "tasks"
-            ? "dream"
+            ? "sideincome"
             : section.id,
       hideCategoryCol: true,
       tabMode,
@@ -4900,9 +4897,9 @@ export function render(options = {}) {
         innerAdd.click();
         return;
       }
-      /* 활성 패널에 +가 없으면 꿈 탭 추가 모달로 연결 */
+      /* 활성 패널에 +가 없으면 시급 상승 탭 추가 모달로 연결 */
       const fallbackAdd = el.querySelector(
-        `.todo-section.todo-section-tab-panel[data-section="dream"] .todo-cards-add-btn`,
+        `.todo-section.todo-section-tab-panel[data-section="sideincome"] .todo-cards-add-btn`,
       );
       fallbackAdd?.click();
     });

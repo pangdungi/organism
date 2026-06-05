@@ -17,6 +17,9 @@ import {
 import {
   removeScopedLocalStorageItem,
 } from "./clientStorageScope.js";
+import { normalizeTimeEndReasonForRow } from "./timeTaskEndReasons.js";
+
+export { normalizeTimeEndReasonForRow } from "./timeTaskEndReasons.js";
 
 /**
  * 로그아웃·계정 전환 시 호출. 해당 계정 로컬 저장·메모리 초기화.
@@ -440,6 +443,7 @@ export function localTimeLedgerRowToDbPayload(userId, row) {
     ),
     kpi_performed_value: normalizeKpiPerformedValueForRow(row.kpiPerformedValue),
     time_rating: normalizeTimeRatingForRow(row.timeRating),
+    time_end_reason: normalizeTimeEndReasonForRow(row.timeEndReason) || null,
   };
 }
 
@@ -487,6 +491,7 @@ export function dbRowToLocalTimeLedgerRow(db) {
     ),
     kpiPerformedValue: normalizeKpiPerformedValueForRow(db.kpi_performed_value),
     timeRating: normalizeTimeRatingForRow(db.time_rating),
+    timeEndReason: normalizeTimeEndReasonForRow(db.time_end_reason),
     /** Supabase updated_at — 병합 시 last-write-wins */
     /** Supabase updated_at — 서버 스냅샷·동기화 표시용 */
     serverUpdatedAt:
@@ -588,12 +593,21 @@ export function applyTimeLedgerServerRangeSnapshot(
     const keepLocalHabit = serverHabit.length === 0 && localHabit.length > 0;
     const keepLocalKpiVal = !serverKpiVal && !!localKpiVal;
     const keepLocalTimeRating = serverRating == null && localRating != null;
-    if (keepLocalHabit || keepLocalKpiVal || keepLocalTimeRating) {
+    const serverEndReason = normalizeTimeEndReasonForRow(serverRow.timeEndReason);
+    const localEndReason = normalizeTimeEndReasonForRow(local.timeEndReason);
+    const keepLocalTimeEndReason = !serverEndReason && !!localEndReason;
+    if (
+      keepLocalHabit ||
+      keepLocalKpiVal ||
+      keepLocalTimeRating ||
+      keepLocalTimeEndReason
+    ) {
       return {
         ...serverRow,
         ...(keepLocalHabit ? { habitDailyCompleted: localHabit } : {}),
         ...(keepLocalKpiVal ? { kpiPerformedValue: localKpiVal } : {}),
         ...(keepLocalTimeRating ? { timeRating: localRating } : {}),
+        ...(keepLocalTimeEndReason ? { timeEndReason: localEndReason } : {}),
         localModifiedAt:
           typeof local.localModifiedAt === "number"
             ? local.localModifiedAt

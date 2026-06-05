@@ -178,7 +178,7 @@ export function getKpiTodosAsTasks() {
         eisenhower: todo.eisenhower || "",
         classification: kpiName,
         sectionId: "sideincome",
-        sectionLabel: "부수입",
+        sectionLabel: "시급 상승",
         done: !!todo.completed,
         isKpiTodo: true,
         kpiTodoId: todo.id,
@@ -860,7 +860,7 @@ export function moveKpiTodoToSection(kpiTodoId, fromStorageKey, toSectionId) {
 
     const sectionMeta = {
       dream: { sectionId: "dream", sectionLabel: "꿈" },
-      sideincome: { sectionId: "sideincome", sectionLabel: "부수입" },
+      sideincome: { sectionId: "sideincome", sectionLabel: "시급 상승" },
       happy: { sectionId: "happy", sectionLabel: "행복" },
       health: { sectionId: "health", sectionLabel: "건강" },
     }[toSectionId];
@@ -930,7 +930,7 @@ export function addBraindumpTodoToSection(toSectionId, todoData) {
 
     const sectionMeta = {
       dream: { sectionId: "dream", sectionLabel: "꿈" },
-      sideincome: { sectionId: "sideincome", sectionLabel: "부수입" },
+      sideincome: { sectionId: "sideincome", sectionLabel: "시급 상승" },
       happy: { sectionId: "happy", sectionLabel: "행복" },
       health: { sectionId: "health", sectionLabel: "건강" },
     }[toSectionId];
@@ -996,7 +996,7 @@ export function addCalendarTodoToSection(toSectionId, todoData) {
 
     const sectionMeta = {
       dream: { sectionId: "dream", sectionLabel: "꿈" },
-      sideincome: { sectionId: "sideincome", sectionLabel: "부수입" },
+      sideincome: { sectionId: "sideincome", sectionLabel: "시급 상승" },
       happy: { sectionId: "happy", sectionLabel: "행복" },
       health: { sectionId: "health", sectionLabel: "건강" },
     }[toSectionId];

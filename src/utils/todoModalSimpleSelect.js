@@ -105,11 +105,9 @@ export function buildModalSimpleSelect(options = {}) {
         closePanel();
         onChange?.(value);
       };
-      row.addEventListener("mousedown", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-      });
-      row.addEventListener("click", (e) => {
+      /* pointerdown — 마우스·터치 공통(WebKit click 누락·모바일 mousedown 지연 대비) */
+      row.addEventListener("pointerdown", (e) => {
+        if (e.pointerType === "mouse" && e.button !== 0) return;
         e.preventDefault();
         e.stopPropagation();
         pick();
@@ -177,7 +175,12 @@ export function buildModalSimpleSelect(options = {}) {
   wrap._getValue = () => value;
   wrap._setValue = (v) => {
     value = v === undefined || v === null ? "" : String(v);
-    closePanel();
+    if (panel.hidden) {
+      syncTrigger();
+      renderOptionRows();
+    } else {
+      closePanel();
+    }
   };
   wrap._closePanel = closePanel;
   wrap._isPanelNode = isModalSimpleSelectPanelNode;

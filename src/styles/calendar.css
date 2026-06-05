@@ -3,6 +3,18 @@
  * 모바일·데스크톱 동일 레이아웃 (막대 밀도는 .calendar-monthly-layout CSS 변수 + JS 공통).
  */
 
+@font-face {
+  font-family: "LP Pizza Club";
+  src: url("/fonts/PizzaClub-Regular.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --lp-calendar-month-font-family: "LP Pizza Club", system-ui, sans-serif;
+}
+
 /* -------------------------------------------------------------------------- */
 /* 토큰 (캘린더 트리 안에서만) */
 /* -------------------------------------------------------------------------- */
@@ -119,6 +131,19 @@
   pointer-events: none;
 }
 
+/* 일정 탭 하단 Month·Week·Day·Year — PizzaClub·#1d40ba (앱 글꼴 변경과 무관) */
+.app-footer-actions .app-footer-icon-btn[data-lp-schedule-cal-subview] {
+  width: auto;
+  min-width: 2.75rem;
+  padding: 0 0.4rem;
+  font-family: var(--lp-calendar-month-font-family);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #1d40ba;
+  letter-spacing: 0.02em;
+}
+
 .calendar-monthly-main {
   flex: 1;
   min-width: 0;
@@ -126,14 +151,6 @@
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-}
-
-/* 일정 탭: 푸터 서브뷰 전환 — 짧은 라벨(월·주·일·연), title·aria-label 은 전체 한글명 */
-.app-footer-actions .app-footer-icon-btn[data-lp-schedule-cal-subview] {
-  line-height: 1;
-  font-size: 0.8125rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -166,8 +183,22 @@
   letter-spacing: -0.02em;
 }
 
+.calendar-view:not(.calendar-view--mobile-workschedule) .calendar-nav-month,
+.calendar-annual-row-month {
+  font-family: var(--lp-calendar-month-font-family);
+  color: #1d40ba;
+}
+
+.calendar-view:not(.calendar-view--mobile-workschedule) .calendar-nav-month {
+  font-size: 3.75rem;
+}
+
+.calendar-view:not(.calendar-view--mobile-workschedule) .calendar-monthly-top-bar-date-num {
+  font-family: var(--lp-calendar-month-font-family);
+  color: #1d40ba;
+}
+
 .calendar-nav-month {
-  text-transform: capitalize;
   font-size: 3.25rem;
   line-height: 1.08;
 }
@@ -598,7 +629,7 @@
   font-size: 0.8125rem;
   font-weight: 700;
   line-height: 1.3;
-  color: #0f172a;
+  color: var(--text-ink);
   word-break: break-word;
 }
 
@@ -621,18 +652,13 @@
   justify-content: center;
   box-sizing: border-box;
   padding: 0.32rem;
+  background: transparent;
 }
 
-.calendar-1day-expected-card-icon-badge--productive {
-  background: #fceef0;
-}
-
-.calendar-1day-expected-card-icon-badge--nonproductive {
-  background: #f2f8fc;
-}
-
+.calendar-1day-expected-card-icon-badge--productive,
+.calendar-1day-expected-card-icon-badge--nonproductive,
 .calendar-1day-expected-card-icon-badge--other {
-  background: #eaf5ec;
+  background: transparent;
 }
 
 .calendar-1day-expected-card-icon-badge > img {
@@ -936,6 +962,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  background: transparent;
 }
 
 .calendar-1day-view .time-ledger-usage-icon-cell > img {
@@ -952,7 +979,7 @@
   font-weight: 600;
   line-height: 1.35;
   letter-spacing: -0.02em;
-  color: #1a1a1a;
+  color: var(--text-ink);
 }
 
 .calendar-1day-timeline-card-end {
@@ -987,7 +1014,7 @@
   margin-top: 0;
   font-size: 0.8125rem;
   line-height: 1.5;
-  color: #1a1a1a;
+  color: var(--text-ink);
   white-space: pre-wrap;
   word-break: break-word;
   min-width: 0;
@@ -1773,7 +1800,7 @@
 /* -------------------------------------------------------------------------- */
 
 .calendar-annual-view {
-  --annual-month-col-w: 2.85rem;
+  --annual-month-col-w: 3.5rem;
   --annual-day-col-w: 2.55rem;
 }
 
@@ -1838,12 +1865,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.2rem 0.2rem;
-  font-size: 0.6875rem;
+  padding: 0.25rem 0.3rem;
+  font-size: 0.9375rem;
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--cal-text-muted);
+  line-height: 1.15;
   border-right: 1px solid var(--cal-line);
   background: #fff;
   box-shadow: 1px 0 0 var(--cal-line);
@@ -2051,13 +2078,13 @@
   }
 
   .calendar-annual-view {
-    --annual-month-col-w: 2.45rem;
+    --annual-month-col-w: 3.25rem;
     --annual-day-col-w: 2.35rem;
   }
 
   .calendar-annual-row-month {
-    font-size: 0.6rem;
-    padding: 0.12rem 0.1rem;
+    font-size: 0.875rem;
+    padding: 0.2rem 0.25rem;
   }
 
   .calendar-annual-cell {

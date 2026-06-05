@@ -392,7 +392,7 @@ function renderSideincomePanel(panel) {
   if (goals.length === 0) {
     const empty = document.createElement("p");
     empty.className = "kpi-mindmap-empty";
-    empty.textContent = "부수입 목표를 추가해보세요";
+    empty.textContent = "시급 상승 목표를 추가해보세요";
     mapArea.appendChild(empty);
   } else {
     goals.forEach((goal) => {

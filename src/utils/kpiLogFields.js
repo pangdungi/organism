@@ -157,7 +157,7 @@ export function kpiLogSourceBadgeHtml(log) {
     ? "dream-kpi-log-source dream-kpi-log-source--time"
     : "dream-kpi-log-source dream-kpi-log-source--manual";
   const title = linked
-    ? "이 로그는 시간가계부 기록과 연결될 수 있습니다."
+    ? "이 로그는 시간 가계부 기록과 연결될 수 있습니다."
     : "KPI 화면에서 직접 입력한 로그입니다.";
   return `<span class="${cls}" title="${title}">${label}</span>`;
 }

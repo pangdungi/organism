@@ -149,7 +149,7 @@ function pillTextColorForRgbaBg(rgbaStr) {
   const g = parseInt(m[2], 10) / 255;
   const b = parseInt(m[3], 10) / 255;
   const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  return lum > 0.62 ? "#334155" : "#ffffff";
+  return lum > 0.62 ? "#1d40ba" : "#ffffff";
 }
 
 /** 할일 분류 칩 등 프리셋 rgba 배경 위 글자색 */

@@ -1,6 +1,6 @@
 /**
- * 부수입 페이지 - 꿈 페이지와 동일 구조
- * 부수입 목표 추가 모달 → 확인 시 탭 형성, KPI 카드, 로그, 할일
+ * 시급 상승 페이지 - 꿈 페이지와 동일 구조
+ * 시급 상승 목표 추가 모달 → 확인 시 탭 형성, KPI 카드, 로그, 할일
  * 활성 탭 연필 버튼으로 이름·목표 수정/삭제 모달
  */
 
@@ -368,12 +368,12 @@ export function render() {
   header.className = "dream-view-header";
   const label = document.createElement("span");
   label.className = "dream-view-label";
-  label.textContent = "SIDE INCOME";
+  label.textContent = "TIME PRICE";
   const titleRow = document.createElement("div");
   titleRow.className = "dream-view-header-title-row";
   const title = document.createElement("h1");
   title.className = "dream-view-title";
-  title.textContent = "부수입";
+  title.textContent = "시급 상승";
   titleRow.appendChild(title);
   setupKpiCategoryHeaderIcon(titleRow, "sideincome");
   header.appendChild(label);
@@ -405,7 +405,7 @@ export function render() {
     foreignKey: "pathId",
   });
   kpiFilter = _sideincomeRestored.kpiFilter;
-  /* 부수입 메뉴 진입은 항상 목표 목록 — KPI 화면은 목표 클릭 후에만 */
+  /* 시급 상승 메뉴 진입은 항상 목표 목록 — KPI 화면은 목표 클릭 후에만 */
   sideincomeViewScreen = "goals";
   activePathId = null;
   selectedKpiId = null;
@@ -432,8 +432,8 @@ export function render() {
       footerBack.title = "KPI 목록으로";
       footerBack.setAttribute("aria-label", "KPI 목록으로");
     } else if (sideincomeViewScreen === "kpis") {
-      footerBack.title = "부수입 목표 목록으로";
-      footerBack.setAttribute("aria-label", "부수입 목표 목록으로");
+      footerBack.title = "시급 상승 목표 목록으로";
+      footerBack.setAttribute("aria-label", "시급 상승 목표 목록으로");
     } else {
       footerBack.title = "오늘(메인)으로";
       footerBack.setAttribute("aria-label", "오늘(메인)으로");
@@ -447,9 +447,9 @@ export function render() {
       const kpi = (data.kpis || []).find((k) => k.id === selectedKpiId);
       title.textContent = kpi?.name || "KPI";
     } else if (sideincomeViewScreen === "kpis" && path) {
-      title.textContent = path.name || "부수입";
+      title.textContent = path.name || "시급 상승";
     } else {
-      title.textContent = "부수입";
+      title.textContent = "시급 상승";
     }
     setKpiCategoryHeaderIconVisible(titleRow, sideincomeViewScreen === "goals");
     syncSideincomeFooterBackLabel();
@@ -784,7 +784,7 @@ export function render() {
       <div data-legacy="time-task-setup-backdrop"></div>
       <div data-legacy="time-task-setup-panel time-task-log-panel">
         <div data-legacy="time-task-setup-header">
-          <h3 data-legacy="time-task-setup-title">${isEdit ? "부수입 로그 수정" : "부수입 로그 추가"}</h3>
+          <h3 data-legacy="time-task-setup-title">${isEdit ? "시급 상승 로그 수정" : "시급 상승 로그 추가"}</h3>
           <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
         </div>
         <form class="dream-kpi-log-form">
@@ -950,8 +950,8 @@ export function render() {
     if (sideincomeViewScreen === "goals") {
       const data = loadSideincomeMap();
       if (shouldShowKpiMapSyncLoading("sideincome", !data.paths?.length)) return;
-      addBtn.title = "부수입 목표 추가";
-      addBtn.setAttribute("aria-label", "부수입 목표 추가");
+      addBtn.title = "시급 상승 목표 추가";
+      addBtn.setAttribute("aria-label", "시급 상승 목표 추가");
       addBtn.addEventListener("click", () => {
         if (pathAddModalJustClosed) return;
         showPathAddModal();
@@ -1104,7 +1104,7 @@ export function render() {
       pathSummary.innerHTML = `
         <div class="dream-kpi-path-summary-inner">
           <div class="dream-kpi-path-summary-top">
-            <h2 class="dream-kpi-path-summary-name">${escapeHtml(path.name || "부수입 경로")}</h2>
+            <h2 class="dream-kpi-path-summary-name">${escapeHtml(path.name || "시급 상승 경로")}</h2>
             <button type="button" class="dream-kpi-path-summary-log-btn dream-kpi-todo-header-add-btn">+ 금액</button>
           </div>
           <div class="dream-kpi-path-summary-hero">
@@ -1114,7 +1114,7 @@ export function render() {
             <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${pathProgress}%"></div></div>
             <div class="dream-kpi-card-progress-text">누적 ${formatNum(pathCurrentVal)} / 목표 ${targetDisp}${pathUnit}</div>
           </div>
-          <div class="dream-kpi-path-summary-logs-heading">부수입 로그</div>
+          <div class="dream-kpi-path-summary-logs-heading">시급 상승 로그</div>
           <div class="dream-kpi-path-summary-logs dream-kpi-history-list"></div>
         </div>
       `;
@@ -1610,7 +1610,7 @@ export function render() {
       <div data-legacy="time-task-setup-backdrop"></div>
       <div data-legacy="time-task-setup-panel" class="dream-delete-confirm-panel">
         <div data-legacy="time-task-setup-header">
-          <h3 data-legacy="time-task-setup-title">부수입 경로 삭제</h3>
+          <h3 data-legacy="time-task-setup-title">시급 상승 경로 삭제</h3>
           <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
         </div>
         <div data-legacy="time-task-setup-body">
@@ -1664,27 +1664,27 @@ export function render() {
       <div data-legacy="time-task-setup-backdrop"></div>
       <div data-legacy="time-task-setup-panel" class="dream-path-context-panel">
         <div data-legacy="time-task-setup-header">
-          <h3 data-legacy="time-task-setup-title">부수입 경로 수정</h3>
+          <h3 data-legacy="time-task-setup-title">시급 상승 경로 수정</h3>
           <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
         </div>
         <form class="dream-kpi-form dream-path-edit-form">
           <div class="dream-kpi-form-body" data-legacy="time-task-setup-body">
             <div class="dream-kpi-field" data-legacy="time-add-task-field">
-              <label>경로 이름</label>
-              <input type="text" name="name" value="${escapeHtml(path.name || "")}" placeholder="홈페이지 디자인 외주" />
+              <label>목표 이름</label>
+              <input type="text" name="name" value="${escapeHtml(path.name || "")}" placeholder="시간관리서비스 개발" />
             </div>
             <div class="dream-kpi-field dream-kpi-field-checkbox" data-legacy="time-add-task-field">
               <label class="dream-kpi-checkbox-label">
-                목표부수입 금액 입력하기
+                목표 금액 입력하기
                 <input type="checkbox" name="trackTargetAmount"${path.trackTargetAmount ? " checked" : ""} />
               </label>
             </div>
             <div class="dream-kpi-field sideincome-target-amount-field" data-legacy="time-add-task-field"${path.trackTargetAmount ? "" : " hidden"}>
-              <label>목표 부수입 (원)</label>
+              <label>목표 금액 (원)</label>
               <input type="text" name="targetAmount" value="${escapeHtml(formatIntegerWithCommas(path.targetAmount || ""))}" placeholder="예) 10,000" inputmode="numeric" />
             </div>
             <div class="dream-kpi-delete-wrap">
-              <button type="button" class="dream-kpi-delete-btn" data-action="delete">부수입 경로 삭제</button>
+              <button type="button" class="dream-kpi-delete-btn" data-action="delete">시급 상승 경로 삭제</button>
               <p class="dream-kpi-delete-note">삭제 시 복구 불가</p>
             </div>
           </div>
@@ -1747,7 +1747,7 @@ export function render() {
     if (!data.paths.length) {
       const empty = document.createElement("p");
       empty.className = "dream-goals-empty";
-      empty.textContent = "부수입 목표를 추가해 보세요.";
+      empty.textContent = "시급 상승 목표를 추가해보세요.";
       list.appendChild(empty);
     }
 
@@ -1808,23 +1808,23 @@ export function render() {
       <div data-legacy="time-task-setup-backdrop"></div>
       <div data-legacy="time-task-setup-panel">
         <div data-legacy="time-task-setup-header">
-          <h3 data-legacy="time-task-setup-title">부수입 목표 추가</h3>
+          <h3 data-legacy="time-task-setup-title">시급 상승 목표 추가</h3>
           <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
         </div>
         <form class="dream-kpi-form">
           <div class="dream-kpi-form-body" data-legacy="time-task-setup-body">
             <div class="dream-kpi-field" data-legacy="time-add-task-field">
-              <label>부수입 경로 이름</label>
-              <input type="text" name="name" placeholder="홈페이지 디자인 외주" />
+              <label>목표 이름</label>
+              <input type="text" name="name" placeholder="시간관리서비스 개발" />
             </div>
             <div class="dream-kpi-field dream-kpi-field-checkbox" data-legacy="time-add-task-field">
               <label class="dream-kpi-checkbox-label">
-                목표부수입 금액 입력하기
+                목표 금액 입력하기
                 <input type="checkbox" name="trackTargetAmount" />
               </label>
             </div>
             <div class="dream-kpi-field sideincome-target-amount-field" data-legacy="time-add-task-field" hidden>
-              <label>목표 부수입 (원)</label>
+              <label>목표 금액 (원)</label>
               <input type="text" name="targetAmount" placeholder="예) 10,000" inputmode="numeric" />
             </div>
           </div>

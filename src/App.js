@@ -85,7 +85,7 @@ const TABS = [
   },
   {
     id: "time",
-    label: "시간가계부",
+    label: "시간 가계부",
     mobileLabel: "시간",
     icon: "/toolbaricons/menu-time.png",
     sidebarSection: "main",
@@ -102,15 +102,8 @@ const TABS = [
     sidebarOrder: 2,
   },
   {
-    id: "dream",
-    label: "꿈",
-    icon: "/toolbaricons/menu-dream.png",
-    sidebarSection: "bucket",
-    sidebarOrder: 0,
-  },
-  {
     id: "sideincome",
-    label: "부수입",
+    label: "시급 상승",
     icon: "/toolbaricons/menu-sideincome.png",
     sidebarSection: "bucket",
     sidebarOrder: 1,
@@ -135,25 +128,22 @@ const TABS = [
 const HOME_MENU_TAB_ORDER = [
   "time",
   "schedulecalendar",
-  "dream",
   "sideincome",
   "health",
   "happiness",
   "idea",
 ];
 
-/** 홈 정사각형 타일 전용 아이콘(사이드바·푸터는 TABS.icon 유지) */
+/** 홈 메뉴 2×3 격자 타일(아이콘+영문 라벨 이미지) */
 const HOME_MENU_ICON = {
-  time: "/toolbaricons/menu-home/time-new.svg",
-  schedulecalendar: "/toolbaricons/menu-home/calendar-new.svg",
-  dream: "/toolbaricons/menu-home/dream-new.svg",
-  sideincome: "/toolbaricons/menu-home/sideincome-new.svg",
-  health: "/toolbaricons/menu-home/health-new.svg",
-  happiness: "/toolbaricons/menu-home/happiness-new.svg",
-  idea: "/toolbaricons/menu-home/account-new.svg",
+  time: "/toolbaricons/menu-home/grid-time-recording.png",
+  schedulecalendar: "/toolbaricons/menu-home/grid-calendar.png",
+  sideincome: "/toolbaricons/menu-home/grid-goals.png",
+  health: "/toolbaricons/menu-home/grid-health.png",
+  happiness: "/toolbaricons/menu-home/grid-happiness.png",
+  idea: "/toolbaricons/menu-home/grid-my-account.png",
 };
 
-const HOME_MENU_LOGO = "/toolbaricons/menu-home/mainlogo-otter-new.svg";
 
 function tabMetaById(tabId) {
   if (tabId === "idea") {
@@ -222,6 +212,7 @@ function applyPersistedTabIdFromSessionStorage() {
     }
     if (tabId === "calendar") return "schedulecalendar";
     if (tabId === "workschedule") return "schedulecalendar";
+    if (tabId === "dream") return "sideincome";
     return tabId;
   };
   try {
@@ -271,8 +262,7 @@ function kpiSoftRefreshAfterPull(tabId, pullResult) {
 function kpiSoftRefreshIfPullChanged(tabId, pullResult) {
   if (!pullResult?.pullOk && !pullResult?.localChanged) return;
   try {
-    if (tabId === "dream") window.__lpDreamSoftRefresh?.();
-    else if (tabId === "health") window.__lpHealthSoftRefresh?.();
+    if (tabId === "health") window.__lpHealthSoftRefresh?.();
     else if (tabId === "happiness") window.__lpHappinessSoftRefresh?.();
     else if (tabId === "sideincome") window.__lpSideincomeSoftRefresh?.();
   } catch (_) {}
@@ -304,13 +294,12 @@ async function pullDataForActiveTab(tabId, opts = {}) {
       /* 기록 탭 날짜는 메뉴 전환 직전 `resetTimeLedgerSessionFilterToToday` 로 맞춤. pull 은 그 구간 기준 */
       await pullTimeLedgerTabEnterFromCloud();
       break;
-    case "dream":
     case "health":
     case "happiness":
     case "sideincome":
       return await pullKpiTabFromCloud(tabId);
     case "idea":
-      await pullUserPrefsFromSupabase().catch(() => {});
+      await pullUserPrefsFromSupabase({ applyServerFont: false }).catch(() => {});
       break;
     case "admin":
       break;
@@ -436,7 +425,6 @@ export async function mountApp(container) {
     '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m14 7-6 5 6 5"/><circle cx="12" cy="12" r="10"/></g></svg>';
   footerBackBtn.addEventListener("click", () => {
     try {
-      if (currentTabId === "dream" && window.__lpDreamFooterBack?.()) return;
       if (currentTabId === "health" && window.__lpHealthFooterBack?.()) return;
       if (currentTabId === "happiness" && window.__lpHappinessFooterBack?.()) return;
       if (currentTabId === "sideincome" && window.__lpSideincomeFooterBack?.()) return;
@@ -474,7 +462,6 @@ export async function mountApp(container) {
     const fromTab = currentTabId;
     if (fromTab !== tabId) flushAllPendingTimeDailyBudgetSync();
     if (
-      tabId !== "dream" &&
       tabId !== "health" &&
       tabId !== "happiness" &&
       tabId !== "sideincome"
@@ -558,7 +545,6 @@ export async function mountApp(container) {
             await syncAdminMenuVisibility();
           } catch (_) {}
         } else if (
-          targetTabId === "dream" ||
           targetTabId === "health" ||
           targetTabId === "happiness" ||
           targetTabId === "sideincome"
@@ -578,19 +564,6 @@ export async function mountApp(container) {
         })();
       })();
     }, 24);
-  }
-
-  function appendLauncherIcon(btn, iconSrc) {
-    const iconWrap = document.createElement("span");
-    iconWrap.className = "app-home-menu-launcher-icon";
-    const img = document.createElement("img");
-    img.src = iconSrc;
-    img.alt = "";
-    img.width = 30;
-    img.height = 30;
-    applyStaticAppIconImg(img);
-    iconWrap.appendChild(img);
-    btn.appendChild(iconWrap);
   }
 
   function bindHomeMenuLauncherAdminBtn(root) {
@@ -616,47 +589,30 @@ export async function mountApp(container) {
     const body = document.createElement("div");
     body.className = "app-home-menu-launcher-body";
 
-    const brand = document.createElement("div");
-    brand.className = "app-home-menu-launcher-brand";
-    const logoShell = document.createElement("div");
-    logoShell.className = "app-home-menu-launcher-logo-float-shell";
-    const logo = document.createElement("img");
-    logo.className = "app-home-menu-launcher-logo";
-    logo.src = HOME_MENU_LOGO;
-    logo.alt = "";
-    logo.width = 256;
-    logo.height = 256;
-    applyStaticAppIconImg(logo);
-    logoShell.appendChild(logo);
-    brand.appendChild(logoShell);
-
     function navButtonFromTab(tab) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "app-home-menu-launcher-btn";
-      if (tab.id === "idea") {
-        btn.classList.add("app-home-menu-launcher-btn--muted");
-      }
       btn.dataset.tabId = tab.id;
       btn.title = tab.label;
-      const iconSrc =
-        HOME_MENU_ICON[tab.id] ?? tab.iconDesktop ?? tab.icon;
-      appendLauncherIcon(btn, iconSrc);
-      const labelSpan = document.createElement("span");
-      labelSpan.className = "app-home-menu-launcher-label";
-      labelSpan.textContent = tab.homeMenuLabel ?? tab.label;
-      btn.appendChild(labelSpan);
+      btn.setAttribute("aria-label", tab.label);
+      const img = document.createElement("img");
+      img.className = "app-home-menu-launcher-grid-img";
+      img.src = HOME_MENU_ICON[tab.id] ?? tab.iconDesktop ?? tab.icon;
+      img.alt = "";
+      applyStaticAppIconImg(img);
+      btn.appendChild(img);
       btn.addEventListener("click", () => setActiveTab(tab.id));
       return btn;
     }
 
-    const list = document.createElement("div");
-    list.className = "app-home-menu-launcher-section-list";
+    const grid = document.createElement("div");
+    grid.className = "app-home-menu-launcher-section-grid";
     HOME_MENU_TAB_ORDER.forEach((tid) => {
       const tab = tabMetaById(tid);
-      if (tab) list.appendChild(navButtonFromTab(tab));
+      if (tab) grid.appendChild(navButtonFromTab(tab));
     });
-    body.appendChild(list);
+    body.appendChild(grid);
 
     launcherAdminBtn = document.createElement("button");
     launcherAdminBtn.type = "button";
@@ -669,7 +625,6 @@ export async function mountApp(container) {
 
     void syncAdminMenuVisibility();
 
-    card.appendChild(brand);
     card.appendChild(body);
     root.append(card, launcherAdminBtn);
     homeMenuLauncherEl = root;
@@ -938,7 +893,6 @@ export async function mountApp(container) {
           window.__lpIdeaSoftRefresh?.();
         } catch (_) {}
       } else if (
-        bootTabId === "dream" ||
         bootTabId === "health" ||
         bootTabId === "happiness" ||
         bootTabId === "sideincome"

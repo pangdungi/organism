@@ -75,7 +75,7 @@ export function getKpisByCategory() {
   const healthData = loadJson(HEALTH_KEY, { healths: [], kpis: [], kpiLogs: [] });
 
   const dreamNames = new Map((dreamData.dreams || []).map((d) => [d.id, d.name || "꿈"]));
-  const pathNames = new Map((sideData.paths || []).map((p) => [p.id, p.name || "부수입"]));
+  const pathNames = new Map((sideData.paths || []).map((p) => [p.id, p.name || "시급 상승"]));
   const happyNames = new Map((happyData.happinesses || []).map((h) => [h.id, h.name || "행복"]));
   const healthNames = new Map((healthData.healths || []).map((h) => [h.id, h.name || "건강"]));
 
@@ -133,7 +133,7 @@ export function getKpisByCategory() {
     addKpi(k, dreamData.kpiLogs || [], parentName, "꿈");
   });
   (sideData.kpis || []).forEach((k) => {
-    const parentName = pathNames.get(k.pathId) || "부수입";
+    const parentName = pathNames.get(k.pathId) || "시급 상승";
     addKpi(k, sideData.kpiLogs || [], parentName, "부수입");
   });
   (happyData.kpis || []).forEach((k) => {
@@ -148,7 +148,11 @@ export function getKpisByCategory() {
   return result;
 }
 
-const CATEGORY_LABELS = { 꿈: "꿈", 부수입: "부수입", 행복: "행복", 건강: "건강" };
+const CATEGORY_LABELS = {
+  부수입: "시급 상승",
+  행복: "행복",
+  건강: "건강",
+};
 const CATEGORY_ICONS = { 꿈: "✨", 부수입: "💰", 행복: "😊", 건강: "💪" };
 const CATEGORY_LEDGER = {
   꿈: "dream",
@@ -159,7 +163,7 @@ const CATEGORY_LEDGER = {
 
 export function showKpiViewModal() {
   const byCategory = getKpisByCategory();
-  const categoryOrder = ["꿈", "건강", "부수입", "행복"];
+  const categoryOrder = ["건강", "부수입", "행복"];
 
   let bodyHtml = "";
   categoryOrder.forEach((cat) => {

@@ -65,6 +65,6 @@ export const HAPPINESS_GOAL_EDIT_PENCIL_HTML = kpiEditButtonHtml(
 
 export const SIDEINCOME_GOAL_EDIT_PENCIL_HTML = kpiEditButtonHtml(
   "dream-kpi-card-edit dream-tab-edit",
-  "부수입 목표 수정",
-  "부수입 목표 수정",
+  "시급 상승 목표 수정",
+  "시급 상승 목표 수정",
 );

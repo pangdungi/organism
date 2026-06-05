@@ -82,8 +82,12 @@ export async function syncUserIanaTimezoneToSupabase() {
   const { error } = await supabase.rpc("set_my_iana_timezone", { p_tz: tz });
 }
 
-/** 로그인·앱 진입: 시급 + appearance + 화면 글꼴 + 구독 필드 → localStorage·UI 반영 */
-export async function pullUserPrefsFromSupabase() {
+/**
+ * 로그인·앱 진입: 시급 + appearance + 화면 글꼴 + 구독 필드 → localStorage·UI 반영
+ * @param {{ applyServerFont?: boolean }} [opts] — false 면 글꼴은 로컬 유지(나의 계정 탭 pull)
+ */
+export async function pullUserPrefsFromSupabase(opts = {}) {
+  const applyServerFont = opts.applyServerFont !== false;
   if (!supabase) return null;
   const {
     data: { session },
@@ -98,7 +102,7 @@ export async function pullUserPrefsFromSupabase() {
     .maybeSingle();
   if (error || !data) return null;
 
-  applyAppFontIdFromServer(data.ui_font_id);
+  if (applyServerFont) applyAppFontIdFromServer(data.ui_font_id);
 
   if (data.hourly_rate != null) {
     const n = Number(data.hourly_rate);

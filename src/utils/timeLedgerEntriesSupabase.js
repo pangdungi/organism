@@ -39,7 +39,9 @@ let _supportsTimeRatingColumn = null;
 
 function ledgerEntrySelectColumns() {
   if (_supportsTimeRatingColumn === false) return LEDGER_ENTRY_SELECT_BASE;
-  return `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, updated_at`;
+  const mid = `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating`;
+  if (_supportsTimeEndReasonColumn === false) return `${mid}, updated_at`;
+  return `${mid}, time_end_reason, updated_at`;
 }
 
 function isMissingTimeRatingColumnError(error) {
@@ -47,12 +49,28 @@ function isMissingTimeRatingColumnError(error) {
   return /time_rating/i.test(msg);
 }
 
+function isMissingTimeEndReasonColumnError(error) {
+  const msg = `${error?.message || ""} ${error?.details || ""} ${error?.hint || ""}`;
+  return /time_end_reason/i.test(msg);
+}
+
 function markTimeRatingColumnSupported(ok) {
   _supportsTimeRatingColumn = ok;
 }
 
+/** null=미확인, true=있음, false=마이그레이션 전 서버 */
+let _supportsTimeEndReasonColumn = null;
+
+function markTimeEndReasonColumnSupported(ok) {
+  _supportsTimeEndReasonColumn = ok;
+}
+
 function stripTimeRatingFromPayloads(payloads) {
   return payloads.map(({ time_rating: _drop, ...rest }) => rest);
+}
+
+function stripTimeEndReasonFromPayloads(payloads) {
+  return payloads.map(({ time_end_reason: _drop, ...rest }) => rest);
 }
 
 async function fetchLedgerEntriesForRangePage(
@@ -75,6 +93,7 @@ async function fetchLedgerEntriesForRangePage(
 
   if (result.error && isMissingTimeRatingColumnError(result.error)) {
     markTimeRatingColumnSupported(false);
+    markTimeEndReasonColumnSupported(false);
     result = await supabase
       .from(TABLE)
       .select(LEDGER_ENTRY_SELECT_BASE)
@@ -84,8 +103,22 @@ async function fetchLedgerEntriesForRangePage(
       .order("entry_date", { ascending: false })
       .order("start_time", { ascending: false })
       .range(offset, offset + pageSize - 1);
-  } else if (!result.error && _supportsTimeRatingColumn === null) {
-    markTimeRatingColumnSupported(true);
+  } else if (result.error && isMissingTimeEndReasonColumnError(result.error)) {
+    markTimeEndReasonColumnSupported(false);
+    result = await supabase
+      .from(TABLE)
+      .select(
+        `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, updated_at`,
+      )
+      .eq("user_id", userId)
+      .gte("entry_date", rs)
+      .lte("entry_date", re)
+      .order("entry_date", { ascending: false })
+      .order("start_time", { ascending: false })
+      .range(offset, offset + pageSize - 1);
+  } else if (!result.error) {
+    if (_supportsTimeRatingColumn === null) markTimeRatingColumnSupported(true);
+    if (_supportsTimeEndReasonColumn === null) markTimeEndReasonColumnSupported(true);
   }
   return result;
 }
@@ -99,14 +132,26 @@ async function upsertLedgerEntryPayloads(payloads) {
 
   if (result.error && isMissingTimeRatingColumnError(result.error)) {
     markTimeRatingColumnSupported(false);
+    markTimeEndReasonColumnSupported(false);
     result = await supabase
       .from(TABLE)
       .upsert(stripTimeRatingFromPayloads(payloads), {
         onConflict: UPSERT_CONFLICT_ROW,
       })
       .select(LEDGER_ENTRY_SELECT_BASE);
-  } else if (!result.error && _supportsTimeRatingColumn === null) {
-    markTimeRatingColumnSupported(true);
+  } else if (result.error && isMissingTimeEndReasonColumnError(result.error)) {
+    markTimeEndReasonColumnSupported(false);
+    result = await supabase
+      .from(TABLE)
+      .upsert(stripTimeEndReasonFromPayloads(payloads), {
+        onConflict: UPSERT_CONFLICT_ROW,
+      })
+      .select(
+        `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, updated_at`,
+      );
+  } else if (!result.error) {
+    if (_supportsTimeRatingColumn === null) markTimeRatingColumnSupported(true);
+    if (_supportsTimeEndReasonColumn === null) markTimeEndReasonColumnSupported(true);
   }
   return result;
 }

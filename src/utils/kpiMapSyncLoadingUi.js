@@ -2,7 +2,7 @@
 
 import { renderLpUnifiedLoadingMarkup } from "./lpUnifiedLoadingUi.js";
 
-const KPI_APP_TAB_IDS = new Set(["dream", "health", "happiness", "sideincome"]);
+const KPI_APP_TAB_IDS = new Set(["health", "happiness", "sideincome"]);
 
 let pendingTabId = null;
 

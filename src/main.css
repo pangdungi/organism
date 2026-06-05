@@ -10,6 +10,7 @@
 }
 
 :root {
+  --text-ink: #1d40ba;
   --lp-safe-top: env(safe-area-inset-top, 0px);
   /* 하단 세이프: 시스템 inset의 60% (34px 기기 ≈ 20px) */
   --lp-safe-bottom: calc(env(safe-area-inset-bottom, 0px) * 0.6);
@@ -53,6 +54,7 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   overflow-x: hidden;
+  color: var(--text-ink);
 }
 
 #app {
@@ -234,11 +236,11 @@ body {
   max-height: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
+  justify-content: stretch;
+  align-items: stretch;
   overflow: hidden;
-  padding-top: clamp(0.25rem, 1.2dvh, 0.65rem);
-  padding-bottom: max(0.65rem, var(--lp-safe-bottom));
+  padding-top: clamp(0.2rem, 0.8dvh, 0.5rem);
+  padding-bottom: max(0.35rem, var(--lp-safe-bottom));
 }
 
 .app-tab-panel {
@@ -402,12 +404,9 @@ html.lp-task-log-modal-open #signin-page {
   filter: brightness(0) invert(1);
 }
 
-/* 메인(오늘) 뷰 — 흰 배경 + 물결 패턴(타일 반복) + 메뉴 그리드 */
+/* 메인(오늘) 뷰 — 흰 배경 + 메뉴 그리드 */
 .app-main:has(.app-home-menu-launcher) {
-  --home-menu-pattern: url("/toolbaricons/menu-home/home-pattern-new.svg");
-  --home-menu-logo-h: clamp(7.5rem, 24dvh, 17.5rem);
-  --home-menu-btn-min-h: clamp(2.35rem, 5.8dvh, 3.125rem);
-  --home-menu-btn-gap: clamp(0.45rem, 0.9dvh, 0.72rem);
+  --home-menu-grid-gap: clamp(0.35rem, 1.6vw, 0.72rem);
   background: #fff;
   overflow: hidden;
 }
@@ -415,27 +414,13 @@ html.lp-task-log-modal-open #signin-page {
 .app-main:has(.app-home-menu-launcher) .app-tab-panel {
   flex: 1 1 0;
   min-height: 0;
-  justify-content: flex-start;
+  justify-content: stretch;
   align-items: stretch;
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  padding: clamp(0.15rem, 0.8dvh, 0.35rem) 0
-    max(0.65rem, var(--lp-safe-bottom));
+  padding: 0;
   background: #fff;
-}
-
-.app-main:has(.app-home-menu-launcher) .app-tab-panel::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.38;
-  background-image: var(--home-menu-pattern);
-  background-repeat: repeat;
-  background-size: 6rem 6rem;
-  background-position: center;
 }
 
 .app-main:has(.app-home-menu-launcher) .app-tab-panel > .app-home-menu-launcher {
@@ -449,12 +434,12 @@ html.lp-task-log-modal-open #signin-page {
   width: 100%;
   max-width: none;
   margin: 0;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 0;
   max-height: 100%;
   overflow: hidden;
   align-items: stretch;
-  justify-content: center;
+  justify-content: stretch;
 }
 
 /* 홈(오늘) — 메뉴 리스트 */
@@ -462,10 +447,11 @@ html.lp-task-log-modal-open #signin-page {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  justify-content: center;
+  justify-content: stretch;
   box-sizing: border-box;
   width: 100%;
   max-width: none;
+  height: 100%;
   max-height: 100%;
   margin: 0;
   padding: 0;
@@ -505,39 +491,19 @@ html.lp-task-log-modal-open #signin-page {
   max-width: min(20rem, 94%);
   margin: 0;
   object-fit: contain;
-  transform-origin: center center;
-  animation: app-home-menu-logo-float 3.4s ease-in-out infinite;
-  will-change: transform;
-}
-
-@keyframes app-home-menu-logo-float {
-  0%,
-  100% {
-    transform: translateY(0.35rem);
-  }
-
-  50% {
-    transform: translateY(-0.35rem);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .app-home-menu-launcher-logo {
-    animation: none;
-    will-change: auto;
-  }
 }
 
 .app-home-menu-launcher-card {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 0;
+  height: 100%;
   max-height: 100%;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   width: 100%;
-  max-width: min(max(22rem, 88vw), 40rem, 100%);
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 0;
   padding: 0;
   overflow: hidden;
   background: transparent;
@@ -547,20 +513,21 @@ html.lp-task-log-modal-open #signin-page {
 }
 
 .app-home-menu-launcher-card .app-home-menu-launcher-body {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 0;
+  height: 100%;
   width: 100%;
   box-sizing: border-box;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  padding: 0 max(0.85rem, var(--lp-safe-left))
+  justify-content: stretch;
+  padding: clamp(0.2rem, 0.8dvh, 0.45rem) max(0.65rem, var(--lp-safe-left))
     max(0.35rem, var(--lp-safe-bottom))
-    max(0.85rem, var(--lp-safe-right));
+    max(0.65rem, var(--lp-safe-right));
 }
 
-.app-home-menu-launcher-card .app-home-menu-launcher-section-list {
+.app-home-menu-launcher-card .app-home-menu-launcher-section-grid {
   box-sizing: border-box;
   width: 100%;
 }
@@ -587,159 +554,73 @@ html.lp-task-log-modal-open #signin-page {
   margin-top: 0;
 }
 
-.app-home-menu-launcher-section-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--home-menu-btn-gap, 0.55rem);
+.app-home-menu-launcher-section-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: var(--home-menu-grid-gap, 0.55rem);
   width: 100%;
+  height: 100%;
   margin: 0;
   align-items: stretch;
-  flex: 0 1 auto;
+  justify-items: stretch;
+  flex: 1 1 0;
   min-height: 0;
-  overflow: hidden;
-}
-
-.app-main:has(.app-home-menu-launcher) .app-home-menu-launcher-btn {
-  min-height: var(--home-menu-btn-min-h, 3.125rem);
-  padding-top: clamp(0.45rem, 1dvh, 0.82rem);
-  padding-bottom: clamp(0.45rem, 1dvh, 0.82rem);
 }
 
 .app-home-menu-launcher-btn {
-  position: relative;
   display: flex;
-  flex-direction: row;
   align-items: center;
-  justify-content: flex-start;
-  gap: 0.55rem;
+  justify-content: center;
   width: 100%;
+  height: 100%;
   min-width: 0;
-  min-height: 3.125rem;
+  min-height: 0;
   margin: 0;
-  padding: 0.82rem 0.7rem 0.82rem 0.88rem;
+  padding: 0;
   box-sizing: border-box;
   cursor: pointer;
   font: inherit;
-  font-size: 0.875rem;
-  font-weight: 600;
-  line-height: 1.25;
-  letter-spacing: -0.03em;
-  text-align: left;
-  color: #2b3240;
-  background: #fff;
-  border: 1px solid rgba(58, 88, 120, 0.22);
-  border-radius: 12px;
+  text-align: center;
+  color: inherit;
+  background: transparent;
+  border: none;
+  border-radius: 0;
   box-shadow: none;
-  transition:
-    color 0.12s ease,
-    background 0.12s ease,
-    border-color 0.12s ease;
   -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.12s ease, transform 0.12s ease;
 }
 
 .app-home-menu-launcher-btn:hover {
-  color: #1a2330;
-  background: #f8fafc;
-  border-color: rgba(30, 77, 123, 0.32);
+  opacity: 0.88;
+}
+
+.app-home-menu-launcher-btn:active {
+  transform: scale(0.97);
 }
 
 .app-home-menu-launcher-btn:focus-visible {
   outline: 2px solid #1a5fa8;
   outline-offset: 2px;
+  border-radius: 4px;
 }
 
-.app-home-menu-launcher-label {
+.app-home-menu-launcher-grid-img {
   display: block;
-  flex: 1;
-  min-width: 0;
-  text-align: left;
-  word-break: keep-all;
-  overflow-wrap: break-word;
-  hyphens: auto;
-}
-
-.app-home-menu-launcher-icon {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  padding: 0.1rem 0 0.1rem 0.06rem;
-  box-sizing: border-box;
-  line-height: 0;
-}
-
-.app-home-menu-launcher-icon img {
-  width: 30px;
-  height: 30px;
+  width: 100%;
+  height: 100%;
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
-  display: block;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
-/* 패드·데스크탑: 메뉴 카드·버튼을 넓은 화면에 맞게 확대(640px 이상 — 미니 패드 포함) */
 @media (min-width: 40rem) {
   .app-main:has(.app-home-menu-launcher) {
-    --home-menu-logo-h: clamp(8.5rem, 22dvh, 16.5rem);
-    --home-menu-btn-min-h: clamp(3rem, 6.5dvh, 3.875rem);
-    --home-menu-btn-gap: clamp(0.55rem, 1.05dvh, 0.82rem);
+    --home-menu-grid-gap: clamp(0.45rem, 1.2vw, 0.75rem);
   }
-
-  .app-home-menu-launcher-card {
-    max-width: min(max(22rem, 88vw), 40rem, 100%);
-  }
-
-  .app-home-menu-launcher-logo {
-    max-width: min(26rem, 94%);
-  }
-
-  .app-home-menu-launcher-btn {
-    font-size: 1rem;
-    gap: 0.65rem;
-    padding: 0.9rem 0.85rem 0.9rem 1.05rem;
-    border-radius: 14px;
-  }
-
-  .app-home-menu-launcher-icon {
-    width: 2.35rem;
-    height: 2.35rem;
-  }
-
-  .app-home-menu-launcher-icon img {
-    width: 34px;
-    height: 34px;
-  }
-}
-
-@media (min-width: 64rem) {
-  .app-main:has(.app-home-menu-launcher) {
-    --home-menu-btn-min-h: clamp(3.25rem, 6dvh, 4.125rem);
-  }
-
-  .app-home-menu-launcher-card {
-    max-width: min(max(24rem, 85vw), 44rem, 100%);
-  }
-
-  .app-home-menu-launcher-btn {
-    font-size: 1.0625rem;
-    padding: 1rem 0.95rem 1rem 1.15rem;
-  }
-
-  .app-home-menu-launcher-icon {
-    width: 2.5rem;
-    height: 2.5rem;
-  }
-
-  .app-home-menu-launcher-icon img {
-    width: 36px;
-    height: 36px;
-  }
-}
-
-.app-home-menu-launcher-btn--muted {
-  opacity: 0.96;
 }
 
 /* 관리자만 보임 — 메뉴 카드 밖·화면 모서리 작은 링크 */
@@ -828,7 +709,7 @@ html.lp-task-log-modal-open #signin-page {
   font-size: 0.875rem;
   line-height: 1.35;
   letter-spacing: -0.01em;
-  color: #1a2218;
+  color: var(--text-ink);
   outline: none;
   -webkit-appearance: none;
   appearance: none;
@@ -847,7 +728,7 @@ html.lp-task-log-modal-open #signin-page {
 .lp-search-bar__input:-webkit-autofill,
 .lp-search-bar__input:-webkit-autofill:hover,
 .lp-search-bar__input:-webkit-autofill:focus {
-  -webkit-text-fill-color: #1a2218;
+  -webkit-text-fill-color: var(--text-ink);
   box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.92) inset;
   transition: background-color 5000s ease-in-out;
 }
@@ -1057,6 +938,18 @@ table {
 
 .idea-view .idea-app-font-dropdown-slot .time-task-log-task-dropdown {
   width: 100%;
+}
+
+.idea-view .idea-app-font-dropdown-slot .time-task-log-task-dropdown-panel,
+.idea-view
+  .idea-app-font-dropdown-slot
+  [data-legacy~="time-task-log-task-dropdown-panel"],
+.idea-view .idea-app-font-dropdown-slot .time-task-log-task-dropdown-options,
+.idea-view
+  .idea-app-font-dropdown-slot
+  [data-legacy~="time-task-log-task-dropdown-options"] {
+  pointer-events: auto;
+  touch-action: manipulation;
 }
 
 .idea-view
@@ -1457,7 +1350,7 @@ table {
   min-height: 0;
   flex: 1 1 auto;
   background: #fff;
-  color: #1a2218;
+  color: var(--text-ink);
   font-family: inherit;
 }
 
@@ -1563,7 +1456,7 @@ table {
 .admin-view .admin-subs-table tbody td {
   padding: 0.5rem 0.65rem;
   vertical-align: middle;
-  color: #1a2218;
+  color: var(--text-ink);
   border-bottom: 1px solid rgba(26, 45, 69, 0.06);
 }
 
@@ -1594,7 +1487,7 @@ table {
   padding: 0.28rem 0.4rem;
   font: inherit;
   font-size: 0.76rem;
-  color: #1a2218;
+  color: var(--text-ink);
   background: #fff;
   border: 1px solid rgba(26, 45, 69, 0.14);
   border-radius: 6px;
@@ -1818,7 +1711,7 @@ table {
 .login-input--auth:focus {
   border-bottom-width: 1.5px;
   border-bottom-color: #1e4d7b;
-  color: #1a2218;
+  color: var(--text-ink);
 }
 
 .login-input--auth:not(:placeholder-shown):not(:focus) {

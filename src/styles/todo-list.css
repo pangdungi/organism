@@ -413,7 +413,7 @@
 .todo-card-name {
   font-size: 0.9375rem;
   font-weight: 400;
-  color: #1a2218;
+  color: var(--text-ink);
   line-height: 1.35;
   word-break: break-word;
   width: 100%;

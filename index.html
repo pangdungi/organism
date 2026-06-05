@@ -52,35 +52,20 @@
     </script>
     <!-- manifest·favicon·og:image 캐시: v= 쿼리 변경 시 검색·미리보기가 새 로고를 받음 -->
     <link rel="manifest" href="/manifest.json?v=money-is-time-logo-2" />
-    <link rel="preload" href="/fonts/LP-SejongGeulggot.otf" as="font" type="font/otf" crossorigin />
-    <link rel="preload" href="/toolbaricons/splash/splash-pattern-wave.png" as="image" />
-    <link rel="preload" href="/toolbaricons/splash/splash-mascot.png" as="image" />
+    <link rel="preload" href="/fonts/LP-KyoboHandwriting2025.otf" as="font" type="font/otf" crossorigin />
+    <link rel="preload" href="/toolbaricons/splash/splash-screen.svg" as="image" type="image/svg+xml" />
     <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png?v=money-is-time-logo-1" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=money-is-time-logo-1" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=money-is-time-logo-1" />
     <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png?v=money-is-time-logo-1" />
     <!-- iOS 홈 화면 실행 직후 네이티브 스플래시(전체 화면 물결+수달) -->
-    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1179.png?v=money-is-time-splash-1" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
-    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1179.png?v=money-is-time-splash-1" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
-    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1284.png?v=money-is-time-splash-1" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
-    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1170.png?v=money-is-time-splash-1" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
-    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1080.png?v=money-is-time-splash-1" media="(orientation: portrait)" />
-    <!-- FOUC 방지 + 첫 페인트부터 세종 글꽃(또는 저장된 화면 글꼴) -->
+    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1179.png?v=good-things-splash-svg-1" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1179.png?v=good-things-splash-svg-1" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1284.png?v=good-things-splash-svg-1" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1170.png?v=good-things-splash-svg-1" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1080.png?v=good-things-splash-svg-1" media="(orientation: portrait)" />
+    <!-- FOUC 방지 + 첫 페인트부터 교보 손글씨(또는 저장된 화면 글꼴) -->
     <style>
-      @font-face {
-        font-family: "LP Sejong Geulggot";
-        src: url("/fonts/LP-SejongGeulggot.otf") format("opentype");
-        font-weight: normal;
-        font-style: normal;
-        font-display: swap;
-      }
-      @font-face {
-        font-family: "LP Lee Seoyun";
-        src: url("/fonts/LP-LeeSeoyun.otf") format("opentype");
-        font-weight: normal;
-        font-style: normal;
-        font-display: swap;
-      }
       @font-face {
         font-family: "LP Kyobo Handwriting";
         src: url("/fonts/LP-KyoboHandwriting2025.otf") format("opentype");
@@ -88,8 +73,15 @@
         font-style: normal;
         font-display: swap;
       }
+      @font-face {
+        font-family: "LP Pizza Club";
+        src: url("/fonts/PizzaClub-Regular.otf") format("opentype");
+        font-weight: normal;
+        font-style: normal;
+        font-display: swap;
+      }
       :root {
-        --lp-app-font-family: "LP Sejong Geulggot", system-ui, -apple-system, "Segoe UI",
+        --lp-app-font-family: "LP Kyobo Handwriting", system-ui, -apple-system, "Segoe UI",
           Roboto, sans-serif;
       }
       html {
@@ -113,12 +105,12 @@
       html.lp-splash-active {
         overflow: hidden;
         height: 100%;
-        background: #fff;
+        background: #000;
       }
       html.lp-splash-active body {
         overflow: hidden;
         height: 100%;
-        background: #fff;
+        background: #000;
       }
       #app {
         display: none;
@@ -144,13 +136,12 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: max(1.5rem, env(safe-area-inset-top, 0)) 1.5rem
-          max(2rem, env(safe-area-inset-bottom, 0));
+        padding: 0;
         box-sizing: border-box;
         overflow: hidden;
         isolation: isolate;
         background: #fff;
-        color: #1e4d7b;
+        color: #1d40ba;
         -webkit-tap-highlight-color: transparent;
         transition: opacity 0.38s ease;
       }
@@ -158,68 +149,15 @@
         opacity: 0;
         pointer-events: none;
       }
-      .app-splash .lp-unified-loading__pattern {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 0;
+      .app-splash .lp-unified-loading__screen-img {
+        display: block;
         width: 100%;
         height: 100%;
-        min-height: 100%;
-        pointer-events: none;
-        opacity: 0.38;
-        background-color: #fff;
-        background-image: url("/toolbaricons/splash/splash-pattern-wave.png");
-        background-repeat: repeat;
-        background-size: 3rem 3rem;
-        background-position: center;
-      }
-      .app-splash .lp-unified-loading__content {
-        position: relative;
-        z-index: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        gap: clamp(0.65rem, 2dvh, 1rem);
-        padding: 1rem;
-        box-sizing: border-box;
-      }
-      .app-splash .lp-unified-loading__mascot {
-        display: block;
-        width: auto;
-        height: clamp(6.5rem, 22dvh, 9.5rem);
-        max-width: min(14rem, 72vw);
-        object-fit: contain;
-        transform-origin: center center;
-        animation: lp-unified-loading-mascot-float 3.4s ease-in-out infinite;
-      }
-      @keyframes lp-unified-loading-mascot-float {
-        0%,
-        100% {
-          transform: translateY(0.35rem);
-        }
-        50% {
-          transform: translateY(-0.35rem);
-        }
-      }
-      .app-splash .lp-unified-loading__message {
+        max-width: 100%;
+        max-height: 100%;
         margin: 0;
-        font-family: inherit;
-        font-size: clamp(0.875rem, 2.8vw, 0.9375rem);
-        font-weight: 500;
-        letter-spacing: -0.02em;
-        color: #1e4d7b;
-        line-height: 1.5;
-        max-width: 18rem;
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .app-splash .lp-unified-loading__mascot {
-          animation: none;
-        }
+        object-fit: contain;
+        object-position: center center;
       }
       .app-tablet-landscape-hint,
       .app-phone-portrait-hint {
@@ -294,16 +232,20 @@
         var FALLBACK =
           'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
         var STACKS = {
-          pakyongjun: '"LP Sejong Geulggot", ' + FALLBACK,
-          leeseoyun: '"LP Lee Seoyun", ' + FALLBACK,
           kyobohandwriting: '"LP Kyobo Handwriting", ' + FALLBACK,
           system: FALLBACK,
         };
         var KEY = "lp_app_ui_font_id";
-        var DEF = "pakyongjun";
+        var DEF = "kyobohandwriting";
         try {
           var id = localStorage.getItem(KEY);
-          if (id === "parkdahyun") id = "kyobohandwriting";
+          if (
+            id === "parkdahyun" ||
+            id === "pakyongjun" ||
+            id === "leeseoyun"
+          ) {
+            id = "kyobohandwriting";
+          }
           if (!id || !STACKS[id]) id = DEF;
           document.documentElement.style.setProperty(
             "--lp-app-font-family",
@@ -343,23 +285,17 @@
       role="status"
       aria-live="polite"
       aria-busy="true"
-      aria-label="조금만 기다리세요 다들 미안 ❤︎"
+      aria-label="Good things are coming"
     >
-      <div class="lp-unified-loading__pattern" aria-hidden="true"></div>
-      <div class="lp-unified-loading__content">
-        <div class="lp-unified-loading__mascot-shell">
-          <img
-            class="lp-unified-loading__mascot"
-            src="/toolbaricons/splash/splash-mascot.png"
-            alt=""
-            width="192"
-            height="192"
-            decoding="async"
-            fetchpriority="high"
-          />
-        </div>
-        <p class="lp-unified-loading__message">조금만 기다리세요 다들 미안 ❤︎</p>
-      </div>
+      <img
+        class="lp-unified-loading__screen-img"
+        src="/toolbaricons/splash/splash-screen.svg"
+        alt=""
+        width="1046"
+        height="1609"
+        decoding="async"
+        fetchpriority="high"
+      />
     </div>
     <div id="lp-boot-fallback" hidden aria-hidden="true" role="alertdialog" aria-labelledby="lp-boot-fallback-title">
       <p class="lp-boot-fallback-title" id="lp-boot-fallback-title">앱을 불러오지 못했습니다</p>

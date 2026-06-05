@@ -94,8 +94,10 @@ import {
   TIME_LEDGER_ENTRIES_KEY,
   writeTimeLedgerEntriesRaw,
   normalizeTimeRatingForRow,
+  normalizeTimeEndReasonForRow,
   formatTimeLedgerCardRatingStarsHtml,
 } from "../utils/timeLedgerEntriesModel.js";
+import { TIME_TASK_END_REASON_OPTIONS } from "../utils/timeTaskEndReasons.js";
 import { closeStaleInProgressTimeLedgerRows, timeLedgerRowIsActiveLiveInProgress } from "../utils/timeLedgerStaleInProgressClose.js";
 import {
   deleteTimeLedgerEntryFromSupabase,
@@ -261,11 +263,10 @@ function appendTaskDropdownBadges(textWrap, task, opts = {}) {
 
 /** KPI에서 만든 과제 — 시간가계부 과제 설정에서 삭제 불가 안내 */
 const MSG_TIME_TASK_KPI_LINKED =
-  "KPI와 연결된 과제입니다. 과제 설정에서는 삭제할 수 없습니다. 꿈·건강·행복·부수입 등 KPI 화면에서 해당 KPI를 삭제하면 서버와 과제 목록에서 함께 제거됩니다.";
+  "KPI와 연결된 과제입니다. 과제 설정에서는 삭제할 수 없습니다. 시급 상승·건강·행복 KPI 화면에서 해당 KPI를 삭제하면 서버와 과제 목록에서 함께 제거됩니다.";
 
 const PRODUCTIVE_CATEGORIES = [
-  { value: "dream", label: "꿈", color: "cat-dream" },
-  { value: "sideincome", label: "부수입", color: "cat-sideincome" },
+  { value: "sideincome", label: "시급 상승", color: "cat-sideincome" },
   { value: "happiness", label: "행복", color: "cat-happiness" },
   { value: "health", label: "건강", color: "cat-health" },
 ];
@@ -879,8 +880,7 @@ const TASK_BAR_COLORS = [
 
 const CATEGORY_OPTIONS = [
   { value: "", label: "—", color: "cat-empty" },
-  { value: "dream", label: "꿈", color: "cat-dream" },
-  { value: "sideincome", label: "부수입", color: "cat-sideincome" },
+  { value: "sideincome", label: "시급 상승", color: "cat-sideincome" },
   { value: "happiness", label: "행복", color: "cat-happiness" },
   { value: "health", label: "건강", color: "cat-health" },
   { value: "pleasure", label: "쾌락충족", color: "cat-pleasure" },
@@ -904,7 +904,7 @@ function getTaskColorForDropdown(taskOpt, isProductive) {
 /** 카테고리에 따른 생산성 자동 매핑 */
 function getProductivityFromCategory(categoryValue) {
   if (!categoryValue) return "";
-  const productive = ["dream", "sideincome", "happiness", "health"];
+  const productive = ["sideincome", "happiness", "health"];
   const nonproductive = [
     "unhappiness",
     "unhealthy",
@@ -1348,45 +1348,6 @@ function getMobileCardProductivityValue(rowData) {
     getProductivityFromCategory(rowData.category) ||
     ""
   );
-}
-
-const MOBILE_CARD_TIME_SLOT_CLASSES = [
-  "calendar-1day-timeline-card--usage-slot-productive",
-  "calendar-1day-timeline-card--usage-slot-nonproductive",
-  "calendar-1day-timeline-card--usage-slot-other",
-];
-
-/** 사용내역 카드 — 아이콘 배경(생산/비생산/그외) */
-function getMobileCardTimeSlotBgClass(rowData) {
-  if (!rowData) return "";
-  const { category, productivity } =
-    resolveRowCategoryProductivityForAudit(rowData);
-  const cat = String(category || "").trim();
-  const pv = (
-    String(productivity || "").trim().toLowerCase() ||
-    String(getProductivityFromCategory(cat) || "")
-      .trim()
-      .toLowerCase()
-  );
-  if (pv === "productive") {
-    return "calendar-1day-timeline-card--usage-slot-productive";
-  }
-  if (pv === "nonproductive") {
-    return "calendar-1day-timeline-card--usage-slot-nonproductive";
-  }
-  if (pv === "other") {
-    return "calendar-1day-timeline-card--usage-slot-other";
-  }
-  return "";
-}
-
-function applyMobileCardTimeSlotBgClass(card, rowData) {
-  if (!card) return;
-  for (const cls of MOBILE_CARD_TIME_SLOT_CLASSES) {
-    card.classList.remove(cls);
-  }
-  const slotClass = getMobileCardTimeSlotBgClass(rowData);
-  if (slotClass) card.classList.add(slotClass);
 }
 
 function hoursBetweenRowStartEnd(rowData) {
@@ -1991,12 +1952,14 @@ function aggregateDailyTimeReportDonutFromLedgerRows(rows) {
     if (p !== "productive" && p !== "nonproductive") return;
     const hrs = parseTimeToHours(r.timeTracked);
     if (hrs <= 0 || !Number.isFinite(hrs)) return;
-    const k = cat || "other";
+    const k =
+      cat === "dream" ? "sideincome" : cat || "other";
     byCat[k] = (byCat[k] || 0) + hrs;
   });
   const totalHours = Object.values(byCat).reduce((a, h) => a + h, 0);
   const categoryLabel = (value) => {
     if (!value || value === "other") return "미분류";
+    if (value === "dream") return "시급 상승";
     const opt = CATEGORY_OPTIONS.find((o) => o.value === value);
     return opt?.label || value;
   };
@@ -2349,7 +2312,7 @@ function productiveCategoryLabelForReport(catKey) {
 
 function aggregateProductiveCategoryInvestBarsFromRows(rows) {
   const hourlyRate = readUserHourlyRateNumber();
-  const KEYS = ["dream", "happiness", "sideincome", "health"];
+  const KEYS = ["happiness", "sideincome", "health"];
   const hoursBy = Object.fromEntries(KEYS.map((k) => [k, 0]));
   let otherProdHours = 0;
   rows.forEach((r) => {
@@ -2366,7 +2329,8 @@ function aggregateProductiveCategoryInvestBarsFromRows(rows) {
         .toLowerCase()
     ).trim();
     if (pv !== "productive") return;
-    if (KEYS.includes(cat)) hoursBy[cat] += h;
+    const prodCat = cat === "dream" ? "sideincome" : cat;
+    if (KEYS.includes(prodCat)) hoursBy[prodCat] += h;
     else otherProdHours += h;
   });
   /** @type {{ categoryKey: string, label: string, hours: number, won: number, pct: number, pctRounded: number }[]} */
@@ -2425,7 +2389,7 @@ export function getMonthlyProductiveCategoryInvestBarsSnapshot(ymdTen) {
   return aggregateProductiveCategoryInvestBarsFromRows(rows);
 }
 
-const PROD_INVEST_CATEGORY_KEYS = ["dream", "happiness", "sideincome", "health"];
+const PROD_INVEST_CATEGORY_KEYS = ["happiness", "sideincome", "health"];
 
 /**
  * 투자 레포트: 생산 카테고리(꿈·행복·부수입·건강)별 과제명·기록 시간 합
@@ -2453,7 +2417,8 @@ function aggregateProductiveTasksByCategoryFromRows(rows, categoryKey, limit = 2
         .trim()
         .toLowerCase()
     ).trim();
-    if (pv !== "productive" || rowCat !== cat) return;
+    const rowProdCat = rowCat === "dream" ? "sideincome" : rowCat;
+    if (pv !== "productive" || rowProdCat !== cat) return;
     const name = String(r.taskName || "").trim();
     if (!name) return;
     const mins = Math.round(h * 60);
@@ -2956,8 +2921,8 @@ export function getHomeMenuLedgerKrwParts(n) {
 
 /** 카테고리 라벨 조회 */
 function getCategoryLabel(value) {
-  if (value === "productive_consumption")
-    return "부수입"; /* 구 카테고리 → 부수입으로 표시 */
+  if (value === "productive_consumption" || value === "dream")
+    return "시급 상승"; /* 구 카테고리·꿈(미사용) */
   const opt = CATEGORY_OPTIONS.find((o) => o.value === value);
   return opt ? opt.label : value || "그 외";
 }
@@ -3514,6 +3479,7 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
       : [],
     kpiPerformedValue: String(initialData?.kpiPerformedValue ?? "").trim(),
     timeRating: normalizeTimeRatingForRow(initialData?.timeRating),
+    timeEndReason: normalizeTimeEndReasonForRow(initialData?.timeEndReason),
   };
   tr._rowData = rowData;
 
@@ -4490,7 +4456,6 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   );
   card.classList.add("calendar-1day-timeline-card");
   card.classList.add("calendar-1day-timeline-card--usage-layout");
-  applyMobileCardTimeSlotBgClass(card, rowData);
   if (live) card.classList.add("calendar-1day-timeline-card--in-progress");
   card._rowData = rowData;
   card._timeLedgerViewEl = viewEl || null;
@@ -5646,6 +5611,10 @@ export function render(opts = {}) {
             <button type="button" data-legacy="time-task-log-rating-star" data-rating-value="4" aria-label="4점">★</button>
             <button type="button" data-legacy="time-task-log-rating-star" data-rating-value="5" aria-label="5점">★</button>
           </div>
+          <div data-legacy="time-task-log-end-reason-section" hidden>
+            <span data-legacy="time-task-log-section-label time-task-log-end-reason-section-label">작업 종료 이유</span>
+            <div data-legacy="time-task-log-end-reason-chips" class="lp-choice-chip-row"></div>
+          </div>
         </div>
         </div>
       </div>
@@ -5810,13 +5779,68 @@ export function render(opts = {}) {
   const taskLogScrollArea = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-scroll-area"]',
   );
+  const taskLogRatingSection = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-rating-section"]',
+  );
   const taskLogRatingStars = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-rating-stars"]',
   );
+  const taskLogEndReasonSection = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-end-reason-section"]',
+  );
+  const taskLogEndReasonChips = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-end-reason-chips"]',
+  );
   let taskLogTimeRating = null;
+  let taskLogTimeEndReason = "";
 
   function getTaskLogTimeRating() {
     return normalizeTimeRatingForRow(taskLogTimeRating);
+  }
+
+  function getTaskLogTimeEndReason() {
+    return normalizeTimeEndReasonForRow(taskLogTimeEndReason);
+  }
+
+  function buildTaskLogModalProductivityStub() {
+    const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
+    const opt = taskName ? getTaskOptionByName(taskName) : null;
+    let productivity = String(opt?.productivity || "").trim();
+    let category = String(opt?.category || "").trim();
+    let timeTracked = "";
+    if (TTC.isNapBuiltinTaskName(taskName)) {
+      const startRaw =
+        taskLogModal.querySelector('[data-legacy~="time-task-log-start"]')
+          ?.value || "";
+      const endRaw =
+        taskLogModal.querySelector('[data-legacy~="time-task-log-end"]')
+          ?.value || "";
+      if (startRaw && endRaw) {
+        const toIso = (str) => {
+          const m = String(str).match(
+            /^(\d{4})-(\d{1,2})-(\d{1,2})[T ](\d{1,2}):(\d{2})/,
+          );
+          if (m)
+            return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}T${m[4].padStart(2, "0")}:${m[5]}:00`;
+          return String(str).replace(" ", "T") + ":00";
+        };
+        const s = new Date(toIso(startRaw));
+        const e = new Date(toIso(endRaw));
+        const diff = (e - s) / (1000 * 60 * 60);
+        if (diff > 0) timeTracked = formatHoursToHHMM(diff);
+      }
+      const nap = getNapCategoryProductivity(timeTracked);
+      category = nap.category;
+      productivity = nap.productivity;
+    }
+    if (!productivity && category)
+      productivity = getProductivityFromCategory(category) || productivity;
+    return { taskName, productivity, category, timeTracked };
+  }
+
+  function isTaskLogModalProductiveTask() {
+    return getTimeLedgerRowDisplayProductivity(buildTaskLogModalProductivityStub()) ===
+      "productive";
   }
 
   function renderTaskLogTimeRating() {
@@ -5832,9 +5856,61 @@ export function render(opts = {}) {
       });
   }
 
+  function syncTaskLogEndReasonChips() {
+    if (!taskLogEndReasonChips) return;
+    const picked = getTaskLogTimeEndReason();
+    taskLogEndReasonChips
+      .querySelectorAll('[data-legacy~="lp-choice-chip"]')
+      .forEach((btn) => {
+        const on = btn.getAttribute("data-end-reason") === picked;
+        lpTokenToggle(btn, "lp-choice-chip--on", on);
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+  }
+
+  function setTaskLogTimeEndReason(value) {
+    taskLogTimeEndReason = normalizeTimeEndReasonForRow(value);
+    syncTaskLogEndReasonChips();
+  }
+
+  function syncTaskLogEndReasonSection() {
+    const show =
+      isTaskLogModalProductiveTask() && getTaskLogTimeRating() != null;
+    if (taskLogEndReasonSection) taskLogEndReasonSection.hidden = !show;
+    if (!show) setTaskLogTimeEndReason("");
+  }
+
+  function syncTaskLogRatingSectionUi() {
+    const productive = isTaskLogModalProductiveTask();
+    if (taskLogRatingSection) taskLogRatingSection.hidden = !productive;
+    if (!productive) {
+      taskLogTimeRating = null;
+      taskLogTimeEndReason = "";
+      renderTaskLogTimeRating();
+    }
+    syncTaskLogEndReasonSection();
+  }
+
   function setTaskLogTimeRating(value) {
     taskLogTimeRating = normalizeTimeRatingForRow(value);
     renderTaskLogTimeRating();
+    syncTaskLogEndReasonSection();
+  }
+
+  if (taskLogEndReasonChips) {
+    TIME_TASK_END_REASON_OPTIONS.forEach(({ id, label }) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      lpSetClasses(btn, "lp-choice-chip");
+      btn.setAttribute("data-end-reason", id);
+      btn.textContent = label;
+      btn.addEventListener("click", () => {
+        setTaskLogTimeEndReason(
+          getTaskLogTimeEndReason() === id ? "" : id,
+        );
+      });
+      taskLogEndReasonChips.appendChild(btn);
+    });
   }
 
   taskLogRatingStars
@@ -6254,6 +6330,7 @@ export function render(opts = {}) {
       return;
     }
     el.hidden = em >= sm;
+    syncTaskLogRatingSectionUi();
   }
 
   /**
@@ -7301,6 +7378,7 @@ export function render(opts = {}) {
   function onTaskSelectedForLog(taskName) {
     refreshKpiTodosInLogModal(taskName);
     updateTaskLogMealDetailVisibility(taskName);
+    syncTaskLogRatingSectionUi();
   }
 
   function isHabitDailyTodoChecked(todo, completedList) {
@@ -7580,6 +7658,8 @@ export function render(opts = {}) {
     if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
     clearTaskLogContentType();
     setTaskLogTimeRating(null);
+    setTaskLogTimeEndReason("");
+    syncTaskLogRatingSectionUi();
     taskLogMemoTags = [];
     taskLogModal
       .querySelectorAll('[data-legacy~="time-task-log-accordion-item"]')
@@ -7813,6 +7893,8 @@ export function render(opts = {}) {
       if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
     }
     setTaskLogTimeRating(data.timeRating);
+    setTaskLogTimeEndReason(data.timeEndReason);
+    syncTaskLogRatingSectionUi();
     const rawMemoTagsForEdit = Array.isArray(data.memoTags)
       ? [...data.memoTags]
       : parseTagsFromFeedback(feedbackRaw);
@@ -7979,6 +8061,10 @@ export function render(opts = {}) {
     const dateStr = parseDateFromDateTime(startTime) || toDateStr(new Date());
     const focusValue = "";
     const timeRatingForRow = getTaskLogTimeRating();
+    const timeEndReasonForRow =
+      timeRatingForRow != null && isTaskLogModalProductiveTask()
+        ? getTaskLogTimeEndReason()
+        : "";
 
     if (editTr) {
       oldRowDataToRemove = editTr._rowData ? { ...editTr._rowData } : null;
@@ -8010,6 +8096,7 @@ export function render(opts = {}) {
           : [],
         kpiPerformedValue: String(prevRow.kpiPerformedValue ?? "").trim(),
         timeRating: timeRatingForRow,
+        timeEndReason: timeEndReasonForRow,
       };
       editTr._rowData = newRowData;
       const isMobileCard = lpTokenHas(editTr, "time-ledger-mobile-card");
@@ -8120,6 +8207,7 @@ export function render(opts = {}) {
         habitDailyCompleted: [],
         kpiPerformedValue: "",
         timeRating: timeRatingForRow,
+        timeEndReason: timeEndReasonForRow,
       };
       const tr = createRow(
         newRowData,
@@ -9261,6 +9349,23 @@ export function render(opts = {}) {
         }
       } else {
         rows.forEach((d) => appendCardTo(timelineList, d));
+      }
+
+      if (rows.length === 0) {
+        const emptyTl = document.createElement("p");
+        lpSetClasses(emptyTl, "time-ledger-usage-timeline-empty");
+        const today = getLedgerFilterTodayYmd();
+        const singleDay = !timeLedgerFilterSpansMultipleDays();
+        const viewingToday =
+          singleDay &&
+          usageHistoryRangeStartYmd === today &&
+          usageHistoryRangeEndYmd === today;
+        emptyTl.textContent = viewingToday
+          ? "오늘 기록이 없습니다."
+          : singleDay
+            ? "이 날 기록이 없습니다."
+            : "선택 기간에 기록이 없습니다.";
+        timelineList.appendChild(emptyTl);
       }
     }
 
