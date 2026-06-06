@@ -41,3 +41,23 @@ export function attachIconPngFallback(img, pngSrc) {
     { once: true }
   );
 }
+
+/**
+ * SVG 로드 실패 시 같은 이름 PNG로 한 번만 폴백(화면 표시용).
+ * @param {HTMLImageElement} img
+ * @param {string} svgSrc
+ */
+export function attachIconSvgFallback(img, svgSrc) {
+  if (!img || !svgSrc) return;
+  const pngSrc = svgSrc.replace(/\.svg$/i, ".png");
+  if (pngSrc === svgSrc) return;
+  img.addEventListener(
+    "error",
+    () => {
+      if (img.dataset.lpIconFallback === "1") return;
+      img.dataset.lpIconFallback = "1";
+      img.src = pngSrc;
+    },
+    { once: true }
+  );
+}

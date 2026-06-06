@@ -270,9 +270,10 @@ export function mountTimeAddTaskIconPicker(mountEl) {
     trigger.replaceChildren();
     if (!has) return;
     const img = document.createElement("img");
-    img.src = src;
     img.alt = "";
     applyStaticAppIconImg(img);
+    attachPickerIconSrcFallback(img, src);
+    img.src = src;
     lpSetClasses(img, "time-add-task-icon-picker__trigger-icon");
     trigger.appendChild(img);
   }

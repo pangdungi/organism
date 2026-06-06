@@ -10,7 +10,7 @@ import { DEFAULT_KPI_ICON_SLUG, DEFAULT_KPI_NAME_ICON_SLUG } from "./defaultKpiI
 import { toolbarIconPng } from "./toolbarIconUrl.js";
 
 const PICKER_ICON_BASE = "/toolbaricons/time-task-picker";
-/** 선택 그리드·목록 표시 — PNG. 파일 없으면 SVG 폴백 */
+/** 과제 아이콘 전부 128×128 PNG (SVG 폴백만) */
 const PICKER_ICON_EXT = "png";
 
 /** KPI 탭 헤더 — 메인 메뉴 손그림 (picker 세트와 별도) */
@@ -155,11 +155,6 @@ function pickerIconSrc(slug, ext = PICKER_ICON_EXT) {
   return `${PICKER_ICON_BASE}/${encodeURIComponent(fileBase)}.${ext}`;
 }
 
-/** @param {string} slug */
-function pickerSvgSrc(slug) {
-  return pickerIconSrc(slug, PICKER_ICON_EXT);
-}
-
 /** @param {string} taskName */
 export function getDefaultTaskIconKey(taskName) {
   const canon = canonicalMealTaskDisplayName(String(taskName || "").trim());
@@ -207,7 +202,7 @@ function resolvePickerSvgFileName(name) {
 function pickerListedIconSrc(fileName) {
   const n = resolvePickerSvgFileName(fileName);
   if (!n) return "";
-  return pickerSvgSrc(n);
+  return pickerIconSrc(n, PICKER_ICON_EXT);
 }
 
 /**

@@ -608,6 +608,22 @@ export function getFullTaskOptions() {
   return assignIdsToMergedList(merged.map((o) => normalizeBuiltinTaskRow(o)));
 }
 
+/** 꿈 KPI 연동 과제 — 과제설정 모달 목록에서 숨김(기록·조회용 데이터는 유지) */
+export function isDreamKpiLedgerTask(task) {
+  if (!task) return false;
+  const cat = String(task.category || "").trim().toLowerCase();
+  if (cat === "dream") return true;
+  const kpiId = String(task.kpiId || "").trim();
+  if (!kpiId) return false;
+  const meta = getActiveKpiTaskKeepersById().get(kpiId);
+  return meta?.category === "dream";
+}
+
+/** @param {ReturnType<typeof getFullTaskOptions>} tasks */
+export function filterTasksForTaskSetupModalList(tasks) {
+  return (tasks || []).filter((t) => !isDreamKpiLedgerTask(t));
+}
+
 /** 외부에서 과제 메모리를 건드린 뒤 알림(예: KPI 연동 경로). UUID 부여·푸시는 getFullTaskOptions·별도 save 경로에서 처리 */
 export function notifyTimeLedgerTasksChanged() {
   patchKpiLinkedTasksFromKpiMaps();

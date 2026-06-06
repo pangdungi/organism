@@ -8,12 +8,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
 const ICONS_DIR = path.join(ROOT, "public", "toolbaricons");
 
+const FORCE = process.argv.includes("--force");
+
 /** @type {Record<string, number>} */
 const SIZE_BY_DIR = {
-  "time-task-picker": 48,
-  "menu-home": 56,
+  /** 선택 그리드 썸네일 — 2x(레티나) */
+  "time-task-picker": 128,
+  "menu-home": 112,
   splash: 512,
-  default: 64,
+  default: 128,
 };
 
 function walk(dir, acc = []) {
@@ -33,9 +36,9 @@ function targetSize(svgPath) {
 
 async function svgToPng(svgPath) {
   const pngPath = svgPath.replace(/\.svg$/i, ".png");
-  if (fs.existsSync(pngPath)) return { svgPath, pngPath, skipped: true };
+  if (fs.existsSync(pngPath) && !FORCE) return { svgPath, pngPath, skipped: true };
   const size = targetSize(svgPath);
-  await sharp(svgPath, { density: 144 })
+  await sharp(svgPath, { density: 288 })
     .resize(size, size, {
       fit: "contain",
       background: { r: 0, g: 0, b: 0, alpha: 0 },

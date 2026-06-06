@@ -48,6 +48,7 @@ import { USER_HOURLY_RATE_KEY, readUserHourlyRateLocal } from "../utils/userHour
 import * as TTC from "../utils/timeTaskOptionsConstants.js";
 import {
   getFullTaskOptions,
+  filterTasksForTaskSetupModalList,
   getTaskOptions,
   addTaskOption,
   addTaskOptionFull,
@@ -8527,7 +8528,7 @@ export function render(opts = {}) {
         tab: activeSetupTab,
         subcat: selectedSubcat,
         selected: setupListSelectedTaskName,
-        tasks: getFullTaskOptions().map((t) => ({
+        tasks: filterTasksForTaskSetupModalList(getFullTaskOptions()).map((t) => ({
           name: (t.name || "").trim(),
           category: (t.category || "").trim(),
           productivity: t.productivity,
@@ -8593,7 +8594,7 @@ export function render(opts = {}) {
       return;
     }
 
-    const allTasks = getFullTaskOptions();
+    const allTasks = filterTasksForTaskSetupModalList(getFullTaskOptions());
     const mainTasksOnly = allTasks.filter(
       (t) => !(t.name || "").includes(" > "),
     );
