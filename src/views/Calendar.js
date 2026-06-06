@@ -3262,10 +3262,20 @@ function resolveExpectedSpanProdKey(span) {
   return span?.prod || "other";
 }
 
+function resolveExpectedSpanCategory(span) {
+  const taskName = String(span?.taskName || "").trim();
+  const fromOpt = getTaskOptionByName(taskName)?.category;
+  if (fromOpt) return fromOpt;
+  const fromTask = String(span?._task?.category || "").trim();
+  if (fromTask) return fromTask;
+  return String(span?.category || "").trim();
+}
+
 function expectedSpansWithFreshProd(spans) {
   return (spans || []).map((span) => ({
     ...span,
     prod: resolveExpectedSpanProdKey(span),
+    category: resolveExpectedSpanCategory(span),
   }));
 }
 

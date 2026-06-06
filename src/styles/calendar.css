@@ -465,6 +465,7 @@
 }
 
 .calendar-1day-slot-grid-cell {
+  position: relative;
   display: block;
   width: 100%;
   height: 100%;
@@ -481,25 +482,39 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--productive {
-  background: #ffe0e0;
-  border-color: #ffe0e0;
+.calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--sideincome {
+  background: #fae3e3;
+  border-color: #fae3e3;
   border-style: solid;
-  color: #c0392b;
+  color: #d63a3a;
 }
 
-.calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--nonproductive {
-  background: #dbeafe;
-  border-color: #dbeafe;
+.calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--happiness {
+  background: #f8e3ef;
+  border-color: #f8e3ef;
   border-style: solid;
-  color: #1d4ed8;
+  color: #c2407e;
+}
+
+.calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--health {
+  background: #fbe7da;
+  border-color: #fbe7da;
+  border-style: solid;
+  color: #d9722b;
 }
 
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--other {
-  background: var(--cal-other-surface);
-  border-color: var(--cal-other-border);
+  background: #e7f3e0;
+  border-color: #e7f3e0;
   border-style: solid;
-  color: var(--cal-other-text);
+  color: #4b9b2e;
+}
+
+.calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--nonproductive {
+  background: #e5eafa;
+  border-color: #e5eafa;
+  border-style: solid;
+  color: #1d40ba;
 }
 
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--labeled {
@@ -512,6 +527,29 @@
   line-height: 1;
   overflow: hidden;
   white-space: nowrap;
+}
+
+.calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--span-absorbed {
+  display: none !important;
+}
+
+.calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--span-merged {
+  z-index: 1;
+}
+
+.calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--span-labeled {
+  justify-content: flex-start;
+  padding: 0 2px;
+  overflow: hidden;
+}
+
+.calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell-label {
+  display: block;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
 }
 
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell:focus-visible {

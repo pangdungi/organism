@@ -64,14 +64,80 @@ function slotOffsetInBlock(block, slotMin) {
   return Math.max(0, Math.floor((slotMin - sm) / TIME_LEDGER_TIMEBOX_SLOT_MINUTES));
 }
 
-/** 칸 수×2글자까지, 칸마다 2글자씩 분배 (과제명이 짧으면 그만큼만) */
-function labelSliceForBlockCell(block, slotMin) {
+function blockKey(block) {
+  if (!block) return "";
+  return `${block.startMin}|${block.endMin}|${String(block.taskName || "").trim()}`;
+}
+
+function maxLabelCharsForBlock(block) {
   const name = String(block?.taskName || "").trim();
-  if (!name) return "";
-  const maxChars = Math.min(name.length, blockSlotCount(block) * 2);
-  const charStart = slotOffsetInBlock(block, slotMin) * 2;
-  if (charStart >= maxChars) return "";
-  return name.slice(charStart, Math.min(charStart + 2, maxChars));
+  if (!name) return 0;
+  return Math.min(name.length, blockSlotCount(block) * 2);
+}
+
+function appendTimeboxCellLabel(cell, block, { spanMerged = false } = {}) {
+  const chars = maxLabelCharsForBlock(block);
+  if (chars <= 0) return;
+  const name = String(block.taskName || "").trim();
+  if (spanMerged) {
+    const labelEl = document.createElement("span");
+    labelEl.className = "time-ledger-day-timebox-matrix-cell-label";
+    labelEl.textContent = name.slice(0, chars);
+    cell.appendChild(labelEl);
+    cell.classList.add("time-ledger-day-timebox-matrix-cell--span-labeled");
+  } else {
+    cell.textContent = name.slice(0, chars);
+  }
+  cell.classList.add("time-ledger-day-timebox-matrix-cell--labeled");
+}
+
+/** 같은 행에서 연속 칸만 가로(span)로 시작~끝 한 덩어리 */
+function applyTimeboxRowSpanMerges(body, blocks) {
+  body.querySelectorAll(".time-ledger-day-timebox-matrix-row").forEach((rowEl) => {
+    const cells = [...rowEl.querySelectorAll(".time-ledger-day-timebox-matrix-cell")];
+    let i = 0;
+    while (i < cells.length) {
+      const cell = cells[i];
+      const key = cell.dataset.blockKey || "";
+      if (!key || !cell.classList.contains("time-ledger-day-timebox-matrix-cell--interactive")) {
+        i += 1;
+        continue;
+      }
+
+      let span = 1;
+      while (i + span < cells.length) {
+        const next = cells[i + span];
+        if (next.dataset.blockKey !== key) break;
+        if (!next.classList.contains("time-ledger-day-timebox-matrix-cell--interactive")) break;
+        span += 1;
+      }
+
+      const slotMin = Number(cell.dataset.slotMin);
+      const block = findBlockForCell(slotMin, blocks);
+      if (!block) {
+        i += span;
+        continue;
+      }
+
+      const offset = slotOffsetInBlock(block, slotMin);
+
+      if (span >= 2) {
+        cell.style.gridColumn = `span ${span}`;
+        cell.classList.add("time-ledger-day-timebox-matrix-cell--span-merged");
+        for (let k = 1; k < span; k += 1) {
+          const absorbed = cells[i + k];
+          absorbed.classList.add("time-ledger-day-timebox-matrix-cell--span-absorbed");
+          absorbed.style.display = "none";
+        }
+      }
+
+      if (offset === 0) {
+        appendTimeboxCellLabel(cell, block, { spanMerged: span >= 2 });
+      }
+
+      i += span;
+    }
+  });
 }
 
 /** 겹치는 기록 중 가장 짧은 구간 우선 (긴·진행 중 기록이 짧은 기록을 가리지 않게) */
@@ -199,12 +265,15 @@ export function paintTimeLedgerDayTimeboxMatrixCells(body, rawBlocks) {
     const slotMin = Number(cell.dataset.slotMin);
     cell.className = "time-ledger-day-timebox-matrix-cell";
     cell.textContent = "";
+    cell.style.display = "";
+    cell.style.gridColumn = "";
     cell.removeAttribute("tabindex");
     cell.removeAttribute("role");
     delete cell.dataset.taskName;
     delete cell.dataset.startDisplay;
     delete cell.dataset.endDisplay;
     delete cell.dataset.memo;
+    delete cell.dataset.blockKey;
 
     const block = findBlockForCell(slotMin, blocks);
     if (!block) {
@@ -227,16 +296,13 @@ export function paintTimeLedgerDayTimeboxMatrixCells(body, rawBlocks) {
     cell.dataset.taskName = taskName;
     cell.dataset.startDisplay = startDisplay;
     cell.dataset.endDisplay = endDisplay;
+    cell.dataset.blockKey = blockKey(block);
     if (memo) cell.dataset.memo = memo;
-
-    const labelText = labelSliceForBlockCell(block, slotMin);
-    if (labelText) {
-      cell.textContent = labelText;
-      cell.classList.add("time-ledger-day-timebox-matrix-cell--labeled");
-    }
 
     cell.title = `${taskName} (${startDisplay} ~ ${endDisplay})`;
   });
+
+  applyTimeboxRowSpanMerges(body, blocks);
 }
 
 export function refreshTimeLedgerDayTimeboxScroll(scrollEl, rawBlocks) {

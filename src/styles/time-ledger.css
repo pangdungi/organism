@@ -1958,6 +1958,7 @@
 
 .time-ledger-day-timebox-matrix-cell,
 [data-legacy~="time-ledger-view"] .time-ledger-day-timebox-matrix-cell {
+  position: relative;
   display: block;
   width: 100%;
   height: 100%;
@@ -2025,6 +2026,37 @@
   line-height: 1;
   overflow: hidden;
   white-space: nowrap;
+}
+
+.time-ledger-day-timebox-matrix-cell--span-absorbed,
+[data-legacy~="time-ledger-view"]
+  .time-ledger-day-timebox-matrix-cell--span-absorbed {
+  display: none !important;
+}
+
+/* 같은 행 — 시작~끝 칸을 한 칸으로 병합 */
+.time-ledger-day-timebox-matrix-cell--span-merged,
+[data-legacy~="time-ledger-view"]
+  .time-ledger-day-timebox-matrix-cell--span-merged {
+  z-index: 1;
+}
+
+.time-ledger-day-timebox-matrix-cell--span-labeled,
+[data-legacy~="time-ledger-view"]
+  .time-ledger-day-timebox-matrix-cell--span-labeled {
+  justify-content: flex-start;
+  padding: 0 2px;
+  overflow: hidden;
+}
+
+.time-ledger-day-timebox-matrix-cell-label,
+[data-legacy~="time-ledger-view"] .time-ledger-day-timebox-matrix-cell-label {
+  display: block;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
 }
 
 .time-ledger-day-timebox-matrix-cell--interactive,
