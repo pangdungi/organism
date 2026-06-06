@@ -1,6 +1,7 @@
 /** 시간가계부 타임박스뷰 — 24행(0~23시)×12열(5분 칸) 그리드 */
 
 import { showToast } from "./showToast.js";
+import { ledgerRowTimeboxDisplayLabel } from "./timeLedgerCardKpiMemo.js";
 
 export const TIME_LEDGER_TIMEBOX_GRID_ROWS = 24;
 export const TIME_LEDGER_TIMEBOX_GRID_COLS = 12;
@@ -66,7 +67,10 @@ function slotOffsetInBlock(block, slotMin) {
 
 function blockKey(block) {
   if (!block) return "";
-  return `${block.startMin}|${block.endMin}|${String(block.taskName || "").trim()}`;
+  const baseTask = String(block.rowData?.taskName || block.taskName || "").trim();
+  const detail = String(block.rowData?.mealDetail || "").trim();
+  const label = String(block.taskName || "").trim();
+  return `${block.startMin}|${block.endMin}|${baseTask}|${detail}|${label}`;
 }
 
 function maxLabelCharsForBlock(block) {
@@ -159,12 +163,15 @@ function findBlockForCell(slotMin, blocks) {
 
 function showTimeboxCellRecordInfo(block) {
   if (!block) return;
-  const taskName = String(block.taskName || "").trim() || "기록";
+  const baseTask = String(block.rowData?.taskName || "").trim();
+  const label = String(block.taskName || "").trim() || baseTask || "기록";
+  const title =
+    baseTask && label && baseTask !== label ? `${baseTask} · ${label}` : label;
   const startDisplay =
     block.startDisplay || formatMinOfDayClock(block.startMin);
   const endDisplay = block.endDisplay || formatMinOfDayClock(block.endMin);
   const memo = String(block.rowData?.feedback || "").trim();
-  showToast(taskName, [ `${startDisplay} ~ ${endDisplay}`, memo ].filter(Boolean).join("\n"));
+  showToast(title, [ `${startDisplay} ~ ${endDisplay}`, memo ].filter(Boolean).join("\n"));
 }
 
 function wireTimeLedgerDayTimeboxCellClicks(body) {
@@ -284,7 +291,8 @@ export function paintTimeLedgerDayTimeboxMatrixCells(body, rawBlocks) {
     const pk = paintKeyForTimeboxBlock(block);
     cell.classList.add(`time-ledger-day-timebox-matrix-cell--${pk}`);
 
-    const taskName = String(block.taskName || "").trim() || "기록";
+    const baseTask = String(block.rowData?.taskName || "").trim();
+    const label = String(block.taskName || "").trim() || baseTask || "기록";
     const startDisplay =
       block.startDisplay || formatMinOfDayClock(block.startMin);
     const endDisplay = block.endDisplay || formatMinOfDayClock(block.endMin);
@@ -293,13 +301,15 @@ export function paintTimeLedgerDayTimeboxMatrixCells(body, rawBlocks) {
     cell.classList.add("time-ledger-day-timebox-matrix-cell--interactive");
     cell.setAttribute("role", "button");
     cell.setAttribute("tabindex", "0");
-    cell.dataset.taskName = taskName;
+    cell.dataset.taskName = label;
     cell.dataset.startDisplay = startDisplay;
     cell.dataset.endDisplay = endDisplay;
     cell.dataset.blockKey = blockKey(block);
     if (memo) cell.dataset.memo = memo;
 
-    cell.title = `${taskName} (${startDisplay} ~ ${endDisplay})`;
+    const titleTask =
+      baseTask && label && baseTask !== label ? `${baseTask} · ${label}` : label;
+    cell.title = `${titleTask} (${startDisplay} ~ ${endDisplay})`;
   });
 
   applyTimeboxRowSpanMerges(body, blocks);

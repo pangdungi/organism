@@ -8,13 +8,8 @@ import * as TTC from "./timeTaskOptionsConstants.js";
 
 const CONTENT_MEMO_PREFIX = "[콘텐츠] ";
 
-/** @param {"meal" | "content"} kind */
-function ledgerDetailLinePrefix(kind) {
-  return kind === "content" ? "콘텐츠" : "식단";
-}
-
 /**
- * @returns {{ kind: "meal" | "content" | null, text: string }}
+ * @returns {{ kind: "meal" | "conversation" | "outing" | "content" | null, text: string }}
  */
 export function resolveLedgerRowDetail(rowData) {
   const taskName = String(rowData?.taskName || "").trim();
@@ -45,7 +40,27 @@ export function resolveLedgerRowMealDetail(rowData) {
 export function formatTimeLedgerCardDetailLines(rowData) {
   const { kind, text } = resolveLedgerRowDetail(rowData);
   if (!kind || !text) return [];
-  return [`${ledgerDetailLinePrefix(kind)} ${text}`];
+  return [`${TTC.ledgerDetailLinePrefix(kind)} ${text}`];
+}
+
+/** 상세명(식단·대화·외출·콘텐츠)을 과제명 대신 표시할지 — Supabase task_name 은 그대로 */
+export function ledgerRowUsesDetailAsDisplayName(rowData) {
+  const taskName = String(rowData?.taskName || "").trim();
+  const { kind, text } = resolveLedgerRowDetail(rowData);
+  return !!kind && !!text && TTC.isLedgerDetailTaskName(taskName);
+}
+
+/** 카드·타임라인·타임박스 — 화면용 과제명 */
+export function ledgerRowDisplayTaskName(rowData) {
+  const taskName = String(rowData?.taskName || "").trim();
+  const { text } = resolveLedgerRowDetail(rowData);
+  if (ledgerRowUsesDetailAsDisplayName(rowData)) return text;
+  return taskName;
+}
+
+/** 타임박스·일간 슬롯 그리드 칸 라벨 */
+export function ledgerRowTimeboxDisplayLabel(rowData) {
+  return ledgerRowDisplayTaskName(rowData);
 }
 
 /** @deprecated formatTimeLedgerCardDetailLines */
@@ -96,7 +111,9 @@ export function formatTimeLedgerCardKpiMemoLines(rowData, kpiId) {
 /** 식단·콘텐츠·KPI 요약 + 사용자 메모 */
 export function buildTimeLedgerCardMemoText(rowData, kpiId) {
   const summary = [
-    ...formatTimeLedgerCardDetailLines(rowData),
+    ...(ledgerRowUsesDetailAsDisplayName(rowData)
+      ? []
+      : formatTimeLedgerCardDetailLines(rowData)),
     ...formatTimeLedgerCardKpiMemoLines(rowData, kpiId),
   ].join("\n");
   const memo = ledgerRowUserMemoFeedback(rowData);

@@ -124,13 +124,18 @@ export function syncVisualViewportKeyboardInset() {
 }
 
 /** iOS가 fixed 모달·페이지를 밀어 올리는 것을 줄이기 */
+let _lockPageScrollActive = false;
+
 export function lockPageScrollForModalKeyboard() {
   if (typeof window === "undefined") return;
+  if (_lockPageScrollActive) return;
+  _lockPageScrollActive = true;
   try {
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
   } catch (_) {}
+  _lockPageScrollActive = false;
 }
 
 let _inited = false;

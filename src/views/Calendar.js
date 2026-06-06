@@ -91,6 +91,10 @@ import {
   pullTimeDailyBudgetForDateRange,
 } from "../utils/timeDailyBudgetSupabase.js";
 import { openCalendarExpectedScheduleModal } from "../utils/calendarExpectedScheduleModal.js";
+import {
+  expectedSpanCardMemoLines,
+  expectedSpanDisplayTaskName,
+} from "../utils/expectedScheduleDetail.js";
 import { resolveTimeTaskDisplayIconSrc } from "../utils/timeTaskIconUrls.js";
 import {
   todoQualifiesCalendarShortSpanBarAccent,
@@ -3046,6 +3050,10 @@ export function buildExpectedScheduleSpansForDateKey(dateKey) {
             .map((x) => String(x || "").trim())
             .filter(Boolean)
             .join(" · ");
+          const detailJoin = [a.scheduleDetail, b.scheduleDetail]
+            .map((x) => String(x || "").trim())
+            .filter(Boolean)
+            .join(" · ");
           const merged = {
             ...a,
             startMin,
@@ -3057,6 +3065,8 @@ export function buildExpectedScheduleSpansForDateKey(dateKey) {
           };
           if (memoJoin) merged.scheduleMemo = memoJoin;
           else delete merged.scheduleMemo;
+          if (detailJoin) merged.scheduleDetail = detailJoin;
+          else delete merged.scheduleDetail;
           arr = arr.filter((_, k) => k !== i && k !== j);
           arr.push(merged);
           changed = true;
@@ -3070,11 +3080,15 @@ export function buildExpectedScheduleSpansForDateKey(dateKey) {
   const budgetPlaceholderPrefix = "(과제 선택)·";
   const budgetRawSpans = [];
   let budgetEnumSeq = 0;
+  const taskOptByName = new Map();
 
   for (const [taskName, data] of Object.entries(budgetGoals)) {
     if (taskName.startsWith(budgetPlaceholderPrefix)) continue;
     const times = getScheduledTimesForTask(data);
     const memos = Array.isArray(data?.scheduleMemos) ? data.scheduleMemos : [];
+    const details = Array.isArray(data?.scheduleDetails)
+      ? data.scheduleDetails
+      : [];
     const savedAts = Array.isArray(data?.scheduledSavedAts)
       ? data.scheduledSavedAts
       : [];
@@ -3090,9 +3104,14 @@ export function buildExpectedScheduleSpansForDateKey(dateKey) {
         SLOTS_PER_DAY - 1,
         Math.floor((endMin - 1) / MIN_PER_SLOT),
       );
-      const opt = getTaskOptionByName(taskName);
+      let opt = taskOptByName.get(taskName);
+      if (opt === undefined) {
+        opt = getTaskOptionByName(taskName);
+        taskOptByName.set(taskName, opt);
+      }
       const prod = opt?.productivity || "other";
       const scheduleMemo = String(memos[timeIdx] || "").trim();
+      const scheduleDetail = String(details[timeIdx] || "").trim();
       const span = {
         startSlot,
         endSlot: Math.max(endSlot, startSlot),
@@ -3107,6 +3126,7 @@ export function buildExpectedScheduleSpansForDateKey(dateKey) {
         _timeIdx: timeIdx,
       };
       if (scheduleMemo) span.scheduleMemo = scheduleMemo;
+      if (scheduleDetail) span.scheduleDetail = scheduleDetail;
       if (taskFromList) {
         span.sectionId = taskFromList.sectionId;
         span._task = taskFromList;
@@ -3595,9 +3615,10 @@ function createCalendar1DayExpectedCardsPanel(dateKey, spans, onSaved) {
     list.appendChild(empty);
   } else {
     for (const span of sorted) {
-      const taskLabel = String(span.taskName || "").trim();
-      const memoText = String(span.scheduleMemo || "").trim();
-      const taskOpt = getTaskOptionByName(taskLabel);
+      const taskStorageName = String(span.taskName || "").trim();
+      const taskLabel = expectedSpanDisplayTaskName(span);
+      const memoText = expectedSpanCardMemoLines(span).join("\n");
+      const taskOpt = getTaskOptionByName(taskStorageName);
       const pk = prodKeyForWeekExpectedSpan({
         prod: resolveExpectedSpanProdKey(span),
       });
@@ -3643,7 +3664,7 @@ function createCalendar1DayExpectedCardsPanel(dateKey, spans, onSaved) {
 
       card.appendChild(main);
 
-      const iconSrc = resolveTimeTaskDisplayIconSrc(taskLabel, {
+      const iconSrc = resolveTimeTaskDisplayIconSrc(taskStorageName, {
         category: taskOpt?.category,
         productivity: taskOpt?.productivity,
         iconKey: taskOpt?.iconKey || "",
@@ -3897,8 +3918,9 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
       spansSortedTl.forEach((span) => {
         const pk = prodKeyForWeekExpectedSpan(span);
         const c = prodColorsTL[pk] || prodColorsTL.other;
-        const taskLabel = String(span.taskName || "").trim();
-        const memoTextStored = String(span.scheduleMemo || "").trim();
+        const taskStorageName = String(span.taskName || "").trim();
+        const taskLabel = expectedSpanDisplayTaskName(span);
+        const memoTextStored = expectedSpanCardMemoLines(span).join("\n");
         const durMin = Math.max(0, span.endMin - span.startMin);
         const ledgerMatched = weekFlowExpectedSpanHasLedgerMatch(
           dayLedgerRowsTL,
@@ -4005,8 +4027,8 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
         durRow.className = "calendar-1day-timeline-card-duration";
         durRow.textContent = formatIntegerMinutesDurationKo(durMin);
 
-        const taskOptForIcon = getTaskOptionByName(taskLabel);
-        const iconSrc = resolveTimeTaskDisplayIconSrc(taskLabel, {
+        const taskOptForIcon = getTaskOptionByName(taskStorageName);
+        const iconSrc = resolveTimeTaskDisplayIconSrc(taskStorageName, {
           category: taskOptForIcon?.category,
           productivity: taskOptForIcon?.productivity,
           iconKey: taskOptForIcon?.iconKey || "",
@@ -4294,7 +4316,13 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
     );
     void source;
     if (!wrapInDoc) return;
-    if (hideTimelineCards || e?.type === "time-ledger-tasks-saved") {
+    /* getFullTaskOptions → assignIds UUID 부여 시 bumpPullSkip 이벤트 — 전체 재빌드 시 동기 무한 루프 */
+    if (e?.type === "time-ledger-tasks-saved") {
+      if (e?.detail?.bumpPullSkip) return;
+      renderCalendar();
+      return;
+    }
+    if (hideTimelineCards) {
       renderCalendar();
       return;
     }
@@ -4334,16 +4362,7 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
   ensureOneDayTimetableDocumentListeners();
   oneDayTimetableRefreshHandler = (e) => refreshTimetableOverlays(e);
 
-  const runInitialRender = async () => {
-    if (!document.contains(wrap)) return;
-    try {
-      renderCalendar();
-    } catch (err) {
-      throw err;
-    }
-  };
-
-  void runInitialRender();
+  renderCalendar();
 
   wrap._lpRefreshCalendarView = () => {
     renderCalendar();
@@ -4976,8 +4995,9 @@ function render1WeekView(tabsElement) {
       spansSorted.forEach((span) => {
         const pk = prodKeyForWeekExpectedSpan(span);
         const c = prodColors[pk] || prodColors.other;
-        const taskLabel = String(span.taskName || "").trim();
-        const memoTextStored = String(span.scheduleMemo || "").trim();
+        const taskStorageName = String(span.taskName || "").trim();
+        const taskLabel = expectedSpanDisplayTaskName(span);
+        const memoTextStored = expectedSpanCardMemoLines(span).join("\n");
         const rangeHuman = `${span.startDisplay} - ${span.endDisplay}`;
 
         const ledgerMatched = weekFlowExpectedSpanHasLedgerMatch(

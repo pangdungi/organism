@@ -482,19 +482,22 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
         if (!isIosLikeMobile()) return;
         pickerSearchKeyboardAc = new AbortController();
         const { signal } = pickerSearchKeyboardAc;
-        const run = () => {
+        const runWithLock = () => {
           lockPageScrollForModalKeyboard();
           syncPanelMaxHeight();
         };
-        window.visualViewport?.addEventListener("resize", run, {
+        const runLayoutOnly = () => {
+          syncPanelMaxHeight();
+        };
+        window.visualViewport?.addEventListener("resize", runWithLock, {
           passive: true,
           signal,
         });
-        window.visualViewport?.addEventListener("scroll", run, {
+        window.visualViewport?.addEventListener("scroll", runLayoutOnly, {
           passive: true,
           signal,
         });
-        run();
+        runWithLock();
       };
 
       input.addEventListener("focus", () => {

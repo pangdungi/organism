@@ -492,6 +492,16 @@ async function notifyAfterServerDeleteIfNeeded(removedId, kpiId) {
   notifySaved({ bumpPullSkip: true, scheduleSyncPush: false });
 }
 
+let _taskOptionsIdNotifyTimer = null;
+
+function scheduleTaskOptionsIdAssignedNotify() {
+  if (_taskOptionsIdNotifyTimer != null) return;
+  _taskOptionsIdNotifyTimer = setTimeout(() => {
+    _taskOptionsIdNotifyTimer = null;
+    notifySaved({ bumpPullSkip: true, scheduleSyncPush: false });
+  }, 0);
+}
+
 function assignIdsToMergedList(merged) {
   let dirty = false;
   const upsertIds = [];
@@ -515,16 +525,18 @@ function assignIdsToMergedList(merged) {
         id: nid,
       };
     }
+    const prod = normalizeProductivity(t.productivity);
+    const cat = String(t.category || "").trim() || "other";
     const uid =
       typeof crypto !== "undefined" && crypto.randomUUID
         ? crypto.randomUUID()
-        : `t-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+        : deterministicTaskId(t.name, prod, cat);
     if (isUuid(uid)) upsertIds.push(uid);
     return { ...t, memo: t.memo || "", id: uid };
   });
   if (dirty) {
     writeTaskOptionListLocal(out);
-    notifySaved({ bumpPullSkip: true, scheduleSyncPush: false });
+    scheduleTaskOptionsIdAssignedNotify();
   }
   return out;
 }

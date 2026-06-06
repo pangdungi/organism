@@ -52,7 +52,7 @@ export function bindLpModalMobileKeyboard(modal, inputEl, opts = {}) {
     }
   }
 
-  function run() {
+  function runWithLock() {
     syncVisualViewportKeyboardInset();
     lockPageScrollForModalKeyboard();
     if (document.activeElement === inputEl) {
@@ -60,16 +60,29 @@ export function bindLpModalMobileKeyboard(modal, inputEl, opts = {}) {
     }
   }
 
+  function runInsetOnly() {
+    syncVisualViewportKeyboardInset();
+    if (document.activeElement === inputEl) {
+      scrollFocusedFieldIntoView();
+    }
+  }
+
   function scheduleAdjust() {
-    run();
-    requestAnimationFrame(run);
-    window.setTimeout(run, 120);
+    runWithLock();
+    requestAnimationFrame(runWithLock);
+    window.setTimeout(runWithLock, 120);
   }
 
   resetViewportKeyboardBaseline();
-  modal.addEventListener("focusin", run, { capture: true, signal });
-  window.visualViewport?.addEventListener("resize", run, { passive: true, signal });
-  window.visualViewport?.addEventListener("scroll", run, { passive: true, signal });
+  modal.addEventListener("focusin", runWithLock, { capture: true, signal });
+  window.visualViewport?.addEventListener("resize", runWithLock, {
+    passive: true,
+    signal,
+  });
+  window.visualViewport?.addEventListener("scroll", runInsetOnly, {
+    passive: true,
+    signal,
+  });
   inputEl.addEventListener(
     "focus",
     () => {
@@ -89,7 +102,7 @@ export function bindLpModalMobileKeyboard(modal, inputEl, opts = {}) {
     },
     { signal },
   );
-  run();
+  runWithLock();
 
   return () => {
     ac.abort();

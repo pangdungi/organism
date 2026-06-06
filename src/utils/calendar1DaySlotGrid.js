@@ -1,5 +1,7 @@
 /** 캘린더 1일뷰 — 24행×6열(10분 칸) 그리드 */
 
+import { expectedSpanSlotGridLabel } from "./expectedScheduleDetail.js";
+
 export const CAL_1DAY_SLOT_MINUTES = 10;
 export const CAL_1DAY_SLOT_COLS = 6;
 export const CAL_1DAY_SLOT_ROWS = 24;
@@ -103,11 +105,11 @@ function slotOffsetInSpan(span, slotMin) {
 
 function spanKey(span) {
   if (!span) return "";
-  return `${span.startMin}|${span.endMin}|${String(span.taskName || "").trim()}`;
+  return `${span.startMin}|${span.endMin}|${String(span.taskName || "").trim()}|${String(span.scheduleDetail || "").trim()}`;
 }
 
 function maxLabelCharsForSpan(span) {
-  const name = String(span?.taskName || "").trim();
+  const name = expectedSpanSlotGridLabel(span);
   if (!name) return 0;
   return Math.min(name.length, spanSlotCount(span) * 2);
 }
@@ -115,7 +117,7 @@ function maxLabelCharsForSpan(span) {
 function appendSlotGridCellLabel(cell, span, { spanMerged = false } = {}) {
   const chars = maxLabelCharsForSpan(span);
   if (chars <= 0) return;
-  const name = String(span.taskName || "").trim();
+  const name = expectedSpanSlotGridLabel(span);
   if (spanMerged) {
     const labelEl = document.createElement("span");
     labelEl.className = "calendar-1day-slot-grid-cell-label";
@@ -255,8 +257,11 @@ export function paintCalendar1DaySlotGridFromSpans(root, spans) {
     cell.dataset.spanKey = spanKey(span);
 
     const taskName = String(span.taskName || "").trim();
-    cell.title = taskName
-      ? `${taskName} (${span.startDisplay || ""} ~ ${span.endDisplay || ""})`
+    const label = expectedSpanSlotGridLabel(span);
+    const titleTask =
+      taskName && label && taskName !== label ? `${taskName} · ${label}` : label;
+    cell.title = titleTask
+      ? `${titleTask} (${span.startDisplay || ""} ~ ${span.endDisplay || ""})`
       : formatCalendar1DaySlotClockLabel(slotMin);
   });
 

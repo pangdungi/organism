@@ -123,7 +123,11 @@ import {
   ledgerRowHasDisplayableMemo,
   mapLedgerRowsToLogMemos,
 } from "../utils/diaryTimeReportLogMemos.js";
-import { buildTimeLedgerCardMemoText } from "../utils/timeLedgerCardKpiMemo.js";
+import {
+  buildTimeLedgerCardMemoText,
+  ledgerRowDisplayTaskName,
+  ledgerRowTimeboxDisplayLabel,
+} from "../utils/timeLedgerCardKpiMemo.js";
 import { mountTimeLedgerMemoFeed } from "../utils/timeLedgerMemoFeed.js";
 import {
   mountTimeLedgerReport,
@@ -357,7 +361,8 @@ function parseBudgetTimeToNormalizedHhMm(s) {
 }
 
 /**
- * 일간 타임블록(캘린더)용: 과제명·예상 시작~마감·메모를 goals.scheduledTimes / scheduleMemos 에 추가.
+ * 일간 타임블록(캘린더)용: 과제명·예상 시작~마감·메모·상세명을 goals 에 추가.
+ * scheduleMemos=사용자 메모, scheduleDetails=식단·대화·외출·콘텐츠 상세명
  * 서버 반영은 time_daily_budget_days — notify 후 호출부에서 sync 권장.
  */
 export function appendBudgetScheduleBlock(
@@ -366,6 +371,7 @@ export function appendBudgetScheduleBlock(
   startHHmm,
   endHHmm,
   memo = "",
+  detail = "",
 ) {
   const dk = String(dateStr || "")
     .replace(/\//g, "-")
@@ -401,15 +407,22 @@ export function appendBudgetScheduleBlock(
     const existing = all[dk][name] || {};
     let scheduledTimes = [];
     let scheduleMemos = [];
+    let scheduleDetails = [];
     if (Array.isArray(existing.scheduledTimes)) {
       scheduledTimes = [...existing.scheduledTimes];
       scheduleMemos = Array.isArray(existing.scheduleMemos)
         ? [...existing.scheduleMemos]
         : [];
+      scheduleDetails = Array.isArray(existing.scheduleDetails)
+        ? [...existing.scheduleDetails]
+        : [];
     } else if (existing.scheduledTime && String(existing.scheduledTime).trim()) {
       scheduledTimes = [String(existing.scheduledTime).trim()];
       scheduleMemos = Array.isArray(existing.scheduleMemos)
         ? [...existing.scheduleMemos]
+        : [];
+      scheduleDetails = Array.isArray(existing.scheduleDetails)
+        ? [...existing.scheduleDetails]
         : [];
     }
     let scheduledSavedAts = Array.isArray(existing.scheduledSavedAts)
@@ -418,16 +431,21 @@ export function appendBudgetScheduleBlock(
     while (scheduleMemos.length < scheduledTimes.length) {
       scheduleMemos.push("");
     }
+    while (scheduleDetails.length < scheduledTimes.length) {
+      scheduleDetails.push("");
+    }
     while (scheduledSavedAts.length < scheduledTimes.length) {
       scheduledSavedAts.push(0);
     }
     scheduledTimes.push(`${st}-${et}`);
     scheduleMemos.push(String(memo || "").trim());
+    scheduleDetails.push(String(detail || "").trim());
     scheduledSavedAts.push(Date.now());
     const next = {
       ...existing,
       scheduledTimes,
       scheduleMemos,
+      scheduleDetails,
       scheduledSavedAts,
     };
     delete next.scheduledTime;
@@ -509,15 +527,22 @@ export function removeBudgetScheduleBlockAtIndex(dateStr, taskName, timeIdx) {
     const existing = all[dk][name] || {};
     let scheduledTimes = [];
     let scheduleMemos = [];
+    let scheduleDetails = [];
     if (Array.isArray(existing.scheduledTimes)) {
       scheduledTimes = [...existing.scheduledTimes];
       scheduleMemos = Array.isArray(existing.scheduleMemos)
         ? [...existing.scheduleMemos]
         : [];
+      scheduleDetails = Array.isArray(existing.scheduleDetails)
+        ? [...existing.scheduleDetails]
+        : [];
     } else if (existing.scheduledTime && String(existing.scheduledTime).trim()) {
       scheduledTimes = [String(existing.scheduledTime).trim()];
       scheduleMemos = Array.isArray(existing.scheduleMemos)
         ? [...existing.scheduleMemos]
+        : [];
+      scheduleDetails = Array.isArray(existing.scheduleDetails)
+        ? [...existing.scheduleDetails]
         : [];
     }
     let scheduledSavedAts = Array.isArray(existing.scheduledSavedAts)
@@ -525,6 +550,9 @@ export function removeBudgetScheduleBlockAtIndex(dateStr, taskName, timeIdx) {
       : [];
     while (scheduleMemos.length < scheduledTimes.length) {
       scheduleMemos.push("");
+    }
+    while (scheduleDetails.length < scheduledTimes.length) {
+      scheduleDetails.push("");
     }
     while (scheduledSavedAts.length < scheduledTimes.length) {
       scheduledSavedAts.push(0);
@@ -534,12 +562,20 @@ export function removeBudgetScheduleBlockAtIndex(dateStr, taskName, timeIdx) {
     }
     scheduledTimes.splice(idx, 1);
     scheduleMemos.splice(idx, 1);
+    scheduleDetails.splice(idx, 1);
     scheduledSavedAts.splice(idx, 1);
-    const next = { ...existing, scheduledTimes, scheduleMemos, scheduledSavedAts };
+    const next = {
+      ...existing,
+      scheduledTimes,
+      scheduleMemos,
+      scheduleDetails,
+      scheduledSavedAts,
+    };
     delete next.scheduledTime;
     if (scheduledTimes.length === 0) {
       delete next.scheduledTimes;
       delete next.scheduleMemos;
+      delete next.scheduleDetails;
       delete next.scheduledSavedAts;
     }
     if (Object.keys(next).length === 0) {
@@ -569,6 +605,7 @@ export function updateBudgetScheduleBlockAtIndex(
   startHHmm,
   endHHmm,
   memo,
+  detail = "",
 ) {
   const dk = String(dateStr || "")
     .replace(/\//g, "-")
@@ -603,6 +640,7 @@ export function updateBudgetScheduleBlockAtIndex(
   }
   const newSlot = `${st}-${et}`;
   const newMemo = String(memo || "").trim();
+  const newDetail = String(detail || "").trim();
   try {
     removeFromBudgetExcluded(dk, nextKey);
     const raw = readTimeDailyBudgetGoalsRaw();
@@ -615,15 +653,22 @@ export function updateBudgetScheduleBlockAtIndex(
       const existing = all[dk][key] || {};
       let scheduledTimes = [];
       let scheduleMemos = [];
+      let scheduleDetails = [];
       if (Array.isArray(existing.scheduledTimes)) {
         scheduledTimes = [...existing.scheduledTimes];
         scheduleMemos = Array.isArray(existing.scheduleMemos)
           ? [...existing.scheduleMemos]
           : [];
+        scheduleDetails = Array.isArray(existing.scheduleDetails)
+          ? [...existing.scheduleDetails]
+          : [];
       } else if (existing.scheduledTime && String(existing.scheduledTime).trim()) {
         scheduledTimes = [String(existing.scheduledTime).trim()];
         scheduleMemos = Array.isArray(existing.scheduleMemos)
           ? [...existing.scheduleMemos]
+          : [];
+        scheduleDetails = Array.isArray(existing.scheduleDetails)
+          ? [...existing.scheduleDetails]
           : [];
       }
       let scheduledSavedAts = Array.isArray(existing.scheduledSavedAts)
@@ -632,10 +677,19 @@ export function updateBudgetScheduleBlockAtIndex(
       while (scheduleMemos.length < scheduledTimes.length) {
         scheduleMemos.push("");
       }
+      while (scheduleDetails.length < scheduledTimes.length) {
+        scheduleDetails.push("");
+      }
       while (scheduledSavedAts.length < scheduledTimes.length) {
         scheduledSavedAts.push(0);
       }
-      return { existing, scheduledTimes, scheduleMemos, scheduledSavedAts };
+      return {
+        existing,
+        scheduledTimes,
+        scheduleMemos,
+        scheduleDetails,
+        scheduledSavedAts,
+      };
     };
     const p = readSlotArrays(prevKey);
     if (ix >= p.scheduledTimes.length) {
@@ -644,11 +698,13 @@ export function updateBudgetScheduleBlockAtIndex(
     if (prevKey === nextKey) {
       p.scheduledTimes[ix] = newSlot;
       p.scheduleMemos[ix] = newMemo;
+      p.scheduleDetails[ix] = newDetail;
       p.scheduledSavedAts[ix] = Date.now();
       const nextObj = {
         ...p.existing,
         scheduledTimes: p.scheduledTimes,
         scheduleMemos: p.scheduleMemos,
+        scheduleDetails: p.scheduleDetails,
         scheduledSavedAts: p.scheduledSavedAts,
       };
       delete nextObj.scheduledTime;
@@ -656,17 +712,20 @@ export function updateBudgetScheduleBlockAtIndex(
     } else {
       p.scheduledTimes.splice(ix, 1);
       p.scheduleMemos.splice(ix, 1);
+      p.scheduleDetails.splice(ix, 1);
       p.scheduledSavedAts.splice(ix, 1);
       const prevNext = {
         ...p.existing,
         scheduledTimes: p.scheduledTimes,
         scheduleMemos: p.scheduleMemos,
+        scheduleDetails: p.scheduleDetails,
         scheduledSavedAts: p.scheduledSavedAts,
       };
       delete prevNext.scheduledTime;
       if (p.scheduledTimes.length === 0) {
         delete prevNext.scheduledTimes;
         delete prevNext.scheduleMemos;
+        delete prevNext.scheduleDetails;
         delete prevNext.scheduledSavedAts;
       }
       if (Object.keys(prevNext).length === 0) {
@@ -677,11 +736,13 @@ export function updateBudgetScheduleBlockAtIndex(
       const n = readSlotArrays(nextKey);
       n.scheduledTimes.push(newSlot);
       n.scheduleMemos.push(newMemo);
+      n.scheduleDetails.push(newDetail);
       n.scheduledSavedAts.push(Date.now());
       const nextObj = {
         ...n.existing,
         scheduledTimes: n.scheduledTimes,
         scheduleMemos: n.scheduleMemos,
+        scheduleDetails: n.scheduleDetails,
         scheduledSavedAts: n.scheduledSavedAts,
       };
       delete nextObj.scheduledTime;
@@ -3587,7 +3648,7 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   lpTokenAdd(prodBar, prodBarMod);
   const taskSpan = document.createElement("span");
   lpSetClasses(taskSpan, "time-display-task");
-  taskSpan.textContent = rowData.taskName || "";
+  taskSpan.textContent = ledgerRowDisplayTaskName(rowData) || "";
   taskInner.appendChild(prodBar);
   taskInner.appendChild(taskSpan);
   taskTd.appendChild(taskInner);
@@ -4146,7 +4207,7 @@ function buildTimeLedgerDayTimeboxBlocks(dayRows) {
       endMin: seg.endMin,
       prod: productivity || seg.prod,
       category,
-      taskName: String(r.taskName || "").trim(),
+      taskName: ledgerRowTimeboxDisplayLabel(r),
       startDisplay: formatLedgerSlotGridClockMin(seg.startMin),
       endDisplay: formatLedgerSlotGridClockMin(seg.endMin),
       rowData: r,
@@ -4412,7 +4473,9 @@ function refreshTimeLedgerRowMemoDisplay(tr, rowData) {
     syncMobileTimeCardMemoEl(tr, rowData);
     syncMobileTimeCardRatingEl(tr, rowData);
     const taskLabel =
-      String(rowData.taskName || "").trim() || "(제목 없음)";
+      ledgerRowDisplayTaskName(rowData) || "(제목 없음)";
+    const titleEl = tr.querySelector(".calendar-1day-timeline-card-title");
+    if (titleEl) titleEl.textContent = taskLabel;
     const startInst = getRowStartInstantForMobileCard(rowData);
     const startClock = formatLedgerTimelineClockHHmm(startInst) || "—";
     const endClock = formatLedgerTimelineEndClock(rowData);
@@ -4427,7 +4490,7 @@ function refreshTimeLedgerRowMemoDisplay(tr, rowData) {
 
 /** 모바일 시간가계부 카드 — 좌 시간열 | 우(아이콘·과제명 1–2행·소요/가격·메모) */
 function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
-  const taskLabel = String(rowData.taskName || "").trim() || "(제목 없음)";
+  const taskLabel = ledgerRowDisplayTaskName(rowData) || "(제목 없음)";
   const kpiId = ledgerRowKpiIdFromTaskName(rowData.taskName);
   const cardMemoText = buildTimeLedgerCardMemoText(rowData, kpiId);
   const startInst = getRowStartInstantForMobileCard(rowData);
@@ -5928,6 +5991,7 @@ export function render(opts = {}) {
       });
     });
 
+  /** @type {{ resize: () => void, scroll: () => void } | null} */
   let taskLogMemoVvAdjust = null;
   let taskLogMemoActiveInput = null;
   let taskLogScrollTopBeforeMemo = 0;
@@ -5942,16 +6006,28 @@ export function render(opts = {}) {
     taskLogKeyboardShellAc = new AbortController();
     const { signal } = taskLogKeyboardShellAc;
     resetViewportKeyboardBaseline();
-    const run = () => {
+    const runWithLock = () => {
       syncVisualViewportKeyboardInset();
       lockPageScrollForModalKeyboard();
     };
-    taskLogModal.addEventListener("focusin", run, { capture: true, signal });
-    window.visualViewport?.addEventListener("resize", run, { passive: true, signal });
-    window.visualViewport?.addEventListener("scroll", run, { passive: true, signal });
-    run();
-    requestAnimationFrame(run);
-    window.setTimeout(run, 120);
+    const runInsetOnly = () => {
+      syncVisualViewportKeyboardInset();
+    };
+    taskLogModal.addEventListener("focusin", runWithLock, {
+      capture: true,
+      signal,
+    });
+    window.visualViewport?.addEventListener("resize", runWithLock, {
+      passive: true,
+      signal,
+    });
+    window.visualViewport?.addEventListener("scroll", runInsetOnly, {
+      passive: true,
+      signal,
+    });
+    runWithLock();
+    requestAnimationFrame(runWithLock);
+    window.setTimeout(runWithLock, 120);
   }
 
   function unbindTaskLogModalKeyboardShell() {
@@ -6068,35 +6144,41 @@ export function render(opts = {}) {
     lockPageScrollForModalKeyboard();
     runTaskLogMemoScrollPasses(inputEl);
 
-    const adjust = () => {
+    const adjustCore = (lockPage) => {
       const active = taskLogMemoActiveInput;
       if (!active || !isTaskLogMemoInputFocused()) {
         exitTaskLogMemoScroll();
         return;
       }
       syncVisualViewportKeyboardInset();
-      lockPageScrollForModalKeyboard();
+      if (lockPage) lockPageScrollForModalKeyboard();
       setTaskLogMemoKeyboardScroll(true);
       scrollTaskLogMemoInputIntoView(active);
     };
+    const adjustOnResize = () => adjustCore(true);
+    const adjustOnScroll = () => adjustCore(false);
 
     if (taskLogMemoVvAdjust && window.visualViewport) {
-      window.visualViewport.removeEventListener("resize", taskLogMemoVvAdjust);
-      window.visualViewport.removeEventListener("scroll", taskLogMemoVvAdjust);
+      window.visualViewport.removeEventListener("resize", taskLogMemoVvAdjust.resize);
+      window.visualViewport.removeEventListener("scroll", taskLogMemoVvAdjust.scroll);
     }
-    taskLogMemoVvAdjust = adjust;
-    window.visualViewport?.addEventListener("resize", adjust, { passive: true });
-    window.visualViewport?.addEventListener("scroll", adjust, { passive: true });
-    window.addEventListener("resize", adjust, { passive: true });
-    adjust();
+    taskLogMemoVvAdjust = { resize: adjustOnResize, scroll: adjustOnScroll };
+    window.visualViewport?.addEventListener("resize", adjustOnResize, {
+      passive: true,
+    });
+    window.visualViewport?.addEventListener("scroll", adjustOnScroll, {
+      passive: true,
+    });
+    window.addEventListener("resize", adjustOnResize, { passive: true });
+    adjustOnResize();
   }
 
   function exitTaskLogMemoScroll() {
     restoreTaskLogMemoScrollPosition();
     if (taskLogMemoVvAdjust) {
-      window.visualViewport?.removeEventListener("resize", taskLogMemoVvAdjust);
-      window.visualViewport?.removeEventListener("scroll", taskLogMemoVvAdjust);
-      window.removeEventListener("resize", taskLogMemoVvAdjust);
+      window.visualViewport?.removeEventListener("resize", taskLogMemoVvAdjust.resize);
+      window.visualViewport?.removeEventListener("scroll", taskLogMemoVvAdjust.scroll);
+      window.removeEventListener("resize", taskLogMemoVvAdjust.resize);
     }
     taskLogMemoVvAdjust = null;
   }
@@ -6115,14 +6197,26 @@ export function render(opts = {}) {
   bindTaskLogMemoScrollMode(taskLogFeedbackInput);
   bindTaskLogMemoScrollMode(taskLogMealDetailInput);
 
+  const taskLogMealDetailLabel = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-meal-detail-label"]',
+  );
+
   function updateTaskLogMealDetailVisibility(taskName) {
     const tn = (taskName || "").trim();
     const kind = TTC.ledgerDetailTaskKind(tn);
     const isContent = kind === "content";
+    const showFreeTextDetail = TTC.isLedgerFreeTextDetailTaskName(tn);
     if (taskLogMealDetailSection) {
-      taskLogMealDetailSection.hidden = kind !== "meal";
-      if (kind !== "meal" && taskLogMealDetailInput) {
-        taskLogMealDetailInput.value = "";
+      taskLogMealDetailSection.hidden = !showFreeTextDetail;
+      if (taskLogMealDetailLabel) {
+        taskLogMealDetailLabel.textContent =
+          TTC.ledgerDetailInputLabel(kind) || "식단명";
+      }
+      if (taskLogMealDetailInput) {
+        if (!showFreeTextDetail) taskLogMealDetailInput.value = "";
+        taskLogMealDetailInput.placeholder =
+          TTC.ledgerDetailInputPlaceholder(kind) ||
+          "무엇을 드셨는지 한 줄로 적어 주세요";
       }
     }
     if (taskLogContentTypeSection) {
@@ -8038,11 +8132,13 @@ export function render(opts = {}) {
       return;
     }
     const feedbackBody = (taskLogFeedbackInput?.value || "").trim();
-    const mealDetailForRow = TTC.isMealDetailTaskName(taskName)
-      ? (taskLogMealDetailInput?.value || "").trim()
-      : TTC.isContentDetailTaskName(taskName)
+    const detailKind = TTC.ledgerDetailTaskKind(taskName);
+    const mealDetailForRow =
+      detailKind === "content"
         ? getTaskLogContentTypeForSave()
-        : "";
+        : detailKind
+          ? (taskLogMealDetailInput?.value || "").trim()
+          : "";
     const feedback = feedbackBody;
     const userTagsForSubmit = (
       Array.isArray(taskLogMemoTags) ? taskLogMemoTags : []
@@ -8122,7 +8218,7 @@ export function render(opts = {}) {
         const dispTask = editTr.querySelector(
           '[data-legacy~="time-display-task"]',
         );
-        if (dispTask) dispTask.textContent = taskName;
+        if (dispTask) dispTask.textContent = ledgerRowDisplayTaskName(newRowData);
         const prodBarEl = editTr.querySelector(
           '[data-legacy~="time-task-prod-bar"]',
         );

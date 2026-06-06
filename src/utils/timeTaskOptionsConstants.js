@@ -215,6 +215,18 @@ export const MEAL_DETAIL_TASK_NAMES = new Set([
   "건강하지 않은 섭취",
 ]);
 
+/** 생산적·비생산적 대화 — 과제 기록 시 대화명 입력 */
+export const CONVERSATION_DETAIL_TASK_NAMES = new Set([
+  "생산적 대화",
+  "비생산적 대화",
+]);
+
+/** 생산적·비생산적 외출 — 과제 기록 시 외출명 입력 */
+export const OUTING_DETAIL_TASK_NAMES = new Set([
+  "생산적 외출",
+  "비생산적 외출",
+]);
+
 /** 의식적·무의식적 콘텐츠 소비 — 과제 기록 시 소비 내용 입력 */
 export const CONTENT_DETAIL_TASK_NAMES = new Set([
   "의식적 콘텐츠 소비",
@@ -278,16 +290,71 @@ export function isContentDetailTaskName(name) {
   return CONTENT_DETAIL_TASK_NAMES.has(n);
 }
 
-/** 섭취·콘텐츠 소비 — time_ledger_entries.meal_detail 에 저장 */
-export function isLedgerDetailTaskName(name) {
-  return isMealDetailTaskName(name) || isContentDetailTaskName(name);
+/** @param {string} name */
+export function isConversationDetailTaskName(name) {
+  const n = canonicalMealTaskDisplayName(name);
+  if (CONVERSATION_DETAIL_TASK_NAMES.has(n)) return true;
+  const raw = String(name || "").trim();
+  return (
+    raw === "생산적 대화 또는 모임" ||
+    raw === "의미 있는 대화 및 모임" ||
+    raw === "비생산적 대화 또는 모임" ||
+    raw === "의미 없는 대화 또는 모임"
+  );
 }
 
-/** @returns {"meal" | "content" | null} */
+/** @param {string} name */
+export function isOutingDetailTaskName(name) {
+  const n = String(name || "").trim();
+  return OUTING_DETAIL_TASK_NAMES.has(n);
+}
+
+/** 자유 텍스트 상세명 — time_ledger_entries.meal_detail 에 저장 */
+export function isLedgerFreeTextDetailTaskName(name) {
+  return (
+    isMealDetailTaskName(name) ||
+    isConversationDetailTaskName(name) ||
+    isOutingDetailTaskName(name)
+  );
+}
+
+/** 섭취·대화·외출·콘텐츠 — time_ledger_entries.meal_detail 에 저장 */
+export function isLedgerDetailTaskName(name) {
+  return isLedgerFreeTextDetailTaskName(name) || isContentDetailTaskName(name);
+}
+
+/** @returns {"meal" | "conversation" | "outing" | "content" | null} */
 export function ledgerDetailTaskKind(name) {
   if (isMealDetailTaskName(name)) return "meal";
+  if (isConversationDetailTaskName(name)) return "conversation";
+  if (isOutingDetailTaskName(name)) return "outing";
   if (isContentDetailTaskName(name)) return "content";
   return null;
+}
+
+/** 기록 모달 입력 라벨 */
+export function ledgerDetailInputLabel(kind) {
+  if (kind === "meal") return "식단명";
+  if (kind === "conversation") return "대화명";
+  if (kind === "outing") return "외출명";
+  return "";
+}
+
+/** 기록 모달 placeholder */
+export function ledgerDetailInputPlaceholder(kind) {
+  if (kind === "meal") return "무엇을 드셨는지 한 줄로 적어 주세요";
+  if (kind === "conversation") return "누구와 무엇에 대해 대화했는지 한 줄로 적어 주세요";
+  if (kind === "outing") return "어디에 외출했는지 한 줄로 적어 주세요";
+  return "";
+}
+
+/** 카드·레포트 요약 접두 */
+export function ledgerDetailLinePrefix(kind) {
+  if (kind === "meal") return "식단";
+  if (kind === "conversation") return "대화";
+  if (kind === "outing") return "외출";
+  if (kind === "content") return "콘텐츠";
+  return "";
 }
 
 /** @param {string} name */

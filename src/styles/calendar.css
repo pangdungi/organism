@@ -2900,6 +2900,13 @@
   flex-shrink: 0;
 }
 
+.lp-calendar-budget-add-modal
+  [data-legacy~="time-task-setup-panel"][data-legacy~="time-task-log-panel"] {
+  height: min(86vh, 41rem);
+  max-height: min(86vh, 41rem);
+  min-height: min(86vh, 41rem);
+}
+
 .lp-calendar-budget-add-modal .lp-calendar-expected-delete-btn {
   font-size: 0.875rem;
   font-weight: 600;
@@ -2913,6 +2920,100 @@
 
 .lp-calendar-budget-add-modal .lp-calendar-expected-delete-btn:hover {
   background: var(--cal-surface-muted, #f1f5f9);
+}
+
+/* 예상 일정 모달 — 모바일 키보드(과제 기록 모달과 동일 원리) */
+@media (max-width: 48rem) and (pointer: coarse) {
+  html.lp-task-log-modal-open .lp-calendar-budget-add-modal.time-task-setup-modal {
+    z-index: 2147483647;
+  }
+
+  .lp-calendar-budget-add-modal [data-legacy~="time-task-log-scroll-area"]:not(
+      .is-task-picker-open
+    ) {
+    display: block;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding-bottom: 0.35rem;
+  }
+
+  /* 메모 영역이 과제·시간 입력을 밀어 올리지 않게 — 과제 기록 모달과 동일 */
+  .lp-calendar-budget-add-modal [data-legacy~="time-task-log-memo-section"],
+  .lp-calendar-budget-add-modal [data-legacy~="time-task-log-memo-fields"],
+  .lp-calendar-budget-add-modal
+    [data-legacy~="time-task-log-memo-section"]
+    [data-legacy~="time-task-log-field"]:last-child {
+    display: block;
+    flex: none;
+    min-height: auto;
+  }
+
+  .lp-calendar-budget-add-modal
+    [data-legacy~="time-task-log-memo-section"]
+    [data-legacy~="time-task-log-feedback"] {
+    flex: none;
+    min-height: var(--lp-modal-textarea-height);
+    max-height: none;
+  }
+
+  .lp-calendar-budget-add-modal
+    [data-legacy~="time-task-log-scroll-area"].is-memo-keyboard-open:not(
+      .is-task-picker-open
+    ) {
+    padding-bottom: max(
+      var(--task-log-memo-scroll-pad, 0px),
+      var(--vv-keyboard, 0px),
+      45vh,
+      20rem
+    );
+    scroll-padding-bottom: max(
+      var(--task-log-memo-scroll-pad, 0px),
+      var(--vv-keyboard, 0px),
+      45vh,
+      20rem
+    );
+  }
+
+  .lp-calendar-budget-add-modal
+    [data-legacy~="time-task-log-scroll-area"].is-memo-keyboard-open:not(
+      .is-task-picker-open
+    )::after {
+    content: "";
+    display: block;
+    height: max(
+      var(--task-log-memo-scroll-pad, 0px),
+      var(--vv-keyboard, 0px),
+      45vh,
+      20rem
+    );
+    pointer-events: none;
+  }
+
+  html.lp-keyboard-open.lp-task-log-modal-open .lp-calendar-budget-add-modal {
+    inset: auto;
+    top: var(--vv-offset-top, 0px);
+    left: 0;
+    right: 0;
+    bottom: auto;
+    height: var(--vv-visible-height, 100dvh);
+    max-height: var(--vv-visible-height, 100dvh);
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding-top: max(0.35rem, env(safe-area-inset-top, 0px));
+    padding-bottom: 0.35rem;
+  }
+
+  html.lp-keyboard-open.lp-task-log-modal-open
+    .lp-calendar-budget-add-modal
+    [data-legacy~="time-task-setup-panel"][data-legacy~="time-task-log-panel"] {
+    height: auto;
+    min-height: 0;
+    max-height: min(calc(var(--vv-visible-height, 100dvh) - 0.75rem), 41rem);
+  }
 }
 
 /* -------------------------------------------------------------------------- */

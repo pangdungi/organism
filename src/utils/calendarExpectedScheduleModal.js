@@ -23,6 +23,8 @@ import {
   updateBudgetScheduleBlockAtIndex,
   removeBudgetScheduleBlockAtIndex,
 } from "../views/Time.js";
+import * as TTC from "./timeTaskOptionsConstants.js";
+import { bindTimeTaskLogModalMemoKeyboard } from "./timeTaskLogModalMemoKeyboard.js";
 
 function parseDateFromDateTime(str) {
   if (!str || typeof str !== "string") return "";
@@ -742,9 +744,17 @@ export function openCalendarExpectedScheduleModal(options) {
               <input type="hidden" data-legacy="time-task-log-end" />
             </div>
           </div>
+          <div data-legacy="time-task-log-content-type-section" hidden>
+            <span data-legacy="time-task-log-section-label time-task-log-content-type-label">콘텐츠 종류</span>
+            <div data-legacy="time-task-log-content-type-chips lp-choice-chip-row"></div>
+          </div>
           <div data-legacy="time-task-log-memo-section">
             <span data-legacy="time-task-log-section-label time-task-log-memo-section-label">메모</span>
             <div data-legacy="time-task-log-memo-fields">
+              <div data-legacy="time-task-log-field time-task-log-meal-detail-section" hidden>
+                <label data-legacy="time-task-log-section-label time-task-log-meal-detail-label" for="lp-calendar-expected-detail-input">식단명</label>
+                <input type="text" id="lp-calendar-expected-detail-input" data-legacy="time-task-log-meal-detail-input time-task-log-memo-input" placeholder="무엇을 드셨는지 한 줄로 적어 주세요" autocomplete="off" />
+              </div>
               <div data-legacy="time-task-log-field">
                 <textarea data-legacy="time-task-log-feedback time-task-log-memo-input" rows="2" placeholder="메모를 입력하세요"></textarea>
               </div>
@@ -766,9 +776,182 @@ export function openCalendarExpectedScheduleModal(options) {
   if (submitBtn) submitBtn.textContent = submitLabel;
 
   const taskWrap = modal.querySelector('[data-legacy~="time-task-log-task-wrap"]');
+  const taskLogMealDetailSection = modal.querySelector(
+    '[data-legacy~="time-task-log-meal-detail-section"]',
+  );
+  const taskLogMealDetailLabel = modal.querySelector(
+    '[data-legacy~="time-task-log-meal-detail-label"]',
+  );
+  const taskLogMealDetailInput = modal.querySelector(
+    '[data-legacy~="time-task-log-meal-detail-input"]',
+  );
+  const taskLogContentTypeSection = modal.querySelector(
+    '[data-legacy~="time-task-log-content-type-section"]',
+  );
+  const taskLogContentTypeChips = modal.querySelector(
+    '[data-legacy~="time-task-log-content-type-chips"]',
+  );
+  const taskLogScrollArea = modal.querySelector(
+    '[data-legacy~="time-task-log-scroll-area"]',
+  );
+  let taskLogContentType = "";
+  let taskLogContentTypeLegacy = "";
+
+  function syncTaskLogContentTypeChips() {
+    if (!taskLogContentTypeChips) return;
+    taskLogContentTypeChips
+      .querySelectorAll('[data-legacy~="lp-choice-chip"]')
+      .forEach((btn) => {
+        const on =
+          !!taskLogContentType &&
+          btn.getAttribute("data-content-type") === taskLogContentType;
+        lpTokenToggle(btn, "lp-choice-chip--on", on);
+      });
+  }
+
+  function setTaskLogContentType(value) {
+    const resolved = TTC.resolveContentTypeLabel(value);
+    if (resolved.known) {
+      taskLogContentType = resolved.label;
+      taskLogContentTypeLegacy = "";
+    } else if (resolved.label) {
+      taskLogContentType = "";
+      taskLogContentTypeLegacy = resolved.label;
+    } else {
+      taskLogContentType = "";
+      taskLogContentTypeLegacy = "";
+    }
+    syncTaskLogContentTypeChips();
+  }
+
+  function getTaskLogContentTypeForSave() {
+    return (taskLogContentType || taskLogContentTypeLegacy || "").trim();
+  }
+
+  function clearTaskLogContentType() {
+    taskLogContentType = "";
+    taskLogContentTypeLegacy = "";
+    syncTaskLogContentTypeChips();
+  }
+
+  if (taskLogContentTypeChips) {
+    TTC.CONTENT_TYPE_OPTIONS.forEach((label) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "lp-choice-chip";
+      btn.setAttribute("data-legacy", "lp-choice-chip");
+      btn.setAttribute("data-content-type", label);
+      btn.textContent = label;
+      btn.addEventListener(
+        "click",
+        () => {
+          taskLogContentType = label;
+          taskLogContentTypeLegacy = "";
+          syncTaskLogContentTypeChips();
+        },
+        { signal },
+      );
+      taskLogContentTypeChips.appendChild(btn);
+    });
+  }
+
+  function updateExpectedDetailVisibility(taskName) {
+    const tn = (taskName || "").trim();
+    const kind = TTC.ledgerDetailTaskKind(tn);
+    const isContent = kind === "content";
+    const showFreeTextDetail = TTC.isLedgerFreeTextDetailTaskName(tn);
+    if (taskLogMealDetailSection) {
+      taskLogMealDetailSection.hidden = !showFreeTextDetail;
+      if (taskLogMealDetailLabel) {
+        taskLogMealDetailLabel.textContent =
+          TTC.ledgerDetailInputLabel(kind) || "식단명";
+      }
+      if (taskLogMealDetailInput) {
+        if (!showFreeTextDetail) taskLogMealDetailInput.value = "";
+        taskLogMealDetailInput.placeholder =
+          TTC.ledgerDetailInputPlaceholder(kind) ||
+          "무엇을 드셨는지 한 줄로 적어 주세요";
+      }
+    }
+    if (taskLogContentTypeSection) {
+      taskLogContentTypeSection.hidden = !isContent;
+      if (!isContent) clearTaskLogContentType();
+    }
+    taskLogScrollArea?.classList?.toggle("is-content-detail-task", isContent);
+  }
+
+  function getExpectedDetailForSave(taskName) {
+    const kind = TTC.ledgerDetailTaskKind(taskName);
+    if (kind === "content") return getTaskLogContentTypeForSave();
+    if (kind) return (taskLogMealDetailInput?.value || "").trim();
+    return "";
+  }
+
+  function setExpectedDetailForEdit(taskName, detailVal) {
+    const tn = (taskName || "").trim();
+    const val = String(detailVal || "").trim();
+    updateExpectedDetailVisibility(tn);
+    if (TTC.isContentDetailTaskName(tn)) {
+      setTaskLogContentType(val);
+      if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
+    } else {
+      if (taskLogMealDetailInput) taskLogMealDetailInput.value = val;
+      clearTaskLogContentType();
+    }
+  }
+
+  function readExpectedScheduleSlotFromGoals(dateKey, taskName, timeIdx) {
+    const goal = getBudgetGoals(dateKey)[taskName];
+    if (!goal) return null;
+    let slotRaw = goal?.scheduledTimes?.[timeIdx];
+    if (
+      (!slotRaw || !String(slotRaw).trim()) &&
+      timeIdx === 0 &&
+      goal?.scheduledTime
+    ) {
+      slotRaw = goal.scheduledTime;
+    }
+    return {
+      goal,
+      slotRaw: String(slotRaw || "").trim(),
+      memoStored: String(goal?.scheduleMemos?.[timeIdx] || "").trim(),
+      detailStored: String(goal?.scheduleDetails?.[timeIdx] || "").trim(),
+    };
+  }
+
+  /** 수정 모달 — 과제 선택 후 식단명·외출명·대화명·메모·시간 복원 */
+  function hydrateExpectedScheduleEditFromBudget() {
+    if (!isEdit) return false;
+    const slot = readExpectedScheduleSlotFromGoals(dk, editTaskName, editTimeIdx);
+    if (!slot?.goal) return false;
+    const parts = slot.slotRaw.split("-");
+    if (parts.length < 2) return false;
+    if (taskLogTimeStart && taskLogTimeEnd) {
+      taskLogTimeStart.value = parts[0].trim().slice(0, 5);
+      taskLogTimeEnd.value = parts[1].trim().slice(0, 5);
+    }
+    taskDropdown._setValue?.(editTaskName);
+    setExpectedDetailForEdit(editTaskName, slot.detailStored);
+    if (taskLogFeedbackInput) {
+      taskLogFeedbackInput.value = slot.memoStored;
+    }
+    if (deleteBtn) deleteBtn.hidden = false;
+    flushBeforeSubmit();
+    return true;
+  }
+
+  function finalizeExpectedModalTaskDropdown() {
+    if (isEdit) {
+      hydrateExpectedScheduleEditFromBudget();
+      return;
+    }
+    afterTaskListSyncForExpectedModal(taskDropdown);
+    updateExpectedDetailVisibility(taskDropdown._getValue?.() || "");
+  }
+
   const taskDropdown = buildTimeTaskLogPickerDropdown({
     abortSignal: signal,
-    onTaskSelected: () => {},
+    onTaskSelected: (name) => updateExpectedDetailVisibility(name),
   });
   taskWrap.appendChild(taskDropdown);
 
@@ -825,38 +1008,31 @@ export function openCalendarExpectedScheduleModal(options) {
   );
 
   if (isEdit) {
-    const goal = getBudgetGoals(dk)[editTaskName];
-    let slotRaw = goal?.scheduledTimes?.[editTimeIdx];
-    if (
-      (!slotRaw || !String(slotRaw).trim()) &&
-      editTimeIdx === 0 &&
-      goal?.scheduledTime
-    ) {
-      slotRaw = goal.scheduledTime;
+    const slot = readExpectedScheduleSlotFromGoals(dk, editTaskName, editTimeIdx);
+    const parts = String(slot?.slotRaw || "").trim().split("-");
+    if (!slot?.goal || parts.length < 2) {
+      showToast("수정할 예상 일정을 찾지 못했습니다.");
+      try {
+        ac.abort();
+      } catch (_) {}
+      return;
     }
-    const parts = String(slotRaw || "").trim().split("-");
-    const memoStored = String(goal?.scheduleMemos?.[editTimeIdx] || "").trim();
-    if (parts.length >= 2 && taskLogTimeStart && taskLogTimeEnd) {
-      taskLogTimeStart.value = parts[0].trim().slice(0, 5);
-      taskLogTimeEnd.value = parts[1].trim().slice(0, 5);
-    }
-    if (taskLogFeedbackInput) {
-      taskLogFeedbackInput.value = memoStored;
-    }
-    if (deleteBtn) deleteBtn.hidden = false;
-    flushBeforeSubmit();
+    hydrateExpectedScheduleEditFromBudget();
+  } else {
+    finalizeExpectedModalTaskDropdown();
   }
 
-  afterTaskListSyncForExpectedModal(taskDropdown);
-
-  if (isEdit) {
-    taskDropdown._setValue?.(editTaskName);
-  }
+  bindTimeTaskLogModalMemoKeyboard(modal, {
+    scrollArea: taskLogScrollArea,
+    signal,
+  });
 
   const close = () => {
     try {
       ac.abort();
     } catch (_) {}
+    taskLogScrollArea?.classList?.remove("is-memo-keyboard-open");
+    taskLogScrollArea?.classList?.remove("is-task-picker-open");
     modal.remove();
     document.body.style.overflow = "";
   };
@@ -879,6 +1055,7 @@ export function openCalendarExpectedScheduleModal(options) {
       const startHHmm = (taskLogTimeStart?.value || "").trim();
       const endHHmm = (taskLogTimeEnd?.value || "").trim();
       const memo = (taskLogFeedbackInput?.value || "").trim();
+      const detail = getExpectedDetailForSave(taskName);
 
       if (!taskName) {
         showToast("과제를 선택해 주세요.");
@@ -894,6 +1071,7 @@ export function openCalendarExpectedScheduleModal(options) {
           startHHmm,
           endHHmm,
           memo,
+          detail,
         );
         if (!r.ok) {
           showToast(r.error || "저장에 실패했습니다.");
@@ -906,6 +1084,7 @@ export function openCalendarExpectedScheduleModal(options) {
           startHHmm,
           endHHmm,
           memo,
+          detail,
         );
         if (!r.ok) {
           showToast(r.error || "등록에 실패했습니다.");
@@ -961,37 +1140,17 @@ export function openCalendarExpectedScheduleModal(options) {
     { signal },
   );
 
-  if (isEdit) {
-    const g = getBudgetGoals(dk)[editTaskName];
-    let slotRaw = g?.scheduledTimes?.[editTimeIdx];
-    if (
-      (!slotRaw || !String(slotRaw).trim()) &&
-      editTimeIdx === 0 &&
-      g?.scheduledTime
-    ) {
-      slotRaw = g.scheduledTime;
-    }
-    const pt = String(slotRaw || "").trim().split("-");
-    if (!g || pt.length < 2) {
-      showToast("수정할 예상 일정을 찾지 못했습니다.");
-      try {
-        ac.abort();
-      } catch (_) {}
-      return;
-    }
-  }
-
   document.body.appendChild(modal);
   document.body.style.overflow = "hidden";
+  if (taskLogScrollArea instanceof HTMLElement) {
+    taskLogScrollArea.scrollTop = 0;
+  }
 
   void ensureExpectedModalCloudData()
     .catch(() => {})
     .then(() => {
       if (!modal.isConnected) return;
-      afterTaskListSyncForExpectedModal(taskDropdown);
-      if (isEdit) {
-        taskDropdown._setValue?.(editTaskName);
-      }
+      finalizeExpectedModalTaskDropdown();
     });
 }
 
