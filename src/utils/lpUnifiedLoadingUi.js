@@ -2,7 +2,7 @@
 
 export const LP_UNIFIED_LOADING_MESSAGE = "Good things are coming";
 export const LP_SPLASH_SCREEN_URL =
-  "/toolbaricons/splash/splash-screen.png?v=good-things-splash-png-1";
+  "/toolbaricons/splash/splash-screen.png?v=good-things-splash-png-2";
 
 function escapeHtml(str) {
   return String(str ?? "")

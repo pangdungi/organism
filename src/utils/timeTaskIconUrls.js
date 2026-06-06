@@ -118,6 +118,15 @@ const PICKER_SEARCH_EXTRA = {
   task: "잡무",
   moon: "취침루틴",
   hospital: "건강검진",
+  art: "그림 팔레트 미술",
+  bts: "방탄",
+  happycloud: "행복 구름",
+  hotcake: "핫케이크 케이크",
+  "flower-smile": "꽃 웃음",
+  earth: "지구",
+  space: "행성 우주",
+  panda: "판다",
+  rainbow: "무지개",
 };
 
 const PRODUCTIVE_CATEGORIES = new Set([
@@ -360,11 +369,13 @@ export function getTimeTaskPickableIcons() {
   /** @type {{ key: string, label: string, src: string, searchText: string }[]} */
   const out = [];
   for (const name of pickerSvgNames) {
+    const src = pickerListedIconSrc(name);
+    if (!src) continue;
     const searchExtra = PICKER_SEARCH_EXTRA[name] || "";
     out.push({
       key: `svg:${name}`,
       label: pickerIconLabelFromFilename(name),
-      src: pickerListedIconSrc(name),
+      src,
       searchText: `${name.replace(/-/g, " ")} ${searchExtra}`.trim(),
     });
   }

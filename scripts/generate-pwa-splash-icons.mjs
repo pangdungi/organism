@@ -1,7 +1,7 @@
 /**
  * PWA 아이콘·Android/iOS 네이티브 스플래시
  * — icon-* / apple-touch: app-icon-source.png (앱 로고 DOODLE — 스플래시와 별도)
- * — pwa-splash-*: splash-screen.svg 래스터 (iOS·Android 네이티브·in-app 스플래시)
+ * — pwa-splash-*: splash-screen.png(우선)·svg 래스터 (iOS·Android 네이티브·in-app 스플래시)
  */
 import sharp from "sharp";
 import { existsSync, writeFileSync } from "fs";
@@ -11,7 +11,14 @@ import { fileURLToPath } from "url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const publicDir = join(__dirname, "..", "public");
 const SOURCE = join(publicDir, "app-icon-source.png");
-const SPLASH_SCREEN = join(publicDir, "toolbaricons/splash/splash-screen.svg");
+const SPLASH_SCREEN_PNG = join(publicDir, "toolbaricons/splash/splash-screen.png");
+const SPLASH_SCREEN_SVG = join(publicDir, "toolbaricons/splash/splash-screen.svg");
+
+function splashScreenSource() {
+  if (existsSync(SPLASH_SCREEN_PNG)) return SPLASH_SCREEN_PNG;
+  if (existsSync(SPLASH_SCREEN_SVG)) return SPLASH_SCREEN_SVG;
+  return "";
+}
 
 /** @type {{ filename: string, width: number, height: number }[]} */
 const PORTRAIT_SPLASHES = [
@@ -82,9 +89,9 @@ async function buildMaskableIcon(size) {
     .toBuffer();
 }
 
-/** splash-screen.svg — 흰 배경 위 contain */
+/** splash-screen — 흰 배경 위 contain */
 async function buildSplashCanvas(width, height) {
-  return sharp(SPLASH_SCREEN)
+  return sharp(splashScreenSource())
     .resize(width, height, {
       fit: "contain",
       background: { r: 255, g: 255, b: 255 },
@@ -150,8 +157,8 @@ async function main() {
     console.error("app icon source missing:", SOURCE);
     process.exit(1);
   }
-  if (!existsSync(SPLASH_SCREEN)) {
-    console.error("splash screen missing:", SPLASH_SCREEN);
+  if (!splashScreenSource()) {
+    console.error("splash screen missing:", SPLASH_SCREEN_PNG, "or", SPLASH_SCREEN_SVG);
     process.exit(1);
   }
 

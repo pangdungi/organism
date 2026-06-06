@@ -43,3 +43,27 @@ optgroup {
   font-style: normal;
   font-display: swap;
 }
+
+@font-face {
+  font-family: "LP Ongleip Bakdahyun";
+  src: url("/fonts/LP-Ongleip-Bakdahyun.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "LP Ongleip Ryuddung";
+  src: url("/fonts/LP-Ongleip-Ryuddung.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Adultkid";
+  src: url("/fonts/Adultkid.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}

@@ -17,10 +17,13 @@ for (const n of files) {
   const ext = m[2].toLowerCase();
   if (ext === "png") names.add(base);
 }
+const namesLower = new Set([...names].map((x) => x.toLowerCase()));
 for (const n of files) {
   const m = n.match(/^(.+)\.svg$/i);
   if (!m) continue;
-  if (!names.has(m[1])) names.add(m[1]);
+  const base = m[1];
+  if (names.has(base) || namesLower.has(base.toLowerCase())) continue;
+  names.add(base);
 }
 const list = [...names].sort((a, b) => a.localeCompare(b, "en"));
 
