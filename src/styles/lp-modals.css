@@ -3344,7 +3344,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   font-family: inherit;
   color: var(--lp-modal-navy);
   background-color: #fff;
-  background-image: url("/toolbaricons/search.svg");
+  background-image: url("/toolbaricons/search.png");
   background-repeat: no-repeat;
   background-position: 0.65rem center;
   background-size: 1rem 1rem;

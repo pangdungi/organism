@@ -2,7 +2,7 @@
 /** index.html·manifest 의 ?v= 와 동일하게 유지 */
 const PWA_BRAND = "doodle-logo-6";
 /** 번들·아이콘 등 캐시 버전 (전략·브랜드 바꿀 때 올리면 이전 캐시 정리됨) */
-const ASSET_CACHE = "tip-assets-v34";
+const ASSET_CACHE = "tip-assets-v35";
 /** HTML 셸 캐시 — 홈 화면에서 열 때 즉시 표시용 */
 const HTML_CACHE = "tip-html-v5";
 
@@ -45,7 +45,7 @@ const PWA_INSTALL_CORE_PATHS = [
   "/fonts/LP-KyoboHandwriting2025.otf",
 ];
 
-/** 홈 화면 추가 시 과제 아이콘 picker SVG 전량 캐시(모달마다 네트워크·재다운로드 방지) */
+/** 홈 화면 추가 시 과제 아이콘 picker PNG(우선) 캐시 */
 async function cacheTimeTaskPickerIcons(assetCache) {
   try {
     const listRes = await fetch(
@@ -145,11 +145,16 @@ function isStaticImageAsset(pathname) {
   return /\.(png|jpe?g|webp|gif|svg|ico)(\?.*)?$/i.test(pathname);
 }
 
+/** PNG 전환 후 캐시 우선이면 구 404·구 파일이 일반 새로고침에 남음 */
+function isToolbarIconPath(pathname) {
+  return pathname.startsWith("/toolbaricons/");
+}
+
 /** JS/CSS 번들 — 네트워크 우선(배포 직후 구 HTML·빈 캐시로 실행 실패·무한 로딩 방지) */
 async function networkFirstAsset(request) {
   const cache = await caches.open(ASSET_CACHE);
   try {
-    const response = await fetch(request);
+    const response = await fetch(new Request(request, { cache: "reload" }));
     if (response && response.ok) {
       try {
         await cache.put(request, response.clone());
@@ -158,7 +163,7 @@ async function networkFirstAsset(request) {
     }
   } catch (_e) {}
   const cached = await cache.match(request);
-  if (cached) return cached;
+  if (cached && cached.ok) return cached;
   return fetch(request);
 }
 
@@ -183,7 +188,7 @@ async function networkFirstBrandAsset(request) {
 async function cacheFirstStaticAsset(request) {
   const cache = await caches.open(ASSET_CACHE);
   const cached = await cache.match(request);
-  if (cached) return cached;
+  if (cached && cached.ok) return cached;
   try {
     const response = await fetch(request);
     if (response && response.ok) {
@@ -193,6 +198,25 @@ async function cacheFirstStaticAsset(request) {
       return response;
     }
   } catch (_e) {}
+  if (cached && cached.ok) return cached;
+  return fetch(request);
+}
+
+/** toolbaricons — 네트워크 우선(배포·PNG 추가 직후 일반 새로고침에서도 최신 파일) */
+async function networkFirstToolbarIcon(request) {
+  const cache = await caches.open(ASSET_CACHE);
+  const reloadReq = new Request(request, { cache: "reload" });
+  try {
+    const response = await fetch(reloadReq);
+    if (response && response.ok) {
+      try {
+        await cache.put(request, response.clone());
+      } catch (_e) {}
+      return response;
+    }
+  } catch (_e) {}
+  const cached = await cache.match(request);
+  if (cached && cached.ok) return cached;
   return fetch(request);
 }
 
@@ -200,7 +224,7 @@ async function cacheFirstStaticAsset(request) {
 async function networkFirstHtml(request) {
   const cache = await caches.open(HTML_CACHE);
   try {
-    const response = await fetch(request);
+    const response = await fetch(new Request(request, { cache: "reload" }));
     if (response && response.ok) {
       try {
         await cache.put(request, response.clone());
@@ -248,6 +272,10 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   if (isStaticImageAsset(url.pathname)) {
+    if (isToolbarIconPath(url.pathname)) {
+      event.respondWith(networkFirstToolbarIcon(req));
+      return;
+    }
     event.respondWith(cacheFirstStaticAsset(req));
     return;
   }

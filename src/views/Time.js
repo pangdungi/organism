@@ -85,10 +85,7 @@ import {
   resolveTimeTaskIconKey,
 } from "../utils/timeTaskIconUrls.js";
 import { mountTimeAddTaskIconPicker } from "../utils/timeAddTaskIconPicker.js";
-import {
-  attachLazyIconHydration,
-  createDeferredIconImg,
-} from "../utils/timeTaskIconLazyDisplay.js";
+import { createSetupListIconImg } from "../utils/timeTaskIconLazyDisplay.js";
 import {
   ensureTimeLedgerEntryIds,
   ledgerRowEntryDateYmd,
@@ -158,7 +155,7 @@ const TIME_LEDGER_ADD_PLUS_ICON_SVG =
 const TIME_LEDGER_TOOLBAR_SETTINGS_ICON_SVG =
   '<svg data-legacy="time-btn-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><path d="m19.845 13.561c.1-.505.155-1.027.155-1.561s-.055-1.056-.155-1.561l1.806-1.489c.502-.414.632-1.132.307-1.696l-.869-1.508c-.325-.564-1.011-.811-1.62-.582l-2.198.825c-.779-.684-1.689-1.218-2.691-1.559l-.385-2.316c-.108-.643-.663-1.114-1.314-1.114h-1.738c-.651 0-1.206.471-1.313 1.114l-.386 2.316c-1.002.341-1.912.875-2.691 1.559l-2.198-.825c-.61-.228-1.295.018-1.62.582l-.87 1.508c-.325.564-.195 1.282.307 1.696l1.806 1.489c-.1.505-.155 1.026-.155 1.561s.055 1.056.155 1.561l-1.806 1.489c-.502.414-.632 1.132-.307 1.696l.869 1.508c.325.564 1.011.811 1.62.582l2.198-.825c.779.684 1.689 1.218 2.691 1.559l.385 2.316c.109.643.664 1.114 1.315 1.114h1.738c.651 0 1.206-.471 1.313-1.114l.385-2.316c1.002-.341 1.913-.875 2.691-1.559l2.198.825c.609.229 1.295-.017 1.62-.582l.869-1.508c.325-.564.196-1.282-.307-1.696z"/><circle cx="12.012" cy="12" r="3"/></g></svg>';
 
-/** 앱 푸터 조회 — public/toolbaricons/search.svg 와 동일 (currentColor) */
+/** 앱 푸터 조회 — search.png 와 동일 형태 (인라인 SVG, currentColor) */
 const TIME_LEDGER_FOOTER_FILTER_ICON_SVG =
   '<svg data-legacy="time-btn-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"><circle cx="10" cy="10" r="8"/><path d="m22 22-6-6"/></g></svg>';
 
@@ -8497,14 +8494,31 @@ export function render(opts = {}) {
   let setupListSelectedTaskName = "";
   let taskSetupListRenderedSig = "";
   let taskSetupListPullGen = 0;
-  let taskSetupSavedRenderRaf = 0;
-  let taskSetupListIconLazyDisconnect = () => {};
+  let taskSetupListPullPending = false;
+  let taskSetupListRenderRaf = 0;
+  let taskSetupListRenderForceNext = false;
 
   function getActiveTaskSetupListContainer() {
     if (activeSetupTab === "productive") return setupListProd;
     if (activeSetupTab === "nonproductive") return setupListNonProd;
     if (activeSetupTab === "other") return setupListOther;
     return setupListAll;
+  }
+
+  function syncTaskSetupListVisibility(tab) {
+    const which = tab || activeSetupTab || "all";
+    if (setupListAll) {
+      setupListAll.style.display = which === "all" ? "" : "none";
+    }
+    if (setupListProd) {
+      setupListProd.style.display = which === "productive" ? "" : "none";
+    }
+    if (setupListNonProd) {
+      setupListNonProd.style.display = which === "nonproductive" ? "" : "none";
+    }
+    if (setupListOther) {
+      setupListOther.style.display = which === "other" ? "" : "none";
+    }
   }
 
   function getTaskSetupListRenderSig() {
@@ -8555,11 +8569,22 @@ export function render(opts = {}) {
           .querySelectorAll('[data-legacy~="time-task-setup-subcat-btn"]')
           .forEach((b) => lpTokenRemove(b, "active"));
         lpTokenAdd(btn, "active");
-        renderTaskSetupList();
+        scheduleRenderTaskSetupList();
       });
       setupSubcatBar.appendChild(btn);
     });
     setupSubcatBar.style.display = "flex";
+  }
+
+  function scheduleRenderTaskSetupList(opts = {}) {
+    if (opts.force) taskSetupListRenderForceNext = true;
+    if (taskSetupListRenderRaf) return;
+    taskSetupListRenderRaf = requestAnimationFrame(() => {
+      taskSetupListRenderRaf = 0;
+      const force = taskSetupListRenderForceNext;
+      taskSetupListRenderForceNext = false;
+      renderTaskSetupList({ force });
+    });
   }
 
   function renderTaskSetupList(opts = {}) {
@@ -8567,7 +8592,6 @@ export function render(opts = {}) {
     if (!opts.force && listSig === taskSetupListRenderedSig) {
       return;
     }
-    taskSetupListRenderedSig = listSig;
 
     const allTasks = getFullTaskOptions();
     const mainTasksOnly = allTasks.filter(
@@ -8622,7 +8646,7 @@ export function render(opts = {}) {
         if (iconSrc) {
           const wrap = document.createElement("span");
           wrap.setAttribute("data-legacy", "time-task-setup-item-icon-wrap");
-          const img = createDeferredIconImg(iconSrc);
+          const img = createSetupListIconImg(iconSrc);
           img.setAttribute("data-legacy", "time-task-setup-item-icon");
           wrap.appendChild(img);
           row.appendChild(wrap);
@@ -8655,8 +8679,9 @@ export function render(opts = {}) {
         row.appendChild(catEl);
         row.setAttribute("role", "button");
         row.tabIndex = 0;
+        const taskName = t.name;
         row.addEventListener("click", () => {
-          void openAddTaskModal(getTaskOptionByName(t.name) || t);
+          void openAddTaskModal(getTaskOptionByName(taskName) || t);
         });
         row.addEventListener("keydown", (e) => {
           if (e.key === "Enter" || e.key === " ") {
@@ -8687,14 +8712,7 @@ export function render(opts = {}) {
     } else {
       renderList(setupListAll, mainTasksOnly);
     }
-    taskSetupListIconLazyDisconnect();
-    const listRoot = getActiveTaskSetupListContainer();
-    if (listRoot) {
-      taskSetupListIconLazyDisconnect = attachLazyIconHydration(
-        listRoot,
-        '[data-legacy~="time-task-setup-item"]',
-      );
-    }
+    taskSetupListRenderedSig = listSig;
   }
 
   function patchTaskSetupListIconForTaskName(taskName) {
@@ -8725,13 +8743,12 @@ export function render(opts = {}) {
         if (!img) {
           wrap = document.createElement("span");
           wrap.setAttribute("data-legacy", "time-task-setup-item-icon-wrap");
-          img = createDeferredIconImg(iconSrc);
+          img = createSetupListIconImg(iconSrc);
           img.setAttribute("data-legacy", "time-task-setup-item-icon");
           wrap.appendChild(img);
           row.insertBefore(wrap, row.firstChild);
-        } else if (img instanceof HTMLImageElement) {
-          img.dataset.lpIconSrc = iconSrc;
-          if (img.src) img.src = iconSrc;
+        } else if (img instanceof HTMLImageElement && img.src !== iconSrc) {
+          img.src = iconSrc;
         }
       });
   }
@@ -8818,7 +8835,7 @@ export function render(opts = {}) {
     } else {
       addTaskIconPicker.reset();
     }
-    renderTaskSetupList();
+    scheduleRenderTaskSetupList();
   }
 
   function closeAddTaskModal(opts = {}) {
@@ -8837,7 +8854,7 @@ export function render(opts = {}) {
       }
       return;
     }
-    renderTaskSetupList();
+    scheduleRenderTaskSetupList();
   }
 
   addTaskNameInput.addEventListener("input", syncAddTaskSubmitState);
@@ -8962,7 +8979,7 @@ export function render(opts = {}) {
     if (!(await removeTaskOption(editName))) {
       void showAlertModal({ message: MSG_TIME_TASK_KPI_LINKED });
     }
-    renderTaskSetupList();
+    scheduleRenderTaskSetupList();
   });
 
   syncAddTaskSubmitState();
@@ -8977,12 +8994,9 @@ export function render(opts = {}) {
       lpTokenAdd(tab, "active");
       const which = tab.dataset.tab;
       activeSetupTab = which;
-      setupListAll.style.display = which === "all" ? "" : "none";
-      setupListProd.style.display = which === "productive" ? "" : "none";
-      setupListNonProd.style.display = which === "nonproductive" ? "" : "none";
-      setupListOther.style.display = which === "other" ? "" : "none";
+      syncTaskSetupListVisibility(which);
       renderSubcatButtons(which);
-      renderTaskSetupList();
+      scheduleRenderTaskSetupList();
     });
   });
 
@@ -8996,29 +9010,36 @@ export function render(opts = {}) {
       )?.dataset?.tab || "all";
     selectedSubcat = "";
     taskSetupListRenderedSig = "";
+    taskSetupListPullPending = true;
     const pullGen = ++taskSetupListPullGen;
     const listSigBeforePull = getTaskSetupListRenderSig();
+    syncTaskSetupListVisibility(activeSetupTab);
     renderSubcatButtons(activeSetupTab);
     renderTaskSetupList({ force: true });
-    window.setTimeout(() => {
-      void pullTimeLedgerTasksWhenSetupModalOpens()
-        .catch(() => {})
-        .finally(() => {
-          if (
-            !el.isConnected ||
-            taskSetupModal.hidden ||
-            pullGen !== taskSetupListPullGen
-          ) {
-            return;
-          }
-          if (getTaskSetupListRenderSig() === listSigBeforePull) return;
+    void pullTimeLedgerTasksWhenSetupModalOpens()
+      .catch(() => {})
+      .finally(() => {
+        taskSetupListPullPending = false;
+        if (
+          !el.isConnected ||
+          taskSetupModal.hidden ||
+          pullGen !== taskSetupListPullGen
+        ) {
+          return;
+        }
+        if (getTaskSetupListRenderSig() !== listSigBeforePull) {
           renderSubcatButtons(activeSetupTab);
-          renderTaskSetupList({ force: true });
-        });
-    }, 1200);
+          renderTaskSetupList();
+        }
+      });
   });
   function closeTaskSetupModal() {
-    taskSetupListIconLazyDisconnect();
+    taskSetupListPullPending = false;
+    if (taskSetupListRenderRaf) {
+      cancelAnimationFrame(taskSetupListRenderRaf);
+      taskSetupListRenderRaf = 0;
+    }
+    taskSetupListRenderForceNext = false;
     taskSetupModal.hidden = true;
     taskSetupListPullGen += 1;
     taskSetupListRenderedSig = "";
@@ -9786,15 +9807,8 @@ export function render(opts = {}) {
     () => {
       if (!el.isConnected) return;
       if (!taskSetupModal.hidden) {
-        if (taskSetupSavedRenderRaf) {
-          cancelAnimationFrame(taskSetupSavedRenderRaf);
-        }
-        taskSetupSavedRenderRaf = requestAnimationFrame(() => {
-          taskSetupSavedRenderRaf = 0;
-          if (!el.isConnected || taskSetupModal.hidden) return;
-          taskSetupListRenderedSig = "";
-          renderTaskSetupList();
-        });
+        if (taskSetupListPullPending) return;
+        scheduleRenderTaskSetupList();
         return;
       }
       refreshTimeLedgerTaskIconsFromOptions(el);

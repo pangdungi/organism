@@ -80,8 +80,8 @@ import {
 
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
 
-const LOVE_FOOTER_LOG_ICON = `<img src="/toolbaricons/list.svg" alt="" width="22" height="22" aria-hidden="true" />`;
-const LOVE_FOOTER_TODO_ICON = `<img src="/toolbaricons/todolist.svg" alt="" width="22" height="22" aria-hidden="true" />`;
+const LOVE_FOOTER_LOG_ICON = `<img src="/toolbaricons/list.png" alt="" width="22" height="22" aria-hidden="true" />`;
+const LOVE_FOOTER_TODO_ICON = `<img src="/toolbaricons/todolist.png" alt="" width="22" height="22" aria-hidden="true" />`;
 
 function defaultDeletedRefs() {
   return {

@@ -79,7 +79,7 @@ const TABS = [
   {
     id: "home",
     label: "오늘",
-    icon: "/toolbaricons/dashboard.svg",
+    icon: "/toolbaricons/dashboard.png",
     sidebarSection: "main",
     sidebarOrder: 0,
   },

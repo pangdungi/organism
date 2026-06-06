@@ -1,5 +1,6 @@
 import { applyStaticAppIconImg } from "./staticAppIconImg.js";
 import { KPI_CATEGORY_ICON_SRC } from "./timeTaskIconUrls.js";
+import { attachIconPngFallback } from "./toolbarIconUrl.js";
 
 /**
  * @param {HTMLElement} titleRow
@@ -12,6 +13,7 @@ export function setupKpiCategoryHeaderIcon(titleRow, categoryKey) {
   if (!src) return;
   const img = document.createElement("img");
   img.className = "dream-view-header-category-icon";
+  attachIconPngFallback(img, src);
   img.src = src;
   img.alt = "";
   img.width = 28;

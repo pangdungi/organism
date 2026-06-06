@@ -7,16 +7,18 @@ import pickerSvgNames from "../../public/time-task-picker-icons.json";
 import pickerIconFiles from "../../public/time-task-picker-icon-files.json";
 import { canonicalMealTaskDisplayName, NAP_TASK_NAME } from "./timeTaskOptionsConstants.js";
 import { DEFAULT_KPI_ICON_SLUG, DEFAULT_KPI_NAME_ICON_SLUG } from "./defaultKpiIconIds.js";
+import { toolbarIconPng } from "./toolbarIconUrl.js";
 
-const PICKER_SVG_BASE = "/toolbaricons/time-task-picker";
-const MENU_HOME_BASE = "/toolbaricons/menu-home";
+const PICKER_ICON_BASE = "/toolbaricons/time-task-picker";
+/** 선택 그리드·목록 표시 — PNG. 파일 없으면 SVG 폴백 */
+const PICKER_ICON_EXT = "png";
 
 /** KPI 탭 헤더 — 메인 메뉴 손그림 (picker 세트와 별도) */
 export const KPI_CATEGORY_ICON_SRC = {
-  dream: `${MENU_HOME_BASE}/dream-new.svg`,
-  sideincome: `${MENU_HOME_BASE}/sideincome-new.svg`,
-  happiness: `${MENU_HOME_BASE}/happiness-new.svg`,
-  health: `${MENU_HOME_BASE}/health-new.svg`,
+  dream: toolbarIconPng("menu-home/dream-new"),
+  sideincome: toolbarIconPng("menu-home/sideincome-new"),
+  happiness: toolbarIconPng("menu-home/happiness-new"),
+  health: toolbarIconPng("menu-home/health-new"),
 };
 
 const PICKER_SVG_SET = new Set(pickerSvgNames);
@@ -144,13 +146,18 @@ function normalizePickerSlug(slug) {
   return "";
 }
 
-/** @param {string} slug */
-function pickerSvgSrc(slug) {
+/** @param {string} slug @param {string} [ext] */
+function pickerIconSrc(slug, ext = PICKER_ICON_EXT) {
   const key = normalizePickerSlug(slug);
   if (!key) return "";
   const fileBase = pickerIconFiles[key];
   if (!fileBase) return "";
-  return `${PICKER_SVG_BASE}/${encodeURIComponent(fileBase)}.svg`;
+  return `${PICKER_ICON_BASE}/${encodeURIComponent(fileBase)}.${ext}`;
+}
+
+/** @param {string} slug */
+function pickerSvgSrc(slug) {
+  return pickerIconSrc(slug, PICKER_ICON_EXT);
 }
 
 /** @param {string} taskName */

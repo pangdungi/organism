@@ -566,7 +566,7 @@ function createRoutineAccordion(routine, onItemChange, onRoutineEdit, openEditMo
   const addBtn = document.createElement("button");
   addBtn.type = "button";
   addBtn.className = "routine-track-add-row-btn";
-  addBtn.innerHTML = '<img src="/toolbaricons/add-square.svg" alt="" class="routine-add-icon" width="20" height="20"> 추가';
+  addBtn.innerHTML = '<img src="/toolbaricons/add-square.png" alt="" class="routine-add-icon" width="20" height="20"> 추가';
   addBtn.addEventListener("click", () => {
     const itemId = routine.id + "-item-" + Date.now();
     const item = { id: itemId, name: `루틴 1-${items.length + 1}` };
@@ -638,7 +638,7 @@ export function render() {
   const addBtn = document.createElement("button");
   addBtn.type = "button";
   addBtn.className = "routine-add-btn";
-  addBtn.innerHTML = '<img src="/toolbaricons/add-square.svg" alt="" class="routine-add-icon" width="20" height="20"> 루틴추가';
+  addBtn.innerHTML = '<img src="/toolbaricons/add-square.png" alt="" class="routine-add-icon" width="20" height="20"> 루틴추가';
   headerRow.appendChild(addBtn);
   el.appendChild(headerRow);
 

@@ -1139,7 +1139,7 @@ const TODO_TOOLBAR_SEARCH_ICON =
   '<svg class="todo-list-search-toolbar-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><circle cx="10.5" cy="10.5" r="6.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M15.2 15.2 20 20"/></svg>';
 
 const LIST_ICON =
-  '<img src="/toolbaricons/list.svg" alt="세부 할 일" class="todo-list-icon" width="20" height="20">';
+  '<img src="/toolbaricons/list.png" alt="세부 할 일" class="todo-list-icon" width="20" height="20">';
 
 /** 할일 탭당 document click 1개 — 행마다 리스너가 쌓이지 않게 */
 const categoryDropdownOutsideByTab = new WeakMap();

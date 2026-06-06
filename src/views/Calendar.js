@@ -112,10 +112,10 @@ function isStoredCalendarSectionId(sectionId) {
 const LP_SCHEDULE_CAL_SUBVIEW_FOOTER_ATTR = "data-lp-schedule-cal-subview";
 
 const LP_SCHEDULE_SUBVIEW_FOOTER_ICONS = {
-  monthly: "/toolbaricons/calendar-alt.svg",
-  "1week": "/toolbaricons/list.svg",
-  annual: "/toolbaricons/dashboard.svg",
-  "1day": "/toolbaricons/timer.svg",
+  monthly: "/toolbaricons/calendar-alt.png",
+  "1week": "/toolbaricons/list.png",
+  annual: "/toolbaricons/dashboard.png",
+  "1day": "/toolbaricons/timer.png",
 };
 
 /** 할일/일정 패널은 할일만 표시 — 저장값으로 빈 화면·탭 초기화 방지 */
@@ -5535,7 +5535,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
       } else {
         const iconSrc =
           LP_SCHEDULE_SUBVIEW_FOOTER_ICONS[v.id] ||
-          "/toolbaricons/calendar-alt.svg";
+          "/toolbaricons/calendar-alt.png";
         btn.innerHTML = `<img src="${iconSrc}" alt="" width="22" height="22" aria-hidden="true" />`;
       }
       btn.addEventListener("click", () => void renderSubView(v.id));

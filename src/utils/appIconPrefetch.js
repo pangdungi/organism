@@ -5,7 +5,7 @@ import appIconPrefetchPaths from "../../public/app-icon-prefetch.json";
 import { isMobileIconBudgetDevice } from "./timeTaskIconLazyDisplay.js";
 
 /** public/sw.js ASSET_CACHE 와 동일 */
-export const SW_ASSET_CACHE = "tip-assets-v34";
+export const SW_ASSET_CACHE = "tip-assets-v35";
 
 const CHUNK_SIZE = 20;
 /** @type {Set<string>} */
@@ -98,7 +98,7 @@ function warmPathsChunked(paths, startIndex = 0) {
 
 /** 홈 메뉴·푸터 등 첫 화면에 필요한 아이콘만 즉시(소량) */
 const CRITICAL_HOME_ICON_PATHS = [
-  "/toolbaricons/dashboard.svg",
+  "/toolbaricons/dashboard.png",
   "/toolbaricons/menu-home/grid-time-recording.png",
   "/toolbaricons/menu-home/grid-calendar.png",
   "/toolbaricons/menu-home/grid-goals.png",
@@ -107,7 +107,7 @@ const CRITICAL_HOME_ICON_PATHS = [
   "/toolbaricons/menu-home/grid-my-account.png",
   "/toolbaricons/menu-time.png",
   "/toolbaricons/menu-schedule.png",
-  "/toolbaricons/caret-left-circle.svg",
+  "/toolbaricons/caret-left-circle.png",
 ];
 
 export function getAllAppIconPrefetchPaths() {

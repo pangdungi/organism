@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/generate-app-icon-prefetch.mjs && node scripts/generate-pwa-splash-icons.mjs && vite build",
-    "gen:icons": "node scripts/generate-app-icon-prefetch.mjs",
+    "build": "node scripts/ensure-toolbar-icons-png.mjs && node scripts/generate-app-icon-prefetch.mjs && node scripts/generate-pwa-splash-icons.mjs && vite build",
+    "gen:icons": "node scripts/ensure-toolbar-icons-png.mjs && node scripts/generate-app-icon-prefetch.mjs",
     "gen:pwa-icons": "node scripts/generate-pwa-splash-icons.mjs",
     "preview": "vite preview"
   },

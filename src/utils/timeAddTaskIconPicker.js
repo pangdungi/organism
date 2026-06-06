@@ -1,9 +1,9 @@
 /**
- * 과제 추가·수정 모달 — 아이콘 트리거 + 선택 모달(모바일: 검색 후만 그리드)
+ * 과제 추가·수정 모달 — 아이콘 트리거(점선 1칸) + 아이콘 선택 내부 모달.
  */
 
 import {
-  applyLazyPickerIconImg,
+  applyEagerIconImg,
   applyStaticAppIconImg,
 } from "./staticAppIconImg.js";
 import {
@@ -13,12 +13,7 @@ import {
   resolveTimeTaskIconKey,
   matchTimeTaskPickerIconSearch,
 } from "./timeTaskIconUrls.js";
-import {
-  attachLazyIconHydration,
-  createDeferredIconImg,
-  filterPickerIconsForDisplay,
-  isMobileIconBudgetDevice,
-} from "./timeTaskIconLazyDisplay.js";
+import { attachPickerIconSrcFallback } from "./timeTaskIconLazyDisplay.js";
 import { lpSetClasses, lpTokenToggle } from "./timeLedgerClassPolicy.js";
 import { markModalOpened } from "./modalNoAutoFocus.js";
 import { syncBodyOverflowAfterModalClose } from "./lpModalStack.js";
@@ -26,19 +21,65 @@ import { syncBodyOverflowAfterModalClose } from "./lpModalStack.js";
 const TIME_TASK_ICON_PICK_MODAL_SHELL_CLASS =
   "time-task-setup-modal time-add-task-icon-modal";
 
-const PICKER_HINT_CLASS = "time-add-task-icon-modal-hint";
-
+/** iOS·Android WebView — SVG 116개 동시 src 금지(셧다운) */
+/** PNG 썸네일이면 한꺼번에 더 불러도 됨 */
+const PICKER_HYDRATE_BATCH = 24;
+const PICKER_HYDRATE_FIRST = 48;
 let pickerGridHydrationGen = 0;
-let pickerLazyDisconnect = () => {};
+
+function cancelPickerIconHydration() {
+  pickerGridHydrationGen += 1;
+}
+
+/** 그리드 버튼은 즉시, img src 만 배치로 (셧다운 방지) */
+function hydratePickerGridImgs(grid, opts = {}) {
+  if (!grid) return;
+  const gen = ++pickerGridHydrationGen;
+  const jobs = [];
+  for (const img of grid.querySelectorAll(
+    '[data-legacy~="time-add-task-icon-modal-item-icon"]',
+  )) {
+    if (!(img instanceof HTMLImageElement)) continue;
+    const src = String(img.dataset.lpIconSrc || "").trim();
+    if (!src || img.src) continue;
+    jobs.push({ img, src });
+  }
+  if (!jobs.length) return;
+
+  const firstSync = Math.min(
+    opts.firstSync ?? PICKER_HYDRATE_FIRST,
+    jobs.length,
+  );
+  for (let i = 0; i < firstSync; i++) {
+    const { img, src } = jobs[i];
+    applyEagerIconImg(img);
+    img.src = src;
+    delete img.dataset.lpIconSrc;
+  }
+
+  let idx = firstSync;
+  const step = () => {
+    if (gen !== pickerGridHydrationGen) return;
+    let n = 0;
+    while (idx < jobs.length && n < PICKER_HYDRATE_BATCH) {
+      const { img, src } = jobs[idx++];
+      applyEagerIconImg(img);
+      img.src = src;
+      delete img.dataset.lpIconSrc;
+      n += 1;
+    }
+    if (idx < jobs.length) requestAnimationFrame(step);
+  };
+  if (idx < jobs.length) requestAnimationFrame(step);
+}
 
 /**
  * @param {HTMLElement} grid
  * @param {{ key: string, label: string, src: string, searchText: string }[]} icons
  * @param {(key: string) => void} onPick
  */
-function mountPickerIconButtons(grid, icons, onPick) {
-  pickerGridHydrationGen += 1;
-  pickerLazyDisconnect();
+function mountPickerIconGrid(grid, icons, onPick) {
+  cancelPickerIconHydration();
   grid.replaceChildren();
 
   for (const { key, label, src, searchText } of icons) {
@@ -50,8 +91,10 @@ function mountPickerIconButtons(grid, icons, onPick) {
     btn.setAttribute("aria-label", label);
     btn.title = label;
 
-    const img = createDeferredIconImg(src);
+    const img = document.createElement("img");
+    img.alt = "";
     lpSetClasses(img, "time-add-task-icon-modal-item-icon");
+    if (src) img.dataset.lpIconSrc = src;
     btn.appendChild(img);
 
     btn.addEventListener("click", (e) => {
@@ -61,78 +104,7 @@ function mountPickerIconButtons(grid, icons, onPick) {
     });
     grid.appendChild(btn);
   }
-
-  pickerLazyDisconnect = attachLazyIconHydration(
-    grid,
-    '[data-legacy~="time-add-task-icon-modal-item"]',
-  );
-}
-
-function ensurePickerHint(gridMount) {
-  let hint = gridMount.querySelector(`.${PICKER_HINT_CLASS}`);
-  if (!hint) {
-    hint = document.createElement("p");
-    lpSetClasses(hint, PICKER_HINT_CLASS);
-    hint.textContent = "위에서 영어로 검색하면 아이콘이 나타납니다.";
-    gridMount.insertBefore(hint, gridMount.firstChild);
-  }
-  hint.hidden = false;
-}
-
-function hidePickerHint(gridMount) {
-  const hint = gridMount.querySelector(`.${PICKER_HINT_CLASS}`);
-  if (hint) hint.hidden = true;
-}
-
-/**
- * @param {HTMLElement} gridMount
- * @param {string} query
- * @param {(key: string) => void} onPick
- * @param {{ mobileSearchOnly?: boolean }} [opts]
- */
-function renderPickerGridMount(gridMount, query, onPick, opts = {}) {
-  let grid = gridMount.querySelector(
-    '[data-legacy~="time-add-task-icon-modal-grid"]',
-  );
-  if (!grid) {
-    grid = document.createElement("div");
-    lpSetClasses(grid, "time-add-task-icon-modal-grid");
-    gridMount.appendChild(grid);
-  }
-
-  const allIcons = getTimeTaskPickableIcons();
-  const q = String(query || "").trim();
-  const mobileSearchOnly = opts.mobileSearchOnly ?? isMobileIconBudgetDevice();
-
-  if (mobileSearchOnly && !q) {
-    pickerGridHydrationGen += 1;
-    pickerLazyDisconnect();
-    grid.replaceChildren();
-    ensurePickerHint(gridMount);
-    return;
-  }
-
-  hidePickerHint(gridMount);
-  const icons = q
-    ? filterPickerIconsForDisplay(allIcons, q)
-    : mobileSearchOnly
-      ? []
-      : allIcons;
-
-  if (!icons.length) {
-    pickerGridHydrationGen += 1;
-    pickerLazyDisconnect();
-    grid.replaceChildren();
-    const empty = document.createElement("p");
-    lpSetClasses(empty, PICKER_HINT_CLASS);
-    empty.textContent = q
-      ? "검색 결과가 없습니다."
-      : "위에서 영어로 검색하면 아이콘이 나타납니다.";
-    grid.appendChild(empty);
-    return;
-  }
-
-  mountPickerIconButtons(grid, icons, onPick);
+  hydratePickerGridImgs(grid);
 }
 
 /**
@@ -169,7 +141,7 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
   function close() {
     if (closed) return;
     closed = true;
-    pickerLazyDisconnect();
+    cancelPickerIconHydration();
     modal.remove();
     syncBodyOverflowAfterModalClose();
   }
@@ -203,6 +175,16 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
   );
   let searchInput = null;
 
+  function applySearchFilter() {
+    const q = String(searchInput?.value ?? "");
+    modal
+      .querySelectorAll('[data-legacy~="time-add-task-icon-modal-item"]')
+      .forEach((item) => {
+        const hay = String(item.getAttribute("data-icon-search-text") || "");
+        item.hidden = !matchTimeTaskPickerIconSearch(hay, q);
+      });
+  }
+
   function syncGridSelection() {
     modal
       .querySelectorAll('[data-legacy~="time-add-task-icon-modal-item"]')
@@ -211,12 +193,6 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
         lpTokenToggle(btn, "time-add-task-icon-modal-item--selected", on);
         btn.setAttribute("aria-pressed", on ? "true" : "false");
       });
-  }
-
-  function onPickKey(key) {
-    currentKey = key;
-    onPick?.(key);
-    close();
   }
 
   if (searchMount) {
@@ -230,18 +206,21 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
     searchInput.placeholder = "영어로 검색";
     searchInput.setAttribute("aria-label", "아이콘 파일명 검색");
     searchInput.autocomplete = "off";
-    searchInput.addEventListener("input", () => {
-      if (!gridMount) return;
-      renderPickerGridMount(gridMount, searchInput?.value ?? "", onPickKey);
-      syncGridSelection();
-    });
+    searchInput.addEventListener("input", applySearchFilter);
     searchRow.appendChild(searchInput);
     searchBar.appendChild(searchRow);
     searchMount.appendChild(searchBar);
   }
 
   if (gridMount) {
-    renderPickerGridMount(gridMount, "", onPickKey);
+    const grid = document.createElement("div");
+    lpSetClasses(grid, "time-add-task-icon-modal-grid");
+    gridMount.appendChild(grid);
+    mountPickerIconGrid(grid, getTimeTaskPickableIcons(), (key) => {
+      currentKey = key;
+      onPick?.(key);
+      close();
+    });
     syncGridSelection();
   }
 
@@ -269,7 +248,6 @@ export function mountTimeAddTaskIconPicker(mountEl) {
   let userPickedIcon = false;
   let modalEl = null;
   let iconSearchInput = null;
-  const mobileSearchOnly = isMobileIconBudgetDevice();
 
   const trigger = document.createElement("button");
   trigger.type = "button";
@@ -294,7 +272,7 @@ export function mountTimeAddTaskIconPicker(mountEl) {
     const img = document.createElement("img");
     img.src = src;
     img.alt = "";
-    applyLazyPickerIconImg(img);
+    applyStaticAppIconImg(img);
     lpSetClasses(img, "time-add-task-icon-picker__trigger-icon");
     trigger.appendChild(img);
   }
@@ -318,28 +296,26 @@ export function mountTimeAddTaskIconPicker(mountEl) {
     btn.setAttribute("aria-pressed", "true");
   }
 
-  function onPickKey(key) {
+  function applyIconSearchFilter() {
+    if (!modalEl) return;
+    const q = String(iconSearchInput?.value ?? "");
+    modalEl
+      .querySelectorAll('[data-legacy~="time-add-task-icon-modal-item"]')
+      .forEach((item) => {
+        const hay = String(item.getAttribute("data-icon-search-text") || "");
+        item.hidden = !matchTimeTaskPickerIconSearch(hay, q);
+      });
+  }
+
+  let pickerGridMounted = false;
+
+  function onPickIconKey(key) {
     selectedKey = key;
     previewSrc = "";
     userPickedIcon = true;
     syncTrigger();
     syncGridSelection();
     closeIconModal();
-  }
-
-  function applyIconSearchFilter() {
-    if (!modalEl) return;
-    const gridMount = modalEl.querySelector(
-      '[data-legacy~="time-add-task-icon-modal-grid-mount"]',
-    );
-    if (!gridMount) return;
-    renderPickerGridMount(
-      gridMount,
-      iconSearchInput?.value ?? "",
-      onPickKey,
-      { mobileSearchOnly },
-    );
-    syncGridSelection();
   }
 
   function renderIconGrid() {
@@ -349,15 +325,35 @@ export function mountTimeAddTaskIconPicker(mountEl) {
     );
     if (!gridMount) return;
     gridMount.removeAttribute("aria-hidden");
+
+    let grid = gridMount.querySelector(
+      '[data-legacy~="time-add-task-icon-modal-grid"]',
+    );
+    if (!grid) {
+      grid = document.createElement("div");
+      lpSetClasses(grid, "time-add-task-icon-modal-grid");
+      gridMount.appendChild(grid);
+    }
+
+    if (!pickerGridMounted) {
+      mountPickerIconGrid(grid, getTimeTaskPickableIcons(), onPickIconKey);
+      pickerGridMounted = true;
+    } else {
+      hydratePickerGridImgs(grid, { firstSync: PICKER_HYDRATE_FIRST });
+    }
+    syncGridSelection();
     applyIconSearchFilter();
   }
 
   function closeIconModal() {
     if (!modalEl) return;
-    pickerLazyDisconnect();
+    cancelPickerIconHydration();
     modalEl.hidden = true;
     trigger.setAttribute("aria-expanded", "false");
-    if (iconSearchInput) iconSearchInput.value = "";
+    if (iconSearchInput) {
+      iconSearchInput.value = "";
+      applyIconSearchFilter();
+    }
     try {
       trigger.focus();
     } catch (_) {}
@@ -365,16 +361,10 @@ export function mountTimeAddTaskIconPicker(mountEl) {
 
   function openIconModal() {
     if (!modalEl) return;
-    if (iconSearchInput) iconSearchInput.value = "";
     renderIconGrid();
     modalEl.hidden = false;
     trigger.setAttribute("aria-expanded", "true");
     syncGridSelection();
-    if (mobileSearchOnly) {
-      try {
-        iconSearchInput?.focus();
-      } catch (_) {}
-    }
   }
 
   function ensureIconModal() {
