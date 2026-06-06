@@ -31,6 +31,29 @@ async function buildAnyIcon(size) {
     .toBuffer();
 }
 
+/** 탭 파비콘(16·32·48) — 작은 크기에서 캐릭터가 더 잘 보이게 */
+async function buildTabFaviconIcon(size) {
+  const inner = Math.round(size * 0.94);
+  const logo = await sharp(SOURCE)
+    .resize(inner, inner, {
+      fit: "contain",
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    })
+    .png()
+    .toBuffer();
+  return sharp({
+    create: {
+      width: size,
+      height: size,
+      channels: 4,
+      background: { r: 255, g: 255, b: 255, alpha: 1 },
+    },
+  })
+    .composite([{ input: logo, gravity: "center" }])
+    .png()
+    .toBuffer();
+}
+
 async function buildMaskableIcon(size) {
   const inner = Math.round(size * 0.72);
   const logo = await sharp(SOURCE)
@@ -112,7 +135,7 @@ async function writeFaviconBundle() {
   const sizes = [16, 32, 48];
   const entries = [];
   for (const size of sizes) {
-    entries.push({ size, buffer: await buildAnyIcon(size) });
+    entries.push({ size, buffer: await buildTabFaviconIcon(size) });
   }
   const icoPath = join(publicDir, "favicon.ico");
   writeFileSync(icoPath, buildIcoFromPngs(entries));

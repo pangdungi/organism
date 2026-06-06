@@ -1095,10 +1095,19 @@
   flex-direction: column;
 }
 
-/* 할 일 목록 — 카드 제목·날짜 (색만 변경, 글꼴은 앱 기본 상속) */
+/* 할 일·일정 본문 — 오늘·미래 #1d40ba, 지난 날짜는 회색 */
 .calendar-view-todo .todo-card-name,
 .calendar-view-todo .todo-card-dates {
   color: #1d40ba;
+}
+
+.calendar-view-todo
+  .todo-priority-quadrant[data-date-bucket="past"]
+  .todo-card-name,
+.calendar-view-todo
+  .todo-priority-quadrant[data-date-bucket="past"]
+  .todo-card-dates {
+  color: rgba(30, 61, 93, 0.66);
 }
 
 .calendar-monthly-span-bar--todo,
@@ -1472,7 +1481,7 @@
 
 .calendar-monthly-span-bar.is-past,
 .calendar-monthly-span-bar.is-past .calendar-monthly-span-bar-text {
-  color: #1d40ba;
+  color: rgba(30, 61, 93, 0.66);
 }
 
 .calendar-monthly-span-bar.is-past.calendar-monthly-span-bar--todo {
@@ -2514,10 +2523,7 @@
     border-color 0.1s ease;
 }
 
-.calendar-day-expand-item.is-past .calendar-day-expand-text {
-  color: #1d40ba;
-}
-
+.calendar-day-expand-item.is-past .calendar-day-expand-text,
 .calendar-day-expand-item.is-past .calendar-day-expand-time,
 .calendar-day-expand-item.is-past .calendar-task-done-mark {
   color: rgba(30, 61, 93, 0.58);
