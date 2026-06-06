@@ -1,6 +1,6 @@
 .lp-pwa-install-root--login {
   width: 100%;
-  max-width: 22rem;
+  max-width: var(--lp-modal-max-sm);
   margin: 0.85rem auto 0;
   padding: 0 1rem;
   box-sizing: border-box;
@@ -39,7 +39,7 @@
 .lp-pwa-install-modal__panel {
   position: relative;
   width: 100%;
-  max-width: 22rem;
+  max-width: var(--lp-modal-max-sm);
   z-index: 1;
 }
 

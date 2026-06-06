@@ -195,7 +195,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 26rem;
+  max-width: var(--lp-modal-max);
   max-height: min(92vh, 44rem);
   display: flex;
   flex-direction: column;
@@ -209,7 +209,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 }
 .time-task-log-panel,
 [data-legacy~="time-task-log-panel"] {
-  max-width: 26rem;
+  max-width: var(--lp-modal-max);
 }
 
 /* 과제 기록·수정 — 패널 높이 소폭 확대(과제 드롭다운 잘림 방지) */
@@ -554,7 +554,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 .time-add-task-panel,
 [data-legacy~="time-task-select-panel"],
 [data-legacy~="time-add-task-panel"] {
-  max-width: 26rem;
+  max-width: var(--lp-modal-max);
 }
 .time-task-setup-header,
 .todo-list-modal-header,
@@ -854,6 +854,15 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+.time-add-task-icon-modal-hint,
+.time-add-task-icon-modal-hint {
+  margin: 0.5rem 0 0;
+  padding: 0 0.25rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--lp-modal-navy-muted, #64748b);
+  text-align: center;
 }
 .time-add-task-icon-modal-grid,
 [data-legacy~="time-add-task-icon-modal-grid"] {
@@ -2121,7 +2130,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 22rem;
+  max-width: var(--lp-modal-max-sm);
   max-height: min(88vh, 36rem);
   display: flex;
   flex-direction: column;
@@ -3453,7 +3462,7 @@ html.lp-task-log-mobile-picker-open
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 26rem;
+  max-width: var(--lp-modal-max);
   max-height: min(92vh, 44rem);
   display: flex;
   flex-direction: column;
@@ -3727,7 +3736,7 @@ html.lp-task-log-mobile-picker-open
 }
 .asset-networth-debt-modal .asset-expense-transaction-modal-panel-shell,
 .asset-networth-asset-modal .asset-expense-transaction-modal-panel-shell {
-  max-width: 26rem;
+  max-width: var(--lp-modal-max);
 }
 .asset-networth-debt-modal .asset-debt-row--inner-panel,
 .asset-networth-asset-modal .asset-asset-row--inner-panel {

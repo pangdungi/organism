@@ -1,0 +1,59 @@
+/**
+ * 데스크탑·태블릿 — 본문 폭·루트 rem·홈/캘린더 가독 (모바일 스타일은 그대로)
+ * main.css :root 변수와 함께 로드한다.
+ */
+
+@media (min-width: 48.0625rem) {
+  :root {
+    --lp-content-max: 42rem;
+    --lp-content-max-narrow: 34rem;
+    --lp-modal-max: 30rem;
+    --lp-modal-max-sm: 26rem;
+    --lp-shell-max: 56rem;
+  }
+}
+
+@media (min-width: 64.0625rem) {
+  :root {
+    --lp-content-max: 52rem;
+    --lp-content-max-narrow: 40rem;
+    --lp-modal-max: 36rem;
+    --lp-modal-max-sm: 30rem;
+    --lp-shell-max: 72rem;
+  }
+
+  .app-home-menu-launcher-title {
+    font-size: clamp(2rem, 2.8vw, 2.85rem);
+  }
+
+  .app-home-menu-launcher-section-grid {
+    max-width: 46rem;
+    margin-inline: auto;
+  }
+
+  .calendar-monthly-top-bar-date,
+  .calendar-nav-date {
+    font-size: 1.0625rem;
+  }
+
+  .calendar-monthly-weekday {
+    font-size: 0.75rem;
+  }
+
+  .calendar-monthly-day-num {
+    font-size: 0.9375rem;
+  }
+
+  .calendar-monthly-day-entries,
+  .calendar-monthly-span-bar {
+    font-size: 0.8125rem;
+  }
+
+  .calendar-1week-flow-card {
+    font-size: 0.75rem;
+  }
+
+  .calendar-1week-flow-card-title {
+    font-size: 0.8125rem;
+  }
+}

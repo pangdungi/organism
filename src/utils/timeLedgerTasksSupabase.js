@@ -470,9 +470,13 @@ function scheduleKpiTaskEnsureOnce() {
   }
 }
 
-/** 과제설정·기록 모달 — 서버 과제 목록만 pull(KPI 맵 정리는 세션당 1회·유휴 시) */
-export async function syncTimeLedgerTaskListForModalOpen() {
+/** 시간가계부 탭 진입 시 1회 — KPI 맵 기준 과제 행 정리(모달 열 때는 호출하지 않음) */
+export function scheduleKpiTaskListEnsureOnce() {
   scheduleKpiTaskEnsureOnce();
+}
+
+/** 과제설정·기록 모달 — 서버 과제 목록 pull 만(모달 즉시 열림 우선) */
+export async function syncTimeLedgerTaskListForModalOpen() {
   try {
     return !!(await pullTimeLedgerTasksFromSupabase());
   } catch (_) {

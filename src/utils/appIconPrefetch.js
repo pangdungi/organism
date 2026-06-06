@@ -2,6 +2,7 @@
  * 앱 정적 아이콘 — Service Worker 캐시에만 적재(화면에 <img> prefetch 금지: iOS·Android 메모리 폭주 방지)
  */
 import appIconPrefetchPaths from "../../public/app-icon-prefetch.json";
+import { isMobileIconBudgetDevice } from "./timeTaskIconLazyDisplay.js";
 
 /** public/sw.js ASSET_CACHE 와 동일 */
 export const SW_ASSET_CACHE = "tip-assets-v34";
@@ -138,7 +139,10 @@ export function warmTimeTaskPickerIconsOnce() {
 export function prefetchIconsForTab(tabId) {
   const id = String(tabId || "").trim();
   if (!id || id === "home") return Promise.resolve();
-  if (id === "time") return warmTimeTaskPickerIconsOnce();
+  if (id === "time") {
+    if (isMobileIconBudgetDevice()) return Promise.resolve();
+    return warmTimeTaskPickerIconsOnce();
+  }
   const existing = tabWarmJobs.get(id);
   if (existing) return existing;
 

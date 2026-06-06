@@ -18,6 +18,12 @@
   --lp-safe-right: env(safe-area-inset-right, 0px);
   /** 브라우저 탭: svh + JS px. PWA는 @media standalone — svh·inset:0 (lvh/dvh 쓰면 812↔762 어긋남) */
   --lp-app-shell-h: 100svh;
+  /** 본문·모달 최대 너비 — 모바일 기본, 데스크탑에서 lp-desktop-layout.css 가 확대 */
+  --lp-content-max: 36rem;
+  --lp-content-max-narrow: 28rem;
+  --lp-modal-max: 26rem;
+  --lp-modal-max-sm: 22rem;
+  --lp-shell-max: none;
 }
 
 /** 앱 전체 배경 — index.html 의 html·body 에 `class="lp-app-bg"` (항상 흰색) */
@@ -44,7 +50,7 @@ html {
 
 @media (min-width: 64.0625rem) {
   html {
-    font-size: 18px;
+    font-size: 20px;
   }
 }
 
@@ -673,7 +679,7 @@ html.lp-task-log-modal-open #signin-page {
   align-items: center;
   box-sizing: border-box;
   width: 100%;
-  max-width: 36rem;
+  max-width: var(--lp-content-max);
   margin: 0 auto;
   padding: 0.15rem 0.75rem;
   border: 1px solid rgba(26, 45, 69, 0.14);
@@ -755,17 +761,25 @@ table {
   max-width: 100%;
 }
 
-/* 데스크톱: 동일 세로 플로우 유지 (필요 시 나중에 사이드바 그리드 추가) */
+/* 데스크톱: 세로 플로우 유지 + 셸 가운데 정렬·본문 폭 확대(lp-desktop-layout.css 변수) */
 @media (min-width: 48.0625rem) {
   .app-page {
     margin-left: auto;
     margin-right: auto;
   }
+
+  #signin-page {
+    left: 0;
+    right: 0;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+    max-width: var(--lp-shell-max);
+  }
 }
 
 @media (min-width: 64.0625rem) {
   .app-main {
-    /* 넓은 화면에서도 메인만 스크롤 */
     min-height: 0;
   }
 }
@@ -851,7 +865,7 @@ table {
   overscroll-behavior: contain;
   padding: 1rem;
   padding-bottom: 1.75rem;
-  max-width: 36rem;
+  max-width: var(--lp-content-max);
   margin: 0 auto;
   width: 100%;
   box-sizing: border-box;
@@ -1228,7 +1242,7 @@ table {
 .idea-delete-account-modal-panel {
   position: relative;
   width: 100%;
-  max-width: 22rem;
+  max-width: var(--lp-modal-max-sm);
   max-height: min(90vh, 28rem);
   overflow: auto;
   background: var(--idea-surface);
@@ -1894,7 +1908,7 @@ table {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 22rem;
+  max-width: var(--lp-modal-max-sm);
   padding: 1.35rem 1.25rem 1.15rem;
   background: #fff;
   border-radius: 18px;
@@ -1988,7 +2002,7 @@ body.auth-pw-modal-open {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 22rem;
+  max-width: var(--lp-modal-max-sm);
   max-height: min(90vh, 36rem);
   overflow: auto;
   background: #fff;

@@ -1,4 +1,5 @@
 import "./main.css";
+import "./styles/lp-desktop-layout.css";
 import "./styles/lp-app-font.css";
 import "./styles/diary.css";
 import "./styles/daily.css";
@@ -36,10 +37,7 @@ import { initLpAppShellViewportLock } from "./utils/lpAppShellViewport.js";
 import { supabase } from "./supabase.js";
 import { getSupabaseSession } from "./utils/supabaseSession.js";
 import { applyAppFont } from "./utils/appUiFont.js";
-import {
-  prefetchCriticalAppIconAssets,
-  warmTimeTaskPickerIconsOnce,
-} from "./utils/appIconPrefetch.js";
+import { prefetchCriticalAppIconAssets } from "./utils/appIconPrefetch.js";
 import { setAppSplashMessage } from "./utils/lpAppLoading.js";
 import {
   initAppSplashViewportLock,
@@ -270,7 +268,6 @@ async function enterAuthenticatedApp(opts = {}) {
       setAppSplashMessage("데이터 불러오는 중…");
       await waitForAppBootReady();
       prefetchCriticalAppIconAssets();
-      void warmTimeTaskPickerIconsOnce();
       refreshLpPwaInstall();
 
       void getSupabaseSession().then(({ data: { session } }) => {

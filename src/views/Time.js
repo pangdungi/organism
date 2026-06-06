@@ -63,6 +63,7 @@ import { pullKpiMapsForTaskLogModalOpen } from "../utils/kpiTabCloudRefresh.js";
 import {
   attachTimeLedgerTasksSaveListener,
   pullTimeLedgerTasksFromSupabase,
+  scheduleKpiTaskListEnsureOnce,
   syncTimeLedgerTaskListForModalOpen,
 } from "../utils/timeLedgerTasksSupabase.js";
 import {
@@ -84,6 +85,10 @@ import {
   resolveTimeTaskIconKey,
 } from "../utils/timeTaskIconUrls.js";
 import { mountTimeAddTaskIconPicker } from "../utils/timeAddTaskIconPicker.js";
+import {
+  attachLazyIconHydration,
+  createDeferredIconImg,
+} from "../utils/timeTaskIconLazyDisplay.js";
 import {
   ensureTimeLedgerEntryIds,
   ledgerRowEntryDateYmd,
@@ -4600,6 +4605,7 @@ export function render(opts = {}) {
   const signal = timeTabAbort.signal;
 
   attachTimeLedgerTasksSaveListener();
+  if (!taskLogBridgeMode) scheduleKpiTaskListEnsureOnce();
 
   const storedRate = (() => {
     try {
@@ -8492,6 +8498,7 @@ export function render(opts = {}) {
   let taskSetupListRenderedSig = "";
   let taskSetupListPullGen = 0;
   let taskSetupSavedRenderRaf = 0;
+  let taskSetupListIconLazyDisconnect = () => {};
 
   function getActiveTaskSetupListContainer() {
     if (activeSetupTab === "productive") return setupListProd;
@@ -8607,29 +8614,45 @@ export function render(opts = {}) {
               : " time-task-setup-item--editable") +
             (isRowSelected ? " time-task-setup-item--selected" : ""),
         );
-        const nameEsc = (t.name || "").replace(/</g, "&lt;");
         const iconSrc = getTimeTaskListIconSrc(t.name, {
           category: t.category,
           productivity: t.productivity,
           iconKey: t.iconKey,
         });
-        const iconBlock = iconSrc
-          ? `<span data-legacy="time-task-setup-item-icon-wrap"><img data-legacy="time-task-setup-item-icon" src="${iconSrc}" alt="" loading="lazy" decoding="async" /></span>`
-          : "";
-        const builtinBadge = isTimeTaskBuiltinTemplate(t)
-          ? `<span data-legacy="lp-task-badge lp-task-badge--builtin" title="앱에서 제공하는 기본 과제입니다. 과제 설정에서 삭제할 수 없습니다.">기본</span>`
-          : "";
-        const kpiBadge = fromKpi
-          ? `<span data-legacy="lp-task-badge lp-task-badge--kpi" title="KPI(맵)에서 연결된 과제입니다">KPI</span>`
-          : "";
-        row.innerHTML = `
-          ${iconBlock}
-          <span data-legacy="time-task-setup-item-title">
-            <span data-legacy="time-task-setup-item-name">${nameEsc}</span>
-            ${builtinBadge}${kpiBadge}
-          </span>
-          <span data-legacy="time-task-setup-item-cat">${catLabel}</span>
-        `;
+        if (iconSrc) {
+          const wrap = document.createElement("span");
+          wrap.setAttribute("data-legacy", "time-task-setup-item-icon-wrap");
+          const img = createDeferredIconImg(iconSrc);
+          img.setAttribute("data-legacy", "time-task-setup-item-icon");
+          wrap.appendChild(img);
+          row.appendChild(wrap);
+        }
+        const title = document.createElement("span");
+        title.setAttribute("data-legacy", "time-task-setup-item-title");
+        const nameEl = document.createElement("span");
+        nameEl.setAttribute("data-legacy", "time-task-setup-item-name");
+        nameEl.textContent = t.name || "";
+        title.appendChild(nameEl);
+        if (isTimeTaskBuiltinTemplate(t)) {
+          const badge = document.createElement("span");
+          badge.setAttribute("data-legacy", "lp-task-badge lp-task-badge--builtin");
+          badge.title =
+            "앱에서 제공하는 기본 과제입니다. 과제 설정에서 삭제할 수 없습니다.";
+          badge.textContent = "기본";
+          title.appendChild(badge);
+        }
+        if (fromKpi) {
+          const badge = document.createElement("span");
+          badge.setAttribute("data-legacy", "lp-task-badge lp-task-badge--kpi");
+          badge.title = "KPI(맵)에서 연결된 과제입니다";
+          badge.textContent = "KPI";
+          title.appendChild(badge);
+        }
+        row.appendChild(title);
+        const catEl = document.createElement("span");
+        catEl.setAttribute("data-legacy", "time-task-setup-item-cat");
+        catEl.textContent = catLabel;
+        row.appendChild(catEl);
         row.setAttribute("role", "button");
         row.tabIndex = 0;
         row.addEventListener("click", () => {
@@ -8664,6 +8687,14 @@ export function render(opts = {}) {
     } else {
       renderList(setupListAll, mainTasksOnly);
     }
+    taskSetupListIconLazyDisconnect();
+    const listRoot = getActiveTaskSetupListContainer();
+    if (listRoot) {
+      taskSetupListIconLazyDisconnect = attachLazyIconHydration(
+        listRoot,
+        '[data-legacy~="time-task-setup-item"]',
+      );
+    }
   }
 
   function patchTaskSetupListIconForTaskName(taskName) {
@@ -8694,15 +8725,14 @@ export function render(opts = {}) {
         if (!img) {
           wrap = document.createElement("span");
           wrap.setAttribute("data-legacy", "time-task-setup-item-icon-wrap");
-          img = document.createElement("img");
+          img = createDeferredIconImg(iconSrc);
           img.setAttribute("data-legacy", "time-task-setup-item-icon");
-          img.alt = "";
-          img.loading = "lazy";
-          img.decoding = "async";
           wrap.appendChild(img);
           row.insertBefore(wrap, row.firstChild);
+        } else if (img instanceof HTMLImageElement) {
+          img.dataset.lpIconSrc = iconSrc;
+          if (img.src) img.src = iconSrc;
         }
-        if (img.getAttribute("src") !== iconSrc) img.setAttribute("src", iconSrc);
       });
   }
 
@@ -8970,18 +9000,25 @@ export function render(opts = {}) {
     const listSigBeforePull = getTaskSetupListRenderSig();
     renderSubcatButtons(activeSetupTab);
     renderTaskSetupList({ force: true });
-    void pullTimeLedgerTasksWhenSetupModalOpens()
-      .catch(() => {})
-      .finally(() => {
-        if (!el.isConnected || taskSetupModal.hidden || pullGen !== taskSetupListPullGen) {
-          return;
-        }
-        if (getTaskSetupListRenderSig() === listSigBeforePull) return;
-        renderSubcatButtons(activeSetupTab);
-        renderTaskSetupList({ force: true });
-      });
+    window.setTimeout(() => {
+      void pullTimeLedgerTasksWhenSetupModalOpens()
+        .catch(() => {})
+        .finally(() => {
+          if (
+            !el.isConnected ||
+            taskSetupModal.hidden ||
+            pullGen !== taskSetupListPullGen
+          ) {
+            return;
+          }
+          if (getTaskSetupListRenderSig() === listSigBeforePull) return;
+          renderSubcatButtons(activeSetupTab);
+          renderTaskSetupList({ force: true });
+        });
+    }, 1200);
   });
   function closeTaskSetupModal() {
+    taskSetupListIconLazyDisconnect();
     taskSetupModal.hidden = true;
     taskSetupListPullGen += 1;
     taskSetupListRenderedSig = "";

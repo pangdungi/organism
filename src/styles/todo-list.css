@@ -89,7 +89,7 @@
 
 .todo-list-view .todo-list-top-strip__center {
   width: 100%;
-  max-width: 36rem;
+  max-width: var(--lp-content-max);
   margin: 0 auto;
   align-self: stretch;
   display: flex;

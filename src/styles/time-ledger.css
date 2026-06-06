@@ -3026,7 +3026,7 @@
 [data-legacy~="time-ledger-view"]
   [data-legacy~="time-usage-range-modal"]
   [data-legacy~="time-task-setup-panel"] {
-  max-width: 26rem;
+  max-width: var(--lp-modal-max);
   width: 100%;
   min-width: 0;
   max-height: min(92vh, 36rem);

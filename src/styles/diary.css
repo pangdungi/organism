@@ -396,7 +396,7 @@
 .diary-tr-log-memo-shell {
   box-sizing: border-box;
   width: 100%;
-  max-width: 36rem;
+  max-width: var(--lp-content-max);
   margin: 0 auto;
   padding: 0.35rem 0.15rem 1rem;
 }
@@ -567,7 +567,7 @@
 .diary-tr-summary-shell {
   box-sizing: border-box;
   width: 100%;
-  max-width: 28rem;
+  max-width: var(--lp-content-max-narrow);
   margin-left: auto;
   margin-right: auto;
   padding-left: calc(0.5rem + var(--lp-safe-left, 0px));
@@ -975,7 +975,7 @@
 .diary-tr-consumption-section-header {
   box-sizing: border-box;
   width: 100%;
-  max-width: 28rem;
+  max-width: var(--lp-content-max-narrow);
   margin-left: auto;
   margin-right: auto;
   padding-left: calc(0.5rem + var(--lp-safe-left, 0px));
@@ -1019,7 +1019,7 @@
 .diary-tr-waste-mini-shell {
   box-sizing: border-box;
   width: 100%;
-  max-width: 28rem;
+  max-width: var(--lp-content-max-narrow);
   margin-left: auto;
   margin-right: auto;
   padding-left: calc(0.5rem + var(--lp-safe-left, 0px));
@@ -1051,7 +1051,7 @@
 .diary-tr-report-hero-shell {
   box-sizing: border-box;
   width: 100%;
-  max-width: 28rem;
+  max-width: var(--lp-content-max-narrow);
   margin-left: auto;
   margin-right: auto;
   padding: 0.35rem calc(0.5rem + var(--lp-safe-right, 0px)) 0.5rem
@@ -1174,7 +1174,7 @@
 .diary-tr-report-subsection-header {
   box-sizing: border-box;
   width: 100%;
-  max-width: 28rem;
+  max-width: var(--lp-content-max-narrow);
   margin: 0.65rem auto 0;
   padding: 0.25rem calc(0.5rem + var(--lp-safe-right, 0px)) 0
     calc(0.5rem + var(--lp-safe-left, 0px));
@@ -1192,7 +1192,7 @@
 .diary-tr-ai-checkup-shell {
   box-sizing: border-box;
   width: 100%;
-  max-width: 28rem;
+  max-width: var(--lp-content-max-narrow);
   margin: 0 auto;
   padding: 0.35rem calc(0.5rem + var(--lp-safe-right, 0px)) 1.25rem
     calc(0.5rem + var(--lp-safe-left, 0px));
