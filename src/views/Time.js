@@ -9730,7 +9730,8 @@ export function render(opts = {}) {
     } catch (_) {}
     allRowsCache = loadTimeRows();
     cachedRows = getFullRowsForFilter(true);
-    syncTimeLedgerContent({ force: true });
+    /* pull 후에도 기록·필터가 같으면 renderAll 생략 — 아이콘 깜빡임 방지 */
+    syncTimeLedgerContent();
     if (el._lpUsageListEnterScrollArmed) {
       const cardsWrap = contentWrap.querySelector(
         '[data-legacy~="time-ledger-mobile-cards"]',
