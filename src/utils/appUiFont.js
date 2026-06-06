@@ -41,7 +41,6 @@ export const LP_APP_FONT_OPTIONS = [
     label: "Adultkid",
     stack: `"Adultkid", ${LP_APP_FONT_FALLBACK}`,
   },
-  { id: "system", label: "시스템 기본", stack: LP_APP_SYSTEM_FONT_STACK },
 ];
 
 const LP_APP_FONT_ID_SET = new Set(LP_APP_FONT_OPTIONS.map((o) => o.id));
@@ -57,7 +56,9 @@ let _localFontChangedAt = 0;
 export function normalizeAppFontId(id) {
   const v = String(id ?? "").trim().toLowerCase();
   if (v === "parkdahyun") return "bakdahyun";
-  if (v === "pakyongjun" || v === "leeseoyun") return "kyobohandwriting";
+  if (v === "pakyongjun" || v === "leeseoyun" || v === "system") {
+    return LP_APP_DEFAULT_FONT_ID;
+  }
   return LP_APP_FONT_ID_SET.has(v) ? v : LP_APP_DEFAULT_FONT_ID;
 }
 

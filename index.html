@@ -239,14 +239,17 @@
           bakdahyun: '"LP Ongleip Bakdahyun", ' + FALLBACK,
           ryuddung: '"LP Ongleip Ryuddung", ' + FALLBACK,
           adultkid: '"Adultkid", ' + FALLBACK,
-          system: FALLBACK,
         };
         var KEY = "lp_app_ui_font_id";
         var DEF = "kyobohandwriting";
         try {
           var id = localStorage.getItem(KEY);
           if (id === "parkdahyun") id = "bakdahyun";
-          if (id === "pakyongjun" || id === "leeseoyun") {
+          if (
+            id === "pakyongjun" ||
+            id === "leeseoyun" ||
+            id === "system"
+          ) {
             id = "kyobohandwriting";
           }
           if (!id || !STACKS[id]) id = DEF;
