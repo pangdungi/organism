@@ -3469,8 +3469,113 @@ function createCalendar1DaySlotGrid(dateKey, onSaved) {
   return scroll;
 }
 
+/** 일간뷰 오른쪽 패널 상단 — 날짜 피커 해당 날 캘린더 셀 할일·일정(작게) */
+function createCalendar1DayDayTasksCompactPanel(dateKey, onAfterChange) {
+  const wrap = document.createElement("div");
+  wrap.className = "calendar-1day-day-tasks-compact";
+
+  const head = document.createElement("div");
+  head.className = "calendar-1day-pane-section-head";
+  head.textContent = "할일 · 일정";
+  wrap.appendChild(head);
+
+  const scroll = document.createElement("div");
+  scroll.className = "calendar-1day-day-tasks-compact-scroll";
+
+  const list = document.createElement("div");
+  list.className = "calendar-1day-day-tasks-compact-list";
+
+  const tasks = getAllTasksForDateDisplay(dateKey);
+  const todayYmd = timeLedgerLocalTodayYmd();
+
+  if (!tasks.length) {
+    const empty = document.createElement("p");
+    empty.className = "calendar-1day-day-tasks-compact-empty";
+    empty.textContent = "할일 / 일정 없음";
+    list.appendChild(empty);
+  } else {
+    tasks.forEach((t) => {
+      const isSingleDay = !calendarTaskIsMultiDayDateSpan(t);
+      const baseColor = getSectionColor(t.sectionId);
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className =
+        "calendar-1day-day-task-chip" +
+        (isSingleDay
+          ? " calendar-1day-day-task-chip--todo"
+          : " calendar-1day-day-task-chip--range") +
+        ((t.itemType || "todo").toLowerCase() !== "todo"
+          ? " calendar-1day-day-task-chip--schedule"
+          : "");
+      if (t.done) item.classList.add("is-completed");
+      if (isPastCalendarTask(t, todayYmd)) item.classList.add("is-past");
+
+      const barModel = {
+        name: t.name,
+        taskId: t.taskId || "",
+        sectionId: t.sectionId || "",
+        startDate: (t.startDate || "").slice(0, 10) || dateKey,
+        dueDate: (t.dueDate || "").slice(0, 10) || dateKey,
+        startTime: t.startTime || "",
+        endTime: t.endTime || "",
+        itemType: t.itemType || "todo",
+        done: !!t.done,
+        isSingleDay,
+        dateKey,
+      };
+
+      if (isSingleDay) {
+        const borderColor = todoQualifiesCalendarShortSpanBarAccent(
+          barModel.startDate,
+          barModel.dueDate,
+        )
+          ? CALENDAR_SHORT_SPAN_BAR_HEX
+          : timetableAccentTextColor(baseColor) || baseColor;
+        barModel.borderColor = borderColor;
+        item.style.setProperty(
+          "--bar-border",
+          borderColor || CALENDAR_SHORT_SPAN_BAR_HEX,
+        );
+      } else {
+        barModel.color = withMoreTransparency(baseColor);
+        item.style.setProperty("--bar-bg", barModel.color || "");
+        lpApplyCalendarMultiDaySpanBarBackground(item, barModel);
+      }
+
+      const name = String(t.name || "").trim();
+      const timePart = [t.startTime, t.endTime].filter(Boolean).join(" ~ ");
+      const timeHtml = timePart
+        ? `<span class="calendar-1day-day-task-chip-time">${escapeHtml(timePart)}</span>`
+        : "";
+      item.innerHTML = `<span class="calendar-1day-day-task-chip-inner">${lpBuildCalendarSpanBarInnerHtml(name, !!t.done)}${timeHtml}</span>`;
+      item.title = timePart ? `${name} (${timePart})` : name;
+
+      const refresh = () => {
+        try {
+          onAfterChange?.();
+        } catch (_) {}
+      };
+      lpAttachCalendarBarOpenTodoEdit(item, barModel, refresh, refresh);
+
+      list.appendChild(item);
+    });
+  }
+
+  scroll.appendChild(list);
+  wrap.appendChild(scroll);
+  return wrap;
+}
+
 /** 캘린더 일간뷰(슬롯 그리드 모드) — 예상 일정 카드 목록 */
 function createCalendar1DayExpectedCardsPanel(dateKey, spans, onSaved) {
+  const section = document.createElement("div");
+  section.className = "calendar-1day-expected-cards-section";
+
+  const head = document.createElement("div");
+  head.className = "calendar-1day-pane-section-head";
+  head.textContent = "예상 일정";
+  section.appendChild(head);
+
   const scroll = document.createElement("div");
   scroll.className = "calendar-1day-expected-cards-scroll";
 
@@ -3590,7 +3695,8 @@ function createCalendar1DayExpectedCardsPanel(dateKey, spans, onSaved) {
   }
 
   scroll.appendChild(list);
-  return scroll;
+  section.appendChild(scroll);
+  return section;
 }
 
 function render1DayView(tabsElement = null, viewOpts = {}) {
@@ -3740,6 +3846,11 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
 
       const cardsPane = document.createElement("div");
       cardsPane.className = "calendar-1day-dual-pane__cards";
+      cardsPane.appendChild(
+        createCalendar1DayDayTasksCompactPanel(targetKey, () =>
+          renderCalendar(),
+        ),
+      );
       cardsPane.appendChild(
         createCalendar1DayExpectedCardsPanel(
           targetKey,
