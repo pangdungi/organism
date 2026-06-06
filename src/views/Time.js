@@ -8489,6 +8489,43 @@ export function render(opts = {}) {
   let activeSetupTab = "all";
   /** 과제 수정 모달이 열려 있을 때 리스트에서 강조할 과제명 */
   let setupListSelectedTaskName = "";
+  let taskSetupListRenderedSig = "";
+  let taskSetupListPullGen = 0;
+
+  function getActiveTaskSetupListContainer() {
+    if (activeSetupTab === "productive") return setupListProd;
+    if (activeSetupTab === "nonproductive") return setupListNonProd;
+    if (activeSetupTab === "other") return setupListOther;
+    return setupListAll;
+  }
+
+  function getTaskSetupListRenderSig() {
+    try {
+      return JSON.stringify({
+        tab: activeSetupTab,
+        subcat: selectedSubcat,
+        selected: setupListSelectedTaskName,
+        tasks: getFullTaskOptions().map((t) => ({
+          name: (t.name || "").trim(),
+          category: (t.category || "").trim(),
+          productivity: t.productivity,
+          iconKey: String(t.iconKey || "").trim(),
+        })),
+      });
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function showTaskSetupListLoading() {
+    const container = getActiveTaskSetupListContainer();
+    if (!container) return;
+    container.replaceChildren();
+    const loading = document.createElement("div");
+    lpSetClasses(loading, "time-task-setup-empty");
+    loading.textContent = "불러오는 중…";
+    container.appendChild(loading);
+  }
 
   function renderSubcatButtons(prodType) {
     if (!setupSubcatBar) return;
@@ -8528,6 +8565,12 @@ export function render(opts = {}) {
   }
 
   function renderTaskSetupList(opts = {}) {
+    const listSig = getTaskSetupListRenderSig();
+    if (!opts.force && listSig === taskSetupListRenderedSig) {
+      return;
+    }
+    taskSetupListRenderedSig = listSig;
+
     const allTasks = getFullTaskOptions();
     const mainTasksOnly = allTasks.filter(
       (t) => !(t.name || "").includes(" > "),
@@ -8931,18 +8974,24 @@ export function render(opts = {}) {
         '[data-legacy~="time-task-setup-tab"][data-legacy~="active"]',
       )?.dataset?.tab || "all";
     selectedSubcat = "";
+    taskSetupListRenderedSig = "";
+    const pullGen = ++taskSetupListPullGen;
     renderSubcatButtons(activeSetupTab);
-    renderTaskSetupList();
+    showTaskSetupListLoading();
     void pullTimeLedgerTasksWhenSetupModalOpens()
       .catch(() => {})
-      .then(() => {
-        if (!el.isConnected || taskSetupModal.hidden) return;
+      .finally(() => {
+        if (!el.isConnected || taskSetupModal.hidden || pullGen !== taskSetupListPullGen) {
+          return;
+        }
         renderSubcatButtons(activeSetupTab);
-        renderTaskSetupList();
+        renderTaskSetupList({ force: true });
       });
   });
   function closeTaskSetupModal() {
     taskSetupModal.hidden = true;
+    taskSetupListPullGen += 1;
+    taskSetupListRenderedSig = "";
     document.body.style.overflow = "";
     closeAddTaskModal();
   }
@@ -9706,8 +9755,12 @@ export function render(opts = {}) {
     "time-ledger-tasks-saved",
     () => {
       if (!el.isConnected) return;
+      if (!taskSetupModal.hidden) {
+        taskSetupListRenderedSig = "";
+        renderTaskSetupList();
+        return;
+      }
       refreshTimeLedgerTaskIconsFromOptions(el);
-      if (!taskSetupModal.hidden) renderTaskSetupList();
     },
     { signal },
   );

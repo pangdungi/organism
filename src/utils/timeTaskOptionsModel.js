@@ -34,6 +34,9 @@ function taskRowsIdentitySig(rows) {
         name: (o.name || "").trim(),
         id: (o.id || "").trim(),
         kpiId: String(o.kpiId || "").trim(),
+        iconKey: String(o.iconKey || "").trim(),
+        category: (o.category || "").trim(),
+        productivity: normalizeProductivity(o.productivity),
       })),
     );
   } catch (_) {
@@ -1273,14 +1276,21 @@ export function applyTimeLedgerTasksFromServer(
   if (deleteIds.length) {
     queueTimeLedgerTaskRowDeletes(deleteIds);
   }
-  saveMergedList(dedupedSansOrphanNameDup, {
-    bumpPullSkip: false,
-    scheduleSyncPush: false,
-  });
+  const listUnchanged =
+    deleteIds.length === 0 &&
+    entryTaskIdRemaps.length === 0 &&
+    taskRowsIdentitySig(dedupedSansOrphanNameDup) ===
+      taskRowsIdentitySig(_ledgerTasksMem);
+  if (!listUnchanged) {
+    saveMergedList(dedupedSansOrphanNameDup, {
+      bumpPullSkip: false,
+      scheduleSyncPush: false,
+    });
+  }
   if (entryTaskIdRemaps.length) {
     remapTimeLedgerEntryTaskIds(entryTaskIdRemaps);
   }
-  return true;
+  return !listUnchanged || deleteIds.length > 0 || entryTaskIdRemaps.length > 0;
 }
 
 export function buildTimeLedgerTasksUpsertPayloads(userId) {
