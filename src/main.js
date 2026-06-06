@@ -36,7 +36,10 @@ import { initLpAppShellViewportLock } from "./utils/lpAppShellViewport.js";
 import { supabase } from "./supabase.js";
 import { getSupabaseSession } from "./utils/supabaseSession.js";
 import { applyAppFont } from "./utils/appUiFont.js";
-import { prefetchCriticalAppIconAssets } from "./utils/appIconPrefetch.js";
+import {
+  prefetchCriticalAppIconAssets,
+  warmTimeTaskPickerIconsOnce,
+} from "./utils/appIconPrefetch.js";
 import { setAppSplashMessage } from "./utils/lpAppLoading.js";
 import {
   initAppSplashViewportLock,
@@ -267,6 +270,7 @@ async function enterAuthenticatedApp(opts = {}) {
       setAppSplashMessage("데이터 불러오는 중…");
       await waitForAppBootReady();
       prefetchCriticalAppIconAssets();
+      void warmTimeTaskPickerIconsOnce();
       refreshLpPwaInstall();
 
       void getSupabaseSession().then(({ data: { session } }) => {
@@ -746,5 +750,5 @@ if (
   "serviceWorker" in navigator &&
   (location.protocol === "https:" || location.hostname === "localhost")
 ) {
-  navigator.serviceWorker.register("/sw.js?v=33").catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=34").catch(() => {});
 }

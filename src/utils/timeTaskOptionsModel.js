@@ -812,7 +812,6 @@ export function kpiTimeTaskEnsure(kpi, category) {
   if (
     getFullTaskOptions().some((o) => String(o.kpiId || "").trim() === kpiId)
   ) {
-    patchKpiLinkedTasksFromKpiMaps();
     return;
   }
 

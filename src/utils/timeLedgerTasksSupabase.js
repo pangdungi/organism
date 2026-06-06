@@ -12,7 +12,6 @@ import {
   getFullTaskOptions,
   isUuid,
   migrateTimeLogRowsTaskIds,
-  patchKpiLinkedTasksFromKpiMaps,
 } from "./timeTaskOptionsModel.js";
 import { ensureAllKpiTimeTasksFromStorage } from "./kpiTimeTaskSync.js";
 import { lpPullDebug } from "./lpPullDebug.js";
@@ -451,16 +450,34 @@ let _listenerAttached = false;
  * 과제설정·과제 기록·수정·예상 일정 모달 — 서버 과제 목록 pull + KPI 맵 기준 행 정리.
  * (모달 확인을 늦추지 않고 비동기로 호출)
  */
+let _kpiTasksEnsuredForSession = false;
+
+function scheduleKpiTaskEnsureOnce() {
+  if (_kpiTasksEnsuredForSession) return;
+  const run = () => {
+    if (_kpiTasksEnsuredForSession) return;
+    _kpiTasksEnsuredForSession = true;
+    try {
+      ensureAllKpiTimeTasksFromStorage();
+      getFullTaskOptions();
+      migrateTimeLogRowsTaskIds();
+    } catch (_) {}
+  };
+  if (typeof requestIdleCallback === "function") {
+    requestIdleCallback(run, { timeout: 3000 });
+  } else {
+    setTimeout(run, 0);
+  }
+}
+
+/** 과제설정·기록 모달 — 서버 과제 목록만 pull(KPI 맵 정리는 세션당 1회·유휴 시) */
 export async function syncTimeLedgerTaskListForModalOpen() {
+  scheduleKpiTaskEnsureOnce();
   try {
-    await pullTimeLedgerTasksFromSupabase();
-  } catch (_) {}
-  try {
-    ensureAllKpiTimeTasksFromStorage();
-    patchKpiLinkedTasksFromKpiMaps();
-    getFullTaskOptions();
-    migrateTimeLogRowsTaskIds();
-  } catch (_) {}
+    return !!(await pullTimeLedgerTasksFromSupabase());
+  } catch (_) {
+    return false;
+  }
 }
 
 export function attachTimeLedgerTasksSaveListener() {

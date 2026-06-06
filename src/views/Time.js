@@ -8491,6 +8491,7 @@ export function render(opts = {}) {
   let setupListSelectedTaskName = "";
   let taskSetupListRenderedSig = "";
   let taskSetupListPullGen = 0;
+  let taskSetupSavedRenderRaf = 0;
 
   function getActiveTaskSetupListContainer() {
     if (activeSetupTab === "productive") return setupListProd;
@@ -8515,16 +8516,6 @@ export function render(opts = {}) {
     } catch (_) {
       return "";
     }
-  }
-
-  function showTaskSetupListLoading() {
-    const container = getActiveTaskSetupListContainer();
-    if (!container) return;
-    container.replaceChildren();
-    const loading = document.createElement("div");
-    lpSetClasses(loading, "time-task-setup-empty");
-    loading.textContent = "불러오는 중…";
-    container.appendChild(loading);
   }
 
   function renderSubcatButtons(prodType) {
@@ -8599,7 +8590,7 @@ export function render(opts = {}) {
       "—";
     const lockedForDisplay = getLockedForSetupDisplay();
     function renderList(container, list) {
-      container.innerHTML = "";
+      container.replaceChildren();
       list.forEach((t) => {
         const fromKpi = isTimeTaskKpiLinked(t);
         const isLocked = fromKpi || lockedForDisplay.has(t.name);
@@ -8976,14 +8967,16 @@ export function render(opts = {}) {
     selectedSubcat = "";
     taskSetupListRenderedSig = "";
     const pullGen = ++taskSetupListPullGen;
+    const listSigBeforePull = getTaskSetupListRenderSig();
     renderSubcatButtons(activeSetupTab);
-    showTaskSetupListLoading();
+    renderTaskSetupList({ force: true });
     void pullTimeLedgerTasksWhenSetupModalOpens()
       .catch(() => {})
       .finally(() => {
         if (!el.isConnected || taskSetupModal.hidden || pullGen !== taskSetupListPullGen) {
           return;
         }
+        if (getTaskSetupListRenderSig() === listSigBeforePull) return;
         renderSubcatButtons(activeSetupTab);
         renderTaskSetupList({ force: true });
       });
@@ -9756,8 +9749,15 @@ export function render(opts = {}) {
     () => {
       if (!el.isConnected) return;
       if (!taskSetupModal.hidden) {
-        taskSetupListRenderedSig = "";
-        renderTaskSetupList();
+        if (taskSetupSavedRenderRaf) {
+          cancelAnimationFrame(taskSetupSavedRenderRaf);
+        }
+        taskSetupSavedRenderRaf = requestAnimationFrame(() => {
+          taskSetupSavedRenderRaf = 0;
+          if (!el.isConnected || taskSetupModal.hidden) return;
+          taskSetupListRenderedSig = "";
+          renderTaskSetupList();
+        });
         return;
       }
       refreshTimeLedgerTaskIconsFromOptions(el);

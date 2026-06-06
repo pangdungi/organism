@@ -2,7 +2,7 @@
 /** index.html·manifest 의 ?v= 와 동일하게 유지 */
 const PWA_BRAND = "doodle-logo-6";
 /** 번들·아이콘 등 캐시 버전 (전략·브랜드 바꿀 때 올리면 이전 캐시 정리됨) */
-const ASSET_CACHE = "tip-assets-v33";
+const ASSET_CACHE = "tip-assets-v34";
 /** HTML 셸 캐시 — 홈 화면에서 열 때 즉시 표시용 */
 const HTML_CACHE = "tip-html-v5";
 
@@ -45,6 +45,36 @@ const PWA_INSTALL_CORE_PATHS = [
   "/fonts/LP-KyoboHandwriting2025.otf",
 ];
 
+/** 홈 화면 추가 시 과제 아이콘 picker SVG 전량 캐시(모달마다 네트워크·재다운로드 방지) */
+async function cacheTimeTaskPickerIcons(assetCache) {
+  try {
+    const listRes = await fetch(
+      new Request(self.location.origin + "/app-icon-prefetch.json", {
+        cache: "reload",
+      }),
+    );
+    if (!listRes.ok) return;
+    const paths = await listRes.json();
+    const picker = (Array.isArray(paths) ? paths : []).filter((p) =>
+      String(p || "").startsWith("/toolbaricons/time-task-picker/"),
+    );
+    const BATCH = 12;
+    for (let i = 0; i < picker.length; i += BATCH) {
+      await Promise.all(
+        picker.slice(i, i + BATCH).map(async (path) => {
+          try {
+            const u = self.location.origin + path;
+            const cached = await assetCache.match(u);
+            if (cached) return;
+            const r = await fetch(u);
+            if (r && r.ok) await assetCache.put(u, r.clone());
+          } catch (_e) {}
+        }),
+      );
+    }
+  } catch (_e) {}
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
@@ -68,6 +98,7 @@ self.addEventListener("install", (event) => {
             } catch (_e) {}
           }),
         );
+        await cacheTimeTaskPickerIcons(assetCache);
       } catch (_e) {}
     })(),
   );

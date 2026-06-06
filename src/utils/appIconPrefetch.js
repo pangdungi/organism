@@ -1,14 +1,19 @@
 /**
- * 앱 정적 아이콘 prefetch — 탭 진입 시에만 해당 경로(전량 887장 기동 prefetch 금지)
+ * 앱 정적 아이콘 — Service Worker 캐시에만 적재(화면에 <img> prefetch 금지: iOS·Android 메모리 폭주 방지)
  */
 import appIconPrefetchPaths from "../../public/app-icon-prefetch.json";
 
-const CHUNK_SIZE = 24;
+/** public/sw.js ASSET_CACHE 와 동일 */
+export const SW_ASSET_CACHE = "tip-assets-v34";
+
+const CHUNK_SIZE = 20;
 /** @type {Set<string>} */
-const prefetchedPaths = new Set();
+const warmedPaths = new Set();
 
 /** @type {Map<string, Promise<void>>} */
-const tabPrefetchJobs = new Map();
+const tabWarmJobs = new Map();
+
+let pickerIconsWarmStarted = false;
 
 /** @param {string} tabId @returns {((path: string) => boolean) | null} */
 function matcherForTab(tabId) {
@@ -53,27 +58,40 @@ function matcherForTab(tabId) {
 
 function scheduleIdle(fn) {
   if (typeof requestIdleCallback === "function") {
-    requestIdleCallback(fn, { timeout: 3000 });
+    requestIdleCallback(fn, { timeout: 4000 });
     return;
   }
-  setTimeout(fn, 120);
+  setTimeout(fn, 150);
 }
 
-function prefetchPath(path) {
-  if (!path || prefetchedPaths.has(path)) return;
-  prefetchedPaths.add(path);
-  const img = new Image();
-  img.decoding = "async";
-  img.src = path;
+/**
+ * SW 디스크 캐시만 채움 — DOM Image() 로 디코딩하지 않음
+ * @param {string} path
+ */
+export async function warmIconPathInSwCache(path) {
+  const p = String(path || "").trim();
+  if (!p || warmedPaths.has(p)) return;
+  warmedPaths.add(p);
+  if (!("caches" in window)) return;
+  try {
+    const cache = await caches.open(SW_ASSET_CACHE);
+    const url = new URL(p, location.origin).href;
+    const req = new Request(url);
+    if (await cache.match(req)) return;
+    const r = await fetch(req);
+    if (r.ok) await cache.put(req, r.clone());
+  } catch (_) {}
 }
 
-function prefetchPathsChunked(paths, startIndex = 0) {
+function warmPathsChunked(paths, startIndex = 0) {
   const list = Array.isArray(paths) ? paths : [];
   let i = startIndex;
   const end = Math.min(i + CHUNK_SIZE, list.length);
-  for (; i < end; i++) prefetchPath(list[i]);
+  const batch = [];
+  for (; i < end; i++) batch.push(warmIconPathInSwCache(list[i]));
+  void Promise.all(batch);
   if (i < list.length) {
-    scheduleIdle(() => prefetchPathsChunked(list, i));
+    scheduleIdle(() => warmPathsChunked(list, i));
   }
 }
 
@@ -97,32 +115,48 @@ export function getAllAppIconPrefetchPaths() {
 
 export function prefetchCriticalAppIconAssets() {
   for (const path of CRITICAL_HOME_ICON_PATHS) {
-    prefetchPath(path);
+    void warmIconPathInSwCache(path);
   }
+}
+
+/** PWA 기동 후 과제 picker 아이콘 전량을 SW 캐시에 한 번만 적재 */
+export function warmTimeTaskPickerIconsOnce() {
+  if (pickerIconsWarmStarted) return Promise.resolve();
+  pickerIconsWarmStarted = true;
+  const paths = appIconPrefetchPaths.filter((p) =>
+    p.startsWith("/toolbaricons/time-task-picker/"),
+  );
+  return new Promise((resolve) => {
+    scheduleIdle(() => {
+      warmPathsChunked(paths);
+      resolve();
+    });
+  });
 }
 
 /** @param {string} tabId */
 export function prefetchIconsForTab(tabId) {
   const id = String(tabId || "").trim();
   if (!id || id === "home") return Promise.resolve();
-  const existing = tabPrefetchJobs.get(id);
+  if (id === "time") return warmTimeTaskPickerIconsOnce();
+  const existing = tabWarmJobs.get(id);
   if (existing) return existing;
 
   const match = matcherForTab(id);
   if (!match) {
     const done = Promise.resolve();
-    tabPrefetchJobs.set(id, done);
+    tabWarmJobs.set(id, done);
     return done;
   }
 
   const paths = appIconPrefetchPaths.filter((p) => match(p));
   const job = new Promise((resolve) => {
     scheduleIdle(() => {
-      prefetchPathsChunked(paths);
+      warmPathsChunked(paths);
       resolve();
     });
   });
-  tabPrefetchJobs.set(id, job);
+  tabWarmJobs.set(id, job);
   return job;
 }
 
