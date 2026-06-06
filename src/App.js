@@ -66,7 +66,11 @@ import { initDomPulseDebug } from "./utils/domPulseDebug.js";
 import { initMobileVisualViewportKeyboardInset } from "./utils/mobileViewportKeyboard.js";
 import { syncLpAppShellViewportHeight } from "./utils/lpAppShellViewport.js";
 import { logTodoScheduleTabOnNavigate } from "./utils/lpTabDataSourceLog.js";
-import { ensureTimeLedgerStorageReady } from "./utils/timeLedgerEntriesModel.js";
+import {
+  ensureTimeLedgerStorageReady,
+  hydrateTimeLedgerFromLocalMirrorForBoot,
+} from "./utils/timeLedgerEntriesModel.js";
+import { hydrateSectionTasksFromLocalMirrorForBoot } from "./utils/todoSectionTasksModel.js";
 import { afterLpTabPaint } from "./utils/lpAppLoading.js";
 import { prefetchIconsForTab } from "./utils/appIconPrefetch.js";
 import {
@@ -270,7 +274,7 @@ function kpiSoftRefreshIfPullChanged(tabId, pullResult) {
 
 /**
  * 탭 진입(클릭·부팅 시 해당 탭) 시에만 서버 pull — 다른 탭 데이터는 가져오지 않음.
- * 시간가계부 **과제 목록**(time_ledger_tasks): `time` 탭 진입 + Time.js 과제설정/기록 모달, 캘린더 1일 뷰 등 해당 화면만.
+ * 시간가계부 **과제 목록**(time_ledger_tasks): `time` 탭 진입·과제설정/기록 모달, 캘린더 1일 뷰 등 해당 화면만.
  */
 async function pullDataForActiveTab(tabId, opts = {}) {
   void opts;
@@ -484,6 +488,12 @@ export async function mountApp(container) {
           } catch (_) {}
           try {
             resetTimeLedgerSessionFilterToToday();
+          } catch (_) {}
+        }
+        if (targetTabId === "schedulecalendar") {
+          try {
+            hydrateSectionTasksFromLocalMirrorForBoot();
+            hydrateTimeLedgerFromLocalMirrorForBoot();
           } catch (_) {}
         }
         if (targetTabId === "schedulecalendar") {

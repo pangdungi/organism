@@ -79,8 +79,7 @@ import {
   isCalendarFixedSectionKey,
   newTaskId,
 } from "../utils/todoSectionTasksModel.js";
-import { TIME_LEDGER_ENTRIES_KEY } from "../utils/timeLedgerEntriesModel.js";
-import { getScopedLocalStorageItem } from "../utils/clientStorageScope.js";
+import { stripTimeLedgerSyncMetaForCompare } from "../utils/timeLedgerEntriesModel.js";
 import {
   pullTimeLedgerEntriesForDateRange,
   timeLedgerLocalTodayYmd,
@@ -439,18 +438,35 @@ function snapshotCalendarDayIconsSemanticForCompare() {
   }
 }
 
-function snapshotCalendarGridPaintSignature(viewContext = "") {
-  let ledger = "";
-  try {
-    ledger = getScopedLocalStorageItem(TIME_LEDGER_ENTRIES_KEY) ?? "";
-  } catch (_) {}
-  return `${snapshotSectionTasksSemanticForCompare()}\x1e${ledger}\x1e${snapshotCalendarDayIconsSemanticForCompare()}\x1e${viewContext}`;
+function snapshotCalendarGridPaintSignature(viewContext = "", opts = {}) {
+  const includeLedger = opts.includeLedger !== false;
+  let ledgerPart = "";
+  if (includeLedger) {
+    try {
+      const rows = loadTimeRows();
+      ledgerPart = JSON.stringify(
+        (Array.isArray(rows) ? rows : []).map((r) =>
+          stripTimeLedgerSyncMetaForCompare(r),
+        ),
+      );
+    } catch (_) {}
+  }
+  return `${snapshotSectionTasksSemanticForCompare()}\x1e${ledgerPart}\x1e${snapshotCalendarDayIconsSemanticForCompare()}\x1e${viewContext}`;
 }
 
-/** pull·소프트 갱신: 할일 데이터가 같으면 renderCalendar 생략 */
-function lpAttachCalendarGridRefreshGuard(wrap, runRender, viewContextFn = () => "") {
+/** pull·소프트 갱신: 화면에 쓰는 데이터가 같으면 renderCalendar 생략 */
+function lpAttachCalendarGridRefreshGuard(
+  wrap,
+  runRender,
+  viewContextFn = () => "",
+  opts = {},
+) {
+  const signatureOpts = { includeLedger: opts.includeLedger !== false };
   wrap._lpRefreshCalendarView = () => {
-    const sig = snapshotCalendarGridPaintSignature(viewContextFn());
+    const sig = snapshotCalendarGridPaintSignature(
+      viewContextFn(),
+      signatureOpts,
+    );
     if (sig === wrap._lpLastCalendarGridPaintSig) {
       calendar1WeekDiagLog("refreshGuard.skipSameSig", {
         ctx: viewContextFn(),
@@ -463,6 +479,7 @@ function lpAttachCalendarGridRefreshGuard(wrap, runRender, viewContextFn = () =>
   wrap._lpRememberCalendarGridPaintSig = () => {
     wrap._lpLastCalendarGridPaintSig = snapshotCalendarGridPaintSignature(
       viewContextFn(),
+      signatureOpts,
     );
   };
 }
@@ -2828,6 +2845,7 @@ function renderMonthlyView(tabsElement) {
     wrap,
     renderCalendar,
     () => `${currentYear}-${currentMonth}`,
+    { includeLedger: false },
   );
   renderCalendar();
 

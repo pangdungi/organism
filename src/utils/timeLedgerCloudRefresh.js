@@ -1,6 +1,6 @@
 /**
- * 시간가계부 — 기록 행·일간 예산 pull. **과제 마스터(time_ledger_tasks) pull 은 하지 않음**
- * (앱 상단「시간가계부」탭 클릭 시 App에서만. 과제 목록 pull 은 과제설정·기록·수정·예상 일정 모달 열 때).
+ * 시간가계부 — 기록 행·일간 예산·과제 마스터(time_ledger_tasks) pull.
+ * (앱 상단「시간가계부」탭 클릭 시 App에서만. 모달 열 때도 추가 pull 가능.)
  */
 
 import {
@@ -21,6 +21,7 @@ import {
 } from "./timeDailyBudgetModel.js";
 import { lpPullDebug } from "./lpPullDebug.js";
 import { getScopedLocalStorageItem } from "./clientStorageScope.js";
+import { pullTimeLedgerTasksFromSupabase } from "./timeLedgerTasksSupabase.js";
 
 function snapshotTimeLedgerLocalStorage() {
   try {
@@ -57,8 +58,8 @@ export async function pullAllTimeLedgerFromCloud(opts = {}) {
 }
 
 /**
- * 시간가계부 화면 안에서 호출 — **기록 행·일간 예산만** pull (과제 목록은 안 함).
- * 과제 목록은 과제설정·과제 기록·수정·예상 일정 모달에서 pull(탭 진입만으로는 안 함).
+ * 시간가계부 화면·탭 진입 — 기록 행·일간 예산·과제 목록을 서버에서 받음.
+ * (과제설정을 열지 않아도 기록 모달에 KPI·사용자 과제가 보이게 함)
  */
 export async function pullTimeLedgerTabEnterFromCloud() {
   lpPullDebug("pullTimeLedgerTabEnterFromCloud", {});
@@ -68,6 +69,7 @@ export async function pullTimeLedgerTabEnterFromCloud() {
   await Promise.all([
     pullTimeLedgerEntriesFromSupabase(),
     pullTimeDailyBudgetForDateRange(rangeStart, rangeEnd),
+    pullTimeLedgerTasksFromSupabase(),
   ]);
   const after = snapshotTimeLedgerLocalStorage();
   return { anyChanged: before !== after };

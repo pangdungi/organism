@@ -472,8 +472,8 @@
   min-width: 0;
   box-sizing: border-box;
   border-radius: 3px;
-  border: 1px dashed #c5d9ea;
-  background: #edf6fc;
+  border: 1px dashed #e2e8f0;
+  background: #f1f5f9;
 }
 
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell {

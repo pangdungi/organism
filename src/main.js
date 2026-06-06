@@ -55,6 +55,7 @@ import {
   prepareTimeLedgerTasksStorageForBoot,
   resetTimeLedgerTasksMemoryForAccountSwitch,
 } from "./utils/timeTaskOptionsModel.js";
+import { prepareCalendarSectionTasksForBoot } from "./utils/todoSectionTasksModel.js";
 import {
   migrateAllRegisteredLegacyLocalStorage,
   setActiveClientStorageUserId,
@@ -102,6 +103,7 @@ async function prepareTimeLedgerStorageForCurrentSession() {
   if (!supabase) {
     prepareTimeLedgerStorageForBoot();
     prepareTimeLedgerTasksStorageForBoot();
+    prepareCalendarSectionTasksForBoot();
     return;
   }
 
@@ -115,6 +117,7 @@ async function prepareTimeLedgerStorageForCurrentSession() {
     migrateAllRegisteredLegacyLocalStorage(cachedUid);
     prepareTimeLedgerStorageForBoot();
     prepareTimeLedgerTasksStorageForBoot();
+    prepareCalendarSectionTasksForBoot();
   }
 
   const {
@@ -125,6 +128,7 @@ async function prepareTimeLedgerStorageForCurrentSession() {
     if (!cachedUid) {
       prepareTimeLedgerStorageForBoot();
       prepareTimeLedgerTasksStorageForBoot();
+      prepareCalendarSectionTasksForBoot();
     }
     return;
   }
@@ -135,6 +139,7 @@ async function prepareTimeLedgerStorageForCurrentSession() {
     await ensureClientStorageForAuthUser(uid);
     prepareTimeLedgerStorageForBoot();
     prepareTimeLedgerTasksStorageForBoot();
+    prepareCalendarSectionTasksForBoot();
     return;
   }
 
@@ -142,6 +147,7 @@ async function prepareTimeLedgerStorageForCurrentSession() {
   if (!cachedUid) {
     prepareTimeLedgerStorageForBoot();
     prepareTimeLedgerTasksStorageForBoot();
+    prepareCalendarSectionTasksForBoot();
   }
 }
 
@@ -228,6 +234,7 @@ function primeTimeLedgerStorageFromCachedSession() {
   }
   prepareTimeLedgerStorageForBoot();
   prepareTimeLedgerTasksStorageForBoot();
+  prepareCalendarSectionTasksForBoot();
 }
 
 /** 저장된 세션·자동 로그인: 앱 먼저 연다. 구독·IDB 정합은 mountApp 뒤 백그라운드 */

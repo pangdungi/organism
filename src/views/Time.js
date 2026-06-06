@@ -4140,10 +4140,12 @@ function buildTimeLedgerDayTimeboxBlocks(dayRows) {
   for (const r of dayRows || []) {
     const seg = getLedgerRowDayBarSegmentMinutes(r);
     if (!seg) continue;
+    const { category, productivity } = resolveRowCategoryProductivityForAudit(r);
     blocks.push({
       startMin: seg.startMin,
       endMin: seg.endMin,
-      prod: seg.prod,
+      prod: productivity || seg.prod,
+      category,
       taskName: String(r.taskName || "").trim(),
       startDisplay: formatLedgerSlotGridClockMin(seg.startMin),
       endDisplay: formatLedgerSlotGridClockMin(seg.endMin),

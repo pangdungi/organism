@@ -15,9 +15,14 @@ function formatMinOfDayClock(minOfDay) {
   return `${String(h).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
 }
 
-function prodKeyForBlock(prod) {
-  const pk = String(prod || "other").toLowerCase();
-  if (pk === "productive" || pk === "nonproductive") return pk;
+/** 타임박스 칸 채움 — 카테고리·생산성 → CSS 수정자 키 */
+function paintKeyForTimeboxBlock(block) {
+  const cat = String(block?.category || "").trim().toLowerCase();
+  if (cat === "sideincome") return "sideincome";
+  if (cat === "happiness") return "happiness";
+  if (cat === "health") return "health";
+  const pk = String(block?.prod || "other").toLowerCase();
+  if (pk === "nonproductive") return "nonproductive";
   return "other";
 }
 
@@ -46,11 +51,27 @@ function cellOverlapsBlock(slotMin, block) {
   return slotMin < block.endMin && cellEnd > block.startMin;
 }
 
-/** 이 5분 칸에 기록 시작 시각이 들어있으면 라벨 표시 */
-function blockStartsInCell(block, slotMin) {
-  const sm = Number(block.startMin);
-  if (!Number.isFinite(sm)) return false;
-  return sm >= slotMin && sm < slotMin + TIME_LEDGER_TIMEBOX_SLOT_MINUTES;
+function blockSlotCount(block) {
+  const dur = Number(block?.endMin) - Number(block?.startMin);
+  if (!Number.isFinite(dur) || dur <= 0) return 0;
+  return Math.ceil(dur / TIME_LEDGER_TIMEBOX_SLOT_MINUTES);
+}
+
+/** 기록 시작 칸 기준 N번째 5분 칸 (0=시작 칸) */
+function slotOffsetInBlock(block, slotMin) {
+  const sm = Number(block?.startMin);
+  if (!Number.isFinite(sm)) return 0;
+  return Math.max(0, Math.floor((slotMin - sm) / TIME_LEDGER_TIMEBOX_SLOT_MINUTES));
+}
+
+/** 칸 수×2글자까지, 칸마다 2글자씩 분배 (과제명이 짧으면 그만큼만) */
+function labelSliceForBlockCell(block, slotMin) {
+  const name = String(block?.taskName || "").trim();
+  if (!name) return "";
+  const maxChars = Math.min(name.length, blockSlotCount(block) * 2);
+  const charStart = slotOffsetInBlock(block, slotMin) * 2;
+  if (charStart >= maxChars) return "";
+  return name.slice(charStart, Math.min(charStart + 2, maxChars));
 }
 
 /** 겹치는 기록 중 가장 짧은 구간 우선 (긴·진행 중 기록이 짧은 기록을 가리지 않게) */
@@ -191,11 +212,9 @@ export function paintTimeLedgerDayTimeboxMatrixCells(body, rawBlocks) {
       return;
     }
 
-    const pk = prodKeyForBlock(block.prod);
+    const pk = paintKeyForTimeboxBlock(block);
     cell.classList.add(`time-ledger-day-timebox-matrix-cell--${pk}`);
 
-    const labelBlock = blocks.find((b) => blockStartsInCell(b, slotMin));
-    const titleBlock = labelBlock || block;
     const taskName = String(block.taskName || "").trim() || "기록";
     const startDisplay =
       block.startDisplay || formatMinOfDayClock(block.startMin);
@@ -210,12 +229,10 @@ export function paintTimeLedgerDayTimeboxMatrixCells(body, rawBlocks) {
     cell.dataset.endDisplay = endDisplay;
     if (memo) cell.dataset.memo = memo;
 
-    if (labelBlock) {
-      const labelName = String(labelBlock.taskName || "").trim();
-      if (labelName) {
-        cell.textContent = labelName.slice(0, 2);
-        cell.classList.add("time-ledger-day-timebox-matrix-cell--labeled");
-      }
+    const labelText = labelSliceForBlockCell(block, slotMin);
+    if (labelText) {
+      cell.textContent = labelText;
+      cell.classList.add("time-ledger-day-timebox-matrix-cell--labeled");
     }
 
     cell.title = `${taskName} (${startDisplay} ~ ${endDisplay})`;
