@@ -64,10 +64,31 @@ const IMPORTS = [
   },
 ];
 
-async function toPickerPng(src, outPng) {
+async function toPickerPng(src, outPng, fileBase) {
+  const pickerSvg = path.join(OUT_DIR, `${fileBase}.svg`);
+  const svgPath = fs.existsSync(pickerSvg)
+    ? pickerSvg
+    : src.replace(/\.(png|jpe?g|webp)$/i, ".svg");
+  if (fs.existsSync(svgPath)) {
+    await sharp(svgPath, { density: 288 })
+      .resize(SIZE, SIZE, {
+        fit: "contain",
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      })
+      .png()
+      .toFile(outPng);
+    return;
+  }
+  const meta = await sharp(src).metadata();
+  const w = meta.width || SIZE;
+  const h = meta.height || SIZE;
+  /** 작은 래스터(≤64px) — 픽셀 아트형, nearest로 흐림 방지 */
+  const kernel =
+    w <= 64 && h <= 64 ? sharp.kernel.nearest : sharp.kernel.lanczos3;
   await sharp(src)
     .resize(SIZE, SIZE, {
       fit: "contain",
+      kernel,
       background: { r: 0, g: 0, b: 0, alpha: 0 },
     })
     .png()
@@ -81,6 +102,6 @@ for (const { slug, fileBase, src } of IMPORTS) {
     continue;
   }
   const pngPath = path.join(OUT_DIR, `${fileBase}.png`);
-  await toPickerPng(src, pngPath);
+  await toPickerPng(src, pngPath, fileBase);
   console.log("imported", slug, "→", path.relative(ROOT, pngPath));
 }
