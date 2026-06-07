@@ -679,7 +679,11 @@
 
 .lp-tr2-sleep-chart-canvas--scroll {
   overflow-x: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: none;
 }
 
 .lp-tr2-sleep-chart-canvas--scroll .lp-tr2-sleep-chart-svg {
@@ -732,6 +736,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.4rem;
+  margin-bottom: 0.55rem;
 }
 
 @media (min-width: 420px) {
@@ -761,6 +766,50 @@
   color: var(--text-ink);
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
+}
+
+.lp-tr2-sleep-stat-hint {
+  display: block;
+  margin-top: 0.08rem;
+  font-size: 0.5625rem;
+  color: #94a3b8;
+  line-height: 1.3;
+}
+
+.lp-tr2-sleep-chart-scroll-hint {
+  margin: 0.2rem 0 0;
+  font-size: 0.625rem;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.lp-tr2-sleep-quality-trend {
+  width: 100%;
+}
+
+.lp-tr2-sleep-quality-trend-canvas {
+  width: 100%;
+  height: clamp(6.25rem, 28vw, 7rem);
+}
+
+.lp-tr2-sleep-quality-trend-canvas .lp-tr2-sleep-quality-trend-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.lp-tr2-sleep-quality-trend-canvas--scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: none;
+}
+
+.lp-tr2-sleep-quality-trend-canvas--scroll .lp-tr2-sleep-quality-trend-svg {
+  width: auto;
+  height: 100%;
 }
 
 .lp-tr2-intake-counts {
@@ -1152,7 +1201,11 @@
 
 .lp-tr2-media-compare-cols--scroll {
   overflow-x: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: none;
 }
 
 .lp-tr2-media-compare-col {

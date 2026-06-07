@@ -249,13 +249,12 @@
   touch-action: pan-y;
 }
 
-/* 시간 레포트(일별) 본문: 짧을 때 가운데 정렬 — 자식 flex-shrink:0 으로 도넛이 세로로 눌리지 않게 */
+/* 시간 레포트 본문: 위부터 쌓기(가운데 정렬 시 터치·가로 스크롤 때 세로 위치가 튐) */
 .diary-layout--feed-only
   .diary-content-scroll[data-lp-time-report-body]:not(:empty) {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  justify-content: safe center;
+  justify-content: flex-start;
   align-items: center;
 }
 
@@ -314,7 +313,10 @@
   > .diary-tr-waste-mini-shell,
 .diary-layout--feed-only
   .diary-content-scroll[data-lp-time-report-body]:not(:empty)
-  > .diary-tr-summary-shell {
+  > .diary-tr-summary-shell,
+.diary-layout--feed-only
+  .diary-content-scroll[data-lp-time-report-body]:not(:empty)
+  > .lp-tr2-section {
   flex-shrink: 0;
   width: 100%;
 }

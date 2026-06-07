@@ -1,9 +1,15 @@
 /**
- * 앱 전역 UI 글꼴 — localStorage + 서버(user_subscriptions.ui_font_id) + --lp-app-font-family
- * 앱 전역은 html 의 --lp-app-font-family 하나만 사용합니다.
+ * 앱 전역 UI 글꼴 — 계정별 localStorage + 서버(user_subscriptions.ui_font_id) + --lp-app-font-family
  */
 
 import { supabase } from "../supabase.js";
+import { getSupabaseSession } from "./supabaseSession.js";
+import {
+  getActiveClientStorageUserId,
+  getScopedLocalStorageItem,
+  migrateLegacyLocalStorageToScoped,
+  setScopedLocalStorageItem,
+} from "./clientStorageScope.js";
 
 export const LP_APP_UI_FONT_STORAGE_KEY = "lp_app_ui_font_id";
 
@@ -48,6 +54,7 @@ const LP_APP_FONT_ID_SET = new Set(LP_APP_FONT_OPTIONS.map((o) => o.id));
 /** 나의 계정에서 글꼴 변경 직후 서버 pull 이 로컬 선택을 덮지 않도록 */
 const LP_LOCAL_FONT_CHANGE_GRACE_MS = 15_000;
 let _localFontChangedAt = 0;
+let _resumeFontSyncBound = false;
 
 /**
  * @param {unknown} id
@@ -74,13 +81,27 @@ export function getAppFontStackForId(id) {
   return def?.stack ?? LP_APP_SYSTEM_FONT_STACK;
 }
 
+function readLegacyAppFontId() {
+  try {
+    const v = localStorage.getItem(LP_APP_UI_FONT_STORAGE_KEY);
+    if (v && LP_APP_FONT_ID_SET.has(v)) return v;
+  } catch (_) {}
+  return null;
+}
+
 /**
  * @returns {string}
  */
 export function getStoredAppFontId() {
   try {
-    const v = localStorage.getItem(LP_APP_UI_FONT_STORAGE_KEY);
-    if (v && LP_APP_FONT_ID_SET.has(v)) return v;
+    const uid = getActiveClientStorageUserId();
+    if (uid) {
+      migrateLegacyLocalStorageToScoped(LP_APP_UI_FONT_STORAGE_KEY, uid);
+      const scoped = getScopedLocalStorageItem(LP_APP_UI_FONT_STORAGE_KEY, uid);
+      if (scoped && LP_APP_FONT_ID_SET.has(scoped)) return scoped;
+    }
+    const legacy = readLegacyAppFontId();
+    if (legacy) return legacy;
   } catch (_) {}
   return LP_APP_DEFAULT_FONT_ID;
 }
@@ -88,7 +109,13 @@ export function getStoredAppFontId() {
 function persistAppFontIdLocal(id) {
   const use = normalizeAppFontId(id);
   try {
-    localStorage.setItem(LP_APP_UI_FONT_STORAGE_KEY, use);
+    const uid = getActiveClientStorageUserId();
+    if (uid) {
+      setScopedLocalStorageItem(LP_APP_UI_FONT_STORAGE_KEY, use, uid);
+      localStorage.removeItem(LP_APP_UI_FONT_STORAGE_KEY);
+    } else {
+      localStorage.setItem(LP_APP_UI_FONT_STORAGE_KEY, use);
+    }
   } catch (_) {}
   return use;
 }
@@ -130,17 +157,32 @@ export function applyAppFontIdFromServer(id) {
   return true;
 }
 
-/** 로그인·계정 설정 변경 시 서버에 글꼴 id 저장 */
-export async function pushAppFontIdToSupabase(id) {
-  if (!supabase) return;
+/** 다른 기기에서 바꾼 글꼴 — 서버만 조회해 화면·로컬 반영 */
+export async function pullAppFontIdFromSupabase() {
+  if (!supabase) return false;
   const {
     data: { session },
-  } = await supabase.auth.getSession();
-  if (!session?.user?.id) return;
+  } = await getSupabaseSession();
+  if (!session?.user?.id) return false;
+  const { data, error } = await supabase
+    .from("user_subscriptions")
+    .select("ui_font_id")
+    .eq("user_id", session.user.id)
+    .maybeSingle();
+  if (error || !data) return false;
+  return applyAppFontIdFromServer(data.ui_font_id);
+}
+
+/** 로그인·계정 설정 변경 시 서버에 글꼴 id 저장 */
+export async function pushAppFontIdToSupabase(id) {
+  if (!supabase) return false;
+  const {
+    data: { session },
+  } = await getSupabaseSession();
+  if (!session?.user?.id) return false;
   const use = normalizeAppFontId(id);
-  try {
-    await supabase.rpc("set_my_ui_font_id", { p_font_id: use });
-  } catch (_) {}
+  const { error } = await supabase.rpc("set_my_ui_font_id", { p_font_id: use });
+  return !error;
 }
 
 /**
@@ -154,4 +196,26 @@ export function setAppFontId(id, opts = {}) {
   applyAppFont();
   emitAppFontChanged(use);
   if (pushServer) void pushAppFontIdToSupabase(use);
+}
+
+/** PWA·모바일: 앱으로 돌아올 때 서버 글꼴 다시 맞춤 */
+export function initAppFontResumeSync() {
+  if (_resumeFontSyncBound || typeof window === "undefined") return;
+  _resumeFontSyncBound = true;
+  window.addEventListener(
+    "pageshow",
+    () => {
+      void pullAppFontIdFromSupabase();
+    },
+    { passive: true },
+  );
+  document.addEventListener(
+    "visibilitychange",
+    () => {
+      if (document.visibilityState === "visible") {
+        void pullAppFontIdFromSupabase();
+      }
+    },
+    { passive: true },
+  );
 }

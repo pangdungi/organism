@@ -6,6 +6,7 @@ import {
   canonicalMealTaskDisplayName,
   contentTypeReportLabel,
   isHealthyMealDetailTaskName,
+  isSleepBuiltinTaskName,
   isUnhealthyMealDetailTaskName,
 } from "./timeTaskOptionsConstants.js";
 import {
@@ -766,6 +767,54 @@ function svgEl(tag, attrs = {}) {
   return node;
 }
 
+/** 가로 차트 스크롤 시 부모(레포트 세로 스크롤)로 터치가 넘어가며 위로 튀는 현상 완화 */
+function bindHorizontalChartScroll(el) {
+  if (!(el instanceof HTMLElement)) return;
+  let startX = 0;
+  let startY = 0;
+  /** @type {boolean | null} */
+  let axisLock = null;
+
+  el.addEventListener(
+    "touchstart",
+    (e) => {
+      if (e.touches.length !== 1) {
+        axisLock = null;
+        return;
+      }
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      axisLock = null;
+    },
+    { passive: true },
+  );
+
+  el.addEventListener(
+    "touchmove",
+    (e) => {
+      if (e.touches.length !== 1 || el.scrollWidth <= el.clientWidth) return;
+      const dx = e.touches[0].clientX - startX;
+      const dy = e.touches[0].clientY - startY;
+      if (axisLock == null) {
+        if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+        axisLock = Math.abs(dx) > Math.abs(dy);
+      }
+      if (axisLock) {
+        e.stopPropagation();
+      }
+    },
+    { passive: true },
+  );
+
+  el.addEventListener(
+    "touchend",
+    () => {
+      axisLock = null;
+    },
+    { passive: true },
+  );
+}
+
 function sleepChartDateLabel(dateYmd, totalDays) {
   const mo = parseInt(dateYmd.slice(5, 7), 10);
   const day = parseInt(dateYmd.slice(8, 10), 10);
@@ -785,11 +834,18 @@ function computeSleepYDomain(hoursValues, targetHours) {
 }
 
 function sleepChartLayout(totalDays) {
-  const minSlot = totalDays <= 7 ? 34 : totalDays <= 14 ? 24 : 16;
+  const scroll = totalDays > 7;
+  const minSlot = scroll
+    ? totalDays <= 14
+      ? 28
+      : 22
+    : totalDays <= 7
+      ? 34
+      : 24;
   const pad = { top: 18, right: 8, bottom: 24, left: 28 };
   const W = Math.max(300, pad.left + pad.right + totalDays * minSlot);
   const H = 128;
-  return { W, H, pad, minSlot, scroll: totalDays > 14 };
+  return { W, H, pad, minSlot, scroll };
 }
 
 function formatCompactSleepBarLabel(minutes) {
@@ -1008,19 +1064,506 @@ function buildSleepChartLegend() {
   return legend;
 }
 
-function buildSleepStatsGrid(daysWithSleep) {
-  const grid = document.createElement("div");
-  grid.className = "lp-tr2-sleep-stats";
-  const total = daysWithSleep.reduce((a, x) => a + x.minutes, 0);
-  const avg = formatIntegerMinutesDurationKo(
-    Math.round(total / daysWithSleep.length),
+function parseRowClockMinutes(str) {
+  const st = String(str || "").trim();
+  const m = st.match(/(?:^|\s|T|\.)(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  const h = Number.parseInt(m[1], 10);
+  const min = Number.parseInt(m[2], 10);
+  if (h < 0 || h > 23 || min < 0 || min > 59) return null;
+  return h * 60 + min;
+}
+
+function rowStartSortKey(r) {
+  const st = String(r.startTime || "").trim();
+  const m = st.match(
+    /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})[T\s.](\d{1,2}):(\d{2})/,
   );
-  const mins = daysWithSleep.map((x) => x.minutes);
+  if (m) {
+    const [, y, mo, d, h, mi] = m;
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${y}-${pad(mo)}-${pad(d)}T${pad(h)}:${mi}`;
+  }
+  const clock = parseRowClockMinutes(st);
+  const date = rowDateYmd(r);
+  if (clock != null && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    const h = Math.floor(clock / 60);
+    const mi = clock % 60;
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${date}T${pad(h)}:${pad(mi)}`;
+  }
+  return st || "9999";
+}
+
+/**
+ * 하루 수면 기록 해석
+ * - 2건 이상: 1번째 마감=기상, 2번째 시작=취침
+ * - 1건(아침 기상만): 마감=기상, 취침=전날 2번째 시작 → 없으면 다음날 1번째 시작
+ */
+function resolveSleepWakeBedForDay(dayRecs, nextDayRecs, prevDayRecs) {
+  if (!dayRecs?.length) {
+    return { wakeMin: null, bedtimeMin: null };
+  }
+  if (dayRecs.length >= 2) {
+    return {
+      wakeMin: dayRecs[0].endMin,
+      bedtimeMin: dayRecs[1].startMin,
+    };
+  }
+  const wakeMin = dayRecs[0].endMin;
+  let bedtimeMin = null;
+  if (prevDayRecs?.length >= 2) {
+    bedtimeMin = prevDayRecs[1].startMin;
+  }
+  if (bedtimeMin == null) {
+    bedtimeMin = nextDayRecs?.[0]?.startMin ?? null;
+  }
+  return { wakeMin, bedtimeMin };
+}
+
+/** 취침·기상 해석용 — 조회 기간 전후 1일 수면 기록 포함 */
+function sleepRowsForReportContext(range) {
+  const padStart = addDaysYmd(range.start, -1);
+  const padEnd = addDaysYmd(range.end, 1);
+  return loadTimeRows().filter((r) => {
+    const d = rowDateYmd(r);
+    if (!d || d < padStart || d > padEnd) return false;
+    return isSleepLedgerRow(r);
+  });
+}
+
+function collectSleepRecordsByDate(rows) {
+  /** @type {Map<string, { startMin: number|null, endMin: number|null, minutes: number, rating: number|null, startSort: string }[]>} */
+  const byDate = new Map();
+  rows.forEach((r) => {
+    if (!isSleepLedgerRow(r)) return;
+    const date = rowDateYmd(r);
+    if (!date) return;
+    const minutes = rowMinutes(r);
+    if (minutes <= 0) return;
+    if (!byDate.has(date)) byDate.set(date, []);
+    byDate.get(date).push({
+      startMin: parseRowClockMinutes(r.startTime),
+      endMin: parseRowClockMinutes(r.endTime),
+      minutes,
+      rating: normalizeTimeRatingForRow(r.timeRating),
+      startSort: rowStartSortKey(r),
+    });
+  });
+  byDate.forEach((recs) => {
+    recs.sort((a, b) => a.startSort.localeCompare(b.startSort));
+  });
+  return byDate;
+}
+
+function isSleepLedgerRow(r) {
+  const tn = String(r.taskName || "").trim();
+  if (isSleepBuiltinTaskName(tn)) return true;
+  const cat = String(r.category || "").trim();
+  return cat === "sleep";
+}
+
+function normalizeBedtimeMinutes(mins) {
+  if (mins == null || !Number.isFinite(mins)) return null;
+  if (mins < 12 * 60) return mins + 24 * 60;
+  return mins;
+}
+
+function formatClockFromMinutes(mins) {
+  if (mins == null || !Number.isFinite(mins)) return "—";
+  let m = Math.round(mins);
+  while (m >= 24 * 60) m -= 24 * 60;
+  while (m < 0) m += 24 * 60;
+  const h = Math.floor(m / 60);
+  const mi = m % 60;
+  return `${String(h).padStart(2, "0")}:${String(mi).padStart(2, "0")}`;
+}
+
+function circularMeanMinutes(values) {
+  if (!values.length) return null;
+  const day = 24 * 60;
+  const angles = values.map((v) => ((v % day) / day) * 2 * Math.PI);
+  const sinSum = angles.reduce((s, a) => s + Math.sin(a), 0);
+  const cosSum = angles.reduce((s, a) => s + Math.cos(a), 0);
+  let meanAngle = Math.atan2(sinSum / values.length, cosSum / values.length);
+  if (meanAngle < 0) meanAngle += 2 * Math.PI;
+  return (meanAngle / (2 * Math.PI)) * day;
+}
+
+function stdDevMinutes(values) {
+  if (values.length < 2) return 0;
+  const mean = values.reduce((a, b) => a + b, 0) / values.length;
+  const variance =
+    values.reduce((s, v) => s + (v - mean) ** 2, 0) / values.length;
+  return Math.sqrt(variance);
+}
+
+function formatRegularitySpread(stdMinutes) {
+  const m = Math.round(Number(stdMinutes) || 0);
+  if (m <= 0) return "—";
+  if (m < 60) return `±${m}분`;
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  if (r === 0) return `±${h}시간`;
+  return `±${h}시간 ${r}분`;
+}
+
+function medianOf(nums) {
+  const arr = nums.filter((n) => Number.isFinite(n)).sort((a, b) => a - b);
+  if (!arr.length) return null;
+  const mid = Math.floor(arr.length / 2);
+  return arr.length % 2 ? arr[mid] : (arr[mid - 1] + arr[mid]) / 2;
+}
+
+function avgRatingOf(days) {
+  const rated = days.filter((d) => d.rating != null);
+  if (!rated.length) return null;
+  const sum = rated.reduce((a, d) => a + d.rating, 0);
+  return sum / rated.length;
+}
+
+function weekStartYmdMonday(dateYmd) {
+  const key = normYmd(dateYmd);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return key;
+  const [y, mo, d] = key.split("-").map(Number);
+  const wd = new Date(y, mo - 1, d).getDay();
+  const delta = wd === 0 ? -6 : 1 - wd;
+  return addDaysYmd(key, delta);
+}
+
+function resolveSleepTrendMode(dayCount) {
+  if (dayCount <= 14) return "daily";
+  if (dayCount <= 62) return "weekly";
+  return "monthly";
+}
+
+function buildSleepTrendPoints(daysWithSleep, mode) {
+  if (!daysWithSleep.length) return [];
+  if (mode === "daily") {
+    return daysWithSleep
+      .filter((d) => d.rating != null)
+      .map((d) => ({
+        key: d.date,
+        label: sleepChartDateLabel(d.date, daysWithSleep.length),
+        avg: d.rating,
+        count: 1,
+      }));
+  }
+  const bucketMap = new Map();
+  daysWithSleep.forEach((d) => {
+    if (d.rating == null) return;
+    const key =
+      mode === "weekly"
+        ? weekStartYmdMonday(d.date)
+        : d.date.slice(0, 7);
+    if (!bucketMap.has(key)) {
+      bucketMap.set(key, { sum: 0, count: 0, key });
+    }
+    const b = bucketMap.get(key);
+    b.sum += d.rating;
+    b.count += 1;
+  });
+  return [...bucketMap.values()]
+    .sort((a, b) => a.key.localeCompare(b.key))
+    .map((b) => ({
+      key: b.key,
+      label:
+        mode === "weekly"
+          ? `${b.key.slice(5).replace("-", ".")}~`
+          : `${b.key.slice(0, 4)}.${b.key.slice(5, 7)}`,
+      avg: b.sum / b.count,
+      count: b.count,
+    }));
+}
+
+function buildSleepQualityCorrelations(daysWithSleep) {
+  const rated = daysWithSleep.filter(
+    (d) =>
+      d.rating != null &&
+      (d.bedtimeMin != null || d.wakeMin != null || d.minutes > 0),
+  );
+  if (rated.length < 3) return null;
+
+  const insights = [];
+
+  const bedNorm = rated
+    .filter((d) => d.bedtimeMin != null)
+    .map((d) => ({ ...d, bedNorm: normalizeBedtimeMinutes(d.bedtimeMin) }));
+  if (bedNorm.length >= 3) {
+    const med = medianOf(bedNorm.map((d) => d.bedNorm));
+    const early = bedNorm.filter((d) => d.bedNorm <= med);
+    const late = bedNorm.filter((d) => d.bedNorm > med);
+    const earlyAvg = avgRatingOf(early);
+    const lateAvg = avgRatingOf(late);
+    if (earlyAvg != null && lateAvg != null) {
+      insights.push({
+        label: "일찍 잔 날",
+        avg: earlyAvg,
+        meta: `${early.length}일 · 취침 ${formatClockFromMinutes(med)} 이전`,
+      });
+      insights.push({
+        label: "늦게 잔 날",
+        avg: lateAvg,
+        meta: `${late.length}일 · 취침 ${formatClockFromMinutes(med)} 이후`,
+      });
+    }
+  }
+
+  const durRated = rated.filter((d) => d.minutes > 0);
+  if (durRated.length >= 3) {
+    const medDur = medianOf(durRated.map((d) => d.minutes));
+    const longDays = durRated.filter((d) => d.minutes >= medDur);
+    const shortDays = durRated.filter((d) => d.minutes < medDur);
+    const longAvg = avgRatingOf(longDays);
+    const shortAvg = avgRatingOf(shortDays);
+    if (longAvg != null && shortAvg != null) {
+      insights.push({
+        label: "긴 수면",
+        avg: longAvg,
+        meta: `${longDays.length}일 · ${formatIntegerMinutesDurationKo(Math.round(medDur))} 이상`,
+      });
+      insights.push({
+        label: "짧은 수면",
+        avg: shortAvg,
+        meta: `${shortDays.length}일 · ${formatIntegerMinutesDurationKo(Math.round(medDur))} 미만`,
+      });
+    }
+  }
+
+  const wakeBuckets = [
+    { label: "7~8시", test: (m) => m >= 7 * 60 && m < 8 * 60 },
+    { label: "8~9시", test: (m) => m >= 8 * 60 && m < 9 * 60 },
+    { label: "9시 이후", test: (m) => m >= 9 * 60 },
+  ];
+  const wakeRated = rated.filter((d) => d.wakeMin != null);
+  wakeBuckets.forEach(({ label, test }) => {
+    const bucket = wakeRated.filter((d) => test(d.wakeMin));
+    const avg = avgRatingOf(bucket);
+    if (avg != null && bucket.length >= 2) {
+      insights.push({
+        label: `기상 ${label}`,
+        avg,
+        meta: `${bucket.length}일`,
+      });
+    }
+  });
+
+  return insights.length ? insights : null;
+}
+
+/** @param {ReturnType<typeof loadTimeRows>} rows @param {{start:string,end:string}} range */
+function buildSleepReportSnapshot(rows, range) {
+  const dates = listDatesInclusive(range.start, range.end);
+  const recordsByDate = collectSleepRecordsByDate(
+    sleepRowsForReportContext(range),
+  );
+
+  const sleepByDay = dates.map((date, index) => {
+    const dayRecs = recordsByDate.get(date) || [];
+    const nextDate = dates[index + 1];
+    const nextDayRecs = nextDate
+      ? recordsByDate.get(nextDate) || []
+      : recordsByDate.get(addDaysYmd(date, 1)) || [];
+    const prevDayRecs = recordsByDate.get(addDaysYmd(date, -1)) || [];
+    const minutes = dayRecs.reduce((sum, rec) => sum + rec.minutes, 0);
+    const { wakeMin, bedtimeMin } = resolveSleepWakeBedForDay(
+      dayRecs,
+      nextDayRecs,
+      prevDayRecs,
+    );
+    const rated = dayRecs.filter((rec) => rec.rating != null);
+    const rating = rated.length
+      ? rated.reduce((sum, rec) => sum + rec.rating, 0) / rated.length
+      : null;
+    return {
+      date,
+      minutes,
+      bedtimeMin,
+      wakeMin,
+      rating,
+    };
+  });
+
+  const daysWithSleep = sleepByDay.filter((x) => x.minutes > 0);
+  const bedNorm = daysWithSleep
+    .map((d) => normalizeBedtimeMinutes(d.bedtimeMin))
+    .filter((v) => v != null);
+  const wakeMins = daysWithSleep
+    .map((d) => d.wakeMin)
+    .filter((v) => v != null);
+  const avgBedtime =
+    bedNorm.length > 0 ? circularMeanMinutes(bedNorm) : null;
+  const avgWake =
+    wakeMins.length > 0
+      ? wakeMins.reduce((a, b) => a + b, 0) / wakeMins.length
+      : null;
+  const bedtimeRegularity =
+    bedNorm.length > 1 ? stdDevMinutes(bedNorm) : 0;
+  const wakeRegularity = wakeMins.length > 1 ? stdDevMinutes(wakeMins) : 0;
+  const regularitySpread =
+    bedNorm.length > 1 && wakeMins.length > 1
+      ? (bedtimeRegularity + wakeRegularity) / 2
+      : bedtimeRegularity || wakeRegularity;
+  const avgQuality = avgRatingOf(daysWithSleep);
+  const trendMode = resolveSleepTrendMode(dates.length);
+  const trendPoints = buildSleepTrendPoints(daysWithSleep, trendMode);
+  const correlations = buildSleepQualityCorrelations(daysWithSleep);
+
+  const total = daysWithSleep.reduce((a, x) => a + x.minutes, 0);
   const metDays = daysWithSleep.filter(
     (x) => x.minutes >= SLEEP_TARGET_MIN,
   ).length;
 
-  const addStat = (label, value) => {
+  return {
+    sleepByDay,
+    daysWithSleep,
+    dayCount: dates.length,
+    avgBedtime,
+    avgWake,
+    bedtimeRegularity,
+    wakeRegularity,
+    regularitySpread,
+    avgQuality,
+    trendMode,
+    trendPoints,
+    correlations,
+    avgDurationMinutes: daysWithSleep.length
+      ? Math.round(total / daysWithSleep.length)
+      : 0,
+    metDays,
+  };
+}
+
+function renderSleepQualityTrendChart(points, mode) {
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-sleep-quality-trend";
+  if (!points.length) {
+    const note = document.createElement("p");
+    note.className = "lp-tr2-chart-note";
+    note.textContent = "이 기간에 수면 평가(별점)가 없습니다.";
+    wrap.appendChild(note);
+    return wrap;
+  }
+
+  const scroll = mode === "daily" && points.length > 10;
+  const slotW = mode === "daily" ? 26 : 44;
+  const pad = { top: 14, right: 10, bottom: 22, left: 28 };
+  const W = Math.max(
+    280,
+    pad.left + pad.right + points.length * slotW,
+  );
+  const H = 108;
+  const plotW = W - pad.left - pad.right;
+  const plotH = H - pad.top - pad.bottom;
+  const yMin = 1;
+  const yMax = 5;
+  const yRange = yMax - yMin;
+  const yAt = (v) =>
+    pad.top + plotH - ((v - yMin) / yRange) * plotH;
+
+  const canvas = document.createElement("div");
+  canvas.className = "lp-tr2-sleep-quality-trend-canvas";
+  if (scroll) canvas.classList.add("lp-tr2-sleep-quality-trend-canvas--scroll");
+
+  const svg = svgEl("svg", {
+    viewBox: `0 0 ${W} ${H}`,
+    class: "lp-tr2-sleep-quality-trend-svg",
+    role: "img",
+    preserveAspectRatio: scroll ? "xMinYMid meet" : "xMidYMid meet",
+    "aria-label": "수면 품질 추세",
+  });
+  if (scroll) svg.style.minWidth = `${W}px`;
+
+  [1, 3, 5].forEach((v) => {
+    const y = yAt(v);
+    svg.appendChild(
+      svgEl("line", {
+        x1: pad.left,
+        x2: W - pad.right,
+        y1: y,
+        y2: y,
+        stroke: "#e2e8f0",
+        "stroke-width": 1,
+      }),
+    );
+    const tick = svgEl("text", {
+      x: pad.left - 5,
+      y: y + 3,
+      fill: "#94a3b8",
+      "font-size": 8,
+      "text-anchor": "end",
+    });
+    tick.textContent = String(v);
+    svg.appendChild(tick);
+  });
+
+  const coords = points.map((p, i) => {
+    const cx = pad.left + (i + 0.5) * (plotW / points.length);
+    const cy = yAt(p.avg);
+    return { ...p, cx, cy };
+  });
+
+  if (coords.length > 1) {
+    const d = coords
+      .map((c, i) => `${i === 0 ? "M" : "L"}${c.cx},${c.cy}`)
+      .join(" ");
+    svg.appendChild(
+      svgEl("path", {
+        d,
+        fill: "none",
+        stroke: "#818cf8",
+        "stroke-width": 2,
+        "stroke-linejoin": "round",
+        "stroke-linecap": "round",
+      }),
+    );
+  }
+
+  coords.forEach((c, i) => {
+    const dot = svgEl("circle", {
+      cx: c.cx,
+      cy: c.cy,
+      r: 3.5,
+      fill: ratingFillColor(c.avg),
+      stroke: "#fff",
+      "stroke-width": 1,
+    });
+    const titleEl = svgEl("title");
+    titleEl.textContent = `${c.label} · ${formatRatingAvg(c.avg)}점 · ${c.count}건`;
+    dot.appendChild(titleEl);
+    svg.appendChild(dot);
+    const showLabel =
+      points.length <= 8 ||
+      i === 0 ||
+      i === points.length - 1 ||
+      (points.length <= 16 && i % 2 === 0);
+    if (showLabel) {
+      const lab = svgEl("text", {
+        x: c.cx,
+        y: H - 6,
+        fill: "#94a3b8",
+        "font-size": 7.5,
+        "text-anchor": "middle",
+      });
+      lab.textContent = c.label;
+      svg.appendChild(lab);
+    }
+  });
+
+  canvas.appendChild(svg);
+  wrap.appendChild(canvas);
+  return wrap;
+}
+
+function buildSleepStatsGrid(snap) {
+  const { daysWithSleep } = snap;
+  const grid = document.createElement("div");
+  grid.className = "lp-tr2-sleep-stats";
+  const mins = daysWithSleep.map((x) => x.minutes);
+  const isSingleDay = snap.dayCount <= 1;
+  const day = daysWithSleep[0];
+
+  const addStat = (label, value, hint = "") => {
     const cell = document.createElement("div");
     cell.className = "lp-tr2-sleep-stat";
     const lab = document.createElement("span");
@@ -1031,15 +1574,64 @@ function buildSleepStatsGrid(daysWithSleep) {
     val.textContent = value;
     cell.appendChild(lab);
     cell.appendChild(val);
+    if (hint) {
+      const h = document.createElement("span");
+      h.className = "lp-tr2-sleep-stat-hint";
+      h.textContent = hint;
+      cell.appendChild(h);
+    }
     grid.appendChild(cell);
   };
 
-  addStat("평균", avg);
+  if (isSingleDay && day) {
+    addStat(
+      "취침",
+      day.bedtimeMin != null ? formatClockFromMinutes(day.bedtimeMin) : "—",
+      day.bedtimeMin != null ? "전날 밤" : "",
+    );
+    addStat("기상", day.wakeMin != null ? formatClockFromMinutes(day.wakeMin) : "—");
+    addStat(
+      "수면 품질",
+      day.rating != null ? `${formatRatingAvg(day.rating)}/5` : "—",
+      "수면 평가 별점",
+    );
+    addStat("수면 시간", formatIntegerMinutesDurationKo(day.minutes));
+    addStat(
+      "7시간 목표",
+      day.minutes >= SLEEP_TARGET_MIN ? "달성" : "미달",
+    );
+    return grid;
+  }
+
+  addStat(
+    "평균 취침",
+    snap.avgBedtime != null ? formatClockFromMinutes(snap.avgBedtime) : "—",
+  );
+  addStat(
+    "평균 기상",
+    snap.avgWake != null ? formatClockFromMinutes(snap.avgWake) : "—",
+  );
+  addStat(
+    "취침·기상 규칙성",
+    snap.regularitySpread > 0
+      ? formatRegularitySpread(snap.regularitySpread)
+      : "—",
+    "클수록 불규칙",
+  );
+  addStat(
+    "평균 품질",
+    snap.avgQuality != null ? `${formatRatingAvg(snap.avgQuality)}/5` : "—",
+    "수면 평가 별점",
+  );
+  addStat(
+    "평균 수면",
+    formatIntegerMinutesDurationKo(snap.avgDurationMinutes),
+  );
   if (daysWithSleep.length > 1) {
     addStat("최소", formatIntegerMinutesDurationKo(Math.min(...mins)));
     addStat("최대", formatIntegerMinutesDurationKo(Math.max(...mins)));
   }
-  addStat("목표 달성", `${metDays}/${daysWithSleep.length}일`);
+  addStat("목표 달성", `${snap.metDays}/${daysWithSleep.length}일`);
   return grid;
 }
 
@@ -1372,6 +1964,7 @@ function renderMediaCompareChart(chartDays) {
   cols.className = "lp-tr2-media-compare-cols";
   if (chartDays.length >= 8) {
     cols.classList.add("lp-tr2-media-compare-cols--scroll");
+    bindHorizontalChartScroll(cols);
   }
   cols.setAttribute("role", "img");
   cols.setAttribute("aria-label", "날짜별 의식적·무의식적 미디어 시청 비교");
@@ -1523,34 +2116,78 @@ function mountHeroSection(scrollWrap, range) {
   scrollWrap.appendChild(sec);
 }
 
-function mountSleepSection(scrollWrap, range) {
-  const dates = listDatesInclusive(range.start, range.end);
+function mountSleepSection(scrollWrap, range, rows) {
+  const snap = buildSleepReportSnapshot(rows, range);
   const sec = createSection(
     "수면 기록",
-    "막대=실제 수면 · 연한 주황=7시간까지 · 점선=목표선",
+    "취침·기상·품질 패턴 · 막대=수면 시간 · 점선=7시간 목표",
   );
-  const sleepByDay = dates.map((d) => ({
-    date: d,
-    minutes: getTimeReportSummaryGridForDateRange(d, d).sleepMinutes,
-  }));
 
-  const daysWithSleep = sleepByDay.filter((x) => x.minutes > 0);
-  if (daysWithSleep.length) {
-    const chartWrap = document.createElement("div");
-    chartWrap.className = "lp-tr2-sleep-chart-wrap";
-    const canvas = document.createElement("div");
-    canvas.className = "lp-tr2-sleep-chart-canvas";
-    const { scroll } = renderSleepGoalBarChart(canvas, sleepByDay) || {};
-    if (scroll) canvas.classList.add("lp-tr2-sleep-chart-canvas--scroll");
-    chartWrap.appendChild(canvas);
-    chartWrap.appendChild(buildSleepChartLegend());
-    sec.appendChild(chartWrap);
-    sec.appendChild(buildSleepStatsGrid(daysWithSleep));
-  } else {
+  if (!snap.daysWithSleep.length) {
     const note = document.createElement("p");
     note.className = "lp-tr2-chart-note";
     note.textContent = "이 기간에 수면 기록이 없습니다.";
     sec.appendChild(note);
+    scrollWrap.appendChild(sec);
+    return;
+  }
+
+  sec.appendChild(buildSleepStatsGrid(snap));
+
+  const chartWrap = document.createElement("div");
+  chartWrap.className = "lp-tr2-sleep-chart-wrap";
+  const canvas = document.createElement("div");
+  canvas.className = "lp-tr2-sleep-chart-canvas";
+  const { scroll } =
+    renderSleepGoalBarChart(canvas, snap.sleepByDay) || {};
+  if (scroll) {
+    canvas.classList.add("lp-tr2-sleep-chart-canvas--scroll");
+    bindHorizontalChartScroll(canvas);
+  }
+  chartWrap.appendChild(canvas);
+  chartWrap.appendChild(buildSleepChartLegend());
+  if (scroll) {
+    const scrollHint = document.createElement("p");
+    scrollHint.className = "lp-tr2-sleep-chart-scroll-hint";
+    scrollHint.textContent = "← 좌우로 밀어 전체 날짜를 볼 수 있어요";
+    chartWrap.appendChild(scrollHint);
+  }
+  sec.appendChild(chartWrap);
+
+  const trendModeLabel =
+    snap.trendMode === "daily"
+      ? "일별"
+      : snap.trendMode === "weekly"
+        ? "주간"
+        : "월간";
+  const trendBlock = createRatingBlock(
+    `수면 품질 추세 (${trendModeLabel})`,
+    "수면 평가 별점 · 선으로 이어진 추세",
+  );
+  const trendChart = renderSleepQualityTrendChart(
+    snap.trendPoints,
+    snap.trendMode,
+  );
+  trendChart
+    .querySelectorAll(".lp-tr2-sleep-quality-trend-canvas--scroll")
+    .forEach((node) => bindHorizontalChartScroll(node));
+  trendBlock.appendChild(trendChart);
+  sec.appendChild(trendBlock);
+
+  if (snap.correlations?.length) {
+    const corrBlock = createRatingBlock(
+      "품질 상관 분석",
+      "일찍 잔 날 · 수면 길이 · 기상 시각대별 평균 품질",
+    );
+    const bars = document.createElement("div");
+    bars.className = "lp-tr2-bars";
+    snap.correlations.forEach((item) => {
+      bars.appendChild(
+        createRatingBarRow(item.label, item.avg, item.meta),
+      );
+    });
+    corrBlock.appendChild(bars);
+    sec.appendChild(corrBlock);
   }
 
   scrollWrap.appendChild(sec);
@@ -1806,7 +2443,7 @@ export function mountUnifiedTimeReport(scrollWrap, arg2, arg3) {
   scrollWrap.classList.add("lp-tr2-root");
 
   mountHeroSection(scrollWrap, range);
-  mountSleepSection(scrollWrap, range);
+  mountSleepSection(scrollWrap, range, rows);
   mountIntakeSection(scrollWrap, range, rows);
   mountMediaSection(scrollWrap, range, rows);
   mountDonutSection(scrollWrap, range);

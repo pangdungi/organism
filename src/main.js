@@ -36,7 +36,7 @@ import { initModalNoAutoFocus } from "./utils/modalNoAutoFocus.js";
 import { initLpAppShellViewportLock } from "./utils/lpAppShellViewport.js";
 import { supabase } from "./supabase.js";
 import { getSupabaseSession } from "./utils/supabaseSession.js";
-import { applyAppFont } from "./utils/appUiFont.js";
+import { applyAppFont, initAppFontResumeSync } from "./utils/appUiFont.js";
 import { prefetchCriticalAppIconAssets } from "./utils/appIconPrefetch.js";
 import { setAppSplashMessage } from "./utils/lpAppLoading.js";
 import {
@@ -86,13 +86,13 @@ async function signOutForSubscriptionExpired() {
   await signOut();
 }
 
-/** 앱 연 뒤 설정 pull 과 같은 응답으로 구독·기한 타이머 처리(첫 로딩 블로킹 없음) */
-function scheduleBackgroundSubscriptionGateAfterPrefsPull() {
-  void pullUserPrefsFromSupabase()
-    .then((row) =>
-      runBackgroundSubscriptionGateFromPrefsRow(row, signOutForSubscriptionExpired),
-    )
-    .catch(() => {});
+/** 설정 pull 후 구독·기한 타이머 (글꼴은 pull 안에서 서버 우선 반영) */
+async function pullPrefsAndRunSubscriptionGate() {
+  const row = await pullUserPrefsFromSupabase().catch(() => null);
+  await runBackgroundSubscriptionGateFromPrefsRow(
+    row,
+    signOutForSubscriptionExpired,
+  ).catch(() => {});
 }
 
 /**
@@ -277,28 +277,25 @@ async function enterAuthenticatedApp(opts = {}) {
       prefetchCriticalAppIconAssets();
       refreshLpPwaInstall();
 
-      void getSupabaseSession().then(({ data: { session } }) => {
-        markTabBootAuthUid(session?.user?.id);
-      });
+      const {
+        data: { session: bootSession },
+      } = await getSupabaseSession();
+      markTabBootAuthUid(bootSession?.user?.id);
       finishStep("세션·탭 표시");
 
-      void (async () => {
-        try {
-          if (enforceSubscriptionBeforeMount) {
-            const blocked = await enforceSubscriptionAccessOrSignOut();
-            if (blocked) {
-              await showAlertModal({
-                title: "안내",
-                message: SUBSCRIPTION_EXPIRED_MESSAGE,
-              });
-              await signOut();
-              return;
-            }
-          }
-          await prepareTimeLedgerStorageForCurrentSession();
-          scheduleBackgroundSubscriptionGateAfterPrefsPull();
-        } catch (_) {}
-      })();
+      if (enforceSubscriptionBeforeMount) {
+        const blocked = await enforceSubscriptionAccessOrSignOut();
+        if (blocked) {
+          await showAlertModal({
+            title: "안내",
+            message: SUBSCRIPTION_EXPIRED_MESSAGE,
+          });
+          await signOut();
+          return;
+        }
+      }
+      await prepareTimeLedgerStorageForCurrentSession();
+      await pullPrefsAndRunSubscriptionGate();
 
       timings.push({
         label: "진입 합계",
@@ -377,6 +374,7 @@ function init() {
   initLpPwaInstall();
 
   applyAppFont();
+  initAppFontResumeSync();
   applyTimeCategoryColors();
   applyTaskCategoryColors();
 

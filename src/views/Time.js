@@ -9758,6 +9758,7 @@ export function render(opts = {}) {
       reportShell.className =
         "time-ledger-report-view-shell diary-content-scroll diary-content-scroll--time-report-swipe";
       reportShell.setAttribute("data-lp-time-report-body", "");
+      reportShell.setAttribute("data-lp-time-report-vertical-start", "");
       reportShell.setAttribute("aria-label", "시간 레포트");
       ledgerContainer.appendChild(reportShell);
       mountTimeLedgerReport(reportShell, {
