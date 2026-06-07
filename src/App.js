@@ -837,6 +837,18 @@ export async function mountApp(container) {
   void syncAdminMenuVisibility();
   if (typeof window !== "undefined") {
     window.__lpSyncWatchHelp = printSyncWatchHelp;
+    window.__lpShowServerTasks = (names) =>
+      import("./utils/timeLedgerTasksSupabase.js").then((m) =>
+        m.fetchServerTimeLedgerTasksForDebug({
+          names: names == null ? [] : Array.isArray(names) ? names : [names],
+        }),
+      );
+    window.__lpCompareServerTasks = (names) =>
+      import("./utils/timeLedgerTasksSupabase.js").then((m) =>
+        m.debugCompareServerAndLocalTasks(
+          names == null ? [] : Array.isArray(names) ? names : [names],
+        ),
+      );
   }
 
   /* 서버 pull 은 상위 탭 전환(setActiveTab)·최초 진입 시에만 수행. 포커스 복귀 등에서는 pull 하지 않음. */

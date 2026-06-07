@@ -1,8 +1,8 @@
 /**
  * 시간가계부 과제 마스터 ↔ Supabase (time_ledger_tasks)
  *
- * - pull: 시간가계부 탭 진입·과제설정·기록·수정·예상 일정 모달 열 때
- * - push: 과제설정 모달 저장·KPI 연동·삭제만 (행 단위 upsert/delete, 전체 목록 덮어쓰기 없음)
+ * - pull: 시간가계부 탭 진입·과제설정·기록·수정·예상 일정 모달 열 때 (서버 행 자동 삭제 없음)
+ * - push: 과제설정 모달 저장·KPI 연동·사용자 명시 삭제만 (행 단위 upsert/delete)
  */
 
 import { supabase } from "../supabase.js";
@@ -505,4 +505,76 @@ export async function hydrateTimeLedgerTasksFromCloud() {
     getFullTaskOptions();
     migrateTimeLogRowsTaskIds();
   }
+}
+
+/**
+ * 콘솔 디버그 — 서버 time_ledger_tasks 원본(로컬 가공 없음).
+ * @param {{ names?: string[] }} [opts] — names 있으면 해당 이름만 개수·id 로그
+ */
+export async function fetchServerTimeLedgerTasksForDebug(opts = {}) {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) {
+    return { ok: false, error: "no_session", rows: [], count: 0 };
+  }
+  let tasksRes = await supabase
+    .from(TABLE)
+    .select(SELECT_TASKS_WITH_KPI)
+    .eq("user_id", userId)
+    .order("sort_order", { ascending: true });
+  let { data, error } = tasksRes;
+  if (error && (isMissingKpiIdColumnError(error) || isMissingIconKeyColumnError(error))) {
+    tasksRes = await supabase
+      .from(TABLE)
+      .select(SELECT_TASKS_BASE)
+      .eq("user_id", userId)
+      .order("sort_order", { ascending: true });
+    data = tasksRes.data;
+    error = tasksRes.error;
+  }
+  const rows = Array.isArray(data) ? data : [];
+  const names = Array.isArray(opts.names) ? opts.names : [];
+  if (names.length) {
+    for (const name of names) {
+      const hits = rows.filter((r) => (r.name || "").trim() === name);
+      console.log(
+        "[서버 과제]",
+        name,
+        "→",
+        hits.length,
+        "개",
+        hits.map((r) => r.id),
+      );
+    }
+  } else {
+    console.log("[서버 과제] 전체", rows.length, "개");
+    console.table(
+      rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        kpi_id: r.kpi_id ?? "",
+        category: r.category ?? "",
+      })),
+    );
+  }
+  return {
+    ok: !error,
+    error: error ? error.message || String(error) : null,
+    rows,
+    count: rows.length,
+  };
+}
+
+/** 서버 원본 조회 + 로컬 메모리·getFullTaskOptions 비교 */
+export async function debugCompareServerAndLocalTasks(names = []) {
+  const server = await fetchServerTimeLedgerTasksForDebug({ names });
+  const m = await import("./timeTaskOptionsModel.js");
+  const mem = m.readTaskOptionsMemRows();
+  const full = m.getFullTaskOptions();
+  const pick = (list) => {
+    if (!names.length) return list;
+    return list.filter((t) => names.includes((t.name || "").trim()));
+  };
+  console.log("[로컬 mem]", pick(mem).length, pick(mem).map((t) => ({ name: t.name, id: t.id })));
+  console.log("[getFullTaskOptions]", pick(full).length, pick(full).map((t) => ({ name: t.name, id: t.id })));
+  return { server, mem: pick(mem), full: pick(full) };
 }

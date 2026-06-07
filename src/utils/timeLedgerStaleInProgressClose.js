@@ -50,12 +50,13 @@ function buildEndTimeAtDayEnd2359(entryYmd, startTime) {
 /**
  * @param {object[]} rows
  * @param {{ todayYmd?: string }} [opts]
- * @returns {{ rows: object[], changed: boolean, closedCount: number }}
+ * @returns {{ rows: object[], changed: boolean, closedCount: number, closedEntryIds: string[] }}
  */
 export function closeStaleInProgressTimeLedgerRows(rows, opts = {}) {
   const today = opts.todayYmd || timeLedgerLocalTodayYmd();
   let changed = false;
   let closedCount = 0;
+  const closedEntryIds = [];
   const next = (Array.isArray(rows) ? rows : []).map((row) => {
     if (!timeLedgerRowHasOpenEnd(row)) return row;
     const entryYmd = timeLedgerRowEntryYmd(row);
@@ -64,11 +65,13 @@ export function closeStaleInProgressTimeLedgerRows(rows, opts = {}) {
     if (!endTime) return row;
     changed = true;
     closedCount += 1;
+    const id = String(row.id || "").trim();
+    if (id) closedEntryIds.push(id);
     return {
       ...row,
       endTime,
       localModifiedAt: Date.now(),
     };
   });
-  return { rows: next, changed, closedCount };
+  return { rows: next, changed, closedCount, closedEntryIds };
 }

@@ -870,6 +870,7 @@ function saveTimeRows(rows) {
     );
     const arr = Array.isArray(rows) ? rows : [];
     const { rows: withIds, dirty } = ensureTimeLedgerEntryIds(arr);
+    const pushEntryIds = [];
     const toSave = withIds.map((r) => {
       const id = String(r?.id || "").trim();
       const prevRow = id ? prevById.get(id) : null;
@@ -879,6 +880,7 @@ function saveTimeRows(rows) {
           Number.isFinite(r.localModifiedAt)
             ? r.localModifiedAt
             : Date.now();
+        if (id) pushEntryIds.push(id);
         return { ...r, localModifiedAt: lm };
       }
       const same =
@@ -895,6 +897,7 @@ function saveTimeRows(rows) {
               : r.serverUpdatedAt,
         };
       }
+      if (id) pushEntryIds.push(id);
       return { ...r, localModifiedAt: Date.now() };
     });
     if (dirty) {
@@ -903,7 +906,8 @@ function saveTimeRows(rows) {
     writeTimeLedgerEntriesRaw(toSave);
     timeLedgerSyncLog("local_rows_saved", {
       totalRows: toSave.length,
-      note: "로컬 저장 완료 → 곧 서버 반영(push) 시도",
+      pushEntryCount: pushEntryIds.length,
+      note: "로컬 저장 완료 → 이번에 바뀐 기록만 서버 반영(push)",
     });
     scheduleSyncHabitTrackerLogs();
     if (typeof document !== "undefined") {
@@ -912,8 +916,11 @@ function saveTimeRows(rows) {
       );
     }
     try {
-      if (typeof window !== "undefined") {
-        void pushDirtyTimeLedgerEntriesToSupabase({ skipPull: true });
+      if (typeof window !== "undefined" && pushEntryIds.length > 0) {
+        void pushDirtyTimeLedgerEntriesToSupabase({
+          skipPull: true,
+          entryIds: pushEntryIds,
+        });
       }
     } catch (_) {}
   } catch (_) {}

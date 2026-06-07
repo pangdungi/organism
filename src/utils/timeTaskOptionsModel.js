@@ -44,17 +44,7 @@ function taskRowsIdentitySig(rows) {
   }
 }
 
-const KPI_LINKED_LEDGER_CATEGORIES = new Set([
-  "dream",
-  "health",
-  "happiness",
-  "sideincome",
-]);
-
 let _patchKpiLinkedFromMapsDepth = 0;
-let _pendingTaskDeleteIds = new Set();
-let _taskDeleteFlushTimer = null;
-let _taskDeleteFlushRunning = false;
 
 function normalizeBuiltinTaskRow(o) {
   const rawName = String(o?.name ?? "").trim();
@@ -84,160 +74,30 @@ export function readTaskOptionsMemRows() {
   }));
 }
 
-/** KPI·과제 정리 시 서버 delete — 한 줄씩 순서대로(동시 요청·락 폭주 방지) */
-function queueTimeLedgerTaskRowDeletes(ids) {
-  for (const id of ids || []) {
-    const s = String(id || "").trim();
-    if (isUuid(s)) _pendingTaskDeleteIds.add(s);
-  }
-  if (_taskDeleteFlushTimer != null) return;
-  _taskDeleteFlushTimer = setTimeout(() => {
-    _taskDeleteFlushTimer = null;
-    void flushPendingTimeLedgerTaskRowDeletes();
-  }, 450);
-}
-
-async function flushPendingTimeLedgerTaskRowDeletes() {
-  if (_taskDeleteFlushRunning) return;
-  if (!_pendingTaskDeleteIds.size) return;
-  _taskDeleteFlushRunning = true;
-  notifySaved({ bumpPullSkip: true, scheduleSyncPush: false });
-  try {
-    const m = await import("./timeLedgerTasksSupabase.js");
-    while (_pendingTaskDeleteIds.size) {
-      const batch = [..._pendingTaskDeleteIds];
-      _pendingTaskDeleteIds.clear();
-      for (const id of batch) {
-        try {
-          await m.deleteTimeLedgerTaskRowForCurrentUser(id);
-        } catch (_) {}
-      }
-    }
-  } finally {
-    _taskDeleteFlushRunning = false;
-    notifySaved({ bumpPullSkip: true, scheduleSyncPush: false });
-  }
-}
-
-/** KPI id당 1행·현재 표시명 — 메모리 행 + KPI 맵 기준 */
-function buildKpiKeeperContext(rows) {
-  const keepersById = getActiveKpiTaskKeepersById();
-  const namesByCat = new Map();
-  const syncNames = getKpiSyncedTaskNames();
-
-  for (const row of rows || []) {
-    const kid = String(row.kpiId || "").trim();
-    const cat = String(row.category || "").trim();
-    const n = String(row.name || "").trim();
-    if (!KPI_LINKED_LEDGER_CATEGORIES.has(cat) || !n) continue;
-    if (!namesByCat.has(cat)) namesByCat.set(cat, new Set());
-    namesByCat.get(cat).add(n);
-  }
-
-  for (const [kid, meta] of keepersById) {
-    const cat = String(meta.category || "").trim();
-    const n = String(meta.name || "").trim();
-    if (!kid || !KPI_LINKED_LEDGER_CATEGORIES.has(cat) || !n) continue;
-    if (!namesByCat.has(cat)) namesByCat.set(cat, new Set());
-    namesByCat.get(cat).add(n);
-  }
-
-  return { keepersById, namesByCat };
-}
-
-function normalizeKpiLinkedTaskRows(rows) {
-  const dupIds = [];
-  const { keepersById, namesByCat } = buildKpiKeeperContext(rows);
-  const seenKpi = new Set();
-  const next = [];
-
-  for (const o of rows || []) {
-    const kid = String(o.kpiId || "").trim();
-    let name = C.canonicalMealTaskDisplayName(String(o.name || "").trim());
-    let category = C.canonicalTimeTaskCategory(o.category);
-    const row = {
-      name,
-      category,
-      productivity: o.productivity || "productive",
-      memo: (o.memo || "").trim(),
-      id: String(o.id || "").trim(),
-      kpiId: kid,
-      iconKey: String(o.iconKey || "").trim(),
-    };
-
-    if (kid) {
-      if (seenKpi.has(kid)) {
-        if (isUuid(row.id)) dupIds.push(row.id);
-        continue;
-      }
-      seenKpi.add(kid);
-      const meta = keepersById.get(kid);
-      if (meta?.name) row.name = meta.name;
-      if (meta?.category) row.category = meta.category;
-      next.push(row);
-      continue;
-    }
-
-    if (
-      KPI_LINKED_LEDGER_CATEGORIES.has(category) &&
-      namesByCat.get(category)?.size
-    ) {
-      const cur = namesByCat.get(category);
-      if (name && !cur.has(name)) {
-        if (isUuid(row.id)) dupIds.push(row.id);
-        continue;
-      }
-    }
-
-    next.push(row);
-  }
-
-  const nameByKpiKeeper = new Map();
-  for (const row of next) {
-    const kid = String(row.kpiId || "").trim();
-    if (!kid) continue;
-    const n = String(row.name || "").trim();
-    if (n) nameByKpiKeeper.set(n, row);
-  }
-
-  const nextSansNameDup = [];
-  for (const row of next) {
-    const kid = String(row.kpiId || "").trim();
-    if (kid) {
-      nextSansNameDup.push(row);
-      continue;
-    }
-    const n = String(row.name || "").trim();
-    if (n && nameByKpiKeeper.has(n)) {
-      const oid = String(row.id || "").trim();
-      const keepId = String(nameByKpiKeeper.get(n).id || "").trim();
-      if (isUuid(oid) && oid !== keepId) dupIds.push(oid);
-      continue;
-    }
-    nextSansNameDup.push(row);
-  }
-
-  return { next: nextSansNameDup, dupIds: [...new Set(dupIds)] };
-}
-
-/** KPI 화면(kpis[])의 현재 이름·kpiId당 1행으로 메모리 정리(서버 upsert는 하지 않음) */
+/** KPI 맵의 현재 표시명·category만 연동 과제 행에 반영(서버 행 삭제·로컬 중복 제거 없음) */
 export function patchKpiLinkedTasksFromKpiMaps() {
   if (!_ledgerTasksMem || !Array.isArray(_ledgerTasksMem)) return;
   if (_patchKpiLinkedFromMapsDepth > 4) return;
   _patchKpiLinkedFromMapsDepth++;
   try {
-    const { next, dupIds } = normalizeKpiLinkedTaskRows(_ledgerTasksMem);
-    if (
-      dupIds.length === 0 &&
-      taskRowsIdentitySig(next) === taskRowsIdentitySig(_ledgerTasksMem)
-    ) {
-      return;
-    }
+    const keepers = getActiveKpiTaskKeepersById();
+    let changed = false;
+    const next = _ledgerTasksMem.map((o) => {
+      const kid = String(o.kpiId || "").trim();
+      if (!kid) return o;
+      const meta = keepers.get(kid);
+      if (!meta) return o;
+      const name = String(meta.name || o.name || "").trim() || o.name;
+      const category = String(meta.category || o.category || "").trim() || o.category;
+      if (name === o.name && category === o.category) return o;
+      changed = true;
+      return { ...o, name, category };
+    });
+    if (!changed) return;
     saveLedgerTaskList(next, {
       bumpPullSkip: true,
       scheduleSyncPush: false,
     });
-    if (dupIds.length) queueTimeLedgerTaskRowDeletes(dupIds);
   } finally {
     _patchKpiLinkedFromMapsDepth--;
   }
@@ -553,70 +413,14 @@ export function clearTimeLedgerTaskOptionsLocalStorage() {
 }
 
 export function getFullTaskOptions() {
-  let arr = [];
-  if (_ledgerTasksMem !== null && Array.isArray(_ledgerTasksMem)) {
-    arr = _ledgerTasksMem.map((o) => ({
-      name: o.name || "",
-      category: o.category || "",
-      productivity: o.productivity || "productive",
-      memo: o.memo || "",
-      id: o.id || "",
-      kpiId: (o.kpiId && String(o.kpiId).trim()) || "",
-      iconKey: String(o.iconKey || "").trim(),
-    }));
-  }
-
-  let merged;
-  if (arr.length === 0) {
-    merged = C.getBuiltinTaskTemplates().map((t) => ({ ...t, memo: "" }));
-  } else {
-    const fixedOtherNames = new Set(C.FIXED_OTHER_TASKS.map((t) => t.name));
-    const fixedProdNames = new Set(C.FIXED_PRODUCTIVE_TASKS.map((t) => t.name));
-    const fixedNonProdNames = new Set(
-      C.FIXED_NONPRODUCTIVE_TASKS.map((t) => t.name),
-    );
-    const legacyMealNames = new Set(
-      C.MEAL_TASK_NAME_RENAMES.map((r) => r.from),
-    );
-    const others = arr.filter((o) => {
-      const n = (o.name || "").trim();
-      if (C.isRetiredBuiltinTaskName(n)) return false;
-      if (legacyMealNames.has(n)) return false;
-      return (
-        !fixedOtherNames.has(n) &&
-        !fixedProdNames.has(n) &&
-        !fixedNonProdNames.has(n)
-      );
-    });
-    /* 이름별로 저장본이 있으면 id·memo 등 유지 (상수만 쓰면 id가 비어 매번 dirty → 저장·동기화 루프) */
-    const byName = new Map(arr.map((o) => [o.name, o]));
-    const hydrateFixed = (t) => {
-      let s = byName.get(t.name);
-      if (!s) {
-        for (const { from, to } of C.MEAL_TASK_NAME_RENAMES) {
-          if (to === t.name) {
-            s = byName.get(from);
-            if (s) break;
-          }
-        }
-      }
-      if (!s) return { ...t, memo: "" };
-      const kid = String(s.kpiId || "").trim();
-      return {
-        ...t,
-        memo: (s.memo || "").trim(),
-        id: (s.id || "").trim(),
-        iconKey: String(s.iconKey || "").trim(),
-        ...(kid ? { kpiId: kid } : {}),
-      };
-    };
-    merged = [
-      ...C.FIXED_OTHER_TASKS.map(hydrateFixed),
-      ...C.FIXED_PRODUCTIVE_TASKS.map(hydrateFixed),
-      ...C.FIXED_NONPRODUCTIVE_TASKS.map(hydrateFixed),
-      ...others,
-    ];
-  }
+  const arr = readTaskOptionsMemRows().filter(
+    (o) => !C.isRetiredBuiltinTaskName(String(o.name || "").trim()),
+  );
+  const merged =
+    arr.length === 0
+      ? C.getBuiltinTaskTemplates().map((t) => ({ ...t, memo: "" }))
+      : arr;
+  /* pull·저장된 메모리를 id 기준 그대로 사용 — 동일 이름·다른 id 여러 줄 유지 */
   return assignIdsToMergedList(merged.map((o) => normalizeBuiltinTaskRow(o)));
 }
 
@@ -995,8 +799,6 @@ export function kpiTimeTaskRename(kpi, oldNameFromKpi) {
     upsertTaskIds: isUuid(canonicalId) ? [canonicalId] : [],
   });
 
-  if (deleteIds.size) queueTimeLedgerTaskRowDeletes([...deleteIds]);
-
   patchKpiLinkedTasksFromKpiMaps();
 }
 
@@ -1164,12 +966,6 @@ export function applyTimeLedgerTasksFromServer(
   for (const t of C.RETIRED_BUILTIN_TASK_TEMPLATES) {
     builtInIdSet.add(deterministicTaskId(t.name, t.productivity, t.category));
   }
-  const retiredTaskIdsToDelete = [];
-  for (const t of C.RETIRED_BUILTIN_TASK_TEMPLATES) {
-    retiredTaskIdsToDelete.push(
-      deterministicTaskId(t.name, t.productivity, t.category),
-    );
-  }
   function localBuiltinIconKey(builtinId, taskName) {
     const loc = localById.get(builtinId);
     if (loc) return String(loc.iconKey || "").trim();
@@ -1182,64 +978,21 @@ export function applyTimeLedgerTasksFromServer(
     return "";
   }
 
+  const serverCanonNames = new Set(
+    serverRowsSafe
+      .map((r) =>
+        C.canonicalMealTaskDisplayName(String(r.name || "").trim()),
+      )
+      .filter(Boolean),
+  );
   const out = [];
-  for (const t of builtinTemplates) {
-    const id = deterministicTaskId(t.name, t.productivity, t.category);
-    let s = byId.get(id);
-    if (!s) {
-      for (const { from, to } of C.MEAL_TASK_NAME_RENAMES) {
-        if (to !== t.name) continue;
-        const oldId = deterministicTaskId(from, t.productivity, t.category);
-        s = byId.get(oldId);
-        if (s) break;
-      }
-    }
-    const locIcon = localBuiltinIconKey(id, t.name);
-    if (s) {
-      const skpi = String(s.kpi_id ?? "").trim();
-      let cat =
-        s.category != null && String(s.category).trim() !== ""
-          ? String(s.category).trim()
-          : t.category;
-      let dispName = t.name;
-      const resolved = resolveFromKpiLink(skpi, dispName, cat);
-      out.push({
-        id: String(s.id || id).trim(),
-        name: resolved.name || t.name,
-        category: resolved.category,
-        productivity: normalizeProductivity(s.productivity || t.productivity),
-        memo: (s.memo || "").trim(),
-        kpiId: skpi,
-        iconKey: String(
-          resolveEffectiveTaskIconKey({
-            iconKey: s.icon_key ?? locIcon,
-            kpiId: skpi,
-            taskName: resolved.name || t.name,
-          }) || "",
-        ).trim(),
-      });
-    } else {
-      out.push({
-        ...t,
-        memo: "",
-        id,
-        kpiId: "",
-        iconKey: String(
-          resolveEffectiveTaskIconKey({
-            iconKey: locIcon,
-            taskName: t.name,
-          }) || "",
-        ).trim(),
-      });
-    }
-  }
+  const outIds = new Set();
+  /* 서버 행을 id 기준 전부 반영 — 동일 이름·다른 id 여러 줄 유지 */
   for (const r of serverRowsSafe) {
     const rid = String(r.id || "").trim();
-    if (!rid || builtInIdSet.has(rid)) continue;
-    if (C.isRetiredBuiltinTaskName(r.name)) {
-      if (isUuid(rid)) retiredTaskIdsToDelete.push(rid);
-      continue;
-    }
+    if (!rid || outIds.has(rid)) continue;
+    if (C.isRetiredBuiltinTaskName(r.name)) continue;
+    outIds.add(rid);
     const loc = localById.get(rid);
     const fromServerKpi = String(r.kpi_id ?? "").trim();
     const kid =
@@ -1247,18 +1000,42 @@ export function applyTimeLedgerTasksFromServer(
     const baseName = (r.name || "").trim();
     const baseCat = (r.category || "").trim();
     const merged = resolveFromKpiLink(kid, baseName, baseCat);
+    const builtin = findBuiltinByName(merged.name || baseName);
     out.push({
       id: rid,
-      name: merged.name,
-      category: merged.category,
-      productivity: normalizeProductivity(r.productivity),
+      name: merged.name || baseName,
+      category: merged.category || baseCat,
+      productivity: normalizeProductivity(
+        r.productivity || builtin?.productivity,
+      ),
       memo: (r.memo || "").trim(),
       kpiId: kid,
       iconKey: String(
         resolveEffectiveTaskIconKey({
           iconKey: r.icon_key ?? loc?.iconKey,
           kpiId: kid,
-          taskName: merged.name,
+          taskName: merged.name || baseName,
+        }) || "",
+      ).trim(),
+    });
+  }
+  /* 서버에 해당 표시명이 없을 때만 내장 과제 한 줄(결정적 id) 추가 */
+  for (const t of builtinTemplates) {
+    const canon = C.canonicalMealTaskDisplayName(t.name);
+    if (serverCanonNames.has(canon)) continue;
+    const id = deterministicTaskId(t.name, t.productivity, t.category);
+    if (outIds.has(id) || byId.has(id)) continue;
+    const locIcon = localBuiltinIconKey(id, t.name);
+    outIds.add(id);
+    out.push({
+      ...t,
+      memo: "",
+      id,
+      kpiId: "",
+      iconKey: String(
+        resolveEffectiveTaskIconKey({
+          iconKey: locIcon,
+          taskName: t.name,
         }) || "",
       ).trim(),
     });
@@ -1294,22 +1071,11 @@ export function applyTimeLedgerTasksFromServer(
     serverRowsSafe.map((r, i) => [String(r.id || "").trim(), r.sort_order ?? i]),
   );
   out.sort((a, b) => (order.get(a.id) ?? 9999) - (order.get(b.id) ?? 9999));
-  const { next: dedupedSansOrphanNameDup, dupIds: dupIdsToDelete } =
-    normalizeKpiLinkedTaskRows(out);
-  const deleteIds = [
-    ...dupIdsToDelete,
-    ...retiredTaskIdsToDelete.filter((id) => isUuid(String(id || "").trim())),
-  ];
-  if (deleteIds.length) {
-    queueTimeLedgerTaskRowDeletes(deleteIds);
-  }
   const listUnchanged =
-    deleteIds.length === 0 &&
     entryTaskIdRemaps.length === 0 &&
-    taskRowsIdentitySig(dedupedSansOrphanNameDup) ===
-      taskRowsIdentitySig(_ledgerTasksMem);
+    taskRowsIdentitySig(out) === taskRowsIdentitySig(_ledgerTasksMem);
   if (!listUnchanged) {
-    saveMergedList(dedupedSansOrphanNameDup, {
+    saveMergedList(out, {
       bumpPullSkip: false,
       scheduleSyncPush: false,
     });
@@ -1317,7 +1083,7 @@ export function applyTimeLedgerTasksFromServer(
   if (entryTaskIdRemaps.length) {
     remapTimeLedgerEntryTaskIds(entryTaskIdRemaps);
   }
-  return !listUnchanged || deleteIds.length > 0 || entryTaskIdRemaps.length > 0;
+  return !listUnchanged || entryTaskIdRemaps.length > 0;
 }
 
 export function buildTimeLedgerTasksUpsertPayloads(userId) {

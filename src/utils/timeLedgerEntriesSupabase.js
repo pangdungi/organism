@@ -3,6 +3,7 @@
  *
  * 정책: 화면에 보이는 날짜 구간은 서버 조회 결과가 기준(로컬은 캐시·오프라인용).
  * 올리기: 사용자 저장으로 바뀐 행만 upsert · 삭제는 delete API (통째 업로드 없음).
+ * pushDirty는 opts.entryIds가 있으면 그 기록 id만 upsert(백로그 일괄 업로드로 저장 실패 방지).
  * 기본(skipPull 미지정 시): upsert 직후 피커 구간 pull — 저장 직후 덮어쓰기가 나면 skipPull: true 로 호출.
  * 서버 쓰기는 사용자가 기록·모달에서 저장·삭제할 때만(pushDirty·delete API).
  */
@@ -388,7 +389,10 @@ async function pullTimeLedgerEntriesForDateRangeCore(
   if (closed.changed) {
     writeTimeLedgerEntriesRaw(closed.rows);
     /* pull 직렬 큐 안에서 pushDirty를 다시 큐에 넣으면 데드락 — core 직접 호출 */
-    await pushDirtyTimeLedgerEntriesToSupabaseCore({ skipPull: true });
+    await pushDirtyTimeLedgerEntriesToSupabaseCore({
+      skipPull: true,
+      entryIds: closed.closedEntryIds,
+    });
   }
   timeLedgerSyncLog("pull_done", {
     range: `${rs}..${re}`,
@@ -446,9 +450,15 @@ export async function deleteTimeLedgerEntryFromSupabase(entryId) {
   });
 }
 
+function isTaskIdForeignKeyError(error) {
+  if (!error || String(error.code || "") !== "23503") return false;
+  const blob = `${error.message || ""} ${error.details || ""} ${error.hint || ""}`;
+  return /task.*fkey/i.test(blob);
+}
+
 /**
  * 로컬에서 «이번에 사용자가 저장해 바뀐 행»만 서버 upsert 후, 피커 구간을 서버 기준으로 pull.
- * @param {{ skipPull?: boolean, rangeStart?: string, rangeEnd?: string, _insideSerializedOp?: boolean }} opts
+ * @param {{ skipPull?: boolean, rangeStart?: string, rangeEnd?: string, entryIds?: string[], _insideSerializedOp?: boolean }} opts
  */
 async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
   const userId = await getSessionUserId();
@@ -465,10 +475,25 @@ async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
   }
 
   const substantive = rows.filter((r) => timeLedgerRowIsSyncable(r));
-  const toUpload = substantive.filter((r) => timeLedgerRowNeedsPush(r));
+  let toUpload = substantive.filter((r) => timeLedgerRowNeedsPush(r));
+
+  const entryIdFilter = new Set(
+    (Array.isArray(opts.entryIds) ? opts.entryIds : [])
+      .map((id) => String(id || "").trim())
+      .filter((id) => isUuid(id)),
+  );
+  if (entryIdFilter.size > 0) {
+    toUpload = toUpload.filter((r) =>
+      entryIdFilter.has(String(r.id || "").trim()),
+    );
+  }
 
   if (toUpload.length === 0) {
-    timeLedgerSyncLog("push_dirty_skipped", { reason: "no_rows_to_upload" });
+    timeLedgerSyncLog("push_dirty_skipped", {
+      reason: entryIdFilter.size
+        ? "no_matching_rows_to_upload"
+        : "no_rows_to_upload",
+    });
     return;
   }
 
@@ -479,6 +504,7 @@ async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
   );
   timeLedgerSyncLog("server_upsert_start", {
     rowCount: toUpload.length,
+    scoped: entryIdFilter.size > 0,
     idPreviews,
   });
 
@@ -493,13 +519,10 @@ async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
   /* time_ledger_entries.task_id FK: 과제는 과제설정·KPI 저장 시에만 서버에 올림 — 기록 push에서 과제 upsert 안 함 */
   let { data, error } = await upsertLedgerEntryPayloads(payloads);
 
-  const fkTask =
-    error &&
-    String(error.code || "") === "23503" &&
-    /task_id_fkey/i.test(String(error.message || ""));
+  const fkTask = isTaskIdForeignKeyError(error);
   if (fkTask) {
     timeLedgerSyncLog("server_upsert_retry", {
-      reason: "task_id_fkey",
+      reason: "task_fkey",
       taskIdStripAll: true,
     });
     const payloadsNoTid = payloads.map((p) => ({
