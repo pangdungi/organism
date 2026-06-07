@@ -14,6 +14,12 @@ export function isNapBuiltinTaskName(name) {
   return NAP_TASK_NAMES_FOR_RULE.has(String(name || "").trim());
 }
 
+export const SLEEP_BUILTIN_TASK_NAME = "수면하기";
+
+export function isSleepBuiltinTaskName(name) {
+  return String(name || "").trim() === SLEEP_BUILTIN_TASK_NAME;
+}
+
 export const FIXED_OTHER_TASKS = [
   { name: "수면하기", category: "sleep", productivity: "other" },
   { name: "근무하기", category: "work", productivity: "other" },

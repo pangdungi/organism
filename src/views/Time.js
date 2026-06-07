@@ -4492,9 +4492,12 @@ function syncMobileTimeCardRatingEl(card, rowData) {
     statsCol.appendChild(ratingEl);
   }
   ratingEl.innerHTML = starsHtml;
+  const ratingLabel = TTC.isSleepBuiltinTaskName(rowData?.taskName)
+    ? "수면 평가"
+    : "이 시간 평가";
   ratingEl.setAttribute(
     "aria-label",
-    rating != null ? `이 시간 평가 ${rating}점` : "",
+    rating != null ? `${ratingLabel} ${rating}점` : "",
   );
 }
 
@@ -5904,6 +5907,9 @@ export function render(opts = {}) {
   const taskLogRatingSection = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-rating-section"]',
   );
+  const taskLogRatingSectionLabel = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-rating-section-label"]',
+  );
   const taskLogRatingStars = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-rating-stars"]',
   );
@@ -5965,6 +5971,19 @@ export function render(opts = {}) {
       "productive";
   }
 
+  function isTaskLogModalSleepTask() {
+    const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
+    return TTC.isSleepBuiltinTaskName(taskName);
+  }
+
+  function shouldShowTaskLogRatingSection() {
+    return isTaskLogModalProductiveTask() || isTaskLogModalSleepTask();
+  }
+
+  function taskLogRatingSectionLabelText() {
+    return isTaskLogModalSleepTask() ? "수면 평가" : "이 시간 평가";
+  }
+
   function renderTaskLogTimeRating() {
     const v = getTaskLogTimeRating();
     taskLogRatingStars
@@ -6003,9 +6022,14 @@ export function render(opts = {}) {
   }
 
   function syncTaskLogRatingSectionUi() {
-    const productive = isTaskLogModalProductiveTask();
-    if (taskLogRatingSection) taskLogRatingSection.hidden = !productive;
-    if (!productive) {
+    const show = shouldShowTaskLogRatingSection();
+    const labelText = taskLogRatingSectionLabelText();
+    if (taskLogRatingSectionLabel)
+      taskLogRatingSectionLabel.textContent = labelText;
+    if (taskLogRatingStars)
+      taskLogRatingStars.setAttribute("aria-label", `${labelText} 1~5점`);
+    if (taskLogRatingSection) taskLogRatingSection.hidden = !show;
+    if (!show) {
       taskLogTimeRating = null;
       taskLogTimeEndReason = "";
       renderTaskLogTimeRating();
