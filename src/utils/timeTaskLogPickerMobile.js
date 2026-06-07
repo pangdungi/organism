@@ -558,10 +558,11 @@ export function createMobileTaskLogPicker(options = {}) {
     } catch (_) {}
     if (apply && searchPendingValue) {
       pendingValue = searchPendingValue;
-      /* 검색 「완료」= 다이얼로 되돌리지 않고 곧바로 과제 확정(기록 모달로 복귀) */
       onConfirm(pendingValue);
       closePicker();
+      return;
     }
+    cancelPicker();
   }
 
   function cancelPicker() {
@@ -612,10 +613,9 @@ export function createMobileTaskLogPicker(options = {}) {
   function openPicker() {
     ensureMounted();
     pendingValue = getCurrentValue?.() || "";
-    renderWheel();
-    bringPickerToFront();
-    setPickerShellHidden(false);
+    setPickerShellHidden(true);
     document.documentElement.classList.add("lp-task-log-mobile-picker-open");
+    openSearch();
   }
 
   function confirmPicker() {
