@@ -21,8 +21,6 @@ export const FIXED_OTHER_TASKS = [
 
 /** 기본 과제 목록에서 제거됨 — 기존 로컬·서버 행 정리용 */
 export const RETIRED_BUILTIN_TASK_TEMPLATES = [
-  { name: "감정적이기(긍정적)", category: "happiness", productivity: "productive" },
-  { name: "감정적이기(부정적)", category: "unhappiness", productivity: "nonproductive" },
   { name: "구매 고민", category: "moneylosing", productivity: "nonproductive" },
   { name: "술 마시기", category: "unhealthy", productivity: "nonproductive" },
   { name: "논쟁하기", category: "unhappiness", productivity: "nonproductive" },
@@ -167,6 +165,11 @@ export const FIXED_NONPRODUCTIVE_TASKS = [
     productivity: "nonproductive",
   },
   {
+    name: "감정적이기",
+    category: "unhappiness",
+    productivity: "nonproductive",
+  },
+  {
     name: "비생산적 외출",
     category: "pleasure",
     productivity: "nonproductive",
@@ -197,6 +200,8 @@ export const MEAL_TASK_NAME_RENAMES = [
   { from: "독서노트 작성", to: "독서 및 독서노트 작성" },
   { from: "시간기록 점검", to: "시간기록 및 점검" },
   { from: "메모하기", to: "기록하기" },
+  { from: "감정적이기(긍정적)", to: "감정적이기" },
+  { from: "감정적이기(부정적)", to: "감정적이기" },
 ];
 
 /** 표시·저장 기준 이름(구이름이면 새 이름으로 치환) */

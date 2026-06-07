@@ -557,14 +557,10 @@ export function createMobileTaskLogPicker(options = {}) {
       searchInput.blur();
     } catch (_) {}
     if (apply && searchPendingValue) {
-      const next = searchPendingValue;
-      if (next !== pendingValue) {
-        pendingValue = next;
-        renderWheel({ force: true });
-      } else {
-        syncWheelSelectionClass();
-        requestAnimationFrame(() => scrollWheelToPendingValue());
-      }
+      pendingValue = searchPendingValue;
+      /* 검색 「완료」= 다이얼로 되돌리지 않고 곧바로 과제 확정(기록 모달로 복귀) */
+      onConfirm(pendingValue);
+      closePicker();
     }
   }
 

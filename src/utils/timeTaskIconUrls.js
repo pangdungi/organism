@@ -77,6 +77,7 @@ export const BUILTIN_TASK_ICON_SLUG = {
   "건강하지 않은 섭취": "burger",
   "건강하지 않은 섭취 준비": "cooking2",
   "비생산적 대화": "emotionsad-2",
+  "감정적이기": "emotionsad-1",
   "비생산적 외출": "beer",
   "물건 찾기": "thinking",
   "단순 이동": "car1",
