@@ -16,7 +16,6 @@ import {
   kpiTimeTaskEnsure,
   kpiTimeTaskRemove,
   kpiTimeTaskRename,
-  patchKpiLinkedTasksFromKpiMaps,
 } from "../utils/timeTaskOptionsModel.js";
 import { ensureHealthKpiTimeTasksForData } from "../utils/healthKpiTimeTaskSync.js";
 import {
@@ -1156,7 +1155,6 @@ export function render() {
   }
 
   function renderHealthMainView() {
-    patchKpiLinkedTasksFromKpiMaps();
     syncHabitTrackerLogs();
     const scopeId = HEALTH_KPI_LIST_SCOPE_ID;
     const savedGridScroll = readKpiGridScrollToRestore(

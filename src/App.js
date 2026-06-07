@@ -45,7 +45,6 @@ import { pullKpiTabFromCloud } from "./utils/kpiTabCloudRefresh.js";
 import {
   clearKpiTabPullPending,
   isKpiAppTabId,
-  setKpiTabPullPending,
 } from "./utils/kpiMapSyncLoadingUi.js";
 import { pullTimeLedgerTabEnterFromCloud } from "./utils/timeLedgerCloudRefresh.js";
 import { attachTimeLedgerTasksSaveListener } from "./utils/timeLedgerTasksSupabase.js";
