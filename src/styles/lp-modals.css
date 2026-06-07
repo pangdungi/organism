@@ -3768,6 +3768,122 @@ html.lp-task-log-mobile-picker-open
   }
 }
 
+/* 예상 일정 템플릿 — 내용 높이에 맞춤(예상 일정 추가 모달 86vh 고정 높이 제외) */
+.lp-budget-template-modal.lp-calendar-budget-add-modal
+  [data-legacy~="time-task-setup-panel"][data-legacy~="time-task-log-panel"] {
+  height: auto;
+  min-height: 0;
+  max-height: min(92vh, 44rem);
+}
+.lp-budget-template-modal.lp-calendar-budget-add-modal
+  [data-legacy~="time-task-log-body"] {
+  flex: 0 1 auto;
+  overflow: visible;
+}
+.lp-budget-template-modal.lp-calendar-budget-add-modal
+  [data-legacy~="time-task-log-scroll-area"] {
+  flex: 0 1 auto;
+  display: block;
+  overflow: visible;
+  padding: 0.85rem 1rem 0.5rem;
+}
+
+/* 예상 일정 템플릿 — lp-calendar-budget-add-modal 셸 안 본문 */
+.lp-budget-template-modal .lp-budget-template-lead {
+  margin: 0 0 0.85rem;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--lp-modal-navy-muted);
+}
+.lp-budget-template-modal .lp-budget-template-preview {
+  margin: 0.35rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--lp-modal-muted);
+}
+.lp-budget-template-modal .lp-budget-template-preview li + li {
+  margin-top: 0.25rem;
+}
+.lp-budget-template-modal .lp-budget-template-mode {
+  margin-top: 0.35rem;
+}
+.lp-budget-template-modal .lp-budget-template-list {
+  margin: 0.35rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 14rem;
+  overflow-y: auto;
+}
+.lp-budget-template-modal .lp-budget-template-list-item {
+  display: flex;
+  align-items: stretch;
+  gap: 0.35rem;
+}
+.lp-budget-template-modal .lp-budget-template-pick-btn {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 10px;
+  background: #fff;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--lp-modal-navy);
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+.lp-budget-template-modal .lp-budget-template-pick-btn:hover {
+  border-color: rgba(30, 77, 123, 0.35);
+  background: rgba(30, 77, 123, 0.04);
+}
+.lp-budget-template-modal
+  .lp-budget-template-list-item--selected
+  .lp-budget-template-pick-btn {
+  border-color: var(--lp-modal-accent);
+  background: var(--lp-modal-subcat-active-bg);
+}
+.lp-budget-template-modal .lp-budget-template-pick-meta {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--lp-modal-muted);
+}
+.lp-budget-template-modal .lp-budget-template-del-btn {
+  flex-shrink: 0;
+  width: 2.25rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 10px;
+  background: #fff;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--lp-modal-muted);
+}
+.lp-budget-template-modal .lp-budget-template-del-btn:hover {
+  border-color: rgba(185, 28, 28, 0.35);
+  color: var(--lp-modal-danger);
+  background: var(--lp-modal-danger-soft);
+}
+.lp-budget-template-modal .lp-budget-template-empty,
+.lp-budget-template-modal .lp-budget-template-loading {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--lp-modal-muted);
+}
+
 /* 모바일·좁은 화면: safe-area 여백 + 화면 정중앙 */
 @media (max-width: 48rem) {
   .time-task-setup-modal,

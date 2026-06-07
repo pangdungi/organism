@@ -290,6 +290,9 @@ async function pullDataForActiveTab(tabId, opts = {}) {
         }),
         pullTimeLedgerEntriesForDateRange(yStart, yEnd),
         pullTimeDailyBudgetForDateRange(yStart, yEnd),
+        import("./utils/timeDailyBudgetTemplateSupabase.js").then((m) =>
+          m.pullBudgetScheduleTemplatesFromSupabase(),
+        ),
       ]);
       break;
     }

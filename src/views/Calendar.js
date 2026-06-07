@@ -92,6 +92,10 @@ import {
 } from "../utils/timeDailyBudgetSupabase.js";
 import { openCalendarExpectedScheduleModal } from "../utils/calendarExpectedScheduleModal.js";
 import {
+  openApplyBudgetTemplateModal,
+  openSaveBudgetTemplateModal,
+} from "../utils/calendarBudgetTemplateModal.js";
+import {
   expectedSpanCardMemoLines,
   expectedSpanDisplayTaskName,
 } from "../utils/expectedScheduleDetail.js";
@@ -3613,6 +3617,22 @@ function createCalendar1DayExpectedCardsPanel(dateKey, spans, onSaved) {
     empty.className = "calendar-1day-expected-cards-empty";
     empty.textContent = "예상 일정이 없습니다.";
     list.appendChild(empty);
+
+    const applyTemplateBtn = document.createElement("button");
+    applyTemplateBtn.type = "button";
+    applyTemplateBtn.className = "calendar-1day-expected-template-apply";
+    applyTemplateBtn.textContent = "템플릿 적용";
+    applyTemplateBtn.title = "저장해 둔 일정 템플릿을 이 날짜에 적용";
+    applyTemplateBtn.setAttribute("aria-label", "예상 일정 템플릿 적용");
+    applyTemplateBtn.addEventListener("click", () => {
+      openApplyBudgetTemplateModal({
+        dateKey,
+        onApplied: () => {
+          if (typeof onSaved === "function") onSaved();
+        },
+      });
+    });
+    list.appendChild(applyTemplateBtn);
   } else {
     for (const span of sorted) {
       const taskStorageName = String(span.taskName || "").trim();
@@ -3717,6 +3737,30 @@ function createCalendar1DayExpectedCardsPanel(dateKey, spans, onSaved) {
 
   scroll.appendChild(list);
   section.appendChild(scroll);
+
+  if (sorted.length) {
+    const footer = document.createElement("div");
+    footer.className = "calendar-1day-expected-cards-footer";
+
+    const saveTemplateBtn = document.createElement("button");
+    saveTemplateBtn.type = "button";
+    saveTemplateBtn.className = "calendar-1day-expected-template-save";
+    saveTemplateBtn.textContent = "템플릿으로 저장";
+    saveTemplateBtn.title = "이 날짜 예상 일정 전체를 템플릿으로 저장";
+    saveTemplateBtn.setAttribute("aria-label", "이 날 예상 일정을 템플릿으로 저장");
+    saveTemplateBtn.addEventListener("click", () => {
+      openSaveBudgetTemplateModal({
+        dateKey,
+        onSaved: () => {
+          if (typeof onSaved === "function") onSaved();
+        },
+      });
+    });
+
+    footer.appendChild(saveTemplateBtn);
+    section.appendChild(footer);
+  }
+
   return section;
 }
 
@@ -3834,24 +3878,6 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
     remainingMain.appendChild(remainingLabel);
     remainingMain.appendChild(remainingValue);
     remainingBar.appendChild(remainingMain);
-
-    const addExpectedBtn = document.createElement("button");
-    addExpectedBtn.type = "button";
-    addExpectedBtn.className = "calendar-1day-nav-add";
-    addExpectedBtn.title = "예상 일정(계획) 추가";
-    addExpectedBtn.textContent = "+ 계획";
-    addExpectedBtn.setAttribute("aria-label", "이 날 예상 일정 추가");
-    addExpectedBtn.addEventListener("click", () => {
-      const td = new Date();
-      td.setDate(td.getDate() + dayOffset);
-      const key = formatDateKey(td);
-      openCalendarExpectedScheduleModal({
-        dateKey: key,
-        defaultStartHhMm: defaultStartHhMmForExpectedModalFromDateKey(key),
-        onSaved: () => renderCalendar(),
-      });
-    });
-    remainingBar.appendChild(addExpectedBtn);
 
     timeColumn.appendChild(remainingBar);
 

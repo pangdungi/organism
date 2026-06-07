@@ -269,7 +269,6 @@
   min-width: 2.25rem;
 }
 
-/* 일간 남은 시간 줄: 예상 일정 추가 — 라벨 「+ 계획」 */
 .calendar-1day-timeline-remaining .calendar-1day-nav-add {
   flex-shrink: 0;
   margin: 0;
@@ -288,6 +287,61 @@
 }
 
 .calendar-1day-timeline-remaining .calendar-1day-nav-add:hover {
+  border-color: var(--cal-line-strong);
+  background: var(--cal-surface-muted);
+}
+
+/* 예상 일정 패널 — 빈 날 템플릿 적용(점선) */
+.calendar-1day-expected-template-apply {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin: 0.35rem 0 0;
+  padding: 0.85rem 0.65rem;
+  box-sizing: border-box;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: #64748b;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.calendar-1day-expected-template-apply:hover {
+  border-color: #94a3b8;
+  color: #475569;
+  background: #f8fafc;
+}
+
+.calendar-1day-expected-cards-footer {
+  flex-shrink: 0;
+  padding: 0.45rem 0.55rem 0.5rem;
+  border-top: 1px solid #e2e8f0;
+  box-sizing: border-box;
+}
+
+.calendar-1day-expected-template-save {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0.45rem 0.65rem;
+  box-sizing: border-box;
+  border: 1px solid var(--cal-line);
+  border-radius: 8px;
+  background: var(--cal-surface);
+  color: var(--cal-text);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.calendar-1day-expected-template-save:hover {
   border-color: var(--cal-line-strong);
   background: var(--cal-surface-muted);
 }

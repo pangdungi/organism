@@ -467,6 +467,52 @@ function normalizeBudgetScheduledEntryString(entry) {
   return `${a}-${b}`;
 }
 
+/** 해당 날짜 예상 일정(시간 블록)만 비움 — goalTime·isInvest 등은 유지 */
+export function clearBudgetScheduleBlocksForDate(dateStr) {
+  const dk = String(dateStr || "")
+    .replace(/\//g, "-")
+    .trim()
+    .slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dk)) return false;
+  try {
+    const raw = readTimeDailyBudgetGoalsRaw();
+    const all = raw ? JSON.parse(raw) : {};
+    const day = all[dk];
+    if (!day || typeof day !== "object" || Array.isArray(day)) return false;
+    let changed = false;
+    const nextDay = {};
+    for (const [taskName, entry] of Object.entries(day)) {
+      if (!entry || typeof entry !== "object") continue;
+      const {
+        scheduledTimes: _st,
+        scheduledTime: _s1,
+        scheduleMemos: _sm,
+        scheduleDetails: _sd,
+        scheduledSavedAts: _ss,
+        ...rest
+      } = entry;
+      const hasSchedule =
+        (Array.isArray(_st) && _st.length > 0) ||
+        (_s1 && String(_s1).trim());
+      if (hasSchedule) changed = true;
+      if (Object.keys(rest).length > 0) {
+        nextDay[taskName] = { ...rest };
+      }
+    }
+    if (!changed) return false;
+    if (Object.keys(nextDay).length === 0) {
+      delete all[dk];
+    } else {
+      all[dk] = nextDay;
+    }
+    writeTimeDailyBudgetGoalsRaw(JSON.stringify(all));
+    notifyTimeDailyBudgetSaved(dk);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 /**
  * 일간 예산 scheduledTimes에서 startMin~endMin 과 일치하는 슬롯 인덱스 (타임라인 수정 모달용).
  */
