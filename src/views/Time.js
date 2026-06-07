@@ -100,6 +100,11 @@ import {
   normalizeTimeEndReasonForRow,
   formatTimeLedgerCardRatingStarsHtml,
 } from "../utils/timeLedgerEntriesModel.js";
+import {
+  formatTimeLedgerEmotionRatingHtml,
+  getEmotionRatingLabel,
+  mountTaskLogEmotionRating,
+} from "../utils/timeEmotionRating.js";
 import { TIME_TASK_END_REASON_OPTIONS } from "../utils/timeTaskEndReasons.js";
 import { closeStaleInProgressTimeLedgerRows, timeLedgerRowIsActiveLiveInProgress } from "../utils/timeLedgerStaleInProgressClose.js";
 import {
@@ -127,6 +132,7 @@ import {
   buildTimeLedgerCardMemoText,
   ledgerRowDisplayTaskName,
   ledgerRowTimeboxDisplayLabel,
+  ledgerRowUsesDetailAsDisplayName,
 } from "../utils/timeLedgerCardKpiMemo.js";
 import { mountTimeLedgerMemoFeed } from "../utils/timeLedgerMemoFeed.js";
 import {
@@ -4470,7 +4476,15 @@ function buildMobileTimeCardTitle(taskLabel, startClock, endClock, rowData) {
   const memoBlock = buildTimeLedgerCardMemoText(rowData, kpiId);
   const rating = normalizeTimeRatingForRow(rowData?.timeRating);
   const base = `${taskLabel} (${startClock} ~ ${endClock})`;
-  const ratingLine = rating != null ? `평가 ${rating}점` : "";
+  let ratingLine = "";
+  if (rating != null) {
+    if (TTC.isEmotionalBuiltinTaskName(rowData?.taskName)) {
+      const lab = getEmotionRatingLabel(rating);
+      ratingLine = lab ? `감정 상태 ${lab}` : `감정 상태 ${rating}점`;
+    } else {
+      ratingLine = `평가 ${rating}점`;
+    }
+  }
   const parts = [base, ratingLine, memoBlock].filter(Boolean);
   return parts.join("\n");
 }
@@ -4479,22 +4493,40 @@ function syncMobileTimeCardRatingEl(card, rowData) {
   if (!card) return;
   const statsCol = card.querySelector(".time-ledger-usage-stats-col");
   if (!statsCol) return;
-  const starsHtml = formatTimeLedgerCardRatingStarsHtml(rowData?.timeRating);
+  const isEmotional = TTC.isEmotionalBuiltinTaskName(rowData?.taskName);
+  const displayHtml = isEmotional
+    ? formatTimeLedgerEmotionRatingHtml(rowData?.timeRating)
+    : formatTimeLedgerCardRatingStarsHtml(rowData?.timeRating);
   const rating = normalizeTimeRatingForRow(rowData?.timeRating);
-  let ratingEl = statsCol.querySelector(".time-ledger-usage-rating-stars");
-  if (!starsHtml) {
+  let ratingEl = statsCol.querySelector(
+    isEmotional
+      ? ".time-ledger-usage-emotion-rating"
+      : ".time-ledger-usage-rating-stars",
+  );
+  statsCol
+    .querySelector(
+      isEmotional
+        ? ".time-ledger-usage-rating-stars"
+        : ".time-ledger-usage-emotion-rating",
+    )
+    ?.remove();
+  if (!displayHtml) {
     ratingEl?.remove();
     return;
   }
   if (!ratingEl) {
     ratingEl = document.createElement("span");
-    ratingEl.className = "time-ledger-usage-rating-stars";
+    ratingEl.className = isEmotional
+      ? "time-ledger-usage-emotion-rating"
+      : "time-ledger-usage-rating-stars";
     statsCol.appendChild(ratingEl);
   }
-  ratingEl.innerHTML = starsHtml;
+  ratingEl.innerHTML = displayHtml;
   const ratingLabel = TTC.isSleepBuiltinTaskName(rowData?.taskName)
     ? "수면 평가"
-    : "이 시간 평가";
+    : isEmotional
+      ? "감정 상태"
+      : "이 시간 평가";
   ratingEl.setAttribute(
     "aria-label",
     rating != null ? `${ratingLabel} ${rating}점` : "",
@@ -4530,6 +4562,10 @@ function refreshTimeLedgerRowMemoDisplay(tr, rowData) {
     syncMobileTimeCardRatingEl(tr, rowData);
     const taskLabel =
       ledgerRowDisplayTaskName(rowData) || "(제목 없음)";
+    tr.classList.toggle(
+      "time-ledger-card--detail-display-name",
+      ledgerRowUsesDetailAsDisplayName(rowData),
+    );
     const titleEl = tr.querySelector(".calendar-1day-timeline-card-title");
     if (titleEl) titleEl.textContent = taskLabel;
     const startInst = getRowStartInstantForMobileCard(rowData);
@@ -4580,6 +4616,9 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   );
   card.classList.add("calendar-1day-timeline-card");
   card.classList.add("calendar-1day-timeline-card--usage-layout");
+  if (ledgerRowUsesDetailAsDisplayName(rowData)) {
+    card.classList.add("time-ledger-card--detail-display-name");
+  }
   if (live) card.classList.add("calendar-1day-timeline-card--in-progress");
   card._rowData = rowData;
   card._timeLedgerViewEl = viewEl || null;
@@ -5715,6 +5754,10 @@ export function render(opts = {}) {
           <span data-legacy="time-task-log-section-label time-task-log-content-type-label">콘텐츠 종류</span>
           <div data-legacy="time-task-log-content-type-chips lp-choice-chip-row"></div>
         </div>
+        <div data-legacy="time-task-log-emotion-trigger-section" hidden>
+          <span data-legacy="time-task-log-section-label time-task-log-emotion-trigger-label">트리거</span>
+          <div data-legacy="time-task-log-emotion-trigger-chips lp-choice-chip-row"></div>
+        </div>
         <div data-legacy="time-task-log-memo-section">
           <span data-legacy="time-task-log-section-label time-task-log-memo-section-label">메모</span>
           <div data-legacy="time-task-log-memo-fields">
@@ -5736,6 +5779,7 @@ export function render(opts = {}) {
             <button type="button" data-legacy="time-task-log-rating-star" data-rating-value="4" aria-label="4점">★</button>
             <button type="button" data-legacy="time-task-log-rating-star" data-rating-value="5" aria-label="5점">★</button>
           </div>
+          <div data-legacy="time-task-log-emotion-rating" hidden></div>
           <div data-legacy="time-task-log-end-reason-section" hidden>
             <span data-legacy="time-task-log-section-label time-task-log-end-reason-section-label">작업 종료 이유</span>
             <div data-legacy="time-task-log-end-reason-chips" class="lp-choice-chip-row"></div>
@@ -5845,6 +5889,13 @@ export function render(opts = {}) {
   const taskLogContentTypeChips = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-content-type-chips"]',
   );
+  const taskLogEmotionTriggerSection = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-emotion-trigger-section"]',
+  );
+  const taskLogEmotionTriggerChips = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-emotion-trigger-chips"]',
+  );
+  let taskLogEmotionTrigger = "";
   let taskLogContentType = "";
   let taskLogContentTypeLegacy = "";
 
@@ -5885,6 +5936,48 @@ export function render(opts = {}) {
     syncTaskLogContentTypeChips();
   }
 
+  function syncTaskLogEmotionTriggerChips() {
+    if (!taskLogEmotionTriggerChips) return;
+    taskLogEmotionTriggerChips
+      .querySelectorAll('[data-legacy~="lp-choice-chip"]')
+      .forEach((btn) => {
+        const on =
+          !!taskLogEmotionTrigger &&
+          btn.getAttribute("data-emotion-trigger") === taskLogEmotionTrigger;
+        lpTokenToggle(btn, "lp-choice-chip--on", on);
+      });
+  }
+
+  function setTaskLogEmotionTrigger(value) {
+    const resolved = TTC.resolveEmotionTriggerLabel(value);
+    taskLogEmotionTrigger = resolved.label || "";
+    syncTaskLogEmotionTriggerChips();
+  }
+
+  function getTaskLogEmotionTriggerForSave() {
+    return (taskLogEmotionTrigger || "").trim();
+  }
+
+  function clearTaskLogEmotionTrigger() {
+    taskLogEmotionTrigger = "";
+    syncTaskLogEmotionTriggerChips();
+  }
+
+  if (taskLogEmotionTriggerChips) {
+    TTC.EMOTION_TRIGGER_OPTIONS.forEach((label) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      lpSetClasses(btn, "lp-choice-chip");
+      btn.setAttribute("data-emotion-trigger", label);
+      btn.textContent = label;
+      btn.addEventListener("click", () => {
+        taskLogEmotionTrigger = label;
+        syncTaskLogEmotionTriggerChips();
+      });
+      taskLogEmotionTriggerChips.appendChild(btn);
+    });
+  }
+
   if (taskLogContentTypeChips) {
     TTC.CONTENT_TYPE_OPTIONS.forEach((label) => {
       const btn = document.createElement("button");
@@ -5912,6 +6005,9 @@ export function render(opts = {}) {
   );
   const taskLogRatingStars = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-rating-stars"]',
+  );
+  const taskLogEmotionRating = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-emotion-rating"]',
   );
   const taskLogEndReasonSection = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-end-reason-section"]',
@@ -5976,16 +6072,38 @@ export function render(opts = {}) {
     return TTC.isSleepBuiltinTaskName(taskName);
   }
 
+  function isTaskLogModalEmotionalTask() {
+    const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
+    return TTC.isEmotionalBuiltinTaskName(taskName);
+  }
+
   function shouldShowTaskLogRatingSection() {
-    return isTaskLogModalProductiveTask() || isTaskLogModalSleepTask();
+    return (
+      isTaskLogModalProductiveTask() ||
+      isTaskLogModalSleepTask() ||
+      isTaskLogModalEmotionalTask()
+    );
   }
 
   function taskLogRatingSectionLabelText() {
-    return isTaskLogModalSleepTask() ? "수면 평가" : "이 시간 평가";
+    if (isTaskLogModalSleepTask()) return "수면 평가";
+    if (isTaskLogModalEmotionalTask()) return "감정 상태";
+    return "이 시간 평가";
   }
 
   function renderTaskLogTimeRating() {
     const v = getTaskLogTimeRating();
+    if (isTaskLogModalEmotionalTask()) {
+      taskLogEmotionRating
+        ?.querySelectorAll('[data-rating-value]')
+        .forEach((btn) => {
+          const n = Number(btn.getAttribute("data-rating-value"));
+          const on = v != null && n === v;
+          btn.setAttribute("aria-pressed", on ? "true" : "false");
+          lpTokenToggle(btn, "time-task-log-emotion-rating-btn--on", on);
+        });
+      return;
+    }
     taskLogRatingStars
       ?.querySelectorAll('[data-rating-value]')
       .forEach((btn) => {
@@ -6023,17 +6141,36 @@ export function render(opts = {}) {
 
   function syncTaskLogRatingSectionUi() {
     const show = shouldShowTaskLogRatingSection();
+    const emotional = isTaskLogModalEmotionalTask();
     const labelText = taskLogRatingSectionLabelText();
     if (taskLogRatingSectionLabel)
       taskLogRatingSectionLabel.textContent = labelText;
-    if (taskLogRatingStars)
-      taskLogRatingStars.setAttribute("aria-label", `${labelText} 1~5점`);
+    const useEmotionPicker = show && emotional;
+    const useStarPicker = show && !emotional;
+    if (taskLogRatingStars) {
+      taskLogRatingStars.hidden = !useStarPicker;
+      if (useStarPicker) {
+        taskLogRatingStars.setAttribute("aria-label", `${labelText} 1~5점`);
+      }
+    }
+    if (taskLogEmotionRating) {
+      taskLogEmotionRating.hidden = !useEmotionPicker;
+      if (useEmotionPicker) {
+        mountTaskLogEmotionRating(taskLogEmotionRating, (n) => {
+          setTaskLogTimeRating(getTaskLogTimeRating() === n ? null : n);
+        });
+        taskLogEmotionRating.setAttribute(
+          "aria-label",
+          `${labelText} 1~5점`,
+        );
+      }
+    }
     if (taskLogRatingSection) taskLogRatingSection.hidden = !show;
     if (!show) {
       taskLogTimeRating = null;
       taskLogTimeEndReason = "";
-      renderTaskLogTimeRating();
     }
+    if (show) renderTaskLogTimeRating();
     syncTaskLogEndReasonSection();
   }
 
@@ -6282,6 +6419,7 @@ export function render(opts = {}) {
     const tn = (taskName || "").trim();
     const kind = TTC.ledgerDetailTaskKind(tn);
     const isContent = kind === "content";
+    const isEmotion = kind === "emotion";
     const showFreeTextDetail = TTC.isLedgerFreeTextDetailTaskName(tn);
     if (taskLogMealDetailSection) {
       taskLogMealDetailSection.hidden = !showFreeTextDetail;
@@ -6299,6 +6437,10 @@ export function render(opts = {}) {
     if (taskLogContentTypeSection) {
       taskLogContentTypeSection.hidden = !isContent;
       if (!isContent) clearTaskLogContentType();
+    }
+    if (taskLogEmotionTriggerSection) {
+      taskLogEmotionTriggerSection.hidden = !isEmotion;
+      if (!isEmotion) clearTaskLogEmotionTrigger();
     }
     taskLogScrollArea?.classList?.toggle("is-content-detail-task", isContent);
   }
@@ -7845,6 +7987,7 @@ export function render(opts = {}) {
     if (taskLogFeedbackInput) taskLogFeedbackInput.value = "";
     if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
     clearTaskLogContentType();
+    clearTaskLogEmotionTrigger();
     setTaskLogTimeRating(null);
     setTaskLogTimeEndReason("");
     syncTaskLogRatingSectionUi();
@@ -8074,10 +8217,17 @@ export function render(opts = {}) {
     if (TTC.isContentDetailTaskName(tnForMemo)) {
       setTaskLogContentType(mealDetailVal);
       if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
+      clearTaskLogEmotionTrigger();
+      if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
+    } else if (TTC.isEmotionalDetailTaskName(tnForMemo)) {
+      setTaskLogEmotionTrigger(mealDetailVal);
+      if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
+      clearTaskLogContentType();
       if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
     } else {
       if (taskLogMealDetailInput) taskLogMealDetailInput.value = mealDetailVal;
       clearTaskLogContentType();
+      clearTaskLogEmotionTrigger();
       if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
     }
     setTaskLogTimeRating(data.timeRating);
@@ -8213,9 +8363,11 @@ export function render(opts = {}) {
     const mealDetailForRow =
       detailKind === "content"
         ? getTaskLogContentTypeForSave()
-        : detailKind
-          ? (taskLogMealDetailInput?.value || "").trim()
-          : "";
+        : detailKind === "emotion"
+          ? getTaskLogEmotionTriggerForSave()
+          : detailKind
+            ? (taskLogMealDetailInput?.value || "").trim()
+            : "";
     const feedback = feedbackBody;
     const userTagsForSubmit = (
       Array.isArray(taskLogMemoTags) ? taskLogMemoTags : []

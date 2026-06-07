@@ -748,6 +748,10 @@ export function openCalendarExpectedScheduleModal(options) {
             <span data-legacy="time-task-log-section-label time-task-log-content-type-label">콘텐츠 종류</span>
             <div data-legacy="time-task-log-content-type-chips lp-choice-chip-row"></div>
           </div>
+          <div data-legacy="time-task-log-emotion-trigger-section" hidden>
+            <span data-legacy="time-task-log-section-label time-task-log-emotion-trigger-label">트리거</span>
+            <div data-legacy="time-task-log-emotion-trigger-chips lp-choice-chip-row"></div>
+          </div>
           <div data-legacy="time-task-log-memo-section">
             <span data-legacy="time-task-log-section-label time-task-log-memo-section-label">메모</span>
             <div data-legacy="time-task-log-memo-fields">
@@ -791,6 +795,13 @@ export function openCalendarExpectedScheduleModal(options) {
   const taskLogContentTypeChips = modal.querySelector(
     '[data-legacy~="time-task-log-content-type-chips"]',
   );
+  const taskLogEmotionTriggerSection = modal.querySelector(
+    '[data-legacy~="time-task-log-emotion-trigger-section"]',
+  );
+  const taskLogEmotionTriggerChips = modal.querySelector(
+    '[data-legacy~="time-task-log-emotion-trigger-chips"]',
+  );
+  let taskLogEmotionTrigger = "";
   const taskLogScrollArea = modal.querySelector(
     '[data-legacy~="time-task-log-scroll-area"]',
   );
@@ -834,6 +845,49 @@ export function openCalendarExpectedScheduleModal(options) {
     syncTaskLogContentTypeChips();
   }
 
+  function syncTaskLogEmotionTriggerChips() {
+    if (!taskLogEmotionTriggerChips) return;
+    taskLogEmotionTriggerChips
+      .querySelectorAll('[data-legacy~="lp-choice-chip"]')
+      .forEach((btn) => {
+        const on =
+          !!taskLogEmotionTrigger &&
+          btn.getAttribute("data-emotion-trigger") === taskLogEmotionTrigger;
+        lpTokenToggle(btn, "lp-choice-chip--on", on);
+      });
+  }
+
+  function setTaskLogEmotionTrigger(value) {
+    const resolved = TTC.resolveEmotionTriggerLabel(value);
+    taskLogEmotionTrigger = resolved.label || "";
+    syncTaskLogEmotionTriggerChips();
+  }
+
+  function clearTaskLogEmotionTrigger() {
+    taskLogEmotionTrigger = "";
+    syncTaskLogEmotionTriggerChips();
+  }
+
+  if (taskLogEmotionTriggerChips) {
+    TTC.EMOTION_TRIGGER_OPTIONS.forEach((label) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "lp-choice-chip";
+      btn.setAttribute("data-legacy", "lp-choice-chip");
+      btn.setAttribute("data-emotion-trigger", label);
+      btn.textContent = label;
+      btn.addEventListener(
+        "click",
+        () => {
+          taskLogEmotionTrigger = label;
+          syncTaskLogEmotionTriggerChips();
+        },
+        { signal },
+      );
+      taskLogEmotionTriggerChips.appendChild(btn);
+    });
+  }
+
   if (taskLogContentTypeChips) {
     TTC.CONTENT_TYPE_OPTIONS.forEach((label) => {
       const btn = document.createElement("button");
@@ -859,6 +913,7 @@ export function openCalendarExpectedScheduleModal(options) {
     const tn = (taskName || "").trim();
     const kind = TTC.ledgerDetailTaskKind(tn);
     const isContent = kind === "content";
+    const isEmotion = kind === "emotion";
     const showFreeTextDetail = TTC.isLedgerFreeTextDetailTaskName(tn);
     if (taskLogMealDetailSection) {
       taskLogMealDetailSection.hidden = !showFreeTextDetail;
@@ -877,12 +932,19 @@ export function openCalendarExpectedScheduleModal(options) {
       taskLogContentTypeSection.hidden = !isContent;
       if (!isContent) clearTaskLogContentType();
     }
+    if (taskLogEmotionTriggerSection) {
+      taskLogEmotionTriggerSection.hidden = !isEmotion;
+      if (!isEmotion) clearTaskLogEmotionTrigger();
+    }
     taskLogScrollArea?.classList?.toggle("is-content-detail-task", isContent);
   }
 
   function getExpectedDetailForSave(taskName) {
     const kind = TTC.ledgerDetailTaskKind(taskName);
     if (kind === "content") return getTaskLogContentTypeForSave();
+    if (kind === "emotion") {
+      return (taskLogEmotionTrigger || "").trim();
+    }
     if (kind) return (taskLogMealDetailInput?.value || "").trim();
     return "";
   }
@@ -894,9 +956,15 @@ export function openCalendarExpectedScheduleModal(options) {
     if (TTC.isContentDetailTaskName(tn)) {
       setTaskLogContentType(val);
       if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
+      clearTaskLogEmotionTrigger();
+    } else if (TTC.isEmotionalDetailTaskName(tn)) {
+      setTaskLogEmotionTrigger(val);
+      if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
+      clearTaskLogContentType();
     } else {
       if (taskLogMealDetailInput) taskLogMealDetailInput.value = val;
       clearTaskLogContentType();
+      clearTaskLogEmotionTrigger();
     }
   }
 

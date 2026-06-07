@@ -255,6 +255,8 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   [data-legacy~="time-task-log-content-type-section"][hidden],
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-emotion-trigger-section"][hidden],
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   [data-legacy~="time-task-log-meal-detail-section"][hidden],
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   [data-legacy~="time-task-log-daily-todos-section"][hidden],
@@ -268,6 +270,10 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
     .lp-calendar-budget-add-modal
   )
   [data-legacy~="time-task-log-content-type-section"][hidden],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-emotion-trigger-section"][hidden],
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
     .lp-calendar-budget-add-modal
   )
@@ -1139,6 +1145,15 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   border-radius: 8px;
   cursor: pointer;
   outline: none;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-emotion-trigger-chips"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-emotion-trigger-chips"] {
+  margin-top: 0.45rem;
 }
 .todo-task-edit-input-shell--select,
 [data-legacy~="todo-task-edit-input-shell--select"] {
@@ -2519,6 +2534,14 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   display: none;
 }
 
+[data-lp-floating-select-panel] {
+  display: flex !important;
+  flex-direction: column;
+  pointer-events: auto !important;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
 /* 과제 기록 모달 — 드롭다운 열림: 모달 높이 유지, 패널만 본문 위에 오버레이 */
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   .time-task-log-scroll-area.is-task-picker-open,
@@ -3420,6 +3443,30 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 트리거·글꼴 등 단순 선택 — 항목 구분선·터치 영역 */
+[data-lp-modal-simple-select-sheet] [data-lp-modal-simple-select-item],
+[data-lp-floating-select-panel] [data-lp-modal-simple-select-item] {
+  min-height: 2.85rem;
+  padding: 0.72rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  box-sizing: border-box;
+  background: #fff;
+}
+[data-lp-modal-simple-select-sheet] [data-lp-modal-simple-select-item]:last-child,
+[data-lp-floating-select-panel] [data-lp-modal-simple-select-item]:last-child {
+  border-bottom: none;
+}
+[data-lp-modal-simple-select-sheet]
+  [data-lp-modal-simple-select-item][aria-selected="true"],
+[data-lp-floating-select-panel]
+  [data-lp-modal-simple-select-item][aria-selected="true"] {
+  background: rgba(30, 77, 123, 0.06);
+}
+[data-lp-modal-simple-select-sheet] [data-lp-modal-simple-select-item]:active,
+[data-lp-floating-select-panel] [data-lp-modal-simple-select-item]:active {
+  background: rgba(30, 77, 123, 0.1);
 }
 
 /* 과제 다이얼 시트 열림 — 기록 모달보다 위에 */

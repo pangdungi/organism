@@ -2661,6 +2661,17 @@
   --time-ledger-usage-icon-img-size: 2.35rem;
   --time-ledger-usage-icon-cell-padding: 0.18rem;
 }
+/* 식단명·트리거 등 상세명 표시 카드 — 아이콘을 제목 글자 크기에 맞춤 */
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout.time-ledger-card--detail-display-name,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout.time-ledger-card--detail-display-name {
+  --time-ledger-usage-icon-cell-size: 1.5rem;
+  --time-ledger-usage-icon-img-size: 1.125rem;
+  --time-ledger-usage-icon-cell-padding: 0.1rem;
+}
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout:has(
@@ -3516,6 +3527,15 @@
 }
 
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-rating-stars"][hidden],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-rating-stars"][hidden] {
+  display: none !important;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   [data-legacy~="time-task-log-rating-star"],
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
     .lp-calendar-budget-add-modal
@@ -3563,6 +3583,162 @@
   color: #f59e0b;
   outline: none;
   transform: scale(1.06);
+}
+
+/* 감정적이기 — 감정 상태 5단계 */
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-emotion-rating"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-emotion-rating"] {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.2rem;
+  margin-top: 0.55rem;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-emotion-rating"][hidden],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-emotion-rating"][hidden] {
+  display: none !important;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-emotion-rating-btn,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-emotion-rating-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 0.1rem 0.05rem;
+  margin: 0;
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.28rem;
+  cursor: pointer;
+  opacity: 0.72;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-emotion-rating-btn--on,
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-emotion-rating-btn[aria-pressed="true"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-emotion-rating-btn--on,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-emotion-rating-btn[aria-pressed="true"] {
+  opacity: 1;
+  transform: scale(1.04);
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-emotion-rating-btn:hover,
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-emotion-rating-btn:focus-visible,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-emotion-rating-btn:hover,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-emotion-rating-btn:focus-visible {
+  opacity: 1;
+  outline: none;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-emotion-face,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-emotion-face {
+  display: block;
+  line-height: 0;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-emotion-face .lp-emotion-face-svg,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-emotion-face .lp-emotion-face-svg {
+  display: block;
+  width: clamp(2.35rem, 14vw, 2.75rem);
+  height: auto;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-emotion-label,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-emotion-label {
+  font-size: 0.5625rem;
+  line-height: 1.25;
+  color: #64748b;
+  text-align: center;
+  word-break: keep-all;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-emotion-rating-btn--on
+  .time-task-log-emotion-label,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-emotion-rating-btn--on
+  .time-task-log-emotion-label {
+  color: #1e4d7b;
+  font-weight: 600;
+}
+
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .time-ledger-usage-emotion-rating,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .time-ledger-emotion-rating-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+}
+
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .time-ledger-emotion-rating-label {
+  font-size: 0.625rem;
+  color: #64748b;
+  line-height: 1.2;
+}
+
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .time-ledger-emotion-rating-chip
+  .lp-emotion-face-svg,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .time-ledger-emotion-rating-chip
+  .lp-emotion-face-svg {
+  display: block;
+  flex-shrink: 0;
+  width: 0.75rem;
+  height: 0.75rem;
 }
 
 /* 생산적 작업 — 별점 선택 후 작업 종료 이유 */

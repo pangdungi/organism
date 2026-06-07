@@ -20,6 +20,12 @@ export function isSleepBuiltinTaskName(name) {
   return String(name || "").trim() === SLEEP_BUILTIN_TASK_NAME;
 }
 
+export const EMOTIONAL_BUILTIN_TASK_NAME = "감정적이기";
+
+export function isEmotionalBuiltinTaskName(name) {
+  return String(name || "").trim() === EMOTIONAL_BUILTIN_TASK_NAME;
+}
+
 export const FIXED_OTHER_TASKS = [
   { name: "수면하기", category: "sleep", productivity: "other" },
   { name: "근무하기", category: "work", productivity: "other" },
@@ -244,6 +250,19 @@ export const CONTENT_DETAIL_TASK_NAMES = new Set([
   "무의식적 콘텐츠 소비",
 ]);
 
+/** 감정적이기 — 과제 기록 시 트리거(감정을 일으킨 상황) 선택 */
+export const EMOTIONAL_DETAIL_TASK_NAMES = new Set([EMOTIONAL_BUILTIN_TASK_NAME]);
+
+/** 감정적이기 트리거 — time_ledger_entries.meal_detail 에 저장 */
+export const EMOTION_TRIGGER_OPTIONS = [
+  "사람·관계",
+  "업무·성취",
+  "신체 상태",
+  "환경·외부 자극",
+  "디지털·정보",
+  "돈·미래",
+];
+
 /** 콘텐츠 소비 — time_ledger_entries.meal_detail 에 저장 (목록에서 1개 선택) */
 export const CONTENT_TYPE_OPTIONS = [
   "인스타 릴스/피드",
@@ -278,6 +297,14 @@ export function resolveContentTypeLabel(value) {
 /** @param {string} value */
 export function isKnownContentType(value) {
   return resolveContentTypeLabel(value).known;
+}
+
+/** @param {string} value @returns {{ label: string, known: boolean }} */
+export function resolveEmotionTriggerLabel(value) {
+  const v = String(value || "").trim();
+  if (!v) return { label: "", known: false };
+  const found = EMOTION_TRIGGER_OPTIONS.find((opt) => opt === v);
+  return found ? { label: found, known: true } : { label: v, known: false };
 }
 
 /** 레포트 집계용 — 목록 외(구 자유텍스트)는 「기타」 */
@@ -320,6 +347,11 @@ export function isOutingDetailTaskName(name) {
   return OUTING_DETAIL_TASK_NAMES.has(n);
 }
 
+/** @param {string} name */
+export function isEmotionalDetailTaskName(name) {
+  return EMOTIONAL_DETAIL_TASK_NAMES.has(String(name || "").trim());
+}
+
 /** 자유 텍스트 상세명 — time_ledger_entries.meal_detail 에 저장 */
 export function isLedgerFreeTextDetailTaskName(name) {
   return (
@@ -329,17 +361,22 @@ export function isLedgerFreeTextDetailTaskName(name) {
   );
 }
 
-/** 섭취·대화·외출·콘텐츠 — time_ledger_entries.meal_detail 에 저장 */
+/** 섭취·대화·외출·콘텐츠·감정 — time_ledger_entries.meal_detail 에 저장 */
 export function isLedgerDetailTaskName(name) {
-  return isLedgerFreeTextDetailTaskName(name) || isContentDetailTaskName(name);
+  return (
+    isLedgerFreeTextDetailTaskName(name) ||
+    isContentDetailTaskName(name) ||
+    isEmotionalDetailTaskName(name)
+  );
 }
 
-/** @returns {"meal" | "conversation" | "outing" | "content" | null} */
+/** @returns {"meal" | "conversation" | "outing" | "content" | "emotion" | null} */
 export function ledgerDetailTaskKind(name) {
   if (isMealDetailTaskName(name)) return "meal";
   if (isConversationDetailTaskName(name)) return "conversation";
   if (isOutingDetailTaskName(name)) return "outing";
   if (isContentDetailTaskName(name)) return "content";
+  if (isEmotionalDetailTaskName(name)) return "emotion";
   return null;
 }
 
@@ -348,6 +385,7 @@ export function ledgerDetailInputLabel(kind) {
   if (kind === "meal") return "식단명";
   if (kind === "conversation") return "대화명";
   if (kind === "outing") return "외출명";
+  if (kind === "emotion") return "트리거";
   return "";
 }
 
@@ -356,6 +394,7 @@ export function ledgerDetailInputPlaceholder(kind) {
   if (kind === "meal") return "무엇을 드셨는지 한 줄로 적어 주세요";
   if (kind === "conversation") return "누구와 무엇에 대해 대화했는지 한 줄로 적어 주세요";
   if (kind === "outing") return "어디에 외출했는지 한 줄로 적어 주세요";
+  if (kind === "emotion") return "";
   return "";
 }
 
@@ -365,6 +404,7 @@ export function ledgerDetailLinePrefix(kind) {
   if (kind === "conversation") return "대화";
   if (kind === "outing") return "외출";
   if (kind === "content") return "콘텐츠";
+  if (kind === "emotion") return "트리거";
   return "";
 }
 

@@ -9,7 +9,7 @@ import * as TTC from "./timeTaskOptionsConstants.js";
 const CONTENT_MEMO_PREFIX = "[콘텐츠] ";
 
 /**
- * @returns {{ kind: "meal" | "conversation" | "outing" | "content" | null, text: string }}
+ * @returns {{ kind: "meal" | "conversation" | "outing" | "content" | "emotion" | null, text: string }}
  */
 export function resolveLedgerRowDetail(rowData) {
   const taskName = String(rowData?.taskName || "").trim();
