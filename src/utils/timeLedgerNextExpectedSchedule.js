@@ -79,6 +79,51 @@ function normalizeTaskNameKey(name) {
   return String(name || "").trim();
 }
 
+const DISMISS_LS_PREFIX = "lp_next_expected_dismissed_";
+
+function readDismissedStorageRaw(dateKey) {
+  const dk = normalizeDateKey(dateKey);
+  if (!dk) return [];
+  try {
+    if (typeof localStorage === "undefined") return [];
+    const raw = localStorage.getItem(`${DISMISS_LS_PREFIX}${dk}`);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr.map((x) => String(x || "").trim()).filter(Boolean);
+  } catch (_) {
+    return [];
+  }
+}
+
+/** 해당 날짜에 「지금 실행하기」·「나중에 하기」로 닫은 예정 블록 키 */
+export function readDismissedNextExpectedBlockKeys(dateKey) {
+  return new Set(readDismissedStorageRaw(dateKey));
+}
+
+export function rememberDismissedNextExpectedBlockKey(dateKey, blockKey) {
+  const dk = normalizeDateKey(dateKey);
+  const key = String(blockKey || "").trim();
+  if (!dk || !key) return;
+  const set = readDismissedNextExpectedBlockKeys(dk);
+  if (set.has(key)) return;
+  set.add(key);
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(
+        `${DISMISS_LS_PREFIX}${dk}`,
+        JSON.stringify([...set]),
+      );
+    }
+  } catch (_) {}
+}
+
+export function isNextExpectedBlockDismissed(dateKey, block) {
+  const blockKey = nextExpectedBudgetBlockKey(block);
+  if (!blockKey) return false;
+  return readDismissedNextExpectedBlockKeys(dateKey).has(blockKey);
+}
+
 /** UI·세션에서 동일 블록 식별용 */
 export function nextExpectedBudgetBlockKey(block) {
   if (!block) return "";
@@ -118,9 +163,10 @@ export function findNextExpectedBudgetBlockForRecording(dateKey, opts = {}) {
   const lookaheadMin = Number.isFinite(lookahead) ? Math.max(0, lookahead) : 30;
   const nowMin = now.getHours() * 60 + now.getMinutes();
   const inProgressTasks = activeInProgressTaskNamesForDay(opts.ledgerRows, dk);
-  const dismissed = new Set(
-    opts.dismissedBlockKeys ? [...opts.dismissedBlockKeys] : [],
-  );
+  const dismissed = new Set([
+    ...readDismissedNextExpectedBlockKeys(dk),
+    ...(opts.dismissedBlockKeys ? [...opts.dismissedBlockKeys] : []),
+  ]);
 
   for (const block of collectBudgetBlocksForDate(dk)) {
     if (block.endMin <= nowMin) continue;

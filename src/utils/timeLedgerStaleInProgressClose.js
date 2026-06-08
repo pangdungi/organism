@@ -75,3 +75,43 @@ export function closeStaleInProgressTimeLedgerRows(rows, opts = {}) {
   });
   return { rows: next, changed, closedCount, closedEntryIds };
 }
+
+function buildEndTimeAtInstant(entryYmd, startTime, at = new Date()) {
+  if (!entryYmd || !/^\d{4}-\d{2}-\d{2}$/.test(entryYmd)) return "";
+  const st = String(startTime || "").trim();
+  const hh = String(at.getHours()).padStart(2, "0");
+  const mm = String(at.getMinutes()).padStart(2, "0");
+  if (st.includes("T")) {
+    return `${entryYmd}T${hh}:${mm}`;
+  }
+  const [y, mo, d] = entryYmd.split("-");
+  const datePart = st.includes("/") ? `${y}/${mo}/${d}` : `${y}-${mo}-${d}`;
+  return `${datePart} ${hh}:${mm}`;
+}
+
+/**
+ * 오늘 진행 중(마감 없음) 행을 지정 시각에 마감 — 「지금 실행하기」 전 이전 과제 종료용
+ * @param {object[]} rows
+ * @param {string} todayYmd
+ * @param {Date} [at]
+ */
+export function closeActiveInProgressRowsAtNow(rows, todayYmd, at = new Date()) {
+  const today = todayYmd || timeLedgerLocalTodayYmd();
+  let changed = false;
+  const closedEntryIds = [];
+  const next = (Array.isArray(rows) ? rows : []).map((row) => {
+    if (!timeLedgerRowIsActiveLiveInProgress(row, today)) return row;
+    const entryYmd = timeLedgerRowEntryYmd(row);
+    const endTime = buildEndTimeAtInstant(entryYmd, row.startTime, at);
+    if (!endTime) return row;
+    changed = true;
+    const id = String(row.id || "").trim();
+    if (id) closedEntryIds.push(id);
+    return {
+      ...row,
+      endTime,
+      localModifiedAt: Date.now(),
+    };
+  });
+  return { rows: next, changed, closedEntryIds };
+}

@@ -110,7 +110,11 @@ import {
 } from "../utils/timeEmotionRating.js";
 import { TIME_TASK_END_REASON_OPTIONS } from "../utils/timeTaskEndReasons.js";
 import { TIME_TASK_FLOW_FACTOR_OPTIONS } from "../utils/timeTaskFlowFactors.js";
-import { closeStaleInProgressTimeLedgerRows, timeLedgerRowIsActiveLiveInProgress } from "../utils/timeLedgerStaleInProgressClose.js";
+import {
+  closeActiveInProgressRowsAtNow,
+  closeStaleInProgressTimeLedgerRows,
+  timeLedgerRowIsActiveLiveInProgress,
+} from "../utils/timeLedgerStaleInProgressClose.js";
 import {
   deleteTimeLedgerEntryFromSupabase,
   pullTimeLedgerEntriesForDateRange,
@@ -148,6 +152,8 @@ import { expectedSpanDisplayTaskName } from "../utils/expectedScheduleDetail.js"
 import {
   findNextExpectedBudgetBlockForRecording,
   nextExpectedBudgetBlockKey,
+  readDismissedNextExpectedBlockKeys,
+  rememberDismissedNextExpectedBlockKey,
 } from "../utils/timeLedgerNextExpectedSchedule.js";
 
 import {
@@ -4638,18 +4644,47 @@ function refreshTimeLedgerRowMemoDisplay(tr, rowData) {
 }
 
 function rememberDismissedNextExpectedBlock(viewEl, block, todayYmd) {
-  if (!viewEl || !block) return;
+  if (!block) return;
+  const blockKey = nextExpectedBudgetBlockKey(block);
+  if (!blockKey) return;
+  rememberDismissedNextExpectedBlockKey(todayYmd, blockKey);
+  if (!viewEl) return;
   if (viewEl._lpDismissedNextExpectedDay !== todayYmd) {
     viewEl._lpDismissedNextExpectedBlocks = new Set();
     viewEl._lpDismissedNextExpectedDay = todayYmd;
   }
-  const blockKey = nextExpectedBudgetBlockKey(block);
-  if (blockKey) {
-    if (!(viewEl._lpDismissedNextExpectedBlocks instanceof Set)) {
-      viewEl._lpDismissedNextExpectedBlocks = new Set();
-    }
-    viewEl._lpDismissedNextExpectedBlocks.add(blockKey);
+  if (!(viewEl._lpDismissedNextExpectedBlocks instanceof Set)) {
+    viewEl._lpDismissedNextExpectedBlocks = new Set();
   }
+  viewEl._lpDismissedNextExpectedBlocks.add(blockKey);
+}
+
+function getDismissedNextExpectedBlockKeysForDay(viewEl, todayYmd) {
+  const keys = readDismissedNextExpectedBlockKeys(todayYmd);
+  if (
+    viewEl &&
+    viewEl._lpDismissedNextExpectedDay === todayYmd &&
+    viewEl._lpDismissedNextExpectedBlocks instanceof Set
+  ) {
+    for (const k of viewEl._lpDismissedNextExpectedBlocks) keys.add(k);
+  }
+  return keys;
+}
+
+function closeTodayInProgressRowsAtNowAndSave(
+  allRowsCacheRef,
+  todayYmd,
+  at = new Date(),
+) {
+  const today = todayYmd || timeLedgerLocalTodayYmd();
+  const merged = mergeLedgerRowsForDedupe(
+    loadTimeRows(),
+    Array.isArray(allRowsCacheRef) ? allRowsCacheRef : [],
+  );
+  const { rows, changed } = closeActiveInProgressRowsAtNow(merged, today, at);
+  if (!changed) return allRowsCacheRef;
+  saveTimeRows(rows);
+  return rows;
 }
 
 /** 예상 일정 — 다음 예정 과제(회색 카드) */
@@ -8114,12 +8149,12 @@ export function render(opts = {}) {
     );
     let startHhMm =
       getNextTaskLogStartHhMmFromLedger(ymd, null, mergedRows) || "00:00";
-    if (taskLogAddContext?.presetStartNow) {
-      const n = new Date();
-      startHhMm = `${String(n.getHours()).padStart(2, "0")}:${String(n.getMinutes()).padStart(2, "0")}`;
-    } else if (taskLogAddContext?.presetStartHhMm) {
+    if (taskLogAddContext?.presetStartHhMm) {
       const preset = normalizeHhMm(String(taskLogAddContext.presetStartHhMm));
       if (preset) startHhMm = preset;
+    } else if (taskLogAddContext?.presetStartNow) {
+      const n = new Date();
+      startHhMm = `${String(n.getHours()).padStart(2, "0")}:${String(n.getMinutes()).padStart(2, "0")}`;
     }
     if (taskLogDateStart) {
       taskLogDateStart.value = ymd;
@@ -8905,7 +8940,22 @@ export function render(opts = {}) {
           performedValue: kpiPerformedRaw || undefined,
         });
       }
-      if (addCtx) requestUsageListScrollToBottomOnce();
+      if (addCtx) {
+        const dismissedKey = String(
+          addCtx.presetNextExpectedBlockKey || "",
+        ).trim();
+        if (dismissedKey) {
+          const dismissYmd =
+            usageHistoryRangeStartYmd || getLedgerFilterTodayYmd();
+          rememberDismissedNextExpectedBlockKey(dismissYmd, dismissedKey);
+          if (!(el._lpDismissedNextExpectedBlocks instanceof Set)) {
+            el._lpDismissedNextExpectedBlocks = new Set();
+            el._lpDismissedNextExpectedDay = dismissYmd;
+          }
+          el._lpDismissedNextExpectedBlocks.add(dismissedKey);
+        }
+        requestUsageListScrollToBottomOnce();
+      }
       onFilterChange();
       saveTimeRows(getFullRowsForFilter(true));
 
@@ -10105,27 +10155,38 @@ export function render(opts = {}) {
         timelineList.appendChild(emptyTl);
       }
 
-      const todayYmd = getLedgerFilterTodayYmd();
+      const calendarTodayYmd = getLedgerFilterTodayYmd();
+      const viewingYmd = usageHistoryRangeStartYmd;
       const viewingTodayTimeline =
         !timeLedgerFilterSpansMultipleDays() &&
-        usageHistoryRangeStartYmd === todayYmd &&
-        usageHistoryRangeEndYmd === todayYmd;
+        viewingYmd === calendarTodayYmd &&
+        usageHistoryRangeEndYmd === calendarTodayYmd;
       if (viewingTodayTimeline) {
-        if (el._lpDismissedNextExpectedDay !== todayYmd) {
-          el._lpDismissedNextExpectedBlocks = new Set();
-          el._lpDismissedNextExpectedDay = todayYmd;
-        }
-        const todayLedgerRows = rows.filter((r) => timeLedgerRowYmd(r) === todayYmd);
-        const nextExpected = findNextExpectedBudgetBlockForRecording(todayYmd, {
+        const dismissedBlockKeys =
+          getDismissedNextExpectedBlockKeysForDay(el, viewingYmd);
+        const todayLedgerRows = rows.filter(
+          (r) => timeLedgerRowYmd(r) === viewingYmd,
+        );
+        const nextExpected = findNextExpectedBudgetBlockForRecording(viewingYmd, {
           ledgerRows: todayLedgerRows,
-          dismissedBlockKeys: el._lpDismissedNextExpectedBlocks,
+          dismissedBlockKeys,
         });
         if (nextExpected) {
+          const nextBlockKey = nextExpectedBudgetBlockKey(nextExpected);
           timelineList.appendChild(
             createNextExpectedScheduleTimelineItem(nextExpected, {
               onStartNow: (itemEl) => {
-                rememberDismissedNextExpectedBlock(el, nextExpected, todayYmd);
+                const clickedAt = new Date();
+                const presetStartHhMm = `${String(clickedAt.getHours()).padStart(2, "0")}:${String(clickedAt.getMinutes()).padStart(2, "0")}`;
+                rememberDismissedNextExpectedBlock(el, nextExpected, viewingYmd);
                 itemEl?.remove();
+                mergeRowsIntoCache();
+                allRowsCache = closeTodayInProgressRowsAtNowAndSave(
+                  allRowsCache,
+                  viewingYmd,
+                  clickedAt,
+                );
+                onFilterChange(true);
                 void openTaskLogModal({
                   productivity: null,
                   tbody: hiddenTbody,
@@ -10139,13 +10200,13 @@ export function render(opts = {}) {
                   handleRowDelete: handleCardDelete,
                   handleRowEdit: handleCardEdit,
                   presetTaskName: nextExpected.taskName,
-                  presetStartNow: true,
+                  presetStartHhMm,
+                  presetNextExpectedBlockKey: nextBlockKey,
                 });
               },
               onSkip: (itemEl) => {
-                rememberDismissedNextExpectedBlock(el, nextExpected, todayYmd);
+                rememberDismissedNextExpectedBlock(el, nextExpected, viewingYmd);
                 itemEl?.remove();
-                onFilterChange();
               },
             }),
           );
