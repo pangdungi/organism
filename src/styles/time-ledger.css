@@ -776,6 +776,140 @@
   line-height: 1.3;
 }
 
+.lp-tr2-emotion-trigger-table {
+  border: 1px solid #e8edf2;
+  border-radius: 0.65rem;
+  overflow: hidden;
+  background: #fff;
+}
+
+.lp-tr2-emotion-trigger-table-head,
+.lp-tr2-emotion-trigger-table-row {
+  display: grid;
+  grid-template-columns: minmax(4.8rem, 1.4fr) 2.4rem 3.2rem 3.6rem;
+  gap: 0.35rem;
+  align-items: center;
+  padding: 0.45rem 0.55rem;
+}
+
+.lp-tr2-emotion-trigger-table-head {
+  background: #f1f5f9;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: #64748b;
+  border-bottom: 1px solid #e8edf2;
+}
+
+.lp-tr2-emotion-trigger-table-head span:not(:first-child) {
+  text-align: right;
+}
+
+.lp-tr2-emotion-trigger-table-row {
+  font-size: 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.lp-tr2-emotion-trigger-table-row:last-child {
+  border-bottom: none;
+}
+
+.lp-tr2-emotion-trigger-table-label {
+  font-weight: 700;
+  color: #1a2d45;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+
+.lp-tr2-emotion-trigger-table-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: #475569;
+}
+
+.lp-tr2-routine-item-table .lp-tr2-emotion-trigger-table-head,
+.lp-tr2-routine-item-table .lp-tr2-emotion-trigger-table-row {
+  grid-template-columns: minmax(4.8rem, 1.6fr) 3.6rem 3.6rem;
+}
+
+.lp-tr2-routine-item-row--weak {
+  background: rgba(139, 92, 58, 0.06);
+}
+
+.lp-tr2-routine-item-row--weak .lp-tr2-emotion-trigger-table-label {
+  color: #8b5c3a;
+}
+
+.lp-tr2-routine-block {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e8edf2;
+}
+
+.lp-tr2-routine-block-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.lp-tr2-routine-block-title {
+  margin: 0;
+  flex: 0 0 100%;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.lp-tr2-routine-block-name {
+  font-size: 0.8125rem;
+  font-weight: 800;
+  color: #1a2d45;
+}
+
+.lp-tr2-routine-block-pct {
+  margin-left: auto;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-tr2-routine-block-sub {
+  margin: 0 0 0.45rem;
+  font-size: 0.625rem;
+  color: #94a3b8;
+}
+
+.lp-tr2-routine-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.5625rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.lp-tr2-routine-badge--ok {
+  background: rgba(30, 77, 123, 0.1);
+  color: #1e4d7b;
+}
+
+.lp-tr2-routine-badge--warn {
+  background: rgba(139, 92, 58, 0.12);
+  color: #8b5c3a;
+}
+
+.lp-tr2-routine-weak-list {
+  margin: 0;
+  padding-left: 1rem;
+  font-size: 0.75rem;
+  color: #475569;
+  line-height: 1.5;
+}
+
 .lp-tr2-sleep-chart-scroll-hint {
   margin: 0.2rem 0 0;
   font-size: 0.625rem;
@@ -2041,6 +2175,16 @@
   color: #c2407e;
 }
 
+/* 생산·비생산 대화·외출 */
+.time-ledger-day-timebox-matrix-cell--social,
+[data-legacy~="time-ledger-view"]
+  .time-ledger-day-timebox-matrix-cell--social {
+  background: #ece6f8;
+  border-color: #ece6f8;
+  border-style: solid;
+  color: #6b4bc2;
+}
+
 .time-ledger-day-timebox-matrix-cell--health,
 [data-legacy~="time-ledger-view"]
   .time-ledger-day-timebox-matrix-cell--health {
@@ -2561,6 +2705,65 @@
   font-size: 0.75rem;
   line-height: 1.45;
   color: #94a3b8;
+}
+
+/* 다음 예정(예상 일정) — 회색 안내 카드 */
+.time-ledger-view .time-ledger-next-expected-card,
+[data-legacy~="time-ledger-view"] .time-ledger-next-expected-card {
+  cursor: default;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  box-shadow: none;
+  color: #94a3b8;
+}
+.time-ledger-view .time-ledger-next-expected-card .calendar-1day-timeline-card-start,
+.time-ledger-view .time-ledger-next-expected-card .calendar-1day-timeline-card-end,
+.time-ledger-view .time-ledger-next-expected-card .calendar-1day-timeline-card-title,
+[data-legacy~="time-ledger-view"]
+  .time-ledger-next-expected-card
+  .calendar-1day-timeline-card-start,
+[data-legacy~="time-ledger-view"]
+  .time-ledger-next-expected-card
+  .calendar-1day-timeline-card-end,
+[data-legacy~="time-ledger-view"]
+  .time-ledger-next-expected-card
+  .calendar-1day-timeline-card-title {
+  color: #94a3b8;
+}
+.time-ledger-view .time-ledger-next-expected-main,
+[data-legacy~="time-ledger-view"] .time-ledger-next-expected-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  min-width: 0;
+}
+.time-ledger-view .time-ledger-next-expected-badge,
+[data-legacy~="time-ledger-view"] .time-ledger-next-expected-badge {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #b0bac7;
+  text-transform: none;
+}
+.time-ledger-view .time-ledger-next-expected-start-btn,
+[data-legacy~="time-ledger-view"] .time-ledger-next-expected-start-btn {
+  margin-top: 0.15rem;
+  padding: 0.28rem 0.45rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.35rem;
+  background: #fff;
+  color: #64748b;
+  font: inherit;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.time-ledger-view .time-ledger-next-expected-start-btn:hover,
+[data-legacy~="time-ledger-view"] .time-ledger-next-expected-start-btn:hover {
+  border-color: #94a3b8;
+  color: #475569;
 }
 
 /* 시간 사용내역 목록 (타임라인) */

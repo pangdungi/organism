@@ -1,6 +1,8 @@
 /** 캘린더 1일뷰 — 24행×6열(10분 칸) 그리드 */
 
 import { expectedSpanSlotGridLabel } from "./expectedScheduleDetail.js";
+import { showToast } from "./showToast.js";
+import * as TTC from "./timeTaskOptionsConstants.js";
 
 export const CAL_1DAY_SLOT_MINUTES = 10;
 export const CAL_1DAY_SLOT_COLS = 6;
@@ -34,6 +36,12 @@ export function slotMinToHhMm(slotMin) {
     0,
     Math.min(24 * 60 - CAL_1DAY_SLOT_MINUTES, Math.floor(Number(slotMin) || 0)),
   );
+  return minutesOfDayToHhMm(m);
+}
+
+/** 예상 일정 저장용 — 24:00(1440분)까지 허용 */
+export function minutesOfDayToHhMm(minOfDay) {
+  const m = Math.max(0, Math.min(24 * 60, Math.floor(Number(minOfDay) || 0)));
   const h = Math.floor(m / 60);
   const r = m % 60;
   return `${String(h).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
@@ -54,6 +62,13 @@ export function findCalendarSlotSpanAtMin(slotMin, spans) {
 
 /** 타임박스 칸 채움 — 카테고리·생산성 → CSS 수정자 키 */
 function paintKeyForSlotGridSpan(span) {
+  const taskName = String(span?.taskName || "").trim();
+  if (
+    TTC.isConversationDetailTaskName(taskName) ||
+    TTC.isOutingDetailTaskName(taskName)
+  ) {
+    return "social";
+  }
   const cat = String(span?.category || "").trim().toLowerCase();
   if (cat === "sideincome") return "sideincome";
   if (cat === "happiness") return "happiness";
@@ -108,24 +123,49 @@ function spanKey(span) {
   return `${span.startMin}|${span.endMin}|${String(span.taskName || "").trim()}|${String(span.scheduleDetail || "").trim()}`;
 }
 
+/** 타임박스 칸 라벨 — 공백은 글자 수·표시 모두 제외(「모닝 루틴」→「모닝루틴」) */
+function compactSlotGridLabel(span) {
+  return String(expectedSpanSlotGridLabel(span) || "").replace(/\s+/g, "");
+}
+
 function maxLabelCharsForSpan(span) {
-  const name = expectedSpanSlotGridLabel(span);
+  const name = compactSlotGridLabel(span);
   if (!name) return 0;
   return Math.min(name.length, spanSlotCount(span) * 2);
 }
 
-function appendSlotGridCellLabel(cell, span, { spanMerged = false } = {}) {
-  const chars = maxLabelCharsForSpan(span);
-  if (chars <= 0) return;
-  const name = expectedSpanSlotGridLabel(span);
+/** 연속 칸(run) · 슬롯 시작 위치 — 2칸당 2글자, 이어진 구간은 한 덩어리로 */
+function sliceLabelForSpanRun(span, run, slotMin) {
+  const name = compactSlotGridLabel(span);
+  if (!name) return "";
+  const totalCap = Math.min(name.length, spanSlotCount(span) * 2);
+  const startChar = slotOffsetInSpan(span, slotMin) * 2;
+  const runCap = Math.min(Math.max(1, run) * 2, Math.max(0, totalCap - startChar));
+  if (runCap <= 0) return "";
+  return name.slice(startChar, startChar + runCap);
+}
+
+function findSpanMatchingKey(spans, key) {
+  if (!key) return null;
+  for (const span of normalizeSpans(spans)) {
+    if (spanKey(span) === key) return span;
+  }
+  return null;
+}
+
+function appendSlotGridCellLabel(cell, span, { spanMerged = false, text } = {}) {
+  const labelText =
+    String(text ?? "").trim() ||
+    compactSlotGridLabel(span).slice(0, maxLabelCharsForSpan(span));
+  if (!labelText) return;
   if (spanMerged) {
     const labelEl = document.createElement("span");
     labelEl.className = "calendar-1day-slot-grid-cell-label";
-    labelEl.textContent = name.slice(0, chars);
+    labelEl.textContent = labelText;
     cell.appendChild(labelEl);
     cell.classList.add("calendar-1day-slot-grid-cell--span-labeled");
   } else {
-    cell.textContent = name.slice(0, chars);
+    cell.textContent = labelText;
   }
   cell.classList.add("calendar-1day-slot-grid-cell--labeled");
 }
@@ -153,13 +193,12 @@ function applyCalendarSlotGridRowSpanMerges(root, spans) {
       }
 
       const slotMin = Number(cell.dataset.slotMin);
-      const span = findSpanForCell(slotMin, sorted);
+      const span =
+        findSpanMatchingKey(sorted, key) || findSpanForCell(slotMin, sorted);
       if (!span) {
         i += run;
         continue;
       }
-
-      const offset = slotOffsetInSpan(span, slotMin);
 
       if (run >= 2) {
         cell.style.gridColumn = `span ${run}`;
@@ -171,8 +210,12 @@ function applyCalendarSlotGridRowSpanMerges(root, spans) {
         }
       }
 
-      if (offset === 0) {
-        appendSlotGridCellLabel(cell, span, { spanMerged: run >= 2 });
+      const labelText = sliceLabelForSpanRun(span, run, slotMin);
+      if (labelText) {
+        appendSlotGridCellLabel(cell, span, {
+          spanMerged: run >= 2,
+          text: labelText,
+        });
       }
 
       i += run;
@@ -266,4 +309,245 @@ export function paintCalendar1DaySlotGridFromSpans(root, spans) {
   });
 
   applyCalendarSlotGridRowSpanMerges(root, sorted);
+}
+
+function spansMatchForDrag(a, b) {
+  if (!a || !b) return false;
+  return (
+    String(a.taskName || "").trim() === String(b.taskName || "").trim() &&
+    Number(a.startMin) === Number(b.startMin) &&
+    Number(a.endMin) === Number(b.endMin)
+  );
+}
+
+/** 이동 대상 구간에 다른 예상 일정이 겹치면 false */
+export function canMoveSpanToStart(spans, span, newStartMin) {
+  const sm = Number(span?.startMin);
+  const em = Number(span?.endMin);
+  if (!Number.isFinite(sm) || !Number.isFinite(em) || em <= sm) return false;
+  const duration = em - sm;
+  const nextStart = Number(newStartMin);
+  const nextEnd = nextStart + duration;
+  if (!Number.isFinite(nextStart) || nextStart < 0 || nextEnd > 24 * 60) {
+    return false;
+  }
+  for (let m = nextStart; m < nextEnd; m += CAL_1DAY_SLOT_MINUTES) {
+    const hit = findSpanForCell(m, normalizeSpans(spans));
+    if (hit && !spansMatchForDrag(hit, span)) return false;
+  }
+  return true;
+}
+
+function mergedCellRunCount(cell) {
+  const raw = String(cell?.style?.gridColumn || "").trim();
+  const m = raw.match(/span\s+(\d+)/i);
+  const n = m ? parseInt(m[1], 10) : 1;
+  return Number.isFinite(n) && n > 0 ? n : 1;
+}
+
+/** 합쳐진 칸 안에서도 10분 칸 단위로 포인터 위치 해석 */
+function slotMinAtPoint(root, clientX, clientY) {
+  const el = document.elementFromPoint(clientX, clientY);
+  const cell = el?.closest?.(".calendar-1day-slot-grid-cell");
+  if (!cell || !root.contains(cell)) return null;
+  let slotMin = Number(cell.dataset.slotMin);
+  if (!Number.isFinite(slotMin)) return null;
+  const run = mergedCellRunCount(cell);
+  if (run > 1) {
+    const rect = cell.getBoundingClientRect();
+    if (rect.width > 0) {
+      const colWidth = rect.width / run;
+      const offsetCol = Math.floor((clientX - rect.left) / colWidth);
+      const clamped = Math.max(0, Math.min(run - 1, offsetCol));
+      slotMin += clamped * CAL_1DAY_SLOT_MINUTES;
+    }
+  }
+  return slotMin;
+}
+
+function cellAtPoint(root, clientX, clientY) {
+  const el = document.elementFromPoint(clientX, clientY);
+  const cell = el?.closest?.(".calendar-1day-slot-grid-cell");
+  if (!cell || !root.contains(cell)) return null;
+  const slotMin = slotMinAtPoint(root, clientX, clientY);
+  return Number.isFinite(slotMin) ? { cell, slotMin } : null;
+}
+
+function snapSlotMin(min) {
+  const step = CAL_1DAY_SLOT_MINUTES;
+  return Math.round(Number(min) / step) * step;
+}
+
+function cellsForSpanKey(root, key) {
+  if (!key) return [];
+  return [...root.querySelectorAll(".calendar-1day-slot-grid-cell")].filter(
+    (c) => c.dataset.spanKey === key,
+  );
+}
+
+function clearDragVisuals(root) {
+  root.querySelectorAll(".calendar-1day-slot-grid-cell--drag-source").forEach((c) => {
+    c.classList.remove("calendar-1day-slot-grid-cell--drag-source");
+  });
+  root.querySelectorAll(".calendar-1day-slot-grid-cell--drop-preview").forEach((c) => {
+    c.classList.remove("calendar-1day-slot-grid-cell--drop-preview");
+  });
+}
+
+function paintDropPreview(root, startMin, durationMin) {
+  for (let m = startMin; m < startMin + durationMin; m += CAL_1DAY_SLOT_MINUTES) {
+    const cell = root.querySelector(
+      `.calendar-1day-slot-grid-cell[data-slot-min="${m}"]`,
+    );
+    if (cell) cell.classList.add("calendar-1day-slot-grid-cell--drop-preview");
+  }
+}
+
+const DRAG_MOVE_THRESHOLD_PX = 6;
+
+/**
+ * 예상 일정 덩어리 드래그 이동 (일간 예산 슬롯만 · 길이 유지 · 10분 격자)
+ * @param {HTMLElement} root
+ * @param {{
+ *   getSpans: () => object[],
+ *   getBudgetSlotIndex: (span: object) => number,
+ *   onMoveSpan: (span: object, newStartMin: number, newEndMin: number) => Promise<{ ok?: boolean, error?: string }>,
+ *   onComplete?: () => void,
+ * }} options
+ */
+export function wireCalendar1DaySlotGridDrag(root, options) {
+  if (!root || root.dataset.slotGridDragWired === "1") return;
+  root.dataset.slotGridDragWired = "1";
+
+  let drag = null;
+  let suppressClickUntil = 0;
+
+  root.addEventListener(
+    "pointerdown",
+    (e) => {
+      if (e.button !== 0) return;
+      const cell = e.target.closest(".calendar-1day-slot-grid-cell--filled");
+      if (!cell || !root.contains(cell)) return;
+      const slotMin = Number(cell.dataset.slotMin);
+      if (!Number.isFinite(slotMin)) return;
+      const spans = options.getSpans();
+      const span = findSpanForCell(slotMin, spans);
+      if (!span) return;
+      const slotIdx = options.getBudgetSlotIndex(span);
+      if (slotIdx < 0) return;
+
+      const anchorSlotMin = slotMinAtPoint(root, e.clientX, e.clientY) ?? slotMin;
+      drag = {
+        span,
+        slotIdx,
+        spanKey: spanKey(span),
+        originStartMin: Number(span.startMin),
+        anchorSlotMin,
+        durationMin: Number(span.endMin) - Number(span.startMin),
+        pointerId: e.pointerId,
+        startX: e.clientX,
+        startY: e.clientY,
+        moved: false,
+        captureCell: cell,
+      };
+      try {
+        cell.setPointerCapture(e.pointerId);
+      } catch (_) {}
+    },
+    { passive: true },
+  );
+
+  const finishDrag = async (e) => {
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    const state = drag;
+    drag = null;
+    try {
+      if (state.captureCell?.hasPointerCapture?.(e.pointerId)) {
+        state.captureCell.releasePointerCapture(e.pointerId);
+      }
+    } catch (_) {}
+
+    clearDragVisuals(root);
+
+    if (!state.moved) return;
+
+    /* click은 pointerup 직후·저장 await 전에 발생 → 여기서 먼저 막음 */
+    suppressClickUntil = Date.now() + 600;
+
+    const dropSlotMin = slotMinAtPoint(root, e.clientX, e.clientY);
+    if (!Number.isFinite(dropSlotMin)) return;
+
+    const deltaMin = dropSlotMin - state.anchorSlotMin;
+    const newStartMin = snapSlotMin(state.originStartMin + deltaMin);
+    const newEndMin = newStartMin + state.durationMin;
+    const spans = options.getSpans();
+    if (!canMoveSpanToStart(spans, state.span, newStartMin)) {
+      showToast("이 시간에는 같은 길이로 옮길 수 없습니다.");
+      return;
+    }
+    if (newStartMin === Number(state.span.startMin)) return;
+
+    let result = options.onMoveSpan(state.span, newStartMin, newEndMin);
+    if (result && typeof result.then === "function") {
+      result = await result;
+    }
+    if (!result?.ok) {
+      showToast(result?.error || "예상 일정 이동에 실패했습니다.");
+      return;
+    }
+    if (typeof options.onComplete === "function") options.onComplete();
+  };
+
+  root.addEventListener("pointermove", (e) => {
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    const dx = e.clientX - drag.startX;
+    const dy = e.clientY - drag.startY;
+    if (!drag.moved && Math.hypot(dx, dy) < DRAG_MOVE_THRESHOLD_PX) return;
+
+    if (!drag.moved) {
+      drag.moved = true;
+      cellsForSpanKey(root, drag.spanKey).forEach((c) => {
+        c.classList.add("calendar-1day-slot-grid-cell--drag-source");
+      });
+    }
+
+    clearDragVisuals(root);
+    cellsForSpanKey(root, drag.spanKey).forEach((c) => {
+      c.classList.add("calendar-1day-slot-grid-cell--drag-source");
+    });
+
+    const dropSlotMin = slotMinAtPoint(root, e.clientX, e.clientY);
+    if (!Number.isFinite(dropSlotMin)) return;
+    const deltaMin = dropSlotMin - drag.anchorSlotMin;
+    const newStartMin = snapSlotMin(drag.originStartMin + deltaMin);
+    const spans = options.getSpans();
+    if (canMoveSpanToStart(spans, drag.span, newStartMin)) {
+      paintDropPreview(root, newStartMin, drag.durationMin);
+    }
+  });
+
+  root.addEventListener("pointerup", (e) => {
+    if (drag?.moved) {
+      suppressClickUntil = Date.now() + 600;
+      e.preventDefault();
+    }
+    void finishDrag(e);
+  });
+  root.addEventListener("pointercancel", (e) => {
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    drag = null;
+    clearDragVisuals(root);
+    suppressClickUntil = Date.now() + 300;
+  });
+
+  root.addEventListener(
+    "click",
+    (e) => {
+      if (Date.now() < suppressClickUntil) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+    },
+    true,
+  );
 }

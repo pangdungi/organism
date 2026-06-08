@@ -35,6 +35,7 @@ import {
   isTimeLedgerRowLiveRecording,
   formatIntegerMinutesDurationKo,
   findBudgetScheduleSlotIndex,
+  updateBudgetScheduleBlockAtIndex,
   getRowStartInstantForMobileCard,
   getMobileCardEffectiveHoursForPrice,
 } from "./Time.js";
@@ -58,9 +59,11 @@ import {
 } from "../utils/lpHorizontalPanNavigate.js";
 import {
   slotMinToHhMm,
+  minutesOfDayToHhMm,
   createCalendar1DaySlotGridScroll,
   paintCalendar1DaySlotGridFromSpans,
   findCalendarSlotSpanAtMin,
+  wireCalendar1DaySlotGridDrag,
 } from "../utils/calendar1DaySlotGrid.js";
 import { supabase } from "../supabase.js";
 import {
@@ -2949,9 +2952,10 @@ function clipBudgetExpectedSpansBySavedAt(
       const clipped = { ...s };
       delete clipped._budgetSavedAt;
       delete clipped._budgetEnumSeq;
-      delete clipped._timeIdx;
       out.push({
         ...clipped,
+        _budgetStoredStartMin: sm,
+        _budgetStoredEndMin: em,
         startMin,
         endMin,
         startSlot,
@@ -3485,10 +3489,66 @@ function wireCalendar1DaySlotGridCells(root, dateKey, onSaved) {
   });
 }
 
+function wireCalendar1DaySlotGridDragMove(scroll, dateKey, onSaved) {
+  const refreshGridNow = () => {
+    paintCalendar1DaySlotGrid(scroll, dateKey);
+  };
+  const scheduleHeavyRefresh = () => {
+    if (typeof onSaved !== "function") return;
+    requestAnimationFrame(() => onSaved());
+  };
+  wireCalendar1DaySlotGridDrag(scroll, {
+    getSpans: () => buildExpectedScheduleSpansForDateKey(dateKey).spans,
+    getBudgetSlotIndex: (span) => {
+      const storedIdx = Number(span?._timeIdx);
+      if (Number.isFinite(storedIdx) && storedIdx >= 0) return storedIdx;
+      const sm = Number(span?._budgetStoredStartMin ?? span?.startMin);
+      const em = Number(span?._budgetStoredEndMin ?? span?.endMin);
+      return findBudgetScheduleSlotIndex(dateKey, span.taskName, sm, em);
+    },
+    onMoveSpan: (span, newStartMin, newEndMin) => {
+      const storedIdx = Number(span?._timeIdx);
+      const slotIdx =
+        Number.isFinite(storedIdx) && storedIdx >= 0
+          ? storedIdx
+          : findBudgetScheduleSlotIndex(
+              dateKey,
+              span.taskName,
+              Number(span?._budgetStoredStartMin ?? span?.startMin),
+              Number(span?._budgetStoredEndMin ?? span?.endMin),
+            );
+      if (slotIdx < 0) {
+        return {
+          ok: false,
+          error: "일간 예산에서 추가한 예상 일정만 옮길 수 있습니다.",
+        };
+      }
+      const r = updateBudgetScheduleBlockAtIndex(
+        dateKey,
+        span.taskName,
+        slotIdx,
+        span.taskName,
+        slotMinToHhMm(newStartMin),
+        minutesOfDayToHhMm(newEndMin),
+        String(span.scheduleMemo || "").trim(),
+        String(span.scheduleDetail || "").trim(),
+      );
+      if (!r.ok) return r;
+      /* 로컬 저장 직후 notifyTimeDailyBudgetSaved → 서버는 백그라운드 동기화 */
+      return { ok: true };
+    },
+    onComplete: () => {
+      refreshGridNow();
+      scheduleHeavyRefresh();
+    },
+  });
+}
+
 /** 캘린더 일간뷰 — 24행×6열(10분 칸) */
 function createCalendar1DaySlotGrid(dateKey, onSaved) {
   const scroll = createCalendar1DaySlotGridScroll();
   wireCalendar1DaySlotGridCells(scroll, dateKey, onSaved);
+  wireCalendar1DaySlotGridDragMove(scroll, dateKey, onSaved);
   paintCalendar1DaySlotGrid(scroll, dateKey);
   return scroll;
 }
@@ -3617,22 +3677,6 @@ function createCalendar1DayExpectedCardsPanel(dateKey, spans, onSaved) {
     empty.className = "calendar-1day-expected-cards-empty";
     empty.textContent = "예상 일정이 없습니다.";
     list.appendChild(empty);
-
-    const applyTemplateBtn = document.createElement("button");
-    applyTemplateBtn.type = "button";
-    applyTemplateBtn.className = "calendar-1day-expected-template-apply";
-    applyTemplateBtn.textContent = "템플릿 적용";
-    applyTemplateBtn.title = "저장해 둔 일정 템플릿을 이 날짜에 적용";
-    applyTemplateBtn.setAttribute("aria-label", "예상 일정 템플릿 적용");
-    applyTemplateBtn.addEventListener("click", () => {
-      openApplyBudgetTemplateModal({
-        dateKey,
-        onApplied: () => {
-          if (typeof onSaved === "function") onSaved();
-        },
-      });
-    });
-    list.appendChild(applyTemplateBtn);
   } else {
     for (const span of sorted) {
       const taskStorageName = String(span.taskName || "").trim();
@@ -3738,28 +3782,43 @@ function createCalendar1DayExpectedCardsPanel(dateKey, spans, onSaved) {
   scroll.appendChild(list);
   section.appendChild(scroll);
 
-  if (sorted.length) {
-    const footer = document.createElement("div");
-    footer.className = "calendar-1day-expected-cards-footer";
+  const footer = document.createElement("div");
+  footer.className = "calendar-1day-expected-cards-footer";
 
-    const saveTemplateBtn = document.createElement("button");
-    saveTemplateBtn.type = "button";
-    saveTemplateBtn.className = "calendar-1day-expected-template-save";
-    saveTemplateBtn.textContent = "템플릿으로 저장";
-    saveTemplateBtn.title = "이 날짜 예상 일정 전체를 템플릿으로 저장";
-    saveTemplateBtn.setAttribute("aria-label", "이 날 예상 일정을 템플릿으로 저장");
-    saveTemplateBtn.addEventListener("click", () => {
-      openSaveBudgetTemplateModal({
-        dateKey,
-        onSaved: () => {
-          if (typeof onSaved === "function") onSaved();
-        },
-      });
+  const applyTemplateBtn = document.createElement("button");
+  applyTemplateBtn.type = "button";
+  applyTemplateBtn.className = "calendar-1day-expected-template-apply";
+  applyTemplateBtn.textContent = "템플릿 적용";
+  applyTemplateBtn.title =
+    "저장해 둔 템플릿을 적용합니다. 기존 예상 일정은 사라집니다.";
+  applyTemplateBtn.setAttribute("aria-label", "예상 일정 템플릿 적용");
+  applyTemplateBtn.addEventListener("click", () => {
+    openApplyBudgetTemplateModal({
+      dateKey,
+      onApplied: () => {
+        if (typeof onSaved === "function") onSaved();
+      },
     });
+  });
 
-    footer.appendChild(saveTemplateBtn);
-    section.appendChild(footer);
-  }
+  const saveTemplateBtn = document.createElement("button");
+  saveTemplateBtn.type = "button";
+  saveTemplateBtn.className = "calendar-1day-expected-template-save";
+  saveTemplateBtn.textContent = "템플릿으로 저장";
+  saveTemplateBtn.title = "이 날짜 예상 일정 전체를 템플릿으로 저장";
+  saveTemplateBtn.setAttribute("aria-label", "이 날 예상 일정을 템플릿으로 저장");
+  saveTemplateBtn.addEventListener("click", () => {
+    openSaveBudgetTemplateModal({
+      dateKey,
+      onSaved: () => {
+        if (typeof onSaved === "function") onSaved();
+      },
+    });
+  });
+
+  footer.appendChild(applyTemplateBtn);
+  footer.appendChild(saveTemplateBtn);
+  section.appendChild(footer);
 
   return section;
 }
@@ -4401,7 +4460,7 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
     lockMs: 400,
     shouldIgnoreTarget: (target) =>
       !!target?.closest?.(
-        "input, textarea, select, [role='dialog'], .time-task-setup-modal, .lp-calendar-budget-add-modal",
+        "input, textarea, select, [role='dialog'], .time-task-setup-modal, .lp-calendar-budget-add-modal, .calendar-1day-slot-grid-scroll",
       ),
   });
 

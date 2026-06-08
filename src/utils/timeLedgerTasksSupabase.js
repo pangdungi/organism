@@ -8,12 +8,13 @@
 import { supabase } from "../supabase.js";
 import {
   applyTimeLedgerTasksFromServer,
+  buildMissingBuiltinUpsertPayloads,
   buildTimeLedgerTasksUpsertPayloads,
+  findMissingBuiltinTasksOnServer,
   getFullTaskOptions,
   isUuid,
   migrateTimeLogRowsTaskIds,
 } from "./timeTaskOptionsModel.js";
-import { ensureAllKpiTimeTasksFromStorage } from "./kpiTimeTaskSync.js";
 import { lpPullDebug } from "./lpPullDebug.js";
 import {
   timeLedgerSyncDebugEnabled,
@@ -416,27 +417,59 @@ export async function pullTimeLedgerTasksFromSupabase(opts = {}) {
     return false;
   }
   const kpiLinkMetaById = await kpiLinkPromise;
-  const rows = Array.isArray(data) ? data : [];
+  let rows = Array.isArray(data) ? data : [];
+  const missingBuiltins = findMissingBuiltinTasksOnServer(rows);
+  if (missingBuiltins.length > 0) {
+    const maxSort = rows.reduce(
+      (m, r) => Math.max(m, Number(r.sort_order ?? -1)),
+      -1,
+    );
+    const payloads = buildMissingBuiltinUpsertPayloads(
+      userId,
+      missingBuiltins,
+      maxSort + 1,
+    );
+    const upsertError = await upsertTaskPayloads(payloads);
+    if (!upsertError) {
+      rows = [
+        ...rows,
+        ...payloads.map((p) => ({
+          id: p.id,
+          name: p.name,
+          productivity: p.productivity,
+          category: p.category,
+          memo: p.memo,
+          sort_order: p.sort_order,
+          is_system: true,
+          kpi_id: p.kpi_id,
+          icon_key: p.icon_key,
+        })),
+      ];
+      _tasksPullSkipUntil = 0;
+    }
+  }
   const applied = applyTimeLedgerTasksFromServer(rows, kpiLinkMetaById);
   if (applied) migrateTimeLogRowsTaskIds();
   return applied;
   });
 }
 
+/** 신규 가입 등 서버 과제가 0건일 때만 기본 과제(FIXED_*) 전체 시드 */
 export async function pushTimeLedgerTasksIfServerEmpty() {
   const userId = await getSessionUserId();
-  if (!userId || !supabase) return;
+  if (!userId || !supabase) return false;
 
   const { count, error } = await supabase
     .from(TABLE)
     .select("*", { count: "exact", head: true })
     .eq("user_id", userId);
 
-  if (error) return;
-  if (count != null && count > 0) return;
+  if (error) return false;
+  if (count != null && count > 0) return false;
 
   getFullTaskOptions();
   await syncTimeLedgerTasksToSupabase();
+  return true;
 }
 
 /** @deprecated 행 단위 `upsertTimeLedgerTaskRowsFromLocalByIds` 를 쓰세요. */
@@ -450,35 +483,13 @@ let _listenerAttached = false;
  * 과제설정·과제 기록·수정·예상 일정 모달 — 서버 과제 목록 pull + KPI 맵 기준 행 정리.
  * (모달 확인을 늦추지 않고 비동기로 호출)
  */
-let _kpiTasksEnsuredForSession = false;
+/** @deprecated 과제 목록은 서버 pull·사용자 저장만 — 탭 진입 시 KPI→과제 자동 생성 안 함 */
+export function scheduleKpiTaskListEnsureOnce() {}
 
-function scheduleKpiTaskEnsureOnce() {
-  if (_kpiTasksEnsuredForSession) return;
-  const run = () => {
-    if (_kpiTasksEnsuredForSession) return;
-    _kpiTasksEnsuredForSession = true;
-    try {
-      ensureAllKpiTimeTasksFromStorage();
-      getFullTaskOptions();
-      migrateTimeLogRowsTaskIds();
-    } catch (_) {}
-  };
-  if (typeof requestIdleCallback === "function") {
-    requestIdleCallback(run, { timeout: 3000 });
-  } else {
-    setTimeout(run, 0);
-  }
-}
-
-/** 시간가계부 탭 진입 시 1회 — KPI 맵 기준 과제 행 정리(모달 열 때는 호출하지 않음) */
-export function scheduleKpiTaskListEnsureOnce() {
-  scheduleKpiTaskEnsureOnce();
-}
-
-/** 과제설정·기록 모달 — 서버 과제 목록 pull 만(모달 즉시 열림 우선) */
+/** 과제설정·기록 모달 — 클릭 시점 서버 과제 목록 pull(로컬 직후 스킵 무시) */
 export async function syncTimeLedgerTaskListForModalOpen() {
   try {
-    return !!(await pullTimeLedgerTasksFromSupabase());
+    return !!(await pullTimeLedgerTasksFromSupabase({ ignoreSkip: true }));
   } catch (_) {
     return false;
   }
@@ -499,12 +510,12 @@ export async function hydrateTimeLedgerTasksFromCloud() {
   lpPullDebug("hydrateTimeLedgerTasksFromCloud", {});
   if (!supabase) return;
   attachTimeLedgerTasksSaveListener();
-  await pushTimeLedgerTasksIfServerEmpty();
-  const pulled = await pullTimeLedgerTasksFromSupabase();
-  if (!pulled) {
-    getFullTaskOptions();
-    migrateTimeLogRowsTaskIds();
+  await pullTimeLedgerTasksFromSupabase();
+  const seeded = await pushTimeLedgerTasksIfServerEmpty();
+  if (seeded) {
+    await pullTimeLedgerTasksFromSupabase();
   }
+  migrateTimeLogRowsTaskIds();
 }
 
 /**

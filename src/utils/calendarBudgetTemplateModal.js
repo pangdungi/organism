@@ -182,7 +182,6 @@ export function openApplyBudgetTemplateModal(options) {
   const { body, footer, close } = shell;
 
   let selectedId = "";
-  let mode = "append";
 
   const renderList = () => {
     const list = readBudgetScheduleTemplates();
@@ -193,28 +192,12 @@ export function openApplyBudgetTemplateModal(options) {
     }
     body.innerHTML = `
       <p class="lp-budget-template-lead">적용할 템플릿을 고르세요.</p>
-      <div data-legacy="time-task-log-field">
-        <span data-legacy="time-task-log-section-label">적용 방식</span>
-        <div data-legacy="lp-choice-chip-row lp-budget-template-mode" role="radiogroup" aria-label="적용 방식">
-          <button type="button" data-legacy="lp-choice-chip${mode === "append" ? " lp-choice-chip--on" : ""}" data-mode="append">기존 일정에 추가</button>
-          <button type="button" data-legacy="lp-choice-chip${mode === "replace" ? " lp-choice-chip--on" : ""}" data-mode="replace">기존 일정 지우고 적용</button>
-        </div>
-      </div>
+      <p class="lp-budget-template-notice" role="note">적용 시 기존 일정은 사라집니다.</p>
       <div data-legacy="time-task-log-field">
         <span data-legacy="time-task-log-section-label">템플릿 목록</span>
         <ul class="lp-budget-template-list"></ul>
       </div>
     `;
-    body
-      .querySelectorAll(
-        '[data-legacy~="lp-budget-template-mode"] [data-legacy~="lp-choice-chip"]',
-      )
-      .forEach((btn) => {
-      btn.addEventListener("click", () => {
-        mode = btn.dataset.mode === "replace" ? "replace" : "append";
-        renderList();
-      });
-    });
     const ul = body.querySelector(".lp-budget-template-list");
     for (const t of list) {
       const li = document.createElement("li");
@@ -269,17 +252,8 @@ export function openApplyBudgetTemplateModal(options) {
         showToast("템플릿을 선택해 주세요.");
         return;
       }
-      if (mode === "replace") {
-        const ok = await showConfirmModal({
-          title: "일정 덮어쓰기",
-          message:
-            "이 날짜의 기존 예상 일정을 모두 지우고 템플릿을 적용합니다. 계속할까요?",
-          confirmText: "적용",
-        });
-        if (!ok) return;
-      }
       confirmBtn.disabled = true;
-      const r = await applyBudgetTemplateToDateKey(dk, selectedId, mode);
+      const r = await applyBudgetTemplateToDateKey(dk, selectedId, "replace");
       confirmBtn.disabled = false;
       if (!r.ok) {
         showToast(r.error || "적용에 실패했습니다.");

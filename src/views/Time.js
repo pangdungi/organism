@@ -48,6 +48,7 @@ import { USER_HOURLY_RATE_KEY, readUserHourlyRateLocal } from "../utils/userHour
 import * as TTC from "../utils/timeTaskOptionsConstants.js";
 import {
   getFullTaskOptions,
+  getServerLedgerTaskOptionsForTaskLog,
   filterTasksForTaskSetupModalList,
   getTaskOptions,
   addTaskOption,
@@ -64,7 +65,6 @@ import { pullKpiMapsForTaskLogModalOpen } from "../utils/kpiTabCloudRefresh.js";
 import {
   attachTimeLedgerTasksSaveListener,
   pullTimeLedgerTasksFromSupabase,
-  scheduleKpiTaskListEnsureOnce,
   syncTimeLedgerTaskListForModalOpen,
 } from "../utils/timeLedgerTasksSupabase.js";
 import {
@@ -140,6 +140,8 @@ import {
   persistTimeLedgerReportRangeToSession,
   readTimeLedgerReportRangeFromSession,
 } from "../utils/timeLedgerReportView.js";
+import { expectedSpanDisplayTaskName } from "../utils/expectedScheduleDetail.js";
+import { findNextExpectedBudgetBlockForRecording } from "../utils/timeLedgerNextExpectedSchedule.js";
 
 import {
   lpSetClasses,
@@ -4580,6 +4582,88 @@ function refreshTimeLedgerRowMemoDisplay(tr, rowData) {
   if (dispFeedback) dispFeedback.textContent = text;
 }
 
+/** 예상 일정 — 다음 예정 과제(회색 카드) */
+function createNextExpectedScheduleTimelineItem(block, onStartNow, viewEl) {
+  const taskLabel =
+    expectedSpanDisplayTaskName({
+      taskName: block.taskName,
+      scheduleDetail: block.detail,
+    }) || block.taskName;
+  const startClock = block.startHhMm || "—";
+  const endClock = block.endHhMm || "—";
+  const iconSrc = resolveTimeTaskDisplayIconSrc(block.taskName, {
+    category: getTaskOptionByName(block.taskName)?.category,
+    productivity: getTaskOptionByName(block.taskName)?.productivity,
+    iconKey: getTaskOptionByName(block.taskName)?.iconKey || "",
+  });
+
+  const item = document.createElement("div");
+  item.className =
+    "calendar-1day-timeline-item time-ledger-next-expected-item";
+
+  const card = document.createElement("div");
+  card.className =
+    "calendar-1day-timeline-card calendar-1day-timeline-card--usage-layout time-ledger-next-expected-card";
+  card.setAttribute("role", "group");
+  card.setAttribute("aria-label", `다음 예정 ${taskLabel}`);
+
+  const startEl = document.createElement("span");
+  startEl.className = "calendar-1day-timeline-card-start";
+  startEl.textContent = startClock;
+
+  const timeConnector = document.createElement("span");
+  timeConnector.className = "calendar-1day-timeline-card-time-connector";
+  timeConnector.setAttribute("aria-hidden", "true");
+
+  const endEl = document.createElement("span");
+  endEl.className = "calendar-1day-timeline-card-end";
+  endEl.textContent = endClock;
+
+  const iconCell = document.createElement("div");
+  iconCell.className = "time-ledger-usage-icon-cell";
+  if (iconSrc) {
+    const iconImg = document.createElement("img");
+    iconImg.src = iconSrc;
+    iconImg.alt = "";
+    iconImg.loading = "eager";
+    iconImg.decoding = "sync";
+    iconCell.appendChild(iconImg);
+  }
+
+  const mainCol = document.createElement("div");
+  mainCol.className = "time-ledger-next-expected-main";
+
+  const badge = document.createElement("span");
+  badge.className = "time-ledger-next-expected-badge";
+  badge.textContent = "다음 예정";
+
+  const titleEl = document.createElement("div");
+  titleEl.className = "calendar-1day-timeline-card-title";
+  titleEl.textContent = taskLabel;
+
+  const startBtn = document.createElement("button");
+  startBtn.type = "button";
+  startBtn.className = "time-ledger-next-expected-start-btn";
+  startBtn.textContent = "이 과제 지금 실행하기";
+  startBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    onStartNow();
+  });
+
+  mainCol.appendChild(badge);
+  mainCol.appendChild(titleEl);
+  mainCol.appendChild(startBtn);
+
+  card.appendChild(startEl);
+  card.appendChild(timeConnector);
+  card.appendChild(iconCell);
+  card.appendChild(mainCol);
+  card.appendChild(endEl);
+
+  item.appendChild(card);
+  return item;
+}
+
 /** 모바일 시간가계부 카드 — 좌 시간열 | 우(아이콘·과제명 1–2행·소요/가격·메모) */
 function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   const taskLabel = ledgerRowDisplayTaskName(rowData) || "(제목 없음)";
@@ -4763,7 +4847,6 @@ export function render(opts = {}) {
   const signal = timeTabAbort.signal;
 
   attachTimeLedgerTasksSaveListener();
-  if (!taskLogBridgeMode) scheduleKpiTaskListEnsureOnce();
 
   const storedRate = (() => {
     try {
@@ -6078,11 +6161,11 @@ export function render(opts = {}) {
   }
 
   function shouldShowTaskLogRatingSection() {
-    return (
-      isTaskLogModalProductiveTask() ||
-      isTaskLogModalSleepTask() ||
-      isTaskLogModalEmotionalTask()
+    if (isTaskLogModalSleepTask() || isTaskLogModalEmotionalTask()) return true;
+    const pv = getTimeLedgerRowDisplayProductivity(
+      buildTaskLogModalProductivityStub(),
     );
+    return pv === "productive" || pv === "nonproductive";
   }
 
   function taskLogRatingSectionLabelText() {
@@ -6210,6 +6293,8 @@ export function render(opts = {}) {
   let taskLogMemoActiveInput = null;
   let taskLogScrollTopBeforeMemo = 0;
   let taskLogMemoKeyboardOpen = false;
+  let taskLogMemoScrollPadLocked = 0;
+  let taskLogMemoSectionAligned = false;
   /** @type {AbortController | null} */
   let taskLogKeyboardShellAc = null;
   const TASK_LOG_KEYBOARD_OPEN_PX = 80;
@@ -6263,8 +6348,15 @@ export function render(opts = {}) {
   }
 
   /** 메모 포커스 시 스크롤 맨 아래 여백(키보드 높이) — 위로 올릴 공간 확보 */
-  function applyTaskLogMemoScrollBottomSpace() {
+  function applyTaskLogMemoScrollBottomSpace(force = false) {
     if (!(taskLogScrollArea instanceof HTMLElement)) return 0;
+    if (!force && taskLogMemoScrollPadLocked > 0) {
+      taskLogScrollArea.style.setProperty(
+        "--task-log-memo-scroll-pad",
+        `${taskLogMemoScrollPadLocked}px`,
+      );
+      return taskLogMemoScrollPadLocked;
+    }
     const kb = syncVisualViewportKeyboardInset();
     const vv = window.visualViewport;
     const vvGap =
@@ -6277,6 +6369,7 @@ export function render(opts = {}) {
       Math.round(window.innerHeight * 0.45),
       300,
     );
+    taskLogMemoScrollPadLocked = pad;
     taskLogScrollArea.style.setProperty(
       "--task-log-memo-scroll-pad",
       `${pad}px`,
@@ -6285,27 +6378,34 @@ export function render(opts = {}) {
   }
 
   function clearTaskLogMemoScrollBottomSpace() {
+    taskLogMemoScrollPadLocked = 0;
     taskLogScrollArea?.style.removeProperty("--task-log-memo-scroll-pad");
   }
 
   /** 스크롤 영역만 세로 스크롤 — 메모·입력란을 키보드 위로 */
-  function scrollTaskLogMemoInputIntoView(inputEl) {
+  function scrollTaskLogMemoInputIntoView(
+    inputEl,
+    { jumpToMemoSection = false } = {},
+  ) {
     if (!(inputEl instanceof HTMLElement)) return;
     if (!(taskLogScrollArea instanceof HTMLElement)) return;
 
     applyTaskLogMemoScrollBottomSpace();
 
-    const memoSection = taskLogModal.querySelector(
-      '[data-legacy~="time-task-log-memo-section"]',
-    );
-    if (memoSection instanceof HTMLElement) {
-      const memoDelta =
-        memoSection.getBoundingClientRect().top -
-        taskLogScrollArea.getBoundingClientRect().top;
-      taskLogScrollArea.scrollTop = Math.max(
-        0,
-        taskLogScrollArea.scrollTop + memoDelta - 12,
+    if (jumpToMemoSection && !taskLogMemoSectionAligned) {
+      const memoSection = taskLogModal.querySelector(
+        '[data-legacy~="time-task-log-memo-section"]',
       );
+      if (memoSection instanceof HTMLElement) {
+        const memoDelta =
+          memoSection.getBoundingClientRect().top -
+          taskLogScrollArea.getBoundingClientRect().top;
+        taskLogScrollArea.scrollTop = Math.max(
+          0,
+          taskLogScrollArea.scrollTop + memoDelta - 12,
+        );
+        taskLogMemoSectionAligned = true;
+      }
     }
 
     const vv = window.visualViewport;
@@ -6321,8 +6421,8 @@ export function render(opts = {}) {
   }
 
   function runTaskLogMemoScrollPasses(inputEl) {
-    applyTaskLogMemoScrollBottomSpace();
-    scrollTaskLogMemoInputIntoView(inputEl);
+    applyTaskLogMemoScrollBottomSpace(true);
+    scrollTaskLogMemoInputIntoView(inputEl, { jumpToMemoSection: true });
     requestAnimationFrame(() => scrollTaskLogMemoInputIntoView(inputEl));
     for (const ms of [50, 150, 350, 550, 850]) {
       window.setTimeout(() => scrollTaskLogMemoInputIntoView(inputEl), ms);
@@ -6338,6 +6438,7 @@ export function render(opts = {}) {
   function restoreTaskLogMemoScrollPosition() {
     taskLogMemoKeyboardOpen = false;
     taskLogMemoActiveInput = null;
+    taskLogMemoSectionAligned = false;
     setTaskLogMemoKeyboardScroll(false);
     clearTaskLogMemoScrollBottomSpace();
     if (taskLogScrollArea instanceof HTMLElement) {
@@ -6352,6 +6453,7 @@ export function render(opts = {}) {
 
     taskLogMemoActiveInput = inputEl;
     taskLogMemoKeyboardOpen = true;
+    taskLogMemoSectionAligned = false;
     taskLogScrollTopBeforeMemo = taskLogScrollArea.scrollTop;
     setTaskLogMemoKeyboardScroll(true);
     syncVisualViewportKeyboardInset();
@@ -7847,8 +7949,15 @@ export function render(opts = {}) {
       loadTimeRows(),
       Array.isArray(allRowsCache) ? allRowsCache : [],
     );
-    const startHhMm =
+    let startHhMm =
       getNextTaskLogStartHhMmFromLedger(ymd, null, mergedRows) || "00:00";
+    if (taskLogAddContext?.presetStartNow) {
+      const n = new Date();
+      startHhMm = `${String(n.getHours()).padStart(2, "0")}:${String(n.getMinutes()).padStart(2, "0")}`;
+    } else if (taskLogAddContext?.presetStartHhMm) {
+      const preset = normalizeHhMm(String(taskLogAddContext.presetStartHhMm));
+      if (preset) startHhMm = preset;
+    }
     if (taskLogDateStart) {
       taskLogDateStart.value = ymd;
       try {
@@ -7904,11 +8013,17 @@ export function render(opts = {}) {
   /** 기록 모달이 이미 열린 뒤 서버 과제 목록이 도착했을 때 드롭다운·KPI 연동만 맞춤(즉시 열기용). */
   function afterTaskListSyncForTaskLogAddModal() {
     if (!el.isConnected || taskLogModal?.hidden) return;
+    const presetTask = String(taskLogAddContext?.presetTaskName || "").trim();
+    if (presetTask) {
+      taskLogTaskDropdown?._setValue?.(presetTask);
+      onTaskSelectedForLog(presetTask);
+      return;
+    }
     const v = (taskLogTaskDropdown?._getValue?.() || "").trim();
     if (v) onTaskSelectedForLog(v);
     else {
       const preset = taskLogAddContext?.ledgerBucketPreset;
-      let mainTasks = getFullTaskOptions().filter(
+      let mainTasks = getServerLedgerTaskOptionsForTaskLog().filter(
         (t) => !(t.name || "").includes(" > "),
       );
       if (preset)
@@ -7923,16 +8038,11 @@ export function render(opts = {}) {
     }
   }
 
-  function openTaskLogModal(addContext) {
-    /** pull 완료를 기다려 모달을 늦추면(느린망 ~1초) 체감 지연 → 먼저 열고 동기화는 비동기 */
+  async function openTaskLogModal(addContext) {
+    await ensureTaskLogModalCloudData().catch(() => {});
+    if (!el.isConnected) return;
     openTaskLogModalAfterPull(addContext);
     afterTaskListSyncForTaskLogAddModal();
-    void ensureTaskLogModalCloudData()
-      .catch(() => {})
-      .then(() => {
-        if (!el.isConnected || taskLogModal.hidden) return;
-        afterTaskListSyncForTaskLogAddModal();
-      });
   }
 
   function setTaskLogModalShellOpen(open) {
@@ -7976,7 +8086,7 @@ export function render(opts = {}) {
     );
     taskLogTaskDropdown._closePanel?.();
     const presetAdd = addContext?.ledgerBucketPreset;
-    let pickTasks = getFullTaskOptions().filter(
+    let pickTasks = getServerLedgerTaskOptionsForTaskLog().filter(
       (t) => !(t.name || "").includes(" > "),
     );
     if (presetAdd)
@@ -8015,16 +8125,34 @@ export function render(opts = {}) {
         if (header) header.setAttribute("aria-expanded", "false");
       });
     applyTaskLogModalDefaultsForNewEntry();
-    taskLogTaskDropdown._setValue?.(firstTask);
+    const presetTask = String(addContext?.presetTaskName || "").trim();
+    if (presetTask) {
+      taskLogTaskDropdown._setValue?.(presetTask);
+      onTaskSelectedForLog(presetTask);
+    } else {
+      taskLogTaskDropdown._setValue?.(firstTask);
+    }
     requestAnimationFrame(() => {
       applyTaskLogModalDefaultsForNewEntry();
+      if (presetTask) {
+        taskLogTaskDropdown._setValue?.(presetTask);
+        onTaskSelectedForLog(presetTask);
+      }
       requestAnimationFrame(() => {
         applyTaskLogModalDefaultsForNewEntry();
+        if (presetTask) {
+          taskLogTaskDropdown._setValue?.(presetTask);
+          onTaskSelectedForLog(presetTask);
+        }
       });
     });
     setTimeout(() => {
       if (!el.isConnected || taskLogModal.hidden) return;
       applyTaskLogModalDefaultsForNewEntry();
+      if (presetTask) {
+        taskLogTaskDropdown._setValue?.(presetTask);
+        onTaskSelectedForLog(presetTask);
+      }
     }, 0);
     setTaskLogQuickAdjustActive(
       taskLogModal.querySelector(
@@ -8033,7 +8161,7 @@ export function render(opts = {}) {
     );
   }
 
-  function openTaskLogModalForEdit(tr, rowData) {
+  async function openTaskLogModalForEdit(tr, rowData) {
     const data =
       tr?._rowData && typeof tr._rowData === "object" ? tr._rowData : rowData;
     let startTime = data.startTime || "";
@@ -8177,6 +8305,8 @@ export function render(opts = {}) {
         }
       }
     }
+    await ensureTaskLogModalCloudData().catch(() => {});
+    if (!el.isConnected) return;
     taskLogModal.hidden = false;
     prepareTaskLogModalForOpen();
     setTaskLogModalShellOpen(true);
@@ -8248,20 +8378,15 @@ export function render(opts = {}) {
     }
     updateTaskLogMealDetailVisibility((data.taskName || "").trim());
     syncTaskLogDateOverlay();
-    void ensureTaskLogModalCloudData()
-      .catch(() => {})
-      .then(() => {
-        if (!el.isConnected || taskLogModal.hidden) return;
-        afterTaskListSyncForTaskLogAddModal();
-        const tnPost = tnForDaily;
-        restoreKpiFieldsIfCloudPullWiped(tnPost, data.id);
-        refreshKpiTodosInLogModal(tnPost);
-        if (taskLogTaskDropdown && tnPost) {
-          taskLogTaskDropdown._setValue?.(tnPost);
-          refreshKpiTodosInLogModal(tnPost);
-        }
-        updateTaskLogMealDetailVisibility(tnPost);
-      });
+    afterTaskListSyncForTaskLogAddModal();
+    const tnPost = tnForDaily;
+    restoreKpiFieldsIfCloudPullWiped(tnPost, data.id);
+    refreshKpiTodosInLogModal(tnPost);
+    if (taskLogTaskDropdown && tnPost) {
+      taskLogTaskDropdown._setValue?.(tnPost);
+      refreshKpiTodosInLogModal(tnPost);
+    }
+    updateTaskLogMealDetailVisibility(tnPost);
   }
 
   function closeTaskLogModal() {
@@ -9806,6 +9931,40 @@ export function render(opts = {}) {
             ? "이 날 기록이 없습니다."
             : "선택 기간에 기록이 없습니다.";
         timelineList.appendChild(emptyTl);
+      }
+
+      const todayYmd = getLedgerFilterTodayYmd();
+      const viewingTodayTimeline =
+        !timeLedgerFilterSpansMultipleDays() &&
+        usageHistoryRangeStartYmd === todayYmd &&
+        usageHistoryRangeEndYmd === todayYmd;
+      if (viewingTodayTimeline) {
+        const nextExpected = findNextExpectedBudgetBlockForRecording(todayYmd);
+        if (nextExpected) {
+          timelineList.appendChild(
+            createNextExpectedScheduleTimelineItem(
+              nextExpected,
+              () => {
+                openTaskLogModal({
+                  productivity: null,
+                  tbody: hiddenTbody,
+                  addRow: null,
+                  onRowUpdate: () => {
+                    updateTotal();
+                    onFilterChange();
+                  },
+                  viewEl: el,
+                  createRow,
+                  handleRowDelete,
+                  handleCardEdit,
+                  presetTaskName: nextExpected.taskName,
+                  presetStartNow: true,
+                });
+              },
+              el,
+            ),
+          );
+        }
       }
     }
 

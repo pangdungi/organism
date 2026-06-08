@@ -291,24 +291,37 @@
   background: var(--cal-surface-muted);
 }
 
-/* 예상 일정 패널 — 빈 날 템플릿 적용(점선) */
-.calendar-1day-expected-template-apply {
+.calendar-1day-expected-cards-footer {
+  flex-shrink: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  margin: 0.35rem 0 0;
-  padding: 0.85rem 0.65rem;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0.4rem;
+  padding: 0.45rem 0.55rem 0.5rem;
+  border-top: 1px solid #e2e8f0;
   box-sizing: border-box;
-  border: 1.5px dashed #cbd5e1;
-  border-radius: 0.5rem;
-  background: transparent;
-  color: #64748b;
+}
+
+.calendar-1day-expected-template-apply,
+.calendar-1day-expected-template-save {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  padding: 0.45rem 0.4rem;
+  box-sizing: border-box;
+  border-radius: 8px;
   font: inherit;
-  font-size: 0.8125rem;
-  font-weight: 600;
+  font-size: 0.75rem;
+  font-weight: 650;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  text-align: center;
+}
+
+.calendar-1day-expected-template-apply {
+  border: 1.5px dashed #cbd5e1;
+  background: transparent;
+  color: #64748b;
 }
 
 .calendar-1day-expected-template-apply:hover {
@@ -317,28 +330,10 @@
   background: #f8fafc;
 }
 
-.calendar-1day-expected-cards-footer {
-  flex-shrink: 0;
-  padding: 0.45rem 0.55rem 0.5rem;
-  border-top: 1px solid #e2e8f0;
-  box-sizing: border-box;
-}
-
 .calendar-1day-expected-template-save {
-  display: block;
-  width: 100%;
-  margin: 0;
-  padding: 0.45rem 0.65rem;
-  box-sizing: border-box;
   border: 1px solid var(--cal-line);
-  border-radius: 8px;
   background: var(--cal-surface);
   color: var(--cal-text);
-  font: inherit;
-  font-size: 0.8125rem;
-  font-weight: 650;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
 }
 
 .calendar-1day-expected-template-save:hover {
@@ -481,6 +476,7 @@
   overflow: hidden;
   padding: 0.3rem 0.55rem 0.45rem;
   box-sizing: border-box;
+  touch-action: pan-y;
 }
 
 .calendar-1day-slot-grid-matrix {
@@ -568,6 +564,14 @@
   color: #c2407e;
 }
 
+/* 생산·비생산 대화·외출(예상 일정) */
+.calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--social {
+  background: #ece6f8;
+  border-color: #ece6f8;
+  border-style: solid;
+  color: #6b4bc2;
+}
+
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--health {
   background: #fbe7da;
   border-color: #fbe7da;
@@ -631,6 +635,20 @@
 
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell:active {
   filter: brightness(0.94);
+}
+
+.calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--filled {
+  cursor: grab;
+}
+
+.calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--drag-source {
+  opacity: 0.42;
+}
+
+.calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--drop-preview {
+  outline: 2px dashed #6b4bc2;
+  outline-offset: -2px;
+  filter: none;
 }
 
 .calendar-1day-day-tasks-compact {
@@ -2904,6 +2922,13 @@
 
 .lp-calendar-budget-add-modal [data-legacy~="time-task-log-field"] {
   margin-bottom: 0.55rem;
+}
+
+.lp-calendar-budget-add-modal .lp-calendar-expected-task-avg-hint {
+  margin: 0.28rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: #64748b;
 }
 
 .lp-calendar-budget-add-modal [data-legacy~="time-task-log-memo-section"] {

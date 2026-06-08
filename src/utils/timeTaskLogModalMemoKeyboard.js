@@ -46,6 +46,8 @@ export function bindTimeTaskLogModalMemoKeyboard(modal, opts = {}) {
   let memoVvAdjust = null;
   let memoActiveInput = null;
   let scrollTopBeforeMemo = 0;
+  let memoScrollPadLocked = 0;
+  let memoSectionAligned = false;
   let keyboardShellAc = null;
 
   function isMemoInputFocused() {
@@ -62,8 +64,15 @@ export function bindTimeTaskLogModalMemoKeyboard(modal, opts = {}) {
     return !!modal.querySelector(`${allKeyboardInputSelector}:focus`);
   }
 
-  function applyMemoScrollBottomSpace() {
+  function applyMemoScrollBottomSpace(force = false) {
     if (!(scrollArea instanceof HTMLElement)) return 0;
+    if (!force && memoScrollPadLocked > 0) {
+      scrollArea.style.setProperty(
+        "--task-log-memo-scroll-pad",
+        `${memoScrollPadLocked}px`,
+      );
+      return memoScrollPadLocked;
+    }
     const kb = syncVisualViewportKeyboardInset();
     const vv = window.visualViewport;
     const vvGap =
@@ -76,11 +85,13 @@ export function bindTimeTaskLogModalMemoKeyboard(modal, opts = {}) {
       Math.round(window.innerHeight * 0.45),
       300,
     );
+    memoScrollPadLocked = pad;
     scrollArea.style.setProperty("--task-log-memo-scroll-pad", `${pad}px`);
     return pad;
   }
 
   function clearMemoScrollBottomSpace() {
+    memoScrollPadLocked = 0;
     scrollArea?.style.removeProperty("--task-log-memo-scroll-pad");
   }
 
@@ -88,8 +99,9 @@ export function bindTimeTaskLogModalMemoKeyboard(modal, opts = {}) {
     if (!(inputEl instanceof HTMLElement)) return;
     if (!(scrollArea instanceof HTMLElement)) return;
 
-    if (jumpToMemoSection) {
-      applyMemoScrollBottomSpace();
+    applyMemoScrollBottomSpace();
+
+    if (jumpToMemoSection && !memoSectionAligned) {
       const memoSection = modal.querySelector(
         '[data-legacy~="time-task-log-memo-section"]',
       );
@@ -101,6 +113,7 @@ export function bindTimeTaskLogModalMemoKeyboard(modal, opts = {}) {
           0,
           scrollArea.scrollTop + memoDelta - 12,
         );
+        memoSectionAligned = true;
       }
     }
 
@@ -120,7 +133,7 @@ export function bindTimeTaskLogModalMemoKeyboard(modal, opts = {}) {
   }
 
   function runMemoScrollPasses(inputEl) {
-    applyMemoScrollBottomSpace();
+    applyMemoScrollBottomSpace(true);
     scrollFocusedInputIntoView(inputEl, { jumpToMemoSection: true });
     requestAnimationFrame(() =>
       scrollFocusedInputIntoView(inputEl, { jumpToMemoSection: true }),
@@ -151,6 +164,7 @@ export function bindTimeTaskLogModalMemoKeyboard(modal, opts = {}) {
 
   function restoreMemoScrollPosition() {
     memoActiveInput = null;
+    memoSectionAligned = false;
     setMemoKeyboardScroll(false);
     clearMemoScrollBottomSpace();
     if (scrollArea instanceof HTMLElement) {
@@ -174,6 +188,7 @@ export function bindTimeTaskLogModalMemoKeyboard(modal, opts = {}) {
     if (!(scrollArea instanceof HTMLElement)) return;
 
     memoActiveInput = inputEl;
+    memoSectionAligned = false;
     scrollTopBeforeMemo = scrollArea.scrollTop;
     const isTimeField = isDatetimeInput(inputEl);
     setMemoKeyboardScroll(!isTimeField);
@@ -191,9 +206,7 @@ export function bindTimeTaskLogModalMemoKeyboard(modal, opts = {}) {
       syncVisualViewportKeyboardInset();
       if (lockPage) lockPageScrollForModalKeyboard();
       setMemoKeyboardScroll(!isDatetimeInput(active));
-      scrollFocusedInputIntoView(active, {
-        jumpToMemoSection: !isDatetimeInput(active),
-      });
+      scrollFocusedInputIntoView(active, { jumpToMemoSection: false });
     };
     const adjustOnResize = () => adjustCore(true);
     const adjustOnScroll = () => adjustCore(false);

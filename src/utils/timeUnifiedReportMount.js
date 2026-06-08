@@ -22,6 +22,10 @@ import {
   parseTimeToHours,
 } from "../views/Time.js";
 import { normalizeTimeRatingForRow } from "./timeLedgerEntriesModel.js";
+import { buildEmotionReportSnapshot } from "./timeEmotionReport.js";
+import { buildMoveReportSnapshot } from "./timeMoveReport.js";
+import { buildHappinessRoutineReportSnapshot } from "./timeHappinessRoutineReport.js";
+import { readUserHourlyRateLocal } from "./userHourlySync.js";
 
 const SLEEP_TARGET_MIN = 7 * 60;
 const CHART_COLORS = {
@@ -62,6 +66,8 @@ const MEDIA_CONSCIOUS_TASK = "의식적 콘텐츠 소비";
 const MEDIA_UNCONSCIOUS_TASK = "무의식적 콘텐츠 소비";
 const MEDIA_CONSCIOUS_COLOR = "#1e4d7b";
 const MEDIA_UNCONSCIOUS_COLOR = "#7c3aed";
+const MOVE_ROUTINE_COLOR = "#1e4d7b";
+const MOVE_SIMPLE_COLOR = "#94a3b8";
 
 function donutCategoryColor(catKey) {
   const k = String(catKey || "").trim() || "other";
@@ -171,6 +177,12 @@ function formatNetWon(netWon) {
   if (n > 0) return formatInvestReclaimWonDisplay(n);
   if (n < 0) return formatLedgerLossKrwDisplay(Math.abs(n));
   return "₩0";
+}
+
+function readReportHourlyRateNumber() {
+  return (
+    parseFloat(String(readUserHourlyRateLocal() || "0").replace(/,/g, "")) || 0
+  );
 }
 
 function createSection(title, subtitle) {
@@ -2010,6 +2022,359 @@ function renderMediaCompareChart(chartDays) {
   return wrap;
 }
 
+function buildEmotionTriggerTable(items) {
+  const table = document.createElement("div");
+  table.className = "lp-tr2-emotion-trigger-table";
+  table.setAttribute("role", "table");
+
+  const head = document.createElement("div");
+  head.className = "lp-tr2-emotion-trigger-table-head";
+  head.setAttribute("role", "row");
+  ["트리거", "횟수", "평균 강도", "평균 시간"].forEach((text) => {
+    const cell = document.createElement("span");
+    cell.setAttribute("role", "columnheader");
+    cell.textContent = text;
+    head.appendChild(cell);
+  });
+  table.appendChild(head);
+
+  const body = document.createElement("div");
+  body.className = "lp-tr2-emotion-trigger-table-body";
+  items.forEach((item) => {
+    const row = document.createElement("div");
+    row.className = "lp-tr2-emotion-trigger-table-row";
+    row.setAttribute("role", "row");
+
+    const labelCell = document.createElement("span");
+    labelCell.className = "lp-tr2-emotion-trigger-table-label";
+    labelCell.setAttribute("role", "cell");
+    labelCell.textContent = item.label;
+
+    const countCell = document.createElement("span");
+    countCell.className = "lp-tr2-emotion-trigger-table-num";
+    countCell.setAttribute("role", "cell");
+    countCell.textContent = `${item.count}회`;
+
+    const ratingCell = document.createElement("span");
+    ratingCell.className = "lp-tr2-emotion-trigger-table-num";
+    ratingCell.setAttribute("role", "cell");
+    ratingCell.textContent =
+      item.avgRating != null ? `${formatRatingAvg(item.avgRating)}/5` : "—";
+
+    const durCell = document.createElement("span");
+    durCell.className = "lp-tr2-emotion-trigger-table-num";
+    durCell.setAttribute("role", "cell");
+    durCell.textContent = formatIntegerMinutesDurationKo(
+      Math.round(item.avgMinutes),
+    );
+
+    row.append(labelCell, countCell, ratingCell, durCell);
+    body.appendChild(row);
+  });
+  table.appendChild(body);
+  return table;
+}
+
+function mountEmotionSection(scrollWrap, range, rows) {
+  const hourlyRate = readReportHourlyRateNumber();
+  const snap = buildEmotionReportSnapshot(rows, hourlyRate);
+  const sec = createSection(
+    "감정 소비",
+    "감정적이기 중 1~2점(나쁨·매우 나쁨) 기록만 집계합니다",
+  );
+
+  if (!snap.hasData) {
+    const note = document.createElement("p");
+    note.className = "lp-tr2-chart-note";
+    note.textContent =
+      "이 기간에 감정 1~2점 기록이 없습니다.";
+    sec.appendChild(note);
+    scrollWrap.appendChild(sec);
+    return;
+  }
+
+  const hero = document.createElement("div");
+  hero.className = "lp-tr2-card-grid";
+  hero.appendChild(
+    createStatCard(
+      "감정소비시간",
+      formatIntegerMinutesDurationKo(snap.consumptionMinutes),
+      snap.consumptionCount > 0
+        ? `감정 1~2점 기록 ${snap.consumptionCount}건`
+        : "이 기간에 1~2점 기록 없음",
+    ),
+  );
+  hero.appendChild(
+    createStatCard(
+      "감정 소비 비용",
+      snap.consumptionCostWon > 0
+        ? formatLedgerLossKrwDisplay(snap.consumptionCostWon)
+        : hourlyRate > 0
+          ? "₩0"
+          : "—",
+      hourlyRate > 0
+        ? "설정한 시급 × 감정소비시간"
+        : "나의 계정에서 시급을 넣으면 표시됩니다",
+    ),
+  );
+  sec.appendChild(hero);
+
+  if (snap.triggers.length) {
+    const block = createRatingBlock(
+      "트리거별 (1~2점만)",
+      "어떤 상황에서 나쁜 감정이 얼마나·얼마나 오래 이어졌는지",
+    );
+    block.appendChild(buildEmotionTriggerTable(snap.triggers));
+    sec.appendChild(block);
+  }
+
+  scrollWrap.appendChild(sec);
+}
+
+function mountMoveSection(scrollWrap, range, rows) {
+  const snap = buildMoveReportSnapshot(rows, range);
+  const sec = createSection(
+    "이동 시간",
+    "이동 루틴 · 단순 이동 과제 기록 합산",
+  );
+
+  if (!snap.hasData) {
+    const note = document.createElement("p");
+    note.className = "lp-tr2-chart-note";
+    note.textContent =
+      "이 기간에 이동 루틴·단순 이동 기록이 없습니다.";
+    sec.appendChild(note);
+    scrollWrap.appendChild(sec);
+    return;
+  }
+
+  const hero = document.createElement("div");
+  hero.className = "lp-tr2-media-hero";
+  const heroMain = document.createElement("p");
+  heroMain.className = "lp-tr2-media-hero-main";
+  heroMain.textContent = `이동시간 가용율 ${snap.routineUtilPct}%`;
+  const heroSub = document.createElement("p");
+  heroSub.className = "lp-tr2-media-hero-sub";
+  heroSub.textContent = `총 이동 ${formatIntegerMinutesDurationKo(snap.totalMinutes)} · 일평균 ${formatIntegerMinutesDurationKo(snap.dailyAvgMinutes)} · 이동 루틴 ${formatIntegerMinutesDurationKo(snap.routineMinutes)} · 단순 이동 ${formatIntegerMinutesDurationKo(snap.simpleMinutes)}`;
+  hero.appendChild(heroMain);
+  hero.appendChild(heroSub);
+  sec.appendChild(hero);
+
+  const hint = document.createElement("p");
+  hint.className = "lp-tr2-media-tag-hint";
+  hint.textContent =
+    "가용율 = 총 이동시간 중 이동 루틴에 쓴 비율입니다. 일평균은 조회 기간 전체 일수로 나눈 값입니다.";
+  sec.appendChild(hint);
+
+  const grid = document.createElement("div");
+  grid.className = "lp-tr2-card-grid";
+  grid.appendChild(
+    createStatCard(
+      "총 이동시간",
+      formatIntegerMinutesDurationKo(snap.totalMinutes),
+      `기록 ${snap.recordCount}건 · 이동 있던 날 ${snap.daysWithMoveCount}일`,
+    ),
+  );
+  grid.appendChild(
+    createStatCard(
+      "일평균 이동시간",
+      formatIntegerMinutesDurationKo(snap.dailyAvgMinutes),
+      `조회 ${snap.calendarDayCount}일 기준`,
+    ),
+  );
+  grid.appendChild(
+    createStatCard(
+      "이동 루틴",
+      formatIntegerMinutesDurationKo(snap.routineMinutes),
+      snap.totalMinutes > 0
+        ? `총 이동의 ${formatPctRounded((snap.routineMinutes / snap.totalMinutes) * 100)}`
+        : "",
+    ),
+  );
+  grid.appendChild(
+    createStatCard(
+      "단순 이동",
+      formatIntegerMinutesDurationKo(snap.simpleMinutes),
+      snap.totalMinutes > 0
+        ? `총 이동의 ${formatPctRounded((snap.simpleMinutes / snap.totalMinutes) * 100)}`
+        : "",
+    ),
+  );
+  sec.appendChild(grid);
+
+  const block = document.createElement("div");
+  block.className = "lp-tr2-rating-block";
+  const blockTitle = document.createElement("p");
+  blockTitle.className = "lp-tr2-rating-block-title";
+  blockTitle.textContent = "이동 시간 구성";
+  const blockSub = document.createElement("p");
+  blockSub.className = "lp-tr2-rating-block-sub";
+  blockSub.textContent = "이동 루틴 vs 단순 이동";
+  block.appendChild(blockTitle);
+  block.appendChild(blockSub);
+  const maxMins = Math.max(snap.routineMinutes, snap.simpleMinutes, 1);
+  block.appendChild(
+    createBarRow(
+      "이동 루틴",
+      snap.routineMinutes,
+      maxMins,
+      MOVE_ROUTINE_COLOR,
+      "의도한 이동 루틴에 쓴 시간",
+    ),
+  );
+  block.appendChild(
+    createBarRow(
+      "단순 이동",
+      snap.simpleMinutes,
+      maxMins,
+      MOVE_SIMPLE_COLOR,
+      "단순 이동 과제에 쓴 시간",
+    ),
+  );
+  sec.appendChild(block);
+
+  scrollWrap.appendChild(sec);
+}
+
+function buildHappinessRoutineItemTable(items) {
+  const table = document.createElement("div");
+  table.className = "lp-tr2-emotion-trigger-table lp-tr2-routine-item-table";
+  table.setAttribute("role", "table");
+
+  const head = document.createElement("div");
+  head.className = "lp-tr2-emotion-trigger-table-head";
+  head.setAttribute("role", "row");
+  ["매일 할일", "체크", "실행율"].forEach((text) => {
+    const cell = document.createElement("span");
+    cell.setAttribute("role", "columnheader");
+    cell.textContent = text;
+    head.appendChild(cell);
+  });
+  table.appendChild(head);
+
+  const body = document.createElement("div");
+  body.className = "lp-tr2-emotion-trigger-table-body";
+  items.forEach((item) => {
+    const row = document.createElement("div");
+    row.className = "lp-tr2-emotion-trigger-table-row";
+    if (item.isWeak) row.classList.add("lp-tr2-routine-item-row--weak");
+    row.setAttribute("role", "row");
+
+    const labelCell = document.createElement("span");
+    labelCell.className = "lp-tr2-emotion-trigger-table-label";
+    labelCell.setAttribute("role", "cell");
+    labelCell.textContent = item.text;
+
+    const checkCell = document.createElement("span");
+    checkCell.className = "lp-tr2-emotion-trigger-table-num";
+    checkCell.setAttribute("role", "cell");
+    checkCell.textContent = `${item.checkCount}/${item.opportunityCount}`;
+
+    const pctCell = document.createElement("span");
+    pctCell.className = "lp-tr2-emotion-trigger-table-num";
+    pctCell.setAttribute("role", "cell");
+    pctCell.textContent = `${formatPctRounded(item.executionPct)}`;
+
+    row.append(labelCell, checkCell, pctCell);
+    body.appendChild(row);
+  });
+  table.appendChild(body);
+  return table;
+}
+
+function appendHappinessRoutineBlock(sec, snap, { heading, routine, items, badgeKind }) {
+  if (!routine) return;
+
+  const block = document.createElement("div");
+  block.className = "lp-tr2-routine-block";
+
+  const head = document.createElement("div");
+  head.className = "lp-tr2-routine-block-head";
+
+  const title = document.createElement("p");
+  title.className = "lp-tr2-routine-block-title";
+  title.textContent = heading;
+
+  const name = document.createElement("span");
+  name.className = "lp-tr2-routine-block-name";
+  name.textContent = routine.name;
+
+  const badge = document.createElement("span");
+  badge.className =
+    badgeKind === "ok"
+      ? "lp-tr2-routine-badge lp-tr2-routine-badge--ok"
+      : "lp-tr2-routine-badge lp-tr2-routine-badge--warn";
+  badge.textContent = badgeKind === "ok" ? "가장 높음" : "가장 낮음";
+
+  const pct = document.createElement("span");
+  pct.className = "lp-tr2-routine-block-pct";
+  pct.textContent = `실행율 ${formatPctRounded(routine.executionPct)}`;
+
+  head.append(title, name, badge, pct);
+  block.appendChild(head);
+
+  const sub = document.createElement("p");
+  sub.className = "lp-tr2-routine-block-sub";
+  sub.textContent = `체크 ${routine.totalChecks}/${routine.totalOpportunities} · ${snap.calendarDayCount}일 기준`;
+  block.appendChild(sub);
+
+  if (items.length) {
+    block.appendChild(buildHappinessRoutineItemTable(items));
+  } else {
+    const empty = document.createElement("p");
+    empty.className = "lp-tr2-chart-note";
+    empty.textContent = "이 루틴에서 실행율이 특히 낮은 매일할일은 없습니다.";
+    block.appendChild(empty);
+  }
+
+  sec.appendChild(block);
+}
+
+function mountHappinessRoutineSection(scrollWrap, range) {
+  const snap = buildHappinessRoutineReportSnapshot(range);
+  const sec = createSection(
+    "행복 루틴 점검",
+    `매일반복 루틴 · ${snap.calendarDayCount || 0}일 · 가장 잘·덜 지켜진 루틴만`,
+  );
+
+  if (!snap.hasData) {
+    const note = document.createElement("p");
+    note.className = "lp-tr2-chart-note";
+    note.textContent =
+      "매일반복이 켜진 행복 루틴과 매일할일이 없거나, 이 기간 집계 대상이 없습니다.";
+    sec.appendChild(note);
+    scrollWrap.appendChild(sec);
+    return;
+  }
+
+  const best = snap.bestRoutine;
+  const worst = snap.worstRoutine;
+  const sameRoutine =
+    best && worst && String(best.kpiId) === String(worst.kpiId);
+
+  appendHappinessRoutineBlock(sec, snap, {
+    heading: "가장 잘 지켜지는 루틴",
+    routine: best,
+    items: best?.items || [],
+    badgeKind: "ok",
+  });
+
+  if (!sameRoutine) {
+    const weakItems =
+      worst?.weakItems?.length > 0
+        ? worst.weakItems
+        : (worst?.items || []).slice(0, 3);
+    appendHappinessRoutineBlock(sec, snap, {
+      heading: "가장 덜 지켜지는 루틴",
+      routine: worst,
+      items: weakItems,
+      badgeKind: "warn",
+    });
+  }
+
+  scrollWrap.appendChild(sec);
+}
+
 function mountMediaSection(scrollWrap, range, rows) {
   const snap = buildMediaReportSnapshot(rows, range);
   const sec = createSection(
@@ -2445,6 +2810,9 @@ export function mountUnifiedTimeReport(scrollWrap, arg2, arg3) {
   mountHeroSection(scrollWrap, range);
   mountSleepSection(scrollWrap, range, rows);
   mountIntakeSection(scrollWrap, range, rows);
+  mountEmotionSection(scrollWrap, range, rows);
+  mountMoveSection(scrollWrap, range, rows);
+  mountHappinessRoutineSection(scrollWrap, range);
   mountMediaSection(scrollWrap, range, rows);
   mountDonutSection(scrollWrap, range);
   mountTimeRatingReportSection(scrollWrap, range, rows);

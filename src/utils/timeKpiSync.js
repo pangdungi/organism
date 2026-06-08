@@ -19,6 +19,7 @@ import {
 } from "./kpiLogFields.js";
 import { syncSleepHealthGoalLogsFromTimeLedger } from "./healthSleepGoalTimeLedgerSync.js";
 import { getActiveKpiTaskKeepersById } from "./kpiMapLocalStorage.js";
+import { timeLedgerLocalTodayYmd } from "./timeLedgerEntriesSupabase.js";
 export {
   getKpiSyncedTaskNames,
   getKpiSyncActiveKpiIds,
@@ -392,6 +393,94 @@ export function countKpiDaysWithRecordedMinutesInDateRange(
     if (accumulateMinutesForKpiFromRows(kpiId, rows, []) >= 1) activeDays++;
   }
   return activeDays;
+}
+
+function shiftYmdByDays(ymdTen, deltaDays) {
+  const d = normalizeYmdTenForRange(ymdTen);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return "";
+  const sy = parseInt(d.slice(0, 4), 10);
+  const sm = parseInt(d.slice(5, 7), 10) - 1;
+  const sd = parseInt(d.slice(8, 10), 10);
+  const dt = new Date(Date.UTC(sy, sm, sd));
+  dt.setUTCDate(dt.getUTCDate() + Number(deltaDays) || 0);
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`;
+}
+
+function collectTaskLedgerMatchKeys(taskName) {
+  const name = String(taskName || "").trim();
+  const names = new Set();
+  const taskIds = new Set();
+  if (!name) return { names, taskIds };
+  names.add(name);
+  const opt = getTaskOptionByName(name);
+  const tid = String(opt?.id || "").trim();
+  if (isUuid(tid)) taskIds.add(tid);
+  for (const r of loadTimeRows()) {
+    const rName = String(r.taskName || "").trim();
+    const rId = String(r.taskId || "").trim();
+    if (rName === name && isUuid(rId)) taskIds.add(rId);
+    if (isUuid(tid) && rId === tid && rName) names.add(rName);
+  }
+  return { names, taskIds };
+}
+
+function ledgerRowMatchesTaskKeys(row, keys) {
+  const rName = String(row?.taskName || "").trim();
+  const rId = String(row?.taskId || "").trim();
+  if (keys.names.has(rName)) return true;
+  return isUuid(rId) && keys.taskIds.has(rId);
+}
+
+/**
+ * 과제명 · 날짜 구간 — 그 과제를 기록한 날만, 하루 합산 분의 평균.
+ * @returns {number|null} null = 해당 구간 기록 없음
+ */
+export function getTaskDailyAverageMinutesInDateRange(
+  taskName,
+  startYmdTen,
+  endYmdTenInclusive,
+) {
+  const keys = collectTaskLedgerMatchKeys(taskName);
+  if (keys.names.size === 0 && keys.taskIds.size === 0) return null;
+  const s = normalizeYmdTenForRange(startYmdTen);
+  const e = normalizeYmdTenForRange(endYmdTenInclusive);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || !/^\d{4}-\d{2}-\d{2}$/.test(e)) {
+    return null;
+  }
+  if (s > e) return null;
+  /** @type {Map<string, number>} */
+  const byDay = new Map();
+  for (const r of loadTimeRows()) {
+    if (!ledgerRowMatchesTaskKeys(r, keys)) continue;
+    const tracked = String(r.timeTracked || "").trim();
+    if (!tracked) continue;
+    const day = ledgerRowDateYmd(r);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day < s || day > e) continue;
+    const mins = Math.round(parseTimeToHours(tracked) * 60);
+    if (mins <= 0) continue;
+    byDay.set(day, (byDay.get(day) || 0) + mins);
+  }
+  if (byDay.size === 0) return null;
+  let total = 0;
+  for (const mins of byDay.values()) total += mins;
+  return Math.round(total / byDay.size);
+}
+
+/**
+ * 최근 30일(끝 날짜 포함) · 기록한 날 기준 일평균 소요(분).
+ * @param {string} [endAnchorYmd] — 기준일(미래면 오늘까지)
+ */
+export function getTaskDailyAverageMinutesLast30Days(
+  taskName,
+  endAnchorYmd = "",
+) {
+  const today = timeLedgerLocalTodayYmd();
+  let end = normalizeYmdTenForRange(endAnchorYmd);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(end)) end = today;
+  if (end > today) end = today;
+  const start = shiftYmdByDays(end, -29);
+  if (!start) return null;
+  return getTaskDailyAverageMinutesInDateRange(taskName, start, end);
 }
 
 /**

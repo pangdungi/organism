@@ -3842,6 +3842,12 @@ html.lp-task-log-mobile-picker-open
   line-height: 1.55;
   color: var(--lp-modal-navy-muted);
 }
+.lp-budget-template-modal .lp-budget-template-notice {
+  margin: -0.35rem 0 0.75rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #8b5c3a;
+}
 .lp-budget-template-modal .lp-budget-template-preview {
   margin: 0.35rem 0 0;
   padding: 0;

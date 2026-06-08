@@ -22,7 +22,9 @@ import {
   getLatestBudgetScheduleEndHhMm,
   updateBudgetScheduleBlockAtIndex,
   removeBudgetScheduleBlockAtIndex,
+  formatIntegerMinutesDurationKo,
 } from "../views/Time.js";
+import { getTaskDailyAverageMinutesLast30Days } from "./timeKpiSync.js";
 import * as TTC from "./timeTaskOptionsConstants.js";
 import { bindTimeTaskLogModalMemoKeyboard } from "./timeTaskLogModalMemoKeyboard.js";
 
@@ -710,6 +712,7 @@ export function openCalendarExpectedScheduleModal(options) {
             <div data-legacy="time-task-log-field">
               <label>이 시간에 할 행동</label>
               <div data-legacy="time-task-log-task-wrap"></div>
+              <p data-legacy="lp-calendar-expected-task-avg-hint" class="lp-calendar-expected-task-avg-hint" hidden></p>
             </div>
             <div data-legacy="time-task-log-field time-task-log-datetime-onerow">
               <div data-legacy="time-task-log-datetime-card lp-modal-datetime-card">
@@ -734,8 +737,8 @@ export function openCalendarExpectedScheduleModal(options) {
                   <button type="button" data-legacy="time-task-log-time-adjust-btn time-task-log-time-adjust-now" data-now="true">지금</button>
                   <button type="button" data-legacy="time-task-log-time-adjust-btn time-task-log-time-adjust-last" data-last="true">마지막</button>
                   <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="-30">−30</button>
-                  <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="-15">−15</button>
-                  <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="15">+15</button>
+                  <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="-10">−10</button>
+                  <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="10">+10</button>
                   <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="30">+30</button>
                   <button type="button" data-legacy="time-task-log-time-adjust-btn" data-day-end="true">하루끝</button>
                 </div>
@@ -780,6 +783,9 @@ export function openCalendarExpectedScheduleModal(options) {
   if (submitBtn) submitBtn.textContent = submitLabel;
 
   const taskWrap = modal.querySelector('[data-legacy~="time-task-log-task-wrap"]');
+  const taskAvgHintEl = modal.querySelector(
+    '[data-legacy~="lp-calendar-expected-task-avg-hint"]',
+  );
   const taskLogMealDetailSection = modal.querySelector(
     '[data-legacy~="time-task-log-meal-detail-section"]',
   );
@@ -909,8 +915,27 @@ export function openCalendarExpectedScheduleModal(options) {
     });
   }
 
+  function updateExpectedTaskAverageHint(taskName) {
+    if (!taskAvgHintEl) return;
+    const tn = (taskName || "").trim();
+    if (!tn) {
+      taskAvgHintEl.hidden = true;
+      taskAvgHintEl.textContent = "";
+      return;
+    }
+    const avgMin = getTaskDailyAverageMinutesLast30Days(tn, dk);
+    if (avgMin == null || avgMin <= 0) {
+      taskAvgHintEl.hidden = true;
+      taskAvgHintEl.textContent = "";
+      return;
+    }
+    taskAvgHintEl.hidden = false;
+    taskAvgHintEl.textContent = `이 과제를 하는데 평균 소요시간은 ${formatIntegerMinutesDurationKo(avgMin)}입니다. (최근 30일)`;
+  }
+
   function updateExpectedDetailVisibility(taskName) {
     const tn = (taskName || "").trim();
+    updateExpectedTaskAverageHint(tn);
     const kind = TTC.ledgerDetailTaskKind(tn);
     const isContent = kind === "content";
     const isEmotion = kind === "emotion";

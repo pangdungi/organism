@@ -49,11 +49,16 @@ let _patchKpiLinkedFromMapsDepth = 0;
 function normalizeBuiltinTaskRow(o) {
   const rawName = String(o?.name ?? "").trim();
   const name = C.canonicalMealTaskDisplayName(rawName);
+  const builtin = findBuiltinByName(name) || findBuiltinByName(rawName);
   return {
     ...o,
     name,
-    category: C.canonicalTimeTaskCategory(o?.category),
-    productivity: o?.productivity || "productive",
+    category: builtin
+      ? builtin.category
+      : C.canonicalTimeTaskCategory(o?.category),
+    productivity: builtin
+      ? builtin.productivity
+      : normalizeProductivity(o?.productivity),
     memo: (o?.memo || "").trim(),
     id: String(o?.id || "").trim(),
     kpiId: String(o?.kpiId || "").trim(),
@@ -198,6 +203,58 @@ function findBuiltinByName(name) {
 
 export function isBuiltinTaskName(name) {
   return findBuiltinByName(name) != null;
+}
+
+function builtinTemplateAlreadyPresent(presentNames, presentIds, template) {
+  const id = deterministicTaskId(
+    template.name,
+    template.productivity,
+    template.category,
+  );
+  if (presentIds.has(id)) return true;
+  const name = String(template.name || "").trim();
+  if (presentNames.has(name)) return true;
+  const canon = C.canonicalMealTaskDisplayName(name);
+  if (canon && presentNames.has(canon)) return true;
+  for (const { from, to } of C.MEAL_TASK_NAME_RENAMES) {
+    if (to === name && presentNames.has(from)) return true;
+    if (from === name && presentNames.has(to)) return true;
+  }
+  return false;
+}
+
+/** 서버·메모리 목록 + 코드 기본 과제(FIXED_*) 중 빠진 이름 보충 — 자동 서버 upsert 없음 */
+function mergeMissingBuiltinTemplates(rows) {
+  const base = (rows || []).map((o) => normalizeBuiltinTaskRow(o));
+  const presentNames = new Set();
+  const presentIds = new Set();
+  for (const o of base) {
+    const n = String(o.name || "").trim();
+    if (n) presentNames.add(n);
+    const canon = C.canonicalMealTaskDisplayName(n);
+    if (canon) presentNames.add(canon);
+    const id = String(o.id || "").trim();
+    if (id) presentIds.add(id);
+  }
+
+  const supplements = [];
+  for (const t of C.getBuiltinTaskTemplates()) {
+    if (builtinTemplateAlreadyPresent(presentNames, presentIds, t)) continue;
+    supplements.push(
+      normalizeBuiltinTaskRow({
+        name: t.name,
+        category: t.category,
+        productivity: t.productivity,
+        memo: "",
+        kpiId: "",
+        id: deterministicTaskId(t.name, t.productivity, t.category),
+        iconKey: String(
+          resolveEffectiveTaskIconKey({ taskName: t.name }) || "",
+        ).trim(),
+      }),
+    );
+  }
+  return [...base, ...supplements];
 }
 
 /** 이름·생산성·카테고리 기반 결정적 UUID (고정 과제용, 앱 버전 간 동일) */
@@ -412,16 +469,19 @@ export function clearTimeLedgerTaskOptionsLocalStorage() {
   } catch (_) {}
 }
 
+/** 과제 기록 모달 — 서버 행 + 코드 기본 과제(FIXED_*) 목록 */
+export function getServerLedgerTaskOptionsForTaskLog() {
+  const arr = readTaskOptionsMemRows().filter(
+    (o) => !C.isRetiredBuiltinTaskName(String(o.name || "").trim()),
+  );
+  return mergeMissingBuiltinTemplates(arr);
+}
+
 export function getFullTaskOptions() {
   const arr = readTaskOptionsMemRows().filter(
     (o) => !C.isRetiredBuiltinTaskName(String(o.name || "").trim()),
   );
-  const merged =
-    arr.length === 0
-      ? C.getBuiltinTaskTemplates().map((t) => ({ ...t, memo: "" }))
-      : arr;
-  /* pull·저장된 메모리를 id 기준 그대로 사용 — 동일 이름·다른 id 여러 줄 유지 */
-  return assignIdsToMergedList(merged.map((o) => normalizeBuiltinTaskRow(o)));
+  return assignIdsToMergedList(mergeMissingBuiltinTemplates(arr));
 }
 
 /** 꿈 KPI 연동 과제 — 과제설정 모달 목록에서 숨김(기록·조회용 데이터는 유지) */
@@ -944,9 +1004,6 @@ export function applyTimeLedgerTasksFromServer(
     }
     return { name, category };
   }
-  const byId = new Map(
-    serverRowsSafe.map((r) => [String(r.id || "").trim(), r]).filter(([k]) => k),
-  );
   const localRows = readStoredTaskOptionRows();
   const localById = new Map(
     localRows.map((r) => [String(r.id || "").trim(), r]).filter(([k]) => k),
@@ -966,28 +1023,9 @@ export function applyTimeLedgerTasksFromServer(
   for (const t of C.RETIRED_BUILTIN_TASK_TEMPLATES) {
     builtInIdSet.add(deterministicTaskId(t.name, t.productivity, t.category));
   }
-  function localBuiltinIconKey(builtinId, taskName) {
-    const loc = localById.get(builtinId);
-    if (loc) return String(loc.iconKey || "").trim();
-    const canon = String(taskName || "").trim();
-    for (const row of localRows) {
-      if (C.canonicalMealTaskDisplayName(String(row.name || "").trim()) === canon) {
-        return String(row.iconKey || "").trim();
-      }
-    }
-    return "";
-  }
-
-  const serverCanonNames = new Set(
-    serverRowsSafe
-      .map((r) =>
-        C.canonicalMealTaskDisplayName(String(r.name || "").trim()),
-      )
-      .filter(Boolean),
-  );
   const out = [];
   const outIds = new Set();
-  /* 서버 행을 id 기준 전부 반영 — 동일 이름·다른 id 여러 줄 유지 */
+  /* 서버 행만 반영 — 로컬·기본 과제 보충 없음(서버 기록은 사용자 행동으로만) */
   for (const r of serverRowsSafe) {
     const rid = String(r.id || "").trim();
     if (!rid || outIds.has(rid)) continue;
@@ -1004,9 +1042,11 @@ export function applyTimeLedgerTasksFromServer(
     out.push({
       id: rid,
       name: merged.name || baseName,
-      category: merged.category || baseCat,
+      category: builtin
+        ? builtin.category
+        : C.canonicalTimeTaskCategory(merged.category || baseCat),
       productivity: normalizeProductivity(
-        r.productivity || builtin?.productivity,
+        builtin?.productivity || r.productivity,
       ),
       memo: (r.memo || "").trim(),
       kpiId: kid,
@@ -1015,27 +1055,6 @@ export function applyTimeLedgerTasksFromServer(
           iconKey: r.icon_key ?? loc?.iconKey,
           kpiId: kid,
           taskName: merged.name || baseName,
-        }) || "",
-      ).trim(),
-    });
-  }
-  /* 서버에 해당 표시명이 없을 때만 내장 과제 한 줄(결정적 id) 추가 */
-  for (const t of builtinTemplates) {
-    const canon = C.canonicalMealTaskDisplayName(t.name);
-    if (serverCanonNames.has(canon)) continue;
-    const id = deterministicTaskId(t.name, t.productivity, t.category);
-    if (outIds.has(id) || byId.has(id)) continue;
-    const locIcon = localBuiltinIconKey(id, t.name);
-    outIds.add(id);
-    out.push({
-      ...t,
-      memo: "",
-      id,
-      kpiId: "",
-      iconKey: String(
-        resolveEffectiveTaskIconKey({
-          iconKey: locIcon,
-          taskName: t.name,
         }) || "",
       ).trim(),
     });
@@ -1084,6 +1103,58 @@ export function applyTimeLedgerTasksFromServer(
     remapTimeLedgerEntryTaskIds(entryTaskIdRemaps);
   }
   return !listUnchanged || entryTaskIdRemaps.length > 0;
+}
+
+/** 서버에 없는 코드 기본 과제만 골라냄 */
+export function findMissingBuiltinTasksOnServer(serverRows) {
+  const serverRowsSafe = Array.isArray(serverRows) ? serverRows : [];
+  const presentNames = new Set();
+  const presentIds = new Set();
+  for (const r of serverRowsSafe) {
+    const id = String(r.id || "").trim();
+    if (id) presentIds.add(id);
+    const n = String(r.name || "").trim();
+    if (n) presentNames.add(n);
+    const canon = C.canonicalMealTaskDisplayName(n);
+    if (canon) presentNames.add(canon);
+  }
+  const missing = [];
+  for (const t of C.getBuiltinTaskTemplates()) {
+    if (builtinTemplateAlreadyPresent(presentNames, presentIds, t)) continue;
+    missing.push(
+      normalizeBuiltinTaskRow({
+        name: t.name,
+        category: t.category,
+        productivity: t.productivity,
+        memo: "",
+        kpiId: "",
+        id: deterministicTaskId(t.name, t.productivity, t.category),
+        iconKey: String(
+          resolveEffectiveTaskIconKey({ taskName: t.name }) || "",
+        ).trim(),
+      }),
+    );
+  }
+  return missing;
+}
+
+export function buildMissingBuiltinUpsertPayloads(
+  userId,
+  missingRows,
+  sortOrderStart = 0,
+) {
+  return (missingRows || []).map((t, i) => ({
+    id: String(t.id || "").trim(),
+    user_id: userId,
+    name: (t.name || "").trim(),
+    productivity: normalizeProductivity(t.productivity),
+    category: (t.category || "").trim(),
+    memo: "",
+    sort_order: sortOrderStart + i,
+    is_system: true,
+    kpi_id: "",
+    icon_key: String(t.iconKey || "").trim(),
+  }));
 }
 
 export function buildTimeLedgerTasksUpsertPayloads(userId) {

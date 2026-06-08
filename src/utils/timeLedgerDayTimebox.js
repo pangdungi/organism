@@ -2,6 +2,7 @@
 
 import { showToast } from "./showToast.js";
 import { ledgerRowTimeboxDisplayLabel } from "./timeLedgerCardKpiMemo.js";
+import * as TTC from "./timeTaskOptionsConstants.js";
 
 export const TIME_LEDGER_TIMEBOX_GRID_ROWS = 24;
 export const TIME_LEDGER_TIMEBOX_GRID_COLS = 12;
@@ -16,8 +17,21 @@ function formatMinOfDayClock(minOfDay) {
   return `${String(h).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
 }
 
+/** 생산·비생산 대화·외출 — 타임박스 전용 보라(기존 행복 핑크·비생산 블루 대신) */
+function isTimeboxSocialDialogOutingTask(block) {
+  const taskName = String(
+    block?.rowData?.taskName || block?.taskName || "",
+  ).trim();
+  if (!taskName) return false;
+  return (
+    TTC.isConversationDetailTaskName(taskName) ||
+    TTC.isOutingDetailTaskName(taskName)
+  );
+}
+
 /** 타임박스 칸 채움 — 카테고리·생산성 → CSS 수정자 키 */
 function paintKeyForTimeboxBlock(block) {
+  if (isTimeboxSocialDialogOutingTask(block)) return "social";
   const cat = String(block?.category || "").trim().toLowerCase();
   if (cat === "sideincome") return "sideincome";
   if (cat === "happiness") return "happiness";

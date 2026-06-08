@@ -7,7 +7,7 @@ import {
   lpTokenAdd,
   lpTokenToggle,
 } from "./timeLedgerClassPolicy.js";
-import { getFullTaskOptions } from "./timeTaskOptionsModel.js";
+import { getServerLedgerTaskOptionsForTaskLog } from "./timeTaskOptionsModel.js";
 import * as TTC from "./timeTaskOptionsConstants.js";
 import { getTimeTaskListIconSrc } from "./timeTaskIconUrls.js";
 import {
@@ -275,7 +275,9 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
 
   function getAllPickerTasks() {
     const bucketAllow = getAllowedBucketsForLedgerPreset(ledgerBucketPreset);
-    let tasks = getFullTaskOptions().filter((t) => !(t.name || "").includes(" > "));
+    let tasks = getServerLedgerTaskOptionsForTaskLog().filter(
+      (t) => !(t.name || "").includes(" > "),
+    );
     if (bucketAllow) {
       tasks = tasks.filter((t) =>
         bucketAllow.has(timeLedgerTaskLogPickerBucket(t)),
@@ -314,7 +316,7 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
     container.innerHTML = "";
     const q = (filter || "").trim().toLowerCase();
     const bucketAllow = getAllowedBucketsForLedgerPreset(ledgerBucketPreset);
-    const allTasks = getFullTaskOptions();
+    const allTasks = getServerLedgerTaskOptionsForTaskLog();
     let tasks = allTasks.filter((t) => !(t.name || "").includes(" > "));
     if (bucketAllow) {
       tasks = tasks.filter((t) =>
