@@ -606,6 +606,123 @@
   line-height: 1.35;
 }
 
+/* 계획 이행 — 메인 히어로 */
+.lp-tr2-plan-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.2rem;
+  margin: 0 0 0.75rem;
+  padding: 0.85rem 0.65rem 0.75rem;
+  border-radius: 0.85rem;
+  background: linear-gradient(165deg, rgba(30, 77, 123, 0.09), rgba(240, 244, 250, 0.95));
+}
+
+.lp-tr2-plan-hero-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.03em;
+}
+
+.lp-tr2-plan-hero-value {
+  font-size: 2.35rem;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  color: #1e4d7b;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-tr2-plan-hero-line {
+  margin: 0.15rem 0 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+  line-height: 1.4;
+}
+
+.lp-tr2-cat-compare-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.lp-tr2-cat-compare-row {
+  display: grid;
+  grid-template-columns: 3.1rem 1fr;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.lp-tr2-cat-compare-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #475569;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.lp-tr2-cat-compare-tracks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  min-width: 0;
+}
+
+.lp-tr2-cat-compare-line {
+  display: grid;
+  grid-template-columns: 1.65rem 1fr;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.lp-tr2-cat-compare-tag {
+  font-size: 0.5625rem;
+  font-weight: 700;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.lp-tr2-cat-compare-track {
+  height: 0.38rem;
+  border-radius: 999px;
+  background: #eef2f6;
+  overflow: hidden;
+}
+
+.lp-tr2-cat-compare-fill {
+  height: 100%;
+  border-radius: inherit;
+  min-width: 2px;
+}
+
+.lp-tr2-plan-leak-main {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #8b5c3a;
+  line-height: 1.35;
+}
+
+.lp-tr2-plan-leak-items {
+  margin: 0.35rem 0 0;
+  font-size: 0.6875rem;
+  color: #64748b;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.lp-tr2-plan-est-text,
+.lp-tr2-plan-rank-line {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+  line-height: 1.45;
+}
+
 .lp-tr2-bars {
   display: flex;
   flex-direction: column;
@@ -827,16 +944,22 @@
   color: #475569;
 }
 
-.lp-tr2-routine-item-table .lp-tr2-emotion-trigger-table-head,
-.lp-tr2-routine-item-table .lp-tr2-emotion-trigger-table-row {
-  grid-template-columns: minmax(4.8rem, 1.6fr) 3.6rem 3.6rem;
+.lp-tr2-routine-weak-line {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: #475569;
+  overflow-wrap: anywhere;
 }
 
-.lp-tr2-routine-item-row--weak {
-  background: rgba(139, 92, 58, 0.06);
+.lp-tr2-routine-weak-line-label {
+  font-weight: 700;
+  color: #64748b;
+  white-space: nowrap;
 }
 
-.lp-tr2-routine-item-row--weak .lp-tr2-emotion-trigger-table-label {
+.lp-tr2-routine-weak-line-items {
+  font-weight: 650;
   color: #8b5c3a;
 }
 
@@ -2707,36 +2830,74 @@
   color: #94a3b8;
 }
 
-/* 다음 예정(예상 일정) — 회색 안내 카드 */
+/* 다음 예정(예상 일정) — 사용내역 카드와 동일 그리드, 회색 톤 */
 .time-ledger-view .time-ledger-next-expected-card,
 [data-legacy~="time-ledger-view"] .time-ledger-next-expected-card {
   cursor: default;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .time-ledger-next-expected-card::before,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .time-ledger-next-expected-card::before {
   background: #f8fafc;
   border: 1px dashed #cbd5e1;
-  box-shadow: none;
-  color: #94a3b8;
 }
-.time-ledger-view .time-ledger-next-expected-card .calendar-1day-timeline-card-start,
-.time-ledger-view .time-ledger-next-expected-card .calendar-1day-timeline-card-end,
-.time-ledger-view .time-ledger-next-expected-card .calendar-1day-timeline-card-title,
-[data-legacy~="time-ledger-view"]
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
   .time-ledger-next-expected-card
   .calendar-1day-timeline-card-start,
-[data-legacy~="time-ledger-view"]
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
   .time-ledger-next-expected-card
   .calendar-1day-timeline-card-end,
 [data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
   .time-ledger-next-expected-card
-  .calendar-1day-timeline-card-title {
+  .calendar-1day-timeline-card-start,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .time-ledger-next-expected-card
+  .calendar-1day-timeline-card-end {
   color: #94a3b8;
 }
-.time-ledger-view .time-ledger-next-expected-main,
-[data-legacy~="time-ledger-view"] .time-ledger-next-expected-main {
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .time-ledger-next-expected-card
+  > .time-ledger-usage-icon-cell,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .time-ledger-next-expected-card
+  > .time-ledger-usage-icon-cell {
+  grid-row: 1 / 4;
+  opacity: 0.72;
+}
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .time-ledger-next-expected-card
+  > .time-ledger-next-expected-body,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .time-ledger-next-expected-card
+  > .time-ledger-next-expected-body {
+  grid-column: 3 / 5;
+  grid-row: 1 / 4;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.2rem;
+  justify-content: center;
+  gap: 0.28rem;
   min-width: 0;
+  min-height: var(--time-ledger-usage-header-min-h);
+  padding: var(--time-ledger-usage-card-inset) 0.65rem
+    var(--time-ledger-usage-card-inset) 0.15rem;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
 }
 .time-ledger-view .time-ledger-next-expected-badge,
 [data-legacy~="time-ledger-view"] .time-ledger-next-expected-badge {
@@ -2744,26 +2905,75 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   color: #b0bac7;
-  text-transform: none;
+  line-height: 1.2;
 }
-.time-ledger-view .time-ledger-next-expected-start-btn,
-[data-legacy~="time-ledger-view"] .time-ledger-next-expected-start-btn {
-  margin-top: 0.15rem;
-  padding: 0.28rem 0.45rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 0.35rem;
-  background: #fff;
-  color: #64748b;
-  font: inherit;
-  font-size: 0.6875rem;
+.time-ledger-view .time-ledger-next-expected-title,
+[data-legacy~="time-ledger-view"] .time-ledger-next-expected-title {
+  width: 100%;
+  min-width: 0;
+  font-size: 0.9375rem;
   font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+  color: #94a3b8;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.time-ledger-view .time-ledger-next-expected-actions,
+[data-legacy~="time-ledger-view"] .time-ledger-next-expected-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  margin-top: 0.12rem;
+}
+
+.time-ledger-view .time-ledger-next-expected-action-btn,
+[data-legacy~="time-ledger-view"] .time-ledger-next-expected-action-btn {
+  position: relative;
+  z-index: 2;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.38rem 0.55rem;
+  border-radius: 0.4rem;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 650;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   cursor: pointer;
+  touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
+
+.time-ledger-view .time-ledger-next-expected-start-btn,
+[data-legacy~="time-ledger-view"] .time-ledger-next-expected-start-btn {
+  border: 1px solid #94a3b8;
+  background: #fff;
+  color: #475569;
+}
+
 .time-ledger-view .time-ledger-next-expected-start-btn:hover,
 [data-legacy~="time-ledger-view"] .time-ledger-next-expected-start-btn:hover {
-  border-color: #94a3b8;
-  color: #475569;
+  border-color: #64748b;
+  color: #1e4d7b;
+}
+
+.time-ledger-view .time-ledger-next-expected-skip-btn,
+[data-legacy~="time-ledger-view"] .time-ledger-next-expected-skip-btn {
+  border: 1px solid #e2e8f0;
+  background: transparent;
+  color: #94a3b8;
+}
+
+.time-ledger-view .time-ledger-next-expected-skip-btn:hover,
+[data-legacy~="time-ledger-view"] .time-ledger-next-expected-skip-btn:hover {
+  border-color: #cbd5e1;
+  color: #64748b;
+  background: rgba(255, 255, 255, 0.65);
 }
 
 /* 시간 사용내역 목록 (타임라인) */
@@ -3266,6 +3476,21 @@
   font-weight: 600;
   text-align: right;
   white-space: nowrap;
+}
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout
+  .time-ledger-usage-stats-col
+  .diary-tab5-timeline-price.time-mobile-card-price--has-rating-return,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout
+  .time-ledger-usage-stats-col
+  .diary-tab5-timeline-price.time-mobile-card-price--has-rating-return {
+  font-size: 0.625rem;
+  line-height: 1.25;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
@@ -3960,5 +4185,24 @@
     .lp-calendar-budget-add-modal
   )
   [data-legacy~="time-task-log-end-reason-chips"] {
+  margin-top: 0.45rem;
+}
+
+/* 생산적 작업 5점 — 몰입 요소 */
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-flow-factor-section"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-flow-factor-section"] {
+  margin-top: 0.65rem;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-flow-factor-chips"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-flow-factor-chips"] {
   margin-top: 0.45rem;
 }

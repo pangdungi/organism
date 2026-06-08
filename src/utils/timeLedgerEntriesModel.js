@@ -18,8 +18,13 @@ import {
   removeScopedLocalStorageItem,
 } from "./clientStorageScope.js";
 import { normalizeTimeEndReasonForRow } from "./timeTaskEndReasons.js";
+import { normalizeTimeFlowFactorsForRow } from "./timeTaskFlowFactors.js";
 
 export { normalizeTimeEndReasonForRow } from "./timeTaskEndReasons.js";
+export {
+  normalizeTimeFlowFactorForRow,
+  normalizeTimeFlowFactorsForRow,
+} from "./timeTaskFlowFactors.js";
 
 /**
  * 로그아웃·계정 전환 시 호출. 해당 계정 로컬 저장·메모리 초기화.
@@ -369,6 +374,31 @@ export function normalizeTimeRatingForRow(raw) {
   return n;
 }
 
+/** 생산적 과제 + 시간평가 별점 → 행동의 가치 배율 (미평가 null) */
+export function productiveTimeRatingPriceMultiplier(rawRating) {
+  const n = normalizeTimeRatingForRow(rawRating);
+  if (n == null) return null;
+  if (n === 5) return 2;
+  if (n === 4) return 1.5;
+  if (n === 3) return 1;
+  if (n === 2) return 0.75;
+  if (n === 1) return 0.5;
+  return 1;
+}
+
+/** 기준 금액 대비 수익률(%) — 5점 +100%, 4점 +50%, 3점 0%, 2점 -25%, 1점 -50% */
+export function productiveTimeRatingReturnPercent(rawRating) {
+  const mult = productiveTimeRatingPriceMultiplier(rawRating);
+  if (mult == null) return null;
+  return Math.round((mult - 1) * 100);
+}
+
+export function applyProductiveTimeRatingToBasePrice(basePrice, rawRating) {
+  const mult = productiveTimeRatingPriceMultiplier(rawRating);
+  if (mult == null) return basePrice;
+  return basePrice * mult;
+}
+
 /** 시간기록 카드 — 평가 별 HTML (미평가 null) */
 export function formatTimeLedgerCardRatingStarsHtml(raw) {
   const n = normalizeTimeRatingForRow(raw);
@@ -444,6 +474,9 @@ export function localTimeLedgerRowToDbPayload(userId, row) {
     kpi_performed_value: normalizeKpiPerformedValueForRow(row.kpiPerformedValue),
     time_rating: normalizeTimeRatingForRow(row.timeRating),
     time_end_reason: normalizeTimeEndReasonForRow(row.timeEndReason) || null,
+    time_flow_factors: normalizeTimeFlowFactorsForRow(
+      row.timeFlowFactors ?? row.timeFlowFactor,
+    ),
   };
 }
 
@@ -492,6 +525,9 @@ export function dbRowToLocalTimeLedgerRow(db) {
     kpiPerformedValue: normalizeKpiPerformedValueForRow(db.kpi_performed_value),
     timeRating: normalizeTimeRatingForRow(db.time_rating),
     timeEndReason: normalizeTimeEndReasonForRow(db.time_end_reason),
+    timeFlowFactors: normalizeTimeFlowFactorsForRow(
+      db.time_flow_factors ?? db.time_flow_factor,
+    ),
     /** Supabase updated_at — 병합 시 last-write-wins */
     /** Supabase updated_at — 서버 스냅샷·동기화 표시용 */
     serverUpdatedAt:
@@ -596,11 +632,20 @@ export function applyTimeLedgerServerRangeSnapshot(
     const serverEndReason = normalizeTimeEndReasonForRow(serverRow.timeEndReason);
     const localEndReason = normalizeTimeEndReasonForRow(local.timeEndReason);
     const keepLocalTimeEndReason = !serverEndReason && !!localEndReason;
+    const serverFlowFactors = normalizeTimeFlowFactorsForRow(
+      serverRow.timeFlowFactors ?? serverRow.timeFlowFactor,
+    );
+    const localFlowFactors = normalizeTimeFlowFactorsForRow(
+      local.timeFlowFactors ?? local.timeFlowFactor,
+    );
+    const keepLocalTimeFlowFactors =
+      serverFlowFactors.length === 0 && localFlowFactors.length > 0;
     if (
       keepLocalHabit ||
       keepLocalKpiVal ||
       keepLocalTimeRating ||
-      keepLocalTimeEndReason
+      keepLocalTimeEndReason ||
+      keepLocalTimeFlowFactors
     ) {
       return {
         ...serverRow,
@@ -608,6 +653,9 @@ export function applyTimeLedgerServerRangeSnapshot(
         ...(keepLocalKpiVal ? { kpiPerformedValue: localKpiVal } : {}),
         ...(keepLocalTimeRating ? { timeRating: localRating } : {}),
         ...(keepLocalTimeEndReason ? { timeEndReason: localEndReason } : {}),
+        ...(keepLocalTimeFlowFactors
+          ? { timeFlowFactors: localFlowFactors }
+          : {}),
         localModifiedAt:
           typeof local.localModifiedAt === "number"
             ? local.localModifiedAt

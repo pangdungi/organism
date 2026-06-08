@@ -3,6 +3,7 @@
  */
 
 import { getBudgetGoals } from "../views/Time.js";
+import { timeLedgerRowIsActiveLiveInProgress } from "./timeLedgerStaleInProgressClose.js";
 
 function normalizeDateKey(s) {
   const d = String(s || "").replace(/\//g, "-").trim().slice(0, 10);
@@ -74,10 +75,40 @@ function collectBudgetBlocksForDate(dateKey) {
   return blocks;
 }
 
+function normalizeTaskNameKey(name) {
+  return String(name || "").trim();
+}
+
+/** UI·세션에서 동일 블록 식별용 */
+export function nextExpectedBudgetBlockKey(block) {
+  if (!block) return "";
+  const name = normalizeTaskNameKey(block.taskName);
+  const start = normalizeHhMm(block.startHhMm);
+  const end = normalizeHhMm(block.endHhMm);
+  if (!name || !start || !end) return "";
+  return `${name}|${start}|${end}`;
+}
+
+function activeInProgressTaskNamesForDay(ledgerRows, dateKey) {
+  const names = new Set();
+  for (const row of Array.isArray(ledgerRows) ? ledgerRows : []) {
+    if (!timeLedgerRowIsActiveLiveInProgress(row, dateKey)) continue;
+    const name = normalizeTaskNameKey(row?.taskName);
+    if (name) names.add(name);
+  }
+  return names;
+}
+
 /**
  * 예상 일정 중 「다음 예정」 1건 — 시작 전 lookahead 분 이내이거나 진행 중인 블록.
+ * 이미 오늘 진행 중인 과제·「지금 실행」으로 닫은 블록은 건너뛰고 그다음 후보를 고른다.
  * @param {string} dateKey YYYY-MM-DD
- * @param {{ now?: Date, lookaheadMinutesBeforeStart?: number }} [opts]
+ * @param {{
+ *   now?: Date,
+ *   lookaheadMinutesBeforeStart?: number,
+ *   ledgerRows?: object[],
+ *   dismissedBlockKeys?: Iterable<string>,
+ * }} [opts]
  */
 export function findNextExpectedBudgetBlockForRecording(dateKey, opts = {}) {
   const dk = normalizeDateKey(dateKey);
@@ -86,10 +117,18 @@ export function findNextExpectedBudgetBlockForRecording(dateKey, opts = {}) {
   const lookahead = Number(opts.lookaheadMinutesBeforeStart);
   const lookaheadMin = Number.isFinite(lookahead) ? Math.max(0, lookahead) : 30;
   const nowMin = now.getHours() * 60 + now.getMinutes();
+  const inProgressTasks = activeInProgressTaskNamesForDay(opts.ledgerRows, dk);
+  const dismissed = new Set(
+    opts.dismissedBlockKeys ? [...opts.dismissedBlockKeys] : [],
+  );
 
   for (const block of collectBudgetBlocksForDate(dk)) {
     if (block.endMin <= nowMin) continue;
     if (nowMin < block.startMin - lookaheadMin) continue;
+    const taskName = normalizeTaskNameKey(block.taskName);
+    if (taskName && inProgressTasks.has(taskName)) continue;
+    const key = nextExpectedBudgetBlockKey(block);
+    if (key && dismissed.has(key)) continue;
     return block;
   }
   return null;

@@ -25,6 +25,7 @@ import { normalizeTimeRatingForRow } from "./timeLedgerEntriesModel.js";
 import { buildEmotionReportSnapshot } from "./timeEmotionReport.js";
 import { buildMoveReportSnapshot } from "./timeMoveReport.js";
 import { buildHappinessRoutineReportSnapshot } from "./timeHappinessRoutineReport.js";
+import { buildPlanAdherenceReportSnapshot } from "./timePlanAdherenceReport.js";
 import { readUserHourlyRateLocal } from "./userHourlySync.js";
 
 const SLEEP_TARGET_MIN = 7 * 60;
@@ -2236,50 +2237,23 @@ function mountMoveSection(scrollWrap, range, rows) {
   scrollWrap.appendChild(sec);
 }
 
-function buildHappinessRoutineItemTable(items) {
-  const table = document.createElement("div");
-  table.className = "lp-tr2-emotion-trigger-table lp-tr2-routine-item-table";
-  table.setAttribute("role", "table");
+function buildHappinessRoutineWeakItemsLine(items) {
+  const line = document.createElement("p");
+  line.className = "lp-tr2-routine-weak-line";
 
-  const head = document.createElement("div");
-  head.className = "lp-tr2-emotion-trigger-table-head";
-  head.setAttribute("role", "row");
-  ["매일 할일", "체크", "실행율"].forEach((text) => {
-    const cell = document.createElement("span");
-    cell.setAttribute("role", "columnheader");
-    cell.textContent = text;
-    head.appendChild(cell);
-  });
-  table.appendChild(head);
+  const label = document.createElement("span");
+  label.className = "lp-tr2-routine-weak-line-label";
+  label.textContent = "잘 안 지켜진 매일할일";
 
-  const body = document.createElement("div");
-  body.className = "lp-tr2-emotion-trigger-table-body";
-  items.forEach((item) => {
-    const row = document.createElement("div");
-    row.className = "lp-tr2-emotion-trigger-table-row";
-    if (item.isWeak) row.classList.add("lp-tr2-routine-item-row--weak");
-    row.setAttribute("role", "row");
+  const names = document.createElement("span");
+  names.className = "lp-tr2-routine-weak-line-items";
+  names.textContent = items
+    .map((item) => String(item.text || "").trim())
+    .filter(Boolean)
+    .join(" · ");
 
-    const labelCell = document.createElement("span");
-    labelCell.className = "lp-tr2-emotion-trigger-table-label";
-    labelCell.setAttribute("role", "cell");
-    labelCell.textContent = item.text;
-
-    const checkCell = document.createElement("span");
-    checkCell.className = "lp-tr2-emotion-trigger-table-num";
-    checkCell.setAttribute("role", "cell");
-    checkCell.textContent = `${item.checkCount}/${item.opportunityCount}`;
-
-    const pctCell = document.createElement("span");
-    pctCell.className = "lp-tr2-emotion-trigger-table-num";
-    pctCell.setAttribute("role", "cell");
-    pctCell.textContent = `${formatPctRounded(item.executionPct)}`;
-
-    row.append(labelCell, checkCell, pctCell);
-    body.appendChild(row);
-  });
-  table.appendChild(body);
-  return table;
+  line.append(label, document.createTextNode(" "), names);
+  return line;
 }
 
 function appendHappinessRoutineBlock(sec, snap, { heading, routine, items, badgeKind }) {
@@ -2319,7 +2293,7 @@ function appendHappinessRoutineBlock(sec, snap, { heading, routine, items, badge
   block.appendChild(sub);
 
   if (items.length) {
-    block.appendChild(buildHappinessRoutineItemTable(items));
+    block.appendChild(buildHappinessRoutineWeakItemsLine(items));
   } else {
     const empty = document.createElement("p");
     empty.className = "lp-tr2-chart-note";
@@ -2355,7 +2329,7 @@ function mountHappinessRoutineSection(scrollWrap, range) {
   appendHappinessRoutineBlock(sec, snap, {
     heading: "가장 잘 지켜지는 루틴",
     routine: best,
-    items: best?.items || [],
+    items: best?.weakItems || [],
     badgeKind: "ok",
   });
 
@@ -2439,6 +2413,140 @@ function mountMediaSection(scrollWrap, range, rows) {
     chartBlock.appendChild(chartSub);
     chartBlock.appendChild(renderMediaCompareChart(snap.chartDays));
     sec.appendChild(chartBlock);
+  }
+
+  scrollWrap.appendChild(sec);
+}
+
+function minutesToHhMmShort(totalMin) {
+  const n = Math.max(0, Math.round(Number(totalMin) || 0));
+  const h = Math.floor(n / 60);
+  const m = n % 60;
+  if (h <= 0) return `${m}분`;
+  if (m === 0) return `${h}시간`;
+  return `${h}시간 ${m}분`;
+}
+
+function createCategoryPlanActualRow(item, maxMin) {
+  const row = document.createElement("div");
+  row.className = "lp-tr2-cat-compare-row";
+  const lab = document.createElement("span");
+  lab.className = "lp-tr2-cat-compare-label";
+  lab.textContent = item.label;
+
+  const tracks = document.createElement("div");
+  tracks.className = "lp-tr2-cat-compare-tracks";
+
+  const makeTrack = (kind, minutes, color) => {
+    const line = document.createElement("div");
+    line.className = `lp-tr2-cat-compare-line lp-tr2-cat-compare-line--${kind}`;
+    const tag = document.createElement("span");
+    tag.className = "lp-tr2-cat-compare-tag";
+    tag.textContent = kind === "plan" ? "계획" : "실제";
+    const track = document.createElement("div");
+    track.className = "lp-tr2-cat-compare-track";
+    const fill = document.createElement("div");
+    fill.className = "lp-tr2-cat-compare-fill";
+    const pct =
+      maxMin > 0 ? Math.min(100, (minutes / maxMin) * 100) : 0;
+    fill.style.width = `${pct}%`;
+    fill.style.background = color;
+    track.appendChild(fill);
+    line.append(tag, track);
+    return line;
+  };
+
+  tracks.appendChild(makeTrack("plan", item.plannedMin, "#cbd5e1"));
+  tracks.appendChild(makeTrack("actual", item.actualMin, "#1e4d7b"));
+  row.append(lab, tracks);
+  return row;
+}
+
+function mountPlanAdherenceSection(scrollWrap, range, rows) {
+  const snap = buildPlanAdherenceReportSnapshot(range, rows);
+  const sec = createSection(
+    "계획 이행",
+    snap.isSingleDay
+      ? "오늘 예상 일정 대비 실제"
+      : `예상 일정 대비 실제 · ${snap.dayCount}일`,
+  );
+  sec.classList.add("lp-tr2-plan-section");
+
+  if (!snap.hasPlanData) {
+    const note = document.createElement("p");
+    note.className = "lp-tr2-chart-note";
+    note.textContent =
+      "이 기간에 예상 일정(타임박스)이 없습니다. 캘린더에서 일정을 넣으면 여기에 계획 이행이 표시됩니다.";
+    sec.appendChild(note);
+    scrollWrap.appendChild(sec);
+    return;
+  }
+
+  const hero = document.createElement("div");
+  hero.className = "lp-tr2-plan-hero";
+  const heroLab = document.createElement("span");
+  heroLab.className = "lp-tr2-plan-hero-label";
+  heroLab.textContent = "계획 이행률";
+  const heroVal = document.createElement("strong");
+  heroVal.className = "lp-tr2-plan-hero-value";
+  heroVal.textContent = formatPctRounded(snap.adherencePct);
+  const heroLine = document.createElement("p");
+  heroLine.className = "lp-tr2-plan-hero-line";
+  heroLine.textContent = snap.oneLiner;
+  hero.append(heroLab, heroVal, heroLine);
+  sec.appendChild(hero);
+
+  if (snap.categories.length) {
+    const catBlock = createRatingBlock(
+      "카테고리별 계획 vs 실제",
+      "계획(회색) · 실제(파랑)",
+    );
+    const maxMin = Math.max(
+      1,
+      ...snap.categories.flatMap((c) => [c.plannedMin, c.actualMin]),
+    );
+    const bars = document.createElement("div");
+    bars.className = "lp-tr2-cat-compare-list";
+    snap.categories.slice(0, 8).forEach((item) => {
+      bars.appendChild(createCategoryPlanActualRow(item, maxMin));
+    });
+    catBlock.appendChild(bars);
+    sec.appendChild(catBlock);
+  }
+
+  if (snap.leak.minutes > 0) {
+    const leakBlock = createRatingBlock("시간 누수", "계획에 없던 활동");
+    const leakMain = document.createElement("p");
+    leakMain.className = "lp-tr2-plan-leak-main";
+    leakMain.textContent = `계획 밖 ${formatIntegerMinutesDurationKo(snap.leak.minutes)} · 전체의 ${snap.leak.pct}%`;
+    leakBlock.appendChild(leakMain);
+    if (snap.leak.items.length) {
+      const leakLine = document.createElement("p");
+      leakLine.className = "lp-tr2-plan-leak-items";
+      leakLine.textContent = snap.leak.items
+        .map((x) => `${x.taskName} ${minutesToHhMmShort(x.minutes)}`)
+        .join(" · ");
+      leakBlock.appendChild(leakLine);
+    }
+    sec.appendChild(leakBlock);
+  }
+
+  if (snap.estimation) {
+    const estBlock = createRatingBlock("추정 정확도", "계획 시간 vs 실제");
+    const estP = document.createElement("p");
+    estP.className = "lp-tr2-plan-est-text";
+    estP.textContent = snap.estimation.message;
+    estBlock.appendChild(estP);
+    sec.appendChild(estBlock);
+  }
+
+  if (snap.categoryRank) {
+    const rankBlock = createRatingBlock("카테고리 이행", "가장 잘·못 지킨 항목");
+    const rankLine = document.createElement("p");
+    rankLine.className = "lp-tr2-plan-rank-line";
+    rankLine.textContent = `잘함 ${snap.categoryRank.best.label} ${snap.categoryRank.best.pct}% · 미달 ${snap.categoryRank.worst.label} ${snap.categoryRank.worst.pct}%`;
+    rankBlock.appendChild(rankLine);
+    sec.appendChild(rankBlock);
   }
 
   scrollWrap.appendChild(sec);
@@ -2816,4 +2924,5 @@ export function mountUnifiedTimeReport(scrollWrap, arg2, arg3) {
   mountMediaSection(scrollWrap, range, rows);
   mountDonutSection(scrollWrap, range);
   mountTimeRatingReportSection(scrollWrap, range, rows);
+  mountPlanAdherenceSection(scrollWrap, range, rows);
 }

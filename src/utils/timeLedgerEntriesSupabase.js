@@ -42,7 +42,9 @@ function ledgerEntrySelectColumns() {
   if (_supportsTimeRatingColumn === false) return LEDGER_ENTRY_SELECT_BASE;
   const mid = `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating`;
   if (_supportsTimeEndReasonColumn === false) return `${mid}, updated_at`;
-  return `${mid}, time_end_reason, updated_at`;
+  if (_supportsTimeFlowFactorColumn === false)
+    return `${mid}, time_end_reason, updated_at`;
+  return `${mid}, time_end_reason, time_flow_factors, updated_at`;
 }
 
 function isMissingTimeRatingColumnError(error) {
@@ -53,6 +55,11 @@ function isMissingTimeRatingColumnError(error) {
 function isMissingTimeEndReasonColumnError(error) {
   const msg = `${error?.message || ""} ${error?.details || ""} ${error?.hint || ""}`;
   return /time_end_reason/i.test(msg);
+}
+
+function isMissingTimeFlowFactorColumnError(error) {
+  const msg = `${error?.message || ""} ${error?.details || ""} ${error?.hint || ""}`;
+  return /time_flow_factors?/i.test(msg);
 }
 
 function markTimeRatingColumnSupported(ok) {
@@ -66,12 +73,32 @@ function markTimeEndReasonColumnSupported(ok) {
   _supportsTimeEndReasonColumn = ok;
 }
 
+/** null=미확인, true=있음, false=마이그레이션 전 서버 */
+let _supportsTimeFlowFactorColumn = null;
+
+function markTimeFlowFactorColumnSupported(ok) {
+  _supportsTimeFlowFactorColumn = ok;
+}
+
 function stripTimeRatingFromPayloads(payloads) {
   return payloads.map(({ time_rating: _drop, ...rest }) => rest);
 }
 
 function stripTimeEndReasonFromPayloads(payloads) {
-  return payloads.map(({ time_end_reason: _drop, ...rest }) => rest);
+  return payloads.map(
+    ({
+      time_end_reason: _drop,
+      time_flow_factor: _drop2,
+      time_flow_factors: _drop3,
+      ...rest
+    }) => rest,
+  );
+}
+
+function stripTimeFlowFactorFromPayloads(payloads) {
+  return payloads.map(
+    ({ time_flow_factor: _drop, time_flow_factors: _drop2, ...rest }) => rest,
+  );
 }
 
 async function fetchLedgerEntriesForRangePage(
@@ -95,6 +122,7 @@ async function fetchLedgerEntriesForRangePage(
   if (result.error && isMissingTimeRatingColumnError(result.error)) {
     markTimeRatingColumnSupported(false);
     markTimeEndReasonColumnSupported(false);
+    markTimeFlowFactorColumnSupported(false);
     result = await supabase
       .from(TABLE)
       .select(LEDGER_ENTRY_SELECT_BASE)
@@ -106,6 +134,7 @@ async function fetchLedgerEntriesForRangePage(
       .range(offset, offset + pageSize - 1);
   } else if (result.error && isMissingTimeEndReasonColumnError(result.error)) {
     markTimeEndReasonColumnSupported(false);
+    markTimeFlowFactorColumnSupported(false);
     result = await supabase
       .from(TABLE)
       .select(
@@ -117,9 +146,23 @@ async function fetchLedgerEntriesForRangePage(
       .order("entry_date", { ascending: false })
       .order("start_time", { ascending: false })
       .range(offset, offset + pageSize - 1);
+  } else if (result.error && isMissingTimeFlowFactorColumnError(result.error)) {
+    markTimeFlowFactorColumnSupported(false);
+    result = await supabase
+      .from(TABLE)
+      .select(
+        `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, time_end_reason, updated_at`,
+      )
+      .eq("user_id", userId)
+      .gte("entry_date", rs)
+      .lte("entry_date", re)
+      .order("entry_date", { ascending: false })
+      .order("start_time", { ascending: false })
+      .range(offset, offset + pageSize - 1);
   } else if (!result.error) {
     if (_supportsTimeRatingColumn === null) markTimeRatingColumnSupported(true);
     if (_supportsTimeEndReasonColumn === null) markTimeEndReasonColumnSupported(true);
+    if (_supportsTimeFlowFactorColumn === null) markTimeFlowFactorColumnSupported(true);
   }
   return result;
 }
@@ -134,6 +177,7 @@ async function upsertLedgerEntryPayloads(payloads) {
   if (result.error && isMissingTimeRatingColumnError(result.error)) {
     markTimeRatingColumnSupported(false);
     markTimeEndReasonColumnSupported(false);
+    markTimeFlowFactorColumnSupported(false);
     result = await supabase
       .from(TABLE)
       .upsert(stripTimeRatingFromPayloads(payloads), {
@@ -142,6 +186,7 @@ async function upsertLedgerEntryPayloads(payloads) {
       .select(LEDGER_ENTRY_SELECT_BASE);
   } else if (result.error && isMissingTimeEndReasonColumnError(result.error)) {
     markTimeEndReasonColumnSupported(false);
+    markTimeFlowFactorColumnSupported(false);
     result = await supabase
       .from(TABLE)
       .upsert(stripTimeEndReasonFromPayloads(payloads), {
@@ -150,9 +195,20 @@ async function upsertLedgerEntryPayloads(payloads) {
       .select(
         `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, updated_at`,
       );
+  } else if (result.error && isMissingTimeFlowFactorColumnError(result.error)) {
+    markTimeFlowFactorColumnSupported(false);
+    result = await supabase
+      .from(TABLE)
+      .upsert(stripTimeFlowFactorFromPayloads(payloads), {
+        onConflict: UPSERT_CONFLICT_ROW,
+      })
+      .select(
+        `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, time_end_reason, updated_at`,
+      );
   } else if (!result.error) {
     if (_supportsTimeRatingColumn === null) markTimeRatingColumnSupported(true);
     if (_supportsTimeEndReasonColumn === null) markTimeEndReasonColumnSupported(true);
+    if (_supportsTimeFlowFactorColumn === null) markTimeFlowFactorColumnSupported(true);
   }
   return result;
 }

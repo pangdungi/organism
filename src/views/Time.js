@@ -98,7 +98,10 @@ import {
   writeTimeLedgerEntriesRaw,
   normalizeTimeRatingForRow,
   normalizeTimeEndReasonForRow,
+  normalizeTimeFlowFactorsForRow,
   formatTimeLedgerCardRatingStarsHtml,
+  applyProductiveTimeRatingToBasePrice,
+  productiveTimeRatingReturnPercent,
 } from "../utils/timeLedgerEntriesModel.js";
 import {
   formatTimeLedgerEmotionRatingHtml,
@@ -106,6 +109,7 @@ import {
   mountTaskLogEmotionRating,
 } from "../utils/timeEmotionRating.js";
 import { TIME_TASK_END_REASON_OPTIONS } from "../utils/timeTaskEndReasons.js";
+import { TIME_TASK_FLOW_FACTOR_OPTIONS } from "../utils/timeTaskFlowFactors.js";
 import { closeStaleInProgressTimeLedgerRows, timeLedgerRowIsActiveLiveInProgress } from "../utils/timeLedgerStaleInProgressClose.js";
 import {
   deleteTimeLedgerEntryFromSupabase,
@@ -141,7 +145,10 @@ import {
   readTimeLedgerReportRangeFromSession,
 } from "../utils/timeLedgerReportView.js";
 import { expectedSpanDisplayTaskName } from "../utils/expectedScheduleDetail.js";
-import { findNextExpectedBudgetBlockForRecording } from "../utils/timeLedgerNextExpectedSchedule.js";
+import {
+  findNextExpectedBudgetBlockForRecording,
+  nextExpectedBudgetBlockKey,
+} from "../utils/timeLedgerNextExpectedSchedule.js";
 
 import {
   lpSetClasses,
@@ -1516,6 +1523,13 @@ export function getMobileCardEffectiveHoursForPrice(rowData) {
   return ms < 0 ? 0 : ms / 3600000;
 }
 
+/** 생산적 과제의 「이 시간 평가」별점만 금액 배율에 반영(감정 과제 제외) */
+function rowProductiveTimeRatingForPrice(rowData) {
+  if (getMobileCardProductivityValue(rowData) !== "productive") return null;
+  if (TTC.isEmotionalBuiltinTaskName(rowData?.taskName)) return null;
+  return normalizeTimeRatingForRow(rowData?.timeRating);
+}
+
 function computeMobileCardPriceValue(rowData, hourlyRate) {
   const hours = getMobileCardEffectiveHoursForPrice(rowData);
   const rate = parseFloat(String(hourlyRate ?? 0).replace(/,/g, "")) || 0;
@@ -1523,6 +1537,12 @@ function computeMobileCardPriceValue(rowData, hourlyRate) {
   let price = hours * rate;
   if (pv === "nonproductive") price *= -1;
   else if (pv === "other" || pv === "그 외" || !pv) price = 0;
+  else if (pv === "productive") {
+    const rating = rowProductiveTimeRatingForPrice(rowData);
+    if (rating != null) {
+      price = applyProductiveTimeRatingToBasePrice(price, rating);
+    }
+  }
   return price;
 }
 
@@ -1552,9 +1572,24 @@ function applyMobileCardPriceEl(priceEl, rowData, hourlyRate) {
   priceEl.classList.add(`time-mobile-card-price--${slot}`);
   if (slot === "other") {
     priceEl.textContent = "\u00a0";
+    lpTokenRemove(priceEl, "time-mobile-card-price--has-rating-return");
+    priceEl.classList.remove("time-mobile-card-price--has-rating-return");
     return;
   }
-  const display = formatTimeLedgerActionPriceDisplay(value, slot);
+  const rating = rowProductiveTimeRatingForPrice(rowData);
+  const returnPct =
+    slot === "productive" && rating != null
+      ? productiveTimeRatingReturnPercent(rating)
+      : null;
+  const hasRatingReturn = returnPct != null;
+  lpTokenToggle(priceEl, "time-mobile-card-price--has-rating-return", hasRatingReturn);
+  priceEl.classList.toggle(
+    "time-mobile-card-price--has-rating-return",
+    hasRatingReturn,
+  );
+  const display = formatTimeLedgerActionPriceDisplay(value, slot, {
+    returnPct,
+  });
   priceEl.textContent = display || "\u00a0";
 }
 
@@ -1587,9 +1622,14 @@ export function getTimeLedgerRowMobilePriceDisplay(rowData) {
   const hourlyRate = readUserHourlyRateNumber();
   const slot = getMobileCardPriceProductivitySlot(rowData);
   const value = computeMobileCardPriceValue(rowData, hourlyRate);
+  const rating = rowProductiveTimeRatingForPrice(rowData);
+  const returnPct =
+    slot === "productive" && rating != null
+      ? productiveTimeRatingReturnPercent(rating)
+      : null;
   return {
     slot,
-    text: formatTimeLedgerActionPriceDisplay(value, slot),
+    text: formatTimeLedgerActionPriceDisplay(value, slot, { returnPct }),
   };
 }
 
@@ -2046,16 +2086,7 @@ function calcPeriodValue(rows, period, hourlyRate) {
 function calcPeriodValueFromFiltered(filtered, hourlyRate) {
   let sum = 0;
   filtered.forEach((r) => {
-    const hrs = parseTimeToHours(r.timeTracked);
-    const pv = (
-      r.productivity ||
-      getProductivityFromCategory(r.category) ||
-      ""
-    ).trim();
-    let price = hrs * hourlyRate;
-    if (pv === "nonproductive") price *= -1;
-    else if (pv === "other" || pv === "그 외" || !pv) price = 0;
-    sum += price;
+    sum += computeMobileCardPriceValue(r, hourlyRate);
   });
   return sum;
 }
@@ -2381,17 +2412,24 @@ export function getLedgerEffectiveHoursForReclaim(rowData) {
 function aggregateInvestReclaimSnapshotFromRows(rows) {
   const hourlyRate = readUserHourlyRateNumber();
   let reclaimHrs = 0;
+  let reclaimWon = 0;
   rows.forEach((r) => {
     if (getTimeLedgerRowDisplayProductivity(r) !== "productive") return;
     const h = getLedgerEffectiveHoursForReclaim(r);
     if (!(h > 0) || !Number.isFinite(h)) return;
     reclaimHrs += h;
+    let price = h * hourlyRate;
+    const rating = rowProductiveTimeRatingForPrice(r);
+    if (rating != null) {
+      price = applyProductiveTimeRatingToBasePrice(price, rating);
+    }
+    reclaimWon += price;
   });
   const reclaimMinutesRounded = Math.round(reclaimHrs * 60);
   return {
     reclaimHours: reclaimHrs,
     reclaimMinutesRounded,
-    reclaimWon: Math.round(reclaimHrs * hourlyRate),
+    reclaimWon: Math.round(reclaimWon),
     hourlyRate,
   };
 }
@@ -3092,14 +3130,24 @@ function formatPrice(n) {
   return n < 0 ? `-${str}` : str;
 }
 
-/** 타임 카드·표 「행동의 가치」: 생산적 +n 원 / 비생산적 -n 원 */
-function formatTimeLedgerActionPriceDisplay(value, productivitySlot) {
+/** 타임 카드·표 「행동의 가치」: 생산적 +n 원 / 비생산적 -n 원 · 평가 있으면 (±n%) */
+function formatTimeLedgerActionPriceDisplay(value, productivitySlot, opts = {}) {
   if (productivitySlot === "other") return "";
   const abs = Math.abs(Math.round(Number(value) || 0));
   const str = abs.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  if (productivitySlot === "productive") return `+${str} 원`;
-  if (productivitySlot === "nonproductive") return `-${str} 원`;
-  return "";
+  let main = "";
+  if (productivitySlot === "productive") main = `+${str} 원`;
+  else if (productivitySlot === "nonproductive") main = `-${str} 원`;
+  const pct = opts.returnPct;
+  if (
+    productivitySlot === "productive" &&
+    pct != null &&
+    Number.isFinite(pct)
+  ) {
+    const pctStr = pct > 0 ? `+${pct}%` : `${pct}%`;
+    main = `${main} (${pctStr})`;
+  }
+  return main;
 }
 
 function parsePriceFromDisplay(text) {
@@ -3605,6 +3653,9 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
     kpiPerformedValue: String(initialData?.kpiPerformedValue ?? "").trim(),
     timeRating: normalizeTimeRatingForRow(initialData?.timeRating),
     timeEndReason: normalizeTimeEndReasonForRow(initialData?.timeEndReason),
+    timeFlowFactors: normalizeTimeFlowFactorsForRow(
+      initialData?.timeFlowFactors ?? initialData?.timeFlowFactor,
+    ),
   };
   tr._rowData = rowData;
 
@@ -3658,16 +3709,20 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
     );
     const hourlyRate =
       parseFloat(String(hourlyInput?.value || "0").replace(/,/g, "")) || 0;
-    const hours = getMobileCardEffectiveHoursForPrice(data);
-    const pv = getMobileCardProductivityValue(data);
-    let price = hours * hourlyRate;
-    if (pv === "nonproductive") price *= -1;
-    else if (pv === "other" || pv === "그 외" || !pv) price = 0;
+    const price = computeMobileCardPriceValue(data, hourlyRate);
     const slot = getMobileCardPriceProductivitySlot(data);
-    priceDisplay.textContent = formatTimeLedgerActionPriceDisplay(price, slot);
+    const rating = rowProductiveTimeRatingForPrice(data);
+    const returnPct =
+      slot === "productive" && rating != null
+        ? productiveTimeRatingReturnPercent(rating)
+        : null;
+    priceDisplay.textContent = formatTimeLedgerActionPriceDisplay(price, slot, {
+      returnPct,
+    });
     lpTokenToggle(priceDisplay, "is-negative", price < 0);
     lpTokenToggle(priceDisplay, "is-positive", price > 0);
 
+    const hours = getMobileCardEffectiveHoursForPrice(data);
     const tracked = (data.timeTracked || "").trim();
     const hasStart = !!(data.startTime && String(data.startTime).trim());
     if (tracked) timeSpan.textContent = tracked;
@@ -4582,8 +4637,23 @@ function refreshTimeLedgerRowMemoDisplay(tr, rowData) {
   if (dispFeedback) dispFeedback.textContent = text;
 }
 
+function rememberDismissedNextExpectedBlock(viewEl, block, todayYmd) {
+  if (!viewEl || !block) return;
+  if (viewEl._lpDismissedNextExpectedDay !== todayYmd) {
+    viewEl._lpDismissedNextExpectedBlocks = new Set();
+    viewEl._lpDismissedNextExpectedDay = todayYmd;
+  }
+  const blockKey = nextExpectedBudgetBlockKey(block);
+  if (blockKey) {
+    if (!(viewEl._lpDismissedNextExpectedBlocks instanceof Set)) {
+      viewEl._lpDismissedNextExpectedBlocks = new Set();
+    }
+    viewEl._lpDismissedNextExpectedBlocks.add(blockKey);
+  }
+}
+
 /** 예상 일정 — 다음 예정 과제(회색 카드) */
-function createNextExpectedScheduleTimelineItem(block, onStartNow, viewEl) {
+function createNextExpectedScheduleTimelineItem(block, handlers) {
   const taskLabel =
     expectedSpanDisplayTaskName({
       taskName: block.taskName,
@@ -4630,34 +4700,51 @@ function createNextExpectedScheduleTimelineItem(block, onStartNow, viewEl) {
     iconCell.appendChild(iconImg);
   }
 
-  const mainCol = document.createElement("div");
-  mainCol.className = "time-ledger-next-expected-main";
+  const bodyCol = document.createElement("div");
+  bodyCol.className = "time-ledger-next-expected-body";
 
   const badge = document.createElement("span");
   badge.className = "time-ledger-next-expected-badge";
   badge.textContent = "다음 예정";
 
   const titleEl = document.createElement("div");
-  titleEl.className = "calendar-1day-timeline-card-title";
+  titleEl.className = "time-ledger-next-expected-title";
   titleEl.textContent = taskLabel;
+
+  const actions = document.createElement("div");
+  actions.className = "time-ledger-next-expected-actions";
 
   const startBtn = document.createElement("button");
   startBtn.type = "button";
-  startBtn.className = "time-ledger-next-expected-start-btn";
-  startBtn.textContent = "이 과제 지금 실행하기";
+  startBtn.className =
+    "time-ledger-next-expected-start-btn time-ledger-next-expected-action-btn";
+  startBtn.textContent = "지금 실행하기";
   startBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-    onStartNow();
+    handlers?.onStartNow?.(item);
   });
 
-  mainCol.appendChild(badge);
-  mainCol.appendChild(titleEl);
-  mainCol.appendChild(startBtn);
+  const skipBtn = document.createElement("button");
+  skipBtn.type = "button";
+  skipBtn.className =
+    "time-ledger-next-expected-skip-btn time-ledger-next-expected-action-btn";
+  skipBtn.textContent = "나중에 하기";
+  skipBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    handlers?.onSkip?.(item);
+  });
+
+  actions.appendChild(startBtn);
+  actions.appendChild(skipBtn);
+
+  bodyCol.appendChild(badge);
+  bodyCol.appendChild(titleEl);
+  bodyCol.appendChild(actions);
 
   card.appendChild(startEl);
   card.appendChild(timeConnector);
   card.appendChild(iconCell);
-  card.appendChild(mainCol);
+  card.appendChild(bodyCol);
   card.appendChild(endEl);
 
   item.appendChild(card);
@@ -4685,7 +4772,14 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
     ) || 0;
   const priceVal = computeMobileCardPriceValue(rowData, hourlyRate);
   const priceSlot = getMobileCardPriceProductivitySlot(rowData);
-  const priceText = formatTimeLedgerActionPriceDisplay(priceVal, priceSlot);
+  const priceRating = rowProductiveTimeRatingForPrice(rowData);
+  const priceReturnPct =
+    priceSlot === "productive" && priceRating != null
+      ? productiveTimeRatingReturnPercent(priceRating)
+      : null;
+  const priceText = formatTimeLedgerActionPriceDisplay(priceVal, priceSlot, {
+    returnPct: priceReturnPct,
+  });
   const iconSrc = timeLedgerListRowIconSrc(rowData);
   const live = mobileCardNeedsLiveClock(rowData);
 
@@ -4749,6 +4843,9 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   priceEl.className =
     "diary-tab5-timeline-price time-mobile-card-price time-mobile-card-price--" +
     priceSlot;
+  if (priceReturnPct != null) {
+    priceEl.classList.add("time-mobile-card-price--has-rating-return");
+  }
   priceEl.textContent = priceText || "\u00a0";
 
   const statsCol = document.createElement("div");
@@ -5867,6 +5964,10 @@ export function render(opts = {}) {
             <span data-legacy="time-task-log-section-label time-task-log-end-reason-section-label">작업 종료 이유</span>
             <div data-legacy="time-task-log-end-reason-chips" class="lp-choice-chip-row"></div>
           </div>
+          <div data-legacy="time-task-log-flow-factor-section" hidden>
+            <span data-legacy="time-task-log-section-label time-task-log-flow-factor-section-label">몰입 요소</span>
+            <div data-legacy="time-task-log-flow-factor-chips" class="lp-choice-chip-row"></div>
+          </div>
         </div>
         </div>
       </div>
@@ -6098,8 +6199,15 @@ export function render(opts = {}) {
   const taskLogEndReasonChips = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-end-reason-chips"]',
   );
+  const taskLogFlowFactorSection = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-flow-factor-section"]',
+  );
+  const taskLogFlowFactorChips = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-flow-factor-chips"]',
+  );
   let taskLogTimeRating = null;
   let taskLogTimeEndReason = "";
+  let taskLogTimeFlowFactors = [];
 
   function getTaskLogTimeRating() {
     return normalizeTimeRatingForRow(taskLogTimeRating);
@@ -6107,6 +6215,10 @@ export function render(opts = {}) {
 
   function getTaskLogTimeEndReason() {
     return normalizeTimeEndReasonForRow(taskLogTimeEndReason);
+  }
+
+  function getTaskLogTimeFlowFactors() {
+    return normalizeTimeFlowFactorsForRow(taskLogTimeFlowFactors);
   }
 
   function buildTaskLogModalProductivityStub() {
@@ -6222,6 +6334,40 @@ export function render(opts = {}) {
     if (!show) setTaskLogTimeEndReason("");
   }
 
+  function syncTaskLogFlowFactorChips() {
+    if (!taskLogFlowFactorChips) return;
+    const picked = new Set(getTaskLogTimeFlowFactors());
+    taskLogFlowFactorChips
+      .querySelectorAll('[data-legacy~="lp-choice-chip"]')
+      .forEach((btn) => {
+        const on = picked.has(btn.getAttribute("data-flow-factor") || "");
+        lpTokenToggle(btn, "lp-choice-chip--on", on);
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+  }
+
+  function setTaskLogTimeFlowFactors(value) {
+    taskLogTimeFlowFactors = normalizeTimeFlowFactorsForRow(value);
+    syncTaskLogFlowFactorChips();
+  }
+
+  function toggleTaskLogTimeFlowFactor(id) {
+    const key = normalizeTimeFlowFactorsForRow([id])[0];
+    if (!key) return;
+    const next = getTaskLogTimeFlowFactors();
+    const idx = next.indexOf(key);
+    if (idx >= 0) next.splice(idx, 1);
+    else next.push(key);
+    setTaskLogTimeFlowFactors(next);
+  }
+
+  function syncTaskLogFlowFactorSection() {
+    const show =
+      isTaskLogModalProductiveTask() && getTaskLogTimeRating() === 5;
+    if (taskLogFlowFactorSection) taskLogFlowFactorSection.hidden = !show;
+    if (!show) setTaskLogTimeFlowFactors([]);
+  }
+
   function syncTaskLogRatingSectionUi() {
     const show = shouldShowTaskLogRatingSection();
     const emotional = isTaskLogModalEmotionalTask();
@@ -6252,15 +6398,18 @@ export function render(opts = {}) {
     if (!show) {
       taskLogTimeRating = null;
       taskLogTimeEndReason = "";
+      taskLogTimeFlowFactors = [];
     }
     if (show) renderTaskLogTimeRating();
     syncTaskLogEndReasonSection();
+    syncTaskLogFlowFactorSection();
   }
 
   function setTaskLogTimeRating(value) {
     taskLogTimeRating = normalizeTimeRatingForRow(value);
     renderTaskLogTimeRating();
     syncTaskLogEndReasonSection();
+    syncTaskLogFlowFactorSection();
   }
 
   if (taskLogEndReasonChips) {
@@ -6276,6 +6425,20 @@ export function render(opts = {}) {
         );
       });
       taskLogEndReasonChips.appendChild(btn);
+    });
+  }
+
+  if (taskLogFlowFactorChips) {
+    TIME_TASK_FLOW_FACTOR_OPTIONS.forEach(({ id, label }) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      lpSetClasses(btn, "lp-choice-chip");
+      btn.setAttribute("data-flow-factor", id);
+      btn.textContent = label;
+      btn.addEventListener("click", () => {
+        toggleTaskLogTimeFlowFactor(id);
+      });
+      taskLogFlowFactorChips.appendChild(btn);
     });
   }
 
@@ -8039,9 +8202,10 @@ export function render(opts = {}) {
   }
 
   async function openTaskLogModal(addContext) {
-    await ensureTaskLogModalCloudData().catch(() => {});
     if (!el.isConnected) return;
     openTaskLogModalAfterPull(addContext);
+    await ensureTaskLogModalCloudData().catch(() => {});
+    if (!el.isConnected || taskLogModal.hidden) return;
     afterTaskListSyncForTaskLogAddModal();
   }
 
@@ -8100,6 +8264,7 @@ export function render(opts = {}) {
     clearTaskLogEmotionTrigger();
     setTaskLogTimeRating(null);
     setTaskLogTimeEndReason("");
+    setTaskLogTimeFlowFactors([]);
     syncTaskLogRatingSectionUi();
     taskLogMemoTags = [];
     taskLogModal
@@ -8362,6 +8527,7 @@ export function render(opts = {}) {
     }
     setTaskLogTimeRating(data.timeRating);
     setTaskLogTimeEndReason(data.timeEndReason);
+    setTaskLogTimeFlowFactors(data.timeFlowFactors ?? data.timeFlowFactor);
     syncTaskLogRatingSectionUi();
     const rawMemoTagsForEdit = Array.isArray(data.memoTags)
       ? [...data.memoTags]
@@ -8533,6 +8699,10 @@ export function render(opts = {}) {
       timeRatingForRow != null && isTaskLogModalProductiveTask()
         ? getTaskLogTimeEndReason()
         : "";
+    const timeFlowFactorsForRow =
+      timeRatingForRow === 5 && isTaskLogModalProductiveTask()
+        ? getTaskLogTimeFlowFactors()
+        : [];
 
     if (editTr) {
       oldRowDataToRemove = editTr._rowData ? { ...editTr._rowData } : null;
@@ -8565,6 +8735,7 @@ export function render(opts = {}) {
         kpiPerformedValue: String(prevRow.kpiPerformedValue ?? "").trim(),
         timeRating: timeRatingForRow,
         timeEndReason: timeEndReasonForRow,
+        timeFlowFactors: timeFlowFactorsForRow,
       };
       editTr._rowData = newRowData;
       const isMobileCard = lpTokenHas(editTr, "time-ledger-mobile-card");
@@ -8676,6 +8847,7 @@ export function render(opts = {}) {
         kpiPerformedValue: "",
         timeRating: timeRatingForRow,
         timeEndReason: timeEndReasonForRow,
+        timeFlowFactors: timeFlowFactorsForRow,
       };
       const tr = createRow(
         newRowData,
@@ -9643,11 +9815,11 @@ export function render(opts = {}) {
           const val = (timeEl?.value ?? timeEl?.textContent ?? "").trim();
           const hrs = parseTimeToHours(val) || 0;
           totalHrs += hrs;
-          const pv = (tr._rowData?.productivity || prod || "").trim();
-          let price = hrs * hourlyRate;
-          if (pv === "nonproductive") price *= -1;
-          else if (pv === "other" || pv === "그 외" || !pv) price = 0;
-          totalPrice += price;
+          const rowData = tr._rowData || {
+            timeTracked: val,
+            productivity: prod,
+          };
+          totalPrice += computeMobileCardPriceValue(rowData, hourlyRate);
         });
         summaryTracked.textContent =
           totalHrs > 0 ? formatHoursDisplay(totalHrs) : "";
@@ -9939,13 +10111,22 @@ export function render(opts = {}) {
         usageHistoryRangeStartYmd === todayYmd &&
         usageHistoryRangeEndYmd === todayYmd;
       if (viewingTodayTimeline) {
-        const nextExpected = findNextExpectedBudgetBlockForRecording(todayYmd);
+        if (el._lpDismissedNextExpectedDay !== todayYmd) {
+          el._lpDismissedNextExpectedBlocks = new Set();
+          el._lpDismissedNextExpectedDay = todayYmd;
+        }
+        const todayLedgerRows = rows.filter((r) => timeLedgerRowYmd(r) === todayYmd);
+        const nextExpected = findNextExpectedBudgetBlockForRecording(todayYmd, {
+          ledgerRows: todayLedgerRows,
+          dismissedBlockKeys: el._lpDismissedNextExpectedBlocks,
+        });
         if (nextExpected) {
           timelineList.appendChild(
-            createNextExpectedScheduleTimelineItem(
-              nextExpected,
-              () => {
-                openTaskLogModal({
+            createNextExpectedScheduleTimelineItem(nextExpected, {
+              onStartNow: (itemEl) => {
+                rememberDismissedNextExpectedBlock(el, nextExpected, todayYmd);
+                itemEl?.remove();
+                void openTaskLogModal({
                   productivity: null,
                   tbody: hiddenTbody,
                   addRow: null,
@@ -9955,14 +10136,18 @@ export function render(opts = {}) {
                   },
                   viewEl: el,
                   createRow,
-                  handleRowDelete,
-                  handleCardEdit,
+                  handleRowDelete: handleCardDelete,
+                  handleRowEdit: handleCardEdit,
                   presetTaskName: nextExpected.taskName,
                   presetStartNow: true,
                 });
               },
-              el,
-            ),
+              onSkip: (itemEl) => {
+                rememberDismissedNextExpectedBlock(el, nextExpected, todayYmd);
+                itemEl?.remove();
+                onFilterChange();
+              },
+            }),
           );
         }
       }
