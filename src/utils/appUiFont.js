@@ -81,6 +81,20 @@ export function getAppFontStackForId(id) {
   return def?.stack ?? LP_APP_SYSTEM_FONT_STACK;
 }
 
+function readCachedAuthUserIdForStorage() {
+  try {
+    return String(localStorage.getItem("lp_last_auth_uid") || "").trim();
+  } catch (_) {
+    return "";
+  }
+}
+
+function resolveStorageUserId() {
+  const active = getActiveClientStorageUserId();
+  if (active) return active;
+  return readCachedAuthUserIdForStorage();
+}
+
 function readLegacyAppFontId() {
   try {
     const v = localStorage.getItem(LP_APP_UI_FONT_STORAGE_KEY);
@@ -94,7 +108,7 @@ function readLegacyAppFontId() {
  */
 export function getStoredAppFontId() {
   try {
-    const uid = getActiveClientStorageUserId();
+    const uid = resolveStorageUserId();
     if (uid) {
       migrateLegacyLocalStorageToScoped(LP_APP_UI_FONT_STORAGE_KEY, uid);
       const scoped = getScopedLocalStorageItem(LP_APP_UI_FONT_STORAGE_KEY, uid);
@@ -109,7 +123,7 @@ export function getStoredAppFontId() {
 function persistAppFontIdLocal(id) {
   const use = normalizeAppFontId(id);
   try {
-    const uid = getActiveClientStorageUserId();
+    const uid = resolveStorageUserId();
     if (uid) {
       setScopedLocalStorageItem(LP_APP_UI_FONT_STORAGE_KEY, use, uid);
       localStorage.removeItem(LP_APP_UI_FONT_STORAGE_KEY);
@@ -157,7 +171,23 @@ export function applyAppFontIdFromServer(id) {
   return true;
 }
 
-/** 다른 기기에서 바꾼 글꼴 — 서버만 조회해 화면·로컬 반영 */
+/**
+ * 로그인·pull 시 서버↔로컬 글꼴 맞춤
+ * 서버에 값이 있으면 서버 우선, 없으면 로컬 선택을 서버에 올림
+ * @param {unknown} serverUiFontId
+ */
+export async function syncAppFontFromServerOnPull(serverUiFontId) {
+  const serverRaw = String(serverUiFontId ?? "").trim();
+  if (serverRaw) {
+    return applyAppFontIdFromServer(serverRaw);
+  }
+  const localId = getStoredAppFontId();
+  const pushed = await pushAppFontIdToSupabase(localId);
+  applyAppFont();
+  return pushed;
+}
+
+/** 다른 기기에서 바꾼 글꼴 — 서버 조회 후 화면·로컬 반영 */
 export async function pullAppFontIdFromSupabase() {
   if (!supabase) return false;
   const {
@@ -170,7 +200,7 @@ export async function pullAppFontIdFromSupabase() {
     .eq("user_id", session.user.id)
     .maybeSingle();
   if (error || !data) return false;
-  return applyAppFontIdFromServer(data.ui_font_id);
+  return syncAppFontFromServerOnPull(data.ui_font_id);
 }
 
 /** 로그인·계정 설정 변경 시 서버에 글꼴 id 저장 */
@@ -179,10 +209,18 @@ export async function pushAppFontIdToSupabase(id) {
   const {
     data: { session },
   } = await getSupabaseSession();
-  if (!session?.user?.id) return false;
+  const uid = session?.user?.id;
+  if (!uid) return false;
   const use = normalizeAppFontId(id);
   const { error } = await supabase.rpc("set_my_ui_font_id", { p_font_id: use });
-  return !error;
+  if (error) return false;
+  const { data, error: readErr } = await supabase
+    .from("user_subscriptions")
+    .select("ui_font_id")
+    .eq("user_id", uid)
+    .maybeSingle();
+  if (readErr || !data) return false;
+  return normalizeAppFontId(data.ui_font_id) === use;
 }
 
 /**

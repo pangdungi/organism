@@ -4206,3 +4206,45 @@
   [data-legacy~="time-task-log-flow-factor-chips"] {
   margin-top: 0.45rem;
 }
+
+/* 초집중 분석 레포트 */
+.lp-tr2-focus-hero-value {
+  font-size: 1.85rem;
+}
+
+.lp-tr2-focus-compare-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.lp-tr2-focus-compare-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.lp-tr2-focus-compare-label {
+  font-weight: 700;
+  color: #475569;
+}
+
+.lp-tr2-focus-compare-value {
+  color: #1e4d7b;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-tr2-focus-end-line {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+  line-height: 1.45;
+}
+
+.lp-tr2-bar-row--focus-recipe .lp-tr2-bar-label {
+  min-width: 4.5rem;
+}

@@ -26,6 +26,7 @@ import { buildEmotionReportSnapshot } from "./timeEmotionReport.js";
 import { buildMoveReportSnapshot } from "./timeMoveReport.js";
 import { buildHappinessRoutineReportSnapshot } from "./timeHappinessRoutineReport.js";
 import { buildPlanAdherenceReportSnapshot } from "./timePlanAdherenceReport.js";
+import { buildFocusReportSnapshot } from "./timeFocusReport.js";
 import { readUserHourlyRateLocal } from "./userHourlySync.js";
 
 const SLEEP_TARGET_MIN = 7 * 60;
@@ -2552,6 +2553,196 @@ function mountPlanAdherenceSection(scrollWrap, range, rows) {
   scrollWrap.appendChild(sec);
 }
 
+function createFocusCompareRow(item) {
+  const row = document.createElement("div");
+  row.className = "lp-tr2-focus-compare-row";
+  const lab = document.createElement("span");
+  lab.className = "lp-tr2-focus-compare-label";
+  lab.textContent = item.label;
+  const val = document.createElement("span");
+  val.className = "lp-tr2-focus-compare-value";
+  const withTxt =
+    item.withAvg != null ? formatRatingAvg(item.withAvg) : "—";
+  const withoutTxt =
+    item.withoutAvg != null ? formatRatingAvg(item.withoutAvg) : "—";
+  const delta =
+    item.delta != null && item.delta !== 0
+      ? ` (${item.delta > 0 ? "+" : ""}${item.delta.toFixed(1)})`
+      : "";
+  val.textContent = `있음 ${withTxt} · 없음 ${withoutTxt}${delta}`;
+  row.append(lab, val);
+  return row;
+}
+
+function createFocusRecipeTagRow(item, maxPct) {
+  const row = document.createElement("div");
+  row.className = "lp-tr2-bar-row lp-tr2-bar-row--focus-recipe";
+  const lab = document.createElement("span");
+  lab.className = "lp-tr2-bar-label";
+  lab.textContent = item.label;
+  const track = document.createElement("div");
+  track.className = "lp-tr2-bar-track";
+  const fill = document.createElement("div");
+  fill.className = "lp-tr2-bar-fill";
+  const pct = maxPct > 0 ? Math.min(100, (item.pct / maxPct) * 100) : 0;
+  fill.style.width = `${pct}%`;
+  fill.style.background = "#1e4d7b";
+  const val = document.createElement("span");
+  val.className = "lp-tr2-bar-value";
+  val.textContent = `${item.pct}%`;
+  track.appendChild(fill);
+  row.append(lab, track, val);
+  return row;
+}
+
+function mountFocusReportSection(scrollWrap, _range, rows) {
+  const snap = buildFocusReportSnapshot(rows);
+  const sec = createSection(
+    "초집중 분석",
+    "생산적 작업 별점·몰입 요소·종료 사유로 나만의 패턴을 봅니다",
+  );
+  sec.classList.add("lp-tr2-focus-section");
+
+  if (!snap) {
+    const note = document.createElement("p");
+    note.className = "lp-tr2-chart-note";
+    note.textContent =
+      "이 기간에 별점을 매긴 생산적 작업 기록이 없습니다.";
+    sec.appendChild(note);
+    scrollWrap.appendChild(sec);
+    return;
+  }
+
+  const hero = document.createElement("div");
+  hero.className = "lp-tr2-plan-hero lp-tr2-focus-hero";
+  const heroLab = document.createElement("span");
+  heroLab.className = "lp-tr2-plan-hero-label";
+  heroLab.textContent = "나의 초집중 레시피";
+  const heroVal = document.createElement("strong");
+  heroVal.className = "lp-tr2-plan-hero-value lp-tr2-focus-hero-value";
+  heroVal.textContent =
+    snap.fiveStarCount > 0 ? `${snap.fiveStarCount}건` : "—";
+  const heroLine = document.createElement("p");
+  heroLine.className = "lp-tr2-plan-hero-line";
+  heroLine.textContent = snap.recipeOneLiner;
+  hero.append(heroLab, heroVal, heroLine);
+  sec.appendChild(hero);
+
+  if (snap.recipeTags.length) {
+    const recipeBlock = createRatingBlock(
+      "5점 세션 조건 순위",
+      "몰입 요소가 함께 있던 비율",
+    );
+    const bars = document.createElement("div");
+    bars.className = "lp-tr2-bars";
+    const maxPct = Math.max(1, ...snap.recipeTags.map((t) => t.pct));
+    snap.recipeTags.slice(0, 6).forEach((item) => {
+      bars.appendChild(createFocusRecipeTagRow(item, maxPct));
+    });
+    recipeBlock.appendChild(bars);
+    sec.appendChild(recipeBlock);
+  }
+
+  if (snap.conditionCompare.length) {
+    const condBlock = createRatingBlock(
+      "조건별 평균 별점",
+      "있을 때 vs 없을 때 — 차이가 큰 순",
+    );
+    const list = document.createElement("div");
+    list.className = "lp-tr2-focus-compare-list";
+    snap.conditionCompare.slice(0, 6).forEach((item) => {
+      list.appendChild(createFocusCompareRow(item));
+    });
+    condBlock.appendChild(list);
+    sec.appendChild(condBlock);
+  }
+
+  if (snap.endReasons.length) {
+    const endBlock = createRatingBlock(
+      "종료 사유",
+      "집중이 끊긴 이유 빈도",
+    );
+    const line = document.createElement("p");
+    line.className = "lp-tr2-focus-end-line";
+    line.textContent = snap.endReasons
+      .slice(0, 5)
+      .map((item, i) => `${i + 1}위 ${item.label} ${item.count}회`)
+      .join(" · ");
+    endBlock.appendChild(line);
+    sec.appendChild(endBlock);
+  }
+
+  if (snap.hourGrid.some((h) => h.count > 0)) {
+    const hourBlock = createRatingBlock(
+      "시간대별 집중",
+      "시작 시각 기준 평균 별점 · 주황=피크",
+    );
+    hourBlock.appendChild(
+      render24HourRatingChart(snap.hourGrid, snap.peakHours),
+    );
+    if (snap.peakHourLine) {
+      const peakNote = document.createElement("p");
+      peakNote.className = "lp-tr2-rating-peak-note";
+      peakNote.textContent = snap.peakHourLine;
+      hourBlock.appendChild(peakNote);
+    }
+    sec.appendChild(hourBlock);
+  }
+
+  const durGrid = document.createElement("div");
+  durGrid.className = "lp-tr2-card-grid";
+  durGrid.appendChild(
+    createStatCard(
+      "평균 집중 시간",
+      formatIntegerMinutesDurationKo(Math.round(snap.duration.avgMins)),
+      `${snap.duration.count}건`,
+    ),
+  );
+  if (snap.duration.avgFiveStarMins != null) {
+    durGrid.appendChild(
+      createStatCard(
+        "5점 세션 평균",
+        formatIntegerMinutesDurationKo(
+          Math.round(snap.duration.avgFiveStarMins),
+        ),
+        `${snap.duration.fiveStarCount}건`,
+      ),
+    );
+  }
+  durGrid.appendChild(
+    createStatCard(
+      "최장 세션",
+      formatIntegerMinutesDurationKo(snap.duration.maxMins),
+      "",
+    ),
+  );
+  const durBlock = createRatingBlock("집중 지속 시간", "시작~종료 기록 기준");
+  durBlock.appendChild(durGrid);
+  sec.appendChild(durBlock);
+
+  if (snap.tasks.length) {
+    const taskBlock = createRatingBlock(
+      "과제별 집중도",
+      "생산적 작업 평균 별점",
+    );
+    const bars = document.createElement("div");
+    bars.className = "lp-tr2-bars";
+    snap.tasks.forEach((t) => {
+      bars.appendChild(
+        createRatingBarRow(
+          t.name,
+          t.avg,
+          `${t.count}회 · ${formatIntegerMinutesDurationKo(t.minutes)}`,
+        ),
+      );
+    });
+    taskBlock.appendChild(bars);
+    sec.appendChild(taskBlock);
+  }
+
+  scrollWrap.appendChild(sec);
+}
+
 function mountHeroSection(scrollWrap, range) {
   const hero = getTimeReportHeroSnapshotForDateRange(range.start, range.end);
   const sec = createSection("한 장 요약", formatRangeLabel(range.start, range.end));
@@ -2924,5 +3115,6 @@ export function mountUnifiedTimeReport(scrollWrap, arg2, arg3) {
   mountMediaSection(scrollWrap, range, rows);
   mountDonutSection(scrollWrap, range);
   mountTimeRatingReportSection(scrollWrap, range, rows);
+  mountFocusReportSection(scrollWrap, range, rows);
   mountPlanAdherenceSection(scrollWrap, range, rows);
 }

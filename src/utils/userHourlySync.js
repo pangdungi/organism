@@ -1,6 +1,6 @@
 import { supabase } from "../supabase.js";
 import { getSupabaseSession } from "./supabaseSession.js";
-import { applyAppFontIdFromServer } from "./appUiFont.js";
+import { syncAppFontFromServerOnPull } from "./appUiFont.js";
 import {
   getScopedLocalStorageItem,
   removeScopedLocalStorageItem,
@@ -102,7 +102,9 @@ export async function pullUserPrefsFromSupabase(opts = {}) {
     .maybeSingle();
   if (error || !data) return null;
 
-  if (applyServerFont) applyAppFontIdFromServer(data.ui_font_id);
+  if (applyServerFont) {
+    await syncAppFontFromServerOnPull(data.ui_font_id);
+  }
 
   if (data.hourly_rate != null) {
     const n = Number(data.hourly_rate);
