@@ -953,7 +953,9 @@ function shouldDeferHealthKpiPullWhileLocalUpdatePending() {
 }
 
 /** @returns {Promise<boolean>} 서버 데이터로 로컬을 갱신했으면 true */
-async function pullHealthKpiMapFromSupabaseImpl(force = false) {
+async function pullHealthKpiMapFromSupabaseImpl(opts = {}) {
+  const force = !!opts.force;
+  const skipTodos = !!opts.skipTodos;
   if (!force && shouldDeferHealthKpiPullWhileLocalUpdatePending()) return false;
   const userId = await getSessionUserId();
   if (!userId || !supabase) {
@@ -969,17 +971,22 @@ async function pullHealthKpiMapFromSupabaseImpl(force = false) {
     return false;
   }
 
+  const emptyTodoRes = { data: [], error: null };
   const [catRes, goalLogRes, kpiRes, logRes, todoRes, dailyRes, metaRes] = await Promise.all([
     supabase.from("health_map_categories").select("*").eq("user_id", userId),
     supabase.from("health_map_goal_logs").select("*").eq("user_id", userId),
     supabase.from("health_map_kpis").select("*").eq("user_id", userId),
     supabase.from("health_map_kpi_logs").select("*").eq("user_id", userId),
-    supabase.from("health_map_kpi_todos").select("*").eq("user_id", userId),
-    supabase.from("health_map_kpi_daily_todos").select("*").eq("user_id", userId),
+    skipTodos
+      ? Promise.resolve(emptyTodoRes)
+      : supabase.from("health_map_kpi_todos").select("*").eq("user_id", userId),
+    skipTodos
+      ? Promise.resolve(emptyTodoRes)
+      : supabase.from("health_map_kpi_daily_todos").select("*").eq("user_id", userId),
     supabase.from("health_map_meta").select("*").eq("user_id", userId).maybeSingle(),
   ]);
 
-  for (const res of [catRes, goalLogRes, kpiRes, logRes, todoRes, dailyRes]) {
+  for (const res of [catRes, goalLogRes, kpiRes, logRes, ...(skipTodos ? [] : [todoRes, dailyRes])]) {
     if (res.error) {
       logKpiServerSnapshot("health", { op: "pull", ok: false, error: res.error.message, step: "table" });
       kpiSyncDebugLog("건강 pull", { ok: false, error: res.error.message });
@@ -996,8 +1003,8 @@ async function pullHealthKpiMapFromSupabaseImpl(force = false) {
   const goalLogs = goalLogRes.data || [];
   const kpis = kpiRes.data || [];
   const logs = logRes.data || [];
-  const todos = todoRes.data || [];
-  const daily = dailyRes.data || [];
+  const todos = skipTodos ? [] : todoRes.data || [];
+  const daily = skipTodos ? [] : dailyRes.data || [];
   const meta = metaRes.data;
   const localBeforePull = readLocalPayload();
 
@@ -1011,7 +1018,19 @@ async function pullHealthKpiMapFromSupabaseImpl(force = false) {
       daily,
       meta,
     );
-    const snapshot = normalizePayload(serverPayload);
+    let snapshot = normalizePayload(serverPayload);
+    if (skipTodos && localBeforePull) {
+      snapshot = normalizePayload({
+        ...snapshot,
+        kpiTodos: localBeforePull.kpiTodos || [],
+        kpiDailyRepeatTodos: localBeforePull.kpiDailyRepeatTodos || [],
+        deletedRefs: {
+          ...(snapshot.deletedRefs || {}),
+          kpiTodos: localBeforePull.deletedRefs?.kpiTodos || [],
+          kpiDailyRepeatTodos: localBeforePull.deletedRefs?.kpiDailyRepeatTodos || [],
+        },
+      });
+    }
     kpiTodoLifecyclePullCompare(
       "health",
       HEALTH_KPI_MAP_STORAGE_KEY,
@@ -1130,10 +1149,58 @@ async function pullHealthKpiMapFromSupabaseImpl(force = false) {
   return true;
 }
 
-/** @param {{ force?: boolean }} [opts] */
-export function pullHealthKpiMapFromSupabase(opts) {
-  const force = !!(opts && opts.force);
-  return runSerializedHealthKpiServerOp(() => pullHealthKpiMapFromSupabaseImpl(force));
+/** @param {{ force?: boolean, skipTodos?: boolean }} [opts] */
+export function pullHealthKpiMapFromSupabase(opts = {}) {
+  const o = opts && typeof opts === "object" ? opts : { force: !!opts };
+  return runSerializedHealthKpiServerOp(() => pullHealthKpiMapFromSupabaseImpl(o));
+}
+
+/** KPI 상세 진입 시 — 할일·매일할일만 서버에서 당김(목록 탭 pull 은 skipTodos) */
+async function pullHealthKpiMapTodosFromSupabaseImpl() {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) return false;
+  const localBefore = normalizePayload(readLocalPayload());
+  const kpiIds = new Set((localBefore.kpis || []).map((k) => String(k.id)));
+  const [todoRes, dailyRes, metaRes] = await Promise.all([
+    supabase.from("health_map_kpi_todos").select("*").eq("user_id", userId),
+    supabase.from("health_map_kpi_daily_todos").select("*").eq("user_id", userId),
+    supabase.from("health_map_meta").select("*").eq("user_id", userId).maybeSingle(),
+  ]);
+  for (const res of [todoRes, dailyRes]) {
+    if (res.error) return false;
+  }
+  if (metaRes.error) return false;
+  const dr = deletedRefsFromMetaRow(metaRes.data);
+  const drTodo = new Set(dr.kpiTodos || []);
+  const drDaily = new Set(dr.kpiDailyRepeatTodos || []);
+  const todosFiltered = (todoRes.data || []).filter((t) => {
+    if (drTodo.has(String(t.id))) return false;
+    return kpiIds.has(String(t.kpi_id));
+  });
+  const dailyFiltered = (dailyRes.data || []).filter((t) => {
+    if (drDaily.has(String(t.id))) return false;
+    return kpiIds.has(String(t.kpi_id));
+  });
+  const next = normalizePayload({
+    ...localBefore,
+    kpiTodos: sortNormalizedKpiTodoRows(todosFiltered).map(rowToTodo),
+    kpiDailyRepeatTodos: sortNormalizedKpiTodoRows(dailyFiltered).map(rowToDaily),
+    deletedRefs: {
+      ...(localBefore.deletedRefs || {}),
+      kpiTodos: dr.kpiTodos || [],
+      kpiDailyRepeatTodos: dr.kpiDailyRepeatTodos || [],
+    },
+  });
+  try {
+    writeKpiMapScopedStorageRaw(HEALTH_KPI_MAP_STORAGE_KEY, JSON.stringify(next));
+  } catch (_) {
+    return false;
+  }
+  return true;
+}
+
+export function pullHealthKpiMapTodosFromSupabase() {
+  return runSerializedHealthKpiServerOp(() => pullHealthKpiMapTodosFromSupabaseImpl());
 }
 
 async function runHealthKpiMapSyncOnce() {

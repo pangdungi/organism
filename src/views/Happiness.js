@@ -65,6 +65,9 @@ import {
 } from "../utils/kpiMapTodoListOrder.js";
 import { mountKpiSegBarClearCompletedRow } from "../utils/kpiTodoBulkDeleteUi.js";
 import { formatKpiCardHeroHtml } from "../utils/kpiViewModal.js";
+import { kpiFilterEmptyListMessage } from "../utils/kpiFilterEmptyMessage.js";
+import { buildKpiListPaintSignature } from "../utils/kpiListPaintSignature.js";
+import { pullKpiDetailTodosFromCloud } from "../utils/kpiTabCloudRefresh.js";
 import { showKpiTodoEditModal } from "../utils/kpiTodoEditModal.js";
 import {
   KPI_CARD_EDIT_PENCIL_HTML,
@@ -410,6 +413,12 @@ export function render() {
     happinessViewScreen = "kpiDetail";
     syncHappinessHeader();
     updateHappinessView();
+    void pullKpiDetailTodosFromCloud("happiness").then(() => {
+      if (!el.isConnected || happinessViewScreen !== "kpiDetail" || selectedKpiId !== kpiId) {
+        return;
+      }
+      syncHappinessUiFromStoredMap();
+    });
   }
 
   function exitToKpiList() {
@@ -844,6 +853,28 @@ export function render() {
     );
   }
 
+  function computeHappinessKpiListPaintSig() {
+    const data = loadHappinessMap();
+    const happinessKpis = getOrderedHappinessTabKpis(data);
+    const progressByKpiId = new Map();
+    const progressFor = (kpi) => {
+      const id = String(kpi?.id ?? "");
+      if (!progressByKpiId.has(id)) {
+        progressByKpiId.set(id, getKpiProgress(kpi));
+      }
+      return progressByKpiId.get(id);
+    };
+    return buildKpiListPaintSignature(
+      happinessKpis,
+      kpiFilter,
+      progressFor,
+      "happiness",
+    );
+  }
+
+  let lastHappinessKpiListPaintSig = "";
+  let lastKpiMapPaintSig = "";
+
   function hideKpiFilterStrip() {
     kpiFilterStrip.hidden = true;
     kpiFilterStrip.replaceChildren();
@@ -869,7 +900,7 @@ export function render() {
   }
 
   function renderKpiList() {
-    syncHabitTrackerLogs();
+    /* 목록·필터(전체/진행중/완료)는 로컬 데이터로 즉시 그림. 습관 연동 sync 는 탭 pull·기록 저장 시에만 */
     const scopeId = HAPPINESS_KPI_LIST_SCOPE_ID;
     const savedGridScroll = readKpiGridScrollToRestore(
       contentWrap,
@@ -916,6 +947,12 @@ export function render() {
     const grid = document.createElement("div");
     grid.className = "dream-kpi-grid";
     const listToShow = kpiFilter === "active" ? activeKpis : kpiFilter === "completed" ? completedKpis : happinessKpis;
+    if (!listToShow.length) {
+      const empty = document.createElement("p");
+      empty.className = "dream-goals-empty";
+      empty.textContent = kpiFilterEmptyListMessage(kpiFilter);
+      grid.appendChild(empty);
+    }
     listToShow.forEach((kpi) => {
       const progressResult = progressFor(kpi);
       const { lowerBetter } = progressResult;
@@ -997,6 +1034,7 @@ export function render() {
     kpiGridScrollPrevScopeId = scopeId;
     persistKpiUiState();
     syncAppFooterHappinessKpiActions();
+    lastHappinessKpiListPaintSig = computeHappinessKpiListPaintSig();
   }
 
 
@@ -1381,17 +1419,25 @@ export function render() {
   reconcileScopeWithStoredMap(_happinessInitData);
   syncHappinessHeader();
   updateHappinessView();
-  let lastKpiMapPaintSig = readKpiMapLocalStorageSignature(
-    HAPPINESS_KPI_MAP_STORAGE_KEY,
-  );
+  if (happinessViewScreen !== "kpis") {
+    lastKpiMapPaintSig = readKpiMapLocalStorageSignature(
+      HAPPINESS_KPI_MAP_STORAGE_KEY,
+    );
+  }
 
   function syncHappinessUiFromStoredMap() {
     if (!el.isConnected) return;
-    const nextSig = readKpiMapLocalStorageSignature(
-      HAPPINESS_KPI_MAP_STORAGE_KEY,
-    );
-    if (nextSig === lastKpiMapPaintSig) return;
-    lastKpiMapPaintSig = nextSig;
+    if (happinessViewScreen === "kpis") {
+      const nextPaint = computeHappinessKpiListPaintSig();
+      if (nextPaint === lastHappinessKpiListPaintSig) return;
+      lastHappinessKpiListPaintSig = nextPaint;
+    } else {
+      const nextSig = readKpiMapLocalStorageSignature(
+        HAPPINESS_KPI_MAP_STORAGE_KEY,
+      );
+      if (nextSig === lastKpiMapPaintSig) return;
+      lastKpiMapPaintSig = nextSig;
+    }
     const data = loadHappinessMap();
     if (happinessViewScreen === "goals") happinessViewScreen = "kpis";
     if (selectedKpiId && !data.kpis.some((k) => k.id === selectedKpiId)) {
@@ -1413,7 +1459,7 @@ export function render() {
   window.addEventListener("happiness-kpi-map-saved", onMergedSync);
   window.addEventListener("lp-kpi-tab-pull-settled", (e) => {
     if (!el.isConnected || e.detail?.tabId !== "happiness") return;
-    updateHappinessView();
+    syncHappinessUiFromStoredMap();
   });
   window.__lpHappinessSoftRefresh = syncHappinessUiFromStoredMap;
   window.__lpHappinessFooterBack = () => {

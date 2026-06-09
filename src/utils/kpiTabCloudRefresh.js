@@ -1,7 +1,8 @@
 /**
  * 꿈·부수입·행복·건강 KPI 맵
  * - 고정 pull(읽기): `pullKpiTabFromCloud` — 꿈/건강/행복/부수입 **상위 앱 탭** 클릭 시 `force: true`.
- *   이 때 **시간가계부 기록** 구간 pull 과 KPI 맵 pull 은 **병렬**(네트워크 대기 합산 단축). 완료 후 `syncHabitTrackerLogs`.
+ *   **건강·행복**: KPI·로그만 먼저(await), 할일은 KPI 상세 진입 시, 6개월 시간기록·습관 sync 는 백그라운드.
+ *   **꿈·부수입**: 시간가계부 pull 과 KPI 맵 pull 병렬 후 `syncHabitTrackerLogs`.
  * - 서브 pull: `pullKpiMapSubViewFromCloud` — 탭 **내부**에서 꿈/경로/건강 **루트(상단 목표) 전환** 시만.
  *   `force: false`로 sync 진행 중이면 생략(삭제·수정 직후 낡은 서버로 덮임 방지). KPI 카드 클릭에서는 pull 안 함.
  * - push: `saveDreamMap` 등 저장 후 즉시 sync 리스너. 가시성만으로는 푸시 안 함.
@@ -9,8 +10,14 @@
  */
 
 import { pullDreamKpiMapFromSupabase } from "./dreamKpiMapSupabase.js";
-import { pullHealthKpiMapFromSupabase } from "./healthKpiMapSupabase.js";
-import { pullHappinessKpiMapFromSupabase } from "./happinessKpiMapSupabase.js";
+import {
+  pullHealthKpiMapFromSupabase,
+  pullHealthKpiMapTodosFromSupabase,
+} from "./healthKpiMapSupabase.js";
+import {
+  pullHappinessKpiMapFromSupabase,
+  pullHappinessKpiMapTodosFromSupabase,
+} from "./happinessKpiMapSupabase.js";
 import { pullSideincomeKpiMapFromSupabase } from "./sideincomeKpiMapSupabase.js";
 import {
   shouldDeferKpiPullForDomain,
@@ -51,6 +58,22 @@ async function pullLedgerForKpiTabEnter() {
       patchKpiLinkedTasksFromKpiMaps();
     } catch (_) {}
   });
+}
+
+const KPI_TAB_LITE_ENTER_IDS = new Set(["health", "happiness"]);
+
+/** 건강·행복 탭 — 시간기록 pull·습관 연동을 백그라운드에서 처리 */
+function scheduleKpiTabLedgerBackgroundSync(tabId) {
+  void (async () => {
+    try {
+      await pullLedgerForKpiTabEnter();
+      syncHabitTrackerLogs();
+    } catch (_) {}
+    try {
+      if (tabId === "health") window.__lpHealthSoftRefresh?.();
+      else if (tabId === "happiness") window.__lpHappinessSoftRefresh?.();
+    } catch (_) {}
+  })();
 }
 
 /**
@@ -96,32 +119,34 @@ export async function pullKpiTabFromCloud(tabId) {
   const key = KPI_LOCAL_STORAGE_KEYS[tabId];
   const before = key ? readKpiMapScopedStorageRaw(key) : null;
 
-  let domainPull = Promise.resolve(false);
-  switch (tabId) {
-    case "dream":
-      domainPull = pullDreamKpiMapFromSupabase({ force: true });
-      break;
-    case "health":
-      domainPull = pullHealthKpiMapFromSupabase({ force: true });
-      break;
-    case "happiness":
-      domainPull = pullHappinessKpiMapFromSupabase({ force: true });
-      break;
-    case "sideincome":
-      domainPull = pullSideincomeKpiMapFromSupabase({ force: true });
-      break;
-    default:
-      return { pullOk: false, localChanged: false };
+  const liteEnter = KPI_TAB_LITE_ENTER_IDS.has(tabId);
+  let pullOk = false;
+
+  if (liteEnter) {
+    if (tabId === "health") {
+      pullOk = await pullHealthKpiMapFromSupabase({ force: true, skipTodos: true });
+    } else {
+      pullOk = await pullHappinessKpiMapFromSupabase({ force: true, skipTodos: true });
+    }
+    scheduleKpiTabLedgerBackgroundSync(tabId);
+  } else {
+    let domainPull = Promise.resolve(false);
+    switch (tabId) {
+      case "dream":
+        domainPull = pullDreamKpiMapFromSupabase({ force: true });
+        break;
+      case "sideincome":
+        domainPull = pullSideincomeKpiMapFromSupabase({ force: true });
+        break;
+      default:
+        return { pullOk: false, localChanged: false };
+    }
+    const [, ok] = await Promise.all([pullLedgerForKpiTabEnter(), domainPull]);
+    pullOk = ok;
+    try {
+      syncHabitTrackerLogs();
+    } catch (_) {}
   }
-
-  const [, pullOk] = await Promise.all([
-    pullLedgerForKpiTabEnter(),
-    domainPull,
-  ]);
-
-  try {
-    syncHabitTrackerLogs();
-  } catch (_) {}
 
   const after = key ? readKpiMapScopedStorageRaw(key) : null;
   const localChanged = pullOk && before !== after;
@@ -141,6 +166,17 @@ export async function pullKpiTabFromCloud(tabId) {
     note: "서버 스냅샷만 반영(로컬·서버 페이로드 merge 없음)",
   });
   return { pullOk, localChanged };
+}
+
+/**
+ * 건강·행복 KPI 카드(상세) 진입 시 — 할일·매일할일 서버 pull
+ * @param {"health" | "happiness"} tabId
+ * @returns {Promise<boolean>}
+ */
+export async function pullKpiDetailTodosFromCloud(tabId) {
+  if (tabId === "health") return pullHealthKpiMapTodosFromSupabase();
+  if (tabId === "happiness") return pullHappinessKpiMapTodosFromSupabase();
+  return false;
 }
 
 /**

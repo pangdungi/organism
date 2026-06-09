@@ -261,9 +261,9 @@ function kpiSoftRefreshAfterPull(tabId, pullResult) {
   kpiSoftRefreshIfPullChanged(tabId, pullResult);
 }
 
-/** KPI 탭: pull·동기화 완료 후 화면 갱신 */
+/** KPI 탭: pull·동기화 완료 후 화면 갱신 (저장소·화면 지문이 같으면 뷰에서 재그림 생략) */
 function kpiSoftRefreshIfPullChanged(tabId, pullResult) {
-  if (!pullResult?.pullOk && !pullResult?.localChanged) return;
+  if (!pullResult?.pullOk) return;
   try {
     if (tabId === "health") window.__lpHealthSoftRefresh?.();
     else if (tabId === "happiness") window.__lpHappinessSoftRefresh?.();

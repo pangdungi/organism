@@ -5199,12 +5199,18 @@ export function render(opts = {}) {
 
   function patchUsageRangeHeadingOnly() {
     const cap = contentWrap.querySelector("[data-usage-range-caption]");
-    if (cap) {
+    if (!cap) return;
+    if (timeLedgerLayoutView === "report") {
       cap.textContent = formatUsageHistoryDateLabel(
-        usageHistoryRangeStartYmd,
-        usageHistoryRangeEndYmd,
+        reportRangeStartYmd,
+        reportRangeEndYmd,
       );
+      return;
     }
+    cap.textContent = formatUsageHistoryDateLabel(
+      usageHistoryRangeStartYmd,
+      usageHistoryRangeEndYmd,
+    );
   }
 
   function schedulePullTimeLedgerForPickerRange() {
@@ -5328,6 +5334,37 @@ export function render(opts = {}) {
     onFilterChange();
     requestUsageListScrollToBottomOnce();
     requestTimeLedgerPullForUserQueryChange("swipe");
+  }
+
+  /** 레포트: 기간 길이 유지한 채 시작·끝을 하루씩 이동 */
+  function shiftReportRangeDay(step) {
+    if (step !== 1 && step !== -1) return;
+    let s = reportRangeStartYmd;
+    let e = reportRangeEndYmd;
+    if (s > e) {
+      const x = s;
+      s = e;
+      e = x;
+    }
+    reportRangeStartYmd = shiftYmdTenByDays(s, step);
+    reportRangeEndYmd = shiftYmdTenByDays(e, step);
+    persistReportRangeToSession();
+    patchUsageRangeHeadingOnly();
+    onFilterChange();
+    requestTimeLedgerPullForUserQueryChange("swipe");
+  }
+
+  function shiftActiveTimeLedgerPanDay(step) {
+    if (timeLedgerLayoutView === "report") {
+      shiftReportRangeDay(step);
+      return;
+    }
+    if (
+      timeLedgerLayoutView === "timeline" ||
+      timeLedgerLayoutView === "timebox"
+    ) {
+      shiftUsageHistoryDay(step);
+    }
   }
 
   /** pull·소프트 갱신: 기록·조회 구간이 같으면 renderAll 생략(아이콘 재로드 깜빡임 방지) */
@@ -9767,8 +9804,8 @@ export function render(opts = {}) {
 
   bindLpHorizontalPanNavigate(contentWrap, {
     signal,
-    onNext: () => shiftUsageHistoryDay(1),
-    onPrev: () => shiftUsageHistoryDay(-1),
+    onNext: () => shiftActiveTimeLedgerPanDay(1),
+    onPrev: () => shiftActiveTimeLedgerPanDay(-1),
     shouldIgnoreTarget: (target) =>
       !!target?.closest?.(
         "input, textarea, select, button, a, [role='dialog'], .time-task-setup-modal, [data-legacy~='time-ledger-memo-log-wrap'], .time-ledger-memo-feed",

@@ -63,6 +63,7 @@ import {
 } from "../utils/kpiMapTodoListOrder.js";
 import { mountKpiSegBarClearCompletedRow } from "../utils/kpiTodoBulkDeleteUi.js";
 import { formatKpiCardHeroHtml } from "../utils/kpiViewModal.js";
+import { kpiFilterEmptyListMessage } from "../utils/kpiFilterEmptyMessage.js";
 import { showKpiTodoEditModal } from "../utils/kpiTodoEditModal.js";
 import {
   KPI_CARD_EDIT_PENCIL_HTML,
@@ -1166,6 +1167,12 @@ export function render() {
     const grid = document.createElement("div");
     grid.className = "dream-kpi-grid";
     const listToShow = kpiFilter === "active" ? activeKpis : kpiFilter === "completed" ? completedKpis : pathKpis;
+    if (!listToShow.length) {
+      const empty = document.createElement("p");
+      empty.className = "dream-goals-empty";
+      empty.textContent = kpiFilterEmptyListMessage(kpiFilter);
+      grid.appendChild(empty);
+    }
     listToShow.forEach((kpi) => {
       const progressResult = getKpiProgress(kpi);
       const { lowerBetter } = progressResult;
