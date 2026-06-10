@@ -230,7 +230,7 @@ export function render() {
   const el = document.createElement("div");
   el.className = "app-tab-panel-content diary-view";
   const mobileViewport =
-    typeof window !== "undefined" && window.matchMedia("(max-width: 48rem)").matches;
+    typeof window !== "undefined" && window.matchMedia("(max-width: 46rem)").matches;
   if (mobileViewport) {
     el.classList.add("diary-view--mobile");
   }
@@ -569,7 +569,7 @@ export function render() {
   }
 
   function isDiaryMobileViewport() {
-    return typeof window !== "undefined" && window.matchMedia("(max-width: 48rem)").matches;
+    return typeof window !== "undefined" && window.matchMedia("(max-width: 46rem)").matches;
   }
 
   /** 모바일: readonly 쓰지 않음 — iOS 등에서 readonly 입력창 탭 시 자판이 안 뜨므로, 항상 편집 가능하게 두어 첫 탭에 자판이 뜨도록 함 */

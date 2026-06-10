@@ -256,7 +256,7 @@
   justify-content: flex-start;
 }
 
-@media (max-width: 48rem) {
+@media (max-width: 46rem) {
   .todo-list-modal.work-schedule-day-entry-modal
     .work-schedule-day-entry-modal-panel.todo-list-modal-panel {
     width: 100%;

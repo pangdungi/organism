@@ -145,7 +145,7 @@ function isStaticImageAsset(pathname) {
   return /\.(png|jpe?g|webp|gif|svg|ico)(\?.*)?$/i.test(pathname);
 }
 
-/** PNG 전환 후 캐시 우선이면 구 404·구 파일이 일반 새로고침에 남음 */
+/** 과제·KPI·메뉴 아이콘 전부 이 경로 — 응답은 stale-while-revalidate */
 function isToolbarIconPath(pathname) {
   return pathname.startsWith("/toolbaricons/");
 }
@@ -202,21 +202,35 @@ async function cacheFirstStaticAsset(request) {
   return fetch(request);
 }
 
-/** toolbaricons — 네트워크 우선(배포·PNG 추가 직후 일반 새로고침에서도 최신 파일) */
-async function networkFirstToolbarIcon(request) {
+/**
+ * toolbaricons — 캐시 우선 + 백그라운드 갱신(stale-while-revalidate).
+ * 네트워크 우선이면 재렌더마다 아이콘이 서버 응답을 기다려 텍스트와 따로 뜨고 깜빡임.
+ * 캐시본을 즉시 반환해 깜빡임을 없애고, 배포로 파일이 바뀌면 다음 표시부터 새 파일.
+ */
+async function staleWhileRevalidateToolbarIcon(request, event) {
   const cache = await caches.open(ASSET_CACHE);
-  const reloadReq = new Request(request, { cache: "reload" });
-  try {
-    const response = await fetch(reloadReq);
-    if (response && response.ok) {
-      try {
-        await cache.put(request, response.clone());
-      } catch (_e) {}
-      return response;
-    }
-  } catch (_e) {}
   const cached = await cache.match(request);
-  if (cached && cached.ok) return cached;
+  const refresh = (async () => {
+    try {
+      const response = await fetch(new Request(request, { cache: "no-cache" }));
+      if (response && response.ok) {
+        try {
+          await cache.put(request, response.clone());
+        } catch (_e) {}
+        return response;
+      }
+    } catch (_e) {}
+    return null;
+  })();
+  if (cached && cached.ok) {
+    try {
+      event.waitUntil(refresh);
+    } catch (_e) {}
+    return cached;
+  }
+  const fresh = await refresh;
+  if (fresh) return fresh;
+  if (cached) return cached;
   return fetch(request);
 }
 
@@ -273,7 +287,7 @@ self.addEventListener("fetch", (event) => {
   }
   if (isStaticImageAsset(url.pathname)) {
     if (isToolbarIconPath(url.pathname)) {
-      event.respondWith(networkFirstToolbarIcon(req));
+      event.respondWith(staleWhileRevalidateToolbarIcon(req, event));
       return;
     }
     event.respondWith(cacheFirstStaticAsset(req));

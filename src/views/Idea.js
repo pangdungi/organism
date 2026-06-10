@@ -53,7 +53,7 @@ export function render() {
   el._lpTabAbortController = tabAbort;
 
   const mobileViewport =
-    typeof window !== "undefined" && window.matchMedia("(max-width: 48rem)").matches;
+    typeof window !== "undefined" && window.matchMedia("(max-width: 46rem)").matches;
   if (mobileViewport) {
     el.classList.add("idea-view--mobile");
   }

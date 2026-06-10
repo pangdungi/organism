@@ -2501,7 +2501,7 @@ function createTaskRow(taskData = {}, options = {}) {
     dateAreaClicked = true;
   });
   startWrap.addEventListener("click", () => {
-    if (window.matchMedia("(max-width: 768px)").matches) {
+    if (window.matchMedia("(max-width: 736px)").matches) {
       showMobileDateModal({
         title: "시작일",
         value: startInput.value,
@@ -2579,7 +2579,7 @@ function createTaskRow(taskData = {}, options = {}) {
     dateAreaClicked = true;
   });
   dueWrap.addEventListener("click", () => {
-    if (window.matchMedia("(max-width: 768px)").matches) {
+    if (window.matchMedia("(max-width: 736px)").matches) {
       showMobileDateModal({
         title: "마감일",
         value: dueInput.value,

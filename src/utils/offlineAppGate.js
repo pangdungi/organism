@@ -21,7 +21,7 @@ function shouldUsePwaRichLayout() {
   return (
     isStandaloneDisplayMode() &&
     typeof window.matchMedia === "function" &&
-    window.matchMedia("(max-width: 48rem)").matches
+    window.matchMedia("(max-width: 46rem)").matches
   );
 }
 

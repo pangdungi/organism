@@ -799,7 +799,7 @@ export async function mountApp(container) {
       if (
         currentTabId !== "home" &&
         tabRenderer &&
-        window.matchMedia("(max-width: 48rem)").matches
+        window.matchMedia("(max-width: 46rem)").matches
       ) {
         initDatePickersIn(p);
       }
@@ -935,14 +935,14 @@ export async function mountApp(container) {
       finishAppBootReady();
     }
   })();
-  if (window.matchMedia("(max-width: 48rem)").matches) {
+  if (window.matchMedia("(max-width: 46rem)").matches) {
     initMobileVisualViewportKeyboardInset();
   }
   syncLpAppShellViewportHeight();
   requestAnimationFrame(() => {
     syncLpAppShellViewportHeight();
   });
-  if (!window.matchMedia("(max-width: 48rem)").matches) {
+  if (!window.matchMedia("(max-width: 46rem)").matches) {
     observeDatePickerInit(panel);
   }
   try {

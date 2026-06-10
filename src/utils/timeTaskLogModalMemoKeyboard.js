@@ -19,7 +19,7 @@ const DEFAULT_ALL_KEYBOARD_INPUT_SELECTOR = `${DEFAULT_MEMO_INPUT_SELECTOR}, ${D
 function isMobileMemoUi() {
   return (
     typeof window.matchMedia === "function" &&
-    window.matchMedia("(max-width: 48rem) and (pointer: coarse)").matches
+    window.matchMedia("(max-width: 46rem) and (pointer: coarse)").matches
   );
 }
 

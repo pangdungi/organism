@@ -6572,7 +6572,7 @@ export function render(opts = {}) {
   function isTaskLogMobileMemoUi() {
     return (
       typeof window.matchMedia === "function" &&
-      window.matchMedia("(max-width: 48rem) and (pointer: coarse)").matches
+      window.matchMedia("(max-width: 46rem) and (pointer: coarse)").matches
     );
   }
 

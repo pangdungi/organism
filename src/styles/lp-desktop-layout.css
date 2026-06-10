@@ -3,7 +3,7 @@
  * main.css :root 변수와 함께 로드한다.
  */
 
-@media (min-width: 48.0625rem) {
+@media (min-width: 46.0625rem) {
   :root {
     --lp-content-max: 42rem;
     --lp-content-max-narrow: 34rem;

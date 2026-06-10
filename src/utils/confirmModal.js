@@ -167,6 +167,19 @@ export function confirmDeleteRow(onConfirm) {
   });
 }
 
+/** KPI 수정 모달「이 행동 삭제하기」— 기록·할일까지 지워지므로 한 번 확인 */
+export function confirmKpiActionDelete(kpiName) {
+  const name = String(kpiName || "").trim();
+  return showConfirmModal({
+    title: "행동 삭제",
+    message: name ? `「${name}」을(를) 삭제할까요?` : "이 행동을 삭제할까요?",
+    warnMessage: "이 행동의 기록·할 일도 함께 삭제되며 복구할 수 없습니다.",
+    confirmText: "삭제",
+    cancelText: "취소",
+    confirmDanger: true,
+  });
+}
+
 /** KPI 카드「할 일 목록」× 클릭 — 실수 삭제 방지 */
 export function confirmKpiTodoDelete() {
   return showConfirmModal({

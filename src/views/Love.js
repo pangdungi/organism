@@ -28,6 +28,7 @@ import {
   resolveKpiDetailLogEntriesLocal,
   kpiDetailLogsNeedCloudPull,
 } from "../utils/kpiTimeLedgerLogs.js";
+import { confirmKpiActionDelete } from "../utils/confirmModal.js";
 import { defaultManualKpiLogMeta, kpiLogSourceBadgeHtml, formatKpiHistoryValueText } from "../utils/kpiLogFields.js";
 import { createKpiHabitGridElement } from "../utils/kpiHabitTrackerGrid.js";
 import { computeKpiHabitCurrentStreak, computeKpiHabitTotalDays } from "../utils/kpiHabitStreak.js";
@@ -471,25 +472,28 @@ export function render() {
     modal
       .querySelector(".dream-kpi-delete-btn")
       .addEventListener("click", () => {
-        syncKpiToTimeTask(kpi, "remove");
-        const data = loadHappinessMap();
-        appendDeletedRef(data, "kpis", kpi.id);
-        data.kpis = (data.kpis || []).filter((k) => k.id !== kpi.id);
-        data.kpiLogs = (data.kpiLogs || []).filter((l) => l.kpiId !== kpi.id);
-        data.kpiTodos = (data.kpiTodos || []).filter((t) => t.kpiId !== kpi.id);
-        data.kpiDailyRepeatTodos = (data.kpiDailyRepeatTodos || []).filter(
-          (t) => t.kpiId !== kpi.id,
-        );
-        const order = (data.kpiOrder || {})[kpi.happinessId] || [];
-        data.kpiOrder = {
-          ...data.kpiOrder,
-          [kpi.happinessId]: order.filter((id) => id !== kpi.id),
-        };
-        saveHappinessMap(data, { pushServer: true });
-        selectedKpiId = null;
-        close();
-        renderKpiList();
-        renderKpiHistory();
+        void confirmKpiActionDelete(kpi.name).then((ok) => {
+          if (!ok) return;
+          syncKpiToTimeTask(kpi, "remove");
+          const data = loadHappinessMap();
+          appendDeletedRef(data, "kpis", kpi.id);
+          data.kpis = (data.kpis || []).filter((k) => k.id !== kpi.id);
+          data.kpiLogs = (data.kpiLogs || []).filter((l) => l.kpiId !== kpi.id);
+          data.kpiTodos = (data.kpiTodos || []).filter((t) => t.kpiId !== kpi.id);
+          data.kpiDailyRepeatTodos = (data.kpiDailyRepeatTodos || []).filter(
+            (t) => t.kpiId !== kpi.id,
+          );
+          const order = (data.kpiOrder || {})[kpi.happinessId] || [];
+          data.kpiOrder = {
+            ...data.kpiOrder,
+            [kpi.happinessId]: order.filter((id) => id !== kpi.id),
+          };
+          saveHappinessMap(data, { pushServer: true });
+          selectedKpiId = null;
+          close();
+          renderKpiList();
+          renderKpiHistory();
+        });
       });
     modal.querySelector(".dream-kpi-form").addEventListener("submit", (e) => {
       e.preventDefault();

@@ -373,7 +373,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 }
 
 /* 과제 기록 — 모바일: flex 줄어듦 방지, 스크롤로 메모를 키보드 위에 */
-@media (max-width: 48rem) and (pointer: coarse) {
+@media (max-width: 46rem) and (pointer: coarse) {
   html.lp-task-log-modal-open
     .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal),
   html.lp-task-log-modal-open
@@ -2989,7 +2989,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 }
 
 /* 모바일·터치: 과제 드롭다운 금지 → 하단 다이얼 시트만 */
-@media (max-width: 48rem), (hover: none) and (pointer: coarse) {
+@media (max-width: 46rem), (hover: none) and (pointer: coarse) {
   .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
     .time-task-log-task-dropdown-panel,
   .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
@@ -3938,7 +3938,7 @@ html.lp-task-log-mobile-picker-open
 }
 
 /* 모바일·좁은 화면: safe-area 여백 + 화면 정중앙 */
-@media (max-width: 48rem) {
+@media (max-width: 46rem) {
   .time-task-setup-modal,
   .todo-list-modal,
   .diary-desktop-compose-modal,

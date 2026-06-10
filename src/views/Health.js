@@ -71,6 +71,7 @@ import { formatKpiCardHeroHtml } from "../utils/kpiViewModal.js";
 import { kpiFilterEmptyListMessage } from "../utils/kpiFilterEmptyMessage.js";
 import { buildKpiListPaintSignature } from "../utils/kpiListPaintSignature.js";
 import { pullKpiDetailTodosFromCloud } from "../utils/kpiTabCloudRefresh.js";
+import { confirmKpiActionDelete } from "../utils/confirmModal.js";
 import { showKpiTodoEditModal } from "../utils/kpiTodoEditModal.js";
 import {
   KPI_CARD_EDIT_PENCIL_HTML,
@@ -698,18 +699,21 @@ export function render() {
     const close = () => modal.remove();
     modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
     modal.querySelector(".dream-kpi-delete-btn")?.addEventListener("click", () => {
-      syncKpiToTimeTask(kpi, "remove");
-      const data = loadHealthMap();
-      appendDeletedRef(data, "kpis", kpi.id);
-      data.kpis = (data.kpis || []).filter((k) => k.id !== kpi.id);
-      data.kpiLogs = (data.kpiLogs || []).filter((l) => l.kpiId !== kpi.id);
-      data.kpiTodos = (data.kpiTodos || []).filter((t) => t.kpiId !== kpi.id);
-      data.kpiDailyRepeatTodos = (data.kpiDailyRepeatTodos || []).filter((t) => t.kpiId !== kpi.id);
-      removeKpiIdFromKpiOrders(data, kpi.id);
-      saveHealthMap(data, { pushServer: true });
-      close();
-      if (selectedKpiId === kpi.id) exitToHealthMain();
-      else refreshHealthAfterKpiDataChange();
+      void confirmKpiActionDelete(kpi.name).then((ok) => {
+        if (!ok) return;
+        syncKpiToTimeTask(kpi, "remove");
+        const data = loadHealthMap();
+        appendDeletedRef(data, "kpis", kpi.id);
+        data.kpis = (data.kpis || []).filter((k) => k.id !== kpi.id);
+        data.kpiLogs = (data.kpiLogs || []).filter((l) => l.kpiId !== kpi.id);
+        data.kpiTodos = (data.kpiTodos || []).filter((t) => t.kpiId !== kpi.id);
+        data.kpiDailyRepeatTodos = (data.kpiDailyRepeatTodos || []).filter((t) => t.kpiId !== kpi.id);
+        removeKpiIdFromKpiOrders(data, kpi.id);
+        saveHealthMap(data, { pushServer: true });
+        close();
+        if (selectedKpiId === kpi.id) exitToHealthMain();
+        else refreshHealthAfterKpiDataChange();
+      });
     });
     modal.querySelector(".dream-kpi-form").addEventListener("submit", (e) => {
       e.preventDefault();

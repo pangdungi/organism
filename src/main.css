@@ -42,7 +42,8 @@ html {
   font-size: 16px;
 }
 
-@media (min-width: 48rem) and (max-width: 64rem) {
+/* 태블릿 기준선 46rem(736px) — 아이패드 미니 세로(744px) 포함 */
+@media (min-width: 46rem) and (max-width: 64rem) {
   html {
     font-size: 17px;
   }
@@ -762,7 +763,7 @@ table {
 }
 
 /* 데스크톱: 세로 플로우 유지 + 셸 가운데 정렬·본문 폭 확대(lp-desktop-layout.css 변수) */
-@media (min-width: 48.0625rem) {
+@media (min-width: 46.0625rem) {
   .app-page {
     margin-left: auto;
     margin-right: auto;

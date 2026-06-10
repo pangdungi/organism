@@ -21,7 +21,7 @@ import { createMobileTaskLogPicker } from "./timeTaskLogPickerMobile.js";
 export function isTaskLogPickerMobile() {
   if (typeof window.matchMedia !== "function") return false;
   return (
-    window.matchMedia("(max-width: 48rem)").matches ||
+    window.matchMedia("(max-width: 46rem)").matches ||
     window.matchMedia("(hover: none) and (pointer: coarse)").matches
   );
 }

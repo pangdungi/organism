@@ -2018,7 +2018,7 @@
 }
 
 /* 26rem 초과 폰(plus 등)에서도 날짜 2열은 자주 넘침 → 기한 블록만 태블릿·폰 폭에서 1열 */
-@media (max-width: 48rem) {
+@media (max-width: 46rem) {
   .dream-kpi-period-block .dream-kpi-row {
     grid-template-columns: minmax(0, 1fr);
   }

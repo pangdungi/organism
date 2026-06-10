@@ -583,6 +583,8 @@ export function applyTimeLedgerServerFullSnapshot(dbRows) {
 
 /**
  * entry_date가 [rangeStart, rangeEnd] (포함)인 구간만 서버 스냅샷으로 교체. 그 외 날짜 행은 유지.
+ * last-write-wins: 이 기기 수정(localModifiedAt)이 서버 updated_at보다 새 행은 로컬을 유지
+ * (push 대기 중 행을 옛 서버 스냅샷이 덮어쓰는 사고 — 마감시간 유실 등 — 방지).
  */
 export function applyTimeLedgerServerRangeSnapshot(
   dbRows,
@@ -616,6 +618,18 @@ export function applyTimeLedgerServerRangeSnapshot(
     const id = String(serverRow?.id || "").trim();
     const local = id ? localById.get(id) : null;
     if (!local) return serverRow;
+    const localLm =
+      typeof local.localModifiedAt === "number" &&
+      Number.isFinite(local.localModifiedAt)
+        ? local.localModifiedAt
+        : null;
+    if (localLm != null) {
+      const serverMs = Date.parse(String(serverRow.serverUpdatedAt || ""));
+      if (!Number.isFinite(serverMs) || localLm > serverMs) {
+        /* 내 수정이 더 새 것 — push 예약 유지(localModifiedAt 보존) */
+        return local;
+      }
+    }
     const serverHabit = Array.isArray(serverRow.habitDailyCompleted)
       ? serverRow.habitDailyCompleted
       : [];
@@ -667,7 +681,17 @@ export function applyTimeLedgerServerRangeSnapshot(
   const outside = localWithIds.filter(
     (r) => !rowEntryDateInInclusiveRange(r, rs, re),
   );
-  const merged = [...outside, ...insideFromServer];
+  /* 방금 만든 행이 아직 서버에 없을 때 — 스냅샷 교체로 통째 사라지지 않게 push 대기 행은 유지 */
+  const serverIdsInRange = new Set(
+    insideFromServerRaw.map((r) => String(r?.id || "").trim()).filter(Boolean),
+  );
+  const pendingInsideLocal = localWithIds.filter(
+    (r) =>
+      rowEntryDateInInclusiveRange(r, rs, re) &&
+      !serverIdsInRange.has(String(r?.id || "").trim()) &&
+      timeLedgerRowNeedsPush(r),
+  );
+  const merged = [...outside, ...insideFromServer, ...pendingInsideLocal];
   writeTimeLedgerEntriesRaw(merged);
   try {
     if (typeof document !== "undefined") {

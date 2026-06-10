@@ -300,9 +300,9 @@ export async function pullAllKpiMapsFromCloud(getCurrentTabId) {
 }
 
 /**
- * 과제 기록 모달을 열 때: KPI 탭을 거치지 않아도 매일 할일·KPI 할일이 비지 않도록
- * 꿈/건강/행복/부수입 맵을 **force** pull + 습관 연동용 시간기록 구간 pull.
- * (상위 탭의 `pullKpiTabFromCloud`와 동일하게 `force: true`)
+ * 과제 기록 모달을 열 때: 모달에 필요한 것만 — 꿈/건강/행복/부수입 KPI 맵(매일 할일·KPI 할일).
+ * 시간기록(entry) 구간 pull 은 하지 않음 — 모달 표시에 불필요하고,
+ * 모달 열린 동안 도착한 옛 서버 스냅샷이 방금 저장한 행(마감시간 등)을 덮어쓰는 사고 방지.
  * @returns {Promise<{ pullOk: boolean }>}
  */
 export async function pullKpiMapsForTaskLogModalOpen() {
@@ -311,18 +311,17 @@ export async function pullKpiMapsForTaskLogModalOpen() {
 
   let pullOk = false;
   try {
-    const [, mapsOk] = await Promise.all([
-      pullLedgerForKpiTabEnter(),
-      Promise.all([
-        pullDreamKpiMapFromSupabase({ force: true }),
-        pullHealthKpiMapFromSupabase({ force: true }),
-        pullHappinessKpiMapFromSupabase({ force: true }),
-        pullSideincomeKpiMapFromSupabase({ force: true }),
-      ]).then(([d, h, ha, si]) => !!(d || h || ha || si)),
-    ]);
-    pullOk = mapsOk;
+    pullOk = await Promise.all([
+      pullDreamKpiMapFromSupabase({ force: true }),
+      pullHealthKpiMapFromSupabase({ force: true }),
+      pullHappinessKpiMapFromSupabase({ force: true }),
+      pullSideincomeKpiMapFromSupabase({ force: true }),
+    ]).then(([d, h, ha, si]) => !!(d || h || ha || si));
   } catch (_) {}
 
+  try {
+    patchKpiLinkedTasksFromKpiMaps();
+  } catch (_) {}
   try {
     syncHabitTrackerLogs();
   } catch (_) {}
@@ -330,7 +329,7 @@ export async function pullKpiMapsForTaskLogModalOpen() {
   kpiTodoFineTrace("cloud.pullKpiMapsForTaskLogModalOpen:끝", { pullOk });
   syncWatchLog("pullKpiMapsForTaskLogModalOpen_완료", {
     pullOk,
-    note: "과제 기록 모달용 KPI 4도메인 force pull + entry 구간",
+    note: "과제 기록 모달용 KPI 4도메인 force pull (시간기록 구간 pull 없음)",
   });
   return { pullOk };
 }

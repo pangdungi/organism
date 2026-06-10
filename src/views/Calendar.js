@@ -1867,7 +1867,7 @@ function createCalendarDayExpandBubble(
     /** 연간 호버 시 모바일 전체 오버레이 생략 */
     useMobileOverlay = true,
   } = options;
-  const isMobile = window.matchMedia("(max-width: 48rem)").matches;
+  const isMobile = window.matchMedia("(max-width: 46rem)").matches;
   const todayYmd = timeLedgerLocalTodayYmd();
   if (_calendarDayExpandOutsideHandler) {
     document.removeEventListener("click", _calendarDayExpandOutsideHandler);
@@ -4243,7 +4243,7 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
     if (
       scheduleMob &&
       typeof window.matchMedia === "function" &&
-      window.matchMedia("(max-width: 48rem)").matches
+      window.matchMedia("(max-width: 46rem)").matches
     ) {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
@@ -5706,7 +5706,7 @@ const MOBILE_SCHEDULE_CAL_SUB_VIEWS = [
  * scheduleSubViewsInFooter: true면 서브뷰 전환을 네비가 아닌 앱 푸터(`app-footer-icon-btn`)에 둡니다.
  */
 function createCalendarSubViewRoot(tabsElement, opts = {}) {
-  const isMobile = window.matchMedia("(max-width: 48rem)").matches;
+  const isMobile = window.matchMedia("(max-width: 46rem)").matches;
   const subViewsList = opts.subViewsList || CALENDAR_SUB_VIEWS;
   const storageKey = opts.storageKey || "calendar-sub-view";
   const forceInitialMonthlyOnMobile = !!opts.forceInitialMonthlyOnMobile;

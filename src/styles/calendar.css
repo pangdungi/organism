@@ -1819,7 +1819,7 @@
   flex-direction: column;
 }
 
-@media (max-width: 48rem) {
+@media (max-width: 46rem) {
   .calendar-1week-flow-hscroll-outer {
     overflow-x: auto;
     overflow-y: hidden;
@@ -1833,7 +1833,7 @@
   }
 }
 
-@media (min-width: 48.0625rem) {
+@media (min-width: 46.0625rem) {
   .calendar-1week-flow-hscroll-outer {
     overflow-x: hidden;
   }
@@ -2377,8 +2377,8 @@
   }
 }
 
-/* 태블릿(768~1024px): mini·iPad — 손글씨체 가독용 소폭 확대 */
-@media (min-width: 48rem) and (max-width: 64rem) {
+/* 태블릿(736~1024px): mini·iPad — 손글씨체 가독용 소폭 확대 */
+@media (min-width: 46rem) and (max-width: 64rem) {
   .calendar-1week-flow-card {
     font-size: 0.8125rem;
     padding: 0.4rem 0.48rem 0.42rem;
@@ -2891,7 +2891,7 @@
   margin-top: 0.4rem;
 }
 
-@media (max-width: 48rem) {
+@media (max-width: 46rem) {
   .calendar-event-bubble {
     min-width: 0;
   }
@@ -3002,7 +3002,7 @@
 }
 
 /* 예상 일정 모달 — 모바일 키보드(과제 기록 모달과 동일 원리) */
-@media (max-width: 48rem) and (pointer: coarse) {
+@media (max-width: 46rem) and (pointer: coarse) {
   html.lp-task-log-modal-open .lp-calendar-budget-add-modal.time-task-setup-modal {
     z-index: 2147483647;
   }
