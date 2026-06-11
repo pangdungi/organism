@@ -3074,17 +3074,7 @@
   --time-ledger-usage-icon-img-size: 2.35rem;
   --time-ledger-usage-icon-cell-padding: 0.18rem;
 }
-/* 식단명·트리거 등 상세명 표시 카드 — 아이콘을 제목 글자 크기에 맞춤 */
-.time-ledger-view
-  .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout.time-ledger-card--detail-display-name,
-[data-legacy~="time-ledger-view"]
-  .diary-tab5-ledger-log-wrap
-  .calendar-1day-timeline-card--usage-layout.time-ledger-card--detail-display-name {
-  --time-ledger-usage-icon-cell-size: 1.5rem;
-  --time-ledger-usage-icon-img-size: 1.125rem;
-  --time-ledger-usage-icon-cell-padding: 0.1rem;
-}
+/* 상세명 표시 카드도 아이콘 크기는 일반 카드와 동일 (예외 없음) */
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout:has(
