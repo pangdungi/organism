@@ -1914,21 +1914,17 @@ function removeTimeLedgerRowFromRows(rows, rowData) {
 }
 
 /**
- * 신규 과제 기록 시작 시각 제안: 해당일 기록 중 마감이 있으면 **가장 늦은 마감** 시각,
- * 전부 마감 없으면 **가장 늦은 시작** 시각. `r.date`가 비면 `startTime`에서 날짜 추출.
+ * 해당 날짜 시간기록 행(편집 제외). `r.date`가 비면 `startTime`에서 날짜 추출.
+ * @returns {object[]}
  */
-export function getNextTaskLogStartHhMmFromLedger(
-  dateInputValue,
-  exclude,
-  rowsOverride,
-) {
+function collectLedgerRowsForDate(dateInputValue, exclude, rowsOverride) {
   const normDate =
     normalizeDateForCompare(dateInputValue || "") ||
     String(dateInputValue || "")
       .trim()
       .replace(/\//g, "-")
       .slice(0, 10);
-  if (!normDate) return null;
+  if (!normDate) return [];
   const rows =
     rowsOverride !== undefined && rowsOverride !== null
       ? rowsOverride
@@ -1948,26 +1944,46 @@ export function getNextTaskLogStartHhMmFromLedger(
     }
     dayRows.push(r);
   }
-  if (dayRows.length === 0) return null;
+  return dayRows;
+}
 
-  const withEnd = dayRows.filter((r) => String(r.endTime || "").trim());
-  let maxM = -1;
-
-  const bump = (fieldVal) => {
-    const mm = parseLedgerTimeStringToMinutes(String(fieldVal || ""));
-    if (mm != null && mm > maxM) maxM = mm;
-  };
-
-  if (withEnd.length) {
-    for (const r of withEnd) bump(r.endTime);
-  } else {
-    for (const r of dayRows) bump(r.startTime);
-  }
-
-  if (maxM < 0) return null;
+/** @param {number | null} maxM */
+function ledgerMinutesToHhMm(maxM) {
+  if (maxM == null || maxM < 0) return null;
   const h = Math.floor(maxM / 60) % 24;
   const mi = maxM % 60;
   return `${String(h).padStart(2, "0")}:${String(mi).padStart(2, "0")}`;
+}
+
+/**
+ * 신규 과제 기록·「마지막」 버튼: 해당일 **마지막 기록**(시작 시각 기준)의
+ * **마감시간**을 우선. 마감 없으면 그 기록의 시작 시각(진행 중 이어쓰기).
+ * @param {{ endFieldOnly?: boolean }} [opts] 마감 칸용 — 마감 없으면 null
+ */
+export function getNextTaskLogStartHhMmFromLedger(
+  dateInputValue,
+  exclude,
+  rowsOverride,
+  opts = {},
+) {
+  const { endFieldOnly = false } = opts;
+  const dayRows = collectLedgerRowsForDate(
+    dateInputValue,
+    exclude,
+    rowsOverride,
+  );
+  if (dayRows.length === 0) return null;
+
+  const sorted = sortRowsByDateTime(dayRows);
+  const lastRow = sorted[sorted.length - 1];
+  const endTrim = String(lastRow?.endTime || "").trim();
+  if (endTrim) {
+    return ledgerMinutesToHhMm(parseLedgerTimeStringToMinutes(lastRow.endTime));
+  }
+  if (endFieldOnly) return null;
+  return ledgerMinutesToHhMm(
+    parseLedgerTimeStringToMinutes(String(lastRow?.startTime || "")),
+  );
 }
 
 /** 날짜·시작시간 기준 과거→최근 (이른 날짜·이른 시각이 위, 시간레포트 로그와 동일) */
@@ -4786,6 +4802,65 @@ function createNextExpectedScheduleTimelineItem(block, handlers) {
   return item;
 }
 
+function unwrapUsageTimelineTimeStack(card) {
+  if (!card) return;
+  const stack = card.querySelector(".calendar-1day-timeline-card-time-stack");
+  if (!stack) return;
+  const startEl = stack.querySelector(".calendar-1day-timeline-card-start");
+  const endEl = stack.querySelector(".calendar-1day-timeline-card-end");
+  const connector = card.querySelector(
+    ".calendar-1day-timeline-card-time-connector",
+  );
+  if (startEl && connector) card.insertBefore(startEl, connector);
+  else if (startEl) card.insertBefore(startEl, card.firstChild);
+  if (endEl) card.appendChild(endEl);
+  stack.remove();
+}
+
+function wrapUsageTimelineTimeStack(card) {
+  if (!card || card.querySelector(".calendar-1day-timeline-card-time-stack")) {
+    return;
+  }
+  const startEl = card.querySelector(".calendar-1day-timeline-card-start");
+  const endEl = card.querySelector(".calendar-1day-timeline-card-end");
+  if (!startEl || !endEl) return;
+  const stack = document.createElement("div");
+  stack.className = "calendar-1day-timeline-card-time-stack";
+  stack.setAttribute("aria-hidden", "true");
+  card.insertBefore(stack, startEl);
+  stack.appendChild(startEl);
+  const tilde = document.createElement("span");
+  tilde.className = "calendar-1day-timeline-card-time-tilde";
+  tilde.textContent = "~";
+  tilde.setAttribute("aria-hidden", "true");
+  stack.appendChild(tilde);
+  stack.appendChild(endEl);
+}
+
+/** 사용내역 — 묶음(하루 스택 등)의 **마지막** 기록만 시작·~·마감 시간열 표시 */
+function markLastUsageTimelineItemShowEndTime(parentEl) {
+  if (!parentEl?.querySelectorAll) return;
+  parentEl
+    .querySelectorAll(".calendar-1day-timeline-item--show-end-time")
+    .forEach((el) => {
+      el.classList.remove("calendar-1day-timeline-item--show-end-time");
+      const card = el.querySelector(".calendar-1day-timeline-card--usage-layout");
+      card?.classList.remove("calendar-1day-timeline-card--show-end-time");
+      unwrapUsageTimelineTimeStack(card);
+    });
+  const items = [
+    ...parentEl.querySelectorAll(
+      ":scope > .calendar-1day-timeline-item:not(.time-ledger-next-expected-item)",
+    ),
+  ];
+  const last = items[items.length - 1];
+  if (!last) return;
+  last.classList.add("calendar-1day-timeline-item--show-end-time");
+  const card = last.querySelector(".calendar-1day-timeline-card--usage-layout");
+  card?.classList.add("calendar-1day-timeline-card--show-end-time");
+  wrapUsageTimelineTimeStack(card);
+}
+
 /** 모바일 시간가계부 카드 — 좌 시간열 | 우(아이콘·과제명 1–2행·소요/가격·메모) */
 function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   const taskLabel = ledgerRowDisplayTaskName(rowData) || "(제목 없음)";
@@ -7318,9 +7393,15 @@ export function render(opts = {}) {
             dateVal,
             taskLogEditExclude,
             mergedRows,
+            { endFieldOnly: !targetIsStart },
           );
           if (!latest) {
-            showToast("해당 날짜에 참고할 기록이 없습니다.", "info");
+            showToast(
+              targetIsStart
+                ? "해당 날짜에 참고할 기록이 없습니다."
+                : "해당 날짜 마지막 기록에 마감시간이 없습니다.",
+              "info",
+            );
             return;
           }
           if (targetIsStart) {
@@ -8192,7 +8273,7 @@ export function render(opts = {}) {
   }
 
   /**
-   * 신규 과제 기록 모달: 오늘 날짜·오버레이 확정, 시작=해당일 마지막 마감(없으면 늦은 시작), 마감 입력 비움.
+   * 신규 과제 기록 모달: 오늘 날짜·오버레이 확정, 시작=해당일 **마지막 기록** 마감(없으면 그 기록 시작), 마감 입력 비움.
    * (type=date/WebKit 이슈 대비 인풋 값·value 속성·오버레이 문구를 모두 맞춤.)
    */
   function applyTaskLogModalDefaultsForNewEntry() {
@@ -8561,8 +8642,6 @@ export function render(opts = {}) {
         }
       }
     }
-    await ensureTaskLogModalCloudData().catch(() => {});
-    if (!el.isConnected) return;
     taskLogModal.hidden = false;
     prepareTaskLogModalForOpen();
     setTaskLogModalShellOpen(true);
@@ -8635,6 +8714,8 @@ export function render(opts = {}) {
     }
     updateTaskLogMealDetailVisibility((data.taskName || "").trim());
     syncTaskLogDateOverlay();
+    await ensureTaskLogModalCloudData().catch(() => {});
+    if (!el.isConnected || taskLogModal.hidden) return;
     afterTaskListSyncForTaskLogAddModal();
     const tnPost = tnForDaily;
     restoreKpiFieldsIfCloudPullWiped(tnPost, data.id);
@@ -10201,9 +10282,11 @@ export function render(opts = {}) {
                 })()
               : timelineList;
           for (const d of g.rows) appendCardTo(cardParent, d);
+          markLastUsageTimelineItemShowEndTime(cardParent);
         }
       } else {
         rows.forEach((d) => appendCardTo(timelineList, d));
+        markLastUsageTimelineItemShowEndTime(timelineList);
       }
 
       if (rows.length === 0) {

@@ -2,9 +2,10 @@
 /** index.html·manifest 의 ?v= 와 동일하게 유지 */
 const PWA_BRAND = "doodle-logo-7";
 /** 번들·아이콘 등 캐시 버전 (전략·브랜드 바꿀 때 올리면 이전 캐시 정리됨) */
-const ASSET_CACHE = "tip-assets-v37";
+const ASSET_CACHE = "tip-assets-v44";
 /** HTML 셸 캐시 — 홈 화면에서 열 때 즉시 표시용 */
-const HTML_CACHE = "tip-html-v5";
+const HTML_CACHE = "tip-html-v6";
+const LOGIN_BRAND_LOGO_V = "doodle-login-brand-2";
 
 const PWA_BRAND_BASENAMES = new Set([
   "/manifest.json",
@@ -19,6 +20,7 @@ const PWA_BRAND_BASENAMES = new Set([
   "/icon-maskable-512.png",
   "/apple-touch-icon.png",
   "/icon.svg",
+  "/login-brand-logo.png",
 ]);
 
 function isPwaBrandAsset(pathname) {
@@ -42,7 +44,8 @@ const PWA_INSTALL_CORE_PATHS = [
   "/pwa-splash-portrait-1179.png",
   "/pwa-splash-portrait-1284.png",
   "/toolbaricons/splash/splash-screen.png",
-  "/fonts/LP-KyoboHandwriting2025.otf",
+  "/fonts/LP-Griun-Cocochoitoon.ttf",
+  `/login-brand-logo.png?v=${LOGIN_BRAND_LOGO_V}`,
 ];
 
 /** 홈 화면 추가 시 과제 아이콘 picker PNG(우선) 캐시 */

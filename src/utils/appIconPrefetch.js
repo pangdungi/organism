@@ -3,9 +3,13 @@
  */
 import appIconPrefetchPaths from "../../public/app-icon-prefetch.json";
 import { isMobileIconBudgetDevice } from "./timeTaskIconLazyDisplay.js";
+import {
+  SW_ASSET_CACHE,
+  withToolbarIconCacheVersion,
+} from "./toolbarIconUrl.js";
 
-/** public/sw.js ASSET_CACHE 와 동일 */
-export const SW_ASSET_CACHE = "tip-assets-v35";
+/** @deprecated import SW_ASSET_CACHE from toolbarIconUrl.js */
+export { SW_ASSET_CACHE };
 
 const CHUNK_SIZE = 20;
 /** @type {Set<string>} */
@@ -31,7 +35,8 @@ function matcherForTab(tabId) {
         p.startsWith("/todo-tab-icons/") ||
         p.startsWith("/toolbaricons/calendar") ||
         p.startsWith("/toolbaricons/menu-schedule") ||
-        p.startsWith("/toolbaricons/menu-todo");
+        p.startsWith("/toolbaricons/menu-todo") ||
+        p.startsWith("/toolbaricons/time-task-picker/");
     case "dream":
       return (p) =>
         p.startsWith("/retrospect-kpi/") ||
@@ -76,7 +81,7 @@ export async function warmIconPathInSwCache(path) {
   if (!("caches" in window)) return;
   try {
     const cache = await caches.open(SW_ASSET_CACHE);
-    const url = new URL(p, location.origin).href;
+    const url = new URL(withToolbarIconCacheVersion(p), location.origin).href;
     const req = new Request(url);
     if (await cache.match(req)) return;
     const r = await fetch(req);
@@ -142,6 +147,11 @@ export function prefetchIconsForTab(tabId) {
   if (id === "time") {
     if (isMobileIconBudgetDevice()) return Promise.resolve();
     return warmTimeTaskPickerIconsOnce();
+  }
+  if (id === "schedulecalendar" || id === "calendar") {
+    void import("./calendarDayIconsModel.js").then((m) => {
+      m.warmCalendarDayStampIconAssetsFromMemory();
+    });
   }
   const existing = tabWarmJobs.get(id);
   if (existing) return existing;

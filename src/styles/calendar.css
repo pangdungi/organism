@@ -3,16 +3,8 @@
  * 모바일·데스크톱 동일 레이아웃 (막대 밀도는 .calendar-monthly-layout CSS 변수 + JS 공통).
  */
 
-@font-face {
-  font-family: "LP Pizza Club";
-  src: url("/fonts/PizzaClub-Regular.otf") format("opentype");
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
 :root {
-  --lp-calendar-month-font-family: "LP Pizza Club", system-ui, sans-serif;
+  --lp-calendar-month-font-family: var(--lp-app-font-family);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -131,7 +123,7 @@
   pointer-events: none;
 }
 
-/* 일정 탭 하단 Month·Week·Day·Year — PizzaClub·검정 (앱 글꼴 변경과 무관) */
+/* 일정 탭 하단 Month·Week·Day·Year — 앱 전역 글꼴 */
 .app-footer-actions .app-footer-icon-btn[data-lp-schedule-cal-subview] {
   width: auto;
   min-width: 2.75rem;
@@ -3164,7 +3156,7 @@
   user-select: none;
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--lp-modal-navy, #1e3d5d);
+  color: var(--lp-modal-navy, #000000);
 }
 
 .calendar-task-edit-done-check {

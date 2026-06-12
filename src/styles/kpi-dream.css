@@ -2079,7 +2079,7 @@
   margin-bottom: 0.45rem;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: var(--lp-modal-navy, #1e3d5d);
+  color: var(--lp-modal-navy, #000000);
 }
 
 .dream-kpi-goal-mode-row--single {

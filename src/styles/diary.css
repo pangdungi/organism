@@ -366,7 +366,7 @@
 
 .diary-tab5-ledger-log-wrap
   .diary-tab5-timeline-price.time-mobile-card-price--nonproductive {
-  color: #1a5fa8;
+  color: #666666;
 }
 
 .diary-tab5-ledger-log-wrap .diary-tab5-timeline-price.time-mobile-card-price--other {
@@ -1111,7 +1111,7 @@
   font-weight: 700;
   line-height: 1.35;
   letter-spacing: -0.02em;
-  color: #1e3d5d;
+  color: #000000;
 }
 
 .diary-tr-report-hero-subtitle {
@@ -1237,7 +1237,7 @@
   font-size: 1.0625rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: #1e3d5d;
+  color: #000000;
 }
 
 .diary-tr-ai-checkup-card {
@@ -1298,7 +1298,7 @@
   font-size: 0.9375rem;
   font-weight: 700;
   line-height: 1.4;
-  color: #1e3d5d;
+  color: #000000;
 }
 
 .diary-tr-ai-checkup-summary {
@@ -1544,7 +1544,7 @@
 }
 
 .diary-tr-summary-money--loss {
-  color: #1a5fa8;
+  color: #666666;
 }
 
 .diary-tr-summary-money--gain {

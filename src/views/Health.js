@@ -26,6 +26,7 @@ import {
   afterKpiTodoListMutationScroll,
 } from "../utils/kpiTodoInputScroll.js";
 import { minutesToHhMm, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
+import { syncSleepHealthGoalLogsFromTimeLedger } from "../utils/healthSleepGoalTimeLedgerSync.js";
 import {
   kpiFormGoalAndTargetSectionHtml,
   readKpiGoalModeFormFields,
@@ -498,6 +499,10 @@ export function render() {
   let kpiGridScrollPrevFilter = null;
   let kpiGridScrollPrevScopeId = null;
   let healthAddModalJustClosed = false;
+
+  try {
+    syncSleepHealthGoalLogsFromTimeLedger();
+  } catch (_) {}
 
   const _healthUiSession = readKpiUiSession(KPI_UI_SESSION_KEYS.health);
   const _healthInitData = loadHealthMap();
@@ -2165,19 +2170,29 @@ export function render() {
     persistKpiUiState();
   }
 
+  let healthSoftRefreshRaf = 0;
+  function scheduleSyncHealthUiFromStoredMap() {
+    if (!el.isConnected) return;
+    if (healthSoftRefreshRaf) return;
+    healthSoftRefreshRaf = requestAnimationFrame(() => {
+      healthSoftRefreshRaf = 0;
+      syncHealthUiFromStoredMap();
+    });
+  }
+
   const onMergedSync = (e) => {
     if (!el.isConnected) return;
     /* push 시에는 화면 갱신 불필요 (로컬 변경을 서버에 올린 것이므로) */
     if (e.detail?.fromPush) return;
     if (!e.detail?.fromServerMerge && !e.detail?.fromLocalWrite) return;
-    syncHealthUiFromStoredMap();
+    scheduleSyncHealthUiFromStoredMap();
   };
   window.addEventListener("health-kpi-map-saved", onMergedSync);
   window.addEventListener("lp-kpi-tab-pull-settled", (e) => {
     if (!el.isConnected || e.detail?.tabId !== "health") return;
-    syncHealthUiFromStoredMap();
+    scheduleSyncHealthUiFromStoredMap();
   });
-  window.__lpHealthSoftRefresh = syncHealthUiFromStoredMap;
+  window.__lpHealthSoftRefresh = scheduleSyncHealthUiFromStoredMap;
   window.__lpHealthFooterBack = () => {
     if (!el.isConnected) return false;
     if (healthViewScreen === "kpiDetail") {

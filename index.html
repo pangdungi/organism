@@ -65,24 +65,17 @@
     <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1284.png?v=good-things-splash-png-3" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
     <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1170.png?v=good-things-splash-png-3" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
     <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1080.png?v=good-things-splash-png-3" media="(orientation: portrait)" />
-    <!-- FOUC 방지 + 첫 페인트부터 교보 손글씨(또는 저장된 화면 글꼴) -->
+    <!-- FOUC 방지 + 첫 페인트부터 그리운 코코최윤체 -->
     <style>
       @font-face {
-        font-family: "LP Kyobo Handwriting";
-        src: url("/fonts/LP-KyoboHandwriting2025.otf") format("opentype");
-        font-weight: normal;
-        font-style: normal;
-        font-display: swap;
-      }
-      @font-face {
-        font-family: "LP Pizza Club";
-        src: url("/fonts/PizzaClub-Regular.otf") format("opentype");
+        font-family: "LP Griun Cocochoitoon";
+        src: url("/fonts/LP-Griun-Cocochoitoon.ttf") format("truetype");
         font-weight: normal;
         font-style: normal;
         font-display: swap;
       }
       :root {
-        --lp-app-font-family: "LP Kyobo Handwriting", system-ui, -apple-system, "Segoe UI",
+        --lp-app-font-family: "LP Griun Cocochoitoon", system-ui, -apple-system, "Segoe UI",
           Roboto, sans-serif;
         --lp-app-font-weight-base: 500;
       }
@@ -232,35 +225,19 @@
     </style>
     <script>
       (function () {
-        var FALLBACK =
-          'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
-        var STACKS = {
-          kyobohandwriting: '"LP Kyobo Handwriting", ' + FALLBACK,
-          bakdahyun: '"LP Ongleip Bakdahyun", ' + FALLBACK,
-          ryuddung: '"LP Ongleip Ryuddung", ' + FALLBACK,
-          adultkid: '"Adultkid", ' + FALLBACK,
-          leeseoyun: '"LP LeeSeoyun", ' + FALLBACK,
-          cocochoitoon: '"LP Griun Cocochoitoon", ' + FALLBACK,
-        };
-        var KEY = "lp_app_ui_font_id";
-        var DEF = "cocochoitoon";
+        var STACK =
+          '"LP Griun Cocochoitoon", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
         try {
-          var uid = localStorage.getItem("lp_last_auth_uid");
-          var id =
-            uid && localStorage.getItem("lp:u:" + uid + ":" + KEY);
-          if (!id) id = localStorage.getItem(KEY);
-          if (id === "parkdahyun") id = "bakdahyun";
-          if (id === "pakyongjun" || id === "system") {
-            id = "kyobohandwriting";
-          }
-          if (!id || !STACKS[id]) id = DEF;
-          document.documentElement.style.setProperty(
-            "--lp-app-font-family",
-            STACKS[id],
-          );
+          document.documentElement.style.setProperty("--lp-app-font-family", STACK);
         } catch (_) {}
       })();
     </script>
+    <link
+      rel="preload"
+      href="/login-brand-logo.png?v=doodle-login-brand-2"
+      as="image"
+      type="image/png"
+    />
     <link rel="stylesheet" href="/src/main.css" />
   </head>
   <body class="lp-app-bg">
@@ -345,7 +322,15 @@
       <div id="login-page" class="page login-page login-page--gate" style="display: none">
         <div class="auth-gate-body">
           <div class="login-wrap">
-            <p class="login-brand-logo" role="img" aria-label="DOODLE">DOODLE</p>
+            <img
+              class="login-brand-logo"
+              src="/login-brand-logo.png?v=doodle-login-brand-2"
+              alt="두들이"
+              width="112"
+              height="112"
+              decoding="async"
+              fetchpriority="high"
+            />
             <div class="login-card login-card--brand">
               <h1 class="auth-gate-heading login-title" id="auth-gate-heading">로그인</h1>
               <div

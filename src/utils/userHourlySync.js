@@ -1,6 +1,5 @@
 import { supabase } from "../supabase.js";
 import { getSupabaseSession } from "./supabaseSession.js";
-import { syncAppFontFromServerOnPull } from "./appUiFont.js";
 import {
   getScopedLocalStorageItem,
   removeScopedLocalStorageItem,
@@ -83,11 +82,9 @@ export async function syncUserIanaTimezoneToSupabase() {
 }
 
 /**
- * 로그인·앱 진입: 시급 + appearance + 화면 글꼴 + 구독 필드 → localStorage·UI 반영
- * @param {{ applyServerFont?: boolean }} [opts] — false 면 글꼴은 로컬 유지(나의 계정 탭 pull)
+ * 로그인·앱 진입: 시급 + appearance + 구독 필드 → localStorage·UI 반영
  */
-export async function pullUserPrefsFromSupabase(opts = {}) {
-  const applyServerFont = opts.applyServerFont !== false;
+export async function pullUserPrefsFromSupabase() {
   if (!supabase) return null;
   const {
     data: { session },
@@ -96,15 +93,11 @@ export async function pullUserPrefsFromSupabase(opts = {}) {
   const { data, error } = await supabase
     .from("user_subscriptions")
     .select(
-      "hourly_rate, hourly_rate_mode, appearance, ui_font_id, subscription_status, access_until",
+      "hourly_rate, hourly_rate_mode, appearance, subscription_status, access_until",
     )
     .eq("user_id", session.user.id)
     .maybeSingle();
   if (error || !data) return null;
-
-  if (applyServerFont) {
-    await syncAppFontFromServerOnPull(data.ui_font_id);
-  }
 
   if (data.hourly_rate != null) {
     const n = Number(data.hourly_rate);

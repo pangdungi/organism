@@ -31,10 +31,10 @@ export const CLIENT_STORAGE_SCOPED_BASE_KEYS = [
   "work_schedule_type_options",
   "work_schedule_daily_hours",
   "lp_stamp_types_mirror_v1",
+  "calendar_day_icons_mirror_v1",
   "user_hourly_rate",
   "user_hourly_calc_inputs",
   "user_hourly_rate_mode",
-  "lp_app_ui_font_id",
 ];
 
 export function setActiveClientStorageUserId(uid) {

@@ -607,7 +607,7 @@ html.lp-task-log-modal-open #signin-page {
 }
 
 .app-home-menu-launcher-btn:focus-visible {
-  outline: 2px solid #1a5fa8;
+  outline: 2px solid #000000;
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -658,7 +658,7 @@ html.lp-task-log-modal-open #signin-page {
 }
 
 .app-home-menu-launcher-admin-fab:focus-visible {
-  outline: 2px solid #1a5fa8;
+  outline: 2px solid #000000;
   outline-offset: 2px;
 }
 
@@ -907,11 +907,6 @@ table {
   gap: 0.75rem;
 }
 
-.idea-view .idea-font-settings-row {
-  align-items: center;
-  padding-bottom: 0.15rem;
-}
-
 .idea-view .idea-widget-logout {
   margin-top: 0.15rem;
 }
@@ -942,37 +937,6 @@ table {
   color: var(--idea-navy);
   text-align: right;
   word-break: break-all;
-}
-
-.idea-view .idea-app-font-dropdown-slot {
-  flex: 1 1 auto;
-  min-width: 0;
-  max-width: 18rem;
-  width: 100%;
-}
-
-.idea-view .idea-app-font-dropdown-slot .time-task-log-task-dropdown {
-  width: 100%;
-}
-
-.idea-view .idea-app-font-dropdown-slot .time-task-log-task-dropdown-panel,
-.idea-view
-  .idea-app-font-dropdown-slot
-  [data-legacy~="time-task-log-task-dropdown-panel"],
-.idea-view .idea-app-font-dropdown-slot .time-task-log-task-dropdown-options,
-.idea-view
-  .idea-app-font-dropdown-slot
-  [data-legacy~="time-task-log-task-dropdown-options"] {
-  pointer-events: auto;
-  touch-action: manipulation;
-}
-
-.idea-view
-  .idea-app-font-dropdown-slot
-  .time-task-log-task-dropdown-trigger:focus-visible {
-  border-color: rgba(0, 0, 0, 0.45);
-  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12);
-  outline: none;
 }
 
 .idea-view .idea-logout-row {
@@ -1590,15 +1554,12 @@ table {
 }
 
 .login-brand-logo {
-  margin: 0 0 1.15rem;
-  font-family: "LP Pizza Club", system-ui, sans-serif;
-  font-size: clamp(2.1rem, 9vw, 2.65rem);
-  font-weight: normal;
-  font-synthesis: none;
-  letter-spacing: 0.06em;
-  line-height: 1;
-  text-align: center;
-  color: var(--auth-navy);
+  display: block;
+  width: min(7rem, 38vw);
+  max-width: 112px;
+  height: auto;
+  margin: 0 auto 0.85rem;
+  object-fit: contain;
 }
 
 .login-card.login-card--brand {
@@ -1684,7 +1645,7 @@ table {
 }
 
 .auth-gate-seg:focus-visible {
-  outline: 2px solid var(--auth-blue);
+  outline: 2px solid #000000;
   outline-offset: 2px;
 }
 
@@ -1738,7 +1699,18 @@ table {
 .login-input--auth:focus {
   border-bottom-width: 1.5px;
   border-bottom-color: #000000;
-  color: var(--text-ink);
+  color: #000000;
+  background: transparent;
+}
+
+.login-input--auth:-webkit-autofill,
+.login-input--auth:-webkit-autofill:hover,
+.login-input--auth:-webkit-autofill:focus,
+.login-input--auth:-webkit-autofill:active {
+  -webkit-text-fill-color: #000000 !important;
+  caret-color: #000000;
+  box-shadow: 0 0 0 1000px #ffffff inset !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 .login-input--auth:not(:placeholder-shown):not(:focus) {
@@ -1777,7 +1749,7 @@ table {
   width: 2.35rem;
   height: 2.35rem;
   padding: 0;
-  color: var(--auth-blue);
+  color: #000000;
   background: transparent;
   border: none;
   border-radius: 8px;
@@ -1790,7 +1762,7 @@ table {
 }
 
 .login-pw-toggle:focus-visible {
-  outline: 2px solid var(--auth-blue);
+  outline: 2px solid #000000;
   outline-offset: 1px;
 }
 
@@ -1823,7 +1795,7 @@ table {
 }
 
 .login-btn-cta:focus-visible {
-  outline: 2px solid var(--auth-blue);
+  outline: 2px solid #000000;
   outline-offset: 3px;
 }
 
@@ -1848,7 +1820,7 @@ table {
   padding: 0;
   font: inherit;
   font-size: 0.8125rem;
-  color: var(--auth-blue);
+  color: #000000;
   text-decoration: underline;
   text-underline-offset: 0.15em;
   background: none;
@@ -1863,7 +1835,7 @@ table {
 }
 
 .login-link:focus-visible {
-  outline: 2px solid var(--auth-blue);
+  outline: 2px solid #000000;
   outline-offset: 2px;
   border-radius: 2px;
 }
@@ -1955,7 +1927,7 @@ table {
   font-size: 0.9rem;
   font-weight: 600;
   color: #fff;
-  background: var(--auth-blue, #1a5fa8);
+  background: #000000;
   border: none;
   border-radius: 10px;
   cursor: pointer;
@@ -1963,11 +1935,11 @@ table {
 }
 
 .app-toast-btn:hover {
-  filter: brightness(1.06);
+  opacity: 0.92;
 }
 
 .app-toast-btn:focus-visible {
-  outline: 2px solid var(--auth-blue, #1a5fa8);
+  outline: 2px solid #000000;
   outline-offset: 2px;
 }
 
@@ -1995,7 +1967,7 @@ body.auth-pw-modal-open {
 .auth-pw-modal__backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(26, 45, 69, 0.38);
+  background: rgba(0, 0, 0, 0.38);
   backdrop-filter: blur(4px);
 }
 

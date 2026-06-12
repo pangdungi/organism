@@ -520,9 +520,14 @@ function attachExpectedScheduleDatetimeUI(panel, ctx) {
               dateVal,
               null,
               loadTimeRows(),
+              { endFieldOnly: !targetIsStart },
             );
             if (!latest) {
-              showToast("해당 날짜에 참고할 기록이 없습니다.");
+              showToast(
+                targetIsStart
+                  ? "해당 날짜에 참고할 기록이 없습니다."
+                  : "해당 날짜 마지막 기록에 마감시간이 없습니다.",
+              );
               return;
             }
             if (targetIsStart) {

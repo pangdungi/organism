@@ -1,4 +1,5 @@
 import { applyStaticAppIconImg } from "./utils/staticAppIconImg.js";
+import { withToolbarIconCacheVersion } from "./utils/toolbarIconUrl.js";
 import { signOut } from "./auth.js";
 import {
   observeDatePickerInit,
@@ -42,6 +43,7 @@ import {
   resetTimeLedgerSessionFilterToToday,
 } from "./utils/timeLedgerEntriesSupabase.js";
 import { pullKpiTabFromCloud } from "./utils/kpiTabCloudRefresh.js";
+import { syncSleepHealthGoalLogsFromTimeLedger } from "./utils/healthSleepGoalTimeLedgerSync.js";
 import {
   clearKpiTabPullPending,
   isKpiAppTabId,
@@ -70,6 +72,7 @@ import {
   hydrateTimeLedgerFromLocalMirrorForBoot,
 } from "./utils/timeLedgerEntriesModel.js";
 import { hydrateSectionTasksFromLocalMirrorForBoot } from "./utils/todoSectionTasksModel.js";
+import { hydrateCalendarDayIconsFromLocalMirrorForBoot } from "./utils/calendarDayIconsModel.js";
 import { afterLpTabPaint } from "./utils/lpAppLoading.js";
 import { prefetchIconsForTab } from "./utils/appIconPrefetch.js";
 import {
@@ -265,7 +268,12 @@ function kpiSoftRefreshAfterPull(tabId, pullResult) {
 function kpiSoftRefreshIfPullChanged(tabId, pullResult) {
   if (!pullResult?.pullOk) return;
   try {
-    if (tabId === "health") window.__lpHealthSoftRefresh?.();
+    if (tabId === "health") {
+      try {
+        syncSleepHealthGoalLogsFromTimeLedger();
+      } catch (_) {}
+      window.__lpHealthSoftRefresh?.();
+    }
     else if (tabId === "happiness") window.__lpHappinessSoftRefresh?.();
     else if (tabId === "sideincome") window.__lpSideincomeSoftRefresh?.();
   } catch (_) {}
@@ -305,7 +313,7 @@ async function pullDataForActiveTab(tabId, opts = {}) {
     case "sideincome":
       return await pullKpiTabFromCloud(tabId);
     case "idea":
-      await pullUserPrefsFromSupabase({ applyServerFont: false }).catch(() => {});
+      await pullUserPrefsFromSupabase().catch(() => {});
       break;
     case "admin":
       break;
@@ -496,6 +504,7 @@ export async function mountApp(container) {
           try {
             hydrateSectionTasksFromLocalMirrorForBoot();
             hydrateTimeLedgerFromLocalMirrorForBoot();
+            hydrateCalendarDayIconsFromLocalMirrorForBoot();
           } catch (_) {}
         }
         if (targetTabId === "schedulecalendar") {
@@ -610,7 +619,9 @@ export async function mountApp(container) {
       btn.setAttribute("aria-label", tab.label);
       const img = document.createElement("img");
       img.className = "app-home-menu-launcher-grid-img";
-      img.src = HOME_MENU_ICON[tab.id] ?? tab.iconDesktop ?? tab.icon;
+      img.src = withToolbarIconCacheVersion(
+        HOME_MENU_ICON[tab.id] ?? tab.iconDesktop ?? tab.icon,
+      );
       img.alt = "";
       applyStaticAppIconImg(img);
       btn.appendChild(img);

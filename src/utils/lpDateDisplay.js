@@ -1,6 +1,5 @@
 /**
- * 날짜 표시 전용 — 월 약어(MMM) · PizzaClub 폰트 대상(.lp-date-font)과 함께 사용
- * 앱 글꼴(--lp-app-font-family) 변경과 무관하게 유지
+ * 날짜 표시 전용 — 월 약어(MMM) 등
  */
 
 export const LP_MONTH_ABBR_EN = [

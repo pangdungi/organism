@@ -1,12 +1,11 @@
 /**
- * 앱 전역 UI 글꼴 — **유일한 소스**: --lp-app-font-family
- * index.html 인라인 부트와 동일 기본값(그리운 코코최툰체). applyAppFont()가 html에 변수를 갱신.
+ * 앱 전역 UI 글꼴 — **유일한 소스**: --lp-app-font-family (그리운 코코최윤체 고정)
+ * index.html 인라인 부트와 동일. applyAppFont()가 html에 변수를 갱신.
  */
 
 :root {
   --lp-app-font-family: "LP Griun Cocochoitoon", system-ui, -apple-system, "Segoe UI",
     Roboto, sans-serif;
-  /* 앱 기본 글꼴(교보·시스템) — 본문이 너무 가늘지 않게 */
   --lp-app-font-weight-base: 500;
 }
 
@@ -24,7 +23,6 @@ body,
 #app {
   font-family: inherit;
   font-weight: inherit;
-  /* 단일 굵기 OTF에서도 font-weight 600·700이 반영되도록 */
   font-synthesis: weight;
 }
 
@@ -34,46 +32,24 @@ select,
 textarea,
 optgroup {
   font-family: inherit;
+  accent-color: #000000;
 }
 
-@font-face {
-  font-family: "LP Kyobo Handwriting";
-  src: url("/fonts/LP-KyoboHandwriting2025.otf") format("opentype");
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "LP Ongleip Bakdahyun";
-  src: url("/fonts/LP-Ongleip-Bakdahyun.ttf") format("truetype");
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "LP Ongleip Ryuddung";
-  src: url("/fonts/LP-Ongleip-Ryuddung.ttf") format("truetype");
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Adultkid";
-  src: url("/fonts/Adultkid.ttf") format("truetype");
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "LP LeeSeoyun";
-  src: url("/fonts/LP-LeeSeoyun.otf") format("opentype");
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
+/* Chrome 자동완성 기본 하늘색 배경 제거 — 블랙앤화이트 유지 */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-text-fill-color: #000000 !important;
+  caret-color: #000000;
+  box-shadow: 0 0 0 1000px #ffffff inset !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 @font-face {

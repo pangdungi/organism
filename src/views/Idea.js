@@ -7,16 +7,9 @@ import { supabase } from "../supabase.js";
 import { deleteMyAccountViaEdgeFunction } from "../utils/deleteMyAccount.js";
 import { USER_HOURLY_RATE_KEY, readUserHourlyRateLocal, readUserHourlyRateModeLocal, setUserHourlyRateModeLocal, HOURLY_RATE_MODE_CALC, HOURLY_RATE_MODE_DIRECT, applyAppearanceFromServer } from "../utils/userHourlySync.js";
 import { setScopedLocalStorageItem, getScopedLocalStorageItem } from "../utils/clientStorageScope.js";
-import {
-  LP_APP_FONT_OPTIONS,
-  applyAppFont,
-  getStoredAppFontId,
-  setAppFontId,
-} from "../utils/appUiFont.js";
-import { buildModalSimpleSelect } from "../utils/todoModalSimpleSelect.js";
 import { showToast } from "../utils/showToast.js";
 
-export { USER_HOURLY_RATE_KEY, applyAppFont };
+export { USER_HOURLY_RATE_KEY };
 
 const USER_HOURLY_CALC_INPUTS_KEY = "user_hourly_calc_inputs";
 
@@ -73,7 +66,7 @@ export function render() {
   const grid = document.createElement("div");
   grid.className = "time-dashboard-view idea-widget-grid";
 
-  // ----- 기본 설정 위젯 (아이디, 화면 글꼴) -----
+  // ----- 기본 설정 위젯 (아이디) -----
   const basicSettingsWidget = document.createElement("div");
   basicSettingsWidget.className = "time-dashboard-widget idea-widget idea-widget-basic-settings";
   basicSettingsWidget.innerHTML = `
@@ -83,31 +76,9 @@ export function render() {
         <span class="idea-form-label">아이디</span>
         <span class="idea-user-id-value" id="idea-user-id">—</span>
       </div>
-      <div class="idea-basic-row idea-font-settings-row">
-        <span class="idea-form-label" id="idea-app-font-label">화면 글꼴</span>
-        <div class="idea-app-font-dropdown-slot" id="idea-app-font-dropdown-slot"></div>
-      </div>
     </div>
   `;
   grid.appendChild(basicSettingsWidget);
-
-  const fontSlot = basicSettingsWidget.querySelector("#idea-app-font-dropdown-slot");
-  if (fontSlot) {
-    const fontDd = buildModalSimpleSelect({
-      items: LP_APP_FONT_OPTIONS.map((o) => ({ value: o.id, label: o.label })),
-      value: getStoredAppFontId(),
-      placeholder: "글꼴 선택",
-      ariaLabel: "앱 화면 글꼴",
-      abortSignal: tabAbort.signal,
-      onChange: (id) => setAppFontId(id),
-    });
-    fontSlot.appendChild(fontDd);
-    window.addEventListener(
-      "lp-app-font-changed",
-      () => fontDd._setValue?.(getStoredAppFontId()),
-      { signal: tabAbort.signal },
-    );
-  }
 
   function openDeleteAccountModal() {
     const wrap = document.createElement("div");

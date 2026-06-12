@@ -36,7 +36,7 @@ import { initModalNoAutoFocus } from "./utils/modalNoAutoFocus.js";
 import { initLpAppShellViewportLock } from "./utils/lpAppShellViewport.js";
 import { supabase } from "./supabase.js";
 import { getSupabaseSession } from "./utils/supabaseSession.js";
-import { applyAppFont, initAppFontResumeSync } from "./utils/appUiFont.js";
+import { applyAppFont } from "./utils/appUiFont.js";
 import { prefetchCriticalAppIconAssets } from "./utils/appIconPrefetch.js";
 import { setAppSplashMessage } from "./utils/lpAppLoading.js";
 import {
@@ -56,6 +56,7 @@ import {
   resetTimeLedgerTasksMemoryForAccountSwitch,
 } from "./utils/timeTaskOptionsModel.js";
 import { prepareCalendarSectionTasksForBoot } from "./utils/todoSectionTasksModel.js";
+import { prepareCalendarDayIconsForBoot } from "./utils/calendarDayIconsModel.js";
 import {
   migrateAllRegisteredLegacyLocalStorage,
   setActiveClientStorageUserId,
@@ -86,7 +87,7 @@ async function signOutForSubscriptionExpired() {
   await signOut();
 }
 
-/** 설정 pull 후 구독·기한 타이머 (글꼴은 pull 안에서 서버 우선 반영) */
+/** 설정 pull 후 구독·기한 타이머 */
 async function pullPrefsAndRunSubscriptionGate() {
   const row = await pullUserPrefsFromSupabase().catch(() => null);
   await runBackgroundSubscriptionGateFromPrefsRow(
@@ -104,6 +105,7 @@ async function prepareTimeLedgerStorageForCurrentSession() {
     prepareTimeLedgerStorageForBoot();
     prepareTimeLedgerTasksStorageForBoot();
     prepareCalendarSectionTasksForBoot();
+    prepareCalendarDayIconsForBoot();
     return;
   }
 
@@ -118,6 +120,7 @@ async function prepareTimeLedgerStorageForCurrentSession() {
     prepareTimeLedgerStorageForBoot();
     prepareTimeLedgerTasksStorageForBoot();
     prepareCalendarSectionTasksForBoot();
+    prepareCalendarDayIconsForBoot();
   }
 
   const {
@@ -129,6 +132,7 @@ async function prepareTimeLedgerStorageForCurrentSession() {
       prepareTimeLedgerStorageForBoot();
       prepareTimeLedgerTasksStorageForBoot();
       prepareCalendarSectionTasksForBoot();
+      prepareCalendarDayIconsForBoot();
     }
     return;
   }
@@ -140,6 +144,7 @@ async function prepareTimeLedgerStorageForCurrentSession() {
     prepareTimeLedgerStorageForBoot();
     prepareTimeLedgerTasksStorageForBoot();
     prepareCalendarSectionTasksForBoot();
+    prepareCalendarDayIconsForBoot();
     return;
   }
 
@@ -148,6 +153,7 @@ async function prepareTimeLedgerStorageForCurrentSession() {
     prepareTimeLedgerStorageForBoot();
     prepareTimeLedgerTasksStorageForBoot();
     prepareCalendarSectionTasksForBoot();
+    prepareCalendarDayIconsForBoot();
   }
 }
 
@@ -235,6 +241,7 @@ function primeTimeLedgerStorageFromCachedSession() {
   prepareTimeLedgerStorageForBoot();
   prepareTimeLedgerTasksStorageForBoot();
   prepareCalendarSectionTasksForBoot();
+  prepareCalendarDayIconsForBoot();
 }
 
 /** 저장된 세션·자동 로그인: 앱 먼저 연다. 구독·IDB 정합은 mountApp 뒤 백그라운드 */
@@ -374,7 +381,6 @@ function init() {
   initLpPwaInstall();
 
   applyAppFont();
-  initAppFontResumeSync();
   applyTimeCategoryColors();
   applyTaskCategoryColors();
 
@@ -752,5 +758,5 @@ if (
   "serviceWorker" in navigator &&
   (location.protocol === "https:" || location.hostname === "localhost")
 ) {
-  navigator.serviceWorker.register("/sw.js?v=35").catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=44").catch(() => {});
 }

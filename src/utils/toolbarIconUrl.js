@@ -2,6 +2,27 @@
 
 export const TOOLBAR_ICON_EXT = "png";
 
+/** public/sw.js ASSET_CACHE 와 함께 올리면 구 아이콘 URL·SW 캐시 무력화 */
+export const TOOLBAR_ICON_CACHE_VERSION = "44";
+
+/** public/sw.js ASSET_CACHE — 클라이언트 warmIconPathInSwCache 와 동일 버킷 */
+export const SW_ASSET_CACHE = "tip-assets-v44";
+
+/** 로그인 화면 두들이 로고 — index.html·sw precache 와 동일 */
+export const LOGIN_BRAND_LOGO_V = "doodle-login-brand-2";
+
+export function loginBrandLogoUrl() {
+  return `/login-brand-logo.png?v=${LOGIN_BRAND_LOGO_V}`;
+}
+
+/** @param {string} url */
+export function withToolbarIconCacheVersion(url) {
+  const u = String(url || "").trim();
+  if (!u) return "";
+  const sep = u.includes("?") ? "&" : "?";
+  return `${u}${sep}v=${TOOLBAR_ICON_CACHE_VERSION}`;
+}
+
 /**
  * @param {string} name 파일명(확장자 없음). 하위 폴더는 "time-task-picker/book" 형태.
  * @param {ToolbarIconExt} [ext]
@@ -9,7 +30,7 @@ export const TOOLBAR_ICON_EXT = "png";
 export function toolbarIconUrl(name, ext = TOOLBAR_ICON_EXT) {
   const base = String(name || "").replace(/^\//, "").replace(/\.(png|svg)$/i, "");
   if (!base) return "";
-  return `/toolbaricons/${base}.${ext}`;
+  return withToolbarIconCacheVersion(`/toolbaricons/${base}.${ext}`);
 }
 
 /** @param {string} name */
@@ -29,7 +50,7 @@ export function toolbarIconSvg(name) {
  */
 export function attachIconPngFallback(img, pngSrc) {
   if (!img || !pngSrc) return;
-  const svgSrc = pngSrc.replace(/\.png$/i, ".svg");
+  const svgSrc = pngSrc.replace(/\.png(\?.*)?$/i, ".svg$1");
   if (svgSrc === pngSrc) return;
   img.addEventListener(
     "error",
@@ -49,7 +70,7 @@ export function attachIconPngFallback(img, pngSrc) {
  */
 export function attachIconSvgFallback(img, svgSrc) {
   if (!img || !svgSrc) return;
-  const pngSrc = svgSrc.replace(/\.svg$/i, ".png");
+  const pngSrc = svgSrc.replace(/\.svg(\?.*)?$/i, ".png$1");
   if (pngSrc === svgSrc) return;
   img.addEventListener(
     "error",

@@ -33,6 +33,7 @@ import {
 } from "./timeLedgerEntriesSupabase.js";
 import { coalesceInFlightPull } from "./timeLedgerPullCoalesce.js";
 import { syncHabitTrackerLogs, getKpiTargetDateRange } from "./timeKpiSync.js";
+import { syncSleepHealthGoalLogsFromTimeLedger } from "./healthSleepGoalTimeLedgerSync.js";
 import { patchKpiLinkedTasksFromKpiMaps } from "./timeTaskOptionsModel.js";
 import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
 const KPI_LOCAL_STORAGE_KEYS = {
@@ -125,6 +126,9 @@ export async function pullKpiTabFromCloud(tabId) {
   if (liteEnter) {
     if (tabId === "health") {
       pullOk = await pullHealthKpiMapFromSupabase({ force: true, skipTodos: true });
+      try {
+        syncSleepHealthGoalLogsFromTimeLedger();
+      } catch (_) {}
     } else {
       pullOk = await pullHappinessKpiMapFromSupabase({ force: true, skipTodos: true });
     }
