@@ -156,5 +156,5 @@ export function calendarDayHasIcon(dateKey) {
   return !!getCalendarDayIconKeyForDate(dateKey);
 }
 
-/** 월간 주 행 — 아이콘 하단 여백(rem). calendar.css `--cal-day-icon-strip-rem` 과 동기 */
+/** 월간 주 행 — 스탬프 아이콘 높이(rem, 상단). calendar.css `--cal-day-icon-strip-rem` 과 동기 */
 export const CALENDAR_MONTHLY_DAY_ICONS_STRIP_REM = 2.85;
