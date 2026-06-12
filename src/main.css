@@ -285,7 +285,7 @@ body {
   padding: 0.45rem 0.75rem max(0.25rem, var(--lp-safe-bottom));
   padding-left: calc(0.75rem + var(--lp-safe-left));
   padding-right: calc(0.75rem + var(--lp-safe-right));
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid #e5e5e5;
   background: #fff;
   box-sizing: border-box;
 }
@@ -337,7 +337,7 @@ html.lp-task-log-modal-open #signin-page {
   background: transparent;
   font: inherit;
   line-height: 0;
-  color: #1e4d7b;
+  color: #000000;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
@@ -350,7 +350,7 @@ html.lp-task-log-modal-open #signin-page {
 /* 푸터 아이콘: 토글·현재 선택(서브뷰 등) — aria-pressed 로만 스타일 (접근성과 동일 조건) */
 .app-footer-menu-back.app-footer-icon-btn[aria-pressed="true"],
 .app-footer-actions .app-footer-icon-btn[aria-pressed="true"] {
-  background: #e8f0f8;
+  background: #efefef;
 }
 
 /* 푸터 + 칸: flex 균등 분할만 (버튼은 안에서 고정 원형) */
@@ -383,7 +383,7 @@ html.lp-task-log-modal-open #signin-page {
   min-height: 2.75rem;
   margin: 0;
   border-radius: 9999px;
-  background: var(--idea-navy, #1e4d7b);
+  background: var(--idea-navy, #000000);
   color: #fff;
 }
 .app-footer-actions .lp-app-footer-add-slot .app-footer-icon-btn[data-lp-app-footer-add][aria-pressed="true"],
@@ -391,7 +391,7 @@ html.lp-task-log-modal-open #signin-page {
 [data-legacy~="app-footer-actions"]
   [data-lp-app-footer-add-slot]
   .app-footer-icon-btn[data-lp-app-footer-add][aria-pressed="true"] {
-  background: var(--idea-navy, #1e4d7b);
+  background: var(--idea-navy, #000000);
   color: #fff;
 }
 .app-footer-actions .lp-app-footer-add-slot .app-footer-icon-btn[data-lp-app-footer-add] svg,
@@ -550,7 +550,7 @@ html.lp-task-log-modal-open #signin-page {
   font-size: clamp(1.85rem, 6.5vw, 2.45rem);
   font-weight: 500;
   letter-spacing: 0.085em;
-  color: #1e4d7b;
+  color: #000000;
   line-height: 1.15;
 }
 
@@ -723,7 +723,7 @@ html.lp-task-log-modal-open #signin-page {
 }
 
 .lp-search-bar__input::placeholder {
-  color: #94a3b8;
+  color: #999999;
   opacity: 1;
 }
 
@@ -800,21 +800,21 @@ table {
 
 /* -------------------------------------------------------------------------- */
 /* 나의 계정 — 미니멀 · 하늘색 톤 (Idea.js / .idea-view) */
-/* 팔레트: Cloud #F0F4FA · Sky Mist #C8DCEF · Bubble #A0C4E2 · Ocean #2E7CC4 · Navy #1E4D7B · Blue text #3A6EA8 */
+/* 팔레트: Cloud #f5f5f5 · Sky Mist #dddddd · Bubble #c4c4c4 · Ocean #000000 · Navy #000000 · Blue text #444444 */
 /* -------------------------------------------------------------------------- */
 
 .idea-view.app-tab-panel-content {
   /* 토큰 — 이 블록 안에서만 사용 */
-  --idea-cloud: #f0f4fa;
-  --idea-navy: #1e4d7b;
-  --idea-blue: #3a6ea8;
-  --idea-mist: #c8dcef;
-  --idea-bubble: #a0c4e2;
-  --idea-ocean: #2e7cc4;
+  --idea-cloud: #f5f5f5;
+  --idea-navy: #000000;
+  --idea-blue: #444444;
+  --idea-mist: #dddddd;
+  --idea-bubble: #c4c4c4;
+  --idea-ocean: #000000;
   --idea-surface: #fff;
-  --idea-border: rgba(58, 110, 168, 0.16);
-  --idea-border-soft: rgba(58, 110, 168, 0.1);
-  --idea-shadow: rgba(30, 77, 123, 0.06);
+  --idea-border: rgba(0, 0, 0, 0.16);
+  --idea-border-soft: rgba(0, 0, 0, 0.1);
+  --idea-shadow: rgba(0, 0, 0, 0.06);
 
   display: flex;
   flex-direction: column;
@@ -970,8 +970,8 @@ table {
 .idea-view
   .idea-app-font-dropdown-slot
   .time-task-log-task-dropdown-trigger:focus-visible {
-  border-color: rgba(30, 77, 123, 0.45);
-  box-shadow: 0 0 0 3px rgba(30, 77, 123, 0.12);
+  border-color: rgba(0, 0, 0, 0.45);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12);
   outline: none;
 }
 
@@ -1000,8 +1000,8 @@ table {
 }
 
 .idea-view .idea-btn-logout:hover {
-  background: rgba(200, 220, 239, 0.45);
-  border-color: rgba(58, 110, 168, 0.32);
+  background: rgba(0, 0, 0, 0.07);
+  border-color: rgba(0, 0, 0, 0.32);
 }
 
 .idea-view .idea-delete-account-block {
@@ -1028,7 +1028,7 @@ table {
   color: var(--idea-ocean);
   background: none;
   border: none;
-  border-bottom: 1px solid rgba(46, 124, 196, 0.45);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.45);
   border-radius: 0;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -1036,7 +1036,7 @@ table {
 
 .idea-view .idea-btn-delete-account:hover {
   color: var(--idea-navy);
-  border-bottom-color: rgba(30, 77, 123, 0.55);
+  border-bottom-color: rgba(0, 0, 0, 0.55);
 }
 
 .idea-view .idea-delete-account-hint {
@@ -1067,7 +1067,7 @@ table {
   font-size: 0.8125rem;
   font-weight: 500;
   color: var(--idea-blue);
-  background: rgba(160, 196, 226, 0.28);
+  background: rgba(0, 0, 0, 0.05);
   border: 1px solid transparent;
   border-radius: 999px;
   cursor: pointer;
@@ -1079,14 +1079,14 @@ table {
 }
 
 .idea-view .idea-hourly-tab:hover {
-  background: rgba(160, 196, 226, 0.48);
+  background: rgba(0, 0, 0, 0.1);
   color: var(--idea-navy);
 }
 
 .idea-view .idea-hourly-tab.active {
   color: var(--idea-navy);
   background: var(--idea-mist);
-  border-color: rgba(58, 110, 168, 0.22);
+  border-color: rgba(0, 0, 0, 0.22);
 }
 
 .idea-view .idea-hourly-panel[hidden] {
@@ -1214,15 +1214,15 @@ table {
 
 /* 회원 탈퇴 모달 — body에 붙으므로 토큰을 이 루트에도 둠 */
 .idea-delete-account-modal {
-  --idea-cloud: #f0f4fa;
-  --idea-navy: #1e4d7b;
-  --idea-blue: #3a6ea8;
-  --idea-mist: #c8dcef;
-  --idea-bubble: #a0c4e2;
-  --idea-ocean: #2e7cc4;
+  --idea-cloud: #f5f5f5;
+  --idea-navy: #000000;
+  --idea-blue: #444444;
+  --idea-mist: #dddddd;
+  --idea-bubble: #c4c4c4;
+  --idea-ocean: #000000;
   --idea-surface: #fff;
-  --idea-border: rgba(58, 110, 168, 0.16);
-  --idea-border-soft: rgba(58, 110, 168, 0.1);
+  --idea-border: rgba(0, 0, 0, 0.16);
+  --idea-border-soft: rgba(0, 0, 0, 0.1);
 
   position: fixed;
   inset: 0;
@@ -1237,7 +1237,7 @@ table {
 .idea-delete-account-modal-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(30, 77, 123, 0.38);
+  background: rgba(0, 0, 0, 0.38);
 }
 
 .idea-delete-account-modal-panel {
@@ -1249,7 +1249,7 @@ table {
   background: var(--idea-surface);
   border: 1px solid var(--idea-border);
   border-radius: 12px;
-  box-shadow: 0 12px 40px rgba(30, 77, 123, 0.14);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.14);
 }
 
 .idea-delete-account-modal-header {
@@ -1282,7 +1282,7 @@ table {
 
 .idea-delete-account-modal-close:hover {
   color: var(--idea-navy);
-  background: rgba(200, 220, 239, 0.55);
+  background: rgba(0, 0, 0, 0.07);
 }
 
 .idea-delete-account-modal-body {
@@ -1380,7 +1380,7 @@ table {
   font-size: 1.2rem;
   font-weight: 600;
   letter-spacing: -0.02em;
-  color: #1e4d7b;
+  color: #000000;
   line-height: 1.25;
 }
 
@@ -1399,7 +1399,7 @@ table {
   margin: 0 0 0.85rem;
   font-size: 0.78rem;
   line-height: 1.45;
-  color: #64748b;
+  color: #666666;
 }
 
 .admin-view .admin-subs-toolbar {
@@ -1414,7 +1414,7 @@ table {
 .admin-view .admin-subs-toolbar-label {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #1e4d7b;
+  color: #000000;
   letter-spacing: -0.01em;
 }
 
@@ -1423,7 +1423,7 @@ table {
   font: inherit;
   font-size: 0.8125rem;
   font-weight: 500;
-  color: #1e4d7b;
+  color: #000000;
   background: #fff;
   border: 1px solid rgba(26, 45, 69, 0.18);
   border-radius: 8px;
@@ -1462,7 +1462,7 @@ table {
   padding: 0.55rem 0.65rem;
   text-align: left;
   font-weight: 600;
-  color: #1e4d7b;
+  color: #000000;
   background: rgba(26, 45, 69, 0.04);
   border-bottom: 1px solid rgba(26, 45, 69, 0.08);
   white-space: nowrap;
@@ -1487,12 +1487,12 @@ table {
 .admin-view .admin-subs-td--uid {
   font-family: ui-monospace, monospace;
   font-size: 0.74rem;
-  color: #64748b;
+  color: #666666;
 }
 
 .admin-view .admin-subs-td--dt {
   white-space: nowrap;
-  color: #64748b;
+  color: #666666;
 }
 
 .admin-view .admin-subs-status,
@@ -1527,7 +1527,7 @@ table {
 }
 
 .admin-view .admin-subs-btn--year {
-  color: #1e4d7b;
+  color: #000000;
   background: rgba(26, 45, 69, 0.06);
   border: 1px solid rgba(26, 45, 69, 0.16);
 }
@@ -1538,7 +1538,7 @@ table {
 
 .admin-view .admin-subs-btn--save {
   color: #fff;
-  background: #1e4d7b;
+  background: #000000;
   border: none;
 }
 
@@ -1556,11 +1556,11 @@ table {
 /* -------------------------------------------------------------------------- */
 
 .login-page.login-page--gate {
-  --auth-navy: #1e4d7b;
-  --auth-blue: #3a6ea8;
-  --auth-track: rgba(58, 110, 168, 0.14);
-  --auth-seg-muted: rgba(30, 77, 123, 0.55);
-  --auth-ink: #1a2d45;
+  --auth-navy: #000000;
+  --auth-blue: #444444;
+  --auth-track: rgba(0, 0, 0, 0.14);
+  --auth-seg-muted: rgba(0, 0, 0, 0.55);
+  --auth-ink: #111111;
   min-height: 100vh;
   min-height: 100dvh;
   width: 100%;
@@ -1607,7 +1607,7 @@ table {
   border-radius: 20px;
   padding: 1.6rem 1.35rem 1rem;
   box-shadow:
-    0 12px 40px rgba(30, 77, 123, 0.09),
+    0 12px 40px rgba(0, 0, 0, 0.09),
     0 1px 0 rgba(255, 255, 255, 0.9) inset;
   box-sizing: border-box;
 }
@@ -1645,8 +1645,8 @@ table {
   border-radius: 10px;
   background: #fff;
   box-shadow:
-    0 2px 8px rgba(30, 77, 123, 0.1),
-    0 1px 2px rgba(30, 77, 123, 0.06);
+    0 2px 8px rgba(0, 0, 0, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.06);
   transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 0;
   pointer-events: none;
@@ -1707,7 +1707,7 @@ table {
 .login-form--auth-gate .login-label {
   font-size: 0.8125rem;
   font-weight: 500;
-  color: #64748b;
+  color: #666666;
   letter-spacing: -0.01em;
 }
 
@@ -1718,43 +1718,43 @@ table {
   padding: 0.45rem 0 0.5rem;
   font: inherit;
   font-size: 0.9375rem;
-  color: #1e4d7b;
+  color: #000000;
   background: transparent;
   border: none;
-  border-bottom: 1px solid #cbd5e1;
+  border-bottom: 1px solid #cccccc;
   border-radius: 0;
   outline: none;
   box-sizing: border-box;
 }
 
 .login-input--auth::placeholder {
-  color: #94a3b8;
+  color: #999999;
 }
 
 .login-field--auth:focus-within .login-label {
-  color: #1e4d7b;
+  color: #000000;
 }
 
 .login-input--auth:focus {
   border-bottom-width: 1.5px;
-  border-bottom-color: #1e4d7b;
+  border-bottom-color: #000000;
   color: var(--text-ink);
 }
 
 .login-input--auth:not(:placeholder-shown):not(:focus) {
-  color: #1e4d7b;
+  color: #000000;
 }
 
 .login-password-row {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  border-bottom: 1px solid #cbd5e1;
+  border-bottom: 1px solid #cccccc;
 }
 
 .login-password-row:focus-within {
   border-bottom-width: 1.5px;
-  border-bottom-color: #1e4d7b;
+  border-bottom-color: #000000;
 }
 
 .login-password-row .login-input--auth,
@@ -1786,7 +1786,7 @@ table {
 }
 
 .login-pw-toggle:hover {
-  background: rgba(58, 110, 168, 0.06);
+  background: rgba(0, 0, 0, 0.06);
 }
 
 .login-pw-toggle:focus-visible {
@@ -1807,7 +1807,7 @@ table {
   border: none;
   border-radius: 12px;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(30, 77, 123, 0.22);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
   -webkit-tap-highlight-color: transparent;
   transition:
     opacity 0.15s ease,
@@ -1831,7 +1831,7 @@ table {
   padding: 0.65rem 0.9rem;
   font-size: 0.875rem;
   margin-top: 0;
-  box-shadow: 0 2px 10px rgba(30, 77, 123, 0.18);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
 }
 
 .login-auth-switch {
@@ -1881,7 +1881,7 @@ table {
   margin: 0 0 1.15rem;
   font-size: 0.8125rem;
   line-height: 1.5;
-  color: rgba(30, 77, 123, 0.6);
+  color: rgba(0, 0, 0, 0.6);
 }
 
 /* 앱 전역 알림 — 스플래시(2147483646)·비밀번호 모달 위에 표시 */
@@ -1913,8 +1913,8 @@ table {
   padding: 1.35rem 1.25rem 1.15rem;
   background: #fff;
   border-radius: 18px;
-  border: 1px solid rgba(58, 110, 168, 0.14);
-  box-shadow: 0 20px 48px rgba(30, 77, 123, 0.2);
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.2);
   box-sizing: border-box;
   text-align: center;
 }
@@ -1926,7 +1926,7 @@ table {
   font-weight: 600;
   line-height: 1.6;
   letter-spacing: -0.02em;
-  color: var(--auth-navy, #1e4d7b);
+  color: #000000;
   word-break: keep-all;
   overflow-wrap: break-word;
   text-wrap: balance;
@@ -1938,7 +1938,7 @@ table {
   font-size: 0.8125rem;
   font-weight: 500;
   line-height: 1.55;
-  color: rgba(30, 77, 123, 0.62);
+  color: rgba(0, 0, 0, 0.62);
   word-break: keep-all;
   overflow-wrap: break-word;
   text-wrap: balance;
@@ -2008,7 +2008,7 @@ body.auth-pw-modal-open {
   overflow: auto;
   background: #fff;
   border-radius: 18px;
-  box-shadow: 0 20px 48px rgba(30, 77, 123, 0.18);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.18);
   box-sizing: border-box;
 }
 
@@ -2017,7 +2017,7 @@ body.auth-pw-modal-open {
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1rem 0.65rem;
-  border-bottom: 1px solid rgba(58, 110, 168, 0.12);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
 }
 
 .auth-pw-modal__title {
@@ -2034,7 +2034,7 @@ body.auth-pw-modal-open {
   margin: -0.25rem -0.25rem 0 0;
   font-size: 1.35rem;
   line-height: 1;
-  color: rgba(30, 77, 123, 0.55);
+  color: rgba(0, 0, 0, 0.55);
   background: transparent;
   border: none;
   border-radius: 8px;
@@ -2043,7 +2043,7 @@ body.auth-pw-modal-open {
 }
 
 .auth-pw-modal__close:hover {
-  background: rgba(58, 110, 168, 0.08);
+  background: rgba(0, 0, 0, 0.08);
 }
 
 .auth-pw-modal__body {
@@ -2060,7 +2060,7 @@ body.auth-pw-modal-open {
   margin: 0 0 0.35rem;
   font-size: 0.8125rem;
   line-height: 1.5;
-  color: rgba(30, 77, 123, 0.58);
+  color: rgba(0, 0, 0, 0.58);
 }
 
 .login-change-actions {
@@ -2075,7 +2075,7 @@ body.auth-pw-modal-open {
   align-items: center;
   gap: 0.45rem;
   font-size: 0.8125rem;
-  color: rgba(30, 77, 123, 0.7);
+  color: rgba(0, 0, 0, 0.7);
   cursor: pointer;
 }
 
@@ -2085,7 +2085,7 @@ body.auth-pw-modal-open {
   gap: 0.45rem;
   margin: 0.1rem 0 0.15rem;
   font-size: 0.8125rem;
-  color: rgba(30, 77, 123, 0.72);
+  color: rgba(0, 0, 0, 0.72);
   cursor: pointer;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
@@ -2096,7 +2096,7 @@ body.auth-pw-modal-open {
   height: 0.9375rem;
   margin: 0;
   flex-shrink: 0;
-  accent-color: var(--lp-modal-accent, #1e4d7b);
+  accent-color: var(--lp-modal-accent, #000000);
   cursor: pointer;
 }
 

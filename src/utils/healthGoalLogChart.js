@@ -1,16 +1,16 @@
 /** 건강 목표 로그 — 날짜별 선 그래프 */
 
 const CHART = {
-  stroke: "#2563eb",
+  stroke: "#000000",
   strokeWidth: 2.5,
-  dotFill: "#2563eb",
+  dotFill: "#000000",
   dotStroke: "#ffffff",
-  grid: "#e2e8f0",
-  axis: "#cbd5e1",
+  grid: "#e5e5e5",
+  axis: "#cccccc",
   target: "#f59e0b",
-  area: "rgba(37, 99, 235, 0.12)",
+  area: "rgba(0, 0, 0, 0.12)",
   label: "#000000",
-  subLabel: "#64748b",
+  subLabel: "#666666",
 };
 
 export function parseHealthGoalLogDateKey(log) {
@@ -142,7 +142,7 @@ function addValueLabel(svg, svgNs, x, y, text, above = true) {
     height: 14,
     rx: 4,
     fill: "#ffffff",
-    stroke: "#e2e8f0",
+    stroke: "#e5e5e5",
     "stroke-width": 1,
   });
   svg.appendChild(bg);
@@ -230,7 +230,7 @@ export function renderHealthGoalLineChart(container, opts = {}) {
       y: pad.top,
       width: plotW,
       height: plotH,
-      fill: "#f8fafc",
+      fill: "#fafafa",
       rx: 8,
     }),
   );

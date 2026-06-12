@@ -47,8 +47,8 @@ const DONUT_CAT_COLORS = {
   unhappiness: "#8B90A8",
   unhealthy: "#6B7280",
   moneylosing: "#7A8E9A",
-  other: "#CBD5E1",
-  "": "#CBD5E1",
+  other: "#cccccc",
+  "": "#cccccc",
 };
 
 const PROD_CATEGORY_KEYS = new Set([
@@ -57,7 +57,7 @@ const PROD_CATEGORY_KEYS = new Set([
   "health",
 ]);
 
-const RATING_REPORT_COLOR = "#1e4d7b";
+const RATING_REPORT_COLOR = "#000000";
 const RATING_REPORT_COLOR_MID = "#5b8ec2";
 const RATING_REPORT_COLOR_LOW = "#b8c9dc";
 const RATING_REPORT_COLOR_EMPTY = "#e8edf3";
@@ -66,10 +66,10 @@ const WEEKDAY_LABELS_KO = ["일", "월", "화", "수", "목", "금", "토"];
 const WEEKDAY_CHART_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const MEDIA_CONSCIOUS_TASK = "의식적 콘텐츠 소비";
 const MEDIA_UNCONSCIOUS_TASK = "무의식적 콘텐츠 소비";
-const MEDIA_CONSCIOUS_COLOR = "#1e4d7b";
+const MEDIA_CONSCIOUS_COLOR = "#000000";
 const MEDIA_UNCONSCIOUS_COLOR = "#7c3aed";
-const MOVE_ROUTINE_COLOR = "#1e4d7b";
-const MOVE_SIMPLE_COLOR = "#94a3b8";
+const MOVE_ROUTINE_COLOR = "#000000";
+const MOVE_SIMPLE_COLOR = "#999999";
 
 function donutCategoryColor(catKey) {
   const k = String(catKey || "").trim() || "other";
@@ -262,7 +262,7 @@ function ratingFillColor(avg) {
   if (n >= 3.5) return "#3b6ea8";
   if (n >= 2.5) return RATING_REPORT_COLOR_MID;
   if (n >= 1.5) return RATING_REPORT_COLOR_LOW;
-  return "#cbd5e1";
+  return "#cccccc";
 }
 
 function ratingBarColor(avg) {
@@ -902,7 +902,7 @@ function renderSleepGoalBarChart(canvas, sleepByDay) {
       y: pad.top,
       width: plotW,
       height: plotH,
-      fill: "#f8fafc",
+      fill: "#fafafa",
       rx: 6,
     }),
   );
@@ -917,14 +917,14 @@ function renderSleepGoalBarChart(canvas, sleepByDay) {
         x2: W - pad.right,
         y1: y,
         y2: y,
-        stroke: isTarget ? "#fde68a" : "#e2e8f0",
+        stroke: isTarget ? "#fde68a" : "#e5e5e5",
         "stroke-width": isTarget ? 1.25 : 1,
       }),
     );
     const tick = svgEl("text", {
       x: pad.left - 5,
       y: y + 3,
-      fill: isTarget ? "#d97706" : "#94a3b8",
+      fill: isTarget ? "#d97706" : "#999999",
       "font-size": 8,
       "font-weight": isTarget ? 600 : 400,
       "text-anchor": "end",
@@ -952,7 +952,7 @@ function renderSleepGoalBarChart(canvas, sleepByDay) {
       x2: pad.left,
       y1: pad.top,
       y2: plotBottom,
-      stroke: "#cbd5e1",
+      stroke: "#cccccc",
       "stroke-width": 1,
     }),
   );
@@ -962,7 +962,7 @@ function renderSleepGoalBarChart(canvas, sleepByDay) {
       x2: W - pad.right,
       y1: plotBottom,
       y2: plotBottom,
-      stroke: "#cbd5e1",
+      stroke: "#cccccc",
       "stroke-width": 1,
     }),
   );
@@ -999,7 +999,7 @@ function renderSleepGoalBarChart(canvas, sleepByDay) {
       const dateLabel = svgEl("text", {
         x: cx,
         y: H - 6,
-        fill: "#94a3b8",
+        fill: "#999999",
         "font-size": 8,
         "text-anchor": "middle",
       });
@@ -1043,7 +1043,7 @@ function renderSleepGoalBarChart(canvas, sleepByDay) {
       const valLabel = svgEl("text", {
         x: cx,
         y: barTop - 4,
-        fill: metGoal ? "#15803d" : "#475569",
+        fill: metGoal ? "#15803d" : "#4d4d4d",
         "font-size": 7.5,
         "font-weight": 600,
         "text-anchor": "middle",
@@ -1496,14 +1496,14 @@ function renderSleepQualityTrendChart(points, mode) {
         x2: W - pad.right,
         y1: y,
         y2: y,
-        stroke: "#e2e8f0",
+        stroke: "#e5e5e5",
         "stroke-width": 1,
       }),
     );
     const tick = svgEl("text", {
       x: pad.left - 5,
       y: y + 3,
-      fill: "#94a3b8",
+      fill: "#999999",
       "font-size": 8,
       "text-anchor": "end",
     });
@@ -1555,7 +1555,7 @@ function renderSleepQualityTrendChart(points, mode) {
       const lab = svgEl("text", {
         x: c.cx,
         y: H - 6,
-        fill: "#94a3b8",
+        fill: "#999999",
         "font-size": 7.5,
         "text-anchor": "middle",
       });
@@ -2457,8 +2457,8 @@ function createCategoryPlanActualRow(item, maxMin) {
     return line;
   };
 
-  tracks.appendChild(makeTrack("plan", item.plannedMin, "#cbd5e1"));
-  tracks.appendChild(makeTrack("actual", item.actualMin, "#1e4d7b"));
+  tracks.appendChild(makeTrack("plan", item.plannedMin, "#cccccc"));
+  tracks.appendChild(makeTrack("actual", item.actualMin, "#000000"));
   row.append(lab, tracks);
   return row;
 }
@@ -2586,7 +2586,7 @@ function createFocusRecipeTagRow(item, maxPct) {
   fill.className = "lp-tr2-bar-fill";
   const pct = maxPct > 0 ? Math.min(100, (item.pct / maxPct) * 100) : 0;
   fill.style.width = `${pct}%`;
-  fill.style.background = "#1e4d7b";
+  fill.style.background = "#000000";
   const val = document.createElement("span");
   val.className = "lp-tr2-bar-value";
   val.textContent = `${item.pct}%`;

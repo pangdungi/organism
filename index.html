@@ -47,24 +47,24 @@
         "name": "Doodle",
         "url": "https://timeisprice.com/",
         "description": "KPI·목표·시간 기록·일정·가계부를 연결하는 생산성 플래너 웹 서비스입니다.",
-        "image": "https://timeisprice.com/icon-512.png?v=doodle-logo-6"
+        "image": "https://timeisprice.com/icon-512.png?v=doodle-logo-7"
       }
     </script>
     <!-- manifest·favicon·og:image — 탭·검색은 favicon.ico·og-app-icon.png(별도 경로) -->
-    <link rel="manifest" href="/manifest.json?v=doodle-logo-6" />
+    <link rel="manifest" href="/manifest.json?v=doodle-logo-7" />
     <link rel="preload" href="/fonts/LP-KyoboHandwriting2025.otf" as="font" type="font/otf" crossorigin />
-    <link rel="preload" href="/toolbaricons/splash/splash-screen.png?v=good-things-splash-png-2" as="image" type="image/png" />
+    <link rel="preload" href="/toolbaricons/splash/splash-screen.png?v=good-things-splash-png-3" as="image" type="image/png" />
     <!-- 탭 아이콘: ico·png만 (svg는 Chrome 탭에서 외부 이미지 참조 시 빈 칸) -->
-    <link rel="icon" href="/favicon.ico?v=doodle-logo-6" sizes="any" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png?v=doodle-logo-6" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/icon-16.png?v=doodle-logo-6" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=doodle-logo-6" />
+    <link rel="icon" href="/favicon.ico?v=doodle-logo-7" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png?v=doodle-logo-7" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icon-16.png?v=doodle-logo-7" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=doodle-logo-7" />
     <!-- iOS 홈 화면 실행 직후 네이티브 스플래시(전체 화면 물결+수달) -->
-    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1179.png?v=good-things-splash-png-2" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
-    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1179.png?v=good-things-splash-png-2" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
-    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1284.png?v=good-things-splash-png-2" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
-    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1170.png?v=good-things-splash-png-2" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
-    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1080.png?v=good-things-splash-png-2" media="(orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1179.png?v=good-things-splash-png-3" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1179.png?v=good-things-splash-png-3" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1284.png?v=good-things-splash-png-3" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1170.png?v=good-things-splash-png-3" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1080.png?v=good-things-splash-png-3" media="(orientation: portrait)" />
     <!-- FOUC 방지 + 첫 페인트부터 교보 손글씨(또는 저장된 화면 글꼴) -->
     <style>
       @font-face {
@@ -191,7 +191,7 @@
           max(2rem, env(safe-area-inset-bottom, 0));
         box-sizing: border-box;
         background: #fff;
-        color: #1e4d7b;
+        color: #000000;
         font-family: inherit;
         text-align: center;
       }
@@ -202,13 +202,13 @@
         margin: 0 0 1rem;
         line-height: 1.6;
         font-size: 0.9375rem;
-        color: #475569;
+        color: #4d4d4d;
       }
       #lp-boot-fallback .lp-boot-fallback-title {
         margin: 0 0 0.5rem;
         font-size: 1.0625rem;
         font-weight: 600;
-        color: #1e4d7b;
+        color: #000000;
       }
       #lp-boot-fallback .lp-boot-fallback-actions {
         display: flex;
@@ -226,7 +226,7 @@
         cursor: pointer;
       }
       #lp-boot-fallback .lp-boot-retry-btn {
-        background: #1e4d7b;
+        background: #000000;
         color: #fff;
       }
     </style>
@@ -239,20 +239,18 @@
           bakdahyun: '"LP Ongleip Bakdahyun", ' + FALLBACK,
           ryuddung: '"LP Ongleip Ryuddung", ' + FALLBACK,
           adultkid: '"Adultkid", ' + FALLBACK,
+          leeseoyun: '"LP LeeSeoyun", ' + FALLBACK,
+          cocochoitoon: '"LP Griun Cocochoitoon", ' + FALLBACK,
         };
         var KEY = "lp_app_ui_font_id";
-        var DEF = "kyobohandwriting";
+        var DEF = "cocochoitoon";
         try {
           var uid = localStorage.getItem("lp_last_auth_uid");
           var id =
             uid && localStorage.getItem("lp:u:" + uid + ":" + KEY);
           if (!id) id = localStorage.getItem(KEY);
           if (id === "parkdahyun") id = "bakdahyun";
-          if (
-            id === "pakyongjun" ||
-            id === "leeseoyun" ||
-            id === "system"
-          ) {
+          if (id === "pakyongjun" || id === "system") {
             id = "kyobohandwriting";
           }
           if (!id || !STACKS[id]) id = DEF;
@@ -297,7 +295,7 @@
     >
       <img
         class="lp-unified-loading__screen-img"
-        src="/toolbaricons/splash/splash-screen.png?v=good-things-splash-png-2"
+        src="/toolbaricons/splash/splash-screen.png?v=good-things-splash-png-3"
         alt=""
         width="665"
         height="1024"

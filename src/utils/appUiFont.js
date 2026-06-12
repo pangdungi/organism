@@ -14,7 +14,7 @@ import {
 export const LP_APP_UI_FONT_STORAGE_KEY = "lp_app_ui_font_id";
 
 /** 앱 기본 글꼴 (localStorage·서버 값 없을 때) */
-export const LP_APP_DEFAULT_FONT_ID = "kyobohandwriting";
+export const LP_APP_DEFAULT_FONT_ID = "cocochoitoon";
 
 /** 앱에서 「시스템 기본」 선택 시만 사용 */
 export const LP_APP_SYSTEM_FONT_STACK =
@@ -47,6 +47,16 @@ export const LP_APP_FONT_OPTIONS = [
     label: "Adultkid",
     stack: `"Adultkid", ${LP_APP_FONT_FALLBACK}`,
   },
+  {
+    id: "leeseoyun",
+    label: "이서윤체",
+    stack: `"LP LeeSeoyun", ${LP_APP_FONT_FALLBACK}`,
+  },
+  {
+    id: "cocochoitoon",
+    label: "그리운 코코최툰체",
+    stack: `"LP Griun Cocochoitoon", ${LP_APP_FONT_FALLBACK}`,
+  },
 ];
 
 const LP_APP_FONT_ID_SET = new Set(LP_APP_FONT_OPTIONS.map((o) => o.id));
@@ -63,7 +73,7 @@ let _resumeFontSyncBound = false;
 export function normalizeAppFontId(id) {
   const v = String(id ?? "").trim().toLowerCase();
   if (v === "parkdahyun") return "bakdahyun";
-  if (v === "pakyongjun" || v === "leeseoyun" || v === "system") {
+  if (v === "pakyongjun" || v === "system") {
     return LP_APP_DEFAULT_FONT_ID;
   }
   return LP_APP_FONT_ID_SET.has(v) ? v : LP_APP_DEFAULT_FONT_ID;

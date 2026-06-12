@@ -1,10 +1,10 @@
 /**
  * 앱 전역 UI 글꼴 — **유일한 소스**: --lp-app-font-family
- * index.html 인라인 부트와 동일 기본값(교보 손글씨). applyAppFont()가 html에 변수를 갱신.
+ * index.html 인라인 부트와 동일 기본값(그리운 코코최툰체). applyAppFont()가 html에 변수를 갱신.
  */
 
 :root {
-  --lp-app-font-family: "LP Kyobo Handwriting", system-ui, -apple-system, "Segoe UI",
+  --lp-app-font-family: "LP Griun Cocochoitoon", system-ui, -apple-system, "Segoe UI",
     Roboto, sans-serif;
   /* 앱 기본 글꼴(교보·시스템) — 본문이 너무 가늘지 않게 */
   --lp-app-font-weight-base: 500;
@@ -63,6 +63,22 @@ optgroup {
 @font-face {
   font-family: "Adultkid";
   src: url("/fonts/Adultkid.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "LP LeeSeoyun";
+  src: url("/fonts/LP-LeeSeoyun.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "LP Griun Cocochoitoon";
+  src: url("/fonts/LP-Griun-Cocochoitoon.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
   font-display: swap;

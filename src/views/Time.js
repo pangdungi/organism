@@ -4848,6 +4848,12 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   const startEl = document.createElement("span");
   startEl.className = "calendar-1day-timeline-card-start";
   startEl.textContent = startClock;
+  if (live) {
+    const liveTag = document.createElement("span");
+    liveTag.className = "time-ledger-card-start-live-tag";
+    liveTag.textContent = "진행중..";
+    startEl.appendChild(liveTag);
+  }
 
   const timeConnector = document.createElement("span");
   timeConnector.className = "calendar-1day-timeline-card-time-connector";
@@ -7245,11 +7251,20 @@ export function render(opts = {}) {
   });
 
   let lastFocusedTimeField = "end";
+  /* 시작 칸은 모달 오픈 시 프로그램으로 focus 되는 일이 있어, 사용자가 직접 누른 경우(pointerdown)에만 "start"로 기억 */
   [taskLogTimeStart, taskLogDateStart].forEach((el) => {
     if (!el) return;
-    el.addEventListener("focus", () => {
+    el.addEventListener("pointerdown", () => {
       lastFocusedTimeField = "start";
     });
+    el.addEventListener("keyup", (e) => {
+      if (e.key === "Tab" && document.activeElement === el) {
+        lastFocusedTimeField = "start";
+      }
+    });
+  });
+  taskLogTimeEnd?.addEventListener("pointerdown", () => {
+    lastFocusedTimeField = "end";
   });
   taskLogTimeEnd?.addEventListener("focus", () => {
     taskLogTimeEndInputFocused = true;
@@ -7281,8 +7296,8 @@ export function render(opts = {}) {
       btn.addEventListener("click", () => {
         const endVal = (taskLogTimeEnd?.value || "").trim();
         const endHasTime = endVal && endVal.match(/\d{1,2}:\d{2}/);
-        /* 마감이 비어 있는데 날짜/시작만 포커스된 경우 lastFocused가 "start"로 남음 → 지금/마지막/±가 시작에만 들어가던 문제 방지 */
-        const targetIsStart = lastFocusedTimeField === "start" && endHasTime;
+        /* 사용자가 직접 누른 칸 기준 — 시작 칸을 눌렀다면 마감이 비어 있어도 시작에 넣는다 */
+        const targetIsStart = lastFocusedTimeField === "start";
 
         const startTimeVal = normalizeHhMm(
           (taskLogTimeStart?.value || "").trim(),
@@ -8292,6 +8307,8 @@ export function render(opts = {}) {
   function prepareTaskLogModalForOpen() {
     dismissLpBlockingShellForTaskLogModal();
     taskLogModal.style.zIndex = "2147483647";
+    /* 새로 열 때 기본 대상은 마감 — 직전 세션의 "start" 기억이 남지 않게 */
+    lastFocusedTimeField = "end";
   }
 
   function openTaskLogModalAfterPull(addContext) {

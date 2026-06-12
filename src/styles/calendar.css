@@ -20,24 +20,24 @@
 /* -------------------------------------------------------------------------- */
 
 .calendar-monthly-layout {
-  --cal-line: rgba(58, 110, 168, 0.14);
-  --cal-line-strong: rgba(58, 110, 168, 0.22);
+  --cal-line: rgba(0, 0, 0, 0.14);
+  --cal-line-strong: rgba(0, 0, 0, 0.22);
   --cal-surface: #fff;
-  --cal-surface-muted: rgba(58, 110, 168, 0.06);
-  --cal-text: #1a2d45;
-  --cal-text-muted: rgba(30, 61, 93, 0.52);
-  --cal-today-accent: #1e4d7b;
+  --cal-surface-muted: rgba(0, 0, 0, 0.06);
+  --cal-text: #111111;
+  --cal-text-muted: rgba(0, 0, 0, 0.52);
+  --cal-today-accent: #000000;
   /** 오늘 날짜 숫자 원형 — 진한 블루 배경 + 흰 글자 */
-  --cal-today-circle-bg: #1d40ba;
+  --cal-today-circle-bg: #000000;
   --cal-today-circle-fg: #fff;
   /** 기간 막대(시작≠마감): 리스트(섹션) 색과 무관하게 동일 */
-  --cal-range-span-bar-bg: #d6e8f4;
+  --cal-range-span-bar-bg: #e6e6e6;
   /** 단일 칸 막대(마감만·시작=마감) 점선 테두리 색 */
-  --cal-short-span-bar-border: #c8dcf0;
+  --cal-short-span-bar-border: #cfcfcf;
   /** 미이행(✕) 카드 — 하늘·흰 계열 (웜 그레이/갈색 잔재 제거) */
-  --cal-missed-surface: #f0f4fa;
-  --cal-missed-border: rgba(58, 110, 168, 0.24);
-  --cal-missed-text: rgba(30, 77, 123, 0.48);
+  --cal-missed-surface: #f5f5f5;
+  --cal-missed-border: rgba(0, 0, 0, 0.24);
+  --cal-missed-text: rgba(0, 0, 0, 0.48);
   /** 생산성 「그 외」(수면·근무 등) — 과제 칸·타임박스 전용 녹색 */
   --cal-other-surface: #e8f8ef;
   --cal-other-border: #e8f8ef;
@@ -298,7 +298,7 @@
   align-items: stretch;
   gap: 0.4rem;
   padding: 0.45rem 0.55rem 0.5rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid #e5e5e5;
   box-sizing: border-box;
 }
 
@@ -319,15 +319,15 @@
 }
 
 .calendar-1day-expected-template-apply {
-  border: 1.5px dashed #cbd5e1;
+  border: 1.5px dashed #cccccc;
   background: transparent;
-  color: #64748b;
+  color: #666666;
 }
 
 .calendar-1day-expected-template-apply:hover {
-  border-color: #94a3b8;
-  color: #475569;
-  background: #f8fafc;
+  border-color: #999999;
+  color: #4d4d4d;
+  background: #fafafa;
 }
 
 .calendar-1day-expected-template-save {
@@ -413,7 +413,7 @@
   box-sizing: border-box;
   padding: 0.55rem 0.65rem 0.5rem;
   margin: 0;
-  border-bottom: 1px solid #f0f4fa;
+  border-bottom: 1px solid #f5f5f5;
   text-align: left;
 }
 
@@ -462,9 +462,9 @@
   font-size: 0.5625rem;
   font-weight: 700;
   letter-spacing: 0.05em;
-  color: #64748b;
+  color: #666666;
   border-bottom: 1px solid #e8edf3;
-  background: #f8fafc;
+  background: #fafafa;
   border-radius: 0.45rem 0.45rem 0 0;
 }
 
@@ -520,7 +520,7 @@
   font-size: 0.4375rem;
   font-weight: 600;
   letter-spacing: 0;
-  color: #94a3b8;
+  color: #999999;
   text-align: center;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -541,8 +541,8 @@
   min-width: 0;
   box-sizing: border-box;
   border-radius: 3px;
-  border: 1px dashed #e2e8f0;
-  background: #f1f5f9;
+  border: 1px dashed #e5e5e5;
+  background: #f2f2f2;
 }
 
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell {
@@ -587,8 +587,8 @@
 }
 
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--nonproductive {
-  background: #e5eafa;
-  border-color: #e5eafa;
+  background: #ececec;
+  border-color: #ececec;
   border-style: solid;
   color: #000000;
 }
@@ -629,7 +629,7 @@
 }
 
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell:focus-visible {
-  outline: 2px solid #1e4d7b;
+  outline: 2px solid #000000;
   outline-offset: 1px;
 }
 
@@ -661,7 +661,7 @@
   isolation: isolate;
   contain: layout paint;
   background: #fff;
-  border: 1px solid #dbe3ec;
+  border: 1px solid #e0e0e0;
   border-radius: 0.5rem;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
   box-sizing: border-box;
@@ -727,12 +727,12 @@
 
 .calendar-1day-day-task-chip--range {
   border: none;
-  background: var(--cal-range-span-bar-bg, #d6e8f4);
+  background: var(--cal-range-span-bar-bg, #e6e6e6);
 }
 
 .calendar-1day-day-task-chip.is-past,
 .calendar-1day-day-task-chip.is-past .calendar-monthly-span-bar-text {
-  color: rgba(30, 61, 93, 0.66);
+  color: rgba(0, 0, 0, 0.66);
 }
 
 .calendar-1day-day-task-chip.is-past.calendar-1day-day-task-chip--todo {
@@ -755,13 +755,13 @@
 .calendar-1day-day-task-chip-time {
   font-size: 0.5rem;
   font-weight: 500;
-  color: #94a3b8;
+  color: #999999;
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
 }
 
 .calendar-1day-day-task-chip:focus-visible {
-  outline: 2px solid #1e4d7b;
+  outline: 2px solid #000000;
   outline-offset: 1px;
 }
 
@@ -772,7 +772,7 @@
   flex-direction: column;
   overflow: hidden;
   background: #fff;
-  border: 1px solid #dbe3ec;
+  border: 1px solid #e0e0e0;
   border-radius: 0.5rem;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
   box-sizing: border-box;
@@ -802,7 +802,7 @@
   margin: 0.25rem 0 0;
   padding: 0.65rem 0.35rem;
   font-size: 0.8125rem;
-  color: #94a3b8;
+  color: #999999;
   text-align: center;
 }
 
@@ -831,7 +831,7 @@
 }
 
 .calendar-1day-expected-card:focus-visible {
-  outline: 2px solid #1e4d7b;
+  outline: 2px solid #000000;
   outline-offset: 1px;
 }
 
@@ -858,7 +858,7 @@
   font-size: 0.625rem;
   font-weight: 700;
   line-height: 1.1;
-  color: #64748b;
+  color: #666666;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   text-align: left;
@@ -870,7 +870,7 @@
   min-height: 1.1rem;
   margin-left: 0.05em;
   border-radius: 1px;
-  background: #cbd5e1;
+  background: #cccccc;
   align-self: flex-start;
 }
 
@@ -894,7 +894,7 @@
 .calendar-1day-expected-card-memo {
   font-size: 0.6875rem;
   line-height: 1.35;
-  color: #94a3b8;
+  color: #999999;
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -1098,7 +1098,7 @@
 }
 
 .calendar-1day-timeline-card {
-  --calendar-timeline-progress-fill: var(--cal-today-accent, #1e4d7b);
+  --calendar-timeline-progress-fill: var(--cal-today-accent, #000000);
   display: grid;
   grid-template-columns: auto 1fr;
   column-gap: 0.45rem;
@@ -1153,7 +1153,7 @@
   min-height: 0.25rem;
   border: none;
   border-radius: 2px;
-  background: #f0f4fa;
+  background: #f5f5f5;
 }
 
 .calendar-1day-timeline-card-body {
@@ -1173,7 +1173,7 @@
   flex: 0 0 auto;
   border: none;
   border-radius: 2px;
-  background: #f0f4fa;
+  background: #f5f5f5;
   align-self: stretch;
   overflow: hidden;
 }
@@ -1187,7 +1187,7 @@
   max-width: 100%;
   background: color-mix(
     in srgb,
-    var(--calendar-timeline-progress-fill, #1e4d7b) 82%,
+    var(--calendar-timeline-progress-fill, #000000) 82%,
     white
   );
   transition: width 0.25s ease-out;
@@ -1197,13 +1197,13 @@
   .calendar-1day-timeline-card-head-bar-fill {
   background: color-mix(
     in srgb,
-    var(--cal-today-accent, #1e4d7b) 88%,
-    #173c5f
+    var(--cal-today-accent, #000000) 88%,
+    #222222
   );
 }
 
 .calendar-1day-timeline-card--ledger-missed {
-  --calendar-timeline-progress-fill: #94a3b8;
+  --calendar-timeline-progress-fill: #999999;
 }
 
 .calendar-1day-timeline-card-title-row {
@@ -1300,7 +1300,7 @@
 .calendar-1day-timeline-card-progress {
   font-size: 0.75rem;
   font-weight: 650;
-  color: var(--cal-today-accent, #1e4d7b);
+  color: #000000;
 }
 
 .calendar-1day-timeline-card--ledger-missed .calendar-1day-timeline-card-start,
@@ -1362,7 +1362,7 @@
 .calendar-view-todo
   .todo-priority-quadrant[data-date-bucket="past"]
   .todo-card-dates {
-  color: rgba(30, 61, 93, 0.66);
+  color: rgba(0, 0, 0, 0.66);
 }
 
 .calendar-monthly-span-bar--todo,
@@ -1586,7 +1586,7 @@
   min-height: 0;
   font-size: 0.75rem;
   line-height: 1.35;
-  color: rgba(30, 61, 93, 0.64);
+  color: rgba(0, 0, 0, 0.64);
   pointer-events: none;
 }
 
@@ -1626,7 +1626,7 @@
 }
 
 .calendar-monthly-day-icon-btn:active {
-  background: rgba(30, 77, 123, 0.06);
+  background: rgba(0, 0, 0, 0.06);
 }
 
 .calendar-monthly-day-icons__img {
@@ -1663,8 +1663,8 @@
 
 /* 드래그 타깃 */
 .calendar-monthly-day.calendar-day-drag-over {
-  background: rgba(30, 61, 93, 0.1);
-  outline: 2px solid rgba(30, 61, 93, 0.35);
+  background: rgba(0, 0, 0, 0.1);
+  outline: 2px solid rgba(0, 0, 0, 0.35);
   outline-offset: -2px;
   z-index: 2;
 }
@@ -1736,7 +1736,7 @@
 
 .calendar-monthly-span-bar.is-past,
 .calendar-monthly-span-bar.is-past .calendar-monthly-span-bar-text {
-  color: rgba(30, 61, 93, 0.66);
+  color: rgba(0, 0, 0, 0.66);
 }
 
 .calendar-monthly-span-bar.is-past.calendar-monthly-span-bar--todo {
@@ -2166,11 +2166,11 @@
 .calendar-annual-cell--pad {
   pointer-events: none;
   cursor: default;
-  background: rgba(30, 61, 93, 0.045);
+  background: rgba(0, 0, 0, 0.045);
 }
 
 .calendar-annual-cell.weekend {
-  background: rgba(30, 61, 93, 0.035);
+  background: rgba(0, 0, 0, 0.035);
 }
 
 .calendar-annual-cell.today {
@@ -2297,7 +2297,7 @@
   .calendar-monthly-day-entries {
     font-size: 0.6875rem;
     line-height: 1.32;
-    color: rgba(30, 61, 93, 0.62);
+    color: rgba(0, 0, 0, 0.62);
   }
 
   .calendar-monthly-span-bar {
@@ -2469,7 +2469,7 @@
   margin: 0 0 0.85rem;
   padding: 0.85rem 1rem;
   border-bottom: 1px solid var(--lp-modal-border);
-  background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+  background: linear-gradient(180deg, #fafafa 0%, #fff 100%);
 }
 
 .calendar-event-bubble-heading {
@@ -2519,7 +2519,7 @@
 }
 
 .calendar-event-bubble-close:hover {
-  background: rgba(30, 77, 123, 0.08);
+  background: rgba(0, 0, 0, 0.08);
   color: var(--lp-modal-navy);
 }
 
@@ -2578,20 +2578,20 @@
 }
 
 .calendar-event-bubble-type-btn:hover {
-  border-color: rgba(30, 77, 123, 0.35);
+  border-color: rgba(0, 0, 0, 0.35);
   color: var(--lp-modal-navy);
 }
 
 .calendar-event-bubble-type-btn.active {
-  border-color: rgba(30, 77, 123, 0.55);
-  background: rgba(30, 77, 123, 0.08);
+  border-color: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.08);
   color: var(--lp-modal-navy);
   font-weight: 600;
 }
 
 .calendar-event-bubble-type-btn:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(30, 77, 123, 0.12);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12);
 }
 
 .calendar-event-bubble-label {
@@ -2626,8 +2626,8 @@
 }
 
 .calendar-event-bubble-input:focus {
-  border-color: rgba(30, 77, 123, 0.45);
-  box-shadow: 0 0 0 3px rgba(30, 77, 123, 0.12);
+  border-color: rgba(0, 0, 0, 0.45);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12);
 }
 
 .calendar-event-bubble-save {
@@ -2720,7 +2720,7 @@
 
 .calendar-day-expand-icon-btn--selected {
   border-style: solid;
-  border-color: rgba(30, 77, 123, 0.28);
+  border-color: rgba(0, 0, 0, 0.28);
   width: 2.35rem;
   padding: 0.28rem;
 }
@@ -2734,8 +2734,8 @@
 }
 
 .calendar-day-expand-icon-btn:hover {
-  border-color: rgba(30, 77, 123, 0.35);
-  background: rgba(30, 77, 123, 0.04);
+  border-color: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .calendar-day-expand-icon-btn__img {
@@ -2771,7 +2771,7 @@
   padding: 0.5rem 0.55rem;
   border: 1px solid var(--lp-modal-border);
   border-radius: 8px;
-  background: #f8fafc;
+  background: #fafafa;
   cursor: pointer;
   transition:
     background 0.1s ease,
@@ -2781,7 +2781,7 @@
 .calendar-day-expand-item.is-past .calendar-day-expand-text,
 .calendar-day-expand-item.is-past .calendar-day-expand-time,
 .calendar-day-expand-item.is-past .calendar-task-done-mark {
-  color: rgba(30, 61, 93, 0.58);
+  color: rgba(0, 0, 0, 0.58);
 }
 
 .calendar-day-expand-item.is-past .calendar-task-done-mark {
@@ -2789,8 +2789,8 @@
 }
 
 .calendar-day-expand-item:hover {
-  background: rgba(30, 77, 123, 0.06);
-  border-color: rgba(30, 77, 123, 0.2);
+  background: rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.2);
 }
 
 .calendar-day-expand-main {
@@ -2832,8 +2832,8 @@
 }
 
 .calendar-day-expand-add-btn:hover {
-  border-color: rgba(30, 77, 123, 0.35);
-  background: rgba(30, 77, 123, 0.04);
+  border-color: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.04);
   color: var(--lp-modal-accent-hover);
 }
 
@@ -2863,7 +2863,7 @@
 
 .calendar-event-bubble .calendar-event-bubble-revert:hover,
 .calendar-event-bubble .calendar-bar-revert-btn:hover {
-  border-color: rgba(30, 77, 123, 0.3);
+  border-color: rgba(0, 0, 0, 0.3);
   color: var(--lp-modal-navy);
 }
 
@@ -2928,7 +2928,7 @@
   margin: 0.28rem 0 0;
   font-size: 0.75rem;
   line-height: 1.45;
-  color: #64748b;
+  color: #666666;
 }
 
 .lp-calendar-budget-add-modal [data-legacy~="time-task-log-memo-section"] {
@@ -2991,14 +2991,14 @@
   font-weight: 600;
   padding: 0.45rem 0.75rem;
   border-radius: 8px;
-  border: 1px solid var(--cal-line-strong, #cbd5e1);
+  border: 1px solid var(--cal-line-strong, #cccccc);
   background: var(--cal-surface, #fff);
   color: #8b5c3a;
   cursor: pointer;
 }
 
 .lp-calendar-budget-add-modal .lp-calendar-expected-delete-btn:hover {
-  background: var(--cal-surface-muted, #f1f5f9);
+  background: var(--cal-surface-muted, #f2f2f2);
 }
 
 /* 예상 일정 모달 — 모바일 키보드(과제 기록 모달과 동일 원리) */
@@ -3189,6 +3189,6 @@
 }
 
 .calendar-task-edit-active {
-  outline: 2px solid rgba(30, 77, 123, 0.35);
+  outline: 2px solid rgba(0, 0, 0, 0.35);
   outline-offset: 1px;
 }

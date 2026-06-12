@@ -87,7 +87,7 @@
   box-shadow:
     0 12px 38px rgba(0, 25, 55, 0.24),
     inset 0 1px 0 rgba(255, 255, 255, 0.52),
-    inset 0 -1px 0 rgba(30, 77, 123, 0.12);
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12);
   box-sizing: border-box;
 }
 /* 얕은 상단 하이라이트 — 블러 위에서만 은은하게 */
@@ -355,7 +355,7 @@
   [data-legacy~="time-ledger-usage-history-heading-row"] {
   margin: 0;
   padding: 0.45rem 1rem 0.5rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid #f2f2f2;
   flex-shrink: 0;
   box-sizing: border-box;
   width: 100%;
@@ -384,7 +384,7 @@
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.01em;
-  color: #94a3b8;
+  color: #999999;
   line-height: 1.2;
 }
 [data-legacy~="time-ledger-view"]
@@ -418,7 +418,7 @@
   font-size: 1.0625rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: #1a2d45;
+  color: #111111;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   line-height: 1.15;
@@ -430,7 +430,7 @@
   [data-legacy~="time-ledger-day-overview-bar-wrap"] {
   flex-shrink: 0;
   padding: 0.5rem 1rem 0.625rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid #f2f2f2;
   box-sizing: border-box;
 }
 [data-legacy~="time-ledger-view"]
@@ -446,7 +446,7 @@
   width: 100%;
   height: 0.6875rem;
   border-radius: 999px;
-  background: #f1f5f9;
+  background: #f2f2f2;
   overflow: hidden;
 }
 [data-legacy~="time-ledger-view"]
@@ -481,7 +481,7 @@
   display: flex;
   justify-content: center;
   padding: 0.5rem 1rem 0.45rem;
-  border-bottom: 1px solid #f8fafc;
+  border-bottom: 1px solid #fafafa;
   box-sizing: border-box;
 }
 
@@ -551,7 +551,7 @@
   padding: 0.85rem 0.9rem 0.95rem;
   background: #fff;
   border-radius: 1rem;
-  box-shadow: 0 2px 14px rgba(30, 61, 93, 0.07);
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.07);
   box-sizing: border-box;
 }
 
@@ -559,7 +559,7 @@
   margin: 0;
   font-size: 0.9375rem;
   font-weight: 700;
-  color: #1e4d7b;
+  color: #000000;
   letter-spacing: -0.01em;
 }
 
@@ -567,7 +567,7 @@
   margin: 0.2rem 0 0.65rem;
   font-size: 0.75rem;
   font-weight: 500;
-  color: #94a3b8;
+  color: #999999;
 }
 
 .lp-tr2-card-grid {
@@ -582,27 +582,27 @@
   gap: 0.15rem;
   padding: 0.55rem 0.6rem;
   border-radius: 0.75rem;
-  background: rgba(30, 77, 123, 0.04);
+  background: rgba(0, 0, 0, 0.04);
   min-width: 0;
 }
 
 .lp-tr2-stat-label {
   font-size: 0.6875rem;
   font-weight: 600;
-  color: #64748b;
+  color: #666666;
 }
 
 .lp-tr2-stat-value {
   font-size: 1rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: #1a2d45;
+  color: #111111;
   line-height: 1.25;
 }
 
 .lp-tr2-stat-hint {
   font-size: 0.625rem;
-  color: #94a3b8;
+  color: #999999;
   line-height: 1.35;
 }
 
@@ -616,13 +616,13 @@
   margin: 0 0 0.75rem;
   padding: 0.85rem 0.65rem 0.75rem;
   border-radius: 0.85rem;
-  background: linear-gradient(165deg, rgba(30, 77, 123, 0.09), rgba(240, 244, 250, 0.95));
+  background: linear-gradient(165deg, rgba(0, 0, 0, 0.09), rgba(240, 244, 250, 0.95));
 }
 
 .lp-tr2-plan-hero-label {
   font-size: 0.6875rem;
   font-weight: 700;
-  color: #64748b;
+  color: #666666;
   letter-spacing: 0.03em;
 }
 
@@ -631,7 +631,7 @@
   font-weight: 800;
   line-height: 1.05;
   letter-spacing: -0.03em;
-  color: #1e4d7b;
+  color: #000000;
   font-variant-numeric: tabular-nums;
 }
 
@@ -639,7 +639,7 @@
   margin: 0.15rem 0 0;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #475569;
+  color: #4d4d4d;
   line-height: 1.4;
 }
 
@@ -659,7 +659,7 @@
 .lp-tr2-cat-compare-label {
   font-size: 0.6875rem;
   font-weight: 700;
-  color: #475569;
+  color: #4d4d4d;
   line-height: 1.2;
   overflow-wrap: anywhere;
 }
@@ -681,7 +681,7 @@
 .lp-tr2-cat-compare-tag {
   font-size: 0.5625rem;
   font-weight: 700;
-  color: #94a3b8;
+  color: #999999;
   white-space: nowrap;
 }
 
@@ -709,7 +709,7 @@
 .lp-tr2-plan-leak-items {
   margin: 0.35rem 0 0;
   font-size: 0.6875rem;
-  color: #64748b;
+  color: #666666;
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
@@ -719,7 +719,7 @@
   margin: 0;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #475569;
+  color: #4d4d4d;
   line-height: 1.45;
 }
 
@@ -744,7 +744,7 @@
 .lp-tr2-bar-label {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #64748b;
+  color: #666666;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
@@ -752,7 +752,7 @@
 .lp-tr2-bar-track {
   height: 0.65rem;
   border-radius: 999px;
-  background: #f1f5f9;
+  background: #f2f2f2;
   overflow: hidden;
 }
 
@@ -767,14 +767,14 @@
   font-size: 0.6875rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: #475569;
+  color: #4d4d4d;
   text-align: right;
 }
 
 .lp-tr2-chart-note {
   margin: 0.55rem 0 0;
   font-size: 0.75rem;
-  color: #64748b;
+  color: #666666;
   line-height: 1.45;
 }
 
@@ -822,7 +822,7 @@
   align-items: center;
   gap: 0.3rem;
   font-size: 0.6875rem;
-  color: #64748b;
+  color: #666666;
   white-space: nowrap;
 }
 
@@ -865,14 +865,14 @@
 .lp-tr2-sleep-stat {
   padding: 0.4rem 0.45rem;
   border-radius: 0.5rem;
-  background: #f8fafc;
+  background: #fafafa;
   min-width: 0;
 }
 
 .lp-tr2-sleep-stat-label {
   display: block;
   font-size: 0.625rem;
-  color: #94a3b8;
+  color: #999999;
   margin-bottom: 0.1rem;
 }
 
@@ -889,7 +889,7 @@
   display: block;
   margin-top: 0.08rem;
   font-size: 0.5625rem;
-  color: #94a3b8;
+  color: #999999;
   line-height: 1.3;
 }
 
@@ -910,10 +910,10 @@
 }
 
 .lp-tr2-emotion-trigger-table-head {
-  background: #f1f5f9;
+  background: #f2f2f2;
   font-size: 0.625rem;
   font-weight: 700;
-  color: #64748b;
+  color: #666666;
   border-bottom: 1px solid #e8edf2;
 }
 
@@ -923,7 +923,7 @@
 
 .lp-tr2-emotion-trigger-table-row {
   font-size: 0.75rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid #f2f2f2;
 }
 
 .lp-tr2-emotion-trigger-table-row:last-child {
@@ -932,7 +932,7 @@
 
 .lp-tr2-emotion-trigger-table-label {
   font-weight: 700;
-  color: #1a2d45;
+  color: #111111;
   overflow-wrap: anywhere;
   line-height: 1.35;
 }
@@ -941,20 +941,20 @@
   text-align: right;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
-  color: #475569;
+  color: #4d4d4d;
 }
 
 .lp-tr2-routine-weak-line {
   margin: 0;
   font-size: 0.75rem;
   line-height: 1.5;
-  color: #475569;
+  color: #4d4d4d;
   overflow-wrap: anywhere;
 }
 
 .lp-tr2-routine-weak-line-label {
   font-weight: 700;
-  color: #64748b;
+  color: #666666;
   white-space: nowrap;
 }
 
@@ -982,27 +982,27 @@
   flex: 0 0 100%;
   font-size: 0.6875rem;
   font-weight: 700;
-  color: #64748b;
+  color: #666666;
 }
 
 .lp-tr2-routine-block-name {
   font-size: 0.8125rem;
   font-weight: 800;
-  color: #1a2d45;
+  color: #111111;
 }
 
 .lp-tr2-routine-block-pct {
   margin-left: auto;
   font-size: 0.6875rem;
   font-weight: 700;
-  color: #64748b;
+  color: #666666;
   font-variant-numeric: tabular-nums;
 }
 
 .lp-tr2-routine-block-sub {
   margin: 0 0 0.45rem;
   font-size: 0.625rem;
-  color: #94a3b8;
+  color: #999999;
 }
 
 .lp-tr2-routine-badge {
@@ -1016,8 +1016,8 @@
 }
 
 .lp-tr2-routine-badge--ok {
-  background: rgba(30, 77, 123, 0.1);
-  color: #1e4d7b;
+  background: rgba(0, 0, 0, 0.1);
+  color: #000000;
 }
 
 .lp-tr2-routine-badge--warn {
@@ -1029,14 +1029,14 @@
   margin: 0;
   padding-left: 1rem;
   font-size: 0.75rem;
-  color: #475569;
+  color: #4d4d4d;
   line-height: 1.5;
 }
 
 .lp-tr2-sleep-chart-scroll-hint {
   margin: 0.2rem 0 0;
   font-size: 0.625rem;
-  color: #94a3b8;
+  color: #999999;
   text-align: center;
 }
 
@@ -1073,7 +1073,7 @@
   margin: 0 0 0.45rem;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #64748b;
+  color: #666666;
 }
 
 .lp-tr2-intake-panels {
@@ -1096,7 +1096,7 @@
 
 .lp-tr2-intake-panel {
   min-width: 0;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e5e5e5;
   border-radius: 0.55rem;
   overflow: hidden;
   background: #fff;
@@ -1108,16 +1108,16 @@
   justify-content: space-between;
   gap: 0.35rem;
   padding: 0.3rem 0.45rem;
-  background: #f8fafc;
-  border-bottom: 1px solid #f1f5f9;
+  background: #fafafa;
+  border-bottom: 1px solid #f2f2f2;
   font-size: 0.6875rem;
   font-weight: 700;
-  color: #475569;
+  color: #4d4d4d;
 }
 
 .lp-tr2-intake-panel-count {
   font-weight: 600;
-  color: #94a3b8;
+  color: #999999;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1136,7 +1136,7 @@
   grid-template-columns: 3.1rem 1fr;
   gap: 0.3rem 0.45rem;
   padding: 0.22rem 0.1rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid #f2f2f2;
   align-items: start;
 }
 
@@ -1147,7 +1147,7 @@
 .lp-tr2-intake-day-date {
   font-size: 0.625rem;
   font-weight: 600;
-  color: #94a3b8;
+  color: #999999;
   line-height: 1.35;
   white-space: nowrap;
 }
@@ -1171,21 +1171,21 @@
   margin: 0;
   padding: 0.25rem 0.1rem;
   font-size: 0.6875rem;
-  color: #94a3b8;
+  color: #999999;
   list-style: none;
 }
 
 .lp-tr2-media-empty {
   margin: 0;
   font-size: 0.8125rem;
-  color: #94a3b8;
+  color: #999999;
 }
 
 .lp-tr2-media-hero {
   margin-bottom: 0.55rem;
   padding: 0.5rem 0.6rem;
   border-radius: 0.55rem;
-  background: linear-gradient(135deg, #f0f4fa 0%, #f8fafc 100%);
+  background: linear-gradient(135deg, #f5f5f5 0%, #fafafa 100%);
   border: 1px solid #dbe4ef;
 }
 
@@ -1193,14 +1193,14 @@
   margin: 0;
   font-size: 0.9375rem;
   font-weight: 700;
-  color: #1e4d7b;
+  color: #000000;
   line-height: 1.35;
 }
 
 .lp-tr2-media-hero-sub {
   margin: 0.2rem 0 0;
   font-size: 0.6875rem;
-  color: #64748b;
+  color: #666666;
   line-height: 1.45;
 }
 
@@ -1208,14 +1208,14 @@
   margin: 0 0 0.35rem;
   font-size: 0.6875rem;
   font-weight: 700;
-  color: #64748b;
+  color: #666666;
 }
 
 .lp-tr2-media-tag-hint {
   margin: 0 0 0.55rem;
   font-size: 0.6875rem;
   line-height: 1.45;
-  color: #94a3b8;
+  color: #999999;
 }
 
 .lp-tr2-media-tag-block {
@@ -1227,7 +1227,7 @@
 }
 
 .lp-tr2-media-tag-block--conscious {
-  background: #f8fafc;
+  background: #fafafa;
   border-color: #dbe4ef;
 }
 
@@ -1240,11 +1240,11 @@
   margin: 0 0 0.22rem;
   font-size: 0.8125rem;
   font-weight: 700;
-  color: #1a2d45;
+  color: #111111;
 }
 
 .lp-tr2-media-tag-block--conscious .lp-tr2-media-tag-block-title {
-  color: #1e4d7b;
+  color: #000000;
 }
 
 .lp-tr2-media-tag-block--unconscious .lp-tr2-media-tag-block-title {
@@ -1255,7 +1255,7 @@
   margin: 0 0 0.5rem;
   font-size: 0.6875rem;
   line-height: 1.4;
-  color: #94a3b8;
+  color: #999999;
 }
 
 .lp-tr2-bar-row--media-tag {
@@ -1279,7 +1279,7 @@
 
 .lp-tr2-bar-row--media-tag .lp-tr2-bar-value {
   font-weight: 700;
-  color: #475569;
+  color: #4d4d4d;
 }
 
 .lp-tr2-media-days {
@@ -1309,20 +1309,20 @@
 .lp-tr2-media-day-block-date {
   font-size: 0.8125rem;
   font-weight: 700;
-  color: #1a2d45;
+  color: #111111;
 }
 
 .lp-tr2-media-day-block-time {
   font-size: 0.8125rem;
   font-weight: 700;
-  color: #475569;
+  color: #4d4d4d;
   font-variant-numeric: tabular-nums;
 }
 
 .lp-tr2-media-day-block-avail {
   margin: 0.18rem 0 0.45rem;
   font-size: 0.6875rem;
-  color: #94a3b8;
+  color: #999999;
   line-height: 1.35;
 }
 
@@ -1341,13 +1341,13 @@
 .lp-tr2-media-kind-panel {
   padding: 0.42rem 0.48rem;
   border-radius: 0.5rem;
-  background: #f8fafc;
+  background: #fafafa;
   border: 1px solid #eef2f7;
   min-width: 0;
 }
 
 .lp-tr2-media-kind-panel--conscious {
-  background: #f0f4fa;
+  background: #f5f5f5;
   border-color: #dbe4ef;
 }
 
@@ -1367,11 +1367,11 @@
 .lp-tr2-media-kind-panel-title {
   font-size: 0.6875rem;
   font-weight: 700;
-  color: #64748b;
+  color: #666666;
 }
 
 .lp-tr2-media-kind-panel--conscious .lp-tr2-media-kind-panel-title {
-  color: #1e4d7b;
+  color: #000000;
 }
 
 .lp-tr2-media-kind-panel--unconscious .lp-tr2-media-kind-panel-title {
@@ -1381,7 +1381,7 @@
 .lp-tr2-media-kind-panel-time {
   font-size: 0.6875rem;
   font-weight: 700;
-  color: #475569;
+  color: #4d4d4d;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1410,21 +1410,21 @@
 }
 
 .lp-tr2-media-kind-panel-label.is-empty {
-  color: #94a3b8;
+  color: #999999;
   font-style: italic;
 }
 
 .lp-tr2-media-kind-panel-meta {
   font-size: 0.6875rem;
   font-weight: 600;
-  color: #64748b;
+  color: #666666;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .lp-tr2-media-kind-panel-empty {
   font-size: 0.75rem;
-  color: #94a3b8;
+  color: #999999;
   list-style: none;
 }
 
@@ -1438,7 +1438,7 @@
   margin: 0 0 0.5rem;
   font-size: 0.6875rem;
   line-height: 1.4;
-  color: #94a3b8;
+  color: #999999;
 }
 
 .lp-tr2-media-compare-chart {
@@ -1505,7 +1505,7 @@
 .lp-tr2-media-compare-date {
   font-size: 0.5625rem;
   font-weight: 600;
-  color: #64748b;
+  color: #666666;
   text-align: center;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -1532,13 +1532,13 @@
   gap: 0.45rem 0.65rem;
   padding: 0.5rem 0.55rem;
   border-radius: 0.65rem;
-  background: #f8fafc;
+  background: #fafafa;
 }
 
 .lp-tr2-journal-date {
   font-size: 0.6875rem;
   font-weight: 600;
-  color: #94a3b8;
+  color: #999999;
   line-height: 1.35;
 }
 
@@ -1551,7 +1551,7 @@
   font-size: 0.875rem;
   font-weight: 600;
   line-height: 1.45;
-  color: #1a2d45;
+  color: #111111;
   overflow-wrap: anywhere;
 }
 
@@ -1559,21 +1559,21 @@
   margin: 0.15rem 0 0;
   font-size: 0.75rem;
   line-height: 1.4;
-  color: #64748b;
+  color: #666666;
 }
 
 .lp-tr2-journal-empty {
   margin: 0;
   padding: 0.35rem 0;
   font-size: 0.8125rem;
-  color: #94a3b8;
+  color: #999999;
   list-style: none;
 }
 
 .lp-tr2-action-block {
   padding: 0.65rem 0.7rem;
   border-radius: 0.75rem;
-  background: #f8fafc;
+  background: #fafafa;
   margin-bottom: 0.45rem;
 }
 
@@ -1593,39 +1593,39 @@
   margin: 0;
   font-size: 0.8125rem;
   font-weight: 700;
-  color: #1e4d7b;
+  color: #000000;
 }
 
 .lp-tr2-action-block-sum {
   font-size: 0.8125rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: #475569;
+  color: #4d4d4d;
   flex-shrink: 0;
 }
 
 .lp-tr2-action-block-only-time {
   margin: 0;
   font-size: 0.8125rem;
-  color: #64748b;
+  color: #666666;
 }
 
 .lp-tr2-rating-insight {
   margin: 0.7rem 0 0;
   padding: 0.6rem 0.7rem;
   border-radius: 0.65rem;
-  background: #f0f4fa;
+  background: #f5f5f5;
   border: 1px solid #dbe4ef;
   font-size: 0.8125rem;
   line-height: 1.5;
-  color: #475569;
+  color: #4d4d4d;
 }
 
 .lp-tr2-rating-block {
   margin-top: 0.85rem;
   padding: 0.75rem 0.72rem 0.8rem;
   border-radius: 0.75rem;
-  background: #f8fafc;
+  background: #fafafa;
   border: 1px solid #eef2f7;
 }
 
@@ -1637,7 +1637,7 @@
   margin: 0 0 0.28rem;
   font-size: 0.8125rem;
   font-weight: 700;
-  color: #1e4d7b;
+  color: #000000;
   letter-spacing: -0.01em;
 }
 
@@ -1645,7 +1645,7 @@
   margin: 0 0 0.62rem;
   font-size: 0.6875rem;
   line-height: 1.45;
-  color: #94a3b8;
+  color: #999999;
 }
 
 .lp-tr2-rating-block .lp-tr2-bars {
@@ -1671,13 +1671,13 @@
   white-space: nowrap;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #475569;
+  color: #4d4d4d;
 }
 
 .lp-tr2-bars--compact .lp-tr2-bar-row--rating .lp-tr2-bar-label {
   text-align: right;
   font-size: 0.6875rem;
-  color: #64748b;
+  color: #666666;
 }
 
 .lp-tr2-bar-row--rating .lp-tr2-bar-track {
@@ -1699,7 +1699,7 @@
   min-width: 2.75rem;
   font-size: 0.6875rem;
   font-weight: 700;
-  color: #1e4d7b;
+  color: #000000;
   text-align: right;
   white-space: nowrap;
 }
@@ -1707,7 +1707,7 @@
 .lp-tr2-bar-value--rating .lp-tr2-bar-value-star {
   font-size: 0.625rem;
   line-height: 1;
-  color: #64748b;
+  color: #666666;
 }
 
 .lp-tr2-rating-hour-chart {
@@ -1777,7 +1777,7 @@
 }
 
 .lp-tr2-rating-hour-axis-tick.is-major {
-  color: #64748b;
+  color: #666666;
   font-weight: 700;
   font-size: 0.625rem;
 }
@@ -1828,13 +1828,13 @@
 .lp-tr2-rating-weekday-label {
   font-size: 0.6875rem;
   font-weight: 700;
-  color: #64748b;
+  color: #666666;
 }
 
 .lp-tr2-rating-weekday-score {
   font-size: 0.625rem;
   font-weight: 700;
-  color: #1e4d7b;
+  color: #000000;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1852,7 +1852,7 @@
   gap: 0.28rem;
   font-size: 0.625rem;
   font-weight: 600;
-  color: #64748b;
+  color: #666666;
 }
 
 .lp-tr2-rating-chart-legend-swatch {
@@ -1873,7 +1873,7 @@
   margin: 0.55rem 0 0;
   font-size: 0.75rem;
   line-height: 1.45;
-  color: #64748b;
+  color: #666666;
 }
 
 .lp-tr2-rating-peak-note::before {
@@ -1888,7 +1888,7 @@
   gap: 0.55rem;
   margin-top: 0.72rem;
   padding-top: 0.62rem;
-  border-top: 1px dashed #e2e8f0;
+  border-top: 1px dashed #e5e5e5;
 }
 
 .lp-tr2-rating-peak-col {
@@ -1908,13 +1908,13 @@
 
 .lp-tr2-rating-peak-col--low {
   background: #fff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e5e5e5;
 }
 
 .lp-tr2-rating-peak-label {
   font-size: 0.6875rem;
   font-weight: 700;
-  color: #64748b;
+  color: #666666;
 }
 
 .lp-tr2-rating-peak-col--high .lp-tr2-rating-peak-label {
@@ -1924,7 +1924,7 @@
 .lp-tr2-rating-peak-item {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #1a2d45;
+  color: #111111;
   font-variant-numeric: tabular-nums;
   line-height: 1.35;
 }
@@ -1945,13 +1945,13 @@
   margin: 0 0 0.35rem;
   font-size: 0.75rem;
   font-weight: 700;
-  color: #475569;
+  color: #4d4d4d;
 }
 
 .lp-tr2-meal-list-empty {
   margin: 0;
   font-size: 0.75rem;
-  color: #94a3b8;
+  color: #999999;
 }
 
 .lp-tr2-meal-list {
@@ -1997,21 +1997,21 @@
 .lp-tr2-donut-split-label {
   font-size: 0.625rem;
   font-weight: 700;
-  color: #64748b;
+  color: #666666;
   width: 100%;
 }
 
 .lp-tr2-donut-split-chip strong {
   font-size: 0.8125rem;
   font-weight: 700;
-  color: #1a2d45;
+  color: #111111;
   font-variant-numeric: tabular-nums;
 }
 
 .lp-tr2-donut-split-pct {
   font-size: 0.6875rem;
   font-weight: 700;
-  color: #475569;
+  color: #4d4d4d;
 }
 
 .lp-tr2-donut-split-chip--prod .lp-tr2-donut-split-pct {
@@ -2068,13 +2068,13 @@
 .lp-tr2-donut-cap {
   font-size: 0.625rem;
   font-weight: 600;
-  color: #94a3b8;
+  color: #999999;
 }
 
 .lp-tr2-donut-total {
   font-size: 0.875rem;
   font-weight: 700;
-  color: #1a2d45;
+  color: #111111;
   font-variant-numeric: tabular-nums;
   line-height: 1.25;
 }
@@ -2083,7 +2083,7 @@
   margin-top: 0.1rem;
   font-size: 0.625rem;
   font-weight: 600;
-  color: #64748b;
+  color: #666666;
 }
 
 .lp-tr2-donut-legend {
@@ -2156,7 +2156,7 @@
 .lp-tr2-donut-legend-meta {
   font-size: 0.6875rem;
   font-weight: 700;
-  color: #64748b;
+  color: #666666;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   flex-shrink: 0;
@@ -2165,7 +2165,7 @@
 .lp-tr2-donut-legend-bar {
   height: 0.35rem;
   border-radius: 999px;
-  background: #f1f5f9;
+  background: #f2f2f2;
   overflow: hidden;
 }
 
@@ -2178,7 +2178,7 @@
 .lp-tr2-donut-legend-empty {
   margin: 0;
   font-size: 0.8125rem;
-  color: #94a3b8;
+  color: #999999;
   line-height: 1.5;
 }
 
@@ -2253,7 +2253,7 @@
   font-size: 0.4375rem;
   font-weight: 600;
   letter-spacing: 0;
-  color: #94a3b8;
+  color: #999999;
   line-height: 1;
   text-align: center;
   font-variant-numeric: tabular-nums;
@@ -2276,8 +2276,8 @@
   min-width: 0;
   box-sizing: border-box;
   border-radius: 3px;
-  border: 1px dashed #e2e8f0;
-  background: #f1f5f9;
+  border: 1px dashed #e5e5e5;
+  background: #f2f2f2;
 }
 
 .time-ledger-day-timebox-matrix-cell--sideincome,
@@ -2328,8 +2328,8 @@
 .time-ledger-day-timebox-matrix-cell--nonproductive,
 [data-legacy~="time-ledger-view"]
   .time-ledger-day-timebox-matrix-cell--nonproductive {
-  background: #e5eafa;
-  border-color: #e5eafa;
+  background: #ececec;
+  border-color: #ececec;
   border-style: solid;
   color: #000000;
 }
@@ -2389,7 +2389,7 @@
 .time-ledger-day-timebox-matrix-cell--interactive:focus-visible,
 [data-legacy~="time-ledger-view"]
   .time-ledger-day-timebox-matrix-cell--interactive:focus-visible {
-  outline: 2px solid #1e4d7b;
+  outline: 2px solid #000000;
   outline-offset: 1px;
 }
 
@@ -2405,7 +2405,7 @@
   padding: 0.75rem 0.25rem 0;
   text-align: center;
   font-size: 0.8125rem;
-  color: #94a3b8;
+  color: #999999;
   line-height: 1.4;
 }
 
@@ -2422,7 +2422,7 @@
   font-size: 0.9375rem;
   font-weight: 500;
   letter-spacing: -0.02em;
-  color: #64748b;
+  color: #666666;
   line-height: 1.45;
 }
 
@@ -2496,7 +2496,7 @@
   min-height: 0;
   font-size: 0.5rem;
   font-weight: 700;
-  color: #64748b;
+  color: #666666;
   line-height: 1;
   display: flex;
   align-items: center;
@@ -2529,7 +2529,7 @@
 [data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-day-label {
   font-size: 0.375rem;
   font-weight: 600;
-  color: #94a3b8;
+  color: #999999;
   line-height: 1;
   text-align: center;
   font-variant-numeric: tabular-nums;
@@ -2581,7 +2581,7 @@
 .time-ledger-productivity-heatmap-cell--out-range,
 [data-legacy~="time-ledger-view"]
   .time-ledger-productivity-heatmap-cell--out-range {
-  background: #f8fafc;
+  background: #fafafa;
   opacity: 0.55;
 }
 
@@ -2592,7 +2592,7 @@
   .time-ledger-productivity-heatmap-cell--no-data:not(
     .time-ledger-productivity-heatmap-cell--out-range
   ) {
-  background: #e2e8f0;
+  background: #e5e5e5;
 }
 
 .time-ledger-productivity-heatmap-cell--lv1,
@@ -2631,7 +2631,7 @@
   .time-ledger-productivity-heatmap-cell--lv3:focus-visible,
 [data-legacy~="time-ledger-view"]
   .time-ledger-productivity-heatmap-cell--lv4:focus-visible {
-  outline: 2px solid #1e4d7b;
+  outline: 2px solid #000000;
   outline-offset: 1px;
 }
 
@@ -2644,7 +2644,7 @@
   gap: 0.2rem;
   font-size: 0.5625rem;
   font-weight: 500;
-  color: #94a3b8;
+  color: #999999;
 }
 
 .time-ledger-productivity-heatmap-legend-category,
@@ -2654,7 +2654,7 @@
   font-size: 0.625rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: #64748b;
+  color: #666666;
 }
 
 .time-ledger-productivity-heatmap-legend-end,
@@ -2681,8 +2681,8 @@
 [data-legacy~="time-ledger-filter-add-row"] {
   width: 100%;
   box-sizing: border-box;
-  border-top: 1px solid #e8ecf2;
-  border-bottom: 1px solid #e8ecf2;
+  border-top: 1px solid #ececec;
+  border-bottom: 1px solid #ececec;
   padding-top: 0.45rem;
   padding-bottom: 0.45rem;
 }
@@ -2816,7 +2816,7 @@
 .time-filter-day-next:focus-visible,
 [data-legacy~="time-filter-day-prev"]:focus-visible,
 [data-legacy~="time-filter-day-next"]:focus-visible {
-  outline: 2px solid #94a3b8;
+  outline: 2px solid #999999;
   outline-offset: 2px;
 }
 /* 시간 사용내역 타임라인 — 기록 없음 */
@@ -2827,7 +2827,7 @@
   text-align: center;
   font-size: 0.75rem;
   line-height: 1.45;
-  color: #94a3b8;
+  color: #999999;
 }
 
 /* 다음 예정(예상 일정) — 사용내역 카드와 동일 그리드, 회색 톤 */
@@ -2844,8 +2844,8 @@
 [data-legacy~="time-ledger-view"]
   .diary-tab5-ledger-log-wrap
   .time-ledger-next-expected-card::before {
-  background: #f8fafc;
-  border: 1px dashed #cbd5e1;
+  background: #fafafa;
+  border: 1px dashed #cccccc;
 }
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
@@ -2863,7 +2863,7 @@
   .diary-tab5-ledger-log-wrap
   .time-ledger-next-expected-card
   .calendar-1day-timeline-card-end {
-  color: #94a3b8;
+  color: #999999;
 }
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
@@ -2915,7 +2915,7 @@
   font-weight: 650;
   line-height: 1.35;
   letter-spacing: -0.02em;
-  color: #94a3b8;
+  color: #999999;
   word-break: keep-all;
   overflow-wrap: anywhere;
 }
@@ -2951,28 +2951,28 @@
 
 .time-ledger-view .time-ledger-next-expected-start-btn,
 [data-legacy~="time-ledger-view"] .time-ledger-next-expected-start-btn {
-  border: 1px solid #94a3b8;
+  border: 1px solid #999999;
   background: #fff;
-  color: #475569;
+  color: #4d4d4d;
 }
 
 .time-ledger-view .time-ledger-next-expected-start-btn:hover,
 [data-legacy~="time-ledger-view"] .time-ledger-next-expected-start-btn:hover {
-  border-color: #64748b;
-  color: #1e4d7b;
+  border-color: #666666;
+  color: #000000;
 }
 
 .time-ledger-view .time-ledger-next-expected-skip-btn,
 [data-legacy~="time-ledger-view"] .time-ledger-next-expected-skip-btn {
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e5e5e5;
   background: transparent;
-  color: #94a3b8;
+  color: #999999;
 }
 
 .time-ledger-view .time-ledger-next-expected-skip-btn:hover,
 [data-legacy~="time-ledger-view"] .time-ledger-next-expected-skip-btn:hover {
-  border-color: #cbd5e1;
-  color: #64748b;
+  border-color: #cccccc;
+  color: #666666;
   background: rgba(255, 255, 255, 0.65);
 }
 
@@ -3015,7 +3015,7 @@
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.4rem 0.55rem;
-  background: var(--idea-cloud, #f0f4fa);
+  background: var(--idea-cloud, #f5f5f5);
   border-radius: 0.4rem;
   box-sizing: border-box;
 }
@@ -3024,14 +3024,14 @@
   font-size: 0.8125rem;
   font-weight: 600;
   letter-spacing: -0.02em;
-  color: #3a6ea8;
+  color: #444444;
   line-height: 1.3;
 }
 .time-ledger-view [data-legacy~="time-ledger-day-group-total"],
 [data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-day-group-total"] {
   font-size: 0.75rem;
   font-weight: 500;
-  color: #64748b;
+  color: #666666;
   flex-shrink: 0;
   white-space: nowrap;
 }
@@ -3144,7 +3144,7 @@
   content: "";
   grid-column: 2 / 5;
   grid-row: 1 / 4;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e5e5e5;
   border-radius: 0.65rem;
   pointer-events: none;
   z-index: 0;
@@ -3159,7 +3159,8 @@
 [data-legacy~="time-ledger-view"]
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout.calendar-1day-timeline-card--in-progress::before {
-  background: var(--idea-cloud, #f0f4fa);
+  /* 진행중 음영 없음 — 표시는 시작시간 아래 「진행중..」 글씨로만 */
+  background: transparent;
 }
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
@@ -3169,7 +3170,7 @@
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card--usage-layout.calendar-1day-timeline-card--in-progress
   .calendar-1day-timeline-card-end {
-  color: #94a3b8;
+  color: #999999;
 }
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
@@ -3271,7 +3272,7 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
   line-height: 1.2;
-  color: #94a3b8;
+  color: #999999;
   position: relative;
   z-index: 2;
   background: #fff;
@@ -3295,7 +3296,7 @@
   margin-bottom: var(--time-ledger-usage-time-line-h);
   border: none;
   border-radius: 1px;
-  background: #dbe3ec;
+  background: #e0e0e0;
   z-index: 1;
 }
 .time-ledger-view
@@ -3323,7 +3324,7 @@
   letter-spacing: -0.02em;
   line-height: 1.2;
   white-space: nowrap;
-  color: #94a3b8;
+  color: #999999;
   position: relative;
   z-index: 2;
   background: #fff;
@@ -3447,8 +3448,8 @@
   min-height: 1rem;
   padding: 0.04rem 0.3rem;
   border-radius: 999px;
-  background: #f1f5f9;
-  color: #64748b;
+  background: #f2f2f2;
+  color: #666666;
   font-size: 0.6875rem;
   font-weight: 500;
   line-height: 1.15;
@@ -3534,7 +3535,7 @@
   .time-ledger-usage-stats-col
   .time-ledger-usage-rating-stars
   .is-off {
-  color: #e2e8f0;
+  color: #e5e5e5;
 }
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
@@ -3552,7 +3553,7 @@
   border-top: none;
   margin-inline: var(--time-ledger-usage-card-inset);
   padding: 0.15rem 0 var(--time-ledger-usage-card-inset);
-  color: #94a3b8;
+  color: #999999;
   font-size: 0.8125rem;
   line-height: 1.45;
 }
@@ -3622,7 +3623,7 @@
   .time-usage-range-task-section {
   margin-top: 0;
   padding-top: 0.65rem;
-  border-top: 1px solid rgba(30, 61, 93, 0.1);
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
   min-width: 0;
 }
 
@@ -3723,7 +3724,7 @@
   height: 1rem;
   margin: 0;
   flex-shrink: 0;
-  accent-color: var(--lp-modal-accent, #1e4d7b);
+  accent-color: var(--lp-modal-accent, #000000);
 }
 
 [data-legacy~="time-ledger-view"]
@@ -3731,7 +3732,7 @@
   .time-usage-range-task-list-wrap {
   margin: 0 0 0.15rem 0.15rem;
   padding-left: 0.35rem;
-  border-left: 2px solid rgba(30, 61, 93, 0.08);
+  border-left: 2px solid rgba(0, 0, 0, 0.08);
   transition: opacity 0.15s ease;
   min-height: 0;
 }
@@ -3801,7 +3802,7 @@
   text-align: center;
   font-size: 0.8125rem;
   line-height: 1.5;
-  color: #94a3b8;
+  color: #999999;
 }
 
 .time-ledger-memo-feed-list {
@@ -3815,7 +3816,7 @@
   padding: 0.85rem 0 0.35rem;
   font-size: 0.6875rem;
   font-weight: 600;
-  color: #94a3b8;
+  color: #999999;
   font-variant-numeric: tabular-nums;
 }
 
@@ -3847,7 +3848,7 @@
   font-size: 0.6875rem;
   font-weight: 600;
   line-height: 1.4;
-  color: #94a3b8;
+  color: #999999;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -3858,7 +3859,7 @@
   font-size: 0.6875rem;
   font-weight: 600;
   line-height: 1.4;
-  color: #94a3b8;
+  color: #999999;
   text-align: right;
   overflow-wrap: anywhere;
 }
@@ -3889,7 +3890,7 @@
   [data-legacy~="time-task-log-content-type-section"] {
   margin-top: 0.85rem;
   padding-top: 0.65rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid #e5e5e5;
 }
 
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
@@ -3935,7 +3936,7 @@
   [data-legacy~="time-task-log-rating-section"] {
   margin-top: 0.85rem;
   padding-top: 0.65rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid #e5e5e5;
 }
 
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
@@ -3972,7 +3973,7 @@
   margin: 0;
   font-size: 1.65rem;
   line-height: 1;
-  color: #cbd5e1;
+  color: #cccccc;
   cursor: pointer;
   transition: color 0.12s ease, transform 0.12s ease;
 }
@@ -4115,7 +4116,7 @@
   .time-task-log-emotion-label {
   font-size: 0.5625rem;
   line-height: 1.25;
-  color: #64748b;
+  color: #666666;
   text-align: center;
   word-break: keep-all;
 }
@@ -4128,7 +4129,7 @@
   )
   .time-task-log-emotion-rating-btn--on
   .time-task-log-emotion-label {
-  color: #1e4d7b;
+  color: #000000;
   font-weight: 600;
 }
 
@@ -4147,7 +4148,7 @@
   .diary-tab5-ledger-log-wrap
   .time-ledger-emotion-rating-label {
   font-size: 0.625rem;
-  color: #64748b;
+  color: #666666;
   line-height: 1.2;
 }
 
@@ -4224,11 +4225,11 @@
 
 .lp-tr2-focus-compare-label {
   font-weight: 700;
-  color: #475569;
+  color: #4d4d4d;
 }
 
 .lp-tr2-focus-compare-value {
-  color: #1e4d7b;
+  color: #000000;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -4237,7 +4238,7 @@
   margin: 0;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #475569;
+  color: #4d4d4d;
   line-height: 1.45;
 }
 
@@ -4273,7 +4274,7 @@
 [data-legacy~="time-ledger-view"]
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-item:not(.time-ledger-next-expected-item) {
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e5e5e5;
 }
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
@@ -4281,7 +4282,7 @@
 [data-legacy~="time-ledger-view"]
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-item:not(.time-ledger-next-expected-item):first-child {
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid #e5e5e5;
 }
 
 /* 카드 개별 테두리 제거(진행중 배경 채움은 유지) */
@@ -4314,6 +4315,23 @@
   /* 세로 구분선이 행 위아래 가로줄까지 닿게 — 카드 상하 패딩 제거(내부 inset 여백은 유지) */
   padding-block: 0;
   --time-ledger-usage-time-col-w: 3.5rem;
+}
+
+/* 진행중 — 시작시간 아래 작은 글씨 */
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card-start
+  .time-ledger-card-start-live-tag,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card-start
+  .time-ledger-card-start-live-tag {
+  display: block;
+  margin-top: 0.18rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #999999;
 }
 
 /* 시작시간 — 행 전체 기준 세로 가운데 */
@@ -4370,5 +4388,5 @@
   width: 1px;
   margin: 0;
   border-radius: 0;
-  background: #e2e8f0;
+  background: #e5e5e5;
 }

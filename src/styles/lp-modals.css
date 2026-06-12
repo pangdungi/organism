@@ -1,18 +1,18 @@
 /**
- * 앱 공통 모달 — 화이트 패널 + 딥 네이비 텍스트, 강조 #1E4D7B
+ * 앱 공통 모달 — 화이트 패널 + 검정 텍스트, 강조 #000000
  * .time-task-setup-modal / .todo-list-modal / 일기 작성 등 동일 계열
  */
 
 /* [auto] data-legacy 병기 선택자 — scripts/time-js-main-only-classes.mjs */
 :root {
-  --lp-modal-accent: #1e4d7b;
-  --lp-modal-accent-hover: #173c5f;
-  --lp-modal-subcat-active-bg: #e3f2fa;
-  --lp-modal-subcat-active-border: #9ec5e6;
+  --lp-modal-accent: #000000;
+  --lp-modal-accent-hover: #222222;
+  --lp-modal-subcat-active-bg: #f0f0f0;
+  --lp-modal-subcat-active-border: #bdbdbd;
   --lp-modal-navy: #000000;
-  --lp-modal-navy-muted: #3d5670;
-  --lp-modal-border: #e2e8f0;
-  --lp-modal-muted: #64748b;
+  --lp-modal-navy-muted: #4d4d4d;
+  --lp-modal-border: #e5e5e5;
+  --lp-modal-muted: #666666;
   --lp-modal-surface: #ffffff;
   --lp-modal-backdrop: rgba(21, 43, 69, 0.45);
   --lp-modal-danger: #b91c1c;
@@ -33,7 +33,7 @@
   text-transform: none;
   font-family: inherit;
   color: var(--lp-modal-navy-muted);
-  background: #f1f5f9;
+  background: #f2f2f2;
   border: 1px solid var(--lp-modal-border);
   border-radius: 999px;
   vertical-align: middle;
@@ -44,13 +44,13 @@
 .lp-task-badge--builtin,
 [data-legacy~="lp-task-badge--builtin"] {
   color: var(--lp-modal-navy-muted);
-  background: #f8fafc;
+  background: #fafafa;
 }
 .lp-task-badge--kpi,
 [data-legacy~="lp-task-badge--kpi"] {
   color: var(--lp-modal-accent);
-  background: rgba(30, 77, 123, 0.07);
-  border-color: rgba(30, 77, 123, 0.25);
+  background: rgba(0, 0, 0, 0.07);
+  border-color: rgba(0, 0, 0, 0.25);
 }
 .lp-choice-chip-row,
 [data-legacy~="lp-choice-chip-row"] {
@@ -81,7 +81,7 @@ button[data-legacy~="lp-choice-chip"] {
 }
 button.lp-choice-chip:hover,
 button[data-legacy~="lp-choice-chip"]:hover {
-  border-color: rgba(30, 77, 123, 0.35);
+  border-color: rgba(0, 0, 0, 0.35);
   color: var(--lp-modal-navy);
 }
 button.lp-choice-chip.lp-choice-chip--on,
@@ -575,7 +575,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   gap: 0.75rem;
   padding: 0.85rem 1rem;
   border-bottom: 1px solid var(--lp-modal-border);
-  background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+  background: linear-gradient(180deg, #fafafa 0%, #fff 100%);
 }
 .time-task-setup-title,
 .todo-list-modal-title,
@@ -625,7 +625,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 [data-legacy~="time-task-setup-close"]:hover,
 [data-legacy~="todo-list-modal-close"]:hover,
 [data-legacy~="diary-desktop-compose-modal-close"]:hover {
-  background: rgba(30, 77, 123, 0.08);
+  background: rgba(0, 0, 0, 0.08);
   color: var(--lp-modal-navy);
 }
 .time-task-setup-body,
@@ -711,7 +711,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   line-height: 1.35;
   color: var(--lp-modal-navy-muted);
   background: transparent;
-  border: 1px solid rgba(30, 77, 123, 0.14);
+  border: 1px solid rgba(0, 0, 0, 0.14);
   border-radius: 999px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -721,12 +721,12 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
     background 0.12s ease;
 }
 .todo-task-date-quick-btn:hover {
-  border-color: rgba(30, 77, 123, 0.28);
+  border-color: rgba(0, 0, 0, 0.28);
   color: var(--lp-modal-navy);
-  background: rgba(30, 77, 123, 0.05);
+  background: rgba(0, 0, 0, 0.05);
 }
 .todo-task-date-quick-btn:focus-visible {
-  outline: 2px solid rgba(30, 77, 123, 0.35);
+  outline: 2px solid rgba(0, 0, 0, 0.35);
   outline-offset: 1px;
 }
 .time-task-log-expense-amount-name-row,
@@ -760,7 +760,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   input[name="time-add-task-name"]:disabled {
   opacity: 0.55;
   cursor: not-allowed;
-  color: var(--text-body, #475569);
+  color: var(--text-body, #4d4d4d);
 }
 .time-task-setup-modal.time-add-task-modal input[name="addProd"]:disabled,
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-add-task-modal"]
@@ -797,21 +797,21 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 }
 .time-add-task-icon-picker__trigger:hover,
 [data-legacy~="time-add-task-icon-picker__trigger"]:hover {
-  border-color: rgba(30, 77, 123, 0.35);
-  background: rgba(30, 77, 123, 0.04);
+  border-color: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.04);
 }
 .time-add-task-icon-picker__trigger--selected,
 [data-legacy~="time-add-task-icon-picker__trigger--selected"] {
   border-style: solid;
   border-color: var(--lp-modal-accent);
-  background: rgba(30, 77, 123, 0.08);
-  box-shadow: 0 0 0 2px rgba(30, 77, 123, 0.12);
+  background: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.12);
 }
 .time-add-task-icon-picker__trigger:focus-visible,
 [data-legacy~="time-add-task-icon-picker__trigger"]:focus-visible {
   outline: none;
   border-color: var(--lp-modal-accent);
-  box-shadow: 0 0 0 3px rgba(30, 77, 123, 0.18);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.18);
 }
 
 /* 과제 추가 모달 위 — 아이콘 선택 내부 모달 */
@@ -867,7 +867,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   padding: 0 0.25rem;
   font-size: 0.8125rem;
   line-height: 1.45;
-  color: var(--lp-modal-navy-muted, #64748b);
+  color: var(--lp-modal-navy-muted, #666666);
   text-align: center;
 }
 .time-add-task-icon-modal-grid,
@@ -901,20 +901,20 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 }
 .time-add-task-icon-modal-item:hover,
 [data-legacy~="time-add-task-icon-modal-item"]:hover {
-  border-color: rgba(30, 77, 123, 0.2);
-  background: rgba(30, 77, 123, 0.04);
+  border-color: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.04);
 }
 .time-add-task-icon-modal-item--selected,
 [data-legacy~="time-add-task-icon-modal-item--selected"] {
   border-color: var(--lp-modal-accent);
-  background: rgba(30, 77, 123, 0.08);
-  box-shadow: 0 0 0 2px rgba(30, 77, 123, 0.12);
+  background: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.12);
 }
 .time-add-task-icon-modal-item:focus-visible,
 [data-legacy~="time-add-task-icon-modal-item"]:focus-visible {
   outline: none;
   border-color: var(--lp-modal-accent);
-  box-shadow: 0 0 0 3px rgba(30, 77, 123, 0.18);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.18);
 }
 .time-add-task-icon-modal-item-icon,
 [data-legacy~="time-add-task-icon-modal-item-icon"] {
@@ -1119,8 +1119,8 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 [data-legacy~="time-task-log-feedback"]:focus,
 [data-legacy~="time-task-log-tag-input"]:focus,
 [data-legacy~="todo-task-edit-name"]:focus {
-  border-color: rgba(30, 77, 123, 0.45);
-  box-shadow: 0 0 0 3px rgba(30, 77, 123, 0.12);
+  border-color: rgba(0, 0, 0, 0.45);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12);
 }
 .time-task-log-feedback,
 [data-legacy~="time-task-log-feedback"] {
@@ -1162,7 +1162,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 .lp-modal-datetime-card,
 [data-legacy~="lp-modal-datetime-card"] {
   padding: 0.45rem 0.55rem;
-  background: #f8fafc;
+  background: #fafafa;
   border: 1px solid var(--lp-modal-border);
   border-radius: 10px;
   margin-bottom: 0.65rem;
@@ -1247,7 +1247,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   [data-legacy~="time-task-log-datetime-sep"] {
   display: flex;
   align-items: center;
-  color: #cbd5e1;
+  color: #cccccc;
   font-weight: 300;
   user-select: none;
   flex-shrink: 0;
@@ -1296,7 +1296,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 .time-task-log-datetime-main-row .time-task-log-datetime-sep,
 [data-legacy~="time-task-log-datetime-main-row"]
   [data-legacy~="time-task-log-datetime-sep"] {
-  color: #cbd5e1;
+  color: #cccccc;
   font-weight: 300;
   user-select: none;
   flex-shrink: 0;
@@ -1323,8 +1323,8 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 .time-task-log-time-end:focus,
 [data-legacy~="time-task-log-time-start"]:focus,
 [data-legacy~="time-task-log-time-end"]:focus {
-  border-color: rgba(30, 77, 123, 0.45);
-  box-shadow: 0 0 0 2px rgba(30, 77, 123, 0.1);
+  border-color: rgba(0, 0, 0, 0.45);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
 }
 /* 과제 기록·예상 일정 — 시작·마감 입력 동일 너비, 마감 X는 입력창 내부 */
 .time-task-log-datetime-time-row .time-task-log-time-start,
@@ -1443,7 +1443,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   border-radius: 50%;
   background: rgba(248, 250, 252, 0.96);
   box-shadow: none;
-  color: #94a3b8;
+  color: #999999;
   font-size: 0;
   line-height: 0;
   cursor: pointer;
@@ -1468,13 +1468,13 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 }
 .time-task-log-date-clear:hover,
 [data-legacy~="time-task-log-date-clear"]:hover {
-  color: #64748b;
+  color: #666666;
   background: #eef2f6;
   border-color: rgba(100, 116, 139, 0.34);
 }
 .time-task-log-date-clear:focus-visible,
 [data-legacy~="time-task-log-date-clear"]:focus-visible {
-  outline: 1px solid rgba(30, 77, 123, 0.28);
+  outline: 1px solid rgba(0, 0, 0, 0.28);
   outline-offset: 1px;
 }
 /* 모달 날짜(할일 수정·조회 기간·스탬프 일자 등): native-wrap 전체 너비 — class·data-legacy 혼용 */
@@ -1596,12 +1596,12 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 }
 .time-task-log-time-adjust-btn:hover,
 [data-legacy~="time-task-log-time-adjust-btn"]:hover {
-  border-color: rgba(30, 77, 123, 0.35);
+  border-color: rgba(0, 0, 0, 0.35);
   color: var(--lp-modal-accent);
 }
 .time-task-log-time-adjust-btn:active,
 [data-legacy~="time-task-log-time-adjust-btn"]:active {
-  background: #f1f5f9;
+  background: #f2f2f2;
 }
 .time-task-log-memo-section,
 [data-legacy~="time-task-log-memo-section"] {
@@ -1652,8 +1652,8 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 }
 .time-task-log-link-strip-add:hover,
 [data-legacy~="time-task-log-link-strip-add"]:hover {
-  background: rgba(30, 77, 123, 0.06);
-  border-color: rgba(30, 77, 123, 0.25);
+  background: rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.25);
 }
 .time-task-log-todo-row,
 .time-task-log-expense-row,
@@ -1903,7 +1903,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 .todo-list-modal-cancel:hover,
 [data-legacy~="time-task-select-clear-btn"]:hover,
 [data-legacy~="todo-list-modal-cancel"]:hover {
-  border-color: rgba(30, 77, 123, 0.3);
+  border-color: rgba(0, 0, 0, 0.3);
   color: var(--lp-modal-navy);
 }
 .time-task-log-delete-btn,
@@ -1983,8 +1983,8 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   font-weight: 600;
   font-family: inherit;
   color: var(--lp-modal-accent);
-  background: rgba(30, 77, 123, 0.06);
-  border: 1px dashed rgba(30, 77, 123, 0.35);
+  background: rgba(0, 0, 0, 0.06);
+  border: 1px dashed rgba(0, 0, 0, 0.35);
   border-radius: 10px;
   cursor: pointer;
 }
@@ -2002,7 +2002,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   font-weight: 500;
   font-family: inherit;
   color: var(--lp-modal-navy-muted);
-  background: #f1f5f9;
+  background: #f2f2f2;
   border: 1px solid transparent;
   border-radius: 999px;
   cursor: pointer;
@@ -2274,7 +2274,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   font-family: inherit;
   font-weight: 500;
   color: var(--lp-modal-navy-muted);
-  background: #f1f5f9;
+  background: #f2f2f2;
   border: 1px solid var(--lp-modal-border);
   border-radius: 8px;
   cursor: pointer;
@@ -2343,7 +2343,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   padding: 0;
   border: none;
   border-radius: 999px;
-  background: #e2e8f0;
+  background: #e5e5e5;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
@@ -2402,7 +2402,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 }
 .todo-settings-color-modal-swatch.selected {
   border-color: var(--lp-modal-accent);
-  box-shadow: 0 0 0 2px rgba(30, 77, 123, 0.22);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.22);
 }
 .todo-settings-color-row-chip {
   display: flex;
@@ -2423,7 +2423,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   border: 1px solid var(--lp-modal-border);
   border-radius: 10px;
   cursor: pointer;
-  background: #f1f5f9;
+  background: #f2f2f2;
   -webkit-tap-highlight-color: transparent;
 }
 .todo-settings-color-chip-inner {
@@ -2503,14 +2503,14 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 }
 .time-task-log-task-dropdown-trigger:hover,
 [data-legacy~="time-task-log-task-dropdown-trigger"]:hover {
-  border-color: rgba(30, 77, 123, 0.35);
+  border-color: rgba(0, 0, 0, 0.35);
 }
 .time-task-log-task-dropdown-trigger.has-value,
 [data-legacy~="time-task-log-task-dropdown-trigger"][data-legacy~="has-value"] {
   font-weight: 700;
   color: var(--lp-modal-navy);
-  border-color: rgba(30, 77, 123, 0.42);
-  background: rgba(30, 77, 123, 0.04);
+  border-color: rgba(0, 0, 0, 0.42);
+  background: rgba(0, 0, 0, 0.04);
 }
 .time-task-log-task-dropdown-panel,
 [data-legacy~="time-task-log-task-dropdown-panel"] {
@@ -2638,8 +2638,8 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   )
   .time-task-log-task-dropdown.is-open
   [data-legacy~="time-task-log-task-dropdown-trigger"] {
-  border-color: rgba(30, 77, 123, 0.42);
-  box-shadow: 0 0 0 1px rgba(30, 77, 123, 0.1);
+  border-color: rgba(0, 0, 0, 0.42);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
 }
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   .time-task-log-task-dropdown.is-open
@@ -2680,7 +2680,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   flex-shrink: 0;
   padding: 0.45rem 0.5rem;
   border-bottom: 1px solid var(--lp-modal-border);
-  background: #f8fafc;
+  background: #fafafa;
 }
 .time-task-log-task-dropdown-search-inner,
 [data-legacy~="time-task-log-task-dropdown-search-inner"] {
@@ -2737,8 +2737,8 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   font-family: inherit;
   line-height: 1.2;
   color: var(--lp-modal-navy-muted);
-  background: #f1f5f9;
-  border: 1px solid rgba(30, 77, 123, 0.12);
+  background: #f2f2f2;
+  border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 999px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -2749,7 +2749,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   font-weight: 700;
   background: var(--lp-modal-accent);
   border-color: var(--lp-modal-accent);
-  box-shadow: 0 2px 8px rgba(30, 77, 123, 0.22);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
 }
 .time-task-log-task-dropdown-options,
 [data-legacy~="time-task-log-task-dropdown-options"] {
@@ -2776,7 +2776,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 }
 .time-task-log-task-dropdown-option:hover,
 [data-legacy~="time-task-log-task-dropdown-option"]:hover {
-  background: rgba(30, 77, 123, 0.06);
+  background: rgba(0, 0, 0, 0.06);
 }
 .time-task-log-task-dropdown-option-label,
 [data-legacy~="time-task-log-task-dropdown-option-label"] {
@@ -2899,7 +2899,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   font-size: 0.75rem;
   font-weight: 500;
   color: var(--lp-modal-navy-muted);
-  background: #f1f5f9;
+  background: #f2f2f2;
   border: 1px solid var(--lp-modal-border);
   border-radius: 999px;
 }
@@ -3138,7 +3138,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   gap: 0.5rem;
   flex-shrink: 0;
   padding: 0.7rem 0.85rem;
-  background: #1a3348;
+  background: #1a1a1a;
   color: #fff;
 }
 .lp-task-log-mobile-picker-toolbar-btn,
@@ -3194,8 +3194,8 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   font-family: inherit;
   line-height: 1.2;
   color: var(--lp-modal-navy-muted);
-  background: #f1f5f9;
-  border: 1px solid rgba(30, 77, 123, 0.12);
+  background: #f2f2f2;
+  border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 999px;
   cursor: pointer;
   pointer-events: auto;
@@ -3208,7 +3208,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   font-weight: 700;
   background: var(--lp-modal-accent);
   border-color: var(--lp-modal-accent);
-  box-shadow: 0 2px 8px rgba(30, 77, 123, 0.22);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
 }
 .lp-task-log-mobile-picker-bucket-header,
 [data-legacy~="lp-task-log-mobile-picker-bucket-header"] {
@@ -3331,7 +3331,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   gap: 0.5rem;
   flex-shrink: 0;
   padding: 0.7rem 0.85rem;
-  background: #1a3348;
+  background: #1a1a1a;
   color: #fff;
 }
 .lp-task-log-mobile-search-header-btn,
@@ -3356,7 +3356,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   flex-shrink: 0;
   padding: 0.65rem 0.85rem;
   border-bottom: 1px solid var(--lp-modal-border);
-  background: #f8fafc;
+  background: #fafafa;
 }
 .lp-task-log-mobile-search-input,
 [data-legacy~="lp-task-log-mobile-search-input"] {
@@ -3379,7 +3379,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 }
 .lp-task-log-mobile-search-input:focus,
 [data-legacy~="lp-task-log-mobile-search-input"]:focus {
-  background-color: rgba(30, 77, 123, 0.08);
+  background-color: rgba(0, 0, 0, 0.08);
 }
 .lp-task-log-mobile-search-list,
 [data-legacy~="lp-task-log-mobile-search-list"] {
@@ -3409,7 +3409,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 }
 .lp-task-log-mobile-search-item:active,
 [data-legacy~="lp-task-log-mobile-search-item"]:active {
-  background: rgba(30, 77, 123, 0.06);
+  background: rgba(0, 0, 0, 0.06);
 }
 .lp-task-log-mobile-search-radio,
 [data-legacy~="lp-task-log-mobile-search-radio"] {
@@ -3417,7 +3417,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   width: 1.125rem;
   height: 1.125rem;
   margin: 0;
-  accent-color: #1e4d7b;
+  accent-color: #000000;
 }
 .lp-task-log-mobile-search-item-icon-wrap,
 [data-legacy~="lp-task-log-mobile-search-item-icon-wrap"] {
@@ -3450,7 +3450,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 [data-lp-floating-select-panel] [data-lp-modal-simple-select-item] {
   min-height: 2.85rem;
   padding: 0.72rem 1rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e5e5e5;
   box-sizing: border-box;
   background: #fff;
 }
@@ -3462,11 +3462,11 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   [data-lp-modal-simple-select-item][aria-selected="true"],
 [data-lp-floating-select-panel]
   [data-lp-modal-simple-select-item][aria-selected="true"] {
-  background: rgba(30, 77, 123, 0.06);
+  background: rgba(0, 0, 0, 0.06);
 }
 [data-lp-modal-simple-select-sheet] [data-lp-modal-simple-select-item]:active,
 [data-lp-floating-select-panel] [data-lp-modal-simple-select-item]:active {
-  background: rgba(30, 77, 123, 0.1);
+  background: rgba(0, 0, 0, 0.1);
 }
 
 /* 과제 다이얼 시트 열림 — 기록 모달보다 위에 */
@@ -3560,7 +3560,7 @@ html.lp-task-log-mobile-picker-open
   gap: 0.75rem;
   padding: 0.85rem 1rem;
   border-bottom: 1px solid var(--lp-modal-border);
-  background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+  background: linear-gradient(180deg, #fafafa 0%, #fff 100%);
 }
 .asset-expense-inline-panel-head-text {
   flex: 1 1 auto;
@@ -3622,7 +3622,7 @@ html.lp-task-log-mobile-picker-open
   gap: 0.35rem;
   padding: 0.5rem 1rem 0.6rem;
   border-bottom: 1px solid var(--lp-modal-border);
-  background: #f8fafc;
+  background: #fafafa;
 }
 .asset-asset-modal-tab {
   margin: 0;
@@ -3639,7 +3639,7 @@ html.lp-task-log-mobile-picker-open
   -webkit-tap-highlight-color: transparent;
 }
 .asset-asset-modal-tab:hover {
-  border-color: rgba(30, 77, 123, 0.35);
+  border-color: rgba(0, 0, 0, 0.35);
   color: var(--lp-modal-navy);
 }
 .asset-asset-modal-tab.active {
@@ -3666,7 +3666,7 @@ html.lp-task-log-mobile-picker-open
   gap: 0.75rem;
   padding: 0.85rem 1rem;
   border-bottom: 1px solid var(--lp-modal-border);
-  background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+  background: linear-gradient(180deg, #fafafa 0%, #fff 100%);
 }
 .asset-settings-tabs {
   flex-shrink: 0;
@@ -3675,7 +3675,7 @@ html.lp-task-log-mobile-picker-open
   gap: 0.35rem;
   padding: 0.5rem 1rem 0.6rem;
   border-bottom: 1px solid var(--lp-modal-border);
-  background: #f8fafc;
+  background: #fafafa;
 }
 .asset-settings-tab-btn {
   margin: 0;
@@ -3691,7 +3691,7 @@ html.lp-task-log-mobile-picker-open
   -webkit-tap-highlight-color: transparent;
 }
 .asset-settings-tab-btn:hover {
-  border-color: rgba(30, 77, 123, 0.35);
+  border-color: rgba(0, 0, 0, 0.35);
   color: var(--lp-modal-navy);
 }
 .asset-settings-tab-btn.active {
@@ -3753,8 +3753,8 @@ html.lp-task-log-mobile-picker-open
 }
 .asset-expense-transaction-modal .asset-expense-input-name:focus,
 .asset-expense-transaction-modal .asset-expense-input-amount:focus {
-  border-color: rgba(30, 77, 123, 0.45);
-  box-shadow: 0 0 0 3px rgba(30, 77, 123, 0.12);
+  border-color: rgba(0, 0, 0, 0.45);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12);
 }
 .asset-settings-input {
   width: 100%;
@@ -3772,8 +3772,8 @@ html.lp-task-log-mobile-picker-open
     box-shadow 0.12s ease;
 }
 .asset-settings-input:focus {
-  border-color: rgba(30, 77, 123, 0.45);
-  box-shadow: 0 0 0 3px rgba(30, 77, 123, 0.12);
+  border-color: rgba(0, 0, 0, 0.45);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12);
 }
 .asset-settings-col-title {
   margin: 0 0 0.5rem;
@@ -3897,8 +3897,8 @@ html.lp-task-log-mobile-picker-open
   -webkit-tap-highlight-color: transparent;
 }
 .lp-budget-template-modal .lp-budget-template-pick-btn:hover {
-  border-color: rgba(30, 77, 123, 0.35);
-  background: rgba(30, 77, 123, 0.04);
+  border-color: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.04);
 }
 .lp-budget-template-modal
   .lp-budget-template-list-item--selected
