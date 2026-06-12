@@ -131,7 +131,7 @@
   pointer-events: none;
 }
 
-/* 일정 탭 하단 Month·Week·Day·Year — PizzaClub·#1d40ba (앱 글꼴 변경과 무관) */
+/* 일정 탭 하단 Month·Week·Day·Year — PizzaClub·검정 (앱 글꼴 변경과 무관) */
 .app-footer-actions .app-footer-icon-btn[data-lp-schedule-cal-subview] {
   width: auto;
   min-width: 2.75rem;
@@ -141,7 +141,7 @@
   font-size: 0.9375rem;
   font-weight: 700;
   line-height: 1.1;
-  color: #1d40ba;
+  color: #000000;
   letter-spacing: 0.02em;
 }
 
@@ -188,7 +188,7 @@
 .calendar-annual-row-month {
   font-family: var(--lp-calendar-month-font-family);
   font-synthesis: none;
-  color: #1d40ba;
+  color: #000000;
 }
 
 .calendar-view:not(.calendar-view--mobile-workschedule) .calendar-nav-month {
@@ -198,7 +198,7 @@
 .calendar-view:not(.calendar-view--mobile-workschedule) .calendar-monthly-top-bar-date-num {
   font-family: var(--lp-calendar-month-font-family);
   font-synthesis: none;
-  color: #1d40ba;
+  color: #000000;
 }
 
 .calendar-nav-month {
@@ -590,7 +590,7 @@
   background: #e5eafa;
   border-color: #e5eafa;
   border-style: solid;
-  color: #1d40ba;
+  color: #000000;
 }
 
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--labeled {
@@ -1237,7 +1237,7 @@
   font-weight: 600;
   line-height: 1.35;
   letter-spacing: -0.02em;
-  color: #1d40ba;
+  color: #000000;
 }
 
 .calendar-1day-timeline-card-end {
@@ -1272,7 +1272,7 @@
   margin-top: 0;
   font-size: 0.8125rem;
   line-height: 1.5;
-  color: #1d40ba;
+  color: #000000;
   white-space: pre-wrap;
   word-break: break-word;
   min-width: 0;
@@ -1350,10 +1350,10 @@
   flex-direction: column;
 }
 
-/* 할 일·일정 본문 — 오늘·미래 #1d40ba, 지난 날짜는 회색 */
+/* 할 일·일정 본문 — 오늘·미래 검정, 지난 날짜는 회색 */
 .calendar-view-todo .todo-card-name,
 .calendar-view-todo .todo-card-dates {
-  color: #1d40ba;
+  color: #000000;
 }
 
 .calendar-view-todo
@@ -1368,7 +1368,7 @@
 .calendar-monthly-span-bar--todo,
 .calendar-monthly-span-bar--range,
 .calendar-monthly-span-bar--schedule-strip {
-  color: #1d40ba;
+  color: #000000;
 }
 
 .calendar-monthly-layout.calendar-view-with-subtabs > .calendar-view-top-row {
@@ -1943,7 +1943,7 @@
   font: inherit;
   font-size: 0.75rem;
   line-height: 1.35;
-  color: #1d40ba;
+  color: #000000;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -2804,7 +2804,7 @@
 .calendar-day-expand-text {
   font-size: 0.8125rem;
   font-weight: 500;
-  color: #1d40ba;
+  color: #000000;
   word-break: break-word;
 }
 

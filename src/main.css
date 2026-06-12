@@ -10,7 +10,7 @@
 }
 
 :root {
-  --text-ink: #1d40ba;
+  --text-ink: #000000;
   --lp-safe-top: env(safe-area-inset-top, 0px);
   /* 하단 세이프: 시스템 inset의 60% (34px 기기 ≈ 20px) */
   --lp-safe-bottom: calc(env(safe-area-inset-bottom, 0px) * 0.6);

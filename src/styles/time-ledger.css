@@ -2331,7 +2331,7 @@
   background: #e5eafa;
   border-color: #e5eafa;
   border-style: solid;
-  color: #1d40ba;
+  color: #000000;
 }
 
 .time-ledger-day-timebox-matrix-cell--labeled,
@@ -3409,6 +3409,12 @@
   justify-content: flex-start;
   gap: 0.38rem;
 }
+/* 연속 기록 — 다음 카드 시작시간과 같은 마감시간은 숨김(자리는 유지해 레일 정렬 보존) */
+.time-ledger-view .calendar-1day-timeline-card-end.lp-end-dup-hidden,
+[data-legacy~="time-ledger-view"] .calendar-1day-timeline-card-end.lp-end-dup-hidden {
+  visibility: hidden;
+}
+
 .time-ledger-view .time-ledger-usage-icon-cell,
 [data-legacy~="time-ledger-view"] .time-ledger-usage-icon-cell {
   display: flex;
@@ -3543,9 +3549,9 @@
   min-width: 0;
   align-self: start;
   text-align: left;
-  border-top: 1px solid #e2e8f0;
+  border-top: none;
   margin-inline: var(--time-ledger-usage-card-inset);
-  padding: 0.55rem 0 var(--time-ledger-usage-card-inset);
+  padding: 0.15rem 0 var(--time-ledger-usage-card-inset);
   color: #94a3b8;
   font-size: 0.8125rem;
   line-height: 1.45;
@@ -4237,4 +4243,132 @@
 
 .lp-tr2-bar-row--focus-recipe .lp-tr2-bar-label {
   min-width: 4.5rem;
+}
+
+/* ---------------------------------------------------------------------------
+ * 시간 사용내역 타임라인 — 표(저널) 형식
+ * 왼쪽: 시작시간만 세로 가운데 · 세로 구분선 · 행은 가로줄로 붙임
+ * (다음 예정 카드 .time-ledger-next-expected-card 는 기존 모양 유지)
+ * ------------------------------------------------------------------------- */
+.time-ledger-view .diary-tab5-ledger-log-wrap .calendar-1day-timeline-list,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-list {
+  gap: 0;
+}
+.time-ledger-view .diary-tab5-ledger-log-wrap .time-ledger-day-card-stack,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .time-ledger-day-card-stack,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  [data-legacy~="time-ledger-day-card-stack"] {
+  gap: 0;
+}
+
+/* 행 구분 가로줄 — 마지막 행 아래에도 줄을 둬 표 마감 */
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-item:not(.time-ledger-next-expected-item),
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-item:not(.time-ledger-next-expected-item) {
+  border-bottom: 1px solid #e2e8f0;
+}
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-item:not(.time-ledger-next-expected-item):first-child,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-item:not(.time-ledger-next-expected-item):first-child {
+  border-top: 1px solid #e2e8f0;
+}
+
+/* 카드 개별 테두리 제거(진행중 배경 채움은 유지) */
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout:not(
+    .time-ledger-next-expected-card
+  )::before,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout:not(
+    .time-ledger-next-expected-card
+  )::before {
+  border: none;
+  border-radius: 0;
+}
+
+/* 시간열 — 카드 왼쪽 패딩을 열 너비에 합쳐 세로선 기준 가로 가운데 정렬이 정확해지게 */
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout:not(
+    .time-ledger-next-expected-card
+  ),
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout:not(
+    .time-ledger-next-expected-card
+  ) {
+  padding-left: 0;
+  /* 세로 구분선이 행 위아래 가로줄까지 닿게 — 카드 상하 패딩 제거(내부 inset 여백은 유지) */
+  padding-block: 0;
+  --time-ledger-usage-time-col-w: 3.5rem;
+}
+
+/* 시작시간 — 행 전체 기준 세로 가운데 */
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout:not(
+    .time-ledger-next-expected-card
+  )
+  .calendar-1day-timeline-card-start,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout:not(
+    .time-ledger-next-expected-card
+  )
+  .calendar-1day-timeline-card-start {
+  grid-row: 1 / 4;
+  align-self: center;
+  padding-bottom: 0;
+  background: transparent;
+  font-size: 0.9375rem;
+  color: #000000;
+}
+
+/* 마감시간·세로 진행선 숨김 — 세로줄은 시간열/내용 구분선으로 교체 */
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout:not(
+    .time-ledger-next-expected-card
+  )
+  .calendar-1day-timeline-card-end,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout:not(
+    .time-ledger-next-expected-card
+  )
+  .calendar-1day-timeline-card-end {
+  display: none;
+}
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout:not(
+    .time-ledger-next-expected-card
+  )
+  .calendar-1day-timeline-card-time-connector,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout:not(
+    .time-ledger-next-expected-card
+  )
+  .calendar-1day-timeline-card-time-connector {
+  grid-row: 1 / 4;
+  justify-self: end;
+  align-self: stretch;
+  width: 1px;
+  margin: 0;
+  border-radius: 0;
+  background: #e2e8f0;
 }

@@ -9,7 +9,7 @@ const CHART = {
   axis: "#cbd5e1",
   target: "#f59e0b",
   area: "rgba(37, 99, 235, 0.12)",
-  label: "#1d40ba",
+  label: "#000000",
   subLabel: "#64748b",
 };
 

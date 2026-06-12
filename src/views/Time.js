@@ -4820,6 +4820,8 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
 
   const item = document.createElement("div");
   item.className = "calendar-1day-timeline-item";
+  item.dataset.lpStartClock = startClock;
+  item.dataset.lpEndClock = endClock;
 
   const card = document.createElement("div");
   lpSetClasses(
@@ -10138,6 +10140,18 @@ export function render(opts = {}) {
           el,
         );
         card._onRowDelete = handleCardDelete;
+        /* 연속 기록 — 앞 기록 마감시간 == 이 기록 시작시간이면 같은 시각 중복 표시라 앞 카드 마감만 숨김(저장은 유지) */
+        const prevItem = parent.lastElementChild;
+        const sc = card.dataset.lpStartClock || "";
+        if (
+          prevItem?.classList?.contains("calendar-1day-timeline-item") &&
+          /^\d{2}:\d{2}$/.test(sc) &&
+          prevItem.dataset.lpEndClock === sc
+        ) {
+          prevItem
+            .querySelector(".calendar-1day-timeline-card-end")
+            ?.classList.add("lp-end-dup-hidden");
+        }
         parent.appendChild(card);
       };
 

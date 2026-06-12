@@ -1,4 +1,4 @@
-// public/toolbaricons 아래 .svg → 같은 이름 .png (없을 때만 생성, sharp)
+// public/toolbaricons 아래 .svg → 같은 이름 .png (PNG가 없거나 SVG가 더 최신일 때 생성, sharp)
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -34,9 +34,19 @@ function targetSize(svgPath) {
   return SIZE_BY_DIR[top] ?? SIZE_BY_DIR.default;
 }
 
+/** PNG가 있어도 SVG가 더 최신이면 다시 변환 — 아이콘은 SVG 파일 교체만으로 갱신 */
+function pngIsUpToDate(svgPath, pngPath) {
+  if (!fs.existsSync(pngPath)) return false;
+  try {
+    return fs.statSync(pngPath).mtimeMs >= fs.statSync(svgPath).mtimeMs;
+  } catch (_) {
+    return false;
+  }
+}
+
 async function svgToPng(svgPath) {
   const pngPath = svgPath.replace(/\.svg$/i, ".png");
-  if (fs.existsSync(pngPath) && !FORCE) return { svgPath, pngPath, skipped: true };
+  if (pngIsUpToDate(svgPath, pngPath) && !FORCE) return { svgPath, pngPath, skipped: true };
   const size = targetSize(svgPath);
   await sharp(svgPath, { density: 288 })
     .resize(size, size, {
