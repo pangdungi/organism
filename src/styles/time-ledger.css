@@ -3071,8 +3071,8 @@
   --time-ledger-usage-time-col-w: 2.85rem;
   --time-ledger-usage-time-line-h: calc(0.8125rem * 1.2);
   --time-ledger-usage-icon-cell-size: 3.1rem;
-  --time-ledger-usage-icon-img-size: 2.35rem;
-  --time-ledger-usage-icon-cell-padding: 0.18rem;
+  --time-ledger-usage-icon-img-size: var(--time-ledger-usage-icon-cell-size, 3.1rem);
+  --time-ledger-usage-icon-cell-padding: 0;
 }
 /* 상세명 표시 카드도 아이콘 크기는 일반 카드와 동일 (예외 없음) */
 .time-ledger-view
@@ -3348,8 +3348,8 @@
   min-height: var(--time-ledger-usage-icon-cell-size, 3.1rem);
   max-height: var(--time-ledger-usage-icon-cell-size, 3.1rem);
   margin: var(--time-ledger-usage-card-inset) 0
-    var(--time-ledger-usage-card-inset) var(--time-ledger-usage-card-inset);
-  padding: var(--time-ledger-usage-icon-cell-padding, 0.18rem);
+    var(--time-ledger-usage-card-inset) 0.15rem;
+  padding: var(--time-ledger-usage-icon-cell-padding, 0);
   border-radius: 0.55rem;
   box-sizing: border-box;
   background: transparent;
@@ -3418,17 +3418,18 @@
 
 .time-ledger-view .time-ledger-usage-icon-cell,
 [data-legacy~="time-ledger-view"] .time-ledger-usage-icon-cell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: stretch;
   flex-shrink: 0;
   background: transparent;
+  overflow: hidden;
 }
 .time-ledger-view .time-ledger-usage-icon-cell > img,
 [data-legacy~="time-ledger-view"] .time-ledger-usage-icon-cell > img {
-  width: var(--time-ledger-usage-icon-img-size, 2.35rem);
-  height: var(--time-ledger-usage-icon-img-size, 2.35rem);
-  max-width: none;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
   display: block;
 }
@@ -4242,8 +4243,35 @@
   line-height: 1.45;
 }
 
+.lp-tr2-bar-row--focus-recipe {
+  grid-template-columns: minmax(5rem, 7.25rem) minmax(0, 1fr) 2.55rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.1rem 0;
+}
+
 .lp-tr2-bar-row--focus-recipe .lp-tr2-bar-label {
-  min-width: 4.5rem;
+  min-width: 0;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #4d4d4d;
+}
+
+.lp-tr2-bar-row--focus-recipe .lp-tr2-bar-track {
+  height: 0.48rem;
+  min-width: 0;
+  border-radius: 999px;
+  background: #e8edf3;
+  overflow: hidden;
+}
+
+.lp-tr2-bar-row--focus-recipe .lp-tr2-bar-value {
+  flex-shrink: 0;
+  font-weight: 700;
 }
 
 /* ---------------------------------------------------------------------------

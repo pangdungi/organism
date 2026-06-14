@@ -167,6 +167,29 @@ function formatHoursMinutesShort(totalMinutes) {
   return `${h}시간 ${m}분`;
 }
 
+function buildPlanningHabitLine(plannedDays, totalDays) {
+  const total = Math.max(0, Math.round(Number(totalDays) || 0));
+  const planned = Math.max(0, Math.round(Number(plannedDays) || 0));
+  if (total <= 0) return "";
+  const pct = total > 0 ? Math.round((planned / total) * 100) : 0;
+  if (planned === 0) {
+    return `조회 ${total}일 중 예상 일정을 적은 날이 없습니다. 캘린더에 타임박스를 넣으면 계획 습관을 볼 수 있어요.`;
+  }
+  if (total === 1) {
+    return "이 날은 예상 일정(타임박스)이 있습니다.";
+  }
+  if (pct >= 80) {
+    return `조회 ${total}일 중 ${planned}일(${pct}%)에 예상 일정을 적었습니다. 계획을 꾸준히 세우는 편이에요.`;
+  }
+  if (pct >= 50) {
+    return `조회 ${total}일 중 ${planned}일(${pct}%)에 예상 일정이 있습니다.`;
+  }
+  if (pct >= 20) {
+    return `조회 ${total}일 중 ${planned}일(${pct}%)만 예상 일정이 있습니다. 계획하는 날을 늘리면 이행 분석이 더 정확해집니다.`;
+  }
+  return `조회 ${total}일 중 ${planned}일(${pct}%)만 예상 일정이 있습니다. 평소 계획 빈도가 낮은 편이에요.`;
+}
+
 /**
  * @param {{ start: string, end: string }} range
  * @param {object[]} rows
@@ -174,10 +197,14 @@ function formatHoursMinutesShort(totalMinutes) {
 export function buildPlanAdherenceReportSnapshot(range, rows) {
   const start = normYmd(range?.start);
   const end = normYmd(range?.end || range?.start);
-  const empty = () => ({
+  const empty = (totalDays = 0) => ({
     hasPlanData: false,
-    dayCount: 0,
-    isSingleDay: true,
+    dayCount: totalDays,
+    totalDaysInPeriod: totalDays,
+    plannedDaysCount: 0,
+    planningHabitPct: 0,
+    planningHabitLine: buildPlanningHabitLine(0, totalDays),
+    isSingleDay: totalDays === 1,
     plannedMinutes: 0,
     executedMinutes: 0,
     adherencePct: 0,
@@ -194,11 +221,13 @@ export function buildPlanAdherenceReportSnapshot(range, rows) {
 
   const days = listDatesInclusive(start, end);
   const ledgerRows = Array.isArray(rows) ? rows : [];
+  const totalDaysInPeriod = days.length;
 
   let totalPlanned = 0;
   let totalExecuted = 0;
   let totalActualAll = 0;
   let totalLeak = 0;
+  let plannedDaysCount = 0;
   /** @type {Map<string, { planned: number, actual: number }>} */
   const catAgg = new Map();
   /** @type {Map<string, number>} */
@@ -209,7 +238,10 @@ export function buildPlanAdherenceReportSnapshot(range, rows) {
 
   for (const day of days) {
     const { plannedByTask, plannedNames } = plannedMetaForDay(day);
-    if (plannedByTask.size > 0) hasPlanData = true;
+    if (plannedByTask.size > 0) {
+      hasPlanData = true;
+      plannedDaysCount += 1;
+    }
     const actualByTask = actualByTaskForDay(ledgerRows, day);
 
     for (const [name, plannedMin] of plannedByTask.entries()) {
@@ -247,7 +279,22 @@ export function buildPlanAdherenceReportSnapshot(range, rows) {
 
   }
 
-  if (!hasPlanData) return empty();
+  const planningHabitPct =
+    totalDaysInPeriod > 0
+      ? Math.round((plannedDaysCount / totalDaysInPeriod) * 100)
+      : 0;
+  const planningHabitLine = buildPlanningHabitLine(
+    plannedDaysCount,
+    totalDaysInPeriod,
+  );
+
+  if (!hasPlanData) {
+    return {
+      ...empty(totalDaysInPeriod),
+      planningHabitPct,
+      planningHabitLine,
+    };
+  }
 
   const adherencePct =
     totalPlanned > 0
@@ -322,6 +369,10 @@ export function buildPlanAdherenceReportSnapshot(range, rows) {
   return {
     hasPlanData: true,
     dayCount: days.length,
+    totalDaysInPeriod,
+    plannedDaysCount,
+    planningHabitPct,
+    planningHabitLine,
     isSingleDay: days.length === 1,
     plannedMinutes: totalPlanned,
     executedMinutes: totalExecuted,

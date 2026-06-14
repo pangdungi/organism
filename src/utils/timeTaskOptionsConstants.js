@@ -250,6 +250,15 @@ export const CONTENT_DETAIL_TASK_NAMES = new Set([
   "무의식적 콘텐츠 소비",
 ]);
 
+/** 개인 위생 — 과제 기록 시 항목 선택 */
+export const PERSONAL_HYGIENE_DETAIL_TASK_NAMES = new Set([
+  "개인 위생",
+  "개인위생",
+]);
+
+/** 외모관리 — 과제 기록 시 항목 선택 */
+export const APPEARANCE_DETAIL_TASK_NAMES = new Set(["외모관리"]);
+
 /** 감정적이기 — 과제 기록 시 트리거(감정을 일으킨 상황) 선택 */
 export const EMOTIONAL_DETAIL_TASK_NAMES = new Set([EMOTIONAL_BUILTIN_TASK_NAME]);
 
@@ -263,7 +272,7 @@ export const EMOTION_TRIGGER_OPTIONS = [
   "돈·미래",
 ];
 
-/** 콘텐츠 소비 — time_ledger_entries.meal_detail 에 저장 (목록에서 1개 선택) */
+/** 콘텐츠 소비 — time_ledger_entries.meal_detail 에 저장 (복수 선택 가능) */
 export const CONTENT_TYPE_OPTIONS = [
   "인스타 릴스/피드",
   "쇼츠",
@@ -272,6 +281,7 @@ export const CONTENT_TYPE_OPTIONS = [
   "유튜브 영상(예능)",
   "유튜브 영상(지식)",
   "OTT",
+  "영화",
   "뉴스",
   "팟캐스트",
   "음악 스트리밍",
@@ -282,6 +292,25 @@ export const CONTENT_TYPE_OPTIONS = [
   "웹툰",
   "웹소설",
   "온라인 강좌",
+];
+
+/** 개인 위생 — time_ledger_entries.meal_detail 에 저장 */
+export const PERSONAL_HYGIENE_TYPE_OPTIONS = [
+  "구강케어",
+  "체모관리",
+  "샤워",
+  "목욕",
+  "손발톱 정리",
+];
+
+/** 외모관리 — time_ledger_entries.meal_detail 에 저장 */
+export const APPEARANCE_TYPE_OPTIONS = [
+  "네일 시술",
+  "미용시술",
+  "스킨케어",
+  "패션/코디",
+  "헤어 스타일링",
+  "화장",
 ];
 
 /** @param {string} value @returns {{ label: string, known: boolean }} */
@@ -329,6 +358,142 @@ export function isContentDetailTaskName(name) {
 }
 
 /** @param {string} name */
+export function isHygieneDetailTaskName(name) {
+  const n = String(name || "").trim();
+  return PERSONAL_HYGIENE_DETAIL_TASK_NAMES.has(n);
+}
+
+/** @param {string} name */
+export function isAppearanceDetailTaskName(name) {
+  const n = String(name || "").trim();
+  return APPEARANCE_DETAIL_TASK_NAMES.has(n);
+}
+
+/** @param {string} kind */
+export function isChipDetailTaskKind(kind) {
+  return kind === "content" || kind === "hygiene" || kind === "appearance";
+}
+
+/** @param {string} name */
+export function isChipDetailTaskName(name) {
+  return isChipDetailTaskKind(ledgerDetailTaskKind(name));
+}
+
+/** @param {string} taskName */
+export function ledgerChipDetailOptionsForTask(taskName) {
+  const kind = ledgerDetailTaskKind(taskName);
+  if (kind === "content") return CONTENT_TYPE_OPTIONS;
+  if (kind === "hygiene") return PERSONAL_HYGIENE_TYPE_OPTIONS;
+  if (kind === "appearance") return APPEARANCE_TYPE_OPTIONS;
+  return [];
+}
+
+/**
+ * @param {string} taskName
+ * @param {string} value
+ * @returns {{ label: string, known: boolean }}
+ */
+export function resolveChipDetailLabel(taskName, value) {
+  const v = String(value || "").trim();
+  if (!v) return { label: "", known: false };
+  const options = ledgerChipDetailOptionsForTask(taskName);
+  const found = options.find(
+    (opt) => opt === v || opt.toLowerCase() === v.toLowerCase(),
+  );
+  return found ? { label: found, known: true } : { label: v, known: false };
+}
+
+/** @param {string} taskName */
+export function ledgerChipDetailSectionLabel(taskName) {
+  const kind = ledgerDetailTaskKind(taskName);
+  if (kind === "content") return "콘텐츠 종류";
+  if (kind === "hygiene") return "개인위생";
+  if (kind === "appearance") return "외모관리";
+  return "";
+}
+
+/** 칩 상세 복수 선택 — meal_detail 저장·표시 구분자 */
+export const CHIP_DETAIL_STORE_SEPARATOR = " · ";
+
+/**
+ * @param {string} _taskName
+ * @param {string} raw
+ * @returns {string[]}
+ */
+export function parseChipDetailStoredValue(_taskName, raw) {
+  const s = String(raw ?? "").trim();
+  if (!s) return [];
+  if (s.includes(CHIP_DETAIL_STORE_SEPARATOR)) {
+    return s
+      .split(CHIP_DETAIL_STORE_SEPARATOR)
+      .map((p) => p.trim())
+      .filter(Boolean);
+  }
+  return [s];
+}
+
+/**
+ * @param {string} taskName
+ * @param {Iterable<string>} values
+ * @returns {string[]}
+ */
+export function normalizeChipDetailSelection(taskName, values) {
+  const tn = String(taskName || "").trim();
+  const options = ledgerChipDetailOptionsForTask(tn);
+  const optionOrder = new Map(options.map((o, i) => [o, i]));
+  const seen = new Set();
+  /** @type {string[]} */
+  const out = [];
+  for (const v of values || []) {
+    const resolved = resolveChipDetailLabel(tn, v);
+    const label = resolved.label;
+    if (!label || seen.has(label)) continue;
+    seen.add(label);
+    out.push(label);
+  }
+  out.sort((a, b) => {
+    const ia = optionOrder.has(a) ? optionOrder.get(a) : 999;
+    const ib = optionOrder.has(b) ? optionOrder.get(b) : 999;
+    if (ia !== ib) return ia - ib;
+    return a.localeCompare(b, "ko");
+  });
+  return out;
+}
+
+/**
+ * @param {string} taskName
+ * @param {Iterable<string>} values
+ */
+export function serializeChipDetailSelection(taskName, values) {
+  return normalizeChipDetailSelection(taskName, values).join(
+    CHIP_DETAIL_STORE_SEPARATOR,
+  );
+}
+
+/**
+ * @param {string} taskName
+ * @param {string} raw
+ */
+export function formatChipDetailDisplayText(taskName, raw) {
+  return serializeChipDetailSelection(
+    taskName,
+    parseChipDetailStoredValue(taskName, raw),
+  );
+}
+
+/**
+ * @param {string} taskName
+ * @param {string} raw
+ * @returns {string[]}
+ */
+export function chipDetailLabelsForReport(taskName, raw) {
+  return normalizeChipDetailSelection(
+    taskName,
+    parseChipDetailStoredValue(taskName, raw),
+  );
+}
+
+/** @param {string} name */
 export function isConversationDetailTaskName(name) {
   const n = canonicalMealTaskDisplayName(name);
   if (CONVERSATION_DETAIL_TASK_NAMES.has(n)) return true;
@@ -361,21 +526,25 @@ export function isLedgerFreeTextDetailTaskName(name) {
   );
 }
 
-/** 섭취·대화·외출·콘텐츠·감정 — time_ledger_entries.meal_detail 에 저장 */
+/** 섭취·대화·외출·콘텐츠·위생·외모·감정 — time_ledger_entries.meal_detail 에 저장 */
 export function isLedgerDetailTaskName(name) {
   return (
     isLedgerFreeTextDetailTaskName(name) ||
     isContentDetailTaskName(name) ||
+    isHygieneDetailTaskName(name) ||
+    isAppearanceDetailTaskName(name) ||
     isEmotionalDetailTaskName(name)
   );
 }
 
-/** @returns {"meal" | "conversation" | "outing" | "content" | "emotion" | null} */
+/** @returns {"meal" | "conversation" | "outing" | "content" | "hygiene" | "appearance" | "emotion" | null} */
 export function ledgerDetailTaskKind(name) {
   if (isMealDetailTaskName(name)) return "meal";
   if (isConversationDetailTaskName(name)) return "conversation";
   if (isOutingDetailTaskName(name)) return "outing";
   if (isContentDetailTaskName(name)) return "content";
+  if (isHygieneDetailTaskName(name)) return "hygiene";
+  if (isAppearanceDetailTaskName(name)) return "appearance";
   if (isEmotionalDetailTaskName(name)) return "emotion";
   return null;
 }
@@ -404,6 +573,8 @@ export function ledgerDetailLinePrefix(kind) {
   if (kind === "conversation") return "대화";
   if (kind === "outing") return "외출";
   if (kind === "content") return "콘텐츠";
+  if (kind === "hygiene") return "개인위생";
+  if (kind === "appearance") return "외모";
   if (kind === "emotion") return "트리거";
   return "";
 }

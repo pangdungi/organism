@@ -17,7 +17,12 @@ export function expectedSpanUsesDetailAsDisplayName(span) {
 export function expectedSpanDisplayTaskName(span) {
   const taskName = String(span?.taskName || "").trim();
   const detail = String(span?.scheduleDetail || "").trim();
-  if (expectedSpanUsesDetailAsDisplayName(span)) return detail;
+  if (expectedSpanUsesDetailAsDisplayName(span)) {
+    if (TTC.isChipDetailTaskName(taskName)) {
+      return TTC.formatChipDetailDisplayText(taskName, detail) || detail;
+    }
+    return detail;
+  }
   return taskName;
 }
 

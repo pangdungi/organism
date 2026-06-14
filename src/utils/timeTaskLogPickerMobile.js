@@ -9,6 +9,7 @@ import {
   lpTokenToggle,
 } from "./timeLedgerClassPolicy.js";
 import { getTimeTaskListIconSrc } from "./timeTaskIconUrls.js";
+import { matchFlexibleSearch } from "./flexibleSearchMatch.js";
 
 function scrollItemToCenter(listEl, itemEl) {
   if (!(listEl instanceof HTMLElement) || !(itemEl instanceof HTMLElement)) return;
@@ -497,7 +498,7 @@ export function createMobileTaskLogPicker(options = {}) {
   function renderSearchList() {
     const q = (searchQuery || "").trim().toLowerCase();
     const tasks = (getTasks?.() || []).filter((t) =>
-      q ? (t.name || "").toLowerCase().includes(q) : true,
+      q ? matchFlexibleSearch(t.name || "", q) : true,
     );
     const chips = getVisibleBucketChips?.() || [];
     const showHeaders = !q && typeof getTaskBucket === "function" && chips.length;

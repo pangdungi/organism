@@ -4,7 +4,9 @@
 
 import {
   canonicalMealTaskDisplayName,
+  chipDetailLabelsForReport,
   contentTypeReportLabel,
+  isChipDetailTaskName,
   isHealthyMealDetailTaskName,
   isSleepBuiltinTaskName,
   isUnhealthyMealDetailTaskName,
@@ -815,9 +817,10 @@ function bindHorizontalChartScroll(el) {
       }
       if (axisLock) {
         e.stopPropagation();
+        e.preventDefault();
       }
     },
-    { passive: true },
+    { passive: false },
   );
 
   el.addEventListener(
@@ -1875,15 +1878,26 @@ function mediaContentKind(row) {
   return null;
 }
 
-function rowContentLabel(row) {
+function rowContentLabels(row) {
+  const tn = String(row.taskName || "").trim();
   const md = String(row.mealDetail || "").trim();
-  if (md) return md;
+  if (md && isChipDetailTaskName(tn)) {
+    const labels = chipDetailLabelsForReport(tn, md);
+    if (labels.length) return labels;
+  }
+  if (md) return [md];
   const fb = String(row.feedback || row.memo || "").trim();
   if (fb.startsWith("[콘텐츠] ")) {
     const first = fb.split("\n")[0] || "";
-    return first.slice("[콘텐츠] ".length).trim();
+    const legacy = first.slice("[콘텐츠] ".length).trim();
+    if (legacy) {
+      if (isChipDetailTaskName(tn)) {
+        return chipDetailLabelsForReport(tn, legacy);
+      }
+      return [legacy];
+    }
   }
-  return "";
+  return [];
 }
 
 function buildMediaReportSnapshot(rows, range) {
@@ -1903,20 +1917,28 @@ function buildMediaReportSnapshot(rows, range) {
     if (!date) return;
     const mins = rowMinutes(r);
     if (mins <= 0) return;
-    const label = rowContentLabel(r);
+    const labels = rowContentLabels(r);
+    const splitMin =
+      labels.length > 0 ? mins / labels.length : mins;
+    const entryLabels = labels.length > 0 ? labels : [""];
 
     if (!byDate.has(date)) {
       byDate.set(date, { conscious: 0, unconscious: 0 });
     }
     const day = byDate.get(date);
+    entryLabels.forEach((label) => {
+      if (kind === "conscious") {
+        consciousEntriesAll.push({ label, minutes: splitMin });
+      } else {
+        unconsciousEntriesAll.push({ label, minutes: splitMin });
+      }
+    });
     if (kind === "conscious") {
       day.conscious += mins;
       totalConscious += mins;
-      consciousEntriesAll.push({ label, minutes: mins });
     } else {
       day.unconscious += mins;
       totalUnconscious += mins;
-      unconsciousEntriesAll.push({ label, minutes: mins });
     }
   });
 
@@ -2468,16 +2490,47 @@ function mountPlanAdherenceSection(scrollWrap, range, rows) {
   const sec = createSection(
     "계획 이행",
     snap.isSingleDay
-      ? "오늘 예상 일정 대비 실제"
-      : `예상 일정 대비 실제 · ${snap.dayCount}일`,
+      ? "예상 일정 · 계획 습관 · 실제 이행"
+      : `예상 일정 · 계획 습관 · ${snap.totalDaysInPeriod}일`,
   );
   sec.classList.add("lp-tr2-plan-section");
+
+  const habitBlock = createRatingBlock(
+    "평소 계획하기",
+    "예상 일정(타임박스)을 적은 날",
+  );
+  const habitGrid = document.createElement("div");
+  habitGrid.className = "lp-tr2-card-grid";
+  habitGrid.appendChild(
+    createStatCard(
+      "계획한 날",
+      snap.totalDaysInPeriod > 0
+        ? `${snap.plannedDaysCount}/${snap.totalDaysInPeriod}일`
+        : "—",
+      snap.isSingleDay ? "이 날 기준" : "조회 기간",
+    ),
+  );
+  habitGrid.appendChild(
+    createStatCard(
+      "계획 빈도",
+      snap.totalDaysInPeriod > 0
+        ? `${Math.round(snap.planningHabitPct)}%`
+        : "—",
+      "예상 일정이 있는 날 비율",
+    ),
+  );
+  habitBlock.appendChild(habitGrid);
+  const habitLine = document.createElement("p");
+  habitLine.className = "lp-tr2-plan-est-text";
+  habitLine.textContent = snap.planningHabitLine || "";
+  if (habitLine.textContent) habitBlock.appendChild(habitLine);
+  sec.appendChild(habitBlock);
 
   if (!snap.hasPlanData) {
     const note = document.createElement("p");
     note.className = "lp-tr2-chart-note";
     note.textContent =
-      "이 기간에 예상 일정(타임박스)이 없습니다. 캘린더에서 일정을 넣으면 여기에 계획 이행이 표시됩니다.";
+      "이 기간에 실행할 예상 일정(과제·시간)이 없어 이행률은 아직 계산되지 않습니다. 캘린더에서 타임박스를 넣어 보세요.";
     sec.appendChild(note);
     scrollWrap.appendChild(sec);
     return;
@@ -2574,7 +2627,7 @@ function createFocusCompareRow(item) {
   return row;
 }
 
-function createFocusRecipeTagRow(item, maxPct) {
+function createFocusRecipeTagRow(item) {
   const row = document.createElement("div");
   row.className = "lp-tr2-bar-row lp-tr2-bar-row--focus-recipe";
   const lab = document.createElement("span");
@@ -2584,7 +2637,7 @@ function createFocusRecipeTagRow(item, maxPct) {
   track.className = "lp-tr2-bar-track";
   const fill = document.createElement("div");
   fill.className = "lp-tr2-bar-fill";
-  const pct = maxPct > 0 ? Math.min(100, (item.pct / maxPct) * 100) : 0;
+  const pct = Math.min(100, Math.max(0, Number(item.pct) || 0));
   fill.style.width = `${pct}%`;
   fill.style.background = "#000000";
   const val = document.createElement("span");
@@ -2635,9 +2688,8 @@ function mountFocusReportSection(scrollWrap, _range, rows) {
     );
     const bars = document.createElement("div");
     bars.className = "lp-tr2-bars";
-    const maxPct = Math.max(1, ...snap.recipeTags.map((t) => t.pct));
     snap.recipeTags.slice(0, 6).forEach((item) => {
-      bars.appendChild(createFocusRecipeTagRow(item, maxPct));
+      bars.appendChild(createFocusRecipeTagRow(item));
     });
     recipeBlock.appendChild(bars);
     sec.appendChild(recipeBlock);

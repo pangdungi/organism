@@ -544,28 +544,30 @@ export async function fetchServerTimeLedgerTasksForDebug(opts = {}) {
   }
   const rows = Array.isArray(data) ? data : [];
   const names = Array.isArray(opts.names) ? opts.names : [];
-  if (names.length) {
-    for (const name of names) {
-      const hits = rows.filter((r) => (r.name || "").trim() === name);
-      console.log(
-        "[서버 과제]",
-        name,
-        "→",
-        hits.length,
-        "개",
-        hits.map((r) => r.id),
+  if (timeLedgerSyncDebugEnabled()) {
+    if (names.length) {
+      for (const name of names) {
+        const hits = rows.filter((r) => (r.name || "").trim() === name);
+        console.log(
+          "[서버 과제]",
+          name,
+          "→",
+          hits.length,
+          "개",
+          hits.map((r) => r.id),
+        );
+      }
+    } else {
+      console.log("[서버 과제] 전체", rows.length, "개");
+      console.table(
+        rows.map((r) => ({
+          id: r.id,
+          name: r.name,
+          kpi_id: r.kpi_id ?? "",
+          category: r.category ?? "",
+        })),
       );
     }
-  } else {
-    console.log("[서버 과제] 전체", rows.length, "개");
-    console.table(
-      rows.map((r) => ({
-        id: r.id,
-        name: r.name,
-        kpi_id: r.kpi_id ?? "",
-        category: r.category ?? "",
-      })),
-    );
   }
   return {
     ok: !error,
@@ -585,7 +587,9 @@ export async function debugCompareServerAndLocalTasks(names = []) {
     if (!names.length) return list;
     return list.filter((t) => names.includes((t.name || "").trim()));
   };
-  console.log("[로컬 mem]", pick(mem).length, pick(mem).map((t) => ({ name: t.name, id: t.id })));
-  console.log("[getFullTaskOptions]", pick(full).length, pick(full).map((t) => ({ name: t.name, id: t.id })));
+  if (timeLedgerSyncDebugEnabled()) {
+    console.log("[로컬 mem]", pick(mem).length, pick(mem).map((t) => ({ name: t.name, id: t.id })));
+    console.log("[getFullTaskOptions]", pick(full).length, pick(full).map((t) => ({ name: t.name, id: t.id })));
+  }
   return { server, mem: pick(mem), full: pick(full) };
 }

@@ -1,5 +1,5 @@
 /**
- * 관리자 전용: user_subscriptions 조회·1년 부여·상태·이용만료일 수정
+ * 관리자 전용: user_subscriptions 조회·1년 부여·이용 만료·탈퇴 회원
  * 서버 권한: Supabase RPC lp_is_app_admin (마이그레이션의 관리자 이메일과 일치)
  */
 
@@ -7,10 +7,32 @@ import { isCurrentUserAppAdmin } from "../utils/adminAccess.js";
 import {
   adminGrantOneYear,
   adminListSubscriptions,
+  adminListUserDeletions,
   adminSetSubscription,
 } from "../utils/adminSubscriptionRpc.js";
 import { supabase } from "../supabase.js";
 import { showToast } from "../utils/showToast.js";
+
+const ADMIN_SECTIONS = [
+  {
+    id: "all",
+    label: "전체 목록",
+    hint: "모든 회원의 구독 상태·이용 만료를 수정할 수 있습니다.",
+    toolbarLabel: "이용권(구독) 목록",
+  },
+  {
+    id: "expired",
+    label: "이용 만료",
+    hint: "이용 종료일이 지난 회원입니다. 갱신권 구매 확인 후 1년 이용권을 부여하세요.",
+    toolbarLabel: "이용 만료 회원",
+  },
+  {
+    id: "withdrawn",
+    label: "탈퇴 회원",
+    hint: "회원 탈퇴로 삭제된 계정 기록입니다. (탈퇴 기능 적용 이후부터 기록됩니다.)",
+    toolbarLabel: "탈퇴 회원 기록",
+  },
+];
 
 function escapeHtml(s) {
   return String(s ?? "")
@@ -42,6 +64,28 @@ function fromDatetimeLocalValue(s) {
   return d.toISOString();
 }
 
+function isRowExpired(row) {
+  if (!row?.access_until) return false;
+  const endMs = new Date(row.access_until).getTime();
+  return !Number.isNaN(endMs) && Date.now() > endMs;
+}
+
+function appendUidCell(tr, uid) {
+  const tdUid = document.createElement("td");
+  tdUid.className = "admin-subs-td admin-subs-td--uid";
+  const id = String(uid || "");
+  tdUid.textContent = id ? `${id.slice(0, 8)}…` : "—";
+  tdUid.title = id;
+  tr.appendChild(tdUid);
+}
+
+function appendEmailCell(tr, email) {
+  const tdEmail = document.createElement("td");
+  tdEmail.className = "admin-subs-td admin-subs-td--email";
+  tdEmail.textContent = email || "—";
+  tr.appendChild(tdEmail);
+}
+
 /**
  * @param {object} row
  * @param {(r: object) => void} onPatched
@@ -49,19 +93,12 @@ function fromDatetimeLocalValue(s) {
 function buildRowTr(row, onPatched) {
   const tr = document.createElement("tr");
   tr.className = "admin-subs-tr";
+  if (isRowExpired(row)) tr.classList.add("admin-subs-tr--expired");
   tr.dataset.userId = String(row.user_id);
 
-  const tdEmail = document.createElement("td");
-  tdEmail.className = "admin-subs-td admin-subs-td--email";
-  tdEmail.textContent = row.email || "—";
-  tr.appendChild(tdEmail);
+  appendEmailCell(tr, row.email);
 
-  const tdUid = document.createElement("td");
-  tdUid.className = "admin-subs-td admin-subs-td--uid";
-  const uid = String(row.user_id || "");
-  tdUid.textContent = uid ? `${uid.slice(0, 8)}…` : "—";
-  tdUid.title = uid;
-  tr.appendChild(tdUid);
+  appendUidCell(tr, row.user_id);
 
   const tdSignup = document.createElement("td");
   tdSignup.className = "admin-subs-td admin-subs-td--dt";
@@ -145,6 +182,21 @@ function buildRowTr(row, onPatched) {
   return tr;
 }
 
+function buildWithdrawnRowTr(row) {
+  const tr = document.createElement("tr");
+  tr.className = "admin-subs-tr admin-subs-tr--withdrawn";
+
+  appendEmailCell(tr, row.email);
+  appendUidCell(tr, row.user_id);
+
+  const tdDeleted = document.createElement("td");
+  tdDeleted.className = "admin-subs-td admin-subs-td--dt";
+  tdDeleted.textContent = formatKoDateTime(row.deleted_at);
+  tr.appendChild(tdDeleted);
+
+  return tr;
+}
+
 function applyRowData(tr, row) {
   const st = tr.querySelector(".admin-subs-status");
   const un = tr.querySelector(".admin-subs-until");
@@ -155,6 +207,19 @@ function applyRowData(tr, row) {
     }
   }
   if (un) un.value = toDatetimeLocalValue(row.access_until);
+  tr.classList.toggle("admin-subs-tr--expired", isRowExpired(row));
+}
+
+function renderTableError(tbody, colSpan, code, error) {
+  const trErr = document.createElement("tr");
+  const tdErr = document.createElement("td");
+  tdErr.colSpan = colSpan;
+  const p = document.createElement("p");
+  p.className = "admin-subs-err";
+  p.innerHTML = `DB에 <code>${escapeHtml(code)}</code> 권한/함수가 없을 수 있어요. Supabase SQL 마이그레이션을 적용해 주세요. ${escapeHtml(error || "")}`;
+  tdErr.appendChild(p);
+  trErr.appendChild(tdErr);
+  tbody.appendChild(trErr);
 }
 
 /**
@@ -175,17 +240,19 @@ export function render() {
   const body = document.createElement("div");
   body.className = "admin-view-body admin-subs-page";
 
+  const nav = document.createElement("nav");
+  nav.className = "admin-section-nav";
+  nav.setAttribute("aria-label", "관리자 메뉴");
+  const navBtns = new Map();
+
   const hint = document.createElement("p");
   hint.className = "admin-view-hint";
-  hint.textContent =
-    "아래 표에서 구독 상태·이용 만료를 수정할 수 있습니다. (서버 마이그레이션 적용 필요)";
   body.appendChild(hint);
 
   const toolbar = document.createElement("div");
   toolbar.className = "admin-subs-toolbar";
   const tbLabel = document.createElement("span");
   tbLabel.className = "admin-subs-toolbar-label";
-  tbLabel.textContent = "이용권(구독) 목록";
   const refresh = document.createElement("button");
   refresh.type = "button";
   refresh.className = "admin-subs-refresh";
@@ -204,37 +271,126 @@ export function render() {
   const table = document.createElement("table");
   table.className = "admin-subs-table";
   table.setAttribute("role", "grid");
-  table.innerHTML = `
-<colgroup>
-  <col class="admin-subs-col" span="1" data-col="email" />
-  <col class="admin-subs-col" span="1" data-col="uid" />
-  <col class="admin-subs-col" span="1" data-col="signup" />
-  <col class="admin-subs-col" span="1" data-col="status" />
-  <col class="admin-subs-col" span="1" data-col="until" />
-  <col class="admin-subs-col" span="1" data-col="act" />
-</colgroup>
-<thead>
-  <tr>
-    <th scope="col">이메일</th>
-    <th scope="col">사용자 ID</th>
-    <th scope="col">가입(기록)</th>
-    <th scope="col">상태</th>
-    <th scope="col">이용 만료(까지)</th>
-    <th scope="col">처리</th>
-  </tr>
-</thead>
-<tbody class="admin-subs-tbody"></tbody>
-  `;
-  const tbody = table.querySelector(".admin-subs-tbody");
+  const thead = document.createElement("thead");
+  const tbody = document.createElement("tbody");
+  tbody.className = "admin-subs-tbody";
+  table.appendChild(thead);
+  table.appendChild(tbody);
   wrap.appendChild(table);
   body.appendChild(wrap);
+
+  for (const section of ADMIN_SECTIONS) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "admin-section-nav-btn";
+    btn.dataset.section = section.id;
+    btn.textContent = section.label;
+    btn.setAttribute("aria-pressed", "false");
+    navBtns.set(section.id, btn);
+    nav.appendChild(btn);
+  }
+  body.insertBefore(nav, hint);
+
   el.appendChild(body);
 
+  let activeSection = "all";
   let requestId = 0;
+  let cachedSubsRows = [];
 
-  async function loadList() {
+  function getSectionMeta(id) {
+    return ADMIN_SECTIONS.find((s) => s.id === id) || ADMIN_SECTIONS[0];
+  }
+
+  function setTableHead(sectionId) {
+    thead.innerHTML = "";
+    const tr = document.createElement("tr");
+    if (sectionId === "withdrawn") {
+      for (const label of ["이메일", "사용자 ID", "탈퇴 일시"]) {
+        const th = document.createElement("th");
+        th.scope = "col";
+        th.textContent = label;
+        tr.appendChild(th);
+      }
+    } else {
+      for (const label of [
+        "이메일",
+        "사용자 ID",
+        "가입(기록)",
+        "상태",
+        "이용 만료(까지)",
+        "처리",
+      ]) {
+        const th = document.createElement("th");
+        th.scope = "col";
+        th.textContent = label;
+        tr.appendChild(th);
+      }
+    }
+    thead.appendChild(tr);
+  }
+
+  function setActiveSection(sectionId) {
+    activeSection = sectionId;
+    for (const [id, btn] of navBtns) {
+      const on = id === sectionId;
+      btn.classList.toggle("is-active", on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+    }
+    const meta = getSectionMeta(sectionId);
+    hint.textContent = meta.hint;
+    tbLabel.textContent = meta.toolbarLabel;
+    setTableHead(sectionId);
+  }
+
+  function patchCachedRow(patched) {
+    const idx = cachedSubsRows.findIndex((r) => String(r.user_id) === String(patched.user_id));
+    if (idx >= 0) cachedSubsRows[idx] = { ...cachedSubsRows[idx], ...patched };
+  }
+
+  function renderSubscriptionRows(rows) {
+    tbody.innerHTML = "";
+    if (!rows.length) {
+      statusLine.textContent =
+        activeSection === "expired" ? "이용 만료 회원이 없어요." : "표시할 사용자가 없어요.";
+      return;
+    }
+    statusLine.textContent = `총 ${rows.length}명`;
+    for (const row of rows) {
+      const tr = buildRowTr(row, (patched) => {
+        applyRowData(tr, patched);
+        patchCachedRow(patched);
+        const tds = tr.querySelectorAll("td");
+        if (tds[2] && patched.signup_at) tds[2].textContent = formatKoDateTime(patched.signup_at);
+        const em = tr.querySelector(".admin-subs-td--email");
+        if (em && patched.email) em.textContent = patched.email;
+      });
+      tbody.appendChild(tr);
+    }
+  }
+
+  function renderWithdrawnRows(rows) {
+    tbody.innerHTML = "";
+    if (!rows.length) {
+      statusLine.textContent = "탈퇴 기록이 없어요.";
+      return;
+    }
+    statusLine.textContent = `총 ${rows.length}명`;
+    for (const row of rows) {
+      tbody.appendChild(buildWithdrawnRowTr(row));
+    }
+  }
+
+  async function loadSubscriptions(force = false) {
     if (!(await isCurrentUserAppAdmin())) {
       statusLine.textContent = "관리자만 이 목록을 불러올 수 있어요.";
+      return;
+    }
+    if (!force && cachedSubsRows.length && activeSection !== "withdrawn") {
+      const rows =
+        activeSection === "expired"
+          ? cachedSubsRows.filter(isRowExpired)
+          : cachedSubsRows;
+      renderSubscriptionRows(rows);
       return;
     }
     const myId = ++requestId;
@@ -250,44 +406,72 @@ export function render() {
           String(error || ""),
         )
       ) {
-        const trErr = document.createElement("tr");
-        const tdErr = document.createElement("td");
-        tdErr.colSpan = 6;
-        const p = document.createElement("p");
-        p.className = "admin-subs-err";
-        p.innerHTML = `DB에 <code>lp_admin_list_subscriptions</code> 권한/함수가 없을 수 있어요. Supabase SQL에 <code>20260426120000_app_admin_subscriptions_rpcs</code> 마이그레이션을 적용해 주세요. ${escapeHtml(error || "")}`;
-        tdErr.appendChild(p);
-        trErr.appendChild(tdErr);
-        tbody.appendChild(trErr);
+        renderTableError(tbody, 6, "lp_admin_list_subscriptions", error);
       }
       return;
     }
-    if (!data.length) {
-      statusLine.textContent = "표시할 사용자가 없어요.";
+    cachedSubsRows = data || [];
+    const rows =
+      activeSection === "expired"
+        ? cachedSubsRows.filter(isRowExpired)
+        : cachedSubsRows;
+    renderSubscriptionRows(rows);
+  }
+
+  async function loadWithdrawn() {
+    if (!(await isCurrentUserAppAdmin())) {
+      statusLine.textContent = "관리자만 이 목록을 불러올 수 있어요.";
       return;
     }
-    statusLine.textContent = `총 ${data.length}명`;
-
-    for (const row of data) {
-      const tr = buildRowTr(row, (patched) => {
-        applyRowData(tr, patched);
-        const tds = tr.querySelectorAll("td");
-        if (tds[2] && patched.signup_at) tds[2].textContent = formatKoDateTime(patched.signup_at);
-        const em = tr.querySelector(".admin-subs-td--email");
-        if (em && patched.email) em.textContent = patched.email;
-      });
-      tbody.appendChild(tr);
+    const myId = ++requestId;
+    statusLine.textContent = "불러오는 중…";
+    tbody.innerHTML = "";
+    const { ok, data, error } = await adminListUserDeletions();
+    if (myId !== requestId) return;
+    if (!ok) {
+      statusLine.textContent = "";
+      showToast("탈퇴 목록을 불러오지 못했어요.", error || "");
+      if (
+        /permission denied|42501|P0001|function.*does not exist|not find/i.test(
+          String(error || ""),
+        )
+      ) {
+        renderTableError(tbody, 3, "lp_admin_list_user_deletions", error);
+      }
+      return;
     }
+    renderWithdrawnRows(data || []);
+  }
+
+  async function loadActiveSection(force = false) {
+    setActiveSection(activeSection);
+    if (activeSection === "withdrawn") {
+      await loadWithdrawn();
+      return;
+    }
+    await loadSubscriptions(force);
+  }
+
+  for (const [id, btn] of navBtns) {
+    btn.addEventListener("click", () => {
+      if (activeSection === id) {
+        void loadActiveSection(true);
+        return;
+      }
+      activeSection = id;
+      void loadActiveSection(false);
+    });
   }
 
   refresh.addEventListener("click", () => {
-    void loadList();
+    void loadActiveSection(true);
   });
 
   if (supabase) {
     void (async () => {
       if (!(await isCurrentUserAppAdmin())) return;
-      void loadList();
+      setActiveSection("all");
+      void loadActiveSection(true);
     })();
   } else {
     statusLine.textContent = "Supabase에 연결되지 않았어요.";

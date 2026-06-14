@@ -57,6 +57,24 @@ Deno.serve(async (req) => {
   const admin = createClient(supabaseUrl, serviceKey);
   const uid = user.id;
 
+  let logEmail = String(user.email || "").trim().toLowerCase();
+  const { data: subRow } = await admin
+    .from("user_subscriptions")
+    .select("email")
+    .eq("user_id", uid)
+    .maybeSingle();
+  if (subRow?.email) {
+    logEmail = String(subRow.email).trim().toLowerCase();
+  }
+
+  const { error: logErr } = await admin.from("user_deletion_log").insert({
+    user_id: uid,
+    email: logEmail,
+  });
+  if (logErr) {
+    console.error("user_deletion_log insert", logErr);
+  }
+
   const { error: auditErr } = await admin
     .from("calendar_section_tasks_write_audit")
     .delete()

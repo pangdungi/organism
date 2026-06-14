@@ -50,6 +50,7 @@ import {
   applyTaskCategoryColors,
 } from "./utils/todoSettings.js";
 import { showToast } from "./utils/showToast.js";
+import { showSubscriptionExpiredModal } from "./utils/confirmModal.js";
 import { prepareTimeLedgerStorageForBoot, resetTimeLedgerMemoryForAccountSwitch } from "./utils/timeLedgerEntriesModel.js";
 import {
   prepareTimeLedgerTasksStorageForBoot,
@@ -70,7 +71,6 @@ import {
 import { consumeSupabaseAuthRedirectErrors } from "./utils/authRedirectErrorUi.js";
 import {
   enforceSubscriptionAccessOrSignOut,
-  SUBSCRIPTION_EXPIRED_MESSAGE,
   runBackgroundSubscriptionGateFromPrefsRow,
 } from "./utils/subscriptionAccess.js";
 import {
@@ -82,9 +82,12 @@ import { initLpShellStuckGuard, runLpShellVisibilityGuard } from "./utils/lpShel
 import { initLpPwaInstall, refreshLpPwaInstall } from "./utils/lpPwaInstall.js";
 import { syncLoginRememberMeCheckbox } from "./utils/authRememberMe.js";
 
-async function signOutForSubscriptionExpired() {
-  await showAlertModal({ title: "안내", message: SUBSCRIPTION_EXPIRED_MESSAGE });
-  await signOut();
+async function blockExpiredSubscriptionOrSignOut() {
+  const blocked = await enforceSubscriptionAccessOrSignOut();
+  if (!blocked) return false;
+  const result = await showSubscriptionExpiredModal();
+  if (!result?.deleted) await signOut();
+  return true;
 }
 
 /** 설정 pull 후 구독·기한 타이머 */
@@ -92,7 +95,7 @@ async function pullPrefsAndRunSubscriptionGate() {
   const row = await pullUserPrefsFromSupabase().catch(() => null);
   await runBackgroundSubscriptionGateFromPrefsRow(
     row,
-    signOutForSubscriptionExpired,
+    blockExpiredSubscriptionOrSignOut,
   ).catch(() => {});
 }
 
@@ -244,9 +247,9 @@ function primeTimeLedgerStorageFromCachedSession() {
   prepareCalendarDayIconsForBoot();
 }
 
-/** 저장된 세션·자동 로그인: 앱 먼저 연다. 구독·IDB 정합은 mountApp 뒤 백그라운드 */
+/** 저장된 세션·자동 로그인: 구독 확인 후 앱 연다 */
 async function enterAuthenticatedApp(opts = {}) {
-  const { enforceSubscriptionBeforeMount = false, showSplash = false } = opts;
+  const { showSplash = false } = opts;
   const screen = document.getElementById("app-screen");
   if (screen?.querySelector(".app-page")) {
     lpAppMounted = true;
@@ -255,6 +258,7 @@ async function enterAuthenticatedApp(opts = {}) {
     void getSupabaseSession().then(({ data: { session } }) => {
       markTabBootAuthUid(session?.user?.id);
     });
+    void blockExpiredSubscriptionOrSignOut();
     return;
   }
   if (lpAppMounted) return;
@@ -273,6 +277,23 @@ async function enterAuthenticatedApp(opts = {}) {
   lpEnterAppPromise = (async () => {
     if (showSplash) showAppSplashNow();
     try {
+      const {
+        data: { session: bootSession },
+      } = await getSupabaseSession();
+      if (!bootSession?.user?.id) {
+        showOnly("login");
+        setAuthGatePanel("login");
+        return;
+      }
+
+      if (showSplash) setAppSplashMessage("이용 권한 확인 중…");
+      finishStep("세션 확인");
+      const blocked = await blockExpiredSubscriptionOrSignOut();
+      if (blocked) {
+        lpAppMounted = false;
+        return;
+      }
+
       lpAppMounted = true;
       showOnly("signin");
       primeTimeLedgerStorageFromCachedSession();
@@ -284,23 +305,9 @@ async function enterAuthenticatedApp(opts = {}) {
       prefetchCriticalAppIconAssets();
       refreshLpPwaInstall();
 
-      const {
-        data: { session: bootSession },
-      } = await getSupabaseSession();
-      markTabBootAuthUid(bootSession?.user?.id);
+      markTabBootAuthUid(bootSession.user.id);
       finishStep("세션·탭 표시");
 
-      if (enforceSubscriptionBeforeMount) {
-        const blocked = await enforceSubscriptionAccessOrSignOut();
-        if (blocked) {
-          await showAlertModal({
-            title: "안내",
-            message: SUBSCRIPTION_EXPIRED_MESSAGE,
-          });
-          await signOut();
-          return;
-        }
-      }
       await prepareTimeLedgerStorageForCurrentSession();
       await pullPrefsAndRunSubscriptionGate();
 
@@ -696,32 +703,20 @@ async function doSignUp() {
   if (loginId) loginId.value = email;
 }
 
-const LP_PW_RESET_LOG = "[lp pw-reset]";
-
 async function doForgotPassword() {
-  console.log(LP_PW_RESET_LOG, "1) 재설정 메일 버튼 클릭");
   const emailInput = document.getElementById("forgot-pw-email");
   const email = emailInput?.value?.trim() || "";
-  console.log(LP_PW_RESET_LOG, "2) 입력값", {
-    이메일길이: email.length,
-    이메일: email || "(비어 있음)",
-  });
   try {
-    console.log(LP_PW_RESET_LOG, "3) resetPasswordRequest 호출");
     const result = await resetPasswordRequest(email);
-    console.log(LP_PW_RESET_LOG, "4) resetPasswordRequest 결과", result);
     if (result.ok) {
-      console.log(LP_PW_RESET_LOG, "5) 성공 → 토스트·모달 닫기");
       closeAuthPwRecoveryModal();
       if (emailInput) emailInput.value = "";
       showToast("비밀번호 재설정 메일을 보냈어요.", "이메일을 확인해 주세요.");
     } else {
-      console.log(LP_PW_RESET_LOG, "5) 실패 → 토스트(메시지)", result.msg);
       showToast(result.msg);
     }
-  } catch (e) {
-    console.error(LP_PW_RESET_LOG, "예외 발생", e);
-    showToast("처리 중 오류가 났어요. 콘솔 로그를 확인해 주세요.");
+  } catch (_e) {
+    showToast("처리 중 오류가 났어요. 잠시 후 다시 시도해 주세요.");
   }
 }
 

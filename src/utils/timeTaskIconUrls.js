@@ -7,6 +7,7 @@ import pickerSvgNames from "../../public/time-task-picker-icons.json";
 import pickerIconFiles from "../../public/time-task-picker-icon-files.json";
 import { canonicalMealTaskDisplayName, NAP_TASK_NAME } from "./timeTaskOptionsConstants.js";
 import { DEFAULT_KPI_ICON_SLUG, DEFAULT_KPI_NAME_ICON_SLUG } from "./defaultKpiIconIds.js";
+import { matchFlexibleSearch } from "./flexibleSearchMatch.js";
 import { toolbarIconPng } from "./toolbarIconUrl.js";
 
 const PICKER_ICON_BASE = "/toolbaricons/time-task-picker";
@@ -23,6 +24,11 @@ export const KPI_CATEGORY_ICON_SRC = {
 
 const PICKER_SVG_SET = new Set(pickerSvgNames);
 
+/** 삭제된 picker 파일명 → 대체 슬러그 (잘못 저장된 iconKey 호환) */
+const REMOVED_PICKER_SLUG_ALIAS = {
+  "train-1": "burger",
+};
+
 /** 기본 내장 과제명 → picker 슬러그 */
 export const BUILTIN_TASK_ICON_SLUG = {
   "수면하기": "sleeping",
@@ -31,7 +37,7 @@ export const BUILTIN_TASK_ICON_SLUG = {
   "독서 및 독서노트 작성": "reading",
   "시간기록 및 점검": "study",
   "개인 위생": "shower",
-  [NAP_TASK_NAME]: "sleeping",
+  [NAP_TASK_NAME]: "nap",
   "건강한 섭취": "healthy food",
   "건강한 섭취 준비": "cooking",
   "생산적 대화": "happy",
@@ -40,7 +46,7 @@ export const BUILTIN_TASK_ICON_SLUG = {
   "기록하기": "writting",
   "외모관리": "skin care",
   "비생산적 소비": "shopping bag",
-  "건강하지 않은 섭취": "cocktail",
+  "건강하지 않은 섭취": "burger",
   "건강하지 않은 섭취 준비": "blender",
   "비생산적 대화": "sad",
   "감정적이기": "angry",
@@ -49,7 +55,7 @@ export const BUILTIN_TASK_ICON_SLUG = {
   "단순 이동": "train",
   "게임": "headset",
   "무의식적 콘텐츠 소비": "youtube",
-  "보충제 섭취": "egg",
+  "보충제 섭취": "medicine",
 };
 
 /** 아이콘 검색용 한글·별칭 */
@@ -69,21 +75,23 @@ const PICKER_SEARCH_EXTRA = {
   writting: "기록하기",
   "skin care": "외모관리",
   "shopping bag": "비생산적 소비",
-  cocktail: "건강하지 않은 섭취",
+  burger: "건강하지 않은 섭취",
+  cocktail: "칵테일",
   blender: "건강하지 않은 섭취 준비",
   sad: "비생산적 대화",
   angry: "감정적이기",
   beer: "비생산적 외출",
-  packing: "물건 찾기",
-  train: "이동 단순이동",
+  packing: "물건 찾기 외출준비",
+  train: "단순이동",
+  moving_basic: "이동루틴",
   headset: "게임",
   youtube: "영상 콘텐츠",
-  egg: "보충제",
+  medicine: "보충제",
   "drip coffee": "모닝루틴 커피",
   Coffee: "커피",
-  dryer: "정리루틴",
-  cloth: "외출준비",
-  clean: "외출 후",
+  dryer: "건조",
+  cloth: "외출 후",
+  clean: "정리루틴",
   running: "유산소",
   "to do list": "잡무",
   bedtime: "취침루틴",
@@ -101,7 +109,7 @@ const PRODUCTIVE_CATEGORIES = new Set([
 
 /** iconKey 없을 때 — 비생산 카테고리 기본 */
 const NONPRODUCTIVE_CATEGORY_PICKER_ICON = {
-  unhealthy: "cocktail",
+  unhealthy: "burger",
   unhappiness: "sad",
   media_watch: "youtube",
   pleasure: "cinema",
@@ -110,8 +118,11 @@ const NONPRODUCTIVE_CATEGORY_PICKER_ICON = {
 
 /** @param {string} name */
 function findPickerSlug(name) {
-  const s = String(name || "").trim();
+  let s = String(name || "").trim();
   if (!s) return "";
+  const aliased =
+    REMOVED_PICKER_SLUG_ALIAS[s] || REMOVED_PICKER_SLUG_ALIAS[s.toLowerCase()];
+  if (aliased) s = aliased;
   if (PICKER_SVG_SET.has(s)) return s;
   const lower = s.toLowerCase();
   if (PICKER_SVG_SET.has(lower)) return lower;
@@ -331,32 +342,9 @@ function pickerIconLabelFromFilename(name) {
     .replace(/-/g, " ");
 }
 
-/** @param {string} text */
-function normalizePickerSearchHaystack(text) {
-  return String(text || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[\s_-]+/g, " ");
-}
-
-/**
- * @param {string} searchText
- * @param {string} query
- */
+/** @param {string} searchText @param {string} query */
 export function matchTimeTaskPickerIconSearch(searchText, query) {
-  const q = String(query ?? "")
-    .trim()
-    .toLowerCase();
-  if (!q) return true;
-  const hay = normalizePickerSearchHaystack(searchText);
-  const qFlat = q.replace(/[\s_-]+/g, "");
-  if (qFlat && hay.replace(/\s/g, "").includes(qFlat)) return true;
-  if (hay.includes(q)) return true;
-  const tokens = q.split(/\s+/).filter(Boolean);
-  return tokens.every((t) => {
-    const tFlat = t.replace(/[\s_-]+/g, "");
-    return hay.includes(t) || (tFlat && hay.replace(/\s/g, "").includes(tFlat));
-  });
+  return matchFlexibleSearch(searchText, query);
 }
 
 /**

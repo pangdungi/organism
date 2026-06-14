@@ -1018,6 +1018,34 @@ table {
   color: var(--idea-navy);
 }
 
+.idea-view .idea-subscription-renewal {
+  margin: 0.15rem 0 0;
+}
+
+.idea-view .idea-btn-renewal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.5rem 0.85rem;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #fff;
+  text-decoration: none;
+  background: var(--idea-navy);
+  border: 1px solid var(--idea-navy);
+  border-radius: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.idea-view .idea-btn-renewal:hover {
+  background: #163a5c;
+  border-color: #163a5c;
+}
+
 .idea-view .idea-hourly-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -1363,6 +1391,44 @@ table {
   margin: 0 0 0.85rem;
   font-size: 0.78rem;
   line-height: 1.45;
+  color: #666666;
+}
+
+.admin-view .admin-section-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 0.85rem;
+}
+
+.admin-view .admin-section-nav-btn {
+  padding: 0.42rem 0.85rem;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #444444;
+  background: #fff;
+  border: 1px solid rgba(26, 45, 69, 0.16);
+  border-radius: 999px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.admin-view .admin-section-nav-btn.is-active {
+  color: #fff;
+  background: #000000;
+  border-color: #000000;
+}
+
+.admin-view .admin-section-nav-btn:hover:not(.is-active) {
+  background: rgba(26, 45, 69, 0.05);
+}
+
+.admin-view .admin-subs-tr--expired .admin-subs-td--email {
+  color: #8b5c3a;
+}
+
+.admin-view .admin-subs-tr--withdrawn .admin-subs-td--email {
   color: #666666;
 }
 

@@ -806,6 +806,9 @@ export function openCalendarExpectedScheduleModal(options) {
   const taskLogContentTypeChips = modal.querySelector(
     '[data-legacy~="time-task-log-content-type-chips"]',
   );
+  const taskLogContentTypeLabel = modal.querySelector(
+    '[data-legacy~="time-task-log-content-type-label"]',
+  );
   const taskLogEmotionTriggerSection = modal.querySelector(
     '[data-legacy~="time-task-log-emotion-trigger-section"]',
   );
@@ -816,43 +819,78 @@ export function openCalendarExpectedScheduleModal(options) {
   const taskLogScrollArea = modal.querySelector(
     '[data-legacy~="time-task-log-scroll-area"]',
   );
-  let taskLogContentType = "";
-  let taskLogContentTypeLegacy = "";
+  /** @type {Set<string>} */
+  const taskLogChipDetailSelection = new Set();
+  let taskLogChipDetailTaskName = "";
 
   function syncTaskLogContentTypeChips() {
     if (!taskLogContentTypeChips) return;
     taskLogContentTypeChips
       .querySelectorAll('[data-legacy~="lp-choice-chip"]')
       .forEach((btn) => {
-        const on =
-          !!taskLogContentType &&
-          btn.getAttribute("data-content-type") === taskLogContentType;
-        lpTokenToggle(btn, "lp-choice-chip--on", on);
+        const label = btn.getAttribute("data-chip-detail") || "";
+        lpTokenToggle(btn, "lp-choice-chip--on", taskLogChipDetailSelection.has(label));
       });
   }
 
-  function setTaskLogContentType(value) {
-    const resolved = TTC.resolveContentTypeLabel(value);
-    if (resolved.known) {
-      taskLogContentType = resolved.label;
-      taskLogContentTypeLegacy = "";
-    } else if (resolved.label) {
-      taskLogContentType = "";
-      taskLogContentTypeLegacy = resolved.label;
-    } else {
-      taskLogContentType = "";
-      taskLogContentTypeLegacy = "";
-    }
+  function rebuildTaskLogChipDetailChips(taskName) {
+    if (!taskLogContentTypeChips) return;
+    const tn = (taskName || "").trim();
+    taskLogChipDetailTaskName = tn;
+    taskLogContentTypeChips.replaceChildren();
+    TTC.ledgerChipDetailOptionsForTask(tn).forEach((label) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "lp-choice-chip";
+      btn.setAttribute("data-legacy", "lp-choice-chip");
+      btn.setAttribute("data-chip-detail", label);
+      btn.setAttribute("aria-pressed", "false");
+      btn.textContent = label;
+      btn.addEventListener(
+        "click",
+        () => {
+          if (taskLogChipDetailSelection.has(label)) {
+            taskLogChipDetailSelection.delete(label);
+          } else {
+            taskLogChipDetailSelection.add(label);
+          }
+          syncTaskLogContentTypeChips();
+        },
+        { signal },
+      );
+      taskLogContentTypeChips.appendChild(btn);
+    });
+    syncTaskLogContentTypeChips();
+  }
+
+  function setTaskLogContentType(value, taskName) {
+    const tn = (
+      taskName ||
+      taskLogChipDetailTaskName ||
+      taskDropdown?._getValue?.() ||
+      ""
+    ).trim();
+    taskLogChipDetailTaskName = tn;
+    taskLogChipDetailSelection.clear();
+    TTC.parseChipDetailStoredValue(tn, value).forEach((part) => {
+      const resolved = TTC.resolveChipDetailLabel(tn, part);
+      if (resolved.label) taskLogChipDetailSelection.add(resolved.label);
+    });
     syncTaskLogContentTypeChips();
   }
 
   function getTaskLogContentTypeForSave() {
-    return (taskLogContentType || taskLogContentTypeLegacy || "").trim();
+    const tn = (
+      taskLogChipDetailTaskName ||
+      taskDropdown?._getValue?.() ||
+      ""
+    ).trim();
+    return TTC.serializeChipDetailSelection(tn, taskLogChipDetailSelection);
   }
 
   function clearTaskLogContentType() {
-    taskLogContentType = "";
-    taskLogContentTypeLegacy = "";
+    taskLogChipDetailSelection.clear();
+    taskLogChipDetailTaskName = "";
     syncTaskLogContentTypeChips();
   }
 
@@ -899,27 +937,6 @@ export function openCalendarExpectedScheduleModal(options) {
     });
   }
 
-  if (taskLogContentTypeChips) {
-    TTC.CONTENT_TYPE_OPTIONS.forEach((label) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "lp-choice-chip";
-      btn.setAttribute("data-legacy", "lp-choice-chip");
-      btn.setAttribute("data-content-type", label);
-      btn.textContent = label;
-      btn.addEventListener(
-        "click",
-        () => {
-          taskLogContentType = label;
-          taskLogContentTypeLegacy = "";
-          syncTaskLogContentTypeChips();
-        },
-        { signal },
-      );
-      taskLogContentTypeChips.appendChild(btn);
-    });
-  }
-
   function updateExpectedTaskAverageHint(taskName) {
     if (!taskAvgHintEl) return;
     const tn = (taskName || "").trim();
@@ -942,7 +959,7 @@ export function openCalendarExpectedScheduleModal(options) {
     const tn = (taskName || "").trim();
     updateExpectedTaskAverageHint(tn);
     const kind = TTC.ledgerDetailTaskKind(tn);
-    const isContent = kind === "content";
+    const isChipDetail = TTC.isChipDetailTaskKind(kind);
     const isEmotion = kind === "emotion";
     const showFreeTextDetail = TTC.isLedgerFreeTextDetailTaskName(tn);
     if (taskLogMealDetailSection) {
@@ -959,19 +976,31 @@ export function openCalendarExpectedScheduleModal(options) {
       }
     }
     if (taskLogContentTypeSection) {
-      taskLogContentTypeSection.hidden = !isContent;
-      if (!isContent) clearTaskLogContentType();
+      taskLogContentTypeSection.hidden = !isChipDetail;
+      if (taskLogContentTypeLabel) {
+        taskLogContentTypeLabel.textContent =
+          TTC.ledgerChipDetailSectionLabel(tn) || "콘텐츠 종류";
+      }
+      if (isChipDetail) {
+        if (tn !== taskLogChipDetailTaskName) {
+          taskLogChipDetailSelection.clear();
+        }
+        rebuildTaskLogChipDetailChips(tn);
+      } else {
+        clearTaskLogContentType();
+        taskLogContentTypeChips?.replaceChildren?.();
+      }
     }
     if (taskLogEmotionTriggerSection) {
       taskLogEmotionTriggerSection.hidden = !isEmotion;
       if (!isEmotion) clearTaskLogEmotionTrigger();
     }
-    taskLogScrollArea?.classList?.toggle("is-content-detail-task", isContent);
+    taskLogScrollArea?.classList?.toggle("is-content-detail-task", isChipDetail);
   }
 
   function getExpectedDetailForSave(taskName) {
     const kind = TTC.ledgerDetailTaskKind(taskName);
-    if (kind === "content") return getTaskLogContentTypeForSave();
+    if (TTC.isChipDetailTaskKind(kind)) return getTaskLogContentTypeForSave();
     if (kind === "emotion") {
       return (taskLogEmotionTrigger || "").trim();
     }
@@ -983,8 +1012,8 @@ export function openCalendarExpectedScheduleModal(options) {
     const tn = (taskName || "").trim();
     const val = String(detailVal || "").trim();
     updateExpectedDetailVisibility(tn);
-    if (TTC.isContentDetailTaskName(tn)) {
-      setTaskLogContentType(val);
+    if (TTC.isChipDetailTaskName(tn)) {
+      setTaskLogContentType(val, tn);
       if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
       clearTaskLogEmotionTrigger();
     } else if (TTC.isEmotionalDetailTaskName(tn)) {

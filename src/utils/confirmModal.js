@@ -5,6 +5,12 @@ import {
   resolveLpModalStackZIndex,
   hasOpenLpConfirmModal,
 } from "./lpModalStack.js";
+import {
+  SUBSCRIPTION_EXPIRED_MESSAGE,
+  SUBSCRIPTION_RENEWAL_SHOP_URL,
+  openSubscriptionRenewalShop,
+} from "./subscriptionAccess.js";
+import { openDeleteAccountModal } from "./deleteAccountModal.js";
 
 /**
  * 할 일·타임레저와 동일한 `time-task-setup-modal` 셸로 확인창을 띄우고, Promise로 결과를 돌려줍니다.
@@ -150,6 +156,99 @@ export function showAlertModal(options = {}) {
     document.body.appendChild(modal);
     modal.style.zIndex = String(resolveLpModalStackZIndex());
     document.body.style.overflow = "hidden";
+  });
+}
+
+/**
+ * 구독 만료 안내 + 갱신권 구매·회원 탈퇴.
+ * @param {{ title?: string, message?: string, warnMessage?: string, deleteAccountText?: string, renewalText?: string, renewalUrl?: string }} options
+ * @returns {Promise<{ deleted?: boolean }>}
+ */
+export function showSubscriptionExpiredModal(options = {}) {
+  const {
+    title = "안내",
+    message = SUBSCRIPTION_EXPIRED_MESSAGE,
+    warnMessage = "갱신권 구매 후 다시 로그인해 주세요.",
+    deleteAccountText = "회원 탈퇴하기",
+    renewalText = "갱신권 구매하기",
+    renewalUrl = SUBSCRIPTION_RENEWAL_SHOP_URL,
+  } = options;
+
+  dismissAppToast();
+
+  return new Promise((resolve) => {
+    function escapeHtml(s) {
+      return String(s || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    const modal = document.createElement("div");
+    modal.className = `time-task-setup-modal ${LP_CONFIRM_STACK_CLASS} lp-subscription-expired-modal`;
+    modal.innerHTML = `
+      <div class="time-task-setup-backdrop"></div>
+      <div class="time-task-setup-panel time-add-task-panel">
+        <div class="time-task-setup-header">
+          <h3 class="time-task-setup-title">${escapeHtml(title)}</h3>
+          <button type="button" class="time-task-setup-close" aria-label="닫기">&times;</button>
+        </div>
+        <div class="time-task-setup-body todo-list-confirm-body">
+          <p class="todo-list-confirm-message">${escapeHtml(message)}</p>
+          ${warnMessage ? `<p class="todo-list-confirm-warn">${escapeHtml(warnMessage)}</p>` : ""}
+        </div>
+        <div class="time-task-log-footer lp-subscription-expired-footer">
+          <button type="button" class="todo-list-modal-cancel lp-subscription-delete-btn">${escapeHtml(deleteAccountText)}</button>
+          <button type="button" class="todo-list-modal-confirm lp-subscription-renewal-btn">${escapeHtml(renewalText)}</button>
+        </div>
+      </div>
+    `;
+
+    const closeBtn = modal.querySelector(".time-task-setup-close");
+    const deleteBtn = modal.querySelector(".lp-subscription-delete-btn");
+    const renewalBtn = modal.querySelector(".lp-subscription-renewal-btn");
+
+    function finish(result = {}) {
+      modal.remove();
+      syncBodyOverflowAfterModalClose();
+      resolve(result);
+    }
+
+    renewalBtn.addEventListener("click", () => {
+      if (renewalUrl === SUBSCRIPTION_RENEWAL_SHOP_URL) {
+        openSubscriptionRenewalShop();
+      } else {
+        try {
+          window.open(renewalUrl, "_blank", "noopener,noreferrer");
+        } catch (_) {
+          window.location.href = renewalUrl;
+        }
+      }
+    });
+    deleteBtn.addEventListener("click", () => {
+      modal.style.visibility = "hidden";
+      void openDeleteAccountModal().then(({ deleted }) => {
+        if (deleted) {
+          finish({ deleted: true });
+          return;
+        }
+        modal.style.visibility = "";
+        document.body.style.overflow = "hidden";
+      });
+    });
+    closeBtn.addEventListener("click", () => finish());
+
+    modal.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") finish();
+    });
+
+    document.body.appendChild(modal);
+    modal.style.zIndex = String(resolveLpModalStackZIndex());
+    document.body.style.overflow = "hidden";
+    requestAnimationFrame(() => {
+      renewalBtn?.focus({ preventScroll: true });
+    });
   });
 }
 

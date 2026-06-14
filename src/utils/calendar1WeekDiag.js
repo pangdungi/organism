@@ -1,6 +1,6 @@
 /**
  * 캘린더 1주(W) 뷰 진단 — 로컬에서 W 진입·그리기 경로 추적용
- * 끄기: localStorage.setItem('debug_calendar_1week','0')
+ * 켜기: localStorage.setItem('debug_calendar_1week','1') 후 새로고침
  */
 
 const FLAG = "debug_calendar_1week";
@@ -8,11 +8,10 @@ const PREFIX = "[cal-1week]";
 
 export function calendar1WeekDiagEnabled() {
   try {
-    if (typeof localStorage !== "undefined" && localStorage.getItem(FLAG) === "0") {
-      return false;
-    }
-  } catch (_) {}
-  return true;
+    return typeof localStorage !== "undefined" && localStorage.getItem(FLAG) === "1";
+  } catch (_) {
+    return false;
+  }
 }
 
 export function calendar1WeekDiagLog(tag, payload) {
@@ -70,4 +69,3 @@ export function calendar1WeekDiagSnapshot(root, label = "snapshot") {
   return snap;
 }
 
-calendar1WeekDiagLog("diag module loaded");

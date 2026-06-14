@@ -1696,7 +1696,7 @@
 .calendar-monthly-span-bar {
   position: absolute;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   border-radius: 4px;
   font-size: 0.75rem;
   font-weight: 600;
@@ -1704,12 +1704,21 @@
   padding: 0.12rem 0.3rem;
   box-sizing: border-box;
   min-height: var(--cal-bar-row-min);
+  height: auto;
   cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   white-space: normal;
-  overflow-wrap: break-word;
+  overflow: visible;
+  overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.calendar-monthly-span-bar-text {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  pointer-events: none;
 }
 
 .calendar-task-done-mark {
@@ -1717,11 +1726,6 @@
   font-weight: 700;
   opacity: 0.72;
   user-select: none;
-}
-
-.calendar-monthly-span-bar-text {
-  display: inline;
-  pointer-events: none;
 }
 
 .calendar-monthly-span-bar.is-past .calendar-task-done-mark {

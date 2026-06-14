@@ -4,10 +4,15 @@
 
 import { signOut } from "../auth.js";
 import { supabase } from "../supabase.js";
-import { deleteMyAccountViaEdgeFunction } from "../utils/deleteMyAccount.js";
+import { openDeleteAccountModal } from "../utils/deleteAccountModal.js";
 import { USER_HOURLY_RATE_KEY, readUserHourlyRateLocal, readUserHourlyRateModeLocal, setUserHourlyRateModeLocal, HOURLY_RATE_MODE_CALC, HOURLY_RATE_MODE_DIRECT, applyAppearanceFromServer } from "../utils/userHourlySync.js";
 import { setScopedLocalStorageItem, getScopedLocalStorageItem } from "../utils/clientStorageScope.js";
 import { showToast } from "../utils/showToast.js";
+import {
+  SUBSCRIPTION_RENEWAL_SHOP_URL,
+  subscriptionAccessEnded,
+  subscriptionSnapFromPrefsRow,
+} from "../utils/subscriptionAccess.js";
 
 export { USER_HOURLY_RATE_KEY };
 
@@ -80,72 +85,6 @@ export function render() {
   `;
   grid.appendChild(basicSettingsWidget);
 
-  function openDeleteAccountModal() {
-    const wrap = document.createElement("div");
-    wrap.className = "idea-delete-account-modal";
-    wrap.innerHTML = `
-      <div class="idea-delete-account-modal-backdrop" aria-hidden="true"></div>
-      <div class="idea-delete-account-modal-panel" role="dialog" aria-modal="true" aria-labelledby="idea-delete-account-title">
-        <div class="idea-delete-account-modal-header">
-          <h3 class="idea-delete-account-modal-title" id="idea-delete-account-title">회원 탈퇴</h3>
-          <button type="button" class="idea-delete-account-modal-close" aria-label="닫기">×</button>
-        </div>
-        <div class="idea-delete-account-modal-body">
-          <p class="idea-delete-account-modal-warn">탈퇴 시 이 계정의 <strong>모든 서버 데이터</strong>가 삭제됩니다. 되돌릴 수 없습니다.</p>
-          <p class="idea-delete-account-modal-label">비밀번호 확인</p>
-          <input type="password" class="idea-form-input idea-delete-account-modal-pw" autocomplete="current-password" placeholder="현재 비밀번호" />
-        </div>
-        <div class="idea-delete-account-modal-footer">
-          <button type="button" class="idea-delete-account-modal-cancel">취소</button>
-          <button type="button" class="idea-delete-account-modal-submit">탈퇴하기</button>
-        </div>
-      </div>
-    `;
-    const close = () => wrap.remove();
-    wrap.querySelector(".idea-delete-account-modal-close").addEventListener("click", close);
-    wrap.querySelector(".idea-delete-account-modal-cancel").addEventListener("click", close);
-    const pwInput = wrap.querySelector(".idea-delete-account-modal-pw");
-    const submitBtn = wrap.querySelector(".idea-delete-account-modal-submit");
-    submitBtn.addEventListener("click", async () => {
-      if (!supabase) {
-        showToast("연결되지 않았습니다.");
-        return;
-      }
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const email = session?.user?.email?.trim();
-      const pw = pwInput?.value || "";
-      if (!email) {
-        showToast("세션을 확인할 수 없습니다.");
-        return;
-      }
-      if (!pw) {
-        showToast("비밀번호를 입력해 주세요.");
-        return;
-      }
-      submitBtn.disabled = true;
-      try {
-        const { error: reAuthErr } = await supabase.auth.signInWithPassword({ email, password: pw });
-        if (reAuthErr) {
-          showToast("비밀번호가 일치하지 않습니다.");
-          return;
-        }
-        const del = await deleteMyAccountViaEdgeFunction();
-        if (!del.ok) {
-          showToast(del.msg || "탈퇴에 실패했습니다.");
-          return;
-        }
-        close();
-        showToast("탈퇴가 완료되었습니다.");
-        await signOut();
-      } finally {
-        submitBtn.disabled = false;
-      }
-    });
-    document.body.appendChild(wrap);
-  }
-
   // ----- 구독 (시급 위젯 위) -----
   const subscriptionWidget = document.createElement("div");
   subscriptionWidget.className =
@@ -158,6 +97,15 @@ export function render() {
         <span class="idea-user-id-value idea-subscription-status" id="idea-subscription-status">—</span>
       </div>
       <p class="idea-subscription-pass" id="idea-subscription-pass" hidden></p>
+      <p class="idea-subscription-renewal" id="idea-subscription-renewal" hidden>
+        <a
+          class="idea-btn-renewal"
+          id="idea-subscription-renewal-link"
+          href="${SUBSCRIPTION_RENEWAL_SHOP_URL}"
+          target="_blank"
+          rel="noopener noreferrer"
+        >갱신권 구매하기</a>
+      </p>
     </div>
   `;
   grid.appendChild(subscriptionWidget);
@@ -170,28 +118,46 @@ export function render() {
       }
       const statusEl = document.getElementById("idea-subscription-status");
       const passEl = document.getElementById("idea-subscription-pass");
+      const renewalEl = document.getElementById("idea-subscription-renewal");
       if (!session?.user?.id || !statusEl || !passEl) return;
       supabase
         .from("user_subscriptions")
-        .select("subscription_status, signup_at, hourly_rate, hourly_rate_mode, appearance")
+        .select(
+          "subscription_status, signup_at, access_until, hourly_rate, hourly_rate_mode, appearance",
+        )
         .eq("user_id", session.user.id)
         .maybeSingle()
         .then(({ data, error }) => {
           if (error || !data) {
             statusEl.textContent = "—";
             passEl.hidden = true;
+            if (renewalEl) renewalEl.hidden = true;
             return;
           }
-          if (data.subscription_status === "active") {
+          const snap = subscriptionSnapFromPrefsRow(data);
+          const expired = subscriptionAccessEnded(snap);
+          if (expired) {
+            statusEl.textContent = "이용 만료";
+            passEl.textContent = data.access_until
+              ? `이용 종료일 ${formatDateKo(data.access_until)}`
+              : "이용기간이 종료되었습니다.";
+            passEl.hidden = false;
+            if (renewalEl) renewalEl.hidden = false;
+          } else if (data.subscription_status === "active") {
             statusEl.textContent = "구독중";
             const start = formatDateKo(data.signup_at);
-            const endD = addDaysFromIso(data.signup_at, 365);
-            const end = endD ? formatDateKo(endD.toISOString()) : "—";
-            passEl.textContent = `1년 이용권 (${start} ~ ${end})`;
+            const end = formatDateKo(data.access_until);
+            passEl.textContent = end
+              ? `1년 이용권 (${start} ~ ${end})`
+              : `1년 이용권 (${start} ~)`;
             passEl.hidden = false;
+            if (renewalEl) renewalEl.hidden = false;
           } else {
-            statusEl.textContent = "작업중";
-            passEl.hidden = true;
+            statusEl.textContent = "체험 이용중";
+            const end = formatDateKo(data.access_until);
+            passEl.textContent = end ? `체험 기간 (~ ${end})` : "체험 기간 이용 중";
+            passEl.hidden = false;
+            if (renewalEl) renewalEl.hidden = false;
           }
           const hr = data.hourly_rate != null ? Number(data.hourly_rate) : NaN;
           if (!Number.isNaN(hr) && hr > 0) {

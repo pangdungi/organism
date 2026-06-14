@@ -33,6 +33,10 @@ import {
 } from "../utils/todoSettings.js";
 import { showToast } from "../utils/showToast.js";
 import {
+  flexibleSearchLabelsEqual,
+  matchFlexibleSearch,
+} from "../utils/flexibleSearchMatch.js";
+import {
   lockPageScrollForModalKeyboard,
   resetViewportKeyboardBaseline,
   syncVisualViewportKeyboardInset,
@@ -148,6 +152,10 @@ import {
   persistTimeLedgerReportRangeToSession,
   readTimeLedgerReportRangeFromSession,
 } from "../utils/timeLedgerReportView.js";
+import {
+  restoreTimeReportScrollTop,
+  TIME_REPORT_HORIZONTAL_SCROLL_SELECTOR,
+} from "../utils/timeReportScrollPreserve.js";
 import { expectedSpanDisplayTaskName } from "../utils/expectedScheduleDetail.js";
 import {
   findNextExpectedBudgetBlockForRecording,
@@ -1657,7 +1665,7 @@ function updateMobileTimeCardLiveFields(card) {
     const mins = ms < 0 ? 0 : Math.floor(ms / 60000);
     trackedEl.textContent = formatIntegerMinutesDurationKo(mins);
   }
-  if (endEl) endEl.textContent = TIME_LEDGER_IN_PROGRESS_LABEL;
+  if (endEl) endEl.textContent = "";
   if (priceEl && viewEl) {
     const hourlyInput = viewEl.querySelector(
       '[data-legacy~="time-hourly-input"]',
@@ -3277,8 +3285,8 @@ function createTagDropdown(
       listRoot
         .querySelectorAll('[data-legacy~="time-tag-option"]')
         .forEach((el) => {
-          const label = (el.dataset.filterLabel || "").toLowerCase();
-          const show = !q || label.includes(q);
+          const label = el.dataset.filterLabel || "";
+          const show = !q || matchFlexibleSearch(label, q);
           el.hidden = !show;
         });
     }
@@ -3482,12 +3490,13 @@ function createTaskNameInput(initialValue, onTaskSelect, tabSignal) {
     const all = getTaskOptions();
     const getName = (o) => (typeof o === "string" ? o : o.name);
     let matches = q
-      ? all.filter((o) => getName(o).toLowerCase().includes(q))
+      ? all.filter((o) => matchFlexibleSearch(getName(o), q))
       : all;
     matches = [...matches].sort((a, b) =>
       getName(a).localeCompare(getName(b), "ko"),
     );
-    const exactMatch = q && matches.some((o) => getName(o).toLowerCase() === q);
+    const exactMatch =
+      q && matches.some((o) => flexibleSearchLabelsEqual(getName(o), q));
     const showCreate = q && !exactMatch;
 
     panel.innerHTML = "";
@@ -4539,7 +4548,7 @@ function formatLedgerTimelineEndClock(row) {
     const inst = getRowEndInstantForMobileCard(row);
     return formatLedgerTimelineClockHHmm(inst) || "—";
   }
-  if (mobileCardNeedsLiveClock(row)) return TIME_LEDGER_IN_PROGRESS_LABEL;
+  if (mobileCardNeedsLiveClock(row)) return "";
   return "—";
 }
 
@@ -4554,7 +4563,10 @@ function buildMobileTimeCardTitle(taskLabel, startClock, endClock, rowData) {
   const kpiId = ledgerRowKpiIdFromTaskName(rowData?.taskName);
   const memoBlock = buildTimeLedgerCardMemoText(rowData, kpiId);
   const rating = normalizeTimeRatingForRow(rowData?.timeRating);
-  const base = `${taskLabel} (${startClock} ~ ${endClock})`;
+  const endLabel =
+    endClock ||
+    (mobileCardNeedsLiveClock(rowData) ? TIME_LEDGER_IN_PROGRESS_LABEL : "—");
+  const base = `${taskLabel} (${startClock} ~ ${endLabel})`;
   let ratingLine = "";
   if (rating != null) {
     if (TTC.isEmotionalBuiltinTaskName(rowData?.taskName)) {
@@ -4855,9 +4867,12 @@ function markLastUsageTimelineItemShowEndTime(parentEl) {
   ];
   const last = items[items.length - 1];
   if (!last) return;
-  last.classList.add("calendar-1day-timeline-item--show-end-time");
   const card = last.querySelector(".calendar-1day-timeline-card--usage-layout");
-  card?.classList.add("calendar-1day-timeline-card--show-end-time");
+  if (!card) return;
+  /* 진행 중 — 시작 아래 「진행중..」만 (마감·~ 스택 없음) */
+  if (mobileCardNeedsLiveClock(card._rowData)) return;
+  last.classList.add("calendar-1day-timeline-item--show-end-time");
+  card.classList.add("calendar-1day-timeline-card--show-end-time");
   wrapUsageTimelineTimeStack(card);
 }
 
@@ -6093,18 +6108,6 @@ export function render(opts = {}) {
           <span data-legacy="time-task-log-section-label time-task-log-emotion-trigger-label">트리거</span>
           <div data-legacy="time-task-log-emotion-trigger-chips lp-choice-chip-row"></div>
         </div>
-        <div data-legacy="time-task-log-memo-section">
-          <span data-legacy="time-task-log-section-label time-task-log-memo-section-label">메모</span>
-          <div data-legacy="time-task-log-memo-fields">
-            <div data-legacy="time-task-log-field time-task-log-meal-detail-section" hidden>
-              <label data-legacy="time-task-log-section-label time-task-log-meal-detail-label" for="time-task-log-meal-detail">식단명</label>
-              <input type="text" id="time-task-log-meal-detail" data-legacy="time-task-log-meal-detail-input time-task-log-memo-input" placeholder="무엇을 드셨는지 한 줄로 적어 주세요" autocomplete="off" />
-            </div>
-            <div data-legacy="time-task-log-field">
-              <textarea data-legacy="time-task-log-feedback time-task-log-memo-input" rows="2" placeholder="메모를 입력하세요"></textarea>
-            </div>
-          </div>
-        </div>
         <div data-legacy="time-task-log-rating-section">
           <span data-legacy="time-task-log-section-label time-task-log-rating-section-label">이 시간 평가</span>
           <div data-legacy="time-task-log-rating-stars" role="group" aria-label="이 시간 평가 1~5점">
@@ -6122,6 +6125,18 @@ export function render(opts = {}) {
           <div data-legacy="time-task-log-flow-factor-section" hidden>
             <span data-legacy="time-task-log-section-label time-task-log-flow-factor-section-label">몰입 요소</span>
             <div data-legacy="time-task-log-flow-factor-chips" class="lp-choice-chip-row"></div>
+          </div>
+        </div>
+        <div data-legacy="time-task-log-memo-section">
+          <span data-legacy="time-task-log-section-label time-task-log-memo-section-label">메모</span>
+          <div data-legacy="time-task-log-memo-fields">
+            <div data-legacy="time-task-log-field time-task-log-meal-detail-section" hidden>
+              <label data-legacy="time-task-log-section-label time-task-log-meal-detail-label" for="time-task-log-meal-detail">식단명</label>
+              <input type="text" id="time-task-log-meal-detail" data-legacy="time-task-log-meal-detail-input time-task-log-memo-input" placeholder="무엇을 드셨는지 한 줄로 적어 주세요" autocomplete="off" />
+            </div>
+            <div data-legacy="time-task-log-field">
+              <textarea data-legacy="time-task-log-feedback time-task-log-memo-input" rows="2" placeholder="메모를 입력하세요"></textarea>
+            </div>
           </div>
         </div>
         </div>
@@ -6228,6 +6243,9 @@ export function render(opts = {}) {
   const taskLogContentTypeChips = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-content-type-chips"]',
   );
+  const taskLogContentTypeLabel = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-content-type-label"]',
+  );
   const taskLogEmotionTriggerSection = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-emotion-trigger-section"]',
   );
@@ -6235,43 +6253,73 @@ export function render(opts = {}) {
     '[data-legacy~="time-task-log-emotion-trigger-chips"]',
   );
   let taskLogEmotionTrigger = "";
-  let taskLogContentType = "";
-  let taskLogContentTypeLegacy = "";
+  /** @type {Set<string>} */
+  const taskLogChipDetailSelection = new Set();
+  let taskLogChipDetailTaskName = "";
 
   function syncTaskLogContentTypeChips() {
     if (!taskLogContentTypeChips) return;
     taskLogContentTypeChips
       .querySelectorAll('[data-legacy~="lp-choice-chip"]')
       .forEach((btn) => {
-        const on =
-          !!taskLogContentType &&
-          btn.getAttribute("data-content-type") === taskLogContentType;
-        lpTokenToggle(btn, "lp-choice-chip--on", on);
+        const label = btn.getAttribute("data-chip-detail") || "";
+        lpTokenToggle(btn, "lp-choice-chip--on", taskLogChipDetailSelection.has(label));
       });
   }
 
-  function setTaskLogContentType(value) {
-    const resolved = TTC.resolveContentTypeLabel(value);
-    if (resolved.known) {
-      taskLogContentType = resolved.label;
-      taskLogContentTypeLegacy = "";
-    } else if (resolved.label) {
-      taskLogContentType = "";
-      taskLogContentTypeLegacy = resolved.label;
-    } else {
-      taskLogContentType = "";
-      taskLogContentTypeLegacy = "";
-    }
+  function rebuildTaskLogChipDetailChips(taskName) {
+    if (!taskLogContentTypeChips) return;
+    const tn = (taskName || "").trim();
+    taskLogChipDetailTaskName = tn;
+    taskLogContentTypeChips.replaceChildren();
+    TTC.ledgerChipDetailOptionsForTask(tn).forEach((label) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      lpSetClasses(btn, "lp-choice-chip");
+      btn.setAttribute("data-chip-detail", label);
+      btn.setAttribute("aria-pressed", "false");
+      btn.textContent = label;
+      btn.addEventListener("click", () => {
+        if (taskLogChipDetailSelection.has(label)) {
+          taskLogChipDetailSelection.delete(label);
+        } else {
+          taskLogChipDetailSelection.add(label);
+        }
+        syncTaskLogContentTypeChips();
+      });
+      taskLogContentTypeChips.appendChild(btn);
+    });
+    syncTaskLogContentTypeChips();
+  }
+
+  function setTaskLogContentType(value, taskName) {
+    const tn = (
+      taskName ||
+      taskLogChipDetailTaskName ||
+      taskLogTaskDropdown?._getValue?.() ||
+      ""
+    ).trim();
+    taskLogChipDetailTaskName = tn;
+    taskLogChipDetailSelection.clear();
+    TTC.parseChipDetailStoredValue(tn, value).forEach((part) => {
+      const resolved = TTC.resolveChipDetailLabel(tn, part);
+      if (resolved.label) taskLogChipDetailSelection.add(resolved.label);
+    });
     syncTaskLogContentTypeChips();
   }
 
   function getTaskLogContentTypeForSave() {
-    return (taskLogContentType || taskLogContentTypeLegacy || "").trim();
+    const tn = (
+      taskLogChipDetailTaskName ||
+      taskLogTaskDropdown?._getValue?.() ||
+      ""
+    ).trim();
+    return TTC.serializeChipDetailSelection(tn, taskLogChipDetailSelection);
   }
 
   function clearTaskLogContentType() {
-    taskLogContentType = "";
-    taskLogContentTypeLegacy = "";
+    taskLogChipDetailSelection.clear();
+    taskLogChipDetailTaskName = "";
     syncTaskLogContentTypeChips();
   }
 
@@ -6314,22 +6362,6 @@ export function render(opts = {}) {
         syncTaskLogEmotionTriggerChips();
       });
       taskLogEmotionTriggerChips.appendChild(btn);
-    });
-  }
-
-  if (taskLogContentTypeChips) {
-    TTC.CONTENT_TYPE_OPTIONS.forEach((label) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      lpSetClasses(btn, "lp-choice-chip");
-      btn.setAttribute("data-content-type", label);
-      btn.textContent = label;
-      btn.addEventListener("click", () => {
-        taskLogContentType = label;
-        taskLogContentTypeLegacy = "";
-        syncTaskLogContentTypeChips();
-      });
-      taskLogContentTypeChips.appendChild(btn);
     });
   }
 
@@ -6838,7 +6870,7 @@ export function render(opts = {}) {
   function updateTaskLogMealDetailVisibility(taskName) {
     const tn = (taskName || "").trim();
     const kind = TTC.ledgerDetailTaskKind(tn);
-    const isContent = kind === "content";
+    const isChipDetail = TTC.isChipDetailTaskKind(kind);
     const isEmotion = kind === "emotion";
     const showFreeTextDetail = TTC.isLedgerFreeTextDetailTaskName(tn);
     if (taskLogMealDetailSection) {
@@ -6855,14 +6887,26 @@ export function render(opts = {}) {
       }
     }
     if (taskLogContentTypeSection) {
-      taskLogContentTypeSection.hidden = !isContent;
-      if (!isContent) clearTaskLogContentType();
+      taskLogContentTypeSection.hidden = !isChipDetail;
+      if (taskLogContentTypeLabel) {
+        taskLogContentTypeLabel.textContent =
+          TTC.ledgerChipDetailSectionLabel(tn) || "콘텐츠 종류";
+      }
+      if (isChipDetail) {
+        if (tn !== taskLogChipDetailTaskName) {
+          taskLogChipDetailSelection.clear();
+        }
+        rebuildTaskLogChipDetailChips(tn);
+      } else {
+        clearTaskLogContentType();
+        taskLogContentTypeChips?.replaceChildren?.();
+      }
     }
     if (taskLogEmotionTriggerSection) {
       taskLogEmotionTriggerSection.hidden = !isEmotion;
       if (!isEmotion) clearTaskLogEmotionTrigger();
     }
-    taskLogScrollArea?.classList?.toggle("is-content-detail-task", isContent);
+    taskLogScrollArea?.classList?.toggle("is-content-detail-task", isChipDetail);
   }
   let taskLogMemoTags = [];
 
@@ -7431,16 +7475,6 @@ export function render(opts = {}) {
             if (taskLogTimeEnd) taskLogTimeEnd.value = newTime;
             syncEndToHidden();
           }
-          console.log("[lp-task-log]", "modal_quick_now", {
-            targetIsStart,
-            lastFocusedTimeField,
-            endHasTime: Boolean(endHasTime),
-            newTime,
-            startVis: (taskLogTimeStart?.value || "").trim(),
-            endVis: (taskLogTimeEnd?.value || "").trim(),
-            startHidden: (taskLogStartInput?.value || "").trim().slice(0, 30),
-            endHidden: (taskLogEndInput?.value || "").trim().slice(0, 30),
-          });
           setTaskLogQuickAdjustActive(btn);
         } else {
           const delta = parseInt(btn.dataset.delta || "0", 10);
@@ -7895,12 +7929,6 @@ export function render(opts = {}) {
             } else {
               currentD = new Date();
             }
-            console.log("[lp-task-log]", "bottom_picker_now", {
-              fieldType,
-              lockedDateYmd: lockedDate
-                ? `${lockedDate.getFullYear()}-${String(lockedDate.getMonth() + 1).padStart(2, "0")}-${String(lockedDate.getDate()).padStart(2, "0")}`
-                : null,
-            });
             renderWheels();
             updateDisplay();
           } else if (action === "eod") {
@@ -8679,8 +8707,9 @@ export function render(opts = {}) {
       }
     }
     const memoOnly = feedbackRaw.replace(/#[^\s#]+/g, "").trim();
-    if (TTC.isContentDetailTaskName(tnForMemo)) {
-      setTaskLogContentType(mealDetailVal);
+    if (TTC.isChipDetailTaskName(tnForMemo)) {
+      updateTaskLogMealDetailVisibility(tnForMemo);
+      setTaskLogContentType(mealDetailVal, tnForMemo);
       if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
       clearTaskLogEmotionTrigger();
       if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
@@ -8770,10 +8799,6 @@ export function render(opts = {}) {
   taskLogSubmitBtn.addEventListener("click", () => {
     dismissTaskLogBlockingPickers();
     flushTaskLogTimeInputsBeforeSubmit();
-    console.log("[lp-task-log]", "submit_click", {
-      mode: taskLogEditTr ? "edit" : taskLogAddContext ? "add" : "none",
-    });
-
     const editTr = taskLogEditTr;
     const addCtx = taskLogAddContext;
     let addLedgerTr = null;
@@ -8789,11 +8814,6 @@ export function render(opts = {}) {
       endRaw = (taskLogEndInput.value || "").trim();
     }
     if (!taskName || !startRaw) {
-      console.warn("[lp-task-log]", "submit_abort", {
-        reason: "missing_task_or_start",
-        hasTaskName: Boolean(taskName),
-        hasStartRaw: Boolean(startRaw),
-      });
       void showAlertModal({
         message: "과제 선택과 시작 시간을 입력해 주세요.",
       });
@@ -8809,12 +8829,6 @@ export function render(opts = {}) {
       /^\d{1,2}:\d{2}$/.test(endVisibleGuard) &&
       !String(endTime || "").trim()
     ) {
-      console.warn("[lp-task-log]", "submit_abort", {
-        reason: "end_visible_not_in_hidden",
-        endVisibleGuard,
-        endRaw,
-        endTime,
-      });
       showToast(
         "마감 시간이 반영되지 않았습니다. 「지금」을 한 번 더 누른 뒤 저장해 주세요.",
         "warn",
@@ -8824,7 +8838,7 @@ export function render(opts = {}) {
     const feedbackBody = (taskLogFeedbackInput?.value || "").trim();
     const detailKind = TTC.ledgerDetailTaskKind(taskName);
     const mealDetailForRow =
-      detailKind === "content"
+      TTC.isChipDetailTaskKind(detailKind)
         ? getTaskLogContentTypeForSave()
         : detailKind === "emotion"
           ? getTaskLogEmotionTriggerForSave()
@@ -9170,16 +9184,7 @@ export function render(opts = {}) {
         if (editTr) refreshTimeLedgerRowMemoDisplay(editTr, rowForMemo);
         if (addLedgerTr) refreshTimeLedgerRowMemoDisplay(addLedgerTr, rowForMemo);
       }
-    } else {
-      console.warn("[lp-task-log]", "submit_no_row_context", {
-        taskName: (taskName || "").slice(0, 80),
-        note: "editTr·addCtx 없음 — 시간 행 저장·갱신 블록 스킵",
-      });
     }
-    console.log("[lp-task-log]", "submit_finished", {
-      savedLedgerRow: Boolean(editTr || addCtx),
-      taskName: (taskName || "").slice(0, 80),
-    });
     closeTaskLogModal();
     el._updateTotal?.();
   });
@@ -9904,11 +9909,12 @@ export function render(opts = {}) {
 
   bindLpHorizontalPanNavigate(contentWrap, {
     signal,
+    dominance: 1.75,
     onNext: () => shiftActiveTimeLedgerPanDay(1),
     onPrev: () => shiftActiveTimeLedgerPanDay(-1),
     shouldIgnoreTarget: (target) =>
       !!target?.closest?.(
-        "input, textarea, select, button, a, [role='dialog'], .time-task-setup-modal, [data-legacy~='time-ledger-memo-log-wrap'], .time-ledger-memo-feed",
+        `input, textarea, select, button, a, [role='dialog'], .time-task-setup-modal, [data-legacy~='time-ledger-memo-log-wrap'], .time-ledger-memo-feed, ${TIME_REPORT_HORIZONTAL_SCROLL_SELECTOR}`,
       ),
     lockMs: 400,
   });
@@ -10174,9 +10180,40 @@ export function render(opts = {}) {
     el._lpUsageListEnterScrollArmed = false;
   }
 
+  function reportScrollPreserveKey() {
+    return `${reportRangeStartYmd}|${reportRangeEndYmd}`;
+  }
+
+  function patchTimeLedgerReportInPlace(rowsToUse) {
+    const shell = contentWrap.querySelector(".time-ledger-report-view-shell");
+    if (!shell || timeLedgerLayoutView !== "report") return false;
+    const savedTop = shell.scrollTop;
+    mountTimeLedgerReport(shell, {
+      rangeStart: reportRangeStartYmd,
+      rangeEnd: reportRangeEndYmd,
+    });
+    restoreTimeReportScrollTop(shell, savedTop);
+    patchTimeLedgerUsageHeadingInPlace(rowsToUse);
+    updateTotal();
+    persistActiveViewTimeFilterToSession();
+    updateFilterBarVisibility();
+    rememberTimeLedgerPaintSignature();
+    return true;
+  }
+
   function renderAll(rows = []) {
     clearTimeLedgerMobileElapsedTimer(el);
     rescueTimeFilterControlsToFilterBar();
+    let reportScrollRestore = null;
+    if (timeLedgerLayoutView === "report") {
+      const shell = contentWrap.querySelector(".time-ledger-report-view-shell");
+      if (shell) {
+        reportScrollRestore = {
+          key: reportScrollPreserveKey(),
+          top: shell.scrollTop,
+        };
+      }
+    }
     try {
       delete el._lpTaskLogModalLedgerRefs;
     } catch (_) {}
@@ -10473,6 +10510,12 @@ export function render(opts = {}) {
         rangeStart: reportRangeStartYmd,
         rangeEnd: reportRangeEndYmd,
       });
+      if (
+        reportScrollRestore?.top > 0 &&
+        reportScrollRestore.key === reportScrollPreserveKey()
+      ) {
+        restoreTimeReportScrollTop(reportShell, reportScrollRestore.top);
+      }
     } else if (showTimelineLedgerContent) {
       ledgerContainer.appendChild(cardsWrap);
     } else {
@@ -10561,6 +10604,8 @@ export function render(opts = {}) {
       updateTotal();
       persistActiveViewTimeFilterToSession();
       updateFilterBarVisibility();
+    } else if (patchTimeLedgerReportInPlace(rowsToUse)) {
+      /* 레포트 탭 — 본문만 갱신, 세로 스크롤 유지 */
     } else {
       renderAll(rowsToUse);
       rememberTimeLedgerPaintSignature();

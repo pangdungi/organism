@@ -17,6 +17,9 @@ export function resolveLedgerRowDetail(rowData) {
   if (!kind) return { kind: null, text: "" };
 
   let text = String(rowData?.mealDetail || "").trim();
+  if (TTC.isChipDetailTaskKind(kind)) {
+    text = TTC.formatChipDetailDisplayText(taskName, text);
+  }
   if (!text) {
     const feedback = String(rowData?.feedback || "").trim();
     if (kind === "meal" && feedback.startsWith("[식단] ")) {

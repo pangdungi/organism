@@ -10,6 +10,7 @@ import {
 import { getServerLedgerTaskOptionsForTaskLog } from "./timeTaskOptionsModel.js";
 import * as TTC from "./timeTaskOptionsConstants.js";
 import { getTimeTaskListIconSrc } from "./timeTaskIconUrls.js";
+import { matchFlexibleSearch } from "./flexibleSearchMatch.js";
 import {
   isIosLikeMobile,
   lockPageScrollForModalKeyboard,
@@ -329,7 +330,7 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
       );
     }
     if (q) {
-      tasks = tasks.filter((t) => (t.name || "").toLowerCase().includes(q));
+      tasks = tasks.filter((t) => matchFlexibleSearch(t.name || "", q));
     }
     tasks = sortTasksForLedgerPicker(tasks);
     tasks.forEach((t) => {

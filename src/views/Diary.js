@@ -28,6 +28,10 @@ import {
 import { readTimeDailyBudgetGoalsRaw } from "../utils/timeDailyBudgetModel.js";
 import { getScopedLocalStorageItem } from "../utils/clientStorageScope.js";
 import { mountUnifiedTimeReport } from "../utils/timeUnifiedReportMount.js";
+import {
+  restoreTimeReportScrollTop,
+  TIME_REPORT_HORIZONTAL_SCROLL_SELECTOR,
+} from "../utils/timeReportScrollPreserve.js";
 import { getAppFooterActionsSlot, APP_FOOTER_ICON_BTN_CLASS } from "../utils/appFooterShell.js";
 import { bindLpHorizontalPanNavigate } from "../utils/lpHorizontalPanNavigate.js";
 import { getTimeReportMonthInclusiveRange } from "./Time.js";
@@ -394,9 +398,10 @@ export function render() {
 
   bindLpHorizontalPanNavigate(inner, {
     isActive: isDiaryTimeReportFooterTab,
+    dominance: 1.75,
     shouldIgnoreTarget: (target) =>
       !!target?.closest?.(
-        "input, textarea, select, [role='dialog'], .time-task-setup-modal, .diary-tr-invest-detail-modal",
+        `input, textarea, select, [role='dialog'], .time-task-setup-modal, .diary-tr-invest-detail-modal, ${TIME_REPORT_HORIZONTAL_SCROLL_SELECTOR}`,
       ),
     onNext: () => shiftActiveTimeReportAnchor(1),
     onPrev: () => shiftActiveTimeReportAnchor(-1),
@@ -1186,6 +1191,29 @@ export function render() {
     lastTimeReportDataSignature = snapshotTimeReportDataSignature();
   }
 
+  /** 서버 pull 후 — 레포트 본문만 다시 그림(헤더·날짜바 유지, 스크롤 유지) */
+  function refreshUnifiedTimeReportAfterPull() {
+    if (currentTabId !== "2") return false;
+    const scrollWrap = layoutWrap.querySelector("[data-lp-time-report-body]");
+    if (!scrollWrap) return false;
+    const savedTop = scrollWrap.scrollTop;
+    const ymd = layoutWrap.dataset.tab2SelectedDate || tab2ReportAnchorDateStr;
+    const g = tab2ViewGranularity === "month" ? "month" : "day";
+    let rangeStart = ymd;
+    let rangeEnd = ymd;
+    if (g === "month") {
+      const monthRng = getTimeReportMonthInclusiveRange(ymd);
+      if (monthRng) {
+        rangeStart = monthRng.start;
+        rangeEnd = monthRng.end;
+      }
+    }
+    mountUnifiedTimeReport(scrollWrap, { rangeStart, rangeEnd });
+    restoreTimeReportScrollTop(scrollWrap, savedTop);
+    rememberTimeReportDataSignature();
+    return true;
+  }
+
   renderLayout = function renderLayout(opts = {}) {
     const force = !!opts.force;
     if (currentTabId === "3") currentTabId = "2";
@@ -1202,6 +1230,12 @@ export function render() {
       typeof window !== "undefined" &&
       !!window.__lpDiaryLedgerPrefetchedForTabSwitch &&
       !reportLedgerRefreshFromPull;
+
+    let savedReportScrollTop = 0;
+    const prevReportScroll = layoutWrap.querySelector("[data-lp-time-report-body]");
+    if (currentTabId === "2" && prevReportScroll) {
+      savedReportScrollTop = prevReportScroll.scrollTop;
+    }
 
     layoutWrap.dataset.diaryTab = currentTabId;
     layoutWrap.innerHTML = "";
@@ -1353,6 +1387,10 @@ export function render() {
       }
       mountUnifiedTimeReport(scrollWrap, { rangeStart, rangeEnd });
 
+      if (savedReportScrollTop > 0) {
+        restoreTimeReportScrollTop(scrollWrap, savedReportScrollTop);
+      }
+
       if (!reportLedgerRefreshFromPull && !skipDupLedgerPull) {
         const { rangeStart: rs, rangeEnd: re } = diaryReportLedgerPullRange(ymd, g);
         const yTen = normalizeDiaryDateStr(ymd);
@@ -1381,8 +1419,11 @@ export function render() {
             return;
           }
           try {
-            reportLedgerRefreshFromPull = true;
-            renderLayout();
+            if (!refreshUnifiedTimeReportAfterPull()) {
+              reportLedgerRefreshFromPull = true;
+              renderLayout();
+              reportLedgerRefreshFromPull = false;
+            }
           } finally {
             reportLedgerRefreshFromPull = false;
           }

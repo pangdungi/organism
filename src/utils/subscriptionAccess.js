@@ -1,10 +1,20 @@
 /**
- * user_subscriptions: inactive + access_until 경과 시 이용 불가(클라이언트).
+ * user_subscriptions: access_until 경과 시 이용 불가(클라이언트).
  * 직접 로그인 직후 차단, 기한 도래 시 자동 로그아웃 예약 등에 사용.
  */
 import { supabase } from "../supabase.js";
 
 export const SUBSCRIPTION_EXPIRED_MESSAGE = "이용기간이 종료되었습니다.";
+export const SUBSCRIPTION_RENEWAL_SHOP_URL = "https://doodledoodle.imweb.me/";
+
+/** 갱신권 구매 페이지를 새 탭으로 연다 */
+export function openSubscriptionRenewalShop() {
+  try {
+    window.open(SUBSCRIPTION_RENEWAL_SHOP_URL, "_blank", "noopener,noreferrer");
+  } catch (_) {
+    window.location.href = SUBSCRIPTION_RENEWAL_SHOP_URL;
+  }
+}
 
 /** setTimeout 최대 지연(브라우저 한도) — 더 긴 기간은 콜백에서 재예약 */
 const MAX_TIMER_MS = 2147483647;
@@ -48,12 +58,17 @@ export function subscriptionSnapFromPrefsRow(row) {
   };
 }
 
-/** inactive + 이용 종료일 경과 */
-export function subscriptionInactiveAccessEnded(snap) {
-  if (!snap || snap.status !== "inactive" || !snap.accessUntil) return false;
+/** access_until 경과 시 이용 불가 (inactive·active 공통) */
+export function subscriptionAccessEnded(snap) {
+  if (!snap || !snap.accessUntil) return false;
   const endMs = new Date(snap.accessUntil).getTime();
   if (Number.isNaN(endMs)) return false;
   return Date.now() > endMs;
+}
+
+/** @deprecated subscriptionAccessEnded 와 동일 — 이름 호환 */
+export function subscriptionInactiveAccessEnded(snap) {
+  return subscriptionAccessEnded(snap);
 }
 
 /**
@@ -61,7 +76,7 @@ export function subscriptionInactiveAccessEnded(snap) {
  */
 export async function enforceSubscriptionAccessOrSignOut() {
   const snap = await fetchSubscriptionGateSnapshot();
-  return subscriptionInactiveAccessEnded(snap);
+  return subscriptionAccessEnded(snap);
 }
 
 /**
@@ -75,7 +90,7 @@ export async function syncSubscriptionAccessAutoSignOut(signOutFn, snapOpt) {
   const snap = snapOpt ?? (await fetchSubscriptionGateSnapshot());
   if (!snap) return;
 
-  if (subscriptionInactiveAccessEnded(snap)) {
+  if (subscriptionAccessEnded(snap)) {
     await signOutFn();
     return;
   }
@@ -107,7 +122,7 @@ export async function syncSubscriptionAccessAutoSignOut(signOutFn, snapOpt) {
 export async function runBackgroundSubscriptionGateFromPrefsRow(row, signOutFn) {
   const snap = subscriptionSnapFromPrefsRow(row);
   if (!snap) return;
-  if (subscriptionInactiveAccessEnded(snap)) {
+  if (subscriptionAccessEnded(snap)) {
     await signOutFn();
     return;
   }

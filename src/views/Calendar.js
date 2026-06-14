@@ -466,15 +466,57 @@ function lpCalendarMonthlyWeekStackSlotCount(allBars, dayCount = 7) {
 }
 
 function lpCalendarMeasureMonthlySpanBarHeightPx(el) {
-  if (!el) return 0;
+  if (!el || !el.isConnected) return 0;
+  const prevMin = el.style.minHeight;
+  const prevHeight = el.style.height;
+  el.style.height = "auto";
+  el.style.minHeight = "0";
   let h = 0;
   try {
-    h = el.getBoundingClientRect().height;
+    h = el.scrollHeight || el.offsetHeight || 0;
+    if (!(h > 0.5)) {
+      h = el.getBoundingClientRect().height || 0;
+    }
   } catch (_) {}
-  if (!(h > 0.5)) {
-    h = el.offsetHeight || el.scrollHeight || 0;
-  }
+  el.style.minHeight = prevMin;
+  el.style.height = prevHeight;
   return h;
+}
+
+/** 화면 너비·줄바꿈 변경 시 막대 top·주 행 높이 재계산 */
+function lpAttachCalendarMonthlyWeekBarLayoutSync(weekRow, barsWithRow, layoutMetrics) {
+  if (!(weekRow instanceof HTMLElement) || !barsWithRow?.length) return;
+  try {
+    weekRow._lpMonthlyBarLayoutRo?.disconnect();
+  } catch (_) {}
+  weekRow._lpMonthlyBarLayoutRo = null;
+  const { BAR_HEIGHT, BARS_TOP, BOTTOM_PAD, ROW_GAP } = layoutMetrics;
+  const rerun = () => {
+    if (!weekRow.isConnected) return;
+    lpCalendarFinalizeBarRowLayout(
+      barsWithRow,
+      weekRow,
+      BAR_HEIGHT,
+      BARS_TOP,
+      BOTTOM_PAD,
+      ROW_GAP,
+    );
+  };
+  weekRow._lpMonthlyBarLayoutRerun = rerun;
+  if (typeof ResizeObserver === "undefined") return;
+  let roRaf = null;
+  const ro = new ResizeObserver(() => {
+    if (roRaf != null) return;
+    roRaf = requestAnimationFrame(() => {
+      roRaf = null;
+      rerun();
+    });
+  });
+  ro.observe(weekRow);
+  barsWithRow.forEach((b) => {
+    if (b._barEl?.isConnected) ro.observe(b._barEl);
+  });
+  weekRow._lpMonthlyBarLayoutRo = ro;
 }
 
 function snapshotCalendarDayIconsSemanticForCompare() {
@@ -664,6 +706,7 @@ function lpCalendarFinalizeBarRowLayout(
       if (b._barEl?.isConnected) {
         b._barEl.style.top = `${rowTopRem[b.row]}rem`;
         b._barEl.style.minHeight = `${rowSlotRem[b.row]}rem`;
+        b._barEl.style.height = "auto";
       }
     }
     const singleByDay = {};
@@ -687,6 +730,7 @@ function lpCalendarFinalizeBarRowLayout(
         const h = lpCalendarMeasureMonthlySpanBarHeightPx(b._barEl);
         const slotRem = Math.max(BAR_HEIGHT, pxToRem(h));
         b._barEl.style.minHeight = `${slotRem}rem`;
+        b._barEl.style.height = "auto";
         acc += slotRem;
         if (i < list.length - 1) acc += gap;
       });
@@ -2682,6 +2726,12 @@ function renderMonthlyView(tabsElement) {
         ROW_GAP,
         weekLayoutDone,
       );
+      lpAttachCalendarMonthlyWeekBarLayoutSync(weekRow, barsWithRow, {
+        BAR_HEIGHT,
+        BARS_TOP,
+        BOTTOM_PAD,
+        ROW_GAP,
+      });
       const moreEl = document.createElement("div");
       moreEl.className = "calendar-day-more-overlay";
       moreEl.style.cssText =
@@ -4990,6 +5040,12 @@ function render1WeekView(tabsElement) {
       ROW_GAP,
       weekLayoutDone,
     );
+    lpAttachCalendarMonthlyWeekBarLayoutSync(weekRow, barsWithRow, {
+      BAR_HEIGHT,
+      BARS_TOP,
+      BOTTOM_PAD,
+      ROW_GAP,
+    });
     const moreEl = document.createElement("div");
     moreEl.className = "calendar-day-more-overlay";
     moreEl.style.cssText =

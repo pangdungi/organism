@@ -42,3 +42,13 @@ export async function adminSetSubscription(userId, status, accessUntilIso) {
   if (error) return { ok: false, error: error.message, data: null };
   return { ok: true, error: null, data };
 }
+
+/**
+ * @returns {Promise<{ ok: boolean, error: string | null, data: object[] | null }>}
+ */
+export async function adminListUserDeletions() {
+  if (!supabase) return { ok: false, error: "Supabase가 설정되지 않았습니다.", data: null };
+  const { data, error } = await supabase.rpc("lp_admin_list_user_deletions");
+  if (error) return { ok: false, error: error.message, data: null };
+  return { ok: true, error: null, data: data || [] };
+}
