@@ -1,8 +1,8 @@
 /* PWA 서비스 워커 — 앱 설치·오프라인 */
 /** index.html·manifest 의 ?v= 와 동일하게 유지 */
-const PWA_BRAND = "doodle-logo-7";
+const PWA_BRAND = "doodle-calendar-1";
 /** 번들·아이콘 등 캐시 버전 (전략·브랜드 바꿀 때 올리면 이전 캐시 정리됨) */
-const ASSET_CACHE = "tip-assets-v52";
+const ASSET_CACHE = "tip-assets-v53";
 /** HTML 셸 캐시 — 홈 화면에서 열 때 즉시 표시용 */
 const HTML_CACHE = "tip-html-v6";
 const LOGIN_BRAND_LOGO_V = "doodle-login-brand-2";
@@ -37,7 +37,7 @@ const PWA_INSTALL_CORE_PATHS = [
   `/apple-touch-icon.png?v=${PWA_BRAND}`,
   `/favicon.ico?v=${PWA_BRAND}`,
   `/icon-48.png?v=${PWA_BRAND}`,
-  `/og-app-icon.png`,
+  `/og-app-icon.png?v=${PWA_BRAND}`,
   "/pwa-splash-512.png",
   "/pwa-splash-portrait-1080.png",
   "/pwa-splash-portrait-1170.png",
@@ -96,7 +96,7 @@ self.addEventListener("install", (event) => {
           PWA_INSTALL_CORE_PATHS.map(async (path) => {
             try {
               const u = self.location.origin + path;
-              const r = await fetch(u);
+              const r = await fetch(new Request(u, { cache: "reload" }));
               if (r && r.ok) await assetCache.put(u, r.clone());
             } catch (_e) {}
           }),
@@ -174,7 +174,7 @@ async function networkFirstAsset(request) {
 async function networkFirstBrandAsset(request) {
   const cache = await caches.open(ASSET_CACHE);
   try {
-    const response = await fetch(request);
+    const response = await fetch(new Request(request, { cache: "reload" }));
     if (response && response.ok) {
       try {
         await cache.put(request, response.clone());
