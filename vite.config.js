@@ -13,7 +13,8 @@ function toolbarIconsSvgWatchPlugin() {
     apply: "serve",
     configureServer(server) {
       const iconsDir = path.resolve(__dirname, "public", "toolbaricons");
-      const runConvert = () => {
+      const runConvert = (opts = {}) => {
+        const { reloadOnCreate = true } = opts;
         execFile(
           process.execPath,
           [path.resolve(__dirname, "scripts", "ensure-toolbar-icons-png.mjs")],
@@ -23,14 +24,14 @@ function toolbarIconsSvgWatchPlugin() {
               return;
             }
             const out = String(stdout || "").trim();
-            if (out.includes("created")) {
+            if (out.includes("created") && reloadOnCreate) {
               server.config.logger.info(out);
               server.ws.send({ type: "full-reload" });
             }
           },
         );
       };
-      runConvert();
+      runConvert({ reloadOnCreate: false });
       server.watcher.add(iconsDir);
       server.watcher.on("all", (_event, file) => {
         if (!file || !file.startsWith(iconsDir)) return;
@@ -48,7 +49,7 @@ export default defineConfig({
   server: {
     host: "0.0.0.0", // localhost:5173 + 같은 Wi‑Fi에서 http://(맥IP):5173
     port: 5173,
-    strictPort: false,
+    strictPort: true,
     open: "http://localhost:5173/",
   },
 });

@@ -95,6 +95,11 @@ function mountPickerIconGrid(grid, icons, onPick) {
     img.alt = "";
     lpSetClasses(img, "time-add-task-icon-modal-item-icon");
     if (src) img.dataset.lpIconSrc = src;
+    attachPickerIconSrcFallback(img, src);
+    img.addEventListener("error", () => {
+      if (img.dataset.lpIconFallback !== "1") return;
+      btn.remove();
+    });
     btn.appendChild(img);
 
     btn.addEventListener("click", (e) => {

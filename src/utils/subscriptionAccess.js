@@ -6,6 +6,9 @@ import { supabase } from "../supabase.js";
 
 export const SUBSCRIPTION_EXPIRED_MESSAGE = "이용기간이 종료되었습니다.";
 export const SUBSCRIPTION_RENEWAL_SHOP_URL = "https://doodledoodle.imweb.me/";
+/** 나의 계정 — 갱신권 구매 노출: 이용 종료일까지 이 일수 이하일 때 */
+export const SUBSCRIPTION_RENEWAL_SHOW_DAYS = 5;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /** 갱신권 구매 페이지를 새 탭으로 연다 */
 export function openSubscriptionRenewalShop() {
@@ -56,6 +59,21 @@ export function subscriptionSnapFromPrefsRow(row) {
     status: String(row.subscription_status || "").toLowerCase(),
     accessUntil: row.access_until ?? null,
   };
+}
+
+/** access_until까지 남은 시간(ms). 없거나 잘못된 값이면 null */
+export function subscriptionMsUntilAccessEnd(snap) {
+  if (!snap?.accessUntil) return null;
+  const endMs = new Date(snap.accessUntil).getTime();
+  if (Number.isNaN(endMs)) return null;
+  return endMs - Date.now();
+}
+
+/** 나의 계정 등 — 만료(또는 종료) 5일 이내면 갱신권 구매 노출 */
+export function subscriptionRenewalOfferDue(snap) {
+  const msLeft = subscriptionMsUntilAccessEnd(snap);
+  if (msLeft == null) return false;
+  return msLeft <= SUBSCRIPTION_RENEWAL_SHOW_DAYS * MS_PER_DAY;
 }
 
 /** access_until 경과 시 이용 불가 (inactive·active 공통) */

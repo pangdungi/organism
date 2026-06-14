@@ -11,6 +11,7 @@ import { showToast } from "../utils/showToast.js";
 import {
   SUBSCRIPTION_RENEWAL_SHOP_URL,
   subscriptionAccessEnded,
+  subscriptionRenewalOfferDue,
   subscriptionSnapFromPrefsRow,
 } from "../utils/subscriptionAccess.js";
 
@@ -136,13 +137,14 @@ export function render() {
           }
           const snap = subscriptionSnapFromPrefsRow(data);
           const expired = subscriptionAccessEnded(snap);
+          const showRenewal = subscriptionRenewalOfferDue(snap);
           if (expired) {
             statusEl.textContent = "이용 만료";
             passEl.textContent = data.access_until
               ? `이용 종료일 ${formatDateKo(data.access_until)}`
               : "이용기간이 종료되었습니다.";
             passEl.hidden = false;
-            if (renewalEl) renewalEl.hidden = false;
+            if (renewalEl) renewalEl.hidden = !showRenewal;
           } else if (data.subscription_status === "active") {
             statusEl.textContent = "구독중";
             const start = formatDateKo(data.signup_at);
@@ -151,13 +153,13 @@ export function render() {
               ? `1년 이용권 (${start} ~ ${end})`
               : `1년 이용권 (${start} ~)`;
             passEl.hidden = false;
-            if (renewalEl) renewalEl.hidden = false;
+            if (renewalEl) renewalEl.hidden = !showRenewal;
           } else {
             statusEl.textContent = "체험 이용중";
             const end = formatDateKo(data.access_until);
             passEl.textContent = end ? `체험 기간 (~ ${end})` : "체험 기간 이용 중";
             passEl.hidden = false;
-            if (renewalEl) renewalEl.hidden = false;
+            if (renewalEl) renewalEl.hidden = !showRenewal;
           }
           const hr = data.hourly_rate != null ? Number(data.hourly_rate) : NaN;
           if (!Number.isNaN(hr) && hr > 0) {

@@ -1,7 +1,7 @@
 /**
  * 꿈·부수입·행복·건강 KPI 맵
  * - 고정 pull(읽기): `pullKpiTabFromCloud` — 꿈/건강/행복/부수입 **상위 앱 탭** 클릭 시 `force: true`.
- *   **건강·행복**: KPI·로그만 먼저(await), 할일은 KPI 상세 진입 시, 6개월 시간기록·습관 sync 는 백그라운드.
+ *   **건강·행복**: KPI·로그만 먼저(await), 할일은 KPI 상세 진입 시, 시간기록(세션 구간)·습관 sync 는 백그라운드.
  *   **꿈·부수입**: 시간가계부 pull 과 KPI 맵 pull 병렬 후 `syncHabitTrackerLogs`.
  * - 서브 pull: `pullKpiMapSubViewFromCloud` — 탭 **내부**에서 꿈/경로/건강 **루트(상단 목표) 전환** 시만.
  *   `force: false`로 sync 진행 중이면 생략(삭제·수정 직후 낡은 서버로 덮임 방지). KPI 카드 클릭에서는 pull 안 함.
@@ -29,6 +29,7 @@ import { kpiTodoCountInStorage, kpiTodoLifecycleOn, kpiTodoLifecycleLog } from "
 import { kpiTodoFineTrace } from "./kpiTodoFineTrace.js";
 import {
   pullTimeLedgerEntriesForDateRange,
+  readTimeLedgerCombinedPullRangeYmd,
   timeLedgerLocalTodayYmd,
 } from "./timeLedgerEntriesSupabase.js";
 import { coalesceInFlightPull } from "./timeLedgerPullCoalesce.js";
@@ -43,19 +44,12 @@ const KPI_LOCAL_STORAGE_KEYS = {
   sideincome: "kpi-sideincome-paths",
 };
 
-/** KPI 탭 진입 시 — 최근 6개월 시간기록 pull (과제목록 pull은 과제설정 모달에서만). */
+/** KPI 탭 진입 시 — 시간기록 탭과 동일한 세션 날짜 구간만 pull (과제목록은 과제설정 모달에서만). */
 async function pullLedgerForKpiTabEnter() {
   return coalesceInFlightPull("kpi-tab-ledger-enter", async () => {
     try {
-      const today = timeLedgerLocalTodayYmd();
-      const d = new Date();
-      d.setMonth(d.getMonth() - 6);
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      await Promise.all([
-        pullTimeLedgerEntriesForDateRange(`${y}-${m}-${day}`, today),
-      ]);
+      const { rangeStart, rangeEnd } = readTimeLedgerCombinedPullRangeYmd();
+      await pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd);
       patchKpiLinkedTasksFromKpiMaps();
     } catch (_) {}
   });
