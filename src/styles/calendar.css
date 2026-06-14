@@ -1640,7 +1640,7 @@
   width: 100%;
   height: auto;
   aspect-ratio: 1;
-  object-fit: fill;
+  object-fit: contain;
   object-position: center;
   pointer-events: none;
 }

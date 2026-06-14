@@ -12,8 +12,8 @@ const FORCE = process.argv.includes("--force");
 
 /** @type {Record<string, number>} */
 const SIZE_BY_DIR = {
-  /** 선택 그리드 썸네일 — 2x(레티나) */
-  "time-task-picker": 128,
+  /** 선택 그리드 썸네일 — picker용 PNG */
+  "time-task-picker": 256,
   "menu-home": 112,
   splash: 512,
   default: 128,
@@ -22,8 +22,13 @@ const SIZE_BY_DIR = {
 function walk(dir, acc = []) {
   for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, ent.name);
-    if (ent.isDirectory()) walk(full, acc);
-    else if (ent.isFile() && ent.name.toLowerCase().endsWith(".svg")) acc.push(full);
+    if (ent.isDirectory()) {
+      /* 스플래시는 generate-pwa-splash-icons.mjs 전용 — 512 정사각 PNG로 덮어쓰지 않음 */
+      if (ent.name === "splash") continue;
+      walk(full, acc);
+    } else if (ent.isFile() && ent.name.toLowerCase().endsWith(".svg")) {
+      acc.push(full);
+    }
   }
   return acc;
 }
@@ -47,6 +52,15 @@ function pngIsUpToDate(svgPath, pngPath) {
 async function svgToPng(svgPath) {
   const pngPath = svgPath.replace(/\.svg$/i, ".png");
   if (pngIsUpToDate(svgPath, pngPath) && !FORCE) return { svgPath, pngPath, skipped: true };
+  try {
+    const stat = fs.statSync(svgPath);
+    if (stat.size < 8) {
+      console.warn("skip empty svg", path.relative(ROOT, svgPath));
+      return { svgPath, pngPath, skipped: true };
+    }
+  } catch (_) {
+    return { svgPath, pngPath, skipped: true };
+  }
   const size = targetSize(svgPath);
   await sharp(svgPath, { density: 288 })
     .resize(size, size, {

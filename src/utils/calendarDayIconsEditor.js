@@ -8,7 +8,8 @@ import {
   setCalendarDayIconKeyForDate,
 } from "./calendarDayIconsModel.js";
 import { syncCalendarDayIconForDate } from "./calendarDayIconsSupabase.js";
-import { getTimeTaskIconSrcByKey } from "./timeTaskIconUrls.js";
+import { getTimeTaskIconDisplaySrcByKey } from "./timeTaskIconUrls.js";
+import { attachIconSvgFallback } from "./toolbarIconUrl.js";
 import { openStandaloneTimeTaskIconPickModal } from "./timeAddTaskIconPicker.js";
 
 /**
@@ -63,7 +64,7 @@ export function renderCalendarMonthlyDayIcons(container, dateKey, opts = {}) {
   if (!(container instanceof HTMLElement)) return;
   container.replaceChildren();
   const iconKey = getCalendarDayIconKeyForDate(dateKey);
-  const src = iconKey ? getTimeTaskIconSrcByKey(iconKey) : "";
+  const src = iconKey ? getTimeTaskIconDisplaySrcByKey(iconKey) : "";
   if (!src) {
     container.hidden = true;
     return;
@@ -78,6 +79,7 @@ export function renderCalendarMonthlyDayIcons(container, dateKey, opts = {}) {
   btn.title = "아이콘 수정";
   const img = document.createElement("img");
   img.src = src;
+  attachIconSvgFallback(img, src);
   img.alt = "";
   applyStaticAppIconImg(img);
   img.className = "calendar-monthly-day-icons__img";
@@ -111,7 +113,7 @@ export function mountCalendarDayExpandIconBtn(mountEl, dateKey, opts = {}) {
 
   function syncBtn() {
     const iconKey = getCalendarDayIconKeyForDate(ymd);
-    const src = iconKey ? getTimeTaskIconSrcByKey(iconKey) : "";
+    const src = iconKey ? getTimeTaskIconDisplaySrcByKey(iconKey) : "";
     btn.replaceChildren();
     if (src) {
       btn.classList.add("calendar-day-expand-icon-btn--selected");
@@ -119,6 +121,7 @@ export function mountCalendarDayExpandIconBtn(mountEl, dateKey, opts = {}) {
       btn.title = "아이콘 변경";
       const img = document.createElement("img");
       img.src = src;
+      attachIconSvgFallback(img, src);
       img.alt = "";
       applyStaticAppIconImg(img);
       img.className = "calendar-day-expand-icon-btn__img";

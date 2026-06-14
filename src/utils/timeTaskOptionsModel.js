@@ -50,6 +50,7 @@ function normalizeBuiltinTaskRow(o) {
   const rawName = String(o?.name ?? "").trim();
   const name = C.canonicalMealTaskDisplayName(rawName);
   const builtin = findBuiltinByName(name) || findBuiltinByName(rawName);
+  const kpiId = String(o?.kpiId || "").trim();
   return {
     ...o,
     name,
@@ -61,8 +62,14 @@ function normalizeBuiltinTaskRow(o) {
       : normalizeProductivity(o?.productivity),
     memo: (o?.memo || "").trim(),
     id: String(o?.id || "").trim(),
-    kpiId: String(o?.kpiId || "").trim(),
-    iconKey: String(o?.iconKey || "").trim(),
+    kpiId,
+    iconKey: String(
+      resolveEffectiveTaskIconKey({
+        iconKey: o?.iconKey,
+        kpiId,
+        taskName: name,
+      }) || "",
+    ).trim(),
   };
 }
 

@@ -1,7 +1,7 @@
 /**
- * PWA 아이콘·Android/iOS 네이티브 스플래시
- * — icon-* / apple-touch: app-icon-source.png (앱 로고 DOODLE — 스플래시와 별도)
- * — pwa-splash-*: splash-screen.png(우선)·svg 래스터 (iOS·Android 네이티브·in-app 스플래시)
+ * PWA 네이티브 스플래시 — public/toolbaricons/splash/splash-screen.png(우선)·svg
+ * in-app 스플래시도 같은 PNG 그대로 사용(덮어쓰지 않음).
+ * icon-* / favicon 은 app-icon-source.png — 스플래시와 별도.
  */
 import sharp from "sharp";
 import { existsSync, writeFileSync } from "fs";
@@ -11,13 +11,28 @@ import { fileURLToPath } from "url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const publicDir = join(__dirname, "..", "public");
 const SOURCE = join(publicDir, "app-icon-source.png");
-const SPLASH_SCREEN_PNG = join(publicDir, "toolbaricons/splash/splash-screen.png");
-const SPLASH_SCREEN_SVG = join(publicDir, "toolbaricons/splash/splash-screen.svg");
+const SPLASH_DIR = join(publicDir, "toolbaricons/splash");
+const SPLASH_SCREEN_PNG = join(SPLASH_DIR, "splash-screen.png");
+const SPLASH_SCREEN_SVG = join(SPLASH_DIR, "splash-screen.svg");
 
 function splashScreenSource() {
   if (existsSync(SPLASH_SCREEN_PNG)) return SPLASH_SCREEN_PNG;
   if (existsSync(SPLASH_SCREEN_SVG)) return SPLASH_SCREEN_SVG;
   return "";
+}
+
+/** @param {string} src @param {number} width @param {number} height */
+async function rasterSplash(src, width, height) {
+  const input = src.toLowerCase().endsWith(".svg")
+    ? sharp(src, { density: 288 })
+    : sharp(src);
+  return input
+    .resize(width, height, {
+      fit: "contain",
+      background: { r: 255, g: 255, b: 255 },
+    })
+    .png()
+    .toBuffer();
 }
 
 /** @type {{ filename: string, width: number, height: number }[]} */
@@ -38,7 +53,6 @@ async function buildAnyIcon(size) {
     .toBuffer();
 }
 
-/** 탭 파비콘(16·32·48) — 작은 크기에서 캐릭터가 더 잘 보이게 */
 async function buildTabFaviconIcon(size) {
   const inner = Math.round(size * 0.94);
   const logo = await sharp(SOURCE)
@@ -89,15 +103,8 @@ async function buildMaskableIcon(size) {
     .toBuffer();
 }
 
-/** splash-screen — 흰 배경 위 contain */
 async function buildSplashCanvas(width, height) {
-  return sharp(splashScreenSource())
-    .resize(width, height, {
-      fit: "contain",
-      background: { r: 255, g: 255, b: 255 },
-    })
-    .png()
-    .toBuffer();
+  return rasterSplash(splashScreenSource(), width, height);
 }
 
 async function buildPwaSplash512(size = 512) {
@@ -110,7 +117,6 @@ async function writeIcon(filename, buffer) {
   console.log("wrote", outPath);
 }
 
-/** 탭·검색용 favicon.ico (PNG-in-ICO, 16·32·48) */
 function buildIcoFromPngs(entries) {
   const count = entries.length;
   const headerSize = 6 + count * 16;
@@ -157,10 +163,12 @@ async function main() {
     console.error("app icon source missing:", SOURCE);
     process.exit(1);
   }
-  if (!splashScreenSource()) {
+  const splashSrc = splashScreenSource();
+  if (!splashSrc) {
     console.error("splash screen missing:", SPLASH_SCREEN_PNG, "or", SPLASH_SCREEN_SVG);
     process.exit(1);
   }
+  console.log("splash source:", splashSrc);
 
   await writeFaviconBundle();
   const icon512 = await buildAnyIcon(512);

@@ -1,6 +1,6 @@
 /**
- * 시간가계부 과제 아이콘 — time-task-picker SVG + 과제·KPI 기본 매핑.
- * iconKey(`svg:슬러그`) 우선, 없으면 기본 과제명·KPI·카테고리 fallback.
+ * 시간가계부 과제 아이콘 — public/toolbaricons/time-task-picker 폴더만 사용.
+ * iconKey(`svg:파일이름`) 우선, 없거나 구 세트면 과제·KPI 기본 fallback.
  */
 
 import pickerSvgNames from "../../public/time-task-picker-icons.json";
@@ -17,117 +17,80 @@ const PICKER_ICON_EXT = "png";
 export const KPI_CATEGORY_ICON_SRC = {
   dream: toolbarIconPng("menu-home/dream-new"),
   sideincome: toolbarIconPng("menu-home/sideincome-new"),
-  happiness: toolbarIconPng("menu-home/happiness-new"),
+  happiness: toolbarIconPng("menu-home/hapiness-new"),
   health: toolbarIconPng("menu-home/health-new"),
 };
 
 const PICKER_SVG_SET = new Set(pickerSvgNames);
 
-/** 구 슬러그 → 현재 picker 슬러그 (저장된 iconKey·구 아이콘 파일 호환) */
-const LEGACY_PICKER_SLUG = {
-  "sleep-new": "sleep",
-  "work-new": "laptop",
-  "bed-new": "sleep",
-  "laptop-new": "laptop",
-  bed: "sleep",
-  onebook: "book2",
-  brocoli: "eating",
-  eggdrop: "cooking",
-  happy3: "conversation",
-  music: "phone",
-  writting: "pen",
-  hair: "king",
-  credit: "creditcard",
-  cook: "cooking2",
-  "emotionsad-1": "sad1",
-  "emotionsad-2": "sad2",
-  "emotionsad-3": "sad3",
-  "emotionsad-4": "sad4",
-  "emotionsad-5": "sad5",
-  emotionsad: "sad1",
-  drug: "medicine",
-  check: "task",
-  sun: "icecoffee",
-  car: "car1",
-  baseball: "basketball",
-  gym: "running",
-  drycloth: "hanger",
-  sofa: "clean",
-  cream: "moon",
-  bag: "cloth",
-};
-
 /** 기본 내장 과제명 → picker 슬러그 */
 export const BUILTIN_TASK_ICON_SLUG = {
-  "수면하기": "sleep",
-  "근무하기": "laptop",
+  "수면하기": "sleeping",
+  "근무하기": "work",
   "생산적 소비": "money",
-  "독서 및 독서노트 작성": "book2",
-  "시간기록 및 점검": "book",
-  "개인 위생": "bath",
-  [NAP_TASK_NAME]: "sleep",
-  "건강한 섭취": "eating",
+  "독서 및 독서노트 작성": "reading",
+  "시간기록 및 점검": "study",
+  "개인 위생": "shower",
+  [NAP_TASK_NAME]: "sleeping",
+  "건강한 섭취": "healthy food",
   "건강한 섭취 준비": "cooking",
-  "생산적 대화": "conversation",
-  "생산적 외출": "communication",
+  "생산적 대화": "happy",
+  "생산적 외출": "travel",
   "의식적 콘텐츠 소비": "phone",
-  "기록하기": "pen",
-  "외모관리": "king",
-  "비생산적 소비": "creditcard",
-  "건강하지 않은 섭취": "burger",
-  "건강하지 않은 섭취 준비": "cooking2",
-  "비생산적 대화": "emotionsad-2",
-  "감정적이기": "emotionsad-1",
+  "기록하기": "writting",
+  "외모관리": "skin care",
+  "비생산적 소비": "shopping bag",
+  "건강하지 않은 섭취": "cocktail",
+  "건강하지 않은 섭취 준비": "blender",
+  "비생산적 대화": "sad",
+  "감정적이기": "angry",
   "비생산적 외출": "beer",
-  "물건 찾기": "thinking",
-  "단순 이동": "car1",
-  "게임": "basketball",
+  "물건 찾기": "packing",
+  "단순 이동": "train",
+  "게임": "headset",
   "무의식적 콘텐츠 소비": "youtube",
-  "보충제 섭취": "medicine",
+  "보충제 섭취": "egg",
 };
 
 /** 아이콘 검색용 한글·별칭 */
 const PICKER_SEARCH_EXTRA = {
-  sleep: "수면하기 낮잠",
-  laptop: "노트북 근무하기",
+  sleeping: "수면하기",
+  nap: "낮잠",
+  work: "근무하기 노트북",
   money: "생산적 소비",
-  book2: "독서 독서노트",
-  book: "시간기록",
-  bath: "위생",
-  eating: "건강한 섭취",
+  reading: "독서 독서노트",
+  study: "시간기록 공부",
+  shower: "위생 개인위생",
+  "healthy food": "건강한 섭취",
   cooking: "건강한 섭취 준비",
-  conversation: "생산적 대화",
-  communication: "생산적 외출",
+  happy: "생산적 대화",
+  travel: "생산적 외출",
   phone: "의식적 콘텐츠",
-  pen: "기록하기",
-  king: "외모관리",
-  creditcard: "비생산적 소비",
-  burger: "건강하지 않은 섭취",
-  cooking2: "건강하지 않은 섭취 준비",
-  thinking: "물건 찾기",
-  car1: "이동",
-  car2: "이동루틴",
-  basketball: "게임",
-  youtube: "영상",
+  writting: "기록하기",
+  "skin care": "외모관리",
+  "shopping bag": "비생산적 소비",
+  cocktail: "건강하지 않은 섭취",
+  blender: "건강하지 않은 섭취 준비",
+  sad: "비생산적 대화",
+  angry: "감정적이기",
   beer: "비생산적 외출",
-  medicine: "보충제",
-  icecoffee: "모닝루틴",
-  hanger: "정리루틴",
+  packing: "물건 찾기",
+  train: "이동 단순이동",
+  headset: "게임",
+  youtube: "영상 콘텐츠",
+  egg: "보충제",
+  "drip coffee": "모닝루틴 커피",
+  Coffee: "커피",
+  dryer: "정리루틴",
   cloth: "외출준비",
   clean: "외출 후",
   running: "유산소",
-  task: "잡무",
-  moon: "취침루틴",
-  hospital: "건강검진",
-  art: "그림 팔레트 미술",
-  bts: "방탄",
-  happycloud: "행복 구름",
-  hotcake: "핫케이크 케이크",
-  "flower-smile": "꽃 웃음",
-  earth: "지구",
-  space: "행성 우주",
-  panda: "판다",
-  rainbow: "무지개",
+  "to do list": "잡무",
+  bedtime: "취침루틴",
+  "dental appointment": "건강검진",
+  meditation: "명상",
+  cinema: "영화",
+  airplane: "비행",
 };
 
 const PRODUCTIVE_CATEGORIES = new Set([
@@ -138,22 +101,39 @@ const PRODUCTIVE_CATEGORIES = new Set([
 
 /** iconKey 없을 때 — 비생산 카테고리 기본 */
 const NONPRODUCTIVE_CATEGORY_PICKER_ICON = {
-  unhealthy: "burger",
-  unhappiness: "emotionsad-2",
+  unhealthy: "cocktail",
+  unhappiness: "sad",
   media_watch: "youtube",
-  pleasure: "car",
-  moneylosing: "creditcard",
+  pleasure: "cinema",
+  moneylosing: "shopping bag",
 };
 
-/** @param {string} slug */
-function normalizePickerSlug(slug) {
-  const s = String(slug || "").trim();
+/** @param {string} name */
+function findPickerSlug(name) {
+  const s = String(name || "").trim();
   if (!s) return "";
-  if (LEGACY_PICKER_SLUG[s]) return LEGACY_PICKER_SLUG[s];
   if (PICKER_SVG_SET.has(s)) return s;
   const lower = s.toLowerCase();
   if (PICKER_SVG_SET.has(lower)) return lower;
+  for (const n of pickerSvgNames) {
+    if (n.toLowerCase() === lower) return n;
+  }
+  const mapped = pickerIconFiles[s] || pickerIconFiles[lower];
+  if (mapped && PICKER_SVG_SET.has(mapped)) return mapped;
   return "";
+}
+
+/** @param {string} slug */
+function normalizePickerSlug(slug) {
+  return findPickerSlug(slug);
+}
+
+/**
+ * picker 폴더에 실제 있는 아이콘인지 (구 svg:슬러그는 false)
+ * @param {string} key
+ */
+export function isValidPickerIconKey(key) {
+  return !!getTimeTaskIconSrcByKey(key);
 }
 
 /** @param {string} slug @param {string} [ext] */
@@ -235,6 +215,22 @@ export function getTimeTaskIconSrcByKey(key) {
   const bare = resolvePickerSvgFileName(k);
   if (bare) return pickerListedIconSrc(bare);
   return "";
+}
+
+/**
+ * 캘린더·목록 등 크게 보이는 곳 — SVG 원본 우선(선명), 없으면 PNG
+ * @param {string} key
+ * @returns {string}
+ */
+export function getTimeTaskIconDisplaySrcByKey(key) {
+  const k = String(key || "").trim();
+  if (!k) return "";
+  const slugRaw = k.startsWith("svg:") || k.startsWith("png:") ? k.slice(4).trim() : k;
+  const fileName = resolvePickerSvgFileName(slugRaw);
+  if (!fileName) return "";
+  const svgSrc = pickerIconSrc(fileName, "svg");
+  if (svgSrc) return svgSrc;
+  return pickerIconSrc(fileName, PICKER_ICON_EXT);
 }
 
 /**

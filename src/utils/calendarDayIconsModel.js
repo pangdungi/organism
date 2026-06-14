@@ -93,7 +93,9 @@ function normalizeYmd(v) {
 }
 
 function normalizeIconKey(v) {
-  return String(v || "").trim();
+  const k = String(v || "").trim();
+  if (!k || !getTimeTaskIconSrcByKey(k)) return "";
+  return k;
 }
 
 export function readCalendarDayIconsSnapshot() {
