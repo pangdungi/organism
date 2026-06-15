@@ -1604,6 +1604,34 @@ table {
   background: #fff;
 }
 
+@media (max-width: 46rem) {
+  .login-page.login-page--gate {
+    min-height: 100svh;
+    min-height: 100dvh;
+    max-height: 100svh;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+
+  .login-page.login-page--gate .auth-gate-body {
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  html.lp-keyboard-open .login-page.login-page--gate {
+    height: var(--vv-visible-height, 100dvh);
+    max-height: var(--vv-visible-height, 100dvh);
+    min-height: 0;
+  }
+
+  html.lp-keyboard-open .login-page.login-page--gate .auth-gate-body {
+    justify-content: flex-start;
+    padding-bottom: calc(1rem + var(--vv-keyboard, 0px));
+  }
+}
+
 .auth-gate-body {
   flex: 1 1 auto;
   display: flex;

@@ -175,3 +175,47 @@ export function initMobileVisualViewportKeyboardInset() {
   });
   run();
 }
+
+/** 로그인·회원가입 — 비밀번호 등 입력란이 키보드에 가리지 않게 */
+export function initAuthGateKeyboardScroll() {
+  if (typeof document === "undefined") return;
+
+  const scrollFieldIntoView = (el) => {
+    const field = el?.closest?.(".login-field--auth");
+    const target =
+      field instanceof HTMLElement
+        ? field
+        : el instanceof HTMLElement
+          ? el
+          : null;
+    if (!target) return;
+    const run = () => {
+      try {
+        target.scrollIntoView({ block: "center", inline: "nearest" });
+      } catch (_) {
+        target.scrollIntoView(false);
+      }
+    };
+    run();
+    window.setTimeout(run, 120);
+    window.setTimeout(run, 320);
+  };
+
+  document.addEventListener(
+    "focusin",
+    (e) => {
+      const t = e.target;
+      if (!(t instanceof HTMLElement)) return;
+      if (!t.closest(".login-page.login-page--gate")) return;
+      if (
+        !t.matches(
+          ".login-input--auth, .login-input--in-password-row, #forgot-pw-email",
+        )
+      ) {
+        return;
+      }
+      scrollFieldIntoView(t);
+    },
+    true,
+  );
+}

@@ -80,6 +80,10 @@ import {
 } from "./utils/lpEnterAppDebug.js";
 import { initLpShellStuckGuard, runLpShellVisibilityGuard } from "./utils/lpShellRecovery.js";
 import { initLpPwaInstall, refreshLpPwaInstall } from "./utils/lpPwaInstall.js";
+import {
+  initAuthGateKeyboardScroll,
+  initMobileVisualViewportKeyboardInset,
+} from "./utils/mobileViewportKeyboard.js";
 import { syncLoginRememberMeCheckbox } from "./utils/authRememberMe.js";
 
 async function blockExpiredSubscriptionOrSignOut() {
@@ -389,6 +393,10 @@ function init() {
   initAppSplashViewportLock();
   initLpAppShellViewportLock();
   initLpPwaInstall();
+  if (window.matchMedia("(max-width: 46rem)").matches) {
+    initMobileVisualViewportKeyboardInset();
+    initAuthGateKeyboardScroll();
+  }
 
   applyAppFont();
   applyTimeCategoryColors();
