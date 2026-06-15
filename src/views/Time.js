@@ -5495,9 +5495,17 @@ export function render(opts = {}) {
     }
     const total = contentWrap.querySelector("[data-usage-total-time]");
     if (total) {
+      const hrs = sumTimeLedgerDayHours(rows);
       total.textContent = usageHistoryMemoOnlyFilter
         ? String(mapLedgerRowsToLogMemos(rows).length)
-        : formatHoursToHHMM(sumTimeLedgerDayHours(rows));
+        : formatHoursToHHMM(hrs);
+      if (!usageHistoryMemoOnlyFilter) {
+        syncTimeLedgerTotalOver24Ui(total, hrs);
+      } else {
+        lpTokenRemove(total, "time-ledger-total-over-24");
+        total.classList.remove("is-over-24h");
+        total.removeAttribute("title");
+      }
     }
   }
 
@@ -8450,6 +8458,7 @@ export function render(opts = {}) {
       '[data-legacy~="time-task-setup-body"]',
     );
     if (bodyEl) bodyEl.scrollTop = 0;
+    applyTaskLogModalDefaultsForNewEntry();
     if (!taskLogTaskDropdown) {
       taskLogTaskDropdown = buildTaskDropdown();
       taskLogTaskWrap.innerHTML = "";
@@ -8473,7 +8482,7 @@ export function render(opts = {}) {
     clearTaskLogContentType();
     clearTaskLogEmotionTrigger();
     setTaskLogTimeRating(null);
-    setTaskLogTimeEndReason("");
+    setTaskLogTimeEndReasons([]);
     setTaskLogTimeFlowFactors([]);
     syncTaskLogRatingSectionUi();
     taskLogMemoTags = [];
@@ -10141,6 +10150,22 @@ export function render(opts = {}) {
     return s;
   }
 
+  /** 하루 총 기록이 24h를 넘으면 총 기록 숫자를 빨간색으로 표시 */
+  function syncTimeLedgerTotalOver24Ui(el, hours, opts = {}) {
+    if (!el) return;
+    const { perDay = false } = opts;
+    const over = hours > 24;
+    const showOver =
+      over && (perDay || !timeLedgerFilterSpansMultipleDays());
+    lpTokenToggle(el, "time-ledger-total-over-24", showOver);
+    el.classList.toggle("is-over-24h", showOver);
+    if (showOver) {
+      el.title = "하루 24시간을 초과한 기록입니다";
+    } else {
+      el.removeAttribute("title");
+    }
+  }
+
   /** 사용내역 목록 — 진입·날짜 변경 시 1회만 맨 아래(최근 기록)로 스크롤 */
   function requestUsageListScrollToBottomOnce() {
     try {
@@ -10312,9 +10337,9 @@ export function render(opts = {}) {
             label.textContent = formatTimeFilterDateDotsWithWeekday(g.key);
             const totalEl = document.createElement("span");
             lpSetClasses(totalEl, "time-ledger-day-group-total");
-            totalEl.textContent = formatHoursDisplay(
-              sumTimeLedgerDayHours(g.rows),
-            );
+            const dayHrs = sumTimeLedgerDayHours(g.rows);
+            totalEl.textContent = formatHoursDisplay(dayHrs);
+            syncTimeLedgerTotalOver24Ui(totalEl, dayHrs, { perDay: true });
             header.appendChild(label);
             header.appendChild(totalEl);
             timelineList.appendChild(header);
@@ -10482,9 +10507,13 @@ export function render(opts = {}) {
     const usageHistoryTotalTime = document.createElement("span");
     lpSetClasses(usageHistoryTotalTime, "time-ledger-usage-history-total");
     usageHistoryTotalTime.setAttribute("data-usage-total-time", "");
+    const headingDayTotalHrs = sumTimeLedgerDayHours(rows);
     usageHistoryTotalTime.textContent = showMemoOnlyLogView
       ? String(memoLogRows.length)
-      : formatHoursToHHMM(sumTimeLedgerDayHours(rows));
+      : formatHoursToHHMM(headingDayTotalHrs);
+    if (!showMemoOnlyLogView) {
+      syncTimeLedgerTotalOver24Ui(usageHistoryTotalTime, headingDayTotalHrs);
+    }
     usageHistoryTotalWrap.appendChild(usageHistoryTotalLabel);
     usageHistoryTotalWrap.appendChild(usageHistoryTotalTime);
     if (showReportView) usageHistoryTotalWrap.hidden = true;
@@ -10566,9 +10595,9 @@ export function render(opts = {}) {
       }
       const totalEl = contentWrap.querySelector("[data-usage-total-time]");
       if (totalEl) {
-        totalEl.textContent = formatHoursToHHMM(
-          sumTimeLedgerDayHours(liveRows),
-        );
+        const hrs = sumTimeLedgerDayHours(liveRows);
+        totalEl.textContent = formatHoursToHHMM(hrs);
+        syncTimeLedgerTotalOver24Ui(totalEl, hrs);
       }
       updateTotal();
     };

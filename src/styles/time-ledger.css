@@ -424,6 +424,28 @@
   line-height: 1.15;
   text-align: right;
 }
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-usage-history-total"].is-over-24h,
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-usage-history-total"][data-legacy~="time-ledger-total-over-24"],
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-day-group-total"].is-over-24h,
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-day-group-total"][data-legacy~="time-ledger-total-over-24"] {
+  color: #dc2626;
+}
+[data-legacy~="time-ledger-view"]
+  .time-ledger-usage-history-total-wrap:has(
+    [data-legacy~="time-ledger-usage-history-total"].is-over-24h
+  )
+  [data-legacy~="time-ledger-usage-history-total-label"],
+[data-legacy~="time-ledger-view"]
+  .time-ledger-usage-history-total-wrap:has(
+    [data-legacy~="time-ledger-usage-history-total"][data-legacy~="time-ledger-total-over-24"]
+  )
+  [data-legacy~="time-ledger-usage-history-total-label"] {
+  color: #dc2626;
+}
 
 /* 시간 사용내역 — 0시~24시 타임라인 바(구간 길이 = 24h 대비 비율) */
 [data-legacy~="time-ledger-view"]
