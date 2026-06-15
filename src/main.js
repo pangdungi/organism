@@ -393,10 +393,8 @@ function init() {
   initAppSplashViewportLock();
   initLpAppShellViewportLock();
   initLpPwaInstall();
-  if (window.matchMedia("(max-width: 46rem)").matches) {
-    initMobileVisualViewportKeyboardInset();
-    initAuthGateKeyboardScroll();
-  }
+  initMobileVisualViewportKeyboardInset();
+  initAuthGateKeyboardScroll();
 
   applyAppFont();
   applyTimeCategoryColors();

@@ -1604,7 +1604,7 @@ table {
   background: #fff;
 }
 
-@media (max-width: 46rem) {
+@media (max-width: 64rem) and (pointer: coarse) {
   .login-page.login-page--gate {
     min-height: 100svh;
     min-height: 100dvh;
@@ -1615,20 +1615,30 @@ table {
 
   .login-page.login-page--gate .auth-gate-body {
     min-height: 0;
+    flex: 1 1 auto;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+    justify-content: flex-start;
+    padding-top: max(2rem, calc(env(safe-area-inset-top, 0px) + 1.25rem));
   }
 
+  html.lp-auth-gate-focus .login-page.login-page--gate,
   html.lp-keyboard-open .login-page.login-page--gate {
     height: var(--vv-visible-height, 100dvh);
     max-height: var(--vv-visible-height, 100dvh);
     min-height: 0;
   }
 
+  html.lp-auth-gate-focus .login-page.login-page--gate .auth-gate-body,
   html.lp-keyboard-open .login-page.login-page--gate .auth-gate-body {
-    justify-content: flex-start;
-    padding-bottom: calc(1rem + var(--vv-keyboard, 0px));
+    padding-bottom: calc(1.25rem + var(--vv-keyboard, 0px));
+  }
+
+  html.lp-auth-gate-focus .login-page.login-page--gate .login-brand-logo {
+    width: min(4.5rem, 28vw);
+    max-width: 72px;
+    margin-bottom: 0.5rem;
   }
 }
 

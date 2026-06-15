@@ -176,45 +176,102 @@ export function initMobileVisualViewportKeyboardInset() {
   run();
 }
 
-/** 로그인·회원가입 — 비밀번호 등 입력란이 키보드에 가리지 않게 */
+function isAuthGateTextInput(el) {
+  if (!(el instanceof HTMLElement)) return false;
+  if (!el.closest(".login-page.login-page--gate")) return false;
+  return el.matches(
+    ".login-input--auth, .login-input--in-password-row, #forgot-pw-email",
+  );
+}
+
+function readVisibleViewportBand() {
+  const vv = window.visualViewport;
+  if (!vv) {
+    return { top: 0, bottom: window.innerHeight };
+  }
+  const top = vv.offsetTop || 0;
+  return { top, bottom: top + vv.height };
+}
+
+function scrollAuthGateFieldIntoView(el) {
+  const root = el?.closest?.(".auth-gate-body");
+  const target =
+    el instanceof HTMLElement
+      ? el.closest(".login-field--auth") || el
+      : null;
+  if (!(root instanceof HTMLElement) || !(target instanceof HTMLElement)) return;
+
+  const align = () => {
+    syncVisualViewportKeyboardInset();
+    const { top, bottom } = readVisibleViewportBand();
+    const margin = 14;
+    const visibleBottom = bottom - margin;
+    const visibleTop = top + margin;
+    let rect = target.getBoundingClientRect();
+    if (rect.bottom > visibleBottom) {
+      root.scrollTop += rect.bottom - visibleBottom;
+    }
+    rect = target.getBoundingClientRect();
+    if (rect.top < visibleTop) {
+      root.scrollTop += rect.top - visibleTop;
+    }
+  };
+
+  align();
+  requestAnimationFrame(align);
+  window.setTimeout(align, 80);
+  window.setTimeout(align, 240);
+  window.setTimeout(align, 420);
+}
+
+let _authGateVvResizeBound = false;
+
+function bindAuthGateViewportFollow() {
+  if (_authGateVvResizeBound || !window.visualViewport) return;
+  _authGateVvResizeBound = true;
+  const onVv = () => {
+    if (!document.documentElement.classList.contains("lp-auth-gate-focus")) return;
+    const active = document.activeElement;
+    if (isAuthGateTextInput(active)) scrollAuthGateFieldIntoView(active);
+    else syncVisualViewportKeyboardInset();
+  };
+  window.visualViewport.addEventListener("resize", onVv, { passive: true });
+  window.visualViewport.addEventListener("scroll", onVv, { passive: true });
+}
+
+function setAuthGateInputFocus(active) {
+  try {
+    document.documentElement.classList.toggle("lp-auth-gate-focus", active);
+  } catch (_) {}
+  if (active) bindAuthGateViewportFollow();
+}
+
+/** 로그인·회원가입 — 입력란이 키보드에 가리지 않게 (.auth-gate-body 안에서 스크롤) */
 export function initAuthGateKeyboardScroll() {
   if (typeof document === "undefined") return;
-
-  const scrollFieldIntoView = (el) => {
-    const field = el?.closest?.(".login-field--auth");
-    const target =
-      field instanceof HTMLElement
-        ? field
-        : el instanceof HTMLElement
-          ? el
-          : null;
-    if (!target) return;
-    const run = () => {
-      try {
-        target.scrollIntoView({ block: "center", inline: "nearest" });
-      } catch (_) {
-        target.scrollIntoView(false);
-      }
-    };
-    run();
-    window.setTimeout(run, 120);
-    window.setTimeout(run, 320);
-  };
+  if (document.documentElement.dataset.lpAuthGateKbScroll === "1") return;
+  document.documentElement.dataset.lpAuthGateKbScroll = "1";
 
   document.addEventListener(
     "focusin",
     (e) => {
       const t = e.target;
-      if (!(t instanceof HTMLElement)) return;
-      if (!t.closest(".login-page.login-page--gate")) return;
-      if (
-        !t.matches(
-          ".login-input--auth, .login-input--in-password-row, #forgot-pw-email",
-        )
-      ) {
-        return;
-      }
-      scrollFieldIntoView(t);
+      if (!isAuthGateTextInput(t)) return;
+      setAuthGateInputFocus(true);
+      scrollAuthGateFieldIntoView(t);
+    },
+    true,
+  );
+
+  document.addEventListener(
+    "focusout",
+    () => {
+      window.setTimeout(() => {
+        const active = document.activeElement;
+        if (isAuthGateTextInput(active)) return;
+        setAuthGateInputFocus(false);
+        syncVisualViewportKeyboardInset();
+      }, 120);
     },
     true,
   );
