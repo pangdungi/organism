@@ -35,6 +35,7 @@ export const BUILTIN_TASK_ICON_SLUG = {
   "근무하기": "work",
   "생산적 소비": "money",
   "독서 및 독서노트 작성": "reading",
+  "시간 관리 관련 행동": "study",
   "시간기록 및 점검": "study",
   "개인 위생": "shower",
   [NAP_TASK_NAME]: "nap",

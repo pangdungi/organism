@@ -127,7 +127,7 @@ export const FIXED_PRODUCTIVE_TASKS = [
     productivity: "productive",
   },
   { name: "독서 및 독서노트 작성", category: "sideincome", productivity: "productive" },
-  { name: "시간기록 및 점검", category: "sideincome", productivity: "productive" },
+  { name: "시간 관리 관련 행동", category: "sideincome", productivity: "productive" },
   { name: "개인 위생", category: "health", productivity: "productive" },
   {
     name: NAP_TASK_NAME,
@@ -210,7 +210,8 @@ export const MEAL_TASK_NAME_RENAMES = [
   { from: "무의식적 영상 시청", to: "무의식적 콘텐츠 소비" },
   { from: "독서하기", to: "독서 및 독서노트 작성" },
   { from: "독서노트 작성", to: "독서 및 독서노트 작성" },
-  { from: "시간기록 점검", to: "시간기록 및 점검" },
+  { from: "시간기록 점검", to: "시간 관리 관련 행동" },
+  { from: "시간기록 및 점검", to: "시간 관리 관련 행동" },
   { from: "메모하기", to: "기록하기" },
   { from: "감정적이기(긍정적)", to: "감정적이기" },
   { from: "감정적이기(부정적)", to: "감정적이기" },
