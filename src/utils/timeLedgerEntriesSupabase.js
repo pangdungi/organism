@@ -43,8 +43,8 @@ function ledgerEntrySelectColumns() {
   const mid = `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating`;
   if (_supportsTimeEndReasonColumn === false) return `${mid}, updated_at`;
   if (_supportsTimeFlowFactorColumn === false)
-    return `${mid}, time_end_reason, updated_at`;
-  return `${mid}, time_end_reason, time_flow_factors, updated_at`;
+    return `${mid}, time_end_reasons, updated_at`;
+  return `${mid}, time_end_reasons, time_flow_factors, updated_at`;
 }
 
 function isMissingTimeRatingColumnError(error) {
@@ -54,7 +54,12 @@ function isMissingTimeRatingColumnError(error) {
 
 function isMissingTimeEndReasonColumnError(error) {
   const msg = `${error?.message || ""} ${error?.details || ""} ${error?.hint || ""}`;
-  return /time_end_reason/i.test(msg);
+  return /time_end_reasons?/i.test(msg);
+}
+
+function isMissingTimeEndReasonsPluralColumnError(error) {
+  const msg = `${error?.message || ""} ${error?.details || ""} ${error?.hint || ""}`;
+  return /time_end_reasons/i.test(msg);
 }
 
 function isMissingTimeFlowFactorColumnError(error) {
@@ -88,11 +93,24 @@ function stripTimeEndReasonFromPayloads(payloads) {
   return payloads.map(
     ({
       time_end_reason: _drop,
-      time_flow_factor: _drop2,
-      time_flow_factors: _drop3,
+      time_end_reasons: _drop2,
+      time_flow_factor: _drop3,
+      time_flow_factors: _drop4,
       ...rest
     }) => rest,
   );
+}
+
+function mapTimeEndReasonsToLegacyPayload(payload) {
+  const reasons = Array.isArray(payload.time_end_reasons)
+    ? payload.time_end_reasons
+    : [];
+  const first = reasons.map((r) => String(r ?? "").trim()).find(Boolean);
+  const { time_end_reasons: _drop, ...rest } = payload;
+  return {
+    ...rest,
+    time_end_reason: first || null,
+  };
 }
 
 function stripTimeFlowFactorFromPayloads(payloads) {
@@ -132,6 +150,32 @@ async function fetchLedgerEntriesForRangePage(
       .order("entry_date", { ascending: false })
       .order("start_time", { ascending: false })
       .range(offset, offset + pageSize - 1);
+  } else if (result.error && isMissingTimeEndReasonsPluralColumnError(result.error)) {
+    result = await supabase
+      .from(TABLE)
+      .select(
+        `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, time_end_reason, time_flow_factors, updated_at`,
+      )
+      .eq("user_id", userId)
+      .gte("entry_date", rs)
+      .lte("entry_date", re)
+      .order("entry_date", { ascending: false })
+      .order("start_time", { ascending: false })
+      .range(offset, offset + pageSize - 1);
+    if (result.error && isMissingTimeFlowFactorColumnError(result.error)) {
+      markTimeFlowFactorColumnSupported(false);
+      result = await supabase
+        .from(TABLE)
+        .select(
+          `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, time_end_reason, updated_at`,
+        )
+        .eq("user_id", userId)
+        .gte("entry_date", rs)
+        .lte("entry_date", re)
+        .order("entry_date", { ascending: false })
+        .order("start_time", { ascending: false })
+        .range(offset, offset + pageSize - 1);
+    }
   } else if (result.error && isMissingTimeEndReasonColumnError(result.error)) {
     markTimeEndReasonColumnSupported(false);
     markTimeFlowFactorColumnSupported(false);
@@ -151,7 +195,7 @@ async function fetchLedgerEntriesForRangePage(
     result = await supabase
       .from(TABLE)
       .select(
-        `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, time_end_reason, updated_at`,
+        `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, time_end_reasons, updated_at`,
       )
       .eq("user_id", userId)
       .gte("entry_date", rs)
@@ -184,6 +228,25 @@ async function upsertLedgerEntryPayloads(payloads) {
         onConflict: UPSERT_CONFLICT_ROW,
       })
       .select(LEDGER_ENTRY_SELECT_BASE);
+  } else if (result.error && isMissingTimeEndReasonsPluralColumnError(result.error)) {
+    const legacyPayloads = payloads.map(mapTimeEndReasonsToLegacyPayload);
+    result = await supabase
+      .from(TABLE)
+      .upsert(legacyPayloads, { onConflict: UPSERT_CONFLICT_ROW })
+      .select(
+        `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, time_end_reason, time_flow_factors, updated_at`,
+      );
+    if (result.error && isMissingTimeFlowFactorColumnError(result.error)) {
+      markTimeFlowFactorColumnSupported(false);
+      result = await supabase
+        .from(TABLE)
+        .upsert(stripTimeFlowFactorFromPayloads(legacyPayloads), {
+          onConflict: UPSERT_CONFLICT_ROW,
+        })
+        .select(
+          `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, time_end_reason, updated_at`,
+        );
+    }
   } else if (result.error && isMissingTimeEndReasonColumnError(result.error)) {
     markTimeEndReasonColumnSupported(false);
     markTimeFlowFactorColumnSupported(false);
@@ -203,7 +266,7 @@ async function upsertLedgerEntryPayloads(payloads) {
         onConflict: UPSERT_CONFLICT_ROW,
       })
       .select(
-        `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, time_end_reason, updated_at`,
+        `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, time_end_reasons, updated_at`,
       );
   } else if (!result.error) {
     if (_supportsTimeRatingColumn === null) markTimeRatingColumnSupported(true);

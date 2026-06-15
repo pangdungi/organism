@@ -5,7 +5,7 @@
 import { supabase } from "../supabase.js";
 
 export const SUBSCRIPTION_EXPIRED_MESSAGE = "이용기간이 종료되었습니다.";
-export const SUBSCRIPTION_RENEWAL_SHOP_URL = "https://doodledoodle.imweb.me/";
+export const SUBSCRIPTION_RENEWAL_SHOP_URL = "https://doodledoodle.me/";
 /** 나의 계정 — 갱신권 구매 노출: 이용 종료일까지 이 일수 이하일 때 */
 export const SUBSCRIPTION_RENEWAL_SHOW_DAYS = 5;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;

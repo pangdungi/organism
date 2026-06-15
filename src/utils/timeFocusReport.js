@@ -14,7 +14,7 @@ import {
   TIME_TASK_FLOW_FACTOR_OPTIONS,
 } from "./timeTaskFlowFactors.js";
 import {
-  normalizeTimeEndReasonForRow,
+  normalizeTimeEndReasonsForRow,
   timeEndReasonLabelForId,
 } from "./timeTaskEndReasons.js";
 
@@ -126,9 +126,11 @@ export function buildFocusReportSnapshot(rows) {
 
   const endReasonCounts = new Map();
   for (const r of productiveRated) {
-    const reason = normalizeTimeEndReasonForRow(r.timeEndReason);
-    if (!reason) continue;
-    endReasonCounts.set(reason, (endReasonCounts.get(reason) || 0) + 1);
+    for (const reason of normalizeTimeEndReasonsForRow(
+      r.timeEndReasons ?? r.timeEndReason,
+    )) {
+      endReasonCounts.set(reason, (endReasonCounts.get(reason) || 0) + 1);
+    }
   }
   const endReasons = [...endReasonCounts.entries()]
     .map(([id, count]) => ({

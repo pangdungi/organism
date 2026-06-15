@@ -17,10 +17,10 @@ import {
 import {
   removeScopedLocalStorageItem,
 } from "./clientStorageScope.js";
-import { normalizeTimeEndReasonForRow } from "./timeTaskEndReasons.js";
+import { normalizeTimeEndReasonsForRow } from "./timeTaskEndReasons.js";
 import { normalizeTimeFlowFactorsForRow } from "./timeTaskFlowFactors.js";
 
-export { normalizeTimeEndReasonForRow } from "./timeTaskEndReasons.js";
+export { normalizeTimeEndReasonForRow, normalizeTimeEndReasonsForRow } from "./timeTaskEndReasons.js";
 export {
   normalizeTimeFlowFactorForRow,
   normalizeTimeFlowFactorsForRow,
@@ -473,7 +473,9 @@ export function localTimeLedgerRowToDbPayload(userId, row) {
     ),
     kpi_performed_value: normalizeKpiPerformedValueForRow(row.kpiPerformedValue),
     time_rating: normalizeTimeRatingForRow(row.timeRating),
-    time_end_reason: normalizeTimeEndReasonForRow(row.timeEndReason) || null,
+    time_end_reasons: normalizeTimeEndReasonsForRow(
+      row.timeEndReasons ?? row.timeEndReason,
+    ),
     time_flow_factors: normalizeTimeFlowFactorsForRow(
       row.timeFlowFactors ?? row.timeFlowFactor,
     ),
@@ -524,7 +526,9 @@ export function dbRowToLocalTimeLedgerRow(db) {
     ),
     kpiPerformedValue: normalizeKpiPerformedValueForRow(db.kpi_performed_value),
     timeRating: normalizeTimeRatingForRow(db.time_rating),
-    timeEndReason: normalizeTimeEndReasonForRow(db.time_end_reason),
+    timeEndReasons: normalizeTimeEndReasonsForRow(
+      db.time_end_reasons ?? db.time_end_reason,
+    ),
     timeFlowFactors: normalizeTimeFlowFactorsForRow(
       db.time_flow_factors ?? db.time_flow_factor,
     ),
@@ -643,9 +647,14 @@ export function applyTimeLedgerServerRangeSnapshot(
     const keepLocalHabit = serverHabit.length === 0 && localHabit.length > 0;
     const keepLocalKpiVal = !serverKpiVal && !!localKpiVal;
     const keepLocalTimeRating = serverRating == null && localRating != null;
-    const serverEndReason = normalizeTimeEndReasonForRow(serverRow.timeEndReason);
-    const localEndReason = normalizeTimeEndReasonForRow(local.timeEndReason);
-    const keepLocalTimeEndReason = !serverEndReason && !!localEndReason;
+    const serverEndReasons = normalizeTimeEndReasonsForRow(
+      serverRow.timeEndReasons ?? serverRow.timeEndReason,
+    );
+    const localEndReasons = normalizeTimeEndReasonsForRow(
+      local.timeEndReasons ?? local.timeEndReason,
+    );
+    const keepLocalTimeEndReasons =
+      serverEndReasons.length === 0 && localEndReasons.length > 0;
     const serverFlowFactors = normalizeTimeFlowFactorsForRow(
       serverRow.timeFlowFactors ?? serverRow.timeFlowFactor,
     );
@@ -658,7 +667,7 @@ export function applyTimeLedgerServerRangeSnapshot(
       keepLocalHabit ||
       keepLocalKpiVal ||
       keepLocalTimeRating ||
-      keepLocalTimeEndReason ||
+      keepLocalTimeEndReasons ||
       keepLocalTimeFlowFactors
     ) {
       return {
@@ -666,7 +675,9 @@ export function applyTimeLedgerServerRangeSnapshot(
         ...(keepLocalHabit ? { habitDailyCompleted: localHabit } : {}),
         ...(keepLocalKpiVal ? { kpiPerformedValue: localKpiVal } : {}),
         ...(keepLocalTimeRating ? { timeRating: localRating } : {}),
-        ...(keepLocalTimeEndReason ? { timeEndReason: localEndReason } : {}),
+        ...(keepLocalTimeEndReasons
+          ? { timeEndReasons: localEndReasons }
+          : {}),
         ...(keepLocalTimeFlowFactors
           ? { timeFlowFactors: localFlowFactors }
           : {}),

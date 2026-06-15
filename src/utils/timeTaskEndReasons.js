@@ -27,7 +27,35 @@ export function normalizeTimeEndReasonForRow(raw) {
   return byLabel ? byLabel.id : "";
 }
 
+/** @returns {string[]} 중복 제거·옵션 순서 유지 */
+export function normalizeTimeEndReasonsForRow(raw) {
+  const items = Array.isArray(raw)
+    ? raw
+    : raw == null || raw === ""
+      ? []
+      : [raw];
+  const out = [];
+  const seen = new Set();
+  for (const item of items) {
+    const id = normalizeTimeEndReasonForRow(item);
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  const order = new Map(
+    TIME_TASK_END_REASON_OPTIONS.map((o, i) => [o.id, i]),
+  );
+  out.sort((a, b) => (order.get(a) ?? 999) - (order.get(b) ?? 999));
+  return out;
+}
+
 export function timeEndReasonLabelForId(id) {
   const key = normalizeTimeEndReasonForRow(id);
   return BY_ID.get(key)?.label || "";
+}
+
+export function timeEndReasonLabelsForIds(ids) {
+  return normalizeTimeEndReasonsForRow(ids)
+    .map((id) => timeEndReasonLabelForId(id))
+    .filter(Boolean);
 }

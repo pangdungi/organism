@@ -101,7 +101,7 @@ import {
   TIME_LEDGER_ENTRIES_KEY,
   writeTimeLedgerEntriesRaw,
   normalizeTimeRatingForRow,
-  normalizeTimeEndReasonForRow,
+  normalizeTimeEndReasonsForRow,
   normalizeTimeFlowFactorsForRow,
   formatTimeLedgerCardRatingStarsHtml,
   applyProductiveTimeRatingToBasePrice,
@@ -3683,7 +3683,9 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
       : [],
     kpiPerformedValue: String(initialData?.kpiPerformedValue ?? "").trim(),
     timeRating: normalizeTimeRatingForRow(initialData?.timeRating),
-    timeEndReason: normalizeTimeEndReasonForRow(initialData?.timeEndReason),
+    timeEndReasons: normalizeTimeEndReasonsForRow(
+      initialData?.timeEndReasons ?? initialData?.timeEndReason,
+    ),
     timeFlowFactors: normalizeTimeFlowFactorsForRow(
       initialData?.timeFlowFactors ?? initialData?.timeFlowFactor,
     ),
@@ -6393,15 +6395,15 @@ export function render(opts = {}) {
     '[data-legacy~="time-task-log-flow-factor-chips"]',
   );
   let taskLogTimeRating = null;
-  let taskLogTimeEndReason = "";
+  let taskLogTimeEndReasons = [];
   let taskLogTimeFlowFactors = [];
 
   function getTaskLogTimeRating() {
     return normalizeTimeRatingForRow(taskLogTimeRating);
   }
 
-  function getTaskLogTimeEndReason() {
-    return normalizeTimeEndReasonForRow(taskLogTimeEndReason);
+  function getTaskLogTimeEndReasons() {
+    return normalizeTimeEndReasonsForRow(taskLogTimeEndReasons);
   }
 
   function getTaskLogTimeFlowFactors() {
@@ -6499,26 +6501,36 @@ export function render(opts = {}) {
 
   function syncTaskLogEndReasonChips() {
     if (!taskLogEndReasonChips) return;
-    const picked = getTaskLogTimeEndReason();
+    const picked = new Set(getTaskLogTimeEndReasons());
     taskLogEndReasonChips
       .querySelectorAll('[data-legacy~="lp-choice-chip"]')
       .forEach((btn) => {
-        const on = btn.getAttribute("data-end-reason") === picked;
+        const on = picked.has(btn.getAttribute("data-end-reason") || "");
         lpTokenToggle(btn, "lp-choice-chip--on", on);
         btn.setAttribute("aria-pressed", on ? "true" : "false");
       });
   }
 
-  function setTaskLogTimeEndReason(value) {
-    taskLogTimeEndReason = normalizeTimeEndReasonForRow(value);
+  function setTaskLogTimeEndReasons(value) {
+    taskLogTimeEndReasons = normalizeTimeEndReasonsForRow(value);
     syncTaskLogEndReasonChips();
+  }
+
+  function toggleTaskLogTimeEndReason(id) {
+    const key = normalizeTimeEndReasonsForRow([id])[0];
+    if (!key) return;
+    const next = getTaskLogTimeEndReasons();
+    const idx = next.indexOf(key);
+    if (idx >= 0) next.splice(idx, 1);
+    else next.push(key);
+    setTaskLogTimeEndReasons(next);
   }
 
   function syncTaskLogEndReasonSection() {
     const show =
       isTaskLogModalProductiveTask() && getTaskLogTimeRating() != null;
     if (taskLogEndReasonSection) taskLogEndReasonSection.hidden = !show;
-    if (!show) setTaskLogTimeEndReason("");
+    if (!show) setTaskLogTimeEndReasons([]);
   }
 
   function syncTaskLogFlowFactorChips() {
@@ -6584,7 +6596,7 @@ export function render(opts = {}) {
     if (taskLogRatingSection) taskLogRatingSection.hidden = !show;
     if (!show) {
       taskLogTimeRating = null;
-      taskLogTimeEndReason = "";
+      taskLogTimeEndReasons = [];
       taskLogTimeFlowFactors = [];
     }
     if (show) renderTaskLogTimeRating();
@@ -6607,9 +6619,7 @@ export function render(opts = {}) {
       btn.setAttribute("data-end-reason", id);
       btn.textContent = label;
       btn.addEventListener("click", () => {
-        setTaskLogTimeEndReason(
-          getTaskLogTimeEndReason() === id ? "" : id,
-        );
+        toggleTaskLogTimeEndReason(id);
       });
       taskLogEndReasonChips.appendChild(btn);
     });
@@ -8725,7 +8735,7 @@ export function render(opts = {}) {
       if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
     }
     setTaskLogTimeRating(data.timeRating);
-    setTaskLogTimeEndReason(data.timeEndReason);
+    setTaskLogTimeEndReasons(data.timeEndReasons ?? data.timeEndReason);
     setTaskLogTimeFlowFactors(data.timeFlowFactors ?? data.timeFlowFactor);
     syncTaskLogRatingSectionUi();
     const rawMemoTagsForEdit = Array.isArray(data.memoTags)
@@ -8881,10 +8891,10 @@ export function render(opts = {}) {
     const dateStr = parseDateFromDateTime(startTime) || toDateStr(new Date());
     const focusValue = "";
     const timeRatingForRow = getTaskLogTimeRating();
-    const timeEndReasonForRow =
+    const timeEndReasonsForRow =
       timeRatingForRow != null && isTaskLogModalProductiveTask()
-        ? getTaskLogTimeEndReason()
-        : "";
+        ? getTaskLogTimeEndReasons()
+        : [];
     const timeFlowFactorsForRow =
       timeRatingForRow === 5 && isTaskLogModalProductiveTask()
         ? getTaskLogTimeFlowFactors()
@@ -8920,7 +8930,7 @@ export function render(opts = {}) {
           : [],
         kpiPerformedValue: String(prevRow.kpiPerformedValue ?? "").trim(),
         timeRating: timeRatingForRow,
-        timeEndReason: timeEndReasonForRow,
+        timeEndReasons: timeEndReasonsForRow,
         timeFlowFactors: timeFlowFactorsForRow,
       };
       editTr._rowData = newRowData;
@@ -9032,7 +9042,7 @@ export function render(opts = {}) {
         habitDailyCompleted: [],
         kpiPerformedValue: "",
         timeRating: timeRatingForRow,
-        timeEndReason: timeEndReasonForRow,
+        timeEndReasons: timeEndReasonsForRow,
         timeFlowFactors: timeFlowFactorsForRow,
       };
       const tr = createRow(
