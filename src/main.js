@@ -196,6 +196,9 @@ function hideAppSplashNow() {
     try {
       window.__lpMarkBootReady?.();
     } catch (_) {}
+    try {
+      refreshLpPwaInstall();
+    } catch (_) {}
   };
   const onTransitionEnd = (ev) => {
     if (ev.target === splash && ev.propertyName === "opacity") done();

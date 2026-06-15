@@ -1,6 +1,6 @@
 /**
  * PWA 설치 — Android Chrome beforeinstallprompt + iOS Safari 안내.
- * 설치 진행·완료 후에는 토스트만 (추가 중 모달 없음).
+ * Android: 크롬 기본「앱 설치」배너를 막지 않음(다른 PWA와 동일).
  */
 
 import { showToast } from "./showToast.js";
@@ -83,16 +83,19 @@ function shouldOfferInstallBanner() {
 function isPageVisible(pageId) {
   const page = document.getElementById(`${pageId}-page`);
   if (!page) return false;
-  const display = page.style.display;
-  return display === "flex" || display === "block";
+  try {
+    return getComputedStyle(page).display !== "none";
+  } catch (_) {
+    const display = page.style.display;
+    return display === "flex" || display === "block";
+  }
 }
 
 function hideAllInstallRoots() {
-  const bodyRoot = document.getElementById("lp-pwa-install-root-body");
-  if (bodyRoot) bodyRoot.hidden = true;
   [
     document.getElementById("lp-pwa-install-root-login"),
     document.getElementById("lp-pwa-install-root-app"),
+    document.getElementById("lp-pwa-install-root-body"),
   ]
     .filter(Boolean)
     .forEach((root) => {
@@ -100,17 +103,15 @@ function hideAllInstallRoots() {
     });
 }
 
-function ensureBodyInstallRoot() {
-  let root = document.getElementById("lp-pwa-install-root-body");
-  if (!root) {
-    root = document.createElement("div");
-    root.id = "lp-pwa-install-root-body";
-    root.className = "lp-pwa-install-root lp-pwa-install-root--app";
-    root.hidden = true;
-    root.setAttribute("aria-live", "polite");
-    document.body.appendChild(root);
+function getActiveInstallRoot() {
+  if (!shouldOfferInstallBanner()) return null;
+  if (isPageVisible("signin")) {
+    return document.getElementById("lp-pwa-install-root-app");
   }
-  return root;
+  if (isPageVisible("login") || isPageVisible("reset-password")) {
+    return document.getElementById("lp-pwa-install-root-login");
+  }
+  return null;
 }
 
 function getInstallInstructions() {
@@ -118,7 +119,7 @@ function getInstallInstructions() {
   const ios = isIosDevice();
   const android = isAndroidDevice();
 
-  if (canNativePrompt) {
+  if (canNativePrompt && !android) {
     return {
       title: "앱 설치",
       desc: "Doodle을 홈 화면에 설치하면 앱처럼 전체 화면으로 열 수 있어요.",
@@ -140,11 +141,11 @@ function getInstallInstructions() {
   }
   if (android) {
     return {
-      title: "앱 설치 / 홈 화면 추가",
-      desc: deferredPrompt
-        ? "Doodle을 홈 화면에 설치하면 앱처럼 전체 화면으로 열 수 있어요."
-        : "앱 설치 준비 중이에요. 잠시 후 「앱 설치」가 뜨거나, ⋮ → 「앱 설치」·「홈 화면에 추가」를 눌러 주세요.",
-      showInstallBtn: !!deferredPrompt,
+      title: "앱 설치",
+      desc: canNativePrompt
+        ? "화면 아래 또는 주소창 옆 「앱 설치」를 눌러 주세요. 안 보이면 ⋮ → 「앱 설치」·「홈 화면에 추가」를 이용해 주세요."
+        : "⋮ 메뉴 → 「앱 설치」 또는 「홈 화면에 추가」로 설치할 수 있어요.",
+      showInstallBtn: canNativePrompt,
     };
   }
   return {
@@ -181,7 +182,7 @@ async function runNativeInstall() {
 
     showToast("설치가 취소되었습니다", "다시 설치하려면 「앱 설치」를 눌러 주세요.");
   } catch (_) {
-    showToast("설치를 시작하지 못했습니다", "잠시 후 다시 시도해 주세요.");
+    showToast("설치를 시작하지 못했습니다", "⋮ → 「앱 설치」를 이용해 주세요.");
   } finally {
     installPromptOpen = false;
     refreshLpPwaInstall();
@@ -191,7 +192,7 @@ async function runNativeInstall() {
 function buildInstallCard(opts = {}) {
   const { onDismiss, dismissLabel = "닫기" } = opts;
   const info = getInstallInstructions();
-  const canNativePrompt = !!deferredPrompt;
+  const canNativePrompt = !!deferredPrompt && !isAndroidDevice();
 
   const card = document.createElement("div");
   card.className = "lp-pwa-install-card";
@@ -279,19 +280,11 @@ function renderInstallBanner(root) {
   hideAllInstallRoots();
   root.hidden = false;
   mountInstallCard(root, {
-    dismissLabel: deferredPrompt ? "나중에" : "닫기",
+    dismissLabel: deferredPrompt && !isAndroidDevice() ? "나중에" : "닫기",
     onDismiss: () => {
       hideAllInstallRoots();
     },
   });
-}
-
-function getActiveInstallRoot() {
-  if (!shouldOfferInstallBanner()) return null;
-  if (isPageVisible("signin") || isPageVisible("login")) {
-    return ensureBodyInstallRoot();
-  }
-  return null;
 }
 
 let helpModalEl = null;
@@ -337,6 +330,13 @@ export function showLpPwaInstallHelp() {
   document.body.classList.add("lp-pwa-install-modal-open");
 }
 
+function scheduleInstallRefreshRetries() {
+  refreshLpPwaInstall();
+  for (const ms of [400, 1200, 3000]) {
+    window.setTimeout(refreshLpPwaInstall, ms);
+  }
+}
+
 export function refreshLpPwaInstall() {
   if (installPromptOpen) {
     hideAllInstallRoots();
@@ -347,14 +347,19 @@ export function refreshLpPwaInstall() {
 
 export function initLpPwaInstall() {
   window.addEventListener("beforeinstallprompt", (e) => {
-    e.preventDefault();
     deferredPrompt = e;
-    refreshLpPwaInstall();
+    if (isAndroidDevice()) {
+      /* Android: preventDefault 하지 않음 → 크롬 기본「앱 설치」배너 유지 */
+      scheduleInstallRefreshRetries();
+      return;
+    }
+    e.preventDefault();
+    scheduleInstallRefreshRetries();
   });
 
   if ("serviceWorker" in navigator) {
     void navigator.serviceWorker.ready.then(() => {
-      refreshLpPwaInstall();
+      scheduleInstallRefreshRetries();
     });
   }
 
@@ -374,5 +379,5 @@ export function initLpPwaInstall() {
     refreshLpPwaInstall();
   });
 
-  refreshLpPwaInstall();
+  scheduleInstallRefreshRetries();
 }
