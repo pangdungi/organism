@@ -115,7 +115,7 @@ export function openSaveBudgetTemplateModal(options) {
     showToast("이 날짜에 저장할 예상 일정이 없습니다.");
     return;
   }
-  const shell = mountModalShell("템플릿으로 저장");
+  const shell = mountModalShell("템플릿 저장");
   if (!shell) return;
   const { body, footer, close } = shell;
 
@@ -187,7 +187,7 @@ export function openApplyBudgetTemplateModal(options) {
     const list = readBudgetScheduleTemplates();
     if (!list.length) {
       body.innerHTML =
-        '<p class="lp-budget-template-empty">저장된 템플릿이 없습니다. 「템플릿으로 저장」으로 먼저 만들어 주세요.</p>';
+        '<p class="lp-budget-template-empty">저장된 템플릿이 없습니다. 「템플릿 저장」으로 먼저 만들어 주세요.</p>';
       return;
     }
     body.innerHTML = `

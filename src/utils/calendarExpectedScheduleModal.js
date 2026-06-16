@@ -9,7 +9,7 @@ import { showConfirmModal } from "./confirmModal.js";
 import {
   lpTokenToggle,
 } from "./timeLedgerClassPolicy.js";
-import { syncTimeDailyBudgetDateToSupabase } from "./timeDailyBudgetSupabase.js";
+import { syncTimeDailyBudgetDateToSupabase, cancelPendingTimeDailyBudgetSyncPush } from "./timeDailyBudgetSupabase.js";
 import { buildTimeTaskLogPickerDropdown } from "./timeTaskLogPickerDropdown.js";
 import { pullKpiMapsForTaskLogModalOpen } from "./kpiTabCloudRefresh.js";
 import { syncTimeLedgerTaskListForModalOpen } from "./timeLedgerTasksSupabase.js";
@@ -27,6 +27,12 @@ import {
 import { getTaskDailyAverageMinutesLast30Days } from "./timeKpiSync.js";
 import * as TTC from "./timeTaskOptionsConstants.js";
 import { bindTimeTaskLogModalMemoKeyboard } from "./timeTaskLogModalMemoKeyboard.js";
+
+function lpExpectedDeleteDebug(step, detail) {
+  try {
+    console.log("[lp expected-delete]", step, detail ?? "");
+  } catch (_) {}
+}
 
 function parseDateFromDateTime(str) {
   if (!str || typeof str !== "string") return "";
@@ -1164,6 +1170,21 @@ export function openCalendarExpectedScheduleModal(options) {
     document.body.style.overflow = "";
   };
 
+  /** 로컬 저장 직후 모달·화면 먼저 닫고, 서버 upsert는 백그라운드 */
+  const finishAfterLocalSave = (dateStr) => {
+    cancelPendingTimeDailyBudgetSyncPush(dateStr);
+    close();
+    try {
+      onSaved?.();
+    } catch (_) {}
+    void syncTimeDailyBudgetDateToSupabase(dateStr).then((syncR) => {
+      lpExpectedDeleteDebug("server.sync.result", syncR);
+      if (!syncR?.ok) {
+        showToast("서버 반영에 실패했습니다.");
+      }
+    });
+  };
+
   /* 배경 탭으로 닫지 않음 — 입력 중 실수로 닫히는 것 방지 (닫기는 ×만) */
   modal
     .querySelector('[data-legacy~="time-task-setup-close"]')
@@ -1189,6 +1210,7 @@ export function openCalendarExpectedScheduleModal(options) {
         return;
       }
       let r;
+      const syncOpts = { skipDebouncedSync: true };
       if (isEdit) {
         r = updateBudgetScheduleBlockAtIndex(
           dateStr,
@@ -1199,6 +1221,7 @@ export function openCalendarExpectedScheduleModal(options) {
           endHHmm,
           memo,
           detail,
+          syncOpts,
         );
         if (!r.ok) {
           showToast(r.error || "저장에 실패했습니다.");
@@ -1212,19 +1235,14 @@ export function openCalendarExpectedScheduleModal(options) {
           endHHmm,
           memo,
           detail,
+          syncOpts,
         );
         if (!r.ok) {
           showToast(r.error || "등록에 실패했습니다.");
           return;
         }
       }
-      try {
-        await syncTimeDailyBudgetDateToSupabase(dateStr);
-      } catch (_) {}
-      close();
-      try {
-        onSaved?.();
-      } catch (_) {}
+      finishAfterLocalSave(dateStr);
     },
     { signal },
   );
@@ -1232,7 +1250,16 @@ export function openCalendarExpectedScheduleModal(options) {
   deleteBtn?.addEventListener(
     "click",
     async () => {
-      if (!isEdit) return;
+      lpExpectedDeleteDebug("deleteBtn.click", {
+        isEdit,
+        editTaskName,
+        editTimeIdx,
+        dateKey: dk,
+      });
+      if (!isEdit) {
+        lpExpectedDeleteDebug("abort", "not_edit_mode");
+        return;
+      }
       const ok = await showConfirmModal({
         title: "예상 일정 삭제",
         message: "이 예상 일정을 삭제할까요?",
@@ -1241,28 +1268,37 @@ export function openCalendarExpectedScheduleModal(options) {
         cancelText: "취소",
         confirmDanger: true,
       });
+      lpExpectedDeleteDebug("confirm.result", { ok });
       if (!ok) return;
       const dateStr = taskLogResolveYmdForSyncInline(
         taskLogDateStart,
         taskLogStartInput,
         dk,
       );
+      const beforeGoals = getBudgetGoals(dateStr);
+      lpExpectedDeleteDebug("local.before", {
+        dateStr,
+        editTaskName,
+        editTimeIdx,
+        taskSlots: beforeGoals[editTaskName]?.scheduledTimes,
+      });
       const r = removeBudgetScheduleBlockAtIndex(
         dateStr,
         editTaskName,
         editTimeIdx,
+        { skipDebouncedSync: true },
       );
+      lpExpectedDeleteDebug("local.remove", r);
       if (!r.ok) {
         showToast(r.error || "삭제에 실패했습니다.");
         return;
       }
-      try {
-        await syncTimeDailyBudgetDateToSupabase(dateStr);
-      } catch (_) {}
-      close();
-      try {
-        onSaved?.();
-      } catch (_) {}
+      const afterGoals = getBudgetGoals(dateStr);
+      lpExpectedDeleteDebug("local.after", {
+        taskSlots: afterGoals[editTaskName]?.scheduledTimes,
+      });
+      finishAfterLocalSave(dateStr);
+      lpExpectedDeleteDebug("ui.onSaved.done", {});
     },
     { signal },
   );

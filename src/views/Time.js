@@ -319,13 +319,23 @@ const NONPRODUCTIVE_CATEGORIES = [
   { value: "moneylosing", label: "돈을 잃는 일", color: "cat-moneylosing" },
 ];
 
+function normalizeBudgetDateKey(dateStr) {
+  const dk = String(dateStr || "")
+    .replace(/\//g, "-")
+    .trim()
+    .slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(dk) ? dk : "";
+}
+
 /** 일간시간예산 목표 시간 저장/불러오기 - { "YYYY-MM-DD": { "과제명": { goalTime: "08:00", scheduledTime: "hh:mm-hh:mm", isInvest: true } } } */
 export function getBudgetGoals(dateStr) {
+  const dk = normalizeBudgetDateKey(dateStr);
+  if (!dk) return {};
   try {
     const raw = readTimeDailyBudgetGoalsRaw();
     if (raw) {
       const all = JSON.parse(raw);
-      const result = all[dateStr] || {};
+      const result = all[dk] || {};
       if (
         typeof result !== "object" ||
         result === null ||
@@ -401,6 +411,7 @@ export function appendBudgetScheduleBlock(
   endHHmm,
   memo = "",
   detail = "",
+  opts = {},
 ) {
   const dk = String(dateStr || "")
     .replace(/\//g, "-")
@@ -480,7 +491,7 @@ export function appendBudgetScheduleBlock(
     delete next.scheduledTime;
     all[dk][name] = next;
     writeTimeDailyBudgetGoalsRaw(JSON.stringify(all));
-    notifyTimeDailyBudgetSaved(dk);
+    if (!opts.skipDebouncedSync) notifyTimeDailyBudgetSaved(dk);
     return { ok: true };
   } catch (_) {
     return { ok: false, error: "저장 중 오류가 났습니다." };
@@ -576,8 +587,17 @@ export function findBudgetScheduleSlotIndex(dateStr, taskName, startMin, endMin)
   return -1;
 }
 
+/** 캘린더 span → goals 슬롯 인덱스(겹침 클리핑·_timeIdx 우선) */
+export function resolveBudgetScheduleSlotIndex(dateKey, span) {
+  const storedIdx = Number(span?._timeIdx);
+  if (Number.isFinite(storedIdx) && storedIdx >= 0) return storedIdx;
+  const sm = Number(span?._budgetStoredStartMin ?? span?.startMin);
+  const em = Number(span?._budgetStoredEndMin ?? span?.endMin);
+  return findBudgetScheduleSlotIndex(dateKey, span?.taskName, sm, em);
+}
+
 /** @param {number} timeIdx — goals[taskName].scheduledTimes 인덱스 */
-export function removeBudgetScheduleBlockAtIndex(dateStr, taskName, timeIdx) {
+export function removeBudgetScheduleBlockAtIndex(dateStr, taskName, timeIdx, opts = {}) {
   const dk = String(dateStr || "")
     .replace(/\//g, "-")
     .trim()
@@ -662,9 +682,20 @@ export function removeBudgetScheduleBlockAtIndex(dateStr, taskName, timeIdx) {
       delete all[dk];
     }
     writeTimeDailyBudgetGoalsRaw(JSON.stringify(all));
-    notifyTimeDailyBudgetSaved(dk);
+    if (!opts.skipDebouncedSync) notifyTimeDailyBudgetSaved(dk);
+    try {
+      console.log("[lp expected-delete]", "remove.ok", {
+        dk,
+        name,
+        idx,
+        remainingSlots: scheduledTimes.length,
+      });
+    } catch (_) {}
     return { ok: true };
-  } catch (_) {
+  } catch (err) {
+    try {
+      console.log("[lp expected-delete]", "remove.fail", String(err?.message || err));
+    } catch (_) {}
     return { ok: false, error: "삭제 중 오류가 났습니다." };
   }
 }
@@ -681,6 +712,7 @@ export function updateBudgetScheduleBlockAtIndex(
   endHHmm,
   memo,
   detail = "",
+  opts = {},
 ) {
   const dk = String(dateStr || "")
     .replace(/\//g, "-")
@@ -824,7 +856,7 @@ export function updateBudgetScheduleBlockAtIndex(
       all[dk][nextKey] = nextObj;
     }
     writeTimeDailyBudgetGoalsRaw(JSON.stringify(all));
-    notifyTimeDailyBudgetSaved(dk);
+    if (!opts.skipDebouncedSync) notifyTimeDailyBudgetSaved(dk);
     return { ok: true };
   } catch (_) {
     return { ok: false, error: "저장 중 오류가 났습니다." };

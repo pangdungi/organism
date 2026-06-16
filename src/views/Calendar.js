@@ -34,7 +34,7 @@ import {
   parseTimeToHours,
   isTimeLedgerRowLiveRecording,
   formatIntegerMinutesDurationKo,
-  findBudgetScheduleSlotIndex,
+  resolveBudgetScheduleSlotIndex,
   updateBudgetScheduleBlockAtIndex,
   getRowStartInstantForMobileCard,
   getMobileCardEffectiveHoursForPrice,
@@ -3544,12 +3544,7 @@ function wireCalendar1DaySlotGridCells(root, dateKey, onSaved) {
       };
       const span = findExpectedSpanAtSlotMin(dateKey, slotMin);
       if (span) {
-        const slotIdx = findBudgetScheduleSlotIndex(
-          dateKey,
-          span.taskName,
-          span.startMin,
-          span.endMin,
-        );
+        const slotIdx = resolveBudgetScheduleSlotIndex(dateKey, span);
         if (slotIdx < 0) {
           showToast(
             "일간 예산에서 추가한 예상 일정만 여기서 수정할 수 있습니다.",
@@ -3590,24 +3585,9 @@ function wireCalendar1DaySlotGridDragMove(scroll, dateKey, onSaved) {
   };
   wireCalendar1DaySlotGridDrag(scroll, {
     getSpans: () => buildExpectedScheduleSpansForDateKey(dateKey).spans,
-    getBudgetSlotIndex: (span) => {
-      const storedIdx = Number(span?._timeIdx);
-      if (Number.isFinite(storedIdx) && storedIdx >= 0) return storedIdx;
-      const sm = Number(span?._budgetStoredStartMin ?? span?.startMin);
-      const em = Number(span?._budgetStoredEndMin ?? span?.endMin);
-      return findBudgetScheduleSlotIndex(dateKey, span.taskName, sm, em);
-    },
+    getBudgetSlotIndex: (span) => resolveBudgetScheduleSlotIndex(dateKey, span),
     onMoveSpan: (span, newStartMin, newEndMin) => {
-      const storedIdx = Number(span?._timeIdx);
-      const slotIdx =
-        Number.isFinite(storedIdx) && storedIdx >= 0
-          ? storedIdx
-          : findBudgetScheduleSlotIndex(
-              dateKey,
-              span.taskName,
-              Number(span?._budgetStoredStartMin ?? span?.startMin),
-              Number(span?._budgetStoredEndMin ?? span?.endMin),
-            );
+      const slotIdx = resolveBudgetScheduleSlotIndex(dateKey, span);
       if (slotIdx < 0) {
         return {
           ok: false,
@@ -3843,12 +3823,7 @@ function createCalendar1DayExpectedCardsPanel(dateKey, spans, onSaved) {
 
       card.addEventListener("click", () => {
         if (lpHorizontalPanNavigateRecentlyFired()) return;
-        const slotIdx = findBudgetScheduleSlotIndex(
-          dateKey,
-          span.taskName,
-          span.startMin,
-          span.endMin,
-        );
+        const slotIdx = resolveBudgetScheduleSlotIndex(dateKey, span);
         if (slotIdx < 0) {
           showToast(
             "일간 예산에서 추가한 예상 일정만 여기서 수정할 수 있습니다.",
@@ -3895,9 +3870,9 @@ function createCalendar1DayExpectedCardsPanel(dateKey, spans, onSaved) {
   const saveTemplateBtn = document.createElement("button");
   saveTemplateBtn.type = "button";
   saveTemplateBtn.className = "calendar-1day-expected-template-save";
-  saveTemplateBtn.textContent = "템플릿으로 저장";
-  saveTemplateBtn.title = "이 날짜 예상 일정 전체를 템플릿으로 저장";
-  saveTemplateBtn.setAttribute("aria-label", "이 날 예상 일정을 템플릿으로 저장");
+  saveTemplateBtn.textContent = "템플릿 저장";
+  saveTemplateBtn.title = "이 날짜 예상 일정 전체를 템플릿 저장";
+  saveTemplateBtn.setAttribute("aria-label", "이 날 예상 일정을 템플릿 저장");
   saveTemplateBtn.addEventListener("click", () => {
     openSaveBudgetTemplateModal({
       dateKey,
@@ -4292,12 +4267,7 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
         });
         card.addEventListener("click", () => {
           if (lpHorizontalPanNavigateRecentlyFired()) return;
-          const slotIdx = findBudgetScheduleSlotIndex(
-            targetKey,
-            span.taskName,
-            span.startMin,
-            span.endMin,
-          );
+          const slotIdx = resolveBudgetScheduleSlotIndex(targetKey, span);
           if (slotIdx < 0) {
             showToast(
               "일간 예산에서 추가한 예상 일정만 여기서 수정할 수 있습니다.",
@@ -5308,12 +5278,7 @@ function render1WeekView(tabsElement) {
         }
         card.addEventListener("click", () => {
           if (lpHorizontalPanNavigateRecentlyFired()) return;
-          const slotIdx = findBudgetScheduleSlotIndex(
-            key,
-            span.taskName,
-            span.startMin,
-            span.endMin,
-          );
+          const slotIdx = resolveBudgetScheduleSlotIndex(key, span);
           if (slotIdx < 0) {
             showToast(
               "일간 예산에서 추가한 예상 일정만 여기서 수정할 수 있습니다.",
