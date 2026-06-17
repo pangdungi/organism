@@ -594,17 +594,20 @@
   justify-content: center;
   margin: 0;
   padding: 0;
-  color: #c4c9d1;
+  color: #666666;
   background: transparent;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: color 0.12s ease;
+  transition:
+    color 0.12s ease,
+    background 0.12s ease;
 }
 
 .lp-kpi-dream-page .dream-tab-edit:hover {
-  color: #999999;
+  color: #111111;
+  background: rgba(0, 0, 0, 0.06);
 }
 
 .lp-kpi-dream-page .dream-tab-edit:focus-visible {
@@ -617,13 +620,16 @@
   flex-shrink: 0;
 }
 
-.lp-kpi-dream-page .dream-tab-edit-icon-mask {
-  width: 14px;
-  height: 14px;
+.lp-kpi-dream-page .dream-tab-edit-icon-dots {
+  display: block;
+  width: 4px;
+  height: 4px;
   pointer-events: none;
-  background-color: currentColor;
-  -webkit-mask: url("/toolbaricons/kpi-edit-modify.png") center / contain no-repeat;
-  mask: url("/toolbaricons/kpi-edit-modify.png") center / contain no-repeat;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow:
+    0 -6px 0 currentColor,
+    0 6px 0 currentColor;
 }
 
 .lp-kpi-dream-page .dream-tab:hover {
@@ -1087,9 +1093,12 @@
   touch-action: manipulation;
 }
 
-.lp-kpi-dream-page .dream-kpi-card-inner > .dream-kpi-card-edit.dream-tab-edit .dream-tab-edit-icon-mask {
-  width: 16px;
-  height: 16px;
+.lp-kpi-dream-page .dream-kpi-card-inner > .dream-kpi-card-edit.dream-tab-edit .dream-tab-edit-icon-dots {
+  width: 5px;
+  height: 5px;
+  box-shadow:
+    0 -7px 0 currentColor,
+    0 7px 0 currentColor;
 }
 
 :is(.lp-kpi-dream-page, .kpi-view-modal) .dream-kpi-card-head {

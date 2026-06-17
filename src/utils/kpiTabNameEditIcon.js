@@ -1,10 +1,10 @@
 /**
  * 꿈·건강·행복·부수입 등 KPI — 목표·카드·활성 탭 수정 버튼
- * 아이콘: public/toolbaricons/kpi-edit-modify.png (대화창 첨부 ellipsis-vertical)
- * 색: kpi-dream.css `.dream-tab-edit` currentColor (#c4c9d1 → hover #94a3b8)
+ * 아이콘: CSS 세로 점3개(⋮) — PNG 없이 currentColor로 표시
+ * 색: kpi-dream.css `.dream-tab-edit` (#666 → hover #111)
  */
 
-const KPI_EDIT_MODIFY_ICON_HTML = `<span class="dream-tab-edit-icon dream-tab-edit-icon-mask" aria-hidden="true"></span>`;
+const KPI_EDIT_MODIFY_ICON_HTML = `<span class="dream-tab-edit-icon dream-tab-edit-icon-dots" aria-hidden="true"></span>`;
 
 function kpiEditButtonHtml(className, title, ariaLabel) {
   return `<button type="button" class="${className}" title="${title}" aria-label="${ariaLabel}">

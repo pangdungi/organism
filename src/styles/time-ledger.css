@@ -2350,10 +2350,10 @@
 .time-ledger-day-timebox-matrix-cell--nonproductive,
 [data-legacy~="time-ledger-view"]
   .time-ledger-day-timebox-matrix-cell--nonproductive {
-  background: #ececec;
-  border-color: #ececec;
+  background: #e5eafa;
+  border-color: #e5eafa;
   border-style: solid;
-  color: #000000;
+  color: #1d40ba;
 }
 
 .time-ledger-day-timebox-matrix-cell--labeled,

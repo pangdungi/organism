@@ -579,10 +579,10 @@
 }
 
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--nonproductive {
-  background: #ececec;
-  border-color: #ececec;
+  background: #e5eafa;
+  border-color: #e5eafa;
   border-style: solid;
-  color: #000000;
+  color: #1d40ba;
 }
 
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--labeled {

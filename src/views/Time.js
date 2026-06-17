@@ -7350,8 +7350,12 @@ export function render(opts = {}) {
 
   [taskLogDateStart, taskLogTimeStart].forEach((el) => {
     el?.addEventListener("change", () => {
-      syncStartToHidden();
-      syncEndToHidden();
+      if (el === taskLogDateStart && !taskLogEditTr) {
+        applyTaskLogStartFromLedgerForDate(taskLogResolveYmdForSync());
+      } else {
+        syncStartToHidden();
+        syncEndToHidden();
+      }
       const tn = taskLogTaskDropdown?._getValue?.() || "";
       if (tn) refreshKpiTodosInLogModal(tn);
     });
@@ -7367,7 +7371,15 @@ export function render(opts = {}) {
       if (!skipEndSync) syncEndToHidden();
     });
   });
-  taskLogDateStart?.addEventListener("input", syncTaskLogDateOverlay);
+  taskLogDateStart?.addEventListener("input", () => {
+    syncTaskLogDateOverlay();
+    if (!taskLogEditTr) {
+      const ymd = (taskLogDateStart?.value || "").trim().slice(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
+        applyTaskLogStartFromLedgerForDate(ymd);
+      }
+    }
+  });
   const taskLogDateWrap = taskLogDateStart?.closest?.(
     '[data-legacy~="time-task-log-date-native-wrap"]',
   );
@@ -8351,24 +8363,54 @@ export function render(opts = {}) {
   }
 
   /**
-   * 신규 과제 기록 모달: 오늘 날짜·오버레이 확정, 시작=해당일 **마지막 기록** 마감(없으면 그 기록 시작), 마감 입력 비움.
-   * (type=date/WebKit 이슈 대비 인풋 값·value 속성·오버레이 문구를 모두 맞춤.)
+   * 신규 기록: 해당 날짜 마지막 기록 마감(없으면 그 기록 시작)을 시작 시각에 반영.
+   * @param {string} ymd
+   * @param {{ allowPreset?: boolean, clearEnd?: boolean }} [opts]
    */
-  function applyTaskLogModalDefaultsForNewEntry() {
-    const ymd = resolveTaskLogNewEntryRecordYmd();
+  function applyTaskLogStartFromLedgerForDate(ymd, opts = {}) {
+    const { allowPreset = false, clearEnd = true } = opts;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return;
     const mergedRows = mergeLedgerRowsForDedupe(
       loadTimeRows(),
       Array.isArray(allRowsCache) ? allRowsCache : [],
     );
     let startHhMm =
-      getNextTaskLogStartHhMmFromLedger(ymd, null, mergedRows) || "00:00";
-    if (taskLogAddContext?.presetStartHhMm) {
+      getNextTaskLogStartHhMmFromLedger(ymd, taskLogEditExclude, mergedRows) ||
+      "00:00";
+    if (allowPreset && taskLogAddContext?.presetStartHhMm) {
       const preset = normalizeHhMm(String(taskLogAddContext.presetStartHhMm));
       if (preset) startHhMm = preset;
-    } else if (taskLogAddContext?.presetStartNow) {
+    } else if (allowPreset && taskLogAddContext?.presetStartNow) {
       const n = new Date();
       startHhMm = `${String(n.getHours()).padStart(2, "0")}:${String(n.getMinutes()).padStart(2, "0")}`;
     }
+    if (taskLogTimeStart) {
+      taskLogTimeStart.value = startHhMm;
+      try {
+        taskLogTimeStart.defaultValue = startHhMm;
+      } catch (_) {}
+    }
+    if (clearEnd) {
+      if (taskLogTimeEnd) {
+        taskLogTimeEnd.value = "";
+        try {
+          taskLogTimeEnd.defaultValue = "";
+        } catch (_) {}
+      }
+      if (taskLogEndInput) taskLogEndInput.value = "";
+    }
+    syncStartToHidden();
+    syncEndToHidden();
+    updateEndTimeClearVisibility();
+    updateTaskLogTimeOrderWarning();
+  }
+
+  /**
+   * 신규 과제 기록 모달: 오늘 날짜·오버레이 확정, 시작=해당일 **마지막 기록** 마감(없으면 그 기록 시작), 마감 입력 비움.
+   * (type=date/WebKit 이슈 대비 인풋 값·value 속성·오버레이 문구를 모두 맞춤.)
+   */
+  function applyTaskLogModalDefaultsForNewEntry() {
+    const ymd = resolveTaskLogNewEntryRecordYmd();
     if (taskLogDateStart) {
       taskLogDateStart.value = ymd;
       try {
@@ -8378,19 +8420,10 @@ export function render(opts = {}) {
         taskLogDateStart.setAttribute("value", ymd);
       } catch (_) {}
     }
-    if (taskLogTimeStart) {
-      taskLogTimeStart.value = startHhMm;
-      try {
-        taskLogTimeStart.defaultValue = startHhMm;
-      } catch (_) {}
-    }
-    if (taskLogTimeEnd) {
-      taskLogTimeEnd.value = "";
-      try {
-        taskLogTimeEnd.defaultValue = "";
-      } catch (_) {}
-    }
-    if (taskLogEndInput) taskLogEndInput.value = "";
+    applyTaskLogStartFromLedgerForDate(ymd, {
+      allowPreset: true,
+      clearEnd: true,
+    });
     const wrap = taskLogDateStart?.closest?.(
       '[data-legacy~="time-task-log-date-native-wrap"]',
     );
@@ -8400,10 +8433,7 @@ export function render(opts = {}) {
     if (ov && /^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
       ov.textContent = formatTaskLogDateOverlayYmd(ymd);
     }
-    syncStartToHidden();
-    syncEndToHidden();
     syncTaskLogDateOverlay();
-    updateEndTimeClearVisibility();
     try {
       taskLogDateStart?.dispatchEvent(new Event("input", { bubbles: true }));
     } catch (_) {}
