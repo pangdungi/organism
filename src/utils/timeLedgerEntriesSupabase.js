@@ -44,7 +44,9 @@ function ledgerEntrySelectColumns() {
   if (_supportsTimeEndReasonColumn === false) return `${mid}, updated_at`;
   if (_supportsTimeFlowFactorColumn === false)
     return `${mid}, time_end_reasons, updated_at`;
-  return `${mid}, time_end_reasons, time_flow_factors, updated_at`;
+  if (_supportsTimeFlowDisruptorColumn === false)
+    return `${mid}, time_end_reasons, time_flow_factors, updated_at`;
+  return `${mid}, time_end_reasons, time_flow_factors, time_flow_disruptors, updated_at`;
 }
 
 function isMissingTimeRatingColumnError(error) {
@@ -67,6 +69,11 @@ function isMissingTimeFlowFactorColumnError(error) {
   return /time_flow_factors?/i.test(msg);
 }
 
+function isMissingTimeFlowDisruptorColumnError(error) {
+  const msg = `${error?.message || ""} ${error?.details || ""} ${error?.hint || ""}`;
+  return /time_flow_disruptors?/i.test(msg);
+}
+
 function markTimeRatingColumnSupported(ok) {
   _supportsTimeRatingColumn = ok;
 }
@@ -83,6 +90,13 @@ let _supportsTimeFlowFactorColumn = null;
 
 function markTimeFlowFactorColumnSupported(ok) {
   _supportsTimeFlowFactorColumn = ok;
+}
+
+/** null=미확인, true=있음, false=마이그레이션 전 서버 */
+let _supportsTimeFlowDisruptorColumn = null;
+
+function markTimeFlowDisruptorColumnSupported(ok) {
+  _supportsTimeFlowDisruptorColumn = ok;
 }
 
 function stripTimeRatingFromPayloads(payloads) {
@@ -119,6 +133,16 @@ function stripTimeFlowFactorFromPayloads(payloads) {
   );
 }
 
+function stripTimeFlowDisruptorFromPayloads(payloads) {
+  return payloads.map(
+    ({
+      time_flow_disruptor: _drop,
+      time_flow_disruptors: _drop2,
+      ...rest
+    }) => rest,
+  );
+}
+
 async function fetchLedgerEntriesForRangePage(
   userId,
   rs,
@@ -141,6 +165,7 @@ async function fetchLedgerEntriesForRangePage(
     markTimeRatingColumnSupported(false);
     markTimeEndReasonColumnSupported(false);
     markTimeFlowFactorColumnSupported(false);
+    markTimeFlowDisruptorColumnSupported(false);
     result = await supabase
       .from(TABLE)
       .select(LEDGER_ENTRY_SELECT_BASE)
@@ -179,6 +204,7 @@ async function fetchLedgerEntriesForRangePage(
   } else if (result.error && isMissingTimeEndReasonColumnError(result.error)) {
     markTimeEndReasonColumnSupported(false);
     markTimeFlowFactorColumnSupported(false);
+    markTimeFlowDisruptorColumnSupported(false);
     result = await supabase
       .from(TABLE)
       .select(
@@ -192,6 +218,7 @@ async function fetchLedgerEntriesForRangePage(
       .range(offset, offset + pageSize - 1);
   } else if (result.error && isMissingTimeFlowFactorColumnError(result.error)) {
     markTimeFlowFactorColumnSupported(false);
+    markTimeFlowDisruptorColumnSupported(false);
     result = await supabase
       .from(TABLE)
       .select(
@@ -203,10 +230,24 @@ async function fetchLedgerEntriesForRangePage(
       .order("entry_date", { ascending: false })
       .order("start_time", { ascending: false })
       .range(offset, offset + pageSize - 1);
+  } else if (result.error && isMissingTimeFlowDisruptorColumnError(result.error)) {
+    markTimeFlowDisruptorColumnSupported(false);
+    result = await supabase
+      .from(TABLE)
+      .select(
+        `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, time_end_reasons, time_flow_factors, updated_at`,
+      )
+      .eq("user_id", userId)
+      .gte("entry_date", rs)
+      .lte("entry_date", re)
+      .order("entry_date", { ascending: false })
+      .order("start_time", { ascending: false })
+      .range(offset, offset + pageSize - 1);
   } else if (!result.error) {
     if (_supportsTimeRatingColumn === null) markTimeRatingColumnSupported(true);
     if (_supportsTimeEndReasonColumn === null) markTimeEndReasonColumnSupported(true);
     if (_supportsTimeFlowFactorColumn === null) markTimeFlowFactorColumnSupported(true);
+    if (_supportsTimeFlowDisruptorColumn === null) markTimeFlowDisruptorColumnSupported(true);
   }
   return result;
 }
@@ -222,6 +263,7 @@ async function upsertLedgerEntryPayloads(payloads) {
     markTimeRatingColumnSupported(false);
     markTimeEndReasonColumnSupported(false);
     markTimeFlowFactorColumnSupported(false);
+    markTimeFlowDisruptorColumnSupported(false);
     result = await supabase
       .from(TABLE)
       .upsert(stripTimeRatingFromPayloads(payloads), {
@@ -250,6 +292,7 @@ async function upsertLedgerEntryPayloads(payloads) {
   } else if (result.error && isMissingTimeEndReasonColumnError(result.error)) {
     markTimeEndReasonColumnSupported(false);
     markTimeFlowFactorColumnSupported(false);
+    markTimeFlowDisruptorColumnSupported(false);
     result = await supabase
       .from(TABLE)
       .upsert(stripTimeEndReasonFromPayloads(payloads), {
@@ -260,6 +303,7 @@ async function upsertLedgerEntryPayloads(payloads) {
       );
   } else if (result.error && isMissingTimeFlowFactorColumnError(result.error)) {
     markTimeFlowFactorColumnSupported(false);
+    markTimeFlowDisruptorColumnSupported(false);
     result = await supabase
       .from(TABLE)
       .upsert(stripTimeFlowFactorFromPayloads(payloads), {
@@ -268,10 +312,21 @@ async function upsertLedgerEntryPayloads(payloads) {
       .select(
         `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, time_end_reasons, updated_at`,
       );
+  } else if (result.error && isMissingTimeFlowDisruptorColumnError(result.error)) {
+    markTimeFlowDisruptorColumnSupported(false);
+    result = await supabase
+      .from(TABLE)
+      .upsert(stripTimeFlowDisruptorFromPayloads(payloads), {
+        onConflict: UPSERT_CONFLICT_ROW,
+      })
+      .select(
+        `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, time_end_reasons, time_flow_factors, updated_at`,
+      );
   } else if (!result.error) {
     if (_supportsTimeRatingColumn === null) markTimeRatingColumnSupported(true);
     if (_supportsTimeEndReasonColumn === null) markTimeEndReasonColumnSupported(true);
     if (_supportsTimeFlowFactorColumn === null) markTimeFlowFactorColumnSupported(true);
+    if (_supportsTimeFlowDisruptorColumn === null) markTimeFlowDisruptorColumnSupported(true);
   }
   return result;
 }

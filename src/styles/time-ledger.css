@@ -4189,22 +4189,22 @@
   height: 0.75rem;
 }
 
-/* 생산적 작업 — 별점 선택 후 작업 종료 이유 */
+/* 생산적 작업 1~2점 — 몰입 방해요소 */
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
-  [data-legacy~="time-task-log-end-reason-section"],
+  [data-legacy~="time-task-log-flow-disruptor-section"],
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
     .lp-calendar-budget-add-modal
   )
-  [data-legacy~="time-task-log-end-reason-section"] {
+  [data-legacy~="time-task-log-flow-disruptor-section"] {
   margin-top: 0.65rem;
 }
 
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
-  [data-legacy~="time-task-log-end-reason-chips"],
+  [data-legacy~="time-task-log-flow-disruptor-chips"],
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
     .lp-calendar-budget-add-modal
   )
-  [data-legacy~="time-task-log-end-reason-chips"] {
+  [data-legacy~="time-task-log-flow-disruptor-chips"] {
   margin-top: 0.45rem;
 }
 
@@ -4263,6 +4263,72 @@
   font-weight: 600;
   color: #4d4d4d;
   line-height: 1.45;
+}
+
+.lp-tr2-focus-disruptor-insight {
+  margin: 0.35rem 0 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #1e4d7b;
+  line-height: 1.45;
+}
+
+.lp-tr2-focus-subblock {
+  margin-top: 0.85rem;
+}
+
+.lp-tr2-focus-subblock-title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #4d4d4d;
+}
+
+.lp-tr2-focus-subblock-sub {
+  margin: 0.2rem 0 0.45rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+.lp-tr2-bars--focus-disruptor {
+  margin-top: 0.15rem;
+}
+
+.lp-tr2-bar-row--focus-disruptor {
+  grid-template-columns: minmax(5.5rem, 8rem) minmax(0, 1fr) 4.75rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.12rem 0;
+}
+
+.lp-tr2-bar-row--focus-disruptor .lp-tr2-bar-label {
+  min-width: 0;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #4d4d4d;
+}
+
+.lp-tr2-bar-row--focus-disruptor .lp-tr2-bar-track {
+  height: 0.48rem;
+  min-width: 0;
+  border-radius: 999px;
+  background: #e8edf3;
+  overflow: hidden;
+}
+
+.lp-tr2-bar-row--focus-disruptor .lp-tr2-bar-value {
+  flex-shrink: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #475569;
+  text-align: right;
 }
 
 .lp-tr2-bar-row--focus-recipe {

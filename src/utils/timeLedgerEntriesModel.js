@@ -19,12 +19,14 @@ import {
 } from "./clientStorageScope.js";
 import { normalizeTimeEndReasonsForRow } from "./timeTaskEndReasons.js";
 import { normalizeTimeFlowFactorsForRow } from "./timeTaskFlowFactors.js";
+import { normalizeTimeFlowDisruptorsForRow } from "./timeTaskFlowDisruptors.js";
 
 export { normalizeTimeEndReasonForRow, normalizeTimeEndReasonsForRow } from "./timeTaskEndReasons.js";
 export {
   normalizeTimeFlowFactorForRow,
   normalizeTimeFlowFactorsForRow,
 } from "./timeTaskFlowFactors.js";
+export { normalizeTimeFlowDisruptorsForRow } from "./timeTaskFlowDisruptors.js";
 
 /**
  * 로그아웃·계정 전환 시 호출. 해당 계정 로컬 저장·메모리 초기화.
@@ -479,6 +481,9 @@ export function localTimeLedgerRowToDbPayload(userId, row) {
     time_flow_factors: normalizeTimeFlowFactorsForRow(
       row.timeFlowFactors ?? row.timeFlowFactor,
     ),
+    time_flow_disruptors: normalizeTimeFlowDisruptorsForRow(
+      row.timeFlowDisruptors ?? row.timeFlowDisruptor,
+    ),
   };
 }
 
@@ -531,6 +536,9 @@ export function dbRowToLocalTimeLedgerRow(db) {
     ),
     timeFlowFactors: normalizeTimeFlowFactorsForRow(
       db.time_flow_factors ?? db.time_flow_factor,
+    ),
+    timeFlowDisruptors: normalizeTimeFlowDisruptorsForRow(
+      db.time_flow_disruptors ?? db.time_flow_disruptor,
     ),
     /** Supabase updated_at — 병합 시 last-write-wins */
     /** Supabase updated_at — 서버 스냅샷·동기화 표시용 */
@@ -663,12 +671,21 @@ export function applyTimeLedgerServerRangeSnapshot(
     );
     const keepLocalTimeFlowFactors =
       serverFlowFactors.length === 0 && localFlowFactors.length > 0;
+    const serverFlowDisruptors = normalizeTimeFlowDisruptorsForRow(
+      serverRow.timeFlowDisruptors ?? serverRow.timeFlowDisruptor,
+    );
+    const localFlowDisruptors = normalizeTimeFlowDisruptorsForRow(
+      local.timeFlowDisruptors ?? local.timeFlowDisruptor,
+    );
+    const keepLocalTimeFlowDisruptors =
+      serverFlowDisruptors.length === 0 && localFlowDisruptors.length > 0;
     if (
       keepLocalHabit ||
       keepLocalKpiVal ||
       keepLocalTimeRating ||
       keepLocalTimeEndReasons ||
-      keepLocalTimeFlowFactors
+      keepLocalTimeFlowFactors ||
+      keepLocalTimeFlowDisruptors
     ) {
       return {
         ...serverRow,
@@ -680,6 +697,9 @@ export function applyTimeLedgerServerRangeSnapshot(
           : {}),
         ...(keepLocalTimeFlowFactors
           ? { timeFlowFactors: localFlowFactors }
+          : {}),
+        ...(keepLocalTimeFlowDisruptors
+          ? { timeFlowDisruptors: localFlowDisruptors }
           : {}),
         localModifiedAt:
           typeof local.localModifiedAt === "number"

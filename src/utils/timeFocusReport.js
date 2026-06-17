@@ -1,6 +1,6 @@
 /**
  * 시간 레포트 — 생산적 작업 초집중 분석
- * 몰입 요소·종료 사유·별점·세션 길이
+ * 몰입 요소·몰입 방해요소·별점·세션 길이
  */
 
 import {
@@ -11,12 +11,14 @@ import { normalizeTimeRatingForRow } from "./timeLedgerEntriesModel.js";
 import {
   normalizeTimeFlowFactorsForRow,
   timeFlowFactorLabelForId,
-  TIME_TASK_FLOW_FACTOR_OPTIONS,
 } from "./timeTaskFlowFactors.js";
 import {
-  normalizeTimeEndReasonsForRow,
-  timeEndReasonLabelForId,
-} from "./timeTaskEndReasons.js";
+  normalizeTimeFlowDisruptorsForRow,
+  timeFlowDisruptorLabelForId,
+  shouldCollectTimeFlowDisruptors,
+  TIME_TASK_FLOW_DISRUPTOR_CATEGORIES,
+  timeFlowDisruptorCategoryForId,
+} from "./timeTaskFlowDisruptors.js";
 
 function rowMinutes(r) {
   const hrs = parseTimeToHours(r.timeTracked);
@@ -63,6 +65,79 @@ function buildPeakHourLine(peakHours) {
   return `${labels[0]}~${labels[labels.length - 1]}에 집중이 가장 잘 됩니다.`;
 }
 
+function buildDisruptorOneLiner(ranking, sessionCount, totalPicks) {
+  if (!sessionCount) {
+    return "1~2점 세션이 쌓이면 피해야 할 방해 요소 패턴이 보입니다.";
+  }
+  if (!totalPicks) {
+    return `1~2점 세션 ${sessionCount}건 — 몰입 방해요소를 고르면 피할 항목이 정리됩니다.`;
+  }
+  const top = ranking[0];
+  if (!top) return "";
+  if (ranking.length === 1) {
+    return `가장 많은 방해 요소는 「${top.label}」입니다 (${top.count}회).`;
+  }
+  const second = ranking[1];
+  if (second && top.count === second.count) {
+    return `가장 자주 겹치는 방해 요소는 「${top.label}」, 「${second.label}」입니다.`;
+  }
+  return `가장 많은 방해 요소는 「${top.label}」입니다 (${top.count}회 · ${top.pct}%).`;
+}
+
+function buildDisruptorAnalysis(productiveRated) {
+  const lowRatedSessions = productiveRated.filter((r) =>
+    shouldCollectTimeFlowDisruptors(normalizeTimeRatingForRow(r.timeRating)),
+  );
+  const sessionCount = lowRatedSessions.length;
+
+  const flowDisruptorCounts = new Map();
+  for (const r of lowRatedSessions) {
+    for (const id of normalizeTimeFlowDisruptorsForRow(
+      r.timeFlowDisruptors ?? r.timeFlowDisruptor,
+    )) {
+      flowDisruptorCounts.set(id, (flowDisruptorCounts.get(id) || 0) + 1);
+    }
+  }
+
+  const totalPicks = [...flowDisruptorCounts.values()].reduce((s, n) => s + n, 0);
+  const ranking = [...flowDisruptorCounts.entries()]
+    .map(([id, count]) => ({
+      id,
+      label: timeFlowDisruptorLabelForId(id),
+      count,
+      pct:
+        totalPicks > 0 ? Math.round((count / totalPicks) * 100) : 0,
+    }))
+    .sort((a, b) => b.count - a.count || b.pct - a.pct);
+
+  const categoryCounts = new Map();
+  for (const [id, count] of flowDisruptorCounts.entries()) {
+    const catId = timeFlowDisruptorCategoryForId(id)?.id || "";
+    if (!catId) continue;
+    categoryCounts.set(catId, (categoryCounts.get(catId) || 0) + count);
+  }
+  const categories = TIME_TASK_FLOW_DISRUPTOR_CATEGORIES.map(({ id, label }) => {
+    const count = categoryCounts.get(id) || 0;
+    return {
+      id,
+      label,
+      count,
+      pct: totalPicks > 0 ? Math.round((count / totalPicks) * 100) : 0,
+    };
+  })
+    .filter((c) => c.count > 0)
+    .sort((a, b) => b.count - a.count || b.pct - a.pct);
+
+  return {
+    sessionCount,
+    totalPicks,
+    ranking,
+    categories,
+    oneLiner: buildDisruptorOneLiner(ranking, sessionCount, totalPicks),
+    show: sessionCount > 0 || ranking.length > 0,
+  };
+}
+
 /**
  * @param {object[]} rows
  */
@@ -96,49 +171,8 @@ export function buildFocusReportSnapshot(rows) {
     }))
     .sort((a, b) => b.count - a.count || b.pct - a.pct);
 
-  const conditionCompare = TIME_TASK_FLOW_FACTOR_OPTIONS.map(({ id, label }) => {
-    const withRatings = [];
-    const withoutRatings = [];
-    for (const r of productiveRated) {
-      const factors = normalizeTimeFlowFactorsForRow(
-        r.timeFlowFactors ?? r.timeFlowFactor,
-      );
-      const rating = normalizeTimeRatingForRow(r.timeRating);
-      if (rating == null) continue;
-      if (factors.includes(id)) withRatings.push(rating);
-      else withoutRatings.push(rating);
-    }
-    const withAvg = avgOf(withRatings);
-    const withoutAvg = avgOf(withoutRatings);
-    return {
-      id,
-      label,
-      withAvg,
-      withoutAvg,
-      withCount: withRatings.length,
-      withoutCount: withoutRatings.length,
-      delta:
-        withAvg != null && withoutAvg != null ? withAvg - withoutAvg : null,
-    };
-  })
-    .filter((c) => c.withCount > 0)
-    .sort((a, b) => (b.delta ?? -99) - (a.delta ?? -99));
-
-  const endReasonCounts = new Map();
-  for (const r of productiveRated) {
-    for (const reason of normalizeTimeEndReasonsForRow(
-      r.timeEndReasons ?? r.timeEndReason,
-    )) {
-      endReasonCounts.set(reason, (endReasonCounts.get(reason) || 0) + 1);
-    }
-  }
-  const endReasons = [...endReasonCounts.entries()]
-    .map(([id, count]) => ({
-      id,
-      label: timeEndReasonLabelForId(id),
-      count,
-    }))
-    .sort((a, b) => b.count - a.count);
+  const disruptorAnalysis = buildDisruptorAnalysis(productiveRated);
+  const flowDisruptors = disruptorAnalysis.ranking;
 
   const hourBuckets = Array.from({ length: 24 }, () => ({
     weighted: 0,
@@ -208,8 +242,8 @@ export function buildFocusReportSnapshot(rows) {
     recipeTags,
     recipeOneLiner: buildRecipeOneLiner(recipeTags, fiveStarCount),
     peakHourLine: buildPeakHourLine(peakHours),
-    conditionCompare,
-    endReasons,
+    flowDisruptors,
+    disruptorAnalysis,
     hourGrid,
     peakHours,
     duration: {

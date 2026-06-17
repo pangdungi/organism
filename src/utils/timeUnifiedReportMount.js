@@ -29,6 +29,7 @@ import { buildMoveReportSnapshot } from "./timeMoveReport.js";
 import { buildHappinessRoutineReportSnapshot } from "./timeHappinessRoutineReport.js";
 import { buildPlanAdherenceReportSnapshot } from "./timePlanAdherenceReport.js";
 import { buildFocusReportSnapshot } from "./timeFocusReport.js";
+import { flowDisruptorCategoryColor } from "./timeTaskFlowDisruptors.js";
 import { readUserHourlyRateLocal } from "./userHourlySync.js";
 
 const SLEEP_TARGET_MIN = 7 * 60;
@@ -2606,27 +2607,6 @@ function mountPlanAdherenceSection(scrollWrap, range, rows) {
   scrollWrap.appendChild(sec);
 }
 
-function createFocusCompareRow(item) {
-  const row = document.createElement("div");
-  row.className = "lp-tr2-focus-compare-row";
-  const lab = document.createElement("span");
-  lab.className = "lp-tr2-focus-compare-label";
-  lab.textContent = item.label;
-  const val = document.createElement("span");
-  val.className = "lp-tr2-focus-compare-value";
-  const withTxt =
-    item.withAvg != null ? formatRatingAvg(item.withAvg) : "—";
-  const withoutTxt =
-    item.withoutAvg != null ? formatRatingAvg(item.withoutAvg) : "—";
-  const delta =
-    item.delta != null && item.delta !== 0
-      ? ` (${item.delta > 0 ? "+" : ""}${item.delta.toFixed(1)})`
-      : "";
-  val.textContent = `있음 ${withTxt} · 없음 ${withoutTxt}${delta}`;
-  row.append(lab, val);
-  return row;
-}
-
 function createFocusRecipeTagRow(item) {
   const row = document.createElement("div");
   row.className = "lp-tr2-bar-row lp-tr2-bar-row--focus-recipe";
@@ -2648,11 +2628,116 @@ function createFocusRecipeTagRow(item) {
   return row;
 }
 
+function createFocusSubheading(title, subtitle) {
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-focus-subblock";
+  const h = document.createElement("h4");
+  h.className = "lp-tr2-focus-subblock-title";
+  h.textContent = title;
+  wrap.appendChild(h);
+  if (subtitle) {
+    const p = document.createElement("p");
+    p.className = "lp-tr2-focus-subblock-sub";
+    p.textContent = subtitle;
+    wrap.appendChild(p);
+  }
+  return wrap;
+}
+
+function createFocusDisruptorBarRow(label, barPct, meta, color) {
+  const row = document.createElement("div");
+  row.className = "lp-tr2-bar-row lp-tr2-bar-row--focus-disruptor";
+  const lab = document.createElement("span");
+  lab.className = "lp-tr2-bar-label";
+  lab.textContent = label;
+  const track = document.createElement("div");
+  track.className = "lp-tr2-bar-track";
+  const fill = document.createElement("div");
+  fill.className = "lp-tr2-bar-fill";
+  const pct = Math.min(100, Math.max(0, Number(barPct) || 0));
+  fill.style.width = `${pct}%`;
+  fill.style.background = color || "#8B5C3A";
+  const val = document.createElement("span");
+  val.className = "lp-tr2-bar-value";
+  val.textContent = meta;
+  track.appendChild(fill);
+  row.append(lab, track, val);
+  return row;
+}
+
+function mountFocusDisruptorAnalysisBlock(sec, analysis) {
+  if (!analysis?.show) return;
+
+  const analysisBlock = createRatingBlock(
+    "방해 요소 분석",
+    "생산적 과제할 때 피하면 좋은 요소",
+  );
+
+  const insight = document.createElement("p");
+  insight.className = "lp-tr2-focus-disruptor-insight";
+  insight.textContent = analysis.oneLiner;
+  analysisBlock.appendChild(insight);
+
+  if (analysis.ranking.length) {
+    analysisBlock.appendChild(
+      createFocusSubheading(
+        "몰입을 깬 이유 빈도 순위",
+        "1~2점 세션에서 고른 항목 · 많이 고른 순",
+      ),
+    );
+    const maxCount = analysis.ranking[0]?.count || 1;
+    const rankBars = document.createElement("div");
+    rankBars.className = "lp-tr2-bars lp-tr2-bars--focus-disruptor";
+    analysis.ranking.slice(0, 8).forEach((item, i) => {
+      rankBars.appendChild(
+        createFocusDisruptorBarRow(
+          `${i + 1}. ${item.label}`,
+          Math.round((item.count / maxCount) * 100),
+          `${item.count}회 · ${item.pct}%`,
+          "#8B5C3A",
+        ),
+      );
+    });
+    analysisBlock.appendChild(rankBars);
+  }
+
+  if (analysis.categories.length) {
+    analysisBlock.appendChild(
+      createFocusSubheading(
+        "방해 요소 카테고리별 비율",
+        "환경 · 신체 · 심리 · 디지털 · 작업 · 외부",
+      ),
+    );
+    const catBars = document.createElement("div");
+    catBars.className = "lp-tr2-bars lp-tr2-bars--focus-disruptor";
+    analysis.categories.forEach((item) => {
+      catBars.appendChild(
+        createFocusDisruptorBarRow(
+          item.label,
+          item.pct,
+          `${item.pct}% · ${item.count}회`,
+          flowDisruptorCategoryColor(item.id),
+        ),
+      );
+    });
+    analysisBlock.appendChild(catBars);
+  }
+
+  if (!analysis.ranking.length && analysis.sessionCount > 0) {
+    const note = document.createElement("p");
+    note.className = "lp-tr2-chart-note";
+    note.textContent = `1~2점 세션 ${analysis.sessionCount}건 — 기록할 때 몰입 방해요소를 고르면 순위가 채워집니다.`;
+    analysisBlock.appendChild(note);
+  }
+
+  sec.appendChild(analysisBlock);
+}
+
 function mountFocusReportSection(scrollWrap, _range, rows) {
   const snap = buildFocusReportSnapshot(rows);
   const sec = createSection(
     "초집중 분석",
-    "생산적 작업 별점·몰입 요소·종료 사유로 나만의 패턴을 봅니다",
+    "생산적 작업 별점·몰입 요소·방해 요소로 나만의 패턴을 봅니다",
   );
   sec.classList.add("lp-tr2-focus-section");
 
@@ -2693,35 +2778,6 @@ function mountFocusReportSection(scrollWrap, _range, rows) {
     });
     recipeBlock.appendChild(bars);
     sec.appendChild(recipeBlock);
-  }
-
-  if (snap.conditionCompare.length) {
-    const condBlock = createRatingBlock(
-      "조건별 평균 별점",
-      "있을 때 vs 없을 때 — 차이가 큰 순",
-    );
-    const list = document.createElement("div");
-    list.className = "lp-tr2-focus-compare-list";
-    snap.conditionCompare.slice(0, 6).forEach((item) => {
-      list.appendChild(createFocusCompareRow(item));
-    });
-    condBlock.appendChild(list);
-    sec.appendChild(condBlock);
-  }
-
-  if (snap.endReasons.length) {
-    const endBlock = createRatingBlock(
-      "종료 사유",
-      "집중이 끊긴 이유 빈도",
-    );
-    const line = document.createElement("p");
-    line.className = "lp-tr2-focus-end-line";
-    line.textContent = snap.endReasons
-      .slice(0, 5)
-      .map((item, i) => `${i + 1}위 ${item.label} ${item.count}회`)
-      .join(" · ");
-    endBlock.appendChild(line);
-    sec.appendChild(endBlock);
   }
 
   if (snap.hourGrid.some((h) => h.count > 0)) {
@@ -2791,6 +2847,8 @@ function mountFocusReportSection(scrollWrap, _range, rows) {
     taskBlock.appendChild(bars);
     sec.appendChild(taskBlock);
   }
+
+  mountFocusDisruptorAnalysisBlock(sec, snap.disruptorAnalysis);
 
   scrollWrap.appendChild(sec);
 }

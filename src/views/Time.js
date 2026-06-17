@@ -101,8 +101,8 @@ import {
   TIME_LEDGER_ENTRIES_KEY,
   writeTimeLedgerEntriesRaw,
   normalizeTimeRatingForRow,
-  normalizeTimeEndReasonsForRow,
   normalizeTimeFlowFactorsForRow,
+  normalizeTimeFlowDisruptorsForRow,
   formatTimeLedgerCardRatingStarsHtml,
   applyProductiveTimeRatingToBasePrice,
   productiveTimeRatingReturnPercent,
@@ -112,8 +112,11 @@ import {
   getEmotionRatingLabel,
   mountTaskLogEmotionRating,
 } from "../utils/timeEmotionRating.js";
-import { TIME_TASK_END_REASON_OPTIONS } from "../utils/timeTaskEndReasons.js";
 import { TIME_TASK_FLOW_FACTOR_OPTIONS } from "../utils/timeTaskFlowFactors.js";
+import {
+  TIME_TASK_FLOW_DISRUPTOR_OPTIONS,
+  shouldCollectTimeFlowDisruptors,
+} from "../utils/timeTaskFlowDisruptors.js";
 import {
   closeActiveInProgressRowsAtNow,
   closeStaleInProgressTimeLedgerRows,
@@ -3715,11 +3718,11 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
       : [],
     kpiPerformedValue: String(initialData?.kpiPerformedValue ?? "").trim(),
     timeRating: normalizeTimeRatingForRow(initialData?.timeRating),
-    timeEndReasons: normalizeTimeEndReasonsForRow(
-      initialData?.timeEndReasons ?? initialData?.timeEndReason,
-    ),
     timeFlowFactors: normalizeTimeFlowFactorsForRow(
       initialData?.timeFlowFactors ?? initialData?.timeFlowFactor,
+    ),
+    timeFlowDisruptors: normalizeTimeFlowDisruptorsForRow(
+      initialData?.timeFlowDisruptors ?? initialData?.timeFlowDisruptor,
     ),
   };
   tr._rowData = rowData;
@@ -6160,9 +6163,9 @@ export function render(opts = {}) {
             <button type="button" data-legacy="time-task-log-rating-star" data-rating-value="5" aria-label="5점">★</button>
           </div>
           <div data-legacy="time-task-log-emotion-rating" hidden></div>
-          <div data-legacy="time-task-log-end-reason-section" hidden>
-            <span data-legacy="time-task-log-section-label time-task-log-end-reason-section-label">작업 종료 이유</span>
-            <div data-legacy="time-task-log-end-reason-chips" class="lp-choice-chip-row"></div>
+          <div data-legacy="time-task-log-flow-disruptor-section" hidden>
+            <span data-legacy="time-task-log-section-label time-task-log-flow-disruptor-section-label">몰입 방해 요소</span>
+            <div data-legacy="time-task-log-flow-disruptor-chips" class="lp-choice-chip-row"></div>
           </div>
           <div data-legacy="time-task-log-flow-factor-section" hidden>
             <span data-legacy="time-task-log-section-label time-task-log-flow-factor-section-label">몰입 요소</span>
@@ -6422,11 +6425,11 @@ export function render(opts = {}) {
   const taskLogEmotionRating = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-emotion-rating"]',
   );
-  const taskLogEndReasonSection = taskLogModal.querySelector(
-    '[data-legacy~="time-task-log-end-reason-section"]',
+  const taskLogFlowDisruptorSection = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-flow-disruptor-section"]',
   );
-  const taskLogEndReasonChips = taskLogModal.querySelector(
-    '[data-legacy~="time-task-log-end-reason-chips"]',
+  const taskLogFlowDisruptorChips = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-flow-disruptor-chips"]',
   );
   const taskLogFlowFactorSection = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-flow-factor-section"]',
@@ -6435,15 +6438,15 @@ export function render(opts = {}) {
     '[data-legacy~="time-task-log-flow-factor-chips"]',
   );
   let taskLogTimeRating = null;
-  let taskLogTimeEndReasons = [];
+  let taskLogTimeFlowDisruptors = [];
   let taskLogTimeFlowFactors = [];
 
   function getTaskLogTimeRating() {
     return normalizeTimeRatingForRow(taskLogTimeRating);
   }
 
-  function getTaskLogTimeEndReasons() {
-    return normalizeTimeEndReasonsForRow(taskLogTimeEndReasons);
+  function getTaskLogTimeFlowDisruptors() {
+    return normalizeTimeFlowDisruptorsForRow(taskLogTimeFlowDisruptors);
   }
 
   function getTaskLogTimeFlowFactors() {
@@ -6539,38 +6542,39 @@ export function render(opts = {}) {
       });
   }
 
-  function syncTaskLogEndReasonChips() {
-    if (!taskLogEndReasonChips) return;
-    const picked = new Set(getTaskLogTimeEndReasons());
-    taskLogEndReasonChips
+  function syncTaskLogFlowDisruptorChips() {
+    if (!taskLogFlowDisruptorChips) return;
+    const picked = new Set(getTaskLogTimeFlowDisruptors());
+    taskLogFlowDisruptorChips
       .querySelectorAll('[data-legacy~="lp-choice-chip"]')
       .forEach((btn) => {
-        const on = picked.has(btn.getAttribute("data-end-reason") || "");
+        const on = picked.has(btn.getAttribute("data-flow-disruptor") || "");
         lpTokenToggle(btn, "lp-choice-chip--on", on);
         btn.setAttribute("aria-pressed", on ? "true" : "false");
       });
   }
 
-  function setTaskLogTimeEndReasons(value) {
-    taskLogTimeEndReasons = normalizeTimeEndReasonsForRow(value);
-    syncTaskLogEndReasonChips();
+  function setTaskLogTimeFlowDisruptors(value) {
+    taskLogTimeFlowDisruptors = normalizeTimeFlowDisruptorsForRow(value);
+    syncTaskLogFlowDisruptorChips();
   }
 
-  function toggleTaskLogTimeEndReason(id) {
-    const key = normalizeTimeEndReasonsForRow([id])[0];
+  function toggleTaskLogTimeFlowDisruptor(id) {
+    const key = normalizeTimeFlowDisruptorsForRow([id])[0];
     if (!key) return;
-    const next = getTaskLogTimeEndReasons();
+    const next = getTaskLogTimeFlowDisruptors();
     const idx = next.indexOf(key);
     if (idx >= 0) next.splice(idx, 1);
     else next.push(key);
-    setTaskLogTimeEndReasons(next);
+    setTaskLogTimeFlowDisruptors(next);
   }
 
-  function syncTaskLogEndReasonSection() {
+  function syncTaskLogFlowDisruptorSection() {
     const show =
-      isTaskLogModalProductiveTask() && getTaskLogTimeRating() != null;
-    if (taskLogEndReasonSection) taskLogEndReasonSection.hidden = !show;
-    if (!show) setTaskLogTimeEndReasons([]);
+      isTaskLogModalProductiveTask() &&
+      shouldCollectTimeFlowDisruptors(getTaskLogTimeRating());
+    if (taskLogFlowDisruptorSection) taskLogFlowDisruptorSection.hidden = !show;
+    if (!show) setTaskLogTimeFlowDisruptors([]);
   }
 
   function syncTaskLogFlowFactorChips() {
@@ -6636,32 +6640,32 @@ export function render(opts = {}) {
     if (taskLogRatingSection) taskLogRatingSection.hidden = !show;
     if (!show) {
       taskLogTimeRating = null;
-      taskLogTimeEndReasons = [];
+      taskLogTimeFlowDisruptors = [];
       taskLogTimeFlowFactors = [];
     }
     if (show) renderTaskLogTimeRating();
-    syncTaskLogEndReasonSection();
+    syncTaskLogFlowDisruptorSection();
     syncTaskLogFlowFactorSection();
   }
 
   function setTaskLogTimeRating(value) {
     taskLogTimeRating = normalizeTimeRatingForRow(value);
     renderTaskLogTimeRating();
-    syncTaskLogEndReasonSection();
+    syncTaskLogFlowDisruptorSection();
     syncTaskLogFlowFactorSection();
   }
 
-  if (taskLogEndReasonChips) {
-    TIME_TASK_END_REASON_OPTIONS.forEach(({ id, label }) => {
+  if (taskLogFlowDisruptorChips) {
+    TIME_TASK_FLOW_DISRUPTOR_OPTIONS.forEach(({ id, label }) => {
       const btn = document.createElement("button");
       btn.type = "button";
       lpSetClasses(btn, "lp-choice-chip");
-      btn.setAttribute("data-end-reason", id);
+      btn.setAttribute("data-flow-disruptor", id);
       btn.textContent = label;
       btn.addEventListener("click", () => {
-        toggleTaskLogTimeEndReason(id);
+        toggleTaskLogTimeFlowDisruptor(id);
       });
-      taskLogEndReasonChips.appendChild(btn);
+      taskLogFlowDisruptorChips.appendChild(btn);
     });
   }
 
@@ -8544,7 +8548,7 @@ export function render(opts = {}) {
     clearTaskLogContentType();
     clearTaskLogEmotionTrigger();
     setTaskLogTimeRating(null);
-    setTaskLogTimeEndReasons([]);
+    setTaskLogTimeFlowDisruptors([]);
     setTaskLogTimeFlowFactors([]);
     syncTaskLogRatingSectionUi();
     taskLogMemoTags = [];
@@ -8806,7 +8810,9 @@ export function render(opts = {}) {
       if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
     }
     setTaskLogTimeRating(data.timeRating);
-    setTaskLogTimeEndReasons(data.timeEndReasons ?? data.timeEndReason);
+    setTaskLogTimeFlowDisruptors(
+      data.timeFlowDisruptors ?? data.timeFlowDisruptor,
+    );
     setTaskLogTimeFlowFactors(data.timeFlowFactors ?? data.timeFlowFactor);
     syncTaskLogRatingSectionUi();
     const rawMemoTagsForEdit = Array.isArray(data.memoTags)
@@ -8962,9 +8968,10 @@ export function render(opts = {}) {
     const dateStr = parseDateFromDateTime(startTime) || toDateStr(new Date());
     const focusValue = "";
     const timeRatingForRow = getTaskLogTimeRating();
-    const timeEndReasonsForRow =
-      timeRatingForRow != null && isTaskLogModalProductiveTask()
-        ? getTaskLogTimeEndReasons()
+    const timeFlowDisruptorsForRow =
+      isTaskLogModalProductiveTask() &&
+      shouldCollectTimeFlowDisruptors(timeRatingForRow)
+        ? getTaskLogTimeFlowDisruptors()
         : [];
     const timeFlowFactorsForRow =
       timeRatingForRow === 5 && isTaskLogModalProductiveTask()
@@ -9001,7 +9008,8 @@ export function render(opts = {}) {
           : [],
         kpiPerformedValue: String(prevRow.kpiPerformedValue ?? "").trim(),
         timeRating: timeRatingForRow,
-        timeEndReasons: timeEndReasonsForRow,
+        timeEndReasons: [],
+        timeFlowDisruptors: timeFlowDisruptorsForRow,
         timeFlowFactors: timeFlowFactorsForRow,
       };
       editTr._rowData = newRowData;
@@ -9113,7 +9121,8 @@ export function render(opts = {}) {
         habitDailyCompleted: [],
         kpiPerformedValue: "",
         timeRating: timeRatingForRow,
-        timeEndReasons: timeEndReasonsForRow,
+        timeEndReasons: [],
+        timeFlowDisruptors: timeFlowDisruptorsForRow,
         timeFlowFactors: timeFlowFactorsForRow,
       };
       const tr = createRow(

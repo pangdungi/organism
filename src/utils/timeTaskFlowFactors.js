@@ -5,17 +5,17 @@ export const TIME_TASK_FLOW_FACTOR_OPTIONS = [
   { id: "caffeine", label: "카페인" },
   { id: "moderate_difficulty", label: "적당한 난이도" },
   { id: "planned_time", label: "계획된 시간" },
-  { id: "clear_tasks", label: "명확한 할일" },
-  { id: "devices_removed", label: "전자기기 제거" },
-  { id: "app_lock", label: "앱잠금" },
+  { id: "clear_tasks", label: "명확한 할 일" },
+  { id: "devices_removed", label: "전자 기기 제거" },
+  { id: "app_lock", label: "앱 잠금" },
   { id: "preferred_task", label: "선호하는 과제" },
   { id: "clear_goal", label: "분명한 목표" },
   { id: "time_of_day", label: "시간대" },
   { id: "lighting", label: "조명" },
   { id: "temperature", label: "온도" },
   { id: "sound", label: "소리" },
-  { id: "physical_activity", label: "신체활동" },
-  { id: "sleep_state", label: "수면상태" },
+  { id: "physical_activity", label: "신체 활동" },
+  { id: "sleep_state", label: "수면 상태" },
   { id: "place", label: "장소" },
 ];
 
@@ -23,6 +23,14 @@ const BY_ID = new Map(TIME_TASK_FLOW_FACTOR_OPTIONS.map((o) => [o.id, o]));
 const BY_LABEL = new Map(
   TIME_TASK_FLOW_FACTOR_OPTIONS.map((o) => [o.label, o]),
 );
+/** 예전 UI 문구 → id (저장·불러오기 호환) */
+const LEGACY_FACTOR_LABEL_TO_ID = new Map([
+  ["명확한 할일", "clear_tasks"],
+  ["전자기기 제거", "devices_removed"],
+  ["앱잠금", "app_lock"],
+  ["신체활동", "physical_activity"],
+  ["수면상태", "sleep_state"],
+]);
 
 /** @returns {string} 허용 id 또는 "" */
 export function normalizeTimeFlowFactorForRow(raw) {
@@ -30,7 +38,8 @@ export function normalizeTimeFlowFactorForRow(raw) {
   if (!s) return "";
   if (BY_ID.has(s)) return s;
   const byLabel = BY_LABEL.get(s);
-  return byLabel ? byLabel.id : "";
+  if (byLabel) return byLabel.id;
+  return LEGACY_FACTOR_LABEL_TO_ID.get(s) || "";
 }
 
 /** @returns {string[]} 중복 제거·옵션 순서 유지 */
