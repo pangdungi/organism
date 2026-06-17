@@ -767,7 +767,92 @@ export function render() {
     initModalNativeDateFieldsIn(modal);
   }
 
-  function showPathLogModal(path, editLog) {
+  function mountPathLogListItems(container, path, onMutate) {
+    if (!container) return;
+    const data = loadSideincomeMap();
+    const pathUnitTrim = (path.unit || "원").trim();
+    const pathUnit = pathUnitTrim ? ` ${pathUnitTrim}` : "";
+    const pathLogs = (data.pathLogs || []).filter((l) => l.pathId === path.id);
+    pathLogs.sort((a, b) =>
+      (b.dateRaw || b.date || "").localeCompare(a.dateRaw || a.date || ""),
+    );
+    container.replaceChildren();
+    if (!pathLogs.length) {
+      const empty = document.createElement("p");
+      empty.className = "dream-kpi-path-logs-modal-empty";
+      empty.textContent = "등록된 수입 로그가 없습니다.";
+      container.appendChild(empty);
+      return;
+    }
+    pathLogs.forEach((log) => {
+      const item = document.createElement("div");
+      item.className = "dream-kpi-path-log-item";
+      item.innerHTML = `
+          <div class="dream-kpi-path-log-body">
+            <span class="dream-kpi-path-log-date">${escapeHtml(log.date)}</span>
+            <span class="dream-kpi-path-log-value">${escapeHtml(log.value || "—")}${pathUnit}</span>
+            ${log.memo ? `<div class="dream-kpi-path-log-memo">${escapeHtml(log.memo)}</div>` : ""}
+          </div>
+          <div class="dream-kpi-path-log-actions">
+            <button type="button" class="dream-kpi-path-log-edit">수정</button>
+            <button type="button" class="dream-kpi-path-log-del">삭제</button>
+          </div>
+        `;
+      item.querySelector(".dream-kpi-path-log-edit").addEventListener("click", () => {
+        showPathLogModal(path, log, {
+          onSaved: () => {
+            renderKpiList();
+            onMutate?.();
+          },
+        });
+      });
+      item.querySelector(".dream-kpi-path-log-del").addEventListener("click", () => {
+        const d = loadSideincomeMap();
+        appendDeletedRef(d, "pathLogs", log.id);
+        d.pathLogs = (d.pathLogs || []).filter((l) => l.id !== log.id);
+        saveSideincomeMap(d, { pushServer: true });
+        renderKpiList();
+        onMutate?.();
+      });
+      container.appendChild(item);
+    });
+  }
+
+  function showPathIncomeLogsModal(path) {
+    const modal = document.createElement("div");
+    modal.className = "time-task-setup-modal dream-kpi-path-logs-modal";
+    modal.innerHTML = `
+      <div data-legacy="time-task-setup-backdrop"></div>
+      <div data-legacy="time-task-setup-panel time-task-log-panel">
+        <div data-legacy="time-task-setup-header">
+          <h3 data-legacy="time-task-setup-title">수입 로그</h3>
+          <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
+        </div>
+        <div data-legacy="time-task-setup-body" class="dream-kpi-path-logs-modal-body">
+          <div class="dream-kpi-path-logs-modal-list dream-kpi-history-list"></div>
+        </div>
+        <div data-legacy="time-task-log-footer" class="dream-kpi-path-logs-modal-footer">
+          <button type="button" data-legacy="time-task-log-submit" class="dream-kpi-path-logs-modal-add-btn">+ 금액</button>
+        </div>
+      </div>
+    `;
+    const listEl = modal.querySelector(".dream-kpi-path-logs-modal-list");
+    const refresh = () => mountPathLogListItems(listEl, path, refresh);
+    const close = () => modal.remove();
+    modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
+    modal.querySelector(".dream-kpi-path-logs-modal-add-btn").addEventListener("click", () => {
+      showPathLogModal(path, null, {
+        onSaved: () => {
+          renderKpiList();
+          refresh();
+        },
+      });
+    });
+    refresh();
+    document.body.appendChild(modal);
+  }
+
+  function showPathLogModal(path, editLog, opts = {}) {
     const isEdit = !!editLog;
     const modal = document.createElement("div");
     modal.className = "time-task-setup-modal time-task-log-modal";
@@ -789,7 +874,7 @@ export function render() {
       <div data-legacy="time-task-setup-backdrop"></div>
       <div data-legacy="time-task-setup-panel time-task-log-panel">
         <div data-legacy="time-task-setup-header">
-          <h3 data-legacy="time-task-setup-title">${isEdit ? "시급 상승 로그 수정" : "시급 상승 로그 추가"}</h3>
+          <h3 data-legacy="time-task-setup-title">${isEdit ? "수입 로그 수정" : "수입 로그 추가"}</h3>
           <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
         </div>
         <form class="dream-kpi-log-form">
@@ -865,6 +950,7 @@ export function render() {
       saveSideincomeMap(data, { pushServer: true });
       close();
       renderKpiList();
+      opts.onSaved?.();
     });
     const pathDelBtn = modal.querySelector(".dream-kpi-log-modal-delete-btn");
     if (pathDelBtn && isEdit) {
@@ -875,6 +961,7 @@ export function render() {
         saveSideincomeMap(d, { pushServer: true });
         close();
         renderKpiList();
+        opts.onSaved?.();
       });
     }
     document.body.appendChild(modal);
@@ -1119,36 +1206,17 @@ export function render() {
             <div class="dream-kpi-card-progress-bar"><div class="dream-kpi-card-progress-fill" style="width:${pathProgress}%"></div></div>
             <div class="dream-kpi-card-progress-text">누적 ${formatNum(pathCurrentVal)} / 목표 ${targetDisp}${pathUnit}</div>
           </div>
-          <div class="dream-kpi-path-summary-logs-heading">시급 상승 로그</div>
-          <div class="dream-kpi-path-summary-logs dream-kpi-history-list"></div>
+          <div class="dream-kpi-path-summary-footer">
+            <button type="button" class="dream-kpi-path-summary-logs-open">수입 로그${pathLogs.length ? ` (${pathLogs.length})` : ""}</button>
+            <button type="button" class="dream-kpi-path-summary-edit-link">수정하기</button>
+          </div>
         </div>
       `;
       pathSummary.querySelector(".dream-kpi-path-summary-log-btn").addEventListener("click", () => showPathLogModal(path));
-      const logsContainer = pathSummary.querySelector(".dream-kpi-path-summary-logs");
-      pathLogs.sort((a, b) => (b.dateRaw || b.date || "").localeCompare(a.dateRaw || a.date || ""));
-      pathLogs.forEach((log) => {
-        const item = document.createElement("div");
-        item.className = "dream-kpi-path-log-item";
-        item.innerHTML = `
-          <div class="dream-kpi-path-log-body">
-            <span class="dream-kpi-path-log-date">${escapeHtml(log.date)}</span>
-            <span class="dream-kpi-path-log-value">${escapeHtml(log.value || "—")}${pathUnit}</span>
-            ${log.memo ? `<div class="dream-kpi-path-log-memo">${escapeHtml(log.memo)}</div>` : ""}
-          </div>
-          <div class="dream-kpi-path-log-actions">
-            <button type="button" class="dream-kpi-path-log-edit">수정</button>
-            <button type="button" class="dream-kpi-path-log-del">삭제</button>
-          </div>
-        `;
-        item.querySelector(".dream-kpi-path-log-edit").addEventListener("click", () => showPathLogModal(path, log));
-        item.querySelector(".dream-kpi-path-log-del").addEventListener("click", () => {
-          const d = loadSideincomeMap();
-          appendDeletedRef(d, "pathLogs", log.id);
-          d.pathLogs = (d.pathLogs || []).filter((l) => l.id !== log.id);
-          saveSideincomeMap(d, { pushServer: true });
-          renderKpiList();
-        });
-        logsContainer.appendChild(item);
+      pathSummary.querySelector(".dream-kpi-path-summary-logs-open").addEventListener("click", () => showPathIncomeLogsModal(path));
+      pathSummary.querySelector(".dream-kpi-path-summary-edit-link").addEventListener("click", (e) => {
+        e.stopPropagation();
+        showPathContextModal(path);
       });
       contentWrap.appendChild(pathSummary);
     }

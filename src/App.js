@@ -6,21 +6,6 @@ import {
   initDatePickersIn,
 } from "./utils/datePickerInit.js";
 import { getRoutineSyncedTaskNames } from "./utils/routineTimeSync.js";
-import {
-  renderMobileScheduleCalendar,
-  dismissCalendarDayExpandUI,
-} from "./views/Calendar.js";
-import { saveTodoListBeforeUnmount } from "./views/TodoList.js";
-import {
-  render as renderTime,
-  teardownDetachedTimeLedgerTaskLogBridge,
-} from "./views/Time.js";
-import { render as renderDream } from "./views/Dream.js";
-import { render as renderSideincome } from "./views/Sideincome.js";
-import { render as renderHappiness } from "./views/Happiness.js";
-import { render as renderHealth } from "./views/Health.js";
-import { render as renderIdea } from "./views/Idea.js";
-import { render as renderAdmin } from "./views/Admin.js";
 import { supabase } from "./supabase.js";
 import { getSupabaseSession } from "./utils/supabaseSession.js";
 import { isAppAdminUser } from "./utils/adminAccess.js";
@@ -78,6 +63,7 @@ import { prefetchIconsForTab } from "./utils/appIconPrefetch.js";
 import {
   setLpTabPullPending,
   clearLpTabPullPending,
+  mountLpTabSyncLoading,
 } from "./utils/lpTabSyncLoadingUi.js";
 
 /** 상위 탭 메타(아이콘·메뉴 런처 구역 순서) */
@@ -162,16 +148,62 @@ function tabMetaById(tabId) {
   return TABS.find((t) => t.id === tabId);
 }
 
-const RENDERERS = {
-  time: renderTime,
-  schedulecalendar: renderMobileScheduleCalendar,
-  dream: renderDream,
-  sideincome: renderSideincome,
-  happiness: renderHappiness,
-  health: renderHealth,
-  idea: renderIdea,
-  admin: renderAdmin,
+/** @typedef {() => (HTMLElement | DocumentFragment | null | undefined)} TabViewRenderFn */
+
+/** @type {Record<string, TabViewRenderFn>} */
+const _tabRendererCache = Object.create(null);
+
+/** @type {Map<string, Promise<TabViewRenderFn | null>>} */
+const _tabRendererLoadPromises = new Map();
+
+/** 메인(오늘) 제외 — 탭 클릭·해당 탭 부팅 시에만 동적 import */
+const TAB_VIEW_LOADERS = {
+  time: () => import("./views/Time.js").then((m) => m.render),
+  schedulecalendar: () =>
+    import("./views/Calendar.js").then((m) => m.renderMobileScheduleCalendar),
+  dream: () => import("./views/Dream.js").then((m) => m.render),
+  sideincome: () => import("./views/Sideincome.js").then((m) => m.render),
+  happiness: () => import("./views/Happiness.js").then((m) => m.render),
+  health: () => import("./views/Health.js").then((m) => m.render),
+  idea: () => import("./views/Idea.js").then((m) => m.render),
+  admin: () => import("./views/Admin.js").then((m) => m.render),
 };
+
+async function ensureTabRenderer(tabId) {
+  const id = String(tabId || "").trim();
+  if (!id || id === "home") return null;
+  if (_tabRendererCache[id]) return _tabRendererCache[id];
+  const loader = TAB_VIEW_LOADERS[id];
+  if (!loader) return null;
+  let inflight = _tabRendererLoadPromises.get(id);
+  if (!inflight) {
+    inflight = loader()
+      .then((renderFn) => {
+        if (typeof renderFn === "function") _tabRendererCache[id] = renderFn;
+        return _tabRendererCache[id] || null;
+      })
+      .finally(() => {
+        _tabRendererLoadPromises.delete(id);
+      });
+    _tabRendererLoadPromises.set(id, inflight);
+  }
+  return inflight;
+}
+
+async function saveTodoListBeforeUnmountIfNeeded(container, skip) {
+  if (skip || !container?.querySelector?.(".todo-sections-wrap")) return;
+  const { saveTodoListBeforeUnmount } = await import("./views/TodoList.js");
+  saveTodoListBeforeUnmount(container);
+}
+
+async function dismissCalendarExpandUiIfPresent(panelEl) {
+  const hadCalendar =
+    panelEl?.querySelector?.("[class*='calendar-']") ||
+    document.querySelector(".calendar-event-bubble");
+  if (!hadCalendar) return;
+  const { dismissCalendarDayExpandUI } = await import("./views/Calendar.js");
+  dismissCalendarDayExpandUI();
+}
 
 let currentTabId = "home";
 
@@ -494,6 +526,9 @@ export async function mountApp(container) {
         const targetTabId = currentTabId;
         if (targetTabId === "time") {
           try {
+            const { teardownDetachedTimeLedgerTaskLogBridge } = await import(
+              "./views/Time.js"
+            );
             teardownDetachedTimeLedgerTaskLogBridge();
           } catch (_) {}
           try {
@@ -736,6 +771,10 @@ export async function mountApp(container) {
    * - force: true일 때만 입력 중이어도 탭을 다시 그림(메뉴·코드 등으로 화면 전환 시).
    */
   function renderMain(mainEl, opts = {}) {
+    void renderMainAsync(mainEl, opts);
+  }
+
+  async function renderMainAsync(mainEl, opts = {}) {
     logLpRenderStack("renderMain 진입", { tab: currentTabId, opts });
     /* 근무표 등록/유형설정 모달은 body 직하위 — force:true(탭 전환 등)여도 여기서 통째로 지우면 월별보기 달이 초기화됨 */
     let wsBodyModal = null;
@@ -767,10 +806,8 @@ export async function mountApp(container) {
     if (!opts.force && mainEl && typeof mainEl.scrollTop === "number") {
       preserveScrollTop = mainEl.scrollTop;
     }
-    if (!opts.skipTodoSaveBeforeUnmount) {
-      saveTodoListBeforeUnmount(p);
-    }
-    dismissCalendarDayExpandUI();
+    await saveTodoListBeforeUnmountIfNeeded(p, opts.skipTodoSaveBeforeUnmount);
+    await dismissCalendarExpandUiIfPresent(p);
     const prevRoot = p.firstElementChild;
     if (prevRoot?._lpTabAbortController) {
       try {
@@ -780,11 +817,19 @@ export async function mountApp(container) {
     }
     launcherAdminBtn = null;
     clearAppFooterActions();
-    const tabRenderer = RENDERERS[currentTabId];
+    const renderTabId = currentTabId;
+    let tabRenderer = _tabRendererCache[renderTabId] || null;
+    if (renderTabId !== "home" && !tabRenderer && TAB_VIEW_LOADERS[renderTabId]) {
+      mountLpTabSyncLoading(p);
+      try {
+        tabRenderer = await ensureTabRenderer(renderTabId);
+      } catch (_) {}
+      if (currentTabId !== renderTabId) return;
+    }
     /** @type {Node[]} */
     let mountNodes;
     try {
-      if (currentTabId === "home") {
+      if (renderTabId === "home") {
         const content = renderHomeMenuLauncher();
         mountNodes = content ? [content] : [];
       } else if (tabRenderer) {
@@ -878,6 +923,8 @@ export async function mountApp(container) {
     } catch (_) {}
   }
   renderMain(main);
+  /* 로컬 화면 먼저 — 스플래시·waitForAppBootReady 는 여기서 풀고 pull·IDB 는 백그라운드 */
+  finishAppBootReady();
   void (async () => {
     const bootTabId = currentTabId;
     try {
@@ -942,9 +989,7 @@ export async function mountApp(container) {
         });
       }
       void prefetchIconsForTab(bootTabId);
-    } finally {
-      finishAppBootReady();
-    }
+    } catch (_) {}
   })();
   if (window.matchMedia("(max-width: 46rem)").matches) {
     initMobileVisualViewportKeyboardInset();

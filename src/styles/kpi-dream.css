@@ -1294,6 +1294,65 @@
   margin-bottom: 0.35rem;
 }
 
+.lp-kpi-dream-page .dream-kpi-path-summary-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #eef0f3;
+}
+
+.lp-kpi-dream-page .dream-kpi-path-summary-logs-open {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text-ink);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lp-kpi-dream-page .dream-kpi-path-summary-logs-open:hover {
+  color: var(--lp-modal-accent);
+}
+
+.lp-kpi-dream-page .dream-kpi-path-summary-logs-open:focus-visible {
+  outline: 2px solid rgba(0, 0, 0, 0.25);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.lp-kpi-dream-page .dream-kpi-path-summary-edit-link {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.3;
+  color: #999999;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lp-kpi-dream-page .dream-kpi-path-summary-edit-link:hover {
+  color: #666666;
+}
+
+.lp-kpi-dream-page .dream-kpi-path-summary-edit-link:focus-visible {
+  outline: 2px solid rgba(0, 0, 0, 0.25);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 .lp-kpi-dream-page .dream-kpi-path-summary-name {
   margin: 0;
   flex: 1 1 auto;
@@ -1336,17 +1395,105 @@
   margin-top: 0.65rem;
 }
 
-.lp-kpi-dream-page .dream-kpi-path-summary-logs-heading {
-  margin: 0.85rem 0 0.4rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #999999;
+/* 수입 로그 목록 모달 (body 직접 부착) */
+.dream-kpi-path-logs-modal .dream-kpi-path-logs-modal-body {
+  padding-top: 0.25rem;
 }
 
-.lp-kpi-dream-page .dream-kpi-path-summary-logs {
-  margin-top: 0;
+.dream-kpi-path-logs-modal .dream-kpi-path-logs-modal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: min(52vh, 420px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.dream-kpi-path-logs-modal .dream-kpi-path-logs-modal-empty {
+  margin: 0.5rem 0 0.25rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #9ca3af;
+  text-align: center;
+}
+
+.dream-kpi-path-logs-modal .dream-kpi-path-log-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  background: var(--lp-kpi-sky-surface, #f8fafc);
+  border: 1px solid var(--lp-kpi-border-gray-soft, #e5e7eb);
+  border-radius: 10px;
+}
+
+.dream-kpi-path-logs-modal .dream-kpi-path-log-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dream-kpi-path-logs-modal .dream-kpi-path-log-date {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-ink, #1d40ba);
+}
+
+.dream-kpi-path-logs-modal .dream-kpi-path-log-value {
+  margin-left: 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--lp-modal-accent, #1e4d7b);
+}
+
+.dream-kpi-path-logs-modal .dream-kpi-path-log-memo {
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #6b7280;
+}
+
+.dream-kpi-path-logs-modal .dream-kpi-path-log-actions {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.dream-kpi-path-logs-modal .dream-kpi-path-log-edit,
+.dream-kpi-path-logs-modal .dream-kpi-path-log-del {
+  margin: 0;
+  padding: 0.3rem 0.55rem;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--lp-modal-navy-muted, #475569);
+  background: #fff;
+  border: 1px solid var(--lp-modal-border, #d1d5db);
+  border-radius: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dream-kpi-path-logs-modal .dream-kpi-path-log-edit:hover {
+  border-color: rgba(0, 0, 0, 0.3);
+  color: var(--lp-modal-navy, #1e4d7b);
+}
+
+.dream-kpi-path-logs-modal .dream-kpi-path-log-del {
+  color: var(--lp-modal-danger, #b91c1c);
+  background: var(--lp-modal-danger-soft, #fef2f2);
+  border-color: rgba(185, 28, 28, 0.35);
+}
+
+.dream-kpi-path-logs-modal .dream-kpi-path-logs-modal-footer {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .lp-kpi-dream-page .dream-kpi-path-log-item {
