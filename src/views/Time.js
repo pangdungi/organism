@@ -137,7 +137,11 @@ import {
   createTimeLedgerDayTimeboxElement,
   refreshTimeLedgerDayTimeboxScroll,
 } from "../utils/timeLedgerDayTimebox.js";
-import { createTimeLedgerVerticalProductivityHeatmap } from "../utils/timeLedgerProductivityHeatmap.js";
+import {
+  createTimeLedgerWeekTimeboxElement,
+  enumerateYmdInclusive,
+  refreshTimeLedgerWeekTimeboxElement,
+} from "../utils/timeLedgerWeekTimebox.js";
 import {
   ledgerRowHasDisplayableMemo,
   mapLedgerRowsToLogMemos,
@@ -4399,39 +4403,15 @@ function buildTimeLedgerDayTimeboxBlocks(dayRows) {
   return blocks;
 }
 
-/** 다일 타임박스 — 날짜별 생산적 시간 비율 */
-function buildDayProductivityStatsMap(rows) {
+function buildTimeLedgerTimeboxBlocksByDay(rows, rangeStartYmd, rangeEndYmd) {
   const byDay = new Map();
-  for (const r of rows || []) {
-    const ymd = ledgerRowDateYmdForFilter(r);
-    if (!ymd) continue;
-    if (!byDay.has(ymd)) byDay.set(ymd, []);
-    byDay.get(ymd).push(r);
+  for (const ymd of enumerateYmdInclusive(rangeStartYmd, rangeEndYmd)) {
+    const dayRows = (rows || []).filter(
+      (r) => ledgerRowDateYmdForFilter(r) === ymd,
+    );
+    byDay.set(ymd, buildTimeLedgerDayTimeboxBlocks(dayRows));
   }
-  const stats = new Map();
-  for (const [ymd, dayRows] of byDay) {
-    let productive = 0;
-    let nonproductive = 0;
-    let other = 0;
-    for (const r of dayRows) {
-      const hrs = getMobileCardEffectiveHoursForPrice(r);
-      if (hrs <= 0) continue;
-      const p = getMobileCardProductivityValue(r);
-      if (p === "productive") productive += hrs;
-      else if (p === "nonproductive") nonproductive += hrs;
-      else other += hrs;
-    }
-    const total = productive + nonproductive + other;
-    stats.set(ymd, {
-      ymd,
-      productiveHrs: productive,
-      nonproductiveHrs: nonproductive,
-      otherHrs: other,
-      totalHrs: total,
-      pct: total > 0 ? (productive / total) * 100 : 0,
-    });
-  }
-  return stats;
+  return byDay;
 }
 
 function mountTimeLedgerTimeboxView(
@@ -4442,12 +4422,15 @@ function mountTimeLedgerTimeboxView(
   timeboxShell.replaceChildren();
   timeboxShell.className = "time-ledger-timebox-view-shell";
   if (isMultiDay) {
+    const rows = allRowsInRange || dayRows;
     timeboxShell.appendChild(
-      createTimeLedgerVerticalProductivityHeatmap({
+      createTimeLedgerWeekTimeboxElement({
         rangeStartYmd,
         rangeEndYmd,
-        dayProductivityMap: buildDayProductivityStatsMap(
-          allRowsInRange || dayRows,
+        blocksByDay: buildTimeLedgerTimeboxBlocksByDay(
+          rows,
+          rangeStartYmd,
+          rangeEndYmd,
         ),
       }),
     );
@@ -4457,7 +4440,22 @@ function mountTimeLedgerTimeboxView(
   timeboxShell.appendChild(createTimeLedgerDayTimeboxElement(blocks));
 }
 
-function refreshTimeLedgerTimeboxSlotGrid(timeboxShell, dayRows) {
+function refreshTimeLedgerTimeboxSlotGrid(
+  timeboxShell,
+  dayRows,
+  { isMultiDay, rangeStartYmd, rangeEndYmd, allRowsInRange } = {},
+) {
+  if (isMultiDay) {
+    refreshTimeLedgerWeekTimeboxElement(
+      timeboxShell,
+      buildTimeLedgerTimeboxBlocksByDay(
+        allRowsInRange || dayRows,
+        rangeStartYmd,
+        rangeEndYmd,
+      ),
+    );
+    return;
+  }
   const scroll = timeboxShell?.querySelector(".time-ledger-day-timebox-scroll");
   if (!scroll) return;
   refreshTimeLedgerDayTimeboxScroll(scroll, buildTimeLedgerDayTimeboxBlocks(dayRows));
@@ -10542,12 +10540,18 @@ export function render(opts = {}) {
         cardsWrap
           .querySelectorAll('[data-legacy~="time-ledger-mobile-card"]')
           .forEach(updateMobileTimeCardLiveFields);
-      } else if (!timeLedgerFilterSpansMultipleDays()) {
+      } else {
         const shell = contentWrap.querySelector(".time-ledger-timebox-view-shell");
         if (shell) {
+          const multiDay = timeLedgerFilterSpansMultipleDays();
           const dayKey = usageHistoryRangeStartYmd;
           const dayRows = liveRows.filter((r) => timeLedgerRowYmd(r) === dayKey);
-          refreshTimeLedgerTimeboxSlotGrid(shell, dayRows);
+          refreshTimeLedgerTimeboxSlotGrid(shell, dayRows, {
+            isMultiDay: multiDay,
+            rangeStartYmd: usageHistoryRangeStartYmd,
+            rangeEndYmd: usageHistoryRangeEndYmd,
+            allRowsInRange: liveRows,
+          });
         }
       }
       const totalEl = contentWrap.querySelector("[data-usage-total-time]");
