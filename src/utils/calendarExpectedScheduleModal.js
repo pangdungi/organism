@@ -11,8 +11,10 @@ import {
 } from "./timeLedgerClassPolicy.js";
 import { syncTimeDailyBudgetDateToSupabase, cancelPendingTimeDailyBudgetSyncPush } from "./timeDailyBudgetSupabase.js";
 import { buildTimeTaskLogPickerDropdown } from "./timeTaskLogPickerDropdown.js";
-import { pullKpiMapsForTaskLogModalOpen } from "./kpiTabCloudRefresh.js";
-import { syncTimeLedgerTaskListForModalOpen } from "./timeLedgerTasksSupabase.js";
+import {
+  primeTaskLogModalFromLocal,
+  scheduleTaskLogModalCloudSync,
+} from "./kpiTabCloudRefresh.js";
 import { getFullTaskOptions } from "./timeTaskOptionsModel.js";
 import {
   appendBudgetScheduleBlock,
@@ -84,11 +86,9 @@ function openNativeDateInput(inp) {
   inp.click();
 }
 
-async function ensureExpectedModalCloudData() {
-  await Promise.all([
-    pullKpiMapsForTaskLogModalOpen().catch(() => {}),
-    syncTimeLedgerTaskListForModalOpen().catch(() => {}),
-  ]);
+async function ensureExpectedModalCloudData(onApplied) {
+  primeTaskLogModalFromLocal();
+  return scheduleTaskLogModalCloudSync(onApplied);
 }
 
 function afterTaskListSyncForExpectedModal(dropdown) {

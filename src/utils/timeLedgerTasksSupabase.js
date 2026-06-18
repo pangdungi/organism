@@ -21,6 +21,7 @@ import {
   timeLedgerSyncLog,
 } from "./timeLedgerSyncDebug.js";
 import { coalesceInFlightPull } from "./timeLedgerPullCoalesce.js";
+import { probeTimeLedgerTasksServerWatermarkMs } from "./kpiMapServerWatermark.js";
 
 const TABLE = "time_ledger_tasks";
 
@@ -183,6 +184,8 @@ export async function fetchKpiTaskLinkMetaByIdFromSupabase(userId) {
  */
 let _tasksPullSkipUntil = 0;
 const TASKS_PULL_SKIP_AFTER_LOCAL_MS = 2800;
+/** 마지막으로 서버 과제 목록을 반영한 시점의 서버 updated_at(ms) */
+let _tasksServerWatermarkMs = 0;
 
 function bumpTasksPullSkipAfterLocalChange() {
   _tasksPullSkipUntil = Date.now() + TASKS_PULL_SKIP_AFTER_LOCAL_MS;
@@ -449,7 +452,13 @@ export async function pullTimeLedgerTasksFromSupabase(opts = {}) {
     }
   }
   const applied = applyTimeLedgerTasksFromServer(rows, kpiLinkMetaById);
-  if (applied) migrateTimeLogRowsTaskIds();
+  if (applied) {
+    _tasksServerWatermarkMs = rows.reduce(
+      (m, r) => Math.max(m, Date.parse(String(r?.updated_at || "")) || 0),
+      0,
+    );
+    migrateTimeLogRowsTaskIds();
+  }
   return applied;
   });
 }
@@ -486,13 +495,30 @@ let _listenerAttached = false;
 /** @deprecated 과제 목록은 서버 pull·사용자 저장만 — 탭 진입 시 KPI→과제 자동 생성 안 함 */
 export function scheduleKpiTaskListEnsureOnce() {}
 
-/** 과제설정·기록 모달 — 클릭 시점 서버 과제 목록 pull(로컬 직후 스킵 무시) */
+/** 과제설정·기록 모달 — 서버에 변경 있을 때만 pull(로컬 직후·사용자 저장 대기 중에는 생략) */
 export async function syncTimeLedgerTaskListForModalOpen() {
   try {
-    return !!(await pullTimeLedgerTasksFromSupabase({ ignoreSkip: true }));
+    return !!(await pullTimeLedgerTasksIfStaleForModal());
   } catch (_) {
     return false;
   }
+}
+
+/**
+ * 워터마크 비교 후 stale일 때만 pull. 로컬→서버 반영 대기 중이면 skip.
+ * @returns {Promise<boolean>} 서버 스냅샷을 반영했으면 true
+ */
+export async function pullTimeLedgerTasksIfStaleForModal() {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) return false;
+  const now = Date.now();
+  if (now < _tasksPullSkipUntil) return false;
+  const serverMs = await probeTimeLedgerTasksServerWatermarkMs(userId);
+  if (serverMs > 0 && serverMs <= _tasksServerWatermarkMs) return false;
+  if (serverMs === 0 && _tasksServerWatermarkMs === 0 && getFullTaskOptions().length > 0) {
+    return false;
+  }
+  return !!(await pullTimeLedgerTasksFromSupabase({ ignoreSkip: false }));
 }
 
 export function attachTimeLedgerTasksSaveListener() {

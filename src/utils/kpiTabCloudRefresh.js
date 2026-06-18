@@ -37,6 +37,8 @@ import { syncHabitTrackerLogs, getKpiTargetDateRange } from "./timeKpiSync.js";
 import { syncSleepHealthGoalLogsFromTimeLedger } from "./healthSleepGoalTimeLedgerSync.js";
 import { patchKpiLinkedTasksFromKpiMaps } from "./timeTaskOptionsModel.js";
 import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
+import { probeKpiDomainServerStale } from "./kpiMapServerWatermark.js";
+import { pullTimeLedgerTasksIfStaleForModal } from "./timeLedgerTasksSupabase.js";
 const KPI_LOCAL_STORAGE_KEYS = {
   dream: "kpi-dream-map",
   health: "kpi-health-map",
@@ -298,36 +300,89 @@ export async function pullAllKpiMapsFromCloud(getCurrentTabId) {
 }
 
 /**
- * 과제 기록 모달을 열 때: 모달에 필요한 것만 — 꿈/건강/행복/부수입 KPI 맵(매일 할일·KPI 할일).
- * 시간기록(entry) 구간 pull 은 하지 않음 — 모달 표시에 불필요하고,
- * 모달 열린 동안 도착한 옛 서버 스냅샷이 방금 저장한 행(마감시간 등)을 덮어쓰는 사고 방지.
- * @returns {Promise<{ pullOk: boolean }>}
+ * 과제 기록 모달 — 로컬 KPI·과제 캐시만으로 UI 준비(네트워크 없음).
+ */
+export function primeTaskLogModalFromLocal() {
+  try {
+    patchKpiLinkedTasksFromKpiMaps();
+  } catch (_) {}
+}
+
+/**
+ * 과제 기록/수정 모달 백그라운드 동기화 — stale일 때만 pull, force 없음(로컬→서버 대기 중 보호).
+ * 서버 push 는 호출하지 않음.
+ * @param {() => void} [onApplied] — pull로 로컬이 바뀐 뒤(모달仍 open일 때 UI 갱신용)
+ * @returns {Promise<{ tasksChanged: boolean, kpiChanged: boolean, anyChanged: boolean }>}
+ */
+export function scheduleTaskLogModalCloudSync(onApplied) {
+  return coalesceInFlightPull("task-log-modal-cloud-sync", async () => {
+    const tasksChanged = !!(await pullTimeLedgerTasksIfStaleForModal().catch(
+      () => false,
+    ));
+    const kpiChanged = !!(await pullKpiMapsForTaskLogModalOpen().catch(
+      () => false,
+    ));
+    const anyChanged = tasksChanged || kpiChanged;
+    if (anyChanged) {
+      try {
+        onApplied?.({ tasksChanged, kpiChanged, anyChanged });
+      } catch (_) {}
+    }
+    return { tasksChanged, kpiChanged, anyChanged };
+  });
+}
+
+/**
+ * 과제 기록 모달 — 꿈/건강/행복/부수입 KPI 맵.
+ * 서버 updated_at 워터마크가 로컬보다 새로울 때만 pull(force:false).
+ * @returns {Promise<boolean>} 이번에 서버 스냅샷을 반영했으면 true
  */
 export async function pullKpiMapsForTaskLogModalOpen() {
   kpiTodoFineTrace("cloud.pullKpiMapsForTaskLogModalOpen:시작", {});
   lpPullDebug("pullKpiMapsForTaskLogModalOpen", {});
 
-  let pullOk = false;
-  try {
-    pullOk = await Promise.all([
-      pullDreamKpiMapFromSupabase({ force: true }),
-      pullHealthKpiMapFromSupabase({ force: true }),
-      pullHappinessKpiMapFromSupabase({ force: true }),
-      pullSideincomeKpiMapFromSupabase({ force: true }),
-    ]).then(([d, h, ha, si]) => !!(d || h || ha || si));
-  } catch (_) {}
+  const domains = [
+    ["dream", pullDreamKpiMapFromSupabase],
+    ["health", pullHealthKpiMapFromSupabase],
+    ["happiness", pullHappinessKpiMapFromSupabase],
+    ["sideincome", pullSideincomeKpiMapFromSupabase],
+  ];
 
-  try {
-    patchKpiLinkedTasksFromKpiMaps();
-  } catch (_) {}
-  try {
-    syncHabitTrackerLogs();
-  } catch (_) {}
+  const staleFlags = await Promise.all(
+    domains.map(([id]) => probeKpiDomainServerStale(id)),
+  );
 
-  kpiTodoFineTrace("cloud.pullKpiMapsForTaskLogModalOpen:끝", { pullOk });
-  syncWatchLog("pullKpiMapsForTaskLogModalOpen_완료", {
-    pullOk,
-    note: "과제 기록 모달용 KPI 4도메인 force pull (시간기록 구간 pull 없음)",
+  const pullJobs = [];
+  for (let i = 0; i < domains.length; i++) {
+    if (!staleFlags[i]?.stale) continue;
+    const [, pullFn] = domains[i];
+    pullJobs.push(pullFn({ force: false }));
+  }
+
+  let kpiChanged = false;
+  if (pullJobs.length) {
+    const results = await Promise.all(pullJobs);
+    kpiChanged = results.some(Boolean);
+    if (kpiChanged) {
+      try {
+        patchKpiLinkedTasksFromKpiMaps();
+      } catch (_) {}
+      try {
+        syncHabitTrackerLogs();
+      } catch (_) {}
+    }
+  }
+
+  kpiTodoFineTrace("cloud.pullKpiMapsForTaskLogModalOpen:끝", {
+    pullOk: true,
+    kpiChanged,
+    pulledDomains: pullJobs.length,
   });
-  return { pullOk };
+  syncWatchLog("pullKpiMapsForTaskLogModalOpen_완료", {
+    pullOk: true,
+    kpiChanged,
+    pulledDomains: pullJobs.length,
+    note: "워터마크 stale 도메인만 force:false pull (모달 non-blocking)",
+  });
+  return kpiChanged;
 }

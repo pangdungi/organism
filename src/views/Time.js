@@ -65,7 +65,10 @@ import {
   patchKpiLinkedTasksFromKpiMaps,
   isUuid,
 } from "../utils/timeTaskOptionsModel.js";
-import { pullKpiMapsForTaskLogModalOpen } from "../utils/kpiTabCloudRefresh.js";
+import {
+  primeTaskLogModalFromLocal,
+  scheduleTaskLogModalCloudSync,
+} from "../utils/kpiTabCloudRefresh.js";
 import {
   attachTimeLedgerTasksSaveListener,
   pullTimeLedgerTasksFromSupabase,
@@ -4675,8 +4678,14 @@ function syncMobileTimeCardMemoEl(card, rowData) {
     memoEl = document.createElement("div");
     memoEl.className = "calendar-1day-timeline-card-memo";
     const endEl = card.querySelector(".calendar-1day-timeline-card-end");
-    if (endEl) card.insertBefore(memoEl, endEl);
-    else card.appendChild(memoEl);
+    const stack = card.querySelector(".calendar-1day-timeline-card-time-stack");
+    if (endEl && endEl.parentElement === card) {
+      card.insertBefore(memoEl, endEl);
+    } else if (stack && stack.parentElement === card) {
+      card.insertBefore(memoEl, stack);
+    } else {
+      card.appendChild(memoEl);
+    }
   }
   memoEl.textContent = display;
 }
@@ -4860,9 +4869,18 @@ function unwrapUsageTimelineTimeStack(card) {
   const connector = card.querySelector(
     ".calendar-1day-timeline-card-time-connector",
   );
-  if (startEl && connector) card.insertBefore(startEl, connector);
-  else if (startEl) card.insertBefore(startEl, card.firstChild);
-  if (endEl) card.appendChild(endEl);
+  if (startEl && connector && startEl.parentElement === stack) {
+    if (connector.parentElement === card) {
+      card.insertBefore(startEl, connector);
+    } else {
+      card.insertBefore(startEl, card.firstChild);
+    }
+  } else if (startEl && startEl.parentElement === stack) {
+    card.insertBefore(startEl, card.firstChild);
+  }
+  if (endEl && endEl.parentElement === stack) {
+    card.appendChild(endEl);
+  }
   stack.remove();
 }
 
@@ -4873,6 +4891,7 @@ function wrapUsageTimelineTimeStack(card) {
   const startEl = card.querySelector(".calendar-1day-timeline-card-start");
   const endEl = card.querySelector(".calendar-1day-timeline-card-end");
   if (!startEl || !endEl) return;
+  if (startEl.parentElement !== card || endEl.parentElement !== card) return;
   const stack = document.createElement("div");
   stack.className = "calendar-1day-timeline-card-time-stack";
   stack.setAttribute("aria-hidden", "true");
@@ -6264,6 +6283,8 @@ export function render(opts = {}) {
     '[data-legacy~="time-task-log-time-order-warning"]',
   );
   let taskLogEditTr = null;
+  /** 수정 모달 — 백그라운드 pull 전 KPI 스냅샷(로컬 덮어쓰기 방지) */
+  let taskLogEditKpiRestoreGuard = null;
   const taskLogEndWrap = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-datetime-wrap-end"]',
   );
@@ -8329,6 +8350,85 @@ export function render(opts = {}) {
     syncTaskLogKpiValueField(name, dateYmd);
   }
 
+  function restoreKpiFieldsIfCloudPullWiped(taskName, ledgerEntryId) {
+    const guard = taskLogEditKpiRestoreGuard;
+    if (!guard) return;
+    const tn = (taskName || "").trim();
+    const info = getKpiDailyRepeatInfoForTaskLog(tn);
+    const measure = getKpiMeasureInfoForTaskLog(tn);
+    const raw = (taskLogDateStart?.value || "").trim();
+    const m = raw.match(/(\d{4})[.\-\s/]*(\d{1,2})[.\-\s/]*(\d{1,2})/);
+    const ymd = m
+      ? `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`
+      : guard.recordDateYmd;
+    if (ymd.length < 10) return;
+    const eid = String(ledgerEntryId || "").trim();
+    const row = taskLogEditTr?._rowData;
+    if (!row) return;
+
+    if (
+      info?.needHabitTracker &&
+      guard.dailyCompletedBeforeCloudPull.length > 0
+    ) {
+      const afterPull = getHabitTrackerDailyCompletedForLedgerEntry(
+        info.storageKey,
+        info.kpiId,
+        ymd,
+        eid,
+      );
+      const rowStill = Array.isArray(row.habitDailyCompleted)
+        ? row.habitDailyCompleted
+        : [];
+      if (afterPull.length === 0 && rowStill.length === 0) {
+        replaceHabitTrackerLogDailyCompleted(
+          info.storageKey,
+          info.kpiId,
+          ymd,
+          guard.dailyCompletedBeforeCloudPull,
+          isUuid(eid) ? eid : undefined,
+        );
+        row.habitDailyCompleted = [...guard.dailyCompletedBeforeCloudPull];
+      }
+    }
+
+    if (measure?.hasUnitGoal && guard.kpiPerformedBeforeCloudPull) {
+      const rowVal = sanitizeKpiPerformedValueForRow(row.kpiPerformedValue);
+      const afterVal = sanitizeKpiPerformedValueForRow(
+        getHabitTrackerLogValueForLedgerEntry(
+          measure.storageKey,
+          measure.kpiId,
+          ymd,
+          eid,
+        ),
+      );
+      if (!rowVal && !afterVal) {
+        upsertKpiMeasureLogValue(
+          measure.storageKey,
+          measure.kpiId,
+          ymd,
+          guard.kpiPerformedBeforeCloudPull,
+          isUuid(eid) ? eid : undefined,
+        );
+        row.kpiPerformedValue = guard.kpiPerformedBeforeCloudPull;
+      }
+    }
+  }
+
+  function applyTaskLogModalAfterBackgroundSync() {
+    if (!el.isConnected || taskLogModal.hidden) return;
+    try {
+      patchKpiLinkedTasksFromKpiMaps();
+    } catch (_) {}
+    const tn = (taskLogTaskDropdown?._getValue?.() || "").trim();
+    if (taskLogEditTr && tn) {
+      restoreKpiFieldsIfCloudPullWiped(tn, taskLogEditTr._rowData?.id);
+    }
+    if (tn) refreshKpiTodosInLogModal(tn);
+    if (!taskLogEditTr) {
+      afterTaskListSyncForTaskLogAddModal();
+    }
+  }
+
   function setupScoreButtons(container, getValue, setValue) {
     if (!container) return;
     container
@@ -8447,12 +8547,10 @@ export function render(opts = {}) {
     await syncTimeLedgerTaskListForModalOpen();
   }
 
-  /** 과제 기록/수정 모달: KPI 맵 + 과제 목록을 서버에서 맞춤(과제설정을 열지 않아도 피커에 KPI 표시). */
+  /** @deprecated 모달은 scheduleTaskLogModalCloudSync 사용 */
   async function ensureTaskLogModalCloudData() {
-    await Promise.all([
-      pullKpiMapsForTaskLogModalOpen().catch(() => {}),
-      syncTimeLedgerTaskListForModalOpen().catch(() => {}),
-    ]);
+    primeTaskLogModalFromLocal();
+    return scheduleTaskLogModalCloudSync(applyTaskLogModalAfterBackgroundSync);
   }
 
   /** 기록 모달이 이미 열린 뒤 서버 과제 목록이 도착했을 때 드롭다운·KPI 연동만 맞춤(즉시 열기용). */
@@ -8485,10 +8583,10 @@ export function render(opts = {}) {
 
   async function openTaskLogModal(addContext) {
     if (!el.isConnected) return;
+    primeTaskLogModalFromLocal();
     openTaskLogModalAfterPull(addContext);
-    await ensureTaskLogModalCloudData().catch(() => {});
-    if (!el.isConnected || taskLogModal.hidden) return;
     afterTaskListSyncForTaskLogAddModal();
+    void scheduleTaskLogModalCloudSync(applyTaskLogModalAfterBackgroundSync);
   }
 
   function setTaskLogModalShellOpen(open) {
@@ -8697,64 +8795,12 @@ export function render(opts = {}) {
             data,
           )
         : "";
-    function restoreKpiFieldsIfCloudPullWiped(taskName, ledgerEntryId) {
-      const tn = (taskName || "").trim();
-      const info = getKpiDailyRepeatInfoForTaskLog(tn);
-      const measure = getKpiMeasureInfoForTaskLog(tn);
-      const raw = (taskLogDateStart?.value || "").trim();
-      const m = raw.match(/(\d{4})[.\-\s/]*(\d{1,2})[.\-\s/]*(\d{1,2})/);
-      const ymd = m
-        ? `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`
-        : recordDateYmd;
-      if (ymd.length < 10) return;
-      const eid = String(ledgerEntryId || "").trim();
-      const row = taskLogEditTr?._rowData;
-      if (!row) return;
-
-      if (info?.needHabitTracker && dailyCompletedBeforeCloudPull.length > 0) {
-        const afterPull = getHabitTrackerDailyCompletedForLedgerEntry(
-          info.storageKey,
-          info.kpiId,
-          ymd,
-          eid,
-        );
-        const rowStill = Array.isArray(row.habitDailyCompleted)
-          ? row.habitDailyCompleted
-          : [];
-        if (afterPull.length === 0 && rowStill.length === 0) {
-          replaceHabitTrackerLogDailyCompleted(
-            info.storageKey,
-            info.kpiId,
-            ymd,
-            dailyCompletedBeforeCloudPull,
-            isUuid(eid) ? eid : undefined,
-          );
-          row.habitDailyCompleted = [...dailyCompletedBeforeCloudPull];
-        }
-      }
-
-      if (measure?.hasUnitGoal && kpiPerformedBeforeCloudPull) {
-        const rowVal = sanitizeKpiPerformedValueForRow(row.kpiPerformedValue);
-        const afterVal = sanitizeKpiPerformedValueForRow(
-          getHabitTrackerLogValueForLedgerEntry(
-            measure.storageKey,
-            measure.kpiId,
-            ymd,
-            eid,
-          ),
-        );
-        if (!rowVal && !afterVal) {
-          upsertKpiMeasureLogValue(
-            measure.storageKey,
-            measure.kpiId,
-            ymd,
-            kpiPerformedBeforeCloudPull,
-            isUuid(eid) ? eid : undefined,
-          );
-          row.kpiPerformedValue = kpiPerformedBeforeCloudPull;
-        }
-      }
-    }
+    taskLogEditKpiRestoreGuard = {
+      recordDateYmd,
+      dailyCompletedBeforeCloudPull,
+      kpiPerformedBeforeCloudPull,
+    };
+    primeTaskLogModalFromLocal();
     taskLogModal.hidden = false;
     prepareTaskLogModalForOpen();
     setTaskLogModalShellOpen(true);
@@ -8822,25 +8868,15 @@ export function render(opts = {}) {
       .map((t) => String(t ?? "").trim())
       .filter(Boolean);
     const tnSync = tnForDaily;
-    refreshKpiTodosInLogModal(tnSync);
     const lockedName = tnForDaily;
     if (taskLogTaskDropdown && lockedName) {
       taskLogTaskDropdown._setValue?.(lockedName);
-      refreshKpiTodosInLogModal(lockedName);
     }
     updateTaskLogMealDetailVisibility((data.taskName || "").trim());
     syncTaskLogDateOverlay();
-    await ensureTaskLogModalCloudData().catch(() => {});
-    if (!el.isConnected || taskLogModal.hidden) return;
-    afterTaskListSyncForTaskLogAddModal();
-    const tnPost = tnForDaily;
-    restoreKpiFieldsIfCloudPullWiped(tnPost, data.id);
-    refreshKpiTodosInLogModal(tnPost);
-    if (taskLogTaskDropdown && tnPost) {
-      taskLogTaskDropdown._setValue?.(tnPost);
-      refreshKpiTodosInLogModal(tnPost);
-    }
-    updateTaskLogMealDetailVisibility(tnPost);
+    refreshKpiTodosInLogModal(tnSync);
+    updateTaskLogMealDetailVisibility(tnSync);
+    void scheduleTaskLogModalCloudSync(applyTaskLogModalAfterBackgroundSync);
   }
 
   function closeTaskLogModal() {
@@ -8856,6 +8892,7 @@ export function render(opts = {}) {
     document.body.style.overflow = "";
     taskLogAddContext = null;
     taskLogEditTr = null;
+    taskLogEditKpiRestoreGuard = null;
     taskLogEditExclude = null;
     pendingEditStartTime = "";
   }
@@ -9133,8 +9170,11 @@ export function render(opts = {}) {
         ctx.handleRowEdit,
       );
       addLedgerTr = tr;
-      if (ctx.addRow) ctx.tbody.insertBefore(tr, ctx.addRow);
-      else ctx.tbody.appendChild(tr);
+      if (ctx.addRow && ctx.addRow.parentNode === ctx.tbody) {
+        ctx.tbody.insertBefore(tr, ctx.addRow);
+      } else if (ctx.tbody) {
+        ctx.tbody.appendChild(tr);
+      }
       /* DOM과 동일 객체를 캐시에 둠(createRow가 정규화한 행 = 저장·서버 push 기준) */
       allRowsCache.push(tr._rowData);
       ctx.onRowUpdate?.();
