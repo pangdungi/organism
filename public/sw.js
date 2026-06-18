@@ -2,7 +2,7 @@
 /** index.html·manifest 의 ?v= 와 동일하게 유지 */
 const PWA_BRAND = "doodle-calendar-1";
 /** 번들·아이콘 등 캐시 버전 (전략·브랜드 바꿀 때 올리면 이전 캐시 정리됨) */
-const ASSET_CACHE = "tip-assets-v54";
+const ASSET_CACHE = "tip-assets-v55";
 /** HTML 셸 캐시 — 홈 화면에서 열 때 즉시 표시용 */
 const HTML_CACHE = "tip-html-v6";
 const LOGIN_BRAND_LOGO_V = "doodle-login-brand-2";
@@ -153,34 +153,6 @@ function isToolbarIconPath(pathname) {
   return pathname.startsWith("/toolbaricons/");
 }
 
-/** Vite 해시 번들 — 캐시 즉시 표시 + 백그라운드 갱신(재실행 시 네트워크 대기 줄임) */
-async function staleWhileRevalidateBundledAsset(request, event) {
-  const cache = await caches.open(ASSET_CACHE);
-  const cached = await cache.match(request);
-  const refresh = (async () => {
-    try {
-      const response = await fetch(new Request(request, { cache: "reload" }));
-      if (response && response.ok) {
-        try {
-          await cache.put(request, response.clone());
-        } catch (_e) {}
-        return response;
-      }
-    } catch (_e) {}
-    return null;
-  })();
-  if (cached && cached.ok) {
-    try {
-      event.waitUntil(refresh);
-    } catch (_e) {}
-    return cached;
-  }
-  const fresh = await refresh;
-  if (fresh) return fresh;
-  if (cached) return cached;
-  return fetch(request);
-}
-
 /** JS/CSS 번들 — 네트워크 우선(배포 직후 구 HTML·빈 캐시로 실행 실패·무한 로딩 방지) */
 async function networkFirstAsset(request) {
   const cache = await caches.open(ASSET_CACHE);
@@ -309,7 +281,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   if (isBundledJsCss(url.pathname)) {
-    event.respondWith(staleWhileRevalidateBundledAsset(req, event));
+    event.respondWith(networkFirstAsset(req));
     return;
   }
   if (isPwaBrandAsset(url.pathname)) {

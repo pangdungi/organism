@@ -295,23 +295,19 @@ async function enterAuthenticatedApp(opts = {}) {
 
       if (showSplash) setAppSplashMessage("이용 권한 확인 중…");
       finishStep("세션 확인");
+      const blocked = await blockExpiredSubscriptionOrSignOut();
+      if (blocked) {
+        lpAppMounted = false;
+        return;
+      }
 
       lpAppMounted = true;
       showOnly("signin");
       primeTimeLedgerStorageFromCachedSession();
       finishStep("로컬 캐시 준비");
-      const subscriptionGatePromise = blockExpiredSubscriptionOrSignOut();
       await mountApp(screen);
       finishStep("메인 화면 조립(mountApp)");
-      const blocked = await subscriptionGatePromise;
-      if (blocked) {
-        lpAppMounted = false;
-        try {
-          screen.innerHTML = "";
-        } catch (_) {}
-        return;
-      }
-
+      setAppSplashMessage("데이터 불러오는 중…");
       await waitForAppBootReady();
       prefetchCriticalAppIconAssets();
       refreshLpPwaInstall();
@@ -319,8 +315,8 @@ async function enterAuthenticatedApp(opts = {}) {
       markTabBootAuthUid(bootSession.user.id);
       finishStep("세션·탭 표시");
 
-      void prepareTimeLedgerStorageForCurrentSession();
-      void pullPrefsAndRunSubscriptionGate();
+      await prepareTimeLedgerStorageForCurrentSession();
+      await pullPrefsAndRunSubscriptionGate();
 
       timings.push({
         label: "진입 합계",
@@ -766,5 +762,5 @@ if (
   "serviceWorker" in navigator &&
   (location.protocol === "https:" || location.hostname === "localhost")
 ) {
-  navigator.serviceWorker.register("/sw.js?v=46").catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=47").catch(() => {});
 }
