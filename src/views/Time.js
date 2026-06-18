@@ -4926,6 +4926,15 @@ function markLastUsageTimelineItemShowEndTime(parentEl) {
   last.classList.add("calendar-1day-timeline-item--show-end-time");
   card.classList.add("calendar-1day-timeline-card--show-end-time");
   wrapUsageTimelineTimeStack(card);
+  last
+    .querySelector(".calendar-1day-timeline-card-end")
+    ?.classList.remove("lp-end-dup-hidden");
+}
+
+function resolveUsageTimelineItemFromCardNode(node) {
+  if (!node) return null;
+  if (node.classList?.contains("calendar-1day-timeline-item")) return node;
+  return node.closest?.(".calendar-1day-timeline-item") || null;
 }
 
 /** 모바일 시간가계부 카드 — 좌 시간열 | 우(아이콘·과제명 1–2행·소요/가격·메모) */
@@ -10200,7 +10209,10 @@ export function render(opts = {}) {
     contentWrap.innerHTML = "";
 
     const handleCardDelete = (card, rowData) => {
-      card.remove();
+      const item = resolveUsageTimelineItemFromCardNode(card);
+      const parent = item?.parentElement;
+      item?.remove();
+      if (parent) markLastUsageTimelineItemShowEndTime(parent);
       updateTotal();
       if (!rowData) return;
       const entryId = String(rowData?.id || "").trim();
