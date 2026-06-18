@@ -66,12 +66,6 @@ function cellOverlapsBlock(slotMin, block) {
   return slotMin < block.endMin && cellEnd > block.startMin;
 }
 
-function blockSlotCount(block) {
-  const dur = Number(block?.endMin) - Number(block?.startMin);
-  if (!Number.isFinite(dur) || dur <= 0) return 0;
-  return Math.ceil(dur / TIME_LEDGER_TIMEBOX_SLOT_MINUTES);
-}
-
 /** 기록 시작 칸 기준 N번째 5분 칸 (0=시작 칸) */
 function slotOffsetInBlock(block, slotMin) {
   const sm = Number(block?.startMin);
@@ -87,24 +81,17 @@ function blockKey(block) {
   return `${block.startMin}|${block.endMin}|${baseTask}|${detail}|${label}`;
 }
 
-function maxLabelCharsForBlock(block) {
-  const name = String(block?.taskName || "").trim();
-  if (!name) return 0;
-  return Math.min(name.length, blockSlotCount(block) * 2);
-}
-
 function appendTimeboxCellLabel(cell, block, { spanMerged = false } = {}) {
-  const chars = maxLabelCharsForBlock(block);
-  if (chars <= 0) return;
   const name = String(block.taskName || "").trim();
+  if (!name) return;
   if (spanMerged) {
     const labelEl = document.createElement("span");
     labelEl.className = "time-ledger-day-timebox-matrix-cell-label";
-    labelEl.textContent = name.slice(0, chars);
+    labelEl.textContent = name;
     cell.appendChild(labelEl);
     cell.classList.add("time-ledger-day-timebox-matrix-cell--span-labeled");
   } else {
-    cell.textContent = name.slice(0, chars);
+    cell.textContent = name;
   }
   cell.classList.add("time-ledger-day-timebox-matrix-cell--labeled");
 }

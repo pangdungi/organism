@@ -2368,6 +2368,7 @@
   line-height: 1;
   overflow: hidden;
   white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .time-ledger-day-timebox-matrix-cell--span-absorbed,
