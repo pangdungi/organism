@@ -447,6 +447,36 @@
   color: #dc2626;
 }
 
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout:not(
+    .time-ledger-next-expected-card
+  )
+  > .calendar-1day-timeline-card-end,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout:not(
+    .time-ledger-next-expected-card
+  )
+  > .calendar-1day-timeline-card-end {
+  visibility: hidden;
+}
+
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card-start-end,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card-start-end {
+  display: block;
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: #dc2626;
+  white-space: nowrap;
+}
+
 /* 시간 사용내역 — 0시~24시 타임라인 바(구간 길이 = 24h 대비 비율) */
 [data-legacy~="time-ledger-view"]
   [data-legacy~="time-ledger-day-overview-bar-wrap"] {
@@ -3393,6 +3423,10 @@
   .calendar-1day-timeline-card-start {
   grid-column: 1;
   grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.06rem;
   justify-self: center;
   width: 100%;
   text-align: center;
@@ -3545,7 +3579,7 @@
   justify-content: flex-start;
   gap: 0.38rem;
 }
-/* 연속 기록 — 다음 카드 시작시간과 같은 마감시간은 숨김(자리는 유지해 레일 정렬 보존) */
+/* 사용내역 — 하단 마감 칸은 레일 정렬용으로만 유지(표시는 시작 아래 ~마감) */
 .time-ledger-view .calendar-1day-timeline-card-end.lp-end-dup-hidden,
 [data-legacy~="time-ledger-view"] .calendar-1day-timeline-card-end.lp-end-dup-hidden {
   visibility: hidden;

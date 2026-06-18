@@ -1700,8 +1700,11 @@ function updateMobileTimeCardLiveFields(card) {
   const rd = card._rowData;
   const viewEl = card._timeLedgerViewEl;
   const trackedEl = card.querySelector(".calendar-1day-timeline-card-duration");
-  const endEl = card.querySelector(".calendar-1day-timeline-card-end");
   const priceEl = card.querySelector(".diary-tab5-timeline-price");
+  const startEl = card.querySelector(".calendar-1day-timeline-card-start");
+  startEl
+    ?.querySelector(".calendar-1day-timeline-card-start-end")
+    ?.remove();
   const start = getRowStartInstantForMobileCard(rd);
   if (!start) return;
   const ms = Date.now() - start.getTime();
@@ -1709,7 +1712,6 @@ function updateMobileTimeCardLiveFields(card) {
     const mins = ms < 0 ? 0 : Math.floor(ms / 60000);
     trackedEl.textContent = formatIntegerMinutesDurationKo(mins);
   }
-  if (endEl) endEl.textContent = "";
   if (priceEl && viewEl) {
     const hourlyInput = viewEl.querySelector(
       '[data-legacy~="time-hourly-input"]',
@@ -1876,6 +1878,15 @@ function parseLedgerTimeStringToMinutes(s) {
   return hh * 60 + mm;
 }
 
+function normalizeLedgerHhMmTen(val) {
+  const s = String(val || "").trim();
+  const m = s.match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return s;
+  const h = Math.min(23, Math.max(0, parseInt(m[1], 10)));
+  const min = Math.min(59, Math.max(0, parseInt(m[2], 10)));
+  return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+}
+
 /** 행당 '그날 마지막 시각': 마감 있으면 마감, 없으면 시작 */
 function rowEffectiveLastMinutesLedger(row) {
   const endTrim = (row?.endTime || "").trim();
@@ -2036,6 +2047,35 @@ export function getNextTaskLogStartHhMmFromLedger(
   return ledgerMinutesToHhMm(
     parseLedgerTimeStringToMinutes(String(lastRow?.startTime || "")),
   );
+}
+
+/** 현재 시작 시각 **다음**에 이어지는 기록의 시작 시각(HH:mm). 갭채우기용 */
+function getNextLedgerRowStartHhMmAfterCurrent(
+  dateInputValue,
+  currentStartHhMm,
+  exclude,
+  rowsOverride,
+) {
+  const currentMin = parseLedgerTimeStringToMinutes(
+    normalizeLedgerHhMmTen(String(currentStartHhMm || "").trim()) ||
+      String(currentStartHhMm || "").trim(),
+  );
+  if (currentMin == null) return null;
+  const dayRows = collectLedgerRowsForDate(
+    dateInputValue,
+    exclude,
+    rowsOverride,
+  );
+  if (dayRows.length === 0) return null;
+  const sorted = sortRowsByDateTime(dayRows);
+  for (const row of sorted) {
+    const rowStartMin = parseLedgerTimeStringToMinutes(row.startTime);
+    if (rowStartMin == null) continue;
+    if (rowStartMin > currentMin) {
+      return ledgerMinutesToHhMm(rowStartMin);
+    }
+  }
+  return null;
 }
 
 /** 날짜·시작시간 기준 과거→최근 (이른 날짜·이른 시각이 위, 시간레포트 로그와 동일) */
@@ -4943,55 +4983,49 @@ function unwrapUsageTimelineTimeStack(card) {
   stack.remove();
 }
 
-function wrapUsageTimelineTimeStack(card) {
-  if (!card || card.querySelector(".calendar-1day-timeline-card-time-stack")) {
-    return;
-  }
-  const startEl = card.querySelector(".calendar-1day-timeline-card-start");
-  const endEl = card.querySelector(".calendar-1day-timeline-card-end");
-  if (!startEl || !endEl) return;
-  if (startEl.parentElement !== card || endEl.parentElement !== card) return;
-  const stack = document.createElement("div");
-  stack.className = "calendar-1day-timeline-card-time-stack";
-  stack.setAttribute("aria-hidden", "true");
-  card.insertBefore(stack, startEl);
-  stack.appendChild(startEl);
-  const tilde = document.createElement("span");
-  tilde.className = "calendar-1day-timeline-card-time-tilde";
-  tilde.textContent = "~";
-  tilde.setAttribute("aria-hidden", "true");
-  stack.appendChild(tilde);
-  stack.appendChild(endEl);
+function usageTimelineEndClockIsValid(clock) {
+  return /^\d{2}:\d{2}$/.test(String(clock || ""));
 }
 
-/** 사용내역 — 묶음(하루 스택 등)의 **마지막** 기록만 시작·~·마감 시간열 표시 */
-function markLastUsageTimelineItemShowEndTime(parentEl) {
+/** 이전 마감 ≠ 다음 시작일 때만, 시작 시각 아래에 ~마감 작게 표시 */
+function applyUsageTimelineEndUnderStartDisplay(parentEl) {
   if (!parentEl?.querySelectorAll) return;
-  parentEl
-    .querySelectorAll(".calendar-1day-timeline-item--show-end-time")
-    .forEach((el) => {
-      el.classList.remove("calendar-1day-timeline-item--show-end-time");
-      const card = el.querySelector(".calendar-1day-timeline-card--usage-layout");
-      card?.classList.remove("calendar-1day-timeline-card--show-end-time");
-      unwrapUsageTimelineTimeStack(card);
-    });
   const items = [
     ...parentEl.querySelectorAll(
       ":scope > .calendar-1day-timeline-item:not(.time-ledger-next-expected-item)",
     ),
   ];
-  const last = items[items.length - 1];
-  if (!last) return;
-  const card = last.querySelector(".calendar-1day-timeline-card--usage-layout");
-  if (!card) return;
-  /* 진행 중 — 시작 아래 「진행중..」만 (마감·~ 스택 없음) */
-  if (mobileCardNeedsLiveClock(card._rowData)) return;
-  last.classList.add("calendar-1day-timeline-item--show-end-time");
-  card.classList.add("calendar-1day-timeline-card--show-end-time");
-  wrapUsageTimelineTimeStack(card);
-  last
-    .querySelector(".calendar-1day-timeline-card-end")
-    ?.classList.remove("lp-end-dup-hidden");
+  for (let i = 0; i < items.length; i += 1) {
+    const item = items[i];
+    const card = item.querySelector(".calendar-1day-timeline-card--usage-layout");
+    if (!card) continue;
+    item.classList.remove("calendar-1day-timeline-item--show-end-time");
+    card.classList.remove("calendar-1day-timeline-card--show-end-time");
+    unwrapUsageTimelineTimeStack(card);
+
+    const nextItem = items[i + 1];
+    const endClock = item.dataset.lpEndClock || "";
+    const nextStart = nextItem?.dataset.lpStartClock || "";
+    const startEl = card.querySelector(".calendar-1day-timeline-card-start");
+    let subEndEl = startEl?.querySelector(".calendar-1day-timeline-card-start-end");
+    const showGapEnd =
+      !mobileCardNeedsLiveClock(card._rowData) &&
+      usageTimelineEndClockIsValid(endClock) &&
+      (!nextItem ||
+        !usageTimelineEndClockIsValid(nextStart) ||
+        nextStart !== endClock);
+
+    if (showGapEnd && startEl) {
+      if (!subEndEl) {
+        subEndEl = document.createElement("span");
+        subEndEl.className = "calendar-1day-timeline-card-start-end";
+        startEl.appendChild(subEndEl);
+      }
+      subEndEl.textContent = `~ ${endClock}`;
+    } else if (subEndEl) {
+      subEndEl.remove();
+    }
+  }
 }
 
 function resolveUsageTimelineItemFromCardNode(node) {
@@ -6581,13 +6615,22 @@ export function render(opts = {}) {
             <p data-legacy="time-task-log-time-order-warning" hidden role="alert">마감시간은 시작시간보다 빠를 수 없습니다.</p>
             <div data-legacy="time-task-log-quick-block">
             <div data-legacy="time-task-log-time-adjust-btns">
-              <button type="button" data-legacy="time-task-log-time-adjust-btn time-task-log-time-adjust-now" data-now="true">지금</button>
-              <button type="button" data-legacy="time-task-log-time-adjust-btn time-task-log-time-adjust-last" data-last="true">마지막</button>
-              <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="-30">−30</button>
-              <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="-15">−15</button>
-              <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="15">+15</button>
-              <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="30">+30</button>
-              <button type="button" data-legacy="time-task-log-time-adjust-btn" data-day-end="true">하루끝</button>
+              <div data-legacy="time-task-log-time-adjust-row time-task-log-time-adjust-row--delta">
+                <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="-5">−5</button>
+                <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="-10">−10</button>
+                <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="-15">−15</button>
+                <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="-30">−30</button>
+                <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="5">+5</button>
+                <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="10">+10</button>
+                <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="15">+15</button>
+                <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="30">+30</button>
+              </div>
+              <div data-legacy="time-task-log-time-adjust-row time-task-log-time-adjust-row--actions">
+                <button type="button" data-legacy="time-task-log-time-adjust-btn time-task-log-time-adjust-now" data-now="true">지금</button>
+                <button type="button" data-legacy="time-task-log-time-adjust-btn time-task-log-time-adjust-last" data-last="true">마지막</button>
+                <button type="button" data-legacy="time-task-log-time-adjust-btn time-task-log-time-adjust-gap" data-gap-fill="true" hidden>갭채우기</button>
+                <button type="button" data-legacy="time-task-log-time-adjust-btn" data-day-end="true">하루끝</button>
+              </div>
             </div>
             </div>
             <input type="hidden" data-legacy="time-task-log-start" />
@@ -7643,6 +7686,7 @@ export function render(opts = {}) {
       }
       const tn = taskLogTaskDropdown?._getValue?.() || "";
       if (tn) refreshKpiTodosInLogModal();
+      syncTaskLogGapFillBtnVisibility();
     });
     el?.addEventListener("focusout", (ev) => {
       const skipEndSync = taskLogFocusOutTargetIsTimeAdjustBtn(ev);
@@ -7654,6 +7698,7 @@ export function render(opts = {}) {
       }
       syncStartToHidden();
       if (!skipEndSync) syncEndToHidden();
+      syncTaskLogGapFillBtnVisibility();
     });
   });
   taskLogDateStart?.addEventListener("input", () => {
@@ -7664,6 +7709,7 @@ export function render(opts = {}) {
         applyTaskLogStartFromLedgerForDate(ymd);
       }
     }
+    syncTaskLogGapFillBtnVisibility();
   });
   const taskLogDateWrap = taskLogDateStart?.closest?.(
     '[data-legacy~="time-task-log-date-native-wrap"]',
@@ -7675,6 +7721,7 @@ export function render(opts = {}) {
   taskLogTimeStart?.addEventListener("input", () => {
     sanitizeTaskLogTimeField(taskLogTimeStart);
     updateTaskLogTimeOrderWarning();
+    syncTaskLogGapFillBtnVisibility();
   });
   taskLogTimeStart?.addEventListener("compositionend", (ev) => {
     sanitizeTaskLogTimeField(ev.target);
@@ -7773,6 +7820,42 @@ export function render(opts = {}) {
         const fallbackTime = startHasTime
           ? startTimeVal
           : `${String(new Date().getHours()).padStart(2, "0")}:${String(new Date().getMinutes()).padStart(2, "0")}`;
+
+        if (btn.dataset.gapFill === "true") {
+          const dateVal = taskLogResolveYmdForSync();
+          const gapStartTimeVal = normalizeHhMm(
+            (taskLogTimeStart?.value || "").trim(),
+          );
+          if (!gapStartTimeVal || !/^\d{1,2}:\d{2}$/.test(gapStartTimeVal)) {
+            showToast("시작 시각을 먼저 입력해 주세요.", "info");
+            return;
+          }
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) {
+            showToast("기록 날짜를 확인해 주세요.", "info");
+            return;
+          }
+          let nextStart =
+            btn.dataset.lpGapFillNext ||
+            getNextLedgerRowStartHhMmAfterCurrent(
+              dateVal,
+              gapStartTimeVal,
+              taskLogEditExclude,
+              taskLogMergedRowsForGapLookup(),
+            );
+          nextStart = normalizeHhMm(String(nextStart || "").trim());
+          if (!nextStart || !/^\d{1,2}:\d{2}$/.test(nextStart)) {
+            showToast("이어지는 다음 기록이 없습니다.", "info");
+            syncTaskLogGapFillBtnVisibility();
+            return;
+          }
+          setEndFromDatetime(`${dateVal}T${nextStart}`);
+          lastFocusedTimeField = "end";
+          updateEndTimeClearVisibility();
+          updateTaskLogTimeOrderWarning();
+          setTaskLogQuickAdjustActive(btn);
+          syncTaskLogGapFillBtnVisibility();
+          return;
+        }
 
         if (btn.dataset.last === "true") {
           const dateVal = (taskLogDateStart?.value || "").trim();
@@ -8540,6 +8623,7 @@ export function render(opts = {}) {
     refreshKpiTodosInLogModal();
     updateTaskLogMealDetailVisibility(taskName);
     syncTaskLogRatingSectionUi();
+    syncTaskLogGapFillBtnVisibility();
   }
 
   function isHabitDailyTodoChecked(todo, completedList) {
@@ -8787,6 +8871,54 @@ export function render(opts = {}) {
     syncEndToHidden();
     updateEndTimeClearVisibility();
     updateTaskLogTimeOrderWarning();
+    syncTaskLogGapFillBtnVisibility();
+  }
+
+  function taskLogMergedRowsForGapLookup() {
+    const merged = mergeLedgerRowsForDedupe(
+      loadTimeRows(),
+      Array.isArray(allRowsCache) ? allRowsCache : [],
+    );
+    try {
+      const live = getFilteredRows(getFullRowsForFilter(true));
+      if (live?.length) return mergeLedgerRowsForDedupe(merged, live);
+    } catch (_) {}
+    return merged;
+  }
+
+  function syncTaskLogGapFillBtnVisibility() {
+    const gapBtn = taskLogModal.querySelector(
+      '[data-legacy~="time-task-log-time-adjust-gap"]',
+    );
+    if (!gapBtn) return;
+    const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
+    const dateVal = taskLogResolveYmdForSync();
+    const startTimeVal = normalizeHhMm((taskLogTimeStart?.value || "").trim());
+    let show = false;
+    let nextStart = null;
+    if (
+      taskName &&
+      /^\d{4}-\d{2}-\d{2}$/.test(dateVal) &&
+      startTimeVal &&
+      /^\d{1,2}:\d{2}$/.test(startTimeVal)
+    ) {
+      nextStart = getNextLedgerRowStartHhMmAfterCurrent(
+        dateVal,
+        startTimeVal,
+        taskLogEditExclude,
+        taskLogMergedRowsForGapLookup(),
+      );
+      show = !!nextStart;
+      if (nextStart) {
+        gapBtn.title = `다음 기록 시작(${nextStart})까지 마감 채우기`;
+      } else {
+        gapBtn.removeAttribute("title");
+      }
+    } else {
+      gapBtn.removeAttribute("title");
+    }
+    gapBtn.hidden = !show;
+    gapBtn.dataset.lpGapFillNext = nextStart || "";
   }
 
   /**
@@ -8988,6 +9120,7 @@ export function render(opts = {}) {
         '[data-legacy~="time-task-log-time-adjust-last"]',
       ),
     );
+    syncTaskLogGapFillBtnVisibility();
   }
 
   async function openTaskLogModalForEdit(tr, rowData) {
@@ -9158,6 +9291,7 @@ export function render(opts = {}) {
     syncTaskLogDateOverlay();
     refreshKpiTodosInLogModal();
     updateTaskLogMealDetailVisibility(tnSync);
+    syncTaskLogGapFillBtnVisibility();
     void runTaskLogModalCloudSync();
   }
 
@@ -10656,7 +10790,7 @@ export function render(opts = {}) {
       const item = resolveUsageTimelineItemFromCardNode(card);
       const parent = item?.parentElement;
       item?.remove();
-      if (parent) markLastUsageTimelineItemShowEndTime(parent);
+      if (parent) applyUsageTimelineEndUnderStartDisplay(parent);
       updateTotal();
       if (!rowData) return;
       const entryId = String(rowData?.id || "").trim();
@@ -10711,18 +10845,6 @@ export function render(opts = {}) {
           el,
         );
         card._onRowDelete = handleCardDelete;
-        /* 연속 기록 — 앞 기록 마감시간 == 이 기록 시작시간이면 같은 시각 중복 표시라 앞 카드 마감만 숨김(저장은 유지) */
-        const prevItem = parent.lastElementChild;
-        const sc = card.dataset.lpStartClock || "";
-        if (
-          prevItem?.classList?.contains("calendar-1day-timeline-item") &&
-          /^\d{2}:\d{2}$/.test(sc) &&
-          prevItem.dataset.lpEndClock === sc
-        ) {
-          prevItem
-            .querySelector(".calendar-1day-timeline-card-end")
-            ?.classList.add("lp-end-dup-hidden");
-        }
         parent.appendChild(card);
       };
 
@@ -10755,11 +10877,11 @@ export function render(opts = {}) {
                 })()
               : timelineList;
           for (const d of g.rows) appendCardTo(cardParent, d);
-          markLastUsageTimelineItemShowEndTime(cardParent);
+          applyUsageTimelineEndUnderStartDisplay(cardParent);
         }
       } else {
         rows.forEach((d) => appendCardTo(timelineList, d));
-        markLastUsageTimelineItemShowEndTime(timelineList);
+        applyUsageTimelineEndUnderStartDisplay(timelineList);
       }
 
       if (rows.length === 0) {

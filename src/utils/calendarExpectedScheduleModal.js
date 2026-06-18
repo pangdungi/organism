@@ -745,13 +745,17 @@ export function openCalendarExpectedScheduleModal(options) {
               <p data-legacy="time-task-log-time-order-warning" hidden role="alert">마감시간은 시작시간보다 빠를 수 없습니다.</p>
               <div data-legacy="time-task-log-quick-block">
                 <div data-legacy="time-task-log-time-adjust-btns">
-                  <button type="button" data-legacy="time-task-log-time-adjust-btn time-task-log-time-adjust-now" data-now="true">지금</button>
-                  <button type="button" data-legacy="time-task-log-time-adjust-btn time-task-log-time-adjust-last" data-last="true">마지막</button>
-                  <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="-30">−30</button>
-                  <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="-10">−10</button>
-                  <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="10">+10</button>
-                  <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="30">+30</button>
-                  <button type="button" data-legacy="time-task-log-time-adjust-btn" data-day-end="true">하루끝</button>
+                  <div data-legacy="time-task-log-time-adjust-row time-task-log-time-adjust-row--delta">
+                    <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="-10">−10</button>
+                    <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="-30">−30</button>
+                    <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="10">+10</button>
+                    <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="30">+30</button>
+                  </div>
+                  <div data-legacy="time-task-log-time-adjust-row time-task-log-time-adjust-row--actions">
+                    <button type="button" data-legacy="time-task-log-time-adjust-btn time-task-log-time-adjust-now" data-now="true">지금</button>
+                    <button type="button" data-legacy="time-task-log-time-adjust-btn time-task-log-time-adjust-last" data-last="true">마지막</button>
+                    <button type="button" data-legacy="time-task-log-time-adjust-btn" data-day-end="true">하루끝</button>
+                  </div>
                 </div>
               </div>
               <input type="hidden" data-legacy="time-task-log-start" />

@@ -1542,13 +1542,24 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 .time-task-log-time-adjust-btns,
 [data-legacy~="time-task-log-time-adjust-btns"] {
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+  width: 100%;
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+}
+.time-task-log-time-adjust-row,
+[data-legacy~="time-task-log-time-adjust-row"] {
+  display: flex;
   flex-wrap: nowrap;
   align-items: center;
   gap: clamp(0.12rem, 1.2vw, 0.35rem);
   width: 100%;
-  /* 라벨 제거 후: 상·하 여백 동일(하단과 같은 값으로 상단 패딩) */
-  padding-top: 0.35rem;
-  padding-bottom: 0.35rem;
+}
+.time-task-log-time-adjust-row--actions
+  [data-legacy~="time-task-log-time-adjust-gap"][hidden] {
+  display: none;
 }
 .time-task-log-time-adjust-btn,
 [data-legacy~="time-task-log-time-adjust-btn"] {
@@ -1581,6 +1592,17 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 .time-task-log-time-adjust-btn:active,
 [data-legacy~="time-task-log-time-adjust-btn"]:active {
   background: #f2f2f2;
+}
+.time-task-log-time-adjust-gap:not([hidden]),
+[data-legacy~="time-task-log-time-adjust-gap"]:not([hidden]) {
+  color: #dc2626;
+  border-color: rgba(220, 38, 38, 0.35);
+  font-weight: 600;
+}
+.time-task-log-time-adjust-gap:not([hidden]):hover,
+[data-legacy~="time-task-log-time-adjust-gap"]:not([hidden]):hover {
+  color: #b91c1c;
+  border-color: rgba(220, 38, 38, 0.55);
 }
 .time-task-log-memo-section,
 [data-legacy~="time-task-log-memo-section"] {
