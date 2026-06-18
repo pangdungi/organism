@@ -524,6 +524,14 @@ export function getTaskOptionByName(name) {
   return getFullTaskOptions().find((o) => o.name === n) || null;
 }
 
+export function getTaskOptionById(taskId) {
+  const id = String(taskId || "").trim();
+  if (!id) return null;
+  return (
+    getFullTaskOptions().find((o) => String(o.id || "").trim() === id) || null
+  );
+}
+
 export function addTaskOption(name) {
   const opts = getFullTaskOptions();
   const trimmed = (name || "").trim();

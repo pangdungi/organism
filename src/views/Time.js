@@ -19,7 +19,7 @@ import {
   getKpiTodosAsTasks,
   getKpiDailyRepeatInfoByKpiId,
   getKpiMeasureInfoByKpiId,
-  resolveKpiIdForTaskName,
+  resolveKpiIdForTaskId,
 } from "../utils/kpiTodoSync.js";
 import { kpiTodoFineTrace } from "../utils/kpiTodoFineTrace.js";
 import {
@@ -36,12 +36,8 @@ import {
   flexibleSearchLabelsEqual,
   matchFlexibleSearch,
 } from "../utils/flexibleSearchMatch.js";
-import {
-  lockPageScrollForModalKeyboard,
-  resetViewportKeyboardBaseline,
-  syncVisualViewportKeyboardInset,
-} from "../utils/mobileViewportKeyboard.js";
 import { showConfirmModal, showAlertModal } from "../utils/confirmModal.js";
+import { bindTimeTaskLogModalMemoKeyboard } from "../utils/timeTaskLogModalMemoKeyboard.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
   mountAppFooterAddButton,
@@ -6575,9 +6571,9 @@ export function render(opts = {}) {
       });
   }
 
-  function setTaskLogTimeFlowDisruptors(value) {
+  function setTaskLogTimeFlowDisruptors(value, opts = {}) {
     taskLogTimeFlowDisruptors = normalizeTimeFlowDisruptorsForRow(value);
-    syncTaskLogFlowDisruptorChips();
+    if (!opts.silent) syncTaskLogFlowDisruptorChips();
   }
 
   function toggleTaskLogTimeFlowDisruptor(id) {
@@ -6595,7 +6591,7 @@ export function render(opts = {}) {
       isTaskLogModalProductiveTask() &&
       shouldCollectTimeFlowDisruptors(getTaskLogTimeRating());
     if (taskLogFlowDisruptorSection) taskLogFlowDisruptorSection.hidden = !show;
-    if (!show) setTaskLogTimeFlowDisruptors([]);
+    if (!show && taskLogTimeFlowDisruptors.length) taskLogTimeFlowDisruptors = [];
   }
 
   function syncTaskLogFlowFactorChips() {
@@ -6610,9 +6606,9 @@ export function render(opts = {}) {
       });
   }
 
-  function setTaskLogTimeFlowFactors(value) {
+  function setTaskLogTimeFlowFactors(value, opts = {}) {
     taskLogTimeFlowFactors = normalizeTimeFlowFactorsForRow(value);
-    syncTaskLogFlowFactorChips();
+    if (!opts.silent) syncTaskLogFlowFactorChips();
   }
 
   function toggleTaskLogTimeFlowFactor(id) {
@@ -6629,7 +6625,18 @@ export function render(opts = {}) {
     const show =
       isTaskLogModalProductiveTask() && getTaskLogTimeRating() === 5;
     if (taskLogFlowFactorSection) taskLogFlowFactorSection.hidden = !show;
-    if (!show) setTaskLogTimeFlowFactors([]);
+    if (!show && taskLogTimeFlowFactors.length) taskLogTimeFlowFactors = [];
+  }
+
+  function applyTaskLogModalRatingUiState({
+    rating = null,
+    disruptors = [],
+    factors = [],
+  } = {}) {
+    taskLogTimeRating = normalizeTimeRatingForRow(rating);
+    taskLogTimeFlowDisruptors = normalizeTimeFlowDisruptorsForRow(disruptors);
+    taskLogTimeFlowFactors = normalizeTimeFlowFactorsForRow(factors);
+    syncTaskLogRatingSectionUi();
   }
 
   function syncTaskLogRatingSectionUi() {
@@ -6664,9 +6671,13 @@ export function render(opts = {}) {
       taskLogTimeFlowDisruptors = [];
       taskLogTimeFlowFactors = [];
     }
-    if (show) renderTaskLogTimeRating();
     syncTaskLogFlowDisruptorSection();
     syncTaskLogFlowFactorSection();
+    if (show) {
+      renderTaskLogTimeRating();
+      syncTaskLogFlowDisruptorChips();
+      syncTaskLogFlowFactorChips();
+    }
   }
 
   function setTaskLogTimeRating(value) {
@@ -6674,6 +6685,10 @@ export function render(opts = {}) {
     renderTaskLogTimeRating();
     syncTaskLogFlowDisruptorSection();
     syncTaskLogFlowFactorSection();
+    if (shouldShowTaskLogRatingSection()) {
+      syncTaskLogFlowDisruptorChips();
+      syncTaskLogFlowFactorChips();
+    }
   }
 
   if (taskLogFlowDisruptorChips) {
@@ -6713,230 +6728,28 @@ export function render(opts = {}) {
       });
     });
 
-  /** @type {{ resize: () => void, scroll: () => void } | null} */
-  let taskLogMemoVvAdjust = null;
-  let taskLogMemoActiveInput = null;
-  let taskLogScrollTopBeforeMemo = 0;
-  let taskLogMemoKeyboardOpen = false;
-  let taskLogMemoScrollPadLocked = 0;
-  let taskLogMemoSectionAligned = false;
   /** @type {AbortController | null} */
-  let taskLogKeyboardShellAc = null;
-  const TASK_LOG_KEYBOARD_OPEN_PX = 80;
+  let taskLogMemoKeyboardAc = null;
 
   function bindTaskLogModalKeyboardShell() {
-    taskLogKeyboardShellAc?.abort();
-    if (!isTaskLogMobileMemoUi()) return;
-    taskLogKeyboardShellAc = new AbortController();
-    const { signal } = taskLogKeyboardShellAc;
-    resetViewportKeyboardBaseline();
-    const runWithLock = () => {
-      syncVisualViewportKeyboardInset();
-      lockPageScrollForModalKeyboard();
-    };
-    const runInsetOnly = () => {
-      syncVisualViewportKeyboardInset();
-    };
-    taskLogModal.addEventListener("focusin", runWithLock, {
-      capture: true,
-      signal,
+    taskLogMemoKeyboardAc?.abort();
+    taskLogMemoKeyboardAc = new AbortController();
+    bindTimeTaskLogModalMemoKeyboard(taskLogModal, {
+      scrollArea: taskLogScrollArea,
+      signal: taskLogMemoKeyboardAc.signal,
     });
-    window.visualViewport?.addEventListener("resize", runWithLock, {
-      passive: true,
-      signal,
-    });
-    window.visualViewport?.addEventListener("scroll", runInsetOnly, {
-      passive: true,
-      signal,
-    });
-    runWithLock();
-    requestAnimationFrame(runWithLock);
-    window.setTimeout(runWithLock, 120);
   }
 
   function unbindTaskLogModalKeyboardShell() {
-    taskLogKeyboardShellAc?.abort();
-    taskLogKeyboardShellAc = null;
-  }
-
-  function isTaskLogMobileMemoUi() {
-    return (
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(max-width: 46rem) and (pointer: coarse)").matches
-    );
-  }
-
-  function isTaskLogMemoInputFocused() {
-    return !!taskLogModal.querySelector(
-      '[data-legacy~="time-task-log-memo-input"]:focus',
-    );
-  }
-
-  /** 메모 포커스 시 스크롤 맨 아래 여백(키보드 높이) — 위로 올릴 공간 확보 */
-  function applyTaskLogMemoScrollBottomSpace(force = false) {
-    if (!(taskLogScrollArea instanceof HTMLElement)) return 0;
-    if (!force && taskLogMemoScrollPadLocked > 0) {
-      taskLogScrollArea.style.setProperty(
-        "--task-log-memo-scroll-pad",
-        `${taskLogMemoScrollPadLocked}px`,
-      );
-      return taskLogMemoScrollPadLocked;
-    }
-    const kb = syncVisualViewportKeyboardInset();
-    const vv = window.visualViewport;
-    const vvGap =
-      vv && vv.height > 0
-        ? Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0))
-        : 0;
-    const pad = Math.max(
-      kb,
-      vvGap,
-      Math.round(window.innerHeight * 0.45),
-      300,
-    );
-    taskLogMemoScrollPadLocked = pad;
-    taskLogScrollArea.style.setProperty(
-      "--task-log-memo-scroll-pad",
-      `${pad}px`,
-    );
-    return pad;
-  }
-
-  function clearTaskLogMemoScrollBottomSpace() {
-    taskLogMemoScrollPadLocked = 0;
+    taskLogMemoKeyboardAc?.abort();
+    taskLogMemoKeyboardAc = null;
+    taskLogScrollArea?.classList?.remove("is-memo-keyboard-open");
     taskLogScrollArea?.style.removeProperty("--task-log-memo-scroll-pad");
   }
 
-  /** 스크롤 영역만 세로 스크롤 — 메모·입력란을 키보드 위로 */
-  function scrollTaskLogMemoInputIntoView(
-    inputEl,
-    { jumpToMemoSection = false } = {},
-  ) {
-    if (!(inputEl instanceof HTMLElement)) return;
-    if (!(taskLogScrollArea instanceof HTMLElement)) return;
-
-    applyTaskLogMemoScrollBottomSpace();
-
-    if (jumpToMemoSection && !taskLogMemoSectionAligned) {
-      const memoSection = taskLogModal.querySelector(
-        '[data-legacy~="time-task-log-memo-section"]',
-      );
-      if (memoSection instanceof HTMLElement) {
-        const memoDelta =
-          memoSection.getBoundingClientRect().top -
-          taskLogScrollArea.getBoundingClientRect().top;
-        taskLogScrollArea.scrollTop = Math.max(
-          0,
-          taskLogScrollArea.scrollTop + memoDelta - 12,
-        );
-        taskLogMemoSectionAligned = true;
-      }
-    }
-
-    const vv = window.visualViewport;
-    let visibleBottom =
-      vv && vv.height > 0
-        ? vv.height + (vv.offsetTop || 0)
-        : window.innerHeight;
-    const margin = 20;
-    const rect = inputEl.getBoundingClientRect();
-    if (rect.bottom > visibleBottom - margin) {
-      taskLogScrollArea.scrollTop += rect.bottom - (visibleBottom - margin);
-    }
-  }
-
-  function runTaskLogMemoScrollPasses(inputEl) {
-    applyTaskLogMemoScrollBottomSpace(true);
-    scrollTaskLogMemoInputIntoView(inputEl, { jumpToMemoSection: true });
-    requestAnimationFrame(() => scrollTaskLogMemoInputIntoView(inputEl));
-    for (const ms of [50, 150, 350, 550, 850]) {
-      window.setTimeout(() => scrollTaskLogMemoInputIntoView(inputEl), ms);
-    }
-  }
-
-  function setTaskLogMemoKeyboardScroll(on) {
-    taskLogScrollArea?.classList?.toggle("is-memo-keyboard-open", !!on);
-    if (on) applyTaskLogMemoScrollBottomSpace();
-    else clearTaskLogMemoScrollBottomSpace();
-  }
-
-  function restoreTaskLogMemoScrollPosition() {
-    taskLogMemoKeyboardOpen = false;
-    taskLogMemoActiveInput = null;
-    taskLogMemoSectionAligned = false;
-    setTaskLogMemoKeyboardScroll(false);
-    clearTaskLogMemoScrollBottomSpace();
-    if (taskLogScrollArea instanceof HTMLElement) {
-      taskLogScrollArea.scrollTop = taskLogScrollTopBeforeMemo;
-    }
-  }
-
-  function enterTaskLogMemoScroll(inputEl) {
-    if (!isTaskLogMobileMemoUi()) return;
-    if (!(inputEl instanceof HTMLElement)) return;
-    if (!(taskLogScrollArea instanceof HTMLElement)) return;
-
-    taskLogMemoActiveInput = inputEl;
-    taskLogMemoKeyboardOpen = true;
-    taskLogMemoSectionAligned = false;
-    taskLogScrollTopBeforeMemo = taskLogScrollArea.scrollTop;
-    setTaskLogMemoKeyboardScroll(true);
-    syncVisualViewportKeyboardInset();
-    lockPageScrollForModalKeyboard();
-    runTaskLogMemoScrollPasses(inputEl);
-
-    const adjustCore = (lockPage) => {
-      const active = taskLogMemoActiveInput;
-      if (!active || !isTaskLogMemoInputFocused()) {
-        exitTaskLogMemoScroll();
-        return;
-      }
-      syncVisualViewportKeyboardInset();
-      if (lockPage) lockPageScrollForModalKeyboard();
-      setTaskLogMemoKeyboardScroll(true);
-      scrollTaskLogMemoInputIntoView(active);
-    };
-    const adjustOnResize = () => adjustCore(true);
-    const adjustOnScroll = () => adjustCore(false);
-
-    if (taskLogMemoVvAdjust && window.visualViewport) {
-      window.visualViewport.removeEventListener("resize", taskLogMemoVvAdjust.resize);
-      window.visualViewport.removeEventListener("scroll", taskLogMemoVvAdjust.scroll);
-    }
-    taskLogMemoVvAdjust = { resize: adjustOnResize, scroll: adjustOnScroll };
-    window.visualViewport?.addEventListener("resize", adjustOnResize, {
-      passive: true,
-    });
-    window.visualViewport?.addEventListener("scroll", adjustOnScroll, {
-      passive: true,
-    });
-    window.addEventListener("resize", adjustOnResize, { passive: true });
-    adjustOnResize();
-  }
-
   function exitTaskLogMemoScroll() {
-    restoreTaskLogMemoScrollPosition();
-    if (taskLogMemoVvAdjust) {
-      window.visualViewport?.removeEventListener("resize", taskLogMemoVvAdjust.resize);
-      window.visualViewport?.removeEventListener("scroll", taskLogMemoVvAdjust.scroll);
-      window.removeEventListener("resize", taskLogMemoVvAdjust.resize);
-    }
-    taskLogMemoVvAdjust = null;
+    unbindTaskLogModalKeyboardShell();
   }
-
-  function bindTaskLogMemoScrollMode(inputEl) {
-    if (!(inputEl instanceof HTMLElement)) return;
-    inputEl.addEventListener("focus", () => {
-      enterTaskLogMemoScroll(inputEl);
-    });
-    inputEl.addEventListener("blur", () => {
-      window.setTimeout(() => {
-        if (!isTaskLogMemoInputFocused()) exitTaskLogMemoScroll();
-      }, 0);
-    });
-  }
-  bindTaskLogMemoScrollMode(taskLogFeedbackInput);
-  bindTaskLogMemoScrollMode(taskLogMealDetailInput);
 
   const taskLogMealDetailLabel = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-meal-detail-label"]',
@@ -7382,7 +7195,7 @@ export function render(opts = {}) {
         syncEndToHidden();
       }
       const tn = taskLogTaskDropdown?._getValue?.() || "";
-      if (tn) refreshKpiTodosInLogModal(tn);
+      if (tn) refreshKpiTodosInLogModal();
     });
     el?.addEventListener("focusout", (ev) => {
       const skipEndSync = taskLogFocusOutTargetIsTimeAdjustBtn(ev);
@@ -8099,16 +7912,37 @@ export function render(opts = {}) {
     };
   }
 
-  /** 과제 기록 모달: KPI에 연결된 과제만 (task.kpiId) */
-  function getKpiDailyRepeatInfoForTaskLog(taskName) {
-    const kpiId = resolveKpiIdForTaskName((taskName || "").trim());
+  /** 과제 기록 모달: 선택·수정 중인 과제 id */
+  function resolveTaskLogModalTaskId() {
+    const fromRow = String(taskLogEditTr?._rowData?.taskId || "").trim();
+    if (fromRow) return fromRow;
+    const fromPicker = String(taskLogTaskDropdown?._getTaskId?.() || "").trim();
+    if (fromPicker) return fromPicker;
+    return "";
+  }
+
+  function resolveTaskLogModalKpiId() {
+    const taskId = resolveTaskLogModalTaskId();
+    if (!taskId) return "";
+    return resolveKpiIdForTaskId(taskId);
+  }
+
+  function runTaskLogModalCloudSync() {
+    return scheduleTaskLogModalCloudSync(applyTaskLogModalAfterBackgroundSync, {
+      resolveKpiId: resolveTaskLogModalKpiId,
+    });
+  }
+
+  /** 과제 기록 모달: KPI에 연결된 과제만 (task id → kpiId) */
+  function getKpiDailyRepeatInfoForTaskLog() {
+    const kpiId = resolveTaskLogModalKpiId();
     if (!kpiId) return null;
     return getKpiDailyRepeatInfoByKpiId(kpiId);
   }
 
-  /** 과제 기록 모달: KPI에 연결된 과제만 (task.kpiId) */
-  function getKpiMeasureInfoForTaskLog(taskName) {
-    const kpiId = resolveKpiIdForTaskName((taskName || "").trim());
+  /** 과제 기록 모달: KPI에 연결된 과제만 (task id → kpiId) */
+  function getKpiMeasureInfoForTaskLog() {
+    const kpiId = resolveTaskLogModalKpiId();
     if (!kpiId) return null;
     return getKpiMeasureInfoByKpiId(kpiId);
   }
@@ -8196,10 +8030,10 @@ export function render(opts = {}) {
     }
   }
 
-  function hydrateLedgerRowKpiFieldsFromStorage(row, taskName, dateYmd) {
+  function hydrateLedgerRowKpiFieldsFromStorage(row, dateYmd) {
     if (!row || dateYmd.length < 10) return;
-    const dailyInfo = getKpiDailyRepeatInfoForTaskLog((taskName || "").trim());
-    const measure = getKpiMeasureInfoForTaskLog((taskName || "").trim());
+    const dailyInfo = getKpiDailyRepeatInfoForTaskLog();
+    const measure = getKpiMeasureInfoForTaskLog();
     const eid = String(row.id || "").trim();
     if (dailyInfo?.needHabitTracker) {
       const rowHabit = Array.isArray(row.habitDailyCompleted)
@@ -8226,9 +8060,9 @@ export function render(opts = {}) {
     }
   }
 
-  function syncTaskLogKpiValueField(taskName, dateYmd) {
+  function syncTaskLogKpiValueField(dateYmd) {
     if (!taskLogKpiValueSection) return;
-    const measure = getKpiMeasureInfoForTaskLog((taskName || "").trim());
+    const measure = getKpiMeasureInfoForTaskLog();
     const showField = !!measure?.hasUnitGoal;
     if (!showField) {
       taskLogKpiValueSection.hidden = true;
@@ -8256,7 +8090,7 @@ export function render(opts = {}) {
   }
 
   function onTaskSelectedForLog(taskName) {
-    refreshKpiTodosInLogModal(taskName);
+    refreshKpiTodosInLogModal();
     updateTaskLogMealDetailVisibility(taskName);
     syncTaskLogRatingSectionUi();
   }
@@ -8273,11 +8107,11 @@ export function render(opts = {}) {
     });
   }
 
-  function refreshKpiTodosInLogModal(taskName) {
-    const name = (taskName || "").trim();
+  function refreshKpiTodosInLogModal() {
+    const name = (taskLogTaskDropdown?._getValue?.() || "").trim();
 
     if (!taskLogDailyTodosSection || !taskLogDailyTodosList) {
-      syncTaskLogKpiValueField(name, normalizeTaskLogPickerDateYmd());
+      syncTaskLogKpiValueField(normalizeTaskLogPickerDateYmd());
       return;
     }
     const taskLogDailyTodosTitle = taskLogModal.querySelector(
@@ -8286,7 +8120,7 @@ export function render(opts = {}) {
     const DEFAULT_DAILY_TODOS_TITLE = "매일 할일 목록";
 
     const dateYmd = normalizeTaskLogPickerDateYmd();
-    const dailyInfo = getKpiDailyRepeatInfoForTaskLog(name);
+    const dailyInfo = getKpiDailyRepeatInfoForTaskLog();
     const dailyTodos = dailyInfo?.dailyTodos || [];
     const showDaily =
       !!dailyInfo?.needHabitTracker && dailyTodos.length > 0;
@@ -8339,7 +8173,7 @@ export function render(opts = {}) {
         });
         taskLogDailyTodosList.appendChild(label);
       });
-      syncTaskLogKpiValueField(name, dateYmd);
+      syncTaskLogKpiValueField(dateYmd);
       return;
     }
 
@@ -8347,15 +8181,14 @@ export function render(opts = {}) {
     taskLogDailyTodosList.innerHTML = "";
     if (taskLogDailyTodosTitle)
       taskLogDailyTodosTitle.textContent = DEFAULT_DAILY_TODOS_TITLE;
-    syncTaskLogKpiValueField(name, dateYmd);
+    syncTaskLogKpiValueField(dateYmd);
   }
 
-  function restoreKpiFieldsIfCloudPullWiped(taskName, ledgerEntryId) {
+  function restoreKpiFieldsIfCloudPullWiped(ledgerEntryId) {
     const guard = taskLogEditKpiRestoreGuard;
     if (!guard) return;
-    const tn = (taskName || "").trim();
-    const info = getKpiDailyRepeatInfoForTaskLog(tn);
-    const measure = getKpiMeasureInfoForTaskLog(tn);
+    const info = getKpiDailyRepeatInfoForTaskLog();
+    const measure = getKpiMeasureInfoForTaskLog();
     const raw = (taskLogDateStart?.value || "").trim();
     const m = raw.match(/(\d{4})[.\-\s/]*(\d{1,2})[.\-\s/]*(\d{1,2})/);
     const ymd = m
@@ -8421,9 +8254,9 @@ export function render(opts = {}) {
     } catch (_) {}
     const tn = (taskLogTaskDropdown?._getValue?.() || "").trim();
     if (taskLogEditTr && tn) {
-      restoreKpiFieldsIfCloudPullWiped(tn, taskLogEditTr._rowData?.id);
+      restoreKpiFieldsIfCloudPullWiped(taskLogEditTr._rowData?.id);
     }
-    if (tn) refreshKpiTodosInLogModal(tn);
+    if (tn) refreshKpiTodosInLogModal();
     if (!taskLogEditTr) {
       afterTaskListSyncForTaskLogAddModal();
     }
@@ -8550,7 +8383,7 @@ export function render(opts = {}) {
   /** @deprecated 모달은 scheduleTaskLogModalCloudSync 사용 */
   async function ensureTaskLogModalCloudData() {
     primeTaskLogModalFromLocal();
-    return scheduleTaskLogModalCloudSync(applyTaskLogModalAfterBackgroundSync);
+    return runTaskLogModalCloudSync();
   }
 
   /** 기록 모달이 이미 열린 뒤 서버 과제 목록이 도착했을 때 드롭다운·KPI 연동만 맞춤(즉시 열기용). */
@@ -8586,7 +8419,7 @@ export function render(opts = {}) {
     primeTaskLogModalFromLocal();
     openTaskLogModalAfterPull(addContext);
     afterTaskListSyncForTaskLogAddModal();
-    void scheduleTaskLogModalCloudSync(applyTaskLogModalAfterBackgroundSync);
+    void runTaskLogModalCloudSync();
   }
 
   function setTaskLogModalShellOpen(open) {
@@ -8645,10 +8478,11 @@ export function render(opts = {}) {
     if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
     clearTaskLogContentType();
     clearTaskLogEmotionTrigger();
-    setTaskLogTimeRating(null);
-    setTaskLogTimeFlowDisruptors([]);
-    setTaskLogTimeFlowFactors([]);
-    syncTaskLogRatingSectionUi();
+    applyTaskLogModalRatingUiState({
+      rating: null,
+      disruptors: [],
+      factors: [],
+    });
     taskLogMemoTags = [];
     taskLogModal
       .querySelectorAll('[data-legacy~="time-task-log-accordion-item"]')
@@ -8769,12 +8603,12 @@ export function render(opts = {}) {
         .replace(/\//g, "-")
         .slice(0, 10);
     const tnForDaily = (data.taskName || "").trim();
-    const dailyInfoForEdit = getKpiDailyRepeatInfoForTaskLog(tnForDaily);
-    hydrateLedgerRowKpiFieldsFromStorage(data, tnForDaily, recordDateYmd);
+    const dailyInfoForEdit = getKpiDailyRepeatInfoForTaskLog();
+    hydrateLedgerRowKpiFieldsFromStorage(data, recordDateYmd);
     if (tr?._rowData && tr._rowData !== data) {
-      hydrateLedgerRowKpiFieldsFromStorage(tr._rowData, tnForDaily, recordDateYmd);
+      hydrateLedgerRowKpiFieldsFromStorage(tr._rowData, recordDateYmd);
     }
-    const measureInfoForEdit = getKpiMeasureInfoForTaskLog(tnForDaily);
+    const measureInfoForEdit = getKpiMeasureInfoForTaskLog();
     const dailyCompletedBeforeCloudPull =
       dailyInfoForEdit?.needHabitTracker && recordDateYmd.length >= 10
         ? resolveDailyCompletedForTaskLogEdit(
@@ -8818,7 +8652,9 @@ export function render(opts = {}) {
       taskLogTaskWrap.appendChild(taskLogTaskDropdown);
     }
     taskLogTaskDropdown._setLedgerBucketPreset?.(null);
-    taskLogTaskDropdown._setValue?.(data.taskName || "");
+    taskLogTaskDropdown._setValue?.(data.taskName || "", {
+      taskId: data.taskId,
+    });
     setStartFromDatetime(startTime || "");
     setEndFromDatetime(endTime || "");
     updateEndTimeClearVisibility();
@@ -8855,12 +8691,11 @@ export function render(opts = {}) {
       clearTaskLogEmotionTrigger();
       if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
     }
-    setTaskLogTimeRating(data.timeRating);
-    setTaskLogTimeFlowDisruptors(
-      data.timeFlowDisruptors ?? data.timeFlowDisruptor,
-    );
-    setTaskLogTimeFlowFactors(data.timeFlowFactors ?? data.timeFlowFactor);
-    syncTaskLogRatingSectionUi();
+    applyTaskLogModalRatingUiState({
+      rating: data.timeRating,
+      disruptors: data.timeFlowDisruptors ?? data.timeFlowDisruptor,
+      factors: data.timeFlowFactors ?? data.timeFlowFactor,
+    });
     const rawMemoTagsForEdit = Array.isArray(data.memoTags)
       ? [...data.memoTags]
       : parseTagsFromFeedback(feedbackRaw);
@@ -8870,13 +8705,13 @@ export function render(opts = {}) {
     const tnSync = tnForDaily;
     const lockedName = tnForDaily;
     if (taskLogTaskDropdown && lockedName) {
-      taskLogTaskDropdown._setValue?.(lockedName);
+      taskLogTaskDropdown._setValue?.(lockedName, { taskId: data.taskId });
     }
     updateTaskLogMealDetailVisibility((data.taskName || "").trim());
     syncTaskLogDateOverlay();
-    refreshKpiTodosInLogModal(tnSync);
+    refreshKpiTodosInLogModal();
     updateTaskLogMealDetailVisibility(tnSync);
-    void scheduleTaskLogModalCloudSync(applyTaskLogModalAfterBackgroundSync);
+    void runTaskLogModalCloudSync();
   }
 
   function closeTaskLogModal() {
@@ -8886,7 +8721,6 @@ export function render(opts = {}) {
     taskLogModal.hidden = true;
     setTaskLogModalShellOpen(false);
     unbindTaskLogModalKeyboardShell();
-    exitTaskLogMemoScroll();
     if (taskLogFooterEl) taskLogFooterEl.style.display = "none";
     taskLogModal.style.zIndex = "";
     document.body.style.overflow = "";
@@ -9192,8 +9026,8 @@ export function render(opts = {}) {
           allRowsCache.push(editTr._rowData);
         }
       }
-      const dailyInfoSubmit = getKpiDailyRepeatInfoForTaskLog(taskName);
-      const measureInfoSubmit = getKpiMeasureInfoForTaskLog(taskName);
+      const dailyInfoSubmit = getKpiDailyRepeatInfoForTaskLog();
+      const measureInfoSubmit = getKpiMeasureInfoForTaskLog();
       const kpiPerformedRaw = (taskLogHabitValueInput?.value || "").trim();
       const dateRawStr = (dateStr || "")
         .toString()

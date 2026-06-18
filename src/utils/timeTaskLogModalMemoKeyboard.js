@@ -23,6 +23,17 @@ function isMobileMemoUi() {
   );
 }
 
+function readVisibleBand() {
+  const vv = window.visualViewport;
+  const margin = 12;
+  const top = (vv?.offsetTop || 0) + margin;
+  const bottom =
+    (vv && vv.height > 0
+      ? vv.height + (vv.offsetTop || 0)
+      : window.innerHeight) - margin;
+  return { top, bottom };
+}
+
 /**
  * @param {HTMLElement} modal
  * @param {{
@@ -42,12 +53,11 @@ export function bindTimeTaskLogModalMemoKeyboard(modal, opts = {}) {
   const allKeyboardInputSelector =
     opts.allKeyboardInputSelector || DEFAULT_ALL_KEYBOARD_INPUT_SELECTOR;
 
-  /** @type {{ resize: () => void, scroll: () => void } | null} */
+  /** @type {{ resize: () => void } | null} */
   let memoVvAdjust = null;
   let memoActiveInput = null;
   let scrollTopBeforeMemo = 0;
   let memoScrollPadLocked = 0;
-  let memoSectionAligned = false;
   let keyboardShellAc = null;
 
   function isMemoInputFocused() {
@@ -79,12 +89,7 @@ export function bindTimeTaskLogModalMemoKeyboard(modal, opts = {}) {
       vv && vv.height > 0
         ? Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0))
         : 0;
-    const pad = Math.max(
-      kb,
-      vvGap,
-      Math.round(window.innerHeight * 0.45),
-      300,
-    );
+    const pad = Math.max(kb, vvGap, 48);
     memoScrollPadLocked = pad;
     scrollArea.style.setProperty("--task-log-memo-scroll-pad", `${pad}px`);
     return pad;
@@ -95,65 +100,35 @@ export function bindTimeTaskLogModalMemoKeyboard(modal, opts = {}) {
     scrollArea?.style.removeProperty("--task-log-memo-scroll-pad");
   }
 
-  function scrollFocusedInputIntoView(inputEl, { jumpToMemoSection = false } = {}) {
+  /** 키보드에 가려질 때만 최소한 스크롤 — 위로 밀어 올리지 않음 */
+  function scrollFocusedInputIntoView(inputEl) {
     if (!(inputEl instanceof HTMLElement)) return;
     if (!(scrollArea instanceof HTMLElement)) return;
 
     applyMemoScrollBottomSpace();
-
-    if (jumpToMemoSection && !memoSectionAligned) {
-      const memoSection = modal.querySelector(
-        '[data-legacy~="time-task-log-memo-section"]',
-      );
-      if (memoSection instanceof HTMLElement) {
-        const memoDelta =
-          memoSection.getBoundingClientRect().top -
-          scrollArea.getBoundingClientRect().top;
-        scrollArea.scrollTop = Math.max(
-          0,
-          scrollArea.scrollTop + memoDelta - 12,
-        );
-        memoSectionAligned = true;
-      }
-    }
-
-    const vv = window.visualViewport;
-    const visibleBottom =
-      vv && vv.height > 0
-        ? vv.height + (vv.offsetTop || 0)
-        : window.innerHeight;
-    const margin = 20;
+    const { top, bottom } = readVisibleBand();
     const rect = inputEl.getBoundingClientRect();
-    if (rect.bottom > visibleBottom - margin) {
-      scrollArea.scrollTop += rect.bottom - (visibleBottom - margin);
+
+    if (rect.bottom > bottom) {
+      scrollArea.scrollTop += rect.bottom - bottom;
+      return;
     }
-    if (rect.top < (vv?.offsetTop || 0) + margin) {
-      scrollArea.scrollTop -= (vv?.offsetTop || 0) + margin - rect.top;
+    if (rect.top < top && rect.bottom < top) {
+      scrollArea.scrollTop += rect.top - top;
     }
   }
 
   function runMemoScrollPasses(inputEl) {
     applyMemoScrollBottomSpace(true);
-    scrollFocusedInputIntoView(inputEl, { jumpToMemoSection: true });
-    requestAnimationFrame(() =>
-      scrollFocusedInputIntoView(inputEl, { jumpToMemoSection: true }),
-    );
-    for (const ms of [50, 150, 350, 550, 850]) {
-      window.setTimeout(
-        () => scrollFocusedInputIntoView(inputEl, { jumpToMemoSection: true }),
-        ms,
-      );
-    }
+    scrollFocusedInputIntoView(inputEl);
+    requestAnimationFrame(() => scrollFocusedInputIntoView(inputEl));
+    window.setTimeout(() => scrollFocusedInputIntoView(inputEl), 150);
   }
 
   function runDatetimeScrollPasses(inputEl) {
-    const scrollOnce = () =>
-      scrollFocusedInputIntoView(inputEl, { jumpToMemoSection: false });
-    scrollOnce();
-    requestAnimationFrame(scrollOnce);
-    for (const ms of [50, 150, 350]) {
-      window.setTimeout(scrollOnce, ms);
-    }
+    scrollFocusedInputIntoView(inputEl);
+    requestAnimationFrame(() => scrollFocusedInputIntoView(inputEl));
+    window.setTimeout(() => scrollFocusedInputIntoView(inputEl), 150);
   }
 
   function setMemoKeyboardScroll(on) {
@@ -164,7 +139,6 @@ export function bindTimeTaskLogModalMemoKeyboard(modal, opts = {}) {
 
   function restoreMemoScrollPosition() {
     memoActiveInput = null;
-    memoSectionAligned = false;
     setMemoKeyboardScroll(false);
     clearMemoScrollBottomSpace();
     if (scrollArea instanceof HTMLElement) {
@@ -175,9 +149,10 @@ export function bindTimeTaskLogModalMemoKeyboard(modal, opts = {}) {
   function exitMemoScroll() {
     restoreMemoScrollPosition();
     if (memoVvAdjust) {
-      window.visualViewport?.removeEventListener("resize", memoVvAdjust.resize);
-      window.visualViewport?.removeEventListener("scroll", memoVvAdjust.scroll);
-      window.removeEventListener("resize", memoVvAdjust.resize);
+      window.visualViewport?.removeEventListener(
+        "resize",
+        memoVvAdjust.resize,
+      );
     }
     memoVvAdjust = null;
   }
@@ -188,7 +163,6 @@ export function bindTimeTaskLogModalMemoKeyboard(modal, opts = {}) {
     if (!(scrollArea instanceof HTMLElement)) return;
 
     memoActiveInput = inputEl;
-    memoSectionAligned = false;
     scrollTopBeforeMemo = scrollArea.scrollTop;
     const isTimeField = isDatetimeInput(inputEl);
     setMemoKeyboardScroll(!isTimeField);
@@ -197,29 +171,23 @@ export function bindTimeTaskLogModalMemoKeyboard(modal, opts = {}) {
     if (isTimeField) runDatetimeScrollPasses(inputEl);
     else runMemoScrollPasses(inputEl);
 
-    const adjustCore = (lockPage) => {
+    const adjustOnResize = () => {
       const active = memoActiveInput;
       if (!active || !isAnyKeyboardInputFocused()) {
         exitMemoScroll();
         return;
       }
       syncVisualViewportKeyboardInset();
-      if (lockPage) lockPageScrollForModalKeyboard();
+      lockPageScrollForModalKeyboard();
       setMemoKeyboardScroll(!isDatetimeInput(active));
-      scrollFocusedInputIntoView(active, { jumpToMemoSection: false });
+      scrollFocusedInputIntoView(active);
     };
-    const adjustOnResize = () => adjustCore(true);
-    const adjustOnScroll = () => adjustCore(false);
 
     if (memoVvAdjust && window.visualViewport) {
       window.visualViewport.removeEventListener("resize", memoVvAdjust.resize);
-      window.visualViewport.removeEventListener("scroll", memoVvAdjust.scroll);
     }
-    memoVvAdjust = { resize: adjustOnResize, scroll: adjustOnScroll };
+    memoVvAdjust = { resize: adjustOnResize };
     window.visualViewport?.addEventListener("resize", adjustOnResize, {
-      passive: true,
-    });
-    window.visualViewport?.addEventListener("scroll", adjustOnScroll, {
       passive: true,
     });
     window.addEventListener("resize", adjustOnResize, { passive: true });
@@ -234,12 +202,19 @@ export function bindTimeTaskLogModalMemoKeyboard(modal, opts = {}) {
         if (!isAnyKeyboardInputFocused()) exitMemoScroll();
       }, 0);
     };
+    const onInput = () => {
+      if (memoActiveInput === inputEl) scrollFocusedInputIntoView(inputEl);
+    };
     inputEl.addEventListener("focus", onFocus);
     inputEl.addEventListener("blur", onBlur);
+    if (inputEl.tagName === "TEXTAREA") {
+      inputEl.addEventListener("input", onInput);
+    }
     if (opts.signal) {
       opts.signal.addEventListener("abort", () => {
         inputEl.removeEventListener("focus", onFocus);
         inputEl.removeEventListener("blur", onBlur);
+        inputEl.removeEventListener("input", onInput);
       });
     }
   }
@@ -257,18 +232,11 @@ export function bindTimeTaskLogModalMemoKeyboard(modal, opts = {}) {
       syncVisualViewportKeyboardInset();
       lockPageScrollForModalKeyboard();
     };
-    const runInsetOnly = () => {
-      syncVisualViewportKeyboardInset();
-    };
     modal.addEventListener("focusin", runWithLock, {
       capture: true,
       signal: shellSignal,
     });
     window.visualViewport?.addEventListener("resize", runWithLock, {
-      passive: true,
-      signal: shellSignal,
-    });
-    window.visualViewport?.addEventListener("scroll", runInsetOnly, {
       passive: true,
       signal: shellSignal,
     });

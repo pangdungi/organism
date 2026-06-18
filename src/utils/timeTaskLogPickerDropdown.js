@@ -7,7 +7,11 @@ import {
   lpTokenAdd,
   lpTokenToggle,
 } from "./timeLedgerClassPolicy.js";
-import { getServerLedgerTaskOptionsForTaskLog } from "./timeTaskOptionsModel.js";
+import {
+  getServerLedgerTaskOptionsForTaskLog,
+  getTaskOptionById,
+  getTaskOptionByName,
+} from "./timeTaskOptionsModel.js";
 import * as TTC from "./timeTaskOptionsConstants.js";
 import { getTimeTaskListIconSrc } from "./timeTaskIconUrls.js";
 import { matchFlexibleSearch } from "./flexibleSearchMatch.js";
@@ -179,6 +183,22 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
       has ? `선택한 과제: ${value}` : "과제 선택",
     );
   }
+  let selectedTaskId = "";
+  function resolveSelectedTaskIdForName(name, forcedTaskId) {
+    const forced = String(forcedTaskId || "").trim();
+    if (forced) return forced;
+    const n = String(name || "").trim();
+    if (!n) return "";
+    const fromList = getAllPickerTasks().find((t) => (t.name || "").trim() === n);
+    if (fromList?.id) return String(fromList.id).trim();
+    return String(getTaskOptionByName(n)?.id || "").trim();
+  }
+  function applyTaskSelection(name, meta) {
+    value = name || "";
+    selectedTaskId = resolveSelectedTaskIdForName(value, meta?.taskId);
+    syncTriggerLabel();
+    onTaskSelected(value, { taskId: selectedTaskId });
+  }
   syncTriggerLabel();
   const panel = document.createElement("div");
   lpSetClasses(
@@ -293,9 +313,7 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
     getTaskBucket: timeLedgerTaskLogPickerBucket,
     getCurrentValue: () => value,
     onConfirm: (name) => {
-      value = name || "";
-      syncTriggerLabel();
-      onTaskSelected(value);
+      applyTaskSelection(name);
       onDismissBlockingLayers();
     },
     onShellClose: onDismissBlockingLayers,
@@ -373,10 +391,8 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
       if (iconEl) row.appendChild(iconEl);
       row.appendChild(textWrap);
       const closePanelAndSelect = () => {
-        value = t.name || "";
-        syncTriggerLabel();
+        applyTaskSelection(t.name || "", { taskId: t.id });
         closePanel();
-        onTaskSelected(value);
       };
       row.addEventListener("mousedown", (e) => {
         e.preventDefault();
@@ -641,10 +657,9 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
   wrap.appendChild(trigger);
   wrap.appendChild(panel);
   wrap._getValue = () => value;
-  wrap._setValue = (v) => {
-    value = v || "";
-    syncTriggerLabel();
-    onTaskSelected(value);
+  wrap._getTaskId = () => selectedTaskId;
+  wrap._setValue = (v, meta) => {
+    applyTaskSelection(v || "", meta);
   };
   wrap._setLedgerBucketPreset = (preset) => {
     ledgerBucketPreset =
@@ -652,6 +667,7 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
     searchQuery = "";
     ensurePickerBucketInAllowed();
     value = "";
+    selectedTaskId = "";
     syncTriggerLabel();
     wrap._closePanel?.();
   };

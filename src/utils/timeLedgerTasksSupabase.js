@@ -186,6 +186,42 @@ let _tasksPullSkipUntil = 0;
 const TASKS_PULL_SKIP_AFTER_LOCAL_MS = 2800;
 /** 마지막으로 서버 과제 목록을 반영한 시점의 서버 updated_at(ms) */
 let _tasksServerWatermarkMs = 0;
+const TASKS_WM_SESSION_PREFIX = "lp:time-ledger-tasks-server-wm:";
+
+function tasksSessionWatermarkKey(userId) {
+  const u = String(userId || "").trim();
+  return u ? `${TASKS_WM_SESSION_PREFIX}${u}` : "";
+}
+
+function readTasksServerWatermarkFromSession(userId) {
+  const key = tasksSessionWatermarkKey(userId);
+  if (!key || typeof sessionStorage === "undefined") return 0;
+  try {
+    const n = Number(sessionStorage.getItem(key) || 0);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  } catch (_) {
+    return 0;
+  }
+}
+
+function writeTasksServerWatermarkToSession(userId, ms) {
+  const key = tasksSessionWatermarkKey(userId);
+  const n = Number(ms);
+  if (!key || !Number.isFinite(n) || n <= 0 || typeof sessionStorage === "undefined") {
+    return;
+  }
+  try {
+    const prev = Number(sessionStorage.getItem(key) || 0);
+    if (n > prev) sessionStorage.setItem(key, String(n));
+  } catch (_) {}
+}
+
+function rememberTasksServerWatermarkMs(userId, ms) {
+  const n = Number(ms);
+  if (!Number.isFinite(n) || n <= 0) return;
+  _tasksServerWatermarkMs = Math.max(_tasksServerWatermarkMs, n);
+  writeTasksServerWatermarkToSession(userId, n);
+}
 
 function bumpTasksPullSkipAfterLocalChange() {
   _tasksPullSkipUntil = Date.now() + TASKS_PULL_SKIP_AFTER_LOCAL_MS;
@@ -453,10 +489,11 @@ export async function pullTimeLedgerTasksFromSupabase(opts = {}) {
   }
   const applied = applyTimeLedgerTasksFromServer(rows, kpiLinkMetaById);
   if (applied) {
-    _tasksServerWatermarkMs = rows.reduce(
+    const wm = rows.reduce(
       (m, r) => Math.max(m, Date.parse(String(r?.updated_at || "")) || 0),
       0,
     );
+    rememberTasksServerWatermarkMs(userId, wm);
     migrateTimeLogRowsTaskIds();
   }
   return applied;
@@ -513,12 +550,19 @@ export async function pullTimeLedgerTasksIfStaleForModal() {
   if (!userId || !supabase) return false;
   const now = Date.now();
   if (now < _tasksPullSkipUntil) return false;
+  if (_tasksServerWatermarkMs <= 0) {
+    _tasksServerWatermarkMs = readTasksServerWatermarkFromSession(userId);
+  }
   const serverMs = await probeTimeLedgerTasksServerWatermarkMs(userId);
   if (serverMs > 0 && serverMs <= _tasksServerWatermarkMs) return false;
   if (serverMs === 0 && _tasksServerWatermarkMs === 0 && getFullTaskOptions().length > 0) {
     return false;
   }
-  return !!(await pullTimeLedgerTasksFromSupabase({ ignoreSkip: false }));
+  const pulled = !!(await pullTimeLedgerTasksFromSupabase({ ignoreSkip: false }));
+  if (!pulled && serverMs > 0) {
+    rememberTasksServerWatermarkMs(userId, serverMs);
+  }
+  return pulled;
 }
 
 export function attachTimeLedgerTasksSaveListener() {

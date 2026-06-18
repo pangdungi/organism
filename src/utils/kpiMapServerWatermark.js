@@ -94,34 +94,73 @@ const KPI_DOMAIN_TABLES = {
 
 const LOCAL_KPI_PAYLOAD_ARRAY_KEYS = [
   "dreams",
+  "goals",
+  "tasks",
+  "healths",
+  "healthGoalLogs",
+  "happinesses",
   "paths",
+  "pathLogs",
   "categories",
   "kpis",
   "kpiLogs",
-  "pathLogs",
-  "goalLogs",
   "kpiTodos",
-  "dailyTodos",
+  "kpiDailyRepeatTodos",
 ];
 
-/** @param {string} storageKey */
-export function readLocalKpiMapWatermarkMs(storageKey) {
-  const raw = readKpiMapScopedStorageRaw(storageKey);
-  if (!raw) return 0;
+const KPI_DOMAIN_SESSION_WM_PREFIX = "lp:kpi-domain-server-wm:";
+
+function kpiDomainSessionWatermarkKey(domain, userId) {
+  const d = String(domain || "").trim();
+  const u = String(userId || "").trim();
+  if (!d || !u) return "";
+  return `${KPI_DOMAIN_SESSION_WM_PREFIX}${u}:${d}`;
+}
+
+/** pull·probe 후 세션에 서버 워터마크 기억(새로고침 전까지 stale 오판 방지) */
+export function rememberKpiDomainServerWatermarkMs(domain, serverMs, userId) {
+  const ms = Number(serverMs);
+  if (!Number.isFinite(ms) || ms <= 0) return;
+  const key = kpiDomainSessionWatermarkKey(domain, userId);
+  if (!key || typeof sessionStorage === "undefined") return;
   try {
-    const p = JSON.parse(raw);
-    let max = parseIsoMs(p.metaServerUpdatedAt);
-    for (const key of LOCAL_KPI_PAYLOAD_ARRAY_KEYS) {
-      const arr = p[key];
-      if (!Array.isArray(arr)) continue;
-      for (const item of arr) {
-        max = Math.max(max, localEntityTimeMs(item));
-      }
-    }
-    return max;
+    const prev = Number(sessionStorage.getItem(key) || 0);
+    if (ms > prev) sessionStorage.setItem(key, String(ms));
+  } catch (_) {}
+}
+
+function readKpiDomainSessionWatermarkMs(domain, userId) {
+  const key = kpiDomainSessionWatermarkKey(domain, userId);
+  if (!key || typeof sessionStorage === "undefined") return 0;
+  try {
+    const n = Number(sessionStorage.getItem(key) || 0);
+    return Number.isFinite(n) && n > 0 ? n : 0;
   } catch (_) {
     return 0;
   }
+}
+
+/** @param {string} storageKey */
+export function readLocalKpiMapWatermarkMs(storageKey, domain, userId) {
+  const raw = readKpiMapScopedStorageRaw(storageKey);
+  let max = 0;
+  if (raw) {
+    try {
+      const p = JSON.parse(raw);
+      max = parseIsoMs(p.metaServerUpdatedAt);
+      for (const key of LOCAL_KPI_PAYLOAD_ARRAY_KEYS) {
+        const arr = p[key];
+        if (!Array.isArray(arr)) continue;
+        for (const item of arr) {
+          max = Math.max(max, localEntityTimeMs(item));
+        }
+      }
+    } catch (_) {}
+  }
+  if (domain && userId) {
+    max = Math.max(max, readKpiDomainSessionWatermarkMs(domain, userId));
+  }
+  return max;
 }
 
 /**
@@ -142,9 +181,12 @@ export async function probeKpiDomainServerStale(domain, userId) {
     happiness: "kpi-happiness-map",
     sideincome: "kpi-sideincome-paths",
   }[domain];
-  const localMs = readLocalKpiMapWatermarkMs(storageKey);
+  const localMs = readLocalKpiMapWatermarkMs(storageKey, domain, uid);
   const stale = serverMs > localMs;
-  return { stale, serverMs, localMs };
+  if (!stale && serverMs > 0) {
+    rememberKpiDomainServerWatermarkMs(domain, serverMs, uid);
+  }
+  return { stale, serverMs, localMs, userId: uid };
 }
 
 /** @returns {Promise<number>} */

@@ -25,7 +25,10 @@ import {
   readKpiMapScopedStorageRaw,
   writeKpiMapScopedStorageRaw,
 } from "./kpiMapLocalStorage.js";
-import { getTaskOptionByName } from "./timeTaskOptionsModel.js";
+import {
+  getTaskOptionById,
+  getTaskOptionByName,
+} from "./timeTaskOptionsModel.js";
 
 const DREAM_MAP_KEY = "kpi-dream-map";
 const SIDEINCOME_KEY = "kpi-sideincome-paths";
@@ -440,6 +443,13 @@ export function syncKpiTodoCompleted(kpiTodoId, storageKey, completed) {
 
 const STORAGE_KEYS = [DREAM_MAP_KEY, SIDEINCOME_KEY, HAPPINESS_KEY, HEALTH_KEY];
 
+const STORAGE_KEY_TO_DOMAIN = {
+  [DREAM_MAP_KEY]: "dream",
+  [SIDEINCOME_KEY]: "sideincome",
+  [HAPPINESS_KEY]: "happiness",
+  [HEALTH_KEY]: "health",
+};
+
 function nextKpiLogId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
@@ -469,6 +479,30 @@ export function kpiHasTargetValueAndUnit(kpi) {
   const tv = String(kpi.targetValue ?? "").trim();
   const u = String(kpi.unit ?? "").trim();
   return tv !== "" && u !== "";
+}
+
+/** 과제 id → KPI id (과제 행의 kpiId만 사용) */
+export function resolveKpiIdForTaskId(taskId) {
+  const tid = String(taskId || "").trim();
+  if (!tid) return "";
+  try {
+    return String(getTaskOptionById(tid)?.kpiId || "").trim();
+  } catch (_) {
+    return "";
+  }
+}
+
+/** KPI id → 꿈/건강/행복/부수입 도메인 */
+export function resolveKpiDomainForKpiId(kpiId) {
+  const kid = String(kpiId || "").trim();
+  if (!kid) return null;
+  for (const storageKey of STORAGE_KEYS) {
+    const data = loadJson(storageKey, { kpis: [] });
+    if ((data.kpis || []).some((k) => String(k.id || "").trim() === kid)) {
+      return STORAGE_KEY_TO_DOMAIN[storageKey] || null;
+    }
+  }
+  return null;
 }
 
 /** 과제명 → KPI id (task.kpiId · KPI 이름 · kpiTaskSync 표시명) */

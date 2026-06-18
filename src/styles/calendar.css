@@ -3056,30 +3056,13 @@
     padding-bottom: max(
       var(--task-log-memo-scroll-pad, 0px),
       var(--vv-keyboard, 0px),
-      45vh,
-      20rem
+      1rem
     );
     scroll-padding-bottom: max(
       var(--task-log-memo-scroll-pad, 0px),
       var(--vv-keyboard, 0px),
-      45vh,
-      20rem
+      1rem
     );
-  }
-
-  .lp-calendar-budget-add-modal
-    [data-legacy~="time-task-log-scroll-area"].is-memo-keyboard-open:not(
-      .is-task-picker-open
-    )::after {
-    content: "";
-    display: block;
-    height: max(
-      var(--task-log-memo-scroll-pad, 0px),
-      var(--vv-keyboard, 0px),
-      45vh,
-      20rem
-    );
-    pointer-events: none;
   }
 
   html.lp-keyboard-open.lp-task-log-modal-open .lp-calendar-budget-add-modal {

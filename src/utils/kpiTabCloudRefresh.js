@@ -37,8 +37,16 @@ import { syncHabitTrackerLogs, getKpiTargetDateRange } from "./timeKpiSync.js";
 import { syncSleepHealthGoalLogsFromTimeLedger } from "./healthSleepGoalTimeLedgerSync.js";
 import { patchKpiLinkedTasksFromKpiMaps } from "./timeTaskOptionsModel.js";
 import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
-import { probeKpiDomainServerStale } from "./kpiMapServerWatermark.js";
+import { probeKpiDomainServerStale, rememberKpiDomainServerWatermarkMs } from "./kpiMapServerWatermark.js";
 import { pullTimeLedgerTasksIfStaleForModal } from "./timeLedgerTasksSupabase.js";
+import { resolveKpiDomainForKpiId } from "./kpiTodoSync.js";
+
+const KPI_DOMAIN_PULL = {
+  dream: pullDreamKpiMapFromSupabase,
+  health: pullHealthKpiMapFromSupabase,
+  happiness: pullHappinessKpiMapFromSupabase,
+  sideincome: pullSideincomeKpiMapFromSupabase,
+};
 const KPI_LOCAL_STORAGE_KEYS = {
   dream: "kpi-dream-map",
   health: "kpi-health-map",
@@ -312,14 +320,18 @@ export function primeTaskLogModalFromLocal() {
  * 과제 기록/수정 모달 백그라운드 동기화 — stale일 때만 pull, force 없음(로컬→서버 대기 중 보호).
  * 서버 push 는 호출하지 않음.
  * @param {() => void} [onApplied] — pull로 로컬이 바뀐 뒤(모달仍 open일 때 UI 갱신용)
+ * @param {{ resolveKpiId?: () => string }} [opts] — 과제 id로 연결된 KPI id (없으면 KPI pull 생략)
  * @returns {Promise<{ tasksChanged: boolean, kpiChanged: boolean, anyChanged: boolean }>}
  */
-export function scheduleTaskLogModalCloudSync(onApplied) {
+export function scheduleTaskLogModalCloudSync(onApplied, opts = {}) {
+  const resolveKpiId =
+    typeof opts.resolveKpiId === "function" ? opts.resolveKpiId : () => "";
   return coalesceInFlightPull("task-log-modal-cloud-sync", async () => {
     const tasksChanged = !!(await pullTimeLedgerTasksIfStaleForModal().catch(
       () => false,
     ));
-    const kpiChanged = !!(await pullKpiMapsForTaskLogModalOpen().catch(
+    const kpiId = String(resolveKpiId() || "").trim();
+    const kpiChanged = !!(await pullKpiMapsForTaskLogModalOpen({ kpiId }).catch(
       () => false,
     ));
     const anyChanged = tasksChanged || kpiChanged;
@@ -333,36 +345,43 @@ export function scheduleTaskLogModalCloudSync(onApplied) {
 }
 
 /**
- * 과제 기록 모달 — 꿈/건강/행복/부수입 KPI 맵.
+ * 과제 기록 모달 — 연결된 KPI가 속한 메뉴 1개만.
  * 서버 updated_at 워터마크가 로컬보다 새로울 때만 pull(force:false).
+ * @param {{ kpiId?: string }} [opts]
  * @returns {Promise<boolean>} 이번에 서버 스냅샷을 반영했으면 true
  */
-export async function pullKpiMapsForTaskLogModalOpen() {
+export async function pullKpiMapsForTaskLogModalOpen(opts = {}) {
   kpiTodoFineTrace("cloud.pullKpiMapsForTaskLogModalOpen:시작", {});
   lpPullDebug("pullKpiMapsForTaskLogModalOpen", {});
 
-  const domains = [
-    ["dream", pullDreamKpiMapFromSupabase],
-    ["health", pullHealthKpiMapFromSupabase],
-    ["happiness", pullHappinessKpiMapFromSupabase],
-    ["sideincome", pullSideincomeKpiMapFromSupabase],
-  ];
-
-  const staleFlags = await Promise.all(
-    domains.map(([id]) => probeKpiDomainServerStale(id)),
-  );
-
-  const pullJobs = [];
-  for (let i = 0; i < domains.length; i++) {
-    if (!staleFlags[i]?.stale) continue;
-    const [, pullFn] = domains[i];
-    pullJobs.push(pullFn({ force: false }));
+  const kpiId = String(opts.kpiId || "").trim();
+  const domain = kpiId ? resolveKpiDomainForKpiId(kpiId) : null;
+  if (!domain) {
+    kpiTodoFineTrace("cloud.pullKpiMapsForTaskLogModalOpen:끝", {
+      pullOk: true,
+      kpiChanged: false,
+      pulledDomains: 0,
+      skip: "no_kpi_id",
+    });
+    syncWatchLog("pullKpiMapsForTaskLogModalOpen_완료", {
+      pullOk: true,
+      kpiChanged: false,
+      pulledDomains: 0,
+      note: "KPI id 없음 — pull 생략",
+    });
+    return false;
   }
 
+  const pullFn = KPI_DOMAIN_PULL[domain];
+  if (!pullFn) return false;
+
+  const stale = await probeKpiDomainServerStale(domain);
   let kpiChanged = false;
-  if (pullJobs.length) {
-    const results = await Promise.all(pullJobs);
-    kpiChanged = results.some(Boolean);
+  if (stale?.stale) {
+    kpiChanged = !!(await pullFn({ force: false }));
+    if (kpiChanged && stale.serverMs > 0) {
+      rememberKpiDomainServerWatermarkMs(domain, stale.serverMs, stale.userId);
+    }
     if (kpiChanged) {
       try {
         patchKpiLinkedTasksFromKpiMaps();
@@ -376,13 +395,15 @@ export async function pullKpiMapsForTaskLogModalOpen() {
   kpiTodoFineTrace("cloud.pullKpiMapsForTaskLogModalOpen:끝", {
     pullOk: true,
     kpiChanged,
-    pulledDomains: pullJobs.length,
+    pulledDomains: stale?.stale ? 1 : 0,
+    domain,
   });
   syncWatchLog("pullKpiMapsForTaskLogModalOpen_완료", {
     pullOk: true,
     kpiChanged,
-    pulledDomains: pullJobs.length,
-    note: "워터마크 stale 도메인만 force:false pull (모달 non-blocking)",
+    pulledDomains: stale?.stale ? 1 : 0,
+    domain,
+    note: "과제 KPI id 도메인만 워터마크 stale 시 pull",
   });
   return kpiChanged;
 }
