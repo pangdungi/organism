@@ -1,4 +1,4 @@
-/** 시간가계부 타임박스 — 조회 기간(주) 7일치를 나란히 표시 */
+/** 시간가계부 타임박스 — 주간 7일 격자 · 기간(주·연) 계산 */
 
 import {
   createTimeLedgerDayTimeboxElement,
@@ -21,6 +21,68 @@ function formatYmdFromDate(dt) {
   const mo = String(dt.getMonth() + 1).padStart(2, "0");
   const d = String(dt.getDate()).padStart(2, "0");
   return `${y}-${mo}-${d}`;
+}
+
+function dateFromYmd(ymd) {
+  const p = parseYmd(ymd);
+  if (!p) return null;
+  return new Date(p.y, p.mo, p.d);
+}
+
+/** 월요일=0 기준 요일 */
+export function getMondayBasedDow(date) {
+  return (date.getDay() + 6) % 7;
+}
+
+/** 임의 날짜가 속한 주 — 월요일~일요일(7일) */
+export function getWeekRangeContainingYmd(ymd) {
+  const fallback = formatYmdFromDate(new Date());
+  const anchor = dateFromYmd(ymd) || dateFromYmd(fallback);
+  if (!anchor) return { start: fallback, end: fallback };
+  const monday = new Date(anchor);
+  monday.setDate(anchor.getDate() - getMondayBasedDow(anchor));
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return {
+    start: formatYmdFromDate(monday),
+    end: formatYmdFromDate(sunday),
+  };
+}
+
+/** 주 단위 이동 — start/end는 항상 7일 */
+export function shiftWeekRangeByWeeks(startYmd, weeksDelta) {
+  const base = dateFromYmd(startYmd) || new Date();
+  base.setDate(base.getDate() + weeksDelta * 7);
+  return getWeekRangeContainingYmd(formatYmdFromDate(base));
+}
+
+export function getYearFromYmd(ymd) {
+  const p = parseYmd(ymd);
+  return p ? p.y : new Date().getFullYear();
+}
+
+export function getYearRangeForYear(year) {
+  const y = Math.floor(Number(year) || new Date().getFullYear());
+  return {
+    start: `${y}-01-01`,
+    end: `${y}-12-31`,
+  };
+}
+
+export function formatTimeboxWeekRangeLabel(startYmd, endYmd) {
+  const fmt = (ymd) => {
+    const p = parseYmd(ymd);
+    if (!p) return ymd;
+    const dt = new Date(p.y, p.mo, p.d);
+    const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+    const yy = String(p.y).slice(-2);
+    const mm = String(p.mo + 1).padStart(2, "0");
+    const dd = String(p.d).padStart(2, "0");
+    return `${yy}.${mm}.${dd}(${weekdays[dt.getDay()]})`;
+  };
+  if (!startYmd || !endYmd) return "";
+  if (startYmd === endYmd) return fmt(startYmd);
+  return `${fmt(startYmd)} ~ ${fmt(endYmd)}`;
 }
 
 /** 시작·끝 YMD(포함) 사이 날짜 목록 */
@@ -57,7 +119,9 @@ function appendWeekDayPanel(parent, ymd, blocks) {
   head.textContent = formatWeekDayLabel(ymd);
   dayWrap.appendChild(head);
 
-  const dayScroll = createTimeLedgerDayTimeboxElement(blocks);
+  const dayScroll = createTimeLedgerDayTimeboxElement(blocks, {
+    showEmptyMessage: false,
+  });
   dayScroll.classList.add("time-ledger-day-timebox-scroll--week-compact");
   dayWrap.appendChild(dayScroll);
 

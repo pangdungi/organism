@@ -2464,6 +2464,7 @@
   box-sizing: border-box;
   scroll-snap-type: x proximity;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
 }
 
 .time-ledger-week-timebox-day,
@@ -2516,6 +2517,13 @@
   .time-ledger-day-timebox-matrix-row-label {
   font-size: 0.5rem;
   line-height: 1;
+}
+
+.time-ledger-day-timebox-scroll--week-compact .time-ledger-day-timebox-empty,
+[data-legacy~="time-ledger-view"]
+  .time-ledger-day-timebox-scroll--week-compact
+  .time-ledger-day-timebox-empty {
+  display: none !important;
 }
 
 .time-ledger-day-timebox-scroll--week-compact .time-ledger-day-timebox-matrix-cell,
@@ -3888,11 +3896,108 @@
 
 [data-legacy~="time-ledger-view"]
   [data-legacy~="time-usage-range-modal"].time-usage-range-modal--timebox
-  .time-task-setup-panel,
+  [data-usage-timeline-range-only],
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"].time-usage-range-modal--timebox
+  [data-usage-range-quick],
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"].time-usage-range-modal--timebox
+  [data-usage-range-dates-wrap] {
+  display: none !important;
+}
+
 [data-legacy~="time-ledger-view"]
   [data-legacy~="time-usage-range-modal"].time-usage-range-modal--timebox
   [data-legacy~="time-task-setup-panel"] {
-  max-height: min(92vh, 22rem);
+  max-height: min(92vh, 16rem);
+}
+
+.time-usage-timebox-mode-section,
+[data-legacy~="time-ledger-view"] .time-usage-timebox-mode-section {
+  margin-bottom: 0.65rem;
+}
+
+.time-usage-timebox-mode-section .time-usage-range-task-label,
+[data-legacy~="time-ledger-view"]
+  .time-usage-timebox-mode-section
+  .time-usage-range-task-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.time-usage-timebox-mode-quick .todo-task-date-quick-btn.is-active,
+[data-legacy~="time-ledger-view"]
+  .time-usage-timebox-mode-quick
+  .todo-task-date-quick-btn.is-active {
+  color: #1e4d7b;
+  font-weight: 700;
+  background: rgba(30, 77, 123, 0.08);
+}
+
+.time-usage-timebox-stepper,
+[data-legacy~="time-ledger-view"] .time-usage-timebox-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: 0.35rem 0 0.5rem;
+}
+
+.time-usage-timebox-stepper-btn,
+[data-legacy~="time-ledger-view"] .time-usage-timebox-stepper-btn {
+  flex: 0 0 auto;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #fff;
+  color: #1e4d7b;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.time-usage-timebox-stepper-btn:hover,
+[data-legacy~="time-ledger-view"] .time-usage-timebox-stepper-btn:hover {
+  background: rgba(30, 77, 123, 0.06);
+}
+
+.time-usage-timebox-week-label,
+.time-usage-timebox-day-label,
+.time-usage-timebox-year-label,
+[data-legacy~="time-ledger-view"] .time-usage-timebox-week-label,
+[data-legacy~="time-ledger-view"] .time-usage-timebox-day-label,
+[data-legacy~="time-ledger-view"] .time-usage-timebox-year-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: center;
+  color: #475569;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.time-usage-timebox-year-label,
+[data-legacy~="time-ledger-view"] .time-usage-timebox-year-label {
+  font-size: 1rem;
+}
+
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"].time-usage-range-modal--timebox-day
+  [data-legacy~="time-task-setup-panel"],
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"].time-usage-range-modal--timebox-week
+  [data-legacy~="time-task-setup-panel"],
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"].time-usage-range-modal--timebox-year
+  [data-legacy~="time-task-setup-panel"] {
+  max-height: min(92vh, 16rem);
 }
 
 /* ── 메모만 보기: 미니멀 목록 + 스크롤 ── */

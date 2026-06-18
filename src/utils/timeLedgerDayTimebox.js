@@ -200,7 +200,7 @@ function wireTimeLedgerDayTimeboxCellClicks(body) {
   });
 }
 
-export function createTimeLedgerDayTimeboxElement(blocks) {
+export function createTimeLedgerDayTimeboxElement(blocks, { showEmptyMessage = true } = {}) {
   const scroll = document.createElement("div");
   scroll.className = "time-ledger-day-timebox-scroll";
 
@@ -255,7 +255,7 @@ export function createTimeLedgerDayTimeboxElement(blocks) {
   wireTimeLedgerDayTimeboxCellClicks(body);
   paintTimeLedgerDayTimeboxMatrixCells(body, blocks);
 
-  if (!normalizeBlocks(blocks).length) {
+  if (showEmptyMessage && !normalizeBlocks(blocks).length) {
     const empty = document.createElement("p");
     empty.className = "time-ledger-day-timebox-empty";
     empty.textContent = "시작·종료 시간이 있는 기록이 없습니다.";
