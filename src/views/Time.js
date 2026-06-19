@@ -6577,7 +6577,7 @@ export function render(opts = {}) {
           </div>
         </div>
         <div data-legacy="time-add-task-field time-add-task-category-wrap">
-          <label>카테고리</label>
+          <label>카테고리 (하나 선택)</label>
           <div data-legacy="time-add-task-categories lp-choice-chip-row" data-for="productive"></div>
           <div data-legacy="time-add-task-categories lp-choice-chip-row" data-for="nonproductive" style="display:none"></div>
         </div>
@@ -10143,9 +10143,16 @@ export function render(opts = {}) {
     const editName = (addTaskNameInput.dataset.editName || "").trim();
     if (editName && isTaskIconOnlyEditLocked(getTaskOptionByName(editName))) {
       addTaskSubmitBtn.disabled = false;
+      addTaskSubmitBtn.title = "";
       return;
     }
-    addTaskSubmitBtn.disabled = !(name && selectedCategory);
+    const ready = !!(name && selectedCategory);
+    addTaskSubmitBtn.disabled = !ready;
+    addTaskSubmitBtn.title = !ready
+      ? !name
+        ? "과제명을 입력해 주세요."
+        : "시급상승·행복·건강 중 카테고리를 하나 선택해 주세요."
+      : "";
   }
   function openAddTaskModal(editTask) {
     if (!el.isConnected) return;

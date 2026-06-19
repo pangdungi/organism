@@ -1958,6 +1958,11 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   cursor: not-allowed;
   pointer-events: none;
 }
+.time-add-task-submit:disabled,
+[data-legacy~="time-add-task-submit"]:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 /* main.css 의 svg { max-width:100%; height:auto } 가 풀폭 버튼 안에서 아이콘을 가로로 늘려 거대하게 만듦 */
 .time-task-log-delete-btn svg,
 .time-add-task-delete svg,
