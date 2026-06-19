@@ -5642,6 +5642,16 @@ export function render(opts = {}) {
     return e;
   }
 
+  /** 레포트·타임라인·타임박스(일간) — 가로 스와이프로 날짜 이동 */
+  function timeLedgerHorizontalPanNavigateActive() {
+    if (timeLedgerLayoutView === "timebox") {
+      return timeLedgerTimeboxGranularity === "day";
+    }
+    return (
+      timeLedgerLayoutView === "timeline" || timeLedgerLayoutView === "report"
+    );
+  }
+
   /** 왼쪽 스와이프=다음날, 오른쪽 스와이프=전날 */
   function shiftUsageHistoryDay(step) {
     if (step !== 1 && step !== -1) return;
@@ -5677,6 +5687,12 @@ export function render(opts = {}) {
   function shiftActiveTimeLedgerPanDay(step) {
     if (timeLedgerLayoutView === "report") {
       shiftReportRangeDay(step);
+      return;
+    }
+    if (timeLedgerLayoutView === "timebox") {
+      if (timeLedgerTimeboxGranularity === "day") {
+        shiftUsageHistoryDay(step);
+      }
       return;
     }
     if (timeLedgerLayoutView === "timeline") {
@@ -10455,12 +10471,12 @@ export function render(opts = {}) {
   bindLpHorizontalPanNavigate(contentWrap, {
     signal,
     dominance: 1.75,
-    isActive: () => timeLedgerLayoutView !== "timebox",
+    isActive: timeLedgerHorizontalPanNavigateActive,
     onNext: () => shiftActiveTimeLedgerPanDay(1),
     onPrev: () => shiftActiveTimeLedgerPanDay(-1),
     shouldIgnoreTarget: (target) =>
       !!target?.closest?.(
-        `input, textarea, select, button, a, [role='dialog'], .time-task-setup-modal, [data-legacy~='time-ledger-memo-log-wrap'], .time-ledger-memo-feed, .time-ledger-week-timebox-scroll, .time-ledger-timebox-view-shell, ${TIME_REPORT_HORIZONTAL_SCROLL_SELECTOR}`,
+        `input, textarea, select, button, a, [role='dialog'], .time-task-setup-modal, [data-legacy~='time-ledger-memo-log-wrap'], .time-ledger-memo-feed, .time-ledger-week-timebox-scroll, .time-ledger-productivity-heatmap-scroll, ${TIME_REPORT_HORIZONTAL_SCROLL_SELECTOR}`,
       ),
     lockMs: 400,
   });

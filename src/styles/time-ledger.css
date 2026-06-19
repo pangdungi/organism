@@ -2020,6 +2020,13 @@
   gap: 0.55rem;
 }
 
+.lp-tr2-field-scores {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin-top: 0.15rem;
+}
+
 .lp-tr2-donut-split {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -3031,6 +3031,49 @@ function mountIntakeSection(scrollWrap, range, rows) {
   scrollWrap.appendChild(sec);
 }
 
+const FIELD_TIME_SCORE_KEYS = [
+  { key: "sideincome", label: "시급상승 점수" },
+  { key: "health", label: "건강 점수" },
+  { key: "happiness", label: "행복 점수" },
+];
+
+function hoursForFieldScoreKey(segments, key) {
+  return (segments || [])
+    .filter((s) => s.key === key)
+    .reduce((sum, s) => sum + (Number(s.hours) || 0), 0);
+}
+
+function fieldTimeScoresFromDonutSnap(snap) {
+  const totalHours = Number(snap?.totalHours) || 0;
+  const segments = snap?.segments || [];
+  return FIELD_TIME_SCORE_KEYS.map(({ key, label }) => {
+    const hours = hoursForFieldScoreKey(segments, key);
+    const pct = totalHours > 0 ? (hours / totalHours) * 100 : 0;
+    const score = Math.round(pct);
+    return {
+      key,
+      label,
+      hours,
+      pct,
+      score,
+    };
+  });
+}
+
+function mountFieldTimeScoresRow(parent, snap) {
+  const row = document.createElement("div");
+  row.className = "lp-tr2-field-scores";
+  fieldTimeScoresFromDonutSnap(snap).forEach(({ label, hours, pct, score }) => {
+    const mins = Math.round(hours * 60);
+    const hint =
+      mins > 0
+        ? `${formatIntegerMinutesDurationKo(mins)} · ${formatPctRounded(pct)}`
+        : "기록 없음";
+    row.appendChild(createStatCard(label, `${score}점`, hint));
+  });
+  parent.appendChild(row);
+}
+
 function annularSectorPath(cx, cy, rOut, rIn, a0, a1) {
   const span = a1 - a0;
   if (span <= 1e-9) return "";
@@ -3064,6 +3107,7 @@ function mountDonutSection(scrollWrap, range) {
     empty.className = "lp-tr2-donut-legend-empty";
     empty.textContent = "집계할 생산·비생산 기록이 없습니다.";
     wrap.appendChild(empty);
+    mountFieldTimeScoresRow(wrap, snap);
     sec.appendChild(wrap);
     scrollWrap.appendChild(sec);
     return;
@@ -3198,6 +3242,7 @@ function mountDonutSection(scrollWrap, range) {
 
   body.appendChild(legend);
   wrap.appendChild(body);
+  mountFieldTimeScoresRow(wrap, snap);
   sec.appendChild(wrap);
   scrollWrap.appendChild(sec);
 }
@@ -3217,13 +3262,13 @@ export function mountUnifiedTimeReport(scrollWrap, arg2, arg3) {
   scrollWrap.classList.add("lp-tr2-root");
 
   mountHeroSection(scrollWrap, range);
+  mountDonutSection(scrollWrap, range);
   mountSleepSection(scrollWrap, range, rows);
   mountIntakeSection(scrollWrap, range, rows);
   mountEmotionSection(scrollWrap, range, rows);
   mountMoveSection(scrollWrap, range, rows);
   mountHappinessRoutineSection(scrollWrap, range);
   mountMediaSection(scrollWrap, range, rows);
-  mountDonutSection(scrollWrap, range);
   mountTimeRatingReportSection(scrollWrap, range, rows);
   mountFocusReportSection(scrollWrap, range, rows);
   mountPlanAdherenceSection(scrollWrap, range, rows);
