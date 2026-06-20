@@ -13,6 +13,7 @@
 
 .calendar-monthly-layout {
   --cal-line: rgba(0, 0, 0, 0.14);
+  --lp-calendar-day-num-font-family: "LP Lee Seoyun", sans-serif;
   --cal-line-strong: rgba(0, 0, 0, 0.22);
   --cal-surface: #fff;
   --cal-surface-muted: rgba(0, 0, 0, 0.06);
@@ -1582,6 +1583,8 @@
   justify-content: flex-end;
   min-height: 1.65rem;
   box-sizing: border-box;
+  font-family: var(--lp-calendar-day-num-font-family);
+  font-synthesis: none;
   font-size: 0.875rem;
   font-weight: 600;
   line-height: 1;

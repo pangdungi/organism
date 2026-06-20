@@ -45,6 +45,7 @@ const PWA_INSTALL_CORE_PATHS = [
   "/pwa-splash-portrait-1284.png",
   "/toolbaricons/splash/splash-screen.png",
   "/fonts/LP-Griun-Cocochoitoon.ttf",
+  "/fonts/LP-LeeSeoyun.otf",
   "/fonts/Hello-Scratchy-Outlines.otf",
   `/login-brand-logo.png?v=${LOGIN_BRAND_LOGO_V}`,
 ];

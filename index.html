@@ -52,7 +52,8 @@
     </script>
     <!-- manifest·favicon·og:image — 탭·검색은 favicon.ico·og-app-icon.png(별도 경로) -->
     <link rel="manifest" href="/manifest.json?v=doodle-calendar-1" />
-    <link rel="preload" href="/fonts/LP-KyoboHandwriting2025.otf" as="font" type="font/otf" crossorigin />
+    <link rel="preload" href="/fonts/LP-Griun-Cocochoitoon.ttf" as="font" type="font/ttf" crossorigin />
+    <link rel="preload" href="/fonts/LP-LeeSeoyun.otf" as="font" type="font/otf" crossorigin />
     <link rel="preload" href="/fonts/Hello-Scratchy-Outlines.otf" as="font" type="font/otf" crossorigin />
     <link rel="preload" href="/toolbaricons/splash/splash-screen.png?v=splash-unified-5" as="image" type="image/png" />
     <!-- 탭 아이콘: ico·png만 (svg는 Chrome 탭에서 외부 이미지 참조 시 빈 칸) -->
@@ -76,6 +77,13 @@
         font-display: swap;
       }
       @font-face {
+        font-family: "LP Lee Seoyun";
+        src: url("/fonts/LP-LeeSeoyun.otf") format("opentype");
+        font-weight: normal;
+        font-style: normal;
+        font-display: block;
+      }
+      @font-face {
         font-family: "Hello Scratchy Outlines";
         src: url("/fonts/Hello-Scratchy-Outlines.otf") format("opentype");
         font-weight: normal;
@@ -87,6 +95,7 @@
           Roboto, sans-serif;
         --lp-app-font-weight-base: 500;
         --lp-calendar-month-abbr-font-family: "Hello Scratchy Outlines", sans-serif;
+        --lp-calendar-day-num-font-family: "LP Lee Seoyun", sans-serif;
       }
       html {
         font-family: var(--lp-app-font-family);

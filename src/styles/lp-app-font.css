@@ -61,6 +61,14 @@ select:-webkit-autofill:focus {
 }
 
 @font-face {
+  font-family: "LP Lee Seoyun";
+  src: url("/fonts/LP-LeeSeoyun.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
   font-family: "Hello Scratchy Outlines";
   src: url("/fonts/Hello-Scratchy-Outlines.otf") format("opentype");
   font-weight: normal;
