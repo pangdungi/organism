@@ -15,21 +15,27 @@ function toolbarIconsSvgWatchPlugin() {
       const iconsDir = path.resolve(__dirname, "public", "toolbaricons");
       const runConvert = (opts = {}) => {
         const { reloadOnCreate = true } = opts;
-        execFile(
-          process.execPath,
-          [path.resolve(__dirname, "scripts", "ensure-toolbar-icons-png.mjs")],
-          (err, stdout) => {
+        const scripts = [
+          path.resolve(__dirname, "scripts", "ensure-toolbar-icons-png.mjs"),
+          path.resolve(__dirname, "scripts", "generate-time-task-picker-icons.mjs"),
+        ];
+        let pending = scripts.length;
+        let anyCreated = false;
+        for (const script of scripts) {
+          execFile(process.execPath, [script], (err, stdout) => {
+            pending -= 1;
             if (err) {
               server.config.logger.error(`toolbaricons 변환 실패: ${err.message}`);
               return;
             }
             const out = String(stdout || "").trim();
-            if (out.includes("created") && reloadOnCreate) {
+            if (out.includes("created")) anyCreated = true;
+            if (pending === 0 && anyCreated && reloadOnCreate) {
               server.config.logger.info(out);
               server.ws.send({ type: "full-reload" });
             }
-          },
-        );
+          });
+        }
       };
       runConvert({ reloadOnCreate: false });
       server.watcher.add(iconsDir);

@@ -772,7 +772,7 @@
   background: #fff;
   border: 1px solid #e0e0e0;
   border-radius: 0;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  box-shadow: none;
   box-sizing: border-box;
 }
 
@@ -784,21 +784,21 @@
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
   touch-action: pan-y;
-  padding: 0.35rem 0.45rem 0.5rem;
+  padding: 0;
   box-sizing: border-box;
 }
 
 .calendar-1day-expected-cards-list {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0;
   width: 100%;
   box-sizing: border-box;
 }
 
 .calendar-1day-expected-cards-empty {
-  margin: 0.25rem 0 0;
-  padding: 0.65rem 0.35rem;
+  margin: 0;
+  padding: 0.65rem 0.45rem;
   font-size: 0.8125rem;
   color: #999999;
   text-align: center;
@@ -808,19 +808,18 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   column-gap: 0.55rem;
-  align-items: stretch;
+  align-items: center;
   width: 100%;
   min-width: 0;
-  min-height: 4.25rem;
+  min-height: 0;
   margin: 0;
-  padding: 0.7rem 0.75rem 0.7rem 0.6rem;
+  padding: 0.55rem 0.45rem 0.55rem 0.5rem;
   box-sizing: border-box;
   border: none;
-  border-radius: 0.5rem;
-  background: #fff;
-  box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.05),
-    0 4px 14px rgba(15, 23, 42, 0.07);
+  border-bottom: 1px solid #e8edf3;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   text-align: left;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -828,16 +827,19 @@
   color: inherit;
 }
 
+.calendar-1day-expected-card:last-child {
+  border-bottom: none;
+}
+
 .calendar-1day-expected-card:focus-visible {
   outline: 2px solid #000000;
-  outline-offset: 1px;
+  outline-offset: -2px;
 }
 
 .calendar-1day-expected-card:active {
-  box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.04),
-    0 2px 8px rgba(15, 23, 42, 0.05);
-  transform: translateY(1px);
+  background: rgba(0, 0, 0, 0.03);
+  box-shadow: none;
+  transform: none;
 }
 
 .calendar-1day-expected-card-time-rail {
@@ -900,14 +902,14 @@
 .calendar-1day-expected-card-icon-badge {
   flex-shrink: 0;
   align-self: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 0.55rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  padding: 0.32rem;
+  padding: 0.2rem;
   background: transparent;
 }
 
