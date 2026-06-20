@@ -4071,8 +4071,6 @@ function createCalendar1DayExpectedCardsPanel(dateKey, spans, onSaved) {
         main.appendChild(memoEl);
       }
 
-      card.appendChild(main);
-
       const iconSrc = resolveTimeTaskDisplayIconSrc(taskStorageName, {
         category: taskOpt?.category,
         productivity: taskOpt?.productivity,
@@ -4089,7 +4087,10 @@ function createCalendar1DayExpectedCardsPanel(dateKey, spans, onSaved) {
         iconImg.decoding = "sync";
         iconBadge.appendChild(iconImg);
       }
+
       card.appendChild(iconBadge);
+      card.appendChild(main);
+      card.appendChild(timeRail);
 
       card.title = memoText
         ? `${taskLabel} (${span.startDisplay} ~ ${span.endDisplay})\n${memoText}`
@@ -4305,8 +4306,8 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
         ),
       );
 
-      dualPane.appendChild(gridPane);
       dualPane.appendChild(cardsPane);
+      dualPane.appendChild(gridPane);
       timeColumn.appendChild(dualPane);
     } else {
     const nowForTimeline = new Date();

@@ -666,7 +666,9 @@
   isolation: isolate;
   contain: layout paint;
   background: #fff;
-  border: 1px solid #e0e0e0;
+  border: none;
+  border-top: 1px solid #e0e0e0;
+  border-bottom: 1px solid #e0e0e0;
   border-radius: 0;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
   box-sizing: border-box;
@@ -770,7 +772,9 @@
   flex-direction: column;
   overflow: hidden;
   background: #fff;
-  border: 1px solid #e0e0e0;
+  border: none;
+  border-top: 1px solid #e0e0e0;
+  border-bottom: 1px solid #e0e0e0;
   border-radius: 0;
   box-shadow: none;
   box-sizing: border-box;
