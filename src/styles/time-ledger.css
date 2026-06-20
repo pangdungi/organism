@@ -2342,55 +2342,55 @@
 .time-ledger-day-timebox-matrix-cell--sideincome,
 [data-legacy~="time-ledger-view"]
   .time-ledger-day-timebox-matrix-cell--sideincome {
-  background: #fae3e3;
-  border-color: #fae3e3;
+  background: rgba(255, 246, 246, 0.82);
+  border-color: rgba(255, 171, 171, 0.38);
   border-style: solid;
-  color: #d63a3a;
+  color: #b85050;
 }
 
 .time-ledger-day-timebox-matrix-cell--happiness,
 [data-legacy~="time-ledger-view"]
   .time-ledger-day-timebox-matrix-cell--happiness {
-  background: #f8e3ef;
-  border-color: #f8e3ef;
+  background: rgba(255, 246, 250, 0.82);
+  border-color: rgba(232, 190, 210, 0.42);
   border-style: solid;
-  color: #c2407e;
+  color: #ad5078;
 }
 
 /* 생산·비생산 대화·외출 */
 .time-ledger-day-timebox-matrix-cell--social,
 [data-legacy~="time-ledger-view"]
   .time-ledger-day-timebox-matrix-cell--social {
-  background: #ece6f8;
-  border-color: #ece6f8;
+  background: rgba(247, 244, 252, 0.82);
+  border-color: rgba(208, 195, 232, 0.42);
   border-style: solid;
-  color: #6b4bc2;
+  color: #6554a8;
 }
 
 .time-ledger-day-timebox-matrix-cell--health,
 [data-legacy~="time-ledger-view"]
   .time-ledger-day-timebox-matrix-cell--health {
-  background: #fbe7da;
-  border-color: #fbe7da;
+  background: rgba(255, 248, 242, 0.82);
+  border-color: rgba(232, 205, 180, 0.42);
   border-style: solid;
-  color: #d9722b;
+  color: #b86e38;
 }
 
 .time-ledger-day-timebox-matrix-cell--other,
 [data-legacy~="time-ledger-view"] .time-ledger-day-timebox-matrix-cell--other {
-  background: #e7f3e0;
-  border-color: #e7f3e0;
+  background: rgba(242, 249, 244, 0.82);
+  border-color: rgba(186, 216, 198, 0.42);
   border-style: solid;
-  color: #4b9b2e;
+  color: #458b58;
 }
 
 .time-ledger-day-timebox-matrix-cell--nonproductive,
 [data-legacy~="time-ledger-view"]
   .time-ledger-day-timebox-matrix-cell--nonproductive {
-  background: #e5eafa;
-  border-color: #e5eafa;
+  background: rgba(243, 248, 252, 0.82);
+  border-color: rgba(175, 203, 230, 0.42);
   border-style: solid;
-  color: #1d40ba;
+  color: #3a6288;
 }
 
 .time-ledger-day-timebox-matrix-cell--labeled,
@@ -2399,6 +2399,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  padding-inline: 0.28rem;
   font-size: clamp(0.4375rem, 1.4vw, 0.5625rem);
   font-weight: 700;
   letter-spacing: -0.03em;
@@ -2425,7 +2426,7 @@
 [data-legacy~="time-ledger-view"]
   .time-ledger-day-timebox-matrix-cell--span-labeled {
   justify-content: flex-start;
-  padding: 0 2px;
+  padding: 0 0.2rem 0 0.32rem;
   overflow: hidden;
 }
 
@@ -2578,7 +2579,7 @@
   .time-ledger-day-timebox-scroll--week-compact
   .time-ledger-day-timebox-matrix-cell--labeled {
   font-size: 0.42rem;
-  padding: 0 0.04rem;
+  padding: 0 0.08rem 0 0.14rem;
 }
 
 .time-ledger-day-timebox-scroll--week-compact .time-ledger-day-timebox-matrix-cell-label,

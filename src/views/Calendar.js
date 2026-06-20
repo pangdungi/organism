@@ -836,58 +836,6 @@ function lpCalendarFinalizeBarRowLayout(
   requestAnimationFrame(step);
 }
 
-/** 1주 플로우: 본문 최소 높이를 스크롤창·콘텐츠 중 큰 값으로 맞춰 열 세로 구분선이 뷰포트까지 끊기지 않게 */
-function lpSync1WeekMobileFlowBodyToScrollViewport(scrollEl, bodyEl) {
-  if (!scrollEl || !bodyEl) return;
-  try {
-    if (!scrollEl.isConnected || !bodyEl.isConnected) return;
-  } catch (_) {
-    return;
-  }
-  bodyEl.style.removeProperty("min-height");
-  const natural = bodyEl.scrollHeight;
-  const ch = scrollEl.clientHeight;
-  const h = Math.round(Math.max(ch, natural));
-  if (h <= 0) return;
-  const last = bodyEl._lpFlowMinHApplied;
-  if (last != null && Math.abs(last - h) <= 2) {
-    bodyEl.style.minHeight = `${last}px`;
-    return;
-  }
-  bodyEl._lpFlowMinHApplied = h;
-  bodyEl.style.minHeight = `${h}px`;
-}
-
-function lpAttach1WeekMobileFlowBodyMinSync(wrap, scrollEl, bodyEl) {
-  if (!wrap || !scrollEl || !bodyEl) return;
-  try {
-    wrap._lp1WeekFlowBodyMinRo?.disconnect();
-  } catch (_) {}
-  wrap._lp1WeekFlowBodyMinRo = null;
-  if (typeof ResizeObserver === "undefined") {
-    requestAnimationFrame(() => {
-      lpSync1WeekMobileFlowBodyToScrollViewport(scrollEl, bodyEl);
-    });
-    return;
-  }
-  let roRaf = null;
-  const ro = new ResizeObserver(() => {
-    if (roRaf != null) return;
-    roRaf = requestAnimationFrame(() => {
-      roRaf = null;
-      lpSync1WeekMobileFlowBodyToScrollViewport(scrollEl, bodyEl);
-    });
-  });
-  ro.observe(scrollEl);
-  ro.observe(bodyEl);
-  wrap._lp1WeekFlowBodyMinRo = ro;
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      lpSync1WeekMobileFlowBodyToScrollViewport(scrollEl, bodyEl);
-    });
-  });
-}
-
 /** 1일 뷰: document 리스너는 한 번만 — 탭 전환·재진입 시 핸들러만 교체 (누적 방지) */
 let oneDayTimetableRefreshHandler = null;
 function ensureOneDayTimetableDocumentListeners() {
@@ -909,32 +857,12 @@ function tasksForCalendarSameDayInStorageOrder(arr, dateKey) {
   );
 }
 
-/** 월간 막대: 단일일 항목의 세로 순서(큰 값 = 아래줄). 서버 갱신시각 → 캘린더 칸 전용 터치 ms → 없으면 0 */
-function calendarSingleDayStackMs(t) {
-  const u = String(t.serverUpdatedAt || "").trim();
-  if (u) {
-    const ms = Date.parse(u);
-    if (!Number.isNaN(ms)) return ms;
-  }
-  const c = Number(t._calCellTouchMs);
-  if (Number.isFinite(c) && c > 0) return c;
-  return 0;
-}
-
 /**
- * 월간 그리드에서 같은 날 단일일 막대는 이 순서로 쌓음 — 최근 추가/수정이 맨 아래.
- * 시간 정보가 전부 같으면 getTasksForDate가 준 순서 유지(안정 정렬).
+ * 같은 날 단일일 할일·일정 — 섹션 저장 배열 순서(추가한 순) 그대로.
+ * 여러 날짜에 걸친 일정(기간 막대)은 이 함수 대상이 아님.
  */
 function orderSingleDayTasksForMonthlyBarStack(tasks) {
-  const list = Array.isArray(tasks) ? tasks.slice() : [];
-  const indexed = list.map((t, i) => ({ t, i }));
-  indexed.sort((a, b) => {
-    const ma = calendarSingleDayStackMs(a.t);
-    const mb = calendarSingleDayStackMs(b.t);
-    if (ma !== mb) return ma - mb;
-    return a.i - b.i;
-  });
-  return indexed.map(({ t }) => t);
+  return Array.isArray(tasks) ? tasks.slice() : [];
 }
 
 function getSectionTasksForDate(dateKey) {
@@ -1624,6 +1552,46 @@ function lpCalendarGuardCellClickFromMonthlyBar(e) {
   return lpCalendarClickHitsMonthlySpanBar(e);
 }
 
+function lpCalendarIsMobileViewport() {
+  try {
+    return window.matchMedia("(max-width: 46rem)").matches;
+  } catch (_) {
+    return false;
+  }
+}
+
+function lpCalendarFindMonthlyDayCell(dateKey, barEl) {
+  const key = String(dateKey || "").trim().slice(0, 10);
+  if (!key) return null;
+  const scope =
+    barEl?.closest?.(".calendar-monthly-grid") ||
+    barEl?.closest?.(".calendar-view") ||
+    document;
+  const cell = scope.querySelector(`.calendar-monthly-day[data-date="${key}"]`);
+  return cell instanceof HTMLElement ? cell : null;
+}
+
+/** 여러 날짜 막대 클릭 — 터치/클릭 X 위치가 가리키는 요일 칸 */
+function lpCalendarDayKeyFromSpanBarClick(bar, b, e) {
+  if (b?.isSingleDay) {
+    return String(b.dateKey || b.dueDate || "").slice(0, 10);
+  }
+  const weekRow = bar
+    ?.closest?.(".calendar-monthly-week-wrap")
+    ?.querySelector?.(".calendar-monthly-week");
+  if (weekRow && e && Number.isFinite(e.clientX)) {
+    const rowRect = weekRow.getBoundingClientRect();
+    if (rowRect.width > 0) {
+      const frac = (e.clientX - rowRect.left) / rowRect.width;
+      const dayIdx = Math.min(6, Math.max(0, Math.floor(frac * 7)));
+      const cell = weekRow.querySelectorAll(".calendar-monthly-day")[dayIdx];
+      const dk = String(cell?.dataset?.date || "").slice(0, 10);
+      if (dk) return dk;
+    }
+  }
+  return String(b?.startDate || b?.dueDate || "").slice(0, 10);
+}
+
 function lpAttachCalendarBarOpenTodoEdit(
   bar,
   b,
@@ -1648,6 +1616,21 @@ function lpAttachCalendarBarOpenTodoEdit(
     if (suppressClickAfterDrag) return;
     e.preventDefault();
     e.stopPropagation();
+    if (lpCalendarIsMobileViewport()) {
+      const dateKey = lpCalendarDayKeyFromSpanBarClick(bar, b, e);
+      const cell = lpCalendarFindMonthlyDayCell(dateKey, bar);
+      if (cell && dateKey) {
+        lpOpenCalendarMonthlyDayActionBubble(cell, dateKey, () => {
+          try {
+            renderCalendar?.();
+          } catch (_) {}
+          try {
+            refreshTodoList?.();
+          } catch (_) {}
+        });
+        return;
+      }
+    }
     lpOpenCalendarTaskEdit(b, {
       selectionEl: bar,
       onAfterApply: () => {
@@ -1733,7 +1716,11 @@ function getTasksForDate(dateKey, excludeSpanningTasks = false) {
 }
 
 function getAllTasksForDateDisplay(dateKey) {
-  const singleDay = getTasksForDate(dateKey, false);
+  const singleDay = orderSingleDayTasksForMonthlyBarStack(
+    getTasksForDate(dateKey, false).filter(
+      (t) => !calendarTaskIsMultiDayDateSpan(t),
+    ),
+  );
   const rangeTasks = getAllTasksWithDateRange().filter((t) => {
     const s = (t.startDate || "").slice(0, 10);
     const d = (t.dueDate || "").slice(0, 10);
@@ -4763,11 +4750,6 @@ function render1WeekView(tabsElement) {
     if (navYear)
       navYear.textContent = week[0] ? String(week[0].getFullYear()) : "";
 
-    try {
-      wrap._lp1WeekFlowBodyMinRo?.disconnect();
-    } catch (_) {}
-    wrap._lp1WeekFlowBodyMinRo = null;
-
     calendarGrid.innerHTML = "";
     calendarGrid.className =
       "calendar-monthly-grid calendar-monthly-grid--1week-timegrid";
@@ -5422,9 +5404,9 @@ function render1WeekView(tabsElement) {
           onSaved: () => refreshCalendar1WeekLocal(),
         });
       });
-      stack.appendChild(addPlanBtn);
 
       col.appendChild(stack);
+      col.appendChild(addPlanBtn);
       colsWrap.appendChild(col);
     });
 
@@ -5483,7 +5465,6 @@ function render1WeekView(tabsElement) {
     flowHScrollInner.appendChild(stripHeader);
     flowHScrollInner.appendChild(scrollArea);
     calendarGrid.appendChild(outer);
-    lpAttach1WeekMobileFlowBodyMinSync(wrap, scrollArea, bodyGrid);
 
     wrap._lpRememberCalendarGridPaintSig?.();
     calendar1WeekDiagLog("renderCalendar.domBuilt", {
