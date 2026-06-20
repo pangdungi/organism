@@ -8,7 +8,7 @@ import pickerIconFiles from "../../public/time-task-picker-icon-files.json";
 import { canonicalMealTaskDisplayName, NAP_TASK_NAME } from "./timeTaskOptionsConstants.js";
 import { DEFAULT_KPI_ICON_SLUG, DEFAULT_KPI_NAME_ICON_SLUG } from "./defaultKpiIconIds.js";
 import { matchFlexibleSearch } from "./flexibleSearchMatch.js";
-import { toolbarIconPng } from "./toolbarIconUrl.js";
+import { toolbarIconPng, withToolbarIconCacheVersion } from "./toolbarIconUrl.js";
 
 const PICKER_ICON_BASE = "/toolbaricons/time-task-picker";
 /** 과제 아이콘 전부 128×128 PNG (SVG 폴백만) */
@@ -154,7 +154,9 @@ function pickerIconSrc(slug, ext = PICKER_ICON_EXT) {
   if (!key) return "";
   const fileBase = pickerIconFiles[key];
   if (!fileBase) return "";
-  return `${PICKER_ICON_BASE}/${encodeURIComponent(fileBase)}.${ext}`;
+  return withToolbarIconCacheVersion(
+    `${PICKER_ICON_BASE}/${encodeURIComponent(fileBase)}.${ext}`,
+  );
 }
 
 /** @param {string} taskName */
