@@ -2336,7 +2336,7 @@
   box-sizing: border-box;
   border-radius: 3px;
   border: 1px dashed #e5e5e5;
-  background: #f2f2f2;
+  background: transparent;
 }
 
 .time-ledger-day-timebox-matrix-cell--sideincome,

@@ -468,8 +468,8 @@
   letter-spacing: 0.05em;
   color: #666666;
   border-bottom: 1px solid #e8edf3;
-  background: #fafafa;
-  border-radius: 0.45rem 0.45rem 0 0;
+  background: transparent;
+  border-radius: 0;
 }
 
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-scroll {
@@ -546,7 +546,7 @@
   box-sizing: border-box;
   border-radius: 3px;
   border: 1px dashed #e5e5e5;
-  background: #f2f2f2;
+  background: transparent;
 }
 
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell {
@@ -666,7 +666,7 @@
   contain: layout paint;
   background: #fff;
   border: 1px solid #e0e0e0;
-  border-radius: 0.5rem;
+  border-radius: 0;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
   box-sizing: border-box;
 }
@@ -770,7 +770,7 @@
   overflow: hidden;
   background: #fff;
   border: 1px solid #e0e0e0;
-  border-radius: 0.5rem;
+  border-radius: 0;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
   box-sizing: border-box;
 }
