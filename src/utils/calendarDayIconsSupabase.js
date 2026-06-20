@@ -89,3 +89,18 @@ export function syncCalendarDayIconsForDate(dateKey, iconKeys) {
   const first = (Array.isArray(iconKeys) ? iconKeys : [])[0] || "";
   return syncCalendarDayIconForDate(dateKey, first);
 }
+
+/** 스탬프 드래그 — 출발일 삭제 후 도착일 교체·저장 */
+export async function syncCalendarDayIconMove(fromDateKey, toDateKey, iconKey) {
+  const from = String(fromDateKey || "").trim().slice(0, 10);
+  const to = String(toDateKey || "").trim().slice(0, 10);
+  const key = String(iconKey || "").trim();
+  if (!from || !to || !key) {
+    return { ok: false, reason: "bad_args" };
+  }
+  if (from !== to) {
+    const cleared = await syncCalendarDayIconForDate(from, "");
+    if (!cleared.ok) return cleared;
+  }
+  return syncCalendarDayIconForDate(to, key);
+}

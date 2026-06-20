@@ -175,3 +175,24 @@ export function setCalendarDayIconKeysForDate(dateKey, iconKeys) {
     .find(Boolean);
   setCalendarDayIconKeyForDate(dateKey, first || "");
 }
+
+/**
+ * 스탬프 날짜 이동·교체 — from 비우고 to에 iconKey 반영(이미 있으면 교체)
+ * @returns {boolean}
+ */
+export function moveCalendarDayIconOnDate(fromDateKey, toDateKey) {
+  const from = normalizeYmd(fromDateKey);
+  const to = normalizeYmd(toDateKey);
+  if (!from || !to) return false;
+  const iconKey = normalizeIconKey(_byDate[from]?.iconKey);
+  if (!iconKey) return false;
+  if (from === to) return true;
+  delete _byDate[from];
+  _byDate[to] = {
+    id: _byDate[to]?.id || newCalendarDayIconId(),
+    iconKey,
+  };
+  mirrorCalendarDayIconsToScopedLocalStorage();
+  warmCalendarDayStampIconAssetsFromMemory();
+  return true;
+}

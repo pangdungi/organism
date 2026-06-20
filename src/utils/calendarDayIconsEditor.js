@@ -12,6 +12,31 @@ import { getTimeTaskIconDisplaySrcByKey } from "./timeTaskIconUrls.js";
 import { attachIconSvgFallback } from "./toolbarIconUrl.js";
 import { openStandaloneTimeTaskIconPickModal } from "./timeAddTaskIconPicker.js";
 
+export const DRAG_TYPE_CALENDAR_DAY_ICON = "application/x-lp-calendar-day-icon";
+
+export function calendarDayIconDragAllowsDrop(dataTransfer) {
+  const types = dataTransfer?.types;
+  if (!types) return false;
+  return Array.from(types).includes(DRAG_TYPE_CALENDAR_DAY_ICON);
+}
+
+/** @returns {{ fromDateKey: string, iconKey: string } | null} */
+export function readCalendarDayIconDragPayload(dataTransfer) {
+  if (!calendarDayIconDragAllowsDrop(dataTransfer)) return null;
+  try {
+    const raw = dataTransfer.getData(DRAG_TYPE_CALENDAR_DAY_ICON);
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    if (!p || typeof p !== "object") return null;
+    const fromDateKey = String(p.fromDateKey || "").trim().slice(0, 10);
+    const iconKey = String(p.iconKey || "").trim();
+    if (!fromDateKey || !iconKey) return null;
+    return { fromDateKey, iconKey };
+  } catch (_) {
+    return null;
+  }
+}
+
 /**
  * @param {{ onPick: (iconKey: string) => void, onRemove?: () => void, currentKey?: string, title?: string }} opts
  */
@@ -75,8 +100,10 @@ export function renderCalendarMonthlyDayIcons(container, dateKey, opts = {}) {
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "calendar-monthly-day-icon-btn";
-  btn.setAttribute("aria-label", "날짜 아이콘 수정");
-  btn.title = "아이콘 수정";
+  btn.setAttribute("aria-label", "날짜 아이콘 — 드래그로 옮기기, 탭으로 수정");
+  btn.title = "드래그로 다른 날짜로 옮기기 · 탭하여 수정";
+  btn.draggable = true;
+  let suppressClickAfterDrag = false;
   const img = document.createElement("img");
   img.src = src;
   attachIconSvgFallback(img, src);
@@ -84,7 +111,29 @@ export function renderCalendarMonthlyDayIcons(container, dateKey, opts = {}) {
   applyStaticAppIconImg(img);
   img.className = "calendar-monthly-day-icons__img";
   btn.appendChild(img);
+  btn.addEventListener("dragstart", (e) => {
+    e.stopPropagation();
+    const key = getCalendarDayIconKeyForDate(dateKey);
+    if (!key) {
+      e.preventDefault();
+      return;
+    }
+    suppressClickAfterDrag = true;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData(
+      DRAG_TYPE_CALENDAR_DAY_ICON,
+      JSON.stringify({ fromDateKey: dateKey, iconKey: key }),
+    );
+    container.classList.add("calendar-monthly-day-icons--dragging");
+  });
+  btn.addEventListener("dragend", () => {
+    container.classList.remove("calendar-monthly-day-icons--dragging");
+    requestAnimationFrame(() => {
+      suppressClickAfterDrag = false;
+    });
+  });
   btn.addEventListener("click", (e) => {
+    if (suppressClickAfterDrag) return;
     e.preventDefault();
     e.stopPropagation();
     openCalendarDayIconEditor(dateKey, { onSaved: opts.onAfterChange });

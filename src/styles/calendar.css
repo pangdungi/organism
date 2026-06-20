@@ -1620,6 +1620,10 @@
   display: none !important;
 }
 
+.calendar-monthly-day-icons--dragging {
+  opacity: 0.45;
+}
+
 .calendar-monthly-day-icon-btn {
   pointer-events: auto;
   display: block;
@@ -1629,13 +1633,14 @@
   border: none;
   border-radius: 0;
   background: transparent;
-  cursor: pointer;
+  cursor: grab;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   box-sizing: border-box;
 }
 
 .calendar-monthly-day-icon-btn:active {
+  cursor: grabbing;
   background: rgba(0, 0, 0, 0.06);
 }
 

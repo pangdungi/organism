@@ -15,9 +15,17 @@ import {
   mountCalendarDayExpandIconBtn,
   CALENDAR_MONTHLY_DAY_ICONS_STRIP_REM,
   calendarDayHasIcon,
+  calendarDayIconDragAllowsDrop,
+  readCalendarDayIconDragPayload,
 } from "../utils/calendarDayIconsEditor.js";
-import { pullCalendarDayIconsFromSupabase } from "../utils/calendarDayIconsSupabase.js";
-import { readCalendarDayIconsSnapshot } from "../utils/calendarDayIconsModel.js";
+import {
+  pullCalendarDayIconsFromSupabase,
+  syncCalendarDayIconMove,
+} from "../utils/calendarDayIconsSupabase.js";
+import {
+  moveCalendarDayIconOnDate,
+  readCalendarDayIconsSnapshot,
+} from "../utils/calendarDayIconsModel.js";
 import {
   isPastCalendarTask,
 } from "../utils/calendarTaskDisplayRules.js";
@@ -1544,11 +1552,37 @@ function dataTransferHasType(dataTransfer, type) {
 /** 날짜 셀 dragover: 브라우저별 types 차이·막대 이동(application/json) 포함 */
 function calendarDragTransferTypesAllowDrop(dataTransfer) {
   return (
+    calendarDayIconDragAllowsDrop(dataTransfer) ||
     dataTransferHasType(dataTransfer, DRAG_TYPE_TODO_TO_CALENDAR) ||
     dataTransferHasType(dataTransfer, DRAG_TYPE_CALENDAR_SPAN) ||
     dataTransferHasType(dataTransfer, "application/json") ||
     dataTransferHasType(dataTransfer, "text/plain")
   );
+}
+
+function lpApplyCalendarDayIconDrop(
+  e,
+  targetDateKey,
+  renderCalendar,
+  refreshTodoList,
+) {
+  const payload = readCalendarDayIconDragPayload(e.dataTransfer);
+  if (!payload) return false;
+  e.preventDefault();
+  e.stopPropagation();
+  const from = payload.fromDateKey;
+  const to = String(targetDateKey || "").trim().slice(0, 10);
+  if (!from || !to || !payload.iconKey) return false;
+  if (from === to) return true;
+  if (!moveCalendarDayIconOnDate(from, to)) return false;
+  try {
+    renderCalendar?.();
+  } catch (_) {}
+  try {
+    refreshTodoList?.();
+  } catch (_) {}
+  void syncCalendarDayIconMove(from, to, payload.iconKey);
+  return true;
 }
 
 /** drop: 사이드바 할일·캘린더 막대(DnD MIME이 다름) 동일 페이로드로 처리 */
@@ -2526,6 +2560,11 @@ function renderMonthlyView(tabsElement) {
         });
         cell.addEventListener("drop", (e) => {
           cell.classList.remove("calendar-day-drag-over");
+          if (
+            lpApplyCalendarDayIconDrop(e, key, renderCalendar, refreshTodoList)
+          ) {
+            return;
+          }
           const json = readCalendarDropPayloadJson(e.dataTransfer);
           if (!json) return;
           e.preventDefault();
@@ -2847,14 +2886,6 @@ function renderMonthlyView(tabsElement) {
           .querySelectorAll(".calendar-day-drag-over")
           .forEach((el) => el.classList.remove("calendar-day-drag-over"));
         e.preventDefault();
-        let json = readCalendarDropPayloadJson(e.dataTransfer);
-        if (!json) return;
-        let payload;
-        try {
-          payload = JSON.parse(json);
-        } catch (_) {
-          return;
-        }
         let cell = document
           .elementFromPoint(e.clientX, e.clientY)
           ?.closest(".calendar-monthly-day:not(.empty)");
@@ -2877,6 +2908,24 @@ function renderMonthlyView(tabsElement) {
         }
         if (!cell?.dataset?.date) return;
         const targetDate = cell.dataset.date;
+        if (
+          lpApplyCalendarDayIconDrop(
+            e,
+            targetDate,
+            renderCalendar,
+            refreshTodoList,
+          )
+        ) {
+          return;
+        }
+        let json = readCalendarDropPayloadJson(e.dataTransfer);
+        if (!json) return;
+        let payload;
+        try {
+          payload = JSON.parse(json);
+        } catch (_) {
+          return;
+        }
         const oldStart = (payload.startDate || "").slice(0, 10);
         const oldDue = (payload.dueDate || "").slice(0, 10);
         let newStart = "";
