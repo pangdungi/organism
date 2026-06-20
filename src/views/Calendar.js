@@ -39,7 +39,7 @@ import {
   getRowStartInstantForMobileCard,
   getMobileCardEffectiveHoursForPrice,
 } from "./Time.js";
-import { formatMonthAbbrEn } from "../utils/lpDateDisplay.js";
+import { formatMonthNameEn } from "../utils/lpDateDisplay.js";
 import { showToast } from "../utils/showToast.js";
 import { showAlertModal } from "../utils/confirmModal.js";
 import { initModalStandardDateFields } from "../utils/modalNativeDateField.js";
@@ -1117,7 +1117,7 @@ function timetableUsesHexSurface(c) {
 
 const DAY_NAMES = ["월", "화", "수", "목", "금", "토", "일"];
 function formatCalendarMonthLabel(monthIndex) {
-  return formatMonthAbbrEn(monthIndex);
+  return formatMonthNameEn(monthIndex);
 }
 
 /** 월요일 시작 (0=월, 6=일) */

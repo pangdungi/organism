@@ -4,7 +4,7 @@
  */
 
 :root {
-  --lp-calendar-month-font-family: var(--lp-app-font-family);
+  --lp-calendar-month-abbr-font-family: "Hello Scratchy Outlines", sans-serif;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -128,7 +128,7 @@
   width: auto;
   min-width: 2.75rem;
   padding: 0 0.4rem;
-  font-family: var(--lp-calendar-month-font-family);
+  font-family: var(--lp-app-font-family);
   font-synthesis: none;
   font-size: 0.9375rem;
   font-weight: 700;
@@ -178,7 +178,7 @@
 
 .calendar-view:not(.calendar-view--mobile-workschedule) .calendar-nav-month,
 .calendar-annual-row-month {
-  font-family: var(--lp-calendar-month-font-family);
+  font-family: var(--lp-calendar-month-abbr-font-family);
   font-synthesis: none;
   color: #000000;
 }
@@ -188,7 +188,7 @@
 }
 
 .calendar-view:not(.calendar-view--mobile-workschedule) .calendar-monthly-top-bar-date-num {
-  font-family: var(--lp-calendar-month-font-family);
+  font-family: var(--lp-app-font-family);
   font-synthesis: none;
   color: #000000;
 }
@@ -2080,7 +2080,7 @@
 /* -------------------------------------------------------------------------- */
 
 .calendar-annual-view {
-  --annual-month-col-w: 3.5rem;
+  --annual-month-col-w: 6.75rem;
   --annual-day-col-w: 2.55rem;
 }
 
@@ -2148,8 +2148,7 @@
   padding: 0.25rem 0.3rem;
   font-size: 0.9375rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
   line-height: 1.15;
   border-right: 1px solid var(--cal-line);
   background: #fff;
@@ -2359,7 +2358,7 @@
   }
 
   .calendar-annual-view {
-    --annual-month-col-w: 3.25rem;
+    --annual-month-col-w: 5.25rem;
     --annual-day-col-w: 2.35rem;
   }
 

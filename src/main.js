@@ -36,7 +36,7 @@ import { initModalNoAutoFocus } from "./utils/modalNoAutoFocus.js";
 import { initLpAppShellViewportLock } from "./utils/lpAppShellViewport.js";
 import { supabase } from "./supabase.js";
 import { getSupabaseSession } from "./utils/supabaseSession.js";
-import { applyAppFont } from "./utils/appUiFont.js";
+import { preloadCalendarMonthFont } from "./utils/appUiFont.js";
 import { prefetchCriticalAppIconAssets } from "./utils/appIconPrefetch.js";
 import { setAppSplashMessage } from "./utils/lpAppLoading.js";
 import {
@@ -396,7 +396,7 @@ function init() {
   initMobileVisualViewportKeyboardInset();
   initAuthGateKeyboardScroll();
 
-  applyAppFont();
+  void preloadCalendarMonthFont();
   applyTimeCategoryColors();
   applyTaskCategoryColors();
 

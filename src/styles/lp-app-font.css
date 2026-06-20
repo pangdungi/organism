@@ -59,3 +59,11 @@ select:-webkit-autofill:focus {
   font-style: normal;
   font-display: swap;
 }
+
+@font-face {
+  font-family: "Hello Scratchy Outlines";
+  src: url("/fonts/Hello-Scratchy-Outlines.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
