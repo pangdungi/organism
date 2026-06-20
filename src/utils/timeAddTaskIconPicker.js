@@ -221,11 +221,15 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
     const grid = document.createElement("div");
     lpSetClasses(grid, "time-add-task-icon-modal-grid");
     gridMount.appendChild(grid);
-    mountPickerIconGrid(grid, getTimeTaskPickableIcons(), (key) => {
+    mountPickerIconGrid(
+      grid,
+      getTimeTaskPickableIcons({ includeCalendarStampOnly: true }),
+      (key) => {
       currentKey = key;
       onPick?.(key);
       close();
-    });
+    },
+    );
     syncGridSelection();
   }
 

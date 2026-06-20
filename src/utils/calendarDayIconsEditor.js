@@ -111,6 +111,14 @@ export function renderCalendarMonthlyDayIcons(container, dateKey, opts = {}) {
   applyStaticAppIconImg(img);
   img.className = "calendar-monthly-day-icons__img";
   btn.appendChild(img);
+  const requestWeekStampLayout = () => {
+    const weekRow = container.closest(".calendar-monthly-week");
+    weekRow?._lpMonthlyBarLayoutRerun?.();
+  };
+  img.addEventListener("load", requestWeekStampLayout, { once: true });
+  if (img.complete) {
+    requestAnimationFrame(requestWeekStampLayout);
+  }
   btn.addEventListener("dragstart", (e) => {
     e.stopPropagation();
     const key = getCalendarDayIconKeyForDate(dateKey);

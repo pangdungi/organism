@@ -343,18 +343,48 @@ function pickerIconLabelFromFilename(name) {
     .replace(/-/g, " ");
 }
 
+/** 캘린더 날짜 스탬프 전용 — 과제 설정 아이콘 선택 그리드에서는 제외 */
+const CALENDAR_STAMP_ONLY_PICKER_SLUGS = new Set(
+  [
+    "day off",
+    "day off1",
+    "day",
+    "evening",
+    "night",
+    "신정",
+    "삼일절",
+    "어린이날",
+    "부처님오신날",
+    "현충일",
+    "광복절",
+    "개천절",
+    "한글날",
+  ].map((s) => s.normalize("NFC")),
+);
+
+/** @param {string} name picker JSON 슬러그 */
+function isCalendarStampOnlyPickerIcon(name) {
+  return CALENDAR_STAMP_ONLY_PICKER_SLUGS.has(
+    String(name || "").trim().normalize("NFC"),
+  );
+}
+
 /** @param {string} searchText @param {string} query */
 export function matchTimeTaskPickerIconSearch(searchText, query) {
   return matchFlexibleSearch(searchText, query);
 }
 
 /**
+ * @param {{ includeCalendarStampOnly?: boolean }} [opts]
+ *   includeCalendarStampOnly — true면 스탬프 전용 아이콘 포함 (캘린더 날짜 아이콘 선택)
  * @returns {{ key: string, label: string, src: string, searchText: string }[]}
  */
-export function getTimeTaskPickableIcons() {
+export function getTimeTaskPickableIcons(opts = {}) {
+  const includeStampOnly = opts.includeCalendarStampOnly === true;
   /** @type {{ key: string, label: string, src: string, searchText: string }[]} */
   const out = [];
   for (const name of pickerSvgNames) {
+    if (!includeStampOnly && isCalendarStampOnlyPickerIcon(name)) continue;
     const src = pickerListedIconSrc(name);
     if (!src) continue;
     const searchExtra = PICKER_SEARCH_EXTRA[name] || "";
