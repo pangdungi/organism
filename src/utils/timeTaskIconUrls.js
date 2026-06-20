@@ -59,48 +59,206 @@ export const BUILTIN_TASK_ICON_SLUG = {
   "보충제 섭취": "medicine",
 };
 
-/** 아이콘 검색용 한글·별칭 */
-const PICKER_SEARCH_EXTRA = {
-  sleeping: "수면하기",
-  nap: "낮잠",
-  work: "근무하기 노트북",
-  money: "생산적 소비",
-  reading: "독서 독서노트",
-  study: "시간기록 공부",
-  shower: "위생 개인위생",
-  "healthy food": "건강한 섭취",
-  cooking: "건강한 섭취 준비",
-  happy: "생산적 대화",
-  travel: "생산적 외출",
-  phone: "의식적 콘텐츠",
-  writting: "기록하기",
-  "skin care": "외모관리",
-  "shopping bag": "비생산적 소비",
-  burger: "건강하지 않은 섭취",
-  cocktail: "칵테일",
-  blender: "건강하지 않은 섭취 준비",
-  sad: "비생산적 대화",
-  angry: "감정적이기",
-  beer: "비생산적 외출",
-  packing: "물건 찾기 외출준비",
-  train: "단순이동",
-  moving_basic: "이동루틴",
-  headset: "게임",
-  youtube: "영상 콘텐츠",
-  medicine: "보충제",
-  "drip coffee": "모닝루틴 커피",
-  Coffee: "커피",
-  dryer: "건조",
-  cloth: "외출 후",
-  clean: "정리루틴",
-  running: "유산소",
-  "to do list": "잡무",
-  bedtime: "취침루틴",
-  "dental appointment": "건강검진",
-  meditation: "명상",
+/** 아이콘 picker 검색용 한글·별칭 (영문 파일명 + 한글 키워드) */
+const PICKER_SEARCH_EXTRA_RAW = {
+  airplane: "비행기 여행",
+  airplane1: "비행기 여행",
+  sleeping: "수면 잠자기 침대 잠",
+  moving_basic: "이동 자동차",
+  Coffee: "커피 아메리카노",
+  "to do list": "러닝 열심 달리기",
+  sunset: "산 등산 해오름 해",
+  sun: "해 태양 아침",
+  rain: "비 구름",
+  christmas: "크리스마스",
+  reading: "독서 책 책읽기",
+  packing: "가방",
+  flower: "꽃 기념일",
+  gift: "선물",
+  "skin care": "외모 피부 스킨",
+  "dental appointment": "치과",
+  "drip coffee": "드립커피 커피",
+  tea: "차 녹차",
+  "healthy food": "건강식 야채",
+  sad: "슬픔",
+  travel: "여행",
+  salary: "월급",
+  birthday: "생일",
+  "hair cut": "이발 미용실",
   cinema: "영화",
-  airplane: "비행",
+  clean: "청소",
+  cloth: "옷",
+  shower: "샤워",
+  brush: "칫솔",
+  dryer: "드라이기",
+  work: "노트북",
+  english: "영어",
+  youtube: "유튜브",
+  headset: "헤드셋",
+  blender: "믹서기",
+  rice: "밥 쌀",
+  happy: "행복",
+  angry: "화남",
+  money: "돈",
+  bedtime: "취침",
+  mic: "마이크",
+  stretching: "스트레칭 요가",
+  running: "달리기",
+  meditation: "명상",
+  study: "공부",
+  "shopping bag": "쇼핑",
+  nap: "낮잠",
+  "public holiday": "공휴일",
+  phone: "스마트폰 폰 핸드폰 휴대폰",
+  writting: "글쓰기 쓰기",
+  train: "지하철",
+  burger: "햄버거",
+  beer: "맥주",
+  cooking: "요리",
+  cocktail: "칵테일",
+  puppy: "강아지",
+  medicine: "약",
+  "it's okay not to be okay": "괜찮아",
+  "done is better than pefect": "하는게 낫다",
+  "you can do this": "할수있다",
+  "energy saving mode": "충전",
+  그날: "그날 생리",
+  baseball: "야구",
+  rainsuit: "비옷 우비",
+  puppywalk: "개산책",
+  test: "시험",
+  subway1: "기차 지하철",
+  subway2: "기차 지하철",
+  subway3: "기차 지하철",
+  우울: "우울",
+  "아무생각없음": "아무 생각",
+  "난 완벽행": "완벽",
+  "행복해짐": "행복",
+  "해야지....": "해야지",
+  sowhat: "소왓 어쩌라고",
+  fighting: "파이팅",
+  "it's okay": "괜찮아",
+  경찰서: "경찰서 경찰",
+  문제없어: "문제없어 괜찮아",
+  미움: "미움 싫어",
+  은행: "은행",
+  응원: "응원",
+  이상무: "이상무",
+  잊어: "잊어",
+  잘났어: "잘났어",
+  잘했어: "잘했어",
+  케이크: "케이크 생일",
+  학교: "학교",
+  힘내: "힘내 파이팅",
+  신정: "신정 공휴일",
+  삼일절: "삼일절 공휴일",
+  어린이날: "어린이 공휴일",
+  "부처님오신날": "부처님 공휴일",
+  현충일: "현충일 휴일 공휴일",
+  광복절: "광복절 휴일 공휴일",
+  개천절: "개천절 휴일 공휴일",
+  한글날: "한글 공휴일 휴일",
+  "day off1": "연차 쉬는날",
+  day: "데이",
+  evening: "이브닝",
+  night: "나이트",
+  "day off": "오프 쉬는날",
+  egg: "달걀 계란",
 };
+
+/** JSON 파일명(NFD)·별칭 — picker 검색용 */
+const PICKER_SEARCH_EXTRA_NFC = (() => {
+  /** @type {Map<string, string>} */
+  const map = new Map();
+  for (const [k, v] of Object.entries(PICKER_SEARCH_EXTRA_RAW)) {
+    const nf = k.normalize("NFC");
+    map.set(nf, v);
+    map.set(nf.toLowerCase(), v);
+  }
+  for (const fileName of pickerSvgNames) {
+    const nf = String(fileName || "").normalize("NFC");
+    if (!nf || map.has(nf)) continue;
+    for (const [k, v] of Object.entries(PICKER_SEARCH_EXTRA_RAW)) {
+      if (k.normalize("NFC") === nf) {
+        map.set(nf, v);
+        break;
+      }
+    }
+    if (!map.has(nf) && /[\u3131-\uD79D]/.test(nf)) {
+      map.set(nf, nf);
+    }
+  }
+  const holidayTag = "공휴일 휴일";
+  const holidayNfc = new Set(
+    [
+      "public holiday",
+      "신정",
+      "삼일절",
+      "어린이날",
+      "부처님오신날",
+      "현충일",
+      "광복절",
+      "개천절",
+      "한글날",
+    ].map((s) => s.normalize("NFC")),
+  );
+  for (const fileName of pickerSvgNames) {
+    const nf = String(fileName || "").normalize("NFC");
+    if (!holidayNfc.has(nf)) continue;
+    const prev = map.get(nf) || nf;
+    map.set(nf, `${prev} ${holidayTag}`.trim());
+  }
+  return map;
+})();
+
+/** 과제·캘린더 스탬프 picker — 동일 아이콘·검색 목록 */
+export const TIME_TASK_ICON_PICKER_LIST_OPTS = {
+  includeCalendarStampOnly: true,
+};
+
+/** @param {string} iconFileName */
+export function buildPickerIconSearchText(iconFileName) {
+  const name = String(iconFileName || "").trim();
+  const nf = name.normalize("NFC");
+  const extra = pickerSearchExtraForIconName(name);
+  const baseLabel = name.replace(/-/g, " ");
+  if (/[\u3131-\uD79D]/.test(nf)) {
+    return `${baseLabel} ${nf} ${extra}`.trim().replace(/\s+/g, " ");
+  }
+  return `${baseLabel} ${extra}`.trim();
+}
+
+/** @param {string} name */
+function pickerSearchExtraLookup(name) {
+  const nf = String(name || "").trim().normalize("NFC");
+  if (!nf) return "";
+  const hit =
+    PICKER_SEARCH_EXTRA_NFC.get(nf) ||
+    PICKER_SEARCH_EXTRA_NFC.get(nf.toLowerCase());
+  if (hit) return hit;
+  if (/[\u3131-\uD79D]/.test(nf)) return nf;
+  return "";
+}
+
+/** @param {string} name */
+function pickerTimeStartSearchExtra(name) {
+  const m = String(name || "").match(/^(\d{1,2})(am|pm)\s+start$/i);
+  if (!m) return "";
+  const hour = m[1];
+  const ampm = m[2].toLowerCase();
+  const ko = ampm === "am" ? "오전 아침" : "오후 저녁 밤";
+  let special = "";
+  if (hour === "0" && ampm === "am") special = "0 12 자정";
+  if (hour === "12" && ampm === "pm") special = "12 정오";
+  return `${hour} ${hour}시 ${ko} ${special}`.trim();
+}
+
+/** @param {string} name */
+function pickerSearchExtraForIconName(name) {
+  const base = pickerSearchExtraLookup(name);
+  const timeExtra = pickerTimeStartSearchExtra(name);
+  return [base, timeExtra].filter(Boolean).join(" ").trim();
+}
 
 const PRODUCTIVE_CATEGORIES = new Set([
   "sideincome",
@@ -378,7 +536,7 @@ export function matchTimeTaskPickerIconSearch(searchText, query) {
 
 /**
  * @param {{ includeCalendarStampOnly?: boolean }} [opts]
- *   includeCalendarStampOnly — true면 스탬프 전용 아이콘 포함 (캘린더 날짜 아이콘 선택)
+ *   includeCalendarStampOnly — true면 스탬프·공휴일 전용 아이콘 포함
  * @returns {{ key: string, label: string, src: string, searchText: string }[]}
  */
 export function getTimeTaskPickableIcons(opts = {}) {
@@ -389,12 +547,11 @@ export function getTimeTaskPickableIcons(opts = {}) {
     if (!includeStampOnly && isCalendarStampOnlyPickerIcon(name)) continue;
     const src = pickerListedIconSrc(name);
     if (!src) continue;
-    const searchExtra = PICKER_SEARCH_EXTRA[name] || "";
     out.push({
       key: `svg:${name}`,
       label: pickerIconLabelFromFilename(name),
       src,
-      searchText: `${name.replace(/-/g, " ")} ${searchExtra}`.trim(),
+      searchText: buildPickerIconSearchText(name),
     });
   }
   return out;

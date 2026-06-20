@@ -12,11 +12,42 @@ import {
   getTimeTaskListIconSrc,
   resolveTimeTaskIconKey,
   matchTimeTaskPickerIconSearch,
+  TIME_TASK_ICON_PICKER_LIST_OPTS,
 } from "./timeTaskIconUrls.js";
 import { attachPickerIconSrcFallback } from "./timeTaskIconLazyDisplay.js";
 import { lpSetClasses, lpTokenToggle } from "./timeLedgerClassPolicy.js";
 import { markModalOpened } from "./modalNoAutoFocus.js";
 import { syncBodyOverflowAfterModalClose } from "./lpModalStack.js";
+
+/** @param {(query: string) => void} onInput */
+function mountPickerIconSearchInput(onInput) {
+  const searchBar = document.createElement("div");
+  searchBar.className = "lp-search-bar";
+  const searchRow = document.createElement("div");
+  searchRow.className = "lp-search-bar__row";
+  const searchInput = document.createElement("input");
+  searchInput.type = "text";
+  searchInput.className = "lp-search-bar__input";
+  searchInput.placeholder = "";
+  searchInput.setAttribute("aria-label", "아이콘 검색");
+  searchInput.autocomplete = "off";
+  searchInput.addEventListener("input", () => {
+    onInput(String(searchInput.value ?? ""));
+  });
+  searchRow.appendChild(searchInput);
+  searchBar.appendChild(searchRow);
+  return { searchBar, searchInput };
+}
+
+/** @param {ParentNode} root @param {string} query */
+function applyPickerIconSearchFilter(root, query) {
+  root
+    .querySelectorAll('[data-legacy~="time-add-task-icon-modal-item"]')
+    .forEach((item) => {
+      const hay = String(item.getAttribute("data-icon-search-text") || "");
+      item.hidden = !matchTimeTaskPickerIconSearch(hay, query);
+    });
+}
 
 const TIME_TASK_ICON_PICK_MODAL_SHELL_CLASS =
   "time-task-setup-modal time-add-task-icon-modal";
@@ -181,13 +212,7 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
   let searchInput = null;
 
   function applySearchFilter() {
-    const q = String(searchInput?.value ?? "");
-    modal
-      .querySelectorAll('[data-legacy~="time-add-task-icon-modal-item"]')
-      .forEach((item) => {
-        const hay = String(item.getAttribute("data-icon-search-text") || "");
-        item.hidden = !matchTimeTaskPickerIconSearch(hay, q);
-      });
+    applyPickerIconSearchFilter(modal, String(searchInput?.value ?? ""));
   }
 
   function syncGridSelection() {
@@ -201,20 +226,9 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
   }
 
   if (searchMount) {
-    const searchBar = document.createElement("div");
-    searchBar.className = "lp-search-bar";
-    const searchRow = document.createElement("div");
-    searchRow.className = "lp-search-bar__row";
-    searchInput = document.createElement("input");
-    searchInput.type = "text";
-    searchInput.className = "lp-search-bar__input";
-    searchInput.placeholder = "영어로 검색";
-    searchInput.setAttribute("aria-label", "아이콘 파일명 검색");
-    searchInput.autocomplete = "off";
-    searchInput.addEventListener("input", applySearchFilter);
-    searchRow.appendChild(searchInput);
-    searchBar.appendChild(searchRow);
-    searchMount.appendChild(searchBar);
+    const mounted = mountPickerIconSearchInput(applySearchFilter);
+    searchInput = mounted.searchInput;
+    searchMount.appendChild(mounted.searchBar);
   }
 
   if (gridMount) {
@@ -223,7 +237,7 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
     gridMount.appendChild(grid);
     mountPickerIconGrid(
       grid,
-      getTimeTaskPickableIcons({ includeCalendarStampOnly: true }),
+      getTimeTaskPickableIcons(TIME_TASK_ICON_PICKER_LIST_OPTS),
       (key) => {
       currentKey = key;
       onPick?.(key);
@@ -308,13 +322,7 @@ export function mountTimeAddTaskIconPicker(mountEl) {
 
   function applyIconSearchFilter() {
     if (!modalEl) return;
-    const q = String(iconSearchInput?.value ?? "");
-    modalEl
-      .querySelectorAll('[data-legacy~="time-add-task-icon-modal-item"]')
-      .forEach((item) => {
-        const hay = String(item.getAttribute("data-icon-search-text") || "");
-        item.hidden = !matchTimeTaskPickerIconSearch(hay, q);
-      });
+    applyPickerIconSearchFilter(modalEl, String(iconSearchInput?.value ?? ""));
   }
 
   let pickerGridMounted = false;
@@ -346,7 +354,11 @@ export function mountTimeAddTaskIconPicker(mountEl) {
     }
 
     if (!pickerGridMounted) {
-      mountPickerIconGrid(grid, getTimeTaskPickableIcons(), onPickIconKey);
+      mountPickerIconGrid(
+        grid,
+        getTimeTaskPickableIcons(TIME_TASK_ICON_PICKER_LIST_OPTS),
+        onPickIconKey,
+      );
       pickerGridMounted = true;
     } else {
       hydratePickerGridImgs(grid, { firstSync: PICKER_HYDRATE_FIRST });
@@ -405,20 +417,9 @@ export function mountTimeAddTaskIconPicker(mountEl) {
       '[data-legacy~="time-add-task-icon-modal-search-mount"]',
     );
     if (searchMount) {
-      const searchBar = document.createElement("div");
-      searchBar.className = "lp-search-bar";
-      const searchRow = document.createElement("div");
-      searchRow.className = "lp-search-bar__row";
-      iconSearchInput = document.createElement("input");
-      iconSearchInput.type = "text";
-      iconSearchInput.className = "lp-search-bar__input";
-      iconSearchInput.placeholder = "영어로 검색";
-      iconSearchInput.setAttribute("aria-label", "아이콘 파일명 검색");
-      iconSearchInput.autocomplete = "off";
-      iconSearchInput.addEventListener("input", applyIconSearchFilter);
-      searchRow.appendChild(iconSearchInput);
-      searchBar.appendChild(searchRow);
-      searchMount.appendChild(searchBar);
+      const mounted = mountPickerIconSearchInput(applyIconSearchFilter);
+      iconSearchInput = mounted.searchInput;
+      searchMount.appendChild(mounted.searchBar);
     }
 
     modalEl
