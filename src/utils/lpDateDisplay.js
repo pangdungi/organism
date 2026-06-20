@@ -40,6 +40,14 @@ export function formatMonthNameEn(monthIndex) {
   return LP_MONTH_NAME_EN[m];
 }
 
+/** 캘린더 상단 월 라벨 — 9월~12월은 모바일에서 `--compact` 클래스로 축소 */
+export function applyCalendarNavMonthLabel(el, monthIndex) {
+  if (!el) return;
+  const m = Number(monthIndex);
+  el.textContent = formatMonthNameEn(m);
+  el.classList.toggle("calendar-nav-month--compact", m >= 8);
+}
+
 /** 1-based month number → January … December */
 export function formatMonthNameEnFrom1(monthNum) {
   const n = Number(monthNum);

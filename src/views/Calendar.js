@@ -39,7 +39,7 @@ import {
   getRowStartInstantForMobileCard,
   getMobileCardEffectiveHoursForPrice,
 } from "./Time.js";
-import { formatMonthNameEn } from "../utils/lpDateDisplay.js";
+import { applyCalendarNavMonthLabel, formatMonthNameEn } from "../utils/lpDateDisplay.js";
 import { showToast } from "../utils/showToast.js";
 import { showAlertModal } from "../utils/confirmModal.js";
 import { initModalStandardDateFields } from "../utils/modalNativeDateField.js";
@@ -585,11 +585,37 @@ function lpRevealCalendarGridLayout(calendarGrid, reason) {
   }
   calendarGrid.classList.remove("calendar-monthly-grid--layout-pending");
   calendarGrid.classList.add("calendar-monthly-grid--layout-ready");
+  lpRestoreCalendarGridScrollTopIfPending(calendarGrid);
   calendar1WeekDiagLog("layoutPass.reveal", {
     reason,
     connected: !!calendarGrid.isConnected,
   });
   calendar1WeekDiagSnapshot(calendarGrid, reason);
+}
+
+function lpRestoreCalendarGridScrollTopIfPending(calendarGrid) {
+  if (!calendarGrid) return;
+  const savedTop = calendarGrid._lpPendingScrollRestore;
+  if (!Number.isFinite(savedTop) || savedTop <= 0) return;
+  delete calendarGrid._lpPendingScrollRestore;
+  const apply = () => {
+    if (!calendarGrid.isConnected) return;
+    calendarGrid.scrollTop = savedTop;
+  };
+  apply();
+  requestAnimationFrame(apply);
+  requestAnimationFrame(() => requestAnimationFrame(apply));
+}
+
+function lpRememberCalendarGridScrollTop(calendarGrid, resetScroll = false) {
+  if (!calendarGrid) return;
+  if (resetScroll) {
+    delete calendarGrid._lpPendingScrollRestore;
+    return;
+  }
+  const top = calendarGrid.scrollTop || 0;
+  if (top > 0) calendarGrid._lpPendingScrollRestore = top;
+  else delete calendarGrid._lpPendingScrollRestore;
 }
 
 /** finishWeek가 DOM 붙기 전에 호출될 때(1주 첫 mount) rAF로 재시도 */
@@ -1204,14 +1230,8 @@ function lpOpenCalendarTaskEdit(barModel, options = {}) {
   openCalendarTaskEditFromBarModel(b, options);
 }
 
-function calendarTaskDoneMarkHtml(done) {
-  return done
-    ? `<span class="calendar-task-done-mark" aria-hidden="true">✓ </span>`
-    : "";
-}
-
-function lpBuildCalendarSpanBarInnerHtml(name, done) {
-  return `<span class="calendar-monthly-span-bar-text">${calendarTaskDoneMarkHtml(!!done)}${escapeHtml(name || "")}</span>`;
+function lpBuildCalendarSpanBarInnerHtml(name, _done) {
+  return `<span class="calendar-monthly-span-bar-text">${escapeHtml(name || "")}</span>`;
 }
 
 function lpApplyCalendarSpanBarDonePastClasses(bar, b, todayYmd) {
@@ -1980,7 +2000,7 @@ function createCalendarDayExpandBubble(
       const isPast = isPastCalendarTask(t, todayYmd);
       const pastCls = isPast ? " is-past" : "";
       const doneCls = t.done ? " is-completed" : "";
-      const nameHtml = `${calendarTaskDoneMarkHtml(!!t.done)}${escapeHtml(t.name || "")}`;
+      const nameHtml = escapeHtml(t.name || "");
       return `
     <div class="calendar-day-expand-item${doneCls}${pastCls}" data-done="${!!t.done}">
       <div class="calendar-day-expand-main">
@@ -2366,10 +2386,13 @@ function renderMonthlyView(tabsElement) {
 
   function refreshTodoList() {}
 
-  function renderCalendar() {
+  function renderCalendar(opts = {}) {
+    lpRememberCalendarGridScrollTop(calendarGrid, !!opts.resetScroll);
     const grid = getCalendarGrid(currentYear, currentMonth);
-    lpCalendarNavQ(nav, wrap, ".calendar-nav-month").textContent =
-      formatCalendarMonthLabel(currentMonth);
+    applyCalendarNavMonthLabel(
+      lpCalendarNavQ(nav, wrap, ".calendar-nav-month"),
+      currentMonth,
+    );
     lpCalendarNavQ(nav, wrap, ".calendar-nav-year").textContent =
       String(currentYear);
 
@@ -2891,7 +2914,7 @@ function renderMonthlyView(tabsElement) {
       currentMonth = 11;
       currentYear--;
     }
-    renderCalendar();
+    renderCalendar({ resetScroll: true });
   }
 
   function goNextMonth() {
@@ -2900,7 +2923,7 @@ function renderMonthlyView(tabsElement) {
       currentMonth = 0;
       currentYear++;
     }
-    renderCalendar();
+    renderCalendar({ resetScroll: true });
   }
 
   lpCalendarNavQ(nav, wrap, ".calendar-nav-today").addEventListener(
@@ -2909,7 +2932,7 @@ function renderMonthlyView(tabsElement) {
       const now = new Date();
       currentYear = now.getFullYear();
       currentMonth = now.getMonth();
-      renderCalendar();
+      renderCalendar({ resetScroll: true });
     },
   );
   lpCalendarNavQ(nav, wrap, ".calendar-nav-prev").addEventListener(
@@ -3949,7 +3972,7 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
     const m = targetDate.getMonth() + 1;
     const d = targetDate.getDate();
     const wKo = NAV_WEEKDAYS_SUN0[targetDate.getDay()] || "";
-    const mdPart = `${m}/${d}`;
+    const mdPart = `${m}.${String(d).padStart(2, "0")}`;
     const dowPart = wKo ? `(${wKo})` : "";
 
     topBarLeft.replaceChildren();
@@ -4647,7 +4670,7 @@ function render1WeekView(tabsElement) {
     const monthIndex = week[0] ? week[0].getMonth() : new Date().getMonth();
     const navMonth = lpCalendarNavQ(nav, wrap, ".calendar-nav-month");
     const navYear = lpCalendarNavQ(nav, wrap, ".calendar-nav-year");
-    if (navMonth) navMonth.textContent = formatCalendarMonthLabel(monthIndex);
+    if (navMonth) applyCalendarNavMonthLabel(navMonth, monthIndex);
     if (navYear)
       navYear.textContent = week[0] ? String(week[0].getFullYear()) : "";
 

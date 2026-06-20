@@ -11,6 +11,7 @@ import { applyWorkScheduleRowTimesFromTypes } from "../utils/workScheduleEntryRe
 import { readWorkScheduleRowsFromMem } from "../utils/workScheduleModel.js";
 import { workScheduleDiagLog } from "../utils/workScheduleDiag.js";
 import { bindLpHorizontalPanNavigate } from "../utils/lpHorizontalPanNavigate.js";
+import { applyCalendarNavMonthLabel } from "../utils/lpDateDisplay.js";
 
 let _workScheduleMonthlyRerender = null;
 
@@ -300,7 +301,7 @@ export function renderMonthlyContent(opts = {}) {
     const byDate = groupByDate(rows);
     const grid = getCalendarGrid(currentYear, currentMonth);
 
-    if (navMonth) navMonth.textContent = MONTH_NAMES_EN[currentMonth];
+    if (navMonth) applyCalendarNavMonthLabel(navMonth, currentMonth);
     if (navYear) navYear.textContent = String(currentYear);
 
     calendarWrap.innerHTML = "";
@@ -439,7 +440,7 @@ export function renderMonthlyContent(opts = {}) {
   }
 
   function syncMonthNavLabels() {
-    if (navMonth) navMonth.textContent = MONTH_NAMES_EN[currentMonth];
+    if (navMonth) applyCalendarNavMonthLabel(navMonth, currentMonth);
     if (navYear) navYear.textContent = String(currentYear);
     storeMonthlyYm(currentYear, currentMonth);
   }

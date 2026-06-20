@@ -330,54 +330,22 @@ export function showLpPwaInstallHelp() {
   document.body.classList.add("lp-pwa-install-modal-open");
 }
 
-function scheduleInstallRefreshRetries() {
-  refreshLpPwaInstall();
-  for (const ms of [400, 1200, 3000]) {
-    window.setTimeout(refreshLpPwaInstall, ms);
-  }
-}
-
 export function refreshLpPwaInstall() {
-  if (installPromptOpen) {
-    hideAllInstallRoots();
-    return;
-  }
-  renderInstallBanner(getActiveInstallRoot());
+  hideAllInstallRoots();
 }
 
 export function initLpPwaInstall() {
   window.addEventListener("beforeinstallprompt", (e) => {
-    deferredPrompt = e;
-    if (isAndroidDevice()) {
-      /* Android: preventDefault 하지 않음 → 크롬 기본「앱 설치」배너 유지 */
-      scheduleInstallRefreshRetries();
-      return;
-    }
     e.preventDefault();
-    scheduleInstallRefreshRetries();
+    deferredPrompt = e;
   });
-
-  if ("serviceWorker" in navigator) {
-    void navigator.serviceWorker.ready.then(() => {
-      scheduleInstallRefreshRetries();
-    });
-  }
 
   window.addEventListener("appinstalled", () => {
     deferredPrompt = null;
     installPromptOpen = false;
-    markDismissed();
     hideAllInstallRoots();
     closeLpPwaInstallHelpModal();
-    showToast(
-      "홈 화면을 확인해 주세요",
-      "Doodle 아이콘이 생겼는지 봐 주세요. 아직 없으면 잠시 후 다시 확인해 주세요.",
-    );
   });
 
-  window.addEventListener("resize", () => {
-    refreshLpPwaInstall();
-  });
-
-  scheduleInstallRefreshRetries();
+  hideAllInstallRoots();
 }

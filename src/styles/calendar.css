@@ -170,7 +170,7 @@
 .calendar-nav-date {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.35rem;
+  gap: 0.65rem;
   font-size: 1.05rem;
   font-weight: 650;
   letter-spacing: -0.02em;
@@ -193,14 +193,24 @@
   color: #000000;
 }
 
+.calendar-view:not(.calendar-view--mobile-workschedule)
+  .calendar-1day-view
+  .calendar-monthly-top-bar-date-num {
+  font-family: var(--lp-calendar-month-abbr-font-family);
+  font-synthesis: none;
+  font-weight: 400;
+  color: #000000;
+}
+
 .calendar-nav-month {
   font-size: 3.25rem;
   line-height: 1.08;
 }
 
 .calendar-nav-year {
-  font-size: 0.9em;
-  font-weight: 600;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
   color: var(--cal-text-muted);
 }
 
@@ -210,6 +220,7 @@
   align-self: flex-end;
   gap: 0.25rem;
   margin-left: auto;
+  flex-shrink: 0;
 }
 
 .calendar-nav-controls button {
@@ -714,7 +725,7 @@
 
 .calendar-1day-day-task-chip--todo {
   background: transparent;
-  border: 1px dashed var(--bar-border, var(--cal-short-span-bar-border));
+  border: none;
 }
 
 .calendar-1day-day-task-chip--range {
@@ -727,13 +738,6 @@
   color: rgba(0, 0, 0, 0.66);
 }
 
-.calendar-1day-day-task-chip.is-past.calendar-1day-day-task-chip--todo {
-  border-color: color-mix(
-    in srgb,
-    var(--bar-border, var(--cal-short-span-bar-border)) 45%,
-    transparent
-  );
-}
 
 .calendar-1day-day-task-chip-inner {
   display: flex;
@@ -1721,15 +1725,17 @@
   pointer-events: none;
 }
 
-.calendar-task-done-mark {
-  display: inline;
-  font-weight: 700;
-  opacity: 0.72;
-  user-select: none;
+.calendar-monthly-span-bar.is-completed .calendar-monthly-span-bar-text,
+.calendar-1day-day-task-chip.is-completed .calendar-monthly-span-bar-text,
+.calendar-day-expand-item.is-completed .calendar-day-expand-text {
+  color: rgba(0, 0, 0, 0.66);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  text-decoration-color: currentColor;
 }
 
-.calendar-monthly-span-bar.is-past .calendar-task-done-mark {
-  opacity: 0.55;
+.calendar-day-expand-item.is-past.is-completed .calendar-day-expand-text {
+  color: rgba(0, 0, 0, 0.58);
 }
 
 /* 기간 막대는 단일일 막대보다 아래 레이어 — 같은 열에서 겹칠 때 할 일 텍스트가 가리지 않게 */
@@ -1741,7 +1747,7 @@
   z-index: 2;
   background: transparent;
   background-color: transparent;
-  border: 1px dashed var(--bar-border, var(--cal-short-span-bar-border));
+  border: none;
 }
 
 .calendar-monthly-span-bar.is-past,
@@ -1749,13 +1755,6 @@
   color: rgba(0, 0, 0, 0.66);
 }
 
-.calendar-monthly-span-bar.is-past.calendar-monthly-span-bar--todo {
-  border-color: color-mix(
-    in srgb,
-    var(--bar-border, var(--cal-short-span-bar-border)) 45%,
-    transparent
-  );
-}
 
 .calendar-monthly-span-bar--dragging {
   opacity: 0.85;
@@ -1827,6 +1826,42 @@
   width: 100%;
   display: flex;
   flex-direction: column;
+}
+
+@media (max-width: 46rem) {
+  .calendar-monthly-nav {
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    gap: 0.35rem;
+  }
+
+  .calendar-nav-date {
+    flex: 1 1 auto;
+    min-width: 0;
+    align-items: flex-end;
+    gap: 0.45rem;
+  }
+
+  .calendar-nav-year {
+    flex-shrink: 0;
+    font-size: 0.625rem;
+    font-weight: 500;
+    padding-bottom: 0.22em;
+    line-height: 1;
+  }
+
+  .calendar-view:not(.calendar-view--mobile-workschedule) .calendar-nav-month {
+    font-size: 2.85rem;
+    line-height: 0.92;
+    letter-spacing: -0.03em;
+    white-space: nowrap;
+  }
+
+  .calendar-view:not(.calendar-view--mobile-workschedule)
+    .calendar-nav-month.calendar-nav-month--compact {
+    font-size: 2.35rem;
+    letter-spacing: -0.04em;
+  }
 }
 
 @media (max-width: 46rem) {
@@ -2267,7 +2302,21 @@
   }
 
   .calendar-nav-date {
-    font-size: 0.9375rem;
+    gap: 0.38rem;
+  }
+
+  .calendar-nav-year {
+    font-size: 0.5625rem;
+    padding-bottom: 0.18em;
+  }
+
+  .calendar-view:not(.calendar-view--mobile-workschedule) .calendar-nav-month {
+    font-size: 2.55rem;
+  }
+
+  .calendar-view:not(.calendar-view--mobile-workschedule)
+    .calendar-nav-month.calendar-nav-month--compact {
+    font-size: 2.05rem;
   }
 
   .calendar-nav-controls button {
@@ -2788,13 +2837,8 @@
 }
 
 .calendar-day-expand-item.is-past .calendar-day-expand-text,
-.calendar-day-expand-item.is-past .calendar-day-expand-time,
-.calendar-day-expand-item.is-past .calendar-task-done-mark {
+.calendar-day-expand-item.is-past .calendar-day-expand-time {
   color: rgba(0, 0, 0, 0.58);
-}
-
-.calendar-day-expand-item.is-past .calendar-task-done-mark {
-  opacity: 0.55;
 }
 
 .calendar-day-expand-item:hover {
