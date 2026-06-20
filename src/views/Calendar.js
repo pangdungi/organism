@@ -4024,10 +4024,8 @@ function createCalendar1DayExpectedCardsPanel(dateKey, spans, onSaved) {
     list.appendChild(empty);
   } else {
     for (const span of sorted) {
-      const taskStorageName = String(span.taskName || "").trim();
       const taskLabel = expectedSpanDisplayTaskName(span);
       const memoText = expectedSpanCardMemoLines(span).join("\n");
-      const taskOpt = getTaskOptionByName(taskStorageName);
       const pk = prodKeyForWeekExpectedSpan({
         prod: resolveExpectedSpanProdKey(span),
       });
@@ -4036,25 +4034,25 @@ function createCalendar1DayExpectedCardsPanel(dateKey, spans, onSaved) {
       card.type = "button";
       card.className = `calendar-1day-expected-card calendar-1day-expected-card--${pk}`;
 
-      const timeRail = document.createElement("div");
-      timeRail.className = "calendar-1day-expected-card-time-rail";
-
-      const startEl = document.createElement("span");
-      startEl.className = "calendar-1day-expected-card-start";
-      startEl.textContent = span.startDisplay || "";
-
-      const timeLine = document.createElement("span");
-      timeLine.className = "calendar-1day-expected-card-time-line";
-      timeLine.setAttribute("aria-hidden", "true");
-
-      const endEl = document.createElement("span");
-      endEl.className = "calendar-1day-expected-card-end";
-      endEl.textContent = span.endDisplay || "";
-
-      timeRail.appendChild(startEl);
-      timeRail.appendChild(timeLine);
-      timeRail.appendChild(endEl);
-      card.appendChild(timeRail);
+      const startDisplay = String(span.startDisplay || "").trim();
+      const endDisplay = String(span.endDisplay || "").trim();
+      const timeEl = document.createElement("div");
+      timeEl.className = "calendar-1day-expected-card-time";
+      if (startDisplay && endDisplay) {
+        const startEl = document.createElement("span");
+        startEl.className = "calendar-1day-expected-card-time-start";
+        startEl.textContent = startDisplay;
+        const dashEl = document.createElement("span");
+        dashEl.className = "calendar-1day-expected-card-time-dash";
+        dashEl.textContent = "–";
+        dashEl.setAttribute("aria-hidden", "true");
+        const endEl = document.createElement("span");
+        endEl.className = "calendar-1day-expected-card-time-end";
+        endEl.textContent = endDisplay;
+        timeEl.append(startEl, dashEl, endEl);
+      } else {
+        timeEl.textContent = startDisplay || endDisplay || "—";
+      }
 
       const main = document.createElement("div");
       main.className = "calendar-1day-expected-card-main";
@@ -4071,26 +4069,8 @@ function createCalendar1DayExpectedCardsPanel(dateKey, spans, onSaved) {
         main.appendChild(memoEl);
       }
 
-      const iconSrc = resolveTimeTaskDisplayIconSrc(taskStorageName, {
-        category: taskOpt?.category,
-        productivity: taskOpt?.productivity,
-        iconKey: taskOpt?.iconKey || "",
-      });
-      const iconBadge = document.createElement("div");
-      iconBadge.className = `calendar-1day-expected-card-icon-badge calendar-1day-expected-card-icon-badge--${pk}`;
-      iconBadge.setAttribute("aria-hidden", "true");
-      if (iconSrc) {
-        const iconImg = document.createElement("img");
-        iconImg.src = iconSrc;
-        iconImg.alt = "";
-        iconImg.loading = "eager";
-        iconImg.decoding = "sync";
-        iconBadge.appendChild(iconImg);
-      }
-
-      card.appendChild(iconBadge);
+      card.appendChild(timeEl);
       card.appendChild(main);
-      card.appendChild(timeRail);
 
       card.title = memoText
         ? `${taskLabel} (${span.startDisplay} ~ ${span.endDisplay})\n${memoText}`

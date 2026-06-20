@@ -667,7 +667,6 @@
   contain: layout paint;
   background: #fff;
   border: none;
-  border-top: 1px solid #e0e0e0;
   border-bottom: 1px solid #e0e0e0;
   border-radius: 0;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
@@ -773,8 +772,6 @@
   overflow: hidden;
   background: #fff;
   border: none;
-  border-top: 1px solid #e0e0e0;
-  border-bottom: 1px solid #e0e0e0;
   border-radius: 0;
   box-shadow: none;
   box-sizing: border-box;
@@ -810,14 +807,14 @@
 
 .calendar-1day-expected-card {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  column-gap: 0.55rem;
-  align-items: center;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 0;
+  align-items: stretch;
   width: 100%;
   min-width: 0;
   min-height: 0;
   margin: 0;
-  padding: 0.55rem 0.45rem 0.55rem 0.5rem;
+  padding: 0;
   box-sizing: border-box;
   border: none;
   border-bottom: 1px solid #e8edf3;
@@ -846,45 +843,47 @@
   transform: none;
 }
 
-.calendar-1day-expected-card-time-rail {
+.calendar-1day-expected-card-time {
   display: flex;
   flex-direction: column;
+  justify-content: flex-start;
   align-items: flex-start;
-  justify-content: space-between;
-  flex-shrink: 0;
   align-self: stretch;
-  gap: 0.12rem;
-  padding: 0.05rem 0.35rem 0.05rem 0;
-}
-
-.calendar-1day-expected-card-start,
-.calendar-1day-expected-card-end {
+  min-height: 100%;
+  padding: 0.5rem 0.28rem 0.5rem 0.38rem;
+  box-sizing: border-box;
+  border-right: 1px solid #e8edf3;
   font-size: 0.625rem;
   font-weight: 700;
-  line-height: 1.1;
+  line-height: 1.35;
   color: #666666;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
   text-align: left;
 }
 
-.calendar-1day-expected-card-time-line {
-  flex: 1 1 auto;
-  width: 2px;
-  min-height: 1.1rem;
-  margin-left: 0.05em;
-  border-radius: 1px;
-  background: #cccccc;
-  align-self: flex-start;
+.calendar-1day-expected-card-time-start,
+.calendar-1day-expected-card-time-end {
+  display: block;
+  white-space: nowrap;
+}
+
+.calendar-1day-expected-card-time-dash {
+  display: block;
+  margin: 0.06rem 0;
+  font-size: 0.5rem;
+  font-weight: 600;
+  line-height: 1;
+  color: #999999;
 }
 
 .calendar-1day-expected-card-main {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0.22rem;
   min-width: 0;
-  padding-block: 0.05rem;
+  padding: 0.5rem 0.45rem 0.5rem 0.55rem;
+  box-sizing: border-box;
 }
 
 .calendar-1day-expected-card-title {
@@ -901,32 +900,6 @@
   color: #999999;
   white-space: pre-wrap;
   word-break: break-word;
-}
-
-.calendar-1day-expected-card-icon-badge {
-  flex-shrink: 0;
-  align-self: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  padding: 0.2rem;
-  background: transparent;
-}
-
-.calendar-1day-expected-card-icon-badge--productive,
-.calendar-1day-expected-card-icon-badge--nonproductive,
-.calendar-1day-expected-card-icon-badge--other {
-  background: transparent;
-}
-
-.calendar-1day-expected-card-icon-badge > img {
-  width: 1.65rem;
-  height: 1.65rem;
-  object-fit: contain;
 }
 
 .calendar-view-content-area > .calendar-1day-view--slot-grid,
