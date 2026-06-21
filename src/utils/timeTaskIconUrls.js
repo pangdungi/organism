@@ -158,6 +158,12 @@ const PICKER_SEARCH_EXTRA_RAW = {
   광복절: "광복절 휴일 공휴일",
   개천절: "개천절 휴일 공휴일",
   한글날: "한글 공휴일 휴일",
+  추석: "추석 명절 공휴일",
+  설날: "설날 명절 구정 공휴일",
+  연휴: "연휴 휴일 공휴일",
+  신나: "신나 기쁨 신남 행복",
+  "오늘의 계획": "오늘 계획 플랜 할일 일정",
+  "결혼 기념일": "결혼 기념 wedding anniversary",
   "day off1": "연차 쉬는날",
   day: "데이",
   evening: "이브닝",
@@ -200,6 +206,9 @@ const PICKER_SEARCH_EXTRA_NFC = (() => {
       "광복절",
       "개천절",
       "한글날",
+      "추석",
+      "설날",
+      "연휴",
     ].map((s) => s.normalize("NFC")),
   );
   for (const fileName of pickerSvgNames) {
