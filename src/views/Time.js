@@ -1647,7 +1647,11 @@ function applyMobileCardPriceEl(priceEl, rowData, hourlyRate) {
   );
   const display = formatTimeLedgerActionPriceDisplay(value, slot, {
     returnPct,
+    hourlyRate,
   });
+  const needsHourly = !userHourlyRateIsConfigured(hourlyRate);
+  lpTokenToggle(priceEl, "time-mobile-card-price--needs-hourly", needsHourly);
+  priceEl.classList.toggle("time-mobile-card-price--needs-hourly", needsHourly);
   priceEl.textContent = display || "\u00a0";
 }
 
@@ -1687,7 +1691,10 @@ export function getTimeLedgerRowMobilePriceDisplay(rowData) {
       : null;
   return {
     slot,
-    text: formatTimeLedgerActionPriceDisplay(value, slot, { returnPct }),
+    text: formatTimeLedgerActionPriceDisplay(value, slot, {
+      returnPct,
+      hourlyRate,
+    }),
   };
 }
 
@@ -2309,6 +2316,87 @@ function readUserHourlyRateNumber() {
   } catch (_) {
     return 0;
   }
+}
+
+function userHourlyRateIsConfigured(hourlyRate) {
+  const rate =
+    hourlyRate != null
+      ? parseFloat(String(hourlyRate).replace(/,/g, "")) || 0
+      : readUserHourlyRateNumber();
+  return rate > 0;
+}
+
+function readTimeLedgerViewHourlyRate(viewEl) {
+  const fromInput =
+    parseFloat(
+      String(
+        viewEl?.querySelector('[data-legacy~="time-hourly-input"]')?.value ||
+          "0",
+      ).replace(/,/g, ""),
+    ) || 0;
+  if (fromInput > 0) return fromInput;
+  return readUserHourlyRateNumber();
+}
+
+function createTimeLedgerHourlyRateHintEl() {
+  const hint = document.createElement("div");
+  lpSetClasses(hint, "time-ledger-hourly-rate-hint");
+  hint.setAttribute("role", "note");
+  const text = document.createElement("p");
+  lpSetClasses(text, "time-ledger-hourly-rate-hint-text");
+  text.textContent =
+    "행동의 가치(금액)를 보려면 나의 계정에서 시급을 입력해 주세요.";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  lpSetClasses(btn, "time-ledger-hourly-rate-hint-btn");
+  btn.textContent = "시급 입력하기";
+  btn.addEventListener("click", () => {
+    try {
+      window.__lpSetTab?.("idea");
+    } catch (_) {}
+  });
+  hint.appendChild(text);
+  hint.appendChild(btn);
+  return hint;
+}
+
+function syncTimeLedgerHourlyRateHint(ledgerContainer, hourlyRate) {
+  if (!ledgerContainer) return;
+  const show = !userHourlyRateIsConfigured(hourlyRate);
+  const existing = ledgerContainer.querySelector(
+    ".time-ledger-hourly-rate-hint",
+  );
+  if (!show) {
+    existing?.remove();
+    return;
+  }
+  if (existing) return;
+  const hint = createTimeLedgerHourlyRateHintEl();
+  const heading = ledgerContainer.querySelector(
+    ".time-ledger-usage-history-heading-row",
+  );
+  if (heading?.parentElement === ledgerContainer) {
+    heading.insertAdjacentElement("afterend", hint);
+  } else {
+    ledgerContainer.prepend(hint);
+  }
+}
+
+function refreshTimeLedgerPriceDisplays(viewEl) {
+  if (!viewEl?.isConnected) return;
+  const hourlyRate = readTimeLedgerViewHourlyRate(viewEl);
+  viewEl
+    .querySelectorAll(".diary-tab5-timeline-price")
+    .forEach((priceEl) => {
+      const card = priceEl.closest(".time-ledger-mobile-card");
+      if (card?._rowData) {
+        applyMobileCardPriceEl(priceEl, card._rowData, hourlyRate);
+      }
+    });
+  const ledgerContainer = viewEl.querySelector(
+    '[data-legacy~="time-ledger-container"]',
+  );
+  syncTimeLedgerHourlyRateHint(ledgerContainer, hourlyRate);
 }
 
 function aggregateDailyTimeReportSummaryFromLedgerRows(rows) {
@@ -3244,9 +3332,14 @@ function formatPrice(n) {
   return n < 0 ? `-${str}` : str;
 }
 
-/** 타임 카드·표 「행동의 가치」: 생산적 +n 원 / 비생산적 -n 원 · 평가 있으면 (±n%) */
+/** 타임 카드·표 「행동의 가치」: 생산적 +n 원 / 비생산적 -n 원 · 평가 있으면 (±n%) · 시급 없으면 안내 */
 function formatTimeLedgerActionPriceDisplay(value, productivitySlot, opts = {}) {
   if (productivitySlot === "other") return "";
+  const rate =
+    opts.hourlyRate != null
+      ? parseFloat(String(opts.hourlyRate).replace(/,/g, "")) || 0
+      : readUserHourlyRateNumber();
+  if (!(rate > 0)) return "시급 입력";
   const abs = Math.abs(Math.round(Number(value) || 0));
   const str = abs.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   let main = "";
@@ -3835,6 +3928,7 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
         : null;
     priceDisplay.textContent = formatTimeLedgerActionPriceDisplay(price, slot, {
       returnPct,
+      hourlyRate,
     });
     lpTokenToggle(priceDisplay, "is-negative", price < 0);
     lpTokenToggle(priceDisplay, "is-positive", price > 0);
@@ -5046,13 +5140,7 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
     0,
     Math.round((getMobileCardEffectiveHoursForPrice(rowData) || 0) * 60),
   );
-  const hourlyRate =
-    parseFloat(
-      String(
-        viewEl?.querySelector('[data-legacy~="time-hourly-input"]')?.value ||
-          "0",
-      ).replace(/,/g, ""),
-    ) || 0;
+  const hourlyRate = readTimeLedgerViewHourlyRate(viewEl);
   const priceVal = computeMobileCardPriceValue(rowData, hourlyRate);
   const priceSlot = getMobileCardPriceProductivitySlot(rowData);
   const priceRating = rowProductiveTimeRatingForPrice(rowData);
@@ -5062,6 +5150,7 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
       : null;
   const priceText = formatTimeLedgerActionPriceDisplay(priceVal, priceSlot, {
     returnPct: priceReturnPct,
+    hourlyRate,
   });
   const iconSrc = timeLedgerListRowIconSrc(rowData);
   const live = mobileCardNeedsLiveClock(rowData);
@@ -5136,6 +5225,9 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
     priceSlot;
   if (priceReturnPct != null) {
     priceEl.classList.add("time-mobile-card-price--has-rating-return");
+  }
+  if (!userHourlyRateIsConfigured(hourlyRate)) {
+    priceEl.classList.add("time-mobile-card-price--needs-hourly");
   }
   priceEl.textContent = priceText || "\u00a0";
 
@@ -10594,6 +10686,7 @@ export function render(opts = {}) {
         summaryPrice.textContent = formatTimeLedgerActionPriceDisplay(
           totalPrice,
           prodSlot,
+          { hourlyRate },
         );
         lpSetClasses(
           summaryPrice,
@@ -11075,6 +11168,12 @@ export function render(opts = {}) {
     usageHistoryHeadingRow.appendChild(usageHistoryHeadingLeft);
     usageHistoryHeadingRow.appendChild(usageHistoryTotalWrap);
     ledgerContainer.appendChild(usageHistoryHeadingRow);
+    if (!showMemoOnlyLogView) {
+      syncTimeLedgerHourlyRateHint(
+        ledgerContainer,
+        readTimeLedgerViewHourlyRate(el),
+      );
+    }
 
     const showTimelineLedgerContent =
       !showMemoOnlyLogView &&
@@ -11393,6 +11492,7 @@ if (typeof document !== "undefined") {
     if (!root) return;
     const inp = root.querySelector('[data-legacy~="time-hourly-input"]');
     if (inp) inp.value = String(rate);
+    refreshTimeLedgerPriceDisplays(root);
     if (typeof root._updateTotal === "function") root._updateTotal();
   });
 }

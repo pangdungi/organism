@@ -403,6 +403,56 @@
   max-width: 100%;
   box-sizing: border-box;
 }
+
+/* 시급 미입력 — 행동의 가치 안내 */
+.time-ledger-view .time-ledger-hourly-rate-hint,
+[data-legacy~="time-ledger-view"] .time-ledger-hourly-rate-hint {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0.55rem 1rem 0.65rem;
+  border-bottom: 1px solid #f2f2f2;
+  background: rgba(30, 77, 123, 0.04);
+  box-sizing: border-box;
+}
+.time-ledger-view .time-ledger-hourly-rate-hint-text,
+[data-legacy~="time-ledger-view"] .time-ledger-hourly-rate-hint-text {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: #64748b;
+}
+.time-ledger-view .time-ledger-hourly-rate-hint-btn,
+[data-legacy~="time-ledger-view"] .time-ledger-hourly-rate-hint-btn {
+  align-self: flex-start;
+  margin: 0;
+  padding: 0.35rem 0.65rem;
+  border: none;
+  border-radius: 999px;
+  background: #1e4d7b;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+}
+.time-ledger-view .time-ledger-hourly-rate-hint-btn:focus-visible,
+[data-legacy~="time-ledger-view"] .time-ledger-hourly-rate-hint-btn:focus-visible {
+  outline: 2px solid #1e4d7b;
+  outline-offset: 2px;
+}
+.time-ledger-view
+  .diary-tab5-timeline-price.time-mobile-card-price--needs-hourly,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-timeline-price.time-mobile-card-price--needs-hourly {
+  color: #64748b;
+  font-weight: 500;
+  font-size: 0.625rem;
+}
+
 [data-legacy~="time-ledger-view"]
   [data-legacy~="time-ledger-usage-history-total-wrap"] {
   flex: 0 0 auto;
