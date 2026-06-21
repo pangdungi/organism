@@ -1656,10 +1656,42 @@ function calendarDragTransferTypesAllowDrop(dataTransfer) {
   );
 }
 
+/** 월간 격자 — 스탬프만 바뀐 날짜 셀만 갱신(전체 renderCalendar 깜빡임 방지) */
+function lpPatchCalendarMonthlyDayStamp(calendarGrid, dateKey, onAfterChange) {
+  const key = String(dateKey || "").trim().slice(0, 10);
+  if (!key || !(calendarGrid instanceof HTMLElement)) return;
+  const cell = calendarGrid.querySelector(
+    `.calendar-monthly-day[data-date="${key}"]`,
+  );
+  if (!cell) return;
+  let dayIconsEl = cell.querySelector(".calendar-monthly-day-icons");
+  if (!dayIconsEl) {
+    dayIconsEl = document.createElement("div");
+    dayIconsEl.className = "calendar-monthly-day-icons";
+    dayIconsEl.setAttribute("aria-hidden", "true");
+    const dayNum = cell.querySelector(".calendar-monthly-day-num");
+    if (dayNum?.nextSibling) {
+      cell.insertBefore(dayIconsEl, dayNum.nextSibling);
+    } else {
+      cell.appendChild(dayIconsEl);
+    }
+  }
+  renderCalendarMonthlyDayIcons(dayIconsEl, key, {
+    onAfterChange,
+  });
+  cell.classList.toggle("calendar-monthly-day--has-stamp", !dayIconsEl.hidden);
+  const weekRow = cell.closest(".calendar-monthly-week");
+  if (weekRow) {
+    lpCalendarApplyWeekStampStripLayout(weekRow);
+    weekRow._lpMonthlyBarLayoutRerun?.();
+  }
+}
+
 function lpApplyCalendarDayIconDrop(
   e,
   targetDateKey,
-  renderCalendar,
+  calendarGrid,
+  patchDayStamp,
   refreshTodoList,
 ) {
   const payload = readCalendarDayIconDragPayload(e.dataTransfer);
@@ -1672,7 +1704,8 @@ function lpApplyCalendarDayIconDrop(
   if (from === to) return true;
   if (!moveCalendarDayIconOnDate(from, to)) return false;
   try {
-    renderCalendar?.();
+    patchDayStamp?.(from);
+    patchDayStamp?.(to);
   } catch (_) {}
   try {
     refreshTodoList?.();
@@ -2613,6 +2646,11 @@ function renderMonthlyView(tabsElement) {
 
   function refreshTodoList() {}
 
+  function patchDayStamp(dateKey) {
+    lpPatchCalendarMonthlyDayStamp(calendarGrid, dateKey, patchDayStamp);
+    wrap._lpRememberCalendarGridPaintSig?.();
+  }
+
   function renderCalendar(opts = {}) {
     lpRememberCalendarGridScrollTop(calendarGrid, !!opts.resetScroll);
     const grid = getCalendarGrid(currentYear, currentMonth);
@@ -2676,7 +2714,7 @@ function renderMonthlyView(tabsElement) {
         dayIconsEl.setAttribute("aria-hidden", "true");
         renderCalendarMonthlyDayIcons(dayIconsEl, key, {
           onAfterChange: () => {
-            renderCalendar();
+            patchDayStamp(key);
             refreshTodoList();
           },
         });
@@ -2699,7 +2737,7 @@ function renderMonthlyView(tabsElement) {
           e.stopPropagation();
           e.preventDefault();
           lpOpenCalendarMonthlyDayActionBubble(cell, key, () => {
-            renderCalendar();
+            patchDayStamp(key);
             refreshTodoList();
           });
         });
@@ -2716,7 +2754,13 @@ function renderMonthlyView(tabsElement) {
         cell.addEventListener("drop", (e) => {
           cell.classList.remove("calendar-day-drag-over");
           if (
-            lpApplyCalendarDayIconDrop(e, key, renderCalendar, refreshTodoList)
+            lpApplyCalendarDayIconDrop(
+              e,
+              key,
+              calendarGrid,
+              patchDayStamp,
+              refreshTodoList,
+            )
           ) {
             return;
           }
@@ -3050,7 +3094,8 @@ function renderMonthlyView(tabsElement) {
           lpApplyCalendarDayIconDrop(
             e,
             targetDate,
-            renderCalendar,
+            calendarGrid,
+            patchDayStamp,
             refreshTodoList,
           )
         ) {
@@ -3889,6 +3934,18 @@ function wireCalendar1DaySlotGridDragMove(scroll, dateKey, onSaved) {
   });
 }
 
+/** 캘린더 일간뷰 — 24행×6열(10분 칸) + 「타임박스」헤더 */
+function createCalendar1DayTimeboxPanel(dateKey, onSaved) {
+  const section = document.createElement("div");
+  section.className = "calendar-1day-timebox-section";
+  const head = document.createElement("div");
+  head.className = "calendar-1day-pane-section-head";
+  head.textContent = "타임박스";
+  section.appendChild(head);
+  section.appendChild(createCalendar1DaySlotGrid(dateKey, onSaved));
+  return section;
+}
+
 /** 캘린더 일간뷰 — 24행×6열(10분 칸) */
 function createCalendar1DaySlotGrid(dateKey, onSaved) {
   const scroll = createCalendar1DaySlotGridScroll();
@@ -3896,103 +3953,6 @@ function createCalendar1DaySlotGrid(dateKey, onSaved) {
   wireCalendar1DaySlotGridDragMove(scroll, dateKey, onSaved);
   paintCalendar1DaySlotGrid(scroll, dateKey);
   return scroll;
-}
-
-/** 일간뷰 오른쪽 패널 상단 — 날짜 피커 해당 날 캘린더 셀 할일·일정(작게) */
-function createCalendar1DayDayTasksCompactPanel(dateKey, onAfterChange) {
-  const wrap = document.createElement("div");
-  wrap.className = "calendar-1day-day-tasks-compact";
-
-  const head = document.createElement("div");
-  head.className = "calendar-1day-pane-section-head";
-  head.textContent = "할일 · 일정";
-  wrap.appendChild(head);
-
-  const scroll = document.createElement("div");
-  scroll.className = "calendar-1day-day-tasks-compact-scroll";
-
-  const list = document.createElement("div");
-  list.className = "calendar-1day-day-tasks-compact-list";
-
-  const tasks = getAllTasksForDateDisplay(dateKey);
-  const todayYmd = timeLedgerLocalTodayYmd();
-
-  if (!tasks.length) {
-    const empty = document.createElement("p");
-    empty.className = "calendar-1day-day-tasks-compact-empty";
-    empty.textContent = "할일 / 일정 없음";
-    list.appendChild(empty);
-  } else {
-    tasks.forEach((t) => {
-      const isSingleDay = !calendarTaskIsMultiDayDateSpan(t);
-      const baseColor = getSectionColor(t.sectionId);
-      const item = document.createElement("button");
-      item.type = "button";
-      item.className =
-        "calendar-1day-day-task-chip" +
-        (isSingleDay
-          ? " calendar-1day-day-task-chip--todo"
-          : " calendar-1day-day-task-chip--range") +
-        ((t.itemType || "todo").toLowerCase() !== "todo"
-          ? " calendar-1day-day-task-chip--schedule"
-          : "");
-      if (t.done) item.classList.add("is-completed");
-      if (isPastCalendarTask(t, todayYmd)) item.classList.add("is-past");
-
-      const barModel = {
-        name: t.name,
-        taskId: t.taskId || "",
-        sectionId: t.sectionId || "",
-        startDate: (t.startDate || "").slice(0, 10) || dateKey,
-        dueDate: (t.dueDate || "").slice(0, 10) || dateKey,
-        startTime: t.startTime || "",
-        endTime: t.endTime || "",
-        itemType: t.itemType || "todo",
-        done: !!t.done,
-        isSingleDay,
-        dateKey,
-      };
-
-      if (isSingleDay) {
-        const borderColor = todoQualifiesCalendarShortSpanBarAccent(
-          barModel.startDate,
-          barModel.dueDate,
-        )
-          ? CALENDAR_SHORT_SPAN_BAR_HEX
-          : timetableAccentTextColor(baseColor) || baseColor;
-        barModel.borderColor = borderColor;
-        item.style.setProperty(
-          "--bar-border",
-          borderColor || CALENDAR_SHORT_SPAN_BAR_HEX,
-        );
-      } else {
-        barModel.color = withMoreTransparency(baseColor);
-        item.style.setProperty("--bar-bg", barModel.color || "");
-        lpApplyCalendarMultiDaySpanBarBackground(item, barModel);
-      }
-
-      const name = String(t.name || "").trim();
-      const timePart = [t.startTime, t.endTime].filter(Boolean).join(" ~ ");
-      const timeHtml = timePart
-        ? `<span class="calendar-1day-day-task-chip-time">${escapeHtml(timePart)}</span>`
-        : "";
-      item.innerHTML = `<span class="calendar-1day-day-task-chip-inner">${lpBuildCalendarSpanBarInnerHtml(name, !!t.done)}${timeHtml}</span>`;
-      item.title = timePart ? `${name} (${timePart})` : name;
-
-      const refresh = () => {
-        try {
-          onAfterChange?.();
-        } catch (_) {}
-      };
-      lpAttachCalendarBarOpenTodoEdit(item, barModel, refresh, refresh);
-
-      list.appendChild(item);
-    });
-  }
-
-  scroll.appendChild(list);
-  wrap.appendChild(scroll);
-  return wrap;
 }
 
 /** 캘린더 일간뷰(슬롯 그리드 모드) — 예상 일정 카드 목록 */
@@ -4268,16 +4228,11 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
       const gridPane = document.createElement("div");
       gridPane.className = "calendar-1day-dual-pane__grid";
       gridPane.appendChild(
-        createCalendar1DaySlotGrid(targetKey, () => renderCalendar()),
+        createCalendar1DayTimeboxPanel(targetKey, () => renderCalendar()),
       );
 
       const cardsPane = document.createElement("div");
       cardsPane.className = "calendar-1day-dual-pane__cards";
-      cardsPane.appendChild(
-        createCalendar1DayDayTasksCompactPanel(targetKey, () =>
-          renderCalendar(),
-        ),
-      );
       cardsPane.appendChild(
         createCalendar1DayExpectedCardsPanel(
           targetKey,
