@@ -3,6 +3,7 @@
 import {
   createTimeLedgerDayTimeboxElement,
   refreshTimeLedgerDayTimeboxScroll,
+  TIME_LEDGER_TIMEBOX_GRID_ROWS,
 } from "./timeLedgerDayTimebox.js";
 
 function parseYmd(ymd) {
@@ -109,16 +110,31 @@ function formatWeekDayLabel(ymd) {
   return `${p.mo + 1}/${p.d}(${weekdays[dt.getDay()]})`;
 }
 
-function appendWeekDayPanel(parent, ymd, blocks) {
-  const p = parseYmd(ymd);
-  const dayDate = p ? new Date(p.y, p.mo, p.d) : null;
-  const showRowLabels = dayDate ? getMondayBasedDow(dayDate) === 0 : false;
+function createWeekTimeboxHourRail() {
+  const rail = document.createElement("div");
+  rail.className = "time-ledger-week-timebox-hour-rail";
+  rail.setAttribute("aria-hidden", "true");
 
+  const head = document.createElement("div");
+  head.className = "time-ledger-week-timebox-hour-rail-head";
+  rail.appendChild(head);
+
+  const body = document.createElement("div");
+  body.className = "time-ledger-week-timebox-hour-rail-body";
+  for (let row = 0; row < TIME_LEDGER_TIMEBOX_GRID_ROWS; row += 1) {
+    const label = document.createElement("span");
+    label.className = "time-ledger-week-timebox-hour-rail-label";
+    label.textContent = String(row).padStart(2, "0");
+    body.appendChild(label);
+  }
+  rail.appendChild(body);
+
+  return rail;
+}
+
+function appendWeekDayPanel(parent, ymd, blocks) {
   const dayWrap = document.createElement("section");
   dayWrap.className = "time-ledger-week-timebox-day";
-  if (showRowLabels) {
-    dayWrap.classList.add("time-ledger-week-timebox-day--time-labels");
-  }
   dayWrap.dataset.ymd = ymd;
 
   const head = document.createElement("div");
@@ -128,7 +144,7 @@ function appendWeekDayPanel(parent, ymd, blocks) {
 
   const dayScroll = createTimeLedgerDayTimeboxElement(blocks, {
     showEmptyMessage: false,
-    showRowLabels,
+    showRowLabels: false,
   });
   dayScroll.classList.add("time-ledger-day-timebox-scroll--week-compact");
   dayWrap.appendChild(dayScroll);
@@ -142,9 +158,9 @@ export function createTimeLedgerWeekTimeboxElement({
   rangeEndYmd,
   blocksByDay,
 }) {
-  const scroll = document.createElement("div");
-  scroll.className = "time-ledger-week-timebox-scroll";
-  scroll.setAttribute(
+  const layout = document.createElement("div");
+  layout.className = "time-ledger-week-timebox-layout";
+  layout.setAttribute(
     "aria-label",
     "주별 시간박스 — 선택 기간 날짜별 5분 단위 기록",
   );
@@ -154,15 +170,23 @@ export function createTimeLedgerWeekTimeboxElement({
     const empty = document.createElement("p");
     empty.className = "time-ledger-timebox-multi-day-msg";
     empty.textContent = "조회 기간을 선택해 주세요.";
-    scroll.appendChild(empty);
-    return scroll;
+    layout.appendChild(empty);
+    return layout;
   }
 
-  days.forEach((ymd) => {
-    appendWeekDayPanel(scroll, ymd, blocksByDay?.get?.(ymd) || []);
-  });
+  layout.appendChild(createWeekTimeboxHourRail());
 
-  return scroll;
+  const scroll = document.createElement("div");
+  scroll.className = "time-ledger-week-timebox-scroll";
+  const daysTrack = document.createElement("div");
+  daysTrack.className = "time-ledger-week-timebox-days-track";
+  days.forEach((ymd) => {
+    appendWeekDayPanel(daysTrack, ymd, blocksByDay?.get?.(ymd) || []);
+  });
+  scroll.appendChild(daysTrack);
+  layout.appendChild(scroll);
+
+  return layout;
 }
 
 export function refreshTimeLedgerWeekTimeboxElement(shell, blocksByDay) {

@@ -2537,22 +2537,92 @@
   line-height: 1.45;
 }
 
-/* 주별 타임박스 — 선택 기간 날짜(최대 7일 등)를 나란히 */
-.time-ledger-week-timebox-scroll,
-[data-legacy~="time-ledger-view"] .time-ledger-week-timebox-scroll {
+/* 주별 타임박스 — 시간 라벨(고정) + 날짜 열(가로 스크롤) */
+.time-ledger-week-timebox-layout,
+[data-legacy~="time-ledger-view"] .time-ledger-week-timebox-layout {
   flex: 1 1 0;
   min-height: 0;
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  gap: 0.28rem;
+  overflow: hidden;
+  padding: 0.25rem 0.45rem 0.4rem;
+  box-sizing: border-box;
+  background: #ffffff;
+}
+
+.time-ledger-week-timebox-hour-rail,
+[data-legacy~="time-ledger-view"] .time-ledger-week-timebox-hour-rail {
+  flex: 0 0 0.95rem;
+  width: 0.95rem;
+  min-width: 0.95rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin-right: 0.12rem;
+  background: #ffffff;
+  box-shadow: 4px 0 6px -4px rgba(15, 23, 42, 0.1);
+}
+
+.time-ledger-week-timebox-hour-rail-head,
+.time-ledger-week-timebox-day-head,
+[data-legacy~="time-ledger-view"] .time-ledger-week-timebox-hour-rail-head,
+[data-legacy~="time-ledger-view"] .time-ledger-week-timebox-day-head {
+  flex-shrink: 0;
+  min-height: calc(0.6875rem * 1.25 + 0.3rem);
+  padding: 0.12rem 0 0.18rem;
+  box-sizing: border-box;
+}
+
+.time-ledger-week-timebox-hour-rail-body,
+[data-legacy~="time-ledger-view"] .time-ledger-week-timebox-hour-rail-body {
+  flex: 1 1 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: repeat(24, minmax(0, 1fr));
+  gap: 0.12rem;
+  padding: 0.12rem 0 0.15rem;
+  box-sizing: border-box;
+}
+
+.time-ledger-week-timebox-hour-rail-label,
+[data-legacy~="time-ledger-view"] .time-ledger-week-timebox-hour-rail-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: #999999;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.time-ledger-week-timebox-scroll,
+[data-legacy~="time-ledger-view"] .time-ledger-week-timebox-scroll {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  display: block;
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 0.25rem 0.45rem 0.4rem;
+  padding: 0;
   box-sizing: border-box;
   scroll-snap-type: x proximity;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x pan-y;
+}
+
+.time-ledger-week-timebox-days-track,
+[data-legacy~="time-ledger-view"] .time-ledger-week-timebox-days-track {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0.28rem;
+  min-height: 100%;
+  width: max-content;
+  min-width: 100%;
+  box-sizing: border-box;
 }
 
 .time-ledger-week-timebox-day,
@@ -2566,21 +2636,12 @@
   scroll-snap-align: start;
 }
 
-.time-ledger-week-timebox-day--time-labels,
-[data-legacy~="time-ledger-view"] .time-ledger-week-timebox-day--time-labels {
-  flex-basis: 8.5rem;
-  width: 8.5rem;
-  min-width: 8.5rem;
-}
-
 .time-ledger-week-timebox-day-head,
 [data-legacy~="time-ledger-view"] .time-ledger-week-timebox-day-head {
-  flex-shrink: 0;
   font-size: 0.6875rem;
   font-weight: 700;
   text-align: center;
   color: #475569;
-  padding: 0.12rem 0 0.18rem;
   letter-spacing: -0.02em;
   white-space: nowrap;
 }
@@ -2590,6 +2651,13 @@
   flex: 1 1 0;
   min-height: 0;
   padding: 0.12rem 0.08rem 0.15rem;
+}
+
+.time-ledger-day-timebox-scroll--week-compact .time-ledger-day-timebox-matrix-body,
+[data-legacy~="time-ledger-view"]
+  .time-ledger-day-timebox-scroll--week-compact
+  .time-ledger-day-timebox-matrix-body {
+  gap: 0.12rem;
 }
 
 .time-ledger-day-timebox-scroll--week-compact .time-ledger-day-timebox-matrix-head,
@@ -2602,25 +2670,14 @@
 .time-ledger-day-timebox-scroll--week-compact .time-ledger-day-timebox-matrix-row,
 [data-legacy~="time-ledger-view"]
   .time-ledger-day-timebox-scroll--week-compact
-  .time-ledger-day-timebox-matrix-row {
-  grid-template-columns: 0.8rem repeat(12, minmax(0, 1fr));
-  gap: 0.05rem;
-}
-
+  .time-ledger-day-timebox-matrix-row,
 .time-ledger-day-timebox-scroll--week-compact.time-ledger-day-timebox-scroll--no-row-labels
   .time-ledger-day-timebox-matrix-row,
 [data-legacy~="time-ledger-view"]
   .time-ledger-day-timebox-scroll--week-compact.time-ledger-day-timebox-scroll--no-row-labels
   .time-ledger-day-timebox-matrix-row {
   grid-template-columns: repeat(12, minmax(0, 1fr));
-}
-
-.time-ledger-day-timebox-scroll--week-compact .time-ledger-day-timebox-matrix-row-label,
-[data-legacy~="time-ledger-view"]
-  .time-ledger-day-timebox-scroll--week-compact
-  .time-ledger-day-timebox-matrix-row-label {
-  font-size: 0.5625rem;
-  line-height: 1;
+  gap: 0.05rem;
 }
 
 .time-ledger-day-timebox-scroll--week-compact .time-ledger-day-timebox-empty,
