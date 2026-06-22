@@ -60,6 +60,19 @@ function isModalKeyboardContextOpen() {
   }
 }
 
+function isTaskLogModalTextInputFocused() {
+  const el = document.activeElement;
+  if (!(el instanceof HTMLElement)) return false;
+  if (
+    !el.closest(
+      ".time-task-log-modal, [data-legacy~='time-task-log-modal']",
+    )
+  ) {
+    return false;
+  }
+  return isTextInputFocused();
+}
+
 /**
  * Android(interactive-widget=overlays-content): 키보드가 layout·vv 를 안 줄이는 경우 추정
  * @param {number} h
@@ -68,8 +81,42 @@ function isModalKeyboardContextOpen() {
 function androidOverlayKeyboardFallbackPx(h, measuredKb) {
   if (!isAndroidLikeMobile()) return measuredKb;
   if (measuredKb > KEYBOARD_OPEN_PX) return measuredKb;
-  if (!isTextInputFocused() || !isModalKeyboardContextOpen()) return measuredKb;
-  return Math.max(measuredKb, Math.round(h * 0.42));
+  const inModal =
+    isModalKeyboardContextOpen() ||
+    isTaskLogModalTextInputFocused();
+  if (!isTextInputFocused() || !inModal) return measuredKb;
+  let guess = Math.round(h * 0.45);
+  try {
+    const outerGap = window.outerHeight - h;
+    if (outerGap > KEYBOARD_OPEN_PX) guess = Math.max(guess, outerGap);
+  } catch (_) {}
+  return Math.max(measuredKb, guess);
+}
+
+/** @param {number} [margin] */
+export function readMobileKeyboardVisibleBand(margin = 12) {
+  const vv = window.visualViewport;
+  const h = readInnerHeight();
+  let kb = 0;
+  try {
+    const raw = getComputedStyle(document.documentElement)
+      .getPropertyValue("--vv-keyboard")
+      .trim();
+    kb = parseFloat(raw) || 0;
+  } catch (_) {}
+  const top = (vv?.offsetTop || 0) + margin;
+  const vvBottom =
+    vv && vv.height > 0 ? vv.height + (vv.offsetTop || 0) : h;
+  const bottom = Math.min(vvBottom, Math.max(h - kb, top + 48)) - margin;
+  return { top, bottom, kb };
+}
+
+/** Android 키보드 애니메이션·vv resize 누락 대비 재측정 */
+export function scheduleMobileKeyboardInsetSync(run, delays = [0, 80, 180, 320, 520]) {
+  if (typeof run !== "function") return;
+  for (const ms of delays) {
+    window.setTimeout(run, ms);
+  }
 }
 
 function isTextInputFocused() {
@@ -117,16 +164,29 @@ export function syncVisualViewportKeyboardInset() {
   const vvKb = Math.max(0, h - vv.height - (vv.offsetTop || 0));
   const layoutShrinkKb = Math.max(0, _baselineInnerHeight - h);
   const measuredKb = Math.max(vvKb, layoutShrinkKb);
-  const kb = androidOverlayKeyboardFallbackPx(h, measuredKb);
-  const iosLayoutShrink = isIosLikeMobile() && layoutShrinkKb > vvKb + 8;
-  let visibleHeight = iosLayoutShrink ? h : vv.height;
-  if (
+  const taskLogKbLift =
+    isTaskLogModalTextInputFocused() &&
+    document.documentElement.classList.contains("lp-task-log-modal-open");
+  let kb = androidOverlayKeyboardFallbackPx(h, measuredKb);
+  if (taskLogKbLift && kb <= KEYBOARD_OPEN_PX) {
+    kb = Math.max(kb, Math.round(h * 0.45));
+  }
+  const layoutShrinkDominant = layoutShrinkKb > vvKb + 8;
+  const iosLayoutShrink = isIosLikeMobile() && layoutShrinkDominant;
+  let visibleHeight = iosLayoutShrink || layoutShrinkDominant ? h : vv.height;
+  if (taskLogKbLift && kb > KEYBOARD_OPEN_PX && !layoutShrinkDominant) {
+    visibleHeight = h - kb;
+  } else if (
     isAndroidLikeMobile() &&
     kb > KEYBOARD_OPEN_PX &&
-    measuredKb <= KEYBOARD_OPEN_PX
+    measuredKb <= KEYBOARD_OPEN_PX &&
+    !layoutShrinkDominant
   ) {
     visibleHeight = Math.max(vv.height, h - kb);
   }
+  const keyboardOpen =
+    (kb > KEYBOARD_OPEN_PX || taskLogKbLift) &&
+    !shouldSkipTaskLogModalKeyboardReposition();
   try {
     document.documentElement.style.setProperty("--vv-keyboard", `${kb}px`);
     document.documentElement.style.setProperty(
@@ -137,10 +197,7 @@ export function syncVisualViewportKeyboardInset() {
       "--vv-offset-top",
       `${vv.offsetTop || 0}px`,
     );
-    document.documentElement.classList.toggle(
-      "lp-keyboard-open",
-      kb > KEYBOARD_OPEN_PX && !shouldSkipTaskLogModalKeyboardReposition(),
-    );
+    document.documentElement.classList.toggle("lp-keyboard-open", keyboardOpen);
   } catch (_) {}
   return kb;
 }

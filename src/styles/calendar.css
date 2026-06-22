@@ -3136,18 +3136,21 @@
     bottom: auto;
     height: var(--vv-visible-height, 100dvh);
     max-height: var(--vv-visible-height, 100dvh);
-    align-items: flex-start;
-    justify-content: flex-start;
-    padding-top: max(0.35rem, env(safe-area-inset-top, 0px));
-    padding-bottom: 0.35rem;
+    overflow: hidden;
+    align-items: center;
+    justify-content: center;
+    padding: max(0.35rem, env(safe-area-inset-top, 0px)) 0.75rem 0.35rem;
+    box-sizing: border-box;
   }
 
   html.lp-keyboard-open.lp-task-log-modal-open
     .lp-calendar-budget-add-modal
     [data-legacy~="time-task-setup-panel"][data-legacy~="time-task-log-panel"] {
-    height: auto;
-    min-height: 0;
-    max-height: min(calc(var(--vv-visible-height, 100dvh) - 0.75rem), 41rem);
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: min(calc(var(--vv-visible-height, 100dvh) - 1rem), 41rem) !important;
+    width: 100%;
+    flex-shrink: 1;
   }
 }
 

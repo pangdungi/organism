@@ -3,8 +3,11 @@
  */
 
 import {
+  isAndroidLikeMobile,
   lockPageScrollForModalKeyboard,
+  readMobileKeyboardVisibleBand,
   resetViewportKeyboardBaseline,
+  scheduleMobileKeyboardInsetSync,
   syncVisualViewportKeyboardInset,
 } from "./mobileViewportKeyboard.js";
 
@@ -19,19 +22,12 @@ const DEFAULT_ALL_KEYBOARD_INPUT_SELECTOR = `${DEFAULT_MEMO_INPUT_SELECTOR}, ${D
 function isMobileMemoUi() {
   return (
     typeof window.matchMedia === "function" &&
-    window.matchMedia("(max-width: 46rem) and (pointer: coarse)").matches
+    window.matchMedia("(max-width: 46rem)").matches
   );
 }
 
 function readVisibleBand() {
-  const vv = window.visualViewport;
-  const margin = 12;
-  const top = (vv?.offsetTop || 0) + margin;
-  const bottom =
-    (vv && vv.height > 0
-      ? vv.height + (vv.offsetTop || 0)
-      : window.innerHeight) - margin;
-  return { top, bottom };
+  return readMobileKeyboardVisibleBand(12);
 }
 
 /**
@@ -100,29 +96,43 @@ export function bindTimeTaskLogModalMemoKeyboard(modal, opts = {}) {
     scrollArea?.style.removeProperty("--task-log-memo-scroll-pad");
   }
 
-  /** 키보드에 가려질 때만 최소한 스크롤 — 위로 밀어 올리지 않음 */
+  /** 키보드 위 가시 영역 안으로 입력란 이동 */
   function scrollFocusedInputIntoView(inputEl) {
     if (!(inputEl instanceof HTMLElement)) return;
     if (!(scrollArea instanceof HTMLElement)) return;
 
-    applyMemoScrollBottomSpace();
+    applyMemoScrollBottomSpace(true);
+    syncVisualViewportKeyboardInset();
     const { top, bottom } = readVisibleBand();
+    const pad = 14;
+    const wantBottom = bottom - pad;
+    const wantTop = top + pad;
     const rect = inputEl.getBoundingClientRect();
 
-    if (rect.bottom > bottom) {
-      scrollArea.scrollTop += rect.bottom - bottom;
-      return;
+    if (rect.bottom > wantBottom) {
+      scrollArea.scrollTop += rect.bottom - wantBottom;
     }
-    if (rect.top < top && rect.bottom < top) {
-      scrollArea.scrollTop += rect.top - top;
+    const rect2 = inputEl.getBoundingClientRect();
+    if (rect2.top < wantTop) {
+      scrollArea.scrollTop -= wantTop - rect2.top;
     }
   }
 
   function runMemoScrollPasses(inputEl) {
     applyMemoScrollBottomSpace(true);
-    scrollFocusedInputIntoView(inputEl);
-    requestAnimationFrame(() => scrollFocusedInputIntoView(inputEl));
-    window.setTimeout(() => scrollFocusedInputIntoView(inputEl), 150);
+    const align = () => scrollFocusedInputIntoView(inputEl);
+    align();
+    requestAnimationFrame(align);
+    window.setTimeout(align, 150);
+    if (isAndroidLikeMobile()) {
+      scheduleMobileKeyboardInsetSync(() => {
+        if (document.activeElement !== inputEl) return;
+        syncVisualViewportKeyboardInset();
+        lockPageScrollForModalKeyboard();
+        applyMemoScrollBottomSpace(true);
+        align();
+      });
+    }
   }
 
   function runDatetimeScrollPasses(inputEl) {
@@ -192,6 +202,12 @@ export function bindTimeTaskLogModalMemoKeyboard(modal, opts = {}) {
     });
     window.addEventListener("resize", adjustOnResize, { passive: true });
     adjustOnResize();
+    if (isAndroidLikeMobile()) {
+      scheduleMobileKeyboardInsetSync(() => {
+        if (document.activeElement !== inputEl) return;
+        adjustOnResize();
+      }, [280, 480, 720]);
+    }
   }
 
   function bindMemoScrollMode(inputEl) {
@@ -231,6 +247,14 @@ export function bindTimeTaskLogModalMemoKeyboard(modal, opts = {}) {
     const runWithLock = () => {
       syncVisualViewportKeyboardInset();
       lockPageScrollForModalKeyboard();
+      const active = document.activeElement;
+      if (
+        active instanceof HTMLElement &&
+        modal.contains(active) &&
+        active.matches(allKeyboardInputSelector)
+      ) {
+        scrollFocusedInputIntoView(active);
+      }
     };
     modal.addEventListener("focusin", runWithLock, {
       capture: true,
@@ -242,7 +266,11 @@ export function bindTimeTaskLogModalMemoKeyboard(modal, opts = {}) {
     });
     runWithLock();
     requestAnimationFrame(runWithLock);
-    window.setTimeout(runWithLock, 120);
+    if (isAndroidLikeMobile()) {
+      scheduleMobileKeyboardInsetSync(runWithLock);
+    } else {
+      window.setTimeout(runWithLock, 120);
+    }
   }
 
   function bindAllMemoInputs() {

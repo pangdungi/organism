@@ -373,7 +373,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 }
 
 /* 과제 기록 — 모바일: flex 줄어듦 방지, 스크롤로 메모를 키보드 위에 */
-@media (max-width: 46rem) and (pointer: coarse) {
+@media (max-width: 46rem) {
   html.lp-task-log-modal-open
     .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal),
   html.lp-task-log-modal-open
@@ -466,10 +466,11 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
     bottom: auto;
     height: var(--vv-visible-height, 100dvh);
     max-height: var(--vv-visible-height, 100dvh);
-    align-items: flex-start;
-    justify-content: flex-start;
-    padding-top: max(0.35rem, env(safe-area-inset-top, 0px));
-    padding-bottom: 0.35rem;
+    overflow: hidden;
+    align-items: center;
+    justify-content: center;
+    padding: max(0.35rem, env(safe-area-inset-top, 0px)) 0.75rem 0.35rem;
+    box-sizing: border-box;
   }
 
   html.lp-keyboard-open.lp-task-log-modal-open
@@ -480,9 +481,12 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
       .lp-calendar-budget-add-modal
     )
     [data-legacy~="time-task-setup-panel"][data-legacy~="time-task-log-panel"] {
-    height: auto;
-    min-height: 0;
-    max-height: min(calc(var(--vv-visible-height, 100dvh) - 0.75rem), 41rem);
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: min(calc(var(--vv-visible-height, 100dvh) - 1rem), 41rem) !important;
+    width: 100%;
+    max-width: var(--lp-modal-max);
+    flex-shrink: 1;
   }
 
   /* ── 공통 컴팩트 모달 (KPI 할일 추가·수정 등 짧은 입력) — 키보드 시 가운데 유지 ── */
