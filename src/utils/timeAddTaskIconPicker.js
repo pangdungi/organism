@@ -13,6 +13,7 @@ import {
   resolveTimeTaskIconKey,
   matchTimeTaskPickerIconSearch,
   TIME_TASK_ICON_PICKER_LIST_OPTS,
+  CALENDAR_STAMP_ICON_PICKER_LIST_OPTS,
 } from "./timeTaskIconUrls.js";
 import { attachPickerIconSrcFallback } from "./timeTaskIconLazyDisplay.js";
 import { lpSetClasses, lpTokenToggle } from "./timeLedgerClassPolicy.js";
@@ -237,7 +238,7 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
     gridMount.appendChild(grid);
     mountPickerIconGrid(
       grid,
-      getTimeTaskPickableIcons(TIME_TASK_ICON_PICKER_LIST_OPTS),
+      getTimeTaskPickableIcons(CALENDAR_STAMP_ICON_PICKER_LIST_OPTS),
       (key) => {
       currentKey = key;
       onPick?.(key);

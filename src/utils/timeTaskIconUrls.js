@@ -167,6 +167,10 @@ const PICKER_SEARCH_EXTRA_RAW = {
   회복중: "회복 휴식 쉬는 recovering",
   배부름: "배부름 배부르 포만 식사 먹음",
   "우울해하지말자": "우울해하지말자 우울 위로 힘내",
+  장례식: "장례 funeral",
+  졸업식: "졸업 graduation",
+  스승의날: "스승의날 스승 선생님 감사",
+  어버이날: "어버이날 부모님 효",
   "day off1": "연차 쉬는날",
   day: "데이",
   evening: "이브닝",
@@ -223,8 +227,13 @@ const PICKER_SEARCH_EXTRA_NFC = (() => {
   return map;
 })();
 
-/** 과제·캘린더 스탬프 picker — 동일 아이콘·검색 목록 */
+/** 과제 설정 모달 — 캘린더 스탬프·공휴일 전용 아이콘 제외 */
 export const TIME_TASK_ICON_PICKER_LIST_OPTS = {
+  includeCalendarStampOnly: false,
+};
+
+/** 캘린더 날짜 스탬프 picker — 공휴일·스탬프 전용 아이콘 포함 */
+export const CALENDAR_STAMP_ICON_PICKER_LIST_OPTS = {
   includeCalendarStampOnly: true,
 };
 
@@ -531,6 +540,12 @@ const CALENDAR_STAMP_ONLY_PICKER_SLUGS = new Set(
     "광복절",
     "개천절",
     "한글날",
+    "설날",
+    "추석",
+    "장례식",
+    "졸업식",
+    "스승의날",
+    "어버이날",
   ].map((s) => s.normalize("NFC")),
 );
 
