@@ -1631,6 +1631,10 @@ function applyMobileCardPriceEl(priceEl, rowData, hourlyRate) {
   }
   lpTokenAdd(priceEl, `time-mobile-card-price--${slot}`);
   priceEl.classList.add(`time-mobile-card-price--${slot}`);
+  lpTokenToggle(priceEl, "is-negative", value < 0);
+  priceEl.classList.toggle("is-negative", value < 0);
+  lpTokenToggle(priceEl, "is-positive", value > 0);
+  priceEl.classList.toggle("is-positive", value > 0);
   if (slot === "other") {
     priceEl.textContent = "\u00a0";
     lpTokenRemove(priceEl, "time-mobile-card-price--has-rating-return");

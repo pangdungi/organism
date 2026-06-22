@@ -453,6 +453,30 @@
   font-size: 0.625rem;
 }
 
+/* 행동의 가치: 생산적 + 빨강, 비생산(마이너스) 파랑 */
+.time-ledger-view
+  .diary-tab5-timeline-price.time-mobile-card-price--productive,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-timeline-price.time-mobile-card-price--productive {
+  color: #c02b2b;
+}
+.time-ledger-view
+  .diary-tab5-timeline-price.time-mobile-card-price--nonproductive,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-timeline-price.time-mobile-card-price--nonproductive,
+.time-ledger-view .time-price-display.is-negative,
+[data-legacy~="time-ledger-view"] .time-price-display.is-negative,
+.time-ledger-view .time-section-summary-price.is-negative,
+[data-legacy~="time-ledger-view"] .time-section-summary-price.is-negative {
+  color: #1d4ed8;
+}
+.time-ledger-view .time-price-display.is-positive,
+[data-legacy~="time-ledger-view"] .time-price-display.is-positive,
+.time-ledger-view .time-section-summary-price.is-positive,
+[data-legacy~="time-ledger-view"] .time-section-summary-price.is-positive {
+  color: #c02b2b;
+}
+
 [data-legacy~="time-ledger-view"]
   [data-legacy~="time-ledger-usage-history-total-wrap"] {
   flex: 0 0 auto;
