@@ -160,6 +160,7 @@ import {
   ledgerRowDisplayTaskName,
   ledgerRowTimeboxDisplayLabel,
   ledgerRowUsesDetailAsDisplayName,
+  ledgerRowUserMemoFeedback,
 } from "../utils/timeLedgerCardKpiMemo.js";
 import { mountTimeLedgerMemoFeed } from "../utils/timeLedgerMemoFeed.js";
 import {
@@ -7103,14 +7104,18 @@ export function render(opts = {}) {
           </div>
         </div>
         <div data-legacy="time-task-log-memo-section">
-          <span data-legacy="time-task-log-section-label time-task-log-memo-section-label">메모</span>
           <div data-legacy="time-task-log-memo-fields">
             <div data-legacy="time-task-log-field time-task-log-meal-detail-section" hidden>
               <label data-legacy="time-task-log-section-label time-task-log-meal-detail-label" for="time-task-log-meal-detail">식단명</label>
               <input type="text" id="time-task-log-meal-detail" data-legacy="time-task-log-meal-detail-input time-task-log-memo-input" placeholder="무엇을 드셨는지 한 줄로 적어 주세요" autocomplete="off" />
             </div>
             <div data-legacy="time-task-log-field">
-              <textarea data-legacy="time-task-log-feedback time-task-log-memo-input" rows="2" placeholder="메모를 입력하세요"></textarea>
+              <label data-legacy="time-task-log-section-label time-task-log-memo-section-label" for="time-task-log-feedback">메모</label>
+              <textarea id="time-task-log-feedback" data-legacy="time-task-log-feedback time-task-log-memo-input" rows="2" placeholder="메모를 입력하세요"></textarea>
+            </div>
+            <div data-legacy="time-task-log-recent-reviews" hidden>
+              <span data-legacy="time-task-log-section-label time-task-log-recent-reviews-label">최근 구매 후기</span>
+              <ul data-legacy="time-task-log-recent-reviews-list"></ul>
             </div>
           </div>
         </div>
@@ -7669,6 +7674,118 @@ export function render(opts = {}) {
   const taskLogMealDetailLabel = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-meal-detail-label"]',
   );
+  const taskLogMemoSectionLabel = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-memo-section-label"]',
+  );
+  const taskLogRecentReviewsSection = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-recent-reviews"]',
+  );
+  const taskLogRecentReviewsList = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-recent-reviews-list"]',
+  );
+
+  const TASK_LOG_MEMO_LABEL_DEFAULT = "메모";
+  const TASK_LOG_MEMO_PLACEHOLDER_DEFAULT = "메모를 입력하세요";
+  const TASK_LOG_MEMO_LABEL_NONPRODUCTIVE = "구매 후기";
+  const TASK_LOG_MEMO_PLACEHOLDER_NONPRODUCTIVE = "구매 후기를 입력하세요";
+  const TASK_LOG_RECENT_REVIEW_LIMIT = 5;
+
+  function extractTaskLogRecentReviewMemo(row) {
+    let memo = ledgerRowUserMemoFeedback(row);
+    if (!memo) return "";
+    return memo.replace(/#[^\s#]+/g, "").trim();
+  }
+
+  function collectTaskLogRecentReviews(taskName, excludeEntryId) {
+    const tn = (taskName || "").trim();
+    if (!tn || !isNonproductiveTaskForTaskLogModal(tn)) return [];
+    const exclude = String(excludeEntryId || "").trim();
+    const matched = readTimeLedgerEntriesRaw().filter((row) => {
+      if ((row.taskName || "").trim() !== tn) return false;
+      if (exclude && String(row.id || "").trim() === exclude) return false;
+      return !!extractTaskLogRecentReviewMemo(row);
+    });
+    return sortRowsByDateTime(matched)
+      .reverse()
+      .slice(0, TASK_LOG_RECENT_REVIEW_LIMIT);
+  }
+
+  function formatTaskLogRecentReviewRatingHtml(row, taskName) {
+    const rating = normalizeTimeRatingForRow(row?.timeRating);
+    if (rating == null) return "";
+    if (TTC.isEmotionalBuiltinTaskName(taskName)) {
+      return formatTimeLedgerEmotionRatingHtml(row.timeRating) || "";
+    }
+    return formatTimeLedgerCardRatingStarsHtml(row.timeRating) || "";
+  }
+
+  function refreshTaskLogRecentReviews(taskName) {
+    if (!taskLogRecentReviewsSection || !taskLogRecentReviewsList) return;
+    const tn = (taskName || "").trim();
+    if (!isNonproductiveTaskForTaskLogModal(tn)) {
+      taskLogRecentReviewsSection.hidden = true;
+      taskLogRecentReviewsList.replaceChildren();
+      return;
+    }
+    const excludeId = String(taskLogEditTr?._rowData?.id || "").trim();
+    const rows = collectTaskLogRecentReviews(tn, excludeId);
+    taskLogRecentReviewsList.replaceChildren();
+    if (!rows.length) {
+      taskLogRecentReviewsSection.hidden = true;
+      return;
+    }
+    taskLogRecentReviewsSection.hidden = false;
+    for (const row of rows) {
+      const memoText = extractTaskLogRecentReviewMemo(row);
+      if (!memoText) continue;
+      const li = document.createElement("li");
+      lpSetClasses(li, "time-task-log-recent-review-item");
+      const memoEl = document.createElement("div");
+      lpSetClasses(memoEl, "time-task-log-recent-review-memo");
+      memoEl.textContent = memoText;
+      li.appendChild(memoEl);
+      const ratingHtml = formatTaskLogRecentReviewRatingHtml(row, tn);
+      if (ratingHtml) {
+        const starsEl = document.createElement("div");
+        lpSetClasses(starsEl, "time-task-log-recent-review-stars");
+        starsEl.innerHTML = ratingHtml;
+        li.appendChild(starsEl);
+      }
+      taskLogRecentReviewsList.appendChild(li);
+    }
+  }
+
+  function isNonproductiveTaskForTaskLogModal(taskName) {
+    const tn = (taskName || "").trim();
+    if (!tn) return false;
+    const opt = getTaskOptionByName(tn);
+    return String(opt?.productivity || "").trim() === "nonproductive";
+  }
+
+  function updateTaskLogMemoCopyForProductivity(taskName) {
+    const isNonprod = isNonproductiveTaskForTaskLogModal(taskName);
+    const memoLabel = isNonprod
+      ? TASK_LOG_MEMO_LABEL_NONPRODUCTIVE
+      : TASK_LOG_MEMO_LABEL_DEFAULT;
+    const memoPlaceholder = isNonprod
+      ? TASK_LOG_MEMO_PLACEHOLDER_NONPRODUCTIVE
+      : TASK_LOG_MEMO_PLACEHOLDER_DEFAULT;
+    if (taskLogMemoSectionLabel) {
+      taskLogMemoSectionLabel.textContent = memoLabel;
+    }
+    if (taskLogFeedbackInput) {
+      taskLogFeedbackInput.placeholder = memoPlaceholder;
+      taskLogFeedbackInput.setAttribute("aria-label", memoPlaceholder);
+    }
+    const memoInnerInput = taskLogModal.querySelector(
+      '[data-legacy~="time-task-log-memo-inner-input"]',
+    );
+    if (memoInnerInput) {
+      memoInnerInput.placeholder = memoPlaceholder;
+      memoInnerInput.setAttribute("aria-label", memoPlaceholder);
+    }
+    refreshTaskLogRecentReviews(taskName);
+  }
 
   function updateTaskLogMealDetailVisibility(taskName) {
     const tn = (taskName || "").trim();
@@ -7710,6 +7827,7 @@ export function render(opts = {}) {
       if (!isEmotion) clearTaskLogEmotionTrigger();
     }
     taskLogScrollArea?.classList?.toggle("is-content-detail-task", isChipDetail);
+    updateTaskLogMemoCopyForProductivity(tn);
   }
   let taskLogMemoTags = [];
 

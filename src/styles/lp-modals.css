@@ -1614,6 +1614,57 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   padding-top: 0.65rem;
   border-top: 1px solid var(--lp-modal-border);
 }
+.time-task-log-recent-reviews,
+[data-legacy~="time-task-log-recent-reviews"] {
+  margin-top: 0.55rem;
+}
+.time-task-log-recent-reviews-label,
+[data-legacy~="time-task-log-recent-reviews-label"] {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--lp-modal-navy-muted);
+}
+.time-task-log-recent-reviews-list,
+[data-legacy~="time-task-log-recent-reviews-list"] {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.time-task-log-recent-review-item,
+[data-legacy~="time-task-log-recent-review-item"] {
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+.time-task-log-recent-review-memo,
+[data-legacy~="time-task-log-recent-review-memo"] {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #475569;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.time-task-log-recent-review-stars,
+[data-legacy~="time-task-log-recent-review-stars"] {
+  margin-top: 0.28rem;
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  letter-spacing: -0.04em;
+}
+.time-task-log-recent-review-stars .is-on,
+[data-legacy~="time-task-log-recent-review-stars"] .is-on {
+  color: #d97706;
+}
+.time-task-log-recent-review-stars .is-off,
+[data-legacy~="time-task-log-recent-review-stars"] .is-off {
+  color: #cbd5e1;
+}
 .time-task-log-tags-wrap,
 [data-legacy~="time-task-log-tags-wrap"] {
   display: flex;

@@ -771,14 +771,14 @@ export function openCalendarExpectedScheduleModal(options) {
             <div data-legacy="time-task-log-emotion-trigger-chips lp-choice-chip-row"></div>
           </div>
           <div data-legacy="time-task-log-memo-section">
-            <span data-legacy="time-task-log-section-label time-task-log-memo-section-label">메모</span>
             <div data-legacy="time-task-log-memo-fields">
               <div data-legacy="time-task-log-field time-task-log-meal-detail-section" hidden>
                 <label data-legacy="time-task-log-section-label time-task-log-meal-detail-label" for="lp-calendar-expected-detail-input">식단명</label>
                 <input type="text" id="lp-calendar-expected-detail-input" data-legacy="time-task-log-meal-detail-input time-task-log-memo-input" placeholder="무엇을 드셨는지 한 줄로 적어 주세요" autocomplete="off" />
               </div>
               <div data-legacy="time-task-log-field">
-                <textarea data-legacy="time-task-log-feedback time-task-log-memo-input" rows="2" placeholder="메모를 입력하세요"></textarea>
+                <label data-legacy="time-task-log-section-label time-task-log-memo-section-label" for="lp-calendar-expected-feedback">메모</label>
+                <textarea id="lp-calendar-expected-feedback" data-legacy="time-task-log-feedback time-task-log-memo-input" rows="2" placeholder="메모를 입력하세요"></textarea>
               </div>
             </div>
           </div>
