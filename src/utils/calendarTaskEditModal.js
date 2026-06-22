@@ -255,9 +255,9 @@ export function openCalendarTaskEditFromBarModel(barModel, options = {}) {
   const b = barModel || {};
   const taskId = String(b.taskId || "").trim();
   const sectionId = String(b.sectionId || "").trim();
-  const runAfter = () => {
+  const runAfter = (applyMeta = {}) => {
     try {
-      onAfterApply?.();
+      onAfterApply?.(applyMeta);
     } catch (_) {}
   };
 
@@ -287,6 +287,14 @@ export function openCalendarTaskEditFromBarModel(barModel, options = {}) {
     String(row.itemType || b.itemType || "todo").toLowerCase() === "schedule"
       ? "schedule"
       : "todo";
+  const prevName = String(row.name || b.name || "").trim();
+  const prevStart = String(row.startDate || b.startDate || "")
+    .trim()
+    .slice(0, 10);
+  const prevDue = String(row.dueDate || b.dueDate || "")
+    .trim()
+    .slice(0, 10);
+  const prevDone = !!(row.done ?? b.done);
 
   showCalendarTaskEditModal({
     taskData: {
@@ -355,7 +363,20 @@ export function openCalendarTaskEditFromBarModel(barModel, options = {}) {
         sortOrder: 0,
       }).catch(() => {});
 
-      runAfter();
+      const mergedName = (payload.name || "").trim();
+      const mergedStart = (payload.startDate || "").trim().slice(0, 10) || "";
+      const mergedDue = (payload.dueDate || "").trim().slice(0, 10) || "";
+      const mergedDone = !!payload.done;
+      const doneOnly =
+        mergedName === prevName &&
+        mergedStart === prevStart &&
+        mergedDue === prevDue &&
+        mergedDone !== prevDone;
+      runAfter(
+        doneOnly
+          ? { doneOnly: true, taskId, done: mergedDone }
+          : undefined,
+      );
     },
     onDelete: () => {
       clearSubtasks(taskId);

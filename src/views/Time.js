@@ -7686,8 +7686,8 @@ export function render(opts = {}) {
 
   const TASK_LOG_MEMO_LABEL_DEFAULT = "메모";
   const TASK_LOG_MEMO_PLACEHOLDER_DEFAULT = "메모를 입력하세요";
-  const TASK_LOG_MEMO_LABEL_NONPRODUCTIVE = "구매 후기";
-  const TASK_LOG_MEMO_PLACEHOLDER_NONPRODUCTIVE = "구매 후기를 입력하세요";
+  const TASK_LOG_MEMO_LABEL_PURCHASE_REVIEW = "구매 후기";
+  const TASK_LOG_MEMO_PLACEHOLDER_PURCHASE_REVIEW = "구매 후기를 입력하세요";
   const TASK_LOG_RECENT_REVIEW_LIMIT = 5;
 
   function extractTaskLogRecentReviewMemo(row) {
@@ -7698,7 +7698,7 @@ export function render(opts = {}) {
 
   function collectTaskLogRecentReviews(taskName, excludeEntryId) {
     const tn = (taskName || "").trim();
-    if (!tn || !isNonproductiveTaskForTaskLogModal(tn)) return [];
+    if (!tn || !isTaskLogPurchaseReviewTask(tn)) return [];
     const exclude = String(excludeEntryId || "").trim();
     const matched = readTimeLedgerEntriesRaw().filter((row) => {
       if ((row.taskName || "").trim() !== tn) return false;
@@ -7722,7 +7722,7 @@ export function render(opts = {}) {
   function refreshTaskLogRecentReviews(taskName) {
     if (!taskLogRecentReviewsSection || !taskLogRecentReviewsList) return;
     const tn = (taskName || "").trim();
-    if (!isNonproductiveTaskForTaskLogModal(tn)) {
+    if (!isTaskLogPurchaseReviewTask(tn)) {
       taskLogRecentReviewsSection.hidden = true;
       taskLogRecentReviewsList.replaceChildren();
       return;
@@ -7755,20 +7755,22 @@ export function render(opts = {}) {
     }
   }
 
-  function isNonproductiveTaskForTaskLogModal(taskName) {
+  /** 생산적·비생산적 과제 — 과제 기록 메모를 「구매 후기」로 표시 */
+  function isTaskLogPurchaseReviewTask(taskName) {
     const tn = (taskName || "").trim();
     if (!tn) return false;
     const opt = getTaskOptionByName(tn);
-    return String(opt?.productivity || "").trim() === "nonproductive";
+    const prod = String(opt?.productivity || "").trim();
+    return prod === "productive" || prod === "nonproductive";
   }
 
   function updateTaskLogMemoCopyForProductivity(taskName) {
-    const isNonprod = isNonproductiveTaskForTaskLogModal(taskName);
-    const memoLabel = isNonprod
-      ? TASK_LOG_MEMO_LABEL_NONPRODUCTIVE
+    const showPurchaseReview = isTaskLogPurchaseReviewTask(taskName);
+    const memoLabel = showPurchaseReview
+      ? TASK_LOG_MEMO_LABEL_PURCHASE_REVIEW
       : TASK_LOG_MEMO_LABEL_DEFAULT;
-    const memoPlaceholder = isNonprod
-      ? TASK_LOG_MEMO_PLACEHOLDER_NONPRODUCTIVE
+    const memoPlaceholder = showPurchaseReview
+      ? TASK_LOG_MEMO_PLACEHOLDER_PURCHASE_REVIEW
       : TASK_LOG_MEMO_PLACEHOLDER_DEFAULT;
     if (taskLogMemoSectionLabel) {
       taskLogMemoSectionLabel.textContent = memoLabel;

@@ -2947,6 +2947,23 @@ function requestCalendarTodoDatesChangedFromCard(card) {
   });
 }
 
+/** 완료/취소만 바뀐 경우 — 월·주 그리드 전체 재렌더 대신 막대 스타일만 갱신 */
+function requestCalendarTodoDoneChangedFromCard(card) {
+  if (!card || typeof card.dispatchEvent !== "function") return;
+  if (!card.closest(".calendar-monthly-layout")) return;
+  const taskId = (card.dataset.taskId || "").trim();
+  if (!taskId) return;
+  const done = card.dataset.done === "true";
+  try {
+    card.dispatchEvent(
+      new CustomEvent("lp-todo-dates-changed", {
+        bubbles: true,
+        detail: { kind: "done-only", taskId, done },
+      }),
+    );
+  } catch (_) {}
+}
+
 /** 카드 레이아웃용 할일 카드 한 개. 클릭 시 모달로 수정, 체크박스로 완료 토글 */
 function createTaskCard(taskData, options = {}) {
   const {
@@ -3060,7 +3077,6 @@ function createTaskCard(taskData, options = {}) {
     }
     if (newDone) {
       refreshEisenhowerQuadrantsIfActive();
-      requestCalendarTodoDatesChangedFromCard(card);
       if (hideCompletedUi) {
         if (sectionsWrap)
           removeAllTodoCardsWithTaskIdInWrap(
@@ -3070,11 +3086,13 @@ function createTaskCard(taskData, options = {}) {
         else card.remove();
       }
     }
-    updateCount();
-    if (sectionsWrap) {
-      refreshTodoDateTabSectionDom(sectionsWrap);
-      refreshTodoPriorityTabSectionDom(sectionsWrap);
+    requestCalendarTodoDoneChangedFromCard(card);
+    const listView = card.closest(".todo-list-view");
+    if (listView) {
+      listView._lpLastTodoSectionsPaintSig =
+        snapshotSectionTasksSemanticForCompare();
     }
+    updateCount();
   });
 
   iconStack.appendChild(chkLabel);
@@ -3319,11 +3337,7 @@ function createTaskCard(taskData, options = {}) {
           ) {
             refreshTodoPriorityTabSectionDom(sectionsWrap);
           }
-          if (
-            sectionsWrap.querySelector(
-              `.todo-section[data-section="${TODO_ALL_TAB_SECTION_ID}"]`,
-            )
-          ) {
+          if (hadSectionMove) {
             refreshTodoAllTabSectionDom(sectionsWrap);
           }
         }

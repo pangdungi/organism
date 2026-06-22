@@ -84,7 +84,6 @@ import {
 import {
   readSectionTasksObject,
   readCustomSectionTasksObject,
-  snapshotSectionTasksSemanticForCompare,
   CALENDAR_FIXED_SECTION_IDS,
   TODO_UNIFIED_SECTION_KEY,
   isCalendarFixedSectionKey,
@@ -223,6 +222,11 @@ function lpEnsureTodoDatesChangedListener() {
   if (_lpTodoDatesChangedListenerAttached) return;
   _lpTodoDatesChangedListenerAttached = true;
   document.addEventListener("lp-todo-dates-changed", (ev) => {
+    const detail = ev.detail || {};
+    if (detail.kind === "done-only" && detail.taskId) {
+      lpPatchCalendarTaskDoneInLayouts(detail.taskId, !!detail.done);
+      return;
+    }
     const t = ev.target;
     if (!t || typeof t.closest !== "function") return;
     let layoutNode = t.closest(".calendar-monthly-layout");
@@ -676,6 +680,31 @@ function snapshotCalendarDayIconsSemanticForCompare() {
   }
 }
 
+/** 월·주 격자 재그림 여부 — 완료(done)만 바뀐 경우는 막대 클래스 패치로 충분 */
+function snapshotSectionTasksForCalendarGridPaintCompare() {
+  function stripContainer(container) {
+    const out = {};
+    for (const k of Object.keys(container || {})) {
+      const arr = container[k];
+      out[k] = Array.isArray(arr)
+        ? arr.map((t) => {
+            if (!t || typeof t !== "object") return t;
+            const { done, serverUpdatedAt, ...rest } = t;
+            return rest;
+          })
+        : arr;
+    }
+    return out;
+  }
+  try {
+    const fixed = stripContainer(readSectionTasksObject());
+    const custom = stripContainer(readCustomSectionTasksObject());
+    return `${JSON.stringify(fixed)}\n${JSON.stringify(custom)}`;
+  } catch (_) {
+    return "";
+  }
+}
+
 function snapshotCalendarGridPaintSignature(viewContext = "", opts = {}) {
   const includeLedger = opts.includeLedger !== false;
   let ledgerPart = "";
@@ -689,7 +718,7 @@ function snapshotCalendarGridPaintSignature(viewContext = "", opts = {}) {
       );
     } catch (_) {}
   }
-  return `${snapshotSectionTasksSemanticForCompare()}\x1e${ledgerPart}\x1e${snapshotCalendarDayIconsSemanticForCompare()}\x1e${viewContext}`;
+  return `${snapshotSectionTasksForCalendarGridPaintCompare()}\x1e${ledgerPart}\x1e${snapshotCalendarDayIconsSemanticForCompare()}\x1e${viewContext}`;
 }
 
 /** pull·소프트 갱신: 화면에 쓰는 데이터가 같으면 renderCalendar 생략 */
@@ -1378,7 +1407,36 @@ function lpBuildCalendarSpanBarInnerHtml(name, _done) {
 
 function lpApplyCalendarSpanBarDonePastClasses(bar, b, todayYmd) {
   if (b.done) bar.classList.add("is-completed");
+  else bar.classList.remove("is-completed");
   if (isPastCalendarTask(b, todayYmd)) bar.classList.add("is-past");
+}
+
+/** 완료 토글만 반영 — renderCalendar 전체 재구성 없이 막대 is-completed만 갱신 */
+function lpPatchCalendarTaskDoneInLayouts(taskId, done) {
+  const tid = String(taskId || "").trim();
+  if (!tid) return;
+  document.querySelectorAll(".calendar-monthly-layout").forEach((layout) => {
+    layout
+      .querySelectorAll(".calendar-monthly-span-bar[data-task-id]")
+      .forEach((bar) => {
+        if ((bar.dataset.taskId || "").trim() !== tid) return;
+        bar.classList.toggle("is-completed", !!done);
+      });
+    try {
+      layout._lpRememberCalendarGridPaintSig?.();
+    } catch (_) {}
+  });
+}
+
+/** 수정 모달 저장 후 — 완료만 바뀌었으면 막대만, 아니면 전체 갱신 콜백 */
+function lpCalendarHandleTaskEditAfterApply(applyMeta, onStructuralChange) {
+  if (applyMeta?.doneOnly && applyMeta.taskId) {
+    lpPatchCalendarTaskDoneInLayouts(applyMeta.taskId, !!applyMeta.done);
+    return;
+  }
+  try {
+    onStructuralChange?.();
+  } catch (_) {}
 }
 
 let _lpTimeBlockHoverTipHideTimer = null;
@@ -1834,13 +1892,15 @@ function lpAttachCalendarBarOpenTodoEdit(
     }
     lpOpenCalendarTaskEdit(b, {
       selectionEl: bar,
-      onAfterApply: () => {
-        try {
-          renderCalendar?.();
-        } catch (_) {}
-        try {
-          refreshTodoList?.();
-        } catch (_) {}
+      onAfterApply: (applyMeta) => {
+        lpCalendarHandleTaskEditAfterApply(applyMeta, () => {
+          try {
+            renderCalendar?.();
+          } catch (_) {}
+          try {
+            refreshTodoList?.();
+          } catch (_) {}
+        });
       },
     });
   };
@@ -2316,10 +2376,8 @@ function createCalendarDayExpandBubble(
       } catch (_) {}
       lpOpenCalendarTaskEdit(t, {
         selectionEl: itemEl,
-        onAfterApply: () => {
-          try {
-            onAfterTaskEdit?.();
-          } catch (_) {}
+        onAfterApply: (applyMeta) => {
+          lpCalendarHandleTaskEditAfterApply(applyMeta, onAfterTaskEdit);
         },
       });
     });
@@ -2971,6 +3029,7 @@ function renderMonthlyView(tabsElement) {
             )
           : baseBarTop + b.row * (BAR_HEIGHT + ROW_GAP);
         bar.style.cssText = `left:${b.left}%;width:${b.width}%;${barStyleVars};top:${topRem}rem;min-height:${BAR_HEIGHT}rem`;
+        if (b.taskId) bar.dataset.taskId = String(b.taskId).trim();
         lpApplyCalendarMultiDaySpanBarBackground(bar, b);
         bar.innerHTML = lpBuildCalendarSpanBarInnerHtml(b.name, !!b.done);
         lpApplyCalendarSpanBarDonePastClasses(bar, b, calendarBarTodayYmd);
@@ -5160,6 +5219,7 @@ function render1WeekView(tabsElement) {
           )
         : baseBarTop + b.row * (BAR_HEIGHT + ROW_GAP);
       bar.style.cssText = `left:${b.left}%;width:${b.width}%;${barStyleVars};top:${topRem}rem;min-height:${BAR_HEIGHT}rem`;
+      if (b.taskId) bar.dataset.taskId = String(b.taskId).trim();
       lpApplyCalendarMultiDaySpanBarBackground(bar, b);
       bar.innerHTML = lpBuildCalendarSpanBarInnerHtml(b.name, !!b.done);
       lpApplyCalendarSpanBarDonePastClasses(bar, b, calendarBarTodayYmd);
