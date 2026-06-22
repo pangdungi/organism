@@ -142,10 +142,13 @@ import {
   createTimeLedgerWeekTimeboxElement,
   enumerateYmdInclusive,
   formatTimeboxWeekRangeLabel,
+  formatTimeboxMonthRangeLabel,
+  getMonthRangeContainingYmd,
   getWeekRangeContainingYmd,
   getYearFromYmd,
   getYearRangeForYear,
   refreshTimeLedgerWeekTimeboxElement,
+  shiftMonthRangeByMonths,
   shiftWeekRangeByWeeks,
 } from "../utils/timeLedgerWeekTimebox.js";
 import {
@@ -4593,6 +4596,13 @@ function normalizeTimeLedgerTimeboxGranularity(raw) {
   return "day";
 }
 
+function normalizeTimeLedgerReportGranularity(raw) {
+  if (raw === "year" || raw === "month" || raw === "week" || raw === "day") {
+    return raw;
+  }
+  return "day";
+}
+
 function mountTimeLedgerTimeboxView(
   timeboxShell,
   { granularity, rangeStartYmd, rangeEndYmd, allRowsInRange },
@@ -5560,20 +5570,6 @@ export function render(opts = {}) {
     persistActiveViewTimeFilterToSession();
   }
 
-  function formatTimeboxUsageHistoryDateLabel(startYmd, endYmd) {
-    const g = normalizeTimeLedgerTimeboxGranularity(timeLedgerTimeboxGranularity);
-    if (g === "year") {
-      const y = getYearFromYmd(startYmd || endYmd);
-      return `${y}년`;
-    }
-    if (g === "day") {
-      return formatTimeFilterDateDotsWithWeekday(
-        getTimeboxDayAnchorYmd(startYmd, endYmd),
-      );
-    }
-    return formatUsageHistoryDateLabel(startYmd, endYmd);
-  }
-
   const _reportRangeFromSession = readTimeLedgerReportRangeFromSession(
     _todayForUsageRange,
   );
@@ -5583,6 +5579,109 @@ export function render(opts = {}) {
     persistTimeLedgerReportRangeToSession(
       reportRangeStartYmd,
       reportRangeEndYmd,
+    );
+  }
+
+  const LP_TIME_LEDGER_REPORT_GRANULARITY_KEY = "lp_time_ledger_report_granularity";
+
+  function inferReportGranularityFromRange(startYmd, endYmd) {
+    const s = String(startYmd || "").slice(0, 10);
+    const e = String(endYmd || "").slice(0, 10);
+    if (!s || !e) return "day";
+    if (s === e) return "day";
+    const week = getWeekRangeContainingYmd(s);
+    if (week.start === s && week.end === e) return "week";
+    const month = getMonthRangeContainingYmd(s);
+    if (month.start === s && month.end === e) return "month";
+    const yr = getYearRangeForYear(getYearFromYmd(s));
+    if (yr.start === s && yr.end === e) return "year";
+    return "day";
+  }
+
+  let timeLedgerReportGranularity = (() => {
+    try {
+      const raw = sessionStorage.getItem(LP_TIME_LEDGER_REPORT_GRANULARITY_KEY);
+      if (raw) return normalizeTimeLedgerReportGranularity(raw);
+    } catch (_) {}
+    return inferReportGranularityFromRange(
+      reportRangeStartYmd,
+      reportRangeEndYmd,
+    );
+  })();
+
+  function persistTimeLedgerReportGranularity() {
+    try {
+      sessionStorage.setItem(
+        LP_TIME_LEDGER_REPORT_GRANULARITY_KEY,
+        timeLedgerReportGranularity,
+      );
+    } catch (_) {}
+  }
+
+  function ensureReportRangeForGranularity() {
+    const g = normalizeTimeLedgerReportGranularity(timeLedgerReportGranularity);
+    if (g === "year") {
+      const y = getYearFromYmd(
+        reportRangeStartYmd || getLedgerFilterTodayYmd(),
+      );
+      const r = getYearRangeForYear(y);
+      reportRangeStartYmd = r.start;
+      reportRangeEndYmd = r.end;
+    } else if (g === "month") {
+      const r = getMonthRangeContainingYmd(
+        reportRangeStartYmd || getLedgerFilterTodayYmd(),
+      );
+      reportRangeStartYmd = r.start;
+      reportRangeEndYmd = r.end;
+    } else if (g === "week") {
+      const r = getWeekRangeContainingYmd(
+        reportRangeStartYmd || getLedgerFilterTodayYmd(),
+      );
+      reportRangeStartYmd = r.start;
+      reportRangeEndYmd = r.end;
+    } else {
+      const d = getTimeboxDayAnchorYmd(
+        reportRangeStartYmd,
+        reportRangeEndYmd,
+      );
+      reportRangeStartYmd = d;
+      reportRangeEndYmd = d;
+    }
+    persistReportRangeToSession();
+  }
+
+  function formatGranularityRangeDateLabel(startYmd, endYmd, granularity, opts = {}) {
+    const g = opts.report
+      ? normalizeTimeLedgerReportGranularity(granularity)
+      : normalizeTimeLedgerTimeboxGranularity(granularity);
+    if (g === "year") {
+      return `${getYearFromYmd(startYmd || endYmd)}년`;
+    }
+    if (g === "month") {
+      return formatTimeboxMonthRangeLabel(startYmd || endYmd);
+    }
+    if (g === "day") {
+      return formatTimeFilterDateDotsWithWeekday(
+        getTimeboxDayAnchorYmd(startYmd, endYmd),
+      );
+    }
+    return formatTimeboxWeekRangeLabel(startYmd, endYmd);
+  }
+
+  function formatTimeboxUsageHistoryDateLabel(startYmd, endYmd) {
+    return formatGranularityRangeDateLabel(
+      startYmd,
+      endYmd,
+      timeLedgerTimeboxGranularity,
+    );
+  }
+
+  function formatReportRangeDateLabel(startYmd, endYmd) {
+    return formatGranularityRangeDateLabel(
+      startYmd,
+      endYmd,
+      timeLedgerReportGranularity,
+      { report: true },
     );
   }
 
@@ -5613,7 +5712,7 @@ export function render(opts = {}) {
     const cap = contentWrap.querySelector("[data-usage-range-caption]");
     if (!cap) return;
     if (timeLedgerLayoutView === "report") {
-      cap.textContent = formatUsageHistoryDateLabel(
+      cap.textContent = formatReportRangeDateLabel(
         reportRangeStartYmd,
         reportRangeEndYmd,
       );
@@ -5739,9 +5838,10 @@ export function render(opts = {}) {
     if (timeLedgerLayoutView === "timebox") {
       return timeLedgerTimeboxGranularity === "day";
     }
-    return (
-      timeLedgerLayoutView === "timeline" || timeLedgerLayoutView === "report"
-    );
+    if (timeLedgerLayoutView === "report") {
+      return timeLedgerReportGranularity === "day";
+    }
+    return timeLedgerLayoutView === "timeline";
   }
 
   /** 왼쪽 스와이프=다음날, 오른쪽 스와이프=전날 */
@@ -5758,18 +5858,28 @@ export function render(opts = {}) {
     requestTimeLedgerPullForUserQueryChange("swipe");
   }
 
-  /** 레포트: 기간 길이 유지한 채 시작·끝을 하루씩 이동 */
-  function shiftReportRangeDay(step) {
+  /** 레포트: 일·주·연 보기에 맞춰 기간 이동 */
+  function shiftReportRangeByGranularity(step) {
     if (step !== 1 && step !== -1) return;
-    let s = reportRangeStartYmd;
-    let e = reportRangeEndYmd;
-    if (s > e) {
-      const x = s;
-      s = e;
-      e = x;
+    const g = normalizeTimeLedgerReportGranularity(timeLedgerReportGranularity);
+    if (g === "week") {
+      const r = shiftWeekRangeByWeeks(reportRangeStartYmd, step);
+      reportRangeStartYmd = r.start;
+      reportRangeEndYmd = r.end;
+    } else if (g === "month") {
+      const r = shiftMonthRangeByMonths(reportRangeStartYmd, step);
+      reportRangeStartYmd = r.start;
+      reportRangeEndYmd = r.end;
+    } else if (g === "year") {
+      const y = getYearFromYmd(reportRangeStartYmd) + step;
+      const r = getYearRangeForYear(y);
+      reportRangeStartYmd = r.start;
+      reportRangeEndYmd = r.end;
+    } else {
+      const d = shiftYmdTenByDays(reportRangeStartYmd, step);
+      reportRangeStartYmd = d;
+      reportRangeEndYmd = d;
     }
-    reportRangeStartYmd = shiftYmdTenByDays(s, step);
-    reportRangeEndYmd = shiftYmdTenByDays(e, step);
     persistReportRangeToSession();
     patchUsageRangeHeadingOnly();
     onFilterChange();
@@ -5778,7 +5888,7 @@ export function render(opts = {}) {
 
   function shiftActiveTimeLedgerPanDay(step) {
     if (timeLedgerLayoutView === "report") {
-      shiftReportRangeDay(step);
+      shiftReportRangeByGranularity(step);
       return;
     }
     if (timeLedgerLayoutView === "timebox") {
@@ -5803,7 +5913,7 @@ export function render(opts = {}) {
       selectedTaskNamesForFilter == null
         ? ""
         : selectedTaskNamesForFilter.join("\x1e");
-    return `${usageHistoryRangeStartYmd}|${usageHistoryRangeEndYmd}|${reportRangeStartYmd}|${reportRangeEndYmd}|${taskFilter}|${usageHistoryMemoOnlyFilter ? "1" : "0"}|${timeLedgerLayoutView}|${timeLedgerTimeboxGranularity}|${ledger}`;
+    return `${usageHistoryRangeStartYmd}|${usageHistoryRangeEndYmd}|${reportRangeStartYmd}|${reportRangeEndYmd}|${taskFilter}|${usageHistoryMemoOnlyFilter ? "1" : "0"}|${timeLedgerLayoutView}|${timeLedgerTimeboxGranularity}|${timeLedgerReportGranularity}|${ledger}`;
   }
 
   function rememberTimeLedgerPaintSignature() {
@@ -5898,9 +6008,10 @@ export function render(opts = {}) {
       <div data-legacy="time-task-setup-body time-usage-range-body">
         <div class="time-usage-timebox-mode-section" data-usage-timebox-mode-section hidden>
           <span class="time-usage-range-task-label">보기</span>
-          <div class="todo-task-date-quick time-usage-timebox-mode-quick" role="group" aria-label="타임박스 보기">
+          <div class="todo-task-date-quick time-usage-timebox-mode-quick" role="group" aria-label="조회 보기">
             <button type="button" class="todo-task-date-quick-btn" data-usage-timebox-mode="day">일간</button>
             <button type="button" class="todo-task-date-quick-btn" data-usage-timebox-mode="week">주간</button>
+            <button type="button" class="todo-task-date-quick-btn" data-usage-report-granularity-only data-usage-timebox-mode="month" hidden>월간</button>
             <button type="button" class="todo-task-date-quick-btn" data-usage-timebox-mode="year">연간</button>
           </div>
         </div>
@@ -5941,6 +6052,16 @@ export function render(opts = {}) {
             <button type="button" class="time-usage-timebox-stepper-btn" data-usage-week-nav="-1" aria-label="이전 주">&lt;</button>
             <span class="time-usage-timebox-week-label" data-usage-timebox-week-label></span>
             <button type="button" class="time-usage-timebox-stepper-btn" data-usage-week-nav="1" aria-label="다음 주">&gt;</button>
+          </div>
+          <div class="todo-task-date-quick time-usage-timebox-today-quick" role="group" aria-label="오늘로 이동">
+            <button type="button" class="todo-task-date-quick-btn" data-usage-timebox-goto-today>오늘</button>
+          </div>
+        </div>
+        <div class="time-usage-timebox-month-panel" data-usage-timebox-month-panel hidden>
+          <div class="time-usage-timebox-stepper" role="group" aria-label="월 선택">
+            <button type="button" class="time-usage-timebox-stepper-btn" data-usage-month-nav="-1" aria-label="이전 달">&lt;</button>
+            <span class="time-usage-timebox-month-label" data-usage-timebox-month-label></span>
+            <button type="button" class="time-usage-timebox-stepper-btn" data-usage-month-nav="1" aria-label="다음 달">&gt;</button>
           </div>
           <div class="todo-task-date-quick time-usage-timebox-today-quick" role="group" aria-label="오늘로 이동">
             <button type="button" class="todo-task-date-quick-btn" data-usage-timebox-goto-today>오늘</button>
@@ -6047,6 +6168,15 @@ export function render(opts = {}) {
     let modalWeekRangeDraft = getWeekRangeContainingYmd(
       usageHistoryRangeStartYmd || getLedgerFilterTodayYmd(),
     );
+    const usageTimeboxMonthPanel = usageRangeModal.querySelector(
+      "[data-usage-timebox-month-panel]",
+    );
+    const usageTimeboxMonthLabel = usageRangeModal.querySelector(
+      "[data-usage-timebox-month-label]",
+    );
+    let modalMonthRangeDraft = getMonthRangeContainingYmd(
+      usageHistoryRangeStartYmd || getLedgerFilterTodayYmd(),
+    );
     const usageTimeboxDayPanel = usageRangeModal.querySelector(
       "[data-usage-timebox-day-panel]",
     );
@@ -6083,12 +6213,66 @@ export function render(opts = {}) {
       return timeLedgerLayoutView === "timebox";
     }
 
+    function isUsageRangeModalReportMode() {
+      return timeLedgerLayoutView === "report";
+    }
+
+    function isUsageRangeModalGranularityMode() {
+      return isUsageRangeModalTimeboxMode() || isUsageRangeModalReportMode();
+    }
+
+    function normalizeActiveModalGranularity(raw) {
+      if (isUsageRangeModalReportMode()) {
+        return normalizeTimeLedgerReportGranularity(raw);
+      }
+      return normalizeTimeLedgerTimeboxGranularity(raw);
+    }
+
+    function activeLayoutGranularityFromView() {
+      return normalizeActiveModalGranularity(
+        isUsageRangeModalReportMode()
+          ? timeLedgerReportGranularity
+          : timeLedgerTimeboxGranularity,
+      );
+    }
+
+    function persistActiveLayoutGranularityFromModal() {
+      const g = normalizeActiveModalGranularity(modalTimeboxGranularityDraft);
+      if (isUsageRangeModalReportMode()) {
+        timeLedgerReportGranularity = g;
+        persistTimeLedgerReportGranularity();
+      } else {
+        timeLedgerTimeboxGranularity = g;
+        persistTimeLedgerTimeboxGranularity();
+      }
+    }
+
+    function resolveGranularityRangeFromModalDrafts() {
+      const g = normalizeActiveModalGranularity(modalTimeboxGranularityDraft);
+      if (g === "week") {
+        return {
+          start: modalWeekRangeDraft.start,
+          end: modalWeekRangeDraft.end,
+        };
+      }
+      if (g === "month") {
+        return {
+          start: modalMonthRangeDraft.start,
+          end: modalMonthRangeDraft.end,
+        };
+      }
+      if (g === "year") {
+        const yr = getYearRangeForYear(modalYearDraft);
+        return { start: yr.start, end: yr.end };
+      }
+      return { start: modalDayDraft, end: modalDayDraft };
+    }
+
     function syncTimeboxModalModeUi() {
       usageRangeModal.querySelectorAll("[data-usage-timebox-mode]").forEach((btn) => {
-        const mode = normalizeTimeLedgerTimeboxGranularity(
-          btn.dataset.usageTimeboxMode,
-        );
-        const active = mode === modalTimeboxGranularityDraft;
+        const mode = normalizeActiveModalGranularity(btn.dataset.usageTimeboxMode);
+        const active =
+          mode === normalizeActiveModalGranularity(modalTimeboxGranularityDraft);
         btn.classList.toggle("is-active", active);
         btn.setAttribute("aria-pressed", active ? "true" : "false");
       });
@@ -6097,12 +6281,19 @@ export function render(opts = {}) {
 
     function isModalTimeboxOnTodayAnchor() {
       const today = getLedgerFilterTodayYmd();
-      const g = normalizeTimeLedgerTimeboxGranularity(modalTimeboxGranularityDraft);
+      const g = normalizeActiveModalGranularity(modalTimeboxGranularityDraft);
       if (g === "week") {
         const week = getWeekRangeContainingYmd(today);
         return (
           modalWeekRangeDraft.start === week.start &&
           modalWeekRangeDraft.end === week.end
+        );
+      }
+      if (g === "month") {
+        const month = getMonthRangeContainingYmd(today);
+        return (
+          modalMonthRangeDraft.start === month.start &&
+          modalMonthRangeDraft.end === month.end
         );
       }
       if (g === "year") {
@@ -6122,20 +6313,27 @@ export function render(opts = {}) {
     }
 
     function syncTimeboxRangeModalPanels() {
-      const timebox = isUsageRangeModalTimeboxMode();
-      const g = normalizeTimeLedgerTimeboxGranularity(modalTimeboxGranularityDraft);
-      const dayMode = timebox && g === "day";
-      const weekMode = timebox && g === "week";
-      const yearMode = timebox && g === "year";
+      const granularityMode = isUsageRangeModalGranularityMode();
+      const g = normalizeActiveModalGranularity(modalTimeboxGranularityDraft);
+      const dayMode = granularityMode && g === "day";
+      const weekMode = granularityMode && g === "week";
+      const monthMode = granularityMode && g === "month";
+      const yearMode = granularityMode && g === "year";
       if (usageTimeboxModeSection) {
-        usageTimeboxModeSection.hidden = !timebox;
+        usageTimeboxModeSection.hidden = !granularityMode;
       }
+      usageRangeModal
+        .querySelectorAll("[data-usage-report-granularity-only]")
+        .forEach((el) => {
+          el.hidden = !isUsageRangeModalReportMode();
+        });
       if (usageTimelineRangeOnly) {
-        usageTimelineRangeOnly.hidden = timebox;
+        usageTimelineRangeOnly.hidden = granularityMode;
       }
-      if (usageRangeQuick) usageRangeQuick.hidden = timebox;
+      if (usageRangeQuick) usageRangeQuick.hidden = granularityMode;
       if (usageTimeboxDayPanel) usageTimeboxDayPanel.hidden = !dayMode;
       if (usageTimeboxWeekPanel) usageTimeboxWeekPanel.hidden = !weekMode;
+      if (usageTimeboxMonthPanel) usageTimeboxMonthPanel.hidden = !monthMode;
       if (usageTimeboxYearPanel) usageTimeboxYearPanel.hidden = !yearMode;
       lpTokenToggle(
         usageRangeModal,
@@ -6149,6 +6347,11 @@ export function render(opts = {}) {
       );
       lpTokenToggle(
         usageRangeModal,
+        "time-usage-range-modal--timebox-month",
+        monthMode,
+      );
+      lpTokenToggle(
+        usageRangeModal,
         "time-usage-range-modal--timebox-year",
         yearMode,
       );
@@ -6156,10 +6359,8 @@ export function render(opts = {}) {
     }
 
     function setModalTimeboxGranularityDraft(next) {
-      const prev = normalizeTimeLedgerTimeboxGranularity(
-        modalTimeboxGranularityDraft,
-      );
-      const g = normalizeTimeLedgerTimeboxGranularity(next);
+      const prev = normalizeActiveModalGranularity(modalTimeboxGranularityDraft);
+      const g = normalizeActiveModalGranularity(next);
       if (g === "day" && prev !== "day") {
         modalDayDraft = getTimeboxDayAnchorYmd(
           usageRangeStartInp?.value,
@@ -6167,6 +6368,10 @@ export function render(opts = {}) {
         );
       } else if (g === "week" && prev !== "week") {
         modalWeekRangeDraft = getWeekRangeContainingYmd(
+          modalDayDraft || usageRangeStartInp?.value || getLedgerFilterTodayYmd(),
+        );
+      } else if (g === "month" && prev !== "month") {
+        modalMonthRangeDraft = getMonthRangeContainingYmd(
           modalDayDraft || usageRangeStartInp?.value || getLedgerFilterTodayYmd(),
         );
       } else if (g === "year" && prev !== "year") {
@@ -6179,11 +6384,15 @@ export function render(opts = {}) {
       const titleEl = usageRangeModal.querySelector(
         '[data-legacy~="time-task-setup-title"]',
       );
-      if (titleEl && isUsageRangeModalTimeboxMode()) {
-        titleEl.textContent = "타임박스 조회";
+      if (titleEl && isUsageRangeModalGranularityMode()) {
+        titleEl.textContent = isUsageRangeModalReportMode()
+          ? "레포트 조회"
+          : "타임박스 조회";
       }
       if (g === "week") {
         syncTimeboxWeekModalDraftFromInputs();
+      } else if (g === "month") {
+        syncTimeboxMonthModalDraftFromInputs();
       } else if (g === "year") {
         syncTimeboxYearModalDraftFromInputs();
       } else {
@@ -6214,6 +6423,30 @@ export function render(opts = {}) {
         end: endYmd,
       };
       syncTimeboxWeekModalDraftFromInputs();
+    }
+
+    function syncTimeboxMonthModalDraftFromInputs() {
+      const month = modalMonthRangeDraft;
+      if (usageTimeboxMonthLabel) {
+        usageTimeboxMonthLabel.textContent = formatTimeboxMonthRangeLabel(
+          month.start,
+        );
+      }
+      if (usageRangeStartInp instanceof HTMLInputElement) {
+        usageRangeStartInp.value = month.start;
+      }
+      if (usageRangeEndInp instanceof HTMLInputElement) {
+        usageRangeEndInp.value = month.end;
+      }
+      syncTimeboxTodayQuickBtnUi();
+    }
+
+    function setModalMonthRangeDraft(startYmd, endYmd) {
+      modalMonthRangeDraft = {
+        start: startYmd,
+        end: endYmd,
+      };
+      syncTimeboxMonthModalDraftFromInputs();
     }
 
     function syncTimeboxDayModalDraftFromInputs() {
@@ -6260,6 +6493,11 @@ export function render(opts = {}) {
       setModalWeekRangeDraft(week.start, week.end);
     }
 
+    function applyTimeboxMonthNavFromModal(step) {
+      const month = shiftMonthRangeByMonths(modalMonthRangeDraft.start, step);
+      setModalMonthRangeDraft(month.start, month.end);
+    }
+
     function applyTimeboxDayNavFromModal(step) {
       setModalDayDraft(shiftYmdTenByDays(modalDayDraft, step));
     }
@@ -6270,10 +6508,13 @@ export function render(opts = {}) {
 
     function applyTimeboxGotoTodayFromModal() {
       const today = getLedgerFilterTodayYmd();
-      const g = normalizeTimeLedgerTimeboxGranularity(modalTimeboxGranularityDraft);
+      const g = normalizeActiveModalGranularity(modalTimeboxGranularityDraft);
       if (g === "week") {
         const week = getWeekRangeContainingYmd(today);
         setModalWeekRangeDraft(week.start, week.end);
+      } else if (g === "month") {
+        const month = getMonthRangeContainingYmd(today);
+        setModalMonthRangeDraft(month.start, month.end);
       } else if (g === "year") {
         setModalYearDraft(new Date().getFullYear());
       } else {
@@ -6297,7 +6538,7 @@ export function render(opts = {}) {
       lpTokenToggle(
         usageRangeModal,
         "time-usage-range-modal--timebox",
-        isUsageRangeModalTimeboxMode(),
+        isUsageRangeModalGranularityMode(),
       );
       syncTimeboxRangeModalPanels();
       const titleEl = usageRangeModal.querySelector(
@@ -6306,6 +6547,8 @@ export function render(opts = {}) {
       if (titleEl) {
         if (timeLedgerLayoutView === "timebox") {
           titleEl.textContent = "타임박스 조회";
+        } else if (timeLedgerLayoutView === "report") {
+          titleEl.textContent = "레포트 조회";
         } else {
           titleEl.textContent = "조회";
         }
@@ -6313,7 +6556,7 @@ export function render(opts = {}) {
       if (footerDateBtn) {
         let label = "조회 기간·필터";
         if (timeLedgerLayoutView === "report") {
-          label = "조회 기간";
+          label = "레포트 조회";
         } else if (timeLedgerLayoutView === "timebox") {
           label = "타임박스 조회";
         }
@@ -6426,8 +6669,24 @@ export function render(opts = {}) {
       const today = getLedgerFilterTodayYmd();
       let active = false;
       if (timeLedgerLayoutView === "report") {
-        active =
-          reportRangeStartYmd !== today || reportRangeEndYmd !== today;
+        const g = normalizeTimeLedgerReportGranularity(timeLedgerReportGranularity);
+        if (g === "year") {
+          active =
+            getYearFromYmd(reportRangeStartYmd) !== new Date().getFullYear();
+        } else if (g === "month") {
+          const month = getMonthRangeContainingYmd(today);
+          active =
+            reportRangeStartYmd !== month.start ||
+            reportRangeEndYmd !== month.end;
+        } else if (g === "week") {
+          active =
+            reportRangeStartYmd !==
+              getWeekRangeContainingYmd(getLedgerFilterTodayYmd()).start ||
+            reportRangeEndYmd !==
+              getWeekRangeContainingYmd(getLedgerFilterTodayYmd()).end;
+        } else {
+          active = reportRangeStartYmd !== today;
+        }
       } else if (isUsageRangeModalTimeboxMode()) {
         const g = normalizeTimeLedgerTimeboxGranularity(
           timeLedgerTimeboxGranularity,
@@ -6498,10 +6757,9 @@ export function render(opts = {}) {
 
     function openUsageRangeModal() {
       const { start, end } = activeRangeYmdForModal();
-      modalTimeboxGranularityDraft = normalizeTimeLedgerTimeboxGranularity(
-        timeLedgerTimeboxGranularity,
-      );
+      modalTimeboxGranularityDraft = activeLayoutGranularityFromView();
       modalWeekRangeDraft = getWeekRangeContainingYmd(start || end);
+      modalMonthRangeDraft = getMonthRangeContainingYmd(start || end);
       modalYearDraft = getYearFromYmd(start || end);
       modalDayDraft = getTimeboxDayAnchorYmd(start, end);
       if (usageRangeStartInp) {
@@ -6511,15 +6769,17 @@ export function render(opts = {}) {
         usageRangeEndInp.value = end;
       }
       syncUsageRangeModalForLayoutView();
-      if (isUsageRangeModalTimeboxMode()) {
+      if (isUsageRangeModalGranularityMode()) {
         if (modalTimeboxGranularityDraft === "week") {
           syncTimeboxWeekModalDraftFromInputs();
+        } else if (modalTimeboxGranularityDraft === "month") {
+          syncTimeboxMonthModalDraftFromInputs();
         } else if (modalTimeboxGranularityDraft === "year") {
           syncTimeboxYearModalDraftFromInputs();
         } else {
           syncTimeboxDayModalDraftFromInputs();
         }
-      } else if (!isUsageRangeModalTimeboxMode()) {
+      } else if (!isUsageRangeModalGranularityMode()) {
         if (usageFilterMemoOnlyCb) {
           usageFilterMemoOnlyCb.checked = usageHistoryMemoOnlyFilter;
         }
@@ -6602,6 +6862,11 @@ export function render(opts = {}) {
         applyTimeboxDayNavFromModal(Number(btn.dataset.usageDayNav || "0"));
       });
     });
+    usageRangeModal.querySelectorAll("[data-usage-month-nav]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        applyTimeboxMonthNavFromModal(Number(btn.dataset.usageMonthNav || "0"));
+      });
+    });
     usageRangeModal.querySelectorAll("[data-usage-year-nav]").forEach((btn) => {
       btn.addEventListener("click", () => {
         applyTimeboxYearNavFromModal(Number(btn.dataset.usageYearNav || "0"));
@@ -6656,26 +6921,17 @@ export function render(opts = {}) {
         return;
       }
       if (timeLedgerLayoutView === "report") {
-        reportRangeStartYmd = s;
-        reportRangeEndYmd = e;
+        persistActiveLayoutGranularityFromModal();
+        const range = resolveGranularityRangeFromModalDrafts();
+        reportRangeStartYmd = range.start;
+        reportRangeEndYmd = range.end;
         persistReportRangeToSession();
       } else {
         if (timeLedgerLayoutView === "timebox") {
-          timeLedgerTimeboxGranularity = normalizeTimeLedgerTimeboxGranularity(
-            modalTimeboxGranularityDraft,
-          );
-          persistTimeLedgerTimeboxGranularity();
-          if (timeLedgerTimeboxGranularity === "week") {
-            s = modalWeekRangeDraft.start;
-            e = modalWeekRangeDraft.end;
-          } else if (timeLedgerTimeboxGranularity === "year") {
-            const yr = getYearRangeForYear(modalYearDraft);
-            s = yr.start;
-            e = yr.end;
-          } else {
-            s = modalDayDraft;
-            e = modalDayDraft;
-          }
+          persistActiveLayoutGranularityFromModal();
+          const range = resolveGranularityRangeFromModalDrafts();
+          s = range.start;
+          e = range.end;
           persistTimeLedgerLayoutView();
         } else {
           applyTaskFilterFromModal();
@@ -10944,6 +11200,9 @@ export function render(opts = {}) {
     if (timeLedgerLayoutView === "timebox") {
       ensureUsageHistoryRangeForTimeboxGranularity();
     }
+    if (timeLedgerLayoutView === "report") {
+      ensureReportRangeForGranularity();
+    }
     let reportScrollRestore = null;
     if (timeLedgerLayoutView === "report") {
       const shell = contentWrap.querySelector(".time-ledger-report-view-shell");
@@ -11146,6 +11405,8 @@ export function render(opts = {}) {
         timeLedgerLayoutView = nextView;
         if (nextView === "timebox") {
           ensureUsageHistoryRangeForTimeboxGranularity();
+        } else if (nextView === "report") {
+          ensureReportRangeForGranularity();
         }
         persistTimeLedgerLayoutView();
         el._lpSyncUsageRangeModalForLayout?.();
@@ -11193,7 +11454,9 @@ export function render(opts = {}) {
             headingRangeStart,
             headingRangeEnd,
           )
-        : formatUsageHistoryDateLabel(headingRangeStart, headingRangeEnd);
+        : showReportView
+          ? formatReportRangeDateLabel(headingRangeStart, headingRangeEnd)
+          : formatUsageHistoryDateLabel(headingRangeStart, headingRangeEnd);
     usageHistoryHeadingLeft.appendChild(usageHistoryEyebrow);
     usageHistoryHeadingLeft.appendChild(usageHistoryDate);
 

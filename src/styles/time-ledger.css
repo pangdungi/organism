@@ -3978,7 +3978,7 @@
   font-size: 0.8125rem;
   font-family: inherit;
   font-weight: 500;
-  color: var(--lp-modal-navy-muted, #5a7189);
+  color: var(--lp-modal-navy-muted, #666666);
   background: transparent;
   border: none;
   border-radius: 8px;
@@ -4090,20 +4090,47 @@
   margin-bottom: 0.35rem;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #64748b;
+  color: #666666;
+}
+
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .todo-task-date-quick-btn {
+  color: #4d4d4d;
+  border-color: rgba(0, 0, 0, 0.14);
+  background: transparent;
+}
+
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .todo-task-date-quick-btn:hover {
+  color: #000000;
+  border-color: rgba(0, 0, 0, 0.28);
+  background: rgba(0, 0, 0, 0.05);
+}
+
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .todo-task-date-quick-btn:focus-visible {
+  outline: 2px solid rgba(0, 0, 0, 0.35);
+  outline-offset: 1px;
 }
 
 .time-usage-timebox-mode-quick .todo-task-date-quick-btn.is-active,
 .time-usage-timebox-today-quick .todo-task-date-quick-btn.is-active,
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .todo-task-date-quick-btn.is-active,
 [data-legacy~="time-ledger-view"]
   .time-usage-timebox-mode-quick
   .todo-task-date-quick-btn.is-active,
 [data-legacy~="time-ledger-view"]
   .time-usage-timebox-today-quick
   .todo-task-date-quick-btn.is-active {
-  color: #1e4d7b;
+  color: #000000;
   font-weight: 700;
-  background: rgba(30, 77, 123, 0.08);
+  border-color: #000000;
+  background: rgba(0, 0, 0, 0.06);
 }
 
 .time-usage-timebox-today-quick,
@@ -4127,10 +4154,10 @@
   flex: 0 0 auto;
   width: 2.25rem;
   height: 2.25rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid rgba(0, 0, 0, 0.14);
   border-radius: 999px;
-  background: #fff;
-  color: #1e4d7b;
+  background: #ffffff;
+  color: #000000;
   font-size: 1.05rem;
   font-weight: 700;
   line-height: 1;
@@ -4139,14 +4166,23 @@
 
 .time-usage-timebox-stepper-btn:hover,
 [data-legacy~="time-ledger-view"] .time-usage-timebox-stepper-btn:hover {
-  background: rgba(30, 77, 123, 0.06);
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.28);
+}
+
+.time-usage-timebox-stepper-btn:focus-visible,
+[data-legacy~="time-ledger-view"] .time-usage-timebox-stepper-btn:focus-visible {
+  outline: 2px solid rgba(0, 0, 0, 0.35);
+  outline-offset: 1px;
 }
 
 .time-usage-timebox-week-label,
 .time-usage-timebox-day-label,
+.time-usage-timebox-month-label,
 .time-usage-timebox-year-label,
 [data-legacy~="time-ledger-view"] .time-usage-timebox-week-label,
 [data-legacy~="time-ledger-view"] .time-usage-timebox-day-label,
+[data-legacy~="time-ledger-view"] .time-usage-timebox-month-label,
 [data-legacy~="time-ledger-view"] .time-usage-timebox-year-label {
   flex: 1 1 auto;
   min-width: 0;
@@ -4154,7 +4190,7 @@
   font-size: 0.875rem;
   font-weight: 600;
   text-align: center;
-  color: #475569;
+  color: #333333;
   letter-spacing: -0.02em;
   white-space: nowrap;
 }
@@ -4164,11 +4200,28 @@
   font-size: 1rem;
 }
 
+.time-usage-timebox-month-label,
+[data-legacy~="time-ledger-view"] .time-usage-timebox-month-label {
+  font-size: 0.9375rem;
+}
+
+.time-usage-timebox-mode-quick .todo-task-date-quick-btn,
+[data-legacy~="time-ledger-view"]
+  .time-usage-timebox-mode-quick
+  .todo-task-date-quick-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  padding-inline: 0.35rem;
+}
+
 [data-legacy~="time-ledger-view"]
   [data-legacy~="time-usage-range-modal"].time-usage-range-modal--timebox-day
   [data-legacy~="time-task-setup-panel"],
 [data-legacy~="time-ledger-view"]
   [data-legacy~="time-usage-range-modal"].time-usage-range-modal--timebox-week
+  [data-legacy~="time-task-setup-panel"],
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"].time-usage-range-modal--timebox-month
   [data-legacy~="time-task-setup-panel"],
 [data-legacy~="time-ledger-view"]
   [data-legacy~="time-usage-range-modal"].time-usage-range-modal--timebox-year

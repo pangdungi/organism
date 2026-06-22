@@ -70,6 +70,30 @@ export function getYearRangeForYear(year) {
   };
 }
 
+/** 임의 날짜가 속한 달 — 1일~말일 */
+export function getMonthRangeContainingYmd(ymd) {
+  const p = parseYmd(ymd);
+  const fallback = formatYmdFromDate(new Date());
+  if (!p) return { start: fallback, end: fallback };
+  const start = formatYmdFromDate(new Date(p.y, p.mo, 1));
+  const end = formatYmdFromDate(new Date(p.y, p.mo + 1, 0));
+  return { start, end };
+}
+
+/** 월 단위 이동 */
+export function shiftMonthRangeByMonths(startYmd, monthsDelta) {
+  const p = parseYmd(startYmd);
+  if (!p) return getMonthRangeContainingYmd(startYmd);
+  const anchor = new Date(p.y, p.mo + monthsDelta, 1);
+  return getMonthRangeContainingYmd(formatYmdFromDate(anchor));
+}
+
+export function formatTimeboxMonthRangeLabel(startYmd) {
+  const p = parseYmd(startYmd);
+  if (!p) return "";
+  return `${p.y}년 ${p.mo + 1}월`;
+}
+
 export function formatTimeboxWeekRangeLabel(startYmd, endYmd) {
   const fmt = (ymd) => {
     const p = parseYmd(ymd);
