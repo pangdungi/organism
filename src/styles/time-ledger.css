@@ -2557,12 +2557,20 @@
 
 .time-ledger-week-timebox-day,
 [data-legacy~="time-ledger-view"] .time-ledger-week-timebox-day {
-  flex: 1 1 0;
-  min-width: 4.6rem;
+  flex: 0 0 7.75rem;
+  width: 7.75rem;
+  min-width: 7.75rem;
   display: flex;
   flex-direction: column;
   min-height: 0;
   scroll-snap-align: start;
+}
+
+.time-ledger-week-timebox-day--time-labels,
+[data-legacy~="time-ledger-view"] .time-ledger-week-timebox-day--time-labels {
+  flex-basis: 8.5rem;
+  width: 8.5rem;
+  min-width: 8.5rem;
 }
 
 .time-ledger-week-timebox-day-head,
@@ -2599,11 +2607,19 @@
   gap: 0.05rem;
 }
 
+.time-ledger-day-timebox-scroll--week-compact.time-ledger-day-timebox-scroll--no-row-labels
+  .time-ledger-day-timebox-matrix-row,
+[data-legacy~="time-ledger-view"]
+  .time-ledger-day-timebox-scroll--week-compact.time-ledger-day-timebox-scroll--no-row-labels
+  .time-ledger-day-timebox-matrix-row {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+
 .time-ledger-day-timebox-scroll--week-compact .time-ledger-day-timebox-matrix-row-label,
 [data-legacy~="time-ledger-view"]
   .time-ledger-day-timebox-scroll--week-compact
   .time-ledger-day-timebox-matrix-row-label {
-  font-size: 0.5rem;
+  font-size: 0.5625rem;
   line-height: 1;
 }
 
@@ -2618,9 +2634,9 @@
 [data-legacy~="time-ledger-view"]
   .time-ledger-day-timebox-scroll--week-compact
   .time-ledger-day-timebox-matrix-cell {
-  min-height: 0.32rem;
-  font-size: 0.42rem;
-  border-radius: 1px;
+  min-height: 0.42rem;
+  font-size: 0.5rem;
+  border-radius: 2px;
 }
 
 .time-ledger-day-timebox-scroll--week-compact
@@ -2628,15 +2644,15 @@
 [data-legacy~="time-ledger-view"]
   .time-ledger-day-timebox-scroll--week-compact
   .time-ledger-day-timebox-matrix-cell--labeled {
-  font-size: 0.42rem;
-  padding: 0 0.08rem 0 0.14rem;
+  font-size: 0.5rem;
+  padding: 0 0.1rem 0 0.18rem;
 }
 
 .time-ledger-day-timebox-scroll--week-compact .time-ledger-day-timebox-matrix-cell-label,
 [data-legacy~="time-ledger-view"]
   .time-ledger-day-timebox-scroll--week-compact
   .time-ledger-day-timebox-matrix-cell-label {
-  font-size: 0.42rem;
+  font-size: 0.5rem;
   line-height: 1.05;
 }
 
@@ -4021,12 +4037,23 @@
 }
 
 .time-usage-timebox-mode-quick .todo-task-date-quick-btn.is-active,
+.time-usage-timebox-today-quick .todo-task-date-quick-btn.is-active,
 [data-legacy~="time-ledger-view"]
   .time-usage-timebox-mode-quick
+  .todo-task-date-quick-btn.is-active,
+[data-legacy~="time-ledger-view"]
+  .time-usage-timebox-today-quick
   .todo-task-date-quick-btn.is-active {
   color: #1e4d7b;
   font-weight: 700;
   background: rgba(30, 77, 123, 0.08);
+}
+
+.time-usage-timebox-today-quick,
+[data-legacy~="time-ledger-view"] .time-usage-timebox-today-quick {
+  justify-content: center;
+  margin-top: 0.1rem;
+  margin-bottom: 0.35rem;
 }
 
 .time-usage-timebox-stepper,

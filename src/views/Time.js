@@ -5932,6 +5932,9 @@ export function render(opts = {}) {
             <span class="time-usage-timebox-day-label" data-usage-timebox-day-label></span>
             <button type="button" class="time-usage-timebox-stepper-btn" data-usage-day-nav="1" aria-label="다음 날">&gt;</button>
           </div>
+          <div class="todo-task-date-quick time-usage-timebox-today-quick" role="group" aria-label="오늘로 이동">
+            <button type="button" class="todo-task-date-quick-btn" data-usage-timebox-goto-today>오늘</button>
+          </div>
         </div>
         <div class="time-usage-timebox-week-panel" data-usage-timebox-week-panel hidden>
           <div class="time-usage-timebox-stepper" role="group" aria-label="주 선택">
@@ -5939,12 +5942,18 @@ export function render(opts = {}) {
             <span class="time-usage-timebox-week-label" data-usage-timebox-week-label></span>
             <button type="button" class="time-usage-timebox-stepper-btn" data-usage-week-nav="1" aria-label="다음 주">&gt;</button>
           </div>
+          <div class="todo-task-date-quick time-usage-timebox-today-quick" role="group" aria-label="오늘로 이동">
+            <button type="button" class="todo-task-date-quick-btn" data-usage-timebox-goto-today>오늘</button>
+          </div>
         </div>
         <div class="time-usage-timebox-year-panel" data-usage-timebox-year-panel hidden>
           <div class="time-usage-timebox-stepper" role="group" aria-label="연도 선택">
             <button type="button" class="time-usage-timebox-stepper-btn" data-usage-year-nav="-1" aria-label="이전 연">&lt;</button>
             <span class="time-usage-timebox-year-label" data-usage-timebox-year-label></span>
             <button type="button" class="time-usage-timebox-stepper-btn" data-usage-year-nav="1" aria-label="다음 연">&gt;</button>
+          </div>
+          <div class="todo-task-date-quick time-usage-timebox-today-quick" role="group" aria-label="오늘로 이동">
+            <button type="button" class="todo-task-date-quick-btn" data-usage-timebox-goto-today>오늘</button>
           </div>
         </div>
         <div class="time-usage-range-task-section" data-usage-range-filter-section>
@@ -6083,6 +6092,33 @@ export function render(opts = {}) {
         btn.classList.toggle("is-active", active);
         btn.setAttribute("aria-pressed", active ? "true" : "false");
       });
+      syncTimeboxTodayQuickBtnUi();
+    }
+
+    function isModalTimeboxOnTodayAnchor() {
+      const today = getLedgerFilterTodayYmd();
+      const g = normalizeTimeLedgerTimeboxGranularity(modalTimeboxGranularityDraft);
+      if (g === "week") {
+        const week = getWeekRangeContainingYmd(today);
+        return (
+          modalWeekRangeDraft.start === week.start &&
+          modalWeekRangeDraft.end === week.end
+        );
+      }
+      if (g === "year") {
+        return modalYearDraft === new Date().getFullYear();
+      }
+      return modalDayDraft === today;
+    }
+
+    function syncTimeboxTodayQuickBtnUi() {
+      const onToday = isModalTimeboxOnTodayAnchor();
+      usageRangeModal
+        .querySelectorAll("[data-usage-timebox-goto-today]")
+        .forEach((btn) => {
+          btn.classList.toggle("is-active", onToday);
+          btn.setAttribute("aria-pressed", onToday ? "true" : "false");
+        });
     }
 
     function syncTimeboxRangeModalPanels() {
@@ -6169,6 +6205,7 @@ export function render(opts = {}) {
       if (usageRangeEndInp instanceof HTMLInputElement) {
         usageRangeEndInp.value = week.end;
       }
+      syncTimeboxTodayQuickBtnUi();
     }
 
     function setModalWeekRangeDraft(startYmd, endYmd) {
@@ -6190,6 +6227,7 @@ export function render(opts = {}) {
       if (usageRangeEndInp instanceof HTMLInputElement) {
         usageRangeEndInp.value = d;
       }
+      syncTimeboxTodayQuickBtnUi();
     }
 
     function setModalDayDraft(ymdTen) {
@@ -6209,6 +6247,7 @@ export function render(opts = {}) {
       if (usageRangeEndInp instanceof HTMLInputElement) {
         usageRangeEndInp.value = r.end;
       }
+      syncTimeboxTodayQuickBtnUi();
     }
 
     function setModalYearDraft(year) {
@@ -6227,6 +6266,19 @@ export function render(opts = {}) {
 
     function applyTimeboxYearNavFromModal(step) {
       setModalYearDraft(modalYearDraft + step);
+    }
+
+    function applyTimeboxGotoTodayFromModal() {
+      const today = getLedgerFilterTodayYmd();
+      const g = normalizeTimeLedgerTimeboxGranularity(modalTimeboxGranularityDraft);
+      if (g === "week") {
+        const week = getWeekRangeContainingYmd(today);
+        setModalWeekRangeDraft(week.start, week.end);
+      } else if (g === "year") {
+        setModalYearDraft(new Date().getFullYear());
+      } else {
+        setModalDayDraft(today);
+      }
     }
 
     function activeRangeYmdForModal() {
@@ -6553,6 +6605,11 @@ export function render(opts = {}) {
     usageRangeModal.querySelectorAll("[data-usage-year-nav]").forEach((btn) => {
       btn.addEventListener("click", () => {
         applyTimeboxYearNavFromModal(Number(btn.dataset.usageYearNav || "0"));
+      });
+    });
+    usageRangeModal.querySelectorAll("[data-usage-timebox-goto-today]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        applyTimeboxGotoTodayFromModal();
       });
     });
     taskSelectAllBtn?.addEventListener("click", () => {

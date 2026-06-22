@@ -200,9 +200,15 @@ function wireTimeLedgerDayTimeboxCellClicks(body) {
   });
 }
 
-export function createTimeLedgerDayTimeboxElement(blocks, { showEmptyMessage = true } = {}) {
+export function createTimeLedgerDayTimeboxElement(
+  blocks,
+  { showEmptyMessage = true, showRowLabels = true } = {},
+) {
   const scroll = document.createElement("div");
   scroll.className = "time-ledger-day-timebox-scroll";
+  if (!showRowLabels) {
+    scroll.classList.add("time-ledger-day-timebox-scroll--no-row-labels");
+  }
 
   const matrix = document.createElement("div");
   matrix.className = "time-ledger-day-timebox-matrix";
@@ -236,8 +242,10 @@ export function createTimeLedgerDayTimeboxElement(blocks, { showEmptyMessage = t
 
     const rowLabel = document.createElement("span");
     rowLabel.className = "time-ledger-day-timebox-matrix-row-label";
-    rowLabel.textContent = String(row).padStart(2, "0");
-    rowEl.appendChild(rowLabel);
+    if (showRowLabels) {
+      rowLabel.textContent = String(row).padStart(2, "0");
+      rowEl.appendChild(rowLabel);
+    }
 
     for (let col = 0; col < TIME_LEDGER_TIMEBOX_GRID_COLS; col++) {
       const slotMin = slotMinForTimeboxCell(row, col);

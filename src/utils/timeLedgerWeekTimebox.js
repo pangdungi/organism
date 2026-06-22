@@ -110,8 +110,15 @@ function formatWeekDayLabel(ymd) {
 }
 
 function appendWeekDayPanel(parent, ymd, blocks) {
+  const p = parseYmd(ymd);
+  const dayDate = p ? new Date(p.y, p.mo, p.d) : null;
+  const showRowLabels = dayDate ? getMondayBasedDow(dayDate) === 0 : false;
+
   const dayWrap = document.createElement("section");
   dayWrap.className = "time-ledger-week-timebox-day";
+  if (showRowLabels) {
+    dayWrap.classList.add("time-ledger-week-timebox-day--time-labels");
+  }
   dayWrap.dataset.ymd = ymd;
 
   const head = document.createElement("div");
@@ -121,6 +128,7 @@ function appendWeekDayPanel(parent, ymd, blocks) {
 
   const dayScroll = createTimeLedgerDayTimeboxElement(blocks, {
     showEmptyMessage: false,
+    showRowLabels,
   });
   dayScroll.classList.add("time-ledger-day-timebox-scroll--week-compact");
   dayWrap.appendChild(dayScroll);
