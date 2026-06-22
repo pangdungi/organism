@@ -451,8 +451,8 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
     );
   }
 
-  /* 갤럭시·iOS: 키보드 시 화면 전체가 눌리지 않게 visualViewport·layout shrink 기준으로 모달만 맞춤
-     (iOS 과제 검색은 shouldSkipTaskLogModalKeyboardReposition 으로 lp-keyboard-open 미적용) */
+  /* 모바일: 키보드 시 visualViewport·Android 추정 inset 기준으로 모달 shell 맞춤
+     (iOS 과제 검색만 shouldSkipTaskLogModalKeyboardReposition 으로 lp-keyboard-open 미적용) */
   html.lp-keyboard-open.lp-task-log-modal-open
     .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal),
   html.lp-keyboard-open.lp-task-log-modal-open

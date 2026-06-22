@@ -43,19 +43,33 @@ export function isAndroidLikeMobile() {
   return /Android/i.test(navigator.userAgent || "");
 }
 
-function isTaskLogMemoFieldFocused() {
-  const el = document.activeElement;
-  if (!(el instanceof HTMLElement)) return false;
-  return el.matches(
-    '[data-legacy~="time-task-log-memo-input"], [data-legacy~="time-task-log-feedback"], [data-legacy~="time-task-log-meal-detail-input"]',
-  );
+/** iOS 과제 검색: 모달 shell 리사이즈는 끄고 드롭다운·스크롤만 조정 */
+export function shouldSkipTaskLogModalKeyboardReposition() {
+  return isIosLikeMobile() && isTaskLogPickerSearchFocused();
 }
 
-/** iOS 과제 검색·Android 메모: 모달 크기는 유지하고 스크롤 영역만 조정(iOS와 동일) */
-export function shouldSkipTaskLogModalKeyboardReposition() {
-  if (isIosLikeMobile() && isTaskLogPickerSearchFocused()) return true;
-  if (isAndroidLikeMobile() && isTaskLogMemoFieldFocused()) return true;
-  return false;
+function isModalKeyboardContextOpen() {
+  try {
+    const html = document.documentElement;
+    return (
+      html.classList.contains("lp-task-log-modal-open") ||
+      html.classList.contains("lp-modal-open")
+    );
+  } catch (_) {
+    return false;
+  }
+}
+
+/**
+ * Android(interactive-widget=overlays-content): 키보드가 layout·vv 를 안 줄이는 경우 추정
+ * @param {number} h
+ * @param {number} measuredKb
+ */
+function androidOverlayKeyboardFallbackPx(h, measuredKb) {
+  if (!isAndroidLikeMobile()) return measuredKb;
+  if (measuredKb > KEYBOARD_OPEN_PX) return measuredKb;
+  if (!isTextInputFocused() || !isModalKeyboardContextOpen()) return measuredKb;
+  return Math.max(measuredKb, Math.round(h * 0.42));
 }
 
 function isTextInputFocused() {
@@ -102,9 +116,17 @@ export function syncVisualViewportKeyboardInset() {
   const h = readInnerHeight();
   const vvKb = Math.max(0, h - vv.height - (vv.offsetTop || 0));
   const layoutShrinkKb = Math.max(0, _baselineInnerHeight - h);
-  const kb = Math.max(vvKb, layoutShrinkKb);
+  const measuredKb = Math.max(vvKb, layoutShrinkKb);
+  const kb = androidOverlayKeyboardFallbackPx(h, measuredKb);
   const iosLayoutShrink = isIosLikeMobile() && layoutShrinkKb > vvKb + 8;
-  const visibleHeight = iosLayoutShrink ? h : vv.height;
+  let visibleHeight = iosLayoutShrink ? h : vv.height;
+  if (
+    isAndroidLikeMobile() &&
+    kb > KEYBOARD_OPEN_PX &&
+    measuredKb <= KEYBOARD_OPEN_PX
+  ) {
+    visibleHeight = Math.max(vv.height, h - kb);
+  }
   try {
     document.documentElement.style.setProperty("--vv-keyboard", `${kb}px`);
     document.documentElement.style.setProperty(
