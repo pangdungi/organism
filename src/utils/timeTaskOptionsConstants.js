@@ -20,6 +20,12 @@ export function isSleepBuiltinTaskName(name) {
   return String(name || "").trim() === SLEEP_BUILTIN_TASK_NAME;
 }
 
+export const WORK_BUILTIN_TASK_NAME = "근무하기";
+
+export function isWorkBuiltinTaskName(name) {
+  return String(name || "").trim() === WORK_BUILTIN_TASK_NAME;
+}
+
 export const EMOTIONAL_BUILTIN_TASK_NAME = "감정적이기";
 
 export function isEmotionalBuiltinTaskName(name) {

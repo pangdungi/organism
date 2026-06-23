@@ -40,16 +40,17 @@ const CHART_COLORS = {
   media: "#9333ea",
 };
 
+/** 레포트 도넛 — 생산=부드러운 붉은 계열, 비생산=부드러운 파란 계열(앱 기본 #FFABAB·#AFCBE6 톤) */
 const DONUT_CAT_COLORS = {
-  dream: "#7BAFD4",
-  sideincome: "#6B9FD4",
-  happiness: "#8FAFD4",
-  health: "#A8BED4",
-  pleasure: "#C4906A",
-  media_watch: "#A67C8A",
-  unhappiness: "#8B90A8",
-  unhealthy: "#6B7280",
-  moneylosing: "#7A8E9A",
+  dream: "#E0A6A6",
+  sideincome: "#C98484",
+  happiness: "#E0A6A6",
+  health: "#F0C2C2",
+  pleasure: "#A3BBD9",
+  media_watch: "#7E9FC3",
+  unhappiness: "#91AED0",
+  unhealthy: "#8FA8C8",
+  moneylosing: "#C8D9EC",
   other: "#cccccc",
   "": "#cccccc",
 };
@@ -60,19 +61,19 @@ const PROD_CATEGORY_KEYS = new Set([
   "health",
 ]);
 
-const RATING_REPORT_COLOR = "#000000";
-const RATING_REPORT_COLOR_MID = "#5b8ec2";
-const RATING_REPORT_COLOR_LOW = "#b8c9dc";
+const RATING_REPORT_COLOR = "#C98484";
+const RATING_REPORT_COLOR_MID = "#7E9FC3";
+const RATING_REPORT_COLOR_LOW = "#C8D9EC";
 const RATING_REPORT_COLOR_EMPTY = "#e8edf3";
 const RATING_REPORT_COLOR_PEAK = "#d97706";
 const WEEKDAY_LABELS_KO = ["일", "월", "화", "수", "목", "금", "토"];
 const WEEKDAY_CHART_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const MEDIA_CONSCIOUS_TASK = "의식적 콘텐츠 소비";
 const MEDIA_UNCONSCIOUS_TASK = "무의식적 콘텐츠 소비";
-const MEDIA_CONSCIOUS_COLOR = "#000000";
-const MEDIA_UNCONSCIOUS_COLOR = "#7c3aed";
-const MOVE_ROUTINE_COLOR = "#000000";
-const MOVE_SIMPLE_COLOR = "#999999";
+const MEDIA_CONSCIOUS_COLOR = "#C98484";
+const MEDIA_UNCONSCIOUS_COLOR = "#7E9FC3";
+const MOVE_ROUTINE_COLOR = "#C98484";
+const MOVE_SIMPLE_COLOR = "#7E9FC3";
 
 function donutCategoryColor(catKey) {
   const k = String(catKey || "").trim() || "other";
@@ -226,30 +227,50 @@ function createStatCard(label, value, hint) {
   return card;
 }
 
-function createBarRow(label, minutes, maxMinutes, color, title) {
-  const row = document.createElement("div");
-  row.className = "lp-tr2-bar-row";
-  if (title) row.title = title;
-  const lab = document.createElement("span");
-  lab.className = "lp-tr2-bar-label";
-  lab.textContent = label;
+function createSplitRatioBar(segments, ariaLabel) {
+  const total = segments.reduce(
+    (sum, seg) => sum + Math.max(0, Number(seg.minutes) || 0),
+    0,
+  );
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-split-ratio";
+
   const track = document.createElement("div");
-  track.className = "lp-tr2-bar-track";
-  const fill = document.createElement("div");
-  fill.className = "lp-tr2-bar-fill";
-  const pct =
-    maxMinutes > 0 ? Math.min(100, (minutes / maxMinutes) * 100) : 0;
-  fill.style.width = `${pct}%`;
-  fill.style.background = color;
-  const val = document.createElement("span");
-  val.className = "lp-tr2-bar-value";
-  val.textContent =
-    minutes > 0 ? formatIntegerMinutesDurationKo(minutes) : "—";
-  track.appendChild(fill);
-  row.appendChild(lab);
-  row.appendChild(track);
-  row.appendChild(val);
-  return row;
+  track.className = "lp-tr2-split-ratio-track";
+  track.setAttribute("role", "img");
+  track.setAttribute(
+    "aria-label",
+    ariaLabel || "두 항목 시간 비율",
+  );
+
+  const active = segments.filter((seg) => (Number(seg.minutes) || 0) > 0);
+  active.forEach((seg, i) => {
+    const el = document.createElement("div");
+    el.className = "lp-tr2-split-ratio-seg";
+    if (i === 0) el.classList.add("lp-tr2-split-ratio-seg--first");
+    if (i === active.length - 1) el.classList.add("lp-tr2-split-ratio-seg--last");
+    const mins = Number(seg.minutes) || 0;
+    const pct = total > 0 ? (mins / total) * 100 : 0;
+    el.style.width = `${pct}%`;
+    el.style.background = seg.color;
+    if (seg.title) el.title = seg.title;
+    track.appendChild(el);
+  });
+
+  if (total <= 0) track.classList.add("is-empty");
+  wrap.appendChild(track);
+  wrap.appendChild(
+    createRatingChartLegend(
+      segments.map((seg) => {
+        const mins = Number(seg.minutes) || 0;
+        return {
+          swatch: seg.color,
+          label: `${seg.label} · ${mins > 0 ? formatIntegerMinutesDurationKo(mins) : "—"}`,
+        };
+      }),
+    ),
+  );
+  return wrap;
 }
 
 function formatRatingAvg(avg) {
@@ -258,14 +279,22 @@ function formatRatingAvg(avg) {
   return `${n.toFixed(1)}`;
 }
 
-function ratingFillColor(avg) {
+function ratingTier(avg) {
   const n = Number(avg);
-  if (!Number.isFinite(n) || n <= 0) return RATING_REPORT_COLOR_EMPTY;
-  if (n >= 4.5) return RATING_REPORT_COLOR;
-  if (n >= 3.5) return "#3b6ea8";
-  if (n >= 2.5) return RATING_REPORT_COLOR_MID;
-  if (n >= 1.5) return RATING_REPORT_COLOR_LOW;
-  return "#cccccc";
+  if (!Number.isFinite(n) || n <= 0) return "empty";
+  if (n >= 4.5) return "high";
+  if (n >= 2.5) return "mid";
+  if (n >= 1.5) return "low";
+  return "weak";
+}
+
+function ratingFillColor(avg) {
+  const tier = ratingTier(avg);
+  if (tier === "empty") return RATING_REPORT_COLOR_EMPTY;
+  if (tier === "high") return RATING_REPORT_COLOR;
+  if (tier === "mid") return RATING_REPORT_COLOR_MID;
+  if (tier === "low") return RATING_REPORT_COLOR_LOW;
+  return "#d8dee8";
 }
 
 function ratingBarColor(avg) {
@@ -285,9 +314,18 @@ function createRatingBarRow(label, avgRating, meta) {
   fill.className = "lp-tr2-bar-fill";
   const pct = Math.min(100, (Math.max(0, avgRating) / 5) * 100);
   fill.style.width = `${pct}%`;
-  fill.style.background = ratingBarColor(avgRating);
+  const tier = ratingTier(avgRating);
+  const fillColor = ratingBarColor(avgRating);
+  fill.style.background = fillColor;
+  fill.style.backgroundColor = fillColor;
+  if (tier !== "empty" && tier !== "weak") {
+    fill.classList.add(`lp-tr2-bar-fill--rating-${tier}`);
+  }
   const val = document.createElement("span");
   val.className = "lp-tr2-bar-value lp-tr2-bar-value--rating";
+  if (tier === "high") val.classList.add("lp-tr2-bar-value--rating-high");
+  else if (tier === "mid") val.classList.add("lp-tr2-bar-value--rating-mid");
+  else if (tier === "low") val.classList.add("lp-tr2-bar-value--rating-low");
   const num = document.createElement("span");
   num.className = "lp-tr2-bar-value-num";
   num.textContent = formatRatingAvg(avgRating);
@@ -361,7 +399,9 @@ function render24HourRatingChart(hourGrid, peakHours) {
     if (hasData) {
       const pct = Math.max(14, ((h.avg ?? 0) / 5) * 100);
       bar.style.height = `${pct}%`;
-      bar.style.background = ratingFillColor(h.avg);
+      const fillColor = ratingFillColor(h.avg);
+      bar.style.background = fillColor;
+      bar.style.backgroundColor = fillColor;
       cell.title = `${formatHourLabel(h.hour)} · ${formatRatingAvg(h.avg)}점 · ${h.count}건 · ${formatIntegerMinutesDurationKo(h.minutes)}`;
     } else {
       bar.classList.add("is-empty");
@@ -415,9 +455,13 @@ function renderWeekdayRatingChart(weekdayGrid) {
     if (hasData) {
       const pct = Math.max(14, ((w.avg ?? 0) / 5) * 100);
       bar.style.height = `${pct}%`;
-      bar.style.background = ratingFillColor(w.avg);
+      const fillColor = ratingFillColor(w.avg);
+      bar.style.background = fillColor;
+      bar.style.backgroundColor = fillColor;
       col.title = `${w.label}요일 · ${formatRatingAvg(w.avg)}점 · ${w.count}건`;
-      if ((w.avg ?? 0) >= 4) col.classList.add("lp-tr2-rating-weekday-col--high");
+      const tier = ratingTier(w.avg);
+      if (tier === "high") col.classList.add("lp-tr2-rating-weekday-col--high");
+      else if (tier === "mid") col.classList.add("lp-tr2-rating-weekday-col--mid");
     } else {
       bar.classList.add("is-empty");
     }
@@ -2237,23 +2281,23 @@ function mountMoveSection(scrollWrap, range, rows) {
   blockSub.textContent = "이동 루틴 vs 단순 이동";
   block.appendChild(blockTitle);
   block.appendChild(blockSub);
-  const maxMins = Math.max(snap.routineMinutes, snap.simpleMinutes, 1);
   block.appendChild(
-    createBarRow(
-      "이동 루틴",
-      snap.routineMinutes,
-      maxMins,
-      MOVE_ROUTINE_COLOR,
-      "의도한 이동 루틴에 쓴 시간",
-    ),
-  );
-  block.appendChild(
-    createBarRow(
-      "단순 이동",
-      snap.simpleMinutes,
-      maxMins,
-      MOVE_SIMPLE_COLOR,
-      "단순 이동 과제에 쓴 시간",
+    createSplitRatioBar(
+      [
+        {
+          label: "이동 루틴",
+          minutes: snap.routineMinutes,
+          color: MOVE_ROUTINE_COLOR,
+          title: "의도한 이동 루틴에 쓴 시간",
+        },
+        {
+          label: "단순 이동",
+          minutes: snap.simpleMinutes,
+          color: MOVE_SIMPLE_COLOR,
+          title: "단순 이동 과제에 쓴 시간",
+        },
+      ],
+      "이동 루틴과 단순 이동 시간 비율",
     ),
   );
   sec.appendChild(block);
@@ -2432,7 +2476,7 @@ function mountMediaSection(scrollWrap, range, rows) {
     chartTitle.textContent = "날짜별 의식적 vs 무의식적";
     const chartSub = document.createElement("p");
     chartSub.className = "lp-tr2-media-compare-sub";
-    chartSub.textContent = "하루마다 의식적(남색)·무의식적(보라) 시청 시간을 나란히 비교";
+    chartSub.textContent = "하루마다 의식적(붉은)·무의식적(파란) 시청 시간을 나란히 비교";
     chartBlock.appendChild(chartTitle);
     chartBlock.appendChild(chartSub);
     chartBlock.appendChild(renderMediaCompareChart(snap.chartDays));

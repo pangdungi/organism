@@ -7436,13 +7436,23 @@ export function render(opts = {}) {
     return TTC.isSleepBuiltinTaskName(taskName);
   }
 
+  function isTaskLogModalWorkTask() {
+    const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
+    return TTC.isWorkBuiltinTaskName(taskName);
+  }
+
   function isTaskLogModalEmotionalTask() {
     const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
     return TTC.isEmotionalBuiltinTaskName(taskName);
   }
 
   function shouldShowTaskLogRatingSection() {
-    if (isTaskLogModalSleepTask() || isTaskLogModalEmotionalTask()) return true;
+    if (
+      isTaskLogModalSleepTask() ||
+      isTaskLogModalWorkTask() ||
+      isTaskLogModalEmotionalTask()
+    )
+      return true;
     const pv = getTimeLedgerRowDisplayProductivity(
       buildTaskLogModalProductivityStub(),
     );
@@ -7683,11 +7693,18 @@ export function render(opts = {}) {
   const taskLogRecentReviewsList = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-recent-reviews-list"]',
   );
+  const taskLogRecentReviewsLabel = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-recent-reviews-label"]',
+  );
 
   const TASK_LOG_MEMO_LABEL_DEFAULT = "메모";
   const TASK_LOG_MEMO_PLACEHOLDER_DEFAULT = "메모를 입력하세요";
+  const TASK_LOG_MEMO_LABEL_REVIEW = "후기";
+  const TASK_LOG_MEMO_PLACEHOLDER_REVIEW = "후기를 입력하세요";
   const TASK_LOG_MEMO_LABEL_PURCHASE_REVIEW = "구매 후기";
   const TASK_LOG_MEMO_PLACEHOLDER_PURCHASE_REVIEW = "구매 후기를 입력하세요";
+  const TASK_LOG_RECENT_REVIEW_LABEL = "최근 후기";
+  const TASK_LOG_RECENT_PURCHASE_REVIEW_LABEL = "최근 구매 후기";
   const TASK_LOG_RECENT_REVIEW_LIMIT = 5;
 
   function extractTaskLogRecentReviewMemo(row) {
@@ -7698,7 +7715,7 @@ export function render(opts = {}) {
 
   function collectTaskLogRecentReviews(taskName, excludeEntryId) {
     const tn = (taskName || "").trim();
-    if (!tn || !isTaskLogPurchaseReviewTask(tn)) return [];
+    if (!tn || !isTaskLogRecentReviewTask(tn)) return [];
     const exclude = String(excludeEntryId || "").trim();
     const matched = readTimeLedgerEntriesRaw().filter((row) => {
       if ((row.taskName || "").trim() !== tn) return false;
@@ -7722,7 +7739,7 @@ export function render(opts = {}) {
   function refreshTaskLogRecentReviews(taskName) {
     if (!taskLogRecentReviewsSection || !taskLogRecentReviewsList) return;
     const tn = (taskName || "").trim();
-    if (!isTaskLogPurchaseReviewTask(tn)) {
+    if (!isTaskLogRecentReviewTask(tn)) {
       taskLogRecentReviewsSection.hidden = true;
       taskLogRecentReviewsList.replaceChildren();
       return;
@@ -7764,14 +7781,39 @@ export function render(opts = {}) {
     return prod === "productive" || prod === "nonproductive";
   }
 
+  /** 수면·근무 — 구매가 아닌 「후기」 라벨 */
+  function isTaskLogGeneralReviewTask(taskName) {
+    const tn = (taskName || "").trim();
+    if (!tn) return false;
+    return TTC.isSleepBuiltinTaskName(tn) || TTC.isWorkBuiltinTaskName(tn);
+  }
+
+  /** 수면·근무·생산·비생산 — 과거 후기 목록 표시 */
+  function isTaskLogRecentReviewTask(taskName) {
+    const tn = (taskName || "").trim();
+    if (!tn) return false;
+    return isTaskLogGeneralReviewTask(tn) || isTaskLogPurchaseReviewTask(tn);
+  }
+
   function updateTaskLogMemoCopyForProductivity(taskName) {
-    const showPurchaseReview = isTaskLogPurchaseReviewTask(taskName);
-    const memoLabel = showPurchaseReview
-      ? TASK_LOG_MEMO_LABEL_PURCHASE_REVIEW
-      : TASK_LOG_MEMO_LABEL_DEFAULT;
-    const memoPlaceholder = showPurchaseReview
-      ? TASK_LOG_MEMO_PLACEHOLDER_PURCHASE_REVIEW
-      : TASK_LOG_MEMO_PLACEHOLDER_DEFAULT;
+    const tn = (taskName || "").trim();
+    let memoLabel = TASK_LOG_MEMO_LABEL_DEFAULT;
+    let memoPlaceholder = TASK_LOG_MEMO_PLACEHOLDER_DEFAULT;
+    if (isTaskLogGeneralReviewTask(tn)) {
+      memoLabel = TASK_LOG_MEMO_LABEL_REVIEW;
+      memoPlaceholder = TASK_LOG_MEMO_PLACEHOLDER_REVIEW;
+    } else if (isTaskLogPurchaseReviewTask(tn)) {
+      memoLabel = TASK_LOG_MEMO_LABEL_PURCHASE_REVIEW;
+      memoPlaceholder = TASK_LOG_MEMO_PLACEHOLDER_PURCHASE_REVIEW;
+    }
+    if (taskLogRecentReviewsLabel) {
+      if (isTaskLogGeneralReviewTask(tn)) {
+        taskLogRecentReviewsLabel.textContent = TASK_LOG_RECENT_REVIEW_LABEL;
+      } else if (isTaskLogPurchaseReviewTask(tn)) {
+        taskLogRecentReviewsLabel.textContent =
+          TASK_LOG_RECENT_PURCHASE_REVIEW_LABEL;
+      }
+    }
     if (taskLogMemoSectionLabel) {
       taskLogMemoSectionLabel.textContent = memoLabel;
     }
