@@ -5,4 +5,5 @@ export {
   ensureAllKpiTimeTasksFromStorage,
   ensureHealthKpiTimeTasksFromStorage,
   ensureHealthKpiTimeTasksForData,
+  ensureHappinessKpiTimeTasksForData,
 } from "./kpiTimeTaskSync.js";

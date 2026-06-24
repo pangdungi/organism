@@ -161,6 +161,11 @@ export function hydrateTaskOptionsFromLocalMirrorForBoot() {
 /** 부팅: 계정별 localStorage 미러만(빠른 표시). 과제 pull·서버 쓰기는 과제설정 모달·KPI·모달 저장만. */
 export function prepareTimeLedgerTasksStorageForBoot() {
   hydrateTaskOptionsFromLocalMirrorForBoot();
+  void import("./kpiTimeTaskSync.js")
+    .then((m) => {
+      m.ensureAllKpiTimeTasksFromStorage();
+    })
+    .catch(() => {});
   void import("./timeLedgerTasksSupabase.js")
     .then((m) => {
       m.attachTimeLedgerTasksSaveListener();

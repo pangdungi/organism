@@ -2346,50 +2346,6 @@ function readTimeLedgerViewHourlyRate(viewEl) {
   return readUserHourlyRateNumber();
 }
 
-function createTimeLedgerHourlyRateHintEl() {
-  const hint = document.createElement("div");
-  lpSetClasses(hint, "time-ledger-hourly-rate-hint");
-  hint.setAttribute("role", "note");
-  const text = document.createElement("p");
-  lpSetClasses(text, "time-ledger-hourly-rate-hint-text");
-  text.textContent =
-    "행동의 가치(금액)를 보려면 나의 계정에서 시급을 입력해 주세요.";
-  const btn = document.createElement("button");
-  btn.type = "button";
-  lpSetClasses(btn, "time-ledger-hourly-rate-hint-btn");
-  btn.textContent = "시급 입력하기";
-  btn.addEventListener("click", () => {
-    try {
-      window.__lpSetTab?.("idea");
-    } catch (_) {}
-  });
-  hint.appendChild(text);
-  hint.appendChild(btn);
-  return hint;
-}
-
-function syncTimeLedgerHourlyRateHint(ledgerContainer, hourlyRate) {
-  if (!ledgerContainer) return;
-  const show = !userHourlyRateIsConfigured(hourlyRate);
-  const existing = ledgerContainer.querySelector(
-    ".time-ledger-hourly-rate-hint",
-  );
-  if (!show) {
-    existing?.remove();
-    return;
-  }
-  if (existing) return;
-  const hint = createTimeLedgerHourlyRateHintEl();
-  const heading = ledgerContainer.querySelector(
-    ".time-ledger-usage-history-heading-row",
-  );
-  if (heading?.parentElement === ledgerContainer) {
-    heading.insertAdjacentElement("afterend", hint);
-  } else {
-    ledgerContainer.prepend(hint);
-  }
-}
-
 function refreshTimeLedgerPriceDisplays(viewEl) {
   if (!viewEl?.isConnected) return;
   const hourlyRate = readTimeLedgerViewHourlyRate(viewEl);
@@ -2401,10 +2357,6 @@ function refreshTimeLedgerPriceDisplays(viewEl) {
         applyMobileCardPriceEl(priceEl, card._rowData, hourlyRate);
       }
     });
-  const ledgerContainer = viewEl.querySelector(
-    '[data-legacy~="time-ledger-container"]',
-  );
-  syncTimeLedgerHourlyRateHint(ledgerContainer, hourlyRate);
 }
 
 function aggregateDailyTimeReportSummaryFromLedgerRows(rows) {
@@ -11654,12 +11606,6 @@ export function render(opts = {}) {
     usageHistoryHeadingRow.appendChild(usageHistoryHeadingLeft);
     usageHistoryHeadingRow.appendChild(usageHistoryTotalWrap);
     ledgerContainer.appendChild(usageHistoryHeadingRow);
-    if (!showMemoOnlyLogView) {
-      syncTimeLedgerHourlyRateHint(
-        ledgerContainer,
-        readTimeLedgerViewHourlyRate(el),
-      );
-    }
 
     const showTimelineLedgerContent =
       !showMemoOnlyLogView &&

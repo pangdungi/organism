@@ -28,6 +28,11 @@ export function ensureHealthKpiTimeTasksForData(data) {
   return ensureKpiTimeTasksForData(data, "health");
 }
 
+/** @returns {boolean} kpiTaskSync 저장이 필요하면 true */
+export function ensureHappinessKpiTimeTasksForData(data) {
+  return ensureKpiTimeTasksForData(data, "happiness");
+}
+
 function ensureKpiTimeTasksForData(data, category) {
   if (!data || typeof data !== "object") return false;
   let syncChanged = false;

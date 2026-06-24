@@ -404,46 +404,6 @@
   box-sizing: border-box;
 }
 
-/* 시급 미입력 — 행동의 가치 안내 */
-.time-ledger-view .time-ledger-hourly-rate-hint,
-[data-legacy~="time-ledger-view"] .time-ledger-hourly-rate-hint {
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.45rem;
-  margin: 0;
-  padding: 0.55rem 1rem 0.65rem;
-  border-bottom: 1px solid #f2f2f2;
-  background: rgba(30, 77, 123, 0.04);
-  box-sizing: border-box;
-}
-.time-ledger-view .time-ledger-hourly-rate-hint-text,
-[data-legacy~="time-ledger-view"] .time-ledger-hourly-rate-hint-text {
-  margin: 0;
-  font-size: 0.75rem;
-  line-height: 1.45;
-  color: #64748b;
-}
-.time-ledger-view .time-ledger-hourly-rate-hint-btn,
-[data-legacy~="time-ledger-view"] .time-ledger-hourly-rate-hint-btn {
-  align-self: flex-start;
-  margin: 0;
-  padding: 0.35rem 0.65rem;
-  border: none;
-  border-radius: 999px;
-  background: #1e4d7b;
-  color: #fff;
-  font-size: 0.75rem;
-  font-weight: 600;
-  line-height: 1.2;
-  cursor: pointer;
-}
-.time-ledger-view .time-ledger-hourly-rate-hint-btn:focus-visible,
-[data-legacy~="time-ledger-view"] .time-ledger-hourly-rate-hint-btn:focus-visible {
-  outline: 2px solid #1e4d7b;
-  outline-offset: 2px;
-}
 .time-ledger-view
   .diary-tab5-timeline-price.time-mobile-card-price--needs-hourly,
 [data-legacy~="time-ledger-view"]
@@ -547,6 +507,7 @@
   font-weight: 600;
   line-height: 1.15;
   letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
   color: #dc2626;
   white-space: nowrap;
 }
@@ -3611,7 +3572,7 @@
   display: grid;
   grid-template-columns: var(
       --time-ledger-usage-time-col-w,
-      2.85rem
+      3.65rem
     ) auto minmax(0, 1fr) max-content;
   grid-template-rows: auto 1fr auto;
   column-gap: 0.5rem;
@@ -3619,7 +3580,7 @@
   align-items: stretch;
   --time-ledger-usage-header-min-h: 3.55rem;
   --time-ledger-usage-card-inset: 0.65rem;
-  --time-ledger-usage-time-col-w: 2.85rem;
+  --time-ledger-usage-time-col-w: 3.65rem;
   --time-ledger-usage-time-line-h: calc(0.8125rem * 1.2);
   --time-ledger-usage-icon-cell-size: 3.1rem;
   --time-ledger-usage-icon-img-size: var(--time-ledger-usage-icon-cell-size, 3.1rem);
@@ -3827,11 +3788,22 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
   line-height: 1.2;
+  white-space: nowrap;
   color: #999999;
   position: relative;
   z-index: 2;
   background: #fff;
   padding-bottom: 0.12rem;
+}
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout
+  .calendar-1day-timeline-card-start-end,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card--usage-layout
+  .calendar-1day-timeline-card-start-end {
+  font-variant-numeric: tabular-nums;
 }
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
@@ -5124,7 +5096,6 @@
   padding-left: 0;
   /* 세로 구분선이 행 위아래 가로줄까지 닿게 — 카드 상하 패딩 제거(내부 inset 여백은 유지) */
   padding-block: 0;
-  --time-ledger-usage-time-col-w: 3.5rem;
 }
 
 /* 진행중 — 시작시간 아래 작은 글씨 */

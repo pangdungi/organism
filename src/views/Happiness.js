@@ -10,6 +10,7 @@ import {
   HAPPINESS_KPI_GLOBAL_SCOPE_ID,
   isProtectedDefaultHappinessKpiId,
 } from "../utils/happinessKpiMapSupabase.js";
+import { ensureHappinessKpiTimeTasksForData } from "../utils/healthKpiTimeTaskSync.js";
 import {
   kpiTimeTaskEnsure,
   kpiTimeTaskRemove,
@@ -147,7 +148,29 @@ function appendDeletedRef(data, kind, id) {
   data.deletedRefs[kind] = arr;
 }
 
+function finalizeHappinessMapDefaults(parsed, baseData) {
+  const prevKpiIds = new Set((parsed?.kpis || []).map((k) => String(k.id)));
+  const data = ensureHappinessMapDefaults(baseData);
+  const newKpis = (data.kpis || []).filter((k) => !prevKpiIds.has(String(k.id)));
+  const syncChanged = ensureHappinessKpiTimeTasksForData(data);
+  const needsSave = newKpis.length > 0 || syncChanged;
+  if (needsSave) {
+    saveHappinessMap(data, { pushServer: true });
+  }
+  return data;
+}
+
 function loadHappinessMap() {
+  const empty = {
+    happinesses: [],
+    kpis: [],
+    kpiLogs: [],
+    kpiTodos: [],
+    kpiDailyRepeatTodos: [],
+    kpiOrder: {},
+    kpiTaskSync: {},
+    deletedRefs: defaultDeletedRefs(),
+  };
   try {
     const raw = readKpiMapScopedStorageRaw(HAPPINESS_KPI_MAP_STORAGE_KEY);
     if (raw) {
@@ -158,7 +181,7 @@ function loadHappinessMap() {
         useTimeAsUnit: !!k.useTimeAsUnit,
         direction: k.direction === "lower" ? "lower" : "higher",
       }));
-      return ensureHappinessMapDefaults({
+      return finalizeHappinessMapDefaults(parsed, {
         happinesses: parsed.happinesses || [],
         kpis,
         kpiLogs: parsed.kpiLogs || [],
@@ -166,20 +189,14 @@ function loadHappinessMap() {
         kpiDailyRepeatTodos: parsed.kpiDailyRepeatTodos || [],
         kpiOrder: parsed.kpiOrder || {},
         kpiTaskSync: parsed.kpiTaskSync || {},
-        deletedRefs: parsed.deletedRefs && typeof parsed.deletedRefs === "object" ? parsed.deletedRefs : defaultDeletedRefs(),
+        deletedRefs:
+          parsed.deletedRefs && typeof parsed.deletedRefs === "object"
+            ? parsed.deletedRefs
+            : defaultDeletedRefs(),
       });
     }
   } catch (_) {}
-  return ensureHappinessMapDefaults({
-    happinesses: [],
-    kpis: [],
-    kpiLogs: [],
-    kpiTodos: [],
-    kpiDailyRepeatTodos: [],
-    kpiOrder: {},
-    kpiTaskSync: {},
-    deletedRefs: defaultDeletedRefs(),
-  });
+  return finalizeHappinessMapDefaults(null, empty);
 }
 
 function getTaskName(o) {
