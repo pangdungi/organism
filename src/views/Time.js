@@ -104,7 +104,7 @@ import {
   normalizeTimeFlowDisruptorsForRow,
   formatTimeLedgerCardRatingStarsHtml,
   applyProductiveTimeRatingToBasePrice,
-  productiveTimeRatingReturnPercent,
+  formatProductiveTimeRatingMultiplierLabel,
 } from "../utils/timeLedgerEntriesModel.js";
 import {
   formatTimeLedgerEmotionRatingHtml,
@@ -1537,11 +1537,10 @@ function getMobileCardTimeRangeHtmlForRow(rowData) {
 
 function getMobileCardProductivityValue(rowData) {
   if (!rowData) return "";
-  return (
-    (rowData.productivity || "").trim() ||
-    getProductivityFromCategory(rowData.category) ||
-    ""
-  );
+  const { productivity } = resolveRowCategoryProductivityForAudit(rowData);
+  return String(productivity || "")
+    .trim()
+    .toLowerCase();
 }
 
 function hoursBetweenRowStartEnd(rowData) {
@@ -1587,9 +1586,20 @@ export function getMobileCardEffectiveHoursForPrice(rowData) {
 
 /** 생산적 과제의 「이 시간 평가」별점만 금액 배율에 반영(감정 과제 제외) */
 function rowProductiveTimeRatingForPrice(rowData) {
-  if (getMobileCardProductivityValue(rowData) !== "productive") return null;
+  if (getTimeLedgerRowDisplayProductivity(rowData) !== "productive") return null;
   if (TTC.isEmotionalBuiltinTaskName(rowData?.taskName)) return null;
   return normalizeTimeRatingForRow(rowData?.timeRating);
+}
+
+function buildTimeLedgerPriceDisplayParts(rowData, hourlyRate) {
+  const slot = getMobileCardPriceProductivitySlot(rowData);
+  const value = computeMobileCardPriceValue(rowData, hourlyRate);
+  const rating = rowProductiveTimeRatingForPrice(rowData);
+  const ratingMultiplierLabel =
+    slot === "productive" && rating != null
+      ? formatProductiveTimeRatingMultiplierLabel(rating)
+      : null;
+  return { slot, value, ratingMultiplierLabel };
 }
 
 function computeMobileCardPriceValue(rowData, hourlyRate) {
@@ -1642,19 +1652,22 @@ function applyMobileCardPriceEl(priceEl, rowData, hourlyRate) {
     priceEl.classList.remove("time-mobile-card-price--has-rating-return");
     return;
   }
-  const rating = rowProductiveTimeRatingForPrice(rowData);
-  const returnPct =
-    slot === "productive" && rating != null
-      ? productiveTimeRatingReturnPercent(rating)
-      : null;
-  const hasRatingReturn = returnPct != null;
-  lpTokenToggle(priceEl, "time-mobile-card-price--has-rating-return", hasRatingReturn);
+  const { ratingMultiplierLabel } = buildTimeLedgerPriceDisplayParts(
+    rowData,
+    hourlyRate,
+  );
+  const hasRatingMultiplier = ratingMultiplierLabel != null;
+  lpTokenToggle(
+    priceEl,
+    "time-mobile-card-price--has-rating-return",
+    hasRatingMultiplier,
+  );
   priceEl.classList.toggle(
     "time-mobile-card-price--has-rating-return",
-    hasRatingReturn,
+    hasRatingMultiplier,
   );
   const display = formatTimeLedgerActionPriceDisplay(value, slot, {
-    returnPct,
+    ratingMultiplierLabel,
     hourlyRate,
   });
   const needsHourly = !userHourlyRateIsConfigured(hourlyRate);
@@ -1690,17 +1703,14 @@ export function formatIntegerMinutesDurationKo(totalMinutes) {
 /** Diary 로그 타임라인 등: 저장된 시급 기준 모바일 카드와 동일한 「행동의 가치」표시 */
 export function getTimeLedgerRowMobilePriceDisplay(rowData) {
   const hourlyRate = readUserHourlyRateNumber();
-  const slot = getMobileCardPriceProductivitySlot(rowData);
-  const value = computeMobileCardPriceValue(rowData, hourlyRate);
-  const rating = rowProductiveTimeRatingForPrice(rowData);
-  const returnPct =
-    slot === "productive" && rating != null
-      ? productiveTimeRatingReturnPercent(rating)
-      : null;
+  const { slot, value, ratingMultiplierLabel } = buildTimeLedgerPriceDisplayParts(
+    rowData,
+    hourlyRate,
+  );
   return {
     slot,
     text: formatTimeLedgerActionPriceDisplay(value, slot, {
-      returnPct,
+      ratingMultiplierLabel,
       hourlyRate,
     }),
   };
@@ -3292,7 +3302,7 @@ function formatPrice(n) {
   return n < 0 ? `-${str}` : str;
 }
 
-/** 타임 카드·표 「행동의 가치」: 생산적 +n 원 / 비생산적 -n 원 · 평가 있으면 (±n%) · 시급 없으면 안내 */
+/** 타임 카드·표 「행동의 가치」: 생산적 +n 원 / 비생산적 -n 원 · 평가 있으면 (×배율) · 시급 없으면 안내 */
 function formatTimeLedgerActionPriceDisplay(value, productivitySlot, opts = {}) {
   if (productivitySlot === "other") return "";
   const rate =
@@ -3305,14 +3315,9 @@ function formatTimeLedgerActionPriceDisplay(value, productivitySlot, opts = {}) 
   let main = "";
   if (productivitySlot === "productive") main = `+${str} 원`;
   else if (productivitySlot === "nonproductive") main = `-${str} 원`;
-  const pct = opts.returnPct;
-  if (
-    productivitySlot === "productive" &&
-    pct != null &&
-    Number.isFinite(pct)
-  ) {
-    const pctStr = pct > 0 ? `+${pct}%` : `${pct}%`;
-    main = `${main} (${pctStr})`;
+  const multLabel = String(opts.ratingMultiplierLabel || "").trim();
+  if (productivitySlot === "productive" && multLabel) {
+    main = `${main} (${multLabel})`;
   }
   return main;
 }
@@ -3879,15 +3884,10 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
     );
     const hourlyRate =
       parseFloat(String(hourlyInput?.value || "0").replace(/,/g, "")) || 0;
-    const price = computeMobileCardPriceValue(data, hourlyRate);
-    const slot = getMobileCardPriceProductivitySlot(data);
-    const rating = rowProductiveTimeRatingForPrice(data);
-    const returnPct =
-      slot === "productive" && rating != null
-        ? productiveTimeRatingReturnPercent(rating)
-        : null;
+    const { value: price, slot, ratingMultiplierLabel } =
+      buildTimeLedgerPriceDisplayParts(data, hourlyRate);
     priceDisplay.textContent = formatTimeLedgerActionPriceDisplay(price, slot, {
-      returnPct,
+      ratingMultiplierLabel,
       hourlyRate,
     });
     lpTokenToggle(priceDisplay, "is-negative", price < 0);
@@ -5108,15 +5108,13 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
     Math.round((getMobileCardEffectiveHoursForPrice(rowData) || 0) * 60),
   );
   const hourlyRate = readTimeLedgerViewHourlyRate(viewEl);
-  const priceVal = computeMobileCardPriceValue(rowData, hourlyRate);
-  const priceSlot = getMobileCardPriceProductivitySlot(rowData);
-  const priceRating = rowProductiveTimeRatingForPrice(rowData);
-  const priceReturnPct =
-    priceSlot === "productive" && priceRating != null
-      ? productiveTimeRatingReturnPercent(priceRating)
-      : null;
+  const {
+    value: priceVal,
+    slot: priceSlot,
+    ratingMultiplierLabel: priceMultiplierLabel,
+  } = buildTimeLedgerPriceDisplayParts(rowData, hourlyRate);
   const priceText = formatTimeLedgerActionPriceDisplay(priceVal, priceSlot, {
-    returnPct: priceReturnPct,
+    ratingMultiplierLabel: priceMultiplierLabel,
     hourlyRate,
   });
   const iconSrc = timeLedgerListRowIconSrc(rowData);
@@ -5190,7 +5188,7 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   priceEl.className =
     "diary-tab5-timeline-price time-mobile-card-price time-mobile-card-price--" +
     priceSlot;
-  if (priceReturnPct != null) {
+  if (priceMultiplierLabel != null) {
     priceEl.classList.add("time-mobile-card-price--has-rating-return");
   }
   if (!userHourlyRateIsConfigured(hourlyRate)) {
@@ -10005,7 +10003,17 @@ export function render(opts = {}) {
       };
       editTr._rowData = newRowData;
       const isMobileCard = lpTokenHas(editTr, "time-ledger-mobile-card");
-      if (!isMobileCard) {
+      if (isMobileCard) {
+        const priceEl = editTr.querySelector(".diary-tab5-timeline-price");
+        if (priceEl) {
+          applyMobileCardPriceEl(
+            priceEl,
+            newRowData,
+            readTimeLedgerViewHourlyRate(el),
+          );
+        }
+        syncMobileTimeCardRatingEl(editTr, newRowData);
+      } else {
         const dispTask = editTr.querySelector(
           '[data-legacy~="time-display-task"]',
         );

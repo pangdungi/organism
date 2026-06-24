@@ -395,6 +395,13 @@ export function productiveTimeRatingReturnPercent(rawRating) {
   return Math.round((mult - 1) * 100);
 }
 
+/** 생산적 별점 배율 표기 — 5점 ×2, 4점 ×1.5, 3점 ×1, 2점 ×0.75, 1점 ×0.5 */
+export function formatProductiveTimeRatingMultiplierLabel(rawRating) {
+  const mult = productiveTimeRatingPriceMultiplier(rawRating);
+  if (mult == null) return null;
+  return `×${mult}`;
+}
+
 export function applyProductiveTimeRatingToBasePrice(basePrice, rawRating) {
   const mult = productiveTimeRatingPriceMultiplier(rawRating);
   if (mult == null) return basePrice;
