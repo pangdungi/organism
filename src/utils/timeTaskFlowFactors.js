@@ -6,6 +6,7 @@ export const TIME_TASK_FLOW_FACTOR_OPTIONS = [
   { id: "moderate_difficulty", label: "적당한 난이도" },
   { id: "planned_time", label: "계획된 시간" },
   { id: "clear_tasks", label: "명확한 할 일" },
+  { id: "supplies_ready", label: "준비물 갖춤" },
   { id: "devices_removed", label: "전자 기기 제거" },
   { id: "app_lock", label: "앱 잠금" },
   { id: "preferred_task", label: "선호하는 과제" },
@@ -16,6 +17,7 @@ export const TIME_TASK_FLOW_FACTOR_OPTIONS = [
   { id: "sound", label: "소리" },
   { id: "physical_activity", label: "신체 활동" },
   { id: "sleep_state", label: "수면 상태" },
+  { id: "good_condition", label: "컨디션 좋음" },
   { id: "place", label: "장소" },
 ];
 

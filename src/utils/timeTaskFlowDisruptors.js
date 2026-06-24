@@ -11,6 +11,7 @@ export const TIME_TASK_FLOW_DISRUPTOR_CATEGORIES = [
 
 export const TIME_TASK_FLOW_DISRUPTOR_OPTIONS = [
   { id: "unclear_task", label: "불명확한 작업", category: "task" },
+  { id: "supplies_unready", label: "준비물 미비", category: "task" },
   { id: "boredom", label: "지루함", category: "mind" },
   { id: "task_difficulty", label: "작업 난이도", category: "task" },
   { id: "multitasking", label: "멀티태스킹", category: "mind" },
@@ -20,6 +21,7 @@ export const TIME_TASK_FLOW_DISRUPTOR_OPTIONS = [
   { id: "mind_wandering", label: "딴 생각", category: "mind" },
   { id: "physiological", label: "생리 현상", category: "body" },
   { id: "hunger", label: "배고픔", category: "body" },
+  { id: "poor_condition", label: "컨디션 미비", category: "body" },
   { id: "media_digital", label: "미디어·디지털", category: "digital" },
   { id: "other_errands", label: "다른 용무", category: "external" },
   { id: "noise", label: "소음", category: "environment" },
