@@ -40,26 +40,23 @@ const CHART_COLORS = {
   media: "#9333ea",
 };
 
-/** 레포트 도넛 — 생산=부드러운 붉은 계열, 비생산=부드러운 파란 계열(앱 기본 #FFABAB·#AFCBE6 톤) */
-const DONUT_CAT_COLORS = {
-  dream: "#E0A6A6",
-  sideincome: "#C98484",
-  happiness: "#E0A6A6",
-  health: "#F0C2C2",
-  pleasure: "#A3BBD9",
-  media_watch: "#7E9FC3",
-  unhappiness: "#91AED0",
-  unhealthy: "#8FA8C8",
-  moneylosing: "#C8D9EC",
-  other: "#cccccc",
-  "": "#cccccc",
-};
-
 const PROD_CATEGORY_KEYS = new Set([
   "sideincome",
   "happiness",
   "health",
 ]);
+
+/** 레포트 레이더 — 생산·비생산 카테고리 전체(기록 없어도 축 표시) */
+const CATEGORY_RADAR_AXES = [
+  { key: "sideincome", label: "시급 상승", tone: "prod" },
+  { key: "happiness", label: "행복", tone: "prod" },
+  { key: "health", label: "건강", tone: "prod" },
+  { key: "pleasure", label: "쾌락충족", tone: "nonprod" },
+  { key: "media_watch", label: "미디어", tone: "nonprod" },
+  { key: "unhappiness", label: "불행", tone: "nonprod" },
+  { key: "unhealthy", label: "비건강", tone: "nonprod" },
+  { key: "moneylosing", label: "돈 잃는 일", tone: "nonprod" },
+];
 
 const RATING_REPORT_COLOR = "#C98484";
 const RATING_REPORT_COLOR_MID = "#7E9FC3";
@@ -74,11 +71,6 @@ const MEDIA_CONSCIOUS_COLOR = "#C98484";
 const MEDIA_UNCONSCIOUS_COLOR = "#7E9FC3";
 const MOVE_ROUTINE_COLOR = "#C98484";
 const MOVE_SIMPLE_COLOR = "#7E9FC3";
-
-function donutCategoryColor(catKey) {
-  const k = String(catKey || "").trim() || "other";
-  return DONUT_CAT_COLORS[k] || DONUT_CAT_COLORS.other;
-}
 
 function isProductiveCategory(catKey) {
   return PROD_CATEGORY_KEYS.has(String(catKey || "").trim());
@@ -2495,39 +2487,144 @@ function minutesToHhMmShort(totalMin) {
   return `${h}시간 ${m}분`;
 }
 
-function createCategoryPlanActualRow(item, maxMin) {
-  const row = document.createElement("div");
-  row.className = "lp-tr2-cat-compare-row";
-  const lab = document.createElement("span");
-  lab.className = "lp-tr2-cat-compare-label";
-  lab.textContent = item.label;
+/** 계획 vs 실제 — 생산·비생산 카테고리 전부(수면·근무 제외) */
+const PLAN_COMPARE_AXES = [
+  { key: "sideincome", label: "시급상승" },
+  { key: "happiness", label: "행복" },
+  { key: "health", label: "건강" },
+  { key: "pleasure", label: "쾌락충족" },
+  { key: "media_watch", label: "미디어" },
+  { key: "unhappiness", label: "불행" },
+  { key: "unhealthy", label: "비건강" },
+  { key: "moneylosing", label: "돈버는일" },
+];
 
-  const tracks = document.createElement("div");
-  tracks.className = "lp-tr2-cat-compare-tracks";
+function buildPlanCompareChartItems(categories) {
+  const byKey = new Map((categories || []).map((c) => [c.key, c]));
+  return PLAN_COMPARE_AXES.map(({ key, label }) => ({
+    key,
+    label,
+    plannedMin: byKey.get(key)?.plannedMin || 0,
+    actualMin: byKey.get(key)?.actualMin || 0,
+  }));
+}
 
-  const makeTrack = (kind, minutes, color) => {
-    const line = document.createElement("div");
-    line.className = `lp-tr2-cat-compare-line lp-tr2-cat-compare-line--${kind}`;
-    const tag = document.createElement("span");
-    tag.className = "lp-tr2-cat-compare-tag";
-    tag.textContent = kind === "plan" ? "계획" : "실제";
-    const track = document.createElement("div");
-    track.className = "lp-tr2-cat-compare-track";
-    const fill = document.createElement("div");
-    fill.className = "lp-tr2-cat-compare-fill";
-    const pct =
-      maxMin > 0 ? Math.min(100, (minutes / maxMin) * 100) : 0;
-    fill.style.width = `${pct}%`;
-    fill.style.background = color;
-    track.appendChild(fill);
-    line.append(tag, track);
-    return line;
-  };
+function formatPlanChartAxisLabel(minutes) {
+  const n = Math.max(0, Math.round(Number(minutes) || 0));
+  if (n <= 0) return "0m";
+  if (n < 60) return `${n}m`;
+  const h = Math.floor(n / 60);
+  const m = n % 60;
+  if (m === 0) return `${h}h`;
+  return `${h}h`;
+}
 
-  tracks.appendChild(makeTrack("plan", item.plannedMin, "#cccccc"));
-  tracks.appendChild(makeTrack("actual", item.actualMin, "#000000"));
-  row.append(lab, tracks);
-  return row;
+function buildPlanChartScale(items) {
+  const maxMin = Math.max(
+    60,
+    ...(items || []).flatMap((i) => [i.plannedMin, i.actualMin]),
+  );
+  const maxH = Math.ceil(maxMin / 60);
+  const scaleHours =
+    maxH <= 2 ? maxH : Math.ceil(maxH / 2) * 2;
+  const scaleMaxMin = Math.max(60, scaleHours * 60);
+  const stepMin = scaleHours <= 3 ? 60 : scaleHours <= 8 ? 60 : 120;
+  const ticks = [0];
+  for (let m = stepMin; m < scaleMaxMin; m += stepMin) ticks.push(m);
+  if (ticks[ticks.length - 1] !== scaleMaxMin) ticks.push(scaleMaxMin);
+  return { scaleMaxMin, ticks };
+}
+
+function renderPlanCompareChart(items) {
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-plan-compare-chart";
+  wrap.setAttribute("role", "img");
+  wrap.setAttribute("aria-label", "카테고리별 계획과 실제 시간");
+
+  wrap.appendChild(
+    createRatingChartLegend([
+      { swatch: "#d1d5db", label: "계획" },
+      { swatch: "#111111", label: "실제" },
+    ]),
+  );
+
+  const { scaleMaxMin, ticks } = buildPlanChartScale(items);
+  const panel = document.createElement("div");
+  panel.className = "lp-tr2-plan-compare-panel";
+
+  const rowsWrap = document.createElement("div");
+  rowsWrap.className = "lp-tr2-plan-compare-rows-wrap";
+
+  const vgrid = document.createElement("div");
+  vgrid.className = "lp-tr2-plan-compare-vgrid";
+  vgrid.setAttribute("aria-hidden", "true");
+  ticks.forEach((min) => {
+    if (min <= 0) return;
+    const line = document.createElement("span");
+    line.className = "lp-tr2-plan-compare-grid-line";
+    line.style.left = `${(min / scaleMaxMin) * 100}%`;
+    vgrid.appendChild(line);
+  });
+
+  const rows = document.createElement("div");
+  rows.className = "lp-tr2-plan-compare-rows";
+  items.forEach((item) => {
+    const row = document.createElement("div");
+    row.className = "lp-tr2-plan-compare-row";
+    const lab = document.createElement("span");
+    lab.className = "lp-tr2-plan-compare-label";
+    lab.textContent = item.label;
+    const bars = document.createElement("div");
+    bars.className = "lp-tr2-plan-compare-bars";
+
+    [
+      ["plan", item.plannedMin, "#d1d5db"],
+      ["actual", item.actualMin, "#111111"],
+    ].forEach(([kind, mins, color]) => {
+      const bar = document.createElement("div");
+      bar.className = `lp-tr2-plan-compare-bar lp-tr2-plan-compare-bar--${kind}`;
+      const fill = document.createElement("div");
+      fill.className = "lp-tr2-plan-compare-bar-fill";
+      const pct =
+        scaleMaxMin > 0
+          ? Math.min(100, (Math.max(0, mins) / scaleMaxMin) * 100)
+          : 0;
+      fill.style.width = `${pct}%`;
+      fill.style.background = color;
+      if (mins > 0) {
+        bar.title = `${item.label} · ${kind === "plan" ? "계획" : "실제"} · ${formatIntegerMinutesDurationKo(mins)}`;
+      }
+      bar.appendChild(fill);
+      bars.appendChild(bar);
+    });
+
+    row.append(lab, bars);
+    rows.appendChild(row);
+  });
+
+  rowsWrap.append(vgrid, rows);
+  panel.appendChild(rowsWrap);
+
+  const axis = document.createElement("div");
+  axis.className = "lp-tr2-plan-compare-axis";
+  axis.setAttribute("aria-hidden", "true");
+  const axisSpacer = document.createElement("span");
+  axisSpacer.className = "lp-tr2-plan-compare-axis-spacer";
+  const axisTrack = document.createElement("div");
+  axisTrack.className = "lp-tr2-plan-compare-axis-track";
+  ticks.forEach((min, idx) => {
+    const tick = document.createElement("span");
+    tick.className = "lp-tr2-plan-compare-axis-tick";
+    if (idx === 0) tick.classList.add("is-origin");
+    tick.style.left = `${(min / scaleMaxMin) * 100}%`;
+    tick.textContent = formatPlanChartAxisLabel(min);
+    axisTrack.appendChild(tick);
+  });
+  axis.append(axisSpacer, axisTrack);
+  panel.appendChild(axis);
+
+  wrap.appendChild(panel);
+  return wrap;
 }
 
 function mountPlanAdherenceSection(scrollWrap, range, rows) {
@@ -2540,13 +2637,9 @@ function mountPlanAdherenceSection(scrollWrap, range, rows) {
   );
   sec.classList.add("lp-tr2-plan-section");
 
-  const habitBlock = createRatingBlock(
-    "평소 계획하기",
-    "예상 일정(타임박스)을 적은 날",
-  );
-  const habitGrid = document.createElement("div");
-  habitGrid.className = "lp-tr2-card-grid";
-  habitGrid.appendChild(
+  const summaryGrid = document.createElement("div");
+  summaryGrid.className = "lp-tr2-card-grid lp-tr2-plan-summary-grid";
+  summaryGrid.appendChild(
     createStatCard(
       "계획한 날",
       snap.totalDaysInPeriod > 0
@@ -2555,7 +2648,7 @@ function mountPlanAdherenceSection(scrollWrap, range, rows) {
       snap.isSingleDay ? "이 날 기준" : "조회 기간",
     ),
   );
-  habitGrid.appendChild(
+  summaryGrid.appendChild(
     createStatCard(
       "계획 빈도",
       snap.totalDaysInPeriod > 0
@@ -2564,12 +2657,21 @@ function mountPlanAdherenceSection(scrollWrap, range, rows) {
       "예상 일정이 있는 날 비율",
     ),
   );
-  habitBlock.appendChild(habitGrid);
-  const habitLine = document.createElement("p");
-  habitLine.className = "lp-tr2-plan-est-text";
-  habitLine.textContent = snap.planningHabitLine || "";
-  if (habitLine.textContent) habitBlock.appendChild(habitLine);
-  sec.appendChild(habitBlock);
+  summaryGrid.appendChild(
+    createStatCard(
+      "계획 이행률",
+      snap.hasPlanData ? formatPctRounded(snap.adherencePct) : "—",
+      snap.hasPlanData && snap.oneLiner ? snap.oneLiner : "예상 일정 대비 실행",
+    ),
+  );
+  sec.appendChild(summaryGrid);
+
+  if (snap.planningHabitLine) {
+    const habitLine = document.createElement("p");
+    habitLine.className = "lp-tr2-plan-est-text";
+    habitLine.textContent = snap.planningHabitLine;
+    sec.appendChild(habitLine);
+  }
 
   if (!snap.hasPlanData) {
     const note = document.createElement("p");
@@ -2581,37 +2683,9 @@ function mountPlanAdherenceSection(scrollWrap, range, rows) {
     return;
   }
 
-  const hero = document.createElement("div");
-  hero.className = "lp-tr2-plan-hero";
-  const heroLab = document.createElement("span");
-  heroLab.className = "lp-tr2-plan-hero-label";
-  heroLab.textContent = "계획 이행률";
-  const heroVal = document.createElement("strong");
-  heroVal.className = "lp-tr2-plan-hero-value";
-  heroVal.textContent = formatPctRounded(snap.adherencePct);
-  const heroLine = document.createElement("p");
-  heroLine.className = "lp-tr2-plan-hero-line";
-  heroLine.textContent = snap.oneLiner;
-  hero.append(heroLab, heroVal, heroLine);
-  sec.appendChild(hero);
-
-  if (snap.categories.length) {
-    const catBlock = createRatingBlock(
-      "카테고리별 계획 vs 실제",
-      "계획(회색) · 실제(파랑)",
-    );
-    const maxMin = Math.max(
-      1,
-      ...snap.categories.flatMap((c) => [c.plannedMin, c.actualMin]),
-    );
-    const bars = document.createElement("div");
-    bars.className = "lp-tr2-cat-compare-list";
-    snap.categories.slice(0, 8).forEach((item) => {
-      bars.appendChild(createCategoryPlanActualRow(item, maxMin));
-    });
-    catBlock.appendChild(bars);
-    sec.appendChild(catBlock);
-  }
+  sec.appendChild(
+    renderPlanCompareChart(buildPlanCompareChartItems(snap.categories)),
+  );
 
   if (snap.leak.minutes > 0) {
     const leakBlock = createRatingBlock("시간 누수", "계획에 없던 활동");
@@ -3090,18 +3164,34 @@ function hoursForFieldScoreKey(segments, key) {
 function fieldTimeScoresFromDonutSnap(snap) {
   const totalHours = Number(snap?.totalHours) || 0;
   const segments = snap?.segments || [];
-  return FIELD_TIME_SCORE_KEYS.map(({ key, label }) => {
+  const rows = FIELD_TIME_SCORE_KEYS.map(({ key, label }) => {
     const hours = hoursForFieldScoreKey(segments, key);
     const pct = totalHours > 0 ? (hours / totalHours) * 100 : 0;
-    const score = Math.round(pct);
-    return {
-      key,
-      label,
-      hours,
-      pct,
-      score,
-    };
+    return { key, label, hours, pct };
   });
+  const focusTotalHours = rows.reduce((sum, r) => sum + r.hours, 0);
+  if (focusTotalHours <= 0) {
+    return rows.map((row) => ({ ...row, score: 0 }));
+  }
+  const weighted = rows.map((row) => ({
+    ...row,
+    scoreRaw: (row.hours / focusTotalHours) * 100,
+  }));
+  const scores = weighted.map((row) => Math.round(row.scoreRaw));
+  let remainder = 100 - scores.reduce((sum, n) => sum + n, 0);
+  if (remainder !== 0) {
+    const adjustIdx = weighted
+      .map((row, i) => ({ i, frac: row.scoreRaw - Math.floor(row.scoreRaw) }))
+      .sort((a, b) => b.frac - a.frac)[0].i;
+    scores[adjustIdx] += remainder;
+  }
+  return weighted.map((row, i) => ({
+    key: row.key,
+    label: row.label,
+    hours: row.hours,
+    pct: row.pct,
+    score: scores[i],
+  }));
 }
 
 function mountFieldTimeScoresRow(parent, snap) {
@@ -3118,35 +3208,198 @@ function mountFieldTimeScoresRow(parent, snap) {
   parent.appendChild(row);
 }
 
-function annularSectorPath(cx, cy, rOut, rIn, a0, a1) {
-  const span = a1 - a0;
-  if (span <= 1e-9) return "";
-  const twoPi = Math.PI * 2;
-  if (span >= twoPi - 1e-5) {
-    return `${annularSectorPath(cx, cy, rOut, rIn, a0, a0 + Math.PI)} ${annularSectorPath(cx, cy, rOut, rIn, a0 + Math.PI, a0 + twoPi)}`;
+function radarGridStep(scaleMax) {
+  if (scaleMax <= 120) return 30;
+  if (scaleMax <= 300) return 60;
+  return Math.max(60, Math.round(scaleMax / 5 / 60) * 60);
+}
+
+function buildCategoryTimeRadarFromDonutSnap(snap) {
+  /** @type {Map<string, { hours: number, label?: string }>} */
+  const byKey = new Map();
+  for (const s of snap.segments || []) {
+    const k = s.key === "dream" ? "sideincome" : s.key;
+    const prev = byKey.get(k);
+    const hours = (prev?.hours || 0) + (Number(s.hours) || 0);
+    byKey.set(k, { hours, label: s.label });
   }
-  const large = span > Math.PI ? 1 : 0;
-  const x1 = cx + rOut * Math.cos(a0);
-  const y1 = cy + rOut * Math.sin(a0);
-  const x2 = cx + rOut * Math.cos(a1);
-  const y2 = cy + rOut * Math.sin(a1);
-  const x3 = cx + rIn * Math.cos(a1);
-  const y3 = cy + rIn * Math.sin(a1);
-  const x4 = cx + rIn * Math.cos(a0);
-  const y4 = cy + rIn * Math.sin(a0);
-  return `M ${x1} ${y1} A ${rOut} ${rOut} 0 ${large} 1 ${x2} ${y2} L ${x3} ${y3} A ${rIn} ${rIn} 0 ${large} 0 ${x4} ${y4} Z`;
+
+  const axes = CATEGORY_RADAR_AXES.map(({ key, label, tone }) => {
+    const seg = byKey.get(key);
+    return {
+      key,
+      label,
+      minutes: seg ? Math.round(seg.hours * 60) : 0,
+      tone,
+    };
+  });
+
+  const rawMax = Math.max(0, ...axes.map((a) => a.minutes));
+  const step = radarGridStep(Math.max(rawMax, 30));
+  const scaleMax =
+    rawMax > 0 ? Math.max(step, Math.ceil(rawMax / step) * step) : 60;
+
+  return {
+    axes,
+    scaleMax,
+    hasData: axes.some((a) => a.minutes > 0),
+  };
+}
+
+function radarSeriesPoints(axes, scaleMax, cx, cy, R) {
+  const n = axes.length;
+  return axes.map((a, i) => {
+    const r = scaleMax > 0 ? (Math.max(0, a.minutes) / scaleMax) * R : 0;
+    const ang = -Math.PI / 2 + (i * 2 * Math.PI) / n;
+    return [cx + r * Math.cos(ang), cy + r * Math.sin(ang)];
+  });
+}
+
+function closedPointsAttr(points) {
+  if (!points.length) return "";
+  const flat = points.map((p) => p.join(","));
+  return `${flat.join(" ")} ${points[0].join(",")}`;
+}
+
+function appendRadarAxisLabel(svg, axis, i, n, cx, cy, labelR) {
+  const ang = -Math.PI / 2 + (i * 2 * Math.PI) / n;
+  const lx = cx + labelR * Math.cos(ang);
+  const ly = cy + labelR * Math.sin(ang);
+  const cos = Math.cos(ang);
+  const sin = Math.sin(ang);
+  const hasValue = axis.minutes > 0;
+
+  let anchor = "middle";
+  if (cos > 0.22) anchor = "start";
+  else if (cos < -0.22) anchor = "end";
+
+  let dy = 0;
+  if (sin < -0.28) dy = -3;
+  else if (sin > 0.28) dy = 4;
+
+  const t = svgEl("text", {
+    x: lx,
+    y: ly + dy,
+    fill: hasValue
+      ? axis.tone === "prod"
+        ? "#a87070"
+        : "#6d8aad"
+      : "#b8c5d4",
+    "font-size": 10,
+    "font-weight": 700,
+    "text-anchor": anchor,
+    "dominant-baseline": "middle",
+  });
+  t.textContent = axis.label;
+  svg.appendChild(t);
+}
+
+function renderCategoryTimeRadarChart(radarSnap) {
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-balance-radar";
+
+  const W = 380;
+  const H = 360;
+  const cx = 190;
+  const cy = 178;
+  const R = 98;
+  const labelR = R + 36;
+  const axes = radarSnap.axes || [];
+  const n = axes.length;
+  if (n === 0) return wrap;
+
+  const scaleMax = Math.max(30, Number(radarSnap.scaleMax) || 60);
+  const gridStep = radarGridStep(scaleMax);
+
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.classList.add("lp-tr2-balance-radar-svg");
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", "카테고리별 기록 시간");
+
+  for (let val = gridStep; val <= scaleMax; val += gridStep) {
+    const r = (val / scaleMax) * R;
+    const ringPts = [];
+    for (let i = 0; i < n; i++) {
+      const ang = -Math.PI / 2 + (i * 2 * Math.PI) / n;
+      ringPts.push(`${cx + r * Math.cos(ang)},${cy + r * Math.sin(ang)}`);
+    }
+    svg.appendChild(
+      svgEl("polygon", {
+        points: ringPts.join(" "),
+        fill: "none",
+        stroke: "#e8edf3",
+        "stroke-width": 1,
+      }),
+    );
+  }
+
+  for (let i = 0; i < n; i++) {
+    const ang = -Math.PI / 2 + (i * 2 * Math.PI) / n;
+    svg.appendChild(
+      svgEl("line", {
+        x1: cx,
+        y1: cy,
+        x2: cx + R * Math.cos(ang),
+        y2: cy + R * Math.sin(ang),
+        stroke: "#e8edf3",
+        "stroke-width": 1,
+      }),
+    );
+  }
+
+  const pts = radarSeriesPoints(axes, scaleMax, cx, cy, R);
+  const hasAnyValue = axes.some((a) => a.minutes > 0);
+  if (hasAnyValue) {
+    svg.appendChild(
+      svgEl("polygon", {
+        points: closedPointsAttr(pts),
+        fill: "rgba(126, 159, 195, 0.12)",
+        stroke: "#64748b",
+        "stroke-width": 2,
+        "stroke-linejoin": "round",
+      }),
+    );
+  }
+  pts.forEach(([x, y], i) => {
+    const axis = axes[i];
+    if (!axis || axis.minutes <= 0) return;
+    const fill = axis.tone === "prod" ? "#C98484" : "#7E9FC3";
+    const dot = svgEl("circle", { cx: x, cy: y, r: 4, fill });
+    const titleEl = document.createElementNS(SVG_NS, "title");
+    titleEl.textContent = `${axis.label} · ${formatIntegerMinutesDurationKo(axis.minutes)}`;
+    dot.appendChild(titleEl);
+    svg.appendChild(dot);
+  });
+
+  axes.forEach((a, i) => {
+    appendRadarAxisLabel(svg, a, i, n, cx, cy, labelR);
+  });
+
+  wrap.appendChild(svg);
+  wrap.appendChild(
+    createRatingChartLegend([
+      { swatch: "#C98484", label: "생산" },
+      { swatch: "#7E9FC3", label: "비생산" },
+    ]),
+  );
+  return wrap;
 }
 
 function mountDonutSection(scrollWrap, range) {
   const snap = getTimeReportDonutSnapshotForDateRange(range.start, range.end);
+  const radarSnap = buildCategoryTimeRadarFromDonutSnap(snap);
   const sec = createSection(
     "생산 · 비생산 시간",
-    "수면·근무 제외 · 색=카테고리 · 막대=비율",
+    "수면·근무 제외 · 카테고리별 기록 시간",
   );
   const wrap = document.createElement("div");
   wrap.className = "lp-tr2-donut-wrap";
 
-  if (!snap.totalHours || snap.totalHours <= 0) {
+  const hasProdNonProd = snap.totalHours > 0;
+
+  if (!hasProdNonProd) {
+    wrap.appendChild(renderCategoryTimeRadarChart(radarSnap));
     const empty = document.createElement("p");
     empty.className = "lp-tr2-donut-legend-empty";
     empty.textContent = "집계할 생산·비생산 기록이 없습니다.";
@@ -3157,135 +3410,28 @@ function mountDonutSection(scrollWrap, range) {
     return;
   }
 
-  const { prod, nonProd, ordered } = orderDonutSegments(snap.segments);
-  const prodHours = prod.reduce((a, s) => a + s.hours, 0);
-  const nonProdHours = nonProd.reduce((a, s) => a + s.hours, 0);
-  const prodPct = (prodHours / snap.totalHours) * 100;
-  const nonProdPct = (nonProdHours / snap.totalHours) * 100;
+  if (hasProdNonProd) {
+    const { prod, nonProd } = orderDonutSegments(snap.segments);
+    const prodHours = prod.reduce((a, s) => a + s.hours, 0);
+    const nonProdHours = nonProd.reduce((a, s) => a + s.hours, 0);
+    const prodPct = (prodHours / snap.totalHours) * 100;
+    const nonProdPct = (nonProdHours / snap.totalHours) * 100;
 
-  const split = document.createElement("div");
-  split.className = "lp-tr2-donut-split";
-  const prodChip = document.createElement("div");
-  prodChip.className = "lp-tr2-donut-split-chip lp-tr2-donut-split-chip--prod";
-  prodChip.innerHTML = `<span class="lp-tr2-donut-split-label">생산</span><strong>${formatIntegerMinutesDurationKo(Math.round(prodHours * 60))}</strong><span class="lp-tr2-donut-split-pct">${formatPctRounded(prodPct)}</span>`;
-  const nonProdChip = document.createElement("div");
-  nonProdChip.className =
-    "lp-tr2-donut-split-chip lp-tr2-donut-split-chip--nonprod";
-  nonProdChip.innerHTML = `<span class="lp-tr2-donut-split-label">비생산</span><strong>${formatIntegerMinutesDurationKo(Math.round(nonProdHours * 60))}</strong><span class="lp-tr2-donut-split-pct">${formatPctRounded(nonProdPct)}</span>`;
-  split.appendChild(prodChip);
-  split.appendChild(nonProdChip);
-  wrap.appendChild(split);
+    const split = document.createElement("div");
+    split.className = "lp-tr2-donut-split";
+    const prodChip = document.createElement("div");
+    prodChip.className = "lp-tr2-donut-split-chip lp-tr2-donut-split-chip--prod";
+    prodChip.innerHTML = `<span class="lp-tr2-donut-split-label">생산</span><strong>${formatIntegerMinutesDurationKo(Math.round(prodHours * 60))}</strong><span class="lp-tr2-donut-split-pct">${formatPctRounded(prodPct)}</span>`;
+    const nonProdChip = document.createElement("div");
+    nonProdChip.className =
+      "lp-tr2-donut-split-chip lp-tr2-donut-split-chip--nonprod";
+    nonProdChip.innerHTML = `<span class="lp-tr2-donut-split-label">비생산</span><strong>${formatIntegerMinutesDurationKo(Math.round(nonProdHours * 60))}</strong><span class="lp-tr2-donut-split-pct">${formatPctRounded(nonProdPct)}</span>`;
+    split.appendChild(prodChip);
+    split.appendChild(nonProdChip);
+    wrap.appendChild(split);
+    wrap.appendChild(renderCategoryTimeRadarChart(radarSnap));
+  }
 
-  const body = document.createElement("div");
-  body.className = "lp-tr2-donut-body";
-
-  const viz = document.createElement("div");
-  viz.className = "lp-tr2-donut-viz";
-  const svg = document.createElementNS(SVG_NS, "svg");
-  svg.setAttribute("viewBox", "0 0 200 200");
-  svg.classList.add("lp-tr2-donut-svg");
-
-  const center = document.createElement("div");
-  center.className = "lp-tr2-donut-center";
-  const cap = document.createElement("span");
-  cap.className = "lp-tr2-donut-cap";
-  cap.textContent = "합계";
-  const strong = document.createElement("strong");
-  strong.className = "lp-tr2-donut-total";
-  strong.textContent = formatIntegerMinutesDurationKo(snap.totalMinutesRounded);
-  const sub = document.createElement("span");
-  sub.className = "lp-tr2-donut-sub";
-  sub.textContent = `생산 ${formatPctRounded(prodPct)}`;
-  center.appendChild(cap);
-  center.appendChild(strong);
-  center.appendChild(sub);
-
-  const SEG_GAP = 0.025;
-  const GROUP_GAP = prod.length && nonProd.length ? 0.06 : 0;
-  const totalGap =
-    ordered.length * SEG_GAP + (prod.length && nonProd.length ? GROUP_GAP : 0);
-  const availAngle = Math.PI * 2 - totalGap;
-  let angle = -Math.PI / 2;
-
-  ordered.forEach((s, i) => {
-    if (i > 0 && prod.length && i === prod.length) {
-      angle += GROUP_GAP;
-    }
-    const span = (s.hours / snap.totalHours) * availAngle;
-    const color = donutCategoryColor(s.key);
-    const d = annularSectorPath(100, 100, 90, 52, angle, angle + span);
-    if (d) {
-      const path = document.createElementNS(SVG_NS, "path");
-      path.setAttribute("d", d);
-      path.setAttribute("fill", color);
-      path.setAttribute("stroke", "#ffffff");
-      path.setAttribute("stroke-width", "2");
-      path.setAttribute("stroke-linejoin", "round");
-      const titleEl = document.createElementNS(SVG_NS, "title");
-      titleEl.textContent = `${s.label} · ${formatIntegerMinutesDurationKo(Math.round(s.hours * 60))} · ${formatPctRounded((s.hours / snap.totalHours) * 100)}`;
-      path.appendChild(titleEl);
-      svg.appendChild(path);
-    }
-    angle += span + SEG_GAP;
-  });
-
-  viz.appendChild(svg);
-  viz.appendChild(center);
-  body.appendChild(viz);
-
-  const legend = document.createElement("div");
-  legend.className = "lp-tr2-donut-legend";
-
-  const addLegendGroup = (title, items, tone) => {
-    if (!items.length) return;
-    const head = document.createElement("p");
-    head.className = `lp-tr2-donut-legend-group lp-tr2-donut-legend-group--${tone}`;
-    head.textContent = title;
-    legend.appendChild(head);
-    const list = document.createElement("ul");
-    list.className = "lp-tr2-donut-legend-list";
-    items.forEach((s) => {
-      const pct = (s.hours / snap.totalHours) * 100;
-      const mins = Math.round(s.hours * 60);
-      const color = donutCategoryColor(s.key);
-      const li = document.createElement("li");
-      li.className = "lp-tr2-donut-legend-item";
-      const dot = document.createElement("span");
-      dot.className = "lp-tr2-donut-legend-dot";
-      dot.style.background = color;
-      const bodyEl = document.createElement("div");
-      bodyEl.className = "lp-tr2-donut-legend-body";
-      const row = document.createElement("div");
-      row.className = "lp-tr2-donut-legend-head";
-      const lab = document.createElement("span");
-      lab.className = "lp-tr2-donut-legend-label";
-      lab.textContent = s.label;
-      const meta = document.createElement("span");
-      meta.className = "lp-tr2-donut-legend-meta";
-      meta.textContent = `${formatIntegerMinutesDurationKo(mins)} · ${formatPctRounded(pct)}`;
-      row.appendChild(lab);
-      row.appendChild(meta);
-      const barTrack = document.createElement("div");
-      barTrack.className = "lp-tr2-donut-legend-bar";
-      const barFill = document.createElement("div");
-      barFill.className = "lp-tr2-donut-legend-bar-fill";
-      barFill.style.width = `${Math.max(2, pct)}%`;
-      barFill.style.background = color;
-      barTrack.appendChild(barFill);
-      bodyEl.appendChild(row);
-      bodyEl.appendChild(barTrack);
-      li.appendChild(dot);
-      li.appendChild(bodyEl);
-      list.appendChild(li);
-    });
-    legend.appendChild(list);
-  };
-
-  addLegendGroup("생산", prod, "prod");
-  addLegendGroup("비생산", nonProd, "nonprod");
-
-  body.appendChild(legend);
-  wrap.appendChild(body);
   mountFieldTimeScoresRow(wrap, snap);
   sec.appendChild(wrap);
   scrollWrap.appendChild(sec);
