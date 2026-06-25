@@ -33,10 +33,27 @@ export function ensureHappinessKpiTimeTasksForData(data) {
   return ensureKpiTimeTasksForData(data, "happiness");
 }
 
+function pruneStaleKpiTaskSyncEntries(data) {
+  if (!data || typeof data !== "object") return false;
+  data.kpiTaskSync = data.kpiTaskSync || {};
+  const active = new Set(
+    (data.kpis || [])
+      .map((k) => String(k?.id || "").trim())
+      .filter(Boolean),
+  );
+  let changed = false;
+  for (const kid of Object.keys(data.kpiTaskSync)) {
+    if (!active.has(String(kid || "").trim())) {
+      delete data.kpiTaskSync[kid];
+      changed = true;
+    }
+  }
+  return changed;
+}
+
 function ensureKpiTimeTasksForData(data, category) {
   if (!data || typeof data !== "object") return false;
-  let syncChanged = false;
-  data.kpiTaskSync = data.kpiTaskSync || {};
+  let syncChanged = pruneStaleKpiTaskSyncEntries(data);
   for (const kpi of data.kpis || []) {
     const id = String(kpi?.id || "").trim();
     const name = String(kpi?.name || "").trim();

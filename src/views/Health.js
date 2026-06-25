@@ -354,11 +354,9 @@ function syncKpiToTimeTask(kpi, action, oldName) {
     kpiTimeTaskEnsure(kpi, "health");
   } else if (action === "remove") {
     const syncName = (data.kpiTaskSync[kpi.id] || kpi.name || "").trim();
-    if (syncName) {
-      delete data.kpiTaskSync[kpi.id];
-      saveHealthMap(data);
-      kpiTimeTaskRemove(kpi, syncName);
-    }
+    delete data.kpiTaskSync[kpi.id];
+    saveHealthMap(data);
+    kpiTimeTaskRemove(kpi, syncName);
   } else if (action === "update" && oldName) {
     const newName = (kpi.name || "").trim();
     const oldNm = (oldName || "").trim();

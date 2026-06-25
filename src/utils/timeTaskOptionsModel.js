@@ -12,6 +12,7 @@ import {
 import {
   getActiveKpiTaskKeepersById,
   getKpiSyncedTaskNames,
+  isActiveKpiId,
 } from "./kpiMapLocalStorage.js";
 import { isUuid, UUID_RE } from "./idUtils.js";
 import {
@@ -86,7 +87,7 @@ export function readTaskOptionsMemRows() {
   }));
 }
 
-/** KPI 맵의 현재 표시명·category만 연동 과제 행에 반영(서버 행 삭제·로컬 중복 제거 없음) */
+/** KPI 맵의 현재 표시명·category 반영 + 삭제된 KPI 연동 과제 제거 */
 export function patchKpiLinkedTasksFromKpiMaps() {
   if (!_ledgerTasksMem || !Array.isArray(_ledgerTasksMem)) return;
   if (_patchKpiLinkedFromMapsDepth > 4) return;
@@ -94,22 +95,38 @@ export function patchKpiLinkedTasksFromKpiMaps() {
   try {
     const keepers = getActiveKpiTaskKeepersById();
     let changed = false;
-    const next = _ledgerTasksMem.map((o) => {
+    const orphanKpiIds = new Set();
+    const next = [];
+    for (const o of _ledgerTasksMem) {
       const kid = String(o.kpiId || "").trim();
-      if (!kid) return o;
-      const meta = keepers.get(kid);
-      if (!meta) return o;
-      const name = String(meta.name || o.name || "").trim() || o.name;
-      const category = String(meta.category || o.category || "").trim() || o.category;
-      if (name === o.name && category === o.category) return o;
-      changed = true;
-      return { ...o, name, category };
-    });
+      if (kid && !keepers.has(kid)) {
+        changed = true;
+        orphanKpiIds.add(kid);
+        continue;
+      }
+      if (kid && keepers.has(kid)) {
+        const meta = keepers.get(kid);
+        const name = String(meta?.name || o.name || "").trim() || o.name;
+        const category =
+          String(meta?.category || o.category || "").trim() || o.category;
+        if (name === o.name && category === o.category) {
+          next.push(o);
+          continue;
+        }
+        changed = true;
+        next.push({ ...o, name, category });
+        continue;
+      }
+      next.push(o);
+    }
     if (!changed) return;
     saveLedgerTaskList(next, {
       bumpPullSkip: true,
       scheduleSyncPush: false,
     });
+    for (const kid of orphanKpiIds) {
+      void notifyAfterServerDeleteIfNeeded("", kid);
+    }
   } finally {
     _patchKpiLinkedFromMapsDepth--;
   }
@@ -483,8 +500,10 @@ export function clearTimeLedgerTaskOptionsLocalStorage() {
 
 /** 과제 기록 모달 — 서버 행 + 코드 기본 과제(FIXED_*) 목록 */
 export function getServerLedgerTaskOptionsForTaskLog() {
-  const arr = readTaskOptionsMemRows().filter(
-    (o) => !C.isRetiredBuiltinTaskName(String(o.name || "").trim()),
+  const arr = filterActiveKpiLinkedLedgerTasks(
+    readTaskOptionsMemRows().filter(
+      (o) => !C.isRetiredBuiltinTaskName(String(o.name || "").trim()),
+    ),
   );
   return mergeMissingBuiltinTemplates(arr);
 }
@@ -509,7 +528,21 @@ export function isDreamKpiLedgerTask(task) {
 
 /** @param {ReturnType<typeof getFullTaskOptions>} tasks */
 export function filterTasksForTaskSetupModalList(tasks) {
-  return (tasks || []).filter((t) => !isDreamKpiLedgerTask(t));
+  return (tasks || []).filter((t) => {
+    if (isDreamKpiLedgerTask(t)) return false;
+    const kid = String(t.kpiId || "").trim();
+    if (kid && !isActiveKpiId(kid)) return false;
+    return true;
+  });
+}
+
+/** 과제 기록·설정 — KPI에 없는 kpiId 연동 과제 제외 */
+export function filterActiveKpiLinkedLedgerTasks(tasks) {
+  return (tasks || []).filter((t) => {
+    const kid = String(t.kpiId || "").trim();
+    if (!kid) return true;
+    return isActiveKpiId(kid);
+  });
 }
 
 /** 외부에서 과제 메모리를 건드린 뒤 알림(예: KPI 연동 경로). UUID 부여·푸시는 getFullTaskOptions·별도 save 경로에서 처리 */
@@ -775,18 +808,31 @@ export function kpiTimeTaskEnsure(kpi, category) {
 export function kpiTimeTaskRemove(kpi, syncNameFromMap) {
   const kpiId = (kpi && kpi.id && String(kpi.id).trim()) || "";
   const nameFb = (syncNameFromMap || (kpi && (kpi.name || "")) || "").trim();
-  const opts = getFullTaskOptions();
-  const byKpi =
-    kpiId && opts.find((o) => o.kpiId && String(o.kpiId) === kpiId);
-  const target =
-    byKpi || (nameFb && opts.find((o) => (o.name || "").trim() === nameFb));
-  if (!target) return;
-  const removedId =
-    target && isUuid(String(target.id || "").trim())
-      ? String(target.id).trim()
-      : "";
-  const next = opts.filter((o) => o !== target);
-  writeTaskOptionListLocal(next);
+  const opts = readTaskOptionsMemRows();
+  let removedId = "";
+  const next = opts.filter((o) => {
+    const kid = String(o.kpiId || "").trim();
+    const n = (o.name || "").trim();
+    if (kpiId && kid === kpiId) {
+      const oid = String(o.id || "").trim();
+      if (!removedId && isUuid(oid)) removedId = oid;
+      return false;
+    }
+    if (nameFb && n === nameFb && (!kid || kid === kpiId)) {
+      const oid = String(o.id || "").trim();
+      if (!removedId && isUuid(oid)) removedId = oid;
+      return false;
+    }
+    return true;
+  });
+  if (next.length === opts.length) {
+    if (kpiId) void notifyAfterServerDeleteIfNeeded("", kpiId);
+    return;
+  }
+  saveMergedList(next, {
+    bumpPullSkip: true,
+    scheduleSyncPush: false,
+  });
   void notifyAfterServerDeleteIfNeeded(removedId, kpiId);
 }
 
@@ -840,6 +886,7 @@ export function kpiTimeTaskRename(kpi, oldNameFromKpi) {
       deleteIds.add(oid);
       continue;
     }
+    if (oldNm && n === oldNm && oid !== canonicalId) deleteIds.add(oid);
     if (oldNm && n === oldNm && kid !== kpiId) deleteIds.add(oid);
     if (!kid && n === newName) deleteIds.add(oid);
   }
@@ -878,6 +925,9 @@ export function kpiTimeTaskRename(kpi, oldNameFromKpi) {
     scheduleSyncPush: isUuid(canonicalId),
     upsertTaskIds: isUuid(canonicalId) ? [canonicalId] : [],
   });
+  for (const oid of deleteIds) {
+    void notifyAfterServerDeleteIfNeeded(oid, "");
+  }
 
   patchKpiLinkedTasksFromKpiMaps();
 }

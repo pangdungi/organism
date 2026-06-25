@@ -23,6 +23,13 @@ export function writeKpiMapScopedStorageRaw(storageKey, raw) {
   setScopedLocalStorageItem(storageKey, raw);
 }
 
+/** KPI id가 현재 맵 kpis 배열에 있는지 */
+export function isActiveKpiId(kpiId) {
+  const id = String(kpiId || "").trim();
+  if (!id) return false;
+  return getActiveKpiTaskKeepersById().has(id);
+}
+
 /** KPI 맵 pull·소프트 갱신 — localStorage 원문 지문(변경 없으면 카드 재그림 생략) */
 export function readKpiMapLocalStorageSignature(storageKey) {
   try {
@@ -37,45 +44,15 @@ export function readKpiMapLocalStorageSignature(storageKey) {
  */
 export function getKpiSyncedTaskNames() {
   const names = new Set();
-  KPI_MAP_STORAGE_KEYS.forEach((key) => {
-    try {
-      const raw = readKpiMapScopedStorageRaw(key);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      const sync = parsed?.kpiTaskSync || {};
-      const kpis = parsed?.kpis || [];
-      const byId = new Map(
-        kpis.map((k) => [String(k?.id || "").trim(), k]).filter(([id]) => id),
-      );
-      Object.keys(sync).forEach((kid) => {
-        const id = String(kid || "").trim();
-        if (!id) return;
-        const row = byId.get(id);
-        const n =
-          (row && String(row.name || "").trim()) ||
-          String(sync[kid] || "").trim();
-        if (n) names.add(n);
-      });
-    } catch (_) {}
-  });
+  for (const { name } of getActiveKpiTaskKeepersById().values()) {
+    if (name) names.add(name);
+  }
   return names;
 }
 
-/** kpiTaskSync 키(kpiId) 집합 */
+/** kpiTaskSync 키(kpiId) — 현재 kpis 배열에 있는 id만 */
 export function getKpiSyncActiveKpiIds() {
-  const ids = new Set();
-  KPI_MAP_STORAGE_KEYS.forEach((key) => {
-    try {
-      const raw = readKpiMapScopedStorageRaw(key);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      const sync = parsed?.kpiTaskSync || {};
-      Object.keys(sync).forEach((kid) => {
-        if (kid && String(kid).trim()) ids.add(String(kid).trim());
-      });
-    } catch (_) {}
-  });
-  return ids;
+  return new Set(getActiveKpiTaskKeepersById().keys());
 }
 
 const KPI_MAP_KEY_TO_LEDGER_CATEGORY = {
@@ -85,7 +62,7 @@ const KPI_MAP_KEY_TO_LEDGER_CATEGORY = {
   "kpi-health-map": "health",
 };
 
-/** 활성 KPI id → 현재 표시명·시간가계부 category (이름 변경·중복 정리용) */
+/** 활성 KPI id → 현재 표시명·시간가계부 category (kpis 배열 기준 — 삭제된 id 제외) */
 export function getActiveKpiTaskKeepersById() {
   /** @type {Map<string, { name: string, category: string }>} */
   const out = new Map();
@@ -96,20 +73,14 @@ export function getActiveKpiTaskKeepersById() {
       if (!raw) return;
       const parsed = JSON.parse(raw);
       const sync = parsed?.kpiTaskSync || {};
-      const kpis = parsed?.kpis || [];
-      const byId = new Map(
-        kpis.map((k) => [String(k?.id || "").trim(), k]).filter(([id]) => id),
-      );
-      Object.keys(sync).forEach((kid) => {
-        const id = String(kid || "").trim();
-        if (!id) return;
-        const row = byId.get(id);
+      for (const k of parsed?.kpis || []) {
+        const id = String(k?.id || "").trim();
+        if (!id) continue;
         const name =
-          (row && String(row.name || "").trim()) ||
-          String(sync[kid] || "").trim();
-        if (!name) return;
+          String(k?.name || "").trim() || String(sync[id] || "").trim();
+        if (!name) continue;
         out.set(id, { name, category: ledgerCat });
-      });
+      }
     } catch (_) {}
   });
   return out;
