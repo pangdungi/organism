@@ -1,4 +1,4 @@
-/** 시간기록 모달 — 생산적 작업 5점 시 «몰입 요소» */
+/** 시간기록 모달 — 생산적 작업 4~5점 시 «몰입 요소» */
 
 export const TIME_TASK_FLOW_FACTOR_OPTIONS = [
   { id: "empty_stomach", label: "공복" },
@@ -75,4 +75,10 @@ export function timeFlowFactorLabelsForIds(ids) {
   return normalizeTimeFlowFactorsForRow(ids)
     .map((id) => timeFlowFactorLabelForId(id))
     .filter(Boolean);
+}
+
+/** 생산적 작업 4~5점일 때 몰입 요소 입력 대상 */
+export function shouldCollectTimeFlowFactors(rating) {
+  const n = Number(rating);
+  return n === 4 || n === 5;
 }

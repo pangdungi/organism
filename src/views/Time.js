@@ -111,7 +111,7 @@ import {
   getEmotionRatingLabel,
   mountTaskLogEmotionRating,
 } from "../utils/timeEmotionRating.js";
-import { TIME_TASK_FLOW_FACTOR_OPTIONS } from "../utils/timeTaskFlowFactors.js";
+import { TIME_TASK_FLOW_FACTOR_OPTIONS, shouldCollectTimeFlowFactors } from "../utils/timeTaskFlowFactors.js";
 import {
   TIME_TASK_FLOW_DISRUPTOR_OPTIONS,
   shouldCollectTimeFlowDisruptors,
@@ -7503,7 +7503,8 @@ export function render(opts = {}) {
 
   function syncTaskLogFlowFactorSection() {
     const show =
-      isTaskLogModalProductiveTask() && getTaskLogTimeRating() === 5;
+      isTaskLogModalProductiveTask() &&
+      shouldCollectTimeFlowFactors(getTaskLogTimeRating());
     if (taskLogFlowFactorSection) taskLogFlowFactorSection.hidden = !show;
     if (!show && taskLogTimeFlowFactors.length) taskLogTimeFlowFactors = [];
   }
@@ -9963,7 +9964,8 @@ export function render(opts = {}) {
         ? getTaskLogTimeFlowDisruptors()
         : [];
     const timeFlowFactorsForRow =
-      timeRatingForRow === 5 && isTaskLogModalProductiveTask()
+      shouldCollectTimeFlowFactors(timeRatingForRow) &&
+      isTaskLogModalProductiveTask()
         ? getTaskLogTimeFlowFactors()
         : [];
 

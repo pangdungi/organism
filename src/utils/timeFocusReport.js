@@ -10,6 +10,7 @@ import {
 import { normalizeTimeRatingForRow } from "./timeLedgerEntriesModel.js";
 import {
   normalizeTimeFlowFactorsForRow,
+  shouldCollectTimeFlowFactors,
   timeFlowFactorLabelForId,
 } from "./timeTaskFlowFactors.js";
 import {
@@ -45,16 +46,16 @@ function avgOf(nums) {
   return nums.reduce((a, b) => a + b, 0) / nums.length;
 }
 
-function buildRecipeOneLiner(tags, fiveStarCount) {
-  if (!fiveStarCount) {
-    return "생산적 작업에 5점 평가를 남기면 초집중 레시피가 채워집니다.";
+function buildRecipeOneLiner(tags, highFocusSessionCount) {
+  if (!highFocusSessionCount) {
+    return "생산적 작업에 4~5점 평가를 남기면 초집중 레시피가 채워집니다.";
   }
   if (!tags.length) {
-    return `5점 세션 ${fiveStarCount}건 — 몰입 요소를 고르면 자주 겹치는 조건이 보입니다.`;
+    return `4~5점 세션 ${highFocusSessionCount}건 — 몰입 요소를 고르면 자주 겹치는 조건이 보입니다.`;
   }
   const top = tags.slice(0, 3);
   const parts = top.map((t) => `「${t.label}」 ${t.pct}%`);
-  return `5점 ${fiveStarCount}건 중 ${parts.join(" · ")}`;
+  return `4~5점 ${highFocusSessionCount}건 중 ${parts.join(" · ")}`;
 }
 
 function buildPeakHourLine(peakHours) {
@@ -145,13 +146,13 @@ export function buildFocusReportSnapshot(rows) {
   const productiveRated = (rows || []).filter(isProductiveRatedRow);
   if (!productiveRated.length) return null;
 
-  const fiveStar = productiveRated.filter(
-    (r) => normalizeTimeRatingForRow(r.timeRating) === 5,
+  const highFocusSessions = productiveRated.filter((r) =>
+    shouldCollectTimeFlowFactors(normalizeTimeRatingForRow(r.timeRating)),
   );
-  const fiveStarCount = fiveStar.length;
+  const highFocusSessionCount = highFocusSessions.length;
 
   const tagCounts = new Map();
-  for (const r of fiveStar) {
+  for (const r of highFocusSessions) {
     const factors = normalizeTimeFlowFactorsForRow(
       r.timeFlowFactors ?? r.timeFlowFactor,
     );
@@ -167,7 +168,10 @@ export function buildFocusReportSnapshot(rows) {
       id,
       label: timeFlowFactorLabelForId(id),
       count,
-      pct: fiveStarCount > 0 ? Math.round((count / fiveStarCount) * 100) : 0,
+      pct:
+        highFocusSessionCount > 0
+          ? Math.round((count / highFocusSessionCount) * 100)
+          : 0,
     }))
     .sort((a, b) => b.count - a.count || b.pct - a.pct);
 
@@ -205,10 +209,10 @@ export function buildFocusReportSnapshot(rows) {
   }));
   const avgMins =
     durations.reduce((s, d) => s + d.mins, 0) / durations.length;
-  const fiveStarDurations = durations
-    .filter((d) => d.rating === 5)
+  const highFocusDurations = durations
+    .filter((d) => shouldCollectTimeFlowFactors(d.rating))
     .map((d) => d.mins);
-  const avgFiveStarMins = avgOf(fiveStarDurations);
+  const avgHighFocusMins = avgOf(highFocusDurations);
   const maxMins = durations.reduce((m, d) => Math.max(m, d.mins), 0);
 
   const taskMap = new Map();
@@ -238,9 +242,9 @@ export function buildFocusReportSnapshot(rows) {
 
   return {
     ratedCount: productiveRated.length,
-    fiveStarCount,
+    highFocusSessionCount,
     recipeTags,
-    recipeOneLiner: buildRecipeOneLiner(recipeTags, fiveStarCount),
+    recipeOneLiner: buildRecipeOneLiner(recipeTags, highFocusSessionCount),
     peakHourLine: buildPeakHourLine(peakHours),
     flowDisruptors,
     disruptorAnalysis,
@@ -248,10 +252,10 @@ export function buildFocusReportSnapshot(rows) {
     peakHours,
     duration: {
       avgMins,
-      avgFiveStarMins,
+      avgHighFocusMins,
       maxMins,
       count: durations.length,
-      fiveStarCount: fiveStarDurations.length,
+      highFocusSessionCount: highFocusDurations.length,
     },
     tasks,
   };

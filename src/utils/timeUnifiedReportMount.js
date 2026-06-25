@@ -3041,7 +3041,9 @@ function mountFocusReportSection(scrollWrap, _range, rows) {
   const heroVal = document.createElement("strong");
   heroVal.className = "lp-tr2-plan-hero-value lp-tr2-focus-hero-value";
   heroVal.textContent =
-    snap.fiveStarCount > 0 ? `${snap.fiveStarCount}건` : "—";
+    snap.highFocusSessionCount > 0
+      ? `${snap.highFocusSessionCount}건`
+      : "—";
   const heroLine = document.createElement("p");
   heroLine.className = "lp-tr2-plan-hero-line";
   heroLine.textContent = snap.recipeOneLiner;
@@ -3050,7 +3052,7 @@ function mountFocusReportSection(scrollWrap, _range, rows) {
 
   if (snap.recipeTags.length) {
     const recipeBlock = createRatingBlock(
-      "5점 세션 조건 순위",
+      "4~5점 세션 조건 순위",
       "몰입 요소가 함께 있던 비율",
     );
     const bars = document.createElement("div");
@@ -3088,14 +3090,14 @@ function mountFocusReportSection(scrollWrap, _range, rows) {
       `${snap.duration.count}건`,
     ),
   );
-  if (snap.duration.avgFiveStarMins != null) {
+  if (snap.duration.avgHighFocusMins != null) {
     durGrid.appendChild(
       createStatCard(
-        "5점 세션 평균",
+        "4~5점 세션 평균",
         formatIntegerMinutesDurationKo(
-          Math.round(snap.duration.avgFiveStarMins),
+          Math.round(snap.duration.avgHighFocusMins),
         ),
-        `${snap.duration.fiveStarCount}건`,
+        `${snap.duration.highFocusSessionCount}건`,
       ),
     );
   }
