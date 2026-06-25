@@ -6,6 +6,7 @@
 import { showToast } from "./showToast.js";
 import { allowModalInputFocus } from "./modalNoAutoFocus.js";
 import { showConfirmModal } from "./confirmModal.js";
+import { lpRefreshAllVisibleCalendarLayoutsFromLocalData } from "./lpCalendarLocalRefresh.js";
 import {
   lpTokenToggle,
 } from "./timeLedgerClassPolicy.js";
@@ -1181,6 +1182,7 @@ export function openCalendarExpectedScheduleModal(options) {
     try {
       onSaved?.();
     } catch (_) {}
+    lpRefreshAllVisibleCalendarLayoutsFromLocalData();
     void syncTimeDailyBudgetDateToSupabase(dateStr).then((syncR) => {
       lpExpectedDeleteDebug("server.sync.result", syncR);
       if (!syncR?.ok) {

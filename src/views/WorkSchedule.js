@@ -1210,12 +1210,21 @@ export function render(opts = {}) {
   async function openMonthlyDayEntryModal(initialDateKey, editRowId = null) {
     await openWorkScheduleDayEntryModal(initialDateKey, {
       editRowId,
-      onAfterStampSave: renderMonthlyView,
+      onAfterStampSave: refreshMonthlyViewLocal,
     });
   }
 
+  function refreshMonthlyViewLocal() {
+    const monthly = contentWrap.querySelector(".work-schedule-monthly-content");
+    if (typeof monthly?._lpSoftRefreshAfterPull === "function") {
+      monthly._lpSoftRefreshAfterPull();
+      return;
+    }
+    renderMonthlyView();
+  }
+
   function renderMonthlyView() {
-    setWorkScheduleMonthlyLiveRerender(renderMonthlyView);
+    setWorkScheduleMonthlyLiveRerender(refreshMonthlyViewLocal);
     contentWrap.innerHTML = "";
     contentWrap.appendChild(
       renderMonthlyContent({

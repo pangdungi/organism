@@ -14,6 +14,7 @@ import {
 } from "./modalNoAutoFocus.js";
 import { syncBodyOverflowAfterModalClose } from "./lpModalStack.js";
 import { showAlertModal } from "./confirmModal.js";
+import { lpRefreshAllVisibleCalendarLayoutsFromLocalData } from "./lpCalendarLocalRefresh.js";
 import { clearSubtasks } from "./todoSubtasks.js";
 import {
   readSectionTasksObject,
@@ -259,6 +260,9 @@ export function openCalendarTaskEditFromBarModel(barModel, options = {}) {
     try {
       onAfterApply?.(applyMeta);
     } catch (_) {}
+    if (!applyMeta?.doneOnly) {
+      lpRefreshAllVisibleCalendarLayoutsFromLocalData();
+    }
   };
 
   if (!taskId || !sectionId) return;

@@ -101,6 +101,7 @@ import {
   pullTimeDailyBudgetForDateRange,
 } from "../utils/timeDailyBudgetSupabase.js";
 import { openCalendarExpectedScheduleModal } from "../utils/calendarExpectedScheduleModal.js";
+import { lpRefreshAllVisibleCalendarLayoutsFromLocalData } from "../utils/lpCalendarLocalRefresh.js";
 import {
   openApplyBudgetTemplateModal,
   openSaveBudgetTemplateModal,
@@ -2097,6 +2098,7 @@ function addSectionTodoFromCalendarBubble(
       isCustom: false,
       sortOrder,
     });
+    lpRefreshAllVisibleCalendarLayoutsFromLocalData();
     return true;
   } catch (_) {}
   return false;
@@ -2704,6 +2706,13 @@ function renderMonthlyView(tabsElement) {
 
   function refreshTodoList() {}
 
+  /** 할일·일정 추가·수정·삭제 직후 — pull 없이 로컬만 다시 그림 */
+  function refreshCalendarLocal() {
+    renderCalendar();
+    refreshTodoList();
+    wrap._lpRememberCalendarGridPaintSig?.();
+  }
+
   function patchDayStamp(dateKey) {
     lpPatchCalendarMonthlyDayStamp(calendarGrid, dateKey, patchDayStamp);
     wrap._lpRememberCalendarGridPaintSig?.();
@@ -2794,10 +2803,7 @@ function renderMonthlyView(tabsElement) {
           if (lpCalendarGuardCellClickFromMonthlyBar(e)) return;
           e.stopPropagation();
           e.preventDefault();
-          lpOpenCalendarMonthlyDayActionBubble(cell, key, () => {
-            patchDayStamp(key);
-            refreshTodoList();
-          });
+          lpOpenCalendarMonthlyDayActionBubble(cell, key, refreshCalendarLocal);
         });
         cell.addEventListener("dragover", (e) => {
           if (calendarDragTransferTypesAllowDrop(e.dataTransfer)) {
@@ -2901,8 +2907,7 @@ function renderMonthlyView(tabsElement) {
           });
           if (ok) {
             syncCalendarSectionTaskToServerAfterCalendarDateDrop(payload, ok);
-            renderCalendar();
-            refreshTodoList();
+            refreshCalendarLocal();
           }
         });
         weekRow.appendChild(cell);
@@ -3036,7 +3041,7 @@ function renderMonthlyView(tabsElement) {
         lpAttachCalendarBarOpenTodoEdit(
           bar,
           b,
-          renderCalendar,
+          refreshCalendarLocal,
           refreshTodoList,
         );
         if (!b.isSingleDay && b.startDate && b.dueDate) {
@@ -3047,10 +3052,7 @@ function renderMonthlyView(tabsElement) {
               e.clientX,
               e.clientY,
               b,
-              () => {
-                renderCalendar();
-                refreshTodoList();
-              },
+              refreshCalendarLocal,
               () => {},
             );
           });
@@ -3064,10 +3066,7 @@ function renderMonthlyView(tabsElement) {
               e.clientX,
               e.clientY,
               b,
-              () => {
-                renderCalendar();
-                refreshTodoList();
-              },
+              refreshCalendarLocal,
               () => {},
             );
           });
@@ -3227,8 +3226,7 @@ function renderMonthlyView(tabsElement) {
         }
         if (ok) {
           syncCalendarSectionTaskToServerAfterCalendarDateDrop(payload, ok);
-          renderCalendar();
-          refreshTodoList();
+          refreshCalendarLocal();
         }
       });
       weekWrap.appendChild(weekRow);
