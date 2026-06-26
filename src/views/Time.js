@@ -9187,6 +9187,8 @@ export function render(opts = {}) {
       '[data-legacy~="time-task-log-daily-todos-title"]',
     );
     const DEFAULT_DAILY_TODOS_TITLE = "매일 할일 목록";
+    const dailyTodosTitle =
+      name === "이동 루틴" ? "이동할 때 할 행동들" : DEFAULT_DAILY_TODOS_TITLE;
 
     const dateYmd = normalizeTaskLogPickerDateYmd();
     const dailyInfo = getKpiDailyRepeatInfoForTaskLog();
@@ -9196,7 +9198,7 @@ export function render(opts = {}) {
 
     if (showDaily) {
       if (taskLogDailyTodosTitle)
-        taskLogDailyTodosTitle.textContent = DEFAULT_DAILY_TODOS_TITLE;
+        taskLogDailyTodosTitle.textContent = dailyTodosTitle;
       taskLogDailyTodosSection.hidden = false;
       taskLogDailyTodosList.innerHTML = "";
       const {
@@ -9249,7 +9251,7 @@ export function render(opts = {}) {
     taskLogDailyTodosSection.hidden = true;
     taskLogDailyTodosList.innerHTML = "";
     if (taskLogDailyTodosTitle)
-      taskLogDailyTodosTitle.textContent = DEFAULT_DAILY_TODOS_TITLE;
+      taskLogDailyTodosTitle.textContent = dailyTodosTitle;
     syncTaskLogKpiValueField(dateYmd);
   }
 

@@ -193,6 +193,7 @@ export const FIXED_NONPRODUCTIVE_TASKS = [
     productivity: "nonproductive",
   },
   { name: "물건 찾기", category: "unhappiness", productivity: "nonproductive" },
+  { name: "잡생각하기", category: "unhappiness", productivity: "nonproductive" },
   { name: "단순 이동", category: "pleasure", productivity: "nonproductive" },
   { name: "게임", category: "pleasure", productivity: "nonproductive" },
   {

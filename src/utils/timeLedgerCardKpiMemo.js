@@ -7,6 +7,17 @@ import { splitUnhealthyMealMemoFromDb } from "./timeLedgerEntriesModel.js";
 import * as TTC from "./timeTaskOptionsConstants.js";
 
 const CONTENT_MEMO_PREFIX = "[콘텐츠] ";
+const MOVE_ROUTINE_TASK_NAME = "이동 루틴";
+
+/** 이동 루틴 + 체크한 매일할일 → 카드·타임라인 표시용 */
+export function formatMoveRoutineDisplayLabel(habitDailyCompleted) {
+  const texts = (Array.isArray(habitDailyCompleted) ? habitDailyCompleted : [])
+    .map((t) => String(t?.text || "").trim())
+    .filter(Boolean);
+  if (!texts.length) return "";
+  const quoted = texts.map((t) => `'${t}'`).join(", ");
+  return `${quoted} 하면서 이동하기`;
+}
 
 /**
  * @returns {{ kind: "meal" | "conversation" | "outing" | "content" | "emotion" | null, text: string }}
@@ -57,6 +68,10 @@ export function ledgerRowUsesDetailAsDisplayName(rowData) {
 /** 카드·타임라인·타임박스 — 화면용 과제명 */
 export function ledgerRowDisplayTaskName(rowData) {
   const taskName = String(rowData?.taskName || "").trim();
+  if (taskName === MOVE_ROUTINE_TASK_NAME) {
+    const moveLabel = formatMoveRoutineDisplayLabel(rowData?.habitDailyCompleted);
+    if (moveLabel) return moveLabel;
+  }
   const { text } = resolveLedgerRowDetail(rowData);
   if (ledgerRowUsesDetailAsDisplayName(rowData)) return text;
   return taskName;
@@ -106,7 +121,13 @@ export function formatTimeLedgerCardKpiMemoLines(rowData, kpiId) {
     .map((t) => String(t?.text || "").trim())
     .filter(Boolean);
   if (texts.length > 0) {
-    lines.push(`매일할일 ✓ ${texts.join(" · ")}`);
+    const taskName = String(rowData?.taskName || "").trim();
+    const moveUsesDailyAsTitle =
+      taskName === MOVE_ROUTINE_TASK_NAME &&
+      !!formatMoveRoutineDisplayLabel(rowData?.habitDailyCompleted);
+    if (!moveUsesDailyAsTitle) {
+      lines.push(`매일할일 ✓ ${texts.join(" · ")}`);
+    }
   }
 
   return lines;
