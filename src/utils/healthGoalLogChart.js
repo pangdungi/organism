@@ -431,7 +431,7 @@ export function renderHealthGoalLineChart(container, opts = {}) {
   if (target != null) {
     const legend = document.createElement("div");
     legend.className = "health-goal-graph-legend";
-    legend.innerHTML = `<span class="health-goal-graph-legend-line"></span> 목표 ${fmtAxisNum(target)}${unit ? ` ${unit}` : ""}`;
+    legend.textContent = `목표 ${fmtAxisNum(target)}${unit ? ` ${unit}` : ""}`;
     container.appendChild(legend);
     return;
   }
