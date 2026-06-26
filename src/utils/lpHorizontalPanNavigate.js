@@ -15,7 +15,13 @@ export function bindLpHorizontalPanNavigate(root, opts) {
   }
 
   const minDx = opts.minDx ?? 48;
+  const touchMinDx = opts.touchMinDx ?? Math.min(minDx, 36);
   const dominance = opts.dominance ?? 1.2;
+  /** 터치 가로 잠금·판정은 세로 스크롤보다 관대하게(모바일에서 씹힘 완화) */
+  const touchDominance = opts.touchDominance ?? Math.min(dominance, 1.06);
+  const lockDetectPx = opts.lockDetectPx ?? 6;
+  /** 이 거리 이상 가로로 밀리면 touchend 전에 바로 넘김(0이면 끔) */
+  const earlyCommitDx = opts.earlyCommitDx ?? 0;
   const wheelThreshold = opts.wheelThreshold ?? 36;
   const lockMs = opts.lockMs ?? 900;
   /** 휠로 한 번 넘긴 뒤 이 시간(ms) 동안 휠만 막음(미세 휠이 잠금을 연장하지 않음) */
@@ -41,6 +47,7 @@ export function bindLpHorizontalPanNavigate(root, opts) {
   let touchPanActive = false;
   let touchHorizontalLock = false;
   let pointerHorizontalLock = false;
+  let gestureCommitted = false;
   let navLockUntil = 0;
   let wheelNavBlockedUntil = 0;
   let wheelAccum = 0;
@@ -55,11 +62,24 @@ export function bindLpHorizontalPanNavigate(root, opts) {
     else opts.onPrev();
   }
 
-  function navigateFromDx(dx, dy) {
+  function navigateFromDx(dx, dy, navOpts = {}) {
     if (!isActive()) return;
-    if (Math.abs(dx) < minDx) return;
-    if (Math.abs(dx) < Math.abs(dy) * dominance) return;
+    const isTouch = navOpts.isTouch === true;
+    const hadHorizontalLock = navOpts.hadHorizontalLock === true;
+    const threshold = isTouch ? touchMinDx : minDx;
+    const dom = isTouch ? touchDominance : dominance;
+    if (Math.abs(dx) < threshold) return;
+    if (!hadHorizontalLock && Math.abs(dx) < Math.abs(dy) * dom) return;
     fireNavigate(dx < 0 ? -1 : 1);
+  }
+
+  function tryEarlyTouchCommit(clientX) {
+    if (!earlyCommitDx || gestureCommitted || !panStart || !touchHorizontalLock) return;
+    const dx = clientX - panStart.x;
+    if (Math.abs(dx) < earlyCommitDx) return;
+    gestureCommitted = true;
+    fireNavigate(dx < 0 ? -1 : 1);
+    clearPan();
   }
 
   function clearPan() {
@@ -68,6 +88,7 @@ export function bindLpHorizontalPanNavigate(root, opts) {
     touchPanActive = false;
     touchHorizontalLock = false;
     pointerHorizontalLock = false;
+    gestureCommitted = false;
   }
 
   function onPanStart(clientX, clientY, target) {
@@ -76,14 +97,19 @@ export function bindLpHorizontalPanNavigate(root, opts) {
     panStart = { x: clientX, y: clientY };
     touchHorizontalLock = false;
     pointerHorizontalLock = false;
+    gestureCommitted = false;
   }
 
-  function onPanEnd(clientX, clientY) {
-    if (!panStart) return;
+  function onPanEnd(clientX, clientY, navOpts = {}) {
+    if (!panStart || gestureCommitted) {
+      clearPan();
+      return;
+    }
     const dx = clientX - panStart.x;
     const dy = clientY - panStart.y;
+    const hadHorizontalLock = navOpts.hadHorizontalLock === true;
     clearPan();
-    navigateFromDx(dx, dy);
+    navigateFromDx(dx, dy, { ...navOpts, hadHorizontalLock });
   }
 
   root.addEventListener(
@@ -106,13 +132,14 @@ export function bindLpHorizontalPanNavigate(root, opts) {
       const dy = t.clientY - panStart.y;
       if (
         !touchHorizontalLock &&
-        Math.abs(dx) > 10 &&
-        Math.abs(dx) > Math.abs(dy) * dominance
+        Math.abs(dx) > lockDetectPx &&
+        Math.abs(dx) > Math.abs(dy) * touchDominance
       ) {
         touchHorizontalLock = true;
       }
       if (touchHorizontalLock) {
         e.preventDefault();
+        tryEarlyTouchCommit(t.clientX);
       }
     },
     passiveFalse,
@@ -127,7 +154,10 @@ export function bindLpHorizontalPanNavigate(root, opts) {
         return;
       }
       const t = e.changedTouches[0];
-      onPanEnd(t.clientX, t.clientY);
+      onPanEnd(t.clientX, t.clientY, {
+        isTouch: true,
+        hadHorizontalLock: touchHorizontalLock,
+      });
     },
     passive,
   );

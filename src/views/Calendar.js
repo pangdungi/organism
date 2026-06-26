@@ -3301,8 +3301,13 @@ function renderMonthlyView(tabsElement) {
   bindLpHorizontalPanNavigate(calendarGrid, {
     onNext: goNextMonth,
     onPrev: goPrevMonth,
-    minDx: 56,
-    dominance: 1.25,
+    minDx: 40,
+    touchMinDx: 28,
+    dominance: 1.15,
+    touchDominance: 1.04,
+    lockDetectPx: 5,
+    earlyCommitDx: 44,
+    lockMs: 380,
     shouldIgnoreTarget: (target) =>
       !!target?.closest?.(
         "input, textarea, select, button, a, [role='dialog'], .calendar-monthly-span-bar",
