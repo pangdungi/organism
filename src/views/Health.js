@@ -9,6 +9,7 @@ import {
   ensureDefaultHealthMapDefaults,
   DEFAULT_CHECKUP_KPI_ID,
   DEFAULT_SUPPLEMENT_KPI_ID,
+  DEFAULT_SLEEP_HEALTH_GOAL_ID,
   isProtectedDefaultHealthGoalId,
   isProtectedDefaultHealthKpiId,
 } from "../utils/healthKpiMapSupabase.js";
@@ -27,6 +28,7 @@ import {
 } from "../utils/kpiTodoInputScroll.js";
 import { minutesToHhMm, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
 import { syncSleepHealthGoalLogsFromTimeLedger } from "../utils/healthSleepGoalTimeLedgerSync.js";
+import { ensureTimeLedgerStorageReady } from "../utils/timeLedgerEntriesModel.js";
 import {
   kpiFormGoalAndTargetSectionHtml,
   readKpiGoalModeFormFields,
@@ -194,8 +196,11 @@ function normalizeHealthGoal(h) {
 
 function healthGoalTargetFieldsMarkup(health, escapeHtmlFn) {
   const h = health ? normalizeHealthGoal(health) : null;
-  const checked = h?.trackTargetValue ? " checked" : "";
-  const hidden = h?.trackTargetValue ? "" : " hidden";
+  const defaultTrackOnAdd = !h;
+  const checked =
+    h?.trackTargetValue || defaultTrackOnAdd ? " checked" : "";
+  const hidden =
+    h?.trackTargetValue || defaultTrackOnAdd ? "" : " hidden";
   const targetVal = escapeHtmlFn(h?.targetValue || "");
   const unitVal = escapeHtmlFn(h?.unit || "");
   return `
@@ -237,14 +242,17 @@ function bindHealthGoalTargetFields(form) {
 }
 
 function readHealthGoalTargetFields(form) {
-  const trackTargetValue = !!form.querySelector('input[name="trackTargetValue"]')?.checked;
+  const targetValue = sanitizeNumericInput(form.targetValue?.value) || "";
+  const unit = (form.unit?.value || "").trim();
+  const trackChecked = !!form.querySelector('input[name="trackTargetValue"]')?.checked;
+  const trackTargetValue = trackChecked || !!targetValue || !!unit;
   if (!trackTargetValue) {
     return { trackTargetValue: false, targetValue: "", unit: "" };
   }
   return {
     trackTargetValue: true,
-    targetValue: sanitizeNumericInput(form.targetValue?.value) || "",
-    unit: (form.unit?.value || "").trim(),
+    targetValue,
+    unit,
   };
 }
 
@@ -498,9 +506,13 @@ export function render() {
   let kpiGridScrollPrevScopeId = null;
   let healthAddModalJustClosed = false;
 
-  try {
-    syncSleepHealthGoalLogsFromTimeLedger();
-  } catch (_) {}
+  void ensureTimeLedgerStorageReady()
+    .then(() => {
+      try {
+        syncSleepHealthGoalLogsFromTimeLedger();
+      } catch (_) {}
+    })
+    .catch(() => {});
 
   const _healthUiSession = readKpiUiSession(KPI_UI_SESSION_KEYS.health);
   const _healthInitData = loadHealthMap();
@@ -1047,7 +1059,7 @@ export function render() {
       let hero = "";
       if (norm.trackTargetValue) {
         const goalLogs = (data.healthGoalLogs || []).filter(
-          (l) => l.healthId === health.id,
+          (l) => String(l.healthId ?? "") === String(health.id ?? ""),
         );
         const latestLog = getLatestHealthGoalLog(goalLogs);
         hero = latestLog
@@ -1285,7 +1297,7 @@ export function render() {
 
       if (norm.trackTargetValue) {
         const goalLogs = (data.healthGoalLogs || []).filter(
-          (l) => l.healthId === health.id,
+          (l) => String(l.healthId ?? "") === String(health.id ?? ""),
         );
         const latestLog = getLatestHealthGoalLog(goalLogs);
         const latestDisp = latestLog
@@ -1746,20 +1758,25 @@ export function render() {
   }
 
   function showHealthGoalGraphModal(health) {
-    const norm = normalizeHealthGoal(health);
-    const data = loadHealthMap();
-    const goalLogs = (data.healthGoalLogs || []).filter((l) => l.healthId === health.id);
-    const unitTrim = (norm.unit || "").trim();
-
     const modal = document.createElement("div");
     modal.className = "time-task-setup-modal health-goal-graph-modal";
     modal.style.zIndex = String(resolveLpModalStackZIndex());
+
+    const getFreshHealthGoal = () =>
+      normalizeHealthGoal(
+        loadHealthMap().healths.find(
+          (x) => String(x.id ?? "") === String(health.id ?? ""),
+        ) || health,
+      );
+
+    const initialNorm = getFreshHealthGoal();
+    if (!initialNorm.trackTargetValue) return;
 
     modal.innerHTML = `
       <div data-legacy="time-task-setup-backdrop"></div>
       <div data-legacy="time-task-setup-panel" class="health-goal-graph-panel">
         <div data-legacy="time-task-setup-header">
-          <h3 data-legacy="time-task-setup-title">${escapeHtml(norm.name || "건강 목표")} 기록</h3>
+          <h3 data-legacy="time-task-setup-title">${escapeHtml(initialNorm.name || "건강 목표")} 기록</h3>
           <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
         </div>
         <div class="health-goal-graph-body" data-legacy="time-task-setup-body">
@@ -1777,16 +1794,33 @@ export function render() {
       </div>
     `;
 
-    const close = () => modal.remove();
+    const close = () => {
+      document.removeEventListener("calendar-time-rows-updated", onLedgerRowsUpdated);
+      modal.remove();
+    };
     modal.querySelector('[data-legacy~="time-task-setup-backdrop"]').addEventListener("click", close);
     modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
 
     let chartRange = "week";
+    const isSleepGoal =
+      String(health.id ?? "") === DEFAULT_SLEEP_HEALTH_GOAL_ID;
 
-    const refreshChart = () => {
+    const prepareSleepLogsFromLedger = async () => {
+      if (!isSleepGoal) return;
+      try {
+        await ensureTimeLedgerStorageReady();
+        syncSleepHealthGoalLogsFromTimeLedger();
+      } catch (_) {}
+    };
+
+    const refreshChart = async () => {
+      await prepareSleepLogsFromLedger();
+      const norm = getFreshHealthGoal();
+      const unitTrim = (norm.unit || "").trim();
       const freshData = loadHealthMap();
+      const healthId = String(health.id ?? "");
       const freshLogs = (freshData.healthGoalLogs || []).filter(
-        (l) => l.healthId === health.id,
+        (l) => String(l.healthId ?? "") === healthId,
       );
       const allPoints = buildHealthGoalChartPoints(freshLogs);
       const points = filterHealthGoalChartPoints(allPoints, chartRange);
@@ -1795,8 +1829,15 @@ export function render() {
         targetValue: norm.trackTargetValue ? norm.targetValue : null,
         unit: unitTrim,
         caption: buildHealthGoalChartCaption(points),
+        scrollToEnd: chartRange !== "all",
       });
     };
+
+    const onLedgerRowsUpdated = () => {
+      if (!modal.isConnected) return;
+      void refreshChart();
+    };
+    document.addEventListener("calendar-time-rows-updated", onLedgerRowsUpdated);
 
     modal.querySelectorAll(".health-goal-graph-range-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -1810,7 +1851,7 @@ export function render() {
       });
     });
 
-    refreshChart();
+    void refreshChart();
 
     modal.querySelector(".health-goal-graph-add-btn")?.addEventListener("click", () => {
       const freshNorm = normalizeHealthGoal(

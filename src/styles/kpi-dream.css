@@ -449,6 +449,8 @@
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  overscroll-behavior-x: contain;
   scrollbar-width: thin;
 }
 
@@ -456,14 +458,27 @@
   padding-bottom: 0.15rem;
 }
 
-.health-goal-graph-modal .health-goal-graph-chart-scroll .health-goal-graph-svg {
-  min-width: 100%;
-}
-
-.health-goal-graph-modal .health-goal-graph-svg {
+.health-goal-graph-modal
+  .health-goal-graph-chart-scroll:not(.health-goal-graph-chart-scroll--wide)
+  .health-goal-graph-svg {
   display: block;
   width: 100%;
   height: auto;
+}
+
+.health-goal-graph-modal
+  .health-goal-graph-chart-scroll--wide
+  .health-goal-graph-svg {
+  display: block;
+  width: auto;
+  height: auto;
+}
+
+.health-goal-graph-modal .health-goal-graph-scroll-hint {
+  margin: 0.2rem 0 0;
+  font-size: 0.6875rem;
+  color: #999999;
+  text-align: center;
 }
 
 .health-goal-graph-modal .health-goal-graph-legend {

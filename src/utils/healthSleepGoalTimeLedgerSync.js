@@ -105,24 +105,9 @@ export function syncSleepHealthGoalLogsFromTimeLedger() {
   if (!hasSleepGoal) return;
 
   const byDay = collectSleepMinutesByDay();
-  const activeDates = new Set(byDay.keys());
   const logs = Array.isArray(data.healthGoalLogs) ? [...data.healthGoalLogs] : [];
   let changed = false;
-
-  const kept = [];
-  for (const log of logs) {
-    const dr = normalizeKpiLogDateYmd(log?.dateRaw || log?.date || "");
-    if (
-      isSleepLedgerSyncedGoalLog(log, healthId) &&
-      dr &&
-      !activeDates.has(dr)
-    ) {
-      changed = true;
-      continue;
-    }
-    kept.push(log);
-  }
-  const nextLogs = kept;
+  const nextLogs = [...logs];
 
   for (const [dateRaw, bucket] of byDay) {
     const minutes = bucket.minutes;

@@ -173,18 +173,23 @@ function shouldShowDateLabel(index, total) {
   return index === 0 || index === total - 1 || index % step === 0;
 }
 
-function chartWidthForPoints(count) {
-  const minPlotGap = 40;
-  const base = 320;
-  const padX = 44 + 16;
-  if (count <= 1) return base;
-  const needed = padX + (count - 1) * minPlotGap + 24;
-  return Math.max(base, needed);
+const SLOT_W = 40;
+
+function chartLayoutForPointCount(count) {
+  const pad = { top: 28, right: 16, bottom: 42, left: 44 };
+  const H = 240;
+  const minPlotSpan = SLOT_W * 6;
+  const plotSpan =
+    count <= 1
+      ? minPlotSpan / 2
+      : Math.max(minPlotSpan, (count - 1) * SLOT_W);
+  const W = Math.max(320, pad.left + pad.right + plotSpan);
+  return { W, H, pad, plotSpan, scroll: count > 7 };
 }
 
 /**
  * @param {HTMLElement} container
- * @param {{ points: Array<{dateKey:string,value:number,label:string}>, targetValue?: string|null, unit?: string }} opts
+ * @param {{ points: Array<{dateKey:string,value:number,label:string}>, targetValue?: string|null, unit?: string, caption?: string, scrollToEnd?: boolean }} opts
  */
 export function renderHealthGoalLineChart(container, opts = {}) {
   if (!container) return;
@@ -200,9 +205,7 @@ export function renderHealthGoalLineChart(container, opts = {}) {
     return;
   }
 
-  const W = chartWidthForPoints(points.length);
-  const H = 240;
-  const pad = { top: 28, right: 16, bottom: 42, left: 44 };
+  const { W, H, pad, plotSpan, scroll } = chartLayoutForPointCount(points.length);
   const plotW = W - pad.left - pad.right;
   const plotH = H - pad.top - pad.bottom;
   const plotBottom = pad.top + plotH;
@@ -211,9 +214,10 @@ export function renderHealthGoalLineChart(container, opts = {}) {
   const target = parseHealthGoalLogNum(opts.targetValue);
   const { yMin, yMax, yRange } = computeYDomain(values, target);
 
-  const xAt = (i) =>
-    pad.left +
-    (points.length === 1 ? plotW / 2 : (i / (points.length - 1)) * plotW);
+  const xAt = (i) => {
+    if (points.length === 1) return pad.left + plotSpan / 2;
+    return pad.left + i * SLOT_W;
+  };
   const yAt = (v) => pad.top + plotH - ((v - yMin) / yRange) * plotH;
 
   const svgNs = "http://www.w3.org/2000/svg";
@@ -221,8 +225,12 @@ export function renderHealthGoalLineChart(container, opts = {}) {
     viewBox: `0 0 ${W} ${H}`,
     class: "health-goal-graph-svg",
     role: "img",
+    preserveAspectRatio: scroll ? "xMinYMid meet" : "xMidYMid meet",
     "aria-label": `날짜별 ${unit || "값"} 기록 선 그래프`,
   });
+  if (scroll) {
+    svg.style.minWidth = `${W}px`;
+  }
 
   svg.appendChild(
     el(svgNs, "rect", {
@@ -389,10 +397,10 @@ export function renderHealthGoalLineChart(container, opts = {}) {
     }
   });
 
-  const scroll = document.createElement("div");
-  scroll.className = "health-goal-graph-chart-scroll";
-  if (W > 320) scroll.classList.add("health-goal-graph-chart-scroll--wide");
-  scroll.appendChild(svg);
+  const scrollEl = document.createElement("div");
+  scrollEl.className = "health-goal-graph-chart-scroll";
+  if (scroll) scrollEl.classList.add("health-goal-graph-chart-scroll--wide");
+  scrollEl.appendChild(svg);
 
   if (opts.caption) {
     const caption = document.createElement("p");
@@ -401,10 +409,23 @@ export function renderHealthGoalLineChart(container, opts = {}) {
     container.appendChild(caption);
   }
 
-  container.appendChild(scroll);
+  container.appendChild(scrollEl);
 
-  if (W > 320) {
-    scroll.scrollLeft = scroll.scrollWidth;
+  if (scroll) {
+    requestAnimationFrame(() => {
+      if (opts.scrollToEnd) {
+        scrollEl.scrollLeft = Math.max(
+          0,
+          scrollEl.scrollWidth - scrollEl.clientWidth,
+        );
+      } else {
+        scrollEl.scrollLeft = 0;
+      }
+    });
+    const hint = document.createElement("p");
+    hint.className = "health-goal-graph-scroll-hint";
+    hint.textContent = "좌우로 밀어 더 보기";
+    container.appendChild(hint);
   }
 
   if (target != null) {
