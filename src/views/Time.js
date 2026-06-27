@@ -19,8 +19,15 @@ import {
   getKpiTodosAsTasks,
   getKpiDailyRepeatInfoByKpiId,
   getKpiMeasureInfoByKpiId,
+  getKpiTodosByKpiId,
   resolveKpiIdForTaskId,
+  syncKpiTodoCompleted,
 } from "../utils/kpiTodoSync.js";
+import {
+  DEFAULT_CHORE_TASK_KPI_ID,
+  HAPPINESS_KPI_MAP_STORAGE_KEY,
+  pullHappinessKpiMapTodosFromSupabase,
+} from "../utils/happinessKpiMapSupabase.js";
 import { kpiTodoFineTrace } from "../utils/kpiTodoFineTrace.js";
 import {
   bindModalNativeDateRange,
@@ -128,6 +135,7 @@ import {
   timeLedgerLocalTodayYmd,
 } from "../utils/timeLedgerEntriesSupabase.js";
 import { pullTimeLedgerTabEnterFromCloud } from "../utils/timeLedgerCloudRefresh.js";
+import { ensureAllKpiTimeTasksFromStorage } from "../utils/kpiTimeTaskSync.js";
 import { timeLedgerSyncLog } from "../utils/timeLedgerSyncDebug.js";
 import { lpSaveDebug } from "../utils/lpSaveDebug.js";
 import { lpPullDebug } from "../utils/lpPullDebug.js";
@@ -7034,6 +7042,13 @@ export function render(opts = {}) {
           <span data-legacy="time-task-log-section-label time-task-log-emotion-trigger-label">트리거</span>
           <div data-legacy="time-task-log-emotion-trigger-chips lp-choice-chip-row"></div>
         </div>
+        <div data-legacy="time-task-log-kpi-todos-section" hidden>
+          <h4 data-legacy="time-task-log-kpi-todos-title">할 일 목록</h4>
+          <p data-legacy="time-task-log-kpi-todos-status" hidden></p>
+          <div data-legacy="time-task-log-kpi-todos-scroll" hidden>
+            <div data-legacy="time-task-log-kpi-todos-list"></div>
+          </div>
+        </div>
         <div data-legacy="time-task-log-rating-section">
           <span data-legacy="time-task-log-section-label time-task-log-rating-section-label">이 시간 평가</span>
           <div data-legacy="time-task-log-rating-stars" role="group" aria-label="이 시간 평가 1~5점">
@@ -8482,6 +8497,18 @@ export function render(opts = {}) {
   const taskLogDailyTodosList = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-daily-todos-list"]',
   );
+  const taskLogKpiTodosSection = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-kpi-todos-section"]',
+  );
+  const taskLogKpiTodosList = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-kpi-todos-list"]',
+  );
+  const taskLogKpiTodosScroll = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-kpi-todos-scroll"]',
+  );
+  const taskLogKpiTodosStatus = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-kpi-todos-status"]',
+  );
   const taskLogKpiValueSection = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-kpi-value-section"]',
   );
@@ -9159,9 +9186,159 @@ export function render(opts = {}) {
 
   function onTaskSelectedForLog(taskName) {
     refreshKpiTodosInLogModal();
+    void refreshChoreTodosInLogModal();
     updateTaskLogMealDetailVisibility(taskName);
     syncTaskLogRatingSectionUi();
     syncTaskLogGapFillBtnVisibility();
+  }
+
+  const CHORE_TASK_LOG_NAME = "잡무 처리하기";
+  let choreTodosFetchGen = 0;
+
+  function collectCheckedChoreTodoTextsFromModal() {
+    const texts = [];
+    if (!taskLogKpiTodosList) return texts;
+    taskLogKpiTodosList
+      .querySelectorAll('[data-legacy~="time-task-log-chore-todo-row"]')
+      .forEach((label) => {
+        const cb = label.querySelector('input[type="checkbox"]');
+        const span = label.querySelector(
+          '[data-legacy~="time-task-log-kpi-todo-text"]',
+        );
+        if (!cb?.checked) return;
+        const t = (span?.textContent || "").trim();
+        if (t) texts.push(t);
+      });
+    return texts;
+  }
+
+  function buildTaskLogFeedbackForSubmit(taskName) {
+    const userMemo = (taskLogFeedbackInput?.value || "").trim();
+    if (!isChoreTaskLogSelection(taskName, resolveTaskLogModalKpiId())) {
+      return userMemo;
+    }
+    if (taskLogEditTr) return userMemo;
+    const doneTexts = collectCheckedChoreTodoTextsFromModal();
+    if (doneTexts.length) return doneTexts.join(" · ");
+    return userMemo;
+  }
+
+  function isChoreTaskLogSelection(taskName, kpiId) {
+    const tn = String(taskName || "").trim();
+    if (!tn && !kpiId) return false;
+    if (String(kpiId || "").trim() === DEFAULT_CHORE_TASK_KPI_ID) return true;
+    if (tn === CHORE_TASK_LOG_NAME || tn.replace(/\s+/g, "") === "잡무처리하기") {
+      return true;
+    }
+    return false;
+  }
+
+  function hideTaskLogChoreTodosSection() {
+    choreTodosFetchGen += 1;
+    if (!taskLogKpiTodosSection) return;
+    taskLogKpiTodosSection.hidden = true;
+    if (taskLogKpiTodosScroll) taskLogKpiTodosScroll.hidden = true;
+    if (taskLogKpiTodosStatus) {
+      taskLogKpiTodosStatus.hidden = true;
+      taskLogKpiTodosStatus.textContent = "";
+    }
+    taskLogKpiTodosList?.replaceChildren?.();
+  }
+
+  function renderTaskLogChoreTodoRows(todos) {
+    if (!taskLogKpiTodosList) return;
+    taskLogKpiTodosList.replaceChildren();
+    for (const todo of todos) {
+      const id = String(todo?.id || "").trim();
+      const text = String(todo?.text || "").trim();
+      if (!text) continue;
+      const label = document.createElement("label");
+      lpSetClasses(
+        label,
+        "time-task-log-kpi-todo-row time-task-log-chore-todo-row",
+      );
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = !!todo.completed;
+      if (id) checkbox.dataset.todoId = id;
+      const span = document.createElement("span");
+      lpSetClasses(span, "time-task-log-kpi-todo-text");
+      span.textContent = text;
+      if (checkbox.checked) lpTokenAdd(span, "is-done");
+      label.appendChild(checkbox);
+      label.appendChild(span);
+      checkbox.addEventListener("change", () => {
+        if (id) {
+          syncKpiTodoCompleted(
+            id,
+            HAPPINESS_KPI_MAP_STORAGE_KEY,
+            checkbox.checked,
+          );
+        }
+        lpTokenToggle(span, "is-done", checkbox.checked);
+      });
+      taskLogKpiTodosList.appendChild(label);
+    }
+  }
+
+  async function refreshChoreTodosInLogModal() {
+    const name = (taskLogTaskDropdown?._getValue?.() || "").trim();
+    const kpiId = resolveTaskLogModalKpiId();
+    if (!isChoreTaskLogSelection(name, kpiId)) {
+      hideTaskLogChoreTodosSection();
+      return;
+    }
+    if (
+      !taskLogKpiTodosSection ||
+      !taskLogKpiTodosList ||
+      !taskLogKpiTodosScroll ||
+      !taskLogKpiTodosStatus
+    ) {
+      return;
+    }
+    const gen = ++choreTodosFetchGen;
+    taskLogKpiTodosSection.hidden = false;
+    taskLogKpiTodosScroll.hidden = true;
+    taskLogKpiTodosStatus.hidden = false;
+    taskLogKpiTodosStatus.textContent = "할 일 목록을 불러오는 중…";
+    taskLogKpiTodosList.replaceChildren();
+
+    let pullOk = false;
+    try {
+      pullOk = !!(await pullHappinessKpiMapTodosFromSupabase());
+    } catch (_) {
+      pullOk = false;
+    }
+    if (gen !== choreTodosFetchGen || !taskLogModal.isConnected || taskLogModal.hidden) {
+      return;
+    }
+
+    const info =
+      getKpiTodosByKpiId(DEFAULT_CHORE_TASK_KPI_ID) ||
+      getKpiTodosByKpiId(kpiId);
+    const todos = (info?.todos || []).filter(
+      (t) => String(t?.text || "").trim() && !t.completed,
+    );
+
+    if (!pullOk && !todos.length) {
+      taskLogKpiTodosStatus.hidden = false;
+      taskLogKpiTodosStatus.textContent =
+        "할 일 목록을 불러오지 못했습니다. 잠시 후 다시 선택해 주세요.";
+      taskLogKpiTodosScroll.hidden = true;
+      return;
+    }
+
+    if (!todos.length) {
+      taskLogKpiTodosStatus.hidden = false;
+      taskLogKpiTodosStatus.textContent = "등록된 할 일이 없습니다.";
+      taskLogKpiTodosScroll.hidden = true;
+      return;
+    }
+
+    taskLogKpiTodosStatus.hidden = true;
+    taskLogKpiTodosStatus.textContent = "";
+    taskLogKpiTodosScroll.hidden = false;
+    renderTaskLogChoreTodoRows(todos);
   }
 
   function isHabitDailyTodoChecked(todo, completedList) {
@@ -9320,6 +9497,9 @@ export function render(opts = {}) {
 
   function applyTaskLogModalAfterBackgroundSync() {
     if (!el.isConnected || taskLogModal.hidden) return;
+    try {
+      ensureAllKpiTimeTasksFromStorage();
+    } catch (_) {}
     try {
       patchKpiLinkedTasksFromKpiMaps();
     } catch (_) {}
@@ -9830,6 +10010,7 @@ export function render(opts = {}) {
     updateTaskLogMealDetailVisibility((data.taskName || "").trim());
     syncTaskLogDateOverlay();
     refreshKpiTodosInLogModal();
+    void refreshChoreTodosInLogModal();
     updateTaskLogMealDetailVisibility(tnSync);
     syncTaskLogGapFillBtnVisibility();
     void runTaskLogModalCloudSync();
@@ -9850,6 +10031,7 @@ export function render(opts = {}) {
     taskLogEditKpiRestoreGuard = null;
     taskLogEditExclude = null;
     pendingEditStartTime = "";
+    hideTaskLogChoreTodosSection();
   }
 
   /** 기록 버튼: blur 없이 바로 누르면 숫자만 입력된 시각이 hidden에 반영되지 않을 수 있음 → blur와 동일 포맷 후 동기화 */
@@ -9914,7 +10096,7 @@ export function render(opts = {}) {
       );
       return;
     }
-    const feedbackBody = (taskLogFeedbackInput?.value || "").trim();
+    const feedbackBody = buildTaskLogFeedbackForSubmit(taskName);
     const detailKind = TTC.ledgerDetailTaskKind(taskName);
     const mealDetailForRow =
       TTC.isChipDetailTaskKind(detailKind)

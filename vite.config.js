@@ -53,9 +53,9 @@ export default defineConfig({
   root: ".",
   plugins: [toolbarIconsSvgWatchPlugin()],
   server: {
-    host: "0.0.0.0", // localhost:5173 + 같은 Wi‑Fi에서 http://(맥IP):5173
-    port: 5173,
+    host: "0.0.0.0", // localhost:5179 + 같은 Wi‑Fi에서 http://(맥IP):5179
+    port: 5179,
     strictPort: true,
-    open: "http://localhost:5173/",
+    open: "http://localhost:5179/",
   },
 });

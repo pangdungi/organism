@@ -1746,6 +1746,35 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   flex-direction: column;
   gap: 0.35rem;
 }
+.time-task-log-kpi-todos-scroll,
+[data-legacy~="time-task-log-kpi-todos-scroll"] {
+  max-height: min(9.5rem, 30vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 0.15rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 8px;
+  background: rgba(30, 77, 123, 0.04);
+}
+.time-task-log-kpi-todos-scroll [data-legacy~="time-task-log-kpi-todos-list"],
+[data-legacy~="time-task-log-kpi-todos-scroll"]
+  [data-legacy~="time-task-log-kpi-todos-list"] {
+  margin: 0;
+  padding: 0;
+}
+.time-task-log-chore-todo-row,
+[data-legacy~="time-task-log-chore-todo-row"] {
+  padding: 0.15rem 0.1rem;
+}
+.time-task-log-kpi-todos-status,
+[data-legacy~="time-task-log-kpi-todos-status"] {
+  margin: 0.15rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--lp-modal-navy-muted);
+}
 .time-task-log-habit-value-row,
 [data-legacy~="time-task-log-habit-value-row"] {
   display: flex;

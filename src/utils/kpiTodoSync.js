@@ -400,6 +400,12 @@ export function syncKpiTodoCompleted(kpiTodoId, storageKey, completed) {
       });
       return;
     }
+    let prevSnapshot;
+    try {
+      prevSnapshot = JSON.parse(raw);
+    } catch (_) {
+      return;
+    }
     const data = JSON.parse(raw);
     data.kpiTodos = data.kpiTodos || [];
     const todo = data.kpiTodos.find(
@@ -416,7 +422,7 @@ export function syncKpiTodoCompleted(kpiTodoId, storageKey, completed) {
     }
     const before = !!todo.completed;
     todo.completed = !!completed;
-    writeKpiMapScopedStorageRaw(storageKey, JSON.stringify(data));
+    stampAndPersistKpiMap(storageKey, prevSnapshot, data, { pushServer: true });
     kpiTodoFineTrace("syncKpiTodoCompleted:저장직후", {
       kpiTodoId: String(kpiTodoId),
       storageKey,
@@ -428,10 +434,9 @@ export function syncKpiTodoCompleted(kpiTodoId, storageKey, completed) {
       storageKey,
       before,
       after: !!todo.completed,
-      note: "체크 후 서버 반영은 KPI맵_동기화이벤트 로그로 이어져야 함",
+      note: "로컬 저장 + pushServer 이벤트로 서버 upsert",
       completionBrief: kpiTodosCompletionBrief(data, 25),
     });
-    dispatchKpiMapSavedAfterLocalWrite(storageKey, "syncKpiTodoCompleted");
   } catch (e) {
     kpiTodoLifecycleLog("할일목록_syncKpiTodoCompleted_예외", {
       kpiTodoId: String(kpiTodoId),
@@ -597,20 +602,42 @@ export function getKpiTodosByKpiName(kpiName) {
       (k) => (k.name || "").trim() === name
     );
     if (!kpi) continue;
-    const kpiId = String(kpi.id);
-    const todos = (data.kpiTodos || [])
-      .filter(
+    return getKpiTodosByKpiId(String(kpi.id));
+  }
+  return null;
+}
+
+/**
+ * KPI id — 일반 할 일 목록(과제 기록 모달 등)
+ * @param {string} kpiId
+ * @param {{ includeCompleted?: boolean }} [opts]
+ */
+export function getKpiTodosByKpiId(kpiId, opts = {}) {
+  const kid = String(kpiId || "").trim();
+  if (!kid) return null;
+  const includeCompleted = opts.includeCompleted === true;
+  for (const storageKey of STORAGE_KEYS) {
+    const data = loadJson(storageKey, { kpis: [], kpiTodos: [] });
+    const kpi = (data.kpis || []).find((k) => String(k.id || "").trim() === kid);
+    if (!kpi) continue;
+    const todos = sortNormalizedKpiTodoRows(
+      (data.kpiTodos || []).filter(
         (t) =>
-          String(t.kpiId) === kpiId &&
+          String(t.kpiId) === kid &&
           (t.text || "").trim() !== "" &&
-          !t.completed
-      )
-      .map((t) => ({
-        id: t.id,
-        text: (t.text || "").trim(),
-        completed: !!t.completed,
-      }));
-    return { storageKey, kpiId, todos };
+          (includeCompleted || !t.completed),
+      ),
+    ).map((t) => ({
+      id: t.id,
+      text: (t.text || "").trim(),
+      completed: !!t.completed,
+    }));
+    return {
+      storageKey,
+      kpiId: kid,
+      kpiName: String(kpi.name || "").trim(),
+      todos,
+    };
   }
   return null;
 }

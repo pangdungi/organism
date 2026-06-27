@@ -22,6 +22,8 @@ import {
 import { lpPullDebug } from "./lpPullDebug.js";
 import { getScopedLocalStorageItem } from "./clientStorageScope.js";
 import { pullTimeLedgerTasksFromSupabase } from "./timeLedgerTasksSupabase.js";
+import { ensureAllKpiTimeTasksFromStorage } from "./kpiTimeTaskSync.js";
+import { pullStaleKpiDomainsForTaskLogList } from "./kpiTabCloudRefresh.js";
 
 function snapshotTimeLedgerLocalStorage() {
   try {
@@ -71,6 +73,10 @@ export async function pullTimeLedgerTabEnterFromCloud() {
     pullTimeDailyBudgetForDateRange(rangeStart, rangeEnd),
     pullTimeLedgerTasksFromSupabase(),
   ]);
+  try {
+    ensureAllKpiTimeTasksFromStorage();
+  } catch (_) {}
+  void pullStaleKpiDomainsForTaskLogList().catch(() => {});
   const after = snapshotTimeLedgerLocalStorage();
   return { anyChanged: before !== after };
 }

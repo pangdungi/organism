@@ -39,7 +39,7 @@ import { patchKpiLinkedTasksFromKpiMaps } from "./timeTaskOptionsModel.js";
 import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
 import { probeKpiDomainServerStale, rememberKpiDomainServerWatermarkMs } from "./kpiMapServerWatermark.js";
 import { pullTimeLedgerTasksIfStaleForModal } from "./timeLedgerTasksSupabase.js";
-import { resolveKpiDomainForKpiId } from "./kpiTodoSync.js";
+import { ensureAllKpiTimeTasksFromStorage } from "./kpiTimeTaskSync.js";
 
 const KPI_DOMAIN_PULL = {
   dream: pullDreamKpiMapFromSupabase,
@@ -309,11 +309,47 @@ export async function pullAllKpiMapsFromCloud(getCurrentTabId) {
 
 /**
  * 과제 기록 모달 — 로컬 KPI·과제 캐시만으로 UI 준비(네트워크 없음).
+ * KPI 탭을 안 거쳐도 연동 과제(잡무 처리하기 등)가 검색·목록에 보이게 기본 KPI 반영.
  */
 export function primeTaskLogModalFromLocal() {
   try {
+    ensureAllKpiTimeTasksFromStorage();
+  } catch (_) {}
+  try {
     patchKpiLinkedTasksFromKpiMaps();
   } catch (_) {}
+}
+
+const TASK_LOG_KPI_DOMAINS = ["dream", "health", "happiness", "sideincome"];
+
+/** 과제 선택 목록용 — 네 KPI 도메인 중 서버가 더 새로우면 pull */
+export async function pullStaleKpiDomainsForTaskLogList() {
+  let kpiChanged = false;
+  await Promise.all(
+    TASK_LOG_KPI_DOMAINS.map(async (domain) => {
+      const stale = await probeKpiDomainServerStale(domain);
+      if (!stale?.stale) return;
+      const pullFn = KPI_DOMAIN_PULL[domain];
+      if (!pullFn) return;
+      const changed = !!(await pullFn({ force: false }));
+      if (changed && stale.serverMs > 0) {
+        rememberKpiDomainServerWatermarkMs(domain, stale.serverMs, stale.userId);
+      }
+      if (changed) kpiChanged = true;
+    }),
+  );
+  if (kpiChanged) {
+    try {
+      ensureAllKpiTimeTasksFromStorage();
+    } catch (_) {}
+    try {
+      patchKpiLinkedTasksFromKpiMaps();
+    } catch (_) {}
+    try {
+      syncHabitTrackerLogs();
+    } catch (_) {}
+  }
+  return kpiChanged;
 }
 
 /**
@@ -355,55 +391,19 @@ export async function pullKpiMapsForTaskLogModalOpen(opts = {}) {
   lpPullDebug("pullKpiMapsForTaskLogModalOpen", {});
 
   const kpiId = String(opts.kpiId || "").trim();
-  const domain = kpiId ? resolveKpiDomainForKpiId(kpiId) : null;
-  if (!domain) {
-    kpiTodoFineTrace("cloud.pullKpiMapsForTaskLogModalOpen:끝", {
-      pullOk: true,
-      kpiChanged: false,
-      pulledDomains: 0,
-      skip: "no_kpi_id",
-    });
-    syncWatchLog("pullKpiMapsForTaskLogModalOpen_완료", {
-      pullOk: true,
-      kpiChanged: false,
-      pulledDomains: 0,
-      note: "KPI id 없음 — pull 생략",
-    });
-    return false;
-  }
-
-  const pullFn = KPI_DOMAIN_PULL[domain];
-  if (!pullFn) return false;
-
-  const stale = await probeKpiDomainServerStale(domain);
-  let kpiChanged = false;
-  if (stale?.stale) {
-    kpiChanged = !!(await pullFn({ force: false }));
-    if (kpiChanged && stale.serverMs > 0) {
-      rememberKpiDomainServerWatermarkMs(domain, stale.serverMs, stale.userId);
-    }
-    if (kpiChanged) {
-      try {
-        patchKpiLinkedTasksFromKpiMaps();
-      } catch (_) {}
-      try {
-        syncHabitTrackerLogs();
-      } catch (_) {}
-    }
-  }
+  const kpiChanged = await pullStaleKpiDomainsForTaskLogList();
 
   kpiTodoFineTrace("cloud.pullKpiMapsForTaskLogModalOpen:끝", {
     pullOk: true,
     kpiChanged,
-    pulledDomains: stale?.stale ? 1 : 0,
-    domain,
+    kpiId: kpiId || "(task-list)",
   });
   syncWatchLog("pullKpiMapsForTaskLogModalOpen_완료", {
     pullOk: true,
     kpiChanged,
-    pulledDomains: stale?.stale ? 1 : 0,
-    domain,
-    note: "과제 KPI id 도메인만 워터마크 stale 시 pull",
+    note: kpiId
+      ? "과제 KPI id + 목록용 네 도메인 stale pull"
+      : "과제 선택 전 — 목록용 네 도메인 stale pull",
   });
   return kpiChanged;
 }
