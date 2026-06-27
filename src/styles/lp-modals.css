@@ -261,6 +261,8 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   [data-legacy~="time-task-log-daily-todos-section"][hidden],
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-kpi-todos-section"][hidden],
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   [data-legacy~="time-task-log-kpi-value-section"][hidden],
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
     .lp-calendar-budget-add-modal
@@ -282,6 +284,10 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
     .lp-calendar-budget-add-modal
   )
   [data-legacy~="time-task-log-daily-todos-section"][hidden],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-kpi-todos-section"][hidden],
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
     .lp-calendar-budget-add-modal
   )
