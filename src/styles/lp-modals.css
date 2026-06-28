@@ -1852,10 +1852,14 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   min-width: 0;
   word-break: break-word;
 }
-.time-task-log-kpi-todo-text.is-done,
-[data-legacy~="time-task-log-kpi-todo-text"][data-legacy~="is-done"] {
+.time-task-log-kpi-todo-row:has(input[type="checkbox"]:checked) .time-task-log-kpi-todo-text,
+.time-task-log-daily-todo-row:has(input[type="checkbox"]:checked) .time-task-log-kpi-todo-text,
+[data-legacy~="time-task-log-kpi-todo-row"]:has(input[type="checkbox"]:checked)
+  [data-legacy~="time-task-log-kpi-todo-text"],
+[data-legacy~="time-task-log-daily-todo-row"]:has(input[type="checkbox"]:checked)
+  [data-legacy~="time-task-log-kpi-todo-text"] {
+  color: #9ca3af;
   text-decoration: line-through;
-  opacity: 0.65;
 }
 .time-task-log-footer,
 .todo-list-modal-footer,

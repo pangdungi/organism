@@ -9212,6 +9212,18 @@ export function render(opts = {}) {
     return texts;
   }
 
+  function applyChoreTodoCompletionsOnTaskLogSubmit(taskName, kpiId) {
+    if (!isChoreTaskLogSelection(taskName, kpiId) || !taskLogKpiTodosList) return;
+    taskLogKpiTodosList
+      .querySelectorAll('[data-legacy~="time-task-log-chore-todo-row"]')
+      .forEach((label) => {
+        const cb = label.querySelector('input[type="checkbox"]');
+        const id = String(cb?.dataset?.todoId || "").trim();
+        if (!id || !cb?.checked) return;
+        syncKpiTodoCompleted(id, HAPPINESS_KPI_MAP_STORAGE_KEY, true);
+      });
+  }
+
   function buildTaskLogFeedbackForSubmit(taskName) {
     const userMemo = (taskLogFeedbackInput?.value || "").trim();
     if (!isChoreTaskLogSelection(taskName, resolveTaskLogModalKpiId())) {
@@ -9268,13 +9280,11 @@ export function render(opts = {}) {
       label.appendChild(checkbox);
       label.appendChild(span);
       checkbox.addEventListener("change", () => {
-        if (id) {
-          syncKpiTodoCompleted(
-            id,
-            HAPPINESS_KPI_MAP_STORAGE_KEY,
-            checkbox.checked,
-          );
-        }
+        kpiTodoFineTrace("Time.과제기록모달:잡무할일체크(저장은 기록 버튼)", {
+          todoId: id,
+          checked: checkbox.checked,
+        });
+        /* KPI 할일 완료는 「기록」 저장 시에만 반영 — X로 닫으면 체크만 무효 */
         lpTokenToggle(span, "is-done", checkbox.checked);
       });
       taskLogKpiTodosList.appendChild(label);
@@ -10422,6 +10432,11 @@ export function render(opts = {}) {
           ledgerIdForKpi,
         );
       }
+
+      applyChoreTodoCompletionsOnTaskLogSubmit(
+        taskName,
+        resolveTaskLogModalKpiId(),
+      );
 
       if (kpiPerformedRaw && normalizedDateRaw.length >= 10) {
         const persistTargets = [];
