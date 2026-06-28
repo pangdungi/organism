@@ -752,6 +752,17 @@ function lpAttachCalendarGridRefreshGuard(
   };
 }
 
+/** 로컬 저장 직후 — 시그니처 가드 있는 _lpRefreshCalendarView 우선(중복 전체 재그림 방지) */
+function lpRunCalendarLayoutRefresh(layoutWrap, fallbackRender) {
+  if (layoutWrap && typeof layoutWrap._lpRefreshCalendarView === "function") {
+    layoutWrap._lpRefreshCalendarView();
+    return;
+  }
+  try {
+    fallbackRender?.();
+  } catch (_) {}
+}
+
 /** layout-pending → layout-ready (막대 재측정 후 표시) */
 function lpRevealCalendarGridLayout(calendarGrid, reason) {
   if (!calendarGrid) return;
@@ -2098,7 +2109,6 @@ function addSectionTodoFromCalendarBubble(
       isCustom: false,
       sortOrder,
     });
-    lpRefreshAllVisibleCalendarLayoutsFromLocalData();
     return true;
   } catch (_) {}
   return false;
@@ -2708,9 +2718,11 @@ function renderMonthlyView(tabsElement) {
 
   /** 할일·일정 추가·수정·삭제 직후 — pull 없이 로컬만 다시 그림 */
   function refreshCalendarLocal() {
-    renderCalendar();
     refreshTodoList();
-    wrap._lpRememberCalendarGridPaintSig?.();
+    lpRunCalendarLayoutRefresh(wrap, () => {
+      renderCalendar();
+      wrap._lpRememberCalendarGridPaintSig?.();
+    });
   }
 
   function patchDayStamp(dateKey) {
@@ -4874,7 +4886,9 @@ function render1WeekView(tabsElement) {
 
   /** 로컬 저장·편집 직후 — 방금 반영한 데이터로만 다시 그림(중복 pull 방지) */
   function refreshCalendar1WeekLocal() {
-    void renderCalendar({ skipWeekPull: true });
+    lpRunCalendarLayoutRefresh(wrap, () => {
+      void renderCalendar({ skipWeekPull: true });
+    });
   }
 
   async function renderCalendar(opts = {}) {

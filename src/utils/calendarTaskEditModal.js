@@ -260,7 +260,7 @@ export function openCalendarTaskEditFromBarModel(barModel, options = {}) {
     try {
       onAfterApply?.(applyMeta);
     } catch (_) {}
-    if (!applyMeta?.doneOnly) {
+    if (!onAfterApply && !applyMeta?.doneOnly) {
       lpRefreshAllVisibleCalendarLayoutsFromLocalData();
     }
   };
