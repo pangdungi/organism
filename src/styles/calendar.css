@@ -751,11 +751,6 @@
   background: var(--cal-range-span-bar-bg, #e6e6e6);
 }
 
-.calendar-1day-day-task-chip.is-past,
-.calendar-1day-day-task-chip.is-past .calendar-monthly-span-bar-text {
-  color: rgba(0, 0, 0, 0.66);
-}
-
 
 .calendar-1day-day-task-chip-inner {
   display: flex;
@@ -805,6 +800,7 @@
 }
 
 .calendar-1day-expected-cards-list {
+  --cal-expected-time-col-w: 3.25rem;
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -822,7 +818,7 @@
 
 .calendar-1day-expected-card {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
+  grid-template-columns: var(--cal-expected-time-col-w, 3.25rem) minmax(0, 1fr);
   column-gap: 0;
   align-items: stretch;
   width: 100%;
@@ -861,11 +857,13 @@
 .calendar-1day-expected-card-time {
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
-  align-items: flex-start;
+  justify-content: center;
+  align-items: center;
   align-self: stretch;
+  width: 100%;
+  min-width: 0;
   min-height: 100%;
-  padding: 0.5rem 0.28rem 0.5rem 0.38rem;
+  padding: 0.5rem 0.28rem;
   box-sizing: border-box;
   border-right: 1px solid #e8edf3;
   font-size: 0.625rem;
@@ -873,13 +871,15 @@
   line-height: 1.35;
   color: #666666;
   font-variant-numeric: tabular-nums;
-  text-align: left;
+  text-align: center;
 }
 
 .calendar-1day-expected-card-time-start,
 .calendar-1day-expected-card-time-end {
   display: block;
+  width: 100%;
   white-space: nowrap;
+  text-align: center;
 }
 
 .calendar-1day-expected-card-time-dash {
@@ -894,11 +894,13 @@
 .calendar-1day-expected-card-main {
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  justify-content: center;
+  align-items: flex-start;
   gap: 0.22rem;
   min-width: 0;
   padding: 0.5rem 0.45rem 0.5rem 0.55rem;
   box-sizing: border-box;
+  text-align: left;
 }
 
 .calendar-1day-expected-card-title {
@@ -907,6 +909,8 @@
   line-height: 1.3;
   color: var(--text-ink);
   word-break: break-word;
+  width: 100%;
+  text-align: left;
 }
 
 .calendar-1day-expected-card-memo {
@@ -915,6 +919,8 @@
   color: #999999;
   white-space: pre-wrap;
   word-break: break-word;
+  width: 100%;
+  text-align: left;
 }
 
 .calendar-view-content-area > .calendar-1day-view--slot-grid,
@@ -1343,18 +1349,14 @@
 }
 
 /* 할 일·일정 본문 — 오늘·미래 검정, 지난 날짜는 회색 */
+.calendar-view-todo .todo-card-name {
+  font-size: 1.375rem;
+  line-height: 1.42;
+}
+
 .calendar-view-todo .todo-card-name,
 .calendar-view-todo .todo-card-dates {
   color: #000000;
-}
-
-.calendar-view-todo
-  .todo-priority-quadrant[data-date-bucket="past"]
-  .todo-card-name,
-.calendar-view-todo
-  .todo-priority-quadrant[data-date-bucket="past"]
-  .todo-card-dates {
-  color: rgba(0, 0, 0, 0.66);
 }
 
 .calendar-monthly-span-bar--todo,
@@ -1744,10 +1746,6 @@
   text-decoration-color: currentColor;
 }
 
-.calendar-day-expand-item.is-past.is-completed .calendar-day-expand-text {
-  color: rgba(0, 0, 0, 0.58);
-}
-
 /* 기간 막대는 단일일 막대보다 아래 레이어 — 같은 열에서 겹칠 때 할 일 텍스트가 가리지 않게 */
 .calendar-monthly-span-bar--range {
   z-index: 1;
@@ -1760,11 +1758,12 @@
   border: none;
 }
 
-.calendar-monthly-span-bar.is-past,
-.calendar-monthly-span-bar.is-past .calendar-monthly-span-bar-text {
-  color: rgba(0, 0, 0, 0.66);
+/* 월간 격자 — 할 일 이름만 크게(날짜·기간 막대·일정 막대는 기본 크기 유지) */
+.calendar-monthly-span-bar--todo .calendar-monthly-span-bar-text {
+  font-size: 1.25rem;
+  line-height: 1.28;
+  font-weight: 600;
 }
-
 
 .calendar-monthly-span-bar--dragging {
   opacity: 0.85;
@@ -2380,6 +2379,11 @@
     padding: 0.1rem 0.25rem;
   }
 
+  .calendar-monthly-span-bar--todo .calendar-monthly-span-bar-text {
+    font-size: 0.8125rem;
+    line-height: 1.22;
+  }
+
   .calendar-1week-flow-stack {
     gap: 0.28rem;
   }
@@ -2854,11 +2858,6 @@
   transition:
     background 0.1s ease,
     border-color 0.1s ease;
-}
-
-.calendar-day-expand-item.is-past .calendar-day-expand-text,
-.calendar-day-expand-item.is-past .calendar-day-expand-time {
-  color: rgba(0, 0, 0, 0.58);
 }
 
 .calendar-day-expand-item:hover {

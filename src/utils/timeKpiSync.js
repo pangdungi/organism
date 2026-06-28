@@ -53,6 +53,29 @@ function readTaskRowsForKpiMatch() {
   }
 }
 
+/**
+ * KPI 연동 과제 — 가계부 행에 taskId 없을 때, kpiId 연결 과제명이 1:1일 때만 id 보완.
+ * (KPI 이름 대조가 아니라 time_ledger_tasks.kpiId 가 있는 과제 행만)
+ */
+function resolveKpiLinkedTaskIdForLedgerRow(row, taskRows, restrictToKpiId = "") {
+  const tid = String(row?.taskId || "").trim();
+  if (isUuid(tid)) return tid;
+  const tn = String(row?.taskName || "").trim();
+  if (!tn) return "";
+  const kidRestrict = String(restrictToKpiId || "").trim();
+  let found = "";
+  for (const o of taskRows || []) {
+    const oid = String(o.id || "").trim();
+    const kid = String(o.kpiId || "").trim();
+    if (!isUuid(oid) || !kid) continue;
+    if (kidRestrict && kid !== kidRestrict) continue;
+    if (String(o.name || "").trim() !== tn) continue;
+    if (found) return "";
+    found = oid;
+  }
+  return found;
+}
+
 /** KPI에 time_ledger_tasks.kpiId 로 연결된 과제가 있는지 */
 export function kpiHasLinkedTimeTask(kpiOrId) {
   const kid =
@@ -107,9 +130,13 @@ function getMatchingLedgerRowsForKpi(kpiId, rowsForSum) {
     const hasHabit =
       Array.isArray(r.habitDailyCompleted) && r.habitDailyCompleted.length > 0;
     if (!hasTime && !hasPerf && !hasHabit) continue;
-    const tid = String(r.taskId || "").trim();
+    const resolvedTid = resolveKpiLinkedTaskIdForLedgerRow(
+      r,
+      taskRows,
+      kid,
+    );
     const tn = String(r.taskName || "").trim();
-    if (!isUuid(tid)) {
+    if (!isUuid(resolvedTid)) {
       if (tn && kpiSyncDebugEnabled()) {
         nameOnlySkipped.push({
           entryId: String(r.id || "").trim(),
@@ -119,15 +146,15 @@ function getMatchingLedgerRowsForKpi(kpiId, rowsForSum) {
       }
       continue;
     }
-    const mappedKpi = taskIdToKpiId.get(tid);
-    if (idsForKpi.has(tid) || mappedKpi === kid) {
+    const mappedKpi = taskIdToKpiId.get(resolvedTid);
+    if (idsForKpi.has(resolvedTid) || mappedKpi === kid) {
       matched.push(r);
       continue;
     }
     if (tn && kpiSyncDebugEnabled()) {
       nameOnlySkipped.push({
         entryId: String(r.id || "").trim(),
-        taskId: tid,
+        taskId: resolvedTid,
         taskName: tn,
         mappedKpiId: mappedKpi || "(없음)",
         reason: "다른 과제 id",
@@ -1138,8 +1165,9 @@ export function syncHabitTrackerLogs() {
 
 /** 과제명·taskId → 연결된 KPI(storageKey, kpiId) 목록 (과제 기록 저장·동기화 공통) */
 export function resolveKpiLinksForTaskName(taskName, rowTaskId = "") {
+  const taskRows = readTaskRowsForKpiMatch();
   const taskIdToKpiId = new Map();
-  for (const o of readTaskRowsForKpiMatch()) {
+  for (const o of taskRows) {
     const tid = String(o.id || "").trim();
     const kid = String(o.kpiId || "").trim();
     if (isUuid(tid) && kid) taskIdToKpiId.set(tid, kid);
@@ -1147,6 +1175,7 @@ export function resolveKpiLinksForTaskName(taskName, rowTaskId = "") {
   return resolveKpiLinksForLedgerRow(
     { taskName, taskId: rowTaskId },
     taskIdToKpiId,
+    taskRows,
   );
 }
 
@@ -1166,7 +1195,7 @@ function kpiAcceptsPerformedValueFromTimeLedger(kpi) {
   return kpiHasTargetValueAndUnit(kpi);
 }
 
-function resolveKpiLinksForLedgerRow(r, taskIdToKpiId) {
+function resolveKpiLinksForLedgerRow(r, taskIdToKpiId, taskRows) {
   /** @type {Array<{ storageKey: string, kpiId: string }>} */
   const links = [];
   const seen = new Set();
@@ -1180,9 +1209,9 @@ function resolveKpiLinksForLedgerRow(r, taskIdToKpiId) {
     links.push({ storageKey: sk, kpiId: kid });
   };
 
-  const taskId = String(r.taskId || "").trim();
-  if (isUuid(taskId)) {
-    const kpiId = taskIdToKpiId.get(taskId);
+  const resolvedTid = resolveKpiLinkedTaskIdForLedgerRow(r, taskRows);
+  if (isUuid(resolvedTid)) {
+    const kpiId = taskIdToKpiId.get(resolvedTid);
     if (kpiId) {
       const sk = findStorageKeyForKpiId(kpiId);
       if (sk) add(sk, kpiId);
@@ -1194,8 +1223,9 @@ function resolveKpiLinksForLedgerRow(r, taskIdToKpiId) {
 
 function syncHabitTrackerLogsInner() {
   const rows = loadTimeRows();
+  const taskRows = readTaskRowsForKpiMatch();
   const taskIdToKpiId = new Map();
-  for (const o of readTaskRowsForKpiMatch()) {
+  for (const o of taskRows) {
     const tid = String(o.id || "").trim();
     const kid = String(o.kpiId || "").trim();
     if (isUuid(tid) && kid) taskIdToKpiId.set(tid, kid);
@@ -1233,6 +1263,7 @@ function syncHabitTrackerLogsInner() {
     for (const { storageKey, kpiId } of resolveKpiLinksForLedgerRow(
       r,
       taskIdToKpiId,
+      taskRows,
     )) {
       const nd = normalizeLogDate(dateRaw);
       const bucket = getLedgerBucket(storageKey, kpiId, nd);

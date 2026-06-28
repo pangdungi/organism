@@ -956,6 +956,7 @@ function removeFromBudgetExcluded(dateStr, taskName) {
 /** 과제 기록 로컬 저장 — IndexedDB(+미러) 경로는 timeLedgerEntriesModel */
 export function loadTimeRows() {
   try {
+    migrateTimeLogRowsTaskIds();
     let arr = readTimeLedgerEntriesRaw();
     const closed = closeStaleInProgressTimeLedgerRows(arr);
     if (closed.changed) {
@@ -10172,7 +10173,12 @@ export function render(opts = {}) {
       oldRowDataToRemove = editTr._rowData ? { ...editTr._rowData } : null;
       const prevRow = editTr._rowData || {};
       const optTask = taskName ? getTaskOptionByName(taskName) : null;
-      const tidRow = String((optTask?.id || prevRow.taskId || "").trim());
+      const tidRow = String(
+        (taskLogTaskDropdown?._getTaskId?.() ||
+          optTask?.id ||
+          prevRow.taskId ||
+          "").trim(),
+      );
       const prevId = String(prevRow.id || "").trim();
       const newRowData = {
         id: isUuid(prevId)
@@ -10299,7 +10305,9 @@ export function render(opts = {}) {
     } else if (addCtx) {
       const ctx = addCtx;
       const optAdd = taskName ? getTaskOptionByName(taskName) : null;
-      const tidAdd = String((optAdd?.id || "").trim());
+      const tidAdd = String(
+        (taskLogTaskDropdown?._getTaskId?.() || optAdd?.id || "").trim(),
+      );
       const newRowData = {
         id:
           typeof crypto !== "undefined" && crypto.randomUUID

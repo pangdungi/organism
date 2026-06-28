@@ -1,6 +1,6 @@
 /**
- * 앱 전역 UI 글꼴 — **유일한 소스**: --lp-app-font-family (그리운 코코최윤체 고정)
- * index.html 인라인 부트와 동일. applyAppFont()가 html에 변수를 갱신.
+ * 앱 전역 UI 글꼴 — **유일한 소스**: --lp-app-font-family
+ * index.html 인라인 부트·applyUiFontById() 와 동기. 캘린더 월·날짜 숫자는 별도 변수.
  */
 
 :root {
@@ -55,6 +55,46 @@ select:-webkit-autofill:focus {
 @font-face {
   font-family: "LP Griun Cocochoitoon";
   src: url("/fonts/LP-Griun-Cocochoitoon.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "LP Ongleip Gongbujahana";
+  src: url("/fonts/LP-Ongleip-Gongbujahana.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "LP Ongleip Ryuryu";
+  src: url("/fonts/LP-Ongleip-Ryuryu.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "LP Griun Mongtori";
+  src: url("/fonts/LP-Griun-Mongtori-Rg.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "LP Griun Cherry1Spoon";
+  src: url("/fonts/LP-Griun-Cherry1Spoon-Rg.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "LP Griun Myeoneunheulrim";
+  src: url("/fonts/LP-Griun-Myeoneunheulrim.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
   font-display: swap;

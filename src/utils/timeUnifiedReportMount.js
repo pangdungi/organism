@@ -276,12 +276,28 @@ function formatRatingAvg(avg) {
   return `${n.toFixed(1)}`;
 }
 
-/** 시간 수익률(별점→배율) 평균 표기 — ×1.5 */
-function formatReturnMultiplierAvg(mult) {
+/** 배율(×1=0%) → 수익률 % — 5점 +100%, 4점 +50%, 3점 0%, 2점 −25%, 1점 −50% */
+function returnMultToPercent(mult) {
   const n = Number(mult);
-  if (!Number.isFinite(n) || n <= 0) return "—";
-  const rounded = Math.round(n * 100) / 100;
-  return `×${rounded}`;
+  if (!Number.isFinite(n)) return null;
+  return Math.round((n - 1) * 100);
+}
+
+/** 시간 수익률 평균 표기 — +68%, 0%, −25% */
+function formatReturnPercentAvg(mult) {
+  const pct = returnMultToPercent(mult);
+  if (pct == null) return "—";
+  if (pct > 0) return `+${pct}%`;
+  if (pct < 0) return `${pct}%`;
+  return "0%";
+}
+
+/** 막대 높이·너비 — −50%~+100% 구간을 0~100% 시각 길이로 */
+function returnMultBarHeightPct(mult, minVisible = 14) {
+  const pct = returnMultToPercent(mult);
+  if (pct == null) return 0;
+  const h = ((pct + 50) / 150) * 100;
+  return Math.max(minVisible, Math.min(100, h));
 }
 
 function returnMultTier(mult) {
@@ -341,7 +357,7 @@ function createReturnRateBarRow(label, avgMult, meta) {
   track.className = "lp-tr2-bar-track";
   const fill = document.createElement("div");
   fill.className = "lp-tr2-bar-fill";
-  const pct = Math.min(100, (Math.max(0, avgMult) / 2) * 100);
+  const pct = returnMultBarHeightPct(avgMult, 0);
   fill.style.width = `${pct}%`;
   const tier = returnMultTier(avgMult);
   const fillColor = returnMultFillColor(avgMult);
@@ -355,7 +371,7 @@ function createReturnRateBarRow(label, avgMult, meta) {
   if (tier === "high") val.classList.add("lp-tr2-bar-value--rating-high");
   else if (tier === "mid") val.classList.add("lp-tr2-bar-value--rating-mid");
   else if (tier === "low") val.classList.add("lp-tr2-bar-value--rating-low");
-  val.textContent = formatReturnMultiplierAvg(avgMult);
+  val.textContent = formatReturnPercentAvg(avgMult);
   track.appendChild(fill);
   row.appendChild(lab);
   row.appendChild(track);
@@ -463,7 +479,7 @@ function render24HourRatingChart(hourGrid, peakHours, opts = {}) {
     bar.className = "lp-tr2-rating-hour-bar";
     if (hasData) {
       const pct = returnMode
-        ? Math.max(14, ((h.avgMult ?? 0) / 2) * 100)
+        ? returnMultBarHeightPct(h.avgMult)
         : Math.max(14, ((h.avg ?? 0) / 5) * 100);
       bar.style.height = `${pct}%`;
       const fillColor = returnMode
@@ -472,7 +488,7 @@ function render24HourRatingChart(hourGrid, peakHours, opts = {}) {
       bar.style.background = fillColor;
       bar.style.backgroundColor = fillColor;
       cell.title = returnMode
-        ? `${formatHourLabel(h.hour)} · ${formatReturnMultiplierAvg(h.avgMult)} · ${h.count}건 · ${formatIntegerMinutesDurationKo(h.minutes)}`
+        ? `${formatHourLabel(h.hour)} · ${formatReturnPercentAvg(h.avgMult)} · ${h.count}건 · ${formatIntegerMinutesDurationKo(h.minutes)}`
         : `${formatHourLabel(h.hour)} · ${formatRatingAvg(h.avg)}점 · ${h.count}건 · ${formatIntegerMinutesDurationKo(h.minutes)}`;
     } else {
       bar.classList.add("is-empty");
@@ -534,12 +550,12 @@ function renderWeekdayReturnChart(weekdayGrid) {
     const bar = document.createElement("div");
     bar.className = "lp-tr2-rating-weekday-bar";
     if (hasData) {
-      const pct = Math.max(14, ((w.avgMult ?? 0) / 2) * 100);
+      const pct = returnMultBarHeightPct(w.avgMult);
       bar.style.height = `${pct}%`;
       const fillColor = returnMultFillColor(w.avgMult);
       bar.style.background = fillColor;
       bar.style.backgroundColor = fillColor;
-      col.title = `${w.label}요일 · ${formatReturnMultiplierAvg(w.avgMult)} · ${w.count}건`;
+      col.title = `${w.label}요일 · ${formatReturnPercentAvg(w.avgMult)} · ${w.count}건`;
       const tier = returnMultTier(w.avgMult);
       if (tier === "high") col.classList.add("lp-tr2-rating-weekday-col--high");
       else if (tier === "mid") col.classList.add("lp-tr2-rating-weekday-col--mid");
@@ -555,7 +571,7 @@ function renderWeekdayReturnChart(weekdayGrid) {
     if (hasData) {
       const score = document.createElement("span");
       score.className = "lp-tr2-rating-weekday-score";
-      score.textContent = formatReturnMultiplierAvg(w.avgMult);
+      score.textContent = formatReturnPercentAvg(w.avgMult);
       col.appendChild(score);
     }
     wrap.appendChild(col);
@@ -822,7 +838,7 @@ function buildRatingInsightText(snap) {
   }
   if (snap.topTasks.length) {
     parts.push(
-      `가장 수익률이 높은 활동은 「${snap.topTasks[0].name}」 (${formatReturnMultiplierAvg(snap.topTasks[0].avgMult)})`,
+      `가장 수익률이 높은 활동은 「${snap.topTasks[0].name}」 (${formatReturnPercentAvg(snap.topTasks[0].avgMult)})`,
     );
   }
   return parts.join(" · ");
@@ -832,7 +848,7 @@ function mountTimeRatingReportSection(scrollWrap, _range, rows) {
   const snap = buildTimeRatingReportSnapshot(rows);
   const sec = createSection(
     "시간 수익률 분석",
-    "투자한 시간의 별점(×배율)으로 어떤 활동·시간대가 이득인지 봅니다",
+    "투자한 시간의 별점을 수익률(%)로 바꿔, 어떤 활동·시간대가 이득인지 봅니다",
   );
 
   if (!snap) {
@@ -860,19 +876,19 @@ function mountTimeRatingReportSection(scrollWrap, _range, rows) {
   hero.appendChild(
     createStatCard(
       "평균 수익률",
-      formatReturnMultiplierAvg(snap.overallWeightedAvgMult),
-      "시간 가중 평균 배율",
+      formatReturnPercentAvg(snap.overallWeightedAvgMult),
+      "3점=0% · 시간 가중 평균",
     ),
   );
   hero.appendChild(
     createStatCard(
       snap.topTasks[0]?.name ? "최고 수익 활동" : "기준 배율",
       snap.topTasks[0]?.name
-        ? formatReturnMultiplierAvg(snap.topTasks[0].avgMult)
-        : "×1",
+        ? formatReturnPercentAvg(snap.topTasks[0].avgMult)
+        : "0%",
       snap.topTasks[0]?.name
         ? String(snap.topTasks[0].name).slice(0, 12)
-        : "×1 = 시급 그대로",
+        : "0% = 시급 그대로",
     ),
   );
   sec.appendChild(hero);
@@ -888,7 +904,7 @@ function mountTimeRatingReportSection(scrollWrap, _range, rows) {
   if (snap.hourGrid.some((h) => h.count > 0)) {
     const block = createRatingBlock(
       "24시간 수익률",
-      "시작 시각 기준 · 막대 높이=배율(×2 최대) · 주황 테두리=피크",
+      "시작 시각 기준 · 막대 높이=수익률(−50%~+100%) · 주황 테두리=피크",
     );
     block.appendChild(
       render24HourRatingChart(snap.hourGrid, snap.peakHours, { mode: "return" }),
@@ -899,7 +915,7 @@ function mountTimeRatingReportSection(scrollWrap, _range, rows) {
       peakNote.textContent = `피크: ${snap.peakHours
         .map(
           (h) =>
-            `${formatHourLabel(h.hour)} (${formatReturnMultiplierAvg(h.avgMult)})`,
+            `${formatHourLabel(h.hour)} (${formatReturnPercentAvg(h.avgMult)})`,
         )
         .join(" · ")}`;
       block.appendChild(peakNote);
@@ -910,7 +926,7 @@ function mountTimeRatingReportSection(scrollWrap, _range, rows) {
   if (snap.weekdayGrid.some((w) => w.count > 0)) {
     const block = createRatingBlock(
       "요일별 패턴",
-      "월~일 요일별 평균 배율 · 막대가 높을수록 수익률 높음",
+      "월~일 요일별 평균 수익률 · 막대가 높을수록 이득",
     );
     block.appendChild(renderWeekdayReturnChart(snap.weekdayGrid));
     sec.appendChild(block);
@@ -919,7 +935,7 @@ function mountTimeRatingReportSection(scrollWrap, _range, rows) {
   if (snap.topTasks.length) {
     const block = createRatingBlock(
       "활동별 수익률",
-      "과제별 평균 배율 · 15분 이상 또는 2회 이상",
+      "과제별 평균 수익률 · 15분 이상 또는 2회 이상",
     );
     const bars = document.createElement("div");
     bars.className = "lp-tr2-bars";
@@ -939,7 +955,7 @@ function mountTimeRatingReportSection(scrollWrap, _range, rows) {
   if (snap.topRoiTasks.length) {
     const block = createRatingBlock(
       "시간 대비 수익률 TOP",
-      "30분 이상 쓴 활동만 · 같은 1시간 투자 시 배율이 높은 순",
+      "30분 이상 쓴 활동만 · 같은 1시간 투자 시 수익률이 높은 순",
     );
     const bars = document.createElement("div");
     bars.className = "lp-tr2-bars";

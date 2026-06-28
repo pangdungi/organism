@@ -35,6 +35,7 @@ export const CLIENT_STORAGE_SCOPED_BASE_KEYS = [
   "user_hourly_rate",
   "user_hourly_calc_inputs",
   "user_hourly_rate_mode",
+  "user_ui_font_id",
 ];
 
 export function setActiveClientStorageUserId(uid) {

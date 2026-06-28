@@ -10,6 +10,7 @@ import {
   saveTodoSettings,
   normalizeSectionTaskListFilter,
 } from "./todoSettings.js";
+import { applyUiFontFromServerRow } from "./appUiFont.js";
 
 export const USER_HOURLY_RATE_KEY = "user_hourly_rate";
 export const USER_HOURLY_RATE_MODE_KEY = "user_hourly_rate_mode";
@@ -93,7 +94,7 @@ export async function pullUserPrefsFromSupabase() {
   const { data, error } = await supabase
     .from("user_subscriptions")
     .select(
-      "hourly_rate, hourly_rate_mode, appearance, subscription_status, access_until",
+      "hourly_rate, hourly_rate_mode, appearance, subscription_status, access_until, ui_font_id",
     )
     .eq("user_id", session.user.id)
     .maybeSingle();
@@ -122,6 +123,7 @@ export async function pullUserPrefsFromSupabase() {
       window.dispatchEvent(new CustomEvent("app-colors-changed"));
     } catch (_) {}
   }
+  applyUiFontFromServerRow(data);
   await syncUserIanaTimezoneToSupabase();
   return data;
 }

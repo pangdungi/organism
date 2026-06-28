@@ -988,7 +988,19 @@ export function migrateTimeLogRowsTaskIds() {
         return row;
       }
       const n = (row.taskName || "").trim();
-      if (!n || kpiSyncedNames.has(n)) return row;
+      if (!n) return row;
+      if (kpiSyncedNames.has(n)) {
+        const kpiLinked = opts.filter(
+          (o) =>
+            (o.name || "").trim() === n &&
+            String(o.kpiId || "").trim(),
+        );
+        if (kpiLinked.length === 1 && isUuid(String(kpiLinked[0].id || ""))) {
+          changed = true;
+          return { ...row, taskId: String(kpiLinked[0].id).trim() };
+        }
+        return row;
+      }
       const matches = opts.filter(
         (o) =>
           (o.name || "").trim() === n && !String(o.kpiId || "").trim(),

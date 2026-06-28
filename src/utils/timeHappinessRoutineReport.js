@@ -9,6 +9,14 @@ import {
   HAPPINESS_KPI_GLOBAL_SCOPE_ID,
   HAPPINESS_KPI_MAP_STORAGE_KEY,
 } from "./happinessKpiMapSupabase.js";
+import {
+  getKpiDailyLedgerSummaries,
+  mergeDailyCompletedLists,
+  syncHabitTrackerLogs,
+} from "./timeKpiSync.js";
+import { migrateTimeLogRowsTaskIds } from "./timeTaskOptionsModel.js";
+import { ensureAllKpiTimeTasksFromStorage } from "./kpiTimeTaskSync.js";
+import { resolveKpiDetailLogEntriesLocal } from "./kpiTimeLedgerLogs.js";
 
 const ROUTINE_WELL_KEPT_PCT = 75;
 const ITEM_WEAK_PCT = 50;
@@ -111,24 +119,68 @@ function buildLogIndex(kpiLogs) {
   return map;
 }
 
-function completedTodoIdsForLog(log) {
-  const ids = new Set();
-  for (const x of Array.isArray(log?.dailyCompleted) ? log.dailyCompleted : []) {
-    const id = String(x?.id || "").trim();
-    if (id) ids.add(id);
+/** KPI 로그·과제 기록( taskId↔kpiId ) 양쪽 체크 — id 또는 텍스트 일치 */
+function isDailyTodoCompleted(todoId, todoText, completedList) {
+  const tid = String(todoId || "").trim();
+  const ttext = String(todoText || "").trim();
+  for (const x of completedList || []) {
+    const xid = String(x?.id || "").trim();
+    const xtext = String(x?.text || "").trim();
+    if (tid && xid && tid === xid) return true;
+    if (ttext && xtext && ttext === xtext) return true;
   }
-  return ids;
+  return false;
+}
+
+/** @returns {Map<string, object[]>} dateRaw → habitDailyCompleted */
+function buildLedgerDailyCompletedByDate(kpiId, startYmd, endYmd) {
+  const map = new Map();
+  for (const day of getKpiDailyLedgerSummaries(kpiId, "", {
+    startYmd,
+    endYmd,
+  })) {
+    const dk = normYmd(day?.dateRaw);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dk)) continue;
+    const list = Array.isArray(day.habitDailyCompleted) ? day.habitDailyCompleted : [];
+    if (list.length > 0) map.set(dk, list);
+  }
+  return map;
+}
+
+function mergedDailyCompletedForKpiDay(
+  logIndex,
+  ledgerByDate,
+  kpiId,
+  day,
+  resolvedEntriesByDay,
+) {
+  const fromResolved = resolvedEntriesByDay?.get(day);
+  const fromLog = Array.isArray(fromResolved?.dailyCompleted)
+    ? fromResolved.dailyCompleted
+    : Array.isArray(logIndex.get(`${kpiId}|${day}`)?.dailyCompleted)
+      ? logIndex.get(`${kpiId}|${day}`).dailyCompleted
+      : [];
+  const fromLedger = ledgerByDate.get(day) || [];
+  return mergeDailyCompletedLists(
+    mergeDailyCompletedLists(fromLog, fromLedger),
+    [],
+  );
 }
 
 /**
  * @param {{ start: string, end: string }} range
  */
 export function buildHappinessRoutineReportSnapshot(range) {
+  ensureAllKpiTimeTasksFromStorage();
+  migrateTimeLogRowsTaskIds();
+  syncHabitTrackerLogs();
   const data = loadHappinessMapForReport();
   const kpis = getOrderedHabitKpis(data);
   const calendarDays = listDatesInclusive(range?.start, range?.end);
   const calendarDayCount = calendarDays.length;
   const logIndex = buildLogIndex(data.kpiLogs || []);
+  const rangeStart = calendarDays[0] || normYmd(range?.start);
+  const rangeEnd = calendarDays[calendarDays.length - 1] || normYmd(range?.end);
 
   const routines = [];
 
@@ -137,6 +189,23 @@ export function buildHappinessRoutineReportSnapshot(range) {
     const name = String(kpi.name || "").trim() || "(이름 없음)";
     const todos = dailyTodosForKpi(data, kpiId);
     if (!todos.length) continue;
+
+    const ledgerByDate =
+      /^\d{4}-\d{2}-\d{2}$/.test(rangeStart) &&
+      /^\d{4}-\d{2}-\d{2}$/.test(rangeEnd)
+        ? buildLedgerDailyCompletedByDate(kpiId, rangeStart, rangeEnd)
+        : new Map();
+
+    const storedLogs = (data.kpiLogs || []).filter(
+      (l) => String(l?.kpiId || "").trim() === kpiId,
+    );
+    const resolvedEntriesByDay = new Map();
+    for (const entry of resolveKpiDetailLogEntriesLocal(kpi, storedLogs)) {
+      const dk = normalizeLogDate(entry?.dateRaw || entry?.date || "");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dk)) continue;
+      if (!calendarDays.includes(dk)) continue;
+      resolvedEntriesByDay.set(dk, entry);
+    }
 
     let routineChecks = 0;
     let routineOpportunities = 0;
@@ -151,8 +220,14 @@ export function buildHappinessRoutineReportSnapshot(range) {
       for (const day of calendarDays) {
         opportunityCount += 1;
         routineOpportunities += 1;
-        const log = logIndex.get(`${kpiId}|${day}`);
-        if (log && completedTodoIdsForLog(log).has(todoId)) {
+        const completedList = mergedDailyCompletedForKpiDay(
+          logIndex,
+          ledgerByDate,
+          kpiId,
+          day,
+          resolvedEntriesByDay,
+        );
+        if (isDailyTodoCompleted(todoId, text, completedList)) {
           checkCount += 1;
           routineChecks += 1;
         }

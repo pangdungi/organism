@@ -36,7 +36,10 @@ import { initModalNoAutoFocus } from "./utils/modalNoAutoFocus.js";
 import { initLpAppShellViewportLock } from "./utils/lpAppShellViewport.js";
 import { supabase } from "./supabase.js";
 import { getSupabaseSession } from "./utils/supabaseSession.js";
-import { preloadCalendarMonthFont } from "./utils/appUiFont.js";
+import {
+  applyUiFontFromLocalCache,
+  preloadCalendarMonthFont,
+} from "./utils/appUiFont.js";
 import { prefetchCriticalAppIconAssets } from "./utils/appIconPrefetch.js";
 import { setAppSplashMessage } from "./utils/lpAppLoading.js";
 import {
@@ -303,8 +306,14 @@ async function enterAuthenticatedApp(opts = {}) {
 
       lpAppMounted = true;
       showOnly("signin");
+      setActiveClientStorageUserId(bootSession.user.id);
+      applyUiFontFromLocalCache();
       primeTimeLedgerStorageFromCachedSession();
       finishStep("로컬 캐시 준비");
+      if (showSplash) setAppSplashMessage("설정 불러오는 중…");
+      await prepareTimeLedgerStorageForCurrentSession();
+      await pullPrefsAndRunSubscriptionGate();
+      finishStep("계정 설정 pull");
       await mountApp(screen);
       finishStep("메인 화면 조립(mountApp)");
       setAppSplashMessage("데이터 불러오는 중…");
@@ -314,9 +323,6 @@ async function enterAuthenticatedApp(opts = {}) {
 
       markTabBootAuthUid(bootSession.user.id);
       finishStep("세션·탭 표시");
-
-      await prepareTimeLedgerStorageForCurrentSession();
-      await pullPrefsAndRunSubscriptionGate();
 
       timings.push({
         label: "진입 합계",

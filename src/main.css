@@ -1150,6 +1150,45 @@ table {
   opacity: 0.85;
 }
 
+.idea-view .idea-ui-font-hint {
+  margin: 0 0 0.75rem;
+  line-height: 1.5;
+}
+
+.idea-view .idea-ui-font-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.idea-view .idea-ui-font-option {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid rgba(30, 77, 123, 0.14);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.idea-view .idea-ui-font-option.is-selected,
+.idea-view .idea-ui-font-option:has(input:checked) {
+  border-color: var(--idea-ocean);
+  background: rgba(30, 77, 123, 0.05);
+}
+
+.idea-view .idea-ui-font-option-input {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.idea-view .idea-ui-font-option-preview {
+  font-size: 1.05rem;
+  line-height: 1.35;
+  color: var(--idea-ink, #1d1d1f);
+}
+
 .idea-view .idea-btn-calc {
   display: flex;
   align-items: center;

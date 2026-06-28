@@ -1416,7 +1416,8 @@ function lpOpenCalendarTaskEdit(barModel, options = {}) {
 }
 
 function lpBuildCalendarSpanBarInnerHtml(name, _done) {
-  return `<span class="calendar-monthly-span-bar-text">${escapeHtml(name || "")}</span>`;
+  const raw = String(name || "");
+  return `<span class="calendar-monthly-span-bar-text">${escapeHtml(raw)}</span>`;
 }
 
 function lpApplyCalendarSpanBarDonePastClasses(bar, b, todayYmd) {
@@ -1986,6 +1987,7 @@ function lpAttachCalendarBarOpenTodoEdit(
   b,
   renderCalendar,
   refreshTodoList,
+  patchDayStamp = null,
 ) {
   const sid = String(b.sectionId || "").trim();
   const tid = String(b.taskId || "").trim();
@@ -2009,14 +2011,28 @@ function lpAttachCalendarBarOpenTodoEdit(
       const dateKey = lpCalendarDayKeyFromSpanBarClick(bar, b, e);
       const cell = lpCalendarFindMonthlyDayCell(dateKey, bar);
       if (cell && dateKey) {
-        lpOpenCalendarMonthlyDayActionBubble(cell, dateKey, () => {
-          try {
-            renderCalendar?.();
-          } catch (_) {}
-          try {
-            refreshTodoList?.();
-          } catch (_) {}
-        });
+        lpOpenCalendarMonthlyDayActionBubble(
+          cell,
+          dateKey,
+          () => {
+            try {
+              renderCalendar?.();
+            } catch (_) {}
+            try {
+              refreshTodoList?.();
+            } catch (_) {}
+          },
+          {
+            onAfterStampChange: () => {
+              try {
+                patchDayStamp?.(dateKey);
+              } catch (_) {}
+              try {
+                refreshTodoList?.();
+              } catch (_) {}
+            },
+          },
+        );
         return;
       }
     }
@@ -2384,7 +2400,12 @@ const MAX_VISIBLE_BARS_PER_DAY = 3;
 let _calendarDayExpandOutsideHandler = null;
 
 /** 월간·1주 날짜 칸 클릭 — 할일/아이콘 버튼 패널(빈 칸·할일 목록) */
-function lpOpenCalendarMonthlyDayActionBubble(cell, dateKey, onAfterChange) {
+function lpOpenCalendarMonthlyDayActionBubble(
+  cell,
+  dateKey,
+  onAfterChange,
+  opts = {},
+) {
   const key = String(dateKey || "").trim().slice(0, 10);
   if (!key || !(cell instanceof HTMLElement)) return;
   const rect = cell.getBoundingClientRect();
@@ -2397,6 +2418,7 @@ function lpOpenCalendarMonthlyDayActionBubble(cell, dateKey, onAfterChange) {
   createCalendarDayExpandBubble(rect, key, tasks, () => {}, {
     positionBelow: true,
     onAfterTaskEdit: refresh,
+    onAfterStampChange: opts.onAfterStampChange ?? null,
     onAdd: () => {
       createCalendarEventBubble(rect, key, refresh, () => {});
     },
@@ -2415,6 +2437,8 @@ function createCalendarDayExpandBubble(
     onAdd = null,
     /** 할일·일정 항목에서 수정 모달 저장/삭제 후 그리드 갱신 */
     onAfterTaskEdit = null,
+    /** 스탬프만 추가·변경·삭제 — 해당 날짜 셀만 갱신(전체 renderCalendar 생략) */
+    onAfterStampChange = null,
     /** 연간 뷰 등: × 숨김 */
     hideCloseButton = false,
     /** false면 바깥 클릭으로 닫지 않음(호버 전용) */
@@ -2544,7 +2568,11 @@ function createCalendarDayExpandBubble(
       onClose: close,
       onAfterChange: () => {
         try {
-          onAfterTaskEdit?.();
+          if (onAfterStampChange) {
+            onAfterStampChange();
+          } else {
+            onAfterTaskEdit?.();
+          }
         } catch (_) {}
       },
     });
@@ -2984,7 +3012,12 @@ function renderMonthlyView(tabsElement) {
           if (lpCalendarGuardCellClickFromMonthlyBar(e)) return;
           e.stopPropagation();
           e.preventDefault();
-          lpOpenCalendarMonthlyDayActionBubble(cell, key, refreshCalendarLocal);
+          lpOpenCalendarMonthlyDayActionBubble(cell, key, refreshCalendarLocal, {
+            onAfterStampChange: () => {
+              patchDayStamp(key);
+              refreshTodoList();
+            },
+          });
         });
         cell.addEventListener("dragover", (e) => {
           if (calendarDragTransferTypesAllowDrop(e.dataTransfer)) {
@@ -3162,6 +3195,7 @@ function renderMonthlyView(tabsElement) {
           b,
           refreshCalendarLocal,
           refreshTodoList,
+          patchDayStamp,
         );
         if (!b.isSingleDay && b.startDate && b.dueDate) {
           bar.addEventListener("contextmenu", (e) => {
@@ -4940,6 +4974,11 @@ function render1WeekView(tabsElement) {
     });
   }
 
+  function patchDayStamp(dateKey) {
+    lpPatchCalendarMonthlyDayStamp(calendarGrid, dateKey, patchDayStamp);
+    wrap._lpRememberCalendarGridPaintSig?.();
+  }
+
   async function renderCalendar(opts = {}) {
     const skipWeekPull = !!opts.skipWeekPull;
     const renderSeq = ++_1weekRenderSeq;
@@ -5084,10 +5123,20 @@ function render1WeekView(tabsElement) {
         if (lpCalendarGuardCellClickFromMonthlyBar(e)) return;
         e.stopPropagation();
         e.preventDefault();
-        lpOpenCalendarMonthlyDayActionBubble(cell, key, () => {
-          refreshCalendar1WeekLocal();
-          refreshTodoList();
-        });
+        lpOpenCalendarMonthlyDayActionBubble(
+          cell,
+          key,
+          () => {
+            refreshCalendar1WeekLocal();
+            refreshTodoList();
+          },
+          {
+            onAfterStampChange: () => {
+              patchDayStamp(key);
+              refreshTodoList();
+            },
+          },
+        );
       });
       cell.addEventListener("dragover", (e) => {
         if (calendarDragTransferTypesAllowDrop(e.dataTransfer)) {
@@ -5243,6 +5292,7 @@ function render1WeekView(tabsElement) {
         b,
         refreshCalendar1WeekLocal,
         refreshTodoList,
+        patchDayStamp,
       );
       if (!b.isSingleDay && b.startDate && b.dueDate) {
         bar.addEventListener("contextmenu", (e) => {
@@ -5907,6 +5957,7 @@ function renderAnnualView(tabsElement) {
                 renderYear();
                 refreshTodoList();
               },
+              onAfterStampChange: () => {},
             },
           );
           _annualDayExpandClose = close;
@@ -5978,6 +6029,7 @@ function renderAnnualView(tabsElement) {
                   renderYear();
                   refreshTodoList();
                 },
+                onAfterStampChange: () => {},
               },
             );
             _annualDayExpandClose = closeTouch;

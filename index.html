@@ -53,6 +53,11 @@
     <!-- manifest·favicon·og:image — 탭·검색은 favicon.ico·og-app-icon.png(별도 경로) -->
     <link rel="manifest" href="/manifest.json?v=doodle-calendar-1" />
     <link rel="preload" href="/fonts/LP-Griun-Cocochoitoon.ttf" as="font" type="font/ttf" crossorigin />
+    <link rel="preload" href="/fonts/LP-Ongleip-Gongbujahana.ttf" as="font" type="font/ttf" crossorigin />
+    <link rel="preload" href="/fonts/LP-Ongleip-Ryuryu.ttf" as="font" type="font/ttf" crossorigin />
+    <link rel="preload" href="/fonts/LP-Griun-Mongtori-Rg.ttf" as="font" type="font/ttf" crossorigin />
+    <link rel="preload" href="/fonts/LP-Griun-Cherry1Spoon-Rg.ttf" as="font" type="font/ttf" crossorigin />
+    <link rel="preload" href="/fonts/LP-Griun-Myeoneunheulrim.ttf" as="font" type="font/ttf" crossorigin />
     <link rel="preload" href="/fonts/LP-LeeSeoyun.otf" as="font" type="font/otf" crossorigin />
     <link rel="preload" href="/fonts/Hello-Scratchy-Outlines.otf" as="font" type="font/otf" crossorigin />
     <link rel="preload" href="/toolbaricons/splash/splash-screen.png?v=splash-unified-5" as="image" type="image/png" />
@@ -67,11 +72,46 @@
     <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1284.png?v=splash-unified-5" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
     <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1170.png?v=splash-unified-5" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
     <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1080.png?v=splash-unified-5" media="(orientation: portrait)" />
-    <!-- FOUC 방지 + 첫 페인트부터 그리운 코코최윤체 -->
+    <!-- FOUC 방지 + 첫 페인트부터 계정별 UI 글꼴(캐시) -->
     <style>
       @font-face {
         font-family: "LP Griun Cocochoitoon";
         src: url("/fonts/LP-Griun-Cocochoitoon.ttf") format("truetype");
+        font-weight: normal;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: "LP Ongleip Gongbujahana";
+        src: url("/fonts/LP-Ongleip-Gongbujahana.ttf") format("truetype");
+        font-weight: normal;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: "LP Ongleip Ryuryu";
+        src: url("/fonts/LP-Ongleip-Ryuryu.ttf") format("truetype");
+        font-weight: normal;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: "LP Griun Mongtori";
+        src: url("/fonts/LP-Griun-Mongtori-Rg.ttf") format("truetype");
+        font-weight: normal;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: "LP Griun Cherry1Spoon";
+        src: url("/fonts/LP-Griun-Cherry1Spoon-Rg.ttf") format("truetype");
+        font-weight: normal;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: "LP Griun Myeoneunheulrim";
+        src: url("/fonts/LP-Griun-Myeoneunheulrim.ttf") format("truetype");
         font-weight: normal;
         font-style: normal;
         font-display: swap;
@@ -243,10 +283,46 @@
     </style>
     <script>
       (function () {
-        var STACK =
-          '"LP Griun Cocochoitoon", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+        /* appUiFont.js UI_FONT_DEFS 와 id·family·weight 동기 */
+        var MAP = {
+          cocochoitoon: {
+            family: "LP Griun Cocochoitoon",
+            weight: "500",
+          },
+          gongbujahana: {
+            family: "LP Ongleip Gongbujahana",
+            weight: "400",
+          },
+          ryuryu: { family: "LP Ongleip Ryuryu", weight: "400" },
+          mongtori: { family: "LP Griun Mongtori", weight: "400" },
+          cherryspoon: { family: "LP Griun Cherry1Spoon", weight: "400" },
+          myeoneunheulrim: { family: "LP Griun Myeoneunheulrim", weight: "400" },
+        };
+        var FALLBACK = MAP.cocochoitoon;
+        var fontId = "cocochoitoon";
         try {
-          document.documentElement.style.setProperty("--lp-app-font-family", STACK);
+          var uid = localStorage.getItem("lp_last_auth_uid") || "";
+          if (uid) {
+            var cached = localStorage.getItem("lp:u:" + uid + ":user_ui_font_id");
+            if (cached && MAP[cached]) fontId = cached;
+          }
+        } catch (_) {}
+        var def = MAP[fontId] || FALLBACK;
+        var stack =
+          '"' +
+          def.family +
+          '", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+        try {
+          document.documentElement.style.setProperty(
+            "--lp-app-font-family",
+            stack,
+          );
+          document.documentElement.style.setProperty(
+            "--lp-app-font-weight-base",
+            def.weight,
+          );
+          document.documentElement.style.fontFamily = stack;
+          document.documentElement.style.fontWeight = def.weight;
         } catch (_) {}
       })();
     </script>

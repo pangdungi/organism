@@ -6,6 +6,14 @@ import { signOut } from "../auth.js";
 import { supabase } from "../supabase.js";
 import { openDeleteAccountModal } from "../utils/deleteAccountModal.js";
 import { USER_HOURLY_RATE_KEY, readUserHourlyRateLocal, readUserHourlyRateModeLocal, setUserHourlyRateModeLocal, HOURLY_RATE_MODE_CALC, HOURLY_RATE_MODE_DIRECT, applyAppearanceFromServer } from "../utils/userHourlySync.js";
+import {
+  UI_FONT_PICKER_OPTIONS,
+  applyUiFontFromServerRow,
+  fontStackForDef,
+  normalizeUiFontId,
+  readUiFontIdLocal,
+  saveUserUiFontToSupabase,
+} from "../utils/appUiFont.js";
 import { setScopedLocalStorageItem, getScopedLocalStorageItem } from "../utils/clientStorageScope.js";
 import { showToast } from "../utils/showToast.js";
 import {
@@ -86,6 +94,73 @@ export function render() {
   `;
   grid.appendChild(basicSettingsWidget);
 
+  // ----- UI 글꼴 (그리운·온글잎 등 — 캘린더 월·날짜 숫자는 제외) -----
+  const fontWidget = document.createElement("div");
+  fontWidget.className =
+    "time-dashboard-widget idea-widget idea-widget-ui-font";
+  const fontTitle = document.createElement("div");
+  fontTitle.className = "time-dashboard-widget-title";
+  fontTitle.textContent = "글꼴";
+  fontWidget.appendChild(fontTitle);
+  const fontHint = document.createElement("p");
+  fontHint.className = "idea-form-hint idea-ui-font-hint";
+  fontHint.textContent =
+    "앱 본문·버튼·입력창 등에 적용됩니다. 캘린더 월 이름·날짜 숫자는 그대로입니다.";
+  fontWidget.appendChild(fontHint);
+  const fontList = document.createElement("div");
+  fontList.className = "idea-ui-font-list";
+  fontList.setAttribute("role", "radiogroup");
+  fontList.setAttribute("aria-label", "앱 글꼴 선택");
+  let fontSaving = false;
+
+  function syncFontPickerSelection(fontId) {
+    const id = normalizeUiFontId(fontId);
+    fontList.querySelectorAll(".idea-ui-font-option").forEach((label) => {
+      const input = label.querySelector('input[type="radio"]');
+      const on = input?.value === id;
+      if (input) input.checked = on;
+      label.classList.toggle("is-selected", on);
+    });
+  }
+
+  UI_FONT_PICKER_OPTIONS.forEach((def) => {
+    const label = document.createElement("label");
+    label.className = "idea-ui-font-option";
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.name = "idea-ui-font";
+    input.value = def.id;
+    input.className = "idea-ui-font-option-input";
+    const preview = document.createElement("span");
+    preview.className = "idea-ui-font-option-preview";
+    preview.style.fontFamily = fontStackForDef(def);
+    preview.style.fontWeight = String(def.weight ?? 400);
+    preview.textContent = def.label;
+    label.appendChild(input);
+    label.appendChild(preview);
+    input.addEventListener("change", () => {
+      if (!input.checked || fontSaving) return;
+      fontSaving = true;
+      void saveUserUiFontToSupabase(def.id)
+        .then((res) => {
+          if (!res.ok) {
+            showToast("글꼴 저장에 실패했습니다.");
+            syncFontPickerSelection(readUiFontIdLocal());
+            return;
+          }
+          syncFontPickerSelection(res.id);
+          showToast("글꼴이 적용되었습니다.");
+        })
+        .finally(() => {
+          fontSaving = false;
+        });
+    });
+    fontList.appendChild(label);
+  });
+  fontWidget.appendChild(fontList);
+  syncFontPickerSelection(readUiFontIdLocal());
+  grid.appendChild(fontWidget);
+
   // ----- 구독 (시급 위젯 위) -----
   const subscriptionWidget = document.createElement("div");
   subscriptionWidget.className =
@@ -124,7 +199,7 @@ export function render() {
       supabase
         .from("user_subscriptions")
         .select(
-          "subscription_status, signup_at, access_until, hourly_rate, hourly_rate_mode, appearance",
+          "subscription_status, signup_at, access_until, hourly_rate, hourly_rate_mode, appearance, ui_font_id",
         )
         .eq("user_id", session.user.id)
         .maybeSingle()
@@ -183,6 +258,8 @@ export function render() {
               window.dispatchEvent(new CustomEvent("app-colors-changed"));
             } catch (_) {}
           }
+          applyUiFontFromServerRow(data);
+          syncFontPickerSelection(readUiFontIdLocal());
         });
     });
   }
@@ -529,6 +606,7 @@ export function render() {
       }
       rv.textContent = "—";
       if (ru) ru.style.visibility = "hidden";
+      syncFontPickerSelection(readUiFontIdLocal());
     } catch (_) {}
   };
 
