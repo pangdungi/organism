@@ -2,7 +2,7 @@
 /** index.html·manifest 의 ?v= 와 동일하게 유지 */
 const PWA_BRAND = "doodle-calendar-1";
 /** 번들·아이콘 등 캐시 버전 (전략·브랜드 바꿀 때 올리면 이전 캐시 정리됨) */
-const ASSET_CACHE = "tip-assets-v62";
+const ASSET_CACHE = "tip-assets-v63";
 /** HTML 셸 캐시 — 홈 화면에서 열 때 즉시 표시용 */
 const HTML_CACHE = "tip-html-v6";
 const LOGIN_BRAND_LOGO_V = "doodle-login-brand-2";
@@ -45,11 +45,6 @@ const PWA_INSTALL_CORE_PATHS = [
   "/pwa-splash-portrait-1284.png",
   "/toolbaricons/splash/splash-screen.png",
   "/fonts/LP-Griun-Cocochoitoon.ttf",
-  "/fonts/LP-Ongleip-Gongbujahana.ttf",
-  "/fonts/LP-Ongleip-Ryuryu.ttf",
-  "/fonts/LP-Griun-Mongtori-Rg.ttf",
-  "/fonts/LP-Griun-Cherry1Spoon-Rg.ttf",
-  "/fonts/LP-Griun-Myeoneunheulrim.ttf",
   "/fonts/LP-LeeSeoyun.otf",
   "/fonts/Hello-Scratchy-Outlines.otf",
   `/login-brand-logo.png?v=${LOGIN_BRAND_LOGO_V}`,
@@ -158,6 +153,10 @@ function isStaticImageAsset(pathname) {
 /** 과제·KPI·메뉴 아이콘 전부 이 경로 — 응답은 stale-while-revalidate */
 function isToolbarIconPath(pathname) {
   return pathname.startsWith("/toolbaricons/");
+}
+
+function isFontPath(pathname) {
+  return pathname.startsWith("/fonts/");
 }
 
 /** JS/CSS 번들 — 네트워크 우선(배포 직후 구 HTML·빈 캐시로 실행 실패·무한 로딩 방지) */
@@ -300,6 +299,10 @@ self.addEventListener("fetch", (event) => {
       event.respondWith(staleWhileRevalidateToolbarIcon(req, event));
       return;
     }
+    event.respondWith(cacheFirstStaticAsset(req));
+    return;
+  }
+  if (isFontPath(url.pathname)) {
     event.respondWith(cacheFirstStaticAsset(req));
     return;
   }
