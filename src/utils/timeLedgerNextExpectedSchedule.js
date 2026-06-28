@@ -57,6 +57,7 @@ function collectBudgetBlocksForDate(dateKey) {
       if (startMin == null || endMin == null || endMin <= startMin) continue;
       blocks.push({
         taskName: name,
+        timeIdx: i,
         startHhMm,
         endHhMm,
         memo: String(memos[i] || "").trim(),
@@ -132,6 +133,41 @@ export function nextExpectedBudgetBlockKey(block) {
   const end = normalizeHhMm(block.endHhMm);
   if (!name || !start || !end) return "";
   return `${name}|${start}|${end}`;
+}
+
+/**
+ * 예상 일정 — 현재 시작 시각 **다음** 예상 블록의 시작 시각(HH:mm). 갭채우기용.
+ * @param {string} dateKey YYYY-MM-DD
+ * @param {string} currentStartHhMm
+ * @param {{ excludeTaskName?: string, excludeTimeIdx?: number }} [opts] — 수정 중인 슬롯 제외
+ */
+export function getNextExpectedScheduleStartHhMmAfterCurrent(
+  dateKey,
+  currentStartHhMm,
+  opts = {},
+) {
+  const currentMin = minutesFromHhMm(currentStartHhMm);
+  if (currentMin == null) return null;
+  const dk = normalizeDateKey(dateKey);
+  if (!dk) return null;
+  const excludeTask = normalizeTaskNameKey(opts.excludeTaskName);
+  const excludeIdx = Number(opts.excludeTimeIdx);
+  const hasExcludeIdx = Number.isFinite(excludeIdx) && excludeIdx >= 0;
+
+  for (const block of collectBudgetBlocksForDate(dk)) {
+    if (
+      hasExcludeIdx &&
+      excludeTask &&
+      normalizeTaskNameKey(block.taskName) === excludeTask &&
+      block.timeIdx === excludeIdx
+    ) {
+      continue;
+    }
+    if (block.startMin > currentMin) {
+      return block.startHhMm;
+    }
+  }
+  return null;
 }
 
 function activeInProgressTaskNamesForDay(ledgerRows, dateKey) {

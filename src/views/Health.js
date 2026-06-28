@@ -613,7 +613,7 @@ export function render() {
     lowerPlaceholder: "5",
     habitTargetPlaceholder: "5",
     habitUnitPlaceholder: "km",
-    timePlaceholder: "예) 25:00",
+    timePlaceholder: "1시간 : 01:00 20분 : 00:20",
   };
 
   function showKpiModal() {

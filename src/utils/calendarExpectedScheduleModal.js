@@ -28,6 +28,7 @@ import {
   formatIntegerMinutesDurationKo,
 } from "../views/Time.js";
 import { getTaskDailyAverageMinutesLast30Days } from "./timeKpiSync.js";
+import { getNextExpectedScheduleStartHhMmAfterCurrent } from "./timeLedgerNextExpectedSchedule.js";
 import * as TTC from "./timeTaskOptionsConstants.js";
 import { bindTimeTaskLogModalMemoKeyboard } from "./timeTaskLogModalMemoKeyboard.js";
 
@@ -114,6 +115,8 @@ function attachExpectedScheduleDatetimeUI(panel, ctx) {
     taskLogTimeOrderWarning,
     /** 일간 뷰 등: 화면에 보이는 예상 블록과 동일한 기준의 시작 시각(없으면 미전달) */
     defaultStartHhMm: defaultStartHhMmFromCtx,
+    /** 수정 모드: 편집 중인 슬롯은 다음 예상 일정 탐색에서 제외 */
+    gapFillExclude,
   } = ctx;
 
   const normalizeHhMm = (val) => {
@@ -228,6 +231,7 @@ function attachExpectedScheduleDatetimeUI(panel, ctx) {
     }
     syncTaskLogDateOverlay();
     updateTaskLogTimeOrderWarning();
+    syncExpectedGapFillBtnVisibility();
   }
 
   function syncEndToHidden() {
@@ -494,6 +498,43 @@ function attachExpectedScheduleDatetimeUI(panel, ctx) {
       });
   }
 
+  function syncExpectedGapFillBtnVisibility() {
+    const gapBtn = panel.querySelector(
+      '[data-legacy~="time-task-log-time-adjust-gap"]',
+    );
+    if (!gapBtn) return;
+    const dateVal = taskLogResolveYmdForSync();
+    const startTimeVal = normalizeHhMm((taskLogTimeStart?.value || "").trim());
+    let show = false;
+    let nextStart = null;
+    if (
+      /^\d{4}-\d{2}-\d{2}$/.test(dateVal) &&
+      startTimeVal &&
+      /^\d{1,2}:\d{2}$/.test(startTimeVal)
+    ) {
+      const opts = {};
+      if (gapFillExclude?.excludeTaskName) {
+        opts.excludeTaskName = gapFillExclude.excludeTaskName;
+        opts.excludeTimeIdx = gapFillExclude.excludeTimeIdx;
+      }
+      nextStart = getNextExpectedScheduleStartHhMmAfterCurrent(
+        dateVal,
+        startTimeVal,
+        opts,
+      );
+      show = !!nextStart;
+      if (nextStart) {
+        gapBtn.title = `다음 예상 일정 시작(${nextStart})까지 마감 채우기`;
+      } else {
+        gapBtn.removeAttribute("title");
+      }
+    } else {
+      gapBtn.removeAttribute("title");
+    }
+    gapBtn.hidden = !show;
+    gapBtn.dataset.lpGapFillNext = nextStart || "";
+  }
+
   panel
     .querySelectorAll('[data-legacy~="time-task-log-time-adjust-btn"]')
     .forEach((btn) => {
@@ -520,6 +561,44 @@ function attachExpectedScheduleDatetimeUI(panel, ctx) {
           const fallbackTime = startHasTime
             ? startTimeVal
             : `${String(new Date().getHours()).padStart(2, "0")}:${String(new Date().getMinutes()).padStart(2, "0")}`;
+
+          if (btn.dataset.gapFill === "true") {
+            const dateVal = taskLogResolveYmdForSync();
+            const gapStartTimeVal = normalizeHhMm(
+              (taskLogTimeStart?.value || "").trim(),
+            );
+            if (!gapStartTimeVal || !/^\d{1,2}:\d{2}$/.test(gapStartTimeVal)) {
+              showToast("시작 시각을 먼저 입력해 주세요.", "info");
+              return;
+            }
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) {
+              showToast("기록 날짜를 확인해 주세요.", "info");
+              return;
+            }
+            const gapOpts = {};
+            if (gapFillExclude?.excludeTaskName) {
+              gapOpts.excludeTaskName = gapFillExclude.excludeTaskName;
+              gapOpts.excludeTimeIdx = gapFillExclude.excludeTimeIdx;
+            }
+            let nextStart =
+              btn.dataset.lpGapFillNext ||
+              getNextExpectedScheduleStartHhMmAfterCurrent(
+                dateVal,
+                gapStartTimeVal,
+                gapOpts,
+              );
+            nextStart = normalizeHhMm(String(nextStart || "").trim());
+            if (!nextStart || !/^\d{1,2}:\d{2}$/.test(nextStart)) {
+              showToast("이어지는 다음 예상 일정이 없습니다.", "info");
+              syncExpectedGapFillBtnVisibility();
+              return;
+            }
+            if (taskLogTimeEnd) taskLogTimeEnd.value = nextStart;
+            syncEndToHidden();
+            setTaskLogQuickAdjustActive(btn);
+            syncExpectedGapFillBtnVisibility();
+            return;
+          }
 
           if (btn.dataset.last === "true") {
             const dateVal = (taskLogDateStart?.value || "").trim() || fallbackYmd;
@@ -643,6 +722,7 @@ function attachExpectedScheduleDatetimeUI(panel, ctx) {
     }
     syncStartToHidden();
     syncEndToHidden();
+    syncExpectedGapFillBtnVisibility();
   }
 
   function flushBeforeSubmit() {
@@ -678,6 +758,7 @@ function attachExpectedScheduleDatetimeUI(panel, ctx) {
     applyDefaultsForYmd,
     syncTaskLogDateOverlay,
     flushBeforeSubmit,
+    syncExpectedGapFillBtnVisibility,
   };
 } /** end attachExpectedScheduleDatetimeUI */
 
@@ -755,6 +836,7 @@ export function openCalendarExpectedScheduleModal(options) {
                   <div data-legacy="time-task-log-time-adjust-row time-task-log-time-adjust-row--actions">
                     <button type="button" data-legacy="time-task-log-time-adjust-btn time-task-log-time-adjust-now" data-now="true">지금</button>
                     <button type="button" data-legacy="time-task-log-time-adjust-btn time-task-log-time-adjust-last" data-last="true">마지막</button>
+                    <button type="button" data-legacy="time-task-log-time-adjust-btn time-task-log-time-adjust-gap" data-gap-fill="true" hidden>갭채우기</button>
                     <button type="button" data-legacy="time-task-log-time-adjust-btn" data-day-end="true">하루끝</button>
                   </div>
                 </div>
@@ -1123,7 +1205,7 @@ export function openCalendarExpectedScheduleModal(options) {
     Number.isFinite(editTimeIdx) &&
     editTimeIdx >= 0;
 
-  const { applyDefaultsForYmd, flushBeforeSubmit } =
+  const { applyDefaultsForYmd, flushBeforeSubmit, syncExpectedGapFillBtnVisibility } =
     attachExpectedScheduleDatetimeUI(panel, {
       fallbackYmd: dk,
       signal,
@@ -1137,6 +1219,9 @@ export function openCalendarExpectedScheduleModal(options) {
         isEdit || defaultStartHhMm === undefined
           ? undefined
           : defaultStartHhMm,
+      gapFillExclude: isEdit
+        ? { excludeTaskName: editTaskName, excludeTimeIdx: editTimeIdx }
+        : undefined,
     });
 
   applyDefaultsForYmd(dk);
@@ -1159,6 +1244,7 @@ export function openCalendarExpectedScheduleModal(options) {
   } else {
     finalizeExpectedModalTaskDropdown();
   }
+  syncExpectedGapFillBtnVisibility();
 
   bindTimeTaskLogModalMemoKeyboard(modal, {
     scrollArea: taskLogScrollArea,

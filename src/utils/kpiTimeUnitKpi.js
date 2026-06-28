@@ -142,7 +142,7 @@ export function kpiTargetValueFieldHtml(kpi, escapeHtml, opts = {}) {
       : sanitizeNumericInput(kpi.targetValue)
     : "";
   const valueAttr = kpi ? ` value="${escapeHtml(val)}"` : "";
-  const timePh = opts.timePlaceholder ?? "예) 25:00";
+  const timePh = opts.timePlaceholder ?? "1시간 : 01:00 20분 : 00:20";
   const higherPh = opts.higherPlaceholder ?? "예) 99";
   const inputAttrs = useTime
     ? ` placeholder="${timePh}"`
@@ -413,7 +413,7 @@ export function bindKpiGoalModeForm(form, kpi = null, opts = {}) {
   const habitTargetPlaceholder = opts.habitTargetPlaceholder ?? "5";
   const habitUnitPlaceholder = opts.habitUnitPlaceholder ?? "km";
   const unitPlaceholder = opts.unitPlaceholder ?? "km";
-  const timePlaceholder = opts.timePlaceholder ?? "예) 25:00";
+  const timePlaceholder = opts.timePlaceholder ?? "1시간 : 01:00 20분 : 00:20";
 
   const unitInput = form.querySelector('input[name="unit"]');
   const targetInput = form.querySelector('input[name="targetValue"]');

@@ -461,7 +461,7 @@ export function render() {
     unitPlaceholder: "권",
     higherPlaceholder: "20",
     lowerPlaceholder: "5",
-    timePlaceholder: "예) 25:00",
+    timePlaceholder: "1시간 : 01:00 20분 : 00:20",
   };
 
   function showKpiModal() {
