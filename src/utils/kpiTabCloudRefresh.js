@@ -40,6 +40,7 @@ import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
 import { probeKpiDomainServerStale, rememberKpiDomainServerWatermarkMs } from "./kpiMapServerWatermark.js";
 import { pullTimeLedgerTasksIfStaleForModal } from "./timeLedgerTasksSupabase.js";
 import { ensureAllKpiTimeTasksFromStorage } from "./kpiTimeTaskSync.js";
+import { resolveKpiDomainForKpiId } from "./kpiTodoSync.js";
 
 const KPI_DOMAIN_PULL = {
   dream: pullDreamKpiMapFromSupabase,
@@ -185,6 +186,28 @@ export async function pullKpiDetailTodosFromCloud(tabId) {
   if (tabId === "health") return pullHealthKpiMapTodosFromSupabase();
   if (tabId === "happiness") return pullHappinessKpiMapTodosFromSupabase();
   return false;
+}
+
+/**
+ * 과제 기록 모달 — 연결 KPI 도메인의 할 일 목록 pull
+ * @param {string} kpiId
+ * @returns {Promise<boolean>}
+ */
+export async function pullKpiTodosDomainFromCloud(kpiId) {
+  const domain = resolveKpiDomainForKpiId(kpiId);
+  if (!domain) return false;
+  switch (domain) {
+    case "dream":
+      return pullDreamKpiMapFromSupabase({ force: false });
+    case "health":
+      return pullHealthKpiMapTodosFromSupabase();
+    case "happiness":
+      return pullHappinessKpiMapTodosFromSupabase();
+    case "sideincome":
+      return pullSideincomeKpiMapFromSupabase({ force: false });
+    default:
+      return false;
+  }
 }
 
 /**

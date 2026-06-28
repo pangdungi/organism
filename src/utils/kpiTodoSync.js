@@ -701,6 +701,47 @@ export function getKpiMeasureInfoByKpiId(kpiId) {
   return null;
 }
 
+/** KPI가 태스크 완료형(할 일 목록 + 과제 기록 연동)인지 */
+export function isKpiTaskCompletionGoalType(kpi) {
+  if (!kpi || typeof kpi !== "object") return false;
+  return !!kpi.useTaskCompletionGoal && !kpi.needHabitTracker;
+}
+
+/**
+ * KPI id — 태스크 완료형 할 일 목록 (과제 기록 모달)
+ * @returns {{ storageKey: string, kpiId: string, kpiName: string, useTaskCompletionGoal: boolean, todos: Array<{ id: string, text: string, completed: boolean }> } | null}
+ */
+export function getKpiTaskCompletionTodoInfoByKpiId(kpiId) {
+  const kid = String(kpiId || "").trim();
+  if (!kid) return null;
+  for (const storageKey of STORAGE_KEYS) {
+    const data = loadJson(storageKey, { kpis: [], kpiTodos: [] });
+    const kpi = (data.kpis || []).find((k) => String(k.id || "").trim() === kid);
+    if (!kpi) continue;
+    if (!isKpiTaskCompletionGoalType(kpi)) return null;
+    const todos = sortNormalizedKpiTodoRows(
+      (data.kpiTodos || []).filter(
+        (t) =>
+          String(t.kpiId) === kid &&
+          (t.text || "").trim() !== "" &&
+          !t.completed,
+      ),
+    ).map((t) => ({
+      id: t.id,
+      text: (t.text || "").trim(),
+      completed: !!t.completed,
+    }));
+    return {
+      storageKey,
+      kpiId: kid,
+      kpiName: String(kpi.name || "").trim(),
+      useTaskCompletionGoal: true,
+      todos,
+    };
+  }
+  return null;
+}
+
 /**
  * @deprecated 과제명=KPI이름 매칭 — getKpiDailyRepeatInfoByKpiId + 과제 kpiId 사용 권장
  */

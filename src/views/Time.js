@@ -19,15 +19,13 @@ import {
   getKpiTodosAsTasks,
   getKpiDailyRepeatInfoByKpiId,
   getKpiMeasureInfoByKpiId,
-  getKpiTodosByKpiId,
+  getKpiTaskCompletionTodoInfoByKpiId,
+  getKpiRecordByTaskName,
+  isKpiTaskCompletionGoalType,
   resolveKpiIdForTaskId,
   syncKpiTodoCompleted,
 } from "../utils/kpiTodoSync.js";
-import {
-  DEFAULT_CHORE_TASK_KPI_ID,
-  HAPPINESS_KPI_MAP_STORAGE_KEY,
-  pullHappinessKpiMapTodosFromSupabase,
-} from "../utils/happinessKpiMapSupabase.js";
+import { pullKpiTodosDomainFromCloud } from "../utils/kpiTabCloudRefresh.js";
 import { kpiTodoFineTrace } from "../utils/kpiTodoFineTrace.js";
 import {
   bindModalNativeDateRange,
@@ -9186,16 +9184,26 @@ export function render(opts = {}) {
 
   function onTaskSelectedForLog(taskName) {
     refreshKpiTodosInLogModal();
-    void refreshChoreTodosInLogModal();
+    void refreshTaskCompletionTodosInLogModal();
     updateTaskLogMealDetailVisibility(taskName);
     syncTaskLogRatingSectionUi();
     syncTaskLogGapFillBtnVisibility();
   }
 
-  const CHORE_TASK_LOG_NAME = "잡무 처리하기";
-  let choreTodosFetchGen = 0;
+  let taskCompletionTodosFetchGen = 0;
 
-  function collectCheckedChoreTodoTextsFromModal() {
+  function getTaskCompletionTodoInfoForTaskLog() {
+    const kpiId = resolveTaskLogModalKpiId();
+    if (kpiId) return getKpiTaskCompletionTodoInfoByKpiId(kpiId);
+    const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
+    const rec = getKpiRecordByTaskName(taskName);
+    if (rec && isKpiTaskCompletionGoalType(rec.kpi)) {
+      return getKpiTaskCompletionTodoInfoByKpiId(String(rec.kpi.id || "").trim());
+    }
+    return null;
+  }
+
+  function collectCheckedTaskCompletionTodoTextsFromModal() {
     const texts = [];
     if (!taskLogKpiTodosList) return texts;
     taskLogKpiTodosList
@@ -9212,41 +9220,32 @@ export function render(opts = {}) {
     return texts;
   }
 
-  function applyChoreTodoCompletionsOnTaskLogSubmit(taskName, kpiId) {
-    if (!isChoreTaskLogSelection(taskName, kpiId) || !taskLogKpiTodosList) return;
+  function applyTaskCompletionTodoCompletionsOnTaskLogSubmit() {
+    const info = getTaskCompletionTodoInfoForTaskLog();
+    if (!info || !taskLogKpiTodosList) return;
     taskLogKpiTodosList
       .querySelectorAll('[data-legacy~="time-task-log-chore-todo-row"]')
       .forEach((label) => {
         const cb = label.querySelector('input[type="checkbox"]');
         const id = String(cb?.dataset?.todoId || "").trim();
         if (!id || !cb?.checked) return;
-        syncKpiTodoCompleted(id, HAPPINESS_KPI_MAP_STORAGE_KEY, true);
+        syncKpiTodoCompleted(id, info.storageKey, true);
       });
   }
 
   function buildTaskLogFeedbackForSubmit(taskName) {
     const userMemo = (taskLogFeedbackInput?.value || "").trim();
-    if (!isChoreTaskLogSelection(taskName, resolveTaskLogModalKpiId())) {
+    if (!getTaskCompletionTodoInfoForTaskLog()) {
       return userMemo;
     }
     if (taskLogEditTr) return userMemo;
-    const doneTexts = collectCheckedChoreTodoTextsFromModal();
+    const doneTexts = collectCheckedTaskCompletionTodoTextsFromModal();
     if (doneTexts.length) return doneTexts.join(" · ");
     return userMemo;
   }
 
-  function isChoreTaskLogSelection(taskName, kpiId) {
-    const tn = String(taskName || "").trim();
-    if (!tn && !kpiId) return false;
-    if (String(kpiId || "").trim() === DEFAULT_CHORE_TASK_KPI_ID) return true;
-    if (tn === CHORE_TASK_LOG_NAME || tn.replace(/\s+/g, "") === "잡무처리하기") {
-      return true;
-    }
-    return false;
-  }
-
-  function hideTaskLogChoreTodosSection() {
-    choreTodosFetchGen += 1;
+  function hideTaskLogTaskCompletionTodosSection() {
+    taskCompletionTodosFetchGen += 1;
     if (!taskLogKpiTodosSection) return;
     taskLogKpiTodosSection.hidden = true;
     if (taskLogKpiTodosScroll) taskLogKpiTodosScroll.hidden = true;
@@ -9257,7 +9256,7 @@ export function render(opts = {}) {
     taskLogKpiTodosList?.replaceChildren?.();
   }
 
-  function renderTaskLogChoreTodoRows(todos) {
+  function renderTaskLogTaskCompletionTodoRows(todos) {
     if (!taskLogKpiTodosList) return;
     taskLogKpiTodosList.replaceChildren();
     for (const todo of todos) {
@@ -9280,7 +9279,7 @@ export function render(opts = {}) {
       label.appendChild(checkbox);
       label.appendChild(span);
       checkbox.addEventListener("change", () => {
-        kpiTodoFineTrace("Time.과제기록모달:잡무할일체크(저장은 기록 버튼)", {
+        kpiTodoFineTrace("Time.과제기록모달:태스크할일체크(저장은 기록 버튼)", {
           todoId: id,
           checked: checkbox.checked,
         });
@@ -9291,11 +9290,10 @@ export function render(opts = {}) {
     }
   }
 
-  async function refreshChoreTodosInLogModal() {
-    const name = (taskLogTaskDropdown?._getValue?.() || "").trim();
-    const kpiId = resolveTaskLogModalKpiId();
-    if (!isChoreTaskLogSelection(name, kpiId)) {
-      hideTaskLogChoreTodosSection();
+  async function refreshTaskCompletionTodosInLogModal() {
+    const info = getTaskCompletionTodoInfoForTaskLog();
+    if (!info) {
+      hideTaskLogTaskCompletionTodosSection();
       return;
     }
     if (
@@ -9306,7 +9304,7 @@ export function render(opts = {}) {
     ) {
       return;
     }
-    const gen = ++choreTodosFetchGen;
+    const gen = ++taskCompletionTodosFetchGen;
     taskLogKpiTodosSection.hidden = false;
     taskLogKpiTodosScroll.hidden = true;
     taskLogKpiTodosStatus.hidden = false;
@@ -9315,19 +9313,22 @@ export function render(opts = {}) {
 
     let pullOk = false;
     try {
-      pullOk = !!(await pullHappinessKpiMapTodosFromSupabase());
+      pullOk = !!(await pullKpiTodosDomainFromCloud(info.kpiId));
     } catch (_) {
       pullOk = false;
     }
-    if (gen !== choreTodosFetchGen || !taskLogModal.isConnected || taskLogModal.hidden) {
+    if (
+      gen !== taskCompletionTodosFetchGen ||
+      !taskLogModal.isConnected ||
+      taskLogModal.hidden
+    ) {
       return;
     }
 
-    const info =
-      getKpiTodosByKpiId(DEFAULT_CHORE_TASK_KPI_ID) ||
-      getKpiTodosByKpiId(kpiId);
-    const todos = (info?.todos || []).filter(
-      (t) => String(t?.text || "").trim() && !t.completed,
+    const refreshed =
+      getKpiTaskCompletionTodoInfoByKpiId(info.kpiId) || info;
+    const todos = (refreshed.todos || []).filter(
+      (t) => String(t?.text || "").trim(),
     );
 
     if (!pullOk && !todos.length) {
@@ -9348,7 +9349,7 @@ export function render(opts = {}) {
     taskLogKpiTodosStatus.hidden = true;
     taskLogKpiTodosStatus.textContent = "";
     taskLogKpiTodosScroll.hidden = false;
-    renderTaskLogChoreTodoRows(todos);
+    renderTaskLogTaskCompletionTodoRows(todos);
   }
 
   function isHabitDailyTodoChecked(todo, completedList) {
@@ -9518,6 +9519,7 @@ export function render(opts = {}) {
       restoreKpiFieldsIfCloudPullWiped(taskLogEditTr._rowData?.id);
     }
     if (tn) refreshKpiTodosInLogModal();
+    void refreshTaskCompletionTodosInLogModal();
     if (!taskLogEditTr) {
       afterTaskListSyncForTaskLogAddModal();
     }
@@ -10020,7 +10022,7 @@ export function render(opts = {}) {
     updateTaskLogMealDetailVisibility((data.taskName || "").trim());
     syncTaskLogDateOverlay();
     refreshKpiTodosInLogModal();
-    void refreshChoreTodosInLogModal();
+    void refreshTaskCompletionTodosInLogModal();
     updateTaskLogMealDetailVisibility(tnSync);
     syncTaskLogGapFillBtnVisibility();
     void runTaskLogModalCloudSync();
@@ -10041,7 +10043,7 @@ export function render(opts = {}) {
     taskLogEditKpiRestoreGuard = null;
     taskLogEditExclude = null;
     pendingEditStartTime = "";
-    hideTaskLogChoreTodosSection();
+    hideTaskLogTaskCompletionTodosSection();
   }
 
   /** 기록 버튼: blur 없이 바로 누르면 숫자만 입력된 시각이 hidden에 반영되지 않을 수 있음 → blur와 동일 포맷 후 동기화 */
@@ -10433,10 +10435,7 @@ export function render(opts = {}) {
         );
       }
 
-      applyChoreTodoCompletionsOnTaskLogSubmit(
-        taskName,
-        resolveTaskLogModalKpiId(),
-      );
+      applyTaskCompletionTodoCompletionsOnTaskLogSubmit();
 
       if (kpiPerformedRaw && normalizedDateRaw.length >= 10) {
         const persistTargets = [];
