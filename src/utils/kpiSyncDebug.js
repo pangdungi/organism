@@ -26,7 +26,12 @@ export function kpiSyncDebugEnabled() {
   }
 }
 
-export function kpiSyncDebugLog(..._args) {}
+export function kpiSyncDebugLog(...args) {
+  if (!kpiSyncDebugEnabled()) return;
+  try {
+    console.log("[kpi-sync]", ...args);
+  } catch (_) {}
+}
 
 /**
  * 단계 구분용 — grep: [kpi-sync][dream]
@@ -34,7 +39,12 @@ export function kpiSyncDebugLog(..._args) {}
  * @param {string} step
  * @param {Record<string, unknown>} detail
  */
-export function kpiSyncTrace(_tab, _step, _detail) {}
+export function kpiSyncTrace(tab, step, detail) {
+  if (!kpiSyncDebugEnabled()) return;
+  try {
+    console.log(`[kpi-sync][${tab}]`, step, detail || {});
+  } catch (_) {}
+}
 
 /** deleted_refs 각 배열 길이 + KPI id 샘플(최대 5개) */
 export function kpiSyncDeletedRefsBrief(dr) {

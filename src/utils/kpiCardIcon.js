@@ -8,16 +8,9 @@ import { applyStaticAppIconImg } from "./staticAppIconImg.js";
 /** @param {object} kpi */
 export function findLinkedTaskOptionForKpi(kpi) {
   const kid = String(kpi?.id || "").trim();
-  const name = String(kpi?.name || "").trim();
   const opts = getFullTaskOptions();
-  if (kid) {
-    const byKpi = opts.find((o) => String(o.kpiId || "").trim() === kid);
-    if (byKpi) return byKpi;
-  }
-  if (name) {
-    return opts.find((o) => (o.name || "").trim() === name) || null;
-  }
-  return null;
+  if (!kid) return null;
+  return opts.find((o) => String(o.kpiId || "").trim() === kid) || null;
 }
 
 /**

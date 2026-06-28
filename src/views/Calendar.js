@@ -822,12 +822,14 @@ function lpScheduleRevealCalendarGridLayout(calendarGrid, reason) {
 }
 
 /** 막대 top·주 행 높이 재측정이 끝날 때까지 격자 깜빡임(큰 갭→좁아짐) 완화 */
-function lpBeginCalendarGridLayoutPass(calendarGrid) {
+function lpBeginCalendarGridLayoutPass(calendarGrid, opts = {}) {
   if (!calendarGrid) {
     return { trackWeek: () => () => {} };
   }
-  calendarGrid.classList.add("calendar-monthly-grid--layout-pending");
-  calendarGrid.classList.remove("calendar-monthly-grid--layout-ready");
+  if (!opts.keepVisible) {
+    calendarGrid.classList.add("calendar-monthly-grid--layout-pending");
+    calendarGrid.classList.remove("calendar-monthly-grid--layout-ready");
+  }
   let pending = 0;
   const finishWeek = () => {
     pending -= 1;
@@ -1642,6 +1644,122 @@ function addDaysToDateKey(dateKey, days) {
   const d = new Date(dateKey + "T12:00:00");
   d.setDate(d.getDate() + days);
   return formatDateKey(d);
+}
+
+/** 할일·일정 날짜 이동 시 영향 받는 날짜 키(이전·새 구간) */
+function lpCollectCalendarTaskMoveDateKeys(oldStart, oldDue, newStart, newDue) {
+  const out = new Set();
+  const addRange = (start, due) => {
+    const s = String(start || "")
+      .trim()
+      .slice(0, 10);
+    const d = String(due || start || "")
+      .trim()
+      .slice(0, 10);
+    if (!s) return;
+    const end = d || s;
+    let cur = s;
+    let guard = 0;
+    while (cur && guard < 400) {
+      out.add(cur);
+      if (cur === end) break;
+      cur = addDaysToDateKey(cur, 1);
+      guard += 1;
+    }
+  };
+  addRange(oldStart, oldDue);
+  addRange(newStart, newDue);
+  return [...out];
+}
+
+function lpResolveCalendarTaskDropDates(targetDate, payload) {
+  const oldStart = (payload?.startDate || "").slice(0, 10);
+  const oldDue = (payload?.dueDate || "").slice(0, 10);
+  let newStart = "";
+  let newDue = String(targetDate || "")
+    .trim()
+    .slice(0, 10);
+  if (oldStart && oldDue && oldStart !== oldDue) {
+    const startD = new Date(oldStart + "T12:00:00");
+    const dueD = new Date(oldDue + "T12:00:00");
+    const daysDiff = Math.round((dueD - startD) / 86400000);
+    newStart = newDue;
+    newDue = addDaysToDateKey(newDue, daysDiff);
+  } else if (oldStart && oldDue) {
+    newStart = newDue;
+  }
+  return { oldStart, oldDue, newStart, newDue };
+}
+
+function lpApplyCalendarSectionTaskDateMove(payload, newStart, newDue) {
+  const oldStart = (payload?.startDate || "").slice(0, 10);
+  const oldDue = (payload?.dueDate || "").slice(0, 10);
+  if (payload?.sectionId && payload.sectionId.startsWith("custom-")) {
+    let ok = updateCustomSectionTaskDates(
+      payload.sectionId,
+      payload.taskId,
+      newStart,
+      newDue,
+      { recordCalendarSidebarRevert: true },
+    );
+    if (!ok && (payload.name || "").trim()) {
+      ok = addCalendarTodoToCustomSection(payload.sectionId, {
+        taskId: payload.taskId,
+        name: payload.name,
+        startDate: newStart,
+        dueDate: newDue,
+        done: !!payload.done,
+        itemType: payload.itemType || "todo",
+        _calPrevStart: oldStart,
+        _calPrevDue: oldDue,
+      });
+    }
+    return ok;
+  }
+  if (
+    isCalendarFixedSectionKey(payload?.sectionId) &&
+    ((payload?.taskId || "").trim() || (payload?.name || "").trim())
+  ) {
+    return (
+      updateSectionTaskDates(
+        payload.sectionId,
+        payload.taskId,
+        newStart,
+        newDue,
+        { recordCalendarSidebarRevert: true },
+      ) ||
+      addSectionTaskToCalendar(payload.sectionId, {
+        taskId: payload.taskId,
+        name: payload.name,
+        startDate: newStart,
+        dueDate: newDue,
+        done: !!payload.done,
+        itemType: payload.itemType || "todo",
+        _calPrevStart: oldStart,
+        _calPrevDue: oldDue,
+      })
+    );
+  }
+  return false;
+}
+
+function lpHandleCalendarTaskDropOnDate(targetDate, payload, onAfterLocalSave) {
+  const { oldStart, oldDue, newStart, newDue } =
+    lpResolveCalendarTaskDropDates(targetDate, payload);
+  const ok = lpApplyCalendarSectionTaskDateMove(payload, newStart, newDue);
+  if (!ok) return false;
+  syncCalendarSectionTaskToServerAfterCalendarDateDrop(payload, ok);
+  try {
+    onAfterLocalSave?.({
+      patchDateKeys: lpCollectCalendarTaskMoveDateKeys(
+        oldStart,
+        oldDue,
+        newStart,
+        newDue,
+      ),
+    });
+  } catch (_) {}
+  return true;
 }
 
 function clearSectionTaskCalendarRevertSnapshot(sectionId, taskId) {
@@ -2716,11 +2834,16 @@ function renderMonthlyView(tabsElement) {
 
   function refreshTodoList() {}
 
-  /** 할일·일정 추가·수정·삭제 직후 — pull 없이 로컬만 다시 그림 */
-  function refreshCalendarLocal() {
+  /** 할일·일정 추가·수정·삭제·드래그 직후 — pull 없이 로컬만 다시 그림(전체 깜빡임 완화) */
+  function refreshCalendarLocal(opts = {}) {
     refreshTodoList();
     lpRunCalendarLayoutRefresh(wrap, () => {
-      renderCalendar();
+      renderCalendar({
+        softLocal: true,
+        patchDateKeys: Array.isArray(opts.patchDateKeys)
+          ? opts.patchDateKeys
+          : undefined,
+      });
       wrap._lpRememberCalendarGridPaintSig?.();
     });
   }
@@ -2732,6 +2855,17 @@ function renderMonthlyView(tabsElement) {
 
   function renderCalendar(opts = {}) {
     lpRememberCalendarGridScrollTop(calendarGrid, !!opts.resetScroll);
+    const softLocal = !!opts.softLocal;
+    const patchDateKeys = Array.isArray(opts.patchDateKeys)
+      ? opts.patchDateKeys
+          .map((k) => String(k || "").trim().slice(0, 10))
+          .filter(Boolean)
+      : null;
+    const patchKeySet =
+      patchDateKeys && patchDateKeys.length > 0
+        ? new Set(patchDateKeys)
+        : null;
+    const partialWeekPatch = !!patchKeySet;
     const grid = getCalendarGrid(currentYear, currentMonth);
     applyCalendarNavMonthLabel(
       lpCalendarNavQ(nav, wrap, ".calendar-nav-month"),
@@ -2740,30 +2874,65 @@ function renderMonthlyView(tabsElement) {
     lpCalendarNavQ(nav, wrap, ".calendar-nav-year").textContent =
       String(currentYear);
 
-    calendarGrid.innerHTML = "";
-    const layoutPass = lpBeginCalendarGridLayoutPass(calendarGrid);
+    let layoutPass;
+    if (partialWeekPatch) {
+      calendarGrid
+        .querySelectorAll(".calendar-monthly-week-wrap")
+        .forEach((weekWrap) => {
+          const dates = [
+            ...weekWrap.querySelectorAll(".calendar-monthly-day[data-date]"),
+          ]
+            .map((cell) => String(cell.dataset.date || "").slice(0, 10))
+            .filter(Boolean);
+          if (dates.some((d) => patchKeySet.has(d))) weekWrap.remove();
+        });
+      layoutPass = lpBeginCalendarGridLayoutPass(calendarGrid, {
+        keepVisible: true,
+      });
+    } else if (softLocal) {
+      calendarGrid
+        .querySelector(".calendar-monthly-weekdays")
+        ?.remove();
+      calendarGrid
+        .querySelectorAll(".calendar-monthly-week-wrap")
+        .forEach((weekWrap) => weekWrap.remove());
+      layoutPass = lpBeginCalendarGridLayoutPass(calendarGrid, {
+        keepVisible: true,
+      });
+    } else {
+      calendarGrid.innerHTML = "";
+      layoutPass = lpBeginCalendarGridLayoutPass(calendarGrid);
+    }
 
-    const dayHeader = document.createElement("div");
-    dayHeader.className = "calendar-monthly-weekdays";
-    DAY_NAMES.forEach((name) => {
-      const cell = document.createElement("div");
-      cell.className = "calendar-monthly-weekday";
-      cell.textContent = name;
-      dayHeader.appendChild(cell);
-    });
-    calendarGrid.appendChild(dayHeader);
+    if (!partialWeekPatch) {
+      const dayHeader = document.createElement("div");
+      dayHeader.className = "calendar-monthly-weekdays";
+      DAY_NAMES.forEach((name) => {
+        const cell = document.createElement("div");
+        cell.className = "calendar-monthly-weekday";
+        cell.textContent = name;
+        dayHeader.appendChild(cell);
+      });
+      calendarGrid.appendChild(dayHeader);
+    }
 
     const todayKey = formatDateKey(new Date());
     const rangeTasks = getAllTasksWithDateRange();
 
     grid.forEach((week) => {
+      const weekDateKeys = week
+        .map((d) => (d ? formatDateKey(d) : ""))
+        .filter(Boolean);
+      if (
+        patchKeySet &&
+        !weekDateKeys.some((dateKey) => patchKeySet.has(dateKey))
+      ) {
+        return;
+      }
       const weekWrap = document.createElement("div");
       weekWrap.className = "calendar-monthly-week-wrap";
       const weekRow = document.createElement("div");
       weekRow.className = "calendar-monthly-week";
-      const weekDateKeys = week
-        .map((d) => (d ? formatDateKey(d) : ""))
-        .filter(Boolean);
       const firstDayKey = weekDateKeys[0] || "";
       const lastDayKey = weekDateKeys[weekDateKeys.length - 1] || "";
 
@@ -2842,85 +3011,23 @@ function renderMonthlyView(tabsElement) {
           }
           const json = readCalendarDropPayloadJson(e.dataTransfer);
           if (!json) return;
-          e.preventDefault();
-          e.stopPropagation();
           let payload;
           try {
             payload = JSON.parse(json);
           } catch (_) {
             return;
           }
-          const targetDate = key;
-          const oldStart = (payload.startDate || "").slice(0, 10);
-          const oldDue = (payload.dueDate || "").slice(0, 10);
-          let newStart = "";
-          let newDue = targetDate;
-          if (oldStart && oldDue && oldStart !== oldDue) {
-            const startD = new Date(oldStart + "T12:00:00");
-            const dueD = new Date(oldDue + "T12:00:00");
-            const daysDiff = Math.round((dueD - startD) / 86400000);
-            newStart = targetDate;
-            newDue = addDaysToDateKey(targetDate, daysDiff);
-          } else if (oldStart && oldDue) {
-            newStart = targetDate;
-          }
-          let ok = false;
-          if (payload.sectionId && payload.sectionId.startsWith("custom-")) {
-            ok = updateCustomSectionTaskDates(
-              payload.sectionId,
-              payload.taskId,
-              newStart,
-              newDue,
-              { recordCalendarSidebarRevert: true },
-            );
-            if (!ok && (payload.name || "").trim()) {
-              ok = addCalendarTodoToCustomSection(payload.sectionId, {
-                taskId: payload.taskId,
-                name: payload.name,
-                startDate: newStart,
-                dueDate: newDue,
-                done: !!payload.done,
-                itemType: payload.itemType || "todo",
-                _calPrevStart: oldStart,
-                _calPrevDue: oldDue,
-              });
-            }
-          } else if (
-            isCalendarFixedSectionKey(payload.sectionId) &&
-            ((payload.taskId || "").trim() || (payload.name || "").trim())
-          ) {
-            ok =
-              updateSectionTaskDates(
-                payload.sectionId,
-                payload.taskId,
-                newStart,
-                newDue,
-                { recordCalendarSidebarRevert: true },
-              ) ||
-              addSectionTaskToCalendar(payload.sectionId, {
-                taskId: payload.taskId,
-                name: payload.name,
-                startDate: newStart,
-                dueDate: newDue,
-                done: !!payload.done,
-                itemType: payload.itemType || "todo",
-                _calPrevStart: oldStart,
-                _calPrevDue: oldDue,
-              });
-          }
+          e.preventDefault();
+          e.stopPropagation();
           dateDebug("drop on day", {
             targetDate: key,
             name: payload?.name,
             sectionId: payload?.sectionId,
             taskId: payload?.taskId,
-            newStart,
-            newDue,
-            ok,
           });
-          if (ok) {
-            syncCalendarSectionTaskToServerAfterCalendarDateDrop(payload, ok);
-            refreshCalendarLocal();
-          }
+          lpHandleCalendarTaskDropOnDate(key, payload, (meta) => {
+            refreshCalendarLocal(meta);
+          });
         });
         weekRow.appendChild(cell);
       });
@@ -3179,67 +3286,9 @@ function renderMonthlyView(tabsElement) {
         } catch (_) {
           return;
         }
-        const oldStart = (payload.startDate || "").slice(0, 10);
-        const oldDue = (payload.dueDate || "").slice(0, 10);
-        let newStart = "";
-        let newDue = targetDate;
-        if (oldStart && oldDue && oldStart !== oldDue) {
-          const startD = new Date(oldStart + "T12:00:00");
-          const dueD = new Date(oldDue + "T12:00:00");
-          const daysDiff = Math.round((dueD - startD) / 86400000);
-          newStart = targetDate;
-          newDue = addDaysToDateKey(targetDate, daysDiff);
-        } else if (oldStart && oldDue) {
-          newStart = targetDate;
-        }
-        let ok = false;
-        if (payload.sectionId && payload.sectionId.startsWith("custom-")) {
-          ok = updateCustomSectionTaskDates(
-            payload.sectionId,
-            payload.taskId,
-            newStart,
-            newDue,
-            { recordCalendarSidebarRevert: true },
-          );
-          if (!ok && (payload.name || "").trim()) {
-            ok = addCalendarTodoToCustomSection(payload.sectionId, {
-              taskId: payload.taskId,
-              name: payload.name,
-              startDate: newStart,
-              dueDate: newDue,
-              done: !!payload.done,
-              itemType: payload.itemType || "todo",
-              _calPrevStart: oldStart,
-              _calPrevDue: oldDue,
-            });
-          }
-        } else if (
-          isCalendarFixedSectionKey(payload.sectionId) &&
-          ((payload.taskId || "").trim() || (payload.name || "").trim())
-        ) {
-          ok =
-            updateSectionTaskDates(
-              payload.sectionId,
-              payload.taskId,
-              newStart,
-              newDue,
-              { recordCalendarSidebarRevert: true },
-            ) ||
-            addSectionTaskToCalendar(payload.sectionId, {
-              taskId: payload.taskId,
-              name: payload.name,
-              startDate: newStart,
-              dueDate: newDue,
-              done: !!payload.done,
-              itemType: payload.itemType || "todo",
-              _calPrevStart: oldStart,
-              _calPrevDue: oldDue,
-            });
-        }
-        if (ok) {
-          syncCalendarSectionTaskToServerAfterCalendarDateDrop(payload, ok);
-          refreshCalendarLocal();
-        }
+        lpHandleCalendarTaskDropOnDate(targetDate, payload, (meta) => {
+          refreshCalendarLocal(meta);
+        });
       });
       weekWrap.appendChild(weekRow);
       weekWrap.appendChild(barsEl);
@@ -4884,10 +4933,10 @@ function render1WeekView(tabsElement) {
 
   function refreshTodoList() {}
 
-  /** 로컬 저장·편집 직후 — 방금 반영한 데이터로만 다시 그림(중복 pull 방지) */
+  /** 로컬 저장·편집 직후 — 방금 반영한 데이터로만 다시 그림(중복 pull·깜빡임 완화) */
   function refreshCalendar1WeekLocal() {
     lpRunCalendarLayoutRefresh(wrap, () => {
-      void renderCalendar({ skipWeekPull: true });
+      void renderCalendar({ skipWeekPull: true, softLocal: true });
     });
   }
 
@@ -4937,10 +4986,17 @@ function render1WeekView(tabsElement) {
     if (navYear)
       navYear.textContent = week[0] ? String(week[0].getFullYear()) : "";
 
-    calendarGrid.innerHTML = "";
+    const softLocal = !!opts.softLocal;
+    if (softLocal) {
+      calendarGrid.replaceChildren();
+    } else {
+      calendarGrid.innerHTML = "";
+    }
     calendarGrid.className =
       "calendar-monthly-grid calendar-monthly-grid--1week-timegrid";
-    const layoutPass = lpBeginCalendarGridLayoutPass(calendarGrid);
+    const layoutPass = lpBeginCalendarGridLayoutPass(calendarGrid, {
+      keepVisible: softLocal,
+    });
     calendar1WeekDiagLog("renderCalendar.layoutPass.begin", {
       renderSeq,
       classes: calendarGrid.className,
@@ -4959,68 +5015,10 @@ function render1WeekView(tabsElement) {
     const allLedgerRowsForWeek = loadTimeRows();
 
     function applyWeekDropToDate(targetDate, payload) {
-      const oldStart = (payload.startDate || "").slice(0, 10);
-      const oldDue = (payload.dueDate || "").slice(0, 10);
-      let newStart = "";
-      let newDue = targetDate;
-      if (oldStart && oldDue && oldStart !== oldDue) {
-        const startD = new Date(oldStart + "T12:00:00");
-        const dueD = new Date(oldDue + "T12:00:00");
-        const daysDiff = Math.round((dueD - startD) / 86400000);
-        newStart = targetDate;
-        newDue = addDaysToDateKey(targetDate, daysDiff);
-      } else if (oldStart && oldDue) {
-        newStart = targetDate;
-      }
-      let ok = false;
-      if (payload.sectionId && payload.sectionId.startsWith("custom-")) {
-        ok = updateCustomSectionTaskDates(
-          payload.sectionId,
-          payload.taskId,
-          newStart,
-          newDue,
-          { recordCalendarSidebarRevert: true },
-        );
-        if (!ok && (payload.name || "").trim()) {
-          ok = addCalendarTodoToCustomSection(payload.sectionId, {
-            taskId: payload.taskId,
-            name: payload.name,
-            startDate: newStart,
-            dueDate: newDue,
-            done: !!payload.done,
-            itemType: payload.itemType || "todo",
-            _calPrevStart: oldStart,
-            _calPrevDue: oldDue,
-          });
-        }
-      } else if (
-        isCalendarFixedSectionKey(payload.sectionId) &&
-        ((payload.taskId || "").trim() || (payload.name || "").trim())
-      ) {
-        ok =
-          updateSectionTaskDates(
-            payload.sectionId,
-            payload.taskId,
-            newStart,
-            newDue,
-            { recordCalendarSidebarRevert: true },
-          ) ||
-          addSectionTaskToCalendar(payload.sectionId, {
-            taskId: payload.taskId,
-            name: payload.name,
-            startDate: newStart,
-            dueDate: newDue,
-            done: !!payload.done,
-            itemType: payload.itemType || "todo",
-            _calPrevStart: oldStart,
-            _calPrevDue: oldDue,
-          });
-      }
-      if (ok) {
-        syncCalendarSectionTaskToServerAfterCalendarDateDrop(payload, ok);
-        void renderCalendar({ skipWeekPull: true });
+      lpHandleCalendarTaskDropOnDate(targetDate, payload, () => {
+        refreshCalendar1WeekLocal();
         refreshTodoList();
-      }
+      });
     }
 
     const outer = document.createElement("div");

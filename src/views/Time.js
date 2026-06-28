@@ -20,8 +20,6 @@ import {
   getKpiDailyRepeatInfoByKpiId,
   getKpiMeasureInfoByKpiId,
   getKpiTaskCompletionTodoInfoByKpiId,
-  getKpiRecordByTaskName,
-  isKpiTaskCompletionGoalType,
   resolveKpiIdForTaskId,
   syncKpiTodoCompleted,
 } from "../utils/kpiTodoSync.js";
@@ -7677,12 +7675,19 @@ export function render(opts = {}) {
     return memo.replace(/#[^\s#]+/g, "").trim();
   }
 
-  function collectTaskLogRecentReviews(taskName, excludeEntryId) {
-    const tn = (taskName || "").trim();
-    if (!tn || !isTaskLogRecentReviewTask(tn)) return [];
+  function rowMatchesTaskLogRecentReviewTarget(row, compareTaskId) {
+    const target = String(compareTaskId || "").trim();
+    const rowTaskId = String(row?.taskId || "").trim();
+    if (!isUuid(target) || !isUuid(rowTaskId)) return false;
+    return rowTaskId === target;
+  }
+
+  function collectTaskLogRecentReviews(taskId, excludeEntryId) {
+    const compareTaskId = String(taskId || "").trim();
+    if (!isUuid(compareTaskId)) return [];
     const exclude = String(excludeEntryId || "").trim();
     const matched = readTimeLedgerEntriesRaw().filter((row) => {
-      if ((row.taskName || "").trim() !== tn) return false;
+      if (!rowMatchesTaskLogRecentReviewTarget(row, compareTaskId)) return false;
       if (exclude && String(row.id || "").trim() === exclude) return false;
       return !!extractTaskLogRecentReviewMemo(row);
     });
@@ -7709,7 +7714,10 @@ export function render(opts = {}) {
       return;
     }
     const excludeId = String(taskLogEditTr?._rowData?.id || "").trim();
-    const rows = collectTaskLogRecentReviews(tn, excludeId);
+    const rows = collectTaskLogRecentReviews(
+      resolveTaskLogModalTaskId(),
+      excludeId,
+    );
     taskLogRecentReviewsList.replaceChildren();
     if (!rows.length) {
       taskLogRecentReviewsSection.hidden = true;
@@ -9194,13 +9202,8 @@ export function render(opts = {}) {
 
   function getTaskCompletionTodoInfoForTaskLog() {
     const kpiId = resolveTaskLogModalKpiId();
-    if (kpiId) return getKpiTaskCompletionTodoInfoByKpiId(kpiId);
-    const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
-    const rec = getKpiRecordByTaskName(taskName);
-    if (rec && isKpiTaskCompletionGoalType(rec.kpi)) {
-      return getKpiTaskCompletionTodoInfoByKpiId(String(rec.kpi.id || "").trim());
-    }
-    return null;
+    if (!kpiId) return null;
+    return getKpiTaskCompletionTodoInfoByKpiId(kpiId);
   }
 
   function collectCheckedTaskCompletionTodoTextsFromModal() {

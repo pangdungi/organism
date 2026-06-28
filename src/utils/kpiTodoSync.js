@@ -21,14 +21,10 @@ import { applyHealthKpiTimestampsOnSave } from "./healthKpiMapSupabase.js";
 import { formatKpiHistoryValueText } from "./kpiLogFields.js";
 import { kpiHasHabitUnitGoal } from "./kpiHabitStreak.js";
 import {
-  getActiveKpiTaskKeepersById,
   readKpiMapScopedStorageRaw,
   writeKpiMapScopedStorageRaw,
 } from "./kpiMapLocalStorage.js";
-import {
-  getTaskOptionById,
-  getTaskOptionByName,
-} from "./timeTaskOptionsModel.js";
+import { getTaskOptionById } from "./timeTaskOptionsModel.js";
 
 const DREAM_MAP_KEY = "kpi-dream-map";
 const SIDEINCOME_KEY = "kpi-sideincome-paths";
@@ -465,25 +461,11 @@ function sanitizeNumericForKpiLog(val) {
 
 /**
  * KPI 이름으로 꿈/부수입/행복/건강 맵에서 KPI 한 건 조회
+ * @deprecated KPI id(resolveKpiIdForTaskId·getKpi*ByKpiId)만 사용
  * @returns {{ storageKey: string, kpi: object } | null}
  */
-export function getKpiRecordByTaskName(kpiName) {
-  const name = (kpiName || "").trim();
-  if (!name) return null;
-  for (const storageKey of STORAGE_KEYS) {
-    const data = loadJson(storageKey, { kpis: [] });
-    const kpi = (data.kpis || []).find((k) => (k.name || "").trim() === name);
-    if (kpi) return { storageKey, kpi };
-  }
+export function getKpiRecordByTaskName(_kpiName) {
   return null;
-}
-
-/** 목표값·단위가 모두 있는지 */
-export function kpiHasTargetValueAndUnit(kpi) {
-  if (!kpi) return false;
-  const tv = String(kpi.targetValue ?? "").trim();
-  const u = String(kpi.unit ?? "").trim();
-  return tv !== "" && u !== "";
 }
 
 /** 과제 id → KPI id (과제 행의 kpiId만 사용) */
@@ -510,37 +492,30 @@ export function resolveKpiDomainForKpiId(kpiId) {
   return null;
 }
 
-/** 과제명 → KPI id (task.kpiId · KPI 이름 · kpiTaskSync 표시명) */
-export function resolveKpiIdForTaskName(taskName) {
-  const n = (taskName || "").trim();
-  if (!n) return "";
-  try {
-    const fromOpt = String(getTaskOptionByName(n)?.kpiId || "").trim();
-    if (fromOpt) return fromOpt;
-  } catch (_) {}
-  const rec = getKpiRecordByTaskName(n);
-  if (rec?.kpi?.id) return String(rec.kpi.id).trim();
-  try {
-    for (const [kpiId, keeper] of getActiveKpiTaskKeepersById()) {
-      if ((keeper?.name || "").trim() === n) return String(kpiId).trim();
-    }
-  } catch (_) {}
-  return "";
+/** 목표값·단위가 모두 있는지 */
+export function kpiHasTargetValueAndUnit(kpi) {
+  if (!kpi) return false;
+  const tv = String(kpi.targetValue ?? "").trim();
+  const u = String(kpi.unit ?? "").trim();
+  return tv !== "" && u !== "";
 }
 
-/** @returns {{ storageKey: string, kpiId: string, needHabitTracker: boolean, dailyTodos: Array, hasUnitGoal: boolean, unit: string } | null} */
-export function getKpiDailyRepeatInfoByTaskName(taskName) {
-  const kpiId = resolveKpiIdForTaskName(taskName);
+/** @deprecated 과제 id(resolveKpiIdForTaskId)만 사용 */
+export function resolveKpiIdForTaskName(_taskName, taskId = "") {
+  return resolveKpiIdForTaskId(taskId);
+}
+
+/** @deprecated getKpiDailyRepeatInfoByKpiId + resolveKpiIdForTaskId */
+export function getKpiDailyRepeatInfoByTaskName(_taskName, taskId = "") {
+  const kpiId = resolveKpiIdForTaskId(taskId);
   if (kpiId) return getKpiDailyRepeatInfoByKpiId(kpiId);
-  return getKpiDailyRepeatInfoByKpiName(taskName);
+  return null;
 }
 
-/** @returns {{ storageKey: string, kpiId: string, hasUnitGoal: boolean, unit: string, needHabitTracker: boolean } | null} */
-export function getKpiMeasureInfoByTaskName(taskName) {
-  const kpiId = resolveKpiIdForTaskName(taskName);
+/** @deprecated getKpiMeasureInfoByKpiId + resolveKpiIdForTaskId */
+export function getKpiMeasureInfoByTaskName(_taskName, taskId = "") {
+  const kpiId = resolveKpiIdForTaskId(taskId);
   if (kpiId) return getKpiMeasureInfoByKpiId(kpiId);
-  const rec = getKpiRecordByTaskName(taskName);
-  if (rec?.kpi?.id) return getKpiMeasureInfoByKpiId(rec.kpi.id);
   return null;
 }
 
@@ -555,13 +530,22 @@ export function kpiShowTimeLedgerMeasureField(kpi) {
  * 시간가계부 과제 기록 저장 시 KPI 일지에 수치 1건 추가 (KPI 화면 «오늘의 수치 기록»과 동일 데이터)
  * @returns {boolean} 저장 여부
  */
-export function appendKpiValueLogFromTimeLedger(taskName, { dateRaw, value, memo }) {
-  const name = (taskName || "").trim();
+export function appendKpiValueLogFromTimeLedger(_taskName, { dateRaw, value, memo, taskId } = {}) {
   const v = sanitizeNumericForKpiLog(value);
-  if (!name || !dateRaw || String(dateRaw).trim().length < 10 || v === "") return false;
-  const rec = getKpiRecordByTaskName(name);
-  if (!rec || !kpiShowTimeLedgerMeasureField(rec.kpi)) return false;
-  const { storageKey, kpi } = rec;
+  const kpiId = resolveKpiIdForTaskId(taskId);
+  if (!kpiId || !dateRaw || String(dateRaw).trim().length < 10 || v === "") return false;
+  let storageKey = "";
+  let kpi = null;
+  for (const sk of STORAGE_KEYS) {
+    const data = loadJson(sk, { kpis: [] });
+    const hit = (data.kpis || []).find((k) => String(k.id || "").trim() === kpiId);
+    if (hit) {
+      storageKey = sk;
+      kpi = hit;
+      break;
+    }
+  }
+  if (!storageKey || !kpi || !kpiShowTimeLedgerMeasureField(kpi)) return false;
   const prev = loadJson(storageKey, {});
   const data = JSON.parse(JSON.stringify(prev));
   data.kpiLogs = data.kpiLogs || [];
@@ -589,21 +573,9 @@ export function appendKpiValueLogFromTimeLedger(taskName, { dateRaw, value, memo
 }
 
 /**
- * KPI 이름으로 해당 KPI의 할일 목록 반환 (과제 기록 모달 등에서 사용)
- * @param {string} kpiName - KPI 이름 (예: "요가")
- * @returns {{ storageKey: string, kpiId: string, todos: Array<{ id: string, text: string, completed: boolean }> } | null}
+ * @deprecated getKpiTodosByKpiId 사용
  */
-export function getKpiTodosByKpiName(kpiName) {
-  const name = (kpiName || "").trim();
-  if (!name) return null;
-  for (const storageKey of STORAGE_KEYS) {
-    const data = loadJson(storageKey, { kpis: [], kpiTodos: [] });
-    const kpi = (data.kpis || []).find(
-      (k) => (k.name || "").trim() === name
-    );
-    if (!kpi) continue;
-    return getKpiTodosByKpiId(String(kpi.id));
-  }
+export function getKpiTodosByKpiName(_kpiName) {
   return null;
 }
 
@@ -742,18 +714,8 @@ export function getKpiTaskCompletionTodoInfoByKpiId(kpiId) {
   return null;
 }
 
-/**
- * @deprecated 과제명=KPI이름 매칭 — getKpiDailyRepeatInfoByKpiId + 과제 kpiId 사용 권장
- */
-export function getKpiDailyRepeatInfoByKpiName(kpiName) {
-  const name = (kpiName || "").trim();
-  if (!name) return null;
-  for (const storageKey of STORAGE_KEYS) {
-    const data = loadJson(storageKey, { kpis: [], kpiDailyRepeatTodos: [] });
-    const kpi = (data.kpis || []).find((k) => (k.name || "").trim() === name);
-    if (!kpi) continue;
-    return getKpiDailyRepeatInfoByKpiId(kpi.id);
-  }
+/** @deprecated getKpiDailyRepeatInfoByKpiId 사용 */
+export function getKpiDailyRepeatInfoByKpiName(_kpiName) {
   return null;
 }
 
