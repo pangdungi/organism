@@ -1843,9 +1843,9 @@ export function openTodoTaskEditFromCalendarBarModel(barModel, options = {}) {
   const storageKey = String(b.storageKey || "").trim();
   const taskId = String(b.taskId || "").trim();
   const sectionId = String(b.sectionId || "").trim();
-  const runAfter = () => {
+  const runAfter = (applyMeta = {}) => {
     try {
-      onAfterApply?.();
+      onAfterApply?.(applyMeta);
     } catch (_) {}
   };
 
@@ -1861,6 +1861,8 @@ export function openTodoTaskEditFromCalendarBarModel(barModel, options = {}) {
     } catch (_) {}
     if (!todo) return;
     const completed = !!todo.completed;
+    const prevStart = (todo.startDate || "").toString().slice(0, 10);
+    const prevDue = (todo.dueDate || "").toString().slice(0, 10);
     const itemTypeInit =
       (todo.itemType || "todo").toLowerCase() === "schedule"
         ? "schedule"
@@ -1961,10 +1963,22 @@ export function openTodoTaskEditFromCalendarBarModel(barModel, options = {}) {
             void moveKpiTodoToSection(kpiTodoId, storageKey, newSectionId);
           }
         }
-        runAfter();
+        runAfter({
+          prevStart,
+          prevDue,
+          startDate: (payload.startDate || "").trim().slice(0, 10) || "",
+          dueDate: (payload.dueDate || "").trim().slice(0, 10) || "",
+        });
       },
       onDelete: async () => {
-        if (removeKpiTodo(kpiTodoId, storageKey)) runAfter();
+        if (removeKpiTodo(kpiTodoId, storageKey)) {
+          runAfter({
+            prevStart,
+            prevDue,
+            startDate: "",
+            dueDate: "",
+          });
+        }
       },
     });
     return;
@@ -1989,6 +2003,10 @@ export function openTodoTaskEditFromCalendarBarModel(barModel, options = {}) {
   } catch (_) {}
   if (!row) return;
 
+  const prevStart = (row.startDate || b.startDate || "").toString().slice(0, 10);
+  const prevDue = (row.dueDate || b.dueDate || b.startDate || "")
+    .toString()
+    .slice(0, 10);
   const storageSectionId = sectionId;
   const sectionLabel = todoModalSectionLabel(storageSectionId);
   const baseDone = !!row.done;
@@ -2122,7 +2140,12 @@ export function openTodoTaskEditFromCalendarBarModel(barModel, options = {}) {
           sortOrder: 0,
         }).catch(() => {});
       }
-      runAfter();
+      runAfter({
+        prevStart,
+        prevDue,
+        startDate: (payload.startDate || "").trim().slice(0, 10) || "",
+        dueDate: (payload.dueDate || "").trim().slice(0, 10) || "",
+      });
     },
     onDelete: () => {
       if (storageSectionId.startsWith("custom-")) {
@@ -2132,7 +2155,12 @@ export function openTodoTaskEditFromCalendarBarModel(barModel, options = {}) {
         );
         if (!begun.ok) return;
         clearSubtasks(taskId);
-        runAfter();
+        runAfter({
+          prevStart,
+          prevDue,
+          startDate: "",
+          dueDate: "",
+        });
         void completeRemoveTaskFromCustomSectionStorageServer(
           storageSectionId,
           taskId,
@@ -2146,7 +2174,12 @@ export function openTodoTaskEditFromCalendarBarModel(barModel, options = {}) {
       );
       if (!begun.ok) return;
       clearSubtasks(taskId);
-      runAfter();
+      runAfter({
+        prevStart,
+        prevDue,
+        startDate: "",
+        dueDate: "",
+      });
       void completeRemoveTaskFromSectionStorageServer(
         storageSectionId,
         taskId,
@@ -4756,6 +4789,7 @@ export function render(options = {}) {
       if (del?.ok) {
         await pullCalendarSectionTasksFromSupabase({
           reason: "clear_completed",
+          forceFull: true,
         });
         syncedFromServer = true;
       }
@@ -5256,6 +5290,7 @@ export function render(options = {}) {
           await pullCalendarSectionTasksFromSupabase({
             reason: "todo_list_category_tab",
             subView: subView || "unknown",
+            forceFull: true,
           });
         } catch (_) {}
         try {

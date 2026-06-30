@@ -103,6 +103,13 @@ import {
 import { openCalendarExpectedScheduleModal } from "../utils/calendarExpectedScheduleModal.js";
 import { lpRefreshAllVisibleCalendarLayoutsFromLocalData } from "../utils/lpCalendarLocalRefresh.js";
 import {
+  calendarPullRangeForSubView,
+  calendarPullRangeYmdForMonth,
+  calendarPullRangeYmdForMonthGrid,
+  calendarPullRangeYmdForWeekDates,
+  calendarSectionTaskOverlapsYmdRange,
+} from "../utils/calendarSectionTasksPullRange.js";
+import {
   openApplyBudgetTemplateModal,
   openSaveBudgetTemplateModal,
 } from "../utils/calendarBudgetTemplateModal.js";
@@ -228,13 +235,19 @@ function lpEnsureTodoDatesChangedListener() {
       lpPatchCalendarTaskDoneInLayouts(detail.taskId, !!detail.done);
       return;
     }
+    const refreshOpts = {
+      softLocal: true,
+      ...(Array.isArray(detail.patchDateKeys) && detail.patchDateKeys.length > 0
+        ? { patchDateKeys: detail.patchDateKeys }
+        : {}),
+    };
     const t = ev.target;
     if (!t || typeof t.closest !== "function") return;
     let layoutNode = t.closest(".calendar-monthly-layout");
     while (layoutNode) {
       if (typeof layoutNode._lpRefreshCalendarView === "function") {
         try {
-          layoutNode._lpRefreshCalendarView();
+          layoutNode._lpRefreshCalendarView(refreshOpts);
         } catch (_) {}
         break;
       }
@@ -730,19 +743,38 @@ function lpAttachCalendarGridRefreshGuard(
   opts = {},
 ) {
   const signatureOpts = { includeLedger: opts.includeLedger !== false };
-  wrap._lpRefreshCalendarView = () => {
-    const sig = snapshotCalendarGridPaintSignature(
-      viewContextFn(),
-      signatureOpts,
-    );
-    if (sig === wrap._lpLastCalendarGridPaintSig) {
-      calendar1WeekDiagLog("refreshGuard.skipSameSig", {
-        ctx: viewContextFn(),
-      });
-      return;
+  wrap._lpRefreshCalendarView = (refreshOpts = {}) => {
+    const opts =
+      refreshOpts && typeof refreshOpts === "object" ? refreshOpts : {};
+    const hasPartialPatch =
+      Array.isArray(opts.patchDateKeys) && opts.patchDateKeys.length > 0;
+    const softLocal = !!opts.softLocal || hasPartialPatch;
+    if (!hasPartialPatch) {
+      const sig = snapshotCalendarGridPaintSignature(
+        viewContextFn(),
+        signatureOpts,
+      );
+      if (sig === wrap._lpLastCalendarGridPaintSig) {
+        calendar1WeekDiagLog("refreshGuard.skipSameSig", {
+          ctx: viewContextFn(),
+        });
+        return;
+      }
     }
-    calendar1WeekDiagLog("refreshGuard.runRender", { ctx: viewContextFn() });
-    runRender();
+    calendar1WeekDiagLog("refreshGuard.runRender", {
+      ctx: viewContextFn(),
+      softLocal,
+      partial: hasPartialPatch,
+    });
+    if (softLocal || hasPartialPatch) {
+      runRender({
+        ...opts,
+        softLocal: true,
+        patchDateKeys: hasPartialPatch ? opts.patchDateKeys : undefined,
+      });
+    } else {
+      runRender(opts);
+    }
   };
   wrap._lpRememberCalendarGridPaintSig = () => {
     wrap._lpLastCalendarGridPaintSig = snapshotCalendarGridPaintSignature(
@@ -753,9 +785,13 @@ function lpAttachCalendarGridRefreshGuard(
 }
 
 /** 로컬 저장 직후 — 시그니처 가드 있는 _lpRefreshCalendarView 우선(중복 전체 재그림 방지) */
-function lpRunCalendarLayoutRefresh(layoutWrap, fallbackRender) {
+function lpRunCalendarLayoutRefresh(
+  layoutWrap,
+  fallbackRender,
+  refreshOpts = {},
+) {
   if (layoutWrap && typeof layoutWrap._lpRefreshCalendarView === "function") {
-    layoutWrap._lpRefreshCalendarView();
+    layoutWrap._lpRefreshCalendarView(refreshOpts);
     return;
   }
   try {
@@ -1449,8 +1485,23 @@ function lpCalendarHandleTaskEditAfterApply(applyMeta, onStructuralChange) {
     lpPatchCalendarTaskDoneInLayouts(applyMeta.taskId, !!applyMeta.done);
     return;
   }
+  let refreshMeta = applyMeta;
+  if (
+    applyMeta &&
+    !Array.isArray(applyMeta.patchDateKeys) &&
+    (applyMeta.prevStart || applyMeta.startDate || applyMeta.prevDue || applyMeta.dueDate)
+  ) {
+    refreshMeta = {
+      patchDateKeys: lpCollectCalendarTaskMoveDateKeys(
+        applyMeta.prevStart,
+        applyMeta.prevDue,
+        applyMeta.startDate,
+        applyMeta.dueDate,
+      ),
+    };
+  }
   try {
-    onStructuralChange?.();
+    onStructuralChange?.(refreshMeta);
   } catch (_) {}
 }
 
@@ -1845,6 +1896,25 @@ function calendarDragTransferTypesAllowDrop(dataTransfer) {
   );
 }
 
+/** 연간 뷰 — 해당 날짜 칸의 할일 점만 갱신(12개월 전체 renderYear 생략) */
+function lpPatchAnnualDayCell(table, dateKey) {
+  const key = String(dateKey || "").trim().slice(0, 10);
+  if (!key || !(table instanceof HTMLElement)) return;
+  const cell = table.querySelector(
+    `.calendar-annual-cell[data-date-key="${key}"]:not(.calendar-annual-cell--pad)`,
+  );
+  if (!cell) return;
+  const hasTasks = getTasksForDate(key).length > 0;
+  let dot = cell.querySelector(".calendar-annual-cell-dot");
+  if (hasTasks && !dot) {
+    dot = document.createElement("span");
+    dot.className = "calendar-annual-cell-dot";
+    cell.appendChild(dot);
+  } else if (!hasTasks && dot) {
+    dot.remove();
+  }
+}
+
 /** 월간 격자 — 스탬프만 바뀐 날짜 셀만 갱신(전체 renderCalendar 깜빡임 방지) */
 function lpPatchCalendarMonthlyDayStamp(calendarGrid, dateKey, onAfterChange) {
   const key = String(dateKey || "").trim().slice(0, 10);
@@ -2014,9 +2084,9 @@ function lpAttachCalendarBarOpenTodoEdit(
         lpOpenCalendarMonthlyDayActionBubble(
           cell,
           dateKey,
-          () => {
+          (meta) => {
             try {
-              renderCalendar?.();
+              renderCalendar?.(meta);
             } catch (_) {}
             try {
               refreshTodoList?.();
@@ -2039,9 +2109,9 @@ function lpAttachCalendarBarOpenTodoEdit(
     lpOpenCalendarTaskEdit(b, {
       selectionEl: bar,
       onAfterApply: (applyMeta) => {
-        lpCalendarHandleTaskEditAfterApply(applyMeta, () => {
+        lpCalendarHandleTaskEditAfterApply(applyMeta, (meta) => {
           try {
-            renderCalendar?.();
+            renderCalendar?.(meta);
           } catch (_) {}
           try {
             refreshTodoList?.();
@@ -2377,6 +2447,12 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
         dueDate,
         sectionId: TODO_UNIFIED_SECTION_KEY,
         itemType: "todo",
+        patchDateKeys: lpCollectCalendarTaskMoveDateKeys(
+          "",
+          "",
+          startDate,
+          dueDate,
+        ),
       });
       close();
     } finally {
@@ -2410,9 +2486,9 @@ function lpOpenCalendarMonthlyDayActionBubble(
   if (!key || !(cell instanceof HTMLElement)) return;
   const rect = cell.getBoundingClientRect();
   const tasks = getAllTasksForDateDisplay(key);
-  const refresh = () => {
+  const refresh = (meta) => {
     try {
-      onAfterChange?.();
+      onAfterChange?.(meta);
     } catch (_) {}
   };
   createCalendarDayExpandBubble(rect, key, tasks, () => {}, {
@@ -2676,7 +2752,14 @@ function createCalendarBarRevertBubble(
     .querySelector(".calendar-bar-revert-btn")
     .addEventListener("click", () => {
       if (revertTaskToTodoList(barData)) {
-        onSave?.();
+        onSave?.({
+          patchDateKeys: lpCollectCalendarTaskMoveDateKeys(
+            barData.startDate,
+            barData.dueDate,
+            "",
+            "",
+          ),
+        });
         close();
       }
     });
@@ -2800,7 +2883,14 @@ function createCalendarBarDateEditBubble(
         }
       }
       if (ok) {
-        onSave?.();
+        onSave?.({
+          patchDateKeys: lpCollectCalendarTaskMoveDateKeys(
+            barData.startDate,
+            barData.dueDate,
+            newStart,
+            newDue,
+          ),
+        });
         close();
       }
     });
@@ -2809,7 +2899,14 @@ function createCalendarBarDateEditBubble(
   if (revertBtn) {
     revertBtn.addEventListener("click", () => {
       if (revertTaskToTodoList(barData)) {
-        onSave?.();
+        onSave?.({
+          patchDateKeys: lpCollectCalendarTaskMoveDateKeys(
+            barData.startDate,
+            barData.dueDate,
+            "",
+            "",
+          ),
+        });
         close();
       }
     });
@@ -2862,18 +2959,46 @@ function renderMonthlyView(tabsElement) {
 
   function refreshTodoList() {}
 
+  function pullTasksForVisibleMonth() {
+    const { rangeStart, rangeEnd } = calendarPullRangeYmdForMonth(
+      currentYear,
+      currentMonth,
+      21,
+    );
+    return pullCalendarSectionTasksFromSupabase({
+      reason: "calendar_month_nav",
+      subView: "calendar",
+      rangeStart,
+      rangeEnd,
+    });
+  }
+
+  function schedulePullTasksForVisibleMonth() {
+    void pullTasksForVisibleMonth().then((res) => {
+      if (!res?.ok || res.skipped || !wrap.isConnected) return;
+      try {
+        refreshCalendarLocal();
+      } catch (_) {}
+    });
+  }
+
   /** 할일·일정 추가·수정·삭제·드래그 직후 — pull 없이 로컬만 다시 그림(전체 깜빡임 완화) */
   function refreshCalendarLocal(opts = {}) {
     refreshTodoList();
-    lpRunCalendarLayoutRefresh(wrap, () => {
-      renderCalendar({
-        softLocal: true,
-        patchDateKeys: Array.isArray(opts.patchDateKeys)
-          ? opts.patchDateKeys
-          : undefined,
-      });
-      wrap._lpRememberCalendarGridPaintSig?.();
-    });
+    const refreshOpts = {
+      softLocal: true,
+      patchDateKeys: Array.isArray(opts.patchDateKeys)
+        ? opts.patchDateKeys
+        : undefined,
+    };
+    lpRunCalendarLayoutRefresh(
+      wrap,
+      () => {
+        renderCalendar(refreshOpts);
+        wrap._lpRememberCalendarGridPaintSig?.();
+      },
+      refreshOpts,
+    );
   }
 
   function patchDayStamp(dateKey) {
@@ -2945,7 +3070,14 @@ function renderMonthlyView(tabsElement) {
     }
 
     const todayKey = formatDateKey(new Date());
-    const rangeTasks = getAllTasksWithDateRange();
+    const gridSpan = calendarPullRangeYmdForMonthGrid(grid, 0);
+    const rangeTasks = getAllTasksWithDateRange().filter((t) =>
+      calendarSectionTaskOverlapsYmdRange(
+        t,
+        gridSpan.rangeStart,
+        gridSpan.rangeEnd,
+      ),
+    );
 
     grid.forEach((week) => {
       const weekDateKeys = week
@@ -3363,6 +3495,7 @@ function renderMonthlyView(tabsElement) {
       currentYear--;
     }
     renderCalendar({ resetScroll: true });
+    schedulePullTasksForVisibleMonth();
   }
 
   function goNextMonth() {
@@ -3372,6 +3505,7 @@ function renderMonthlyView(tabsElement) {
       currentYear++;
     }
     renderCalendar({ resetScroll: true });
+    schedulePullTasksForVisibleMonth();
   }
 
   lpCalendarNavQ(nav, wrap, ".calendar-nav-today").addEventListener(
@@ -3381,6 +3515,7 @@ function renderMonthlyView(tabsElement) {
       currentYear = now.getFullYear();
       currentMonth = now.getMonth();
       renderCalendar({ resetScroll: true });
+      schedulePullTasksForVisibleMonth();
     },
   );
   lpCalendarNavQ(nav, wrap, ".calendar-nav-prev").addEventListener(
@@ -4968,10 +5103,15 @@ function render1WeekView(tabsElement) {
   function refreshTodoList() {}
 
   /** 로컬 저장·편집 직후 — 방금 반영한 데이터로만 다시 그림(중복 pull·깜빡임 완화) */
-  function refreshCalendar1WeekLocal() {
-    lpRunCalendarLayoutRefresh(wrap, () => {
-      void renderCalendar({ skipWeekPull: true, softLocal: true });
-    });
+  function refreshCalendar1WeekLocal(opts = {}) {
+    const refreshOpts = { skipWeekPull: true, softLocal: true, ...opts };
+    lpRunCalendarLayoutRefresh(
+      wrap,
+      () => {
+        void renderCalendar(refreshOpts);
+      },
+      refreshOpts,
+    );
   }
 
   function patchDayStamp(dateKey) {
@@ -5054,8 +5194,8 @@ function render1WeekView(tabsElement) {
     const allLedgerRowsForWeek = loadTimeRows();
 
     function applyWeekDropToDate(targetDate, payload) {
-      lpHandleCalendarTaskDropOnDate(targetDate, payload, () => {
-        refreshCalendar1WeekLocal();
+      lpHandleCalendarTaskDropOnDate(targetDate, payload, (meta) => {
+        refreshCalendar1WeekLocal(meta);
         refreshTodoList();
       });
     }
@@ -5069,7 +5209,17 @@ function render1WeekView(tabsElement) {
       .filter(Boolean);
     const firstDayKey = weekDateKeys[0] || "";
     const lastDayKey = weekDateKeys[weekDateKeys.length - 1] || "";
-    const rangeTasks = getAllTasksWithDateRange();
+    const weekSpan = calendarPullRangeYmdForWeekDates(
+      week.filter(Boolean),
+      0,
+    );
+    const rangeTasks = getAllTasksWithDateRange().filter((t) =>
+      calendarSectionTaskOverlapsYmdRange(
+        t,
+        weekSpan.rangeStart,
+        weekSpan.rangeEnd,
+      ),
+    );
 
     const stripHeader = document.createElement("div");
     stripHeader.className = "calendar-1week-strip-header";
@@ -5126,8 +5276,8 @@ function render1WeekView(tabsElement) {
         lpOpenCalendarMonthlyDayActionBubble(
           cell,
           key,
-          () => {
-            refreshCalendar1WeekLocal();
+          (meta) => {
+            refreshCalendar1WeekLocal(meta);
             refreshTodoList();
           },
           {
@@ -5302,8 +5452,8 @@ function render1WeekView(tabsElement) {
             e.clientX,
             e.clientY,
             b,
-            () => {
-              refreshCalendar1WeekLocal();
+            (meta) => {
+              refreshCalendar1WeekLocal(meta);
               refreshTodoList();
             },
             () => {},
@@ -5319,8 +5469,8 @@ function render1WeekView(tabsElement) {
             e.clientX,
             e.clientY,
             b,
-            () => {
-              refreshCalendar1WeekLocal();
+            (meta) => {
+              refreshCalendar1WeekLocal(meta);
               refreshTodoList();
             },
             () => {},
@@ -5756,8 +5906,8 @@ function render1WeekView(tabsElement) {
   /* 상위 renderSubView 가 같은 주간에 이미 시간·예산을 pull 한 뒤 호출함 — 여기서 또 pull 하면 전체 격자가 연달아 다시 그려져 줄이 여러 번 튐 */
   lpAttachCalendarGridRefreshGuard(
     wrap,
-    () => {
-      void renderCalendar({ skipWeekPull: true });
+    (opts = {}) => {
+      void renderCalendar({ skipWeekPull: true, ...opts });
     },
     () => `1week-${weekOffset}`,
   );
@@ -5870,6 +6020,20 @@ function renderAnnualView(tabsElement) {
     });
   }
 
+  function refreshAnnualLocal(meta = {}) {
+    refreshTodoList();
+    const keys = Array.isArray(meta.patchDateKeys)
+      ? meta.patchDateKeys
+          .map((k) => String(k || "").trim().slice(0, 10))
+          .filter(Boolean)
+      : [];
+    if (keys.length > 0) {
+      keys.forEach((k) => lpPatchAnnualDayCell(table, k));
+      return;
+    }
+    renderYear();
+  }
+
   function renderYear() {
     cancelAnnualDayExpandHideTimer();
     try {
@@ -5946,17 +6110,11 @@ function renderAnnualView(tabsElement) {
                 createCalendarEventBubble(
                   rect,
                   key,
-                  () => {
-                    renderYear();
-                    refreshTodoList();
-                  },
+                  (meta) => refreshAnnualLocal(meta),
                   () => {},
                 );
               },
-              onAfterTaskEdit: () => {
-                renderYear();
-                refreshTodoList();
-              },
+              onAfterTaskEdit: (meta) => refreshAnnualLocal(meta),
               onAfterStampChange: () => {},
             },
           );
@@ -5977,10 +6135,7 @@ function renderAnnualView(tabsElement) {
           createCalendarEventBubble(
             rect,
             key,
-            () => {
-              renderYear();
-              refreshTodoList();
-            },
+            (meta) => refreshAnnualLocal(meta),
             () => {},
           );
         };
@@ -6018,17 +6173,11 @@ function renderAnnualView(tabsElement) {
                   createCalendarEventBubble(
                     r,
                     key,
-                    () => {
-                      renderYear();
-                      refreshTodoList();
-                    },
+                    (meta) => refreshAnnualLocal(meta),
                     () => {},
                   );
                 },
-                onAfterTaskEdit: () => {
-                  renderYear();
-                  refreshTodoList();
-                },
+                onAfterTaskEdit: (meta) => refreshAnnualLocal(meta),
                 onAfterStampChange: () => {},
               },
             );
@@ -6312,9 +6461,23 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
         return;
       }
       try {
+        const now = new Date();
+        const pullCtx =
+          subViewId === "1week"
+            ? {
+                weekDates: getCalendarGridFor1Week(0).filter(Boolean),
+              }
+            : subViewId === "1day"
+              ? { dayYmd: timeLedgerLocalTodayYmd() }
+              : subViewId === "annual"
+                ? { year: now.getFullYear() }
+                : { year: now.getFullYear(), monthIndex: now.getMonth() };
+        const taskRange = calendarPullRangeForSubView(subViewId, pullCtx);
         await pullCalendarSectionTasksFromSupabase({
           reason: `calendar_nested_${subViewId}`,
           subView: "calendar",
+          rangeStart: taskRange.rangeStart,
+          rangeEnd: taskRange.rangeEnd,
         });
         if (subViewId === "monthly") {
           await pullCalendarDayIconsFromSupabase({
@@ -6519,6 +6682,7 @@ export function render() {
         await pullCalendarSectionTasksFromSupabase({
           reason: "calendar_main_subtab",
           subView: view,
+          forceFull: true,
         });
       } catch (_) {}
       try {

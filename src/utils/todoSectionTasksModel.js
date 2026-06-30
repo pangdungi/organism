@@ -13,6 +13,8 @@ import {
   getScopedLocalStorageItem,
   setScopedLocalStorageItem,
 } from "./clientStorageScope.js";
+import { clearCalendarSectionTasksPullStamp } from "./calendarSectionTasksPullStamp.js";
+import { calendarSectionTaskOverlapsYmdRange, addDaysToYmdKey, formatDateKeyFromDate } from "./calendarSectionTasksPullRange.js";
 
 export const SECTION_TASKS_KEY = "todo-section-tasks";
 export const CUSTOM_SECTION_TASKS_KEY = "todo-custom-section-tasks";
@@ -60,18 +62,44 @@ function removeUnscopedLegacyTodoStorageKeys() {
   } catch (_) {}
 }
 
+const LITE_MIRROR_RECENT_DONE_DAYS = 120;
+
+function filterTasksForLiteLocalMirror(arr) {
+  const cutoff = addDaysToYmdKey(
+    formatDateKeyFromDate(new Date()),
+    -LITE_MIRROR_RECENT_DONE_DAYS,
+  );
+  return (Array.isArray(arr) ? arr : []).filter((t) => {
+    if (!t || typeof t !== "object") return false;
+    if (!t.done) return true;
+    const due = String(t.dueDate || t.startDate || "")
+      .trim()
+      .slice(0, 10);
+    if (!due) return false;
+    return !cutoff || due >= cutoff;
+  });
+}
+
+function buildLiteMirrorContainer(container) {
+  const out = {};
+  for (const k of Object.keys(container || {})) {
+    out[k] = filterTasksForLiteLocalMirror(container[k]);
+  }
+  return out;
+}
+
 function mirrorSectionTasksToScopedLocalStorage() {
   const uid = getActiveClientStorageUserId();
   if (!uid) return;
   try {
     setScopedLocalStorageItem(
       SECTION_TASKS_KEY,
-      JSON.stringify(_sectionTasksMem),
+      JSON.stringify(buildLiteMirrorContainer(_sectionTasksMem)),
       uid,
     );
     setScopedLocalStorageItem(
       CUSTOM_SECTION_TASKS_KEY,
-      JSON.stringify(_customSectionTasksMem),
+      JSON.stringify(buildLiteMirrorContainer(_customSectionTasksMem)),
       uid,
     );
   } catch (_) {}
@@ -214,6 +242,7 @@ export function clearTodoSectionTasksMemAndLegacy() {
     localStorage.removeItem(CUSTOM_SECTION_TASKS_KEY);
     localStorage.removeItem("todo-section-task-deletion-tombstones");
   } catch (_) {}
+  clearCalendarSectionTasksPullStamp();
   _legacyMigrated = true;
   _memInitialized = false;
   _sectionTasksMem = {};
@@ -331,6 +360,165 @@ export function applyCalendarSectionTasksServerSnapshot(rows, knownCustomSection
   for (const k of Object.keys(tempCustom)) {
     const arr = tempCustom[k].slice().sort((a, b) => a.sort - b.sort);
     customOut[k] = arr.map((x) => x.task);
+  }
+
+  writeSectionTasksObject(fixedOut);
+  writeCustomSectionTasksObject(customOut);
+}
+
+function calendarSectionTaskFromServerRow(row) {
+  const r = row && typeof row === "object" ? row : {};
+  const id = String(r.id || "").trim();
+  return {
+    taskId: id,
+    name: String(r.name != null ? r.name : "").trim(),
+    startDate: r.start_date ? String(r.start_date).slice(0, 10) : "",
+    dueDate: r.due_date ? String(r.due_date).slice(0, 10) : "",
+    startTime: String(r.start_time != null ? r.start_time : "").trim(),
+    endTime: String(r.end_time != null ? r.end_time : "").trim(),
+    reminderDate: r.reminder_date ? String(r.reminder_date).slice(0, 10) : "",
+    reminderTime: String(r.reminder_time != null ? r.reminder_time : "").trim(),
+    eisenhower: String(r.eisenhower != null ? r.eisenhower : "").trim(),
+    done: !!r.done,
+    itemType: String(r.item_type != null ? r.item_type : "todo").trim() || "todo",
+    serverUpdatedAt: r.updated_at != null ? String(r.updated_at) : "",
+    _sectionKey: String(r.section_key || "").trim(),
+    _isCustom: !!r.is_custom_section || String(r.section_key || "").startsWith("custom-"),
+    _sortOrder:
+      typeof r.sort_order === "number" ? r.sort_order : Number(r.sort_order) || 0,
+  };
+}
+
+function mergeSectionTaskListForRangePull(
+  existing,
+  pulledForSection,
+  pulledUndoneIds,
+  pulledAllIds,
+  rangeStart,
+  rangeEnd,
+) {
+  const rs = String(rangeStart || "").trim().slice(0, 10);
+  const re = String(rangeEnd || "").trim().slice(0, 10);
+  const next = (Array.isArray(existing) ? existing : []).filter((t) => {
+    const id = String(t?.taskId || "").trim();
+    if (!id) return true;
+    if (!t.done) return pulledUndoneIds.has(id);
+    if (calendarSectionTaskOverlapsYmdRange(t, rs, re)) {
+      return pulledAllIds.has(id);
+    }
+    return true;
+  });
+  const idxById = new Map(
+    next
+      .map((t, i) => [String(t?.taskId || "").trim(), i])
+      .filter(([id]) => id),
+  );
+  const sortedPulled = (pulledForSection || [])
+    .slice()
+    .sort((a, b) => (a._sortOrder || 0) - (b._sortOrder || 0));
+  for (const raw of sortedPulled) {
+    const { _sectionKey, _isCustom, _sortOrder, ...task } = raw;
+    void _sectionKey;
+    void _isCustom;
+    void _sortOrder;
+    const id = String(task.taskId || "").trim();
+    if (!id) continue;
+    if (idxById.has(id)) {
+      next[idxById.get(id)] = task;
+    } else {
+      idxById.set(id, next.length);
+      next.push(task);
+    }
+  }
+  return next;
+}
+
+/**
+ * 기간 pull — 미완료 전체 + 구간 내 완료만 서버에서 받아 메모리에 병합(전체 덮어쓰기 아님).
+ * @param {unknown[]} rows
+ * @param {string[]} knownCustomSectionIds
+ * @param {{ rangeStart: string, rangeEnd: string }} mergeOpts
+ */
+export function mergeCalendarSectionTasksServerSnapshot(
+  rows,
+  knownCustomSectionIds = [],
+  mergeOpts = {},
+) {
+  const rs = String(mergeOpts.rangeStart || "").trim().slice(0, 10);
+  const re = String(mergeOpts.rangeEnd || "").trim().slice(0, 10);
+  if (!rs || !re) {
+    applyCalendarSectionTasksServerSnapshot(rows, knownCustomSectionIds);
+    return;
+  }
+
+  migrateLegacyLocalStorageOnce();
+  const list = Array.isArray(rows) ? rows : [];
+  const pulledUndoneIds = new Set();
+  const pulledAllIds = new Set();
+  /** @type {Record<string, ReturnType<typeof calendarSectionTaskFromServerRow>[]>} */
+  const pulledFixed = {};
+  /** @type {Record<string, ReturnType<typeof calendarSectionTaskFromServerRow>[]>} */
+  const pulledCustom = {};
+  CALENDAR_FIXED_SECTION_IDS.forEach((k) => {
+    pulledFixed[k] = [];
+  });
+  const known = new Set(
+    (knownCustomSectionIds || []).map((id) => String(id).trim()).filter(Boolean),
+  );
+  for (const id of known) {
+    pulledCustom[id] = [];
+  }
+
+  for (const row of list) {
+    const parsed = calendarSectionTaskFromServerRow(row);
+    const id = String(parsed.taskId || "").trim();
+    if (!id) continue;
+    pulledAllIds.add(id);
+    if (!parsed.done) pulledUndoneIds.add(id);
+    const sk = parsed._sectionKey;
+    if (!sk) continue;
+    if (parsed._isCustom) {
+      if (!pulledCustom[sk]) pulledCustom[sk] = [];
+      pulledCustom[sk].push(parsed);
+    } else if (Object.prototype.hasOwnProperty.call(pulledFixed, sk)) {
+      pulledFixed[sk].push(parsed);
+    }
+  }
+
+  const fixed = readSectionTasksObject();
+  const custom = readCustomSectionTasksObject();
+  const fixedOut = {};
+  CALENDAR_FIXED_SECTION_IDS.forEach((k) => {
+    fixedOut[k] = mergeSectionTaskListForRangePull(
+      fixed[k],
+      pulledFixed[k],
+      pulledUndoneIds,
+      pulledAllIds,
+      rs,
+      re,
+    );
+  });
+  const customOut = {};
+  for (const k of Object.keys(custom)) {
+    customOut[k] = mergeSectionTaskListForRangePull(
+      custom[k],
+      pulledCustom[k] || [],
+      pulledUndoneIds,
+      pulledAllIds,
+      rs,
+      re,
+    );
+  }
+  for (const k of Object.keys(pulledCustom)) {
+    if (customOut[k]) continue;
+    customOut[k] = mergeSectionTaskListForRangePull(
+      [],
+      pulledCustom[k],
+      pulledUndoneIds,
+      pulledAllIds,
+      rs,
+      re,
+    );
   }
 
   writeSectionTasksObject(fixedOut);

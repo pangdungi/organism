@@ -30,6 +30,7 @@ import {
   clearAppFooterActions,
 } from "./utils/appFooterShell.js";
 import { pullCalendarSectionTasksFromSupabase } from "./utils/todoSectionTasksSupabase.js";
+import { calendarPullRangeYmdForMonth } from "./utils/calendarSectionTasksPullRange.js";
 import { pullCalendarDayIconsFromSupabase } from "./utils/calendarDayIconsSupabase.js";
 import { attachHealthKpiMapSaveListener } from "./utils/healthKpiMapSupabase.js";
 import { attachHappinessKpiMapSaveListener } from "./utils/happinessKpiMapSupabase.js";
@@ -289,9 +290,18 @@ async function pullDataForActiveTab(tabId, opts = {}) {
     case "schedulecalendar": {
       const yEnd = timeLedgerLocalTodayYmd();
       const yStart = timeLedgerLocalYesterdayYmd();
+      const now = new Date();
+      const calRange = calendarPullRangeYmdForMonth(
+        now.getFullYear(),
+        now.getMonth(),
+        21,
+      );
       await Promise.all([
         pullCalendarSectionTasksFromSupabase({
           reason: `app_setActiveTab_${tabId}`,
+          subView: "calendar",
+          rangeStart: calRange.rangeStart,
+          rangeEnd: calRange.rangeEnd,
         }),
         pullCalendarDayIconsFromSupabase({
           reason: `app_setActiveTab_${tabId}`,

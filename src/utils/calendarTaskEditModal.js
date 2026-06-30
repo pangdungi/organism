@@ -379,7 +379,12 @@ export function openCalendarTaskEditFromBarModel(barModel, options = {}) {
       runAfter(
         doneOnly
           ? { doneOnly: true, taskId, done: mergedDone }
-          : undefined,
+          : {
+              prevStart,
+              prevDue,
+              startDate: mergedStart,
+              dueDate: mergedDue,
+            },
       );
     },
     onDelete: () => {
@@ -387,7 +392,12 @@ export function openCalendarTaskEditFromBarModel(barModel, options = {}) {
       if (isCustom) {
         const begun = beginRemoveFromCustomSection(storageSectionId, taskId);
         if (!begun.ok) return;
-        runAfter();
+        runAfter({
+          prevStart,
+          prevDue,
+          startDate: "",
+          dueDate: "",
+        });
         void completeRemoveFromServer(
           storageSectionId,
           taskId,
@@ -398,7 +408,12 @@ export function openCalendarTaskEditFromBarModel(barModel, options = {}) {
       }
       const begun = beginRemoveFromFixedSection(storageSectionId, taskId);
       if (!begun.ok) return;
-      runAfter();
+      runAfter({
+        prevStart,
+        prevDue,
+        startDate: "",
+        dueDate: "",
+      });
       void completeRemoveFromServer(
         storageSectionId,
         taskId,

@@ -6,7 +6,7 @@ export function lpRefreshAllVisibleCalendarLayoutsFromLocalData() {
   document.querySelectorAll(".calendar-monthly-layout").forEach((layout) => {
     try {
       if (typeof layout._lpRefreshCalendarView === "function") {
-        layout._lpRefreshCalendarView();
+        layout._lpRefreshCalendarView({ softLocal: true });
         return;
       }
       if (typeof layout._lpSoftRefreshAfterPull === "function") {

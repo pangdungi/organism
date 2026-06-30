@@ -5,8 +5,8 @@
  * 서버에 일괄 반영하지 않는다.
  *
  * - Supabase INSERT/UPDATE/DELETE: 모달 저장·삭제 확정, 우클릭 리스트 이동, … 완료 일괄 제거 시 done=true 행 DELETE.
- * - 할일/일정 상위 탭·내부 서브탭 클릭 시: `pullCalendarSectionTasksFromSupabase` 한 번으로
- *   해당 사용자의 `calendar_section_tasks` 전체를 SELECT 해 세션 메모리를 교체(그 시점 서버 스냅샷).
+ * - 할일/일정 탭·캘린더 진입: `pullCalendarSectionTasksFromSupabase` — 스탬프 동일 시 생략,
+ *   아니면 미완료 전체 + 보는 구간의 완료 할일만 SELECT 후 병합(할일 목록 탭은 forceFull).
  * - persist*ToSessionMemOnly: 앱 안 임시 목록만 갱신 — 서버 호출 없음.
  */
 
@@ -17,6 +17,7 @@ import {
   writeCustomSectionTasksObject,
   localTaskToDbPayload,
   applyCalendarSectionTasksServerSnapshot,
+  mergeCalendarSectionTasksServerSnapshot,
   readSectionTasksObject,
   readCustomSectionTasksObject,
   CALENDAR_FIXED_SECTION_IDS,
@@ -32,6 +33,13 @@ import {
 } from "./todoSectionTasksPendingUpsert.js";
 import { consumeTodoAddPendingServerLog, logTodoScheduleAddStep3 } from "./lpTabDataSourceLog.js";
 import { logTodoServerCrud } from "./todoSectionTasksServerCrudDebug.js";
+import {
+  computeCalendarSectionTasksStampFromRows,
+  fetchCalendarSectionTasksServerStamp,
+  probeCalendarSectionTasksPullSkip,
+  rememberCalendarSectionTasksPullStamp,
+} from "./calendarSectionTasksPullStamp.js";
+import { calendarPullRangeYmdForMonth } from "./calendarSectionTasksPullRange.js";
 
 const TABLE = "calendar_section_tasks";
 const UPSERT_CONFLICT_ROW = "user_id,id";
@@ -418,40 +426,173 @@ export function persistCustomSectionTasksToSessionMemOnly(obj) {
   return Promise.resolve();
 }
 
+async function fetchCalendarSectionTasksRowsForPull(userId, opts = {}) {
+  const rs = String(opts.rangeStart || "").trim().slice(0, 10);
+  const re = String(opts.rangeEnd || "").trim().slice(0, 10);
+  const useRange = !opts.forceFull && rs && re;
+
+  if (!useRange) {
+    const { data, error } = await supabase
+      .from(TABLE)
+      .select("*")
+      .eq("user_id", userId)
+      .order("section_key", { ascending: true })
+      .order("sort_order", { ascending: true });
+    if (error) return { ok: false, error, rows: [] };
+    return { ok: true, rows: Array.isArray(data) ? data : [], mode: "full" };
+  }
+
+  const undoneRes = await supabase
+    .from(TABLE)
+    .select("*")
+    .eq("user_id", userId)
+    .eq("done", false)
+    .order("section_key", { ascending: true })
+    .order("sort_order", { ascending: true });
+  if (undoneRes.error) {
+    return { ok: false, error: undoneRes.error, rows: [] };
+  }
+
+  const doneRes = await supabase
+    .from(TABLE)
+    .select("*")
+    .eq("user_id", userId)
+    .eq("done", true)
+    .or(
+      `and(start_date.lte.${re},due_date.gte.${rs}),and(start_date.is.null,due_date.gte.${rs},due_date.lte.${re})`,
+    )
+    .order("section_key", { ascending: true })
+    .order("sort_order", { ascending: true });
+
+  if (doneRes.error) {
+    logTodoServerCrud("PULL", {
+      mode: "range_fallback_full",
+      message: doneRes.error.message || "range_done_query_failed",
+    });
+    const full = await supabase
+      .from(TABLE)
+      .select("*")
+      .eq("user_id", userId)
+      .order("section_key", { ascending: true })
+      .order("sort_order", { ascending: true });
+    if (full.error) return { ok: false, error: full.error, rows: [] };
+    return { ok: true, rows: Array.isArray(full.data) ? full.data : [], mode: "full_fallback" };
+  }
+
+  const byId = new Map();
+  for (const row of [...(undoneRes.data || []), ...(doneRes.data || [])]) {
+    const id = String(row?.id || "").trim();
+    if (id) byId.set(id, row);
+  }
+  return { ok: true, rows: [...byId.values()], mode: "range" };
+}
+
 /**
- * 할일/일정: 탭 클릭 시 1회 — `calendar_section_tasks` 서버 행만 SELECT 해 세션 메모리를 덮어씀.
- * @param {{ reason?: string, subView?: string }} [opts] subView는 로그·추후 필터 확장용(현재는 동일 SELECT).
+ * 할일/일정: 탭 클릭 시 — 서버 스탬프가 같으면 SELECT 생략, 아니면 pull(기간 또는 전체).
+ * @param {{ reason?: string, subView?: string, force?: boolean, rangeStart?: string, rangeEnd?: string, forceFull?: boolean }} [opts]
  */
 export async function pullCalendarSectionTasksFromSupabase(opts = {}) {
-  const { reason = "pull", subView } = opts;
+  const {
+    reason = "pull",
+    subView,
+    force = false,
+    rangeStart,
+    rangeEnd,
+    forceFull = false,
+  } = opts;
   return runTodoSectionTasksSerialized(async () => {
     const userId = await getSessionUserId();
     if (!userId || !supabase) {
       return { ok: false, reason: !supabase ? "no_supabase" : "no_session", rowCount: 0 };
     }
 
-    const query = supabase.from(TABLE).select("*").eq("user_id", userId);
-
-    const { data, error } = await query
-      .order("section_key", { ascending: true })
-      .order("sort_order", { ascending: true });
-
-    if (error) {
-      return { ok: false, reason: error.message || "select_failed", rowCount: 0 };
+    const probe = await probeCalendarSectionTasksPullSkip({
+      force,
+      rangeStart,
+      rangeEnd,
+    });
+    if (probe.skip) {
+      mergePendingCalendarSectionTasksIntoSessionMemory();
+      logTodoServerCrud("PULL", {
+        reason: String(reason || ""),
+        subView: subView != null ? String(subView) : "",
+        rowCount: probe.serverStamp?.rowCount ?? 0,
+        skipped: true,
+        skipReason: probe.reason,
+        안내: "서버 스탬프 동일 — SELECT 생략",
+      });
+      return {
+        ok: true,
+        rowCount: probe.serverStamp?.rowCount ?? 0,
+        skipped: true,
+      };
     }
 
-    const rows = Array.isArray(data) ? data : [];
+    let rs = String(rangeStart || "").trim().slice(0, 10);
+    let re = String(rangeEnd || "").trim().slice(0, 10);
+    if (!forceFull && !rs && !re && subView === "calendar") {
+      const now = new Date();
+      const auto = calendarPullRangeYmdForMonth(
+        now.getFullYear(),
+        now.getMonth(),
+        21,
+      );
+      rs = auto.rangeStart;
+      re = auto.rangeEnd;
+    }
+
+    const fetched = await fetchCalendarSectionTasksRowsForPull(userId, {
+      rangeStart: forceFull ? "" : rs,
+      rangeEnd: forceFull ? "" : re,
+      forceFull,
+    });
+
+    if (!fetched.ok) {
+      return {
+        ok: false,
+        reason: fetched.error?.message || "select_failed",
+        rowCount: 0,
+      };
+    }
+
+    const rows = fetched.rows;
     const knownCustomSectionIds = getCustomSections().map((s) => s.id).filter(Boolean);
-    applyCalendarSectionTasksServerSnapshot(rows, knownCustomSectionIds);
+    const useRangeMerge =
+      !forceFull &&
+      fetched.mode === "range" &&
+      rs &&
+      re &&
+      fetched.mode !== "full_fallback";
+
+    if (useRangeMerge) {
+      mergeCalendarSectionTasksServerSnapshot(rows, knownCustomSectionIds, {
+        rangeStart: rs,
+        rangeEnd: re,
+      });
+    } else {
+      applyCalendarSectionTasksServerSnapshot(rows, knownCustomSectionIds);
+    }
     mergePendingCalendarSectionTasksIntoSessionMemory();
+
+    const serverStamp =
+      (await fetchCalendarSectionTasksServerStamp(userId)) ||
+      computeCalendarSectionTasksStampFromRows(rows);
+    rememberCalendarSectionTasksPullStamp(serverStamp);
 
     logTodoServerCrud("PULL", {
       reason: String(reason || ""),
       subView: subView != null ? String(subView) : "",
       rowCount: rows.length,
-      안내: "서버 SELECT → 세션 메모리 전체 교체",
+      skipped: false,
+      skipReason: probe.reason,
+      pullMode: fetched.mode,
+      rangeStart: useRangeMerge ? rs : "",
+      rangeEnd: useRangeMerge ? re : "",
+      안내: useRangeMerge
+        ? "기간 pull → 세션 메모리 병합"
+        : "서버 SELECT → 세션 메모리 전체 교체",
     });
 
-    return { ok: true, rowCount: rows.length };
+    return { ok: true, rowCount: rows.length, skipped: false, mode: fetched.mode };
   });
 }
