@@ -3101,36 +3101,102 @@
   background: var(--cal-surface-muted, #f2f2f2);
 }
 
-/* 예상 일정 모달 전용 — 모바일 키보드 shell (과제 기록 lp-modals 규칙과 분리) */
+/* 예상 일정 모달 전용 — iOS 키보드 shell (inset:0·812px 고정 덮어씀) */
 @media (max-width: 46rem) {
   html.lp-keyboard-open.lp-calendar-expected-keyboard-shell
-    .lp-calendar-budget-add-modal.time-task-log-modal,
-  html.lp-keyboard-open.lp-calendar-expected-keyboard-shell
-    .lp-calendar-budget-add-modal[data-legacy~="time-task-setup-modal"] {
-    inset: auto;
-    top: var(--vv-offset-top, 0px);
-    left: 0;
-    right: 0;
-    bottom: auto;
-    height: var(--vv-visible-height, 100dvh);
-    max-height: var(--vv-visible-height, 100dvh);
-    overflow: hidden;
-    align-items: center;
-    justify-content: flex-end;
-    padding: max(0.35rem, env(safe-area-inset-top, 0px)) 0.75rem 0.35rem;
-    box-sizing: border-box;
-    z-index: 2147483647;
+    .lp-calendar-budget-add-modal.time-task-setup-modal.time-task-log-modal {
+    position: fixed !important;
+    inset: unset !important;
+    top: var(--lp-expected-shell-top, 0px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: auto !important;
+    width: 100% !important;
+    height: var(--lp-expected-shell-height, 100dvh) !important;
+    max-height: var(--lp-expected-shell-height, 100dvh) !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    padding: max(0.35rem, env(safe-area-inset-top, 0px)) 0.75rem 0.35rem !important;
+    box-sizing: border-box !important;
+    z-index: 2147483647 !important;
   }
 
   html.lp-keyboard-open.lp-calendar-expected-keyboard-shell
     .lp-calendar-budget-add-modal
     [data-legacy~="time-task-setup-panel"][data-legacy~="time-task-log-panel"] {
+    display: flex !important;
+    flex-direction: column !important;
     height: auto !important;
     min-height: 0 !important;
-    max-height: min(calc(var(--vv-visible-height, 100dvh) - 1rem), 41rem) !important;
+    max-height: min(
+      calc(var(--lp-expected-shell-height, var(--vv-visible-height, 100dvh)) - 1rem),
+      41rem
+    ) !important;
     width: 100%;
     max-width: var(--lp-modal-max);
     flex-shrink: 1;
+  }
+
+  html.lp-keyboard-open.lp-calendar-expected-keyboard-shell
+    .lp-calendar-budget-add-modal
+    [data-legacy~="time-task-log-body"] {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  html.lp-keyboard-open.lp-calendar-expected-keyboard-shell
+    .lp-calendar-budget-add-modal
+    [data-legacy~="time-task-log-scroll-area"] {
+    display: block !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  html.lp-keyboard-open.lp-calendar-expected-keyboard-shell
+    .lp-calendar-budget-add-modal
+    [data-legacy~="time-task-log-memo-section"],
+  html.lp-keyboard-open.lp-calendar-expected-keyboard-shell
+    .lp-calendar-budget-add-modal
+    [data-legacy~="time-task-log-memo-fields"],
+  html.lp-keyboard-open.lp-calendar-expected-keyboard-shell
+    .lp-calendar-budget-add-modal
+    [data-legacy~="time-task-log-memo-section"]
+    [data-legacy~="time-task-log-field"]:last-child {
+    display: block !important;
+    flex: none !important;
+    min-height: auto !important;
+  }
+
+  html.lp-keyboard-open.lp-calendar-expected-keyboard-shell
+    .lp-calendar-budget-add-modal
+    [data-legacy~="time-task-log-memo-section"]
+    [data-legacy~="time-task-log-feedback"] {
+    display: block !important;
+    flex: none !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 11rem !important;
+    max-height: none !important;
+  }
+
+  html.lp-keyboard-open.lp-calendar-expected-keyboard-shell
+    .lp-calendar-budget-add-modal
+    [data-legacy~="time-task-log-scroll-area"].is-expected-memo-kb-open:not(
+      .is-task-picker-open
+    ) {
+    padding-bottom: max(var(--lp-expected-scroll-pad, var(--lp-expected-kb, 0px)), 1rem);
+    scroll-padding-bottom: max(
+      var(--lp-expected-scroll-pad, var(--lp-expected-kb, 0px)),
+      1rem
+    );
   }
 }
 

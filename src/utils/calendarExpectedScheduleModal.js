@@ -30,7 +30,6 @@ import {
 import { getTaskDailyAverageMinutesLast30Days } from "./timeKpiSync.js";
 import { getNextExpectedScheduleStartHhMmAfterCurrent } from "./timeLedgerNextExpectedSchedule.js";
 import * as TTC from "./timeTaskOptionsConstants.js";
-import { bindTimeTaskLogModalMemoKeyboard } from "./timeTaskLogModalMemoKeyboard.js";
 import {
   bindExpectedScheduleModalKeyboard,
   clearExpectedScheduleModalKeyboardShell,
@@ -1257,7 +1256,8 @@ export function openCalendarExpectedScheduleModal(options) {
     try {
       document.documentElement.classList.remove("lp-task-log-modal-open");
     } catch (_) {}
-    clearExpectedScheduleModalKeyboardShell();
+    clearExpectedScheduleModalKeyboardShell(modal, taskLogScrollArea);
+    taskLogScrollArea?.classList?.remove("is-expected-memo-kb-open");
     taskLogScrollArea?.classList?.remove("is-memo-keyboard-open");
     taskLogScrollArea?.classList?.remove("is-task-picker-open");
     modal.remove();
@@ -1403,10 +1403,6 @@ export function openCalendarExpectedScheduleModal(options) {
   try {
     document.documentElement.classList.add("lp-task-log-modal-open");
   } catch (_) {}
-  bindTimeTaskLogModalMemoKeyboard(modal, {
-    scrollArea: taskLogScrollArea,
-    signal,
-  });
   bindExpectedScheduleModalKeyboard(modal, taskLogScrollArea, signal);
   if (taskLogScrollArea instanceof HTMLElement) {
     taskLogScrollArea.scrollTop = 0;
