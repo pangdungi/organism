@@ -70,6 +70,22 @@ function isRowExpired(row) {
   return !Number.isNaN(endMs) && Date.now() > endMs;
 }
 
+function normalizeEmailSearchQuery(query) {
+  return String(query || "").trim().toLowerCase();
+}
+
+function rowMatchesEmailSearch(row, query) {
+  const q = normalizeEmailSearchQuery(query);
+  if (!q) return true;
+  return String(row?.email || "").toLowerCase().includes(q);
+}
+
+function filterRowsByEmail(rows, query) {
+  const q = normalizeEmailSearchQuery(query);
+  if (!q) return rows;
+  return rows.filter((row) => rowMatchesEmailSearch(row, query));
+}
+
 function appendUidCell(tr, uid) {
   const tdUid = document.createElement("td");
   tdUid.className = "admin-subs-td admin-subs-td--uid";
@@ -261,6 +277,21 @@ export function render() {
   toolbar.appendChild(refresh);
   body.appendChild(toolbar);
 
+  const searchBar = document.createElement("div");
+  searchBar.className = "lp-search-bar admin-subs-search";
+  const searchRow = document.createElement("div");
+  searchRow.className = "lp-search-bar__row";
+  const emailSearchInput = document.createElement("input");
+  emailSearchInput.type = "text";
+  emailSearchInput.className = "lp-search-bar__input";
+  emailSearchInput.placeholder = "이메일 검색…";
+  emailSearchInput.setAttribute("aria-label", "이메일 검색");
+  emailSearchInput.autocomplete = "off";
+  emailSearchInput.inputMode = "email";
+  searchRow.appendChild(emailSearchInput);
+  searchBar.appendChild(searchRow);
+  body.appendChild(searchBar);
+
   const statusLine = document.createElement("p");
   statusLine.className = "admin-subs-statusline";
   statusLine.setAttribute("aria-live", "polite");
@@ -296,6 +327,28 @@ export function render() {
   let activeSection = "all";
   let requestId = 0;
   let cachedSubsRows = [];
+  let cachedWithdrawnRows = [];
+  let emailSearchQuery = "";
+
+  function getSubscriptionRowsForView() {
+    const base =
+      activeSection === "expired"
+        ? cachedSubsRows.filter(isRowExpired)
+        : cachedSubsRows;
+    return filterRowsByEmail(base, emailSearchQuery);
+  }
+
+  function getWithdrawnRowsForView() {
+    return filterRowsByEmail(cachedWithdrawnRows, emailSearchQuery);
+  }
+
+  function formatStatusLineCount(shown, totalBeforeFilter) {
+    const q = normalizeEmailSearchQuery(emailSearchQuery);
+    if (q && totalBeforeFilter != null && shown < totalBeforeFilter) {
+      return `검색 ${shown}명 · ${totalBeforeFilter}명 중`;
+    }
+    return `총 ${shown}명`;
+  }
 
   function getSectionMeta(id) {
     return ADMIN_SECTIONS.find((s) => s.id === id) || ADMIN_SECTIONS[0];
@@ -347,14 +400,18 @@ export function render() {
     if (idx >= 0) cachedSubsRows[idx] = { ...cachedSubsRows[idx], ...patched };
   }
 
-  function renderSubscriptionRows(rows) {
+  function renderSubscriptionRows(rows, { totalBeforeFilter } = {}) {
     tbody.innerHTML = "";
+    const q = normalizeEmailSearchQuery(emailSearchQuery);
     if (!rows.length) {
-      statusLine.textContent =
-        activeSection === "expired" ? "이용 만료 회원이 없어요." : "표시할 사용자가 없어요.";
+      statusLine.textContent = q
+        ? `「${emailSearchQuery.trim()}」 검색 결과가 없어요.`
+        : activeSection === "expired"
+          ? "이용 만료 회원이 없어요."
+          : "표시할 사용자가 없어요.";
       return;
     }
-    statusLine.textContent = `총 ${rows.length}명`;
+    statusLine.textContent = formatStatusLineCount(rows.length, totalBeforeFilter);
     for (const row of rows) {
       const tr = buildRowTr(row, (patched) => {
         applyRowData(tr, patched);
@@ -368,16 +425,32 @@ export function render() {
     }
   }
 
-  function renderWithdrawnRows(rows) {
+  function renderWithdrawnRows(rows, { totalBeforeFilter } = {}) {
     tbody.innerHTML = "";
+    const q = normalizeEmailSearchQuery(emailSearchQuery);
     if (!rows.length) {
-      statusLine.textContent = "탈퇴 기록이 없어요.";
+      statusLine.textContent = q
+        ? `「${emailSearchQuery.trim()}」 검색 결과가 없어요.`
+        : "탈퇴 기록이 없어요.";
       return;
     }
-    statusLine.textContent = `총 ${rows.length}명`;
+    statusLine.textContent = formatStatusLineCount(rows.length, totalBeforeFilter);
     for (const row of rows) {
       tbody.appendChild(buildWithdrawnRowTr(row));
     }
+  }
+
+  function applyCachedView() {
+    if (activeSection === "withdrawn") {
+      const base = cachedWithdrawnRows;
+      renderWithdrawnRows(getWithdrawnRowsForView(), { totalBeforeFilter: base.length });
+      return;
+    }
+    const base =
+      activeSection === "expired"
+        ? cachedSubsRows.filter(isRowExpired)
+        : cachedSubsRows;
+    renderSubscriptionRows(getSubscriptionRowsForView(), { totalBeforeFilter: base.length });
   }
 
   async function loadSubscriptions(force = false) {
@@ -386,11 +459,7 @@ export function render() {
       return;
     }
     if (!force && cachedSubsRows.length && activeSection !== "withdrawn") {
-      const rows =
-        activeSection === "expired"
-          ? cachedSubsRows.filter(isRowExpired)
-          : cachedSubsRows;
-      renderSubscriptionRows(rows);
+      applyCachedView();
       return;
     }
     const myId = ++requestId;
@@ -411,16 +480,16 @@ export function render() {
       return;
     }
     cachedSubsRows = data || [];
-    const rows =
-      activeSection === "expired"
-        ? cachedSubsRows.filter(isRowExpired)
-        : cachedSubsRows;
-    renderSubscriptionRows(rows);
+    applyCachedView();
   }
 
-  async function loadWithdrawn() {
+  async function loadWithdrawn(force = false) {
     if (!(await isCurrentUserAppAdmin())) {
       statusLine.textContent = "관리자만 이 목록을 불러올 수 있어요.";
+      return;
+    }
+    if (!force && cachedWithdrawnRows.length) {
+      applyCachedView();
       return;
     }
     const myId = ++requestId;
@@ -440,7 +509,8 @@ export function render() {
       }
       return;
     }
-    renderWithdrawnRows(data || []);
+    cachedWithdrawnRows = data || [];
+    applyCachedView();
   }
 
   async function loadActiveSection(force = false) {
@@ -465,6 +535,11 @@ export function render() {
 
   refresh.addEventListener("click", () => {
     void loadActiveSection(true);
+  });
+
+  emailSearchInput.addEventListener("input", () => {
+    emailSearchQuery = emailSearchInput.value;
+    applyCachedView();
   });
 
   if (supabase) {

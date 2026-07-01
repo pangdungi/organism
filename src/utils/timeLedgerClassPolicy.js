@@ -9,6 +9,7 @@ export const LP_MAIN_CLASS = new Set([
   "admin-subs-btn--save",
   "admin-subs-btn--year",
   "admin-subs-refresh",
+  "admin-subs-search",
   "admin-subs-status",
   "admin-subs-statusline",
   "admin-subs-table",
