@@ -31,6 +31,10 @@ import { getTaskDailyAverageMinutesLast30Days } from "./timeKpiSync.js";
 import { getNextExpectedScheduleStartHhMmAfterCurrent } from "./timeLedgerNextExpectedSchedule.js";
 import * as TTC from "./timeTaskOptionsConstants.js";
 import { bindTimeTaskLogModalMemoKeyboard } from "./timeTaskLogModalMemoKeyboard.js";
+import {
+  bindExpectedScheduleModalKeyboard,
+  clearExpectedScheduleModalKeyboardShell,
+} from "./calendarExpectedScheduleModalKeyboard.js";
 
 function lpExpectedDeleteDebug(step, detail) {
   try {
@@ -1246,15 +1250,14 @@ export function openCalendarExpectedScheduleModal(options) {
   }
   syncExpectedGapFillBtnVisibility();
 
-  bindTimeTaskLogModalMemoKeyboard(modal, {
-    scrollArea: taskLogScrollArea,
-    signal,
-  });
-
   const close = () => {
     try {
       ac.abort();
     } catch (_) {}
+    try {
+      document.documentElement.classList.remove("lp-task-log-modal-open");
+    } catch (_) {}
+    clearExpectedScheduleModalKeyboardShell();
     taskLogScrollArea?.classList?.remove("is-memo-keyboard-open");
     taskLogScrollArea?.classList?.remove("is-task-picker-open");
     modal.remove();
@@ -1397,6 +1400,14 @@ export function openCalendarExpectedScheduleModal(options) {
 
   document.body.appendChild(modal);
   document.body.style.overflow = "hidden";
+  try {
+    document.documentElement.classList.add("lp-task-log-modal-open");
+  } catch (_) {}
+  bindTimeTaskLogModalMemoKeyboard(modal, {
+    scrollArea: taskLogScrollArea,
+    signal,
+  });
+  bindExpectedScheduleModalKeyboard(modal, taskLogScrollArea, signal);
   if (taskLogScrollArea instanceof HTMLElement) {
     taskLogScrollArea.scrollTop = 0;
   }

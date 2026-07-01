@@ -3101,7 +3101,40 @@
   background: var(--cal-surface-muted, #f2f2f2);
 }
 
-/* 모바일 키보드·스크롤 — lp-modals.css(과제 기록과 동일) 사용, 별도 규칙 없음 */
+/* 예상 일정 모달 전용 — 모바일 키보드 shell (과제 기록 lp-modals 규칙과 분리) */
+@media (max-width: 46rem) {
+  html.lp-keyboard-open.lp-calendar-expected-keyboard-shell
+    .lp-calendar-budget-add-modal.time-task-log-modal,
+  html.lp-keyboard-open.lp-calendar-expected-keyboard-shell
+    .lp-calendar-budget-add-modal[data-legacy~="time-task-setup-modal"] {
+    inset: auto;
+    top: var(--vv-offset-top, 0px);
+    left: 0;
+    right: 0;
+    bottom: auto;
+    height: var(--vv-visible-height, 100dvh);
+    max-height: var(--vv-visible-height, 100dvh);
+    overflow: hidden;
+    align-items: center;
+    justify-content: flex-end;
+    padding: max(0.35rem, env(safe-area-inset-top, 0px)) 0.75rem 0.35rem;
+    box-sizing: border-box;
+    z-index: 2147483647;
+  }
+
+  html.lp-keyboard-open.lp-calendar-expected-keyboard-shell
+    .lp-calendar-budget-add-modal
+    [data-legacy~="time-task-setup-panel"][data-legacy~="time-task-log-panel"] {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: min(calc(var(--vv-visible-height, 100dvh) - 1rem), 41rem) !important;
+    width: 100%;
+    max-width: var(--lp-modal-max);
+    flex-shrink: 1;
+  }
+}
+
+/* 모바일 키보드·스크롤(메모 등) — lp-modals.css 공통 + 위 예상 일정 shell */
 
 /* -------------------------------------------------------------------------- */
 /* 캘린더 1일 타임블록 호버 툴팁 (#lp-time-block-hover-tip, body) */
