@@ -33,14 +33,6 @@ export const UI_FONT_DEFS = {
     format: "truetype",
     weight: 400,
   },
-  ryuryu: {
-    id: "ryuryu",
-    label: "온글잎 류류체",
-    family: "LP Ongleip Ryuryu",
-    url: "/fonts/LP-Ongleip-Ryuryu.ttf",
-    format: "truetype",
-    weight: 400,
-  },
   mongtori: {
     id: "mongtori",
     label: "그리운 몽토리",
@@ -71,7 +63,6 @@ export const UI_FONT_DEFS = {
 export const UI_FONT_PICKER_OPTIONS = [
   UI_FONT_DEFS.cocochoitoon,
   UI_FONT_DEFS.gongbujahana,
-  UI_FONT_DEFS.ryuryu,
   UI_FONT_DEFS.mongtori,
   UI_FONT_DEFS.cherryspoon,
   UI_FONT_DEFS.myeoneunheulrim,
@@ -80,6 +71,7 @@ export const UI_FONT_PICKER_OPTIONS = [
 const LEGACY_UI_FONT_ALIASES = {
   parkdahyun: "bakdahyun",
   pakyongjun: "kyobohandwriting",
+  ryuryu: "cocochoitoon",
 };
 
 /** @deprecated applyUiFontById 사용 */

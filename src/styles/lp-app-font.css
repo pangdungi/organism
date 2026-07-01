@@ -69,14 +69,6 @@ select:-webkit-autofill:focus {
 }
 
 @font-face {
-  font-family: "LP Ongleip Ryuryu";
-  src: url("/fonts/LP-Ongleip-Ryuryu.ttf") format("truetype");
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
   font-family: "LP Griun Mongtori";
   src: url("/fonts/LP-Griun-Mongtori-Rg.ttf") format("truetype");
   font-weight: normal;

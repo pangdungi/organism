@@ -570,6 +570,7 @@
   padding: 0.5rem 1rem 0.45rem;
   border-bottom: 1px solid #fafafa;
   box-sizing: border-box;
+  background-color: #fff;
 }
 
 /* 시간가계부 — 타임라인 / 타임박스 / 레포트 (3칸 슬라이딩 칩) */
