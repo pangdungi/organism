@@ -62,15 +62,15 @@ function isModalKeyboardContextOpen() {
 
 function isTaskLogModalTextInputFocused() {
   const el = document.activeElement;
-  if (!(el instanceof HTMLElement)) return false;
+  if (!(el instanceof HTMLElement) || !isTextInputFocused()) return false;
   if (
-    !el.closest(
-      ".time-task-log-modal, [data-legacy~='time-task-log-modal']",
-    )
+    !document.documentElement.classList.contains("lp-task-log-modal-open")
   ) {
     return false;
   }
-  return isTextInputFocused();
+  return !!el.closest(
+    ".time-task-log-modal, .lp-calendar-budget-add-modal, .time-task-setup-modal, [data-legacy~='time-task-log-modal']",
+  );
 }
 
 /**
@@ -169,13 +169,15 @@ export function syncVisualViewportKeyboardInset() {
     document.documentElement.classList.contains("lp-task-log-modal-open");
   let kb = androidOverlayKeyboardFallbackPx(h, measuredKb);
   if (taskLogKbLift && kb <= KEYBOARD_OPEN_PX) {
-    kb = Math.max(kb, Math.round(h * 0.45));
+    kb = Math.max(kb, Math.round(_baselineInnerHeight * 0.45));
   }
   const layoutShrinkDominant = layoutShrinkKb > vvKb + 8;
   const iosLayoutShrink = isIosLikeMobile() && layoutShrinkDominant;
+  const vvOffsetTop = vv.offsetTop || 0;
   let visibleHeight = iosLayoutShrink || layoutShrinkDominant ? h : vv.height;
-  if (taskLogKbLift && kb > KEYBOARD_OPEN_PX && !layoutShrinkDominant) {
-    visibleHeight = h - kb;
+  if (taskLogKbLift && kb > KEYBOARD_OPEN_PX) {
+    /* iOS·Android 공통 — 키보드 위 가시 영역 높이로 모달 shell 맞춤 */
+    visibleHeight = Math.max(160, vv.height + vvOffsetTop, h - kb);
   } else if (
     isAndroidLikeMobile() &&
     kb > KEYBOARD_OPEN_PX &&
@@ -195,7 +197,7 @@ export function syncVisualViewportKeyboardInset() {
     );
     document.documentElement.style.setProperty(
       "--vv-offset-top",
-      `${vv.offsetTop || 0}px`,
+      `${vvOffsetTop}px`,
     );
     document.documentElement.classList.toggle("lp-keyboard-open", keyboardOpen);
   } catch (_) {}

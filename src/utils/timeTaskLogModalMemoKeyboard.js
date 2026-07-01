@@ -4,6 +4,7 @@
 
 import {
   isAndroidLikeMobile,
+  isIosLikeMobile,
   lockPageScrollForModalKeyboard,
   readMobileKeyboardVisibleBand,
   resetViewportKeyboardBaseline,
@@ -96,7 +97,26 @@ export function bindTimeTaskLogModalMemoKeyboard(modal, opts = {}) {
     scrollArea?.style.removeProperty("--task-log-memo-scroll-pad");
   }
 
-  /** 키보드 위 가시 영역 안으로 입력란 이동 */
+  function isMemoInputEl(el) {
+    return !!(el instanceof HTMLElement && el.matches(memoInputSelector));
+  }
+
+  /** 메모 레이블+입력 묶음 — 스크롤 시 레이블이 보이게 */
+  function findMemoFieldAnchor(inputEl) {
+    if (!(inputEl instanceof HTMLElement)) return inputEl;
+    const field = inputEl.closest('[data-legacy~="time-task-log-field"]');
+    return field instanceof HTMLElement ? field : inputEl;
+  }
+
+  function scheduleMemoKeyboardAlign(run, delays) {
+    if (isAndroidLikeMobile() || isIosLikeMobile()) {
+      scheduleMobileKeyboardInsetSync(run, delays);
+      return;
+    }
+    window.setTimeout(run, 120);
+  }
+
+  /** 키보드 위 가시 영역 — 메모는 레이블·입력란 함께 보이게 */
   function scrollFocusedInputIntoView(inputEl) {
     if (!(inputEl instanceof HTMLElement)) return;
     if (!(scrollArea instanceof HTMLElement)) return;
@@ -107,6 +127,24 @@ export function bindTimeTaskLogModalMemoKeyboard(modal, opts = {}) {
     const pad = 14;
     const wantBottom = bottom - pad;
     const wantTop = top + pad;
+
+    if (isMemoInputEl(inputEl)) {
+      const anchor = findMemoFieldAnchor(inputEl);
+      let anchorRect = anchor.getBoundingClientRect();
+      if (anchorRect.top < wantTop) {
+        scrollArea.scrollTop -= wantTop - anchorRect.top;
+      }
+      let inputRect = inputEl.getBoundingClientRect();
+      if (inputRect.bottom > wantBottom) {
+        scrollArea.scrollTop += inputRect.bottom - wantBottom;
+        anchorRect = anchor.getBoundingClientRect();
+        if (anchorRect.top < wantTop) {
+          scrollArea.scrollTop -= wantTop - anchorRect.top;
+        }
+      }
+      return;
+    }
+
     const rect = inputEl.getBoundingClientRect();
 
     if (rect.bottom > wantBottom) {
@@ -124,14 +162,16 @@ export function bindTimeTaskLogModalMemoKeyboard(modal, opts = {}) {
     align();
     requestAnimationFrame(align);
     window.setTimeout(align, 150);
-    if (isAndroidLikeMobile()) {
-      scheduleMobileKeyboardInsetSync(() => {
+    if (isAndroidLikeMobile() || isIosLikeMobile()) {
+      scheduleMemoKeyboardAlign(() => {
         if (document.activeElement !== inputEl) return;
         syncVisualViewportKeyboardInset();
         lockPageScrollForModalKeyboard();
         applyMemoScrollBottomSpace(true);
         align();
-      });
+      }, isIosLikeMobile()
+        ? [0, 120, 280, 480, 720]
+        : [0, 80, 180, 320, 520, 720]);
     }
   }
 
@@ -202,11 +242,11 @@ export function bindTimeTaskLogModalMemoKeyboard(modal, opts = {}) {
     });
     window.addEventListener("resize", adjustOnResize, { passive: true });
     adjustOnResize();
-    if (isAndroidLikeMobile()) {
-      scheduleMobileKeyboardInsetSync(() => {
+    if (isAndroidLikeMobile() || isIosLikeMobile()) {
+      scheduleMemoKeyboardAlign(() => {
         if (document.activeElement !== inputEl) return;
         adjustOnResize();
-      }, [280, 480, 720]);
+      }, isIosLikeMobile() ? [280, 480, 720] : [280, 480, 720, 900]);
     }
   }
 
@@ -266,8 +306,8 @@ export function bindTimeTaskLogModalMemoKeyboard(modal, opts = {}) {
     });
     runWithLock();
     requestAnimationFrame(runWithLock);
-    if (isAndroidLikeMobile()) {
-      scheduleMobileKeyboardInsetSync(runWithLock);
+    if (isAndroidLikeMobile() || isIosLikeMobile()) {
+      scheduleMemoKeyboardAlign(runWithLock);
     } else {
       window.setTimeout(runWithLock, 120);
     }
