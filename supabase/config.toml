@@ -389,3 +389,15 @@ verify_jwt = true
 
 [functions.time-report-analyze]
 verify_jwt = true
+
+[functions.imweb-webhook]
+verify_jwt = false
+
+[functions.imweb-order-webhook]
+verify_jwt = false
+
+[functions.imweb-connect]
+verify_jwt = false
+
+[functions.imweb-oauth-callback]
+verify_jwt = false

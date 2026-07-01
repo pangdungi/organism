@@ -5,6 +5,9 @@
 import { supabase } from "../supabase.js";
 
 export const SUBSCRIPTION_EXPIRED_MESSAGE = "이용기간이 종료되었습니다.";
+export const SUBSCRIPTION_NO_ACCESS_MESSAGE = "이용 권한이 없습니다.";
+export const SUBSCRIPTION_NO_ACCESS_HINT =
+  "아임웹에서 이용권을 구매한 뒤, 결제하신 이메일로 로그인해 주세요.";
 export const SUBSCRIPTION_RENEWAL_SHOP_URL = "https://doodledoodle.me/";
 /** 나의 계정 — 갱신권 구매 노출: 이용 종료일까지 이 일수 이하일 때 */
 export const SUBSCRIPTION_RENEWAL_SHOW_DAYS = 5;
@@ -69,8 +72,30 @@ export function subscriptionMsUntilAccessEnd(snap) {
   return endMs - Date.now();
 }
 
-/** 나의 계정 등 — 만료(또는 종료) 5일 이내면 갱신권 구매 노출 */
+/** 1년 이용권(active) — 만료·갱신 안내 대상 */
+export function subscriptionRenewalEligible(snap) {
+  return String(snap?.status || "").toLowerCase() === "active";
+}
+
+/** 로그인 차단 모달 문구·갱신 버튼 */
+export function subscriptionBlockedModalOptions(snap) {
+  if (subscriptionRenewalEligible(snap)) {
+    return {
+      message: SUBSCRIPTION_EXPIRED_MESSAGE,
+      warnMessage: "갱신권 구매 후 다시 로그인해 주세요.",
+      showRenewal: true,
+    };
+  }
+  return {
+    message: SUBSCRIPTION_NO_ACCESS_MESSAGE,
+    warnMessage: SUBSCRIPTION_NO_ACCESS_HINT,
+    showRenewal: false,
+  };
+}
+
+/** 나의 계정 — 1년 이용권(active) + 만료 5일 이내 */
 export function subscriptionRenewalOfferDue(snap) {
+  if (!subscriptionRenewalEligible(snap)) return false;
   const msLeft = subscriptionMsUntilAccessEnd(snap);
   if (msLeft == null) return false;
   return msLeft <= SUBSCRIPTION_RENEWAL_SHOW_DAYS * MS_PER_DAY;

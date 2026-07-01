@@ -160,8 +160,8 @@ export function showAlertModal(options = {}) {
 }
 
 /**
- * 구독 만료 안내 + 갱신권 구매·회원 탈퇴.
- * @param {{ title?: string, message?: string, warnMessage?: string, deleteAccountText?: string, renewalText?: string, renewalUrl?: string }} options
+ * 구독 만료·이용 권한 없음 안내 (+ 갱신권 구매·회원 탈퇴).
+ * @param {{ title?: string, message?: string, warnMessage?: string, deleteAccountText?: string, renewalText?: string, renewalUrl?: string, showRenewal?: boolean }} options
  * @returns {Promise<{ deleted?: boolean }>}
  */
 export function showSubscriptionExpiredModal(options = {}) {
@@ -172,6 +172,7 @@ export function showSubscriptionExpiredModal(options = {}) {
     deleteAccountText = "회원 탈퇴하기",
     renewalText = "갱신권 구매하기",
     renewalUrl = SUBSCRIPTION_RENEWAL_SHOP_URL,
+    showRenewal = true,
   } = options;
 
   dismissAppToast();
@@ -200,7 +201,7 @@ export function showSubscriptionExpiredModal(options = {}) {
         </div>
         <div class="time-task-log-footer lp-subscription-expired-footer">
           <button type="button" class="todo-list-modal-cancel lp-subscription-delete-btn">${escapeHtml(deleteAccountText)}</button>
-          <button type="button" class="todo-list-modal-confirm lp-subscription-renewal-btn">${escapeHtml(renewalText)}</button>
+          ${showRenewal ? `<button type="button" class="todo-list-modal-confirm lp-subscription-renewal-btn">${escapeHtml(renewalText)}</button>` : ""}
         </div>
       </div>
     `;
@@ -215,7 +216,7 @@ export function showSubscriptionExpiredModal(options = {}) {
       resolve(result);
     }
 
-    renewalBtn.addEventListener("click", () => {
+    renewalBtn?.addEventListener("click", () => {
       if (renewalUrl === SUBSCRIPTION_RENEWAL_SHOP_URL) {
         openSubscriptionRenewalShop();
       } else {
@@ -247,7 +248,7 @@ export function showSubscriptionExpiredModal(options = {}) {
     modal.style.zIndex = String(resolveLpModalStackZIndex());
     document.body.style.overflow = "hidden";
     requestAnimationFrame(() => {
-      renewalBtn?.focus({ preventScroll: true });
+      (renewalBtn || deleteBtn)?.focus({ preventScroll: true });
     });
   });
 }

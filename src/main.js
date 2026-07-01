@@ -53,6 +53,11 @@ import {
   applyTaskCategoryColors,
 } from "./utils/todoSettings.js";
 import { showToast } from "./utils/showToast.js";
+import {
+  maybeRedirectImwebConnect,
+  readImwebConnectResult,
+  clearImwebConnectQueryFromUrl,
+} from "./utils/imwebConnectBootstrap.js";
 import { showSubscriptionExpiredModal } from "./utils/confirmModal.js";
 import { prepareTimeLedgerStorageForBoot, resetTimeLedgerMemoryForAccountSwitch } from "./utils/timeLedgerEntriesModel.js";
 import {
@@ -73,7 +78,9 @@ import {
 } from "./utils/authRecoverySession.js";
 import { consumeSupabaseAuthRedirectErrors } from "./utils/authRedirectErrorUi.js";
 import {
-  enforceSubscriptionAccessOrSignOut,
+  fetchSubscriptionGateSnapshot,
+  subscriptionAccessEnded,
+  subscriptionBlockedModalOptions,
   runBackgroundSubscriptionGateFromPrefsRow,
 } from "./utils/subscriptionAccess.js";
 import {
@@ -90,9 +97,11 @@ import {
 import { syncLoginRememberMeCheckbox } from "./utils/authRememberMe.js";
 
 async function blockExpiredSubscriptionOrSignOut() {
-  const blocked = await enforceSubscriptionAccessOrSignOut();
-  if (!blocked) return false;
-  const result = await showSubscriptionExpiredModal();
+  const snap = await fetchSubscriptionGateSnapshot();
+  if (!subscriptionAccessEnded(snap)) return false;
+  const result = await showSubscriptionExpiredModal(
+    subscriptionBlockedModalOptions(snap),
+  );
   if (!result?.deleted) await signOut();
   return true;
 }
@@ -387,6 +396,19 @@ function closeAuthPwRecoveryModal() {
 }
 
 function init() {
+  const imwebResult = readImwebConnectResult();
+  if (imwebResult) {
+    clearImwebConnectQueryFromUrl();
+    if (imwebResult.status === "connected") {
+      showToast("아임웹 연동이 완료됐어요.");
+    } else if (imwebResult.status === "error") {
+      showToast(
+        "아임웹 연동에 실패했어요.",
+        imwebResult.reason || "잠시 후 다시 시도해 주세요.",
+      );
+    }
+  }
+
   setLpAuthBootPending(true);
   initAuthUserCrossTabGuard({ isAppMounted: () => lpAppMounted });
   consumeSupabaseAuthRedirectErrors();
@@ -761,7 +783,9 @@ async function doResetPassword() {
   }
 }
 
-init();
+if (!maybeRedirectImwebConnect()) {
+  init();
+}
 
 // PWA: 서비스 워커 — load 대기 없이 즉시 등록(첫 방문 설치 가능 조건 빠르게 충족)
 if (

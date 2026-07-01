@@ -17,8 +17,11 @@ import {
 import { setScopedLocalStorageItem, getScopedLocalStorageItem } from "../utils/clientStorageScope.js";
 import { showToast } from "../utils/showToast.js";
 import {
+  SUBSCRIPTION_EXPIRED_MESSAGE,
+  SUBSCRIPTION_NO_ACCESS_HINT,
   SUBSCRIPTION_RENEWAL_SHOP_URL,
   subscriptionAccessEnded,
+  subscriptionRenewalEligible,
   subscriptionRenewalOfferDue,
   subscriptionSnapFromPrefsRow,
 } from "../utils/subscriptionAccess.js";
@@ -214,10 +217,15 @@ export function render() {
           const expired = subscriptionAccessEnded(snap);
           const showRenewal = subscriptionRenewalOfferDue(snap);
           if (expired) {
-            statusEl.textContent = "이용 만료";
-            passEl.textContent = data.access_until
-              ? `이용 종료일 ${formatDateKo(data.access_until)}`
-              : "이용기간이 종료되었습니다.";
+            if (subscriptionRenewalEligible(snap)) {
+              statusEl.textContent = "이용 만료";
+              passEl.textContent = data.access_until
+                ? `이용 종료일 ${formatDateKo(data.access_until)}`
+                : SUBSCRIPTION_EXPIRED_MESSAGE;
+            } else {
+              statusEl.textContent = "이용 권한 없음";
+              passEl.textContent = SUBSCRIPTION_NO_ACCESS_HINT;
+            }
             passEl.hidden = false;
             if (renewalEl) renewalEl.hidden = !showRenewal;
           } else if (data.subscription_status === "active") {
