@@ -60,7 +60,7 @@ const CATEGORY_RADAR_AXES = [
   { key: "media_watch", label: "미디어", tone: "nonprod" },
   { key: "unhappiness", label: "불행", tone: "nonprod" },
   { key: "unhealthy", label: "비건강", tone: "nonprod" },
-  { key: "moneylosing", label: "돈 잃는 일", tone: "nonprod" },
+  { key: "moneylosing", label: "시급 저하", tone: "nonprod" },
 ];
 
 const RATING_REPORT_COLOR = "#C98484";
@@ -2676,7 +2676,7 @@ const PLAN_COMPARE_AXES = [
   { key: "media_watch", label: "미디어" },
   { key: "unhappiness", label: "불행" },
   { key: "unhealthy", label: "비건강" },
-  { key: "moneylosing", label: "돈버는일" },
+  { key: "moneylosing", label: "시급 저하" },
 ];
 
 function buildPlanCompareChartItems(categories) {

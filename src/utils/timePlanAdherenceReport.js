@@ -15,7 +15,7 @@ const CATEGORY_LABELS = {
   media_watch: "미디어",
   unhappiness: "불행",
   unhealthy: "비건강",
-  moneylosing: "돈 잃는 일",
+  moneylosing: "시급 저하",
   work: "근무",
   sleep: "수면",
   other: "기타",
