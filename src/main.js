@@ -9,6 +9,7 @@ import "./styles/calendar.css";
 import "./styles/stamp-calendar.css";
 import "./styles/todo-list.css";
 import "./styles/kpi-dream.css";
+import "./styles/habit-tracker.css";
 import "./styles/lp-pwa-install.css";
 import "./styles/lp-app-loading.css";
 import { showOnly } from "./pages.js";

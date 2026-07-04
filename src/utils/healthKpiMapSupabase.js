@@ -518,6 +518,7 @@ function rowToKpi(r) {
     useTimeAsUnit: !!r.use_time_as_unit,
     useTaskCompletionGoal: !!r.use_task_completion_goal,
     direction: r.direction === "lower" ? "lower" : "higher",
+    habitTrackerStartDate: r.habit_tracker_start_date ?? "",
     serverUpdatedAt: serverUpdatedAtFromRow(r),
   };
 }
@@ -729,6 +730,7 @@ function kpiToRow(userId, k) {
     use_time_as_unit: !!k.useTimeAsUnit,
     use_task_completion_goal: !!k.useTaskCompletionGoal,
     direction: k.direction === "lower" ? "lower" : "higher",
+    habit_tracker_start_date: (k.habitTrackerStartDate || "").trim(),
   };
 }
 
@@ -955,7 +957,9 @@ function shouldDeferHealthKpiPullWhileLocalUpdatePending() {
 /** @returns {Promise<boolean>} 서버 데이터로 로컬을 갱신했으면 true */
 async function pullHealthKpiMapFromSupabaseImpl(opts = {}) {
   const force = !!opts.force;
-  const skipTodos = !!opts.skipTodos;
+  const habitTrackerLite = !!opts.habitTrackerLite;
+  const skipTodos = !!opts.skipTodos || habitTrackerLite;
+  const skipLogs = !!opts.skipLogs;
   if (!force && shouldDeferHealthKpiPullWhileLocalUpdatePending()) return false;
   const userId = await getSessionUserId();
   if (!userId || !supabase) {
@@ -972,21 +976,36 @@ async function pullHealthKpiMapFromSupabaseImpl(opts = {}) {
   }
 
   const emptyTodoRes = { data: [], error: null };
+  const emptyLogRes = { data: [], error: null };
+  const emptyRowRes = { data: [], error: null };
   const [catRes, goalLogRes, kpiRes, logRes, todoRes, dailyRes, metaRes] = await Promise.all([
-    supabase.from("health_map_categories").select("*").eq("user_id", userId),
-    supabase.from("health_map_goal_logs").select("*").eq("user_id", userId),
+    habitTrackerLite
+      ? Promise.resolve(emptyRowRes)
+      : supabase.from("health_map_categories").select("*").eq("user_id", userId),
+    habitTrackerLite
+      ? Promise.resolve(emptyRowRes)
+      : supabase.from("health_map_goal_logs").select("*").eq("user_id", userId),
     supabase.from("health_map_kpis").select("*").eq("user_id", userId),
-    supabase.from("health_map_kpi_logs").select("*").eq("user_id", userId),
+    skipLogs
+      ? Promise.resolve(emptyLogRes)
+      : supabase.from("health_map_kpi_logs").select("*").eq("user_id", userId),
     skipTodos
       ? Promise.resolve(emptyTodoRes)
       : supabase.from("health_map_kpi_todos").select("*").eq("user_id", userId),
     skipTodos
       ? Promise.resolve(emptyTodoRes)
       : supabase.from("health_map_kpi_daily_todos").select("*").eq("user_id", userId),
-    supabase.from("health_map_meta").select("*").eq("user_id", userId).maybeSingle(),
+    habitTrackerLite
+      ? Promise.resolve({ data: null, error: null })
+      : supabase.from("health_map_meta").select("*").eq("user_id", userId).maybeSingle(),
   ]);
 
-  for (const res of [catRes, goalLogRes, kpiRes, logRes, ...(skipTodos ? [] : [todoRes, dailyRes])]) {
+  for (const res of [
+    ...(habitTrackerLite ? [] : [catRes, goalLogRes]),
+    kpiRes,
+    ...(skipLogs ? [] : [logRes]),
+    ...(skipTodos ? [] : [todoRes, dailyRes]),
+  ]) {
     if (res.error) {
       logKpiServerSnapshot("health", { op: "pull", ok: false, error: res.error.message, step: "table" });
       kpiSyncDebugLog("건강 pull", { ok: false, error: res.error.message });
@@ -1002,23 +1021,34 @@ async function pullHealthKpiMapFromSupabaseImpl(opts = {}) {
   const categories = catRes.data || [];
   const goalLogs = goalLogRes.data || [];
   const kpis = kpiRes.data || [];
-  const logs = logRes.data || [];
+  const logs = skipLogs ? [] : logRes.data || [];
   const todos = skipTodos ? [] : todoRes.data || [];
   const daily = skipTodos ? [] : dailyRes.data || [];
   const meta = metaRes.data;
   const localBeforePull = readLocalPayload();
 
-  if (hasAnyNormalizedData(categories, goalLogs, kpis, logs, todos, daily, meta)) {
+  const serverHasRows = habitTrackerLite
+    ? kpis.length > 0 || logs.length > 0
+    : hasAnyNormalizedData(categories, goalLogs, kpis, logs, todos, daily, meta);
+
+  if (serverHasRows) {
     const serverPayload = buildPayloadFromNormalizedRows(
-      categories,
-      goalLogs,
+      habitTrackerLite ? [] : categories,
+      habitTrackerLite ? [] : goalLogs,
       kpis,
       logs,
-      todos,
-      daily,
-      meta,
+      habitTrackerLite ? [] : todos,
+      habitTrackerLite ? [] : daily,
+      habitTrackerLite ? null : meta,
     );
     let snapshot = normalizePayload(serverPayload);
+    if (habitTrackerLite && localBeforePull) {
+      snapshot = normalizePayload({
+        ...localBeforePull,
+        kpis: snapshot.kpis || [],
+        kpiLogs: snapshot.kpiLogs || [],
+      });
+    }
     if (skipTodos && localBeforePull) {
       snapshot = normalizePayload({
         ...snapshot,
@@ -1028,6 +1058,16 @@ async function pullHealthKpiMapFromSupabaseImpl(opts = {}) {
           ...(snapshot.deletedRefs || {}),
           kpiTodos: localBeforePull.deletedRefs?.kpiTodos || [],
           kpiDailyRepeatTodos: localBeforePull.deletedRefs?.kpiDailyRepeatTodos || [],
+        },
+      });
+    }
+    if (skipLogs && localBeforePull) {
+      snapshot = normalizePayload({
+        ...snapshot,
+        kpiLogs: localBeforePull.kpiLogs || [],
+        deletedRefs: {
+          ...(snapshot.deletedRefs || {}),
+          kpiLogs: localBeforePull.deletedRefs?.kpiLogs || [],
         },
       });
     }
@@ -1149,7 +1189,7 @@ async function pullHealthKpiMapFromSupabaseImpl(opts = {}) {
   return true;
 }
 
-/** @param {{ force?: boolean, skipTodos?: boolean }} [opts] */
+/** @param {{ force?: boolean, skipTodos?: boolean, skipLogs?: boolean, habitTrackerLite?: boolean }} [opts] */
 export function pullHealthKpiMapFromSupabase(opts = {}) {
   const o = opts && typeof opts === "object" ? opts : { force: !!opts };
   return runSerializedHealthKpiServerOp(() => pullHealthKpiMapFromSupabaseImpl(o));

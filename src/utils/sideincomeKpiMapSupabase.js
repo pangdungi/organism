@@ -210,6 +210,7 @@ function rowToKpi(r) {
     useTimeAsUnit: !!r.use_time_as_unit,
     useTaskCompletionGoal: !!r.use_task_completion_goal,
     direction: r.direction === "lower" ? "lower" : "higher",
+    habitTrackerStartDate: r.habit_tracker_start_date ?? "",
     serverUpdatedAt: serverUpdatedAtFromRow(r),
   };
 }
@@ -428,6 +429,7 @@ function kpiToRow(userId, k) {
     use_time_as_unit: !!k.useTimeAsUnit,
     use_task_completion_goal: !!k.useTaskCompletionGoal,
     direction: k.direction === "lower" ? "lower" : "higher",
+    habit_tracker_start_date: (k.habitTrackerStartDate || "").trim(),
   };
 }
 
@@ -656,7 +658,11 @@ function shouldDeferSideincomeKpiPullWhileLocalUpdatePending() {
 }
 
 /** @returns {Promise<boolean>} */
-async function pullSideincomeKpiMapFromSupabaseImpl(force = false) {
+async function pullSideincomeKpiMapFromSupabaseImpl(opts = {}) {
+  const force = !!opts.force;
+  const habitTrackerLite = !!opts.habitTrackerLite;
+  const skipTodos = !!opts.skipTodos || habitTrackerLite;
+  const skipLogs = !!opts.skipLogs;
   if (!force && shouldDeferSideincomeKpiPullWhileLocalUpdatePending()) return false;
   const userId = await getSessionUserId();
   if (!userId || !supabase) {
@@ -672,17 +678,37 @@ async function pullSideincomeKpiMapFromSupabaseImpl(force = false) {
     return false;
   }
 
+  const emptyLogRes = { data: [], error: null };
+  const emptyTodoRes = { data: [], error: null };
+  const emptyRowRes = { data: [], error: null };
   const [pathRes, plRes, kpiRes, klRes, todoRes, dailyRes, metaRes] = await Promise.all([
-    supabase.from("sideincome_map_paths").select("*").eq("user_id", userId),
-    supabase.from("sideincome_map_path_logs").select("*").eq("user_id", userId),
+    habitTrackerLite
+      ? Promise.resolve(emptyRowRes)
+      : supabase.from("sideincome_map_paths").select("*").eq("user_id", userId),
+    habitTrackerLite
+      ? Promise.resolve(emptyRowRes)
+      : supabase.from("sideincome_map_path_logs").select("*").eq("user_id", userId),
     supabase.from("sideincome_map_kpis").select("*").eq("user_id", userId),
-    supabase.from("sideincome_map_kpi_logs").select("*").eq("user_id", userId),
-    supabase.from("sideincome_map_kpi_todos").select("*").eq("user_id", userId),
-    supabase.from("sideincome_map_kpi_daily_todos").select("*").eq("user_id", userId),
-    supabase.from("sideincome_map_meta").select("*").eq("user_id", userId).maybeSingle(),
+    skipLogs
+      ? Promise.resolve(emptyLogRes)
+      : supabase.from("sideincome_map_kpi_logs").select("*").eq("user_id", userId),
+    skipTodos
+      ? Promise.resolve(emptyTodoRes)
+      : supabase.from("sideincome_map_kpi_todos").select("*").eq("user_id", userId),
+    skipTodos
+      ? Promise.resolve(emptyTodoRes)
+      : supabase.from("sideincome_map_kpi_daily_todos").select("*").eq("user_id", userId),
+    habitTrackerLite
+      ? Promise.resolve({ data: null, error: null })
+      : supabase.from("sideincome_map_meta").select("*").eq("user_id", userId).maybeSingle(),
   ]);
 
-  for (const res of [pathRes, plRes, kpiRes, klRes, todoRes, dailyRes]) {
+  for (const res of [
+    ...(habitTrackerLite ? [] : [pathRes, plRes]),
+    kpiRes,
+    ...(skipLogs ? [] : [klRes]),
+    ...(skipTodos ? [] : [todoRes, dailyRes]),
+  ]) {
     if (res.error) {
       logKpiServerSnapshot("sideincome", { op: "pull", ok: false, error: res.error.message, step: "table" });
       kpiSyncDebugLog("부수입 pull", { ok: false, error: res.error.message });
@@ -698,13 +724,17 @@ async function pullSideincomeKpiMapFromSupabaseImpl(force = false) {
   const paths = pathRes.data || [];
   const pathLogs = plRes.data || [];
   const kpis = kpiRes.data || [];
-  const kpiLogs = klRes.data || [];
-  const todos = todoRes.data || [];
-  const daily = dailyRes.data || [];
+  const kpiLogs = skipLogs ? [] : klRes.data || [];
+  const todos = skipTodos ? [] : todoRes.data || [];
+  const daily = skipTodos ? [] : dailyRes.data || [];
   const meta = metaRes.data;
   const localBeforePull = readLocalPayload();
 
-  if (!hasAnyNormalizedData(paths, pathLogs, kpis, kpiLogs, todos, daily, meta)) {
+  const serverHasRows = habitTrackerLite
+    ? kpis.length > 0 || kpiLogs.length > 0
+    : hasAnyNormalizedData(paths, pathLogs, kpis, kpiLogs, todos, daily, meta);
+
+  if (!serverHasRows) {
     const localOnly = localBeforePull;
     if (localPayloadHasAnythingToPersist(localOnly)) {
       kpiTodoLifecycleLog("sideincome_pull_스킵_서버스냅샷없음_로컬유지", {
@@ -734,8 +764,33 @@ async function pullSideincomeKpiMapFromSupabaseImpl(force = false) {
     return true;
   }
 
-  const serverPayload = buildPayloadFromRows(paths, pathLogs, kpis, kpiLogs, todos, daily, meta);
-  const snapshot = normalizePayload(serverPayload);
+  const serverPayload = buildPayloadFromRows(
+    habitTrackerLite ? [] : paths,
+    habitTrackerLite ? [] : pathLogs,
+    kpis,
+    kpiLogs,
+    habitTrackerLite ? [] : todos,
+    habitTrackerLite ? [] : daily,
+    habitTrackerLite ? null : meta,
+  );
+  let snapshot = normalizePayload(serverPayload);
+  if (habitTrackerLite && localBeforePull) {
+    snapshot = normalizePayload({
+      ...localBeforePull,
+      kpis: snapshot.kpis || [],
+      kpiLogs: snapshot.kpiLogs || [],
+    });
+  }
+  if (skipLogs && localBeforePull && !habitTrackerLite) {
+    snapshot = normalizePayload({
+      ...snapshot,
+      kpiLogs: localBeforePull.kpiLogs || [],
+      deletedRefs: {
+        ...(snapshot.deletedRefs || {}),
+        kpiLogs: localBeforePull.deletedRefs?.kpiLogs || [],
+      },
+    });
+  }
   kpiTodoLifecyclePullCompare(
     "sideincome",
     SIDEINCOME_KPI_MAP_STORAGE_KEY,
@@ -787,10 +842,10 @@ async function pullSideincomeKpiMapFromSupabaseImpl(force = false) {
   return true;
 }
 
-/** @param {{ force?: boolean }} [opts] */
-export function pullSideincomeKpiMapFromSupabase(opts) {
-  const force = !!(opts && opts.force);
-  return runSerializedSideincomeKpiServerOp(() => pullSideincomeKpiMapFromSupabaseImpl(force));
+/** @param {{ force?: boolean, skipLogs?: boolean, skipTodos?: boolean, habitTrackerLite?: boolean }} [opts] */
+export function pullSideincomeKpiMapFromSupabase(opts = {}) {
+  const o = opts && typeof opts === "object" ? opts : { force: !!opts };
+  return runSerializedSideincomeKpiServerOp(() => pullSideincomeKpiMapFromSupabaseImpl(o));
 }
 
 async function runSideincomeKpiMapSyncOnce() {

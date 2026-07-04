@@ -191,6 +191,7 @@ function rowToKpi(r) {
     useTimeAsUnit: !!r.use_time_as_unit,
     useTaskCompletionGoal: !!r.use_task_completion_goal,
     direction: r.direction === "lower" ? "lower" : "higher",
+    habitTrackerStartDate: r.habit_tracker_start_date ?? "",
     serverUpdatedAt: serverUpdatedAtFromRow(r),
   };
 }
@@ -387,6 +388,7 @@ function kpiToRow(userId, k) {
     use_time_as_unit: !!k.useTimeAsUnit,
     use_task_completion_goal: !!k.useTaskCompletionGoal,
     direction: k.direction === "lower" ? "lower" : "higher",
+    habit_tracker_start_date: (k.habitTrackerStartDate || "").trim(),
   };
 }
 
@@ -629,8 +631,10 @@ function shouldDeferDreamKpiPullWhileLocalUpdatePending() {
 }
 
 /** @returns {Promise<boolean>} 서버 데이터로 로컬을 갱신했으면 true */
-async function pullDreamKpiMapFromSupabaseImpl(force = false) {
-  kpiTodoFineTrace("dream.pull:진입", { force: !!force });
+async function pullDreamKpiMapFromSupabaseImpl(opts = {}) {
+  const force = !!opts.force;
+  const skipLogs = !!opts.skipLogs;
+  kpiTodoFineTrace("dream.pull:진입", { force: !!force, skipLogs });
   if (!force && shouldDeferDreamKpiPullWhileLocalUpdatePending()) {
     kpiTodoFineTrace("dream.pull:스킵(로컬→서버반영대기중)");
     return false;
@@ -649,16 +653,25 @@ async function pullDreamKpiMapFromSupabaseImpl(force = false) {
     return false;
   }
 
+  const emptyLogRes = { data: [], error: null };
   const [catRes, kpiRes, logRes, todoRes, dailyRes, metaRes] = await Promise.all([
     supabase.from("dream_map_categories").select("*").eq("user_id", userId),
     supabase.from("dream_map_kpis").select("*").eq("user_id", userId),
-    supabase.from("dream_map_kpi_logs").select("*").eq("user_id", userId),
+    skipLogs
+      ? Promise.resolve(emptyLogRes)
+      : supabase.from("dream_map_kpi_logs").select("*").eq("user_id", userId),
     supabase.from("dream_map_kpi_todos").select("*").eq("user_id", userId),
     supabase.from("dream_map_kpi_daily_todos").select("*").eq("user_id", userId),
     supabase.from("dream_map_meta").select("*").eq("user_id", userId).maybeSingle(),
   ]);
 
-  for (const res of [catRes, kpiRes, logRes, todoRes, dailyRes]) {
+  for (const res of [
+    catRes,
+    kpiRes,
+    ...(skipLogs ? [] : [logRes]),
+    todoRes,
+    dailyRes,
+  ]) {
     if (res.error) {
       logKpiServerSnapshot("dream", { op: "pull", ok: false, error: res.error.message, step: "table" });
       kpiSyncDebugLog("꿈 pull", { ok: false, error: res.error.message });
@@ -673,7 +686,7 @@ async function pullDreamKpiMapFromSupabaseImpl(force = false) {
 
   const categories = catRes.data || [];
   const kpis = kpiRes.data || [];
-  const logs = logRes.data || [];
+  const logs = skipLogs ? [] : logRes.data || [];
   const todos = todoRes.data || [];
   const daily = dailyRes.data || [];
   const meta = metaRes.data;
@@ -697,16 +710,27 @@ async function pullDreamKpiMapFromSupabaseImpl(force = false) {
       meta,
     );
     const snapshot = normalizePayload(serverPayload);
+    let merged = snapshot;
+    if (skipLogs && localBeforePull) {
+      merged = normalizePayload({
+        ...merged,
+        kpiLogs: localBeforePull.kpiLogs || [],
+        deletedRefs: {
+          ...(merged.deletedRefs || {}),
+          kpiLogs: localBeforePull.deletedRefs?.kpiLogs || [],
+        },
+      });
+    }
     kpiTodoLifecyclePullCompare(
       "dream",
       DREAM_KPI_MAP_STORAGE_KEY,
       localBeforePull,
-      snapshot,
+      merged,
       "서버스냅샷_setItem직전",
       { dbKpiTodoRows: todos.length },
     );
     try {
-      writeKpiMapScopedStorageRaw(DREAM_KPI_MAP_STORAGE_KEY, JSON.stringify(snapshot));
+      writeKpiMapScopedStorageRaw(DREAM_KPI_MAP_STORAGE_KEY, JSON.stringify(merged));
     } catch (_) {}
     kpiTodoFineTrace("dream.pull:서버스냅샷으로localStorage_setItem_함", {
       스냅샷할일수: (snapshot.kpiTodos || []).length,
@@ -792,11 +816,11 @@ async function pullDreamKpiMapFromSupabaseImpl(force = false) {
 }
 
 /**
- * @param {{ force?: boolean }} [opts] — force: 탭 진입·hydrate 등, 대기 중이어도 서버 스냅샷으로 맞춤
+ * @param {{ force?: boolean, skipLogs?: boolean }} [opts] — force: 탭 진입·hydrate 등, 대기 중이어도 서버 스냅샷으로 맞춤
  */
-export function pullDreamKpiMapFromSupabase(opts) {
-  const force = !!(opts && opts.force);
-  return runSerializedDreamKpiServerOp(() => pullDreamKpiMapFromSupabaseImpl(force));
+export function pullDreamKpiMapFromSupabase(opts = {}) {
+  const o = opts && typeof opts === "object" ? opts : { force: !!opts };
+  return runSerializedDreamKpiServerOp(() => pullDreamKpiMapFromSupabaseImpl(o));
 }
 
 async function runDreamKpiMapSyncOnce() {

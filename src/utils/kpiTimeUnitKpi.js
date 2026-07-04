@@ -20,6 +20,10 @@ import {
 import { normalizeKpiLogDateYmd } from "./timeKpiSync.js";
 import { buildModalNativeDateFieldMarkup } from "./modalNativeDateField.js";
 import { setupDeadlineQuickButtons } from "./deadlineQuickButtons.js";
+import {
+  ensureKpiHabitTrackerStartDate,
+  localTodayYmdForHabitStart,
+} from "./kpiHabitTrackerStartDate.js";
 
 function localTodayYmd() {
   const d = new Date();
@@ -361,6 +365,9 @@ export function readKpiGoalModeFormFields(
         targetTimeRequired: "",
         targetStartDate: "",
         targetDeadline: "",
+        ...(opts.isNewKpi
+          ? { habitTrackerStartDate: localTodayYmdForHabitStart() }
+          : {}),
       };
     }
     return {
@@ -372,6 +379,9 @@ export function readKpiGoalModeFormFields(
       targetTimeRequired: "",
       targetStartDate: "",
       targetDeadline: "",
+      ...(opts.isNewKpi
+        ? { habitTrackerStartDate: localTodayYmdForHabitStart() }
+        : {}),
     };
   }
   return {
@@ -403,6 +413,12 @@ export function applyKpiFormGoalFieldsToKpi(target, form, opts = {}) {
   target.targetTimeRequired = fields.targetTimeRequired;
   target.targetStartDate = fields.targetStartDate;
   target.targetDeadline = fields.targetDeadline;
+  if (fields.needHabitTracker) {
+    ensureKpiHabitTrackerStartDate(target);
+    if (fields.habitTrackerStartDate && !target.habitTrackerStartDate) {
+      target.habitTrackerStartDate = fields.habitTrackerStartDate;
+    }
+  }
 }
 
 export function bindKpiGoalModeForm(form, kpi = null, opts = {}) {

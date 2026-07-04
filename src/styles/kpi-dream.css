@@ -721,10 +721,44 @@
 }
 
 .lp-kpi-dream-page .dream-kpi-detail-wrap .dream-kpi-bottom-seg-bar,
-.lp-kpi-dream-page .dream-kpi-detail-wrap .dream-kpi-bottom-seg-row {
+.lp-kpi-dream-page .dream-kpi-detail-wrap .dream-kpi-bottom-seg-row,
+.lp-kpi-dream-page .dream-kpi-detail-wrap .dream-kpi-detail-section-head-row {
   flex: 0 0 auto;
   flex-shrink: 0;
-  align-self: center;
+  align-self: stretch;
+}
+
+.lp-kpi-dream-page .dream-kpi-detail-sections--stacked {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  width: 100%;
+}
+
+.lp-kpi-dream-page .dream-kpi-detail-section-head-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin: 0 0 0.15rem;
+}
+
+.lp-kpi-dream-page .dream-kpi-detail-section-head-row .dream-kpi-detail-section-head-center {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.lp-kpi-dream-page .dream-kpi-detail-section-header {
+  margin: 0;
+}
+
+.lp-kpi-dream-page .dream-kpi-detail-sections--stacked .dream-kpi-bottom-seg-panel {
+  display: flex !important;
+}
+
+.lp-kpi-dream-page .dream-kpi-detail-sections--stacked .dream-kpi-bottom-seg-panel[hidden] {
+  display: flex !important;
 }
 
 .lp-kpi-dream-page .dream-kpi-detail-wrap .dream-kpi-bottom-seg-btn {

@@ -1,8 +1,8 @@
 /**
  * 꿈·부수입·행복·건강 KPI 맵
  * - 고정 pull(읽기): `pullKpiTabFromCloud` — 꿈/건강/행복/부수입 **상위 앱 탭** 클릭 시 `force: true`.
- *   **건강·행복**: KPI·로그만 먼저(await), 할일은 KPI 상세 진입 시, 시간기록(세션 구간)·습관 sync 는 백그라운드.
- *   **꿈·부수입**: 시간가계부 pull 과 KPI 맵 pull 병렬 후 `syncHabitTrackerLogs`.
+ *   **건강·행복**: KPI·할일(await, KPI 로그 제외), 시간기록·습관 sync 는 백그라운드.
+ *   **꿈·부수입**: KPI·할일(await, KPI 로그 제외), 시간기록 pull 병렬.
  * - 서브 pull: `pullKpiMapSubViewFromCloud` — 탭 **내부**에서 꿈/경로/건강 **루트(상단 목표) 전환** 시만.
  *   `force: false`로 sync 진행 중이면 생략(삭제·수정 직후 낡은 서버로 덮임 방지). KPI 카드 클릭에서는 pull 안 함.
  * - push: `saveDreamMap` 등 저장 후 즉시 sync 리스너. 가시성만으로는 푸시 안 함.
@@ -67,6 +67,7 @@ async function pullLedgerForKpiTabEnter() {
 }
 
 const KPI_TAB_LITE_ENTER_IDS = new Set(["health", "happiness"]);
+const KPI_TAB_ENTER_PULL_OPTS = { force: true, skipLogs: true };
 
 /** 건강·행복 탭 — 시간기록 pull·습관 연동을 백그라운드에서 처리 */
 function scheduleKpiTabLedgerBackgroundSync(tabId) {
@@ -130,22 +131,22 @@ export async function pullKpiTabFromCloud(tabId) {
 
   if (liteEnter) {
     if (tabId === "health") {
-      pullOk = await pullHealthKpiMapFromSupabase({ force: true, skipTodos: true });
+      pullOk = await pullHealthKpiMapFromSupabase(KPI_TAB_ENTER_PULL_OPTS);
       try {
         syncSleepHealthGoalLogsFromTimeLedger();
       } catch (_) {}
     } else {
-      pullOk = await pullHappinessKpiMapFromSupabase({ force: true, skipTodos: true });
+      pullOk = await pullHappinessKpiMapFromSupabase(KPI_TAB_ENTER_PULL_OPTS);
     }
     scheduleKpiTabLedgerBackgroundSync(tabId);
   } else {
     let domainPull = Promise.resolve(false);
     switch (tabId) {
       case "dream":
-        domainPull = pullDreamKpiMapFromSupabase({ force: true });
+        domainPull = pullDreamKpiMapFromSupabase(KPI_TAB_ENTER_PULL_OPTS);
         break;
       case "sideincome":
-        domainPull = pullSideincomeKpiMapFromSupabase({ force: true });
+        domainPull = pullSideincomeKpiMapFromSupabase(KPI_TAB_ENTER_PULL_OPTS);
         break;
       default:
         return { pullOk: false, localChanged: false };
@@ -198,13 +199,13 @@ export async function pullKpiTodosDomainFromCloud(kpiId) {
   if (!domain) return false;
   switch (domain) {
     case "dream":
-      return pullDreamKpiMapFromSupabase({ force: false });
+      return pullDreamKpiMapFromSupabase({ force: false, skipLogs: true });
     case "health":
       return pullHealthKpiMapTodosFromSupabase();
     case "happiness":
       return pullHappinessKpiMapTodosFromSupabase();
     case "sideincome":
-      return pullSideincomeKpiMapFromSupabase({ force: false });
+      return pullSideincomeKpiMapFromSupabase({ force: false, skipLogs: true });
     default:
       return false;
   }
@@ -224,16 +225,16 @@ export async function pullKpiMapSubViewFromCloud(tabId) {
   let domainPull = Promise.resolve(false);
   switch (tabId) {
     case "dream":
-      domainPull = pullDreamKpiMapFromSupabase({ force: false });
+      domainPull = pullDreamKpiMapFromSupabase({ force: false, skipLogs: true });
       break;
     case "health":
-      domainPull = pullHealthKpiMapFromSupabase({ force: false });
+      domainPull = pullHealthKpiMapFromSupabase({ force: false, skipLogs: true });
       break;
     case "happiness":
-      domainPull = pullHappinessKpiMapFromSupabase({ force: false });
+      domainPull = pullHappinessKpiMapFromSupabase({ force: false, skipLogs: true });
       break;
     case "sideincome":
-      domainPull = pullSideincomeKpiMapFromSupabase({ force: false });
+      domainPull = pullSideincomeKpiMapFromSupabase({ force: false, skipLogs: true });
       break;
     default:
       return false;

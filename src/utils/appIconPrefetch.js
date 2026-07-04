@@ -109,6 +109,7 @@ const CRITICAL_HOME_ICON_PATHS = [
   "/toolbaricons/menu-home/grid-goals.png",
   "/toolbaricons/menu-home/grid-health.png",
   "/toolbaricons/menu-home/grid-happiness.png",
+  "/toolbaricons/menu-home/grid-habit-tracker.png",
   "/toolbaricons/menu-home/grid-my-account.png",
   "/toolbaricons/menu-time.png",
   "/toolbaricons/menu-schedule.png",

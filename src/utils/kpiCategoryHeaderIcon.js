@@ -4,7 +4,7 @@ import { attachIconPngFallback } from "./toolbarIconUrl.js";
 
 /**
  * @param {HTMLElement} titleRow
- * @param {"dream"|"sideincome"|"happiness"|"health"} categoryKey
+ * @param {"dream"|"sideincome"|"happiness"|"health"|"habittracker"} categoryKey
  */
 export function setupKpiCategoryHeaderIcon(titleRow, categoryKey) {
   if (!titleRow) return;

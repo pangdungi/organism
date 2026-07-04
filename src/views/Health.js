@@ -51,6 +51,7 @@ import {
   effectiveKpiHistoryBottomTab,
   kpiUsesDailyTodosOnly,
   kpiHistoryFooterShowsAddButton,
+  KPI_DETAIL_LOGS_UI_ENABLED,
   KPI_BOTTOM_TAB_LOG,
   KPI_BOTTOM_TAB_TODO,
   KPI_BOTTOM_TAB_DAILY,
@@ -71,10 +72,10 @@ import {
   sortNormalizedKpiTodoRows,
 } from "../utils/kpiMapTodoListOrder.js";
 import { mountKpiSegBarClearCompletedRow } from "../utils/kpiTodoBulkDeleteUi.js";
+import { mountKpiDetailStackedSections } from "../utils/kpiDetailSectionUi.js";
 import { formatKpiCardHeroHtml } from "../utils/kpiViewModal.js";
 import { kpiFilterEmptyListMessage } from "../utils/kpiFilterEmptyMessage.js";
 import { buildKpiListPaintSignature } from "../utils/kpiListPaintSignature.js";
-import { pullKpiDetailTodosFromCloud } from "../utils/kpiTabCloudRefresh.js";
 import { confirmKpiActionDelete } from "../utils/confirmModal.js";
 import { showKpiTodoEditModal } from "../utils/kpiTodoEditModal.js";
 import {
@@ -582,12 +583,6 @@ export function render() {
     healthViewScreen = "kpiDetail";
     syncHealthHeader();
     updateHealthView();
-    void pullKpiDetailTodosFromCloud("health").then(() => {
-      if (!el.isConnected || healthViewScreen !== "kpiDetail" || selectedKpiId !== kpiId) {
-        return;
-      }
-      syncHealthUiFromStoredMap();
-    });
   }
 
   function exitToHealthMain() {
@@ -1285,8 +1280,10 @@ export function render() {
       return;
     }
     const needHabitTracker = !!kpi.needHabitTracker;
-    const storedLogs = getKpiLogs(selectedKpiId);
-    const logs = resolveKpiDetailLogEntriesLocal(kpi, storedLogs);
+    const storedLogs = KPI_DETAIL_LOGS_UI_ENABLED ? getKpiLogs(selectedKpiId) : [];
+    const logs = KPI_DETAIL_LOGS_UI_ENABLED
+      ? resolveKpiDetailLogEntriesLocal(kpi, storedLogs)
+      : [];
     const selKpi = String(selectedKpiId);
     const todos = (data.kpiTodos || []).filter(
       (t) => String(t.kpiId) === selKpi && (t.text || "").trim() !== "",
@@ -1334,25 +1331,41 @@ export function render() {
       }
     };
 
-    const segBar = document.createElement("div");
-    segBar.className = "dream-kpi-bottom-seg-bar";
-    segBar.setAttribute("role", "tablist");
-    segBar.setAttribute("aria-label", "할 일·매일 할 일·로그 전환");
+    const todoSegLabel = isHealthCheckupKpi(kpi) ? "검진 목록" : "할 일";
 
-    const btnSegLog = document.createElement("button");
-    btnSegLog.type = "button";
-    btnSegLog.className = "dream-kpi-bottom-seg-btn";
-    btnSegLog.textContent = "로그";
-    btnSegLog.setAttribute("role", "tab");
+    const segBar = KPI_DETAIL_LOGS_UI_ENABLED ? document.createElement("div") : null;
+    if (segBar) {
+      segBar.className = "dream-kpi-bottom-seg-bar";
+      segBar.setAttribute("role", "tablist");
+      segBar.setAttribute("aria-label", "할 일·매일 할 일·로그 전환");
+    }
 
-    const btnSegTodo = document.createElement("button");
-    btnSegTodo.type = "button";
-    btnSegTodo.className = "dream-kpi-bottom-seg-btn";
-    btnSegTodo.textContent = isHealthCheckupKpi(kpi) ? "검진 목록" : "할 일";
-    btnSegTodo.setAttribute("role", "tab");
+    let btnSegLog = null;
+    let panelLogSeg = null;
+    if (KPI_DETAIL_LOGS_UI_ENABLED) {
+      btnSegLog = document.createElement("button");
+      btnSegLog.type = "button";
+      btnSegLog.className = "dream-kpi-bottom-seg-btn";
+      btnSegLog.textContent = "로그";
+      btnSegLog.setAttribute("role", "tab");
+
+      panelLogSeg = document.createElement("div");
+      panelLogSeg.className =
+        "dream-kpi-bottom-seg-panel dream-kpi-bottom-seg-panel--log";
+      panelLogSeg.setAttribute("role", "tabpanel");
+      appendKpiDailyLogBlock(panelLogSeg, logs);
+    }
+
+    const btnSegTodo = KPI_DETAIL_LOGS_UI_ENABLED ? document.createElement("button") : null;
+    if (btnSegTodo) {
+      btnSegTodo.type = "button";
+      btnSegTodo.className = "dream-kpi-bottom-seg-btn";
+      btnSegTodo.textContent = todoSegLabel;
+      btnSegTodo.setAttribute("role", "tab");
+    }
 
     let btnSegDaily = null;
-    if (hasDailyTab) {
+    if (hasDailyTab && KPI_DETAIL_LOGS_UI_ENABLED) {
       btnSegDaily = document.createElement("button");
       btnSegDaily.type = "button";
       btnSegDaily.className = "dream-kpi-bottom-seg-btn";
@@ -1360,17 +1373,11 @@ export function render() {
       btnSegDaily.setAttribute("role", "tab");
     }
 
-    if (!dailyTodosOnly) {
-      segBar.appendChild(btnSegTodo);
+    if (segBar) {
+      if (!dailyTodosOnly && btnSegTodo) segBar.appendChild(btnSegTodo);
+      if (btnSegDaily) segBar.appendChild(btnSegDaily);
+      if (btnSegLog) segBar.appendChild(btnSegLog);
     }
-    if (btnSegDaily) segBar.appendChild(btnSegDaily);
-    segBar.appendChild(btnSegLog);
-
-    const panelLogSeg = document.createElement("div");
-    panelLogSeg.className =
-      "dream-kpi-bottom-seg-panel dream-kpi-bottom-seg-panel--log";
-    panelLogSeg.setAttribute("role", "tabpanel");
-    appendKpiDailyLogBlock(panelLogSeg, logs);
 
     let panelTodoSeg = null;
     if (!dailyTodosOnly) {
@@ -1549,38 +1556,53 @@ export function render() {
       panelDailySeg.appendChild(dailyList);
     }
 
-    const segBarMount = mountKpiSegBarClearCompletedRow(segBar, {
+    const clearCompletedOpts = {
       showClearCompleted: !dailyTodosOnly,
       kpiId: selKpi,
       loadMap: loadHealthMap,
       saveMap: saveHealthMap,
       appendDeletedRef,
       onAfterDelete: () => renderKpiDetailView({ scrollTodoAfterMutation: true }),
-    });
-    target.appendChild(segBarMount);
-    target.appendChild(panelLogSeg);
-    if (panelTodoSeg) target.appendChild(panelTodoSeg);
-    if (panelDailySeg) target.appendChild(panelDailySeg);
+    };
 
-    wireKpiHistoryBottomTabs(
-      "health",
-      selectedKpiId,
-      btnSegLog,
-      dailyTodosOnly ? null : btnSegTodo,
-      btnSegDaily,
-      panelLogSeg,
-      dailyTodosOnly ? null : panelTodoSeg,
-      panelDailySeg,
-      hasDailyTab,
-      () => syncAppFooterHealthKpiActions(),
-      { dailyTodosOnly },
-    );
+    if (KPI_DETAIL_LOGS_UI_ENABLED && segBar) {
+      const segBarMount = mountKpiSegBarClearCompletedRow(segBar, clearCompletedOpts);
+      target.appendChild(segBarMount);
+      if (panelLogSeg) target.appendChild(panelLogSeg);
+      if (panelTodoSeg) target.appendChild(panelTodoSeg);
+      if (panelDailySeg) target.appendChild(panelDailySeg);
+      wireKpiHistoryBottomTabs(
+        "health",
+        selectedKpiId,
+        btnSegLog,
+        dailyTodosOnly ? null : btnSegTodo,
+        btnSegDaily,
+        panelLogSeg,
+        dailyTodosOnly ? null : panelTodoSeg,
+        panelDailySeg,
+        hasDailyTab,
+        () => syncAppFooterHealthKpiActions(),
+        { dailyTodosOnly },
+      );
+    } else {
+      mountKpiDetailStackedSections(target, {
+        namespace: "health",
+        kpiId: selKpi,
+        todoPanel: panelTodoSeg,
+        dailyPanel: panelDailySeg,
+        dailyTodosOnly,
+        hasDailyTab,
+        todoTitle: todoSegLabel,
+        dailyTitle: healthKpiDailyTabLabel(kpi),
+        clearCompleted: clearCompletedOpts,
+      });
+    }
     if (scrollTodoAfterMutation) {
       afterKpiTodoListMutationScroll(target);
     }
     syncAppFooterHealthKpiActions();
 
-    if (kpiDetailLogsNeedCloudPull(kpi, storedLogs)) {
+    if (KPI_DETAIL_LOGS_UI_ENABLED && panelLogSeg && kpiDetailLogsNeedCloudPull(kpi, storedLogs)) {
       void resolveKpiDetailLogEntriesPrepared(kpi, storedLogs).then((freshLogs) => {
         if (!panelLogSeg.isConnected) return;
         panelLogSeg.replaceChildren();

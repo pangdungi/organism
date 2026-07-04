@@ -21,6 +21,7 @@ import { render as renderHappiness } from "./views/Happiness.js";
 import { render as renderHealth } from "./views/Health.js";
 import { render as renderIdea } from "./views/Idea.js";
 import { render as renderAdmin } from "./views/Admin.js";
+import { render as renderHabitTracker } from "./views/HabitTracker.js";
 import { supabase } from "./supabase.js";
 import { getSupabaseSession } from "./utils/supabaseSession.js";
 import { isAppAdminUser } from "./utils/adminAccess.js";
@@ -44,6 +45,7 @@ import {
   resetTimeLedgerSessionFilterToToday,
 } from "./utils/timeLedgerEntriesSupabase.js";
 import { pullKpiTabFromCloud } from "./utils/kpiTabCloudRefresh.js";
+import { pullHabitTrackerTabFromCloud } from "./utils/habitTrackerCloudRefresh.js";
 import { syncSleepHealthGoalLogsFromTimeLedger } from "./utils/healthSleepGoalTimeLedgerSync.js";
 import {
   clearKpiTabPullPending,
@@ -138,8 +140,10 @@ const HOME_MENU_TAB_ORDER = [
   "sideincome",
   "health",
   "happiness",
-  "idea",
+  "habittracker",
 ];
+
+const HOME_MENU_ACCOUNT_ICON = "/toolbaricons/menu-home/grid-my-account.png";
 
 /** 홈 메뉴 2×3 격자 타일(아이콘+영문 라벨 이미지) */
 const HOME_MENU_ICON = {
@@ -148,7 +152,7 @@ const HOME_MENU_ICON = {
   sideincome: "/toolbaricons/menu-home/grid-goals.png",
   health: "/toolbaricons/menu-home/grid-health.png",
   happiness: "/toolbaricons/menu-home/grid-happiness.png",
-  idea: "/toolbaricons/menu-home/grid-my-account.png",
+  habittracker: "/toolbaricons/menu-home/grid-habit-tracker.png",
 };
 
 
@@ -157,7 +161,14 @@ function tabMetaById(tabId) {
     return {
       id: "idea",
       label: "나의 계정",
-      icon: "/toolbaricons/menu-account.png",
+      icon: HOME_MENU_ACCOUNT_ICON,
+    };
+  }
+  if (tabId === "habittracker") {
+    return {
+      id: "habittracker",
+      label: "습관관리",
+      icon: HOME_MENU_ICON.habittracker,
     };
   }
   return TABS.find((t) => t.id === tabId);
@@ -171,6 +182,7 @@ const RENDERERS = {
   happiness: renderHappiness,
   health: renderHealth,
   idea: renderIdea,
+  habittracker: renderHabitTracker,
   admin: renderAdmin,
 };
 
@@ -205,7 +217,7 @@ export const LP_LAST_TAB_SESSION_KEY = "lp_active_tab_id";
 export const LP_LAST_TAB_LOCAL_KEY = "lp_active_tab_id_persist";
 
 function validAppTabIdSet() {
-  return new Set([...TABS.map((t) => t.id), "idea", "admin"]);
+  return new Set([...TABS.map((t) => t.id), "idea", "habittracker", "admin"]);
 }
 
 /** @returns {boolean} 저장된 마지막 탭을 적용했으면 true */
@@ -277,6 +289,7 @@ function kpiSoftRefreshIfPullChanged(tabId, pullResult) {
     }
     else if (tabId === "happiness") window.__lpHappinessSoftRefresh?.();
     else if (tabId === "sideincome") window.__lpSideincomeSoftRefresh?.();
+    else if (tabId === "habittracker") window.__lpHabitTrackerSoftRefresh?.();
   } catch (_) {}
 }
 
@@ -322,6 +335,13 @@ async function pullDataForActiveTab(tabId, opts = {}) {
     case "happiness":
     case "sideincome":
       return await pullKpiTabFromCloud(tabId);
+    case "habittracker": {
+      const vm = window.__lpHabitTrackerViewMonth;
+      const now = new Date();
+      const y = Number(vm?.year) || now.getFullYear();
+      const m = Number(vm?.month) || now.getMonth() + 1;
+      return await pullHabitTrackerTabFromCloud(y, m);
+    }
     case "idea":
       await pullUserPrefsFromSupabase().catch(() => {});
       break;
@@ -586,6 +606,10 @@ export async function mountApp(container) {
           try {
             window.__lpTimeLedgerSoftRefresh?.();
           } catch (_) {}
+        } else if (targetTabId === "habittracker") {
+          try {
+            window.__lpHabitTrackerSoftRefresh?.();
+          } catch (_) {}
         } else {
           renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
         }
@@ -613,6 +637,30 @@ export async function mountApp(container) {
 
     const root = document.createElement("div");
     root.className = "app-home-menu-launcher";
+
+    const topBar = document.createElement("div");
+    topBar.className = "app-home-menu-launcher-topbar";
+
+    const accountBtn = document.createElement("button");
+    accountBtn.type = "button";
+    accountBtn.className = "app-home-menu-launcher-account-btn";
+    accountBtn.title = "나의 계정";
+    accountBtn.setAttribute("aria-label", "나의 계정");
+    const accountIconWrap = document.createElement("span");
+    accountIconWrap.className = "app-home-menu-launcher-account-icon-wrap";
+    accountIconWrap.setAttribute("aria-hidden", "true");
+    const accountImg = document.createElement("img");
+    accountImg.className = "app-home-menu-launcher-account-img";
+    accountImg.src = withToolbarIconCacheVersion(HOME_MENU_ACCOUNT_ICON);
+    accountImg.alt = "";
+    applyStaticAppIconImg(accountImg);
+    accountIconWrap.appendChild(accountImg);
+    const accountLabel = document.createElement("span");
+    accountLabel.className = "app-home-menu-launcher-account-label";
+    accountLabel.textContent = "나의 계정";
+    accountBtn.append(accountIconWrap, accountLabel);
+    accountBtn.addEventListener("click", () => setActiveTab("idea"));
+    topBar.appendChild(accountBtn);
 
     const card = document.createElement("div");
     card.className = "app-home-menu-launcher-card";
@@ -659,7 +707,7 @@ export async function mountApp(container) {
     void syncAdminMenuVisibility();
 
     card.appendChild(body);
-    root.append(card, launcherAdminBtn);
+    root.append(topBar, card, launcherAdminBtn);
     homeMenuLauncherEl = root;
     bindHomeMenuLauncherAdminBtn(root);
     return root;
@@ -943,6 +991,10 @@ export async function mountApp(container) {
         bootTabId === "sideincome"
       ) {
         kpiSoftRefreshAfterPull(bootTabId, pullResult);
+      } else if (bootTabId === "habittracker") {
+        try {
+          window.__lpHabitTrackerSoftRefresh?.();
+        } catch (_) {}
       } else {
         renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
       }

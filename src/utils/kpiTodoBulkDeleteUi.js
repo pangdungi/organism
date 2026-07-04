@@ -63,10 +63,15 @@ export function mountKpiSegBarClearCompletedRow(segBar, options) {
 
   if (!showClearCompleted) return segBar;
 
+  const isSectionHead = segBar.classList?.contains("dream-kpi-detail-section-header");
   const row = document.createElement("div");
-  row.className = "dream-kpi-bottom-seg-row";
+  row.className = isSectionHead
+    ? "dream-kpi-detail-section-head-row"
+    : "dream-kpi-bottom-seg-row";
   const segBarCenter = document.createElement("div");
-  segBarCenter.className = "dream-kpi-bottom-seg-bar-center";
+  segBarCenter.className = isSectionHead
+    ? "dream-kpi-detail-section-head-center"
+    : "dream-kpi-bottom-seg-bar-center";
   segBarCenter.appendChild(segBar);
   row.appendChild(segBarCenter);
 

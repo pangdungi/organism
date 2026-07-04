@@ -20,6 +20,9 @@ export const KPI_CATEGORY_ICON_SRC = {
   sideincome: toolbarIconPng("menu-home/sideincome-new"),
   happiness: toolbarIconPng("menu-home/hapiness-new"),
   health: toolbarIconPng("menu-home/health-new"),
+  habittracker: withToolbarIconCacheVersion(
+    `${PICKER_ICON_BASE}/meditation.png`,
+  ),
 };
 
 const PICKER_SVG_SET = new Set(pickerSvgNames);
