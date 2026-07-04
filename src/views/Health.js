@@ -44,12 +44,13 @@ import {
   resolveKpiDetailLogEntriesLocal,
   kpiDetailLogsNeedCloudPull,
 } from "../utils/kpiTimeLedgerLogs.js";
-import { defaultManualKpiLogMeta, kpiLogSourceBadgeHtml, formatKpiHistoryValueText } from "../utils/kpiLogFields.js";
+import { kpiLogSourceBadgeHtml, formatKpiHistoryValueText } from "../utils/kpiLogFields.js";
 import {
   wireKpiHistoryBottomTabs,
   getKpiHistoryBottomTab,
   effectiveKpiHistoryBottomTab,
   kpiUsesDailyTodosOnly,
+  kpiHistoryFooterShowsAddButton,
   KPI_BOTTOM_TAB_LOG,
   KPI_BOTTOM_TAB_TODO,
   KPI_BOTTOM_TAB_DAILY,
@@ -777,122 +778,6 @@ export function render() {
     return `${y}-${m}-${day}`;
   }
 
-  function showKpiLogModal(kpi, editLog) {
-    const isEdit = !!editLog;
-    const modal = document.createElement("div");
-    modal.className = "time-task-setup-modal time-task-log-modal";
-    const today = new Date();
-    let dateVal = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
-    let valueVal = "";
-    let memoVal = "";
-    if (editLog) {
-      if (editLog.dateRaw) {
-        dateVal = editLog.dateRaw;
-      } else if (editLog.date) {
-        const m = editLog.date.match(/(\d{4})\.?\s*(\d{1,2})\.?\s*(\d{1,2})/);
-        if (m) dateVal = `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
-      }
-      valueVal = sanitizeNumericInput(editLog.value) || "";
-      memoVal = editLog.memo || "";
-    }
-    modal.innerHTML = `
-      <div data-legacy="time-task-setup-backdrop"></div>
-      <div data-legacy="time-task-setup-panel time-task-log-panel">
-        <div data-legacy="time-task-setup-header">
-          <h3 data-legacy="time-task-setup-title">${isEdit ? "로그 수정" : "오늘의 수치 기록"}</h3>
-          <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
-        </div>
-        <form class="dream-kpi-log-form">
-          <div data-legacy="time-task-setup-body">
-          ${kpi.direction === "lower" ? '<p class="dream-kpi-log-lower-hint">숫자가 <strong>작을수록</strong> 좋은 지표예요. 카드와 진행 막대에는 <strong>가장 최근에 입력한 숫자 하나</strong>만 반영하고, 예전 기록은 더하지 않아요.</p>' : ""}
-          <div class="dream-kpi-log-section">
-            <div class="dream-kpi-log-row">
-              <div class="dream-kpi-log-field">
-                <label>날짜</label>
-                ${buildModalNativeDateFieldMarkup({
-                  name: "date",
-                  ariaLabel: "날짜",
-                  value: dateVal,
-                })}
-              </div>
-              <div class="dream-kpi-log-field">
-                <label>KPI 항목</label>
-                <input type="text" value="${escapeHtml(kpi.name)}${kpi.unit ? " (" + escapeHtml(kpi.unit) + ")" : ""}" readonly class="dream-kpi-log-readonly" />
-              </div>
-            </div>
-            <div class="dream-kpi-log-row">
-              <div class="dream-kpi-log-field">
-                <label>${kpi.direction === "lower" ? "이날 대표값" : "오늘 측정값"}</label>
-                <input type="text" name="value" placeholder="숫자 입력" value="${escapeHtml(valueVal)}" inputmode="numeric" />
-              </div>
-            </div>
-            <div class="dream-kpi-log-field">
-              <label>메모 (선택)</label>
-              <textarea name="memo" placeholder="오늘 이 수치가 나온 이유, 특이사항 등..." rows="3">${escapeHtml(memoVal)}</textarea>
-            </div>
-          </div>
-          </div>
-          <div data-legacy="time-task-log-footer" class="dream-kpi-log-modal-footer">
-            ${isEdit ? '<button type="button" class="dream-kpi-log-modal-delete-btn" data-legacy="time-task-log-delete-btn">삭제</button>' : ""}
-            <button type="submit" data-legacy="time-task-log-submit">${isEdit ? "수정" : "로그 저장"}</button>
-          </div>
-        </form>
-      </div>
-    `;
-    const close = () => modal.remove();
-    modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
-    modal.querySelector(".dream-kpi-log-form").addEventListener("submit", (e) => {
-      e.preventDefault();
-      const form = e.target;
-      const dateVal = form.date.value;
-      const dateStr = dateVal ? `${dateVal.split("-")[0]}. ${dateVal.split("-")[1]}. ${dateVal.split("-")[2]}.` : toDateStr(new Date());
-      const data = loadHealthMap();
-      if (isEdit) {
-        const idx = data.kpiLogs.findIndex((l) => l.id === editLog.id);
-        if (idx >= 0) {
-          const row = {
-            ...data.kpiLogs[idx],
-            date: dateStr,
-            dateRaw: dateVal,
-            value: sanitizeNumericInput(form.value.value) || "",
-            memo: (form.memo.value || "").trim(),
-          };
-          delete row.status;
-          data.kpiLogs[idx] = row;
-        }
-      } else {
-        const log = {
-          id: nextId(),
-          kpiId: kpi.id,
-          healthId: kpi.healthId,
-          date: dateStr,
-          dateRaw: dateVal,
-          value: sanitizeNumericInput(form.value.value) || "",
-          memo: (form.memo.value || "").trim(),
-          ...defaultManualKpiLogMeta(),
-        };
-        data.kpiLogs = data.kpiLogs || [];
-        data.kpiLogs.push(log);
-      }
-      saveHealthMap(data, { pushServer: true });
-      close();
-      refreshHealthAfterKpiDataChange();
-    });
-    const delBtn = modal.querySelector(".dream-kpi-log-modal-delete-btn");
-    if (delBtn && isEdit) {
-      delBtn.addEventListener("click", () => {
-        const d = loadHealthMap();
-        appendDeletedRef(d, "kpiLogs", editLog.id);
-        d.kpiLogs = (d.kpiLogs || []).filter((l) => l.id !== editLog.id);
-        saveHealthMap(d, { pushServer: true });
-        close();
-        refreshHealthAfterKpiDataChange();
-      });
-    }
-    document.body.appendChild(modal);
-    setupNumericOnlyInput(modal.querySelector('input[name="value"]'));
-    initModalNativeDateFieldsIn(modal);
-  }
 
   function clearHealthKpiFooterActions() {
     clearKpiMapFooterActionButtons();
@@ -906,7 +791,6 @@ export function render() {
     if (t === KPI_BOTTOM_TAB_DAILY) {
       return isHealthSupplementKpi(kpi) ? "보충제 추가" : "매일 할 일 추가";
     }
-    return "로그 추가";
   }
 
   async function runHealthKpiFooterAddAction() {
@@ -954,7 +838,6 @@ export function render() {
       renderKpiDetailView({ scrollTodoAfterMutation: true });
       return;
     }
-    showKpiLogModal(k);
   }
 
   function syncAppFooterHealthKpiActions() {
@@ -998,6 +881,10 @@ export function render() {
     if (!kpiNow) return;
 
     const tab = getKpiHistoryBottomTab("health", selectedKpiId);
+    if (!kpiHistoryFooterShowsAddButton(tab, kpiNow)) {
+      appendKpiFooterHomeButton(slot);
+      return;
+    }
     const addLabel = healthKpiFooterAddLabel(tab, kpiNow);
     addBtn.title = addLabel;
     addBtn.setAttribute("aria-label", addLabel);
@@ -1441,16 +1328,6 @@ export function render() {
             ${dailyLine ? `<div class="dream-kpi-history-daily dream-kpi-history-daily--checked-only">${escapeHtml(dailyLine)}</div>` : ""}
           </div>
         `;
-          item.setAttribute("role", "button");
-          item.setAttribute("tabindex", "0");
-          item.title = "눌러서 수정";
-          item.addEventListener("click", () => showKpiLogModal(kpi, log));
-          item.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              showKpiLogModal(kpi, log);
-            }
-          });
           list.appendChild(item);
         });
         parentEl.appendChild(list);

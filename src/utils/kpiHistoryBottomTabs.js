@@ -36,6 +36,11 @@ export function effectiveKpiHistoryBottomTab(tab, kpi) {
   return t;
 }
 
+/** 로그 탭 — 시간기록에서만 쌓이므로 푸터「추가」 버튼 없음 */
+export function kpiHistoryFooterShowsAddButton(tab, kpi) {
+  return effectiveKpiHistoryBottomTab(tab, kpi) !== KPI_BOTTOM_TAB_LOG;
+}
+
 export function setKpiHistoryBottomTab(namespace, kpiId, tab) {
   const t =
     tab === KPI_BOTTOM_TAB_TODO
