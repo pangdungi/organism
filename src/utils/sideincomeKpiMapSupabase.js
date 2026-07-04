@@ -26,6 +26,11 @@ import {
   readKpiMapScopedStorageRaw,
   writeKpiMapScopedStorageRaw,
 } from "./kpiMapLocalStorage.js";
+import {
+  applyKpiMapExplicitDeletesOnServer,
+  sideincomeMapActiveIdsFromPayload,
+  SIDEINCOME_KPI_MAP_DELETE_TABLES,
+} from "./kpiMapServerExplicitDeletes.js";
 
 export const SIDEINCOME_KPI_MAP_STORAGE_KEY = "kpi-sideincome-paths";
 
@@ -574,6 +579,13 @@ async function upsertNormalizedFromPayload(userId, p) {
     );
     if (error) throw new Error(`sideincome_map_meta: ${error.message}`);
   }
+  await applyKpiMapExplicitDeletesOnServer({
+    supabase,
+    userId,
+    deletedRefs: normalizeDeletedRefs(p.deletedRefs),
+    active: sideincomeMapActiveIdsFromPayload(p),
+    tables: SIDEINCOME_KPI_MAP_DELETE_TABLES,
+  });
 }
 
 async function fetchSideincomeMapPayloadFromSupabase(userId) {
@@ -698,9 +710,7 @@ async function pullSideincomeKpiMapFromSupabaseImpl(opts = {}) {
     skipTodos
       ? Promise.resolve(emptyTodoRes)
       : supabase.from("sideincome_map_kpi_daily_todos").select("*").eq("user_id", userId),
-    habitTrackerLite
-      ? Promise.resolve({ data: null, error: null })
-      : supabase.from("sideincome_map_meta").select("*").eq("user_id", userId).maybeSingle(),
+    supabase.from("sideincome_map_meta").select("*").eq("user_id", userId).maybeSingle(),
   ]);
 
   for (const res of [
@@ -731,7 +741,7 @@ async function pullSideincomeKpiMapFromSupabaseImpl(opts = {}) {
   const localBeforePull = readLocalPayload();
 
   const serverHasRows = habitTrackerLite
-    ? kpis.length > 0 || kpiLogs.length > 0
+    ? true
     : hasAnyNormalizedData(paths, pathLogs, kpis, kpiLogs, todos, daily, meta);
 
   if (!serverHasRows) {
@@ -771,7 +781,7 @@ async function pullSideincomeKpiMapFromSupabaseImpl(opts = {}) {
     kpiLogs,
     habitTrackerLite ? [] : todos,
     habitTrackerLite ? [] : daily,
-    habitTrackerLite ? null : meta,
+    meta,
   );
   let snapshot = normalizePayload(serverPayload);
   if (habitTrackerLite && localBeforePull) {
@@ -779,6 +789,7 @@ async function pullSideincomeKpiMapFromSupabaseImpl(opts = {}) {
       ...localBeforePull,
       kpis: snapshot.kpis || [],
       kpiLogs: snapshot.kpiLogs || [],
+      deletedRefs: snapshot.deletedRefs || localBeforePull.deletedRefs,
     });
   }
   if (skipLogs && localBeforePull && !habitTrackerLite) {
@@ -931,9 +942,9 @@ async function runSideincomeKpiMapSyncOnce() {
 
     if (localPayloadHasAnythingToPersist(toSync)) {
       await upsertNormalizedFromPayloadWithRetry(userId, toSync);
-      kpiSyncTrace("sideincome", "sync:4-orphanDelete", {
-        skipped: true,
-        reason: "로컬 기준 고아 삭제 없음 — 모달·체크 저장 시 upsert만",
+      kpiSyncTrace("sideincome", "sync:4-explicitDelete", {
+        skipped: false,
+        reason: "deleted_refs id — upsertNormalizedFromPayload 내부에서 서버 DELETE",
       });
     } else {
       let metaEmptyErr = null;
@@ -953,9 +964,16 @@ async function runSideincomeKpiMapSyncOnce() {
         if (attempt < 2) await new Promise((r) => setTimeout(r, 350 * (attempt + 1)));
       }
       if (metaEmptyErr) throw new Error(`sideincome_map_meta(empty): ${metaEmptyErr.message}`);
-      kpiSyncTrace("sideincome", "sync:4-orphanDelete(emptyPayloadBranch)", {
-        skipped: true,
-        reason: "로컬 기준 고아 삭제 없음",
+      await applyKpiMapExplicitDeletesOnServer({
+        supabase,
+        userId,
+        deletedRefs: drEmpty,
+        active: sideincomeMapActiveIdsFromPayload(toSync),
+        tables: SIDEINCOME_KPI_MAP_DELETE_TABLES,
+      });
+      kpiSyncTrace("sideincome", "sync:4-explicitDelete(emptyPayloadBranch)", {
+        skipped: false,
+        reason: "deleted_refs id — empty payload 분기에서 서버 DELETE",
       });
     }
 

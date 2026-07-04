@@ -27,6 +27,11 @@ import {
   readKpiMapScopedStorageRaw,
   writeKpiMapScopedStorageRaw,
 } from "./kpiMapLocalStorage.js";
+import {
+  applyKpiMapExplicitDeletesOnServer,
+  dreamMapActiveIdsFromPayload,
+  DREAM_KPI_MAP_DELETE_TABLES,
+} from "./kpiMapServerExplicitDeletes.js";
 
 export const DREAM_KPI_MAP_STORAGE_KEY = "kpi-dream-map";
 
@@ -538,6 +543,13 @@ async function upsertNormalizedFromPayload(userId, p) {
     );
     if (error) throw new Error(`dream_map_meta: ${error.message}`);
   }
+  await applyKpiMapExplicitDeletesOnServer({
+    supabase,
+    userId,
+    deletedRefs: normalizeDeletedRefs(p.deletedRefs),
+    active: dreamMapActiveIdsFromPayload(p),
+    tables: DREAM_KPI_MAP_DELETE_TABLES,
+  });
 }
 
 function localPayloadHasAnythingToPersist(p) {
@@ -911,9 +923,9 @@ async function runDreamKpiMapSyncOnce() {
       });
       await upsertNormalizedFromPayloadWithRetry(userId, toSync);
       kpiTodoFineTrace("dream.sync:upsert완료");
-      kpiSyncTrace("dream", "sync:4-orphanDelete", {
-        skipped: true,
-        reason: "로컬 기준 고아 삭제 없음 — 모달·체크 저장 시 upsert만",
+      kpiSyncTrace("dream", "sync:4-explicitDelete", {
+        skipped: false,
+        reason: "deleted_refs id — upsertNormalizedFromPayload 내부에서 서버 DELETE",
       });
     } else {
       /* 로컬이 완전히 비었을 때도 meta 한 줄을 남겨 ‘서버 최신=비움’을 pull에서 구분 (미동기화 빈 서버와 구분) */
@@ -937,9 +949,16 @@ async function runDreamKpiMapSyncOnce() {
         if (attempt < 2) await new Promise((r) => setTimeout(r, 350 * (attempt + 1)));
       }
       if (metaEmptyErr) throw new Error(`dream_map_meta(empty): ${metaEmptyErr.message}`);
-      kpiSyncTrace("dream", "sync:4-orphanDelete(emptyPayloadBranch)", {
-        skipped: true,
-        reason: "로컬 기준 고아 삭제 없음",
+      await applyKpiMapExplicitDeletesOnServer({
+        supabase,
+        userId,
+        deletedRefs: drEmpty,
+        active: dreamMapActiveIdsFromPayload(toSync),
+        tables: DREAM_KPI_MAP_DELETE_TABLES,
+      });
+      kpiSyncTrace("dream", "sync:4-explicitDelete(emptyPayloadBranch)", {
+        skipped: false,
+        reason: "deleted_refs id — empty payload 분기에서 서버 DELETE",
       });
     }
 

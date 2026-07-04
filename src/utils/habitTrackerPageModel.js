@@ -185,6 +185,7 @@ export function buildHabitTrackerRows(year, month, opts = {}) {
     { id: "builtin-time-record", kind: "time-record", label: "시간기록하기" },
     { id: "builtin-time-plan", kind: "time-plan", label: "시간 계획하기" },
   ];
+  const seenKpiKeys = new Set();
 
   for (const { storageKey } of KPI_DOMAIN_STORAGE) {
     const data = loadKpiMapData(storageKey);
@@ -193,8 +194,12 @@ export function buildHabitTrackerRows(year, month, opts = {}) {
       if (!isKpiHabitVisibleInMonth(kpi, year, month)) continue;
       const name = String(kpi.name || "").trim();
       if (!name) continue;
+      const kpiId = String(kpi.id || "").trim();
+      const dedupeKey = `${storageKey}:${kpiId}`;
+      if (!kpiId || seenKpiKeys.has(dedupeKey)) continue;
+      seenKpiKeys.add(dedupeKey);
       rows.push({
-        id: `kpi-${String(kpi.id || "").trim()}`,
+        id: `kpi-${kpiId}`,
         kind: "kpi",
         label: name,
         kpi,

@@ -190,15 +190,7 @@
 }
 
 .lp-kpi-dream-page .habit-tracker-page-grid-th--today {
-  background-color: #eef3f8;
-}
-
-.lp-kpi-dream-page .habit-tracker-page-grid-td--today {
-  background-color: #eef3f8;
-}
-
-.lp-kpi-dream-page .habit-tracker-page-grid-td--habit.habit-tracker-page-grid-td--today {
-  background-color: #e8eef5;
+  background-color: #e8e8e8;
 }
 
 .lp-kpi-dream-page .habit-tracker-page-grid-cell--ok {

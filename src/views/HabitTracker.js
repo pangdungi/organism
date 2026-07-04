@@ -47,7 +47,7 @@ export function render() {
   }
 
   function paintGrid(opts = {}) {
-    if (!el.isConnected) return;
+    if (!opts.allowBeforeMount && !el.isConnected) return;
     syncViewMonthGlobal();
     const skipSync = opts.skipSync ?? !hasSyncedPaint;
     gridHost.replaceChildren(
@@ -86,7 +86,7 @@ export function render() {
 
   window.__lpHabitTrackerSoftRefresh = scheduleSoftRefresh;
   syncViewMonthGlobal();
-  paintGrid({ skipSync: true });
+  paintGrid({ skipSync: true, allowBeforeMount: true });
 
   return el;
 }

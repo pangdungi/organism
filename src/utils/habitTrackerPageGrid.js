@@ -126,9 +126,6 @@ export function createHabitTrackerPageGridElement(opts = {}) {
       } else if (text) {
         td.classList.add("habit-tracker-page-grid-cell--value");
       }
-      if (isCurrentMonth && dk === todayYmd) {
-        td.classList.add("habit-tracker-page-grid-td--today");
-      }
       tr.appendChild(td);
     }
     tbody.appendChild(tr);

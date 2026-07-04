@@ -26,6 +26,11 @@ import {
   readKpiMapScopedStorageRaw,
   writeKpiMapScopedStorageRaw,
 } from "./kpiMapLocalStorage.js";
+import {
+  applyKpiMapExplicitDeletesOnServer,
+  healthMapActiveIdsFromPayload,
+  HEALTH_KPI_MAP_DELETE_TABLES,
+} from "./kpiMapServerExplicitDeletes.js";
 
 export const HEALTH_KPI_MAP_STORAGE_KEY = "kpi-health-map";
 
@@ -879,6 +884,13 @@ async function upsertNormalizedFromPayload(userId, p) {
     );
     if (error) throw new Error(`health_map_meta: ${error.message}`);
   }
+  await applyKpiMapExplicitDeletesOnServer({
+    supabase,
+    userId,
+    deletedRefs: normalizeDeletedRefs(p.deletedRefs),
+    active: healthMapActiveIdsFromPayload(p),
+    tables: HEALTH_KPI_MAP_DELETE_TABLES,
+  });
 }
 
 function localPayloadHasAnythingToPersist(p) {
@@ -995,9 +1007,7 @@ async function pullHealthKpiMapFromSupabaseImpl(opts = {}) {
     skipTodos
       ? Promise.resolve(emptyTodoRes)
       : supabase.from("health_map_kpi_daily_todos").select("*").eq("user_id", userId),
-    habitTrackerLite
-      ? Promise.resolve({ data: null, error: null })
-      : supabase.from("health_map_meta").select("*").eq("user_id", userId).maybeSingle(),
+    supabase.from("health_map_meta").select("*").eq("user_id", userId).maybeSingle(),
   ]);
 
   for (const res of [
@@ -1028,7 +1038,7 @@ async function pullHealthKpiMapFromSupabaseImpl(opts = {}) {
   const localBeforePull = readLocalPayload();
 
   const serverHasRows = habitTrackerLite
-    ? kpis.length > 0 || logs.length > 0
+    ? true
     : hasAnyNormalizedData(categories, goalLogs, kpis, logs, todos, daily, meta);
 
   if (serverHasRows) {
@@ -1039,7 +1049,7 @@ async function pullHealthKpiMapFromSupabaseImpl(opts = {}) {
       logs,
       habitTrackerLite ? [] : todos,
       habitTrackerLite ? [] : daily,
-      habitTrackerLite ? null : meta,
+      meta,
     );
     let snapshot = normalizePayload(serverPayload);
     if (habitTrackerLite && localBeforePull) {
@@ -1047,6 +1057,7 @@ async function pullHealthKpiMapFromSupabaseImpl(opts = {}) {
         ...localBeforePull,
         kpis: snapshot.kpis || [],
         kpiLogs: snapshot.kpiLogs || [],
+        deletedRefs: snapshot.deletedRefs || localBeforePull.deletedRefs,
       });
     }
     if (skipTodos && localBeforePull) {
@@ -1323,9 +1334,9 @@ async function runHealthKpiMapSyncOnce() {
 
     if (localPayloadHasAnythingToPersist(toSync)) {
       await upsertNormalizedFromPayloadWithRetry(userId, toSync);
-      kpiSyncTrace("health", "sync:4-orphanDelete", {
-        skipped: true,
-        reason: "로컬 기준 고아 삭제 없음 — 모달·체크 저장 시 upsert만",
+      kpiSyncTrace("health", "sync:4-explicitDelete", {
+        skipped: false,
+        reason: "deleted_refs id — upsertNormalizedFromPayload 내부에서 서버 DELETE",
       });
     } else {
       let metaEmptyErr = null;
@@ -1345,9 +1356,16 @@ async function runHealthKpiMapSyncOnce() {
         if (attempt < 2) await new Promise((r) => setTimeout(r, 350 * (attempt + 1)));
       }
       if (metaEmptyErr) throw new Error(`health_map_meta(empty): ${metaEmptyErr.message}`);
-      kpiSyncTrace("health", "sync:4-orphanDelete(emptyPayloadBranch)", {
-        skipped: true,
-        reason: "로컬 기준 고아 삭제 없음",
+      const deleteResult = await applyKpiMapExplicitDeletesOnServer({
+        supabase,
+        userId,
+        deletedRefs: drEmpty,
+        active: healthMapActiveIdsFromPayload(toSync),
+        tables: HEALTH_KPI_MAP_DELETE_TABLES,
+      });
+      kpiSyncTrace("health", "sync:4-explicitDelete(emptyPayloadBranch)", {
+        skipped: false,
+        deleted: deleteResult.deleted,
       });
     }
 

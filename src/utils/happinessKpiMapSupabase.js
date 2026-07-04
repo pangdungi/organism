@@ -26,6 +26,11 @@ import {
   readKpiMapScopedStorageRaw,
   writeKpiMapScopedStorageRaw,
 } from "./kpiMapLocalStorage.js";
+import {
+  applyKpiMapExplicitDeletesOnServer,
+  happinessMapActiveIdsFromPayload,
+  HAPPINESS_KPI_MAP_DELETE_TABLES,
+} from "./kpiMapServerExplicitDeletes.js";
 
 export const HAPPINESS_KPI_MAP_STORAGE_KEY = "kpi-happiness-map";
 
@@ -885,6 +890,13 @@ async function upsertNormalizedFromPayload(userId, p) {
     );
     if (error) throw new Error(`happiness_map_meta: ${error.message}`);
   }
+  await applyKpiMapExplicitDeletesOnServer({
+    supabase,
+    userId,
+    deletedRefs: normalizeDeletedRefs(p.deletedRefs),
+    active: happinessMapActiveIdsFromPayload(p),
+    tables: HAPPINESS_KPI_MAP_DELETE_TABLES,
+  });
 }
 
 function localPayloadHasAnythingToPersist(p) {
@@ -1006,9 +1018,7 @@ async function pullHappinessKpiMapFromSupabaseImpl(opts = {}) {
     skipTodos
       ? Promise.resolve(emptyTodoRes)
       : supabase.from("happiness_map_kpi_daily_todos").select("*").eq("user_id", userId),
-    habitTrackerLite
-      ? Promise.resolve({ data: null, error: null })
-      : supabase.from("happiness_map_meta").select("*").eq("user_id", userId).maybeSingle(),
+    supabase.from("happiness_map_meta").select("*").eq("user_id", userId).maybeSingle(),
   ]);
 
   for (const res of [
@@ -1038,7 +1048,7 @@ async function pullHappinessKpiMapFromSupabaseImpl(opts = {}) {
   const localBeforePull = readLocalPayload();
 
   const serverHasRows = habitTrackerLite
-    ? kpis.length > 0 || logs.length > 0
+    ? true
     : hasAnyNormalizedData(categories, kpis, logs, todos, daily, meta);
 
   if (!serverHasRows) {
@@ -1077,7 +1087,7 @@ async function pullHappinessKpiMapFromSupabaseImpl(opts = {}) {
     logs,
     habitTrackerLite ? [] : todos,
     habitTrackerLite ? [] : daily,
-    habitTrackerLite ? null : meta,
+    meta,
   );
   let snapshot = normalizePayload(serverPayload);
   if (habitTrackerLite && localBeforePull) {
@@ -1085,6 +1095,7 @@ async function pullHappinessKpiMapFromSupabaseImpl(opts = {}) {
       ...localBeforePull,
       kpis: snapshot.kpis || [],
       kpiLogs: snapshot.kpiLogs || [],
+      deletedRefs: snapshot.deletedRefs || localBeforePull.deletedRefs,
     });
   }
   if (skipTodos && localBeforePull && !habitTrackerLite) {
@@ -1099,7 +1110,7 @@ async function pullHappinessKpiMapFromSupabaseImpl(opts = {}) {
       },
     });
   }
-  if (skipLogs && localBeforePull) {
+  if (skipLogs && localBeforePull && !habitTrackerLite) {
     snapshot = normalizePayload({
       ...snapshot,
       kpiLogs: localBeforePull.kpiLogs || [],
@@ -1291,9 +1302,9 @@ async function runHappinessKpiMapSyncOnce() {
 
     if (localPayloadHasAnythingToPersist(toSync)) {
       await upsertNormalizedFromPayloadWithRetry(userId, toSync);
-      kpiSyncTrace("happiness", "sync:4-orphanDelete", {
-        skipped: true,
-        reason: "로컬 기준 고아 삭제 없음 — 모달·체크 저장 시 upsert만",
+      kpiSyncTrace("happiness", "sync:4-explicitDelete", {
+        skipped: false,
+        reason: "deleted_refs id — upsertNormalizedFromPayload 내부에서 서버 DELETE",
       });
     } else {
       let metaEmptyErr = null;
@@ -1313,9 +1324,16 @@ async function runHappinessKpiMapSyncOnce() {
         if (attempt < 2) await new Promise((r) => setTimeout(r, 350 * (attempt + 1)));
       }
       if (metaEmptyErr) throw new Error(`happiness_map_meta(empty): ${metaEmptyErr.message}`);
-      kpiSyncTrace("happiness", "sync:4-orphanDelete(emptyPayloadBranch)", {
-        skipped: true,
-        reason: "로컬 기준 고아 삭제 없음",
+      await applyKpiMapExplicitDeletesOnServer({
+        supabase,
+        userId,
+        deletedRefs: drEmpty,
+        active: happinessMapActiveIdsFromPayload(toSync),
+        tables: HAPPINESS_KPI_MAP_DELETE_TABLES,
+      });
+      kpiSyncTrace("happiness", "sync:4-explicitDelete(emptyPayloadBranch)", {
+        skipped: false,
+        reason: "deleted_refs id — empty payload 분기에서 서버 DELETE",
       });
     }
 
