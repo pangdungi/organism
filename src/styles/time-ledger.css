@@ -835,24 +835,32 @@
 
 .lp-tr2-plan-compare-axis-track {
   position: relative;
-  height: 1rem;
+  height: 1.35rem;
   border-top: 1px solid #eef2f7;
+  overflow: hidden;
 }
 
 .lp-tr2-plan-compare-axis-tick {
   position: absolute;
-  top: 0.22rem;
+  top: 0.28rem;
   transform: translateX(-50%);
   font-size: 0.5625rem;
   font-weight: 600;
   line-height: 1;
-  color: #b8c5d4;
+  color: #94a3b8;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  max-width: 2.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .lp-tr2-plan-compare-axis-tick.is-origin {
   transform: translateX(0);
+}
+
+.lp-tr2-plan-compare-axis-tick.is-end {
+  transform: translateX(-100%);
 }
 
 .lp-tr2-cat-compare-list {
@@ -1154,6 +1162,152 @@
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   color: #4d4d4d;
+}
+
+/* 감정적이기 레포트 — 도넛·바·트리거·히트맵 */
+.lp-tr2-emotion-donut-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 0.15rem 0 0.25rem;
+}
+
+.lp-tr2-emotion-donut-svg {
+  display: block;
+  width: min(100%, 12.5rem);
+  height: auto;
+}
+
+.lp-tr2-emotion-donut-slice-label {
+  pointer-events: none;
+  paint-order: stroke fill;
+  stroke: rgba(0, 0, 0, 0.18);
+  stroke-width: 0.35px;
+}
+
+.lp-tr2-emotion-donut-slice-label--out {
+  stroke: none;
+}
+
+.lp-tr2-emotion-donut-hole-label,
+.lp-tr2-emotion-donut-hole-meta {
+  pointer-events: none;
+}
+
+.lp-tr2-emotion-sub-bars .lp-tr2-bar-fill {
+  background: #404040 !important;
+}
+
+.lp-tr2-emotion-trigger-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.lp-tr2-emotion-trigger-chip {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  padding: 0.38rem 0.55rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 0.55rem;
+  background: #fafafa;
+  min-width: 0;
+}
+
+.lp-tr2-emotion-trigger-chip-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #222222;
+  overflow-wrap: anywhere;
+}
+
+.lp-tr2-emotion-trigger-chip-meta {
+  font-size: 0.5625rem;
+  color: #666666;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-tr2-emotion-heatmap-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.lp-tr2-emotion-heatmap {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: min(100%, 28rem);
+}
+
+.lp-tr2-emotion-heatmap-row {
+  display: grid;
+  grid-template-columns: 1.6rem repeat(24, minmax(0.45rem, 1fr));
+  gap: 1px;
+  align-items: stretch;
+}
+
+.lp-tr2-emotion-heatmap-row--head {
+  margin-bottom: 0.15rem;
+}
+
+.lp-tr2-emotion-heatmap-day-label {
+  font-size: 0.5625rem;
+  font-weight: 700;
+  color: #666666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lp-tr2-emotion-heatmap-hour-label {
+  font-size: 0.5rem;
+  color: #999999;
+  text-align: center;
+  line-height: 1.2;
+  padding-bottom: 0.1rem;
+}
+
+.lp-tr2-emotion-heatmap-cell {
+  display: block;
+  min-height: 0.55rem;
+  border-radius: 1px;
+  background: #f5f5f5;
+}
+
+.lp-tr2-emotion-heatmap-cell--lv0 {
+  background: #f5f5f5;
+}
+
+.lp-tr2-emotion-heatmap-cell--lv1 {
+  background: #e0e0e0;
+}
+
+.lp-tr2-emotion-heatmap-cell--lv2 {
+  background: #bdbdbd;
+}
+
+.lp-tr2-emotion-heatmap-cell--lv3 {
+  background: #757575;
+}
+
+.lp-tr2-emotion-heatmap-cell--lv4 {
+  background: #212121;
+}
+
+.lp-tr2-emotion-heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.45rem;
+  font-size: 0.5625rem;
+  color: #999999;
+}
+
+.lp-tr2-emotion-heatmap-legend-swatch {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 1px;
+  display: inline-block;
 }
 
 .lp-tr2-routine-weak-line {
@@ -4606,6 +4760,27 @@
   line-height: 1.25;
 }
 
+/* 시간기록 모달 — 감정적이기 트리거 */
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-emotion-trigger-section"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-emotion-trigger-section"] {
+  margin-top: 0.85rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid #e5e5e5;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-emotion-trigger-chips"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-emotion-trigger-chips"] {
+  margin-top: 0.45rem;
+}
+
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   [data-legacy~="time-task-log-scroll-area"].is-content-detail-task
   [data-legacy~="time-task-log-rating-section"],
@@ -4854,6 +5029,223 @@
   flex-shrink: 0;
   width: 0.75rem;
   height: 0.75rem;
+}
+
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .time-ledger-emotion-rating-chip
+  .lp-emotion-category-icon,
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .time-ledger-emotion-rating-chip
+  .lp-emotion-category-icon {
+  display: block;
+  flex-shrink: 0;
+  width: 1.1rem;
+  height: 1.1rem;
+  object-fit: contain;
+}
+
+.time-ledger-emotion-rating-chip--legacy
+  .time-ledger-emotion-rating-label {
+  font-style: italic;
+  color: #999999;
+}
+
+/* 감정적이기 — 2단계 picker: 구 5단계 flex 레이아웃 덮어쓰기 */
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-emotion-rating"].time-task-log-emotion-picker,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-emotion-rating"].time-task-log-emotion-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0.65rem;
+  margin-top: 0.55rem;
+  overflow: visible;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-rating-section"]
+  .time-task-log-emotion-sub-row,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-rating-section"]
+  .time-task-log-emotion-sub-row {
+  position: relative;
+  z-index: 2;
+  margin-top: 0.15rem;
+  margin-bottom: 0.1rem;
+  pointer-events: auto;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-emotion-sub-chips,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-emotion-sub-chips {
+  margin-top: 0.35rem;
+}
+
+/* 감정적이기 — 2단계 picker (대분류·소분류) */
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-emotion-picker,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-emotion-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 0.45rem;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-emotion-category-row,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-emotion-category-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-emotion-category-btn,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-emotion-category-btn {
+  appearance: none;
+  border: 1px solid #e0e0e0;
+  border-radius: 0.55rem;
+  background: #fafafa;
+  padding: 0.35rem 0.15rem 0.42rem;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.22rem;
+  cursor: pointer;
+  opacity: 0.78;
+  transition: opacity 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-emotion-category-btn--on,
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-emotion-category-btn[aria-pressed="true"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-emotion-category-btn--on,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-emotion-category-btn[aria-pressed="true"] {
+  opacity: 1;
+  border-color: #333333;
+  background: #ffffff;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-emotion-category-btn:hover,
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-emotion-category-btn:focus-visible,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-emotion-category-btn:hover,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-emotion-category-btn:focus-visible {
+  opacity: 1;
+  outline: none;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-emotion-category-icon,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-emotion-category-icon {
+  display: block;
+  line-height: 0;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-emotion-category-icon
+  .lp-emotion-category-icon,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-emotion-category-icon
+  .lp-emotion-category-icon {
+  display: block;
+  width: clamp(2rem, 12vw, 2.5rem);
+  height: auto;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-emotion-category-label,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-emotion-category-label {
+  font-size: 0.5625rem;
+  line-height: 1.25;
+  color: #666666;
+  text-align: center;
+  word-break: keep-all;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-emotion-category-btn--on
+  .time-task-log-emotion-category-label,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-emotion-category-btn--on
+  .time-task-log-emotion-category-label {
+  color: #000000;
+  font-weight: 600;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-emotion-sub-row,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-emotion-sub-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-emotion-sub-row[hidden],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-emotion-sub-row[hidden] {
+  display: none !important;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  .time-task-log-emotion-sub-label,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  .time-task-log-emotion-sub-label {
+  font-size: 0.625rem;
+  color: #666666;
 }
 
 /* 생산적 작업 1~2점 — 몰입 방해요소 */

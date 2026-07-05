@@ -30,6 +30,12 @@ import {
   productiveTimeRatingPriceMultiplier,
 } from "./timeLedgerEntriesModel.js";
 import { buildEmotionReportSnapshot } from "./timeEmotionReport.js";
+import {
+  renderEmotionCategoryDonut,
+  renderEmotionSubEmotionBars,
+  renderEmotionTriggerList,
+  renderEmotionTimeHeatmap,
+} from "./timeEmotionReportCharts.js";
 import { buildMoveReportSnapshot } from "./timeMoveReport.js";
 import { buildHappinessRoutineReportSnapshot } from "./timeHappinessRoutineReport.js";
 import { buildPlanAdherenceReportSnapshot } from "./timePlanAdherenceReport.js";
@@ -2263,74 +2269,23 @@ function renderMediaCompareChart(chartDays) {
   return wrap;
 }
 
-function buildEmotionTriggerTable(items) {
-  const table = document.createElement("div");
-  table.className = "lp-tr2-emotion-trigger-table";
-  table.setAttribute("role", "table");
-
-  const head = document.createElement("div");
-  head.className = "lp-tr2-emotion-trigger-table-head";
-  head.setAttribute("role", "row");
-  ["트리거", "횟수", "평균 강도", "평균 시간"].forEach((text) => {
-    const cell = document.createElement("span");
-    cell.setAttribute("role", "columnheader");
-    cell.textContent = text;
-    head.appendChild(cell);
-  });
-  table.appendChild(head);
-
-  const body = document.createElement("div");
-  body.className = "lp-tr2-emotion-trigger-table-body";
-  items.forEach((item) => {
-    const row = document.createElement("div");
-    row.className = "lp-tr2-emotion-trigger-table-row";
-    row.setAttribute("role", "row");
-
-    const labelCell = document.createElement("span");
-    labelCell.className = "lp-tr2-emotion-trigger-table-label";
-    labelCell.setAttribute("role", "cell");
-    labelCell.textContent = item.label;
-
-    const countCell = document.createElement("span");
-    countCell.className = "lp-tr2-emotion-trigger-table-num";
-    countCell.setAttribute("role", "cell");
-    countCell.textContent = `${item.count}회`;
-
-    const ratingCell = document.createElement("span");
-    ratingCell.className = "lp-tr2-emotion-trigger-table-num";
-    ratingCell.setAttribute("role", "cell");
-    ratingCell.textContent =
-      item.avgRating != null ? `${formatRatingAvg(item.avgRating)}/5` : "—";
-
-    const durCell = document.createElement("span");
-    durCell.className = "lp-tr2-emotion-trigger-table-num";
-    durCell.setAttribute("role", "cell");
-    durCell.textContent = formatIntegerMinutesDurationKo(
-      Math.round(item.avgMinutes),
-    );
-
-    row.append(labelCell, countCell, ratingCell, durCell);
-    body.appendChild(row);
-  });
-  table.appendChild(body);
-  return table;
-}
-
 function mountEmotionSection(scrollWrap, range, rows) {
   const hourlyRate = readReportHourlyRateNumber();
   const snap = buildEmotionReportSnapshot(rows, hourlyRate);
   const sec = createSection(
     "감정 소비",
-    "감정적이기 중 1~2점(나쁨·매우 나쁨) 기록만 집계합니다",
+    "감정 대분류·세부 감정·트리거·시간대 패턴",
   );
 
   if (!snap.hasData) {
     const note = document.createElement("p");
     note.className = "lp-tr2-chart-note";
     note.textContent =
-      "이 기간에 감정 1~2점 기록이 없습니다.";
-    sec.appendChild(note);
+      snap.legacyCount > 0
+        ? "이 기간에 새 방식(대분류·세부 감정) 기록이 없습니다. 예전 1~5점 기록만 있습니다."
+        : "이 기간에 감정적이기 기록이 없습니다.";
     scrollWrap.appendChild(sec);
+    sec.appendChild(note);
     return;
   }
 
@@ -2341,8 +2296,8 @@ function mountEmotionSection(scrollWrap, range, rows) {
       "감정소비시간",
       formatIntegerMinutesDurationKo(snap.consumptionMinutes),
       snap.consumptionCount > 0
-        ? `감정 1~2점 기록 ${snap.consumptionCount}건`
-        : "이 기간에 1~2점 기록 없음",
+        ? `세부 감정 선택 기록 ${snap.consumptionCount}건`
+        : "",
     ),
   );
   hero.appendChild(
@@ -2360,14 +2315,42 @@ function mountEmotionSection(scrollWrap, range, rows) {
   );
   sec.appendChild(hero);
 
-  if (snap.triggers.length) {
-    const block = createRatingBlock(
-      "트리거별 (1~2점만)",
-      "어떤 상황에서 나쁜 감정이 얼마나·얼마나 오래 이어졌는지",
-    );
-    block.appendChild(buildEmotionTriggerTable(snap.triggers));
-    sec.appendChild(block);
+  if (snap.legacyCount > 0) {
+    const legacyNote = document.createElement("p");
+    legacyNote.className = "lp-tr2-chart-note";
+    legacyNote.textContent = `예전 1~5점 방식 기록 ${snap.legacyCount}건은 아래 차트에 포함되지 않습니다.`;
+    sec.appendChild(legacyNote);
   }
+
+  const donutBlock = createRatingBlock(
+    "감정 대분류",
+    "5개 분류 중 어디가 가장 많은지",
+  );
+  donutBlock.appendChild(renderEmotionCategoryDonut(snap));
+  sec.appendChild(donutBlock);
+
+  const subBlock = createRatingBlock(
+    "세부 감정 Top 5",
+    "가장 자주 기록된 세부 감정",
+  );
+  subBlock.appendChild(renderEmotionSubEmotionBars(snap));
+  sec.appendChild(subBlock);
+
+  if (snap.triggers.length) {
+    const triggerBlock = createRatingBlock(
+      "트리거 패턴",
+      "어떤 상황에서 감정적이기가 반복되는지",
+    );
+    triggerBlock.appendChild(renderEmotionTriggerList(snap));
+    sec.appendChild(triggerBlock);
+  }
+
+  const heatBlock = createRatingBlock(
+    "요일·시간대",
+    "언제 감정적이기가 집중되는지",
+  );
+  heatBlock.appendChild(renderEmotionTimeHeatmap(snap));
+  sec.appendChild(heatBlock);
 
   scrollWrap.appendChild(sec);
 }
@@ -2691,12 +2674,12 @@ function buildPlanCompareChartItems(categories) {
 
 function formatPlanChartAxisLabel(minutes) {
   const n = Math.max(0, Math.round(Number(minutes) || 0));
-  if (n <= 0) return "0m";
-  if (n < 60) return `${n}m`;
+  if (n <= 0) return "0";
+  if (n < 60) return `${n}분`;
   const h = Math.floor(n / 60);
   const m = n % 60;
-  if (m === 0) return `${h}h`;
-  return `${h}h`;
+  if (m === 0) return `${h}시간`;
+  return `${h}시간 ${m}분`;
 }
 
 function buildPlanChartScale(items) {
@@ -2704,14 +2687,22 @@ function buildPlanChartScale(items) {
     60,
     ...(items || []).flatMap((i) => [i.plannedMin, i.actualMin]),
   );
-  const maxH = Math.ceil(maxMin / 60);
-  const scaleHours =
-    maxH <= 2 ? maxH : Math.ceil(maxH / 2) * 2;
-  const scaleMaxMin = Math.max(60, scaleHours * 60);
-  const stepMin = scaleHours <= 3 ? 60 : scaleHours <= 8 ? 60 : 120;
+  const scaleMaxMin = Math.max(60, Math.ceil(maxMin / 60) * 60);
+  const maxTicks = 5;
+  let stepMin = Math.max(
+    60,
+    Math.ceil(scaleMaxMin / maxTicks / 60) * 60,
+  );
   const ticks = [0];
   for (let m = stepMin; m < scaleMaxMin; m += stepMin) ticks.push(m);
   if (ticks[ticks.length - 1] !== scaleMaxMin) ticks.push(scaleMaxMin);
+  while (ticks.length > maxTicks + 1 && stepMin < scaleMaxMin) {
+    stepMin += 60;
+    ticks.length = 0;
+    ticks.push(0);
+    for (let m = stepMin; m < scaleMaxMin; m += stepMin) ticks.push(m);
+    if (ticks[ticks.length - 1] !== scaleMaxMin) ticks.push(scaleMaxMin);
+  }
   return { scaleMaxMin, ticks };
 }
 
@@ -2796,6 +2787,7 @@ function renderPlanCompareChart(items) {
     const tick = document.createElement("span");
     tick.className = "lp-tr2-plan-compare-axis-tick";
     if (idx === 0) tick.classList.add("is-origin");
+    else if (idx === ticks.length - 1) tick.classList.add("is-end");
     tick.style.left = `${(min / scaleMaxMin) * 100}%`;
     tick.textContent = formatPlanChartAxisLabel(min);
     axisTrack.appendChild(tick);

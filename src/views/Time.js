@@ -111,9 +111,11 @@ import {
 } from "../utils/timeLedgerEntriesModel.js";
 import {
   formatTimeLedgerEmotionRatingHtml,
-  getEmotionRatingLabel,
-  mountTaskLogEmotionRating,
+  mountTaskLogEmotionPicker,
+  extractEmotionSubFromMemoTags,
+  mergeEmotionSubIntoMemoTags,
 } from "../utils/timeEmotionRating.js";
+import { EMOTION_SUB_TAG_PREFIX, parseEmotionFromRow } from "../utils/timeEmotionTaxonomy.js";
 import { TIME_TASK_FLOW_FACTOR_OPTIONS, shouldCollectTimeFlowFactors } from "../utils/timeTaskFlowFactors.js";
 import {
   TIME_TASK_FLOW_DISRUPTOR_OPTIONS,
@@ -4019,6 +4021,7 @@ function userMemoTagsFromLedgerRaw(raw) {
   for (const t of arr) {
     const s = String(t ?? "").trim();
     if (!s || s.startsWith(LP_LEDGER_EXPENSE_TAG_PREFIX)) continue;
+    if (s.startsWith(EMOTION_SUB_TAG_PREFIX)) continue;
     if (seen.has(s)) continue;
     seen.add(s);
     out.push(s);
@@ -4775,8 +4778,13 @@ function buildMobileTimeCardTitle(taskLabel, startClock, endClock, rowData) {
   let ratingLine = "";
   if (rating != null) {
     if (TTC.isEmotionalBuiltinTaskName(rowData?.taskName)) {
-      const lab = getEmotionRatingLabel(rating);
-      ratingLine = lab ? `감정 상태 ${lab}` : `감정 상태 ${rating}점`;
+      const { category, subLabel, isModern, isLegacy } =
+        parseEmotionFromRow(rowData);
+      if (isModern && category) {
+        ratingLine = `감정 상태 ${category.label} · ${subLabel}`;
+      } else if (isLegacy && category) {
+        ratingLine = `감정 상태 ${category.label} (예전 기록)`;
+      }
     } else {
       ratingLine = `평가 ${rating}점`;
     }
@@ -4791,7 +4799,7 @@ function syncMobileTimeCardRatingEl(card, rowData) {
   if (!statsCol) return;
   const isEmotional = TTC.isEmotionalBuiltinTaskName(rowData?.taskName);
   const displayHtml = isEmotional
-    ? formatTimeLedgerEmotionRatingHtml(rowData?.timeRating)
+    ? formatTimeLedgerEmotionRatingHtml(rowData)
     : formatTimeLedgerCardRatingStarsHtml(rowData?.timeRating);
   const rating = normalizeTimeRatingForRow(rowData?.timeRating);
   let ratingEl = statsCol.querySelector(
@@ -7338,6 +7346,7 @@ export function render(opts = {}) {
     '[data-legacy~="time-task-log-emotion-trigger-chips"]',
   );
   let taskLogEmotionTrigger = "";
+  let taskLogEmotionSub = "";
   /** @type {Set<string>} */
   const taskLogChipDetailSelection = new Set();
   let taskLogChipDetailTaskName = "";
@@ -7571,14 +7580,10 @@ export function render(opts = {}) {
   function renderTaskLogTimeRating() {
     const v = getTaskLogTimeRating();
     if (isTaskLogModalEmotionalTask()) {
-      taskLogEmotionRating
-        ?.querySelectorAll('[data-rating-value]')
-        .forEach((btn) => {
-          const n = Number(btn.getAttribute("data-rating-value"));
-          const on = v != null && n === v;
-          btn.setAttribute("aria-pressed", on ? "true" : "false");
-          lpTokenToggle(btn, "time-task-log-emotion-rating-btn--on", on);
-        });
+      taskLogEmotionRating?._setEmotionState?.({
+        categoryRating: v,
+        subLabel: getTaskLogEmotionSubForSave(),
+      });
       return;
     }
     taskLogRatingStars
@@ -7666,11 +7671,41 @@ export function render(opts = {}) {
     rating = null,
     disruptors = [],
     factors = [],
+    emotionSub = "",
   } = {}) {
     taskLogTimeRating = normalizeTimeRatingForRow(rating);
+    taskLogEmotionSub = String(emotionSub || "").trim();
     taskLogTimeFlowDisruptors = normalizeTimeFlowDisruptorsForRow(disruptors);
     taskLogTimeFlowFactors = normalizeTimeFlowFactorsForRow(factors);
     syncTaskLogRatingSectionUi();
+  }
+
+  function getTaskLogEmotionSubForSave() {
+    return String(taskLogEmotionSub || "").trim();
+  }
+
+  function syncTaskLogEmotionSectionOrder() {
+    if (!taskLogScrollArea || !isTaskLogModalEmotionalTask()) return;
+    const datetimeWrap = taskLogScrollArea.querySelector(
+      '[data-legacy~="time-task-log-datetime-fields-wrap"]',
+    );
+    if (
+      !datetimeWrap ||
+      !taskLogRatingSection ||
+      !taskLogEmotionTriggerSection ||
+      !taskLogMemoSection
+    ) {
+      return;
+    }
+    datetimeWrap.insertAdjacentElement("afterend", taskLogRatingSection);
+    taskLogRatingSection.insertAdjacentElement(
+      "afterend",
+      taskLogEmotionTriggerSection,
+    );
+    taskLogEmotionTriggerSection.insertAdjacentElement(
+      "afterend",
+      taskLogMemoSection,
+    );
   }
 
   function syncTaskLogRatingSectionUi() {
@@ -7689,19 +7724,34 @@ export function render(opts = {}) {
     }
     if (taskLogEmotionRating) {
       taskLogEmotionRating.hidden = !useEmotionPicker;
-      if (useEmotionPicker) {
-        mountTaskLogEmotionRating(taskLogEmotionRating, (n) => {
-          setTaskLogTimeRating(getTaskLogTimeRating() === n ? null : n);
-        });
-        taskLogEmotionRating.setAttribute(
-          "aria-label",
-          `${labelText} 1~5점`,
-        );
+      if (!useEmotionPicker) {
+        taskLogEmotionRating._detachSubRow?.();
+      } else if (useEmotionPicker) {
+        taskLogEmotionRating.setAttribute("aria-label", `${labelText}`);
+        const state = {
+          categoryRating: getTaskLogTimeRating(),
+          subLabel: getTaskLogEmotionSubForSave(),
+        };
+        if (
+          taskLogEmotionRating.dataset.built === "1" &&
+          typeof taskLogEmotionRating._setEmotionState === "function"
+        ) {
+          taskLogEmotionRating._setEmotionState(state);
+        } else {
+          mountTaskLogEmotionPicker(taskLogEmotionRating, {
+            ...state,
+            onChange: ({ categoryRating, subLabel }) => {
+              taskLogTimeRating = categoryRating;
+              taskLogEmotionSub = String(subLabel || "").trim();
+            },
+          });
+        }
       }
     }
     if (taskLogRatingSection) taskLogRatingSection.hidden = !show;
     if (!show) {
       taskLogTimeRating = null;
+      taskLogEmotionSub = "";
       taskLogTimeFlowDisruptors = [];
       taskLogTimeFlowFactors = [];
     }
@@ -7712,6 +7762,7 @@ export function render(opts = {}) {
       syncTaskLogFlowDisruptorChips();
       syncTaskLogFlowFactorChips();
     }
+    syncTaskLogEmotionSectionOrder();
   }
 
   function setTaskLogTimeRating(value) {
@@ -7805,10 +7856,14 @@ export function render(opts = {}) {
   const TASK_LOG_MEMO_PLACEHOLDER_DEFAULT = "메모를 입력하세요";
   const TASK_LOG_MEMO_LABEL_REVIEW = "후기";
   const TASK_LOG_MEMO_PLACEHOLDER_REVIEW = "후기를 입력하세요";
+  const TASK_LOG_MEMO_LABEL_EMOTION_CONTEXT = "상황 맥락과 계획";
+  const TASK_LOG_MEMO_PLACEHOLDER_EMOTION_CONTEXT =
+    "무슨 상황이었는지, 앞으로 어떻게 할지 적어 주세요";
   const TASK_LOG_MEMO_LABEL_PURCHASE_REVIEW = "구매 후기";
   const TASK_LOG_MEMO_PLACEHOLDER_PURCHASE_REVIEW = "구매 후기를 입력하세요";
   const TASK_LOG_RECENT_REVIEW_LABEL = "최근 후기";
   const TASK_LOG_RECENT_PURCHASE_REVIEW_LABEL = "최근 구매 후기";
+  const TASK_LOG_RECENT_EMOTION_CONTEXT_LABEL = "최근 상황 맥락과 계획";
   const TASK_LOG_RECENT_REVIEW_LIMIT = 5;
 
   function extractTaskLogRecentReviewMemo(row) {
@@ -7842,7 +7897,7 @@ export function render(opts = {}) {
     const rating = normalizeTimeRatingForRow(row?.timeRating);
     if (rating == null) return "";
     if (TTC.isEmotionalBuiltinTaskName(taskName)) {
-      return formatTimeLedgerEmotionRatingHtml(row.timeRating) || "";
+      return formatTimeLedgerEmotionRatingHtml(row) || "";
     }
     return formatTimeLedgerCardRatingStarsHtml(row.timeRating) || "";
   }
@@ -7890,6 +7945,7 @@ export function render(opts = {}) {
   function isTaskLogPurchaseReviewTask(taskName) {
     const tn = (taskName || "").trim();
     if (!tn) return false;
+    if (TTC.isEmotionalBuiltinTaskName(tn)) return false;
     const opt = getTaskOptionByName(tn);
     const prod = String(opt?.productivity || "").trim();
     return prod === "productive" || prod === "nonproductive";
@@ -7902,10 +7958,11 @@ export function render(opts = {}) {
     return TTC.isSleepBuiltinTaskName(tn) || TTC.isWorkBuiltinTaskName(tn);
   }
 
-  /** 수면·근무·생산·비생산 — 과거 후기 목록 표시 */
+  /** 수면·근무·생산·비생산·감정적이기 — 과거 후기·맥락 목록 표시 */
   function isTaskLogRecentReviewTask(taskName) {
     const tn = (taskName || "").trim();
     if (!tn) return false;
+    if (TTC.isEmotionalBuiltinTaskName(tn)) return true;
     return isTaskLogGeneralReviewTask(tn) || isTaskLogPurchaseReviewTask(tn);
   }
 
@@ -7913,7 +7970,10 @@ export function render(opts = {}) {
     const tn = (taskName || "").trim();
     let memoLabel = TASK_LOG_MEMO_LABEL_DEFAULT;
     let memoPlaceholder = TASK_LOG_MEMO_PLACEHOLDER_DEFAULT;
-    if (isTaskLogGeneralReviewTask(tn)) {
+    if (TTC.isEmotionalBuiltinTaskName(tn)) {
+      memoLabel = TASK_LOG_MEMO_LABEL_EMOTION_CONTEXT;
+      memoPlaceholder = TASK_LOG_MEMO_PLACEHOLDER_EMOTION_CONTEXT;
+    } else if (isTaskLogGeneralReviewTask(tn)) {
       memoLabel = TASK_LOG_MEMO_LABEL_REVIEW;
       memoPlaceholder = TASK_LOG_MEMO_PLACEHOLDER_REVIEW;
     } else if (isTaskLogPurchaseReviewTask(tn)) {
@@ -7921,7 +7981,10 @@ export function render(opts = {}) {
       memoPlaceholder = TASK_LOG_MEMO_PLACEHOLDER_PURCHASE_REVIEW;
     }
     if (taskLogRecentReviewsLabel) {
-      if (isTaskLogGeneralReviewTask(tn)) {
+      if (TTC.isEmotionalBuiltinTaskName(tn)) {
+        taskLogRecentReviewsLabel.textContent =
+          TASK_LOG_RECENT_EMOTION_CONTEXT_LABEL;
+      } else if (isTaskLogGeneralReviewTask(tn)) {
         taskLogRecentReviewsLabel.textContent = TASK_LOG_RECENT_REVIEW_LABEL;
       } else if (isTaskLogPurchaseReviewTask(tn)) {
         taskLogRecentReviewsLabel.textContent =
@@ -7985,6 +8048,7 @@ export function render(opts = {}) {
       if (!isEmotion) clearTaskLogEmotionTrigger();
     }
     taskLogScrollArea?.classList?.toggle("is-content-detail-task", isChipDetail);
+    syncTaskLogEmotionSectionOrder();
     updateTaskLogMemoCopyForProductivity(tn);
   }
   let taskLogMemoTags = [];
@@ -10148,14 +10212,15 @@ export function render(opts = {}) {
       clearTaskLogEmotionTrigger();
       if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
     }
+    const rawMemoTagsForEdit = Array.isArray(data.memoTags)
+      ? [...data.memoTags]
+      : parseTagsFromFeedback(feedbackRaw);
     applyTaskLogModalRatingUiState({
       rating: data.timeRating,
       disruptors: data.timeFlowDisruptors ?? data.timeFlowDisruptor,
       factors: data.timeFlowFactors ?? data.timeFlowFactor,
+      emotionSub: extractEmotionSubFromMemoTags(rawMemoTagsForEdit),
     });
-    const rawMemoTagsForEdit = Array.isArray(data.memoTags)
-      ? [...data.memoTags]
-      : parseTagsFromFeedback(feedbackRaw);
     taskLogMemoTags = userMemoTagsFromLedgerRaw(rawMemoTagsForEdit)
       .map((t) => String(t ?? "").trim())
       .filter(Boolean);
@@ -10269,7 +10334,10 @@ export function render(opts = {}) {
     )
       .map((t) => String(t ?? "").trim())
       .filter(Boolean);
-    const memoTags = buildLedgerMemoTagsForSubmit(userTagsForSubmit);
+    const memoTags = mergeEmotionSubIntoMemoTags(
+      buildLedgerMemoTagsForSubmit(userTagsForSubmit),
+      TTC.ledgerDetailTaskKind(taskName) === "emotion" ? taskLogEmotionSub : "",
+    );
     const timeTracked = (() => {
       if (startTime && endTime) {
         const toIso = (str) => {
