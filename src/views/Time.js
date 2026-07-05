@@ -6026,6 +6026,11 @@ export function render(opts = {}) {
         <div data-legacy="time-task-setup-subcats" data-subcat-bar style="display:none">
           <button type="button" data-legacy="time-task-setup-subcat-btn active" data-subcat="">전체</button>
         </div>
+        <div data-legacy="time-task-setup-search" class="lp-search-bar time-task-setup-search">
+          <div class="lp-search-bar__row">
+            <input type="search" data-legacy="time-task-setup-search-input" class="lp-search-bar__input" placeholder="과제명·카테고리 검색" autocomplete="off" enterkeyhint="search" aria-label="과제 검색" />
+          </div>
+        </div>
         <div data-legacy="time-task-setup-list-scroll">
           <div data-legacy="time-task-setup-list" data-tab-content="all"></div>
           <div data-legacy="time-task-setup-list" data-tab-content="productive" style="display:none"></div>
@@ -10750,6 +10755,9 @@ export function render(opts = {}) {
     '[data-tab-content="other"]',
   );
   const setupSubcatBar = taskSetupModal.querySelector("[data-subcat-bar]");
+  const taskSetupSearchInput = taskSetupModal.querySelector(
+    '[data-legacy~="time-task-setup-search-input"]',
+  );
 
   const addTaskCloseBtn = addTaskModal.querySelector(
     '[data-legacy~="time-task-setup-close"]',
@@ -10819,6 +10827,7 @@ export function render(opts = {}) {
 
   let selectedSubcat = "";
   let activeSetupTab = "all";
+  let taskSetupSearchQuery = "";
   /** 과제 수정 모달이 열려 있을 때 리스트에서 강조할 과제명 */
   let setupListSelectedTaskName = "";
   let taskSetupListRenderedSig = "";
@@ -10855,6 +10864,7 @@ export function render(opts = {}) {
       return JSON.stringify({
         tab: activeSetupTab,
         subcat: selectedSubcat,
+        search: taskSetupSearchQuery.trim(),
         selected: setupListSelectedTaskName,
         tasks: filterTasksForTaskSetupModalList(getFullTaskOptions()).map((t) => ({
           name: (t.name || "").trim(),
@@ -10923,7 +10933,7 @@ export function render(opts = {}) {
     }
 
     const allTasks = filterTasksForTaskSetupModalList(getFullTaskOptions());
-    const mainTasksOnly = allTasks.filter(
+    let mainTasksOnly = allTasks.filter(
       (t) => !(t.name || "").includes(" > "),
     );
     let prodTasks = mainTasksOnly.filter(
@@ -10932,7 +10942,7 @@ export function render(opts = {}) {
     let nonProdTasks = mainTasksOnly.filter(
       (t) => t.productivity === "nonproductive",
     );
-    const otherTasks = mainTasksOnly.filter(
+    let otherTasks = mainTasksOnly.filter(
       (t) =>
         t.productivity === "other" ||
         !["productive", "nonproductive"].includes(t.productivity),
@@ -10948,6 +10958,19 @@ export function render(opts = {}) {
       CATEGORY_OPTIONS.find((c) => c.value === v)?.label ||
       v ||
       "—";
+    const searchQ = taskSetupSearchQuery.trim().toLowerCase();
+    function applySetupSearchFilter(list) {
+      if (!searchQ) return list;
+      return list.filter((t) => {
+        const name = (t.name || "").toLowerCase();
+        const cat = getCatLabel(t.category).toLowerCase();
+        return name.includes(searchQ) || cat.includes(searchQ);
+      });
+    }
+    mainTasksOnly = applySetupSearchFilter(mainTasksOnly);
+    prodTasks = applySetupSearchFilter(prodTasks);
+    nonProdTasks = applySetupSearchFilter(nonProdTasks);
+    otherTasks = applySetupSearchFilter(otherTasks);
     const lockedForDisplay = getLockedForSetupDisplay();
     function renderList(container, list) {
       container.replaceChildren();
@@ -11023,7 +11046,9 @@ export function render(opts = {}) {
       if (list.length === 0) {
         const empty = document.createElement("div");
         lpSetClasses(empty, "time-task-setup-empty");
-        empty.textContent = "등록된 과제가 없습니다";
+        empty.textContent = searchQ
+          ? "검색 결과가 없습니다"
+          : "등록된 과제가 없습니다";
         container.appendChild(empty);
       }
     }
@@ -11324,6 +11349,15 @@ export function render(opts = {}) {
   /* 과제 추가/수정 모달도 배경 탭으로 닫지 않음(저장 전 이탈 방지) */
   addTaskCloseBtn?.addEventListener("click", closeAddTaskModal);
 
+  taskSetupSearchInput?.addEventListener("input", () => {
+    taskSetupSearchQuery = taskSetupSearchInput.value || "";
+    scheduleRenderTaskSetupList();
+  });
+  taskSetupSearchInput?.addEventListener("search", () => {
+    taskSetupSearchQuery = taskSetupSearchInput.value || "";
+    scheduleRenderTaskSetupList();
+  });
+
   setupTabs.forEach((tab) => {
     tab.addEventListener("click", () => {
       setupTabs.forEach((t) => lpTokenRemove(t, "active"));
@@ -11345,6 +11379,8 @@ export function render(opts = {}) {
         '[data-legacy~="time-task-setup-tab"][data-legacy~="active"]',
       )?.dataset?.tab || "all";
     selectedSubcat = "";
+    taskSetupSearchQuery = "";
+    if (taskSetupSearchInput) taskSetupSearchInput.value = "";
     taskSetupListRenderedSig = "";
     taskSetupListPullPending = true;
     const pullGen = ++taskSetupListPullGen;
@@ -11376,6 +11412,8 @@ export function render(opts = {}) {
       taskSetupListRenderRaf = 0;
     }
     taskSetupListRenderForceNext = false;
+    taskSetupSearchQuery = "";
+    if (taskSetupSearchInput) taskSetupSearchInput.value = "";
     taskSetupModal.hidden = true;
     taskSetupListPullGen += 1;
     taskSetupListRenderedSig = "";
