@@ -65,15 +65,17 @@ export function openCalendarDayIconEditor(dateKey, opts = {}) {
       const iconKey = String(key || "").trim();
       if (!iconKey) return;
       setCalendarDayIconKeyForDate(ymd, iconKey);
+      opts.onSaved?.();
       opts.onClose?.();
-      void syncCalendarDayIconForDate(ymd, iconKey).then(() => {
+      void syncCalendarDayIconForDate(ymd, iconKey).finally(() => {
         opts.onSaved?.();
       });
     },
     onRemove: () => {
       setCalendarDayIconKeyForDate(ymd, "");
+      opts.onSaved?.();
       opts.onClose?.();
-      void syncCalendarDayIconForDate(ymd, "").then(() => {
+      void syncCalendarDayIconForDate(ymd, "").finally(() => {
         opts.onSaved?.();
       });
     },

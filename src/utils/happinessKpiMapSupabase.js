@@ -136,9 +136,11 @@ export const DEFAULT_TIDY_ROUTINE_KPI_ID = "__lp_default_kpi_tidy_routine__";
 export const DEFAULT_OUT_PREP_ROUTINE_KPI_ID = "__lp_default_kpi_out_prep_routine__";
 export const DEFAULT_OUT_AFTER_ROUTINE_KPI_ID = "__lp_default_kpi_out_after_routine__";
 export const DEFAULT_BEDTIME_ROUTINE_KPI_ID = "__lp_default_kpi_bedtime_routine__";
+export const DEFAULT_READING_KPI_ID = "__lp_default_kpi_reading__";
 
 const PROTECTED_DEFAULT_HAPPINESS_KPI_IDS = new Set([
   DEFAULT_CHORE_TASK_KPI_ID,
+  DEFAULT_READING_KPI_ID,
   DEFAULT_MORNING_ROUTINE_KPI_ID,
   DEFAULT_MOVE_ROUTINE_KPI_ID,
   DEFAULT_TIDY_ROUTINE_KPI_ID,
@@ -225,9 +227,24 @@ export function createDefaultBedtimeRoutineKpi() {
   });
 }
 
+export function createDefaultReadingKpi() {
+  return createDefaultHappinessKpi({
+    id: DEFAULT_READING_KPI_ID,
+    name: "독서하기",
+    useTaskCompletionGoal: true,
+  });
+}
+
+export const DEFAULT_READING_KPI_TODO_LIST_LABEL = "독서 목록";
+
+export function isDefaultReadingHappinessKpiId(id) {
+  return String(id ?? "") === DEFAULT_READING_KPI_ID;
+}
+
 /** 고정 KPI 목록 순서(맨 위 → 아래) */
 const DEFAULT_HAPPINESS_KPI_ORDER = [
   DEFAULT_CHORE_TASK_KPI_ID,
+  DEFAULT_READING_KPI_ID,
   DEFAULT_MORNING_ROUTINE_KPI_ID,
   DEFAULT_MOVE_ROUTINE_KPI_ID,
   DEFAULT_TIDY_ROUTINE_KPI_ID,
@@ -238,6 +255,7 @@ const DEFAULT_HAPPINESS_KPI_ORDER = [
 
 const DEFAULT_HAPPINESS_KPI_FACTORIES = [
   createDefaultChoreTaskKpi,
+  createDefaultReadingKpi,
   createDefaultMorningRoutineKpi,
   createDefaultMoveRoutineKpi,
   createDefaultTidyRoutineKpi,
@@ -290,6 +308,7 @@ function migrateDefaultHappinessHabitKpis(kpis) {
 
 const DEFAULT_HAPPINESS_TASK_COMPLETION_KPI_MIGRATIONS = [
   { id: DEFAULT_CHORE_TASK_KPI_ID, name: "잡무 처리하기" },
+  { id: DEFAULT_READING_KPI_ID, name: "독서하기" },
 ];
 
 /** 기본 태스크 완료형 KPI — 과제 완료 목표 유지 */

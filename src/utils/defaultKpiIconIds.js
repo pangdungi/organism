@@ -7,6 +7,7 @@ export const DEFAULT_TIDY_ROUTINE_KPI_ID = "__lp_default_kpi_tidy_routine__";
 export const DEFAULT_OUT_PREP_ROUTINE_KPI_ID = "__lp_default_kpi_out_prep_routine__";
 export const DEFAULT_OUT_AFTER_ROUTINE_KPI_ID = "__lp_default_kpi_out_after_routine__";
 export const DEFAULT_BEDTIME_ROUTINE_KPI_ID = "__lp_default_kpi_bedtime_routine__";
+export const DEFAULT_READING_KPI_ID = "__lp_default_kpi_reading__";
 
 export const DEFAULT_AEROBIC_KPI_ID = "__lp_default_kpi_aerobic__";
 export const DEFAULT_SUPPLEMENT_KPI_ID = "__lp_default_kpi_supplement__";
@@ -21,6 +22,7 @@ export const DEFAULT_KPI_ICON_SLUG = {
   [DEFAULT_OUT_PREP_ROUTINE_KPI_ID]: "packing",
   [DEFAULT_OUT_AFTER_ROUTINE_KPI_ID]: "cloth",
   [DEFAULT_BEDTIME_ROUTINE_KPI_ID]: "bedtime",
+  [DEFAULT_READING_KPI_ID]: "reading",
   [DEFAULT_AEROBIC_KPI_ID]: "running",
   [DEFAULT_SUPPLEMENT_KPI_ID]: "medicine",
   [DEFAULT_CHECKUP_KPI_ID]: "dental appointment",
@@ -35,6 +37,7 @@ export const DEFAULT_KPI_NAME_ICON_SLUG = {
   "외출 준비 루틴": "packing",
   "외출 후 루틴": "cloth",
   "취침 루틴": "bedtime",
+  "독서하기": "reading",
   "유산소 운동": "running",
   "보충제 섭취": "medicine",
   "건강 검진": "dental appointment",

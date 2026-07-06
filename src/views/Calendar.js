@@ -2353,10 +2353,7 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
     <div class="time-task-setup-backdrop"></div>
     <div class="time-task-setup-panel time-add-task-panel">
       <div class="time-task-setup-header">
-        <div class="calendar-event-add-modal-heading">
-          <h3 class="time-task-setup-title">할일/일정 추가</h3>
-          <p class="calendar-event-add-modal-date">${dateLabel}</p>
-        </div>
+        <h3 class="time-task-setup-title">${dateLabel}</h3>
         <button type="button" class="time-task-setup-close" aria-label="닫기">&times;</button>
       </div>
       <div class="time-task-setup-body">

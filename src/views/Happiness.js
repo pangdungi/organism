@@ -9,6 +9,8 @@ import {
   ensureHappinessMapDefaults,
   HAPPINESS_KPI_GLOBAL_SCOPE_ID,
   isProtectedDefaultHappinessKpiId,
+  isDefaultReadingHappinessKpiId,
+  DEFAULT_READING_KPI_TODO_LIST_LABEL,
 } from "../utils/happinessKpiMapSupabase.js";
 import { ensureHappinessKpiTimeTasksForData } from "../utils/healthKpiTimeTaskSync.js";
 import {
@@ -601,7 +603,11 @@ export function render() {
 
   function happinessKpiFooterAddLabel(tab, kpi) {
     const t = effectiveKpiHistoryBottomTab(tab, kpi);
-    if (t === KPI_BOTTOM_TAB_TODO) return "할 일 추가";
+    if (t === KPI_BOTTOM_TAB_TODO) {
+      return isDefaultReadingHappinessKpiId(kpi?.id)
+        ? "독서 추가"
+        : "할 일 추가";
+    }
     return "매일 할 일 추가";
   }
 
@@ -614,9 +620,12 @@ export function render() {
       k,
     );
     if (tab === KPI_BOTTOM_TAB_TODO) {
+      const readingKpi = isDefaultReadingHappinessKpiId(k.id);
       const text = await showKpiTodoAddModal({
         kpiName: k.name,
-        placeholder: "할 일 입력",
+        title: readingKpi ? "독서 추가" : undefined,
+        inputLabel: readingKpi ? DEFAULT_READING_KPI_TODO_LIST_LABEL : undefined,
+        placeholder: readingKpi ? "독서 입력" : "할 일 입력",
       });
       if (!text) return;
       const d2 = loadHappinessMap();
@@ -967,6 +976,10 @@ export function render() {
 
     const hasDailyTab = needHabitTracker;
     const dailyTodosOnly = kpiUsesDailyTodosOnly(kpi);
+    const readingKpi = isDefaultReadingHappinessKpiId(selKpi);
+    const todoSegLabel = readingKpi
+      ? DEFAULT_READING_KPI_TODO_LIST_LABEL
+      : "할 일";
 
     const appendKpiDailyLogBlock = (parentEl, logEntries) => {
       const div = document.createElement("div");
@@ -1033,7 +1046,7 @@ export function render() {
     if (btnSegTodo) {
       btnSegTodo.type = "button";
       btnSegTodo.className = "dream-kpi-bottom-seg-btn";
-      btnSegTodo.textContent = "할 일";
+      btnSegTodo.textContent = todoSegLabel;
       btnSegTodo.setAttribute("role", "tab");
     }
 
@@ -1084,7 +1097,9 @@ export function render() {
         const result = await showKpiTodoEditModal({
           kpiName: kpi.name,
           initialText: todo.text || "",
-          title: "할 일 수정",
+          title: readingKpi ? "독서 수정" : "할 일 수정",
+          inputLabel: readingKpi ? DEFAULT_READING_KPI_TODO_LIST_LABEL : undefined,
+          placeholder: readingKpi ? "독서 입력" : undefined,
         });
         if (!result) return;
         if (result.action === "delete") {
@@ -1146,7 +1161,9 @@ export function render() {
     if (todos.length === 0) {
       const emptyTodo = document.createElement("p");
       emptyTodo.className = "dream-kpi-history-empty";
-      emptyTodo.textContent = "등록된 할 일이 없습니다.";
+      emptyTodo.textContent = readingKpi
+        ? "등록된 독서 목록이 없습니다."
+        : "등록된 할 일이 없습니다.";
       panelTodoSeg.appendChild(emptyTodo);
     } else {
       panelTodoSeg.appendChild(todoList);
@@ -1265,6 +1282,7 @@ export function render() {
         dailyPanel: panelDailySeg,
         dailyTodosOnly,
         hasDailyTab,
+        todoTitle: todoSegLabel,
         clearCompleted: clearCompletedOpts,
       });
     }

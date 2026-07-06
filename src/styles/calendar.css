@@ -2492,23 +2492,6 @@
 /* 캘린더 셀 클릭 — 할일/일정 추가 (공용 time-task-setup-modal 셸) */
 /* -------------------------------------------------------------------------- */
 
-.calendar-event-add-modal .calendar-event-add-modal-heading {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.2rem;
-  min-width: 0;
-}
-
-.calendar-event-add-modal .calendar-event-add-modal-date {
-  margin: 0;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  line-height: 1.3;
-  color: var(--lp-modal-navy-muted);
-}
-
 /* -------------------------------------------------------------------------- */
 /* 일정·할일 버블 (fixed → body) — 시간가계부/lp-modals와 동일 토큰 */
 /* -------------------------------------------------------------------------- */

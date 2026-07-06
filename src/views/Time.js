@@ -24,6 +24,10 @@ import {
   syncKpiTodoCompleted,
 } from "../utils/kpiTodoSync.js";
 import { pullKpiTodosDomainFromCloud } from "../utils/kpiTabCloudRefresh.js";
+import {
+  DEFAULT_READING_KPI_ID,
+  DEFAULT_READING_KPI_TODO_LIST_LABEL,
+} from "../utils/happinessKpiMapSupabase.js";
 import { kpiTodoFineTrace } from "../utils/kpiTodoFineTrace.js";
 import {
   bindModalNativeDateRange,
@@ -8717,6 +8721,9 @@ export function render(opts = {}) {
   const taskLogKpiTodosSection = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-kpi-todos-section"]',
   );
+  const taskLogKpiTodosTitle = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-kpi-todos-title"]',
+  );
   const taskLogKpiTodosList = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-kpi-todos-list"]',
   );
@@ -9504,12 +9511,26 @@ export function render(opts = {}) {
     }
   }
 
+  function taskCompletionTodoListLabelForKpiId(kpiId) {
+    return String(kpiId || "").trim() === DEFAULT_READING_KPI_ID
+      ? DEFAULT_READING_KPI_TODO_LIST_LABEL
+      : "할 일 목록";
+  }
+
+  function taskCompletionTodoListEmptyMessageForKpiId(kpiId) {
+    return String(kpiId || "").trim() === DEFAULT_READING_KPI_ID
+      ? "등록된 독서 목록이 없습니다."
+      : "등록된 할 일이 없습니다.";
+  }
+
   async function refreshTaskCompletionTodosInLogModal() {
     const info = getTaskCompletionTodoInfoForTaskLog();
     if (!info) {
       hideTaskLogTaskCompletionTodosSection();
       return;
     }
+    const listLabel = taskCompletionTodoListLabelForKpiId(info.kpiId);
+    if (taskLogKpiTodosTitle) taskLogKpiTodosTitle.textContent = listLabel;
     if (
       !taskLogKpiTodosSection ||
       !taskLogKpiTodosList ||
@@ -9522,7 +9543,7 @@ export function render(opts = {}) {
     taskLogKpiTodosSection.hidden = false;
     taskLogKpiTodosScroll.hidden = true;
     taskLogKpiTodosStatus.hidden = false;
-    taskLogKpiTodosStatus.textContent = "할 일 목록을 불러오는 중…";
+    taskLogKpiTodosStatus.textContent = `${listLabel}을 불러오는 중…`;
     taskLogKpiTodosList.replaceChildren();
 
     let pullOk = false;
@@ -9548,14 +9569,15 @@ export function render(opts = {}) {
     if (!pullOk && !todos.length) {
       taskLogKpiTodosStatus.hidden = false;
       taskLogKpiTodosStatus.textContent =
-        "할 일 목록을 불러오지 못했습니다. 잠시 후 다시 선택해 주세요.";
+        `${listLabel}을 불러오지 못했습니다. 잠시 후 다시 선택해 주세요.`;
       taskLogKpiTodosScroll.hidden = true;
       return;
     }
 
     if (!todos.length) {
       taskLogKpiTodosStatus.hidden = false;
-      taskLogKpiTodosStatus.textContent = "등록된 할 일이 없습니다.";
+      taskLogKpiTodosStatus.textContent =
+        taskCompletionTodoListEmptyMessageForKpiId(info.kpiId);
       taskLogKpiTodosScroll.hidden = true;
       return;
     }
