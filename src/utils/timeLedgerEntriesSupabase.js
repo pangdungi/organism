@@ -26,6 +26,15 @@ import { closeStaleInProgressTimeLedgerRows } from "./timeLedgerStaleInProgressC
 import { timeLedgerSyncLog } from "./timeLedgerSyncDebug.js";
 import { isUuid } from "./idUtils.js";
 import { coalesceInFlightPull } from "./timeLedgerPullCoalesce.js";
+import { parseIsoMs } from "./kpiMapLwwMerge.js";
+import {
+  hasLocalTimeLedgerEntriesInRange,
+  isTimeLedgerRangePullStale,
+  probeTimeLedgerEntriesRangeServerMs,
+  readLedgerEntriesRangeSessionWatermarkMs,
+  readLocalTimeLedgerEntriesRangeWatermarkMs,
+  rememberLedgerEntriesRangeWatermarkMs,
+} from "./timeLedgerServerWatermark.js";
 
 const TABLE = "time_ledger_entries";
 const UPSERT_CONFLICT_ROW = "user_id,id";
@@ -547,6 +556,11 @@ async function pullTimeLedgerEntriesForDateRangeCore(
       entryIds: closed.closedEntryIds,
     });
   }
+  const wm = rows.reduce(
+    (m, r) => Math.max(m, parseIsoMs(r?.updated_at)),
+    0,
+  );
+  if (wm > 0) rememberLedgerEntriesRangeWatermarkMs(userId, rs, re, wm);
   timeLedgerSyncLog("pull_done", {
     range: `${rs}..${re}`,
     trigger,
@@ -743,6 +757,35 @@ export async function pushDirtyTimeLedgerEntriesToSupabase(opts = {}) {
   return runSerializedLedgerServerOp(() =>
     pushDirtyTimeLedgerEntriesToSupabaseCore(opts),
   );
+}
+
+/**
+ * 서버 updated_at 워터마크가 로컬·세션보다 새로울 때만 구간 pull.
+ * @returns {Promise<boolean>} 이번에 서버 스냅샷을 반영했으면 true
+ */
+export async function pullTimeLedgerEntriesIfStaleForCombinedRange() {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) return false;
+  const { rangeStart, rangeEnd } = readTimeLedgerCombinedPullRangeYmd();
+  const rs = String(rangeStart || "").trim();
+  const re = String(rangeEnd || "").trim();
+  if (!rs || !re) return false;
+
+  const serverMs = await probeTimeLedgerEntriesRangeServerMs(userId, rs, re);
+  const localMs = readLocalTimeLedgerEntriesRangeWatermarkMs(rs, re);
+  const sessionMs = readLedgerEntriesRangeSessionWatermarkMs(userId, rs, re);
+  const hasLocalRows = hasLocalTimeLedgerEntriesInRange(rs, re);
+  const stale = isTimeLedgerRangePullStale(
+    serverMs,
+    localMs,
+    sessionMs,
+    hasLocalRows,
+  );
+  if (!stale) {
+    if (serverMs > 0) rememberLedgerEntriesRangeWatermarkMs(userId, rs, re, serverMs);
+    return false;
+  }
+  return !!(await pullTimeLedgerEntriesForDateRange(rs, re));
 }
 
 /** 시간 탭에서 쓰는 pull: 계정 + 시간「기록」세션 구간 entry_date만 조회 */
