@@ -11,14 +11,6 @@ import {
 } from "./timeDailyBudgetModel.js";
 import { lpPullDebug } from "./lpPullDebug.js";
 import { coalesceInFlightPull } from "./timeLedgerPullCoalesce.js";
-import { parseIsoMs } from "./kpiMapLwwMerge.js";
-import {
-  hasLocalTimeDailyBudgetInRange,
-  isTimeDailyBudgetRangePullStale,
-  probeTimeDailyBudgetRangeServerMs,
-  readDailyBudgetRangeSessionWatermarkMs,
-  rememberDailyBudgetRangeWatermarkMs,
-} from "./timeLedgerServerWatermark.js";
 
 const TABLE = "time_daily_budget_days";
 
@@ -151,39 +143,8 @@ export async function pullTimeDailyBudgetForDateRange(rangeStart, rangeEnd) {
   if (!data?.length) return false;
   const selfRows = data.filter((r) => r && r.user_id === userId);
   if (selfRows.length === 0) return false;
-  const wm = selfRows.reduce(
-    (m, r) => Math.max(m, parseIsoMs(r?.updated_at)),
-    0,
-  );
-  if (wm > 0) rememberDailyBudgetRangeWatermarkMs(userId, rs, re, wm);
   return mergeTimeDailyBudgetRowsFromServer(selfRows);
   });
-}
-
-/**
- * 서버 updated_at 워터마크가 세션·로컬보다 새로울 때만 구간 pull.
- * @returns {Promise<boolean>}
- */
-export async function pullTimeDailyBudgetIfStaleForDateRange(rangeStart, rangeEnd) {
-  const userId = await getSessionUserId();
-  if (!userId || !supabase) return false;
-  const rs = normalizeDateKey(rangeStart);
-  const re = normalizeDateKey(rangeEnd);
-  if (!rs || !re) return false;
-
-  const serverMs = await probeTimeDailyBudgetRangeServerMs(userId, rs, re);
-  const sessionMs = readDailyBudgetRangeSessionWatermarkMs(userId, rs, re);
-  const hasLocalBudget = hasLocalTimeDailyBudgetInRange(rs, re);
-  const stale = isTimeDailyBudgetRangePullStale(
-    serverMs,
-    sessionMs,
-    hasLocalBudget,
-  );
-  if (!stale) {
-    if (serverMs > 0) rememberDailyBudgetRangeWatermarkMs(userId, rs, re, serverMs);
-    return false;
-  }
-  return !!(await pullTimeDailyBudgetForDateRange(rs, re));
 }
 
 /** @deprecated 탭 진입 등에서는 `pullTimeDailyBudgetForDateRange` 사용 */

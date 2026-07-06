@@ -271,15 +271,6 @@ function persistActiveTabId(tabId) {
   } catch (_) {}
 }
 
-/** 시간가계부: pull로 로컬이 바뀐 뒤에만 화면 갱신 */
-function timeSoftRefreshAfterPull(pullResult) {
-  clearLpTabPullPending("time");
-  if (!pullResult?.anyChanged) return;
-  try {
-    window.__lpTimeLedgerSoftRefresh?.();
-  } catch (_) {}
-}
-
 /** KPI 탭: pull 완료 후 화면 갱신(동기화 로딩 해제·데이터 반영) */
 function kpiSoftRefreshAfterPull(tabId, pullResult) {
   if (isKpiAppTabId(tabId)) clearKpiTabPullPending(tabId);
@@ -338,7 +329,8 @@ async function pullDataForActiveTab(tabId, opts = {}) {
     }
     case "time":
       /* 기록 탭 날짜는 메뉴 전환 직전 `resetTimeLedgerSessionFilterToToday` 로 맞춤. pull 은 그 구간 기준 */
-      return await pullTimeLedgerTabEnterFromCloud();
+      await pullTimeLedgerTabEnterFromCloud();
+      break;
     case "health":
     case "happiness":
     case "sideincome":
@@ -610,7 +602,10 @@ export async function mountApp(container) {
         ) {
           kpiSoftRefreshAfterPull(targetTabId, pullResult);
         } else if (targetTabId === "time") {
-          timeSoftRefreshAfterPull(pullResult);
+          clearLpTabPullPending(targetTabId);
+          try {
+            window.__lpTimeLedgerSoftRefresh?.();
+          } catch (_) {}
         } else if (targetTabId === "habittracker") {
           try {
             window.__lpHabitTrackerSoftRefresh?.();
@@ -952,8 +947,6 @@ export async function mountApp(container) {
 
       await ensureTimeLedgerStorageReady();
 
-      finishAppBootReady();
-
       if (bootTabId === "home") {
         try {
           await syncAdminMenuVisibility();
@@ -980,7 +973,10 @@ export async function mountApp(container) {
         return;
       }
       if (bootTabId === "time") {
-        timeSoftRefreshAfterPull(pullResult);
+        clearLpTabPullPending("time");
+        try {
+          window.__lpTimeLedgerSoftRefresh?.();
+        } catch (_) {}
       } else if (bootTabId === "schedulecalendar") {
         try {
           window.__lpCalendarSoftRefresh?.();

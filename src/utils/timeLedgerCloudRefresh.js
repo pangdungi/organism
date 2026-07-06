@@ -7,9 +7,9 @@ import {
   ensureTimeLedgerStorageReady,
   TIME_LEDGER_ENTRIES_KEY,
 } from "./timeLedgerEntriesModel.js";
-import { pullTimeDailyBudgetIfStaleForDateRange } from "./timeDailyBudgetSupabase.js";
+import { pullTimeDailyBudgetForDateRange } from "./timeDailyBudgetSupabase.js";
 import {
-  pullTimeLedgerEntriesIfStaleForCombinedRange,
+  pullTimeLedgerEntriesFromSupabase,
   readTimeLedgerCombinedPullRangeYmd,
 } from "./timeLedgerEntriesSupabase.js";
 import { getLedgerTasksMemSnapshotString, TIME_TASK_LOG_ROWS_KEY } from "./timeTaskOptionsModel.js";
@@ -21,7 +21,7 @@ import {
 } from "./timeDailyBudgetModel.js";
 import { lpPullDebug } from "./lpPullDebug.js";
 import { getScopedLocalStorageItem } from "./clientStorageScope.js";
-import { pullTimeLedgerTasksIfStaleForModal } from "./timeLedgerTasksSupabase.js";
+import { pullTimeLedgerTasksFromSupabase } from "./timeLedgerTasksSupabase.js";
 import { ensureAllKpiTimeTasksFromStorage } from "./kpiTimeTaskSync.js";
 import { pullStaleKpiDomainsForTaskLogList } from "./kpiTabCloudRefresh.js";
 
@@ -69,9 +69,9 @@ export async function pullTimeLedgerTabEnterFromCloud() {
   const before = snapshotTimeLedgerLocalStorage();
   const { rangeStart, rangeEnd } = readTimeLedgerCombinedPullRangeYmd();
   await Promise.all([
-    pullTimeLedgerEntriesIfStaleForCombinedRange(),
-    pullTimeDailyBudgetIfStaleForDateRange(rangeStart, rangeEnd),
-    pullTimeLedgerTasksIfStaleForModal(),
+    pullTimeLedgerEntriesFromSupabase(),
+    pullTimeDailyBudgetForDateRange(rangeStart, rangeEnd),
+    pullTimeLedgerTasksFromSupabase(),
   ]);
   try {
     ensureAllKpiTimeTasksFromStorage();
