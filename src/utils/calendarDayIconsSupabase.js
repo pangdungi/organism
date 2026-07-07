@@ -5,6 +5,8 @@
 import { supabase } from "../supabase.js";
 import {
   applyCalendarDayIconsServerSnapshot,
+  clearCalendarDayIconLocalSyncPending,
+  markCalendarDayIconLocalSyncPending,
   setCalendarDayIconKeyForDate,
 } from "./calendarDayIconsModel.js";
 import { runTodoSectionTasksSerialized } from "./todoSectionTasksServerSyncSerial.js";
@@ -57,30 +59,35 @@ export async function syncCalendarDayIconForDate(dateKey, iconKey) {
       return { ok: false, reason: !supabase ? "no_supabase" : !userId ? "no_session" : "bad_date" };
     }
 
-    setCalendarDayIconKeyForDate(ymd, key);
+    markCalendarDayIconLocalSyncPending(ymd);
+    try {
+      setCalendarDayIconKeyForDate(ymd, key);
 
-    const { error: delErr } = await supabase
-      .from(TABLE)
-      .delete()
-      .eq("user_id", userId)
-      .eq("day_date", ymd);
-    if (delErr) {
-      return { ok: false, reason: delErr.message || "delete_failed" };
-    }
-    if (!key) return { ok: true };
+      const { error: delErr } = await supabase
+        .from(TABLE)
+        .delete()
+        .eq("user_id", userId)
+        .eq("day_date", ymd);
+      if (delErr) {
+        return { ok: false, reason: delErr.message || "delete_failed" };
+      }
+      if (!key) return { ok: true };
 
-    const { error: insErr } = await supabase.from(TABLE).insert([
-      {
-        user_id: userId,
-        day_date: ymd,
-        icon_key: key,
-        sort_order: 0,
-      },
-    ]);
-    if (insErr) {
-      return { ok: false, reason: insErr.message || "insert_failed" };
+      const { error: insErr } = await supabase.from(TABLE).insert([
+        {
+          user_id: userId,
+          day_date: ymd,
+          icon_key: key,
+          sort_order: 0,
+        },
+      ]);
+      if (insErr) {
+        return { ok: false, reason: insErr.message || "insert_failed" };
+      }
+      return { ok: true };
+    } finally {
+      clearCalendarDayIconLocalSyncPending(ymd);
     }
-    return { ok: true };
   });
 }
 

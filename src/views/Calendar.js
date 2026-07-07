@@ -5254,6 +5254,17 @@ function render1WeekView(tabsElement) {
       if (date.getDay() === 6) cell.classList.add("sat");
 
       cell.appendChild(dayNum);
+      const dayIconsEl = document.createElement("div");
+      dayIconsEl.className = "calendar-monthly-day-icons";
+      dayIconsEl.setAttribute("aria-hidden", "true");
+      renderCalendarMonthlyDayIcons(dayIconsEl, key, {
+        onAfterChange: () => {
+          patchDayStamp(key);
+          refreshTodoList();
+        },
+      });
+      cell.classList.toggle("calendar-monthly-day--has-stamp", !dayIconsEl.hidden);
+      cell.appendChild(dayIconsEl);
       const entriesEl = document.createElement("div");
       entriesEl.className = "calendar-monthly-day-entries";
       cell.appendChild(entriesEl);

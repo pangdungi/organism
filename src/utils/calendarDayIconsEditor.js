@@ -49,6 +49,60 @@ export function showCalendarDayIconPickModal(opts = {}) {
   });
 }
 
+function syncWeekStampStripAfterCellPaint(cell) {
+  const weekRow = cell?.closest?.(".calendar-monthly-week");
+  if (!(weekRow instanceof HTMLElement)) return;
+  const hasVisible = !!weekRow.querySelector(
+    ".calendar-monthly-day-icons:not([hidden])",
+  );
+  weekRow.classList.toggle("calendar-monthly-week--has-stamps", hasVisible);
+  if (!hasVisible) {
+    weekRow.style.removeProperty("--lp-cal-stamp-strip-rem");
+  }
+  weekRow._lpMonthlyBarLayoutRerun?.();
+}
+
+/**
+ * 화면에 붙은 모든 월간·1주 날짜 셀 — 스탬프 DOM 즉시 갱신(모바일 버블 경로 포함)
+ * @param {string} dateKey
+ * @param {{ onAfterChange?: () => void }} [opts]
+ */
+export function repaintCalendarDayStampCells(dateKey, opts = {}) {
+  const key = String(dateKey || "").trim().slice(0, 10);
+  if (!key || typeof document === "undefined") return;
+  let selectorKey = key;
+  try {
+    selectorKey = CSS.escape(key);
+  } catch (_) {}
+  document
+    .querySelectorAll(`.calendar-monthly-day[data-date="${selectorKey}"]`)
+    .forEach((cell) => {
+      if (!(cell instanceof HTMLElement)) return;
+      let dayIconsEl = cell.querySelector(".calendar-monthly-day-icons");
+      if (!dayIconsEl) {
+        dayIconsEl = document.createElement("div");
+        dayIconsEl.className = "calendar-monthly-day-icons";
+        dayIconsEl.setAttribute("aria-hidden", "true");
+        const dayNum = cell.querySelector(".calendar-monthly-day-num");
+        if (dayNum?.nextSibling) {
+          cell.insertBefore(dayIconsEl, dayNum.nextSibling);
+        } else if (dayNum) {
+          dayNum.insertAdjacentElement("afterend", dayIconsEl);
+        } else {
+          cell.prepend(dayIconsEl);
+        }
+      }
+      renderCalendarMonthlyDayIcons(dayIconsEl, key, {
+        onAfterChange: opts.onAfterChange,
+      });
+      cell.classList.toggle(
+        "calendar-monthly-day--has-stamp",
+        !dayIconsEl.hidden,
+      );
+      syncWeekStampStripAfterCellPaint(cell);
+    });
+}
+
 /**
  * 날짜 아이콘 선택/수정 (날짜 패널·월간 셀)
  * @param {string} dateKey
@@ -59,24 +113,29 @@ export function openCalendarDayIconEditor(dateKey, opts = {}) {
   if (!ymd) return;
   const currentKey = getCalendarDayIconKeyForDate(ymd);
 
+  const notifyStampUiChanged = () => {
+    repaintCalendarDayStampCells(ymd, { onAfterChange: opts.onSaved });
+    opts.onSaved?.();
+  };
+
   showCalendarDayIconPickModal({
     currentKey,
     onPick: (key) => {
       const iconKey = String(key || "").trim();
       if (!iconKey) return;
       setCalendarDayIconKeyForDate(ymd, iconKey);
-      opts.onSaved?.();
+      notifyStampUiChanged();
       opts.onClose?.();
       void syncCalendarDayIconForDate(ymd, iconKey).finally(() => {
-        opts.onSaved?.();
+        notifyStampUiChanged();
       });
     },
     onRemove: () => {
       setCalendarDayIconKeyForDate(ymd, "");
-      opts.onSaved?.();
+      notifyStampUiChanged();
       opts.onClose?.();
       void syncCalendarDayIconForDate(ymd, "").finally(() => {
-        opts.onSaved?.();
+        notifyStampUiChanged();
       });
     },
   });
