@@ -457,6 +457,20 @@ function lpCalendarWeekHasVisibleDayIcons(weekRow) {
   );
 }
 
+/** partialWeekPatch — 제거한 주 행을 맨 아래가 아니라 날짜 순서 위치에 다시 넣기 */
+function lpFindMonthlyWeekWrapInsertBefore(calendarGrid, firstDayKey) {
+  const key = String(firstDayKey || "").trim().slice(0, 10);
+  if (!key || !(calendarGrid instanceof HTMLElement)) return null;
+  for (const wrap of calendarGrid.querySelectorAll(
+    ".calendar-monthly-week-wrap",
+  )) {
+    const cell = wrap.querySelector(".calendar-monthly-day[data-date]");
+    const wrapFirst = String(cell?.dataset?.date || "").trim().slice(0, 10);
+    if (wrapFirst && wrapFirst > key) return wrap;
+  }
+  return null;
+}
+
 /** 스탬프 영역 — 셀 너비 기준 클래스만(높이는 CSS auto, JS에서 실측) */
 function lpCalendarApplyWeekStampStripLayout(weekRow) {
   if (!(weekRow instanceof HTMLElement)) return 0;
@@ -3456,7 +3470,14 @@ function renderMonthlyView(tabsElement) {
       weekWrap.appendChild(weekRow);
       weekWrap.appendChild(barsEl);
       weekWrap.appendChild(moreEl);
-      calendarGrid.appendChild(weekWrap);
+      const insertBefore = partialWeekPatch
+        ? lpFindMonthlyWeekWrapInsertBefore(calendarGrid, firstDayKey)
+        : null;
+      if (insertBefore) {
+        calendarGrid.insertBefore(weekWrap, insertBefore);
+      } else {
+        calendarGrid.appendChild(weekWrap);
+      }
       lpCalendarApplyWeekStampStripLayout(weekRow);
       const weekLayoutDone = layoutPass.trackWeek();
       if (

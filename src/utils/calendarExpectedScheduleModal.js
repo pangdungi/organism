@@ -571,11 +571,11 @@ function attachExpectedScheduleDatetimeUI(panel, ctx) {
               (taskLogTimeStart?.value || "").trim(),
             );
             if (!gapStartTimeVal || !/^\d{1,2}:\d{2}$/.test(gapStartTimeVal)) {
-              showToast("시작 시각을 먼저 입력해 주세요.", "info");
+              showToast("시작 시각을 먼저 입력해 주세요.");
               return;
             }
             if (!/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) {
-              showToast("기록 날짜를 확인해 주세요.", "info");
+              showToast("기록 날짜를 확인해 주세요.");
               return;
             }
             const gapOpts = {};
@@ -592,7 +592,7 @@ function attachExpectedScheduleDatetimeUI(panel, ctx) {
               );
             nextStart = normalizeHhMm(String(nextStart || "").trim());
             if (!nextStart || !/^\d{1,2}:\d{2}$/.test(nextStart)) {
-              showToast("이어지는 다음 예상 일정이 없습니다.", "info");
+              showToast("이어지는 다음 예상 일정이 없습니다.");
               syncExpectedGapFillBtnVisibility();
               return;
             }
