@@ -1114,6 +1114,53 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   [data-legacy~="time-task-log-emotion-trigger-chips"] {
   margin-top: 0.45rem;
 }
+
+/* 과제 기록 — 칩 선택과 아래 구분선(메모 등) 사이 여백 */
+.time-task-setup-modal.time-task-log-modal
+  [data-legacy~="time-task-log-content-type-section"]:not([hidden]),
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-content-type-section"]:not([hidden]),
+.time-task-setup-modal.time-task-log-modal
+  [data-legacy~="time-task-log-emotion-trigger-section"]:not([hidden]),
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-emotion-trigger-section"]:not([hidden]) {
+  padding-bottom: 0.4rem;
+}
+
+.time-task-setup-modal.time-task-log-modal
+  [data-legacy~="time-task-log-content-type-chips"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-content-type-chips"],
+.time-task-setup-modal.time-task-log-modal
+  [data-legacy~="time-task-log-emotion-trigger-chips"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-emotion-trigger-chips"] {
+  margin-top: 0.45rem;
+  margin-bottom: 0.5rem;
+}
+
+.time-task-setup-modal.time-task-log-modal
+  [data-legacy~="time-task-log-content-type-section"]:not([hidden])
+  + [data-legacy~="time-task-log-memo-section"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-content-type-section"]:not([hidden])
+  + [data-legacy~="time-task-log-memo-section"],
+.time-task-setup-modal.time-task-log-modal
+  [data-legacy~="time-task-log-emotion-trigger-section"]:not([hidden])
+  + [data-legacy~="time-task-log-memo-section"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-emotion-trigger-section"]:not([hidden])
+  + [data-legacy~="time-task-log-memo-section"],
+.time-task-setup-modal.time-task-log-modal
+  [data-legacy~="time-task-log-content-type-section"]:not([hidden])
+  + [data-legacy~="time-task-log-rating-section"][hidden]
+  + [data-legacy~="time-task-log-memo-section"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-content-type-section"]:not([hidden])
+  + [data-legacy~="time-task-log-rating-section"][hidden]
+  + [data-legacy~="time-task-log-memo-section"] {
+  margin-top: 0.75rem;
+}
 .todo-task-edit-input-shell--select,
 [data-legacy~="todo-task-edit-input-shell--select"] {
   position: relative;

@@ -2735,15 +2735,22 @@
   letter-spacing: 0;
   color: #999999;
   line-height: 1;
-  text-align: center;
+  text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.time-ledger-day-timebox-matrix-col-label,
+[data-legacy~="time-ledger-view"] .time-ledger-day-timebox-matrix-col-label {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .time-ledger-day-timebox-matrix-row-label,
 [data-legacy~="time-ledger-view"] .time-ledger-day-timebox-matrix-row-label {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
 }
 
 .time-ledger-day-timebox-matrix-cell,
@@ -2960,12 +2967,13 @@
 [data-legacy~="time-ledger-view"] .time-ledger-week-timebox-hour-rail-label {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
   font-size: 0.5625rem;
   font-weight: 600;
   letter-spacing: 0;
   color: #999999;
   line-height: 1;
+  text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
@@ -4734,6 +4742,7 @@
   [data-legacy~="time-task-log-content-type-section"] {
   margin-top: 0.85rem;
   padding-top: 0.65rem;
+  padding-bottom: 0.4rem;
   border-top: 1px solid #e5e5e5;
 }
 
@@ -4744,7 +4753,7 @@
   )
   [data-legacy~="time-task-log-content-type-chips"] {
   margin-top: 0.45rem;
-  margin-bottom: 0.15rem;
+  margin-bottom: 0.5rem;
 }
 
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
@@ -4769,6 +4778,7 @@
   [data-legacy~="time-task-log-emotion-trigger-section"] {
   margin-top: 0.85rem;
   padding-top: 0.65rem;
+  padding-bottom: 0.4rem;
   border-top: 1px solid #e5e5e5;
 }
 
@@ -4779,6 +4789,7 @@
   )
   [data-legacy~="time-task-log-emotion-trigger-chips"] {
   margin-top: 0.45rem;
+  margin-bottom: 0.5rem;
 }
 
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)

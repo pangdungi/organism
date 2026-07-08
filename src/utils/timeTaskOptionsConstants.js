@@ -319,6 +319,7 @@ export const APPEARANCE_TYPE_OPTIONS = [
   "패션/코디",
   "헤어 스타일링",
   "화장",
+  "마사지하기",
 ];
 
 /** @param {string} value @returns {{ label: string, known: boolean }} */

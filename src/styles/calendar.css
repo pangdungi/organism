@@ -540,15 +540,21 @@
   font-weight: 600;
   letter-spacing: 0;
   color: #999999;
-  text-align: center;
+  text-align: right;
   line-height: 1;
   font-variant-numeric: tabular-nums;
+}
+
+.calendar-1day-slot-grid-col-label {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .calendar-1day-slot-grid-row-label {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
 }
 
 .calendar-1day-slot-grid-cell {
@@ -3023,6 +3029,16 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
+  }
+
+  .lp-calendar-budget-add-modal
+    [data-legacy~="time-task-log-content-type-section"]:not([hidden])
+    + [data-legacy~="time-task-log-memo-section"],
+  .lp-calendar-budget-add-modal
+    [data-legacy~="time-task-log-emotion-trigger-section"]:not([hidden])
+    + [data-legacy~="time-task-log-memo-section"] {
+    margin-top: 0.75rem;
+    padding-top: 0.65rem;
   }
 
   .lp-calendar-budget-add-modal [data-legacy~="time-task-log-memo-fields"] {
