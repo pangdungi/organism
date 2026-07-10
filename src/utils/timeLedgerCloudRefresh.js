@@ -12,7 +12,11 @@ import {
   pullTimeLedgerEntriesFromSupabase,
   readTimeLedgerCombinedPullRangeYmd,
 } from "./timeLedgerEntriesSupabase.js";
-import { getLedgerTasksMemSnapshotString, TIME_TASK_LOG_ROWS_KEY } from "./timeTaskOptionsModel.js";
+import {
+  getLedgerTasksMemSnapshotString,
+  patchKpiLinkedTasksFromKpiMaps,
+  TIME_TASK_LOG_ROWS_KEY,
+} from "./timeTaskOptionsModel.js";
 import {
   TIME_DAILY_BUDGET_GOALS_KEY,
   TIME_BUDGET_EXCLUDED_KEY,
@@ -21,9 +25,10 @@ import {
 } from "./timeDailyBudgetModel.js";
 import { lpPullDebug } from "./lpPullDebug.js";
 import { getScopedLocalStorageItem } from "./clientStorageScope.js";
-import { pullTimeLedgerTasksFromSupabase } from "./timeLedgerTasksSupabase.js";
+import { pullTimeLedgerTasksForTabEnter } from "./timeLedgerTasksSupabase.js";
 import { ensureAllKpiTimeTasksFromStorage } from "./kpiTimeTaskSync.js";
 import { pullStaleKpiDomainsForTaskLogList } from "./kpiTabCloudRefresh.js";
+import { coalesceInFlightPull } from "./timeLedgerPullCoalesce.js";
 
 function snapshotTimeLedgerLocalStorage() {
   try {
@@ -37,6 +42,28 @@ function snapshotTimeLedgerLocalStorage() {
   } catch (_) {
     return "";
   }
+}
+
+async function pullTimeLedgerTabEnterFromCloudCore() {
+  lpPullDebug("pullTimeLedgerTabEnterFromCloud", {});
+  await ensureTimeLedgerStorageReady();
+  const before = snapshotTimeLedgerLocalStorage();
+  const { rangeStart, rangeEnd } = readTimeLedgerCombinedPullRangeYmd();
+  /* KPI 맵 먼저 — 연동 과제가 목록 필터에서 빠지지 않게 */
+  await pullStaleKpiDomainsForTaskLogList();
+  await Promise.all([
+    pullTimeLedgerEntriesFromSupabase(),
+    pullTimeDailyBudgetForDateRange(rangeStart, rangeEnd),
+    pullTimeLedgerTasksForTabEnter(),
+  ]);
+  try {
+    ensureAllKpiTimeTasksFromStorage();
+  } catch (_) {}
+  try {
+    patchKpiLinkedTasksFromKpiMaps();
+  } catch (_) {}
+  const after = snapshotTimeLedgerLocalStorage();
+  return { anyChanged: before !== after };
 }
 
 /**
@@ -60,23 +87,12 @@ export async function pullAllTimeLedgerFromCloud(opts = {}) {
 }
 
 /**
- * 시간가계부 화면·탭 진입 — 기록 행·일간 예산·과제 목록을 서버에서 받음.
- * (과제설정을 열지 않아도 기록 모달에 KPI·사용자 과제가 보이게 함)
+ * 시간기록 탭 클릭 — KPI·과제는 첫 반영 전 무조건 pull, 이후 서버 변경(stale)일 때만.
+ * 기록 행·일간 예산은 매 탭 진입 시 pull.
  */
-export async function pullTimeLedgerTabEnterFromCloud() {
-  lpPullDebug("pullTimeLedgerTabEnterFromCloud", {});
-  await ensureTimeLedgerStorageReady();
-  const before = snapshotTimeLedgerLocalStorage();
-  const { rangeStart, rangeEnd } = readTimeLedgerCombinedPullRangeYmd();
-  await Promise.all([
-    pullTimeLedgerEntriesFromSupabase(),
-    pullTimeDailyBudgetForDateRange(rangeStart, rangeEnd),
-    pullTimeLedgerTasksFromSupabase(),
-  ]);
-  try {
-    ensureAllKpiTimeTasksFromStorage();
-  } catch (_) {}
-  void pullStaleKpiDomainsForTaskLogList().catch(() => {});
-  const after = snapshotTimeLedgerLocalStorage();
-  return { anyChanged: before !== after };
+export function pullTimeLedgerTabEnterFromCloud() {
+  return coalesceInFlightPull(
+    "time-ledger-tab-enter",
+    pullTimeLedgerTabEnterFromCloudCore,
+  );
 }

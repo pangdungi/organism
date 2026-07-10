@@ -23,7 +23,7 @@ import {
   resolveKpiIdForTaskId,
   syncKpiTodoCompleted,
 } from "../utils/kpiTodoSync.js";
-import { pullKpiTodosDomainFromCloud } from "../utils/kpiTabCloudRefresh.js";
+import { pullKpiTodosDomainFromCloudIfStale } from "../utils/kpiTabCloudRefresh.js";
 import {
   DEFAULT_READING_KPI_ID,
   DEFAULT_READING_KPI_TODO_LIST_LABEL,
@@ -9410,13 +9410,14 @@ export function render(opts = {}) {
 
   function onTaskSelectedForLog(taskName) {
     refreshKpiTodosInLogModal();
-    void refreshTaskCompletionTodosInLogModal();
+    refreshTaskCompletionTodosInLogModal();
+    void syncTaskLogKpiListsFromCloudIfStale();
     updateTaskLogMealDetailVisibility(taskName);
     syncTaskLogRatingSectionUi();
     syncTaskLogGapFillBtnVisibility();
   }
 
-  let taskCompletionTodosFetchGen = 0;
+  let taskLogKpiListsSyncGen = 0;
 
   function getTaskCompletionTodoInfoForTaskLog() {
     const kpiId = resolveTaskLogModalKpiId();
@@ -9466,7 +9467,7 @@ export function render(opts = {}) {
   }
 
   function hideTaskLogTaskCompletionTodosSection() {
-    taskCompletionTodosFetchGen += 1;
+    taskLogKpiListsSyncGen += 1;
     if (!taskLogKpiTodosSection) return;
     taskLogKpiTodosSection.hidden = true;
     if (taskLogKpiTodosScroll) taskLogKpiTodosScroll.hidden = true;
@@ -9477,7 +9478,30 @@ export function render(opts = {}) {
     taskLogKpiTodosList?.replaceChildren?.();
   }
 
-  function renderTaskLogTaskCompletionTodoRows(todos) {
+  function kpiTodoListSnapshot(todos) {
+    return (todos || [])
+      .map(
+        (t) =>
+          `${String(t?.id || "").trim()}\x01${String(t?.text || "").trim()}`,
+      )
+      .sort()
+      .join("\x02");
+  }
+
+  function collectTaskLogTodoChecks(listEl, rowLegacyToken) {
+    const map = new Map();
+    if (!listEl) return map;
+    listEl
+      .querySelectorAll(`[data-legacy~="${rowLegacyToken}"]`)
+      .forEach((label) => {
+        const cb = label.querySelector('input[type="checkbox"]');
+        const id = String(cb?.dataset?.todoId || "").trim();
+        if (id) map.set(id, !!cb?.checked);
+      });
+    return map;
+  }
+
+  function renderTaskLogTaskCompletionTodoRows(todos, preserveChecks) {
     if (!taskLogKpiTodosList) return;
     taskLogKpiTodosList.replaceChildren();
     for (const todo of todos) {
@@ -9491,7 +9515,8 @@ export function render(opts = {}) {
       );
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
-      checkbox.checked = !!todo.completed;
+      checkbox.checked =
+        preserveChecks?.has(id) ? !!preserveChecks.get(id) : !!todo.completed;
       if (id) checkbox.dataset.todoId = id;
       const span = document.createElement("span");
       lpSetClasses(span, "time-task-log-kpi-todo-text");
@@ -9523,13 +9548,8 @@ export function render(opts = {}) {
       : "등록된 할 일이 없습니다.";
   }
 
-  async function refreshTaskCompletionTodosInLogModal() {
-    const info = getTaskCompletionTodoInfoForTaskLog();
-    if (!info) {
-      hideTaskLogTaskCompletionTodosSection();
-      return;
-    }
-    const listLabel = taskCompletionTodoListLabelForKpiId(info.kpiId);
+  function applyTaskCompletionTodosUi(kpiId, todos, opts = {}) {
+    const listLabel = taskCompletionTodoListLabelForKpiId(kpiId);
     if (taskLogKpiTodosTitle) taskLogKpiTodosTitle.textContent = listLabel;
     if (
       !taskLogKpiTodosSection ||
@@ -9539,53 +9559,96 @@ export function render(opts = {}) {
     ) {
       return;
     }
-    const gen = ++taskCompletionTodosFetchGen;
     taskLogKpiTodosSection.hidden = false;
-    taskLogKpiTodosScroll.hidden = true;
-    taskLogKpiTodosStatus.hidden = false;
-    taskLogKpiTodosStatus.textContent = `${listLabel}을 불러오는 중…`;
-    taskLogKpiTodosList.replaceChildren();
-
-    let pullOk = false;
-    try {
-      pullOk = !!(await pullKpiTodosDomainFromCloud(info.kpiId));
-    } catch (_) {
-      pullOk = false;
-    }
-    if (
-      gen !== taskCompletionTodosFetchGen ||
-      !taskLogModal.isConnected ||
-      taskLogModal.hidden
-    ) {
-      return;
-    }
-
-    const refreshed =
-      getKpiTaskCompletionTodoInfoByKpiId(info.kpiId) || info;
-    const todos = (refreshed.todos || []).filter(
-      (t) => String(t?.text || "").trim(),
+    const filtered = (todos || []).filter((t) =>
+      String(t?.text || "").trim(),
     );
 
-    if (!pullOk && !todos.length) {
+    if (!filtered.length) {
+      taskLogKpiTodosScroll.hidden = true;
       taskLogKpiTodosStatus.hidden = false;
       taskLogKpiTodosStatus.textContent =
-        `${listLabel}을 불러오지 못했습니다. 잠시 후 다시 선택해 주세요.`;
-      taskLogKpiTodosScroll.hidden = true;
-      return;
-    }
-
-    if (!todos.length) {
-      taskLogKpiTodosStatus.hidden = false;
-      taskLogKpiTodosStatus.textContent =
-        taskCompletionTodoListEmptyMessageForKpiId(info.kpiId);
-      taskLogKpiTodosScroll.hidden = true;
+        opts.errorMessage ||
+        taskCompletionTodoListEmptyMessageForKpiId(kpiId);
+      taskLogKpiTodosList.replaceChildren();
       return;
     }
 
     taskLogKpiTodosStatus.hidden = true;
     taskLogKpiTodosStatus.textContent = "";
     taskLogKpiTodosScroll.hidden = false;
-    renderTaskLogTaskCompletionTodoRows(todos);
+    renderTaskLogTaskCompletionTodoRows(filtered, opts.preserveChecks);
+  }
+
+  function refreshTaskCompletionTodosInLogModal() {
+    const info = getTaskCompletionTodoInfoForTaskLog();
+    if (!info) {
+      hideTaskLogTaskCompletionTodosSection();
+      return;
+    }
+    applyTaskCompletionTodosUi(info.kpiId, info.todos);
+  }
+
+  async function syncTaskLogKpiListsFromCloudIfStale() {
+    const kpiId = resolveTaskLogModalKpiId();
+    if (!kpiId) return;
+
+    const gen = ++taskLogKpiListsSyncGen;
+    const beforeTaskSnap = kpiTodoListSnapshot(
+      getKpiTaskCompletionTodoInfoByKpiId(kpiId)?.todos,
+    );
+    const beforeDailySnap = kpiTodoListSnapshot(
+      getKpiDailyRepeatInfoByKpiId(kpiId)?.dailyTodos,
+    );
+    const taskChecks = collectTaskLogTodoChecks(
+      taskLogKpiTodosList,
+      "time-task-log-chore-todo-row",
+    );
+
+    let syncResult = { stale: false, pulled: false, pullOk: true };
+    try {
+      syncResult = await pullKpiTodosDomainFromCloudIfStale(kpiId);
+    } catch (_) {
+      syncResult = { stale: true, pulled: true, pullOk: false };
+    }
+
+    if (
+      gen !== taskLogKpiListsSyncGen ||
+      !taskLogModal.isConnected ||
+      taskLogModal.hidden
+    ) {
+      return;
+    }
+
+    if (!syncResult.stale) return;
+
+    const listLabel = taskCompletionTodoListLabelForKpiId(kpiId);
+    const afterTaskInfo = getKpiTaskCompletionTodoInfoByKpiId(kpiId);
+    const afterDailyInfo = getKpiDailyRepeatInfoByKpiId(kpiId);
+    const afterTaskSnap = kpiTodoListSnapshot(afterTaskInfo?.todos);
+    const afterDailySnap = kpiTodoListSnapshot(afterDailyInfo?.dailyTodos);
+
+    if (afterTaskSnap !== beforeTaskSnap) {
+      if (afterTaskInfo) {
+        applyTaskCompletionTodosUi(afterTaskInfo.kpiId, afterTaskInfo.todos, {
+          preserveChecks: taskChecks,
+        });
+      } else {
+        hideTaskLogTaskCompletionTodosSection();
+      }
+    } else if (
+      !syncResult.pullOk &&
+      getTaskCompletionTodoInfoForTaskLog() &&
+      !afterTaskInfo?.todos?.length
+    ) {
+      applyTaskCompletionTodosUi(kpiId, [], {
+        errorMessage: `${listLabel}을 불러오지 못했습니다. 잠시 후 다시 선택해 주세요.`,
+      });
+    }
+
+    if (afterDailySnap !== beforeDailySnap) {
+      refreshKpiTodosInLogModal();
+    }
   }
 
   function isHabitDailyTodoChecked(todo, completedList) {
@@ -9744,18 +9807,13 @@ export function render(opts = {}) {
 
   function applyTaskLogModalAfterBackgroundSync() {
     if (!el.isConnected || taskLogModal.hidden) return;
-    try {
-      ensureAllKpiTimeTasksFromStorage();
-    } catch (_) {}
-    try {
-      patchKpiLinkedTasksFromKpiMaps();
-    } catch (_) {}
+    refreshTaskLogTaskPickerIfMounted();
     const tn = (taskLogTaskDropdown?._getValue?.() || "").trim();
     if (taskLogEditTr && tn) {
       restoreKpiFieldsIfCloudPullWiped(taskLogEditTr._rowData?.id);
     }
     if (tn) refreshKpiTodosInLogModal();
-    void refreshTaskCompletionTodosInLogModal();
+    refreshTaskCompletionTodosInLogModal();
     if (!taskLogEditTr) {
       afterTaskListSyncForTaskLogAddModal();
     }
@@ -9959,6 +10017,14 @@ export function render(opts = {}) {
         onTaskSelectedForLog(first);
       }
     }
+  }
+
+  function refreshTaskLogTaskPickerIfMounted() {
+    try {
+      ensureAllKpiTimeTasksFromStorage();
+      patchKpiLinkedTasksFromKpiMaps();
+    } catch (_) {}
+    taskLogTaskDropdown?._refreshTaskList?.();
   }
 
   async function openTaskLogModal(addContext) {
@@ -10259,7 +10325,7 @@ export function render(opts = {}) {
     updateTaskLogMealDetailVisibility((data.taskName || "").trim());
     syncTaskLogDateOverlay();
     refreshKpiTodosInLogModal();
-    void refreshTaskCompletionTodosInLogModal();
+    refreshTaskCompletionTodosInLogModal();
     updateTaskLogMealDetailVisibility(tnSync);
     syncTaskLogGapFillBtnVisibility();
     void runTaskLogModalCloudSync();
@@ -12278,6 +12344,7 @@ export function render(opts = {}) {
     } catch (_) {}
     allRowsCache = loadTimeRows();
     cachedRows = getFullRowsForFilter(true);
+    refreshTaskLogTaskPickerIfMounted();
     /* pull 후에도 기록·필터가 같으면 renderAll 생략 — 아이콘 깜빡임 방지 */
     syncTimeLedgerContent();
     if (el._lpUsageListEnterScrollArmed) {

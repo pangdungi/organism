@@ -212,6 +212,25 @@ export async function pullKpiTodosDomainFromCloud(kpiId) {
 }
 
 /**
+ * 과제 기록 모달 — 서버 워터마크가 로컬보다 새로울 때만 할일·매일할일 pull
+ * @param {string} kpiId
+ * @returns {Promise<{ stale: boolean, pulled: boolean, pullOk: boolean }>}
+ */
+export async function pullKpiTodosDomainFromCloudIfStale(kpiId) {
+  const domain = resolveKpiDomainForKpiId(kpiId);
+  if (!domain) return { stale: false, pulled: false, pullOk: false };
+  const probe = await probeKpiDomainServerStale(domain);
+  if (!probe.stale) {
+    return { stale: false, pulled: false, pullOk: true };
+  }
+  const pullOk = !!(await pullKpiTodosDomainFromCloud(kpiId));
+  if (pullOk && probe.serverMs > 0) {
+    rememberKpiDomainServerWatermarkMs(domain, probe.serverMs, probe.userId);
+  }
+  return { stale: true, pulled: true, pullOk };
+}
+
+/**
  * 꿈/건강/행복/부수입 **탭 안**에서 루트 목표(상단 탭)를 전환할 때만 서버에서 당깁니다.
  * `force: false` — 로컬 sync 진행 중이면 생략(삭제·수정 직후 스냅샷 충돌 방지).
  * (상위 앱 탭은 `pullKpiTabFromCloud` — `force: true`)

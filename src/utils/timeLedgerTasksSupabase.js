@@ -532,13 +532,29 @@ let _listenerAttached = false;
 /** @deprecated 과제 목록은 서버 pull·사용자 저장만 — 탭 진입 시 KPI→과제 자동 생성 안 함 */
 export function scheduleKpiTaskListEnsureOnce() {}
 
-/** 과제설정·기록 모달 — 서버에 변경 있을 때만 pull(로컬 직후·사용자 저장 대기 중에는 생략) */
+/** 과제설정·기록 모달 — 서버에 변경 있을 때만 pull */
 export async function syncTimeLedgerTaskListForModalOpen() {
   try {
     return !!(await pullTimeLedgerTasksIfStaleForModal());
   } catch (_) {
     return false;
   }
+}
+
+/**
+ * 시간기록 탭 진입 — 서버 과제 목록을 한 번도 반영한 적 없으면 무조건 pull, 이후 stale일 때만.
+ * @returns {Promise<boolean>}
+ */
+export async function pullTimeLedgerTasksForTabEnter() {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) return false;
+  if (_tasksServerWatermarkMs <= 0) {
+    _tasksServerWatermarkMs = readTasksServerWatermarkFromSession(userId);
+  }
+  if (_tasksServerWatermarkMs <= 0) {
+    return !!(await pullTimeLedgerTasksFromSupabase({ ignoreSkip: true }));
+  }
+  return !!(await pullTimeLedgerTasksIfStaleForModal());
 }
 
 /**

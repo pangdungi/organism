@@ -679,6 +679,12 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
     scroll?.classList?.remove?.("is-task-picker-open");
     document.documentElement.classList.remove("lp-task-log-mobile-picker-open");
   };
+  wrap._refreshTaskList = () => {
+    syncTriggerLabel();
+    if (!panel.hidden) {
+      renderOptions(optionsContainer, searchQuery);
+    }
+  };
   wrap._getLedgerBucketPreset = () => ledgerBucketPreset;
   return wrap;
 }
