@@ -76,10 +76,14 @@ import {
 } from "./utils/timeLedgerEntriesModel.js";
 import { hydrateSectionTasksFromLocalMirrorForBoot } from "./utils/todoSectionTasksModel.js";
 import { hydrateCalendarDayIconsFromLocalMirrorForBoot } from "./utils/calendarDayIconsModel.js";
-import { afterLpTabPaint } from "./utils/lpAppLoading.js";
+import {
+  afterLpTabPaint,
+  scheduleLpTabPullOverlay,
+  clearLpTabPullOverlay,
+  isLpMainPanelEmpty,
+} from "./utils/lpAppLoading.js";
 import { prefetchIconsForTab } from "./utils/appIconPrefetch.js";
 import {
-  setLpTabPullPending,
   clearLpTabPullPending,
 } from "./utils/lpTabSyncLoadingUi.js";
 
@@ -354,6 +358,17 @@ async function pullDataForActiveTab(tabId, opts = {}) {
 
 const ROUTINE_REMOVED_KEY = "app-routine-removed-v1";
 
+/** 탭 전환 시 서버 pull 이 있는 탭 — 본문이 비었을 때만 스플래시 오버레이 */
+const TAB_IDS_WITH_CLOUD_PULL = new Set([
+  "schedulecalendar",
+  "time",
+  "health",
+  "happiness",
+  "sideincome",
+  "habittracker",
+  "idea",
+]);
+
 function migrateRemoveRoutineTasks() {
   if (localStorage.getItem(ROUTINE_REMOVED_KEY) === "1") return;
   try {
@@ -556,6 +571,15 @@ export async function mountApp(container) {
           }
         }
         renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
+        /** @type {string | null} */
+        let tabPullOverlayTabId = null;
+        if (
+          TAB_IDS_WITH_CLOUD_PULL.has(targetTabId) &&
+          isLpMainPanelEmpty(main)
+        ) {
+          tabPullOverlayTabId = targetTabId;
+          scheduleLpTabPullOverlay(targetTabId, { immediate: true });
+        }
         syncAppFooterVisibility();
         if (
           targetTabId === "idea" ||
@@ -569,18 +593,19 @@ export async function mountApp(container) {
         void (async () => {
           let pullResult;
           try {
-            pullResult = await pullPromise;
-          } catch (_) {}
-          if (currentTabId !== targetTabId) {
             try {
-              window.__lpCalendarGridPrefetchedForTabSwitch = false;
+              pullResult = await pullPromise;
             } catch (_) {}
-            if (isKpiAppTabId(targetTabId)) clearKpiTabPullPending(targetTabId);
-            if (targetTabId === "home" || targetTabId === "time") {
-              clearLpTabPullPending(targetTabId);
+            if (currentTabId !== targetTabId) {
+              try {
+                window.__lpCalendarGridPrefetchedForTabSwitch = false;
+              } catch (_) {}
+              if (isKpiAppTabId(targetTabId)) clearKpiTabPullPending(targetTabId);
+              if (targetTabId === "home" || targetTabId === "time") {
+                clearLpTabPullPending(targetTabId);
+              }
+              return;
             }
-            return;
-          }
         if (targetTabId === "schedulecalendar") {
           /* 할일/일정·사이드 캘린더: 두 번째 renderMain 시 상단 탭·설정 아이콘이 통째로 다시 붙으며 깜빡임 — 패널 유지 후 본문만 갱신 */
           try {
@@ -616,6 +641,11 @@ export async function mountApp(container) {
         afterLpTabPaint(() => {
           void prefetchIconsForTab(targetTabId);
         });
+          } finally {
+            if (tabPullOverlayTabId) {
+              clearLpTabPullOverlay(tabPullOverlayTabId);
+            }
+          }
         })();
       })();
     }, 24);

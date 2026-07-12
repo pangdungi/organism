@@ -14,6 +14,12 @@ import {
 /** @type {HTMLElement | null} */
 let tabOverlayEl = null;
 
+/** @type {ReturnType<typeof setTimeout> | null} */
+let tabPullOverlayTimer = null;
+
+/** @type {string | null} */
+let tabPullOverlayTabId = null;
+
 export function setAppSplashMessage(_message) {
   const splash = document.getElementById("app-splash");
   if (!splash) return;
@@ -67,6 +73,46 @@ export function hideLpTabLoading() {
   try {
     document.documentElement.classList.remove("lp-tab-loading-active");
   } catch (_) {}
+}
+
+/**
+ * 서버 pull 중 본문이 비어 있을 때만 탭 스플래시 — 짧은 pull 은 오버레이 생략.
+ * @param {string} tabId
+ * @param {{ delayMs?: number, immediate?: boolean }} [opts]
+ */
+export function scheduleLpTabPullOverlay(tabId, opts = {}) {
+  const id = String(tabId || "").trim();
+  if (!id) return;
+  clearLpTabPullOverlay(id, { skipHide: true });
+  tabPullOverlayTabId = id;
+  const delayMs = opts.immediate ? 0 : (opts.delayMs ?? 280);
+  tabPullOverlayTimer = setTimeout(() => {
+    tabPullOverlayTimer = null;
+    if (tabPullOverlayTabId !== id) return;
+    showLpTabLoading();
+  }, delayMs);
+}
+
+/**
+ * @param {string} tabId
+ * @param {{ skipHide?: boolean }} [opts]
+ */
+export function clearLpTabPullOverlay(tabId, opts = {}) {
+  const id = String(tabId || "").trim();
+  if (tabPullOverlayTabId === id || !id) {
+    if (tabPullOverlayTimer != null) {
+      clearTimeout(tabPullOverlayTimer);
+      tabPullOverlayTimer = null;
+    }
+    tabPullOverlayTabId = null;
+  }
+  if (!opts?.skipHide) hideLpTabLoading();
+}
+
+/** @param {HTMLElement | null | undefined} mainEl */
+export function isLpMainPanelEmpty(mainEl) {
+  const panel = mainEl?.querySelector(".app-tab-panel");
+  return !panel?.firstElementChild;
 }
 
 /** 과제 기록·수정 모달 — 탭 로딩 오버레이·스플래시 뷰포트 잠금이 입력·키보드를 막지 않게 */

@@ -179,6 +179,8 @@ async function prepareTimeLedgerStorageForCurrentSession() {
 
 let lpAppMounted = false;
 let lpEnterAppPromise = null;
+let hideSplashRetryCount = 0;
+const HIDE_SPLASH_MAX_RETRIES = 50;
 
 function setLpAuthBootPending(on) {
   try {
@@ -187,6 +189,7 @@ function setLpAuthBootPending(on) {
 }
 
 function showAppSplashNow() {
+  hideSplashRetryCount = 0;
   const splash = document.getElementById("app-splash");
   if (!splash) return;
   splash.classList.remove("app-splash--exiting");
@@ -200,6 +203,25 @@ function showAppSplashNow() {
 function hideAppSplashNow() {
   const splash = document.getElementById("app-splash");
   if (!splash || splash.hasAttribute("hidden")) return;
+
+  const signinPage = document.getElementById("signin-page");
+  const signinVisible =
+    signinPage && getComputedStyle(signinPage).display !== "none";
+  const hasAppPage = !!document
+    .getElementById("app-screen")
+    ?.querySelector(".app-page");
+  if (
+    lpAppMounted &&
+    signinVisible &&
+    !hasAppPage &&
+    hideSplashRetryCount < HIDE_SPLASH_MAX_RETRIES
+  ) {
+    hideSplashRetryCount += 1;
+    setTimeout(hideAppSplashNow, 48);
+    return;
+  }
+  hideSplashRetryCount = 0;
+
   splash.classList.add("app-splash--exiting");
   splash.setAttribute("aria-busy", "false");
   let finished = false;
@@ -326,7 +348,7 @@ async function enterAuthenticatedApp(opts = {}) {
       finishStep("계정 설정 pull");
       await mountApp(screen);
       finishStep("메인 화면 조립(mountApp)");
-      setAppSplashMessage("데이터 불러오는 중…");
+      if (showSplash) setAppSplashMessage("데이터 불러오는 중…");
       await waitForAppBootReady();
       prefetchCriticalAppIconAssets();
       refreshLpPwaInstall();
@@ -341,7 +363,10 @@ async function enterAuthenticatedApp(opts = {}) {
       lpEnterAppDebugMark("진입 합계", t0);
       lpEnterAppDebugSummary(timings);
     } finally {
-      hideAppSplashNow();
+      if (showSplash) {
+        setLpAuthBootPending(false);
+        hideAppSplashNow();
+      }
     }
   })();
 
@@ -548,7 +573,7 @@ function init() {
       session &&
       !lpAppMounted
     ) {
-      void enterAuthenticatedApp();
+      void enterAuthenticatedApp({ showSplash: true });
       return;
     }
     if (event === "SIGNED_OUT") {
@@ -617,13 +642,14 @@ function init() {
   /** 느린 네트워크에서 세션 로드가 잘리며 로그인 화면만 보이는 일 줄이기 */
   const AUTH_GET_SESSION_MS = 30_000;
 
+  /** @returns {Promise<"login" | "authenticated" | "reset-password">} */
   async function showInitialPage() {
     setLpAuthBootPending(true);
     try {
       if (!supabase) {
         showOnly("login");
         setAuthGatePanel("login");
-        return;
+        return "login";
       }
       let session = null;
       try {
@@ -640,19 +666,20 @@ function init() {
       } catch (_e) {
         showOnly("login");
         setAuthGatePanel("login");
-        return;
+        return "login";
       }
       if (session) {
         if (isPasswordRecoverySession(session) || hasPasswordRecoveryUrlHint()) {
           goToPasswordResetUi();
-          return;
+          return "reset-password";
         }
         showOnly("signin");
-        await enterAuthenticatedApp();
-        return;
+        await enterAuthenticatedApp({ showSplash: true });
+        return "authenticated";
       }
       showOnly("login");
       setAuthGatePanel("login");
+      return "login";
     } finally {
       setLpAuthBootPending(false);
     }
@@ -661,12 +688,16 @@ function init() {
   lpRerouteInitialPage = showInitialPage;
 
   async function dismissAppSplash() {
+    /** @type {"login" | "authenticated" | "reset-password" | undefined} */
+    let bootKind;
     try {
-      await showInitialPage();
+      bootKind = await showInitialPage();
     } catch (_e) {
       runLpShellVisibilityGuard(lpShellRecoveryDeps());
     } finally {
-      hideAppSplashNow();
+      if (bootKind !== "authenticated") {
+        hideAppSplashNow();
+      }
     }
   }
 
