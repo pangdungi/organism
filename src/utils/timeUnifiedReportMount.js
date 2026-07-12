@@ -40,6 +40,7 @@ import { buildMoveReportSnapshot } from "./timeMoveReport.js";
 import { buildHappinessRoutineReportSnapshot } from "./timeHappinessRoutineReport.js";
 import { buildPlanAdherenceReportSnapshot } from "./timePlanAdherenceReport.js";
 import { buildFocusReportSnapshot } from "./timeFocusReport.js";
+import { buildMealTasteReportSnapshot } from "./timeMealTasteReport.js";
 import { flowDisruptorCategoryColor } from "./timeTaskFlowDisruptors.js";
 import { readUserHourlyRateLocal } from "./userHourlySync.js";
 
@@ -3320,6 +3321,99 @@ function mountIntakeSection(scrollWrap, range, rows) {
 
   sec.appendChild(counts);
   sec.appendChild(panels);
+
+  const tasteSnap = buildMealTasteReportSnapshot(rows);
+  if (tasteSnap) {
+    const tasteNote = document.createElement("p");
+    tasteNote.className = "lp-tr2-chart-note lp-tr2-intake-taste-note";
+    tasteNote.textContent = `맛 평가 ${tasteSnap.ratedCount}건 · 식단 ${tasteSnap.foodCount}종`;
+    sec.appendChild(tasteNote);
+
+    if (tasteSnap.favorites.length) {
+      const favBlock = createRatingBlock(
+        "가장 좋아한 음식",
+        "식단명별 평균 맛 평가 · 높을수록 선호",
+      );
+      const bars = document.createElement("div");
+      bars.className = "lp-tr2-bars";
+      tasteSnap.favorites.forEach((item) => {
+        const meta = [
+          `${item.count}회`,
+          item.fiveStarCount > 0 ? `5점 ${item.fiveStarCount}회` : "",
+          item.healthyCount && item.unhealthyCount
+            ? "건강·비건강 섭취"
+            : item.healthyCount
+              ? "건강한 섭취"
+              : "건강하지 않은 섭취",
+        ]
+          .filter(Boolean)
+          .join(" · ");
+        bars.appendChild(createRatingBarRow(item.food, item.avg, meta));
+      });
+      favBlock.appendChild(bars);
+      sec.appendChild(favBlock);
+    }
+
+    if (tasteSnap.dislikes.length) {
+      const dislikeBlock = createRatingBlock(
+        "아쉬웠던 음식",
+        "식단명별 평균 맛 평가 · 낮을수록 아쉬움",
+      );
+      const bars = document.createElement("div");
+      bars.className = "lp-tr2-bars";
+      tasteSnap.dislikes.forEach((item) => {
+        const meta = [
+          `${item.count}회`,
+          item.lowStarCount > 0 ? `1~2점 ${item.lowStarCount}회` : "",
+          `최저 ${item.minRating}점`,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+        bars.appendChild(createRatingBarRow(item.food, item.avg, meta));
+      });
+      dislikeBlock.appendChild(bars);
+      sec.appendChild(dislikeBlock);
+    }
+
+    if (tasteSnap.fiveStarFoods.length || tasteSnap.oneStarFoods.length) {
+      const chipWrap = document.createElement("div");
+      chipWrap.className = "lp-tr2-intake-taste-chips";
+      if (tasteSnap.fiveStarFoods.length) {
+        const lab = document.createElement("p");
+        lab.className = "lp-tr2-intake-taste-chip-label";
+        lab.textContent = "5점을 준 음식";
+        chipWrap.appendChild(lab);
+        const row = document.createElement("div");
+        row.className = "lp-tr2-intake-taste-chip-row";
+        tasteSnap.fiveStarFoods.forEach((food) => {
+          const chip = document.createElement("span");
+          chip.className =
+            "lp-tr2-intake-taste-chip lp-tr2-intake-taste-chip--high";
+          chip.textContent = food;
+          row.appendChild(chip);
+        });
+        chipWrap.appendChild(row);
+      }
+      if (tasteSnap.oneStarFoods.length) {
+        const lab = document.createElement("p");
+        lab.className = "lp-tr2-intake-taste-chip-label";
+        lab.textContent = "1점을 준 음식";
+        chipWrap.appendChild(lab);
+        const row = document.createElement("div");
+        row.className = "lp-tr2-intake-taste-chip-row";
+        tasteSnap.oneStarFoods.forEach((food) => {
+          const chip = document.createElement("span");
+          chip.className =
+            "lp-tr2-intake-taste-chip lp-tr2-intake-taste-chip--low";
+          chip.textContent = food;
+          row.appendChild(chip);
+        });
+        chipWrap.appendChild(row);
+      }
+      sec.appendChild(chipWrap);
+    }
+  }
+
   scrollWrap.appendChild(sec);
 }
 

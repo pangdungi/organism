@@ -7,6 +7,7 @@ import {
   getTimeLedgerRowDisplayProductivity,
   parseTimeToHours,
 } from "../views/Time.js";
+import { isMealIntakeTasteRatingTaskName } from "./timeTaskOptionsConstants.js";
 import { normalizeTimeRatingForRow } from "./timeLedgerEntriesModel.js";
 import {
   normalizeTimeFlowFactorsForRow,
@@ -38,6 +39,7 @@ function rowStartHour(r) {
 
 function isProductiveRatedRow(r) {
   if (getTimeLedgerRowDisplayProductivity(r) !== "productive") return false;
+  if (isMealIntakeTasteRatingTaskName(r?.taskName)) return false;
   return normalizeTimeRatingForRow(r.timeRating) != null;
 }
 

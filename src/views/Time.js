@@ -4832,9 +4832,11 @@ function syncMobileTimeCardRatingEl(card, rowData) {
   ratingEl.innerHTML = displayHtml;
   const ratingLabel = TTC.isSleepBuiltinTaskName(rowData?.taskName)
     ? "수면 평가"
-    : isEmotional
-      ? "감정 상태"
-      : "이 시간 평가";
+    : TTC.isMealIntakeTasteRatingTaskName(rowData?.taskName)
+      ? "맛 평가"
+      : isEmotional
+        ? "감정 상태"
+        : "이 시간 평가";
   ratingEl.setAttribute(
     "aria-label",
     rating != null ? `${ratingLabel} ${rating}점` : "",
@@ -7567,6 +7569,11 @@ export function render(opts = {}) {
     return TTC.isEmotionalBuiltinTaskName(taskName);
   }
 
+  function isTaskLogModalMealIntakeTask() {
+    const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
+    return TTC.isMealIntakeTasteRatingTaskName(taskName);
+  }
+
   function shouldShowTaskLogRatingSection() {
     if (
       isTaskLogModalSleepTask() ||
@@ -7583,6 +7590,7 @@ export function render(opts = {}) {
   function taskLogRatingSectionLabelText() {
     if (isTaskLogModalSleepTask()) return "수면 평가";
     if (isTaskLogModalEmotionalTask()) return "감정 상태";
+    if (isTaskLogModalMealIntakeTask()) return "맛 평가";
     return "이 시간 평가";
   }
 
@@ -7636,6 +7644,7 @@ export function render(opts = {}) {
   function syncTaskLogFlowDisruptorSection() {
     const show =
       isTaskLogModalProductiveTask() &&
+      !isTaskLogModalMealIntakeTask() &&
       shouldCollectTimeFlowDisruptors(getTaskLogTimeRating());
     if (taskLogFlowDisruptorSection) taskLogFlowDisruptorSection.hidden = !show;
     if (!show && taskLogTimeFlowDisruptors.length) taskLogTimeFlowDisruptors = [];
@@ -7671,6 +7680,7 @@ export function render(opts = {}) {
   function syncTaskLogFlowFactorSection() {
     const show =
       isTaskLogModalProductiveTask() &&
+      !isTaskLogModalMealIntakeTask() &&
       shouldCollectTimeFlowFactors(getTaskLogTimeRating());
     if (taskLogFlowFactorSection) taskLogFlowFactorSection.hidden = !show;
     if (!show && taskLogTimeFlowFactors.length) taskLogTimeFlowFactors = [];
@@ -10462,12 +10472,14 @@ export function render(opts = {}) {
     const timeRatingForRow = getTaskLogTimeRating();
     const timeFlowDisruptorsForRow =
       isTaskLogModalProductiveTask() &&
+      !isTaskLogModalMealIntakeTask() &&
       shouldCollectTimeFlowDisruptors(timeRatingForRow)
         ? getTaskLogTimeFlowDisruptors()
         : [];
     const timeFlowFactorsForRow =
       shouldCollectTimeFlowFactors(timeRatingForRow) &&
-      isTaskLogModalProductiveTask()
+      isTaskLogModalProductiveTask() &&
+      !isTaskLogModalMealIntakeTask()
         ? getTaskLogTimeFlowFactors()
         : [];
 

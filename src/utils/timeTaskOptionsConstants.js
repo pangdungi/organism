@@ -600,6 +600,13 @@ export function isHealthyMealDetailTaskName(name) {
   return n === "건강한 섭취";
 }
 
+/** 건강한·건강하지 않은 「섭취」 — 맛 평가·섭취 레포트 전용(준비 과제 제외) */
+export function isMealIntakeTasteRatingTaskName(name) {
+  return (
+    isHealthyMealDetailTaskName(name) || isUnhealthyMealDetailTaskName(name)
+  );
+}
+
 export const TASKS_LOCKED_FOR_EDIT = [NAP_TASK_NAME];
 
 export const DEFAULT_TASK_OPTIONS = [
