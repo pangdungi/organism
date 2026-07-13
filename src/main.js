@@ -89,7 +89,11 @@ import {
   lpEnterAppDebugMark,
   lpEnterAppDebugSummary,
 } from "./utils/lpEnterAppDebug.js";
-import { initLpShellStuckGuard, runLpShellVisibilityGuard } from "./utils/lpShellRecovery.js";
+import {
+  initLpShellStuckGuard,
+  isSplashBlocking,
+  runLpShellVisibilityGuard,
+} from "./utils/lpShellRecovery.js";
 import { initLpPwaInstall, refreshLpPwaInstall } from "./utils/lpPwaInstall.js";
 import {
   initAuthGateKeyboardScroll,
@@ -181,6 +185,8 @@ let lpAppMounted = false;
 let lpEnterAppPromise = null;
 let hideSplashRetryCount = 0;
 const HIDE_SPLASH_MAX_RETRIES = 50;
+/** @type {ReturnType<typeof setTimeout> | null} */
+let lpResumeSplashHideTimer = null;
 
 function setLpAuthBootPending(on) {
   try {
@@ -244,6 +250,62 @@ function hideAppSplashNow() {
   };
   splash.addEventListener("transitionend", onTransitionEnd);
   setTimeout(done, 280);
+}
+
+/**
+ * 백그라운드·화면 꺼짐 후 복귀 — 브라우저가 흰 화면만 그리는 구간을 스플래시로 덮음.
+ * (앱 최초 실행·탭 pull 과는 별도)
+ */
+function initLpAppResumeSplashCover() {
+  if (typeof document === "undefined") return;
+  let hiddenAt = 0;
+  const MIN_AWAY_MS = 500;
+  const MIN_SPLASH_MS = 100;
+
+  const coverIfNeeded = () => {
+    if (!lpAppMounted || lpEnterAppPromise) return;
+    const hasMain = !!document
+      .getElementById("app-screen")
+      ?.querySelector(".app-page");
+    if (!hasMain) return;
+    const signinPage = document.getElementById("signin-page");
+    const signinVisible =
+      signinPage && getComputedStyle(signinPage).display !== "none";
+    if (!signinVisible) return;
+    if (isSplashBlocking()) return;
+    try {
+      if (document.documentElement.classList.contains("lp-auth-booting")) return;
+    } catch (_) {}
+    const awayMs = hiddenAt > 0 ? Date.now() - hiddenAt : MIN_AWAY_MS + 1;
+    if (awayMs < MIN_AWAY_MS) return;
+
+    if (lpResumeSplashHideTimer != null) {
+      clearTimeout(lpResumeSplashHideTimer);
+      lpResumeSplashHideTimer = null;
+    }
+    showAppSplashNow();
+    const shownAt = Date.now();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const wait = Math.max(0, MIN_SPLASH_MS - (Date.now() - shownAt));
+        lpResumeSplashHideTimer = setTimeout(() => {
+          lpResumeSplashHideTimer = null;
+          hideAppSplashNow();
+        }, wait);
+      });
+    });
+  };
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      hiddenAt = Date.now();
+      return;
+    }
+    if (document.visibilityState === "visible") coverIfNeeded();
+  });
+  window.addEventListener("pageshow", (ev) => {
+    if (ev.persisted) coverIfNeeded();
+  });
 }
 
 /** @type {null | (() => Promise<void>)} */
@@ -644,6 +706,7 @@ function init() {
 
   /** @returns {Promise<"login" | "authenticated" | "reset-password">} */
   async function showInitialPage() {
+    showAppSplashNow();
     setLpAuthBootPending(true);
     try {
       if (!supabase) {
@@ -702,6 +765,7 @@ function init() {
   }
 
   initLpShellStuckGuard(lpShellRecoveryDeps());
+  initLpAppResumeSplashCover();
 
   dismissAppSplash();
 }
