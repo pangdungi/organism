@@ -147,6 +147,7 @@ import {
   createTimeLedgerDayTimeboxElement,
   refreshTimeLedgerDayTimeboxScroll,
 } from "../utils/timeLedgerDayTimebox.js";
+import { buildTimeLedgerExpectedDayTimeboxBlocks } from "../utils/timeLedgerExpectedTimeboxBlocks.js";
 import { createTimeLedgerVerticalProductivityHeatmap } from "../utils/timeLedgerProductivityHeatmap.js";
 import {
   createTimeLedgerWeekTimeboxElement,
@@ -4572,6 +4573,43 @@ function normalizeTimeLedgerReportGranularity(raw) {
   return "day";
 }
 
+/** 1일 타임박스 — 좌=실제 기록, 우=예상 일정(일간 예산) */
+function createTimeLedgerDayTimeboxDualPane(actualBlocks, expectedBlocks) {
+  const dual = document.createElement("div");
+  dual.className = "time-ledger-day-timebox-dual-pane";
+
+  const actualCol = document.createElement("div");
+  actualCol.className = "time-ledger-day-timebox-dual-pane__col";
+  const actualHead = document.createElement("div");
+  actualHead.className = "time-ledger-day-timebox-dual-pane__head";
+  actualHead.textContent = "실제";
+  actualCol.appendChild(actualHead);
+  const actualScroll = createTimeLedgerDayTimeboxElement(actualBlocks, {
+    matrixAriaLabel: "실제 수행 24행 12열 5분 단위 시간박스",
+  });
+  actualScroll.dataset.lpTimeboxKind = "actual";
+  actualCol.appendChild(actualScroll);
+  dual.appendChild(actualCol);
+
+  const expectedCol = document.createElement("div");
+  expectedCol.className =
+    "time-ledger-day-timebox-dual-pane__col time-ledger-day-timebox-dual-pane__col--expected";
+  const expectedHead = document.createElement("div");
+  expectedHead.className = "time-ledger-day-timebox-dual-pane__head";
+  expectedHead.textContent = "예상";
+  expectedCol.appendChild(expectedHead);
+  const expectedScroll = createTimeLedgerDayTimeboxElement(expectedBlocks, {
+    showRowLabels: false,
+    emptyMessage: "예상 일정이 없습니다.",
+    matrixAriaLabel: "예상 일정 24행 12열 5분 단위 시간박스",
+  });
+  expectedScroll.dataset.lpTimeboxKind = "expected";
+  expectedCol.appendChild(expectedScroll);
+  dual.appendChild(expectedCol);
+
+  return dual;
+}
+
 function mountTimeLedgerTimeboxView(
   timeboxShell,
   { granularity, rangeStartYmd, rangeEndYmd, allRowsInRange },
@@ -4608,8 +4646,12 @@ function mountTimeLedgerTimeboxView(
   }
   const dayKey = rangeStartYmd || rangeEndYmd;
   const dayRows = rows.filter((r) => ledgerRowDateYmdForFilter(r) === dayKey);
+  timeboxShell.dataset.lpTimeboxDayDual = "1";
   timeboxShell.appendChild(
-    createTimeLedgerDayTimeboxElement(buildTimeLedgerDayTimeboxBlocks(dayRows)),
+    createTimeLedgerDayTimeboxDualPane(
+      buildTimeLedgerDayTimeboxBlocks(dayRows),
+      buildTimeLedgerExpectedDayTimeboxBlocks(dayKey),
+    ),
   );
 }
 
@@ -4629,10 +4671,32 @@ function refreshTimeLedgerTimeboxSlotGrid(
     );
     return;
   }
-  const scroll = timeboxShell.querySelector(".time-ledger-day-timebox-scroll");
-  if (!scroll) return;
   const dayKey = rangeStartYmd || rangeEndYmd;
   const dayRows = rows.filter((r) => ledgerRowDateYmdForFilter(r) === dayKey);
+  const dualPane = timeboxShell.querySelector(".time-ledger-day-timebox-dual-pane");
+  if (dualPane) {
+    const actualScroll = dualPane.querySelector(
+      '.time-ledger-day-timebox-scroll[data-lp-timebox-kind="actual"]',
+    );
+    const expectedScroll = dualPane.querySelector(
+      '.time-ledger-day-timebox-scroll[data-lp-timebox-kind="expected"]',
+    );
+    if (actualScroll) {
+      refreshTimeLedgerDayTimeboxScroll(
+        actualScroll,
+        buildTimeLedgerDayTimeboxBlocks(dayRows),
+      );
+    }
+    if (expectedScroll) {
+      refreshTimeLedgerDayTimeboxScroll(
+        expectedScroll,
+        buildTimeLedgerExpectedDayTimeboxBlocks(dayKey),
+      );
+    }
+    return;
+  }
+  const scroll = timeboxShell.querySelector(".time-ledger-day-timebox-scroll");
+  if (!scroll) return;
   refreshTimeLedgerDayTimeboxScroll(
     scroll,
     buildTimeLedgerDayTimeboxBlocks(dayRows),

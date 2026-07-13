@@ -2715,6 +2715,75 @@
   overflow: hidden;
 }
 
+/* 1일 타임박스 — 좌=실제 기록, 우=예상 일정 */
+.time-ledger-day-timebox-dual-pane,
+[data-legacy~="time-ledger-view"] .time-ledger-day-timebox-dual-pane {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.time-ledger-day-timebox-dual-pane__col,
+[data-legacy~="time-ledger-view"] .time-ledger-day-timebox-dual-pane__col {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.time-ledger-day-timebox-dual-pane__col--expected,
+[data-legacy~="time-ledger-view"]
+  .time-ledger-day-timebox-dual-pane__col--expected {
+  border-left: 1px solid #e8edf3;
+}
+
+.time-ledger-day-timebox-dual-pane__head,
+[data-legacy~="time-ledger-view"] .time-ledger-day-timebox-dual-pane__head {
+  flex-shrink: 0;
+  padding: 0.42rem 0.55rem 0.36rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #475569;
+  text-align: center;
+  border-bottom: 1px solid #e8edf3;
+  background: #fafbfc;
+}
+
+.time-ledger-day-timebox-dual-pane__col .time-ledger-day-timebox-scroll,
+[data-legacy~="time-ledger-view"]
+  .time-ledger-day-timebox-dual-pane__col
+  .time-ledger-day-timebox-scroll {
+  padding: 0.3rem 0.35rem 0.45rem;
+}
+
+.time-ledger-day-timebox-scroll--no-row-labels
+  .time-ledger-day-timebox-matrix-head,
+.time-ledger-day-timebox-scroll--no-row-labels
+  .time-ledger-day-timebox-matrix-row,
+[data-legacy~="time-ledger-view"]
+  .time-ledger-day-timebox-scroll--no-row-labels
+  .time-ledger-day-timebox-matrix-head,
+[data-legacy~="time-ledger-view"]
+  .time-ledger-day-timebox-scroll--no-row-labels
+  .time-ledger-day-timebox-matrix-row {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+
+.time-ledger-day-timebox-scroll--no-row-labels
+  .time-ledger-day-timebox-matrix-corner,
+[data-legacy~="time-ledger-view"]
+  .time-ledger-day-timebox-scroll--no-row-labels
+  .time-ledger-day-timebox-matrix-corner {
+  display: none;
+}
+
 /* 24행(0~23시)×12열(5분) 타임박스 — 화면 높이에 맞춤, 스크롤 없음 */
 .time-ledger-day-timebox-scroll,
 [data-legacy~="time-ledger-view"] .time-ledger-day-timebox-scroll {

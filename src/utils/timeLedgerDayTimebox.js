@@ -202,7 +202,12 @@ function wireTimeLedgerDayTimeboxCellClicks(body) {
 
 export function createTimeLedgerDayTimeboxElement(
   blocks,
-  { showEmptyMessage = true, showRowLabels = true } = {},
+  {
+    showEmptyMessage = true,
+    showRowLabels = true,
+    emptyMessage = "시작·종료 시간이 있는 기록이 없습니다.",
+    matrixAriaLabel = "하루 24행 12열 5분 단위 시간박스",
+  } = {},
 ) {
   const scroll = document.createElement("div");
   scroll.className = "time-ledger-day-timebox-scroll";
@@ -213,10 +218,7 @@ export function createTimeLedgerDayTimeboxElement(
   const matrix = document.createElement("div");
   matrix.className = "time-ledger-day-timebox-matrix";
   matrix.setAttribute("role", "grid");
-  matrix.setAttribute(
-    "aria-label",
-    "하루 24행 12열 5분 단위 시간박스",
-  );
+  matrix.setAttribute("aria-label", matrixAriaLabel);
 
   const head = document.createElement("div");
   head.className = "time-ledger-day-timebox-matrix-head";
@@ -266,7 +268,7 @@ export function createTimeLedgerDayTimeboxElement(
   if (showEmptyMessage && !normalizeBlocks(blocks).length) {
     const empty = document.createElement("p");
     empty.className = "time-ledger-day-timebox-empty";
-    empty.textContent = "시작·종료 시간이 있는 기록이 없습니다.";
+    empty.textContent = emptyMessage;
     scroll.appendChild(empty);
   }
 
