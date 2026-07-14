@@ -422,12 +422,26 @@ export function wireCalendar1DaySlotGridDrag(root, options) {
   let drag = null;
   let suppressClickUntil = 0;
 
+  root.addEventListener("selectstart", (e) => {
+    e.preventDefault();
+  });
+  root.addEventListener(
+    "dragstart",
+    (e) => {
+      if (e.target.closest(".calendar-1day-slot-grid-cell--filled")) {
+        e.preventDefault();
+      }
+    },
+    true,
+  );
+
   root.addEventListener(
     "pointerdown",
     (e) => {
       if (e.button !== 0) return;
       const cell = e.target.closest(".calendar-1day-slot-grid-cell--filled");
       if (!cell || !root.contains(cell)) return;
+      e.preventDefault();
       const slotMin = Number(cell.dataset.slotMin);
       if (!Number.isFinite(slotMin)) return;
       const spans = options.getSpans();
@@ -454,13 +468,14 @@ export function wireCalendar1DaySlotGridDrag(root, options) {
         cell.setPointerCapture(e.pointerId);
       } catch (_) {}
     },
-    { passive: true },
+    { passive: false },
   );
 
   const finishDrag = async (e) => {
     if (!drag || e.pointerId !== drag.pointerId) return;
     const state = drag;
     drag = null;
+    root.classList.remove("calendar-1day-slot-grid-scroll--dragging");
     try {
       if (state.captureCell?.hasPointerCapture?.(e.pointerId)) {
         state.captureCell.releasePointerCapture(e.pointerId);
@@ -506,10 +521,13 @@ export function wireCalendar1DaySlotGridDrag(root, options) {
 
     if (!drag.moved) {
       drag.moved = true;
+      root.classList.add("calendar-1day-slot-grid-scroll--dragging");
       cellsForSpanKey(root, drag.spanKey).forEach((c) => {
         c.classList.add("calendar-1day-slot-grid-cell--drag-source");
       });
     }
+
+    e.preventDefault();
 
     clearDragVisuals(root);
     cellsForSpanKey(root, drag.spanKey).forEach((c) => {
@@ -524,7 +542,7 @@ export function wireCalendar1DaySlotGridDrag(root, options) {
     if (canMoveSpanToStart(spans, drag.span, newStartMin)) {
       paintDropPreview(root, newStartMin, drag.durationMin);
     }
-  });
+  }, { passive: false });
 
   root.addEventListener("pointerup", (e) => {
     if (drag?.moved) {
@@ -536,6 +554,7 @@ export function wireCalendar1DaySlotGridDrag(root, options) {
   root.addEventListener("pointercancel", (e) => {
     if (!drag || e.pointerId !== drag.pointerId) return;
     drag = null;
+    root.classList.remove("calendar-1day-slot-grid-scroll--dragging");
     clearDragVisuals(root);
     suppressClickUntil = Date.now() + 300;
   });

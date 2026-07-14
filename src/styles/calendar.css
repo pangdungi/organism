@@ -496,6 +496,13 @@
   padding: 0.28rem 0.45rem 0.4rem;
   box-sizing: border-box;
   touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.calendar-1day-view--slot-grid .calendar-1day-slot-grid-scroll--dragging {
+  touch-action: none;
 }
 
 .calendar-1day-slot-grid-matrix {
@@ -573,6 +580,9 @@
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--sideincome {
@@ -652,6 +662,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell:focus-visible {
