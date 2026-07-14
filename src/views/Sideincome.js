@@ -48,7 +48,17 @@ import {
   KPI_BOTTOM_TAB_LOG,
   KPI_BOTTOM_TAB_TODO,
   KPI_BOTTOM_TAB_DAILY,
+  KPI_BOTTOM_TAB_NOTES,
+  SIDEINCOME_KPI_NOTES_UI_ENABLED,
 } from "../utils/kpiHistoryBottomTabs.js";
+import { showSideincomeKpiNoteModal } from "../utils/kpiSideincomeNotesModal.js";
+import {
+  getLocalSideincomeKpiNotes,
+  pullSideincomeKpiNotesForKpi,
+  upsertSideincomeKpiNoteOnServer,
+  deleteSideincomeKpiNoteOnServer,
+  normalizeKpiNoteTags,
+} from "../utils/sideincomeKpiNotesSupabase.js";
 import {
   applyKpiGridScrollRestore,
   readKpiGridScrollToRestore,
@@ -160,6 +170,7 @@ function loadSideincomeMap() {
         kpiLogs: parsed.kpiLogs || [],
         kpiTodos: parsed.kpiTodos || [],
         kpiDailyRepeatTodos: parsed.kpiDailyRepeatTodos || [],
+        kpiNotes: parsed.kpiNotes || [],
         kpiOrder: parsed.kpiOrder || {},
         kpiTaskSync: parsed.kpiTaskSync || {},
         pathLogs: parsed.pathLogs || [],
@@ -173,6 +184,7 @@ function loadSideincomeMap() {
     kpiLogs: [],
     kpiTodos: [],
     kpiDailyRepeatTodos: [],
+    kpiNotes: [],
     kpiOrder: {},
     kpiTaskSync: {},
     pathLogs: [],
@@ -860,6 +872,7 @@ export function render() {
 
   function sideincomeKpiFooterAddLabel(tab, kpi) {
     const t = effectiveKpiHistoryBottomTab(tab, kpi);
+    if (t === KPI_BOTTOM_TAB_NOTES) return "기록 추가";
     if (t === KPI_BOTTOM_TAB_TODO) return "할 일 추가";
     return "매일 할 일 추가";
   }
@@ -907,6 +920,23 @@ export function render() {
       });
       saveSideincomeMap(d2, { pushServer: true });
       renderKpiDetailView({ scrollTodoAfterMutation: true });
+      return;
+    }
+    if (tab === KPI_BOTTOM_TAB_NOTES) {
+      const result = await showSideincomeKpiNoteModal({
+        mode: "add",
+        kpiName: k.name,
+      });
+      if (!result || result.action !== "save") return;
+      const note = {
+        id: nextId(),
+        kpiId: String(selectedKpiId),
+        tags: normalizeKpiNoteTags(result.tags),
+        memo: result.memo || "",
+      };
+      const saved = await upsertSideincomeKpiNoteOnServer(note);
+      if (!saved.ok) return;
+      renderKpiDetailView();
       return;
     }
   }
@@ -1297,11 +1327,87 @@ export function render() {
       }
     };
 
-    const segBar = KPI_DETAIL_LOGS_UI_ENABLED ? document.createElement("div") : null;
+    const useKpiSegBar =
+      KPI_DETAIL_LOGS_UI_ENABLED || SIDEINCOME_KPI_NOTES_UI_ENABLED;
+    const todoSegLabel = dailyTodosOnly ? "매일할일" : "할 일";
+
+    const appendSideincomeKpiNotesPanel = (parentEl, noteRows, kpiNameForModal) => {
+      parentEl.replaceChildren();
+      if (!noteRows.length) {
+        const empty = document.createElement("p");
+        empty.className = "dream-kpi-history-empty";
+        empty.textContent = "아직 기록이 없습니다.";
+        parentEl.appendChild(empty);
+        return;
+      }
+      const list = document.createElement("div");
+      list.className = "dream-kpi-notes-list";
+      noteRows.forEach((note) => {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = "dream-kpi-notes-row";
+        row.dataset.noteId = note.id;
+
+        const tagsCol = document.createElement("div");
+        tagsCol.className = "dream-kpi-notes-row-tags";
+        const tags = normalizeKpiNoteTags(note.tags);
+        if (tags.length) {
+          tags.forEach((tag) => {
+            const chip = document.createElement("span");
+            chip.className = "dream-kpi-notes-tag-chip";
+            chip.textContent = tag;
+            tagsCol.appendChild(chip);
+          });
+        } else {
+          const emptyTag = document.createElement("span");
+          emptyTag.className = "dream-kpi-notes-tag-empty";
+          emptyTag.textContent = "태그 없음";
+          tagsCol.appendChild(emptyTag);
+        }
+
+        const memoCol = document.createElement("div");
+        memoCol.className = "dream-kpi-notes-row-memo";
+        memoCol.textContent = String(note.memo || "").trim() || "—";
+
+        row.appendChild(tagsCol);
+        row.appendChild(memoCol);
+
+        row.addEventListener("click", async () => {
+          const result = await showSideincomeKpiNoteModal({
+            mode: "edit",
+            kpiName: kpiNameForModal,
+            note: { tags: note.tags, memo: note.memo },
+          });
+          if (!result) return;
+          if (result.action === "delete") {
+            const del = await deleteSideincomeKpiNoteOnServer(note.id, note.kpiId);
+            if (!del.ok) return;
+            renderKpiDetailView();
+            return;
+          }
+          if (result.action === "save") {
+            const updated = {
+              id: note.id,
+              kpiId: String(note.kpiId || selectedKpiId),
+              tags: normalizeKpiNoteTags(result.tags),
+              memo: result.memo || "",
+            };
+            const saved = await upsertSideincomeKpiNoteOnServer(updated);
+            if (!saved.ok) return;
+            renderKpiDetailView();
+          }
+        });
+
+        list.appendChild(row);
+      });
+      parentEl.appendChild(list);
+    };
+
+    const segBar = useKpiSegBar ? document.createElement("div") : null;
     if (segBar) {
       segBar.className = "dream-kpi-bottom-seg-bar";
       segBar.setAttribute("role", "tablist");
-      segBar.setAttribute("aria-label", "할 일·매일 할 일·로그 전환");
+      segBar.setAttribute("aria-label", "할 일·매일 할 일·기록 전환");
     }
 
     let btnSegLog = null;
@@ -1320,16 +1426,36 @@ export function render() {
       appendKpiDailyLogBlock(panelLogSeg, logs);
     }
 
-    const btnSegTodo = KPI_DETAIL_LOGS_UI_ENABLED ? document.createElement("button") : null;
+    let btnSegNotes = null;
+    let panelNotesSeg = null;
+    if (SIDEINCOME_KPI_NOTES_UI_ENABLED) {
+      btnSegNotes = document.createElement("button");
+      btnSegNotes.type = "button";
+      btnSegNotes.className = "dream-kpi-bottom-seg-btn";
+      btnSegNotes.textContent = "기록";
+      btnSegNotes.setAttribute("role", "tab");
+
+      panelNotesSeg = document.createElement("div");
+      panelNotesSeg.className =
+        "dream-kpi-bottom-seg-panel dream-kpi-bottom-seg-panel--notes";
+      panelNotesSeg.setAttribute("role", "tabpanel");
+      appendSideincomeKpiNotesPanel(
+        panelNotesSeg,
+        getLocalSideincomeKpiNotes(String(selectedKpiId)),
+        kpi.name,
+      );
+    }
+
+    const btnSegTodo = useKpiSegBar ? document.createElement("button") : null;
     if (btnSegTodo) {
       btnSegTodo.type = "button";
       btnSegTodo.className = "dream-kpi-bottom-seg-btn";
-      btnSegTodo.textContent = "할 일";
+      btnSegTodo.textContent = todoSegLabel;
       btnSegTodo.setAttribute("role", "tab");
     }
 
     let btnSegDaily = null;
-    if (hasDailyTab && KPI_DETAIL_LOGS_UI_ENABLED) {
+    if (hasDailyTab && useKpiSegBar && !dailyTodosOnly) {
       btnSegDaily = document.createElement("button");
       btnSegDaily.type = "button";
       btnSegDaily.className = "dream-kpi-bottom-seg-btn";
@@ -1338,9 +1464,10 @@ export function render() {
     }
 
     if (segBar) {
-      if (!dailyTodosOnly && btnSegTodo) segBar.appendChild(btnSegTodo);
+      if (btnSegTodo) segBar.appendChild(btnSegTodo);
       if (btnSegDaily) segBar.appendChild(btnSegDaily);
       if (btnSegLog) segBar.appendChild(btnSegLog);
+      if (btnSegNotes) segBar.appendChild(btnSegNotes);
     }
 
     let panelTodoSeg = null;
@@ -1529,24 +1656,39 @@ export function render() {
       onAfterDelete: () => renderKpiDetailView({ scrollTodoAfterMutation: true }),
     };
 
-    if (KPI_DETAIL_LOGS_UI_ENABLED && segBar) {
+    if (useKpiSegBar && segBar) {
       const segBarMount = mountKpiSegBarClearCompletedRow(segBar, clearCompletedOpts);
       target.appendChild(segBarMount);
       if (panelLogSeg) target.appendChild(panelLogSeg);
+      if (panelNotesSeg) target.appendChild(panelNotesSeg);
       if (panelTodoSeg) target.appendChild(panelTodoSeg);
       if (panelDailySeg) target.appendChild(panelDailySeg);
       wireKpiHistoryBottomTabs(
         "sideincome",
         selectedKpiId,
         btnSegLog,
-        dailyTodosOnly ? null : btnSegTodo,
+        btnSegTodo,
         btnSegDaily,
         panelLogSeg,
-        dailyTodosOnly ? null : panelTodoSeg,
+        panelTodoSeg,
         panelDailySeg,
         hasDailyTab,
-        () => syncAppFooterSideincomeKpiActions(),
-        { dailyTodosOnly },
+        (tab) => {
+          syncAppFooterSideincomeKpiActions();
+          if (tab === KPI_BOTTOM_TAB_NOTES && selectedKpiId && panelNotesSeg) {
+            void pullSideincomeKpiNotesForKpi(String(selectedKpiId)).then(
+              (fresh) => {
+                if (!panelNotesSeg.isConnected) return;
+                appendSideincomeKpiNotesPanel(panelNotesSeg, fresh, kpi.name);
+              },
+            );
+          }
+        },
+        {
+          dailyTodosOnly,
+          btnNotes: btnSegNotes,
+          panelNotes: panelNotesSeg,
+        },
       );
     } else {
       mountKpiDetailStackedSections(target, {
