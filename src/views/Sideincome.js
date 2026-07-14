@@ -1658,6 +1658,13 @@ export function render() {
 
     if (useKpiSegBar && segBar) {
       const segBarMount = mountKpiSegBarClearCompletedRow(segBar, clearCompletedOpts);
+      const clearCompletedTrashBtn = segBarMount.querySelector(
+        ".dream-kpi-bottom-seg-clear-completed-btn",
+      );
+      const syncSegClearCompletedTrashVisibility = (tab) => {
+        if (!(clearCompletedTrashBtn instanceof HTMLElement)) return;
+        clearCompletedTrashBtn.hidden = tab !== KPI_BOTTOM_TAB_TODO;
+      };
       target.appendChild(segBarMount);
       if (panelLogSeg) target.appendChild(panelLogSeg);
       if (panelNotesSeg) target.appendChild(panelNotesSeg);
@@ -1675,6 +1682,7 @@ export function render() {
         hasDailyTab,
         (tab) => {
           syncAppFooterSideincomeKpiActions();
+          syncSegClearCompletedTrashVisibility(tab);
           if (tab === KPI_BOTTOM_TAB_NOTES && selectedKpiId && panelNotesSeg) {
             void pullSideincomeKpiNotesForKpi(String(selectedKpiId)).then(
               (fresh) => {

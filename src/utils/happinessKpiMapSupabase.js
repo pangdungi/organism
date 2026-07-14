@@ -27,6 +27,9 @@ import {
   writeKpiMapScopedStorageRaw,
 } from "./kpiMapLocalStorage.js";
 import {
+  normalizeKpiTaskCompletionEvents,
+} from "./kpiTaskCompletionEvents.js";
+import {
   applyKpiMapExplicitDeletesOnServer,
   happinessMapActiveIdsFromPayload,
   HAPPINESS_KPI_MAP_DELETE_TABLES,
@@ -503,6 +506,7 @@ function emptyPayload() {
     kpiLogs: [],
     kpiTodos: [],
     kpiDailyRepeatTodos: [],
+    kpiTaskCompletionEvents: [],
     kpiOrder: {},
     kpiTaskSync: {},
     deletedRefs: defaultDeletedRefs(),
@@ -525,6 +529,7 @@ function normalizePayload(p) {
     kpiLogs: Array.isArray(p.kpiLogs) ? p.kpiLogs : [],
     kpiTodos: Array.isArray(p.kpiTodos) ? p.kpiTodos : [],
     kpiDailyRepeatTodos: Array.isArray(p.kpiDailyRepeatTodos) ? p.kpiDailyRepeatTodos : [],
+    kpiTaskCompletionEvents: normalizeKpiTaskCompletionEvents(p.kpiTaskCompletionEvents),
     kpiOrder: p.kpiOrder && typeof p.kpiOrder === "object" ? p.kpiOrder : {},
     kpiTaskSync: p.kpiTaskSync && typeof p.kpiTaskSync === "object" ? p.kpiTaskSync : {},
     deletedRefs: normalizeDeletedRefs(p.deletedRefs),
@@ -677,12 +682,16 @@ function buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, me
 
   const kpiOrder = meta?.kpi_order && typeof meta.kpi_order === "object" ? meta.kpi_order : {};
   const kpiTaskSync = meta?.kpi_task_sync && typeof meta.kpi_task_sync === "object" ? meta.kpi_task_sync : {};
+  const kpiTaskCompletionEvents = normalizeKpiTaskCompletionEvents(
+    meta?.kpi_task_completion_events,
+  );
   const out = normalizePayload({
     happinesses,
     kpis: kpisFiltered.map(rowToKpi),
     kpiLogs: logsFiltered.map(rowToLog),
     kpiTodos: sortNormalizedKpiTodoRows(todosFiltered).map(rowToTodo),
     kpiDailyRepeatTodos: sortNormalizedKpiTodoRows(dailyFiltered).map(rowToDaily),
+    kpiTaskCompletionEvents,
     kpiOrder,
     kpiTaskSync,
     deletedRefs: dr,
@@ -716,6 +725,7 @@ function buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, me
 function metaRowHasData(meta) {
   if (!meta) return false;
   if (Object.keys(meta.kpi_order || {}).length > 0 || Object.keys(meta.kpi_task_sync || {}).length > 0) return true;
+  if (normalizeKpiTaskCompletionEvents(meta.kpi_task_completion_events).length > 0) return true;
   const dr = meta.deleted_refs;
   if (dr && typeof dr === "object" && !Array.isArray(dr)) {
     if (DELETED_REF_KEYS.some((k) => Array.isArray(dr[k]) && dr[k].length > 0)) return true;
@@ -744,6 +754,7 @@ function shouldInsertMetaRow(p) {
   return (
     (p.kpiOrder && Object.keys(p.kpiOrder).length > 0) ||
     (p.kpiTaskSync && Object.keys(p.kpiTaskSync).length > 0) ||
+    (p.kpiTaskCompletionEvents && p.kpiTaskCompletionEvents.length > 0) ||
     hasDeletedRefsPayload(p)
   );
 }
@@ -903,6 +914,7 @@ async function upsertNormalizedFromPayload(userId, p) {
         user_id: userId,
         kpi_order: p.kpiOrder || {},
         kpi_task_sync: p.kpiTaskSync || {},
+        kpi_task_completion_events: p.kpiTaskCompletionEvents || [],
         deleted_refs: dr,
       },
       { onConflict: "user_id" },
@@ -974,6 +986,7 @@ export function applyHappinessKpiTimestampsOnSave(prev, next) {
   const metaChanged =
     JSON.stringify(prevN.kpiOrder) !== JSON.stringify(out.kpiOrder) ||
     JSON.stringify(prevN.kpiTaskSync) !== JSON.stringify(out.kpiTaskSync) ||
+    JSON.stringify(prevN.kpiTaskCompletionEvents) !== JSON.stringify(out.kpiTaskCompletionEvents) ||
     JSON.stringify(prevN.deletedRefs) !== JSON.stringify(out.deletedRefs);
   if (metaChanged) out.localMetaModifiedAt = Date.now();
   else out.localMetaModifiedAt = prevN.localMetaModifiedAt;
@@ -1334,6 +1347,7 @@ async function runHappinessKpiMapSyncOnce() {
             user_id: userId,
             kpi_order: {},
             kpi_task_sync: {},
+            kpi_task_completion_events: [],
             deleted_refs: drEmpty,
           },
           { onConflict: "user_id" },

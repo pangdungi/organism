@@ -17,6 +17,7 @@ import {
   kpiHasHabitUnitGoal,
   buildKpiCardHabitStreakAsideMarkup,
 } from "./kpiHabitStreak.js";
+import { countKpiTaskCompletionsThisWeek } from "./kpiTaskCompletionEvents.js";
 import { normalizeKpiLogDateYmd } from "./timeKpiSync.js";
 import { buildModalNativeDateFieldMarkup } from "./modalNativeDateField.js";
 import { setupDeadlineQuickButtons } from "./deadlineQuickButtons.js";
@@ -558,10 +559,11 @@ export function bindKpiUnitTimeMode(form, kpi = null, opts = {}) {
 
 /**
  * @param {object} kpi
- * @param {{ toDateKey: (d: Date) => string, getAllKpiLogs: () => Array, getAccumulatedKpiValue: (id: string) => number, getKpiTodos?: (id: string) => Array, parseNum: (s: unknown) => number }} deps
+ * @param {{ toDateKey: (d: Date) => string, getAllKpiLogs: () => Array, getAccumulatedKpiValue: (id: string) => number, getKpiTodos?: (id: string) => Array, getKpiTaskCompletionEvents?: (id: string) => Array, parseNum: (s: unknown) => number }} deps
  */
 export function computeKpiProgress(kpi, deps) {
-  const { getAllKpiLogs, getAccumulatedKpiValue, getKpiTodos, parseNum } = deps;
+  const { getAllKpiLogs, getAccumulatedKpiValue, getKpiTodos, getKpiTaskCompletionEvents, parseNum } =
+    deps;
   const lower = kpi.direction === "lower";
 
   if (kpi.useTaskCompletionGoal) {
@@ -570,10 +572,15 @@ export function computeKpiProgress(kpi, deps) {
     );
     const total = todos.length;
     const done = todos.filter((t) => !!t.completed).length;
-    const taskCompletionEmpty = total === 0;
+    const remaining = todos.filter((t) => !t.completed).length;
+    const weekDone = countKpiTaskCompletionsThisWeek(
+      getKpiTaskCompletionEvents?.(kpi.id) || [],
+      kpi.id,
+    );
+    const taskCompletionEmpty = total === 0 && weekDone === 0;
     const progress =
-      total > 0 ? Math.min(100, (done / total) * 100) : 0;
-    const isCompleted = total > 0 && done >= total;
+      total > 0 ? Math.min(100, (done / total) * 100) : remaining === 0 && weekDone > 0 ? 100 : 0;
+    const isCompleted = remaining === 0 && (total > 0 ? done >= total : weekDone > 0);
     const isInProgress = !isCompleted;
     return {
       progress,
@@ -590,6 +597,8 @@ export function computeKpiProgress(kpi, deps) {
       taskCompletionEmpty,
       taskDoneCount: done,
       taskTotalCount: total,
+      taskWeekDoneCount: weekDone,
+      taskRemainingCount: remaining,
     };
   }
 
@@ -719,6 +728,8 @@ export function buildKpiCardTimePresentation(kpi, progressResult, formatNum) {
     taskCompletionEmpty,
     taskDoneCount,
     taskTotalCount,
+    taskWeekDoneCount,
+    taskRemainingCount,
     habitStreak,
     habitTotalDays,
   } = progressResult;
@@ -778,22 +789,27 @@ export function buildKpiCardTimePresentation(kpi, progressResult, formatNum) {
   let hideProgressFill = false;
 
   if (useTaskCompletionGoal) {
+    const weekDone = Math.max(0, Number(taskWeekDoneCount) || 0);
+    const remaining = Math.max(0, Number(taskRemainingCount) || 0);
     if (taskCompletionEmpty) {
       progressText = "아직 할일이 없습니다";
       displayProgress = 0;
       hideProgressFill = true;
     } else {
-      progressText = `태스크 ${taskDoneCount}개 / ${taskTotalCount}개`;
+      progressText = `이번 주 ${weekDone}개 처리 · 남은 ${remaining}개`;
+      displayProgress =
+        remaining === 0 ? 100 : taskTotalCount > 0 ? progress : 0;
+      hideProgressFill = remaining === 0 && weekDone === 0 && taskTotalCount === 0;
     }
     return {
       displayProgress,
       progressText,
-      heroStr: taskCompletionEmpty ? "—" : String(Math.round(displayProgress)),
-      heroUnit: taskCompletionEmpty ? "" : "%",
+      heroStr: taskCompletionEmpty ? "—" : String(weekDone),
+      heroUnit: taskCompletionEmpty ? "" : "개",
       cardExtraClass: " dream-kpi-card--task-completion",
       hideProgressFill,
       hideProgressBar: false,
-      heroPrefix: "",
+      heroPrefix: taskCompletionEmpty ? "" : "이번 주 ",
       habitStatsHtml: "",
       heroStreakAsideHtml: "",
     };

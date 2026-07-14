@@ -65,6 +65,7 @@ import {
   sortNormalizedKpiTodoRows,
 } from "../utils/kpiMapTodoListOrder.js";
 import { mountKpiSegBarClearCompletedRow } from "../utils/kpiTodoBulkDeleteUi.js";
+import { syncKpiTaskCompletionEventOnTodoToggle } from "../utils/kpiTaskCompletionEvents.js";
 import { mountKpiDetailStackedSections } from "../utils/kpiDetailSectionUi.js";
 import { formatKpiCardHeroHtml } from "../utils/kpiViewModal.js";
 import { kpiFilterEmptyListMessage } from "../utils/kpiFilterEmptyMessage.js";
@@ -167,6 +168,7 @@ function loadHappinessMap() {
     kpiLogs: [],
     kpiTodos: [],
     kpiDailyRepeatTodos: [],
+    kpiTaskCompletionEvents: [],
     kpiOrder: {},
     kpiTaskSync: {},
     deletedRefs: defaultDeletedRefs(),
@@ -187,6 +189,7 @@ function loadHappinessMap() {
         kpiLogs: parsed.kpiLogs || [],
         kpiTodos: parsed.kpiTodos || [],
         kpiDailyRepeatTodos: parsed.kpiDailyRepeatTodos || [],
+        kpiTaskCompletionEvents: parsed.kpiTaskCompletionEvents || [],
         kpiOrder: parsed.kpiOrder || {},
         kpiTaskSync: parsed.kpiTaskSync || {},
         deletedRefs:
@@ -737,6 +740,10 @@ export function render() {
       getAccumulatedKpiValue,
       getKpiTodos: (kpiId) =>
         (loadHappinessMap().kpiTodos || []).filter((t) => t.kpiId === kpiId),
+      getKpiTaskCompletionEvents: (kpiId) =>
+        (loadHappinessMap().kpiTaskCompletionEvents || []).filter(
+          (e) => String(e.kpiId) === String(kpiId),
+        ),
       parseNum,
     });
     if (!kpi?.needHabitTracker) return result;
@@ -1138,12 +1145,20 @@ export function render() {
         const d = loadHappinessMap();
         const t = d.kpiTodos.find((x) => x.id === todo.id);
         if (t) {
+          const wasCompleted = !!t.completed;
           kpiTodoLifecycleLog("행복KPI탭_체크_완료토글", {
             todoId: String(todo.id),
-            이전완료: !!t.completed,
+            이전완료: wasCompleted,
             요청완료: !!check.checked,
           });
           t.completed = !!check.checked;
+          syncKpiTaskCompletionEventOnTodoToggle(
+            d,
+            kpi,
+            String(todo.id),
+            !!check.checked,
+            wasCompleted,
+          );
           saveHappinessMap(d, { pushServer: true });
           kpiTodoLifecycleLog("행복KPI탭_체크_save후", {
             todoId: String(todo.id),
