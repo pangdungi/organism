@@ -72,6 +72,7 @@ import {
   sortNormalizedKpiTodoRows,
 } from "../utils/kpiMapTodoListOrder.js";
 import { mountKpiSegBarClearCompletedRow } from "../utils/kpiTodoBulkDeleteUi.js";
+import { wireKpiDailyTodoListDragReorder } from "../utils/kpiDailyTodoListDragReorder.js";
 import { mountKpiDetailStackedSections } from "../utils/kpiDetailSectionUi.js";
 import { formatKpiCardHeroHtml } from "../utils/kpiViewModal.js";
 import { kpiFilterEmptyListMessage } from "../utils/kpiFilterEmptyMessage.js";
@@ -1552,6 +1553,11 @@ export function render() {
         item.appendChild(label);
         item.appendChild(textPreview);
         dailyList.appendChild(item);
+      });
+      wireKpiDailyTodoListDragReorder(dailyList, {
+        kpiId: selKpi,
+        loadMap: loadHealthMap,
+        saveMap: saveHealthMap,
       });
       panelDailySeg.appendChild(dailyList);
     }

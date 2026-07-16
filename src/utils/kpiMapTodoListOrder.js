@@ -135,3 +135,23 @@ export function appendKpiDailyRepeatTodoAtEnd(todos, entry) {
   list.push({ ...normalized, sortOrder: maxOrder + 1 });
   return list;
 }
+
+/**
+ * @param {object} data KPI 맵 payload (mutate)
+ * @param {string} kpiId
+ * @param {string[]} orderedTodoIds 드래그 후 보이는 순서
+ */
+export function reorderKpiDailyRepeatTodosForKpi(data, kpiId, orderedTodoIds) {
+  if (!data || typeof data !== "object") return data;
+  const kid = String(kpiId ?? "").trim();
+  const order = [...new Set((orderedTodoIds || []).map((id) => String(id)))];
+  const indexById = new Map(order.map((id, i) => [id, i]));
+  for (const t of data.kpiDailyRepeatTodos || []) {
+    if (String(t?.kpiId ?? "").trim() !== kid) continue;
+    const id = String(t.id ?? "");
+    if (indexById.has(id)) {
+      t.sortOrder = indexById.get(id);
+    }
+  }
+  return data;
+}
