@@ -1,22 +1,32 @@
 import { allowModalInputFocus } from "./modalNoAutoFocus.js";
 import { bindKpiTodoModalMobileKeyboard } from "./kpiTodoModalKeyboard.js";
-import { normalizeKpiNoteTags } from "./sideincomeKpiNotesSupabase.js";
+import { findKpiNoteTagByLabel } from "./sideincomeKpiNotesSupabase.js";
 
 /**
- * 시급상승 KPI 기록 — 추가·수정 모달
+ * 시급상승 KPI 기록 — 추가·수정 모달 (태그 1개 + 자동완성)
  * @param {{
  *   mode?: "add" | "edit",
  *   kpiName?: string,
- *   note?: { tags?: string[], memo?: string },
+ *   kpiId?: string,
+ *   existingTags?: { id?: string, label?: string }[],
+ *   note?: { tagId?: string, tagLabel?: string, memo?: string },
  * }} [opts]
- * @returns {Promise<null | { action: "save", tags: string[], memo: string } | { action: "delete" }>}
+ * @returns {Promise<null | { action: "save", tagId?: string, tagLabel: string, memo: string } | { action: "delete" }>}
  */
 export function showSideincomeKpiNoteModal(opts = {}) {
   const mode = opts.mode === "edit" ? "edit" : "add";
   const kpiName = (opts.kpiName || "").trim();
+  const kpiId = String(opts.kpiId || "").trim();
   const initialMemo = String(opts.note?.memo || "").trim();
+  const existingTags = Array.isArray(opts.existingTags) ? opts.existingTags : [];
   const title = mode === "edit" ? "기록 수정" : "기록 추가";
   const submitLabel = mode === "edit" ? "저장" : "추가";
+
+  const initialTagId = String(opts.note?.tagId || "").trim();
+  const initialTagLabel =
+    String(opts.note?.tagLabel || "").trim() ||
+    existingTags.find((t) => String(t.id || "").trim() === initialTagId)?.label ||
+    "";
 
   return new Promise((resolve) => {
     function escapeHtml(s) {
@@ -49,11 +59,10 @@ export function showSideincomeKpiNoteModal(opts = {}) {
           }
           <div class="dream-kpi-field dream-kpi-note-tags-field">
             <label for="dream-kpi-note-tag-input">태그</label>
-            <div class="dream-kpi-note-tags-input-row">
-              <input id="dream-kpi-note-tag-input" type="text" name="tagDraft" placeholder="태그 입력" autocomplete="off" />
-              <button type="button" class="dream-kpi-note-tag-add-btn" data-lp-kpi-note-tag-add aria-label="태그 추가">+</button>
+            <div class="dream-kpi-note-tag-input-wrap">
+              <input id="dream-kpi-note-tag-input" type="text" name="tag" placeholder="태그 입력" autocomplete="off" value="${escapeHtml(initialTagLabel)}" />
+              <div class="dream-kpi-note-tag-suggest" data-lp-kpi-note-tag-suggest hidden role="listbox" aria-label="기존 태그"></div>
             </div>
-            <div class="dream-kpi-note-tags-chips" data-lp-kpi-note-tags-list aria-live="polite"></div>
           </div>
           <div class="dream-kpi-field dream-kpi-note-memo-field">
             <label for="dream-kpi-note-memo">메모</label>
@@ -74,10 +83,10 @@ export function showSideincomeKpiNoteModal(opts = {}) {
 
     const prevOverflow = document.body.style.overflow;
     let unbindKeyboard = () => {};
-    /** @type {string[]} */
-    let tags = normalizeKpiNoteTags(opts.note?.tags);
+    let selectedTagId = initialTagId;
+    let suggestIndex = -1;
 
-    /** @param {null | { action: string, tags?: string[], memo?: string }} value */
+    /** @param {null | { action: string, tagId?: string, tagLabel?: string, memo?: string }} value */
     function finish(value) {
       unbindKeyboard();
       modal.remove();
@@ -86,8 +95,7 @@ export function showSideincomeKpiNoteModal(opts = {}) {
     }
 
     const tagInput = modal.querySelector("#dream-kpi-note-tag-input");
-    const tagListEl = modal.querySelector("[data-lp-kpi-note-tags-list]");
-    const tagAddBtn = modal.querySelector("[data-lp-kpi-note-tag-add]");
+    const suggestEl = modal.querySelector("[data-lp-kpi-note-tag-suggest]");
     const memoInput = modal.querySelector("#dream-kpi-note-memo");
     const tagField = modal.querySelector(".dream-kpi-note-tags-field");
     const memoField = modal.querySelector(".dream-kpi-note-memo-field");
@@ -112,38 +120,85 @@ export function showSideincomeKpiNoteModal(opts = {}) {
       err.textContent = message;
     }
 
-    function renderTagChips() {
-      if (!(tagListEl instanceof HTMLElement)) return;
-      tagListEl.replaceChildren();
-      tags.forEach((tag, index) => {
-        const chip = document.createElement("span");
-        chip.className = "dream-kpi-note-tag-chip";
-        chip.innerHTML = `<span class="dream-kpi-note-tag-chip-text">${escapeHtml(tag)}</span><button type="button" class="dream-kpi-note-tag-chip-remove" aria-label="태그 삭제">&times;</button>`;
-        chip
-          .querySelector(".dream-kpi-note-tag-chip-remove")
-          ?.addEventListener("click", () => {
-            tags = tags.filter((_, i) => i !== index);
-            renderTagChips();
-          });
-        tagListEl.appendChild(chip);
+    function matchingTags(query) {
+      const q = String(query || "").trim().toLowerCase();
+      if (!q) return [];
+      return existingTags.filter((t) => {
+        const label = String(t.label || "").trim();
+        return label && label.toLowerCase().includes(q);
       });
-      tagListEl.hidden = tags.length === 0;
-      if (tags.length) clearFieldError(tagField);
     }
 
-    function addTagFromInput() {
-      if (!(tagInput instanceof HTMLInputElement)) return false;
-      const val = (tagInput.value || "").trim();
-      if (!val) return false;
-      const merged = normalizeKpiNoteTags([...tags, val]);
-      tags = merged;
-      tagInput.value = "";
-      renderTagChips();
+    function hideSuggest() {
+      if (!(suggestEl instanceof HTMLElement)) return;
+      suggestEl.hidden = true;
+      suggestEl.replaceChildren();
+      suggestIndex = -1;
+    }
+
+    function selectTag(tag) {
+      if (!(tagInput instanceof HTMLInputElement)) return;
+      selectedTagId = String(tag.id || "").trim();
+      tagInput.value = String(tag.label || "").trim();
+      hideSuggest();
       clearFieldError(tagField);
+    }
+
+    function renderSuggest() {
+      if (!(tagInput instanceof HTMLInputElement) || !(suggestEl instanceof HTMLElement)) {
+        return;
+      }
+      const query = (tagInput.value || "").trim();
+      const hits = matchingTags(query);
+      suggestEl.replaceChildren();
+      suggestIndex = -1;
+      if (!query || !hits.length) {
+        suggestEl.hidden = true;
+        return;
+      }
+      const exact = hits.find(
+        (t) => String(t.label || "").trim().toLowerCase() === query.toLowerCase(),
+      );
+      if (exact && String(exact.id || "").trim() === selectedTagId) {
+        suggestEl.hidden = true;
+        return;
+      }
+      hits.slice(0, 8).forEach((tag, i) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "dream-kpi-note-tag-suggest-item";
+        btn.setAttribute("role", "option");
+        btn.dataset.suggestIndex = String(i);
+        btn.textContent = String(tag.label || "").trim();
+        btn.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+          selectTag(tag);
+        });
+        suggestEl.appendChild(btn);
+      });
+      suggestEl.hidden = false;
+    }
+
+    function highlightSuggest(index) {
+      if (!(suggestEl instanceof HTMLElement)) return;
+      const items = suggestEl.querySelectorAll(".dream-kpi-note-tag-suggest-item");
+      items.forEach((el, i) => {
+        el.classList.toggle("is-active", i === index);
+      });
+    }
+
+    function pickHighlightedSuggest() {
+      if (!(suggestEl instanceof HTMLElement) || suggestEl.hidden) return false;
+      const items = suggestEl.querySelectorAll(".dream-kpi-note-tag-suggest-item");
+      if (!items.length) return false;
+      const idx = suggestIndex >= 0 ? suggestIndex : 0;
+      const query = (tagInput?.value || "").trim();
+      const hits = matchingTags(query);
+      const tag = hits[idx];
+      if (!tag) return false;
+      selectTag(tag);
       return true;
     }
-
-    renderTagChips();
 
     modal
       .querySelector('[data-legacy~="time-task-setup-close"]')
@@ -153,17 +208,45 @@ export function showSideincomeKpiNoteModal(opts = {}) {
       finish({ action: "delete" });
     });
 
-    tagAddBtn?.addEventListener("click", () => {
-      addTagFromInput();
-      allowModalInputFocus(tagInput);
-      tagInput?.focus();
+    tagInput?.addEventListener("input", () => {
+      selectedTagId = "";
+      clearFieldError(tagField);
+      renderSuggest();
     });
 
-    tagInput?.addEventListener("input", () => clearFieldError(tagField));
+    tagInput?.addEventListener("focus", () => renderSuggest());
+
+    tagInput?.addEventListener("blur", () => {
+      window.setTimeout(() => hideSuggest(), 120);
+    });
+
     tagInput?.addEventListener("keydown", (e) => {
-      if (e.key !== "Enter" || e.isComposing) return;
-      e.preventDefault();
-      addTagFromInput();
+      if (!(suggestEl instanceof HTMLElement) || suggestEl.hidden) {
+        if (e.key === "Enter" && !e.isComposing) e.preventDefault();
+        return;
+      }
+      const items = suggestEl.querySelectorAll(".dream-kpi-note-tag-suggest-item");
+      if (!items.length) return;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        suggestIndex = Math.min(suggestIndex + 1, items.length - 1);
+        highlightSuggest(suggestIndex);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        suggestIndex = Math.max(suggestIndex - 1, 0);
+        highlightSuggest(suggestIndex);
+        return;
+      }
+      if (e.key === "Enter" && !e.isComposing) {
+        e.preventDefault();
+        pickHighlightedSuggest();
+        return;
+      }
+      if (e.key === "Escape") {
+        hideSuggest();
+      }
     });
 
     memoInput?.addEventListener("input", () => clearFieldError(memoField));
@@ -172,9 +255,10 @@ export function showSideincomeKpiNoteModal(opts = {}) {
       e.preventDefault();
       clearFieldError(tagField);
       clearFieldError(memoField);
+      const tagLabel = String(tagInput?.value || "").trim();
       const memo = String(memoInput?.value || "").trim();
-      if (!tags.length) {
-        showFieldError(tagField, "+ 버튼을 눌러 태그를 추가해 주세요.");
+      if (!tagLabel) {
+        showFieldError(tagField, "태그를 입력해 주세요.");
         allowModalInputFocus(tagInput);
         tagInput?.focus();
         return;
@@ -185,7 +269,17 @@ export function showSideincomeKpiNoteModal(opts = {}) {
         memoInput?.focus();
         return;
       }
-      finish({ action: "save", tags: [...tags], memo });
+      let tagId = selectedTagId;
+      if (!tagId) {
+        const hit = findKpiNoteTagByLabel(kpiId, tagLabel, existingTags);
+        if (hit?.id) tagId = hit.id;
+      }
+      finish({
+        action: "save",
+        tagId: tagId || undefined,
+        tagLabel,
+        memo,
+      });
     });
 
     document.body.style.overflow = "hidden";

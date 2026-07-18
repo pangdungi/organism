@@ -54,10 +54,12 @@ import {
 import { showSideincomeKpiNoteModal } from "../utils/kpiSideincomeNotesModal.js";
 import {
   getLocalSideincomeKpiNotes,
+  getLocalSideincomeKpiNoteTags,
+  groupSideincomeKpiNotesByTag,
   pullSideincomeKpiNotesForKpi,
+  ensureSideincomeKpiNoteTagId,
   upsertSideincomeKpiNoteOnServer,
   deleteSideincomeKpiNoteOnServer,
-  normalizeKpiNoteTags,
 } from "../utils/sideincomeKpiNotesSupabase.js";
 import {
   applyKpiGridScrollRestore,
@@ -172,6 +174,7 @@ function loadSideincomeMap() {
         kpiTodos: parsed.kpiTodos || [],
         kpiDailyRepeatTodos: parsed.kpiDailyRepeatTodos || [],
         kpiNotes: parsed.kpiNotes || [],
+        kpiNoteTags: parsed.kpiNoteTags || [],
         kpiOrder: parsed.kpiOrder || {},
         kpiTaskSync: parsed.kpiTaskSync || {},
         pathLogs: parsed.pathLogs || [],
@@ -186,6 +189,7 @@ function loadSideincomeMap() {
     kpiTodos: [],
     kpiDailyRepeatTodos: [],
     kpiNotes: [],
+    kpiNoteTags: [],
     kpiOrder: {},
     kpiTaskSync: {},
     pathLogs: [],
@@ -924,15 +928,22 @@ export function render() {
       return;
     }
     if (tab === KPI_BOTTOM_TAB_NOTES) {
+      const kpiId = String(selectedKpiId);
       const result = await showSideincomeKpiNoteModal({
         mode: "add",
+        kpiId,
         kpiName: k.name,
+        existingTags: getLocalSideincomeKpiNoteTags(kpiId),
       });
       if (!result || result.action !== "save") return;
+      const tagRes = result.tagId
+        ? { ok: true, tag: { id: result.tagId, label: result.tagLabel } }
+        : await ensureSideincomeKpiNoteTagId(kpiId, result.tagLabel, nextId);
+      if (!tagRes.ok || !tagRes.tag?.id) return;
       const note = {
         id: nextId(),
-        kpiId: String(selectedKpiId),
-        tags: normalizeKpiNoteTags(result.tags),
+        kpiId,
+        tagId: tagRes.tag.id,
         memo: result.memo || "",
       };
       const saved = await upsertSideincomeKpiNoteOnServer(note);
@@ -1332,9 +1343,13 @@ export function render() {
       KPI_DETAIL_LOGS_UI_ENABLED || SIDEINCOME_KPI_NOTES_UI_ENABLED;
     const todoSegLabel = dailyTodosOnly ? "매일할일" : "할 일";
 
-    const appendSideincomeKpiNotesPanel = (parentEl, noteRows, kpiNameForModal) => {
+    const appendSideincomeKpiNotesPanel = (parentEl, kpiIdForNotes, kpiNameForModal) => {
       parentEl.replaceChildren();
-      if (!noteRows.length) {
+      const kid = String(kpiIdForNotes || selectedKpiId || "").trim();
+      const tags = getLocalSideincomeKpiNoteTags(kid);
+      const notes = getLocalSideincomeKpiNotes(kid);
+      const groups = groupSideincomeKpiNotesByTag(kid, notes, tags);
+      if (!groups.length) {
         const empty = document.createElement("p");
         empty.className = "dream-kpi-history-empty";
         empty.textContent = "아직 기록이 없습니다.";
@@ -1343,63 +1358,71 @@ export function render() {
       }
       const list = document.createElement("div");
       list.className = "dream-kpi-notes-list";
-      noteRows.forEach((note) => {
-        const row = document.createElement("button");
-        row.type = "button";
-        row.className = "dream-kpi-notes-row";
-        row.dataset.noteId = note.id;
+      groups.forEach(({ tag, notes: tagNotes }) => {
+        const group = document.createElement("section");
+        group.className = "dream-kpi-notes-group";
 
-        const tagsCol = document.createElement("div");
-        tagsCol.className = "dream-kpi-notes-row-tags";
-        const tags = normalizeKpiNoteTags(note.tags);
-        if (tags.length) {
-          tags.forEach((tag) => {
-            const chip = document.createElement("span");
-            chip.className = "dream-kpi-notes-tag-chip";
-            chip.textContent = tag;
-            tagsCol.appendChild(chip);
+        const head = document.createElement("div");
+        head.className = "dream-kpi-notes-group-head";
+        const chip = document.createElement("span");
+        chip.className = "dream-kpi-notes-tag-chip";
+        chip.textContent = String(tag.label || "").trim() || "태그";
+        head.appendChild(chip);
+        group.appendChild(head);
+
+        const items = document.createElement("div");
+        items.className = "dream-kpi-notes-group-items";
+        tagNotes.forEach((note) => {
+          const row = document.createElement("button");
+          row.type = "button";
+          row.className = "dream-kpi-notes-row";
+          row.dataset.noteId = note.id;
+
+          const memoCol = document.createElement("div");
+          memoCol.className = "dream-kpi-notes-row-memo";
+          memoCol.textContent = String(note.memo || "").trim() || "—";
+          row.appendChild(memoCol);
+
+          row.addEventListener("click", async () => {
+            const result = await showSideincomeKpiNoteModal({
+              mode: "edit",
+              kpiId: kid,
+              kpiName: kpiNameForModal,
+              existingTags: getLocalSideincomeKpiNoteTags(kid),
+              note: {
+                tagId: note.tagId,
+                tagLabel: String(tag.label || "").trim(),
+                memo: note.memo,
+              },
+            });
+            if (!result) return;
+            if (result.action === "delete") {
+              const del = await deleteSideincomeKpiNoteOnServer(note.id, note.kpiId);
+              if (!del.ok) return;
+              renderKpiDetailView();
+              return;
+            }
+            if (result.action === "save") {
+              const tagRes = result.tagId
+                ? { ok: true, tag: { id: result.tagId, label: result.tagLabel } }
+                : await ensureSideincomeKpiNoteTagId(kid, result.tagLabel, nextId);
+              if (!tagRes.ok || !tagRes.tag?.id) return;
+              const updated = {
+                id: note.id,
+                kpiId: kid,
+                tagId: tagRes.tag.id,
+                memo: result.memo || "",
+              };
+              const saved = await upsertSideincomeKpiNoteOnServer(updated);
+              if (!saved.ok) return;
+              renderKpiDetailView();
+            }
           });
-        } else {
-          const emptyTag = document.createElement("span");
-          emptyTag.className = "dream-kpi-notes-tag-empty";
-          emptyTag.textContent = "태그 없음";
-          tagsCol.appendChild(emptyTag);
-        }
 
-        const memoCol = document.createElement("div");
-        memoCol.className = "dream-kpi-notes-row-memo";
-        memoCol.textContent = String(note.memo || "").trim() || "—";
-
-        row.appendChild(tagsCol);
-        row.appendChild(memoCol);
-
-        row.addEventListener("click", async () => {
-          const result = await showSideincomeKpiNoteModal({
-            mode: "edit",
-            kpiName: kpiNameForModal,
-            note: { tags: note.tags, memo: note.memo },
-          });
-          if (!result) return;
-          if (result.action === "delete") {
-            const del = await deleteSideincomeKpiNoteOnServer(note.id, note.kpiId);
-            if (!del.ok) return;
-            renderKpiDetailView();
-            return;
-          }
-          if (result.action === "save") {
-            const updated = {
-              id: note.id,
-              kpiId: String(note.kpiId || selectedKpiId),
-              tags: normalizeKpiNoteTags(result.tags),
-              memo: result.memo || "",
-            };
-            const saved = await upsertSideincomeKpiNoteOnServer(updated);
-            if (!saved.ok) return;
-            renderKpiDetailView();
-          }
+          items.appendChild(row);
         });
-
-        list.appendChild(row);
+        group.appendChild(items);
+        list.appendChild(group);
       });
       parentEl.appendChild(list);
     };
@@ -1442,7 +1465,7 @@ export function render() {
       panelNotesSeg.setAttribute("role", "tabpanel");
       appendSideincomeKpiNotesPanel(
         panelNotesSeg,
-        getLocalSideincomeKpiNotes(String(selectedKpiId)),
+        String(selectedKpiId),
         kpi.name,
       );
     }
@@ -1690,12 +1713,14 @@ export function render() {
           syncAppFooterSideincomeKpiActions();
           syncSegClearCompletedTrashVisibility(tab);
           if (tab === KPI_BOTTOM_TAB_NOTES && selectedKpiId && panelNotesSeg) {
-            void pullSideincomeKpiNotesForKpi(String(selectedKpiId)).then(
-              (fresh) => {
-                if (!panelNotesSeg.isConnected) return;
-                appendSideincomeKpiNotesPanel(panelNotesSeg, fresh, kpi.name);
-              },
-            );
+            void pullSideincomeKpiNotesForKpi(String(selectedKpiId)).then(() => {
+              if (!panelNotesSeg.isConnected) return;
+              appendSideincomeKpiNotesPanel(
+                panelNotesSeg,
+                String(selectedKpiId),
+                kpi.name,
+              );
+            });
           }
         },
         {
