@@ -89,7 +89,28 @@ export function showSideincomeKpiNoteModal(opts = {}) {
     const tagListEl = modal.querySelector("[data-lp-kpi-note-tags-list]");
     const tagAddBtn = modal.querySelector("[data-lp-kpi-note-tag-add]");
     const memoInput = modal.querySelector("#dream-kpi-note-memo");
+    const tagField = modal.querySelector(".dream-kpi-note-tags-field");
+    const memoField = modal.querySelector(".dream-kpi-note-memo-field");
     const form = modal.querySelector("form");
+
+    function clearFieldError(field) {
+      if (!(field instanceof HTMLElement)) return;
+      field.classList.remove("dream-kpi-field--invalid");
+      field.querySelector(".dream-kpi-field-error")?.remove();
+    }
+
+    function showFieldError(field, message) {
+      if (!(field instanceof HTMLElement)) return;
+      field.classList.add("dream-kpi-field--invalid");
+      let err = field.querySelector(".dream-kpi-field-error");
+      if (!err) {
+        err = document.createElement("p");
+        err.className = "dream-kpi-field-error";
+        err.setAttribute("role", "alert");
+        field.appendChild(err);
+      }
+      err.textContent = message;
+    }
 
     function renderTagChips() {
       if (!(tagListEl instanceof HTMLElement)) return;
@@ -107,6 +128,7 @@ export function showSideincomeKpiNoteModal(opts = {}) {
         tagListEl.appendChild(chip);
       });
       tagListEl.hidden = tags.length === 0;
+      if (tags.length) clearFieldError(tagField);
     }
 
     function addTagFromInput() {
@@ -117,6 +139,7 @@ export function showSideincomeKpiNoteModal(opts = {}) {
       tags = merged;
       tagInput.value = "";
       renderTagChips();
+      clearFieldError(tagField);
       return true;
     }
 
@@ -136,21 +159,28 @@ export function showSideincomeKpiNoteModal(opts = {}) {
       tagInput?.focus();
     });
 
+    tagInput?.addEventListener("input", () => clearFieldError(tagField));
     tagInput?.addEventListener("keydown", (e) => {
       if (e.key !== "Enter" || e.isComposing) return;
       e.preventDefault();
       addTagFromInput();
     });
 
+    memoInput?.addEventListener("input", () => clearFieldError(memoField));
+
     form.addEventListener("submit", (e) => {
       e.preventDefault();
+      clearFieldError(tagField);
+      clearFieldError(memoField);
       const memo = String(memoInput?.value || "").trim();
       if (!tags.length) {
+        showFieldError(tagField, "+ 버튼을 눌러 태그를 추가해 주세요.");
         allowModalInputFocus(tagInput);
         tagInput?.focus();
         return;
       }
       if (!memo) {
+        showFieldError(memoField, "메모를 입력해 주세요.");
         allowModalInputFocus(memoInput);
         memoInput?.focus();
         return;
