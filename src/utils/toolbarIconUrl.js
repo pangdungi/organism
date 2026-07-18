@@ -15,6 +15,13 @@ export function loginBrandLogoUrl() {
   return `/login-brand-logo.png?v=${LOGIN_BRAND_LOGO_V}`;
 }
 
+/** 상단 브랜드(데스크탑 대시보드) — PWA 앱 아이콘과 동일 */
+export const APP_BRAND_LOGO_V = "doodle-calendar-1";
+
+export function appBrandLogoUrl() {
+  return `/icon-512.png?v=${APP_BRAND_LOGO_V}`;
+}
+
 /** @param {string} url */
 export function withToolbarIconCacheVersion(url) {
   const u = String(url || "").trim();

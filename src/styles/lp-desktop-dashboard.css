@@ -1,12 +1,28 @@
 /**
  * 데스크탑 홈 3분할 — min-width 64rem(1024px~)
- * 75rem 미만(Mini·Pro 11 가로): 세 칸 동일 너비(1:1:1)
+ * 71rem 미만(Mini 가로): 중앙만 조금 줄이고 캘린더 확대
+ * 75rem+: 시간·중앙은 읽기 좋은 폭 유지, 남는 너비 전부 캘린더
  */
 
 @media (min-width: 64rem) {
+  /* 3분할 홈 — 셸 max-width(72rem) 제한 해제, 가로 전폭 사용 */
+  #signin-page:has(.lp-desktop-dashboard) {
+    max-width: none;
+    margin-left: 0;
+    margin-right: 0;
+    width: 100%;
+  }
+
+  #signin-page:has(.lp-desktop-dashboard) .app-page {
+    margin-left: 0;
+    margin-right: 0;
+    max-width: none;
+    width: 100%;
+  }
+
   .app-main:has(.lp-desktop-dashboard) {
     max-width: none;
-    padding-inline: 0.75rem;
+    padding-inline: max(0.2rem, var(--lp-safe-left)) max(0.2rem, var(--lp-safe-right));
     overflow: hidden;
   }
 
@@ -35,10 +51,37 @@
 
   .lp-desktop-dashboard-topbar {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
     align-items: center;
+    gap: 0.65rem;
     min-height: 2.25rem;
-    padding-inline: 0.15rem;
+    padding-inline: max(0.15rem, var(--lp-safe-left)) max(0.15rem, var(--lp-safe-right));
+  }
+
+  .lp-desktop-dashboard-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+    font-family: var(--lp-app-font-family, inherit);
+    font-weight: var(--lp-app-font-weight-base, 500);
+  }
+
+  .lp-desktop-dashboard-brand-img {
+    flex: 0 0 auto;
+    width: 1.65rem;
+    height: 1.65rem;
+    object-fit: contain;
+  }
+
+  .lp-desktop-dashboard-brand-title {
+    font-family: var(--lp-app-font-family, inherit);
+    font-weight: inherit;
+    font-size: 0.9375rem;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    color: rgba(0, 0, 0, 0.82);
+    white-space: nowrap;
   }
 
   .lp-desktop-dashboard-account-btn {
@@ -88,6 +131,49 @@
     border-radius: 0.65rem;
     background: #fff;
     overflow: hidden;
+  }
+
+  .lp-desktop-dashboard-col-expand-row {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    min-height: 1.15rem;
+    padding: 0.12rem 0.28rem 0.02rem;
+    box-sizing: border-box;
+  }
+
+  .lp-desktop-dashboard-col-expand-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.15rem;
+    height: 1.15rem;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    cursor: pointer;
+    font: inherit;
+    color: rgba(0, 0, 0, 0.38);
+    background: transparent;
+    border: none;
+    border-radius: 0.2rem;
+    -webkit-tap-highlight-color: transparent;
+    transition: color 0.12s ease, background 0.12s ease;
+  }
+
+  .lp-desktop-dashboard-col-expand-btn:hover {
+    color: rgba(30, 77, 123, 0.88);
+    background: rgba(0, 0, 0, 0.04);
+  }
+
+  .lp-desktop-dashboard-col-expand-btn:active {
+    transform: scale(0.94);
+  }
+
+  .lp-desktop-dashboard-col-expand-btn:focus-visible {
+    outline: 1.5px solid rgba(30, 77, 123, 0.55);
+    outline-offset: 1px;
   }
 
   .lp-desktop-dashboard-col-body {
@@ -228,6 +314,7 @@
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+    padding: 0;
   }
 
   .lp-desktop-dashboard-col--time .time-ledger-view,
@@ -338,10 +425,10 @@
     max-width: 4.5rem;
   }
 
-  /* Mini·Pro 11 가로(1024~1199px) — 동일 3분할 + 컴팩트 여백·글자 */
+  /* Mini·Pro 11 가로(1024~1199px) — 컴팩트 여백·글자 */
   @media (max-width: 74.9375rem) {
     .app-main:has(.lp-desktop-dashboard) {
-      padding-inline: 0.45rem;
+      padding-inline: max(0.15rem, var(--lp-safe-left)) max(0.15rem, var(--lp-safe-right));
     }
 
     .lp-desktop-dashboard {
@@ -350,6 +437,19 @@
 
     .lp-desktop-dashboard-topbar {
       min-height: 1.85rem;
+    }
+
+    .lp-desktop-dashboard-brand {
+      gap: 0.35rem;
+    }
+
+    .lp-desktop-dashboard-brand-img {
+      width: 1.4rem;
+      height: 1.4rem;
+    }
+
+    .lp-desktop-dashboard-brand-title {
+      font-size: 0.8125rem;
     }
 
     .lp-desktop-dashboard-account-btn {
@@ -471,13 +571,19 @@
     }
   }
 
-  /* 1200px+ — 좌·중앙 고정 폭, 플래너만 확장 */
+  /* iPad Mini 가로(~1136px 이하) — 중앙만 소폭 축소 */
+  @media (max-width: 71rem) {
+    .lp-desktop-dashboard-grid {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 0.68fr) minmax(0, 1.32fr);
+    }
+  }
+
+  /* 1200px+ — 1·2열 폭은 그대로, 3열(캘린더)만 남는 공간 전부 */
   @media (min-width: 75rem) {
     .lp-desktop-dashboard-grid {
-      --lp-dashboard-side-col-max: 20rem;
       grid-template-columns:
-        minmax(14rem, var(--lp-dashboard-side-col-max))
-        minmax(14rem, var(--lp-dashboard-side-col-max))
+        minmax(14rem, 20rem)
+        minmax(14rem, 20rem)
         minmax(0, 1fr);
     }
   }

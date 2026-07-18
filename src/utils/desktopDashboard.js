@@ -4,7 +4,7 @@
  */
 
 import { applyStaticAppIconImg } from "./staticAppIconImg.js";
-import { withToolbarIconCacheVersion } from "./toolbarIconUrl.js";
+import { appBrandLogoUrl, withToolbarIconCacheVersion } from "./toolbarIconUrl.js";
 import { render as renderTime } from "../views/Time.js";
 import { render as renderHabitTracker } from "../views/HabitTracker.js";
 import { renderMobileScheduleCalendar } from "../views/Calendar.js";
@@ -48,6 +48,35 @@ function createColFooter() {
     "lp-desktop-dashboard-col-footer app-footer-actions lp-desktop-dashboard-col-footer-actions";
   footer.setAttribute("data-lp-dashboard-col-footer-actions", "");
   return footer;
+}
+
+const DESKTOP_COL_EXPAND_ICON =
+  '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" d="M7 17 17 7M9 7h8v8"/></svg>';
+
+/**
+ * @param {HTMLElement} host
+ * @param {string} tabId
+ * @param {string} label
+ * @param {(tabId: string) => void} setActiveTab
+ */
+function mountColExpandBtn(host, tabId, label, setActiveTab) {
+  const row = document.createElement("div");
+  row.className = "lp-desktop-dashboard-col-expand-row";
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "lp-desktop-dashboard-col-expand-btn";
+  btn.title = `${label} 전체 화면`;
+  btn.setAttribute("aria-label", `${label} 전체 화면으로 열기`);
+  btn.innerHTML = DESKTOP_COL_EXPAND_ICON;
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setActiveTab(tabId);
+  });
+
+  row.appendChild(btn);
+  host.insertBefore(row, host.firstElementChild);
 }
 
 /**
@@ -103,6 +132,21 @@ export function renderDesktopDashboard(opts) {
   const topBar = document.createElement("div");
   topBar.className = "lp-desktop-dashboard-topbar";
 
+  const brand = document.createElement("div");
+  brand.className = "lp-desktop-dashboard-brand";
+
+  const brandImg = document.createElement("img");
+  brandImg.className = "lp-desktop-dashboard-brand-img";
+  brandImg.src = appBrandLogoUrl();
+  brandImg.alt = "";
+  applyStaticAppIconImg(brandImg);
+
+  const brandTitle = document.createElement("span");
+  brandTitle.className = "lp-desktop-dashboard-brand-title";
+  brandTitle.textContent = "두들 플래너";
+
+  brand.append(brandImg, brandTitle);
+
   const accountBtn = document.createElement("button");
   accountBtn.type = "button";
   accountBtn.className = "lp-desktop-dashboard-account-btn";
@@ -118,7 +162,7 @@ export function renderDesktopDashboard(opts) {
   accountLabel.textContent = "나의 계정";
   accountBtn.append(accountImg, accountLabel);
   accountBtn.addEventListener("click", () => opts.setActiveTab("idea"));
-  topBar.appendChild(accountBtn);
+  topBar.append(brand, accountBtn);
 
   const grid = document.createElement("div");
   grid.className = "lp-desktop-dashboard-grid";
@@ -151,6 +195,10 @@ export function renderDesktopDashboard(opts) {
   plannerBody.className = "lp-desktop-dashboard-col-body";
   const plannerFooter = createColFooter();
   colPlanner.append(plannerBody, plannerFooter);
+
+  mountColExpandBtn(colTime, "time", "시간기록", opts.setActiveTab);
+  mountColExpandBtn(centerBottom, "habittracker", "해빗 트랙커", opts.setActiveTab);
+  mountColExpandBtn(colPlanner, "schedulecalendar", "캘린더", opts.setActiveTab);
 
   grid.append(colTime, colCenter, colPlanner);
   root.append(topBar, grid);

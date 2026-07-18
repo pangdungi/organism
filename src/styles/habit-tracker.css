@@ -209,3 +209,88 @@
   background-color: #f1f5f9 !important;
   color: #cbd5e1;
 }
+
+/* 홈 3분할 embed — 격자 바깥(상·하·좌·우) 점선·테두리 겹침 제거 (본 파일이 마지막에 로드됨) */
+.habit-tracker-view--dashboard-embed .habit-tracker-page-grid-scroll {
+  border: none;
+  border-radius: 0;
+}
+
+.habit-tracker-view--dashboard-embed
+  .habit-tracker-page-grid-table
+  thead
+  .habit-tracker-page-grid-th {
+  background-image: var(--ht-grid-dot-h) !important;
+  background-position: left bottom !important;
+  background-size: calc(100% - 1px) 1px !important;
+  background-repeat: repeat-x !important;
+}
+
+.habit-tracker-view--dashboard-embed
+  .habit-tracker-page-grid-table
+  thead
+  .habit-tracker-page-grid-th--habit {
+  background-image: var(--ht-grid-dot-h), var(--ht-grid-dot-v) !important;
+  background-position: 1px bottom, right top !important;
+  background-size: calc(100% - 2px) 1px, 1px auto !important;
+  background-repeat: repeat-x, repeat-y !important;
+}
+
+.habit-tracker-view--dashboard-embed
+  .habit-tracker-page-grid-table
+  thead
+  .habit-tracker-page-grid-th--day:not(:last-child) {
+  background-image: var(--ht-grid-dot-h), var(--ht-grid-dot-v) !important;
+  background-position: left bottom, right top !important;
+  background-size: calc(100% - 1px) 1px, 1px auto !important;
+  background-repeat: repeat-x, repeat-y !important;
+}
+
+.habit-tracker-view--dashboard-embed
+  .habit-tracker-page-grid-table
+  tbody
+  .habit-tracker-page-grid-td--habit {
+  background-image: var(--ht-grid-dot-h), var(--ht-grid-dot-v) !important;
+  background-position: 1px bottom, right top !important;
+  background-size: calc(100% - 2px) 1px, 1px auto !important;
+  background-repeat: repeat-x, repeat-y !important;
+}
+
+.habit-tracker-view--dashboard-embed
+  .habit-tracker-page-grid-table
+  tbody
+  .habit-tracker-page-grid-td--cell:not(:last-child) {
+  background-image: var(--ht-grid-dot-h), var(--ht-grid-dot-v) !important;
+  background-position: left bottom, right top !important;
+  background-size: calc(100% - 1px) 1px, 1px auto !important;
+  background-repeat: repeat-x, repeat-y !important;
+}
+
+.habit-tracker-view--dashboard-embed
+  .habit-tracker-page-grid-table
+  tbody
+  .habit-tracker-page-grid-td--cell:last-child {
+  background-image: var(--ht-grid-dot-h) !important;
+  background-position: left bottom !important;
+  background-size: calc(100% - 1px) 1px !important;
+  background-repeat: repeat-x !important;
+}
+
+.habit-tracker-view--dashboard-embed
+  .habit-tracker-page-grid-table
+  tbody
+  tr:last-child
+  .habit-tracker-page-grid-td {
+  background-image: none !important;
+}
+
+.habit-tracker-view--dashboard-embed
+  .habit-tracker-page-grid-table
+  tbody
+  tr:last-child
+  .habit-tracker-page-grid-td--cell:not(:last-child) {
+  background-image: var(--ht-grid-dot-v) !important;
+  background-position: right top !important;
+  background-size: 1px auto !important;
+  background-repeat: repeat-y !important;
+}
