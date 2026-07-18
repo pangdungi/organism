@@ -6,9 +6,13 @@ import { setupKpiCategoryHeaderIcon } from "../utils/kpiCategoryHeaderIcon.js";
 import { createHabitTrackerPageGridElement } from "../utils/habitTrackerPageGrid.js";
 import { pullHabitTrackerTabFromCloud } from "../utils/habitTrackerCloudRefresh.js";
 
-export function render() {
+export function render(opts = {}) {
+  const dashboardEmbedMode = !!opts?.dashboardEmbedMode;
+  const dashboardHost = opts?.dashboardHost || null;
+  const dashboardEmbedKey = String(opts?.dashboardEmbedKey || "").trim();
   const el = document.createElement("div");
   el.className = "app-tab-panel-content dream-view lp-kpi-dream-page";
+  if (dashboardEmbedMode) el.classList.add("habit-tracker-view--dashboard-embed");
 
   const header = document.createElement("header");
   header.className = "dream-view-header";
@@ -84,7 +88,12 @@ export function render() {
     });
   }
 
-  window.__lpHabitTrackerSoftRefresh = scheduleSoftRefresh;
+  if (dashboardEmbedMode && dashboardHost && dashboardEmbedKey) {
+    dashboardHost._lpEmbedSoftRefresh = dashboardHost._lpEmbedSoftRefresh || {};
+    dashboardHost._lpEmbedSoftRefresh[dashboardEmbedKey] = scheduleSoftRefresh;
+  } else {
+    window.__lpHabitTrackerSoftRefresh = scheduleSoftRefresh;
+  }
   syncViewMonthGlobal();
   paintGrid({ skipSync: true, allowBeforeMount: true });
 

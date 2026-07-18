@@ -6273,7 +6273,7 @@ const MOBILE_SCHEDULE_CAL_SUB_VIEWS = [
 /**
  * 캘린더 탭 하위 뷰(월별·1주·연간·타임블록) 공통 셸
  * @param {HTMLElement|null} tabsElement 상단에 붙일 외부 탭 행(없으면 null)
- * @param {{ subViewsList?: {id:string,label:string}[], storageKey?: string, forceInitialMonthlyOnMobile?: boolean, scheduleSubViewsInFooter?: boolean }} opts
+ * @param {{ subViewsList?: {id:string,label:string}[], storageKey?: string, forceInitialMonthlyOnMobile?: boolean, scheduleSubViewsInFooter?: boolean, footerActionsSlot?: HTMLElement | null }} opts
  * scheduleSubViewsInFooter: true면 서브뷰 전환을 네비가 아닌 앱 푸터(`app-footer-icon-btn`)에 둡니다.
  */
 function createCalendarSubViewRoot(tabsElement, opts = {}) {
@@ -6282,6 +6282,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
   const storageKey = opts.storageKey || "calendar-sub-view";
   const forceInitialMonthlyOnMobile = !!opts.forceInitialMonthlyOnMobile;
   const scheduleSubViewsInFooter = !!opts.scheduleSubViewsInFooter;
+  const footerActionsSlot = opts.footerActionsSlot || null;
 
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout calendar-view-with-subtabs";
@@ -6327,7 +6328,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
 
   function mountScheduleSubViewFooterActions() {
     if (!scheduleSubViewsInFooter) return;
-    const slot = getAppFooterActionsSlot();
+    const slot = footerActionsSlot || getAppFooterActionsSlot();
     if (!slot) return;
     try {
       slot
@@ -6617,7 +6618,11 @@ function renderCalendarView(tabsElement) {
 }
 
 /** 모바일 하단 '일정' 탭: 월별·1주·연간·타임블록(앱 푸터 아이콘으로 뷰 전환) */
-export function renderMobileScheduleCalendar() {
+export function renderMobileScheduleCalendar(opts = {}) {
+  const dashboardEmbedMode = !!opts?.dashboardEmbedMode;
+  const footerActionsSlot = opts?.footerActionsSlot || null;
+  const dashboardHost = opts?.dashboardHost || null;
+  const dashboardEmbedKey = String(opts?.dashboardEmbedKey || "").trim();
   const el = document.createElement("div");
   el.className =
     "app-tab-panel-content calendar-view calendar-view--mobile-schedule";
@@ -6636,6 +6641,7 @@ export function renderMobileScheduleCalendar() {
         storageKey: "calendar-mobile-schedule-sub-view",
         forceInitialMonthlyOnMobile: false,
         scheduleSubViewsInFooter: true,
+        footerActionsSlot,
       }),
     );
   }
@@ -6643,7 +6649,7 @@ export function renderMobileScheduleCalendar() {
   el.appendChild(contentWrap);
   mountCalendarSubViews();
 
-  window.__lpCalendarSoftRefresh = () => {
+  const calendarSoftRefresh = () => {
     if (!el.isConnected) return;
     const wrap = contentWrap.querySelector(".calendar-view-with-subtabs");
     if (wrap && typeof wrap._lpCalendarSoftPullRefresh === "function") {
@@ -6652,6 +6658,13 @@ export function renderMobileScheduleCalendar() {
     }
     mountCalendarSubViews();
   };
+
+  if (dashboardEmbedMode && dashboardHost && dashboardEmbedKey) {
+    dashboardHost._lpEmbedSoftRefresh = dashboardHost._lpEmbedSoftRefresh || {};
+    dashboardHost._lpEmbedSoftRefresh[dashboardEmbedKey] = calendarSoftRefresh;
+  } else {
+    window.__lpCalendarSoftRefresh = calendarSoftRefresh;
+  }
 
   return el;
 }

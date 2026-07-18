@@ -42,14 +42,20 @@ html {
   font-size: 16px;
 }
 
-/* 태블릿 기준선 46rem(736px) — 아이패드 미니 세로(744px) 포함 */
-@media (min-width: 46rem) and (max-width: 64rem) {
+/* 태블릿 세로·Mini·Pro 11 가로(64~75rem 미만) */
+@media (min-width: 46rem) and (max-width: 63.9375rem) {
   html {
     font-size: 17px;
   }
 }
 
-@media (min-width: 64.0625rem) {
+@media (min-width: 64rem) and (max-width: 74.9375rem) {
+  html {
+    font-size: 17px;
+  }
+}
+
+@media (min-width: 75rem) {
   html {
     font-size: 20px;
   }
@@ -883,7 +889,7 @@ table {
   }
 }
 
-@media (min-width: 64.0625rem) {
+@media (min-width: 75rem) {
   .app-main {
     min-height: 0;
   }

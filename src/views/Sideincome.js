@@ -107,9 +107,10 @@ import {
 } from "../utils/kpiMapLocalStorage.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
+  APP_FOOTER_ADD_SLOT_ATTR,
+  APP_FOOTER_HOME_ICON,
   mountAppFooterAddButton,
   appendKpiFooterHomeButton,
-  clearKpiMapFooterActionButtons,
   getAppFooterActionsSlot,
 } from "../utils/appFooterShell.js";
 import {
@@ -380,9 +381,14 @@ function readPathTargetAmountFields(form) {
   };
 }
 
-export function render() {
+export function render(opts = {}) {
+  const dashboardEmbedMode = !!opts?.dashboardEmbedMode;
+  const footerActionsSlot = opts?.footerActionsSlot || null;
+  const dashboardHost = opts?.dashboardHost || null;
+  const dashboardEmbedKey = String(opts?.dashboardEmbedKey || "").trim();
   const el = document.createElement("div");
   el.className = "app-tab-panel-content sideincome-view dream-view lp-kpi-dream-page";
+  if (dashboardEmbedMode) el.classList.add("sideincome-view--dashboard-embed");
 
   const header = document.createElement("header");
   header.className = "dream-view-header";
@@ -445,7 +451,7 @@ export function render() {
   }
 
   function syncSideincomeFooterBackLabel() {
-    if (!el.isConnected) return;
+    if (!el.isConnected || dashboardEmbedMode) return;
     const footerBack = document.querySelector("[data-lp-app-footer-back]");
     if (!footerBack) return;
     if (sideincomeViewScreen === "kpiDetail") {
@@ -872,7 +878,14 @@ export function render() {
   }
 
   function clearSideincomeKpiFooterActions() {
-    clearKpiMapFooterActionButtons();
+    const slot = footerActionsSlot || getAppFooterActionsSlot();
+    if (!slot) return;
+    slot.querySelectorAll("[data-lp-dream-kpi-footer-action]").forEach((btn) => {
+      const wrap = btn.closest(`[${APP_FOOTER_ADD_SLOT_ATTR}]`);
+      if (wrap) wrap.remove();
+      else btn.remove();
+    });
+    slot.querySelectorAll("[data-lp-kpi-footer-home]").forEach((n) => n.remove());
   }
 
   function sideincomeKpiFooterAddLabel(tab, kpi) {
@@ -953,9 +966,26 @@ export function render() {
     }
   }
 
+  function appendSideincomeFooterHomeOrGoals(slot) {
+    if (dashboardEmbedMode) {
+      if (sideincomeViewScreen === "goals") return;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = APP_FOOTER_ICON_BTN_CLASS;
+      btn.setAttribute("data-lp-kpi-footer-home", "");
+      btn.title = "목표 목록";
+      btn.setAttribute("aria-label", "목표 목록");
+      btn.innerHTML = APP_FOOTER_HOME_ICON;
+      btn.addEventListener("click", () => exitToSideincomeGoalsList());
+      slot.appendChild(btn);
+      return;
+    }
+    appendKpiFooterHomeButton(slot);
+  }
+
   function syncAppFooterSideincomeKpiActions() {
     clearSideincomeKpiFooterActions();
-    const slot = getAppFooterActionsSlot();
+    const slot = footerActionsSlot || getAppFooterActionsSlot();
     if (!slot) return;
 
     const addBtn = document.createElement("button");
@@ -986,7 +1016,7 @@ export function render() {
         if (!activePathId) return;
         showKpiModal();
       });
-      appendKpiFooterHomeButton(slot);
+      appendSideincomeFooterHomeOrGoals(slot);
       slot.appendChild(mountAppFooterAddButton(addBtn));
       return;
     }
@@ -999,7 +1029,7 @@ export function render() {
 
     const tab = getKpiHistoryBottomTab("sideincome", selectedKpiId);
     if (!kpiHistoryFooterShowsAddButton(tab, kpiNow)) {
-      appendKpiFooterHomeButton(slot);
+      appendSideincomeFooterHomeOrGoals(slot);
       return;
     }
     const addLabel = sideincomeKpiFooterAddLabel(tab, kpiNow);
@@ -1008,7 +1038,7 @@ export function render() {
     addBtn.addEventListener("click", () => {
       void runSideincomeKpiFooterAddAction();
     });
-    appendKpiFooterHomeButton(slot);
+    appendSideincomeFooterHomeOrGoals(slot);
     slot.appendChild(mountAppFooterAddButton(addBtn));
   }
 
@@ -2093,19 +2123,27 @@ export function render() {
     if (!el.isConnected || e.detail?.tabId !== "sideincome") return;
     updateSideincomeView();
   });
-  window.__lpSideincomeSoftRefresh = syncSideincomeUiFromStoredMap;
-  window.__lpSideincomeFooterBack = () => {
-    if (!el.isConnected) return false;
-    if (sideincomeViewScreen === "kpiDetail") {
-      exitToKpiList();
-      return true;
-    }
-    if (sideincomeViewScreen === "kpis") {
-      exitToSideincomeGoalsList();
-      return true;
-    }
-    return false;
-  };
+  if (dashboardEmbedMode && dashboardHost && dashboardEmbedKey) {
+    dashboardHost._lpEmbedSoftRefresh = dashboardHost._lpEmbedSoftRefresh || {};
+    dashboardHost._lpEmbedSoftRefresh[dashboardEmbedKey] =
+      syncSideincomeUiFromStoredMap;
+  } else {
+    window.__lpSideincomeSoftRefresh = syncSideincomeUiFromStoredMap;
+  }
+  if (!dashboardEmbedMode) {
+    window.__lpSideincomeFooterBack = () => {
+      if (!el.isConnected) return false;
+      if (sideincomeViewScreen === "kpiDetail") {
+        exitToKpiList();
+        return true;
+      }
+      if (sideincomeViewScreen === "kpis") {
+        exitToSideincomeGoalsList();
+        return true;
+      }
+      return false;
+    };
+  }
 
   return el;
 }

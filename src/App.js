@@ -86,6 +86,12 @@ import { prefetchIconsForTab } from "./utils/appIconPrefetch.js";
 import {
   clearLpTabPullPending,
 } from "./utils/lpTabSyncLoadingUi.js";
+import {
+  DESKTOP_DASHBOARD_MQ,
+  isDesktopDashboardViewport,
+  renderDesktopDashboard,
+  runDesktopDashboardSoftRefresh,
+} from "./utils/desktopDashboard.js";
 
 /** 상위 탭 메타(아이콘·메뉴 런처 구역 순서) */
 const TABS = [
@@ -356,6 +362,35 @@ async function pullDataForActiveTab(tabId, opts = {}) {
   }
 }
 
+async function pullDesktopDashboardData() {
+  const now = new Date();
+  const yEnd = timeLedgerLocalTodayYmd();
+  const yStart = timeLedgerLocalYesterdayYmd();
+  const calRange = calendarPullRangeYmdForMonth(
+    now.getFullYear(),
+    now.getMonth(),
+    21,
+  );
+  await Promise.all([
+    pullTimeLedgerTabEnterFromCloud(),
+    pullHabitTrackerTabFromCloud(now.getFullYear(), now.getMonth() + 1),
+    pullCalendarSectionTasksFromSupabase({
+      reason: "app_desktop_dashboard_boot",
+      subView: "calendar",
+      rangeStart: calRange.rangeStart,
+      rangeEnd: calRange.rangeEnd,
+    }),
+    pullCalendarDayIconsFromSupabase({
+      reason: "app_desktop_dashboard_boot",
+    }),
+    pullTimeLedgerEntriesForDateRange(yStart, yEnd),
+    pullTimeDailyBudgetForDateRange(yStart, yEnd),
+    import("./utils/timeDailyBudgetTemplateSupabase.js").then((m) =>
+      m.pullBudgetScheduleTemplatesFromSupabase(),
+    ),
+  ]);
+}
+
 const ROUTINE_REMOVED_KEY = "app-routine-removed-v1";
 
 /** 탭 전환 시 서버 pull 이 있는 탭 — 본문이 비었을 때만 스플래시 오버레이 */
@@ -433,6 +468,7 @@ export async function mountApp(container) {
   let launcherAdminBtn = null;
   /** 메뉴 그리드 DOM 재사용 — 탭 복귀 시 img 재생성 깜빡임 방지 */
   let homeMenuLauncherEl = null;
+  let desktopDashboardEl = null;
 
   async function syncAdminMenuVisibility() {
     let show = false;
@@ -560,10 +596,11 @@ export async function mountApp(container) {
         const pullPromise = pullDataForActiveTab(targetTabId, { fromBoot: false });
         if (targetTabId === "home") {
           const panelEl = main.querySelector(".app-tab-panel");
+          const firstChild = panelEl?.firstElementChild;
           if (
             panelEl &&
-            homeMenuLauncherEl &&
-            panelEl.firstElementChild === homeMenuLauncherEl
+            ((homeMenuLauncherEl && firstChild === homeMenuLauncherEl) ||
+              (desktopDashboardEl && firstChild === desktopDashboardEl))
           ) {
             syncAppFooterVisibility();
             void syncAdminMenuVisibility();
@@ -873,9 +910,25 @@ export async function mountApp(container) {
     let mountNodes;
     try {
       if (currentTabId === "home") {
-        const content = renderHomeMenuLauncher();
-        mountNodes = content ? [content] : [];
+        if (isDesktopDashboardViewport()) {
+          homeMenuLauncherEl = null;
+          if (desktopDashboardEl?.isConnected) {
+            void syncAdminMenuVisibility();
+            mountNodes = [desktopDashboardEl];
+          } else {
+            desktopDashboardEl = renderDesktopDashboard({
+              setActiveTab,
+              accountIconSrc: HOME_MENU_ACCOUNT_ICON,
+            });
+            mountNodes = [desktopDashboardEl];
+          }
+        } else {
+          desktopDashboardEl = null;
+          const content = renderHomeMenuLauncher();
+          mountNodes = content ? [content] : [];
+        }
       } else if (tabRenderer) {
+        desktopDashboardEl = null;
         const content = tabRenderer();
         mountNodes = content ? [content] : [];
       } else {
@@ -920,6 +973,16 @@ export async function mountApp(container) {
 
   window.__lpRenderMain = (opts) => renderMain(main, opts || {});
   window.__lpSetTab = (tabId) => setActiveTab(tabId);
+
+  try {
+    const desktopDashboardMq = window.matchMedia(DESKTOP_DASHBOARD_MQ);
+    desktopDashboardMq.addEventListener("change", () => {
+      if (currentTabId !== "home") return;
+      homeMenuLauncherEl = null;
+      desktopDashboardEl = null;
+      renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
+    });
+  } catch (_) {}
 
   initSupabaseRealtimeSync({
     getCurrentTabId: () => currentTabId,
@@ -981,6 +1044,17 @@ export async function mountApp(container) {
         try {
           await syncAdminMenuVisibility();
         } catch (_) {}
+        if (isDesktopDashboardViewport()) {
+          try {
+            resetTimeLedgerSessionFilterToToday();
+          } catch (_) {}
+          try {
+            await pullDesktopDashboardData();
+            runDesktopDashboardSoftRefresh(
+              main.querySelector(".lp-desktop-dashboard"),
+            );
+          } catch (_) {}
+        }
         return;
       }
 

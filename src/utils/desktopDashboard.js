@@ -1,0 +1,211 @@
+/**
+ * 데스크탑(넓은 화면) 홈 — 3분할 대시보드
+ * 시간기록 | KPI 퀵버튼+습관 | 플래너
+ */
+
+import { applyStaticAppIconImg } from "./staticAppIconImg.js";
+import { withToolbarIconCacheVersion } from "./toolbarIconUrl.js";
+import { render as renderTime } from "../views/Time.js";
+import { render as renderHabitTracker } from "../views/HabitTracker.js";
+import { renderMobileScheduleCalendar } from "../views/Calendar.js";
+
+/** iPad Mini 가로(1024px)부터 3분할 — 75rem 미만은 열 너비 1:1:1 */
+export const DESKTOP_DASHBOARD_MQ = "(min-width: 64rem)";
+/** Mini·Pro 11 등 좁은 3분할 — 세 칸 동일 너비 + 컴팩트 여백 */
+export const DESKTOP_DASHBOARD_COMPACT_MQ = "(min-width: 64rem) and (max-width: 74.9375rem)";
+/** Pro 12.9·데스크탑 등 넓은 화면용 기본 비율 */
+export const DESKTOP_DASHBOARD_FULL_MQ = "(min-width: 75rem)";
+
+const DESKTOP_QUICK_KPI_TABS = [
+  {
+    id: "sideincome",
+    label: "시급상승",
+    icon: "/toolbaricons/menu-sideincome.png",
+  },
+  {
+    id: "health",
+    label: "건강",
+    icon: "/toolbaricons/menu-health.png",
+  },
+  {
+    id: "happiness",
+    label: "행복",
+    icon: "/toolbaricons/menu-happiness.png",
+  },
+];
+
+export function isDesktopDashboardViewport() {
+  try {
+    return window.matchMedia(DESKTOP_DASHBOARD_MQ).matches;
+  } catch (_) {
+    return false;
+  }
+}
+
+function createColFooter() {
+  const footer = document.createElement("div");
+  footer.className =
+    "lp-desktop-dashboard-col-footer app-footer-actions lp-desktop-dashboard-col-footer-actions";
+  footer.setAttribute("data-lp-dashboard-col-footer-actions", "");
+  return footer;
+}
+
+/**
+ * @param {(tabId: string) => void} setActiveTab
+ */
+function renderQuickKpiButtons(setActiveTab) {
+  const wrap = document.createElement("div");
+  wrap.className = "lp-desktop-dashboard-quick-kpi";
+
+  const list = document.createElement("div");
+  list.className = "lp-desktop-dashboard-quick-kpi-list";
+  list.setAttribute("role", "group");
+  list.setAttribute("aria-label", "목표 바로가기");
+
+  DESKTOP_QUICK_KPI_TABS.forEach((tab) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "lp-desktop-dashboard-quick-kpi-btn";
+    btn.dataset.tabId = tab.id;
+    btn.title = tab.label;
+    btn.setAttribute("aria-label", tab.label);
+
+    const img = document.createElement("img");
+    img.className = "lp-desktop-dashboard-quick-kpi-img";
+    img.src = withToolbarIconCacheVersion(tab.icon);
+    img.alt = "";
+    applyStaticAppIconImg(img);
+
+    const label = document.createElement("span");
+    label.className = "lp-desktop-dashboard-quick-kpi-label";
+    label.textContent = tab.label;
+
+    btn.append(img, label);
+    btn.addEventListener("click", () => setActiveTab(tab.id));
+    list.appendChild(btn);
+  });
+
+  wrap.appendChild(list);
+  return wrap;
+}
+
+/**
+ * @param {{ setActiveTab: (tabId: string) => void, accountIconSrc: string }} opts
+ */
+export function renderDesktopDashboard(opts) {
+  const root = document.createElement("div");
+  root.className = "lp-desktop-dashboard";
+  root._lpEmbedSoftRefresh = {};
+
+  const abort = new AbortController();
+  root._lpTabAbortController = abort;
+
+  const topBar = document.createElement("div");
+  topBar.className = "lp-desktop-dashboard-topbar";
+
+  const accountBtn = document.createElement("button");
+  accountBtn.type = "button";
+  accountBtn.className = "lp-desktop-dashboard-account-btn";
+  accountBtn.title = "나의 계정";
+  accountBtn.setAttribute("aria-label", "나의 계정");
+  const accountImg = document.createElement("img");
+  accountImg.className = "lp-desktop-dashboard-account-img";
+  accountImg.src = withToolbarIconCacheVersion(opts.accountIconSrc || "");
+  accountImg.alt = "";
+  applyStaticAppIconImg(accountImg);
+  const accountLabel = document.createElement("span");
+  accountLabel.className = "lp-desktop-dashboard-account-label";
+  accountLabel.textContent = "나의 계정";
+  accountBtn.append(accountImg, accountLabel);
+  accountBtn.addEventListener("click", () => opts.setActiveTab("idea"));
+  topBar.appendChild(accountBtn);
+
+  const grid = document.createElement("div");
+  grid.className = "lp-desktop-dashboard-grid";
+
+  const colTime = document.createElement("section");
+  colTime.className = "lp-desktop-dashboard-col lp-desktop-dashboard-col--time";
+  const timeBody = document.createElement("div");
+  timeBody.className = "lp-desktop-dashboard-col-body";
+  const timeFooter = createColFooter();
+  colTime.append(timeBody, timeFooter);
+
+  const colCenter = document.createElement("section");
+  colCenter.className = "lp-desktop-dashboard-col lp-desktop-dashboard-col--center";
+  const centerTop = document.createElement("div");
+  centerTop.className =
+    "lp-desktop-dashboard-col-split lp-desktop-dashboard-col-split--top lp-desktop-dashboard-col-split--quick";
+  const quickKpiBody = document.createElement("div");
+  quickKpiBody.className = "lp-desktop-dashboard-col-body";
+  centerTop.appendChild(quickKpiBody);
+  const centerBottom = document.createElement("div");
+  centerBottom.className = "lp-desktop-dashboard-col-split lp-desktop-dashboard-col-split--bottom";
+  const habitBody = document.createElement("div");
+  habitBody.className = "lp-desktop-dashboard-col-body";
+  centerBottom.appendChild(habitBody);
+  colCenter.append(centerTop, centerBottom);
+
+  const colPlanner = document.createElement("section");
+  colPlanner.className = "lp-desktop-dashboard-col lp-desktop-dashboard-col--planner";
+  const plannerBody = document.createElement("div");
+  plannerBody.className = "lp-desktop-dashboard-col-body";
+  const plannerFooter = createColFooter();
+  colPlanner.append(plannerBody, plannerFooter);
+
+  grid.append(colTime, colCenter, colPlanner);
+  root.append(topBar, grid);
+
+  const embedCommon = {
+    dashboardEmbedMode: true,
+    dashboardHost: root,
+  };
+
+  const timeEl = renderTime({
+    ...embedCommon,
+    dashboardEmbedKey: "time",
+    footerActionsSlot: timeFooter,
+  });
+  timeBody.appendChild(timeEl);
+
+  quickKpiBody.appendChild(renderQuickKpiButtons(opts.setActiveTab));
+
+  const habitEl = renderHabitTracker({
+    ...embedCommon,
+    dashboardEmbedKey: "habit",
+  });
+  habitBody.appendChild(habitEl);
+
+  const plannerEl = renderMobileScheduleCalendar({
+    ...embedCommon,
+    dashboardEmbedKey: "planner",
+    footerActionsSlot: plannerFooter,
+  });
+  plannerBody.appendChild(plannerEl);
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      runDesktopDashboardSoftRefresh(root);
+    });
+  });
+
+  abort.signal.addEventListener(
+    "abort",
+    () => {
+      root._lpEmbedSoftRefresh = {};
+    },
+    { once: true },
+  );
+
+  return root;
+}
+
+/** @param {HTMLElement | null | undefined} dashboardRoot */
+export function runDesktopDashboardSoftRefresh(dashboardRoot) {
+  const map = dashboardRoot?._lpEmbedSoftRefresh;
+  if (!map || typeof map !== "object") return;
+  for (const fn of Object.values(map)) {
+    try {
+      if (typeof fn === "function") fn();
+    } catch (_) {}
+  }
+}

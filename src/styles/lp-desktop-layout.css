@@ -13,7 +13,7 @@
   }
 }
 
-@media (min-width: 64.0625rem) {
+@media (min-width: 64rem) {
   :root {
     --lp-content-max: 52rem;
     --lp-content-max-narrow: 40rem;

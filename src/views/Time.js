@@ -5365,6 +5365,10 @@ function createTableHTML() {
 
 export function render(opts = {}) {
   const taskLogBridgeMode = !!opts?.taskLogBridgeMode;
+  const dashboardEmbedMode = !!opts?.dashboardEmbedMode;
+  const footerActionsSlot = opts?.footerActionsSlot || null;
+  const dashboardHost = opts?.dashboardHost || null;
+  const dashboardEmbedKey = String(opts?.dashboardEmbedKey || "").trim();
   const el = document.createElement("div");
   lpSetClasses(el, "app-tab-panel-content time-ledger-view");
   el.dataset.timeContentView = "all";
@@ -6067,7 +6071,7 @@ export function render(opts = {}) {
 
   /** 설정·과제 기록(+)·조회 — 앱 푸터 공통: appFooterShell + main.css */
   function syncAppFooterLedgerActions() {
-    const slot = getAppFooterActionsSlot();
+    const slot = footerActionsSlot || getAppFooterActionsSlot();
     if (!slot) return;
     const nodes = [taskSetupBtn, ledgerAddFooterBtnWrap, footerDateBtn];
     for (const node of nodes) {
@@ -12459,7 +12463,13 @@ export function render(opts = {}) {
   window.__lpOpenTimeTaskLog = openTaskLogModalFromExternal;
 
   /** App.setActiveTab 에서 pull 후 두 번째 renderMain 대신 호출 — 패널 통째 교체 없이 위 갱신만 */
-  window.__lpTimeLedgerSoftRefresh = () => refreshTimeLedgerFromRemotePull();
+  if (dashboardEmbedMode && dashboardHost && dashboardEmbedKey) {
+    dashboardHost._lpEmbedSoftRefresh = dashboardHost._lpEmbedSoftRefresh || {};
+    dashboardHost._lpEmbedSoftRefresh[dashboardEmbedKey] =
+      () => refreshTimeLedgerFromRemotePull();
+  } else {
+    window.__lpTimeLedgerSoftRefresh = () => refreshTimeLedgerFromRemotePull();
+  }
 
   signal.addEventListener(
     "abort",
@@ -12476,8 +12486,16 @@ export function render(opts = {}) {
       try {
         taskLogModal?.remove();
       } catch (_) {}
-      clearAppFooterActions();
+      if (!dashboardEmbedMode) {
+        clearAppFooterActions();
+      }
       if (
+        dashboardEmbedMode &&
+        dashboardHost?._lpEmbedSoftRefresh &&
+        dashboardEmbedKey
+      ) {
+        delete dashboardHost._lpEmbedSoftRefresh[dashboardEmbedKey];
+      } else if (
         window.__lpTimeLedgerSoftRefresh === refreshTimeLedgerFromRemotePull
       ) {
         delete window.__lpTimeLedgerSoftRefresh;

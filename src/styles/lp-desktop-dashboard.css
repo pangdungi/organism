@@ -1,0 +1,484 @@
+/**
+ * 데스크탑 홈 3분할 — min-width 64rem(1024px~)
+ * 75rem 미만(Mini·Pro 11 가로): 세 칸 동일 너비(1:1:1)
+ */
+
+@media (min-width: 64rem) {
+  .app-main:has(.lp-desktop-dashboard) {
+    max-width: none;
+    padding-inline: 0.75rem;
+    overflow: hidden;
+  }
+
+  .app-main:has(.lp-desktop-dashboard) > .app-tab-panel > :first-child {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding-top: clamp(0.2rem, 0.8dvh, 0.5rem);
+    padding-bottom: max(0.35rem, var(--lp-safe-bottom));
+  }
+
+  .lp-desktop-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    width: 100%;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  .lp-desktop-dashboard-topbar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    min-height: 2.25rem;
+    padding-inline: 0.15rem;
+  }
+
+  .lp-desktop-dashboard-account-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.25rem 0.55rem;
+    font: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: rgba(0, 0, 0, 0.72);
+    background: transparent;
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+
+  .lp-desktop-dashboard-account-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  .lp-desktop-dashboard-account-img {
+    width: 1.35rem;
+    height: 1.35rem;
+    object-fit: contain;
+  }
+
+  .lp-desktop-dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.65rem;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+  }
+
+  .lp-desktop-dashboard-col--planner {
+    min-width: 0;
+  }
+
+  .lp-desktop-dashboard-col {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 0.65rem;
+    background: #fff;
+    overflow: hidden;
+  }
+
+  .lp-desktop-dashboard-col-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .lp-desktop-dashboard-col-body > .app-tab-panel-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .lp-desktop-dashboard-col-footer,
+  .lp-desktop-dashboard-col-footer-actions {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    gap: 0.35rem;
+    padding: 0.35rem 0.5rem calc(0.35rem + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    background: #fff;
+  }
+
+  .lp-desktop-dashboard-col--center {
+    border: none;
+    background: transparent;
+    gap: 0.65rem;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .lp-desktop-dashboard-col-split {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 0.65rem;
+    background: #fff;
+    overflow: hidden;
+  }
+
+  .lp-desktop-dashboard-col-split--bottom {
+    min-height: 0;
+  }
+
+  .lp-desktop-dashboard-quick-kpi {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    flex: 0 0 auto;
+    padding: 0.5rem 0.55rem 0.45rem;
+    box-sizing: border-box;
+  }
+
+  .lp-desktop-dashboard-quick-kpi-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    width: 100%;
+  }
+
+  .lp-desktop-dashboard-quick-kpi-btn {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.65rem;
+    width: 100%;
+    min-height: 3.1rem;
+    margin: 0;
+    padding: 0.55rem 0.65rem;
+    box-sizing: border-box;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+    color: inherit;
+    background: transparent;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 0.5rem;
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity 0.12s ease, transform 0.12s ease, background 0.12s ease;
+  }
+
+  .lp-desktop-dashboard-quick-kpi-btn:hover {
+    background: rgba(0, 0, 0, 0.04);
+    opacity: 0.92;
+  }
+
+  .lp-desktop-dashboard-quick-kpi-btn:active {
+    transform: scale(0.98);
+  }
+
+  .lp-desktop-dashboard-quick-kpi-btn:focus-visible {
+    outline: 2px solid #000;
+    outline-offset: 2px;
+  }
+
+  .lp-desktop-dashboard-quick-kpi-img {
+    display: block;
+    flex: 0 0 auto;
+    width: 2rem;
+    height: 2rem;
+    object-fit: contain;
+    pointer-events: none;
+  }
+
+  .lp-desktop-dashboard-quick-kpi-label {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.25;
+    color: rgba(0, 0, 0, 0.82);
+  }
+
+  .lp-desktop-dashboard-col-split--bottom .lp-desktop-dashboard-col-body {
+    padding-top: 0.55rem;
+    box-sizing: border-box;
+  }
+
+  .habit-tracker-view--dashboard-embed {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .habit-tracker-view--dashboard-embed .habit-tracker-content-wrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .lp-desktop-dashboard-col--time .time-ledger-view,
+  .lp-desktop-dashboard-col--planner .calendar-view--mobile-schedule {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .lp-desktop-dashboard-col--time .time-ledger-view {
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* 플래너 — 본문(월별·주간·일간)이 칸 높이를 받아 그리드가 보이게 */
+  .lp-desktop-dashboard-col--planner .calendar-view--mobile-schedule {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .lp-desktop-dashboard-col--planner .calendar-view--mobile-schedule > .calendar-content-wrap,
+  .lp-desktop-dashboard-col--planner
+    .calendar-view--mobile-schedule
+    .calendar-view-with-subtabs,
+  .lp-desktop-dashboard-col--planner
+    .calendar-view--mobile-schedule
+    .calendar-view-content-area,
+  .lp-desktop-dashboard-col--planner
+    .calendar-view--mobile-schedule
+    .calendar-view-content-area
+    > .calendar-monthly-layout,
+  .lp-desktop-dashboard-col--planner
+    .calendar-view--mobile-schedule
+    .calendar-monthly-main {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .lp-desktop-dashboard-col--planner
+    .calendar-view--mobile-schedule
+    .calendar-monthly-grid:not(.calendar-monthly-grid--1week-timegrid) {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .lp-desktop-dashboard-col--planner
+    .calendar-view--mobile-schedule
+    .calendar-monthly-grid--1week-timegrid,
+  .lp-desktop-dashboard-col--planner
+    .calendar-view--mobile-schedule
+    .calendar-1week-time-grid-google--flow,
+  .lp-desktop-dashboard-col--planner
+    .calendar-view--mobile-schedule
+    .calendar-1week-flow-hscroll-outer,
+  .lp-desktop-dashboard-col--planner
+    .calendar-view--mobile-schedule
+    .calendar-1week-flow-hscroll-inner,
+  .lp-desktop-dashboard-col--planner
+    .calendar-view--mobile-schedule
+    .calendar-1week-google-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .lp-desktop-dashboard-col--planner
+    .calendar-view--mobile-schedule
+    .calendar-1week-flow-hscroll-inner,
+  .lp-desktop-dashboard-col--planner
+    .calendar-view--mobile-schedule
+    .calendar-1week-google-scroll {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .lp-desktop-dashboard-col--time .time-ledger-view {
+    padding-bottom: 0;
+  }
+
+  .habit-tracker-view--dashboard-embed .dream-view-header {
+    padding: 0.35rem 0.75rem 0.45rem;
+    border-bottom: none;
+  }
+
+  .habit-tracker-view--dashboard-embed .dream-view-label {
+    display: none;
+  }
+
+  .habit-tracker-view--dashboard-embed .dream-view-title {
+    font-size: 1rem;
+  }
+
+  .lp-desktop-dashboard-col-footer-actions.app-footer-actions {
+    justify-content: space-around;
+  }
+
+  .lp-desktop-dashboard-col-footer-actions .app-footer-icon-btn {
+    flex: 1 1 0;
+    max-width: 4.5rem;
+  }
+
+  /* Mini·Pro 11 가로(1024~1199px) — 동일 3분할 + 컴팩트 여백·글자 */
+  @media (max-width: 74.9375rem) {
+    .app-main:has(.lp-desktop-dashboard) {
+      padding-inline: 0.45rem;
+    }
+
+    .lp-desktop-dashboard {
+      gap: 0.45rem;
+    }
+
+    .lp-desktop-dashboard-topbar {
+      min-height: 1.85rem;
+    }
+
+    .lp-desktop-dashboard-account-btn {
+      gap: 0.35rem;
+      padding: 0.2rem 0.45rem;
+      font-size: 0.75rem;
+    }
+
+    .lp-desktop-dashboard-account-img {
+      width: 1.15rem;
+      height: 1.15rem;
+    }
+
+    .lp-desktop-dashboard-grid {
+      gap: 0.4rem;
+    }
+
+    .lp-desktop-dashboard-col {
+      border-radius: 0.5rem;
+    }
+
+    .lp-desktop-dashboard-col--center {
+      gap: 0.45rem;
+    }
+
+    .lp-desktop-dashboard-col-split {
+      border-radius: 0.5rem;
+    }
+
+    .lp-desktop-dashboard-quick-kpi {
+      padding: 0.35rem 0.4rem 0.32rem;
+    }
+
+    .lp-desktop-dashboard-quick-kpi-list {
+      gap: 0.28rem;
+    }
+
+    .lp-desktop-dashboard-quick-kpi-btn {
+      gap: 0.5rem;
+      min-height: 2.45rem;
+      padding: 0.38rem 0.48rem;
+    }
+
+    .lp-desktop-dashboard-quick-kpi-img {
+      width: 1.55rem;
+      height: 1.55rem;
+    }
+
+    .lp-desktop-dashboard-quick-kpi-label {
+      font-size: 0.8125rem;
+    }
+
+    .lp-desktop-dashboard-col-footer,
+    .lp-desktop-dashboard-col-footer-actions {
+      gap: 0.25rem;
+      padding: 0.28rem 0.35rem calc(0.28rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    .lp-desktop-dashboard-col-footer-actions .app-footer-icon-btn {
+      max-width: 3.75rem;
+    }
+
+    .habit-tracker-view--dashboard-embed .dream-view-header {
+      padding: 0.28rem 0.5rem 0.32rem;
+    }
+
+    .habit-tracker-view--dashboard-embed .dream-view-title {
+      font-size: 0.875rem;
+    }
+
+    .lp-desktop-dashboard .habit-tracker-page-grid-table {
+      font-size: 0.6875rem;
+    }
+
+    .lp-desktop-dashboard .habit-tracker-page-grid-th--habit,
+    .lp-desktop-dashboard .habit-tracker-page-grid-td--habit {
+      min-width: 5.25rem;
+      max-width: 6.5rem;
+      padding: 0.28rem 0.32rem;
+    }
+
+    .lp-desktop-dashboard .habit-tracker-page-grid-th--day,
+    .lp-desktop-dashboard .habit-tracker-page-grid-td--cell {
+      min-width: 1.85rem;
+      padding: 0.28rem 0.2rem;
+    }
+
+    .lp-desktop-dashboard-col--planner .calendar-monthly-top-bar-date,
+    .lp-desktop-dashboard-col--planner .calendar-nav-date {
+      font-size: 0.875rem;
+    }
+
+    .lp-desktop-dashboard-col--planner .calendar-monthly-weekday {
+      font-size: 0.625rem;
+    }
+
+    .lp-desktop-dashboard-col--planner .calendar-monthly-day-num {
+      font-size: 0.8125rem;
+    }
+
+    .lp-desktop-dashboard-col--planner .calendar-monthly-day-entries,
+    .lp-desktop-dashboard-col--planner .calendar-monthly-span-bar {
+      font-size: 0.6875rem;
+    }
+
+    .lp-desktop-dashboard-col--planner .calendar-1week-flow-card {
+      font-size: 0.6875rem;
+      padding: 0.3rem 0.34rem 0.28rem;
+    }
+
+    .lp-desktop-dashboard-col--planner .calendar-1week-flow-card-title {
+      font-size: 0.6875rem;
+    }
+
+    .lp-desktop-dashboard-col--planner .calendar-1week-flow-card-meta,
+    .lp-desktop-dashboard-col--planner .calendar-1week-flow-card-badge,
+    .lp-desktop-dashboard-col--planner .calendar-1week-flow-card-progress {
+      font-size: 0.5625rem;
+    }
+  }
+
+  /* 1200px+ — 좌·중앙 고정 폭, 플래너만 확장 */
+  @media (min-width: 75rem) {
+    .lp-desktop-dashboard-grid {
+      --lp-dashboard-side-col-max: 20rem;
+      grid-template-columns:
+        minmax(14rem, var(--lp-dashboard-side-col-max))
+        minmax(14rem, var(--lp-dashboard-side-col-max))
+        minmax(0, 1fr);
+    }
+  }
+}
