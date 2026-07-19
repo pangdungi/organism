@@ -12,6 +12,42 @@ import { serverUpdatedAtFromRow } from "./kpiMapLwwMerge.js";
 import { showToast } from "./showToast.js";
 
 /** @param {unknown} raw */
+export function normalizeTagIdList(raw) {
+  if (!Array.isArray(raw)) {
+    const one = String(raw || "").trim();
+    return one ? [one] : [];
+  }
+  const out = [];
+  const seen = new Set();
+  for (const item of raw) {
+    const id = String(item || "").trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
+}
+
+/** @param {{ tagIds?: unknown, tagId?: unknown, tags?: unknown }} note */
+export function getNoteTagIds(note) {
+  const fromIds = normalizeTagIdList(note?.tagIds);
+  if (fromIds.length) return fromIds;
+  const single = String(note?.tagId || "").trim();
+  return single ? [single] : [];
+}
+
+/** @param {object[]} tags @param {string[]} tagIds */
+export function kpiNoteTagLabelsJoined(tagIds, tags) {
+  const byId = new Map(
+    (tags || []).map((t) => [String(t.id || "").trim(), normalizeTagLabel(t.label)]),
+  );
+  return getNoteTagIds({ tagIds })
+    .map((id) => byId.get(id) || "")
+    .filter(Boolean)
+    .join(", ");
+}
+
+/** @param {unknown} raw */
 export function parseKpiNoteTagsInput(raw) {
   return String(raw || "")
     .split(/[,，、\n]+/)
@@ -49,10 +85,16 @@ export function rowToSideincomeKpiNote(row) {
   const legacyTags = Array.isArray(tagsRaw)
     ? normalizeKpiNoteTags(tagsRaw)
     : normalizeKpiNoteTags([]);
+  let tagIds = normalizeTagIdList(row?.tag_ids ?? row?.tagIds);
+  if (!tagIds.length) {
+    const single = String(row.tag_id || row.tagId || "").trim();
+    if (single) tagIds = [single];
+  }
   return {
     id: String(row.id || "").trim(),
     kpiId: String(row.kpi_id || "").trim(),
-    tagId: String(row.tag_id || row.tagId || "").trim(),
+    tagIds,
+    tagId: tagIds[0] || "",
     tags: legacyTags,
     memo: String(row.memo || "").trim(),
     serverUpdatedAt: serverUpdatedAtFromRow(row),
@@ -60,11 +102,13 @@ export function rowToSideincomeKpiNote(row) {
 }
 
 function noteToDbRow(userId, note) {
+  const tagIds = getNoteTagIds(note);
   return {
     user_id: userId,
     id: String(note.id || "").trim(),
     kpi_id: String(note.kpiId || "").trim(),
-    tag_id: String(note.tagId || "").trim(),
+    tag_id: tagIds[0] || "",
+    tag_ids: tagIds,
     tags: [],
     memo: String(note.memo || "").trim(),
     updated_at: new Date().toISOString(),
@@ -196,33 +240,40 @@ export function migrateLegacySideincomeKpiNotesForKpi(kpiId) {
     return id;
   };
 
-  notes = notes.flatMap((note) => {
-    if (String(note.kpiId || "").trim() !== kid) return [note];
-    const tid = String(note.tagId || "").trim();
-    if (tid) return [note];
-    const legacy = normalizeKpiNoteTags(note.tags);
-    const memo = String(note.memo || "").trim();
-    if (!legacy.length) {
+  notes = notes
+    .map((note) => {
+      if (String(note.kpiId || "").trim() !== kid) return note;
+      let tagIds = getNoteTagIds(note);
+      if (tagIds.length) {
+        if (
+          !Array.isArray(note.tagIds) ||
+          note.tags?.length ||
+          String(note.tagId || "") !== (tagIds[0] || "")
+        ) {
+          changed = true;
+        }
+        return { ...note, tagIds, tagId: tagIds[0] || "", tags: [] };
+      }
+      const legacy = normalizeKpiNoteTags(note.tags);
+      const memo = String(note.memo || "").trim();
+      if (!legacy.length) {
+        changed = true;
+        return null;
+      }
       changed = true;
-      return [];
-    }
-    changed = true;
-    if (legacy.length === 1) {
-      return [{ ...note, tagId: ensureTagForLabel(legacy[0]), tags: [] }];
-    }
-    return legacy.map((lbl, i) => ({
-      ...note,
-      id:
-        i === 0
-          ? note.id
-          : typeof crypto !== "undefined" && crypto.randomUUID
-            ? crypto.randomUUID()
-            : `kn-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-      tagId: ensureTagForLabel(lbl),
-      tags: [],
-      memo,
-    }));
-  });
+      tagIds = legacy
+        .map((lbl) => ensureTagForLabel(lbl))
+        .filter(Boolean);
+      if (!tagIds.length) return null;
+      return {
+        ...note,
+        tagIds,
+        tagId: tagIds[0] || "",
+        tags: [],
+        memo,
+      };
+    })
+    .filter(Boolean);
 
   if (changed) writeLocalNotesAndTags(notes, tags);
 }
@@ -232,7 +283,8 @@ export function getLocalSideincomeKpiNotes(kpiId) {
   migrateLegacySideincomeKpiNotesForKpi(kpiId);
   const kid = String(kpiId || "").trim();
   const notes = (readLocalMap().kpiNotes || []).filter(
-    (n) => String(n.kpiId || "").trim() === kid && String(n.tagId || "").trim(),
+    (n) =>
+      String(n.kpiId || "").trim() === kid && getNoteTagIds(n).length > 0,
   );
   return sortKpiNotesNewestFirst(notes);
 }
@@ -251,15 +303,17 @@ export function groupSideincomeKpiNotesByTag(kpiId, notes, tags) {
   );
   const groups = new Map();
   sortKpiNotesNewestFirst(notes).forEach((note) => {
-    const tid = String(note.tagId || "").trim();
-    if (!tid) return;
-    if (!groups.has(tid)) {
-      groups.set(tid, {
-        tag: tagById.get(tid) || { id: tid, kpiId: kid, label: "태그" },
-        notes: [],
-      });
-    }
-    groups.get(tid).notes.push(note);
+    getNoteTagIds(note).forEach((tid) => {
+      if (!tid) return;
+      if (!groups.has(tid)) {
+        groups.set(tid, {
+          tag: tagById.get(tid) || { id: tid, kpiId: kid, label: "태그" },
+          notes: [],
+        });
+      }
+      const bucket = groups.get(tid).notes;
+      if (!bucket.some((n) => n.id === note.id)) bucket.push(note);
+    });
   });
   return [...groups.values()].sort((a, b) =>
     normalizeTagLabel(a.tag.label).localeCompare(
@@ -394,7 +448,64 @@ export async function ensureSideincomeKpiNoteTagId(kpiId, label, nextId) {
 }
 
 /**
- * @param {{ id: string, kpiId: string, tagId: string, memo: string }} note
+ * @param {string} kpiId
+ * @param {string[]} labels
+ * @param {() => string} nextId
+ * @returns {Promise<{ ok: boolean, tagIds?: string[], error?: string }>}
+ */
+export async function ensureSideincomeKpiNoteTagIds(kpiId, labels, nextId) {
+  const kid = String(kpiId || "").trim();
+  const uniq = [
+    ...new Set(
+      (labels || []).map((l) => normalizeTagLabel(l)).filter(Boolean),
+    ),
+  ];
+  if (!kid || !uniq.length) return { ok: false, error: "missing" };
+  const tagIds = [];
+  for (const label of uniq) {
+    const res = await ensureSideincomeKpiNoteTagId(kid, label, nextId);
+    if (!res.ok || !res.tag?.id) return { ok: false, error: res.error || "tag" };
+    tagIds.push(res.tag.id);
+  }
+  return { ok: true, tagIds };
+}
+
+/**
+ * @param {{
+ *   kpiId: string,
+ *   noteId?: string,
+ *   tagLabels: string[],
+ *   memo: string,
+ *   nextId: () => string,
+ * }} opts
+ */
+export async function saveSideincomeKpiNoteFromModal(opts) {
+  const kid = String(opts.kpiId || "").trim();
+  const memo = String(opts.memo || "").trim();
+  const labels = [
+    ...new Set(
+      (opts.tagLabels || [])
+        .map((l) => normalizeTagLabel(l))
+        .filter(Boolean),
+    ),
+  ];
+  if (!kid || !labels.length) return { ok: false, error: "missing_tags" };
+  const tagRes = await ensureSideincomeKpiNoteTagIds(kid, labels, opts.nextId);
+  if (!tagRes.ok || !tagRes.tagIds?.length) {
+    return { ok: false, error: tagRes.error || "tags" };
+  }
+  const note = {
+    id: String(opts.noteId || opts.nextId()).trim(),
+    kpiId: kid,
+    tagIds: tagRes.tagIds,
+    tagId: tagRes.tagIds[0] || "",
+    memo,
+  };
+  return upsertSideincomeKpiNoteOnServer(note);
+}
+
+/**
+ * @param {{ id: string, kpiId: string, tagIds?: string[], tagId?: string, memo: string }} note
  */
 export async function upsertSideincomeKpiNoteOnServer(note) {
   if (!supabase) {
@@ -472,7 +583,8 @@ export function upsertLocalSideincomeKpiNote(note) {
   const list = (map.kpiNotes || []).filter((n) => n.id !== note.id);
   list.push({
     ...note,
-    tagId: String(note.tagId || "").trim(),
+    tagIds: getNoteTagIds(note),
+    tagId: getNoteTagIds(note)[0] || "",
     tags: [],
     memo: String(note.memo || "").trim(),
     localUpdatedAt: Date.now(),

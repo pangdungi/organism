@@ -81,12 +81,11 @@ import { showKpiTodoEditModal } from "../utils/kpiTodoEditModal.js";
 import { showSideincomeKpiNoteModal } from "../utils/kpiSideincomeNotesModal.js";
 import {
   deleteSideincomeKpiNoteOnServer,
-  ensureSideincomeKpiNoteTagId,
   getLocalSideincomeKpiNoteTags,
   getLocalSideincomeKpiNotes,
   groupSideincomeKpiNotesByTag,
   pullSideincomeKpiNotesForKpi,
-  upsertSideincomeKpiNoteOnServer,
+  saveSideincomeKpiNoteFromModal,
 } from "../utils/sideincomeKpiNotesSupabase.js";
 import {
   KPI_CARD_EDIT_PENCIL_HTML,
@@ -689,17 +688,12 @@ export function render() {
         labels: READING_KPI_NOTE_MODAL_LABELS,
       });
       if (!result || result.action !== "save") return;
-      const tagRes = result.tagId
-        ? { ok: true, tag: { id: result.tagId, label: result.tagLabel } }
-        : await ensureSideincomeKpiNoteTagId(kpiId, result.tagLabel, nextId);
-      if (!tagRes.ok || !tagRes.tag?.id) return;
-      const note = {
-        id: nextId(),
+      const saved = await saveSideincomeKpiNoteFromModal({
         kpiId,
-        tagId: tagRes.tag.id,
-        memo: result.memo || "",
-      };
-      const saved = await upsertSideincomeKpiNoteOnServer(note);
+        tagLabels: result.tagLabels,
+        memo: result.memo,
+        nextId,
+      });
       if (!saved.ok) return;
       renderKpiDetailView();
       return;
@@ -1119,8 +1113,9 @@ export function render() {
               existingTags: getLocalSideincomeKpiNoteTags(kid),
               labels: READING_KPI_NOTE_MODAL_LABELS,
               note: {
+                id: note.id,
+                tagIds: note.tagIds,
                 tagId: note.tagId,
-                tagLabel: String(tag.label || "").trim(),
                 memo: note.memo,
               },
             });
@@ -1132,17 +1127,13 @@ export function render() {
               return;
             }
             if (result.action === "save") {
-              const tagRes = result.tagId
-                ? { ok: true, tag: { id: result.tagId, label: result.tagLabel } }
-                : await ensureSideincomeKpiNoteTagId(kid, result.tagLabel, nextId);
-              if (!tagRes.ok || !tagRes.tag?.id) return;
-              const updated = {
-                id: note.id,
+              const saved = await saveSideincomeKpiNoteFromModal({
                 kpiId: kid,
-                tagId: tagRes.tag.id,
-                memo: result.memo || "",
-              };
-              const saved = await upsertSideincomeKpiNoteOnServer(updated);
+                noteId: note.id,
+                tagLabels: result.tagLabels,
+                memo: result.memo,
+                nextId,
+              });
               if (!saved.ok) return;
               renderKpiDetailView();
             }
