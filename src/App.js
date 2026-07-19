@@ -535,7 +535,12 @@ export async function mountApp(container) {
         desktopDashboardEl?.isConnected && desktopDashboardEl
           ? desktopDashboardEl
           : main.querySelector(".lp-desktop-dashboard");
-      if (root?.isConnected) runDesktopDashboardSoftRefresh(root);
+      if (root?.isConnected) {
+        runDesktopDashboardSoftRefresh(root, { skipEmbedKeys: ["habit"] });
+        try {
+          root._lpEmbedHabitFocusToday?.();
+        } catch (_) {}
+      }
     }
     try {
       await syncAdminMenuVisibility();
@@ -567,7 +572,12 @@ export async function mountApp(container) {
       desktopDashboardEl?.isConnected && desktopDashboardEl
         ? desktopDashboardEl
         : main.querySelector(".lp-desktop-dashboard");
-    if (root?.isConnected) runDesktopDashboardSoftRefresh(root);
+    if (root?.isConnected) {
+      runDesktopDashboardSoftRefresh(root, { skipEmbedKeys: ["habit"] });
+      try {
+        root._lpEmbedHabitFocusToday?.();
+      } catch (_) {}
+    }
     try {
       await syncAdminMenuVisibility();
     } catch (_) {}

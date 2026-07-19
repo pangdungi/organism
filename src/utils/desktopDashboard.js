@@ -239,7 +239,10 @@ export function renderDesktopDashboard(opts) {
 
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      runDesktopDashboardSoftRefresh(root);
+      runDesktopDashboardSoftRefresh(root, { skipEmbedKeys: ["habit"] });
+      try {
+        root._lpEmbedHabitFocusToday?.();
+      } catch (_) {}
     });
   });
 
@@ -247,6 +250,7 @@ export function renderDesktopDashboard(opts) {
     "abort",
     () => {
       root._lpEmbedSoftRefresh = {};
+      root._lpEmbedHabitFocusToday = null;
     },
     { once: true },
   );
@@ -254,11 +258,17 @@ export function renderDesktopDashboard(opts) {
   return root;
 }
 
-/** @param {HTMLElement | null | undefined} dashboardRoot */
-export function runDesktopDashboardSoftRefresh(dashboardRoot) {
+/** @param {HTMLElement | null | undefined} dashboardRoot @param {{ skipEmbedKeys?: string[] }} [opts] */
+export function runDesktopDashboardSoftRefresh(dashboardRoot, opts = {}) {
+  const skip = new Set(
+    Array.isArray(opts.skipEmbedKeys)
+      ? opts.skipEmbedKeys.map((k) => String(k || "").trim()).filter(Boolean)
+      : [],
+  );
   const map = dashboardRoot?._lpEmbedSoftRefresh;
   if (!map || typeof map !== "object") return;
-  for (const fn of Object.values(map)) {
+  for (const [key, fn] of Object.entries(map)) {
+    if (skip.has(key)) continue;
     try {
       if (typeof fn === "function") fn();
     } catch (_) {}

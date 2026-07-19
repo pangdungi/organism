@@ -3,8 +3,9 @@
  */
 
 import { setupKpiCategoryHeaderIcon } from "../utils/kpiCategoryHeaderIcon.js";
-import { createHabitTrackerPageGridElement } from "../utils/habitTrackerPageGrid.js";
+import { createHabitTrackerPageGridElement, scheduleScrollHabitTrackerToToday } from "../utils/habitTrackerPageGrid.js";
 import { pullHabitTrackerTabFromCloud } from "../utils/habitTrackerCloudRefresh.js";
+import { timeLedgerLocalTodayYmd } from "../utils/timeLedgerEntriesSupabase.js";
 
 export function render(opts = {}) {
   const dashboardEmbedMode = !!opts?.dashboardEmbedMode;
@@ -77,6 +78,21 @@ export function render(opts = {}) {
     if (!skipSync) hasSyncedPaint = true;
   }
 
+  function focusTodayInEmbed() {
+    if (!dashboardEmbedMode || !el.isConnected) return;
+    if (softRefreshRaf) {
+      cancelAnimationFrame(softRefreshRaf);
+      softRefreshRaf = 0;
+    }
+    const now = new Date();
+    viewYear = now.getFullYear();
+    viewMonth = now.getMonth() + 1;
+    syncViewMonthGlobal();
+    hasSyncedPaint = true;
+    paintGrid({ skipSync: false });
+    scheduleScrollHabitTrackerToToday(gridHost, timeLedgerLocalTodayYmd());
+  }
+
   let softRefreshRaf = 0;
   function scheduleSoftRefresh() {
     if (!el.isConnected) return;
@@ -91,6 +107,7 @@ export function render(opts = {}) {
   if (dashboardEmbedMode && dashboardHost && dashboardEmbedKey) {
     dashboardHost._lpEmbedSoftRefresh = dashboardHost._lpEmbedSoftRefresh || {};
     dashboardHost._lpEmbedSoftRefresh[dashboardEmbedKey] = scheduleSoftRefresh;
+    dashboardHost._lpEmbedHabitFocusToday = focusTodayInEmbed;
   } else {
     window.__lpHabitTrackerSoftRefresh = scheduleSoftRefresh;
   }

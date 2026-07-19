@@ -9,6 +9,7 @@ import {
   getHabitTrackerCellDisplay,
 } from "./habitTrackerPageModel.js";
 import { shiftMonthYear } from "./kpiHabitTrackerStartDate.js";
+import { timeLedgerLocalTodayYmd } from "./timeLedgerEntriesSupabase.js";
 
 /**
  * @param {{
@@ -34,7 +35,7 @@ export function createHabitTrackerPageGridElement(opts = {}) {
     month,
     skipSync: !!opts.skipSync,
   });
-  const todayYmd = normYmd(opts.todayYmd || model.todayYmd);
+  const todayYmd = normYmd(opts.todayYmd || timeLedgerLocalTodayYmd());
   const isCurrentMonth =
     year === refDate.getFullYear() && month === refDate.getMonth() + 1;
 
@@ -136,18 +137,7 @@ export function createHabitTrackerPageGridElement(opts = {}) {
   wrap.appendChild(scroll);
 
   if (isCurrentMonth) {
-    requestAnimationFrame(() => {
-      const todayHead = scroll.querySelector(
-        `.habit-tracker-page-grid-th--day[data-ymd="${todayYmd}"]`,
-      );
-      if (todayHead) {
-        todayHead.scrollIntoView({
-          inline: "center",
-          block: "nearest",
-          behavior: "instant",
-        });
-      }
-    });
+    scheduleScrollHabitTrackerToToday(scroll, todayYmd);
   }
 
   async function handleMonthShift(delta) {
@@ -164,6 +154,77 @@ export function createHabitTrackerPageGridElement(opts = {}) {
   }
 
   return wrap;
+}
+
+/** @param {HTMLElement | null | undefined} scrollOrHost @param {string} todayYmd */
+export function scheduleScrollHabitTrackerToToday(scrollOrHost, todayYmd) {
+  const ymd = normYmd(todayYmd);
+  if (!scrollOrHost || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return;
+  let attempts = 0;
+  const maxAttempts = 16;
+  const tick = () => {
+    attempts += 1;
+    const done = applyScrollHabitTrackerToToday(scrollOrHost, ymd);
+    if (!done && attempts < maxAttempts) {
+      requestAnimationFrame(tick);
+    }
+  };
+  requestAnimationFrame(tick);
+}
+
+/** @returns {boolean} true when scroll applied or nothing left to try */
+function applyScrollHabitTrackerToToday(scrollOrHost, todayYmd) {
+  const ymd = normYmd(todayYmd);
+  const scroll = resolveHabitTrackerGridScrollEl(scrollOrHost);
+  if (!scroll || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return true;
+
+  const todayHead = scroll.querySelector(
+    `.habit-tracker-page-grid-th--day[data-ymd="${ymd}"]`,
+  );
+  if (!(todayHead instanceof HTMLElement)) return true;
+
+  if (scroll.clientWidth < 4) return false;
+
+  const habitHead = scroll.querySelector(".habit-tracker-page-grid-th--habit");
+  const stickyW =
+    habitHead instanceof HTMLElement
+      ? habitHead.getBoundingClientRect().width
+      : 0;
+
+  const scrollRect = scroll.getBoundingClientRect();
+  const headRect = todayHead.getBoundingClientRect();
+  const dateViewportLeft = scrollRect.left + stickyW + 2;
+  const dateViewportWidth = Math.max(
+    1,
+    scroll.clientWidth - stickyW - 4,
+  );
+  const headCenter = headRect.left + headRect.width / 2;
+  const targetCenter = dateViewportLeft + dateViewportWidth / 2;
+  const delta = headCenter - targetCenter;
+
+  if (Math.abs(delta) < 1) return true;
+
+  const maxScroll = Math.max(0, scroll.scrollWidth - scroll.clientWidth);
+  scroll.scrollLeft = Math.min(
+    maxScroll,
+    Math.max(0, scroll.scrollLeft + delta),
+  );
+
+  const headRectAfter = todayHead.getBoundingClientRect();
+  const scrollRectAfter = scroll.getBoundingClientRect();
+  const headCenterAfter = headRectAfter.left + headRectAfter.width / 2;
+  const targetCenterAfter =
+    scrollRectAfter.left + stickyW + 2 + dateViewportWidth / 2;
+  return Math.abs(headCenterAfter - targetCenterAfter) < 2;
+}
+
+function resolveHabitTrackerGridScrollEl(scrollOrHost) {
+  if (!(scrollOrHost instanceof HTMLElement)) return null;
+  if (scrollOrHost.classList.contains("habit-tracker-page-grid-scroll")) {
+    return scrollOrHost;
+  }
+  const nested = scrollOrHost.querySelector(".habit-tracker-page-grid-scroll");
+  return nested instanceof HTMLElement ? nested : null;
 }
 
 function normYmd(v) {
