@@ -718,6 +718,7 @@
 .lp-kpi-dream-page .dream-content-wrap.dream-kpi-detail-wrap {
   padding-top: 0.65rem;
   gap: 0.65rem;
+  overflow: hidden;
 }
 
 .lp-kpi-dream-page .dream-kpi-detail-wrap .dream-kpi-bottom-seg-bar,
@@ -758,7 +759,7 @@
 }
 
 .lp-kpi-dream-page .dream-kpi-detail-sections--stacked .dream-kpi-bottom-seg-panel[hidden] {
-  display: flex !important;
+  display: none !important;
 }
 
 .lp-kpi-dream-page .dream-kpi-detail-wrap .dream-kpi-bottom-seg-btn {
@@ -774,7 +775,8 @@
 
 .lp-kpi-dream-page .dream-kpi-detail-wrap .dream-kpi-bottom-seg-panel--log .dream-kpi-history-list,
 .lp-kpi-dream-page .dream-kpi-detail-wrap .dream-kpi-bottom-seg-panel--todo .dream-kpi-todo-list--seg-panel,
-.lp-kpi-dream-page .dream-kpi-detail-wrap .dream-kpi-bottom-seg-panel--daily .dream-kpi-todo-list--seg-panel {
+.lp-kpi-dream-page .dream-kpi-detail-wrap .dream-kpi-bottom-seg-panel--daily .dream-kpi-todo-list--seg-panel,
+.lp-kpi-dream-page .dream-kpi-detail-wrap .dream-kpi-bottom-seg-panel--notes .dream-kpi-notes-list {
   max-height: none;
   flex: 1 1 auto;
   min-height: 0;

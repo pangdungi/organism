@@ -38,7 +38,7 @@ import { syncSleepHealthGoalLogsFromTimeLedger } from "./healthSleepGoalTimeLedg
 import { patchKpiLinkedTasksFromKpiMaps } from "./timeTaskOptionsModel.js";
 import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
 import { probeKpiDomainServerStale, rememberKpiDomainServerWatermarkMs } from "./kpiMapServerWatermark.js";
-import { pullTimeLedgerTasksIfStaleForModal } from "./timeLedgerTasksSupabase.js";
+import { pullTimeLedgerTasksIfStaleForModal, pullTimeLedgerTasksFromSupabase } from "./timeLedgerTasksSupabase.js";
 import { ensureAllKpiTimeTasksFromStorage } from "./kpiTimeTaskSync.js";
 import { resolveKpiDomainForKpiId } from "./kpiTodoSync.js";
 
@@ -395,20 +395,51 @@ export async function pullStaleKpiDomainsForTaskLogList() {
   return kpiChanged;
 }
 
+/** 홈 3분할 boot·과제 모달 — KPI 맵을 stale 무시하고 받아 과제 picker 필터에 필요 */
+export async function pullKpiDomainsForTaskLogListForce() {
+  await Promise.all(
+    TASK_LOG_KPI_DOMAINS.map(async (domain) => {
+      const pullFn = KPI_DOMAIN_PULL[domain];
+      if (!pullFn) return;
+      try {
+        await pullFn({ force: true, skipLogs: true });
+      } catch (_) {}
+    }),
+  );
+  try {
+    ensureAllKpiTimeTasksFromStorage();
+  } catch (_) {}
+  try {
+    patchKpiLinkedTasksFromKpiMaps();
+  } catch (_) {}
+  try {
+    syncHabitTrackerLogs();
+  } catch (_) {}
+}
+
 /**
  * 과제 기록/수정 모달 백그라운드 동기화 — stale일 때만 pull, force 없음(로컬→서버 대기 중 보호).
  * 서버 push 는 호출하지 않음.
  * @param {() => void} [onApplied] — pull로 로컬이 바뀐 뒤(모달仍 open일 때 UI 갱신용)
- * @param {{ resolveKpiId?: () => string }} [opts] — 과제 id로 연결된 KPI id (없으면 KPI pull 생략)
+ * @param {{ resolveKpiId?: () => string, forceTasks?: boolean, skipTasks?: boolean }} [opts]
  * @returns {Promise<{ tasksChanged: boolean, kpiChanged: boolean, anyChanged: boolean }>}
  */
 export function scheduleTaskLogModalCloudSync(onApplied, opts = {}) {
   const resolveKpiId =
     typeof opts.resolveKpiId === "function" ? opts.resolveKpiId : () => "";
+  const forceTasks = !!opts.forceTasks;
+  const skipTasks = !!opts.skipTasks;
   return coalesceInFlightPull("task-log-modal-cloud-sync", async () => {
-    const tasksChanged = !!(await pullTimeLedgerTasksIfStaleForModal().catch(
-      () => false,
-    ));
+    let tasksChanged = false;
+    if (!skipTasks) {
+      try {
+        tasksChanged = forceTasks
+          ? !!(await pullTimeLedgerTasksFromSupabase({ ignoreSkip: true }))
+          : !!(await pullTimeLedgerTasksIfStaleForModal());
+      } catch (_) {
+        tasksChanged = false;
+      }
+    }
     const kpiId = String(resolveKpiId() || "").trim();
     const kpiChanged = !!(await pullKpiMapsForTaskLogModalOpen({ kpiId }).catch(
       () => false,

@@ -44,7 +44,12 @@ import {
   timeLedgerLocalYesterdayYmd,
   resetTimeLedgerSessionFilterToToday,
 } from "./utils/timeLedgerEntriesSupabase.js";
-import { pullKpiTabFromCloud } from "./utils/kpiTabCloudRefresh.js";
+import {
+  pullKpiTabFromCloud,
+  pullKpiDomainsForTaskLogListForce,
+  pullStaleKpiDomainsForTaskLogList,
+} from "./utils/kpiTabCloudRefresh.js";
+import { ensureAllKpiTimeTasksFromStorage } from "./utils/kpiTimeTaskSync.js";
 import { pullHabitTrackerTabFromCloud } from "./utils/habitTrackerCloudRefresh.js";
 import { syncSleepHealthGoalLogsFromTimeLedger } from "./utils/healthSleepGoalTimeLedgerSync.js";
 import {
@@ -52,9 +57,14 @@ import {
   isKpiAppTabId,
 } from "./utils/kpiMapSyncLoadingUi.js";
 import { pullTimeLedgerTabEnterFromCloud } from "./utils/timeLedgerCloudRefresh.js";
-import { attachTimeLedgerTasksSaveListener } from "./utils/timeLedgerTasksSupabase.js";
+import {
+  attachTimeLedgerTasksSaveListener,
+  pullTimeLedgerTasksFromSupabase,
+  pullTimeLedgerTasksIfStaleForModal,
+} from "./utils/timeLedgerTasksSupabase.js";
 import {
   getFullTaskOptions,
+  patchKpiLinkedTasksFromKpiMaps,
   saveLedgerTaskList,
 } from "./utils/timeTaskOptionsModel.js";
 import {
@@ -86,6 +96,7 @@ import { prefetchIconsForTab } from "./utils/appIconPrefetch.js";
 import {
   clearLpTabPullPending,
 } from "./utils/lpTabSyncLoadingUi.js";
+import { coalesceInFlightPull } from "./utils/timeLedgerPullCoalesce.js";
 import {
   DESKTOP_DASHBOARD_MQ,
   isDesktopDashboardViewport,
@@ -362,7 +373,8 @@ async function pullDataForActiveTab(tabId, opts = {}) {
   }
 }
 
-async function pullDesktopDashboardData() {
+async function pullDesktopDashboardDataCore(opts = {}) {
+  const { forceTaskList = false } = opts;
   const now = new Date();
   const yEnd = timeLedgerLocalTodayYmd();
   const yStart = timeLedgerLocalYesterdayYmd();
@@ -371,17 +383,24 @@ async function pullDesktopDashboardData() {
     now.getMonth(),
     21,
   );
+  await (forceTaskList
+    ? pullKpiDomainsForTaskLogListForce()
+    : pullStaleKpiDomainsForTaskLogList());
+  const taskPullJob = forceTaskList
+    ? pullTimeLedgerTasksFromSupabase({ ignoreSkip: true })
+    : pullTimeLedgerTasksIfStaleForModal();
   await Promise.all([
-    pullTimeLedgerTabEnterFromCloud(),
+    pullTimeLedgerTabEnterFromCloud({ skipTasks: true }),
+    taskPullJob,
     pullHabitTrackerTabFromCloud(now.getFullYear(), now.getMonth() + 1),
     pullCalendarSectionTasksFromSupabase({
-      reason: "app_desktop_dashboard_boot",
+      reason: "app_desktop_dashboard",
       subView: "calendar",
       rangeStart: calRange.rangeStart,
       rangeEnd: calRange.rangeEnd,
     }),
     pullCalendarDayIconsFromSupabase({
-      reason: "app_desktop_dashboard_boot",
+      reason: "app_desktop_dashboard",
     }),
     pullTimeLedgerEntriesForDateRange(yStart, yEnd),
     pullTimeDailyBudgetForDateRange(yStart, yEnd),
@@ -389,6 +408,21 @@ async function pullDesktopDashboardData() {
       m.pullBudgetScheduleTemplatesFromSupabase(),
     ),
   ]);
+  try {
+    ensureAllKpiTimeTasksFromStorage();
+  } catch (_) {}
+  try {
+    patchKpiLinkedTasksFromKpiMaps();
+  } catch (_) {}
+}
+
+/** @param {{ forceTaskList?: boolean }} [opts] — boot:true=과제목록 무조건 pull, 이후 sync:false=stale일 때만 */
+function pullDesktopDashboardData(opts = {}) {
+  const forceTaskList = !!opts.forceTaskList;
+  return coalesceInFlightPull(
+    `desktop-dashboard-data:${forceTaskList ? "boot" : "sync"}`,
+    () => pullDesktopDashboardDataCore({ forceTaskList }),
+  );
 }
 
 const ROUTINE_REMOVED_KEY = "app-routine-removed-v1";
@@ -487,6 +521,21 @@ export async function mountApp(container) {
   const panel = document.createElement("div");
   panel.className = "app-tab-panel";
   main.appendChild(panel);
+
+  function prepareLeaveHomeDashboardForFullTab() {
+    if (currentTabId !== "home" || !isDesktopDashboardViewport()) return;
+    if (!desktopDashboardEl) return;
+    try {
+      desktopDashboardEl._lpTabAbortController?.abort();
+    } catch (_) {}
+    desktopDashboardEl = null;
+  }
+
+  /** 홈(메뉴 그리드·3분할 ↗) → 전체 탭 — setActiveTab 과 동일 + 대시보드 embed 정리 */
+  function openAppTabFromHome(tabId) {
+    prepareLeaveHomeDashboardForFullTab();
+    setActiveTab(tabId);
+  }
 
   function setActiveTab(tabId) {
     if (tabId === "admin") {
@@ -726,7 +775,7 @@ export async function mountApp(container) {
     accountLabel.className = "app-home-menu-launcher-account-label";
     accountLabel.textContent = "나의 계정";
     accountBtn.append(accountIconWrap, accountLabel);
-    accountBtn.addEventListener("click", () => setActiveTab("idea"));
+    accountBtn.addEventListener("click", () => openAppTabFromHome("idea"));
     topBar.appendChild(accountBtn);
 
     const card = document.createElement("div");
@@ -750,7 +799,7 @@ export async function mountApp(container) {
       img.alt = "";
       applyStaticAppIconImg(img);
       btn.appendChild(img);
-      btn.addEventListener("click", () => setActiveTab(tab.id));
+      btn.addEventListener("click", () => openAppTabFromHome(tab.id));
       return btn;
     }
 
@@ -917,7 +966,7 @@ export async function mountApp(container) {
             mountNodes = [desktopDashboardEl];
           } else {
             desktopDashboardEl = renderDesktopDashboard({
-              setActiveTab,
+              navigateToTab: openAppTabFromHome,
               accountIconSrc: HOME_MENU_ACCOUNT_ICON,
             });
             mountNodes = [desktopDashboardEl];
@@ -987,6 +1036,29 @@ export async function mountApp(container) {
   initSupabaseRealtimeSync({
     getCurrentTabId: () => currentTabId,
     renderMain: (opts) => renderMain(main, opts || {}),
+    refreshDesktopDashboardFromRealtime: async () => {
+      if (currentTabId !== "home" || !isDesktopDashboardViewport()) {
+        return false;
+      }
+      const root =
+        desktopDashboardEl?.isConnected && desktopDashboardEl
+          ? desktopDashboardEl
+          : main.querySelector(".lp-desktop-dashboard");
+      if (!root?.isConnected) return false;
+      try {
+        await pullDesktopDashboardData();
+      } catch (_) {
+        return false;
+      }
+      if (currentTabId !== "home") return false;
+      const liveRoot =
+        desktopDashboardEl?.isConnected && desktopDashboardEl
+          ? desktopDashboardEl
+          : main.querySelector(".lp-desktop-dashboard");
+      if (!liveRoot?.isConnected) return false;
+      runDesktopDashboardSoftRefresh(liveRoot);
+      return true;
+    },
   });
   if (supabase?.auth?.onAuthStateChange) {
     supabase.auth.onAuthStateChange((_event, session) => {
@@ -1015,7 +1087,7 @@ export async function mountApp(container) {
       );
   }
 
-  /* 서버 pull 은 상위 탭 전환(setActiveTab)·최초 진입 시에만 수행. 포커스 복귀 등에서는 pull 하지 않음. */
+  /* 서버 pull: 탭 전환·부팅·홈 3분할 Realtime(데스크탑·패드 가로). 포커스 복귀만으로는 pull 안 함. */
 
   logTabSync("boot", { tab: currentTabId, phase: "render_local_then_pull" });
   appScreen.appendChild(main);
@@ -1049,7 +1121,7 @@ export async function mountApp(container) {
             resetTimeLedgerSessionFilterToToday();
           } catch (_) {}
           try {
-            await pullDesktopDashboardData();
+            await pullDesktopDashboardData({ forceTaskList: true });
             runDesktopDashboardSoftRefresh(
               main.querySelector(".lp-desktop-dashboard"),
             );

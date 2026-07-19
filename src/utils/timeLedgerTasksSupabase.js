@@ -14,6 +14,7 @@ import {
   getFullTaskOptions,
   isUuid,
   migrateTimeLogRowsTaskIds,
+  readTaskOptionsMemRows,
 } from "./timeTaskOptionsModel.js";
 import { lpPullDebug } from "./lpPullDebug.js";
 import {
@@ -225,6 +226,11 @@ function rememberTasksServerWatermarkMs(userId, ms) {
 
 function bumpTasksPullSkipAfterLocalChange() {
   _tasksPullSkipUntil = Date.now() + TASKS_PULL_SKIP_AFTER_LOCAL_MS;
+}
+
+/** 로컬 미러가 비었으면 코드 기본 과제만 보이므로 — 워터마크와 관계없이 서버 pull */
+function shouldForceTaskListPullFromServer() {
+  return readTaskOptionsMemRows().length === 0;
 }
 
 async function getSessionUserId() {
@@ -548,6 +554,9 @@ export async function syncTimeLedgerTaskListForModalOpen() {
 export async function pullTimeLedgerTasksForTabEnter() {
   const userId = await getSessionUserId();
   if (!userId || !supabase) return false;
+  if (shouldForceTaskListPullFromServer()) {
+    return !!(await pullTimeLedgerTasksFromSupabase({ ignoreSkip: true }));
+  }
   if (_tasksServerWatermarkMs <= 0) {
     _tasksServerWatermarkMs = readTasksServerWatermarkFromSession(userId);
   }
@@ -564,6 +573,9 @@ export async function pullTimeLedgerTasksForTabEnter() {
 export async function pullTimeLedgerTasksIfStaleForModal() {
   const userId = await getSessionUserId();
   if (!userId || !supabase) return false;
+  if (shouldForceTaskListPullFromServer()) {
+    return !!(await pullTimeLedgerTasksFromSupabase({ ignoreSkip: true }));
+  }
   const now = Date.now();
   if (now < _tasksPullSkipUntil) return false;
   if (_tasksServerWatermarkMs <= 0) {
@@ -571,7 +583,11 @@ export async function pullTimeLedgerTasksIfStaleForModal() {
   }
   const serverMs = await probeTimeLedgerTasksServerWatermarkMs(userId);
   if (serverMs > 0 && serverMs <= _tasksServerWatermarkMs) return false;
-  if (serverMs === 0 && _tasksServerWatermarkMs === 0 && getFullTaskOptions().length > 0) {
+  if (
+    serverMs === 0 &&
+    _tasksServerWatermarkMs === 0 &&
+    readTaskOptionsMemRows().length > 0
+  ) {
     return false;
   }
   const pulled = !!(await pullTimeLedgerTasksFromSupabase({ ignoreSkip: false }));

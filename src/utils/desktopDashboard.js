@@ -57,9 +57,9 @@ const DESKTOP_COL_EXPAND_ICON =
  * @param {HTMLElement} host
  * @param {string} tabId
  * @param {string} label
- * @param {(tabId: string) => void} setActiveTab
+ * @param {(tabId: string) => void} navigateToTab
  */
-function mountColExpandBtn(host, tabId, label, setActiveTab) {
+function mountColExpandBtn(host, tabId, label, navigateToTab) {
   const row = document.createElement("div");
   row.className = "lp-desktop-dashboard-col-expand-row";
 
@@ -72,7 +72,7 @@ function mountColExpandBtn(host, tabId, label, setActiveTab) {
   btn.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
-    setActiveTab(tabId);
+    navigateToTab(tabId);
   });
 
   row.appendChild(btn);
@@ -80,9 +80,9 @@ function mountColExpandBtn(host, tabId, label, setActiveTab) {
 }
 
 /**
- * @param {(tabId: string) => void} setActiveTab
+ * @param {(tabId: string) => void} navigateToTab
  */
-function renderQuickKpiButtons(setActiveTab) {
+function renderQuickKpiButtons(navigateToTab) {
   const wrap = document.createElement("div");
   wrap.className = "lp-desktop-dashboard-quick-kpi";
 
@@ -110,7 +110,7 @@ function renderQuickKpiButtons(setActiveTab) {
     label.textContent = tab.label;
 
     btn.append(img, label);
-    btn.addEventListener("click", () => setActiveTab(tab.id));
+    btn.addEventListener("click", () => navigateToTab(tab.id));
     list.appendChild(btn);
   });
 
@@ -119,7 +119,7 @@ function renderQuickKpiButtons(setActiveTab) {
 }
 
 /**
- * @param {{ setActiveTab: (tabId: string) => void, accountIconSrc: string }} opts
+ * @param {{ navigateToTab: (tabId: string) => void, accountIconSrc: string }} opts
  */
 export function renderDesktopDashboard(opts) {
   const root = document.createElement("div");
@@ -161,7 +161,7 @@ export function renderDesktopDashboard(opts) {
   accountLabel.className = "lp-desktop-dashboard-account-label";
   accountLabel.textContent = "나의 계정";
   accountBtn.append(accountImg, accountLabel);
-  accountBtn.addEventListener("click", () => opts.setActiveTab("idea"));
+  accountBtn.addEventListener("click", () => opts.navigateToTab("idea"));
   topBar.append(brand, accountBtn);
 
   const grid = document.createElement("div");
@@ -196,9 +196,9 @@ export function renderDesktopDashboard(opts) {
   const plannerFooter = createColFooter();
   colPlanner.append(plannerBody, plannerFooter);
 
-  mountColExpandBtn(colTime, "time", "시간기록", opts.setActiveTab);
-  mountColExpandBtn(centerBottom, "habittracker", "해빗 트랙커", opts.setActiveTab);
-  mountColExpandBtn(colPlanner, "schedulecalendar", "캘린더", opts.setActiveTab);
+  mountColExpandBtn(colTime, "time", "시간기록", opts.navigateToTab);
+  mountColExpandBtn(centerBottom, "habittracker", "해빗 트랙커", opts.navigateToTab);
+  mountColExpandBtn(colPlanner, "schedulecalendar", "캘린더", opts.navigateToTab);
 
   grid.append(colTime, colCenter, colPlanner);
   root.append(topBar, grid);
@@ -215,7 +215,7 @@ export function renderDesktopDashboard(opts) {
   });
   timeBody.appendChild(timeEl);
 
-  quickKpiBody.appendChild(renderQuickKpiButtons(opts.setActiveTab));
+  quickKpiBody.appendChild(renderQuickKpiButtons(opts.navigateToTab));
 
   const habitEl = renderHabitTracker({
     ...embedCommon,

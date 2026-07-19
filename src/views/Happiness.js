@@ -42,10 +42,12 @@ import {
   effectiveKpiHistoryBottomTab,
   kpiUsesDailyTodosOnly,
   kpiHistoryFooterShowsAddButton,
+  kpiNotesTabEnabledForKpi,
   KPI_DETAIL_LOGS_UI_ENABLED,
   KPI_BOTTOM_TAB_LOG,
   KPI_BOTTOM_TAB_TODO,
   KPI_BOTTOM_TAB_DAILY,
+  KPI_BOTTOM_TAB_NOTES,
 } from "../utils/kpiHistoryBottomTabs.js";
 import {
   applyKpiGridScrollRestore,
@@ -73,6 +75,16 @@ import { kpiFilterEmptyListMessage } from "../utils/kpiFilterEmptyMessage.js";
 import { buildKpiListPaintSignature } from "../utils/kpiListPaintSignature.js";
 import { confirmKpiActionDelete } from "../utils/confirmModal.js";
 import { showKpiTodoEditModal } from "../utils/kpiTodoEditModal.js";
+import { showSideincomeKpiNoteModal } from "../utils/kpiSideincomeNotesModal.js";
+import {
+  deleteSideincomeKpiNoteOnServer,
+  ensureSideincomeKpiNoteTagId,
+  getLocalSideincomeKpiNoteTags,
+  getLocalSideincomeKpiNotes,
+  groupSideincomeKpiNotesByTag,
+  pullSideincomeKpiNotesForKpi,
+  upsertSideincomeKpiNoteOnServer,
+} from "../utils/sideincomeKpiNotesSupabase.js";
 import {
   KPI_CARD_EDIT_PENCIL_HTML,
   bindKpiCardEditButton,
@@ -607,6 +619,7 @@ export function render() {
 
   function happinessKpiFooterAddLabel(tab, kpi) {
     const t = effectiveKpiHistoryBottomTab(tab, kpi);
+    if (t === KPI_BOTTOM_TAB_NOTES) return "기록 추가";
     if (t === KPI_BOTTOM_TAB_TODO) {
       return isDefaultReadingHappinessKpiId(kpi?.id)
         ? "독서 추가"
@@ -661,6 +674,30 @@ export function render() {
       });
       saveHappinessMap(d2, { pushServer: true });
       renderKpiDetailView({ scrollTodoAfterMutation: true });
+      return;
+    }
+    if (tab === KPI_BOTTOM_TAB_NOTES) {
+      const kpiId = String(selectedKpiId);
+      const result = await showSideincomeKpiNoteModal({
+        mode: "add",
+        kpiId,
+        kpiName: k.name,
+        existingTags: getLocalSideincomeKpiNoteTags(kpiId),
+      });
+      if (!result || result.action !== "save") return;
+      const tagRes = result.tagId
+        ? { ok: true, tag: { id: result.tagId, label: result.tagLabel } }
+        : await ensureSideincomeKpiNoteTagId(kpiId, result.tagLabel, nextId);
+      if (!tagRes.ok || !tagRes.tag?.id) return;
+      const note = {
+        id: nextId(),
+        kpiId,
+        tagId: tagRes.tag.id,
+        memo: result.memo || "",
+      };
+      const saved = await upsertSideincomeKpiNoteOnServer(note);
+      if (!saved.ok) return;
+      renderKpiDetailView();
       return;
     }
   }
@@ -988,6 +1025,8 @@ export function render() {
     const todoSegLabel = readingKpi
       ? DEFAULT_READING_KPI_TODO_LIST_LABEL
       : "할 일";
+    const readingNotesUi = kpiNotesTabEnabledForKpi("happiness", selKpi);
+    const useKpiSegBar = KPI_DETAIL_LOGS_UI_ENABLED || readingNotesUi;
 
     const appendKpiDailyLogBlock = (parentEl, logEntries) => {
       const div = document.createElement("div");
@@ -1027,11 +1066,98 @@ export function render() {
       }
     };
 
-    const segBar = KPI_DETAIL_LOGS_UI_ENABLED ? document.createElement("div") : null;
+    const appendReadingKpiNotesPanel = (parentEl, kpiIdForNotes, kpiNameForModal) => {
+      parentEl.replaceChildren();
+      const kid = String(kpiIdForNotes || selectedKpiId || "").trim();
+      const tags = getLocalSideincomeKpiNoteTags(kid);
+      const notes = getLocalSideincomeKpiNotes(kid);
+      const groups = groupSideincomeKpiNotesByTag(kid, notes, tags);
+      if (!groups.length) {
+        const empty = document.createElement("p");
+        empty.className = "dream-kpi-history-empty";
+        empty.textContent = "아직 기록이 없습니다.";
+        parentEl.appendChild(empty);
+        return;
+      }
+      const list = document.createElement("div");
+      list.className = "dream-kpi-notes-list";
+      groups.forEach(({ tag, notes: tagNotes }) => {
+        const group = document.createElement("section");
+        group.className = "dream-kpi-notes-group";
+
+        const head = document.createElement("div");
+        head.className = "dream-kpi-notes-group-head";
+        const chip = document.createElement("span");
+        chip.className = "dream-kpi-notes-tag-chip";
+        chip.textContent = String(tag.label || "").trim() || "태그";
+        head.appendChild(chip);
+        group.appendChild(head);
+
+        const items = document.createElement("div");
+        items.className = "dream-kpi-notes-group-items";
+        tagNotes.forEach((note) => {
+          const row = document.createElement("button");
+          row.type = "button";
+          row.className = "dream-kpi-notes-row";
+          row.dataset.noteId = note.id;
+
+          const memoCol = document.createElement("div");
+          memoCol.className = "dream-kpi-notes-row-memo";
+          memoCol.textContent = String(note.memo || "").trim() || "—";
+          row.appendChild(memoCol);
+
+          row.addEventListener("click", async () => {
+            const result = await showSideincomeKpiNoteModal({
+              mode: "edit",
+              kpiId: kid,
+              kpiName: kpiNameForModal,
+              existingTags: getLocalSideincomeKpiNoteTags(kid),
+              note: {
+                tagId: note.tagId,
+                tagLabel: String(tag.label || "").trim(),
+                memo: note.memo,
+              },
+            });
+            if (!result) return;
+            if (result.action === "delete") {
+              const del = await deleteSideincomeKpiNoteOnServer(note.id, note.kpiId);
+              if (!del.ok) return;
+              renderKpiDetailView();
+              return;
+            }
+            if (result.action === "save") {
+              const tagRes = result.tagId
+                ? { ok: true, tag: { id: result.tagId, label: result.tagLabel } }
+                : await ensureSideincomeKpiNoteTagId(kid, result.tagLabel, nextId);
+              if (!tagRes.ok || !tagRes.tag?.id) return;
+              const updated = {
+                id: note.id,
+                kpiId: kid,
+                tagId: tagRes.tag.id,
+                memo: result.memo || "",
+              };
+              const saved = await upsertSideincomeKpiNoteOnServer(updated);
+              if (!saved.ok) return;
+              renderKpiDetailView();
+            }
+          });
+
+          items.appendChild(row);
+        });
+        group.appendChild(items);
+        list.appendChild(group);
+      });
+      parentEl.appendChild(list);
+    };
+
+    const segBar = useKpiSegBar ? document.createElement("div") : null;
     if (segBar) {
       segBar.className = "dream-kpi-bottom-seg-bar";
       segBar.setAttribute("role", "tablist");
-      segBar.setAttribute("aria-label", "할 일·매일 할 일·로그 전환");
+      segBar.setAttribute(
+        "aria-label",
+        readingNotesUi ? "독서 목록·기록 전환" : "할 일·매일 할 일·로그 전환",
+      );
     }
 
     let btnSegLog = null;
@@ -1050,7 +1176,27 @@ export function render() {
       appendKpiDailyLogBlock(panelLogSeg, logs);
     }
 
-    const btnSegTodo = KPI_DETAIL_LOGS_UI_ENABLED ? document.createElement("button") : null;
+    let btnSegNotes = null;
+    let panelNotesSeg = null;
+    if (readingNotesUi) {
+      btnSegNotes = document.createElement("button");
+      btnSegNotes.type = "button";
+      btnSegNotes.className = "dream-kpi-bottom-seg-btn";
+      btnSegNotes.textContent = "기록";
+      btnSegNotes.setAttribute("role", "tab");
+
+      panelNotesSeg = document.createElement("div");
+      panelNotesSeg.className =
+        "dream-kpi-bottom-seg-panel dream-kpi-bottom-seg-panel--notes";
+      panelNotesSeg.setAttribute("role", "tabpanel");
+      appendReadingKpiNotesPanel(
+        panelNotesSeg,
+        String(selectedKpiId),
+        kpi.name,
+      );
+    }
+
+    const btnSegTodo = useKpiSegBar ? document.createElement("button") : null;
     if (btnSegTodo) {
       btnSegTodo.type = "button";
       btnSegTodo.className = "dream-kpi-bottom-seg-btn";
@@ -1059,7 +1205,7 @@ export function render() {
     }
 
     let btnSegDaily = null;
-    if (hasDailyTab && KPI_DETAIL_LOGS_UI_ENABLED) {
+    if (hasDailyTab && useKpiSegBar && !dailyTodosOnly) {
       btnSegDaily = document.createElement("button");
       btnSegDaily.type = "button";
       btnSegDaily.className = "dream-kpi-bottom-seg-btn";
@@ -1068,9 +1214,10 @@ export function render() {
     }
 
     if (segBar) {
-      if (!dailyTodosOnly && btnSegTodo) segBar.appendChild(btnSegTodo);
+      if (btnSegTodo) segBar.appendChild(btnSegTodo);
       if (btnSegDaily) segBar.appendChild(btnSegDaily);
       if (btnSegLog) segBar.appendChild(btnSegLog);
+      if (btnSegNotes) segBar.appendChild(btnSegNotes);
     }
 
     let panelTodoSeg = null;
@@ -1276,10 +1423,18 @@ export function render() {
       onAfterDelete: () => renderKpiDetailView({ scrollTodoAfterMutation: true }),
     };
 
-    if (KPI_DETAIL_LOGS_UI_ENABLED && segBar) {
+    if (useKpiSegBar && segBar) {
       const segBarMount = mountKpiSegBarClearCompletedRow(segBar, clearCompletedOpts);
+      const clearCompletedTrashBtn = segBarMount.querySelector(
+        ".dream-kpi-bottom-seg-clear-completed-btn",
+      );
+      const syncSegClearCompletedTrashVisibility = (tab) => {
+        if (!(clearCompletedTrashBtn instanceof HTMLElement)) return;
+        clearCompletedTrashBtn.hidden = tab !== KPI_BOTTOM_TAB_TODO;
+      };
       target.appendChild(segBarMount);
       if (panelLogSeg) target.appendChild(panelLogSeg);
+      if (panelNotesSeg) target.appendChild(panelNotesSeg);
       if (panelTodoSeg) target.appendChild(panelTodoSeg);
       if (panelDailySeg) target.appendChild(panelDailySeg);
       wireKpiHistoryBottomTabs(
@@ -1292,8 +1447,25 @@ export function render() {
         dailyTodosOnly ? null : panelTodoSeg,
         panelDailySeg,
         hasDailyTab,
-        () => syncAppFooterHappinessKpiActions(),
-        { dailyTodosOnly },
+        (tab) => {
+          syncAppFooterHappinessKpiActions();
+          syncSegClearCompletedTrashVisibility(tab);
+          if (tab === KPI_BOTTOM_TAB_NOTES && selectedKpiId && panelNotesSeg) {
+            void pullSideincomeKpiNotesForKpi(String(selectedKpiId)).then(() => {
+              if (!panelNotesSeg.isConnected) return;
+              appendReadingKpiNotesPanel(
+                panelNotesSeg,
+                String(selectedKpiId),
+                kpi.name,
+              );
+            });
+          }
+        },
+        {
+          dailyTodosOnly,
+          btnNotes: btnSegNotes,
+          panelNotes: panelNotesSeg,
+        },
       );
     } else {
       mountKpiDetailStackedSections(target, {

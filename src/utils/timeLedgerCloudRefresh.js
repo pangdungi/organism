@@ -44,24 +44,30 @@ function snapshotTimeLedgerLocalStorage() {
   }
 }
 
-async function pullTimeLedgerTabEnterFromCloudCore() {
-  lpPullDebug("pullTimeLedgerTabEnterFromCloud", {});
+async function pullTimeLedgerTabEnterFromCloudCore(opts = {}) {
+  const skipTasks = !!opts.skipTasks;
+  lpPullDebug("pullTimeLedgerTabEnterFromCloud", { skipTasks });
   await ensureTimeLedgerStorageReady();
   const before = snapshotTimeLedgerLocalStorage();
   const { rangeStart, rangeEnd } = readTimeLedgerCombinedPullRangeYmd();
   /* KPI 맵 먼저 — 연동 과제가 목록 필터에서 빠지지 않게 */
   await pullStaleKpiDomainsForTaskLogList();
-  await Promise.all([
+  const jobs = [
     pullTimeLedgerEntriesFromSupabase(),
     pullTimeDailyBudgetForDateRange(rangeStart, rangeEnd),
-    pullTimeLedgerTasksForTabEnter(),
-  ]);
-  try {
-    ensureAllKpiTimeTasksFromStorage();
-  } catch (_) {}
-  try {
-    patchKpiLinkedTasksFromKpiMaps();
-  } catch (_) {}
+  ];
+  if (!skipTasks) {
+    jobs.push(pullTimeLedgerTasksForTabEnter());
+  }
+  await Promise.all(jobs);
+  if (!skipTasks) {
+    try {
+      ensureAllKpiTimeTasksFromStorage();
+    } catch (_) {}
+    try {
+      patchKpiLinkedTasksFromKpiMaps();
+    } catch (_) {}
+  }
   const after = snapshotTimeLedgerLocalStorage();
   return { anyChanged: before !== after };
 }
@@ -90,9 +96,13 @@ export async function pullAllTimeLedgerFromCloud(opts = {}) {
  * 시간기록 탭 클릭 — KPI·과제는 첫 반영 전 무조건 pull, 이후 서버 변경(stale)일 때만.
  * 기록 행·일간 예산은 매 탭 진입 시 pull.
  */
-export function pullTimeLedgerTabEnterFromCloud() {
+/**
+ * @param {{ skipTasks?: boolean }} [opts] — true면 과제 목록 pull·KPI 병합은 호출 쪽에서 처리(홈 3분할 boot/sync)
+ */
+export function pullTimeLedgerTabEnterFromCloud(opts = {}) {
+  const skipTasks = !!opts.skipTasks;
   return coalesceInFlightPull(
-    "time-ledger-tab-enter",
-    pullTimeLedgerTabEnterFromCloudCore,
+    skipTasks ? "time-ledger-tab-enter-skip-tasks" : "time-ledger-tab-enter",
+    () => pullTimeLedgerTabEnterFromCloudCore(opts),
   );
 }

@@ -50,6 +50,18 @@ const TIME_LEDGER_REALTIME_TABLES = [
 
 const DIARY_REALTIME_TABLES = ["diary_daily_entries"];
 
+/** 홈 3분할(시간·습관·캘린더) 갱신에 쓰는 Realtime 테이블 */
+const CALENDAR_REALTIME_TABLES = [
+  "calendar_section_tasks",
+  "calendar_day_icons",
+];
+
+const DESKTOP_DASHBOARD_REALTIME_TABLES_SET = new Set([
+  ...TIME_LEDGER_REALTIME_TABLES,
+  ...KPI_REALTIME_TABLES,
+  ...CALENDAR_REALTIME_TABLES,
+]);
+
 let _channel = null;
 let _debounceTimer = null;
 let _generation = 0;
@@ -74,10 +86,17 @@ function recordTimeLedgerRealtimePayload(payload) {
   }
 }
 
-/** Realtime 이벤트 디바운스(로그용). 서버 pull 은 App 상위 탭 전환 시에만 수행 */
+/** Realtime 이벤트 디바운스 — 홈 3분할은 여기서 pull·soft refresh */
 const REALTIME_REFRESH_DEBOUNCE_MS = 1800;
 
-function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
+/**
+ * @param {{
+ *   getCurrentTabId: () => string,
+ *   refreshDesktopDashboardFromRealtime?: (touchedTables: string[]) => Promise<boolean>,
+ * }} opts
+ */
+function debouncedRealtimeRefresh(opts) {
+  const { getCurrentTabId, refreshDesktopDashboardFromRealtime } = opts;
   clearTimeout(_debounceTimer);
   _debounceTimer = setTimeout(() => {
     _debounceTimer = null;
@@ -93,30 +112,64 @@ function debouncedRealtimeRefresh(getCurrentTabId, renderMain) {
 
     void (async () => {
       try {
+        const tab = getCurrentTabId();
+        const touched = [...realtimeTouchedTables];
+        const touchesDashboard = touched.some((t) =>
+          DESKTOP_DASHBOARD_REALTIME_TABLES_SET.has(t),
+        );
+        if (
+          tab === "home" &&
+          touchesDashboard &&
+          typeof refreshDesktopDashboardFromRealtime === "function"
+        ) {
+          const refreshed = await refreshDesktopDashboardFromRealtime(touched);
+          syncWatchLog("realtime_디바운스끝", {
+            gen,
+            debounceMs: REALTIME_REFRESH_DEBOUNCE_MS,
+            postgres_changes테이블: touched,
+            note: "홈 3분할 — pull 후 embed soft refresh",
+            refreshed,
+          });
+          logTabSync("realtime_debounced_pull", { gen, refreshed });
+          lpPullDebug("realtime_desktop_dashboard_pull", {
+            gen,
+            tab,
+            refreshed,
+            realtimeTouchedTables: touched,
+            timeLedgerRtTables: [...timeBatch.touchedTables],
+          });
+          logLpRender("realtime:홈 대시보드 pull", { gen, refreshed });
+          return;
+        }
         syncWatchLog("realtime_디바운스끝", {
           gen,
           debounceMs: REALTIME_REFRESH_DEBOUNCE_MS,
-          postgres_changes테이블: [...realtimeTouchedTables],
-          note: "서버 pull 은 상위 탭 전환 시에만 — Realtime 으로는 자동 fetch 안 함",
+          postgres_changes테이블: touched,
+          note: "홈 3분할 외 — Realtime 후 자동 pull 없음(탭 전환 시 pull)",
         });
-        logTabSync("realtime_debounced_no_pull", { gen });
+        logTabSync("realtime_debounced_no_pull", { gen, tab });
         lpPullDebug("realtime_debounced_pull_bundle", {
           gen,
-          tab: getCurrentTabId(),
-          realtimeTouchedTables: [...realtimeTouchedTables],
+          tab,
+          realtimeTouchedTables: touched,
           timeLedgerRtTables: [...timeBatch.touchedTables],
         });
-        logLpRender("realtime:자동 pull 비활성(탭 전환 시에만 동기화)", { gen });
+        logLpRender("realtime:자동 pull 없음(탭 전환 시 동기화)", { gen, tab });
       } catch (_e) {}
     })();
   }, REALTIME_REFRESH_DEBOUNCE_MS);
 }
 
 /**
- * @param {{ getCurrentTabId: () => string, renderMain: (opts?: { skipTodoSaveBeforeUnmount?: boolean }) => void }} opts
+ * @param {{
+ *   getCurrentTabId: () => string,
+ *   renderMain: (opts?: { skipTodoSaveBeforeUnmount?: boolean }) => void,
+ *   refreshDesktopDashboardFromRealtime?: (touchedTables: string[]) => Promise<boolean>,
+ * }} opts
  */
 export function initSupabaseRealtimeSync(opts) {
-  const { getCurrentTabId, renderMain } = opts;
+  const { getCurrentTabId, renderMain, refreshDesktopDashboardFromRealtime } =
+    opts;
   if (!supabase || typeof getCurrentTabId !== "function" || typeof renderMain !== "function") return;
 
   const teardown = async () => {
@@ -136,14 +189,28 @@ export function initSupabaseRealtimeSync(opts) {
       const tbl = payload?.table;
       if (tbl) _realtimeAllTablesBatch.add(tbl);
       recordTimeLedgerRealtimePayload(payload);
-      debouncedRealtimeRefresh(getCurrentTabId, renderMain);
+      debouncedRealtimeRefresh({
+        getCurrentTabId,
+        refreshDesktopDashboardFromRealtime,
+      });
     };
 
     let ch = supabase.channel(`lp-multi-${uid}`, {
       config: { broadcast: { self: false } },
     });
 
-    /* calendar_section_tasks: Realtime으로 자동 목록 갱신 안 함(탭 진입 시 SELECT) */
+    for (const table of CALENDAR_REALTIME_TABLES) {
+      ch = ch.on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table,
+          filter: `user_id=eq.${uid}`,
+        },
+        onEvent,
+      );
+    }
 
     for (const table of KPI_REALTIME_TABLES) {
       ch = ch.on(

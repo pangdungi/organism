@@ -1,10 +1,15 @@
-/** KPI 카드 확장 영역 — 할 일 / 매일(습관 KPI일 때만) / 기록(시급상승 실험) */
+import { isDefaultReadingHappinessKpiId } from "./happinessKpiMapSupabase.js";
 
-/** KPI 상세 — 구 로그 탭(시간기록 수치); 시급상승은 KPI_BOTTOM_TAB_NOTES 사용 */
+/** KPI 카드 확장 영역 — 할 일 / 매일(습관 KPI일 때만) / 기록(시급상승·독서하기) */
+
+/** KPI 상세 — 구 로그 탭(시간기록 수치); 시급상승·독서하기는 KPI_BOTTOM_TAB_NOTES 사용 */
 export const KPI_DETAIL_LOGS_UI_ENABLED = false;
 
 /** 시급상승 KPI — 태그·메모 기록 탭 */
 export const SIDEINCOME_KPI_NOTES_UI_ENABLED = true;
+
+/** 행복 기본 KPI「독서하기」— 태그·메모 기록 탭 */
+export const HAPPINESS_READING_KPI_NOTES_UI_ENABLED = true;
 
 export const KPI_BOTTOM_TAB_LOG = "log";
 export const KPI_BOTTOM_TAB_TODO = "todo";
@@ -22,6 +27,21 @@ export function kpiNotesTabEnabledForNamespace(namespace) {
   return namespace === "sideincome" && SIDEINCOME_KPI_NOTES_UI_ENABLED;
 }
 
+/** @param {string} namespace @param {string} kpiId */
+export function kpiNotesTabEnabledForKpi(namespace, kpiId) {
+  const ns = String(namespace || "");
+  const kid = String(kpiId || "").trim();
+  if (ns === "sideincome" && SIDEINCOME_KPI_NOTES_UI_ENABLED) return true;
+  if (
+    ns === "happiness" &&
+    HAPPINESS_READING_KPI_NOTES_UI_ENABLED &&
+    isDefaultReadingHappinessKpiId(kid)
+  ) {
+    return true;
+  }
+  return false;
+}
+
 /** KPI「매일 반복」— 일반 할 일 없이 매일 할 일·기록만 사용 */
 export function kpiUsesDailyTodosOnly(kpi) {
   return !!(kpi && kpi.needHabitTracker);
@@ -30,7 +50,7 @@ export function kpiUsesDailyTodosOnly(kpi) {
 export function getKpiHistoryBottomTab(namespace, kpiId) {
   const v = subByKey.get(storageKey(namespace, kpiId));
   if (v === KPI_BOTTOM_TAB_TODO || v === KPI_BOTTOM_TAB_DAILY) return v;
-  if (v === KPI_BOTTOM_TAB_NOTES && kpiNotesTabEnabledForNamespace(namespace)) {
+  if (v === KPI_BOTTOM_TAB_NOTES && kpiNotesTabEnabledForKpi(namespace, kpiId)) {
     return v;
   }
   if (v === KPI_BOTTOM_TAB_LOG && KPI_DETAIL_LOGS_UI_ENABLED) return v;
@@ -99,7 +119,7 @@ export function wireKpiHistoryBottomTabs(
   const btnNotes = options.btnNotes || null;
   const panelNotes = options.panelNotes || null;
   const notesUi =
-    kpiNotesTabEnabledForNamespace(namespace) && btnNotes && panelNotes;
+    kpiNotesTabEnabledForKpi(namespace, kpiId) && btnNotes && panelNotes;
   const logsUi = KPI_DETAIL_LOGS_UI_ENABLED && btnLog && panelLog;
 
   const apply = (which) => {
