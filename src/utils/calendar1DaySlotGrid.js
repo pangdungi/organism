@@ -106,43 +106,14 @@ function findSpanForCell(slotMin, spans) {
   return best;
 }
 
-function spanSlotCount(span) {
-  const dur = Number(span?.endMin) - Number(span?.startMin);
-  if (!Number.isFinite(dur) || dur <= 0) return 0;
-  return Math.ceil(dur / CAL_1DAY_SLOT_MINUTES);
-}
-
-function slotOffsetInSpan(span, slotMin) {
-  const sm = Number(span?.startMin);
-  if (!Number.isFinite(sm)) return 0;
-  return Math.max(0, Math.floor((slotMin - sm) / CAL_1DAY_SLOT_MINUTES));
-}
-
 function spanKey(span) {
   if (!span) return "";
   return `${span.startMin}|${span.endMin}|${String(span.taskName || "").trim()}|${String(span.scheduleDetail || "").trim()}`;
 }
 
-/** 타임박스 칸 라벨 — 공백은 글자 수·표시 모두 제외(「모닝 루틴」→「모닝루틴」) */
+/** 타임박스 칸 라벨 — 공백은 표시에서 제외(「모닝 루틴」→「모닝루틴」) */
 function compactSlotGridLabel(span) {
   return String(expectedSpanSlotGridLabel(span) || "").replace(/\s+/g, "");
-}
-
-function maxLabelCharsForSpan(span) {
-  const name = compactSlotGridLabel(span);
-  if (!name) return 0;
-  return Math.min(name.length, spanSlotCount(span) * 2);
-}
-
-/** 연속 칸(run) · 슬롯 시작 위치 — 2칸당 2글자, 이어진 구간은 한 덩어리로 */
-function sliceLabelForSpanRun(span, run, slotMin) {
-  const name = compactSlotGridLabel(span);
-  if (!name) return "";
-  const totalCap = Math.min(name.length, spanSlotCount(span) * 2);
-  const startChar = slotOffsetInSpan(span, slotMin) * 2;
-  const runCap = Math.min(Math.max(1, run) * 2, Math.max(0, totalCap - startChar));
-  if (runCap <= 0) return "";
-  return name.slice(startChar, startChar + runCap);
 }
 
 function findSpanMatchingKey(spans, key) {
@@ -153,26 +124,26 @@ function findSpanMatchingKey(spans, key) {
   return null;
 }
 
-function appendSlotGridCellLabel(cell, span, { spanMerged = false, text } = {}) {
-  const labelText =
-    String(text ?? "").trim() ||
-    compactSlotGridLabel(span).slice(0, maxLabelCharsForSpan(span));
+function appendSlotGridCellLabel(cell, span) {
+  const labelText = compactSlotGridLabel(span);
   if (!labelText) return;
-  if (spanMerged) {
-    const labelEl = document.createElement("span");
-    labelEl.className = "calendar-1day-slot-grid-cell-label";
-    labelEl.textContent = labelText;
-    cell.appendChild(labelEl);
-    cell.classList.add("calendar-1day-slot-grid-cell--span-labeled");
-  } else {
-    cell.textContent = labelText;
-  }
-  cell.classList.add("calendar-1day-slot-grid-cell--labeled");
+  cell.textContent = "";
+  const labelEl = document.createElement("span");
+  labelEl.className = "calendar-1day-slot-grid-cell-label";
+  labelEl.textContent = labelText;
+  cell.appendChild(labelEl);
+  cell.classList.add(
+    "calendar-1day-slot-grid-cell--labeled",
+    "calendar-1day-slot-grid-cell--span-labeled",
+  );
 }
 
-/** 같은 행에서 연속 칸만 가로(span)로 시작~끝 한 덩어리 */
+/** 같은 행에서 연속 칸만 가로(span)로 시작~끝 한 덩어리 — 라벨은 span당 1회(가장 넓은 구간) */
 function applyCalendarSlotGridRowSpanMerges(root, spans) {
   const sorted = normalizeSpans(spans);
+  /** spanKey → 가장 넓은 가로 구간(동률이면 더 이른 칸) */
+  const labelAnchors = new Map();
+
   root.querySelectorAll(".calendar-1day-slot-grid-row").forEach((rowEl) => {
     const cells = [...rowEl.querySelectorAll(".calendar-1day-slot-grid-cell")];
     let i = 0;
@@ -210,17 +181,23 @@ function applyCalendarSlotGridRowSpanMerges(root, spans) {
         }
       }
 
-      const labelText = sliceLabelForSpanRun(span, run, slotMin);
-      if (labelText) {
-        appendSlotGridCellLabel(cell, span, {
-          spanMerged: run >= 2,
-          text: labelText,
-        });
+      const prev = labelAnchors.get(key);
+      const candidate = { cell, run, slotMin, span };
+      if (
+        !prev ||
+        run > prev.run ||
+        (run === prev.run && slotMin < prev.slotMin)
+      ) {
+        labelAnchors.set(key, candidate);
       }
 
       i += run;
     }
   });
+
+  for (const { cell, span } of labelAnchors.values()) {
+    appendSlotGridCellLabel(cell, span);
+  }
 }
 
 /** 24행×6열(10분 칸) 스크롤 래퍼 */

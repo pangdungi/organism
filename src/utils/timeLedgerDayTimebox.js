@@ -1,7 +1,6 @@
 /** 시간가계부 타임박스뷰 — 24행(0~23시)×12열(5분 칸) 그리드 */
 
 import { showToast } from "./showToast.js";
-import { ledgerRowTimeboxDisplayLabel } from "./timeLedgerCardKpiMemo.js";
 import * as TTC from "./timeTaskOptionsConstants.js";
 
 export const TIME_LEDGER_TIMEBOX_GRID_ROWS = 24;
@@ -66,13 +65,6 @@ function cellOverlapsBlock(slotMin, block) {
   return slotMin < block.endMin && cellEnd > block.startMin;
 }
 
-/** 기록 시작 칸 기준 N번째 5분 칸 (0=시작 칸) */
-function slotOffsetInBlock(block, slotMin) {
-  const sm = Number(block?.startMin);
-  if (!Number.isFinite(sm)) return 0;
-  return Math.max(0, Math.floor((slotMin - sm) / TIME_LEDGER_TIMEBOX_SLOT_MINUTES));
-}
-
 function blockKey(block) {
   if (!block) return "";
   const baseTask = String(block.rowData?.taskName || block.taskName || "").trim();
@@ -81,23 +73,25 @@ function blockKey(block) {
   return `${block.startMin}|${block.endMin}|${baseTask}|${detail}|${label}`;
 }
 
-function appendTimeboxCellLabel(cell, block, { spanMerged = false } = {}) {
+function appendTimeboxCellLabel(cell, block) {
   const name = String(block.taskName || "").trim();
   if (!name) return;
-  if (spanMerged) {
-    const labelEl = document.createElement("span");
-    labelEl.className = "time-ledger-day-timebox-matrix-cell-label";
-    labelEl.textContent = name;
-    cell.appendChild(labelEl);
-    cell.classList.add("time-ledger-day-timebox-matrix-cell--span-labeled");
-  } else {
-    cell.textContent = name;
-  }
-  cell.classList.add("time-ledger-day-timebox-matrix-cell--labeled");
+  cell.textContent = "";
+  const labelEl = document.createElement("span");
+  labelEl.className = "time-ledger-day-timebox-matrix-cell-label";
+  labelEl.textContent = name;
+  cell.appendChild(labelEl);
+  cell.classList.add(
+    "time-ledger-day-timebox-matrix-cell--labeled",
+    "time-ledger-day-timebox-matrix-cell--span-labeled",
+  );
 }
 
 /** 같은 행에서 연속 칸만 가로(span)로 시작~끝 한 덩어리 */
 function applyTimeboxRowSpanMerges(body, blocks) {
+  /** blockKey → 가장 넓은 가로 구간(동률이면 더 이른 칸)에 라벨 1회 */
+  const labelAnchors = new Map();
+
   body.querySelectorAll(".time-ledger-day-timebox-matrix-row").forEach((rowEl) => {
     const cells = [...rowEl.querySelectorAll(".time-ledger-day-timebox-matrix-cell")];
     let i = 0;
@@ -124,8 +118,6 @@ function applyTimeboxRowSpanMerges(body, blocks) {
         continue;
       }
 
-      const offset = slotOffsetInBlock(block, slotMin);
-
       if (span >= 2) {
         cell.style.gridColumn = `span ${span}`;
         cell.classList.add("time-ledger-day-timebox-matrix-cell--span-merged");
@@ -136,13 +128,23 @@ function applyTimeboxRowSpanMerges(body, blocks) {
         }
       }
 
-      if (offset === 0) {
-        appendTimeboxCellLabel(cell, block, { spanMerged: span >= 2 });
+      const prev = labelAnchors.get(key);
+      const candidate = { cell, span, slotMin, block };
+      if (
+        !prev ||
+        span > prev.span ||
+        (span === prev.span && slotMin < prev.slotMin)
+      ) {
+        labelAnchors.set(key, candidate);
       }
 
       i += span;
     }
   });
+
+  for (const { cell, block } of labelAnchors.values()) {
+    appendTimeboxCellLabel(cell, block);
+  }
 }
 
 /** 겹치는 기록 중 가장 짧은 구간 우선 (긴·진행 중 기록이 짧은 기록을 가리지 않게) */

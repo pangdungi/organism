@@ -547,6 +547,17 @@ export async function syncTimeLedgerTaskListForModalOpen() {
   }
 }
 
+/** 탭·일간 진입 — 서버 과제목록을 아직 한 번도 받지 않았으면 true (pull 전에 호출) */
+export async function isTaskListFirstPullNeeded() {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) return false;
+  if (shouldForceTaskListPullFromServer()) return true;
+  if (_tasksServerWatermarkMs <= 0) {
+    _tasksServerWatermarkMs = readTasksServerWatermarkFromSession(userId);
+  }
+  return _tasksServerWatermarkMs <= 0;
+}
+
 /**
  * 시간기록 탭 진입 — 서버 과제 목록을 한 번도 반영한 적 없으면 무조건 pull, 이후 stale일 때만.
  * @returns {Promise<boolean>}

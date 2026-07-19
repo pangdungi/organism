@@ -2944,9 +2944,10 @@
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1;
+  min-width: 0;
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  word-break: keep-all;
+  overflow-wrap: normal;
 }
 
 .time-ledger-day-timebox-matrix-cell--span-absorbed,
@@ -2973,10 +2974,14 @@
 .time-ledger-day-timebox-matrix-cell-label,
 [data-legacy~="time-ledger-view"] .time-ledger-day-timebox-matrix-cell-label {
   display: block;
+  flex: 1 1 auto;
   width: 100%;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  word-break: keep-all;
+  overflow-wrap: normal;
   pointer-events: none;
 }
 

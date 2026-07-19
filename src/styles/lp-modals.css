@@ -3995,6 +3995,51 @@ html.lp-task-log-mobile-picker-open
   line-height: 1.45;
   color: #8b5c3a;
 }
+.lp-budget-template-modal .lp-budget-template-current-plan {
+  margin: 0 0 1rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--lp-modal-border);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.02);
+}
+.lp-budget-template-modal .lp-budget-template-current-summary {
+  margin: 0.35rem 0 0.65rem;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--lp-modal-navy-muted);
+}
+.lp-budget-template-modal .lp-budget-template-clear-plan-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin: 0;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid rgba(185, 28, 28, 0.28);
+  border-radius: 10px;
+  background: var(--lp-modal-danger-soft);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  line-height: 1.35;
+  color: var(--lp-modal-danger);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.lp-budget-template-modal .lp-budget-template-clear-plan-btn:hover:not(:disabled) {
+  border-color: rgba(185, 28, 28, 0.45);
+  background: #fee2e2;
+}
+.lp-budget-template-modal .lp-budget-template-clear-plan-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.lp-budget-template-modal .lp-budget-template-clear-plan-hint {
+  margin: 0.45rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--lp-modal-muted);
+}
 .lp-budget-template-modal .lp-budget-template-preview {
   margin: 0.35rem 0 0;
   padding: 0;
@@ -4022,14 +4067,12 @@ html.lp-task-log-mobile-picker-open
 .lp-budget-template-modal .lp-budget-template-list-item {
   display: flex;
   align-items: stretch;
-  gap: 0.35rem;
+  gap: 0;
 }
-.lp-budget-template-modal .lp-budget-template-pick-btn {
+.lp-budget-template-modal .lp-budget-template-pick-name {
   flex: 1;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.5rem;
+  display: block;
+  width: 100%;
   margin: 0;
   padding: 0.55rem 0.7rem;
   border: 1px solid var(--lp-modal-border);
@@ -4037,44 +4080,88 @@ html.lp-task-log-mobile-picker-open
   background: #fff;
   font: inherit;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 650;
   color: var(--lp-modal-navy);
-  cursor: pointer;
   text-align: left;
+  text-decoration: none;
+  cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
 }
-.lp-budget-template-modal .lp-budget-template-pick-btn:hover {
+.lp-budget-template-modal .lp-budget-template-pick-name:hover {
   border-color: rgba(0, 0, 0, 0.35);
   background: rgba(0, 0, 0, 0.04);
+  color: var(--lp-modal-navy);
+}
+.lp-budget-template-modal .lp-budget-template-pick-name:active {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.45);
+  color: var(--lp-modal-navy);
 }
 .lp-budget-template-modal
   .lp-budget-template-list-item--selected
-  .lp-budget-template-pick-btn {
-  border-color: var(--lp-modal-accent);
+  .lp-budget-template-pick-name {
+  color: var(--lp-modal-navy);
+  border-color: var(--lp-modal-subcat-active-border);
   background: var(--lp-modal-subcat-active-bg);
 }
-.lp-budget-template-modal .lp-budget-template-pick-meta {
-  font-size: 0.75rem;
-  font-weight: 600;
+.lp-budget-template-modal .lp-budget-template-preview-lead {
+  margin: 0 0 0.55rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
   color: var(--lp-modal-muted);
 }
-.lp-budget-template-modal .lp-budget-template-del-btn {
-  flex-shrink: 0;
-  width: 2.25rem;
-  margin: 0;
-  padding: 0;
+.lp-budget-template-modal--preview [data-legacy~="time-task-log-footer"] {
+  display: none;
+}
+.lp-budget-template-modal--preview .lp-budget-template-preview-timebox {
   border: 1px solid var(--lp-modal-border);
-  border-radius: 10px;
+  border-radius: 12px;
+  overflow: hidden;
   background: #fff;
-  font-size: 1.15rem;
-  line-height: 1;
-  cursor: pointer;
-  color: var(--lp-modal-muted);
 }
-.lp-budget-template-modal .lp-budget-template-del-btn:hover {
-  border-color: rgba(185, 28, 28, 0.35);
-  color: var(--lp-modal-danger);
+.lp-budget-template-modal .lp-budget-template-preview-timebox-scroll {
+  height: 14rem;
+  max-height: 42vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0.28rem 0.45rem 0.4rem;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
+}
+.lp-budget-template-modal
+  .lp-budget-template-preview-timebox-scroll
+  .calendar-1day-slot-grid-body {
+  min-height: 18rem;
+}
+.lp-budget-template-modal .lp-budget-template-delete-template-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin: 0.35rem 0 0;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid rgba(185, 28, 28, 0.28);
+  border-radius: 10px;
   background: var(--lp-modal-danger-soft);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  line-height: 1.35;
+  color: var(--lp-modal-danger);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.lp-budget-template-modal .lp-budget-template-delete-template-btn:hover:not(:disabled) {
+  border-color: rgba(185, 28, 28, 0.45);
+  background: #fee2e2;
+}
+.lp-budget-template-modal .lp-budget-template-delete-template-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 .lp-budget-template-modal .lp-budget-template-empty,
 .lp-budget-template-modal .lp-budget-template-loading {

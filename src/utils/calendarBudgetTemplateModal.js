@@ -12,10 +12,13 @@ import {
   resolveLpModalStackZIndex,
   syncBodyOverflowAfterModalClose,
 } from "./lpModalStack.js";
+import { getTaskOptionByName } from "../views/Time.js";
 import {
   extractBudgetBlocksFromDateKey,
   saveBudgetDayAsTemplate,
   applyBudgetTemplateToDateKey,
+  clearBudgetDayPlanFromDateKey,
+  budgetTemplateBlocksToCalendarSpans,
   ensureBudgetTemplatesLoaded,
 } from "./timeDailyBudgetTemplateOps.js";
 import {
@@ -23,6 +26,10 @@ import {
   removeBudgetScheduleTemplate,
 } from "./timeDailyBudgetTemplateModel.js";
 import { deleteBudgetScheduleTemplateOnSupabase } from "./timeDailyBudgetTemplateSupabase.js";
+import {
+  createCalendar1DaySlotGridScroll,
+  paintCalendar1DaySlotGridFromSpans,
+} from "./calendar1DaySlotGrid.js";
 
 function escapeHtml(s) {
   return String(s || "")
@@ -36,13 +43,16 @@ function normalizeDateKey(s) {
   return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : "";
 }
 
-function mountModalShell(title) {
-  if (document.querySelector(".lp-budget-template-modal")) return null;
+const BUDGET_TEMPLATE_NONE_ID = "__no_template__";
+
+function mountBudgetTemplateModalShell(title, { variant = "apply" } = {}) {
+  const variantClass = `lp-budget-template-modal--${variant}`;
+  if (document.querySelector(`.${variantClass}`)) return null;
   dismissAppToast();
 
   const modal = document.createElement("div");
   modal.className =
-    "time-task-setup-modal time-task-log-modal lp-calendar-budget-add-modal lp-budget-template-modal";
+    `time-task-setup-modal time-task-log-modal lp-calendar-budget-add-modal lp-budget-template-modal ${variantClass}`;
 
   modal.innerHTML = `
     <div data-legacy="time-task-setup-backdrop"></div>
@@ -85,6 +95,104 @@ function mountModalShell(title) {
   };
 }
 
+function mountApplyModalShell(title) {
+  return mountBudgetTemplateModalShell(title, { variant: "apply" });
+}
+
+function mountSaveModalShell(title) {
+  return mountBudgetTemplateModalShell(title, { variant: "save" });
+}
+
+function enrichCalendarSpansForPreview(spans) {
+  return (spans || []).map((span) => {
+    const taskName = String(span?.taskName || "").trim();
+    const opt = getTaskOptionByName(taskName);
+    return {
+      ...span,
+      prod: opt?.productivity || span?.prod || "other",
+      category: opt?.category || span?.category || "",
+    };
+  });
+}
+
+function mountTemplatePreviewTimebox(blocks) {
+  const wrap = document.createElement("div");
+  wrap.className =
+    "lp-budget-template-preview-timebox calendar-1day-view--slot-grid";
+  const scroll = createCalendar1DaySlotGridScroll();
+  scroll.classList.add("lp-budget-template-preview-timebox-scroll");
+  scroll.setAttribute("aria-label", "템플릿 미리보기 타임박스");
+  paintCalendar1DaySlotGridFromSpans(
+    scroll,
+    enrichCalendarSpansForPreview(
+      budgetTemplateBlocksToCalendarSpans(blocks),
+    ),
+  );
+  wrap.appendChild(scroll);
+  return wrap;
+}
+
+async function deleteBudgetTemplateById(templateId, templateName) {
+  const id = String(templateId || "").trim();
+  if (!id) return false;
+  const ok = await showConfirmModal({
+    title: "템플릿 삭제",
+    message: `「${templateName || "템플릿"}」 템플릿을 삭제할까요?\n삭제하면 복구할 수 없습니다.`,
+    confirmText: "삭제",
+    confirmDanger: true,
+  });
+  if (!ok) return false;
+  removeBudgetScheduleTemplate(id);
+  try {
+    await deleteBudgetScheduleTemplateOnSupabase(id);
+  } catch (_) {}
+  showToast("템플릿을 삭제했습니다.");
+  return true;
+}
+
+/**
+ * @param {{ id: string, name: string, blocks: object[] }} template
+ * @param {{ onDeleted?: () => void }} [callbacks]
+ */
+function openBudgetTemplatePreviewModal(template, callbacks = {}) {
+  const tpl = template;
+  if (!tpl?.id) return;
+  const shell = mountBudgetTemplateModalShell(
+    String(tpl.name || "템플릿 미리보기"),
+    { variant: "preview" },
+  );
+  if (!shell) return;
+  const { body, close } = shell;
+
+  const lead = document.createElement("p");
+  lead.className = "lp-budget-template-preview-lead";
+  lead.textContent = `예상 일정 ${tpl.blocks?.length || 0}건 · 타임박스 미리보기`;
+  body.appendChild(lead);
+
+  if (tpl.blocks?.length) {
+    body.appendChild(mountTemplatePreviewTimebox(tpl.blocks));
+  } else {
+    const empty = document.createElement("p");
+    empty.className = "lp-budget-template-empty";
+    empty.textContent = "이 템플릿에 일정이 없습니다.";
+    body.appendChild(empty);
+  }
+
+  const deleteBtn = document.createElement("button");
+  deleteBtn.type = "button";
+  deleteBtn.className = "lp-budget-template-delete-template-btn";
+  deleteBtn.textContent = "이 템플릿 삭제하기";
+  deleteBtn.addEventListener("click", async () => {
+    deleteBtn.disabled = true;
+    const deleted = await deleteBudgetTemplateById(tpl.id, tpl.name);
+    deleteBtn.disabled = false;
+    if (!deleted) return;
+    close();
+    callbacks.onDeleted?.();
+  });
+  body.appendChild(deleteBtn);
+}
+
 function mountFooterActions(footer, { onCancel, onConfirm, confirmLabel }) {
   const cancelBtn = document.createElement("button");
   cancelBtn.type = "button";
@@ -115,7 +223,7 @@ export function openSaveBudgetTemplateModal(options) {
     showToast("이 날짜에 저장할 예상 일정이 없습니다.");
     return;
   }
-  const shell = mountModalShell("템플릿 저장");
+  const shell = mountSaveModalShell("템플릿 저장");
   if (!shell) return;
   const { body, footer, close } = shell;
 
@@ -177,28 +285,53 @@ export function openApplyBudgetTemplateModal(options) {
   const { dateKey, onApplied } = options || {};
   const dk = normalizeDateKey(dateKey);
   if (!dk) return;
-  const shell = mountModalShell("템플릿 적용");
+  const shell = mountApplyModalShell("템플릿 적용");
   if (!shell) return;
   const { body, footer, close } = shell;
 
   let selectedId = "";
 
+  body.innerHTML = `
+    <div data-lp-budget-template-list-host>
+      <p class="lp-budget-template-loading">불러오는 중…</p>
+    </div>
+  `;
+
+  const listHost = body.querySelector("[data-lp-budget-template-list-host]");
+
   const renderList = () => {
+    if (!listHost) return;
     const list = readBudgetScheduleTemplates();
-    if (!list.length) {
-      body.innerHTML =
-        '<p class="lp-budget-template-empty">저장된 템플릿이 없습니다. 「템플릿 저장」으로 먼저 만들어 주세요.</p>';
-      return;
-    }
-    body.innerHTML = `
+    listHost.replaceChildren();
+    const wrap = document.createElement("div");
+    wrap.innerHTML = `
       <p class="lp-budget-template-lead">적용할 템플릿을 고르세요.</p>
-      <p class="lp-budget-template-notice" role="note">적용 시 기존 일정은 사라집니다.</p>
       <div data-legacy="time-task-log-field">
         <span data-legacy="time-task-log-section-label">템플릿 목록</span>
         <ul class="lp-budget-template-list"></ul>
       </div>
     `;
-    const ul = body.querySelector(".lp-budget-template-list");
+    listHost.appendChild(wrap);
+    const ul = wrap.querySelector(".lp-budget-template-list");
+
+    const noneLi = document.createElement("li");
+    noneLi.className =
+      "lp-budget-template-list-item" +
+      (selectedId === BUDGET_TEMPLATE_NONE_ID
+        ? " lp-budget-template-list-item--selected"
+        : "");
+    const nonePick = document.createElement("button");
+    nonePick.type = "button";
+    nonePick.className = "lp-budget-template-pick-name";
+    nonePick.textContent = "템플릿 없음";
+    nonePick.setAttribute("aria-label", "템플릿 없음 선택");
+    nonePick.addEventListener("click", () => {
+      selectedId = BUDGET_TEMPLATE_NONE_ID;
+      renderList();
+    });
+    noneLi.appendChild(nonePick);
+    ul.appendChild(noneLi);
+
     for (const t of list) {
       const li = document.createElement("li");
       li.className =
@@ -206,41 +339,24 @@ export function openApplyBudgetTemplateModal(options) {
         (selectedId === t.id ? " lp-budget-template-list-item--selected" : "");
       const pick = document.createElement("button");
       pick.type = "button";
-      pick.className = "lp-budget-template-pick-btn";
-      pick.innerHTML = `<span class="lp-budget-template-pick-name">${escapeHtml(t.name)}</span><span class="lp-budget-template-pick-meta">${t.blocks.length}건</span>`;
+      pick.className = "lp-budget-template-pick-name";
+      pick.textContent = t.name;
+      pick.title = "타임박스 미리보기";
+      pick.setAttribute("aria-label", `${t.name} 미리보기 및 선택`);
       pick.addEventListener("click", () => {
         selectedId = t.id;
         renderList();
-      });
-      const del = document.createElement("button");
-      del.type = "button";
-      del.className = "lp-budget-template-del-btn";
-      del.setAttribute("aria-label", "템플릿 삭제");
-      del.textContent = "×";
-      del.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        const ok = await showConfirmModal({
-          title: "템플릿 삭제",
-          message: `「${t.name}」 템플릿을 삭제할까요?`,
-          confirmText: "삭제",
-          confirmDanger: true,
+        openBudgetTemplatePreviewModal(t, {
+          onDeleted: () => {
+            if (selectedId === t.id) selectedId = "";
+            renderList();
+          },
         });
-        if (!ok) return;
-        removeBudgetScheduleTemplate(t.id);
-        try {
-          await deleteBudgetScheduleTemplateOnSupabase(t.id);
-        } catch (_) {}
-        if (selectedId === t.id) selectedId = "";
-        renderList();
-        showToast("템플릿을 삭제했습니다.");
       });
       li.appendChild(pick);
-      li.appendChild(del);
       ul.appendChild(li);
     }
   };
-
-  body.innerHTML = '<p class="lp-budget-template-loading">불러오는 중…</p>';
   void ensureBudgetTemplatesLoaded().then(() => {
     renderList();
   });
@@ -253,6 +369,22 @@ export function openApplyBudgetTemplateModal(options) {
         return;
       }
       confirmBtn.disabled = true;
+      if (selectedId === BUDGET_TEMPLATE_NONE_ID) {
+        const r = await clearBudgetDayPlanFromDateKey(dk);
+        confirmBtn.disabled = false;
+        if (!r.ok) {
+          showToast(r.error || "비우지 못했습니다.");
+          if (r.empty) {
+            close();
+            onApplied?.();
+          }
+          return;
+        }
+        showToast(`이 날짜 예상 일정 ${r.cleared}건을 비웠습니다.`);
+        close();
+        onApplied?.();
+        return;
+      }
       const r = await applyBudgetTemplateToDateKey(dk, selectedId, "replace");
       confirmBtn.disabled = false;
       if (!r.ok) {

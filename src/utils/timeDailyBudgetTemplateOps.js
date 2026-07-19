@@ -79,6 +79,27 @@ export function extractBudgetBlocksFromDateKey(dateKey) {
   return blocks;
 }
 
+/** 템플릿 블록 → 캘린더 1일 타임박스(10분 격자) span */
+export function budgetTemplateBlocksToCalendarSpans(blocks) {
+  return (blocks || [])
+    .map((b) => {
+      const startMin = minutesFromHhMm(b.startHhMm);
+      const endMin = minutesFromHhMm(b.endHhMm);
+      if (!Number.isFinite(startMin) || !Number.isFinite(endMin) || endMin <= startMin) {
+        return null;
+      }
+      return {
+        startMin,
+        endMin,
+        taskName: String(b.taskName || "").trim(),
+        scheduleDetail: String(b.detail || "").trim(),
+        startDisplay: String(b.startHhMm || "").trim(),
+        endDisplay: String(b.endHhMm || "").trim(),
+      };
+    })
+    .filter(Boolean);
+}
+
 /**
  * @param {string} dateKey
  * @param {string} name
@@ -130,6 +151,35 @@ export async function applyBudgetTemplateToDateKey(dateKey, templateId, mode) {
     return { ok: false, error: "일정을 적용하지 못했습니다." };
   }
   return { ok: true, applied: tpl.blocks.length - fail, failed: fail };
+}
+
+/**
+ * 해당 날짜 예상 일정(시간 블록)만 전부 비움 — 템플릿 목록은 유지
+ * @param {string} dateKey
+ */
+export async function clearBudgetDayPlanFromDateKey(dateKey) {
+  const dk = normalizeDateKey(dateKey);
+  if (!dk) return { ok: false, error: "날짜가 올바르지 않습니다." };
+  const blocks = extractBudgetBlocksFromDateKey(dk);
+  if (!blocks.length) {
+    return {
+      ok: false,
+      empty: true,
+      error: "이 날짜에 지울 예상 일정이 없습니다.",
+    };
+  }
+  const cleared = clearBudgetScheduleBlocksForDate(dk);
+  if (!cleared) {
+    return {
+      ok: false,
+      empty: true,
+      error: "이 날짜에 지울 예상 일정이 없습니다.",
+    };
+  }
+  try {
+    await syncTimeDailyBudgetDateToSupabase(dk);
+  } catch (_) {}
+  return { ok: true, cleared: blocks.length };
 }
 
 export async function ensureBudgetTemplatesLoaded() {

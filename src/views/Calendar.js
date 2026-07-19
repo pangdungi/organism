@@ -100,6 +100,7 @@ import {
   flushAllPendingTimeDailyBudgetSync,
   pullTimeDailyBudgetForDateRange,
 } from "../utils/timeDailyBudgetSupabase.js";
+import { pullTaskListForCalendar1DayEnter } from "../utils/kpiTabCloudRefresh.js";
 import { openCalendarExpectedScheduleModal } from "../utils/calendarExpectedScheduleModal.js";
 import { lpRefreshAllVisibleCalendarLayoutsFromLocalData } from "../utils/lpCalendarLocalRefresh.js";
 import {
@@ -152,6 +153,11 @@ function persistCalendarMainViewIfValid(view) {
   try {
     localStorage.setItem(CALENDAR_MAIN_VIEW_STORAGE_KEY, view);
   } catch (_) {}
+}
+
+/** 일간(예상 일정) 뷰 — 과제목록·KPI 과제 pull (첫 진입 full, 이후 stale) */
+async function pullCalendar1DayExpectedTaskListFromCloud() {
+  await pullTaskListForCalendar1DayEnter();
 }
 
 /** 네비 조작 시 서브 레이아웃 안에서 동일 셀렉터로 요소를 찾기 위한 보조(구 lifted 클러스터 흔적 포함) */
@@ -6479,6 +6485,16 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
               ]);
             }
           } catch (_) {}
+        } else if (subViewId === "1day") {
+          try {
+            const yEnd = timeLedgerLocalTodayYmd();
+            const yStart = timeLedgerLocalYesterdayYmd();
+            await Promise.all([
+              pullTimeLedgerEntriesForDateRange(yStart, yEnd),
+              pullTimeDailyBudgetForDateRange(yStart, yEnd),
+              pullCalendar1DayExpectedTaskListFromCloud(),
+            ]);
+          } catch (_) {}
         }
         if (gen !== _nestedSubViewGen) return;
         const layoutAfterPrefetch = contentArea.querySelector(
@@ -6522,6 +6538,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
           await Promise.all([
             pullTimeLedgerEntriesForDateRange(yStart, yEnd),
             pullTimeDailyBudgetForDateRange(yStart, yEnd),
+            pullCalendar1DayExpectedTaskListFromCloud(),
           ]);
         } catch (_) {}
       } else if (subViewId === "1week") {

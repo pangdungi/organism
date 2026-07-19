@@ -658,8 +658,10 @@
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1;
+  min-width: 0;
   overflow: hidden;
-  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
 }
 
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--span-absorbed {
@@ -678,10 +680,14 @@
 
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell-label {
   display: block;
+  flex: 1 1 auto;
   width: 100%;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  word-break: keep-all;
+  overflow-wrap: normal;
   pointer-events: none;
   -webkit-user-select: none;
   user-select: none;

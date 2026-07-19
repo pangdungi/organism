@@ -38,7 +38,12 @@ import { syncSleepHealthGoalLogsFromTimeLedger } from "./healthSleepGoalTimeLedg
 import { patchKpiLinkedTasksFromKpiMaps } from "./timeTaskOptionsModel.js";
 import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
 import { probeKpiDomainServerStale, rememberKpiDomainServerWatermarkMs } from "./kpiMapServerWatermark.js";
-import { pullTimeLedgerTasksIfStaleForModal, pullTimeLedgerTasksFromSupabase } from "./timeLedgerTasksSupabase.js";
+import {
+  isTaskListFirstPullNeeded,
+  pullTimeLedgerTasksForTabEnter,
+  pullTimeLedgerTasksIfStaleForModal,
+  pullTimeLedgerTasksFromSupabase,
+} from "./timeLedgerTasksSupabase.js";
 import { ensureAllKpiTimeTasksFromStorage } from "./kpiTimeTaskSync.js";
 import { resolveKpiDomainForKpiId } from "./kpiTodoSync.js";
 
@@ -393,6 +398,32 @@ export async function pullStaleKpiDomainsForTaskLogList() {
     } catch (_) {}
   }
   return kpiChanged;
+}
+
+/**
+ * 캘린더 일간(예상 일정) — 첫 진입 full pull, 이후 서버 변경(stale)일 때만.
+ * 시간기록 탭 과제목록과 같은 기준을 씁니다.
+ */
+export async function pullTaskListForCalendar1DayEnter() {
+  const needFull = await isTaskListFirstPullNeeded();
+  try {
+    await pullTimeLedgerTasksForTabEnter();
+  } catch (_) {}
+  try {
+    if (needFull) {
+      await pullKpiDomainsForTaskLogListForce();
+    } else {
+      await pullStaleKpiDomainsForTaskLogList();
+    }
+  } catch (_) {}
+  if (!needFull) {
+    try {
+      ensureAllKpiTimeTasksFromStorage();
+    } catch (_) {}
+    try {
+      patchKpiLinkedTasksFromKpiMaps();
+    } catch (_) {}
+  }
 }
 
 /** 홈 3분할 boot·과제 모달 — KPI 맵을 stale 무시하고 받아 과제 picker 필터에 필요 */
