@@ -543,31 +543,37 @@
     }
 
     .lp-desktop-dashboard-col--planner .calendar-monthly-weekday {
-      font-size: 0.625rem;
+      font-size: var(--cal-font-weekday, 0.625rem);
     }
 
     .lp-desktop-dashboard-col--planner .calendar-monthly-day-num {
-      font-size: 0.8125rem;
+      font-size: var(--cal-font-day-num, 0.8125rem);
     }
 
     .lp-desktop-dashboard-col--planner .calendar-monthly-day-entries,
     .lp-desktop-dashboard-col--planner .calendar-monthly-span-bar {
-      font-size: 0.6875rem;
+      font-size: 0.5625rem;
+    }
+
+    .lp-desktop-dashboard-col--planner
+      .calendar-monthly-span-bar--todo
+      .calendar-monthly-span-bar-text {
+      font-size: inherit;
     }
 
     .lp-desktop-dashboard-col--planner .calendar-1week-flow-card {
-      font-size: 0.6875rem;
+      font-size: var(--cal-font-1week-card, 0.6875rem);
       padding: 0.3rem 0.34rem 0.28rem;
     }
 
     .lp-desktop-dashboard-col--planner .calendar-1week-flow-card-title {
-      font-size: 0.6875rem;
+      font-size: var(--cal-font-1week-title, 0.6875rem);
     }
 
     .lp-desktop-dashboard-col--planner .calendar-1week-flow-card-meta,
     .lp-desktop-dashboard-col--planner .calendar-1week-flow-card-badge,
     .lp-desktop-dashboard-col--planner .calendar-1week-flow-card-progress {
-      font-size: 0.5625rem;
+      font-size: var(--cal-font-1week-meta, 0.625rem);
     }
   }
 

@@ -30,30 +30,4 @@
     max-width: 46rem;
     margin-inline: auto;
   }
-
-  .calendar-monthly-top-bar-date,
-  .calendar-nav-date {
-    font-size: 1.0625rem;
-  }
-
-  .calendar-monthly-weekday {
-    font-size: 0.75rem;
-  }
-
-  .calendar-monthly-day-num {
-    font-size: 0.9375rem;
-  }
-
-  .calendar-monthly-day-entries,
-  .calendar-monthly-span-bar {
-    font-size: 0.8125rem;
-  }
-
-  .calendar-1week-flow-card {
-    font-size: 0.75rem;
-  }
-
-  .calendar-1week-flow-card-title {
-    font-size: 0.8125rem;
-  }
 }
