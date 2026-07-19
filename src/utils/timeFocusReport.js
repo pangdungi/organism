@@ -60,14 +60,6 @@ function buildRecipeOneLiner(tags, highFocusSessionCount) {
   return `4~5점 ${highFocusSessionCount}건 중 ${parts.join(" · ")}`;
 }
 
-function buildPeakHourLine(peakHours) {
-  if (!peakHours.length) return "";
-  const pad = (n) => String(n).padStart(2, "0");
-  const labels = peakHours.map((h) => `${pad(h.hour)}시`);
-  if (labels.length === 1) return `${labels[0]}에 집중이 가장 잘 됩니다.`;
-  return `${labels[0]}~${labels[labels.length - 1]}에 집중이 가장 잘 됩니다.`;
-}
-
 function buildDisruptorOneLiner(ranking, sessionCount, totalPicks) {
   if (!sessionCount) {
     return "1~2점 세션이 쌓이면 피해야 할 방해 요소 패턴이 보입니다.";
@@ -200,10 +192,6 @@ export function buildFocusReportSnapshot(rows) {
     count: b.count,
     minutes: b.minutes,
   }));
-  const peakHours = [...hourGrid]
-    .filter((h) => h.count > 0)
-    .sort((a, b) => (b.avg ?? 0) - (a.avg ?? 0))
-    .slice(0, 3);
 
   const durations = productiveRated.map((r) => ({
     mins: rowMinutes(r) || 15,
@@ -247,11 +235,9 @@ export function buildFocusReportSnapshot(rows) {
     highFocusSessionCount,
     recipeTags,
     recipeOneLiner: buildRecipeOneLiner(recipeTags, highFocusSessionCount),
-    peakHourLine: buildPeakHourLine(peakHours),
     flowDisruptors,
     disruptorAnalysis,
     hourGrid,
-    peakHours,
     duration: {
       avgMins,
       avgHighFocusMins,

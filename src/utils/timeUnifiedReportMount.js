@@ -460,9 +460,8 @@ function createRatingChartLegend(items) {
   return leg;
 }
 
-function render24HourRatingChart(hourGrid, peakHours, opts = {}) {
+function render24HourRatingChart(hourGrid, opts = {}) {
   const returnMode = opts.mode === "return";
-  const peakSet = new Set((peakHours || []).map((h) => h.hour));
   const wrap = document.createElement("div");
   wrap.className = "lp-tr2-rating-hour-chart";
   const cols = document.createElement("div");
@@ -479,9 +478,6 @@ function render24HourRatingChart(hourGrid, peakHours, opts = {}) {
     const cell = document.createElement("div");
     cell.className = "lp-tr2-rating-hour-cell";
     const hasData = h.count > 0 && (returnMode ? h.avgMult != null : h.avg != null);
-    if (hasData && peakSet.has(h.hour)) {
-      cell.classList.add("lp-tr2-rating-hour-cell--peak");
-    }
     const bar = document.createElement("div");
     bar.className = "lp-tr2-rating-hour-bar";
     if (hasData) {
@@ -529,13 +525,11 @@ function render24HourRatingChart(hourGrid, peakHours, opts = {}) {
             { swatch: RATING_REPORT_COLOR_MID, label: "보통" },
             { swatch: RATING_REPORT_COLOR_LOW, label: "수익률 낮음" },
             { swatch: RATING_REPORT_COLOR_EMPTY, label: "기록 없음" },
-            { swatch: "is-peak-ring", label: "피크 시간" },
           ]
         : [
             { swatch: RATING_REPORT_COLOR, label: "만족 높음" },
             { swatch: RATING_REPORT_COLOR_MID, label: "보통" },
             { swatch: RATING_REPORT_COLOR_EMPTY, label: "기록 없음" },
-            { swatch: "is-peak-ring", label: "피크 시간" },
           ],
     ),
   );
@@ -712,15 +706,6 @@ function buildTimeRatingReportSnapshot(rows) {
   }));
   const hourScores = hourGrid.filter((h) => h.count > 0);
 
-  const hourScoresByMult = [...hourScores].sort(
-    (a, b) => (b.avgMult ?? 0) - (a.avgMult ?? 0),
-  );
-  const peakHours = hourScoresByMult.slice(0, 3);
-  const lowHours = [...hourScoresByMult]
-    .reverse()
-    .slice(0, 3)
-    .filter((h) => (h.avgMult ?? 0) < overallWeightedAvgMult);
-
   const wdBuckets = Array.from({ length: 7 }, () => ({
     weighted: 0,
     weightedMult: 0,
@@ -816,8 +801,6 @@ function buildTimeRatingReportSnapshot(rows) {
     overallWeightedAvgMult,
     hourGrid,
     hourScores,
-    peakHours,
-    lowHours,
     weekdayScores,
     weekdayGrid,
     taskScores,
@@ -829,12 +812,6 @@ function buildTimeRatingReportSnapshot(rows) {
 
 function buildRatingInsightText(snap) {
   const parts = [];
-  if (snap.peakHours.length) {
-    const labels = snap.peakHours
-      .map((h) => formatHourLabel(h.hour))
-      .join(" · ");
-    parts.push(`수익률이 높은 시간 ${labels}`);
-  }
   const wdSorted = [...snap.weekdayScores].sort(
     (a, b) => (b.avgMult ?? 0) - (a.avgMult ?? 0),
   );
@@ -911,22 +888,11 @@ function mountTimeRatingReportSection(scrollWrap, _range, rows) {
   if (snap.hourGrid.some((h) => h.count > 0)) {
     const block = createRatingBlock(
       "24시간 수익률",
-      "시작 시각 기준 · 막대 높이=수익률(−50%~+100%) · 주황 테두리=피크",
+      "시작 시각 기준 · 막대 높이=수익률(−50%~+100%)",
     );
     block.appendChild(
-      render24HourRatingChart(snap.hourGrid, snap.peakHours, { mode: "return" }),
+      render24HourRatingChart(snap.hourGrid, { mode: "return" }),
     );
-    if (snap.peakHours.length) {
-      const peakNote = document.createElement("p");
-      peakNote.className = "lp-tr2-rating-peak-note";
-      peakNote.textContent = `피크: ${snap.peakHours
-        .map(
-          (h) =>
-            `${formatHourLabel(h.hour)} (${formatReturnPercentAvg(h.avgMult)})`,
-        )
-        .join(" · ")}`;
-      block.appendChild(peakNote);
-    }
     sec.appendChild(block);
   }
 
@@ -3076,17 +3042,9 @@ function mountFocusReportSection(scrollWrap, _range, rows) {
   if (snap.hourGrid.some((h) => h.count > 0)) {
     const hourBlock = createRatingBlock(
       "시간대별 집중",
-      "시작 시각 기준 평균 별점 · 주황=피크",
+      "시작 시각 기준 평균 별점",
     );
-    hourBlock.appendChild(
-      render24HourRatingChart(snap.hourGrid, snap.peakHours),
-    );
-    if (snap.peakHourLine) {
-      const peakNote = document.createElement("p");
-      peakNote.className = "lp-tr2-rating-peak-note";
-      peakNote.textContent = snap.peakHourLine;
-      hourBlock.appendChild(peakNote);
-    }
+    hourBlock.appendChild(render24HourRatingChart(snap.hourGrid));
     sec.appendChild(hourBlock);
   }
 
