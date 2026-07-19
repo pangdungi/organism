@@ -1453,8 +1453,8 @@
 }
 
 /**
- * 캘린더 격자 너비(7열)에 따라 타이포 스케일 — 최대 0.6875rem, 1.25rem 금지
- * 좁은 3분할·폰: ~0.5625rem / 넓은 전체 탭·아이패드 가로: ~0.6875rem
+ * 캘린더 격자 너비(7열)에 따라 타이포 스케일 — 기본(3분할·좁은 칸)
+ * 최대 0.6875rem — 1.25rem 금지
  */
 .calendar-monthly-grid,
 .calendar-1week-flow-hscroll-inner,
@@ -1471,7 +1471,21 @@
   --cal-font-1week-badge: clamp(0.5rem, calc(0.46rem + 100cqw / 300), 0.625rem);
 }
 
-/* 홈 3분할 planner — 같은 화면에서 전체 탭보다 한 단계 작게 */
+/* 일정 탭 전체 화면 — 데스크탑·아이패드 가로에서 할 일·일정 글자 더 크게 */
+.app-tab-panel > .calendar-view .calendar-monthly-grid,
+.app-tab-panel > .calendar-view .calendar-1week-flow-hscroll-inner,
+.app-tab-panel > .calendar-view .calendar-1week-google-body {
+  --cal-font-span-bar: clamp(0.625rem, calc(0.56rem + 100cqw / 105), 0.875rem);
+  --cal-font-span-todo: var(--cal-font-span-bar);
+  --cal-font-day-num: clamp(0.8125rem, calc(0.72rem + 100cqw / 145), 1.0625rem);
+  --cal-font-day-entries: clamp(0.6875rem, calc(0.62rem + 100cqw / 170), 0.875rem);
+  --cal-font-1week-card: clamp(0.6875rem, calc(0.62rem + 100cqw / 125), 0.9375rem);
+  --cal-font-1week-title: var(--cal-font-1week-card);
+  --cal-font-1week-meta: clamp(0.625rem, calc(0.56rem + 100cqw / 185), 0.8125rem);
+  --cal-font-1week-badge: clamp(0.5625rem, calc(0.5rem + 100cqw / 220), 0.6875rem);
+}
+
+/* 홈 3분할 planner — 전체 탭보다 한 단계 작게 */
 .lp-desktop-dashboard-col--planner .calendar-monthly-grid,
 .lp-desktop-dashboard-col--planner .calendar-1week-flow-hscroll-inner,
 .lp-desktop-dashboard-col--planner .calendar-1week-google-body {

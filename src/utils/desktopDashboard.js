@@ -119,7 +119,7 @@ function renderQuickKpiButtons(navigateToTab) {
 }
 
 /**
- * @param {{ navigateToTab: (tabId: string) => void, accountIconSrc: string }} opts
+ * @param {{ navigateToTab: (tabId: string) => void, accountIconSrc: string, onBrandRefresh?: () => void | Promise<void> }} opts
  */
 export function renderDesktopDashboard(opts) {
   const root = document.createElement("div");
@@ -132,8 +132,11 @@ export function renderDesktopDashboard(opts) {
   const topBar = document.createElement("div");
   topBar.className = "lp-desktop-dashboard-topbar";
 
-  const brand = document.createElement("div");
+  const brand = document.createElement("button");
+  brand.type = "button";
   brand.className = "lp-desktop-dashboard-brand";
+  brand.title = "새로고침";
+  brand.setAttribute("aria-label", "홈 새로고침");
 
   const brandImg = document.createElement("img");
   brandImg.className = "lp-desktop-dashboard-brand-img";
@@ -146,6 +149,10 @@ export function renderDesktopDashboard(opts) {
   brandTitle.textContent = "두들 플래너";
 
   brand.append(brandImg, brandTitle);
+  brand.addEventListener("click", (e) => {
+    e.preventDefault();
+    void opts.onBrandRefresh?.();
+  });
 
   const accountBtn = document.createElement("button");
   accountBtn.type = "button";

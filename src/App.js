@@ -515,6 +515,33 @@ export async function mountApp(container) {
     if (launcherAdminBtn) launcherAdminBtn.hidden = !show;
   }
 
+  /** 홈 로고 클릭 — 서버에서 최신 데이터 pull 후 3분할 embed 갱신 */
+  async function refreshHomeFromBrandClick() {
+    if (currentTabId !== "home") return;
+    try {
+      syncLpAppShellViewportHeight();
+    } catch (_) {}
+    if (isDesktopDashboardViewport()) {
+      try {
+        resetTimeLedgerSessionFilterToToday();
+      } catch (_) {}
+    }
+    try {
+      await pullDesktopDashboardData({ forceTaskList: true });
+    } catch (_) {}
+    if (currentTabId !== "home") return;
+    if (isDesktopDashboardViewport()) {
+      const root =
+        desktopDashboardEl?.isConnected && desktopDashboardEl
+          ? desktopDashboardEl
+          : main.querySelector(".lp-desktop-dashboard");
+      if (root?.isConnected) runDesktopDashboardSoftRefresh(root);
+    }
+    try {
+      await syncAdminMenuVisibility();
+    } catch (_) {}
+  }
+
   /** 홈(메뉴·3분할) 진입 — boot·탭 복귀·Realtime과 동일하게 pull 후 embed 갱신 */
   async function refreshHomeDesktopDashboardAfterEnter(opts = {}) {
     if (currentTabId !== "home") return;
@@ -997,6 +1024,7 @@ export async function mountApp(container) {
             desktopDashboardEl = renderDesktopDashboard({
               navigateToTab: openAppTabFromHome,
               accountIconSrc: HOME_MENU_ACCOUNT_ICON,
+              onBrandRefresh: () => refreshHomeFromBrandClick(),
             });
             mountNodes = [desktopDashboardEl];
           }
