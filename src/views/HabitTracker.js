@@ -3,7 +3,11 @@
  */
 
 import { setupKpiCategoryHeaderIcon } from "../utils/kpiCategoryHeaderIcon.js";
-import { createHabitTrackerPageGridElement, scheduleScrollHabitTrackerToToday } from "../utils/habitTrackerPageGrid.js";
+import {
+  createHabitTrackerPageGridElement,
+  scheduleScrollHabitTrackerToToday,
+  scrollHabitTrackerToToday,
+} from "../utils/habitTrackerPageGrid.js";
 import { pullHabitTrackerTabFromCloud } from "../utils/habitTrackerCloudRefresh.js";
 import { timeLedgerLocalTodayYmd } from "../utils/timeLedgerEntriesSupabase.js";
 
@@ -60,6 +64,7 @@ export function render(opts = {}) {
         year: viewYear,
         month: viewMonth,
         skipSync,
+        autoScrollToday: !dashboardEmbedMode,
         onMonthChange: async (next) => {
           viewYear = next.year;
           viewMonth = next.month;
@@ -78,19 +83,26 @@ export function render(opts = {}) {
     if (!skipSync) hasSyncedPaint = true;
   }
 
-  function focusTodayInEmbed() {
+  /** 3분할 — DOM 통째 교체 없이 오늘 칸으로만 스크롤 (깜빡임 방지) */
+  function scrollTodayInEmbed() {
     if (!dashboardEmbedMode || !el.isConnected) return;
-    if (softRefreshRaf) {
-      cancelAnimationFrame(softRefreshRaf);
-      softRefreshRaf = 0;
-    }
+    const todayYmd = timeLedgerLocalTodayYmd();
     const now = new Date();
-    viewYear = now.getFullYear();
-    viewMonth = now.getMonth() + 1;
-    syncViewMonthGlobal();
-    hasSyncedPaint = true;
-    paintGrid({ skipSync: false });
-    scheduleScrollHabitTrackerToToday(gridHost, timeLedgerLocalTodayYmd());
+    const ty = now.getFullYear();
+    const tm = now.getMonth() + 1;
+    const monthChanged = viewYear !== ty || viewMonth !== tm;
+    if (monthChanged) {
+      viewYear = ty;
+      viewMonth = tm;
+      syncViewMonthGlobal();
+      hasSyncedPaint = true;
+      paintGrid({ skipSync: false });
+      scheduleScrollHabitTrackerToToday(gridHost, todayYmd);
+      return;
+    }
+    if (!scrollHabitTrackerToToday(gridHost, todayYmd)) {
+      scheduleScrollHabitTrackerToToday(gridHost, todayYmd);
+    }
   }
 
   let softRefreshRaf = 0;
@@ -107,7 +119,7 @@ export function render(opts = {}) {
   if (dashboardEmbedMode && dashboardHost && dashboardEmbedKey) {
     dashboardHost._lpEmbedSoftRefresh = dashboardHost._lpEmbedSoftRefresh || {};
     dashboardHost._lpEmbedSoftRefresh[dashboardEmbedKey] = scheduleSoftRefresh;
-    dashboardHost._lpEmbedHabitFocusToday = focusTodayInEmbed;
+    dashboardHost._lpEmbedHabitScrollToday = scrollTodayInEmbed;
   } else {
     window.__lpHabitTrackerSoftRefresh = scheduleSoftRefresh;
   }

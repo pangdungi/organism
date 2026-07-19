@@ -241,7 +241,7 @@ export function renderDesktopDashboard(opts) {
     requestAnimationFrame(() => {
       runDesktopDashboardSoftRefresh(root, { skipEmbedKeys: ["habit"] });
       try {
-        root._lpEmbedHabitFocusToday?.();
+        root._lpEmbedHabitScrollToday?.();
       } catch (_) {}
     });
   });
@@ -250,7 +250,7 @@ export function renderDesktopDashboard(opts) {
     "abort",
     () => {
       root._lpEmbedSoftRefresh = {};
-      root._lpEmbedHabitFocusToday = null;
+      root._lpEmbedHabitScrollToday = null;
     },
     { once: true },
   );

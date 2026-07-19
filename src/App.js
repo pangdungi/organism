@@ -536,10 +536,12 @@ export async function mountApp(container) {
           ? desktopDashboardEl
           : main.querySelector(".lp-desktop-dashboard");
       if (root?.isConnected) {
-        runDesktopDashboardSoftRefresh(root, { skipEmbedKeys: ["habit"] });
-        try {
-          root._lpEmbedHabitFocusToday?.();
-        } catch (_) {}
+        runDesktopDashboardSoftRefresh(root);
+        requestAnimationFrame(() => {
+          try {
+            root._lpEmbedHabitScrollToday?.();
+          } catch (_) {}
+        });
       }
     }
     try {
@@ -575,7 +577,7 @@ export async function mountApp(container) {
     if (root?.isConnected) {
       runDesktopDashboardSoftRefresh(root, { skipEmbedKeys: ["habit"] });
       try {
-        root._lpEmbedHabitFocusToday?.();
+        root._lpEmbedHabitScrollToday?.();
       } catch (_) {}
     }
     try {

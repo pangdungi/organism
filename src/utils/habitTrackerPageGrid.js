@@ -18,6 +18,7 @@ import { timeLedgerLocalTodayYmd } from "./timeLedgerEntriesSupabase.js";
  *   todayYmd?: string,
  *   onMonthChange?: (next: { year: number, month: number }) => void | Promise<void>,
  *   skipSync?: boolean,
+ *   autoScrollToday?: boolean,
  * }} [opts]
  * @returns {HTMLDivElement}
  */
@@ -136,7 +137,8 @@ export function createHabitTrackerPageGridElement(opts = {}) {
   scroll.appendChild(table);
   wrap.appendChild(scroll);
 
-  if (isCurrentMonth) {
+  const autoScrollToday = opts.autoScrollToday !== false;
+  if (isCurrentMonth && autoScrollToday) {
     scheduleScrollHabitTrackerToToday(scroll, todayYmd);
   }
 
@@ -156,66 +158,55 @@ export function createHabitTrackerPageGridElement(opts = {}) {
   return wrap;
 }
 
-/** @param {HTMLElement | null | undefined} scrollOrHost @param {string} todayYmd */
-export function scheduleScrollHabitTrackerToToday(scrollOrHost, todayYmd) {
-  const ymd = normYmd(todayYmd);
-  if (!scrollOrHost || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return;
-  let attempts = 0;
-  const maxAttempts = 16;
-  const tick = () => {
-    attempts += 1;
-    const done = applyScrollHabitTrackerToToday(scrollOrHost, ymd);
-    if (!done && attempts < maxAttempts) {
-      requestAnimationFrame(tick);
-    }
-  };
-  requestAnimationFrame(tick);
-}
-
-/** @returns {boolean} true when scroll applied or nothing left to try */
-function applyScrollHabitTrackerToToday(scrollOrHost, todayYmd) {
+/** @param {HTMLElement | null | undefined} scrollOrHost @param {string} todayYmd @returns {boolean} */
+export function scrollHabitTrackerToToday(scrollOrHost, todayYmd) {
   const ymd = normYmd(todayYmd);
   const scroll = resolveHabitTrackerGridScrollEl(scrollOrHost);
-  if (!scroll || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return true;
+  if (!scroll || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return false;
 
   const todayHead = scroll.querySelector(
     `.habit-tracker-page-grid-th--day[data-ymd="${ymd}"]`,
   );
-  if (!(todayHead instanceof HTMLElement)) return true;
-
+  if (!(todayHead instanceof HTMLElement)) return false;
   if (scroll.clientWidth < 4) return false;
 
   const habitHead = scroll.querySelector(".habit-tracker-page-grid-th--habit");
   const stickyW =
-    habitHead instanceof HTMLElement
-      ? habitHead.getBoundingClientRect().width
-      : 0;
-
-  const scrollRect = scroll.getBoundingClientRect();
-  const headRect = todayHead.getBoundingClientRect();
-  const dateViewportLeft = scrollRect.left + stickyW + 2;
-  const dateViewportWidth = Math.max(
-    1,
-    scroll.clientWidth - stickyW - 4,
-  );
-  const headCenter = headRect.left + headRect.width / 2;
-  const targetCenter = dateViewportLeft + dateViewportWidth / 2;
-  const delta = headCenter - targetCenter;
-
-  if (Math.abs(delta) < 1) return true;
-
+    habitHead instanceof HTMLElement ? habitHead.offsetWidth : 0;
+  const dayW = todayHead.offsetWidth || 0;
+  const dayLeft = offsetLeftWithinScrollContent(todayHead, scroll);
+  const viewW = Math.max(1, scroll.clientWidth - stickyW - 4);
   const maxScroll = Math.max(0, scroll.scrollWidth - scroll.clientWidth);
-  scroll.scrollLeft = Math.min(
-    maxScroll,
-    Math.max(0, scroll.scrollLeft + delta),
-  );
+  const target =
+    dayLeft - stickyW - Math.max(0, (viewW - dayW) / 2);
+  scroll.scrollLeft = Math.min(maxScroll, Math.max(0, target));
+  return true;
+}
 
-  const headRectAfter = todayHead.getBoundingClientRect();
-  const scrollRectAfter = scroll.getBoundingClientRect();
-  const headCenterAfter = headRectAfter.left + headRectAfter.width / 2;
-  const targetCenterAfter =
-    scrollRectAfter.left + stickyW + 2 + dateViewportWidth / 2;
-  return Math.abs(headCenterAfter - targetCenterAfter) < 2;
+/** 레이아웃 확정 후 1~2회만 시도 (3분할 embed — 연속 rAF 스크롤로 깜빡임 방지) */
+export function scheduleScrollHabitTrackerToToday(scrollOrHost, todayYmd) {
+  const ymd = normYmd(todayYmd);
+  if (!scrollOrHost || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return;
+  let attempts = 0;
+  const tick = () => {
+    attempts += 1;
+    if (scrollHabitTrackerToToday(scrollOrHost, ymd)) return;
+    if (attempts < 2) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+function offsetLeftWithinScrollContent(el, scroll) {
+  let left = 0;
+  let node = el;
+  while (node && node !== scroll) {
+    left += node.offsetLeft;
+    node = node.offsetParent;
+  }
+  if (node === scroll) return left;
+  const scrollRect = scroll.getBoundingClientRect();
+  const elRect = el.getBoundingClientRect();
+  return elRect.left - scrollRect.left + scroll.scrollLeft;
 }
 
 function resolveHabitTrackerGridScrollEl(scrollOrHost) {
