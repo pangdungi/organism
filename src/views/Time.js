@@ -9635,7 +9635,7 @@ export function render(opts = {}) {
 
   function taskCompletionTodoListEmptyMessageForKpiId(kpiId) {
     return String(kpiId || "").trim() === DEFAULT_READING_KPI_ID
-      ? "등록된 독서 목록이 없습니다."
+      ? "등록된 읽을 예정이 없습니다."
       : "등록된 할 일이 없습니다.";
   }
 

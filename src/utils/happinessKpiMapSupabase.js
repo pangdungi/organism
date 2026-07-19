@@ -238,7 +238,23 @@ export function createDefaultReadingKpi() {
   });
 }
 
-export const DEFAULT_READING_KPI_TODO_LIST_LABEL = "독서 목록";
+export const DEFAULT_READING_KPI_TODO_LIST_LABEL = "읽을 예정";
+/** 독서하기 KPI — 기록 탭·모달 문구 */
+export const DEFAULT_READING_KPI_NOTES_TAB_LABEL = "위시리스트";
+export const DEFAULT_READING_KPI_NOTE_FIELD_LABEL = "분야";
+export const DEFAULT_READING_KPI_NOTE_BOOK_LABEL = "책 이름";
+
+export const READING_KPI_NOTE_MODAL_LABELS = {
+  titleAdd: "읽을 예정 추가",
+  titleEdit: "읽을 예정 수정",
+  tagLabel: DEFAULT_READING_KPI_NOTE_FIELD_LABEL,
+  tagPlaceholder: "분야 입력",
+  tagSuggestAria: "기존 분야",
+  tagRequiredError: "분야를 입력해 주세요.",
+  memoLabel: DEFAULT_READING_KPI_NOTE_BOOK_LABEL,
+  memoPlaceholder: "책 이름",
+  memoRequiredError: "책 이름을 입력해 주세요.",
+};
 
 export function isDefaultReadingHappinessKpiId(id) {
   return String(id ?? "") === DEFAULT_READING_KPI_ID;

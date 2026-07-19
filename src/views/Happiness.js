@@ -11,6 +11,9 @@ import {
   isProtectedDefaultHappinessKpiId,
   isDefaultReadingHappinessKpiId,
   DEFAULT_READING_KPI_TODO_LIST_LABEL,
+  DEFAULT_READING_KPI_NOTES_TAB_LABEL,
+  DEFAULT_READING_KPI_NOTE_FIELD_LABEL,
+  READING_KPI_NOTE_MODAL_LABELS,
 } from "../utils/happinessKpiMapSupabase.js";
 import { ensureHappinessKpiTimeTasksForData } from "../utils/healthKpiTimeTaskSync.js";
 import {
@@ -619,7 +622,7 @@ export function render() {
 
   function happinessKpiFooterAddLabel(tab, kpi) {
     const t = effectiveKpiHistoryBottomTab(tab, kpi);
-    if (t === KPI_BOTTOM_TAB_NOTES) return "기록 추가";
+    if (t === KPI_BOTTOM_TAB_NOTES) return "위시리스트 추가";
     if (t === KPI_BOTTOM_TAB_TODO) {
       return isDefaultReadingHappinessKpiId(kpi?.id)
         ? "독서 추가"
@@ -683,6 +686,7 @@ export function render() {
         kpiId,
         kpiName: k.name,
         existingTags: getLocalSideincomeKpiNoteTags(kpiId),
+        labels: READING_KPI_NOTE_MODAL_LABELS,
       });
       if (!result || result.action !== "save") return;
       const tagRes = result.tagId
@@ -1075,7 +1079,7 @@ export function render() {
       if (!groups.length) {
         const empty = document.createElement("p");
         empty.className = "dream-kpi-history-empty";
-        empty.textContent = "아직 기록이 없습니다.";
+        empty.textContent = "아직 위시리스트가 없습니다.";
         parentEl.appendChild(empty);
         return;
       }
@@ -1089,7 +1093,8 @@ export function render() {
         head.className = "dream-kpi-notes-group-head";
         const chip = document.createElement("span");
         chip.className = "dream-kpi-notes-tag-chip";
-        chip.textContent = String(tag.label || "").trim() || "태그";
+        chip.textContent =
+          String(tag.label || "").trim() || DEFAULT_READING_KPI_NOTE_FIELD_LABEL;
         head.appendChild(chip);
         group.appendChild(head);
 
@@ -1112,6 +1117,7 @@ export function render() {
               kpiId: kid,
               kpiName: kpiNameForModal,
               existingTags: getLocalSideincomeKpiNoteTags(kid),
+              labels: READING_KPI_NOTE_MODAL_LABELS,
               note: {
                 tagId: note.tagId,
                 tagLabel: String(tag.label || "").trim(),
@@ -1156,7 +1162,9 @@ export function render() {
       segBar.setAttribute("role", "tablist");
       segBar.setAttribute(
         "aria-label",
-        readingNotesUi ? "독서 목록·기록 전환" : "할 일·매일 할 일·로그 전환",
+        readingNotesUi
+          ? "읽을 예정·위시리스트 전환"
+          : "할 일·매일 할 일·로그 전환",
       );
     }
 
@@ -1182,7 +1190,7 @@ export function render() {
       btnSegNotes = document.createElement("button");
       btnSegNotes.type = "button";
       btnSegNotes.className = "dream-kpi-bottom-seg-btn";
-      btnSegNotes.textContent = "기록";
+      btnSegNotes.textContent = DEFAULT_READING_KPI_NOTES_TAB_LABEL;
       btnSegNotes.setAttribute("role", "tab");
 
       panelNotesSeg = document.createElement("div");
@@ -1325,7 +1333,7 @@ export function render() {
       const emptyTodo = document.createElement("p");
       emptyTodo.className = "dream-kpi-history-empty";
       emptyTodo.textContent = readingKpi
-        ? "등록된 독서 목록이 없습니다."
+        ? "등록된 읽을 예정이 없습니다."
         : "등록된 할 일이 없습니다.";
       panelTodoSeg.appendChild(emptyTodo);
     } else {

@@ -3,6 +3,32 @@ import { bindKpiTodoModalMobileKeyboard } from "./kpiTodoModalKeyboard.js";
 import { findKpiNoteTagByLabel } from "./sideincomeKpiNotesSupabase.js";
 
 /**
+ * @typedef {{
+ *   titleAdd?: string,
+ *   titleEdit?: string,
+ *   tagLabel?: string,
+ *   tagPlaceholder?: string,
+ *   tagSuggestAria?: string,
+ *   tagRequiredError?: string,
+ *   memoLabel?: string,
+ *   memoPlaceholder?: string,
+ *   memoRequiredError?: string,
+ * }} KpiNoteModalLabels
+ */
+
+const DEFAULT_KPI_NOTE_MODAL_LABELS = {
+  titleAdd: "기록 추가",
+  titleEdit: "기록 수정",
+  tagLabel: "태그",
+  tagPlaceholder: "태그 입력",
+  tagSuggestAria: "기존 태그",
+  tagRequiredError: "태그를 입력해 주세요.",
+  memoLabel: "메모",
+  memoPlaceholder: "아이디어·메모",
+  memoRequiredError: "메모를 입력해 주세요.",
+};
+
+/**
  * 시급상승 KPI 기록 — 추가·수정 모달 (태그 1개 + 자동완성)
  * @param {{
  *   mode?: "add" | "edit",
@@ -10,6 +36,7 @@ import { findKpiNoteTagByLabel } from "./sideincomeKpiNotesSupabase.js";
  *   kpiId?: string,
  *   existingTags?: { id?: string, label?: string }[],
  *   note?: { tagId?: string, tagLabel?: string, memo?: string },
+ *   labels?: KpiNoteModalLabels,
  * }} [opts]
  * @returns {Promise<null | { action: "save", tagId?: string, tagLabel: string, memo: string } | { action: "delete" }>}
  */
@@ -19,7 +46,8 @@ export function showSideincomeKpiNoteModal(opts = {}) {
   const kpiId = String(opts.kpiId || "").trim();
   const initialMemo = String(opts.note?.memo || "").trim();
   const existingTags = Array.isArray(opts.existingTags) ? opts.existingTags : [];
-  const title = mode === "edit" ? "기록 수정" : "기록 추가";
+  const labels = { ...DEFAULT_KPI_NOTE_MODAL_LABELS, ...(opts.labels || {}) };
+  const title = mode === "edit" ? labels.titleEdit : labels.titleAdd;
   const submitLabel = mode === "edit" ? "저장" : "추가";
 
   const initialTagId = String(opts.note?.tagId || "").trim();
@@ -58,15 +86,15 @@ export function showSideincomeKpiNoteModal(opts = {}) {
               : ""
           }
           <div class="dream-kpi-field dream-kpi-note-tags-field">
-            <label for="dream-kpi-note-tag-input">태그</label>
+            <label for="dream-kpi-note-tag-input">${escapeHtml(labels.tagLabel)}</label>
             <div class="dream-kpi-note-tag-input-wrap">
-              <input id="dream-kpi-note-tag-input" type="text" name="tag" placeholder="태그 입력" autocomplete="off" value="${escapeHtml(initialTagLabel)}" />
-              <div class="dream-kpi-note-tag-suggest" data-lp-kpi-note-tag-suggest hidden role="listbox" aria-label="기존 태그"></div>
+              <input id="dream-kpi-note-tag-input" type="text" name="tag" placeholder="${escapeHtml(labels.tagPlaceholder)}" autocomplete="off" value="${escapeHtml(initialTagLabel)}" />
+              <div class="dream-kpi-note-tag-suggest" data-lp-kpi-note-tag-suggest hidden role="listbox" aria-label="${escapeHtml(labels.tagSuggestAria)}"></div>
             </div>
           </div>
           <div class="dream-kpi-field dream-kpi-note-memo-field">
-            <label for="dream-kpi-note-memo">메모</label>
-            <textarea id="dream-kpi-note-memo" name="memo" rows="4" placeholder="아이디어·메모">${escapeHtml(initialMemo)}</textarea>
+            <label for="dream-kpi-note-memo">${escapeHtml(labels.memoLabel)}</label>
+            <textarea id="dream-kpi-note-memo" name="memo" rows="4" placeholder="${escapeHtml(labels.memoPlaceholder)}">${escapeHtml(initialMemo)}</textarea>
           </div>
           </div>
           <div data-legacy="time-task-log-footer" class="dream-kpi-note-modal-footer">
@@ -258,13 +286,13 @@ export function showSideincomeKpiNoteModal(opts = {}) {
       const tagLabel = String(tagInput?.value || "").trim();
       const memo = String(memoInput?.value || "").trim();
       if (!tagLabel) {
-        showFieldError(tagField, "태그를 입력해 주세요.");
+        showFieldError(tagField, labels.tagRequiredError);
         allowModalInputFocus(tagInput);
         tagInput?.focus();
         return;
       }
       if (!memo) {
-        showFieldError(memoField, "메모를 입력해 주세요.");
+        showFieldError(memoField, labels.memoRequiredError);
         allowModalInputFocus(memoInput);
         memoInput?.focus();
         return;
