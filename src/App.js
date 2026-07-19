@@ -515,6 +515,37 @@ export async function mountApp(container) {
     if (launcherAdminBtn) launcherAdminBtn.hidden = !show;
   }
 
+  /** 홈(메뉴·3분할) 진입 — boot·탭 복귀·Realtime과 동일하게 pull 후 embed 갱신 */
+  async function refreshHomeDesktopDashboardAfterEnter(opts = {}) {
+    if (currentTabId !== "home") return;
+    try {
+      syncLpAppShellViewportHeight();
+    } catch (_) {}
+    if (!isDesktopDashboardViewport()) {
+      try {
+        await syncAdminMenuVisibility();
+      } catch (_) {}
+      return;
+    }
+    try {
+      resetTimeLedgerSessionFilterToToday();
+    } catch (_) {}
+    try {
+      await pullDesktopDashboardData({
+        forceTaskList: !!opts.forceTaskList,
+      });
+    } catch (_) {}
+    if (currentTabId !== "home") return;
+    const root =
+      desktopDashboardEl?.isConnected && desktopDashboardEl
+        ? desktopDashboardEl
+        : main.querySelector(".lp-desktop-dashboard");
+    if (root?.isConnected) runDesktopDashboardSoftRefresh(root);
+    try {
+      await syncAdminMenuVisibility();
+    } catch (_) {}
+  }
+
   const main = document.createElement("main");
   main.className = "app-main";
 
@@ -652,7 +683,7 @@ export async function mountApp(container) {
               (desktopDashboardEl && firstChild === desktopDashboardEl))
           ) {
             syncAppFooterVisibility();
-            void syncAdminMenuVisibility();
+            void refreshHomeDesktopDashboardAfterEnter();
             return;
           }
         }
@@ -703,9 +734,7 @@ export async function mountApp(container) {
             window.__lpIdeaSoftRefresh?.();
           } catch (_) {}
         } else if (targetTabId === "home") {
-          try {
-            await syncAdminMenuVisibility();
-          } catch (_) {}
+          await refreshHomeDesktopDashboardAfterEnter();
         } else if (
           targetTabId === "health" ||
           targetTabId === "happiness" ||
@@ -1114,19 +1143,8 @@ export async function mountApp(container) {
 
       if (bootTabId === "home") {
         try {
-          await syncAdminMenuVisibility();
+          await refreshHomeDesktopDashboardAfterEnter({ forceTaskList: true });
         } catch (_) {}
-        if (isDesktopDashboardViewport()) {
-          try {
-            resetTimeLedgerSessionFilterToToday();
-          } catch (_) {}
-          try {
-            await pullDesktopDashboardData({ forceTaskList: true });
-            runDesktopDashboardSoftRefresh(
-              main.querySelector(".lp-desktop-dashboard"),
-            );
-          } catch (_) {}
-        }
         return;
       }
 
