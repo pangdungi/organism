@@ -552,13 +552,20 @@
 
     .lp-desktop-dashboard-col--planner .calendar-monthly-day-entries,
     .lp-desktop-dashboard-col--planner .calendar-monthly-span-bar {
-      font-size: 0.5625rem;
+      font-size: var(--cal-font-span-bar, 0.5625rem);
     }
 
     .lp-desktop-dashboard-col--planner
       .calendar-monthly-span-bar--todo
+      .calendar-monthly-span-bar-text,
+    .lp-desktop-dashboard-col--planner
+      .calendar-monthly-span-bar--range
+      .calendar-monthly-span-bar-text,
+    .lp-desktop-dashboard-col--planner
+      .calendar-monthly-span-bar--schedule-strip
       .calendar-monthly-span-bar-text {
       font-size: inherit;
+      line-height: inherit;
     }
 
     .lp-desktop-dashboard-col--planner .calendar-1week-flow-card {

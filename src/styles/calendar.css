@@ -13,8 +13,8 @@
   --cal-font-weekday: 0.625rem;
   --cal-font-day-num: 0.8125rem;
   --cal-font-day-entries: 0.6875rem;
-  --cal-font-span-bar: 0.5625rem;
-  --cal-font-span-todo: 0.5625rem;
+  --cal-font-span-bar: 0.625rem;
+  --cal-font-span-todo: 0.625rem;
   --cal-font-todo-card: 1.125rem;
   --cal-font-1day-title: 0.8125rem;
   --cal-font-1day-time: 0.75rem;
@@ -764,7 +764,7 @@
   min-height: 1.1rem;
   margin: 0;
   padding: 0.12rem 0.32rem;
-  font-size: 0.5625rem;
+  font-size: 0.625rem;
   font-weight: 600;
   line-height: 1.25;
   border-radius: 3px;
@@ -1452,6 +1452,35 @@
   visibility: visible;
 }
 
+/**
+ * 캘린더 격자 너비(7열)에 따라 타이포 스케일 — 최대 0.6875rem, 1.25rem 금지
+ * 좁은 3분할·폰: ~0.5625rem / 넓은 전체 탭·아이패드 가로: ~0.6875rem
+ */
+.calendar-monthly-grid,
+.calendar-1week-flow-hscroll-inner,
+.calendar-1week-google-body {
+  container-type: inline-size;
+  container-name: lp-cal-grid;
+  --cal-font-span-bar: clamp(0.5625rem, calc(0.5rem + 100cqw / 160), 0.6875rem);
+  --cal-font-span-todo: var(--cal-font-span-bar);
+  --cal-font-day-num: clamp(0.75rem, calc(0.68rem + 100cqw / 200), 0.9375rem);
+  --cal-font-day-entries: clamp(0.625rem, calc(0.56rem + 100cqw / 240), 0.75rem);
+  --cal-font-1week-card: clamp(0.625rem, calc(0.56rem + 100cqw / 220), 0.8125rem);
+  --cal-font-1week-title: var(--cal-font-1week-card);
+  --cal-font-1week-meta: clamp(0.5625rem, calc(0.5rem + 100cqw / 260), 0.6875rem);
+  --cal-font-1week-badge: clamp(0.5rem, calc(0.46rem + 100cqw / 300), 0.625rem);
+}
+
+/* 홈 3분할 planner — 같은 화면에서 전체 탭보다 한 단계 작게 */
+.lp-desktop-dashboard-col--planner .calendar-monthly-grid,
+.lp-desktop-dashboard-col--planner .calendar-1week-flow-hscroll-inner,
+.lp-desktop-dashboard-col--planner .calendar-1week-google-body {
+  --cal-font-span-bar: clamp(0.5rem, calc(0.46rem + 100cqw / 220), 0.59375rem);
+  --cal-font-span-todo: var(--cal-font-span-bar);
+  --cal-font-day-num: clamp(0.6875rem, calc(0.62rem + 100cqw / 280), 0.8125rem);
+  --cal-font-day-entries: clamp(0.5625rem, calc(0.5rem + 100cqw / 300), 0.625rem);
+}
+
 /* 월별 뷰만: 그리드 카드 전체의 아래 외곽 보더 제거(연간 등은 유지) */
 .calendar-monthly-layout.calendar-subview-monthly
   > .calendar-monthly-main
@@ -1753,7 +1782,7 @@
   display: flex;
   align-items: flex-start;
   border-radius: 4px;
-  font-size: 0.5625rem;
+  font-size: var(--cal-font-span-bar, 0.625rem);
   font-weight: 600;
   line-height: 1.2;
   padding: 0.08rem 0.2rem;
@@ -1801,10 +1830,18 @@
   border: none;
 }
 
-/* 월간 격자 — 할 일·일정 막대 동일 작은 글자 */
-.calendar-monthly-span-bar--todo .calendar-monthly-span-bar-text {
+/* 월간 격자 — 할 일·일정 막대 동일 작은 글자 (예전 1.25rem 덮어쓰기 방지) */
+.calendar-monthly-layout .calendar-monthly-bars .calendar-monthly-span-bar {
+  font-family: var(--lp-app-font-family, system-ui, sans-serif);
+  font-synthesis: none;
+}
+
+.calendar-monthly-span-bar--todo .calendar-monthly-span-bar-text,
+.calendar-monthly-span-bar--range .calendar-monthly-span-bar-text,
+.calendar-monthly-span-bar--schedule-strip .calendar-monthly-span-bar-text {
   font-size: inherit;
   line-height: inherit;
+  font-family: inherit;
   font-weight: 600;
 }
 
@@ -2348,7 +2385,7 @@
     --cal-cell-pad: 0.3rem;
     --cal-weekday-pad-y: 0.38rem;
     --cal-nav-pad: 0.6rem;
-    --cal-font-span-todo: 0.5625rem;
+    --cal-font-span-todo: 0.625rem;
     --cal-font-todo-card: 1rem;
   }
 
@@ -2366,7 +2403,7 @@
   }
 
   .calendar-nav-year {
-    font-size: 0.5625rem;
+    font-size: 0.625rem;
     padding-bottom: 0.18em;
   }
 
@@ -2416,17 +2453,6 @@
     font-size: var(--cal-font-day-entries, 0.6875rem);
     line-height: 1.32;
     color: rgba(0, 0, 0, 0.62);
-  }
-
-  .calendar-monthly-span-bar {
-    font-size: 0.5625rem;
-    line-height: 1.2;
-    padding: 0.08rem 0.18rem;
-  }
-
-  .calendar-monthly-span-bar--todo .calendar-monthly-span-bar-text {
-    font-size: inherit;
-    line-height: inherit;
   }
 
   .calendar-1week-flow-stack {
