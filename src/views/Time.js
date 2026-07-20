@@ -183,7 +183,10 @@ import {
   restoreTimeReportScrollTop,
   TIME_REPORT_HORIZONTAL_SCROLL_SELECTOR,
 } from "../utils/timeReportScrollPreserve.js";
-import { expectedSpanDisplayTaskName } from "../utils/expectedScheduleDetail.js";
+import {
+  expectedSpanCardMemoLines,
+  expectedSpanDisplayTaskName,
+} from "../utils/expectedScheduleDetail.js";
 import {
   findNextExpectedBudgetBlockForRecording,
   nextExpectedBudgetBlockKey,
@@ -5063,6 +5066,12 @@ function createNextExpectedScheduleTimelineItem(block, handlers) {
   titleEl.className = "time-ledger-next-expected-title";
   titleEl.textContent = taskLabel;
 
+  const memoText = expectedSpanCardMemoLines({
+    taskName: block.taskName,
+    scheduleDetail: block.detail,
+    scheduleMemo: block.memo,
+  }).join("\n");
+
   const actions = document.createElement("div");
   actions.className = "time-ledger-next-expected-actions";
 
@@ -5091,6 +5100,12 @@ function createNextExpectedScheduleTimelineItem(block, handlers) {
 
   bodyCol.appendChild(badge);
   bodyCol.appendChild(titleEl);
+  if (memoText) {
+    const memoEl = document.createElement("div");
+    memoEl.className = "time-ledger-next-expected-memo";
+    memoEl.textContent = memoText;
+    bodyCol.appendChild(memoEl);
+  }
   bodyCol.appendChild(actions);
 
   card.appendChild(startEl);
