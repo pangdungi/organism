@@ -428,17 +428,7 @@ export async function pullTaskListForCalendar1DayEnter() {
   }
 }
 
-/** 3분할 과제 모달 — KPI·과제목록 항상 강제 pull (stale skip으로 기본과제만 남는 문제 방지) */
-export async function pullTaskListForDashboardEmbedOpen() {
-  try {
-    await pullKpiDomainsForTaskLogListForce();
-    await pullTimeLedgerTasksFromSupabase({ ignoreSkip: true });
-    ensureAllKpiTimeTasksFromStorage();
-    patchKpiLinkedTasksFromKpiMaps();
-  } catch (_) {}
-}
-
-/** 홈 3분할 boot·과제 모달 — KPI 맵을 stale 무시하고 받아 과제 picker 필터에 필요 */
+/** 홈 3분할 boot — KPI 맵을 stale 무시하고 받아 과제 picker 필터에 필요 */
 export async function pullKpiDomainsForTaskLogListForce() {
   await Promise.all(
     TASK_LOG_KPI_DOMAINS.map(async (domain) => {
@@ -487,12 +477,17 @@ export function scheduleTaskLogModalCloudSync(onApplied, opts = {}) {
     const kpiChanged = !!(await pullKpiMapsForTaskLogModalOpen({ kpiId }).catch(
       () => false,
     ));
+    /* 서버 pull이 로컬 KPI 연동 과제를 덮을 수 있어, 맵 기준으로 다시 채운 뒤 UI를 갱신 */
+    try {
+      ensureAllKpiTimeTasksFromStorage();
+    } catch (_) {}
+    try {
+      patchKpiLinkedTasksFromKpiMaps();
+    } catch (_) {}
     const anyChanged = tasksChanged || kpiChanged;
-    if (anyChanged) {
-      try {
-        onApplied?.({ tasksChanged, kpiChanged, anyChanged });
-      } catch (_) {}
-    }
+    try {
+      onApplied?.({ tasksChanged, kpiChanged, anyChanged });
+    } catch (_) {}
     return { tasksChanged, kpiChanged, anyChanged };
   });
 }

@@ -70,12 +70,10 @@ import {
 } from "../utils/timeTaskOptionsModel.js";
 import {
   primeTaskLogModalFromLocal,
-  pullTaskListForDashboardEmbedOpen as pullTaskListForDashboardEmbedOpenCore,
   scheduleTaskLogModalCloudSync,
 } from "../utils/kpiTabCloudRefresh.js";
 import {
   attachTimeLedgerTasksSaveListener,
-  syncTimeLedgerTaskListForModalOpen,
 } from "../utils/timeLedgerTasksSupabase.js";
 import {
   scheduleTimeDailyBudgetSyncPush,
@@ -9346,12 +9344,6 @@ export function render(opts = {}) {
     });
   }
 
-  /** 홈 3분할 embed — 첫 1회만 강제 pull, 이후 서버 변경(stale)일 때만 */
-  async function pullTaskListForDashboardEmbedOpen() {
-    if (!dashboardEmbedMode) return;
-    await pullTaskListForDashboardEmbedOpenCore();
-  }
-
   /** 과제 기록 모달: KPI에 연결된 과제만 (task id → kpiId) */
   function getKpiDailyRepeatInfoForTaskLog() {
     const kpiId = resolveTaskLogModalKpiId();
@@ -10082,7 +10074,11 @@ export function render(opts = {}) {
   }
 
   async function pullTimeLedgerTasksWhenSetupModalOpens() {
-    await syncTimeLedgerTaskListForModalOpen();
+    return scheduleTaskLogModalCloudSync(() => {
+      if (!el.isConnected || taskSetupModal.hidden) return;
+      renderSubcatButtons(activeSetupTab);
+      renderTaskSetupList();
+    });
   }
 
   /** @deprecated 모달은 scheduleTaskLogModalCloudSync 사용 */
@@ -10130,13 +10126,9 @@ export function render(opts = {}) {
   async function openTaskLogModal(addContext) {
     if (!el.isConnected) return;
     primeTaskLogModalFromLocal();
-    await pullTaskListForDashboardEmbedOpen();
     refreshTaskLogTaskPickerIfMounted();
     openTaskLogModalAfterPull(addContext);
-    afterTaskListSyncForTaskLogAddModal();
-    void runTaskLogModalCloudSync(
-      dashboardEmbedMode ? { skipTasks: true } : {},
-    );
+    await runTaskLogModalCloudSync();
   }
 
   function setTaskLogModalShellOpen(open) {
@@ -11567,8 +11559,6 @@ export function render(opts = {}) {
   taskSetupBtn?.addEventListener("click", () => {
     if (!el.isConnected) return;
     void (async () => {
-      await pullTaskListForDashboardEmbedOpen();
-      if (!el.isConnected) return;
       taskSetupModal.hidden = false;
       document.body.style.overflow = "hidden";
       activeSetupTab =
@@ -11579,32 +11569,27 @@ export function render(opts = {}) {
       taskSetupSearchQuery = "";
       if (taskSetupSearchInput) taskSetupSearchInput.value = "";
       taskSetupListRenderedSig = "";
-      taskSetupListPullPending = !dashboardEmbedMode;
+      taskSetupListPullPending = true;
       const pullGen = ++taskSetupListPullGen;
       const listSigBeforePull = getTaskSetupListRenderSig();
       syncTaskSetupListVisibility(activeSetupTab);
       renderSubcatButtons(activeSetupTab);
       renderTaskSetupList({ force: true });
-      if (dashboardEmbedMode) {
-        taskSetupListPullPending = false;
+      try {
+        await pullTimeLedgerTasksWhenSetupModalOpens();
+      } catch (_) {}
+      taskSetupListPullPending = false;
+      if (
+        !el.isConnected ||
+        taskSetupModal.hidden ||
+        pullGen !== taskSetupListPullGen
+      ) {
         return;
       }
-      void pullTimeLedgerTasksWhenSetupModalOpens()
-        .catch(() => {})
-        .finally(() => {
-          taskSetupListPullPending = false;
-          if (
-            !el.isConnected ||
-            taskSetupModal.hidden ||
-            pullGen !== taskSetupListPullGen
-          ) {
-            return;
-          }
-          if (getTaskSetupListRenderSig() !== listSigBeforePull) {
-            renderSubcatButtons(activeSetupTab);
-            renderTaskSetupList();
-          }
-        });
+      if (getTaskSetupListRenderSig() !== listSigBeforePull) {
+        renderSubcatButtons(activeSetupTab);
+        renderTaskSetupList();
+      }
     })();
   });
   function closeTaskSetupModal() {

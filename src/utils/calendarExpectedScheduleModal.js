@@ -15,7 +15,6 @@ import { buildTimeTaskLogPickerDropdown } from "./timeTaskLogPickerDropdown.js";
 import {
   primeTaskLogModalFromLocal,
   scheduleTaskLogModalCloudSync,
-  pullTaskListForDashboardEmbedOpen,
 } from "./kpiTabCloudRefresh.js";
 import {
   getServerLedgerTaskOptionsForTaskLog,
@@ -1433,21 +1432,13 @@ export function openCalendarExpectedScheduleModal(options) {
     finalizeExpectedModalTaskDropdown();
   };
 
-  if (dashboardEmbedMode) {
-    void (async () => {
-      primeTaskLogModalFromLocal();
-      await pullTaskListForDashboardEmbedOpen();
-      if (signal.aborted) return;
-      showExpectedModal();
-      void scheduleTaskLogModalCloudSync(applyExpectedModalAfterCloudSync, {
-        skipTasks: true,
-      });
-    })();
-  } else {
-    primeTaskLogModalFromLocal();
-    showExpectedModal();
-    void scheduleTaskLogModalCloudSync(applyExpectedModalAfterCloudSync);
-  }
+  primeTaskLogModalFromLocal();
+  showExpectedModal();
+  void (async () => {
+    try {
+      await scheduleTaskLogModalCloudSync(applyExpectedModalAfterCloudSync);
+    } catch (_) {}
+  })();
 }
 
 function taskLogResolveYmdForSyncInline(taskLogDateStart, taskLogStartInput, fallbackYmd) {

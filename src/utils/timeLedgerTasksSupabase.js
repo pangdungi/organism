@@ -23,6 +23,7 @@ import {
 } from "./timeLedgerSyncDebug.js";
 import { coalesceInFlightPull } from "./timeLedgerPullCoalesce.js";
 import { probeTimeLedgerTasksServerWatermarkMs } from "./kpiMapServerWatermark.js";
+import { getActiveKpiTaskKeepersById } from "./kpiMapLocalStorage.js";
 
 const TABLE = "time_ledger_tasks";
 
@@ -228,9 +229,19 @@ function bumpTasksPullSkipAfterLocalChange() {
   _tasksPullSkipUntil = Date.now() + TASKS_PULL_SKIP_AFTER_LOCAL_MS;
 }
 
-/** 로컬 미러가 비었으면 코드 기본 과제만 보이므로 — 워터마크와 관계없이 서버 pull */
+/** 로컬 미러가 비었거나 KPI 연동 과제가 비면 — 워터마크와 관계없이 서버 pull */
 function shouldForceTaskListPullFromServer() {
-  return readTaskOptionsMemRows().length === 0;
+  const rows = readTaskOptionsMemRows();
+  if (rows.length === 0) return true;
+  const keepers = getActiveKpiTaskKeepersById();
+  if (keepers.size === 0) return false;
+  const presentKpiIds = new Set(
+    rows.map((r) => String(r.kpiId || "").trim()).filter(Boolean),
+  );
+  for (const kid of keepers.keys()) {
+    if (!presentKpiIds.has(kid)) return true;
+  }
+  return false;
 }
 
 async function getSessionUserId() {

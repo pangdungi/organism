@@ -13,7 +13,6 @@ import { kpiSyncDebugLog } from "./kpiSyncDebug.js";
 import {
   getActiveKpiTaskKeepersById,
   getKpiSyncedTaskNames,
-  isActiveKpiId,
 } from "./kpiMapLocalStorage.js";
 import { isUuid, UUID_RE } from "./idUtils.js";
 import {
@@ -35,7 +34,10 @@ function filterStaleKpiOrphanTaskRows(rows) {
   return (rows || []).filter((o) => {
     const kid = String(o.kpiId || "").trim();
     const n = (o.name || "").trim();
-    if (kid) return activeKpiIds.has(kid);
+    if (kid) {
+      if (activeKpiIds.size === 0) return true;
+      return activeKpiIds.has(kid);
+    }
     if (n && activeKpiNames.has(n)) return false;
     return true;
   });
@@ -104,48 +106,31 @@ export function readTaskOptionsMemRows() {
   }));
 }
 
-/** KPI 맵의 현재 표시명·category 반영 + 삭제된 KPI 연동 과제 제거 */
+/** KPI 맵의 현재 표시명·category 반영 (삭제·서버 delete 없음 — 서버 과제 목록은 pull·사용자 삭제만) */
 export function patchKpiLinkedTasksFromKpiMaps() {
   if (!_ledgerTasksMem || !Array.isArray(_ledgerTasksMem)) return;
   if (_patchKpiLinkedFromMapsDepth > 4) return;
   _patchKpiLinkedFromMapsDepth++;
   try {
     const keepers = getActiveKpiTaskKeepersById();
+    if (keepers.size === 0) return;
     let changed = false;
-    const orphanKpiIds = new Set();
-    const next = [];
-    for (const o of _ledgerTasksMem) {
+    const next = _ledgerTasksMem.map((o) => {
       const kid = String(o.kpiId || "").trim();
-      if (kid && keepers.size > 0 && !keepers.has(kid)) {
-        changed = true;
-        orphanKpiIds.add(kid);
-        continue;
-      }
-      if (kid && keepers.has(kid)) {
-        const meta = keepers.get(kid);
-        const name = String(meta?.name || o.name || "").trim() || o.name;
-        const category =
-          String(meta?.category || o.category || "").trim() || o.category;
-        if (name === o.name && category === o.category) {
-          next.push(o);
-          continue;
-        }
-        changed = true;
-        next.push({ ...o, name, category });
-        continue;
-      }
-      next.push(o);
-    }
-    const pruned = filterStaleKpiOrphanTaskRows(next);
-    if (pruned.length !== next.length) changed = true;
+      if (!kid || !keepers.has(kid)) return o;
+      const meta = keepers.get(kid);
+      const name = String(meta?.name || o.name || "").trim() || o.name;
+      const category =
+        String(meta?.category || o.category || "").trim() || o.category;
+      if (name === o.name && category === o.category) return o;
+      changed = true;
+      return { ...o, name, category };
+    });
     if (!changed) return;
-    saveLedgerTaskList(pruned, {
+    saveLedgerTaskList(next, {
       bumpPullSkip: true,
       scheduleSyncPush: false,
     });
-    for (const kid of orphanKpiIds) {
-      void notifyAfterServerDeleteIfNeeded("", kid);
-    }
   } finally {
     _patchKpiLinkedFromMapsDepth--;
   }
@@ -519,10 +504,8 @@ export function clearTimeLedgerTaskOptionsLocalStorage() {
 
 /** 과제 기록 모달 — 서버 행 + 코드 기본 과제(FIXED_*) 목록 */
 export function getServerLedgerTaskOptionsForTaskLog() {
-  const arr = filterActiveKpiLinkedLedgerTasks(
-    readTaskOptionsMemRows().filter(
-      (o) => !C.isRetiredBuiltinTaskName(String(o.name || "").trim()),
-    ),
+  const arr = readTaskOptionsMemRows().filter(
+    (o) => !C.isRetiredBuiltinTaskName(String(o.name || "").trim()),
   );
   return mergeMissingBuiltinTemplates(arr);
 }
@@ -547,23 +530,12 @@ export function isDreamKpiLedgerTask(task) {
 
 /** @param {ReturnType<typeof getFullTaskOptions>} tasks */
 export function filterTasksForTaskSetupModalList(tasks) {
-  return (tasks || []).filter((t) => {
-    if (isDreamKpiLedgerTask(t)) return false;
-    const kid = String(t.kpiId || "").trim();
-    if (kid && !isActiveKpiId(kid)) return false;
-    return true;
-  });
+  return (tasks || []).filter((t) => !isDreamKpiLedgerTask(t));
 }
 
-/** 과제 기록·설정 — KPI에 없는 kpiId 연동 과제 제외 */
+/** @deprecated 표시 필터로 쓰지 않음 — 서버/로컬 목록 그대로 노출 */
 export function filterActiveKpiLinkedLedgerTasks(tasks) {
-  const keepers = getActiveKpiTaskKeepersById();
-  return (tasks || []).filter((t) => {
-    const kid = String(t.kpiId || "").trim();
-    if (!kid) return true;
-    if (keepers.size === 0) return true;
-    return isActiveKpiId(kid);
-  });
+  return tasks || [];
 }
 
 /** 외부에서 과제 메모리를 건드린 뒤 알림(예: KPI 연동 경로). UUID 부여·푸시는 getFullTaskOptions·별도 save 경로에서 처리 */
@@ -745,7 +717,7 @@ export function kpiTimeTaskAdd(kpi, category) {
   ) {
     return;
   }
-  const mem = filterStaleKpiOrphanTaskRows(readTaskOptionsMemRows()).filter(
+  const mem = readTaskOptionsMemRows().filter(
     (o) => String(o.kpiId || "").trim() !== kpiId,
   );
   const id =
@@ -1130,26 +1102,17 @@ export function applyTimeLedgerTasksFromServer(
     serverRowsSafe.map((r, i) => [String(r.id || "").trim(), r.sort_order ?? i]),
   );
   out.sort((a, b) => (order.get(a.id) ?? 9999) - (order.get(b.id) ?? 9999));
-  const filteredOut = filterStaleKpiOrphanTaskRows(out);
-  const droppedOrphanIds = out
-    .filter((o) => !filteredOut.some((f) => f.id === o.id))
-    .map((o) => String(o.id || "").trim())
-    .filter((id) => isUuid(id));
   const listUnchanged =
     entryTaskIdRemaps.length === 0 &&
-    droppedOrphanIds.length === 0 &&
-    taskRowsIdentitySig(filteredOut) === taskRowsIdentitySig(_ledgerTasksMem);
+    taskRowsIdentitySig(out) === taskRowsIdentitySig(_ledgerTasksMem);
   if (!listUnchanged) {
-    saveMergedList(filteredOut, {
+    saveMergedList(out, {
       bumpPullSkip: false,
       scheduleSyncPush: false,
     });
   }
   if (entryTaskIdRemaps.length) {
     remapTimeLedgerEntryTaskIds(entryTaskIdRemaps);
-  }
-  for (const orphanId of droppedOrphanIds) {
-    void notifyAfterServerDeleteIfNeeded(orphanId, "");
   }
   return !listUnchanged || entryTaskIdRemaps.length > 0;
 }
