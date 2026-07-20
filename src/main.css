@@ -2353,3 +2353,19 @@ body.auth-pw-modal-open {
   line-height: 1.35;
   letter-spacing: -0.01em;
 }
+
+/* 패드·폰 — 스크롤은 되고 스크롤바(세로·가로)만 숨김 */
+@media (max-width: 63.9375rem), (hover: none) and (pointer: coarse) {
+  #app,
+  #app * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  #app *::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+    background: transparent;
+  }
+}

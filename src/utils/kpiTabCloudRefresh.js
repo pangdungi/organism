@@ -35,7 +35,9 @@ import {
 import { coalesceInFlightPull } from "./timeLedgerPullCoalesce.js";
 import { syncHabitTrackerLogs, getKpiTargetDateRange } from "./timeKpiSync.js";
 import { syncSleepHealthGoalLogsFromTimeLedger } from "./healthSleepGoalTimeLedgerSync.js";
-import { patchKpiLinkedTasksFromKpiMaps } from "./timeTaskOptionsModel.js";
+import {
+  patchKpiLinkedTasksFromKpiMaps,
+} from "./timeTaskOptionsModel.js";
 import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
 import { probeKpiDomainServerStale, rememberKpiDomainServerWatermarkMs } from "./kpiMapServerWatermark.js";
 import {
@@ -426,17 +428,11 @@ export async function pullTaskListForCalendar1DayEnter() {
   }
 }
 
-/** 과제 모달·3분할 — 첫 1회만 강제 pull, 이후 서버 변경(stale)일 때만 */
+/** 3분할 과제 모달 — KPI·과제목록 항상 강제 pull (stale skip으로 기본과제만 남는 문제 방지) */
 export async function pullTaskListForDashboardEmbedOpen() {
   try {
-    const needFull = await isTaskListFirstPullNeeded();
-    if (needFull) {
-      await pullKpiDomainsForTaskLogListForce();
-      await pullTimeLedgerTasksFromSupabase({ ignoreSkip: true });
-    } else {
-      await pullStaleKpiDomainsForTaskLogList();
-      await pullTimeLedgerTasksIfStaleForModal();
-    }
+    await pullKpiDomainsForTaskLogListForce();
+    await pullTimeLedgerTasksFromSupabase({ ignoreSkip: true });
     ensureAllKpiTimeTasksFromStorage();
     patchKpiLinkedTasksFromKpiMaps();
   } catch (_) {}

@@ -116,7 +116,7 @@ export function patchKpiLinkedTasksFromKpiMaps() {
     const next = [];
     for (const o of _ledgerTasksMem) {
       const kid = String(o.kpiId || "").trim();
-      if (kid && !keepers.has(kid)) {
+      if (kid && keepers.size > 0 && !keepers.has(kid)) {
         changed = true;
         orphanKpiIds.add(kid);
         continue;
@@ -557,9 +557,11 @@ export function filterTasksForTaskSetupModalList(tasks) {
 
 /** 과제 기록·설정 — KPI에 없는 kpiId 연동 과제 제외 */
 export function filterActiveKpiLinkedLedgerTasks(tasks) {
+  const keepers = getActiveKpiTaskKeepersById();
   return (tasks || []).filter((t) => {
     const kid = String(t.kpiId || "").trim();
     if (!kid) return true;
+    if (keepers.size === 0) return true;
     return isActiveKpiId(kid);
   });
 }

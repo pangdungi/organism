@@ -568,9 +568,7 @@ export async function mountApp(container) {
       resetTimeLedgerSessionFilterToToday();
     } catch (_) {}
     try {
-      await pullDesktopDashboardData({
-        forceTaskList: !!opts.forceTaskList,
-      });
+      await pullDesktopDashboardData({ forceTaskList: true });
     } catch (_) {}
     if (currentTabId !== "home") return;
     const root =

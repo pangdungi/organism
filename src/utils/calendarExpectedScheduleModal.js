@@ -18,7 +18,7 @@ import {
   pullTaskListForDashboardEmbedOpen,
 } from "./kpiTabCloudRefresh.js";
 import {
-  getFullTaskOptions,
+  getServerLedgerTaskOptionsForTaskLog,
   patchKpiLinkedTasksFromKpiMaps,
 } from "./timeTaskOptionsModel.js";
 import { ensureAllKpiTimeTasksFromStorage } from "./kpiTimeTaskSync.js";
@@ -113,7 +113,7 @@ function refreshExpectedModalTaskPicker(dropdown) {
 function afterTaskListSyncForExpectedModal(dropdown) {
   const v = (dropdown?._getValue?.() || "").trim();
   if (v) return;
-  const mainTasks = getFullTaskOptions().filter(
+  const mainTasks = getServerLedgerTaskOptionsForTaskLog().filter(
     (t) => !(t.name || "").includes(" > "),
   );
   const first = mainTasks[0]?.name || "";
