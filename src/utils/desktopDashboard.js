@@ -243,6 +243,9 @@ export function renderDesktopDashboard(opts) {
       try {
         root._lpEmbedHabitScrollToday?.();
       } catch (_) {}
+      try {
+        root._lpEmbedPlannerScrollToday?.();
+      } catch (_) {}
     });
   });
 
@@ -251,6 +254,7 @@ export function renderDesktopDashboard(opts) {
     () => {
       root._lpEmbedSoftRefresh = {};
       root._lpEmbedHabitScrollToday = null;
+      root._lpEmbedPlannerScrollToday = null;
     },
     { once: true },
   );

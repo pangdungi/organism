@@ -70,12 +70,11 @@ import {
 } from "../utils/timeTaskOptionsModel.js";
 import {
   primeTaskLogModalFromLocal,
-  pullKpiDomainsForTaskLogListForce,
+  pullTaskListForDashboardEmbedOpen as pullTaskListForDashboardEmbedOpenCore,
   scheduleTaskLogModalCloudSync,
 } from "../utils/kpiTabCloudRefresh.js";
 import {
   attachTimeLedgerTasksSaveListener,
-  pullTimeLedgerTasksFromSupabase,
   syncTimeLedgerTaskListForModalOpen,
 } from "../utils/timeLedgerTasksSupabase.js";
 import {
@@ -9332,15 +9331,10 @@ export function render(opts = {}) {
     });
   }
 
-  /** 홈 3분할 embed — 과제 picker 전 KPI·과제목록 강제 pull */
+  /** 홈 3분할 embed — 첫 1회만 강제 pull, 이후 서버 변경(stale)일 때만 */
   async function pullTaskListForDashboardEmbedOpen() {
     if (!dashboardEmbedMode) return;
-    try {
-      await pullKpiDomainsForTaskLogListForce();
-      await pullTimeLedgerTasksFromSupabase({ ignoreSkip: true });
-      ensureAllKpiTimeTasksFromStorage();
-      patchKpiLinkedTasksFromKpiMaps();
-    } catch (_) {}
+    await pullTaskListForDashboardEmbedOpenCore();
   }
 
   /** 과제 기록 모달: KPI에 연결된 과제만 (task id → kpiId) */
@@ -10122,6 +10116,7 @@ export function render(opts = {}) {
     if (!el.isConnected) return;
     primeTaskLogModalFromLocal();
     await pullTaskListForDashboardEmbedOpen();
+    refreshTaskLogTaskPickerIfMounted();
     openTaskLogModalAfterPull(addContext);
     afterTaskListSyncForTaskLogAddModal();
     void runTaskLogModalCloudSync(

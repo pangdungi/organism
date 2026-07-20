@@ -43,8 +43,6 @@ function normalizeDateKey(s) {
   return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : "";
 }
 
-const BUDGET_TEMPLATE_NONE_ID = "__no_template__";
-
 function mountBudgetTemplateModalShell(title, { variant = "apply" } = {}) {
   const variantClass = `lp-budget-template-modal--${variant}`;
   if (document.querySelector(`.${variantClass}`)) return null;
@@ -152,17 +150,18 @@ async function deleteBudgetTemplateById(templateId, templateName) {
 
 /**
  * @param {{ id: string, name: string, blocks: object[] }} template
- * @param {{ onDeleted?: () => void }} [callbacks]
+ * @param {{ dateKey?: string, onApplied?: () => void, onCloseAll?: () => void, onDeleted?: () => void }} [callbacks]
  */
 function openBudgetTemplatePreviewModal(template, callbacks = {}) {
   const tpl = template;
   if (!tpl?.id) return;
+  const dk = normalizeDateKey(callbacks.dateKey);
   const shell = mountBudgetTemplateModalShell(
     String(tpl.name || "템플릿 미리보기"),
     { variant: "preview" },
   );
   if (!shell) return;
-  const { body, close } = shell;
+  const { body, footer, close } = shell;
 
   const lead = document.createElement("p");
   lead.className = "lp-budget-template-preview-lead";
@@ -178,6 +177,8 @@ function openBudgetTemplatePreviewModal(template, callbacks = {}) {
     body.appendChild(empty);
   }
 
+  const dangerZone = document.createElement("div");
+  dangerZone.className = "lp-budget-template-preview-danger";
   const deleteBtn = document.createElement("button");
   deleteBtn.type = "button";
   deleteBtn.className = "lp-budget-template-delete-template-btn";
@@ -190,7 +191,79 @@ function openBudgetTemplatePreviewModal(template, callbacks = {}) {
     close();
     callbacks.onDeleted?.();
   });
-  body.appendChild(deleteBtn);
+  dangerZone.appendChild(deleteBtn);
+  body.appendChild(dangerZone);
+
+  const applyBtn = document.createElement("button");
+  applyBtn.type = "button";
+  applyBtn.setAttribute("data-legacy", "time-task-log-submit");
+  applyBtn.className = "lp-budget-template-apply-template-btn";
+  applyBtn.textContent = "적용";
+  applyBtn.addEventListener("click", async () => {
+    if (!dk) {
+      showToast("날짜 정보를 확인할 수 없습니다.");
+      return;
+    }
+    applyBtn.disabled = true;
+    const r = await applyBudgetTemplateToDateKey(dk, tpl.id, "replace");
+    applyBtn.disabled = false;
+    if (!r.ok) {
+      showToast(r.error || "적용에 실패했습니다.");
+      return;
+    }
+    showToast(`템플릿을 적용했습니다. (${r.applied}건)`);
+    close();
+    callbacks.onCloseAll?.();
+    callbacks.onApplied?.();
+  });
+  footer.appendChild(applyBtn);
+
+  wireModalEnterToConfirm(shell.modal, applyBtn);
+}
+
+/**
+ * @param {{ dateKey: string, onApplied?: () => void, onCloseAll?: () => void }} callbacks
+ */
+function openBudgetTemplateClearModal(callbacks = {}) {
+  const dk = normalizeDateKey(callbacks.dateKey);
+  if (!dk) return;
+  const shell = mountBudgetTemplateModalShell("템플릿 없음", {
+    variant: "clear",
+  });
+  if (!shell) return;
+  const { body, footer, close } = shell;
+
+  const lead = document.createElement("p");
+  lead.className = "lp-budget-template-preview-lead";
+  lead.textContent = "이 날짜 예상 일정을 모두 비웁니다. 저장된 템플릿 목록은 그대로입니다.";
+  body.appendChild(lead);
+
+  const applyBtn = document.createElement("button");
+  applyBtn.type = "button";
+  applyBtn.setAttribute("data-legacy", "time-task-log-submit");
+  applyBtn.className = "lp-budget-template-apply-template-btn";
+  applyBtn.textContent = "적용";
+  applyBtn.addEventListener("click", async () => {
+    applyBtn.disabled = true;
+    const r = await clearBudgetDayPlanFromDateKey(dk);
+    applyBtn.disabled = false;
+    if (!r.ok) {
+      showToast(r.error || "비우지 못했습니다.");
+      if (r.empty) {
+        close();
+        callbacks.onCloseAll?.();
+        callbacks.onApplied?.();
+      }
+      return;
+    }
+    showToast(`이 날짜 예상 일정 ${r.cleared}건을 비웠습니다.`);
+    close();
+    callbacks.onCloseAll?.();
+    callbacks.onApplied?.();
+  });
+  footer.appendChild(applyBtn);
+
+  wireModalEnterToConfirm(shell.modal, applyBtn);
 }
 
 function mountFooterActions(footer, { onCancel, onConfirm, confirmLabel }) {
@@ -287,9 +360,7 @@ export function openApplyBudgetTemplateModal(options) {
   if (!dk) return;
   const shell = mountApplyModalShell("템플릿 적용");
   if (!shell) return;
-  const { body, footer, close } = shell;
-
-  let selectedId = "";
+  const { body, close } = shell;
 
   body.innerHTML = `
     <div data-lp-budget-template-list-host>
@@ -315,42 +386,36 @@ export function openApplyBudgetTemplateModal(options) {
     const ul = wrap.querySelector(".lp-budget-template-list");
 
     const noneLi = document.createElement("li");
-    noneLi.className =
-      "lp-budget-template-list-item" +
-      (selectedId === BUDGET_TEMPLATE_NONE_ID
-        ? " lp-budget-template-list-item--selected"
-        : "");
+    noneLi.className = "lp-budget-template-list-item";
     const nonePick = document.createElement("button");
     nonePick.type = "button";
     nonePick.className = "lp-budget-template-pick-name";
     nonePick.textContent = "템플릿 없음";
-    nonePick.setAttribute("aria-label", "템플릿 없음 선택");
+    nonePick.setAttribute("aria-label", "템플릿 없음");
     nonePick.addEventListener("click", () => {
-      selectedId = BUDGET_TEMPLATE_NONE_ID;
-      renderList();
+      openBudgetTemplateClearModal({
+        dateKey: dk,
+        onCloseAll: close,
+        onApplied,
+      });
     });
     noneLi.appendChild(nonePick);
     ul.appendChild(noneLi);
 
     for (const t of list) {
       const li = document.createElement("li");
-      li.className =
-        "lp-budget-template-list-item" +
-        (selectedId === t.id ? " lp-budget-template-list-item--selected" : "");
+      li.className = "lp-budget-template-list-item";
       const pick = document.createElement("button");
       pick.type = "button";
       pick.className = "lp-budget-template-pick-name";
       pick.textContent = t.name;
-      pick.title = "타임박스 미리보기";
-      pick.setAttribute("aria-label", `${t.name} 미리보기 및 선택`);
+      pick.setAttribute("aria-label", `${t.name} 미리보기`);
       pick.addEventListener("click", () => {
-        selectedId = t.id;
-        renderList();
         openBudgetTemplatePreviewModal(t, {
-          onDeleted: () => {
-            if (selectedId === t.id) selectedId = "";
-            renderList();
-          },
+          dateKey: dk,
+          onCloseAll: close,
+          onApplied,
+          onDeleted: () => renderList(),
         });
       });
       li.appendChild(pick);
@@ -360,43 +425,4 @@ export function openApplyBudgetTemplateModal(options) {
   void ensureBudgetTemplatesLoaded().then(() => {
     renderList();
   });
-
-  const { confirmBtn } = mountFooterActions(footer, {
-    onCancel: close,
-    onConfirm: async () => {
-      if (!selectedId) {
-        showToast("템플릿을 선택해 주세요.");
-        return;
-      }
-      confirmBtn.disabled = true;
-      if (selectedId === BUDGET_TEMPLATE_NONE_ID) {
-        const r = await clearBudgetDayPlanFromDateKey(dk);
-        confirmBtn.disabled = false;
-        if (!r.ok) {
-          showToast(r.error || "비우지 못했습니다.");
-          if (r.empty) {
-            close();
-            onApplied?.();
-          }
-          return;
-        }
-        showToast(`이 날짜 예상 일정 ${r.cleared}건을 비웠습니다.`);
-        close();
-        onApplied?.();
-        return;
-      }
-      const r = await applyBudgetTemplateToDateKey(dk, selectedId, "replace");
-      confirmBtn.disabled = false;
-      if (!r.ok) {
-        showToast(r.error || "적용에 실패했습니다.");
-        return;
-      }
-      showToast(`템플릿을 적용했습니다. (${r.applied}건)`);
-      close();
-      onApplied?.();
-    },
-    confirmLabel: "적용",
-  });
-
-  wireModalEnterToConfirm(shell.modal, confirmBtn);
 }

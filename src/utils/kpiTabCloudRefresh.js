@@ -426,6 +426,22 @@ export async function pullTaskListForCalendar1DayEnter() {
   }
 }
 
+/** 과제 모달·3분할 — 첫 1회만 강제 pull, 이후 서버 변경(stale)일 때만 */
+export async function pullTaskListForDashboardEmbedOpen() {
+  try {
+    const needFull = await isTaskListFirstPullNeeded();
+    if (needFull) {
+      await pullKpiDomainsForTaskLogListForce();
+      await pullTimeLedgerTasksFromSupabase({ ignoreSkip: true });
+    } else {
+      await pullStaleKpiDomainsForTaskLogList();
+      await pullTimeLedgerTasksIfStaleForModal();
+    }
+    ensureAllKpiTimeTasksFromStorage();
+    patchKpiLinkedTasksFromKpiMaps();
+  } catch (_) {}
+}
+
 /** 홈 3분할 boot·과제 모달 — KPI 맵을 stale 무시하고 받아 과제 picker 필터에 필요 */
 export async function pullKpiDomainsForTaskLogListForce() {
   await Promise.all(

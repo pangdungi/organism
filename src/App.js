@@ -541,6 +541,9 @@ export async function mountApp(container) {
           try {
             root._lpEmbedHabitScrollToday?.();
           } catch (_) {}
+          try {
+            root._lpEmbedPlannerScrollToday?.();
+          } catch (_) {}
         });
       }
     }
@@ -578,6 +581,9 @@ export async function mountApp(container) {
       runDesktopDashboardSoftRefresh(root, { skipEmbedKeys: ["habit"] });
       try {
         root._lpEmbedHabitScrollToday?.();
+      } catch (_) {}
+      try {
+        root._lpEmbedPlannerScrollToday?.();
       } catch (_) {}
     }
     try {

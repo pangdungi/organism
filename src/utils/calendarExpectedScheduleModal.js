@@ -15,8 +15,13 @@ import { buildTimeTaskLogPickerDropdown } from "./timeTaskLogPickerDropdown.js";
 import {
   primeTaskLogModalFromLocal,
   scheduleTaskLogModalCloudSync,
+  pullTaskListForDashboardEmbedOpen,
 } from "./kpiTabCloudRefresh.js";
-import { getFullTaskOptions } from "./timeTaskOptionsModel.js";
+import {
+  getFullTaskOptions,
+  patchKpiLinkedTasksFromKpiMaps,
+} from "./timeTaskOptionsModel.js";
+import { ensureAllKpiTimeTasksFromStorage } from "./kpiTimeTaskSync.js";
 import {
   appendBudgetScheduleBlock,
   getBudgetGoals,
@@ -91,9 +96,18 @@ function openNativeDateInput(inp) {
   inp.click();
 }
 
-async function ensureExpectedModalCloudData(onApplied) {
-  primeTaskLogModalFromLocal();
-  return scheduleTaskLogModalCloudSync(onApplied);
+function isPlannerDashboardEmbed() {
+  return !!document.querySelector(
+    ".lp-desktop-dashboard-col--planner .calendar-view",
+  );
+}
+
+function refreshExpectedModalTaskPicker(dropdown) {
+  try {
+    ensureAllKpiTimeTasksFromStorage();
+    patchKpiLinkedTasksFromKpiMaps();
+  } catch (_) {}
+  dropdown?._refreshTaskList?.();
 }
 
 function afterTaskListSyncForExpectedModal(dropdown) {
@@ -1243,9 +1257,6 @@ export function openCalendarExpectedScheduleModal(options) {
       } catch (_) {}
       return;
     }
-    hydrateExpectedScheduleEditFromBudget();
-  } else {
-    finalizeExpectedModalTaskDropdown();
   }
   syncExpectedGapFillBtnVisibility();
 
@@ -1398,22 +1409,45 @@ export function openCalendarExpectedScheduleModal(options) {
     { signal },
   );
 
-  document.body.appendChild(modal);
-  document.body.style.overflow = "hidden";
-  try {
-    document.documentElement.classList.add("lp-task-log-modal-open");
-  } catch (_) {}
-  bindExpectedScheduleModalKeyboard(modal, taskLogScrollArea, signal);
-  if (taskLogScrollArea instanceof HTMLElement) {
-    taskLogScrollArea.scrollTop = 0;
-  }
+  const dashboardEmbedMode = isPlannerDashboardEmbed();
 
-  void ensureExpectedModalCloudData()
-    .catch(() => {})
-    .then(() => {
-      if (!modal.isConnected) return;
-      finalizeExpectedModalTaskDropdown();
-    });
+  const applyExpectedModalAfterCloudSync = () => {
+    if (!modal.isConnected) return;
+    refreshExpectedModalTaskPicker(taskDropdown);
+    if (!isEdit) {
+      afterTaskListSyncForExpectedModal(taskDropdown);
+      updateExpectedDetailVisibility(taskDropdown._getValue?.() || "");
+    }
+  };
+
+  const showExpectedModal = () => {
+    document.body.appendChild(modal);
+    document.body.style.overflow = "hidden";
+    try {
+      document.documentElement.classList.add("lp-task-log-modal-open");
+    } catch (_) {}
+    bindExpectedScheduleModalKeyboard(modal, taskLogScrollArea, signal);
+    if (taskLogScrollArea instanceof HTMLElement) {
+      taskLogScrollArea.scrollTop = 0;
+    }
+    finalizeExpectedModalTaskDropdown();
+  };
+
+  if (dashboardEmbedMode) {
+    void (async () => {
+      primeTaskLogModalFromLocal();
+      await pullTaskListForDashboardEmbedOpen();
+      if (signal.aborted) return;
+      showExpectedModal();
+      void scheduleTaskLogModalCloudSync(applyExpectedModalAfterCloudSync, {
+        skipTasks: true,
+      });
+    })();
+  } else {
+    primeTaskLogModalFromLocal();
+    showExpectedModal();
+    void scheduleTaskLogModalCloudSync(applyExpectedModalAfterCloudSync);
+  }
 }
 
 function taskLogResolveYmdForSyncInline(taskLogDateStart, taskLogStartInput, fallbackYmd) {
