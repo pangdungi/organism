@@ -50,9 +50,12 @@ async function pullTimeLedgerTabEnterFromCloudCore(opts = {}) {
   await ensureTimeLedgerStorageReady();
   const before = snapshotTimeLedgerLocalStorage();
   const { rangeStart, rangeEnd } = readTimeLedgerCombinedPullRangeYmd();
-  /* KPI 맵 먼저 — 연동 과제가 목록 필터에서 빠지지 않게 */
-  await pullStaleKpiDomainsForTaskLogList();
+  /*
+   * KPI·기록·예산·과제를 한꺼번에 — 끝난 뒤 KPI 연동 과제만 합친다.
+   * (예전: KPI를 먼저 await 해서 모바일 복귀 시 체감이 길어짐)
+   */
   const jobs = [
+    pullStaleKpiDomainsForTaskLogList(),
     pullTimeLedgerEntriesFromSupabase(),
     pullTimeDailyBudgetForDateRange(rangeStart, rangeEnd),
   ];

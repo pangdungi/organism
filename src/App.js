@@ -1222,6 +1222,12 @@ export async function mountApp(container) {
     } catch (_) {}
   }
   renderMain(main);
+  /*
+   * 로컬 화면을 그린 뒤 바로 스플래시 해제.
+   * 서버 pull은 뒤에서 이어가고, 끝나면 soft refresh로만 반영한다.
+   * (예전: pull 끝날 때까지 스플래시를 붙잡아 복귀·재실행 시 수 초 대기)
+   */
+  finishAppBootReady();
   void (async () => {
     const bootTabId = currentTabId;
     try {
@@ -1290,8 +1296,8 @@ export async function mountApp(container) {
         });
       }
       void prefetchIconsForTab(bootTabId);
-    } finally {
-      finishAppBootReady();
+    } catch (_) {
+      /* pull 실패해도 로컬 화면은 이미 표시된 상태 */
     }
   })();
   if (window.matchMedia("(max-width: 46rem)").matches) {
