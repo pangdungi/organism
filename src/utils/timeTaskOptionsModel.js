@@ -647,13 +647,7 @@ export function updateTaskOption(oldName, task) {
         ? crypto.randomUUID()
         : `t-${Date.now()}`;
   }
-  if (name !== oldName && opts.some((o, i) => i !== idx && o.name === name)) {
-    const removedId = opts[idx].id;
-    opts.splice(idx, 1);
-    writeTaskOptionListLocal(opts);
-    void notifyAfterServerDeleteIfNeeded(removedId);
-    return opts;
-  }
+  /* 해당 과제 id 행의 이름·분류만 갱신 — 이름 겹침으로 행 삭제하지 않음 */
   const prevKpi = (opts[idx].kpiId || "").trim();
   const newId = String(nextId).trim();
   opts[idx] = {
@@ -793,14 +787,14 @@ export function kpiTimeTaskRemove(kpi, _syncNameFromMap) {
 }
 
 /**
- * KPI 표시명 변경 → kpiId 기준 한 줄만 유지·이름 갱신·옛 이름 잔재 제거.
- * KPI 맵 저장(서버 트리거)보다 **먼저** 호출해야 pull 전에 로컬이 맞음.
+ * KPI 표시명 변경 → 해당 kpiId 과제 행의 이름만 갱신·upsert.
+ * 다른 과제 행 삭제·서버 DELETE 없음.
  */
 export function kpiTimeTaskRename(kpi, oldNameFromKpi) {
   const kpiId = (kpi && kpi.id && String(kpi.id).trim()) || "";
   const newName = (kpi && (kpi.name || "").trim()) || "";
   if (!kpiId || !newName) return;
-  const oldNm = (oldNameFromKpi || "").trim();
+  void oldNameFromKpi;
   patchKpiLinkedTasksFromKpiMaps();
   const opts = readTaskOptionsMemRows();
   const mapKeeper = getActiveKpiTaskKeepersById().get(kpiId);
@@ -816,58 +810,28 @@ export function kpiTimeTaskRename(kpi, oldNameFromKpi) {
         : `t-${Date.now()}`;
   }
 
-  const deleteIds = new Set();
-  for (const o of opts) {
-    const oid = String(o.id || "").trim();
-    if (!isUuid(oid) || oid === canonicalId) continue;
-    const kid = String(o.kpiId || "").trim();
-    const n = (o.name || "").trim();
-    if (kid === kpiId) {
-      deleteIds.add(oid);
-      continue;
-    }
-    if (oldNm && n === oldNm && oid !== canonicalId) deleteIds.add(oid);
-    if (oldNm && n === oldNm && kid !== kpiId) deleteIds.add(oid);
-    if (!kid && n === newName) deleteIds.add(oid);
-  }
-
   const keeperCat =
     String(row.category || "").trim() ||
     String(mapKeeper?.category || "").trim();
-  const next = opts
-    .filter((o) => {
-      const oid = String(o.id || "").trim();
-      if (deleteIds.has(oid)) return false;
-      const kid = String(o.kpiId || "").trim();
-      if (kid === kpiId && oid !== canonicalId) return false;
-      return true;
-    })
-    .map((o) => {
-      const oid = String(o.id || "").trim();
-      if (oid !== canonicalId && String(o.kpiId || "").trim() !== kpiId) {
-        return o;
-      }
-      return {
-        ...o,
-        id: canonicalId,
-        name: newName,
-        kpiId,
-        category: keeperCat || o.category || "",
-        productivity: o.productivity || "productive",
-      };
-    });
+  const next = opts.map((o, i) => {
+    if (i !== idx) return o;
+    return {
+      ...o,
+      id: canonicalId,
+      name: newName,
+      kpiId,
+      category: keeperCat || o.category || "",
+      productivity: o.productivity || "productive",
+    };
+  });
 
-  const prevSig = taskRowsIdentitySig(opts);
-  if (taskRowsIdentitySig(next) === prevSig && deleteIds.size === 0) return;
+  if (taskRowsIdentitySig(next) === taskRowsIdentitySig(opts)) return;
 
   saveMergedList(next, {
     bumpPullSkip: true,
     scheduleSyncPush: isUuid(canonicalId),
     upsertTaskIds: isUuid(canonicalId) ? [canonicalId] : [],
   });
-  for (const oid of deleteIds) {
-    void notifyAfterServerDeleteIfNeeded(oid, "");
-  }
 
   patchKpiLinkedTasksFromKpiMaps();
 }
