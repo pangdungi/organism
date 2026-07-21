@@ -10144,6 +10144,36 @@ export function render(opts = {}) {
     lastFocusedTimeField = "end";
   }
 
+  /** 「지금 실행하기」등 — 예상 일정의 메모·상세를 과제 기록 모달에 채움 */
+  function applyExpectedSchedulePresetsToTaskLogModal(ctx) {
+    const memo = String(ctx?.presetMemo || "").trim();
+    const detail = String(ctx?.presetDetail || "").trim();
+    const taskName = String(
+      ctx?.presetTaskName ||
+        taskLogTaskDropdown?._getValue?.() ||
+        "",
+    ).trim();
+    if (memo && taskLogFeedbackInput) {
+      taskLogFeedbackInput.value = memo;
+    }
+    if (!detail || !taskName) {
+      updateTaskLogMealDetailVisibility(taskName);
+      return;
+    }
+    const kind = TTC.ledgerDetailTaskKind(taskName);
+    if (TTC.isChipDetailTaskName(taskName)) {
+      setTaskLogContentType(detail, taskName);
+    } else if (kind === "emotion") {
+      setTaskLogEmotionTrigger(detail);
+    } else if (
+      TTC.isLedgerFreeTextDetailTaskName(taskName) ||
+      TTC.isLedgerDetailTaskName(taskName)
+    ) {
+      if (taskLogMealDetailInput) taskLogMealDetailInput.value = detail;
+    }
+    updateTaskLogMealDetailVisibility(taskName);
+  }
+
   function openTaskLogModalAfterPull(addContext) {
     taskLogAddContext = addContext;
     taskLogEditTr = null;
@@ -10223,18 +10253,21 @@ export function render(opts = {}) {
     } else {
       taskLogTaskDropdown._setValue?.(firstTask);
     }
+    applyExpectedSchedulePresetsToTaskLogModal(addContext);
     requestAnimationFrame(() => {
       applyTaskLogModalDefaultsForNewEntry();
       if (presetTask) {
         taskLogTaskDropdown._setValue?.(presetTask);
         onTaskSelectedForLog(presetTask);
       }
+      applyExpectedSchedulePresetsToTaskLogModal(addContext);
       requestAnimationFrame(() => {
         applyTaskLogModalDefaultsForNewEntry();
         if (presetTask) {
           taskLogTaskDropdown._setValue?.(presetTask);
           onTaskSelectedForLog(presetTask);
         }
+        applyExpectedSchedulePresetsToTaskLogModal(addContext);
       });
     });
     setTimeout(() => {
@@ -10244,6 +10277,7 @@ export function render(opts = {}) {
         taskLogTaskDropdown._setValue?.(presetTask);
         onTaskSelectedForLog(presetTask);
       }
+      applyExpectedSchedulePresetsToTaskLogModal(addContext);
     }, 0);
     setTaskLogQuickAdjustActive(
       taskLogModal.querySelector(
@@ -12154,6 +12188,8 @@ export function render(opts = {}) {
                   presetTaskName: nextExpected.taskName,
                   presetStartHhMm,
                   presetNextExpectedBlockKey: nextBlockKey,
+                  presetMemo: nextExpected.memo,
+                  presetDetail: nextExpected.detail,
                 });
               },
               onSkip: (itemEl) => {
