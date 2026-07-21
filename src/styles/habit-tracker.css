@@ -171,7 +171,16 @@
   background-color: var(--ht-grass-before) !important;
 }
 
-/* 홈 3분할 embed */
+/* 홈 3분할 embed — 잔디·링을 블랙&화이트로 */
+.habit-tracker-view--dashboard-embed {
+  --ht-grass-empty: #f0f0f0;
+  --ht-grass-lv1: #d4d4d4;
+  --ht-grass-lv2: #a3a3a3;
+  --ht-grass-lv3: #525252;
+  --ht-grass-lv4: #171717;
+  --ht-grass-before: #fafafa;
+}
+
 .habit-tracker-view--dashboard-embed .habit-tracker-page-grid-scroll {
   border: none;
   border-radius: 0;
@@ -181,6 +190,12 @@
 .habit-tracker-view--dashboard-embed .habit-tracker-page-grid-table {
   --ht-habit-w: 4.75rem;
   --ht-cell-gap: 2px;
+  --ht-grass-empty: #f0f0f0;
+  --ht-grass-lv1: #d4d4d4;
+  --ht-grass-lv2: #a3a3a3;
+  --ht-grass-lv3: #525252;
+  --ht-grass-lv4: #171717;
+  --ht-grass-before: #fafafa;
 }
 
 .habit-tracker-view--dashboard-embed .habit-tracker-page-grid-td--habit {
@@ -256,6 +271,14 @@
 .habit-tracker-today-ring-progress {
   stroke: #27a675;
   transition: stroke-dashoffset 0.35s ease;
+}
+
+.habit-tracker-view--dashboard-embed .habit-tracker-today-ring-track {
+  stroke: #e5e5e5;
+}
+
+.habit-tracker-view--dashboard-embed .habit-tracker-today-ring-progress {
+  stroke: #171717;
 }
 
 .habit-tracker-today-ring-center {
