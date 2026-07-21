@@ -1,10 +1,11 @@
 /**
- * 홈 3분할 습관 트랙커 — 오늘 매일할일 완료 원형 링
+ * 홈 3분할 습관 트랙커 — 오늘 KPI(루틴) 완료 원형 링
  */
 
 import {
   buildHabitTrackerRows,
-  getHabitTrackerDailyTodoProgress,
+  getHabitTrackerCellDisplay,
+  getHabitTrackerCellText,
 } from "./habitTrackerPageModel.js";
 import { timeLedgerLocalTodayYmd } from "./timeLedgerEntriesSupabase.js";
 
@@ -24,11 +25,15 @@ export function buildHabitTrackerTodayDailyRingModel(opts = {}) {
   let done = 0;
   let total = 0;
   for (const row of rows) {
-    if (row?.kind !== "kpi") continue;
-    const p = getHabitTrackerDailyTodoProgress(row, todayYmd);
-    if (p.total <= 0) continue;
-    done += p.done;
-    total += p.total;
+    if (row?.kind !== "kpi" || !row.kpi) continue;
+    const cell = getHabitTrackerCellDisplay(row, todayYmd);
+    if (cell.beforeStart) continue;
+    total += 1;
+    /*
+     * 잔디 진하기(매일할일 전부 완료)가 아니라,
+     * 오늘 해당 루틴에 시간기록·체크·값이 있으면 카운트 (표의 O와 동일)
+     */
+    if (String(getHabitTrackerCellText(row, todayYmd) || "").trim()) done += 1;
   }
 
   const remaining = Math.max(0, total - done);
@@ -47,7 +52,7 @@ export function createHabitTrackerTodayRingElement(model) {
 
   const wrap = document.createElement("div");
   wrap.className = "habit-tracker-today-ring";
-  wrap.setAttribute("aria-label", `오늘 매일 할 일 ${done} / ${total}`);
+  wrap.setAttribute("aria-label", `오늘 루틴 ${done} / ${total}`);
 
   const size = 112;
   const stroke = 10;

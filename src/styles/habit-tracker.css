@@ -193,7 +193,7 @@
 
 /* 홈 3분할 — 오늘 매일할일 원형 링 (표 바로 아래, 아래로 밀어내지 않음) */
 .habit-tracker-view--dashboard-embed .habit-tracker-content-wrap {
-  gap: 0.35rem;
+  gap: 0.85rem;
   padding-bottom: 0.35rem;
   justify-content: flex-start;
   overflow-x: hidden;
@@ -223,8 +223,8 @@
   flex: 0 0 auto;
   display: flex;
   justify-content: center;
-  margin-top: 0.15rem;
-  padding: 0.1rem 0.35rem 0.25rem;
+  margin: 0;
+  padding: 0.85rem 0.35rem 0.15rem;
   box-sizing: border-box;
 }
 

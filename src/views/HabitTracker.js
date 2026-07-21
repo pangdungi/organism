@@ -46,21 +46,23 @@ export function render(opts = {}) {
   const contentWrap = document.createElement("div");
   contentWrap.className = "dream-content-wrap habit-tracker-content-wrap";
 
+  /** 원형 링(위) — 홈 3분할 embed만 / 표 / 레포트 카드 — 전체 탭만 */
+  let insightHost = null;
+  let todayRingHost = null;
+  if (dashboardEmbedMode) {
+    todayRingHost = document.createElement("div");
+    todayRingHost.className = "habit-tracker-today-ring-host";
+    contentWrap.appendChild(todayRingHost);
+  }
+
   const gridHost = document.createElement("div");
   gridHost.className = "habit-tracker-grid-host";
   contentWrap.appendChild(gridHost);
 
-  /** 하단 레포트 카드 — 전체 탭만 / 원형 링 — 홈 3분할 embed만 */
-  let insightHost = null;
-  let todayRingHost = null;
   if (!dashboardEmbedMode) {
     insightHost = document.createElement("div");
     insightHost.className = "habit-tracker-insight-host";
     contentWrap.appendChild(insightHost);
-  } else {
-    todayRingHost = document.createElement("div");
-    todayRingHost.className = "habit-tracker-today-ring-host";
-    contentWrap.appendChild(todayRingHost);
   }
   el.appendChild(contentWrap);
 

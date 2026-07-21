@@ -335,7 +335,7 @@
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
-    padding: 0;
+    padding: 0.15rem 0 0;
   }
 
   .lp-desktop-dashboard-col--time .time-ledger-view,
@@ -425,7 +425,7 @@
   }
 
   .habit-tracker-view--dashboard-embed .dream-view-header {
-    padding: 0.2rem 0.55rem 0.15rem;
+    padding: 0.2rem 0.55rem 0.45rem;
     border-bottom: none;
     gap: 0;
   }
