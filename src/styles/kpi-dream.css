@@ -107,6 +107,344 @@
   gap: 0.65rem;
 }
 
+.lp-kpi-dream-page .sideincome-goals-year-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.lp-kpi-dream-page .sideincome-goals-year-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.lp-kpi-dream-page .sideincome-goals-year-label {
+  min-width: 5.5rem;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-ink);
+  letter-spacing: -0.02em;
+}
+
+.lp-kpi-dream-page .sideincome-goals-year-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.4rem;
+  background: #fff;
+  color: var(--text-ink);
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lp-kpi-dream-page .sideincome-goals-by-quarter {
+  gap: 1.15rem;
+}
+
+.lp-kpi-dream-page .sideincome-quarter-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.lp-kpi-dream-page .sideincome-quarter-section-title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #64748b;
+}
+
+.lp-kpi-dream-page .sideincome-quarter-months {
+  margin-left: 0.35rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: #94a3b8;
+}
+
+.lp-kpi-dream-page .sideincome-quarter-empty {
+  margin: 0;
+  padding: 0.55rem 0.15rem;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.sideincome-quarter-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.sideincome-quarter-chip-row .sideincome-quarter-chip {
+  flex: 1 1 auto;
+  min-width: 3.5rem;
+}
+
+/* 건강·행복 — 데스크탑·아이패드 가로 2분할 (목록 | 상세). 모바일·세로는 미적용 */
+@media (min-width: 64rem) and (orientation: landscape) {
+  .lp-kpi-dream-page.kpi-twopane-view--split {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .lp-kpi-dream-page.kpi-twopane-view--split .kpi-twopane-split-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    gap: 0;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 0;
+    overflow: hidden;
+    align-items: stretch;
+  }
+
+  .lp-kpi-dream-page.kpi-twopane-view--split .kpi-twopane-split-pane {
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding: 0.75rem 0.85rem 1.25rem;
+    border-right: 1px solid #e5e7eb;
+    box-sizing: border-box;
+  }
+
+  .lp-kpi-dream-page.kpi-twopane-view--split
+    .kpi-twopane-split-pane--detail {
+    border-right: none;
+  }
+
+  .lp-kpi-dream-page.kpi-twopane-view--split
+    .kpi-twopane-split-pane.dream-kpi-detail-wrap {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .lp-kpi-dream-page .kpi-twopane-split-placeholder {
+    margin: 2.5rem 0.5rem 0;
+    padding: 0;
+    text-align: center;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #94a3b8;
+    line-height: 1.5;
+  }
+
+  /* 2분할 — 할 일 추가 점선 카드 · 완료목록 삭제 (시급 3분할과 동일) */
+  .lp-kpi-dream-page.kpi-twopane-view--split .sideincome-split-todo-add-card {
+    width: 100%;
+    margin: 0 0 0.5rem;
+    box-sizing: border-box;
+  }
+
+  .lp-kpi-dream-page.kpi-twopane-view--split
+    .sideincome-split-clear-completed-label-btn {
+    display: block;
+    width: 100%;
+    margin: 0.85rem 0 0.25rem;
+    padding: 0.65rem 0.5rem;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    font: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #8b5c3a;
+    text-align: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .lp-kpi-dream-page.kpi-twopane-view--split
+    .sideincome-split-clear-completed-label-btn:hover {
+    background: rgba(139, 92, 58, 0.06);
+  }
+
+  .lp-kpi-dream-page.kpi-twopane-view--split .dream-kpi-add-card {
+    min-height: 2.125rem;
+    padding: 0.4rem 0.65rem;
+    border-radius: 10px;
+  }
+
+  .lp-kpi-dream-page.kpi-twopane-view--split .dream-kpi-add-card-text {
+    font-size: 0.8125rem;
+  }
+}
+
+/* 시급 상승 — 데스크탑·아이패드 가로 3분할 (목표 | KPI | 상세) */
+@media (min-width: 64rem) and (orientation: landscape) {
+  .lp-kpi-dream-page.sideincome-view--split {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .lp-kpi-dream-page.sideincome-view--split .sideincome-split-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.15fr);
+    gap: 0;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 0;
+    overflow: hidden;
+    align-items: stretch;
+  }
+
+  .lp-kpi-dream-page.sideincome-view--split .sideincome-split-pane {
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding: 0.75rem 0.85rem 1.25rem;
+    border-right: 1px solid #e5e7eb;
+    box-sizing: border-box;
+  }
+
+  /* 목표 칸: 연도는 고정, 분기 목록만 세로 스크롤 */
+  .lp-kpi-dream-page.sideincome-view--split .sideincome-split-pane--goals {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .lp-kpi-dream-page.sideincome-view--split
+    .sideincome-split-pane--goals
+    .sideincome-goals-year-shell {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .lp-kpi-dream-page.sideincome-view--split
+    .sideincome-split-pane--goals
+    .sideincome-goals-year-bar {
+    flex: 0 0 auto;
+    background: #fff;
+    padding-bottom: 0.15rem;
+  }
+
+  .lp-kpi-dream-page.sideincome-view--split
+    .sideincome-split-pane--goals
+    .sideincome-split-goal-add-card {
+    flex: 0 0 auto;
+    width: 100%;
+    margin: 0;
+    box-sizing: border-box;
+  }
+
+  .lp-kpi-dream-page.sideincome-view--split
+    .sideincome-split-pane--goals
+    .sideincome-goals-by-quarter {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding-bottom: 0.5rem;
+  }
+
+  .lp-kpi-dream-page.sideincome-view--split
+    .sideincome-split-pane--detail {
+    border-right: none;
+  }
+
+  .lp-kpi-dream-page.sideincome-view--split
+    .sideincome-split-pane.dream-kpi-detail-wrap {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .lp-kpi-dream-page .sideincome-split-placeholder {
+    margin: 2.5rem 0.5rem 0;
+    padding: 0;
+    text-align: center;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #94a3b8;
+    line-height: 1.5;
+  }
+
+  /* 3분할 상세 — 휴지통 자리 + (푸터 추가 버튼과 동일 네이비 원형) */
+  .lp-kpi-dream-page.sideincome-view--split .sideincome-split-todo-add-btn {
+    flex: 0 0 auto;
+    align-self: center;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    min-width: 2.75rem;
+    max-width: 2.75rem;
+    min-height: 2.75rem;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 9999px;
+    background: var(--idea-navy, #000000);
+    color: #fff;
+    cursor: pointer;
+    line-height: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .lp-kpi-dream-page.sideincome-view--split .sideincome-split-todo-add-btn svg {
+    color: #fff;
+  }
+
+  .lp-kpi-dream-page.sideincome-view--split .sideincome-split-todo-add-btn:active {
+    opacity: 0.85;
+  }
+
+  .lp-kpi-dream-page.sideincome-view--split .sideincome-split-todo-add-card {
+    width: 100%;
+    margin: 0 0 0.5rem;
+    box-sizing: border-box;
+  }
+
+  .lp-kpi-dream-page.sideincome-view--split
+    .sideincome-split-clear-completed-label-btn {
+    display: block;
+    width: 100%;
+    margin: 0.85rem 0 0.25rem;
+    padding: 0.65rem 0.5rem;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    font: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #8b5c3a;
+    text-align: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .lp-kpi-dream-page.sideincome-view--split
+    .sideincome-split-clear-completed-label-btn:hover {
+    background: rgba(139, 92, 58, 0.06);
+  }
+}
+
 .lp-kpi-dream-page .health-main-view {
   display: flex;
   flex-direction: column;
@@ -788,13 +1126,16 @@
   --lp-seg-pad: 3px;
   --lp-seg-count: 3;
   position: relative;
-  display: inline-flex;
+  display: flex;
   flex-wrap: nowrap;
   align-items: stretch;
   gap: 0;
   padding: var(--lp-seg-pad);
-  width: fit-content;
+  /* 3등분 흰 칩과 버튼 폭을 맞추려면 고정 폭 + 동일 flex */
+  width: min(18.5rem, 100%);
   max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
   align-self: center;
   border-radius: 0.5625rem;
   border: 1px solid var(--cal-line-strong, rgba(0, 0, 0, 0.22));
@@ -1267,23 +1608,24 @@
   color: var(--idea-navy, #1e4d7b);
 }
 
-/* 전체·진행중·완료 — 슬라이딩 흰 칩 (diary-report-granularity와 동일 패턴) */
+/* 진행 전·진행중·완료 — 슬라이딩 흰 칩 (칸 너비 동일 → 칩·글자 정렬) */
 .lp-kpi-dream-page .dream-kpi-filter-btn {
   position: relative;
   z-index: 1;
-  flex: 0 0 auto;
+  flex: 1 1 0;
+  min-width: 0;
   appearance: none;
   margin: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border: none;
-  padding: 0.35rem 0.85rem;
+  padding: 0.35rem 0.25rem;
   min-height: 2rem;
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: -0.02em;
-  line-height: 1.2;
+  line-height: 1;
   white-space: nowrap;
   cursor: pointer;
   color: var(--cal-text-muted, rgba(0, 0, 0, 0.48));
@@ -1534,6 +1876,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
   min-height: 3.5rem;
   margin: 0;
   padding: 1rem;
@@ -1559,6 +1903,17 @@
 .lp-kpi-dream-page .dream-kpi-add-card-text {
   font-size: 0.875rem;
   font-weight: 500;
+}
+
+/* 시급 상승 3분할만 — 목표/행동/할 일 추가 카드 높이 축소 */
+.lp-kpi-dream-page.sideincome-view--split .dream-kpi-add-card {
+  min-height: 2.125rem;
+  padding: 0.4rem 0.65rem;
+  border-radius: 10px;
+}
+
+.lp-kpi-dream-page.sideincome-view--split .dream-kpi-add-card-text {
+  font-size: 0.8125rem;
 }
 
 /* 부수입 경로 요약 — KPI 카드·로그 목록과 동일 톤 */
@@ -2437,6 +2792,111 @@
   flex-wrap: nowrap;
   align-items: center;
   gap: 0.5rem 1rem;
+}
+
+/* 행동 수정 모달 — 과제 상태 세그먼트 버튼 (가운데 정렬) */
+.dream-kpi-progress-status-field {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.dream-kpi-progress-status-field > .dream-kpi-field-label {
+  align-self: stretch;
+  text-align: left;
+}
+
+.dream-kpi-progress-status-field .dream-kpi-progress-status-bar {
+  --lp-seg-pad: 3px;
+  --lp-seg-count: 3;
+  position: relative;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0;
+  width: min(18.5rem, 100%);
+  max-width: 100%;
+  margin-top: 0.15rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding: var(--lp-seg-pad);
+  border-radius: 0.5625rem;
+  border: 1px solid rgba(0, 0, 0, 0.22);
+  background: rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.dream-kpi-progress-status-field .dream-kpi-progress-status-bar::before {
+  content: "";
+  position: absolute;
+  top: var(--lp-seg-pad);
+  bottom: var(--lp-seg-pad);
+  left: var(--lp-seg-pad);
+  width: calc((100% - 2 * var(--lp-seg-pad)) / var(--lp-seg-count));
+  border-radius: calc(0.5rem - var(--lp-seg-pad));
+  background: #fff;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.12),
+    0 1px 2px rgba(0, 0, 0, 0.08);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.dream-kpi-progress-status-field
+  .dream-kpi-progress-status-bar:has(
+    > .dream-kpi-progress-status-btn:nth-child(2).is-active
+  )::before {
+  transform: translateX(100%);
+}
+
+.dream-kpi-progress-status-field
+  .dream-kpi-progress-status-bar:has(
+    > .dream-kpi-progress-status-btn:nth-child(3).is-active
+  )::before {
+  transform: translateX(200%);
+}
+
+.dream-kpi-progress-status-field .dream-kpi-progress-status-btn {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 0;
+  min-width: 0;
+  appearance: none;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  padding: 0.35rem 0.25rem;
+  min-height: 2rem;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  white-space: nowrap;
+  color: rgba(0, 0, 0, 0.48);
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dream-kpi-progress-status-field .dream-kpi-progress-status-btn.is-active {
+  color: #000;
+  font-weight: 700;
+}
+
+.dream-kpi-progress-status-field .dream-kpi-progress-status-btn:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dream-kpi-progress-status-field .dream-kpi-progress-status-bar::before {
+    transition: none;
+  }
 }
 
 .dream-kpi-field input[type="text"],

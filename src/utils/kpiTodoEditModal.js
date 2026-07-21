@@ -18,6 +18,7 @@ export function showKpiTodoEditModal(opts = {}) {
   const kpiName = (opts.kpiName || "").trim();
   const inputLabel = opts.inputLabel ?? "할 일";
   const placeholder = opts.placeholder ?? "";
+  const linkedLabel = opts.linkedLabel ?? "연결된 KPI";
 
   return new Promise((resolve) => {
     function escapeHtml(s) {
@@ -43,7 +44,7 @@ export function showKpiTodoEditModal(opts = {}) {
           ${
             kpiName
               ? `<div class="dream-kpi-field dream-kpi-todo-kpi-block">
-            <label for="dream-kpi-todo-edit-kpi-readonly">연결된 KPI</label>
+            <label for="dream-kpi-todo-edit-kpi-readonly">${escapeHtml(linkedLabel)}</label>
             <p id="dream-kpi-todo-edit-kpi-readonly" class="dream-kpi-todo-linked-kpi-name">${escapeHtml(kpiName)}</p>
           </div>`
               : ""

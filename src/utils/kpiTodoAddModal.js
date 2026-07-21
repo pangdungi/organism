@@ -10,6 +10,7 @@ export function showKpiTodoAddModal(opts = {}) {
   const inputLabel = opts.inputLabel ?? "할 일";
   const title = opts.title ?? "할 일 추가";
   const submitLabel = opts.submitLabel ?? "추가";
+  const linkedLabel = opts.linkedLabel ?? "연결된 KPI";
   const kpiName = (opts.kpiName || "").trim();
 
   return new Promise((resolve) => {
@@ -36,7 +37,7 @@ export function showKpiTodoAddModal(opts = {}) {
           ${
             kpiName
               ? `<div class="dream-kpi-field dream-kpi-todo-kpi-block">
-            <label for="dream-kpi-todo-add-kpi-readonly">연결된 KPI</label>
+            <label for="dream-kpi-todo-add-kpi-readonly">${escapeHtml(linkedLabel)}</label>
             <p id="dream-kpi-todo-add-kpi-readonly" class="dream-kpi-todo-linked-kpi-name">${escapeHtml(kpiName)}</p>
           </div>`
               : ""

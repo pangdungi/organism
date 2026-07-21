@@ -1,13 +1,26 @@
-/* 해빗 트랙커 — 월간 습관 격자 */
+/* 해빗 트랙커 — 깃허브 잔디밭 스타일 월간 격자 */
 
 .lp-kpi-dream-page .habit-tracker-content-wrap {
   flex: 1 1 auto;
   min-height: 0;
-  padding: 0 0 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 0 0 1.75rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  box-sizing: border-box;
+}
+
+.lp-kpi-dream-page .habit-tracker-grid-host {
+  flex: 0 0 auto;
+  min-width: 0;
 }
 
 .lp-kpi-dream-page .habit-tracker-page-grid-wrap {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -15,122 +28,60 @@
 }
 
 .lp-kpi-dream-page .habit-tracker-page-grid-scroll {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
-  overflow: auto;
+  max-height: min(58vh, 28rem);
+  overflow-x: hidden;
+  overflow-y: auto;
   scroll-behavior: auto;
-  padding: 0;
+  padding: 0.65rem 0.7rem 0.75rem;
   margin: 0;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #d0d7de;
   border-radius: 10px;
   background: #fff;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-}
-
-.lp-kpi-dream-page .habit-tracker-page-grid-table {
-  width: max-content;
-  min-width: 100%;
-  margin: 0;
-  border-collapse: collapse;
-  border-spacing: 0;
-  font-size: 0.75rem;
-  table-layout: fixed;
-  --ht-grid-dot-color: #b8c4d4;
-  --ht-grid-dot-step: 4px;
-  --ht-grid-dot-h: repeating-linear-gradient(
-    to right,
-    var(--ht-grid-dot-color) 0,
-    var(--ht-grid-dot-color) 1px,
-    transparent 1px,
-    transparent var(--ht-grid-dot-step)
-  );
-  --ht-grid-dot-v: repeating-linear-gradient(
-    to bottom,
-    var(--ht-grid-dot-color) 0,
-    var(--ht-grid-dot-color) 1px,
-    transparent 1px,
-    transparent var(--ht-grid-dot-step)
-  );
-}
-
-.lp-kpi-dream-page .habit-tracker-page-grid-th,
-.lp-kpi-dream-page .habit-tracker-page-grid-td {
-  padding: 0.4rem 0.45rem;
-  text-align: center;
-  border: none;
-  background-color: #fff;
-  background-image: var(--ht-grid-dot-h);
-  background-position: left bottom;
-  background-size: auto 1px;
-  background-repeat: repeat-x;
-  color: #374151;
-  vertical-align: middle;
   box-sizing: border-box;
-}
-
-.lp-kpi-dream-page .habit-tracker-page-grid-th--habit,
-.lp-kpi-dream-page .habit-tracker-page-grid-td--habit,
-.lp-kpi-dream-page .habit-tracker-page-grid-th--day:not(:last-child),
-.lp-kpi-dream-page .habit-tracker-page-grid-td--cell:not(:last-child) {
-  background-image: var(--ht-grid-dot-h), var(--ht-grid-dot-v);
-  background-position: left bottom, right top;
-  background-size: auto 1px, 1px auto;
-  background-repeat: repeat-x, repeat-y;
-}
-
-.lp-kpi-dream-page .habit-tracker-page-grid-th--habit,
-.lp-kpi-dream-page .habit-tracker-page-grid-td--habit {
-  position: sticky;
-  left: 0;
-  z-index: 2;
-  min-width: 7.75rem;
-  max-width: 10rem;
-  text-align: left;
-  font-weight: 500;
-  background-color: #f8fafc;
-  background-clip: padding-box;
-  /* 가로 점선이 세로 구분선 밖으로 튀지 않게 */
-  background-size: calc(100% - 1px) 1px, 1px auto;
-  transform: translateZ(0);
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
 }
 
 .lp-kpi-dream-page .habit-tracker-page-grid-month-nav {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.15rem;
+  gap: 0.2rem;
   width: 100%;
+  margin: 0 0 0.65rem;
+  flex-shrink: 0;
 }
 
 .lp-kpi-dream-page .habit-tracker-page-grid-month-nav-label {
-  min-width: 3.25rem;
+  min-width: 3.5rem;
+  text-align: center;
   font-weight: 600;
-  color: #64748b;
+  color: #656d76;
   font-variant-numeric: tabular-nums;
+  font-size: 0.875rem;
 }
 
 .lp-kpi-dream-page .habit-tracker-page-grid-month-nav-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.35rem;
-  height: 1.35rem;
+  width: 1.5rem;
+  height: 1.5rem;
   padding: 0;
   border: none;
-  border-radius: 0.25rem;
+  border-radius: 0.35rem;
   background: transparent;
-  color: #64748b;
-  font-size: 1rem;
+  color: #656d76;
+  font-size: 1.05rem;
   line-height: 1;
   cursor: pointer;
 }
 
 .lp-kpi-dream-page .habit-tracker-page-grid-month-nav-btn:hover:not(:disabled) {
-  background: rgba(30, 77, 123, 0.08);
-  color: #1e4d7b;
+  background: #f3f4f6;
+  color: #24292f;
 }
 
 .lp-kpi-dream-page .habit-tracker-page-grid-month-nav-btn:disabled {
@@ -138,160 +89,531 @@
   cursor: wait;
 }
 
-.lp-kpi-dream-page .habit-tracker-page-grid-th--year {
-  font-weight: 600;
-  color: #64748b;
-  text-align: center;
+.lp-kpi-dream-page .habit-tracker-page-grid-table {
+  --ht-habit-w: 5.75rem;
+  --ht-cell-gap: 3px;
+  --ht-grass-empty: #ebedf0;
+  --ht-grass-lv1: #9be9a8;
+  --ht-grass-lv2: #40c463;
+  --ht-grass-lv3: #30a14e;
+  --ht-grass-lv4: #216e39;
+  --ht-grass-before: #f6f8fa;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  border-collapse: separate;
+  border-spacing: var(--ht-cell-gap);
+  font-size: 0.75rem;
+  table-layout: fixed;
 }
 
-.lp-kpi-dream-page .habit-tracker-page-grid-th--day,
-.lp-kpi-dream-page .habit-tracker-page-grid-td--cell {
-  min-width: 2.35rem;
-  white-space: nowrap;
+.lp-kpi-dream-page .habit-tracker-page-grid-td {
+  border: none;
+  vertical-align: middle;
+  box-sizing: border-box;
 }
 
-.lp-kpi-dream-page .habit-tracker-page-grid-th--day {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background-color: #fff;
-  font-weight: 600;
-  color: #4b5563;
-}
-
-.lp-kpi-dream-page .habit-tracker-page-grid-table thead .habit-tracker-page-grid-th {
-  background-image: var(--ht-grid-dot-h), var(--ht-grid-dot-h);
-  background-position: left bottom, left top;
-  background-size: auto 1px, auto 1px;
-  background-repeat: repeat-x, repeat-x;
-}
-
-.lp-kpi-dream-page
-  .habit-tracker-page-grid-table
-  thead
-  .habit-tracker-page-grid-th:not(:last-child) {
-  background-image: var(--ht-grid-dot-h), var(--ht-grid-dot-h), var(--ht-grid-dot-v);
-  background-position: left bottom, left top, right top;
-  background-size: auto 1px, auto 1px, 1px auto;
-  background-repeat: repeat-x, repeat-x, repeat-y;
-}
-
-.lp-kpi-dream-page
-  .habit-tracker-page-grid-table
-  thead
-  .habit-tracker-page-grid-th--habit {
-  background-size: calc(100% - 1px) 1px, calc(100% - 1px) 1px, 1px auto;
-}
-
-.lp-kpi-dream-page .habit-tracker-page-grid-th--habit {
-  top: 0;
-  left: 0;
-  z-index: 4;
-  background-color: #f8fafc;
-}
-
-.lp-kpi-dream-page .habit-tracker-page-grid-th--today {
-  background-color: #e8e8e8;
-}
-
-.lp-kpi-dream-page .habit-tracker-page-grid-cell--ok {
-  font-weight: 600;
-  color: #1e4d7b;
-}
-
-.lp-kpi-dream-page .habit-tracker-page-grid-cell--value {
-  font-size: 0.68rem;
+.lp-kpi-dream-page .habit-tracker-page-grid-td--habit {
+  width: var(--ht-habit-w);
+  min-width: var(--ht-habit-w);
+  max-width: var(--ht-habit-w);
+  padding: 0 0.4rem 0 0.1rem;
+  text-align: left;
+  font-size: 0.75rem;
   font-weight: 500;
-  color: #334155;
-  line-height: 1.25;
+  color: #24292f;
+  background: transparent;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+/* 잔디 칸 — 둥근 사각 + 빈칸 회색 / 실행 초록 */
+.lp-kpi-dream-page .habit-tracker-page-grid-td--cell {
+  min-width: 0;
+  width: calc(
+    (100% - var(--ht-habit-w) - (var(--ht-day-cols, 31) * var(--ht-cell-gap))) /
+      var(--ht-day-cols, 31)
+  );
+  height: auto;
+  padding: 0;
+  font-size: 0;
+  line-height: 0;
+  color: transparent;
+  background-color: var(--ht-grass-empty);
+  border-radius: 2px;
+  aspect-ratio: 1 / 1;
+}
+
+.lp-kpi-dream-page .habit-tracker-page-grid-cell--ok,
+.lp-kpi-dream-page .habit-tracker-page-grid-cell--value {
+  background-color: var(--ht-grass-lv2) !important;
+}
+
+.lp-kpi-dream-page .habit-tracker-page-grid-cell--lv1 {
+  background-color: var(--ht-grass-lv1) !important;
+}
+
+.lp-kpi-dream-page .habit-tracker-page-grid-cell--lv2 {
+  background-color: var(--ht-grass-lv2) !important;
+}
+
+.lp-kpi-dream-page .habit-tracker-page-grid-cell--lv3 {
+  background-color: var(--ht-grass-lv3) !important;
+}
+
+.lp-kpi-dream-page .habit-tracker-page-grid-cell--lv4 {
+  background-color: var(--ht-grass-lv4) !important;
 }
 
 .lp-kpi-dream-page .habit-tracker-page-grid-cell--before-start {
-  background-color: #f1f5f9 !important;
-  color: #cbd5e1;
+  background-color: var(--ht-grass-before) !important;
 }
 
-/* 홈 3분할 embed — 격자 바깥(상·하·좌·우) 점선·테두리 겹침 제거 (본 파일이 마지막에 로드됨) */
+/* 홈 3분할 embed */
 .habit-tracker-view--dashboard-embed .habit-tracker-page-grid-scroll {
   border: none;
   border-radius: 0;
+  padding: 0.15rem 0.4rem 0.35rem;
 }
 
-.habit-tracker-view--dashboard-embed
-  .habit-tracker-page-grid-table
-  thead
-  .habit-tracker-page-grid-th {
-  background-image: var(--ht-grid-dot-h) !important;
-  background-position: left bottom !important;
-  background-size: calc(100% - 1px) 1px !important;
-  background-repeat: repeat-x !important;
+.habit-tracker-view--dashboard-embed .habit-tracker-page-grid-table {
+  --ht-habit-w: 4.75rem;
+  --ht-cell-gap: 2px;
 }
 
-.habit-tracker-view--dashboard-embed
-  .habit-tracker-page-grid-table
-  thead
-  .habit-tracker-page-grid-th--habit {
-  background-image: var(--ht-grid-dot-h), var(--ht-grid-dot-v) !important;
-  background-position: 1px bottom, right top !important;
-  background-size: calc(100% - 2px) 1px, 1px auto !important;
-  background-repeat: repeat-x, repeat-y !important;
+.habit-tracker-view--dashboard-embed .habit-tracker-page-grid-td--habit {
+  font-size: 0.6875rem;
 }
 
-.habit-tracker-view--dashboard-embed
-  .habit-tracker-page-grid-table
-  thead
-  .habit-tracker-page-grid-th--day:not(:last-child) {
-  background-image: var(--ht-grid-dot-h), var(--ht-grid-dot-v) !important;
-  background-position: left bottom, right top !important;
-  background-size: calc(100% - 1px) 1px, 1px auto !important;
-  background-repeat: repeat-x, repeat-y !important;
+.habit-tracker-view--dashboard-embed .habit-tracker-page-grid-month-nav {
+  margin-bottom: 0.3rem;
 }
 
-.habit-tracker-view--dashboard-embed
-  .habit-tracker-page-grid-table
-  tbody
-  .habit-tracker-page-grid-td--habit {
-  background-image: var(--ht-grid-dot-h), var(--ht-grid-dot-v) !important;
-  background-position: 1px bottom, right top !important;
-  background-size: calc(100% - 2px) 1px, 1px auto !important;
-  background-repeat: repeat-x, repeat-y !important;
+/* 홈 3분할 — 오늘 매일할일 원형 링 (표 바로 아래, 아래로 밀어내지 않음) */
+.habit-tracker-view--dashboard-embed .habit-tracker-content-wrap {
+  gap: 0.35rem;
+  padding-bottom: 0.35rem;
+  justify-content: flex-start;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
-.habit-tracker-view--dashboard-embed
-  .habit-tracker-page-grid-table
-  tbody
-  .habit-tracker-page-grid-td--cell:not(:last-child) {
-  background-image: var(--ht-grid-dot-h), var(--ht-grid-dot-v) !important;
-  background-position: left bottom, right top !important;
-  background-size: calc(100% - 1px) 1px, 1px auto !important;
-  background-repeat: repeat-x, repeat-y !important;
+.habit-tracker-view--dashboard-embed .habit-tracker-grid-host {
+  flex: 0 0 auto;
+  min-height: 0;
+  display: block;
 }
 
-.habit-tracker-view--dashboard-embed
-  .habit-tracker-page-grid-table
-  tbody
-  .habit-tracker-page-grid-td--cell:last-child {
-  background-image: var(--ht-grid-dot-h) !important;
-  background-position: left bottom !important;
-  background-size: calc(100% - 1px) 1px !important;
-  background-repeat: repeat-x !important;
+.habit-tracker-view--dashboard-embed .habit-tracker-page-grid-wrap {
+  flex: 0 0 auto;
+  min-height: 0;
 }
 
-.habit-tracker-view--dashboard-embed
-  .habit-tracker-page-grid-table
-  tbody
-  tr:last-child
-  .habit-tracker-page-grid-td {
-  background-image: none !important;
+.habit-tracker-view--dashboard-embed .habit-tracker-page-grid-scroll {
+  flex: 0 0 auto;
+  max-height: none;
+  overflow: visible;
 }
 
-.habit-tracker-view--dashboard-embed
-  .habit-tracker-page-grid-table
-  tbody
-  tr:last-child
-  .habit-tracker-page-grid-td--cell:not(:last-child) {
-  background-image: var(--ht-grid-dot-v) !important;
-  background-position: right top !important;
-  background-size: 1px auto !important;
-  background-repeat: repeat-y !important;
+.habit-tracker-view--dashboard-embed .habit-tracker-today-ring-host {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  margin-top: 0.15rem;
+  padding: 0.1rem 0.35rem 0.25rem;
+  box-sizing: border-box;
+}
+
+.habit-tracker-today-ring {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  max-width: 10rem;
+}
+
+.habit-tracker-today-ring-visual {
+  position: relative;
+  width: 6.5rem;
+  height: 6.5rem;
+}
+
+.habit-tracker-today-ring-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.habit-tracker-today-ring-track {
+  stroke: #e8edf2;
+}
+
+.habit-tracker-today-ring-progress {
+  stroke: #27a675;
+  transition: stroke-dashoffset 0.35s ease;
+}
+
+.habit-tracker-today-ring-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  line-height: 1.05;
+}
+
+.habit-tracker-today-ring-done {
+  font-size: 1.55rem;
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.habit-tracker-today-ring-total {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #9ca3af;
+  font-variant-numeric: tabular-nums;
+}
+
+.habit-tracker-today-ring-summary {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #374151;
+  letter-spacing: -0.02em;
+  text-align: center;
+}
+
+/* —— 하단 달성률 카드 —— */
+.lp-kpi-dream-page .habit-tracker-insight-host {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 0 0.7rem;
+  box-sizing: border-box;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-section-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #656d76;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-track {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0;
+  padding: 1rem 1.05rem 0.85rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-sizing: border-box;
+}
+
+
+
+
+
+.lp-kpi-dream-page .habit-tracker-insight-card-title {
+  display: inline-flex;
+  align-self: flex-start;
+  margin: 0 0 0.85rem;
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+  box-sizing: border-box;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-card-title--blue {
+  color: #1d4ed8;
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-card-title--warm {
+  color: #c2410c;
+  background: rgba(251, 146, 60, 0.16);
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-card-title--violet {
+  color: #6d28d9;
+  background: rgba(139, 92, 246, 0.14);
+}
+
+
+.lp-kpi-dream-page .habit-tracker-insight-card-body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+
+
+.lp-kpi-dream-page .habit-tracker-insight-empty {
+  margin: 0.5rem 0;
+  font-size: 0.8125rem;
+  color: #94a3b8;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-bar-row {
+  display: grid;
+  grid-template-columns: minmax(0, 4.5rem) minmax(0, 1fr) 2.1rem;
+  align-items: center;
+  gap: 0.4rem 0.5rem;
+  margin: 0 0 0.45rem;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-bar-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #374151;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-bar-track {
+  height: 0.55rem;
+  border-radius: 999px;
+  background: #eef2f7;
+  overflow: hidden;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #3b82f6;
+  min-width: 0;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-bar-fill.is-blue {
+  background: #3b82f6;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-bar-fill.is-mid {
+  background: #60a5fa;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-bar-fill.is-high {
+  background: #22c55e;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-bar-fill.is-low {
+  background: #f97316;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-bar-value {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #111827;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-heat-row {
+  display: grid;
+  grid-template-columns: 2.5rem auto;
+  gap: 0.3rem;
+  align-items: center;
+  margin: 0 0 0.18rem;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-heat-label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: #4b5563;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-heat-cells {
+  display: grid;
+  grid-template-columns: repeat(7, 0.55rem);
+  gap: 2px;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-heat-cell {
+  display: block;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 2px;
+  background: var(--ht-grass-empty, #ebedf0);
+  box-sizing: border-box;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-heat-cell--lv0 {
+  background: var(--ht-grass-empty, #ebedf0);
+}
+.lp-kpi-dream-page .habit-tracker-insight-heat-cell--lv1 {
+  background: var(--ht-grass-lv1, #9be9a8);
+}
+.lp-kpi-dream-page .habit-tracker-insight-heat-cell--lv2 {
+  background: var(--ht-grass-lv2, #40c463);
+}
+.lp-kpi-dream-page .habit-tracker-insight-heat-cell--lv3 {
+  background: var(--ht-grass-lv3, #30a14e);
+}
+.lp-kpi-dream-page .habit-tracker-insight-heat-cell--lv4 {
+  background: var(--ht-grass-lv4, #216e39);
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-heat-legend {
+  display: flex;
+  justify-content: flex-start;
+  gap: 0.55rem;
+  margin-top: 0.35rem;
+  margin-left: calc(2.5rem + 0.3rem);
+  font-size: 0.625rem;
+  color: #6b7280;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-heat-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-heat-legend .habit-tracker-insight-heat-cell {
+  width: 0.55rem;
+  height: 0.55rem;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-streak-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 2rem;
+  align-items: center;
+  gap: 0.45rem 0.55rem;
+  margin: 0 0 0.45rem;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-streak-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #374151;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-streak-bar {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-streak-seg {
+  display: block;
+  width: 0.42rem;
+  height: 0.85rem;
+  border-radius: 2px;
+  background: #eef2f7;
+  box-sizing: border-box;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-streak-seg.is-on {
+  background: #22c55e;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-streak-row.is-high .habit-tracker-insight-streak-seg.is-on {
+  background: #16a34a;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-streak-row.is-mid .habit-tracker-insight-streak-seg.is-on {
+  background: #3b82f6;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-streak-row.is-low .habit-tracker-insight-streak-seg.is-on {
+  background: #f59e0b;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-streak-days {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #111827;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-streak-unit {
+  margin-left: 0.05rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-streak-row.is-zero .habit-tracker-insight-streak-name,
+.lp-kpi-dream-page .habit-tracker-insight-streak-row.is-zero .habit-tracker-insight-streak-days,
+.lp-kpi-dream-page .habit-tracker-insight-streak-row.is-zero .habit-tracker-insight-streak-unit {
+  color: #9ca3af;
+  font-weight: 600;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-dots-nav {
+  display: none;
+}
+
+/* 모바일: 가로 스와이프, 화면(트랙)당 카드 1장 */
+@media (max-width: 46rem) {
+  .lp-kpi-dream-page .habit-tracker-insight-track {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.65rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    padding-bottom: 0.15rem;
+  }
+
+  .lp-kpi-dream-page .habit-tracker-insight-card {
+    flex: 0 0 100%;
+    width: 100%;
+    max-width: 100%;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+  }
+
+  .lp-kpi-dream-page .habit-tracker-insight-dots-nav {
+    display: flex;
+    justify-content: center;
+    gap: 0.4rem;
+    margin-top: 0.65rem;
+  }
+
+  .lp-kpi-dream-page .habit-tracker-insight-dots-nav-item {
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 999px;
+    background: #d1d5db;
+  }
+
+  .lp-kpi-dream-page .habit-tracker-insight-dots-nav-item.is-active {
+    background: #111827;
+    width: 0.9rem;
+    border-radius: 999px;
+  }
 }

@@ -204,7 +204,7 @@ export function renderDesktopDashboard(opts) {
   colPlanner.append(plannerBody, plannerFooter);
 
   mountColExpandBtn(colTime, "time", "시간기록", opts.navigateToTab);
-  mountColExpandBtn(centerBottom, "habittracker", "해빗 트랙커", opts.navigateToTab);
+  mountColExpandBtn(centerBottom, "habittracker", "루틴 트랙커", opts.navigateToTab);
   mountColExpandBtn(colPlanner, "schedulecalendar", "캘린더", opts.navigateToTab);
 
   grid.append(colTime, colCenter, colPlanner);

@@ -4,12 +4,10 @@
 
 import {
   buildHabitTrackerPageModel,
-  formatHabitTrackerDayColLabel,
   formatHabitTrackerMonthCornerLabel,
   getHabitTrackerCellDisplay,
 } from "./habitTrackerPageModel.js";
 import { shiftMonthYear } from "./kpiHabitTrackerStartDate.js";
-import { timeLedgerLocalTodayYmd } from "./timeLedgerEntriesSupabase.js";
 
 /**
  * @param {{
@@ -36,27 +34,11 @@ export function createHabitTrackerPageGridElement(opts = {}) {
     month,
     skipSync: !!opts.skipSync,
   });
-  const todayYmd = normYmd(opts.todayYmd || timeLedgerLocalTodayYmd());
-  const isCurrentMonth =
-    year === refDate.getFullYear() && month === refDate.getMonth() + 1;
-
   const wrap = document.createElement("div");
   wrap.className = "habit-tracker-page-grid-wrap";
 
   const scroll = document.createElement("div");
   scroll.className = "habit-tracker-page-grid-scroll";
-
-  const table = document.createElement("table");
-  table.className = "habit-tracker-page-grid-table";
-  table.setAttribute("role", "grid");
-  table.setAttribute("aria-label", "해빗 트랙커");
-
-  const thead = document.createElement("thead");
-  const headRow = document.createElement("tr");
-  const cornerTh = document.createElement("th");
-  cornerTh.className =
-    "habit-tracker-page-grid-th habit-tracker-page-grid-th--habit habit-tracker-page-grid-th--year";
-  cornerTh.scope = "row";
 
   const monthNav = document.createElement("div");
   monthNav.className = "habit-tracker-page-grid-month-nav";
@@ -89,22 +71,13 @@ export function createHabitTrackerPageGridElement(opts = {}) {
   });
 
   monthNav.append(prevBtn, monthLabel, nextBtn);
-  cornerTh.appendChild(monthNav);
-  headRow.appendChild(cornerTh);
+  scroll.appendChild(monthNav);
 
-  for (const dk of model.dateKeys) {
-    const th = document.createElement("th");
-    th.className = "habit-tracker-page-grid-th habit-tracker-page-grid-th--day";
-    th.dataset.ymd = dk;
-    th.textContent = formatHabitTrackerDayColLabel(dk);
-    th.title = dk;
-    if (isCurrentMonth && dk === todayYmd) {
-      th.classList.add("habit-tracker-page-grid-th--today");
-    }
-    headRow.appendChild(th);
-  }
-  thead.appendChild(headRow);
-  table.appendChild(thead);
+  const table = document.createElement("table");
+  table.className = "habit-tracker-page-grid-table";
+  table.setAttribute("role", "grid");
+  table.setAttribute("aria-label", "루틴 트랙커");
+  table.style.setProperty("--ht-day-cols", String(model.dateKeys.length || 1));
 
   const tbody = document.createElement("tbody");
   for (const row of model.rows) {
@@ -119,14 +92,18 @@ export function createHabitTrackerPageGridElement(opts = {}) {
       const td = document.createElement("td");
       td.className =
         "habit-tracker-page-grid-td habit-tracker-page-grid-td--cell";
-      const { text, beforeStart } = getHabitTrackerCellDisplay(row, dk);
-      td.textContent = text;
+      td.dataset.ymd = dk;
+      const { text, beforeStart, level } = getHabitTrackerCellDisplay(row, dk);
+      const tip = text ? `${dk} · ${text}` : dk;
+      td.title = tip;
+      td.setAttribute("aria-label", tip);
       if (beforeStart) {
         td.classList.add("habit-tracker-page-grid-cell--before-start");
-      } else if (text === "O") {
-        td.classList.add("habit-tracker-page-grid-cell--ok");
-      } else if (text) {
-        td.classList.add("habit-tracker-page-grid-cell--value");
+      } else if (level > 0) {
+        td.classList.add(
+          "habit-tracker-page-grid-cell--ok",
+          `habit-tracker-page-grid-cell--lv${level}`,
+        );
       }
       tr.appendChild(td);
     }
@@ -136,11 +113,6 @@ export function createHabitTrackerPageGridElement(opts = {}) {
 
   scroll.appendChild(table);
   wrap.appendChild(scroll);
-
-  const autoScrollToday = opts.autoScrollToday !== false;
-  if (isCurrentMonth && autoScrollToday) {
-    scheduleScrollHabitTrackerToToday(scroll, todayYmd);
-  }
 
   async function handleMonthShift(delta) {
     if (typeof opts.onMonthChange !== "function") return;
@@ -158,29 +130,14 @@ export function createHabitTrackerPageGridElement(opts = {}) {
   return wrap;
 }
 
-/** @param {HTMLElement | null | undefined} scrollOrHost @param {string} todayYmd @returns {boolean} */
+/** 화면 너비에 맞춤 — 가로 스크롤 없음. 오늘 칸만 확인 */
 export function scrollHabitTrackerToToday(scrollOrHost, todayYmd) {
   const ymd = normYmd(todayYmd);
   const scroll = resolveHabitTrackerGridScrollEl(scrollOrHost);
   if (!scroll || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return false;
-
-  const todayHead = scroll.querySelector(
-    `.habit-tracker-page-grid-th--day[data-ymd="${ymd}"]`,
+  return !!scroll.querySelector(
+    `.habit-tracker-page-grid-td--cell[data-ymd="${ymd}"]`,
   );
-  if (!(todayHead instanceof HTMLElement)) return false;
-  if (scroll.clientWidth < 4) return false;
-
-  const habitHead = scroll.querySelector(".habit-tracker-page-grid-th--habit");
-  const stickyW =
-    habitHead instanceof HTMLElement ? habitHead.offsetWidth : 0;
-  const dayW = todayHead.offsetWidth || 0;
-  const dayLeft = offsetLeftWithinScrollContent(todayHead, scroll);
-  const viewW = Math.max(1, scroll.clientWidth - stickyW - 4);
-  const maxScroll = Math.max(0, scroll.scrollWidth - scroll.clientWidth);
-  const target =
-    dayLeft - stickyW - Math.max(0, (viewW - dayW) / 2);
-  scroll.scrollLeft = Math.min(maxScroll, Math.max(0, target));
-  return true;
 }
 
 /** 레이아웃 확정 후 1~2회만 시도 (3분할 embed — 연속 rAF 스크롤로 깜빡임 방지) */
@@ -194,19 +151,6 @@ export function scheduleScrollHabitTrackerToToday(scrollOrHost, todayYmd) {
     if (attempts < 2) requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
-}
-
-function offsetLeftWithinScrollContent(el, scroll) {
-  let left = 0;
-  let node = el;
-  while (node && node !== scroll) {
-    left += node.offsetLeft;
-    node = node.offsetParent;
-  }
-  if (node === scroll) return left;
-  const scrollRect = scroll.getBoundingClientRect();
-  const elRect = el.getBoundingClientRect();
-  return elRect.left - scrollRect.left + scroll.scrollLeft;
 }
 
 function resolveHabitTrackerGridScrollEl(scrollOrHost) {

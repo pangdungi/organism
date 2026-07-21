@@ -10,6 +10,14 @@ import {
 } from "../utils/habitTrackerPageGrid.js";
 import { pullHabitTrackerTabFromCloud } from "../utils/habitTrackerCloudRefresh.js";
 import { timeLedgerLocalTodayYmd } from "../utils/timeLedgerEntriesSupabase.js";
+import {
+  buildHabitTrackerWeekInsightModel,
+  createHabitTrackerInsightSection,
+} from "../utils/habitTrackerInsightCards.js";
+import {
+  buildHabitTrackerTodayDailyRingModel,
+  createHabitTrackerTodayRingElement,
+} from "../utils/habitTrackerTodayRing.js";
 
 export function render(opts = {}) {
   const dashboardEmbedMode = !!opts?.dashboardEmbedMode;
@@ -23,12 +31,12 @@ export function render(opts = {}) {
   header.className = "dream-view-header";
   const label = document.createElement("span");
   label.className = "dream-view-label";
-  label.textContent = "HABIT TRACKER";
+  label.textContent = "ROUTINE TRACKER";
   const titleRow = document.createElement("div");
   titleRow.className = "dream-view-header-title-row";
   const title = document.createElement("h1");
   title.className = "dream-view-title";
-  title.textContent = "해빗 트랙커";
+  title.textContent = "루틴 트랙커";
   titleRow.appendChild(title);
   setupKpiCategoryHeaderIcon(titleRow, "habittracker");
   header.appendChild(label);
@@ -41,6 +49,19 @@ export function render(opts = {}) {
   const gridHost = document.createElement("div");
   gridHost.className = "habit-tracker-grid-host";
   contentWrap.appendChild(gridHost);
+
+  /** 하단 레포트 카드 — 전체 탭만 / 원형 링 — 홈 3분할 embed만 */
+  let insightHost = null;
+  let todayRingHost = null;
+  if (!dashboardEmbedMode) {
+    insightHost = document.createElement("div");
+    insightHost.className = "habit-tracker-insight-host";
+    contentWrap.appendChild(insightHost);
+  } else {
+    todayRingHost = document.createElement("div");
+    todayRingHost.className = "habit-tracker-today-ring-host";
+    contentWrap.appendChild(todayRingHost);
+  }
   el.appendChild(contentWrap);
 
   const now = new Date();
@@ -53,6 +74,18 @@ export function render(opts = {}) {
     try {
       window.__lpHabitTrackerViewMonth = { year: viewYear, month: viewMonth };
     } catch (_) {}
+  }
+
+  function paintInsightCards(skipSync) {
+    if (!insightHost) return;
+    const model = buildHabitTrackerWeekInsightModel({ skipSync: !!skipSync });
+    insightHost.replaceChildren(createHabitTrackerInsightSection(model));
+  }
+
+  function paintTodayRing(skipSync) {
+    if (!todayRingHost) return;
+    const model = buildHabitTrackerTodayDailyRingModel({ skipSync: !!skipSync });
+    todayRingHost.replaceChildren(createHabitTrackerTodayRingElement(model));
   }
 
   function paintGrid(opts = {}) {
@@ -80,6 +113,8 @@ export function render(opts = {}) {
         },
       }),
     );
+    paintInsightCards(skipSync);
+    paintTodayRing(skipSync);
     if (!skipSync) hasSyncedPaint = true;
   }
 

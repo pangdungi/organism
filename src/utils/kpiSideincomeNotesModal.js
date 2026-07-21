@@ -92,7 +92,7 @@ export function showSideincomeKpiNoteModal(opts = {}) {
           ${
             kpiName
               ? `<div class="dream-kpi-field dream-kpi-todo-kpi-block">
-            <label for="dream-kpi-note-kpi-readonly">연결된 KPI</label>
+            <label for="dream-kpi-note-kpi-readonly">연결된 행동</label>
             <p id="dream-kpi-note-kpi-readonly" class="dream-kpi-todo-linked-kpi-name">${escapeHtml(kpiName)}</p>
           </div>`
               : ""

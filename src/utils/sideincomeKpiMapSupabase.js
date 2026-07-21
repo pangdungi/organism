@@ -173,6 +173,18 @@ async function getSessionUserId() {
   return user?.id ?? null;
 }
 
+function normalizePathYear(raw) {
+  const n = Number(raw);
+  if (Number.isFinite(n) && n >= 2000 && n <= 2100) return Math.floor(n);
+  return 0;
+}
+
+function normalizePathQuarter(raw) {
+  const n = Number(raw);
+  if (Number.isFinite(n) && n >= 1 && n <= 4) return Math.floor(n);
+  return 0;
+}
+
 function rowToPath(r) {
   const trackFromDb = r.track_target_amount;
   const hasLegacyAmount =
@@ -184,6 +196,10 @@ function rowToPath(r) {
     trackTargetAmount,
     targetAmount: trackTargetAmount ? String(r.target_amount ?? "").trim() : "",
     unit: trackTargetAmount ? (String(r.unit || "").trim() || "원") : "",
+    targetStartDate: String(r.target_start_date ?? "").trim().slice(0, 10),
+    targetDeadline: String(r.target_deadline ?? "").trim().slice(0, 10),
+    targetYear: normalizePathYear(r.target_year),
+    targetQuarter: normalizePathQuarter(r.target_quarter),
     serverUpdatedAt: serverUpdatedAtFromRow(r),
   };
 }
@@ -202,6 +218,9 @@ function rowToPathLog(r) {
 }
 
 function rowToKpi(r) {
+  const ps = String(r.progress_status || "").trim().toLowerCase();
+  const progressStatus =
+    ps === "pending" || ps === "completed" || ps === "active" ? ps : "active";
   return {
     id: r.id,
     pathId: r.path_id,
@@ -216,6 +235,7 @@ function rowToKpi(r) {
     useTaskCompletionGoal: !!r.use_task_completion_goal,
     direction: r.direction === "lower" ? "lower" : "higher",
     habitTrackerStartDate: r.habit_tracker_start_date ?? "",
+    progressStatus,
     serverUpdatedAt: serverUpdatedAtFromRow(r),
   };
 }
@@ -391,6 +411,10 @@ function shouldInsertMetaRow(p) {
 
 function pathToRow(userId, path, sortOrder) {
   const trackTargetAmount = !!path.trackTargetAmount;
+  const startYmd = String(path.targetStartDate || "").trim().slice(0, 10);
+  const endYmd = String(path.targetDeadline || "").trim().slice(0, 10);
+  const targetYear = normalizePathYear(path.targetYear);
+  const targetQuarter = normalizePathQuarter(path.targetQuarter);
   return {
     user_id: userId,
     id: String(path.id),
@@ -402,6 +426,10 @@ function pathToRow(userId, path, sortOrder) {
       : "",
     unit: trackTargetAmount ? (String(path.unit || "").trim() || "원") : "",
     track_target_amount: trackTargetAmount,
+    target_start_date: /^\d{4}-\d{2}-\d{2}$/.test(startYmd) ? startYmd : "",
+    target_deadline: /^\d{4}-\d{2}-\d{2}$/.test(endYmd) ? endYmd : "",
+    target_year: targetYear,
+    target_quarter: targetQuarter,
     sort_order: sortOrder,
   };
 }
@@ -420,6 +448,9 @@ function pathLogToRow(userId, l) {
 }
 
 function kpiToRow(userId, k) {
+  const ps = String(k.progressStatus || "").trim().toLowerCase();
+  const progress_status =
+    ps === "pending" || ps === "completed" || ps === "active" ? ps : "active";
   return {
     user_id: userId,
     id: String(k.id),
@@ -435,6 +466,7 @@ function kpiToRow(userId, k) {
     use_task_completion_goal: !!k.useTaskCompletionGoal,
     direction: k.direction === "lower" ? "lower" : "higher",
     habit_tracker_start_date: (k.habitTrackerStartDate || "").trim(),
+    progress_status,
   };
 }
 

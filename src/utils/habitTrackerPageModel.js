@@ -43,6 +43,7 @@ const KPI_DOMAIN_STORAGE = [
  * @property {object} [kpi]
  * @property {string} [storageKey]
  * @property {object[]} [storedLogs]
+ * @property {Array<{id?: string, text?: string}>} [dailyTodos]
  */
 
 function normYmd(v) {
@@ -198,6 +199,10 @@ export function buildHabitTrackerRows(year, month, opts = {}) {
       const dedupeKey = `${storageKey}:${kpiId}`;
       if (!kpiId || seenKpiKeys.has(dedupeKey)) continue;
       seenKpiKeys.add(dedupeKey);
+      const dailyTodos = (Array.isArray(data.kpiDailyRepeatTodos)
+        ? data.kpiDailyRepeatTodos
+        : []
+      ).filter((t) => String(t?.kpiId || "").trim() === kpiId);
       rows.push({
         id: `kpi-${kpiId}`,
         kind: "kpi",
@@ -205,6 +210,7 @@ export function buildHabitTrackerRows(year, month, opts = {}) {
         kpi,
         storageKey,
         storedLogs: Array.isArray(data.kpiLogs) ? data.kpiLogs : [],
+        dailyTodos,
         habitStartYmd: getKpiHabitTrackerStartYmd(kpi),
       });
     }
@@ -247,19 +253,140 @@ export function formatHabitTrackerDayColLabel(dateKey) {
 /**
  * @param {HabitTrackerRow} row
  * @param {string} dateKey
- * @returns {{ text: string, beforeStart: boolean }}
+ * @returns {{ text: string, beforeStart: boolean, level: 0|1|2|3|4 }}
  */
 export function getHabitTrackerCellDisplay(row, dateKey) {
   const dk = normYmd(dateKey);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dk)) {
-    return { text: "", beforeStart: false };
+    return { text: "", beforeStart: false, level: 0 };
   }
 
   if (row.kind === "kpi" && row.kpi && isKpiHabitDateBeforeStart(row.kpi, dk)) {
-    return { text: "", beforeStart: true };
+    return { text: "", beforeStart: true, level: 0 };
   }
 
-  return { text: getHabitTrackerCellText(row, dk), beforeStart: false };
+  const text = getHabitTrackerCellText(row, dk);
+  const level = getHabitTrackerCellLevel(row, dk, text);
+  const progress = getHabitTrackerDailyProgressLabel(row, dk);
+  return {
+    text: progress || text,
+    beforeStart: false,
+    level,
+  };
+}
+
+/**
+ * 해당일 매일할일 완료 수
+ * @param {HabitTrackerRow} row
+ * @param {string} dateKey
+ * @returns {{ done: number, total: number }}
+ */
+export function getHabitTrackerDailyTodoProgress(row, dateKey) {
+  if (row?.kind !== "kpi") return { done: 0, total: 0 };
+  const dk = normYmd(dateKey);
+  const todos = (Array.isArray(row.dailyTodos) ? row.dailyTodos : []).filter(
+    (t) => String(t?.id || "").trim() || String(t?.text || "").trim(),
+  );
+  const total = todos.length;
+  if (total <= 0) return { done: 0, total: 0 };
+  const kid = String(row.kpi?.id || "").trim();
+  const logs = (row.storedLogs || []).filter(
+    (l) => String(l?.kpiId || "").trim() === kid,
+  );
+  const entries = resolveKpiDetailLogEntriesLocal(row.kpi, logs);
+  const entry = entries.find(
+    (l) => normYmd(l?.dateRaw || l?.date || "") === dk,
+  );
+  const completed = Array.isArray(entry?.dailyCompleted)
+    ? entry.dailyCompleted
+    : [];
+  let done = 0;
+  for (const t of todos) {
+    if (isHabitDailyTodoCompleted(t, completed)) done += 1;
+  }
+  return { done, total };
+}
+
+/**
+ * 툴팁용 — "1/4" 형태
+ * @param {HabitTrackerRow} row
+ * @param {string} dateKey
+ */
+function getHabitTrackerDailyProgressLabel(row, dateKey) {
+  const { done, total } = getHabitTrackerDailyTodoProgress(row, dateKey);
+  if (total <= 0) return "";
+  return `${done}/${total}`;
+}
+
+/**
+ * 매일할일 완료 수 / 전체 수 → 잔디 단계 0~4
+ * 예: 4개 중 1개 → 1(가장 연함), 4개 중 4개 → 4(가장 진함)
+ * @param {HabitTrackerRow} row
+ * @param {string} dateKey
+ * @param {string} [cellText]
+ * @returns {0|1|2|3|4}
+ */
+export function getHabitTrackerCellLevel(row, dateKey, cellText) {
+  const dk = normYmd(dateKey);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dk)) return 0;
+
+  if (row.kind === "time-record") {
+    return isTimeRecordingCompleteForDay(dk) ? 4 : 0;
+  }
+  if (row.kind === "time-plan") {
+    return hasTimePlanForDay(dk) ? 4 : 0;
+  }
+
+  const kpi = row.kpi;
+  if (!kpi) return 0;
+  if (isKpiHabitDateBeforeStart(kpi, dk)) return 0;
+
+  const kid = String(kpi.id || "").trim();
+  const logs = (row.storedLogs || []).filter(
+    (l) => String(l?.kpiId || "").trim() === kid,
+  );
+  const entries = resolveKpiDetailLogEntriesLocal(kpi, logs);
+  const entry = entries.find(
+    (l) => normYmd(l?.dateRaw || l?.date || "") === dk,
+  );
+  const completed = Array.isArray(entry?.dailyCompleted)
+    ? entry.dailyCompleted
+    : [];
+
+  const todos = (Array.isArray(row.dailyTodos) ? row.dailyTodos : []).filter(
+    (t) => String(t?.id || "").trim() || String(t?.text || "").trim(),
+  );
+  const total = todos.length;
+  if (total > 0) {
+    let done = 0;
+    for (const t of todos) {
+      if (isHabitDailyTodoCompleted(t, completed)) done += 1;
+    }
+    if (done <= 0) return 0;
+    /* 4개 중 1개→1, 2개→2, 3개→3, 4개→4 */
+    return /** @type {1|2|3|4} */ (
+      Math.min(4, Math.max(1, Math.ceil((done / total) * 4)))
+    );
+  }
+
+  /* 매일할일 목록이 없을 때만 기존 O·값 */
+  const text =
+    cellText != null ? String(cellText) : getHabitTrackerCellText(row, dk);
+  if (!text) return 0;
+  return 4;
+}
+
+/** @param {{id?: string, text?: string}} todo @param {object[]} completedList */
+function isHabitDailyTodoCompleted(todo, completedList) {
+  const tid = String(todo?.id || "").trim();
+  const ttext = String(todo?.text || "").trim();
+  for (const x of completedList || []) {
+    const xid = String(x?.id || "").trim();
+    const xtext = String(x?.text || "").trim();
+    if (tid && xid && tid === xid) return true;
+    if (ttext && xtext && ttext === xtext) return true;
+  }
+  return false;
 }
 
 /**

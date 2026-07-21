@@ -590,6 +590,9 @@ async function getSessionUserId() {
 }
 
 function rowToKpi(r) {
+  const ps = String(r.progress_status || "").trim().toLowerCase();
+  const progressStatus =
+    ps === "pending" || ps === "completed" || ps === "active" ? ps : "active";
   return {
     id: r.id,
     happinessId: r.happiness_id,
@@ -604,6 +607,7 @@ function rowToKpi(r) {
     useTaskCompletionGoal: !!r.use_task_completion_goal,
     direction: r.direction === "lower" ? "lower" : "higher",
     habitTrackerStartDate: r.habit_tracker_start_date ?? "",
+    progressStatus,
     serverUpdatedAt: serverUpdatedAtFromRow(r),
   };
 }
@@ -777,6 +781,9 @@ function shouldInsertMetaRow(p) {
 }
 
 function kpiToRow(userId, k) {
+  const ps = String(k.progressStatus || "").trim().toLowerCase();
+  const progress_status =
+    ps === "pending" || ps === "completed" || ps === "active" ? ps : "active";
   return {
     user_id: userId,
     id: String(k.id),
@@ -792,6 +799,7 @@ function kpiToRow(userId, k) {
     use_task_completion_goal: !!k.useTaskCompletionGoal,
     direction: k.direction === "lower" ? "lower" : "higher",
     habit_tracker_start_date: (k.habitTrackerStartDate || "").trim(),
+    progress_status,
   };
 }
 

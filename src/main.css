@@ -280,6 +280,11 @@ body {
   display: none !important;
 }
 
+/* 시급 상승 3분할 등 — 뒤로가기만 숨길 때 (.app-footer-actions > * display:flex 보다 우선) */
+.app-footer-actions > [data-lp-app-footer-back][hidden] {
+  display: none !important;
+}
+
 .app-footer-menu {
   flex-shrink: 0;
   align-self: stretch;

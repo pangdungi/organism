@@ -39,6 +39,75 @@ export function purgeCompletedKpiTodosForKpi(data, kpiId, appendDeletedRefFn) {
 }
 
 /**
+ * 완료 할 일 일괄 삭제 — 확인 모달 후 purge
+ * @param {{
+ *   kpiId: string,
+ *   loadMap: () => object,
+ *   saveMap: (data: object, opts?: { pushServer?: boolean }) => void,
+ *   appendDeletedRef: (data: object, kind: string, id: string) => void,
+ *   onAfterDelete?: () => void,
+ *   title?: string,
+ *   emptyMessage?: string,
+ * }} options
+ */
+export async function confirmAndPurgeCompletedKpiTodos(options) {
+  const {
+    kpiId,
+    loadMap,
+    saveMap,
+    appendDeletedRef,
+    onAfterDelete,
+    title = "완료한 할 일 삭제",
+    emptyMessage = "삭제할 완료한 할 일이 없습니다.",
+  } = options;
+  const snapshot = loadMap();
+  const n = countCompletedKpiTodosForKpi(snapshot.kpiTodos, kpiId);
+  if (n === 0) {
+    await showAlertModal({
+      title,
+      message: emptyMessage,
+    });
+    return false;
+  }
+  const ok = await showConfirmModal({
+    title,
+    message: `완료한 할 일 ${n}개를 삭제할까요?`,
+    warnMessage: "삭제 후에는 복구할 수 없습니다.",
+    confirmText: "삭제",
+    cancelText: "취소",
+    confirmDanger: true,
+  });
+  if (!ok) return false;
+  const d = loadMap();
+  purgeCompletedKpiTodosForKpi(d, kpiId, appendDeletedRef);
+  saveMap(d, { pushServer: true });
+  onAfterDelete?.();
+  return true;
+}
+
+/**
+ * 세그/섹션 헤더 오른쪽에 액션 버튼을 붙인 행
+ * @param {HTMLElement} segBar
+ * @param {HTMLElement} actionBtn
+ * @returns {HTMLElement}
+ */
+export function mountKpiSegBarActionRow(segBar, actionBtn) {
+  const isSectionHead = segBar.classList?.contains("dream-kpi-detail-section-header");
+  const row = document.createElement("div");
+  row.className = isSectionHead
+    ? "dream-kpi-detail-section-head-row"
+    : "dream-kpi-bottom-seg-row";
+  const segBarCenter = document.createElement("div");
+  segBarCenter.className = isSectionHead
+    ? "dream-kpi-detail-section-head-center"
+    : "dream-kpi-bottom-seg-bar-center";
+  segBarCenter.appendChild(segBar);
+  row.appendChild(segBarCenter);
+  if (actionBtn) row.appendChild(actionBtn);
+  return row;
+}
+
+/**
  * 할 일·로그 세그 바 오른쪽에 완료 할 일 삭제(휴지통) 버튼
  * @param {HTMLElement} segBar
  * @param {{
@@ -63,18 +132,6 @@ export function mountKpiSegBarClearCompletedRow(segBar, options) {
 
   if (!showClearCompleted) return segBar;
 
-  const isSectionHead = segBar.classList?.contains("dream-kpi-detail-section-header");
-  const row = document.createElement("div");
-  row.className = isSectionHead
-    ? "dream-kpi-detail-section-head-row"
-    : "dream-kpi-bottom-seg-row";
-  const segBarCenter = document.createElement("div");
-  segBarCenter.className = isSectionHead
-    ? "dream-kpi-detail-section-head-center"
-    : "dream-kpi-bottom-seg-bar-center";
-  segBarCenter.appendChild(segBar);
-  row.appendChild(segBarCenter);
-
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "dream-kpi-bottom-seg-clear-completed-btn";
@@ -82,31 +139,15 @@ export function mountKpiSegBarClearCompletedRow(segBar, options) {
   btn.title = "완료한 할 일 삭제";
   btn.innerHTML = KPI_SEG_CLEAR_COMPLETED_TRASH_ICON;
 
-  btn.addEventListener("click", async () => {
-    const snapshot = loadMap();
-    const n = countCompletedKpiTodosForKpi(snapshot.kpiTodos, kpiId);
-    if (n === 0) {
-      await showAlertModal({
-        title: "완료한 할 일 삭제",
-        message: "삭제할 완료한 할 일이 없습니다.",
-      });
-      return;
-    }
-    const ok = await showConfirmModal({
-      title: "완료한 할 일 삭제",
-      message: `완료한 할 일 ${n}개를 삭제할까요?`,
-      warnMessage: "삭제 후에는 복구할 수 없습니다.",
-      confirmText: "삭제",
-      cancelText: "취소",
-      confirmDanger: true,
+  btn.addEventListener("click", () => {
+    void confirmAndPurgeCompletedKpiTodos({
+      kpiId,
+      loadMap,
+      saveMap,
+      appendDeletedRef,
+      onAfterDelete,
     });
-    if (!ok) return;
-    const d = loadMap();
-    purgeCompletedKpiTodosForKpi(d, kpiId, appendDeletedRef);
-    saveMap(d, { pushServer: true });
-    onAfterDelete?.();
   });
 
-  row.appendChild(btn);
-  return row;
+  return mountKpiSegBarActionRow(segBar, btn);
 }

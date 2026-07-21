@@ -44,6 +44,7 @@ import {
   effectiveKpiHistoryBottomTab,
   kpiUsesDailyTodosOnly,
   kpiHistoryFooterShowsAddButton,
+  setKpiHistoryBottomTab,
   KPI_DETAIL_LOGS_UI_ENABLED,
   KPI_BOTTOM_TAB_LOG,
   KPI_BOTTOM_TAB_TODO,
@@ -74,11 +75,27 @@ import {
   appendKpiDailyRepeatTodoAtEnd,
   sortNormalizedKpiTodoRows,
 } from "../utils/kpiMapTodoListOrder.js";
-import { mountKpiSegBarClearCompletedRow } from "../utils/kpiTodoBulkDeleteUi.js";
+import {
+  mountKpiSegBarClearCompletedRow,
+  confirmAndPurgeCompletedKpiTodos,
+} from "../utils/kpiTodoBulkDeleteUi.js";
 import { wireKpiDailyTodoListDragReorder } from "../utils/kpiDailyTodoListDragReorder.js";
-import { mountKpiDetailStackedSections } from "../utils/kpiDetailSectionUi.js";
+import {
+  createKpiDetailSectionHeader,
+  mountKpiDetailStackedSections,
+} from "../utils/kpiDetailSectionUi.js";
 import { formatKpiCardHeroHtml } from "../utils/kpiViewModal.js";
 import { kpiFilterEmptyListMessage } from "../utils/kpiFilterEmptyMessage.js";
+import {
+  KPI_PROGRESS_STATUS_DEFAULT,
+  applyAutoCompleteManualKpiIfNeeded,
+  filterKpisByProgressStatus,
+  bindKpiProgressStatusField,
+  kpiProgressStatusFieldHtml,
+  kpiProgressStatusFilterBarHtml,
+  normalizeKpiListFilter,
+  readKpiProgressStatusFromForm,
+} from "../utils/kpiProgressStatus.js";
 import { confirmKpiActionDelete } from "../utils/confirmModal.js";
 import { showKpiTodoEditModal } from "../utils/kpiTodoEditModal.js";
 import {
@@ -106,6 +123,8 @@ import {
 } from "../utils/kpiMapLocalStorage.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
+  APP_FOOTER_ADD_BTN_ATTR,
+  APP_FOOTER_ADD_BTN_CLASS,
   APP_FOOTER_ADD_SLOT_ATTR,
   APP_FOOTER_HOME_ICON,
   mountAppFooterAddButton,
@@ -366,18 +385,137 @@ function bindPathTargetAmountMode(form, path = null) {
   trackCheck?.addEventListener("change", sync);
   sync();
   setupWonAmountInput(amountInput);
+  void path;
 }
 
 function readPathTargetAmountFields(form) {
   const trackTargetAmount = !!form.querySelector('input[name="trackTargetAmount"]')?.checked;
   if (!trackTargetAmount) {
-    return { trackTargetAmount: false, targetAmount: "", unit: "" };
+    return {
+      trackTargetAmount: false,
+      targetAmount: "",
+      unit: "",
+    };
   }
   return {
     trackTargetAmount: true,
     targetAmount: sanitizeNumericInput(form.targetAmount?.value) || "",
     unit: "원",
   };
+}
+
+function sideincomeLocalYear() {
+  return new Date().getFullYear();
+}
+
+function sideincomeLocalQuarter() {
+  return Math.min(4, Math.max(1, Math.ceil((new Date().getMonth() + 1) / 3)));
+}
+
+/** 분기 → 월 구간 안내 (목록 제목용) */
+const SIDEINCOME_QUARTER_MONTH_LABELS = {
+  1: "1–3월",
+  2: "4–6월",
+  3: "7–9월",
+  4: "10–12월",
+};
+
+/** 목록·저장용 — 연도·분기 (없으면 시작일·오늘 기준으로 추정) */
+function resolvePathTargetYear(path) {
+  const y = Number(path?.targetYear);
+  if (Number.isFinite(y) && y >= 2000 && y <= 2100) return Math.floor(y);
+  const fromStart = String(path?.targetStartDate || "").trim().slice(0, 4);
+  if (/^\d{4}$/.test(fromStart)) return Number(fromStart);
+  return sideincomeLocalYear();
+}
+
+function resolvePathTargetQuarter(path) {
+  const q = Number(path?.targetQuarter);
+  if (Number.isFinite(q) && q >= 1 && q <= 4) return Math.floor(q);
+  const d = String(path?.targetStartDate || "").trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+    const m = Number(d.slice(5, 7));
+    if (m >= 1 && m <= 12) return Math.min(4, Math.max(1, Math.ceil(m / 3)));
+  }
+  return sideincomeLocalQuarter();
+}
+
+function readPathYearQuarterFields(form) {
+  const yearRaw = String(form?.querySelector?.('input[name="targetYear"]')?.value || "")
+    .trim()
+    .replace(/\D/g, "")
+    .slice(0, 4);
+  let targetYear = Number(yearRaw);
+  if (!Number.isFinite(targetYear) || targetYear < 2000 || targetYear > 2100) {
+    targetYear = sideincomeLocalYear();
+  }
+  const qBtn = form?.querySelector?.(".sideincome-quarter-chip.lp-choice-chip--on");
+  let targetQuarter = Number(qBtn?.dataset?.quarter || 0);
+  if (!(targetQuarter >= 1 && targetQuarter <= 4)) {
+    targetQuarter = sideincomeLocalQuarter();
+  }
+  return { targetYear: Math.floor(targetYear), targetQuarter: Math.floor(targetQuarter) };
+}
+
+function pathYearQuarterFieldsHtml(path = null) {
+  const year = resolvePathTargetYear(path);
+  const quarter = resolvePathTargetQuarter(path);
+  const chips = [1, 2, 3, 4]
+    .map(
+      (q) => `
+                <button type="button" class="lp-choice-chip sideincome-quarter-chip${
+                  q === quarter ? " lp-choice-chip--on" : ""
+                }" data-quarter="${q}">${q}분기</button>`,
+    )
+    .join("");
+  return `
+            <div class="dream-kpi-field" data-legacy="time-add-task-field">
+              <label>연도</label>
+              <input type="text" name="targetYear" value="${year}" placeholder="${sideincomeLocalYear()}" inputmode="numeric" maxlength="4" autocomplete="off" />
+            </div>
+            <div class="dream-kpi-field" data-legacy="time-add-task-field">
+              <label>분기</label>
+              <div class="sideincome-quarter-chip-row" role="group" aria-label="목표 분기">${chips}</div>
+            </div>`;
+}
+
+function bindPathYearQuarterFields(form) {
+  if (!form) return;
+  const yearInput = form.querySelector('input[name="targetYear"]');
+  yearInput?.addEventListener("input", () => {
+    const digits = String(yearInput.value || "")
+      .replace(/\D/g, "")
+      .slice(0, 4);
+    if (yearInput.value !== digits) yearInput.value = digits;
+  });
+  form.querySelectorAll(".sideincome-quarter-chip").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      form
+        .querySelectorAll(".sideincome-quarter-chip")
+        .forEach((b) => b.classList.remove("lp-choice-chip--on"));
+      btn.classList.add("lp-choice-chip--on");
+    });
+  });
+}
+
+/** 데스크탑·아이패드 가로 — 목표|KPI|상세 3분할 (세로는 스택 유지) */
+const SIDEINCOME_SPLIT_MQ = "(min-width: 64rem) and (orientation: landscape)";
+
+function isSideincomeSplitViewport() {
+  try {
+    return window.matchMedia(SIDEINCOME_SPLIT_MQ).matches;
+  } catch (_) {
+    return false;
+  }
+}
+
+function sideincomeSplitPlaceholderHtml(message) {
+  const safe = String(message || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+  return `<p class="sideincome-split-placeholder">${safe}</p>`;
 }
 
 export function render(opts = {}) {
@@ -414,13 +552,101 @@ export function render(opts = {}) {
   historyWrap.hidden = true;
   el.appendChild(historyWrap);
 
+  let layoutIsSplit = false;
+  let paneGoals = null;
+  let paneKpis = null;
+  let paneDetail = null;
+
   let activePathId = null;
   let selectedKpiId = null;
-  let kpiFilter = "all";
+  let kpiFilter = "active";
   let sideincomeViewScreen = "goals"; // "goals" | "kpis" | "kpiDetail"
   let kpiGridScrollPrevFilter = null;
   let kpiGridScrollPrevScopeId = null;
   let pathAddModalJustClosed = false;
+
+  function wantsSplitLayout() {
+    return !dashboardEmbedMode && isSideincomeSplitViewport();
+  }
+
+  function ensureSplitDom() {
+    if (layoutIsSplit && paneGoals && paneKpis && paneDetail && paneGoals.isConnected) {
+      return;
+    }
+    historyWrap.hidden = true;
+    historyWrap.innerHTML = "";
+    if (historyWrap.parentNode !== el) el.appendChild(historyWrap);
+    contentWrap.hidden = false;
+    contentWrap.className = "dream-content-wrap sideincome-split-shell";
+    contentWrap.innerHTML = "";
+    paneGoals = document.createElement("div");
+    paneGoals.className =
+      "sideincome-split-pane sideincome-split-pane--goals dream-content-wrap";
+    paneKpis = document.createElement("div");
+    paneKpis.className =
+      "sideincome-split-pane sideincome-split-pane--kpis dream-content-wrap";
+    paneDetail = document.createElement("div");
+    paneDetail.className =
+      "sideincome-split-pane sideincome-split-pane--detail dream-content-wrap";
+    contentWrap.appendChild(paneGoals);
+    contentWrap.appendChild(paneKpis);
+    contentWrap.appendChild(paneDetail);
+    layoutIsSplit = true;
+    el.classList.add("sideincome-view--split");
+  }
+
+  function ensureStackDom() {
+    if (!layoutIsSplit && !contentWrap.classList.contains("sideincome-split-shell")) {
+      layoutIsSplit = false;
+      el.classList.remove("sideincome-view--split");
+      return;
+    }
+    contentWrap.hidden = false;
+    contentWrap.className = "dream-content-wrap";
+    contentWrap.innerHTML = "";
+    paneGoals = null;
+    paneKpis = null;
+    paneDetail = null;
+    layoutIsSplit = false;
+    el.classList.remove("sideincome-view--split");
+    if (historyWrap.parentNode !== el) el.appendChild(historyWrap);
+  }
+
+  function syncLayoutModeFromViewport() {
+    const want = wantsSplitLayout();
+    if (want === layoutIsSplit && (!want || (paneGoals && paneGoals.isConnected))) {
+      return want;
+    }
+    if (want) {
+      if (selectedKpiId) sideincomeViewScreen = "kpiDetail";
+      else if (activePathId) sideincomeViewScreen = "kpis";
+      else sideincomeViewScreen = "goals";
+      ensureSplitDom();
+    } else {
+      if (selectedKpiId && activePathId) sideincomeViewScreen = "kpiDetail";
+      else if (activePathId) sideincomeViewScreen = "kpis";
+      else sideincomeViewScreen = "goals";
+      ensureStackDom();
+    }
+    return want;
+  }
+
+  function goalsHost() {
+    return layoutIsSplit && paneGoals ? paneGoals : contentWrap;
+  }
+
+  function kpisHost() {
+    return layoutIsSplit && paneKpis ? paneKpis : contentWrap;
+  }
+
+  function detailHost() {
+    return layoutIsSplit && paneDetail ? paneDetail : contentWrap;
+  }
+
+  function paintSplitPlaceholder(container, message) {
+    if (!container) return;
+    container.innerHTML = sideincomeSplitPlaceholderHtml(message);
+  }
 
   const _sideincomeUiSession = readKpiUiSession(KPI_UI_SESSION_KEYS.sideincome);
   const _sideincomeInitData = loadSideincomeMap();
@@ -429,7 +655,8 @@ export function render(opts = {}) {
     kpis: _sideincomeInitData.kpis || [],
     foreignKey: "pathId",
   });
-  kpiFilter = _sideincomeRestored.kpiFilter;
+  /* 목록 필터는 항상 진행중부터 (세션 복원하지 않음) */
+  kpiFilter = "active";
   /* 시급 상승 메뉴 진입은 항상 목표 목록 — KPI 화면은 목표 클릭 후에만 */
   sideincomeViewScreen = "goals";
   activePathId = null;
@@ -449,13 +676,33 @@ export function render(opts = {}) {
     } catch (_) {}
   }
 
+  function setSideincomeFooterBackVisible(visible) {
+    const footerBack = document.querySelector("[data-lp-app-footer-back]");
+    if (!footerBack) return;
+    if (visible) {
+      footerBack.hidden = false;
+      footerBack.removeAttribute("aria-hidden");
+      footerBack.style.removeProperty("display");
+    } else {
+      footerBack.hidden = true;
+      footerBack.setAttribute("aria-hidden", "true");
+      footerBack.style.setProperty("display", "none", "important");
+    }
+  }
+
   function syncSideincomeFooterBackLabel() {
     if (!el.isConnected || dashboardEmbedMode) return;
     const footerBack = document.querySelector("[data-lp-app-footer-back]");
     if (!footerBack) return;
+    /* 3분할: 홈만 — 뒤로가기는 CSS/style로 강제 숨김 */
+    if (wantsSplitLayout() || layoutIsSplit) {
+      setSideincomeFooterBackVisible(false);
+      return;
+    }
+    setSideincomeFooterBackVisible(true);
     if (sideincomeViewScreen === "kpiDetail") {
-      footerBack.title = "KPI 목록으로";
-      footerBack.setAttribute("aria-label", "KPI 목록으로");
+      footerBack.title = "행동 목록으로";
+      footerBack.setAttribute("aria-label", "행동 목록으로");
     } else if (sideincomeViewScreen === "kpis") {
       footerBack.title = "시급 상승 목표 목록으로";
       footerBack.setAttribute("aria-label", "시급 상승 목표 목록으로");
@@ -466,11 +713,17 @@ export function render(opts = {}) {
   }
 
   function syncSideincomeHeader() {
+    if (wantsSplitLayout() || layoutIsSplit) {
+      title.textContent = "시급 상승";
+      setKpiCategoryHeaderIconVisible(titleRow, true);
+      syncSideincomeFooterBackLabel();
+      return;
+    }
     const data = loadSideincomeMap();
     const path = data.paths.find((p) => p.id === activePathId);
     if (sideincomeViewScreen === "kpiDetail" && selectedKpiId) {
       const kpi = (data.kpis || []).find((k) => k.id === selectedKpiId);
-      title.textContent = kpi?.name || "KPI";
+      title.textContent = kpi?.name || "행동";
     } else if (sideincomeViewScreen === "kpis" && path) {
       title.textContent = path.name || "시급 상승";
     } else {
@@ -506,6 +759,18 @@ export function render(opts = {}) {
   }
 
   function refreshSideincomeAfterKpiDataChange(opts = {}) {
+    if (layoutIsSplit || wantsSplitLayout()) {
+      syncLayoutModeFromViewport();
+      syncSideincomeHeader();
+      renderSideincomeGoalsList(paneGoals);
+      if (activePathId) renderKpiList(paneKpis);
+      else paintSplitPlaceholder(paneKpis, "목표를 선택해 주세요");
+      if (selectedKpiId) renderKpiDetailView({ ...opts, target: paneDetail });
+      else paintSplitPlaceholder(paneDetail, "행동을 선택해 주세요");
+      syncAppFooterSideincomeKpiActions();
+      persistKpiUiState();
+      return;
+    }
     if (sideincomeViewScreen === "kpiDetail") {
       syncSideincomeHeader();
       renderKpiDetailView(opts);
@@ -572,6 +837,7 @@ export function render(opts = {}) {
         pathId: activePathId,
         name: (form.name.value || "").trim(),
         direction: "higher",
+        progressStatus: KPI_PROGRESS_STATUS_DEFAULT,
         ...fields,
       };
       const data = loadSideincomeMap();
@@ -606,6 +872,7 @@ export function render(opts = {}) {
               <input type="text" name="name" value="${escapeHtml(kpi.name || "")}" placeholder="예) 인스타 게시물 포스팅하기" />
             </div>
             ${kpiFormGoalAndTargetSectionHtml(kpi, escapeHtml, kpiTimeFormOpts)}
+            ${kpiProgressStatusFieldHtml(kpi, getKpiProgress(kpi))}
             <div class="dream-kpi-delete-wrap">
               <button type="button" class="dream-kpi-delete-btn">이 행동 삭제하기</button>
               <p class="dream-kpi-delete-note">삭제 시 복구 불가</p>
@@ -649,6 +916,7 @@ export function render(opts = {}) {
         });
         target.name = (form.name.value || "").trim();
         target.direction = kpi.direction === "lower" ? "lower" : "higher";
+        target.progressStatus = readKpiProgressStatusFromForm(form);
         saveSideincomeMap(data, { pushServer: true });
         if (oldName !== target.name) syncKpiToTimeTask(target, "update", oldName);
       }
@@ -656,6 +924,7 @@ export function render(opts = {}) {
       refreshSideincomeAfterKpiDataChange();
     });
     document.body.appendChild(modal);
+    bindKpiProgressStatusField(modal);
     bindKpiGoalModeForm(modal.querySelector(".dream-kpi-form"), kpi, kpiTimeFormOpts);
   }
 
@@ -905,6 +1174,7 @@ export function render(opts = {}) {
     if (tab === KPI_BOTTOM_TAB_TODO) {
       const text = await showKpiTodoAddModal({
         kpiName: k.name,
+        linkedLabel: "연결된 행동",
         placeholder: "할 일 입력",
       });
       if (!text) return;
@@ -923,6 +1193,7 @@ export function render(opts = {}) {
     if (tab === KPI_BOTTOM_TAB_DAILY) {
       const text = await showKpiTodoAddModal({
         kpiName: k.name,
+        linkedLabel: "연결된 행동",
         title: "매일 할 일 추가",
         placeholder: "할 일 입력 (매일 반복)",
       });
@@ -961,6 +1232,10 @@ export function render(opts = {}) {
   }
 
   function appendSideincomeFooterHomeOrGoals(slot) {
+    if (layoutIsSplit || wantsSplitLayout()) {
+      appendKpiFooterHomeButton(slot);
+      return;
+    }
     if (dashboardEmbedMode) {
       if (sideincomeViewScreen === "goals") return;
       const btn = document.createElement("button");
@@ -982,13 +1257,23 @@ export function render(opts = {}) {
     const slot = footerActionsSlot || getAppFooterActionsSlot();
     if (!slot) return;
 
+    /* 3분할: 하단은 홈만 (뒤로가기 숨김) */
+    if (layoutIsSplit || wantsSplitLayout()) {
+      setSideincomeFooterBackVisible(false);
+      appendKpiFooterHomeButton(slot);
+      return;
+    }
+    setSideincomeFooterBackVisible(true);
+
     const addBtn = document.createElement("button");
     addBtn.type = "button";
     addBtn.className = APP_FOOTER_ICON_BTN_CLASS;
     addBtn.setAttribute("data-lp-dream-kpi-footer-action", "");
     addBtn.innerHTML = KPI_FOOTER_ADD_ICON;
 
-    if (sideincomeViewScreen === "goals") {
+    const footerScreen = sideincomeViewScreen;
+
+    if (footerScreen === "goals") {
       const data = loadSideincomeMap();
       if (shouldShowKpiMapSyncLoading("sideincome", !data.paths?.length)) return;
       addBtn.title = "시급 상승 목표 추가";
@@ -1003,9 +1288,9 @@ export function render(opts = {}) {
 
     if (!activePathId) return;
 
-    if (sideincomeViewScreen === "kpis") {
-      addBtn.title = "KPI 추가";
-      addBtn.setAttribute("aria-label", "KPI 추가");
+    if (footerScreen === "kpis") {
+      addBtn.title = "행동 추가";
+      addBtn.setAttribute("aria-label", "행동 추가");
       addBtn.addEventListener("click", () => {
         if (!activePathId) return;
         showKpiModal();
@@ -1015,7 +1300,7 @@ export function render(opts = {}) {
       return;
     }
 
-    if (sideincomeViewScreen !== "kpiDetail" || !selectedKpiId) return;
+    if (footerScreen !== "kpiDetail" || !selectedKpiId) return;
 
     const data = loadSideincomeMap();
     const kpiNow = (data.kpis || []).find((k) => k.id === selectedKpiId);
@@ -1080,25 +1365,39 @@ export function render(opts = {}) {
     );
   }
 
-  function renderKpiList() {
+  function renderKpiList(host) {
+    const container = host || kpisHost();
+    if (!container) return;
+    const inSplitPane = layoutIsSplit && container !== contentWrap;
+
     syncHabitTrackerLogs();
     const scopeId = activePathId;
     const savedGridScroll = readKpiGridScrollToRestore(
-      contentWrap,
+      container,
       kpiFilter,
       scopeId,
       kpiGridScrollPrevFilter,
       kpiGridScrollPrevScopeId,
     );
-    historyWrap.remove();
-    contentWrap.innerHTML = "";
-    contentWrap.className = "dream-content-wrap";
+    if (!inSplitPane) {
+      historyWrap.remove();
+      container.innerHTML = "";
+      container.className = "dream-content-wrap";
+    } else {
+      container.innerHTML = "";
+      container.className =
+        "sideincome-split-pane sideincome-split-pane--kpis dream-content-wrap";
+    }
     if (!activePathId) {
       kpiGridScrollPrevFilter = null;
       kpiGridScrollPrevScopeId = null;
+      if (inSplitPane) {
+        paintSplitPlaceholder(container, "목표를 선택해 주세요");
+      } else {
+        historyWrap.hidden = true;
+        el.appendChild(historyWrap);
+      }
       persistKpiUiState();
-      historyWrap.hidden = true;
-      el.appendChild(historyWrap);
       syncAppFooterSideincomeKpiActions();
       return;
     }
@@ -1113,18 +1412,17 @@ export function render(opts = {}) {
         return ia - ib;
       });
     }
-    /* 진행중 = 목표 미달성, 완료 = 목표 달성 */
-    const completedKpis = pathKpis.filter((k) => getKpiProgress(k).isCompleted);
-    const activeKpis = pathKpis.filter((k) => !getKpiProgress(k).isCompleted);
 
     if (
       renderKpiMapSyncLoadingIfNeeded({
         tabId: "sideincome",
-        container: contentWrap,
+        container,
         isEmpty: pathKpis.length === 0,
         onLoading: () => {
-          historyWrap.hidden = true;
-          el.appendChild(historyWrap);
+          if (!inSplitPane) {
+            historyWrap.hidden = true;
+            el.appendChild(historyWrap);
+          }
           syncAppFooterSideincomeKpiActions();
         },
       })
@@ -1171,35 +1469,53 @@ export function render(opts = {}) {
         e.stopPropagation();
         showPathContextModal(path);
       });
-      contentWrap.appendChild(pathSummary);
+      container.appendChild(pathSummary);
     }
 
     const filterBar = document.createElement("div");
     filterBar.className = "dream-kpi-filter-bar";
-    filterBar.innerHTML = `
-      <button type="button" class="dream-kpi-filter-btn ${kpiFilter === "all" ? "active" : ""}" data-filter="all">전체</button>
-      <button type="button" class="dream-kpi-filter-btn ${kpiFilter === "active" ? "active" : ""}" data-filter="active">진행중</button>
-      <button type="button" class="dream-kpi-filter-btn ${kpiFilter === "completed" ? "active" : ""}" data-filter="completed">완료</button>
-    `;
+    filterBar.innerHTML = kpiProgressStatusFilterBarHtml(kpiFilter);
     filterBar.querySelectorAll(".dream-kpi-filter-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
-        kpiFilter = btn.dataset.filter;
-        renderKpiList();
+        kpiFilter = normalizeKpiListFilter(btn.dataset.filter);
+        renderKpiList(container);
       });
     });
-    contentWrap.appendChild(filterBar);
+    container.appendChild(filterBar);
+
+    const progressByKpiId = new Map();
+    const progressFor = (kpi) => {
+      const id = String(kpi?.id ?? "");
+      if (!progressByKpiId.has(id)) {
+        progressByKpiId.set(id, getKpiProgress(kpi));
+      }
+      return progressByKpiId.get(id);
+    };
+    let autoCompleted = false;
+    for (const k of pathKpis) {
+      if (applyAutoCompleteManualKpiIfNeeded(k, progressFor(k))) {
+        autoCompleted = true;
+      }
+    }
+    if (autoCompleted) {
+      queueMicrotask(() => saveSideincomeMap(data, { pushServer: true }));
+    }
 
     const grid = document.createElement("div");
     grid.className = "dream-kpi-grid";
-    const listToShow = kpiFilter === "active" ? activeKpis : kpiFilter === "completed" ? completedKpis : pathKpis;
+    const listToShow = filterKpisByProgressStatus(
+      pathKpis,
+      kpiFilter,
+      progressFor,
+    );
     if (!listToShow.length) {
       const empty = document.createElement("p");
       empty.className = "dream-goals-empty";
-      empty.textContent = kpiFilterEmptyListMessage(kpiFilter);
+      empty.textContent = kpiFilterEmptyListMessage(kpiFilter, { noun: "행동" });
       grid.appendChild(empty);
     }
     listToShow.forEach((kpi) => {
-      const progressResult = getKpiProgress(kpi);
+      const progressResult = progressFor(kpi);
       const { lowerBetter } = progressResult;
       const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
       const { displayProgress, progressText, heroStr, heroUnit, cardExtraClass, hideProgressFill, hideProgressBar, heroPrefix, heroStreakAsideHtml } =
@@ -1208,10 +1524,11 @@ export function render(opts = {}) {
       card.className =
         "dream-kpi-card" +
         (lowerBetter ? " dream-kpi-card--lower-better" : "") +
-        cardExtraClass;
+        cardExtraClass +
+        (selectedKpiId === kpi.id ? " is-selected" : "");
       card.dataset.kpiId = kpi.id;
       card.draggable = true;
-      const nameHtml = `${escapeHtml(kpi.name)}${lowerBetter ? '<span class="dream-kpi-card-direction-badge" title="낮을수록 좋음 KPI">↓낮음</span>' : ""}`;
+      const nameHtml = `${escapeHtml(kpi.name)}${lowerBetter ? '<span class="dream-kpi-card-direction-badge" title="낮을수록 좋음 행동">↓낮음</span>' : ""}`;
       const progressHtml = hideProgressBar
         ? `<div class="dream-kpi-card-progress dream-kpi-card-progress--habit"><div class="dream-kpi-card-progress-text">${escapeHtml(progressText)}</div></div>`
         : `<div class="dream-kpi-card-progress">
@@ -1263,18 +1580,36 @@ export function render(opts = {}) {
           newOrder.splice(fromIdx, 1);
           newOrder.splice(toIdx, 0, draggedId);
           reorderKpis(activePathId, newOrder);
-          renderKpiList();
+          renderKpiList(container);
         }
       });
       appendKpiCardToGrid(grid, card, kpi, escapeHtml);
     });
+    /* 3분할만: 목록 끝 점선 「행동 추가하기」 — 모바일은 푸터 + 유지 */
+    if (layoutIsSplit) {
+      const addCard = document.createElement("button");
+      addCard.type = "button";
+      addCard.className = "dream-kpi-add-card";
+      addCard.innerHTML =
+        '<span class="dream-kpi-add-card-text">+ 행동 추가하기</span>';
+      addCard.addEventListener("click", () => {
+        if (!activePathId) return;
+        showKpiModal();
+      });
+      grid.appendChild(addCard);
+    }
     wireKpiCardIconsIn(grid);
     grid.addEventListener("dragend", () => {
       grid.querySelectorAll(".dream-kpi-card-drag-over").forEach((c) => c.classList.remove("dream-kpi-card-drag-over"));
     });
-    contentWrap.appendChild(grid);
+    container.appendChild(grid);
 
-    applyKpiGridScrollRestore(contentWrap, savedGridScroll);
+    if (!inSplitPane) {
+      historyWrap.hidden = true;
+      el.appendChild(historyWrap);
+    }
+
+    applyKpiGridScrollRestore(container, savedGridScroll);
     kpiGridScrollPrevFilter = kpiFilter;
     kpiGridScrollPrevScopeId = scopeId;
     persistKpiUiState();
@@ -1283,14 +1618,29 @@ export function render(opts = {}) {
 
 
   function renderKpiDetailView(opts = {}) {
-    contentWrap.hidden = false;
-    contentWrap.className = "dream-content-wrap dream-kpi-detail-wrap";
+    const container = opts.target || detailHost();
+    if (!container) return;
+    const inSplitPane = layoutIsSplit && container !== contentWrap;
+
+    if (!inSplitPane) {
+      contentWrap.hidden = false;
+      contentWrap.className = "dream-content-wrap dream-kpi-detail-wrap";
+    } else {
+      container.className =
+        "sideincome-split-pane sideincome-split-pane--detail dream-content-wrap dream-kpi-detail-wrap";
+    }
     if (!selectedKpiId) {
-      contentWrap.innerHTML = "";
+      if (inSplitPane) {
+        paintSplitPlaceholder(container, "행동을 선택해 주세요");
+        syncAppFooterSideincomeKpiActions();
+        persistKpiUiState();
+        return;
+      }
+      container.innerHTML = "";
       exitToKpiList();
       return;
     }
-    void renderKpiHistory({ ...opts, target: contentWrap });
+    void renderKpiHistory({ ...opts, target: container });
     syncAppFooterSideincomeKpiActions();
     persistKpiUiState();
   }
@@ -1546,6 +1896,7 @@ export function render(opts = {}) {
       const openTodoEdit = async () => {
         const result = await showKpiTodoEditModal({
           kpiName: kpi.name,
+          linkedLabel: "연결된 행동",
           initialText: todo.text || "",
           title: "할 일 수정",
         });
@@ -1606,6 +1957,18 @@ export function render(opts = {}) {
       todoList.appendChild(item);
     });
 
+    if (layoutIsSplit) {
+      const todoAddCard = document.createElement("button");
+      todoAddCard.type = "button";
+      todoAddCard.className = "dream-kpi-add-card sideincome-split-todo-add-card";
+      todoAddCard.innerHTML =
+        '<span class="dream-kpi-add-card-text">할 일 추가하기</span>';
+      todoAddCard.addEventListener("click", () => {
+        setKpiHistoryBottomTab("sideincome", selKpi, KPI_BOTTOM_TAB_TODO);
+        void runSideincomeKpiFooterAddAction();
+      });
+      panelTodoSeg.appendChild(todoAddCard);
+    }
     if (todos.length === 0) {
       const emptyTodo = document.createElement("p");
       emptyTodo.className = "dream-kpi-history-empty";
@@ -1613,6 +1976,25 @@ export function render(opts = {}) {
       panelTodoSeg.appendChild(emptyTodo);
     } else {
       panelTodoSeg.appendChild(todoList);
+    }
+    if (layoutIsSplit) {
+      const clearLabelBtn = document.createElement("button");
+      clearLabelBtn.type = "button";
+      clearLabelBtn.className = "sideincome-split-clear-completed-label-btn";
+      clearLabelBtn.textContent = "완료목록 모두 삭제하기";
+      clearLabelBtn.addEventListener("click", () => {
+        void confirmAndPurgeCompletedKpiTodos({
+          kpiId: selKpi,
+          loadMap: loadSideincomeMap,
+          saveMap: saveSideincomeMap,
+          appendDeletedRef,
+          onAfterDelete: () =>
+            renderKpiDetailView({ scrollTodoAfterMutation: true }),
+          title: "완료목록 모두 삭제",
+          emptyMessage: "삭제할 완료한 할 일이 없습니다.",
+        });
+      });
+      panelTodoSeg.appendChild(clearLabelBtn);
     }
     }
 
@@ -1649,7 +2031,7 @@ export function render(opts = {}) {
         check.disabled = true;
         check.checked = false;
         check.title =
-          "KPI 화면에서는 체크 상태를 보여 주지 않습니다. 완료는 시간기록(과제 기록)에서만 체크하세요.";
+          "행동 화면에서는 체크 상태를 보여 주지 않습니다. 완료는 시간기록(과제 기록)에서만 체크하세요.";
         label.appendChild(check);
         const textPreview = document.createElement("div");
         textPreview.className = "dream-kpi-todo-list-preview";
@@ -1659,6 +2041,7 @@ export function render(opts = {}) {
         const openDailyEdit = async () => {
           const result = await showKpiTodoEditModal({
             kpiName: kpi.name,
+            linkedLabel: "연결된 행동",
             initialText: todo.text || "",
             title: "매일 할 일 수정",
             placeholder: "매일 반복되는 할 일",
@@ -1694,11 +2077,31 @@ export function render(opts = {}) {
         loadMap: loadSideincomeMap,
         saveMap: saveSideincomeMap,
       });
-      panelDailySeg.appendChild(dailyList);
+      if (layoutIsSplit) {
+        const dailyAddCard = document.createElement("button");
+        dailyAddCard.type = "button";
+        dailyAddCard.className =
+          "dream-kpi-add-card sideincome-split-todo-add-card";
+        dailyAddCard.innerHTML =
+          '<span class="dream-kpi-add-card-text">매일 할 일 추가하기</span>';
+        dailyAddCard.addEventListener("click", () => {
+          setKpiHistoryBottomTab("sideincome", selKpi, KPI_BOTTOM_TAB_DAILY);
+          void runSideincomeKpiFooterAddAction();
+        });
+        panelDailySeg.appendChild(dailyAddCard);
+      }
+      if (dailyTodos.length === 0) {
+        const emptyDaily = document.createElement("p");
+        emptyDaily.className = "dream-kpi-history-empty";
+        emptyDaily.textContent = "등록된 매일 할 일이 없습니다.";
+        panelDailySeg.appendChild(emptyDaily);
+      } else {
+        panelDailySeg.appendChild(dailyList);
+      }
     }
 
     const clearCompletedOpts = {
-      showClearCompleted: !dailyTodosOnly,
+      showClearCompleted: !dailyTodosOnly && !layoutIsSplit,
       kpiId: selKpi,
       loadMap: loadSideincomeMap,
       saveMap: saveSideincomeMap,
@@ -1707,10 +2110,15 @@ export function render(opts = {}) {
     };
 
     if (useKpiSegBar && segBar) {
-      const segBarMount = mountKpiSegBarClearCompletedRow(segBar, clearCompletedOpts);
-      const clearCompletedTrashBtn = segBarMount.querySelector(
-        ".dream-kpi-bottom-seg-clear-completed-btn",
-      );
+      /* 3분할: 할 일 추가는 목록 상단 점선 카드, 세그 바에는 휴지통 없음 */
+      const segBarMount =
+        layoutIsSplit && !dailyTodosOnly
+          ? segBar
+          : mountKpiSegBarClearCompletedRow(segBar, clearCompletedOpts);
+      const clearCompletedTrashBtn =
+        segBarMount instanceof HTMLElement
+          ? segBarMount.querySelector(".dream-kpi-bottom-seg-clear-completed-btn")
+          : null;
       const syncSegClearCompletedTrashVisibility = (tab) => {
         if (!(clearCompletedTrashBtn instanceof HTMLElement)) return;
         clearCompletedTrashBtn.hidden = tab !== KPI_BOTTOM_TAB_TODO;
@@ -1750,6 +2158,16 @@ export function render(opts = {}) {
           panelNotes: panelNotesSeg,
         },
       );
+    } else if (layoutIsSplit && !dailyTodosOnly && panelTodoSeg) {
+      target.appendChild(createKpiDetailSectionHeader("할 일"));
+      target.appendChild(panelTodoSeg);
+      setKpiHistoryBottomTab("sideincome", selKpi, KPI_BOTTOM_TAB_TODO);
+      if (hasDailyTab && panelDailySeg) {
+        panelDailySeg.querySelector(".dream-kpi-todo-header")?.remove();
+        panelDailySeg.querySelector(".dream-kpi-todo-divider")?.remove();
+        target.appendChild(createKpiDetailSectionHeader("매일할일"));
+        target.appendChild(panelDailySeg);
+      }
     } else {
       mountKpiDetailStackedSections(target, {
         namespace: "sideincome",
@@ -1854,6 +2272,7 @@ export function render(opts = {}) {
               <label>목표 이름</label>
               <input type="text" name="name" value="${escapeHtml(path.name || "")}" placeholder="시간관리서비스 개발" />
             </div>
+            ${pathYearQuarterFieldsHtml(path)}
             <div class="dream-kpi-field dream-kpi-field-checkbox" data-legacy="time-add-task-field">
               <label class="dream-kpi-checkbox-label">
                 목표 금액 입력하기
@@ -1881,6 +2300,7 @@ export function render(opts = {}) {
       e.preventDefault();
       const val = (e.target.name.value || "").trim() || "새 경로";
       const amountFields = readPathTargetAmountFields(e.target);
+      const yq = readPathYearQuarterFields(e.target);
       const d = loadSideincomeMap();
       const target = d.paths.find((x) => x.id === path.id);
       if (target) {
@@ -1888,13 +2308,20 @@ export function render(opts = {}) {
         target.trackTargetAmount = amountFields.trackTargetAmount;
         target.targetAmount = amountFields.targetAmount;
         target.unit = amountFields.unit;
+        target.targetStartDate = "";
+        target.targetDeadline = "";
+        target.targetYear = yq.targetYear;
+        target.targetQuarter = yq.targetQuarter;
         saveSideincomeMap(d, { pushServer: true });
+        goalsListYear = yq.targetYear;
         syncSideincomeHeader();
         updateSideincomeView();
       }
       close();
     });
-    bindPathTargetAmountMode(modal.querySelector("form"), path);
+    const editForm = modal.querySelector("form");
+    bindPathTargetAmountMode(editForm, path);
+    bindPathYearQuarterFields(editForm);
     modal.querySelector('[data-action="delete"]').addEventListener("click", () => {
       close();
       showPathDeleteConfirmModal(path.id);
@@ -1902,22 +2329,32 @@ export function render(opts = {}) {
     document.body.appendChild(modal);
   }
 
-  function renderSideincomeGoalsList() {
-    historyWrap.hidden = true;
-    historyWrap.innerHTML = "";
-    contentWrap.hidden = false;
-    contentWrap.className = "dream-content-wrap";
-    contentWrap.innerHTML = "";
+  let goalsListYear = sideincomeLocalYear();
+
+  function renderSideincomeGoalsList(host) {
+    const container = host || goalsHost();
+    if (!container) return;
+    const inSplitPane = layoutIsSplit && container !== contentWrap;
+
+    if (!inSplitPane) {
+      historyWrap.hidden = true;
+      historyWrap.innerHTML = "";
+      contentWrap.hidden = false;
+      contentWrap.className = "dream-content-wrap";
+      container.innerHTML = "";
+    } else {
+      container.innerHTML = "";
+      container.className =
+        "sideincome-split-pane sideincome-split-pane--goals dream-content-wrap";
+    }
     syncAppFooterSideincomeKpiActions();
 
-    const list = document.createElement("div");
-    list.className = "dream-goals-list";
     const data = loadSideincomeMap();
 
     if (
       renderKpiMapSyncLoadingIfNeeded({
         tabId: "sideincome",
-        container: contentWrap,
+        container,
         isEmpty: !data.paths.length,
         onLoading: () => syncAppFooterSideincomeKpiActions(),
       })
@@ -1925,43 +2362,144 @@ export function render(opts = {}) {
       return;
     }
 
+    const shell = document.createElement("div");
+    shell.className = "sideincome-goals-year-shell";
+
+    const yearBar = document.createElement("div");
+    yearBar.className = "sideincome-goals-year-bar";
+    yearBar.innerHTML = `
+      <button type="button" class="sideincome-goals-year-nav" data-year-delta="-1" aria-label="이전 연도">‹</button>
+      <span class="sideincome-goals-year-label">${goalsListYear}년</span>
+      <button type="button" class="sideincome-goals-year-nav" data-year-delta="1" aria-label="다음 연도">›</button>
+    `;
+    yearBar.querySelectorAll("[data-year-delta]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const d = Number(btn.getAttribute("data-year-delta") || 0);
+        goalsListYear = Math.min(2100, Math.max(2000, goalsListYear + d));
+        renderSideincomeGoalsList(container);
+      });
+    });
+    shell.appendChild(yearBar);
+
+    /* 3분할: 연도 아래 점선 「목표 추가하기」 */
+    if (layoutIsSplit) {
+      const goalAddCard = document.createElement("button");
+      goalAddCard.type = "button";
+      goalAddCard.className = "dream-kpi-add-card sideincome-split-goal-add-card";
+      goalAddCard.innerHTML =
+        '<span class="dream-kpi-add-card-text">목표 추가하기</span>';
+      goalAddCard.addEventListener("click", () => {
+        if (pathAddModalJustClosed) return;
+        showPathAddModal();
+      });
+      shell.appendChild(goalAddCard);
+    }
+
+    const list = document.createElement("div");
+    list.className = "dream-goals-list sideincome-goals-by-quarter";
+
+    const yearPaths = (data.paths || []).filter(
+      (p) => resolvePathTargetYear(p) === goalsListYear,
+    );
+
     if (!data.paths.length) {
       const empty = document.createElement("p");
       empty.className = "dream-goals-empty";
       empty.textContent = "시급 상승 목표를 추가해보세요.";
       list.appendChild(empty);
+    } else if (!yearPaths.length) {
+      const empty = document.createElement("p");
+      empty.className = "dream-goals-empty";
+      empty.textContent = `${goalsListYear}년 목표가 없습니다. 목표 추가에서 연도·분기를 골라 주세요.`;
+      list.appendChild(empty);
     }
 
-    data.paths.forEach((path) => {
-      const kpiCount = (data.kpis || []).filter((k) => k.pathId === path.id)
-        .length;
-      const item = document.createElement("div");
-      item.className = "dream-goals-item dream-kpi-card";
-      item.innerHTML = `
-        <div class="dream-kpi-card-inner">
-          ${SIDEINCOME_GOAL_EDIT_PENCIL_HTML}
-          <div class="dream-goals-item-name">${escapeHtml(path.name || "새 경로")}</div>
-          <div class="dream-goals-item-meta">KPI ${kpiCount}개</div>
-        </div>
-      `;
-      bindKpiCardEditButton(item.querySelector(".dream-kpi-card-edit"), () =>
-        showPathContextModal(path),
+    for (let q = 1; q <= 4; q++) {
+      const section = document.createElement("section");
+      section.className = "sideincome-quarter-section";
+      const monthLabel = SIDEINCOME_QUARTER_MONTH_LABELS[q] || "";
+      section.setAttribute(
+        "aria-label",
+        `${goalsListYear}년 ${q}분기${monthLabel ? ` (${monthLabel})` : ""}`,
       );
-      item.addEventListener("click", (e) => {
-        if (e.target.closest(".dream-kpi-card-edit")) return;
-        enterKpiView(path.id);
-      });
-      list.appendChild(item);
-    });
+      const head = document.createElement("h2");
+      head.className = "sideincome-quarter-section-title";
+      head.innerHTML = `${q}분기 <span class="sideincome-quarter-months">${monthLabel}</span>`;
+      section.appendChild(head);
 
-    contentWrap.appendChild(list);
+      const qPaths = yearPaths.filter((p) => resolvePathTargetQuarter(p) === q);
+      if (!qPaths.length) {
+        const emptyQ = document.createElement("p");
+        emptyQ.className = "sideincome-quarter-empty";
+        emptyQ.textContent = "목표 없음";
+        section.appendChild(emptyQ);
+      } else {
+        qPaths.forEach((path) => {
+          const kpiCount = (data.kpis || []).filter((k) => k.pathId === path.id)
+            .length;
+          const item = document.createElement("div");
+          item.className =
+            "dream-goals-item dream-kpi-card" +
+            (activePathId === path.id ? " is-selected" : "");
+          const amountLabel =
+            path.trackTargetAmount && path.targetAmount
+              ? ` · ${formatIntegerWithCommas(path.targetAmount)}원`
+              : "";
+          item.innerHTML = `
+            <div class="dream-kpi-card-inner">
+              ${SIDEINCOME_GOAL_EDIT_PENCIL_HTML}
+              <div class="dream-goals-item-name">${escapeHtml(path.name || "새 경로")}</div>
+              <div class="dream-goals-item-meta">행동 ${kpiCount}개${amountLabel}</div>
+            </div>
+          `;
+          bindKpiCardEditButton(item.querySelector(".dream-kpi-card-edit"), () =>
+            showPathContextModal(path),
+          );
+          item.addEventListener("click", (e) => {
+            if (e.target.closest(".dream-kpi-card-edit")) return;
+            enterKpiView(path.id);
+          });
+          section.appendChild(item);
+        });
+      }
+      list.appendChild(section);
+    }
+
+    shell.appendChild(list);
+    container.appendChild(shell);
     persistKpiUiState();
   }
 
   function updateSideincomeView() {
+    syncLayoutModeFromViewport();
     syncSideincomeHeader();
     historyWrap.hidden = true;
     historyWrap.innerHTML = "";
+
+    if (layoutIsSplit) {
+      const data = loadSideincomeMap();
+      if (activePathId && !data.paths.some((p) => p.id === activePathId)) {
+        activePathId = null;
+        selectedKpiId = null;
+        sideincomeViewScreen = "goals";
+      }
+      if (selectedKpiId) {
+        const kpi = (data.kpis || []).find((k) => k.id === selectedKpiId);
+        if (!kpi || kpi.pathId !== activePathId) {
+          selectedKpiId = null;
+          sideincomeViewScreen = activePathId ? "kpis" : "goals";
+        }
+      }
+      renderSideincomeGoalsList(paneGoals);
+      if (activePathId) renderKpiList(paneKpis);
+      else paintSplitPlaceholder(paneKpis, "목표를 선택해 주세요");
+      if (selectedKpiId) renderKpiDetailView({ target: paneDetail });
+      else paintSplitPlaceholder(paneDetail, "행동을 선택해 주세요");
+      syncAppFooterSideincomeKpiActions();
+      persistKpiUiState();
+      return;
+    }
+
     if (sideincomeViewScreen === "goals") {
       renderSideincomeGoalsList();
       return;
@@ -1998,6 +2536,10 @@ export function render(opts = {}) {
               <label>목표 이름</label>
               <input type="text" name="name" placeholder="시간관리서비스 개발" />
             </div>
+            ${pathYearQuarterFieldsHtml({
+              targetYear: goalsListYear,
+              targetQuarter: sideincomeLocalQuarter(),
+            })}
             <div class="dream-kpi-field dream-kpi-field-checkbox" data-legacy="time-add-task-field">
               <label class="dream-kpi-checkbox-label">
                 목표 금액 입력하기
@@ -2022,6 +2564,7 @@ export function render(opts = {}) {
     const doSubmit = () => {
       const val = (form.name.value || "").trim() || "새 경로";
       const amountFields = readPathTargetAmountFields(form);
+      const yq = readPathYearQuarterFields(form);
       const data = loadSideincomeMap();
       const path = {
         id: nextId(),
@@ -2029,11 +2572,16 @@ export function render(opts = {}) {
         trackTargetAmount: amountFields.trackTargetAmount,
         targetAmount: amountFields.targetAmount,
         unit: amountFields.unit,
+        targetStartDate: "",
+        targetDeadline: "",
+        targetYear: yq.targetYear,
+        targetQuarter: yq.targetQuarter,
       };
       data.paths.push(path);
       saveSideincomeMap(data, { pushServer: true });
       selectedKpiId = null;
       pathAddModalJustClosed = true;
+      goalsListYear = yq.targetYear;
       close();
       sideincomeViewScreen = "goals";
       activePathId = null;
@@ -2049,16 +2597,21 @@ export function render(opts = {}) {
     });
     document.body.appendChild(modal);
     bindPathTargetAmountMode(form);
+    bindPathYearQuarterFields(form);
   }
 
   function reconcileScopeWithStoredMap(data) {
     const paths = data?.paths || [];
     const kpis = data?.kpis || [];
-    if (sideincomeViewScreen === "kpis") {
-      if (!paths.some((p) => p.id === activePathId)) {
-        activePathId = paths[0]?.id || null;
+    const keepSelection =
+      wantsSplitLayout() ||
+      sideincomeViewScreen === "kpis" ||
+      sideincomeViewScreen === "kpiDetail";
+    if (keepSelection) {
+      if (activePathId && !paths.some((p) => p.id === activePathId)) {
+        activePathId = null;
         selectedKpiId = null;
-        if (!activePathId) sideincomeViewScreen = "goals";
+        sideincomeViewScreen = "goals";
       }
     } else {
       activePathId = null;
@@ -2066,6 +2619,9 @@ export function render(opts = {}) {
     }
     if (selectedKpiId && !kpis.some((k) => k.id === selectedKpiId)) {
       selectedKpiId = null;
+      if (sideincomeViewScreen === "kpiDetail") {
+        sideincomeViewScreen = activePathId ? "kpis" : "goals";
+      }
     }
   }
 
@@ -2084,11 +2640,16 @@ export function render(opts = {}) {
     if (nextSig === lastKpiMapPaintSig) return;
     lastKpiMapPaintSig = nextSig;
     const data = loadSideincomeMap();
-    if (sideincomeViewScreen === "kpis") {
-      if (!data.paths.some((p) => p.id === activePathId)) {
-        activePathId = data.paths[0]?.id || null;
+    const keepSelection =
+      wantsSplitLayout() ||
+      layoutIsSplit ||
+      sideincomeViewScreen === "kpis" ||
+      sideincomeViewScreen === "kpiDetail";
+    if (keepSelection) {
+      if (activePathId && !data.paths.some((p) => p.id === activePathId)) {
+        activePathId = null;
         selectedKpiId = null;
-        if (!activePathId) sideincomeViewScreen = "goals";
+        sideincomeViewScreen = "goals";
       }
     } else {
       activePathId = null;
@@ -2096,6 +2657,9 @@ export function render(opts = {}) {
     }
     if (selectedKpiId && !data.kpis.some((k) => k.id === selectedKpiId)) {
       selectedKpiId = null;
+      if (sideincomeViewScreen === "kpiDetail") {
+        sideincomeViewScreen = activePathId ? "kpis" : "goals";
+      }
     }
     syncSideincomeHeader();
     updateSideincomeView();
@@ -2114,6 +2678,23 @@ export function render(opts = {}) {
     if (!el.isConnected || e.detail?.tabId !== "sideincome") return;
     updateSideincomeView();
   });
+
+  let splitMql = null;
+  const onSplitViewportChange = () => {
+    if (!el.isConnected) return;
+    updateSideincomeView();
+  };
+  try {
+    splitMql = window.matchMedia(SIDEINCOME_SPLIT_MQ);
+    if (splitMql.addEventListener) {
+      splitMql.addEventListener("change", onSplitViewportChange);
+    } else if (splitMql.addListener) {
+      splitMql.addListener(onSplitViewportChange);
+    }
+  } catch (_) {
+    splitMql = null;
+  }
+
   if (dashboardEmbedMode && dashboardHost && dashboardEmbedKey) {
     dashboardHost._lpEmbedSoftRefresh = dashboardHost._lpEmbedSoftRefresh || {};
     dashboardHost._lpEmbedSoftRefresh[dashboardEmbedKey] =
@@ -2124,6 +2705,7 @@ export function render(opts = {}) {
   if (!dashboardEmbedMode) {
     window.__lpSideincomeFooterBack = () => {
       if (!el.isConnected) return false;
+      if (wantsSplitLayout() || layoutIsSplit) return false;
       if (sideincomeViewScreen === "kpiDetail") {
         exitToKpiList();
         return true;

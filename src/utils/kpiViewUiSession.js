@@ -28,7 +28,7 @@ export function writeKpiUiSession(storageKey, state) {
     const payload = {
       tabId: state.tabId ?? null,
       selectedKpiId: state.selectedKpiId ?? null,
-      kpiFilter: state.kpiFilter ?? "all",
+      kpiFilter: state.kpiFilter ?? "active",
     };
     if (state.healthViewScreen != null) {
       payload.healthViewScreen = state.healthViewScreen;
@@ -67,6 +67,9 @@ export function restoreKpiTabFromSession(session, { categoryIds, kpis, foreignKe
     }
   }
   const kf = session?.kpiFilter;
-  const kpiFilter = kf === "active" || kf === "completed" || kf === "all" ? kf : "all";
+  const kpiFilter =
+    kf === "pending" || kf === "active" || kf === "completed"
+      ? kf
+      : "active";
   return { tabId, selectedKpiId, kpiFilter };
 }

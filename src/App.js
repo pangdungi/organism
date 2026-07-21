@@ -568,7 +568,8 @@ export async function mountApp(container) {
       resetTimeLedgerSessionFilterToToday();
     } catch (_) {}
     try {
-      await pullDesktopDashboardData({ forceTaskList: true });
+      /* 탭 복귀는 강제 전체 pull 없이 — 첫 화면이 막히지 않게 */
+      await pullDesktopDashboardData({ forceTaskList: !!opts.forceTaskList });
     } catch (_) {}
     if (currentTabId !== "home") return;
     const root =
@@ -596,18 +597,11 @@ export async function mountApp(container) {
   panel.className = "app-tab-panel";
   main.appendChild(panel);
 
-  function prepareLeaveHomeDashboardForFullTab() {
-    if (currentTabId !== "home" || !isDesktopDashboardViewport()) return;
-    if (!desktopDashboardEl) return;
-    try {
-      desktopDashboardEl._lpTabAbortController?.abort();
-    } catch (_) {}
-    desktopDashboardEl = null;
-  }
-
-  /** 홈(메뉴 그리드·3분할 ↗) → 전체 탭 — setActiveTab 과 동일 + 대시보드 embed 정리 */
+  /**
+   * 홈 3분할 DOM은 버리지 않음 — 전체 탭 갔다가 홈(푸터 홈 등)으로 돌아올 때
+   * 통째 재생성하면 약 1초 지연이 난다.
+   */
   function openAppTabFromHome(tabId) {
-    prepareLeaveHomeDashboardForFullTab();
     setActiveTab(tabId);
   }
 
@@ -672,17 +666,66 @@ export async function mountApp(container) {
   function resetAppFooterBackLabel() {
     const footerBack = document.querySelector("[data-lp-app-footer-back]");
     if (!footerBack) return;
+    footerBack.hidden = false;
+    footerBack.removeAttribute("aria-hidden");
+    footerBack.style.removeProperty("display");
     footerBack.title = "오늘(메인)으로";
     footerBack.setAttribute("aria-label", "오늘(메인)으로");
+  }
+
+  /**
+   * 캐시된 홈 DOM을 즉시 붙인다(건강·행복·시급→홈 1초 지연 방지).
+   * 이전 탭 abort는 홈을 먼저 보여 준 뒤 microtask로 돌린다.
+   */
+  function restoreCachedHomePanel() {
+    const panelEl = main.querySelector(".app-tab-panel");
+    if (!panelEl) return false;
+    const useDesktop = isDesktopDashboardViewport();
+    const cached = useDesktop ? desktopDashboardEl : homeMenuLauncherEl;
+    if (!cached) return false;
+
+    const prev = panelEl.firstElementChild;
+    if (prev !== cached) {
+      clearAppFooterActions();
+      panelEl.replaceChildren(cached);
+      if (prev?._lpTabAbortController) {
+        const ac = prev._lpTabAbortController;
+        prev._lpTabAbortController = null;
+        queueMicrotask(() => {
+          try {
+            ac.abort();
+          } catch (_) {}
+        });
+      }
+    }
+    if (useDesktop) {
+      homeMenuLauncherEl = null;
+    } else {
+      bindHomeMenuLauncherAdminBtn(cached);
+      void syncAdminMenuVisibility();
+    }
+    syncAppFooterVisibility();
+    resetAppFooterBackLabel();
+    return true;
   }
 
   function applySetActiveTab(tabId) {
     const fromTab = currentTabId;
     if (fromTab !== tabId) flushAllPendingTimeDailyBudgetSync();
+    /*
+     * 홈으로 갈 때는 푸터를 미리 건드리지 않음(숨김/버튼 제거 금지).
+     * 화면 교체(renderMain) 때 같이 정리한다.
+     * 건강·행복·시급→홈: 미리 뒤로가기를 켜면 홈버튼과 겹쳐 보이므로 복구도 교체 후로.
+     */
+    const fromKpiMapTab =
+      fromTab === "health" ||
+      fromTab === "happiness" ||
+      fromTab === "sideincome";
     if (
       tabId !== "health" &&
       tabId !== "happiness" &&
-      tabId !== "sideincome"
+      tabId !== "sideincome" &&
+      !(fromKpiMapTab && tabId === "home")
     ) {
       resetAppFooterBackLabel();
     }
@@ -690,9 +733,9 @@ export async function mountApp(container) {
     persistActiveTabId(tabId);
     logTodoScheduleTabOnNavigate(tabId, fromTab);
     logTabSync("tab_switch", { from: fromTab, to: tabId });
-    /* 렌더·pull은 빠른 연속 탭 전환 시 마지막 탭만 처리하도록 짧게 디바운스 */
+    /* 홈은 즉시 전환(푸터 홈 등) — 나머지 탭만 짧게 디바운스 */
     if (_tabSwitchTimer != null) clearTimeout(_tabSwitchTimer);
-    _tabSwitchTimer = setTimeout(() => {
+    const runTabSwitch = () => {
       _tabSwitchTimer = null;
       void (async () => {
         const targetTabId = currentTabId;
@@ -717,18 +760,10 @@ export async function mountApp(container) {
           } catch (_) {}
         }
         const pullPromise = pullDataForActiveTab(targetTabId, { fromBoot: false });
-        if (targetTabId === "home") {
-          const panelEl = main.querySelector(".app-tab-panel");
-          const firstChild = panelEl?.firstElementChild;
-          if (
-            panelEl &&
-            ((homeMenuLauncherEl && firstChild === homeMenuLauncherEl) ||
-              (desktopDashboardEl && firstChild === desktopDashboardEl))
-          ) {
-            syncAppFooterVisibility();
-            void refreshHomeDesktopDashboardAfterEnter();
-            return;
-          }
+        /* 홈: 캐시 DOM 즉시 복원 — renderMain 전체 경로보다 먼저 */
+        if (targetTabId === "home" && restoreCachedHomePanel()) {
+          void refreshHomeDesktopDashboardAfterEnter();
+          return;
         }
         renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
         /** @type {string | null} */
@@ -741,6 +776,9 @@ export async function mountApp(container) {
           scheduleLpTabPullOverlay(targetTabId, { immediate: true });
         }
         syncAppFooterVisibility();
+        if (fromKpiMapTab && targetTabId === "home") {
+          resetAppFooterBackLabel();
+        }
         if (
           targetTabId === "idea" ||
           targetTabId === "admin" ||
@@ -777,7 +815,7 @@ export async function mountApp(container) {
             window.__lpIdeaSoftRefresh?.();
           } catch (_) {}
         } else if (targetTabId === "home") {
-          await refreshHomeDesktopDashboardAfterEnter();
+          void refreshHomeDesktopDashboardAfterEnter();
         } else if (
           targetTabId === "health" ||
           targetTabId === "happiness" ||
@@ -806,7 +844,12 @@ export async function mountApp(container) {
           }
         })();
       })();
-    }, 24);
+    };
+    if (tabId === "home") {
+      runTabSwitch();
+    } else {
+      _tabSwitchTimer = setTimeout(runTabSwitch, 24);
+    }
   }
 
   function bindHomeMenuLauncherAdminBtn(root) {
@@ -814,12 +857,12 @@ export async function mountApp(container) {
   }
 
   function renderHomeMenuLauncher() {
-    if (homeMenuLauncherEl?.isConnected) {
+    /* 탭 이탈 시 패널에서만 떼어 둠 — isConnected 아니어도 재사용(재생성 지연 방지) */
+    if (homeMenuLauncherEl) {
       bindHomeMenuLauncherAdminBtn(homeMenuLauncherEl);
       void syncAdminMenuVisibility();
       return homeMenuLauncherEl;
     }
-    homeMenuLauncherEl = null;
 
     launcherAdminBtn = null;
 
@@ -1018,7 +1061,13 @@ export async function mountApp(container) {
     }
     dismissCalendarDayExpandUI();
     const prevRoot = p.firstElementChild;
-    if (prevRoot?._lpTabAbortController) {
+    /* 홈 3분할은 재사용 — 떠날 때 abort/폐기하지 않음 */
+    const leavingCachedHomeDashboard =
+      !!prevRoot &&
+      !!desktopDashboardEl &&
+      prevRoot === desktopDashboardEl &&
+      currentTabId !== "home";
+    if (prevRoot?._lpTabAbortController && !leavingCachedHomeDashboard) {
       try {
         prevRoot._lpTabAbortController.abort();
       } catch (_) {}
@@ -1033,7 +1082,7 @@ export async function mountApp(container) {
       if (currentTabId === "home") {
         if (isDesktopDashboardViewport()) {
           homeMenuLauncherEl = null;
-          if (desktopDashboardEl?.isConnected) {
+          if (desktopDashboardEl) {
             void syncAdminMenuVisibility();
             mountNodes = [desktopDashboardEl];
           } else {
@@ -1050,7 +1099,6 @@ export async function mountApp(container) {
           mountNodes = content ? [content] : [];
         }
       } else if (tabRenderer) {
-        desktopDashboardEl = null;
         const content = tabRenderer();
         mountNodes = content ? [content] : [];
       } else {

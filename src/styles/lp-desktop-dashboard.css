@@ -314,7 +314,7 @@
   }
 
   .lp-desktop-dashboard-col-split--bottom .lp-desktop-dashboard-col-body {
-    padding-top: 0.55rem;
+    padding-top: 0;
     box-sizing: border-box;
   }
 
@@ -328,8 +328,11 @@
   .habit-tracker-view--dashboard-embed .habit-tracker-content-wrap {
     flex: 1 1 auto;
     min-height: 0;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
     overflow-x: hidden;
+    overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
     padding: 0;
@@ -422,8 +425,9 @@
   }
 
   .habit-tracker-view--dashboard-embed .dream-view-header {
-    padding: 0.35rem 0.75rem 0.45rem;
+    padding: 0.2rem 0.55rem 0.15rem;
     border-bottom: none;
+    gap: 0;
   }
 
   .habit-tracker-view--dashboard-embed .dream-view-label {
@@ -531,7 +535,7 @@
     }
 
     .habit-tracker-view--dashboard-embed .dream-view-header {
-      padding: 0.28rem 0.5rem 0.32rem;
+      padding: 0.15rem 0.45rem 0.1rem;
     }
 
     .habit-tracker-view--dashboard-embed .dream-view-title {
@@ -539,20 +543,12 @@
     }
 
     .lp-desktop-dashboard .habit-tracker-page-grid-table {
-      font-size: 0.6875rem;
+      --ht-habit-w: 4.75rem;
+      --ht-cell-gap: 2px;
     }
 
-    .lp-desktop-dashboard .habit-tracker-page-grid-th--habit,
     .lp-desktop-dashboard .habit-tracker-page-grid-td--habit {
-      min-width: 5.25rem;
-      max-width: 6.5rem;
-      padding: 0.28rem 0.32rem;
-    }
-
-    .lp-desktop-dashboard .habit-tracker-page-grid-th--day,
-    .lp-desktop-dashboard .habit-tracker-page-grid-td--cell {
-      min-width: 1.85rem;
-      padding: 0.28rem 0.2rem;
+      font-size: 0.6875rem;
     }
 
     .lp-desktop-dashboard-col--planner .calendar-monthly-top-bar-date,
