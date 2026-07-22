@@ -6714,7 +6714,8 @@ export function renderMobileScheduleCalendar(opts = {}) {
         subViewsList: MOBILE_SCHEDULE_CAL_SUB_VIEWS,
         storageKey: "calendar-mobile-schedule-sub-view",
         forceInitialMonthlyOnMobile: false,
-        dashboardEmbedMode: true,
+        /* 3분할 embed만 월별 강제 — 확대(전체 탭)는 저장해 둔 1일·1주 등 유지 */
+        dashboardEmbedMode,
         scheduleSubViewsInFooter: true,
         footerActionsSlot,
       }),
