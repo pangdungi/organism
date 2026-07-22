@@ -35,7 +35,8 @@
     flex-direction: column;
     overflow: hidden;
     padding-top: clamp(0.2rem, 0.8dvh, 0.5rem);
-    padding-bottom: max(0.35rem, var(--lp-safe-bottom));
+    /* 패드 가로: safe-bottom을 또 넣으면 푸터가 떠 보임 — 얇은 여백만 */
+    padding-bottom: 0.35rem;
   }
 
   .lp-desktop-dashboard {
@@ -215,7 +216,8 @@
     align-items: center;
     justify-content: space-around;
     gap: 0.35rem;
-    padding: 0.35rem 0.5rem calc(0.35rem + env(safe-area-inset-bottom, 0px));
+    /* safe-area는 셸에 두지 않음 — 열 푸터에 또 넣으면 데스크탑보다 위로 뜸 */
+    padding: 0.35rem 0.5rem;
     border-top: 1px solid rgba(0, 0, 0, 0.08);
     background: #fff;
   }
@@ -527,7 +529,7 @@
     .lp-desktop-dashboard-col-footer,
     .lp-desktop-dashboard-col-footer-actions {
       gap: 0.25rem;
-      padding: 0.28rem 0.35rem calc(0.28rem + env(safe-area-inset-bottom, 0px));
+      padding: 0.28rem 0.35rem;
     }
 
     .lp-desktop-dashboard-col-footer-actions .app-footer-icon-btn {

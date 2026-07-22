@@ -102,6 +102,8 @@ import {
   isDesktopDashboardViewport,
   renderDesktopDashboard,
   runDesktopDashboardSoftRefresh,
+  hasDesktopDashboardInitialTodayAlign,
+  alignDesktopDashboardEmbedsToTodayOnce,
 } from "./utils/desktopDashboard.js";
 
 /** 상위 탭 메타(아이콘·메뉴 런처 구역 순서) */
@@ -564,9 +566,17 @@ export async function mountApp(container) {
       } catch (_) {}
       return;
     }
-    try {
-      resetTimeLedgerSessionFilterToToday();
-    } catch (_) {}
+    const rootBefore =
+      desktopDashboardEl?.isConnected && desktopDashboardEl
+        ? desktopDashboardEl
+        : main.querySelector(".lp-desktop-dashboard");
+    const firstTodayAlign = !hasDesktopDashboardInitialTodayAlign(rootBefore);
+    /* 오늘로 맞추기·스크롤은 3분할 최초 진입 1회만 — 다른 탭 갔다 오면 유지 */
+    if (firstTodayAlign) {
+      try {
+        resetTimeLedgerSessionFilterToToday();
+      } catch (_) {}
+    }
     try {
       /* 탭 복귀는 강제 전체 pull 없이 — 첫 화면이 막히지 않게 */
       await pullDesktopDashboardData({ forceTaskList: !!opts.forceTaskList });
@@ -577,13 +587,14 @@ export async function mountApp(container) {
         ? desktopDashboardEl
         : main.querySelector(".lp-desktop-dashboard");
     if (root?.isConnected) {
-      runDesktopDashboardSoftRefresh(root, { skipEmbedKeys: ["habit"] });
-      try {
-        root._lpEmbedHabitScrollToday?.();
-      } catch (_) {}
-      try {
-        root._lpEmbedPlannerScrollToday?.();
-      } catch (_) {}
+      runDesktopDashboardSoftRefresh(root, {
+        skipEmbedKeys: firstTodayAlign ? ["habit"] : [],
+      });
+      if (firstTodayAlign) {
+        requestAnimationFrame(() => {
+          alignDesktopDashboardEmbedsToTodayOnce(root);
+        });
+      }
     }
     try {
       await syncAdminMenuVisibility();

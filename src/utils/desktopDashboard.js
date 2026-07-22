@@ -239,13 +239,8 @@ export function renderDesktopDashboard(opts) {
 
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
+      /* 오늘로 맞추기·스크롤은 App 홈 진입 시 1회만 — 여기서 반복 호출하지 않음 */
       runDesktopDashboardSoftRefresh(root, { skipEmbedKeys: ["habit"] });
-      try {
-        root._lpEmbedHabitScrollToday?.();
-      } catch (_) {}
-      try {
-        root._lpEmbedPlannerScrollToday?.();
-      } catch (_) {}
     });
   });
 
@@ -255,11 +250,39 @@ export function renderDesktopDashboard(opts) {
       root._lpEmbedSoftRefresh = {};
       root._lpEmbedHabitScrollToday = null;
       root._lpEmbedPlannerScrollToday = null;
+      root._lpEmbedDidInitialTodayAlign = false;
     },
     { once: true },
   );
 
   return root;
+}
+
+/**
+ * 3분할 — 오늘 날짜/스크롤 정렬을 세션당 1회만 수행했는지
+ * @param {HTMLElement | null | undefined} dashboardRoot
+ */
+export function hasDesktopDashboardInitialTodayAlign(dashboardRoot) {
+  return !!dashboardRoot?._lpEmbedDidInitialTodayAlign;
+}
+
+/**
+ * 3분할 최초 진입 시에만 습관·플래너를 오늘로 스크롤
+ * @param {HTMLElement | null | undefined} dashboardRoot
+ * @returns {boolean} 이번에 정렬했으면 true
+ */
+export function alignDesktopDashboardEmbedsToTodayOnce(dashboardRoot) {
+  const root = dashboardRoot;
+  if (!root?.isConnected) return false;
+  if (root._lpEmbedDidInitialTodayAlign) return false;
+  root._lpEmbedDidInitialTodayAlign = true;
+  try {
+    root._lpEmbedHabitScrollToday?.();
+  } catch (_) {}
+  try {
+    root._lpEmbedPlannerScrollToday?.();
+  } catch (_) {}
+  return true;
 }
 
 /** @param {HTMLElement | null | undefined} dashboardRoot @param {{ skipEmbedKeys?: string[] }} [opts] */

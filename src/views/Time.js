@@ -6549,23 +6549,21 @@ export function render(opts = {}) {
     function setModalTimeboxGranularityDraft(next) {
       const prev = normalizeActiveModalGranularity(modalTimeboxGranularityDraft);
       const g = normalizeActiveModalGranularity(next);
-      if (g === "day" && prev !== "day") {
-        modalDayDraft = getTimeboxDayAnchorYmd(
-          usageRangeStartInp?.value,
-          usageRangeEndInp?.value,
-        );
-      } else if (g === "week" && prev !== "week") {
-        modalWeekRangeDraft = getWeekRangeContainingYmd(
-          modalDayDraft || usageRangeStartInp?.value || getLedgerFilterTodayYmd(),
-        );
-      } else if (g === "month" && prev !== "month") {
-        modalMonthRangeDraft = getMonthRangeContainingYmd(
-          modalDayDraft || usageRangeStartInp?.value || getLedgerFilterTodayYmd(),
-        );
-      } else if (g === "year" && prev !== "year") {
-        modalYearDraft = getYearFromYmd(
-          modalDayDraft || usageRangeStartInp?.value || getLedgerFilterTodayYmd(),
-        );
+      /*
+       * 일간·주간·연간 전환 시 항상 오늘 기준 기간으로 맞춤.
+       * (연간→주간 때 입력값이 1월 1일로 남아 그 주부터 시작하는 문제 방지)
+       */
+      if (g !== prev) {
+        const today = getLedgerFilterTodayYmd();
+        if (g === "day") {
+          modalDayDraft = today;
+        } else if (g === "week") {
+          modalWeekRangeDraft = getWeekRangeContainingYmd(today);
+        } else if (g === "month") {
+          modalMonthRangeDraft = getMonthRangeContainingYmd(today);
+        } else if (g === "year") {
+          modalYearDraft = getYearFromYmd(today);
+        }
       }
       modalTimeboxGranularityDraft = g;
       syncTimeboxRangeModalPanels();
