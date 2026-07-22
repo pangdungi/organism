@@ -844,9 +844,13 @@ export function openCalendarExpectedScheduleModal(options) {
               <div data-legacy="time-task-log-quick-block">
                 <div data-legacy="time-task-log-time-adjust-btns">
                   <div data-legacy="time-task-log-time-adjust-row time-task-log-time-adjust-row--delta">
+                    <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="-5">−5</button>
                     <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="-10">−10</button>
+                    <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="-15">−15</button>
                     <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="-30">−30</button>
+                    <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="5">+5</button>
                     <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="10">+10</button>
+                    <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="15">+15</button>
                     <button type="button" data-legacy="time-task-log-time-adjust-btn" data-delta="30">+30</button>
                   </div>
                   <div data-legacy="time-task-log-time-adjust-row time-task-log-time-adjust-row--actions">

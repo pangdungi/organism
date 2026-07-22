@@ -4262,7 +4262,7 @@ function wireCalendar1DaySlotGridDragMove(scroll, dateKey, onSaved) {
   });
 }
 
-/** 캘린더 일간뷰 — 24행×6열(10분 칸) + 「타임박스」헤더 */
+/** 캘린더 일간뷰 — 24행×12열(5분 칸) + 「타임박스」헤더 */
 function createCalendar1DayTimeboxPanel(dateKey, onSaved) {
   const section = document.createElement("div");
   section.className = "calendar-1day-timebox-section";
@@ -4274,7 +4274,7 @@ function createCalendar1DayTimeboxPanel(dateKey, onSaved) {
   return section;
 }
 
-/** 캘린더 일간뷰 — 24행×6열(10분 칸) */
+/** 캘린더 일간뷰 — 24행×12열(5분 칸) */
 function createCalendar1DaySlotGrid(dateKey, onSaved) {
   const scroll = createCalendar1DaySlotGridScroll();
   wireCalendar1DaySlotGridCells(scroll, dateKey, onSaved);

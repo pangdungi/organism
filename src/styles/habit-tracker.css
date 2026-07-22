@@ -206,6 +206,33 @@
   margin-bottom: 0.3rem;
 }
 
+/* 3분할 — 1주(7열) 전용 */
+.habit-tracker-view--dashboard-embed .habit-tracker-page-grid-table--week {
+  --ht-habit-w: 4.5rem;
+  --ht-cell-gap: 3px;
+}
+
+.habit-tracker-view--dashboard-embed
+  .habit-tracker-page-grid-table--week
+  .habit-tracker-page-grid-th--day {
+  aspect-ratio: auto;
+  height: auto;
+  padding: 0 0 0.15rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1.1;
+  color: #6b7280;
+  background: transparent !important;
+  border-radius: 0;
+  text-align: center;
+}
+
+.habit-tracker-view--dashboard-embed
+  .habit-tracker-page-grid-table--week
+  .habit-tracker-page-grid-td--cell {
+  border-radius: 3px;
+}
+
 /* 홈 3분할 — 오늘 매일할일 원형 링 (표 바로 아래, 아래로 밀어내지 않음) */
 .habit-tracker-view--dashboard-embed .habit-tracker-content-wrap {
   gap: 0.85rem;
@@ -334,8 +361,21 @@
 
 .lp-kpi-dream-page .habit-tracker-insight-track {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
+}
+
+.lp-kpi-dream-page .habit-tracker-insight-card-body--today-ring {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0.35rem 0 0.15rem;
+}
+
+.lp-kpi-dream-page
+  .habit-tracker-insight-card--today-ring
+  .habit-tracker-today-ring {
+  width: 100%;
 }
 
 .lp-kpi-dream-page .habit-tracker-insight-card {

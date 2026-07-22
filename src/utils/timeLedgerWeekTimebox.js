@@ -156,10 +156,22 @@ function createWeekTimeboxHourRail() {
   return rail;
 }
 
+function dayHasTimeboxBlocks(blocks) {
+  return (Array.isArray(blocks) ? blocks : []).some(
+    (b) =>
+      Number.isFinite(b?.startMin) &&
+      Number.isFinite(b?.endMin) &&
+      b.endMin > b.startMin,
+  );
+}
+
 function appendWeekDayPanel(parent, ymd, blocks) {
   const dayWrap = document.createElement("section");
   dayWrap.className = "time-ledger-week-timebox-day";
   dayWrap.dataset.ymd = ymd;
+  if (!dayHasTimeboxBlocks(blocks)) {
+    dayWrap.classList.add("time-ledger-week-timebox-day--no-records");
+  }
 
   const head = document.createElement("div");
   head.className = "time-ledger-week-timebox-day-head";
@@ -219,9 +231,11 @@ export function refreshTimeLedgerWeekTimeboxElement(shell, blocksByDay) {
     const ymd = dayWrap.dataset.ymd || "";
     const dayScroll = dayWrap.querySelector(".time-ledger-day-timebox-scroll");
     if (!dayScroll) return;
-    refreshTimeLedgerDayTimeboxScroll(
-      dayScroll,
-      blocksByDay?.get?.(ymd) || [],
+    const blocks = blocksByDay?.get?.(ymd) || [];
+    dayWrap.classList.toggle(
+      "time-ledger-week-timebox-day--no-records",
+      !dayHasTimeboxBlocks(blocks),
     );
+    refreshTimeLedgerDayTimeboxScroll(dayScroll, blocks);
   });
 }

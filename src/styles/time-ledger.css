@@ -2760,7 +2760,8 @@
 [data-legacy~="time-ledger-view"]
   .time-ledger-day-timebox-dual-pane__col
   .time-ledger-day-timebox-scroll {
-  padding: 0.3rem 0.35rem 0.45rem;
+  /* 실제·예상 동일 — 왼쪽 바깥 0 · 오른쪽 여백 · 숫자↔칸 틈은 라벨 padding */
+  padding: 0.28rem 0.45rem 0.4rem 0;
 }
 
 .time-ledger-day-timebox-scroll--no-row-labels
@@ -2792,7 +2793,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 0.3rem 0.55rem 0.45rem;
+  padding: 0.28rem 0.45rem 0.4rem 0;
   box-sizing: border-box;
 }
 
@@ -2811,8 +2812,9 @@
 [data-legacy~="time-ledger-view"] .time-ledger-day-timebox-matrix-head,
 [data-legacy~="time-ledger-view"] .time-ledger-day-timebox-matrix-row {
   display: grid;
-  grid-template-columns: 1.35rem repeat(12, minmax(0, 1fr));
-  gap: 0.12rem;
+  grid-template-columns: 1.1rem repeat(12, minmax(0, 1fr));
+  column-gap: 0.06rem;
+  row-gap: 0;
   align-items: stretch;
   width: 100%;
   box-sizing: border-box;
@@ -2835,17 +2837,22 @@
 
 .time-ledger-day-timebox-matrix-corner,
 [data-legacy~="time-ledger-view"] .time-ledger-day-timebox-matrix-corner {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin: 0;
+  padding: 0 0.28rem 0 0;
+  box-sizing: border-box;
 }
 
 .time-ledger-day-timebox-matrix-col-label,
 .time-ledger-day-timebox-matrix-row-label,
 [data-legacy~="time-ledger-view"] .time-ledger-day-timebox-matrix-col-label,
 [data-legacy~="time-ledger-view"] .time-ledger-day-timebox-matrix-row-label {
-  font-size: 0.4375rem;
+  font-size: 0.5625rem;
   font-weight: 600;
   letter-spacing: 0;
-  color: #999999;
+  color: #c4c4c4;
   line-height: 1;
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -2863,6 +2870,9 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  margin: 0;
+  padding: 0 0.28rem 0 0;
+  box-sizing: border-box;
 }
 
 .time-ledger-day-timebox-matrix-cell,
@@ -2874,7 +2884,7 @@
   min-height: 0;
   min-width: 0;
   box-sizing: border-box;
-  border-radius: 3px;
+  border-radius: 2px;
   border: 1px dashed #e5e5e5;
   background: transparent;
 }
@@ -3163,6 +3173,14 @@
   color: #475569;
   letter-spacing: -0.02em;
   white-space: nowrap;
+}
+
+/* 주간 — 기록이 전혀 없는 날은 점선 빈 격자 숨김(열 정렬은 유지) */
+.time-ledger-week-timebox-day--no-records .time-ledger-day-timebox-scroll,
+[data-legacy~="time-ledger-view"]
+  .time-ledger-week-timebox-day--no-records
+  .time-ledger-day-timebox-scroll {
+  visibility: hidden;
 }
 
 .time-ledger-day-timebox-scroll--week-compact,

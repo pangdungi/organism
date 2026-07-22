@@ -218,19 +218,72 @@ export function buildHabitTrackerRows(year, month, opts = {}) {
   return rows;
 }
 
+function pad2Local(n) {
+  return String(n).padStart(2, "0");
+}
+
+function ymdFromLocalDate(d) {
+  return `${d.getFullYear()}-${pad2Local(d.getMonth() + 1)}-${pad2Local(d.getDate())}`;
+}
+
 /** @param {number} year @param {number} month 1-12 */
 export function buildMonthDateKeys(year, month) {
   const y = Number(year);
   const m = Number(month);
   if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) return [];
   const lastDay = new Date(y, m, 0).getDate();
-  const pad = (n) => String(n).padStart(2, "0");
   /** @type {string[]} */
   const keys = [];
   for (let d = 1; d <= lastDay; d += 1) {
-    keys.push(`${y}-${pad(m)}-${pad(d)}`);
+    keys.push(`${y}-${pad2Local(m)}-${pad2Local(d)}`);
   }
   return keys;
+}
+
+/** 기준일이 속한 주(월~일) 7일 */
+export function habitTrackerWeekDateKeys(refYmd) {
+  const raw = String(refYmd || "").trim();
+  const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const base = m
+    ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+    : new Date();
+  const day = base.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  const monday = new Date(base);
+  monday.setDate(base.getDate() + mondayOffset);
+  /** @type {string[]} */
+  const keys = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    keys.push(ymdFromLocalDate(d));
+  }
+  return keys;
+}
+
+/** @param {string} anchorYmd @param {number} weekDelta */
+export function shiftHabitTrackerWeekAnchorYmd(anchorYmd, weekDelta) {
+  const keys = habitTrackerWeekDateKeys(anchorYmd);
+  const monday = keys[0] || String(anchorYmd || "").slice(0, 10);
+  const m = monday.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return monday;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  d.setDate(d.getDate() + Math.trunc(Number(weekDelta) || 0) * 7);
+  return ymdFromLocalDate(d);
+}
+
+/** @param {string[]} weekKeys */
+export function formatHabitTrackerWeekRangeLabel(weekKeys) {
+  const keys = Array.isArray(weekKeys) ? weekKeys.filter(Boolean) : [];
+  if (!keys.length) return "";
+  const a = String(keys[0] || "");
+  const b = String(keys[keys.length - 1] || a);
+  const fmt = (ymd) => {
+    const m = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return ymd;
+    return `${Number(m[2])}/${Number(m[3])}`;
+  };
+  return `${fmt(a)} – ${fmt(b)}`;
 }
 
 /** @param {number} year @param {number} month 1-12 */
@@ -438,21 +491,62 @@ export function getHabitTrackerCellText(row, dateKey) {
 }
 
 /**
- * @param {{ year?: number, month?: number, refDate?: Date }} [opts]
+ * @param {{
+ *   year?: number,
+ *   month?: number,
+ *   refDate?: Date,
+ *   skipSync?: boolean,
+ *   viewMode?: "month" | "week",
+ *   weekAnchorYmd?: string,
+ * }} [opts]
  */
 export function buildHabitTrackerPageModel(opts = {}) {
   const refDate = opts.refDate instanceof Date ? opts.refDate : new Date();
-  const todayYmd = normYmd(refDate.toISOString().slice(0, 10));
-  const year = Number.isFinite(Number(opts.year)) ? Number(opts.year) : refDate.getFullYear();
+  const todayYmd = ymdFromLocalDate(refDate);
+  const viewMode = opts.viewMode === "week" ? "week" : "month";
+  const rowOpts = opts.skipSync ? { skipSync: true } : {};
+
+  if (viewMode === "week") {
+    const dateKeys = habitTrackerWeekDateKeys(
+      opts.weekAnchorYmd || todayYmd,
+    );
+    /** @type {Map<string, HabitTrackerRow>} */
+    const rowsById = new Map();
+    const seenYm = new Set();
+    for (const dk of dateKeys) {
+      const ym = dk.slice(0, 7);
+      if (seenYm.has(ym)) continue;
+      seenYm.add(ym);
+      const y = Number(dk.slice(0, 4));
+      const m = Number(dk.slice(5, 7));
+      for (const row of buildHabitTrackerRows(y, m, rowOpts)) {
+        if (!rowsById.has(row.id)) rowsById.set(row.id, row);
+      }
+    }
+    const mid = dateKeys[3] || dateKeys[0] || todayYmd;
+    return {
+      year: Number(mid.slice(0, 4)) || refDate.getFullYear(),
+      month: Number(mid.slice(5, 7)) || refDate.getMonth() + 1,
+      todayYmd,
+      dateKeys,
+      rows: [...rowsById.values()],
+      viewMode: "week",
+      weekAnchorYmd: dateKeys[0] || todayYmd,
+    };
+  }
+
+  const year = Number.isFinite(Number(opts.year))
+    ? Number(opts.year)
+    : refDate.getFullYear();
   const month = Number.isFinite(Number(opts.month))
     ? Number(opts.month)
     : refDate.getMonth() + 1;
-  const rowOpts = opts.skipSync ? { skipSync: true } : {};
   return {
     year,
     month,
     todayYmd,
     dateKeys: buildMonthDateKeys(year, month),
     rows: buildHabitTrackerRows(year, month, rowOpts),
+    viewMode: "month",
   };
 }

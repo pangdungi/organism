@@ -26,7 +26,7 @@ export function expectedSpanDisplayTaskName(span) {
   return taskName;
 }
 
-/** 타임테이블(10분 슬롯)·타임박스 칸 라벨 */
+/** 타임테이블(5분 슬롯)·타임박스 칸 라벨 */
 export function expectedSpanSlotGridLabel(span) {
   return expectedSpanDisplayTaskName(span);
 }

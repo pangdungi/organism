@@ -983,6 +983,21 @@ export function loadTimeRows() {
 
 let _syncHabitTrackerLogsTimer = null;
 
+/** 시간기록 저장 후 — 루틴 트랙커 화면만 다시 그리기(전체 탭·3분할 embed) */
+function notifyHabitTrackerUiAfterTimeSave() {
+  try {
+    window.__lpHabitTrackerSoftRefresh?.();
+  } catch (_) {}
+  try {
+    const host =
+      typeof document !== "undefined"
+        ? document.querySelector(".lp-desktop-dashboard")
+        : null;
+    const fn = host?._lpEmbedSoftRefresh?.habit;
+    if (typeof fn === "function") fn();
+  } catch (_) {}
+}
+
 function scheduleSyncHabitTrackerLogs() {
   if (_syncHabitTrackerLogsTimer != null) {
     clearTimeout(_syncHabitTrackerLogsTimer);
@@ -992,6 +1007,7 @@ function scheduleSyncHabitTrackerLogs() {
     try {
       syncHabitTrackerLogs();
     } catch (_) {}
+    notifyHabitTrackerUiAfterTimeSave();
   }, 450);
 }
 
@@ -4600,7 +4616,7 @@ function createTimeLedgerDayTimeboxDualPane(actualBlocks, expectedBlocks) {
   expectedHead.textContent = "예상";
   expectedCol.appendChild(expectedHead);
   const expectedScroll = createTimeLedgerDayTimeboxElement(expectedBlocks, {
-    showRowLabels: false,
+    showRowLabels: true,
     emptyMessage: "예상 일정이 없습니다.",
     matrixAriaLabel: "예상 일정 24행 12열 5분 단위 시간박스",
   });
@@ -10946,6 +10962,7 @@ export function render(opts = {}) {
         try {
           syncHabitTrackerLogs();
         } catch (_) {}
+        notifyHabitTrackerUiAfterTimeSave();
       }
       const rowForMemo = editTr?._rowData || addLedgerTr?._rowData;
       if (rowForMemo) {

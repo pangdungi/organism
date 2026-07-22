@@ -1,18 +1,24 @@
-/** 캘린더 1일뷰 — 24행×6열(10분 칸) 그리드 */
+/** 캘린더 1일뷰 — 24행×12열(5분 칸) 그리드 — 시간기록 타임박스와 동일 */
 
 import { expectedSpanSlotGridLabel } from "./expectedScheduleDetail.js";
 import { showToast } from "./showToast.js";
 import * as TTC from "./timeTaskOptionsConstants.js";
 
-export const CAL_1DAY_SLOT_MINUTES = 10;
-export const CAL_1DAY_SLOT_COLS = 6;
+export const CAL_1DAY_SLOT_MINUTES = 5;
+export const CAL_1DAY_SLOT_COLS = 12;
 export const CAL_1DAY_SLOT_ROWS = 24;
 export const CAL_1DAY_SLOT_COL_LABELS = [
+  "5",
   "10",
+  "15",
   "20",
+  "25",
   "30",
+  "35",
   "40",
+  "45",
   "50",
+  "55",
   "60",
 ];
 
@@ -20,7 +26,7 @@ function slotMinForCell(row, col) {
   return row * 60 + col * CAL_1DAY_SLOT_MINUTES;
 }
 
-/** 10분 칸 시작 분(0~1430) → "0:00" 표기 */
+/** 5분 칸 시작 분(0~1435) → "0:00" 표기 */
 export function formatCalendar1DaySlotClockLabel(slotMin) {
   const m = Math.max(
     0,
@@ -200,7 +206,7 @@ function applyCalendarSlotGridRowSpanMerges(root, spans) {
   }
 }
 
-/** 24행×6열(10분 칸) 스크롤 래퍼 */
+/** 24행×12열(5분 칸) 스크롤 래퍼 */
 export function createCalendar1DaySlotGridScroll() {
   const scroll = document.createElement("div");
   scroll.className = "calendar-1day-slot-grid-scroll";
@@ -208,7 +214,7 @@ export function createCalendar1DaySlotGridScroll() {
   const matrix = document.createElement("div");
   matrix.className = "calendar-1day-slot-grid-matrix";
   matrix.setAttribute("role", "grid");
-  matrix.setAttribute("aria-label", "하루 24행 6열 10분 단위");
+  matrix.setAttribute("aria-label", "하루 24행 12열 5분 단위");
 
   const head = document.createElement("div");
   head.className = "calendar-1day-slot-grid-head";
@@ -322,7 +328,7 @@ function mergedCellRunCount(cell) {
   return Number.isFinite(n) && n > 0 ? n : 1;
 }
 
-/** 합쳐진 칸 안에서도 10분 칸 단위로 포인터 위치 해석 */
+/** 합쳐진 칸 안에서도 5분 칸 단위로 포인터 위치 해석 */
 function slotMinAtPoint(root, clientX, clientY) {
   const el = document.elementFromPoint(clientX, clientY);
   const cell = el?.closest?.(".calendar-1day-slot-grid-cell");
@@ -383,7 +389,7 @@ function paintDropPreview(root, startMin, durationMin) {
 const DRAG_MOVE_THRESHOLD_PX = 6;
 
 /**
- * 예상 일정 덩어리 드래그 이동 (일간 예산 슬롯만 · 길이 유지 · 10분 격자)
+ * 예상 일정 덩어리 드래그 이동 (일간 예산 슬롯만 · 길이 유지 · 5분 격자)
  * @param {HTMLElement} root
  * @param {{
  *   getSpans: () => object[],

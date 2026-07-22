@@ -5,37 +5,15 @@
 import {
   buildHabitTrackerRows,
   getHabitTrackerCellLevel,
+  habitTrackerWeekDateKeys,
 } from "./habitTrackerPageModel.js";
+import {
+  buildHabitTrackerTodayDailyRingModel,
+  createHabitTrackerTodayRingElement,
+} from "./habitTrackerTodayRing.js";
 import { timeLedgerLocalTodayYmd } from "./timeLedgerEntriesSupabase.js";
 
-function pad2(n) {
-  return String(n).padStart(2, "0");
-}
-
-function ymdFromDate(d) {
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-}
-
-/** 오늘이 속한 주(월~일) 7일 */
-export function habitTrackerWeekDateKeys(refYmd) {
-  const raw = String(refYmd || timeLedgerLocalTodayYmd() || "").trim();
-  const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  const base = m
-    ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
-    : new Date();
-  const day = base.getDay();
-  const mondayOffset = day === 0 ? -6 : 1 - day;
-  const monday = new Date(base);
-  monday.setDate(base.getDate() + mondayOffset);
-  /** @type {string[]} */
-  const keys = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    keys.push(ymdFromDate(d));
-  }
-  return keys;
-}
+export { habitTrackerWeekDateKeys };
 
 function isDayComplete(level) {
   return Number(level) >= 4;
@@ -93,8 +71,9 @@ function barToneClass(index, rate) {
 
 /**
  * @param {ReturnType<typeof buildHabitTrackerWeekInsightModel>} model
+ * @param {{ skipSync?: boolean }} [opts]
  */
-export function createHabitTrackerInsightSection(model) {
+export function createHabitTrackerInsightSection(model, opts = {}) {
   const section = document.createElement("section");
   section.className = "habit-tracker-insight-section";
   section.setAttribute("aria-label", "달성률과 목표 대비");
@@ -109,8 +88,27 @@ export function createHabitTrackerInsightSection(model) {
 
   const habits = Array.isArray(model?.habits) ? model.habits : [];
   const maxDone = Math.max(1, ...habits.map((h) => h.doneCount), 1);
+  const skipSync = opts.skipSync !== false;
 
-  /* 1 — 달성 횟수 비교 */
+  /* 1 — 오늘 루틴 달성 (원형 링) */
+  {
+    const card = document.createElement("article");
+    card.className =
+      "habit-tracker-insight-card habit-tracker-insight-card--today-ring";
+    const title = document.createElement("h3");
+    title.className =
+      "habit-tracker-insight-card-title habit-tracker-insight-card-title--violet";
+    title.textContent = "오늘 루틴 달성";
+    const body = document.createElement("div");
+    body.className =
+      "habit-tracker-insight-card-body habit-tracker-insight-card-body--today-ring";
+    const ringModel = buildHabitTrackerTodayDailyRingModel({ skipSync });
+    body.appendChild(createHabitTrackerTodayRingElement(ringModel));
+    card.append(title, body);
+    track.appendChild(card);
+  }
+
+  /* 2 — 달성 횟수 비교 */
   {
     const card = document.createElement("article");
     card.className = "habit-tracker-insight-card";
@@ -136,7 +134,7 @@ export function createHabitTrackerInsightSection(model) {
     track.appendChild(card);
   }
 
-  /* 2 — 연속 달성 (이번주 습관 점수판) */
+  /* 3 — 연속 달성 (이번주 습관 점수판) */
   {
     const card = document.createElement("article");
     card.className = "habit-tracker-insight-card";

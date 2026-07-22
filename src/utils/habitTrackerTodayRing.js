@@ -1,5 +1,6 @@
 /**
- * 홈 3분할 습관 트랙커 — 오늘 KPI(루틴) 완료 원형 링
+ * 홈 3분할·모바일 카드 — 오늘 루틴 완료 원형 링
+ * (시간기록하기·시간 계획하기 + 루틴 트랙커 KPI)
  */
 
 import {
@@ -25,13 +26,18 @@ export function buildHabitTrackerTodayDailyRingModel(opts = {}) {
   let done = 0;
   let total = 0;
   for (const row of rows) {
-    if (row?.kind !== "kpi" || !row.kpi) continue;
+    const kind = String(row?.kind || "");
+    /* KPI + 기본 줄(시간기록하기·시간 계획하기) 모두 포함 */
+    if (kind !== "kpi" && kind !== "time-record" && kind !== "time-plan") {
+      continue;
+    }
+    if (kind === "kpi" && !row.kpi) continue;
     const cell = getHabitTrackerCellDisplay(row, todayYmd);
     if (cell.beforeStart) continue;
     total += 1;
     /*
      * 잔디 진하기(매일할일 전부 완료)가 아니라,
-     * 오늘 해당 루틴에 시간기록·체크·값이 있으면 카운트 (표의 O와 동일)
+     * 오늘 해당 줄에 시간기록·체크·값이 있으면 카운트 (표의 O와 동일)
      */
     if (String(getHabitTrackerCellText(row, todayYmd) || "").trim()) done += 1;
   }

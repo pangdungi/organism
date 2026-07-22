@@ -453,7 +453,7 @@
   min-width: 0;
 }
 
-/* 일간뷰(캘린더 탭): 24행×6열 10분 슬롯 + 예상 일정 카드 */
+/* 일간뷰(캘린더 탭): 24행×12열 5분 슬롯 + 예상 일정 카드 */
 .calendar-1day-view--slot-grid .calendar-1day-dual-pane {
   flex: 1 1 0;
   min-height: 0;
@@ -514,7 +514,8 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 0.28rem 0.45rem 0.4rem;
+  /* 바깥 왼쪽만 없이 · 오른쪽 여백 유지 · 숫자↔칸 틈은 column-gap */
+  padding: 0.28rem 0.45rem 0.4rem 0;
   box-sizing: border-box;
   touch-action: pan-y;
   -webkit-user-select: none;
@@ -538,8 +539,10 @@
 .calendar-1day-slot-grid-head,
 .calendar-1day-slot-grid-row {
   display: grid;
-  grid-template-columns: 1.35rem repeat(6, minmax(0, 1fr));
-  gap: 0.12rem;
+  /* 시 라벨 열 = 숫자폭 + 오른쪽 여백 */
+  grid-template-columns: 1.1rem repeat(12, minmax(0, 1fr));
+  column-gap: 0.06rem;
+  row-gap: 0;
   align-items: stretch;
   width: 100%;
   box-sizing: border-box;
@@ -558,16 +561,12 @@
   gap: 0.12rem;
 }
 
-.calendar-1day-slot-grid-corner {
-  display: block;
-}
-
 .calendar-1day-slot-grid-col-label,
 .calendar-1day-slot-grid-row-label {
-  font-size: 0.4375rem;
+  font-size: 0.5625rem;
   font-weight: 600;
   letter-spacing: 0;
-  color: #999999;
+  color: #c4c4c4;
   text-align: right;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -579,10 +578,15 @@
   justify-content: flex-end;
 }
 
-.calendar-1day-slot-grid-row-label {
+.calendar-1day-slot-grid-row-label,
+.calendar-1day-slot-grid-corner {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  margin: 0;
+  /* 00·01… 숫자와 타임박스 칸 사이 여백 */
+  padding: 0 0.28rem 0 0;
+  box-sizing: border-box;
 }
 
 .calendar-1day-slot-grid-cell {
@@ -593,7 +597,7 @@
   min-height: 0;
   min-width: 0;
   box-sizing: border-box;
-  border-radius: 3px;
+  border-radius: 2px;
   border: 1px dashed #e5e5e5;
   background: transparent;
 }
@@ -1046,7 +1050,7 @@
   }
 }
 
-/* 일간뷰: 남은 시간 고정 + 10분 슬롯 그리드·예상 카드 */
+/* 일간뷰: 남은 시간 고정 + 5분 슬롯 그리드·예상 카드 */
 .calendar-monthly-layout.calendar-1day-view {
   flex: 1 1 auto;
   min-height: 0;

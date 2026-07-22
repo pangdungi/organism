@@ -79,7 +79,7 @@ export function extractBudgetBlocksFromDateKey(dateKey) {
   return blocks;
 }
 
-/** 템플릿 블록 → 캘린더 1일 타임박스(10분 격자) span */
+/** 템플릿 블록 → 캘린더 1일 타임박스(5분 격자) span */
 export function budgetTemplateBlocksToCalendarSpans(blocks) {
   return (blocks || [])
     .map((b) => {

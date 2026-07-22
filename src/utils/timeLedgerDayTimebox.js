@@ -207,14 +207,19 @@ export function createTimeLedgerDayTimeboxElement(
   {
     showEmptyMessage = true,
     showRowLabels = true,
+    /** 시 라벨은 숨기되 열 폭은 유지(실제|예상 듀얼 정렬) */
+    reserveRowLabelGutter = false,
     emptyMessage = "시작·종료 시간이 있는 기록이 없습니다.",
     matrixAriaLabel = "하루 24행 12열 5분 단위 시간박스",
   } = {},
 ) {
   const scroll = document.createElement("div");
   scroll.className = "time-ledger-day-timebox-scroll";
-  if (!showRowLabels) {
+  if (!showRowLabels && !reserveRowLabelGutter) {
     scroll.classList.add("time-ledger-day-timebox-scroll--no-row-labels");
+  }
+  if (!showRowLabels && reserveRowLabelGutter) {
+    scroll.classList.add("time-ledger-day-timebox-scroll--label-gutter");
   }
 
   const matrix = document.createElement("div");
@@ -248,6 +253,9 @@ export function createTimeLedgerDayTimeboxElement(
     rowLabel.className = "time-ledger-day-timebox-matrix-row-label";
     if (showRowLabels) {
       rowLabel.textContent = String(row).padStart(2, "0");
+      rowEl.appendChild(rowLabel);
+    } else if (reserveRowLabelGutter) {
+      rowLabel.setAttribute("aria-hidden", "true");
       rowEl.appendChild(rowLabel);
     }
 
