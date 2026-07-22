@@ -3132,6 +3132,29 @@
   scroll-snap-align: start;
 }
 
+/* 아이패드·데스크탑 가로 — 7일이 남는 여백 없이 화면 너비를 나눠 채움 */
+@media (min-width: 64rem) {
+  .time-ledger-week-timebox-scroll,
+  [data-legacy~="time-ledger-view"] .time-ledger-week-timebox-scroll {
+    overflow-x: hidden;
+    scroll-snap-type: none;
+  }
+
+  .time-ledger-week-timebox-days-track,
+  [data-legacy~="time-ledger-view"] .time-ledger-week-timebox-days-track {
+    width: 100%;
+    min-width: 100%;
+    max-width: 100%;
+  }
+
+  .time-ledger-week-timebox-day,
+  [data-legacy~="time-ledger-view"] .time-ledger-week-timebox-day {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+  }
+}
+
 .time-ledger-week-timebox-day-head,
 [data-legacy~="time-ledger-view"] .time-ledger-week-timebox-day-head {
   font-size: 0.6875rem;
@@ -3355,10 +3378,10 @@
   min-width: 0;
   margin: 0;
   padding: 0;
-  border: none;
+  border: 1px dashed #e5e5e5;
   border-radius: 2px;
   box-sizing: border-box;
-  background: #ebedf0;
+  background: #ffffff;
   cursor: default;
   -webkit-tap-highlight-color: transparent;
 }
@@ -3367,47 +3390,66 @@
 [data-legacy~="time-ledger-view"]
   .time-ledger-productivity-heatmap-cell--empty {
   background: transparent;
+  border-color: transparent;
   pointer-events: none;
 }
 
 .time-ledger-productivity-heatmap-cell--out-range,
 [data-legacy~="time-ledger-view"]
   .time-ledger-productivity-heatmap-cell--out-range {
-  background: #fafafa;
-  opacity: 0.55;
+  background: #ffffff;
+  border-style: dashed;
+  border-color: #ececec;
+  opacity: 0.45;
 }
 
 .time-ledger-productivity-heatmap-cell--no-data:not(
   .time-ledger-productivity-heatmap-cell--out-range
 ),
+.time-ledger-productivity-heatmap-cell--lv0:not(
+  .time-ledger-productivity-heatmap-cell--out-range
+),
 [data-legacy~="time-ledger-view"]
   .time-ledger-productivity-heatmap-cell--no-data:not(
     .time-ledger-productivity-heatmap-cell--out-range
+  ),
+[data-legacy~="time-ledger-view"]
+  .time-ledger-productivity-heatmap-cell--lv0:not(
+    .time-ledger-productivity-heatmap-cell--out-range
   ) {
-  background: #e5e5e5;
+  background: #ffffff;
+  border: 1px dashed #e5e5e5;
 }
 
 .time-ledger-productivity-heatmap-cell--lv1,
 [data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-cell--lv1 {
   background: #ffe0e0;
+  border-style: solid;
+  border-color: rgba(255, 171, 171, 0.45);
   cursor: pointer;
 }
 
 .time-ledger-productivity-heatmap-cell--lv2,
 [data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-cell--lv2 {
   background: #fecaca;
+  border-style: solid;
+  border-color: rgba(248, 113, 113, 0.4);
   cursor: pointer;
 }
 
 .time-ledger-productivity-heatmap-cell--lv3,
 [data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-cell--lv3 {
   background: #f87171;
+  border-style: solid;
+  border-color: rgba(192, 57, 43, 0.35);
   cursor: pointer;
 }
 
 .time-ledger-productivity-heatmap-cell--lv4,
 [data-legacy~="time-ledger-view"] .time-ledger-productivity-heatmap-cell--lv4 {
   background: #c0392b;
+  border-style: solid;
+  border-color: rgba(127, 29, 29, 0.35);
   cursor: pointer;
 }
 
@@ -3461,6 +3503,14 @@
   height: 0.625rem;
   border-radius: 2px;
   flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.time-ledger-productivity-heatmap-legend-swatch.time-ledger-productivity-heatmap-cell--lv0,
+[data-legacy~="time-ledger-view"]
+  .time-ledger-productivity-heatmap-legend-swatch.time-ledger-productivity-heatmap-cell--lv0 {
+  background: #ffffff;
+  border: 1px dashed #e5e5e5;
 }
 
 .time-ledger-tabs-filter-row,

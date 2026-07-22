@@ -5959,10 +5959,23 @@ export function render(opts = {}) {
     return e;
   }
 
-  /** 레포트·타임라인·타임박스(일간) — 가로 스와이프로 날짜 이동 */
+  /** 아이패드·데스크탑 가로 — 주간 타임박스 스와이프 주 이동용 */
+  function isWideTimeLedgerWeekPanViewport() {
+    try {
+      return window.matchMedia("(min-width: 64rem)").matches;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /** 레포트·타임라인·타임박스(일간) · 넓은 화면 주간 타임박스 — 가로 스와이프 이동 */
   function timeLedgerHorizontalPanNavigateActive() {
     if (timeLedgerLayoutView === "timebox") {
-      return timeLedgerTimeboxGranularity === "day";
+      if (timeLedgerTimeboxGranularity === "day") return true;
+      if (timeLedgerTimeboxGranularity === "week") {
+        return isWideTimeLedgerWeekPanViewport();
+      }
+      return false;
     }
     if (timeLedgerLayoutView === "report") {
       return timeLedgerReportGranularity === "day";
@@ -5987,6 +6000,21 @@ export function render(opts = {}) {
     patchUsageRangeHeadingOnly();
     onFilterChange();
     requestUsageListScrollToBottomOnce();
+    requestTimeLedgerPullForUserQueryChange("swipe");
+  }
+
+  /** 왼쪽 스와이프=다음 주, 오른쪽 스와이프=이전 주 */
+  function shiftUsageHistoryWeek(step) {
+    if (step !== 1 && step !== -1) return;
+    const r = shiftWeekRangeByWeeks(
+      usageHistoryRangeStartYmd || getLedgerFilterTodayYmd(),
+      step,
+    );
+    usageHistoryRangeStartYmd = r.start;
+    usageHistoryRangeEndYmd = r.end;
+    persistActiveViewTimeFilterToSession();
+    patchUsageRangeHeadingOnly();
+    onFilterChange();
     requestTimeLedgerPullForUserQueryChange("swipe");
   }
 
@@ -6026,6 +6054,11 @@ export function render(opts = {}) {
     if (timeLedgerLayoutView === "timebox") {
       if (timeLedgerTimeboxGranularity === "day") {
         shiftUsageHistoryDay(step);
+      } else if (
+        timeLedgerTimeboxGranularity === "week" &&
+        isWideTimeLedgerWeekPanViewport()
+      ) {
+        shiftUsageHistoryWeek(step);
       }
       return;
     }
@@ -11691,10 +11724,23 @@ export function render(opts = {}) {
     isActive: timeLedgerHorizontalPanNavigateActive,
     onNext: () => shiftActiveTimeLedgerPanDay(1),
     onPrev: () => shiftActiveTimeLedgerPanDay(-1),
-    shouldIgnoreTarget: (target) =>
-      !!target?.closest?.(
+    shouldIgnoreTarget: (target) => {
+      /* 넓은 화면 주간뷰: 가로 스크롤 대신 주 이동 스와이프를 받음 */
+      const onWeekScroll = !!target?.closest?.(
+        ".time-ledger-week-timebox-scroll",
+      );
+      if (
+        onWeekScroll &&
+        timeLedgerLayoutView === "timebox" &&
+        timeLedgerTimeboxGranularity === "week" &&
+        isWideTimeLedgerWeekPanViewport()
+      ) {
+        return false;
+      }
+      return !!target?.closest?.(
         `input, textarea, select, button, a, [role='dialog'], .time-task-setup-modal, [data-legacy~='time-ledger-memo-log-wrap'], .time-ledger-memo-feed, .time-ledger-week-timebox-scroll, .time-ledger-productivity-heatmap-scroll, ${TIME_REPORT_HORIZONTAL_SCROLL_SELECTOR}`,
-      ),
+      );
+    },
     lockMs: 400,
   });
 

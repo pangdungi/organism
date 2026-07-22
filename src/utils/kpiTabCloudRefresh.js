@@ -493,8 +493,9 @@ export function scheduleTaskLogModalCloudSync(onApplied, opts = {}) {
 }
 
 /**
- * 과제 기록 모달 — 연결된 KPI가 속한 메뉴 1개만.
- * 서버 updated_at 워터마크가 로컬보다 새로울 때만 pull(force:false).
+ * 과제 기록 모달 — 연결된 KPI가 속한 메뉴 1개만 stale 확인·pull.
+ * KPI가 아직 없으면(추가 모달에서 과제 선택 전) KPI 영역 pull은 생략.
+ * (과제 선택 시 `pullKpiTodosDomainFromCloudIfStale`가 이어서 처리)
  * @param {{ kpiId?: string }} [opts]
  * @returns {Promise<boolean>} 이번에 서버 스냅샷을 반영했으면 true
  */
@@ -503,19 +504,51 @@ export async function pullKpiMapsForTaskLogModalOpen(opts = {}) {
   lpPullDebug("pullKpiMapsForTaskLogModalOpen", {});
 
   const kpiId = String(opts.kpiId || "").trim();
-  const kpiChanged = await pullStaleKpiDomainsForTaskLogList();
+  let kpiChanged = false;
+  let note = "과제 선택 전 — KPI 도메인 pull 생략";
+
+  if (kpiId) {
+    const domain = resolveKpiDomainForKpiId(kpiId);
+    if (domain && KPI_DOMAIN_PULL[domain]) {
+      const stale = await probeKpiDomainServerStale(domain);
+      if (stale?.stale) {
+        const changed = !!(await KPI_DOMAIN_PULL[domain]({ force: false }));
+        if (changed && stale.serverMs > 0) {
+          rememberKpiDomainServerWatermarkMs(
+            domain,
+            stale.serverMs,
+            stale.userId,
+          );
+        }
+        kpiChanged = !!changed;
+      }
+      note = `연결된 KPI 도메인만 stale pull (${domain})`;
+    } else {
+      note = "KPI 도메인 미확인 — pull 생략";
+    }
+  }
+
+  if (kpiChanged) {
+    try {
+      ensureAllKpiTimeTasksFromStorage();
+    } catch (_) {}
+    try {
+      patchKpiLinkedTasksFromKpiMaps();
+    } catch (_) {}
+    try {
+      syncHabitTrackerLogs();
+    } catch (_) {}
+  }
 
   kpiTodoFineTrace("cloud.pullKpiMapsForTaskLogModalOpen:끝", {
     pullOk: true,
     kpiChanged,
-    kpiId: kpiId || "(task-list)",
+    kpiId: kpiId || "(none)",
   });
   syncWatchLog("pullKpiMapsForTaskLogModalOpen_완료", {
     pullOk: true,
     kpiChanged,
-    note: kpiId
-      ? "과제 KPI id + 목록용 네 도메인 stale pull"
-      : "과제 선택 전 — 목록용 네 도메인 stale pull",
+    note,
   });
   return kpiChanged;
 }
