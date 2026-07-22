@@ -391,33 +391,53 @@ async function enterAuthenticatedApp(opts = {}) {
         return;
       }
 
-      if (showSplash) setAppSplashMessage("이용 권한 확인 중…");
       finishStep("세션 확인");
-      const blocked = await blockExpiredSubscriptionOrSignOut();
-      if (blocked) {
-        lpAppMounted = false;
-        return;
-      }
+      const uid = bootSession.user.id;
+      let cachedUid = "";
+      try {
+        cachedUid = localStorage.getItem("lp_last_auth_uid") || "";
+      } catch (_) {}
+      /** 같은 계정 재진입 — 로컬로 바로 그리고, 서버·IDB·구독 확인은 뒤에서 */
+      const sameAccountFastPath = !!(cachedUid && cachedUid === uid);
 
       lpAppMounted = true;
       showOnly("signin");
-      setActiveClientStorageUserId(bootSession.user.id);
+      setActiveClientStorageUserId(uid);
       applyUiFontFromLocalCache();
       primeTimeLedgerStorageFromCachedSession();
       finishStep("로컬 캐시 준비");
-      if (showSplash) setAppSplashMessage("설정 불러오는 중…");
-      await prepareTimeLedgerStorageForCurrentSession();
-      await pullPrefsAndRunSubscriptionGate();
-      finishStep("계정 설정 pull");
+
+      if (!sameAccountFastPath) {
+        if (showSplash) setAppSplashMessage("이용 권한 확인 중…");
+        const blocked = await blockExpiredSubscriptionOrSignOut();
+        if (blocked) {
+          lpAppMounted = false;
+          return;
+        }
+        if (showSplash) setAppSplashMessage("설정 불러오는 중…");
+        await prepareTimeLedgerStorageForCurrentSession();
+        await pullPrefsAndRunSubscriptionGate();
+        finishStep("계정 설정 pull");
+      }
+
       await mountApp(screen);
       finishStep("메인 화면 조립(mountApp)");
-      if (showSplash) setAppSplashMessage("데이터 불러오는 중…");
       await waitForAppBootReady();
       prefetchCriticalAppIconAssets();
       refreshLpPwaInstall();
 
-      markTabBootAuthUid(bootSession.user.id);
+      markTabBootAuthUid(uid);
       finishStep("세션·탭 표시");
+
+      if (sameAccountFastPath) {
+        void (async () => {
+          try {
+            await prepareTimeLedgerStorageForCurrentSession();
+            await pullPrefsAndRunSubscriptionGate();
+            await blockExpiredSubscriptionOrSignOut();
+          } catch (_) {}
+        })();
+      }
 
       timings.push({
         label: "진입 합계",
