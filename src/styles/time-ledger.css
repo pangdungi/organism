@@ -756,6 +756,15 @@
   line-height: 1.25;
 }
 
+/* 시간의 가격 — +빨강 / −파랑 (가계부 금액과 동일) */
+.lp-tr2-stat-value--pos {
+  color: #c02b2b;
+}
+
+.lp-tr2-stat-value--neg {
+  color: #1d4ed8;
+}
+
 .lp-tr2-stat-hint {
   font-size: var(--lp-tr2-meta);
   color: #999999;
@@ -1374,11 +1383,14 @@
 .lp-tr2-sleep-chart-wrap {
   width: 100%;
   margin-top: 0.15rem;
+  box-sizing: border-box;
 }
 
 .lp-tr2-sleep-chart-canvas {
   width: 100%;
-  height: clamp(6.75rem, 30vw, 7.5rem);
+  max-width: 100%;
+  height: clamp(7.25rem, 34vw, 8.5rem);
+  box-sizing: border-box;
 }
 
 .lp-tr2-sleep-chart-canvas .lp-tr2-sleep-chart-svg {
@@ -1439,7 +1451,7 @@
 }
 
 .lp-tr2-sleep-chart-legend-miss {
-  background: #818cf8;
+  background: #94a3b8;
 }
 
 /* 일간 수면 — 목표 대비 가로 진행 바 */
@@ -1520,8 +1532,12 @@
   margin-bottom: 0.55rem;
 }
 
+.lp-tr2-sleep-stats--week {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 @media (min-width: 420px) {
-  .lp-tr2-sleep-stats {
+  .lp-tr2-sleep-stats:not(.lp-tr2-sleep-stats--week) {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
@@ -1549,12 +1565,56 @@
   overflow-wrap: anywhere;
 }
 
+.lp-tr2-sleep-stat-value--duration {
+  color: #6d28d9;
+}
+
+.lp-tr2-sleep-stat-value--bedtime {
+  color: #15803d;
+}
+
+.lp-tr2-sleep-stat-value--rating {
+  color: #c2410c;
+}
+
 .lp-tr2-sleep-stat-hint {
   display: block;
   margin-top: 0.08rem;
   font-size: var(--lp-tr2-meta);
   color: #999999;
   line-height: 1.3;
+}
+
+.lp-tr2-sleep-day-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.lp-tr2-sleep-day-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--lp-tr2-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-tr2-sleep-day-table th,
+.lp-tr2-sleep-day-table td {
+  padding: 0.35rem 0.3rem;
+  text-align: center;
+  border-bottom: 1px solid #f1f5f9;
+  white-space: nowrap;
+}
+
+.lp-tr2-sleep-day-table th {
+  font-weight: 650;
+  color: #94a3b8;
+  font-size: 0.6875rem;
+}
+
+.lp-tr2-sleep-day-table td {
+  color: #64748b;
+  font-weight: 600;
 }
 
 /* 일간 이동 — 가용율 + 24시 타임라인 */
@@ -1952,31 +2012,24 @@
   display: block;
   min-height: 0.55rem;
   border-radius: 1px;
-  background: #f5f5f5;
+  background: #eef2f6;
 }
 
 .lp-tr2-emotion-heatmap-cell--lv0 {
-  background: #f5f5f5;
+  background: #eef2f6;
 }
 
-.lp-tr2-emotion-heatmap-cell--lv1 {
-  background: #e0e0e0;
-}
-
-.lp-tr2-emotion-heatmap-cell--lv2 {
-  background: #bdbdbd;
-}
-
-.lp-tr2-emotion-heatmap-cell--lv3 {
-  background: #757575;
-}
-
+/* 농도·대분류 색은 JS에서 일간 타임라인 chartColor로 지정 */
+.lp-tr2-emotion-heatmap-cell--lv1,
+.lp-tr2-emotion-heatmap-cell--lv2,
+.lp-tr2-emotion-heatmap-cell--lv3,
 .lp-tr2-emotion-heatmap-cell--lv4 {
-  background: #212121;
+  background: rgba(123, 107, 174, 0.48);
 }
 
 .lp-tr2-emotion-heatmap-legend {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.25rem;
   margin-top: 0.45rem;
@@ -1989,6 +2042,11 @@
   height: 0.65rem;
   border-radius: 1px;
   display: inline-block;
+}
+
+.lp-tr2-emotion-heatmap-legend-note {
+  margin-left: 0.15rem;
+  color: #94a3b8;
 }
 
 .lp-tr2-routine-weak-line {
@@ -2275,6 +2333,11 @@
   font-weight: 650;
   line-height: 1.35;
   overflow-wrap: anywhere;
+  color: #64748b;
+}
+
+.lp-tr2-intake-meal-name--neutral {
+  color: #64748b;
 }
 
 .lp-tr2-intake-meal-sub {
@@ -2350,9 +2413,18 @@
   color: #166534;
 }
 
+.lp-tr2-intake-taste-chip--mid {
+  background: #f1f5f9;
+  color: #475569;
+}
+
 .lp-tr2-intake-taste-chip--low {
   background: #fff7ed;
   color: #9a3412;
+}
+
+.lp-tr2-intake-taste-by-rating {
+  margin-top: 0.15rem;
 }
 
 .lp-tr2-media-empty {
@@ -3040,17 +3112,18 @@
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 0.35rem;
   align-items: end;
-  padding: 0.45rem 0.35rem 0.25rem;
+  padding: 0.45rem 0.2rem 0.25rem;
   border-radius: 0.55rem;
   background: #fff;
   border: 1px solid #e8edf3;
+  overflow: visible;
 }
 
 .lp-tr2-rating-weekday-col {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.28rem;
+  gap: 0.2rem;
   min-width: 0;
 }
 
@@ -3094,13 +3167,21 @@
   font-size: 0.6875rem;
   font-weight: 700;
   color: #666666;
+  line-height: 1.1;
 }
 
 .lp-tr2-rating-weekday-score {
-  font-size: 0.625rem;
+  display: block;
+  min-height: 1em;
+  max-width: 100%;
+  font-size: 0.5625rem;
   font-weight: 700;
   color: #475569;
   font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+  overflow: visible;
 }
 
 .lp-tr2-rating-chart-legend {

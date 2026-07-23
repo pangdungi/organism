@@ -46,9 +46,10 @@ function parseRowDayOfWeek(r) {
   return dt.getDay();
 }
 
+/** @returns {{ count: number, cats: Record<string, number> }[][]} */
 function emptyHeatmap() {
   return Array.from({ length: 7 }, () =>
-    Array.from({ length: 24 }, () => 0),
+    Array.from({ length: 24 }, () => ({ count: 0, cats: {} })),
   );
 }
 
@@ -130,7 +131,9 @@ export function buildEmotionReportSnapshot(rows, hourlyRate = 0) {
     const dow = parseRowDayOfWeek(r);
     const hour = parseRowStartHour(r);
     if (dow != null && hour != null) {
-      heatmap[dow][hour] += 1;
+      const cell = heatmap[dow][hour];
+      cell.count += 1;
+      cell.cats[cat.id] = (cell.cats[cat.id] || 0) + 1;
     }
 
     const date = String(r?.date || "")

@@ -9,8 +9,40 @@ import {
 } from "./timeEmotionTaxonomy.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
-const HEATMAP_LEVELS = ["#f5f5f5", "#e0e0e0", "#bdbdbd", "#757575", "#212121"];
+/** 일간 타임라인과 맞춘 대분류 톤 · 농도(적음→많음). 기준색=두려움(보라) */
+const HEATMAP_EMPTY = "#eef2f6";
+const HEATMAP_BASE = "#7B6BAE";
+const HEATMAP_LEVEL_ALPHA = [0, 0.28, 0.48, 0.68, 0.92];
 const WEEKDAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
+
+function hexToRgba(hex, alpha) {
+  const raw = String(hex || "").replace("#", "");
+  const full =
+    raw.length === 3
+      ? raw
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : raw;
+  if (!/^[0-9a-fA-F]{6}$/.test(full)) return `rgba(123, 107, 174, ${alpha})`;
+  const n = Number.parseInt(full, 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function dominantEmotionCategoryId(cats) {
+  let bestId = null;
+  let bestN = 0;
+  for (const [id, n] of Object.entries(cats || {})) {
+    if (n > bestN) {
+      bestId = id;
+      bestN = n;
+    }
+  }
+  return bestId;
+}
 
 function svgEl(tag, attrs = {}) {
   const el = document.createElementNS(SVG_NS, tag);
@@ -270,8 +302,14 @@ function heatmapLevel(count, max) {
   return 1;
 }
 
+function cellCount(cell) {
+  if (cell == null) return 0;
+  if (typeof cell === "number") return cell;
+  return Number(cell.count) || 0;
+}
+
 /**
- * @param {{ heatmap: number[][] }} snap
+ * @param {{ heatmap: Array<Array<number|{count:number,cats:Record<string,number>}>> }} snap
  */
 export function renderEmotionTimeHeatmap(snap) {
   const wrap = document.createElement("div");
@@ -281,7 +319,7 @@ export function renderEmotionTimeHeatmap(snap) {
   let max = 0;
   for (let d = 0; d < 7; d++) {
     for (let h = 0; h < 24; h++) {
-      const v = grid[d]?.[h] ?? 0;
+      const v = cellCount(grid[d]?.[h]);
       if (v > max) max = v;
     }
   }
@@ -313,14 +351,30 @@ export function renderEmotionTimeHeatmap(snap) {
     dayLab.textContent = WEEKDAY_LABELS[d];
     row.appendChild(dayLab);
     for (let h = 0; h < 24; h++) {
-      const count = grid[d]?.[h] ?? 0;
+      const raw = grid[d]?.[h];
+      const count = cellCount(raw);
+      const cats = raw && typeof raw === "object" ? raw.cats || {} : {};
+      const catId = dominantEmotionCategoryId(cats);
+      const catColor = catId
+        ? getEmotionCategoryChartColor(catId)
+        : HEATMAP_BASE;
       const cell = document.createElement("span");
       cell.className = "lp-tr2-emotion-heatmap-cell";
       const lv = heatmapLevel(count, max);
       cell.classList.add(`lp-tr2-emotion-heatmap-cell--lv${lv}`);
+      if (count > 0) {
+        cell.style.background = hexToRgba(
+          catColor,
+          HEATMAP_LEVEL_ALPHA[lv] || 0.48,
+        );
+      } else {
+        cell.style.background = HEATMAP_EMPTY;
+      }
+      const catLabel =
+        EMOTION_CATEGORIES.find((c) => c.id === catId)?.label || "";
       cell.title =
         count > 0
-          ? `${WEEKDAY_LABELS[d]} ${h}시 · ${count}건`
+          ? `${WEEKDAY_LABELS[d]} ${h}시 · ${count}건${catLabel ? ` · ${catLabel}` : ""}`
           : `${WEEKDAY_LABELS[d]} ${h}시`;
       row.appendChild(cell);
     }
@@ -331,7 +385,23 @@ export function renderEmotionTimeHeatmap(snap) {
 
   const legend = document.createElement("div");
   legend.className = "lp-tr2-emotion-heatmap-legend";
-  legend.innerHTML = `<span>적음</span>${HEATMAP_LEVELS.map((c, i) => `<span class="lp-tr2-emotion-heatmap-legend-swatch lp-tr2-emotion-heatmap-cell--lv${i}" style="background:${c}"></span>`).join("")}<span>많음</span>`;
+  const less = document.createElement("span");
+  less.textContent = "적음";
+  legend.appendChild(less);
+  HEATMAP_LEVEL_ALPHA.forEach((alpha, i) => {
+    const sw = document.createElement("span");
+    sw.className = "lp-tr2-emotion-heatmap-legend-swatch";
+    sw.style.background =
+      i === 0 ? HEATMAP_EMPTY : hexToRgba(HEATMAP_BASE, alpha);
+    legend.appendChild(sw);
+  });
+  const more = document.createElement("span");
+  more.textContent = "많음";
+  legend.appendChild(more);
+  const catNote = document.createElement("span");
+  catNote.className = "lp-tr2-emotion-heatmap-legend-note";
+  catNote.textContent = "· 색=감정 대분류";
+  legend.appendChild(catNote);
   wrap.appendChild(legend);
 
   return wrap;

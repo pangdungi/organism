@@ -94,11 +94,39 @@ export function buildMealTasteReportSnapshot(rows) {
     ...new Set(picks.filter((p) => p.rating === 1).map((p) => p.food)),
   ];
 
+  /** 평점(1~5)별 음식 · 해당 점수를 준 횟수 */
+  /** @type {Map<number, Map<string, number>>} */
+  const ratingMaps = new Map([
+    [5, new Map()],
+    [4, new Map()],
+    [3, new Map()],
+    [2, new Map()],
+    [1, new Map()],
+  ]);
+  for (const p of picks) {
+    const star = Math.round(Number(p.rating));
+    if (star < 1 || star > 5) continue;
+    const m = ratingMaps.get(star);
+    m.set(p.food, (m.get(p.food) || 0) + 1);
+  }
+  const byRating = [5, 4, 3, 2, 1]
+    .map((rating) => {
+      const foodsAt = [...ratingMaps.get(rating).entries()]
+        .map(([food, count]) => ({ food, count }))
+        .sort(
+          (a, b) =>
+            b.count - a.count || a.food.localeCompare(b.food, "ko"),
+        );
+      return { rating, foods: foodsAt };
+    })
+    .filter((g) => g.foods.length > 0);
+
   return {
     ratedCount: picks.length,
     foodCount: foods.length,
     favorites,
     dislikes,
+    byRating,
     fiveStarFoods: fiveStarFoods.slice(0, 10),
     oneStarFoods: oneStarFoods.slice(0, 10),
   };
