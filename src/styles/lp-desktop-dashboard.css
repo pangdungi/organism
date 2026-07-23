@@ -337,7 +337,14 @@
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+    touch-action: pan-y;
+    transform: translateZ(0);
+    contain: layout style;
     padding: 0.15rem 0 0;
+  }
+
+  .habit-tracker-view--dashboard-embed .habit-tracker-page-grid-table {
+    contain: layout style;
   }
 
   .lp-desktop-dashboard-col--time .time-ledger-view,
@@ -347,11 +354,23 @@
     overflow: hidden;
   }
 
+  /*
+   * 시간기록 열 — 루트는 스크롤하지 않음(목록·타임박스 안쪽만).
+   * 바깥+안쪽 이중 스크롤이면 아이패드에서 세로 스크롤 렉이 남.
+   */
   .lp-desktop-dashboard-col--time .time-ledger-view {
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .lp-desktop-dashboard-col--time .time-ledger-mobile-cards,
+  .lp-desktop-dashboard-col--time .time-ledger-report-view-shell {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+    touch-action: pan-y;
+    /* 스크롤 레이어 분리 — 터치 드래그 시 페인트 부담 완화 */
+    transform: translateZ(0);
   }
 
   /* 플래너 — 본문(월별·주간·일간)이 칸 높이를 받아 그리드가 보이게 */

@@ -242,6 +242,7 @@
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 
 .habit-tracker-view--dashboard-embed .habit-tracker-grid-host {
@@ -258,7 +259,9 @@
 .habit-tracker-view--dashboard-embed .habit-tracker-page-grid-scroll {
   flex: 0 0 auto;
   max-height: none;
+  /* 안쪽 격자 스크롤 끔 — content-wrap 한 곳에서만 스크롤 */
   overflow: visible;
+  -webkit-overflow-scrolling: auto;
 }
 
 .habit-tracker-view--dashboard-embed .habit-tracker-today-ring-host {

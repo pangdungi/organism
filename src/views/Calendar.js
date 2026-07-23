@@ -3973,10 +3973,13 @@ function defaultStartHhMmForExpectedModalFromDateKey(dateKey) {
   return `${String(h).padStart(2, "0")}:${String(mi).padStart(2, "0")}`;
 }
 
-/** 0~24h 안에서 예상 일정 구간 겹침을 합쳐 실제로 덮인 분(합집합 길이) */
+/** 하루 길이(분) — 0:00~23:59. 24:00(1440)으로 세면 하루끝 23:59에도 1분이 남음 */
+const CALENDAR_1DAY_LENGTH_MINUTES = 23 * 60 + 59;
+
+/** 하루(0:00~23:59) 안에서 예상 일정 구간 겹침을 합쳐 실제로 덮인 분(합집합 길이) */
 function minutesCoveredByExpectedSpansUnion(spans) {
   if (!Array.isArray(spans) || spans.length === 0) return 0;
-  const dayCap = 24 * 60;
+  const dayCap = CALENDAR_1DAY_LENGTH_MINUTES;
   const iv = spans
     .map((s) => {
       const a = Math.max(0, Number(s.startMin));
@@ -4530,7 +4533,10 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
     const { spans: daySpansTl } =
       buildExpectedScheduleSpansForDateKey(targetKey);
     const plannedMinutes = minutesCoveredByExpectedSpansUnion(daySpansTl);
-    const remainingMinutes = Math.max(0, 24 * 60 - plannedMinutes);
+    const remainingMinutes = Math.max(
+      0,
+      CALENDAR_1DAY_LENGTH_MINUTES - plannedMinutes,
+    );
 
     const remainingBar = document.createElement("div");
     remainingBar.className = "calendar-1day-timeline-remaining";
@@ -4540,7 +4546,7 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
     remainingLabel.textContent = "남은 시간:";
     const remainingValue = document.createElement("span");
     remainingValue.textContent = formatMinutesAsCompactHm(remainingMinutes);
-    remainingValue.title = `이 날 24시간 중 예상 일정으로 덮인 시간: ${formatMinutesAsCompactHm(plannedMinutes)}`;
+    remainingValue.title = `이 날 0:00~23:59 중 예상 일정으로 덮인 시간: ${formatMinutesAsCompactHm(plannedMinutes)}`;
     remainingLabel.title =
       "같은 날짜 예상 시간(합쳐서 겹침은 한 번만 계산)을 모두 쓰고도 남은 분입니다.";
     remainingMain.appendChild(remainingLabel);
