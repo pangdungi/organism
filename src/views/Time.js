@@ -5915,13 +5915,22 @@ export function render(opts = {}) {
   }
 
   function applyUsageListFilters(rows) {
+    /** 레포트 탭은 레포트 조회 기간, 그 외는 타임라인·타임박스 기간 */
+    const rangeStart =
+      timeLedgerLayoutView === "report"
+        ? reportRangeStartYmd
+        : usageHistoryRangeStartYmd;
+    const rangeEnd =
+      timeLedgerLayoutView === "report"
+        ? reportRangeEndYmd
+        : usageHistoryRangeEndYmd;
     let filtered = filterRowsByFilterType(
       rows,
       filterType,
       filterYear,
       filterMonth,
-      usageHistoryRangeStartYmd,
-      usageHistoryRangeEndYmd,
+      rangeStart,
+      rangeEnd,
     );
     if (
       timeLedgerLayoutView !== "timebox" &&
@@ -6104,16 +6113,27 @@ export function render(opts = {}) {
   function patchTimeLedgerUsageHeadingInPlace(rows) {
     const cap = contentWrap.querySelector("[data-usage-range-caption]");
     if (cap) {
-      cap.textContent =
-        timeLedgerLayoutView === "timebox"
-          ? formatTimeboxUsageHistoryDateLabel(
-              usageHistoryRangeStartYmd,
-              usageHistoryRangeEndYmd,
-            )
-          : formatUsageHistoryDateLabel(
-              usageHistoryRangeStartYmd,
-              usageHistoryRangeEndYmd,
-            );
+      if (timeLedgerLayoutView === "report") {
+        cap.textContent = formatReportRangeDateLabel(
+          reportRangeStartYmd,
+          reportRangeEndYmd,
+        );
+      } else if (timeLedgerLayoutView === "timebox") {
+        cap.textContent = formatTimeboxUsageHistoryDateLabel(
+          usageHistoryRangeStartYmd,
+          usageHistoryRangeEndYmd,
+        );
+      } else if (timeLedgerLayoutView === "timeline") {
+        cap.textContent = formatTimelineRangeDateLabel(
+          usageHistoryRangeStartYmd,
+          usageHistoryRangeEndYmd,
+        );
+      } else {
+        cap.textContent = formatUsageHistoryDateLabel(
+          usageHistoryRangeStartYmd,
+          usageHistoryRangeEndYmd,
+        );
+      }
     }
     const total = contentWrap.querySelector("[data-usage-total-time]");
     if (total) {
@@ -11936,8 +11956,14 @@ export function render(opts = {}) {
   }
 
   function timeLedgerFilterSpansMultipleDays() {
-    const s = usageHistoryRangeStartYmd;
-    const e = usageHistoryRangeEndYmd;
+    const s =
+      timeLedgerLayoutView === "report"
+        ? reportRangeStartYmd
+        : usageHistoryRangeStartYmd;
+    const e =
+      timeLedgerLayoutView === "report"
+        ? reportRangeEndYmd
+        : usageHistoryRangeEndYmd;
     return !!(s && e && s !== e);
   }
 
@@ -12358,7 +12384,6 @@ export function render(opts = {}) {
     }
     usageHistoryTotalWrap.appendChild(usageHistoryTotalLabel);
     usageHistoryTotalWrap.appendChild(usageHistoryTotalTime);
-    if (showReportView) usageHistoryTotalWrap.hidden = true;
 
     usageHistoryHeadingRow.appendChild(usageHistoryHeadingLeft);
     usageHistoryHeadingRow.appendChild(usageHistoryTotalWrap);
