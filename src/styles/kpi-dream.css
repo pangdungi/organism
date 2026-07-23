@@ -1690,10 +1690,10 @@
 }
 
 .lp-kpi-dream-page .dream-kpi-card.is-selected {
+  /* 1.5px+바깥 1px 링은 기기에서 위아래만 굵어 보임 → 정수 2px만 */
+  border-width: 2px;
   border-color: var(--lp-modal-accent);
-  box-shadow:
-    0 0 0 1px var(--lp-modal-accent),
-    0 2px 10px rgba(0, 0, 0, 0.16);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
 }
 
 .lp-kpi-dream-page .dream-kpi-card.dream-kpi-card-dragging {
