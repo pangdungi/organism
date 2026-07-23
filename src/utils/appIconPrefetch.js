@@ -104,12 +104,12 @@ function warmPathsChunked(paths, startIndex = 0) {
 /** 홈 메뉴·푸터 등 첫 화면에 필요한 아이콘만 즉시(소량) */
 const CRITICAL_HOME_ICON_PATHS = [
   "/toolbaricons/dashboard.png",
-  "/toolbaricons/menu-home/grid-time-recording.png",
-  "/toolbaricons/menu-home/grid-calendar.png",
-  "/toolbaricons/menu-home/grid-goals.png",
-  "/toolbaricons/menu-home/grid-health.png",
-  "/toolbaricons/menu-home/grid-happiness.png",
-  "/toolbaricons/menu-home/grid-habit-tracker.png",
+  "/toolbaricons/menu-home/grid-icon-time.png",
+  "/toolbaricons/menu-home/grid-icon-planner.png",
+  "/toolbaricons/menu-home/grid-icon-sideincome.png",
+  "/toolbaricons/menu-home/grid-icon-health.png",
+  "/toolbaricons/menu-home/grid-icon-happiness.png",
+  "/toolbaricons/menu-home/grid-icon-habit.png",
   "/toolbaricons/menu-home/grid-my-account.png",
   "/toolbaricons/menu-time.png",
   "/toolbaricons/menu-schedule.png",

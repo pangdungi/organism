@@ -4,9 +4,9 @@
  */
 
 :root {
-  --lp-app-font-family: "LP Griun Cocochoitoon", system-ui, -apple-system, "Segoe UI",
+  --lp-app-font-family: "LP Ongleip Mitmi", system-ui, -apple-system, "Segoe UI",
     Roboto, sans-serif;
-  --lp-app-font-weight-base: 500;
+  --lp-app-font-weight-base: 400;
 }
 
 html {
@@ -98,6 +98,14 @@ select:-webkit-autofill:focus {
   font-weight: normal;
   font-style: normal;
   font-display: block;
+}
+
+@font-face {
+  font-family: "LP Ongleip Mitmi";
+  src: url("/fonts/LP-Ongleip-Mitmi.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
 }
 
 @font-face {

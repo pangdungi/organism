@@ -119,6 +119,7 @@ const TABS = [
     id: "time",
     label: "시간 가계부",
     mobileLabel: "시간",
+    homeMenuLabel: "시간기록",
     icon: "/toolbaricons/menu-time.png",
     sidebarSection: "main",
     sidebarOrder: 0,
@@ -128,7 +129,7 @@ const TABS = [
     label: "일정",
     mobileLabel: "일정",
     /** 홈 메뉴 그리드 표시명 */
-    homeMenuLabel: "캘린더",
+    homeMenuLabel: "플래너",
     icon: "/toolbaricons/menu-schedule.png",
     sidebarSection: "main",
     sidebarOrder: 2,
@@ -168,14 +169,24 @@ const HOME_MENU_TAB_ORDER = [
 
 const HOME_MENU_ACCOUNT_ICON = "/toolbaricons/menu-home/grid-my-account.png";
 
-/** 홈 메뉴 2×3 격자 타일(아이콘+영문 라벨 이미지) */
+/** 홈 메뉴 2×3 — 아이콘만(라벨은 텍스트로 분리, 앱 글꼴 적용) */
 const HOME_MENU_ICON = {
-  time: "/toolbaricons/menu-home/grid-time-recording.png",
-  schedulecalendar: "/toolbaricons/menu-home/grid-calendar.png",
-  sideincome: "/toolbaricons/menu-home/grid-goals.png",
-  health: "/toolbaricons/menu-home/grid-health.png",
-  happiness: "/toolbaricons/menu-home/grid-happiness.png",
-  habittracker: "/toolbaricons/menu-home/grid-habit-tracker.png",
+  time: "/toolbaricons/menu-home/grid-icon-time.png",
+  schedulecalendar: "/toolbaricons/menu-home/grid-icon-planner.png",
+  sideincome: "/toolbaricons/menu-home/grid-icon-sideincome.png",
+  health: "/toolbaricons/menu-home/grid-icon-health.png",
+  happiness: "/toolbaricons/menu-home/grid-icon-happiness.png",
+  habittracker: "/toolbaricons/menu-home/grid-icon-habit.png",
+};
+
+/** 홈 6그리드 라벨 — 이미지에 박지 않고 DOM 텍스트로 표시 */
+const HOME_MENU_LABEL = {
+  time: "시간기록",
+  schedulecalendar: "플래너",
+  sideincome: "시급상승",
+  health: "건강",
+  happiness: "행복",
+  habittracker: "습관관리",
 };
 
 
@@ -191,10 +202,17 @@ function tabMetaById(tabId) {
     return {
       id: "habittracker",
       label: "습관관리",
+      homeMenuLabel: HOME_MENU_LABEL.habittracker,
       icon: HOME_MENU_ICON.habittracker,
     };
   }
   return TABS.find((t) => t.id === tabId);
+}
+
+function homeMenuLabelForTab(tab) {
+  if (!tab) return "";
+  if (HOME_MENU_LABEL[tab.id]) return HOME_MENU_LABEL[tab.id];
+  return String(tab.homeMenuLabel || tab.label || "").trim();
 }
 
 const RENDERERS = {
@@ -911,12 +929,17 @@ export async function mountApp(container) {
     body.className = "app-home-menu-launcher-body";
 
     function navButtonFromTab(tab) {
+      const menuLabel = homeMenuLabelForTab(tab);
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "app-home-menu-launcher-btn";
       btn.dataset.tabId = tab.id;
-      btn.title = tab.label;
-      btn.setAttribute("aria-label", tab.label);
+      btn.title = menuLabel;
+      btn.setAttribute("aria-label", menuLabel);
+
+      const iconWrap = document.createElement("span");
+      iconWrap.className = "app-home-menu-launcher-icon";
+      iconWrap.setAttribute("aria-hidden", "true");
       const img = document.createElement("img");
       img.className = "app-home-menu-launcher-grid-img";
       img.src = withToolbarIconCacheVersion(
@@ -924,7 +947,13 @@ export async function mountApp(container) {
       );
       img.alt = "";
       applyStaticAppIconImg(img);
-      btn.appendChild(img);
+      iconWrap.appendChild(img);
+
+      const label = document.createElement("span");
+      label.className = "app-home-menu-launcher-label";
+      label.textContent = menuLabel;
+
+      btn.append(iconWrap, label);
       btn.addEventListener("click", () => openAppTabFromHome(tab.id));
       return btn;
     }

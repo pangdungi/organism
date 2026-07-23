@@ -270,30 +270,42 @@
       (function () {
         /* appUiFont.js UI_FONT_DEFS 와 id·family·weight·url 동기 */
         var MAP = {
-          cocochoitoon: {
-            family: "LP Griun Cocochoitoon",
-            weight: "500",
-            url: "/fonts/LP-Griun-Cocochoitoon.ttf",
-          },
           gongbujahana: {
             family: "LP Ongleip Gongbujahana",
             weight: "400",
             url: "/fonts/LP-Ongleip-Gongbujahana.ttf",
           },
-          mongtori: {
-            family: "LP Griun Mongtori",
-            weight: "400",
-            url: "/fonts/LP-Griun-Mongtori-Rg.ttf",
-          },
-          cherryspoon: {
-            family: "LP Griun Cherry1Spoon",
-            weight: "400",
-            url: "/fonts/LP-Griun-Cherry1Spoon-Rg.ttf",
-          },
           myeoneunheulrim: {
             family: "LP Griun Myeoneunheulrim",
             weight: "400",
             url: "/fonts/LP-Griun-Myeoneunheulrim.ttf",
+          },
+          leeseoyun: {
+            family: "LP Lee Seoyun",
+            weight: "400",
+            url: "/fonts/LP-LeeSeoyun.otf",
+            type: "font/otf",
+          },
+          mitmi: {
+            family: "LP Ongleip Mitmi",
+            weight: "400",
+            url: "/fonts/LP-Ongleip-Mitmi.ttf",
+          },
+          /* 제거된 글꼴 — 캐시 id 호환용(온글잎 밑미로 표시) */
+          cocochoitoon: {
+            family: "LP Ongleip Mitmi",
+            weight: "400",
+            url: "/fonts/LP-Ongleip-Mitmi.ttf",
+          },
+          mongtori: {
+            family: "LP Ongleip Mitmi",
+            weight: "400",
+            url: "/fonts/LP-Ongleip-Mitmi.ttf",
+          },
+          cherryspoon: {
+            family: "LP Ongleip Mitmi",
+            weight: "400",
+            url: "/fonts/LP-Ongleip-Mitmi.ttf",
           },
         };
         var CALENDAR_FONT_PRELOADS = [
@@ -310,8 +322,8 @@
           link.crossOrigin = "anonymous";
           document.head.appendChild(link);
         }
-        var FALLBACK = MAP.cocochoitoon;
-        var fontId = "cocochoitoon";
+        var FALLBACK = MAP.mitmi;
+        var fontId = "mitmi";
         try {
           var uid = localStorage.getItem("lp_last_auth_uid") || "";
           if (uid) {
@@ -320,7 +332,7 @@
           }
         } catch (_) {}
         var def = MAP[fontId] || FALLBACK;
-        preloadFontAsset(def.url, "font/ttf");
+        preloadFontAsset(def.url, def.type || "font/ttf");
         for (var i = 0; i < CALENDAR_FONT_PRELOADS.length; i++) {
           preloadFontAsset(
             CALENDAR_FONT_PRELOADS[i].url,

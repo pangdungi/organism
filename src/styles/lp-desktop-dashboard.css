@@ -243,6 +243,9 @@
 
   .lp-desktop-dashboard-col-split--bottom {
     min-height: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
   }
 
   .lp-desktop-dashboard-quick-kpi {
@@ -447,7 +450,7 @@
 
   .habit-tracker-view--dashboard-embed .dream-view-header {
     padding: 0.2rem 0.55rem 0.45rem;
-    border-bottom: none;
+    border-bottom: 1px solid #e5e7eb;
     gap: 0;
   }
 

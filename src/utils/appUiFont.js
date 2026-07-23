@@ -11,41 +11,17 @@ import { supabase } from "../supabase.js";
 import { getSupabaseSession } from "./supabaseSession.js";
 
 export const USER_UI_FONT_ID_KEY = "user_ui_font_id";
-export const DEFAULT_UI_FONT_ID = "cocochoitoon";
+export const DEFAULT_UI_FONT_ID = "mitmi";
 
 /** @typedef {{ id: string, label: string, family: string, url: string, format: "truetype"|"opentype", weight: number|string }} UiFontDef */
 
 /** @type {Record<string, UiFontDef>} */
 export const UI_FONT_DEFS = {
-  cocochoitoon: {
-    id: "cocochoitoon",
-    label: "그리운 코코최윤체",
-    family: "LP Griun Cocochoitoon",
-    url: "/fonts/LP-Griun-Cocochoitoon.ttf",
-    format: "truetype",
-    weight: 500,
-  },
   gongbujahana: {
     id: "gongbujahana",
     label: "온글잎 공부잘하자나",
     family: "LP Ongleip Gongbujahana",
     url: "/fonts/LP-Ongleip-Gongbujahana.ttf",
-    format: "truetype",
-    weight: 400,
-  },
-  mongtori: {
-    id: "mongtori",
-    label: "그리운 몽토리",
-    family: "LP Griun Mongtori",
-    url: "/fonts/LP-Griun-Mongtori-Rg.ttf",
-    format: "truetype",
-    weight: 400,
-  },
-  cherryspoon: {
-    id: "cherryspoon",
-    label: "그리운 체리1스푼",
-    family: "LP Griun Cherry1Spoon",
-    url: "/fonts/LP-Griun-Cherry1Spoon-Rg.ttf",
     format: "truetype",
     weight: 400,
   },
@@ -57,25 +33,43 @@ export const UI_FONT_DEFS = {
     format: "truetype",
     weight: 400,
   },
+  leeseoyun: {
+    id: "leeseoyun",
+    label: "이서윤체",
+    family: "LP Lee Seoyun",
+    url: "/fonts/LP-LeeSeoyun.otf",
+    format: "opentype",
+    weight: 400,
+  },
+  mitmi: {
+    id: "mitmi",
+    label: "온글잎 밑미",
+    family: "LP Ongleip Mitmi",
+    url: "/fonts/LP-Ongleip-Mitmi.ttf",
+    format: "truetype",
+    weight: 400,
+  },
 };
 
 /** 나의 계정 — 선택 가능한 UI 글꼴(기본 포함) */
 export const UI_FONT_PICKER_OPTIONS = [
-  UI_FONT_DEFS.cocochoitoon,
+  UI_FONT_DEFS.mitmi,
   UI_FONT_DEFS.gongbujahana,
-  UI_FONT_DEFS.mongtori,
-  UI_FONT_DEFS.cherryspoon,
   UI_FONT_DEFS.myeoneunheulrim,
+  UI_FONT_DEFS.leeseoyun,
 ];
 
 const LEGACY_UI_FONT_ALIASES = {
   parkdahyun: "bakdahyun",
   pakyongjun: "kyobohandwriting",
-  ryuryu: "cocochoitoon",
+  ryuryu: "mitmi",
+  cocochoitoon: "mitmi",
+  mongtori: "mitmi",
+  cherryspoon: "mitmi",
 };
 
 /** @deprecated applyUiFontById 사용 */
-export const LP_APP_FONT_STACK = fontStackForDef(UI_FONT_DEFS.cocochoitoon);
+export const LP_APP_FONT_STACK = fontStackForDef(UI_FONT_DEFS.mitmi);
 
 export const LP_LEE_SEOYUN_FONT_STACK =
   '"LP Lee Seoyun", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';

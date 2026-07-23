@@ -284,14 +284,14 @@ function formatRatingAvg(avg) {
   return `${n.toFixed(1)}`;
 }
 
-/** 배율(×1=0%) → 수익률 % — 5점 +100%, 4점 +50%, 3점 0%, 2점 −25%, 1점 −50% */
+/** 배율(×1=0%) → 집중도 % — 5점 +100%, 4점 +50%, 3점 0%, 2점 −25%, 1점 −50% */
 function returnMultToPercent(mult) {
   const n = Number(mult);
   if (!Number.isFinite(n)) return null;
   return Math.round((n - 1) * 100);
 }
 
-/** 시간 수익률 평균 표기 — +68%, 0%, −25% */
+/** 집중도 표기 — +68%, 0%, −25% */
 function formatReturnPercentAvg(mult) {
   const pct = returnMultToPercent(mult);
   if (pct == null) return "—";
@@ -471,7 +471,7 @@ function render24HourRatingChart(hourGrid, opts = {}) {
   cols.setAttribute(
     "aria-label",
     returnMode
-      ? "0시부터 23시까지 시간대별 수익률"
+      ? "0시부터 23시까지 시간대별 집중도"
       : "0시부터 23시까지 시간대별 만족도",
   );
 
@@ -522,9 +522,9 @@ function render24HourRatingChart(hourGrid, opts = {}) {
     createRatingChartLegend(
       returnMode
         ? [
-            { swatch: RATING_REPORT_COLOR, label: "수익률 높음" },
+            { swatch: RATING_REPORT_COLOR, label: "집중 높음" },
             { swatch: RATING_REPORT_COLOR_MID, label: "보통" },
-            { swatch: RATING_REPORT_COLOR_LOW, label: "수익률 낮음" },
+            { swatch: RATING_REPORT_COLOR_LOW, label: "집중 낮음" },
             { swatch: RATING_REPORT_COLOR_EMPTY, label: "기록 없음" },
           ]
         : [
@@ -541,7 +541,7 @@ function renderWeekdayReturnChart(weekdayGrid) {
   const wrap = document.createElement("div");
   wrap.className = "lp-tr2-rating-weekday-chart";
   wrap.setAttribute("role", "img");
-  wrap.setAttribute("aria-label", "요일별 수익률");
+  wrap.setAttribute("aria-label", "요일별 집중도");
 
   weekdayGrid.forEach((w) => {
     const col = document.createElement("div");
@@ -809,118 +809,6 @@ function buildTimeRatingReportSnapshot(rows) {
     topRoiTasks,
     monthScores,
   };
-}
-
-function mountTimeRatingReportSection(scrollWrap, range, rows) {
-  const isDay = range?.start === range?.end;
-  const snap = buildTimeRatingReportSnapshot(rows);
-  const sec = createSection(
-    "시간 수익률 분석",
-    "투자한 시간의 별점을 수익률(%)로 바꿔, 어떤 활동·시간대가 이득인지 봅니다",
-  );
-
-  if (!snap) {
-    const note = document.createElement("p");
-    note.className = "lp-tr2-chart-note";
-    note.textContent =
-      "이 기간에 평가한 생산적 시간 기록이 없습니다. 기록 모달에서 「이 시간 평가」를 남겨 보세요.";
-    sec.appendChild(note);
-    scrollWrap.appendChild(sec);
-    return;
-  }
-
-  const hero = document.createElement("div");
-  hero.className = "lp-tr2-card-grid";
-  hero.appendChild(
-    createStatCard("평가한 기록", `${snap.ratedCount}건`, ""),
-  );
-  hero.appendChild(
-    createStatCard(
-      "평가한 시간",
-      formatIntegerMinutesDurationKo(snap.totalMinutes),
-      "",
-    ),
-  );
-  sec.appendChild(hero);
-
-  if (snap.hourGrid.some((h) => h.count > 0)) {
-    const block = createRatingBlock(
-      "24시간 수익률",
-      "시작 시각 기준 · 막대 높이=수익률(−50%~+100%)",
-    );
-    block.appendChild(
-      render24HourRatingChart(snap.hourGrid, { mode: "return" }),
-    );
-    sec.appendChild(block);
-  }
-
-  if (!isDay && snap.weekdayGrid.some((w) => w.count > 0)) {
-    const block = createRatingBlock(
-      "요일별 패턴",
-      "월~일 요일별 평균 수익률 · 막대가 높을수록 이득",
-    );
-    block.appendChild(renderWeekdayReturnChart(snap.weekdayGrid));
-    sec.appendChild(block);
-  }
-
-  if (snap.topTasks.length) {
-    const block = createRatingBlock(
-      "활동별 수익률",
-      "과제별 평균 수익률 · 15분 이상 또는 2회 이상",
-    );
-    const bars = document.createElement("div");
-    bars.className = "lp-tr2-bars";
-    snap.topTasks.forEach((t) => {
-      bars.appendChild(
-        createReturnRateBarRow(
-          t.name,
-          t.avgMult,
-          `${t.count}회 · ${formatIntegerMinutesDurationKo(t.minutes)}`,
-        ),
-      );
-    });
-    block.appendChild(bars);
-    sec.appendChild(block);
-  }
-
-  if (snap.topRoiTasks.length) {
-    const block = createRatingBlock(
-      "시간 대비 수익률 TOP",
-      "30분 이상 쓴 활동만 · 같은 1시간 투자 시 수익률이 높은 순",
-    );
-    const bars = document.createElement("div");
-    bars.className = "lp-tr2-bars";
-    snap.topRoiTasks.forEach((t) => {
-      bars.appendChild(
-        createReturnRateBarRow(
-          t.name,
-          t.avgMult,
-          `${formatIntegerMinutesDurationKo(t.minutes)} · ${t.count}회 평가`,
-        ),
-      );
-    });
-    block.appendChild(bars);
-    sec.appendChild(block);
-  }
-
-  if (snap.monthScores.length > 1) {
-    const block = createRatingBlock("월별 추이", "기간이 여러 달일 때");
-    const bars = document.createElement("div");
-    bars.className = "lp-tr2-bars lp-tr2-bars--compact";
-    snap.monthScores.forEach((m) => {
-      bars.appendChild(
-        createReturnRateBarRow(
-          m.label,
-          m.avgMult,
-          `${m.count}건 · ${formatIntegerMinutesDurationKo(m.minutes)}`,
-        ),
-      );
-    });
-    block.appendChild(bars);
-    sec.appendChild(block);
-  }
-
-  scrollWrap.appendChild(sec);
 }
 
 function svgEl(tag, attrs = {}) {
@@ -3182,12 +3070,6 @@ function renderPlanDayTaskCompareChart(tasks) {
       planFill.className = "lp-tr2-plan-day-plan";
       planFill.style.width = `${planPct}%`;
       track.appendChild(planFill);
-
-      const planMark = document.createElement("span");
-      planMark.className = "lp-tr2-plan-day-plan-mark";
-      planMark.style.left = `${planPct}%`;
-      planMark.setAttribute("aria-hidden", "true");
-      track.appendChild(planMark);
     }
 
     if (item.actualMin > 0) {
@@ -3446,116 +3328,161 @@ function mountFocusDisruptorAnalysisBlock(sec, analysis) {
   sec.appendChild(analysisBlock);
 }
 
-function mountFocusReportSection(scrollWrap, _range, rows) {
-  const snap = buildFocusReportSnapshot(rows);
+function mountFocusReportSection(scrollWrap, range, rows) {
+  const isDay = range?.start === range?.end;
+  const ratingSnap = buildTimeRatingReportSnapshot(rows);
+  const focusSnap = buildFocusReportSnapshot(rows);
   const sec = createSection(
-    "초집중 분석",
-    "생산적 작업 별점·몰입 요소·방해 요소로 나만의 패턴을 봅니다",
+    "집중 분석",
+    "생산적 작업 별점·몰입 요소·방해 요소로 잘 집중된 시간·활동을 봅니다",
   );
   sec.classList.add("lp-tr2-focus-section");
 
-  if (!snap) {
+  if (!ratingSnap && !focusSnap) {
     const note = document.createElement("p");
     note.className = "lp-tr2-chart-note";
     note.textContent =
-      "이 기간에 별점을 매긴 생산적 작업 기록이 없습니다.";
+      "이 기간에 별점을 매긴 생산적 작업 기록이 없습니다. 기록할 때 「이 시간 평가」를 남겨 보세요.";
     sec.appendChild(note);
     scrollWrap.appendChild(sec);
     return;
   }
 
-  const hero = document.createElement("div");
-  hero.className = "lp-tr2-plan-hero lp-tr2-focus-hero";
-  const heroLab = document.createElement("span");
-  heroLab.className = "lp-tr2-plan-hero-label";
-  heroLab.textContent = "나의 초집중 레시피";
-  const heroVal = document.createElement("strong");
-  heroVal.className = "lp-tr2-plan-hero-value lp-tr2-focus-hero-value";
-  heroVal.textContent =
-    snap.highFocusSessionCount > 0
-      ? `${snap.highFocusSessionCount}건`
-      : "—";
-  const heroLine = document.createElement("p");
-  heroLine.className = "lp-tr2-plan-hero-line";
-  heroLine.textContent = snap.recipeOneLiner;
-  hero.append(heroLab, heroVal, heroLine);
-  sec.appendChild(hero);
+  if (focusSnap) {
+    const hero = document.createElement("div");
+    hero.className = "lp-tr2-plan-hero lp-tr2-focus-hero";
+    const heroLab = document.createElement("span");
+    heroLab.className = "lp-tr2-plan-hero-label";
+    heroLab.textContent = "나의 초집중 레시피";
+    const heroVal = document.createElement("strong");
+    heroVal.className = "lp-tr2-plan-hero-value lp-tr2-focus-hero-value";
+    heroVal.textContent =
+      focusSnap.highFocusSessionCount > 0
+        ? `${focusSnap.highFocusSessionCount}건`
+        : "—";
+    const heroLine = document.createElement("p");
+    heroLine.className = "lp-tr2-plan-hero-line";
+    heroLine.textContent = focusSnap.recipeOneLiner;
+    hero.append(heroLab, heroVal, heroLine);
+    if (ratingSnap) {
+      const evalMeta = document.createElement("p");
+      evalMeta.className = "lp-tr2-focus-eval-meta";
+      evalMeta.textContent = `평가 ${ratingSnap.ratedCount}건 · ${formatIntegerMinutesDurationKo(ratingSnap.totalMinutes)}`;
+      hero.appendChild(evalMeta);
+    }
+    sec.appendChild(hero);
 
-  if (snap.recipeTags.length) {
-    const recipeBlock = createRatingBlock(
-      "4~5점 세션 조건 순위",
-      "몰입 요소가 함께 있던 비율",
-    );
-    const bars = document.createElement("div");
-    bars.className = "lp-tr2-bars";
-    snap.recipeTags.slice(0, 6).forEach((item) => {
-      bars.appendChild(createFocusRecipeTagRow(item));
-    });
-    recipeBlock.appendChild(bars);
-    sec.appendChild(recipeBlock);
+    if (focusSnap.recipeTags.length) {
+      const recipeBlock = createRatingBlock(
+        "4~5점 세션 조건 순위",
+        "몰입 요소가 함께 있던 비율",
+      );
+      const bars = document.createElement("div");
+      bars.className = "lp-tr2-bars";
+      focusSnap.recipeTags.slice(0, 6).forEach((item) => {
+        bars.appendChild(createFocusRecipeTagRow(item));
+      });
+      recipeBlock.appendChild(bars);
+      sec.appendChild(recipeBlock);
+    }
+  } else if (ratingSnap) {
+    const evalLine = document.createElement("p");
+    evalLine.className = "lp-tr2-chart-note";
+    evalLine.textContent = `평가 ${ratingSnap.ratedCount}건 · ${formatIntegerMinutesDurationKo(ratingSnap.totalMinutes)}`;
+    sec.appendChild(evalLine);
   }
 
-  if (snap.hourGrid.some((h) => h.count > 0)) {
+  if (ratingSnap?.hourGrid?.some((h) => h.count > 0)) {
     const hourBlock = createRatingBlock(
       "시간대별 집중",
-      "시작 시각 기준 평균 별점",
+      "시작 시각 기준 · 막대 높이=집중도(−50%~+100%, 5점=+100%)",
     );
-    hourBlock.appendChild(render24HourRatingChart(snap.hourGrid));
+    hourBlock.appendChild(
+      render24HourRatingChart(ratingSnap.hourGrid, { mode: "return" }),
+    );
     sec.appendChild(hourBlock);
   }
 
-  const durGrid = document.createElement("div");
-  durGrid.className = "lp-tr2-card-grid";
-  durGrid.appendChild(
-    createStatCard(
-      "평균 집중 시간",
-      formatIntegerMinutesDurationKo(Math.round(snap.duration.avgMins)),
-      `${snap.duration.count}건`,
-    ),
-  );
-  if (snap.duration.avgHighFocusMins != null) {
-    durGrid.appendChild(
-      createStatCard(
-        "4~5점 세션 평균",
-        formatIntegerMinutesDurationKo(
-          Math.round(snap.duration.avgHighFocusMins),
-        ),
-        `${snap.duration.highFocusSessionCount}건`,
-      ),
+  if (!isDay && ratingSnap?.weekdayGrid?.some((w) => w.count > 0)) {
+    const block = createRatingBlock(
+      "요일별 집중",
+      "월~일 요일별 평균 집중도 · 막대가 높을수록 잘 집중된 날",
     );
+    block.appendChild(renderWeekdayReturnChart(ratingSnap.weekdayGrid));
+    sec.appendChild(block);
   }
-  durGrid.appendChild(
-    createStatCard(
-      "최장 세션",
-      formatIntegerMinutesDurationKo(snap.duration.maxMins),
-      "",
-    ),
-  );
-  const durBlock = createRatingBlock("집중 지속 시간", "시작~종료 기록 기준");
-  durBlock.appendChild(durGrid);
-  sec.appendChild(durBlock);
 
-  if (snap.tasks.length) {
-    const taskBlock = createRatingBlock(
-      "과제별 집중도",
-      "생산적 작업 평균 별점",
+  if (ratingSnap?.topTasks?.length) {
+    const block = createRatingBlock(
+      "활동별 집중도",
+      "과제별 평균 집중도 · 15분 이상 또는 2회 이상 · 5점=+100%",
     );
     const bars = document.createElement("div");
     bars.className = "lp-tr2-bars";
-    snap.tasks.forEach((t) => {
+    ratingSnap.topTasks.forEach((t) => {
       bars.appendChild(
-        createRatingBarRow(
+        createReturnRateBarRow(
           t.name,
-          t.avg,
+          t.avgMult,
           `${t.count}회 · ${formatIntegerMinutesDurationKo(t.minutes)}`,
         ),
       );
     });
-    taskBlock.appendChild(bars);
-    sec.appendChild(taskBlock);
+    block.appendChild(bars);
+    sec.appendChild(block);
   }
 
-  mountFocusDisruptorAnalysisBlock(sec, snap.disruptorAnalysis);
+  if (focusSnap) {
+    const durGrid = document.createElement("div");
+    durGrid.className = "lp-tr2-card-grid";
+    durGrid.appendChild(
+      createStatCard(
+        "평균 집중 시간",
+        formatIntegerMinutesDurationKo(Math.round(focusSnap.duration.avgMins)),
+        `${focusSnap.duration.count}건`,
+      ),
+    );
+    if (focusSnap.duration.avgHighFocusMins != null) {
+      durGrid.appendChild(
+        createStatCard(
+          "4~5점 세션 평균",
+          formatIntegerMinutesDurationKo(
+            Math.round(focusSnap.duration.avgHighFocusMins),
+          ),
+          `${focusSnap.duration.highFocusSessionCount}건`,
+        ),
+      );
+    }
+    durGrid.appendChild(
+      createStatCard(
+        "최장 세션",
+        formatIntegerMinutesDurationKo(focusSnap.duration.maxMins),
+        "",
+      ),
+    );
+    const durBlock = createRatingBlock("집중 지속 시간", "시작~종료 기록 기준");
+    durBlock.appendChild(durGrid);
+    sec.appendChild(durBlock);
+
+    mountFocusDisruptorAnalysisBlock(sec, focusSnap.disruptorAnalysis);
+  }
+
+  if (ratingSnap?.monthScores?.length > 1) {
+    const block = createRatingBlock("월별 집중 추이", "기간이 여러 달일 때");
+    const bars = document.createElement("div");
+    bars.className = "lp-tr2-bars lp-tr2-bars--compact";
+    ratingSnap.monthScores.forEach((m) => {
+      bars.appendChild(
+        createReturnRateBarRow(
+          m.label,
+          m.avgMult,
+          `${m.count}건 · ${formatIntegerMinutesDurationKo(m.minutes)}`,
+        ),
+      );
+    });
+    block.appendChild(bars);
+    sec.appendChild(block);
+  }
 
   scrollWrap.appendChild(sec);
 }
@@ -4528,7 +4455,6 @@ export function mountUnifiedTimeReport(scrollWrap, arg2, arg3) {
   mountMoveSection(scrollWrap, range, rows);
   mountHappinessRoutineSection(scrollWrap, range);
   mountMediaSection(scrollWrap, range, rows);
-  mountTimeRatingReportSection(scrollWrap, range, rows);
   mountFocusReportSection(scrollWrap, range, rows);
   mountPlanAdherenceSection(scrollWrap, range, rows);
 }

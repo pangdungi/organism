@@ -36,8 +36,8 @@
   scroll-behavior: auto;
   padding: 0.65rem 0.7rem 0.75rem;
   margin: 0;
-  border: 1px solid #d0d7de;
-  border-radius: 10px;
+  border: none;
+  border-radius: 0;
   background: #fff;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
