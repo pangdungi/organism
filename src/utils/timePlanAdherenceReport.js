@@ -210,6 +210,7 @@ export function buildPlanAdherenceReportSnapshot(range, rows) {
     adherencePct: 0,
     oneLiner: "",
     categories: [],
+    tasks: [],
     leak: { minutes: 0, pct: 0, items: [] },
     estimation: null,
     categoryRank: null,
@@ -230,6 +231,8 @@ export function buildPlanAdherenceReportSnapshot(range, rows) {
   let plannedDaysCount = 0;
   /** @type {Map<string, { planned: number, actual: number }>} */
   const catAgg = new Map();
+  /** @type {Map<string, { planned: number, actual: number }>} */
+  const taskAgg = new Map();
   /** @type {Map<string, number>} */
   const leakByTask = new Map();
   /** @type {number[]} */
@@ -254,6 +257,10 @@ export function buildPlanAdherenceReportSnapshot(range, rows) {
       cur.planned += plannedMin;
       catAgg.set(cat, cur);
 
+      const tCur = taskAgg.get(name) || { planned: 0, actual: 0 };
+      tCur.planned += plannedMin;
+      taskAgg.set(name, tCur);
+
       if (actualMin > 0 && plannedMin > 0) {
         biasSamples.push((actualMin - plannedMin) / plannedMin);
       }
@@ -270,6 +277,10 @@ export function buildPlanAdherenceReportSnapshot(range, rows) {
       const cur = catAgg.get(cat) || { planned: 0, actual: 0 };
       cur.actual += mins;
       catAgg.set(cat, cur);
+
+      const tCur = taskAgg.get(name) || { planned: 0, actual: 0 };
+      tCur.actual += mins;
+      taskAgg.set(name, tCur);
 
       if (!plannedNames.has(name)) {
         totalLeak += mins;
@@ -322,6 +333,30 @@ export function buildPlanAdherenceReportSnapshot(range, rows) {
         b.plannedMin - a.plannedMin ||
         b.actualMin - a.actualMin ||
         a.label.localeCompare(b.label, "ko"),
+    );
+
+  const tasks = [...taskAgg.entries()]
+    .filter(([, v]) => v.planned > 0 || v.actual > 0)
+    .map(([taskName, v]) => ({
+      taskName,
+      label: taskName,
+      key: taskName,
+      categoryKey: taskCategoryKey(taskName),
+      categoryLabel: categoryLabel(taskCategoryKey(taskName)),
+      plannedMin: v.planned,
+      actualMin: v.actual,
+      adherencePct:
+        v.planned > 0
+          ? Math.round((Math.min(v.actual, v.planned) / v.planned) * 100)
+          : null,
+      isUnplanned: v.planned <= 0 && v.actual > 0,
+    }))
+    .sort(
+      (a, b) =>
+        Number(b.plannedMin > 0) - Number(a.plannedMin > 0) ||
+        b.plannedMin - a.plannedMin ||
+        b.actualMin - a.actualMin ||
+        a.taskName.localeCompare(b.taskName, "ko"),
     );
 
   const leakItems = [...leakByTask.entries()]
@@ -379,6 +414,7 @@ export function buildPlanAdherenceReportSnapshot(range, rows) {
     adherencePct,
     oneLiner,
     categories,
+    tasks,
     leak: {
       minutes: totalLeak,
       pct: leakPct,

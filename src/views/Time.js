@@ -8197,8 +8197,11 @@ export function render(opts = {}) {
     if (taskLogContentTypeSection) {
       taskLogContentTypeSection.hidden = !isChipDetail;
       if (taskLogContentTypeLabel) {
-        taskLogContentTypeLabel.textContent =
+        const base =
           TTC.ledgerChipDetailSectionLabel(tn) || "콘텐츠 종류";
+        taskLogContentTypeLabel.textContent = TTC.isContentDetailTaskName(tn)
+          ? `${base} (필수)`
+          : base;
       }
       if (isChipDetail) {
         if (tn !== taskLogChipDetailTaskName) {
@@ -10618,6 +10621,24 @@ export function render(opts = {}) {
           : detailKind
             ? (taskLogMealDetailInput?.value || "").trim()
             : "";
+    if (
+      TTC.isContentDetailTaskName(taskName) &&
+      !String(mealDetailForRow || "").trim()
+    ) {
+      void showAlertModal({
+        message: "콘텐츠 종류를 하나 이상 선택해 주세요.",
+      });
+      if (taskLogContentTypeSection) {
+        taskLogContentTypeSection.hidden = false;
+        try {
+          taskLogContentTypeSection.scrollIntoView({
+            block: "nearest",
+            behavior: "smooth",
+          });
+        } catch (_) {}
+      }
+      return;
+    }
     const feedback = feedbackBody;
     const userTagsForSubmit = (
       Array.isArray(taskLogMemoTags) ? taskLogMemoTags : []

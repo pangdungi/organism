@@ -53,7 +53,7 @@ function buildRecipeOneLiner(tags, highFocusSessionCount) {
     return "생산적 작업에 4~5점 평가를 남기면 초집중 레시피가 채워집니다.";
   }
   if (!tags.length) {
-    return `4~5점 세션 ${highFocusSessionCount}건 — 몰입 요소를 고르면 자주 겹치는 조건이 보입니다.`;
+    return `4~5점 세션 ${highFocusSessionCount}건 — 시간 기록할 때 「몰입 요소」를 골라 주세요.`;
   }
   const top = tags.slice(0, 3);
   const parts = top.map((t) => `「${t.label}」 ${t.pct}%`);

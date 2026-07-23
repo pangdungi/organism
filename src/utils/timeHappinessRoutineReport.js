@@ -260,6 +260,9 @@ export function buildHappinessRoutineReportSnapshot(range) {
         ? Math.round((routineChecks / routineOpportunities) * 100)
         : 0;
 
+    const keptItems = items.filter((i) => i.checkCount > 0);
+    const missedItems = items.filter((i) => i.checkCount === 0);
+
     routines.push({
       kpiId,
       name,
@@ -268,6 +271,8 @@ export function buildHappinessRoutineReportSnapshot(range) {
       totalOpportunities: routineOpportunities,
       isWellKept: executionPct >= ROUTINE_WELL_KEPT_PCT,
       items,
+      keptItems,
+      missedItems,
       weakItems: items.filter((i) => i.isWeak),
     });
   }

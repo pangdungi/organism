@@ -36,6 +36,7 @@ import {
   renderEmotionTriggerList,
   renderEmotionTimeHeatmap,
 } from "./timeEmotionReportCharts.js";
+import { getEmotionCategoryChartColor } from "./timeEmotionTaxonomy.js";
 import { buildMoveReportSnapshot } from "./timeMoveReport.js";
 import { buildHappinessRoutineReportSnapshot } from "./timeHappinessRoutineReport.js";
 import { buildPlanAdherenceReportSnapshot } from "./timePlanAdherenceReport.js";
@@ -47,8 +48,8 @@ import { readUserHourlyRateLocal } from "./userHourlySync.js";
 const SLEEP_TARGET_MIN = 7 * 60;
 const CHART_COLORS = {
   sleep: "#818cf8",
-  healthy: "#16a34a",
-  unhealthy: "#ea580c",
+  healthy: "#c02b2b",
+  unhealthy: "#1d4ed8",
   media: "#9333ea",
 };
 
@@ -810,25 +811,8 @@ function buildTimeRatingReportSnapshot(rows) {
   };
 }
 
-function buildRatingInsightText(snap) {
-  const parts = [];
-  const wdSorted = [...snap.weekdayScores].sort(
-    (a, b) => (b.avgMult ?? 0) - (a.avgMult ?? 0),
-  );
-  if (wdSorted.length >= 2) {
-    parts.push(
-      `${wdSorted[0].label}요일 수익률이 높고 ${wdSorted[wdSorted.length - 1].label}요일이 낮아요`,
-    );
-  }
-  if (snap.topTasks.length) {
-    parts.push(
-      `가장 수익률이 높은 활동은 「${snap.topTasks[0].name}」 (${formatReturnPercentAvg(snap.topTasks[0].avgMult)})`,
-    );
-  }
-  return parts.join(" · ");
-}
-
-function mountTimeRatingReportSection(scrollWrap, _range, rows) {
+function mountTimeRatingReportSection(scrollWrap, range, rows) {
+  const isDay = range?.start === range?.end;
   const snap = buildTimeRatingReportSnapshot(rows);
   const sec = createSection(
     "시간 수익률 분석",
@@ -857,33 +841,7 @@ function mountTimeRatingReportSection(scrollWrap, _range, rows) {
       "",
     ),
   );
-  hero.appendChild(
-    createStatCard(
-      "평균 수익률",
-      formatReturnPercentAvg(snap.overallWeightedAvgMult),
-      "3점=0% · 시간 가중 평균",
-    ),
-  );
-  hero.appendChild(
-    createStatCard(
-      snap.topTasks[0]?.name ? "최고 수익 활동" : "기준 배율",
-      snap.topTasks[0]?.name
-        ? formatReturnPercentAvg(snap.topTasks[0].avgMult)
-        : "0%",
-      snap.topTasks[0]?.name
-        ? String(snap.topTasks[0].name).slice(0, 12)
-        : "0% = 시급 그대로",
-    ),
-  );
   sec.appendChild(hero);
-
-  const insight = buildRatingInsightText(snap);
-  if (insight) {
-    const box = document.createElement("p");
-    box.className = "lp-tr2-rating-insight";
-    box.textContent = insight;
-    sec.appendChild(box);
-  }
 
   if (snap.hourGrid.some((h) => h.count > 0)) {
     const block = createRatingBlock(
@@ -896,7 +854,7 @@ function mountTimeRatingReportSection(scrollWrap, _range, rows) {
     sec.appendChild(block);
   }
 
-  if (snap.weekdayGrid.some((w) => w.count > 0)) {
+  if (!isDay && snap.weekdayGrid.some((w) => w.count > 0)) {
     const block = createRatingBlock(
       "요일별 패턴",
       "월~일 요일별 평균 수익률 · 막대가 높을수록 이득",
@@ -1303,24 +1261,60 @@ function rowStartSortKey(r) {
 }
 
 /**
- * 하루 수면 기록 해석
- * - 2건 이상: 1번째 마감=기상, 2번째 시작=취침
- * - 1건(아침 기상만): 마감=기상, 취침=전날 2번째 시작 → 없으면 다음날 1번째 시작
+ * 하루 수면 기록 해석 (기상일 기준)
+ * - 기상: 당일 첫 기록 마감
+ * - 취침: 전날 밤 시작 우선 → 당일 기록의 저녁 시작(자정 넘김) → 당일 2번째 시작
  */
+/** 전날 밤 취침 시각(분) — 기상일 기준 수면 길이 계산용 */
+function prevNightBedtimeMin(prevDayRecs) {
+  if (!prevDayRecs?.length) return null;
+  if (prevDayRecs.length >= 2) return prevDayRecs[1].startMin ?? null;
+  const p = prevDayRecs[0];
+  if (p?.startMin == null || !Number.isFinite(p.startMin)) return null;
+  /* 저녁(12:00 이후) 시작만 전날 취침으로 본다 */
+  if (p.startMin >= 12 * 60) return p.startMin;
+  return null;
+}
+
+/**
+ * 취침→기상 수면 분. 자정을 넘기면(기상 ≤ 취침) 24h를 더해 계산.
+ * @returns {number|null}
+ */
+function overnightSleepMinutes(bedtimeMin, wakeMin) {
+  if (
+    bedtimeMin == null ||
+    wakeMin == null ||
+    !Number.isFinite(bedtimeMin) ||
+    !Number.isFinite(wakeMin)
+  ) {
+    return null;
+  }
+  const bed = Math.round(bedtimeMin);
+  const wake = Math.round(wakeMin);
+  if (wake <= bed) return wake + 24 * 60 - bed;
+  return wake - bed;
+}
+
 function resolveSleepWakeBedForDay(dayRecs, nextDayRecs, prevDayRecs) {
   if (!dayRecs?.length) {
     return { wakeMin: null, bedtimeMin: null };
   }
-  if (dayRecs.length >= 2) {
-    return {
-      wakeMin: dayRecs[0].endMin,
-      bedtimeMin: dayRecs[1].startMin,
-    };
-  }
   const wakeMin = dayRecs[0].endMin;
-  let bedtimeMin = null;
-  if (prevDayRecs?.length >= 2) {
-    bedtimeMin = prevDayRecs[1].startMin;
+  /* 기상일 수면: 전날 밤 취침 우선 */
+  let bedtimeMin = prevNightBedtimeMin(prevDayRecs);
+  if (bedtimeMin == null) {
+    const first = dayRecs[0];
+    if (
+      first.startMin != null &&
+      first.endMin != null &&
+      first.endMin <= first.startMin
+    ) {
+      /* 한 건에 저녁 시작~아침 마감이 같이 있는 경우 */
+      bedtimeMin = first.startMin;
+    }
+  }
+  if (bedtimeMin == null && dayRecs.length >= 2) {
+    bedtimeMin = dayRecs[1].startMin;
   }
   if (bedtimeMin == null) {
     bedtimeMin = nextDayRecs?.[0]?.startMin ?? null;
@@ -1572,12 +1566,16 @@ function buildSleepReportSnapshot(rows, range) {
       ? recordsByDate.get(nextDate) || []
       : recordsByDate.get(addDaysYmd(date, 1)) || [];
     const prevDayRecs = recordsByDate.get(addDaysYmd(date, -1)) || [];
-    const minutes = dayRecs.reduce((sum, rec) => sum + rec.minutes, 0);
     const { wakeMin, bedtimeMin } = resolveSleepWakeBedForDay(
       dayRecs,
       nextDayRecs,
       prevDayRecs,
     );
+    const trackedSum = dayRecs.reduce((sum, rec) => sum + rec.minutes, 0);
+    const span = overnightSleepMinutes(bedtimeMin, wakeMin);
+    /* 수면 시간 = 전날 밤 취침 ~ 기상 (기록 분 합이 아님 — 00시 잘림 방지) */
+    const minutes =
+      span != null && span > 0 ? span : trackedSum;
     const rated = dayRecs.filter((rec) => rec.rating != null);
     const rating = rated.length
       ? rated.reduce((sum, rec) => sum + rec.rating, 0) / rated.length
@@ -1803,10 +1801,6 @@ function buildSleepStatsGrid(snap) {
       "수면 평가 별점",
     );
     addStat("수면 시간", formatIntegerMinutesDurationKo(day.minutes));
-    addStat(
-      "7시간 목표",
-      day.minutes >= SLEEP_TARGET_MIN ? "달성" : "미달",
-    );
     return grid;
   }
 
@@ -1874,7 +1868,7 @@ function formatIntakeDayLine(items) {
 }
 
 /**
- * @param {Array<{date:string, main:string, sub:string}>} entries
+ * @param {Array<{date:string, main:string, sub:string, rating?:number|null}>} entries
  * @param {"healthy"|"unhealthy"} tone
  */
 function buildCompactIntakeFeed(entries, emptyText, tone) {
@@ -1899,6 +1893,52 @@ function buildCompactIntakeFeed(entries, emptyText, tone) {
     meals.textContent = formatIntakeDayLine(items);
     li.appendChild(dateEl);
     li.appendChild(meals);
+    ul.appendChild(li);
+  });
+  return ul;
+}
+
+/** 일간: 먹은 음식마다 한 줄 + 맛 평가 */
+function buildDayIntakeRatedFeed(entries, emptyText, tone) {
+  const ul = document.createElement("ul");
+  ul.className = "lp-tr2-intake-day-list lp-tr2-intake-day-list--rated";
+  if (!entries.length) {
+    const li = document.createElement("li");
+    li.className = "lp-tr2-intake-day-empty";
+    li.textContent = emptyText;
+    ul.appendChild(li);
+    return ul;
+  }
+  entries.forEach((item) => {
+    const li = document.createElement("li");
+    li.className = "lp-tr2-intake-meal-row";
+    const body = document.createElement("div");
+    body.className = "lp-tr2-intake-meal-body";
+    const name = document.createElement("span");
+    name.className = `lp-tr2-intake-meal-name lp-tr2-intake-day-meals--${tone}`;
+    name.textContent = item.main;
+    body.appendChild(name);
+    if (item.sub) {
+      const sub = document.createElement("span");
+      sub.className = "lp-tr2-intake-meal-sub";
+      sub.textContent = item.sub;
+      body.appendChild(sub);
+    }
+    const taste = document.createElement("span");
+    if (item.rating != null && Number.isFinite(item.rating)) {
+      const r = Number(item.rating);
+      taste.className = "lp-tr2-intake-meal-taste";
+      if (r >= 4) taste.classList.add("is-high");
+      else if (r <= 2) taste.classList.add("is-low");
+      else taste.classList.add("is-mid");
+      taste.textContent = `${formatRatingAvg(r)} ★`;
+      taste.title = `맛 평가 ${formatRatingAvg(r)}점`;
+    } else {
+      taste.className = "lp-tr2-intake-meal-taste is-empty";
+      taste.textContent = "평가 없음";
+    }
+    li.appendChild(body);
+    li.appendChild(taste);
     ul.appendChild(li);
   });
   return ul;
@@ -1940,9 +1980,9 @@ function buildJournalList(items, emptyText) {
 }
 
 function collectIntakeLogs(rows) {
-  /** @type {{ date: string, main: string, sub: string }[]} */
+  /** @type {{ date: string, main: string, sub: string, rating: number|null }[]} */
   const healthy = [];
-  /** @type {{ date: string, main: string, sub: string }[]} */
+  /** @type {{ date: string, main: string, sub: string, rating: number|null }[]} */
   const unhealthy = [];
   rows.forEach((r) => {
     const tn = String(r.taskName || "").trim();
@@ -1956,7 +1996,12 @@ function collectIntakeLogs(rows) {
     if (md && note && note !== md) subParts.push(note);
     const mins = rowMinutes(r);
     if (mins > 0) subParts.push(formatIntegerMinutesDurationKo(mins));
-    const entry = { date, main, sub: subParts.join(" · ") };
+    const entry = {
+      date,
+      main,
+      sub: subParts.join(" · "),
+      rating: normalizeTimeRatingForRow(r.timeRating),
+    };
     if (isHealthyMealDetailTaskName(tn)) healthy.push(entry);
     else if (isUnhealthyMealDetailTaskName(tn)) unhealthy.push(entry);
   });
@@ -2236,12 +2281,128 @@ function renderMediaCompareChart(chartDays) {
   return wrap;
 }
 
+const EMOTION_DAY_TIMELINE_MINUTES = 24 * 60;
+
+/** 일간: 그날 0~24시 감정 소비 타임라인 */
+function renderEmotionDayTimeline(entries) {
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-emotion-day-timeline";
+  wrap.setAttribute("role", "img");
+  wrap.setAttribute("aria-label", "이날 24시간 감정 소비 타임라인");
+
+  const track = document.createElement("div");
+  track.className = "lp-tr2-emotion-day-timeline-track";
+
+  const dayCap = EMOTION_DAY_TIMELINE_MINUTES;
+  (entries || []).forEach((e) => {
+    if (e.startMinOfDay == null || !Number.isFinite(e.startMinOfDay)) return;
+    const start = Math.max(0, Math.min(dayCap - 1, e.startMinOfDay));
+    const dur = Math.max(5, Math.min(dayCap - start, Number(e.minutes) || 15));
+    const block = document.createElement("div");
+    block.className = "lp-tr2-emotion-day-timeline-block";
+    block.style.left = `${(start / dayCap) * 100}%`;
+    block.style.width = `${(dur / dayCap) * 100}%`;
+    block.style.background = getEmotionCategoryChartColor(e.categoryId);
+    block.title = [
+      e.startLabel,
+      e.subLabel,
+      e.categoryLabel,
+      formatIntegerMinutesDurationKo(e.minutes),
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    track.appendChild(block);
+  });
+
+  const ticks = document.createElement("div");
+  ticks.className = "lp-tr2-emotion-day-timeline-ticks";
+  for (let h = 0; h <= 24; h += 3) {
+    const tick = document.createElement("span");
+    tick.className = "lp-tr2-emotion-day-timeline-tick";
+    tick.style.left = `${(h / 24) * 100}%`;
+    tick.textContent = String(h).padStart(2, "0");
+    ticks.appendChild(tick);
+  }
+
+  wrap.appendChild(track);
+  wrap.appendChild(ticks);
+  return wrap;
+}
+
+/** 일간: 이날 느낀 감정·소비 기록(메모 포함) */
+function renderEmotionDayJournal(entries) {
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-emotion-day-journal";
+  const title = document.createElement("p");
+  title.className = "lp-tr2-emotion-day-journal-title";
+  title.textContent = "이날의 감정 기록";
+  wrap.appendChild(title);
+
+  if (!entries?.length) {
+    const empty = document.createElement("p");
+    empty.className = "lp-tr2-chart-note";
+    empty.textContent = "표시할 감정 기록이 없습니다.";
+    wrap.appendChild(empty);
+    return wrap;
+  }
+
+  const list = document.createElement("ul");
+  list.className = "lp-tr2-emotion-day-list";
+  entries.forEach((e) => {
+    const li = document.createElement("li");
+    li.className = "lp-tr2-emotion-day-item";
+
+    const head = document.createElement("div");
+    head.className = "lp-tr2-emotion-day-item-head";
+    const emotion = document.createElement("strong");
+    emotion.className = "lp-tr2-emotion-day-item-emotion";
+    emotion.textContent = e.subLabel;
+    const meta = document.createElement("span");
+    meta.className = "lp-tr2-emotion-day-item-meta";
+    const metaParts = [
+      e.categoryLabel,
+      e.startLabel || null,
+      e.minutes > 0 ? formatIntegerMinutesDurationKo(e.minutes) : null,
+    ].filter(Boolean);
+    meta.textContent = metaParts.join(" · ");
+    head.appendChild(emotion);
+    head.appendChild(meta);
+    li.appendChild(head);
+
+    if (e.trigger) {
+      const trig = document.createElement("p");
+      trig.className = "lp-tr2-emotion-day-item-trigger";
+      trig.textContent = `상황 · ${e.trigger}`;
+      li.appendChild(trig);
+    }
+
+    if (e.memo) {
+      const memo = document.createElement("p");
+      memo.className = "lp-tr2-emotion-day-item-memo";
+      memo.textContent = e.memo;
+      li.appendChild(memo);
+    } else {
+      const noMemo = document.createElement("p");
+      noMemo.className = "lp-tr2-emotion-day-item-memo is-empty";
+      noMemo.textContent = "메모 없음";
+      li.appendChild(noMemo);
+    }
+
+    list.appendChild(li);
+  });
+  wrap.appendChild(list);
+  return wrap;
+}
+
 function mountEmotionSection(scrollWrap, range, rows) {
   const hourlyRate = readReportHourlyRateNumber();
   const snap = buildEmotionReportSnapshot(rows, hourlyRate);
+  const isDay = range.start === range.end;
   const sec = createSection(
     "감정 소비",
-    "감정 대분류·세부 감정·트리거·시간대 패턴",
+    isDay
+      ? "이날 느낀 감정과 남긴 메모"
+      : "감정 대분류·세부 감정·트리거·시간대 패턴",
   );
 
   if (!snap.hasData) {
@@ -2285,8 +2446,22 @@ function mountEmotionSection(scrollWrap, range, rows) {
   if (snap.legacyCount > 0) {
     const legacyNote = document.createElement("p");
     legacyNote.className = "lp-tr2-chart-note";
-    legacyNote.textContent = `예전 1~5점 방식 기록 ${snap.legacyCount}건은 아래 차트에 포함되지 않습니다.`;
+    legacyNote.textContent = isDay
+      ? `예전 1~5점 방식 기록 ${snap.legacyCount}건은 아래 목록에 포함되지 않습니다.`
+      : `예전 1~5점 방식 기록 ${snap.legacyCount}건은 아래 차트에 포함되지 않습니다.`;
     sec.appendChild(legacyNote);
+  }
+
+  if (isDay) {
+    const timeBlock = createRatingBlock(
+      "하루 타임라인",
+      "0시~24시 · 색=감정 대분류 · 길이는 기록 시간",
+    );
+    timeBlock.appendChild(renderEmotionDayTimeline(snap.entries || []));
+    sec.appendChild(timeBlock);
+    sec.appendChild(renderEmotionDayJournal(snap.entries || []));
+    scrollWrap.appendChild(sec);
+    return;
   }
 
   const donutBlock = createRatingBlock(
@@ -2322,11 +2497,109 @@ function mountEmotionSection(scrollWrap, range, rows) {
   scrollWrap.appendChild(sec);
 }
 
+/** 일간: 가용율 + 루틴/단순 비율 막대(시간 표시) */
+function renderMoveDayComposition(snap) {
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-move-day-hero";
+
+  const util = document.createElement("p");
+  util.className = "lp-tr2-move-day-util";
+  util.textContent = `이동시간 가용율 ${snap.routineUtilPct}%`;
+  wrap.appendChild(util);
+
+  const total = document.createElement("p");
+  total.className = "lp-tr2-move-day-total";
+  total.textContent = `총 이동시간 ${formatIntegerMinutesDurationKo(snap.totalMinutes)}`;
+  wrap.appendChild(total);
+
+  const barWrap = document.createElement("div");
+  barWrap.className = "lp-tr2-move-day-bar-wrap";
+  barWrap.setAttribute("role", "img");
+  barWrap.setAttribute(
+    "aria-label",
+    `이동 루틴 ${formatIntegerMinutesDurationKo(snap.routineMinutes)}, 단순 이동 ${formatIntegerMinutesDurationKo(snap.simpleMinutes)}, 총 ${formatIntegerMinutesDurationKo(snap.totalMinutes)}`,
+  );
+
+  const track = document.createElement("div");
+  track.className = "lp-tr2-move-day-bar-track";
+  const totalMin = Math.max(0, Number(snap.totalMinutes) || 0);
+  const segs = [
+    {
+      label: "이동 루틴",
+      minutes: snap.routineMinutes,
+      color: MOVE_ROUTINE_COLOR,
+    },
+    {
+      label: "단순 이동",
+      minutes: snap.simpleMinutes,
+      color: MOVE_SIMPLE_COLOR,
+    },
+  ].filter((s) => (Number(s.minutes) || 0) > 0);
+
+  segs.forEach((seg, i) => {
+    const mins = Number(seg.minutes) || 0;
+    const pct = totalMin > 0 ? (mins / totalMin) * 100 : 0;
+    const el = document.createElement("div");
+    el.className = "lp-tr2-move-day-bar-seg";
+    if (i === 0) el.classList.add("is-first");
+    if (i === segs.length - 1) el.classList.add("is-last");
+    el.style.width = `${pct}%`;
+    el.style.background = seg.color;
+    el.title = `${seg.label} ${formatIntegerMinutesDurationKo(mins)}`;
+    if (pct >= 18) {
+      const txt = document.createElement("span");
+      txt.className = "lp-tr2-move-day-bar-seg-label";
+      txt.textContent = formatIntegerMinutesDurationKo(mins);
+      el.appendChild(txt);
+    }
+    track.appendChild(el);
+  });
+  if (!segs.length) track.classList.add("is-empty");
+  barWrap.appendChild(track);
+
+  const legend = document.createElement("div");
+  legend.className = "lp-tr2-move-day-legend";
+  [
+    {
+      color: MOVE_ROUTINE_COLOR,
+      label: `이동 루틴 ${formatIntegerMinutesDurationKo(snap.routineMinutes)}`,
+    },
+    {
+      color: MOVE_SIMPLE_COLOR,
+      label: `단순 이동 ${formatIntegerMinutesDurationKo(snap.simpleMinutes)}`,
+    },
+    {
+      color: "#94A3B8",
+      label: `총 이동 ${formatIntegerMinutesDurationKo(snap.totalMinutes)}`,
+    },
+  ].forEach(({ color, label }) => {
+    const item = document.createElement("span");
+    item.className = "lp-tr2-move-day-legend-item";
+    const sw = document.createElement("span");
+    sw.className = "lp-tr2-move-day-legend-swatch";
+    sw.style.background = color;
+    item.appendChild(sw);
+    item.appendChild(document.createTextNode(label));
+    legend.appendChild(item);
+  });
+  barWrap.appendChild(legend);
+  wrap.appendChild(barWrap);
+
+  const hint = document.createElement("p");
+  hint.className = "lp-tr2-move-day-util-hint";
+  hint.textContent = "가용율 = 총 이동시간 중 이동 루틴 비율";
+  wrap.appendChild(hint);
+  return wrap;
+}
+
 function mountMoveSection(scrollWrap, range, rows) {
   const snap = buildMoveReportSnapshot(rows, range);
+  const isDay = range.start === range.end;
   const sec = createSection(
     "이동 시간",
-    "이동 루틴 · 단순 이동 과제 기록 합산",
+    isDay
+      ? "이동시간 가용율 · 루틴·단순·총 이동시간"
+      : "이동 루틴 · 단순 이동 과제 기록 합산",
   );
 
   if (!snap.hasData) {
@@ -2335,6 +2608,12 @@ function mountMoveSection(scrollWrap, range, rows) {
     note.textContent =
       "이 기간에 이동 루틴·단순 이동 기록이 없습니다.";
     sec.appendChild(note);
+    scrollWrap.appendChild(sec);
+    return;
+  }
+
+  if (isDay) {
+    sec.appendChild(renderMoveDayComposition(snap));
     scrollWrap.appendChild(sec);
     return;
   }
@@ -2427,23 +2706,74 @@ function mountMoveSection(scrollWrap, range, rows) {
   scrollWrap.appendChild(sec);
 }
 
-function buildHappinessRoutineWeakItemsLine(items) {
+function buildHappinessRoutineItemsLine(items, labelText, kind) {
   const line = document.createElement("p");
-  line.className = "lp-tr2-routine-weak-line";
+  line.className =
+    kind === "kept"
+      ? "lp-tr2-routine-weak-line lp-tr2-routine-day-line lp-tr2-routine-day-line--kept"
+      : "lp-tr2-routine-weak-line lp-tr2-routine-day-line lp-tr2-routine-day-line--missed";
 
   const label = document.createElement("span");
   label.className = "lp-tr2-routine-weak-line-label";
-  label.textContent = "잘 안 지켜진 매일할일";
+  label.textContent = labelText;
 
   const names = document.createElement("span");
-  names.className = "lp-tr2-routine-weak-line-items";
-  names.textContent = items
-    .map((item) => String(item.text || "").trim())
-    .filter(Boolean)
-    .join(" · ");
+  names.className =
+    kind === "kept"
+      ? "lp-tr2-routine-weak-line-items lp-tr2-routine-day-items--kept"
+      : "lp-tr2-routine-weak-line-items";
+  names.textContent = items.length
+    ? items
+        .map((item) => String(item.text || "").trim())
+        .filter(Boolean)
+        .join(" · ")
+    : "없음";
 
   line.append(label, document.createTextNode(" "), names);
   return line;
+}
+
+function buildHappinessRoutineWeakItemsLine(items) {
+  return buildHappinessRoutineItemsLine(items, "잘 안 지켜진 매일할일", "missed");
+}
+
+function appendHappinessRoutineDayBlock(sec, routine) {
+  if (!routine) return;
+
+  const block = document.createElement("div");
+  block.className = "lp-tr2-routine-block";
+
+  const head = document.createElement("div");
+  head.className = "lp-tr2-routine-block-head";
+
+  const name = document.createElement("span");
+  name.className = "lp-tr2-routine-block-name";
+  name.textContent = routine.name;
+
+  const pct = document.createElement("span");
+  pct.className = "lp-tr2-routine-block-pct";
+  pct.textContent = `실행율 ${formatPctRounded(routine.executionPct)}`;
+
+  head.append(name, pct);
+  block.appendChild(head);
+
+  const sub = document.createElement("p");
+  sub.className = "lp-tr2-routine-block-sub";
+  sub.textContent = `체크 ${routine.totalChecks}/${routine.totalOpportunities}`;
+  block.appendChild(sub);
+
+  block.appendChild(
+    buildHappinessRoutineItemsLine(routine.keptItems || [], "지켜진 매일할일", "kept"),
+  );
+  block.appendChild(
+    buildHappinessRoutineItemsLine(
+      routine.missedItems || [],
+      "안 지켜진 매일할일",
+      "missed",
+    ),
+  );
+
+  sec.appendChild(block);
 }
 
 function appendHappinessRoutineBlock(sec, snap, { heading, routine, items, badgeKind }) {
@@ -2495,10 +2825,13 @@ function appendHappinessRoutineBlock(sec, snap, { heading, routine, items, badge
 }
 
 function mountHappinessRoutineSection(scrollWrap, range) {
+  const isDay = range?.start === range?.end;
   const snap = buildHappinessRoutineReportSnapshot(range);
   const sec = createSection(
     "행복 루틴 점검",
-    `매일반복 루틴 · ${snap.calendarDayCount || 0}일 · 가장 잘·덜 지켜진 루틴만`,
+    isDay
+      ? "매일반복 KPI별 · 오늘 지켜진 / 안 지켜진 매일할일"
+      : `매일반복 루틴 · ${snap.calendarDayCount || 0}일 · 가장 잘·덜 지켜진 루틴만`,
   );
 
   if (!snap.hasData) {
@@ -2507,6 +2840,14 @@ function mountHappinessRoutineSection(scrollWrap, range) {
     note.textContent =
       "매일반복이 켜진 행복 루틴과 매일할일이 없거나, 이 기간 집계 대상이 없습니다.";
     sec.appendChild(note);
+    scrollWrap.appendChild(sec);
+    return;
+  }
+
+  if (isDay) {
+    for (const routine of snap.routines) {
+      appendHappinessRoutineDayBlock(sec, routine);
+    }
     scrollWrap.appendChild(sec);
     return;
   }
@@ -2673,6 +3014,10 @@ function buildPlanChartScale(items) {
   return { scaleMaxMin, ticks };
 }
 
+const PLAN_COMPARE_PLAN_COLOR = "#94A3B8";
+const PLAN_COMPARE_ACTUAL_COLOR = "#1E4D7B";
+const PLAN_COMPARE_UNPLANNED_COLOR = "#8B5C3A";
+
 function renderPlanCompareChart(items) {
   const wrap = document.createElement("div");
   wrap.className = "lp-tr2-plan-compare-chart";
@@ -2681,8 +3026,8 @@ function renderPlanCompareChart(items) {
 
   wrap.appendChild(
     createRatingChartLegend([
-      { swatch: "#d1d5db", label: "계획" },
-      { swatch: "#111111", label: "실제" },
+      { swatch: PLAN_COMPARE_PLAN_COLOR, label: "계획" },
+      { swatch: PLAN_COMPARE_ACTUAL_COLOR, label: "실제" },
     ]),
   );
 
@@ -2716,8 +3061,8 @@ function renderPlanCompareChart(items) {
     bars.className = "lp-tr2-plan-compare-bars";
 
     [
-      ["plan", item.plannedMin, "#d1d5db"],
-      ["actual", item.actualMin, "#111111"],
+      ["plan", item.plannedMin, PLAN_COMPARE_PLAN_COLOR],
+      ["actual", item.actualMin, PLAN_COMPARE_ACTUAL_COLOR],
     ].forEach(([kind, mins, color]) => {
       const bar = document.createElement("div");
       bar.className = `lp-tr2-plan-compare-bar lp-tr2-plan-compare-bar--${kind}`;
@@ -2766,36 +3111,143 @@ function renderPlanCompareChart(items) {
   return wrap;
 }
 
+/** 일간 — 과제별 계획 대비 실제 (한 트랙에 계획 표시선 + 실제 채움) */
+function renderPlanDayTaskCompareChart(tasks) {
+  const items = (tasks || []).filter(
+    (t) => (t.plannedMin || 0) > 0 || (t.actualMin || 0) > 0,
+  );
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-plan-day-chart";
+  wrap.setAttribute("role", "img");
+  wrap.setAttribute("aria-label", "과제별 계획과 실제 시간");
+
+  wrap.appendChild(
+    createRatingChartLegend([
+      { swatch: PLAN_COMPARE_PLAN_COLOR, label: "계획" },
+      { swatch: PLAN_COMPARE_ACTUAL_COLOR, label: "실제" },
+      { swatch: PLAN_COMPARE_UNPLANNED_COLOR, label: "계획 밖" },
+    ]),
+  );
+
+  if (!items.length) {
+    const empty = document.createElement("p");
+    empty.className = "lp-tr2-chart-note";
+    empty.textContent = "이 날 비교할 과제 기록이 없습니다.";
+    wrap.appendChild(empty);
+    return wrap;
+  }
+
+  const { scaleMaxMin } = buildPlanChartScale(items);
+  const list = document.createElement("div");
+  list.className = "lp-tr2-plan-day-list";
+
+  items.forEach((item) => {
+    const row = document.createElement("div");
+    row.className = "lp-tr2-plan-day-row";
+    if (item.isUnplanned) row.classList.add("is-unplanned");
+
+    const head = document.createElement("div");
+    head.className = "lp-tr2-plan-day-row-head";
+
+    const name = document.createElement("span");
+    name.className = "lp-tr2-plan-day-name";
+    name.textContent = item.taskName || item.label;
+
+    const meta = document.createElement("span");
+    meta.className = "lp-tr2-plan-day-meta";
+    if (item.isUnplanned) {
+      meta.textContent = `계획 밖 · 실제 ${formatIntegerMinutesDurationKo(item.actualMin)}`;
+    } else if (item.adherencePct != null) {
+      meta.textContent = `계획 ${formatIntegerMinutesDurationKo(item.plannedMin)} · 실제 ${formatIntegerMinutesDurationKo(item.actualMin)} · ${item.adherencePct}%`;
+    } else {
+      meta.textContent = `계획 ${formatIntegerMinutesDurationKo(item.plannedMin)} · 실제 ${formatIntegerMinutesDurationKo(item.actualMin)}`;
+    }
+    head.append(name, meta);
+
+    const track = document.createElement("div");
+    track.className = "lp-tr2-plan-day-track";
+    track.title = meta.textContent;
+
+    const planPct =
+      scaleMaxMin > 0
+        ? Math.min(100, (Math.max(0, item.plannedMin) / scaleMaxMin) * 100)
+        : 0;
+    const actualPct =
+      scaleMaxMin > 0
+        ? Math.min(100, (Math.max(0, item.actualMin) / scaleMaxMin) * 100)
+        : 0;
+
+    if (item.plannedMin > 0) {
+      const planFill = document.createElement("div");
+      planFill.className = "lp-tr2-plan-day-plan";
+      planFill.style.width = `${planPct}%`;
+      track.appendChild(planFill);
+
+      const planMark = document.createElement("span");
+      planMark.className = "lp-tr2-plan-day-plan-mark";
+      planMark.style.left = `${planPct}%`;
+      planMark.setAttribute("aria-hidden", "true");
+      track.appendChild(planMark);
+    }
+
+    if (item.actualMin > 0) {
+      const actualFill = document.createElement("div");
+      actualFill.className = item.isUnplanned
+        ? "lp-tr2-plan-day-actual is-unplanned"
+        : "lp-tr2-plan-day-actual";
+      actualFill.style.width = `${actualPct}%`;
+      track.appendChild(actualFill);
+    }
+
+    row.append(head, track);
+    list.appendChild(row);
+  });
+
+  wrap.appendChild(list);
+  return wrap;
+}
+
 function mountPlanAdherenceSection(scrollWrap, range, rows) {
   const snap = buildPlanAdherenceReportSnapshot(range, rows);
   const sec = createSection(
     "계획 이행",
     snap.isSingleDay
-      ? "예상 일정 · 계획 습관 · 실제 이행"
+      ? "과제별 계획 대비 실제"
       : `예상 일정 · 계획 습관 · ${snap.totalDaysInPeriod}일`,
   );
   sec.classList.add("lp-tr2-plan-section");
 
   const summaryGrid = document.createElement("div");
   summaryGrid.className = "lp-tr2-card-grid lp-tr2-plan-summary-grid";
-  summaryGrid.appendChild(
-    createStatCard(
-      "계획한 날",
-      snap.totalDaysInPeriod > 0
-        ? `${snap.plannedDaysCount}/${snap.totalDaysInPeriod}일`
-        : "—",
-      snap.isSingleDay ? "이 날 기준" : "조회 기간",
-    ),
-  );
-  summaryGrid.appendChild(
-    createStatCard(
-      "계획 빈도",
-      snap.totalDaysInPeriod > 0
-        ? `${Math.round(snap.planningHabitPct)}%`
-        : "—",
-      "예상 일정이 있는 날 비율",
-    ),
-  );
+  if (snap.isSingleDay) {
+    const hasPlan = snap.plannedDaysCount > 0;
+    summaryGrid.appendChild(
+      createStatCard(
+        "계획 여부",
+        hasPlan ? "O" : "X",
+        hasPlan ? "예상 일정 있음" : "예상 일정 없음",
+      ),
+    );
+  } else {
+    summaryGrid.appendChild(
+      createStatCard(
+        "계획한 날",
+        snap.totalDaysInPeriod > 0
+          ? `${snap.plannedDaysCount}/${snap.totalDaysInPeriod}일`
+          : "—",
+        "조회 기간",
+      ),
+    );
+    summaryGrid.appendChild(
+      createStatCard(
+        "계획 빈도",
+        snap.totalDaysInPeriod > 0
+          ? `${Math.round(snap.planningHabitPct)}%`
+          : "—",
+        "예상 일정이 있는 날 비율",
+      ),
+    );
+  }
   summaryGrid.appendChild(
     createStatCard(
       "계획 이행률",
@@ -2805,7 +3257,7 @@ function mountPlanAdherenceSection(scrollWrap, range, rows) {
   );
   sec.appendChild(summaryGrid);
 
-  if (snap.planningHabitLine) {
+  if (!snap.isSingleDay && snap.planningHabitLine) {
     const habitLine = document.createElement("p");
     habitLine.className = "lp-tr2-plan-est-text";
     habitLine.textContent = snap.planningHabitLine;
@@ -2822,9 +3274,13 @@ function mountPlanAdherenceSection(scrollWrap, range, rows) {
     return;
   }
 
-  sec.appendChild(
-    renderPlanCompareChart(buildPlanCompareChartItems(snap.categories)),
-  );
+  if (snap.isSingleDay) {
+    sec.appendChild(renderPlanDayTaskCompareChart(snap.tasks || []));
+  } else {
+    sec.appendChild(
+      renderPlanCompareChart(buildPlanCompareChartItems(snap.categories)),
+    );
+  }
 
   if (snap.leak.minutes > 0) {
     const leakBlock = createRatingBlock("시간 누수", "계획에 없던 활동");
@@ -3104,9 +3560,329 @@ function mountFocusReportSection(scrollWrap, _range, rows) {
   scrollWrap.appendChild(sec);
 }
 
+const DAY_HERO_COLORS = {
+  productive: "#E8A0A0",
+  waste: "#A8C4E8",
+  work: "#A8D4B8",
+  sleep: "#B8DCC8",
+  rest: "#EEF1F4",
+};
+
+/** 하루 = 0:00~23:59(1439분). 1440으로 세면 하루끝에도 1분이 그 외로 남음 */
+const DAY_LENGTH_MINUTES = 23 * 60 + 59;
+
+function donutSlicePath(cx, cy, r, rInner, startAngle, endAngle) {
+  const span = endAngle - startAngle;
+  if (span <= 1e-6) return "";
+  if (span >= Math.PI * 2 - 1e-5) {
+    return [
+      `M ${cx - r} ${cy}`,
+      `A ${r} ${r} 0 1 1 ${cx + r} ${cy}`,
+      `A ${r} ${r} 0 1 1 ${cx - r} ${cy}`,
+      `M ${cx - rInner} ${cy}`,
+      `A ${rInner} ${rInner} 0 1 0 ${cx + rInner} ${cy}`,
+      `A ${rInner} ${rInner} 0 1 0 ${cx - rInner} ${cy}`,
+      "Z",
+    ].join(" ");
+  }
+  const large = span > Math.PI ? 1 : 0;
+  const x1 = cx + r * Math.cos(startAngle);
+  const y1 = cy + r * Math.sin(startAngle);
+  const x2 = cx + r * Math.cos(endAngle);
+  const y2 = cy + r * Math.sin(endAngle);
+  const xi1 = cx + rInner * Math.cos(endAngle);
+  const yi1 = cy + rInner * Math.sin(endAngle);
+  const xi2 = cx + rInner * Math.cos(startAngle);
+  const yi2 = cy + rInner * Math.sin(startAngle);
+  return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} L ${xi1} ${yi1} A ${rInner} ${rInner} 0 ${large} 0 ${xi2} ${yi2} Z`;
+}
+
+function appendDonutRingSlices(svg, cx, cy, r, rInner, segments, startAngle) {
+  let angle = startAngle;
+  const total = segments.reduce(
+    (sum, seg) => sum + Math.max(0, Number(seg.minutes) || 0),
+    0,
+  );
+  if (!(total > 0)) return angle;
+  segments.forEach((seg) => {
+    const mins = Math.max(0, Number(seg.minutes) || 0);
+    if (mins <= 0) return;
+    const slice = (mins / total) * Math.PI * 2;
+    if (slice <= 0) return;
+    const start = angle;
+    const end = angle + slice;
+    const d = donutSlicePath(cx, cy, r, rInner, start, end);
+    if (!d) return;
+    const path = svgEl("path", {
+      d,
+      fill: seg.color,
+      class: seg.className || "",
+    });
+    const title = document.createElementNS(SVG_NS, "title");
+    title.textContent = `${seg.label} ${formatIntegerMinutesDurationKo(Math.round(mins))}`;
+    path.appendChild(title);
+    svg.appendChild(path);
+    angle = end;
+  });
+  return angle;
+}
+
+function buildDayHeroTimeParts(hero) {
+  const dayMin = DAY_LENGTH_MINUTES;
+  const productive = Math.max(0, Math.round(Number(hero.productiveMinutes) || 0));
+  const waste = Math.max(0, Math.round(Number(hero.wasteMinutes) || 0));
+  const work = Math.max(0, Math.round(Number(hero.workMinutes) || 0));
+  const sleep = Math.max(0, Math.round(Number(hero.sleepMinutes) || 0));
+  const used = productive + waste + work + sleep;
+  const rest = Math.max(0, dayMin - used);
+  const pct = (mins) => (dayMin > 0 ? Math.round((mins / dayMin) * 100) : 0);
+  return {
+    dayMin,
+    available: Math.max(0, Math.round(Number(hero.availableMinutes) || 0)),
+    productive,
+    waste,
+    work,
+    sleep,
+    rest,
+    prodPct: pct(productive),
+    wastePct: pct(waste),
+    workPct: pct(work),
+    sleepPct: pct(sleep),
+    restPct: pct(rest),
+  };
+}
+
+function dayHeroDonutSegments(parts) {
+  const segs = [
+    {
+      label: "생산적",
+      minutes: parts.productive,
+      color: DAY_HERO_COLORS.productive,
+    },
+    {
+      label: "비생산",
+      minutes: parts.waste,
+      color: DAY_HERO_COLORS.waste,
+    },
+    {
+      label: "근무",
+      minutes: parts.work,
+      color: DAY_HERO_COLORS.work,
+    },
+    {
+      label: "수면",
+      minutes: parts.sleep,
+      color: DAY_HERO_COLORS.sleep,
+    },
+  ];
+  if (parts.rest > 0) {
+    segs.push({
+      label: "그 외",
+      minutes: parts.rest,
+      color: DAY_HERO_COLORS.rest,
+    });
+  }
+  return segs;
+}
+
+/** 하루 24시간 기준 — 생산 / 비생산 / 근무 / 수면 (/ 그 외) */
+function renderDayHeroDayDonut(parts) {
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-day-hero-donut";
+
+  const size = 220;
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = 96;
+  const rInner = 58;
+  const start = -Math.PI / 2;
+  const segments = dayHeroDonutSegments(parts);
+
+  const svg = svgEl("svg", {
+    class: "lp-tr2-day-hero-donut-svg",
+    width: size,
+    height: size,
+    viewBox: `0 0 ${size} ${size}`,
+    role: "img",
+    "aria-label": `하루 중 생산 ${formatIntegerMinutesDurationKo(parts.productive)}, 비생산 ${formatIntegerMinutesDurationKo(parts.waste)}, 근무 ${formatIntegerMinutesDurationKo(parts.work)}, 수면 ${formatIntegerMinutesDurationKo(parts.sleep)}`,
+  });
+
+  appendDonutRingSlices(svg, cx, cy, r, rInner, segments, start);
+
+  wrap.appendChild(svg);
+
+  const center = document.createElement("div");
+  center.className = "lp-tr2-day-hero-donut-center";
+  const cap = document.createElement("span");
+  cap.className = "lp-tr2-day-hero-donut-cap";
+  cap.textContent = "생산";
+  const totalEl = document.createElement("strong");
+  totalEl.className = "lp-tr2-day-hero-donut-total";
+  totalEl.textContent = formatIntegerMinutesDurationKo(parts.productive);
+  const sub = document.createElement("span");
+  sub.className = "lp-tr2-day-hero-donut-sub";
+  sub.textContent = `23:59 중 ${parts.prodPct}%`;
+  center.appendChild(cap);
+  center.appendChild(totalEl);
+  center.appendChild(sub);
+  wrap.appendChild(center);
+  return wrap;
+}
+
+function createDayHeroLegendItem(swatch, label, value, pctText) {
+  const item = document.createElement("div");
+  item.className = "lp-tr2-day-hero-legend-item";
+  const sw = document.createElement("span");
+  sw.className = "lp-tr2-day-hero-legend-swatch";
+  sw.style.background = swatch;
+  const body = document.createElement("div");
+  body.className = "lp-tr2-day-hero-legend-body";
+  const lab = document.createElement("span");
+  lab.className = "lp-tr2-day-hero-legend-label";
+  lab.textContent = label;
+  const meta = document.createElement("span");
+  meta.className = "lp-tr2-day-hero-legend-meta";
+  meta.textContent = pctText
+    ? `${formatIntegerMinutesDurationKo(value)} · ${pctText}`
+    : formatIntegerMinutesDurationKo(value);
+  body.appendChild(lab);
+  body.appendChild(meta);
+  item.appendChild(sw);
+  item.appendChild(body);
+  return item;
+}
+
+function createDayHeroValueRow(label, valueText, tone) {
+  const row = document.createElement("div");
+  row.className = `lp-tr2-day-hero-value-row${tone ? ` lp-tr2-day-hero-value-row--${tone}` : ""}`;
+  const lab = document.createElement("span");
+  lab.className = "lp-tr2-day-hero-value-label";
+  lab.textContent = label;
+  const val = document.createElement("strong");
+  val.className = "lp-tr2-day-hero-value-amount";
+  val.textContent = valueText;
+  row.appendChild(lab);
+  row.appendChild(val);
+  return row;
+}
+
+function renderDayHeroSummary(hero) {
+  const parts = buildDayHeroTimeParts(hero);
+  const root = document.createElement("div");
+  root.className = "lp-tr2-day-hero";
+
+  const viz = document.createElement("div");
+  viz.className = "lp-tr2-day-hero-viz";
+  viz.appendChild(renderDayHeroDayDonut(parts));
+
+  const legend = document.createElement("div");
+  legend.className = "lp-tr2-day-hero-legend";
+  const legendItems = [
+    {
+      color: DAY_HERO_COLORS.productive,
+      label: "생산적",
+      minutes: parts.productive,
+      pct: `${parts.prodPct}%`,
+    },
+    {
+      color: DAY_HERO_COLORS.waste,
+      label: "비생산",
+      minutes: parts.waste,
+      pct: `${parts.wastePct}%`,
+    },
+    {
+      color: DAY_HERO_COLORS.work,
+      label: "근무",
+      minutes: parts.work,
+      pct: `${parts.workPct}%`,
+    },
+    {
+      color: DAY_HERO_COLORS.sleep,
+      label: "수면",
+      minutes: parts.sleep,
+      pct: `${parts.sleepPct}%`,
+    },
+  ];
+  if (parts.rest > 0) {
+    legendItems.push({
+      color: DAY_HERO_COLORS.rest,
+      label: "그 외",
+      minutes: parts.rest,
+      pct: `${parts.restPct}%`,
+    });
+  }
+  legendItems.forEach((item) => {
+    legend.appendChild(
+      createDayHeroLegendItem(item.color, item.label, item.minutes, item.pct),
+    );
+  });
+  viz.appendChild(legend);
+  root.appendChild(viz);
+
+  const valuePanel = document.createElement("div");
+  valuePanel.className = "lp-tr2-day-hero-value";
+  const valueTitle = document.createElement("p");
+  valueTitle.className = "lp-tr2-day-hero-value-title";
+  valueTitle.textContent = "오늘의 시간 가치";
+  valuePanel.appendChild(valueTitle);
+
+  const investWon = Math.round(Number(hero.investWon) || 0);
+  const wasteWon = Math.round(Number(hero.wasteWon) || 0);
+  const netWon = Math.round(Number(hero.netWon) || 0);
+
+  valuePanel.appendChild(
+    createDayHeroValueRow(
+      "생산적 가치",
+      investWon > 0
+        ? formatInvestReclaimWonDisplay(investWon)
+        : "₩0",
+      "prod",
+    ),
+  );
+  valuePanel.appendChild(
+    createDayHeroValueRow(
+      "비생산 가치",
+      wasteWon > 0
+        ? formatLedgerLossKrwDisplay(wasteWon)
+        : "₩0",
+      "waste",
+    ),
+  );
+
+  const netRow = createDayHeroValueRow(
+    "합(순가치)",
+    formatNetWon(netWon),
+    netWon > 0 ? "net-pos" : netWon < 0 ? "net-neg" : "net-zero",
+  );
+  netRow.classList.add("lp-tr2-day-hero-value-row--net");
+  valuePanel.appendChild(netRow);
+
+  const scoreHint = document.createElement("p");
+  scoreHint.className = "lp-tr2-day-hero-value-score";
+  scoreHint.textContent = `집중 점수 ${hero.score}`;
+  if (hero.focusLabel) {
+    scoreHint.textContent += ` · ${hero.focusLabel} ${hero.focusPct}%`;
+  }
+  valuePanel.appendChild(scoreHint);
+
+  root.appendChild(valuePanel);
+  return root;
+}
+
 function mountHeroSection(scrollWrap, range) {
   const hero = getTimeReportHeroSnapshotForDateRange(range.start, range.end);
-  const sec = createSection("한 장 요약", formatRangeLabel(range.start, range.end));
+  const isDay = range.start === range.end;
+  const sec = createSection(
+    "한 장 요약",
+    formatRangeLabel(range.start, range.end),
+  );
+
+  if (isDay) {
+    sec.appendChild(renderDayHeroSummary(hero));
+    scrollWrap.appendChild(sec);
+    return;
+  }
+
   const grid = document.createElement("div");
   grid.className = "lp-tr2-card-grid";
   grid.appendChild(
@@ -3141,11 +3917,58 @@ function mountHeroSection(scrollWrap, range) {
   scrollWrap.appendChild(sec);
 }
 
+/** 일간: 목표 수면 대비 가로 진행 바 */
+function renderSleepGoalProgressBar(minutes) {
+  const slept = Math.max(0, Math.round(Number(minutes) || 0));
+  const target = SLEEP_TARGET_MIN;
+  const pct = target > 0 ? Math.min(100, Math.round((slept / target) * 100)) : 0;
+  const met = slept >= target;
+
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-sleep-goal-bar";
+  wrap.setAttribute(
+    "aria-label",
+    `목표 ${formatIntegerMinutesDurationKo(target)} 중 ${formatIntegerMinutesDurationKo(slept)} (${pct}%)`,
+  );
+
+  const head = document.createElement("div");
+  head.className = "lp-tr2-sleep-goal-bar-head";
+  const label = document.createElement("span");
+  label.className = "lp-tr2-sleep-goal-bar-label";
+  label.textContent = "목표 대비 수면";
+  const meta = document.createElement("strong");
+  meta.className = `lp-tr2-sleep-goal-bar-meta${met ? " is-met" : " is-miss"}`;
+  meta.textContent = `${formatIntegerMinutesDurationKo(slept)} / ${formatIntegerMinutesDurationKo(target)} · ${pct}%`;
+  head.appendChild(label);
+  head.appendChild(meta);
+
+  const track = document.createElement("div");
+  track.className = "lp-tr2-sleep-goal-bar-track";
+  const fill = document.createElement("div");
+  fill.className = `lp-tr2-sleep-goal-bar-fill${met ? " is-met" : " is-miss"}`;
+  fill.style.width = `${pct}%`;
+  track.appendChild(fill);
+
+  const foot = document.createElement("p");
+  foot.className = "lp-tr2-sleep-goal-bar-foot";
+  foot.textContent = met
+    ? "7시간 목표 달성"
+    : `목표까지 ${formatIntegerMinutesDurationKo(Math.max(0, target - slept))} 부족`;
+
+  wrap.appendChild(head);
+  wrap.appendChild(track);
+  wrap.appendChild(foot);
+  return wrap;
+}
+
 function mountSleepSection(scrollWrap, range, rows) {
   const snap = buildSleepReportSnapshot(rows, range);
+  const isDay = range.start === range.end;
   const sec = createSection(
     "수면 기록",
-    "취침·기상·품질 패턴 · 막대=수면 시간 · 점선=7시간 목표",
+    isDay
+      ? "전날 밤 취침 ~ 기상 · 7시간 목표 대비"
+      : "취침·기상·품질 패턴 · 막대=수면 시간 · 점선=7시간 목표",
   );
 
   if (!snap.daysWithSleep.length) {
@@ -3158,6 +3981,13 @@ function mountSleepSection(scrollWrap, range, rows) {
   }
 
   sec.appendChild(buildSleepStatsGrid(snap));
+
+  if (isDay) {
+    const day = snap.daysWithSleep[0];
+    sec.appendChild(renderSleepGoalProgressBar(day?.minutes || 0));
+    scrollWrap.appendChild(sec);
+    return;
+  }
 
   const chartWrap = document.createElement("div");
   chartWrap.className = "lp-tr2-sleep-chart-wrap";
@@ -3221,12 +4051,15 @@ function mountSleepSection(scrollWrap, range, rows) {
 function mountIntakeSection(scrollWrap, range, rows) {
   const { healthy, unhealthy } = collectIntakeLogs(rows);
   const dayCount = listDatesInclusive(range.start, range.end).length;
+  const isDay = range.start === range.end;
   const totalEntries = healthy.length + unhealthy.length;
   const sec = createSection(
     "섭취 기록",
-    dayCount > 1
-      ? "날짜별 한 줄 요약 · 길면 패널 안에서 스크롤"
-      : "무엇을 먹었는지(식단 메모)",
+    isDay
+      ? "오늘 먹은 음식 · 옆의 별점이 맛 평가"
+      : dayCount > 1
+        ? "날짜별 한 줄 요약 · 길면 패널 안에서 스크롤"
+        : "무엇을 먹었는지(식단 메모)",
   );
   const counts = document.createElement("p");
   counts.className = "lp-tr2-intake-counts";
@@ -3240,7 +4073,7 @@ function mountIntakeSection(scrollWrap, range, rows) {
 
   const makePanel = (title, count, entries, emptyText, tone) => {
     const panel = document.createElement("div");
-    panel.className = "lp-tr2-intake-panel";
+    panel.className = `lp-tr2-intake-panel lp-tr2-intake-panel--${tone}`;
     const head = document.createElement("div");
     head.className = "lp-tr2-intake-panel-head";
     const headTitle = document.createElement("span");
@@ -3252,7 +4085,11 @@ function mountIntakeSection(scrollWrap, range, rows) {
     head.appendChild(headCount);
     const body = document.createElement("div");
     body.className = "lp-tr2-intake-panel-body";
-    body.appendChild(buildCompactIntakeFeed(entries, emptyText, tone));
+    body.appendChild(
+      isDay
+        ? buildDayIntakeRatedFeed(entries, emptyText, tone)
+        : buildCompactIntakeFeed(entries, emptyText, tone),
+    );
     panel.appendChild(head);
     panel.appendChild(body);
     return panel;
@@ -3279,6 +4116,12 @@ function mountIntakeSection(scrollWrap, range, rows) {
 
   sec.appendChild(counts);
   sec.appendChild(panels);
+
+  /* 일간: 목록에 맛 평가만 표시. 좋아한/아쉬웠던 순위는 기간이 길 때만 */
+  if (isDay) {
+    scrollWrap.appendChild(sec);
+    return;
+  }
 
   const tasteSnap = buildMealTasteReportSnapshot(rows);
   if (tasteSnap) {
@@ -3493,7 +4336,6 @@ function appendRadarAxisLabel(svg, axis, i, n, cx, cy, labelR) {
   const ly = cy + labelR * Math.sin(ang);
   const cos = Math.cos(ang);
   const sin = Math.sin(ang);
-  const hasValue = axis.minutes > 0;
 
   let anchor = "middle";
   if (cos > 0.22) anchor = "start";
@@ -3506,12 +4348,13 @@ function appendRadarAxisLabel(svg, axis, i, n, cx, cy, labelR) {
   const t = svgEl("text", {
     x: lx,
     y: ly + dy,
-    fill: hasValue
-      ? axis.tone === "prod"
-        ? "#a87070"
-        : "#6d8aad"
-      : "#b8c5d4",
-    "font-size": 10,
+    fill: "#334155",
+    "fill-opacity": "1",
+    "font-size":
+      typeof window !== "undefined" &&
+      window.matchMedia("(min-width: 768px)").matches
+        ? 14
+        : 12,
     "font-weight": 700,
     "text-anchor": anchor,
     "dominant-baseline": "middle",
@@ -3616,7 +4459,7 @@ function mountDonutSection(scrollWrap, range) {
   const snap = getTimeReportDonutSnapshotForDateRange(range.start, range.end);
   const radarSnap = buildCategoryTimeRadarFromDonutSnap(snap);
   const sec = createSection(
-    "생산 · 비생산 시간",
+    "시간 배분 현황",
     "수면·근무 제외 · 카테고리별 기록 시간",
   );
   const wrap = document.createElement("div");

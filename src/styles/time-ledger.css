@@ -458,6 +458,32 @@
   line-height: 1.15;
   text-align: right;
 }
+@media (min-width: 768px) {
+  [data-legacy~="time-ledger-view"]
+    [data-legacy~="time-ledger-usage-history-eyebrow"],
+  [data-legacy~="time-ledger-view"]
+    [data-legacy~="time-ledger-usage-history-total-label"] {
+    font-size: 0.8125rem;
+  }
+  [data-legacy~="time-ledger-view"]
+    [data-legacy~="time-ledger-usage-history-date"] {
+    font-size: 1.125rem;
+  }
+  [data-legacy~="time-ledger-view"]
+    [data-legacy~="time-ledger-usage-history-total"] {
+    font-size: 1.25rem;
+  }
+}
+@media (min-width: 1100px) {
+  [data-legacy~="time-ledger-view"]
+    [data-legacy~="time-ledger-usage-history-date"] {
+    font-size: 1.25rem;
+  }
+  [data-legacy~="time-ledger-view"]
+    [data-legacy~="time-ledger-usage-history-total"] {
+    font-size: 1.375rem;
+  }
+}
 [data-legacy~="time-ledger-view"]
   [data-legacy~="time-ledger-usage-history-total"].is-over-24h,
 [data-legacy~="time-ledger-view"]
@@ -627,6 +653,15 @@
 /* ── 시간 레포트 v2 ── */
 .lp-tr2-root,
 .diary-content-scroll.lp-tr2-root {
+  /* 모바일 기본 → 넓은 화면에서 media로 키움 */
+  --lp-tr2-title: 0.9375rem;
+  --lp-tr2-sub: 0.75rem;
+  --lp-tr2-body: 0.75rem;
+  --lp-tr2-label: 0.6875rem;
+  --lp-tr2-meta: 0.625rem;
+  --lp-tr2-value: 1rem;
+  --lp-tr2-hero: 1.25rem;
+  --lp-tr2-section-pad: 0.85rem 0.9rem 0.95rem;
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
@@ -634,9 +669,42 @@
   box-sizing: border-box;
 }
 
+@media (min-width: 768px) {
+  .lp-tr2-root,
+  .diary-content-scroll.lp-tr2-root {
+    --lp-tr2-title: 1.125rem;
+    --lp-tr2-sub: 0.875rem;
+    --lp-tr2-body: 0.875rem;
+    --lp-tr2-label: 0.8125rem;
+    --lp-tr2-meta: 0.75rem;
+    --lp-tr2-value: 1.1875rem;
+    --lp-tr2-hero: 1.5rem;
+    --lp-tr2-section-pad: 1.05rem 1.1rem 1.15rem;
+    gap: 0.85rem;
+  }
+
+  [data-legacy~="time-ledger-view"] .time-ledger-report-view-shell {
+    padding: 0.5rem 1.05rem 1.35rem;
+  }
+}
+
+@media (min-width: 1100px) {
+  .lp-tr2-root,
+  .diary-content-scroll.lp-tr2-root {
+    --lp-tr2-title: 1.25rem;
+    --lp-tr2-sub: 0.9375rem;
+    --lp-tr2-body: 0.9375rem;
+    --lp-tr2-label: 0.875rem;
+    --lp-tr2-meta: 0.8125rem;
+    --lp-tr2-value: 1.25rem;
+    --lp-tr2-hero: 1.625rem;
+    --lp-tr2-section-pad: 1.15rem 1.25rem 1.25rem;
+  }
+}
+
 .lp-tr2-section {
   margin: 0;
-  padding: 0.85rem 0.9rem 0.95rem;
+  padding: var(--lp-tr2-section-pad);
   background: #fff;
   border-radius: 1rem;
   box-shadow: 0 2px 14px rgba(0, 0, 0, 0.07);
@@ -645,7 +713,7 @@
 
 .lp-tr2-section-title {
   margin: 0;
-  font-size: 0.9375rem;
+  font-size: var(--lp-tr2-title);
   font-weight: 700;
   color: #000000;
   letter-spacing: -0.01em;
@@ -653,7 +721,7 @@
 
 .lp-tr2-section-sub {
   margin: 0.2rem 0 0.65rem;
-  font-size: 0.75rem;
+  font-size: var(--lp-tr2-sub);
   font-weight: 500;
   color: #999999;
 }
@@ -675,13 +743,13 @@
 }
 
 .lp-tr2-stat-label {
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   font-weight: 600;
   color: #666666;
 }
 
 .lp-tr2-stat-value {
-  font-size: 1rem;
+  font-size: var(--lp-tr2-value);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: #111111;
@@ -689,9 +757,215 @@
 }
 
 .lp-tr2-stat-hint {
-  font-size: 0.625rem;
+  font-size: var(--lp-tr2-meta);
   color: #999999;
   line-height: 1.35;
+}
+
+/* 일간 한 장 요약 — 이중 도넛 + 시간 가치 */
+.lp-tr2-day-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.lp-tr2-day-hero-viz {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.35rem 0 0.15rem;
+}
+
+.lp-tr2-day-hero-donut {
+  position: relative;
+  width: min(13.75rem, 72vw);
+  aspect-ratio: 1;
+  flex-shrink: 0;
+}
+
+.lp-tr2-day-hero-donut-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.lp-tr2-day-hero-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  text-align: center;
+  padding: 0 1.6rem;
+}
+
+.lp-tr2-day-hero-donut-cap {
+  font-size: var(--lp-tr2-meta);
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.02em;
+}
+
+.lp-tr2-day-hero-donut-total {
+  margin-top: 0.1rem;
+  font-size: calc(var(--lp-tr2-value) * 0.95);
+  font-weight: 800;
+  color: #111111;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.lp-tr2-day-hero-donut-sub {
+  margin-top: 0.12rem;
+  font-size: var(--lp-tr2-meta);
+  font-weight: 600;
+  color: #64748b;
+}
+
+.lp-tr2-day-hero-legend {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem 0.55rem;
+}
+
+.lp-tr2-day-hero-legend-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.lp-tr2-day-hero-legend-swatch {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+  margin-top: 0.2rem;
+}
+
+.lp-tr2-day-hero-legend-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+}
+
+.lp-tr2-day-hero-legend-label {
+  font-size: var(--lp-tr2-label);
+  font-weight: 700;
+  color: #475569;
+}
+
+.lp-tr2-day-hero-legend-meta {
+  font-size: var(--lp-tr2-label);
+  font-weight: 600;
+  color: #111111;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+}
+
+.lp-tr2-day-hero-value {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.7rem 0.75rem 0.65rem;
+  border-radius: 0.85rem;
+  background: linear-gradient(
+    165deg,
+    rgba(30, 77, 123, 0.06),
+    rgba(248, 250, 252, 0.98)
+  );
+  border: 1px solid rgba(30, 77, 123, 0.1);
+}
+
+.lp-tr2-day-hero-value-title {
+  margin: 0 0 0.15rem;
+  font-size: var(--lp-tr2-label);
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.02em;
+}
+
+.lp-tr2-day-hero-value-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.lp-tr2-day-hero-value-label {
+  font-size: var(--lp-tr2-body);
+  font-weight: 600;
+  color: #64748b;
+}
+
+.lp-tr2-day-hero-value-amount {
+  font-size: calc(var(--lp-tr2-value) * 0.95);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: #111111;
+}
+
+.lp-tr2-day-hero-value-row--prod .lp-tr2-day-hero-value-amount {
+  color: #c02b2b;
+}
+
+.lp-tr2-day-hero-value-row--waste .lp-tr2-day-hero-value-amount {
+  color: #1d4ed8;
+}
+
+.lp-tr2-day-hero-value-row--net {
+  margin-top: 0.15rem;
+  padding-top: 0.45rem;
+  border-top: 1px dashed rgba(30, 77, 123, 0.18);
+}
+
+.lp-tr2-day-hero-value-row--net .lp-tr2-day-hero-value-label {
+  font-weight: 700;
+  color: #334155;
+}
+
+.lp-tr2-day-hero-value-row--net .lp-tr2-day-hero-value-amount {
+  font-size: var(--lp-tr2-hero);
+}
+
+.lp-tr2-day-hero-value-row--net-pos .lp-tr2-day-hero-value-amount {
+  color: #c02b2b;
+}
+
+.lp-tr2-day-hero-value-row--net-neg .lp-tr2-day-hero-value-amount {
+  color: #1d4ed8;
+}
+
+.lp-tr2-day-hero-value-score {
+  margin: 0.15rem 0 0;
+  font-size: var(--lp-tr2-label);
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+@media (min-width: 520px) {
+  .lp-tr2-day-hero {
+    flex-direction: row;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .lp-tr2-day-hero-viz {
+    flex: 1 1 55%;
+    min-width: 0;
+  }
+
+  .lp-tr2-day-hero-value {
+    flex: 0 0 12.5rem;
+    justify-content: center;
+  }
 }
 
 /* 계획 이행 — 메인 히어로 */
@@ -735,6 +1009,10 @@
 .lp-tr2-plan-summary-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-bottom: 0.35rem;
+}
+
+.lp-tr2-plan-summary-grid:has(> :nth-child(2):last-child) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .lp-tr2-plan-compare-chart {
@@ -820,6 +1098,104 @@
   height: 100%;
   border-radius: inherit;
   min-width: 0;
+}
+
+/* 일간 — 과제별 계획(회색 바탕+표시선) vs 실제(남색 채움) */
+.lp-tr2-plan-day-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: 0.35rem;
+}
+
+.lp-tr2-plan-day-chart .lp-tr2-rating-chart-legend {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.lp-tr2-plan-day-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.lp-tr2-plan-day-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.lp-tr2-plan-day-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 0.6rem;
+}
+
+.lp-tr2-plan-day-name {
+  font-size: 0.8125rem;
+  font-weight: 800;
+  color: #111111;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.lp-tr2-plan-day-meta {
+  font-size: 0.6875rem;
+  font-weight: 650;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+}
+
+.lp-tr2-plan-day-row.is-unplanned .lp-tr2-plan-day-meta {
+  color: #8b5c3a;
+}
+
+.lp-tr2-plan-day-track {
+  position: relative;
+  height: 1.1rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+  overflow: hidden;
+}
+
+.lp-tr2-plan-day-plan {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: inherit;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.lp-tr2-plan-day-plan-mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #64748b;
+  transform: translateX(-50%);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.lp-tr2-plan-day-actual {
+  position: absolute;
+  left: 0;
+  top: 18%;
+  bottom: 18%;
+  background: #1e4d7b;
+  border-radius: 999px;
+  z-index: 2;
+  min-width: 2px;
+}
+
+.lp-tr2-plan-day-actual.is-unplanned {
+  background: #8b5c3a;
 }
 
 .lp-tr2-plan-compare-axis {
@@ -993,7 +1369,7 @@
 
 .lp-tr2-chart-note {
   margin: 0.55rem 0 0;
-  font-size: 0.75rem;
+  font-size: var(--lp-tr2-sub);
   color: #666666;
   line-height: 1.45;
 }
@@ -1069,6 +1445,77 @@
   background: #818cf8;
 }
 
+/* 일간 수면 — 목표 대비 가로 진행 바 */
+.lp-tr2-sleep-goal-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.15rem;
+  padding: 0.65rem 0.7rem 0.6rem;
+  border-radius: 0.75rem;
+  background: rgba(0, 0, 0, 0.03);
+  box-sizing: border-box;
+}
+
+.lp-tr2-sleep-goal-bar-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.lp-tr2-sleep-goal-bar-label {
+  font-size: var(--lp-tr2-label);
+  font-weight: 700;
+  color: #64748b;
+}
+
+.lp-tr2-sleep-goal-bar-meta {
+  font-size: var(--lp-tr2-body);
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  color: #334155;
+  text-align: right;
+}
+
+.lp-tr2-sleep-goal-bar-meta.is-met {
+  color: #3d8b5e;
+}
+
+.lp-tr2-sleep-goal-bar-meta.is-miss {
+  color: #8b6b9e;
+}
+
+.lp-tr2-sleep-goal-bar-track {
+  width: 100%;
+  height: 0.7rem;
+  border-radius: 999px;
+  background: #e8edf3;
+  overflow: hidden;
+}
+
+.lp-tr2-sleep-goal-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  min-width: 0;
+  transition: width 0.25s ease;
+}
+
+.lp-tr2-sleep-goal-bar-fill.is-met {
+  background: #a8d4b8;
+}
+
+.lp-tr2-sleep-goal-bar-fill.is-miss {
+  background: #c4b0d4;
+}
+
+.lp-tr2-sleep-goal-bar-foot {
+  margin: 0;
+  font-size: var(--lp-tr2-label);
+  font-weight: 600;
+  color: #94a3b8;
+}
+
 .lp-tr2-sleep-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1091,14 +1538,14 @@
 
 .lp-tr2-sleep-stat-label {
   display: block;
-  font-size: 0.625rem;
+  font-size: var(--lp-tr2-meta);
   color: #999999;
   margin-bottom: 0.1rem;
 }
 
 .lp-tr2-sleep-stat-value {
   display: block;
-  font-size: 0.75rem;
+  font-size: var(--lp-tr2-body);
   font-weight: 700;
   color: var(--text-ink);
   font-variant-numeric: tabular-nums;
@@ -1108,9 +1555,246 @@
 .lp-tr2-sleep-stat-hint {
   display: block;
   margin-top: 0.08rem;
-  font-size: 0.5625rem;
+  font-size: var(--lp-tr2-meta);
   color: #999999;
   line-height: 1.3;
+}
+
+/* 일간 이동 — 가용율 + 24시 타임라인 */
+.lp-tr2-move-day-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.7rem 0.75rem 0.65rem;
+  border-radius: 0.85rem;
+  background: linear-gradient(
+    165deg,
+    rgba(30, 77, 123, 0.06),
+    rgba(248, 250, 252, 0.98)
+  );
+  border: 1px solid rgba(30, 77, 123, 0.1);
+  box-sizing: border-box;
+}
+
+.lp-tr2-move-day-util {
+  margin: 0;
+  font-size: var(--lp-tr2-hero);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #111111;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.lp-tr2-move-day-total {
+  margin: 0;
+  font-size: var(--lp-tr2-body);
+  font-weight: 700;
+  color: #334155;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-tr2-move-day-util-hint {
+  margin: 0;
+  font-size: var(--lp-tr2-label);
+  font-weight: 600;
+  color: #64748b;
+}
+
+.lp-tr2-move-day-bar-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.15rem;
+}
+
+.lp-tr2-move-day-bar-track {
+  display: flex;
+  width: 100%;
+  height: 1.65rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #e8edf3;
+  box-sizing: border-box;
+}
+
+.lp-tr2-move-day-bar-track.is-empty {
+  opacity: 0.55;
+}
+
+.lp-tr2-move-day-bar-seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.lp-tr2-move-day-bar-seg-label {
+  font-size: var(--lp-tr2-meta);
+  font-weight: 750;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.18);
+  white-space: nowrap;
+  padding: 0 0.25rem;
+}
+
+.lp-tr2-move-day-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.85rem;
+  margin-top: 0.1rem;
+}
+
+.lp-tr2-move-day-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: var(--lp-tr2-label);
+  font-weight: 650;
+  color: #475569;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-tr2-move-day-legend-swatch {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+/* 일간 감정 소비 — 24시간 타임라인 */
+.lp-tr2-emotion-day-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.15rem 0 0.1rem;
+}
+
+.lp-tr2-emotion-day-timeline-track {
+  position: relative;
+  width: 100%;
+  height: 1.35rem;
+  border-radius: 999px;
+  background: #eef2f6;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.lp-tr2-emotion-day-timeline-block {
+  position: absolute;
+  top: 0.15rem;
+  bottom: 0.15rem;
+  min-width: 0.35rem;
+  border-radius: 999px;
+  opacity: 0.92;
+  box-sizing: border-box;
+}
+
+.lp-tr2-emotion-day-timeline-ticks {
+  position: relative;
+  height: 0.95rem;
+  margin: 0 0.1rem;
+}
+
+.lp-tr2-emotion-day-timeline-tick {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: var(--lp-tr2-meta);
+  font-weight: 650;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.lp-tr2-emotion-day-timeline-tick:first-child {
+  transform: translateX(0);
+}
+
+.lp-tr2-emotion-day-timeline-tick:last-child {
+  transform: translateX(-100%);
+}
+
+/* 일간 감정 소비 — 기록·메모 목록 */
+.lp-tr2-emotion-day-journal {
+  margin-top: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.lp-tr2-emotion-day-journal-title {
+  margin: 0;
+  font-size: var(--lp-tr2-label);
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.01em;
+}
+
+.lp-tr2-emotion-day-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.lp-tr2-emotion-day-item {
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.7rem;
+  background: rgba(0, 0, 0, 0.03);
+  box-sizing: border-box;
+}
+
+.lp-tr2-emotion-day-item-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.lp-tr2-emotion-day-item-emotion {
+  font-size: calc(var(--lp-tr2-body) + 0.0625rem);
+  font-weight: 750;
+  color: #111111;
+  line-height: 1.3;
+}
+
+.lp-tr2-emotion-day-item-meta {
+  flex: 0 0 auto;
+  font-size: var(--lp-tr2-meta);
+  font-weight: 600;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.lp-tr2-emotion-day-item-trigger {
+  margin: 0.28rem 0 0;
+  font-size: var(--lp-tr2-label);
+  font-weight: 600;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+.lp-tr2-emotion-day-item-memo {
+  margin: 0.3rem 0 0;
+  font-size: var(--lp-tr2-body);
+  font-weight: 500;
+  color: #334155;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.lp-tr2-emotion-day-item-memo.is-empty {
+  color: #cbd5e1;
+  font-weight: 600;
 }
 
 .lp-tr2-emotion-trigger-table {
@@ -1329,6 +2013,14 @@
   color: #8b5c3a;
 }
 
+.lp-tr2-routine-day-line + .lp-tr2-routine-day-line {
+  margin-top: 0.35rem;
+}
+
+.lp-tr2-routine-day-items--kept {
+  color: #1e4d7b;
+}
+
 .lp-tr2-routine-block {
   margin-top: 0.85rem;
   padding-top: 0.75rem;
@@ -1437,7 +2129,7 @@
 
 .lp-tr2-intake-counts {
   margin: 0 0 0.45rem;
-  font-size: 0.75rem;
+  font-size: var(--lp-tr2-sub);
   font-weight: 600;
   color: #666666;
 }
@@ -1468,6 +2160,24 @@
   background: #fff;
 }
 
+.lp-tr2-intake-panel--healthy {
+  border-color: #ecd8d8;
+}
+
+.lp-tr2-intake-panel--healthy .lp-tr2-intake-panel-head {
+  background: #faf6f6;
+  color: #c02b2b;
+}
+
+.lp-tr2-intake-panel--unhealthy {
+  border-color: #d8e3ef;
+}
+
+.lp-tr2-intake-panel--unhealthy .lp-tr2-intake-panel-head {
+  background: #f6f8fb;
+  color: #1d4ed8;
+}
+
 .lp-tr2-intake-panel-head {
   display: flex;
   align-items: center;
@@ -1476,7 +2186,7 @@
   padding: 0.3rem 0.45rem;
   background: #fafafa;
   border-bottom: 1px solid #f2f2f2;
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   font-weight: 700;
   color: #4d4d4d;
 }
@@ -1511,7 +2221,7 @@
 }
 
 .lp-tr2-intake-day-date {
-  font-size: 0.625rem;
+  font-size: var(--lp-tr2-meta);
   font-weight: 600;
   color: #999999;
   line-height: 1.35;
@@ -1519,26 +2229,90 @@
 }
 
 .lp-tr2-intake-day-meals {
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   line-height: 1.38;
   color: var(--text-ink);
   overflow-wrap: anywhere;
 }
 
 .lp-tr2-intake-day-meals--healthy {
-  color: #166534;
+  color: #c02b2b;
 }
 
 .lp-tr2-intake-day-meals--unhealthy {
-  color: #9a3412;
+  color: #1d4ed8;
 }
 
 .lp-tr2-intake-day-empty {
   margin: 0;
   padding: 0.25rem 0.1rem;
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   color: #999999;
   list-style: none;
+}
+
+/* 일간 섭취 — 음식별 맛 평가 */
+.lp-tr2-intake-day-list--rated .lp-tr2-intake-meal-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.45rem;
+  padding: 0.28rem 0.1rem;
+  border-bottom: 1px solid #f2f2f2;
+}
+
+.lp-tr2-intake-day-list--rated .lp-tr2-intake-meal-row:last-child {
+  border-bottom: none;
+}
+
+.lp-tr2-intake-meal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.08rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.lp-tr2-intake-meal-name {
+  font-size: var(--lp-tr2-body);
+  font-weight: 650;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.lp-tr2-intake-meal-sub {
+  font-size: var(--lp-tr2-meta);
+  font-weight: 500;
+  color: #94a3b8;
+  line-height: 1.3;
+}
+
+.lp-tr2-intake-meal-taste {
+  flex: 0 0 auto;
+  font-size: var(--lp-tr2-label);
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  line-height: 1.35;
+  padding-top: 0.05rem;
+}
+
+/* 맛 평가는 건강/비건강(빨강·파랑)과 겹치지 않게 중립·호박색 */
+.lp-tr2-intake-meal-taste.is-high {
+  color: #b45309;
+}
+
+.lp-tr2-intake-meal-taste.is-mid {
+  color: #64748b;
+}
+
+.lp-tr2-intake-meal-taste.is-low {
+  color: #78716c;
+}
+
+.lp-tr2-intake-meal-taste.is-empty {
+  font-weight: 600;
+  color: #cbd5e1;
 }
 
 .lp-tr2-intake-taste-note {
@@ -1600,7 +2374,7 @@
 
 .lp-tr2-media-hero-main {
   margin: 0;
-  font-size: 0.9375rem;
+  font-size: var(--lp-tr2-title);
   font-weight: 700;
   color: #000000;
   line-height: 1.35;
@@ -1608,7 +2382,7 @@
 
 .lp-tr2-media-hero-sub {
   margin: 0.2rem 0 0;
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   color: #666666;
   line-height: 1.45;
 }
@@ -2044,7 +2818,7 @@
 
 .lp-tr2-rating-block-title {
   margin: 0 0 0.28rem;
-  font-size: 0.8125rem;
+  font-size: calc(var(--lp-tr2-title) - 0.0625rem);
   font-weight: 700;
   color: #000000;
   letter-spacing: -0.01em;
@@ -2052,7 +2826,7 @@
 
 .lp-tr2-rating-block-sub {
   margin: 0 0 0.62rem;
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   line-height: 1.45;
   color: #999999;
 }
@@ -5285,7 +6059,7 @@
   .time-task-log-emotion-sub-row {
   position: relative;
   z-index: 2;
-  margin-top: 0.15rem;
+  margin-top: 0.85rem;
   margin-bottom: 0.1rem;
   pointer-events: auto;
 }
@@ -5433,7 +6207,8 @@
   .time-task-log-emotion-sub-row {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.4rem;
+  margin-top: 0.85rem;
 }
 
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)

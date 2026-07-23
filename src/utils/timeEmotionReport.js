@@ -3,7 +3,10 @@
  */
 
 import { parseTimeToHours } from "../views/Time.js";
-import { resolveLedgerRowDetail } from "./timeLedgerCardKpiMemo.js";
+import {
+  ledgerRowUserMemoFeedback,
+  resolveLedgerRowDetail,
+} from "./timeLedgerCardKpiMemo.js";
 import {
   EMOTION_CATEGORIES,
   parseEmotionFromRow,
@@ -80,6 +83,9 @@ export function buildEmotionReportSnapshot(rows, hourlyRate = 0) {
 
   const heatmap = emptyHeatmap();
 
+  /** @type {{ date: string, startHour: number|null, startMinOfDay: number|null, startLabel: string, minutes: number, categoryId: string, categoryLabel: string, subLabel: string, trigger: string, memo: string }[]} */
+  const entries = [];
+
   for (const r of modernRows) {
     const mins = rowMinutes(r);
     if (mins <= 0) continue;
@@ -126,7 +132,44 @@ export function buildEmotionReportSnapshot(rows, hourlyRate = 0) {
     if (dow != null && hour != null) {
       heatmap[dow][hour] += 1;
     }
+
+    const date = String(r?.date || "")
+      .replace(/\//g, "-")
+      .slice(0, 10);
+    const clockMatch = String(r?.startTime || "").match(/(\d{1,2}):(\d{2})/);
+    let startMinOfDay = null;
+    let startLabel = "";
+    if (clockMatch) {
+      const h = Number.parseInt(clockMatch[1], 10);
+      const mi = Number.parseInt(clockMatch[2], 10);
+      if (Number.isInteger(h) && h >= 0 && h <= 23 && Number.isInteger(mi)) {
+        startMinOfDay = h * 60 + mi;
+        startLabel = `${String(h).padStart(2, "0")}:${String(mi).padStart(2, "0")}`;
+      }
+    }
+    entries.push({
+      date,
+      startHour: hour,
+      startMinOfDay,
+      startLabel,
+      minutes: mins,
+      categoryId: cat.id,
+      categoryLabel: cat.label,
+      subLabel: parsed.subLabel,
+      trigger: resolved.label || "",
+      memo: ledgerRowUserMemoFeedback(r),
+    });
   }
+
+  entries.sort((a, b) => {
+    const am = a.startMinOfDay == null ? 99 * 60 : a.startMinOfDay;
+    const bm = b.startMinOfDay == null ? 99 * 60 : b.startMinOfDay;
+    return (
+      String(a.date).localeCompare(String(b.date)) ||
+      am - bm ||
+      a.startLabel.localeCompare(b.startLabel)
+    );
+  });
 
   const rate = Number(hourlyRate) || 0;
   const consumptionCostWon =
@@ -174,5 +217,6 @@ export function buildEmotionReportSnapshot(rows, hourlyRate = 0) {
     subEmotions,
     triggers,
     heatmap,
+    entries,
   };
 }
