@@ -3,6 +3,7 @@
  */
 
 import { getBudgetGoals, parseTimeToHours } from "../views/Time.js";
+import { isWorkBuiltinTaskName } from "./timeTaskOptionsConstants.js";
 import { getTaskOptionByName } from "./timeTaskOptionsModel.js";
 
 const BUDGET_PLACEHOLDER_PREFIX = "(과제 선택)·";
@@ -247,7 +248,7 @@ export function buildPlanAdherenceReportSnapshot(range, rows) {
     },
     leak: { minutes: 0, pct: 0, items: [] },
     estimation: null,
-    categoryRank: null,
+    taskDurationAverages: [],
   });
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) {
@@ -267,6 +268,9 @@ export function buildPlanAdherenceReportSnapshot(range, rows) {
   const catAgg = new Map();
   /** @type {Map<string, { planned: number, actual: number }>} */
   const taskAgg = new Map();
+  /** 같은 날 계획·실제가 둘 다 있는 과제 — 평균 소요시간용 */
+  /** @type {Map<string, { plannedSum: number, actualSum: number, dayCount: number }>} */
+  const taskBothDayAgg = new Map();
   /** @type {Map<string, number>} */
   const leakByTask = new Map();
   /** @type {number[]} */
@@ -297,6 +301,15 @@ export function buildPlanAdherenceReportSnapshot(range, rows) {
 
       if (actualMin > 0 && plannedMin > 0) {
         biasSamples.push((actualMin - plannedMin) / plannedMin);
+        const both = taskBothDayAgg.get(name) || {
+          plannedSum: 0,
+          actualSum: 0,
+          dayCount: 0,
+        };
+        both.plannedSum += plannedMin;
+        both.actualSum += actualMin;
+        both.dayCount += 1;
+        taskBothDayAgg.set(name, both);
       }
     }
 
@@ -425,34 +438,64 @@ export function buildPlanAdherenceReportSnapshot(range, rows) {
     const avg =
       biasSamples.reduce((a, b) => a + b, 0) / biasSamples.length;
     const biasPct = Math.round(avg * 100);
+    const abs = Math.abs(biasPct);
     let message = "";
-    if (biasPct > 8) {
-      message = `작업 시간을 평균 ${biasPct}% 짧게 잡는 편이에요.`;
-    } else if (biasPct < -8) {
-      message = `계획보다 평균 ${Math.abs(biasPct)}% 길게 잡는 편이에요.`;
-    } else {
+    if (abs <= 15) {
       message = "계획과 실제 시간이 비교적 잘 맞아요.";
+    } else if (biasPct > 15 && abs <= 50) {
+      message =
+        "계획보다 실제가 조금 더 걸리는 편이에요. 다음에는 여유를 조금 더 잡아 보세요.";
+    } else if (biasPct > 50) {
+      message =
+        "계획과 실제가 많이 달라요. 보통 생각보다 훨씬 더 걸리는 편이에요.";
+    } else if (biasPct < -15 && abs <= 50) {
+      message =
+        "계획보다 실제가 조금 짧게 끝나는 편이에요. 시간을 넉넉히 잡는 경우가 있어요.";
+    } else {
+      message =
+        "계획과 실제가 많이 달라요. 보통 계획보다 훨씬 짧게 끝나는 편이에요.";
     }
     estimation = { biasPct, sampleCount: biasSamples.length, message };
   }
 
-  let categoryRank = null;
-  const ranked = categories.filter((c) => c.plannedMin > 0 && c.adherencePct != null);
-  if (ranked.length >= 2) {
-    const sorted = [...ranked].sort(
-      (a, b) => (b.adherencePct ?? 0) - (a.adherencePct ?? 0),
+  /** 다음에 배치할 시간 — 실제 평균을 5분 단위로 */
+  const roundSuggestMin = (min) => {
+    const n = Math.max(0, Math.round(Number(min) || 0));
+    if (n <= 0) return 0;
+    return Math.max(5, Math.round(n / 5) * 5);
+  };
+
+  const taskDurationAverages = [...taskBothDayAgg.entries()]
+    .filter(([taskName]) => {
+      /* 근무는 배치를 조절하는 과제가 아님 */
+      if (isWorkBuiltinTaskName(taskName)) return false;
+      return taskCategoryKey(taskName) !== "work";
+    })
+    .map(([taskName, v]) => {
+      const avgPlannedMin = Math.round(v.plannedSum / v.dayCount);
+      const avgActualMin = Math.round(v.actualSum / v.dayCount);
+      const suggestedMin = roundSuggestMin(avgActualMin);
+      const deltaMin = avgActualMin - avgPlannedMin;
+      return {
+        taskName,
+        label: taskName,
+        key: taskName,
+        avgPlannedMin,
+        avgActualMin,
+        suggestedMin,
+        plannedMin: avgPlannedMin,
+        actualMin: avgActualMin,
+        deltaMin,
+        sampleCount: v.dayCount,
+      };
+    })
+    .sort(
+      (a, b) =>
+        b.sampleCount - a.sampleCount ||
+        Math.abs(b.deltaMin) - Math.abs(a.deltaMin) ||
+        b.avgActualMin - a.avgActualMin ||
+        a.taskName.localeCompare(b.taskName, "ko"),
     );
-    categoryRank = {
-      best: {
-        label: sorted[0].label,
-        pct: sorted[0].adherencePct ?? 0,
-      },
-      worst: {
-        label: sorted[sorted.length - 1].label,
-        pct: sorted[sorted.length - 1].adherencePct ?? 0,
-      },
-    };
-  }
 
   return {
     hasPlanData: true,
@@ -475,6 +518,6 @@ export function buildPlanAdherenceReportSnapshot(range, rows) {
       items: leakItems,
     },
     estimation,
-    categoryRank,
+    taskDurationAverages,
   };
 }

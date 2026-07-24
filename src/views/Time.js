@@ -12567,26 +12567,8 @@ export function render(opts = {}) {
     }
     usageHistoryTotalWrap.appendChild(usageHistoryTotalLabel);
     usageHistoryTotalWrap.appendChild(usageHistoryTotalTime);
-    /* 일·주간 레포트: 총기록은 한 장 요약에만 — 상단에는 아예 안 붙임 */
-    const reportSpanDays = (() => {
-      const a = String(reportRangeStartYmd || "")
-        .replace(/\//g, "-")
-        .slice(0, 10);
-      const b = String(reportRangeEndYmd || "")
-        .replace(/\//g, "-")
-        .slice(0, 10);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(a) || !/^\d{4}-\d{2}-\d{2}$/.test(b)) {
-        return showReportView ? 1 : 0;
-      }
-      const t0 = Date.UTC(+a.slice(0, 4), +a.slice(5, 7) - 1, +a.slice(8, 10));
-      const t1 = Date.UTC(+b.slice(0, 4), +b.slice(5, 7) - 1, +b.slice(8, 10));
-      return Math.floor((t1 - t0) / 86400000) + 1;
-    })();
-    const hideReportHeaderTotal =
-      showReportView &&
-      !showMemoOnlyLogView &&
-      reportSpanDays >= 1 &&
-      reportSpanDays <= 8;
+    /* 일·주·월간 레포트: 총기록은 한 장 요약에만 — 상단에는 아예 안 붙임 */
+    const hideReportHeaderTotal = showReportView && !showMemoOnlyLogView;
 
     usageHistoryHeadingRow.appendChild(usageHistoryHeadingLeft);
     if (!hideReportHeaderTotal) {

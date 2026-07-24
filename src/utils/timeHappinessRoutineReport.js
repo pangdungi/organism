@@ -157,19 +157,53 @@ function isDailyTodoCompleted(todoId, todoText, completedList) {
   return false;
 }
 
-/** @returns {Map<string, object[]>} dateRaw → habitDailyCompleted */
-function buildLedgerDailyCompletedByDate(kpiId, startYmd, endYmd) {
-  const map = new Map();
+/**
+ * @returns {{
+ *   completedByDate: Map<string, object[]>,
+ *   minutesByDate: Map<string, number>,
+ *   performedByDate: Map<string, string>,
+ * }}
+ */
+function buildLedgerDayMaps(kpiId, startYmd, endYmd) {
+  /** @type {Map<string, object[]>} */
+  const completedByDate = new Map();
+  /** @type {Map<string, number>} */
+  const minutesByDate = new Map();
+  /** @type {Map<string, string>} */
+  const performedByDate = new Map();
   for (const day of getKpiDailyLedgerSummaries(kpiId, "", {
     startYmd,
     endYmd,
   })) {
     const dk = normYmd(day?.dateRaw);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dk)) continue;
-    const list = Array.isArray(day.habitDailyCompleted) ? day.habitDailyCompleted : [];
-    if (list.length > 0) map.set(dk, list);
+    const list = Array.isArray(day.habitDailyCompleted)
+      ? day.habitDailyCompleted
+      : [];
+    if (list.length > 0) completedByDate.set(dk, list);
+    const mins = Math.max(0, Math.round(Number(day?.minutes) || 0));
+    if (mins > 0) minutesByDate.set(dk, mins);
+    const performed = String(day?.performedValue || "").trim();
+    if (performed) performedByDate.set(dk, performed);
   }
-  return map;
+  return { completedByDate, minutesByDate, performedByDate };
+}
+
+/** 그날 루틴을 ‘했는지’ — 시간/수행값 기준 (매일할일 체크와 무관) */
+function isRoutineDoneOnDay(day, minutesByDate, performedByDate, resolvedEntry) {
+  if ((minutesByDate.get(day) || 0) > 0) return true;
+  if (performedByDate.has(day)) return true;
+  if (!resolvedEntry) return false;
+  const ledgerMin = Math.max(
+    0,
+    Math.round(Number(resolvedEntry.__ledgerMinutes) || 0),
+  );
+  if (ledgerMin > 0) return true;
+  if (String(resolvedEntry.value || "").trim()) return true;
+  if (String(resolvedEntry.memo || "").trim()) return true;
+  const entryIds = resolvedEntry.timeLedgerEntryIds;
+  if (Array.isArray(entryIds) && entryIds.length > 0) return true;
+  return false;
 }
 
 function mergedDailyCompletedForKpiDay(
@@ -215,11 +249,16 @@ export function buildHappinessRoutineReportSnapshot(range) {
     const todos = dailyTodosForKpi(data, kpiId);
     /* 매일할일이 없어도 루틴 KPI 자체는 목록에 표시 */
 
-    const ledgerByDate =
+    const ledgerMaps =
       /^\d{4}-\d{2}-\d{2}$/.test(rangeStart) &&
       /^\d{4}-\d{2}-\d{2}$/.test(rangeEnd)
-        ? buildLedgerDailyCompletedByDate(kpiId, rangeStart, rangeEnd)
-        : new Map();
+        ? buildLedgerDayMaps(kpiId, rangeStart, rangeEnd)
+        : {
+            completedByDate: new Map(),
+            minutesByDate: new Map(),
+            performedByDate: new Map(),
+          };
+    const { completedByDate, minutesByDate, performedByDate } = ledgerMaps;
 
     const storedLogs = (data.kpiLogs || []).filter(
       (l) => String(l?.kpiId || "").trim() === kpiId,
@@ -230,6 +269,20 @@ export function buildHappinessRoutineReportSnapshot(range) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(dk)) continue;
       if (!calendarDays.includes(dk)) continue;
       resolvedEntriesByDay.set(dk, entry);
+    }
+
+    let daysDone = 0;
+    for (const day of calendarDays) {
+      if (
+        isRoutineDoneOnDay(
+          day,
+          minutesByDate,
+          performedByDate,
+          resolvedEntriesByDay.get(day),
+        )
+      ) {
+        daysDone += 1;
+      }
     }
 
     let routineChecks = 0;
@@ -247,7 +300,7 @@ export function buildHappinessRoutineReportSnapshot(range) {
         routineOpportunities += 1;
         const completedList = mergedDailyCompletedForKpiDay(
           logIndex,
-          ledgerByDate,
+          completedByDate,
           kpiId,
           day,
           resolvedEntriesByDay,
@@ -280,9 +333,10 @@ export function buildHappinessRoutineReportSnapshot(range) {
         a.text.localeCompare(b.text, "ko"),
     );
 
+    /* 루틴 실행율 = 한 날 했는지 여부만 (매일할일 체크 비율과 무관) */
     const executionPct =
-      routineOpportunities > 0
-        ? Math.round((routineChecks / routineOpportunities) * 100)
+      calendarDayCount > 0
+        ? Math.round((daysDone / calendarDayCount) * 100)
         : 0;
 
     const keptItems = items.filter((i) => i.checkCount > 0);
@@ -292,6 +346,8 @@ export function buildHappinessRoutineReportSnapshot(range) {
       kpiId,
       name,
       executionPct,
+      daysDone,
+      dayCount: calendarDayCount,
       totalChecks: routineChecks,
       totalOpportunities: routineOpportunities,
       isWellKept: executionPct >= ROUTINE_WELL_KEPT_PCT,
@@ -315,7 +371,7 @@ export function buildHappinessRoutineReportSnapshot(range) {
   const byExecutionDesc = [...routines].sort(
     (a, b) =>
       b.executionPct - a.executionPct ||
-      b.totalChecks - a.totalChecks ||
+      (b.daysDone || 0) - (a.daysDone || 0) ||
       a.name.localeCompare(b.name, "ko"),
   );
   const bestRoutine = byExecutionDesc[0] || null;

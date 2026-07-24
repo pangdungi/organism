@@ -43,6 +43,7 @@ import { buildPlanAdherenceReportSnapshot } from "./timePlanAdherenceReport.js";
 import { buildFocusReportSnapshot } from "./timeFocusReport.js";
 import { buildMealTasteReportSnapshot } from "./timeMealTasteReport.js";
 import { flowDisruptorCategoryColor } from "./timeTaskFlowDisruptors.js";
+import { getTaskOptionByName } from "./timeTaskOptionsModel.js";
 import { readUserHourlyRateLocal } from "./userHourlySync.js";
 import { tr2SvgFontSize } from "./timeReportUiScale.js";
 
@@ -2677,27 +2678,6 @@ function mountMoveSection(scrollWrap, range, rows) {
   scrollWrap.appendChild(sec);
 }
 
-function buildHappinessRoutineWeakItemsLine(items) {
-  const line = document.createElement("p");
-  line.className = "lp-tr2-routine-weak-line";
-
-  const label = document.createElement("span");
-  label.className = "lp-tr2-routine-weak-line-label";
-  label.textContent = "잘 안 지켜진 매일할일";
-
-  const names = document.createElement("span");
-  names.className = "lp-tr2-routine-weak-line-items";
-  names.textContent = items.length
-    ? items
-        .map((item) => String(item.text || "").trim())
-        .filter(Boolean)
-        .join(" · ")
-    : "없음";
-
-  line.append(label, document.createTextNode(" "), names);
-  return line;
-}
-
 function routineExecutionBarColor(pct) {
   const n = Number(pct) || 0;
   if (n >= 75) return "#1e4d7b";
@@ -2796,10 +2776,18 @@ function appendHappinessRoutinePeriodCard(
   head.append(name, sub);
   card.appendChild(head);
 
+  const dayDoneLabel =
+    Number.isFinite(Number(routine.daysDone)) &&
+    Number.isFinite(Number(routine.dayCount)) &&
+    Number(routine.dayCount) > 0
+      ? `${routine.daysDone}/${routine.dayCount}일`
+      : "";
   card.appendChild(
     createRoutineCardProgressBar(
       routine.executionPct,
-      `실행율 ${formatPctRounded(routine.executionPct)} · 체크 ${routine.totalChecks}/${routine.totalOpportunities}`,
+      dayDoneLabel
+        ? `실행율 ${formatPctRounded(routine.executionPct)} · ${dayDoneLabel}`
+        : `실행율 ${formatPctRounded(routine.executionPct)}`,
     ),
   );
 
@@ -2874,8 +2862,12 @@ function appendHappinessRoutineWeekView(sec, snap) {
     if (showBothBadges && id === bestId) badgeKind = "ok";
     else if (showBothBadges && id === worstId) badgeKind = "warn";
     const { weak, strong } = splitRoutineItemsByAvgExecution(routine);
+    const done = Number.isFinite(Number(routine.daysDone))
+      ? routine.daysDone
+      : 0;
+    const span = Number(routine.dayCount) > 0 ? routine.dayCount : days;
     appendHappinessRoutinePeriodCard(sec, routine, {
-      subText: `실행율 ${formatPctRounded(routine.executionPct)} · 체크 ${routine.totalChecks}/${routine.totalOpportunities} · ${days}일`,
+      subText: `실행율 ${formatPctRounded(routine.executionPct)} · ${done}/${span}일`,
       missedTitle: "평균적으로 잘 안 지킨",
       keptTitle: "평균적으로 잘 지킨",
       missedItems: weak,
@@ -2885,72 +2877,15 @@ function appendHappinessRoutineWeekView(sec, snap) {
   }
 }
 
-function appendHappinessRoutineBlock(sec, snap, { heading, routine, items, badgeKind }) {
-  if (!routine) return;
-
-  const block = document.createElement("div");
-  block.className = "lp-tr2-routine-block";
-
-  const head = document.createElement("div");
-  head.className = "lp-tr2-routine-block-head";
-
-  if (heading && heading !== "루틴") {
-    const title = document.createElement("p");
-    title.className = "lp-tr2-routine-block-title";
-    title.textContent = heading;
-    head.appendChild(title);
-  }
-
-  const name = document.createElement("span");
-  name.className = "lp-tr2-routine-block-name";
-  name.textContent = routine.name;
-
-  const pct = document.createElement("span");
-  pct.className = "lp-tr2-routine-block-pct";
-  pct.textContent = `실행율 ${formatPctRounded(routine.executionPct)}`;
-
-  head.append(name);
-  if (badgeKind === "ok" || badgeKind === "warn") {
-    const badge = document.createElement("span");
-    badge.className =
-      badgeKind === "ok"
-        ? "lp-tr2-routine-badge lp-tr2-routine-badge--ok"
-        : "lp-tr2-routine-badge lp-tr2-routine-badge--warn";
-    badge.textContent = badgeKind === "ok" ? "가장 높음" : "가장 낮음";
-    head.appendChild(badge);
-  }
-  head.appendChild(pct);
-  block.appendChild(head);
-
-  const sub = document.createElement("p");
-  sub.className = "lp-tr2-routine-block-sub";
-  sub.textContent = `체크 ${routine.totalChecks}/${routine.totalOpportunities} · ${snap.calendarDayCount}일 기준`;
-  block.appendChild(sub);
-
-  if (items.length) {
-    block.appendChild(buildHappinessRoutineWeakItemsLine(items));
-  } else {
-    const empty = document.createElement("p");
-    empty.className = "lp-tr2-chart-note";
-    empty.textContent = "이 루틴에서 실행율이 특히 낮은 매일할일은 없습니다.";
-    block.appendChild(empty);
-  }
-
-  sec.appendChild(block);
-}
-
 function mountHappinessRoutineSection(scrollWrap, range) {
   const isDay = range?.start === range?.end;
   const snap = buildHappinessRoutineReportSnapshot(range);
   const dayCount = snap.calendarDayCount || 0;
-  const isWeekView = !isDay && dayCount > 1 && dayCount <= 8;
   const sec = createSection(
     "행복 루틴 점검",
     isDay
       ? "루틴 카드별 실행율 · 안 지켜진 / 지켜진 매일할일"
-      : isWeekView
-        ? `${dayCount}일 실행율 · 평균적으로 잘 지킨 / 잘 안 지킨 매일할일`
-        : `행복 기본 루틴 + 매일 반복 KPI · ${dayCount}일`,
+      : `${dayCount}일 중 한 날 했는지 · 아래는 매일할일 잘 지킨/안 지킨`,
   );
 
   if (!snap.hasData) {
@@ -2965,45 +2900,10 @@ function mountHappinessRoutineSection(scrollWrap, range) {
 
   if (isDay) {
     appendHappinessRoutineDayView(sec, snap);
-    scrollWrap.appendChild(sec);
-    return;
-  }
-
-  if (isWeekView) {
+  } else {
+    /* 주간·월간 동일 — 카드형 실행율 + 잘 지킨/안 지킨 */
     appendHappinessRoutineWeekView(sec, snap);
-    scrollWrap.appendChild(sec);
-    return;
   }
-
-  /* 한달 이상: 대상 루틴 전부 표시 (가장 높음/낮음 뱃지만 표시) */
-  const bestId = snap.bestRoutine ? String(snap.bestRoutine.kpiId) : "";
-  const worstId = snap.worstRoutine ? String(snap.worstRoutine.kpiId) : "";
-  const showBothBadges =
-    bestId && worstId && bestId !== worstId && snap.routines.length > 1;
-
-  for (const routine of snap.routines) {
-    const id = String(routine.kpiId);
-    let badgeKind = "";
-    let heading = "루틴";
-    if (showBothBadges && id === bestId) {
-      badgeKind = "ok";
-      heading = "가장 잘 지켜지는 루틴";
-    } else if (showBothBadges && id === worstId) {
-      badgeKind = "warn";
-      heading = "가장 덜 지켜지는 루틴";
-    }
-    const weakItems =
-      routine.weakItems?.length > 0
-        ? routine.weakItems
-        : (routine.items || []).filter((i) => i.executionPct < 100).slice(0, 3);
-    appendHappinessRoutineBlock(sec, snap, {
-      heading,
-      routine,
-      items: weakItems,
-      badgeKind,
-    });
-  }
-
   scrollWrap.appendChild(sec);
 }
 
@@ -3085,38 +2985,6 @@ function minutesToHhMmShort(totalMin) {
   return `${h}시간 ${m}분`;
 }
 
-/** 계획 vs 실제 — 생산·비생산 카테고리 전부(수면·근무 제외) */
-const PLAN_COMPARE_AXES = [
-  { key: "sideincome", label: "시급상승" },
-  { key: "happiness", label: "행복" },
-  { key: "health", label: "건강" },
-  { key: "pleasure", label: "쾌락충족" },
-  { key: "media_watch", label: "미디어" },
-  { key: "unhappiness", label: "불행" },
-  { key: "unhealthy", label: "비건강" },
-  { key: "moneylosing", label: "시급 저하" },
-];
-
-function buildPlanCompareChartItems(categories) {
-  const byKey = new Map((categories || []).map((c) => [c.key, c]));
-  return PLAN_COMPARE_AXES.map(({ key, label }) => ({
-    key,
-    label,
-    plannedMin: byKey.get(key)?.plannedMin || 0,
-    actualMin: byKey.get(key)?.actualMin || 0,
-  }));
-}
-
-function formatPlanChartAxisLabel(minutes) {
-  const n = Math.max(0, Math.round(Number(minutes) || 0));
-  if (n <= 0) return "0";
-  if (n < 60) return `${n}분`;
-  const h = Math.floor(n / 60);
-  const m = n % 60;
-  if (m === 0) return `${h}시간`;
-  return `${h}시간 ${m}분`;
-}
-
 function buildPlanChartScale(items) {
   const maxMin = Math.max(
     60,
@@ -3144,99 +3012,6 @@ function buildPlanChartScale(items) {
 const PLAN_COMPARE_PLAN_COLOR = "#94A3B8";
 const PLAN_COMPARE_ACTUAL_COLOR = "#1E4D7B";
 const PLAN_COMPARE_UNPLANNED_COLOR = "#8B5C3A";
-
-function renderPlanCompareChart(items) {
-  const wrap = document.createElement("div");
-  wrap.className = "lp-tr2-plan-compare-chart";
-  wrap.setAttribute("role", "img");
-  wrap.setAttribute("aria-label", "카테고리별 계획과 실제 시간");
-
-  wrap.appendChild(
-    createRatingChartLegend([
-      { swatch: PLAN_COMPARE_PLAN_COLOR, label: "계획" },
-      { swatch: PLAN_COMPARE_ACTUAL_COLOR, label: "실제" },
-    ]),
-  );
-
-  const { scaleMaxMin, ticks } = buildPlanChartScale(items);
-  const panel = document.createElement("div");
-  panel.className = "lp-tr2-plan-compare-panel";
-
-  const rowsWrap = document.createElement("div");
-  rowsWrap.className = "lp-tr2-plan-compare-rows-wrap";
-
-  const vgrid = document.createElement("div");
-  vgrid.className = "lp-tr2-plan-compare-vgrid";
-  vgrid.setAttribute("aria-hidden", "true");
-  ticks.forEach((min) => {
-    if (min <= 0) return;
-    const line = document.createElement("span");
-    line.className = "lp-tr2-plan-compare-grid-line";
-    line.style.left = `${(min / scaleMaxMin) * 100}%`;
-    vgrid.appendChild(line);
-  });
-
-  const rows = document.createElement("div");
-  rows.className = "lp-tr2-plan-compare-rows";
-  items.forEach((item) => {
-    const row = document.createElement("div");
-    row.className = "lp-tr2-plan-compare-row";
-    const lab = document.createElement("span");
-    lab.className = "lp-tr2-plan-compare-label";
-    lab.textContent = item.label;
-    const bars = document.createElement("div");
-    bars.className = "lp-tr2-plan-compare-bars";
-
-    [
-      ["plan", item.plannedMin, PLAN_COMPARE_PLAN_COLOR],
-      ["actual", item.actualMin, PLAN_COMPARE_ACTUAL_COLOR],
-    ].forEach(([kind, mins, color]) => {
-      const bar = document.createElement("div");
-      bar.className = `lp-tr2-plan-compare-bar lp-tr2-plan-compare-bar--${kind}`;
-      const fill = document.createElement("div");
-      fill.className = "lp-tr2-plan-compare-bar-fill";
-      const pct =
-        scaleMaxMin > 0
-          ? Math.min(100, (Math.max(0, mins) / scaleMaxMin) * 100)
-          : 0;
-      fill.style.width = `${pct}%`;
-      fill.style.background = color;
-      if (mins > 0) {
-        bar.title = `${item.label} · ${kind === "plan" ? "계획" : "실제"} · ${formatIntegerMinutesDurationKo(mins)}`;
-      }
-      bar.appendChild(fill);
-      bars.appendChild(bar);
-    });
-
-    row.append(lab, bars);
-    rows.appendChild(row);
-  });
-
-  rowsWrap.append(vgrid, rows);
-  panel.appendChild(rowsWrap);
-
-  const axis = document.createElement("div");
-  axis.className = "lp-tr2-plan-compare-axis";
-  axis.setAttribute("aria-hidden", "true");
-  const axisSpacer = document.createElement("span");
-  axisSpacer.className = "lp-tr2-plan-compare-axis-spacer";
-  const axisTrack = document.createElement("div");
-  axisTrack.className = "lp-tr2-plan-compare-axis-track";
-  ticks.forEach((min, idx) => {
-    const tick = document.createElement("span");
-    tick.className = "lp-tr2-plan-compare-axis-tick";
-    if (idx === 0) tick.classList.add("is-origin");
-    else if (idx === ticks.length - 1) tick.classList.add("is-end");
-    tick.style.left = `${(min / scaleMaxMin) * 100}%`;
-    tick.textContent = formatPlanChartAxisLabel(min);
-    axisTrack.appendChild(tick);
-  });
-  axis.append(axisSpacer, axisTrack);
-  panel.appendChild(axis);
-
-  wrap.appendChild(panel);
-  return wrap;
-}
 
 function formatPlanDeltaMinutes(deltaMin) {
   const n = Math.round(Number(deltaMin) || 0);
@@ -3341,6 +3116,112 @@ function renderPlanDayTaskCompareChart(tasks) {
   return wrap;
 }
 
+/** 주간+ — 실제 평균 기준으로 다음에 배치할 시간 안내 */
+function renderPlanTaskSuggestDurationChart(tasks) {
+  const items = (tasks || []).filter(
+    (t) => (t.suggestedMin || t.avgActualMin || 0) > 0,
+  );
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-plan-day-chart lp-tr2-plan-suggest-chart";
+  wrap.setAttribute("role", "img");
+  wrap.setAttribute("aria-label", "과제별 다음에 배치할 권장 시간");
+
+  if (!items.length) {
+    const empty = document.createElement("p");
+    empty.className = "lp-tr2-chart-note";
+    empty.textContent =
+      "이 기간에 계획과 실제 기록이 둘 다 있는 과제가 없습니다.";
+    wrap.appendChild(empty);
+    return wrap;
+  }
+
+  const scaleItems = items.map((t) => ({
+    plannedMin: t.avgPlannedMin || t.plannedMin || 0,
+    actualMin: t.suggestedMin || t.avgActualMin || t.actualMin || 0,
+  }));
+  const { scaleMaxMin } = buildPlanChartScale(scaleItems);
+  const list = document.createElement("div");
+  list.className = "lp-tr2-plan-day-list";
+
+  items.forEach((item) => {
+    const suggestMin = Math.max(
+      0,
+      Math.round(Number(item.suggestedMin || item.avgActualMin) || 0),
+    );
+    const plannedAvg = Math.max(
+      0,
+      Math.round(Number(item.avgPlannedMin || item.plannedMin) || 0),
+    );
+    const actualAvg = Math.max(
+      0,
+      Math.round(Number(item.avgActualMin || item.actualMin) || 0),
+    );
+    const sampleN = Math.max(0, Math.round(Number(item.sampleCount) || 0));
+
+    const row = document.createElement("div");
+    row.className = "lp-tr2-plan-day-row lp-tr2-plan-suggest-row";
+
+    const head = document.createElement("div");
+    head.className = "lp-tr2-plan-day-row-head";
+
+    const name = document.createElement("span");
+    name.className = "lp-tr2-plan-day-name";
+    name.textContent = item.taskName || item.label;
+
+    const badge = document.createElement("span");
+    badge.className = "lp-tr2-plan-day-outcome lp-tr2-plan-suggest-badge";
+    badge.textContent = `권장 ${formatIntegerMinutesDurationKo(suggestMin)}`;
+
+    head.append(name, badge);
+
+    const meta = document.createElement("p");
+    meta.className = "lp-tr2-plan-day-meta";
+    const sampleSuffix = sampleN > 0 ? ` · ${sampleN}일` : "";
+    meta.textContent = `평소 계획 ${formatIntegerMinutesDurationKo(plannedAvg)} · 실제 평균 ${formatIntegerMinutesDurationKo(actualAvg)}${sampleSuffix} → 다음엔 ${formatIntegerMinutesDurationKo(suggestMin)} 배치`;
+
+    const track = document.createElement("div");
+    track.className = "lp-tr2-plan-day-track";
+    track.title = `${name.textContent} · ${meta.textContent}`;
+
+    const planPct =
+      scaleMaxMin > 0
+        ? Math.min(100, (plannedAvg / scaleMaxMin) * 100)
+        : 0;
+    const suggestPct =
+      scaleMaxMin > 0
+        ? Math.min(100, (suggestMin / scaleMaxMin) * 100)
+        : 0;
+
+    if (plannedAvg > 0) {
+      const planFill = document.createElement("div");
+      planFill.className = "lp-tr2-plan-day-plan";
+      planFill.style.width = `${planPct}%`;
+      planFill.title = `평소 계획 ${formatIntegerMinutesDurationKo(plannedAvg)}`;
+      track.appendChild(planFill);
+    }
+
+    if (suggestMin > 0) {
+      const suggestFill = document.createElement("div");
+      suggestFill.className = "lp-tr2-plan-day-actual";
+      suggestFill.style.width = `${suggestPct}%`;
+      suggestFill.title = `권장 ${formatIntegerMinutesDurationKo(suggestMin)}`;
+      track.appendChild(suggestFill);
+    }
+
+    row.append(head, meta, track);
+    list.appendChild(row);
+  });
+
+  wrap.appendChild(
+    createRatingChartLegend([
+      { swatch: PLAN_COMPARE_PLAN_COLOR, label: "평소 계획" },
+      { swatch: PLAN_COMPARE_ACTUAL_COLOR, label: "권장 배치" },
+    ]),
+  );
+  wrap.appendChild(list);
+  return wrap;
+}
+
 function mountPlanAdherenceSection(scrollWrap, range, rows) {
   const snap = buildPlanAdherenceReportSnapshot(range, rows);
   const sec = createSection(
@@ -3424,9 +3305,15 @@ function mountPlanAdherenceSection(scrollWrap, range, rows) {
     taskBlock.appendChild(renderPlanDayTaskCompareChart(snap.tasks || []));
     sec.appendChild(taskBlock);
   } else {
-    sec.appendChild(
-      renderPlanCompareChart(buildPlanCompareChartItems(snap.categories)),
-    );
+    const avgTasks = snap.taskDurationAverages || [];
+    if (avgTasks.length) {
+      const avgBlock = createRatingBlock(
+        "다음에 이만큼 잡으세요",
+        "실제 평균 기준 · 계획·기록이 둘 다 있는 과제만",
+      );
+      avgBlock.appendChild(renderPlanTaskSuggestDurationChart(avgTasks));
+      sec.appendChild(avgBlock);
+    }
   }
 
   if (snap.leak.minutes > 0) {
@@ -3447,21 +3334,15 @@ function mountPlanAdherenceSection(scrollWrap, range, rows) {
   }
 
   if (!snap.isSingleDay && snap.estimation) {
-    const estBlock = createRatingBlock("추정 정확도", "계획 시간 vs 실제");
+    const estBlock = createRatingBlock(
+      "추정 정확도",
+      "계획이 실제와 얼마나 맞는지",
+    );
     const estP = document.createElement("p");
     estP.className = "lp-tr2-plan-est-text";
     estP.textContent = snap.estimation.message;
     estBlock.appendChild(estP);
     sec.appendChild(estBlock);
-  }
-
-  if (!snap.isSingleDay && snap.categoryRank) {
-    const rankBlock = createRatingBlock("카테고리 이행", "가장 잘·못 지킨 항목");
-    const rankLine = document.createElement("p");
-    rankLine.className = "lp-tr2-plan-rank-line";
-    rankLine.textContent = `잘함 ${snap.categoryRank.best.label} ${snap.categoryRank.best.pct}% · 미달 ${snap.categoryRank.worst.label} ${snap.categoryRank.worst.pct}%`;
-    rankBlock.appendChild(rankLine);
-    sec.appendChild(rankBlock);
   }
 
   scrollWrap.appendChild(sec);
@@ -4298,53 +4179,13 @@ function renderDayHeroSummary(hero, { dayCount = 1 } = {}) {
 
 function mountHeroSection(scrollWrap, range) {
   const hero = getTimeReportHeroSnapshotForDateRange(range.start, range.end);
-  const isDay = range.start === range.end;
   const dayCount = listDatesInclusive(range.start, range.end).length;
-  const isWeekView = !isDay && dayCount > 1 && dayCount <= 8;
   const sec = createSection(
     "한 장 요약",
     formatRangeLabel(range.start, range.end),
   );
-
-  if (isDay || isWeekView) {
-    sec.appendChild(renderDayHeroSummary(hero, { dayCount }));
-    scrollWrap.appendChild(sec);
-    return;
-  }
-
-  const grid = document.createElement("div");
-  grid.className = "lp-tr2-card-grid";
-  grid.appendChild(
-    createStatCard(
-      "가용 시간",
-      formatIntegerMinutesDurationKo(hero.availableMinutes),
-      hero.daysWithData > 1 ? `${hero.daysWithData}일 기준 평균` : "",
-    ),
-  );
-  grid.appendChild(
-    createStatCard(
-      "생산(투자)",
-      formatIntegerMinutesDurationKo(hero.productiveMinutes),
-      hero.focusLabel ? `${hero.focusLabel} ${hero.focusPct}%` : "",
-    ),
-  );
-  grid.appendChild(
-    createStatCard(
-      "비생산(소비)",
-      formatIntegerMinutesDurationKo(hero.wasteMinutes),
-      "",
-    ),
-  );
-  const netWon = Math.round(Number(hero.netWon) || 0);
-  grid.appendChild(
-    createStatCard(
-      "시간의 가격(순가치)",
-      formatNetWon(netWon),
-      `집중 점수 ${hero.score}`,
-      netWon > 0 ? "pos" : netWon < 0 ? "neg" : "",
-    ),
-  );
-  sec.appendChild(grid);
+  /* 일·주·월간 동일 — 구성 도넛 + 가용시간 도넛 + 시간 가치 */
+  sec.appendChild(renderDayHeroSummary(hero, { dayCount }));
   scrollWrap.appendChild(sec);
 }
 
@@ -4942,11 +4783,233 @@ function renderCategoryTimeRadarChart(radarSnap) {
   return wrap;
 }
 
+/** 월간 과제 트리맵 — 파스텔 카테고리 색 */
+const MONTH_TASK_TREEMAP_COLORS = {
+  sideincome: "#F3D0D0",
+  happiness: "#F5DCE4",
+  health: "#D0EBD8",
+  pleasure: "#F3E4CC",
+  media_watch: "#DDD6F0",
+  unhappiness: "#D8DCE8",
+  unhealthy: "#D0E0F2",
+  moneylosing: "#E8D6E0",
+  work: "#D0E4F5",
+  sleep: "#D0EBE2",
+  other: "#E0E6EE",
+};
+
+const MONTH_TASK_TREEMAP_CAT_LABELS = {
+  sideincome: "시급 상승",
+  happiness: "행복",
+  health: "건강",
+  pleasure: "쾌락",
+  media_watch: "미디어",
+  unhappiness: "불행",
+  unhealthy: "비건강",
+  moneylosing: "시급 저하",
+  work: "근무",
+  sleep: "수면",
+  other: "기타",
+};
+
+function monthTaskCategoryKey(taskName, rowHint) {
+  const fromRow = String(rowHint || "").trim();
+  if (fromRow && MONTH_TASK_TREEMAP_COLORS[fromRow]) return fromRow;
+  const opt = getTaskOptionByName(String(taskName || "").trim());
+  const cat = String(opt?.category || "").trim();
+  return MONTH_TASK_TREEMAP_COLORS[cat] ? cat : "other";
+}
+
+/**
+ * 한달 과제별 총 시간 → 트리맵용 항목
+ * 작은 항목은「그 외」로 묶음
+ */
+function buildMonthTaskTreemapItems(rows) {
+  /** @type {Map<string, { name: string, minutes: number, categoryKey: string }>} */
+  const map = new Map();
+  for (const r of rows || []) {
+    const name = String(r?.taskName || "").trim();
+    if (!name) continue;
+    const mins = rowMinutes(r);
+    if (mins <= 0) continue;
+    const cur = map.get(name) || {
+      name,
+      minutes: 0,
+      categoryKey: monthTaskCategoryKey(name, r.category),
+    };
+    cur.minutes += mins;
+    if (!MONTH_TASK_TREEMAP_COLORS[cur.categoryKey]) {
+      cur.categoryKey = monthTaskCategoryKey(name, r.category);
+    }
+    map.set(name, cur);
+  }
+  const all = [...map.values()].sort(
+    (a, b) => b.minutes - a.minutes || a.name.localeCompare(b.name, "ko"),
+  );
+  if (!all.length) return [];
+
+  const total = all.reduce((s, t) => s + t.minutes, 0);
+  /* 너무 잘게 쪼개면 글자가 잘리므로 상위만 남기고 나머지는「그 외」 */
+  const MAX_CELLS = 12;
+  const MIN_SHARE = 0.02;
+  const kept = [];
+  let otherMin = 0;
+  for (const item of all) {
+    const share = total > 0 ? item.minutes / total : 0;
+    if (kept.length < MAX_CELLS && share >= MIN_SHARE) kept.push(item);
+    else otherMin += item.minutes;
+  }
+  if (otherMin > 0) {
+    kept.push({
+      name: "그 외",
+      minutes: otherMin,
+      categoryKey: "other",
+    });
+  }
+  return kept;
+}
+
+/** 이분 분할 트리맵 레이아웃 (0~100% 좌표) */
+function layoutMonthTaskTreemap(items) {
+  const total = items.reduce((s, t) => s + t.minutes, 0);
+  if (total <= 0) return [];
+  /** @type {{ name: string, minutes: number, categoryKey: string, x: number, y: number, w: number, h: number, pct: number }[]} */
+  const out = [];
+
+  function split(list, x, y, w, h) {
+    if (!list.length || w < 0.4 || h < 0.4) return;
+    if (list.length === 1) {
+      const t = list[0];
+      out.push({
+        ...t,
+        x,
+        y,
+        w,
+        h,
+        pct: Math.round((t.minutes / total) * 100),
+      });
+      return;
+    }
+    const sum = list.reduce((s, t) => s + t.minutes, 0);
+    let acc = 0;
+    let cut = 1;
+    for (let i = 0; i < list.length - 1; i += 1) {
+      acc += list[i].minutes;
+      cut = i + 1;
+      if (acc >= sum / 2) break;
+    }
+    const left = list.slice(0, cut);
+    const right = list.slice(cut);
+    const leftSum = left.reduce((s, t) => s + t.minutes, 0);
+    const ratio = sum > 0 ? leftSum / sum : 0.5;
+    if (w >= h) {
+      const w1 = w * ratio;
+      split(left, x, y, w1, h);
+      split(right, x + w1, y, w - w1, h);
+    } else {
+      const h1 = h * ratio;
+      split(left, x, y, w, h1);
+      split(right, x, y + h1, w, h - h1);
+    }
+  }
+
+  split(
+    [...items].sort((a, b) => b.minutes - a.minutes),
+    0,
+    0,
+    100,
+    100,
+  );
+  return out;
+}
+
+function renderMonthTaskTreemap(items) {
+  const layout = layoutMonthTaskTreemap(items);
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-task-treemap";
+  wrap.setAttribute("role", "img");
+  wrap.setAttribute("aria-label", "한달 과제별 사용 시간");
+
+  const board = document.createElement("div");
+  board.className = "lp-tr2-task-treemap-board";
+
+  const GAP = 0.45;
+  layout.forEach((cell) => {
+    const el = document.createElement("div");
+    el.className = "lp-tr2-task-treemap-cell";
+    const w = Math.max(0, cell.w - GAP);
+    const h = Math.max(0, cell.h - GAP);
+    el.style.left = `${cell.x + GAP / 2}%`;
+    el.style.top = `${cell.y + GAP / 2}%`;
+    el.style.width = `${w}%`;
+    el.style.height = `${h}%`;
+    el.style.background =
+      MONTH_TASK_TREEMAP_COLORS[cell.categoryKey] ||
+      MONTH_TASK_TREEMAP_COLORS.other;
+    el.title = `${cell.name} · ${formatIntegerMinutesDurationKo(cell.minutes)} · ${cell.pct}%`;
+
+    if (h < 9 || w < 11) el.classList.add("is-compact");
+    if (h < 7 || w < 9) el.classList.add("is-tiny");
+
+    const name = document.createElement("span");
+    name.className = "lp-tr2-task-treemap-name";
+    name.textContent = cell.name;
+
+    const meta = document.createElement("span");
+    meta.className = "lp-tr2-task-treemap-meta";
+    meta.textContent = `${formatIntegerMinutesDurationKo(cell.minutes)} · ${cell.pct}%`;
+
+    el.append(name, meta);
+    board.appendChild(el);
+  });
+
+  wrap.appendChild(board);
+
+  const usedCats = [
+    ...new Set(items.map((i) => i.categoryKey).filter(Boolean)),
+  ];
+  if (usedCats.length) {
+    wrap.appendChild(
+      createRatingChartLegend(
+        usedCats.map((key) => ({
+          swatch: MONTH_TASK_TREEMAP_COLORS[key] || MONTH_TASK_TREEMAP_COLORS.other,
+          label: MONTH_TASK_TREEMAP_CAT_LABELS[key] || key,
+        })),
+      ),
+    );
+  }
+  return wrap;
+}
+
+/** 월간 — 시간 배분 위에 과제별 시간 면적 시각화 */
+function mountMonthTaskTreemapSection(scrollWrap, range, rows) {
+  const dayCount = listDatesInclusive(range.start, range.end).length;
+  if (dayCount <= 8) return;
+
+  const items = buildMonthTaskTreemapItems(rows);
+  const sec = createSection(
+    "한달 시간 지도",
+    "네모가 클수록 그 과제에 쓴 시간이 많아요 · 색은 카테고리",
+  );
+
+  if (!items.length) {
+    const note = document.createElement("p");
+    note.className = "lp-tr2-chart-note";
+    note.textContent = "이 달에 집계할 과제 기록이 없습니다.";
+    sec.appendChild(note);
+    scrollWrap.appendChild(sec);
+    return;
+  }
+
+  sec.appendChild(renderMonthTaskTreemap(items));
+  scrollWrap.appendChild(sec);
+}
+
 function mountDonutSection(scrollWrap, range) {
   const snap = getTimeReportDonutSnapshotForDateRange(range.start, range.end);
   const radarSnap = buildCategoryTimeRadarFromDonutSnap(snap);
   const sec = createSection(
-    "시간 배분 현황",
+    "시간의 방향",
     "수면·근무 제외 · 카테고리별 기록 시간",
   );
   const wrap = document.createElement("div");
@@ -5008,6 +5071,7 @@ export function mountUnifiedTimeReport(scrollWrap, arg2, arg3) {
   scrollWrap.classList.add("lp-tr2-root");
 
   mountHeroSection(scrollWrap, range);
+  mountMonthTaskTreemapSection(scrollWrap, range, rows);
   mountDonutSection(scrollWrap, range);
   mountSleepSection(scrollWrap, range, rows);
   mountIntakeSection(scrollWrap, range, rows);
