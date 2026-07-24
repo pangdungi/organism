@@ -653,12 +653,13 @@
 /* ── 시간 레포트 v2 ── */
 .lp-tr2-root,
 .diary-content-scroll.lp-tr2-root {
-  /* 모바일 기본 → 넓은 화면에서 media로 키움 */
+  /* 모바일 기본 → 넓은 화면에서 media로 키움 (레포트 전 구간이 이 변수 사용) */
   --lp-tr2-title: 0.9375rem;
   --lp-tr2-sub: 0.75rem;
   --lp-tr2-body: 0.75rem;
   --lp-tr2-label: 0.6875rem;
   --lp-tr2-meta: 0.625rem;
+  --lp-tr2-caption: 0.5625rem;
   --lp-tr2-value: 1rem;
   --lp-tr2-hero: 1.25rem;
   --lp-tr2-section-pad: 0.85rem 0.9rem 0.95rem;
@@ -672,13 +673,14 @@
 @media (min-width: 768px) {
   .lp-tr2-root,
   .diary-content-scroll.lp-tr2-root {
-    --lp-tr2-title: 1.125rem;
-    --lp-tr2-sub: 0.875rem;
-    --lp-tr2-body: 0.875rem;
-    --lp-tr2-label: 0.8125rem;
-    --lp-tr2-meta: 0.75rem;
-    --lp-tr2-value: 1.1875rem;
-    --lp-tr2-hero: 1.5rem;
+    --lp-tr2-title: 1.25rem;
+    --lp-tr2-sub: 0.9375rem;
+    --lp-tr2-body: 0.9375rem;
+    --lp-tr2-label: 0.875rem;
+    --lp-tr2-meta: 0.8125rem;
+    --lp-tr2-caption: 0.6875rem;
+    --lp-tr2-value: 1.375rem;
+    --lp-tr2-hero: 1.75rem;
     --lp-tr2-section-pad: 1.05rem 1.1rem 1.15rem;
     gap: 0.85rem;
   }
@@ -691,13 +693,14 @@
 @media (min-width: 1100px) {
   .lp-tr2-root,
   .diary-content-scroll.lp-tr2-root {
-    --lp-tr2-title: 1.25rem;
-    --lp-tr2-sub: 0.9375rem;
-    --lp-tr2-body: 0.9375rem;
-    --lp-tr2-label: 0.875rem;
-    --lp-tr2-meta: 0.8125rem;
-    --lp-tr2-value: 1.25rem;
-    --lp-tr2-hero: 1.625rem;
+    --lp-tr2-title: 1.375rem;
+    --lp-tr2-sub: 1rem;
+    --lp-tr2-body: 1rem;
+    --lp-tr2-label: 0.9375rem;
+    --lp-tr2-meta: 0.875rem;
+    --lp-tr2-caption: 0.75rem;
+    --lp-tr2-value: 1.5rem;
+    --lp-tr2-hero: 1.875rem;
     --lp-tr2-section-pad: 1.15rem 1.25rem 1.25rem;
   }
 }
@@ -999,14 +1002,14 @@
 }
 
 .lp-tr2-plan-hero-label {
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   font-weight: 700;
   color: #666666;
   letter-spacing: 0.03em;
 }
 
 .lp-tr2-plan-hero-value {
-  font-size: 2.35rem;
+  font-size: calc(var(--lp-tr2-hero) * 1.55);
   font-weight: 800;
   line-height: 1.05;
   letter-spacing: -0.03em;
@@ -1016,7 +1019,7 @@
 
 .lp-tr2-plan-hero-line {
   margin: 0.15rem 0 0;
-  font-size: 0.75rem;
+  font-size: var(--lp-tr2-body);
   font-weight: 600;
   color: #4d4d4d;
   line-height: 1.4;
@@ -1026,6 +1029,14 @@
 .lp-tr2-plan-summary-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-bottom: 0.35rem;
+}
+
+.lp-tr2-plan-summary-grid--day {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.lp-tr2-plan-summary-grid--day:has(> :nth-child(4)) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .lp-tr2-plan-summary-grid:has(> :nth-child(2):last-child) {
@@ -1090,7 +1101,7 @@
 }
 
 .lp-tr2-plan-compare-label {
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   font-weight: 700;
   color: #475569;
   line-height: 1.2;
@@ -1133,40 +1144,90 @@
 .lp-tr2-plan-day-list {
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
+  gap: 0;
 }
 
 .lp-tr2-plan-day-row {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
+  padding: 0.7rem 0.55rem 0.75rem;
+  border-bottom: 1px solid #e8edf3;
+  box-sizing: border-box;
+}
+
+.lp-tr2-plan-day-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0.35rem;
+}
+
+.lp-tr2-plan-day-row:first-child {
+  padding-top: 0.35rem;
 }
 
 .lp-tr2-plan-day-row-head {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 0.25rem 0.6rem;
 }
 
 .lp-tr2-plan-day-name {
-  font-size: 0.8125rem;
+  font-size: var(--lp-tr2-body);
   font-weight: 800;
   color: #111111;
   line-height: 1.25;
   overflow-wrap: anywhere;
 }
 
+.lp-tr2-plan-day-outcome {
+  flex: 0 0 auto;
+  font-size: var(--lp-tr2-label);
+  font-weight: 750;
+  padding: 0.12rem 0.4rem;
+  border-radius: 999px;
+  line-height: 1.2;
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.lp-tr2-plan-day-outcome--over {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.lp-tr2-plan-day-outcome--match {
+  background: #ecfdf5;
+  color: #15803d;
+}
+
+.lp-tr2-plan-day-outcome--under {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.lp-tr2-plan-day-outcome--missed {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.lp-tr2-plan-day-outcome--unplanned {
+  background: #fff7ed;
+  color: #9a3412;
+}
+
 .lp-tr2-plan-day-meta {
-  font-size: 0.6875rem;
+  margin: 0;
+  font-size: var(--lp-tr2-label);
   font-weight: 650;
   color: #64748b;
   font-variant-numeric: tabular-nums;
   line-height: 1.3;
 }
 
-.lp-tr2-plan-day-row.is-unplanned .lp-tr2-plan-day-meta {
+.lp-tr2-plan-day-row.is-outcome-unplanned .lp-tr2-plan-day-meta,
+.lp-tr2-plan-day-row.is-outcome-missed .lp-tr2-plan-day-meta {
   color: #8b5c3a;
 }
 
@@ -1226,7 +1287,7 @@
   position: absolute;
   top: 0.28rem;
   transform: translateX(-50%);
-  font-size: 0.5625rem;
+  font-size: var(--lp-tr2-caption);
   font-weight: 600;
   line-height: 1;
   color: #94a3b8;
@@ -1259,7 +1320,7 @@
 }
 
 .lp-tr2-cat-compare-label {
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   font-weight: 700;
   color: #4d4d4d;
   line-height: 1.2;
@@ -1281,7 +1342,7 @@
 }
 
 .lp-tr2-cat-compare-tag {
-  font-size: 0.5625rem;
+  font-size: var(--lp-tr2-caption);
   font-weight: 700;
   color: #999999;
   white-space: nowrap;
@@ -1302,7 +1363,7 @@
 
 .lp-tr2-plan-leak-main {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: var(--lp-tr2-body);
   font-weight: 700;
   color: #8b5c3a;
   line-height: 1.35;
@@ -1310,7 +1371,7 @@
 
 .lp-tr2-plan-leak-items {
   margin: 0.35rem 0 0;
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   color: #666666;
   line-height: 1.45;
   overflow-wrap: anywhere;
@@ -1319,7 +1380,7 @@
 .lp-tr2-plan-est-text,
 .lp-tr2-plan-rank-line {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: var(--lp-tr2-body);
   font-weight: 600;
   color: #4d4d4d;
   line-height: 1.45;
@@ -1333,7 +1394,7 @@
 
 .lp-tr2-bars--compact .lp-tr2-bar-label {
   min-width: 1.4rem;
-  font-size: 0.625rem;
+  font-size: var(--lp-tr2-meta);
 }
 
 .lp-tr2-bar-row {
@@ -1344,7 +1405,7 @@
 }
 
 .lp-tr2-bar-label {
-  font-size: 0.75rem;
+  font-size: var(--lp-tr2-body);
   font-weight: 600;
   color: #666666;
   text-align: right;
@@ -1366,7 +1427,7 @@
 }
 
 .lp-tr2-bar-value {
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: #4d4d4d;
@@ -1383,23 +1444,25 @@
 .lp-tr2-sleep-chart-wrap {
   width: 100%;
   margin-top: 0.15rem;
-  box-sizing: border-box;
 }
 
+/* 주간 등: 카드 가로를 꽉 채움. height:auto → 비율 유지(글자 안 찌그러짐) */
 .lp-tr2-sleep-chart-canvas {
   width: 100%;
   max-width: 100%;
-  height: clamp(7.25rem, 34vw, 8.5rem);
-  box-sizing: border-box;
+  height: auto;
+  overflow: visible;
 }
 
 .lp-tr2-sleep-chart-canvas .lp-tr2-sleep-chart-svg {
   display: block;
   width: 100%;
-  height: 100%;
+  max-width: 100%;
+  height: auto;
 }
 
 .lp-tr2-sleep-chart-canvas--scroll {
+  height: clamp(6.75rem, 30vw, 7.5rem);
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
@@ -1410,6 +1473,7 @@
 
 .lp-tr2-sleep-chart-canvas--scroll .lp-tr2-sleep-chart-svg {
   width: auto;
+  max-width: none;
   height: 100%;
 }
 
@@ -1426,7 +1490,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   color: #666666;
   white-space: nowrap;
 }
@@ -1533,10 +1597,14 @@
 }
 
 .lp-tr2-sleep-stats--week {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 @media (min-width: 420px) {
+  .lp-tr2-sleep-stats--week {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
   .lp-tr2-sleep-stats:not(.lp-tr2-sleep-stats--week) {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
@@ -1577,6 +1645,10 @@
   color: #c2410c;
 }
 
+.lp-tr2-sleep-stat-value--recommend {
+  color: #1e4d7b;
+}
+
 .lp-tr2-sleep-stat-hint {
   display: block;
   margin-top: 0.08rem;
@@ -1609,7 +1681,7 @@
 .lp-tr2-sleep-day-table th {
   font-weight: 650;
   color: #94a3b8;
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
 }
 
 .lp-tr2-sleep-day-table td {
@@ -1872,7 +1944,7 @@
 
 .lp-tr2-emotion-trigger-table-head {
   background: #f2f2f2;
-  font-size: 0.625rem;
+  font-size: var(--lp-tr2-meta);
   font-weight: 700;
   color: #666666;
   border-bottom: 1px solid #e8edf2;
@@ -1883,7 +1955,7 @@
 }
 
 .lp-tr2-emotion-trigger-table-row {
-  font-size: 0.75rem;
+  font-size: var(--lp-tr2-body);
   border-bottom: 1px solid #f2f2f2;
 }
 
@@ -1956,14 +2028,14 @@
 }
 
 .lp-tr2-emotion-trigger-chip-label {
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   font-weight: 700;
   color: #222222;
   overflow-wrap: anywhere;
 }
 
 .lp-tr2-emotion-trigger-chip-meta {
-  font-size: 0.5625rem;
+  font-size: var(--lp-tr2-caption);
   color: #666666;
   font-variant-numeric: tabular-nums;
 }
@@ -1992,7 +2064,7 @@
 }
 
 .lp-tr2-emotion-heatmap-day-label {
-  font-size: 0.5625rem;
+  font-size: var(--lp-tr2-caption);
   font-weight: 700;
   color: #666666;
   display: flex;
@@ -2001,7 +2073,7 @@
 }
 
 .lp-tr2-emotion-heatmap-hour-label {
-  font-size: 0.5rem;
+  font-size: var(--lp-tr2-caption);
   color: #999999;
   text-align: center;
   line-height: 1.2;
@@ -2033,7 +2105,7 @@
   align-items: center;
   gap: 0.25rem;
   margin-top: 0.45rem;
-  font-size: 0.5625rem;
+  font-size: var(--lp-tr2-caption);
   color: #999999;
 }
 
@@ -2051,7 +2123,7 @@
 
 .lp-tr2-routine-weak-line {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: var(--lp-tr2-body);
   line-height: 1.5;
   color: #4d4d4d;
   overflow-wrap: anywhere;
@@ -2093,20 +2165,20 @@
 .lp-tr2-routine-block-title {
   margin: 0;
   flex: 0 0 100%;
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   font-weight: 700;
   color: #666666;
 }
 
 .lp-tr2-routine-block-name {
-  font-size: 0.8125rem;
+  font-size: var(--lp-tr2-body);
   font-weight: 800;
   color: #111111;
 }
 
 .lp-tr2-routine-block-pct {
   margin-left: auto;
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   font-weight: 700;
   color: #666666;
   font-variant-numeric: tabular-nums;
@@ -2114,7 +2186,7 @@
 
 .lp-tr2-routine-block-sub {
   margin: 0 0 0.45rem;
-  font-size: 0.625rem;
+  font-size: var(--lp-tr2-meta);
   color: #999999;
 }
 
@@ -2123,7 +2195,7 @@
   align-items: center;
   padding: 0.1rem 0.4rem;
   border-radius: 999px;
-  font-size: 0.5625rem;
+  font-size: var(--lp-tr2-caption);
   font-weight: 800;
   letter-spacing: 0.02em;
 }
@@ -2141,14 +2213,14 @@
 .lp-tr2-routine-weak-list {
   margin: 0;
   padding-left: 1rem;
-  font-size: 0.75rem;
+  font-size: var(--lp-tr2-body);
   color: #4d4d4d;
   line-height: 1.5;
 }
 
 .lp-tr2-sleep-chart-scroll-hint {
   margin: 0.2rem 0 0;
-  font-size: 0.625rem;
+  font-size: var(--lp-tr2-meta);
   color: #999999;
   text-align: center;
 }
@@ -2385,7 +2457,7 @@
 
 .lp-tr2-intake-taste-chip-label {
   margin: 0 0 0.35rem;
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   font-weight: 600;
   color: var(--text-caption-color, #64748b);
 }
@@ -2402,7 +2474,7 @@
   align-items: center;
   padding: 0.2rem 0.45rem;
   border-radius: 999px;
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   line-height: 1.35;
   background: #f1f5f9;
   color: var(--text-body, #475569);
@@ -2429,7 +2501,7 @@
 
 .lp-tr2-media-empty {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: var(--lp-tr2-body);
   color: #999999;
 }
 
@@ -2458,14 +2530,14 @@
 
 .lp-tr2-media-days-title {
   margin: 0 0 0.35rem;
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   font-weight: 700;
   color: #666666;
 }
 
 .lp-tr2-media-tag-hint {
   margin: 0 0 0.55rem;
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   line-height: 1.45;
   color: #999999;
 }
@@ -2490,7 +2562,7 @@
 
 .lp-tr2-media-tag-block-title {
   margin: 0 0 0.22rem;
-  font-size: 0.8125rem;
+  font-size: var(--lp-tr2-body);
   font-weight: 700;
   color: #111111;
 }
@@ -2505,7 +2577,7 @@
 
 .lp-tr2-media-tag-block-sub {
   margin: 0 0 0.5rem;
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   line-height: 1.4;
   color: #999999;
 }
@@ -2520,7 +2592,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.75rem;
+  font-size: var(--lp-tr2-body);
   color: var(--text-ink);
 }
 
@@ -2559,13 +2631,13 @@
 }
 
 .lp-tr2-media-day-block-date {
-  font-size: 0.8125rem;
+  font-size: var(--lp-tr2-body);
   font-weight: 700;
   color: #111111;
 }
 
 .lp-tr2-media-day-block-time {
-  font-size: 0.8125rem;
+  font-size: var(--lp-tr2-body);
   font-weight: 700;
   color: #4d4d4d;
   font-variant-numeric: tabular-nums;
@@ -2573,7 +2645,7 @@
 
 .lp-tr2-media-day-block-avail {
   margin: 0.18rem 0 0.45rem;
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   color: #999999;
   line-height: 1.35;
 }
@@ -2617,7 +2689,7 @@
 }
 
 .lp-tr2-media-kind-panel-title {
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   font-weight: 700;
   color: #666666;
 }
@@ -2631,7 +2703,7 @@
 }
 
 .lp-tr2-media-kind-panel-time {
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   font-weight: 700;
   color: #4d4d4d;
   font-variant-numeric: tabular-nums;
@@ -2654,7 +2726,7 @@
 }
 
 .lp-tr2-media-kind-panel-label {
-  font-size: 0.75rem;
+  font-size: var(--lp-tr2-body);
   font-weight: 500;
   color: var(--text-ink);
   overflow-wrap: anywhere;
@@ -2667,7 +2739,7 @@
 }
 
 .lp-tr2-media-kind-panel-meta {
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   font-weight: 600;
   color: #666666;
   white-space: nowrap;
@@ -2675,7 +2747,7 @@
 }
 
 .lp-tr2-media-kind-panel-empty {
-  font-size: 0.75rem;
+  font-size: var(--lp-tr2-body);
   color: #999999;
   list-style: none;
 }
@@ -2688,7 +2760,7 @@
 
 .lp-tr2-media-compare-sub {
   margin: 0 0 0.5rem;
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   line-height: 1.4;
   color: #999999;
 }
@@ -2755,7 +2827,7 @@
 }
 
 .lp-tr2-media-compare-date {
-  font-size: 0.5625rem;
+  font-size: var(--lp-tr2-caption);
   font-weight: 600;
   color: #666666;
   text-align: center;
@@ -2788,7 +2860,7 @@
 }
 
 .lp-tr2-journal-date {
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   font-weight: 600;
   color: #999999;
   line-height: 1.35;
@@ -2800,7 +2872,7 @@
 
 .lp-tr2-journal-main {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: calc(var(--lp-tr2-body) + 0.125rem);
   font-weight: 600;
   line-height: 1.45;
   color: #111111;
@@ -2809,7 +2881,7 @@
 
 .lp-tr2-journal-sub {
   margin: 0.15rem 0 0;
-  font-size: 0.75rem;
+  font-size: var(--lp-tr2-body);
   line-height: 1.4;
   color: #666666;
 }
@@ -2817,7 +2889,7 @@
 .lp-tr2-journal-empty {
   margin: 0;
   padding: 0.35rem 0;
-  font-size: 0.8125rem;
+  font-size: var(--lp-tr2-body);
   color: #999999;
   list-style: none;
 }
@@ -2843,13 +2915,13 @@
 
 .lp-tr2-action-block-title {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: var(--lp-tr2-body);
   font-weight: 700;
   color: #000000;
 }
 
 .lp-tr2-action-block-sum {
-  font-size: 0.8125rem;
+  font-size: var(--lp-tr2-body);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: #4d4d4d;
@@ -2858,7 +2930,7 @@
 
 .lp-tr2-action-block-only-time {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: var(--lp-tr2-body);
   color: #666666;
 }
 
@@ -2868,7 +2940,7 @@
   border-radius: 0.65rem;
   background: #f5f5f5;
   border: 1px solid #dbe4ef;
-  font-size: 0.8125rem;
+  font-size: var(--lp-tr2-body);
   line-height: 1.5;
   color: #4d4d4d;
 }
@@ -2970,14 +3042,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.75rem;
+  font-size: var(--lp-tr2-body);
   font-weight: 600;
   color: #4d4d4d;
 }
 
 .lp-tr2-bars--compact .lp-tr2-bar-row--rating .lp-tr2-bar-label {
   text-align: right;
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   color: #666666;
 }
 
@@ -3010,7 +3082,7 @@
   justify-content: flex-end;
   gap: 0.2rem;
   min-width: 2.75rem;
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   font-weight: 700;
   color: #475569;
   text-align: right;
@@ -3030,7 +3102,7 @@
 }
 
 .lp-tr2-bar-value--rating .lp-tr2-bar-value-star {
-  font-size: 0.625rem;
+  font-size: var(--lp-tr2-meta);
   line-height: 1;
   color: #666666;
 }
@@ -3094,7 +3166,7 @@
 
 .lp-tr2-rating-hour-axis-tick {
   text-align: center;
-  font-size: 0.5625rem;
+  font-size: var(--lp-tr2-caption);
   font-weight: 600;
   line-height: 1;
   color: #b8c5d4;
@@ -3104,7 +3176,7 @@
 .lp-tr2-rating-hour-axis-tick.is-major {
   color: #666666;
   font-weight: 700;
-  font-size: 0.625rem;
+  font-size: var(--lp-tr2-meta);
 }
 
 .lp-tr2-rating-weekday-chart {
@@ -3164,7 +3236,7 @@
 }
 
 .lp-tr2-rating-weekday-label {
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   font-weight: 700;
   color: #666666;
   line-height: 1.1;
@@ -3174,7 +3246,7 @@
   display: block;
   min-height: 1em;
   max-width: 100%;
-  font-size: 0.5625rem;
+  font-size: var(--lp-tr2-caption);
   font-weight: 700;
   color: #475569;
   font-variant-numeric: tabular-nums;
@@ -3196,7 +3268,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.28rem;
-  font-size: 0.625rem;
+  font-size: var(--lp-tr2-meta);
   font-weight: 600;
   color: #666666;
 }
@@ -3217,7 +3289,7 @@
 
 .lp-tr2-rating-peak-note {
   margin: 0.55rem 0 0;
-  font-size: 0.75rem;
+  font-size: var(--lp-tr2-body);
   line-height: 1.45;
   color: #666666;
 }
@@ -3258,7 +3330,7 @@
 }
 
 .lp-tr2-rating-peak-label {
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   font-weight: 700;
   color: #666666;
 }
@@ -3268,7 +3340,7 @@
 }
 
 .lp-tr2-rating-peak-item {
-  font-size: 0.8125rem;
+  font-size: var(--lp-tr2-body);
   font-weight: 600;
   color: #111111;
   font-variant-numeric: tabular-nums;
@@ -3289,21 +3361,21 @@
 
 .lp-tr2-meal-list-title {
   margin: 0 0 0.35rem;
-  font-size: 0.75rem;
+  font-size: var(--lp-tr2-body);
   font-weight: 700;
   color: #4d4d4d;
 }
 
 .lp-tr2-meal-list-empty {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: var(--lp-tr2-body);
   color: #999999;
 }
 
 .lp-tr2-meal-list {
   margin: 0;
   padding: 0 0 0 1rem;
-  font-size: 0.8125rem;
+  font-size: var(--lp-tr2-body);
   line-height: 1.55;
   color: var(--text-ink);
 }
@@ -3370,21 +3442,21 @@
 }
 
 .lp-tr2-donut-split-label {
-  font-size: 0.625rem;
+  font-size: var(--lp-tr2-meta);
   font-weight: 700;
   color: #666666;
   width: 100%;
 }
 
 .lp-tr2-donut-split-chip strong {
-  font-size: 0.8125rem;
+  font-size: var(--lp-tr2-body);
   font-weight: 700;
   color: #111111;
   font-variant-numeric: tabular-nums;
 }
 
 .lp-tr2-donut-split-pct {
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   font-weight: 700;
   color: #4d4d4d;
 }
@@ -3441,13 +3513,13 @@
 }
 
 .lp-tr2-donut-cap {
-  font-size: 0.625rem;
+  font-size: var(--lp-tr2-meta);
   font-weight: 600;
   color: #999999;
 }
 
 .lp-tr2-donut-total {
-  font-size: 0.875rem;
+  font-size: calc(var(--lp-tr2-body) + 0.125rem);
   font-weight: 700;
   color: #111111;
   font-variant-numeric: tabular-nums;
@@ -3456,7 +3528,7 @@
 
 .lp-tr2-donut-sub {
   margin-top: 0.1rem;
-  font-size: 0.625rem;
+  font-size: var(--lp-tr2-meta);
   font-weight: 600;
   color: #666666;
 }
@@ -3468,7 +3540,7 @@
 
 .lp-tr2-donut-legend-group {
   margin: 0 0 0.3rem;
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   font-weight: 700;
 }
 
@@ -3522,14 +3594,14 @@
 }
 
 .lp-tr2-donut-legend-label {
-  font-size: 0.75rem;
+  font-size: var(--lp-tr2-body);
   font-weight: 600;
   color: var(--text-ink);
   overflow-wrap: anywhere;
 }
 
 .lp-tr2-donut-legend-meta {
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-label);
   font-weight: 700;
   color: #666666;
   font-variant-numeric: tabular-nums;
@@ -3552,7 +3624,7 @@
 
 .lp-tr2-donut-legend-empty {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: var(--lp-tr2-body);
   color: #999999;
   line-height: 1.5;
 }

@@ -167,6 +167,33 @@ function formatHoursMinutesShort(totalMinutes) {
   return `${h}시간 ${m}분`;
 }
 
+/**
+ * 계획 대비 실제 결과
+ * - over: 실제가 계획보다 김(초과)
+ * - match: 거의 맞음
+ * - under: 계획보다 짧게 씀(시간을 너무 많이 잡아 둠)
+ * - missed: 계획은 있는데 실행 0
+ * - unplanned: 계획 밖 활동
+ */
+function resolvePlanVsActualOutcome(plannedMin, actualMin) {
+  const planned = Math.max(0, Math.round(Number(plannedMin) || 0));
+  const actual = Math.max(0, Math.round(Number(actualMin) || 0));
+  if (planned <= 0 && actual > 0) {
+    return { key: "unplanned", label: "계획 밖" };
+  }
+  if (planned > 0 && actual <= 0) {
+    return { key: "missed", label: "미실행" };
+  }
+  if (planned <= 0) {
+    return { key: "match", label: "—" };
+  }
+  const tol = Math.max(10, Math.round(planned * 0.1));
+  const delta = actual - planned;
+  if (delta > tol) return { key: "over", label: "시간 초과" };
+  if (delta < -tol) return { key: "under", label: "계획 과다" };
+  return { key: "match", label: "딱 맞음" };
+}
+
 function buildPlanningHabitLine(plannedDays, totalDays) {
   const total = Math.max(0, Math.round(Number(totalDays) || 0));
   const planned = Math.max(0, Math.round(Number(plannedDays) || 0));
@@ -211,6 +238,13 @@ export function buildPlanAdherenceReportSnapshot(range, rows) {
     oneLiner: "",
     categories: [],
     tasks: [],
+    dayOutcomeCounts: {
+      over: 0,
+      match: 0,
+      under: 0,
+      missed: 0,
+      unplanned: 0,
+    },
     leak: { minutes: 0, pct: 0, items: [] },
     estimation: null,
     categoryRank: null,
@@ -337,27 +371,46 @@ export function buildPlanAdherenceReportSnapshot(range, rows) {
 
   const tasks = [...taskAgg.entries()]
     .filter(([, v]) => v.planned > 0 || v.actual > 0)
-    .map(([taskName, v]) => ({
-      taskName,
-      label: taskName,
-      key: taskName,
-      categoryKey: taskCategoryKey(taskName),
-      categoryLabel: categoryLabel(taskCategoryKey(taskName)),
-      plannedMin: v.planned,
-      actualMin: v.actual,
-      adherencePct:
-        v.planned > 0
-          ? Math.round((Math.min(v.actual, v.planned) / v.planned) * 100)
-          : null,
-      isUnplanned: v.planned <= 0 && v.actual > 0,
-    }))
+    .map(([taskName, v]) => {
+      const plannedMin = v.planned;
+      const actualMin = v.actual;
+      const isUnplanned = plannedMin <= 0 && actualMin > 0;
+      const deltaMin = actualMin - plannedMin;
+      const outcome = resolvePlanVsActualOutcome(plannedMin, actualMin);
+      return {
+        taskName,
+        label: taskName,
+        key: taskName,
+        categoryKey: taskCategoryKey(taskName),
+        categoryLabel: categoryLabel(taskCategoryKey(taskName)),
+        plannedMin,
+        actualMin,
+        deltaMin,
+        outcome: outcome.key,
+        outcomeLabel: outcome.label,
+        adherencePct:
+          plannedMin > 0
+            ? Math.round((Math.min(actualMin, plannedMin) / plannedMin) * 100)
+            : null,
+        isUnplanned,
+      };
+    })
     .sort(
       (a, b) =>
         Number(b.plannedMin > 0) - Number(a.plannedMin > 0) ||
+        Math.abs(b.deltaMin) - Math.abs(a.deltaMin) ||
         b.plannedMin - a.plannedMin ||
         b.actualMin - a.actualMin ||
         a.taskName.localeCompare(b.taskName, "ko"),
     );
+
+  const dayOutcomeCounts = {
+    over: tasks.filter((t) => t.outcome === "over").length,
+    match: tasks.filter((t) => t.outcome === "match").length,
+    under: tasks.filter((t) => t.outcome === "under").length,
+    missed: tasks.filter((t) => t.outcome === "missed").length,
+    unplanned: tasks.filter((t) => t.outcome === "unplanned").length,
+  };
 
   const leakItems = [...leakByTask.entries()]
     .map(([taskName, minutes]) => ({ taskName, minutes }))
@@ -415,6 +468,7 @@ export function buildPlanAdherenceReportSnapshot(range, rows) {
     oneLiner,
     categories,
     tasks,
+    dayOutcomeCounts,
     leak: {
       minutes: totalLeak,
       pct: leakPct,

@@ -896,18 +896,18 @@ function computeSleepYDomain(hoursValues, targetHours) {
 }
 
 function sleepChartLayout(totalDays) {
-  /* 주간(~8일)·2주까지는 가로 스크롤 없이 카드 너비를 꽉 채움 */
+  /* 주간·2주: 스크롤 없이 카드 가로 100%에 맞춤. 긴 기간만 가로 스크롤 */
   const scroll = totalDays > 14;
   const minSlot = scroll
     ? totalDays <= 31
       ? 26
       : 20
     : totalDays <= 8
-      ? 52
-      : 40;
-  const pad = { top: 18, right: 12, bottom: 24, left: 28 };
-  const W = Math.max(360, pad.left + pad.right + totalDays * minSlot);
-  const H = 128;
+      ? 46
+      : 38;
+  const pad = { top: 20, right: 8, bottom: 26, left: 28 };
+  const W = Math.max(320, pad.left + pad.right + totalDays * minSlot);
+  const H = 148;
   return { W, H, pad, minSlot, scroll };
 }
 
@@ -938,12 +938,15 @@ function renderSleepGoalBarChart(canvas, sleepByDay) {
     viewBox: `0 0 ${W} ${H}`,
     class: "lp-tr2-sleep-chart-svg",
     role: "img",
-    /* 주간 등은 가로를 늘려 카드 전체를 쓰고, 긴 기간만 스크롤 */
-    preserveAspectRatio: scroll ? "xMinYMid meet" : "none",
+    /* meet: 비율 유지(글자 안 눌림). 가로는 CSS width:100% + height:auto 로 채움 */
+    preserveAspectRatio: scroll ? "xMinYMid meet" : "xMidYMid meet",
     "aria-label": "날짜별 수면 시간 막대 그래프 · 7시간 목표",
   });
   if (scroll) {
     svg.style.minWidth = `${W}px`;
+  } else {
+    svg.removeAttribute("width");
+    svg.removeAttribute("height");
   }
 
   svg.appendChild(
@@ -1456,6 +1459,7 @@ function buildSleepReportSnapshot(rows, range) {
       : bedtimeRegularity || wakeRegularity;
   const avgQuality = avgRatingOf(daysWithSleep);
   const correlations = buildSleepQualityCorrelations(daysWithSleep);
+  const bestSleepEstimate = estimateBestRatedSleepMinutes(daysWithSleep);
 
   const total = daysWithSleep.reduce((a, x) => a + x.minutes, 0);
   const metDays = daysWithSleep.filter(
@@ -1472,11 +1476,39 @@ function buildSleepReportSnapshot(rows, range) {
     wakeRegularity,
     regularitySpread,
     avgQuality,
+    bestSleepEstimate,
     correlations,
     avgDurationMinutes: daysWithSleep.length
       ? Math.round(total / daysWithSleep.length)
       : 0,
     metDays,
+  };
+}
+
+/**
+ * 평가(별점)가 높았던 날의 수면 길이 평균 → 추천 수면 시간 추산
+ * @returns {{ minutes: number, rating: number, sampleDays: number }|null}
+ */
+function estimateBestRatedSleepMinutes(daysWithSleep) {
+  const rated = (daysWithSleep || []).filter(
+    (d) => d.rating != null && Number.isFinite(d.rating) && d.minutes > 0,
+  );
+  if (rated.length < 2) return null;
+  const maxR = Math.max(...rated.map((d) => d.rating));
+  let best = rated.filter((d) => d.rating >= maxR - 0.05);
+  /* 최고점이 하루뿐이면 4점 이상 날로 넓혀 추산 */
+  if (best.length < 2 && maxR >= 4) {
+    best = rated.filter((d) => d.rating >= 4);
+  }
+  if (best.length < 1) return null;
+  const minutes = Math.round(
+    best.reduce((sum, d) => sum + d.minutes, 0) / best.length,
+  );
+  if (!(minutes > 0)) return null;
+  return {
+    minutes,
+    rating: maxR,
+    sampleDays: best.length,
   };
 }
 
@@ -1526,7 +1558,7 @@ function buildSleepStatsGrid(snap, options = {}) {
     return grid;
   }
 
-  /* 주간: 평균 수면 · 취침 · 평가만 (그래프는 목표 대비 수면 시간) */
+  /* 주간: 평균 수면 · 취침 · 평가 · 추천 수면 */
   if (isWeekView) {
     grid.classList.add("lp-tr2-sleep-stats--week");
     addStat(
@@ -1536,7 +1568,7 @@ function buildSleepStatsGrid(snap, options = {}) {
       "duration",
     );
     addStat(
-      "평균 취침",
+      "평균 취침 시작 시간",
       snap.avgBedtime != null ? formatClockFromMinutes(snap.avgBedtime) : "—",
       "",
       "bedtime",
@@ -1547,11 +1579,18 @@ function buildSleepStatsGrid(snap, options = {}) {
       "",
       "rating",
     );
+    const best = snap.bestSleepEstimate;
+    addStat(
+      "추천 수면 시간",
+      best ? formatIntegerMinutesDurationKo(best.minutes) : "—",
+      "",
+      "recommend",
+    );
     return grid;
   }
 
   addStat(
-    "평균 취침",
+    "평균 취침 시작 시간",
     snap.avgBedtime != null ? formatClockFromMinutes(snap.avgBedtime) : "—",
   );
   addStat(
@@ -1574,6 +1613,15 @@ function buildSleepStatsGrid(snap, options = {}) {
     "평균 수면",
     formatIntegerMinutesDurationKo(snap.avgDurationMinutes),
   );
+  {
+    const best = snap.bestSleepEstimate;
+    addStat(
+      "추천 수면 시간",
+      best ? formatIntegerMinutesDurationKo(best.minutes) : "—",
+      "",
+      "recommend",
+    );
+  }
   if (daysWithSleep.length > 1) {
     addStat("최소", formatIntegerMinutesDurationKo(Math.min(...mins)));
     addStat("최대", formatIntegerMinutesDurationKo(Math.max(...mins)));
@@ -2982,7 +3030,14 @@ function renderPlanCompareChart(items) {
   return wrap;
 }
 
-/** 일간 — 과제별 계획 대비 실제 (한 트랙에 계획 표시선 + 실제 채움) */
+function formatPlanDeltaMinutes(deltaMin) {
+  const n = Math.round(Number(deltaMin) || 0);
+  if (n === 0) return "차이 없음";
+  const abs = formatIntegerMinutesDurationKo(Math.abs(n));
+  return n > 0 ? `+${abs}` : `−${abs}`;
+}
+
+/** 일간 — 과제별 계획 → 실제 → 결과(초과/딱 맞음/과다 할당) */
 function renderPlanDayTaskCompareChart(tasks) {
   const items = (tasks || []).filter(
     (t) => (t.plannedMin || 0) > 0 || (t.actualMin || 0) > 0,
@@ -2990,7 +3045,7 @@ function renderPlanDayTaskCompareChart(tasks) {
   const wrap = document.createElement("div");
   wrap.className = "lp-tr2-plan-day-chart";
   wrap.setAttribute("role", "img");
-  wrap.setAttribute("aria-label", "과제별 계획과 실제 시간");
+  wrap.setAttribute("aria-label", "과제별 계획 대비 실제 결과");
 
   wrap.appendChild(
     createRatingChartLegend([
@@ -3015,7 +3070,8 @@ function renderPlanDayTaskCompareChart(tasks) {
   items.forEach((item) => {
     const row = document.createElement("div");
     row.className = "lp-tr2-plan-day-row";
-    if (item.isUnplanned) row.classList.add("is-unplanned");
+    const outcome = item.outcome || (item.isUnplanned ? "unplanned" : "match");
+    row.classList.add(`is-outcome-${outcome}`);
 
     const head = document.createElement("div");
     head.className = "lp-tr2-plan-day-row-head";
@@ -3024,20 +3080,25 @@ function renderPlanDayTaskCompareChart(tasks) {
     name.className = "lp-tr2-plan-day-name";
     name.textContent = item.taskName || item.label;
 
-    const meta = document.createElement("span");
+    const badge = document.createElement("span");
+    badge.className = `lp-tr2-plan-day-outcome lp-tr2-plan-day-outcome--${outcome}`;
+    badge.textContent = item.outcomeLabel || "—";
+
+    head.append(name, badge);
+
+    const meta = document.createElement("p");
     meta.className = "lp-tr2-plan-day-meta";
-    if (item.isUnplanned) {
-      meta.textContent = `계획 밖 · 실제 ${formatIntegerMinutesDurationKo(item.actualMin)}`;
-    } else if (item.adherencePct != null) {
-      meta.textContent = `계획 ${formatIntegerMinutesDurationKo(item.plannedMin)} · 실제 ${formatIntegerMinutesDurationKo(item.actualMin)} · ${item.adherencePct}%`;
+    if (outcome === "unplanned") {
+      meta.textContent = `계획 없음 → 실제 ${formatIntegerMinutesDurationKo(item.actualMin)}`;
+    } else if (outcome === "missed") {
+      meta.textContent = `계획 ${formatIntegerMinutesDurationKo(item.plannedMin)} → 실제 없음`;
     } else {
-      meta.textContent = `계획 ${formatIntegerMinutesDurationKo(item.plannedMin)} · 실제 ${formatIntegerMinutesDurationKo(item.actualMin)}`;
+      meta.textContent = `계획 ${formatIntegerMinutesDurationKo(item.plannedMin)} → 실제 ${formatIntegerMinutesDurationKo(item.actualMin)} · ${formatPlanDeltaMinutes(item.deltaMin)}`;
     }
-    head.append(name, meta);
 
     const track = document.createElement("div");
     track.className = "lp-tr2-plan-day-track";
-    track.title = meta.textContent;
+    track.title = `${name.textContent} · ${badge.textContent} · ${meta.textContent}`;
 
     const planPct =
       scaleMaxMin > 0
@@ -3064,7 +3125,7 @@ function renderPlanDayTaskCompareChart(tasks) {
       track.appendChild(actualFill);
     }
 
-    row.append(head, track);
+    row.append(head, meta, track);
     list.appendChild(row);
   });
 
@@ -3077,7 +3138,7 @@ function mountPlanAdherenceSection(scrollWrap, range, rows) {
   const sec = createSection(
     "계획 이행",
     snap.isSingleDay
-      ? "과제별 계획 대비 실제"
+      ? "과제별 계획 → 실제 · 내일 계획에 참고"
       : `예상 일정 · 계획 습관 · ${snap.totalDaysInPeriod}일`,
   );
   sec.classList.add("lp-tr2-plan-section");
@@ -3085,14 +3146,22 @@ function mountPlanAdherenceSection(scrollWrap, range, rows) {
   const summaryGrid = document.createElement("div");
   summaryGrid.className = "lp-tr2-card-grid lp-tr2-plan-summary-grid";
   if (snap.isSingleDay) {
-    const hasPlan = snap.plannedDaysCount > 0;
+    const oc = snap.dayOutcomeCounts || {};
+    summaryGrid.classList.add("lp-tr2-plan-summary-grid--day");
     summaryGrid.appendChild(
-      createStatCard(
-        "계획 여부",
-        hasPlan ? "O" : "X",
-        hasPlan ? "예상 일정 있음" : "예상 일정 없음",
-      ),
+      createStatCard("시간 초과", `${oc.over || 0}건`, "실제 > 계획"),
     );
+    summaryGrid.appendChild(
+      createStatCard("딱 맞음", `${oc.match || 0}건`, "계획 ≈ 실제"),
+    );
+    summaryGrid.appendChild(
+      createStatCard("계획 과다", `${oc.under || 0}건`, "실제 < 계획"),
+    );
+    if ((oc.missed || 0) > 0) {
+      summaryGrid.appendChild(
+        createStatCard("미실행", `${oc.missed}건`, "계획만 있고 실행 없음"),
+      );
+    }
   } else {
     summaryGrid.appendChild(
       createStatCard(
@@ -3112,14 +3181,14 @@ function mountPlanAdherenceSection(scrollWrap, range, rows) {
         "예상 일정이 있는 날 비율",
       ),
     );
+    summaryGrid.appendChild(
+      createStatCard(
+        "계획 이행률",
+        snap.hasPlanData ? formatPctRounded(snap.adherencePct) : "—",
+        snap.hasPlanData && snap.oneLiner ? snap.oneLiner : "예상 일정 대비 실행",
+      ),
+    );
   }
-  summaryGrid.appendChild(
-    createStatCard(
-      "계획 이행률",
-      snap.hasPlanData ? formatPctRounded(snap.adherencePct) : "—",
-      snap.hasPlanData && snap.oneLiner ? snap.oneLiner : "예상 일정 대비 실행",
-    ),
-  );
   sec.appendChild(summaryGrid);
 
   if (!snap.isSingleDay && snap.planningHabitLine) {
@@ -3140,7 +3209,12 @@ function mountPlanAdherenceSection(scrollWrap, range, rows) {
   }
 
   if (snap.isSingleDay) {
-    sec.appendChild(renderPlanDayTaskCompareChart(snap.tasks || []));
+    const taskBlock = createRatingBlock(
+      "과제별 계획 대비",
+      "계획한 시간 → 실제로 쓴 시간",
+    );
+    taskBlock.appendChild(renderPlanDayTaskCompareChart(snap.tasks || []));
+    sec.appendChild(taskBlock);
   } else {
     sec.appendChild(
       renderPlanCompareChart(buildPlanCompareChartItems(snap.categories)),
@@ -3164,7 +3238,7 @@ function mountPlanAdherenceSection(scrollWrap, range, rows) {
     sec.appendChild(leakBlock);
   }
 
-  if (snap.estimation) {
+  if (!snap.isSingleDay && snap.estimation) {
     const estBlock = createRatingBlock("추정 정확도", "계획 시간 vs 실제");
     const estP = document.createElement("p");
     estP.className = "lp-tr2-plan-est-text";
@@ -3173,7 +3247,7 @@ function mountPlanAdherenceSection(scrollWrap, range, rows) {
     sec.appendChild(estBlock);
   }
 
-  if (snap.categoryRank) {
+  if (!snap.isSingleDay && snap.categoryRank) {
     const rankBlock = createRatingBlock("카테고리 이행", "가장 잘·못 지킨 항목");
     const rankLine = document.createElement("p");
     rankLine.className = "lp-tr2-plan-rank-line";
@@ -4028,14 +4102,49 @@ function mountIntakeSection(scrollWrap, range, rows) {
     const dietBlock = createRatingBlock(
       "식단",
       isDay
-        ? "오늘 먹은 음식 · 옆의 별점이 맛 평가"
-        : "기간 중 먹은 음식 · 옆의 별점이 맛 평가",
+        ? "건강한·건강하지 않은 섭취 · 옆의 별점이 맛 평가"
+        : "건강한·건강하지 않은 섭취 · 옆의 별점이 맛 평가",
     );
-    dietBlock.appendChild(
-      buildDayIntakeRatedFeed(meals, "식단 기록 없음", "neutral", {
-        showDate: !isDay,
-      }),
+    const panels = document.createElement("div");
+    panels.className = "lp-tr2-intake-panels";
+    /* 일간·주간: 세로 스크롤 없이 목록 전부 표시 */
+
+    const makeDietPanel = (title, count, entries, tone) => {
+      const panel = document.createElement("div");
+      panel.className = `lp-tr2-intake-panel lp-tr2-intake-panel--${tone}`;
+      const head = document.createElement("div");
+      head.className = "lp-tr2-intake-panel-head";
+      const headTitle = document.createElement("span");
+      headTitle.textContent = title;
+      const headCount = document.createElement("span");
+      headCount.className = "lp-tr2-intake-panel-count";
+      headCount.textContent = `${count}건`;
+      head.appendChild(headTitle);
+      head.appendChild(headCount);
+      const body = document.createElement("div");
+      body.className = "lp-tr2-intake-panel-body";
+      body.appendChild(
+        buildDayIntakeRatedFeed(entries, "기록 없음", tone, {
+          showDate: !isDay,
+        }),
+      );
+      panel.appendChild(head);
+      panel.appendChild(body);
+      return panel;
+    };
+
+    panels.appendChild(
+      makeDietPanel("건강한 섭취", healthy.length, healthy, "healthy"),
     );
+    panels.appendChild(
+      makeDietPanel(
+        "건강하지 않은 섭취",
+        unhealthy.length,
+        unhealthy,
+        "unhealthy",
+      ),
+    );
+    dietBlock.appendChild(panels);
     sec.appendChild(dietBlock);
     scrollWrap.appendChild(sec);
     return;

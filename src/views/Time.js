@@ -7736,7 +7736,7 @@ export function render(opts = {}) {
   }
 
   function taskLogRatingSectionLabelText() {
-    if (isTaskLogModalSleepTask()) return "수면 평가";
+    if (isTaskLogModalSleepTask()) return "수면 평가 (필수)";
     if (isTaskLogModalEmotionalTask()) return "감정 상태";
     if (isTaskLogModalMealIntakeTask()) return "맛 평가";
     return "이 시간 평가";
@@ -8184,8 +8184,9 @@ export function render(opts = {}) {
     if (taskLogMealDetailSection) {
       taskLogMealDetailSection.hidden = !showFreeTextDetail;
       if (taskLogMealDetailLabel) {
+        const base = TTC.ledgerDetailInputLabel(kind) || "식단명";
         taskLogMealDetailLabel.textContent =
-          TTC.ledgerDetailInputLabel(kind) || "식단명";
+          TTC.isMealIntakeTasteRatingTaskName(tn) ? `${base} (필수)` : base;
       }
       if (taskLogMealDetailInput) {
         if (!showFreeTextDetail) taskLogMealDetailInput.value = "";
@@ -10572,7 +10573,7 @@ export function render(opts = {}) {
     }
   }
 
-  taskLogSubmitBtn.addEventListener("click", () => {
+  taskLogSubmitBtn.addEventListener("click", async () => {
     dismissTaskLogBlockingPickers();
     flushTaskLogTimeInputsBeforeSubmit();
     const editTr = taskLogEditTr;
@@ -10625,19 +10626,54 @@ export function render(opts = {}) {
       TTC.isContentDetailTaskName(taskName) &&
       !String(mealDetailForRow || "").trim()
     ) {
-      void showAlertModal({
-        message: "콘텐츠 종류를 하나 이상 선택해 주세요.",
+      /* 왼쪽「나중에」= 종류 없이 저장 · 오른쪽「확인」= 선택하러 돌아가기 */
+      const selectNow = await showConfirmModal({
+        title: "알림",
+        message: "콘텐츠 종류를 아직 고르지 않았어요.",
+        cancelText: "나중에",
+        confirmText: "확인",
       });
-      if (taskLogContentTypeSection) {
-        taskLogContentTypeSection.hidden = false;
-        try {
-          taskLogContentTypeSection.scrollIntoView({
-            block: "nearest",
-            behavior: "smooth",
-          });
-        } catch (_) {}
+      if (selectNow) {
+        if (taskLogContentTypeSection) {
+          taskLogContentTypeSection.hidden = false;
+          try {
+            taskLogContentTypeSection.scrollIntoView({
+              block: "nearest",
+              behavior: "smooth",
+            });
+          } catch (_) {}
+        }
+        return;
       }
-      return;
+    }
+    if (
+      TTC.isMealIntakeTasteRatingTaskName(taskName) &&
+      !String(mealDetailForRow || "").trim()
+    ) {
+      /* 건강한·비건강한 섭취: 식단명 권장, 「나중에」면 빈 값으로 저장 */
+      const enterMeal = await showConfirmModal({
+        title: "알림",
+        message: "식단명을 아직 입력하지 않았어요.",
+        cancelText: "나중에",
+        confirmText: "확인",
+      });
+      if (enterMeal) {
+        if (taskLogMealDetailSection) {
+          taskLogMealDetailSection.hidden = false;
+          try {
+            taskLogMealDetailSection.scrollIntoView({
+              block: "nearest",
+              behavior: "smooth",
+            });
+          } catch (_) {}
+        }
+        try {
+          taskLogMealDetailInput?.focus?.({ preventScroll: true });
+        } catch (_) {
+          taskLogMealDetailInput?.focus?.();
+        }
+        return;
+      }
     }
     const feedback = feedbackBody;
     const userTagsForSubmit = (
@@ -10678,6 +10714,27 @@ export function render(opts = {}) {
     const dateStr = parseDateFromDateTime(startTime) || toDateStr(new Date());
     const focusValue = "";
     const timeRatingForRow = getTaskLogTimeRating();
+    if (TTC.isSleepBuiltinTaskName(taskName) && timeRatingForRow == null) {
+      /* 수면 평가 권장 · 「나중에」면 평가 없이 저장 */
+      const rateNow = await showConfirmModal({
+        title: "알림",
+        message: "수면 평가를 아직 고르지 않았어요.",
+        cancelText: "나중에",
+        confirmText: "확인",
+      });
+      if (rateNow) {
+        if (taskLogRatingSection) {
+          taskLogRatingSection.hidden = false;
+          try {
+            taskLogRatingSection.scrollIntoView({
+              block: "nearest",
+              behavior: "smooth",
+            });
+          } catch (_) {}
+        }
+        return;
+      }
+    }
     const timeFlowDisruptorsForRow =
       isTaskLogModalProductiveTask() &&
       !isTaskLogModalMealIntakeTask() &&
