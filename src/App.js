@@ -788,12 +788,12 @@ export async function mountApp(container) {
             window.__lpCalendarGridPrefetchedForTabSwitch = true;
           } catch (_) {}
         }
-        const pullPromise = pullDataForActiveTab(targetTabId, { fromBoot: false });
         /* 홈: 캐시 DOM 즉시 복원 — renderMain 전체 경로보다 먼저 */
         if (targetTabId === "home" && restoreCachedHomePanel()) {
           void refreshHomeDesktopDashboardAfterEnter();
           return;
         }
+        /* 화면 먼저 — pull 을 먼저 돌리면 메인스레드가 막혀 습관관리 등이 ~1초 지연됨 */
         renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
         /** @type {string | null} */
         let tabPullOverlayTabId = null;
@@ -821,7 +821,12 @@ export async function mountApp(container) {
           let pullResult;
           try {
             try {
-              pullResult = await pullPromise;
+              /* 한 프레임 그린 뒤 pull — 진입 체감 지연 완화 */
+              await new Promise((r) => requestAnimationFrame(() => r()));
+              if (currentTabId !== targetTabId) return;
+              pullResult = await pullDataForActiveTab(targetTabId, {
+                fromBoot: false,
+              });
             } catch (_) {}
             if (currentTabId !== targetTabId) {
               try {

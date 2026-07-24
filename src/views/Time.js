@@ -3086,12 +3086,19 @@ export function getMonthlyNonproductiveWastedSnapshot(ymdTen) {
   return aggregateNonproductiveWasteSnapshotFromRows(rows);
 }
 
+/** 레포트 하루 길이 — 0:00~23:59 (1440분이면 끝 1분이 남음) */
+const REPORT_DAY_LENGTH_MINUTES = 23 * 60 + 59;
+
 function aggregateAvailableMinutesMetaFromLedgerRows(rows, granularity) {
   if (granularity === "day") {
     const summary = aggregateDailyTimeReportSummaryFromLedgerRows(rows);
     const availableMinutes = Math.max(
       0,
-      Math.round(24 * 60 - summary.workMinutes - summary.sleepMinutes),
+      Math.round(
+        REPORT_DAY_LENGTH_MINUTES -
+          summary.workMinutes -
+          summary.sleepMinutes,
+      ),
     );
     return {
       availableMinutes,
@@ -3114,7 +3121,7 @@ function aggregateAvailableMinutesMetaFromLedgerRows(rows, granularity) {
   });
   const dates = Object.keys(byDate);
   if (!dates.length) {
-    const fullDay = 24 * 60;
+    const fullDay = REPORT_DAY_LENGTH_MINUTES;
     return {
       availableMinutes: fullDay,
       totalAvailableMinutes: fullDay,
@@ -3126,7 +3133,7 @@ function aggregateAvailableMinutesMetaFromLedgerRows(rows, granularity) {
     const u = byDate[d];
     totalAvailableMinutes += Math.max(
       0,
-      Math.round(24 * 60 - u.workMin - u.sleepMin),
+      Math.round(REPORT_DAY_LENGTH_MINUTES - u.workMin - u.sleepMin),
     );
   });
   return {
@@ -3144,6 +3151,12 @@ function aggregateTimeReportHeroFromRows(rows, granularity) {
   const avail = aggregateAvailableMinutesMetaFromLedgerRows(rows, granularity);
   const productiveMinutes = invest.reclaimMinutesRounded;
   const wasteMinutes = waste.wastedMinutesRounded;
+  /* 상단 「총 기록」과 동일 — 카드 유효 시간 합 */
+  let totalLoggedHours = 0;
+  for (const r of rows || []) {
+    totalLoggedHours += getMobileCardEffectiveHoursForPrice(r) || 0;
+  }
+  const totalLoggedMinutes = Math.max(0, Math.round(totalLoggedHours * 60));
   const scoreDenom =
     granularity === "month"
       ? avail.totalAvailableMinutes
@@ -3162,6 +3175,7 @@ function aggregateTimeReportHeroFromRows(rows, granularity) {
     daysWithData: avail.daysWithData,
     productiveMinutes,
     wasteMinutes,
+    totalLoggedMinutes,
     mediaMinutes: summary.mediaMinutes,
     workMinutes: summary.workMinutes,
     sleepMinutes: summary.sleepMinutes,
@@ -6135,8 +6149,38 @@ export function render(opts = {}) {
         );
       }
     }
+    const totalWrap = contentWrap.querySelector("[data-usage-total-wrap]");
     const total = contentWrap.querySelector("[data-usage-total-time]");
-    if (total) {
+    const reportSpanDays = (() => {
+      const a = String(reportRangeStartYmd || "")
+        .replace(/\//g, "-")
+        .slice(0, 10);
+      const b = String(reportRangeEndYmd || "")
+        .replace(/\//g, "-")
+        .slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(a) || !/^\d{4}-\d{2}-\d{2}$/.test(b)) {
+        return timeLedgerLayoutView === "report" ? 1 : 0;
+      }
+      const t0 = Date.UTC(+a.slice(0, 4), +a.slice(5, 7) - 1, +a.slice(8, 10));
+      const t1 = Date.UTC(+b.slice(0, 4), +b.slice(5, 7) - 1, +b.slice(8, 10));
+      return Math.floor((t1 - t0) / 86400000) + 1;
+    })();
+    const hideReportHeaderTotal =
+      timeLedgerLayoutView === "report" &&
+      !usageHistoryMemoOnlyFilter &&
+      reportSpanDays >= 1 &&
+      reportSpanDays <= 8;
+    if (totalWrap) {
+      totalWrap.hidden = hideReportHeaderTotal;
+      if (hideReportHeaderTotal) {
+        totalWrap.setAttribute("hidden", "");
+        totalWrap.style.display = "none";
+      } else {
+        totalWrap.removeAttribute("hidden");
+        totalWrap.style.display = "";
+      }
+    }
+    if (total && !hideReportHeaderTotal) {
       const hrs = sumTimeLedgerDayHours(rows);
       total.textContent = usageHistoryMemoOnlyFilter
         ? String(mapLedgerRowsToLogMemos(rows).length)
@@ -7795,6 +7839,14 @@ export function render(opts = {}) {
       !isTaskLogModalMealIntakeTask() &&
       shouldCollectTimeFlowDisruptors(getTaskLogTimeRating());
     if (taskLogFlowDisruptorSection) taskLogFlowDisruptorSection.hidden = !show;
+    const disruptorLabel = taskLogFlowDisruptorSection?.querySelector(
+      '[data-legacy~="time-task-log-flow-disruptor-section-label"]',
+    );
+    if (disruptorLabel) {
+      disruptorLabel.textContent = show
+        ? "몰입 방해 요소 (필수)"
+        : "몰입 방해 요소";
+    }
     if (!show && taskLogTimeFlowDisruptors.length) taskLogTimeFlowDisruptors = [];
   }
 
@@ -7831,6 +7883,12 @@ export function render(opts = {}) {
       !isTaskLogModalMealIntakeTask() &&
       shouldCollectTimeFlowFactors(getTaskLogTimeRating());
     if (taskLogFlowFactorSection) taskLogFlowFactorSection.hidden = !show;
+    const factorLabel = taskLogFlowFactorSection?.querySelector(
+      '[data-legacy~="time-task-log-flow-factor-section-label"]',
+    );
+    if (factorLabel) {
+      factorLabel.textContent = show ? "몰입 요소 (필수)" : "몰입 요소";
+    }
     if (!show && taskLogTimeFlowFactors.length) taskLogTimeFlowFactors = [];
   }
 
@@ -10735,18 +10793,64 @@ export function render(opts = {}) {
         return;
       }
     }
-    const timeFlowDisruptorsForRow =
+    const needsFlowDisruptors =
       isTaskLogModalProductiveTask() &&
       !isTaskLogModalMealIntakeTask() &&
-      shouldCollectTimeFlowDisruptors(timeRatingForRow)
-        ? getTaskLogTimeFlowDisruptors()
-        : [];
-    const timeFlowFactorsForRow =
+      shouldCollectTimeFlowDisruptors(timeRatingForRow);
+    const timeFlowDisruptorsForRow = needsFlowDisruptors
+      ? getTaskLogTimeFlowDisruptors()
+      : [];
+    if (needsFlowDisruptors && !timeFlowDisruptorsForRow.length) {
+      /* 1~2점 평가 시 몰입 방해 요소 권장 · 「나중에」면 없이 저장 */
+      const pickDisruptor = await showConfirmModal({
+        title: "알림",
+        message: "몰입 방해 요소를 아직 고르지 않았어요.",
+        cancelText: "나중에",
+        confirmText: "확인",
+      });
+      if (pickDisruptor) {
+        syncTaskLogFlowDisruptorSection();
+        if (taskLogFlowDisruptorSection) {
+          taskLogFlowDisruptorSection.hidden = false;
+          try {
+            taskLogFlowDisruptorSection.scrollIntoView({
+              block: "nearest",
+              behavior: "smooth",
+            });
+          } catch (_) {}
+        }
+        return;
+      }
+    }
+    const needsFlowFactors =
       shouldCollectTimeFlowFactors(timeRatingForRow) &&
       isTaskLogModalProductiveTask() &&
-      !isTaskLogModalMealIntakeTask()
-        ? getTaskLogTimeFlowFactors()
-        : [];
+      !isTaskLogModalMealIntakeTask();
+    const timeFlowFactorsForRow = needsFlowFactors
+      ? getTaskLogTimeFlowFactors()
+      : [];
+    if (needsFlowFactors && !timeFlowFactorsForRow.length) {
+      /* 4~5점 평가 시 몰입 요소 권장 · 「나중에」면 없이 저장 */
+      const pickNow = await showConfirmModal({
+        title: "알림",
+        message: "몰입 요소를 아직 고르지 않았어요.",
+        cancelText: "나중에",
+        confirmText: "확인",
+      });
+      if (pickNow) {
+        syncTaskLogFlowFactorSection();
+        if (taskLogFlowFactorSection) {
+          taskLogFlowFactorSection.hidden = false;
+          try {
+            taskLogFlowFactorSection.scrollIntoView({
+              block: "nearest",
+              behavior: "smooth",
+            });
+          } catch (_) {}
+        }
+        return;
+      }
+    }
 
     if (editTr) {
       oldRowDataToRemove = editTr._rowData ? { ...editTr._rowData } : null;
@@ -12444,6 +12548,7 @@ export function render(opts = {}) {
       usageHistoryTotalWrap,
       "time-ledger-usage-history-total-wrap",
     );
+    usageHistoryTotalWrap.setAttribute("data-usage-total-wrap", "");
     const usageHistoryTotalLabel = document.createElement("span");
     lpSetClasses(
       usageHistoryTotalLabel,
@@ -12462,9 +12567,31 @@ export function render(opts = {}) {
     }
     usageHistoryTotalWrap.appendChild(usageHistoryTotalLabel);
     usageHistoryTotalWrap.appendChild(usageHistoryTotalTime);
+    /* 일·주간 레포트: 총기록은 한 장 요약에만 — 상단에는 아예 안 붙임 */
+    const reportSpanDays = (() => {
+      const a = String(reportRangeStartYmd || "")
+        .replace(/\//g, "-")
+        .slice(0, 10);
+      const b = String(reportRangeEndYmd || "")
+        .replace(/\//g, "-")
+        .slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(a) || !/^\d{4}-\d{2}-\d{2}$/.test(b)) {
+        return showReportView ? 1 : 0;
+      }
+      const t0 = Date.UTC(+a.slice(0, 4), +a.slice(5, 7) - 1, +a.slice(8, 10));
+      const t1 = Date.UTC(+b.slice(0, 4), +b.slice(5, 7) - 1, +b.slice(8, 10));
+      return Math.floor((t1 - t0) / 86400000) + 1;
+    })();
+    const hideReportHeaderTotal =
+      showReportView &&
+      !showMemoOnlyLogView &&
+      reportSpanDays >= 1 &&
+      reportSpanDays <= 8;
 
     usageHistoryHeadingRow.appendChild(usageHistoryHeadingLeft);
-    usageHistoryHeadingRow.appendChild(usageHistoryTotalWrap);
+    if (!hideReportHeaderTotal) {
+      usageHistoryHeadingRow.appendChild(usageHistoryTotalWrap);
+    }
     ledgerContainer.appendChild(usageHistoryHeadingRow);
 
     const showTimelineLedgerContent =

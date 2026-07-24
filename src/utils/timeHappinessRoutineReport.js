@@ -1,9 +1,15 @@
 /**
- * 행복 루틴 점검 — needHabitTracker(매일반복) KPI · 매일할일 체크 집계
+ * 행복 루틴 점검 — 기본 루틴 KPI + 매일 반복(needHabitTracker) KPI · 매일할일 체크 집계
  */
 
 import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
 import {
+  DEFAULT_BEDTIME_ROUTINE_KPI_ID,
+  DEFAULT_MORNING_ROUTINE_KPI_ID,
+  DEFAULT_MOVE_ROUTINE_KPI_ID,
+  DEFAULT_OUT_AFTER_ROUTINE_KPI_ID,
+  DEFAULT_OUT_PREP_ROUTINE_KPI_ID,
+  DEFAULT_TIDY_ROUTINE_KPI_ID,
   ensureHappinessMapDefaults,
   flattenHappinessMapForKpiOnlyTab,
   HAPPINESS_KPI_GLOBAL_SCOPE_ID,
@@ -65,11 +71,30 @@ function happinessKpiInTabScope(kpi) {
   return !hid || hid === HAPPINESS_KPI_GLOBAL_SCOPE_ID;
 }
 
+/** 행복 기본 루틴 KPI (잡무·독서 등 과제완료형은 제외) */
+const DEFAULT_HAPPINESS_ROUTINE_KPI_IDS = new Set([
+  DEFAULT_MORNING_ROUTINE_KPI_ID,
+  DEFAULT_MOVE_ROUTINE_KPI_ID,
+  DEFAULT_TIDY_ROUTINE_KPI_ID,
+  DEFAULT_OUT_PREP_ROUTINE_KPI_ID,
+  DEFAULT_OUT_AFTER_ROUTINE_KPI_ID,
+  DEFAULT_BEDTIME_ROUTINE_KPI_ID,
+]);
+
+function isDefaultHappinessRoutineKpi(kpi) {
+  return DEFAULT_HAPPINESS_ROUTINE_KPI_IDS.has(String(kpi?.id ?? ""));
+}
+
+/**
+ * 행복 루틴 점검 대상:
+ * - 행복 기본 루틴 KPI
+ * - 행복에 추가된 KPI 중 매일 반복(needHabitTracker)이 켜진 것
+ */
 function isHabitRoutineKpi(kpi) {
   if (!kpi || typeof kpi !== "object") return false;
-  if (!kpi.needHabitTracker) return false;
-  if (kpi.useTaskCompletionGoal) return false;
-  return happinessKpiInTabScope(kpi);
+  if (!happinessKpiInTabScope(kpi)) return false;
+  if (isDefaultHappinessRoutineKpi(kpi)) return true;
+  return !!kpi.needHabitTracker;
 }
 
 function getOrderedHabitKpis(data) {
@@ -188,7 +213,7 @@ export function buildHappinessRoutineReportSnapshot(range) {
     const kpiId = String(kpi.id || "").trim();
     const name = String(kpi.name || "").trim() || "(이름 없음)";
     const todos = dailyTodosForKpi(data, kpiId);
-    if (!todos.length) continue;
+    /* 매일할일이 없어도 루틴 KPI 자체는 목록에 표시 */
 
     const ledgerByDate =
       /^\d{4}-\d{2}-\d{2}$/.test(rangeStart) &&

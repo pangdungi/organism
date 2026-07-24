@@ -177,6 +177,78 @@ function showTimeboxCellRecordInfo(block) {
   showToast(title, [ `${startDisplay} ~ ${endDisplay}`, memo ].filter(Boolean).join("\n"));
 }
 
+function escapeTimeboxTipHtml(s) {
+  return String(s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+let _timeboxHoverTipHideTimer = null;
+let _timeboxHoverTipScrollBound = false;
+
+function ensureTimeboxHoverTip() {
+  let tip = document.getElementById("time-ledger-timebox-hover-tip");
+  if (!tip) {
+    tip = document.createElement("div");
+    tip.id = "time-ledger-timebox-hover-tip";
+    tip.className = "time-ledger-timebox-hover-tip";
+    tip.setAttribute("role", "tooltip");
+    document.body.appendChild(tip);
+    if (!_timeboxHoverTipScrollBound) {
+      _timeboxHoverTipScrollBound = true;
+      window.addEventListener(
+        "scroll",
+        () => {
+          hideTimeboxHoverTip();
+        },
+        true,
+      );
+    }
+  }
+  return tip;
+}
+
+function hideTimeboxHoverTip() {
+  clearTimeout(_timeboxHoverTipHideTimer);
+  const tip = document.getElementById("time-ledger-timebox-hover-tip");
+  if (tip) tip.classList.remove("time-ledger-timebox-hover-tip--visible");
+}
+
+function showTimeboxHoverTipFromCell(cell) {
+  if (!cell) return;
+  const title = String(cell.dataset.tipTitle || "").trim();
+  const meta = String(cell.dataset.tipMeta || "").trim();
+  if (!title && !meta) return;
+  const tip = ensureTimeboxHoverTip();
+  tip.innerHTML = `${
+    title
+      ? `<div class="time-ledger-timebox-hover-tip__title">${escapeTimeboxTipHtml(title)}</div>`
+      : ""
+  }${
+    meta
+      ? `<div class="time-ledger-timebox-hover-tip__meta">${escapeTimeboxTipHtml(meta)}</div>`
+      : ""
+  }`;
+  tip.classList.add("time-ledger-timebox-hover-tip--visible");
+  requestAnimationFrame(() => {
+    const rect = cell.getBoundingClientRect();
+    const pad = 8;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const tw = tip.offsetWidth;
+    const th = tip.offsetHeight;
+    let left = rect.left + rect.width / 2 - tw / 2;
+    let top = rect.bottom + pad;
+    if (top + th > vh - pad) top = Math.max(pad, rect.top - th - pad);
+    if (left < pad) left = pad;
+    if (left + tw > vw - pad) left = Math.max(pad, vw - tw - pad);
+    tip.style.left = `${Math.round(left)}px`;
+    tip.style.top = `${Math.round(top)}px`;
+  });
+}
+
 function wireTimeLedgerDayTimeboxCellClicks(body) {
   if (!body || body.dataset.lpTimeboxClickWired === "1") return;
   body.dataset.lpTimeboxClickWired = "1";
@@ -184,6 +256,7 @@ function wireTimeLedgerDayTimeboxCellClicks(body) {
     const cell = e.target.closest(".time-ledger-day-timebox-matrix-cell--interactive");
     if (!cell) return;
     e.stopPropagation();
+    hideTimeboxHoverTip();
     const taskName = cell.dataset.taskName || "";
     if (!taskName) return;
     showTimeboxCellRecordInfo({
@@ -199,6 +272,21 @@ function wireTimeLedgerDayTimeboxCellClicks(body) {
     if (!cell) return;
     e.preventDefault();
     cell.click();
+  });
+  /* 브라우저 기본 title(검정 툴팁) 대신 앱 스타일 호버 안내 */
+  body.addEventListener("pointerover", (e) => {
+    const cell = e.target.closest(".time-ledger-day-timebox-matrix-cell");
+    if (!cell || !body.contains(cell)) return;
+    if (!cell.dataset.tipTitle && !cell.dataset.tipMeta) return;
+    clearTimeout(_timeboxHoverTipHideTimer);
+    showTimeboxHoverTipFromCell(cell);
+  });
+  body.addEventListener("pointerout", (e) => {
+    const to = e.relatedTarget;
+    if (to && body.contains(to) && to.closest?.(".time-ledger-day-timebox-matrix-cell")) {
+      return;
+    }
+    _timeboxHoverTipHideTimer = setTimeout(hideTimeboxHoverTip, 60);
   });
 }
 
@@ -302,10 +390,16 @@ export function paintTimeLedgerDayTimeboxMatrixCells(body, rawBlocks) {
     delete cell.dataset.endDisplay;
     delete cell.dataset.memo;
     delete cell.dataset.blockKey;
+    delete cell.dataset.tipTitle;
+    delete cell.dataset.tipMeta;
+    cell.removeAttribute("title");
+    cell.removeAttribute("aria-label");
 
     const block = findBlockForCell(slotMin, blocks);
     if (!block) {
-      cell.title = formatMinOfDayClock(slotMin);
+      const clock = formatMinOfDayClock(slotMin);
+      cell.dataset.tipMeta = clock;
+      cell.setAttribute("aria-label", clock);
       return;
     }
 
@@ -330,7 +424,12 @@ export function paintTimeLedgerDayTimeboxMatrixCells(body, rawBlocks) {
 
     const titleTask =
       baseTask && label && baseTask !== label ? `${baseTask} · ${label}` : label;
-    cell.title = `${titleTask} (${startDisplay} ~ ${endDisplay})`;
+    cell.dataset.tipTitle = titleTask;
+    cell.dataset.tipMeta = `${startDisplay} ~ ${endDisplay}`;
+    cell.setAttribute(
+      "aria-label",
+      `${titleTask} (${startDisplay} ~ ${endDisplay})`,
+    );
   });
 
   applyTimeboxRowSpanMerges(body, blocks);

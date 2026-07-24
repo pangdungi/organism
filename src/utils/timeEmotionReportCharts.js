@@ -7,6 +7,7 @@ import {
   EMOTION_CATEGORIES,
   getEmotionCategoryChartColor,
 } from "./timeEmotionTaxonomy.js";
+import { tr2SvgFontSize } from "./timeReportUiScale.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 /** 일간 타임라인과 맞춘 대분류 톤 · 농도(적음→많음). 기준색=두려움(보라) */
@@ -105,7 +106,7 @@ function appendDonutSliceLabel(
     "text-anchor": "middle",
     "dominant-baseline": "middle",
     fill: innerOk ? "#ffffff" : "#333333",
-    "font-size": innerOk ? "11" : "10",
+    "font-size": String(tr2SvgFontSize(innerOk ? 11 : 10)),
     "font-weight": "700",
     class: innerOk
       ? "lp-tr2-emotion-donut-slice-label"
@@ -122,7 +123,7 @@ function appendDonutCenterLabel(svg, cx, cy, label, meta) {
     "text-anchor": "middle",
     "dominant-baseline": "middle",
     fill: "#111111",
-    "font-size": "14",
+    "font-size": String(tr2SvgFontSize(14)),
     "font-weight": "800",
     class: "lp-tr2-emotion-donut-hole-label",
   });
@@ -135,7 +136,7 @@ function appendDonutCenterLabel(svg, cx, cy, label, meta) {
       "text-anchor": "middle",
       "dominant-baseline": "middle",
       fill: "#666666",
-      "font-size": "10",
+      "font-size": String(tr2SvgFontSize(10)),
       "font-weight": "600",
       class: "lp-tr2-emotion-donut-hole-meta",
     });

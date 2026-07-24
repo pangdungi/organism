@@ -365,6 +365,39 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    /* 3분할 칸 너비 기준 — 뷰포트 media로 키운 타이포가 여기선 적용되지 않게 */
+    container-type: inline-size;
+    container-name: time-ledger;
+  }
+
+  /* 3분할 시간열 — 한 장 요약은 항상 세로(칸 너비에 맞춤). 뷰포트 넓은 것과 무관 */
+  .lp-desktop-dashboard-col--time .lp-tr2-day-hero {
+    flex-direction: column !important;
+  }
+
+  .lp-desktop-dashboard-col--time .lp-tr2-day-hero-charts {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .lp-desktop-dashboard-col--time .lp-tr2-day-hero-donut {
+    width: min(10.5rem, 78%);
+  }
+
+  .lp-desktop-dashboard-col--time .lp-tr2-day-hero-value {
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+
+  .lp-desktop-dashboard-col--time .lp-tr2-root {
+    --lp-tr2-title: 0.9375rem;
+    --lp-tr2-sub: 0.75rem;
+    --lp-tr2-body: 0.75rem;
+    --lp-tr2-label: 0.6875rem;
+    --lp-tr2-meta: 0.625rem;
+    --lp-tr2-caption: 0.5625rem;
+    --lp-tr2-value: 1rem;
+    --lp-tr2-hero: 1.25rem;
+    --lp-tr2-section-pad: 0.85rem 0.85rem 0.95rem;
   }
 
   .lp-desktop-dashboard-col--time .time-ledger-mobile-cards,

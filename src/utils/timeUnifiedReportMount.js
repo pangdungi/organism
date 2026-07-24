@@ -44,6 +44,7 @@ import { buildFocusReportSnapshot } from "./timeFocusReport.js";
 import { buildMealTasteReportSnapshot } from "./timeMealTasteReport.js";
 import { flowDisruptorCategoryColor } from "./timeTaskFlowDisruptors.js";
 import { readUserHourlyRateLocal } from "./userHourlySync.js";
+import { tr2SvgFontSize } from "./timeReportUiScale.js";
 
 const SLEEP_TARGET_MIN = 7 * 60;
 const CHART_COLORS = {
@@ -285,6 +286,36 @@ function formatRatingAvg(avg) {
   const n = Number(avg);
   if (!Number.isFinite(n) || n <= 0) return "—";
   return `${n.toFixed(1)}`;
+}
+
+/** 수면 평가 1~5 — ★ 시각화 (반올림 채움) */
+function createSleepRatingStarsEl(rating, { showScore = false } = {}) {
+  const n = Number(rating);
+  const wrap = document.createElement("span");
+  wrap.className = "lp-tr2-sleep-rating-stars";
+  if (!Number.isFinite(n) || n <= 0) {
+    wrap.textContent = "—";
+    return wrap;
+  }
+  const filled = Math.max(0, Math.min(5, Math.round(n)));
+  wrap.setAttribute("aria-label", `${formatRatingAvg(n)}점 / 5점`);
+  const stars = document.createElement("span");
+  stars.className = "lp-tr2-sleep-rating-stars-row";
+  stars.setAttribute("aria-hidden", "true");
+  for (let i = 1; i <= 5; i += 1) {
+    const s = document.createElement("span");
+    s.className = i <= filled ? "is-on" : "is-off";
+    s.textContent = "★";
+    stars.appendChild(s);
+  }
+  wrap.appendChild(stars);
+  if (showScore) {
+    const score = document.createElement("span");
+    score.className = "lp-tr2-sleep-rating-stars-score";
+    score.textContent = formatRatingAvg(n);
+    wrap.appendChild(score);
+  }
+  return wrap;
 }
 
 /** 배율(×1=0%) → 집중도 % — 5점 +100%, 4점 +50%, 3점 0%, 2점 −25%, 1점 −50% */
@@ -905,10 +936,17 @@ function sleepChartLayout(totalDays) {
     : totalDays <= 8
       ? 46
       : 38;
-  const pad = { top: 20, right: 8, bottom: 26, left: 28 };
+  const pad = { top: 16, right: 8, bottom: 22, left: 26 };
   const W = Math.max(320, pad.left + pad.right + totalDays * minSlot);
   const H = 148;
   return { W, H, pad, minSlot, scroll };
+}
+
+/** 수면 막대 차트 글자 — 업스케일 없이 작게(손글씨 폰트에서 과대 방지) */
+function sleepChartSvgFont(base) {
+  const n = Number(base);
+  if (!Number.isFinite(n) || n <= 0) return 6;
+  return Math.round(n * 10) / 10;
 }
 
 function formatCompactSleepBarLabel(minutes) {
@@ -978,9 +1016,10 @@ function renderSleepGoalBarChart(canvas, sleepByDay) {
       x: pad.left - 5,
       y: y + 3,
       fill: isTarget ? "#d97706" : "#999999",
-      "font-size": 8,
+      "font-size": sleepChartSvgFont(6.25),
       "font-weight": isTarget ? 600 : 400,
       "text-anchor": "end",
+      class: "lp-tr2-sleep-chart-tick",
     });
     tick.textContent = isTarget ? "7" : fmtSleepAxisHours(v);
     svg.appendChild(tick);
@@ -991,9 +1030,10 @@ function renderSleepGoalBarChart(canvas, sleepByDay) {
       x: pad.left - 5,
       y: y + 3,
       fill: "#d97706",
-      "font-size": 8,
+      "font-size": sleepChartSvgFont(6.25),
       "font-weight": 600,
       "text-anchor": "end",
+      class: "lp-tr2-sleep-chart-tick",
     });
     tick.textContent = "7";
     svg.appendChild(tick);
@@ -1053,8 +1093,9 @@ function renderSleepGoalBarChart(canvas, sleepByDay) {
         x: cx,
         y: H - 6,
         fill: "#999999",
-        "font-size": 8,
+        "font-size": sleepChartSvgFont(6.25),
         "text-anchor": "middle",
+        class: "lp-tr2-sleep-chart-tick",
       });
       dateLabel.textContent = label;
       svg.appendChild(dateLabel);
@@ -1095,11 +1136,12 @@ function renderSleepGoalBarChart(canvas, sleepByDay) {
     if (totalDays <= 10) {
       const valLabel = svgEl("text", {
         x: cx,
-        y: barTop - 4,
+        y: barTop - 3,
         fill: metGoal ? "#15803d" : "#64748b",
-        "font-size": 7.5,
+        "font-size": sleepChartSvgFont(6),
         "font-weight": 600,
         "text-anchor": "middle",
+        class: "lp-tr2-sleep-chart-bar-label",
       });
       valLabel.textContent = formatCompactSleepBarLabel(minutes);
       svg.appendChild(valLabel);
@@ -1530,7 +1572,11 @@ function buildSleepStatsGrid(snap, options = {}) {
     const val = document.createElement("strong");
     val.className = "lp-tr2-sleep-stat-value";
     if (valueTone) val.classList.add(`lp-tr2-sleep-stat-value--${valueTone}`);
-    val.textContent = value;
+    if (value instanceof Node) {
+      val.appendChild(value);
+    } else {
+      val.textContent = value;
+    }
     cell.appendChild(lab);
     cell.appendChild(val);
     if (hint) {
@@ -1551,8 +1597,9 @@ function buildSleepStatsGrid(snap, options = {}) {
     addStat("기상", day.wakeMin != null ? formatClockFromMinutes(day.wakeMin) : "—");
     addStat(
       "수면 품질",
-      day.rating != null ? `${formatRatingAvg(day.rating)}/5` : "—",
+      day.rating != null ? createSleepRatingStarsEl(day.rating) : "—",
       "수면 평가 별점",
+      "rating",
     );
     addStat("수면 시간", formatIntegerMinutesDurationKo(day.minutes));
     return grid;
@@ -1575,7 +1622,9 @@ function buildSleepStatsGrid(snap, options = {}) {
     );
     addStat(
       "평균 평가",
-      snap.avgQuality != null ? `${formatRatingAvg(snap.avgQuality)}★` : "—",
+      snap.avgQuality != null
+        ? createSleepRatingStarsEl(snap.avgQuality, { showScore: true })
+        : "—",
       "",
       "rating",
     );
@@ -1606,8 +1655,11 @@ function buildSleepStatsGrid(snap, options = {}) {
   );
   addStat(
     "평균 품질",
-    snap.avgQuality != null ? `${formatRatingAvg(snap.avgQuality)}/5` : "—",
+    snap.avgQuality != null
+      ? createSleepRatingStarsEl(snap.avgQuality, { showScore: true })
+      : "—",
     "수면 평가 별점",
+    "rating",
   );
   addStat(
     "평균 수면",
@@ -2625,22 +2677,16 @@ function mountMoveSection(scrollWrap, range, rows) {
   scrollWrap.appendChild(sec);
 }
 
-function buildHappinessRoutineItemsLine(items, labelText, kind) {
+function buildHappinessRoutineWeakItemsLine(items) {
   const line = document.createElement("p");
-  line.className =
-    kind === "kept"
-      ? "lp-tr2-routine-weak-line lp-tr2-routine-day-line lp-tr2-routine-day-line--kept"
-      : "lp-tr2-routine-weak-line lp-tr2-routine-day-line lp-tr2-routine-day-line--missed";
+  line.className = "lp-tr2-routine-weak-line";
 
   const label = document.createElement("span");
   label.className = "lp-tr2-routine-weak-line-label";
-  label.textContent = labelText;
+  label.textContent = "잘 안 지켜진 매일할일";
 
   const names = document.createElement("span");
-  names.className =
-    kind === "kept"
-      ? "lp-tr2-routine-weak-line-items lp-tr2-routine-day-items--kept"
-      : "lp-tr2-routine-weak-line-items";
+  names.className = "lp-tr2-routine-weak-line-items";
   names.textContent = items.length
     ? items
         .map((item) => String(item.text || "").trim())
@@ -2652,47 +2698,191 @@ function buildHappinessRoutineItemsLine(items, labelText, kind) {
   return line;
 }
 
-function buildHappinessRoutineWeakItemsLine(items) {
-  return buildHappinessRoutineItemsLine(items, "잘 안 지켜진 매일할일", "missed");
+function routineExecutionBarColor(pct) {
+  const n = Number(pct) || 0;
+  if (n >= 75) return "#1e4d7b";
+  if (n >= 50) return "#7E9FC3";
+  return "#8B5C3A";
 }
 
-function appendHappinessRoutineDayBlock(sec, routine) {
-  if (!routine) return;
+function createRoutineCardProgressBar(pct, meta) {
+  const row = document.createElement("div");
+  row.className = "lp-tr2-routine-card-progress";
+  if (meta) row.title = meta;
+  const track = document.createElement("div");
+  track.className = "lp-tr2-routine-card-progress-track";
+  const fill = document.createElement("div");
+  fill.className = "lp-tr2-routine-card-progress-fill";
+  const width = Math.min(100, Math.max(0, Number(pct) || 0));
+  fill.style.width = `${width}%`;
+  fill.style.background = routineExecutionBarColor(pct);
+  track.appendChild(fill);
+  const val = document.createElement("span");
+  val.className = "lp-tr2-routine-card-progress-pct";
+  val.textContent = formatPctRounded(pct);
+  row.append(track, val);
+  return row;
+}
 
-  const block = document.createElement("div");
-  block.className = "lp-tr2-routine-block";
+function buildHappinessRoutineCardItemList(title, items, kind) {
+  const texts = (items || [])
+    .map((item) => String(item?.text || "").trim())
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b, "ko"));
+
+  const panel = document.createElement("div");
+  panel.className =
+    kind === "kept"
+      ? "lp-tr2-routine-day-panel lp-tr2-routine-day-panel--kept"
+      : "lp-tr2-routine-day-panel lp-tr2-routine-day-panel--missed";
 
   const head = document.createElement("div");
-  head.className = "lp-tr2-routine-block-head";
+  head.className = "lp-tr2-routine-day-panel-head";
+  const h = document.createElement("h4");
+  h.className = "lp-tr2-routine-day-panel-title";
+  h.textContent = title;
+  const count = document.createElement("span");
+  count.className = "lp-tr2-routine-day-panel-count";
+  count.textContent = `${texts.length}`;
+  head.append(h, count);
+  panel.appendChild(head);
 
-  const name = document.createElement("span");
-  name.className = "lp-tr2-routine-block-name";
-  name.textContent = routine.name;
+  const body = document.createElement("p");
+  body.className = texts.length
+    ? "lp-tr2-routine-card-item-text"
+    : "lp-tr2-routine-day-panel-empty";
+  body.textContent = texts.length ? texts.join(", ") : "없음";
+  panel.appendChild(body);
+  return panel;
+}
 
-  const pct = document.createElement("span");
-  pct.className = "lp-tr2-routine-block-pct";
-  pct.textContent = `실행율 ${formatPctRounded(routine.executionPct)}`;
+function appendHappinessRoutinePeriodCard(
+  sec,
+  routine,
+  {
+    subText,
+    missedTitle,
+    keptTitle,
+    missedItems,
+    keptItems,
+    badgeKind = "",
+  } = {},
+) {
+  if (!routine) return;
 
-  head.append(name, pct);
-  block.appendChild(head);
+  const card = document.createElement("article");
+  card.className = "lp-tr2-routine-day-card";
 
-  const sub = document.createElement("p");
-  sub.className = "lp-tr2-routine-block-sub";
-  sub.textContent = `체크 ${routine.totalChecks}/${routine.totalOpportunities}`;
-  block.appendChild(sub);
+  const head = document.createElement("div");
+  head.className = "lp-tr2-routine-day-card-head";
+  const name = document.createElement("h3");
+  name.className = "lp-tr2-routine-day-card-name";
+  name.textContent = routine.name || "(이름 없음)";
+  if (badgeKind === "ok" || badgeKind === "warn") {
+    const badge = document.createElement("span");
+    badge.className =
+      badgeKind === "ok"
+        ? "lp-tr2-routine-badge lp-tr2-routine-badge--ok"
+        : "lp-tr2-routine-badge lp-tr2-routine-badge--warn";
+    badge.textContent = badgeKind === "ok" ? "가장 높음" : "가장 낮음";
+    name.appendChild(document.createTextNode(" "));
+    name.appendChild(badge);
+  }
+  const sub = document.createElement("span");
+  sub.className = "lp-tr2-routine-day-card-sub";
+  sub.textContent =
+    subText ||
+    `체크 ${routine.totalChecks}/${routine.totalOpportunities}`;
+  head.append(name, sub);
+  card.appendChild(head);
 
-  block.appendChild(
-    buildHappinessRoutineItemsLine(routine.keptItems || [], "지켜진 매일할일", "kept"),
-  );
-  block.appendChild(
-    buildHappinessRoutineItemsLine(
-      routine.missedItems || [],
-      "안 지켜진 매일할일",
-      "missed",
+  card.appendChild(
+    createRoutineCardProgressBar(
+      routine.executionPct,
+      `실행율 ${formatPctRounded(routine.executionPct)} · 체크 ${routine.totalChecks}/${routine.totalOpportunities}`,
     ),
   );
 
-  sec.appendChild(block);
+  const split = document.createElement("div");
+  split.className = "lp-tr2-routine-day-split";
+  split.append(
+    buildHappinessRoutineCardItemList(
+      missedTitle || "안 지켜진",
+      missedItems || [],
+      "missed",
+    ),
+    buildHappinessRoutineCardItemList(
+      keptTitle || "지켜진",
+      keptItems || [],
+      "kept",
+    ),
+  );
+  card.appendChild(split);
+  sec.appendChild(card);
+}
+
+/** 주간 등 — 매일할일 실행율 평균으로 잘 지킴 / 잘 안 지킴 분리 (50% 기준) */
+function splitRoutineItemsByAvgExecution(routine) {
+  const items = Array.isArray(routine?.items) ? routine.items : [];
+  const weak = [];
+  const strong = [];
+  for (const item of items) {
+    const pct = Number(item?.executionPct);
+    if (!Number.isFinite(pct)) continue;
+    if (pct < 50) weak.push(item);
+    else strong.push(item);
+  }
+  weak.sort(
+    (a, b) =>
+      a.executionPct - b.executionPct ||
+      String(a.text || "").localeCompare(String(b.text || ""), "ko"),
+  );
+  strong.sort(
+    (a, b) =>
+      b.executionPct - a.executionPct ||
+      String(a.text || "").localeCompare(String(b.text || ""), "ko"),
+  );
+  return { weak, strong };
+}
+
+function appendHappinessRoutineDayView(sec, snap) {
+  const routines = [...(snap.routines || [])];
+  if (!routines.length) return;
+  for (const routine of routines) {
+    appendHappinessRoutinePeriodCard(sec, routine, {
+      subText: `체크 ${routine.totalChecks}/${routine.totalOpportunities}`,
+      missedTitle: "안 지켜진",
+      keptTitle: "지켜진",
+      missedItems: routine.missedItems || [],
+      keptItems: routine.keptItems || [],
+    });
+  }
+}
+
+function appendHappinessRoutineWeekView(sec, snap) {
+  const routines = [...(snap.routines || [])];
+  if (!routines.length) return;
+  const days = snap.calendarDayCount || 0;
+  const bestId = snap.bestRoutine ? String(snap.bestRoutine.kpiId) : "";
+  const worstId = snap.worstRoutine ? String(snap.worstRoutine.kpiId) : "";
+  const showBothBadges =
+    bestId && worstId && bestId !== worstId && routines.length > 1;
+
+  for (const routine of routines) {
+    const id = String(routine.kpiId);
+    let badgeKind = "";
+    if (showBothBadges && id === bestId) badgeKind = "ok";
+    else if (showBothBadges && id === worstId) badgeKind = "warn";
+    const { weak, strong } = splitRoutineItemsByAvgExecution(routine);
+    appendHappinessRoutinePeriodCard(sec, routine, {
+      subText: `실행율 ${formatPctRounded(routine.executionPct)} · 체크 ${routine.totalChecks}/${routine.totalOpportunities} · ${days}일`,
+      missedTitle: "평균적으로 잘 안 지킨",
+      keptTitle: "평균적으로 잘 지킨",
+      missedItems: weak,
+      keptItems: strong,
+      badgeKind,
+    });
+  }
 }
 
 function appendHappinessRoutineBlock(sec, snap, { heading, routine, items, badgeKind }) {
@@ -2704,26 +2894,32 @@ function appendHappinessRoutineBlock(sec, snap, { heading, routine, items, badge
   const head = document.createElement("div");
   head.className = "lp-tr2-routine-block-head";
 
-  const title = document.createElement("p");
-  title.className = "lp-tr2-routine-block-title";
-  title.textContent = heading;
+  if (heading && heading !== "루틴") {
+    const title = document.createElement("p");
+    title.className = "lp-tr2-routine-block-title";
+    title.textContent = heading;
+    head.appendChild(title);
+  }
 
   const name = document.createElement("span");
   name.className = "lp-tr2-routine-block-name";
   name.textContent = routine.name;
 
-  const badge = document.createElement("span");
-  badge.className =
-    badgeKind === "ok"
-      ? "lp-tr2-routine-badge lp-tr2-routine-badge--ok"
-      : "lp-tr2-routine-badge lp-tr2-routine-badge--warn";
-  badge.textContent = badgeKind === "ok" ? "가장 높음" : "가장 낮음";
-
   const pct = document.createElement("span");
   pct.className = "lp-tr2-routine-block-pct";
   pct.textContent = `실행율 ${formatPctRounded(routine.executionPct)}`;
 
-  head.append(title, name, badge, pct);
+  head.append(name);
+  if (badgeKind === "ok" || badgeKind === "warn") {
+    const badge = document.createElement("span");
+    badge.className =
+      badgeKind === "ok"
+        ? "lp-tr2-routine-badge lp-tr2-routine-badge--ok"
+        : "lp-tr2-routine-badge lp-tr2-routine-badge--warn";
+    badge.textContent = badgeKind === "ok" ? "가장 높음" : "가장 낮음";
+    head.appendChild(badge);
+  }
+  head.appendChild(pct);
   block.appendChild(head);
 
   const sub = document.createElement("p");
@@ -2746,53 +2942,65 @@ function appendHappinessRoutineBlock(sec, snap, { heading, routine, items, badge
 function mountHappinessRoutineSection(scrollWrap, range) {
   const isDay = range?.start === range?.end;
   const snap = buildHappinessRoutineReportSnapshot(range);
+  const dayCount = snap.calendarDayCount || 0;
+  const isWeekView = !isDay && dayCount > 1 && dayCount <= 8;
   const sec = createSection(
     "행복 루틴 점검",
     isDay
-      ? "매일반복 KPI별 · 오늘 지켜진 / 안 지켜진 매일할일"
-      : `매일반복 루틴 · ${snap.calendarDayCount || 0}일 · 가장 잘·덜 지켜진 루틴만`,
+      ? "루틴 카드별 실행율 · 안 지켜진 / 지켜진 매일할일"
+      : isWeekView
+        ? `${dayCount}일 실행율 · 평균적으로 잘 지킨 / 잘 안 지킨 매일할일`
+        : `행복 기본 루틴 + 매일 반복 KPI · ${dayCount}일`,
   );
 
   if (!snap.hasData) {
     const note = document.createElement("p");
     note.className = "lp-tr2-chart-note";
     note.textContent =
-      "매일반복이 켜진 행복 루틴과 매일할일이 없거나, 이 기간 집계 대상이 없습니다.";
+      "행복 기본 루틴·매일 반복 KPI가 없거나, 이 기간 집계 대상이 없습니다.";
     sec.appendChild(note);
     scrollWrap.appendChild(sec);
     return;
   }
 
   if (isDay) {
-    for (const routine of snap.routines) {
-      appendHappinessRoutineDayBlock(sec, routine);
-    }
+    appendHappinessRoutineDayView(sec, snap);
     scrollWrap.appendChild(sec);
     return;
   }
 
-  const best = snap.bestRoutine;
-  const worst = snap.worstRoutine;
-  const sameRoutine =
-    best && worst && String(best.kpiId) === String(worst.kpiId);
+  if (isWeekView) {
+    appendHappinessRoutineWeekView(sec, snap);
+    scrollWrap.appendChild(sec);
+    return;
+  }
 
-  appendHappinessRoutineBlock(sec, snap, {
-    heading: "가장 잘 지켜지는 루틴",
-    routine: best,
-    items: best?.weakItems || [],
-    badgeKind: "ok",
-  });
+  /* 한달 이상: 대상 루틴 전부 표시 (가장 높음/낮음 뱃지만 표시) */
+  const bestId = snap.bestRoutine ? String(snap.bestRoutine.kpiId) : "";
+  const worstId = snap.worstRoutine ? String(snap.worstRoutine.kpiId) : "";
+  const showBothBadges =
+    bestId && worstId && bestId !== worstId && snap.routines.length > 1;
 
-  if (!sameRoutine) {
+  for (const routine of snap.routines) {
+    const id = String(routine.kpiId);
+    let badgeKind = "";
+    let heading = "루틴";
+    if (showBothBadges && id === bestId) {
+      badgeKind = "ok";
+      heading = "가장 잘 지켜지는 루틴";
+    } else if (showBothBadges && id === worstId) {
+      badgeKind = "warn";
+      heading = "가장 덜 지켜지는 루틴";
+    }
     const weakItems =
-      worst?.weakItems?.length > 0
-        ? worst.weakItems
-        : (worst?.items || []).slice(0, 3);
+      routine.weakItems?.length > 0
+        ? routine.weakItems
+        : (routine.items || []).filter((i) => i.executionPct < 100).slice(0, 3);
     appendHappinessRoutineBlock(sec, snap, {
-      heading: "가장 덜 지켜지는 루틴",
-      routine: worst,
+      heading,
+      routine,
       items: weakItems,
-      badgeKind: "warn",
+      badgeKind,
     });
   }
 
@@ -3317,12 +3525,70 @@ function createFocusDisruptorBarRow(label, barPct, meta, color) {
   return row;
 }
 
+function pickFocusHourRanks(hourGrid, { best = true, take = 3, minCount = 1 } = {}) {
+  const scored = (hourGrid || []).filter(
+    (h) =>
+      (h.count || 0) >= minCount &&
+      (h.avgMult != null || h.avg != null),
+  );
+  scored.sort((a, b) => {
+    const am = a.avgMult != null ? a.avgMult : (a.avg || 0) / 5;
+    const bm = b.avgMult != null ? b.avgMult : (b.avg || 0) / 5;
+    if (best) {
+      return bm - am || (b.minutes || 0) - (a.minutes || 0);
+    }
+    return am - bm || (a.minutes || 0) - (b.minutes || 0);
+  });
+  return scored.slice(0, take);
+}
+
+/** 다음에 집중할 때 — 시간대·좋은 조건·피할 조건 한 줄 요약 */
+function buildFocusNextPlanLines(ratingSnap, focusSnap) {
+  const hourGrid = ratingSnap?.hourGrid || focusSnap?.hourGrid || [];
+  const bestHours = pickFocusHourRanks(hourGrid, { best: true, take: 3 });
+  const lowHours = pickFocusHourRanks(hourGrid, { best: false, take: 2 });
+  const goodTags = (focusSnap?.recipeTags || []).slice(0, 3);
+  const badTags = (focusSnap?.disruptorAnalysis?.ranking || []).slice(0, 2);
+
+  const lines = [];
+  if (bestHours.length) {
+    lines.push(
+      `평균 집중이 높았던 시각: ${bestHours.map((h) => formatHourLabel(h.hour)).join(" · ")}`,
+    );
+  }
+  if (goodTags.length) {
+    lines.push(
+      `잘 된 상황(몰입 요소): ${goodTags.map((t) => `「${t.label}」`).join(" · ")}`,
+    );
+  }
+  if (badTags.length) {
+    lines.push(
+      `피하면 좋은 방해: ${badTags.map((t) => `「${t.label}」`).join(" · ")}`,
+    );
+  }
+  if (
+    lowHours.length &&
+    bestHours.length &&
+    !bestHours.some((b) => lowHours.some((l) => l.hour === b.hour))
+  ) {
+    lines.push(
+      `집중이 낮았던 시각: ${lowHours.map((h) => formatHourLabel(h.hour)).join(" · ")}`,
+    );
+  }
+  if (!lines.length) {
+    return [
+      "생산적 작업에 「이 시간 평가」와 몰입·방해 요소를 남기면, 다음에 쓰기 좋은 시간대와 조건이 정리됩니다.",
+    ];
+  }
+  return lines;
+}
+
 function mountFocusDisruptorAnalysisBlock(sec, analysis) {
   if (!analysis?.show) return;
 
   const analysisBlock = createRatingBlock(
-    "방해 요소 분석",
-    "생산적 과제할 때 피하면 좋은 요소",
+    "이럴 때 집중이 안 됐음",
+    "1~2점일 때 고른 방해 요소 · 다음에 피하면 좋은 조건",
   );
 
   const insight = document.createElement("p");
@@ -3391,7 +3657,7 @@ function mountFocusReportSection(scrollWrap, range, rows) {
   const focusSnap = buildFocusReportSnapshot(rows);
   const sec = createSection(
     "집중 분석",
-    "생산적 작업 별점·몰입 요소·방해 요소로 잘 집중된 시간·활동을 봅니다",
+    "언제·어떤 상황에서 잘 되고 안 됐는지 · 다음에 집중할 때 참고",
   );
   sec.classList.add("lp-tr2-focus-section");
 
@@ -3405,65 +3671,82 @@ function mountFocusReportSection(scrollWrap, range, rows) {
     return;
   }
 
-  if (focusSnap) {
-    const hero = document.createElement("div");
-    hero.className = "lp-tr2-plan-hero lp-tr2-focus-hero";
-    const heroLab = document.createElement("span");
-    heroLab.className = "lp-tr2-plan-hero-label";
-    heroLab.textContent = "나의 초집중 레시피";
-    const heroVal = document.createElement("strong");
-    heroVal.className = "lp-tr2-plan-hero-value lp-tr2-focus-hero-value";
-    heroVal.textContent =
-      focusSnap.highFocusSessionCount > 0
-        ? `${focusSnap.highFocusSessionCount}건`
-        : "—";
-    const heroLine = document.createElement("p");
-    heroLine.className = "lp-tr2-plan-hero-line";
-    heroLine.textContent = focusSnap.recipeOneLiner;
-    hero.append(heroLab, heroVal, heroLine);
-    if (ratingSnap) {
-      const evalMeta = document.createElement("p");
-      evalMeta.className = "lp-tr2-focus-eval-meta";
-      evalMeta.textContent = `평가 ${ratingSnap.ratedCount}건 · ${formatIntegerMinutesDurationKo(ratingSnap.totalMinutes)}`;
-      hero.appendChild(evalMeta);
-    }
-    sec.appendChild(hero);
-
-    if (focusSnap.recipeTags.length) {
-      const recipeBlock = createRatingBlock(
-        "4~5점 세션 조건 순위",
-        "몰입 요소가 함께 있던 비율",
-      );
-      const bars = document.createElement("div");
-      bars.className = "lp-tr2-bars";
-      focusSnap.recipeTags.slice(0, 6).forEach((item) => {
-        bars.appendChild(createFocusRecipeTagRow(item));
-      });
-      recipeBlock.appendChild(bars);
-      sec.appendChild(recipeBlock);
-    }
-  } else if (ratingSnap) {
-    const evalLine = document.createElement("p");
-    evalLine.className = "lp-tr2-chart-note";
-    evalLine.textContent = `평가 ${ratingSnap.ratedCount}건 · ${formatIntegerMinutesDurationKo(ratingSnap.totalMinutes)}`;
-    sec.appendChild(evalLine);
+  /* 1) 다음에 집중하려면 — 시간대 + 좋은/나쁜 조건 */
+  const planBlock = createRatingBlock(
+    "다음에 집중하려면",
+    "평균으로 잘 됐던 시간대와 조건 · 피할 방해",
+  );
+  const planLines = buildFocusNextPlanLines(ratingSnap, focusSnap);
+  planLines.forEach((text) => {
+    const p = document.createElement("p");
+    p.className = "lp-tr2-focus-next-plan-line";
+    p.textContent = text;
+    planBlock.appendChild(p);
+  });
+  if (ratingSnap) {
+    const evalMeta = document.createElement("p");
+    evalMeta.className = "lp-tr2-focus-eval-meta";
+    evalMeta.textContent = `평가 ${ratingSnap.ratedCount}건 · ${formatIntegerMinutesDurationKo(ratingSnap.totalMinutes)}`;
+    planBlock.appendChild(evalMeta);
   }
+  sec.appendChild(planBlock);
 
+  /* 2) 몇 시에 집중이 높았는지 */
   if (ratingSnap?.hourGrid?.some((h) => h.count > 0)) {
     const hourBlock = createRatingBlock(
-      "시간대별 집중",
-      "시작 시각 기준 · 막대 높이=집중도(−50%~+100%, 5점=+100%)",
+      "주로 집중이 높은 시간",
+      "시작 시각 기준 평균 집중도 · 막대가 높을수록 그 시간대에 잘 됨",
     );
     hourBlock.appendChild(
       render24HourRatingChart(ratingSnap.hourGrid, { mode: "return" }),
     );
+    const bestHours = pickFocusHourRanks(ratingSnap.hourGrid, {
+      best: true,
+      take: 3,
+    });
+    if (bestHours.length) {
+      const tip = document.createElement("p");
+      tip.className = "lp-tr2-chart-note";
+      tip.textContent = `평균 상위: ${bestHours
+        .map(
+          (h) =>
+            `${formatHourLabel(h.hour)}(${formatReturnPercentAvg(h.avgMult)})`,
+        )
+        .join(" · ")}`;
+      hourBlock.appendChild(tip);
+    }
     sec.appendChild(hourBlock);
+  }
+
+  /* 3) 어떤 상황에서 잘 됐는지 */
+  if (focusSnap?.recipeTags?.length) {
+    const recipeBlock = createRatingBlock(
+      "이럴 때 집중이 잘 됐음",
+      "4~5점일 때 함께 있던 몰입 요소 · 다음에 만들기 좋은 조건",
+    );
+    const bars = document.createElement("div");
+    bars.className = "lp-tr2-bars";
+    focusSnap.recipeTags.slice(0, 6).forEach((item) => {
+      bars.appendChild(createFocusRecipeTagRow(item));
+    });
+    recipeBlock.appendChild(bars);
+    sec.appendChild(recipeBlock);
+  } else if (focusSnap && focusSnap.highFocusSessionCount > 0) {
+    const note = document.createElement("p");
+    note.className = "lp-tr2-chart-note";
+    note.textContent = focusSnap.recipeOneLiner;
+    sec.appendChild(note);
+  }
+
+  /* 4) 어떨 때 안 좋았는지 */
+  if (focusSnap) {
+    mountFocusDisruptorAnalysisBlock(sec, focusSnap.disruptorAnalysis);
   }
 
   if (!isDay && ratingSnap?.weekdayGrid?.some((w) => w.count > 0)) {
     const block = createRatingBlock(
-      "요일별 집중",
-      "월~일 요일별 평균 집중도 · 막대가 높을수록 잘 집중된 날",
+      "요일별로 보면",
+      "어떤 요일에 집중이 잘 됐는지 · 다음에 일정 잡을 때 참고",
     );
     block.appendChild(renderWeekdayReturnChart(ratingSnap.weekdayGrid));
     sec.appendChild(block);
@@ -3471,8 +3754,8 @@ function mountFocusReportSection(scrollWrap, range, rows) {
 
   if (ratingSnap?.topTasks?.length) {
     const block = createRatingBlock(
-      "활동별 집중도",
-      "과제별 평균 집중도 · 15분 이상 또는 2회 이상 · 5점=+100%",
+      "어떤 활동에서",
+      "과제별 평균 집중도 · 집중이 잘 된 활동 유형",
     );
     const bars = document.createElement("div");
     bars.className = "lp-tr2-bars";
@@ -3487,41 +3770,6 @@ function mountFocusReportSection(scrollWrap, range, rows) {
     });
     block.appendChild(bars);
     sec.appendChild(block);
-  }
-
-  if (focusSnap) {
-    const durGrid = document.createElement("div");
-    durGrid.className = "lp-tr2-card-grid";
-    durGrid.appendChild(
-      createStatCard(
-        "평균 집중 시간",
-        formatIntegerMinutesDurationKo(Math.round(focusSnap.duration.avgMins)),
-        `${focusSnap.duration.count}건`,
-      ),
-    );
-    if (focusSnap.duration.avgHighFocusMins != null) {
-      durGrid.appendChild(
-        createStatCard(
-          "4~5점 세션 평균",
-          formatIntegerMinutesDurationKo(
-            Math.round(focusSnap.duration.avgHighFocusMins),
-          ),
-          `${focusSnap.duration.highFocusSessionCount}건`,
-        ),
-      );
-    }
-    durGrid.appendChild(
-      createStatCard(
-        "최장 세션",
-        formatIntegerMinutesDurationKo(focusSnap.duration.maxMins),
-        "",
-      ),
-    );
-    const durBlock = createRatingBlock("집중 지속 시간", "시작~종료 기록 기준");
-    durBlock.appendChild(durGrid);
-    sec.appendChild(durBlock);
-
-    mountFocusDisruptorAnalysisBlock(sec, focusSnap.disruptorAnalysis);
   }
 
   if (ratingSnap?.monthScores?.length > 1) {
@@ -3581,13 +3829,23 @@ function donutSlicePath(cx, cy, r, rInner, startAngle, endAngle) {
   return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} L ${xi1} ${yi1} A ${rInner} ${rInner} 0 ${large} 0 ${xi2} ${yi2} Z`;
 }
 
-function appendDonutRingSlices(svg, cx, cy, r, rInner, segments, startAngle) {
+function appendDonutRingSlices(
+  svg,
+  cx,
+  cy,
+  r,
+  rInner,
+  segments,
+  startAngle,
+  { withSliceLabels = false, labelMinSpan = 0.32 } = {},
+) {
   let angle = startAngle;
   const total = segments.reduce(
     (sum, seg) => sum + Math.max(0, Number(seg.minutes) || 0),
     0,
   );
-  if (!(total > 0)) return angle;
+  if (!(total > 0)) return { angle, slices: [] };
+  const slices = [];
   segments.forEach((seg) => {
     const mins = Math.max(0, Number(seg.minutes) || 0);
     if (mins <= 0) return;
@@ -3603,36 +3861,100 @@ function appendDonutRingSlices(svg, cx, cy, r, rInner, segments, startAngle) {
       class: seg.className || "",
     });
     const title = document.createElementNS(SVG_NS, "title");
-    title.textContent = `${seg.label} ${formatIntegerMinutesDurationKo(Math.round(mins))}`;
+    const pct =
+      seg.pctText ||
+      `${Math.round((mins / total) * 100)}%`;
+    title.textContent = `${seg.label} ${formatIntegerMinutesDurationKo(Math.round(mins))} · ${pct}`;
     path.appendChild(title);
     svg.appendChild(path);
+    slices.push({
+      label: seg.label,
+      minutes: mins,
+      pctText: pct,
+      slice,
+      midAngle: start + slice / 2,
+      color: seg.color,
+    });
     angle = end;
   });
-  return angle;
+
+  if (withSliceLabels) {
+    slices.forEach((item) => {
+      if (item.slice < labelMinSpan) return;
+      const labelR = (r + rInner) / 2;
+      const tx = cx + labelR * Math.cos(item.midAngle);
+      const ty = cy + labelR * Math.sin(item.midAngle);
+      const fillColor = String(item.color || "").toLowerCase();
+      const lightFill =
+        fillColor === DAY_HERO_COLORS.rest.toLowerCase() ||
+        fillColor === "#eef1f4" ||
+        fillColor === "#f2f2f2";
+      const text = svgEl("text", {
+        x: tx.toFixed(1),
+        y: ty.toFixed(1),
+        "text-anchor": "middle",
+        "dominant-baseline": "middle",
+        fill: lightFill ? "#64748b" : "#ffffff",
+        "font-size": String(tr2SvgFontSize(11)),
+        "font-weight": "800",
+        class: "lp-tr2-day-hero-donut-slice-label",
+      });
+      text.textContent = item.pctText;
+      svg.appendChild(text);
+    });
+  }
+
+  return { angle, slices };
 }
 
-function buildDayHeroTimeParts(hero) {
+function buildDayHeroTimeParts(hero, { dayCount = 1 } = {}) {
+  const days = Math.max(1, Math.round(Number(dayCount) || 1));
   const dayMin = DAY_LENGTH_MINUTES;
+  const periodMin = dayMin * days;
   const productive = Math.max(0, Math.round(Number(hero.productiveMinutes) || 0));
   const waste = Math.max(0, Math.round(Number(hero.wasteMinutes) || 0));
   const work = Math.max(0, Math.round(Number(hero.workMinutes) || 0));
   const sleep = Math.max(0, Math.round(Number(hero.sleepMinutes) || 0));
-  const used = productive + waste + work + sleep;
-  const rest = Math.max(0, dayMin - used);
-  const pct = (mins) => (dayMin > 0 ? Math.round((mins / dayMin) * 100) : 0);
+  const categoryRecorded = productive + waste + work + sleep;
+  /* 상단 총 기록과 동일 합 — 없으면 카테고리 합 */
+  const logged = Math.max(
+    0,
+    Math.round(Number(hero.totalLoggedMinutes) || 0),
+  );
+  const recorded = logged > 0 ? logged : categoryRecorded;
+  const rest = Math.max(0, periodMin - categoryRecorded);
+  /* 가용 = (23:59×일수) − 근무 − 수면 */
+  const available = Math.max(0, periodMin - work - sleep);
+  const availProd = Math.min(productive, available);
+  const availWaste = Math.min(waste, Math.max(0, available - availProd));
+  const availLeft = Math.max(0, available - availProd - availWaste);
+  const periodPct = (mins) =>
+    periodMin > 0 ? Math.round((mins / periodMin) * 100) : 0;
+  const availPctOf = (mins) =>
+    available > 0 ? Math.round((mins / available) * 100) : 0;
   return {
+    dayCount: days,
     dayMin,
-    available: Math.max(0, Math.round(Number(hero.availableMinutes) || 0)),
+    periodMin,
+    recorded,
+    recordedPct: periodPct(recorded),
+    available,
     productive,
     waste,
     work,
     sleep,
     rest,
-    prodPct: pct(productive),
-    wastePct: pct(waste),
-    workPct: pct(work),
-    sleepPct: pct(sleep),
-    restPct: pct(rest),
+    availProd,
+    availWaste,
+    availLeft,
+    prodPct: periodPct(productive),
+    wastePct: periodPct(waste),
+    workPct: periodPct(work),
+    sleepPct: periodPct(sleep),
+    restPct: periodPct(rest),
+    availProdPct: availPctOf(availProd),
+    availWastePct: availPctOf(availWaste),
+    availLeftPct: availPctOf(availLeft),
   };
 }
 
@@ -3669,7 +3991,55 @@ function dayHeroDonutSegments(parts) {
   return segs;
 }
 
-/** 하루 24시간 기준 — 생산 / 비생산 / 근무 / 수면 (/ 그 외) */
+function dayHeroAvailableDonutSegments(parts) {
+  const segs = [
+    {
+      label: "생산적",
+      minutes: parts.availProd,
+      color: DAY_HERO_COLORS.productive,
+      pctText: `${parts.availProdPct}%`,
+    },
+    {
+      label: "비생산",
+      minutes: parts.availWaste,
+      color: DAY_HERO_COLORS.waste,
+      pctText: `${parts.availWastePct}%`,
+    },
+  ];
+  if (parts.availLeft > 0) {
+    segs.push({
+      label: "남는 가용",
+      minutes: parts.availLeft,
+      color: DAY_HERO_COLORS.rest,
+      pctText: `${parts.availLeftPct}%`,
+    });
+  }
+  return segs;
+}
+
+function fillDayHeroDonutCenter(wrap, { capText, totalText, subText }) {
+  const center = document.createElement("div");
+  center.className = "lp-tr2-day-hero-donut-center";
+  if (capText) {
+    const cap = document.createElement("span");
+    cap.className = "lp-tr2-day-hero-donut-cap";
+    cap.textContent = capText;
+    center.appendChild(cap);
+  }
+  const totalEl = document.createElement("strong");
+  totalEl.className = "lp-tr2-day-hero-donut-total";
+  totalEl.textContent = totalText;
+  center.appendChild(totalEl);
+  if (subText) {
+    const sub = document.createElement("span");
+    sub.className = "lp-tr2-day-hero-donut-sub";
+    sub.textContent = subText;
+    center.appendChild(sub);
+  }
+  wrap.appendChild(center);
+}
+
+/** 하루 24시간 기준 — 생산 / 비생산 / 근무 / 수면 (/ 그 외), 가운데 = 총기록 */
 function renderDayHeroDayDonut(parts) {
   const wrap = document.createElement("div");
   wrap.className = "lp-tr2-day-hero-donut";
@@ -3688,28 +4058,68 @@ function renderDayHeroDayDonut(parts) {
     height: size,
     viewBox: `0 0 ${size} ${size}`,
     role: "img",
-    "aria-label": `하루 중 생산 ${formatIntegerMinutesDurationKo(parts.productive)}, 비생산 ${formatIntegerMinutesDurationKo(parts.waste)}, 근무 ${formatIntegerMinutesDurationKo(parts.work)}, 수면 ${formatIntegerMinutesDurationKo(parts.sleep)}`,
+    "aria-label": `총기록 ${formatIntegerMinutesDurationKo(parts.recorded)}, 생산 ${formatIntegerMinutesDurationKo(parts.productive)}, 비생산 ${formatIntegerMinutesDurationKo(parts.waste)}, 근무 ${formatIntegerMinutesDurationKo(parts.work)}, 수면 ${formatIntegerMinutesDurationKo(parts.sleep)}`,
   });
 
   appendDonutRingSlices(svg, cx, cy, r, rInner, segments, start);
+  wrap.appendChild(svg);
+  fillDayHeroDonutCenter(wrap, {
+    capText: "",
+    totalText: formatIntegerMinutesDurationKo(parts.recorded),
+    subText:
+      parts.dayCount <= 1
+        ? `${parts.recordedPct}%`
+        : `${parts.dayCount}일 중 ${parts.recordedPct}%`,
+  });
+  return wrap;
+}
+
+/** 가용시간(근무·수면 제외) 안에서 생산·비생산 활용 — %는 도넛 안 */
+function renderDayHeroAvailableDonut(parts) {
+  const wrap = document.createElement("div");
+  wrap.className =
+    "lp-tr2-day-hero-donut lp-tr2-day-hero-donut--available";
+
+  const size = 220;
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = 96;
+  const rInner = 58;
+  const start = -Math.PI / 2;
+  const segments = dayHeroAvailableDonutSegments(parts);
+
+  const svg = svgEl("svg", {
+    class: "lp-tr2-day-hero-donut-svg",
+    width: size,
+    height: size,
+    viewBox: `0 0 ${size} ${size}`,
+    role: "img",
+    "aria-label": `가용 ${formatIntegerMinutesDurationKo(parts.available)} 중 생산 ${formatIntegerMinutesDurationKo(parts.availProd)}, 비생산 ${formatIntegerMinutesDurationKo(parts.availWaste)}`,
+  });
+
+  if (parts.available > 0 && segments.some((s) => s.minutes > 0)) {
+    appendDonutRingSlices(svg, cx, cy, r, rInner, segments, start, {
+      withSliceLabels: true,
+      labelMinSpan: 0.28,
+    });
+  } else {
+    const emptyPath = donutSlicePath(cx, cy, r, rInner, 0, Math.PI * 2);
+    if (emptyPath) {
+      svg.appendChild(
+        svgEl("path", {
+          d: emptyPath,
+          fill: DAY_HERO_COLORS.rest,
+        }),
+      );
+    }
+  }
 
   wrap.appendChild(svg);
-
-  const center = document.createElement("div");
-  center.className = "lp-tr2-day-hero-donut-center";
-  const cap = document.createElement("span");
-  cap.className = "lp-tr2-day-hero-donut-cap";
-  cap.textContent = "생산";
-  const totalEl = document.createElement("strong");
-  totalEl.className = "lp-tr2-day-hero-donut-total";
-  totalEl.textContent = formatIntegerMinutesDurationKo(parts.productive);
-  const sub = document.createElement("span");
-  sub.className = "lp-tr2-day-hero-donut-sub";
-  sub.textContent = `23:59 중 ${parts.prodPct}%`;
-  center.appendChild(cap);
-  center.appendChild(totalEl);
-  center.appendChild(sub);
-  wrap.appendChild(center);
+  fillDayHeroDonutCenter(wrap, {
+    capText: "가용시간",
+    totalText: formatIntegerMinutesDurationKo(parts.available),
+    subText: "근무·수면 제외",
+  });
   return wrap;
 }
 
@@ -3724,13 +4134,20 @@ function createDayHeroLegendItem(swatch, label, value, pctText) {
   const lab = document.createElement("span");
   lab.className = "lp-tr2-day-hero-legend-label";
   lab.textContent = label;
-  const meta = document.createElement("span");
-  meta.className = "lp-tr2-day-hero-legend-meta";
-  meta.textContent = pctText
-    ? `${formatIntegerMinutesDurationKo(value)} · ${pctText}`
-    : formatIntegerMinutesDurationKo(value);
   body.appendChild(lab);
-  body.appendChild(meta);
+  const hasValue = value != null && Number.isFinite(Number(value));
+  if (hasValue || pctText) {
+    const meta = document.createElement("span");
+    meta.className = "lp-tr2-day-hero-legend-meta";
+    if (hasValue && pctText) {
+      meta.textContent = `${formatIntegerMinutesDurationKo(value)} · ${pctText}`;
+    } else if (hasValue) {
+      meta.textContent = formatIntegerMinutesDurationKo(value);
+    } else {
+      meta.textContent = pctText;
+    }
+    body.appendChild(meta);
+  }
   item.appendChild(sw);
   item.appendChild(body);
   return item;
@@ -3750,18 +4167,30 @@ function createDayHeroValueRow(label, valueText, tone) {
   return row;
 }
 
-function renderDayHeroSummary(hero) {
-  const parts = buildDayHeroTimeParts(hero);
+function renderDayHeroSummary(hero, { dayCount = 1 } = {}) {
+  const parts = buildDayHeroTimeParts(hero, { dayCount });
+  const isMultiDay = parts.dayCount > 1;
   const root = document.createElement("div");
   root.className = "lp-tr2-day-hero";
 
   const viz = document.createElement("div");
   viz.className = "lp-tr2-day-hero-viz";
-  viz.appendChild(renderDayHeroDayDonut(parts));
 
-  const legend = document.createElement("div");
-  legend.className = "lp-tr2-day-hero-legend";
-  const legendItems = [
+  const charts = document.createElement("div");
+  charts.className = "lp-tr2-day-hero-charts";
+
+  const dayCol = document.createElement("div");
+  dayCol.className = "lp-tr2-day-hero-chart-col";
+  const dayCap = document.createElement("p");
+  dayCap.className = "lp-tr2-day-hero-chart-cap";
+  dayCap.textContent = isMultiDay
+    ? `${parts.dayCount}일 쓴 시간`
+    : "하루 구성";
+  dayCol.appendChild(dayCap);
+  dayCol.appendChild(renderDayHeroDayDonut(parts));
+  const dayLegend = document.createElement("div");
+  dayLegend.className = "lp-tr2-day-hero-legend";
+  const dayLegendItems = [
     {
       color: DAY_HERO_COLORS.productive,
       label: "생산적",
@@ -3788,26 +4217,40 @@ function renderDayHeroSummary(hero) {
     },
   ];
   if (parts.rest > 0) {
-    legendItems.push({
+    dayLegendItems.push({
       color: DAY_HERO_COLORS.rest,
       label: "그 외",
       minutes: parts.rest,
       pct: `${parts.restPct}%`,
     });
   }
-  legendItems.forEach((item) => {
-    legend.appendChild(
+  dayLegendItems.forEach((item) => {
+    dayLegend.appendChild(
       createDayHeroLegendItem(item.color, item.label, item.minutes, item.pct),
     );
   });
-  viz.appendChild(legend);
+  dayCol.appendChild(dayLegend);
+  charts.appendChild(dayCol);
+
+  const availCol = document.createElement("div");
+  availCol.className = "lp-tr2-day-hero-chart-col";
+  const availCap = document.createElement("p");
+  availCap.className = "lp-tr2-day-hero-chart-cap";
+  availCap.textContent = isMultiDay
+    ? `${parts.dayCount}일 가용시간 활용`
+    : "가용시간 활용";
+  availCol.appendChild(availCap);
+  availCol.appendChild(renderDayHeroAvailableDonut(parts));
+  charts.appendChild(availCol);
+
+  viz.appendChild(charts);
   root.appendChild(viz);
 
   const valuePanel = document.createElement("div");
   valuePanel.className = "lp-tr2-day-hero-value";
   const valueTitle = document.createElement("p");
   valueTitle.className = "lp-tr2-day-hero-value-title";
-  valueTitle.textContent = "오늘의 시간 가치";
+  valueTitle.textContent = isMultiDay ? "기간의 시간 가치" : "오늘의 시간 가치";
   valuePanel.appendChild(valueTitle);
 
   const investWon = Math.round(Number(hero.investWon) || 0);
@@ -3856,13 +4299,15 @@ function renderDayHeroSummary(hero) {
 function mountHeroSection(scrollWrap, range) {
   const hero = getTimeReportHeroSnapshotForDateRange(range.start, range.end);
   const isDay = range.start === range.end;
+  const dayCount = listDatesInclusive(range.start, range.end).length;
+  const isWeekView = !isDay && dayCount > 1 && dayCount <= 8;
   const sec = createSection(
     "한 장 요약",
     formatRangeLabel(range.start, range.end),
   );
 
-  if (isDay) {
-    sec.appendChild(renderDayHeroSummary(hero));
+  if (isDay || isWeekView) {
+    sec.appendChild(renderDayHeroSummary(hero, { dayCount }));
     scrollWrap.appendChild(sec);
     return;
   }
@@ -4146,6 +4591,10 @@ function mountIntakeSection(scrollWrap, range, rows) {
     );
     dietBlock.appendChild(panels);
     sec.appendChild(dietBlock);
+    /* 주간: 식단 목록 + 좋아한/아쉬웠던 음식 (일간은 목록·별점만) */
+    if (isWeekView) {
+      appendMealTasteRankBlocks(sec, rows);
+    }
     scrollWrap.appendChild(sec);
     return;
   }
@@ -4208,100 +4657,56 @@ function mountIntakeSection(scrollWrap, range, rows) {
 
   sec.appendChild(counts);
   sec.appendChild(panels);
-
-  const tasteSnap = buildMealTasteReportSnapshot(rows);
-  if (tasteSnap) {
-    const tasteNote = document.createElement("p");
-    tasteNote.className = "lp-tr2-chart-note lp-tr2-intake-taste-note";
-    tasteNote.textContent = `맛 평가 ${tasteSnap.ratedCount}건 · 식단 ${tasteSnap.foodCount}종`;
-    sec.appendChild(tasteNote);
-
-    if (tasteSnap.favorites.length) {
-      const favBlock = createRatingBlock(
-        "가장 좋아한 음식",
-        "식단명별 평균 맛 평가 · 높을수록 선호",
-      );
-      const bars = document.createElement("div");
-      bars.className = "lp-tr2-bars";
-      tasteSnap.favorites.forEach((item) => {
-        const meta = [
-          `${item.count}회`,
-          item.fiveStarCount > 0 ? `5점 ${item.fiveStarCount}회` : "",
-          item.healthyCount && item.unhealthyCount
-            ? "건강·비건강 섭취"
-            : item.healthyCount
-              ? "건강한 섭취"
-              : "건강하지 않은 섭취",
-        ]
-          .filter(Boolean)
-          .join(" · ");
-        bars.appendChild(createRatingBarRow(item.food, item.avg, meta));
-      });
-      favBlock.appendChild(bars);
-      sec.appendChild(favBlock);
-    }
-
-    if (tasteSnap.dislikes.length) {
-      const dislikeBlock = createRatingBlock(
-        "아쉬웠던 음식",
-        "식단명별 평균 맛 평가 · 낮을수록 아쉬움",
-      );
-      const bars = document.createElement("div");
-      bars.className = "lp-tr2-bars";
-      tasteSnap.dislikes.forEach((item) => {
-        const meta = [
-          `${item.count}회`,
-          item.lowStarCount > 0 ? `1~2점 ${item.lowStarCount}회` : "",
-          `최저 ${item.minRating}점`,
-        ]
-          .filter(Boolean)
-          .join(" · ");
-        bars.appendChild(createRatingBarRow(item.food, item.avg, meta));
-      });
-      dislikeBlock.appendChild(bars);
-      sec.appendChild(dislikeBlock);
-    }
-
-    if (tasteSnap.fiveStarFoods.length || tasteSnap.oneStarFoods.length) {
-      const chipWrap = document.createElement("div");
-      chipWrap.className = "lp-tr2-intake-taste-chips";
-      if (tasteSnap.fiveStarFoods.length) {
-        const lab = document.createElement("p");
-        lab.className = "lp-tr2-intake-taste-chip-label";
-        lab.textContent = "5점을 준 음식";
-        chipWrap.appendChild(lab);
-        const row = document.createElement("div");
-        row.className = "lp-tr2-intake-taste-chip-row";
-        tasteSnap.fiveStarFoods.forEach((food) => {
-          const chip = document.createElement("span");
-          chip.className =
-            "lp-tr2-intake-taste-chip lp-tr2-intake-taste-chip--high";
-          chip.textContent = food;
-          row.appendChild(chip);
-        });
-        chipWrap.appendChild(row);
-      }
-      if (tasteSnap.oneStarFoods.length) {
-        const lab = document.createElement("p");
-        lab.className = "lp-tr2-intake-taste-chip-label";
-        lab.textContent = "1점을 준 음식";
-        chipWrap.appendChild(lab);
-        const row = document.createElement("div");
-        row.className = "lp-tr2-intake-taste-chip-row";
-        tasteSnap.oneStarFoods.forEach((food) => {
-          const chip = document.createElement("span");
-          chip.className =
-            "lp-tr2-intake-taste-chip lp-tr2-intake-taste-chip--low";
-          chip.textContent = food;
-          row.appendChild(chip);
-        });
-        chipWrap.appendChild(row);
-      }
-      sec.appendChild(chipWrap);
-    }
-  }
-
+  appendMealTasteRankBlocks(sec, rows);
   scrollWrap.appendChild(sec);
+}
+
+/** 맛 평가 — 5~1점별 나열 (5=가장 좋아한, 1=가장 싫어한) */
+function appendMealTasteRankBlocks(sec, rows) {
+  const tasteSnap = buildMealTasteReportSnapshot(rows);
+  if (!tasteSnap) return;
+
+  const tasteNote = document.createElement("p");
+  tasteNote.className = "lp-tr2-chart-note lp-tr2-intake-taste-note";
+  tasteNote.textContent = `맛 평가 ${tasteSnap.ratedCount}건 · 식단 ${tasteSnap.foodCount}종`;
+  sec.appendChild(tasteNote);
+
+  /* 위 식단 목록에 중간 점수가 있으므로 5점·1점만 요약 */
+  const byRating = (Array.isArray(tasteSnap.byRating) ? tasteSnap.byRating : [])
+    .filter(({ rating }) => {
+      const star = Math.round(Number(rating) || 0);
+      return star === 5 || star === 1;
+    });
+  if (!byRating.length) return;
+
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-intake-taste-by-rating";
+
+  byRating.forEach(({ rating, foods }) => {
+    if (!foods?.length) return;
+    const star = Math.round(Number(rating) || 0);
+    const title = star === 5 ? "가장 좋아한 음식" : "가장 싫어한 음식";
+    const sub = star === 5 ? "5점을 준 식단" : "1점을 준 식단";
+    const chipMod =
+      star === 5
+        ? "lp-tr2-intake-taste-chip--high"
+        : "lp-tr2-intake-taste-chip--low";
+
+    const block = createRatingBlock(title, sub);
+    const row = document.createElement("div");
+    row.className = "lp-tr2-intake-taste-chip-row";
+    foods.forEach(({ food, count }) => {
+      const chip = document.createElement("span");
+      chip.className = `lp-tr2-intake-taste-chip ${chipMod}`;
+      chip.textContent =
+        count > 1 ? `${food} · ${count}회` : food;
+      row.appendChild(chip);
+    });
+    block.appendChild(row);
+    wrap.appendChild(block);
+  });
+
+  sec.appendChild(wrap);
 }
 
 const FIELD_TIME_SCORE_KEYS = [
@@ -4436,11 +4841,7 @@ function appendRadarAxisLabel(svg, axis, i, n, cx, cy, labelR) {
     y: ly + dy,
     fill: "#334155",
     "fill-opacity": "1",
-    "font-size":
-      typeof window !== "undefined" &&
-      window.matchMedia("(min-width: 768px)").matches
-        ? 14
-        : 12,
+    "font-size": tr2SvgFontSize(12),
     "font-weight": 700,
     "text-anchor": anchor,
     "dominant-baseline": "middle",
