@@ -73,13 +73,8 @@ import {
 import {
   pullTimeDailyBudgetForDateRange,
   flushAllPendingTimeDailyBudgetSync,
-  syncTimeDailyBudgetDateToSupabase,
 } from "./utils/timeDailyBudgetSupabase.js";
-import {
-  listTimeDailyBudgetLocalDirtyDates,
-  clearTimeDailyBudgetDateLocalDirty,
-  armTimeDailyBudgetMergePreferServerOnce,
-} from "./utils/timeDailyBudgetModel.js";
+import { armTimeDailyBudgetMergePreferServerOnce } from "./utils/timeDailyBudgetModel.js";
 import { pullUserPrefsFromSupabase } from "./utils/userHourlySync.js";
 import { initSupabaseRealtimeSync } from "./utils/supabaseRealtimeSync.js";
 import { printSyncWatchHelp } from "./utils/syncWatchLog.js";
@@ -299,9 +294,6 @@ function initLpTabResumeCloudPull(getCurrentTabId) {
   }
 
   async function runPlannerResumePull(gen) {
-    try {
-      armTimeDailyBudgetMergePreferServerOnce();
-    } catch (_) {}
     await pullDataForActiveTab("schedulecalendar", { preferServer: true });
     if (gen !== resumeGen) return;
     if (getCurrentTabId() !== "schedulecalendar") return;
