@@ -517,22 +517,9 @@ export async function pullTimeLedgerTasksFromSupabase(opts = {}) {
   });
 }
 
-/** 신규 가입 등 서버 과제가 0건일 때만 기본 과제(FIXED_*) 전체 시드 */
+/** @deprecated 서버 비어 있을 때 로컬 통째 시드 금지 — 서버는 사용자 모달 저장만 */
 export async function pushTimeLedgerTasksIfServerEmpty() {
-  const userId = await getSessionUserId();
-  if (!userId || !supabase) return false;
-
-  const { count, error } = await supabase
-    .from(TABLE)
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", userId);
-
-  if (error) return false;
-  if (count != null && count > 0) return false;
-
-  getFullTaskOptions();
-  await syncTimeLedgerTasksToSupabase();
-  return true;
+  return false;
 }
 
 /** @deprecated 행 단위 `upsertTimeLedgerTaskRowsFromLocalByIds` 를 쓰세요. */

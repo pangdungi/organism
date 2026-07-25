@@ -601,18 +601,17 @@ export function applyTimeLedgerServerFullSnapshot(dbRows) {
 }
 
 /**
- * entry_date가 [rangeStart, rangeEnd] (포함)인 구간만 서버 스냅샷으로 교체. 그 외 날짜 행은 유지.
- * last-write-wins: 이 기기 수정(localModifiedAt)이 서버 updated_at보다 새 행은 로컬을 유지
- * (push 대기 중 행을 옛 서버 스냅샷이 덮어쓰는 사고 — 마감시간 유실 등 — 방지).
- * @param {{ preferServer?: boolean }} [opts] — true면(화면 복귀) 서버 행을 우선(로컬 전용 미업로드 행만 유지)
+ * entry_date가 [rangeStart, rangeEnd] (포함)인 구간만 **pull 시점 서버 스냅샷**으로 교체.
+ * 원칙: pull은 서버 → 로컬만. 「로컬이 더 최신」으로 서버 행을 가리지 않음.
+ * 구간 안·아직 서버에 한 번도 안 올라간 새 행(serverUpdatedAt 없음)만 로컬 유지.
+ * @param {{ preferServer?: boolean }} [opts] — 호환용(무시). 항상 서버 스냅샷 우선.
  */
 export function applyTimeLedgerServerRangeSnapshot(
   dbRows,
   rangeStart,
   rangeEnd,
-  opts = {},
+  _opts = {},
 ) {
-  const preferServer = !!opts.preferServer;
   const rs = String(rangeStart || "").trim();
   const re = String(rangeEnd || "").trim();
   if (!rs || !re) return;
@@ -627,118 +626,24 @@ export function applyTimeLedgerServerRangeSnapshot(
   const serverLocals = serverRowsFiltered.map((r) =>
     dbRowToLocalTimeLedgerRow(r),
   );
-  const { rows: insideFromServerRaw } = ensureTimeLedgerEntryIds(serverLocals);
+  const { rows: insideFromServer } = ensureTimeLedgerEntryIds(serverLocals);
   const { rows: localWithIds } = ensureTimeLedgerEntryIds(
     readTimeLedgerEntriesRaw(),
   );
-  const localById = new Map(
-    localWithIds
-      .map((r) => [String(r?.id || "").trim(), r])
-      .filter(([id]) => id),
-  );
-  const insideFromServer = insideFromServerRaw.map((serverRow) => {
-    const id = String(serverRow?.id || "").trim();
-    const local = id ? localById.get(id) : null;
-    if (!local) return serverRow;
-    if (preferServer) {
-      return serverRow;
-    }
-    const localLm =
-      typeof local.localModifiedAt === "number" &&
-      Number.isFinite(local.localModifiedAt)
-        ? local.localModifiedAt
-        : null;
-    if (localLm != null) {
-      const serverMs = Date.parse(String(serverRow.serverUpdatedAt || ""));
-      if (!Number.isFinite(serverMs) || localLm > serverMs) {
-        /* 내 수정이 더 새 것 — push 예약 유지(localModifiedAt 보존) */
-        return local;
-      }
-    }
-    const serverHabit = Array.isArray(serverRow.habitDailyCompleted)
-      ? serverRow.habitDailyCompleted
-      : [];
-    const localHabit = Array.isArray(local.habitDailyCompleted)
-      ? local.habitDailyCompleted
-      : [];
-    const serverKpiVal = normalizeKpiPerformedValueForRow(serverRow.kpiPerformedValue);
-    const localKpiVal = normalizeKpiPerformedValueForRow(local.kpiPerformedValue);
-    const serverRating = normalizeTimeRatingForRow(serverRow.timeRating);
-    const localRating = normalizeTimeRatingForRow(local.timeRating);
-    const keepLocalHabit = serverHabit.length === 0 && localHabit.length > 0;
-    const keepLocalKpiVal = !serverKpiVal && !!localKpiVal;
-    const keepLocalTimeRating = serverRating == null && localRating != null;
-    const serverEndReasons = normalizeTimeEndReasonsForRow(
-      serverRow.timeEndReasons ?? serverRow.timeEndReason,
-    );
-    const localEndReasons = normalizeTimeEndReasonsForRow(
-      local.timeEndReasons ?? local.timeEndReason,
-    );
-    const keepLocalTimeEndReasons =
-      serverEndReasons.length === 0 && localEndReasons.length > 0;
-    const serverFlowFactors = normalizeTimeFlowFactorsForRow(
-      serverRow.timeFlowFactors ?? serverRow.timeFlowFactor,
-    );
-    const localFlowFactors = normalizeTimeFlowFactorsForRow(
-      local.timeFlowFactors ?? local.timeFlowFactor,
-    );
-    const keepLocalTimeFlowFactors =
-      serverFlowFactors.length === 0 && localFlowFactors.length > 0;
-    const serverFlowDisruptors = normalizeTimeFlowDisruptorsForRow(
-      serverRow.timeFlowDisruptors ?? serverRow.timeFlowDisruptor,
-    );
-    const localFlowDisruptors = normalizeTimeFlowDisruptorsForRow(
-      local.timeFlowDisruptors ?? local.timeFlowDisruptor,
-    );
-    const keepLocalTimeFlowDisruptors =
-      serverFlowDisruptors.length === 0 && localFlowDisruptors.length > 0;
-    if (
-      keepLocalHabit ||
-      keepLocalKpiVal ||
-      keepLocalTimeRating ||
-      keepLocalTimeEndReasons ||
-      keepLocalTimeFlowFactors ||
-      keepLocalTimeFlowDisruptors
-    ) {
-      return {
-        ...serverRow,
-        ...(keepLocalHabit ? { habitDailyCompleted: localHabit } : {}),
-        ...(keepLocalKpiVal ? { kpiPerformedValue: localKpiVal } : {}),
-        ...(keepLocalTimeRating ? { timeRating: localRating } : {}),
-        ...(keepLocalTimeEndReasons
-          ? { timeEndReasons: localEndReasons }
-          : {}),
-        ...(keepLocalTimeFlowFactors
-          ? { timeFlowFactors: localFlowFactors }
-          : {}),
-        ...(keepLocalTimeFlowDisruptors
-          ? { timeFlowDisruptors: localFlowDisruptors }
-          : {}),
-        localModifiedAt:
-          typeof local.localModifiedAt === "number"
-            ? local.localModifiedAt
-            : Date.now(),
-      };
-    }
-    return serverRow;
-  });
   const outside = localWithIds.filter(
     (r) => !rowEntryDateInInclusiveRange(r, rs, re),
   );
-  /* 방금 만든 행이 아직 서버에 없을 때 — 스냅샷 교체로 통째 사라지지 않게 push 대기 행은 유지 */
+  /* 방금 만든 행이 아직 서버에 없을 때 — 스냅샷 교체로 통째 사라지지 않게 유지 */
   const serverIdsInRange = new Set(
-    insideFromServerRaw.map((r) => String(r?.id || "").trim()).filter(Boolean),
+    insideFromServer.map((r) => String(r?.id || "").trim()).filter(Boolean),
   );
   const pendingInsideLocal = localWithIds.filter((r) => {
     const id = String(r?.id || "").trim();
     if (!rowEntryDateInInclusiveRange(r, rs, re)) return false;
     if (serverIdsInRange.has(id)) return false;
     if (!timeLedgerRowNeedsPush(r)) return false;
-    /*
-     * preferServer(화면 복귀 등): 예전에 서버에 있던 로컬 잔여분·삭제분 부활 금지.
-     * 이 기기에서 아직 한 번도 서버에 안 올린 새 행만 유지.
-     */
-    if (preferServer && String(r.serverUpdatedAt || "").trim()) return false;
+    /* 예전에 서버에 있던 로컬 잔여분·삭제분 부활 금지 — 미업로드 새 행만 */
+    if (String(r.serverUpdatedAt || "").trim()) return false;
     return true;
   });
   const merged = [...outside, ...insideFromServer, ...pendingInsideLocal];

@@ -223,16 +223,9 @@ export async function pullDiaryFromSupabase() {
   return merged;
 }
 
-/** 서버에 일기가 하나도 없을 때 로컬 전체 업로드 */
-export async function pushAllLocalDiaryIfServerEmpty(entries) {
-  const userId = await getSessionUserId();
-  if (!userId || !supabase) return;
-  const { count, error: cErr } = await supabase
-    .from(TABLE)
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", userId);
-  if (cErr || (count != null && count > 0)) return;
-  await syncDiaryToSupabase(entries);
+/** @deprecated 서버 비어 있을 때 로컬 통째 시드 금지 — 서버는 사용자 저장만 */
+export async function pushAllLocalDiaryIfServerEmpty(_entries) {
+  return;
 }
 
 let _pushTimer = null;

@@ -5,7 +5,8 @@
  * 올리기: 사용자 저장으로 바뀐 행만 upsert · 삭제는 delete API (통째 업로드 없음).
  * pushDirty는 opts.entryIds가 있으면 그 기록 id만 upsert(백로그 일괄 업로드로 저장 실패 방지).
  * 기본(skipPull 미지정 시): upsert 직후 피커 구간 pull — 저장 직후 덮어쓰기가 나면 skipPull: true 로 호출.
- * 서버 쓰기는 사용자가 기록·모달에서 저장·삭제할 때만(pushDirty·delete API).
+ * 서버 쓰기는 사용자가 모달에서 확인·추가·수정·삭제할 때만(pushDirty·delete API).
+ * pull·화면 읽기·자동마감은 서버에 올리지 않음.
  */
 
 import { supabase } from "../supabase.js";
@@ -487,7 +488,7 @@ function runSerializedLedgerServerOp(fn) {
 /**
  * @param {{ trigger?: string, preferServer?: boolean }} [meta]
  * — trigger: 콘솔 디버그용 (direct / after_push / resume)
- * — preferServer: 화면 복귀 등 — 서버 스냅샷 우선
+ * — preferServer: 호환용(무시). pull은 항상 그 시점 서버 스냅샷만 반영
  */
 async function pullTimeLedgerEntriesForDateRangeCore(
   rangeStart,
@@ -498,7 +499,6 @@ async function pullTimeLedgerEntriesForDateRangeCore(
   const rs = String(rangeStart || "").trim();
   const re = String(rangeEnd || "").trim();
   const trigger = meta.trigger ?? "direct";
-  const preferServer = !!meta.preferServer;
   if (!userId || !supabase) {
     timeLedgerSyncLog("pull_skipped", {
       reason: "no_session",
@@ -515,7 +515,7 @@ async function pullTimeLedgerEntriesForDateRangeCore(
   timeLedgerSyncLog("pull_start", {
     range: `${rs}..${re}`,
     trigger,
-    preferServer,
+    preferServer: true,
   });
 
   const pageSize = 1000;
@@ -544,15 +544,14 @@ async function pullTimeLedgerEntriesForDateRangeCore(
     if (batch.length < pageSize) break;
   }
 
-  applyTimeLedgerServerRangeSnapshot(rows, rs, re, { preferServer });
+  applyTimeLedgerServerRangeSnapshot(rows, rs, re, { preferServer: true });
+  /*
+   * 어제 이전 「진행 중」은 이 기기 화면에만 마감 표시.
+   * 서버 반영은 사용자가 모달에서 저장할 때만 (자동 push 금지).
+   */
   const closed = closeStaleInProgressTimeLedgerRows(readTimeLedgerEntriesRaw());
   if (closed.changed) {
     writeTimeLedgerEntriesRaw(closed.rows);
-    /* pull 직렬 큐 안에서 pushDirty를 다시 큐에 넣으면 데드락 — core 직접 호출 */
-    await pushDirtyTimeLedgerEntriesToSupabaseCore({
-      skipPull: true,
-      entryIds: closed.closedEntryIds,
-    });
   }
   timeLedgerSyncLog("pull_done", {
     range: `${rs}..${re}`,
@@ -772,17 +771,16 @@ export async function pullTimeLedgerEntriesForDateRange(
 ) {
   const rs = String(rangeStart || "").trim();
   const re = String(rangeEnd || "").trim();
-  const preferServer = !!opts.preferServer;
-  const trigger = opts.trigger || (preferServer ? "resume" : "direct");
+  const trigger = opts.trigger || "direct";
   const run = () =>
     runSerializedLedgerServerOp(() =>
       pullTimeLedgerEntriesForDateRangeCore(rangeStart, rangeEnd, {
         trigger,
-        preferServer,
+        preferServer: true,
       }),
     );
-  /* 화면 복귀 등은 진행 중 pull 과 합치지 않음 */
-  if (opts.force || preferServer) return run();
+  /* force: 진행 중 pull 과 합치지 않음(화면 복귀 등) */
+  if (opts.force) return run();
   return coalesceInFlightPull(`ledger-entries:${rs}::${re}`, run);
 }
 

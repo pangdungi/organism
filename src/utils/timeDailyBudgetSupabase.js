@@ -177,27 +177,9 @@ export async function pullTimeDailyBudgetFromSupabase() {
   return mergeTimeDailyBudgetRowsFromServer(selfRows);
 }
 
+/** @deprecated 서버 비어 있을 때 로컬 통째 시드 금지 — 서버는 사용자 모달 저장만 */
 export async function pushAllLocalTimeDailyBudgetIfServerEmpty() {
-  const userId = await getSessionUserId();
-  if (!userId || !supabase) return;
-
-  const { count, error } = await supabase
-    .from(TABLE)
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", userId);
-
-  if (error) return;
-  if (count != null && count > 0) return;
-
-  const locals = buildAllLocalTimeDailyBudgetPayloadsForSync();
-  if (locals.length === 0) return;
-
-  const payloads = locals.map((row) =>
-    rowToUpsert(userId, row.dateKey, row.goals, row.excluded_names),
-  );
-  await supabase.from(TABLE).upsert(payloads, {
-    onConflict: "user_id,plan_date",
-  });
+  return;
 }
 
 /** 날짜별 디바운스 — 타이머를 하나만 쓰면 다른 날짜만 편집했을 때 이전 날짜가 서버에 안 올라가던 문제 방지 */

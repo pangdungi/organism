@@ -55,20 +55,7 @@ export async function deleteBudgetScheduleTemplateOnSupabase(templateId) {
   return !error;
 }
 
-/** 로컬에만 있고 서버가 비었을 때 일괄 업로드 */
+/** @deprecated 서버 비어 있을 때 로컬 통째 시드 금지 — 서버는 사용자 저장만 */
 export async function pushAllLocalBudgetTemplatesIfServerEmpty() {
-  const userId = await getSessionUserId();
-  if (!userId || !supabase) return;
-  const { count, error } = await supabase
-    .from(TABLE)
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", userId);
-  if (error) return;
-  if (count != null && count > 0) return;
-  const locals = readBudgetScheduleTemplates();
-  if (!locals.length) return;
-  const payloads = buildBudgetTemplateUpsertPayloads(userId, locals);
-  await supabase.from(TABLE).upsert(payloads, {
-    onConflict: "user_id,template_id",
-  });
+  return;
 }

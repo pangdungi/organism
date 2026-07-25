@@ -47,8 +47,10 @@ function snapshotTimeLedgerLocalStorage() {
 
 async function pullTimeLedgerTabEnterFromCloudCore(opts = {}) {
   const skipTasks = !!opts.skipTasks;
-  const preferServer = !!(opts.preferServer || opts.force);
-  lpPullDebug("pullTimeLedgerTabEnterFromCloud", { skipTasks, preferServer });
+  /* 탭 진입·복귀 공통: pull 시점 서버만 반영. 로컬 LWW로 서버를 가리지 않음 */
+  const preferServer = true;
+  const force = !!(opts.force || opts.preferServer);
+  lpPullDebug("pullTimeLedgerTabEnterFromCloud", { skipTasks, preferServer, force });
   await ensureTimeLedgerStorageReady();
   const before = snapshotTimeLedgerLocalStorage();
   const { rangeStart, rangeEnd } = readTimeLedgerCombinedPullRangeYmd();
@@ -56,14 +58,12 @@ async function pullTimeLedgerTabEnterFromCloudCore(opts = {}) {
    * KPI·기록·예산·과제를 한꺼번에 — 끝난 뒤 KPI 연동 과제만 합친다.
    * (예전: KPI를 먼저 await 해서 모바일 복귀 시 체감이 길어짐)
    */
-  if (preferServer) {
-    armTimeDailyBudgetMergePreferServerOnce();
-  }
+  armTimeDailyBudgetMergePreferServerOnce();
   const jobs = [
     pullStaleKpiDomainsForTaskLogList(),
     pullTimeLedgerEntriesFromSupabase({
-      preferServer,
-      force: preferServer,
+      preferServer: true,
+      force,
     }),
     pullTimeDailyBudgetForDateRange(rangeStart, rangeEnd),
   ];

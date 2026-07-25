@@ -972,10 +972,14 @@ export function loadTimeRows() {
   try {
     migrateTimeLogRowsTaskIds();
     let arr = readTimeLedgerEntriesRaw();
+    /*
+     * 화면용 자동마감만 — 서버 업로드 없음.
+     * (saveTimeRows는 모달 저장 등 사용자 행동에서만 호출)
+     */
     const closed = closeStaleInProgressTimeLedgerRows(arr);
     if (closed.changed) {
-      saveTimeRows(closed.rows);
-      arr = readTimeLedgerEntriesRaw();
+      writeTimeLedgerEntriesRaw(closed.rows);
+      arr = closed.rows;
     }
     const { rows, dirty } = ensureTimeLedgerEntryIds(arr);
     if (dirty) {
