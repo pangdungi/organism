@@ -8,6 +8,7 @@ import {
   buildAllLocalTimeDailyBudgetPayloadsForSync,
   readTimeDailyBudgetGoalsRaw,
   readTimeDailyBudgetExcludedRaw,
+  clearTimeDailyBudgetDateLocalDirtyIfNotNewer,
 } from "./timeDailyBudgetModel.js";
 import { lpPullDebug } from "./lpPullDebug.js";
 import { coalesceInFlightPull } from "./timeLedgerPullCoalesce.js";
@@ -54,66 +55,77 @@ function rowToUpsert(userId, dateKey, goals, excluded_names) {
   };
 }
 
+/**
+ * 한 날짜 upsert 1회 — 호출 시점에 로컬을 다시 읽음.
+ * (겹친 sync 는 체인으로 이어져, 예전 스냅샷이 최신을 덮지 않음)
+ */
+async function syncTimeDailyBudgetDateOnce(dk) {
+  const syncStartedAt = Date.now();
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) {
+    lpExpectedBudgetDeleteDebug("sync.skip", {
+      reason: !userId ? "no_login" : "no_supabase",
+      dateKey: dk,
+    });
+    return { ok: false, error: !userId ? "no_login" : "no_supabase" };
+  }
+  let goals = {};
+  let excluded_names = [];
+  try {
+    const rawG = readTimeDailyBudgetGoalsRaw();
+    const all = rawG ? JSON.parse(rawG) : {};
+    const g = all[dk];
+    if (g && typeof g === "object" && !Array.isArray(g)) {
+      goals = JSON.parse(JSON.stringify(g));
+    }
+    const rawE = readTimeDailyBudgetExcludedRaw();
+    const excl = rawE ? JSON.parse(rawE) : {};
+    const er = excl[dk];
+    if (Array.isArray(er)) {
+      excluded_names = er.map((x) => String(x || "").trim()).filter(Boolean);
+    }
+  } catch (err) {
+    lpExpectedBudgetDeleteDebug(
+      "sync.read_local.error",
+      String(err?.message || err),
+    );
+  }
+  lpExpectedBudgetDeleteDebug("sync.upsert.request", {
+    dk,
+    userIdPrefix: String(userId).slice(0, 8),
+    goalsSummary: summarizeGoalsForDebug(goals),
+    excludedCount: excluded_names.length,
+  });
+  const { error, status, statusText } = await supabase
+    .from(TABLE)
+    .upsert(rowToUpsert(userId, dk, goals, excluded_names), {
+      onConflict: "user_id,plan_date",
+    });
+  lpExpectedBudgetDeleteDebug("sync.upsert.response", {
+    httpStatus: status,
+    statusText,
+    error: error?.message || error?.code || null,
+    goalsSummary: summarizeGoalsForDebug(goals),
+  });
+  if (error) {
+    return { ok: false, error: error.message || "upsert_failed" };
+  }
+  cancelPendingTimeDailyBudgetSyncPush(dk);
+  clearTimeDailyBudgetDateLocalDirtyIfNotNewer(dk, syncStartedAt);
+  return { ok: true };
+}
+
 export async function syncTimeDailyBudgetDateToSupabase(dateKey) {
   const dk = normalizeDateKey(dateKey);
   if (!dk) {
     lpExpectedBudgetDeleteDebug("sync.skip", { reason: "bad_date", dateKey });
     return { ok: false, error: "bad_date" };
   }
-  const inflight = _syncInflightByDate.get(dk);
-  if (inflight) return inflight;
-
-  const job = (async () => {
-    const userId = await getSessionUserId();
-    if (!userId || !supabase) {
-      lpExpectedBudgetDeleteDebug("sync.skip", {
-        reason: !userId ? "no_login" : "no_supabase",
-        dateKey: dk,
-      });
-      return { ok: false, error: !userId ? "no_login" : "no_supabase" };
-    }
-    let goals = {};
-    let excluded_names = [];
-    try {
-      const rawG = readTimeDailyBudgetGoalsRaw();
-      const all = rawG ? JSON.parse(rawG) : {};
-      const g = all[dk];
-      if (g && typeof g === "object" && !Array.isArray(g)) {
-        goals = JSON.parse(JSON.stringify(g));
-      }
-      const rawE = readTimeDailyBudgetExcludedRaw();
-      const excl = rawE ? JSON.parse(rawE) : {};
-      const er = excl[dk];
-      if (Array.isArray(er)) {
-        excluded_names = er.map((x) => String(x || "").trim()).filter(Boolean);
-      }
-    } catch (err) {
-      lpExpectedBudgetDeleteDebug("sync.read_local.error", String(err?.message || err));
-    }
-    lpExpectedBudgetDeleteDebug("sync.upsert.request", {
-      dk,
-      userIdPrefix: String(userId).slice(0, 8),
-      goalsSummary: summarizeGoalsForDebug(goals),
-      excludedCount: excluded_names.length,
-    });
-    const { error, status, statusText } = await supabase
-      .from(TABLE)
-      .upsert(rowToUpsert(userId, dk, goals, excluded_names), {
-        onConflict: "user_id,plan_date",
-      });
-    lpExpectedBudgetDeleteDebug("sync.upsert.response", {
-      httpStatus: status,
-      statusText,
-      error: error?.message || error?.code || null,
-      goalsSummary: summarizeGoalsForDebug(goals),
-    });
-    if (error) {
-      return { ok: false, error: error.message || "upsert_failed" };
-    }
-    cancelPendingTimeDailyBudgetSyncPush(dk);
-    return { ok: true };
-  })();
-
+  /* 같은 날짜는 직렬 — 진행 중이면 끝난 뒤 최신 로컬로 다시 올림 */
+  const prev = _syncInflightByDate.get(dk) || Promise.resolve();
+  const job = prev
+    .catch(() => {})
+    .then(() => syncTimeDailyBudgetDateOnce(dk));
   _syncInflightByDate.set(dk, job);
   try {
     return await job;
@@ -190,7 +202,7 @@ export async function pushAllLocalTimeDailyBudgetIfServerEmpty() {
 
 /** 날짜별 디바운스 — 타이머를 하나만 쓰면 다른 날짜만 편집했을 때 이전 날짜가 서버에 안 올라가던 문제 방지 */
 const _pushTimersByDate = new Map();
-/** 같은 날짜 동시 upsert 방지(모달 즉시 sync + 디바운스 push 겹침) */
+/** 같은 날짜 upsert 직렬 체인(모달 즉시 sync + 디바운스 push 겹침) */
 const _syncInflightByDate = new Map();
 const PUSH_DEBOUNCE_MS = 900;
 

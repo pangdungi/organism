@@ -83,6 +83,7 @@ import {
   readTimeDailyBudgetExcludedRaw,
   writeTimeDailyBudgetGoalsRaw,
   writeTimeDailyBudgetExcludedRaw,
+  markTimeDailyBudgetDateLocalDirty,
 } from "../utils/timeDailyBudgetModel.js";
 import {
   buildTimeTaskLogPickerDropdown,
@@ -234,7 +235,9 @@ const TIME_LEDGER_DAILY_RECORD_CAP_HOURS = 23 + 59 / 60;
 
 function notifyTimeDailyBudgetSaved(dateStr) {
   if (!(dateStr || "").trim()) return;
-  scheduleTimeDailyBudgetSyncPush(String(dateStr).trim().slice(0, 10));
+  const dk = String(dateStr).trim().slice(0, 10);
+  markTimeDailyBudgetDateLocalDirty(dk);
+  scheduleTimeDailyBudgetSyncPush(dk);
 }
 
 function collectKpiLinkedNamesFromFullTaskOptions() {
@@ -519,6 +522,7 @@ export function appendBudgetScheduleBlock(
     delete next.scheduledTime;
     all[dk][name] = next;
     writeTimeDailyBudgetGoalsRaw(JSON.stringify(all));
+    markTimeDailyBudgetDateLocalDirty(dk);
     if (!opts.skipDebouncedSync) notifyTimeDailyBudgetSaved(dk);
     return { ok: true };
   } catch (_) {
@@ -710,6 +714,7 @@ export function removeBudgetScheduleBlockAtIndex(dateStr, taskName, timeIdx, opt
       delete all[dk];
     }
     writeTimeDailyBudgetGoalsRaw(JSON.stringify(all));
+    markTimeDailyBudgetDateLocalDirty(dk);
     if (!opts.skipDebouncedSync) notifyTimeDailyBudgetSaved(dk);
     try {
       console.log("[lp expected-delete]", "remove.ok", {
@@ -884,6 +889,7 @@ export function updateBudgetScheduleBlockAtIndex(
       all[dk][nextKey] = nextObj;
     }
     writeTimeDailyBudgetGoalsRaw(JSON.stringify(all));
+    markTimeDailyBudgetDateLocalDirty(dk);
     if (!opts.skipDebouncedSync) notifyTimeDailyBudgetSaved(dk);
     return { ok: true };
   } catch (_) {

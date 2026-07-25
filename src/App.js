@@ -256,10 +256,23 @@ function initLpTimeLedgerResumePull(getCurrentTabId) {
   const MIN_AWAY_MS = 800;
   let resumeGen = 0;
 
-  const isTimeLedgerModalOpen = () =>
-    !!document.querySelector(
+  /** 실제 열린 모달만 — Time 탭은 숨긴 과제기록 모달을 DOM에 항상 둠 */
+  const isTimeLedgerModalOpen = () => {
+    const nodes = document.querySelectorAll(
       ".time-task-setup-modal, .time-task-log-modal, .lp-calendar-budget-add-modal",
     );
+    for (const m of nodes) {
+      if (!(m instanceof HTMLElement)) continue;
+      if (m.hidden) continue;
+      if (m.getAttribute("aria-hidden") === "true") continue;
+      try {
+        const st = window.getComputedStyle(m);
+        if (st.display === "none" || st.visibility === "hidden") continue;
+      } catch (_) {}
+      return true;
+    }
+    return false;
+  };
 
   const runIfNeeded = () => {
     if (typeof getCurrentTabId !== "function") return;

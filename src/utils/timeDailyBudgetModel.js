@@ -31,6 +31,45 @@ function normalizeDateKey(s) {
   return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : "";
 }
 
+/** 로컬에서 방금 고친 날짜 — pull 이 예전 서버 값으로 덮지 않게 */
+const _localDirtyAtByDate = new Map();
+
+export function markTimeDailyBudgetDateLocalDirty(dateKey) {
+  const dk = normalizeDateKey(dateKey);
+  if (!dk) return;
+  _localDirtyAtByDate.set(dk, Date.now());
+}
+
+/** @returns {number} dirty 시각(ms) — 없으면 0 */
+export function getTimeDailyBudgetDateLocalDirtyAt(dateKey) {
+  const dk = normalizeDateKey(dateKey);
+  if (!dk) return 0;
+  return Number(_localDirtyAtByDate.get(dk) || 0) || 0;
+}
+
+export function isTimeDailyBudgetDateLocalDirty(dateKey) {
+  return getTimeDailyBudgetDateLocalDirtyAt(dateKey) > 0;
+}
+
+/**
+ * 서버 upsert 성공 후 — 동기화 시작 이후에 또 고치지 않았을 때만 dirty 해제
+ * @param {string} dateKey
+ * @param {number} syncStartedAtMs
+ */
+export function clearTimeDailyBudgetDateLocalDirtyIfNotNewer(
+  dateKey,
+  syncStartedAtMs,
+) {
+  const dk = normalizeDateKey(dateKey);
+  if (!dk) return;
+  const dirtyAt = getTimeDailyBudgetDateLocalDirtyAt(dk);
+  if (!dirtyAt) return;
+  const started = Number(syncStartedAtMs) || 0;
+  if (!started || dirtyAt <= started) {
+    _localDirtyAtByDate.delete(dk);
+  }
+}
+
 /** 서버 행들 → localStorage 병합. 변경 시 true */
 export function mergeTimeDailyBudgetRowsFromServer(rows) {
   if (!Array.isArray(rows) || rows.length === 0) return false;
@@ -43,6 +82,8 @@ export function mergeTimeDailyBudgetRowsFromServer(rows) {
     for (const r of rows) {
       const dk = normalizeDateKey(r.plan_date);
       if (!dk) continue;
+      /* 방금 로컬 저장·업로드 대기 중이면 서버(옛 값)로 덮지 않음 */
+      if (isTimeDailyBudgetDateLocalDirty(dk)) continue;
       const g = r.goals;
       if (g !== undefined && g !== null && typeof g === "object" && !Array.isArray(g)) {
         const incoming = JSON.parse(JSON.stringify(g));
@@ -54,14 +95,21 @@ export function mergeTimeDailyBudgetRowsFromServer(rows) {
           }
           continue;
         }
-        all[dk] = incoming;
-        changed = true;
+        const prev = all[dk];
+        if (!(prev && JSON.stringify(prev) === JSON.stringify(incoming))) {
+          all[dk] = incoming;
+          changed = true;
+        }
       }
       if (Object.prototype.hasOwnProperty.call(r, "excluded_names")) {
         const en = r.excluded_names;
         if (Array.isArray(en)) {
-          excl[dk] = en.map((x) => String(x || "").trim()).filter(Boolean);
-          changed = true;
+          const nextEx = en.map((x) => String(x || "").trim()).filter(Boolean);
+          const prevEx = Array.isArray(excl[dk]) ? excl[dk] : [];
+          if (JSON.stringify(prevEx) !== JSON.stringify(nextEx)) {
+            excl[dk] = nextEx;
+            changed = true;
+          }
         }
       }
     }
