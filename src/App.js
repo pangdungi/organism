@@ -1,5 +1,8 @@
 import { applyStaticAppIconImg } from "./utils/staticAppIconImg.js";
-import { withToolbarIconCacheVersion } from "./utils/toolbarIconUrl.js";
+import {
+  loginBrandLogoUrl,
+  withToolbarIconCacheVersion,
+} from "./utils/toolbarIconUrl.js";
 import { signOut } from "./auth.js";
 import {
   observeDatePickerInit,
@@ -77,6 +80,7 @@ import {
 import {
   listTimeDailyBudgetLocalDirtyDates,
   clearTimeDailyBudgetDateLocalDirty,
+  armTimeDailyBudgetMergePreferServerOnce,
 } from "./utils/timeDailyBudgetModel.js";
 import { pullUserPrefsFromSupabase } from "./utils/userHourlySync.js";
 import { initSupabaseRealtimeSync } from "./utils/supabaseRealtimeSync.js";
@@ -253,11 +257,11 @@ export function waitForAppBootReady() {
 }
 
 /**
- * 실험: 화면 잠금·백그라운드 복귀 시 시간기록 탭이면 서버 pull 후 soft refresh.
+ * 실험: 화면 잠금·백그라운드 복귀 시 시간기록·플래너 탭이면 서버 pull 후 soft refresh.
  * (입력 모달이 실제로 열린 경우만 건너뜀)
  * @param {() => string} getCurrentTabId
  */
-function initLpTimeLedgerResumePull(getCurrentTabId) {
+function initLpTabResumeCloudPull(getCurrentTabId) {
   if (typeof document === "undefined") return;
   let hiddenAt = 0;
   const MIN_AWAY_MS = 300;
@@ -265,8 +269,8 @@ function initLpTimeLedgerResumePull(getCurrentTabId) {
   let lastResumeAt = 0;
   const MIN_RESUME_GAP_MS = 1200;
 
-  /** 실제 열린 모달만 — Time 탭은 숨긴 과제기록·과제설정 모달을 DOM에 항상 둠 */
-  const isTimeLedgerModalOpen = () => {
+  /** 실제 열린 모달만 — 숨긴 과제기록·과제설정 모달은 DOM에 항상 있음 */
+  const isResumeBlockingModalOpen = () => {
     const nodes = document.querySelectorAll(
       ".time-task-setup-modal, .time-task-log-modal, .lp-calendar-budget-add-modal",
     );
@@ -279,51 +283,80 @@ function initLpTimeLedgerResumePull(getCurrentTabId) {
     return false;
   };
 
+  async function pushLocalBudgetDirtyThenClear() {
+    flushAllPendingTimeDailyBudgetSync();
+    const dirtyBudgetDates = listTimeDailyBudgetLocalDirtyDates();
+    try {
+      await Promise.all(
+        dirtyBudgetDates.map((dk) => syncTimeDailyBudgetDateToSupabase(dk)),
+      );
+    } catch (_) {}
+    try {
+      const { rangeEnd } = readTimeLedgerCombinedPullRangeYmd();
+      if (rangeEnd) await syncTimeDailyBudgetDateToSupabase(rangeEnd);
+    } catch (_) {}
+    for (const dk of listTimeDailyBudgetLocalDirtyDates()) {
+      clearTimeDailyBudgetDateLocalDirty(dk);
+    }
+  }
+
+  async function runTimeResumePull(gen) {
+    await pushLocalBudgetDirtyThenClear();
+    try {
+      await pushDirtyTimeLedgerEntriesToSupabase({ skipPull: true });
+    } catch (_) {}
+    if (gen !== resumeGen) return;
+    await pullTimeLedgerTabEnterFromCloud({
+      force: true,
+      preferServer: true,
+    });
+    if (gen !== resumeGen) return;
+    if (getCurrentTabId() !== "time") return;
+    if (isResumeBlockingModalOpen()) return;
+    try {
+      window.__lpTimeLedgerSoftRefresh?.({ force: true });
+    } catch (_) {}
+  }
+
+  async function runPlannerResumePull(gen) {
+    await pushLocalBudgetDirtyThenClear();
+    try {
+      await pushDirtyTimeLedgerEntriesToSupabase({ skipPull: true });
+    } catch (_) {}
+    if (gen !== resumeGen) return;
+    try {
+      armTimeDailyBudgetMergePreferServerOnce();
+    } catch (_) {}
+    await pullDataForActiveTab("schedulecalendar");
+    if (gen !== resumeGen) return;
+    if (getCurrentTabId() !== "schedulecalendar") return;
+    if (isResumeBlockingModalOpen()) return;
+    try {
+      window.__lpCalendarSoftRefresh?.();
+    } catch (_) {}
+  }
+
   const runIfNeeded = (reason = "visibility") => {
     if (typeof getCurrentTabId !== "function") return;
-    if (getCurrentTabId() !== "time") return;
-    if (isTimeLedgerModalOpen()) return;
+    const tab = getCurrentTabId();
+    if (tab !== "time" && tab !== "schedulecalendar") return;
+    if (isResumeBlockingModalOpen()) return;
     const awayMs = hiddenAt > 0 ? Date.now() - hiddenAt : MIN_AWAY_MS + 1;
     if (awayMs < MIN_AWAY_MS) return;
     const now = Date.now();
     if (now - lastResumeAt < MIN_RESUME_GAP_MS) return;
     lastResumeAt = now;
     const gen = ++resumeGen;
-    logTabSync("visibility_pull", { tab: "time", awayMs, reason });
+    logTabSync("visibility_pull", { tab, awayMs, reason });
+    const toastMsg =
+      tab === "schedulecalendar" ? "플래너 동기화 중…" : "시간기록 동기화 중…";
     try {
-      showToast("시간기록 동기화 중…", { autoOnly: true, durationMs: 1800 });
+      showToast(toastMsg, { autoOnly: true, durationMs: 1800 });
     } catch (_) {}
     void (async () => {
       try {
-        /* 1) 이 기기 미업로드분 먼저 올림 2) 서버 최신을 우선으로 받음 */
-        flushAllPendingTimeDailyBudgetSync();
-        const dirtyBudgetDates = listTimeDailyBudgetLocalDirtyDates();
-        try {
-          await Promise.all(
-            dirtyBudgetDates.map((dk) => syncTimeDailyBudgetDateToSupabase(dk)),
-          );
-        } catch (_) {}
-        try {
-          const { rangeEnd } = readTimeLedgerCombinedPullRangeYmd();
-          if (rangeEnd) await syncTimeDailyBudgetDateToSupabase(rangeEnd);
-        } catch (_) {}
-        for (const dk of listTimeDailyBudgetLocalDirtyDates()) {
-          clearTimeDailyBudgetDateLocalDirty(dk);
-        }
-        try {
-          await pushDirtyTimeLedgerEntriesToSupabase({ skipPull: true });
-        } catch (_) {}
-        if (gen !== resumeGen) return;
-        await pullTimeLedgerTabEnterFromCloud({
-          force: true,
-          preferServer: true,
-        });
-        if (gen !== resumeGen) return;
-        if (getCurrentTabId() !== "time") return;
-        if (isTimeLedgerModalOpen()) return;
-        try {
-          window.__lpTimeLedgerSoftRefresh?.({ force: true });
-        } catch (_) {}
+        if (tab === "time") await runTimeResumePull(gen);
+        else await runPlannerResumePull(gen);
       } catch (_) {
       } finally {
         try {
@@ -1079,13 +1112,35 @@ export async function mountApp(container) {
       return btn;
     }
 
+    const brand = document.createElement("div");
+    brand.className = "app-home-menu-launcher-brand";
+    const brandRow = document.createElement("div");
+    brandRow.className = "app-home-menu-launcher-brand-row";
+    const logoShell = document.createElement("div");
+    logoShell.className = "app-home-menu-launcher-logo-float-shell";
+    const logoImg = document.createElement("img");
+    logoImg.className = "app-home-menu-launcher-logo";
+    logoImg.src = loginBrandLogoUrl();
+    logoImg.alt = "";
+    logoImg.setAttribute("aria-hidden", "true");
+    applyStaticAppIconImg(logoImg);
+    logoShell.appendChild(logoImg);
+    const brandTitle = document.createElement("h1");
+    brandTitle.className = "app-home-menu-launcher-title";
+    brandTitle.textContent = "두들";
+    brandRow.append(logoShell, brandTitle);
+    const brandSub = document.createElement("p");
+    brandSub.className = "app-home-menu-launcher-brand-sub";
+    brandSub.textContent = "나를 위한 모든 '행동'들";
+    brand.append(brandRow, brandSub);
+
     const grid = document.createElement("div");
     grid.className = "app-home-menu-launcher-section-grid";
     HOME_MENU_TAB_ORDER.forEach((tid) => {
       const tab = tabMetaById(tid);
       if (tab) grid.appendChild(navButtonFromTab(tab));
     });
-    body.appendChild(grid);
+    body.append(brand, grid);
 
     launcherAdminBtn = document.createElement("button");
     launcherAdminBtn.type = "button";
@@ -1369,8 +1424,8 @@ export async function mountApp(container) {
       );
   }
 
-  /* 서버 pull: 탭 전환·부팅·홈 Realtime + (실험) 시간기록 탭 화면 복귀 pull */
-  initLpTimeLedgerResumePull(() => currentTabId);
+  /* 서버 pull: 탭 전환·부팅·홈 Realtime + (실험) 시간기록·플래너 화면 복귀 pull */
+  initLpTabResumeCloudPull(() => currentTabId);
 
   logTabSync("boot", { tab: currentTabId, phase: "render_local_then_pull" });
   appScreen.appendChild(main);

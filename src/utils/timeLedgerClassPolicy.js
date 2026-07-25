@@ -39,6 +39,8 @@ export const LP_MAIN_CLASS = new Set([
   "app-home-menu-launcher-admin-fab",
   "app-home-menu-launcher-body",
   "app-home-menu-launcher-brand",
+  "app-home-menu-launcher-brand-row",
+  "app-home-menu-launcher-brand-sub",
   "app-home-menu-launcher-btn",
   "app-home-menu-launcher-btn--muted",
   "app-home-menu-launcher-card",
