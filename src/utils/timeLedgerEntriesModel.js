@@ -604,12 +604,15 @@ export function applyTimeLedgerServerFullSnapshot(dbRows) {
  * entry_date가 [rangeStart, rangeEnd] (포함)인 구간만 서버 스냅샷으로 교체. 그 외 날짜 행은 유지.
  * last-write-wins: 이 기기 수정(localModifiedAt)이 서버 updated_at보다 새 행은 로컬을 유지
  * (push 대기 중 행을 옛 서버 스냅샷이 덮어쓰는 사고 — 마감시간 유실 등 — 방지).
+ * @param {{ preferServer?: boolean }} [opts] — true면(화면 복귀) 서버 행을 우선(로컬 전용 미업로드 행만 유지)
  */
 export function applyTimeLedgerServerRangeSnapshot(
   dbRows,
   rangeStart,
   rangeEnd,
+  opts = {},
 ) {
+  const preferServer = !!opts.preferServer;
   const rs = String(rangeStart || "").trim();
   const re = String(rangeEnd || "").trim();
   if (!rs || !re) return;
@@ -637,6 +640,9 @@ export function applyTimeLedgerServerRangeSnapshot(
     const id = String(serverRow?.id || "").trim();
     const local = id ? localById.get(id) : null;
     if (!local) return serverRow;
+    if (preferServer) {
+      return serverRow;
+    }
     const localLm =
       typeof local.localModifiedAt === "number" &&
       Number.isFinite(local.localModifiedAt)

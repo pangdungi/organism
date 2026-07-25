@@ -70,6 +70,33 @@ export function clearTimeDailyBudgetDateLocalDirtyIfNotNewer(
   }
 }
 
+export function listTimeDailyBudgetLocalDirtyDates() {
+  return [..._localDirtyAtByDate.keys()];
+}
+
+/** 화면 복귀 pull 직전 — 업로드를 기다린 뒤 덮어쓰기 가드 해제 */
+export function clearTimeDailyBudgetDateLocalDirty(dateKey) {
+  const dk = normalizeDateKey(dateKey);
+  if (!dk) return;
+  _localDirtyAtByDate.delete(dk);
+}
+
+/**
+ * 서버 병합 시 dirty 날짜도 덮기(화면 복귀용). 한 번의 merge 호출에만 적용.
+ * @type {boolean}
+ */
+let _budgetMergePreferServerOnce = false;
+
+export function armTimeDailyBudgetMergePreferServerOnce() {
+  _budgetMergePreferServerOnce = true;
+}
+
+function consumeTimeDailyBudgetMergePreferServerOnce() {
+  if (!_budgetMergePreferServerOnce) return false;
+  _budgetMergePreferServerOnce = false;
+  return true;
+}
+
 /** 서버 행들 → localStorage 병합. 변경 시 true */
 export function mergeTimeDailyBudgetRowsFromServer(rows) {
   if (!Array.isArray(rows) || rows.length === 0) return false;
@@ -79,11 +106,12 @@ export function mergeTimeDailyBudgetRowsFromServer(rows) {
     const rawE = readTimeDailyBudgetExcludedRaw();
     const excl = rawE && typeof rawE === "string" ? JSON.parse(rawE) : {};
     let changed = false;
+    const preferServer = consumeTimeDailyBudgetMergePreferServerOnce();
     for (const r of rows) {
       const dk = normalizeDateKey(r.plan_date);
       if (!dk) continue;
-      /* 방금 로컬 저장·업로드 대기 중이면 서버(옛 값)로 덮지 않음 */
-      if (isTimeDailyBudgetDateLocalDirty(dk)) continue;
+      /* 방금 로컬 저장·업로드 대기 중이면 서버(옛 값)로 덮지 않음(복귀 pull 제외) */
+      if (!preferServer && isTimeDailyBudgetDateLocalDirty(dk)) continue;
       const g = r.goals;
       if (g !== undefined && g !== null && typeof g === "object" && !Array.isArray(g)) {
         const incoming = JSON.parse(JSON.stringify(g));

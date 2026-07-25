@@ -8,6 +8,7 @@ import {
   TIME_LEDGER_ENTRIES_KEY,
 } from "./timeLedgerEntriesModel.js";
 import { pullTimeDailyBudgetForDateRange } from "./timeDailyBudgetSupabase.js";
+import { armTimeDailyBudgetMergePreferServerOnce } from "./timeDailyBudgetModel.js";
 import {
   pullTimeLedgerEntriesFromSupabase,
   readTimeLedgerCombinedPullRangeYmd,
@@ -46,7 +47,8 @@ function snapshotTimeLedgerLocalStorage() {
 
 async function pullTimeLedgerTabEnterFromCloudCore(opts = {}) {
   const skipTasks = !!opts.skipTasks;
-  lpPullDebug("pullTimeLedgerTabEnterFromCloud", { skipTasks });
+  const preferServer = !!(opts.preferServer || opts.force);
+  lpPullDebug("pullTimeLedgerTabEnterFromCloud", { skipTasks, preferServer });
   await ensureTimeLedgerStorageReady();
   const before = snapshotTimeLedgerLocalStorage();
   const { rangeStart, rangeEnd } = readTimeLedgerCombinedPullRangeYmd();
@@ -54,9 +56,15 @@ async function pullTimeLedgerTabEnterFromCloudCore(opts = {}) {
    * KPI·기록·예산·과제를 한꺼번에 — 끝난 뒤 KPI 연동 과제만 합친다.
    * (예전: KPI를 먼저 await 해서 모바일 복귀 시 체감이 길어짐)
    */
+  if (preferServer) {
+    armTimeDailyBudgetMergePreferServerOnce();
+  }
   const jobs = [
     pullStaleKpiDomainsForTaskLogList(),
-    pullTimeLedgerEntriesFromSupabase(),
+    pullTimeLedgerEntriesFromSupabase({
+      preferServer,
+      force: preferServer,
+    }),
     pullTimeDailyBudgetForDateRange(rangeStart, rangeEnd),
   ];
   if (!skipTasks) {

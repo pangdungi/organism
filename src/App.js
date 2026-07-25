@@ -41,6 +41,7 @@ import {
   attachTimeLedgerEntriesSaveListener,
   pullTimeLedgerEntriesForDateRange,
   pushDirtyTimeLedgerEntriesToSupabase,
+  readTimeLedgerCombinedPullRangeYmd,
   timeLedgerLocalTodayYmd,
   timeLedgerLocalYesterdayYmd,
   resetTimeLedgerSessionFilterToToday,
@@ -71,7 +72,12 @@ import {
 import {
   pullTimeDailyBudgetForDateRange,
   flushAllPendingTimeDailyBudgetSync,
+  syncTimeDailyBudgetDateToSupabase,
 } from "./utils/timeDailyBudgetSupabase.js";
+import {
+  listTimeDailyBudgetLocalDirtyDates,
+  clearTimeDailyBudgetDateLocalDirty,
+} from "./utils/timeDailyBudgetModel.js";
 import { pullUserPrefsFromSupabase } from "./utils/userHourlySync.js";
 import { initSupabaseRealtimeSync } from "./utils/supabaseRealtimeSync.js";
 import { printSyncWatchHelp } from "./utils/syncWatchLog.js";
@@ -284,15 +290,34 @@ function initLpTimeLedgerResumePull(getCurrentTabId) {
     lastResumeAt = now;
     const gen = ++resumeGen;
     logTabSync("visibility_pull", { tab: "time", awayMs, reason });
+    try {
+      showToast("시간기록 동기화 중…");
+    } catch (_) {}
     void (async () => {
       try {
-        /* 이 기기 미업로드 기록 먼저 올린 뒤, 서버 최신을 새로 받음 */
+        /* 1) 이 기기 미업로드분 먼저 올림 2) 서버 최신을 우선으로 받음 */
         flushAllPendingTimeDailyBudgetSync();
+        const dirtyBudgetDates = listTimeDailyBudgetLocalDirtyDates();
+        try {
+          await Promise.all(
+            dirtyBudgetDates.map((dk) => syncTimeDailyBudgetDateToSupabase(dk)),
+          );
+        } catch (_) {}
+        try {
+          const { rangeEnd } = readTimeLedgerCombinedPullRangeYmd();
+          if (rangeEnd) await syncTimeDailyBudgetDateToSupabase(rangeEnd);
+        } catch (_) {}
+        for (const dk of listTimeDailyBudgetLocalDirtyDates()) {
+          clearTimeDailyBudgetDateLocalDirty(dk);
+        }
         try {
           await pushDirtyTimeLedgerEntriesToSupabase({ skipPull: true });
         } catch (_) {}
         if (gen !== resumeGen) return;
-        await pullTimeLedgerTabEnterFromCloud({ force: true });
+        await pullTimeLedgerTabEnterFromCloud({
+          force: true,
+          preferServer: true,
+        });
         if (gen !== resumeGen) return;
         if (getCurrentTabId() !== "time") return;
         if (isTimeLedgerModalOpen()) return;
@@ -316,6 +341,19 @@ function initLpTimeLedgerResumePull(getCurrentTabId) {
   window.addEventListener("focus", () => {
     runIfNeeded("focus");
   });
+  /* Chrome Android 등 — 잠금 후 복귀 */
+  try {
+    document.addEventListener("resume", () => runIfNeeded("resume"), {
+      capture: true,
+    });
+    document.addEventListener(
+      "freeze",
+      () => {
+        hiddenAt = Date.now();
+      },
+      { capture: true },
+    );
+  } catch (_) {}
 }
 
 function finishAppBootReady() {
