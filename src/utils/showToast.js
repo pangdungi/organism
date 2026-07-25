@@ -1,10 +1,12 @@
 /**
  * 앱 톤앤매너(흰색/회색/블랙)에 맞는 알림 모달
  * @param {string} message - 메인 메시지
- * @param {string} [subMessage] - 서브 메시지 (작게 회색으로 표시)
+ * @param {string | { autoOnly?: boolean, durationMs?: number }} [subMessageOrOpts] - 서브 메시지, 또는 옵션
+ * @param {{ autoOnly?: boolean, durationMs?: number }} [opts]
  */
 const TOAST_AUTO_DISMISS_MS = 5200;
 const TOAST_AUTO_DISMISS_WITH_SUB_MS = 6800;
+const TOAST_AUTO_ONLY_MS = 1600;
 
 /** 열려 있는 토스트만 제거(다른 UI는 건드리지 않음) */
 export function dismissAppToast() {
@@ -13,22 +15,42 @@ export function dismissAppToast() {
   } catch (_) {}
 }
 
-export function showToast(message, subMessage) {
+export function showToast(message, subMessageOrOpts, opts) {
   dismissAppToast();
 
+  let subMessage = subMessageOrOpts;
+  let options = opts && typeof opts === "object" ? opts : {};
+  if (
+    subMessageOrOpts &&
+    typeof subMessageOrOpts === "object" &&
+    !Array.isArray(subMessageOrOpts)
+  ) {
+    subMessage = undefined;
+    options = subMessageOrOpts;
+  }
+
+  const autoOnly = !!options.autoOnly;
   const mainHtml = formatToastMainHtml(message);
-  const subHtml = subMessage ? `<p class="app-toast-sub">${escapeHtml(subMessage)}</p>` : "";
+  const subHtml = subMessage
+    ? `<p class="app-toast-sub">${escapeHtml(subMessage)}</p>`
+    : "";
   const overlay = document.createElement("div");
-  overlay.className = "app-toast-modal";
-  overlay.setAttribute("role", "alertdialog");
-  overlay.setAttribute("aria-modal", "true");
-  overlay.setAttribute("aria-live", "assertive");
+  overlay.className = autoOnly
+    ? "app-toast-modal app-toast-modal--auto"
+    : "app-toast-modal";
+  overlay.setAttribute("role", autoOnly ? "status" : "alertdialog");
+  if (!autoOnly) overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute("aria-live", autoOnly ? "polite" : "assertive");
   overlay.innerHTML = `
     <div class="app-toast-backdrop"></div>
     <div class="app-toast-panel">
       <p class="app-toast-message">${mainHtml}</p>
       ${subHtml}
-      <button type="button" class="app-toast-btn">확인</button>
+      ${
+        autoOnly
+          ? ""
+          : `<button type="button" class="app-toast-btn">확인</button>`
+      }
     </div>
   `;
 
@@ -43,12 +65,19 @@ export function showToast(message, subMessage) {
     } catch (_) {}
   };
 
-  overlay.querySelector(".app-toast-backdrop").addEventListener("click", close);
-  overlay.querySelector(".app-toast-btn").addEventListener("click", close);
+  overlay.querySelector(".app-toast-backdrop")?.addEventListener("click", close);
+  overlay.querySelector(".app-toast-btn")?.addEventListener("click", close);
 
   document.body.appendChild(overlay);
 
-  const autoMs = subMessage ? TOAST_AUTO_DISMISS_WITH_SUB_MS : TOAST_AUTO_DISMISS_MS;
+  const autoMs =
+    typeof options.durationMs === "number" && options.durationMs > 0
+      ? options.durationMs
+      : autoOnly
+        ? TOAST_AUTO_ONLY_MS
+        : subMessage
+          ? TOAST_AUTO_DISMISS_WITH_SUB_MS
+          : TOAST_AUTO_DISMISS_MS;
   autoTimer = setTimeout(close, autoMs);
 }
 

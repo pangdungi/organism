@@ -2246,6 +2246,32 @@ table {
   outline-offset: 2px;
 }
 
+/* 확인 없이 잠깐만 보이는 안내 — 화면을 막지 않음 */
+.app-toast-modal--auto {
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0));
+  pointer-events: none;
+}
+
+.app-toast-modal--auto .app-toast-backdrop {
+  display: none;
+}
+
+.app-toast-modal--auto .app-toast-panel {
+  max-width: 16.5rem;
+  padding: 0.7rem 1rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  pointer-events: none;
+}
+
+.app-toast-modal--auto .app-toast-message {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
 /* 비밀번호 복구 모달 */
 .auth-pw-modal {
   position: fixed;

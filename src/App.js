@@ -25,7 +25,7 @@ import { render as renderHabitTracker } from "./views/HabitTracker.js";
 import { supabase } from "./supabase.js";
 import { getSupabaseSession } from "./utils/supabaseSession.js";
 import { isAppAdminUser } from "./utils/adminAccess.js";
-import { showToast } from "./utils/showToast.js";
+import { dismissAppToast, showToast } from "./utils/showToast.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
   clearAppFooterActions,
@@ -291,7 +291,7 @@ function initLpTimeLedgerResumePull(getCurrentTabId) {
     const gen = ++resumeGen;
     logTabSync("visibility_pull", { tab: "time", awayMs, reason });
     try {
-      showToast("시간기록 동기화 중…");
+      showToast("시간기록 동기화 중…", { autoOnly: true, durationMs: 1800 });
     } catch (_) {}
     void (async () => {
       try {
@@ -324,7 +324,12 @@ function initLpTimeLedgerResumePull(getCurrentTabId) {
         try {
           window.__lpTimeLedgerSoftRefresh?.({ force: true });
         } catch (_) {}
-      } catch (_) {}
+      } catch (_) {
+      } finally {
+        try {
+          dismissAppToast();
+        } catch (_) {}
+      }
     })();
   };
 
