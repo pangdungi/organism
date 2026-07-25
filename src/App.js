@@ -43,8 +43,6 @@ import { attachSideincomeKpiMapSaveListener } from "./utils/sideincomeKpiMapSupa
 import {
   attachTimeLedgerEntriesSaveListener,
   pullTimeLedgerEntriesForDateRange,
-  pushDirtyTimeLedgerEntriesToSupabase,
-  readTimeLedgerCombinedPullRangeYmd,
   timeLedgerLocalTodayYmd,
   timeLedgerLocalYesterdayYmd,
   resetTimeLedgerSessionFilterToToday,
@@ -283,29 +281,11 @@ function initLpTabResumeCloudPull(getCurrentTabId) {
     return false;
   };
 
-  async function pushLocalBudgetDirtyThenClear() {
-    flushAllPendingTimeDailyBudgetSync();
-    const dirtyBudgetDates = listTimeDailyBudgetLocalDirtyDates();
-    try {
-      await Promise.all(
-        dirtyBudgetDates.map((dk) => syncTimeDailyBudgetDateToSupabase(dk)),
-      );
-    } catch (_) {}
-    try {
-      const { rangeEnd } = readTimeLedgerCombinedPullRangeYmd();
-      if (rangeEnd) await syncTimeDailyBudgetDateToSupabase(rangeEnd);
-    } catch (_) {}
-    for (const dk of listTimeDailyBudgetLocalDirtyDates()) {
-      clearTimeDailyBudgetDateLocalDirty(dk);
-    }
-  }
-
+  /**
+   * 화면 복귀: 예전 로컬을 서버에 올리지 않음.
+   * 서버만 받아 그리고, 서버 쓰기는 사용자가 저장·삭제할 때만.
+   */
   async function runTimeResumePull(gen) {
-    await pushLocalBudgetDirtyThenClear();
-    try {
-      await pushDirtyTimeLedgerEntriesToSupabase({ skipPull: true });
-    } catch (_) {}
-    if (gen !== resumeGen) return;
     await pullTimeLedgerTabEnterFromCloud({
       force: true,
       preferServer: true,
@@ -319,15 +299,10 @@ function initLpTabResumeCloudPull(getCurrentTabId) {
   }
 
   async function runPlannerResumePull(gen) {
-    await pushLocalBudgetDirtyThenClear();
-    try {
-      await pushDirtyTimeLedgerEntriesToSupabase({ skipPull: true });
-    } catch (_) {}
-    if (gen !== resumeGen) return;
     try {
       armTimeDailyBudgetMergePreferServerOnce();
     } catch (_) {}
-    await pullDataForActiveTab("schedulecalendar");
+    await pullDataForActiveTab("schedulecalendar", { preferServer: true });
     if (gen !== resumeGen) return;
     if (getCurrentTabId() !== "schedulecalendar") return;
     if (isResumeBlockingModalOpen()) return;
@@ -488,7 +463,7 @@ function kpiSoftRefreshIfPullChanged(tabId, pullResult) {
  * 시간가계부 **과제 목록**(time_ledger_tasks): `time` 탭 진입·과제설정/기록 모달, 캘린더 1일 뷰 등 해당 화면만.
  */
 async function pullDataForActiveTab(tabId, opts = {}) {
-  void opts;
+  const preferServer = !!opts.preferServer;
   switch (tabId) {
     case "schedulecalendar": {
       const yEnd = timeLedgerLocalTodayYmd();
@@ -499,6 +474,11 @@ async function pullDataForActiveTab(tabId, opts = {}) {
         now.getMonth(),
         21,
       );
+      if (preferServer) {
+        try {
+          armTimeDailyBudgetMergePreferServerOnce();
+        } catch (_) {}
+      }
       await Promise.all([
         pullCalendarSectionTasksFromSupabase({
           reason: `app_setActiveTab_${tabId}`,
@@ -509,7 +489,10 @@ async function pullDataForActiveTab(tabId, opts = {}) {
         pullCalendarDayIconsFromSupabase({
           reason: `app_setActiveTab_${tabId}`,
         }),
-        pullTimeLedgerEntriesForDateRange(yStart, yEnd),
+        pullTimeLedgerEntriesForDateRange(yStart, yEnd, {
+          preferServer,
+          force: preferServer,
+        }),
         pullTimeDailyBudgetForDateRange(yStart, yEnd),
         import("./utils/timeDailyBudgetTemplateSupabase.js").then((m) =>
           m.pullBudgetScheduleTemplatesFromSupabase(),
@@ -519,7 +502,9 @@ async function pullDataForActiveTab(tabId, opts = {}) {
     }
     case "time":
       /* 기록 탭 날짜는 메뉴 전환 직전 `resetTimeLedgerSessionFilterToToday` 로 맞춤. pull 은 그 구간 기준 */
-      await pullTimeLedgerTabEnterFromCloud();
+      await pullTimeLedgerTabEnterFromCloud(
+        preferServer ? { force: true, preferServer: true } : {},
+      );
       break;
     case "health":
     case "happiness":

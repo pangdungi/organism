@@ -729,12 +729,18 @@ export function applyTimeLedgerServerRangeSnapshot(
   const serverIdsInRange = new Set(
     insideFromServerRaw.map((r) => String(r?.id || "").trim()).filter(Boolean),
   );
-  const pendingInsideLocal = localWithIds.filter(
-    (r) =>
-      rowEntryDateInInclusiveRange(r, rs, re) &&
-      !serverIdsInRange.has(String(r?.id || "").trim()) &&
-      timeLedgerRowNeedsPush(r),
-  );
+  const pendingInsideLocal = localWithIds.filter((r) => {
+    const id = String(r?.id || "").trim();
+    if (!rowEntryDateInInclusiveRange(r, rs, re)) return false;
+    if (serverIdsInRange.has(id)) return false;
+    if (!timeLedgerRowNeedsPush(r)) return false;
+    /*
+     * preferServer(화면 복귀 등): 예전에 서버에 있던 로컬 잔여분·삭제분 부활 금지.
+     * 이 기기에서 아직 한 번도 서버에 안 올린 새 행만 유지.
+     */
+    if (preferServer && String(r.serverUpdatedAt || "").trim()) return false;
+    return true;
+  });
   const merged = [...outside, ...insideFromServer, ...pendingInsideLocal];
   writeTimeLedgerEntriesRaw(merged);
   try {
