@@ -97,21 +97,30 @@ function consumeTimeDailyBudgetMergePreferServerOnce() {
   return true;
 }
 
-/** 서버 행들 → localStorage 병합. 변경 시 true */
-export function mergeTimeDailyBudgetRowsFromServer(rows) {
-  if (!Array.isArray(rows) || rows.length === 0) return false;
+/**
+ * 서버 행들 → localStorage. pull 시점 서버만 반영(dirty 로컬이 이기지 않음).
+ * @param {unknown[]} rows
+ * @param {{ rangeStart?: string, rangeEnd?: string }} [opts]
+ * — range가 있으면 그 구간 안·서버에 없는 날짜 로컬은 제거
+ */
+export function mergeTimeDailyBudgetRowsFromServer(rows, opts = {}) {
+  const list = Array.isArray(rows) ? rows : [];
+  const rangeStart = normalizeDateKey(opts.rangeStart);
+  const rangeEnd = normalizeDateKey(opts.rangeEnd);
   try {
+    /* arm 플래그만 소비(호환). 병합은 항상 서버 우선 */
+    consumeTimeDailyBudgetMergePreferServerOnce();
     const rawG = readTimeDailyBudgetGoalsRaw();
     const all = rawG && typeof rawG === "string" ? JSON.parse(rawG) : {};
     const rawE = readTimeDailyBudgetExcludedRaw();
     const excl = rawE && typeof rawE === "string" ? JSON.parse(rawE) : {};
     let changed = false;
-    const preferServer = consumeTimeDailyBudgetMergePreferServerOnce();
-    for (const r of rows) {
-      const dk = normalizeDateKey(r.plan_date);
+    const serverDates = new Set();
+    for (const r of list) {
+      const dk = normalizeDateKey(r?.plan_date);
       if (!dk) continue;
-      /* 방금 로컬 저장·업로드 대기 중이면 서버(옛 값)로 덮지 않음(복귀 pull 제외) */
-      if (!preferServer && isTimeDailyBudgetDateLocalDirty(dk)) continue;
+      serverDates.add(dk);
+      clearTimeDailyBudgetDateLocalDirty(dk);
       const g = r.goals;
       if (g !== undefined && g !== null && typeof g === "object" && !Array.isArray(g)) {
         const incoming = JSON.parse(JSON.stringify(g));
@@ -121,12 +130,12 @@ export function mergeTimeDailyBudgetRowsFromServer(rows) {
             delete all[dk];
             changed = true;
           }
-          continue;
-        }
-        const prev = all[dk];
-        if (!(prev && JSON.stringify(prev) === JSON.stringify(incoming))) {
-          all[dk] = incoming;
-          changed = true;
+        } else {
+          const prev = all[dk];
+          if (!(prev && JSON.stringify(prev) === JSON.stringify(incoming))) {
+            all[dk] = incoming;
+            changed = true;
+          }
         }
       }
       if (Object.prototype.hasOwnProperty.call(r, "excluded_names")) {
@@ -140,6 +149,27 @@ export function mergeTimeDailyBudgetRowsFromServer(rows) {
           }
         }
       }
+    }
+    if (rangeStart && rangeEnd) {
+      for (const dk of Object.keys(all)) {
+        if (dk < rangeStart || dk > rangeEnd) continue;
+        if (serverDates.has(dk)) continue;
+        delete all[dk];
+        if (Object.prototype.hasOwnProperty.call(excl, dk)) delete excl[dk];
+        clearTimeDailyBudgetDateLocalDirty(dk);
+        changed = true;
+      }
+      for (const dk of Object.keys(excl)) {
+        if (dk < rangeStart || dk > rangeEnd) continue;
+        if (serverDates.has(dk)) continue;
+        if (!Object.prototype.hasOwnProperty.call(all, dk)) {
+          delete excl[dk];
+          clearTimeDailyBudgetDateLocalDirty(dk);
+          changed = true;
+        }
+      }
+    } else if (list.length === 0) {
+      return false;
     }
     if (changed) {
       writeTimeDailyBudgetGoalsRaw(JSON.stringify(all));

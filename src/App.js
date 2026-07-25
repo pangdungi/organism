@@ -476,6 +476,8 @@ async function pullDataForActiveTab(tabId, opts = {}) {
           subView: "calendar",
           rangeStart: calRange.rangeStart,
           rangeEnd: calRange.rangeEnd,
+          /* 스탬프 같다고 SELECT 생략하지 않음 — 탭 진입 시 서버 스냅샷 강제 */
+          force: true,
         }),
         pullCalendarDayIconsFromSupabase({
           reason: `app_setActiveTab_${tabId}`,

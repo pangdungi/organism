@@ -152,10 +152,14 @@ export async function pullTimeDailyBudgetForDateRange(rangeStart, rangeEnd) {
   }
   const { data, error } = await q.order("plan_date", { ascending: false });
   if (error) return false;
-  if (!data?.length) return false;
-  const selfRows = data.filter((r) => r && r.user_id === userId);
-  if (selfRows.length === 0) return false;
-  return mergeTimeDailyBudgetRowsFromServer(selfRows);
+  const selfRows = (Array.isArray(data) ? data : []).filter(
+    (r) => r && r.user_id === userId,
+  );
+  /* 구간 pull: 서버 0건이어도 해당 기간 로컬 잔존을 비움 */
+  return mergeTimeDailyBudgetRowsFromServer(selfRows, {
+    rangeStart: rs,
+    rangeEnd: re,
+  });
   });
 }
 
