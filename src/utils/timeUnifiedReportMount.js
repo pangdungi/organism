@@ -860,12 +860,15 @@ function svgEl(tag, attrs = {}) {
   return node;
 }
 
-/** 가로 차트 스크롤 시 부모(레포트 세로 스크롤)로 터치가 넘어가며 위로 튀는 현상 완화 */
+/**
+ * 가로 차트 스크롤 — 가로로 밀 때만 가로 스크롤을 잡고,
+ * 세로로 밀면 부모(레포트) 스크롤이 그대로 이어지게 함
+ */
 function bindHorizontalChartScroll(el) {
   if (!(el instanceof HTMLElement)) return;
   let startX = 0;
   let startY = 0;
-  /** @type {boolean | null} */
+  /** @type {"x" | "y" | null} */
   let axisLock = null;
 
   el.addEventListener(
@@ -885,14 +888,22 @@ function bindHorizontalChartScroll(el) {
   el.addEventListener(
     "touchmove",
     (e) => {
-      if (e.touches.length !== 1 || el.scrollWidth <= el.clientWidth) return;
+      if (e.touches.length !== 1 || el.scrollWidth <= el.clientWidth + 1) {
+        return;
+      }
       const dx = e.touches[0].clientX - startX;
       const dy = e.touches[0].clientY - startY;
       if (axisLock == null) {
-        if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
-        axisLock = Math.abs(dx) > Math.abs(dy);
+        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+        /* 세로 의도가 분명하면 가로 잠금하지 않음 → 부모 스크롤 */
+        if (Math.abs(dy) >= Math.abs(dx)) {
+          axisLock = "y";
+          return;
+        }
+        axisLock = "x";
       }
-      if (axisLock) {
+      if (axisLock === "y") return;
+      if (axisLock === "x") {
         e.stopPropagation();
         e.preventDefault();
       }
@@ -902,6 +913,13 @@ function bindHorizontalChartScroll(el) {
 
   el.addEventListener(
     "touchend",
+    () => {
+      axisLock = null;
+    },
+    { passive: true },
+  );
+  el.addEventListener(
+    "touchcancel",
     () => {
       axisLock = null;
     },
@@ -1208,17 +1226,27 @@ function rowStartSortKey(r) {
 /**
  * 하루 수면 기록 해석 (기상일 기준)
  * - 기상: 당일 첫 기록 마감
- * - 취침: 전날 밤 시작 우선 → 당일 기록의 저녁 시작(자정 넘김) → 당일 2번째 시작
+ * - 취침: 전날 기록 중 마감이 23:59인 건의 시작 시각
+ *   (낮잠을 수면하기로 적어도 2번째 기록으로 오인하지 않음)
  */
-/** 전날 밤 취침 시각(분) — 기상일 기준 수면 길이 계산용 */
+const DAY_END_MINUTES = 23 * 60 + 59; /* 23:59 */
+
+/** 전날 밤 취침 시각(분) — 마감 23:59 구간의 시작 */
 function prevNightBedtimeMin(prevDayRecs) {
   if (!prevDayRecs?.length) return null;
-  if (prevDayRecs.length >= 2) return prevDayRecs[1].startMin ?? null;
-  const p = prevDayRecs[0];
-  if (p?.startMin == null || !Number.isFinite(p.startMin)) return null;
-  /* 저녁(12:00 이후) 시작만 전날 취침으로 본다 */
-  if (p.startMin >= 12 * 60) return p.startMin;
-  return null;
+  const endingAtDayEnd = prevDayRecs.filter(
+    (p) =>
+      p?.endMin === DAY_END_MINUTES &&
+      p?.startMin != null &&
+      Number.isFinite(p.startMin),
+  );
+  if (!endingAtDayEnd.length) return null;
+  /* 여러 개면 가장 늦게 시작한 것(실제 취침 구간) */
+  let best = endingAtDayEnd[0];
+  for (let i = 1; i < endingAtDayEnd.length; i += 1) {
+    if (endingAtDayEnd[i].startMin > best.startMin) best = endingAtDayEnd[i];
+  }
+  return best.startMin;
 }
 
 /**
@@ -1240,12 +1268,12 @@ function overnightSleepMinutes(bedtimeMin, wakeMin) {
   return wake - bed;
 }
 
-function resolveSleepWakeBedForDay(dayRecs, nextDayRecs, prevDayRecs) {
+function resolveSleepWakeBedForDay(dayRecs, prevDayRecs) {
   if (!dayRecs?.length) {
     return { wakeMin: null, bedtimeMin: null };
   }
   const wakeMin = dayRecs[0].endMin;
-  /* 기상일 수면: 전날 밤 취침 우선 */
+  /* 1) 전날 마감 23:59 수면의 시작 = 취침 */
   let bedtimeMin = prevNightBedtimeMin(prevDayRecs);
   if (bedtimeMin == null) {
     const first = dayRecs[0];
@@ -1257,12 +1285,6 @@ function resolveSleepWakeBedForDay(dayRecs, nextDayRecs, prevDayRecs) {
       /* 한 건에 저녁 시작~아침 마감이 같이 있는 경우 */
       bedtimeMin = first.startMin;
     }
-  }
-  if (bedtimeMin == null && dayRecs.length >= 2) {
-    bedtimeMin = dayRecs[1].startMin;
-  }
-  if (bedtimeMin == null) {
-    bedtimeMin = nextDayRecs?.[0]?.startMin ?? null;
   }
   return { wakeMin, bedtimeMin };
 }
@@ -1450,16 +1472,11 @@ function buildSleepReportSnapshot(rows, range) {
     sleepRowsForReportContext(range),
   );
 
-  const sleepByDay = dates.map((date, index) => {
+  const sleepByDay = dates.map((date) => {
     const dayRecs = recordsByDate.get(date) || [];
-    const nextDate = dates[index + 1];
-    const nextDayRecs = nextDate
-      ? recordsByDate.get(nextDate) || []
-      : recordsByDate.get(addDaysYmd(date, 1)) || [];
     const prevDayRecs = recordsByDate.get(addDaysYmd(date, -1)) || [];
     const { wakeMin, bedtimeMin } = resolveSleepWakeBedForDay(
       dayRecs,
-      nextDayRecs,
       prevDayRecs,
     );
     const trackedSum = dayRecs.reduce((sum, rec) => sum + rec.minutes, 0);
@@ -4821,8 +4838,7 @@ function monthTaskCategoryKey(taskName, rowHint) {
 }
 
 /**
- * 한달 과제별 총 시간 → 트리맵용 항목
- * 작은 항목은「그 외」로 묶음
+ * 기간 안 기록된 과제별 총 시간 — 과제명마다 전부 표시(묶음 없음)
  */
 function buildMonthTaskTreemapItems(rows) {
   /** @type {Map<string, { name: string, minutes: number, categoryKey: string }>} */
@@ -4843,30 +4859,9 @@ function buildMonthTaskTreemapItems(rows) {
     }
     map.set(name, cur);
   }
-  const all = [...map.values()].sort(
+  return [...map.values()].sort(
     (a, b) => b.minutes - a.minutes || a.name.localeCompare(b.name, "ko"),
   );
-  if (!all.length) return [];
-
-  const total = all.reduce((s, t) => s + t.minutes, 0);
-  /* 너무 잘게 쪼개면 글자가 잘리므로 상위만 남기고 나머지는「그 외」 */
-  const MAX_CELLS = 12;
-  const MIN_SHARE = 0.02;
-  const kept = [];
-  let otherMin = 0;
-  for (const item of all) {
-    const share = total > 0 ? item.minutes / total : 0;
-    if (kept.length < MAX_CELLS && share >= MIN_SHARE) kept.push(item);
-    else otherMin += item.minutes;
-  }
-  if (otherMin > 0) {
-    kept.push({
-      name: "그 외",
-      minutes: otherMin,
-      categoryKey: "other",
-    });
-  }
-  return kept;
 }
 
 /** 이분 분할 트리맵 레이아웃 (0~100% 좌표) */
@@ -4981,21 +4976,26 @@ function renderMonthTaskTreemap(items) {
   return wrap;
 }
 
-/** 월간 — 시간 배분 위에 과제별 시간 면적 시각화 */
-function mountMonthTaskTreemapSection(scrollWrap, range, rows) {
-  const dayCount = listDatesInclusive(range.start, range.end).length;
-  if (dayCount <= 8) return;
+/** 주간·월간 — 시간의 방향 위에 과제별 시간 지도(동일 네모 형태) */
+function mountTaskTimeMapSection(scrollWrap, range, rows) {
+  const isDay = range.start === range.end;
+  if (isDay) return;
 
+  const dayCount = listDatesInclusive(range.start, range.end).length;
+  const isWeek = dayCount > 1 && dayCount <= 8;
   const items = buildMonthTaskTreemapItems(rows);
+
   const sec = createSection(
-    "한달 시간 지도",
-    "네모가 클수록 그 과제에 쓴 시간이 많아요 · 색은 카테고리",
+    isWeek ? "1주 시간 지도" : "한달 시간 지도",
+    "",
   );
 
   if (!items.length) {
     const note = document.createElement("p");
     note.className = "lp-tr2-chart-note";
-    note.textContent = "이 달에 집계할 과제 기록이 없습니다.";
+    note.textContent = isWeek
+      ? "이 주에 집계할 과제 기록이 없습니다."
+      : "이 달에 집계할 과제 기록이 없습니다.";
     sec.appendChild(note);
     scrollWrap.appendChild(sec);
     return;
@@ -5071,7 +5071,7 @@ export function mountUnifiedTimeReport(scrollWrap, arg2, arg3) {
   scrollWrap.classList.add("lp-tr2-root");
 
   mountHeroSection(scrollWrap, range);
-  mountMonthTaskTreemapSection(scrollWrap, range, rows);
+  mountTaskTimeMapSection(scrollWrap, range, rows);
   mountDonutSection(scrollWrap, range);
   mountSleepSection(scrollWrap, range, rows);
   mountIntakeSection(scrollWrap, range, rows);

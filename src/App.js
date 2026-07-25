@@ -245,6 +245,56 @@ export function waitForAppBootReady() {
   ]);
 }
 
+/**
+ * 실험: 화면 잠금·백그라운드 복귀 시 시간기록 탭이면 서버 pull 후 soft refresh.
+ * (모달 입력 중·짧은 이탈은 건너뜀)
+ * @param {() => string} getCurrentTabId
+ */
+function initLpTimeLedgerResumePull(getCurrentTabId) {
+  if (typeof document === "undefined") return;
+  let hiddenAt = 0;
+  const MIN_AWAY_MS = 800;
+  let resumeGen = 0;
+
+  const isTimeLedgerModalOpen = () =>
+    !!document.querySelector(
+      ".time-task-setup-modal, .time-task-log-modal, .lp-calendar-budget-add-modal",
+    );
+
+  const runIfNeeded = () => {
+    if (typeof getCurrentTabId !== "function") return;
+    if (getCurrentTabId() !== "time") return;
+    if (isTimeLedgerModalOpen()) return;
+    const awayMs = hiddenAt > 0 ? Date.now() - hiddenAt : MIN_AWAY_MS + 1;
+    if (awayMs < MIN_AWAY_MS) return;
+    const gen = ++resumeGen;
+    logTabSync("visibility_pull", { tab: "time", awayMs });
+    void (async () => {
+      try {
+        flushAllPendingTimeDailyBudgetSync();
+        await pullTimeLedgerTabEnterFromCloud();
+        if (gen !== resumeGen) return;
+        if (getCurrentTabId() !== "time") return;
+        if (isTimeLedgerModalOpen()) return;
+        try {
+          window.__lpTimeLedgerSoftRefresh?.();
+        } catch (_) {}
+      } catch (_) {}
+    })();
+  };
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      hiddenAt = Date.now();
+      return;
+    }
+    if (document.visibilityState === "visible") runIfNeeded();
+  });
+  window.addEventListener("pageshow", (ev) => {
+    if (ev.persisted) runIfNeeded();
+  });
+}
+
 function finishAppBootReady() {
   if (resolveAppBootReady) {
     resolveAppBootReady();
@@ -1253,7 +1303,8 @@ export async function mountApp(container) {
       );
   }
 
-  /* 서버 pull: 탭 전환·부팅·홈 3분할 Realtime(데스크탑·패드 가로). 포커스 복귀만으로는 pull 안 함. */
+  /* 서버 pull: 탭 전환·부팅·홈 Realtime + (실험) 시간기록 탭 화면 복귀 pull */
+  initLpTimeLedgerResumePull(() => currentTabId);
 
   logTabSync("boot", { tab: currentTabId, phase: "render_local_then_pull" });
   appScreen.appendChild(main);

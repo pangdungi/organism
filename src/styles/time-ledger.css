@@ -1523,9 +1523,10 @@
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
+  /* 세로는 부모(레포트)로 넘기고, 가로만 이 영역에서 */
   touch-action: pan-x pan-y;
   overscroll-behavior-x: contain;
-  overscroll-behavior-y: none;
+  overscroll-behavior-y: auto;
 }
 
 .lp-tr2-sleep-chart-canvas--scroll .lp-tr2-sleep-chart-svg {
@@ -2511,7 +2512,7 @@
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x pan-y;
   overscroll-behavior-x: contain;
-  overscroll-behavior-y: none;
+  overscroll-behavior-y: auto;
 }
 
 .lp-tr2-sleep-quality-trend-canvas--scroll .lp-tr2-sleep-quality-trend-svg {
@@ -3062,7 +3063,7 @@
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x pan-y;
   overscroll-behavior-x: contain;
-  overscroll-behavior-y: none;
+  overscroll-behavior-y: auto;
 }
 
 .lp-tr2-media-compare-col {

@@ -44,6 +44,7 @@ import {
 import { appendKpiCardToGrid } from "../utils/kpiCardDeadlineFoot.js";
 import {
   afterKpiTodoListMutationScroll,
+  captureKpiDetailScroll,
 } from "../utils/kpiTodoInputScroll.js";
 import {
   KPI_UI_SESSION_KEYS,
@@ -886,6 +887,9 @@ export function render() {
   async function renderKpiHistory(opts = {}) {
     syncHabitTrackerLogs();
     const { scrollTodoAfterMutation = false } = opts;
+    const scrollSnap = scrollTodoAfterMutation
+      ? captureKpiDetailScroll(historyWrap)
+      : null;
     historyWrap.innerHTML = "";
     if (!selectedKpiId) {
       historyWrap.hidden = true;
@@ -1099,7 +1103,7 @@ export function render() {
       historyWrap.appendChild(todoList);
     }
     if (scrollTodoAfterMutation) {
-      afterKpiTodoListMutationScroll(historyWrap);
+      afterKpiTodoListMutationScroll(historyWrap, scrollSnap);
     }
     syncAppFooterLoveKpiActions();
 

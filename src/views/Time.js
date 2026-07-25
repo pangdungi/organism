@@ -7751,6 +7751,13 @@ export function render(opts = {}) {
     return TTC.isSleepBuiltinTaskName(taskName);
   }
 
+  /** 수면 마감 23:59 — 자정 넘김 취침 구간(기상·평가는 다음날) */
+  function isTaskLogModalSleepOvernightCutoff() {
+    if (!isTaskLogModalSleepTask()) return false;
+    const endRaw = normalizeHhMm((taskLogTimeEnd?.value || "").trim());
+    return endRaw === "23:59";
+  }
+
   function isTaskLogModalWorkTask() {
     const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
     return TTC.isWorkBuiltinTaskName(taskName);
@@ -7767,6 +7774,8 @@ export function render(opts = {}) {
   }
 
   function shouldShowTaskLogRatingSection() {
+    /* 취침~23:59 구간은 아직 자는 중 — 평가는 다음날 기상 때 */
+    if (isTaskLogModalSleepOvernightCutoff()) return false;
     if (
       isTaskLogModalSleepTask() ||
       isTaskLogModalWorkTask() ||
@@ -10772,8 +10781,21 @@ export function render(opts = {}) {
     const dateStr = parseDateFromDateTime(startTime) || toDateStr(new Date());
     const focusValue = "";
     const timeRatingForRow = getTaskLogTimeRating();
-    if (TTC.isSleepBuiltinTaskName(taskName) && timeRatingForRow == null) {
-      /* 수면 평가 권장 · 「나중에」면 평가 없이 저장 */
+    const sleepEndsAtDayCutoff =
+      TTC.isSleepBuiltinTaskName(taskName) &&
+      (normalizeHhMm((taskLogTimeEnd?.value || "").trim()) === "23:59" ||
+        normalizeHhMm(
+          String(endTime || "")
+            .trim()
+            .replace(/^.*[T\s]/, "")
+            .slice(0, 5),
+        ) === "23:59");
+    if (
+      TTC.isSleepBuiltinTaskName(taskName) &&
+      timeRatingForRow == null &&
+      !sleepEndsAtDayCutoff
+    ) {
+      /* 수면 평가 권장 · 「나중에」면 평가 없이 저장 (23:59 마감=취침 중은 제외) */
       const rateNow = await showConfirmModal({
         title: "알림",
         message: "수면 평가를 아직 고르지 않았어요.",

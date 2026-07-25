@@ -25,6 +25,7 @@ import {
 } from "../utils/modalNativeDateField.js";
 import {
   afterKpiTodoListMutationScroll,
+  captureKpiDetailScroll,
 } from "../utils/kpiTodoInputScroll.js";
 import { minutesToHhMm, syncHabitTrackerLogs } from "../utils/timeKpiSync.js";
 import { syncSleepHealthGoalLogsFromTimeLedger } from "../utils/healthSleepGoalTimeLedgerSync.js";
@@ -1443,6 +1444,9 @@ export function render() {
   async function renderKpiHistory(opts = {}) {
     syncHabitTrackerLogs();
     const { scrollTodoAfterMutation = false, target = historyWrap } = opts;
+    const scrollSnap = scrollTodoAfterMutation
+      ? captureKpiDetailScroll(target)
+      : null;
     target.innerHTML = "";
     if (!selectedKpiId) {
       if (target === historyWrap) historyWrap.hidden = true;
@@ -1863,7 +1867,7 @@ export function render() {
       });
     }
     if (scrollTodoAfterMutation) {
-      afterKpiTodoListMutationScroll(target);
+      afterKpiTodoListMutationScroll(target, scrollSnap);
     }
     syncAppFooterHealthKpiActions();
 

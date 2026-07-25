@@ -109,9 +109,21 @@ function refreshExpectedModalTaskPicker(dropdown) {
   dropdown?._refreshTaskList?.();
 }
 
-function afterTaskListSyncForExpectedModal(dropdown) {
+/**
+ * 추가 모달 기본 과제 — 시작이 00:00이면 수면하기(취침 계획), 아니면 목록 첫 과제.
+ * @param {{ preferSleep?: boolean }} [opts]
+ */
+function afterTaskListSyncForExpectedModal(dropdown, opts = {}) {
   const v = (dropdown?._getValue?.() || "").trim();
   if (v) return;
+  if (opts.preferSleep) {
+    dropdown._setValue?.(TTC.SLEEP_BUILTIN_TASK_NAME);
+    if (
+      (dropdown._getValue?.() || "").trim() === TTC.SLEEP_BUILTIN_TASK_NAME
+    ) {
+      return;
+    }
+  }
   const mainTasks = getServerLedgerTaskOptionsForTaskLog().filter(
     (t) => !(t.name || "").includes(" > "),
   );
@@ -1180,12 +1192,21 @@ export function openCalendarExpectedScheduleModal(options) {
     return true;
   }
 
+  function preferSleepForExpectedAddDefaults() {
+    const start =
+      String(taskLogTimeStart?.value || "").trim() ||
+      String(defaultStartHhMm || "").trim();
+    return start === "00:00";
+  }
+
   function finalizeExpectedModalTaskDropdown() {
     if (isEdit) {
       hydrateExpectedScheduleEditFromBudget();
       return;
     }
-    afterTaskListSyncForExpectedModal(taskDropdown);
+    afterTaskListSyncForExpectedModal(taskDropdown, {
+      preferSleep: preferSleepForExpectedAddDefaults(),
+    });
     updateExpectedDetailVisibility(taskDropdown._getValue?.() || "");
   }
 
@@ -1418,7 +1439,9 @@ export function openCalendarExpectedScheduleModal(options) {
     if (!modal.isConnected) return;
     refreshExpectedModalTaskPicker(taskDropdown);
     if (!isEdit) {
-      afterTaskListSyncForExpectedModal(taskDropdown);
+      afterTaskListSyncForExpectedModal(taskDropdown, {
+        preferSleep: preferSleepForExpectedAddDefaults(),
+      });
       updateExpectedDetailVisibility(taskDropdown._getValue?.() || "");
     }
   };
