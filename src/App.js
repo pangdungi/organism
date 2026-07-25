@@ -40,6 +40,7 @@ import { attachSideincomeKpiMapSaveListener } from "./utils/sideincomeKpiMapSupa
 import {
   attachTimeLedgerEntriesSaveListener,
   pullTimeLedgerEntriesForDateRange,
+  pushDirtyTimeLedgerEntriesToSupabase,
   timeLedgerLocalTodayYmd,
   timeLedgerLocalYesterdayYmd,
   resetTimeLedgerSessionFilterToToday,
@@ -247,50 +248,56 @@ export function waitForAppBootReady() {
 
 /**
  * 실험: 화면 잠금·백그라운드 복귀 시 시간기록 탭이면 서버 pull 후 soft refresh.
- * (모달 입력 중·짧은 이탈은 건너뜀)
+ * (입력 모달이 실제로 열린 경우만 건너뜀)
  * @param {() => string} getCurrentTabId
  */
 function initLpTimeLedgerResumePull(getCurrentTabId) {
   if (typeof document === "undefined") return;
   let hiddenAt = 0;
-  const MIN_AWAY_MS = 800;
+  const MIN_AWAY_MS = 300;
   let resumeGen = 0;
+  let lastResumeAt = 0;
+  const MIN_RESUME_GAP_MS = 1200;
 
-  /** 실제 열린 모달만 — Time 탭은 숨긴 과제기록 모달을 DOM에 항상 둠 */
+  /** 실제 열린 모달만 — Time 탭은 숨긴 과제기록·과제설정 모달을 DOM에 항상 둠 */
   const isTimeLedgerModalOpen = () => {
     const nodes = document.querySelectorAll(
       ".time-task-setup-modal, .time-task-log-modal, .lp-calendar-budget-add-modal",
     );
     for (const m of nodes) {
       if (!(m instanceof HTMLElement)) continue;
-      if (m.hidden) continue;
+      if (m.hidden || m.hasAttribute("hidden")) continue;
       if (m.getAttribute("aria-hidden") === "true") continue;
-      try {
-        const st = window.getComputedStyle(m);
-        if (st.display === "none" || st.visibility === "hidden") continue;
-      } catch (_) {}
       return true;
     }
     return false;
   };
 
-  const runIfNeeded = () => {
+  const runIfNeeded = (reason = "visibility") => {
     if (typeof getCurrentTabId !== "function") return;
     if (getCurrentTabId() !== "time") return;
     if (isTimeLedgerModalOpen()) return;
     const awayMs = hiddenAt > 0 ? Date.now() - hiddenAt : MIN_AWAY_MS + 1;
     if (awayMs < MIN_AWAY_MS) return;
+    const now = Date.now();
+    if (now - lastResumeAt < MIN_RESUME_GAP_MS) return;
+    lastResumeAt = now;
     const gen = ++resumeGen;
-    logTabSync("visibility_pull", { tab: "time", awayMs });
+    logTabSync("visibility_pull", { tab: "time", awayMs, reason });
     void (async () => {
       try {
+        /* 이 기기 미업로드 기록 먼저 올린 뒤, 서버 최신을 새로 받음 */
         flushAllPendingTimeDailyBudgetSync();
-        await pullTimeLedgerTabEnterFromCloud();
+        try {
+          await pushDirtyTimeLedgerEntriesToSupabase({ skipPull: true });
+        } catch (_) {}
+        if (gen !== resumeGen) return;
+        await pullTimeLedgerTabEnterFromCloud({ force: true });
         if (gen !== resumeGen) return;
         if (getCurrentTabId() !== "time") return;
         if (isTimeLedgerModalOpen()) return;
         try {
-          window.__lpTimeLedgerSoftRefresh?.();
+          window.__lpTimeLedgerSoftRefresh?.({ force: true });
         } catch (_) {}
       } catch (_) {}
     })();
@@ -301,10 +308,13 @@ function initLpTimeLedgerResumePull(getCurrentTabId) {
       hiddenAt = Date.now();
       return;
     }
-    if (document.visibilityState === "visible") runIfNeeded();
+    if (document.visibilityState === "visible") runIfNeeded("visibility");
   });
-  window.addEventListener("pageshow", (ev) => {
-    if (ev.persisted) runIfNeeded();
+  window.addEventListener("pageshow", () => {
+    runIfNeeded("pageshow");
+  });
+  window.addEventListener("focus", () => {
+    runIfNeeded("focus");
   });
 }
 

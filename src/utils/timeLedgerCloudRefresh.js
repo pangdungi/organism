@@ -100,10 +100,15 @@ export async function pullAllTimeLedgerFromCloud(opts = {}) {
  * 기록 행·일간 예산은 매 탭 진입 시 pull.
  */
 /**
- * @param {{ skipTasks?: boolean }} [opts] — true면 과제 목록 pull·KPI 병합은 호출 쪽에서 처리(홈 3분할 boot/sync)
+ * @param {{ skipTasks?: boolean, force?: boolean }} [opts]
+ * — skipTasks: 과제 목록 pull·KPI 병합은 호출 쪽에서 처리(홈 3분할 boot/sync)
+ * — force: 진행 중 tab-enter pull 과 합치지 않고 새로 받기(화면 복귀용)
  */
 export function pullTimeLedgerTabEnterFromCloud(opts = {}) {
   const skipTasks = !!opts.skipTasks;
+  if (opts.force) {
+    return pullTimeLedgerTabEnterFromCloudCore(opts);
+  }
   return coalesceInFlightPull(
     skipTasks ? "time-ledger-tab-enter-skip-tasks" : "time-ledger-tab-enter",
     () => pullTimeLedgerTabEnterFromCloudCore(opts),

@@ -12781,8 +12781,8 @@ export function render(opts = {}) {
     allRowsCache = loadTimeRows();
     cachedRows = getFullRowsForFilter(true);
     refreshTaskLogTaskPickerIfMounted();
-    /* pull 후에도 기록·필터가 같으면 renderAll 생략 — 아이콘 깜빡임 방지 */
-    syncTimeLedgerContent();
+    /* 화면 복귀 pull 등은 force 로 무조건 다시 그림 */
+    syncTimeLedgerContent({ force: !!opts.force });
     if (el._lpUsageListEnterScrollArmed) {
       const cardsWrap = contentWrap.querySelector(
         '[data-legacy~="time-ledger-mobile-cards"]',
@@ -12821,10 +12821,11 @@ export function render(opts = {}) {
   /** App.setActiveTab 에서 pull 후 두 번째 renderMain 대신 호출 — 패널 통째 교체 없이 위 갱신만 */
   if (dashboardEmbedMode && dashboardHost && dashboardEmbedKey) {
     dashboardHost._lpEmbedSoftRefresh = dashboardHost._lpEmbedSoftRefresh || {};
-    dashboardHost._lpEmbedSoftRefresh[dashboardEmbedKey] =
-      () => refreshTimeLedgerFromRemotePull();
+    dashboardHost._lpEmbedSoftRefresh[dashboardEmbedKey] = (softOpts) =>
+      refreshTimeLedgerFromRemotePull(softOpts || {});
   } else {
-    window.__lpTimeLedgerSoftRefresh = () => refreshTimeLedgerFromRemotePull();
+    window.__lpTimeLedgerSoftRefresh = (softOpts) =>
+      refreshTimeLedgerFromRemotePull(softOpts || {});
   }
 
   signal.addEventListener(
