@@ -159,9 +159,18 @@ export function filterKpisByProgressStatus(kpis, filter, progressFor) {
 export function kpiProgressStatusFilterBarHtml(kpiFilter) {
   const f = normalizeKpiListFilter(kpiFilter);
   return `
-      <button type="button" class="dream-kpi-filter-btn ${f === "pending" ? "active" : ""}" data-filter="pending">진행 전</button>
-      <button type="button" class="dream-kpi-filter-btn ${f === "active" ? "active" : ""}" data-filter="active">진행중</button>
-      <button type="button" class="dream-kpi-filter-btn ${f === "completed" ? "active" : ""}" data-filter="completed">완료</button>
+      <label class="dream-kpi-filter-radio-label">
+        <input type="radio" name="kpi-filter" value="pending" ${f === "pending" ? "checked" : ""} data-filter="pending" />
+        <span>진행전</span>
+      </label>
+      <label class="dream-kpi-filter-radio-label">
+        <input type="radio" name="kpi-filter" value="active" ${f === "active" ? "checked" : ""} data-filter="active" />
+        <span>진행중</span>
+      </label>
+      <label class="dream-kpi-filter-radio-label">
+        <input type="radio" name="kpi-filter" value="completed" ${f === "completed" ? "checked" : ""} data-filter="completed" />
+        <span>완료</span>
+      </label>
     `;
 }
 
@@ -177,7 +186,7 @@ export function kpiProgressStatusFieldHtml(kpi, progress = null) {
               <span class="dream-kpi-field-label">과제 상태</span>
               <input type="hidden" name="progressStatus" value="${cur}" />
               <div class="dream-kpi-progress-status-bar" role="group" aria-label="과제 상태">
-                <button type="button" class="dream-kpi-progress-status-btn${cur === "pending" ? " is-active" : ""}" data-status="pending">진행 전</button>
+                <button type="button" class="dream-kpi-progress-status-btn${cur === "pending" ? " is-active" : ""}" data-status="pending">진행전</button>
                 <button type="button" class="dream-kpi-progress-status-btn${cur === "active" ? " is-active" : ""}" data-status="active">진행중</button>
                 <button type="button" class="dream-kpi-progress-status-btn${cur === "completed" ? " is-active" : ""}" data-status="completed">완료</button>
               </div>

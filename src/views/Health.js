@@ -1147,9 +1147,9 @@ export function render() {
     const filterBar = document.createElement("div");
     filterBar.className = "dream-kpi-filter-bar";
     filterBar.innerHTML = kpiProgressStatusFilterBarHtml(kpiFilter);
-    filterBar.querySelectorAll(".dream-kpi-filter-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        kpiFilter = normalizeKpiListFilter(btn.dataset.filter);
+    filterBar.querySelectorAll('input[name="kpi-filter"]').forEach((input) => {
+      input.addEventListener("change", () => {
+        kpiFilter = normalizeKpiListFilter(input.dataset.filter);
         updateHealthView();
       });
     });
