@@ -285,19 +285,23 @@ export function alignDesktopDashboardEmbedsToTodayOnce(dashboardRoot) {
   return true;
 }
 
-/** @param {HTMLElement | null | undefined} dashboardRoot @param {{ skipEmbedKeys?: string[] }} [opts] */
+/**
+ * @param {HTMLElement | null | undefined} dashboardRoot
+ * @param {{ skipEmbedKeys?: string[], force?: boolean }} [opts]
+ */
 export function runDesktopDashboardSoftRefresh(dashboardRoot, opts = {}) {
   const skip = new Set(
     Array.isArray(opts.skipEmbedKeys)
       ? opts.skipEmbedKeys.map((k) => String(k || "").trim()).filter(Boolean)
       : [],
   );
+  const softOpts = opts.force ? { force: true } : {};
   const map = dashboardRoot?._lpEmbedSoftRefresh;
   if (!map || typeof map !== "object") return;
   for (const [key, fn] of Object.entries(map)) {
     if (skip.has(key)) continue;
     try {
-      if (typeof fn === "function") fn();
+      if (typeof fn === "function") fn(softOpts);
     } catch (_) {}
   }
 }

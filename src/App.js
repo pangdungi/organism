@@ -250,7 +250,9 @@ export function waitForAppBootReady() {
 }
 
 /**
- * 실험: 화면 잠금·백그라운드 복귀 시 시간기록·플래너 탭이면 서버 pull 후 soft refresh.
+ * 화면 잠금·백그라운드 복귀 시 서버 pull 후 soft refresh.
+ * — 모바일: 시간기록·플래너 탭
+ * — 데스크탑 3분할 홈: 시간·습관·플래너 embed 일괄
  * (입력 모달이 실제로 열린 경우만 건너뜀)
  * @param {() => string} getCurrentTabId
  */
@@ -303,10 +305,25 @@ function initLpTabResumeCloudPull(getCurrentTabId) {
     } catch (_) {}
   }
 
+  /** 데스크탑 홈 3분할 — pull 후 embed soft refresh(옛 화면 고정 방지) */
+  async function runHomeDesktopResumePull(gen) {
+    if (!isDesktopDashboardViewport()) return;
+    await pullDesktopDashboardData({ forceTaskList: true, force: true });
+    if (gen !== resumeGen) return;
+    if (getCurrentTabId() !== "home") return;
+    if (isResumeBlockingModalOpen()) return;
+    if (!isDesktopDashboardViewport()) return;
+    const root = document.querySelector(".lp-desktop-dashboard");
+    if (!root?.isConnected) return;
+    runDesktopDashboardSoftRefresh(root, { force: true });
+  }
+
   const runIfNeeded = (reason = "visibility") => {
     if (typeof getCurrentTabId !== "function") return;
     const tab = getCurrentTabId();
-    if (tab !== "time" && tab !== "schedulecalendar") return;
+    const homeDesktop =
+      tab === "home" && isDesktopDashboardViewport();
+    if (tab !== "time" && tab !== "schedulecalendar" && !homeDesktop) return;
     if (isResumeBlockingModalOpen()) return;
     const awayMs = hiddenAt > 0 ? Date.now() - hiddenAt : MIN_AWAY_MS + 1;
     if (awayMs < MIN_AWAY_MS) return;
@@ -314,15 +331,19 @@ function initLpTabResumeCloudPull(getCurrentTabId) {
     if (now - lastResumeAt < MIN_RESUME_GAP_MS) return;
     lastResumeAt = now;
     const gen = ++resumeGen;
-    logTabSync("visibility_pull", { tab, awayMs, reason });
-    const toastMsg =
-      tab === "schedulecalendar" ? "플래너 동기화 중…" : "시간기록 동기화 중…";
+    logTabSync("visibility_pull", { tab, awayMs, reason, homeDesktop });
+    const toastMsg = homeDesktop
+      ? "홈 동기화 중…"
+      : tab === "schedulecalendar"
+        ? "플래너 동기화 중…"
+        : "시간기록 동기화 중…";
     try {
       showToast(toastMsg, { autoOnly: true, durationMs: 1800 });
     } catch (_) {}
     void (async () => {
       try {
-        if (tab === "time") await runTimeResumePull(gen);
+        if (homeDesktop) await runHomeDesktopResumePull(gen);
+        else if (tab === "time") await runTimeResumePull(gen);
         else await runPlannerResumePull(gen);
       } catch (_) {
       } finally {
@@ -522,7 +543,7 @@ async function pullDataForActiveTab(tabId, opts = {}) {
 }
 
 async function pullDesktopDashboardDataCore(opts = {}) {
-  const { forceTaskList = false } = opts;
+  const { forceTaskList = false, force = false } = opts;
   const now = new Date();
   const yEnd = timeLedgerLocalTodayYmd();
   const yStart = timeLedgerLocalYesterdayYmd();
@@ -538,7 +559,11 @@ async function pullDesktopDashboardDataCore(opts = {}) {
     ? pullTimeLedgerTasksFromSupabase({ ignoreSkip: true })
     : pullTimeLedgerTasksIfStaleForModal();
   await Promise.all([
-    pullTimeLedgerTabEnterFromCloud({ skipTasks: true }),
+    pullTimeLedgerTabEnterFromCloud({
+      skipTasks: true,
+      force: !!force,
+      preferServer: true,
+    }),
     taskPullJob,
     pullHabitTrackerTabFromCloud(now.getFullYear(), now.getMonth() + 1),
     pullCalendarSectionTasksFromSupabase({
@@ -546,11 +571,15 @@ async function pullDesktopDashboardDataCore(opts = {}) {
       subView: "calendar",
       rangeStart: calRange.rangeStart,
       rangeEnd: calRange.rangeEnd,
+      force: !!force || !!forceTaskList,
     }),
     pullCalendarDayIconsFromSupabase({
       reason: "app_desktop_dashboard",
     }),
-    pullTimeLedgerEntriesForDateRange(yStart, yEnd),
+    pullTimeLedgerEntriesForDateRange(yStart, yEnd, {
+      preferServer: true,
+      force: !!force,
+    }),
     pullTimeDailyBudgetForDateRange(yStart, yEnd),
     import("./utils/timeDailyBudgetTemplateSupabase.js").then((m) =>
       m.pullBudgetScheduleTemplatesFromSupabase(),
@@ -564,12 +593,17 @@ async function pullDesktopDashboardDataCore(opts = {}) {
   } catch (_) {}
 }
 
-/** @param {{ forceTaskList?: boolean }} [opts] — boot:true=과제목록 무조건 pull, 이후 sync:false=stale일 때만 */
+/**
+ * @param {{ forceTaskList?: boolean, force?: boolean }} [opts]
+ * — forceTaskList: 과제목록 무조건 pull
+ * — force: 화면 복귀 등 — 진행 중 pull과 합치지 않고 서버 스냅샷 강제
+ */
 function pullDesktopDashboardData(opts = {}) {
   const forceTaskList = !!opts.forceTaskList;
+  const force = !!opts.force;
   return coalesceInFlightPull(
-    `desktop-dashboard-data:${forceTaskList ? "boot" : "sync"}`,
-    () => pullDesktopDashboardDataCore({ forceTaskList }),
+    `desktop-dashboard-data:${forceTaskList ? "boot" : "sync"}${force ? ":force" : ""}`,
+    () => pullDesktopDashboardDataCore({ forceTaskList, force }),
   );
 }
 
