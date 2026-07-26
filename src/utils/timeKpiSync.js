@@ -330,8 +330,14 @@ function parseKpiMeasureNumeric(val) {
  */
 export function getKpiAccumulatedMeasureValue(kpi, storedLogs = []) {
   const kid = String(kpi?.id || "").trim();
-  if (!kid || kpi?.useTimeAsUnit || kpi?.useTaskCompletionGoal || kpi?.needHabitTracker) {
+  if (!kid || kpi?.useTimeAsUnit || kpi?.useTaskCompletionGoal) {
     return 0;
+  }
+  /* 매일하기는 체크만이면 누적 수치 없음. 목표값·단위가 있을 때만 일별 수행값 합산 */
+  if (kpi?.needHabitTracker) {
+    const unit = String(kpi.unit || "").trim();
+    const target = String(kpi.targetValue ?? "").trim();
+    if (!unit || !target) return 0;
   }
   const { start, end } = getKpiTargetDateRange(kpi);
   const logs = Array.isArray(storedLogs) ? storedLogs : [];

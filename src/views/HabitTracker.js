@@ -5,8 +5,6 @@
 import { setupKpiCategoryHeaderIcon } from "../utils/kpiCategoryHeaderIcon.js";
 import {
   createHabitTrackerPageGridElement,
-  scheduleScrollHabitTrackerToToday,
-  scrollHabitTrackerToToday,
 } from "../utils/habitTrackerPageGrid.js";
 import { pullHabitTrackerTabFromCloud } from "../utils/habitTrackerCloudRefresh.js";
 import { timeLedgerLocalTodayYmd } from "../utils/timeLedgerEntriesSupabase.js";
@@ -166,26 +164,6 @@ export function render(opts = {}) {
     if (!skipSync) hasSyncedPaint = true;
   }
 
-  /** 3분할 — 오늘이 들어 있는 주로 맞추기 */
-  function scrollTodayInEmbed() {
-    if (!dashboardEmbedMode || !el.isConnected) return;
-    const todayYmd = timeLedgerLocalTodayYmd();
-    const todayWeek = habitTrackerWeekDateKeys(todayYmd)[0] || todayYmd;
-    const curWeek = habitTrackerWeekDateKeys(viewWeekAnchorYmd)[0] || viewWeekAnchorYmd;
-    if (todayWeek !== curWeek) {
-      viewWeekAnchorYmd = todayYmd;
-      const mid = habitTrackerWeekDateKeys(todayYmd)[3] || todayYmd;
-      viewYear = Number(mid.slice(0, 4)) || viewYear;
-      viewMonth = Number(mid.slice(5, 7)) || viewMonth;
-      syncViewMonthGlobal();
-      hasSyncedPaint = true;
-      paintGrid({ skipSync: false });
-    }
-    if (!scrollHabitTrackerToToday(gridHost, todayYmd)) {
-      scheduleScrollHabitTrackerToToday(gridHost, todayYmd);
-    }
-  }
-
   let softRefreshRaf = 0;
   function scheduleSoftRefresh() {
     if (!el.isConnected) return;
@@ -202,7 +180,6 @@ export function render(opts = {}) {
   if (dashboardEmbedMode && dashboardHost && dashboardEmbedKey) {
     dashboardHost._lpEmbedSoftRefresh = dashboardHost._lpEmbedSoftRefresh || {};
     dashboardHost._lpEmbedSoftRefresh[dashboardEmbedKey] = scheduleSoftRefresh;
-    dashboardHost._lpEmbedHabitScrollToday = scrollTodayInEmbed;
   }
   syncViewMonthGlobal();
   paintGrid({ skipSync: true, allowBeforeMount: true });

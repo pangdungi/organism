@@ -25,6 +25,7 @@ import {
   writeKpiMapScopedStorageRaw,
 } from "./kpiMapLocalStorage.js";
 import { getTaskOptionById } from "./timeTaskOptionsModel.js";
+import { removeKpiTaskCompletionEventsForTodos } from "./kpiTaskCompletionEvents.js";
 
 const DREAM_MAP_KEY = "kpi-dream-map";
 const SIDEINCOME_KEY = "kpi-sideincome-paths";
@@ -778,6 +779,7 @@ export function removeKpiTodo(kpiTodoId, storageKey) {
       삭제전dr: deletedRefsKpiTodosLen(data),
     });
     appendDeletedKpiTodoRef(data, storageKey, idNorm);
+    removeKpiTaskCompletionEventsForTodos(data, idNorm);
     kpiTodoFineTrace("removeKpiTodo:deletedRefs추가후", {
       idNorm,
       drKpiTodosLen: (data.deletedRefs?.kpiTodos || []).length,
@@ -863,6 +865,10 @@ export function removeAllCompletedKpiTodos() {
         for (const row of completedRows) {
           appendDeletedKpiTodoRef(data, key, row.id);
         }
+        removeKpiTaskCompletionEventsForTodos(
+          data,
+          completedRows.map((r) => r.id),
+        );
       }
       writeKpiMapScopedStorageRaw(key, JSON.stringify(data));
       if (before > after) dispatchKpiMapSavedAfterLocalWrite(key, "removeAllCompletedKpiTodos");

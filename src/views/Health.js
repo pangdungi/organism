@@ -7,6 +7,7 @@ import {
   HEALTH_KPI_GLOBAL_SCOPE_ID,
   applyHealthKpiTimestampsOnSave,
   ensureDefaultHealthMapDefaults,
+  DEFAULT_AEROBIC_KPI_ID,
   DEFAULT_CHECKUP_KPI_ID,
   DEFAULT_SUPPLEMENT_KPI_ID,
   DEFAULT_SLEEP_HEALTH_GOAL_ID,
@@ -39,6 +40,7 @@ import {
   computeKpiProgress,
   buildKpiCardTimePresentation,
   enrichKpiProgressWithHabitStreak,
+  formatKpiCardProgressSectionHtml,
 } from "../utils/kpiTimeUnitKpi.js";
 import {
   resolveKpiDetailLogEntriesPrepared,
@@ -324,13 +326,38 @@ function appendDeletedRef(data, kind, id) {
 function finalizeHealthMapDefaults(parsed, baseData) {
   const prevHealthCount = (parsed?.healths || []).length;
   const prevKpiIds = new Set((parsed?.kpis || []).map((k) => String(k.id)));
+  const hadAerobic = prevKpiIds.has(DEFAULT_AEROBIC_KPI_ID);
+  const prevAerobicSyncName = String(
+    parsed?.kpiTaskSync?.[DEFAULT_AEROBIC_KPI_ID] || "유산소 운동",
+  ).trim();
   const data = ensureDefaultHealthMapDefaults(baseData);
   const newKpis = (data.kpis || []).filter((k) => !prevKpiIds.has(String(k.id)));
+  const aerobicRemoved =
+    hadAerobic &&
+    !(data.kpis || []).some((k) => String(k.id) === DEFAULT_AEROBIC_KPI_ID);
+  const prevDeletedHadAerobic = (
+    Array.isArray(parsed?.deletedRefs?.kpis) ? parsed.deletedRefs.kpis : []
+  )
+    .map(String)
+    .includes(DEFAULT_AEROBIC_KPI_ID);
+  const aerobicMarkedDeleted =
+    (data.deletedRefs?.kpis || []).map(String).includes(DEFAULT_AEROBIC_KPI_ID) &&
+    !prevDeletedHadAerobic;
   const syncChanged = ensureHealthKpiTimeTasksForData(data);
   const needsSave =
     (data.healths || []).length > prevHealthCount ||
     newKpis.length > 0 ||
+    aerobicRemoved ||
+    aerobicMarkedDeleted ||
     syncChanged;
+  if (aerobicRemoved) {
+    try {
+      kpiTimeTaskRemove(
+        { id: DEFAULT_AEROBIC_KPI_ID, name: prevAerobicSyncName || "유산소 운동" },
+        prevAerobicSyncName || "유산소 운동",
+      );
+    } catch (_) {}
+  }
   if (needsSave) {
     saveHealthMap(data, { pushServer: true });
   }
@@ -1147,9 +1174,9 @@ export function render() {
     const filterBar = document.createElement("div");
     filterBar.className = "dream-kpi-filter-bar";
     filterBar.innerHTML = kpiProgressStatusFilterBarHtml(kpiFilter);
-    filterBar.querySelectorAll('input[name="kpi-filter"]').forEach((input) => {
-      input.addEventListener("change", () => {
-        kpiFilter = normalizeKpiListFilter(input.dataset.filter);
+    filterBar.querySelectorAll(".dream-kpi-filter-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        kpiFilter = normalizeKpiListFilter(btn.dataset.filter);
         updateHealthView();
       });
     });
@@ -1186,8 +1213,19 @@ export function render() {
       const progressResult = progressFor(kpi);
       const { lowerBetter } = progressResult;
       const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
-      const { displayProgress, progressText, heroStr, heroUnit, cardExtraClass, hideProgressFill, hideProgressBar, heroPrefix, heroStreakAsideHtml } =
-        buildKpiCardTimePresentation(kpi, progressResult, formatNum);
+      const {
+        displayProgress,
+        progressText,
+        heroStr,
+        heroUnit,
+        cardExtraClass,
+        hideProgressFill,
+        hideProgressBar,
+        heroPrefix,
+        heroStreakAsideHtml,
+        habitWeekStripHtml,
+        hideHabitHero,
+      } = buildKpiCardTimePresentation(kpi, progressResult, formatNum);
       const card = document.createElement("div");
       card.className =
         "dream-kpi-card" +
@@ -1196,17 +1234,22 @@ export function render() {
       card.dataset.kpiId = kpi.id;
       card.draggable = true;
       const nameHtml = `${escapeHtml(kpi.name)}${lowerBetter ? '<span class="dream-kpi-card-direction-badge" title="낮을수록 좋음 행동">↓낮음</span>' : ""}`;
-      const progressHtml = hideProgressBar
-        ? `<div class="dream-kpi-card-progress dream-kpi-card-progress--habit"><div class="dream-kpi-card-progress-text">${escapeHtml(progressText)}</div></div>`
-        : `<div class="dream-kpi-card-progress">
-            <div class="dream-kpi-card-progress-bar${hideProgressFill ? " dream-kpi-card-progress-bar--empty" : ""}"><div class="dream-kpi-card-progress-fill" style="width:${hideProgressFill ? 0 : displayProgress}%"></div></div>
-            <div class="dream-kpi-card-progress-text">${escapeHtml(progressText)}</div>
-          </div>`;
+      const progressHtml = formatKpiCardProgressSectionHtml({
+        habitWeekStripHtml,
+        hideProgressBar,
+        hideProgressFill,
+        displayProgress,
+        progressText,
+        escapeHtml,
+      });
+      const heroHtml = hideHabitHero
+        ? ""
+        : `<div class="dream-kpi-card-target-num${heroStreakAsideHtml ? " dream-kpi-card-target-num--habit-unit" : ""}">${formatKpiCardHeroHtml(lowerBetter, heroStr, heroUnit, heroPrefix)}${heroStreakAsideHtml || ""}</div>`;
       card.innerHTML = `
         <div class="dream-kpi-card-inner">
           ${KPI_CARD_EDIT_PENCIL_HTML}
           ${kpiCardHeadHtml(kpi, "health", nameHtml)}
-          <div class="dream-kpi-card-target-num${heroStreakAsideHtml ? " dream-kpi-card-target-num--habit-unit" : ""}">${formatKpiCardHeroHtml(lowerBetter, heroStr, heroUnit, heroPrefix)}${heroStreakAsideHtml || ""}</div>
+          ${heroHtml}
           ${progressHtml}
         </div>
       `;

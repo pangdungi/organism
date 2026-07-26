@@ -188,6 +188,33 @@
 .sideincome-quarter-chip-row .sideincome-quarter-chip {
   flex: 1 1 auto;
   min-width: 3.5rem;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.12rem;
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+  line-height: 1.15;
+}
+
+.sideincome-quarter-chip-row .sideincome-quarter-chip-main {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.sideincome-quarter-chip-row .sideincome-quarter-chip-months {
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  opacity: 0.72;
+  white-space: nowrap;
+}
+
+.sideincome-quarter-chip-row
+  .sideincome-quarter-chip.lp-choice-chip--on
+  .sideincome-quarter-chip-months {
+  opacity: 0.88;
 }
 
 /* 건강·행복 — 데스크탑·아이패드 가로 2분할 (목록 | 상세). 모바일·세로는 미적용 */
@@ -2040,9 +2067,9 @@
   margin-top: 0.65rem;
 }
 
-/* 수입 로그 목록 모달 (body 직접 부착) */
+/* 수입 로그 목록 모달 (body 직접 부착) — 위·아래 여백 동일 */
 .dream-kpi-path-logs-modal .dream-kpi-path-logs-modal-body {
-  padding-top: 0.25rem;
+  padding: 0.85rem 1rem;
 }
 
 .dream-kpi-path-logs-modal .dream-kpi-path-logs-modal-list {
@@ -2794,103 +2821,44 @@
   gap: 0.5rem 1rem;
 }
 
-/* 행동 수정 모달 — 과제 상태 세그먼트 버튼 (가운데 정렬) */
+/* 행동 수정 모달 — 과제 상태 라디오 */
 .dream-kpi-progress-status-field {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
 }
 
 .dream-kpi-progress-status-field > .dream-kpi-field-label {
-  align-self: stretch;
   text-align: left;
 }
 
-.dream-kpi-progress-status-field .dream-kpi-progress-status-bar {
-  --lp-seg-pad: 3px;
-  --lp-seg-count: 3;
-  position: relative;
+.dream-kpi-progress-status-field .dream-kpi-progress-status-radios {
   display: flex;
-  flex-wrap: nowrap;
-  align-items: stretch;
-  gap: 0;
-  width: min(18.5rem, 100%);
-  max-width: 100%;
-  margin-top: 0.15rem;
-  margin-left: auto;
-  margin-right: auto;
-  padding: var(--lp-seg-pad);
-  border-radius: 0.5625rem;
-  border: 1px solid rgba(0, 0, 0, 0.22);
-  background: rgba(0, 0, 0, 0.08);
-  box-sizing: border-box;
-  overflow: hidden;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.85rem 1.25rem;
+  margin-top: 0.35rem;
 }
 
-.dream-kpi-progress-status-field .dream-kpi-progress-status-bar::before {
-  content: "";
-  position: absolute;
-  top: var(--lp-seg-pad);
-  bottom: var(--lp-seg-pad);
-  left: var(--lp-seg-pad);
-  width: calc((100% - 2 * var(--lp-seg-pad)) / var(--lp-seg-count));
-  border-radius: calc(0.5rem - var(--lp-seg-pad));
-  background: #fff;
-  box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.12),
-    0 1px 2px rgba(0, 0, 0, 0.08);
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 0;
-  pointer-events: none;
-}
-
-.dream-kpi-progress-status-field
-  .dream-kpi-progress-status-bar:has(
-    > .dream-kpi-progress-status-btn:nth-child(2).is-active
-  )::before {
-  transform: translateX(100%);
-}
-
-.dream-kpi-progress-status-field
-  .dream-kpi-progress-status-bar:has(
-    > .dream-kpi-progress-status-btn:nth-child(3).is-active
-  )::before {
-  transform: translateX(200%);
-}
-
-.dream-kpi-progress-status-field .dream-kpi-progress-status-btn {
-  position: relative;
-  z-index: 1;
-  flex: 1 1 0;
-  min-width: 0;
-  appearance: none;
-  margin: 0;
+.dream-kpi-progress-status-field .dream-kpi-progress-status-radio {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  border: none;
-  padding: 0.35rem 0.25rem;
-  min-height: 2rem;
+  gap: 0.4rem;
+  margin: 0;
   font: inherit;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1;
-  white-space: nowrap;
-  color: rgba(0, 0, 0, 0.48);
-  background: transparent;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #1a1a1a;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
-.dream-kpi-progress-status-field .dream-kpi-progress-status-btn.is-active {
-  color: #000;
-  font-weight: 700;
-}
-
-.dream-kpi-progress-status-field .dream-kpi-progress-status-btn:focus-visible {
-  outline: 2px solid #000;
-  outline-offset: 1px;
+.dream-kpi-progress-status-field .dream-kpi-progress-status-radio input {
+  margin: 0;
+  width: 1rem;
+  height: 1rem;
+  accent-color: #1a1a1a;
+  cursor: pointer;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2961,6 +2929,13 @@
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
+}
+
+/* 퀵버튼이 적용될 시작일/마감일 — 테두리만 살짝 */
+.dream-kpi-period-block
+  .time-task-log-date-native-wrap.is-date-target
+  .time-task-log-date-overlay {
+  border-color: #1a1a1a;
 }
 
 /* 26rem 초과 폰(plus 등)에서도 날짜 2열은 자주 넘침 → 기한 블록만 태블릿·폰 폭에서 1열 */
@@ -3084,6 +3059,60 @@
   font-size: 0.8125rem;
   font-weight: 600;
   color: #000000;
+}
+
+/* 매일하기 — 이번 주 월~일 칩 (블랙/화이트) */
+.dream-kpi-card-progress--habit-week {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.35rem;
+}
+
+.dream-kpi-card-habit-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.28rem;
+  width: 100%;
+}
+
+.dream-kpi-card-habit-day {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.85rem;
+  padding: 0.2rem 0;
+  border-radius: 0.4rem;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #9ca3af;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  box-sizing: border-box;
+}
+
+.dream-kpi-card-habit-day.is-done {
+  background: #111111;
+  border-color: #111111;
+  color: #fff;
+}
+
+.dream-kpi-card-habit-day.is-today:not(.is-done) {
+  border-color: #111111;
+  color: #111111;
+}
+
+.dream-kpi-card-progress--habit-week .dream-kpi-card-progress-text {
+  margin-top: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #9ca3af;
+}
+
+.dream-kpi-card--habit-week .dream-kpi-card-inner {
+  gap: 0.35rem;
 }
 
 .dream-kpi-card--habit .dream-kpi-card-target-num {

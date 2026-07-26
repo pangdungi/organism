@@ -153,12 +153,12 @@ export function ensureDefaultWeightHealthGoal(payload) {
 }
 
 /** 기본 건강 KPI — 삭제 불가, 수정 가능 */
+/** @deprecated 기본 KPI에서 제외됨. 기존 데이터 정리용 id만 유지 */
 export const DEFAULT_AEROBIC_KPI_ID = "__lp_default_kpi_aerobic__";
 export const DEFAULT_SUPPLEMENT_KPI_ID = "__lp_default_kpi_supplement__";
 export const DEFAULT_CHECKUP_KPI_ID = "__lp_default_kpi_checkup__";
 
 const PROTECTED_DEFAULT_HEALTH_KPI_IDS = new Set([
-  DEFAULT_AEROBIC_KPI_ID,
   DEFAULT_SUPPLEMENT_KPI_ID,
   DEFAULT_CHECKUP_KPI_ID,
 ]);
@@ -183,37 +183,69 @@ function createDefaultHealthKpi(overrides) {
   };
 }
 
-export function createDefaultAerobicKpi() {
-  return createDefaultHealthKpi({
-    id: DEFAULT_AEROBIC_KPI_ID,
-    name: "유산소 운동",
-    needHabitTracker: true,
-    unit: "km",
-    targetValue: "5",
-  });
-}
+/** 기본 KPI에서 제외된 유산소 — 맵·연동 데이터에서 제거 */
+function retireDefaultAerobicKpi(payload) {
+  const p = payload && typeof payload === "object" ? payload : emptyPayload();
+  const kid = DEFAULT_AEROBIC_KPI_ID;
+  const kpis = Array.isArray(p.kpis) ? p.kpis : [];
+  const hadKpi = kpis.some((k) => String(k?.id ?? "") === kid);
+  const nextKpis = kpis.filter((k) => String(k?.id ?? "") !== kid);
+  const nextLogs = (Array.isArray(p.kpiLogs) ? p.kpiLogs : []).filter(
+    (l) => String(l?.kpiId ?? "") !== kid,
+  );
+  const nextTodos = (Array.isArray(p.kpiTodos) ? p.kpiTodos : []).filter(
+    (t) => String(t?.kpiId ?? "") !== kid,
+  );
+  const nextDaily = (
+    Array.isArray(p.kpiDailyRepeatTodos) ? p.kpiDailyRepeatTodos : []
+  ).filter((t) => String(t?.kpiId ?? "") !== kid);
+  const deletedRefs = normalizeDeletedRefs(p.deletedRefs);
+  const deletedKpis = deletedRefs.kpis || [];
+  const needDeletedRef = !deletedKpis.includes(kid);
+  const kpiOrder =
+    p.kpiOrder && typeof p.kpiOrder === "object" ? { ...p.kpiOrder } : {};
+  const scopeId = HEALTH_KPI_GLOBAL_SCOPE_ID;
+  let orderChanged = false;
+  if (Array.isArray(kpiOrder[scopeId])) {
+    const filtered = kpiOrder[scopeId].filter((id) => String(id) !== kid);
+    if (filtered.length !== kpiOrder[scopeId].length) {
+      kpiOrder[scopeId] = filtered;
+      orderChanged = true;
+    }
+  }
+  const kpiTaskSync =
+    p.kpiTaskSync && typeof p.kpiTaskSync === "object"
+      ? { ...p.kpiTaskSync }
+      : {};
+  const hadSync = Object.prototype.hasOwnProperty.call(kpiTaskSync, kid);
+  if (hadSync) delete kpiTaskSync[kid];
 
-/** 기존 로컬·서버에 직접입력으로 저장된 기본 유산소 KPI → 매일하기로 맞춤 */
-function migrateDefaultAerobicKpiToHabit(kpis) {
-  let changed = false;
-  const next = (kpis || []).map((k) => {
-    if (String(k?.id ?? "") !== DEFAULT_AEROBIC_KPI_ID) return k;
-    if (k.needHabitTracker) return k;
-    if (k.useTimeAsUnit || k.useTaskCompletionGoal) return k;
-    changed = true;
-    return {
-      ...k,
-      needHabitTracker: true,
-      useTimeAsUnit: false,
-      useTaskCompletionGoal: false,
-      unit: (k.unit || "").trim() || "km",
-      targetValue: String(k.targetValue ?? "").trim() || "5",
-      targetStartDate: "",
-      targetDeadline: "",
-      targetTimeRequired: "",
-    };
-  });
-  return { kpis: changed ? next : kpis, changed };
+  const changed =
+    hadKpi ||
+    nextLogs.length !== (p.kpiLogs || []).length ||
+    nextTodos.length !== (p.kpiTodos || []).length ||
+    nextDaily.length !== (p.kpiDailyRepeatTodos || []).length ||
+    needDeletedRef ||
+    orderChanged ||
+    hadSync;
+  if (!changed) return { payload: p, changed: false, removed: false };
+
+  return {
+    payload: {
+      ...p,
+      kpis: nextKpis,
+      kpiLogs: nextLogs,
+      kpiTodos: nextTodos,
+      kpiDailyRepeatTodos: nextDaily,
+      kpiOrder,
+      kpiTaskSync,
+      deletedRefs: needDeletedRef
+        ? { ...deletedRefs, kpis: [...deletedKpis, kid] }
+        : deletedRefs,
+    },
+    changed: true,
+    removed: hadKpi || hadSync,
+  };
 }
 
 /** 기존 로컬·서버 기본 보충제 KPI 표시명 — 영양제 → 보충제 */
@@ -246,13 +278,15 @@ export function createDefaultCheckupKpi() {
 }
 
 const DEFAULT_HEALTH_KPI_FACTORIES = [
-  createDefaultAerobicKpi,
   createDefaultSupplementKpi,
   createDefaultCheckupKpi,
 ];
 
 export function ensureDefaultHealthKpis(payload) {
-  const p = payload && typeof payload === "object" ? payload : emptyPayload();
+  const retired = retireDefaultAerobicKpi(
+    payload && typeof payload === "object" ? payload : emptyPayload(),
+  );
+  const p = retired.payload;
   const kpis = Array.isArray(p.kpis) ? [...p.kpis] : [];
   const existingIds = new Set(kpis.map((k) => String(k.id)));
 
@@ -272,15 +306,13 @@ export function ensureDefaultHealthKpis(payload) {
     nextDeletedKpis.length !== (deletedRefs.kpis || []).length;
 
   const mergedKpis = [...toPrepend, ...kpis];
-  const { kpis: afterAerobic, changed: aerobicMigrated } =
-    migrateDefaultAerobicKpiToHabit(mergedKpis);
   const { kpis: migratedKpis, changed: supplementLabelMigrated } =
-    migrateDefaultSupplementKpiLabel(afterAerobic);
+    migrateDefaultSupplementKpiLabel(mergedKpis);
 
   if (
+    !retired.changed &&
     !toPrepend.length &&
     !deletedRefsChanged &&
-    !aerobicMigrated &&
     !supplementLabelMigrated
   ) {
     return p;

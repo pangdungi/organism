@@ -27,11 +27,6 @@ import {
   readCalendarDayIconsSnapshot,
 } from "../utils/calendarDayIconsModel.js";
 import {
-  scrollCalendarMonthlyGridToToday,
-  scheduleScrollCalendarMonthlyGridToToday,
-  bindCalendarMonthlyScrollTodayAfterLayout,
-} from "../utils/calendarMonthlyScrollToday.js";
-import {
   isPastCalendarTask,
 } from "../utils/calendarTaskDisplayRules.js";
 import {
@@ -6300,38 +6295,6 @@ const MOBILE_SCHEDULE_CAL_SUB_VIEWS = [
  * @param {{ subViewsList?: {id:string,label:string}[], storageKey?: string, forceInitialMonthlyOnMobile?: boolean, scheduleSubViewsInFooter?: boolean, footerActionsSlot?: HTMLElement | null }} opts
  * scheduleSubViewsInFooter: true면 서브뷰 전환을 네비가 아닌 앱 푸터(`app-footer-icon-btn`)에 둡니다.
  */
-function lpAttachEmbedMonthlyScrollToday(shellWrap) {
-  if (!(shellWrap instanceof HTMLElement)) return;
-  const todayYmd = timeLedgerLocalTodayYmd();
-  const resolveGrid = () => {
-    const layout = shellWrap.querySelector(".calendar-subview-monthly");
-    return layout?.querySelector(
-      ".calendar-monthly-grid:not(.calendar-monthly-grid--1week-timegrid)",
-    );
-  };
-  const runScroll = () => {
-    const grid = resolveGrid();
-    if (!(grid instanceof HTMLElement)) return;
-    if (grid.classList.contains("calendar-monthly-grid--layout-pending")) {
-      bindCalendarMonthlyScrollTodayAfterLayout(grid, () => {
-        scrollCalendarMonthlyGridToToday(grid, todayYmd);
-      });
-      return;
-    }
-    if (!scrollCalendarMonthlyGridToToday(grid, todayYmd)) {
-      scheduleScrollCalendarMonthlyGridToToday(grid, todayYmd);
-    }
-  };
-  shellWrap._lpScrollMonthlyToToday = runScroll;
-  const grid = resolveGrid();
-  if (grid instanceof HTMLElement) {
-    bindCalendarMonthlyScrollTodayAfterLayout(grid, () => {
-      scrollCalendarMonthlyGridToToday(grid, todayYmd);
-    });
-    scheduleScrollCalendarMonthlyGridToToday(grid, todayYmd);
-  }
-}
-
 function createCalendarSubViewRoot(tabsElement, opts = {}) {
   const isMobile = window.matchMedia("(max-width: 46rem)").matches;
   const subViewsList = opts.subViewsList || CALENDAR_SUB_VIEWS;
@@ -6454,13 +6417,6 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
   let _nestedSubViewGen = 0;
   let activeSubViewId = initialSubView;
 
-  if (dashboardEmbedMode) {
-    wrap._lpEnsureMonthlySubView = () => {
-      if (activeSubViewId === "monthly") return;
-      renderSubView("monthly", { skipPull: true });
-    };
-  }
-
   /**
    * 서브탭 전환: 뷰는 즉시 마운트. skipPull 아닐 때만 서버 pull 후 `_lpRefreshCalendarView`로 반영.
    * (1주도 동일 — 빈 화면 대기 없음; 과제 기록은 짧은 뒤 갱신)
@@ -6493,9 +6449,6 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
     if (subViewId === "monthly") {
       const monthlyLayout = renderMonthlyView(null);
       contentArea.appendChild(monthlyLayout);
-      if (dashboardEmbedMode) {
-        lpAttachEmbedMonthlyScrollToday(wrap);
-      }
     } else if (subViewId === "1week") {
       contentArea.appendChild(render1WeekView(null));
       calendar1WeekDiagSnapshot(contentArea, "renderSubView.afterMount1week");
@@ -6745,28 +6698,6 @@ export function renderMobileScheduleCalendar(opts = {}) {
     dashboardHost._lpEmbedSoftRefresh = dashboardHost._lpEmbedSoftRefresh || {};
     dashboardHost._lpEmbedSoftRefresh[dashboardEmbedKey] = calendarSoftRefresh;
 
-    /** 3분할 — 월별 격자만 스크롤(통째 remount 없음) */
-    dashboardHost._lpEmbedPlannerScrollToday = () => {
-      if (!el.isConnected) return;
-      const shellWrap = contentWrap.querySelector(".calendar-view-with-subtabs");
-      if (!(shellWrap instanceof HTMLElement)) return;
-      const monthlyLayout = shellWrap.querySelector(".calendar-subview-monthly");
-      if (!(monthlyLayout instanceof HTMLElement)) {
-        shellWrap._lpEnsureMonthlySubView?.();
-        requestAnimationFrame(() => {
-          shellWrap._lpScrollMonthlyToToday?.();
-        });
-        return;
-      }
-      const todayBtn = monthlyLayout.querySelector(".calendar-nav-today");
-      if (
-        todayBtn instanceof HTMLButtonElement &&
-        !monthlyLayout.querySelector(".calendar-monthly-day.today")
-      ) {
-        todayBtn.click();
-      }
-      shellWrap._lpScrollMonthlyToToday?.();
-    };
   } else {
     window.__lpCalendarSoftRefresh = calendarSoftRefresh;
   }

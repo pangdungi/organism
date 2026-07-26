@@ -159,23 +159,14 @@ export function filterKpisByProgressStatus(kpis, filter, progressFor) {
 export function kpiProgressStatusFilterBarHtml(kpiFilter) {
   const f = normalizeKpiListFilter(kpiFilter);
   return `
-      <label class="dream-kpi-filter-radio-label">
-        <input type="radio" name="kpi-filter" value="pending" ${f === "pending" ? "checked" : ""} data-filter="pending" />
-        <span>진행전</span>
-      </label>
-      <label class="dream-kpi-filter-radio-label">
-        <input type="radio" name="kpi-filter" value="active" ${f === "active" ? "checked" : ""} data-filter="active" />
-        <span>진행중</span>
-      </label>
-      <label class="dream-kpi-filter-radio-label">
-        <input type="radio" name="kpi-filter" value="completed" ${f === "completed" ? "checked" : ""} data-filter="completed" />
-        <span>완료</span>
-      </label>
+      <button type="button" class="dream-kpi-filter-btn ${f === "pending" ? "active" : ""}" data-filter="pending">진행 전</button>
+      <button type="button" class="dream-kpi-filter-btn ${f === "active" ? "active" : ""}" data-filter="active">진행중</button>
+      <button type="button" class="dream-kpi-filter-btn ${f === "completed" ? "active" : ""}" data-filter="completed">완료</button>
     `;
 }
 
 /**
- * 행동 수정 모달 — 과제 상태 (진행 전·진행중·완료 버튼)
+ * 행동 수정 모달 — 과제 상태 (진행전·진행중·완료 라디오)
  * @param {object} kpi
  * @param {{ isCompleted?: boolean }|null} [progress]
  */
@@ -184,41 +175,40 @@ export function kpiProgressStatusFieldHtml(kpi, progress = null) {
   return `
             <div class="dream-kpi-field dream-kpi-progress-status-field" data-legacy="time-add-task-field">
               <span class="dream-kpi-field-label">과제 상태</span>
-              <input type="hidden" name="progressStatus" value="${cur}" />
-              <div class="dream-kpi-progress-status-bar" role="group" aria-label="과제 상태">
-                <button type="button" class="dream-kpi-progress-status-btn${cur === "pending" ? " is-active" : ""}" data-status="pending">진행전</button>
-                <button type="button" class="dream-kpi-progress-status-btn${cur === "active" ? " is-active" : ""}" data-status="active">진행중</button>
-                <button type="button" class="dream-kpi-progress-status-btn${cur === "completed" ? " is-active" : ""}" data-status="completed">완료</button>
+              <div class="dream-kpi-progress-status-radios" role="radiogroup" aria-label="과제 상태">
+                <label class="dream-kpi-progress-status-radio">
+                  <input type="radio" name="progressStatus" value="pending"${cur === "pending" ? " checked" : ""} />
+                  <span>진행전</span>
+                </label>
+                <label class="dream-kpi-progress-status-radio">
+                  <input type="radio" name="progressStatus" value="active"${cur === "active" ? " checked" : ""} />
+                  <span>진행중</span>
+                </label>
+                <label class="dream-kpi-progress-status-radio">
+                  <input type="radio" name="progressStatus" value="completed"${cur === "completed" ? " checked" : ""} />
+                  <span>완료</span>
+                </label>
               </div>
             </div>`;
 }
 
 /**
  * @param {ParentNode|null|undefined} root — 모달 또는 form
+ * 라디오는 name=progressStatus 로 폼에서 바로 읽힘 (바인딩 불필요, 호출 호환용)
  */
 export function bindKpiProgressStatusField(root) {
-  const field = root?.querySelector?.(".dream-kpi-progress-status-field");
-  if (!field) return;
-  const hidden = field.querySelector('input[name="progressStatus"]');
-  const bar = field.querySelector(".dream-kpi-progress-status-bar");
-  if (!(hidden instanceof HTMLInputElement) || !bar) return;
-  bar.querySelectorAll(".dream-kpi-progress-status-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const v = normalizeKpiProgressStatus(btn.getAttribute("data-status"));
-      hidden.value = v;
-      bar.querySelectorAll(".dream-kpi-progress-status-btn").forEach((b) => {
-        b.classList.toggle(
-          "is-active",
-          normalizeKpiProgressStatus(b.getAttribute("data-status")) === v,
-        );
-      });
-    });
-  });
+  void root;
 }
 
 /** @param {HTMLFormElement|null|undefined} form */
 export function readKpiProgressStatusFromForm(form) {
   if (!form) return KPI_PROGRESS_STATUS_DEFAULT;
+  const checked = form.querySelector?.(
+    'input[type="radio"][name="progressStatus"]:checked',
+  );
+  if (checked && "value" in checked) {
+    return normalizeKpiProgressStatus(checked.value);
+  }
   const el =
     form.querySelector?.('input[name="progressStatus"]') ||
     form.elements?.namedItem?.("progressStatus");

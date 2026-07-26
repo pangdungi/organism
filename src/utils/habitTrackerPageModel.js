@@ -21,13 +21,13 @@ import { ensureAllKpiTimeTasksFromStorage } from "./kpiTimeTaskSync.js";
 import {
   getKpiHabitTrackerStartYmd,
   isKpiHabitDateBeforeStart,
-  isKpiHabitVisibleInMonth,
 } from "./kpiHabitTrackerStartDate.js";
 
 const DAY_END_MIN = 23 * 60 + 59;
 const BUDGET_PLACEHOLDER_PREFIX = "(과제 선택)·";
 
 const KPI_DOMAIN_STORAGE = [
+  { storageKey: "kpi-dream-map", domain: "dream" },
   { storageKey: "kpi-health-map", domain: "health" },
   { storageKey: "kpi-sideincome-paths", domain: "sideincome" },
   { storageKey: "kpi-happiness-map", domain: "happiness" },
@@ -192,7 +192,7 @@ export function buildHabitTrackerRows(year, month, opts = {}) {
     const data = loadKpiMapData(storageKey);
     for (const kpi of data.kpis || []) {
       if (!kpi?.needHabitTracker) continue;
-      if (!isKpiHabitVisibleInMonth(kpi, year, month)) continue;
+      /* 시작월 이전이어도 행은 보여 주고, 칸만 beforeStart 로 막음 */
       const name = String(kpi.name || "").trim();
       if (!name) continue;
       const kpiId = String(kpi.id || "").trim();

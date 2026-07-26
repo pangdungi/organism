@@ -2,6 +2,7 @@
  * 해빗 트랙커 탭 — KPI·시간기록·일간계획 서버 pull
  */
 
+import { pullDreamKpiMapFromSupabase } from "./dreamKpiMapSupabase.js";
 import { pullHealthKpiMapFromSupabase } from "./healthKpiMapSupabase.js";
 import { pullHappinessKpiMapFromSupabase } from "./happinessKpiMapSupabase.js";
 import { pullSideincomeKpiMapFromSupabase } from "./sideincomeKpiMapSupabase.js";
@@ -37,14 +38,15 @@ export async function pullHabitTrackerTabFromCloud(year, month) {
   return coalesceInFlightPull(pullKey, async () => {
     let pullOk = false;
     try {
-      const [h, ha, s, ledgerOk, budgetOk] = await Promise.all([
+      const [d, h, ha, s, ledgerOk, budgetOk] = await Promise.all([
+        pullDreamKpiMapFromSupabase({ force: true, skipLogs: false }),
         pullHealthKpiMapFromSupabase(HABIT_TRACKER_KPI_PULL_OPTS),
         pullHappinessKpiMapFromSupabase(HABIT_TRACKER_KPI_PULL_OPTS),
         pullSideincomeKpiMapFromSupabase(HABIT_TRACKER_KPI_PULL_OPTS),
         pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd),
         pullTimeDailyBudgetForDateRange(rangeStart, rangeEnd),
       ]);
-      pullOk = !!(h || ha || s || ledgerOk || budgetOk);
+      pullOk = !!(d || h || ha || s || ledgerOk || budgetOk);
       patchKpiLinkedTasksFromKpiMaps();
       ensureAllKpiTimeTasksFromStorage();
       syncHabitTrackerLogs();

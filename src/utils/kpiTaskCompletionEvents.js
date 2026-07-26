@@ -1,5 +1,6 @@
 /**
- * 태스크 완료형 KPI — 체크 시점 완료 이벤트(휴지통 삭제 후에도 이번 주 처리 수 유지)
+ * 태스크 완료형 KPI — 체크 시점 완료 이벤트
+ * (이번 주 처리 수: 현재 목록에 남은 할 일만 반영. 삭제되면 집계에서 빠짐)
  */
 
 /** @param {Date} d */
@@ -48,19 +49,34 @@ export function normalizeKpiTaskCompletionEvents(arr) {
 }
 
 /**
+ * 이번 주 처리 수 — 현재 할 일 목록에 아직 있는 항목만 센다.
  * @param {object[]} events
  * @param {string} kpiId
  * @param {Date} [refDate]
+ * @param {Iterable<string>|Set<string>|string[]|null} [activeTodoIds] 있으면 이 id만 포함
  */
-export function countKpiTaskCompletionsThisWeek(events, kpiId, refDate = new Date()) {
+export function countKpiTaskCompletionsThisWeek(
+  events,
+  kpiId,
+  refDate = new Date(),
+  activeTodoIds = null,
+) {
   const kid = String(kpiId || "").trim();
   if (!kid) return 0;
   const todayYmd = toLocalDateKey(refDate);
   const weekStart = weekStartYmdMonday(todayYmd);
   const weekEnd = weekEndYmdSunday(weekStart);
   if (!weekStart || !weekEnd) return 0;
+  const active =
+    activeTodoIds == null
+      ? null
+      : new Set(
+          [...activeTodoIds].map((x) => String(x || "").trim()).filter(Boolean),
+        );
   return normalizeKpiTaskCompletionEvents(events).filter((e) => {
     if (String(e.kpiId) !== kid) return false;
+    const tid = String(e.todoId || "").trim();
+    if (active && (!tid || !active.has(tid))) return false;
     const at = e.completedAt;
     const dayYmd = at.length >= 10 ? at.slice(0, 10) : toLocalDateKey(new Date(at));
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dayYmd)) {
@@ -71,6 +87,74 @@ export function countKpiTaskCompletionsThisWeek(events, kpiId, refDate = new Dat
     }
     return dayYmd >= weekStart && dayYmd <= weekEnd;
   }).length;
+}
+
+/**
+ * 누적 완료 수 — todoId 기준 고유 (완료 목록 삭제 후에도 이벤트면 유지)
+ * ※ 잡무 처리하기 카드는 쓰지 않음(이번 주·현재 목록만)
+ * @param {object[]} events
+ * @param {string} kpiId
+ */
+export function countKpiTaskCompletionsAll(events, kpiId) {
+  const kid = String(kpiId || "").trim();
+  if (!kid) return 0;
+  const ids = new Set();
+  for (const e of normalizeKpiTaskCompletionEvents(events)) {
+    if (String(e.kpiId) !== kid) continue;
+    const tid = String(e.todoId || "").trim();
+    if (tid) ids.add(tid);
+    else if (e.id) ids.add(e.id);
+  }
+  return ids.size;
+}
+
+/**
+ * 전체 과제 수 = 현재 할 일 ∪ 완료 이벤트 todoId
+ * (잡무 외 태스크완료형 — 완료분만 지워도 분모·분자에 이력 유지)
+ * @param {object[]} todos
+ * @param {object[]} events
+ * @param {string} kpiId
+ */
+export function resolveKpiTaskCompletionCounts(todos, events, kpiId) {
+  const kid = String(kpiId || "").trim();
+  const list = (Array.isArray(todos) ? todos : []).filter(
+    (t) =>
+      String(t?.kpiId ?? kid) === kid && String(t?.text || "").trim() !== "",
+  );
+  const currentIds = new Set(
+    list.map((t) => String(t?.id || "").trim()).filter(Boolean),
+  );
+  const eventTodoIds = new Set();
+  for (const e of normalizeKpiTaskCompletionEvents(events)) {
+    if (String(e.kpiId) !== kid) continue;
+    const tid = String(e.todoId || "").trim();
+    if (tid) eventTodoIds.add(tid);
+  }
+  const liveDone = list.filter((t) => !!t.completed).length;
+  const doneFromEvents = eventTodoIds.size;
+  const done = Math.max(doneFromEvents, liveDone);
+  const totalIds = new Set([...currentIds, ...eventTodoIds]);
+  const total = Math.max(totalIds.size, done);
+  const remaining = list.filter((t) => !t.completed).length;
+  return { done, total, remaining, liveDone, doneFromEvents };
+}
+
+/**
+ * @param {object} data KPI 맵 payload (mutate)
+ * @param {string|string[]} todoIds
+ */
+export function removeKpiTaskCompletionEventsForTodos(data, todoIds) {
+  if (!data || typeof data !== "object") return;
+  const ids = new Set(
+    (Array.isArray(todoIds) ? todoIds : [todoIds])
+      .map((x) => String(x || "").trim())
+      .filter(Boolean),
+  );
+  if (!ids.size) return;
+  const list = normalizeKpiTaskCompletionEvents(data.kpiTaskCompletionEvents);
+  data.kpiTaskCompletionEvents = list.filter(
+    (e) => !ids.has(String(e.todoId || "").trim()),
+  );
 }
 
 function newCompletionEventId() {

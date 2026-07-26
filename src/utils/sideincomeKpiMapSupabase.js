@@ -725,10 +725,9 @@ async function pullSideincomeKpiMapFromSupabaseImpl(opts = {}) {
   const emptyLogRes = { data: [], error: null };
   const emptyTodoRes = { data: [], error: null };
   const emptyRowRes = { data: [], error: null };
+  /* lite여도 paths는 필수 — 없으면 path_id 필터에 KPI가 전부 탈락함 */
   const [pathRes, plRes, kpiRes, klRes, todoRes, dailyRes, metaRes] = await Promise.all([
-    habitTrackerLite
-      ? Promise.resolve(emptyRowRes)
-      : supabase.from("sideincome_map_paths").select("*").eq("user_id", userId),
+    supabase.from("sideincome_map_paths").select("*").eq("user_id", userId),
     habitTrackerLite
       ? Promise.resolve(emptyRowRes)
       : supabase.from("sideincome_map_path_logs").select("*").eq("user_id", userId),
@@ -746,7 +745,8 @@ async function pullSideincomeKpiMapFromSupabaseImpl(opts = {}) {
   ]);
 
   for (const res of [
-    ...(habitTrackerLite ? [] : [pathRes, plRes]),
+    pathRes,
+    ...(habitTrackerLite ? [] : [plRes]),
     kpiRes,
     ...(skipLogs ? [] : [klRes]),
     ...(skipTodos ? [] : [todoRes, dailyRes]),
@@ -807,7 +807,7 @@ async function pullSideincomeKpiMapFromSupabaseImpl(opts = {}) {
   }
 
   const serverPayload = buildPayloadFromRows(
-    habitTrackerLite ? [] : paths,
+    paths,
     habitTrackerLite ? [] : pathLogs,
     kpis,
     kpiLogs,
@@ -819,7 +819,8 @@ async function pullSideincomeKpiMapFromSupabaseImpl(opts = {}) {
   if (habitTrackerLite && localBeforePull) {
     snapshot = normalizePayload({
       ...localBeforePull,
-      kpis: snapshot.kpis || [],
+      paths: snapshot.paths?.length ? snapshot.paths : localBeforePull.paths || [],
+      kpis: snapshot.kpis?.length ? snapshot.kpis : localBeforePull.kpis || [],
       kpiLogs: snapshot.kpiLogs || [],
       deletedRefs: snapshot.deletedRefs || localBeforePull.deletedRefs,
     });

@@ -121,3 +121,85 @@ export function computeKpiHabitCurrentStreak(kpi, storedLogs = [], todayYmd = ""
 export function computeKpiHabitTotalDays(kpi, storedLogs = []) {
   return collectKpiHabitSuccessDateKeys(kpi, storedLogs).size;
 }
+
+const HABIT_WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
+
+/** 기준일이 속한 주(월~일) 7일 ymd */
+export function habitWeekDateKeysMonSun(refYmd = "") {
+  const today = normalizeKpiLogDateYmd(
+    refYmd || new Date().toISOString().slice(0, 10),
+  );
+  const m = String(today).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const base = m
+    ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+    : new Date();
+  const day = base.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  const monday = new Date(base);
+  monday.setDate(base.getDate() + mondayOffset);
+  /** @type {string[]} */
+  const keys = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const y = d.getFullYear();
+    const mo = String(d.getMonth() + 1).padStart(2, "0");
+    const da = String(d.getDate()).padStart(2, "0");
+    keys.push(`${y}-${mo}-${da}`);
+  }
+  return keys;
+}
+
+/**
+ * 매일하기 카드 — 이번 주 월~일 완료 칩 (블랙/화이트)
+ * @param {Iterable<string>|Set<string>|string[]} successYmds
+ * @param {string} [todayYmd]
+ */
+export function buildKpiCardHabitWeekStripHtml(successYmds, todayYmd = "") {
+  const today = normalizeKpiLogDateYmd(
+    todayYmd || new Date().toISOString().slice(0, 10),
+  );
+  const success = new Set(
+    [...(successYmds || [])]
+      .map((x) => normalizeKpiLogDateYmd(x))
+      .filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x)),
+  );
+  const keys = habitWeekDateKeysMonSun(today);
+  const chips = keys
+    .map((ymd, i) => {
+      const done = success.has(ymd);
+      const isToday = ymd === today;
+      const cls = [
+        "dream-kpi-card-habit-day",
+        done ? "is-done" : "",
+        isToday ? "is-today" : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      const label = HABIT_WEEKDAY_LABELS[i] || "";
+      return `<span class="${cls}" title="${ymd}" aria-label="${label} ${ymd}${done ? " 완료" : ""}">${label}</span>`;
+    })
+    .join("");
+  return `<div class="dream-kpi-card-habit-week" role="list" aria-label="이번 주 수행">${chips}</div>`;
+}
+
+/** @param {object} kpi */
+export function formatKpiHabitPeriodRangeLabel(kpi) {
+  const start = String(
+    kpi?.targetStartDate || kpi?.habitTrackerStartDate || "",
+  )
+    .trim()
+    .slice(0, 10);
+  const end = String(kpi?.targetDeadline || "").trim().slice(0, 10);
+  const fmt = (ymd) => {
+    const m = String(ymd).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return "";
+    return `${m[1]}.${m[2]}.${m[3]}`;
+  };
+  const a = fmt(start);
+  const b = fmt(end);
+  if (a && b) return `${a} ~ ${b}`;
+  if (a) return `${a} ~`;
+  if (b) return `~ ${b}`;
+  return "";
+}

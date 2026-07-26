@@ -51,7 +51,7 @@ export function setupTodoTaskDateQuickButtons(modal) {
 
 /**
  * KPI 모달 날짜 퀵 버튼(오늘, +14일, +30일) 설정
- * 마지막으로 포커스된 날짜 입력(시작기한/달성기한)에 적용됨
+ * 마지막으로 포커스된 날짜 입력(시작일/마감일)에 적용됨
  */
 export function setupDeadlineQuickButtons(modal) {
   const startInput = modal.querySelector('input[name="targetStartDate"]');
@@ -60,11 +60,23 @@ export function setupDeadlineQuickButtons(modal) {
 
   let lastFocusedDateInput = deadlineInput || startInput;
 
-  [startInput, deadlineInput].filter(Boolean).forEach((inp) => {
-    inp.addEventListener("focus", () => {
-      lastFocusedDateInput = inp;
+  const markDateTarget = (inp) => {
+    if (!(inp instanceof HTMLInputElement)) return;
+    lastFocusedDateInput = inp;
+    [startInput, deadlineInput].filter(Boolean).forEach((el) => {
+      el.closest(".time-task-log-date-native-wrap")?.classList.toggle(
+        "is-date-target",
+        el === inp,
+      );
     });
+  };
+
+  [startInput, deadlineInput].filter(Boolean).forEach((inp) => {
+    inp.addEventListener("focus", () => markDateTarget(inp));
+    const wrap = inp.closest(".time-task-log-date-native-wrap");
+    wrap?.addEventListener("click", () => markDateTarget(inp));
   });
+  markDateTarget(lastFocusedDateInput);
 
   const todayStr = () => {
     const d = new Date();
@@ -77,6 +89,7 @@ export function setupDeadlineQuickButtons(modal) {
         lastFocusedDateInput.value = todayStr();
         lastFocusedDateInput.dispatchEvent(new Event("input", { bubbles: true }));
         lastFocusedDateInput.dispatchEvent(new Event("change", { bubbles: true }));
+        markDateTarget(lastFocusedDateInput);
       }
     });
   });
@@ -102,6 +115,7 @@ export function setupDeadlineQuickButtons(modal) {
       lastFocusedDateInput.value = `${y}-${m}-${d}`;
       lastFocusedDateInput.dispatchEvent(new Event("input", { bubbles: true }));
       lastFocusedDateInput.dispatchEvent(new Event("change", { bubbles: true }));
+      markDateTarget(lastFocusedDateInput);
     });
   });
 

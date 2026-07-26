@@ -32,6 +32,7 @@ import {
   computeKpiProgress,
   buildKpiCardTimePresentation,
   enrichKpiProgressWithHabitStreak,
+  formatKpiCardProgressSectionHtml,
 } from "../utils/kpiTimeUnitKpi.js";
 import {
   KPI_PROGRESS_STATUS_DEFAULT,
@@ -852,8 +853,19 @@ export function render() {
       } = progressResult;
       const unitSuffix = kpi.unit ? " " + kpi.unit : "";
       const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
-      const { displayProgress, progressText, heroStr, heroUnit, cardExtraClass, hideProgressFill, hideProgressBar, heroPrefix, heroStreakAsideHtml } =
-        buildKpiCardTimePresentation(kpi, progressResult, formatNum);
+      const {
+        displayProgress,
+        progressText,
+        heroStr,
+        heroUnit,
+        cardExtraClass,
+        hideProgressFill,
+        hideProgressBar,
+        heroPrefix,
+        heroStreakAsideHtml,
+        habitWeekStripHtml,
+        hideHabitHero,
+      } = buildKpiCardTimePresentation(kpi, progressResult, formatNum);
       const card = document.createElement("div");
       card.className =
         "dream-kpi-card" +
@@ -864,17 +876,22 @@ export function render() {
       const investedTimeHtml = "";
       const heroUnitFinal = heroUnit;
       const nameHtml = `${escapeHtml(kpi.name)}${lowerBetter ? '<span class="dream-kpi-card-direction-badge" title="낮을수록 좋음 KPI">↓낮음</span>' : ""}`;
-      const progressHtml = hideProgressBar
-        ? `<div class="dream-kpi-card-progress dream-kpi-card-progress--habit"><div class="dream-kpi-card-progress-text">${escapeHtml(progressText)}</div></div>`
-        : `<div class="dream-kpi-card-progress">
-            <div class="dream-kpi-card-progress-bar${hideProgressFill ? " dream-kpi-card-progress-bar--empty" : ""}"><div class="dream-kpi-card-progress-fill" style="width:${hideProgressFill ? 0 : displayProgress}%"></div></div>
-            <div class="dream-kpi-card-progress-text">${escapeHtml(progressText)}</div>
-          </div>`;
+      const progressHtml = formatKpiCardProgressSectionHtml({
+        habitWeekStripHtml,
+        hideProgressBar,
+        hideProgressFill,
+        displayProgress,
+        progressText,
+        escapeHtml,
+      });
+      const heroHtml = hideHabitHero
+        ? ""
+        : `<div class="dream-kpi-card-target-num${heroStreakAsideHtml ? " dream-kpi-card-target-num--habit-unit" : ""}">${formatKpiCardHeroHtml(lowerBetter, heroStr, heroUnitFinal, heroPrefix)}${heroStreakAsideHtml || ""}</div>`;
       card.innerHTML = `
         <div class="dream-kpi-card-inner">
           ${KPI_CARD_EDIT_PENCIL_HTML}
           ${kpiCardHeadHtml(kpi, "dream", nameHtml)}
-          <div class="dream-kpi-card-target-num${heroStreakAsideHtml ? " dream-kpi-card-target-num--habit-unit" : ""}">${formatKpiCardHeroHtml(lowerBetter, heroStr, heroUnitFinal, heroPrefix)}${heroStreakAsideHtml || ""}</div>
+          ${heroHtml}
           ${progressHtml}
           ${investedTimeHtml ? `<div class="dream-kpi-card-invested">${investedTimeHtml}</div>` : ""}
         </div>

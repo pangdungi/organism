@@ -32,6 +32,7 @@ import {
   computeKpiProgress,
   buildKpiCardTimePresentation,
   enrichKpiProgressWithHabitStreak,
+  formatKpiCardProgressSectionHtml,
 } from "../utils/kpiTimeUnitKpi.js";
 import {
   resolveKpiDetailLogEntriesPrepared,
@@ -75,7 +76,10 @@ import {
   mountKpiSegBarClearCompletedRow,
   confirmAndPurgeCompletedKpiTodos,
 } from "../utils/kpiTodoBulkDeleteUi.js";
-import { syncKpiTaskCompletionEventOnTodoToggle } from "../utils/kpiTaskCompletionEvents.js";
+import {
+  syncKpiTaskCompletionEventOnTodoToggle,
+  removeKpiTaskCompletionEventsForTodos,
+} from "../utils/kpiTaskCompletionEvents.js";
 import { wireKpiDailyTodoListDragReorder } from "../utils/kpiDailyTodoListDragReorder.js";
 import {
   mountKpiDetailStackedSections,
@@ -970,9 +974,9 @@ export function render() {
     const filterBar = document.createElement("div");
     filterBar.className = "dream-kpi-filter-bar";
     filterBar.innerHTML = kpiProgressStatusFilterBarHtml(kpiFilter);
-    filterBar.querySelectorAll('input[name="kpi-filter"]').forEach((input) => {
-      input.addEventListener("change", () => {
-        kpiFilter = normalizeKpiListFilter(input.dataset.filter);
+    filterBar.querySelectorAll(".dream-kpi-filter-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        kpiFilter = normalizeKpiListFilter(btn.dataset.filter);
         renderKpiList();
       });
     });
@@ -1059,8 +1063,19 @@ export function render() {
       const progressResult = progressFor(kpi);
       const { lowerBetter } = progressResult;
       const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
-      const { displayProgress, progressText, heroStr, heroUnit, cardExtraClass, hideProgressFill, hideProgressBar, heroPrefix, heroStreakAsideHtml } =
-        buildKpiCardTimePresentation(kpi, progressResult, formatNum);
+      const {
+        displayProgress,
+        progressText,
+        heroStr,
+        heroUnit,
+        cardExtraClass,
+        hideProgressFill,
+        hideProgressBar,
+        heroPrefix,
+        heroStreakAsideHtml,
+        habitWeekStripHtml,
+        hideHabitHero,
+      } = buildKpiCardTimePresentation(kpi, progressResult, formatNum);
       const card = document.createElement("div");
       card.className =
         "dream-kpi-card" +
@@ -1069,17 +1084,22 @@ export function render() {
       card.dataset.kpiId = kpi.id;
       card.draggable = true;
       const nameHtml = `${escapeHtml(kpi.name)}${lowerBetter ? '<span class="dream-kpi-card-direction-badge" title="낮을수록 좋음 행동">↓낮음</span>' : ""}`;
-      const progressHtml = hideProgressBar
-        ? `<div class="dream-kpi-card-progress dream-kpi-card-progress--habit"><div class="dream-kpi-card-progress-text">${escapeHtml(progressText)}</div></div>`
-        : `<div class="dream-kpi-card-progress">
-            <div class="dream-kpi-card-progress-bar${hideProgressFill ? " dream-kpi-card-progress-bar--empty" : ""}"><div class="dream-kpi-card-progress-fill" style="width:${hideProgressFill ? 0 : displayProgress}%"></div></div>
-            <div class="dream-kpi-card-progress-text">${escapeHtml(progressText)}</div>
-          </div>`;
+      const progressHtml = formatKpiCardProgressSectionHtml({
+        habitWeekStripHtml,
+        hideProgressBar,
+        hideProgressFill,
+        displayProgress,
+        progressText,
+        escapeHtml,
+      });
+      const heroHtml = hideHabitHero
+        ? ""
+        : `<div class="dream-kpi-card-target-num${heroStreakAsideHtml ? " dream-kpi-card-target-num--habit-unit" : ""}">${formatKpiCardHeroHtml(lowerBetter, heroStr, heroUnit, heroPrefix)}${heroStreakAsideHtml || ""}</div>`;
       card.innerHTML = `
         <div class="dream-kpi-card-inner">
           ${KPI_CARD_EDIT_PENCIL_HTML}
           ${kpiCardHeadHtml(kpi, "happiness", nameHtml)}
-          <div class="dream-kpi-card-target-num${heroStreakAsideHtml ? " dream-kpi-card-target-num--habit-unit" : ""}">${formatKpiCardHeroHtml(lowerBetter, heroStr, heroUnit, heroPrefix)}${heroStreakAsideHtml || ""}</div>
+          ${heroHtml}
           ${progressHtml}
         </div>
       `;
@@ -1458,6 +1478,7 @@ export function render() {
             삭제전dr: deletedRefsKpiTodosLen(d),
           });
           appendDeletedRef(d, "kpiTodos", todo.id);
+          removeKpiTaskCompletionEventsForTodos(d, todo.id);
           d.kpiTodos = (d.kpiTodos || []).filter((x) => x.id !== todo.id);
           saveHappinessMap(d, { pushServer: true });
           const after = loadHappinessMap();

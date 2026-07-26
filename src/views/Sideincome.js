@@ -32,6 +32,7 @@ import {
   computeKpiProgress,
   buildKpiCardTimePresentation,
   enrichKpiProgressWithHabitStreak,
+  formatKpiCardProgressSectionHtml,
 } from "../utils/kpiTimeUnitKpi.js";
 import {
   resolveKpiDetailLogEntriesPrepared,
@@ -463,12 +464,16 @@ function pathYearQuarterFieldsHtml(path = null) {
   const year = resolvePathTargetYear(path);
   const quarter = resolvePathTargetQuarter(path);
   const chips = [1, 2, 3, 4]
-    .map(
-      (q) => `
+    .map((q) => {
+      const months = SIDEINCOME_QUARTER_MONTH_LABELS[q] || "";
+      return `
                 <button type="button" class="lp-choice-chip sideincome-quarter-chip${
                   q === quarter ? " lp-choice-chip--on" : ""
-                }" data-quarter="${q}">${q}분기</button>`,
-    )
+                }" data-quarter="${q}" aria-label="${q}분기 ${months}">
+                  <span class="sideincome-quarter-chip-main">${q}분기</span>
+                  <span class="sideincome-quarter-chip-months">${months}</span>
+                </button>`;
+    })
     .join("");
   return `
             <div class="dream-kpi-field" data-legacy="time-add-task-field">
@@ -1460,9 +1465,9 @@ export function render(opts = {}) {
     const filterBar = document.createElement("div");
     filterBar.className = "dream-kpi-filter-bar";
     filterBar.innerHTML = kpiProgressStatusFilterBarHtml(kpiFilter);
-    filterBar.querySelectorAll('input[name="kpi-filter"]').forEach((input) => {
-      input.addEventListener("change", () => {
-        kpiFilter = normalizeKpiListFilter(input.dataset.filter);
+    filterBar.querySelectorAll(".dream-kpi-filter-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        kpiFilter = normalizeKpiListFilter(btn.dataset.filter);
         renderKpiList(container);
       });
     });
@@ -1503,8 +1508,19 @@ export function render(opts = {}) {
       const progressResult = progressFor(kpi);
       const { lowerBetter } = progressResult;
       const formatNum = (n) => (n == null || Number.isNaN(n) ? "—" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
-      const { displayProgress, progressText, heroStr, heroUnit, cardExtraClass, hideProgressFill, hideProgressBar, heroPrefix, heroStreakAsideHtml } =
-        buildKpiCardTimePresentation(kpi, progressResult, formatNum);
+      const {
+        displayProgress,
+        progressText,
+        heroStr,
+        heroUnit,
+        cardExtraClass,
+        hideProgressFill,
+        hideProgressBar,
+        heroPrefix,
+        heroStreakAsideHtml,
+        habitWeekStripHtml,
+        hideHabitHero,
+      } = buildKpiCardTimePresentation(kpi, progressResult, formatNum);
       const card = document.createElement("div");
       card.className =
         "dream-kpi-card" +
@@ -1514,17 +1530,22 @@ export function render(opts = {}) {
       card.dataset.kpiId = kpi.id;
       card.draggable = true;
       const nameHtml = `${escapeHtml(kpi.name)}${lowerBetter ? '<span class="dream-kpi-card-direction-badge" title="낮을수록 좋음 행동">↓낮음</span>' : ""}`;
-      const progressHtml = hideProgressBar
-        ? `<div class="dream-kpi-card-progress dream-kpi-card-progress--habit"><div class="dream-kpi-card-progress-text">${escapeHtml(progressText)}</div></div>`
-        : `<div class="dream-kpi-card-progress">
-            <div class="dream-kpi-card-progress-bar${hideProgressFill ? " dream-kpi-card-progress-bar--empty" : ""}"><div class="dream-kpi-card-progress-fill" style="width:${hideProgressFill ? 0 : displayProgress}%"></div></div>
-            <div class="dream-kpi-card-progress-text">${escapeHtml(progressText)}</div>
-          </div>`;
+      const progressHtml = formatKpiCardProgressSectionHtml({
+        habitWeekStripHtml,
+        hideProgressBar,
+        hideProgressFill,
+        displayProgress,
+        progressText,
+        escapeHtml,
+      });
+      const heroHtml = hideHabitHero
+        ? ""
+        : `<div class="dream-kpi-card-target-num${heroStreakAsideHtml ? " dream-kpi-card-target-num--habit-unit" : ""}">${formatKpiCardHeroHtml(lowerBetter, heroStr, heroUnit, heroPrefix)}${heroStreakAsideHtml || ""}</div>`;
       card.innerHTML = `
         <div class="dream-kpi-card-inner">
           ${KPI_CARD_EDIT_PENCIL_HTML}
           ${kpiCardHeadHtml(kpi, "sideincome", nameHtml)}
-          <div class="dream-kpi-card-target-num${heroStreakAsideHtml ? " dream-kpi-card-target-num--habit-unit" : ""}">${formatKpiCardHeroHtml(lowerBetter, heroStr, heroUnit, heroPrefix)}${heroStreakAsideHtml || ""}</div>
+          ${heroHtml}
           ${progressHtml}
         </div>
       `;
@@ -2317,6 +2338,53 @@ export function render(opts = {}) {
     document.body.appendChild(modal);
   }
 
+  function clearPathTargetAmountAndLogs(pathId) {
+    const d = loadSideincomeMap();
+    const target = d.paths.find((x) => x.id === pathId);
+    if (!target) return;
+    target.trackTargetAmount = false;
+    target.targetAmount = "";
+    target.unit = "";
+    const removedLogs = (d.pathLogs || []).filter((l) => l.pathId === pathId);
+    removedLogs.forEach((l) => appendDeletedRef(d, "pathLogs", l.id));
+    d.pathLogs = (d.pathLogs || []).filter((l) => l.pathId !== pathId);
+    saveSideincomeMap(d, { pushServer: true });
+    syncSideincomeHeader();
+    updateSideincomeView();
+  }
+
+  function showPathTargetAmountClearConfirmModal(path) {
+    const data = loadSideincomeMap();
+    const logCount = (data.pathLogs || []).filter((l) => l.pathId === path.id).length;
+    const modal = document.createElement("div");
+    modal.className = "time-task-setup-modal dream-delete-confirm-modal";
+    modal.innerHTML = `
+      <div data-legacy="time-task-setup-backdrop"></div>
+      <div data-legacy="time-task-setup-panel" class="dream-delete-confirm-panel">
+        <div data-legacy="time-task-setup-header">
+          <h3 data-legacy="time-task-setup-title">목표 금액 삭제</h3>
+          <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
+        </div>
+        <div data-legacy="time-task-setup-body">
+          <p class="dream-delete-confirm-msg">목표 금액을 삭제하시겠습니까?</p>
+          <p class="dream-delete-confirm-warn">관련 수입 로그${logCount ? ` ${logCount}건` : ""}도 함께 삭제되며 복구할 수 없습니다.</p>
+        </div>
+        <div data-legacy="time-task-log-footer" class="dream-delete-confirm-modal-footer">
+          <button type="button" class="dream-delete-confirm-cancel" data-legacy="todo-list-modal-cancel">취소</button>
+          <button type="button" class="dream-delete-confirm-submit">삭제</button>
+        </div>
+      </div>
+    `;
+    const close = () => modal.remove();
+    modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
+    modal.querySelector(".dream-delete-confirm-cancel").addEventListener("click", close);
+    modal.querySelector(".dream-delete-confirm-submit").addEventListener("click", () => {
+      close();
+      clearPathTargetAmountAndLogs(path.id);
+    });
+    document.body.appendChild(modal);
+  }
+
   function showPathTargetAmountModal(path) {
     const modal = document.createElement("div");
     modal.className = "time-task-setup-modal";
@@ -2329,18 +2397,13 @@ export function render(opts = {}) {
         </div>
         <form class="dream-kpi-form dream-path-edit-form">
           <div class="dream-kpi-form-body" data-legacy="time-task-setup-body">
-            <div class="dream-kpi-field dream-kpi-field-checkbox" data-legacy="time-add-task-field">
-              <label class="dream-kpi-checkbox-label">
-                목표 금액 입력하기
-                <input type="checkbox" name="trackTargetAmount"${path.trackTargetAmount ? " checked" : ""} />
-              </label>
-            </div>
-            <div class="dream-kpi-field sideincome-target-amount-field" data-legacy="time-add-task-field"${path.trackTargetAmount ? "" : " hidden"}>
+            <div class="dream-kpi-field sideincome-target-amount-field" data-legacy="time-add-task-field">
               <label>목표 금액 (원)</label>
               <input type="text" name="targetAmount" value="${escapeHtml(formatIntegerWithCommas(path.targetAmount || ""))}" placeholder="예) 10,000" inputmode="numeric" />
             </div>
           </div>
-          <div data-legacy="time-task-log-footer">
+          <div data-legacy="time-task-log-footer" class="dream-kpi-log-modal-footer">
+            <button type="button" class="dream-kpi-log-modal-delete-btn" data-legacy="time-task-log-delete-btn" data-action="clear-target-amount">목표 금액 삭제하기</button>
             <button type="submit" data-legacy="time-task-log-submit">수정</button>
           </div>
         </form>
@@ -2350,21 +2413,28 @@ export function render(opts = {}) {
     modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
     modal.querySelector("form").addEventListener("submit", (e) => {
       e.preventDefault();
-      const amountFields = readPathTargetAmountFields(e.target);
+      const amount = sanitizeNumericInput(e.target.targetAmount?.value) || "";
+      if (!amount) {
+        e.target.targetAmount?.focus();
+        return;
+      }
       const d = loadSideincomeMap();
       const target = d.paths.find((x) => x.id === path.id);
       if (target) {
-        target.trackTargetAmount = amountFields.trackTargetAmount;
-        target.targetAmount = amountFields.targetAmount;
-        target.unit = amountFields.unit;
+        target.trackTargetAmount = true;
+        target.targetAmount = amount;
+        target.unit = "원";
         saveSideincomeMap(d, { pushServer: true });
         syncSideincomeHeader();
         updateSideincomeView();
       }
       close();
     });
-    const editForm = modal.querySelector("form");
-    bindPathTargetAmountMode(editForm, path);
+    setupWonAmountInput(modal.querySelector('input[name="targetAmount"]'));
+    modal.querySelector('[data-action="clear-target-amount"]').addEventListener("click", () => {
+      close();
+      showPathTargetAmountClearConfirmModal(path);
+    });
     document.body.appendChild(modal);
   }
 
