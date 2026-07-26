@@ -8185,14 +8185,18 @@ export function render(opts = {}) {
     }
   }
 
-  /** 생산적·비생산적 과제 — 과제 기록 메모를 「구매 후기」로 표시 */
+  /**
+   * 감정·수면·근무 제외한 모든 과제 — 메모 라벨 「구매 후기」
+   * (생산성 값과 무관)
+   */
   function isTaskLogPurchaseReviewTask(taskName) {
     const tn = (taskName || "").trim();
     if (!tn) return false;
     if (TTC.isEmotionalBuiltinTaskName(tn)) return false;
-    const opt = getTaskOptionByName(tn);
-    const prod = String(opt?.productivity || "").trim();
-    return prod === "productive" || prod === "nonproductive";
+    if (TTC.isSleepBuiltinTaskName(tn) || TTC.isWorkBuiltinTaskName(tn)) {
+      return false;
+    }
+    return true;
   }
 
   /** 수면·근무 — 구매가 아닌 「후기」 라벨 */
@@ -8202,7 +8206,7 @@ export function render(opts = {}) {
     return TTC.isSleepBuiltinTaskName(tn) || TTC.isWorkBuiltinTaskName(tn);
   }
 
-  /** 수면·근무·생산·비생산·감정적이기 — 과거 후기·맥락 목록 표시 */
+  /** 감정·수면·근무·그 외(구매 후기) — 과거 후기·맥락 목록 표시 */
   function isTaskLogRecentReviewTask(taskName) {
     const tn = (taskName || "").trim();
     if (!tn) return false;
