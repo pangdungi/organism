@@ -51,9 +51,31 @@ export function getKpiProgressStatus(kpi) {
   return normalizeKpiProgressStatus(kpi?.progressStatus);
 }
 
+function localTodayYmdTen() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * 시작일이 오늘보다 미래면 진행 전.
+ * @param {string} startYmd
+ * @param {unknown} [fallbackStatus]
+ */
+export function progressStatusForKpiStartDate(
+  startYmd,
+  fallbackStatus = KPI_PROGRESS_STATUS_DEFAULT,
+) {
+  const start = String(startYmd || "").trim().slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(start) && start > localTodayYmdTen()) {
+    return KPI_PROGRESS_STATUS.PENDING;
+  }
+  return normalizeKpiProgressStatus(fallbackStatus);
+}
+
 /**
  * 목록·필터용 유효 상태.
  * 직접입력이고 목표 달성(isCompleted)이면 항상 완료.
+ * 시작일이 미래면 진행 전(완료 제외).
  * @param {unknown} kpi
  * @param {{ isCompleted?: boolean }|null|undefined} progress
  */
@@ -61,7 +83,13 @@ export function resolveKpiProgressStatus(kpi, progress = null) {
   if (isManualInputKpi(kpi) && progress?.isCompleted) {
     return KPI_PROGRESS_STATUS.COMPLETED;
   }
-  return getKpiProgressStatus(kpi);
+  const stored = getKpiProgressStatus(kpi);
+  if (stored === KPI_PROGRESS_STATUS.COMPLETED) return stored;
+  const start = String(kpi?.targetStartDate || "").trim().slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(start) && start > localTodayYmdTen()) {
+    return KPI_PROGRESS_STATUS.PENDING;
+  }
+  return stored;
 }
 
 /**

@@ -91,6 +91,7 @@ import {
   kpiProgressStatusFieldHtml,
   kpiProgressStatusFilterBarHtml,
   normalizeKpiListFilter,
+  progressStatusForKpiStartDate,
   readKpiProgressStatusFromForm,
 } from "../utils/kpiProgressStatus.js";
 import { buildKpiListPaintSignature } from "../utils/kpiListPaintSignature.js";
@@ -624,8 +625,11 @@ export function render() {
         happinessId: HAPPINESS_KPI_LIST_SCOPE_ID,
         name: (form.name.value || "").trim(),
         direction: "higher",
-        progressStatus: KPI_PROGRESS_STATUS_DEFAULT,
         ...fields,
+        progressStatus: progressStatusForKpiStartDate(
+          fields.targetStartDate,
+          KPI_PROGRESS_STATUS_DEFAULT,
+        ),
       };
       const data = loadHappinessMap();
       data.kpis = data.kpis || [];
@@ -713,7 +717,10 @@ export function render() {
         });
         target.name = (form.name.value || "").trim();
         target.direction = kpi.direction === "lower" ? "lower" : "higher";
-        target.progressStatus = readKpiProgressStatusFromForm(form);
+        target.progressStatus = progressStatusForKpiStartDate(
+          target.targetStartDate,
+          readKpiProgressStatusFromForm(form),
+        );
         saveHappinessMap(data, { pushServer: true });
         if (oldName !== target.name) syncKpiToTimeTask(target, "update", oldName);
       }

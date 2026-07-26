@@ -34,6 +34,10 @@ import {
   enrichKpiProgressWithHabitStreak,
 } from "../utils/kpiTimeUnitKpi.js";
 import {
+  KPI_PROGRESS_STATUS_DEFAULT,
+  progressStatusForKpiStartDate,
+} from "../utils/kpiProgressStatus.js";
+import {
   resolveKpiDetailLogEntriesPrepared,
   resolveKpiDetailLogEntriesLocal,
   kpiDetailLogsNeedCloudPull,
@@ -493,6 +497,10 @@ export function render() {
         name: (form.name.value || "").trim(),
         direction: "higher",
         ...fields,
+        progressStatus: progressStatusForKpiStartDate(
+          fields.targetStartDate,
+          KPI_PROGRESS_STATUS_DEFAULT,
+        ),
       };
       const data = loadDreamMap();
       data.kpis = data.kpis || [];
@@ -569,6 +577,10 @@ export function render() {
         });
         target.name = (form.name.value || "").trim();
         target.direction = kpi.direction === "lower" ? "lower" : "higher";
+        target.progressStatus = progressStatusForKpiStartDate(
+          target.targetStartDate,
+          target.progressStatus || KPI_PROGRESS_STATUS_DEFAULT,
+        );
         saveDreamMap(data, { pushServer: true });
         if (oldName !== target.name) syncKpiToTimeTask(target, "update", oldName);
       }

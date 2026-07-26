@@ -1,5 +1,11 @@
 /** 기본 KPI id — 아이콘 매핑용(무거운 kpi map 모듈 import 방지) */
 
+/** 앱이 제공하는 기본 KPI id (`__lp_default_kpi_…`) */
+export function isDefaultAppKpiId(id) {
+  const s = String(id ?? "").trim();
+  return s.startsWith("__lp_default_kpi_");
+}
+
 export const DEFAULT_CHORE_TASK_KPI_ID = "__lp_default_kpi_chore_tasks__";
 export const DEFAULT_MORNING_ROUTINE_KPI_ID = "__lp_default_kpi_morning_routine__";
 export const DEFAULT_MOVE_ROUTINE_KPI_ID = "__lp_default_kpi_move_routine__";

@@ -95,6 +95,7 @@ import {
   kpiProgressStatusFieldHtml,
   kpiProgressStatusFilterBarHtml,
   normalizeKpiListFilter,
+  progressStatusForKpiStartDate,
   readKpiProgressStatusFromForm,
 } from "../utils/kpiProgressStatus.js";
 import { confirmKpiActionDelete } from "../utils/confirmModal.js";
@@ -838,8 +839,11 @@ export function render(opts = {}) {
         pathId: activePathId,
         name: (form.name.value || "").trim(),
         direction: "higher",
-        progressStatus: KPI_PROGRESS_STATUS_DEFAULT,
         ...fields,
+        progressStatus: progressStatusForKpiStartDate(
+          fields.targetStartDate,
+          KPI_PROGRESS_STATUS_DEFAULT,
+        ),
       };
       const data = loadSideincomeMap();
       data.kpis = data.kpis || [];
@@ -917,7 +921,10 @@ export function render(opts = {}) {
         });
         target.name = (form.name.value || "").trim();
         target.direction = kpi.direction === "lower" ? "lower" : "higher";
-        target.progressStatus = readKpiProgressStatusFromForm(form);
+        target.progressStatus = progressStatusForKpiStartDate(
+          target.targetStartDate,
+          readKpiProgressStatusFromForm(form),
+        );
         saveSideincomeMap(data, { pushServer: true });
         if (oldName !== target.name) syncKpiToTimeTask(target, "update", oldName);
       }

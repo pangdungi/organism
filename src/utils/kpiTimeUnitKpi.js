@@ -25,6 +25,11 @@ import {
   ensureKpiHabitTrackerStartDate,
   localTodayYmdForHabitStart,
 } from "./kpiHabitTrackerStartDate.js";
+import { isDefaultAppKpiId } from "./defaultKpiIconIds.js";
+import {
+  KPI_PROGRESS_STATUS,
+  progressStatusForKpiStartDate,
+} from "./kpiProgressStatus.js";
 
 function localTodayYmd() {
   const d = new Date();
@@ -113,24 +118,36 @@ export function kpiFormGoalAndTargetSectionHtml(kpi, escapeHtml, opts = {}) {
                 ${kpiUnitFieldHtml(kpi, escapeHtml, opts)}
               </div>
             </div>
-            ${kpiFormManualDeadlineSectionHtml(kpi, escapeHtml, opts)}`;
+            ${kpiFormPeriodSectionHtml(kpi, escapeHtml, opts)}`;
 }
 
-function kpiFormManualDeadlineSectionHtml(kpi, escapeHtml, opts = {}) {
-  const mode = kpi ? resolveKpiGoalMode(kpi) : "";
-  const showInitially = mode === "manual";
+/** 기본 KPI 제외 — 모든 목표 방식에 시작일·마감일 */
+function kpiFormPeriodSectionHtml(kpi, escapeHtml, _opts = {}) {
+  if (isDefaultAppKpiId(kpi?.id)) return "";
+  const startVal =
+    (kpi?.targetStartDate || "").trim().slice(0, 10) ||
+    (!kpi ? localTodayYmd() : "");
   const deadlineVal = (kpi?.targetDeadline || "").trim().slice(0, 10);
   return `
-            <div class="dream-kpi-period-block" data-kpi-period-fields data-legacy="time-add-task-field"${showInitially ? "" : " hidden"}>
+            <div class="dream-kpi-period-block" data-kpi-period-fields data-legacy="time-add-task-field">
               <div class="dream-kpi-field" data-legacy="time-add-task-field">
-                <label>마감기한</label>
+                <label>시작일</label>
+                ${buildModalNativeDateFieldMarkup({
+                  name: "targetStartDate",
+                  ariaLabel: "시작일",
+                  value: escapeHtml(startVal),
+                })}
+              </div>
+              <div class="dream-kpi-field" data-legacy="time-add-task-field">
+                <label>마감일</label>
                 ${buildModalNativeDateFieldMarkup({
                   name: "targetDeadline",
-                  ariaLabel: "마감기한",
+                  ariaLabel: "마감일",
                   value: escapeHtml(deadlineVal),
                 })}
               </div>
-              <div class="dream-kpi-deadline-quick" role="group" aria-label="마감기한 빠른 입력">
+              <div class="dream-kpi-deadline-quick" role="group" aria-label="날짜 빠른 입력">
+                <button type="button" class="dream-kpi-today-btn">오늘</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="14">+14일</button>
                 <button type="button" class="dream-kpi-deadline-quick-btn" data-days="30">+30일</button>
               </div>
@@ -265,12 +282,23 @@ export function validateKpiActionForm(form, opts = {}) {
     } else if (mode === "manual") {
       const targetValue = sanitizeNumericInput((form.targetValue?.value || "").trim());
       const unit = (form.unit?.value || "").trim();
-      const deadline = (
-        form.querySelector('input[name="targetDeadline"]')?.value || ""
-      ).trim();
       if (!targetValue) addError("targetValue", "목표값을 입력해 주세요.");
       if (!unit) addError("unit", "단위를 입력해 주세요.");
-      if (!deadline) addError("targetDeadline", "마감기한을 선택해 주세요.");
+    }
+  }
+
+  const periodBlock = form.querySelector("[data-kpi-period-fields]");
+  if (periodBlock && !periodBlock.hidden) {
+    const start = (
+      form.querySelector('input[name="targetStartDate"]')?.value || ""
+    ).trim();
+    const deadline = (
+      form.querySelector('input[name="targetDeadline"]')?.value || ""
+    ).trim();
+    if (!start) addError("targetStartDate", "시작일을 선택해 주세요.");
+    if (!deadline) addError("targetDeadline", "마감일을 선택해 주세요.");
+    if (start && deadline && start > deadline) {
+      addError("targetDeadline", "마감일은 시작일 이후로 선택해 주세요.");
     }
   }
 
@@ -298,8 +326,19 @@ export function bindKpiFormValidationClear(form) {
   form.addEventListener("change", (e) => clearFieldError(e.target));
 }
 
-function readKpiPeriodFieldsFromForm(form, mode, opts = {}) {
-  if (mode !== "manual") {
+function readKpiPeriodFieldsFromForm(form, _mode, opts = {}) {
+  if (isDefaultAppKpiId(opts.existingKpi?.id)) {
+    return {
+      targetStartDate: String(opts.existingKpi?.targetStartDate || "")
+        .trim()
+        .slice(0, 10),
+      targetDeadline: String(opts.existingKpi?.targetDeadline || "")
+        .trim()
+        .slice(0, 10),
+    };
+  }
+  const periodBlock = form.querySelector("[data-kpi-period-fields]");
+  if (!periodBlock) {
     return { targetStartDate: "", targetDeadline: "" };
   }
   const deadline = (
@@ -307,11 +346,18 @@ function readKpiPeriodFieldsFromForm(form, mode, opts = {}) {
   )
     .trim()
     .slice(0, 10);
-  const existingStart = (opts.existingKpi?.targetStartDate || "")
+  let targetStartDate = (
+    form.querySelector('input[name="targetStartDate"]')?.value || ""
+  )
     .trim()
     .slice(0, 10);
-  const targetStartDate =
-    opts.isNewKpi || !existingStart ? localTodayYmd() : existingStart;
+  if (!targetStartDate) {
+    const existingStart = (opts.existingKpi?.targetStartDate || "")
+      .trim()
+      .slice(0, 10);
+    targetStartDate =
+      opts.isNewKpi || !existingStart ? localTodayYmd() : existingStart;
+  }
   return { targetStartDate, targetDeadline: deadline };
 }
 
@@ -336,8 +382,7 @@ export function readKpiGoalModeFormFields(
       unit: "시간",
       targetValue: "",
       targetTimeRequired: targetRaw,
-      targetStartDate: "",
-      targetDeadline: "",
+      ...period,
     };
   }
   if (useTaskCompletionGoal) {
@@ -348,8 +393,7 @@ export function readKpiGoalModeFormFields(
       unit: "",
       targetValue: "",
       targetTimeRequired: "",
-      targetStartDate: "",
-      targetDeadline: "",
+      ...period,
     };
   }
   if (needHabitTracker) {
@@ -364,8 +408,7 @@ export function readKpiGoalModeFormFields(
         unit: "",
         targetValue: "",
         targetTimeRequired: "",
-        targetStartDate: "",
-        targetDeadline: "",
+        ...period,
         ...(opts.isNewKpi
           ? { habitTrackerStartDate: localTodayYmdForHabitStart() }
           : {}),
@@ -378,8 +421,7 @@ export function readKpiGoalModeFormFields(
       unit: (form.unit?.value || "").trim(),
       targetValue: sanitizeNumericInput(targetRaw) || "",
       targetTimeRequired: "",
-      targetStartDate: "",
-      targetDeadline: "",
+      ...period,
       ...(opts.isNewKpi
         ? { habitTrackerStartDate: localTodayYmdForHabitStart() }
         : {}),
@@ -414,6 +456,13 @@ export function applyKpiFormGoalFieldsToKpi(target, form, opts = {}) {
   target.targetTimeRequired = fields.targetTimeRequired;
   target.targetStartDate = fields.targetStartDate;
   target.targetDeadline = fields.targetDeadline;
+  if (
+    !isDefaultAppKpiId(target.id) &&
+    progressStatusForKpiStartDate(target.targetStartDate) ===
+      KPI_PROGRESS_STATUS.PENDING
+  ) {
+    target.progressStatus = KPI_PROGRESS_STATUS.PENDING;
+  }
   if (fields.needHabitTracker) {
     ensureKpiHabitTrackerStartDate(target);
     if (fields.habitTrackerStartDate && !target.habitTrackerStartDate) {
@@ -485,7 +534,8 @@ export function bindKpiGoalModeForm(form, kpi = null, opts = {}) {
     const showUnitField = mode === "manual" || (isHabit && trackHabitTarget);
     if (targetFieldsRow) targetFieldsRow.hidden = !showTargetFields;
     if (unitFieldWrap) unitFieldWrap.hidden = !showUnitField;
-    if (periodFieldsBlock) periodFieldsBlock.hidden = mode !== "manual";
+    /* 시작일·마감일은 목표 방식과 무관하게 표시(기본 KPI는 HTML 자체가 없음) */
+    if (periodFieldsBlock) periodFieldsBlock.hidden = false;
     syncTargetLabelForDirection();
 
     const onTime = mode === "time";

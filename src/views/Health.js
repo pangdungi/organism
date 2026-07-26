@@ -92,6 +92,7 @@ import {
   kpiProgressStatusFieldHtml,
   kpiProgressStatusFilterBarHtml,
   normalizeKpiListFilter,
+  progressStatusForKpiStartDate,
   readKpiProgressStatusFromForm,
 } from "../utils/kpiProgressStatus.js";
 import { buildKpiListPaintSignature } from "../utils/kpiListPaintSignature.js";
@@ -772,8 +773,11 @@ export function render() {
         healthId: HEALTH_KPI_GLOBAL_SCOPE_ID,
         name: (form.name.value || "").trim(),
         direction: "higher",
-        progressStatus: KPI_PROGRESS_STATUS_DEFAULT,
         ...fields,
+        progressStatus: progressStatusForKpiStartDate(
+          fields.targetStartDate,
+          KPI_PROGRESS_STATUS_DEFAULT,
+        ),
       };
       const data = loadHealthMap();
       data.kpis = data.kpis || [];
@@ -872,7 +876,10 @@ export function render() {
         target.name = (form.name.value || "").trim();
         target.direction = kpi.direction === "lower" ? "lower" : "higher";
       }
-      target.progressStatus = readKpiProgressStatusFromForm(form);
+      target.progressStatus = progressStatusForKpiStartDate(
+        target.targetStartDate,
+        readKpiProgressStatusFromForm(form),
+      );
       saveHealthMap(data, { pushServer: true });
       if (oldName !== target.name) syncKpiToTimeTask(target, "update", oldName);
       close();
