@@ -977,26 +977,14 @@ export function render(opts = {}) {
             <span class="dream-kpi-path-log-value">${escapeHtml(log.value || "—")}${pathUnit}</span>
             ${log.memo ? `<div class="dream-kpi-path-log-memo">${escapeHtml(log.memo)}</div>` : ""}
           </div>
-          <div class="dream-kpi-path-log-actions">
-            <button type="button" class="dream-kpi-path-log-edit">수정</button>
-            <button type="button" class="dream-kpi-path-log-del">삭제</button>
-          </div>
         `;
-      item.querySelector(".dream-kpi-path-log-edit").addEventListener("click", () => {
+      item.addEventListener("click", () => {
         showPathLogModal(path, log, {
           onSaved: () => {
             renderKpiList();
             onMutate?.();
           },
         });
-      });
-      item.querySelector(".dream-kpi-path-log-del").addEventListener("click", () => {
-        const d = loadSideincomeMap();
-        appendDeletedRef(d, "pathLogs", log.id);
-        d.pathLogs = (d.pathLogs || []).filter((l) => l.id !== log.id);
-        saveSideincomeMap(d, { pushServer: true });
-        renderKpiList();
-        onMutate?.();
       });
       container.appendChild(item);
     });
@@ -1015,23 +1003,12 @@ export function render(opts = {}) {
         <div data-legacy="time-task-setup-body" class="dream-kpi-path-logs-modal-body">
           <div class="dream-kpi-path-logs-modal-list dream-kpi-history-list"></div>
         </div>
-        <div data-legacy="time-task-log-footer" class="dream-kpi-path-logs-modal-footer">
-          <button type="button" data-legacy="time-task-log-submit" class="dream-kpi-path-logs-modal-add-btn">+ 금액</button>
-        </div>
       </div>
     `;
     const listEl = modal.querySelector(".dream-kpi-path-logs-modal-list");
     const refresh = () => mountPathLogListItems(listEl, path, refresh);
     const close = () => modal.remove();
     modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
-    modal.querySelector(".dream-kpi-path-logs-modal-add-btn").addEventListener("click", () => {
-      showPathLogModal(path, null, {
-        onSaved: () => {
-          renderKpiList();
-          refresh();
-        },
-      });
-    });
     refresh();
     document.body.appendChild(modal);
   }
@@ -1475,7 +1452,7 @@ export function render(opts = {}) {
       pathSummary.querySelector(".dream-kpi-path-summary-logs-open").addEventListener("click", () => showPathIncomeLogsModal(path));
       pathSummary.querySelector(".dream-kpi-path-summary-edit-link").addEventListener("click", (e) => {
         e.stopPropagation();
-        showPathContextModal(path);
+        showPathTargetAmountModal(path);
       });
       container.appendChild(pathSummary);
     }
@@ -2337,6 +2314,57 @@ export function render(opts = {}) {
       close();
       showPathDeleteConfirmModal(path.id);
     });
+    document.body.appendChild(modal);
+  }
+
+  function showPathTargetAmountModal(path) {
+    const modal = document.createElement("div");
+    modal.className = "time-task-setup-modal";
+    modal.innerHTML = `
+      <div data-legacy="time-task-setup-backdrop"></div>
+      <div data-legacy="time-task-setup-panel" class="dream-path-context-panel">
+        <div data-legacy="time-task-setup-header">
+          <h3 data-legacy="time-task-setup-title">목표 금액 수정</h3>
+          <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
+        </div>
+        <form class="dream-kpi-form dream-path-edit-form">
+          <div class="dream-kpi-form-body" data-legacy="time-task-setup-body">
+            <div class="dream-kpi-field dream-kpi-field-checkbox" data-legacy="time-add-task-field">
+              <label class="dream-kpi-checkbox-label">
+                목표 금액 입력하기
+                <input type="checkbox" name="trackTargetAmount"${path.trackTargetAmount ? " checked" : ""} />
+              </label>
+            </div>
+            <div class="dream-kpi-field sideincome-target-amount-field" data-legacy="time-add-task-field"${path.trackTargetAmount ? "" : " hidden"}>
+              <label>목표 금액 (원)</label>
+              <input type="text" name="targetAmount" value="${escapeHtml(formatIntegerWithCommas(path.targetAmount || ""))}" placeholder="예) 10,000" inputmode="numeric" />
+            </div>
+          </div>
+          <div data-legacy="time-task-log-footer">
+            <button type="submit" data-legacy="time-task-log-submit">수정</button>
+          </div>
+        </form>
+      </div>
+    `;
+    const close = () => modal.remove();
+    modal.querySelector('[data-legacy~="time-task-setup-close"]').addEventListener("click", close);
+    modal.querySelector("form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const amountFields = readPathTargetAmountFields(e.target);
+      const d = loadSideincomeMap();
+      const target = d.paths.find((x) => x.id === path.id);
+      if (target) {
+        target.trackTargetAmount = amountFields.trackTargetAmount;
+        target.targetAmount = amountFields.targetAmount;
+        target.unit = amountFields.unit;
+        saveSideincomeMap(d, { pushServer: true });
+        syncSideincomeHeader();
+        updateSideincomeView();
+      }
+      close();
+    });
+    const editForm = modal.querySelector("form");
+    bindPathTargetAmountMode(editForm, path);
     document.body.appendChild(modal);
   }
 
