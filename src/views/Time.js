@@ -1079,13 +1079,14 @@ function saveTimeRows(rows) {
     }
     try {
       if (typeof window !== "undefined" && pushEntryIds.length > 0) {
-        void pushDirtyTimeLedgerEntriesToSupabase({
+        return pushDirtyTimeLedgerEntriesToSupabase({
           skipPull: true,
           entryIds: pushEntryIds,
         });
       }
     } catch (_) {}
   } catch (_) {}
+  return Promise.resolve();
 }
 
 const TASK_BAR_COLORS = [
