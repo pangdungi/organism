@@ -1717,10 +1717,18 @@
 }
 
 .lp-kpi-dream-page .dream-kpi-card.is-selected {
-  /* 1.5px+바깥 1px 링은 기기에서 위아래만 굵어 보임 → 정수 2px만 */
+  /* 선택: 검정 테두리 + 왼쪽 얇은 바 (요란하지 않게) */
   border-width: 2px;
-  border-color: var(--lp-modal-accent);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+  border-color: #111111;
+  background: #fafafa;
+  box-shadow:
+    inset 3px 0 0 #111111,
+    0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.lp-kpi-dream-page .dream-kpi-card.is-selected .dream-kpi-card-name {
+  color: #111111;
+  font-weight: 700;
 }
 
 .lp-kpi-dream-page .dream-kpi-card.dream-kpi-card-dragging {

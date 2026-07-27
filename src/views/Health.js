@@ -451,7 +451,9 @@ function saveHealthMap(data, opts) {
     if (opts?.pushServer) {
       try {
         window.dispatchEvent(
-          new CustomEvent("health-kpi-map-saved", { detail: { pushServer: true } }),
+          new CustomEvent("health-kpi-map-saved", {
+            detail: { pushServer: true, fromLocalWrite: true },
+          }),
         );
       } catch (_) {}
     }
@@ -867,15 +869,24 @@ export function render() {
     modal.querySelector(".dream-kpi-delete-btn")?.addEventListener("click", () => {
       void confirmKpiActionDelete(kpi.name).then((ok) => {
         if (!ok) return;
-        syncKpiToTimeTask(kpi, "remove");
         const data = loadHealthMap();
+        const syncName = String(
+          data.kpiTaskSync?.[kpi.id] || kpi.name || "",
+        ).trim();
         appendDeletedRef(data, "kpis", kpi.id);
         data.kpis = (data.kpis || []).filter((k) => k.id !== kpi.id);
         data.kpiLogs = (data.kpiLogs || []).filter((l) => l.kpiId !== kpi.id);
         data.kpiTodos = (data.kpiTodos || []).filter((t) => t.kpiId !== kpi.id);
-        data.kpiDailyRepeatTodos = (data.kpiDailyRepeatTodos || []).filter((t) => t.kpiId !== kpi.id);
+        data.kpiDailyRepeatTodos = (data.kpiDailyRepeatTodos || []).filter(
+          (t) => t.kpiId !== kpi.id,
+        );
+        data.kpiTaskSync = data.kpiTaskSync || {};
+        delete data.kpiTaskSync[kpi.id];
         removeKpiIdFromKpiOrders(data, kpi.id);
         saveHealthMap(data, { pushServer: true });
+        try {
+          kpiTimeTaskRemove(kpi, syncName || kpi.name);
+        } catch (_) {}
         close();
         if (selectedKpiId === kpi.id) exitToHealthMain();
         else refreshHealthAfterKpiDataChange();
@@ -941,7 +952,7 @@ export function render() {
   function healthKpiFooterAddLabel(tab, kpi) {
     const t = effectiveKpiHistoryBottomTab(tab, kpi);
     if (t === KPI_BOTTOM_TAB_TODO) {
-      return isHealthCheckupKpi(kpi) ? "검진 추가" : "할 일 추가";
+      return isHealthCheckupKpi(kpi) ? "검진 목록 추가" : "할 일 추가";
     }
     if (t === KPI_BOTTOM_TAB_DAILY) {
       return isHealthSupplementKpi(kpi) ? "보충제 추가" : "매일 할 일 추가";
@@ -957,9 +968,12 @@ export function render() {
       k,
     );
     if (tab === KPI_BOTTOM_TAB_TODO) {
+      const checkup = isHealthCheckupKpi(k);
       const text = await showKpiTodoAddModal({
         kpiName: k.name,
-        placeholder: "할 일 입력",
+        title: checkup ? "검진 목록 추가" : undefined,
+        inputLabel: checkup ? "검진 목록" : undefined,
+        placeholder: checkup ? "검진 입력" : "할 일 입력",
         linkedLabel: "연결된 행동",
       });
       if (!text) return;
@@ -1642,7 +1656,9 @@ export function render() {
         const result = await showKpiTodoEditModal({
           kpiName: kpi.name,
           initialText: todo.text || "",
-          title: "할 일 수정",
+          title: isHealthCheckupKpi(kpi) ? "검진 목록 수정" : "할 일 수정",
+          inputLabel: isHealthCheckupKpi(kpi) ? "검진 목록" : undefined,
+          placeholder: isHealthCheckupKpi(kpi) ? "검진" : undefined,
           linkedLabel: "연결된 행동",
         });
         if (!result) return;
@@ -1706,8 +1722,9 @@ export function render() {
       const todoAddCard = document.createElement("button");
       todoAddCard.type = "button";
       todoAddCard.className = "dream-kpi-add-card sideincome-split-todo-add-card";
-      todoAddCard.innerHTML =
-        '<span class="dream-kpi-add-card-text">할 일 추가하기</span>';
+      todoAddCard.innerHTML = `<span class="dream-kpi-add-card-text">${
+        isHealthCheckupKpi(kpi) ? "검진 목록 추가하기" : "할 일 추가하기"
+      }</span>`;
       todoAddCard.addEventListener("click", () => {
         setKpiHistoryBottomTab("health", selKpi, KPI_BOTTOM_TAB_TODO);
         void runHealthKpiFooterAddAction();
@@ -1717,7 +1734,9 @@ export function render() {
     if (todos.length === 0) {
       const emptyTodo = document.createElement("p");
       emptyTodo.className = "dream-kpi-history-empty";
-      emptyTodo.textContent = "등록된 할 일이 없습니다.";
+      emptyTodo.textContent = isHealthCheckupKpi(kpi)
+        ? "등록된 검진 목록이 없습니다."
+        : "등록된 할 일이 없습니다.";
       panelTodoSeg.appendChild(emptyTodo);
     } else {
       panelTodoSeg.appendChild(todoList);
@@ -2224,7 +2243,7 @@ export function render() {
             <div class="dream-kpi-form-body">
               <div class="dream-kpi-field">
                 <label>건강 이름</label>
-                <input type="text" name="name" value="${escapeHtml(norm.name || "")}" placeholder="신체적으로 건강해지기" />
+                <input type="text" name="name" value="${escapeHtml(norm.name || "")}" placeholder="몸무게 감량하기" />
               </div>
               ${healthGoalTargetFieldsMarkup(norm, escapeHtml)}
             </div>
@@ -2285,7 +2304,7 @@ export function render() {
           <div class="dream-kpi-form-body" data-legacy="time-task-setup-body">
             <div class="dream-kpi-field" data-legacy="time-add-task-field">
               <label>건강 이름</label>
-              <input type="text" name="name" placeholder="신체적으로 건강해지기" />
+              <input type="text" name="name" placeholder="몸무게 감량하기" />
             </div>
             ${healthGoalTargetFieldsMarkup(null, escapeHtml)}
           </div>

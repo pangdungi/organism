@@ -14,7 +14,69 @@ import {
   DEFAULT_READING_KPI_NOTES_TAB_LABEL,
   DEFAULT_READING_KPI_NOTE_FIELD_LABEL,
   READING_KPI_NOTE_MODAL_LABELS,
+  DEFAULT_TIDY_ROUTINE_KPI_ID,
+  DEFAULT_OUT_PREP_ROUTINE_KPI_ID,
+  DEFAULT_OUT_AFTER_ROUTINE_KPI_ID,
+  DEFAULT_BEDTIME_ROUTINE_KPI_ID,
 } from "../utils/happinessKpiMapSupabase.js";
+
+function happinessKpiId(kpiOrId) {
+  return typeof kpiOrId === "object" && kpiOrId
+    ? String(kpiOrId.id ?? "").trim()
+    : String(kpiOrId ?? "").trim();
+}
+
+function happinessDailyTodoCopyFromNoun(noun) {
+  return {
+    segLabel: noun,
+    listTitle: noun,
+    footerAdd: `${noun} 추가`,
+    addTitle: `${noun} 추가`,
+    addCard: `${noun} 추가하기`,
+    empty: `등록된 ${noun}이 없습니다.`,
+    editTitle: `${noun} 수정`,
+    inputLabel: noun,
+    placeholder: "할 일 입력",
+  };
+}
+
+/** 매일하기 목록·추가 라벨 (기본 루틴별) */
+function happinessDailyTodoCopy(kpiOrId) {
+  const id = happinessKpiId(kpiOrId);
+  if (id === DEFAULT_TIDY_ROUTINE_KPI_ID) {
+    return {
+      segLabel: "정리 할 공간",
+      listTitle: "정리 할 공간",
+      footerAdd: "정리할 구역 추가",
+      addTitle: "정리할 구역 추가",
+      addCard: "정리할 구역 추가하기",
+      empty: "등록된 정리할 구역이 없습니다.",
+      editTitle: "정리할 구역 수정",
+      inputLabel: "정리할 구역",
+      placeholder: "구역 입력",
+    };
+  }
+  if (id === DEFAULT_OUT_PREP_ROUTINE_KPI_ID) {
+    return happinessDailyTodoCopyFromNoun("외출 전 할일");
+  }
+  if (id === DEFAULT_OUT_AFTER_ROUTINE_KPI_ID) {
+    return happinessDailyTodoCopyFromNoun("외출 후 할일");
+  }
+  if (id === DEFAULT_BEDTIME_ROUTINE_KPI_ID) {
+    return happinessDailyTodoCopyFromNoun("취침전 할일");
+  }
+  return {
+    segLabel: "매일할일",
+    listTitle: "매일 반복되는 할일 목록",
+    footerAdd: "매일 할 일 추가",
+    addTitle: "매일 할 일 추가",
+    addCard: "매일 할 일 추가하기",
+    empty: "등록된 매일 할 일이 없습니다.",
+    editTitle: "매일 할 일 수정",
+    inputLabel: undefined,
+    placeholder: "할 일 입력 (매일 반복)",
+  };
+}
 import { ensureHappinessKpiTimeTasksForData } from "../utils/healthKpiTimeTaskSync.js";
 import {
   kpiTimeTaskEnsure,
@@ -295,7 +357,9 @@ function saveHappinessMap(data, opts) {
     if (opts?.pushServer) {
       try {
         window.dispatchEvent(
-          new CustomEvent("happiness-kpi-map-saved", { detail: { pushServer: true } }),
+          new CustomEvent("happiness-kpi-map-saved", {
+            detail: { pushServer: true, fromLocalWrite: true },
+          }),
         );
       } catch (_) {}
     }
@@ -691,19 +755,28 @@ export function render() {
     modal.querySelector(".dream-kpi-delete-btn")?.addEventListener("click", () => {
       void confirmKpiActionDelete(kpi.name).then((ok) => {
         if (!ok) return;
-        syncKpiToTimeTask(kpi, "remove");
         const data = loadHappinessMap();
+        const syncName = String(
+          data.kpiTaskSync?.[kpi.id] || kpi.name || "",
+        ).trim();
         appendDeletedRef(data, "kpis", kpi.id);
         data.kpis = (data.kpis || []).filter((k) => k.id !== kpi.id);
         data.kpiLogs = (data.kpiLogs || []).filter((l) => l.kpiId !== kpi.id);
         data.kpiTodos = (data.kpiTodos || []).filter((t) => t.kpiId !== kpi.id);
-        data.kpiDailyRepeatTodos = (data.kpiDailyRepeatTodos || []).filter((t) => t.kpiId !== kpi.id);
+        data.kpiDailyRepeatTodos = (data.kpiDailyRepeatTodos || []).filter(
+          (t) => t.kpiId !== kpi.id,
+        );
+        data.kpiTaskSync = data.kpiTaskSync || {};
+        delete data.kpiTaskSync[kpi.id];
         const order = (data.kpiOrder || {})[HAPPINESS_KPI_LIST_SCOPE_ID] || [];
         data.kpiOrder = {
           ...data.kpiOrder,
           [HAPPINESS_KPI_LIST_SCOPE_ID]: order.filter((id) => id !== kpi.id),
         };
         saveHappinessMap(data, { pushServer: true });
+        try {
+          kpiTimeTaskRemove(kpi, syncName || kpi.name);
+        } catch (_) {}
         close();
         exitToKpiList();
       });
@@ -763,7 +836,7 @@ export function render() {
         ? "독서 추가"
         : "할 일 추가";
     }
-    return "매일 할 일 추가";
+    return happinessDailyTodoCopy(kpi).footerAdd;
   }
 
   async function runHappinessKpiFooterAddAction() {
@@ -797,10 +870,12 @@ export function render() {
       return;
     }
     if (tab === KPI_BOTTOM_TAB_DAILY) {
+      const dailyCopy = happinessDailyTodoCopy(k);
       const text = await showKpiTodoAddModal({
         kpiName: k.name,
-        title: "매일 할 일 추가",
-        placeholder: "할 일 입력 (매일 반복)",
+        title: dailyCopy.addTitle,
+        inputLabel: dailyCopy.inputLabel,
+        placeholder: dailyCopy.placeholder,
         linkedLabel: "연결된 행동",
       });
       if (!text) return;
@@ -1233,9 +1308,12 @@ export function render() {
     const hasDailyTab = needHabitTracker;
     const dailyTodosOnly = kpiUsesDailyTodosOnly(kpi);
     const readingKpi = isDefaultReadingHappinessKpiId(selKpi);
+    const dailyCopy = happinessDailyTodoCopy(selKpi);
     const todoSegLabel = readingKpi
       ? DEFAULT_READING_KPI_TODO_LIST_LABEL
       : "할 일";
+    const dailySegLabel = dailyCopy.segLabel;
+    const dailyListTitle = dailyCopy.listTitle;
     const readingNotesUi = kpiNotesTabEnabledForKpi("happiness", selKpi);
     const useKpiSegBar = KPI_DETAIL_LOGS_UI_ENABLED || readingNotesUi;
 
@@ -1421,7 +1499,7 @@ export function render() {
       btnSegDaily = document.createElement("button");
       btnSegDaily.type = "button";
       btnSegDaily.className = "dream-kpi-bottom-seg-btn";
-      btnSegDaily.textContent = "매일할일";
+      btnSegDaily.textContent = dailySegLabel;
       btnSegDaily.setAttribute("role", "tab");
     }
 
@@ -1587,7 +1665,7 @@ export function render() {
 
       const dailyHeader = document.createElement("div");
       dailyHeader.className = "dream-kpi-todo-header";
-      dailyHeader.innerHTML = `<span class="dream-kpi-todo-title">매일 반복되는 할일 목록</span>`;
+      dailyHeader.innerHTML = `<span class="dream-kpi-todo-title">${dailyListTitle}</span>`;
       panelDailySeg.appendChild(dailyHeader);
       const dailyDivider = document.createElement("div");
       dailyDivider.className = "dream-kpi-todo-divider";
@@ -1622,8 +1700,11 @@ export function render() {
           const result = await showKpiTodoEditModal({
             kpiName: kpi.name,
             initialText: todo.text || "",
-            title: "매일 할 일 수정",
-            placeholder: "매일 반복되는 할 일",
+            title: dailyCopy.editTitle,
+            inputLabel: dailyCopy.inputLabel,
+            placeholder: dailyCopy.inputLabel
+              ? dailyCopy.placeholder
+              : "매일 반복되는 할 일",
             linkedLabel: "연결된 행동",
           });
           if (!result) return;
@@ -1662,8 +1743,7 @@ export function render() {
         dailyAddCard.type = "button";
         dailyAddCard.className =
           "dream-kpi-add-card sideincome-split-todo-add-card";
-        dailyAddCard.innerHTML =
-          '<span class="dream-kpi-add-card-text">매일 할 일 추가하기</span>';
+        dailyAddCard.innerHTML = `<span class="dream-kpi-add-card-text">${dailyCopy.addCard}</span>`;
         dailyAddCard.addEventListener("click", () => {
           setKpiHistoryBottomTab("happiness", selKpi, KPI_BOTTOM_TAB_DAILY);
           void runHappinessKpiFooterAddAction();
@@ -1673,7 +1753,7 @@ export function render() {
       if (dailyTodos.length === 0) {
         const emptyDaily = document.createElement("p");
         emptyDaily.className = "dream-kpi-history-empty";
-        emptyDaily.textContent = "등록된 매일 할 일이 없습니다.";
+        emptyDaily.textContent = dailyCopy.empty;
         panelDailySeg.appendChild(emptyDaily);
       } else {
         panelDailySeg.appendChild(dailyList);
@@ -1744,9 +1824,7 @@ export function render() {
       if (hasDailyTab && panelDailySeg) {
         panelDailySeg.querySelector(".dream-kpi-todo-header")?.remove();
         panelDailySeg.querySelector(".dream-kpi-todo-divider")?.remove();
-        target.appendChild(
-          createKpiDetailSectionHeader("매일 반복되는 할일 목록"),
-        );
+        target.appendChild(createKpiDetailSectionHeader(dailyListTitle));
         target.appendChild(panelDailySeg);
       }
     } else {
@@ -1758,6 +1836,7 @@ export function render() {
         dailyTodosOnly,
         hasDailyTab,
         todoTitle: todoSegLabel,
+        dailyTitle: dailySegLabel,
         clearCompleted: clearCompletedOpts,
       });
     }

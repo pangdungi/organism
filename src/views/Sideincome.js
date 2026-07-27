@@ -268,7 +268,9 @@ function saveSideincomeMap(data, opts) {
     if (opts?.pushServer) {
       try {
         window.dispatchEvent(
-          new CustomEvent("sideincome-kpi-map-saved", { detail: { pushServer: true } }),
+          new CustomEvent("sideincome-kpi-map-saved", {
+            detail: { pushServer: true, fromLocalWrite: true },
+          }),
         );
       } catch (_) {}
     }
@@ -899,16 +901,28 @@ export function render(opts = {}) {
     modal.querySelector(".dream-kpi-delete-btn").addEventListener("click", () => {
       void confirmKpiActionDelete(kpi.name).then((ok) => {
         if (!ok) return;
-        syncKpiToTimeTask(kpi, "remove");
         const data = loadSideincomeMap();
+        const syncName = String(
+          data.kpiTaskSync?.[kpi.id] || kpi.name || "",
+        ).trim();
         appendDeletedRef(data, "kpis", kpi.id);
         data.kpis = (data.kpis || []).filter((k) => k.id !== kpi.id);
         data.kpiLogs = (data.kpiLogs || []).filter((l) => l.kpiId !== kpi.id);
         data.kpiTodos = (data.kpiTodos || []).filter((t) => t.kpiId !== kpi.id);
-        data.kpiDailyRepeatTodos = (data.kpiDailyRepeatTodos || []).filter((t) => t.kpiId !== kpi.id);
+        data.kpiDailyRepeatTodos = (data.kpiDailyRepeatTodos || []).filter(
+          (t) => t.kpiId !== kpi.id,
+        );
+        data.kpiTaskSync = data.kpiTaskSync || {};
+        delete data.kpiTaskSync[kpi.id];
         const order = (data.kpiOrder || {})[kpi.pathId] || [];
-        data.kpiOrder = { ...data.kpiOrder, [kpi.pathId]: order.filter((id) => id !== kpi.id) };
+        data.kpiOrder = {
+          ...data.kpiOrder,
+          [kpi.pathId]: order.filter((id) => id !== kpi.id),
+        };
         saveSideincomeMap(data, { pushServer: true });
+        try {
+          kpiTimeTaskRemove(kpi, syncName || kpi.name);
+        } catch (_) {}
         close();
         exitToKpiList();
       });

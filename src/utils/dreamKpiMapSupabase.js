@@ -32,6 +32,7 @@ import {
   dreamMapActiveIdsFromPayload,
   DREAM_KPI_MAP_DELETE_TABLES,
 } from "./kpiMapServerExplicitDeletes.js";
+import { applyLocalPendingKpiDeletesToPullSnapshot } from "./kpiMapPullLocalDeletes.js";
 
 export const DREAM_KPI_MAP_STORAGE_KEY = "kpi-dream-map";
 
@@ -647,7 +648,8 @@ async function pullDreamKpiMapFromSupabaseImpl(opts = {}) {
   const force = !!opts.force;
   const skipLogs = !!opts.skipLogs;
   kpiTodoFineTrace("dream.pull:진입", { force: !!force, skipLogs });
-  if (!force && shouldDeferDreamKpiPullWhileLocalUpdatePending()) {
+  /* force여도 로컬 삭제·수정 push 대기 중이면 덮지 않음 */
+  if (shouldDeferDreamKpiPullWhileLocalUpdatePending()) {
     kpiTodoFineTrace("dream.pull:스킵(로컬→서버반영대기중)");
     return false;
   }
@@ -733,10 +735,12 @@ async function pullDreamKpiMapFromSupabaseImpl(opts = {}) {
         },
       });
     }
+    const localNow = readLocalPayload() || localBeforePull;
+    merged = applyLocalPendingKpiDeletesToPullSnapshot(merged, localNow);
     kpiTodoLifecyclePullCompare(
       "dream",
       DREAM_KPI_MAP_STORAGE_KEY,
-      localBeforePull,
+      localNow,
       merged,
       "서버스냅샷_setItem직전",
       { dbKpiTodoRows: todos.length },
@@ -745,7 +749,7 @@ async function pullDreamKpiMapFromSupabaseImpl(opts = {}) {
       writeKpiMapScopedStorageRaw(DREAM_KPI_MAP_STORAGE_KEY, JSON.stringify(merged));
     } catch (_) {}
     kpiTodoFineTrace("dream.pull:서버스냅샷으로localStorage_setItem_함", {
-      스냅샷할일수: (snapshot.kpiTodos || []).length,
+      스냅샷할일수: (merged.kpiTodos || []).length,
     });
     kpiSyncDebugLog("꿈 pull → 완료", {
       source: "Supabase dream_map_* (서버 스냅샷만 반영)",

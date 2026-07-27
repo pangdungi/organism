@@ -34,6 +34,7 @@ import {
   happinessMapActiveIdsFromPayload,
   HAPPINESS_KPI_MAP_DELETE_TABLES,
 } from "./kpiMapServerExplicitDeletes.js";
+import { applyLocalPendingKpiDeletesToPullSnapshot } from "./kpiMapPullLocalDeletes.js";
 
 export const HAPPINESS_KPI_MAP_STORAGE_KEY = "kpi-happiness-map";
 
@@ -1043,7 +1044,8 @@ async function pullHappinessKpiMapFromSupabaseImpl(opts = {}) {
   const habitTrackerLite = !!opts.habitTrackerLite;
   const skipTodos = !!opts.skipTodos || habitTrackerLite;
   const skipLogs = !!opts.skipLogs;
-  if (!force && shouldDeferHappinessKpiPullWhileLocalUpdatePending()) return false;
+  /* force여도 로컬 삭제·수정 push 대기 중이면 덮지 않음 */
+  if (shouldDeferHappinessKpiPullWhileLocalUpdatePending()) return false;
   const userId = await getSessionUserId();
   if (!userId || !supabase) {
     logKpiServerSnapshot("happiness", {
@@ -1177,10 +1179,12 @@ async function pullHappinessKpiMapFromSupabaseImpl(opts = {}) {
       },
     });
   }
+  const localNow = readLocalPayload() || localBeforePull;
+  snapshot = applyLocalPendingKpiDeletesToPullSnapshot(snapshot, localNow);
   kpiTodoLifecyclePullCompare(
     "happiness",
     HAPPINESS_KPI_MAP_STORAGE_KEY,
-    localBeforePull,
+    localNow,
     snapshot,
     "서버스냅샷_setItem직전",
     { dbKpiTodoRows: todos.length },
