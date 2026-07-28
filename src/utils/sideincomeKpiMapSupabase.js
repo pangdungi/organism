@@ -823,8 +823,16 @@ async function pullSideincomeKpiMapFromSupabaseImpl(opts = {}) {
       ...localBeforePull,
       paths: snapshot.paths?.length ? snapshot.paths : localBeforePull.paths || [],
       kpis: snapshot.kpis?.length ? snapshot.kpis : localBeforePull.kpis || [],
-      kpiLogs: snapshot.kpiLogs || [],
-      deletedRefs: snapshot.deletedRefs || localBeforePull.deletedRefs,
+      kpiLogs: skipLogs
+        ? localBeforePull.kpiLogs || []
+        : snapshot.kpiLogs || [],
+      deletedRefs: {
+        ...(localBeforePull.deletedRefs || {}),
+        ...(snapshot.deletedRefs || {}),
+        ...(skipLogs
+          ? { kpiLogs: localBeforePull.deletedRefs?.kpiLogs || [] }
+          : {}),
+      },
     });
   }
   if (skipLogs && localBeforePull && !habitTrackerLite) {

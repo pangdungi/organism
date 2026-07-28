@@ -7,6 +7,7 @@ import {
   getScopedLocalStorageItem,
   setScopedLocalStorageItem,
 } from "./clientStorageScope.js";
+import { isKpiEligibleForTimeTaskList } from "./kpiProgressStatus.js";
 
 export const KPI_MAP_STORAGE_KEYS = [
   "kpi-dream-map",
@@ -62,7 +63,27 @@ const KPI_MAP_KEY_TO_LEDGER_CATEGORY = {
   "kpi-health-map": "health",
 };
 
-/** 활성 KPI id → 현재 표시명·시간가계부 category (kpis 배열 기준 — 삭제된 id 제외) */
+/** 맵에 있는 모든 KPI id (진행 상태 무관 — 삭제 여부 판별용) */
+export function getAllKpiIdsFromMaps() {
+  const out = new Set();
+  KPI_MAP_STORAGE_KEYS.forEach((key) => {
+    try {
+      const raw = readKpiMapScopedStorageRaw(key);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      for (const k of parsed?.kpis || []) {
+        const id = String(k?.id || "").trim();
+        if (id) out.add(id);
+      }
+    } catch (_) {}
+  });
+  return out;
+}
+
+/**
+ * 과제목록에 둘 KPI id → 표시명·category
+ * (진행중만 — 진행전·완료·삭제된 id 제외)
+ */
 export function getActiveKpiTaskKeepersById() {
   /** @type {Map<string, { name: string, category: string }>} */
   const out = new Map();
@@ -76,6 +97,7 @@ export function getActiveKpiTaskKeepersById() {
       for (const k of parsed?.kpis || []) {
         const id = String(k?.id || "").trim();
         if (!id) continue;
+        if (!isKpiEligibleForTimeTaskList(k)) continue;
         const name =
           String(k?.name || "").trim() || String(sync[id] || "").trim();
         if (!name) continue;

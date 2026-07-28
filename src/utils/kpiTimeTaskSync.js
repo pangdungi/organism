@@ -1,6 +1,6 @@
 /**
  * 꿈·부수입·행복·건강 KPI → 시간가계부 과제목록 동기화
- * (기본 KPI 포함 — KPI 탭을 안 열어도 과제설정·기록 모달에 표시)
+ * (진행중 KPI만 — 진행전·완료 제외. 기본 KPI 포함)
  */
 
 import {
@@ -20,8 +20,10 @@ import {
 } from "./kpiMapLocalStorage.js";
 import {
   kpiTimeTaskEnsure,
+  kpiTimeTaskRemove,
   patchKpiLinkedTasksFromKpiMaps,
 } from "./timeTaskOptionsModel.js";
+import { isKpiEligibleForTimeTaskList } from "./kpiProgressStatus.js";
 
 /** @returns {boolean} kpiTaskSync 저장이 필요하면 true */
 export function ensureHealthKpiTimeTasksForData(data) {
@@ -58,6 +60,15 @@ function ensureKpiTimeTasksForData(data, category) {
     const id = String(kpi?.id || "").trim();
     const name = String(kpi?.name || "").trim();
     if (!id || !name) continue;
+    /* 진행전·완료는 과제목록에서 제외 */
+    if (!isKpiEligibleForTimeTaskList(kpi)) {
+      if (data.kpiTaskSync?.[id]) {
+        delete data.kpiTaskSync[id];
+        syncChanged = true;
+      }
+      kpiTimeTaskRemove(kpi);
+      continue;
+    }
     if (!data.kpiTaskSync[id]) {
       data.kpiTaskSync[id] = name;
       syncChanged = true;

@@ -1153,8 +1153,16 @@ async function pullHappinessKpiMapFromSupabaseImpl(opts = {}) {
     snapshot = normalizePayload({
       ...localBeforePull,
       kpis: snapshot.kpis || [],
-      kpiLogs: snapshot.kpiLogs || [],
-      deletedRefs: snapshot.deletedRefs || localBeforePull.deletedRefs,
+      kpiLogs: skipLogs
+        ? localBeforePull.kpiLogs || []
+        : snapshot.kpiLogs || [],
+      deletedRefs: {
+        ...(localBeforePull.deletedRefs || {}),
+        ...(snapshot.deletedRefs || {}),
+        ...(skipLogs
+          ? { kpiLogs: localBeforePull.deletedRefs?.kpiLogs || [] }
+          : {}),
+      },
     });
   }
   if (skipTodos && localBeforePull && !habitTrackerLite) {

@@ -11129,7 +11129,12 @@ export function render(opts = {}) {
         requestUsageListScrollToBottomOnce();
       }
       onFilterChange();
-      saveTimeRows(getFullRowsForFilter(true));
+      /*
+       * 로컬(마감시간 포함)은 동기 저장 → 모달 즉시 닫기.
+       * 서버 push는 그 뒤에도 await — 전송 자체를 건너뛰지 않음.
+       * (예전 유실: push 끝나기 전 옛 서버 pull이 덮어씀 → push 완료까지 대기 유지)
+       */
+      const savePushPromise = saveTimeRows(getFullRowsForFilter(true));
 
       const rowTaskId = String(ledgerRowForKpi?.taskId || "").trim();
       const kpiLinks =
@@ -11137,6 +11142,8 @@ export function render(opts = {}) {
           ? resolveKpiLinksForTaskName(taskName, rowTaskId)
           : [];
       const primaryKpiCtx = dailyInfoSubmit || measureInfoSubmit;
+      const shouldNotifyHabit =
+        !!(dailyInfoSubmit || measureInfoSubmit || kpiPerformedRaw || kpiLinks.length > 0);
 
       if (
         dailyInfoSubmit?.needHabitTracker &&
@@ -11197,17 +11204,25 @@ export function render(opts = {}) {
         }
       }
 
-      if (dailyInfoSubmit || measureInfoSubmit || kpiPerformedRaw || kpiLinks.length > 0) {
+      if (shouldNotifyHabit) {
         try {
           syncHabitTrackerLogs();
         } catch (_) {}
-        notifyHabitTrackerUiAfterTimeSave();
       }
       const rowForMemo = editTr?._rowData || addLedgerTr?._rowData;
       if (rowForMemo) {
         if (editTr) refreshTimeLedgerRowMemoDisplay(editTr, rowForMemo);
         if (addLedgerTr) refreshTimeLedgerRowMemoDisplay(addLedgerTr, rowForMemo);
       }
+      closeTaskLogModal();
+      el._updateTotal?.();
+      try {
+        await savePushPromise;
+      } catch (_) {}
+      if (shouldNotifyHabit) {
+        notifyHabitTrackerUiAfterTimeSave();
+      }
+      return;
     }
     closeTaskLogModal();
     el._updateTotal?.();

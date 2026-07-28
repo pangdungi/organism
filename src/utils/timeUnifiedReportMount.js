@@ -46,6 +46,7 @@ import { flowDisruptorCategoryColor } from "./timeTaskFlowDisruptors.js";
 import { getTaskOptionByName } from "./timeTaskOptionsModel.js";
 import { readUserHourlyRateLocal } from "./userHourlySync.js";
 import { tr2SvgFontSize } from "./timeReportUiScale.js";
+import { mountReportHabitScoreboard } from "./reportHabitScoreboard.js";
 
 const SLEEP_TARGET_MIN = 7 * 60;
 const CHART_COLORS = {
@@ -2905,6 +2906,8 @@ function mountHappinessRoutineSection(scrollWrap, range) {
       : `${dayCount}일 중 한 날 했는지 · 아래는 매일할일 잘 지킨/안 지킨`,
   );
 
+  mountReportHabitScoreboard(sec, range);
+
   if (!snap.hasData) {
     const note = document.createElement("p");
     note.className = "lp-tr2-chart-note";
@@ -2930,6 +2933,8 @@ function mountMediaSection(scrollWrap, range, rows) {
     "콘텐츠·미디어 시청",
     "기록에서 고른 콘텐츠 종류 · 의식적 vs 무의식적 비율",
   );
+
+  mountReportHabitScoreboard(sec, range);
 
   if (snap.totalMinutes <= 0) {
     const empty = document.createElement("p");
@@ -4976,26 +4981,26 @@ function renderMonthTaskTreemap(items) {
   return wrap;
 }
 
-/** 주간·월간 — 시간의 방향 위에 과제별 시간 지도(동일 네모 형태) */
+/** 일·주·월 — 과제별 사용 시간 면적 지도(동일 네모 형태) */
 function mountTaskTimeMapSection(scrollWrap, range, rows) {
   const isDay = range.start === range.end;
-  if (isDay) return;
-
   const dayCount = listDatesInclusive(range.start, range.end).length;
-  const isWeek = dayCount > 1 && dayCount <= 8;
+  const isWeek = !isDay && dayCount > 1 && dayCount <= 8;
   const items = buildMonthTaskTreemapItems(rows);
 
   const sec = createSection(
-    isWeek ? "1주 시간 지도" : "한달 시간 지도",
+    isDay ? "하루 시간 지도" : isWeek ? "1주 시간 지도" : "한달 시간 지도",
     "",
   );
 
   if (!items.length) {
     const note = document.createElement("p");
     note.className = "lp-tr2-chart-note";
-    note.textContent = isWeek
-      ? "이 주에 집계할 과제 기록이 없습니다."
-      : "이 달에 집계할 과제 기록이 없습니다.";
+    note.textContent = isDay
+      ? "이날 집계할 과제 기록이 없습니다."
+      : isWeek
+        ? "이 주에 집계할 과제 기록이 없습니다."
+        : "이 달에 집계할 과제 기록이 없습니다.";
     sec.appendChild(note);
     scrollWrap.appendChild(sec);
     return;

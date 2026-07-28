@@ -1152,7 +1152,16 @@ export function upsertHabitTrackerLogWithDailyState(
 let _syncHabitTrackerInFlight = false;
 let _syncHabitTrackerPending = false;
 
-export function syncHabitTrackerLogs() {
+let _syncHabitTrackerLastAt = 0;
+
+/**
+ * @param {{ throttleMs?: number }} [opts]
+ */
+export function syncHabitTrackerLogs(opts = {}) {
+  const throttleMs = Number(opts.throttleMs) || 0;
+  if (throttleMs > 0 && Date.now() - _syncHabitTrackerLastAt < throttleMs) {
+    return;
+  }
   if (_syncHabitTrackerInFlight) {
     _syncHabitTrackerPending = true;
     return;
@@ -1160,6 +1169,7 @@ export function syncHabitTrackerLogs() {
   _syncHabitTrackerInFlight = true;
   try {
     syncHabitTrackerLogsInner();
+    _syncHabitTrackerLastAt = Date.now();
   } finally {
     _syncHabitTrackerInFlight = false;
     if (_syncHabitTrackerPending) {

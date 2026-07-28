@@ -1203,6 +1203,16 @@
   transform: translateX(200%);
 }
 
+.lp-kpi-dream-page
+  .dream-kpi-filter-bar:has(> .dream-kpi-filter-btn:nth-child(4):last-child) {
+  --lp-seg-count: 4;
+}
+
+.lp-kpi-dream-page
+  .dream-kpi-filter-bar:has(> .dream-kpi-filter-btn:nth-child(4).active)::before {
+  transform: translateX(300%);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lp-kpi-dream-page .dream-kpi-filter-bar::before {
     transition: none;
@@ -1717,13 +1727,11 @@
 }
 
 .lp-kpi-dream-page .dream-kpi-card.is-selected {
-  /* 선택: 검정 테두리 + 왼쪽 얇은 바 (요란하지 않게) */
+  /* 선택: 사방 동일 검정 테두리 */
   border-width: 2px;
   border-color: #111111;
   background: #fafafa;
-  box-shadow:
-    inset 3px 0 0 #111111,
-    0 1px 4px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
 .lp-kpi-dream-page .dream-kpi-card.is-selected .dream-kpi-card-name {

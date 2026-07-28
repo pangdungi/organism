@@ -188,7 +188,7 @@ const HOME_MENU_LABEL = {
   sideincome: "시급상승",
   health: "건강",
   happiness: "행복",
-  habittracker: "습관관리",
+  habittracker: "진행 상황",
 };
 
 
@@ -203,7 +203,7 @@ function tabMetaById(tabId) {
   if (tabId === "habittracker") {
     return {
       id: "habittracker",
-      label: "습관관리",
+      label: "진행 상황",
       homeMenuLabel: HOME_MENU_LABEL.habittracker,
       icon: HOME_MENU_ICON.habittracker,
     };

@@ -8,6 +8,7 @@ import {
   formatHabitTrackerMonthCornerLabel,
   formatHabitTrackerWeekRangeLabel,
   getHabitTrackerCellDisplay,
+  releaseHabitTrackerPaintCaches,
   shiftHabitTrackerWeekAnchorYmd,
 } from "./habitTrackerPageModel.js";
 import { shiftMonthYear } from "./kpiHabitTrackerStartDate.js";
@@ -49,6 +50,7 @@ export function createHabitTrackerPageGridElement(opts = {}) {
     wrap.classList.add("habit-tracker-page-grid-wrap--week");
   }
 
+  try {
   const scroll = document.createElement("div");
   scroll.className = "habit-tracker-page-grid-scroll";
 
@@ -93,7 +95,7 @@ export function createHabitTrackerPageGridElement(opts = {}) {
   });
 
   monthNav.append(prevBtn, monthLabel, nextBtn);
-  scroll.appendChild(monthNav);
+  /* 월/주 네비는 격자 스크롤 밖 — 상단 고정용 */
 
   const table = document.createElement("table");
   table.className = "habit-tracker-page-grid-table";
@@ -103,7 +105,7 @@ export function createHabitTrackerPageGridElement(opts = {}) {
   table.setAttribute("role", "grid");
   table.setAttribute(
     "aria-label",
-    viewMode === "week" ? "루틴 트랙커 1주" : "루틴 트랙커",
+    viewMode === "week" ? "진행 상황 1주" : "진행 상황",
   );
   table.style.setProperty("--ht-day-cols", String(model.dateKeys.length || 1));
 
@@ -128,6 +130,7 @@ export function createHabitTrackerPageGridElement(opts = {}) {
   }
 
   const tbody = document.createElement("tbody");
+  const frag = document.createDocumentFragment();
   for (const row of model.rows) {
     const tr = document.createElement("tr");
     const tdName = document.createElement("td");
@@ -155,12 +158,13 @@ export function createHabitTrackerPageGridElement(opts = {}) {
       }
       tr.appendChild(td);
     }
-    tbody.appendChild(tr);
+    frag.appendChild(tr);
   }
+  tbody.appendChild(frag);
   table.appendChild(tbody);
 
   scroll.appendChild(table);
-  wrap.appendChild(scroll);
+  wrap.append(monthNav, scroll);
 
   async function handleNavShift(delta) {
     prevBtn.disabled = true;
@@ -180,6 +184,10 @@ export function createHabitTrackerPageGridElement(opts = {}) {
       prevBtn.disabled = false;
       nextBtn.disabled = false;
     }
+  }
+
+  } finally {
+    releaseHabitTrackerPaintCaches();
   }
 
   return wrap;

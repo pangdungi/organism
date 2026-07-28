@@ -2776,6 +2776,190 @@
   margin-bottom: 0;
 }
 
+/* 레포트 — 습관 점수판 */
+.lp-tr2-habit-scoreboard {
+  margin: 0 0 1rem;
+  padding: 0.75rem 0.7rem 0.55rem;
+  border-radius: 0.75rem;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  box-sizing: border-box;
+}
+
+.lp-tr2-habit-scoreboard-badge {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0 0.7rem;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  background: #f97316;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.lp-tr2-habit-scoreboard-ring {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 0.65rem;
+}
+
+.lp-tr2-habit-scoreboard-empty {
+  margin: 0;
+  font-size: var(--lp-tr2-body);
+  color: #999999;
+}
+
+.lp-tr2-habit-scoreboard-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.lp-tr2-habit-scoreboard-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem 0.5rem;
+  width: 100%;
+}
+
+.lp-tr2-habit-scoreboard-name {
+  flex: 0 0 7.5rem;
+  width: 7.5rem;
+  min-width: 0;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  color: #1f2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lp-tr2-habit-scoreboard-bar {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 2px;
+  align-items: stretch;
+}
+
+.lp-tr2-habit-scoreboard-seg {
+  display: block;
+  flex: 1 1 0;
+  min-width: 2px;
+  width: auto;
+  height: 0.95rem;
+  border-radius: 2px;
+  background: #f3f4f6;
+  box-sizing: border-box;
+}
+
+.lp-tr2-habit-scoreboard--month .lp-tr2-habit-scoreboard-seg,
+.lp-tr2-habit-scoreboard[data-seg-count] .lp-tr2-habit-scoreboard-seg {
+  min-width: 2px;
+  width: auto;
+}
+
+.lp-tr2-habit-scoreboard-seg.is-on {
+  background: #f97316;
+}
+
+.lp-tr2-habit-scoreboard-row.is-high .lp-tr2-habit-scoreboard-seg.is-on {
+  background: #ea580c;
+}
+
+.lp-tr2-habit-scoreboard-row.is-mid .lp-tr2-habit-scoreboard-seg.is-on {
+  background: #fb923c;
+}
+
+.lp-tr2-habit-scoreboard-row.is-low .lp-tr2-habit-scoreboard-seg.is-on {
+  background: #fdba74;
+}
+
+.lp-tr2-habit-scoreboard-days {
+  flex: 0 0 2.4rem;
+  width: 2.4rem;
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: #111827;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.lp-tr2-habit-scoreboard-unit {
+  margin-left: 0.05rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+.lp-tr2-habit-scoreboard-row.is-zero .lp-tr2-habit-scoreboard-name,
+.lp-tr2-habit-scoreboard-row.is-zero .lp-tr2-habit-scoreboard-days,
+.lp-tr2-habit-scoreboard-row.is-zero .lp-tr2-habit-scoreboard-unit {
+  color: #9ca3af;
+  font-weight: 600;
+}
+
+/* 일 뷰 목록 — 진행상황 오늘의 목표와 동일 톤 */
+.lp-tr2-habit-scoreboard .habit-tracker-today-goals-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid #f1f5f9;
+}
+
+.lp-tr2-habit-scoreboard .habit-tracker-today-goals-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  padding: 0.55rem 0.05rem;
+  border-bottom: 1px solid #f8fafc;
+}
+
+.lp-tr2-habit-scoreboard .habit-tracker-today-goals-mark {
+  flex: 0 0 1.15rem;
+  width: 1.15rem;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #94a3b8;
+}
+
+.lp-tr2-habit-scoreboard .habit-tracker-today-goals-row.is-done .habit-tracker-today-goals-mark {
+  color: #27a675;
+}
+
+.lp-tr2-habit-scoreboard .habit-tracker-today-goals-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.45rem;
+  min-width: 0;
+}
+
+.lp-tr2-habit-scoreboard .habit-tracker-today-goals-name {
+  font-size: 0.875rem;
+  font-weight: 650;
+  color: #111827;
+}
+
+.lp-tr2-habit-scoreboard .habit-tracker-today-goals-target {
+  font-size: 0.8125rem;
+  font-weight: 650;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-tr2-habit-scoreboard .habit-tracker-today-goals-empty {
+  margin: 0;
+  font-size: var(--lp-tr2-body);
+  color: #999999;
+  text-align: center;
+}
+
 .lp-tr2-media-empty {
   margin: 0;
   font-size: var(--lp-tr2-body);

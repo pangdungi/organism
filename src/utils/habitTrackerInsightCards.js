@@ -30,6 +30,7 @@ export function buildHabitTrackerWeekInsightModel(opts = {}) {
   const month = ym ? Number(ym[2]) : new Date().getMonth() + 1;
   const rows = buildHabitTrackerRows(year, month, {
     skipSync: opts.skipSync !== false,
+    habitsOnly: true,
   });
   const habits = rows.map((row) => {
     /** @type {number[]} */

@@ -1,5 +1,5 @@
 /**
- * 해빗 트랙커 — 습관 관리
+ * 해빗 트랙커 — 오늘의 목표 / 간트 / 성공·실패 / 루틴
  */
 
 import { setupKpiCategoryHeaderIcon } from "../utils/kpiCategoryHeaderIcon.js";
@@ -11,14 +11,49 @@ import { timeLedgerLocalTodayYmd } from "../utils/timeLedgerEntriesSupabase.js";
 import {
   habitTrackerWeekDateKeys,
 } from "../utils/habitTrackerPageModel.js";
-import {
-  buildHabitTrackerWeekInsightModel,
-  createHabitTrackerInsightSection,
-} from "../utils/habitTrackerInsightCards.js";
-import {
-  buildHabitTrackerTodayDailyRingModel,
-  createHabitTrackerTodayRingElement,
-} from "../utils/habitTrackerTodayRing.js";
+import { mountKpiActiveGanttView } from "../utils/kpiActiveGanttView.js";
+import { collectGoalTrackerActiveKpis } from "../utils/kpiGoalTrackerActiveKpis.js";
+import { mountKpiGoalSuccessFailSection } from "../utils/kpiGoalTrackerSuccessFail.js";
+import { mountKpiGoalTodayGoalsSection } from "../utils/kpiGoalTrackerTodayGoals.js";
+
+const MAIN_VIEW_KEY = "lp_habit_tracker_main_view";
+
+/** @typedef {"today"|"gantt"|"successfail"|"routine"} HabitMainView */
+
+const MAIN_VIEWS = /** @type {const} */ ([
+  "today",
+  "gantt",
+  "successfail",
+  "routine",
+]);
+
+const VIEW_CHROME = {
+  today: { label: "TODAY'S ACTIONS", title: "오늘의 행동" },
+  gantt: { label: "GANTT CHART", title: "간트 차트" },
+  successfail: { label: "SUCCESS · FAIL", title: "성공·실패표" },
+  routine: { label: "ACTION TRACKER", title: "행동 트래커" },
+};
+
+/** @returns {HabitMainView} */
+function readMainView() {
+  try {
+    const v = sessionStorage.getItem(MAIN_VIEW_KEY);
+    if (v === "goals") return "today";
+    if (MAIN_VIEWS.includes(/** @type {HabitMainView} */ (v))) {
+      return /** @type {HabitMainView} */ (v);
+    }
+  } catch (_) {}
+  return "today";
+}
+
+/** @param {HabitMainView} mode */
+function writeMainView(mode) {
+  const m = MAIN_VIEWS.includes(mode) ? mode : "today";
+  try {
+    sessionStorage.setItem(MAIN_VIEW_KEY, m);
+  } catch (_) {}
+  return m;
+}
 
 async function pullMonthsCoveringYmds(ymdList) {
   const seen = new Set();
@@ -42,50 +77,69 @@ export function render(opts = {}) {
   el.className = "app-tab-panel-content dream-view lp-kpi-dream-page";
   if (dashboardEmbedMode) el.classList.add("habit-tracker-view--dashboard-embed");
 
-  const header = document.createElement("header");
-  header.className = "dream-view-header";
-  const label = document.createElement("span");
-  label.className = "dream-view-label";
-  label.textContent = "ROUTINE TRACKER";
-  const titleRow = document.createElement("div");
-  titleRow.className = "dream-view-header-title-row";
-  const title = document.createElement("h1");
-  title.className = "dream-view-title";
-  title.textContent = "루틴 트랙커";
-  titleRow.appendChild(title);
-  setupKpiCategoryHeaderIcon(titleRow, "habittracker");
-  header.appendChild(label);
-  header.appendChild(titleRow);
-  el.appendChild(header);
+  let label = null;
+  let title = null;
+  if (!dashboardEmbedMode) {
+    const header = document.createElement("header");
+    header.className = "dream-view-header";
+    label = document.createElement("span");
+    label.className = "dream-view-label";
+    label.textContent = VIEW_CHROME.today.label;
+    const titleRow = document.createElement("div");
+    titleRow.className = "dream-view-header-title-row";
+    title = document.createElement("h1");
+    title.className = "dream-view-title";
+    title.textContent = VIEW_CHROME.today.title;
+    titleRow.appendChild(title);
+    setupKpiCategoryHeaderIcon(titleRow, "habittracker");
+    header.appendChild(label);
+    header.appendChild(titleRow);
+    el.appendChild(header);
+  }
+
+  /** @type {HabitMainView} */
+  let mainView = dashboardEmbedMode ? "today" : readMainView();
+
+  const viewModeBar = document.createElement("div");
+  viewModeBar.className =
+    "dream-kpi-filter-bar habit-tracker-main-view-bar habit-tracker-main-view-bar--quad";
+  viewModeBar.setAttribute("role", "tablist");
+  viewModeBar.setAttribute("aria-label", "진행 상황 보기");
+  viewModeBar.innerHTML = `
+    <button type="button" class="dream-kpi-filter-btn" data-main-view="today" role="tab">오늘의 행동</button>
+    <button type="button" class="dream-kpi-filter-btn" data-main-view="gantt" role="tab">간트 차트</button>
+    <button type="button" class="dream-kpi-filter-btn" data-main-view="successfail" role="tab">성공·실패표</button>
+    <button type="button" class="dream-kpi-filter-btn" data-main-view="routine" role="tab">행동 트래커</button>
+  `;
+  if (!dashboardEmbedMode) {
+    el.appendChild(viewModeBar);
+  }
 
   const contentWrap = document.createElement("div");
   contentWrap.className = "dream-content-wrap habit-tracker-content-wrap";
 
-  /** 원형 링(위) — 홈 3분할 embed만 / 표 / 레포트 카드 — 전체 탭만 */
-  let insightHost = null;
-  let todayRingHost = null;
-  if (dashboardEmbedMode) {
-    todayRingHost = document.createElement("div");
-    todayRingHost.className = "habit-tracker-today-ring-host";
-    contentWrap.appendChild(todayRingHost);
-  }
+  const routineBlock = document.createElement("div");
+  routineBlock.className = "habit-tracker-routine-block";
 
   const gridHost = document.createElement("div");
   gridHost.className = "habit-tracker-grid-host";
-  contentWrap.appendChild(gridHost);
+  routineBlock.appendChild(gridHost);
+
+  const goalHost = document.createElement("div");
+  goalHost.className = "habit-tracker-goal-host";
+  goalHost.hidden = true;
 
   if (!dashboardEmbedMode) {
-    insightHost = document.createElement("div");
-    insightHost.className = "habit-tracker-insight-host";
-    contentWrap.appendChild(insightHost);
+    contentWrap.appendChild(routineBlock);
   }
+  contentWrap.appendChild(goalHost);
   el.appendChild(contentWrap);
 
   const now = new Date();
   let viewYear = now.getFullYear();
   let viewMonth = now.getMonth() + 1;
-  /** 3분할 — 1주 뷰 기준일(해당 주 월~일) */
   let viewWeekAnchorYmd = timeLedgerLocalTodayYmd();
+  let successFailWeekAnchorYmd = timeLedgerLocalTodayYmd();
   let paintGen = 0;
   let hasSyncedPaint = false;
 
@@ -95,18 +149,66 @@ export function render(opts = {}) {
     } catch (_) {}
   }
 
-  function paintInsightCards(skipSync) {
-    if (!insightHost) return;
-    const model = buildHabitTrackerWeekInsightModel({ skipSync: !!skipSync });
-    insightHost.replaceChildren(
-      createHabitTrackerInsightSection(model, { skipSync: !!skipSync }),
-    );
+  function syncHeaderChrome() {
+    if (!label || !title) return;
+    const chrome = VIEW_CHROME[mainView] || VIEW_CHROME.today;
+    label.textContent = chrome.label;
+    title.textContent = chrome.title;
   }
 
-  function paintTodayRing(skipSync) {
-    if (!todayRingHost) return;
-    const model = buildHabitTrackerTodayDailyRingModel({ skipSync: !!skipSync });
-    todayRingHost.replaceChildren(createHabitTrackerTodayRingElement(model));
+  function syncViewModeBar() {
+    viewModeBar.querySelectorAll(".dream-kpi-filter-btn").forEach((btn) => {
+      const on = btn.dataset.mainView === mainView;
+      btn.classList.toggle("active", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+    });
+  }
+
+  function paintTodayGoals(opts = {}) {
+    if (!goalHost) return;
+    goalHost.replaceChildren();
+    goalHost.classList.toggle(
+      "habit-tracker-goal-host--panel",
+      !dashboardEmbedMode,
+    );
+    const skipSync = opts.skipSync ?? !hasSyncedPaint;
+    mountKpiGoalTodayGoalsSection(goalHost, {
+      pinChrome: true,
+      skipSync,
+    });
+    if (!skipSync) hasSyncedPaint = true;
+  }
+
+  function paintGanttOnly() {
+    if (!goalHost) return;
+    goalHost.replaceChildren();
+    goalHost.classList.add("habit-tracker-goal-host--panel");
+    const { kpis, getProgressPct } = collectGoalTrackerActiveKpis();
+    mountKpiActiveGanttView(goalHost, kpis, {
+      getProgressPct,
+      collapsible: false,
+      emptyMessage:
+        "진행중이면서 시작·마감일이 있는 행동이 없습니다. (시급·건강·행복)",
+    });
+  }
+
+  function paintSuccessFailOnly(opts = {}) {
+    if (!goalHost) return;
+    goalHost.replaceChildren();
+    goalHost.classList.add("habit-tracker-goal-host--panel");
+    const scroll = document.createElement("div");
+    scroll.className = "habit-tracker-goal-panel-scroll";
+    goalHost.appendChild(scroll);
+    const skipSync = opts.skipSync ?? !hasSyncedPaint;
+    mountKpiGoalSuccessFailSection(scroll, {
+      weekAnchorYmd: successFailWeekAnchorYmd || timeLedgerLocalTodayYmd(),
+      skipSync,
+      onWeekChange: (nextAnchorYmd) => {
+        successFailWeekAnchorYmd = String(nextAnchorYmd || "").slice(0, 10);
+        paintSuccessFailOnly({ skipSync: true });
+      },
+    });
+    if (!skipSync) hasSyncedPaint = true;
   }
 
   function paintGrid(opts = {}) {
@@ -159,9 +261,61 @@ export function render(opts = {}) {
         }),
       );
     }
-    paintInsightCards(skipSync);
-    paintTodayRing(skipSync);
     if (!skipSync) hasSyncedPaint = true;
+  }
+
+  function paintActiveView(opts = {}) {
+    if (dashboardEmbedMode) {
+      routineBlock.hidden = true;
+      goalHost.hidden = false;
+      paintTodayGoals(opts);
+      return;
+    }
+
+    const isRoutine = mainView === "routine";
+    routineBlock.hidden = !isRoutine;
+    goalHost.hidden = isRoutine;
+
+    if (isRoutine) {
+      if (!gridHost.hasChildNodes() || opts.forceGrid) {
+        /* 첫 페인트는 sync 생략 — 칸 계산이 무거움 */
+        paintGrid({
+          skipSync: true,
+          allowBeforeMount: true,
+        });
+        hasSyncedPaint = true;
+      }
+      return;
+    }
+    if (mainView === "today") {
+      paintTodayGoals(opts);
+      return;
+    }
+    if (mainView === "gantt") {
+      paintGanttOnly();
+      return;
+    }
+    paintSuccessFailOnly(opts);
+  }
+
+  function applyMainView() {
+    syncHeaderChrome();
+    if (!dashboardEmbedMode) syncViewModeBar();
+    contentWrap.dataset.habitView = mainView;
+    paintActiveView();
+  }
+
+  if (!dashboardEmbedMode) {
+    viewModeBar.querySelectorAll(".dream-kpi-filter-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const next = /** @type {HabitMainView} */ (
+          String(btn.dataset.mainView || "today")
+        );
+        if (!MAIN_VIEWS.includes(next) || next === mainView) return;
+        mainView = writeMainView(next);
+        applyMainView();
+      });
+    });
   }
 
   let softRefreshRaf = 0;
@@ -170,19 +324,22 @@ export function render(opts = {}) {
     if (softRefreshRaf) return;
     softRefreshRaf = requestAnimationFrame(() => {
       softRefreshRaf = 0;
+      /* pull 쪽에서 이미 sync — 행동 트래커는 보이는 중일 때만 격자 재생성 */
       hasSyncedPaint = true;
-      paintGrid({ skipSync: false });
+      paintActiveView({
+        skipSync: true,
+        forceGrid: mainView === "routine",
+      });
     });
   }
 
-  /* 전체 탭·3분할 모두 — 시간기록 저장 후 window 훅으로도 다시 그릴 수 있게 */
   window.__lpHabitTrackerSoftRefresh = scheduleSoftRefresh;
   if (dashboardEmbedMode && dashboardHost && dashboardEmbedKey) {
     dashboardHost._lpEmbedSoftRefresh = dashboardHost._lpEmbedSoftRefresh || {};
     dashboardHost._lpEmbedSoftRefresh[dashboardEmbedKey] = scheduleSoftRefresh;
   }
   syncViewMonthGlobal();
-  paintGrid({ skipSync: true, allowBeforeMount: true });
+  applyMainView();
 
   return el;
 }

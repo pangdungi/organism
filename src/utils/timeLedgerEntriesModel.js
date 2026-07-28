@@ -602,10 +602,9 @@ export function applyTimeLedgerServerFullSnapshot(dbRows) {
 
 /**
  * entry_date가 [rangeStart, rangeEnd] (포함)인 구간만 **pull 시점 서버 스냅샷**으로 교체.
- * 원칙: pull은 서버 → 로컬. 다만 이 기기에서 사용자가 저장해 push 대기 중인 행
- * (timeLedgerRowNeedsPush)은 옛 서버 스냅샷으로 덮지 않음 — 마감시간 등 입력값 유실 방지.
- * 구간 안·아직 서버에 한 번도 안 올라간 새 행도 로컬 유지.
- * @param {{ preferServer?: boolean }} [opts] — 호환용(무시).
+ * 원칙: 항상 서버 우선. 같은 id는 서버 행으로 교체(로컬 LWW 없음).
+ * 구간 안·아직 서버에 한 번도 안 올라간 새 행(serverUpdatedAt 없음)만 로컬 유지.
+ * @param {{ preferServer?: boolean }} [opts] — 호환용(무시). 항상 서버 스냅샷 우선.
  */
 export function applyTimeLedgerServerRangeSnapshot(
   dbRows,
@@ -634,48 +633,19 @@ export function applyTimeLedgerServerRangeSnapshot(
   const outside = localWithIds.filter(
     (r) => !rowEntryDateInInclusiveRange(r, rs, re),
   );
-  const localInRangeById = new Map();
-  for (const r of localWithIds) {
-    if (!rowEntryDateInInclusiveRange(r, rs, re)) continue;
-    const id = String(r?.id || "").trim();
-    if (id) localInRangeById.set(id, r);
-  }
-  const keepLocalOverServer = (local, serverRow) => {
-    if (!local) return false;
-    /* 저장 후 push 대기 — 옛 서버(마감 없음)로 화면에서 지우지 않음 */
-    if (timeLedgerRowNeedsPush(local)) return true;
-    /* push 직후·복제 지연: 이 기기 serverUpdatedAt 이 스냅샷보다 새면 로컬 유지 */
-    const localSu = Date.parse(String(local.serverUpdatedAt || ""));
-    const serverSu = Date.parse(String(serverRow?.serverUpdatedAt || ""));
-    return (
-      Number.isFinite(localSu) &&
-      Number.isFinite(serverSu) &&
-      localSu > serverSu
-    );
-  };
-  const consumedPendingIds = new Set();
-  const insideMerged = insideFromServer.map((serverRow) => {
-    const id = String(serverRow?.id || "").trim();
-    const local = id ? localInRangeById.get(id) : null;
-    if (keepLocalOverServer(local, serverRow)) {
-      if (id) consumedPendingIds.add(id);
-      return local;
-    }
-    return serverRow;
-  });
   const serverIdsInRange = new Set(
     insideFromServer.map((r) => String(r?.id || "").trim()).filter(Boolean),
   );
-  /* 서버에 아직 없는 신규 행(미업로드)만 추가 유지 */
-  const pendingNewLocal = [];
-  for (const r of localInRangeById.values()) {
+  /* 서버에 아직 없는 신규 행(미업로드)만 로컬 유지 — 그 외는 전부 서버 */
+  const pendingNewLocal = localWithIds.filter((r) => {
     const id = String(r?.id || "").trim();
-    if (!id || serverIdsInRange.has(id) || consumedPendingIds.has(id)) continue;
-    if (!timeLedgerRowNeedsPush(r)) continue;
-    if (String(r.serverUpdatedAt || "").trim()) continue;
-    pendingNewLocal.push(r);
-  }
-  const merged = [...outside, ...insideMerged, ...pendingNewLocal];
+    if (!rowEntryDateInInclusiveRange(r, rs, re)) return false;
+    if (serverIdsInRange.has(id)) return false;
+    if (!timeLedgerRowNeedsPush(r)) return false;
+    if (String(r.serverUpdatedAt || "").trim()) return false;
+    return true;
+  });
+  const merged = [...outside, ...insideFromServer, ...pendingNewLocal];
   writeTimeLedgerEntriesRaw(merged);
   try {
     if (typeof document !== "undefined") {

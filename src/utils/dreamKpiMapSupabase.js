@@ -647,7 +647,8 @@ function shouldDeferDreamKpiPullWhileLocalUpdatePending() {
 async function pullDreamKpiMapFromSupabaseImpl(opts = {}) {
   const force = !!opts.force;
   const skipLogs = !!opts.skipLogs;
-  kpiTodoFineTrace("dream.pull:진입", { force: !!force, skipLogs });
+  const skipTodos = !!opts.skipTodos;
+  kpiTodoFineTrace("dream.pull:진입", { force: !!force, skipLogs, skipTodos });
   /* force여도 로컬 삭제·수정 push 대기 중이면 덮지 않음 */
   if (shouldDeferDreamKpiPullWhileLocalUpdatePending()) {
     kpiTodoFineTrace("dream.pull:스킵(로컬→서버반영대기중)");
@@ -674,8 +675,12 @@ async function pullDreamKpiMapFromSupabaseImpl(opts = {}) {
     skipLogs
       ? Promise.resolve(emptyLogRes)
       : supabase.from("dream_map_kpi_logs").select("*").eq("user_id", userId),
-    supabase.from("dream_map_kpi_todos").select("*").eq("user_id", userId),
-    supabase.from("dream_map_kpi_daily_todos").select("*").eq("user_id", userId),
+    skipTodos
+      ? Promise.resolve(emptyLogRes)
+      : supabase.from("dream_map_kpi_todos").select("*").eq("user_id", userId),
+    skipTodos
+      ? Promise.resolve(emptyLogRes)
+      : supabase.from("dream_map_kpi_daily_todos").select("*").eq("user_id", userId),
     supabase.from("dream_map_meta").select("*").eq("user_id", userId).maybeSingle(),
   ]);
 
@@ -683,8 +688,7 @@ async function pullDreamKpiMapFromSupabaseImpl(opts = {}) {
     catRes,
     kpiRes,
     ...(skipLogs ? [] : [logRes]),
-    todoRes,
-    dailyRes,
+    ...(skipTodos ? [] : [todoRes, dailyRes]),
   ]) {
     if (res.error) {
       logKpiServerSnapshot("dream", { op: "pull", ok: false, error: res.error.message, step: "table" });
@@ -732,6 +736,19 @@ async function pullDreamKpiMapFromSupabaseImpl(opts = {}) {
         deletedRefs: {
           ...(merged.deletedRefs || {}),
           kpiLogs: localBeforePull.deletedRefs?.kpiLogs || [],
+        },
+      });
+    }
+    if (skipTodos && localBeforePull) {
+      merged = normalizePayload({
+        ...merged,
+        kpiTodos: localBeforePull.kpiTodos || [],
+        kpiDailyRepeatTodos: localBeforePull.kpiDailyRepeatTodos || [],
+        deletedRefs: {
+          ...(merged.deletedRefs || {}),
+          kpiTodos: localBeforePull.deletedRefs?.kpiTodos || [],
+          kpiDailyRepeatTodos:
+            localBeforePull.deletedRefs?.kpiDailyRepeatTodos || [],
         },
       });
     }
@@ -832,7 +849,7 @@ async function pullDreamKpiMapFromSupabaseImpl(opts = {}) {
 }
 
 /**
- * @param {{ force?: boolean, skipLogs?: boolean }} [opts] — force: 탭 진입·hydrate 등, 대기 중이어도 서버 스냅샷으로 맞춤
+ * @param {{ force?: boolean, skipLogs?: boolean, skipTodos?: boolean }} [opts] — force: 탭 진입·hydrate 등, 대기 중이어도 서버 스냅샷으로 맞춤
  */
 export function pullDreamKpiMapFromSupabase(opts = {}) {
   const o = opts && typeof opts === "object" ? opts : { force: !!opts };

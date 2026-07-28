@@ -7,7 +7,7 @@
  * 기본(skipPull 미지정 시): upsert 직후 피커 구간 pull — 저장 직후 덮어쓰기가 나면 skipPull: true 로 호출.
  * 서버 쓰기는 사용자가 모달에서 확인·추가·수정·삭제할 때만(pushDirty·delete API).
  * pull·화면 읽기·자동마감은 서버에 올리지 않음.
- * pull 병합: push 대기(localModifiedAt) 행·방금 push한 행은 옛 서버 스냅샷으로 덮지 않음.
+ * pull 병합: 항상 서버 우선(같은 id는 서버 스냅샷). 미업로드 신규 행만 로컬 유지.
  */
 
 import { supabase } from "../supabase.js";
@@ -489,7 +489,7 @@ function runSerializedLedgerServerOp(fn) {
 /**
  * @param {{ trigger?: string, preferServer?: boolean }} [meta]
  * — trigger: 콘솔 디버그용 (direct / after_push / resume)
- * — preferServer: 호환용(무시). 병합은 applyTimeLedgerServerRangeSnapshot 규칙
+ * — preferServer: 호환용(무시). pull은 항상 그 시점 서버 스냅샷만 반영
  */
 async function pullTimeLedgerEntriesForDateRangeCore(
   rangeStart,

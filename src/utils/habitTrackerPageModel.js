@@ -22,9 +22,13 @@ import {
   getKpiHabitTrackerStartYmd,
   isKpiHabitDateBeforeStart,
 } from "./kpiHabitTrackerStartDate.js";
+import { isKpiEligibleForTimeTaskList } from "./kpiProgressStatus.js";
+import { getFullTaskOptions } from "./timeTaskOptionsModel.js";
 
 const DAY_END_MIN = 23 * 60 + 59;
 const BUDGET_PLACEHOLDER_PREFIX = "(과제 선택)·";
+/** 상단 고정 행과 겹치는 과제목록 이름 */
+const BUILTIN_TRACKER_TASK_NAMES = new Set(["시간기록하기", "시간 계획하기"]);
 
 const KPI_DOMAIN_STORAGE = [
   { storageKey: "kpi-dream-map", domain: "dream" },
@@ -33,7 +37,7 @@ const KPI_DOMAIN_STORAGE = [
   { storageKey: "kpi-happiness-map", domain: "happiness" },
 ];
 
-/** @typedef {"time-record"|"time-plan"|"kpi"} HabitTrackerRowKind */
+/** @typedef {"time-record"|"time-plan"|"kpi"|"ledger-task"} HabitTrackerRowKind */
 
 /**
  * @typedef {object} HabitTrackerRow
@@ -44,6 +48,8 @@ const KPI_DOMAIN_STORAGE = [
  * @property {string} [storageKey]
  * @property {object[]} [storedLogs]
  * @property {Array<{id?: string, text?: string}>} [dailyTodos]
+ * @property {string} [taskId]
+ * @property {string} [taskName]
  */
 
 function normYmd(v) {
@@ -110,20 +116,8 @@ function mergeDaySegments(segments) {
   return merged;
 }
 
-/** 해당 날짜 시간기록이 0:00~23:59까지 빈틈 없이 채워졌는지 */
-export function isTimeRecordingCompleteForDay(ymd) {
-  const key = normYmd(ymd);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return false;
-
-  const segments = [];
-  for (const row of readTimeLedgerEntriesRaw()) {
-    const d = ledgerRowDateYmd(row) || ledgerRowEntryDateYmd(row);
-    if (d !== key) continue;
-    const seg = ledgerRowDaySegment(row);
-    if (seg) segments.push(seg);
-  }
-  if (!segments.length) return false;
-
+function isTimeRecordingCompleteFromSegments(segments) {
+  if (!segments?.length) return false;
   const merged = mergeDaySegments(segments);
   if (merged[0].startMin > 0) return false;
   let cursor = 0;
@@ -132,6 +126,22 @@ export function isTimeRecordingCompleteForDay(ymd) {
     cursor = Math.max(cursor, seg.endMin);
   }
   return cursor >= DAY_END_MIN;
+}
+
+/** 해당 날짜 시간기록이 0:00~23:59까지 빈틈 없이 채워졌는지 */
+export function isTimeRecordingCompleteForDay(ymd) {
+  const key = normYmd(ymd);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return false;
+  if (_paintLedgerIndex) return _paintLedgerIndex.timeRecordOk.has(key);
+
+  const segments = [];
+  for (const row of readTimeLedgerEntriesRaw()) {
+    const d = ledgerRowDateYmd(row) || ledgerRowEntryDateYmd(row);
+    if (d !== key) continue;
+    const seg = ledgerRowDaySegment(row);
+    if (seg) segments.push(seg);
+  }
+  return isTimeRecordingCompleteFromSegments(segments);
 }
 
 function getBudgetGoalsForDay(ymd) {
@@ -149,8 +159,8 @@ function getBudgetGoalsForDay(ymd) {
 }
 
 /** 데일리뷰 예상 일정(시간 블록)이 하나라도 있으면 true */
-export function hasTimePlanForDay(ymd) {
-  const goals = getBudgetGoalsForDay(ymd);
+function dayGoalsHaveSchedule(goals) {
+  if (!goals || typeof goals !== "object" || Array.isArray(goals)) return false;
   for (const [taskName, data] of Object.entries(goals)) {
     if (taskName.startsWith(BUDGET_PLACEHOLDER_PREFIX)) continue;
     const sched = Array.isArray(data?.scheduledTimes)
@@ -163,6 +173,13 @@ export function hasTimePlanForDay(ymd) {
   return false;
 }
 
+export function hasTimePlanForDay(ymd) {
+  const key = normYmd(ymd);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return false;
+  if (_paintLedgerIndex) return _paintLedgerIndex.timePlanOk.has(key);
+  return dayGoalsHaveSchedule(getBudgetGoalsForDay(key));
+}
+
 function loadKpiMapData(storageKey) {
   try {
     const raw = readKpiMapScopedStorageRaw(storageKey);
@@ -172,12 +189,190 @@ function loadKpiMapData(storageKey) {
   }
 }
 
-/** @returns {HabitTrackerRow[]} */
+/** @returns {Map<string, { kpi: object, storageKey: string, data: object }>} */
+function indexKpisById() {
+  /** @type {Map<string, { kpi: object, storageKey: string, data: object }>} */
+  const map = new Map();
+  for (const { storageKey } of KPI_DOMAIN_STORAGE) {
+    const data = loadKpiMapData(storageKey);
+    for (const kpi of data.kpis || []) {
+      const id = String(kpi?.id || "").trim();
+      if (!id || map.has(id)) continue;
+      map.set(id, { kpi, storageKey, data });
+    }
+  }
+  return map;
+}
+
+/** 해당일 시간가계부에 이 과제 기록이 있으면 true */
+/**
+ * @typedef {{
+ *   timeRecordOk: Set<string>,
+ *   timePlanOk: Set<string>,
+ *   taskIdDays: Map<string, Set<string>>,
+ *   taskNameDays: Map<string, Set<string>>,
+ * }} HabitTrackerLedgerDayIndex
+ */
+
+/** @type {HabitTrackerLedgerDayIndex | null} */
+let _paintLedgerIndex = null;
+
+/**
+ * 잔디표 1회 페인트용 — 가계부·일간계획을 날짜별로 한 번만 훑음
+ * @param {Iterable<string>} dateKeys
+ * @returns {HabitTrackerLedgerDayIndex}
+ */
+function buildHabitTrackerLedgerDayIndex(dateKeys) {
+  /** @type {Set<string>} */
+  const dateKeySet = new Set();
+  for (const dk of dateKeys || []) {
+    const k = normYmd(dk);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(k)) dateKeySet.add(k);
+  }
+
+  /** @type {Set<string>} */
+  const timePlanOk = new Set();
+  let budgetAll = {};
+  try {
+    const raw = readTimeDailyBudgetGoalsRaw();
+    budgetAll = raw ? JSON.parse(raw) : {};
+  } catch (_) {
+    budgetAll = {};
+  }
+  for (const ymd of dateKeySet) {
+    if (dayGoalsHaveSchedule(budgetAll[ymd])) timePlanOk.add(ymd);
+  }
+
+  /** @type {Map<string, { startMin: number, endMin: number }[]>} */
+  const segmentsByDay = new Map();
+  /** @type {Map<string, Set<string>>} */
+  const taskIdDays = new Map();
+  /** @type {Map<string, Set<string>>} */
+  const taskNameDays = new Map();
+
+  const addDay = (map, key, ymd) => {
+    if (!key) return;
+    let set = map.get(key);
+    if (!set) {
+      set = new Set();
+      map.set(key, set);
+    }
+    set.add(ymd);
+  };
+
+  for (const row of readTimeLedgerEntriesRaw()) {
+    const d = normYmd(ledgerRowDateYmd(row) || ledgerRowEntryDateYmd(row));
+    if (!d || (dateKeySet.size > 0 && !dateKeySet.has(d))) continue;
+
+    const seg = ledgerRowDaySegment(row);
+    if (seg) {
+      let list = segmentsByDay.get(d);
+      if (!list) {
+        list = [];
+        segmentsByDay.set(d, list);
+      }
+      list.push(seg);
+    }
+
+    const tracked = parseTimeTrackedToMinutes(row.timeTracked);
+    if (tracked <= 0 && !seg) continue;
+    addDay(taskIdDays, String(row.taskId || "").trim(), d);
+    addDay(taskNameDays, String(row.taskName || "").trim(), d);
+  }
+
+  /** @type {Set<string>} */
+  const timeRecordOk = new Set();
+  for (const [ymd, segs] of segmentsByDay) {
+    if (isTimeRecordingCompleteFromSegments(segs)) timeRecordOk.add(ymd);
+  }
+
+  return { timeRecordOk, timePlanOk, taskIdDays, taskNameDays };
+}
+
+function hasLedgerActivityForTaskOnDay(taskId, taskName, ymd) {
+  const tid = String(taskId || "").trim();
+  const name = String(taskName || "").trim();
+  if (!tid && !name) return false;
+  const key = normYmd(ymd);
+  if (_paintLedgerIndex) {
+    if (tid && _paintLedgerIndex.taskIdDays.get(tid)?.has(key)) return true;
+    if (!tid && name && _paintLedgerIndex.taskNameDays.get(name)?.has(key)) {
+      return true;
+    }
+    return false;
+  }
+  for (const row of readTimeLedgerEntriesRaw()) {
+    const d = ledgerRowDateYmd(row) || ledgerRowEntryDateYmd(row);
+    if (normYmd(d) !== key) continue;
+    const tracked = parseTimeTrackedToMinutes(row.timeTracked);
+    if (tracked <= 0 && !ledgerRowDaySegment(row)) continue;
+    if (tid && String(row.taskId || "").trim() === tid) return true;
+    if (!tid && name && String(row.taskName || "").trim() === name) return true;
+  }
+  return false;
+}
+
+/** @param {HabitTrackerRow} row */
+function ensureRowEntryByYmd(row) {
+  if (row?._entryByYmd instanceof Map) return row._entryByYmd;
+  /** @type {Map<string, object>} */
+  const map = new Map();
+  if (row?.kind === "kpi" && row.kpi) {
+    const kid = String(row.kpi.id || "").trim();
+    const logs = (row.storedLogs || []).filter(
+      (l) => String(l?.kpiId || "").trim() === kid,
+    );
+    try {
+      const entries = resolveKpiDetailLogEntriesLocal(row.kpi, logs);
+      for (const e of entries || []) {
+        const dk = normYmd(e?.dateRaw || e?.date || "");
+        if (dk) map.set(dk, e);
+      }
+    } catch (_) {}
+  }
+  row._entryByYmd = map;
+  return map;
+}
+
+/** @param {HabitTrackerRow[]} rows */
+function prepareHabitTrackerRowsForPaint(rows) {
+  for (const row of rows || []) {
+    if (row?.kind === "kpi") ensureRowEntryByYmd(row);
+  }
+}
+
+function pushKpiHabitRow(rows, seenKpiIds, kpi, storageKey, data) {
+  const kpiId = String(kpi?.id || "").trim();
+  const name = String(kpi?.name || "").trim();
+  if (!kpiId || !name || seenKpiIds.has(kpiId)) return;
+  seenKpiIds.add(kpiId);
+  const dailyTodos = (
+    Array.isArray(data.kpiDailyRepeatTodos) ? data.kpiDailyRepeatTodos : []
+  ).filter((t) => String(t?.kpiId || "").trim() === kpiId);
+  rows.push({
+    id: `kpi-${kpiId}`,
+    kind: "kpi",
+    label: name,
+    kpi,
+    storageKey,
+    storedLogs: Array.isArray(data.kpiLogs) ? data.kpiLogs : [],
+    dailyTodos,
+    habitStartYmd: getKpiHabitTrackerStartYmd(kpi),
+  });
+}
+
+/**
+ * @param {number} year
+ * @param {number} month
+ * @param {{ skipSync?: boolean, habitsOnly?: boolean }} [opts]
+ *   habitsOnly — 달성률·링용. 매일 반복 KPI만 (잔디표는 과제목록 전체)
+ * @returns {HabitTrackerRow[]}
+ */
 export function buildHabitTrackerRows(year, month, opts = {}) {
   if (!opts.skipSync) {
     ensureAllKpiTimeTasksFromStorage();
     try {
-      syncHabitTrackerLogs();
+      syncHabitTrackerLogs({ throttleMs: 1500 });
     } catch (_) {}
   }
 
@@ -186,34 +381,53 @@ export function buildHabitTrackerRows(year, month, opts = {}) {
     { id: "builtin-time-record", kind: "time-record", label: "시간기록하기" },
     { id: "builtin-time-plan", kind: "time-plan", label: "시간 계획하기" },
   ];
-  const seenKpiKeys = new Set();
+  const seenKpiIds = new Set();
 
-  for (const { storageKey } of KPI_DOMAIN_STORAGE) {
-    const data = loadKpiMapData(storageKey);
-    for (const kpi of data.kpis || []) {
-      if (!kpi?.needHabitTracker) continue;
-      /* 시작월 이전이어도 행은 보여 주고, 칸만 beforeStart 로 막음 */
-      const name = String(kpi.name || "").trim();
-      if (!name) continue;
-      const kpiId = String(kpi.id || "").trim();
-      const dedupeKey = `${storageKey}:${kpiId}`;
-      if (!kpiId || seenKpiKeys.has(dedupeKey)) continue;
-      seenKpiKeys.add(dedupeKey);
-      const dailyTodos = (Array.isArray(data.kpiDailyRepeatTodos)
-        ? data.kpiDailyRepeatTodos
-        : []
-      ).filter((t) => String(t?.kpiId || "").trim() === kpiId);
-      rows.push({
-        id: `kpi-${kpiId}`,
-        kind: "kpi",
-        label: name,
-        kpi,
-        storageKey,
-        storedLogs: Array.isArray(data.kpiLogs) ? data.kpiLogs : [],
-        dailyTodos,
-        habitStartYmd: getKpiHabitTrackerStartYmd(kpi),
-      });
+  /* 하단 달성률·오늘 링 — 예전과 같이 매일 반복만 */
+  if (opts.habitsOnly) {
+    for (const { storageKey } of KPI_DOMAIN_STORAGE) {
+      const data = loadKpiMapData(storageKey);
+      for (const kpi of data.kpis || []) {
+        if (!kpi?.needHabitTracker) continue;
+        pushKpiHabitRow(rows, seenKpiIds, kpi, storageKey, data);
+      }
     }
+    return rows;
+  }
+
+  const seenTaskIds = new Set();
+  const kpiById = indexKpisById();
+
+  /* 잔디표 — 시간가계부 과제목록 전부 */
+  for (const task of getFullTaskOptions()) {
+    const name = String(task?.name || "").trim();
+    if (!name || BUILTIN_TRACKER_TASK_NAMES.has(name)) continue;
+    const tid = String(task?.id || "").trim();
+    if (tid) {
+      if (seenTaskIds.has(tid)) continue;
+      seenTaskIds.add(tid);
+    }
+
+    const kpiId = String(task?.kpiId || "").trim();
+    const linked = kpiId ? kpiById.get(kpiId) : null;
+    if (linked && isKpiEligibleForTimeTaskList(linked.kpi)) {
+      pushKpiHabitRow(
+        rows,
+        seenKpiIds,
+        linked.kpi,
+        linked.storageKey,
+        linked.data,
+      );
+      continue;
+    }
+
+    rows.push({
+      id: tid ? `task-${tid}` : `task-name-${name}`,
+      kind: "ledger-task",
+      label: name,
+      taskId: tid,
+      taskName: name,
+    });
   }
   return rows;
 }
@@ -305,6 +519,27 @@ export function formatHabitTrackerDayColLabel(dateKey) {
 
 /**
  * @param {HabitTrackerRow} row
+ * @param {object | undefined} entry
+ * @returns {{ done: number, total: number }}
+ */
+function dailyTodoProgressFromEntry(row, entry) {
+  const todos = (Array.isArray(row.dailyTodos) ? row.dailyTodos : []).filter(
+    (t) => String(t?.id || "").trim() || String(t?.text || "").trim(),
+  );
+  const total = todos.length;
+  if (total <= 0) return { done: 0, total: 0 };
+  const completed = Array.isArray(entry?.dailyCompleted)
+    ? entry.dailyCompleted
+    : [];
+  let done = 0;
+  for (const t of todos) {
+    if (isHabitDailyTodoCompleted(t, completed)) done += 1;
+  }
+  return { done, total };
+}
+
+/**
+ * @param {HabitTrackerRow} row
  * @param {string} dateKey
  * @returns {{ text: string, beforeStart: boolean, level: 0|1|2|3|4 }}
  */
@@ -318,13 +553,40 @@ export function getHabitTrackerCellDisplay(row, dateKey) {
     return { text: "", beforeStart: true, level: 0 };
   }
 
-  const text = getHabitTrackerCellText(row, dk);
-  const level = getHabitTrackerCellLevel(row, dk, text);
-  const progress = getHabitTrackerDailyProgressLabel(row, dk);
+  if (row.kind === "time-record") {
+    const ok = isTimeRecordingCompleteForDay(dk);
+    return { text: ok ? "O" : "", beforeStart: false, level: ok ? 4 : 0 };
+  }
+  if (row.kind === "time-plan") {
+    const ok = hasTimePlanForDay(dk);
+    return { text: ok ? "O" : "", beforeStart: false, level: ok ? 4 : 0 };
+  }
+  if (row.kind === "ledger-task") {
+    const ok = hasLedgerActivityForTaskOnDay(row.taskId, row.taskName, dk);
+    return { text: ok ? "O" : "", beforeStart: false, level: ok ? 4 : 0 };
+  }
+
+  const entry = ensureRowEntryByYmd(row).get(dk);
+  const { done, total } = dailyTodoProgressFromEntry(row, entry);
+  if (total > 0) {
+    const level =
+      done <= 0
+        ? 0
+        : /** @type {1|2|3|4} */ (
+            Math.min(4, Math.max(1, Math.ceil((done / total) * 4)))
+          );
+    return {
+      text: `${done}/${total}`,
+      beforeStart: false,
+      level,
+    };
+  }
+
+  const text = getHabitTrackerCellTextFromEntry(row, entry);
   return {
-    text: progress || text,
+    text,
     beforeStart: false,
-    level,
+    level: text ? 4 : 0,
   };
 }
 
@@ -337,27 +599,8 @@ export function getHabitTrackerCellDisplay(row, dateKey) {
 export function getHabitTrackerDailyTodoProgress(row, dateKey) {
   if (row?.kind !== "kpi") return { done: 0, total: 0 };
   const dk = normYmd(dateKey);
-  const todos = (Array.isArray(row.dailyTodos) ? row.dailyTodos : []).filter(
-    (t) => String(t?.id || "").trim() || String(t?.text || "").trim(),
-  );
-  const total = todos.length;
-  if (total <= 0) return { done: 0, total: 0 };
-  const kid = String(row.kpi?.id || "").trim();
-  const logs = (row.storedLogs || []).filter(
-    (l) => String(l?.kpiId || "").trim() === kid,
-  );
-  const entries = resolveKpiDetailLogEntriesLocal(row.kpi, logs);
-  const entry = entries.find(
-    (l) => normYmd(l?.dateRaw || l?.date || "") === dk,
-  );
-  const completed = Array.isArray(entry?.dailyCompleted)
-    ? entry.dailyCompleted
-    : [];
-  let done = 0;
-  for (const t of todos) {
-    if (isHabitDailyTodoCompleted(t, completed)) done += 1;
-  }
-  return { done, total };
+  const entry = ensureRowEntryByYmd(row).get(dk);
+  return dailyTodoProgressFromEntry(row, entry);
 }
 
 /**
@@ -389,42 +632,27 @@ export function getHabitTrackerCellLevel(row, dateKey, cellText) {
   if (row.kind === "time-plan") {
     return hasTimePlanForDay(dk) ? 4 : 0;
   }
+  if (row.kind === "ledger-task") {
+    return hasLedgerActivityForTaskOnDay(row.taskId, row.taskName, dk) ? 4 : 0;
+  }
 
   const kpi = row.kpi;
   if (!kpi) return 0;
   if (isKpiHabitDateBeforeStart(kpi, dk)) return 0;
 
-  const kid = String(kpi.id || "").trim();
-  const logs = (row.storedLogs || []).filter(
-    (l) => String(l?.kpiId || "").trim() === kid,
-  );
-  const entries = resolveKpiDetailLogEntriesLocal(kpi, logs);
-  const entry = entries.find(
-    (l) => normYmd(l?.dateRaw || l?.date || "") === dk,
-  );
-  const completed = Array.isArray(entry?.dailyCompleted)
-    ? entry.dailyCompleted
-    : [];
-
-  const todos = (Array.isArray(row.dailyTodos) ? row.dailyTodos : []).filter(
-    (t) => String(t?.id || "").trim() || String(t?.text || "").trim(),
-  );
-  const total = todos.length;
+  const entry = ensureRowEntryByYmd(row).get(dk);
+  const { done, total } = dailyTodoProgressFromEntry(row, entry);
   if (total > 0) {
-    let done = 0;
-    for (const t of todos) {
-      if (isHabitDailyTodoCompleted(t, completed)) done += 1;
-    }
     if (done <= 0) return 0;
-    /* 4개 중 1개→1, 2개→2, 3개→3, 4개→4 */
     return /** @type {1|2|3|4} */ (
       Math.min(4, Math.max(1, Math.ceil((done / total) * 4)))
     );
   }
 
-  /* 매일할일 목록이 없을 때만 기존 O·값 */
   const text =
-    cellText != null ? String(cellText) : getHabitTrackerCellText(row, dk);
+    cellText != null
+      ? String(cellText)
+      : getHabitTrackerCellTextFromEntry(row, entry);
   if (!text) return 0;
   return 4;
 }
@@ -447,32 +675,10 @@ function isHabitDailyTodoCompleted(todo, completedList) {
  * @param {string} dateKey
  * @returns {string}
  */
-export function getHabitTrackerCellText(row, dateKey) {
-  const dk = normYmd(dateKey);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dk)) return "";
-
-  if (row.kind === "kpi" && row.kpi && isKpiHabitDateBeforeStart(row.kpi, dk)) {
-    return "";
-  }
-
-  if (row.kind === "time-record") {
-    return isTimeRecordingCompleteForDay(dk) ? "O" : "";
-  }
-  if (row.kind === "time-plan") {
-    return hasTimePlanForDay(dk) ? "O" : "";
-  }
-
-  const kpi = row.kpi;
-  if (!kpi) return "";
-  const kid = String(kpi.id || "").trim();
-  const logs = (row.storedLogs || []).filter(
-    (l) => String(l?.kpiId || "").trim() === kid,
-  );
-  const entries = resolveKpiDetailLogEntriesLocal(kpi, logs);
-  const entry = entries.find(
-    (l) => normYmd(l?.dateRaw || l?.date || "") === dk,
-  );
-  if (!entry) return "";
+/** @param {HabitTrackerRow} row @param {object | undefined} entry */
+function getHabitTrackerCellTextFromEntry(row, entry) {
+  const kpi = row?.kpi;
+  if (!kpi || !entry) return "";
 
   if (kpiHasHabitUnitGoal(kpi)) {
     const text = formatKpiHistoryValueText(entry, kpi).trim();
@@ -490,6 +696,32 @@ export function getHabitTrackerCellText(row, dateKey) {
   return "";
 }
 
+export function getHabitTrackerCellText(row, dateKey) {
+  const dk = normYmd(dateKey);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dk)) return "";
+
+  if (row.kind === "kpi" && row.kpi && isKpiHabitDateBeforeStart(row.kpi, dk)) {
+    return "";
+  }
+
+  if (row.kind === "time-record") {
+    return isTimeRecordingCompleteForDay(dk) ? "O" : "";
+  }
+  if (row.kind === "time-plan") {
+    return hasTimePlanForDay(dk) ? "O" : "";
+  }
+  if (row.kind === "ledger-task") {
+    return hasLedgerActivityForTaskOnDay(row.taskId, row.taskName, dk)
+      ? "O"
+      : "";
+  }
+
+  return getHabitTrackerCellTextFromEntry(
+    row,
+    ensureRowEntryByYmd(row).get(dk),
+  );
+}
+
 /**
  * @param {{
  *   year?: number,
@@ -505,6 +737,17 @@ export function buildHabitTrackerPageModel(opts = {}) {
   const todayYmd = ymdFromLocalDate(refDate);
   const viewMode = opts.viewMode === "week" ? "week" : "month";
   const rowOpts = opts.skipSync ? { skipSync: true } : {};
+
+  /** @type {{
+   *   year: number,
+   *   month: number,
+   *   todayYmd: string,
+   *   dateKeys: string[],
+   *   rows: HabitTrackerRow[],
+   *   viewMode: "month" | "week",
+   *   weekAnchorYmd?: string,
+   * }} */
+  let model;
 
   if (viewMode === "week") {
     const dateKeys = habitTrackerWeekDateKeys(
@@ -524,7 +767,7 @@ export function buildHabitTrackerPageModel(opts = {}) {
       }
     }
     const mid = dateKeys[3] || dateKeys[0] || todayYmd;
-    return {
+    model = {
       year: Number(mid.slice(0, 4)) || refDate.getFullYear(),
       month: Number(mid.slice(5, 7)) || refDate.getMonth() + 1,
       todayYmd,
@@ -533,20 +776,30 @@ export function buildHabitTrackerPageModel(opts = {}) {
       viewMode: "week",
       weekAnchorYmd: dateKeys[0] || todayYmd,
     };
+  } else {
+    const year = Number.isFinite(Number(opts.year))
+      ? Number(opts.year)
+      : refDate.getFullYear();
+    const month = Number.isFinite(Number(opts.month))
+      ? Number(opts.month)
+      : refDate.getMonth() + 1;
+    model = {
+      year,
+      month,
+      todayYmd,
+      dateKeys: buildMonthDateKeys(year, month),
+      rows: buildHabitTrackerRows(year, month, rowOpts),
+      viewMode: "month",
+    };
   }
 
-  const year = Number.isFinite(Number(opts.year))
-    ? Number(opts.year)
-    : refDate.getFullYear();
-  const month = Number.isFinite(Number(opts.month))
-    ? Number(opts.month)
-    : refDate.getMonth() + 1;
-  return {
-    year,
-    month,
-    todayYmd,
-    dateKeys: buildMonthDateKeys(year, month),
-    rows: buildHabitTrackerRows(year, month, rowOpts),
-    viewMode: "month",
-  };
+  prepareHabitTrackerRowsForPaint(model.rows);
+  /* 셀 DOM 생성까지 유지 — createHabitTrackerPageGridElement 가 finally 에서 해제 */
+  _paintLedgerIndex = buildHabitTrackerLedgerDayIndex(model.dateKeys);
+  return model;
+}
+
+/** 격자 DOM 생성 직후 호출 — 페인트용 인덱스 해제 */
+export function releaseHabitTrackerPaintCaches() {
+  _paintLedgerIndex = null;
 }

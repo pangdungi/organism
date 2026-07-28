@@ -73,6 +73,15 @@ export function progressStatusForKpiStartDate(
 }
 
 /**
+ * 시간가계부 과제목록에 올릴 KPI인지 — 진행중만 (진행전·완료 제외)
+ * @param {unknown} kpi
+ * @param {{ isCompleted?: boolean }|null|undefined} [progress]
+ */
+export function isKpiEligibleForTimeTaskList(kpi, progress = null) {
+  return resolveKpiProgressStatus(kpi, progress) === KPI_PROGRESS_STATUS.ACTIVE;
+}
+
+/**
  * 목록·필터용 유효 상태.
  * 직접입력이고 목표 달성(isCompleted)이면 항상 완료.
  * 시작일이 미래면 진행 전(완료 제외).

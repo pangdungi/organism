@@ -21,6 +21,7 @@ export function buildHabitTrackerTodayDailyRingModel(opts = {}) {
   const month = Number(parts[1]) || new Date().getMonth() + 1;
   const rows = buildHabitTrackerRows(year, month, {
     skipSync: opts.skipSync !== false,
+    habitsOnly: true,
   });
 
   let done = 0;
