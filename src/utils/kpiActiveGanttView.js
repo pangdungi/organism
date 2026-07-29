@@ -316,9 +316,16 @@ export function mountKpiActiveGanttView(container, kpis, opts = {}) {
   colDivider.className = "dream-kpi-gantt-col-divider";
   colDivider.setAttribute("aria-hidden", "true");
 
+  /* 차트만 가로 스크롤 — 월당 최소 폭으로 8월 이후도 드래그로 볼 수 있게 */
+  const tracksScroll = document.createElement("div");
+  tracksScroll.className = "dream-kpi-gantt-tracks-scroll";
+  const pxPerMonth = 56;
+  tracksCol.style.minWidth = `${Math.max(months.length * pxPerMonth, 280)}px`;
+  tracksScroll.appendChild(tracksCol);
+
   layout.appendChild(labelsCol);
   layout.appendChild(colDivider);
-  layout.appendChild(tracksCol);
+  layout.appendChild(tracksScroll);
   root.appendChild(layout);
 
   appendGanttFold(container, root, foldOpts);

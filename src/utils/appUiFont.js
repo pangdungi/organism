@@ -11,7 +11,7 @@ import { supabase } from "../supabase.js";
 import { getSupabaseSession } from "./supabaseSession.js";
 
 export const USER_UI_FONT_ID_KEY = "user_ui_font_id";
-export const DEFAULT_UI_FONT_ID = "mitmi";
+export const DEFAULT_UI_FONT_ID = "leeseoyun";
 
 /** @typedef {{ id: string, label: string, family: string, url: string, format: "truetype"|"opentype", weight: number|string }} UiFontDef */
 
@@ -53,10 +53,10 @@ export const UI_FONT_DEFS = {
 
 /** 나의 계정 — 선택 가능한 UI 글꼴(기본 포함) */
 export const UI_FONT_PICKER_OPTIONS = [
+  UI_FONT_DEFS.leeseoyun,
   UI_FONT_DEFS.mitmi,
   UI_FONT_DEFS.gongbujahana,
   UI_FONT_DEFS.myeoneunheulrim,
-  UI_FONT_DEFS.leeseoyun,
 ];
 
 const LEGACY_UI_FONT_ALIASES = {
@@ -69,7 +69,7 @@ const LEGACY_UI_FONT_ALIASES = {
 };
 
 /** @deprecated applyUiFontById 사용 */
-export const LP_APP_FONT_STACK = fontStackForDef(UI_FONT_DEFS.mitmi);
+export const LP_APP_FONT_STACK = fontStackForDef(UI_FONT_DEFS.leeseoyun);
 
 export const LP_LEE_SEOYUN_FONT_STACK =
   '"LP Lee Seoyun", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';

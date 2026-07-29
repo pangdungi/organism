@@ -1853,6 +1853,18 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
+/* 예상 일정 모달 — 할 일 목록 보기 전용 */
+.lp-calendar-budget-add-modal .time-task-log-kpi-todo-row--readonly {
+  cursor: default;
+  gap: 0.4rem;
+}
+.lp-calendar-budget-add-modal .time-task-log-kpi-todo-row--readonly::before {
+  content: "·";
+  flex: 0 0 auto;
+  color: #94a3b8;
+  font-weight: 700;
+  line-height: 1.45;
+}
 .time-task-log-kpi-todo-row input[type="checkbox"],
 .time-task-log-daily-todo-row input[type="checkbox"],
 [data-legacy~="time-task-log-kpi-todo-row"] input[type="checkbox"],

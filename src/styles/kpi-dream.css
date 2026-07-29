@@ -1213,6 +1213,16 @@
   transform: translateX(300%);
 }
 
+.lp-kpi-dream-page
+  .dream-kpi-filter-bar:has(> .dream-kpi-filter-btn:nth-child(5):last-child) {
+  --lp-seg-count: 5;
+}
+
+.lp-kpi-dream-page
+  .dream-kpi-filter-bar:has(> .dream-kpi-filter-btn:nth-child(5).active)::before {
+  transform: translateX(400%);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lp-kpi-dream-page .dream-kpi-filter-bar::before {
     transition: none;

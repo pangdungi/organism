@@ -3036,12 +3036,6 @@
   padding: 0.65rem 0.85rem;
 }
 
-.lp-calendar-budget-add-modal [data-legacy~="time-task-log-scroll-area"] {
-  padding-left: 0;
-  padding-right: 0;
-  padding-top: 0;
-}
-
 .lp-calendar-budget-add-modal [data-legacy~="time-task-log-field"] {
   margin-bottom: 0.55rem;
 }
@@ -3051,6 +3045,12 @@
   font-size: 0.75rem;
   line-height: 1.45;
   color: #666666;
+}
+
+.lp-calendar-budget-add-modal .lp-calendar-expected-task-avg-hint-time {
+  color: #b91c1c;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
 }
 
 .lp-calendar-budget-add-modal [data-legacy~="time-task-log-body"] {
@@ -3063,81 +3063,76 @@
 
 .lp-calendar-budget-add-modal [data-legacy~="time-task-log-datetime-fields-wrap"] {
   flex-shrink: 0;
+  padding: 0.85rem 1rem 0;
 }
 
-/* [hidden] — flex/display 규칙보다 우선(식단명·칩 섹션 기본 숨김) */
+/* [hidden] — flex/display 규칙보다 우선(식단명·칩·할일 섹션 기본 숨김) */
 .lp-calendar-budget-add-modal
   [data-legacy~="time-task-log-meal-detail-section"][hidden],
 .lp-calendar-budget-add-modal
   [data-legacy~="time-task-log-content-type-section"][hidden],
 .lp-calendar-budget-add-modal
-  [data-legacy~="time-task-log-emotion-trigger-section"][hidden] {
+  [data-legacy~="time-task-log-emotion-trigger-section"][hidden],
+.lp-calendar-budget-add-modal
+  [data-legacy~="time-task-log-kpi-todos-section"][hidden] {
   display: none !important;
 }
 
-/* 데스크탑 — 메모가 패널 아래까지 채우도록 flex(모바일·키보드는 lp-modals.css 와 동일) */
-@media (min-width: 46.001rem) {
-  .lp-calendar-budget-add-modal [data-legacy~="time-task-log-scroll-area"] {
-    padding-bottom: 0;
-    display: flex;
-    flex-direction: column;
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow: visible;
-  }
+/* 본문 세로 스크롤 — 할 일 목록·메모가 길어도 패널 안에서 스크롤 */
+.lp-calendar-budget-add-modal [data-legacy~="time-task-log-scroll-area"] {
+  display: block;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 0 0 0.5rem;
+}
 
-  .lp-calendar-budget-add-modal [data-legacy~="time-task-log-memo-section"] {
-    margin-top: 0.12rem;
-    padding-top: 0.42rem;
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-  }
+.lp-calendar-budget-add-modal [data-legacy~="time-task-log-kpi-todos-section"] {
+  display: block;
+  margin: 0.35rem 0 0.35rem;
+  padding: 0.65rem 1rem 0.15rem;
+  border-top: 1px solid #e5e5e5;
+}
 
-  .lp-calendar-budget-add-modal
-    [data-legacy~="time-task-log-content-type-section"]:not([hidden])
-    + [data-legacy~="time-task-log-memo-section"],
-  .lp-calendar-budget-add-modal
-    [data-legacy~="time-task-log-emotion-trigger-section"]:not([hidden])
-    + [data-legacy~="time-task-log-memo-section"] {
-    margin-top: 0.75rem;
-    padding-top: 0.65rem;
-  }
+.lp-calendar-budget-add-modal [data-legacy~="time-task-log-kpi-todos-title"] {
+  margin: 0 0 0.65rem;
+}
 
-  .lp-calendar-budget-add-modal [data-legacy~="time-task-log-memo-fields"] {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-  }
+.lp-calendar-budget-add-modal [data-legacy~="time-task-log-memo-section"] {
+  margin-top: 0.12rem;
+  padding: 0.42rem 1rem 0;
+}
 
-  .lp-calendar-budget-add-modal
-    [data-legacy~="time-task-log-memo-section"]
-    [data-legacy~="time-task-log-field"]:last-child {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    margin-bottom: 0;
-  }
+.lp-calendar-budget-add-modal
+  [data-legacy~="time-task-log-content-type-section"]:not([hidden])
+  + [data-legacy~="time-task-log-memo-section"],
+.lp-calendar-budget-add-modal
+  [data-legacy~="time-task-log-emotion-trigger-section"]:not([hidden])
+  + [data-legacy~="time-task-log-memo-section"],
+.lp-calendar-budget-add-modal
+  [data-legacy~="time-task-log-kpi-todos-section"]:not([hidden])
+  + [data-legacy~="time-task-log-memo-section"] {
+  margin-top: 0.55rem;
+  padding-top: 0.55rem;
+}
 
-  .lp-calendar-budget-add-modal
-    [data-legacy~="time-task-log-memo-section"]
-    [data-legacy~="time-task-log-feedback"] {
-    flex: 1 1 auto;
-    height: auto;
-    min-height: var(--lp-modal-textarea-height);
-    max-height: none;
-    overflow-y: auto;
-  }
+.lp-calendar-budget-add-modal
+  [data-legacy~="time-task-log-memo-section"]
+  [data-legacy~="time-task-log-feedback"] {
+  min-height: var(--lp-modal-textarea-height, 5.5rem);
+  max-height: none;
+}
 
-  .lp-calendar-budget-add-modal
-    [data-legacy~="time-task-setup-panel"][data-legacy~="time-task-log-panel"] {
-    height: min(86vh, 41rem);
-    max-height: min(86vh, 41rem);
-    min-height: min(86vh, 41rem);
-  }
+.lp-calendar-budget-add-modal
+  [data-legacy~="time-task-setup-panel"][data-legacy~="time-task-log-panel"] {
+  display: flex;
+  flex-direction: column;
+  height: min(86vh, 41rem);
+  max-height: min(86vh, 41rem);
+  min-height: 0;
 }
 
 @media (max-width: 46rem) {

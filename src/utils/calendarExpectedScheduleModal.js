@@ -18,6 +18,7 @@ import {
 } from "./kpiTabCloudRefresh.js";
 import {
   getServerLedgerTaskOptionsForTaskLog,
+  getTaskOptionByName,
   patchKpiLinkedTasksFromKpiMaps,
 } from "./timeTaskOptionsModel.js";
 import { ensureAllKpiTimeTasksFromStorage } from "./kpiTimeTaskSync.js";
@@ -38,6 +39,15 @@ import {
   bindExpectedScheduleModalKeyboard,
   clearExpectedScheduleModalKeyboardShell,
 } from "./calendarExpectedScheduleModalKeyboard.js";
+import {
+  getKpiTaskCompletionTodoInfoByKpiId,
+  resolveKpiIdForTaskId,
+} from "./kpiTodoSync.js";
+import {
+  DEFAULT_READING_KPI_ID,
+  DEFAULT_READING_KPI_TODO_LIST_LABEL,
+} from "./happinessKpiMapSupabase.js";
+import { pullKpiTodosDomainFromCloudIfStale } from "./kpiTabCloudRefresh.js";
 
 function lpExpectedDeleteDebug(step, detail) {
   try {
@@ -877,6 +887,13 @@ export function openCalendarExpectedScheduleModal(options) {
               <input type="hidden" data-legacy="time-task-log-end" />
             </div>
           </div>
+          <div data-legacy="time-task-log-kpi-todos-section" hidden>
+            <h4 data-legacy="time-task-log-kpi-todos-title">할 일 목록</h4>
+            <p data-legacy="time-task-log-kpi-todos-status" hidden></p>
+            <div data-legacy="time-task-log-kpi-todos-scroll" hidden>
+              <div data-legacy="time-task-log-kpi-todos-list"></div>
+            </div>
+          </div>
           <div data-legacy="time-task-log-content-type-section" hidden>
             <span data-legacy="time-task-log-section-label time-task-log-content-type-label">콘텐츠 종류</span>
             <div data-legacy="time-task-log-content-type-chips lp-choice-chip-row"></div>
@@ -944,6 +961,22 @@ export function openCalendarExpectedScheduleModal(options) {
   const taskLogScrollArea = modal.querySelector(
     '[data-legacy~="time-task-log-scroll-area"]',
   );
+  const taskLogKpiTodosSection = modal.querySelector(
+    '[data-legacy~="time-task-log-kpi-todos-section"]',
+  );
+  const taskLogKpiTodosTitle = modal.querySelector(
+    '[data-legacy~="time-task-log-kpi-todos-title"]',
+  );
+  const taskLogKpiTodosList = modal.querySelector(
+    '[data-legacy~="time-task-log-kpi-todos-list"]',
+  );
+  const taskLogKpiTodosScroll = modal.querySelector(
+    '[data-legacy~="time-task-log-kpi-todos-scroll"]',
+  );
+  const taskLogKpiTodosStatus = modal.querySelector(
+    '[data-legacy~="time-task-log-kpi-todos-status"]',
+  );
+  let expectedKpiTodosSyncGen = 0;
   /** @type {Set<string>} */
   const taskLogChipDetailSelection = new Set();
   let taskLogChipDetailTaskName = "";
@@ -1077,10 +1110,140 @@ export function openCalendarExpectedScheduleModal(options) {
       return;
     }
     taskAvgHintEl.hidden = false;
-    taskAvgHintEl.textContent = `이 과제를 하는데 평균 소요시간은 ${formatIntegerMinutesDurationKo(avgMin)}입니다. (최근 30일)`;
+    const dur = formatIntegerMinutesDurationKo(avgMin);
+    taskAvgHintEl.replaceChildren();
+    taskAvgHintEl.append(
+      document.createTextNode("이 과제를 하는데 평균 소요시간은 "),
+    );
+    const timeEl = document.createElement("span");
+    timeEl.className = "lp-calendar-expected-task-avg-hint-time";
+    timeEl.textContent = dur;
+    taskAvgHintEl.append(
+      timeEl,
+      document.createTextNode("입니다. (최근 30일)"),
+    );
   }
 
-  function updateExpectedDetailVisibility(taskName) {
+  function resolveExpectedModalKpiId(meta = {}) {
+    const tid = String(
+      meta?.taskId || taskDropdown?._getTaskId?.() || "",
+    ).trim();
+    if (tid) {
+      const kid = resolveKpiIdForTaskId(tid);
+      if (kid) return kid;
+    }
+    const name = String(
+      meta?.taskName || taskDropdown?._getValue?.() || "",
+    ).trim();
+    if (!name) return "";
+    try {
+      const opt = getTaskOptionByName(name);
+      const fromOpt = resolveKpiIdForTaskId(opt?.id);
+      if (fromOpt) return fromOpt;
+      return String(opt?.kpiId || "").trim();
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function hideExpectedTaskCompletionTodos() {
+    expectedKpiTodosSyncGen += 1;
+    if (!taskLogKpiTodosSection) return;
+    taskLogKpiTodosSection.hidden = true;
+    if (taskLogKpiTodosScroll) taskLogKpiTodosScroll.hidden = true;
+    if (taskLogKpiTodosStatus) {
+      taskLogKpiTodosStatus.hidden = true;
+      taskLogKpiTodosStatus.textContent = "";
+    }
+    taskLogKpiTodosList?.replaceChildren?.();
+  }
+
+  function expectedTodoListLabelForKpiId(kpiId) {
+    return String(kpiId || "").trim() === DEFAULT_READING_KPI_ID
+      ? DEFAULT_READING_KPI_TODO_LIST_LABEL
+      : "할 일 목록";
+  }
+
+  function expectedTodoListEmptyMessageForKpiId(kpiId) {
+    return String(kpiId || "").trim() === DEFAULT_READING_KPI_ID
+      ? "등록된 읽을 예정이 없습니다."
+      : "등록된 할 일이 없습니다.";
+  }
+
+  function renderExpectedTaskCompletionTodoRows(todos) {
+    if (!taskLogKpiTodosList) return;
+    taskLogKpiTodosList.replaceChildren();
+    for (const todo of todos) {
+      const text = String(todo?.text || "").trim();
+      if (!text) continue;
+      const row = document.createElement("div");
+      row.className =
+        "time-task-log-kpi-todo-row time-task-log-chore-todo-row time-task-log-kpi-todo-row--readonly";
+      row.setAttribute("data-legacy", "time-task-log-chore-todo-row");
+      const span = document.createElement("span");
+      span.className = "time-task-log-kpi-todo-text";
+      span.setAttribute("data-legacy", "time-task-log-kpi-todo-text");
+      span.textContent = text;
+      row.appendChild(span);
+      taskLogKpiTodosList.appendChild(row);
+    }
+  }
+
+  function applyExpectedTaskCompletionTodosUi(kpiId, todos, opts = {}) {
+    if (
+      !taskLogKpiTodosSection ||
+      !taskLogKpiTodosList ||
+      !taskLogKpiTodosScroll ||
+      !taskLogKpiTodosStatus
+    ) {
+      return;
+    }
+    if (taskLogKpiTodosTitle) {
+      taskLogKpiTodosTitle.textContent = expectedTodoListLabelForKpiId(kpiId);
+    }
+    taskLogKpiTodosSection.hidden = false;
+    const filtered = (todos || []).filter((t) => String(t?.text || "").trim());
+    if (!filtered.length) {
+      taskLogKpiTodosScroll.hidden = true;
+      taskLogKpiTodosStatus.hidden = false;
+      taskLogKpiTodosStatus.textContent =
+        opts.errorMessage || expectedTodoListEmptyMessageForKpiId(kpiId);
+      taskLogKpiTodosList.replaceChildren();
+      return;
+    }
+    taskLogKpiTodosStatus.hidden = true;
+    taskLogKpiTodosStatus.textContent = "";
+    taskLogKpiTodosScroll.hidden = false;
+    renderExpectedTaskCompletionTodoRows(filtered);
+  }
+
+  function refreshExpectedTaskCompletionTodos(meta = {}) {
+    const kpiId = resolveExpectedModalKpiId(meta);
+    if (!kpiId) {
+      hideExpectedTaskCompletionTodos();
+      return null;
+    }
+    const info = getKpiTaskCompletionTodoInfoByKpiId(kpiId);
+    if (!info) {
+      hideExpectedTaskCompletionTodos();
+      return null;
+    }
+    applyExpectedTaskCompletionTodosUi(info.kpiId, info.todos);
+    return info;
+  }
+
+  async function syncExpectedTaskCompletionTodosFromCloud(meta = {}) {
+    const kpiId = resolveExpectedModalKpiId(meta);
+    if (!kpiId) return;
+    const gen = ++expectedKpiTodosSyncGen;
+    try {
+      await pullKpiTodosDomainFromCloudIfStale(kpiId);
+    } catch (_) {}
+    if (gen !== expectedKpiTodosSyncGen || !modal.isConnected) return;
+    refreshExpectedTaskCompletionTodos(meta);
+  }
+
+  function updateExpectedDetailVisibility(taskName, meta = {}) {
     const tn = (taskName || "").trim();
     updateExpectedTaskAverageHint(tn);
     const kind = TTC.ledgerDetailTaskKind(tn);
@@ -1121,6 +1284,9 @@ export function openCalendarExpectedScheduleModal(options) {
       if (!isEmotion) clearTaskLogEmotionTrigger();
     }
     taskLogScrollArea?.classList?.toggle("is-content-detail-task", isChipDetail);
+    const todoMeta = { taskName: tn, taskId: meta?.taskId };
+    refreshExpectedTaskCompletionTodos(todoMeta);
+    void syncExpectedTaskCompletionTodosFromCloud(todoMeta);
   }
 
   function getExpectedDetailForSave(taskName) {
@@ -1202,17 +1368,28 @@ export function openCalendarExpectedScheduleModal(options) {
   function finalizeExpectedModalTaskDropdown() {
     if (isEdit) {
       hydrateExpectedScheduleEditFromBudget();
+      refreshExpectedTaskCompletionTodos({
+        taskName: taskDropdown._getValue?.() || editTaskName,
+        taskId: taskDropdown._getTaskId?.(),
+      });
+      void syncExpectedTaskCompletionTodosFromCloud({
+        taskName: taskDropdown._getValue?.() || editTaskName,
+        taskId: taskDropdown._getTaskId?.(),
+      });
       return;
     }
     afterTaskListSyncForExpectedModal(taskDropdown, {
       preferSleep: preferSleepForExpectedAddDefaults(),
     });
-    updateExpectedDetailVisibility(taskDropdown._getValue?.() || "");
+    updateExpectedDetailVisibility(taskDropdown._getValue?.() || "", {
+      taskId: taskDropdown._getTaskId?.(),
+    });
   }
 
   const taskDropdown = buildTimeTaskLogPickerDropdown({
     abortSignal: signal,
-    onTaskSelected: (name) => updateExpectedDetailVisibility(name),
+    onTaskSelected: (name, meta) =>
+      updateExpectedDetailVisibility(name, meta || {}),
   });
   taskWrap.appendChild(taskDropdown);
 
@@ -1442,8 +1619,15 @@ export function openCalendarExpectedScheduleModal(options) {
       afterTaskListSyncForExpectedModal(taskDropdown, {
         preferSleep: preferSleepForExpectedAddDefaults(),
       });
-      updateExpectedDetailVisibility(taskDropdown._getValue?.() || "");
+      updateExpectedDetailVisibility(taskDropdown._getValue?.() || "", {
+        taskId: taskDropdown._getTaskId?.(),
+      });
+      return;
     }
+    refreshExpectedTaskCompletionTodos({
+      taskName: taskDropdown._getValue?.() || editTaskName,
+      taskId: taskDropdown._getTaskId?.(),
+    });
   };
 
   const showExpectedModal = () => {

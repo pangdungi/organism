@@ -44,6 +44,35 @@
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  min-width: 0;
+}
+
+/* 전체 할일 — 칸반 보드가 가로 스크롤 */
+.lp-kpi-dream-page
+  .habit-tracker-content-wrap[data-habit-view="alltodos"] {
+  overflow: hidden;
+  padding-bottom: 0.5rem;
+}
+
+.lp-kpi-dream-page
+  .habit-tracker-content-wrap[data-habit-view="alltodos"]
+  .habit-tracker-goal-host {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.lp-kpi-dream-page
+  .habit-tracker-content-wrap[data-habit-view="gantt"]
+  .dream-kpi-gantt,
+.lp-kpi-dream-page
+  .habit-tracker-content-wrap[data-habit-view="gantt"]
+  .dream-kpi-gantt-layout {
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* 페이지 제목 헤더도 스크롤과 분리 */
@@ -68,17 +97,14 @@
 .lp-kpi-dream-page .habit-tracker-page-grid-scroll {
   flex: 0 0 auto;
   min-height: 0;
-  max-height: min(58vh, 28rem);
-  overflow-x: hidden;
-  overflow-y: auto;
+  max-height: none;
+  overflow: visible;
   scroll-behavior: auto;
   padding: 0.35rem 0.7rem 0.75rem;
   margin: 0;
   border: none;
   border-radius: 0;
   background: #fff;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
   box-sizing: border-box;
 }
 
@@ -167,11 +193,25 @@
   font-size: 0.75rem;
   font-weight: 500;
   color: #24292f;
-  background: transparent;
+  background: #fff;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   line-height: 1.2;
+}
+
+/* 데스크탑 — 이름 열은 살짝만 넓히고, 글자는 잔디 쪽에 붙여 행 대응이 보이게 */
+@media (min-width: 46.01rem) {
+  .lp-kpi-dream-page .habit-tracker-page-grid-table {
+    --ht-habit-w: 8.5rem;
+    --ht-cell-gap: 2px;
+  }
+
+  .lp-kpi-dream-page .habit-tracker-page-grid-td--habit {
+    font-size: 0.8125rem;
+    text-align: right;
+    padding: 0 0.45rem 0 0.15rem;
+  }
 }
 
 /* 잔디 칸 — 둥근 사각 + 빈칸 회색 / 실행 초록 */
@@ -682,8 +722,17 @@
   display: none;
 }
 
-/* 모바일: 가로 스와이프, 화면(트랙)당 카드 1장 */
+/* 모바일: 간트 이름열 축소 · 인사이트 가로 스와이프 */
 @media (max-width: 46rem) {
+  .lp-kpi-dream-page .dream-kpi-gantt-layout {
+    grid-template-columns: 4.25rem 1px minmax(0, 1fr);
+    column-gap: 0.3rem;
+  }
+
+  .lp-kpi-dream-page .dream-kpi-gantt-row-label {
+    font-size: 0.6875rem;
+  }
+
   .lp-kpi-dream-page .habit-tracker-insight-track {
     display: flex;
     flex-wrap: nowrap;
@@ -739,10 +788,138 @@
   max-width: 28rem;
 }
 
-.lp-kpi-dream-page > .habit-tracker-main-view-bar--quad .dream-kpi-filter-btn {
+.lp-kpi-dream-page > .habit-tracker-main-view-bar--five {
+  /* 기본 filter-bar 18.5rem보다 넓게 — 5칸 흰 칩이 한 칸씩 맞게 */
+  width: min(100%, calc(100% - 2 * var(--lp-kpi-inset, 1rem)));
+  max-width: 36rem;
+}
+
+.lp-kpi-dream-page > .habit-tracker-main-view-bar--quad .dream-kpi-filter-btn,
+.lp-kpi-dream-page > .habit-tracker-main-view-bar--five .dream-kpi-filter-btn {
   font-size: 0.6875rem;
   padding: 0.35rem 0.15rem;
   letter-spacing: -0.03em;
+}
+
+.lp-kpi-dream-page > .habit-tracker-main-view-bar--five .dream-kpi-filter-btn {
+  font-size: 0.625rem;
+  padding: 0.35rem 0.08rem;
+}
+
+/* 전체 할일 — 칸반(가로 스크롤) */
+.lp-kpi-dream-page .habit-tracker-all-todos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  padding: 0.15rem 0 0.85rem;
+  box-sizing: border-box;
+}
+
+.lp-kpi-dream-page .habit-tracker-all-todos-summary {
+  margin: 0;
+  padding: 0 0.7rem;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  color: #555;
+  flex: 0 0 auto;
+}
+
+.lp-kpi-dream-page .habit-tracker-all-todos-empty {
+  margin: 0.5rem 0.7rem 0;
+}
+
+.lp-kpi-dream-page .habit-tracker-all-todos-board {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  padding: 0 0.7rem 0.35rem;
+  box-sizing: border-box;
+}
+
+.lp-kpi-dream-page .habit-tracker-all-todos-col {
+  flex: 0 0 auto;
+  width: min(78vw, 17.5rem);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: min(70vh, 32rem);
+  border: 1px solid #e5e5e5;
+  border-radius: 0.55rem;
+  background: #f7f7f7;
+  overflow: hidden;
+  scroll-snap-align: start;
+  box-sizing: border-box;
+  /* gap은 가로 스크롤 flex에서 다음 칸이 붙는 경우가 있어 margin으로 간격 유지 */
+  margin-right: 0.65rem;
+}
+
+.lp-kpi-dream-page .habit-tracker-all-todos-col:last-child {
+  margin-right: 0;
+}
+
+.lp-kpi-dream-page .habit-tracker-all-todos-col-head {
+  flex: 0 0 auto;
+  padding: 0.55rem 0.65rem 0.5rem;
+  background: #f0f0f0;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.lp-kpi-dream-page .habit-tracker-all-todos-card-name {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 750;
+  color: #111;
+  letter-spacing: -0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lp-kpi-dream-page .habit-tracker-all-todos-card-meta {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #666;
+}
+
+.lp-kpi-dream-page .habit-tracker-all-todos-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.25rem 0.55rem 0.55rem;
+  background: #fff;
+}
+
+.lp-kpi-dream-page .habit-tracker-all-todos-list .dream-kpi-todo-item {
+  padding: 0.45rem 0;
+}
+
+.lp-kpi-dream-page .habit-tracker-all-todos-none {
+  margin: 0.55rem 0;
+  font-size: 0.8125rem;
+  color: #888;
+}
+
+@media (min-width: 46.01rem) {
+  .lp-kpi-dream-page .habit-tracker-all-todos-col {
+    width: 16.5rem;
+    max-height: min(72vh, 36rem);
+  }
 }
 
 .lp-kpi-dream-page .habit-tracker-routine-block {
@@ -831,38 +1008,54 @@
 .lp-kpi-dream-page .dream-kpi-gantt {
   width: 100%;
   margin: 0;
-  padding: 0.55rem 0.45rem 0.65rem;
+  padding: 0.55rem 0.35rem 0.65rem;
   border-radius: 0;
   border: none;
   background: #fff;
   box-sizing: border-box;
-  overflow-x: auto;
+  overflow-x: hidden;
+  min-width: 0;
 }
 
 .lp-kpi-dream-page .dream-kpi-gantt-layout {
   display: grid;
-  grid-template-columns: minmax(7.5rem, 11rem) 1px minmax(12rem, 1fr);
-  column-gap: 0.65rem;
+  grid-template-columns: 5rem 1px minmax(0, 1fr);
+  column-gap: 0.4rem;
   align-items: stretch;
-  min-width: 24rem;
+  min-width: 0;
+  width: 100%;
 }
 
-.lp-kpi-dream-page .dream-kpi-gantt-labels,
-.lp-kpi-dream-page .dream-kpi-gantt-tracks {
+.lp-kpi-dream-page .dream-kpi-gantt-labels {
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
   min-width: 0;
+  z-index: 3;
+  background: #fff;
+}
+
+.lp-kpi-dream-page .dream-kpi-gantt-tracks-scroll {
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
+}
+
+.lp-kpi-dream-page .dream-kpi-gantt-tracks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  position: relative;
+  box-sizing: border-box;
 }
 
 .lp-kpi-dream-page .dream-kpi-gantt-col-divider {
   width: 1px;
-  background: #cbd5e1;
+  background: #d4d4d4;
   align-self: stretch;
-}
-
-.lp-kpi-dream-page .dream-kpi-gantt-tracks {
-  position: relative;
 }
 
 .lp-kpi-dream-page .dream-kpi-gantt-month-grid {
@@ -934,15 +1127,15 @@
 
 .lp-kpi-dream-page .dream-kpi-gantt-row-label {
   margin: 0;
-  padding: 0.1rem 0;
+  padding: 0.1rem 0.1rem 0.1rem 0;
   border: none;
   background: transparent;
   font: inherit;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
-  color: #1e293b;
-  line-height: 1.4;
+  letter-spacing: -0.03em;
+  color: #111;
+  line-height: 1.3;
   text-align: left;
   cursor: default;
   display: -webkit-box;
@@ -1174,7 +1367,7 @@
   text-align: center;
   font-size: 0.8125rem;
   font-weight: 650;
-  color: #475569;
+  color: #555;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1204,17 +1397,18 @@
 }
 
 .lp-kpi-dream-page .habit-tracker-success-fail-card {
-  border: 1px solid #d1d5db;
-  border-radius: 0.45rem;
+  border: 1px solid #e5e5e5;
+  border-radius: 0.55rem;
   overflow: hidden;
   background: #fff;
 }
 
 .lp-kpi-dream-page .habit-tracker-success-fail-card-head {
   margin: 0;
-  padding: 0.45rem 0.65rem;
-  background: #111827;
-  color: #fff;
+  padding: 0.55rem 0.7rem;
+  background: #f5f5f5;
+  border-bottom: 1px solid #e5e5e5;
+  color: #111;
   font-size: 0.8125rem;
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -1224,7 +1418,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  padding: 0.6rem 0.7rem 0.65rem;
+  padding: 0.65rem 0.75rem 0.7rem;
 }
 
 .lp-kpi-dream-page .habit-tracker-success-fail-head-row {
@@ -1238,6 +1432,7 @@
   min-width: 0;
   font-size: 0.875rem;
   font-weight: 750;
+  color: #111;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1248,30 +1443,29 @@
   font-size: 0.875rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
-  color: #fef08a;
+  color: #111;
 }
 
 .lp-kpi-dream-page .habit-tracker-success-fail-progress {
   width: 100%;
-  height: 0.7rem;
+  height: 0.55rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.28);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
+  background: #e5e5e5;
   overflow: hidden;
 }
 
 .lp-kpi-dream-page .habit-tracker-success-fail-progress-fill {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #4ade80 0%, #a3e635 100%);
+  background: #111;
   min-width: 0;
   transition: width 0.25s ease;
 }
 
 .lp-kpi-dream-page .habit-tracker-success-fail-head-meta {
   font-size: 0.75rem;
-  font-weight: 650;
-  color: #f3f4f6;
+  font-weight: 600;
+  color: #666;
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
 }
@@ -1286,7 +1480,7 @@
 
 .lp-kpi-dream-page .habit-tracker-success-fail-table th,
 .lp-kpi-dream-page .habit-tracker-success-fail-table td {
-  border: 1px solid #cbd5e1;
+  border: 1px solid #d4d4d4;
   padding: 0.5rem 0.2rem;
   text-align: center;
   vertical-align: middle;
@@ -1297,25 +1491,25 @@
 }
 
 .lp-kpi-dream-page .habit-tracker-success-fail-table thead th {
-  background: #e2e8f0;
+  background: #f0f0f0;
   font-weight: 750;
-  color: #0f172a;
+  color: #111;
 }
 
 .lp-kpi-dream-page .habit-tracker-success-fail-table tbody th {
-  background: #f1f5f9;
+  background: #f5f5f5;
   text-align: left;
   padding-left: 0.55rem;
   padding-right: 0.35rem;
   font-size: 0.75rem;
   font-weight: 750;
-  color: #1e293b;
+  color: #111;
   width: 5.5rem;
 }
 
 .lp-kpi-dream-page .habit-tracker-success-fail-row--mark th,
 .lp-kpi-dream-page .habit-tracker-success-fail-row--mark td {
-  background: #eef2ff;
+  background: #f5f5f5;
   vertical-align: middle;
 }
 
@@ -1328,9 +1522,9 @@
 }
 
 .lp-kpi-dream-page .habit-tracker-success-fail-table td.is-ok {
-  color: #047857;
+  color: #111;
   font-weight: 800;
-  background: #ecfdf5;
+  background: #fff;
 }
 
 .lp-kpi-dream-page .habit-tracker-success-fail-table td.is-fail {
@@ -1344,9 +1538,9 @@
   color: transparent;
   background: repeating-linear-gradient(
     -45deg,
-    #f8fafc,
-    #f8fafc 4px,
-    #eef2f7 4px,
-    #eef2f7 8px
+    #fafafa,
+    #fafafa 4px,
+    #e8e8e8 4px,
+    #e8e8e8 8px
   );
 }

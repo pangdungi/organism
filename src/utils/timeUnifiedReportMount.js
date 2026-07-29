@@ -4989,7 +4989,7 @@ function mountTaskTimeMapSection(scrollWrap, range, rows) {
   const items = buildMonthTaskTreemapItems(rows);
 
   const sec = createSection(
-    isDay ? "하루 시간 지도" : isWeek ? "1주 시간 지도" : "한달 시간 지도",
+    isDay ? "하루 시간 분포" : isWeek ? "1주 시간 분포" : "한달 시간 분포",
     "",
   );
 

@@ -1,5 +1,5 @@
 /**
- * 해빗 트랙커 — 오늘의 목표 / 간트 / 성공·실패 / 루틴
+ * 해빗 트랙커 — 오늘의 행동 / 간트 / 성공·실패 / 전체 할일 / 행동 트래커
  */
 
 import { setupKpiCategoryHeaderIcon } from "../utils/kpiCategoryHeaderIcon.js";
@@ -13,17 +13,19 @@ import {
 } from "../utils/habitTrackerPageModel.js";
 import { mountKpiActiveGanttView } from "../utils/kpiActiveGanttView.js";
 import { collectGoalTrackerActiveKpis } from "../utils/kpiGoalTrackerActiveKpis.js";
+import { mountKpiGoalAllTodosSection } from "../utils/kpiGoalTrackerAllTodos.js";
 import { mountKpiGoalSuccessFailSection } from "../utils/kpiGoalTrackerSuccessFail.js";
 import { mountKpiGoalTodayGoalsSection } from "../utils/kpiGoalTrackerTodayGoals.js";
 
 const MAIN_VIEW_KEY = "lp_habit_tracker_main_view";
 
-/** @typedef {"today"|"gantt"|"successfail"|"routine"} HabitMainView */
+/** @typedef {"today"|"gantt"|"successfail"|"alltodos"|"routine"} HabitMainView */
 
 const MAIN_VIEWS = /** @type {const} */ ([
   "today",
   "gantt",
   "successfail",
+  "alltodos",
   "routine",
 ]);
 
@@ -31,6 +33,7 @@ const VIEW_CHROME = {
   today: { label: "TODAY'S ACTIONS", title: "오늘의 행동" },
   gantt: { label: "GANTT CHART", title: "간트 차트" },
   successfail: { label: "SUCCESS · FAIL", title: "성공·실패표" },
+  alltodos: { label: "ALL TODOS", title: "전체 할일" },
   routine: { label: "ACTION TRACKER", title: "행동 트래커" },
 };
 
@@ -102,13 +105,14 @@ export function render(opts = {}) {
 
   const viewModeBar = document.createElement("div");
   viewModeBar.className =
-    "dream-kpi-filter-bar habit-tracker-main-view-bar habit-tracker-main-view-bar--quad";
+    "dream-kpi-filter-bar habit-tracker-main-view-bar habit-tracker-main-view-bar--five";
   viewModeBar.setAttribute("role", "tablist");
   viewModeBar.setAttribute("aria-label", "진행 상황 보기");
   viewModeBar.innerHTML = `
     <button type="button" class="dream-kpi-filter-btn" data-main-view="today" role="tab">오늘의 행동</button>
     <button type="button" class="dream-kpi-filter-btn" data-main-view="gantt" role="tab">간트 차트</button>
     <button type="button" class="dream-kpi-filter-btn" data-main-view="successfail" role="tab">성공·실패표</button>
+    <button type="button" class="dream-kpi-filter-btn" data-main-view="alltodos" role="tab">전체 할일</button>
     <button type="button" class="dream-kpi-filter-btn" data-main-view="routine" role="tab">행동 트래커</button>
   `;
   if (!dashboardEmbedMode) {
@@ -211,6 +215,13 @@ export function render(opts = {}) {
     if (!skipSync) hasSyncedPaint = true;
   }
 
+  function paintAllTodosOnly() {
+    if (!goalHost) return;
+    goalHost.replaceChildren();
+    goalHost.classList.remove("habit-tracker-goal-host--panel");
+    mountKpiGoalAllTodosSection(goalHost);
+  }
+
   function paintGrid(opts = {}) {
     if (!opts.allowBeforeMount && !el.isConnected) return;
     syncViewMonthGlobal();
@@ -293,6 +304,10 @@ export function render(opts = {}) {
     }
     if (mainView === "gantt") {
       paintGanttOnly();
+      return;
+    }
+    if (mainView === "alltodos") {
+      paintAllTodosOnly();
       return;
     }
     paintSuccessFailOnly(opts);
