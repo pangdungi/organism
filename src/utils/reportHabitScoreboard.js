@@ -4,7 +4,9 @@
  */
 
 import {
+  beginHabitTrackerReportPaint,
   buildHabitTrackerRows,
+  endHabitTrackerReportPaint,
   getHabitTrackerCellLevel,
 } from "./habitTrackerPageModel.js";
 import { createHabitTrackerTodayRingElement } from "./habitTrackerTodayRing.js";
@@ -65,14 +67,23 @@ function resolveScoreboardPeriod(start, end) {
   if (s && s === e) {
     return { mode: "day", dateKeys: [s], title: "오늘의 습관" };
   }
-  let keys = listDatesInclusive(s, e);
-  if (keys.length > 40) {
-    keys = keys.slice(-31);
+  const keys = listDatesInclusive(s, e);
+  if (keys.length >= 300) {
+    const monthKeys = [...new Set(keys.map((dk) => dk.slice(0, 7)).filter(Boolean))];
+    return {
+      mode: "year",
+      dateKeys: keys,
+      monthKeys,
+      title: "1년 습관 점수판",
+    };
   }
   if (keys.length <= 10) {
-    return { mode: "week", dateKeys: keys, title: "이번주 습관 점수판" };
+    return { mode: "week", dateKeys: keys, title: "1주 습관 점수판" };
   }
-  return { mode: "month", dateKeys: keys, title: "이번달 습관 점수판" };
+  if (keys.length <= 40) {
+    return { mode: "month", dateKeys: keys, title: "한달 습관 점수판" };
+  }
+  return { mode: "month", dateKeys: keys, title: "기간 습관 점수판" };
 }
 
 /**
@@ -95,42 +106,57 @@ export function buildReportHabitScoreboardModel(opts = {}) {
     };
   }
 
-  /** @type {Map<string, object>} */
-  const rowById = new Map();
-  const months = new Set(
-    period.dateKeys.map((dk) => dk.slice(0, 7)).filter(Boolean),
-  );
-  for (const ym of months) {
-    const y = Number(ym.slice(0, 4));
-    const m = Number(ym.slice(5, 7));
-    for (const row of buildHabitTrackerRows(y, m, {
-      skipSync: opts.skipSync !== false,
-      habitsOnly: true,
-    })) {
-      if (!rowById.has(row.id)) rowById.set(row.id, row);
-    }
-  }
-
-  const habits = [...rowById.values()].map((row) => {
-    const completeFlags = period.dateKeys.map((dk) =>
-      isDayComplete(getHabitTrackerCellLevel(row, dk)),
-    );
-    const doneCount = completeFlags.filter(Boolean).length;
-    return {
-      id: String(row.id || ""),
-      label: String(row.label || "루틴").trim() || "루틴",
-      completeFlags,
-      doneCount,
-    };
+  /* habitsOnly 목록은 월과 무관 — 한 번만 읽고 페인트 인덱스 공유 */
+  const anchor = period.dateKeys[0] || start;
+  const ay = Number(anchor.slice(0, 4)) || new Date().getFullYear();
+  const am = Number(anchor.slice(5, 7)) || 1;
+  const trackerRows = buildHabitTrackerRows(ay, am, {
+    skipSync: opts.skipSync !== false,
+    habitsOnly: true,
   });
 
-  return {
-    mode: period.mode,
-    title: period.title,
-    dateKeys: period.dateKeys,
-    habits,
-    dayGoals: null,
-  };
+  const isYear = period.mode === "year";
+  const monthKeys = Array.isArray(period.monthKeys) ? period.monthKeys : [];
+
+  beginHabitTrackerReportPaint(period.dateKeys, trackerRows);
+  try {
+    const habits = trackerRows.map((row) => {
+      if (isYear) {
+        /* 연간 카드는 doneCount만 필요 — 월 칸 completeFlags 생략 */
+        let doneCount = 0;
+        for (const dk of period.dateKeys) {
+          if (isDayComplete(getHabitTrackerCellLevel(row, dk))) doneCount += 1;
+        }
+        return {
+          id: String(row.id || ""),
+          label: String(row.label || "루틴").trim() || "루틴",
+          completeFlags: [],
+          doneCount,
+        };
+      }
+      const dayFlags = period.dateKeys.map((dk) =>
+        isDayComplete(getHabitTrackerCellLevel(row, dk)),
+      );
+      return {
+        id: String(row.id || ""),
+        label: String(row.label || "루틴").trim() || "루틴",
+        completeFlags: dayFlags,
+        doneCount: dayFlags.filter(Boolean).length,
+      };
+    });
+
+    return {
+      mode: period.mode,
+      title: period.title,
+      dateKeys: isYear ? monthKeys : period.dateKeys,
+      habits,
+      dayGoals: null,
+      /** 연간 달성률 분모(일 수) — UI 톤 계산용 */
+      periodDayCount: isYear ? period.dateKeys.length : undefined,
+    };
+  } finally {
+    endHabitTrackerReportPaint();
+  }
 }
 
 /**
@@ -139,8 +165,11 @@ export function buildReportHabitScoreboardModel(opts = {}) {
 export function createReportHabitScoreboardElement(model) {
   const root = document.createElement("div");
   root.className = "lp-tr2-habit-scoreboard";
-  if (model?.mode === "month") {
+  if (model?.mode === "month" || model?.mode === "year") {
     root.classList.add("lp-tr2-habit-scoreboard--month");
+  }
+  if (model?.mode === "year") {
+    root.classList.add("lp-tr2-habit-scoreboard--year");
   }
   root.setAttribute("aria-label", model?.title || "습관 점수판");
   root.dataset.segCount = String((model?.dateKeys || []).length || 0);
@@ -186,6 +215,40 @@ export function createReportHabitScoreboardElement(model) {
   }
 
   const ranked = habits.slice().sort((a, b) => b.doneCount - a.doneCount);
+
+  /* 연간: 월별 막대 대신 실행률 카드(한 줄 3개) */
+  if (model?.mode === "year") {
+    root.classList.add("lp-tr2-habit-scoreboard--cards");
+    badge.remove();
+    const totalDays = Math.max(
+      1,
+      Number(model.periodDayCount) || segCount || 365,
+    );
+    const grid = document.createElement("div");
+    grid.className = "lp-tr2-habit-year-cards";
+    grid.setAttribute("role", "list");
+    ranked.forEach((h) => {
+      const done = Math.max(0, Math.min(totalDays, Number(h.doneCount) || 0));
+      const pct = (done / totalDays) * 100;
+      const pctLabel =
+        pct >= 10 ? pct.toFixed(1) : pct > 0 ? pct.toFixed(1) : "0";
+      const card = document.createElement("article");
+      card.className = "lp-tr2-habit-year-card";
+      card.setAttribute("role", "listitem");
+      card.title = `${h.label} · ${done}/${totalDays} · 실행률 ${pctLabel}%`;
+      card.innerHTML = `
+        <p class="lp-tr2-habit-year-card-name">${escapeHtml(h.label)}</p>
+        <p class="lp-tr2-habit-year-card-frac"><strong>${done}</strong><span>/${totalDays}</span></p>
+        <p class="lp-tr2-habit-year-card-pct">실행률 ${pctLabel}%</p>
+      `;
+      grid.appendChild(card);
+    });
+    body.appendChild(grid);
+    root.appendChild(body);
+    return root;
+  }
+
+  const toneDenom = segCount;
   body.innerHTML = ranked
     .map((h) => {
       const flags = Array.isArray(h.completeFlags) ? h.completeFlags : [];
@@ -197,9 +260,9 @@ export function createReportHabitScoreboardElement(model) {
       const tone =
         done <= 0
           ? "is-zero"
-          : done / segCount >= 0.7
+          : done / toneDenom >= 0.7
             ? "is-high"
-            : done / segCount >= 0.4
+            : done / toneDenom >= 0.4
               ? "is-mid"
               : "is-low";
       return `<div class="lp-tr2-habit-scoreboard-row ${tone}">

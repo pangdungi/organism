@@ -620,11 +620,14 @@ function isTaskIdForeignKeyError(error) {
  * 로컬에서 «이번에 사용자가 저장해 바뀐 행»만 서버 upsert 후, 피커 구간을 서버 기준으로 pull.
  * @param {{ skipPull?: boolean, rangeStart?: string, rangeEnd?: string, entryIds?: string[], _insideSerializedOp?: boolean }} opts
  */
+/**
+ * @returns {Promise<{ ok: boolean, reason?: string, pushedCount?: number }>}
+ */
 async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
   const userId = await getSessionUserId();
   if (!userId || !supabase) {
     timeLedgerSyncLog("push_dirty_skipped", { reason: "no_session" });
-    return;
+    return { ok: false, reason: "no_session", pushedCount: 0 };
   }
 
   let rows = readTimeLedgerEntriesRaw();
@@ -649,12 +652,12 @@ async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
   }
 
   if (toUpload.length === 0) {
-    timeLedgerSyncLog("push_dirty_skipped", {
-      reason: entryIdFilter.size
-        ? "no_matching_rows_to_upload"
-        : "no_rows_to_upload",
-    });
-    return;
+    const reason = entryIdFilter.size
+      ? "no_matching_rows_to_upload"
+      : "no_rows_to_upload";
+    timeLedgerSyncLog("push_dirty_skipped", { reason });
+    /* 올릴 행이 없으면 실패가 아님(이미 반영·변경 없음) */
+    return { ok: true, reason, pushedCount: 0 };
   }
 
   const idPreviews = toUpload.map((r) =>
@@ -673,7 +676,7 @@ async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
     .filter(Boolean);
   if (payloads.length === 0) {
     timeLedgerSyncLog("push_dirty_skipped", { reason: "payloads_empty" });
-    return;
+    return { ok: false, reason: "payloads_empty", pushedCount: 0 };
   }
 
   /* time_ledger_entries.task_id FK: 과제는 과제설정·KPI 저장 시에만 서버에 올림 — 기록 push에서 과제 upsert 안 함 */
@@ -702,7 +705,11 @@ async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
       code: error.code,
       hint: error.hint,
     });
-    return;
+    return {
+      ok: false,
+      reason: error.message || "upsert_failed",
+      pushedCount: 0,
+    };
   }
 
   if (Array.isArray(data) && data.length > 0) {
@@ -729,7 +736,7 @@ async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
     timeLedgerSyncLog("pull_after_push_skipped", {
       reason: "skipPull_option",
     });
-    return;
+    return { ok: true, pushedCount: toUpload.length };
   }
 
   const rs = opts.rangeStart;
@@ -744,8 +751,10 @@ async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
       trigger: "after_push",
     });
   }
+  return { ok: true, pushedCount: toUpload.length };
 }
 
+/** @returns {Promise<{ ok: boolean, reason?: string, pushedCount?: number }>} */
 export async function pushDirtyTimeLedgerEntriesToSupabase(opts = {}) {
   return runSerializedLedgerServerOp(() =>
     pushDirtyTimeLedgerEntriesToSupabaseCore(opts),

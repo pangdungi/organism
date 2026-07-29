@@ -653,23 +653,26 @@
 /* ── 시간 레포트 v2 ── */
 .lp-tr2-root,
 .diary-content-scroll.lp-tr2-root {
-  /* 레포트 타이포 — 레포트 칸 너비(cqw). 3분할이면 좁은 칸 기준 */
   container-type: inline-size;
   container-name: time-report;
-  --lp-tr2-title: clamp(0.875rem, 0.62rem + 1.7cqw, 1.375rem);
-  --lp-tr2-sub: clamp(0.6875rem, 0.52rem + 1.2cqw, 1rem);
-  --lp-tr2-body: clamp(0.6875rem, 0.52rem + 1.2cqw, 1rem);
-  --lp-tr2-label: clamp(0.625rem, 0.48rem + 1.05cqw, 0.9375rem);
-  --lp-tr2-meta: clamp(0.5625rem, 0.44rem + 0.95cqw, 0.875rem);
-  --lp-tr2-caption: clamp(0.5rem, 0.4rem + 0.85cqw, 0.75rem);
-  --lp-tr2-value: clamp(0.9375rem, 0.7rem + 1.8cqw, 1.5rem);
-  --lp-tr2-hero: clamp(1.125rem, 0.85rem + 2.2cqw, 1.875rem);
-  --lp-tr2-section-pad: clamp(0.85rem, 0.7rem + 1.2cqw, 1.25rem)
-    clamp(0.9rem, 0.75rem + 1.3cqw, 1.25rem)
-    clamp(0.95rem, 0.8rem + 1.3cqw, 1.25rem);
+  /*
+   * 레포트 타이포 계층 (큰 → 작음, 단계 겹침 없음)
+   * display > hero > value > title > block > body > sub(=label) > meta > caption
+   */
+  --lp-tr2-display: 1.75rem;
+  --lp-tr2-hero: 1.25rem;
+  --lp-tr2-value: 1.0625rem;
+  --lp-tr2-title: 0.9375rem;
+  --lp-tr2-block: 0.875rem;
+  --lp-tr2-body: 0.8125rem;
+  --lp-tr2-sub: 0.75rem;
+  --lp-tr2-label: 0.75rem;
+  --lp-tr2-meta: 0.6875rem;
+  --lp-tr2-caption: 0.625rem;
+  --lp-tr2-section-pad: 0.95rem 1rem 1.05rem;
   display: flex;
   flex-direction: column;
-  gap: clamp(0.65rem, 0.5rem + 0.8cqw, 0.85rem);
+  gap: 0.75rem;
   padding-bottom: 1.25rem;
   box-sizing: border-box;
 }
@@ -749,6 +752,208 @@
   line-height: 1.35;
 }
 
+/* 연간 한 장 요약 — 기록 막대 + 구성 막대 + 순가치 카드 */
+.lp-tr2-report-loading {
+  margin: 1.25rem 0.75rem;
+  font-size: var(--lp-tr2-body);
+  font-weight: 600;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.lp-tr2-year-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.lp-tr2-year-hero-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.lp-tr2-year-hero-block-title {
+  margin: 0;
+  font-size: var(--lp-tr2-label);
+  font-weight: 800;
+  color: #475569;
+  letter-spacing: 0.01em;
+}
+
+.lp-tr2-year-hero-block-meta {
+  margin: 0;
+  font-size: var(--lp-tr2-body);
+  font-weight: 700;
+  color: #111111;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+}
+
+.lp-tr2-year-hero-block-sub {
+  margin: 0;
+  font-size: var(--lp-tr2-label);
+  font-weight: 500;
+  color: #999999;
+  line-height: 1.35;
+}
+
+.lp-tr2-year-hero-bar {
+  width: 100%;
+  margin-top: 0.15rem;
+}
+
+.lp-tr2-year-hero-bar-track {
+  display: flex;
+  width: 100%;
+  height: 0.95rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #eef2f7;
+}
+
+.lp-tr2-year-hero-bar-track.is-empty {
+  background: #eef2f7;
+}
+
+.lp-tr2-year-hero-bar-seg {
+  min-width: 2px;
+  height: 100%;
+  flex-shrink: 0;
+}
+
+.lp-tr2-year-hero-bar-seg.is-first {
+  border-radius: 999px 0 0 999px;
+}
+
+.lp-tr2-year-hero-bar-seg.is-last {
+  border-radius: 0 999px 999px 0;
+}
+
+.lp-tr2-year-hero-bar-seg:only-child {
+  border-radius: 999px;
+}
+
+.lp-tr2-year-hero-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  margin-top: 0.2rem;
+}
+
+.lp-tr2-year-hero-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: var(--lp-tr2-label);
+  font-weight: 600;
+  color: #666666;
+  white-space: nowrap;
+}
+
+.lp-tr2-year-hero-legend-swatch {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+/* 연간 한 장 요약 — 월별 투자·소비 곡선 */
+.lp-tr2-year-invest-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+  width: 100%;
+  padding: 0.45rem 0.15rem 0.25rem;
+  border-radius: 0.75rem;
+  background: #fff;
+  border: 1px solid #eef2f7;
+  box-sizing: border-box;
+}
+
+.lp-tr2-year-invest-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.45rem 1rem;
+  margin: 0.1rem 0 0.15rem;
+}
+
+.lp-tr2-year-invest-chart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: var(--lp-tr2-label);
+  font-weight: 650;
+  color: #64748b;
+}
+
+.lp-tr2-year-invest-chart-legend-swatch {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 0.15rem;
+  flex-shrink: 0;
+}
+
+.lp-tr2-year-invest-chart-svg {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  /* max-height 있으면 가로가 잘려 양옆 여백이 생김 */
+  aspect-ratio: 420 / 200;
+}
+
+.lp-tr2-year-value-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  padding: 0.95rem 1rem 1rem;
+  border-radius: 0.9rem;
+  background: linear-gradient(
+    165deg,
+    rgba(30, 77, 123, 0.07),
+    rgba(248, 250, 252, 0.98)
+  );
+  border: 1px solid rgba(30, 77, 123, 0.12);
+  box-sizing: border-box;
+}
+
+.lp-tr2-year-value-card-title {
+  margin: 0;
+  font-size: var(--lp-tr2-label);
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.02em;
+}
+
+.lp-tr2-year-value-card-sub {
+  margin: 0;
+  font-size: var(--lp-tr2-meta);
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.lp-tr2-year-value-card-amount {
+  font-size: var(--lp-tr2-display) !important;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #111111;
+}
+
+.lp-tr2-year-value-card.is-pos .lp-tr2-year-value-card-amount {
+  color: #a87070;
+}
+
+.lp-tr2-year-value-card.is-neg .lp-tr2-year-value-card-amount {
+  color: #6d8aad;
+}
+
 /* 일간 한 장 요약 — 이중 도넛 + 시간 가치 */
 .lp-tr2-day-hero {
   display: flex;
@@ -800,6 +1005,65 @@
   text-overflow: ellipsis;
 }
 
+/* 연간 한 장 요약 — 가로 막대 */
+.lp-tr2-day-hero--bars .lp-tr2-day-hero-chart-col {
+  align-items: stretch;
+}
+
+.lp-tr2-day-hero--bars .lp-tr2-day-hero-chart-cap {
+  text-align: left;
+}
+
+.lp-tr2-day-hero-bars {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.lp-tr2-day-hero-bars-total {
+  margin: 0;
+  font-size: var(--lp-tr2-body);
+  font-weight: 600;
+  color: #475569;
+  line-height: 1.35;
+}
+
+.lp-tr2-day-hero-bars-total strong {
+  color: #111;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-tr2-day-hero-bar-row .lp-tr2-bar-label {
+  font-weight: 700;
+  color: #334155;
+}
+
+.lp-tr2-day-hero-bar-value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.05rem;
+  line-height: 1.2;
+}
+
+.lp-tr2-day-hero-bar-dur {
+  font-size: var(--lp-tr2-body);
+  font-weight: 800;
+  color: #111;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.lp-tr2-day-hero-bar-pct {
+  font-size: var(--lp-tr2-caption);
+  font-weight: 650;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+}
+
 .lp-tr2-day-hero-donut {
   position: relative;
   /* 뷰포트 vw 금지 — 레포트 칸 너비(cqw) 기준 */
@@ -807,6 +1071,8 @@
   max-width: 100%;
   aspect-ratio: 1;
   flex-shrink: 0;
+  container-type: inline-size;
+  container-name: lp-day-hero-donut;
 }
 
 .lp-tr2-day-hero-donut-slice-label {
@@ -819,55 +1085,76 @@
   display: block;
 }
 
+/* 가운데 문구는 도넛 구멍(약 53%) 안으로만 */
 .lp-tr2-day-hero-donut-center {
   position: absolute;
-  inset: 0;
+  inset: 24%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   pointer-events: none;
   text-align: center;
-  padding: 0 clamp(0.45rem, 8cqw, 1.35rem);
+  padding: 0.05rem 0.15rem;
   box-sizing: border-box;
   min-width: 0;
+  overflow: hidden;
 }
 
 .lp-tr2-day-hero-donut-cap {
-  font-size: clamp(0.5625rem, 0.42rem + 1.1cqw, 0.75rem);
+  font-size: clamp(0.4375rem, 5.8cqi, 0.625rem);
   font-weight: 700;
   color: #94a3b8;
   letter-spacing: 0.02em;
   white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.15;
 }
 
 .lp-tr2-day-hero-donut-total {
-  margin-top: 0.1rem;
-  font-size: clamp(0.75rem, 0.5rem + 2.4cqw, 1.2rem);
+  margin-top: 0.04rem;
+  /* 긴 월간 합계(예: 821시간 46분)가 구멍을 넘지 않게 */
+  font-size: clamp(0.5rem, 6.2cqi, 0.78rem);
   font-weight: 800;
   color: #111111;
   font-variant-numeric: tabular-nums;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
   max-width: 100%;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+}
+
+.lp-tr2-day-hero-donut--available .lp-tr2-day-hero-donut-total {
+  font-size: clamp(0.48rem, 5.6cqi, 0.72rem);
 }
 
 .lp-tr2-day-hero-donut-sub {
-  margin-top: 0.12rem;
-  font-size: clamp(0.5rem, 0.4rem + 0.9cqw, 0.7rem);
+  margin-top: 0.06rem;
+  font-size: clamp(0.4rem, 5cqi, 0.58rem);
   font-weight: 600;
   color: #64748b;
-  line-height: 1.25;
+  line-height: 1.15;
   max-width: 100%;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
+/* 도넛 아래 — 생산·비생산·근무·수면 카드 */
 .lp-tr2-day-hero-legend {
   width: 100%;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.35rem 0.55rem;
+  grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+  gap: 0.4rem 0.65rem;
+  margin-top: 0.15rem;
+}
+
+.lp-tr2-day-hero-legend--cards {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.35rem;
 }
 
 .lp-tr2-day-hero-legend--compact {
@@ -886,12 +1173,28 @@
   min-width: 0;
 }
 
+.lp-tr2-day-hero-legend--cards .lp-tr2-day-hero-legend-item {
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.65rem 0.7rem 0.7rem;
+  border-radius: 0.7rem;
+  background: #fff;
+  border: 1px solid #eef2f7;
+  box-sizing: border-box;
+}
+
 .lp-tr2-day-hero-legend-swatch {
   width: 0.55rem;
   height: 0.55rem;
   border-radius: 999px;
   flex-shrink: 0;
   margin-top: 0.2rem;
+}
+
+.lp-tr2-day-hero-legend--cards .lp-tr2-day-hero-legend-swatch {
+  width: 0.65rem;
+  height: 0.65rem;
+  margin-top: 0.28rem;
 }
 
 .lp-tr2-day-hero-legend-body {
@@ -901,10 +1204,19 @@
   min-width: 0;
 }
 
+.lp-tr2-day-hero-legend--cards .lp-tr2-day-hero-legend-body {
+  gap: 0.2rem;
+}
+
 .lp-tr2-day-hero-legend-label {
   font-size: var(--lp-tr2-label);
   font-weight: 700;
   color: #475569;
+}
+
+.lp-tr2-day-hero-legend--cards .lp-tr2-day-hero-legend-label {
+  font-weight: 750;
+  color: #64748b;
 }
 
 .lp-tr2-day-hero-legend-meta {
@@ -913,6 +1225,14 @@
   color: #111111;
   font-variant-numeric: tabular-nums;
   line-height: 1.25;
+}
+
+.lp-tr2-day-hero-legend--cards .lp-tr2-day-hero-legend-meta {
+  font-size: var(--lp-tr2-body);
+  font-weight: 750;
+  color: #1e293b;
+  line-height: 1.3;
+  word-break: keep-all;
 }
 
 .lp-tr2-day-hero-value {
@@ -958,13 +1278,32 @@
 .lp-tr2-day-hero-value-amount {
   flex: 0 1 auto;
   min-width: 0;
-  font-size: clamp(0.8125rem, 0.55rem + 2cqw, 1.25rem);
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.04em;
+  font-family: var(--lp-app-font-family, inherit);
+  font-size: var(--lp-tr2-value);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
   color: #111111;
   text-align: right;
   white-space: nowrap;
+}
+
+.lp-tr2-day-hero-value-sign,
+.lp-tr2-day-hero-value-digits,
+.lp-tr2-day-hero-value-currency {
+  font-family: inherit;
+  font-weight: inherit;
+  font-size: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+}
+
+.lp-tr2-day-hero-value-currency {
+  margin-left: 0.06em;
 }
 
 .lp-tr2-day-hero-value-row--prod .lp-tr2-day-hero-value-amount {
@@ -987,7 +1326,7 @@
 }
 
 .lp-tr2-day-hero-value-row--net .lp-tr2-day-hero-value-amount {
-  font-size: clamp(0.9375rem, 0.65rem + 2.6cqw, 1.5rem);
+  font-size: var(--lp-tr2-hero);
 }
 
 .lp-tr2-day-hero-value-row--net-pos .lp-tr2-day-hero-value-amount {
@@ -1054,7 +1393,7 @@
 }
 
 .lp-tr2-plan-hero-value {
-  font-size: calc(var(--lp-tr2-hero) * 1.55);
+  font-size: var(--lp-tr2-display);
   font-weight: 800;
   line-height: 1.05;
   letter-spacing: -0.03em;
@@ -1074,6 +1413,20 @@
 .lp-tr2-plan-summary-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-bottom: 0.35rem;
+}
+
+/* 요약 카드 ↔ 안내 문구 ↔ 다음 블록 — 위·아래 여백 동일 */
+.lp-tr2-plan-section > .lp-tr2-plan-summary-grid {
+  margin-bottom: 0;
+}
+
+.lp-tr2-plan-section > .lp-tr2-plan-est-text {
+  margin: 0.55rem 0;
+}
+
+.lp-tr2-plan-section > .lp-tr2-plan-est-text + .lp-tr2-rating-block,
+.lp-tr2-plan-section > .lp-tr2-plan-est-text + .lp-tr2-rating-block:first-of-type {
+  margin-top: 0;
 }
 
 .lp-tr2-plan-summary-grid--day {
@@ -1267,6 +1620,181 @@
   color: #1e4d7b;
 }
 
+/* 연간 — 실제 연평균 타임라인 */
+.lp-tr2-year-avg-schedule {
+  margin-top: 0.55rem;
+  padding: 0.85rem 0.8rem 0.9rem;
+  border-radius: 0.75rem;
+  background: #faf7f2;
+  border: 1px solid #efe6d9;
+  border-left: 3px solid #e8a06a;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.lp-tr2-year-avg-schedule-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin-bottom: 0.75rem;
+}
+
+.lp-tr2-year-avg-schedule-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  margin-top: 0.1rem;
+  border-radius: 0.28rem;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #15803d;
+  font-size: var(--lp-tr2-meta);
+  font-weight: 800;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.lp-tr2-year-avg-schedule-titles {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.lp-tr2-year-avg-schedule-title {
+  font-size: var(--lp-tr2-body);
+  font-weight: 800;
+  color: #1e293b;
+  line-height: 1.3;
+}
+
+.lp-tr2-year-avg-schedule-sub {
+  margin: 0;
+  font-size: var(--lp-tr2-label);
+  font-weight: 600;
+  color: #8a7460;
+  line-height: 1.35;
+}
+
+.lp-tr2-year-avg-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.lp-tr2-year-avg-timeline-item {
+  display: grid;
+  grid-template-columns: 3.15rem 0.75rem minmax(0, 1fr);
+  column-gap: 0.4rem;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.lp-tr2-year-avg-timeline-time {
+  display: block;
+  padding-top: 0.65rem;
+  text-align: right;
+  font-size: var(--lp-tr2-meta);
+  font-weight: 750;
+  color: #8a7460;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.lp-tr2-year-avg-timeline-spine {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100%;
+  padding-top: 0.72rem;
+}
+
+.lp-tr2-year-avg-timeline-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: #e8a06a;
+  border: 2px solid #fff7ed;
+  box-shadow: 0 0 0 1px rgba(232, 160, 106, 0.45);
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.lp-tr2-year-avg-timeline-line {
+  flex: 1 1 auto;
+  width: 2px;
+  min-height: 1.35rem;
+  margin-top: 0.2rem;
+  background: linear-gradient(
+    180deg,
+    rgba(232, 160, 106, 0.55) 0%,
+    rgba(232, 160, 106, 0.18) 100%
+  );
+  border-radius: 999px;
+}
+
+.lp-tr2-year-avg-timeline-item.is-last .lp-tr2-year-avg-timeline-line {
+  opacity: 0;
+  min-height: 0.35rem;
+}
+
+.lp-tr2-year-avg-timeline-card {
+  min-width: 0;
+  margin-bottom: 0.55rem;
+  padding: 0.55rem 0.65rem 0.55rem;
+  border-radius: 0.6rem;
+  background: #ffffff;
+  border: 1px solid #f0e6d8;
+  box-sizing: border-box;
+}
+
+.lp-tr2-year-avg-timeline-item.is-last .lp-tr2-year-avg-timeline-card {
+  margin-bottom: 0;
+}
+
+.lp-tr2-year-avg-timeline-card-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+}
+
+.lp-tr2-year-avg-timeline-name {
+  min-width: 0;
+  font-size: var(--lp-tr2-body);
+  font-weight: 800;
+  color: #1e293b;
+  line-height: 1.35;
+  word-break: keep-all;
+}
+
+.lp-tr2-year-avg-timeline-dur {
+  flex: 0 0 auto;
+  font-size: var(--lp-tr2-label);
+  font-weight: 750;
+  color: #c07840;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.lp-tr2-year-avg-timeline-meta {
+  margin: 0.22rem 0 0;
+  font-size: var(--lp-tr2-label);
+  font-weight: 650;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
 .lp-tr2-plan-day-meta {
   margin: 0;
   font-size: var(--lp-tr2-label);
@@ -1436,52 +1964,155 @@
   line-height: 1.45;
 }
 
-.lp-tr2-bars {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
+/*
+ * 레포트 가로 막대 — 목록이 하나의 고정 3열 그리드
+ * [라벨 고정폭] [막대 1fr] [숫자 고정폭]
+ * → 행마다 칸을 따로 잡지 않아 막대 시작·끝이 전부 같음
+ */
+.lp-tr2-bars,
+.lp-tr2-focus-end-reason-list {
+  --lp-tr2-bar-label-w: 6.75rem;
+  --lp-tr2-bar-value-w: 3.75rem;
+  /* rem 소수 → 행마다 1px씩 달라 보이는 문제 방지 */
+  --lp-tr2-bar-track-h: 8px;
+  display: grid;
+  grid-template-columns:
+    var(--lp-tr2-bar-label-w) minmax(0, 1fr) var(--lp-tr2-bar-value-w);
+  column-gap: 0.5rem;
+  row-gap: 0.5rem;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.lp-tr2-bars > .lp-tr2-bar-row,
+.lp-tr2-focus-end-reason-item,
+.lp-tr2-focus-end-reason-item > .lp-tr2-bar-row {
+  display: contents !important;
+}
+
+.lp-tr2-bars > .lp-tr2-chart-note {
+  grid-column: 1 / -1;
+}
+
+.lp-tr2-bars--compact {
+  --lp-tr2-bar-label-w: 2.5rem;
+  --lp-tr2-bar-value-w: 2.75rem;
+  row-gap: 0.45rem;
+  column-gap: 0.45rem;
 }
 
 .lp-tr2-bars--compact .lp-tr2-bar-label {
-  min-width: 1.4rem;
-  font-size: var(--lp-tr2-meta);
+  font-size: var(--lp-tr2-body);
 }
 
+.lp-tr2-bars--month-trend {
+  --lp-tr2-bar-label-w: 5.5rem;
+  --lp-tr2-bar-value-w: 3.5rem;
+}
+
+.lp-tr2-day-hero-bars .lp-tr2-bars {
+  --lp-tr2-bar-label-w: 3.6rem;
+  --lp-tr2-bar-value-w: 5.5rem;
+  --lp-tr2-bar-track-h: 10px;
+}
+
+.lp-tr2-bars--focus-disruptor {
+  --lp-tr2-bar-label-w: 6.75rem;
+  --lp-tr2-bar-value-w: 4.25rem;
+  margin-top: 0.15rem;
+}
+
+.lp-tr2-emotion-sub-bars {
+  --lp-tr2-bar-label-w: 6.75rem;
+  --lp-tr2-bar-value-w: 3rem;
+}
+
+/* 단독 행(목록 밖)용 폴백 — 목록 안에서는 contents로 무력화 */
 .lp-tr2-bar-row {
   display: grid;
-  grid-template-columns: 2.2rem 1fr 3.2rem;
+  grid-template-columns:
+    var(--lp-tr2-bar-label-w, 6.75rem) minmax(0, 1fr)
+    var(--lp-tr2-bar-value-w, 3.75rem);
   align-items: center;
-  gap: 0.4rem;
+  column-gap: 0.5rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .lp-tr2-bar-label {
+  display: block;
+  min-width: 0;
   font-size: var(--lp-tr2-body);
   font-weight: 600;
-  color: #666666;
-  text-align: right;
+  color: #4d4d4d;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-variant-numeric: tabular-nums;
+  line-height: 1.3;
 }
 
 .lp-tr2-bar-track {
-  height: 0.65rem;
+  min-width: 0;
+  width: 100%;
+  height: var(--lp-tr2-bar-track-h, 8px);
+  min-height: var(--lp-tr2-bar-track-h, 8px);
+  max-height: var(--lp-tr2-bar-track-h, 8px);
+  align-self: center;
   border-radius: 999px;
   background: #f2f2f2;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .lp-tr2-bar-fill {
+  display: block;
   height: 100%;
+  min-height: 100%;
+  max-height: 100%;
   border-radius: 999px;
   min-width: 2px;
+  box-sizing: border-box;
   transition: width 0.25s ease;
 }
 
 .lp-tr2-bar-value {
+  display: block;
+  justify-self: end;
+  min-width: 0;
   font-size: var(--lp-tr2-label);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: #4d4d4d;
+  color: #475569;
   text-align: right;
+  white-space: nowrap;
+}
+
+/* 막대 글자 — 변형 클래스도 동일 계층만 사용 */
+.lp-tr2-bars .lp-tr2-bar-label,
+.lp-tr2-focus-end-reason-list .lp-tr2-bar-label,
+.lp-tr2-bar-row--rating .lp-tr2-bar-label,
+.lp-tr2-bar-row--media-tag .lp-tr2-bar-label,
+.lp-tr2-bar-row--focus-disruptor .lp-tr2-bar-label,
+.lp-tr2-bar-row--focus-recipe .lp-tr2-bar-label,
+.lp-tr2-bar-row--focus-end-reason .lp-tr2-bar-label {
+  font-size: var(--lp-tr2-body);
+}
+
+.lp-tr2-bars .lp-tr2-bar-value,
+.lp-tr2-focus-end-reason-list .lp-tr2-bar-value,
+.lp-tr2-bar-row--rating .lp-tr2-bar-value,
+.lp-tr2-bar-value--rating,
+.lp-tr2-bar-row--media-tag .lp-tr2-bar-value,
+.lp-tr2-bar-row--focus-disruptor .lp-tr2-bar-value,
+.lp-tr2-bar-row--focus-recipe .lp-tr2-bar-value,
+.lp-tr2-bar-row--focus-end-reason .lp-tr2-bar-value {
+  font-size: var(--lp-tr2-label);
 }
 
 .lp-tr2-chart-note {
@@ -1496,43 +2127,203 @@
   margin-top: 0.15rem;
 }
 
-/* 주간 등: 카드 가로를 꽉 채움. height:auto → 비율 유지(글자 안 찌그러짐) */
 .lp-tr2-sleep-chart-canvas {
   width: 100%;
   max-width: 100%;
-  height: auto;
   overflow: visible;
 }
 
-.lp-tr2-sleep-chart-canvas .lp-tr2-sleep-chart-svg {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  height: auto;
-}
-
-/* 손글씨 앱 폰트면 막대 위 숫자가 과대해 보임 — 차트만 조금 얇게 */
-.lp-tr2-sleep-chart-svg .lp-tr2-sleep-chart-tick,
-.lp-tr2-sleep-chart-svg .lp-tr2-sleep-chart-bar-label {
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  font-weight: 600;
-}
-
 .lp-tr2-sleep-chart-canvas--scroll {
-  height: clamp(6.75rem, 30vw, 7.5rem);
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
-  /* 세로는 부모(레포트)로 넘기고, 가로만 이 영역에서 */
   touch-action: pan-x pan-y;
   overscroll-behavior-x: contain;
   overscroll-behavior-y: auto;
 }
 
-.lp-tr2-sleep-chart-canvas--scroll .lp-tr2-sleep-chart-svg {
-  width: auto;
-  max-width: none;
+/* 수면 목표 대비 — HTML 막대 (집중 시간대와 동일 방식) */
+.lp-tr2-sleep-chart-wrap,
+.lp-tr2-sleep-chart-canvas,
+.lp-tr2-sleep-goal-chart,
+.lp-tr2-sleep-chart-legend,
+.lp-tr2-sleep-chart-scroll-hint {
+  font-family: var(--lp-app-font-family, inherit);
+  font-weight: var(--lp-app-font-weight-base, 400);
+  /* tabular-nums 쓰면 손글씨 폰트에 숫자 글리프 없어 시스템 폰트로 떨어짐 */
+  font-variant-numeric: normal;
+}
+
+.lp-tr2-sleep-goal-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.lp-tr2-sleep-goal-chart-top,
+.lp-tr2-sleep-goal-chart-mid,
+.lp-tr2-sleep-goal-chart-bottom {
+  display: flex;
+  align-items: stretch;
+  gap: 0.3rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.lp-tr2-sleep-goal-chart-y-spacer {
+  flex: 0 0 1.35rem;
+}
+
+.lp-tr2-sleep-goal-chart-y {
+  position: relative;
+  flex: 0 0 1.35rem;
+  min-height: 6.25rem;
+}
+
+.lp-tr2-sleep-goal-chart-y-tick {
+  position: absolute;
+  right: 0;
+  transform: translateY(50%);
+  font-family: var(--lp-app-font-family, inherit);
+  font-size: var(--lp-tr2-label);
+  font-weight: var(--lp-app-font-weight-base, 400);
+  color: #999999;
+  line-height: 1;
+  font-variant-numeric: normal;
+}
+
+.lp-tr2-sleep-goal-chart-vals,
+.lp-tr2-sleep-goal-chart-bars,
+.lp-tr2-sleep-goal-chart-dates {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 0.12rem;
+  align-items: stretch;
+}
+
+.lp-tr2-sleep-goal-chart-bars {
+  position: relative;
+  height: 6.25rem;
+  padding: 0 0.1rem;
+  border-radius: 0.55rem;
+  background: #fafafa;
+  border: 1px solid #e2e8f0;
+  box-sizing: border-box;
+}
+
+.lp-tr2-sleep-goal-chart-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.lp-tr2-sleep-goal-chart-grid-line {
+  position: absolute;
+  left: 0.1rem;
+  right: 0.1rem;
+  height: 0;
+  border-top: 1px solid #e2e8f0;
+  pointer-events: none;
+  transform: translateY(50%);
+}
+
+.lp-tr2-sleep-goal-chart-grid-line.is-baseline {
+  border-top: 1.5px solid #cbd5e1;
+}
+
+.lp-tr2-sleep-goal-chart-target {
+  position: absolute;
+  left: 0.15rem;
+  right: 0.15rem;
+  z-index: 3;
+  height: 0;
+  border-top: 2px dashed #f59e0b;
+  pointer-events: none;
+  transform: translateY(50%);
+}
+
+.lp-tr2-sleep-goal-chart-target-tag {
+  position: absolute;
+  right: 0;
+  top: 0;
+  transform: translateY(-50%);
+  padding: 0.05rem 0.28rem;
+  border-radius: 0.25rem;
+  background: rgba(255, 247, 237, 0.95);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  font-size: var(--lp-tr2-caption);
+  font-weight: 750;
+  color: #d97706;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.lp-tr2-sleep-goal-chart-val,
+.lp-tr2-sleep-goal-chart-bar-cell,
+.lp-tr2-sleep-goal-chart-date {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.lp-tr2-sleep-chart-canvas--scroll .lp-tr2-sleep-goal-chart-val,
+.lp-tr2-sleep-chart-canvas--scroll .lp-tr2-sleep-goal-chart-bar-cell,
+.lp-tr2-sleep-chart-canvas--scroll .lp-tr2-sleep-goal-chart-date {
+  flex: 0 0 1.65rem;
+}
+
+.lp-tr2-sleep-goal-chart-val,
+.lp-tr2-sleep-goal-chart-date {
+  align-items: center;
+  min-height: 0.95rem;
+  font-family: var(--lp-app-font-family, inherit);
+  font-size: var(--lp-tr2-label);
+  font-weight: var(--lp-app-font-weight-base, 400);
+  line-height: 1;
+  font-variant-numeric: normal;
+  white-space: nowrap;
+}
+
+.lp-tr2-sleep-goal-chart-val {
+  color: #64748b;
+}
+
+.lp-tr2-sleep-goal-chart-val.is-met {
+  color: #15803d;
+}
+
+.lp-tr2-sleep-goal-chart-date {
+  color: #999999;
+}
+
+.lp-tr2-sleep-goal-chart-bar-cell {
+  position: relative;
+  align-items: flex-end;
   height: 100%;
+}
+
+.lp-tr2-sleep-goal-chart-bar {
+  position: relative;
+  z-index: 1;
+  width: 56%;
+  max-width: 1.25rem;
+  min-height: 2px;
+  border-radius: 0.15rem 0.15rem 0 0;
+}
+
+.lp-tr2-sleep-goal-chart-bar.is-met {
+  background: #22c55e;
+  opacity: 0.92;
+}
+
+.lp-tr2-sleep-goal-chart-bar.is-miss {
+  background: #94a3b8;
+  opacity: 0.88;
 }
 
 .lp-tr2-sleep-chart-legend {
@@ -1709,9 +2500,9 @@
 
 .lp-tr2-sleep-rating-stars {
   display: inline-flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.12rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
   line-height: 1;
 }
 
@@ -1720,7 +2511,7 @@
   align-items: center;
   gap: 0.06rem;
   letter-spacing: -0.04em;
-  font-size: calc(var(--lp-tr2-body) * 1.15);
+  font-size: var(--lp-tr2-block);
   line-height: 1;
 }
 
@@ -1733,10 +2524,11 @@
 }
 
 .lp-tr2-sleep-rating-stars-score {
-  font-size: var(--lp-tr2-meta);
+  font-size: var(--lp-tr2-body);
   font-weight: 700;
   color: #64748b;
   font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
 .lp-tr2-sleep-stat-value--recommend {
@@ -1889,6 +2681,119 @@
   flex-shrink: 0;
 }
 
+/* 이동하면서 이뤄낸 것들 — 이동 루틴 매일할일 체크 */
+.lp-tr2-move-accomplished {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  margin: 0.45rem 0 0.55rem;
+  padding: 0.6rem 0.7rem 0.65rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(
+    160deg,
+    rgba(201, 132, 132, 0.08) 0%,
+    rgba(248, 250, 252, 0.98) 55%,
+    #fff 100%
+  );
+  border: 1px solid rgba(201, 132, 132, 0.18);
+  box-sizing: border-box;
+}
+
+.lp-tr2-move-accomplished-title {
+  margin: 0;
+  font-size: var(--lp-tr2-label);
+  font-weight: 800;
+  color: #475569;
+}
+
+.lp-tr2-move-accomplished-sub {
+  margin: 0;
+  font-size: var(--lp-tr2-meta);
+  font-weight: 500;
+  color: #94a3b8;
+  line-height: 1.35;
+}
+
+.lp-tr2-move-accomplished-list {
+  list-style: none;
+  margin: 0.2rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+
+/* 체크 · 이름 · 시간 붙여 배치 (가운데 텅 빈 여백 없음) */
+.lp-tr2-move-accomplished-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.lp-tr2-move-accomplished-check {
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: var(--lp-tr2-caption);
+  font-weight: 800;
+  color: #fff;
+  background: #c98484;
+  line-height: 1;
+}
+
+.lp-tr2-move-accomplished-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: var(--lp-tr2-body);
+  font-weight: 650;
+  color: #334155;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lp-tr2-move-accomplished-dur {
+  flex-shrink: 0;
+  margin-left: 0.15rem;
+  font-size: var(--lp-tr2-label);
+  font-weight: 750;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* 이동 요약 카드 — 안쪽 가운데, 여백 균등 */
+.lp-tr2-card-grid--move {
+  gap: 0.45rem;
+  margin-top: 0.15rem;
+}
+
+.lp-tr2-card-grid--move .lp-tr2-stat-card {
+  align-items: center;
+  text-align: center;
+  gap: 0.22rem;
+  padding: 0.7rem 0.55rem 0.65rem;
+  box-sizing: border-box;
+}
+
+.lp-tr2-card-grid--move .lp-tr2-stat-label,
+.lp-tr2-card-grid--move .lp-tr2-stat-value,
+.lp-tr2-card-grid--move .lp-tr2-stat-hint {
+  width: 100%;
+  text-align: center;
+}
+
+.lp-tr2-card-grid--move .lp-tr2-stat-hint {
+  line-height: 1.3;
+}
+
 /* 일간 감정 소비 — 24시간 타임라인 */
 .lp-tr2-emotion-day-timeline {
   display: flex;
@@ -1981,7 +2886,7 @@
 }
 
 .lp-tr2-emotion-day-item-emotion {
-  font-size: calc(var(--lp-tr2-body) + 0.0625rem);
+  font-size: var(--lp-tr2-body);
   font-weight: 750;
   color: #111111;
   line-height: 1.3;
@@ -2527,6 +3432,74 @@
   color: #666666;
 }
 
+/* 건강·비건강 섭취 건수 비율 — 한 줄 가로 막대 */
+.lp-tr2-intake-ratio-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0 0 0.85rem;
+}
+
+.lp-tr2-intake-ratio-bar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: var(--lp-tr2-label);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-tr2-intake-ratio-bar-head-healthy {
+  color: #a87070;
+}
+
+.lp-tr2-intake-ratio-bar-head-unhealthy {
+  color: #6d8aad;
+}
+
+.lp-tr2-intake-ratio-bar-track {
+  display: flex;
+  width: 100%;
+  height: 0.85rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #eef2f7;
+}
+
+.lp-tr2-intake-ratio-bar-fill {
+  min-width: 2px;
+  height: 100%;
+  flex-shrink: 0;
+}
+
+.lp-tr2-intake-ratio-bar-fill--healthy {
+  background: #c4a0a0;
+}
+
+.lp-tr2-intake-ratio-bar-fill--unhealthy {
+  background: #8fa8c4;
+}
+
+.lp-tr2-intake-ratio-bar-fill:only-child {
+  border-radius: 999px;
+}
+
+.lp-tr2-intake-ratio-bar-fill--healthy:first-child:not(:only-child) {
+  border-radius: 999px 0 0 999px;
+}
+
+.lp-tr2-intake-ratio-bar-fill--unhealthy:last-child:not(:only-child) {
+  border-radius: 0 999px 999px 0;
+}
+
+.lp-tr2-intake-ratio-bar-foot {
+  margin: 0;
+  font-size: var(--lp-tr2-label);
+  line-height: 1.4;
+  color: #666666;
+}
+
 .lp-tr2-intake-panels {
   display: grid;
   grid-template-columns: 1fr;
@@ -2559,7 +3532,7 @@
 
 .lp-tr2-intake-panel--healthy .lp-tr2-intake-panel-head {
   background: #faf6f6;
-  color: #c02b2b;
+  color: #a87070;
 }
 
 .lp-tr2-intake-panel--unhealthy {
@@ -2568,7 +3541,7 @@
 
 .lp-tr2-intake-panel--unhealthy .lp-tr2-intake-panel-head {
   background: #f6f8fb;
-  color: #1d4ed8;
+  color: #6d8aad;
 }
 
 .lp-tr2-intake-panel-head {
@@ -2629,11 +3602,11 @@
 }
 
 .lp-tr2-intake-day-meals--healthy {
-  color: #c02b2b;
+  color: #a87070;
 }
 
 .lp-tr2-intake-day-meals--unhealthy {
-  color: #1d4ed8;
+  color: #6d8aad;
 }
 
 .lp-tr2-intake-day-empty {
@@ -2714,7 +3687,7 @@
 }
 
 .lp-tr2-intake-taste-note {
-  margin: 0.65rem 0 0.35rem;
+  margin: 0.55rem 0;
 }
 
 .lp-tr2-intake-taste-chips {
@@ -2762,18 +3735,167 @@
 }
 
 .lp-tr2-intake-taste-by-rating {
-  margin-top: 0.15rem;
+  margin-top: 0;
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
 }
 
-.lp-tr2-intake-taste-by-rating .lp-tr2-rating-block {
+.lp-tr2-intake-taste-by-rating .lp-tr2-rating-block,
+.lp-tr2-intake-taste-by-rating .lp-tr2-rating-block:first-of-type {
   margin-top: 0;
 }
 
 .lp-tr2-intake-taste-by-rating .lp-tr2-intake-taste-chip-row {
   margin-bottom: 0;
+}
+
+/* 연간 — KPI 목표 레포트 */
+.lp-tr2-year-kpi-summary-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 0.15rem;
+}
+
+.lp-tr2-year-kpi-cat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.2rem;
+}
+
+.lp-tr2-year-kpi-cat-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.lp-tr2-year-kpi-cat-row:last-child {
+  border-bottom: none;
+}
+
+.lp-tr2-year-kpi-cat-name {
+  font-size: var(--lp-tr2-body);
+  font-weight: 800;
+  color: #111111;
+}
+
+.lp-tr2-year-kpi-cat-meta {
+  font-size: var(--lp-tr2-label);
+  font-weight: 650;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.lp-tr2-year-kpi-name-list {
+  list-style: none;
+  margin: 0.15rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.lp-tr2-year-kpi-name-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 0.65rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 0.5rem;
+  background: #ecfdf5;
+  box-sizing: border-box;
+}
+
+.lp-tr2-year-kpi-name-text {
+  font-size: var(--lp-tr2-body);
+  font-weight: 750;
+  color: #166534;
+  word-break: keep-all;
+}
+
+.lp-tr2-year-kpi-name-tag {
+  font-size: var(--lp-tr2-label);
+  font-weight: 650;
+  color: #15803d;
+}
+
+.lp-tr2-year-kpi-progress-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: 0.2rem;
+}
+
+.lp-tr2-year-kpi-progress-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  padding: 0.55rem 0.45rem 0.6rem;
+  border-bottom: 1px solid #eef2f7;
+  box-sizing: border-box;
+}
+
+.lp-tr2-year-kpi-progress-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0.2rem;
+}
+
+.lp-tr2-year-kpi-progress-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.lp-tr2-year-kpi-progress-name {
+  font-size: var(--lp-tr2-body);
+  font-weight: 800;
+  color: #111111;
+  word-break: keep-all;
+  min-width: 0;
+}
+
+.lp-tr2-year-kpi-progress-pct {
+  flex: 0 0 auto;
+  font-size: var(--lp-tr2-body);
+  font-weight: 800;
+  color: #1e4d7b;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-tr2-year-kpi-progress-row.is-done .lp-tr2-year-kpi-progress-pct {
+  color: #15803d;
+}
+
+.lp-tr2-year-kpi-progress-meta {
+  margin: 0;
+  font-size: var(--lp-tr2-label);
+  font-weight: 650;
+  color: #64748b;
+  line-height: 1.35;
+  word-break: keep-all;
+}
+
+.lp-tr2-year-kpi-progress-track {
+  height: 0.35rem;
+  border-radius: 999px;
+  background: #e8edf3;
+  overflow: hidden;
+}
+
+.lp-tr2-year-kpi-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #7e9fc3;
+}
+
+.lp-tr2-year-kpi-progress-fill.is-done {
+  background: #22c55e;
 }
 
 /* 레포트 — 습관 점수판 */
@@ -2786,15 +3908,106 @@
   box-sizing: border-box;
 }
 
+/* 연간 습관 — 실행률 카드 (한 줄 3개) */
+.lp-tr2-habit-scoreboard--cards {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+.lp-tr2-habit-scoreboard--cards .lp-tr2-habit-scoreboard-body {
+  margin: 0;
+}
+
+.lp-tr2-habit-year-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.lp-tr2-habit-year-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  min-width: 0;
+  padding: 0.7rem 0.7rem 0.65rem 0.85rem;
+  border-radius: 0.75rem;
+  box-sizing: border-box;
+  background: linear-gradient(
+    135deg,
+    rgba(143, 168, 196, 0.14) 0%,
+    rgba(248, 250, 252, 0.98) 55%,
+    #fff 100%
+  );
+  border: 1px solid rgba(143, 168, 196, 0.22);
+  overflow: hidden;
+}
+
+.lp-tr2-habit-year-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55rem;
+  bottom: 0.55rem;
+  width: 3px;
+  border-radius: 999px;
+  background: #7fa89a;
+}
+
+.lp-tr2-habit-year-card-name {
+  margin: 0;
+  font-size: var(--lp-tr2-label);
+  font-weight: 650;
+  color: #64748b;
+  line-height: 1.3;
+  max-width: 100%;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  word-break: keep-all;
+}
+
+.lp-tr2-habit-year-card-frac {
+  margin: 0.1rem 0 0;
+  font-size: var(--lp-tr2-value);
+  font-weight: 800;
+  color: #1e293b;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+
+.lp-tr2-habit-year-card-frac span {
+  font-weight: 650;
+  color: #64748b;
+  font-size: 0.85em;
+}
+
+.lp-tr2-habit-year-card-pct {
+  margin: 0.05rem 0 0;
+  font-size: var(--lp-tr2-meta);
+  font-weight: 600;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+}
+
 .lp-tr2-habit-scoreboard-badge {
   display: inline-flex;
   align-items: center;
   margin: 0 0 0.7rem;
   padding: 0.28rem 0.65rem;
   border-radius: 999px;
-  background: #f97316;
-  color: #fff;
-  font-size: 0.75rem;
+  background: rgba(201, 132, 132, 0.16);
+  color: #8a5a5a;
+  border: 1px solid rgba(201, 132, 132, 0.35);
+  font-size: var(--lp-tr2-label);
   font-weight: 750;
   letter-spacing: -0.02em;
   line-height: 1.2;
@@ -2829,7 +4042,7 @@
   flex: 0 0 7.5rem;
   width: 7.5rem;
   min-width: 0;
-  font-size: 0.8125rem;
+  font-size: var(--lp-tr2-body);
   font-weight: 650;
   color: #1f2937;
   overflow: hidden;
@@ -2862,26 +4075,27 @@
   width: auto;
 }
 
+/* 레포트 톤 — 비비드 오렌지 대신 부드러운 로즈 */
 .lp-tr2-habit-scoreboard-seg.is-on {
-  background: #f97316;
+  background: #c98484;
 }
 
 .lp-tr2-habit-scoreboard-row.is-high .lp-tr2-habit-scoreboard-seg.is-on {
-  background: #ea580c;
+  background: #b87272;
 }
 
 .lp-tr2-habit-scoreboard-row.is-mid .lp-tr2-habit-scoreboard-seg.is-on {
-  background: #fb923c;
+  background: #d4a4a4;
 }
 
 .lp-tr2-habit-scoreboard-row.is-low .lp-tr2-habit-scoreboard-seg.is-on {
-  background: #fdba74;
+  background: #e4c4c4;
 }
 
 .lp-tr2-habit-scoreboard-days {
   flex: 0 0 2.4rem;
   width: 2.4rem;
-  font-size: 0.875rem;
+  font-size: var(--lp-tr2-block);
   font-weight: 800;
   color: #111827;
   text-align: right;
@@ -2891,7 +4105,7 @@
 
 .lp-tr2-habit-scoreboard-unit {
   margin-left: 0.05rem;
-  font-size: 0.625rem;
+  font-size: var(--lp-tr2-caption);
   font-weight: 700;
   color: #6b7280;
 }
@@ -2923,7 +4137,7 @@
   flex: 0 0 1.15rem;
   width: 1.15rem;
   text-align: center;
-  font-size: 0.9rem;
+  font-size: var(--lp-tr2-block);
   font-weight: 800;
   color: #94a3b8;
 }
@@ -2941,13 +4155,13 @@
 }
 
 .lp-tr2-habit-scoreboard .habit-tracker-today-goals-name {
-  font-size: 0.875rem;
+  font-size: var(--lp-tr2-block);
   font-weight: 650;
   color: #111827;
 }
 
 .lp-tr2-habit-scoreboard .habit-tracker-today-goals-target {
-  font-size: 0.8125rem;
+  font-size: var(--lp-tr2-body);
   font-weight: 650;
   color: #64748b;
   font-variant-numeric: tabular-nums;
@@ -2994,6 +4208,127 @@
   font-size: var(--lp-tr2-label);
   font-weight: 700;
   color: #666666;
+}
+
+/* 연간 미디어 — 콘텐츠 종류 트리맵 */
+.lp-tr2-media-treemap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  width: 100%;
+  margin-top: 0.35rem;
+}
+
+.lp-tr2-media-treemap-board {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  min-height: 14rem;
+  max-height: 26rem;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: transparent;
+}
+
+.lp-tr2-media-treemap-cell {
+  position: absolute;
+  box-sizing: border-box;
+  padding: 0.7rem 0.7rem 0.65rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 0.35rem;
+  overflow: hidden;
+  color: #1e3a5f;
+  border-radius: 0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: inset 0 0 0 1px rgba(30, 58, 95, 0.04);
+  --tm-name-fs: 0.85rem;
+  --tm-meta-fs: 0.72rem;
+}
+
+.lp-tr2-media-treemap-name {
+  font-size: var(--tm-name-fs);
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  max-width: 100%;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.lp-tr2-media-treemap-meta {
+  font-size: var(--tm-meta-fs);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #334155;
+  line-height: 1.3;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.lp-tr2-media-treemap-cell.is-compact {
+  padding: 0.4rem 0.45rem;
+  gap: 0.15rem;
+}
+
+.lp-tr2-media-treemap-cell.is-compact .lp-tr2-media-treemap-name {
+  -webkit-line-clamp: 1;
+}
+
+.lp-tr2-media-treemap-cell.is-meta-hidden .lp-tr2-media-treemap-meta {
+  display: none;
+}
+
+.lp-tr2-media-treemap-cell.is-tiny {
+  padding: 0.16rem 0.22rem;
+  gap: 0.06rem;
+  justify-content: center;
+}
+
+.lp-tr2-media-treemap-cell.is-tiny .lp-tr2-media-treemap-name {
+  -webkit-line-clamp: 1;
+  font-weight: 700;
+}
+
+.lp-tr2-media-treemap-cell.is-strip {
+  padding: 0.1rem 0.28rem;
+  gap: 0;
+  justify-content: center;
+  flex-direction: row;
+  align-items: center;
+}
+
+.lp-tr2-media-treemap-cell.is-strip .lp-tr2-media-treemap-name {
+  -webkit-line-clamp: 1;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.lp-tr2-media-treemap-cell.is-micro {
+  padding: 0.06rem 0.12rem;
+  gap: 0;
+  justify-content: center;
+}
+
+.lp-tr2-media-treemap-cell.is-micro .lp-tr2-media-treemap-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.lp-tr2-media-treemap-cell.is-micro .lp-tr2-media-treemap-meta {
+  display: none;
 }
 
 .lp-tr2-media-tag-hint {
@@ -3043,28 +4378,13 @@
   color: #999999;
 }
 
-.lp-tr2-bar-row--media-tag {
-  grid-template-columns: minmax(3.5rem, 5.5rem) minmax(0, 1fr) 2.35rem;
-  gap: 0.5rem;
-}
-
 .lp-tr2-bar-row--media-tag .lp-tr2-bar-label {
-  text-align: left;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: var(--lp-tr2-body);
   color: var(--text-ink);
 }
 
 .lp-tr2-bar-row--media-tag .lp-tr2-bar-track {
-  height: 0.48rem;
   background: #eef2f7;
-}
-
-.lp-tr2-bar-row--media-tag .lp-tr2-bar-value {
-  font-weight: 700;
-  color: #4d4d4d;
 }
 
 .lp-tr2-media-days {
@@ -3333,7 +4653,7 @@
 
 .lp-tr2-journal-main {
   margin: 0;
-  font-size: calc(var(--lp-tr2-body) + 0.125rem);
+  font-size: var(--lp-tr2-body);
   font-weight: 600;
   line-height: 1.45;
   color: #111111;
@@ -3408,10 +4728,12 @@
 
 .lp-tr2-rating-block {
   margin-top: 0.85rem;
-  padding: 0.75rem 0.72rem 0.8rem;
+  padding: 0.75rem 0.55rem 0.8rem;
   border-radius: 0.75rem;
   background: #fafafa;
   border: 1px solid #eef2f7;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .lp-tr2-rating-block:first-of-type {
@@ -3420,7 +4742,7 @@
 
 .lp-tr2-rating-block-title {
   margin: 0 0 0.28rem;
-  font-size: calc(var(--lp-tr2-title) - 0.0625rem);
+  font-size: var(--lp-tr2-block);
   font-weight: 700;
   color: #000000;
   letter-spacing: -0.01em;
@@ -3428,13 +4750,9 @@
 
 .lp-tr2-rating-block-sub {
   margin: 0 0 0.62rem;
-  font-size: var(--lp-tr2-label);
+  font-size: var(--lp-tr2-sub);
   line-height: 1.45;
   color: #999999;
-}
-
-.lp-tr2-rating-block .lp-tr2-bars {
-  gap: 0.52rem;
 }
 
 /* 이동 시간 구성 — 한 막대 비율 비교 */
@@ -3476,47 +4794,11 @@
   border-radius: 999px;
 }
 
-.lp-tr2-rating-block > .lp-tr2-bar-row {
-  grid-template-columns: minmax(5.25rem, auto) minmax(0, 1fr) 3.2rem;
-  gap: 0.45rem;
-}
-
-.lp-tr2-rating-block > .lp-tr2-bar-row .lp-tr2-bar-label {
-  white-space: nowrap;
-  text-align: left;
-}
-
-.lp-tr2-bar-row--rating {
-  grid-template-columns: minmax(2.75rem, 4.25rem) minmax(0, 1fr) 2.55rem;
-  align-items: center;
-  gap: 0.55rem;
-  padding: 0.12rem 0;
-}
-
-.lp-tr2-rating-block .lp-tr2-bars:not(.lp-tr2-bars--compact) .lp-tr2-bar-row--rating {
-  grid-template-columns: minmax(4.25rem, 6.75rem) minmax(0, 1fr) 2.55rem;
-}
-
 .lp-tr2-bar-row--rating .lp-tr2-bar-label {
-  min-width: 0;
-  text-align: left;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--lp-tr2-body);
-  font-weight: 600;
   color: #4d4d4d;
 }
 
-.lp-tr2-bars--compact .lp-tr2-bar-row--rating .lp-tr2-bar-label {
-  text-align: right;
-  font-size: var(--lp-tr2-label);
-  color: #666666;
-}
-
 .lp-tr2-bar-row--rating .lp-tr2-bar-track {
-  height: 0.48rem;
-  border-radius: 999px;
   background: #e8edf3;
 }
 
@@ -3538,13 +4820,18 @@
 }
 
 .lp-tr2-bar-value--rating {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.2rem;
-  min-width: 2.75rem;
+  justify-self: end;
+  gap: 0.15rem;
+  min-width: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0;
   font-size: var(--lp-tr2-label);
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
   color: #475569;
   text-align: right;
   white-space: nowrap;
@@ -3857,6 +5144,84 @@
   gap: 0.7rem;
 }
 
+/* 연간 — 카테고리 버블 차트 */
+.lp-tr2-cat-bubbles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  width: 100%;
+}
+
+.lp-tr2-cat-bubbles-board {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem 0.7rem;
+  padding: 0.55rem 0.25rem 0.35rem;
+  min-height: 12rem;
+  box-sizing: border-box;
+}
+
+.lp-tr2-cat-bubble {
+  --d: 5rem;
+  width: var(--d);
+  height: var(--d);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.12rem;
+  padding: 0.35rem;
+  box-sizing: border-box;
+  text-align: center;
+  color: #1e3a5f;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow: inset 0 0 0 1px rgba(30, 58, 95, 0.04);
+  overflow: hidden;
+}
+
+.lp-tr2-cat-bubble-name {
+  font-size: clamp(0.62rem, calc(var(--d) * 0.14), 0.95rem);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  max-width: 90%;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.lp-tr2-cat-bubble-dur {
+  font-size: clamp(0.5rem, calc(var(--d) * 0.1), 0.72rem);
+  font-weight: 600;
+  color: #475569;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-tr2-cat-bubble-meta {
+  font-size: clamp(0.55rem, calc(var(--d) * 0.12), 0.85rem);
+  font-weight: 800;
+  color: #334155;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-tr2-cat-bubble.is-sm .lp-tr2-cat-bubble-name {
+  font-size: clamp(0.5rem, calc(var(--d) * 0.16), 0.7rem);
+}
+
+.lp-tr2-cat-bubble.is-md .lp-tr2-cat-bubble-name {
+  font-size: clamp(0.58rem, calc(var(--d) * 0.15), 0.8rem);
+}
+
+.lp-tr2-cat-bubbles .lp-tr2-rating-chart-legend {
+  margin-top: 0.1rem;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
 .lp-tr2-task-treemap-board {
   position: relative;
   container-type: inline-size;
@@ -3866,7 +5231,7 @@
   max-height: 28rem;
   border-radius: 0.75rem;
   overflow: hidden;
-  background: #f4f6f9;
+  background: transparent;
 }
 
 .lp-tr2-task-treemap-cell {
@@ -3884,6 +5249,8 @@
   border: 1px solid rgba(255, 255, 255, 0.7);
   box-shadow: inset 0 0 0 1px rgba(30, 58, 95, 0.04);
   transition: filter 0.15s ease;
+  --tm-name-fs: 0.85rem;
+  --tm-meta-fs: 0.72rem;
 }
 
 .lp-tr2-task-treemap-cell:hover {
@@ -3892,9 +5259,9 @@
 }
 
 .lp-tr2-task-treemap-name {
-  font-size: clamp(0.72rem, 2.1cqw, 0.92rem);
+  font-size: var(--tm-name-fs);
   font-weight: 800;
-  line-height: 1.35;
+  line-height: 1.3;
   letter-spacing: -0.01em;
   max-width: 100%;
   overflow: hidden;
@@ -3907,11 +5274,11 @@
 }
 
 .lp-tr2-task-treemap-meta {
-  font-size: clamp(0.66rem, 1.8cqw, 0.8rem);
+  font-size: var(--tm-meta-fs);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: #334155;
-  line-height: 1.35;
+  line-height: 1.3;
   max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
@@ -3920,30 +5287,61 @@
 }
 
 .lp-tr2-task-treemap-cell.is-compact {
-  padding: 0.5rem 0.55rem;
-  gap: 0.22rem;
+  padding: 0.4rem 0.45rem;
+  gap: 0.15rem;
 }
 
 .lp-tr2-task-treemap-cell.is-compact .lp-tr2-task-treemap-name {
   -webkit-line-clamp: 1;
-  font-size: clamp(0.66rem, 1.9cqw, 0.8rem);
 }
 
-.lp-tr2-task-treemap-cell.is-compact .lp-tr2-task-treemap-meta {
-  font-size: clamp(0.6rem, 1.6cqw, 0.72rem);
-}
-
-.lp-tr2-task-treemap-cell.is-tiny .lp-tr2-task-treemap-meta {
+/* 작은 칸: 시간·% 숨김 → 커서(title)로만 */
+.lp-tr2-task-treemap-cell.is-meta-hidden .lp-tr2-task-treemap-meta {
   display: none;
 }
 
 .lp-tr2-task-treemap-cell.is-tiny {
-  padding: 0.4rem 0.45rem;
+  padding: 0.16rem 0.22rem;
+  gap: 0.06rem;
+  justify-content: center;
 }
 
 .lp-tr2-task-treemap-cell.is-tiny .lp-tr2-task-treemap-name {
   -webkit-line-clamp: 1;
-  font-size: clamp(0.62rem, 1.7cqw, 0.74rem);
+  font-weight: 700;
+}
+
+/* 가로로 얇은 띠 — 한 줄로 이름 표시 */
+.lp-tr2-task-treemap-cell.is-strip {
+  padding: 0.1rem 0.28rem;
+  gap: 0;
+  justify-content: center;
+  flex-direction: row;
+  align-items: center;
+}
+
+.lp-tr2-task-treemap-cell.is-strip .lp-tr2-task-treemap-name {
+  -webkit-line-clamp: 1;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+/* 극소 칸만: 패딩 최소 · 글자는 최대한 유지 */
+.lp-tr2-task-treemap-cell.is-micro {
+  padding: 0.06rem 0.12rem;
+  gap: 0;
+  justify-content: center;
+}
+
+.lp-tr2-task-treemap-cell.is-micro .lp-tr2-task-treemap-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.lp-tr2-task-treemap-cell.is-micro .lp-tr2-task-treemap-meta {
+  display: none;
 }
 
 .lp-tr2-task-treemap .lp-tr2-rating-chart-legend {
@@ -4091,7 +5489,7 @@
 }
 
 .lp-tr2-donut-total {
-  font-size: calc(var(--lp-tr2-body) + 0.125rem);
+  font-size: var(--lp-tr2-block);
   font-weight: 700;
   color: #111111;
   font-variant-numeric: tabular-nums;
@@ -7015,42 +8413,124 @@
   color: #666666;
 }
 
-/* 생산적 작업 1~2점 — 몰입 방해요소 */
+/*
+ * 평가 안 하위 블록(방해·몰입·종료 이유)
+ * — 구분선 위(칩→선) · 구분선 아래(선→라벨) · 라벨→칩 · 칩→다음 선 여백을 맞춤
+ */
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-flow-disruptor-section"],
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-flow-factor-section"],
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-end-reason-section"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
   [data-legacy~="time-task-log-flow-disruptor-section"],
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
     .lp-calendar-budget-add-modal
   )
-  [data-legacy~="time-task-log-flow-disruptor-section"] {
-  margin-top: 0.65rem;
-}
-
-.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
-  [data-legacy~="time-task-log-flow-disruptor-chips"],
-[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
-    .lp-calendar-budget-add-modal
-  )
-  [data-legacy~="time-task-log-flow-disruptor-chips"] {
-  margin-top: 0.45rem;
-}
-
-/* 생산적 작업 5점 — 몰입 요소 */
-.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   [data-legacy~="time-task-log-flow-factor-section"],
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
     .lp-calendar-budget-add-modal
   )
-  [data-legacy~="time-task-log-flow-factor-section"] {
-  margin-top: 0.65rem;
+  [data-legacy~="time-task-log-end-reason-section"] {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  padding-bottom: 0.85rem;
+  border-top: 1px solid #e2e8f0;
+  box-sizing: border-box;
+}
+
+/* 연속 블록끼리 margin 겹침 방지 — 칩↔구분선 간격은 padding-bottom만 */
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-flow-disruptor-section"]
+  + [data-legacy~="time-task-log-flow-factor-section"],
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-flow-disruptor-section"]
+  + [data-legacy~="time-task-log-end-reason-section"],
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-flow-factor-section"]
+  + [data-legacy~="time-task-log-end-reason-section"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-flow-disruptor-section"]
+  + [data-legacy~="time-task-log-flow-factor-section"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-flow-disruptor-section"]
+  + [data-legacy~="time-task-log-end-reason-section"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-flow-factor-section"]
+  + [data-legacy~="time-task-log-end-reason-section"] {
+  margin-top: 0;
 }
 
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-flow-disruptor-section"]
+  > [data-legacy~="time-task-log-section-label"],
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-flow-factor-section"]
+  > [data-legacy~="time-task-log-section-label"],
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-end-reason-section"]
+  > [data-legacy~="time-task-log-section-label"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-flow-disruptor-section"]
+  > [data-legacy~="time-task-log-section-label"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-flow-factor-section"]
+  > [data-legacy~="time-task-log-section-label"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-end-reason-section"]
+  > [data-legacy~="time-task-log-section-label"] {
+  margin-top: 0;
+  margin-bottom: 0.85rem;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-flow-disruptor-chips"],
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-flow-factor-chips"],
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-end-reason-chips"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-flow-disruptor-chips"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
   [data-legacy~="time-task-log-flow-factor-chips"],
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
     .lp-calendar-budget-add-modal
   )
-  [data-legacy~="time-task-log-flow-factor-chips"] {
-  margin-top: 0.45rem;
+  [data-legacy~="time-task-log-end-reason-chips"] {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* 평가 블록 다음 메모(구매 후기) 구분선 — 위 칩 아래 여백과 동일 */
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-rating-section"]:not([hidden])
+  + [data-legacy~="time-task-log-memo-section"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-rating-section"]:not([hidden])
+  + [data-legacy~="time-task-log-memo-section"] {
+  margin-top: 0;
+  padding-top: 0.85rem;
 }
 
 /* 초집중 분석 레포트 */
@@ -7089,7 +8569,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.12rem;
-  font-size: 0.75rem;
+  font-size: var(--lp-tr2-label);
   line-height: 1.35;
 }
 
@@ -7106,7 +8586,7 @@
 
 .lp-tr2-focus-end-line {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: var(--lp-tr2-label);
   font-weight: 600;
   color: #4d4d4d;
   line-height: 1.45;
@@ -7114,7 +8594,7 @@
 
 .lp-tr2-focus-disruptor-insight {
   margin: 0.35rem 0 0.85rem;
-  font-size: 0.8125rem;
+  font-size: var(--lp-tr2-body);
   font-weight: 700;
   color: #1e4d7b;
   line-height: 1.45;
@@ -7126,87 +8606,52 @@
 
 .lp-tr2-focus-subblock-title {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: var(--lp-tr2-body);
   font-weight: 700;
   color: #4d4d4d;
 }
 
 .lp-tr2-focus-subblock-sub {
   margin: 0.2rem 0 0.45rem;
-  font-size: 0.6875rem;
+  font-size: var(--lp-tr2-meta);
   font-weight: 500;
   color: #64748b;
   line-height: 1.35;
 }
 
-.lp-tr2-bars--focus-disruptor {
-  margin-top: 0.15rem;
+.lp-tr2-focus-end-reason-list {
+  --lp-tr2-bar-label-w: 7.5rem;
+  --lp-tr2-bar-value-w: 4.5rem;
+  row-gap: 0.28rem;
+  margin-top: 0.35rem;
 }
 
-.lp-tr2-bar-row--focus-disruptor {
-  grid-template-columns: minmax(5.5rem, 8rem) minmax(0, 1fr) 4.75rem;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.12rem 0;
-}
-
-.lp-tr2-bar-row--focus-disruptor .lp-tr2-bar-label {
+.lp-tr2-focus-end-reason-tip {
+  grid-column: 1 / -1;
+  margin: 0 0 0.65rem;
+  width: 100%;
   min-width: 0;
-  text-align: left;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.75rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 8px;
+  background: rgba(30, 77, 123, 0.06);
+  font-size: var(--lp-tr2-label);
   font-weight: 600;
-  color: #4d4d4d;
+  color: #1e4d7b;
+  line-height: 1.45;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  box-sizing: border-box;
 }
 
-.lp-tr2-bar-row--focus-disruptor .lp-tr2-bar-track {
-  height: 0.48rem;
-  min-width: 0;
-  border-radius: 999px;
+.lp-tr2-focus-end-reason-list > .lp-tr2-focus-end-reason-item:last-child .lp-tr2-focus-end-reason-tip {
+  margin-bottom: 0;
+}
+
+.lp-tr2-focus-end-reason-list .lp-tr2-bar-track,
+.lp-tr2-bar-row--focus-disruptor .lp-tr2-bar-track,
+.lp-tr2-bar-row--focus-recipe .lp-tr2-bar-track,
+.lp-tr2-bar-row--focus-end-reason .lp-tr2-bar-track {
   background: #e8edf3;
-  overflow: hidden;
-}
-
-.lp-tr2-bar-row--focus-disruptor .lp-tr2-bar-value {
-  flex-shrink: 0;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: #475569;
-  text-align: right;
-}
-
-.lp-tr2-bar-row--focus-recipe {
-  grid-template-columns: minmax(5rem, 7.25rem) minmax(0, 1fr) 2.55rem;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.1rem 0;
-}
-
-.lp-tr2-bar-row--focus-recipe .lp-tr2-bar-label {
-  min-width: 0;
-  text-align: left;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #4d4d4d;
-}
-
-.lp-tr2-bar-row--focus-recipe .lp-tr2-bar-track {
-  height: 0.48rem;
-  min-width: 0;
-  border-radius: 999px;
-  background: #e8edf3;
-  overflow: hidden;
-}
-
-.lp-tr2-bar-row--focus-recipe .lp-tr2-bar-value {
-  flex-shrink: 0;
-  font-weight: 700;
 }
 
 /* ---------------------------------------------------------------------------

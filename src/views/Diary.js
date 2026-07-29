@@ -1385,13 +1385,25 @@ export function render() {
           rangeEnd = monthRng.end;
         }
       }
-      mountUnifiedTimeReport(scrollWrap, { rangeStart, rangeEnd });
 
-      if (savedReportScrollTop > 0) {
-        restoreTimeReportScrollTop(scrollWrap, savedReportScrollTop);
-      }
+      const paintUnifiedReport = () => {
+        if (!scrollWrap.isConnected) return;
+        mountUnifiedTimeReport(scrollWrap, { rangeStart, rangeEnd });
+        if (savedReportScrollTop > 0) {
+          restoreTimeReportScrollTop(scrollWrap, savedReportScrollTop);
+        }
+        rememberTimeReportDataSignature();
+      };
 
+      let deferredReportPaint = false;
       if (!reportLedgerRefreshFromPull && !skipDupLedgerPull) {
+        /* pull 끝난 뒤 한 번만 그림 — 로컬→서버 이중 렌더 방지 */
+        deferredReportPaint = true;
+        const loading = document.createElement("p");
+        loading.className = "lp-tr2-report-loading";
+        loading.textContent = "기록을 불러오는 중…";
+        scrollWrap.replaceChildren(loading);
+
         const { rangeStart: rs, rangeEnd: re } = diaryReportLedgerPullRange(ymd, g);
         const yTen = normalizeDiaryDateStr(ymd);
         const anchorsAtStart = {
@@ -1418,25 +1430,27 @@ export function render() {
           ) {
             return;
           }
-          try {
-            if (!refreshUnifiedTimeReportAfterPull()) {
-              reportLedgerRefreshFromPull = true;
-              renderLayout();
-              reportLedgerRefreshFromPull = false;
-            }
-          } finally {
-            reportLedgerRefreshFromPull = false;
-          }
+          paintUnifiedReport();
         });
+      } else {
+        paintUnifiedReport();
       }
-    }
 
-    layout.appendChild(contentArea);
-    layoutWrap.appendChild(layout);
+      layout.appendChild(contentArea);
+      layoutWrap.appendChild(layout);
 
-    syncDiaryFooterSubtabs();
-    if (currentTabId === "2" || currentTabId === "3") {
-      rememberTimeReportDataSignature();
+      syncDiaryFooterSubtabs();
+      if ((currentTabId === "2" || currentTabId === "3") && !deferredReportPaint) {
+        rememberTimeReportDataSignature();
+      }
+    } else {
+      layout.appendChild(contentArea);
+      layoutWrap.appendChild(layout);
+
+      syncDiaryFooterSubtabs();
+      if (currentTabId === "2" || currentTabId === "3") {
+        rememberTimeReportDataSignature();
+      }
     }
   }
 

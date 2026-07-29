@@ -75,6 +75,31 @@ function parseRowStartClock(r) {
   };
 }
 
+/**
+ * 이동 루틴 세션에서 체크한 매일할일 — 세션 분을 각 체크 항목에 합산
+ * (이동하면서 그 행동을 한 시간으로 봄)
+ */
+function accumulateMoveAccomplishments(byKey, r, mins) {
+  const list = Array.isArray(r?.habitDailyCompleted) ? r.habitDailyCompleted : [];
+  if (!list.length || mins <= 0) return;
+  list.forEach((item) => {
+    const text = String(item?.text || "").trim();
+    if (!text) return;
+    const id = String(item?.id || "").trim();
+    const key = id || text.toLowerCase();
+    const cur = byKey.get(key) || {
+      id,
+      text,
+      minutes: 0,
+      sessionCount: 0,
+    };
+    cur.minutes += mins;
+    cur.sessionCount += 1;
+    if (!cur.text) cur.text = text;
+    byKey.set(key, cur);
+  });
+}
+
 export function buildMoveReportSnapshot(rows, range) {
   let routineMinutes = 0;
   let simpleMinutes = 0;
@@ -83,6 +108,8 @@ export function buildMoveReportSnapshot(rows, range) {
   const daysWithMove = new Set();
   /** @type {{ kind: "routine"|"simple", label: string, minutes: number, startMinOfDay: number|null, startLabel: string }[]} */
   const entries = [];
+  /** @type {Map<string, { id: string, text: string, minutes: number, sessionCount: number }>} */
+  const accomplishedByKey = new Map();
 
   for (const r of rows || []) {
     const name = taskNameOf(r);
@@ -94,8 +121,12 @@ export function buildMoveReportSnapshot(rows, range) {
     else if (name === SIMPLE_MOVE_TASK_NAME) kind = "simple";
     if (!kind) continue;
 
-    if (kind === "routine") routineMinutes += mins;
-    else simpleMinutes += mins;
+    if (kind === "routine") {
+      routineMinutes += mins;
+      accumulateMoveAccomplishments(accomplishedByKey, r, mins);
+    } else {
+      simpleMinutes += mins;
+    }
     recordCount += 1;
     const d = rowDateYmd(r);
     if (d) daysWithMove.add(d);
@@ -116,6 +147,13 @@ export function buildMoveReportSnapshot(rows, range) {
     return am - bm || a.label.localeCompare(b.label, "ko");
   });
 
+  const accomplishedItems = [...accomplishedByKey.values()]
+    .filter((x) => x.minutes > 0 && x.text)
+    .sort(
+      (a, b) =>
+        b.minutes - a.minutes || a.text.localeCompare(b.text, "ko"),
+    );
+
   const totalMinutes = routineMinutes + simpleMinutes;
   const calendarDays = listDatesInclusive(range?.start, range?.end);
   const calendarDayCount = Math.max(1, calendarDays.length);
@@ -134,5 +172,6 @@ export function buildMoveReportSnapshot(rows, range) {
     daysWithMoveCount: daysWithMove.size,
     recordCount,
     entries,
+    accomplishedItems,
   };
 }

@@ -3,6 +3,7 @@
  */
 
 import { getBudgetGoals, parseTimeToHours } from "../views/Time.js";
+import { readTimeDailyBudgetGoalsRaw } from "./timeDailyBudgetModel.js";
 import { isWorkBuiltinTaskName } from "./timeTaskOptionsConstants.js";
 import { getTaskOptionByName } from "./timeTaskOptionsModel.js";
 
@@ -88,18 +89,32 @@ function rowEffectiveMinutes(r) {
   return 0;
 }
 
+const _taskCategoryCache = new Map();
+
 function taskCategoryKey(taskName) {
-  const opt = getTaskOptionByName(String(taskName || "").trim());
-  const cat = String(opt?.category || "").trim();
-  return cat || "other";
+  const name = String(taskName || "").trim();
+  if (_taskCategoryCache.has(name)) return _taskCategoryCache.get(name);
+  const opt = getTaskOptionByName(name);
+  const cat = String(opt?.category || "").trim() || "other";
+  _taskCategoryCache.set(name, cat);
+  return cat;
 }
 
 function categoryLabel(key) {
   return CATEGORY_LABELS[key] || CATEGORY_LABELS.other;
 }
 
-function plannedMetaForDay(ymd) {
-  const goals = getBudgetGoals(ymd);
+function loadAllBudgetGoalsOnce() {
+  try {
+    const raw = readTimeDailyBudgetGoalsRaw();
+    const all = raw ? JSON.parse(raw) : {};
+    return all && typeof all === "object" && !Array.isArray(all) ? all : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function plannedMetaForDayGoals(goals) {
   /** @type {Map<string, number>} */
   const plannedByTask = new Map();
   /** @type {Set<string>} */
@@ -145,11 +160,30 @@ function plannedMetaForDay(ymd) {
   return { plannedByTask, plannedNames, blocks };
 }
 
-function actualByTaskForDay(rows, ymd) {
+function plannedMetaForDay(ymd) {
+  return plannedMetaForDayGoals(getBudgetGoals(ymd));
+}
+
+function indexLedgerRowsByDay(rows) {
+  /** @type {Map<string, object[]>} */
+  const map = new Map();
+  for (const r of Array.isArray(rows) ? rows : []) {
+    const day = rowDateYmd(r);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) continue;
+    let arr = map.get(day);
+    if (!arr) {
+      arr = [];
+      map.set(day, arr);
+    }
+    arr.push(r);
+  }
+  return map;
+}
+
+function actualByTaskForDayRows(dayRows) {
   /** @type {Map<string, number>} */
   const map = new Map();
-  for (const r of rows) {
-    if (rowDateYmd(r) !== ymd) continue;
+  for (const r of dayRows || []) {
     const name = String(r.taskName || "").trim();
     if (!name) continue;
     const mins = rowEffectiveMinutes(r);
@@ -157,6 +191,12 @@ function actualByTaskForDay(rows, ymd) {
     map.set(name, (map.get(name) || 0) + mins);
   }
   return map;
+}
+
+function actualByTaskForDay(rows, ymd) {
+  return actualByTaskForDayRows(
+    (Array.isArray(rows) ? rows : []).filter((r) => rowDateYmd(r) === ymd),
+  );
 }
 
 function formatHoursMinutesShort(totalMinutes) {
@@ -258,6 +298,58 @@ export function buildPlanAdherenceReportSnapshot(range, rows) {
   const days = listDatesInclusive(start, end);
   const ledgerRows = Array.isArray(rows) ? rows : [];
   const totalDaysInPeriod = days.length;
+  const budgetAll = loadAllBudgetGoalsOnce();
+  const rowsByDay = indexLedgerRowsByDay(ledgerRows);
+  const isYear = totalDaysInPeriod >= 300;
+
+  /* 연간: 요약 카드만 쓰므로 상세(누수·추정·과제평균)는 생략 */
+  if (isYear) {
+    let totalPlanned = 0;
+    let totalExecuted = 0;
+    let plannedDaysCount = 0;
+    let hasPlanData = false;
+    for (const day of days) {
+      const dayGoals = budgetAll[day];
+      const { plannedByTask } = plannedMetaForDayGoals(
+        dayGoals && typeof dayGoals === "object" && !Array.isArray(dayGoals)
+          ? dayGoals
+          : {},
+      );
+      if (plannedByTask.size > 0) {
+        hasPlanData = true;
+        plannedDaysCount += 1;
+      }
+      const actualByTask = actualByTaskForDayRows(rowsByDay.get(day) || []);
+      for (const [name, plannedMin] of plannedByTask.entries()) {
+        totalPlanned += plannedMin;
+        totalExecuted += Math.min(actualByTask.get(name) || 0, plannedMin);
+      }
+    }
+    const planningHabitPct =
+      totalDaysInPeriod > 0
+        ? Math.round((plannedDaysCount / totalDaysInPeriod) * 100)
+        : 0;
+    const adherencePct =
+      totalPlanned > 0
+        ? Math.round((totalExecuted / totalPlanned) * 100)
+        : 0;
+    return {
+      ...empty(totalDaysInPeriod),
+      hasPlanData,
+      plannedDaysCount,
+      planningHabitPct,
+      planningHabitLine: buildPlanningHabitLine(
+        plannedDaysCount,
+        totalDaysInPeriod,
+      ),
+      plannedMinutes: totalPlanned,
+      executedMinutes: totalExecuted,
+      adherencePct,
+      oneLiner: hasPlanData
+        ? `계획(${totalDaysInPeriod}일) ${formatHoursMinutesShort(totalPlanned)} 중 ${formatHoursMinutesShort(totalExecuted)} 실행 = ${adherencePct}%`
+        : "",
+    };
+  }
 
   let totalPlanned = 0;
   let totalExecuted = 0;
@@ -278,12 +370,18 @@ export function buildPlanAdherenceReportSnapshot(range, rows) {
   let hasPlanData = false;
 
   for (const day of days) {
-    const { plannedByTask, plannedNames } = plannedMetaForDay(day);
+    const dayGoals = budgetAll[day];
+    const { plannedByTask, plannedNames } = plannedMetaForDayGoals(
+      dayGoals && typeof dayGoals === "object" && !Array.isArray(dayGoals)
+        ? dayGoals
+        : {},
+    );
     if (plannedByTask.size > 0) {
       hasPlanData = true;
       plannedDaysCount += 1;
     }
-    const actualByTask = actualByTaskForDay(ledgerRows, day);
+    const dayRows = rowsByDay.get(day) || [];
+    const actualByTask = actualByTaskForDayRows(dayRows);
 
     for (const [name, plannedMin] of plannedByTask.entries()) {
       totalPlanned += plannedMin;
@@ -313,8 +411,7 @@ export function buildPlanAdherenceReportSnapshot(range, rows) {
       }
     }
 
-    for (const r of ledgerRows) {
-      if (rowDateYmd(r) !== day) continue;
+    for (const r of dayRows) {
       const mins = rowEffectiveMinutes(r);
       if (mins <= 0) continue;
       totalActualAll += mins;
@@ -334,7 +431,6 @@ export function buildPlanAdherenceReportSnapshot(range, rows) {
         leakByTask.set(name, (leakByTask.get(name) || 0) + mins);
       }
     }
-
   }
 
   const planningHabitPct =
@@ -520,4 +616,134 @@ export function buildPlanAdherenceReportSnapshot(range, rows) {
     estimation,
     taskDurationAverages,
   };
+}
+
+function formatClockHm(minsOfDay) {
+  const m = ((Math.round(Number(minsOfDay) || 0) % 1440) + 1440) % 1440;
+  const h = Math.floor(m / 60);
+  const min = m % 60;
+  return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+}
+
+/** 연평균 스케줄 소요 표기 — 짧으면 분, 길면 시간(+소수) */
+export function formatAvgScheduleDurationKo(totalMinutes) {
+  const n = Math.max(0, Math.round(Number(totalMinutes) || 0));
+  if (n < 60) return `${n}분`;
+  const h = n / 60;
+  if (n % 60 === 0) return `${Math.round(h)}시간`;
+  if (n < 180) {
+    const hh = Math.floor(n / 60);
+    const mm = n % 60;
+    return `${hh}시간 ${mm}분`;
+  }
+  const rounded = Math.round(h * 100) / 100;
+  return `${rounded}시간`;
+}
+
+/**
+ * 연간 등 긴 기간 — 자주 반복된 실제 기록으로 「하루 평균 스케줄」 정리
+ * @param {{ start: string, end: string }} range
+ * @param {object[]} rows
+ * @returns {{ recordedDays: number, items: Array<{ taskName: string, startMin: number, endMin: number, durationMin: number, dayCount: number, line: string }> }}
+ */
+export function buildAverageActualDaySchedule(range, rows) {
+  const start = normYmd(range?.start);
+  const end = normYmd(range?.end || range?.start);
+  const empty = { recordedDays: 0, items: [] };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) {
+    return empty;
+  }
+
+  const ledgerRows = Array.isArray(rows) ? rows : [];
+  /** @type {Map<string, Map<string, { startMin: number, durationMin: number }>>} */
+  const byDayTask = new Map();
+  /** @type {Set<string>} */
+  const recordedDaySet = new Set();
+
+  for (const r of ledgerRows) {
+    const day = rowDateYmd(r);
+    if (day < start || day > end) continue;
+    const taskName = String(r.taskName || "").trim();
+    if (!taskName) continue;
+    const startMin = parseClockToMinutesOfDay(String(r.startTime || ""));
+    if (startMin == null) continue;
+    let mins = rowEffectiveMinutes(r);
+    if (mins <= 0) {
+      const en = parseClockToMinutesOfDay(String(r.endTime || ""));
+      if (en != null && en > startMin) mins = en - startMin;
+    }
+    if (mins <= 0) continue;
+
+    recordedDaySet.add(day);
+    let dayMap = byDayTask.get(day);
+    if (!dayMap) {
+      dayMap = new Map();
+      byDayTask.set(day, dayMap);
+    }
+    const prev = dayMap.get(taskName);
+    if (!prev) {
+      dayMap.set(taskName, { startMin, durationMin: mins });
+    } else {
+      dayMap.set(taskName, {
+        startMin: Math.min(prev.startMin, startMin),
+        durationMin: prev.durationMin + mins,
+      });
+    }
+  }
+
+  const recordedDays = recordedDaySet.size;
+  if (recordedDays <= 0) return empty;
+
+  /** @type {Map<string, { startSum: number, durSum: number, dayCount: number }>} */
+  const agg = new Map();
+  for (const dayMap of byDayTask.values()) {
+    for (const [taskName, v] of dayMap.entries()) {
+      const cur = agg.get(taskName) || {
+        startSum: 0,
+        durSum: 0,
+        dayCount: 0,
+      };
+      cur.startSum += v.startMin;
+      cur.durSum += v.durationMin;
+      cur.dayCount += 1;
+      agg.set(taskName, cur);
+    }
+  }
+
+  /* 유지되는 패턴만 — 기록 있는 날의 약 15% 이상(최소 5일, 최대 기준 40일) */
+  const minDays = Math.min(
+    40,
+    Math.max(5, Math.ceil(recordedDays * 0.15)),
+  );
+
+  const items = [...agg.entries()]
+    .filter(([, v]) => v.dayCount >= minDays)
+    .map(([taskName, v]) => {
+      const startMin = Math.round(v.startSum / v.dayCount);
+      const durationMin = Math.max(1, Math.round(v.durSum / v.dayCount));
+      const endMin = Math.min(startMin + durationMin, 24 * 60);
+      const startLabel = formatClockHm(startMin);
+      const endLabel = formatClockHm(endMin);
+      const durLabel = formatAvgScheduleDurationKo(durationMin);
+      const line = `${startLabel}~${endLabel} ${taskName} (${durLabel})`;
+      return {
+        taskName,
+        startMin,
+        endMin,
+        durationMin,
+        dayCount: v.dayCount,
+        startLabel,
+        endLabel,
+        durLabel,
+        line,
+      };
+    })
+    .sort(
+      (a, b) =>
+        a.startMin - b.startMin ||
+        b.dayCount - a.dayCount ||
+        a.taskName.localeCompare(b.taskName, "ko"),
+    );
+
+  return { recordedDays, items };
 }

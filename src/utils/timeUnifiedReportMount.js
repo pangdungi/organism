@@ -9,14 +9,15 @@ import {
   isChipDetailTaskName,
   isEmotionalBuiltinTaskName,
   isHealthyMealDetailTaskName,
+  isMealIntakeTasteRatingTaskName,
   isSleepBuiltinTaskName,
   isUnhealthyMealDetailTaskName,
 } from "./timeTaskOptionsConstants.js";
 import {
   formatIntegerMinutesDurationKo,
-  formatInvestReclaimWonDisplay,
   formatLedgerLossKrwDisplay,
   formatYmdDotsWithWeekdayKo,
+  getLedgerEffectiveHoursForReclaim,
   getTimeLedgerRowDisplayProductivity,
   getTimeReportDonutSnapshotForDateRange,
   getTimeReportHeroSnapshotForDateRange,
@@ -39,7 +40,10 @@ import {
 import { getEmotionCategoryChartColor } from "./timeEmotionTaxonomy.js";
 import { buildMoveReportSnapshot } from "./timeMoveReport.js";
 import { buildHappinessRoutineReportSnapshot } from "./timeHappinessRoutineReport.js";
-import { buildPlanAdherenceReportSnapshot } from "./timePlanAdherenceReport.js";
+import {
+  buildAverageActualDaySchedule,
+  buildPlanAdherenceReportSnapshot,
+} from "./timePlanAdherenceReport.js";
 import { buildFocusReportSnapshot } from "./timeFocusReport.js";
 import { buildMealTasteReportSnapshot } from "./timeMealTasteReport.js";
 import { flowDisruptorCategoryColor } from "./timeTaskFlowDisruptors.js";
@@ -47,6 +51,7 @@ import { getTaskOptionByName } from "./timeTaskOptionsModel.js";
 import { readUserHourlyRateLocal } from "./userHourlySync.js";
 import { tr2SvgFontSize } from "./timeReportUiScale.js";
 import { mountReportHabitScoreboard } from "./reportHabitScoreboard.js";
+import { buildYearKpiGoalReportSnapshot } from "./yearKpiGoalReport.js";
 
 const SLEEP_TARGET_MIN = 7 * 60;
 const CHART_COLORS = {
@@ -163,10 +168,11 @@ function formatRangeLabel(startYmd, endYmd) {
   return `${formatYmdDotsWithWeekdayKo(s)} ~ ${formatYmdDotsWithWeekdayKo(e)}`;
 }
 
-function rowsInRange(startYmd, endYmd) {
+function rowsInRange(startYmd, endYmd, allRows) {
   const rs = normYmd(startYmd);
   const re = normYmd(endYmd);
-  return loadTimeRows().filter((r) => {
+  const src = Array.isArray(allRows) ? allRows : loadTimeRows();
+  return src.filter((r) => {
     const d = (r.date || "").toString().replace(/\//g, "-").slice(0, 10);
     return d >= rs && d <= re;
   });
@@ -186,11 +192,36 @@ function rowMinutes(r) {
   return Math.round(hrs * 60);
 }
 
-function formatNetWon(netWon) {
-  const n = Math.round(Number(netWon) || 0);
-  if (n > 0) return formatInvestReclaimWonDisplay(n);
-  if (n < 0) return formatLedgerLossKrwDisplay(Math.abs(n));
-  return "₩0";
+/** 한 장 요약 금액 — 손글씨 폰트에 없는 ₩·반각 ± 대신 전각 부호·「원」 */
+function createDayHeroWonAmountEl(signedWon) {
+  const n = Math.round(Number(signedWon) || 0);
+  const abs = Math.abs(n);
+  const digits = abs.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const el = document.createElement("span");
+  el.className = "lp-tr2-day-hero-value-amount";
+  if (n > 0) {
+    const sign = document.createElement("span");
+    sign.className = "lp-tr2-day-hero-value-sign";
+    sign.textContent = "＋";
+    el.appendChild(sign);
+  } else if (n < 0) {
+    const sign = document.createElement("span");
+    sign.className = "lp-tr2-day-hero-value-sign";
+    sign.textContent = "－";
+    el.appendChild(sign);
+  }
+  const num = document.createElement("span");
+  num.className = "lp-tr2-day-hero-value-digits";
+  num.textContent = digits;
+  const cur = document.createElement("span");
+  cur.className = "lp-tr2-day-hero-value-currency";
+  cur.textContent = "원";
+  el.append(num, cur);
+  el.setAttribute(
+    "aria-label",
+    n > 0 ? `플러스 ${digits}원` : n < 0 ? `마이너스 ${digits}원` : `${digits}원`,
+  );
+  return el;
 }
 
 function readReportHourlyRateNumber() {
@@ -344,6 +375,21 @@ function returnMultBarHeightPct(mult, minVisible = 14) {
   return Math.max(minVisible, Math.min(100, h));
 }
 
+/**
+ * 요일별 등 — 이번 차트 안 최저~최고에 맞춰 높이 차이를 키움
+ * (절대 스케일이면 +79%·+98%가 비슷해 보임)
+ */
+function returnMultBarHeightPctInRange(mult, lo, hi, minVisible = 22) {
+  const pct = returnMultToPercent(mult);
+  if (pct == null) return 0;
+  const span = Math.max(1, Number(hi) - Number(lo));
+  const t = (pct - Number(lo)) / span;
+  return Math.max(
+    minVisible,
+    Math.min(100, minVisible + t * (100 - minVisible)),
+  );
+}
+
 function returnMultTier(mult) {
   const n = Number(mult);
   if (!Number.isFinite(n) || n <= 0) return "empty";
@@ -365,6 +411,8 @@ function returnMultFillColor(mult) {
 function rowCountsForTimeReturnReport(r) {
   if (getTimeLedgerRowDisplayProductivity(r) !== "productive") return false;
   if (isEmotionalBuiltinTaskName(r?.taskName)) return false;
+  /* 건강한·건강하지 않은 섭취 별점은 맛 평가 — 집중도와 분리 */
+  if (isMealIntakeTasteRatingTaskName(r?.taskName)) return false;
   return normalizeTimeRatingForRow(r.timeRating) != null;
 }
 
@@ -579,6 +627,19 @@ function renderWeekdayReturnChart(weekdayGrid) {
   wrap.setAttribute("role", "img");
   wrap.setAttribute("aria-label", "요일별 집중도");
 
+  const pcts = (weekdayGrid || [])
+    .filter((w) => w.count > 0 && w.avgMult != null)
+    .map((w) => returnMultToPercent(w.avgMult))
+    .filter((p) => p != null);
+  let lo = pcts.length ? Math.min(...pcts) : 0;
+  let hi = pcts.length ? Math.max(...pcts) : 100;
+  /* 격차가 너무 작으면 살짝 벌려 구분 */
+  if (hi - lo < 24) {
+    const mid = (hi + lo) / 2;
+    lo = mid - 12;
+    hi = mid + 12;
+  }
+
   weekdayGrid.forEach((w) => {
     const col = document.createElement("div");
     col.className = "lp-tr2-rating-weekday-col";
@@ -596,7 +657,7 @@ function renderWeekdayReturnChart(weekdayGrid) {
     const bar = document.createElement("div");
     bar.className = "lp-tr2-rating-weekday-bar";
     if (hasData) {
-      const pct = returnMultBarHeightPct(w.avgMult);
+      const pct = returnMultBarHeightPctInRange(w.avgMult, lo, hi, 24);
       bar.style.height = `${pct}%`;
       const fillColor = returnMultFillColor(w.avgMult);
       bar.style.background = fillColor;
@@ -946,29 +1007,6 @@ function computeSleepYDomain(hoursValues, targetHours) {
   return { yMin: 0, yMax, yRange: yMax || 1 };
 }
 
-function sleepChartLayout(totalDays) {
-  /* 주간·2주: 스크롤 없이 카드 가로 100%에 맞춤. 긴 기간만 가로 스크롤 */
-  const scroll = totalDays > 14;
-  const minSlot = scroll
-    ? totalDays <= 31
-      ? 26
-      : 20
-    : totalDays <= 8
-      ? 46
-      : 38;
-  const pad = { top: 16, right: 8, bottom: 22, left: 26 };
-  const W = Math.max(320, pad.left + pad.right + totalDays * minSlot);
-  const H = 148;
-  return { W, H, pad, minSlot, scroll };
-}
-
-/** 수면 막대 차트 글자 — 업스케일 없이 작게(손글씨 폰트에서 과대 방지) */
-function sleepChartSvgFont(base) {
-  const n = Number(base);
-  if (!Number.isFinite(n) || n <= 0) return 6;
-  return Math.round(n * 10) / 10;
-}
-
 function formatCompactSleepBarLabel(minutes) {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
@@ -977,7 +1015,11 @@ function formatCompactSleepBarLabel(minutes) {
   return `${h}:${String(m).padStart(2, "0")}`;
 }
 
-/** @param {HTMLElement} canvas @param {Array<{date:string, minutes:number}>} sleepByDay */
+/**
+ * 수면 목표 대비 — HTML 막대(집중 시간대 차트와 동일 방식).
+ * @param {HTMLElement} canvas
+ * @param {Array<{date:string, minutes:number}>} sleepByDay
+ */
 function renderSleepGoalBarChart(canvas, sleepByDay) {
   const totalDays = sleepByDay.length;
   const recorded = sleepByDay.filter((x) => x.minutes > 0);
@@ -985,122 +1027,73 @@ function renderSleepGoalBarChart(canvas, sleepByDay) {
 
   const targetH = SLEEP_TARGET_MIN / 60;
   const hoursValues = recorded.map((x) => x.minutes / 60);
-  const { yMin, yMax, yRange } = computeSleepYDomain(hoursValues, targetH);
-  const { W, H, pad, scroll } = sleepChartLayout(totalDays);
-  const plotW = W - pad.left - pad.right;
-  const plotH = H - pad.top - pad.bottom;
-  const plotBottom = pad.top + plotH;
-  const yAt = (h) => pad.top + plotH - ((h - yMin) / yRange) * plotH;
+  const { yMax } = computeSleepYDomain(hoursValues, targetH);
+  const scroll = totalDays > 14;
+  const showValLabels = totalDays <= 10;
+  const targetPct = yMax > 0 ? (targetH / yMax) * 100 : 0;
 
-  const svg = svgEl("svg", {
-    viewBox: `0 0 ${W} ${H}`,
-    class: "lp-tr2-sleep-chart-svg",
-    role: "img",
-    /* meet: 비율 유지(글자 안 눌림). 가로는 CSS width:100% + height:auto 로 채움 */
-    preserveAspectRatio: scroll ? "xMinYMid meet" : "xMidYMid meet",
-    "aria-label": "날짜별 수면 시간 막대 그래프 · 7시간 목표",
-  });
-  if (scroll) {
-    svg.style.minWidth = `${W}px`;
-  } else {
-    svg.removeAttribute("width");
-    svg.removeAttribute("height");
-  }
-
-  svg.appendChild(
-    svgEl("rect", {
-      x: pad.left,
-      y: pad.top,
-      width: plotW,
-      height: plotH,
-      fill: "#fafafa",
-      rx: 6,
-    }),
+  const chart = document.createElement("div");
+  chart.className = "lp-tr2-sleep-goal-chart";
+  chart.setAttribute("role", "img");
+  chart.setAttribute(
+    "aria-label",
+    "날짜별 수면 시간 막대 그래프 · 7시간 목표",
   );
 
+  /* Y축은 3·6·9…만 — 목표 7은 점선·범례로만 (숫자 겹침 방지) */
   const gridStep = yMax <= 9 ? 3 : Math.ceil(yMax / 4 / 3) * 3;
-  for (let v = 0; v <= yMax + 0.01; v += gridStep) {
-    const y = yAt(v);
-    const isTarget = Math.abs(v - targetH) < 0.01;
-    svg.appendChild(
-      svgEl("line", {
-        x1: pad.left,
-        x2: W - pad.right,
-        y1: y,
-        y2: y,
-        stroke: isTarget ? "#fde68a" : "#e5e5e5",
-        "stroke-width": isTarget ? 1.25 : 1,
-      }),
-    );
-    const tick = svgEl("text", {
-      x: pad.left - 5,
-      y: y + 3,
-      fill: isTarget ? "#d97706" : "#999999",
-      "font-size": sleepChartSvgFont(6.25),
-      "font-weight": isTarget ? 600 : 400,
-      "text-anchor": "end",
-      class: "lp-tr2-sleep-chart-tick",
-    });
-    tick.textContent = isTarget ? "7" : fmtSleepAxisHours(v);
-    svg.appendChild(tick);
-  }
-  if (Math.abs(yMax - targetH) > 0.01 && targetH % gridStep !== 0) {
-    const y = yAt(targetH);
-    const tick = svgEl("text", {
-      x: pad.left - 5,
-      y: y + 3,
-      fill: "#d97706",
-      "font-size": sleepChartSvgFont(6.25),
-      "font-weight": 600,
-      "text-anchor": "end",
-      class: "lp-tr2-sleep-chart-tick",
-    });
-    tick.textContent = "7";
-    svg.appendChild(tick);
+  const tickVals = [];
+  for (let v = 0; v <= yMax + 0.01; v += gridStep) tickVals.push(v);
+
+  const yAxis = document.createElement("div");
+  yAxis.className = "lp-tr2-sleep-goal-chart-y";
+  yAxis.setAttribute("aria-hidden", "true");
+  tickVals.forEach((v) => {
+    const tick = document.createElement("span");
+    tick.className = "lp-tr2-sleep-goal-chart-y-tick";
+    tick.textContent = fmtSleepAxisHours(v);
+    tick.style.bottom = `${(v / yMax) * 100}%`;
+    yAxis.appendChild(tick);
+  });
+
+  const valsRow = document.createElement("div");
+  valsRow.className = "lp-tr2-sleep-goal-chart-vals";
+  const barsRow = document.createElement("div");
+  barsRow.className = "lp-tr2-sleep-goal-chart-bars";
+  const datesRow = document.createElement("div");
+  datesRow.className = "lp-tr2-sleep-goal-chart-dates";
+  if (scroll) {
+    const minW = `${Math.max(320, totalDays * (totalDays <= 31 ? 28 : 22))}px`;
+    valsRow.style.minWidth = minW;
+    barsRow.style.minWidth = minW;
+    datesRow.style.minWidth = minW;
   }
 
-  svg.appendChild(
-    svgEl("line", {
-      x1: pad.left,
-      x2: pad.left,
-      y1: pad.top,
-      y2: plotBottom,
-      stroke: "#cccccc",
-      "stroke-width": 1,
-    }),
-  );
-  svg.appendChild(
-    svgEl("line", {
-      x1: pad.left,
-      x2: W - pad.right,
-      y1: plotBottom,
-      y2: plotBottom,
-      stroke: "#cccccc",
-      "stroke-width": 1,
-    }),
-  );
+  /* Y축 눈금 가로 격자 — 몇 시간인지 맞추기 쉽게 */
+  const gridLayer = document.createElement("div");
+  gridLayer.className = "lp-tr2-sleep-goal-chart-grid";
+  gridLayer.setAttribute("aria-hidden", "true");
+  tickVals.forEach((v) => {
+    const line = document.createElement("div");
+    line.className = "lp-tr2-sleep-goal-chart-grid-line";
+    if (v === 0) line.classList.add("is-baseline");
+    line.style.bottom = `${(v / yMax) * 100}%`;
+    gridLayer.appendChild(line);
+  });
+  barsRow.appendChild(gridLayer);
 
-  const ty = yAt(targetH);
-  svg.appendChild(
-    svgEl("line", {
-      x1: pad.left,
-      x2: W - pad.right,
-      y1: ty,
-      y2: ty,
-      stroke: "#f59e0b",
-      "stroke-width": 1.75,
-      "stroke-dasharray": "5 3",
-    }),
-  );
-
-  const slotW = plotW / totalDays;
-  const barW = Math.max(4, Math.min(22, slotW * 0.52));
-  const goalTop = yAt(targetH);
-  const goalHeight = plotBottom - goalTop;
+  /* 7시간 목표 점선 — 그래프 안에 반드시 표시 (Y축 숫자와 별개) */
+  const targetLine = document.createElement("div");
+  targetLine.className = "lp-tr2-sleep-goal-chart-target";
+  targetLine.style.bottom = `${targetPct}%`;
+  targetLine.setAttribute("aria-hidden", "true");
+  const targetTag = document.createElement("span");
+  targetTag.className = "lp-tr2-sleep-goal-chart-target-tag";
+  targetTag.textContent = "7h";
+  targetLine.appendChild(targetTag);
+  barsRow.appendChild(targetLine);
 
   sleepByDay.forEach(({ date, minutes }, index) => {
-    const cx = pad.left + (index + 0.5) * slotW;
-    const label = sleepChartDateLabel(date, totalDays);
     const showDate =
       totalDays <= 10 ||
       index === 0 ||
@@ -1108,67 +1101,60 @@ function renderSleepGoalBarChart(canvas, sleepByDay) {
       (totalDays <= 20 && index % 2 === 0) ||
       (totalDays > 20 && index % 3 === 0);
 
-    if (showDate) {
-      const dateLabel = svgEl("text", {
-        x: cx,
-        y: H - 6,
-        fill: "#999999",
-        "font-size": sleepChartSvgFont(6.25),
-        "text-anchor": "middle",
-        class: "lp-tr2-sleep-chart-tick",
-      });
-      dateLabel.textContent = label;
-      svg.appendChild(dateLabel);
+    const valCell = document.createElement("span");
+    valCell.className = "lp-tr2-sleep-goal-chart-val";
+    const barCell = document.createElement("div");
+    barCell.className = "lp-tr2-sleep-goal-chart-bar-cell";
+    const dateCell = document.createElement("span");
+    dateCell.className = "lp-tr2-sleep-goal-chart-date";
+    dateCell.textContent = showDate
+      ? sleepChartDateLabel(date, totalDays)
+      : "\u00a0";
+
+    if (minutes > 0) {
+      const hours = minutes / 60;
+      const barPct = Math.max(3, (hours / yMax) * 100);
+      const metGoal = minutes >= SLEEP_TARGET_MIN;
+      const bar = document.createElement("div");
+      bar.className = `lp-tr2-sleep-goal-chart-bar${metGoal ? " is-met" : " is-miss"}`;
+      bar.style.height = `${barPct}%`;
+      bar.title = `${formatYmdDotsWithWeekdayKo(date)} · ${formatIntegerMinutesDurationKo(minutes)}${metGoal ? " · 목표 달성" : " · 목표 미달"}`;
+      barCell.appendChild(bar);
+      if (showValLabels) {
+        valCell.textContent = formatCompactSleepBarLabel(minutes);
+        if (metGoal) valCell.classList.add("is-met");
+      } else {
+        valCell.textContent = "\u00a0";
+      }
+    } else {
+      valCell.textContent = "\u00a0";
     }
 
-    if (minutes <= 0) return;
-
-    svg.appendChild(
-      svgEl("rect", {
-        x: cx - barW / 2,
-        y: goalTop,
-        width: barW,
-        height: Math.max(1, goalHeight),
-        fill: "#fff7ed",
-        rx: 2,
-      }),
-    );
-
-    const hours = minutes / 60;
-    const barTop = yAt(hours);
-    const barHeight = Math.max(2, plotBottom - barTop);
-    const metGoal = minutes >= SLEEP_TARGET_MIN;
-    const bar = svgEl("rect", {
-      x: cx - barW / 2,
-      y: barTop,
-      width: barW,
-      height: barHeight,
-      fill: metGoal ? "#22c55e" : "#94a3b8",
-      opacity: metGoal ? 0.92 : 0.88,
-      rx: 2,
-    });
-    const tip = `${formatYmdDotsWithWeekdayKo(date)} · ${formatIntegerMinutesDurationKo(minutes)}${metGoal ? " · 목표 달성" : " · 목표 미달"}`;
-    const titleEl = svgEl("title");
-    titleEl.textContent = tip;
-    bar.appendChild(titleEl);
-    svg.appendChild(bar);
-
-    if (totalDays <= 10) {
-      const valLabel = svgEl("text", {
-        x: cx,
-        y: barTop - 3,
-        fill: metGoal ? "#15803d" : "#64748b",
-        "font-size": sleepChartSvgFont(6),
-        "font-weight": 600,
-        "text-anchor": "middle",
-        class: "lp-tr2-sleep-chart-bar-label",
-      });
-      valLabel.textContent = formatCompactSleepBarLabel(minutes);
-      svg.appendChild(valLabel);
-    }
+    valsRow.appendChild(valCell);
+    barsRow.appendChild(barCell);
+    datesRow.appendChild(dateCell);
   });
 
-  canvas.appendChild(svg);
+  const top = document.createElement("div");
+  top.className = "lp-tr2-sleep-goal-chart-top";
+  const topSpacer = document.createElement("div");
+  topSpacer.className = "lp-tr2-sleep-goal-chart-y-spacer";
+  topSpacer.setAttribute("aria-hidden", "true");
+  top.append(topSpacer, valsRow);
+
+  const mid = document.createElement("div");
+  mid.className = "lp-tr2-sleep-goal-chart-mid";
+  mid.append(yAxis, barsRow);
+
+  const bottom = document.createElement("div");
+  bottom.className = "lp-tr2-sleep-goal-chart-bottom";
+  const bottomSpacer = document.createElement("div");
+  bottomSpacer.className = "lp-tr2-sleep-goal-chart-y-spacer";
+  bottomSpacer.setAttribute("aria-hidden", "true");
+  bottom.append(bottomSpacer, datesRow);
+
+  chart.append(top, mid, bottom);
+  canvas.appendChild(chart);
   return { scroll };
 }
 
@@ -1291,10 +1277,11 @@ function resolveSleepWakeBedForDay(dayRecs, prevDayRecs) {
 }
 
 /** 취침·기상 해석용 — 조회 기간 전후 1일 수면 기록 포함 */
-function sleepRowsForReportContext(range) {
+function sleepRowsForReportContext(range, allRows) {
   const padStart = addDaysYmd(range.start, -1);
   const padEnd = addDaysYmd(range.end, 1);
-  return loadTimeRows().filter((r) => {
+  const src = Array.isArray(allRows) ? allRows : loadTimeRows();
+  return src.filter((r) => {
     const d = rowDateYmd(r);
     if (!d || d < padStart || d > padEnd) return false;
     return isSleepLedgerRow(r);
@@ -1467,10 +1454,10 @@ function buildSleepQualityCorrelations(daysWithSleep) {
 }
 
 /** @param {ReturnType<typeof loadTimeRows>} rows @param {{start:string,end:string}} range */
-function buildSleepReportSnapshot(rows, range) {
+function buildSleepReportSnapshot(rows, range, allRows) {
   const dates = listDatesInclusive(range.start, range.end);
   const recordsByDate = collectSleepRecordsByDate(
-    sleepRowsForReportContext(range),
+    sleepRowsForReportContext(range, allRows),
   );
 
   const sleepByDay = dates.map((date) => {
@@ -1617,7 +1604,7 @@ function buildSleepStatsGrid(snap, options = {}) {
     addStat(
       "수면 품질",
       day.rating != null ? createSleepRatingStarsEl(day.rating) : "—",
-      "수면 평가 별점",
+      "",
       "rating",
     );
     addStat("수면 시간", formatIntegerMinutesDurationKo(day.minutes));
@@ -1670,14 +1657,13 @@ function buildSleepStatsGrid(snap, options = {}) {
     snap.regularitySpread > 0
       ? formatRegularitySpread(snap.regularitySpread)
       : "—",
-    "클수록 불규칙",
   );
   addStat(
     "평균 품질",
     snap.avgQuality != null
       ? createSleepRatingStarsEl(snap.avgQuality, { showScore: true })
       : "—",
-    "수면 평가 별점",
+    "",
     "rating",
   );
   addStat(
@@ -1697,7 +1683,6 @@ function buildSleepStatsGrid(snap, options = {}) {
     addStat("최소", formatIntegerMinutesDurationKo(Math.min(...mins)));
     addStat("최대", formatIntegerMinutesDurationKo(Math.max(...mins)));
   }
-  addStat("목표 달성", `${snap.metDays}/${daysWithSleep.length}일`);
   return grid;
 }
 
@@ -1786,13 +1771,11 @@ function groupIntakeEntriesByDate(entries) {
     .map(([date, items]) => ({ date, items }));
 }
 
-/** @param {Array<{main:string, sub:string}>} items */
+/** @param {Array<{main:string}>} items */
 function formatIntakeDayLine(items) {
   return items
-    .map((item) => {
-      if (item.sub) return `${item.main} (${item.sub})`;
-      return item.main;
-    })
+    .map((item) => String(item.main || "").trim())
+    .filter(Boolean)
     .join(" · ");
 }
 
@@ -1962,42 +1945,147 @@ function buildIntakeTimeSnapshot(rows, range) {
   };
 }
 
+/**
+ * 섭취 로그 — 목록은 식단명(mealDetail)만.
+ * healthyCount/unhealthyCount = 조회 기간 기록 건수(식단명 없어도 집계).
+ */
 function collectIntakeLogs(rows) {
   /** @type {{ date: string, main: string, sub: string, rating: number|null }[]} */
   const healthy = [];
   /** @type {{ date: string, main: string, sub: string, rating: number|null }[]} */
   const unhealthy = [];
+  let healthyCount = 0;
+  let unhealthyCount = 0;
   rows.forEach((r) => {
     const tn = String(r.taskName || "").trim();
-    const md = String(r.mealDetail || "").trim();
-    const note = rowUserNote(r);
     const date = rowDateYmd(r);
     if (!date) return;
-    const main = md || note || tn;
-    if (!main) return;
-    const subParts = [];
-    if (md && note && note !== md) subParts.push(note);
-    const mins = rowMinutes(r);
-    if (mins > 0) subParts.push(formatIntegerMinutesDurationKo(mins));
+    const isHealthy = isHealthyMealDetailTaskName(tn);
+    const isUnhealthy = isUnhealthyMealDetailTaskName(tn);
+    if (!isHealthy && !isUnhealthy) return;
+    if (isHealthy) healthyCount += 1;
+    else unhealthyCount += 1;
+    const md = String(r.mealDetail || "").trim();
+    if (!md) return;
     const entry = {
       date,
-      main,
-      sub: subParts.join(" · "),
+      main: md,
+      sub: "",
       rating: normalizeTimeRatingForRow(r.timeRating),
     };
-    if (isHealthyMealDetailTaskName(tn)) healthy.push(entry);
-    else if (isUnhealthyMealDetailTaskName(tn)) unhealthy.push(entry);
+    if (isHealthy) healthy.push(entry);
+    else unhealthy.push(entry);
   });
   const sortDesc = (a, b) =>
     b.date.localeCompare(a.date) || a.main.localeCompare(b.main, "ko");
   healthy.sort(sortDesc);
   unhealthy.sort(sortDesc);
-  return { healthy, unhealthy };
+  return { healthy, unhealthy, healthyCount, unhealthyCount };
 }
 
-function getDayAvailableMinutes(ymd) {
+/** 건강·비건강 섭취 건수 비율 — 한 줄 가로 막대 */
+function renderIntakeHealthRatioBar(healthyCount, unhealthyCount) {
+  const h = Math.max(0, Math.round(Number(healthyCount) || 0));
+  const u = Math.max(0, Math.round(Number(unhealthyCount) || 0));
+  const total = h + u;
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-intake-ratio-bar";
+  if (total <= 0) return wrap;
+
+  const hPct = Math.round((h / total) * 100);
+  const uPct = 100 - hPct;
+
+  const head = document.createElement("div");
+  head.className = "lp-tr2-intake-ratio-bar-head";
+  const left = document.createElement("span");
+  left.className = "lp-tr2-intake-ratio-bar-head-healthy";
+  left.textContent = `건강한 섭취 ${h}건`;
+  const right = document.createElement("span");
+  right.className = "lp-tr2-intake-ratio-bar-head-unhealthy";
+  right.textContent = `비건강 ${u}건`;
+  head.append(left, right);
+
+  const track = document.createElement("div");
+  track.className = "lp-tr2-intake-ratio-bar-track";
+  track.setAttribute(
+    "aria-label",
+    `건강한 섭취 ${h}건(${hPct}%), 건강하지 않은 섭취 ${u}건(${uPct}%)`,
+  );
+  if (h > 0) {
+    const fillH = document.createElement("div");
+    fillH.className = "lp-tr2-intake-ratio-bar-fill lp-tr2-intake-ratio-bar-fill--healthy";
+    fillH.style.width = `${hPct}%`;
+    fillH.title = `건강한 섭취 ${h}건 · ${hPct}%`;
+    track.appendChild(fillH);
+  }
+  if (u > 0) {
+    const fillU = document.createElement("div");
+    fillU.className =
+      "lp-tr2-intake-ratio-bar-fill lp-tr2-intake-ratio-bar-fill--unhealthy";
+    fillU.style.width = `${uPct}%`;
+    fillU.title = `건강하지 않은 섭취 ${u}건 · ${uPct}%`;
+    track.appendChild(fillU);
+  }
+
+  const foot = document.createElement("p");
+  foot.className = "lp-tr2-intake-ratio-bar-foot";
+  if (h === u) {
+    foot.textContent = `이 기간 건강·비건강 섭취 기록이 같습니다 (${hPct}% · ${uPct}%)`;
+  } else if (h > u) {
+    foot.textContent = `이 기간에는 건강한 섭취 기록이 더 많습니다 (${hPct}%)`;
+  } else {
+    foot.textContent = `이 기간에는 건강하지 않은 섭취 기록이 더 많습니다 (${uPct}%)`;
+  }
+
+  wrap.append(head, track, foot);
+  return wrap;
+}
+
+/** 하루 = 0:00~23:59(1439분) — DAY_LENGTH_MINUTES 와 동일 */
+const AVAIL_DAY_LENGTH_MINUTES = 23 * 60 + 59;
+
+/** rows 한 번으로 날짜별 가용분(하루 − 근무 − 수면) 맵 */
+function buildAvailableMinutesByDate(rows) {
+  /** @type {Map<string, { work: number, sleep: number }>} */
+  const byDate = new Map();
+  (rows || []).forEach((r) => {
+    const d = rowDateYmd(r);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+    const hrs = parseTimeToHours(r.timeTracked);
+    if (!(hrs > 0) || !Number.isFinite(hrs)) return;
+    const cat = String(r.category || "")
+      .trim()
+      .toLowerCase();
+    if (cat !== "work" && cat !== "sleep") return;
+    if (!byDate.has(d)) byDate.set(d, { work: 0, sleep: 0 });
+    const day = byDate.get(d);
+    if (cat === "work") day.work += hrs * 60;
+    else day.sleep += hrs * 60;
+  });
+  /** @type {Map<string, number>} */
+  const avail = new Map();
+  byDate.forEach((u, d) => {
+    avail.set(
+      d,
+      Math.max(0, Math.round(AVAIL_DAY_LENGTH_MINUTES - u.work - u.sleep)),
+    );
+  });
+  return avail;
+}
+
+function getDayAvailableMinutes(ymd, availByDate) {
+  if (availByDate instanceof Map && availByDate.has(ymd)) {
+    return availByDate.get(ymd) || 0;
+  }
+  if (availByDate instanceof Map) {
+    /* 해당일 근무·수면 없으면 하루 전체 가용 */
+    return AVAIL_DAY_LENGTH_MINUTES;
+  }
   const s = getTimeReportSummaryGridForDateRange(ymd, ymd);
-  return Math.max(0, Math.round(24 * 60 - s.workMinutes - s.sleepMinutes));
+  return Math.max(
+    0,
+    Math.round(AVAIL_DAY_LENGTH_MINUTES - s.workMinutes - s.sleepMinutes),
+  );
 }
 
 function aggregateContentTypesFromEntries(entries, categoryTotalMinutes) {
@@ -2089,6 +2177,98 @@ function renderMediaTagBreakdown(title, subtitle, tags, kind) {
   return block;
 }
 
+/** 연간 미디어 트리맵 — 콘텐츠별 소프트 톤 */
+const MEDIA_CONTENT_TREEMAP_COLORS = [
+  "#C5D4E8",
+  "#E8C4C4",
+  "#D0E4F5",
+  "#F3E4CC",
+  "#DDD6F0",
+  "#D0EBD8",
+  "#F5DCE4",
+  "#D8DCE8",
+  "#E8D6E0",
+  "#D0EBE2",
+  "#E0E6EE",
+];
+
+/** 연간 미디어 — 콘텐츠 종류별 트리맵 */
+function buildMediaTreemapItems(snap) {
+  return (snap?.contentTags || [])
+    .filter((t) => (Number(t.minutes) || 0) > 0)
+    .map((t) => ({
+      name: String(t.label || "(미선택)").trim() || "(미선택)",
+      minutes: Math.round(Number(t.minutes) || 0),
+    }))
+    .sort((a, b) => b.minutes - a.minutes || a.name.localeCompare(b.name, "ko"));
+}
+
+function renderMediaContentTreemap(items) {
+  const layout = layoutMonthTaskTreemap(items);
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-media-treemap";
+  wrap.setAttribute("role", "img");
+  wrap.setAttribute("aria-label", "콘텐츠 종류별 시청 시간");
+
+  const board = document.createElement("div");
+  board.className = "lp-tr2-media-treemap-board";
+  const colorByName = new Map();
+  items.forEach((it, idx) => {
+    colorByName.set(
+      it.name,
+      MEDIA_CONTENT_TREEMAP_COLORS[idx % MEDIA_CONTENT_TREEMAP_COLORS.length],
+    );
+  });
+  const GAP_RATIO = 0.012;
+
+  layout.forEach((cell) => {
+    const gapW = Math.min(0.55, cell.w * GAP_RATIO);
+    const gapH = Math.min(0.55, cell.h * GAP_RATIO);
+    const w = Math.max(0, cell.w - gapW);
+    const h = Math.max(0, cell.h - gapH);
+    const el = document.createElement("div");
+    el.className = "lp-tr2-media-treemap-cell";
+    el.style.left = `${cell.x + gapW / 2}%`;
+    el.style.top = `${cell.y + gapH / 2}%`;
+    el.style.width = `${w}%`;
+    el.style.height = `${h}%`;
+    el.style.background =
+      colorByName.get(cell.name) || MEDIA_CONTENT_TREEMAP_COLORS[0];
+    const metaText = `${formatIntegerMinutesDurationKo(cell.minutes)} · ${cell.pct}%`;
+    el.title = `${cell.name} · ${metaText}`;
+
+    const minSide = Math.min(w, h);
+    if (minSide < 22 || h < 16 || w < 18) el.classList.add("is-compact");
+    if (minSide < 12 || h < 9 || w < 11) el.classList.add("is-tiny");
+    if (h < 8 && w >= 8) el.classList.add("is-strip");
+    if (h < 6.5 || (h < 9 && w < 10)) el.classList.add("is-meta-hidden");
+    if (minSide < 2.8 || (h < 2.4 && w < 4)) el.classList.add("is-micro");
+
+    const nameFs = Math.max(
+      0.375,
+      Math.min(0.95, 0.26 + minSide * 0.034),
+    );
+    const metaFs = Math.max(
+      0.34,
+      Math.min(0.8, 0.22 + minSide * 0.028),
+    );
+    el.style.setProperty("--tm-name-fs", `${nameFs.toFixed(3)}rem`);
+    el.style.setProperty("--tm-meta-fs", `${metaFs.toFixed(3)}rem`);
+
+    const name = document.createElement("span");
+    name.className = "lp-tr2-media-treemap-name";
+    name.textContent = cell.name;
+    const meta = document.createElement("span");
+    meta.className = "lp-tr2-media-treemap-meta";
+    meta.textContent = metaText;
+    el.append(name, meta);
+    board.appendChild(el);
+  });
+
+  wrap.appendChild(board);
+  return wrap;
+}
+
 function mediaContentKind(row) {
   const tn = canonicalMealTaskDisplayName(String(row.taskName || "").trim());
   if (tn === MEDIA_CONSCIOUS_TASK) return "conscious";
@@ -2127,6 +2307,7 @@ function buildMediaReportSnapshot(rows, range) {
   const unconsciousEntriesAll = [];
   let totalConscious = 0;
   let totalUnconscious = 0;
+  const availByDate = buildAvailableMinutesByDate(rows);
 
   rows.forEach((r) => {
     const kind = mediaContentKind(r);
@@ -2168,7 +2349,7 @@ function buildMediaReportSnapshot(rows, range) {
       const consciousMinutes = d?.conscious ?? 0;
       const unconsciousMinutes = d?.unconscious ?? 0;
       const minutes = consciousMinutes + unconsciousMinutes;
-      const avail = getDayAvailableMinutes(date);
+      const avail = getDayAvailableMinutes(date, availByDate);
       const pct = avail > 0 ? Math.round((minutes / avail) * 100) : 0;
       return {
         date,
@@ -2202,6 +2383,10 @@ function buildMediaReportSnapshot(rows, range) {
     unconsciousTags: aggregateContentTypesFromEntries(
       unconsciousEntriesAll,
       totalUnconscious,
+    ),
+    contentTags: aggregateContentTypesFromEntries(
+      [...consciousEntriesAll, ...unconsciousEntriesAll],
+      totalMinutes,
     ),
   };
 }
@@ -2579,7 +2764,49 @@ function renderMoveDayComposition(snap) {
   hint.className = "lp-tr2-move-day-util-hint";
   hint.textContent = "가용율 = 총 이동시간 중 이동 루틴 비율";
   wrap.appendChild(hint);
+
+  const accomplished = renderMoveAccomplishedBlock(snap);
+  if (accomplished) wrap.appendChild(accomplished);
   return wrap;
+}
+
+/** 이동 루틴에서 체크한 매일할일 — 이동하면서 이뤄낸 것들 */
+function renderMoveAccomplishedBlock(snap) {
+  const items = Array.isArray(snap?.accomplishedItems)
+    ? snap.accomplishedItems
+    : [];
+  if (!items.length) return null;
+
+  const block = document.createElement("div");
+  block.className = "lp-tr2-move-accomplished";
+  const title = document.createElement("p");
+  title.className = "lp-tr2-move-accomplished-title";
+  title.textContent = "이동하면서 이뤄낸 것들";
+  const sub = document.createElement("p");
+  sub.className = "lp-tr2-move-accomplished-sub";
+  sub.textContent = "이동 루틴에서 체크한 매일할일 · 그 이동에 쓴 시간";
+  block.append(title, sub);
+
+  const list = document.createElement("ul");
+  list.className = "lp-tr2-move-accomplished-list";
+  items.forEach((item) => {
+    const li = document.createElement("li");
+    li.className = "lp-tr2-move-accomplished-item";
+    const check = document.createElement("span");
+    check.className = "lp-tr2-move-accomplished-check";
+    check.setAttribute("aria-hidden", "true");
+    check.textContent = "✓";
+    const name = document.createElement("span");
+    name.className = "lp-tr2-move-accomplished-name";
+    name.textContent = item.text;
+    const dur = document.createElement("span");
+    dur.className = "lp-tr2-move-accomplished-dur";
+    dur.textContent = formatIntegerMinutesDurationKo(item.minutes);
+    li.append(check, name, dur);
+    list.appendChild(li);
+  });
+  block.appendChild(list);
+  return block;
 }
 
 function mountMoveSection(scrollWrap, range, rows) {
@@ -2588,8 +2815,8 @@ function mountMoveSection(scrollWrap, range, rows) {
   const sec = createSection(
     "이동 시간",
     isDay
-      ? "이동시간 가용율 · 루틴·단순·총 이동시간"
-      : "이동 루틴 · 단순 이동 과제 기록 합산",
+      ? "이동시간 가용율 · 이동하면서 이뤄낸 것들"
+      : "이동 루틴 · 단순 이동 · 이동하면서 이뤄낸 것들",
   );
 
   if (!snap.hasData) {
@@ -2626,8 +2853,11 @@ function mountMoveSection(scrollWrap, range, rows) {
     "가용율 = 총 이동시간 중 이동 루틴에 쓴 비율입니다. 일평균은 조회 기간 전체 일수로 나눈 값입니다.";
   sec.appendChild(hint);
 
+  const accomplished = renderMoveAccomplishedBlock(snap);
+  if (accomplished) sec.appendChild(accomplished);
+
   const grid = document.createElement("div");
-  grid.className = "lp-tr2-card-grid";
+  grid.className = "lp-tr2-card-grid lp-tr2-card-grid--move";
   grid.appendChild(
     createStatCard(
       "총 이동시간",
@@ -2895,8 +3125,186 @@ function appendHappinessRoutineWeekView(sec, snap) {
   }
 }
 
+function mountYearKpiGoalReportSection(scrollWrap, range, rows) {
+  const dayCount = listDatesInclusive(range?.start, range?.end).length;
+  if (dayCount < 300) return;
+
+  const snap = buildYearKpiGoalReportSnapshot(range, rows);
+  const sec = createSection(
+    "목표 레포트",
+    "KPI별 올해 달성 · 100% 완료 · 잡무·할일 처리",
+  );
+
+  if (!snap.hasData) {
+    const note = document.createElement("p");
+    note.className = "lp-tr2-chart-note";
+    note.textContent =
+      "올해 집계할 KPI가 없거나, 아직 진행·기록이 없습니다.";
+    sec.appendChild(note);
+    scrollWrap.appendChild(sec);
+    return;
+  }
+
+  const s = snap.summary;
+  const grid = document.createElement("div");
+  grid.className = "lp-tr2-card-grid lp-tr2-year-kpi-summary-grid";
+  grid.appendChild(
+    createStatCard(
+      "100% 달성",
+      `${s.completedCount}개`,
+      `전체 ${s.totalKpis}개 KPI 중`,
+    ),
+  );
+  grid.appendChild(
+    createStatCard(
+      "평균 달성률",
+      `${s.avgProgressPct}%`,
+      "잡무 제외 · 진행률 있는 KPI",
+    ),
+  );
+  grid.appendChild(
+    createStatCard(
+      "잡무 처리",
+      `${s.choreYearCount}건`,
+      "올해 완료한 잡무",
+    ),
+  );
+  grid.appendChild(
+    createStatCard(
+      "할일 완료",
+      `${s.taskCompletionsYear}건`,
+      "태스크완료형 KPI 합계",
+    ),
+  );
+  sec.appendChild(grid);
+
+  if (snap.byCategory.length) {
+    const catBlock = createRatingBlock(
+      "카테고리별 달성",
+      "꿈 · 시급 · 행복 · 건강",
+    );
+    const catList = document.createElement("div");
+    catList.className = "lp-tr2-year-kpi-cat-list";
+    snap.byCategory.forEach((c) => {
+      const row = document.createElement("div");
+      row.className = "lp-tr2-year-kpi-cat-row";
+      const lab = document.createElement("span");
+      lab.className = "lp-tr2-year-kpi-cat-name";
+      lab.textContent = c.category;
+      const meta = document.createElement("span");
+      meta.className = "lp-tr2-year-kpi-cat-meta";
+      meta.textContent = `완료 ${c.completed}/${c.total} · 평균 ${c.avgProgressPct}%`;
+      row.append(lab, meta);
+      catList.appendChild(row);
+    });
+    catBlock.appendChild(catList);
+    sec.appendChild(catBlock);
+  }
+
+  const doneBlock = createRatingBlock(
+    "100% 달성한 KPI",
+    "목표를 끝낸 과제명",
+  );
+  if (snap.completedItems.length) {
+    const ul = document.createElement("ul");
+    ul.className = "lp-tr2-year-kpi-name-list";
+    snap.completedItems.forEach((item) => {
+      const li = document.createElement("li");
+      li.className = "lp-tr2-year-kpi-name-item";
+      const name = document.createElement("span");
+      name.className = "lp-tr2-year-kpi-name-text";
+      name.textContent = item.name;
+      const tag = document.createElement("span");
+      tag.className = "lp-tr2-year-kpi-name-tag";
+      tag.textContent = `${item.category} · ${item.modeLabel}`;
+      li.append(name, tag);
+      ul.appendChild(li);
+    });
+    doneBlock.appendChild(ul);
+  } else {
+    const empty = document.createElement("p");
+    empty.className = "lp-tr2-chart-note";
+    empty.textContent = "아직 100% 달성한 KPI가 없습니다.";
+    doneBlock.appendChild(empty);
+  }
+  sec.appendChild(doneBlock);
+
+  const allBlock = createRatingBlock(
+    "KPI별 목표 달성",
+    "진행률 · 올해 기록 요약",
+  );
+  const list = document.createElement("div");
+  list.className = "lp-tr2-year-kpi-progress-list";
+  snap.progressItems.forEach((item) => {
+    const row = document.createElement("div");
+    row.className = "lp-tr2-year-kpi-progress-row";
+    if (item.completed) row.classList.add("is-done");
+
+    const head = document.createElement("div");
+    head.className = "lp-tr2-year-kpi-progress-head";
+    const name = document.createElement("span");
+    name.className = "lp-tr2-year-kpi-progress-name";
+    name.textContent = item.name;
+    const pct = document.createElement("span");
+    pct.className = "lp-tr2-year-kpi-progress-pct";
+    pct.textContent =
+      item.progressPct == null
+        ? item.isChore
+          ? `${item.yearTaskCount}건`
+          : "—"
+        : `${item.progressPct}%`;
+    head.append(name, pct);
+
+    const meta = document.createElement("p");
+    meta.className = "lp-tr2-year-kpi-progress-meta";
+    meta.textContent = `${item.category} · ${item.modeLabel} · ${item.meta}`;
+
+    row.append(head, meta);
+
+    if (item.progressPct != null) {
+      const track = document.createElement("div");
+      track.className = "lp-tr2-year-kpi-progress-track";
+      const fill = document.createElement("div");
+      fill.className = "lp-tr2-year-kpi-progress-fill";
+      if (item.completed) fill.classList.add("is-done");
+      fill.style.width = `${Math.min(100, Math.max(0, item.progressPct))}%`;
+      track.appendChild(fill);
+      row.appendChild(track);
+    }
+
+    list.appendChild(row);
+  });
+  allBlock.appendChild(list);
+  sec.appendChild(allBlock);
+
+  scrollWrap.appendChild(sec);
+}
+
+/** 콘텐츠·미디어 시청과 행복 루틴 사이 — 전체 매일 KPI 습관 점검 구역 */
+function mountHabitCheckSection(scrollWrap, range) {
+  const isDay = range?.start === range?.end;
+  const dayCount = listDatesInclusive(range?.start, range?.end).length;
+  const isYear = !isDay && dayCount >= 300;
+  const sec = createSection(
+    "습관 점검",
+    isDay
+      ? "오늘 해야 할 매일 습관 · 완료 / 남은 목표"
+      : isYear
+        ? "습관별 지킨 날 · 실행률"
+        : dayCount <= 10
+          ? `${dayCount}일 습관 점수판 · 지킨 날 수`
+          : "기간 습관 점수판 · 지킨 날 수",
+  );
+  mountReportHabitScoreboard(sec, range);
+  scrollWrap.appendChild(sec);
+}
+
 function mountHappinessRoutineSection(scrollWrap, range) {
   const isDay = range?.start === range?.end;
+  const rangeDayCount = listDatesInclusive(range?.start, range?.end).length;
+  /* 연간: 행복 루틴 점검 섹션 생략 */
+  if (!isDay && rangeDayCount >= 300) return;
+
   const snap = buildHappinessRoutineReportSnapshot(range);
   const dayCount = snap.calendarDayCount || 0;
   const sec = createSection(
@@ -2905,8 +3313,6 @@ function mountHappinessRoutineSection(scrollWrap, range) {
       ? "루틴 카드별 실행율 · 안 지켜진 / 지켜진 매일할일"
       : `${dayCount}일 중 한 날 했는지 · 아래는 매일할일 잘 지킨/안 지킨`,
   );
-
-  mountReportHabitScoreboard(sec, range);
 
   if (!snap.hasData) {
     const note = document.createElement("p");
@@ -2929,12 +3335,14 @@ function mountHappinessRoutineSection(scrollWrap, range) {
 
 function mountMediaSection(scrollWrap, range, rows) {
   const snap = buildMediaReportSnapshot(rows, range);
+  const dayCount = listDatesInclusive(range.start, range.end).length;
+  const isYear = dayCount >= 300;
   const sec = createSection(
     "콘텐츠·미디어 시청",
-    "기록에서 고른 콘텐츠 종류 · 의식적 vs 무의식적 비율",
+    isYear
+      ? "콘텐츠 종류별 시청 시간"
+      : "기록에서 고른 콘텐츠 종류 · 의식적 vs 무의식적 비율",
   );
-
-  mountReportHabitScoreboard(sec, range);
 
   if (snap.totalMinutes <= 0) {
     const empty = document.createElement("p");
@@ -2957,6 +3365,15 @@ function mountMediaSection(scrollWrap, range, rows) {
   hero.appendChild(heroMain);
   hero.appendChild(heroSub);
   sec.appendChild(hero);
+
+  if (isYear) {
+    const treemapItems = buildMediaTreemapItems(snap);
+    if (treemapItems.length) {
+      sec.appendChild(renderMediaContentTreemap(treemapItems));
+    }
+    scrollWrap.appendChild(sec);
+    return;
+  }
 
   const tagHint = document.createElement("p");
   tagHint.className = "lp-tr2-media-tag-hint";
@@ -3244,13 +3661,88 @@ function renderPlanTaskSuggestDurationChart(tasks) {
   return wrap;
 }
 
+function renderYearAvgActualSchedule(schedule) {
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-year-avg-schedule";
+  wrap.setAttribute("aria-label", "실제 연평균 스케줄");
+
+  const head = document.createElement("div");
+  head.className = "lp-tr2-year-avg-schedule-head";
+  const mark = document.createElement("span");
+  mark.className = "lp-tr2-year-avg-schedule-mark";
+  mark.setAttribute("aria-hidden", "true");
+  mark.textContent = "✓";
+  const titleWrap = document.createElement("div");
+  titleWrap.className = "lp-tr2-year-avg-schedule-titles";
+  const title = document.createElement("strong");
+  title.className = "lp-tr2-year-avg-schedule-title";
+  title.textContent = "실제 (연평균)";
+  const sub = document.createElement("p");
+  sub.className = "lp-tr2-year-avg-schedule-sub";
+  sub.textContent = "자주 반복된 하루 흐름 · 평균 시작·소요";
+  titleWrap.append(title, sub);
+  head.append(mark, titleWrap);
+  wrap.appendChild(head);
+
+  const list = document.createElement("ol");
+  list.className = "lp-tr2-year-avg-timeline";
+  list.setAttribute("role", "list");
+  const items = schedule?.items || [];
+  items.forEach((item, index) => {
+    const li = document.createElement("li");
+    li.className = "lp-tr2-year-avg-timeline-item";
+    li.setAttribute("role", "listitem");
+    if (index === items.length - 1) li.classList.add("is-last");
+
+    const time = document.createElement("span");
+    time.className = "lp-tr2-year-avg-timeline-time";
+    time.textContent = item.startLabel || "";
+
+    const spine = document.createElement("div");
+    spine.className = "lp-tr2-year-avg-timeline-spine";
+    spine.setAttribute("aria-hidden", "true");
+    const dot = document.createElement("span");
+    dot.className = "lp-tr2-year-avg-timeline-dot";
+    const line = document.createElement("span");
+    line.className = "lp-tr2-year-avg-timeline-line";
+    spine.append(dot, line);
+
+    const card = document.createElement("div");
+    card.className = "lp-tr2-year-avg-timeline-card";
+    const top = document.createElement("div");
+    top.className = "lp-tr2-year-avg-timeline-card-top";
+    const name = document.createElement("strong");
+    name.className = "lp-tr2-year-avg-timeline-name";
+    name.textContent = item.taskName || "";
+    const dur = document.createElement("span");
+    dur.className = "lp-tr2-year-avg-timeline-dur";
+    dur.textContent = item.durLabel || "";
+    top.append(name, dur);
+    const meta = document.createElement("p");
+    meta.className = "lp-tr2-year-avg-timeline-meta";
+    meta.textContent = `${item.startLabel || ""} ~ ${item.endLabel || ""}`;
+    card.append(top, meta);
+
+    li.append(time, spine, card);
+    list.appendChild(li);
+  });
+  wrap.appendChild(list);
+  return wrap;
+}
+
 function mountPlanAdherenceSection(scrollWrap, range, rows) {
   const snap = buildPlanAdherenceReportSnapshot(range, rows);
+  const isYear = !snap.isSingleDay && snap.totalDaysInPeriod >= 300;
+  const yearSchedule = isYear
+    ? buildAverageActualDaySchedule(range, rows)
+    : null;
   const sec = createSection(
     "계획 이행",
     snap.isSingleDay
       ? "과제별 계획 → 실제 · 내일 계획에 참고"
-      : `예상 일정 · 계획 습관 · ${snap.totalDaysInPeriod}일`,
+      : isYear
+        ? "예상 일정 · 연평균으로 유지된 하루"
+        : `예상 일정 · 계획 습관 · ${snap.totalDaysInPeriod}일`,
   );
   sec.classList.add("lp-tr2-plan-section");
 
@@ -3302,7 +3794,7 @@ function mountPlanAdherenceSection(scrollWrap, range, rows) {
   }
   sec.appendChild(summaryGrid);
 
-  if (!snap.isSingleDay && snap.planningHabitLine) {
+  if (!snap.isSingleDay && !isYear && snap.planningHabitLine) {
     const habitLine = document.createElement("p");
     habitLine.className = "lp-tr2-plan-est-text";
     habitLine.textContent = snap.planningHabitLine;
@@ -3310,6 +3802,11 @@ function mountPlanAdherenceSection(scrollWrap, range, rows) {
   }
 
   if (!snap.hasPlanData) {
+    if (isYear && yearSchedule?.items?.length) {
+      sec.appendChild(renderYearAvgActualSchedule(yearSchedule));
+      scrollWrap.appendChild(sec);
+      return;
+    }
     const note = document.createElement("p");
     note.className = "lp-tr2-chart-note";
     note.textContent =
@@ -3326,6 +3823,17 @@ function mountPlanAdherenceSection(scrollWrap, range, rows) {
     );
     taskBlock.appendChild(renderPlanDayTaskCompareChart(snap.tasks || []));
     sec.appendChild(taskBlock);
+  } else if (isYear) {
+    /* 연간: 「다음에 이만큼」 대신 연평균 유지 스케줄 */
+    if (yearSchedule?.items?.length) {
+      sec.appendChild(renderYearAvgActualSchedule(yearSchedule));
+    } else {
+      const note = document.createElement("p");
+      note.className = "lp-tr2-chart-note";
+      note.textContent =
+        "자주 반복된 하루 패턴을 만들기엔 같은 과제의 기록이 아직 부족합니다.";
+      sec.appendChild(note);
+    }
   } else {
     const avgTasks = snap.taskDurationAverages || [];
     if (avgTasks.length) {
@@ -3338,7 +3846,7 @@ function mountPlanAdherenceSection(scrollWrap, range, rows) {
     }
   }
 
-  if (snap.leak.minutes > 0) {
+  if (!isYear && snap.leak.minutes > 0) {
     const leakBlock = createRatingBlock("시간 누수", "계획에 없던 활동");
     const leakMain = document.createElement("p");
     leakMain.className = "lp-tr2-plan-leak-main";
@@ -3355,7 +3863,7 @@ function mountPlanAdherenceSection(scrollWrap, range, rows) {
     sec.appendChild(leakBlock);
   }
 
-  if (!snap.isSingleDay && snap.estimation) {
+  if (!snap.isSingleDay && !isYear && snap.estimation) {
     const estBlock = createRatingBlock(
       "추정 정확도",
       "계획이 실제와 얼마나 맞는지",
@@ -3428,6 +3936,40 @@ function createFocusDisruptorBarRow(label, barPct, meta, color) {
   return row;
 }
 
+/** 종료 이유 — 막대 옆은 횟수만, 힌트는 아래 한 줄 */
+function createFocusEndReasonRow(label, barPct, countMeta, tip, color) {
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-focus-end-reason-item";
+
+  const row = document.createElement("div");
+  row.className = "lp-tr2-bar-row lp-tr2-bar-row--focus-end-reason";
+  const lab = document.createElement("span");
+  lab.className = "lp-tr2-bar-label";
+  lab.textContent = label;
+  const track = document.createElement("div");
+  track.className = "lp-tr2-bar-track";
+  const fill = document.createElement("div");
+  fill.className = "lp-tr2-bar-fill";
+  const pct = Math.min(100, Math.max(0, Number(barPct) || 0));
+  fill.style.width = `${pct}%`;
+  fill.style.background = color || "#1e4d7b";
+  const val = document.createElement("span");
+  val.className = "lp-tr2-bar-value";
+  val.textContent = countMeta;
+  track.appendChild(fill);
+  row.append(lab, track, val);
+  wrap.appendChild(row);
+
+  const tipText = String(tip || "").trim();
+  if (tipText) {
+    const tipEl = document.createElement("p");
+    tipEl.className = "lp-tr2-focus-end-reason-tip";
+    tipEl.textContent = tipText;
+    wrap.appendChild(tipEl);
+  }
+  return wrap;
+}
+
 function pickFocusHourRanks(hourGrid, { best = true, take = 3, minCount = 1 } = {}) {
   const scored = (hourGrid || []).filter(
     (h) =>
@@ -3469,6 +4011,13 @@ function buildFocusNextPlanLines(ratingSnap, focusSnap) {
       `피하면 좋은 방해: ${badTags.map((t) => `「${t.label}」`).join(" · ")}`,
     );
   }
+  const endTop = (focusSnap?.endReasonAnalysis?.ranking || []).slice(0, 2);
+  if (endTop.length) {
+    const tips = endTop
+      .map((t) => (t.tip ? `「${t.label}」 → ${t.tip}` : `「${t.label}」`))
+      .join(" · ");
+    lines.push(`더 오래 유지하려면: ${tips}`);
+  }
   if (
     lowHours.length &&
     bestHours.length &&
@@ -3480,7 +4029,7 @@ function buildFocusNextPlanLines(ratingSnap, focusSnap) {
   }
   if (!lines.length) {
     return [
-      "생산적 작업에 「이 시간 평가」와 몰입·방해 요소를 남기면, 다음에 쓰기 좋은 시간대와 조건이 정리됩니다.",
+      "생산적 작업에 「이 시간 평가」·몰입·종료 이유를 남기면, 다음에 더 오래 집중하는 방법이 정리됩니다.",
     ];
   }
   return lines;
@@ -3597,7 +4146,7 @@ function mountFocusReportSection(scrollWrap, range, rows) {
   /* 2) 몇 시에 집중이 높았는지 */
   if (ratingSnap?.hourGrid?.some((h) => h.count > 0)) {
     const hourBlock = createRatingBlock(
-      "주로 집중이 높은 시간",
+      "시간대별 집중도",
       "시작 시각 기준 평균 집중도 · 막대가 높을수록 그 시간대에 잘 됨",
     );
     hourBlock.appendChild(
@@ -3641,6 +4190,36 @@ function mountFocusReportSection(scrollWrap, range, rows) {
     sec.appendChild(note);
   }
 
+  /* 3.5) 잘하다 왜 멈췄는지 — 종료 이유 */
+  if (focusSnap?.endReasonAnalysis?.show) {
+    const endBlock = createRatingBlock(
+      "잘하다 왜 멈췄는지",
+      "4~5점일 때 고른 종료 이유 · 다음에 더 오래 유지하는 힌트",
+    );
+    const insight = document.createElement("p");
+    insight.className = "lp-tr2-focus-disruptor-insight";
+    insight.textContent = focusSnap.endReasonAnalysis.oneLiner;
+    endBlock.appendChild(insight);
+    if (focusSnap.endReasonAnalysis.ranking?.length) {
+      const maxCount = focusSnap.endReasonAnalysis.ranking[0]?.count || 1;
+      const list = document.createElement("div");
+      list.className = "lp-tr2-focus-end-reason-list";
+      focusSnap.endReasonAnalysis.ranking.slice(0, 8).forEach((item, i) => {
+        list.appendChild(
+          createFocusEndReasonRow(
+            `${i + 1}. ${item.label}`,
+            Math.round((item.count / maxCount) * 100),
+            `${item.count}회 · ${item.pct}%`,
+            item.tip || "",
+            "#1e4d7b",
+          ),
+        );
+      });
+      endBlock.appendChild(list);
+    }
+    sec.appendChild(endBlock);
+  }
+
   /* 4) 어떨 때 안 좋았는지 */
   if (focusSnap) {
     mountFocusDisruptorAnalysisBlock(sec, focusSnap.disruptorAnalysis);
@@ -3678,7 +4257,7 @@ function mountFocusReportSection(scrollWrap, range, rows) {
   if (ratingSnap?.monthScores?.length > 1) {
     const block = createRatingBlock("월별 집중 추이", "기간이 여러 달일 때");
     const bars = document.createElement("div");
-    bars.className = "lp-tr2-bars lp-tr2-bars--compact";
+    bars.className = "lp-tr2-bars lp-tr2-bars--month-trend";
     ratingSnap.monthScores.forEach((m) => {
       bars.appendChild(
         createReturnRateBarRow(
@@ -3698,8 +4277,9 @@ function mountFocusReportSection(scrollWrap, range, rows) {
 const DAY_HERO_COLORS = {
   productive: "#E8A0A0",
   waste: "#A8C4E8",
-  work: "#A8D4B8",
-  sleep: "#B8DCC8",
+  /* 근무·수면은 서로 비슷한 초록이 되지 않게 분리 */
+  work: "#D4B896",
+  sleep: "#8FA8C4",
   rest: "#EEF1F4",
 };
 
@@ -3883,14 +4463,7 @@ function dayHeroDonutSegments(parts) {
       minutes: parts.sleep,
       color: DAY_HERO_COLORS.sleep,
     },
-  ];
-  if (parts.rest > 0) {
-    segs.push({
-      label: "그 외",
-      minutes: parts.rest,
-      color: DAY_HERO_COLORS.rest,
-    });
-  }
+  ].filter((s) => (Number(s.minutes) || 0) > 0);
   return segs;
 }
 
@@ -3920,6 +4493,21 @@ function dayHeroAvailableDonutSegments(parts) {
   return segs;
 }
 
+function fitDayHeroDonutCenterText(wrap) {
+  const center = wrap.querySelector(".lp-tr2-day-hero-donut-center");
+  const totalEl = wrap.querySelector(".lp-tr2-day-hero-donut-total");
+  if (!center || !totalEl || !wrap.isConnected) return;
+  const maxW = Math.max(0, center.clientWidth - 2);
+  if (maxW < 8) return;
+  let size = parseFloat(getComputedStyle(totalEl).fontSize) || 12;
+  const minSize = 7;
+  totalEl.style.fontSize = `${size}px`;
+  while (size > minSize && totalEl.scrollWidth > maxW) {
+    size -= 0.5;
+    totalEl.style.fontSize = `${size}px`;
+  }
+}
+
 function fillDayHeroDonutCenter(wrap, { capText, totalText, subText }) {
   const center = document.createElement("div");
   center.className = "lp-tr2-day-hero-donut-center";
@@ -3940,9 +4528,10 @@ function fillDayHeroDonutCenter(wrap, { capText, totalText, subText }) {
     center.appendChild(sub);
   }
   wrap.appendChild(center);
+  requestAnimationFrame(() => fitDayHeroDonutCenterText(wrap));
 }
 
-/** 하루 24시간 기준 — 생산 / 비생산 / 근무 / 수면 (/ 그 외), 가운데 = 총기록 */
+/** 하루 기록 구성 — 생산 / 비생산 / 근무 / 수면, 가운데 = 총기록 */
 function renderDayHeroDayDonut(parts) {
   const wrap = document.createElement("div");
   wrap.className = "lp-tr2-day-hero-donut";
@@ -4026,6 +4615,150 @@ function renderDayHeroAvailableDonut(parts) {
   return wrap;
 }
 
+/** 연간 등 긴 기간 — 도넛 대신 가로 막대(절대 시간이 잘 보이게) */
+function createDayHeroBarRow(label, minutes, pct, color) {
+  const row = document.createElement("div");
+  row.className = "lp-tr2-bar-row lp-tr2-day-hero-bar-row";
+  const dur = formatIntegerMinutesDurationKo(minutes);
+  row.title = `${label} · ${dur} · ${pct}%`;
+  const lab = document.createElement("span");
+  lab.className = "lp-tr2-bar-label";
+  lab.textContent = label;
+  const track = document.createElement("div");
+  track.className = "lp-tr2-bar-track";
+  const fill = document.createElement("div");
+  fill.className = "lp-tr2-bar-fill";
+  fill.style.width = `${Math.min(100, Math.max(0, pct))}%`;
+  fill.style.background = color;
+  track.appendChild(fill);
+  const val = document.createElement("span");
+  val.className = "lp-tr2-bar-value lp-tr2-day-hero-bar-value";
+  const durEl = document.createElement("strong");
+  durEl.className = "lp-tr2-day-hero-bar-dur";
+  durEl.textContent = dur;
+  const pctEl = document.createElement("span");
+  pctEl.className = "lp-tr2-day-hero-bar-pct";
+  pctEl.textContent = `${pct}%`;
+  val.append(durEl, pctEl);
+  row.appendChild(lab);
+  row.appendChild(track);
+  row.appendChild(val);
+  return row;
+}
+
+function renderDayHeroDayBars(parts) {
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-day-hero-bars";
+  wrap.setAttribute(
+    "aria-label",
+    `총기록 ${formatIntegerMinutesDurationKo(parts.recorded)}, 생산 ${formatIntegerMinutesDurationKo(parts.productive)}, 비생산 ${formatIntegerMinutesDurationKo(parts.waste)}, 근무 ${formatIntegerMinutesDurationKo(parts.work)}, 수면 ${formatIntegerMinutesDurationKo(parts.sleep)}`,
+  );
+
+  const total = document.createElement("p");
+  total.className = "lp-tr2-day-hero-bars-total";
+  const totalStrong = document.createElement("strong");
+  totalStrong.textContent = formatIntegerMinutesDurationKo(parts.recorded);
+  total.append(
+    document.createTextNode("총기록 "),
+    totalStrong,
+    document.createTextNode(
+      parts.dayCount <= 1
+        ? ` · ${parts.recordedPct}%`
+        : ` · ${parts.dayCount}일 중 ${parts.recordedPct}%`,
+    ),
+  );
+  wrap.appendChild(total);
+
+  const bars = document.createElement("div");
+  bars.className = "lp-tr2-bars";
+  const rows = [
+    {
+      label: "생산적",
+      minutes: parts.productive,
+      pct: parts.prodPct,
+      color: DAY_HERO_COLORS.productive,
+    },
+    {
+      label: "비생산",
+      minutes: parts.waste,
+      pct: parts.wastePct,
+      color: DAY_HERO_COLORS.waste,
+    },
+    {
+      label: "근무",
+      minutes: parts.work,
+      pct: parts.workPct,
+      color: DAY_HERO_COLORS.work,
+    },
+    {
+      label: "수면",
+      minutes: parts.sleep,
+      pct: parts.sleepPct,
+      color: DAY_HERO_COLORS.sleep,
+    },
+  ];
+  rows.forEach((r) => {
+    bars.appendChild(
+      createDayHeroBarRow(r.label, r.minutes, r.pct, r.color),
+    );
+  });
+  wrap.appendChild(bars);
+  return wrap;
+}
+
+function renderDayHeroAvailableBars(parts) {
+  const wrap = document.createElement("div");
+  wrap.className =
+    "lp-tr2-day-hero-bars lp-tr2-day-hero-bars--available";
+  wrap.setAttribute(
+    "aria-label",
+    `가용 ${formatIntegerMinutesDurationKo(parts.available)} 중 생산 ${formatIntegerMinutesDurationKo(parts.availProd)}, 비생산 ${formatIntegerMinutesDurationKo(parts.availWaste)}`,
+  );
+
+  const total = document.createElement("p");
+  total.className = "lp-tr2-day-hero-bars-total";
+  const totalStrong = document.createElement("strong");
+  totalStrong.textContent = formatIntegerMinutesDurationKo(parts.available);
+  total.append(
+    document.createTextNode("가용시간 "),
+    totalStrong,
+    document.createTextNode(" · 근무·수면 제외"),
+  );
+  wrap.appendChild(total);
+
+  const bars = document.createElement("div");
+  bars.className = "lp-tr2-bars";
+  const rows = [
+    {
+      label: "생산적",
+      minutes: parts.availProd,
+      pct: parts.availProdPct,
+      color: DAY_HERO_COLORS.productive,
+    },
+    {
+      label: "비생산",
+      minutes: parts.availWaste,
+      pct: parts.availWastePct,
+      color: DAY_HERO_COLORS.waste,
+    },
+  ];
+  if (parts.availLeft > 0) {
+    rows.push({
+      label: "남는 가용",
+      minutes: parts.availLeft,
+      pct: parts.availLeftPct,
+      color: DAY_HERO_COLORS.rest,
+    });
+  }
+  rows.forEach((r) => {
+    bars.appendChild(
+      createDayHeroBarRow(r.label, r.minutes, r.pct, r.color),
+    );
+  });
+  wrap.appendChild(bars);
+  return wrap;
+}
+
 function createDayHeroLegendItem(swatch, label, value, pctText) {
   const item = document.createElement("div");
   item.className = "lp-tr2-day-hero-legend-item";
@@ -4056,23 +4789,554 @@ function createDayHeroLegendItem(swatch, label, value, pctText) {
   return item;
 }
 
-function createDayHeroValueRow(label, valueText, tone) {
+function createDayHeroValueRow(label, valueNodeOrText, tone) {
   const row = document.createElement("div");
   row.className = `lp-tr2-day-hero-value-row${tone ? ` lp-tr2-day-hero-value-row--${tone}` : ""}`;
   const lab = document.createElement("span");
   lab.className = "lp-tr2-day-hero-value-label";
   lab.textContent = label;
-  const val = document.createElement("strong");
-  val.className = "lp-tr2-day-hero-value-amount";
-  val.textContent = valueText;
+  let val;
+  if (valueNodeOrText instanceof Node) {
+    val = valueNodeOrText;
+    if (!val.classList.contains("lp-tr2-day-hero-value-amount")) {
+      val.classList.add("lp-tr2-day-hero-value-amount");
+    }
+  } else {
+    val = document.createElement("strong");
+    val.className = "lp-tr2-day-hero-value-amount";
+    val.textContent = valueNodeOrText;
+  }
   row.appendChild(lab);
   row.appendChild(val);
   return row;
 }
 
-function renderDayHeroSummary(hero, { dayCount = 1 } = {}) {
+/** 분 → 일자 표기 (연간 요약용) */
+function formatDaysFromMinutes(mins) {
+  const m = Math.max(0, Math.round(Number(mins) || 0));
+  const days = m / DAY_LENGTH_MINUTES;
+  if (days >= 10) return `${Math.round(days)}일`;
+  if (days >= 1) return `${days.toFixed(1)}일`;
+  const h = m / 60;
+  if (h >= 1) return `${h.toFixed(1)}시간`;
+  return formatIntegerMinutesDurationKo(m);
+}
+
+function createYearHeroRatioBar(segments, ariaLabel) {
+  const total = segments.reduce(
+    (sum, seg) => sum + Math.max(0, Number(seg.minutes) || 0),
+    0,
+  );
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-year-hero-bar";
+  const track = document.createElement("div");
+  track.className = "lp-tr2-year-hero-bar-track";
+  track.setAttribute("role", "img");
+  track.setAttribute("aria-label", ariaLabel || "비율 막대");
+  const active = segments.filter((seg) => (Number(seg.minutes) || 0) > 0);
+  active.forEach((seg, i) => {
+    const el = document.createElement("div");
+    el.className = "lp-tr2-year-hero-bar-seg";
+    if (i === 0) el.classList.add("is-first");
+    if (i === active.length - 1) el.classList.add("is-last");
+    const mins = Number(seg.minutes) || 0;
+    el.style.width = `${total > 0 ? (mins / total) * 100 : 0}%`;
+    el.style.background = seg.color;
+    if (seg.title) el.title = seg.title;
+    track.appendChild(el);
+  });
+  if (total <= 0) track.classList.add("is-empty");
+  wrap.appendChild(track);
+  return wrap;
+}
+
+/** 조회 기간에 포함된 연-월 목록 (YYYY-MM) */
+function listYearMonthsInclusive(startYmd, endYmd) {
+  const s = String(startYmd || "").replace(/\//g, "-").slice(0, 7);
+  const e = String(endYmd || "").replace(/\//g, "-").slice(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(s) || !/^\d{4}-\d{2}$/.test(e) || s > e) return [];
+  /** @type {string[]} */
+  const out = [];
+  let [y, m] = s.split("-").map(Number);
+  const [ey, em] = e.split("-").map(Number);
+  while (y < ey || (y === ey && m <= em)) {
+    out.push(`${y}-${String(m).padStart(2, "0")}`);
+    m += 1;
+    if (m > 12) {
+      m = 1;
+      y += 1;
+    }
+  }
+  return out;
+}
+
+/**
+ * 월별 투자(=생산)·소비(=비생산) 비율
+ * — 근무·수면은 분자에서 제외, 분모는 (하루 − 근무 − 수면) 가용시간
+ * @returns {{ ym: string, label: string, investPct: number, consumePct: number }[]}
+ */
+function buildYearInvestConsumeMonthlySeries(rows, range) {
+  const months = listYearMonthsInclusive(range?.start, range?.end);
+  const rangeStart = String(range?.start || "").replace(/\//g, "-").slice(0, 10);
+  const rangeEnd = String(range?.end || "").replace(/\//g, "-").slice(0, 10);
+  /** @type {Map<string, { investHrs: number, wasteMin: number, workSleepByDate: Map<string, { work: number, sleep: number }> }>} */
+  const byMonth = new Map();
+  months.forEach((ym) => {
+    byMonth.set(ym, {
+      investHrs: 0,
+      wasteMin: 0,
+      workSleepByDate: new Map(),
+    });
+  });
+
+  (rows || []).forEach((r) => {
+    const d = rowDateYmd(r);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+    const ym = d.slice(0, 7);
+    const bucket = byMonth.get(ym);
+    if (!bucket) return;
+    const hrs = parseTimeToHours(r.timeTracked);
+    const cat = String(r.category || "")
+      .trim()
+      .toLowerCase();
+    const isWorkOrSleep = cat === "work" || cat === "sleep";
+
+    if (isWorkOrSleep) {
+      if (!(hrs > 0) || !Number.isFinite(hrs)) return;
+      if (!bucket.workSleepByDate.has(d)) {
+        bucket.workSleepByDate.set(d, { work: 0, sleep: 0 });
+      }
+      const day = bucket.workSleepByDate.get(d);
+      if (cat === "work") day.work += hrs * 60;
+      else day.sleep += hrs * 60;
+      return;
+    }
+
+    const pv = getTimeLedgerRowDisplayProductivity(r);
+    if (pv === "productive") {
+      const h = getLedgerEffectiveHoursForReclaim(r);
+      if (h > 0 && Number.isFinite(h)) bucket.investHrs += h;
+    } else if (pv === "nonproductive") {
+      if (hrs > 0 && Number.isFinite(hrs)) {
+        bucket.wasteMin += Math.round(hrs * 60);
+      }
+    }
+  });
+
+  return months.map((ym) => {
+    const bucket = byMonth.get(ym);
+    const [yy, mm] = ym.split("-").map(Number);
+    const monthStart = `${ym}-01`;
+    const lastDay = new Date(yy, mm, 0).getDate();
+    const monthEnd = `${ym}-${String(lastDay).padStart(2, "0")}`;
+    const from = rangeStart > monthStart ? rangeStart : monthStart;
+    const to = rangeEnd < monthEnd ? rangeEnd : monthEnd;
+    const dates = listDatesInclusive(from, to);
+
+    let avail = 0;
+    dates.forEach((d) => {
+      const u = bucket?.workSleepByDate.get(d);
+      avail += Math.max(
+        0,
+        Math.round(
+          DAY_LENGTH_MINUTES - (u?.work || 0) - (u?.sleep || 0),
+        ),
+      );
+    });
+
+    const investMin = Math.max(0, Math.round((bucket?.investHrs || 0) * 60));
+    const wasteMin = Math.max(0, Math.round(bucket?.wasteMin || 0));
+    const investPct =
+      avail > 0 ? Math.min(100, Math.max(0, Math.round((investMin / avail) * 100))) : 0;
+    const consumePct =
+      avail > 0 ? Math.min(100, Math.max(0, Math.round((wasteMin / avail) * 100))) : 0;
+    const monthNum = Number(ym.slice(5, 7)) || 1;
+    return {
+      ym,
+      label: `${monthNum}월`,
+      investPct,
+      consumePct,
+    };
+  });
+}
+
+/** Catmull-Rom → cubic Bézier (y는 차트 영역 안으로만 — 0% 아래 오버슈트 방지) */
+function buildSmoothLinePath(pts, yClamp) {
+  if (!pts.length) return "";
+  if (pts.length === 1) return `M ${pts[0].x} ${pts[0].y}`;
+  const clampY = (y) => {
+    if (!yClamp) return y;
+    return Math.max(yClamp.min, Math.min(yClamp.max, y));
+  };
+  let d = `M ${pts[0].x} ${clampY(pts[0].y)}`;
+  for (let i = 0; i < pts.length - 1; i += 1) {
+    const p0 = pts[i - 1] || pts[i];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[i + 2] || p2;
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = clampY(p1.y + (p2.y - p0.y) / 6);
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = clampY(p2.y - (p3.y - p1.y) / 6);
+    d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${clampY(p2.y)}`;
+  }
+  return d;
+}
+
+function buildSmoothAreaPath(pts, yBase, yClamp) {
+  const line = buildSmoothLinePath(pts, yClamp);
+  if (!line || !pts.length) return "";
+  const last = pts[pts.length - 1];
+  const first = pts[0];
+  return `${line} L ${last.x} ${yBase} L ${first.x} ${yBase} Z`;
+}
+
+const YEAR_INVEST_LINE_COLOR = "#C98484";
+const YEAR_CONSUME_LINE_COLOR = "#7E9FC3";
+const YEAR_INVEST_FILL = "rgba(201, 132, 132, 0.22)";
+const YEAR_CONSUME_FILL = "rgba(126, 159, 195, 0.2)";
+
+/** 연간 한 장 요약 — 월별 투자·소비 % 곡선 */
+function renderYearInvestConsumeChart(series) {
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-year-invest-chart";
+  const title = document.createElement("p");
+  title.className = "lp-tr2-year-hero-block-title";
+  title.textContent = "월별 투자·소비 시간";
+  const sub = document.createElement("p");
+  sub.className = "lp-tr2-year-hero-block-sub";
+  sub.textContent = "생산적·비생산적 · 근무·수면 제외 · 가용시간 대비";
+  wrap.append(title, sub);
+
+  const legend = document.createElement("div");
+  legend.className = "lp-tr2-year-invest-chart-legend";
+  [
+    { color: YEAR_INVEST_LINE_COLOR, label: "투자 시간 (%)" },
+    { color: YEAR_CONSUME_LINE_COLOR, label: "소비 시간 (%)" },
+  ].forEach(({ color, label }) => {
+    const item = document.createElement("span");
+    item.className = "lp-tr2-year-invest-chart-legend-item";
+    const sw = document.createElement("span");
+    sw.className = "lp-tr2-year-invest-chart-legend-swatch";
+    sw.style.background = color;
+    item.append(sw, document.createTextNode(label));
+    legend.appendChild(item);
+  });
+  wrap.appendChild(legend);
+
+  if (!series.length) {
+    const empty = document.createElement("p");
+    empty.className = "lp-tr2-year-hero-block-sub";
+    empty.textContent = "월별 기록이 없습니다.";
+    wrap.appendChild(empty);
+    return wrap;
+  }
+
+  const maxVal = Math.max(
+    5,
+    ...series.map((p) => Math.max(p.investPct, p.consumePct)),
+  );
+  const yMax = Math.min(100, Math.ceil((maxVal + 2) / 5) * 5);
+  const yTicks = [];
+  const step = yMax <= 20 ? 5 : yMax <= 40 ? 5 : 10;
+  for (let v = 0; v <= yMax; v += step) yTicks.push(v);
+  if (yTicks[yTicks.length - 1] !== yMax) yTicks.push(yMax);
+
+  const W = 420;
+  const H = 200;
+  const padL = 30;
+  const padR = 6;
+  const padT = 10;
+  const padB = 26;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+  const n = series.length;
+  const xAt = (i) =>
+    padL + (n <= 1 ? plotW / 2 : (i / (n - 1)) * plotW);
+  const yAt = (pct) =>
+    padT + plotH - (Math.max(0, Math.min(yMax, pct)) / yMax) * plotH;
+
+  const svg = svgEl("svg", {
+    viewBox: `0 0 ${W} ${H}`,
+    preserveAspectRatio: "xMidYMid meet",
+    class: "lp-tr2-year-invest-chart-svg",
+    role: "img",
+    "aria-label": "월별 투자·소비 시간 비율",
+  });
+
+  yTicks.forEach((v) => {
+    const y = yAt(v);
+    svg.appendChild(
+      svgEl("line", {
+        x1: padL,
+        y1: y,
+        x2: padL + plotW,
+        y2: y,
+        stroke: "#e8edf3",
+        "stroke-width": 1,
+      }),
+    );
+    const t = svgEl("text", {
+      x: padL - 6,
+      y: y + 3,
+      "text-anchor": "end",
+      fill: "#94a3b8",
+      "font-size": tr2SvgFontSize(9),
+      "font-weight": 600,
+    });
+    t.textContent = `${v}%`;
+    svg.appendChild(t);
+  });
+
+  series.forEach((_, i) => {
+    const x = xAt(i);
+    svg.appendChild(
+      svgEl("line", {
+        x1: x,
+        y1: padT,
+        x2: x,
+        y2: padT + plotH,
+        stroke: "#f1f5f9",
+        "stroke-width": 1,
+      }),
+    );
+  });
+
+  const investPts = series.map((p, i) => ({
+    x: xAt(i),
+    y: yAt(p.investPct),
+  }));
+  const consumePts = series.map((p, i) => ({
+    x: xAt(i),
+    y: yAt(p.consumePct),
+  }));
+  const yBase = padT + plotH;
+  /* 곡선이 0% 아래·상단 밖으로 삐져나오지 않게 */
+  const yClamp = { min: padT, max: yBase };
+
+  svg.appendChild(
+    svgEl("path", {
+      d: buildSmoothAreaPath(investPts, yBase, yClamp),
+      fill: YEAR_INVEST_FILL,
+      stroke: "none",
+    }),
+  );
+  svg.appendChild(
+    svgEl("path", {
+      d: buildSmoothAreaPath(consumePts, yBase, yClamp),
+      fill: YEAR_CONSUME_FILL,
+      stroke: "none",
+    }),
+  );
+  svg.appendChild(
+    svgEl("path", {
+      d: buildSmoothLinePath(investPts, yClamp),
+      fill: "none",
+      stroke: YEAR_INVEST_LINE_COLOR,
+      "stroke-width": 2.2,
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+    }),
+  );
+  svg.appendChild(
+    svgEl("path", {
+      d: buildSmoothLinePath(consumePts, yClamp),
+      fill: "none",
+      stroke: YEAR_CONSUME_LINE_COLOR,
+      "stroke-width": 2.2,
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+    }),
+  );
+
+  investPts.forEach((pt, i) => {
+    svg.appendChild(
+      svgEl("circle", {
+        cx: pt.x,
+        cy: pt.y,
+        r: 3.2,
+        fill: "#fff",
+        stroke: YEAR_INVEST_LINE_COLOR,
+        "stroke-width": 1.8,
+      }),
+    );
+    const tip = svgEl("title", {});
+    tip.textContent = `${series[i].label} 투자 ${series[i].investPct}%`;
+    svg.lastChild.appendChild(tip);
+  });
+  consumePts.forEach((pt, i) => {
+    svg.appendChild(
+      svgEl("circle", {
+        cx: pt.x,
+        cy: pt.y,
+        r: 3.2,
+        fill: "#fff",
+        stroke: YEAR_CONSUME_LINE_COLOR,
+        "stroke-width": 1.8,
+      }),
+    );
+    const tip = svgEl("title", {});
+    tip.textContent = `${series[i].label} 소비 ${series[i].consumePct}%`;
+    svg.lastChild.appendChild(tip);
+  });
+
+  series.forEach((p, i) => {
+    const t = svgEl("text", {
+      x: xAt(i),
+      y: H - 8,
+      "text-anchor": "middle",
+      fill: "#64748b",
+      "font-size": tr2SvgFontSize(n > 8 ? 8 : 9),
+      "font-weight": 600,
+    });
+    t.textContent = p.label;
+    svg.appendChild(t);
+  });
+
+  wrap.appendChild(svg);
+  return wrap;
+}
+
+/** 연간 한 장 요약 — 기록/1년 막대 + 구성(일) 막대 + 월별 곡선 + 순가치 카드 */
+function renderYearHeroSummary(
+  hero,
+  { dayCount = 365, rangeLabel = "", rows = [], range = null } = {},
+) {
+  const parts = buildDayHeroTimeParts(hero, { dayCount });
+  const days = parts.dayCount;
+  const root = document.createElement("div");
+  root.className = "lp-tr2-year-hero";
+
+  /* 1) 365일 중 총 기록 시간 */
+  const recBlock = document.createElement("div");
+  recBlock.className = "lp-tr2-year-hero-block";
+  const recTitle = document.createElement("p");
+  recTitle.className = "lp-tr2-year-hero-block-title";
+  recTitle.textContent = `${days}일 중 총 기록 시간`;
+  const recMeta = document.createElement("p");
+  recMeta.className = "lp-tr2-year-hero-block-meta";
+  recMeta.textContent = `${formatIntegerMinutesDurationKo(parts.recorded)} · 1년의 ${parts.recordedPct}%`;
+  const unrecorded = Math.max(0, parts.periodMin - parts.recorded);
+  recBlock.append(
+    recTitle,
+    recMeta,
+    createYearHeroRatioBar(
+      [
+        {
+          label: "기록",
+          minutes: parts.recorded,
+          color: "#8fa8c4",
+          title: `기록 ${formatIntegerMinutesDurationKo(parts.recorded)}`,
+        },
+        {
+          label: "미기록",
+          minutes: unrecorded,
+          color: "#e8edf3",
+          title: `미기록 ${formatIntegerMinutesDurationKo(unrecorded)}`,
+        },
+      ],
+      `${days}일 중 기록 ${parts.recordedPct}%`,
+    ),
+  );
+  root.appendChild(recBlock);
+
+  /* 2) 기록 시간 중 생산·비생산·근무·수면 (일자) */
+  const mixBlock = document.createElement("div");
+  mixBlock.className = "lp-tr2-year-hero-block";
+  const mixTitle = document.createElement("p");
+  mixTitle.className = "lp-tr2-year-hero-block-title";
+  mixTitle.textContent = "기록 시간 구성";
+  const mixSub = document.createElement("p");
+  mixSub.className = "lp-tr2-year-hero-block-sub";
+  mixSub.textContent = "생산·비생산·근무·수면 · 일자로 환산";
+  const mixSegs = [
+    {
+      label: "생산적",
+      minutes: parts.productive,
+      color: DAY_HERO_COLORS.productive,
+      title: `생산적 ${formatDaysFromMinutes(parts.productive)}`,
+    },
+    {
+      label: "비생산",
+      minutes: parts.waste,
+      color: DAY_HERO_COLORS.waste,
+      title: `비생산 ${formatDaysFromMinutes(parts.waste)}`,
+    },
+    {
+      label: "근무",
+      minutes: parts.work,
+      color: DAY_HERO_COLORS.work,
+      title: `근무 ${formatDaysFromMinutes(parts.work)}`,
+    },
+    {
+      label: "수면",
+      minutes: parts.sleep,
+      color: DAY_HERO_COLORS.sleep,
+      title: `수면 ${formatDaysFromMinutes(parts.sleep)}`,
+    },
+  ];
+  mixBlock.append(
+    mixTitle,
+    mixSub,
+    createYearHeroRatioBar(
+      mixSegs,
+      "기록 시간 구성 · 생산·비생산·근무·수면",
+    ),
+  );
+  const mixLegend = document.createElement("div");
+  mixLegend.className = "lp-tr2-year-hero-legend";
+  mixSegs.forEach((seg) => {
+    if ((Number(seg.minutes) || 0) <= 0) return;
+    const item = document.createElement("span");
+    item.className = "lp-tr2-year-hero-legend-item";
+    const sw = document.createElement("span");
+    sw.className = "lp-tr2-year-hero-legend-swatch";
+    sw.style.background = seg.color;
+    item.append(sw, document.createTextNode(`${seg.label} ${formatDaysFromMinutes(seg.minutes)}`));
+    mixLegend.appendChild(item);
+  });
+  mixBlock.appendChild(mixLegend);
+  root.appendChild(mixBlock);
+
+  /* 나의 1년의 가치 — 순가치만 카드 */
+  const netWon = Math.round(Number(hero.netWon) || 0);
+  const valueCard = document.createElement("div");
+  valueCard.className = `lp-tr2-year-value-card${
+    netWon > 0 ? " is-pos" : netWon < 0 ? " is-neg" : ""
+  }`;
+  const valueTitle = document.createElement("p");
+  valueTitle.className = "lp-tr2-year-value-card-title";
+  valueTitle.textContent = "나의 1년의 가치";
+  if (rangeLabel) {
+    const valueSub = document.createElement("p");
+    valueSub.className = "lp-tr2-year-value-card-sub";
+    valueSub.textContent = rangeLabel;
+    valueCard.append(valueTitle, valueSub);
+  } else {
+    valueCard.appendChild(valueTitle);
+  }
+  const amount = createDayHeroWonAmountEl(netWon);
+  amount.classList.add("lp-tr2-year-value-card-amount");
+  valueCard.appendChild(amount);
+  root.appendChild(valueCard);
+
+  return root;
+}
+
+function renderDayHeroSummary(
+  hero,
+  { dayCount = 1, rangeLabel = "", rows = [], range = null } = {},
+) {
   const parts = buildDayHeroTimeParts(hero, { dayCount });
   const isMultiDay = parts.dayCount > 1;
+  if (parts.dayCount >= 300) {
+    return renderYearHeroSummary(hero, {
+      dayCount: parts.dayCount,
+      rangeLabel,
+      rows,
+      range,
+    });
+  }
   const root = document.createElement("div");
   root.className = "lp-tr2-day-hero";
 
@@ -4091,48 +5355,6 @@ function renderDayHeroSummary(hero, { dayCount = 1 } = {}) {
     : "하루 구성";
   dayCol.appendChild(dayCap);
   dayCol.appendChild(renderDayHeroDayDonut(parts));
-  const dayLegend = document.createElement("div");
-  dayLegend.className = "lp-tr2-day-hero-legend";
-  const dayLegendItems = [
-    {
-      color: DAY_HERO_COLORS.productive,
-      label: "생산적",
-      minutes: parts.productive,
-      pct: `${parts.prodPct}%`,
-    },
-    {
-      color: DAY_HERO_COLORS.waste,
-      label: "비생산",
-      minutes: parts.waste,
-      pct: `${parts.wastePct}%`,
-    },
-    {
-      color: DAY_HERO_COLORS.work,
-      label: "근무",
-      minutes: parts.work,
-      pct: `${parts.workPct}%`,
-    },
-    {
-      color: DAY_HERO_COLORS.sleep,
-      label: "수면",
-      minutes: parts.sleep,
-      pct: `${parts.sleepPct}%`,
-    },
-  ];
-  if (parts.rest > 0) {
-    dayLegendItems.push({
-      color: DAY_HERO_COLORS.rest,
-      label: "그 외",
-      minutes: parts.rest,
-      pct: `${parts.restPct}%`,
-    });
-  }
-  dayLegendItems.forEach((item) => {
-    dayLegend.appendChild(
-      createDayHeroLegendItem(item.color, item.label, item.minutes, item.pct),
-    );
-  });
-  dayCol.appendChild(dayLegend);
   charts.appendChild(dayCol);
 
   const availCol = document.createElement("div");
@@ -4147,13 +5369,54 @@ function renderDayHeroSummary(hero, { dayCount = 1 } = {}) {
   charts.appendChild(availCol);
 
   viz.appendChild(charts);
+
+  /* 범례 — 생산·비생산·근무·수면만 카드 (미기록「그 외」제외) */
+  {
+    const dayLegend = document.createElement("div");
+    dayLegend.className = "lp-tr2-day-hero-legend lp-tr2-day-hero-legend--cards";
+    const dayLegendItems = [
+      {
+        color: DAY_HERO_COLORS.productive,
+        label: "생산적",
+        minutes: parts.productive,
+        pct: `${parts.prodPct}%`,
+      },
+      {
+        color: DAY_HERO_COLORS.waste,
+        label: "비생산",
+        minutes: parts.waste,
+        pct: `${parts.wastePct}%`,
+      },
+      {
+        color: DAY_HERO_COLORS.work,
+        label: "근무",
+        minutes: parts.work,
+        pct: `${parts.workPct}%`,
+      },
+      {
+        color: DAY_HERO_COLORS.sleep,
+        label: "수면",
+        minutes: parts.sleep,
+        pct: `${parts.sleepPct}%`,
+      },
+    ];
+    dayLegendItems.forEach((item) => {
+      dayLegend.appendChild(
+        createDayHeroLegendItem(item.color, item.label, item.minutes, item.pct),
+      );
+    });
+    viz.appendChild(dayLegend);
+  }
+
   root.appendChild(viz);
 
   const valuePanel = document.createElement("div");
   valuePanel.className = "lp-tr2-day-hero-value";
   const valueTitle = document.createElement("p");
   valueTitle.className = "lp-tr2-day-hero-value-title";
-  valueTitle.textContent = isMultiDay ? "기간의 시간 가치" : "오늘의 시간 가치";
+  valueTitle.textContent =
+    rangeLabel ||
+    (isMultiDay ? "기간의 시간 가치" : "오늘의 시간 가치");
   valuePanel.appendChild(valueTitle);
 
   const investWon = Math.round(Number(hero.investWon) || 0);
@@ -4163,51 +5426,43 @@ function renderDayHeroSummary(hero, { dayCount = 1 } = {}) {
   valuePanel.appendChild(
     createDayHeroValueRow(
       "생산적 가치",
-      investWon > 0
-        ? formatInvestReclaimWonDisplay(investWon)
-        : "₩0",
+      createDayHeroWonAmountEl(investWon > 0 ? investWon : 0),
       "prod",
     ),
   );
   valuePanel.appendChild(
     createDayHeroValueRow(
       "비생산 가치",
-      wasteWon > 0
-        ? formatLedgerLossKrwDisplay(wasteWon)
-        : "₩0",
+      createDayHeroWonAmountEl(wasteWon > 0 ? -wasteWon : 0),
       "waste",
     ),
   );
 
   const netRow = createDayHeroValueRow(
     "합(순가치)",
-    formatNetWon(netWon),
+    createDayHeroWonAmountEl(netWon),
     netWon > 0 ? "net-pos" : netWon < 0 ? "net-neg" : "net-zero",
   );
   netRow.classList.add("lp-tr2-day-hero-value-row--net");
   valuePanel.appendChild(netRow);
 
-  const scoreHint = document.createElement("p");
-  scoreHint.className = "lp-tr2-day-hero-value-score";
-  scoreHint.textContent = `집중 점수 ${hero.score}`;
-  if (hero.focusLabel) {
-    scoreHint.textContent += ` · ${hero.focusLabel} ${hero.focusPct}%`;
-  }
-  valuePanel.appendChild(scoreHint);
-
   root.appendChild(valuePanel);
   return root;
 }
 
-function mountHeroSection(scrollWrap, range) {
-  const hero = getTimeReportHeroSnapshotForDateRange(range.start, range.end);
-  const dayCount = listDatesInclusive(range.start, range.end).length;
-  const sec = createSection(
-    "한 장 요약",
-    formatRangeLabel(range.start, range.end),
+function mountHeroSection(scrollWrap, range, rows) {
+  const hero = getTimeReportHeroSnapshotForDateRange(
+    range.start,
+    range.end,
+    rows,
   );
-  /* 일·주·월간 동일 — 구성 도넛 + 가용시간 도넛 + 시간 가치 */
-  sec.appendChild(renderDayHeroSummary(hero, { dayCount }));
+  const dayCount = listDatesInclusive(range.start, range.end).length;
+  const rangeLabel = formatRangeLabel(range.start, range.end);
+  const sec = createSection("한 장 요약", rangeLabel);
+  /* 일·주·월·연간: 도넛 + 시간 가치 */
+  sec.appendChild(
+    renderDayHeroSummary(hero, { dayCount, rangeLabel, rows, range }),
+  );
   scrollWrap.appendChild(sec);
 }
 
@@ -4255,17 +5510,20 @@ function renderSleepGoalProgressBar(minutes) {
   return wrap;
 }
 
-function mountSleepSection(scrollWrap, range, rows) {
-  const snap = buildSleepReportSnapshot(rows, range);
+function mountSleepSection(scrollWrap, range, rows, allRows) {
+  const snap = buildSleepReportSnapshot(rows, range, allRows);
   const isDay = range.start === range.end;
   const isWeekView = !isDay && snap.dayCount > 1 && snap.dayCount <= 8;
+  const isYearView = !isDay && snap.dayCount >= 300;
   const sec = createSection(
     "수면 기록",
     isDay
       ? "전날 밤 취침 ~ 기상 · 7시간 목표 대비"
       : isWeekView
         ? "평균 요약 · 막대=수면 시간 · 점선=7시간 목표"
-        : "취침·기상·품질 패턴 · 막대=수면 시간 · 점선=7시간 목표",
+        : isYearView
+          ? "취침·기상·품질 평균 요약"
+          : "취침·기상·품질 패턴 · 막대=수면 시간 · 점선=7시간 목표",
   );
 
   if (!snap.daysWithSleep.length) {
@@ -4286,30 +5544,33 @@ function mountSleepSection(scrollWrap, range, rows) {
     return;
   }
 
-  const chartBlock = createRatingBlock(
-    "수면 시간 · 목표 대비",
-    "날짜별 수면 길이와 7시간 목표",
-  );
-  const chartWrap = document.createElement("div");
-  chartWrap.className = "lp-tr2-sleep-chart-wrap";
-  const canvas = document.createElement("div");
-  canvas.className = "lp-tr2-sleep-chart-canvas";
-  const { scroll } =
-    renderSleepGoalBarChart(canvas, snap.sleepByDay) || {};
-  if (scroll) {
-    canvas.classList.add("lp-tr2-sleep-chart-canvas--scroll");
-    bindHorizontalChartScroll(canvas);
+  /* 연간: 일별 수면 막대 그래프는 생략(요약·상관만) */
+  if (!isYearView) {
+    const chartBlock = createRatingBlock(
+      "수면 시간 · 목표 대비",
+      "날짜별 수면 길이와 7시간 목표",
+    );
+    const chartWrap = document.createElement("div");
+    chartWrap.className = "lp-tr2-sleep-chart-wrap";
+    const canvas = document.createElement("div");
+    canvas.className = "lp-tr2-sleep-chart-canvas";
+    const { scroll } =
+      renderSleepGoalBarChart(canvas, snap.sleepByDay) || {};
+    if (scroll) {
+      canvas.classList.add("lp-tr2-sleep-chart-canvas--scroll");
+      bindHorizontalChartScroll(canvas);
+    }
+    chartWrap.appendChild(canvas);
+    chartWrap.appendChild(buildSleepChartLegend());
+    if (scroll) {
+      const scrollHint = document.createElement("p");
+      scrollHint.className = "lp-tr2-sleep-chart-scroll-hint";
+      scrollHint.textContent = "← 좌우로 밀어 전체 날짜를 볼 수 있어요";
+      chartWrap.appendChild(scrollHint);
+    }
+    chartBlock.appendChild(chartWrap);
+    sec.appendChild(chartBlock);
   }
-  chartWrap.appendChild(canvas);
-  chartWrap.appendChild(buildSleepChartLegend());
-  if (scroll) {
-    const scrollHint = document.createElement("p");
-    scrollHint.className = "lp-tr2-sleep-chart-scroll-hint";
-    scrollHint.textContent = "← 좌우로 밀어 전체 날짜를 볼 수 있어요";
-    chartWrap.appendChild(scrollHint);
-  }
-  chartBlock.appendChild(chartWrap);
-  sec.appendChild(chartBlock);
 
   if (isWeekView) {
     const detailBlock = createRatingBlock(
@@ -4340,34 +5601,39 @@ function mountSleepSection(scrollWrap, range, rows) {
 }
 
 function mountIntakeSection(scrollWrap, range, rows) {
-  const { healthy, unhealthy } = collectIntakeLogs(rows);
+  const { healthy, unhealthy, healthyCount, unhealthyCount } =
+    collectIntakeLogs(rows);
   const dayCount = listDatesInclusive(range.start, range.end).length;
   const isDay = range.start === range.end;
   const isWeekView = !isDay && dayCount > 1 && dayCount <= 8;
-  const meals = [...healthy, ...unhealthy].sort(
-    (a, b) =>
-      b.date.localeCompare(a.date) || a.main.localeCompare(b.main, "ko"),
+  const isMonthView = !isDay && !isWeekView;
+  const mealListCount = healthy.length + unhealthy.length;
+  const recordCount = healthyCount + unhealthyCount;
+  const timeSnap = buildIntakeTimeSnapshot(rows, range);
+
+  const sec = createSection(
+    "섭취 기록",
+    isDay
+      ? "오늘 섭취·준비 시간 · 식단"
+      : isWeekView
+        ? "하루 평균 섭취·준비 시간 · 식단"
+        : "건강·비건강 섭취 비율 · 날짜별 식단",
   );
 
-  /* 일간·주간: 섭취/준비 시간 요약 + 식단(맛 평가 목록) */
-  if (isDay || isWeekView) {
-    const timeSnap = buildIntakeTimeSnapshot(rows, range);
-    const sec = createSection(
-      "섭취 기록",
-      isDay
-        ? "오늘 섭취·준비에 쓴 시간 · 식단 맛 평가"
-        : "하루 평균 섭취·준비 시간 · 식단 맛 평가",
-    );
+  if (!timeSnap.hasData && recordCount <= 0 && mealListCount <= 0) {
+    const note = document.createElement("p");
+    note.className = "lp-tr2-chart-note";
+    note.textContent = "이 기간에 섭취 기록이 없습니다.";
+    sec.appendChild(note);
+    scrollWrap.appendChild(sec);
+    return;
+  }
 
-    if (!timeSnap.hasData && !meals.length) {
-      const note = document.createElement("p");
-      note.className = "lp-tr2-chart-note";
-      note.textContent = "이 기간에 섭취 기록이 없습니다.";
-      sec.appendChild(note);
-      scrollWrap.appendChild(sec);
-      return;
-    }
+  if (recordCount > 0) {
+    sec.appendChild(renderIntakeHealthRatioBar(healthyCount, unhealthyCount));
+  }
 
+  if ((isDay || isWeekView) && timeSnap.hasData) {
     const grid = document.createElement("div");
     grid.className = "lp-tr2-card-grid";
     if (isDay) {
@@ -4406,80 +5672,23 @@ function mountIntakeSection(scrollWrap, range, rows) {
       );
     }
     sec.appendChild(grid);
-
-    const dietBlock = createRatingBlock(
-      "식단",
-      isDay
-        ? "건강한·건강하지 않은 섭취 · 옆의 별점이 맛 평가"
-        : "건강한·건강하지 않은 섭취 · 옆의 별점이 맛 평가",
-    );
-    const panels = document.createElement("div");
-    panels.className = "lp-tr2-intake-panels";
-    /* 일간·주간: 세로 스크롤 없이 목록 전부 표시 */
-
-    const makeDietPanel = (title, count, entries, tone) => {
-      const panel = document.createElement("div");
-      panel.className = `lp-tr2-intake-panel lp-tr2-intake-panel--${tone}`;
-      const head = document.createElement("div");
-      head.className = "lp-tr2-intake-panel-head";
-      const headTitle = document.createElement("span");
-      headTitle.textContent = title;
-      const headCount = document.createElement("span");
-      headCount.className = "lp-tr2-intake-panel-count";
-      headCount.textContent = `${count}건`;
-      head.appendChild(headTitle);
-      head.appendChild(headCount);
-      const body = document.createElement("div");
-      body.className = "lp-tr2-intake-panel-body";
-      body.appendChild(
-        buildDayIntakeRatedFeed(entries, "기록 없음", tone, {
-          showDate: !isDay,
-        }),
-      );
-      panel.appendChild(head);
-      panel.appendChild(body);
-      return panel;
-    };
-
-    panels.appendChild(
-      makeDietPanel("건강한 섭취", healthy.length, healthy, "healthy"),
-    );
-    panels.appendChild(
-      makeDietPanel(
-        "건강하지 않은 섭취",
-        unhealthy.length,
-        unhealthy,
-        "unhealthy",
-      ),
-    );
-    dietBlock.appendChild(panels);
-    sec.appendChild(dietBlock);
-    /* 주간: 식단 목록 + 좋아한/아쉬웠던 음식 (일간은 목록·별점만) */
-    if (isWeekView) {
-      appendMealTasteRankBlocks(sec, rows);
-    }
-    scrollWrap.appendChild(sec);
-    return;
   }
 
-  const totalEntries = healthy.length + unhealthy.length;
-  const sec = createSection(
-    "섭취 기록",
-    dayCount > 1
-      ? "날짜별 한 줄 요약 · 길면 패널 안에서 스크롤"
-      : "무엇을 먹었는지(식단 메모)",
+  const dietBlock = createRatingBlock(
+    "식단",
+    isDay
+      ? "건강한·건강하지 않은 섭취 · 옆의 별점이 맛 평가"
+      : isWeekView
+        ? "건강한·건강하지 않은 섭취 · 옆의 별점이 맛 평가"
+        : "날짜별 식단명만 · 길면 패널 안에서 스크롤",
   );
-  const counts = document.createElement("p");
-  counts.className = "lp-tr2-intake-counts";
-  counts.textContent = `건강 ${healthy.length}건 · 비건강 ${unhealthy.length}건 · ${new Set([...healthy, ...unhealthy].map((e) => e.date)).size}일`;
-
   const panels = document.createElement("div");
   panels.className = "lp-tr2-intake-panels";
-  if (dayCount >= 7 || totalEntries > 8) {
+  if (isMonthView && (dayCount >= 7 || mealListCount > 8)) {
     panels.classList.add("lp-tr2-intake-panels--scroll");
   }
 
-  const makePanel = (title, count, entries, emptyText, tone) => {
+  const makeDietPanel = (title, count, entries, tone) => {
     const panel = document.createElement("div");
     panel.className = `lp-tr2-intake-panel lp-tr2-intake-panel--${tone}`;
     const head = document.createElement("div");
@@ -4493,34 +5702,37 @@ function mountIntakeSection(scrollWrap, range, rows) {
     head.appendChild(headCount);
     const body = document.createElement("div");
     body.className = "lp-tr2-intake-panel-body";
-    body.appendChild(buildCompactIntakeFeed(entries, emptyText, tone));
+    if (isMonthView) {
+      body.appendChild(buildCompactIntakeFeed(entries, "기록 없음", tone));
+    } else {
+      body.appendChild(
+        buildDayIntakeRatedFeed(entries, "기록 없음", tone, {
+          showDate: !isDay,
+        }),
+      );
+    }
     panel.appendChild(head);
     panel.appendChild(body);
     return panel;
   };
 
   panels.appendChild(
-    makePanel(
-      "건강한 섭취",
-      healthy.length,
-      healthy,
-      "기록 없음",
-      "healthy",
-    ),
+    makeDietPanel("건강한 섭취", healthyCount, healthy, "healthy"),
   );
   panels.appendChild(
-    makePanel(
+    makeDietPanel(
       "건강하지 않은 섭취",
-      unhealthy.length,
+      unhealthyCount,
       unhealthy,
-      "기록 없음",
       "unhealthy",
     ),
   );
+  dietBlock.appendChild(panels);
+  sec.appendChild(dietBlock);
 
-  sec.appendChild(counts);
-  sec.appendChild(panels);
-  appendMealTasteRankBlocks(sec, rows);
+  if (isWeekView || isMonthView) {
+    appendMealTasteRankBlocks(sec, rows);
+  }
   scrollWrap.appendChild(sec);
 }
 
@@ -4842,6 +6054,97 @@ function monthTaskCategoryKey(taskName, rowHint) {
   return MONTH_TASK_TREEMAP_COLORS[cat] ? cat : "other";
 }
 
+/** 연간 — 카테고리별 합산 (버블 차트용) */
+function buildCategoryBubbleItems(rows) {
+  /** @type {Map<string, { key: string, label: string, minutes: number }>} */
+  const map = new Map();
+  for (const r of rows || []) {
+    const mins = rowMinutes(r);
+    if (mins <= 0) continue;
+    const key = monthTaskCategoryKey(r?.taskName, r?.category);
+    const cur = map.get(key) || {
+      key,
+      label: MONTH_TASK_TREEMAP_CAT_LABELS[key] || key,
+      minutes: 0,
+    };
+    cur.minutes += mins;
+    map.set(key, cur);
+  }
+  const total = [...map.values()].reduce((s, x) => s + x.minutes, 0);
+  return [...map.values()]
+    .filter((x) => x.minutes > 0)
+    .map((x) => ({
+      ...x,
+      pct: total > 0 ? Math.round((x.minutes / total) * 100) : 0,
+    }))
+    .sort((a, b) => b.minutes - a.minutes || a.label.localeCompare(b.label, "ko"));
+}
+
+/** 카테고리 버블 — 원 넓이 ≈ 시간 비율 */
+function renderCategoryBubbleChart(items) {
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-cat-bubbles";
+  wrap.setAttribute("role", "img");
+  wrap.setAttribute("aria-label", "카테고리별 사용 시간");
+
+  if (!items.length) {
+    const empty = document.createElement("p");
+    empty.className = "lp-tr2-chart-note";
+    empty.textContent = "표시할 카테고리가 없습니다.";
+    wrap.appendChild(empty);
+    return wrap;
+  }
+
+  const maxM = Math.max(...items.map((x) => x.minutes), 1);
+  const board = document.createElement("div");
+  board.className = "lp-tr2-cat-bubbles-board";
+
+  items.forEach((item) => {
+    const t = Math.sqrt(item.minutes / maxM);
+    /* 지름 rem — 최소·최대 고정, 면적 느낌은 √비율 */
+    const dRem = (3.1 + t * 7.2).toFixed(2);
+    const bubble = document.createElement("div");
+    bubble.className = "lp-tr2-cat-bubble";
+    bubble.style.setProperty("--d", `${dRem}rem`);
+    bubble.style.background =
+      MONTH_TASK_TREEMAP_COLORS[item.key] || MONTH_TASK_TREEMAP_COLORS.other;
+    bubble.title = `${item.label} · ${formatIntegerMinutesDurationKo(item.minutes)} · ${item.pct}%`;
+
+    const name = document.createElement("span");
+    name.className = "lp-tr2-cat-bubble-name";
+    name.textContent = item.label;
+    const meta = document.createElement("span");
+    meta.className = "lp-tr2-cat-bubble-meta";
+    meta.textContent = `${item.pct}%`;
+    const dur = document.createElement("span");
+    dur.className = "lp-tr2-cat-bubble-dur";
+    dur.textContent = formatIntegerMinutesDurationKo(item.minutes);
+
+    if (t < 0.42) {
+      bubble.classList.add("is-sm");
+      bubble.append(name, meta);
+    } else if (t < 0.62) {
+      bubble.classList.add("is-md");
+      bubble.append(name, meta);
+    } else {
+      bubble.append(name, dur, meta);
+    }
+    board.appendChild(bubble);
+  });
+
+  wrap.appendChild(board);
+  wrap.appendChild(
+    createRatingChartLegend(
+      items.map((item) => ({
+        swatch:
+          MONTH_TASK_TREEMAP_COLORS[item.key] || MONTH_TASK_TREEMAP_COLORS.other,
+        label: item.label,
+      })),
+    ),
+  );
+  return wrap;
+}
+
 /**
  * 기간 안 기록된 과제별 총 시간 — 과제명마다 전부 표시(묶음 없음)
  */
@@ -4923,33 +6226,56 @@ function layoutMonthTaskTreemap(items) {
   return out;
 }
 
-function renderMonthTaskTreemap(items) {
+function renderMonthTaskTreemap(items, { ariaLabel = "과제별 사용 시간" } = {}) {
   const layout = layoutMonthTaskTreemap(items);
   const wrap = document.createElement("div");
   wrap.className = "lp-tr2-task-treemap";
   wrap.setAttribute("role", "img");
-  wrap.setAttribute("aria-label", "한달 과제별 사용 시간");
+  wrap.setAttribute("aria-label", ariaLabel);
 
   const board = document.createElement("div");
   board.className = "lp-tr2-task-treemap-board";
 
-  const GAP = 0.45;
+  /* 간격은 고정 %가 아니라 칸 크기에 비례 — 큰 칸 면적 왜곡 줄임 */
+  const GAP_RATIO = 0.012;
   layout.forEach((cell) => {
     const el = document.createElement("div");
     el.className = "lp-tr2-task-treemap-cell";
-    const w = Math.max(0, cell.w - GAP);
-    const h = Math.max(0, cell.h - GAP);
-    el.style.left = `${cell.x + GAP / 2}%`;
-    el.style.top = `${cell.y + GAP / 2}%`;
+    const gapW = Math.min(0.55, cell.w * GAP_RATIO);
+    const gapH = Math.min(0.55, cell.h * GAP_RATIO);
+    const w = Math.max(0, cell.w - gapW);
+    const h = Math.max(0, cell.h - gapH);
+    el.style.left = `${cell.x + gapW / 2}%`;
+    el.style.top = `${cell.y + gapH / 2}%`;
     el.style.width = `${w}%`;
     el.style.height = `${h}%`;
     el.style.background =
       MONTH_TASK_TREEMAP_COLORS[cell.categoryKey] ||
       MONTH_TASK_TREEMAP_COLORS.other;
-    el.title = `${cell.name} · ${formatIntegerMinutesDurationKo(cell.minutes)} · ${cell.pct}%`;
+    const metaText = `${formatIntegerMinutesDurationKo(cell.minutes)} · ${cell.pct}%`;
+    el.title = `${cell.name} · ${metaText}`;
 
-    if (h < 9 || w < 11) el.classList.add("is-compact");
-    if (h < 7 || w < 9) el.classList.add("is-tiny");
+    /* 칸 면적(%)에 맞춰 글자 크기·표시 조절 — 작은 칸도 폰트만 줄여 표시 */
+    const minSide = Math.min(w, h);
+    if (minSide < 22 || h < 16 || w < 18) el.classList.add("is-compact");
+    if (minSide < 12 || h < 9 || w < 11) el.classList.add("is-tiny");
+    /* 가로로 얇은 띠 — 한 줄로 이름 표시 */
+    if (h < 8 && w >= 8) el.classList.add("is-strip");
+    /* 시간·%는 높이가 너무 낮을 때만 숨김 (이름보다 우선순위 낮음) */
+    if (h < 6.5 || (h < 9 && w < 10)) el.classList.add("is-meta-hidden");
+    /* 극소 칸만 글자 생략(거의 안 씀) */
+    if (minSide < 2.8 || (h < 2.4 && w < 4)) el.classList.add("is-micro");
+
+    const nameFs = Math.max(
+      0.375,
+      Math.min(0.95, 0.26 + minSide * 0.034),
+    );
+    const metaFs = Math.max(
+      0.34,
+      Math.min(0.8, 0.22 + minSide * 0.028),
+    );
+    el.style.setProperty("--tm-name-fs", `${nameFs.toFixed(3)}rem`);
+    el.style.setProperty("--tm-meta-fs", `${metaFs.toFixed(3)}rem`);
 
     const name = document.createElement("span");
     name.className = "lp-tr2-task-treemap-name";
@@ -4957,7 +6283,7 @@ function renderMonthTaskTreemap(items) {
 
     const meta = document.createElement("span");
     meta.className = "lp-tr2-task-treemap-meta";
-    meta.textContent = `${formatIntegerMinutesDurationKo(cell.minutes)} · ${cell.pct}%`;
+    meta.textContent = metaText;
 
     el.append(name, meta);
     board.appendChild(el);
@@ -4981,18 +6307,46 @@ function renderMonthTaskTreemap(items) {
   return wrap;
 }
 
-/** 일·주·월 — 과제별 사용 시간 면적 지도(동일 네모 형태) */
+/** 일·주·월·연간 — 과제 트리맵 / 연간은 카테고리 버블 */
 function mountTaskTimeMapSection(scrollWrap, range, rows) {
   const isDay = range.start === range.end;
   const dayCount = listDatesInclusive(range.start, range.end).length;
   const isWeek = !isDay && dayCount > 1 && dayCount <= 8;
-  const items = buildMonthTaskTreemapItems(rows);
+  const isYear = !isDay && dayCount >= 300;
+  const isMonth = !isDay && !isWeek && !isYear;
 
+  const title = isDay
+    ? "하루 시간 분포"
+    : isWeek
+      ? "1주 시간 분포"
+      : isYear
+        ? "1년 시간 분포"
+        : isMonth
+          ? "한달 시간 분포"
+          : "기간 시간 분포";
   const sec = createSection(
-    isDay ? "하루 시간 분포" : isWeek ? "1주 시간 분포" : "한달 시간 분포",
-    "",
+    title,
+    isYear
+      ? "원 크기 = 카테고리 시간 비율 · 수면·근무·미디어·시급 상승 등"
+      : "칸 넓이·높이가 만든 면적 = 그 과제 시간 비율",
   );
 
+  if (isYear) {
+    const bubbles = buildCategoryBubbleItems(rows);
+    if (!bubbles.length) {
+      const note = document.createElement("p");
+      note.className = "lp-tr2-chart-note";
+      note.textContent = "이 해에 집계할 과제 기록이 없습니다.";
+      sec.appendChild(note);
+      scrollWrap.appendChild(sec);
+      return;
+    }
+    sec.appendChild(renderCategoryBubbleChart(bubbles));
+    scrollWrap.appendChild(sec);
+    return;
+  }
+
+  const items = buildMonthTaskTreemapItems(rows);
   if (!items.length) {
     const note = document.createElement("p");
     note.className = "lp-tr2-chart-note";
@@ -5000,18 +6354,24 @@ function mountTaskTimeMapSection(scrollWrap, range, rows) {
       ? "이날 집계할 과제 기록이 없습니다."
       : isWeek
         ? "이 주에 집계할 과제 기록이 없습니다."
-        : "이 달에 집계할 과제 기록이 없습니다.";
+        : "이 기간에 집계할 과제 기록이 없습니다.";
     sec.appendChild(note);
     scrollWrap.appendChild(sec);
     return;
   }
 
-  sec.appendChild(renderMonthTaskTreemap(items));
+  sec.appendChild(
+    renderMonthTaskTreemap(items, { ariaLabel: `${title} · 과제별 사용 시간` }),
+  );
   scrollWrap.appendChild(sec);
 }
 
-function mountDonutSection(scrollWrap, range) {
-  const snap = getTimeReportDonutSnapshotForDateRange(range.start, range.end);
+function mountDonutSection(scrollWrap, range, rows) {
+  const snap = getTimeReportDonutSnapshotForDateRange(
+    range.start,
+    range.end,
+    rows,
+  );
   const radarSnap = buildCategoryTimeRadarFromDonutSnap(snap);
   const sec = createSection(
     "시간의 방향",
@@ -5069,21 +6429,25 @@ function mountDonutSection(scrollWrap, range) {
 export function mountUnifiedTimeReport(scrollWrap, arg2, arg3) {
   if (!scrollWrap) return;
   const range = resolveMountRange(arg2, arg3);
-  const rows = rowsInRange(range.start, range.end);
+  /* 기록은 한 번만 읽고 섹션에 공유 */
+  const allRows = loadTimeRows();
+  const rows = rowsInRange(range.start, range.end, allRows);
 
   scrollWrap.replaceChildren();
   scrollWrap.classList.remove("lp-time-report-body--empty");
   scrollWrap.classList.add("lp-tr2-root");
 
-  mountHeroSection(scrollWrap, range);
+  mountHeroSection(scrollWrap, range, rows);
   mountTaskTimeMapSection(scrollWrap, range, rows);
-  mountDonutSection(scrollWrap, range);
-  mountSleepSection(scrollWrap, range, rows);
+  mountDonutSection(scrollWrap, range, rows);
+  mountSleepSection(scrollWrap, range, rows, allRows);
   mountIntakeSection(scrollWrap, range, rows);
   mountEmotionSection(scrollWrap, range, rows);
   mountMoveSection(scrollWrap, range, rows);
-  mountHappinessRoutineSection(scrollWrap, range);
   mountMediaSection(scrollWrap, range, rows);
+  mountYearKpiGoalReportSection(scrollWrap, range, allRows);
+  mountHabitCheckSection(scrollWrap, range);
+  mountHappinessRoutineSection(scrollWrap, range);
   mountFocusReportSection(scrollWrap, range, rows);
   mountPlanAdherenceSection(scrollWrap, range, rows);
 }

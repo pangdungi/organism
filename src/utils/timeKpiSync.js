@@ -40,6 +40,70 @@ function loadTimeRows() {
   return readTimeLedgerEntriesRaw();
 }
 
+/** 레포트 등 — loadTimeRows·과제매칭을 KPI마다 반복하지 않게 */
+let _reportAccumRows = null;
+/** @type {Map<string, object[]>|null} */
+let _reportMatchedRowsByKpi = null;
+
+/**
+ * @param {object[]|null|undefined} [rows]
+ */
+export function beginKpiTimeLedgerReportCache(rows) {
+  _reportAccumRows = Array.isArray(rows) ? rows : loadTimeRows();
+  _reportMatchedRowsByKpi = null;
+  const taskRows = readTaskRowsForKpiMatch();
+  /** @type {Map<string, Set<string>>} */
+  const kpiIdToTaskIds = new Map();
+  /** @type {Map<string, string>} */
+  const taskIdToKpiId = new Map();
+  for (const o of taskRows) {
+    const id = String(o.id || "").trim();
+    const kid = String(o.kpiId || "").trim();
+    if (!isUuid(id) || !kid) continue;
+    taskIdToKpiId.set(id, kid);
+    let set = kpiIdToTaskIds.get(kid);
+    if (!set) {
+      set = new Set();
+      kpiIdToTaskIds.set(kid, set);
+    }
+    set.add(id);
+  }
+  /** @type {Map<string, object[]>} */
+  const matched = new Map();
+  for (const r of _reportAccumRows) {
+    const resolvedTid = resolveKpiLinkedTaskIdForLedgerRow(
+      r,
+      taskRows,
+      "",
+    );
+    if (!isUuid(resolvedTid)) continue;
+    const kid = taskIdToKpiId.get(resolvedTid);
+    if (!kid) continue;
+    const hasTime = parseTimeToHours(r.timeTracked) > 0;
+    const hasPerf =
+      r.kpiPerformedValue != null && String(r.kpiPerformedValue).trim() !== "";
+    const hasHabit =
+      Array.isArray(r.habitDailyCompleted) && r.habitDailyCompleted.length > 0;
+    if (!hasTime && !hasPerf && !hasHabit) continue;
+    let arr = matched.get(kid);
+    if (!arr) {
+      arr = [];
+      matched.set(kid, arr);
+    }
+    arr.push(r);
+  }
+  _reportMatchedRowsByKpi = matched;
+}
+
+export function endKpiTimeLedgerReportCache() {
+  _reportAccumRows = null;
+  _reportMatchedRowsByKpi = null;
+}
+
+function loadTimeRowsForAccum() {
+  return _reportAccumRows || loadTimeRows();
+}
+
 /** taskId↔kpiId 매칭용 — mem 미로드 시 getFullTaskOptions fallback */
 function readTaskRowsForKpiMatch() {
   const mem = readTaskOptionsMemRows();
@@ -106,6 +170,13 @@ export function kpiShouldUseTimeLedgerLogs(kpi) {
 function getMatchingLedgerRowsForKpi(kpiId, rowsForSum) {
   const kid = String(kpiId || "").trim();
   if (!kid) return [];
+
+  if (
+    _reportMatchedRowsByKpi &&
+    rowsForSum === _reportAccumRows
+  ) {
+    return _reportMatchedRowsByKpi.get(kid) || [];
+  }
 
   const taskRows = readTaskRowsForKpiMatch();
   const idsForKpi = new Set();
@@ -194,7 +265,7 @@ function accumulateMinutesForKpiFromRows(kpiId, rowsForSum) {
  * @param {string=} _kpiName - (미사용, 호환용)
  */
 export function getAccumulatedMinutesForKpiId(kpiId, _kpiName) {
-  return accumulateMinutesForKpiFromRows(kpiId, loadTimeRows());
+  return accumulateMinutesForKpiFromRows(kpiId, loadTimeRowsForAccum());
 }
 
 /**
@@ -213,7 +284,18 @@ export function getAccumulatedMinutesForKpiIdInDateRange(
   const e = String(endYmdTenInclusive || "").replace(/\//g, "-").slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || !/^\d{4}-\d{2}-\d{2}$/.test(e)) return 0;
   if (s > e) return 0;
-  const filtered = loadTimeRows().filter((r) => {
+  const src = loadTimeRowsForAccum();
+  /* 레포트 캐시가 있으면 행을 다시 복사·필터하지 않고 매칭 후 날짜만 검사 */
+  if (_reportAccumRows && src === _reportAccumRows) {
+    let totalHours = 0;
+    for (const r of getMatchingLedgerRowsForKpi(kpiId, src)) {
+      const d = ledgerRowDateYmd(r);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || d < s || d > e) continue;
+      totalHours += parseTimeToHours(r.timeTracked);
+    }
+    return Math.round(totalHours * 60);
+  }
+  const filtered = src.filter((r) => {
     const d = ledgerRowDateYmd(r);
     return /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= s && d <= e;
   });

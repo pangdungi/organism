@@ -803,3 +803,17 @@ export function buildHabitTrackerPageModel(opts = {}) {
 export function releaseHabitTrackerPaintCaches() {
   _paintLedgerIndex = null;
 }
+
+/**
+ * 레포트 습관 점수판용 — 날짜 인덱스·로그 맵을 한 번만 준비
+ * @param {Iterable<string>} dateKeys
+ * @param {HabitTrackerRow[]} rows
+ */
+export function beginHabitTrackerReportPaint(dateKeys, rows) {
+  prepareHabitTrackerRowsForPaint(rows);
+  _paintLedgerIndex = buildHabitTrackerLedgerDayIndex(dateKeys);
+}
+
+export function endHabitTrackerReportPaint() {
+  _paintLedgerIndex = null;
+}

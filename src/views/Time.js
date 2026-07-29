@@ -125,6 +125,11 @@ import {
   shouldCollectTimeFlowDisruptors,
 } from "../utils/timeTaskFlowDisruptors.js";
 import {
+  TIME_TASK_END_REASON_OPTIONS,
+  shouldCollectTimeEndReasons,
+  normalizeTimeEndReasonsForRow,
+} from "../utils/timeTaskEndReasons.js";
+import {
   closeActiveInProgressRowsAtNow,
   closeStaleInProgressTimeLedgerRows,
   timeLedgerRowIsActiveLiveInProgress,
@@ -1021,6 +1026,9 @@ function scheduleSyncHabitTrackerLogs() {
   }, 450);
 }
 
+/**
+ * @returns {Promise<{ ok: boolean, reason?: string, pushedCount?: number }>}
+ */
 function saveTimeRows(rows) {
   try {
     const prevSnap = readTimeLedgerEntriesRaw();
@@ -1077,16 +1085,48 @@ function saveTimeRows(rows) {
         new CustomEvent("calendar-time-rows-updated", { detail: {} }),
       );
     }
+    if (typeof window !== "undefined" && pushEntryIds.length > 0) {
+      return pushDirtyTimeLedgerEntriesToSupabase({
+        skipPull: true,
+        entryIds: pushEntryIds,
+      });
+    }
+    return Promise.resolve({ ok: true, pushedCount: 0, reason: "no_push_needed" });
+  } catch (err) {
+    return Promise.resolve({
+      ok: false,
+      reason: err?.message || "local_save_failed",
+      pushedCount: 0,
+    });
+  }
+}
+
+/** 모달 저장 직후 — 서버 반영 재시도(사용자 행동 우선, 실패 숨기지 않음) */
+async function pushTimeRowsAfterModalSaveWithRetry(entryIds, { attempts = 3 } = {}) {
+  const ids = (Array.isArray(entryIds) ? entryIds : [])
+    .map((id) => String(id || "").trim())
+    .filter((id) => isUuid(id));
+  if (!ids.length) return { ok: true, pushedCount: 0, reason: "no_ids" };
+  let last = { ok: false, reason: "not_attempted", pushedCount: 0 };
+  for (let i = 0; i < attempts; i += 1) {
     try {
-      if (typeof window !== "undefined" && pushEntryIds.length > 0) {
-        return pushDirtyTimeLedgerEntriesToSupabase({
-          skipPull: true,
-          entryIds: pushEntryIds,
-        });
-      }
-    } catch (_) {}
-  } catch (_) {}
-  return Promise.resolve();
+      last = await pushDirtyTimeLedgerEntriesToSupabase({
+        skipPull: true,
+        entryIds: ids,
+      });
+      if (last?.ok) return last;
+    } catch (err) {
+      last = {
+        ok: false,
+        reason: err?.message || "push_threw",
+        pushedCount: 0,
+      };
+    }
+    if (i < attempts - 1) {
+      await new Promise((r) => setTimeout(r, 400 * (i + 1)));
+    }
+  }
+  return last;
 }
 
 const TASK_BAR_COLORS = [
@@ -3243,27 +3283,55 @@ function loadLedgerRowsForInclusiveDateRange(rangeStart, rangeEnd) {
 }
 
 /** 조회 시작~끝(이번 주·지난달 등) 구간 집계 — 다일이면 월과 동일하게 가용·점수 계산 */
-export function getTimeReportHeroSnapshotForDateRange(rangeStart, rangeEnd) {
+export function getTimeReportHeroSnapshotForDateRange(
+  rangeStart,
+  rangeEnd,
+  rowsOpt,
+) {
   const rs = String(rangeStart || "")
     .replace(/\//g, "-")
     .slice(0, 10);
   const re = String(rangeEnd || "")
     .replace(/\//g, "-")
     .slice(0, 10);
-  const rows = loadLedgerRowsForInclusiveDateRange(rs, re);
+  const rows = Array.isArray(rowsOpt)
+    ? rowsOpt
+    : loadLedgerRowsForInclusiveDateRange(rs, re);
   return aggregateTimeReportHeroFromRows(rows, rs === re ? "day" : "month");
 }
 
-export function getTimeReportSummaryGridForDateRange(rangeStart, rangeEnd) {
-  return aggregateDailyTimeReportSummaryFromLedgerRows(
-    loadLedgerRowsForInclusiveDateRange(rangeStart, rangeEnd),
-  );
+export function getTimeReportSummaryGridForDateRange(
+  rangeStart,
+  rangeEnd,
+  rowsOpt,
+) {
+  const rs = String(rangeStart || "")
+    .replace(/\//g, "-")
+    .slice(0, 10);
+  const re = String(rangeEnd || "")
+    .replace(/\//g, "-")
+    .slice(0, 10);
+  const rows = Array.isArray(rowsOpt)
+    ? rowsOpt
+    : loadLedgerRowsForInclusiveDateRange(rs, re);
+  return aggregateDailyTimeReportSummaryFromLedgerRows(rows);
 }
 
-export function getTimeReportDonutSnapshotForDateRange(rangeStart, rangeEnd) {
-  return aggregateDailyTimeReportDonutFromLedgerRows(
-    loadLedgerRowsForInclusiveDateRange(rangeStart, rangeEnd),
-  );
+export function getTimeReportDonutSnapshotForDateRange(
+  rangeStart,
+  rangeEnd,
+  rowsOpt,
+) {
+  const rs = String(rangeStart || "")
+    .replace(/\//g, "-")
+    .slice(0, 10);
+  const re = String(rangeEnd || "")
+    .replace(/\//g, "-")
+    .slice(0, 10);
+  const rows = Array.isArray(rowsOpt)
+    ? rowsOpt
+    : loadLedgerRowsForInclusiveDateRange(rs, re);
+  return aggregateDailyTimeReportDonutFromLedgerRows(rows);
 }
 
 export function getHealthyMealDetailsForDateRange(rangeStart, rangeEnd) {
@@ -3879,6 +3947,9 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
       : [],
     kpiPerformedValue: String(initialData?.kpiPerformedValue ?? "").trim(),
     timeRating: normalizeTimeRatingForRow(initialData?.timeRating),
+    timeEndReasons: normalizeTimeEndReasonsForRow(
+      initialData?.timeEndReasons ?? initialData?.timeEndReason,
+    ),
     timeFlowFactors: normalizeTimeFlowFactorsForRow(
       initialData?.timeFlowFactors ?? initialData?.timeFlowFactor,
     ),
@@ -5922,11 +5993,8 @@ export function render(opts = {}) {
         const cacheRows = loadTimeRows();
         allRowsCache = cacheRows;
         cachedRows = [...cacheRows];
-        const filtered = applyUsageListFilters(cacheRows);
-        renderAll(filtered);
-        rememberTimeLedgerPaintSignature();
-        updateTotal();
-        persistActiveViewTimeFilterToSession();
+        /* 데이터 안 바뀌면 레포트 통째 다시 그리지 않음 */
+        syncTimeLedgerContent();
         if (!ok) {
           lpPullDebug("time_ledger_range_pull_failed", { range: `${rs}..${re}` });
         }
@@ -7427,6 +7495,10 @@ export function render(opts = {}) {
             <span data-legacy="time-task-log-section-label time-task-log-flow-factor-section-label">몰입 요소</span>
             <div data-legacy="time-task-log-flow-factor-chips" class="lp-choice-chip-row"></div>
           </div>
+          <div data-legacy="time-task-log-end-reason-section" hidden>
+            <span data-legacy="time-task-log-section-label time-task-log-end-reason-section-label">종료 이유</span>
+            <div data-legacy="time-task-log-end-reason-chips" class="lp-choice-chip-row"></div>
+          </div>
         </div>
         <div data-legacy="time-task-log-memo-section">
           <div data-legacy="time-task-log-memo-fields">
@@ -7700,9 +7772,16 @@ export function render(opts = {}) {
   const taskLogFlowFactorChips = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-flow-factor-chips"]',
   );
+  const taskLogEndReasonSection = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-end-reason-section"]',
+  );
+  const taskLogEndReasonChips = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-end-reason-chips"]',
+  );
   let taskLogTimeRating = null;
   let taskLogTimeFlowDisruptors = [];
   let taskLogTimeFlowFactors = [];
+  let taskLogTimeEndReasons = [];
 
   function getTaskLogTimeRating() {
     return normalizeTimeRatingForRow(taskLogTimeRating);
@@ -7714,6 +7793,10 @@ export function render(opts = {}) {
 
   function getTaskLogTimeFlowFactors() {
     return normalizeTimeFlowFactorsForRow(taskLogTimeFlowFactors);
+  }
+
+  function getTaskLogTimeEndReasons() {
+    return normalizeTimeEndReasonsForRow(taskLogTimeEndReasons);
   }
 
   function buildTaskLogModalProductivityStub() {
@@ -7912,16 +7995,60 @@ export function render(opts = {}) {
     if (!show && taskLogTimeFlowFactors.length) taskLogTimeFlowFactors = [];
   }
 
+  function syncTaskLogEndReasonChips() {
+    if (!taskLogEndReasonChips) return;
+    const picked = new Set(getTaskLogTimeEndReasons());
+    taskLogEndReasonChips
+      .querySelectorAll('[data-legacy~="lp-choice-chip"]')
+      .forEach((btn) => {
+        const on = picked.has(btn.getAttribute("data-end-reason") || "");
+        lpTokenToggle(btn, "lp-choice-chip--on", on);
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+  }
+
+  function setTaskLogTimeEndReasons(value, opts = {}) {
+    taskLogTimeEndReasons = normalizeTimeEndReasonsForRow(value);
+    if (!opts.silent) syncTaskLogEndReasonChips();
+  }
+
+  function toggleTaskLogTimeEndReason(id) {
+    const key = normalizeTimeEndReasonsForRow([id])[0];
+    if (!key) return;
+    const next = getTaskLogTimeEndReasons();
+    const idx = next.indexOf(key);
+    if (idx >= 0) next.splice(idx, 1);
+    else next.push(key);
+    setTaskLogTimeEndReasons(next);
+  }
+
+  function syncTaskLogEndReasonSection() {
+    const show =
+      isTaskLogModalProductiveTask() &&
+      !isTaskLogModalMealIntakeTask() &&
+      shouldCollectTimeEndReasons(getTaskLogTimeRating());
+    if (taskLogEndReasonSection) taskLogEndReasonSection.hidden = !show;
+    const endLabel = taskLogEndReasonSection?.querySelector(
+      '[data-legacy~="time-task-log-end-reason-section-label"]',
+    );
+    if (endLabel) {
+      endLabel.textContent = show ? "종료 이유 (필수)" : "종료 이유";
+    }
+    if (!show && taskLogTimeEndReasons.length) taskLogTimeEndReasons = [];
+  }
+
   function applyTaskLogModalRatingUiState({
     rating = null,
     disruptors = [],
     factors = [],
+    endReasons = [],
     emotionSub = "",
   } = {}) {
     taskLogTimeRating = normalizeTimeRatingForRow(rating);
     taskLogEmotionSub = String(emotionSub || "").trim();
     taskLogTimeFlowDisruptors = normalizeTimeFlowDisruptorsForRow(disruptors);
     taskLogTimeFlowFactors = normalizeTimeFlowFactorsForRow(factors);
+    taskLogTimeEndReasons = normalizeTimeEndReasonsForRow(endReasons);
     syncTaskLogRatingSectionUi();
   }
 
@@ -7999,13 +8126,16 @@ export function render(opts = {}) {
       taskLogEmotionSub = "";
       taskLogTimeFlowDisruptors = [];
       taskLogTimeFlowFactors = [];
+      taskLogTimeEndReasons = [];
     }
     syncTaskLogFlowDisruptorSection();
     syncTaskLogFlowFactorSection();
+    syncTaskLogEndReasonSection();
     if (show) {
       renderTaskLogTimeRating();
       syncTaskLogFlowDisruptorChips();
       syncTaskLogFlowFactorChips();
+      syncTaskLogEndReasonChips();
     }
     syncTaskLogEmotionSectionOrder();
   }
@@ -8015,9 +8145,11 @@ export function render(opts = {}) {
     renderTaskLogTimeRating();
     syncTaskLogFlowDisruptorSection();
     syncTaskLogFlowFactorSection();
+    syncTaskLogEndReasonSection();
     if (shouldShowTaskLogRatingSection()) {
       syncTaskLogFlowDisruptorChips();
       syncTaskLogFlowFactorChips();
+      syncTaskLogEndReasonChips();
     }
   }
 
@@ -8046,6 +8178,20 @@ export function render(opts = {}) {
         toggleTaskLogTimeFlowFactor(id);
       });
       taskLogFlowFactorChips.appendChild(btn);
+    });
+  }
+
+  if (taskLogEndReasonChips) {
+    TIME_TASK_END_REASON_OPTIONS.forEach(({ id, label }) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      lpSetClasses(btn, "lp-choice-chip");
+      btn.setAttribute("data-end-reason", id);
+      btn.textContent = label;
+      btn.addEventListener("click", () => {
+        toggleTaskLogTimeEndReason(id);
+      });
+      taskLogEndReasonChips.appendChild(btn);
     });
   }
 
@@ -10374,6 +10520,7 @@ export function render(opts = {}) {
       rating: null,
       disruptors: [],
       factors: [],
+      endReasons: [],
     });
     taskLogMemoTags = [];
     taskLogModal
@@ -10595,6 +10742,7 @@ export function render(opts = {}) {
       rating: data.timeRating,
       disruptors: data.timeFlowDisruptors ?? data.timeFlowDisruptor,
       factors: data.timeFlowFactors ?? data.timeFlowFactor,
+      endReasons: data.timeEndReasons ?? data.timeEndReason,
       emotionSub: extractEmotionSubFromMemoTags(rawMemoTagsForEdit),
     });
     taskLogMemoTags = userMemoTagsFromLedgerRaw(rawMemoTagsForEdit)
@@ -10888,6 +11036,35 @@ export function render(opts = {}) {
         return;
       }
     }
+    const needsEndReasons =
+      shouldCollectTimeEndReasons(timeRatingForRow) &&
+      isTaskLogModalProductiveTask() &&
+      !isTaskLogModalMealIntakeTask();
+    const timeEndReasonsForRow = needsEndReasons
+      ? getTaskLogTimeEndReasons()
+      : [];
+    if (needsEndReasons && !timeEndReasonsForRow.length) {
+      /* 4~5점 — 왜 잘하다 멈췄는지 · 「나중에」면 없이 저장 */
+      const pickEnd = await showConfirmModal({
+        title: "알림",
+        message: "종료 이유를 아직 고르지 않았어요.",
+        cancelText: "나중에",
+        confirmText: "확인",
+      });
+      if (pickEnd) {
+        syncTaskLogEndReasonSection();
+        if (taskLogEndReasonSection) {
+          taskLogEndReasonSection.hidden = false;
+          try {
+            taskLogEndReasonSection.scrollIntoView({
+              block: "nearest",
+              behavior: "smooth",
+            });
+          } catch (_) {}
+        }
+        return;
+      }
+    }
 
     if (editTr) {
       oldRowDataToRemove = editTr._rowData ? { ...editTr._rowData } : null;
@@ -10924,7 +11101,7 @@ export function render(opts = {}) {
           : [],
         kpiPerformedValue: String(prevRow.kpiPerformedValue ?? "").trim(),
         timeRating: timeRatingForRow,
-        timeEndReasons: [],
+        timeEndReasons: timeEndReasonsForRow,
         timeFlowDisruptors: timeFlowDisruptorsForRow,
         timeFlowFactors: timeFlowFactorsForRow,
       };
@@ -11049,7 +11226,7 @@ export function render(opts = {}) {
         habitDailyCompleted: [],
         kpiPerformedValue: "",
         timeRating: timeRatingForRow,
-        timeEndReasons: [],
+        timeEndReasons: timeEndReasonsForRow,
         timeFlowDisruptors: timeFlowDisruptorsForRow,
         timeFlowFactors: timeFlowFactorsForRow,
       };
@@ -11078,8 +11255,8 @@ export function render(opts = {}) {
           oldRowDataToRemove,
         );
         allRowsCache = next;
-        const isMobileCardEdit = lpTokenHas(editTr, "time-ledger-mobile-card");
-        if (isMobileCardEdit && editTr._rowData) {
+        /* 데스크탑·모바일 모두 — 마감 포함 수정본을 캐시에 다시 넣음 */
+        if (editTr._rowData) {
           allRowsCache.push(editTr._rowData);
         }
       }
@@ -11130,11 +11307,35 @@ export function render(opts = {}) {
       }
       onFilterChange();
       /*
-       * 로컬(마감시간 포함)은 동기 저장 → 모달 즉시 닫기.
-       * 서버 push는 그 뒤에도 await — 전송 자체를 건너뛰지 않음.
-       * (예전 유실: push 끝나기 전 옛 서버 pull이 덮어씀 → push 완료까지 대기 유지)
+       * 로컬(마감시간 포함) 먼저 저장 → 서버 반영은 재시도·실패 안내.
+       * 사용자 모달 저장은 조용히 넘기지 않음.
        */
-      const savePushPromise = saveTimeRows(getFullRowsForFilter(true));
+      const pushedId = String(
+        (editTr?._rowData?.id || addLedgerTr?._rowData?.id || "").trim(),
+      );
+      const saveResult = await saveTimeRows(getFullRowsForFilter(true));
+      let pushResult = saveResult;
+      if (!pushResult?.ok && isUuid(pushedId)) {
+        pushResult = await pushTimeRowsAfterModalSaveWithRetry([pushedId], {
+          attempts: 3,
+        });
+      } else if (
+        pushResult?.ok &&
+        (pushResult.pushedCount || 0) === 0 &&
+        isUuid(pushedId)
+      ) {
+        /* 로컬은 저장됐는데 이번 push 목록이 비었을 때 한 번 더 강제 */
+        pushResult = await pushTimeRowsAfterModalSaveWithRetry([pushedId], {
+          attempts: 2,
+        });
+      }
+      if (!pushResult?.ok) {
+        void showAlertModal({
+          title: "저장 안내",
+          message:
+            "이 기기에는 저장됐지만 서버에 올리지 못했습니다. 네트워크를 확인한 뒤 같은 기록을 다시 저장해 주세요. (마감 시간이 사라질 수 있습니다.)",
+        });
+      }
 
       const rowTaskId = String(ledgerRowForKpi?.taskId || "").trim();
       const kpiLinks =
@@ -11216,9 +11417,6 @@ export function render(opts = {}) {
       }
       closeTaskLogModal();
       el._updateTotal?.();
-      try {
-        await savePushPromise;
-      } catch (_) {}
       if (shouldNotifyHabit) {
         notifyHabitTrackerUiAfterTimeSave();
       }
@@ -12651,15 +12849,22 @@ export function render(opts = {}) {
       reportShell.setAttribute("data-lp-time-report-vertical-start", "");
       reportShell.setAttribute("aria-label", "시간 레포트");
       ledgerContainer.appendChild(reportShell);
-      mountTimeLedgerReport(reportShell, {
-        rangeStart: reportRangeStartYmd,
-        rangeEnd: reportRangeEndYmd,
-      });
-      if (
-        reportScrollRestore?.top > 0 &&
-        reportScrollRestore.key === reportScrollPreserveKey()
-      ) {
-        restoreTimeReportScrollTop(reportShell, reportScrollRestore.top);
+      if (el._lpReportMountDeferred) {
+        const loading = document.createElement("p");
+        loading.className = "lp-tr2-report-loading";
+        loading.textContent = "기록을 불러오는 중…";
+        reportShell.replaceChildren(loading);
+      } else {
+        mountTimeLedgerReport(reportShell, {
+          rangeStart: reportRangeStartYmd,
+          rangeEnd: reportRangeEndYmd,
+        });
+        if (
+          reportScrollRestore?.top > 0 &&
+          reportScrollRestore.key === reportScrollPreserveKey()
+        ) {
+          restoreTimeReportScrollTop(reportShell, reportScrollRestore.top);
+        }
       }
     } else if (showTimelineLedgerContent) {
       ledgerContainer.appendChild(cardsWrap);
@@ -12742,6 +12947,36 @@ export function render(opts = {}) {
     mergeRowsIntoCache();
     cachedRows = getFullRowsForFilter(true);
     const rowsToUse = getFilteredRows(cachedRows);
+
+    /* 레포트 탭 진입: pull 후 한 번만 본문 그림 */
+    if (userSubTabClick && timeLedgerLayoutView === "report") {
+      const gen = (el._lpTimeSubTabPullGen =
+        (el._lpTimeSubTabPullGen || 0) + 1);
+      el._lpReportMountDeferred = true;
+      renderAll(rowsToUse);
+      el._lpReportMountDeferred = false;
+      persistActiveViewTimeFilterToSession();
+      updateFilterBarVisibility();
+      void (async () => {
+        try {
+          await pullTimeLedgerTabEnterFromCloud();
+        } catch (_) {}
+        if (!el.isConnected || gen !== el._lpTimeSubTabPullGen) return;
+        if (timeLedgerLayoutView !== "report") return;
+        allRowsCache = loadTimeRows();
+        cachedRows = getFullRowsForFilter(true);
+        const filtered = getFilteredRows(cachedRows);
+        if (!patchTimeLedgerReportInPlace(filtered)) {
+          renderAll(filtered);
+          rememberTimeLedgerPaintSignature();
+        }
+        updateTotal();
+        persistActiveViewTimeFilterToSession();
+        updateFilterBarVisibility();
+      })();
+      return;
+    }
+
     const nextSig = snapshotTimeLedgerPaintSignature();
     const sigSame = !opts.force && nextSig === el._lpLastTimeLedgerPaintSig;
     if (sigSame) {

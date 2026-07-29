@@ -21,6 +21,12 @@ import {
   TIME_TASK_FLOW_DISRUPTOR_CATEGORIES,
   timeFlowDisruptorCategoryForId,
 } from "./timeTaskFlowDisruptors.js";
+import {
+  normalizeTimeEndReasonsForRow,
+  shouldCollectTimeEndReasons,
+  timeEndReasonLabelForId,
+  timeEndReasonLongerTipForId,
+} from "./timeTaskEndReasons.js";
 
 function rowMinutes(r) {
   const hrs = parseTimeToHours(r.timeTracked);
@@ -77,6 +83,52 @@ function buildDisruptorOneLiner(ranking, sessionCount, totalPicks) {
     return `가장 자주 겹치는 방해 요소는 「${top.label}」, 「${second.label}」입니다.`;
   }
   return `가장 많은 방해 요소는 「${top.label}」입니다 (${top.count}회 · ${top.pct}%).`;
+}
+
+function buildEndReasonOneLiner(ranking, sessionCount, totalPicks) {
+  if (!sessionCount) {
+    return "4~5점 세션에 종료 이유를 남기면, 왜 잘하다 멈췄는지 패턴이 보입니다.";
+  }
+  if (!totalPicks) {
+    return `4~5점 세션 ${sessionCount}건 — 「종료 이유」를 고르면 더 오래 유지하는 팁이 정리됩니다.`;
+  }
+  const top = ranking[0];
+  if (!top) return "";
+  return `잘하다 멈춘 이유로 「${top.label}」이(가) 가장 많았습니다 (${top.count}회).`;
+}
+
+function buildEndReasonAnalysis(highFocusSessions) {
+  const sessionCount = highFocusSessions.length;
+  const counts = new Map();
+  for (const r of highFocusSessions) {
+    const seen = new Set();
+    for (const id of normalizeTimeEndReasonsForRow(
+      r.timeEndReasons ?? r.timeEndReason,
+    )) {
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      counts.set(id, (counts.get(id) || 0) + 1);
+    }
+  }
+  const totalPicks = [...counts.values()].reduce((s, n) => s + n, 0);
+  const ranking = [...counts.entries()]
+    .map(([id, count]) => ({
+      id,
+      label: timeEndReasonLabelForId(id),
+      tip: timeEndReasonLongerTipForId(id),
+      count,
+      pct:
+        sessionCount > 0 ? Math.round((count / sessionCount) * 100) : 0,
+    }))
+    .sort((a, b) => b.count - a.count || b.pct - a.pct);
+
+  return {
+    sessionCount,
+    totalPicks,
+    ranking,
+    oneLiner: buildEndReasonOneLiner(ranking, sessionCount, totalPicks),
+    show: sessionCount > 0 || ranking.length > 0,
+  };
 }
 
 function buildDisruptorAnalysis(productiveRated) {
@@ -171,6 +223,7 @@ export function buildFocusReportSnapshot(rows) {
 
   const disruptorAnalysis = buildDisruptorAnalysis(productiveRated);
   const flowDisruptors = disruptorAnalysis.ranking;
+  const endReasonAnalysis = buildEndReasonAnalysis(highFocusSessions);
 
   const hourBuckets = Array.from({ length: 24 }, () => ({
     weighted: 0,
@@ -237,6 +290,7 @@ export function buildFocusReportSnapshot(rows) {
     recipeOneLiner: buildRecipeOneLiner(recipeTags, highFocusSessionCount),
     flowDisruptors,
     disruptorAnalysis,
+    endReasonAnalysis,
     hourGrid,
     duration: {
       avgMins,

@@ -601,10 +601,10 @@ export function applyTimeLedgerServerFullSnapshot(dbRows) {
 }
 
 /**
- * entry_date가 [rangeStart, rangeEnd] (포함)인 구간만 **pull 시점 서버 스냅샷**으로 교체.
- * 원칙: 항상 서버 우선. 같은 id는 서버 행으로 교체(로컬 LWW 없음).
- * 구간 안·아직 서버에 한 번도 안 올라간 새 행(serverUpdatedAt 없음)만 로컬 유지.
- * @param {{ preferServer?: boolean }} [opts] — 호환용(무시). 항상 서버 스냅샷 우선.
+ * entry_date가 [rangeStart, rangeEnd] (포함)인 구간만 pull 스냅샷으로 맞춤.
+ * 기본은 서버 우선. 다만 이 기기에서 사용자가 저장해 아직 서버에 안 올라간 행
+ * (timeLedgerRowNeedsPush)은 로컬을 유지 — 마감 등 사용자 행동이 pull에 지워지지 않게.
+ * @param {{ preferServer?: boolean }} [opts] — 호환용(무시).
  */
 export function applyTimeLedgerServerRangeSnapshot(
   dbRows,
@@ -633,19 +633,27 @@ export function applyTimeLedgerServerRangeSnapshot(
   const outside = localWithIds.filter(
     (r) => !rowEntryDateInInclusiveRange(r, rs, re),
   );
-  const serverIdsInRange = new Set(
-    insideFromServer.map((r) => String(r?.id || "").trim()).filter(Boolean),
-  );
-  /* 서버에 아직 없는 신규 행(미업로드)만 로컬 유지 — 그 외는 전부 서버 */
-  const pendingNewLocal = localWithIds.filter((r) => {
+  /** @type {Map<string, object>} */
+  const pendingDirtyById = new Map();
+  for (const r of localWithIds) {
+    if (!rowEntryDateInInclusiveRange(r, rs, re)) continue;
+    if (!timeLedgerRowNeedsPush(r)) continue;
     const id = String(r?.id || "").trim();
-    if (!rowEntryDateInInclusiveRange(r, rs, re)) return false;
-    if (serverIdsInRange.has(id)) return false;
-    if (!timeLedgerRowNeedsPush(r)) return false;
-    if (String(r.serverUpdatedAt || "").trim()) return false;
-    return true;
+    if (!id) continue;
+    pendingDirtyById.set(id, r);
+  }
+  const insideMerged = insideFromServer.map((serverRow) => {
+    const id = String(serverRow?.id || "").trim();
+    const dirty = id ? pendingDirtyById.get(id) : null;
+    if (dirty) {
+      pendingDirtyById.delete(id);
+      return dirty;
+    }
+    return serverRow;
   });
-  const merged = [...outside, ...insideFromServer, ...pendingNewLocal];
+  /* 서버에 아직 없는 신규·미업로드 행 */
+  const pendingNewLocal = [...pendingDirtyById.values()];
+  const merged = [...outside, ...insideMerged, ...pendingNewLocal];
   writeTimeLedgerEntriesRaw(merged);
   try {
     if (typeof document !== "undefined") {
