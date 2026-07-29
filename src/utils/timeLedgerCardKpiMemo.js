@@ -67,8 +67,9 @@ export function ledgerRowUsesDetailAsDisplayName(rowData) {
 
 /** 카드·타임라인·타임박스 — 화면용 과제명 */
 export function ledgerRowDisplayTaskName(rowData) {
-  const taskName = String(rowData?.taskName || "").trim();
-  if (taskName === MOVE_ROUTINE_TASK_NAME) {
+  const rawName = String(rowData?.taskName || "").trim();
+  const taskName = TTC.canonicalMealTaskDisplayName(rawName) || rawName;
+  if (rawName === MOVE_ROUTINE_TASK_NAME || taskName === MOVE_ROUTINE_TASK_NAME) {
     const moveLabel = formatMoveRoutineDisplayLabel(rowData?.habitDailyCompleted);
     if (moveLabel) return moveLabel;
   }

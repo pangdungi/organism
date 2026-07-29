@@ -294,7 +294,10 @@ function initLpTabResumeCloudPull(getCurrentTabId) {
   }
 
   async function runPlannerResumePull(gen) {
-    await pullDataForActiveTab("schedulecalendar", { preferServer: true });
+    await pullDataForActiveTab("schedulecalendar", {
+      preferServer: true,
+      force: true,
+    });
     if (gen !== resumeGen) return;
     if (getCurrentTabId() !== "schedulecalendar") return;
     if (isResumeBlockingModalOpen()) return;
@@ -316,12 +319,45 @@ function initLpTabResumeCloudPull(getCurrentTabId) {
     runDesktopDashboardSoftRefresh(root, { force: true });
   }
 
+  /** 모바일 홈 메뉴 — 꺼졌다 켜도 시간기록 등 서버를 미리 받아 둠 */
+  async function runHomeMobileResumePull(gen) {
+    await pullTimeLedgerTabEnterFromCloud({
+      force: true,
+      preferServer: true,
+    });
+    if (gen !== resumeGen) return;
+    if (getCurrentTabId() !== "home") return;
+  }
+
+  async function runGenericTabResumePull(gen, tabId) {
+    const pullResult = await pullDataForActiveTab(tabId, {
+      preferServer: true,
+      force: true,
+    });
+    if (gen !== resumeGen) return;
+    if (getCurrentTabId() !== tabId) return;
+    if (isResumeBlockingModalOpen()) return;
+    if (tabId === "health" || tabId === "happiness" || tabId === "sideincome") {
+      kpiSoftRefreshAfterPull(tabId, pullResult);
+    } else if (tabId === "habittracker") {
+      try {
+        window.__lpHabitTrackerSoftRefresh?.();
+      } catch (_) {}
+    } else if (tabId === "idea") {
+      try {
+        window.__lpIdeaSoftRefresh?.();
+      } catch (_) {}
+    }
+  }
+
   const runIfNeeded = (reason = "visibility") => {
     if (typeof getCurrentTabId !== "function") return;
     const tab = getCurrentTabId();
     const homeDesktop =
       tab === "home" && isDesktopDashboardViewport();
-    if (tab !== "time" && tab !== "schedulecalendar" && !homeDesktop) return;
+    const homeMobile = tab === "home" && !isDesktopDashboardViewport();
+    const cloudTab = TAB_IDS_WITH_CLOUD_PULL.has(tab);
+    if (!homeDesktop && !homeMobile && !cloudTab) return;
     if (isResumeBlockingModalOpen()) return;
     const awayMs = hiddenAt > 0 ? Date.now() - hiddenAt : MIN_AWAY_MS + 1;
     if (awayMs < MIN_AWAY_MS) return;
@@ -329,20 +365,30 @@ function initLpTabResumeCloudPull(getCurrentTabId) {
     if (now - lastResumeAt < MIN_RESUME_GAP_MS) return;
     lastResumeAt = now;
     const gen = ++resumeGen;
-    logTabSync("visibility_pull", { tab, awayMs, reason, homeDesktop });
-    const toastMsg = homeDesktop
+    logTabSync("visibility_pull", {
+      tab,
+      awayMs,
+      reason,
+      homeDesktop,
+      homeMobile,
+    });
+    const toastMsg = homeDesktop || homeMobile
       ? "홈 동기화 중…"
       : tab === "schedulecalendar"
         ? "플래너 동기화 중…"
-        : "시간기록 동기화 중…";
+        : tab === "time"
+          ? "시간기록 동기화 중…"
+          : "동기화 중…";
     try {
       showToast(toastMsg, { autoOnly: true, durationMs: 1800 });
     } catch (_) {}
     void (async () => {
       try {
         if (homeDesktop) await runHomeDesktopResumePull(gen);
+        else if (homeMobile) await runHomeMobileResumePull(gen);
         else if (tab === "time") await runTimeResumePull(gen);
-        else await runPlannerResumePull(gen);
+        else if (tab === "schedulecalendar") await runPlannerResumePull(gen);
+        else await runGenericTabResumePull(gen, tab);
       } catch (_) {
       } finally {
         try {
@@ -724,7 +770,7 @@ export async function mountApp(container) {
     } catch (_) {}
   }
 
-  /** 홈(메뉴·3분할) 진입 — boot·탭 복귀·Realtime과 동일하게 pull 후 embed 갱신 */
+  /** 홈(메뉴·3분할) 진입 — boot·탭 복귀 시 서버 강제 pull 후 embed 갱신 */
   async function refreshHomeDesktopDashboardAfterEnter(opts = {}) {
     if (currentTabId !== "home") return;
     try {
@@ -732,13 +778,25 @@ export async function mountApp(container) {
     } catch (_) {}
     if (!isDesktopDashboardViewport()) {
       try {
-        await syncAdminMenuVisibility();
-      } catch (_) {}
+        await Promise.all([
+          pullTimeLedgerTabEnterFromCloud({
+            force: true,
+            preferServer: true,
+          }),
+          syncAdminMenuVisibility(),
+        ]);
+      } catch (_) {
+        try {
+          await syncAdminMenuVisibility();
+        } catch (_) {}
+      }
       return;
     }
     try {
-      /* 탭 복귀는 강제 전체 pull 없이 — 첫 화면이 막히지 않게 */
-      await pullDesktopDashboardData({ forceTaskList: !!opts.forceTaskList });
+      await pullDesktopDashboardData({
+        forceTaskList: true,
+        force: true,
+      });
     } catch (_) {}
     if (currentTabId !== "home") return;
     const root =
@@ -746,7 +804,7 @@ export async function mountApp(container) {
         ? desktopDashboardEl
         : main.querySelector(".lp-desktop-dashboard");
     if (root?.isConnected) {
-      runDesktopDashboardSoftRefresh(root);
+      runDesktopDashboardSoftRefresh(root, { force: true });
     }
     try {
       await syncAdminMenuVisibility();
@@ -922,9 +980,11 @@ export async function mountApp(container) {
             window.__lpCalendarGridPrefetchedForTabSwitch = true;
           } catch (_) {}
         }
-        /* 홈: 캐시 DOM 즉시 복원 — renderMain 전체 경로보다 먼저 */
+        /* 홈: 캐시 DOM 즉시 복원 — 화면은 바로, 서버 pull은 강제 */
         if (targetTabId === "home" && restoreCachedHomePanel()) {
-          void refreshHomeDesktopDashboardAfterEnter();
+          void refreshHomeDesktopDashboardAfterEnter({
+            forceTaskList: true,
+          });
           return;
         }
         /* 화면 먼저 — pull 을 먼저 돌리면 메인스레드가 막혀 습관관리 등이 ~1초 지연됨 */
@@ -958,8 +1018,11 @@ export async function mountApp(container) {
               /* 한 프레임 그린 뒤 pull — 진입 체감 지연 완화 */
               await new Promise((r) => requestAnimationFrame(() => r()));
               if (currentTabId !== targetTabId) return;
+              /* 메뉴 클릭·탭 재진입: 그 시점 서버를 강제 pull */
               pullResult = await pullDataForActiveTab(targetTabId, {
                 fromBoot: false,
+                preferServer: true,
+                force: true,
               });
             } catch (_) {}
             if (currentTabId !== targetTabId) {
@@ -983,7 +1046,7 @@ export async function mountApp(container) {
             window.__lpIdeaSoftRefresh?.();
           } catch (_) {}
         } else if (targetTabId === "home") {
-          void refreshHomeDesktopDashboardAfterEnter();
+          void refreshHomeDesktopDashboardAfterEnter({ forceTaskList: true });
         } else if (
           targetTabId === "health" ||
           targetTabId === "happiness" ||
@@ -993,7 +1056,7 @@ export async function mountApp(container) {
         } else if (targetTabId === "time") {
           clearLpTabPullPending(targetTabId);
           try {
-            window.__lpTimeLedgerSoftRefresh?.();
+            window.__lpTimeLedgerSoftRefresh?.({ force: true });
           } catch (_) {}
         } else if (targetTabId === "habittracker") {
           try {
@@ -1443,7 +1506,18 @@ export async function mountApp(container) {
 
       if (bootTabId === "home") {
         try {
-          await refreshHomeDesktopDashboardAfterEnter({ forceTaskList: true });
+          if (isDesktopDashboardViewport()) {
+            await refreshHomeDesktopDashboardAfterEnter({ forceTaskList: true });
+          } else {
+            /* 모바일 홈: 예전엔 pull 없이 끝났음 → 메뉴 들어가도 옛 로컬만 보임 */
+            await Promise.all([
+              pullTimeLedgerTabEnterFromCloud({
+                force: true,
+                preferServer: true,
+              }),
+              syncAdminMenuVisibility(),
+            ]);
+          }
         } catch (_) {}
         return;
       }
@@ -1452,7 +1526,11 @@ export async function mountApp(container) {
       try {
         const [, pr] = await Promise.all([
           syncAdminMenuVisibility(),
-          pullDataForActiveTab(bootTabId, { fromBoot: true }),
+          pullDataForActiveTab(bootTabId, {
+            fromBoot: true,
+            preferServer: true,
+            force: true,
+          }),
         ]);
         pullResult = pr;
       } catch (_) {}
@@ -1469,7 +1547,7 @@ export async function mountApp(container) {
       if (bootTabId === "time") {
         clearLpTabPullPending("time");
         try {
-          window.__lpTimeLedgerSoftRefresh?.();
+          window.__lpTimeLedgerSoftRefresh?.({ force: true });
         } catch (_) {}
       } else if (bootTabId === "schedulecalendar") {
         try {

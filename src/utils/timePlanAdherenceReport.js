@@ -4,7 +4,10 @@
 
 import { getBudgetGoals, parseTimeToHours } from "../views/Time.js";
 import { readTimeDailyBudgetGoalsRaw } from "./timeDailyBudgetModel.js";
-import { isWorkBuiltinTaskName } from "./timeTaskOptionsConstants.js";
+import {
+  isSleepBuiltinTaskName,
+  isWorkBuiltinTaskName,
+} from "./timeTaskOptionsConstants.js";
 import { getTaskOptionByName } from "./timeTaskOptionsModel.js";
 
 const BUDGET_PLACEHOLDER_PREFIX = "(과제 선택)·";
@@ -235,6 +238,165 @@ function resolvePlanVsActualOutcome(plannedMin, actualMin) {
   return { key: "match", label: "딱 맞음" };
 }
 
+function formatHmLabel(minsOfDay) {
+  if (minsOfDay == null || !Number.isFinite(minsOfDay)) return "";
+  const m = ((Math.round(minsOfDay) % 1440) + 1440) % 1440;
+  const h = Math.floor(m / 60);
+  const min = m % 60;
+  return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+}
+
+function formatAuditDateLabel(ymd) {
+  const key = normYmd(ymd);
+  const m = key.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return key;
+  return `${Number(m[2])}/${Number(m[3])}`;
+}
+
+const AUDIT_DAY_END_MIN = 23 * 60 + 59;
+const AUDIT_DAY_OVER_MIN = 24 * 60;
+
+function rowEndsAt2359(r) {
+  const en = parseClockToMinutesOfDay(String(r?.endTime || ""));
+  return en === AUDIT_DAY_END_MIN;
+}
+
+/** @returns {{ startMin: number, endMin: number } | null} */
+function auditRowDaySegment(row) {
+  if (!row) return null;
+  const startMin = parseClockToMinutesOfDay(String(row.startTime || ""));
+  if (startMin == null) return null;
+  let endMin = parseClockToMinutesOfDay(String(row.endTime || ""));
+  if (endMin == null) {
+    const tracked = rowEffectiveMinutes(row);
+    if (tracked > 0) endMin = startMin + tracked;
+  }
+  if (endMin == null) return null;
+  if (endMin <= startMin) {
+    endMin = Math.min(24 * 60, startMin + Math.max(1, rowEffectiveMinutes(row)));
+  }
+  endMin = Math.min(24 * 60, endMin);
+  if (endMin <= startMin) return null;
+  return { startMin, endMin };
+}
+
+function mergeAuditDaySegments(segments) {
+  const sorted = [...segments].sort((a, b) => a.startMin - b.startMin);
+  /** @type {{ startMin: number, endMin: number }[]} */
+  const merged = [];
+  for (const seg of sorted) {
+    if (!merged.length) {
+      merged.push({ ...seg });
+      continue;
+    }
+    const last = merged[merged.length - 1];
+    if (seg.startMin <= last.endMin + 1) {
+      last.endMin = Math.max(last.endMin, seg.endMin);
+    } else {
+      merged.push({ ...seg });
+    }
+  }
+  return merged;
+}
+
+/** 0:00~23:59 빈틈 없이 채워졌는지 */
+function isAuditDayCoverageComplete(dayRows) {
+  const segments = [];
+  for (const r of dayRows || []) {
+    const seg = auditRowDaySegment(r);
+    if (seg) segments.push(seg);
+  }
+  if (!segments.length) return false;
+  const merged = mergeAuditDaySegments(segments);
+  if (merged[0].startMin > 0) return false;
+  let cursor = 0;
+  for (const seg of merged) {
+    if (seg.startMin > cursor + 1) return false;
+    cursor = Math.max(cursor, seg.endMin);
+  }
+  return cursor >= AUDIT_DAY_END_MIN;
+}
+
+/**
+ * 일·주·월 — 기록 초과(>24h)·기록 부족(빈틈)·마감 23:59(수면 제외) 점검
+ * 연간(≥300일)은 빈 결과
+ */
+function buildRecordAudit(days, rowsByDay) {
+  const totalDays = days.length;
+  if (totalDays <= 0 || totalDays >= 300) {
+    return {
+      show: false,
+      isSingleDay: totalDays === 1,
+      overDays: [],
+      underDays: [],
+      days: [],
+    };
+  }
+
+  /** @type {{ date: string, dateLabel: string, isOver: boolean, isUnder: boolean, totalMinutes: number, endLostRows: object[] }[]} */
+  const auditDays = [];
+  const overDays = [];
+  const underDays = [];
+
+  for (const day of days) {
+    const dayRows = rowsByDay.get(day) || [];
+    if (!dayRows.length) continue;
+
+    let totalMinutes = 0;
+    for (const r of dayRows) totalMinutes += rowEffectiveMinutes(r);
+    const isOver = totalMinutes > AUDIT_DAY_OVER_MIN;
+    const isUnder = !isAuditDayCoverageComplete(dayRows);
+
+    const endLostRows = dayRows
+      .filter((r) => {
+        if (!rowEndsAt2359(r)) return false;
+        if (isSleepBuiltinTaskName(r?.taskName)) return false;
+        return !!String(r?.taskName || "").trim();
+      })
+      .map((r) => {
+        const startMin = parseClockToMinutesOfDay(String(r?.startTime || ""));
+        const endMin = parseClockToMinutesOfDay(String(r?.endTime || ""));
+        return {
+          taskName: String(r.taskName || "").trim(),
+          startLabel: formatHmLabel(startMin) || "—",
+          endLabel: formatHmLabel(endMin) || "23:59",
+          minutes: rowEffectiveMinutes(r),
+        };
+      })
+      .sort(
+        (a, b) =>
+          a.startLabel.localeCompare(b.startLabel) ||
+          a.taskName.localeCompare(b.taskName, "ko"),
+      );
+
+    if (!isOver && !isUnder && !endLostRows.length) continue;
+
+    if (isOver) {
+      overDays.push({ date: day, dateLabel: formatAuditDateLabel(day) });
+    }
+    if (isUnder) {
+      underDays.push({ date: day, dateLabel: formatAuditDateLabel(day) });
+    }
+
+    auditDays.push({
+      date: day,
+      dateLabel: formatAuditDateLabel(day),
+      isOver,
+      isUnder,
+      totalMinutes,
+      endLostRows,
+    });
+  }
+
+  return {
+    show: auditDays.length > 0,
+    isSingleDay: totalDays === 1,
+    overDays,
+    underDays,
+    days: auditDays,
+  };
+}
+
 function buildPlanningHabitLine(plannedDays, totalDays) {
   const total = Math.max(0, Math.round(Number(totalDays) || 0));
   const planned = Math.max(0, Math.round(Number(plannedDays) || 0));
@@ -289,6 +451,13 @@ export function buildPlanAdherenceReportSnapshot(range, rows) {
     leak: { minutes: 0, pct: 0, items: [] },
     estimation: null,
     taskDurationAverages: [],
+    recordAudit: {
+      show: false,
+      isSingleDay: totalDays === 1,
+      overDays: [],
+      underDays: [],
+      days: [],
+    },
   });
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) {
@@ -348,6 +517,13 @@ export function buildPlanAdherenceReportSnapshot(range, rows) {
       oneLiner: hasPlanData
         ? `계획(${totalDaysInPeriod}일) ${formatHoursMinutesShort(totalPlanned)} 중 ${formatHoursMinutesShort(totalExecuted)} 실행 = ${adherencePct}%`
         : "",
+      recordAudit: {
+        show: false,
+        isSingleDay: false,
+        overDays: [],
+        underDays: [],
+        days: [],
+      },
     };
   }
 
@@ -442,11 +618,14 @@ export function buildPlanAdherenceReportSnapshot(range, rows) {
     totalDaysInPeriod,
   );
 
+  const recordAudit = buildRecordAudit(days, rowsByDay);
+
   if (!hasPlanData) {
     return {
       ...empty(totalDaysInPeriod),
       planningHabitPct,
       planningHabitLine,
+      recordAudit,
     };
   }
 
@@ -615,6 +794,7 @@ export function buildPlanAdherenceReportSnapshot(range, rows) {
     },
     estimation,
     taskDurationAverages,
+    recordAudit,
   };
 }
 

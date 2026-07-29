@@ -118,7 +118,12 @@ import {
   extractEmotionSubFromMemoTags,
   mergeEmotionSubIntoMemoTags,
 } from "../utils/timeEmotionRating.js";
-import { EMOTION_SUB_TAG_PREFIX, parseEmotionFromRow } from "../utils/timeEmotionTaxonomy.js";
+import {
+  EMOTION_SUB_TAG_PREFIX,
+  getEmotionCategoryByRating,
+  getEmotionMemoPrompt,
+  parseEmotionFromRow,
+} from "../utils/timeEmotionTaxonomy.js";
 import { TIME_TASK_FLOW_FACTOR_OPTIONS, shouldCollectTimeFlowFactors } from "../utils/timeTaskFlowFactors.js";
 import {
   TIME_TASK_FLOW_DISRUPTOR_OPTIONS,
@@ -4959,10 +4964,16 @@ function buildMobileTimeCardTitle(taskLabel, startClock, endClock, rowData) {
   let ratingLine = "";
   if (rating != null) {
     if (TTC.isEmotionalBuiltinTaskName(rowData?.taskName)) {
-      const { category, subLabel, isModern, isLegacy } =
-        parseEmotionFromRow(rowData);
+      const polarity = TTC.emotionTaskPolarity(rowData?.taskName) || "negative";
+      const { category, subLabel, isModern, isLegacy } = parseEmotionFromRow(
+        rowData,
+        polarity,
+      );
       if (isModern && category) {
-        ratingLine = `감정 상태 ${category.label} · ${subLabel}`;
+        ratingLine =
+          category.selectOnly || !subLabel || subLabel === category.label
+            ? `감정 상태 ${category.label}`
+            : `감정 상태 ${category.label} · ${subLabel}`;
       } else if (isLegacy && category) {
         ratingLine = `감정 상태 ${category.label} (예전 기록)`;
       }
@@ -7862,6 +7873,16 @@ export function render(opts = {}) {
     return TTC.isEmotionalBuiltinTaskName(taskName);
   }
 
+  function isTaskLogModalPositiveEmotionalTask() {
+    const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
+    return TTC.isPositiveEmotionalTaskName(taskName);
+  }
+
+  function taskLogModalEmotionPolarity() {
+    const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
+    return TTC.emotionTaskPolarity(taskName) || "negative";
+  }
+
   function isTaskLogModalMealIntakeTask() {
     const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
     return TTC.isMealIntakeTasteRatingTaskName(taskName);
@@ -8061,23 +8082,28 @@ export function render(opts = {}) {
     const datetimeWrap = taskLogScrollArea.querySelector(
       '[data-legacy~="time-task-log-datetime-fields-wrap"]',
     );
-    if (
-      !datetimeWrap ||
-      !taskLogRatingSection ||
-      !taskLogEmotionTriggerSection ||
-      !taskLogMemoSection
-    ) {
+    if (!datetimeWrap || !taskLogRatingSection || !taskLogMemoSection) {
       return;
     }
     datetimeWrap.insertAdjacentElement("afterend", taskLogRatingSection);
-    taskLogRatingSection.insertAdjacentElement(
-      "afterend",
-      taskLogEmotionTriggerSection,
-    );
-    taskLogEmotionTriggerSection.insertAdjacentElement(
-      "afterend",
-      taskLogMemoSection,
-    );
+    if (
+      !isTaskLogModalPositiveEmotionalTask() &&
+      taskLogEmotionTriggerSection
+    ) {
+      taskLogRatingSection.insertAdjacentElement(
+        "afterend",
+        taskLogEmotionTriggerSection,
+      );
+      taskLogEmotionTriggerSection.insertAdjacentElement(
+        "afterend",
+        taskLogMemoSection,
+      );
+    } else {
+      taskLogRatingSection.insertAdjacentElement(
+        "afterend",
+        taskLogMemoSection,
+      );
+    }
   }
 
   function syncTaskLogRatingSectionUi() {
@@ -8100,11 +8126,16 @@ export function render(opts = {}) {
         taskLogEmotionRating._detachSubRow?.();
       } else if (useEmotionPicker) {
         taskLogEmotionRating.setAttribute("aria-label", `${labelText}`);
+        const polarity = taskLogModalEmotionPolarity();
         const state = {
           categoryRating: getTaskLogTimeRating(),
           subLabel: getTaskLogEmotionSubForSave(),
+          polarity,
         };
+        const samePolarity =
+          taskLogEmotionRating.dataset.emotionPolarity === polarity;
         if (
+          samePolarity &&
           taskLogEmotionRating.dataset.built === "1" &&
           typeof taskLogEmotionRating._setEmotionState === "function"
         ) {
@@ -8115,6 +8146,9 @@ export function render(opts = {}) {
             onChange: ({ categoryRating, subLabel }) => {
               taskLogTimeRating = categoryRating;
               taskLogEmotionSub = String(subLabel || "").trim();
+              updateTaskLogMemoCopyForProductivity(
+                (taskLogTaskDropdown?._getValue?.() || "").trim(),
+              );
             },
           });
         }
@@ -8365,7 +8399,17 @@ export function render(opts = {}) {
     const tn = (taskName || "").trim();
     let memoLabel = TASK_LOG_MEMO_LABEL_DEFAULT;
     let memoPlaceholder = TASK_LOG_MEMO_PLACEHOLDER_DEFAULT;
-    if (TTC.isEmotionalBuiltinTaskName(tn)) {
+    if (TTC.isPositiveEmotionalTaskName(tn)) {
+      const cat = getEmotionCategoryByRating(
+        getTaskLogTimeRating(),
+        "positive",
+      );
+      const prompt = getEmotionMemoPrompt(cat);
+      memoLabel = prompt || "무엇이 그렇게 느끼게 했어요?";
+      memoPlaceholder = prompt
+        ? `${prompt} 적어 주세요`
+        : "감정을 고른 뒤, 무엇이 그렇게 느끼게 했는지 적어 주세요";
+    } else if (TTC.isEmotionalBuiltinTaskName(tn)) {
       memoLabel = TASK_LOG_MEMO_LABEL_EMOTION_CONTEXT;
       memoPlaceholder = TASK_LOG_MEMO_PLACEHOLDER_EMOTION_CONTEXT;
     } else if (isTaskLogGeneralReviewTask(tn)) {
@@ -8443,8 +8487,10 @@ export function render(opts = {}) {
       }
     }
     if (taskLogEmotionTriggerSection) {
-      taskLogEmotionTriggerSection.hidden = !isEmotion;
-      if (!isEmotion) clearTaskLogEmotionTrigger();
+      const showTrigger =
+        isEmotion && TTC.emotionTaskUsesTriggers(tn);
+      taskLogEmotionTriggerSection.hidden = !showTrigger;
+      if (!showTrigger) clearTaskLogEmotionTrigger();
     }
     taskLogScrollArea?.classList?.toggle("is-content-detail-task", isChipDetail);
     syncTaskLogEmotionSectionOrder();
@@ -10811,7 +10857,9 @@ export function render(opts = {}) {
     let addLedgerTr = null;
     let oldRowDataToRemove = null;
 
-    const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
+    const taskName = TTC.canonicalMealTaskDisplayName(
+      (taskLogTaskDropdown?._getValue?.() || "").trim(),
+    );
     const startRaw = (taskLogStartInput.value || "").trim();
     let endRaw = (taskLogEndInput.value || "").trim();
     const endVisibleGuard =
@@ -10848,7 +10896,9 @@ export function render(opts = {}) {
       TTC.isChipDetailTaskKind(detailKind)
         ? getTaskLogContentTypeForSave()
         : detailKind === "emotion"
-          ? getTaskLogEmotionTriggerForSave()
+          ? TTC.emotionTaskUsesTriggers(taskName)
+            ? getTaskLogEmotionTriggerForSave()
+            : ""
           : detailKind
             ? (taskLogMealDetailInput?.value || "").trim()
             : "";
@@ -12959,7 +13009,10 @@ export function render(opts = {}) {
       updateFilterBarVisibility();
       void (async () => {
         try {
-          await pullTimeLedgerTabEnterFromCloud();
+          await pullTimeLedgerTabEnterFromCloud({
+            force: true,
+            preferServer: true,
+          });
         } catch (_) {}
         if (!el.isConnected || gen !== el._lpTimeSubTabPullGen) return;
         if (timeLedgerLayoutView !== "report") return;
@@ -12998,10 +13051,13 @@ export function render(opts = {}) {
         (el._lpTimeSubTabPullGen || 0) + 1);
       void (async () => {
         try {
-          await pullTimeLedgerTabEnterFromCloud();
+          await pullTimeLedgerTabEnterFromCloud({
+            force: true,
+            preferServer: true,
+          });
         } catch (_) {}
         if (!el.isConnected || gen !== el._lpTimeSubTabPullGen) return;
-        refreshTimeLedgerFromRemotePull();
+        refreshTimeLedgerFromRemotePull({ force: true });
       })();
     }
   }
@@ -13027,7 +13083,6 @@ export function render(opts = {}) {
     if (opts.scrollUsageListToBottom) {
       requestUsageListScrollToBottomOnce();
     }
-    syncUsageHistoryRangeFromSession();
     try {
       const t = getLedgerFilterTodayYmd();
       try {
@@ -13036,11 +13091,15 @@ export function render(opts = {}) {
           sessionStorage.setItem("lp_time_filter_end", t);
         }
       } catch (_) {}
-    } catch (_) {}
+      usageHistoryRangeStartYmd = t;
+      usageHistoryRangeEndYmd = t;
+    } catch (_) {
+      syncUsageHistoryRangeFromSession();
+    }
     allRowsCache = loadTimeRows();
     cachedRows = getFullRowsForFilter(true);
     refreshTaskLogTaskPickerIfMounted();
-    /* 화면 복귀 pull 등은 force 로 무조건 다시 그림 */
+    /* 메뉴·탭 재진입 등은 force:true 로 무조건 다시 그림 */
     syncTimeLedgerContent({ force: !!opts.force });
     if (el._lpUsageListEnterScrollArmed) {
       const cardsWrap = contentWrap.querySelector(

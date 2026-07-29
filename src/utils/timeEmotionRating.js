@@ -1,20 +1,26 @@
 /**
- * 감정적이기 과제 — 2단계 감정 선택 UI·카드 표시
+ * 감정적이기 과제 — 감정 선택 UI·카드 표시 (부정 2단계 / 긍정 1단계)
  */
 
 import { lpSetClasses, lpTokenToggle } from "./timeLedgerClassPolicy.js";
 import {
   EMOTION_CATEGORIES,
+  EMOTION_CATEGORIES_POSITIVE,
   buildEmotionCategoryIconImgHtml,
   findEmotionCategoryForSub,
+  getEmotionCategoriesForPolarity,
   getEmotionCategoryByRating,
+  getEmotionMemoPrompt,
   parseEmotionFromRow,
 } from "./timeEmotionTaxonomy.js";
+import { emotionTaskPolarity } from "./timeTaskOptionsConstants.js";
 
 export {
   EMOTION_CATEGORIES,
+  EMOTION_CATEGORIES_POSITIVE,
   parseEmotionFromRow,
   getEmotionCategoryByRating,
+  getEmotionMemoPrompt,
   extractEmotionSubFromMemoTags,
   mergeEmotionSubIntoMemoTags,
   buildEmotionSubTag,
@@ -26,17 +32,41 @@ export const EMOTION_RATING_OPTIONS = [];
 
 /**
  * @param {unknown} raw
+ * @param {unknown} [memoTagsOrTaskName]
+ * @param {string} [taskName]
  * @returns {string | null}
  */
-export function formatTimeLedgerEmotionRatingHtml(raw, memoTags) {
+export function formatTimeLedgerEmotionRatingHtml(
+  raw,
+  memoTagsOrTaskName,
+  taskName,
+) {
   const row =
     raw != null && typeof raw === "object" && !Array.isArray(raw)
       ? raw
-      : { timeRating: raw, memoTags: memoTags || [] };
-  const { category, subLabel, isModern, isLegacy } = parseEmotionFromRow(row);
+      : {
+          timeRating: raw,
+          memoTags: Array.isArray(memoTagsOrTaskName)
+            ? memoTagsOrTaskName
+            : [],
+          taskName:
+            typeof memoTagsOrTaskName === "string"
+              ? memoTagsOrTaskName
+              : taskName,
+        };
+  const polarity =
+    emotionTaskPolarity(row.taskName || taskName) || "negative";
+  const { category, subLabel, isModern, isLegacy } = parseEmotionFromRow(
+    row,
+    polarity,
+  );
   if (isModern && category) {
     const icon = buildEmotionCategoryIconImgHtml(category, { size: 22 });
-    return `<span class="time-ledger-emotion-rating-chip">${icon}<span class="time-ledger-emotion-rating-label">${category.label} · ${subLabel}</span></span>`;
+    const label =
+      category.selectOnly || !subLabel || subLabel === category.label
+        ? category.label
+        : `${category.label} · ${subLabel}`;
+    return `<span class="time-ledger-emotion-rating-chip">${icon}<span class="time-ledger-emotion-rating-label">${label}</span></span>`;
   }
   if (isLegacy && category) {
     return `<span class="time-ledger-emotion-rating-chip time-ledger-emotion-rating-chip--legacy"><span class="time-ledger-emotion-rating-label">${category.label} (예전 기록)</span></span>`;
@@ -46,7 +76,7 @@ export function formatTimeLedgerEmotionRatingHtml(raw, memoTags) {
 
 /**
  * @param {HTMLElement|null} container
- * @param {{ categoryRating: number|null, subLabel: string, onChange: (state: { categoryRating: number|null, subLabel: string }) => void }} opts
+ * @param {{ categoryRating: number|null, subLabel: string, polarity?: "negative"|"positive", onChange: (state: { categoryRating: number|null, subLabel: string }) => void }} opts
  */
 function detachTaskLogEmotionSubRow(container) {
   container?._subRowEl?.remove?.();
@@ -58,9 +88,12 @@ export function mountTaskLogEmotionPicker(container, opts = {}) {
   detachTaskLogEmotionSubRow(container);
   container.replaceChildren();
   container.dataset.built = "1";
+  const polarity = opts.polarity === "positive" ? "positive" : "negative";
+  container.dataset.emotionPolarity = polarity;
   container.className = "time-task-log-emotion-picker";
   container.setAttribute("role", "group");
 
+  const categories = getEmotionCategoriesForPolarity(polarity);
   const mountRoot = container.parentElement;
 
   const categoryRow = document.createElement("div");
@@ -76,14 +109,15 @@ export function mountTaskLogEmotionPicker(container, opts = {}) {
 
   function syncSubRow() {
     subRow.replaceChildren();
-    const cat = getEmotionCategoryByRating(categoryRating);
-    if (!cat) {
+    const cat = getEmotionCategoryByRating(categoryRating, polarity);
+    if (!cat || cat.selectOnly) {
       subRow.hidden = true;
       return;
     }
     subRow.hidden = false;
     const subLabelEl = document.createElement("span");
-    subLabelEl.className = "time-task-log-section-label time-task-log-emotion-sub-label";
+    subLabelEl.className =
+      "time-task-log-section-label time-task-log-emotion-sub-label";
     subLabelEl.textContent = `${cat.label} — 어떤 감정인가요?`;
     subRow.appendChild(subLabelEl);
 
@@ -127,11 +161,11 @@ export function mountTaskLogEmotionPicker(container, opts = {}) {
 
   function emitChange() {
     if (typeof opts.onChange === "function") {
-      opts.onChange({ categoryRating, subLabel });
+      opts.onChange({ categoryRating, subLabel, polarity });
     }
   }
 
-  EMOTION_CATEGORIES.forEach((cat) => {
+  categories.forEach((cat) => {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "time-task-log-emotion-category-btn";
@@ -154,7 +188,11 @@ export function mountTaskLogEmotionPicker(container, opts = {}) {
         subLabel = "";
       } else {
         categoryRating = cat.rating;
-        if (!cat.subs.includes(subLabel)) subLabel = "";
+        if (cat.selectOnly) {
+          subLabel = cat.label;
+        } else if (!cat.subs.includes(subLabel)) {
+          subLabel = "";
+        }
       }
       syncCategoryButtons();
       syncSubRow();
@@ -171,8 +209,12 @@ export function mountTaskLogEmotionPicker(container, opts = {}) {
   }
 
   if (subLabel && !categoryRating) {
-    const inferred = findEmotionCategoryForSub(subLabel);
+    const inferred = findEmotionCategoryForSub(subLabel, polarity);
     if (inferred) categoryRating = inferred.rating;
+  }
+  const selected = getEmotionCategoryByRating(categoryRating, polarity);
+  if (selected?.selectOnly) {
+    subLabel = selected.label;
   }
   syncCategoryButtons();
   syncSubRow();
@@ -181,9 +223,11 @@ export function mountTaskLogEmotionPicker(container, opts = {}) {
     categoryRating = state?.categoryRating ?? null;
     subLabel = String(state?.subLabel || "").trim();
     if (subLabel && !categoryRating) {
-      const inferred = findEmotionCategoryForSub(subLabel);
+      const inferred = findEmotionCategoryForSub(subLabel, polarity);
       if (inferred) categoryRating = inferred.rating;
     }
+    const cat = getEmotionCategoryByRating(categoryRating, polarity);
+    if (cat?.selectOnly) subLabel = cat.label;
     syncCategoryButtons();
     syncSubRow();
   };
@@ -191,6 +235,7 @@ export function mountTaskLogEmotionPicker(container, opts = {}) {
   container._getEmotionState = () => ({
     categoryRating,
     subLabel,
+    polarity,
   });
 
   container._detachSubRow = () => detachTaskLogEmotionSubRow(container);

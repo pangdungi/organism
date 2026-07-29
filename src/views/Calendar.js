@@ -155,7 +155,7 @@ function persistCalendarMainViewIfValid(view) {
   } catch (_) {}
 }
 
-/** 일간(예상 일정) 뷰 — 과제목록·KPI 과제 pull (첫 진입 full, 이후 stale) */
+/** 일간(예상 일정) 뷰 — 과제목록·KPI 과제 강제 pull */
 async function pullCalendar1DayExpectedTaskListFromCloud() {
   await pullTaskListForCalendar1DayEnter();
 }
@@ -5180,7 +5180,9 @@ function render1WeekView(tabsElement) {
       });
       try {
         await Promise.all([
-          pullTimeLedgerEntriesForDateRange(firstPullKey, lastPullKey),
+          pullTimeLedgerEntriesForDateRange(firstPullKey, lastPullKey, {
+            force: true,
+          }),
           pullTimeDailyBudgetForDateRange(firstPullKey, lastPullKey),
         ]);
       } catch (_) {}
@@ -6496,7 +6498,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
             const re0 = ks[ks.length - 1];
             if (rs0 && re0) {
               await Promise.all([
-                pullTimeLedgerEntriesForDateRange(rs0, re0),
+                pullTimeLedgerEntriesForDateRange(rs0, re0, { force: true }),
                 pullTimeDailyBudgetForDateRange(rs0, re0),
               ]);
             }
@@ -6506,7 +6508,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
             const yEnd = timeLedgerLocalTodayYmd();
             const yStart = timeLedgerLocalYesterdayYmd();
             await Promise.all([
-              pullTimeLedgerEntriesForDateRange(yStart, yEnd),
+              pullTimeLedgerEntriesForDateRange(yStart, yEnd, { force: true }),
               pullTimeDailyBudgetForDateRange(yStart, yEnd),
               pullCalendar1DayExpectedTaskListFromCloud(),
             ]);
@@ -6540,6 +6542,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
           subView: "calendar",
           rangeStart: taskRange.rangeStart,
           rangeEnd: taskRange.rangeEnd,
+          force: true,
         });
         if (subViewId === "monthly") {
           await pullCalendarDayIconsFromSupabase({
@@ -6552,7 +6555,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
           const yEnd = timeLedgerLocalTodayYmd();
           const yStart = timeLedgerLocalYesterdayYmd();
           await Promise.all([
-            pullTimeLedgerEntriesForDateRange(yStart, yEnd),
+            pullTimeLedgerEntriesForDateRange(yStart, yEnd, { force: true }),
             pullTimeDailyBudgetForDateRange(yStart, yEnd),
             pullCalendar1DayExpectedTaskListFromCloud(),
           ]);
@@ -6565,7 +6568,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
           const re0 = ks[ks.length - 1];
           if (rs0 && re0) {
             await Promise.all([
-              pullTimeLedgerEntriesForDateRange(rs0, re0),
+              pullTimeLedgerEntriesForDateRange(rs0, re0, { force: true }),
               pullTimeDailyBudgetForDateRange(rs0, re0),
             ]);
           }
@@ -6767,7 +6770,7 @@ export function render() {
         const yEnd = timeLedgerLocalTodayYmd();
         const yStart = timeLedgerLocalYesterdayYmd();
         await Promise.all([
-          pullTimeLedgerEntriesForDateRange(yStart, yEnd),
+          pullTimeLedgerEntriesForDateRange(yStart, yEnd, { force: true }),
           pullTimeDailyBudgetForDateRange(yStart, yEnd),
         ]);
       } catch (_) {}

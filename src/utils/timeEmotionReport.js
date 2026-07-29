@@ -1,5 +1,5 @@
 /**
- * 감정적이기 과제 — 시간 레포트 집계 (5대분류·소분류·트리거·히트맵)
+ * 감정적이기 과제 — 시간 레포트 집계 (부정/긍정 분리)
  */
 
 import { parseTimeToHours } from "../views/Time.js";
@@ -8,12 +8,15 @@ import {
   resolveLedgerRowDetail,
 } from "./timeLedgerCardKpiMemo.js";
 import {
-  EMOTION_CATEGORIES,
+  getEmotionCategoriesForPolarity,
   parseEmotionFromRow,
 } from "./timeEmotionTaxonomy.js";
 import {
   EMOTION_TRIGGER_OPTIONS,
+  emotionTaskPolarity,
   isEmotionalBuiltinTaskName,
+  isNegativeEmotionalTaskName,
+  isPositiveEmotionalTaskName,
   resolveEmotionTriggerLabel,
 } from "./timeTaskOptionsConstants.js";
 
@@ -21,10 +24,6 @@ function rowMinutes(r) {
   const hrs = parseTimeToHours(r.timeTracked);
   if (!(hrs > 0) || !Number.isFinite(hrs)) return 0;
   return Math.round(hrs * 60);
-}
-
-function isEmotionLedgerRow(r) {
-  return isEmotionalBuiltinTaskName(r?.taskName);
 }
 
 function parseRowStartHour(r) {
@@ -56,18 +55,36 @@ function emptyHeatmap() {
 /**
  * @param {ReturnType<import('../views/Time.js').loadTimeRows>} rows
  * @param {number} [hourlyRate]
+ * @param {{ polarity?: "negative"|"positive" }} [opts]
  */
-export function buildEmotionReportSnapshot(rows, hourlyRate = 0) {
-  const emotionRows = (rows || []).filter(isEmotionLedgerRow);
-  const modernRows = emotionRows.filter((r) => parseEmotionFromRow(r).isModern);
-  const legacyRows = emotionRows.filter((r) => parseEmotionFromRow(r).isLegacy);
+export function buildEmotionReportSnapshot(
+  rows,
+  hourlyRate = 0,
+  opts = {},
+) {
+  const polarity = opts.polarity === "positive" ? "positive" : "negative";
+  const categoriesList = getEmotionCategoriesForPolarity(polarity);
+  const includeTriggers = polarity === "negative";
+
+  const emotionRows = (rows || []).filter((r) => {
+    if (!isEmotionalBuiltinTaskName(r?.taskName)) return false;
+    if (polarity === "positive") return isPositiveEmotionalTaskName(r.taskName);
+    return isNegativeEmotionalTaskName(r.taskName);
+  });
+
+  const modernRows = emotionRows.filter(
+    (r) => parseEmotionFromRow(r, polarity).isModern,
+  );
+  const legacyRows = emotionRows.filter(
+    (r) => parseEmotionFromRow(r, polarity).isLegacy,
+  );
 
   let consumptionMinutes = 0;
   let consumptionCount = 0;
 
   /** @type {Map<string, { id: string, label: string, count: number, minutes: number }>} */
   const categoryMap = new Map();
-  EMOTION_CATEGORIES.forEach((c) => {
+  categoriesList.forEach((c) => {
     categoryMap.set(c.id, { id: c.id, label: c.label, count: 0, minutes: 0 });
   });
 
@@ -76,24 +93,27 @@ export function buildEmotionReportSnapshot(rows, hourlyRate = 0) {
 
   /** @type {Map<string, { count: number, minutes: number }>} */
   const triggerMap = new Map();
-  EMOTION_TRIGGER_OPTIONS.forEach((label) => {
-    triggerMap.set(label, { count: 0, minutes: 0 });
-  });
+  if (includeTriggers) {
+    EMOTION_TRIGGER_OPTIONS.forEach((label) => {
+      triggerMap.set(label, { count: 0, minutes: 0 });
+    });
+  }
   const miscTrigger = { label: "기타", count: 0, minutes: 0 };
   const unsetTrigger = { label: "미선택", count: 0, minutes: 0 };
 
   const heatmap = emptyHeatmap();
 
-  /** @type {{ date: string, startHour: number|null, startMinOfDay: number|null, startLabel: string, minutes: number, categoryId: string, categoryLabel: string, subLabel: string, trigger: string, memo: string }[]} */
+  /** @type {{ date: string, startHour: number|null, startMinOfDay: number|null, startLabel: string, minutes: number, categoryId: string, categoryLabel: string, subLabel: string, trigger: string, memo: string, polarity: string }[]} */
   const entries = [];
 
   for (const r of modernRows) {
     const mins = rowMinutes(r);
     if (mins <= 0) continue;
 
-    const parsed = parseEmotionFromRow(r);
+    const parsed = parseEmotionFromRow(r, polarity);
     const cat = parsed.category;
-    if (!cat || !parsed.subLabel) continue;
+    if (!cat) continue;
+    if (!cat.selectOnly && !parsed.subLabel) continue;
 
     consumptionMinutes += mins;
     consumptionCount += 1;
@@ -104,29 +124,34 @@ export function buildEmotionReportSnapshot(rows, hourlyRate = 0) {
       catBucket.minutes += mins;
     }
 
-    const subKey = parsed.subLabel;
-    const subPrev = subMap.get(subKey) || {
-      label: subKey,
-      categoryLabel: cat.label,
-      count: 0,
-      minutes: 0,
-    };
-    subPrev.count += 1;
-    subPrev.minutes += mins;
-    subMap.set(subKey, subPrev);
-
-    const { text } = resolveLedgerRowDetail(r);
-    const resolved = resolveEmotionTriggerLabel(text);
-    let tBucket;
-    if (!resolved.label) {
-      tBucket = unsetTrigger;
-    } else if (resolved.known && triggerMap.has(resolved.label)) {
-      tBucket = triggerMap.get(resolved.label);
-    } else {
-      tBucket = miscTrigger;
+    if (!cat.selectOnly && parsed.subLabel) {
+      const subKey = parsed.subLabel;
+      const subPrev = subMap.get(subKey) || {
+        label: subKey,
+        categoryLabel: cat.label,
+        count: 0,
+        minutes: 0,
+      };
+      subPrev.count += 1;
+      subPrev.minutes += mins;
+      subMap.set(subKey, subPrev);
     }
-    tBucket.count += 1;
-    tBucket.minutes += mins;
+
+    let resolved = { label: "", known: false };
+    if (includeTriggers) {
+      const { text } = resolveLedgerRowDetail(r);
+      resolved = resolveEmotionTriggerLabel(text);
+      let tBucket;
+      if (!resolved.label) {
+        tBucket = unsetTrigger;
+      } else if (resolved.known && triggerMap.has(resolved.label)) {
+        tBucket = triggerMap.get(resolved.label);
+      } else {
+        tBucket = miscTrigger;
+      }
+      tBucket.count += 1;
+      tBucket.minutes += mins;
+    }
 
     const dow = parseRowDayOfWeek(r);
     const hour = parseRowStartHour(r);
@@ -158,9 +183,10 @@ export function buildEmotionReportSnapshot(rows, hourlyRate = 0) {
       minutes: mins,
       categoryId: cat.id,
       categoryLabel: cat.label,
-      subLabel: parsed.subLabel,
-      trigger: resolved.label || "",
+      subLabel: parsed.subLabel || cat.label,
+      trigger: includeTriggers ? resolved.label || "" : "",
       memo: ledgerRowUserMemoFeedback(r),
+      polarity,
     });
   }
 
@@ -189,27 +215,34 @@ export function buildEmotionReportSnapshot(rows, hourlyRate = 0) {
     .slice(0, 5);
 
   /** @type {{ label: string, count: number, totalMinutes: number }[]} */
-  const triggers = EMOTION_TRIGGER_OPTIONS.map((label) => {
-    const b = triggerMap.get(label);
-    return {
-      label,
-      count: b.count,
-      totalMinutes: b.minutes,
-    };
-  }).filter((t) => t.count > 0);
-
-  [miscTrigger, unsetTrigger].forEach((b) => {
-    if (b.count > 0) {
-      triggers.push({
-        label: b.label,
-        count: b.count,
-        totalMinutes: b.minutes,
-      });
-    }
-  });
-  triggers.sort((a, b) => b.count - a.count || b.totalMinutes - a.totalMinutes);
+  const triggers = [];
+  if (includeTriggers) {
+    EMOTION_TRIGGER_OPTIONS.forEach((label) => {
+      const b = triggerMap.get(label);
+      if (b?.count > 0) {
+        triggers.push({
+          label,
+          count: b.count,
+          totalMinutes: b.minutes,
+        });
+      }
+    });
+    [miscTrigger, unsetTrigger].forEach((b) => {
+      if (b.count > 0) {
+        triggers.push({
+          label: b.label,
+          count: b.count,
+          totalMinutes: b.minutes,
+        });
+      }
+    });
+    triggers.sort(
+      (a, b) => b.count - a.count || b.totalMinutes - a.totalMinutes,
+    );
+  }
 
   return {
+    polarity,
     hasData: consumptionCount > 0,
     consumptionMinutes,
     consumptionCount,
@@ -222,4 +255,13 @@ export function buildEmotionReportSnapshot(rows, hourlyRate = 0) {
     heatmap,
     entries,
   };
+}
+
+/** 부정·긍정 둘 다 있는지 빠른 확인 */
+export function emotionReportHasAnyData(rows) {
+  return (rows || []).some((r) => isEmotionalBuiltinTaskName(r?.taskName));
+}
+
+export function emotionReportPolarityOfRow(row) {
+  return emotionTaskPolarity(row?.taskName);
 }

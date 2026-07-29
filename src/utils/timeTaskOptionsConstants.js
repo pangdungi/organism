@@ -26,10 +26,47 @@ export function isWorkBuiltinTaskName(name) {
   return String(name || "").trim() === WORK_BUILTIN_TASK_NAME;
 }
 
-export const EMOTIONAL_BUILTIN_TASK_NAME = "감정적이기";
+/** 표시·저장 기준 — 부정(기존 감정적이기) */
+export const EMOTIONAL_NEGATIVE_TASK_NAME = "감정적이기 (부정적)";
+/** 긍정 감정 과제 */
+export const EMOTIONAL_POSITIVE_TASK_NAME = "감정적이기 (긍정적)";
+/** @deprecated 구이름 별칭 — 값은 부정 과제명 */
+export const EMOTIONAL_BUILTIN_TASK_NAME = EMOTIONAL_NEGATIVE_TASK_NAME;
 
+function normalizeEmotionalTaskNameRaw(name) {
+  const n = String(name || "").trim();
+  if (!n) return "";
+  if (n === "감정적이기" || n === "감정적이기(부정적)" || n === EMOTIONAL_NEGATIVE_TASK_NAME) {
+    return EMOTIONAL_NEGATIVE_TASK_NAME;
+  }
+  if (n === "감정적이기(긍정적)" || n === EMOTIONAL_POSITIVE_TASK_NAME) {
+    return EMOTIONAL_POSITIVE_TASK_NAME;
+  }
+  return n;
+}
+
+export function isNegativeEmotionalTaskName(name) {
+  return normalizeEmotionalTaskNameRaw(name) === EMOTIONAL_NEGATIVE_TASK_NAME;
+}
+
+export function isPositiveEmotionalTaskName(name) {
+  return normalizeEmotionalTaskNameRaw(name) === EMOTIONAL_POSITIVE_TASK_NAME;
+}
+
+/** 부정·긍정 감정 과제 공통 */
 export function isEmotionalBuiltinTaskName(name) {
-  return String(name || "").trim() === EMOTIONAL_BUILTIN_TASK_NAME;
+  return isNegativeEmotionalTaskName(name) || isPositiveEmotionalTaskName(name);
+}
+
+/** @returns {"negative"|"positive"|null} */
+export function emotionTaskPolarity(name) {
+  if (isPositiveEmotionalTaskName(name)) return "positive";
+  if (isNegativeEmotionalTaskName(name)) return "negative";
+  return null;
+}
+
+export function emotionTaskUsesTriggers(name) {
+  return isNegativeEmotionalTaskName(name);
 }
 
 export const FIXED_OTHER_TASKS = [
@@ -159,6 +196,11 @@ export const FIXED_PRODUCTIVE_TASKS = [
   },
   { name: "기록하기", category: "happiness", productivity: "productive" },
   { name: "외모관리", category: "happiness", productivity: "productive" },
+  {
+    name: EMOTIONAL_POSITIVE_TASK_NAME,
+    category: "happiness",
+    productivity: "productive",
+  },
 ];
 
 export const FIXED_NONPRODUCTIVE_TASKS = [
@@ -183,7 +225,7 @@ export const FIXED_NONPRODUCTIVE_TASKS = [
     productivity: "nonproductive",
   },
   {
-    name: "감정적이기",
+    name: EMOTIONAL_NEGATIVE_TASK_NAME,
     category: "unhappiness",
     productivity: "nonproductive",
   },
@@ -220,8 +262,9 @@ export const MEAL_TASK_NAME_RENAMES = [
   { from: "시간기록 점검", to: "시간 관리 관련 행동" },
   { from: "시간기록 및 점검", to: "시간 관리 관련 행동" },
   { from: "메모하기", to: "기록하기" },
-  { from: "감정적이기(긍정적)", to: "감정적이기" },
-  { from: "감정적이기(부정적)", to: "감정적이기" },
+  { from: "감정적이기", to: EMOTIONAL_NEGATIVE_TASK_NAME },
+  { from: "감정적이기(부정적)", to: EMOTIONAL_NEGATIVE_TASK_NAME },
+  { from: "감정적이기(긍정적)", to: EMOTIONAL_POSITIVE_TASK_NAME },
 ];
 
 /** 표시·저장 기준 이름(구이름이면 새 이름으로 치환) */
@@ -267,8 +310,14 @@ export const PERSONAL_HYGIENE_DETAIL_TASK_NAMES = new Set([
 /** 외모관리 — 과제 기록 시 항목 선택 */
 export const APPEARANCE_DETAIL_TASK_NAMES = new Set(["외모관리"]);
 
-/** 감정적이기 — 과제 기록 시 트리거(감정을 일으킨 상황) 선택 */
-export const EMOTIONAL_DETAIL_TASK_NAMES = new Set([EMOTIONAL_BUILTIN_TASK_NAME]);
+/** 감정적이기(부정·긍정) — meal_detail 은 부정만 트리거로 사용 */
+export const EMOTIONAL_DETAIL_TASK_NAMES = new Set([
+  EMOTIONAL_NEGATIVE_TASK_NAME,
+  EMOTIONAL_POSITIVE_TASK_NAME,
+  "감정적이기",
+  "감정적이기(부정적)",
+  "감정적이기(긍정적)",
+]);
 
 /** 감정적이기 트리거 — time_ledger_entries.meal_detail 에 저장 */
 export const EMOTION_TRIGGER_OPTIONS = [
@@ -523,7 +572,7 @@ export function isOutingDetailTaskName(name) {
 
 /** @param {string} name */
 export function isEmotionalDetailTaskName(name) {
-  return EMOTIONAL_DETAIL_TASK_NAMES.has(String(name || "").trim());
+  return isEmotionalBuiltinTaskName(name);
 }
 
 /** 자유 텍스트 상세명 — time_ledger_entries.meal_detail 에 저장 */

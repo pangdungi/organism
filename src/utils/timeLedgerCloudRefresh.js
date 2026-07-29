@@ -26,9 +26,15 @@ import {
 } from "./timeDailyBudgetModel.js";
 import { lpPullDebug } from "./lpPullDebug.js";
 import { getScopedLocalStorageItem } from "./clientStorageScope.js";
-import { pullTimeLedgerTasksForTabEnter } from "./timeLedgerTasksSupabase.js";
+import {
+  pullTimeLedgerTasksForTabEnter,
+  pullTimeLedgerTasksFromSupabase,
+} from "./timeLedgerTasksSupabase.js";
 import { ensureAllKpiTimeTasksFromStorage } from "./kpiTimeTaskSync.js";
-import { pullStaleKpiDomainsForTaskLogList } from "./kpiTabCloudRefresh.js";
+import {
+  pullKpiDomainsForTaskLogListForce,
+  pullStaleKpiDomainsForTaskLogList,
+} from "./kpiTabCloudRefresh.js";
 import { coalesceInFlightPull } from "./timeLedgerPullCoalesce.js";
 
 function snapshotTimeLedgerLocalStorage() {
@@ -60,7 +66,9 @@ async function pullTimeLedgerTabEnterFromCloudCore(opts = {}) {
    */
   armTimeDailyBudgetMergePreferServerOnce();
   const jobs = [
-    pullStaleKpiDomainsForTaskLogList(),
+    force
+      ? pullKpiDomainsForTaskLogListForce()
+      : pullStaleKpiDomainsForTaskLogList(),
     pullTimeLedgerEntriesFromSupabase({
       preferServer: true,
       force,
@@ -68,7 +76,12 @@ async function pullTimeLedgerTabEnterFromCloudCore(opts = {}) {
     pullTimeDailyBudgetForDateRange(rangeStart, rangeEnd),
   ];
   if (!skipTasks) {
-    jobs.push(pullTimeLedgerTasksForTabEnter());
+    /* force(메뉴·재실행·복귀): 과제목록도 stale 생략 없이 서버에서 다시 받음 */
+    jobs.push(
+      force
+        ? pullTimeLedgerTasksFromSupabase({ ignoreSkip: true })
+        : pullTimeLedgerTasksForTabEnter(),
+    );
   }
   await Promise.all(jobs);
   if (!skipTasks) {
@@ -104,11 +117,9 @@ export async function pullAllTimeLedgerFromCloud(opts = {}) {
 }
 
 /**
- * 시간기록 탭 클릭 — KPI·과제는 첫 반영 전 무조건 pull, 이후 서버 변경(stale)일 때만.
- * 기록 행·일간 예산은 매 탭 진입 시 pull.
- */
-/**
- * @param {{ skipTasks?: boolean, force?: boolean }} [opts]
+ * 시간기록 탭 클릭·복귀 — force/preferServer 이면 기록·과제·KPI 강제 pull.
+ * force 없을 때만 과제·KPI 는 stale 검사.
+ * @param {{ skipTasks?: boolean, force?: boolean, preferServer?: boolean }} [opts]
  * — skipTasks: 과제 목록 pull·KPI 병합은 호출 쪽에서 처리(홈 3분할 boot/sync)
  * — force: 진행 중 tab-enter pull 과 합치지 않고 새로 받기(화면 복귀용)
  */

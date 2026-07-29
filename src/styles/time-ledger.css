@@ -1955,6 +1955,57 @@
   overflow-wrap: anywhere;
 }
 
+.lp-tr2-plan-audit-summary {
+  margin: 0.35rem 0 0;
+  font-size: var(--lp-tr2-body);
+  font-weight: 700;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.lp-tr2-plan-audit-summary--over {
+  color: #8b5c3a;
+}
+
+.lp-tr2-plan-audit-summary--under {
+  color: #1e4d7b;
+}
+
+.lp-tr2-plan-audit-list {
+  list-style: none;
+  margin: 0.55rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.lp-tr2-plan-audit-day-head {
+  margin: 0;
+  font-size: var(--lp-tr2-body);
+  font-weight: 700;
+  color: #4d4d4d;
+  line-height: 1.4;
+}
+
+.lp-tr2-plan-audit-rows {
+  list-style: none;
+  margin: 0.3rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.lp-tr2-plan-audit-row,
+.lp-tr2-plan-audit-hint {
+  margin: 0;
+  font-size: var(--lp-tr2-label);
+  color: #666666;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .lp-tr2-plan-est-text,
 .lp-tr2-plan-rank-line {
   margin: 0;
@@ -5129,13 +5180,19 @@
 }
 
 /* 월간 — 과제별 시간 트리맵 */
-.lp-tr2-section:has(> .lp-tr2-task-treemap) {
+.lp-tr2-section:has(> .lp-tr2-task-treemap),
+.lp-tr2-section:has(.lp-tr2-task-treemap) {
   padding-top: 1.2rem;
   padding-bottom: 1.2rem;
 }
 
-.lp-tr2-section:has(> .lp-tr2-task-treemap) > .lp-tr2-section-title {
+.lp-tr2-section:has(> .lp-tr2-task-treemap) > .lp-tr2-section-title,
+.lp-tr2-section:has(.lp-tr2-task-treemap) > .lp-tr2-section-title {
   margin: 0 0 0.9rem;
+}
+
+.lp-tr2-time-map-ws-grid {
+  margin: 0.45rem 0 0.75rem;
 }
 
 .lp-tr2-task-treemap {
@@ -8520,7 +8577,7 @@
   margin-bottom: 0;
 }
 
-/* 평가 블록 다음 메모(구매 후기) 구분선 — 위 칩 아래 여백과 동일 */
+/* 평가 블록 다음 메모 구분선 — 이모티콘·칩과 선 사이 여백 */
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   [data-legacy~="time-task-log-rating-section"]:not([hidden])
   + [data-legacy~="time-task-log-memo-section"],
@@ -8529,7 +8586,7 @@
   )
   [data-legacy~="time-task-log-rating-section"]:not([hidden])
   + [data-legacy~="time-task-log-memo-section"] {
-  margin-top: 0;
+  margin-top: 1.1rem;
   padding-top: 0.85rem;
 }
 

@@ -1,12 +1,15 @@
 /**
- * 감정적이기 — 5대분류·25소분류 (time_rating + memo_tags lp-emotion-sub)
+ * 감정적이기 — 부정 5대분류·25소분류 / 긍정 5감정
+ * (time_rating + memo_tags lp-emotion-sub)
  */
 
 import { normalizeTimeRatingForRow } from "./timeLedgerEntriesModel.js";
 
 export const EMOTION_SUB_TAG_PREFIX = "lp-emotion-sub:";
 
-/** @type {{ rating: number, id: string, label: string, iconFile: string, chartColor: string, subs: string[] }[]} */
+/** @typedef {{ rating: number, id: string, label: string, iconFile: string, chartColor: string, subs: string[], selectOnly?: boolean, prompt?: string }} EmotionCategory */
+
+/** @type {EmotionCategory[]} */
 export const EMOTION_CATEGORIES = [
   {
     rating: 1,
@@ -50,13 +53,77 @@ export const EMOTION_CATEGORIES = [
   },
 ];
 
+/** 긍정 감정 — 대분류만 선택(세부 칩·트리거 없음) */
+/** @type {EmotionCategory[]} */
+export const EMOTION_CATEGORIES_POSITIVE = [
+  {
+    rating: 1,
+    id: "gratitude",
+    label: "감사함",
+    iconFile: "gratitude.svg",
+    chartColor: "#C98484",
+    subs: ["감사함"],
+    selectOnly: true,
+    prompt: "왜 감사했어요?",
+  },
+  {
+    rating: 2,
+    id: "pride",
+    label: "뿌듯함",
+    iconFile: "pride.svg",
+    chartColor: "#C9A27A",
+    subs: ["뿌듯함"],
+    selectOnly: true,
+    prompt: "무엇이 뿌듯하게 했어요?",
+  },
+  {
+    rating: 3,
+    id: "happiness",
+    label: "행복함",
+    iconFile: "happiness.svg",
+    chartColor: "#D4B07A",
+    subs: ["행복함"],
+    selectOnly: true,
+    prompt: "무엇이 행복하게 했어요?",
+  },
+  {
+    rating: 4,
+    id: "interest",
+    label: "흥미",
+    iconFile: "interest.svg",
+    chartColor: "#7E9FC3",
+    subs: ["흥미"],
+    selectOnly: true,
+    prompt: "무엇이 흥미롭게 했어요?",
+  },
+  {
+    rating: 5,
+    id: "comfort",
+    label: "편안함",
+    iconFile: "comfort.svg",
+    chartColor: "#8FA89A",
+    subs: ["편안함"],
+    selectOnly: true,
+    prompt: "무엇이 편안하게 했어요?",
+  },
+];
+
+/** @param {"negative"|"positive"|string|null|undefined} polarity */
+export function getEmotionCategoriesForPolarity(polarity) {
+  return polarity === "positive"
+    ? EMOTION_CATEGORIES_POSITIVE
+    : EMOTION_CATEGORIES;
+}
+
 /** @param {string} id */
 export function getEmotionCategoryChartColor(id) {
-  const cat = EMOTION_CATEGORIES.find((c) => c.id === id);
+  const cat =
+    EMOTION_CATEGORIES.find((c) => c.id === id) ||
+    EMOTION_CATEGORIES_POSITIVE.find((c) => c.id === id);
   return cat?.chartColor || "#666666";
 }
 
-const ICON_VERSION = "1";
+const ICON_VERSION = "7";
 
 export function getEmotionCategoryIconUrl(category) {
   const file = category?.iconFile || "";
@@ -65,18 +132,31 @@ export function getEmotionCategoryIconUrl(category) {
   return `${base}emotion-categories/${file}?v=${ICON_VERSION}`;
 }
 
-/** @param {number|null|undefined} rating */
-export function getEmotionCategoryByRating(rating) {
+/**
+ * @param {number|null|undefined} rating
+ * @param {"negative"|"positive"|string|null|undefined} [polarity]
+ */
+export function getEmotionCategoryByRating(rating, polarity = "negative") {
   const n = normalizeTimeRatingForRow(rating);
   if (n == null) return null;
-  return EMOTION_CATEGORIES.find((c) => c.rating === n) ?? null;
+  return (
+    getEmotionCategoriesForPolarity(polarity).find((c) => c.rating === n) ??
+    null
+  );
 }
 
-/** @param {string} subLabel */
-export function findEmotionCategoryForSub(subLabel) {
+/**
+ * @param {string} subLabel
+ * @param {"negative"|"positive"|string|null|undefined} [polarity]
+ */
+export function findEmotionCategoryForSub(subLabel, polarity = "negative") {
   const s = String(subLabel || "").trim();
   if (!s) return null;
-  return EMOTION_CATEGORIES.find((c) => c.subs.includes(s)) ?? null;
+  return (
+    getEmotionCategoriesForPolarity(polarity).find((c) =>
+      c.subs.includes(s),
+    ) ?? null
+  );
 }
 
 /** @param {unknown[]} memoTags */
@@ -116,28 +196,57 @@ export function stripEmotionSubFromMemoTags(memoTags) {
 }
 
 /**
- * @param {{ timeRating?: unknown, memoTags?: unknown[] }} row
- * @returns {{ category: typeof EMOTION_CATEGORIES[0]|null, subLabel: string, isModern: boolean, isLegacy: boolean }}
+ * @param {{ timeRating?: unknown, memoTags?: unknown[], taskName?: unknown }} row
+ * @param {"negative"|"positive"|string|null|undefined} [polarity]
  */
-export function parseEmotionFromRow(row) {
-  const category = getEmotionCategoryByRating(row?.timeRating);
+export function parseEmotionFromRow(row, polarity = "negative") {
+  const pol = polarity === "positive" ? "positive" : "negative";
+  const category = getEmotionCategoryByRating(row?.timeRating, pol);
   const subLabel = extractEmotionSubFromMemoTags(row?.memoTags);
-  const isModern =
-    !!category &&
-    !!subLabel &&
-    category.subs.includes(subLabel);
-  const isLegacy =
-    !!category &&
-    !subLabel;
+  if (!category) {
+    return { category: null, subLabel, isModern: false, isLegacy: false };
+  }
+  if (category.selectOnly) {
+    const isModern =
+      !subLabel || subLabel === category.label || category.subs.includes(subLabel);
+    const isLegacy = false;
+    return {
+      category,
+      subLabel: subLabel || category.label,
+      isModern,
+      isLegacy,
+    };
+  }
+  const isModern = !!subLabel && category.subs.includes(subLabel);
+  const isLegacy = !subLabel;
   return { category, subLabel, isModern, isLegacy };
 }
 
-/** @param {string} subLabel @param {number|null|undefined} categoryRating */
-export function isValidEmotionSelection(categoryRating, subLabel) {
-  const cat = getEmotionCategoryByRating(categoryRating);
+/**
+ * @param {string} subLabel
+ * @param {number|null|undefined} categoryRating
+ * @param {"negative"|"positive"|string|null|undefined} [polarity]
+ */
+export function isValidEmotionSelection(
+  categoryRating,
+  subLabel,
+  polarity = "negative",
+) {
+  const cat = getEmotionCategoryByRating(categoryRating, polarity);
+  if (!cat) return false;
+  if (cat.selectOnly) return true;
   const sub = String(subLabel || "").trim();
-  if (!cat || !sub) return false;
+  if (!sub) return false;
   return cat.subs.includes(sub);
+}
+
+/** @param {EmotionCategory|null|undefined} category */
+export function getEmotionMemoPrompt(category) {
+  const p = String(category?.prompt || "").trim();
+  if (p) return p;
+  const label = String(category?.label || "").trim();
+  if (!label) return "";
+  return `무엇이 ${label}하게 했어요?`;
 }
 
 export function buildEmotionCategoryIconImgHtml(category, opts = {}) {

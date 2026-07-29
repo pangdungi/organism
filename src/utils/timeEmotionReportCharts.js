@@ -5,6 +5,7 @@
 import { formatIntegerMinutesDurationKo } from "../views/Time.js";
 import {
   EMOTION_CATEGORIES,
+  EMOTION_CATEGORIES_POSITIVE,
   getEmotionCategoryChartColor,
 } from "./timeEmotionTaxonomy.js";
 import { tr2SvgFontSize } from "./timeReportUiScale.js";
@@ -372,7 +373,9 @@ export function renderEmotionTimeHeatmap(snap) {
         cell.style.background = HEATMAP_EMPTY;
       }
       const catLabel =
-        EMOTION_CATEGORIES.find((c) => c.id === catId)?.label || "";
+        EMOTION_CATEGORIES.find((c) => c.id === catId)?.label ||
+        EMOTION_CATEGORIES_POSITIVE.find((c) => c.id === catId)?.label ||
+        "";
       cell.title =
         count > 0
           ? `${WEEKDAY_LABELS[d]} ${h}시 · ${count}건${catLabel ? ` · ${catLabel}` : ""}`

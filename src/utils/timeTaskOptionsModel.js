@@ -167,7 +167,9 @@ function setLedgerTasksMemory(list) {
     mirrorTaskOptionsToLocalStorage();
     return;
   }
-  _ledgerTasksMem = list.map((o) => normalizeBuiltinTaskRow(o));
+  _ledgerTasksMem = dedupeCanonicalBuiltinTaskRows(
+    list.map((o) => normalizeBuiltinTaskRow(o)),
+  );
   mirrorTaskOptionsToLocalStorage();
 }
 
@@ -270,9 +272,73 @@ function builtinTemplateAlreadyPresent(presentNames, presentIds, template) {
   return false;
 }
 
+/**
+ * 구이름·신이름이 같은 기본 과제로 합쳐진 경우(예: 감정적이기 → 부정적)
+ * 목록에 두 줄로 남는 것을 막는다.
+ */
+function dedupeCanonicalBuiltinTaskRows(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  const nonBuiltin = [];
+  /** @type {Map<string, object[]>} */
+  const byBuiltinName = new Map();
+
+  for (const raw of list) {
+    const row = normalizeBuiltinTaskRow(raw);
+    const n = String(row.name || "").trim();
+    const builtin = findBuiltinByName(n);
+    if (!builtin) {
+      nonBuiltin.push(row);
+      continue;
+    }
+    const key = String(builtin.name || "").trim();
+    if (!byBuiltinName.has(key)) byBuiltinName.set(key, []);
+    byBuiltinName.get(key).push(row);
+  }
+
+  const remaps = [];
+  const dedupedBuiltin = [];
+  for (const [canonName, group] of byBuiltinName) {
+    const builtin = findBuiltinByName(canonName);
+    if (!builtin) continue;
+    const preferId = deterministicTaskId(
+      builtin.name,
+      builtin.productivity,
+      builtin.category,
+    );
+    let pick =
+      group.find((r) => String(r.id || "").trim() === preferId) ||
+      group.find((r) => isUuid(String(r.id || "").trim())) ||
+      group[0];
+    pick = normalizeBuiltinTaskRow({
+      ...pick,
+      name: builtin.name,
+      category: builtin.category,
+      productivity: builtin.productivity,
+      id: String(pick?.id || "").trim() || preferId,
+    });
+    for (const r of group) {
+      const from = String(r.id || "").trim();
+      const to = String(pick.id || "").trim();
+      if (from && to && from !== to) {
+        remaps.push({ from, to });
+      }
+    }
+    dedupedBuiltin.push(pick);
+  }
+
+  if (remaps.length) {
+    try {
+      remapTimeLedgerEntryTaskIds(remaps);
+    } catch (_) {}
+  }
+  return [...nonBuiltin, ...dedupedBuiltin];
+}
+
 /** 서버·메모리 목록 + 코드 기본 과제(FIXED_*) 중 빠진 이름 보충 — 자동 서버 upsert 없음 */
 function mergeMissingBuiltinTemplates(rows) {
-  const base = (rows || []).map((o) => normalizeBuiltinTaskRow(o));
+  const base = dedupeCanonicalBuiltinTaskRows(
+    (rows || []).map((o) => normalizeBuiltinTaskRow(o)),
+  );
   const presentNames = new Set();
   const presentIds = new Set();
   for (const o of base) {
@@ -301,7 +367,7 @@ function mergeMissingBuiltinTemplates(rows) {
       }),
     );
   }
-  return [...base, ...supplements];
+  return dedupeCanonicalBuiltinTaskRows([...base, ...supplements]);
 }
 
 /** 이름·생산성·카테고리 기반 결정적 UUID (고정 과제용, 앱 버전 간 동일) */

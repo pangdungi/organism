@@ -41,8 +41,6 @@ import {
 import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
 import { probeKpiDomainServerStale, rememberKpiDomainServerWatermarkMs } from "./kpiMapServerWatermark.js";
 import {
-  isTaskListFirstPullNeeded,
-  pullTimeLedgerTasksForTabEnter,
   pullTimeLedgerTasksIfStaleForModal,
   pullTimeLedgerTasksFromSupabase,
 } from "./timeLedgerTasksSupabase.js";
@@ -62,12 +60,15 @@ const KPI_LOCAL_STORAGE_KEYS = {
   sideincome: "kpi-sideincome-paths",
 };
 
-/** KPI 탭 진입 시 — 시간기록 탭과 동일한 세션 날짜 구간만 pull (과제목록은 과제설정 모달에서만). */
+/** KPI 탭 진입 시 — 시간기록 탭과 동일한 세션 날짜 구간만 강제 pull (과제목록은 과제설정 모달에서만). */
 async function pullLedgerForKpiTabEnter() {
   return coalesceInFlightPull("kpi-tab-ledger-enter", async () => {
     try {
       const { rangeStart, rangeEnd } = readTimeLedgerCombinedPullRangeYmd();
-      await pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd);
+      await pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd, {
+        force: true,
+        preferServer: true,
+      });
       patchKpiLinkedTasksFromKpiMaps();
     } catch (_) {}
   });
@@ -403,29 +404,15 @@ export async function pullStaleKpiDomainsForTaskLogList() {
 }
 
 /**
- * 캘린더 일간(예상 일정) — 첫 진입 full pull, 이후 서버 변경(stale)일 때만.
- * 시간기록 탭 과제목록과 같은 기준을 씁니다.
+ * 캘린더 일간(예상 일정) — 서브탭 진입 시 과제·KPI 강제 pull.
  */
 export async function pullTaskListForCalendar1DayEnter() {
-  const needFull = await isTaskListFirstPullNeeded();
   try {
-    await pullTimeLedgerTasksForTabEnter();
+    await pullTimeLedgerTasksFromSupabase({ ignoreSkip: true });
   } catch (_) {}
   try {
-    if (needFull) {
-      await pullKpiDomainsForTaskLogListForce();
-    } else {
-      await pullStaleKpiDomainsForTaskLogList();
-    }
+    await pullKpiDomainsForTaskLogListForce();
   } catch (_) {}
-  if (!needFull) {
-    try {
-      ensureAllKpiTimeTasksFromStorage();
-    } catch (_) {}
-    try {
-      patchKpiLinkedTasksFromKpiMaps();
-    } catch (_) {}
-  }
 }
 
 /** 홈 3분할 boot — KPI 맵을 stale 무시하고 받아 과제 picker 필터에 필요 */

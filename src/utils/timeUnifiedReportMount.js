@@ -12,6 +12,7 @@ import {
   isMealIntakeTasteRatingTaskName,
   isSleepBuiltinTaskName,
   isUnhealthyMealDetailTaskName,
+  isWorkBuiltinTaskName,
 } from "./timeTaskOptionsConstants.js";
 import {
   formatIntegerMinutesDurationKo,
@@ -2562,19 +2563,31 @@ function renderEmotionDayJournal(entries) {
   return wrap;
 }
 
-function mountEmotionSection(scrollWrap, range, rows) {
-  const hourlyRate = readReportHourlyRateNumber();
-  const snap = buildEmotionReportSnapshot(rows, hourlyRate);
+function appendEmotionPolaritySection(
+  scrollWrap,
+  range,
+  rows,
+  polarity,
+  hourlyRate,
+) {
+  const isPositive = polarity === "positive";
+  const snap = buildEmotionReportSnapshot(rows, hourlyRate, { polarity });
   const isDay = range.start === range.end;
   const dayCount = listDatesInclusive(range.start, range.end).length;
   const isWeekView = !isDay && dayCount > 1 && dayCount <= 8;
   const sec = createSection(
-    "감정 소비",
+    isPositive ? "감정 상태 (긍정)" : "감정 상태 (부정)",
     isDay
-      ? "이날 느낀 감정과 남긴 메모"
+      ? isPositive
+        ? "이날 느낀 긍정 감정과 남긴 메모"
+        : "이날 느낀 부정 감정과 남긴 메모"
       : isWeekView
-        ? "감정 대분류 비중 · 트리거 · 시간대 패턴"
-        : "감정 대분류·세부 감정·트리거·시간대 패턴",
+        ? isPositive
+          ? "긍정 감정 비중 · 시간대 패턴"
+          : "부정 감정 대분류 · 트리거 · 시간대 패턴"
+        : isPositive
+          ? "긍정 감정·시간대 패턴"
+          : "부정 감정 대분류·세부·트리거·시간대 패턴",
   );
 
   if (!snap.hasData) {
@@ -2582,10 +2595,12 @@ function mountEmotionSection(scrollWrap, range, rows) {
     note.className = "lp-tr2-chart-note";
     note.textContent =
       snap.legacyCount > 0
-        ? "이 기간에 새 방식(대분류·세부 감정) 기록이 없습니다. 예전 1~5점 기록만 있습니다."
-        : "이 기간에 감정적이기 기록이 없습니다.";
-    scrollWrap.appendChild(sec);
+        ? "이 기간에 새 방식 기록이 없습니다. 예전 1~5점 기록만 있습니다."
+        : isPositive
+          ? "이 기간에 감정적이기 (긍정적) 기록이 없습니다."
+          : "이 기간에 감정적이기 (부정적) 기록이 없습니다.";
     sec.appendChild(note);
+    scrollWrap.appendChild(sec);
     return;
   }
 
@@ -2593,26 +2608,26 @@ function mountEmotionSection(scrollWrap, range, rows) {
   hero.className = "lp-tr2-card-grid";
   hero.appendChild(
     createStatCard(
-      "감정소비시간",
+      isPositive ? "긍정 감정 시간" : "부정 감정 시간",
       formatIntegerMinutesDurationKo(snap.consumptionMinutes),
-      snap.consumptionCount > 0
-        ? `세부 감정 선택 기록 ${snap.consumptionCount}건`
-        : "",
+      snap.consumptionCount > 0 ? `기록 ${snap.consumptionCount}건` : "",
     ),
   );
-  hero.appendChild(
-    createStatCard(
-      "감정 소비 비용",
-      snap.consumptionCostWon > 0
-        ? formatLedgerLossKrwDisplay(snap.consumptionCostWon)
-        : hourlyRate > 0
-          ? "₩0"
-          : "—",
-      hourlyRate > 0
-        ? "설정한 시급 × 감정소비시간"
-        : "나의 계정에서 시급을 넣으면 표시됩니다",
-    ),
-  );
+  if (!isPositive) {
+    hero.appendChild(
+      createStatCard(
+        "감정 소비 비용",
+        snap.consumptionCostWon > 0
+          ? formatLedgerLossKrwDisplay(snap.consumptionCostWon)
+          : hourlyRate > 0
+            ? "₩0"
+            : "—",
+        hourlyRate > 0
+          ? "설정한 시급 × 부정 감정 시간"
+          : "나의 계정에서 시급을 넣으면 표시됩니다",
+      ),
+    );
+  }
   sec.appendChild(hero);
 
   if (snap.legacyCount > 0) {
@@ -2627,7 +2642,9 @@ function mountEmotionSection(scrollWrap, range, rows) {
   if (isDay) {
     const timeBlock = createRatingBlock(
       "하루 타임라인",
-      "0시~24시 · 색=감정 대분류 · 길이는 기록 시간",
+      isPositive
+        ? "0시~24시 · 색=감정 · 길이는 기록 시간"
+        : "0시~24시 · 색=감정 대분류 · 길이는 기록 시간",
     );
     timeBlock.appendChild(renderEmotionDayTimeline(snap.entries || []));
     sec.appendChild(timeBlock);
@@ -2637,14 +2654,15 @@ function mountEmotionSection(scrollWrap, range, rows) {
   }
 
   const donutBlock = createRatingBlock(
-    "감정 대분류",
-    "5개 분류 중 어디가 가장 많은지 · 조각 크기=비중(%)",
+    isPositive ? "긍정 감정" : "감정 대분류",
+    isPositive
+      ? "5개 감정 중 어디가 가장 많은지 · 조각 크기=비중(%)"
+      : "5개 분류 중 어디가 가장 많은지 · 조각 크기=비중(%)",
   );
   donutBlock.appendChild(renderEmotionCategoryDonut(snap));
   sec.appendChild(donutBlock);
 
-  /* 주간: 대분류 원형으로 비중을 보므로 세부 감정 Top 5는 생략 */
-  if (!isWeekView) {
+  if (!isPositive && !isWeekView) {
     const subBlock = createRatingBlock(
       "세부 감정 Top 5",
       "가장 자주 기록된 세부 감정",
@@ -2653,10 +2671,10 @@ function mountEmotionSection(scrollWrap, range, rows) {
     sec.appendChild(subBlock);
   }
 
-  if (snap.triggers.length) {
+  if (!isPositive && snap.triggers.length) {
     const triggerBlock = createRatingBlock(
       "트리거 패턴",
-      "어떤 상황에서 감정적이기가 반복되는지",
+      "어떤 상황에서 부정 감정이 반복되는지",
     );
     triggerBlock.appendChild(renderEmotionTriggerList(snap));
     sec.appendChild(triggerBlock);
@@ -2664,12 +2682,32 @@ function mountEmotionSection(scrollWrap, range, rows) {
 
   const heatBlock = createRatingBlock(
     "요일·시간대",
-    "언제 감정적이기가 집중되는지 · 색=대분류(일간 타임라인과 동일)",
+    isPositive
+      ? "언제 긍정 감정이 집중되는지 · 색=감정"
+      : "언제 부정 감정이 집중되는지 · 색=대분류",
   );
   heatBlock.appendChild(renderEmotionTimeHeatmap(snap));
   sec.appendChild(heatBlock);
 
   scrollWrap.appendChild(sec);
+}
+
+function mountEmotionSection(scrollWrap, range, rows) {
+  const hourlyRate = readReportHourlyRateNumber();
+  appendEmotionPolaritySection(
+    scrollWrap,
+    range,
+    rows,
+    "negative",
+    hourlyRate,
+  );
+  appendEmotionPolaritySection(
+    scrollWrap,
+    range,
+    rows,
+    "positive",
+    hourlyRate,
+  );
 }
 
 /** 일간: 가용율 + 루틴/단순 비율 막대(시간 표시) */
@@ -3812,6 +3850,7 @@ function mountPlanAdherenceSection(scrollWrap, range, rows) {
     note.textContent =
       "이 기간에 실행할 예상 일정(과제·시간)이 없어 이행률은 아직 계산되지 않습니다. 캘린더에서 타임박스를 넣어 보세요.";
     sec.appendChild(note);
+    appendPlanRecordAuditBlock(sec, snap, isYear);
     scrollWrap.appendChild(sec);
     return;
   }
@@ -3875,7 +3914,92 @@ function mountPlanAdherenceSection(scrollWrap, range, rows) {
     sec.appendChild(estBlock);
   }
 
+  appendPlanRecordAuditBlock(sec, snap, isYear);
   scrollWrap.appendChild(sec);
+}
+
+/** 계획 이행 하단 — 기록 초과·부족 날 + 마감 23:59(수면 제외) 점검 (연간 제외) */
+function appendPlanRecordAuditBlock(sec, snap, isYear) {
+  if (isYear) return;
+  const audit = snap?.recordAudit;
+  if (!audit?.show) return;
+
+  const block = createRatingBlock(
+    "기록 점검",
+    snap.isSingleDay
+      ? "하루가 23:59까지 안 채워진 원인 · 마감이 23:59인 기록"
+      : "기록 초과·부족한 날 · 마감이 23:59인 기록",
+  );
+
+  if (!snap.isSingleDay) {
+    if (audit.overDays?.length) {
+      const overP = document.createElement("p");
+      overP.className = "lp-tr2-plan-audit-summary lp-tr2-plan-audit-summary--over";
+      overP.textContent = `기록 초과 · ${audit.overDays.map((d) => d.dateLabel).join(", ")}`;
+      block.appendChild(overP);
+    }
+    if (audit.underDays?.length) {
+      const underP = document.createElement("p");
+      underP.className =
+        "lp-tr2-plan-audit-summary lp-tr2-plan-audit-summary--under";
+      underP.textContent = `기록 부족 · ${audit.underDays.map((d) => d.dateLabel).join(", ")}`;
+      block.appendChild(underP);
+    }
+  }
+
+  const list = document.createElement("ul");
+  list.className = "lp-tr2-plan-audit-list";
+
+  for (const day of audit.days || []) {
+    const li = document.createElement("li");
+    li.className = "lp-tr2-plan-audit-day";
+
+    const head = document.createElement("p");
+    head.className = "lp-tr2-plan-audit-day-head";
+    if (snap.isSingleDay) {
+      const bits = [];
+      if (day.isOver) bits.push("기록이 하루(24시간)를 넘었습니다");
+      if (day.isUnder) bits.push("하루 기록이 23:59까지 채워지지 않았습니다");
+      head.textContent = bits.length
+        ? bits.join(" · ")
+        : "마감이 23:59인 기록을 확인해 보세요";
+    } else {
+      const bits = [];
+      if (day.isOver) bits.push("기록 초과");
+      if (day.isUnder) bits.push("기록 부족");
+      const status = bits.length ? ` (${bits.join("·")})` : "";
+      head.textContent = `${day.dateLabel} · 이날의 이 기록을 점검해 보세요${status}`;
+    }
+    li.appendChild(head);
+
+    if (day.endLostRows?.length) {
+      const rowList = document.createElement("ul");
+      rowList.className = "lp-tr2-plan-audit-rows";
+      for (const row of day.endLostRows) {
+        const rowLi = document.createElement("li");
+        rowLi.className = "lp-tr2-plan-audit-row";
+        const tip = snap.isSingleDay
+          ? "이 기록을 점검해 보세요"
+          : "이날의 이 기록을 점검해 보세요";
+        const dur =
+          row.minutes > 0 ? ` · ${formatIntegerMinutesDurationKo(row.minutes)}` : "";
+        rowLi.textContent = `${tip} · ${row.taskName} ${row.startLabel}~${row.endLabel}${dur}`;
+        rowList.appendChild(rowLi);
+      }
+      li.appendChild(rowList);
+    } else if (snap.isSingleDay && (day.isOver || day.isUnder)) {
+      const hint = document.createElement("p");
+      hint.className = "lp-tr2-plan-audit-hint";
+      hint.textContent =
+        "겹친 시간·빈 구간·마감 시각을 사용내역에서 확인해 보세요.";
+      li.appendChild(hint);
+    }
+
+    list.appendChild(li);
+  }
+
+  block.appendChild(list);
+  sec.appendChild(block);
 }
 
 function createFocusRecipeTagRow(item) {
@@ -6054,13 +6178,72 @@ function monthTaskCategoryKey(taskName, rowHint) {
   return MONTH_TASK_TREEMAP_COLORS[cat] ? cat : "other";
 }
 
+function isWorkOrSleepTreemapRow(taskName, categoryHint) {
+  const name = String(taskName || "").trim();
+  if (isWorkBuiltinTaskName(name) || isSleepBuiltinTaskName(name)) return true;
+  const key = monthTaskCategoryKey(name, categoryHint);
+  return key === "work" || key === "sleep";
+}
+
+/** 근무·수면 분 — 시간 분포에서 따로 표시용 */
+function sumWorkSleepMinutesFromRows(rows) {
+  let work = 0;
+  let sleep = 0;
+  let total = 0;
+  for (const r of rows || []) {
+    const mins = rowMinutes(r);
+    if (mins <= 0) continue;
+    total += mins;
+    const name = String(r?.taskName || "").trim();
+    const key = monthTaskCategoryKey(name, r?.category);
+    if (key === "work" || isWorkBuiltinTaskName(name)) work += mins;
+    else if (key === "sleep" || isSleepBuiltinTaskName(name)) sleep += mins;
+  }
+  return { work, sleep, total };
+}
+
+function appendWorkSleepTimeMapSummary(sec, workMin, sleepMin, totalMin) {
+  if (workMin <= 0 && sleepMin <= 0) return;
+  const grid = document.createElement("div");
+  grid.className =
+    "lp-tr2-card-grid lp-tr2-plan-summary-grid lp-tr2-time-map-ws-grid";
+  const denom = totalMin > 0 ? totalMin : workMin + sleepMin;
+  if (workMin > 0) {
+    const pct = denom > 0 ? Math.round((workMin / denom) * 100) : 0;
+    grid.appendChild(
+      createStatCard(
+        "근무",
+        formatIntegerMinutesDurationKo(workMin),
+        `전체 기록의 ${pct}%`,
+      ),
+    );
+  }
+  if (sleepMin > 0) {
+    const pct = denom > 0 ? Math.round((sleepMin / denom) * 100) : 0;
+    grid.appendChild(
+      createStatCard(
+        "수면",
+        formatIntegerMinutesDurationKo(sleepMin),
+        `전체 기록의 ${pct}%`,
+      ),
+    );
+  }
+  sec.appendChild(grid);
+}
+
 /** 연간 — 카테고리별 합산 (버블 차트용) */
-function buildCategoryBubbleItems(rows) {
+function buildCategoryBubbleItems(rows, { excludeWorkSleep = false } = {}) {
   /** @type {Map<string, { key: string, label: string, minutes: number }>} */
   const map = new Map();
   for (const r of rows || []) {
     const mins = rowMinutes(r);
     if (mins <= 0) continue;
+    if (
+      excludeWorkSleep &&
+      isWorkOrSleepTreemapRow(r?.taskName, r?.category)
+    ) {
+      continue;
+    }
     const key = monthTaskCategoryKey(r?.taskName, r?.category);
     const cur = map.get(key) || {
       key,
@@ -6147,8 +6330,9 @@ function renderCategoryBubbleChart(items) {
 
 /**
  * 기간 안 기록된 과제별 총 시간 — 과제명마다 전부 표시(묶음 없음)
+ * @param {{ excludeWorkSleep?: boolean }} [opts]
  */
-function buildMonthTaskTreemapItems(rows) {
+function buildMonthTaskTreemapItems(rows, { excludeWorkSleep = false } = {}) {
   /** @type {Map<string, { name: string, minutes: number, categoryKey: string }>} */
   const map = new Map();
   for (const r of rows || []) {
@@ -6156,6 +6340,7 @@ function buildMonthTaskTreemapItems(rows) {
     if (!name) continue;
     const mins = rowMinutes(r);
     if (mins <= 0) continue;
+    if (excludeWorkSleep && isWorkOrSleepTreemapRow(name, r.category)) continue;
     const cur = map.get(name) || {
       name,
       minutes: 0,
@@ -6326,43 +6511,63 @@ function mountTaskTimeMapSection(scrollWrap, range, rows) {
           : "기간 시간 분포";
   const sec = createSection(
     title,
-    isYear
-      ? "원 크기 = 카테고리 시간 비율 · 수면·근무·미디어·시급 상승 등"
-      : "칸 넓이·높이가 만든 면적 = 그 과제 시간 비율",
+    "근무·수면은 위에 · 아래는 그 외 과제 비율",
   );
 
+  const { work, sleep, total } = sumWorkSleepMinutesFromRows(rows);
+  appendWorkSleepTimeMapSummary(sec, work, sleep, total);
+
   if (isYear) {
-    const bubbles = buildCategoryBubbleItems(rows);
+    const bubbles = buildCategoryBubbleItems(rows, { excludeWorkSleep: true });
     if (!bubbles.length) {
       const note = document.createElement("p");
       note.className = "lp-tr2-chart-note";
-      note.textContent = "이 해에 집계할 과제 기록이 없습니다.";
+      note.textContent =
+        work > 0 || sleep > 0
+          ? "근무·수면 외에 집계할 카테고리 기록이 없습니다."
+          : "이 해에 집계할 과제 기록이 없습니다.";
       sec.appendChild(note);
       scrollWrap.appendChild(sec);
       return;
     }
-    sec.appendChild(renderCategoryBubbleChart(bubbles));
+    const restBlock = createRatingBlock(
+      "그 외 시간",
+      "근무·수면 제외 · 원 크기 = 카테고리 비율",
+    );
+    restBlock.appendChild(renderCategoryBubbleChart(bubbles));
+    sec.appendChild(restBlock);
     scrollWrap.appendChild(sec);
     return;
   }
 
-  const items = buildMonthTaskTreemapItems(rows);
+  const items = buildMonthTaskTreemapItems(rows, { excludeWorkSleep: true });
   if (!items.length) {
     const note = document.createElement("p");
     note.className = "lp-tr2-chart-note";
-    note.textContent = isDay
-      ? "이날 집계할 과제 기록이 없습니다."
-      : isWeek
-        ? "이 주에 집계할 과제 기록이 없습니다."
-        : "이 기간에 집계할 과제 기록이 없습니다.";
+    if (work > 0 || sleep > 0) {
+      note.textContent = "근무·수면 외에 집계할 과제 기록이 없습니다.";
+    } else {
+      note.textContent = isDay
+        ? "이날 집계할 과제 기록이 없습니다."
+        : isWeek
+          ? "이 주에 집계할 과제 기록이 없습니다."
+          : "이 기간에 집계할 과제 기록이 없습니다.";
+    }
     sec.appendChild(note);
     scrollWrap.appendChild(sec);
     return;
   }
 
-  sec.appendChild(
-    renderMonthTaskTreemap(items, { ariaLabel: `${title} · 과제별 사용 시간` }),
+  const restBlock = createRatingBlock(
+    "그 외 시간",
+    "근무·수면 제외 · 칸 면적 = 과제 시간 비율",
   );
+  restBlock.appendChild(
+    renderMonthTaskTreemap(items, {
+      ariaLabel: `${title} · 근무·수면 제외 과제별 사용 시간`,
+    }),
+  );
+  sec.appendChild(restBlock);
   scrollWrap.appendChild(sec);
 }
 
