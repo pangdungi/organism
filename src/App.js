@@ -281,16 +281,25 @@ function initLpTabResumeCloudPull(getCurrentTabId) {
    * 서버만 받아 그리고, 서버 쓰기는 사용자가 저장·삭제할 때만.
    */
   async function runTimeResumePull(gen) {
-    await pullTimeLedgerTabEnterFromCloud({
-      force: true,
-      preferServer: true,
-    });
-    if (gen !== resumeGen) return;
-    if (getCurrentTabId() !== "time") return;
-    if (isResumeBlockingModalOpen()) return;
     try {
-      window.__lpTimeLedgerSoftRefresh?.({ force: true });
+      window.__lpTimeLedgerSetSyncing?.(true, "시간기록 동기화 중…");
     } catch (_) {}
+    try {
+      await pullTimeLedgerTabEnterFromCloud({
+        force: true,
+        preferServer: true,
+      });
+      if (gen !== resumeGen) return;
+      if (getCurrentTabId() !== "time") return;
+      if (isResumeBlockingModalOpen()) return;
+      try {
+        window.__lpTimeLedgerSoftRefresh?.({ force: true });
+      } catch (_) {}
+    } finally {
+      try {
+        window.__lpTimeLedgerSetSyncing?.(false);
+      } catch (_) {}
+    }
   }
 
   async function runPlannerResumePull(gen) {
@@ -1018,6 +1027,11 @@ export async function mountApp(container) {
               /* 한 프레임 그린 뒤 pull — 진입 체감 지연 완화 */
               await new Promise((r) => requestAnimationFrame(() => r()));
               if (currentTabId !== targetTabId) return;
+              if (targetTabId === "time") {
+                try {
+                  window.__lpTimeLedgerSetSyncing?.(true, "시간기록 동기화 중…");
+                } catch (_) {}
+              }
               /* 메뉴 클릭·탭 재진입: 그 시점 서버를 강제 pull */
               pullResult = await pullDataForActiveTab(targetTabId, {
                 fromBoot: false,
@@ -1032,6 +1046,11 @@ export async function mountApp(container) {
               if (isKpiAppTabId(targetTabId)) clearKpiTabPullPending(targetTabId);
               if (targetTabId === "home" || targetTabId === "time") {
                 clearLpTabPullPending(targetTabId);
+              }
+              if (targetTabId === "time") {
+                try {
+                  window.__lpTimeLedgerSetSyncing?.(false);
+                } catch (_) {}
               }
               return;
             }
@@ -1058,6 +1077,9 @@ export async function mountApp(container) {
           try {
             window.__lpTimeLedgerSoftRefresh?.({ force: true });
           } catch (_) {}
+          try {
+            window.__lpTimeLedgerSetSyncing?.(false);
+          } catch (_) {}
         } else if (targetTabId === "habittracker") {
           try {
             window.__lpHabitTrackerSoftRefresh?.();
@@ -1071,6 +1093,11 @@ export async function mountApp(container) {
           } finally {
             if (tabPullOverlayTabId) {
               clearLpTabPullOverlay(tabPullOverlayTabId);
+            }
+            if (targetTabId === "time") {
+              try {
+                window.__lpTimeLedgerSetSyncing?.(false);
+              } catch (_) {}
             }
           }
         })();
@@ -1524,6 +1551,11 @@ export async function mountApp(container) {
 
       let pullResult;
       try {
+        if (bootTabId === "time") {
+          try {
+            window.__lpTimeLedgerSetSyncing?.(true, "시간기록 동기화 중…");
+          } catch (_) {}
+        }
         const [, pr] = await Promise.all([
           syncAdminMenuVisibility(),
           pullDataForActiveTab(bootTabId, {
@@ -1542,12 +1574,20 @@ export async function mountApp(container) {
           clearLpTabPullPending(bootTabId);
         }
         if (isKpiAppTabId(bootTabId)) clearKpiTabPullPending(bootTabId);
+        if (bootTabId === "time") {
+          try {
+            window.__lpTimeLedgerSetSyncing?.(false);
+          } catch (_) {}
+        }
         return;
       }
       if (bootTabId === "time") {
         clearLpTabPullPending("time");
         try {
           window.__lpTimeLedgerSoftRefresh?.({ force: true });
+        } catch (_) {}
+        try {
+          window.__lpTimeLedgerSetSyncing?.(false);
         } catch (_) {}
       } else if (bootTabId === "schedulecalendar") {
         try {

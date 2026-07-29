@@ -4157,6 +4157,23 @@ function timeLedgerRowHasUserMemo(row) {
   return ledgerRowHasDisplayableMemo(row);
 }
 
+/** 타임라인 텍스트 검색 — 과제명·메모·태그·피드백 */
+function timeLedgerRowSearchHaystack(row) {
+  if (!row || typeof row !== "object") return "";
+  const kpiId = String(row.kpiId || row.linkedKpiId || "").trim();
+  const parts = [
+    row.taskName,
+    row.category,
+    row.feedback,
+    buildTimeLedgerCardMemoText(row, kpiId),
+    ...getMemoTagDisplayTextsForLedgerRow(row),
+  ];
+  return parts
+    .map((x) => String(x || "").trim())
+    .filter(Boolean)
+    .join(" ");
+}
+
 /** 사용자 메모 태그만 memo_tags에 넣음 */
 function buildLedgerMemoTagsForSubmit(userTags) {
   const base = [...(Array.isArray(userTags) ? userTags : [])];
@@ -5639,18 +5656,27 @@ export function render(opts = {}) {
   function readUsageQueryFiltersFromSession() {
     try {
       if (typeof sessionStorage === "undefined") {
-        return { memoOnly: false, taskFilter: null };
+        return { memoOnly: false, taskFilter: null, textSearch: "" };
       }
       const memoOnly = sessionStorage.getItem("lp_time_usage_memo_only") === "1";
+      const textSearch = String(
+        sessionStorage.getItem("lp_time_usage_text_search") || "",
+      ).trim();
       const taskRaw = sessionStorage.getItem("lp_time_usage_task_filter");
       if (taskRaw == null || taskRaw === "") {
-        return { memoOnly, taskFilter: null };
+        return { memoOnly, taskFilter: null, textSearch };
       }
       const parsed = JSON.parse(taskRaw);
-      if (!Array.isArray(parsed)) return { memoOnly, taskFilter: null };
-      return { memoOnly, taskFilter: parsed.map((n) => String(n || "").trim()) };
+      if (!Array.isArray(parsed)) {
+        return { memoOnly, taskFilter: null, textSearch };
+      }
+      return {
+        memoOnly,
+        taskFilter: parsed.map((n) => String(n || "").trim()),
+        textSearch,
+      };
     } catch (_) {
-      return { memoOnly: false, taskFilter: null };
+      return { memoOnly: false, taskFilter: null, textSearch: "" };
     }
   }
 
@@ -5658,6 +5684,8 @@ export function render(opts = {}) {
   const _usageQueryFiltersFromSession = readUsageQueryFiltersFromSession();
   let selectedTaskNamesForFilter = _usageQueryFiltersFromSession.taskFilter;
   let usageHistoryMemoOnlyFilter = _usageQueryFiltersFromSession.memoOnly;
+  /** 타임라인 텍스트 검색(과제명·메모 등). 입력 시 연간 조회로 맞춤 */
+  let usageHistoryTextSearchQuery = _usageQueryFiltersFromSession.textSearch;
   if (usageHistoryMemoOnlyFilter) selectedTaskNamesForFilter = null;
 
   function persistActiveViewTimeFilterToSession() {
@@ -5672,6 +5700,9 @@ export function render(opts = {}) {
         "lp_time_usage_memo_only",
         usageHistoryMemoOnlyFilter ? "1" : "0",
       );
+      const q = String(usageHistoryTextSearchQuery || "").trim();
+      if (!q) sessionStorage.removeItem("lp_time_usage_text_search");
+      else sessionStorage.setItem("lp_time_usage_text_search", q);
       if (selectedTaskNamesForFilter == null) {
         sessionStorage.removeItem("lp_time_usage_task_filter");
       } else {
@@ -5883,6 +5914,16 @@ export function render(opts = {}) {
     persistActiveViewTimeFilterToSession();
   }
 
+  /* 검색어가 남아 있으면 연간 구간으로 맞춤(탭 재진입) */
+  if (
+    String(usageHistoryTextSearchQuery || "").trim() &&
+    timeLedgerLayoutView === "timeline"
+  ) {
+    timeLedgerTimelineGranularity = "year";
+    persistTimeLedgerTimelineGranularity();
+    ensureUsageHistoryRangeForTimelineGranularity();
+  }
+
   function formatGranularityRangeDateLabel(startYmd, endYmd, granularity, opts = {}) {
     const g = opts.report
       ? normalizeTimeLedgerReportGranularity(granularity)
@@ -5973,41 +6014,103 @@ export function render(opts = {}) {
     );
   }
 
+  function ensureTimeLedgerSyncOverlay() {
+    let ov = el.querySelector("[data-time-ledger-sync-overlay]");
+    if (ov instanceof HTMLElement) return ov;
+    ov = document.createElement("div");
+    ov.className = "time-ledger-sync-overlay";
+    ov.setAttribute("data-time-ledger-sync-overlay", "");
+    ov.hidden = true;
+    ov.setAttribute("aria-hidden", "true");
+    ov.innerHTML =
+      '<div class="time-ledger-sync-overlay__label" role="status" aria-live="polite">동기화 중…</div>';
+    el.appendChild(ov);
+    return ov;
+  }
+
+  /** 조회·탭 복귀 pull 중 — 화면을 살짝 어둡게 해 「기록이 사라진 것」처럼 보이지 않게 */
+  function showTimeLedgerPullLoadingUi(message = "동기화 중…") {
+    if (!el.isConnected) return;
+    const ov = ensureTimeLedgerSyncOverlay();
+    const label = ov.querySelector(".time-ledger-sync-overlay__label");
+    if (label) label.textContent = String(message || "동기화 중…");
+    ov.hidden = false;
+    ov.setAttribute("aria-hidden", "false");
+    ov.setAttribute("aria-busy", "true");
+    lpTokenAdd(el, "is-syncing");
+  }
+
+  function dismissTimeLedgerPullLoadingUi() {
+    if (!el.isConnected) {
+      try {
+        hideLpTabLoading();
+      } catch (_) {}
+      return;
+    }
+    const ov = el.querySelector("[data-time-ledger-sync-overlay]");
+    if (ov instanceof HTMLElement) {
+      ov.hidden = true;
+      ov.setAttribute("aria-hidden", "true");
+      ov.setAttribute("aria-busy", "false");
+    }
+    lpTokenRemove(el, "is-syncing");
+    try {
+      hideLpTabLoading();
+    } catch (_) {}
+  }
+
+  function setTimeLedgerSyncingUi(on, message) {
+    if (on) showTimeLedgerPullLoadingUi(message);
+    else dismissTimeLedgerPullLoadingUi();
+  }
+
   function schedulePullTimeLedgerForPickerRange() {
+    showTimeLedgerPullLoadingUi("동기화 중…");
     if (_timeLedgerFilterPullTimer) clearTimeout(_timeLedgerFilterPullTimer);
     _timeLedgerFilterPullTimer = setTimeout(() => {
       _timeLedgerFilterPullTimer = null;
       const pullGen = ++_usageListPullGen;
       void (async () => {
-        if (!el.isConnected) return;
-        persistActiveViewTimeFilterToSession();
-        let rs;
-        let re;
-        if (timeLedgerLayoutView === "report") {
-          rs = String(reportRangeStartYmd || "").trim();
-          re = String(reportRangeEndYmd || "").trim();
-        } else {
-          rs = String(usageHistoryRangeStartYmd || "").trim();
-          re = String(usageHistoryRangeEndYmd || "").trim();
-        }
-        if (rs > re) {
-          const x = rs;
-          rs = re;
-          re = x;
-        }
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(rs) || !/^\d{4}-\d{2}-\d{2}$/.test(re)) {
-          return;
-        }
-        const ok = await pullTimeLedgerEntriesForDateRange(rs, re);
-        if (pullGen !== _usageListPullGen) return;
-        if (!el.isConnected) return;
-        const cacheRows = loadTimeRows();
-        allRowsCache = cacheRows;
-        cachedRows = [...cacheRows];
-        /* 데이터 안 바뀌면 레포트 통째 다시 그리지 않음 */
-        syncTimeLedgerContent();
-        if (!ok) {
-          lpPullDebug("time_ledger_range_pull_failed", { range: `${rs}..${re}` });
+        try {
+          if (!el.isConnected) return;
+          persistActiveViewTimeFilterToSession();
+          let rs;
+          let re;
+          if (timeLedgerLayoutView === "report") {
+            rs = String(reportRangeStartYmd || "").trim();
+            re = String(reportRangeEndYmd || "").trim();
+          } else {
+            rs = String(usageHistoryRangeStartYmd || "").trim();
+            re = String(usageHistoryRangeEndYmd || "").trim();
+          }
+          if (rs > re) {
+            const x = rs;
+            rs = re;
+            re = x;
+          }
+          if (
+            !/^\d{4}-\d{2}-\d{2}$/.test(rs) ||
+            !/^\d{4}-\d{2}-\d{2}$/.test(re)
+          ) {
+            return;
+          }
+          const ok = await pullTimeLedgerEntriesForDateRange(rs, re);
+          if (pullGen !== _usageListPullGen) return;
+          if (!el.isConnected) return;
+          const cacheRows = loadTimeRows();
+          allRowsCache = cacheRows;
+          cachedRows = [...cacheRows];
+          /* 데이터 안 바뀌면 레포트 통째 다시 그리지 않음 */
+          syncTimeLedgerContent();
+          if (!ok) {
+            lpPullDebug("time_ledger_range_pull_failed", {
+              range: `${rs}..${re}`,
+            });
+          }
+        } finally {
+          if (pullGen === _usageListPullGen) {
+            dismissTimeLedgerPullLoadingUi();
+          }
         }
       })();
     }, 400);
@@ -6050,6 +6153,12 @@ export function render(opts = {}) {
       }
       if (usageHistoryMemoOnlyFilter) {
         filtered = filtered.filter((r) => timeLedgerRowHasUserMemo(r));
+      }
+      const textQ = String(usageHistoryTextSearchQuery || "").trim();
+      if (textQ) {
+        filtered = filtered.filter((r) =>
+          matchFlexibleSearch(timeLedgerRowSearchHaystack(r), textQ),
+        );
       }
     }
     return filtered;
@@ -6207,7 +6316,8 @@ export function render(opts = {}) {
       selectedTaskNamesForFilter == null
         ? ""
         : selectedTaskNamesForFilter.join("\x1e");
-    return `${usageHistoryRangeStartYmd}|${usageHistoryRangeEndYmd}|${reportRangeStartYmd}|${reportRangeEndYmd}|${taskFilter}|${usageHistoryMemoOnlyFilter ? "1" : "0"}|${timeLedgerLayoutView}|${timeLedgerTimeboxGranularity}|${timeLedgerReportGranularity}|${timeLedgerTimelineGranularity}|${ledger}`;
+    const textQ = String(usageHistoryTextSearchQuery || "").trim();
+    return `${usageHistoryRangeStartYmd}|${usageHistoryRangeEndYmd}|${reportRangeStartYmd}|${reportRangeEndYmd}|${taskFilter}|${usageHistoryMemoOnlyFilter ? "1" : "0"}|${textQ}|${timeLedgerLayoutView}|${timeLedgerTimeboxGranularity}|${timeLedgerReportGranularity}|${timeLedgerTimelineGranularity}|${ledger}`;
   }
 
   function rememberTimeLedgerPaintSignature() {
@@ -6422,6 +6532,19 @@ export function render(opts = {}) {
             <span class="time-usage-range-task-label">필터</span>
             <button type="button" class="time-usage-range-filter-clear-link" data-legacy="time-task-select-clear-btn">필터 해제</button>
           </div>
+          <div class="lp-search-bar time-usage-range-text-search" data-usage-text-search-wrap>
+            <div class="lp-search-bar__row">
+              <input
+                type="search"
+                class="lp-search-bar__input"
+                data-usage-text-search
+                placeholder="과제명·메모 검색 (입력 시 연간 조회)"
+                autocomplete="off"
+                enterkeyhint="search"
+                aria-label="시간기록 검색"
+              />
+            </div>
+          </div>
           <div class="time-usage-range-filter-options">
             <label class="time-usage-range-filter-option">
               <input type="checkbox" data-usage-filter-by-task />
@@ -6490,6 +6613,10 @@ export function render(opts = {}) {
     const usageFilterSection = usageRangeModal.querySelector(
       "[data-usage-range-filter-section]",
     );
+    const usageTextSearchInp = usageRangeModal.querySelector(
+      "[data-usage-text-search]",
+    );
+    let _usageTextSearchLiveTimer = null;
     const usageRangeDatesWraps = usageRangeModal.querySelectorAll(
       "[data-usage-range-dates-wrap]",
     );
@@ -7101,12 +7228,49 @@ export function render(opts = {}) {
         active =
           active ||
           usageHistoryMemoOnlyFilter ||
-          selectedTaskNamesForFilter != null;
+          selectedTaskNamesForFilter != null ||
+          !!String(usageHistoryTextSearchQuery || "").trim();
       } else {
         active =
           usageHistoryMemoOnlyFilter || selectedTaskNamesForFilter != null;
       }
       lpTokenToggle(footerDateBtn, "is-active", active);
+    }
+
+    /** 검색어 입력 — 즉시 목록 반영, 비어 있지 않으면 연간으로 맞춤 */
+    function applyUsageTextSearchLive(rawQ, opts = {}) {
+      if (!isUsageRangeModalTimelineMode()) return;
+      const q = String(rawQ ?? "").trim();
+      const prevQ = String(usageHistoryTextSearchQuery || "").trim();
+      usageHistoryTextSearchQuery = q;
+      if (usageTextSearchInp && usageTextSearchInp.value !== String(rawQ ?? "")) {
+        usageTextSearchInp.value = String(rawQ ?? "");
+      }
+      let rangeChanged = false;
+      if (q) {
+        const prevG = normalizeTimeLedgerReportGranularity(
+          timeLedgerTimelineGranularity,
+        );
+        setModalTimeboxGranularityDraft("year");
+        persistActiveLayoutGranularityFromModal();
+        const range = resolveGranularityRangeFromModalDrafts();
+        if (
+          prevG !== "year" ||
+          usageHistoryRangeStartYmd !== range.start ||
+          usageHistoryRangeEndYmd !== range.end
+        ) {
+          rangeChanged = true;
+        }
+        usageHistoryRangeStartYmd = range.start;
+        usageHistoryRangeEndYmd = range.end;
+      }
+      persistActiveViewTimeFilterToSession();
+      onFilterChange();
+      if (rangeChanged || q !== prevQ) {
+        requestTimeLedgerPullForUserQueryChange("usage_text_search");
+      }
+      syncFooterDateBtnActiveState();
+      if (opts.closeModal) closeUsageRangeModal();
     }
 
     function populateTaskSelectList() {
@@ -7179,6 +7343,9 @@ export function render(opts = {}) {
         }
       }
       if (!isUsageRangeModalDateOnlyMode()) {
+        if (usageTextSearchInp) {
+          usageTextSearchInp.value = String(usageHistoryTextSearchQuery || "");
+        }
         if (usageFilterMemoOnlyCb) {
           usageFilterMemoOnlyCb.checked = usageHistoryMemoOnlyFilter;
         }
@@ -7295,12 +7462,39 @@ export function render(opts = {}) {
     taskSelectClearBtn?.addEventListener("click", () => {
       selectedTaskNamesForFilter = null;
       usageHistoryMemoOnlyFilter = false;
+      usageHistoryTextSearchQuery = "";
+      if (usageTextSearchInp) usageTextSearchInp.value = "";
       if (usageFilterByTaskCb) usageFilterByTaskCb.checked = false;
       if (usageFilterMemoOnlyCb) usageFilterMemoOnlyCb.checked = false;
       syncFilterModeUi();
+      persistActiveViewTimeFilterToSession();
       onFilterChange();
       requestTimeLedgerPullForUserQueryChange("task_filter_clear");
       syncFooterDateBtnActiveState();
+    });
+    usageTextSearchInp?.addEventListener("input", () => {
+      if (!isUsageRangeModalTimelineMode()) return;
+      const raw = usageTextSearchInp.value || "";
+      if (_usageTextSearchLiveTimer) {
+        clearTimeout(_usageTextSearchLiveTimer);
+        _usageTextSearchLiveTimer = null;
+      }
+      _usageTextSearchLiveTimer = setTimeout(() => {
+        _usageTextSearchLiveTimer = null;
+        if (!el.isConnected) return;
+        applyUsageTextSearchLive(raw);
+      }, 120);
+    });
+    usageTextSearchInp?.addEventListener("keydown", (ev) => {
+      if (ev.key !== "Enter") return;
+      ev.preventDefault();
+      if (_usageTextSearchLiveTimer) {
+        clearTimeout(_usageTextSearchLiveTimer);
+        _usageTextSearchLiveTimer = null;
+      }
+      applyUsageTextSearchLive(usageTextSearchInp.value || "", {
+        closeModal: true,
+      });
     });
     usageRangeApplyBtn?.addEventListener("click", () => {
       let s = String(usageRangeStartInp?.value || "").trim();
@@ -7334,6 +7528,16 @@ export function render(opts = {}) {
         }
         if (timeLedgerLayoutView === "timeline") {
           applyTaskFilterFromModal();
+          usageHistoryTextSearchQuery = String(
+            usageTextSearchInp?.value || "",
+          ).trim();
+          if (usageHistoryTextSearchQuery) {
+            setModalTimeboxGranularityDraft("year");
+            persistActiveLayoutGranularityFromModal();
+            const yr = resolveGranularityRangeFromModalDrafts();
+            s = yr.start;
+            e = yr.end;
+          }
         }
         if (timeLedgerLayoutView === "timebox") {
           persistTimeLedgerLayoutView();
@@ -10849,10 +11053,18 @@ export function render(opts = {}) {
     }
   }
 
+  let _taskLogSubmitBusy = false;
   taskLogSubmitBtn.addEventListener("click", async () => {
+    /* 서버 반영 중 연타 → 같은 내용·다른 id 행이 여러 개 생기는 것 방지 */
+    if (_taskLogSubmitBusy || taskLogSubmitBtn.disabled) return;
+    _taskLogSubmitBusy = true;
+    const prevSubmitLabel = taskLogSubmitBtn.textContent;
+    taskLogSubmitBtn.disabled = true;
+    taskLogSubmitBtn.setAttribute("aria-busy", "true");
+    try {
     dismissTaskLogBlockingPickers();
     flushTaskLogTimeInputsBeforeSubmit();
-    const editTr = taskLogEditTr;
+    let editTr = taskLogEditTr;
     const addCtx = taskLogAddContext;
     let addLedgerTr = null;
     let oldRowDataToRemove = null;
@@ -11255,47 +11467,93 @@ export function render(opts = {}) {
       const tidAdd = String(
         (taskLogTaskDropdown?._getTaskId?.() || optAdd?.id || "").trim(),
       );
-      const newRowData = {
-        id:
-          typeof crypto !== "undefined" && crypto.randomUUID
-            ? crypto.randomUUID()
-            : `t-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-        taskId: isUuid(tidAdd) ? tidAdd : "",
+      const contentKey = [
+        String(dateStr || "").slice(0, 10),
         taskName,
-        startTime,
-        endTime,
-        timeTracked,
-        productivity: ctx.productivity || productivity,
-        category,
-        date: dateStr,
-        feedback,
-        mealDetail: mealDetailForRow,
-        memoTags,
-        linkedExpenseIds: [],
-        focus: focusValue,
-        habitDailyCompleted: [],
-        kpiPerformedValue: "",
-        timeRating: timeRatingForRow,
-        timeEndReasons: timeEndReasonsForRow,
-        timeFlowDisruptors: timeFlowDisruptorsForRow,
-        timeFlowFactors: timeFlowFactorsForRow,
-      };
-      const tr = createRow(
-        newRowData,
-        ctx.onRowUpdate,
-        ctx.viewEl,
-        ctx.handleRowDelete,
-        ctx.handleRowEdit,
-      );
-      addLedgerTr = tr;
-      if (ctx.addRow && ctx.addRow.parentNode === ctx.tbody) {
-        ctx.tbody.insertBefore(tr, ctx.addRow);
-      } else if (ctx.tbody) {
-        ctx.tbody.appendChild(tr);
+        String(startTime || "").trim(),
+        String(endTime || "").trim(),
+      ].join("\0");
+      const existingSame = allRowsCache.find((r) => {
+        if (!r) return false;
+        const k = [
+          String(r.date || "").slice(0, 10),
+          String(r.taskName || "").trim(),
+          String(r.startTime || "").trim(),
+          String(r.endTime || "").trim(),
+        ].join("\0");
+        return k === contentKey;
+      });
+      /* 같은 과제·시작·마감이 이미 있으면 새 id로 또 만들지 않고 그 행을 수정 */
+      if (existingSame && isUuid(String(existingSame.id || "").trim())) {
+        const prevId = String(existingSame.id || "").trim();
+        const newRowData = {
+          ...existingSame,
+          id: prevId,
+          taskId: isUuid(tidAdd) ? tidAdd : String(existingSame.taskId || "").trim(),
+          taskName,
+          startTime,
+          endTime,
+          timeTracked,
+          productivity: ctx.productivity || productivity,
+          category,
+          date: dateStr,
+          feedback,
+          mealDetail: mealDetailForRow,
+          memoTags,
+          focus: focusValue,
+          timeRating: timeRatingForRow,
+          timeEndReasons: timeEndReasonsForRow,
+          timeFlowDisruptors: timeFlowDisruptorsForRow,
+          timeFlowFactors: timeFlowFactorsForRow,
+        };
+        const idx = allRowsCache.indexOf(existingSame);
+        if (idx >= 0) allRowsCache[idx] = newRowData;
+        else allRowsCache.push(newRowData);
+        addLedgerTr = { _rowData: newRowData };
+        ctx.onRowUpdate?.();
+      } else {
+        const newRowData = {
+          id:
+            typeof crypto !== "undefined" && crypto.randomUUID
+              ? crypto.randomUUID()
+              : `t-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          taskId: isUuid(tidAdd) ? tidAdd : "",
+          taskName,
+          startTime,
+          endTime,
+          timeTracked,
+          productivity: ctx.productivity || productivity,
+          category,
+          date: dateStr,
+          feedback,
+          mealDetail: mealDetailForRow,
+          memoTags,
+          linkedExpenseIds: [],
+          focus: focusValue,
+          habitDailyCompleted: [],
+          kpiPerformedValue: "",
+          timeRating: timeRatingForRow,
+          timeEndReasons: timeEndReasonsForRow,
+          timeFlowDisruptors: timeFlowDisruptorsForRow,
+          timeFlowFactors: timeFlowFactorsForRow,
+        };
+        const tr = createRow(
+          newRowData,
+          ctx.onRowUpdate,
+          ctx.viewEl,
+          ctx.handleRowDelete,
+          ctx.handleRowEdit,
+        );
+        addLedgerTr = tr;
+        if (ctx.addRow && ctx.addRow.parentNode === ctx.tbody) {
+          ctx.tbody.insertBefore(tr, ctx.addRow);
+        } else if (ctx.tbody) {
+          ctx.tbody.appendChild(tr);
+        }
+        /* DOM과 동일 객체를 캐시에 둠(createRow가 정규화한 행 = 저장·서버 push 기준) */
+        allRowsCache.push(tr._rowData);
+        ctx.onRowUpdate?.();
       }
-      /* DOM과 동일 객체를 캐시에 둠(createRow가 정규화한 행 = 저장·서버 push 기준) */
-      allRowsCache.push(tr._rowData);
-      ctx.onRowUpdate?.();
     }
 
     if (editTr || addCtx) {
@@ -11380,10 +11638,18 @@ export function render(opts = {}) {
         });
       }
       if (!pushResult?.ok) {
+        const why = String(pushResult?.reason || "");
+        const whyHint =
+          why === "no_session"
+            ? " 로그인이 풀렸을 수 있어요. 다시 로그인해 주세요."
+            : why && why !== "upsert_failed"
+              ? ` (${why})`
+              : "";
         void showAlertModal({
           title: "저장 안내",
           message:
-            "이 기기에는 저장됐지만 서버에 올리지 못했습니다. 네트워크를 확인한 뒤 같은 기록을 다시 저장해 주세요. (마감 시간이 사라질 수 있습니다.)",
+            "이 기기에는 저장됐지만 서버에 올리지 못했습니다. 네트워크를 확인한 뒤, 목록에서 그 카드를 열어 「수정」으로 다시 저장해 주세요. 새 기록으로 또 만들지 마세요." +
+            whyHint,
         });
       }
 
@@ -11474,6 +11740,14 @@ export function render(opts = {}) {
     }
     closeTaskLogModal();
     el._updateTotal?.();
+    } finally {
+      _taskLogSubmitBusy = false;
+      if (taskLogSubmitBtn.isConnected) {
+        taskLogSubmitBtn.disabled = false;
+        taskLogSubmitBtn.removeAttribute("aria-busy");
+        if (prevSubmitLabel) taskLogSubmitBtn.textContent = prevSubmitLabel;
+      }
+    }
   });
 
   /* 배경 탭으로 닫지 않음 — 실수로 터치 시 저장 없이 닫혀 기록이 안 남는 문제 방지 (닫기는 ×·Esc만) */
@@ -12516,11 +12790,6 @@ export function render(opts = {}) {
     );
   }
 
-  function dismissTimeLedgerPullLoadingUi() {
-    if (!el.isConnected) return;
-    hideLpTabLoading();
-  }
-
   function applyUsageListScrollToBottomIfPending(cardsWrap) {
     if (!cardsWrap || !shouldApplyUsageListScrollToBottom()) return;
     el._lpUsageListScrollToBottomPending = false;
@@ -13007,25 +13276,31 @@ export function render(opts = {}) {
       el._lpReportMountDeferred = false;
       persistActiveViewTimeFilterToSession();
       updateFilterBarVisibility();
+      showTimeLedgerPullLoadingUi("동기화 중…");
       void (async () => {
         try {
           await pullTimeLedgerTabEnterFromCloud({
             force: true,
             preferServer: true,
           });
-        } catch (_) {}
-        if (!el.isConnected || gen !== el._lpTimeSubTabPullGen) return;
-        if (timeLedgerLayoutView !== "report") return;
-        allRowsCache = loadTimeRows();
-        cachedRows = getFullRowsForFilter(true);
-        const filtered = getFilteredRows(cachedRows);
-        if (!patchTimeLedgerReportInPlace(filtered)) {
-          renderAll(filtered);
-          rememberTimeLedgerPaintSignature();
+          if (!el.isConnected || gen !== el._lpTimeSubTabPullGen) return;
+          if (timeLedgerLayoutView !== "report") return;
+          allRowsCache = loadTimeRows();
+          cachedRows = getFullRowsForFilter(true);
+          const filtered = getFilteredRows(cachedRows);
+          if (!patchTimeLedgerReportInPlace(filtered)) {
+            renderAll(filtered);
+            rememberTimeLedgerPaintSignature();
+          }
+          updateTotal();
+          persistActiveViewTimeFilterToSession();
+          updateFilterBarVisibility();
+        } catch (_) {
+        } finally {
+          if (gen === el._lpTimeSubTabPullGen) {
+            dismissTimeLedgerPullLoadingUi();
+          }
         }
-        updateTotal();
-        persistActiveViewTimeFilterToSession();
-        updateFilterBarVisibility();
       })();
       return;
     }
@@ -13049,15 +13324,21 @@ export function render(opts = {}) {
     if (userSubTabClick) {
       const gen = (el._lpTimeSubTabPullGen =
         (el._lpTimeSubTabPullGen || 0) + 1);
+      showTimeLedgerPullLoadingUi("동기화 중…");
       void (async () => {
         try {
           await pullTimeLedgerTabEnterFromCloud({
             force: true,
             preferServer: true,
           });
-        } catch (_) {}
-        if (!el.isConnected || gen !== el._lpTimeSubTabPullGen) return;
-        refreshTimeLedgerFromRemotePull({ force: true });
+          if (!el.isConnected || gen !== el._lpTimeSubTabPullGen) return;
+          refreshTimeLedgerFromRemotePull({ force: true });
+        } catch (_) {
+        } finally {
+          if (gen === el._lpTimeSubTabPullGen) {
+            dismissTimeLedgerPullLoadingUi();
+          }
+        }
       })();
     }
   }
@@ -13145,6 +13426,7 @@ export function render(opts = {}) {
     window.__lpTimeLedgerSoftRefresh = (softOpts) =>
       refreshTimeLedgerFromRemotePull(softOpts || {});
   }
+  window.__lpTimeLedgerSetSyncing = setTimeLedgerSyncingUi;
 
   signal.addEventListener(
     "abort",
@@ -13174,6 +13456,9 @@ export function render(opts = {}) {
         window.__lpTimeLedgerSoftRefresh === refreshTimeLedgerFromRemotePull
       ) {
         delete window.__lpTimeLedgerSoftRefresh;
+      }
+      if (window.__lpTimeLedgerSetSyncing === setTimeLedgerSyncingUi) {
+        delete window.__lpTimeLedgerSetSyncing;
       }
       if (window.__lpOpenTimeTaskLog === openTaskLogModalFromExternal) {
         delete window.__lpOpenTimeTaskLog;

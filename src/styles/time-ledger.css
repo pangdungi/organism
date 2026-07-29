@@ -7,6 +7,49 @@
 
 /* [auto] data-legacy 병기 선택자 — scripts/time-js-main-only-classes.mjs */
 
+/* 동기화 중 — 목록 위에 살짝 어둡게 + 안내 (기록이 사라진 것처럼 오해 방지) */
+.time-ledger-view,
+[data-legacy~="time-ledger-view"] {
+  position: relative;
+}
+
+.time-ledger-view .time-ledger-sync-overlay,
+[data-legacy~="time-ledger-view"] .time-ledger-sync-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 1rem;
+  box-sizing: border-box;
+  background: rgba(15, 23, 42, 0.28);
+  -webkit-backdrop-filter: blur(1px);
+  backdrop-filter: blur(1px);
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.time-ledger-view .time-ledger-sync-overlay[hidden],
+[data-legacy~="time-ledger-view"] .time-ledger-sync-overlay[hidden] {
+  display: none !important;
+}
+
+.time-ledger-view .time-ledger-sync-overlay__label,
+[data-legacy~="time-ledger-view"] .time-ledger-sync-overlay__label {
+  margin: 0;
+  padding: 0.65rem 1.1rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #1e293b;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.14);
+}
+
 /* 시간가계부 탭만: 본문 흰 배경 — 시간 사용내역만 표시 */
 #signin-page
   .app-main:has(
@@ -7526,6 +7569,19 @@
   padding-top: 0.65rem;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
   min-width: 0;
+}
+
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-usage-range-text-search.lp-search-bar {
+  margin: 0 0 0.55rem;
+}
+
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-usage-range-text-search
+  .lp-search-bar__input {
+  font-size: 0.875rem;
 }
 
 [data-legacy~="time-ledger-view"]
