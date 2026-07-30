@@ -3,7 +3,10 @@
  */
 
 import { getBudgetGoals } from "../views/Time.js";
-import { timeLedgerRowIsActiveLiveInProgress } from "./timeLedgerStaleInProgressClose.js";
+import {
+  timeLedgerRowEntryYmd,
+  timeLedgerRowIsActiveLiveInProgress,
+} from "./timeLedgerStaleInProgressClose.js";
 
 function normalizeDateKey(s) {
   const d = String(s || "").replace(/\//g, "-").trim().slice(0, 10);
@@ -28,6 +31,87 @@ function minutesFromHhMm(hhmm) {
 /** 해당 날짜의 예상 일정 슬롯(시작 시각 순). 과제 기록「오늘 계획」선택용 */
 export function listExpectedScheduleBlocksForDate(dateKey) {
   return collectBudgetBlocksForDate(dateKey);
+}
+
+function rowStartMinutesFromLedger(row) {
+  const st = String(row?.startTime || "").trim();
+  const m = st.match(/(?:^|[T\s])(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  return minutesFromHhMm(`${m[1]}:${m[2]}`);
+}
+
+/**
+ * 이미 기록했거나 「나중에/지금 실행」으로 닫은 오늘 계획 슬롯 키
+ * — 같은 과제명이 여러 번이면 시작 시각이 가까운 기록부터 1:1 매칭
+ * @param {string} dateKey
+ * @param {ReturnType<typeof collectBudgetBlocksForDate>} blocks
+ * @param {object[]} [ledgerRows]
+ */
+export function collectDoneExpectedScheduleBlockKeys(
+  dateKey,
+  blocks,
+  ledgerRows,
+) {
+  const dk = normalizeDateKey(dateKey);
+  const done = new Set(readDismissedNextExpectedBlockKeys(dk));
+  if (!dk || !Array.isArray(blocks) || !blocks.length) return done;
+
+  /** @type {{ name: string, startMin: number|null, used: boolean }[]} */
+  const candidates = [];
+  for (const r of Array.isArray(ledgerRows) ? ledgerRows : []) {
+    if (timeLedgerRowEntryYmd(r) !== dk) continue;
+    const name = normalizeTaskNameKey(r?.taskName);
+    if (!name) continue;
+    candidates.push({
+      name,
+      startMin: rowStartMinutesFromLedger(r),
+      used: false,
+    });
+  }
+
+  for (const block of blocks) {
+    const key = nextExpectedBudgetBlockKey(block);
+    if (!key || done.has(key)) continue;
+    const name = normalizeTaskNameKey(block.taskName);
+    if (!name) continue;
+    let best = -1;
+    let bestDist = Infinity;
+    for (let i = 0; i < candidates.length; i++) {
+      const c = candidates[i];
+      if (c.used || c.name !== name) continue;
+      const dist =
+        c.startMin != null && block.startMin != null
+          ? Math.abs(c.startMin - block.startMin)
+          : 10_000;
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = i;
+      }
+    }
+    if (best >= 0) {
+      candidates[best].used = true;
+      done.add(key);
+    }
+  }
+  return done;
+}
+
+/**
+ * 아직 안 한 오늘 계획만 (과제 기록 퀵버튼용)
+ * @param {string} dateKey
+ * @param {object[]} [ledgerRows]
+ */
+export function listOpenExpectedScheduleBlocksForDate(dateKey, ledgerRows) {
+  const blocks = collectBudgetBlocksForDate(dateKey);
+  const done = collectDoneExpectedScheduleBlockKeys(
+    dateKey,
+    blocks,
+    ledgerRows,
+  );
+  return blocks.filter((b) => {
+    const key = nextExpectedBudgetBlockKey(b);
+    return !!key && !done.has(key);
+  });
 }
 
 function collectBudgetBlocksForDate(dateKey) {

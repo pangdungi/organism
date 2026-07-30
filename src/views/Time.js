@@ -209,7 +209,7 @@ import {
 } from "../utils/expectedScheduleDetail.js";
 import {
   findNextExpectedBudgetBlockForRecording,
-  listExpectedScheduleBlocksForDate,
+  listOpenExpectedScheduleBlocksForDate,
   nextExpectedBudgetBlockKey,
   readDismissedNextExpectedBlockKeys,
   rememberDismissedNextExpectedBlockKey,
@@ -10359,7 +10359,7 @@ export function render(opts = {}) {
       hideTaskLogPlannedSlotsSection();
       return;
     }
-    const blocks = listExpectedScheduleBlocksForDate(ymd);
+    const blocks = listOpenExpectedScheduleBlocksForDate(ymd, loadTimeRows());
     if (!blocks.length) {
       hideTaskLogPlannedSlotsSection();
       return;
@@ -12107,11 +12107,15 @@ export function render(opts = {}) {
       }
       if (addCtx) {
         const dismissedKey = String(
-          addCtx.presetNextExpectedBlockKey || "",
+          addCtx.presetNextExpectedBlockKey ||
+            taskLogSelectedPlannedSlot?.key ||
+            "",
         ).trim();
         if (dismissedKey) {
           const dismissYmd =
-            usageHistoryRangeStartYmd || getLedgerFilterTodayYmd();
+            taskLogResolveYmdForPlannedSlots() ||
+            usageHistoryRangeStartYmd ||
+            getLedgerFilterTodayYmd();
           rememberDismissedNextExpectedBlockKey(dismissYmd, dismissedKey);
           if (!(el._lpDismissedNextExpectedBlocks instanceof Set)) {
             el._lpDismissedNextExpectedBlocks = new Set();
@@ -12120,6 +12124,12 @@ export function render(opts = {}) {
           el._lpDismissedNextExpectedBlocks.add(dismissedKey);
         }
         requestUsageListScrollToBottomOnce();
+      } else if (!editTr && taskLogSelectedPlannedSlot?.key) {
+        const plannedKey = String(taskLogSelectedPlannedSlot.key || "").trim();
+        const dismissYmd = taskLogResolveYmdForPlannedSlots();
+        if (plannedKey && dismissYmd) {
+          rememberDismissedNextExpectedBlockKey(dismissYmd, plannedKey);
+        }
       }
       onFilterChange();
       /*

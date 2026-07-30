@@ -2753,11 +2753,14 @@ function renderEmotionDayJournal(entries) {
     head.className = "lp-tr2-emotion-day-item-head";
     const emotion = document.createElement("strong");
     emotion.className = "lp-tr2-emotion-day-item-emotion";
-    emotion.textContent = e.subLabel;
+    emotion.textContent =
+      e.subLabel && e.subLabel !== e.categoryLabel
+        ? e.subLabel
+        : e.categoryLabel;
     const meta = document.createElement("span");
     meta.className = "lp-tr2-emotion-day-item-meta";
     const metaParts = [
-      e.categoryLabel,
+      e.subLabel && e.subLabel !== e.categoryLabel ? e.categoryLabel : null,
       e.startLabel || null,
       e.minutes > 0 ? formatIntegerMinutesDurationKo(e.minutes) : null,
     ].filter(Boolean);
@@ -2815,7 +2818,7 @@ function appendEmotionPolaritySection(
           : "부정 감정 대분류 · 트리거 · 시간대 패턴"
         : isPositive
           ? "긍정 감정·시간대 패턴"
-          : "부정 감정 대분류·세부·트리거·시간대 패턴",
+          : "부정 감정 · 트리거 · 시간대 패턴",
   );
 
   if (!snap.hasData) {
@@ -2890,7 +2893,7 @@ function appendEmotionPolaritySection(
   donutBlock.appendChild(renderEmotionCategoryDonut(snap));
   sec.appendChild(donutBlock);
 
-  if (!isPositive && !isWeekView) {
+  if (!isPositive && !isWeekView && snap.subEmotions?.length) {
     const subBlock = createRatingBlock(
       "세부 감정 Top 5",
       "가장 자주 기록된 세부 감정",
@@ -3757,7 +3760,7 @@ function mountReadingSection(scrollWrap, rows) {
       li.className = "lp-tr2-reading-book-item";
       const name = document.createElement("span");
       name.className = "lp-tr2-reading-book-title";
-      name.textContent = book.title;
+      name.textContent = `📖 ${book.title}`;
       const meta = document.createElement("span");
       meta.className = "lp-tr2-reading-book-meta";
       meta.textContent = formatIntegerMinutesDurationKo(book.minutes);
@@ -3769,7 +3772,7 @@ function mountReadingSection(scrollWrap, rows) {
       li.className = "lp-tr2-reading-book-item lp-tr2-reading-book-item--untitled";
       const name = document.createElement("span");
       name.className = "lp-tr2-reading-book-title";
-      name.textContent = "(도서명 없음)";
+      name.textContent = "📖 (도서명 없음)";
       const meta = document.createElement("span");
       meta.className = "lp-tr2-reading-book-meta";
       meta.textContent = formatIntegerMinutesDurationKo(snap.untitledMinutes);

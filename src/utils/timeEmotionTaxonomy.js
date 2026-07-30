@@ -1,5 +1,5 @@
 /**
- * 감정적이기 — 부정 5대분류·25소분류 / 긍정 5감정
+ * 감정적이기 — 부정 5감정(대분류만) / 긍정 5감정
  * (time_rating + memo_tags lp-emotion-sub)
  */
 
@@ -14,42 +14,47 @@ export const EMOTION_CATEGORIES = [
   {
     rating: 1,
     id: "anger",
-    label: "분노",
+    label: "짜증·분노",
     iconFile: "anger.png",
     chartColor: "#D4645C",
-    subs: ["짜증", "화남", "억울함", "원망", "질투"],
+    subs: ["짜증·분노"],
+    selectOnly: true,
   },
   {
     rating: 2,
     id: "fear",
-    label: "두려움",
+    label: "불안·걱정",
     iconFile: "fear.png",
     chartColor: "#7B6BAE",
-    subs: ["불안", "공포", "긴장", "초조", "걱정"],
+    subs: ["불안·걱정"],
+    selectOnly: true,
   },
   {
     rating: 3,
     id: "sadness",
-    label: "슬픔",
+    label: "슬픔·우울",
     iconFile: "sadness.png",
     chartColor: "#5A8FC4",
-    subs: ["우울", "외로움", "절망", "무기력", "허무함"],
+    subs: ["슬픔·우울"],
+    selectOnly: true,
   },
   {
     rating: 4,
     id: "shame",
-    label: "수치",
+    label: "죄책감·수치",
     iconFile: "shame.png",
     chartColor: "#C46B8A",
-    subs: ["부끄러움", "죄책감", "자기혐오", "굴욕감", "후회"],
+    subs: ["죄책감·수치"],
+    selectOnly: true,
   },
   {
     rating: 5,
     id: "discomfort",
-    label: "불쾌",
+    label: "무기력",
     iconFile: "discomfort.png",
     chartColor: "#8F9A58",
-    subs: ["지루함", "혼란", "실망", "답답함", "좌절"],
+    subs: ["무기력"],
+    selectOnly: true,
   },
 ];
 
@@ -207,14 +212,12 @@ export function parseEmotionFromRow(row, polarity = "negative") {
     return { category: null, subLabel, isModern: false, isLegacy: false };
   }
   if (category.selectOnly) {
-    const isModern =
-      !subLabel || subLabel === category.label || category.subs.includes(subLabel);
-    const isLegacy = false;
+    /* 대분류만 쓰는 감정 — 예전 세부 태그가 있어도 대분류 기록으로 인정 */
     return {
       category,
-      subLabel: subLabel || category.label,
-      isModern,
-      isLegacy,
+      subLabel: category.label,
+      isModern: true,
+      isLegacy: false,
     };
   }
   const isModern = !!subLabel && category.subs.includes(subLabel);
