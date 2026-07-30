@@ -1194,25 +1194,25 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   width: 100%;
 }
 /* 과제 기록·일정 모달: iOS date input 터치 영역이 위 과제 필드까지 겹치는 문제 방지 */
-.time-task-log-datetime-fields-wrap > .time-task-log-field:first-child,
+.time-task-log-datetime-fields-wrap > .time-task-log-task-field,
 [data-legacy~="time-task-log-datetime-fields-wrap"]
-  > [data-legacy~="time-task-log-field"]:first-child {
+  > [data-legacy~="time-task-log-task-field"] {
   position: relative;
   z-index: 6;
   isolation: isolate;
 }
 .time-task-log-datetime-fields-wrap
-  > .time-task-log-field:first-child
+  > .time-task-log-task-field
   .time-task-log-task-dropdown,
 [data-legacy~="time-task-log-datetime-fields-wrap"]
-  > [data-legacy~="time-task-log-field"]:first-child
+  > [data-legacy~="time-task-log-task-field"]
   [data-legacy~="time-task-log-task-dropdown"] {
   position: relative;
   z-index: 7;
 }
-.time-task-log-datetime-fields-wrap > .time-task-log-field:nth-child(2),
+.time-task-log-datetime-fields-wrap > .time-task-log-datetime-onerow,
 [data-legacy~="time-task-log-datetime-fields-wrap"]
-  > [data-legacy~="time-task-log-field"]:nth-child(2) {
+  > [data-legacy~="time-task-log-datetime-onerow"] {
   position: relative;
   z-index: 1;
   isolation: isolate;
@@ -2760,7 +2760,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   box-sizing: border-box;
 }
 
-/* 과제 기록 모달 — 드롭다운 열림: 모달 높이 유지, 패널만 본문 위에 오버레이 */
+/* 과제 기록 모달 — 드롭다운 열림: 다른 칸 숨기지 않고 패널만 위에 올림 */
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   .time-task-log-scroll-area.is-task-picker-open,
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
@@ -2768,71 +2768,17 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   )
   [data-legacy~="time-task-log-scroll-area"].is-task-picker-open {
   position: relative;
-  overflow: hidden;
 }
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   .time-task-log-scroll-area.is-task-picker-open
   .time-task-log-datetime-fields-wrap
-  > .time-task-log-field:not(:first-child),
-.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
-  .time-task-log-scroll-area.is-task-picker-open
-  [data-legacy~="time-task-log-memo-section"],
-.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
-  .time-task-log-scroll-area.is-task-picker-open
-  [data-legacy~="time-task-log-content-type-section"],
-.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
-  .time-task-log-scroll-area.is-task-picker-open
-  [data-legacy~="time-task-log-rating-section"],
-.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
-  .time-task-log-scroll-area.is-task-picker-open
-  [data-legacy~="time-task-log-kpi-todos-section"],
-.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
-  .time-task-log-scroll-area.is-task-picker-open
-  [data-legacy~="time-task-log-daily-todos-section"],
+  > .time-task-log-task-field,
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
     .lp-calendar-budget-add-modal
   )
   [data-legacy~="time-task-log-scroll-area"].is-task-picker-open
   [data-legacy~="time-task-log-datetime-fields-wrap"]
-  > [data-legacy~="time-task-log-field"]:not(:first-child),
-[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
-    .lp-calendar-budget-add-modal
-  )
-  [data-legacy~="time-task-log-scroll-area"].is-task-picker-open
-  [data-legacy~="time-task-log-memo-section"],
-[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
-    .lp-calendar-budget-add-modal
-  )
-  [data-legacy~="time-task-log-scroll-area"].is-task-picker-open
-  [data-legacy~="time-task-log-content-type-section"],
-[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
-    .lp-calendar-budget-add-modal
-  )
-  [data-legacy~="time-task-log-scroll-area"].is-task-picker-open
-  [data-legacy~="time-task-log-rating-section"],
-[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
-    .lp-calendar-budget-add-modal
-  )
-  [data-legacy~="time-task-log-scroll-area"].is-task-picker-open
-  [data-legacy~="time-task-log-kpi-todos-section"],
-[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
-    .lp-calendar-budget-add-modal
-  )
-  [data-legacy~="time-task-log-scroll-area"].is-task-picker-open
-  [data-legacy~="time-task-log-daily-todos-section"] {
-  visibility: hidden;
-  pointer-events: none;
-}
-.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
-  .time-task-log-scroll-area.is-task-picker-open
-  .time-task-log-datetime-fields-wrap
-  > .time-task-log-field:first-child,
-[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
-    .lp-calendar-budget-add-modal
-  )
-  [data-legacy~="time-task-log-scroll-area"].is-task-picker-open
-  [data-legacy~="time-task-log-datetime-fields-wrap"]
-  > [data-legacy~="time-task-log-field"]:first-child {
+  > [data-legacy~="time-task-log-task-field"] {
   position: relative;
   z-index: 40;
 }

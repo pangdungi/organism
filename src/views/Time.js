@@ -199,6 +199,7 @@ import {
 } from "../utils/expectedScheduleDetail.js";
 import {
   findNextExpectedBudgetBlockForRecording,
+  listExpectedScheduleBlocksForDate,
   nextExpectedBudgetBlockKey,
   readDismissedNextExpectedBlockKeys,
   rememberDismissedNextExpectedBlockKey,
@@ -7738,7 +7739,11 @@ export function render(opts = {}) {
       <div data-legacy="time-task-setup-body time-task-log-body">
         <div data-legacy="time-task-log-scroll-area">
         <div data-legacy="time-task-log-datetime-fields-wrap">
-          <div data-legacy="time-task-log-field">
+          <div data-legacy="time-task-log-planned-slots-section" hidden>
+            <span data-legacy="time-task-log-section-label time-task-log-planned-slots-label">오늘 계획 (퀵)</span>
+            <div data-legacy="time-task-log-planned-slots-btns" role="group" aria-label="오늘 예상 일정"></div>
+          </div>
+          <div data-legacy="time-task-log-field time-task-log-task-field">
             <label>이 시간에 할 행동</label>
             <div data-legacy="time-task-log-task-wrap"></div>
           </div>
@@ -7919,6 +7924,14 @@ export function render(opts = {}) {
   const taskLogTaskWrap = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-task-wrap"]',
   );
+  const taskLogPlannedSlotsSection = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-planned-slots-section"]',
+  );
+  const taskLogPlannedSlotsBtns = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-planned-slots-btns"]',
+  );
+  /** @type {{ key: string, taskName: string, timeIdx: number, startHhMm: string, endHhMm: string, memo: string, detail: string, plannedTodoIds: string[] } | null} */
+  let taskLogSelectedPlannedSlot = null;
   const taskLogStartInput = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-start"]',
   );
@@ -9266,12 +9279,17 @@ export function render(opts = {}) {
     el?.addEventListener("change", () => {
       if (el === taskLogDateStart && !taskLogEditTr) {
         applyTaskLogStartFromLedgerForDate(taskLogResolveYmdForSync());
+        taskLogSelectedPlannedSlot = null;
+        refreshTaskLogPlannedSlotsSection({ preferPreset: false });
       } else {
         syncStartToHidden();
         syncEndToHidden();
       }
       const tn = taskLogTaskDropdown?._getValue?.() || "";
-      if (tn) refreshKpiTodosInLogModal();
+      if (tn) {
+        refreshKpiTodosInLogModal();
+        refreshTaskCompletionTodosInLogModal();
+      }
       syncTaskLogGapFillBtnVisibility();
     });
     el?.addEventListener("focusout", (ev) => {
@@ -10240,28 +10258,26 @@ export function render(opts = {}) {
   }
 
   function onTaskSelectedForLog(taskName) {
+    const name = String(taskName || "").trim();
+    if (
+      taskLogSelectedPlannedSlot &&
+      String(taskLogSelectedPlannedSlot.taskName || "").trim() !== name
+    ) {
+      taskLogSelectedPlannedSlot = null;
+      syncTaskLogPlannedSlotBtnSelection();
+    }
     refreshKpiTodosInLogModal();
     refreshTaskCompletionTodosInLogModal();
     void syncTaskLogKpiListsFromCloudIfStale();
-    updateTaskLogMealDetailVisibility(taskName);
+    updateTaskLogMealDetailVisibility(name);
     syncTaskLogRatingSectionUi();
     syncTaskLogGapFillBtnVisibility();
   }
 
   let taskLogKpiListsSyncGen = 0;
 
-  function resolveTaskLogPlannedTodoIdFilter() {
-    const fromCtx = taskLogAddContext?.presetPlannedTodoIds;
-    if (Array.isArray(fromCtx) && fromCtx.length) {
-      return fromCtx.map((x) => String(x || "").trim()).filter(Boolean);
-    }
-    const taskName = String(
-      taskLogTaskDropdown?._getValue?.() ||
-        taskLogAddContext?.presetTaskName ||
-        "",
-    ).trim();
-    if (!taskName) return [];
-    const ymd = String(
+  function taskLogResolveYmdForPlannedSlots() {
+    return String(
       taskLogDateStart?.value ||
         taskLogAddContext?.recordDateKey ||
         "",
@@ -10269,8 +10285,193 @@ export function render(opts = {}) {
       .replace(/\//g, "-")
       .trim()
       .slice(0, 10);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return [];
-    return findRelevantPlannedTodoIdsForRecording(ymd, taskName);
+  }
+
+  function hideTaskLogPlannedSlotsSection() {
+    taskLogSelectedPlannedSlot = null;
+    if (taskLogPlannedSlotsBtns) taskLogPlannedSlotsBtns.replaceChildren();
+    if (taskLogPlannedSlotsSection) taskLogPlannedSlotsSection.hidden = true;
+  }
+
+  function syncTaskLogPlannedSlotBtnSelection() {
+    const key = taskLogSelectedPlannedSlot?.key || "";
+    taskLogPlannedSlotsBtns
+      ?.querySelectorAll('[data-legacy~="time-task-log-planned-slot-btn"]')
+      .forEach((btn) => {
+        const on = String(btn.getAttribute("data-slot-key") || "") === key;
+        lpTokenToggle(btn, "is-on", on);
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+  }
+
+  function applyTaskLogPlannedSlotSelection(slot, { toggleOff = true } = {}) {
+    if (!slot) return;
+    const key = String(slot.key || nextExpectedBudgetBlockKey(slot) || "").trim();
+    if (
+      toggleOff &&
+      taskLogSelectedPlannedSlot &&
+      taskLogSelectedPlannedSlot.key === key
+    ) {
+      taskLogSelectedPlannedSlot = null;
+      syncTaskLogPlannedSlotBtnSelection();
+      refreshTaskCompletionTodosInLogModal();
+      return;
+    }
+    taskLogSelectedPlannedSlot = {
+      key,
+      taskName: String(slot.taskName || "").trim(),
+      timeIdx: Number(slot.timeIdx) || 0,
+      startHhMm: String(slot.startHhMm || "").trim(),
+      endHhMm: String(slot.endHhMm || "").trim(),
+      memo: String(slot.memo || "").trim(),
+      detail: String(slot.detail || "").trim(),
+      plannedTodoIds: Array.isArray(slot.plannedTodoIds)
+        ? slot.plannedTodoIds.map((x) => String(x || "").trim()).filter(Boolean)
+        : [],
+    };
+    const taskName = taskLogSelectedPlannedSlot.taskName;
+    if (taskName) {
+      taskLogTaskDropdown?._setValue?.(taskName);
+      applyExpectedSchedulePresetsToTaskLogModal({
+        presetTaskName: taskName,
+        presetMemo: taskLogSelectedPlannedSlot.memo,
+        presetDetail: taskLogSelectedPlannedSlot.detail,
+        presetPlannedTodoIds: taskLogSelectedPlannedSlot.plannedTodoIds,
+      });
+      refreshKpiTodosInLogModal();
+      refreshTaskCompletionTodosInLogModal();
+      void syncTaskLogKpiListsFromCloudIfStale();
+      updateTaskLogMealDetailVisibility(taskName);
+      syncTaskLogRatingSectionUi();
+      syncTaskLogGapFillBtnVisibility();
+    } else {
+      refreshTaskCompletionTodosInLogModal();
+    }
+    syncTaskLogPlannedSlotBtnSelection();
+  }
+
+  function refreshTaskLogPlannedSlotsSection(opts = {}) {
+    if (!taskLogPlannedSlotsSection || !taskLogPlannedSlotsBtns) return;
+    if (taskLogEditTr) {
+      hideTaskLogPlannedSlotsSection();
+      return;
+    }
+    const ymd = taskLogResolveYmdForPlannedSlots();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
+      hideTaskLogPlannedSlotsSection();
+      return;
+    }
+    const blocks = listExpectedScheduleBlocksForDate(ymd);
+    if (!blocks.length) {
+      hideTaskLogPlannedSlotsSection();
+      return;
+    }
+    const prevKey = taskLogSelectedPlannedSlot?.key || "";
+    taskLogPlannedSlotsBtns.replaceChildren();
+    for (const block of blocks) {
+      const key = nextExpectedBudgetBlockKey(block);
+      if (!key) continue;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      lpSetClasses(btn, "time-task-log-planned-slot-btn");
+      btn.setAttribute("data-slot-key", key);
+      btn.setAttribute("aria-pressed", "false");
+      const name = String(block.taskName || "").trim();
+      const opt = getTaskOptionByName(name);
+      const iconSrc = resolveTimeTaskDisplayIconSrc(name, {
+        category: opt?.category,
+        productivity: opt?.productivity,
+        iconKey: opt?.iconKey || "",
+      });
+      const iconWrap = document.createElement("span");
+      iconWrap.setAttribute("data-legacy", "time-task-log-planned-slot-btn-icon");
+      iconWrap.setAttribute("aria-hidden", "true");
+      if (iconSrc) {
+        const img = document.createElement("img");
+        img.src = iconSrc;
+        img.alt = "";
+        img.draggable = false;
+        iconWrap.appendChild(img);
+      }
+      const label = document.createElement("span");
+      label.setAttribute("data-legacy", "time-task-log-planned-slot-btn-label");
+      label.textContent = name;
+      btn.appendChild(iconWrap);
+      btn.appendChild(label);
+      btn.setAttribute("aria-label", name);
+      btn.addEventListener("click", () => {
+        applyTaskLogPlannedSlotSelection({ ...block, key });
+      });
+      taskLogPlannedSlotsBtns.appendChild(btn);
+    }
+    taskLogPlannedSlotsSection.hidden = !taskLogPlannedSlotsBtns.childElementCount;
+    if (!taskLogPlannedSlotsBtns.childElementCount) {
+      taskLogSelectedPlannedSlot = null;
+      return;
+    }
+    if (prevKey) {
+      const still = blocks.some((b) => nextExpectedBudgetBlockKey(b) === prevKey);
+      if (!still) taskLogSelectedPlannedSlot = null;
+    }
+    if (!taskLogSelectedPlannedSlot && opts.preferPreset !== false) {
+      const presetIds = Array.isArray(taskLogAddContext?.presetPlannedTodoIds)
+        ? taskLogAddContext.presetPlannedTodoIds
+            .map((x) => String(x || "").trim())
+            .filter(Boolean)
+        : [];
+      const presetTask = String(
+        taskLogAddContext?.presetTaskName || "",
+      ).trim();
+      if (presetTask || presetIds.length) {
+        const match = blocks.find((b) => {
+          const nameOk =
+            !presetTask ||
+            String(b.taskName || "").trim() === presetTask;
+          if (!nameOk) return false;
+          if (!presetIds.length) return true;
+          const ids = Array.isArray(b.plannedTodoIds) ? b.plannedTodoIds : [];
+          return (
+            ids.length === presetIds.length &&
+            presetIds.every((id) => ids.includes(id))
+          );
+        });
+        if (match) {
+          taskLogSelectedPlannedSlot = {
+            key: nextExpectedBudgetBlockKey(match),
+            taskName: String(match.taskName || "").trim(),
+            timeIdx: Number(match.timeIdx) || 0,
+            startHhMm: String(match.startHhMm || "").trim(),
+            endHhMm: String(match.endHhMm || "").trim(),
+            memo: String(match.memo || "").trim(),
+            detail: String(match.detail || "").trim(),
+            plannedTodoIds: Array.isArray(match.plannedTodoIds)
+              ? match.plannedTodoIds
+                  .map((x) => String(x || "").trim())
+                  .filter(Boolean)
+              : [],
+          };
+        }
+      }
+    }
+    syncTaskLogPlannedSlotBtnSelection();
+  }
+
+  /** 퀵버튼(오늘 계획)·「지금 실행하기」로 고른 경우만 계획 할일 필터. 그 외는 일반 과제 기록. */
+  function resolveTaskLogPlannedTodoIdFilter() {
+    if (
+      taskLogSelectedPlannedSlot &&
+      Array.isArray(taskLogSelectedPlannedSlot.plannedTodoIds)
+    ) {
+      return taskLogSelectedPlannedSlot.plannedTodoIds
+        .map((x) => String(x || "").trim())
+        .filter(Boolean);
+    }
+    const fromCtx = taskLogAddContext?.presetPlannedTodoIds;
+    if (!Array.isArray(fromCtx) || !fromCtx.length) return [];
+    const presetTask = String(taskLogAddContext?.presetTaskName || "").trim();
+    const taskName = String(taskLogTaskDropdown?._getValue?.() || "").trim();
+    if (presetTask && taskName && presetTask !== taskName) return [];
+    return fromCtx.map((x) => String(x || "").trim()).filter(Boolean);
   }
 
   function getTaskCompletionTodoInfoForTaskLog() {
@@ -10965,6 +11166,7 @@ export function render(opts = {}) {
     taskLogEditTr = null;
     taskLogEditExclude = null;
     pendingEditStartTime = "";
+    taskLogSelectedPlannedSlot = null;
     taskLogTitleEl.textContent = "과제 기록";
     taskLogSubmitBtn.textContent = "기록";
     if (taskLogFooterEl) taskLogFooterEl.style.display = "";
@@ -11033,6 +11235,7 @@ export function render(opts = {}) {
         if (header) header.setAttribute("aria-expanded", "false");
       });
     applyTaskLogModalDefaultsForNewEntry();
+    refreshTaskLogPlannedSlotsSection();
     const presetTask = String(addContext?.presetTaskName || "").trim();
     if (presetTask) {
       taskLogTaskDropdown._setValue?.(presetTask);
@@ -11048,6 +11251,7 @@ export function render(opts = {}) {
         onTaskSelectedForLog(presetTask);
       }
       applyExpectedSchedulePresetsToTaskLogModal(addContext);
+      refreshTaskLogPlannedSlotsSection();
       requestAnimationFrame(() => {
         applyTaskLogModalDefaultsForNewEntry();
         if (presetTask) {
@@ -11055,6 +11259,7 @@ export function render(opts = {}) {
           onTaskSelectedForLog(presetTask);
         }
         applyExpectedSchedulePresetsToTaskLogModal(addContext);
+        refreshTaskLogPlannedSlotsSection();
       });
     });
     setTimeout(() => {
@@ -11065,6 +11270,7 @@ export function render(opts = {}) {
         onTaskSelectedForLog(presetTask);
       }
       applyExpectedSchedulePresetsToTaskLogModal(addContext);
+      refreshTaskLogPlannedSlotsSection();
     }, 0);
     setTaskLogQuickAdjustActive(
       taskLogModal.querySelector(
@@ -11109,6 +11315,7 @@ export function render(opts = {}) {
 
     taskLogAddContext = null;
     taskLogEditTr = tr;
+    hideTaskLogPlannedSlotsSection();
     const recKey =
       recordDate ||
       normalizeDateForCompare(data.date || "") ||

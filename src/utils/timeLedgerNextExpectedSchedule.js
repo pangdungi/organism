@@ -25,6 +25,11 @@ function minutesFromHhMm(hhmm) {
   return h * 60 + m;
 }
 
+/** 해당 날짜의 예상 일정 슬롯(시작 시각 순). 과제 기록「오늘 계획」선택용 */
+export function listExpectedScheduleBlocksForDate(dateKey) {
+  return collectBudgetBlocksForDate(dateKey);
+}
+
 function collectBudgetBlocksForDate(dateKey) {
   const dk = normalizeDateKey(dateKey);
   if (!dk) return [];
