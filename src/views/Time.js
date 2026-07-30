@@ -441,9 +441,114 @@ function parseBudgetTimeToNormalizedHhMm(s) {
   return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
 }
 
+/** 예상 일정 슬롯별 계획 할일 id 목록 정규화 */
+export function normalizeSchedulePlannedTodoIdsEntry(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const x of raw) {
+    const id = String(x || "").trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
+}
+
+function padSchedulePlannedTodoIdsArray(arr, len) {
+  const out = Array.isArray(arr)
+    ? arr.map((slot) => normalizeSchedulePlannedTodoIdsEntry(slot))
+    : [];
+  while (out.length < len) out.push([]);
+  return out;
+}
+
+/** 해당 날짜·과제·슬롯의 계획 할일 id */
+export function getPlannedTodoIdsFromBudgetSlot(dateStr, taskName, timeIdx) {
+  const dk = String(dateStr || "")
+    .replace(/\//g, "-")
+    .trim()
+    .slice(0, 10);
+  const name = String(taskName || "").trim();
+  const ix = Number(timeIdx);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dk) || !name || !Number.isFinite(ix) || ix < 0) {
+    return [];
+  }
+  const goal = getBudgetGoals(dk)[name];
+  if (!goal) return [];
+  let n = 0;
+  if (Array.isArray(goal.scheduledTimes)) n = goal.scheduledTimes.length;
+  else if (goal.scheduledTime) n = 1;
+  const padded = padSchedulePlannedTodoIdsArray(goal.schedulePlannedTodoIds, n);
+  return padded[ix] || [];
+}
+
+/**
+ * 과제 기록용 — 오늘 예상 일정 중 이 과제에 골라 둔 할일 id.
+ * 진행 중 → 곧 시작 → 그날 첫 계획 순.
+ */
+export function findRelevantPlannedTodoIdsForRecording(
+  dateStr,
+  taskName,
+  nowMin = null,
+) {
+  const dk = String(dateStr || "")
+    .replace(/\//g, "-")
+    .trim()
+    .slice(0, 10);
+  const name = String(taskName || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dk) || !name) return [];
+  const goal = getBudgetGoals(dk)[name];
+  if (!goal) return [];
+  let scheduledTimes = [];
+  if (Array.isArray(goal.scheduledTimes)) {
+    scheduledTimes = goal.scheduledTimes;
+  } else if (goal.scheduledTime) {
+    scheduledTimes = [String(goal.scheduledTime)];
+  }
+  const planned = padSchedulePlannedTodoIdsArray(
+    goal.schedulePlannedTodoIds,
+    scheduledTimes.length,
+  );
+  const slots = [];
+  for (let i = 0; i < scheduledTimes.length; i++) {
+    const ids = planned[i] || [];
+    if (!ids.length) continue;
+    const parts = String(scheduledTimes[i] || "").trim().split("-");
+    if (parts.length < 2) continue;
+    const st = parseBudgetTimeToNormalizedHhMm(parts[0]);
+    const et = parseBudgetTimeToNormalizedHhMm(parts[1]);
+    if (!st || !et) continue;
+    const [h1, m1] = st.split(":").map((x) => parseInt(x, 10));
+    const [h2, m2] = et.split(":").map((x) => parseInt(x, 10));
+    slots.push({
+      i,
+      ids,
+      startMin: h1 * 60 + m1,
+      endMin: h2 * 60 + m2,
+    });
+  }
+  if (!slots.length) return [];
+  const nm =
+    Number.isFinite(nowMin) && nowMin != null
+      ? nowMin
+      : (() => {
+          const d = new Date();
+          return d.getHours() * 60 + d.getMinutes();
+        })();
+  const inProgress = slots.find((s) => nm >= s.startMin && nm < s.endMin);
+  if (inProgress) return inProgress.ids;
+  const upcoming = slots
+    .filter((s) => s.startMin >= nm)
+    .sort((a, b) => a.startMin - b.startMin)[0];
+  if (upcoming) return upcoming.ids;
+  return slots[0].ids;
+}
+
 /**
  * 일간 타임블록(캘린더)용: 과제명·예상 시작~마감·메모·상세명을 goals 에 추가.
  * scheduleMemos=사용자 메모, scheduleDetails=식단·대화·외출·콘텐츠 상세명
+ * schedulePlannedTodoIds=이 슬롯에서 하기로 고른 할일 id[]
  * 서버 반영은 time_daily_budget_days — notify 후 호출부에서 sync 권장.
  */
 export function appendBudgetScheduleBlock(
@@ -490,6 +595,7 @@ export function appendBudgetScheduleBlock(
     let scheduledTimes = [];
     let scheduleMemos = [];
     let scheduleDetails = [];
+    let schedulePlannedTodoIds = [];
     if (Array.isArray(existing.scheduledTimes)) {
       scheduledTimes = [...existing.scheduledTimes];
       scheduleMemos = Array.isArray(existing.scheduleMemos)
@@ -498,6 +604,9 @@ export function appendBudgetScheduleBlock(
       scheduleDetails = Array.isArray(existing.scheduleDetails)
         ? [...existing.scheduleDetails]
         : [];
+      schedulePlannedTodoIds = Array.isArray(existing.schedulePlannedTodoIds)
+        ? [...existing.schedulePlannedTodoIds]
+        : [];
     } else if (existing.scheduledTime && String(existing.scheduledTime).trim()) {
       scheduledTimes = [String(existing.scheduledTime).trim()];
       scheduleMemos = Array.isArray(existing.scheduleMemos)
@@ -505,6 +614,9 @@ export function appendBudgetScheduleBlock(
         : [];
       scheduleDetails = Array.isArray(existing.scheduleDetails)
         ? [...existing.scheduleDetails]
+        : [];
+      schedulePlannedTodoIds = Array.isArray(existing.schedulePlannedTodoIds)
+        ? [...existing.schedulePlannedTodoIds]
         : [];
     }
     let scheduledSavedAts = Array.isArray(existing.scheduledSavedAts)
@@ -519,16 +631,24 @@ export function appendBudgetScheduleBlock(
     while (scheduledSavedAts.length < scheduledTimes.length) {
       scheduledSavedAts.push(0);
     }
+    schedulePlannedTodoIds = padSchedulePlannedTodoIdsArray(
+      schedulePlannedTodoIds,
+      scheduledTimes.length,
+    );
     scheduledTimes.push(`${st}-${et}`);
     scheduleMemos.push(String(memo || "").trim());
     scheduleDetails.push(String(detail || "").trim());
     scheduledSavedAts.push(Date.now());
+    schedulePlannedTodoIds.push(
+      normalizeSchedulePlannedTodoIdsEntry(opts.plannedTodoIds),
+    );
     const next = {
       ...existing,
       scheduledTimes,
       scheduleMemos,
       scheduleDetails,
       scheduledSavedAts,
+      schedulePlannedTodoIds,
     };
     delete next.scheduledTime;
     all[dk][name] = next;
@@ -572,6 +692,7 @@ export function clearBudgetScheduleBlocksForDate(dateStr) {
         scheduleMemos: _sm,
         scheduleDetails: _sd,
         scheduledSavedAts: _ss,
+        schedulePlannedTodoIds: _sp,
         ...rest
       } = entry;
       const hasSchedule =
@@ -666,6 +787,7 @@ export function removeBudgetScheduleBlockAtIndex(dateStr, taskName, timeIdx, opt
     let scheduledTimes = [];
     let scheduleMemos = [];
     let scheduleDetails = [];
+    let schedulePlannedTodoIds = [];
     if (Array.isArray(existing.scheduledTimes)) {
       scheduledTimes = [...existing.scheduledTimes];
       scheduleMemos = Array.isArray(existing.scheduleMemos)
@@ -674,6 +796,9 @@ export function removeBudgetScheduleBlockAtIndex(dateStr, taskName, timeIdx, opt
       scheduleDetails = Array.isArray(existing.scheduleDetails)
         ? [...existing.scheduleDetails]
         : [];
+      schedulePlannedTodoIds = Array.isArray(existing.schedulePlannedTodoIds)
+        ? [...existing.schedulePlannedTodoIds]
+        : [];
     } else if (existing.scheduledTime && String(existing.scheduledTime).trim()) {
       scheduledTimes = [String(existing.scheduledTime).trim()];
       scheduleMemos = Array.isArray(existing.scheduleMemos)
@@ -681,6 +806,9 @@ export function removeBudgetScheduleBlockAtIndex(dateStr, taskName, timeIdx, opt
         : [];
       scheduleDetails = Array.isArray(existing.scheduleDetails)
         ? [...existing.scheduleDetails]
+        : [];
+      schedulePlannedTodoIds = Array.isArray(existing.schedulePlannedTodoIds)
+        ? [...existing.schedulePlannedTodoIds]
         : [];
     }
     let scheduledSavedAts = Array.isArray(existing.scheduledSavedAts)
@@ -695,6 +823,10 @@ export function removeBudgetScheduleBlockAtIndex(dateStr, taskName, timeIdx, opt
     while (scheduledSavedAts.length < scheduledTimes.length) {
       scheduledSavedAts.push(0);
     }
+    schedulePlannedTodoIds = padSchedulePlannedTodoIdsArray(
+      schedulePlannedTodoIds,
+      scheduledTimes.length,
+    );
     if (idx >= scheduledTimes.length) {
       return { ok: false, error: "항목을 찾지 못했습니다." };
     }
@@ -702,12 +834,14 @@ export function removeBudgetScheduleBlockAtIndex(dateStr, taskName, timeIdx, opt
     scheduleMemos.splice(idx, 1);
     scheduleDetails.splice(idx, 1);
     scheduledSavedAts.splice(idx, 1);
+    schedulePlannedTodoIds.splice(idx, 1);
     const next = {
       ...existing,
       scheduledTimes,
       scheduleMemos,
       scheduleDetails,
       scheduledSavedAts,
+      schedulePlannedTodoIds,
     };
     delete next.scheduledTime;
     if (scheduledTimes.length === 0) {
@@ -715,6 +849,7 @@ export function removeBudgetScheduleBlockAtIndex(dateStr, taskName, timeIdx, opt
       delete next.scheduleMemos;
       delete next.scheduleDetails;
       delete next.scheduledSavedAts;
+      delete next.schedulePlannedTodoIds;
     }
     if (Object.keys(next).length === 0) {
       delete all[dk][name];
@@ -805,6 +940,7 @@ export function updateBudgetScheduleBlockAtIndex(
       let scheduledTimes = [];
       let scheduleMemos = [];
       let scheduleDetails = [];
+      let schedulePlannedTodoIds = [];
       if (Array.isArray(existing.scheduledTimes)) {
         scheduledTimes = [...existing.scheduledTimes];
         scheduleMemos = Array.isArray(existing.scheduleMemos)
@@ -813,6 +949,9 @@ export function updateBudgetScheduleBlockAtIndex(
         scheduleDetails = Array.isArray(existing.scheduleDetails)
           ? [...existing.scheduleDetails]
           : [];
+        schedulePlannedTodoIds = Array.isArray(existing.schedulePlannedTodoIds)
+          ? [...existing.schedulePlannedTodoIds]
+          : [];
       } else if (existing.scheduledTime && String(existing.scheduledTime).trim()) {
         scheduledTimes = [String(existing.scheduledTime).trim()];
         scheduleMemos = Array.isArray(existing.scheduleMemos)
@@ -820,6 +959,9 @@ export function updateBudgetScheduleBlockAtIndex(
           : [];
         scheduleDetails = Array.isArray(existing.scheduleDetails)
           ? [...existing.scheduleDetails]
+          : [];
+        schedulePlannedTodoIds = Array.isArray(existing.schedulePlannedTodoIds)
+          ? [...existing.schedulePlannedTodoIds]
           : [];
       }
       let scheduledSavedAts = Array.isArray(existing.scheduledSavedAts)
@@ -834,29 +976,40 @@ export function updateBudgetScheduleBlockAtIndex(
       while (scheduledSavedAts.length < scheduledTimes.length) {
         scheduledSavedAts.push(0);
       }
+      schedulePlannedTodoIds = padSchedulePlannedTodoIdsArray(
+        schedulePlannedTodoIds,
+        scheduledTimes.length,
+      );
       return {
         existing,
         scheduledTimes,
         scheduleMemos,
         scheduleDetails,
         scheduledSavedAts,
+        schedulePlannedTodoIds,
       };
     };
     const p = readSlotArrays(prevKey);
     if (ix >= p.scheduledTimes.length) {
       return { ok: false, error: "항목을 찾지 못했습니다." };
     }
+    const newPlanned =
+      opts.plannedTodoIds !== undefined
+        ? normalizeSchedulePlannedTodoIdsEntry(opts.plannedTodoIds)
+        : normalizeSchedulePlannedTodoIdsEntry(p.schedulePlannedTodoIds[ix]);
     if (prevKey === nextKey) {
       p.scheduledTimes[ix] = newSlot;
       p.scheduleMemos[ix] = newMemo;
       p.scheduleDetails[ix] = newDetail;
       p.scheduledSavedAts[ix] = Date.now();
+      p.schedulePlannedTodoIds[ix] = newPlanned;
       const nextObj = {
         ...p.existing,
         scheduledTimes: p.scheduledTimes,
         scheduleMemos: p.scheduleMemos,
         scheduleDetails: p.scheduleDetails,
         scheduledSavedAts: p.scheduledSavedAts,
+        schedulePlannedTodoIds: p.schedulePlannedTodoIds,
       };
       delete nextObj.scheduledTime;
       all[dk][prevKey] = nextObj;
@@ -865,12 +1018,14 @@ export function updateBudgetScheduleBlockAtIndex(
       p.scheduleMemos.splice(ix, 1);
       p.scheduleDetails.splice(ix, 1);
       p.scheduledSavedAts.splice(ix, 1);
+      p.schedulePlannedTodoIds.splice(ix, 1);
       const prevNext = {
         ...p.existing,
         scheduledTimes: p.scheduledTimes,
         scheduleMemos: p.scheduleMemos,
         scheduleDetails: p.scheduleDetails,
         scheduledSavedAts: p.scheduledSavedAts,
+        schedulePlannedTodoIds: p.schedulePlannedTodoIds,
       };
       delete prevNext.scheduledTime;
       if (p.scheduledTimes.length === 0) {
@@ -878,6 +1033,7 @@ export function updateBudgetScheduleBlockAtIndex(
         delete prevNext.scheduleMemos;
         delete prevNext.scheduleDetails;
         delete prevNext.scheduledSavedAts;
+        delete prevNext.schedulePlannedTodoIds;
       }
       if (Object.keys(prevNext).length === 0) {
         delete all[dk][prevKey];
@@ -889,12 +1045,14 @@ export function updateBudgetScheduleBlockAtIndex(
       n.scheduleMemos.push(newMemo);
       n.scheduleDetails.push(newDetail);
       n.scheduledSavedAts.push(Date.now());
+      n.schedulePlannedTodoIds.push(newPlanned);
       const nextObj = {
         ...n.existing,
         scheduledTimes: n.scheduledTimes,
         scheduleMemos: n.scheduleMemos,
         scheduleDetails: n.scheduleDetails,
         scheduledSavedAts: n.scheduledSavedAts,
+        schedulePlannedTodoIds: n.schedulePlannedTodoIds,
       };
       delete nextObj.scheduledTime;
       all[dk][nextKey] = nextObj;
@@ -4120,7 +4278,6 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
 
   if (onRowEdit) {
     lpTokenAdd(tr, "time-row-clickable");
-    tr.title = "클릭하여 수정";
     tr.addEventListener("click", (e) => {
       onRowEdit(tr, collectRowFromTR(tr));
     });
@@ -10093,10 +10250,44 @@ export function render(opts = {}) {
 
   let taskLogKpiListsSyncGen = 0;
 
+  function resolveTaskLogPlannedTodoIdFilter() {
+    const fromCtx = taskLogAddContext?.presetPlannedTodoIds;
+    if (Array.isArray(fromCtx) && fromCtx.length) {
+      return fromCtx.map((x) => String(x || "").trim()).filter(Boolean);
+    }
+    const taskName = String(
+      taskLogTaskDropdown?._getValue?.() ||
+        taskLogAddContext?.presetTaskName ||
+        "",
+    ).trim();
+    if (!taskName) return [];
+    const ymd = String(
+      taskLogDateStart?.value ||
+        taskLogAddContext?.recordDateKey ||
+        "",
+    )
+      .replace(/\//g, "-")
+      .trim()
+      .slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return [];
+    return findRelevantPlannedTodoIdsForRecording(ymd, taskName);
+  }
+
   function getTaskCompletionTodoInfoForTaskLog() {
     const kpiId = resolveTaskLogModalKpiId();
     if (!kpiId) return null;
-    return getKpiTaskCompletionTodoInfoByKpiId(kpiId);
+    const info = getKpiTaskCompletionTodoInfoByKpiId(kpiId);
+    if (!info) return null;
+    const plannedIds = resolveTaskLogPlannedTodoIdFilter();
+    if (!plannedIds.length) return info;
+    const allow = new Set(plannedIds);
+    return {
+      ...info,
+      todos: (info.todos || []).filter((t) =>
+        allow.has(String(t?.id || "").trim()),
+      ),
+      plannedTodoFilterActive: true,
+    };
   }
 
   function collectCheckedTaskCompletionTodoTextsFromModal() {
@@ -10260,7 +10451,11 @@ export function render(opts = {}) {
       hideTaskLogTaskCompletionTodosSection();
       return;
     }
-    applyTaskCompletionTodosUi(info.kpiId, info.todos);
+    applyTaskCompletionTodosUi(info.kpiId, info.todos, {
+      errorMessage: info.plannedTodoFilterActive
+        ? "이 일정에서 고른 할 일이 없거나 이미 완료되었습니다."
+        : undefined,
+    });
   }
 
   async function syncTaskLogKpiListsFromCloudIfStale() {
@@ -10728,7 +10923,16 @@ export function render(opts = {}) {
 
   /** 「지금 실행하기」등 — 예상 일정의 메모·상세를 과제 기록 모달에 채움 */
   function applyExpectedSchedulePresetsToTaskLogModal(ctx) {
-    const memo = String(ctx?.presetMemo || "").trim();
+    /* 예전 ◽️ 계획 줄은 메모가 아님 — 할일 목록 필터로만 씀 */
+    const memo = String(ctx?.presetMemo || "")
+      .split(/\n/)
+      .filter((line) => {
+        const t = String(line || "").trim();
+        if (!t) return false;
+        return !/^(?:⬜|▫|□|◽|◽️)\s*/u.test(t);
+      })
+      .join("\n")
+      .trim();
     const detail = String(ctx?.presetDetail || "").trim();
     const taskName = String(
       ctx?.presetTaskName ||
@@ -13061,6 +13265,11 @@ export function render(opts = {}) {
                   presetNextExpectedBlockKey: nextBlockKey,
                   presetMemo: nextExpected.memo,
                   presetDetail: nextExpected.detail,
+                  presetPlannedTodoIds: Array.isArray(
+                    nextExpected.plannedTodoIds,
+                  )
+                    ? nextExpected.plannedTodoIds
+                    : [],
                 });
               },
               onSkip: (itemEl) => {

@@ -4,7 +4,10 @@
 
 import { buildExpectedScheduleSpansForDateKey } from "../views/Calendar.js";
 import { getTaskOptionByName } from "../views/Time.js";
-import { expectedSpanDisplayTaskName } from "./expectedScheduleDetail.js";
+import {
+  expectedSpanCardMemoLines,
+  expectedSpanDisplayTaskName,
+} from "./expectedScheduleDetail.js";
 
 function resolveExpectedSpanCategory(span) {
   const taskName = String(span?.taskName || "").trim();
@@ -48,9 +51,7 @@ export function buildTimeLedgerExpectedDayTimeboxBlocks(dayKey) {
       const prod = resolveExpectedSpanProdKey(span);
       const category = resolveExpectedSpanCategory(span);
       const taskName = expectedSpanDisplayTaskName(span);
-      const memoParts = [span.scheduleMemo, span.scheduleDetail]
-        .map((s) => String(s || "").trim())
-        .filter(Boolean);
+      const memoText = expectedSpanCardMemoLines(span).join("\n");
       return {
         startMin,
         endMin,
@@ -61,7 +62,7 @@ export function buildTimeLedgerExpectedDayTimeboxBlocks(dayKey) {
         endDisplay: span.endDisplay || formatClockMin(endMin),
         rowData: {
           taskName: String(span.taskName || "").trim(),
-          feedback: memoParts.join("\n"),
+          feedback: memoText,
         },
       };
     })

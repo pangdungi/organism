@@ -3833,6 +3833,9 @@ export function buildExpectedScheduleSpansForDateKey(dateKey) {
     const details = Array.isArray(data?.scheduleDetails)
       ? data.scheduleDetails
       : [];
+    const plannedIdsArr = Array.isArray(data?.schedulePlannedTodoIds)
+      ? data.schedulePlannedTodoIds
+      : [];
     const savedAts = Array.isArray(data?.scheduledSavedAts)
       ? data.scheduledSavedAts
       : [];
@@ -3856,6 +3859,11 @@ export function buildExpectedScheduleSpansForDateKey(dateKey) {
       const prod = opt?.productivity || "other";
       const scheduleMemo = String(memos[timeIdx] || "").trim();
       const scheduleDetail = String(details[timeIdx] || "").trim();
+      const plannedTodoIds = Array.isArray(plannedIdsArr[timeIdx])
+        ? plannedIdsArr[timeIdx]
+            .map((x) => String(x || "").trim())
+            .filter(Boolean)
+        : [];
       const span = {
         startSlot,
         endSlot: Math.max(endSlot, startSlot),
@@ -3871,6 +3879,7 @@ export function buildExpectedScheduleSpansForDateKey(dateKey) {
       };
       if (scheduleMemo) span.scheduleMemo = scheduleMemo;
       if (scheduleDetail) span.scheduleDetail = scheduleDetail;
+      if (plannedTodoIds.length) span.plannedTodoIds = plannedTodoIds;
       if (taskFromList) {
         span.sectionId = taskFromList.sectionId;
         span._task = taskFromList;
@@ -4251,6 +4260,11 @@ function wireCalendar1DaySlotGridDragMove(scroll, dateKey, onSaved) {
         minutesOfDayToHhMm(newEndMin),
         String(span.scheduleMemo || "").trim(),
         String(span.scheduleDetail || "").trim(),
+        {
+          plannedTodoIds: Array.isArray(span.plannedTodoIds)
+            ? span.plannedTodoIds
+            : undefined,
+        },
       );
       if (!r.ok) return r;
       /* 로컬 저장 직후 notifyTimeDailyBudgetSaved → 서버는 백그라운드 동기화 */
@@ -5803,6 +5817,12 @@ function render1WeekView(tabsElement) {
 
         card.appendChild(titleRow);
         card.appendChild(meta);
+        if (memoTextStored) {
+          const memoEl = document.createElement("div");
+          memoEl.className = "calendar-1week-flow-card-memo";
+          memoEl.textContent = memoTextStored;
+          card.appendChild(memoEl);
+        }
         if (memoTextStored) {
           const memoEl = document.createElement("div");
           memoEl.className = "calendar-1week-flow-card-memo";

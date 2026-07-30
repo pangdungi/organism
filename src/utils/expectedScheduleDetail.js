@@ -3,6 +3,7 @@
  */
 
 import * as TTC from "./timeTaskOptionsConstants.js";
+import { getKpiTodoTextById } from "./kpiTodoSync.js";
 
 /** 상세명을 과제명 대신 표시할지 — 식단·감정 트리거는 제외(과제명 유지) */
 export function expectedSpanUsesDetailAsDisplayName(span) {
@@ -39,7 +40,21 @@ export function formatExpectedSpanDetailLine(taskName, detailText) {
   return `${TTC.ledgerDetailLinePrefix(kind)} ${text}`;
 }
 
-/** 예상 카드 메모 영역 — 상세명이 제목이면 사용자 메모만 */
+/** 계획 할일 id → 표시용 ◽️ 줄 (실제 메모 문자열과 분리) */
+function plannedTodoDisplayLinesForSpan(span) {
+  const ids = Array.isArray(span?.plannedTodoIds)
+    ? span.plannedTodoIds.map((x) => String(x || "").trim()).filter(Boolean)
+    : [];
+  if (!ids.length) return [];
+  const lines = [];
+  for (const id of ids) {
+    const text = getKpiTodoTextById(id);
+    if (text) lines.push(`◽️ ${text}`);
+  }
+  return lines;
+}
+
+/** 예상 카드 메모 영역 — 상세·계획 할일(표시만)·사용자 메모 */
 export function expectedSpanCardMemoLines(span) {
   const taskName = String(span?.taskName || "").trim();
   const detail = String(span?.scheduleDetail || "").trim();
@@ -48,6 +63,9 @@ export function expectedSpanCardMemoLines(span) {
   if (!expectedSpanUsesDetailAsDisplayName(span)) {
     const detailLine = formatExpectedSpanDetailLine(taskName, detail);
     if (detailLine) lines.push(detailLine);
+  }
+  for (const line of plannedTodoDisplayLinesForSpan(span)) {
+    lines.push(line);
   }
   if (userMemo) lines.push(userMemo);
   return lines;

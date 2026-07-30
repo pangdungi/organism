@@ -1650,7 +1650,6 @@ export function render() {
       const textPreview = document.createElement("div");
       textPreview.className = "dream-kpi-todo-list-preview";
       textPreview.textContent = todo.text || "";
-      textPreview.title = "눌러서 수정·삭제";
 
       const openTodoEdit = async () => {
         const result = await showKpiTodoEditModal({
@@ -1800,7 +1799,6 @@ export function render() {
         const textPreview = document.createElement("div");
         textPreview.className = "dream-kpi-todo-list-preview";
         textPreview.textContent = todo.text || "";
-        textPreview.title = "눌러서 수정·삭제";
 
         const openDailyEdit = async () => {
           const result = await showKpiTodoEditModal({

@@ -271,7 +271,6 @@ export function mountKpiGoalAllTodosSection(container, opts = {}) {
       const preview = document.createElement("div");
       preview.className = "dream-kpi-todo-list-preview";
       preview.textContent = todo.text;
-      preview.title = "눌러서 수정·삭제";
 
       const openTodoEdit = async () => {
         const result = await showKpiTodoEditModal({

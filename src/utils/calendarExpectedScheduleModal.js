@@ -25,9 +25,11 @@ import { ensureAllKpiTimeTasksFromStorage } from "./kpiTimeTaskSync.js";
 import {
   appendBudgetScheduleBlock,
   getBudgetGoals,
+  getPlannedTodoIdsFromBudgetSlot,
   loadTimeRows,
   getNextTaskLogStartHhMmFromLedger,
   getLatestBudgetScheduleEndHhMm,
+  normalizeSchedulePlannedTodoIdsEntry,
   updateBudgetScheduleBlockAtIndex,
   removeBudgetScheduleBlockAtIndex,
   formatIntegerMinutesDurationKo,
@@ -42,6 +44,7 @@ import {
 import { syncBodyOverflowAfterModalClose } from "./lpModalStack.js";
 import {
   getKpiTaskCompletionTodoInfoByKpiId,
+  getKpiTodosByKpiId,
   resolveKpiIdForTaskId,
 } from "./kpiTodoSync.js";
 import {
@@ -899,11 +902,12 @@ export function openCalendarExpectedScheduleModal(options) {
           <div data-legacy="lp-expected-todo-memo-split">
             <div data-legacy="time-task-log-kpi-todos-section" hidden>
               <h4 data-legacy="time-task-log-kpi-todos-title">할 일 목록</h4>
-              <p data-legacy="time-task-log-kpi-todos-hint">항목을 누르면 메모에 ◽️로 들어갑니다</p>
+              <p data-legacy="time-task-log-kpi-todos-hint">오늘 할 항목을 누르면 골라집니다 (과제 기록에만 표시)</p>
               <p data-legacy="time-task-log-kpi-todos-status" hidden></p>
               <div data-legacy="time-task-log-kpi-todos-scroll" hidden>
                 <div data-legacy="time-task-log-kpi-todos-list"></div>
               </div>
+              <div data-legacy="lp-expected-planned-todos-preview" hidden aria-label="고른 할일 미리보기"></div>
             </div>
             <div data-legacy="time-task-log-memo-section">
               <div data-legacy="time-task-log-memo-fields">
@@ -988,11 +992,82 @@ export function openCalendarExpectedScheduleModal(options) {
   const taskLogKpiTodosStatus = modal.querySelector(
     '[data-legacy~="time-task-log-kpi-todos-status"]',
   );
+  const plannedTodosPreview = modal.querySelector(
+    '[data-legacy~="lp-expected-planned-todos-preview"]',
+  );
   let expectedKpiTodosSyncGen = 0;
+  /** @type {Map<string, string>} todoId → text (이 슬롯에서 고른 할일) */
+  const plannedTodoSelection = new Map();
+  let suppressPlannedClearOnTaskChange = false;
 
   function setExpectedTodoMemoSplitActive(active) {
     if (!expectedTodoMemoSplit) return;
     expectedTodoMemoSplit.classList.toggle("is-split", !!active);
+  }
+
+  function getPlannedTodoIdsList() {
+    return [...plannedTodoSelection.keys()];
+  }
+
+  function refreshPlannedTodosPreview() {
+    if (!plannedTodosPreview) return;
+    plannedTodosPreview.replaceChildren();
+    if (!plannedTodoSelection.size) {
+      plannedTodosPreview.hidden = true;
+      return;
+    }
+    plannedTodosPreview.hidden = false;
+    for (const text of plannedTodoSelection.values()) {
+      const line = document.createElement("div");
+      line.className = "lp-expected-planned-todos-preview-line";
+      line.textContent = `◽️ ${text}`;
+      plannedTodosPreview.appendChild(line);
+    }
+  }
+
+  function togglePlannedTodoSelection(todoId, todoText) {
+    const id = String(todoId || "").trim();
+    const text = String(todoText || "").trim();
+    if (!id || !text) return;
+    if (plannedTodoSelection.has(id)) plannedTodoSelection.delete(id);
+    else plannedTodoSelection.set(id, text);
+    refreshPlannedTodosPreview();
+    taskLogKpiTodosList
+      ?.querySelectorAll("[data-todo-id]")
+      .forEach((row) => {
+        const rid = String(row.getAttribute("data-todo-id") || "").trim();
+        row.classList.toggle("is-planned", plannedTodoSelection.has(rid));
+      });
+  }
+
+  /** 예전 메모에 넣었던 ◽️ 줄을 계획 할일로 옮기고 메모에서 제거 */
+  function migrateLegacyMemoTodoLinesIntoPlanned(kpiId, memoText) {
+    const raw = String(memoText || "");
+    if (!raw.trim()) return raw;
+    const info = getKpiTodosByKpiId(kpiId, { includeCompleted: true });
+    const byText = new Map();
+    for (const t of info?.todos || []) {
+      const text = String(t?.text || "").trim();
+      const id = String(t?.id || "").trim();
+      if (text && id && !byText.has(text)) byText.set(text, id);
+    }
+    const kept = [];
+    for (const line of raw.split(/\n/)) {
+      const t = String(line || "").trim();
+      if (!t) {
+        kept.push(line);
+        continue;
+      }
+      const bare = t.replace(/^(?:⬜|▫|□|◽|◽️)\s*/u, "").trim();
+      const id = byText.get(bare) || byText.get(t);
+      if (id && /^(?:⬜|▫|□|◽|◽️)/u.test(t)) {
+        plannedTodoSelection.set(id, bare || t);
+        continue;
+      }
+      kept.push(line);
+    }
+    refreshPlannedTodosPreview();
+    return kept.join("\n").replace(/^\n+/, "").replace(/\n+$/, "");
   }
   /** @type {Set<string>} */
   const taskLogChipDetailSelection = new Set();
@@ -1188,60 +1263,22 @@ export function openCalendarExpectedScheduleModal(options) {
       : "등록된 할 일이 없습니다.";
   }
 
-  function appendTodoLineToExpectedMemo(todoText) {
-    const text = String(todoText || "").trim();
-    if (!text || !(taskLogFeedbackInput instanceof HTMLTextAreaElement)) return;
-    const line = `◽️ ${text}`;
-    const cur = String(taskLogFeedbackInput.value || "");
-    const already = cur
-      .split(/\n/)
-      .some((raw) => {
-        const t = String(raw || "").trim();
-        if (!t) return false;
-        if (t === line || t === text) return true;
-        return (
-          t.replace(/^(?:⬜|▫|□|◽|◽️)\s*/u, "").trim() === text
-        );
-      });
-    if (already) {
-      try {
-        taskLogFeedbackInput.focus({ preventScroll: true });
-      } catch (_) {
-        try {
-          taskLogFeedbackInput.focus();
-        } catch (_) {}
-      }
-      return;
-    }
-    const next = cur.trim() ? `${cur.replace(/\s+$/, "")}\n${line}` : line;
-    taskLogFeedbackInput.value = next;
-    taskLogFeedbackInput.dispatchEvent(new Event("input", { bubbles: true }));
-    try {
-      taskLogFeedbackInput.focus({ preventScroll: true });
-    } catch (_) {
-      try {
-        taskLogFeedbackInput.focus();
-      } catch (_) {}
-    }
-    try {
-      const end = next.length;
-      taskLogFeedbackInput.setSelectionRange(end, end);
-    } catch (_) {}
-  }
-
   function renderExpectedTaskCompletionTodoRows(todos) {
     if (!taskLogKpiTodosList) return;
     taskLogKpiTodosList.replaceChildren();
     for (const todo of todos) {
+      const id = String(todo?.id || "").trim();
       const text = String(todo?.text || "").trim();
-      if (!text) continue;
+      if (!text || !id) continue;
       const row = document.createElement("button");
       row.type = "button";
       row.className =
         "time-task-log-kpi-todo-row time-task-log-chore-todo-row time-task-log-kpi-todo-row--pick-memo";
       row.setAttribute("data-legacy", "time-task-log-chore-todo-row");
-      row.title = "메모에 ◽️로 넣기";
-      row.setAttribute("aria-label", `메모에 넣기: ${text}`);
+      row.setAttribute("data-todo-id", id);
+      row.removeAttribute("title");
+      row.setAttribute("aria-label", `할 일 고르기: ${text}`);
+      row.classList.toggle("is-planned", plannedTodoSelection.has(id));
       const span = document.createElement("span");
       span.className = "time-task-log-kpi-todo-text";
       span.setAttribute("data-legacy", "time-task-log-kpi-todo-text");
@@ -1250,7 +1287,7 @@ export function openCalendarExpectedScheduleModal(options) {
       row.addEventListener(
         "click",
         () => {
-          appendTodoLineToExpectedMemo(text);
+          togglePlannedTodoSelection(id, text);
         },
         { signal },
       );
@@ -1404,7 +1441,33 @@ export function openCalendarExpectedScheduleModal(options) {
       slotRaw: String(slotRaw || "").trim(),
       memoStored: String(goal?.scheduleMemos?.[timeIdx] || "").trim(),
       detailStored: String(goal?.scheduleDetails?.[timeIdx] || "").trim(),
+      plannedTodoIds: getPlannedTodoIdsFromBudgetSlot(
+        dateKey,
+        taskName,
+        timeIdx,
+      ),
     };
+  }
+
+  function hydratePlannedTodoSelectionFromIds(kpiId, ids) {
+    plannedTodoSelection.clear();
+    const list = normalizeSchedulePlannedTodoIdsEntry(ids);
+    if (!list.length) {
+      refreshPlannedTodosPreview();
+      return;
+    }
+    const info = getKpiTodosByKpiId(kpiId, { includeCompleted: true });
+    const byId = new Map(
+      (info?.todos || []).map((t) => [
+        String(t?.id || "").trim(),
+        String(t?.text || "").trim(),
+      ]),
+    );
+    for (const id of list) {
+      const text = byId.get(id);
+      if (text) plannedTodoSelection.set(id, text);
+    }
+    refreshPlannedTodosPreview();
   }
 
   /** 수정 모달 — 과제 선택 후 식단명·외출명·대화명·메모·시간 복원 */
@@ -1418,10 +1481,24 @@ export function openCalendarExpectedScheduleModal(options) {
       taskLogTimeStart.value = parts[0].trim().slice(0, 5);
       taskLogTimeEnd.value = parts[1].trim().slice(0, 5);
     }
-    taskDropdown._setValue?.(editTaskName);
-    setExpectedDetailForEdit(editTaskName, slot.detailStored);
-    if (taskLogFeedbackInput) {
-      taskLogFeedbackInput.value = slot.memoStored;
+    suppressPlannedClearOnTaskChange = true;
+    try {
+      taskDropdown._setValue?.(editTaskName);
+      setExpectedDetailForEdit(editTaskName, slot.detailStored);
+      const kpiId = resolveExpectedModalKpiId({
+        taskId: getTaskOptionByName(editTaskName)?.taskId || "",
+        taskName: editTaskName,
+      });
+      hydratePlannedTodoSelectionFromIds(kpiId, slot.plannedTodoIds);
+      if (taskLogFeedbackInput) {
+        const cleaned = migrateLegacyMemoTodoLinesIntoPlanned(
+          kpiId,
+          slot.memoStored,
+        );
+        taskLogFeedbackInput.value = cleaned;
+      }
+    } finally {
+      suppressPlannedClearOnTaskChange = false;
     }
     if (deleteBtn) deleteBtn.hidden = false;
     flushBeforeSubmit();
@@ -1458,8 +1535,13 @@ export function openCalendarExpectedScheduleModal(options) {
 
   const taskDropdown = buildTimeTaskLogPickerDropdown({
     abortSignal: signal,
-    onTaskSelected: (name, meta) =>
-      updateExpectedDetailVisibility(name, meta || {}),
+    onTaskSelected: (name, meta) => {
+      if (!suppressPlannedClearOnTaskChange) {
+        plannedTodoSelection.clear();
+        refreshPlannedTodosPreview();
+      }
+      updateExpectedDetailVisibility(name, meta || {});
+    },
   });
   taskWrap.appendChild(taskDropdown);
 
@@ -1636,13 +1718,14 @@ export function openCalendarExpectedScheduleModal(options) {
       const endHHmm = (taskLogTimeEnd?.value || "").trim();
       const memo = (taskLogFeedbackInput?.value || "").trim();
       const detail = getExpectedDetailForSave(taskName);
+      const plannedTodoIds = getPlannedTodoIdsList();
 
       if (!taskName) {
         showToast("과제를 선택해 주세요.");
         return;
       }
       let r;
-      const syncOpts = { skipDebouncedSync: true };
+      const syncOpts = { skipDebouncedSync: true, plannedTodoIds };
       if (isEdit) {
         r = updateBudgetScheduleBlockAtIndex(
           dateStr,

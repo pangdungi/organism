@@ -615,6 +615,20 @@ export function getKpiTodosByKpiId(kpiId, opts = {}) {
   return null;
 }
 
+/** 할일 id → 텍스트 (KPI id 몰라도 전 맵에서 검색) */
+export function getKpiTodoTextById(todoId) {
+  const id = String(todoId || "").trim();
+  if (!id) return "";
+  for (const storageKey of STORAGE_KEYS) {
+    const data = loadJson(storageKey, { kpiTodos: [] });
+    const t = (data.kpiTodos || []).find(
+      (row) => String(row?.id || "").trim() === id,
+    );
+    if (t) return String(t.text || "").trim();
+  }
+  return "";
+}
+
 /**
  * KPI id로 매일 반복 여부·매일 할일 목록 (과제 기록 모달 — time_ledger_tasks.kpiId 기준)
  * @param {string} kpiId

@@ -1855,7 +1855,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-/* 예상 일정 모달 — 할 일 목록을 눌러 메모에 넣기 */
+/* 예상 일정 모달 — 할 일 고르기(메모 삽입 아님) */
 .lp-calendar-budget-add-modal [data-legacy~="time-task-log-kpi-todos-hint"] {
   margin: 0.2rem 0 0.45rem;
   font-size: 0.75rem;
@@ -1887,11 +1887,42 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   line-height: 1.45;
   font-size: 0.8em;
 }
+.lp-calendar-budget-add-modal
+  .time-task-log-kpi-todo-row--pick-memo.is-planned::before {
+  content: "☑️";
+}
+.lp-calendar-budget-add-modal
+  .time-task-log-kpi-todo-row--pick-memo.is-planned {
+  background: rgba(30, 77, 123, 0.08);
+}
 .lp-calendar-budget-add-modal .time-task-log-kpi-todo-row--pick-memo:hover {
   background: rgba(148, 163, 184, 0.12);
 }
 .lp-calendar-budget-add-modal .time-task-log-kpi-todo-row--pick-memo:active {
   background: rgba(148, 163, 184, 0.2);
+}
+.lp-calendar-budget-add-modal
+  [data-legacy~="lp-expected-planned-todos-preview"] {
+  flex: 0 0 auto;
+  margin: 0.4rem 0 0;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: rgba(30, 77, 123, 0.04);
+  box-sizing: border-box;
+  min-width: 0;
+}
+.lp-calendar-budget-add-modal .lp-expected-planned-todos-preview-line {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #475569;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.lp-calendar-budget-add-modal
+  .lp-expected-planned-todos-preview-line
+  + .lp-expected-planned-todos-preview-line {
+  margin-top: 0.15rem;
 }
 .time-task-log-kpi-todo-row input[type="checkbox"],
 .time-task-log-daily-todo-row input[type="checkbox"],

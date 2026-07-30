@@ -38,14 +38,21 @@ function collectBudgetBlocksForDate(dateKey) {
     let scheduledTimes = [];
     let memos = [];
     let details = [];
+    let plannedIds = [];
     if (Array.isArray(data.scheduledTimes)) {
       scheduledTimes = data.scheduledTimes.filter((x) => x && String(x).trim());
       memos = Array.isArray(data.scheduleMemos) ? data.scheduleMemos : [];
       details = Array.isArray(data.scheduleDetails) ? data.scheduleDetails : [];
+      plannedIds = Array.isArray(data.schedulePlannedTodoIds)
+        ? data.schedulePlannedTodoIds
+        : [];
     } else if (data.scheduledTime && String(data.scheduledTime).trim()) {
       scheduledTimes = [String(data.scheduledTime).trim()];
       memos = Array.isArray(data.scheduleMemos) ? data.scheduleMemos : [];
       details = Array.isArray(data.scheduleDetails) ? data.scheduleDetails : [];
+      plannedIds = Array.isArray(data.schedulePlannedTodoIds)
+        ? data.schedulePlannedTodoIds
+        : [];
     }
     for (let i = 0; i < scheduledTimes.length; i++) {
       const parts = String(scheduledTimes[i] || "").trim().split("-");
@@ -55,6 +62,9 @@ function collectBudgetBlocksForDate(dateKey) {
       const startMin = minutesFromHhMm(startHhMm);
       const endMin = minutesFromHhMm(endHhMm);
       if (startMin == null || endMin == null || endMin <= startMin) continue;
+      const slotPlanned = Array.isArray(plannedIds[i])
+        ? plannedIds[i].map((x) => String(x || "").trim()).filter(Boolean)
+        : [];
       blocks.push({
         taskName: name,
         timeIdx: i,
@@ -62,6 +72,7 @@ function collectBudgetBlocksForDate(dateKey) {
         endHhMm,
         memo: String(memos[i] || "").trim(),
         detail: String(details[i] || "").trim(),
+        plannedTodoIds: slotPlanned,
         startMin,
         endMin,
       });
