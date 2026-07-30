@@ -10,6 +10,7 @@ import {
   isEmotionalBuiltinTaskName,
   isHealthyMealDetailTaskName,
   isMealIntakeTasteRatingTaskName,
+  isReadingDetailTaskName,
   isSleepBuiltinTaskName,
   isUnhealthyMealDetailTaskName,
   isWorkBuiltinTaskName,
@@ -2436,7 +2437,7 @@ function renderMediaContentTreemap(items) {
   const wrap = document.createElement("div");
   wrap.className = "lp-tr2-media-treemap";
   wrap.setAttribute("role", "img");
-  wrap.setAttribute("aria-label", "콘텐츠 종류별 시청 시간");
+  wrap.setAttribute("aria-label", "콘텐츠 종류별 소비 시간");
 
   const board = document.createElement("div");
   board.className = "lp-tr2-media-treemap-board";
@@ -2634,7 +2635,7 @@ function renderMediaCompareChart(chartDays) {
     bindHorizontalChartScroll(cols);
   }
   cols.setAttribute("role", "img");
-  cols.setAttribute("aria-label", "날짜별 의식적·무의식적 미디어 시청 비교");
+  cols.setAttribute("aria-label", "날짜별 의식적·무의식적 미디어 소비 비교");
 
   chartDays.forEach((day) => {
     const col = document.createElement("div");
@@ -3545,7 +3546,7 @@ function mountYearKpiGoalReportSection(scrollWrap, range, rows) {
   scrollWrap.appendChild(sec);
 }
 
-/** 콘텐츠·미디어 시청과 행복 루틴 사이 — 전체 매일 KPI 습관 점검 구역 */
+/** 콘텐츠·미디어 소비·독서와 행복 루틴 사이 — 전체 매일 KPI 습관 점검 구역 */
 function mountHabitCheckSection(scrollWrap, range) {
   const isDay = range?.start === range?.end;
   const dayCount = listDatesInclusive(range?.start, range?.end).length;
@@ -3603,9 +3604,9 @@ function mountMediaSection(scrollWrap, range, rows) {
   const dayCount = listDatesInclusive(range.start, range.end).length;
   const isYear = dayCount >= 300;
   const sec = createSection(
-    "콘텐츠·미디어 시청",
+    "콘텐츠·미디어 소비",
     isYear
-      ? "콘텐츠 종류별 시청 시간"
+      ? "콘텐츠 종류별 소비 시간"
       : "기록에서 고른 콘텐츠 종류 · 의식적 vs 무의식적 비율",
   );
 
@@ -3670,13 +3671,114 @@ function mountMediaSection(scrollWrap, range, rows) {
     chartTitle.textContent = "날짜별 의식적 vs 무의식적";
     const chartSub = document.createElement("p");
     chartSub.className = "lp-tr2-media-compare-sub";
-    chartSub.textContent = "하루마다 의식적(붉은)·무의식적(파란) 시청 시간을 나란히 비교";
+    chartSub.textContent = "하루마다 의식적(붉은)·무의식적(파란) 소비 시간을 나란히 비교";
     chartBlock.appendChild(chartTitle);
     chartBlock.appendChild(chartSub);
     chartBlock.appendChild(renderMediaCompareChart(snap.chartDays));
     sec.appendChild(chartBlock);
   }
 
+  scrollWrap.appendChild(sec);
+}
+
+/** @param {ReturnType<typeof loadTimeRows>} rows */
+function buildReadingReportSnapshot(rows) {
+  let totalMinutes = 0;
+  let sessionCount = 0;
+  let untitledMinutes = 0;
+  /** @type {Map<string, number>} */
+  const bookMinutes = new Map();
+  for (const r of rows || []) {
+    if (!isReadingDetailTaskName(r?.taskName)) continue;
+    const mins = rowMinutes(r);
+    if (!(mins > 0)) continue;
+    sessionCount += 1;
+    totalMinutes += mins;
+    const title = String(r.mealDetail || "").trim();
+    if (!title) {
+      untitledMinutes += mins;
+      continue;
+    }
+    bookMinutes.set(title, (bookMinutes.get(title) || 0) + mins);
+  }
+  const books = [...bookMinutes.entries()]
+    .map(([title, minutes]) => ({ title, minutes }))
+    .sort(
+      (a, b) =>
+        b.minutes - a.minutes || a.title.localeCompare(b.title, "ko"),
+    );
+  return { totalMinutes, sessionCount, untitledMinutes, books };
+}
+
+function mountReadingSection(scrollWrap, rows) {
+  const snap = buildReadingReportSnapshot(rows);
+  const sec = createSection(
+    "독서 기록",
+    "독서하기 · 총 독서시간 · 읽은 책 목록",
+  );
+
+  if (snap.totalMinutes <= 0) {
+    const empty = document.createElement("p");
+    empty.className = "lp-tr2-media-empty";
+    empty.textContent = "이 기간에 독서하기 기록이 없습니다.";
+    sec.appendChild(empty);
+    scrollWrap.appendChild(sec);
+    return;
+  }
+
+  const hero = document.createElement("div");
+  hero.className = "lp-tr2-media-hero";
+  const heroMain = document.createElement("p");
+  heroMain.className = "lp-tr2-media-hero-main";
+  heroMain.textContent = `총 독서시간 ${formatIntegerMinutesDurationKo(snap.totalMinutes)}`;
+  const heroSub = document.createElement("p");
+  heroSub.className = "lp-tr2-media-hero-sub";
+  const bookCount = snap.books.length + (snap.untitledMinutes > 0 ? 1 : 0);
+  heroSub.textContent = `${snap.sessionCount}회 · 책 ${bookCount}권`;
+  hero.appendChild(heroMain);
+  hero.appendChild(heroSub);
+  sec.appendChild(hero);
+
+  const listBlock = createRatingBlock(
+    "읽은 책 목록",
+    "도서명별로 모은 독서 시간",
+  );
+  if (!snap.books.length && !(snap.untitledMinutes > 0)) {
+    const note = document.createElement("p");
+    note.className = "lp-tr2-chart-note";
+    note.textContent = "도서명을 남기면 여기에 목록이 쌓입니다.";
+    listBlock.appendChild(note);
+  } else {
+    const list = document.createElement("ul");
+    list.className = "lp-tr2-reading-book-list";
+    list.setAttribute("aria-label", "읽은 책 목록");
+    snap.books.forEach((book) => {
+      const li = document.createElement("li");
+      li.className = "lp-tr2-reading-book-item";
+      const name = document.createElement("span");
+      name.className = "lp-tr2-reading-book-title";
+      name.textContent = book.title;
+      const meta = document.createElement("span");
+      meta.className = "lp-tr2-reading-book-meta";
+      meta.textContent = formatIntegerMinutesDurationKo(book.minutes);
+      li.append(name, meta);
+      list.appendChild(li);
+    });
+    if (snap.untitledMinutes > 0) {
+      const li = document.createElement("li");
+      li.className = "lp-tr2-reading-book-item lp-tr2-reading-book-item--untitled";
+      const name = document.createElement("span");
+      name.className = "lp-tr2-reading-book-title";
+      name.textContent = "(도서명 없음)";
+      const meta = document.createElement("span");
+      meta.className = "lp-tr2-reading-book-meta";
+      meta.textContent = formatIntegerMinutesDurationKo(snap.untitledMinutes);
+      li.append(name, meta);
+      list.appendChild(li);
+    }
+    listBlock.appendChild(list);
+  }
+  sec.appendChild(listBlock);
   scrollWrap.appendChild(sec);
 }
 
@@ -6906,6 +7008,7 @@ export function mountUnifiedTimeReport(scrollWrap, arg2, arg3) {
   mountEmotionSection(scrollWrap, range, rows);
   mountMoveSection(scrollWrap, range, rows);
   mountMediaSection(scrollWrap, range, rows);
+  mountReadingSection(scrollWrap, rows);
   mountYearKpiGoalReportSection(scrollWrap, range, allRows);
   mountHabitCheckSection(scrollWrap, range);
   mountHappinessRoutineSection(scrollWrap, range);

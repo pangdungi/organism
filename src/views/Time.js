@@ -364,7 +364,7 @@ const NONPRODUCTIVE_CATEGORIES = [
   { value: "pleasure", label: "쾌락충족", color: "cat-pleasure" },
   {
     value: "media_watch",
-    label: "미디어 시청",
+    label: "미디어 소비",
     color: "cat-media-watch",
   },
   { value: "unhappiness", label: "불행", color: "cat-unhappiness" },
@@ -1335,7 +1335,7 @@ const CATEGORY_OPTIONS = [
   { value: "pleasure", label: "쾌락충족", color: "cat-pleasure" },
   {
     value: "media_watch",
-    label: "미디어 시청",
+    label: "미디어 소비",
     color: "cat-media-watch",
   },
   { value: "unhappiness", label: "불행", color: "cat-unhappiness" },

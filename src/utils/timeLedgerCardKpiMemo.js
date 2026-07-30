@@ -57,11 +57,11 @@ export function formatTimeLedgerCardDetailLines(rowData) {
   return [`${TTC.ledgerDetailLinePrefix(kind)} ${text}`];
 }
 
-/** 상세명을 과제명 대신 표시할지 — 식단·감정 트리거는 제외(과제명 유지) */
+/** 상세명을 과제명 대신 표시할지 — 식단·감정·독서는 제외(과제명 유지) */
 export function ledgerRowUsesDetailAsDisplayName(rowData) {
   const taskName = String(rowData?.taskName || "").trim();
   const { kind, text } = resolveLedgerRowDetail(rowData);
-  if (kind === "emotion" || kind === "meal") return false;
+  if (kind === "emotion" || kind === "meal" || kind === "reading") return false;
   return !!kind && !!text && TTC.isLedgerDetailTaskName(taskName);
 }
 

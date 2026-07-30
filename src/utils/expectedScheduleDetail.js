@@ -1,16 +1,16 @@
 /**
- * 예상 일정(일간 예산) — 식단·대화·외출·콘텐츠 상세명 (실제 과제 기록 meal_detail 과 동일 역할)
+ * 예상 일정(일간 예산) — 식단·대화·외출·독서·콘텐츠 상세명 (실제 과제 기록 meal_detail 과 동일 역할)
  */
 
 import * as TTC from "./timeTaskOptionsConstants.js";
 import { getKpiTodoTextById } from "./kpiTodoSync.js";
 
-/** 상세명을 과제명 대신 표시할지 — 식단·감정 트리거는 제외(과제명 유지) */
+/** 상세명을 과제명 대신 표시할지 — 식단·감정·독서는 제외(과제명 유지) */
 export function expectedSpanUsesDetailAsDisplayName(span) {
   const taskName = String(span?.taskName || "").trim();
   const detail = String(span?.scheduleDetail || "").trim();
   const kind = TTC.ledgerDetailTaskKind(taskName);
-  if (kind === "meal" || kind === "emotion") return false;
+  if (kind === "meal" || kind === "emotion" || kind === "reading") return false;
   return TTC.isLedgerDetailTaskName(taskName) && !!detail;
 }
 

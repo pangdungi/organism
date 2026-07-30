@@ -295,6 +295,9 @@ export const OUTING_DETAIL_TASK_NAMES = new Set([
   "비생산적 외출",
 ]);
 
+/** 독서하기 — 과제 기록 시 도서명 입력 (meal_detail 저장) */
+export const READING_DETAIL_TASK_NAMES = new Set(["독서하기"]);
+
 /** 의식적·무의식적 콘텐츠 소비 — 과제 기록 시 소비 내용 입력 */
 export const CONTENT_DETAIL_TASK_NAMES = new Set([
   "의식적 콘텐츠 소비",
@@ -571,6 +574,12 @@ export function isOutingDetailTaskName(name) {
 }
 
 /** @param {string} name */
+export function isReadingDetailTaskName(name) {
+  const n = String(name || "").trim();
+  return READING_DETAIL_TASK_NAMES.has(n);
+}
+
+/** @param {string} name */
 export function isEmotionalDetailTaskName(name) {
   return isEmotionalBuiltinTaskName(name);
 }
@@ -580,11 +589,12 @@ export function isLedgerFreeTextDetailTaskName(name) {
   return (
     isMealDetailTaskName(name) ||
     isConversationDetailTaskName(name) ||
-    isOutingDetailTaskName(name)
+    isOutingDetailTaskName(name) ||
+    isReadingDetailTaskName(name)
   );
 }
 
-/** 섭취·대화·외출·콘텐츠·위생·외모·감정 — time_ledger_entries.meal_detail 에 저장 */
+/** 섭취·대화·외출·독서·콘텐츠·위생·외모·감정 — time_ledger_entries.meal_detail 에 저장 */
 export function isLedgerDetailTaskName(name) {
   return (
     isLedgerFreeTextDetailTaskName(name) ||
@@ -595,11 +605,12 @@ export function isLedgerDetailTaskName(name) {
   );
 }
 
-/** @returns {"meal" | "conversation" | "outing" | "content" | "hygiene" | "appearance" | "emotion" | null} */
+/** @returns {"meal" | "conversation" | "outing" | "reading" | "content" | "hygiene" | "appearance" | "emotion" | null} */
 export function ledgerDetailTaskKind(name) {
   if (isMealDetailTaskName(name)) return "meal";
   if (isConversationDetailTaskName(name)) return "conversation";
   if (isOutingDetailTaskName(name)) return "outing";
+  if (isReadingDetailTaskName(name)) return "reading";
   if (isContentDetailTaskName(name)) return "content";
   if (isHygieneDetailTaskName(name)) return "hygiene";
   if (isAppearanceDetailTaskName(name)) return "appearance";
@@ -612,6 +623,7 @@ export function ledgerDetailInputLabel(kind) {
   if (kind === "meal") return "식단명";
   if (kind === "conversation") return "대화명";
   if (kind === "outing") return "외출명";
+  if (kind === "reading") return "도서명";
   if (kind === "emotion") return "트리거";
   return "";
 }
@@ -621,6 +633,7 @@ export function ledgerDetailInputPlaceholder(kind) {
   if (kind === "meal") return "무엇을 드셨는지 한 줄로 적어 주세요";
   if (kind === "conversation") return "누구와 무엇에 대해 대화했는지 한 줄로 적어 주세요";
   if (kind === "outing") return "어디에 외출했는지 한 줄로 적어 주세요";
+  if (kind === "reading") return "무슨 책을 읽었는지 한 줄로 적어 주세요";
   if (kind === "emotion") return "";
   return "";
 }
@@ -630,6 +643,7 @@ export function ledgerDetailLinePrefix(kind) {
   if (kind === "meal") return "식단";
   if (kind === "conversation") return "대화";
   if (kind === "outing") return "외출";
+  if (kind === "reading") return "도서";
   if (kind === "content") return "콘텐츠";
   if (kind === "hygiene") return "개인위생";
   if (kind === "appearance") return "외모";
