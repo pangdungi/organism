@@ -48,6 +48,14 @@ import {
 import { buildFocusReportSnapshot } from "./timeFocusReport.js";
 import { buildMealTasteReportSnapshot } from "./timeMealTasteReport.js";
 import { flowDisruptorCategoryColor } from "./timeTaskFlowDisruptors.js";
+import {
+  normalizeTimeSleepGoodFactorsForRow,
+  timeSleepGoodFactorLabelForId,
+} from "./timeTaskSleepGoodFactors.js";
+import {
+  normalizeTimeSleepPoorReasonsForRow,
+  timeSleepPoorReasonLabelForId,
+} from "./timeTaskSleepPoorReasons.js";
 import { getTaskOptionByName } from "./timeTaskOptionsModel.js";
 import { readUserHourlyRateLocal } from "./userHourlySync.js";
 import { tr2SvgFontSize } from "./timeReportUiScale.js";
@@ -1290,7 +1298,7 @@ function sleepRowsForReportContext(range, allRows) {
 }
 
 function collectSleepRecordsByDate(rows) {
-  /** @type {Map<string, { startMin: number|null, endMin: number|null, minutes: number, rating: number|null, startSort: string }[]>} */
+  /** @type {Map<string, { startMin: number|null, endMin: number|null, minutes: number, rating: number|null, goodFactors: string[], poorReasons: string[], startSort: string }[]>} */
   const byDate = new Map();
   rows.forEach((r) => {
     if (!isSleepLedgerRow(r)) return;
@@ -1304,6 +1312,8 @@ function collectSleepRecordsByDate(rows) {
       endMin: parseRowClockMinutes(r.endTime),
       minutes,
       rating: normalizeTimeRatingForRow(r.timeRating),
+      goodFactors: normalizeTimeSleepGoodFactorsForRow(r.timeSleepGoodFactors),
+      poorReasons: normalizeTimeSleepPoorReasonsForRow(r.timeSleepPoorReasons),
       startSort: rowStartSortKey(r),
     });
   });
@@ -1311,6 +1321,55 @@ function collectSleepRecordsByDate(rows) {
     recs.sort((a, b) => a.startSort.localeCompare(b.startSort));
   });
   return byDate;
+}
+
+/** @param {Map<string, number>} countsMap @param {number} sessionCount @param {(id:string)=>string} labelFn */
+function buildSleepRecipeTagRanking(countsMap, sessionCount, labelFn) {
+  return [...(countsMap || new Map()).entries()]
+    .map(([id, count]) => ({
+      id,
+      label: labelFn(id) || id,
+      count,
+      pct:
+        sessionCount > 0 ? Math.round((count / sessionCount) * 100) : 0,
+    }))
+    .sort(
+      (a, b) =>
+        b.count - a.count ||
+        b.pct - a.pct ||
+        a.label.localeCompare(b.label, "ko"),
+    );
+}
+
+function buildSleepRecipeKeepOneLiner(tags, fiveStarCount) {
+  if (!fiveStarCount) {
+    return "수면 평가 5점을 주고 「잘 잔 이유」를 고르면 수면 레시피가 채워집니다.";
+  }
+  if (!tags.length) {
+    return `5점 수면 ${fiveStarCount}건 — 기록할 때 「잘 잔 이유」를 골라 주세요.`;
+  }
+  const top = tags.slice(0, 3);
+  const parts = top.map((t) => `「${t.label}」 ${t.pct}%`);
+  return `5점 ${fiveStarCount}건 중 ${parts.join(" · ")}`;
+}
+
+function buildSleepRecipeAvoidOneLiner(tags, poorRatedCount) {
+  if (!poorRatedCount) {
+    return "1~2점 수면이 쌓이면 피하면 좋은 조건이 보입니다.";
+  }
+  if (!tags.length) {
+    return `1~2점 수면 ${poorRatedCount}건 — 「아쉬웠던 이유」를 고르면 피할 항목이 정리됩니다.`;
+  }
+  const top = tags[0];
+  if (!top) return "";
+  if (tags.length === 1) {
+    return `가장 많은 아쉬움은 「${top.label}」입니다 (${top.count}회).`;
+  }
+  const second = tags[1];
+  if (second && top.count === second.count) {
+    return `「${top.label}」·「${second.label}」이(가) 자주 겹칩니다.`;
+  }
+  return `가장 많은 아쉬움은 「${top.label}」입니다 (${top.count}회 · ${top.pct}%).`;
 }
 
 function isSleepLedgerRow(r) {
@@ -1477,12 +1536,22 @@ function buildSleepReportSnapshot(rows, range, allRows) {
     const rating = rated.length
       ? rated.reduce((sum, rec) => sum + rec.rating, 0) / rated.length
       : null;
+    const goodFactors = [];
+    const poorReasons = [];
+    dayRecs.forEach((rec) => {
+      if (rec.rating === 5) goodFactors.push(...(rec.goodFactors || []));
+      if (rec.rating === 1 || rec.rating === 2) {
+        poorReasons.push(...(rec.poorReasons || []));
+      }
+    });
     return {
       date,
       minutes,
       bedtimeMin,
       wakeMin,
       rating,
+      goodFactors: normalizeTimeSleepGoodFactorsForRow(goodFactors),
+      poorReasons: normalizeTimeSleepPoorReasonsForRow(poorReasons),
     };
   });
 
@@ -1510,6 +1579,58 @@ function buildSleepReportSnapshot(rows, range, allRows) {
   const correlations = buildSleepQualityCorrelations(daysWithSleep);
   const bestSleepEstimate = estimateBestRatedSleepMinutes(daysWithSleep);
 
+  /** @type {Map<string, number>} */
+  const goodCounts = new Map();
+  /** @type {Map<string, number>} */
+  const poorCounts = new Map();
+  let fiveStarCount = 0;
+  let poorRatedCount = 0;
+  dates.forEach((date) => {
+    const dayRecs = recordsByDate.get(date) || [];
+    dayRecs.forEach((rec) => {
+      if (rec.rating === 5) {
+        fiveStarCount += 1;
+        const seen = new Set();
+        for (const id of rec.goodFactors || []) {
+          if (!id || seen.has(id)) continue;
+          seen.add(id);
+          goodCounts.set(id, (goodCounts.get(id) || 0) + 1);
+        }
+      } else if (rec.rating === 1 || rec.rating === 2) {
+        poorRatedCount += 1;
+        const seen = new Set();
+        for (const id of rec.poorReasons || []) {
+          if (!id || seen.has(id)) continue;
+          seen.add(id);
+          poorCounts.set(id, (poorCounts.get(id) || 0) + 1);
+        }
+      }
+    });
+  });
+
+  const goodFactorRanking = buildSleepRecipeTagRanking(
+    goodCounts,
+    fiveStarCount,
+    timeSleepGoodFactorLabelForId,
+  );
+  const poorReasonRanking = buildSleepRecipeTagRanking(
+    poorCounts,
+    poorRatedCount,
+    timeSleepPoorReasonLabelForId,
+  );
+  const sleepRecipe = {
+    keepTags: goodFactorRanking,
+    avoidTags: poorReasonRanking,
+    keepOneLiner: buildSleepRecipeKeepOneLiner(
+      goodFactorRanking,
+      fiveStarCount,
+    ),
+    avoidOneLiner: buildSleepRecipeAvoidOneLiner(
+      poorReasonRanking,
+      poorRatedCount,
+    ),
+  };
+
   const total = daysWithSleep.reduce((a, x) => a + x.minutes, 0);
   const metDays = daysWithSleep.filter(
     (x) => x.minutes >= SLEEP_TARGET_MIN,
@@ -1527,11 +1648,117 @@ function buildSleepReportSnapshot(rows, range, allRows) {
     avgQuality,
     bestSleepEstimate,
     correlations,
+    fiveStarCount,
+    poorRatedCount,
+    goodFactorRanking,
+    poorReasonRanking,
+    sleepRecipe,
     avgDurationMinutes: daysWithSleep.length
       ? Math.round(total / daysWithSleep.length)
       : 0,
     metDays,
   };
+}
+
+function buildSleepFactorChipRow(labels, emptyText) {
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-sleep-factor-chips";
+  const list = (labels || []).filter(Boolean);
+  if (!list.length) {
+    const note = document.createElement("p");
+    note.className = "lp-tr2-chart-note";
+    note.textContent = emptyText;
+    wrap.appendChild(note);
+    return wrap;
+  }
+  list.forEach((label) => {
+    const chip = document.createElement("span");
+    chip.className = "lp-tr2-sleep-factor-chip";
+    chip.textContent = label;
+    wrap.appendChild(chip);
+  });
+  return wrap;
+}
+
+/** 주·달·년 — 수면 레시피(잘 잔 조건 + 피하면 좋은 조건) */
+function mountSleepRecipeBlock(sec, snap) {
+  const recipe = snap?.sleepRecipe;
+  if (!recipe) return;
+
+  const recipeBlock = createRatingBlock(
+    "수면 레시피",
+    "잘 잔 날의 조건 · 다음에 다시 만들기",
+  );
+
+  const summaryParts = [];
+  if (snap.bestSleepEstimate) {
+    summaryParts.push(
+      `추천 수면 ${formatIntegerMinutesDurationKo(snap.bestSleepEstimate.minutes)}`,
+    );
+  }
+  if (snap.avgBedtime != null) {
+    summaryParts.push(
+      `평균 취침 ${formatClockFromMinutes(snap.avgBedtime)}`,
+    );
+  }
+  if (snap.avgQuality != null) {
+    summaryParts.push(`평균 평가 ${Number(snap.avgQuality).toFixed(1)}점`);
+  }
+  if (summaryParts.length) {
+    const summary = document.createElement("p");
+    summary.className = "lp-tr2-focus-disruptor-insight";
+    summary.textContent = summaryParts.join(" · ");
+    recipeBlock.appendChild(summary);
+  }
+
+  recipeBlock.appendChild(
+    createFocusSubheading(
+      "이럴 때 잘 잤음",
+      "5점일 때 고른 요소 · 해당 수면에서 자주 함께 있던 순",
+    ),
+  );
+  if (recipe.keepTags?.length) {
+    const bars = document.createElement("div");
+    bars.className = "lp-tr2-bars";
+    recipe.keepTags.slice(0, 6).forEach((item) => {
+      bars.appendChild(createFocusRecipeTagRow(item));
+    });
+    recipeBlock.appendChild(bars);
+  } else {
+    const note = document.createElement("p");
+    note.className = "lp-tr2-chart-note";
+    note.textContent = recipe.keepOneLiner;
+    recipeBlock.appendChild(note);
+  }
+
+  recipeBlock.appendChild(
+    createFocusSubheading(
+      "이럴 때 아쉬웠음",
+      "1~2점일 때 고른 요소 · 피하면 좋은 조건",
+    ),
+  );
+  const avoidInsight = document.createElement("p");
+  avoidInsight.className = "lp-tr2-focus-disruptor-insight";
+  avoidInsight.textContent = recipe.avoidOneLiner;
+  recipeBlock.appendChild(avoidInsight);
+  if (recipe.avoidTags?.length) {
+    const maxCount = recipe.avoidTags[0]?.count || 1;
+    const bars = document.createElement("div");
+    bars.className = "lp-tr2-bars lp-tr2-bars--compact";
+    recipe.avoidTags.slice(0, 6).forEach((item, i) => {
+      bars.appendChild(
+        createFocusDisruptorBarRow(
+          `${i + 1}. ${item.label}`,
+          Math.round((item.count / maxCount) * 100),
+          `${item.count}회 · ${item.pct}%`,
+          "#8B5C3A",
+        ),
+      );
+    });
+    recipeBlock.appendChild(bars);
+  }
+
+  sec.appendChild(recipeBlock);
 }
 
 /**
@@ -5664,6 +5891,32 @@ function mountSleepSection(scrollWrap, range, rows, allRows) {
   if (isDay) {
     const day = snap.daysWithSleep[0];
     sec.appendChild(renderSleepGoalProgressBar(day?.minutes || 0));
+    if ((day?.goodFactors || []).length) {
+      const goodBlock = createRatingBlock(
+        "잘 잔 이유",
+        "5점으로 평가했을 때 고른 요소",
+      );
+      goodBlock.appendChild(
+        buildSleepFactorChipRow(
+          (day.goodFactors || []).map(timeSleepGoodFactorLabelForId),
+          "아직 고른 이유가 없습니다.",
+        ),
+      );
+      sec.appendChild(goodBlock);
+    }
+    if ((day?.poorReasons || []).length) {
+      const poorBlock = createRatingBlock(
+        "아쉬웠던 이유",
+        "1~2점으로 평가했을 때 고른 요소",
+      );
+      poorBlock.appendChild(
+        buildSleepFactorChipRow(
+          (day.poorReasons || []).map(timeSleepPoorReasonLabelForId),
+          "아직 고른 이유가 없습니다.",
+        ),
+      );
+      sec.appendChild(poorBlock);
+    }
     scrollWrap.appendChild(sec);
     return;
   }
@@ -5720,6 +5973,9 @@ function mountSleepSection(scrollWrap, range, rows, allRows) {
     corrBlock.appendChild(bars);
     sec.appendChild(corrBlock);
   }
+
+  /* 주·달·년: 수면 레시피 (일간은 칩으로 위에서 표시) */
+  mountSleepRecipeBlock(sec, snap);
 
   scrollWrap.appendChild(sec);
 }

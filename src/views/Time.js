@@ -108,6 +108,8 @@ import {
   normalizeTimeRatingForRow,
   normalizeTimeFlowFactorsForRow,
   normalizeTimeFlowDisruptorsForRow,
+  normalizeTimeSleepGoodFactorsForRow,
+  normalizeTimeSleepPoorReasonsForRow,
   formatTimeLedgerCardRatingStarsHtml,
   applyProductiveTimeRatingToBasePrice,
   formatProductiveTimeRatingMultiplierLabel,
@@ -134,6 +136,14 @@ import {
   shouldCollectTimeEndReasons,
   normalizeTimeEndReasonsForRow,
 } from "../utils/timeTaskEndReasons.js";
+import {
+  TIME_TASK_SLEEP_GOOD_FACTOR_OPTIONS,
+  shouldCollectTimeSleepGoodFactors,
+} from "../utils/timeTaskSleepGoodFactors.js";
+import {
+  TIME_TASK_SLEEP_POOR_REASON_OPTIONS,
+  shouldCollectTimeSleepPoorReasons,
+} from "../utils/timeTaskSleepPoorReasons.js";
 import {
   closeActiveInProgressRowsAtNow,
   closeStaleInProgressTimeLedgerRows,
@@ -4121,6 +4131,12 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
     timeFlowDisruptors: normalizeTimeFlowDisruptorsForRow(
       initialData?.timeFlowDisruptors ?? initialData?.timeFlowDisruptor,
     ),
+    timeSleepGoodFactors: normalizeTimeSleepGoodFactorsForRow(
+      initialData?.timeSleepGoodFactors,
+    ),
+    timeSleepPoorReasons: normalizeTimeSleepPoorReasonsForRow(
+      initialData?.timeSleepPoorReasons,
+    ),
   };
   tr._rowData = rowData;
 
@@ -5821,11 +5837,9 @@ export function render(opts = {}) {
     } catch (_) {}
   }
 
-  /* 검색·과제·메모 필터는 탭을 나가면 리셋(세션에 남기지 않음) */
+  /* 검색·메모 필터는 탭을 나가면 리셋(세션에 남기지 않음) */
   clearUsageQueryFiltersFromSession();
 
-  /** 과제 필터: null = 전체, [] = 과제별 보기 켰지만 미선택, string[] = 선택 과제만 */
-  let selectedTaskNamesForFilter = null;
   let usageHistoryMemoOnlyFilter = false;
   /** 타임라인 텍스트 검색(과제명·메모 등). 선택한 일간·주간·월간·연간은 그대로 둠 */
   let usageHistoryTextSearchQuery = "";
@@ -5838,7 +5852,7 @@ export function render(opts = {}) {
       sessionStorage.setItem("lp_time_usage_list_end", usageHistoryRangeEndYmd);
       sessionStorage.setItem("lp_time_filter_start", t);
       sessionStorage.setItem("lp_time_filter_end", t);
-      /* 조회 필터(검색·과제·메모)는 화면을 나가면 사라지도록 세션에 저장하지 않음 */
+      /* 조회 필터(검색·메모)는 화면을 나가면 사라지도록 세션에 저장하지 않음 */
       clearUsageQueryFiltersFromSession();
     } catch (_) {}
   }
@@ -6260,14 +6274,6 @@ export function render(opts = {}) {
       timeLedgerLayoutView !== "timebox" &&
       timeLedgerLayoutView !== "report"
     ) {
-      if (selectedTaskNamesForFilter != null) {
-        if (selectedTaskNamesForFilter.length === 0) {
-          filtered = [];
-        } else {
-          const set = new Set(selectedTaskNamesForFilter);
-          filtered = filtered.filter((r) => set.has((r.taskName || "").trim()));
-        }
-      }
       if (usageHistoryMemoOnlyFilter) {
         filtered = filtered.filter((r) => timeLedgerRowHasUserMemo(r));
       }
@@ -6429,12 +6435,8 @@ export function render(opts = {}) {
       /* 기록 행은 메모리(_ledgerRowsMem)만 사용 — localStorage 키는 비어 있음 */
       ledger = JSON.stringify(loadTimeRows());
     } catch (_) {}
-    const taskFilter =
-      selectedTaskNamesForFilter == null
-        ? ""
-        : selectedTaskNamesForFilter.join("\x1e");
     const textQ = String(usageHistoryTextSearchQuery || "").trim();
-    return `${usageHistoryRangeStartYmd}|${usageHistoryRangeEndYmd}|${reportRangeStartYmd}|${reportRangeEndYmd}|${taskFilter}|${usageHistoryMemoOnlyFilter ? "1" : "0"}|${textQ}|${timeLedgerLayoutView}|${timeLedgerTimeboxGranularity}|${timeLedgerReportGranularity}|${timeLedgerTimelineGranularity}|${ledger}`;
+    return `${usageHistoryRangeStartYmd}|${usageHistoryRangeEndYmd}|${reportRangeStartYmd}|${reportRangeEndYmd}|${usageHistoryMemoOnlyFilter ? "1" : "0"}|${textQ}|${timeLedgerLayoutView}|${timeLedgerTimeboxGranularity}|${timeLedgerReportGranularity}|${timeLedgerTimelineGranularity}|${ledger}`;
   }
 
   function rememberTimeLedgerPaintSignature() {
@@ -6665,22 +6667,9 @@ export function render(opts = {}) {
           <p class="time-usage-range-filter-active-banner" data-usage-filter-active-banner hidden></p>
           <div class="time-usage-range-filter-options">
             <label class="time-usage-range-filter-option">
-              <input type="checkbox" data-usage-filter-by-task />
-              <span>과제별 보기</span>
-            </label>
-            <label class="time-usage-range-filter-option">
               <input type="checkbox" data-usage-filter-memo-only />
               <span>메모만 보기</span>
             </label>
-          </div>
-          <div class="time-usage-range-task-filter-panel" data-usage-task-filter-panel hidden>
-            <div class="time-usage-range-filter-actions" data-legacy="time-task-select-actions">
-              <button type="button" data-legacy="time-task-select-all-btn">전체 선택</button>
-              <button type="button" data-legacy="time-task-select-none-btn">전체 해제</button>
-            </div>
-            <div class="time-usage-range-task-list-wrap" data-usage-task-list-wrap>
-              <div data-legacy="time-task-select-list" data-task-select-list></div>
-            </div>
           </div>
         </div>
       </div>
@@ -6692,9 +6681,6 @@ export function render(opts = {}) {
   el.appendChild(usageRangeModal);
 
   (function initUsageRangeModal() {
-    const taskSelectList = usageRangeModal.querySelector(
-      "[data-task-select-list]",
-    );
     const usageRangeClose = usageRangeModal.querySelector(
       '[data-legacy~="time-task-setup-header"] [data-legacy~="time-task-setup-close"]',
     );
@@ -6707,26 +6693,11 @@ export function render(opts = {}) {
     const usageRangeApplyBtn = usageRangeModal.querySelector(
       "[data-usage-range-apply]",
     );
-    const taskSelectAllBtn = usageRangeModal.querySelector(
-      '[data-legacy~="time-task-select-all-btn"]',
-    );
-    const taskSelectNoneBtn = usageRangeModal.querySelector(
-      '[data-legacy~="time-task-select-none-btn"]',
-    );
     const taskSelectClearBtn = usageRangeModal.querySelector(
       '[data-legacy~="time-task-select-clear-btn"]',
     );
-    const usageFilterByTaskCb = usageRangeModal.querySelector(
-      "[data-usage-filter-by-task]",
-    );
     const usageFilterMemoOnlyCb = usageRangeModal.querySelector(
       "[data-usage-filter-memo-only]",
-    );
-    const usageTaskListWrap = usageRangeModal.querySelector(
-      "[data-usage-task-list-wrap]",
-    );
-    const usageTaskFilterPanel = usageRangeModal.querySelector(
-      "[data-usage-task-filter-panel]",
     );
     const usageFilterSection = usageRangeModal.querySelector(
       "[data-usage-range-filter-section]",
@@ -7009,12 +6980,6 @@ export function render(opts = {}) {
       }
     }
 
-    function syncTimelineTaskFilterListIfNeeded() {
-      if (isUsageRangeModalTimelineMode() && usageFilterByTaskCb?.checked) {
-        populateTaskSelectList();
-      }
-    }
-
     function syncTimeboxWeekModalDraftFromInputs() {
       const week = modalWeekRangeDraft;
       if (usageTimeboxWeekLabel) {
@@ -7030,7 +6995,6 @@ export function render(opts = {}) {
         usageRangeEndInp.value = week.end;
       }
       syncTimeboxTodayQuickBtnUi();
-      syncTimelineTaskFilterListIfNeeded();
     }
 
     function setModalWeekRangeDraft(startYmd, endYmd) {
@@ -7055,7 +7019,6 @@ export function render(opts = {}) {
         usageRangeEndInp.value = month.end;
       }
       syncTimeboxTodayQuickBtnUi();
-      syncTimelineTaskFilterListIfNeeded();
     }
 
     function setModalMonthRangeDraft(startYmd, endYmd) {
@@ -7078,7 +7041,6 @@ export function render(opts = {}) {
         usageRangeEndInp.value = d;
       }
       syncTimeboxTodayQuickBtnUi();
-      syncTimelineTaskFilterListIfNeeded();
     }
 
     function setModalDayDraft(ymdTen) {
@@ -7099,7 +7061,6 @@ export function render(opts = {}) {
         usageRangeEndInp.value = r.end;
       }
       syncTimeboxTodayQuickBtnUi();
-      syncTimelineTaskFilterListIfNeeded();
     }
 
     function setModalYearDraft(year) {
@@ -7190,13 +7151,6 @@ export function render(opts = {}) {
         if (usageFilterMemoOnlyCb) {
           usageFilterMemoOnlyCb.checked = usageHistoryMemoOnlyFilter;
         }
-        if (usageFilterByTaskCb) {
-          usageFilterByTaskCb.checked =
-            !usageHistoryMemoOnlyFilter &&
-            selectedTaskNamesForFilter != null;
-        }
-        if (usageFilterByTaskCb?.checked) populateTaskSelectList();
-        syncFilterModeUi();
       }
     }
 
@@ -7269,22 +7223,6 @@ export function render(opts = {}) {
       ) {
         syncTimeboxWeekModalDraftFromInputs();
       }
-      if (usageFilterByTaskCb?.checked) populateTaskSelectList();
-    }
-
-    function syncFilterModeUi() {
-      const memoOnly = !!usageFilterMemoOnlyCb?.checked;
-      let byTask = !!usageFilterByTaskCb?.checked;
-      if (memoOnly) {
-        byTask = false;
-        if (usageFilterByTaskCb) usageFilterByTaskCb.checked = false;
-      }
-      if (usageTaskFilterPanel) usageTaskFilterPanel.hidden = !byTask;
-      if (usageTaskListWrap) {
-        lpTokenToggle(usageTaskListWrap, "is-disabled", !byTask);
-      }
-      if (taskSelectAllBtn) taskSelectAllBtn.disabled = !byTask;
-      if (taskSelectNoneBtn) taskSelectNoneBtn.disabled = !byTask;
     }
 
     function syncFooterDateBtnActiveState() {
@@ -7352,11 +7290,9 @@ export function render(opts = {}) {
         active =
           active ||
           usageHistoryMemoOnlyFilter ||
-          selectedTaskNamesForFilter != null ||
           !!String(usageHistoryTextSearchQuery || "").trim();
       } else {
-        active =
-          usageHistoryMemoOnlyFilter || selectedTaskNamesForFilter != null;
+        active = usageHistoryMemoOnlyFilter;
       }
       lpTokenToggle(footerDateBtn, "is-active", active);
     }
@@ -7398,50 +7334,6 @@ export function render(opts = {}) {
       if (opts.closeModal) closeUsageRangeModal();
     }
 
-    function populateTaskSelectList() {
-      const { start, end } = getUsageModalDraftRangeYmd();
-      const rows = filterRowsByFilterType(
-        getFullRowsForFilter(true),
-        filterType,
-        filterYear,
-        filterMonth,
-        start,
-        end,
-      );
-      const names = [
-        ...new Set(rows.map((r) => (r.taskName || "").trim()).filter(Boolean)),
-      ];
-      names.sort((a, b) => a.localeCompare(b, "ko"));
-      const byTask = !!usageFilterByTaskCb?.checked;
-      const selectedSet =
-        !byTask || selectedTaskNamesForFilter == null
-          ? null
-          : new Set(selectedTaskNamesForFilter);
-      taskSelectList.innerHTML = names
-        .map((name) => {
-          const attrEsc = String(name).replace(/"/g, "&quot;");
-          const nameHtml = String(name)
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;");
-          const opt = getTaskOptionByName(name);
-          const kpiMark =
-            opt && isTimeTaskKpiLinked(opt)
-              ? '<span data-legacy="lp-task-badge lp-task-badge--kpi" title="KPI(맵)에서 연결된 과제입니다">KPI</span>'
-              : "";
-          const builtinMark = isTimeTaskBuiltinTemplate({ name })
-            ? '<span data-legacy="lp-task-badge lp-task-badge--builtin" title="앱에서 제공하는 기본 과제입니다. 과제 설정에서 삭제할 수 없습니다.">기본</span>'
-            : "";
-          const checked =
-            selectedSet === null || selectedSet.has(name) ? "checked" : "";
-          return `<label data-legacy="time-task-select-item"><input type="checkbox" data-legacy="time-task-select-cb" data-task-name="${attrEsc}" ${checked} /><span data-legacy="time-task-select-item-text"><span data-legacy="time-task-select-item-name-part">${nameHtml}</span>${builtinMark}${kpiMark}</span></label>`;
-        })
-        .join("");
-      if (names.length === 0) {
-        taskSelectList.innerHTML =
-          '<p data-legacy="time-task-select-empty">선택 기간에 기록된 과제가 없습니다.</p>';
-      }
-    }
-
     function openUsageRangeModal() {
       const { start, end } = activeRangeYmdForModal();
       modalTimeboxGranularityDraft = activeLayoutGranularityFromView();
@@ -7475,13 +7367,6 @@ export function render(opts = {}) {
         if (usageFilterMemoOnlyCb) {
           usageFilterMemoOnlyCb.checked = usageHistoryMemoOnlyFilter;
         }
-        if (usageFilterByTaskCb) {
-          usageFilterByTaskCb.checked =
-            !usageHistoryMemoOnlyFilter &&
-            selectedTaskNamesForFilter != null;
-        }
-        if (usageFilterByTaskCb?.checked) populateTaskSelectList();
-        syncFilterModeUi();
       }
       initModalNativeDateFieldsIn(usageRangeModal);
       bindModalNativeDateRange(usageRangeStartInp, usageRangeEndInp);
@@ -7494,46 +7379,16 @@ export function render(opts = {}) {
 
     function applyTaskFilterFromModal() {
       const memoOnly = !!usageFilterMemoOnlyCb?.checked;
-      const byTask = !!usageFilterByTaskCb?.checked && !memoOnly;
       usageHistoryMemoOnlyFilter = memoOnly;
       if (memoOnly) {
         timeLedgerLayoutView = "timeline";
         persistTimeLedgerLayoutView();
-      }
-      if (!byTask) {
-        selectedTaskNamesForFilter = null;
-      } else {
-        const checked = [
-          ...usageRangeModal.querySelectorAll(
-            '[data-legacy~="time-task-select-cb"]:checked',
-          ),
-        ].map((cb) => cb.dataset.taskName || "");
-        selectedTaskNamesForFilter = checked;
       }
       syncFooterDateBtnActiveState();
     }
 
     footerDateBtn?.addEventListener("click", openUsageRangeModal);
     usageRangeClose?.addEventListener("click", closeUsageRangeModal);
-    usageFilterMemoOnlyCb?.addEventListener("change", () => {
-      if (usageFilterMemoOnlyCb.checked && usageFilterByTaskCb) {
-        usageFilterByTaskCb.checked = false;
-      }
-      syncFilterModeUi();
-    });
-    usageFilterByTaskCb?.addEventListener("change", () => {
-      if (usageFilterByTaskCb.checked) {
-        if (usageFilterMemoOnlyCb) usageFilterMemoOnlyCb.checked = false;
-        populateTaskSelectList();
-      }
-      syncFilterModeUi();
-    });
-    usageRangeStartInp?.addEventListener("change", () => {
-      if (usageFilterByTaskCb?.checked) populateTaskSelectList();
-    });
-    usageRangeEndInp?.addEventListener("change", () => {
-      if (usageFilterByTaskCb?.checked) populateTaskSelectList();
-    });
     usageRangeModal.querySelectorAll("[data-usage-timebox-mode]").forEach((btn) => {
       btn.addEventListener("click", () => {
         setModalTimeboxGranularityDraft(btn.dataset.usageTimeboxMode || "day");
@@ -7569,31 +7424,12 @@ export function render(opts = {}) {
         applyTimeboxGotoTodayFromModal();
       });
     });
-    taskSelectAllBtn?.addEventListener("click", () => {
-      if (!usageFilterByTaskCb?.checked) return;
-      usageRangeModal
-        .querySelectorAll('[data-legacy~="time-task-select-cb"]')
-        .forEach((cb) => {
-          cb.checked = true;
-        });
-    });
-    taskSelectNoneBtn?.addEventListener("click", () => {
-      if (!usageFilterByTaskCb?.checked) return;
-      usageRangeModal
-        .querySelectorAll('[data-legacy~="time-task-select-cb"]')
-        .forEach((cb) => {
-          cb.checked = false;
-        });
-    });
     taskSelectClearBtn?.addEventListener("click", () => {
-      selectedTaskNamesForFilter = null;
       usageHistoryMemoOnlyFilter = false;
       usageHistoryTextSearchQuery = "";
       if (usageTextSearchInp) usageTextSearchInp.value = "";
       syncUsageTextSearchFilterUi();
-      if (usageFilterByTaskCb) usageFilterByTaskCb.checked = false;
       if (usageFilterMemoOnlyCb) usageFilterMemoOnlyCb.checked = false;
-      syncFilterModeUi();
       persistActiveViewTimeFilterToSession();
       onFilterChange();
       requestTimeLedgerPullForUserQueryChange("task_filter_clear");
@@ -7838,6 +7674,14 @@ export function render(opts = {}) {
           <div data-legacy="time-task-log-end-reason-section" hidden>
             <span data-legacy="time-task-log-section-label time-task-log-end-reason-section-label">종료 이유</span>
             <div data-legacy="time-task-log-end-reason-chips" class="lp-choice-chip-row"></div>
+          </div>
+          <div data-legacy="time-task-log-sleep-good-section" hidden>
+            <span data-legacy="time-task-log-section-label time-task-log-sleep-good-section-label">잘 잔 이유</span>
+            <div data-legacy="time-task-log-sleep-good-chips" class="lp-choice-chip-row"></div>
+          </div>
+          <div data-legacy="time-task-log-sleep-poor-section" hidden>
+            <span data-legacy="time-task-log-section-label time-task-log-sleep-poor-section-label">아쉬웠던 이유</span>
+            <div data-legacy="time-task-log-sleep-poor-chips" class="lp-choice-chip-row"></div>
           </div>
         </div>
         <div data-legacy="time-task-log-memo-section">
@@ -8178,10 +8022,24 @@ export function render(opts = {}) {
   const taskLogEndReasonChips = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-end-reason-chips"]',
   );
+  const taskLogSleepGoodSection = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-sleep-good-section"]',
+  );
+  const taskLogSleepGoodChips = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-sleep-good-chips"]',
+  );
+  const taskLogSleepPoorSection = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-sleep-poor-section"]',
+  );
+  const taskLogSleepPoorChips = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-sleep-poor-chips"]',
+  );
   let taskLogTimeRating = null;
   let taskLogTimeFlowDisruptors = [];
   let taskLogTimeFlowFactors = [];
   let taskLogTimeEndReasons = [];
+  let taskLogTimeSleepGoodFactors = [];
+  let taskLogTimeSleepPoorReasons = [];
 
   function getTaskLogTimeRating() {
     return normalizeTimeRatingForRow(taskLogTimeRating);
@@ -8197,6 +8055,14 @@ export function render(opts = {}) {
 
   function getTaskLogTimeEndReasons() {
     return normalizeTimeEndReasonsForRow(taskLogTimeEndReasons);
+  }
+
+  function getTaskLogTimeSleepGoodFactors() {
+    return normalizeTimeSleepGoodFactorsForRow(taskLogTimeSleepGoodFactors);
+  }
+
+  function getTaskLogTimeSleepPoorReasons() {
+    return normalizeTimeSleepPoorReasonsForRow(taskLogTimeSleepPoorReasons);
   }
 
   function buildTaskLogModalProductivityStub() {
@@ -8417,6 +8283,94 @@ export function render(opts = {}) {
       });
   }
 
+  function syncTaskLogSleepGoodChips() {
+    if (!taskLogSleepGoodChips) return;
+    const picked = new Set(getTaskLogTimeSleepGoodFactors());
+    taskLogSleepGoodChips
+      .querySelectorAll('[data-legacy~="lp-choice-chip"]')
+      .forEach((btn) => {
+        const on = picked.has(btn.getAttribute("data-sleep-good") || "");
+        lpTokenToggle(btn, "lp-choice-chip--on", on);
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+  }
+
+  function setTaskLogTimeSleepGoodFactors(value, opts = {}) {
+    taskLogTimeSleepGoodFactors = normalizeTimeSleepGoodFactorsForRow(value);
+    if (!opts.silent) syncTaskLogSleepGoodChips();
+  }
+
+  function toggleTaskLogTimeSleepGoodFactor(id) {
+    const key = normalizeTimeSleepGoodFactorsForRow([id])[0];
+    if (!key) return;
+    const next = getTaskLogTimeSleepGoodFactors();
+    const idx = next.indexOf(key);
+    if (idx >= 0) next.splice(idx, 1);
+    else next.push(key);
+    setTaskLogTimeSleepGoodFactors(next);
+  }
+
+  function syncTaskLogSleepGoodSection() {
+    const show =
+      isTaskLogModalSleepTask() &&
+      !isTaskLogModalSleepOvernightCutoff() &&
+      shouldCollectTimeSleepGoodFactors(getTaskLogTimeRating());
+    if (taskLogSleepGoodSection) taskLogSleepGoodSection.hidden = !show;
+    const goodLabel = taskLogSleepGoodSection?.querySelector(
+      '[data-legacy~="time-task-log-sleep-good-section-label"]',
+    );
+    if (goodLabel) {
+      goodLabel.textContent = show ? "잘 잔 이유 (필수)" : "잘 잔 이유";
+    }
+    if (!show && taskLogTimeSleepGoodFactors.length) {
+      taskLogTimeSleepGoodFactors = [];
+    }
+  }
+
+  function syncTaskLogSleepPoorChips() {
+    if (!taskLogSleepPoorChips) return;
+    const picked = new Set(getTaskLogTimeSleepPoorReasons());
+    taskLogSleepPoorChips
+      .querySelectorAll('[data-legacy~="lp-choice-chip"]')
+      .forEach((btn) => {
+        const on = picked.has(btn.getAttribute("data-sleep-poor") || "");
+        lpTokenToggle(btn, "lp-choice-chip--on", on);
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+  }
+
+  function setTaskLogTimeSleepPoorReasons(value, opts = {}) {
+    taskLogTimeSleepPoorReasons = normalizeTimeSleepPoorReasonsForRow(value);
+    if (!opts.silent) syncTaskLogSleepPoorChips();
+  }
+
+  function toggleTaskLogTimeSleepPoorReason(id) {
+    const key = normalizeTimeSleepPoorReasonsForRow([id])[0];
+    if (!key) return;
+    const next = getTaskLogTimeSleepPoorReasons();
+    const idx = next.indexOf(key);
+    if (idx >= 0) next.splice(idx, 1);
+    else next.push(key);
+    setTaskLogTimeSleepPoorReasons(next);
+  }
+
+  function syncTaskLogSleepPoorSection() {
+    const show =
+      isTaskLogModalSleepTask() &&
+      !isTaskLogModalSleepOvernightCutoff() &&
+      shouldCollectTimeSleepPoorReasons(getTaskLogTimeRating());
+    if (taskLogSleepPoorSection) taskLogSleepPoorSection.hidden = !show;
+    const poorLabel = taskLogSleepPoorSection?.querySelector(
+      '[data-legacy~="time-task-log-sleep-poor-section-label"]',
+    );
+    if (poorLabel) {
+      poorLabel.textContent = show ? "아쉬웠던 이유 (필수)" : "아쉬웠던 이유";
+    }
+    if (!show && taskLogTimeSleepPoorReasons.length) {
+      taskLogTimeSleepPoorReasons = [];
+    }
+  }
+
   function setTaskLogTimeEndReasons(value, opts = {}) {
     taskLogTimeEndReasons = normalizeTimeEndReasonsForRow(value);
     if (!opts.silent) syncTaskLogEndReasonChips();
@@ -8452,6 +8406,8 @@ export function render(opts = {}) {
     disruptors = [],
     factors = [],
     endReasons = [],
+    sleepGoodFactors = [],
+    sleepPoorReasons = [],
     emotionSub = "",
   } = {}) {
     taskLogTimeRating = normalizeTimeRatingForRow(rating);
@@ -8459,6 +8415,10 @@ export function render(opts = {}) {
     taskLogTimeFlowDisruptors = normalizeTimeFlowDisruptorsForRow(disruptors);
     taskLogTimeFlowFactors = normalizeTimeFlowFactorsForRow(factors);
     taskLogTimeEndReasons = normalizeTimeEndReasonsForRow(endReasons);
+    taskLogTimeSleepGoodFactors =
+      normalizeTimeSleepGoodFactorsForRow(sleepGoodFactors);
+    taskLogTimeSleepPoorReasons =
+      normalizeTimeSleepPoorReasonsForRow(sleepPoorReasons);
     syncTaskLogRatingSectionUi();
   }
 
@@ -8550,15 +8510,21 @@ export function render(opts = {}) {
       taskLogTimeFlowDisruptors = [];
       taskLogTimeFlowFactors = [];
       taskLogTimeEndReasons = [];
+      taskLogTimeSleepGoodFactors = [];
+      taskLogTimeSleepPoorReasons = [];
     }
     syncTaskLogFlowDisruptorSection();
     syncTaskLogFlowFactorSection();
     syncTaskLogEndReasonSection();
+    syncTaskLogSleepGoodSection();
+    syncTaskLogSleepPoorSection();
     if (show) {
       renderTaskLogTimeRating();
       syncTaskLogFlowDisruptorChips();
       syncTaskLogFlowFactorChips();
       syncTaskLogEndReasonChips();
+      syncTaskLogSleepGoodChips();
+      syncTaskLogSleepPoorChips();
     }
     syncTaskLogEmotionSectionOrder();
   }
@@ -8569,10 +8535,14 @@ export function render(opts = {}) {
     syncTaskLogFlowDisruptorSection();
     syncTaskLogFlowFactorSection();
     syncTaskLogEndReasonSection();
+    syncTaskLogSleepGoodSection();
+    syncTaskLogSleepPoorSection();
     if (shouldShowTaskLogRatingSection()) {
       syncTaskLogFlowDisruptorChips();
       syncTaskLogFlowFactorChips();
       syncTaskLogEndReasonChips();
+      syncTaskLogSleepGoodChips();
+      syncTaskLogSleepPoorChips();
     }
   }
 
@@ -8615,6 +8585,34 @@ export function render(opts = {}) {
         toggleTaskLogTimeEndReason(id);
       });
       taskLogEndReasonChips.appendChild(btn);
+    });
+  }
+
+  if (taskLogSleepGoodChips) {
+    TIME_TASK_SLEEP_GOOD_FACTOR_OPTIONS.forEach(({ id, label }) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      lpSetClasses(btn, "lp-choice-chip");
+      btn.setAttribute("data-sleep-good", id);
+      btn.textContent = label;
+      btn.addEventListener("click", () => {
+        toggleTaskLogTimeSleepGoodFactor(id);
+      });
+      taskLogSleepGoodChips.appendChild(btn);
+    });
+  }
+
+  if (taskLogSleepPoorChips) {
+    TIME_TASK_SLEEP_POOR_REASON_OPTIONS.forEach(({ id, label }) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      lpSetClasses(btn, "lp-choice-chip");
+      btn.setAttribute("data-sleep-poor", id);
+      btn.textContent = label;
+      btn.addEventListener("click", () => {
+        toggleTaskLogTimeSleepPoorReason(id);
+      });
+      taskLogSleepPoorChips.appendChild(btn);
     });
   }
 
@@ -11210,6 +11208,8 @@ export function render(opts = {}) {
       disruptors: [],
       factors: [],
       endReasons: [],
+      sleepGoodFactors: [],
+      sleepPoorReasons: [],
     });
     taskLogMemoTags = [];
     taskLogModal
@@ -11437,6 +11437,8 @@ export function render(opts = {}) {
       disruptors: data.timeFlowDisruptors ?? data.timeFlowDisruptor,
       factors: data.timeFlowFactors ?? data.timeFlowFactor,
       endReasons: data.timeEndReasons ?? data.timeEndReason,
+      sleepGoodFactors: data.timeSleepGoodFactors,
+      sleepPoorReasons: data.timeSleepPoorReasons,
       emotionSub: extractEmotionSubFromMemoTags(rawMemoTagsForEdit),
     });
     taskLogMemoTags = userMemoTagsFromLedgerRaw(rawMemoTagsForEdit)
@@ -11771,6 +11773,62 @@ export function render(opts = {}) {
         return;
       }
     }
+    const needsSleepGood =
+      isTaskLogModalSleepTask() &&
+      !isTaskLogModalSleepOvernightCutoff() &&
+      shouldCollectTimeSleepGoodFactors(timeRatingForRow);
+    const timeSleepGoodFactorsForRow = needsSleepGood
+      ? getTaskLogTimeSleepGoodFactors()
+      : [];
+    if (needsSleepGood && !timeSleepGoodFactorsForRow.length) {
+      const pickSleepGood = await showConfirmModal({
+        title: "알림",
+        message: "잘 잔 이유를 아직 고르지 않았어요.",
+        cancelText: "나중에",
+        confirmText: "확인",
+      });
+      if (pickSleepGood) {
+        syncTaskLogSleepGoodSection();
+        if (taskLogSleepGoodSection) {
+          taskLogSleepGoodSection.hidden = false;
+          try {
+            taskLogSleepGoodSection.scrollIntoView({
+              block: "nearest",
+              behavior: "smooth",
+            });
+          } catch (_) {}
+        }
+        return;
+      }
+    }
+    const needsSleepPoor =
+      isTaskLogModalSleepTask() &&
+      !isTaskLogModalSleepOvernightCutoff() &&
+      shouldCollectTimeSleepPoorReasons(timeRatingForRow);
+    const timeSleepPoorReasonsForRow = needsSleepPoor
+      ? getTaskLogTimeSleepPoorReasons()
+      : [];
+    if (needsSleepPoor && !timeSleepPoorReasonsForRow.length) {
+      const pickSleepPoor = await showConfirmModal({
+        title: "알림",
+        message: "아쉬웠던 이유를 아직 고르지 않았어요.",
+        cancelText: "나중에",
+        confirmText: "확인",
+      });
+      if (pickSleepPoor) {
+        syncTaskLogSleepPoorSection();
+        if (taskLogSleepPoorSection) {
+          taskLogSleepPoorSection.hidden = false;
+          try {
+            taskLogSleepPoorSection.scrollIntoView({
+              block: "nearest",
+              behavior: "smooth",
+            });
+          } catch (_) {}
+        }
+        return;
+      }
+    }
 
     if (editTr) {
       oldRowDataToRemove = editTr._rowData ? { ...editTr._rowData } : null;
@@ -11810,6 +11868,8 @@ export function render(opts = {}) {
         timeEndReasons: timeEndReasonsForRow,
         timeFlowDisruptors: timeFlowDisruptorsForRow,
         timeFlowFactors: timeFlowFactorsForRow,
+        timeSleepGoodFactors: timeSleepGoodFactorsForRow,
+        timeSleepPoorReasons: timeSleepPoorReasonsForRow,
       };
       editTr._rowData = newRowData;
       const isMobileCard = lpTokenHas(editTr, "time-ledger-mobile-card");
@@ -11949,6 +12009,8 @@ export function render(opts = {}) {
           timeEndReasons: timeEndReasonsForRow,
           timeFlowDisruptors: timeFlowDisruptorsForRow,
           timeFlowFactors: timeFlowFactorsForRow,
+          timeSleepGoodFactors: timeSleepGoodFactorsForRow,
+          timeSleepPoorReasons: timeSleepPoorReasonsForRow,
         };
         const idx = allRowsCache.indexOf(existingSame);
         if (idx >= 0) allRowsCache[idx] = newRowData;
@@ -11980,6 +12042,8 @@ export function render(opts = {}) {
           timeEndReasons: timeEndReasonsForRow,
           timeFlowDisruptors: timeFlowDisruptorsForRow,
           timeFlowFactors: timeFlowFactorsForRow,
+          timeSleepGoodFactors: timeSleepGoodFactorsForRow,
+          timeSleepPoorReasons: timeSleepPoorReasonsForRow,
         };
         const tr = createRow(
           newRowData,
@@ -13896,7 +13960,6 @@ export function render(opts = {}) {
       }
       usageHistoryTextSearchQuery = "";
       usageHistoryMemoOnlyFilter = false;
-      selectedTaskNamesForFilter = null;
       clearUsageQueryFiltersFromSession();
       /* 탭 이탈 후 세션에 연간·주간 조회가 남지 않게 오늘 하루로 고정 */
       try {
