@@ -255,6 +255,10 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   [data-legacy~="time-task-log-emotion-trigger-section"][hidden],
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-emotion-reflect-section"][hidden],
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-memo-default-field"][hidden],
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   [data-legacy~="time-task-log-meal-detail-section"][hidden],
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   [data-legacy~="time-task-log-daily-todos-section"][hidden],
@@ -274,6 +278,14 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
     .lp-calendar-budget-add-modal
   )
   [data-legacy~="time-task-log-emotion-trigger-section"][hidden],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-emotion-reflect-section"][hidden],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-memo-default-field"][hidden],
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
     .lp-calendar-budget-add-modal
   )
@@ -414,6 +426,28 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
     height: auto;
     min-height: 11rem;
     max-height: none;
+  }
+  /* 부정 감정 사실·해석 — 메모처럼 커지지 않고 고정 높이 */
+  .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+    [data-legacy~="time-task-log-emotion-fact"],
+  .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+    [data-legacy~="time-task-log-emotion-interp"],
+  [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+      .lp-calendar-budget-add-modal
+    )
+    [data-legacy~="time-task-log-emotion-fact"],
+  [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+      .lp-calendar-budget-add-modal
+    )
+    [data-legacy~="time-task-log-emotion-interp"] {
+    display: block;
+    flex: none;
+    width: 100%;
+    height: var(--lp-modal-textarea-height);
+    min-height: var(--lp-modal-textarea-height);
+    max-height: var(--lp-modal-textarea-height);
+    resize: none;
+    field-sizing: fixed;
   }
   /* 메모 입력 시 하단 여백 = 키보드 높이만큼 */
   .time-task-setup-modal.time-task-log-modal
@@ -1043,6 +1077,8 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 .time-task-log-expense-name,
 .time-task-log-meal-detail-input,
 .time-task-log-feedback,
+.time-task-log-emotion-fact,
+.time-task-log-emotion-interp,
 .time-task-log-tag-input,
 .todo-task-edit-name,
 [data-legacy~="time-add-task-name"],
@@ -1050,6 +1086,8 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 [data-legacy~="time-task-log-expense-name"],
 [data-legacy~="time-task-log-meal-detail-input"],
 [data-legacy~="time-task-log-feedback"],
+[data-legacy~="time-task-log-emotion-fact"],
+[data-legacy~="time-task-log-emotion-interp"],
 [data-legacy~="time-task-log-tag-input"],
 [data-legacy~="todo-task-edit-name"] {
   width: 100%;
@@ -1071,6 +1109,8 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 .time-task-log-expense-name:focus,
 .time-task-log-meal-detail-input:focus,
 .time-task-log-feedback:focus,
+.time-task-log-emotion-fact:focus,
+.time-task-log-emotion-interp:focus,
 .time-task-log-tag-input:focus,
 .todo-task-edit-name:focus,
 [data-legacy~="time-add-task-name"]:focus,
@@ -1078,13 +1118,19 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 [data-legacy~="time-task-log-expense-name"]:focus,
 [data-legacy~="time-task-log-meal-detail-input"]:focus,
 [data-legacy~="time-task-log-feedback"]:focus,
+[data-legacy~="time-task-log-emotion-fact"]:focus,
+[data-legacy~="time-task-log-emotion-interp"]:focus,
 [data-legacy~="time-task-log-tag-input"]:focus,
 [data-legacy~="todo-task-edit-name"]:focus {
   border-color: rgba(0, 0, 0, 0.45);
   box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12);
 }
 .time-task-log-feedback,
-[data-legacy~="time-task-log-feedback"] {
+.time-task-log-emotion-fact,
+.time-task-log-emotion-interp,
+[data-legacy~="time-task-log-feedback"],
+[data-legacy~="time-task-log-emotion-fact"],
+[data-legacy~="time-task-log-emotion-interp"] {
   resize: none;
   height: var(--lp-modal-textarea-height);
   min-height: var(--lp-modal-textarea-height);
@@ -1092,6 +1138,26 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   overflow-y: auto;
   line-height: 1.45;
   -webkit-overflow-scrolling: touch;
+  field-sizing: fixed;
+}
+
+.time-task-setup-modal.time-task-log-modal
+  [data-legacy~="time-task-log-emotion-reflect-section"]:not([hidden]),
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-emotion-reflect-section"]:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin: 0;
+}
+
+.time-task-setup-modal.time-task-log-modal
+  [data-legacy~="time-task-log-emotion-reflect-section"]
+  [data-legacy~="time-task-log-field"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-emotion-reflect-section"]
+  [data-legacy~="time-task-log-field"] {
+  margin-bottom: 0;
 }
 .time-task-log-expense-classification-wrap select,
 [data-legacy~="time-task-log-expense-classification-wrap"] select {
@@ -3108,6 +3174,8 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 .time-datetime-picker-column,
 .time-task-log-task-dropdown-options,
 .time-task-log-feedback,
+.time-task-log-emotion-fact,
+.time-task-log-emotion-interp,
 [data-legacy~="time-task-setup-body"],
 [data-legacy~="todo-list-modal-body"],
 [data-legacy~="diary-desktop-compose-modal-scroll"],
@@ -3119,7 +3187,9 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 [data-legacy~="time-datetime-picker-wrap"][data-legacy~="time-datetime-picker-bottom"],
 [data-legacy~="time-datetime-picker-column"],
 [data-legacy~="time-task-log-task-dropdown-options"],
-[data-legacy~="time-task-log-feedback"] {
+[data-legacy~="time-task-log-feedback"],
+[data-legacy~="time-task-log-emotion-fact"],
+[data-legacy~="time-task-log-emotion-interp"] {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -3135,6 +3205,8 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 .time-datetime-picker-column::-webkit-scrollbar,
 .time-task-log-task-dropdown-options::-webkit-scrollbar,
 .time-task-log-feedback::-webkit-scrollbar,
+.time-task-log-emotion-fact::-webkit-scrollbar,
+.time-task-log-emotion-interp::-webkit-scrollbar,
 [data-legacy~="time-task-setup-body"]::-webkit-scrollbar,
 [data-legacy~="todo-list-modal-body"]::-webkit-scrollbar,
 [data-legacy~="diary-desktop-compose-modal-scroll"]::-webkit-scrollbar,
@@ -3146,7 +3218,9 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 [data-legacy~="time-datetime-picker-wrap"][data-legacy~="time-datetime-picker-bottom"]::-webkit-scrollbar,
 [data-legacy~="time-datetime-picker-column"]::-webkit-scrollbar,
 [data-legacy~="time-task-log-task-dropdown-options"]::-webkit-scrollbar,
-[data-legacy~="time-task-log-feedback"]::-webkit-scrollbar {
+[data-legacy~="time-task-log-feedback"]::-webkit-scrollbar,
+[data-legacy~="time-task-log-emotion-fact"]::-webkit-scrollbar,
+[data-legacy~="time-task-log-emotion-interp"]::-webkit-scrollbar {
   display: none;
   width: 0;
   height: 0;

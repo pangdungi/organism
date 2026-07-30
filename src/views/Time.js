@@ -193,6 +193,11 @@ import {
   ledgerRowUsesDetailAsDisplayName,
   ledgerRowUserMemoFeedback,
 } from "../utils/timeLedgerCardKpiMemo.js";
+import {
+  formatEmotionReflectMemoDisplay,
+  packEmotionReflectMemo,
+  parseEmotionReflectMemo,
+} from "../utils/timeEmotionReflectMemo.js";
 import { mountTimeLedgerMemoFeed } from "../utils/timeLedgerMemoFeed.js";
 import {
   mountTimeLedgerReport,
@@ -5177,6 +5182,37 @@ function buildMobileTimeCardTitle(taskLabel, startClock, endClock, rowData) {
   return parts.join("\n");
 }
 
+/** 제목·메모가 카드에서 잘렸을 때만 native title(호버 툴팁) */
+function applyMobileTimeCardHoverTitle(
+  card,
+  taskLabel,
+  startClock,
+  endClock,
+  rowData,
+) {
+  if (!card) return;
+  const full = buildMobileTimeCardTitle(
+    taskLabel,
+    startClock,
+    endClock,
+    rowData,
+  );
+  const apply = () => {
+    if (!card.isConnected) return;
+    const titleEl = card.querySelector(".calendar-1day-timeline-card-title");
+    const memoEl = card.querySelector(".calendar-1day-timeline-card-memo");
+    const titleCut =
+      !!titleEl && titleEl.scrollWidth > titleEl.clientWidth + 0.5;
+    const memoCut =
+      !!memoEl &&
+      (memoEl.scrollHeight > memoEl.clientHeight + 0.5 ||
+        memoEl.scrollWidth > memoEl.clientWidth + 0.5);
+    if (titleCut || memoCut) card.title = full;
+    else card.removeAttribute("title");
+  };
+  requestAnimationFrame(() => requestAnimationFrame(apply));
+}
+
 function syncMobileTimeCardRatingEl(card, rowData) {
   if (!card) return;
   const statsCol = card.querySelector(".time-ledger-usage-stats-col");
@@ -5267,7 +5303,13 @@ function refreshTimeLedgerRowMemoDisplay(tr, rowData) {
     const startInst = getRowStartInstantForMobileCard(rowData);
     const startClock = formatLedgerTimelineClockHHmm(startInst) || "—";
     const endClock = formatLedgerTimelineEndClock(rowData);
-    tr.title = buildMobileTimeCardTitle(taskLabel, startClock, endClock, rowData);
+    applyMobileTimeCardHoverTitle(
+      tr,
+      taskLabel,
+      startClock,
+      endClock,
+      rowData,
+    );
     return;
   }
   const dispFeedback = tr.querySelector(
@@ -5551,7 +5593,8 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   card._rowData = rowData;
   card._timeLedgerViewEl = viewEl || null;
   card._onRowDelete = onDelete;
-  card.title = buildMobileTimeCardTitle(
+  applyMobileTimeCardHoverTitle(
+    card,
     taskLabel,
     startClock,
     endClock,
@@ -7690,7 +7733,7 @@ export function render(opts = {}) {
               <label data-legacy="time-task-log-section-label time-task-log-meal-detail-label" for="time-task-log-meal-detail">식단명</label>
               <input type="text" id="time-task-log-meal-detail" data-legacy="time-task-log-meal-detail-input time-task-log-memo-input" placeholder="무엇을 드셨는지 한 줄로 적어 주세요" autocomplete="off" />
             </div>
-            <div data-legacy="time-task-log-field">
+            <div data-legacy="time-task-log-field time-task-log-memo-default-field">
               <div data-legacy="time-task-log-memo-label-row">
                 <label data-legacy="time-task-log-section-label time-task-log-memo-section-label" for="time-task-log-feedback">메모</label>
                 <div data-legacy="time-task-log-memo-quick" role="group" aria-label="메모 빠른 입력">
@@ -7700,6 +7743,16 @@ export function render(opts = {}) {
                 </div>
               </div>
               <textarea id="time-task-log-feedback" data-legacy="time-task-log-feedback time-task-log-memo-input" rows="2" placeholder="메모를 입력하세요"></textarea>
+            </div>
+            <div data-legacy="time-task-log-emotion-reflect-section" hidden>
+              <div data-legacy="time-task-log-field">
+                <label data-legacy="time-task-log-section-label" for="time-task-log-emotion-fact">상황에 대한 사실만 적기</label>
+                <textarea id="time-task-log-emotion-fact" data-legacy="time-task-log-emotion-fact time-task-log-memo-input" rows="2" placeholder="무슨 일이 있었는지, 사실만 적어 주세요" autocomplete="off"></textarea>
+              </div>
+              <div data-legacy="time-task-log-field">
+                <label data-legacy="time-task-log-section-label" for="time-task-log-emotion-interp">내 해석 적기</label>
+                <textarea id="time-task-log-emotion-interp" data-legacy="time-task-log-emotion-interp time-task-log-memo-input" rows="2" placeholder="내가 해석한 상황을 적어주세요" autocomplete="off"></textarea>
+              </div>
             </div>
             <div data-legacy="time-task-log-recent-reviews" hidden>
               <span data-legacy="time-task-log-section-label time-task-log-recent-reviews-label">최근 구매 후기</span>
@@ -7806,12 +7859,47 @@ export function render(opts = {}) {
   const taskLogFeedbackInput = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-feedback"]',
   );
+  const taskLogMemoDefaultField = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-memo-default-field"]',
+  );
+  const taskLogEmotionReflectSection = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-emotion-reflect-section"]',
+  );
+  const taskLogEmotionFactInput = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-emotion-fact"]',
+  );
+  const taskLogEmotionInterpInput = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-emotion-interp"]',
+  );
   const taskLogMemoQuick = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-memo-quick"]',
   );
   const taskLogMemoSection = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-memo-section"]',
   );
+
+  function clearTaskLogEmotionReflectInputs() {
+    if (taskLogEmotionFactInput) taskLogEmotionFactInput.value = "";
+    if (taskLogEmotionInterpInput) taskLogEmotionInterpInput.value = "";
+  }
+
+  function setTaskLogEmotionReflectInputsFromMemo(raw) {
+    const { fact, interpretation } = parseEmotionReflectMemo(raw);
+    if (taskLogEmotionFactInput) taskLogEmotionFactInput.value = fact;
+    if (taskLogEmotionInterpInput)
+      taskLogEmotionInterpInput.value = interpretation;
+  }
+
+  function syncTaskLogEmotionReflectVisibility(taskName) {
+    const show = TTC.isNegativeEmotionalTaskName(taskName);
+    if (taskLogEmotionReflectSection) {
+      taskLogEmotionReflectSection.hidden = !show;
+    }
+    if (taskLogMemoDefaultField) {
+      taskLogMemoDefaultField.hidden = show;
+    }
+    if (!show) clearTaskLogEmotionReflectInputs();
+  }
 
   /** 메모 textarea 커서 위치에 문자 삽입(이모티콘 창 없이 □ 등) */
   function insertTextIntoTaskLogMemo(text) {
@@ -8668,20 +8756,21 @@ export function render(opts = {}) {
   const TASK_LOG_MEMO_PLACEHOLDER_DEFAULT = "메모를 입력하세요";
   const TASK_LOG_MEMO_LABEL_REVIEW = "후기";
   const TASK_LOG_MEMO_PLACEHOLDER_REVIEW = "후기를 입력하세요";
-  const TASK_LOG_MEMO_LABEL_EMOTION_CONTEXT = "상황 맥락과 계획";
-  const TASK_LOG_MEMO_PLACEHOLDER_EMOTION_CONTEXT =
-    "무슨 상황이었는지, 앞으로 어떻게 할지 적어 주세요";
   const TASK_LOG_MEMO_LABEL_PURCHASE_REVIEW = "구매 후기";
   const TASK_LOG_MEMO_PLACEHOLDER_PURCHASE_REVIEW = "구매 후기를 입력하세요";
   const TASK_LOG_RECENT_REVIEW_LABEL = "최근 후기";
   const TASK_LOG_RECENT_PURCHASE_REVIEW_LABEL = "최근 구매 후기";
-  const TASK_LOG_RECENT_EMOTION_CONTEXT_LABEL = "최근 상황 맥락과 계획";
+  const TASK_LOG_RECENT_EMOTION_CONTEXT_LABEL = "최근 사실·해석";
   const TASK_LOG_RECENT_REVIEW_LIMIT = 5;
 
   function extractTaskLogRecentReviewMemo(row) {
     let memo = ledgerRowUserMemoFeedback(row);
     if (!memo) return "";
-    return memo.replace(/#[^\s#]+/g, "").trim();
+    memo = memo.replace(/#[^\s#]+/g, "").trim();
+    if (TTC.isNegativeEmotionalTaskName(row?.taskName)) {
+      return formatEmotionReflectMemoDisplay(memo);
+    }
+    return memo;
   }
 
   function rowMatchesTaskLogRecentReviewTarget(row, compareTaskId) {
@@ -8796,9 +8885,10 @@ export function render(opts = {}) {
       memoPlaceholder = prompt
         ? `${prompt} 적어 주세요`
         : "감정을 고른 뒤, 무엇이 그렇게 느끼게 했는지 적어 주세요";
-    } else if (TTC.isEmotionalBuiltinTaskName(tn)) {
-      memoLabel = TASK_LOG_MEMO_LABEL_EMOTION_CONTEXT;
-      memoPlaceholder = TASK_LOG_MEMO_PLACEHOLDER_EMOTION_CONTEXT;
+    } else if (TTC.isNegativeEmotionalTaskName(tn)) {
+      /* 부정 감정 — 사실/해석 2칸 (기본 메모 칸 숨김) */
+      memoLabel = TASK_LOG_MEMO_LABEL_DEFAULT;
+      memoPlaceholder = TASK_LOG_MEMO_PLACEHOLDER_DEFAULT;
     } else if (isTaskLogGeneralReviewTask(tn)) {
       memoLabel = TASK_LOG_MEMO_LABEL_REVIEW;
       memoPlaceholder = TASK_LOG_MEMO_PLACEHOLDER_REVIEW;
@@ -8879,6 +8969,7 @@ export function render(opts = {}) {
       taskLogEmotionTriggerSection.hidden = !showTrigger;
       if (!showTrigger) clearTaskLogEmotionTrigger();
     }
+    syncTaskLogEmotionReflectVisibility(tn);
     taskLogScrollArea?.classList?.toggle("is-content-detail-task", isChipDetail);
     syncTaskLogEmotionSectionOrder();
     updateTaskLogMemoCopyForProductivity(tn);
@@ -10520,6 +10611,12 @@ export function render(opts = {}) {
   }
 
   function buildTaskLogFeedbackForSubmit(taskName) {
+    if (TTC.isNegativeEmotionalTaskName(taskName)) {
+      return packEmotionReflectMemo(
+        taskLogEmotionFactInput?.value || "",
+        taskLogEmotionInterpInput?.value || "",
+      );
+    }
     const userMemo = (taskLogFeedbackInput?.value || "").trim();
     if (!getTaskCompletionTodoInfoForTaskLog()) {
       return userMemo;
@@ -11203,6 +11300,7 @@ export function render(opts = {}) {
     if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
     clearTaskLogContentType();
     clearTaskLogEmotionTrigger();
+    clearTaskLogEmotionReflectInputs();
     applyTaskLogModalRatingUiState({
       rating: null,
       disruptors: [],
@@ -11422,11 +11520,18 @@ export function render(opts = {}) {
       setTaskLogEmotionTrigger(mealDetailVal);
       if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
       clearTaskLogContentType();
-      if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
+      if (TTC.isNegativeEmotionalTaskName(tnForMemo)) {
+        if (taskLogFeedbackInput) taskLogFeedbackInput.value = "";
+        setTaskLogEmotionReflectInputsFromMemo(memoOnly);
+      } else {
+        clearTaskLogEmotionReflectInputs();
+        if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
+      }
     } else {
       if (taskLogMealDetailInput) taskLogMealDetailInput.value = mealDetailVal;
       clearTaskLogContentType();
       clearTaskLogEmotionTrigger();
+      clearTaskLogEmotionReflectInputs();
       if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
     }
     const rawMemoTagsForEdit = Array.isArray(data.memoTags)
@@ -13585,6 +13690,7 @@ export function render(opts = {}) {
         el._lpSyncUsageRangeModalForLayout?.();
         el._lpSyncUsageQueryFooterBtn?.();
         renderAll(getFilteredRows(getFullRowsForFilter(true)));
+        requestTimeLedgerPullForUserQueryChange(`layout_${nextView}`);
       });
       viewModeBarWrap._syncTimeLedgerViewModeUi?.(timeLedgerLayoutView);
       ledgerContainer.appendChild(viewModeBarWrap);

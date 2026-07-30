@@ -249,7 +249,6 @@ export function createCalendar1DaySlotGridScroll() {
       cell.className = "calendar-1day-slot-grid-cell";
       cell.setAttribute("role", "gridcell");
       cell.dataset.slotMin = String(slotMin);
-      cell.title = formatCalendar1DaySlotClockLabel(slotMin);
       rowEl.appendChild(cell);
     }
     body.appendChild(rowEl);
@@ -270,10 +269,11 @@ export function paintCalendar1DaySlotGridFromSpans(root, spans) {
     cell.style.display = "";
     cell.style.gridColumn = "";
     delete cell.dataset.spanKey;
+    delete cell.dataset.lpTipTitle;
+    cell.removeAttribute("title");
 
     const span = findSpanForCell(slotMin, sorted);
     if (!span) {
-      cell.title = formatCalendar1DaySlotClockLabel(slotMin);
       return;
     }
 
@@ -286,12 +286,34 @@ export function paintCalendar1DaySlotGridFromSpans(root, spans) {
     const label = expectedSpanSlotGridLabel(span);
     const titleTask =
       taskName && label && taskName !== label ? `${taskName} · ${label}` : label;
-    cell.title = titleTask
+    /* title은 라벨 merge 후 · 글자 잘릴 때만 (아래 sync) */
+    cell.dataset.lpTipTitle = titleTask
       ? `${titleTask} (${span.startDisplay || ""} ~ ${span.endDisplay || ""})`
-      : formatCalendar1DaySlotClockLabel(slotMin);
+      : "";
+    cell.removeAttribute("title");
   });
 
   applyCalendarSlotGridRowSpanMerges(root, sorted);
+  syncCalendar1DaySlotGridHoverTitles(root);
+}
+
+/** 칸 라벨이 ellipsis로 잘렸을 때만 native title */
+function syncCalendar1DaySlotGridHoverTitles(root) {
+  if (!root) return;
+  const apply = () => {
+    if (!root.isConnected) return;
+    root.querySelectorAll(".calendar-1day-slot-grid-cell").forEach((cell) => {
+      const tip = String(cell.dataset.lpTipTitle || "").trim();
+      const label = cell.querySelector(".calendar-1day-slot-grid-cell-label");
+      const cut =
+        !!label &&
+        (label.scrollWidth > label.clientWidth + 0.5 ||
+          label.scrollHeight > label.clientHeight + 0.5);
+      if (tip && cut) cell.title = tip;
+      else cell.removeAttribute("title");
+    });
+  };
+  requestAnimationFrame(() => requestAnimationFrame(apply));
 }
 
 function spansMatchForDrag(a, b) {

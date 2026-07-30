@@ -40,6 +40,7 @@ import {
   renderEmotionTimeHeatmap,
 } from "./timeEmotionReportCharts.js";
 import { getEmotionCategoryChartColor } from "./timeEmotionTaxonomy.js";
+import { parseEmotionReflectMemo } from "./timeEmotionReflectMemo.js";
 import { buildMoveReportSnapshot } from "./timeMoveReport.js";
 import { buildHappinessRoutineReportSnapshot } from "./timeHappinessRoutineReport.js";
 import {
@@ -2777,10 +2778,29 @@ function renderEmotionDayJournal(entries) {
     }
 
     if (e.memo) {
-      const memo = document.createElement("p");
-      memo.className = "lp-tr2-emotion-day-item-memo";
-      memo.textContent = e.memo;
-      li.appendChild(memo);
+      const parsed = parseEmotionReflectMemo(e.memo);
+      const showSplit =
+        e.polarity !== "positive" &&
+        (parsed.isStructured || parsed.fact || parsed.interpretation);
+      if (showSplit && (parsed.fact || parsed.interpretation)) {
+        if (parsed.fact) {
+          const factEl = document.createElement("p");
+          factEl.className = "lp-tr2-emotion-day-item-memo";
+          factEl.textContent = `사실 ${parsed.fact}`;
+          li.appendChild(factEl);
+        }
+        if (parsed.interpretation) {
+          const interpEl = document.createElement("p");
+          interpEl.className = "lp-tr2-emotion-day-item-memo";
+          interpEl.textContent = `해석 ${parsed.interpretation}`;
+          li.appendChild(interpEl);
+        }
+      } else {
+        const memo = document.createElement("p");
+        memo.className = "lp-tr2-emotion-day-item-memo";
+        memo.textContent = e.memo;
+        li.appendChild(memo);
+      }
     } else {
       const noMemo = document.createElement("p");
       noMemo.className = "lp-tr2-emotion-day-item-memo is-empty";

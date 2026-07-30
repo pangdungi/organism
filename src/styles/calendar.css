@@ -3079,9 +3079,10 @@
   display: none !important;
 }
 
-/* 본문 세로 스크롤 — 바깥 패딩 없음 */
+/* 본문 세로 스크롤 — 바깥 패딩 없음 · 남은 높이는 메모가 채움 */
 .lp-calendar-budget-add-modal [data-legacy~="time-task-log-scroll-area"] {
-  display: block;
+  display: flex;
+  flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
   overflow-x: hidden;
@@ -3095,6 +3096,57 @@
   display: block;
   margin: 0;
   min-width: 0;
+}
+
+/* 메모만(할 일 분할 아님) — 아래 빈 공간을 메모 칸이 채움 */
+.lp-calendar-budget-add-modal
+  [data-legacy~="lp-expected-todo-memo-split"]:not(.is-split) {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 10rem;
+  min-width: 0;
+}
+
+.lp-calendar-budget-add-modal
+  [data-legacy~="lp-expected-todo-memo-split"]:not(.is-split)
+  > [data-legacy~="time-task-log-memo-section"] {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 0.12rem;
+  padding: 0.35rem 0 0;
+}
+
+.lp-calendar-budget-add-modal
+  [data-legacy~="lp-expected-todo-memo-split"]:not(.is-split)
+  [data-legacy~="time-task-log-memo-fields"] {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+}
+
+.lp-calendar-budget-add-modal
+  [data-legacy~="lp-expected-todo-memo-split"]:not(.is-split)
+  [data-legacy~="time-task-log-meal-detail-section"]:not([hidden]) {
+  flex: 0 0 auto;
+  margin-bottom: 0.55rem;
+}
+
+.lp-calendar-budget-add-modal
+  [data-legacy~="lp-expected-todo-memo-split"]:not(.is-split)
+  [data-legacy~="time-task-log-memo-fields"]
+  > [data-legacy~="time-task-log-field"]:not([hidden]):not(
+    [data-legacy~="time-task-log-meal-detail-section"]
+  ) {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
 }
 
 .lp-calendar-budget-add-modal [data-legacy~="time-task-log-kpi-todos-section"] {
@@ -3363,10 +3415,14 @@
 .lp-calendar-budget-add-modal.time-task-setup-modal.time-task-log-modal
   [data-legacy~="time-task-log-memo-section"]
   [data-legacy~="time-task-log-feedback"] {
-  height: 2.75rem;
-  min-height: 2.75rem;
-  max-height: 6rem;
-  resize: vertical;
+  flex: 1 1 auto;
+  width: 100%;
+  height: auto;
+  min-height: 10rem;
+  max-height: none;
+  resize: none;
+  box-sizing: border-box;
+  overflow-y: auto;
 }
 
 .lp-calendar-budget-add-modal.time-task-setup-modal.time-task-log-modal
@@ -3391,7 +3447,7 @@
 @media (max-width: 46rem) {
   .lp-calendar-budget-add-modal
     [data-legacy~="time-task-setup-panel"][data-legacy~="time-task-log-panel"] {
-    height: auto;
+    height: min(92vh, 44rem);
     min-height: 0;
     max-height: min(92vh, 44rem);
   }

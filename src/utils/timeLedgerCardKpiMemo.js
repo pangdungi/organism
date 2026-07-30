@@ -3,6 +3,7 @@
  */
 
 import { getKpiMeasureInfoByKpiId } from "./kpiTodoSync.js";
+import { formatEmotionReflectMemoDisplay } from "./timeEmotionReflectMemo.js";
 import { splitUnhealthyMealMemoFromDb } from "./timeLedgerEntriesModel.js";
 import * as TTC from "./timeTaskOptionsConstants.js";
 
@@ -142,7 +143,13 @@ export function buildTimeLedgerCardMemoText(rowData, kpiId) {
       : formatTimeLedgerCardDetailLines(rowData)),
     ...formatTimeLedgerCardKpiMemoLines(rowData, kpiId),
   ].join("\n");
-  const memo = ledgerRowUserMemoFeedback(rowData);
+  let memo = ledgerRowUserMemoFeedback(rowData);
+  if (
+    memo &&
+    TTC.isNegativeEmotionalTaskName(rowData?.taskName)
+  ) {
+    memo = formatEmotionReflectMemoDisplay(memo);
+  }
   if (!summary) return memo;
   if (!memo) return summary;
   return `${summary}\n${memo}`;

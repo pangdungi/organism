@@ -638,6 +638,16 @@ export function ledgerDetailInputPlaceholder(kind) {
   return "";
 }
 
+/** 예상 일정 모달 placeholder (예정 문구) */
+export function ledgerDetailInputPlaceholderExpected(kind) {
+  if (kind === "meal") return "예정 식단을 한 줄로 적어 주세요";
+  if (kind === "conversation") return "누구와 무엇에 대해 대화할지 한 줄로 적어 주세요";
+  if (kind === "outing") return "어디에 외출할지 한 줄로 적어 주세요";
+  if (kind === "reading") return "무슨 책을 읽을지 한 줄로 적어 주세요";
+  if (kind === "emotion") return "";
+  return "";
+}
+
 /** 카드·레포트 요약 접두 */
 export function ledgerDetailLinePrefix(kind) {
   if (kind === "meal") return "식단";

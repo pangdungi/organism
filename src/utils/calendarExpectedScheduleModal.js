@@ -913,7 +913,7 @@ export function openCalendarExpectedScheduleModal(options) {
               <div data-legacy="time-task-log-memo-fields">
                 <div data-legacy="time-task-log-field time-task-log-meal-detail-section" hidden>
                   <label data-legacy="time-task-log-section-label time-task-log-meal-detail-label" for="lp-calendar-expected-detail-input">식단명</label>
-                  <input type="text" id="lp-calendar-expected-detail-input" data-legacy="time-task-log-meal-detail-input time-task-log-memo-input" placeholder="무엇을 드셨는지 한 줄로 적어 주세요" autocomplete="off" />
+                  <input type="text" id="lp-calendar-expected-detail-input" data-legacy="time-task-log-meal-detail-input time-task-log-memo-input" placeholder="예정 식단을 한 줄로 적어 주세요" autocomplete="off" />
                 </div>
                 <div data-legacy="time-task-log-field">
                   <div data-legacy="time-task-log-memo-label-row">
@@ -1366,8 +1366,8 @@ export function openCalendarExpectedScheduleModal(options) {
       if (taskLogMealDetailInput) {
         if (!showFreeTextDetail) taskLogMealDetailInput.value = "";
         taskLogMealDetailInput.placeholder =
-          TTC.ledgerDetailInputPlaceholder(kind) ||
-          "무엇을 드셨는지 한 줄로 적어 주세요";
+          TTC.ledgerDetailInputPlaceholderExpected(kind) ||
+          "예정 식단을 한 줄로 적어 주세요";
       }
     }
     if (taskLogContentTypeSection) {
