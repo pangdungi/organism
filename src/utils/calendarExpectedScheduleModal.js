@@ -39,6 +39,7 @@ import {
   bindExpectedScheduleModalKeyboard,
   clearExpectedScheduleModalKeyboardShell,
 } from "./calendarExpectedScheduleModalKeyboard.js";
+import { syncBodyOverflowAfterModalClose } from "./lpModalStack.js";
 import {
   getKpiTaskCompletionTodoInfoByKpiId,
   resolveKpiIdForTaskId,
@@ -887,13 +888,6 @@ export function openCalendarExpectedScheduleModal(options) {
               <input type="hidden" data-legacy="time-task-log-end" />
             </div>
           </div>
-          <div data-legacy="time-task-log-kpi-todos-section" hidden>
-            <h4 data-legacy="time-task-log-kpi-todos-title">할 일 목록</h4>
-            <p data-legacy="time-task-log-kpi-todos-status" hidden></p>
-            <div data-legacy="time-task-log-kpi-todos-scroll" hidden>
-              <div data-legacy="time-task-log-kpi-todos-list"></div>
-            </div>
-          </div>
           <div data-legacy="time-task-log-content-type-section" hidden>
             <span data-legacy="time-task-log-section-label time-task-log-content-type-label">콘텐츠 종류</span>
             <div data-legacy="time-task-log-content-type-chips lp-choice-chip-row"></div>
@@ -902,15 +896,30 @@ export function openCalendarExpectedScheduleModal(options) {
             <span data-legacy="time-task-log-section-label time-task-log-emotion-trigger-label">트리거</span>
             <div data-legacy="time-task-log-emotion-trigger-chips lp-choice-chip-row"></div>
           </div>
-          <div data-legacy="time-task-log-memo-section">
-            <div data-legacy="time-task-log-memo-fields">
-              <div data-legacy="time-task-log-field time-task-log-meal-detail-section" hidden>
-                <label data-legacy="time-task-log-section-label time-task-log-meal-detail-label" for="lp-calendar-expected-detail-input">식단명</label>
-                <input type="text" id="lp-calendar-expected-detail-input" data-legacy="time-task-log-meal-detail-input time-task-log-memo-input" placeholder="무엇을 드셨는지 한 줄로 적어 주세요" autocomplete="off" />
+          <div data-legacy="lp-expected-todo-memo-split">
+            <div data-legacy="time-task-log-kpi-todos-section" hidden>
+              <h4 data-legacy="time-task-log-kpi-todos-title">할 일 목록</h4>
+              <p data-legacy="time-task-log-kpi-todos-hint">항목을 누르면 메모에 ◽️로 들어갑니다</p>
+              <p data-legacy="time-task-log-kpi-todos-status" hidden></p>
+              <div data-legacy="time-task-log-kpi-todos-scroll" hidden>
+                <div data-legacy="time-task-log-kpi-todos-list"></div>
               </div>
-              <div data-legacy="time-task-log-field">
-                <label data-legacy="time-task-log-section-label time-task-log-memo-section-label" for="lp-calendar-expected-feedback">메모</label>
-                <textarea id="lp-calendar-expected-feedback" data-legacy="time-task-log-feedback time-task-log-memo-input" rows="2" placeholder="메모를 입력하세요"></textarea>
+            </div>
+            <div data-legacy="time-task-log-memo-section">
+              <div data-legacy="time-task-log-memo-fields">
+                <div data-legacy="time-task-log-field time-task-log-meal-detail-section" hidden>
+                  <label data-legacy="time-task-log-section-label time-task-log-meal-detail-label" for="lp-calendar-expected-detail-input">식단명</label>
+                  <input type="text" id="lp-calendar-expected-detail-input" data-legacy="time-task-log-meal-detail-input time-task-log-memo-input" placeholder="무엇을 드셨는지 한 줄로 적어 주세요" autocomplete="off" />
+                </div>
+                <div data-legacy="time-task-log-field">
+                  <div data-legacy="time-task-log-memo-label-row">
+                    <label data-legacy="time-task-log-section-label time-task-log-memo-section-label" for="lp-calendar-expected-feedback">메모</label>
+                    <div data-legacy="time-task-log-memo-quick" role="group" aria-label="메모 빠른 입력">
+                      <button type="button" data-legacy="time-task-log-memo-quick-todo" data-insert="◽️" title="할 일 표시 ◽️ 넣기" aria-label="할 일 네모 넣기">◽️</button>
+                    </div>
+                  </div>
+                  <textarea id="lp-calendar-expected-feedback" data-legacy="time-task-log-feedback time-task-log-memo-input" rows="2" placeholder="메모를 입력하세요"></textarea>
+                </div>
               </div>
             </div>
           </div>
@@ -961,6 +970,9 @@ export function openCalendarExpectedScheduleModal(options) {
   const taskLogScrollArea = modal.querySelector(
     '[data-legacy~="time-task-log-scroll-area"]',
   );
+  const expectedTodoMemoSplit = modal.querySelector(
+    '[data-legacy~="lp-expected-todo-memo-split"]',
+  );
   const taskLogKpiTodosSection = modal.querySelector(
     '[data-legacy~="time-task-log-kpi-todos-section"]',
   );
@@ -977,6 +989,11 @@ export function openCalendarExpectedScheduleModal(options) {
     '[data-legacy~="time-task-log-kpi-todos-status"]',
   );
   let expectedKpiTodosSyncGen = 0;
+
+  function setExpectedTodoMemoSplitActive(active) {
+    if (!expectedTodoMemoSplit) return;
+    expectedTodoMemoSplit.classList.toggle("is-split", !!active);
+  }
   /** @type {Set<string>} */
   const taskLogChipDetailSelection = new Set();
   let taskLogChipDetailTaskName = "";
@@ -1156,6 +1173,7 @@ export function openCalendarExpectedScheduleModal(options) {
       taskLogKpiTodosStatus.textContent = "";
     }
     taskLogKpiTodosList?.replaceChildren?.();
+    setExpectedTodoMemoSplitActive(false);
   }
 
   function expectedTodoListLabelForKpiId(kpiId) {
@@ -1170,21 +1188,72 @@ export function openCalendarExpectedScheduleModal(options) {
       : "등록된 할 일이 없습니다.";
   }
 
+  function appendTodoLineToExpectedMemo(todoText) {
+    const text = String(todoText || "").trim();
+    if (!text || !(taskLogFeedbackInput instanceof HTMLTextAreaElement)) return;
+    const line = `◽️ ${text}`;
+    const cur = String(taskLogFeedbackInput.value || "");
+    const already = cur
+      .split(/\n/)
+      .some((raw) => {
+        const t = String(raw || "").trim();
+        if (!t) return false;
+        if (t === line || t === text) return true;
+        return (
+          t.replace(/^(?:⬜|▫|□|◽|◽️)\s*/u, "").trim() === text
+        );
+      });
+    if (already) {
+      try {
+        taskLogFeedbackInput.focus({ preventScroll: true });
+      } catch (_) {
+        try {
+          taskLogFeedbackInput.focus();
+        } catch (_) {}
+      }
+      return;
+    }
+    const next = cur.trim() ? `${cur.replace(/\s+$/, "")}\n${line}` : line;
+    taskLogFeedbackInput.value = next;
+    taskLogFeedbackInput.dispatchEvent(new Event("input", { bubbles: true }));
+    try {
+      taskLogFeedbackInput.focus({ preventScroll: true });
+    } catch (_) {
+      try {
+        taskLogFeedbackInput.focus();
+      } catch (_) {}
+    }
+    try {
+      const end = next.length;
+      taskLogFeedbackInput.setSelectionRange(end, end);
+    } catch (_) {}
+  }
+
   function renderExpectedTaskCompletionTodoRows(todos) {
     if (!taskLogKpiTodosList) return;
     taskLogKpiTodosList.replaceChildren();
     for (const todo of todos) {
       const text = String(todo?.text || "").trim();
       if (!text) continue;
-      const row = document.createElement("div");
+      const row = document.createElement("button");
+      row.type = "button";
       row.className =
-        "time-task-log-kpi-todo-row time-task-log-chore-todo-row time-task-log-kpi-todo-row--readonly";
+        "time-task-log-kpi-todo-row time-task-log-chore-todo-row time-task-log-kpi-todo-row--pick-memo";
       row.setAttribute("data-legacy", "time-task-log-chore-todo-row");
+      row.title = "메모에 ◽️로 넣기";
+      row.setAttribute("aria-label", `메모에 넣기: ${text}`);
       const span = document.createElement("span");
       span.className = "time-task-log-kpi-todo-text";
       span.setAttribute("data-legacy", "time-task-log-kpi-todo-text");
       span.textContent = text;
       row.appendChild(span);
+      row.addEventListener(
+        "click",
+        () => {
+          appendTodoLineToExpectedMemo(text);
+        },
+        { signal },
+      );
       taskLogKpiTodosList.appendChild(row);
     }
   }
@@ -1202,6 +1271,7 @@ export function openCalendarExpectedScheduleModal(options) {
       taskLogKpiTodosTitle.textContent = expectedTodoListLabelForKpiId(kpiId);
     }
     taskLogKpiTodosSection.hidden = false;
+    setExpectedTodoMemoSplitActive(true);
     const filtered = (todos || []).filter((t) => String(t?.text || "").trim());
     if (!filtered.length) {
       taskLogKpiTodosScroll.hidden = true;
@@ -1414,6 +1484,57 @@ export function openCalendarExpectedScheduleModal(options) {
   const taskLogFeedbackInput = modal.querySelector(
     '[data-legacy~="time-task-log-feedback"]',
   );
+  const taskLogMemoQuick = modal.querySelector(
+    '[data-legacy~="time-task-log-memo-quick"]',
+  );
+
+  function insertTextIntoExpectedMemo(text) {
+    const ta = taskLogFeedbackInput;
+    if (!(ta instanceof HTMLTextAreaElement) || ta.disabled) return;
+    const insert = String(text || "");
+    if (!insert) return;
+    const value = String(ta.value || "");
+    let start = Number.isFinite(ta.selectionStart)
+      ? ta.selectionStart
+      : value.length;
+    let end = Number.isFinite(ta.selectionEnd) ? ta.selectionEnd : start;
+    if (start > end) {
+      const t = start;
+      start = end;
+      end = t;
+    }
+    ta.value = value.slice(0, start) + insert + value.slice(end);
+    const caret = start + insert.length;
+    try {
+      ta.focus({ preventScroll: true });
+    } catch (_) {
+      try {
+        ta.focus();
+      } catch (_) {}
+    }
+    try {
+      ta.setSelectionRange(caret, caret);
+    } catch (_) {}
+    ta.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  taskLogMemoQuick?.querySelectorAll("button[data-insert]").forEach((btn) => {
+    btn.addEventListener(
+      "mousedown",
+      (ev) => {
+        ev.preventDefault();
+      },
+      { signal },
+    );
+    btn.addEventListener(
+      "click",
+      () => {
+        const ch = btn.getAttribute("data-insert") || btn.textContent || "";
+        insertTextIntoExpectedMemo(ch);
+      },
+      { signal },
+    );
+  });
 
   const editTaskName = String(edit?.taskName || "").trim();
   const editTimeIdx = Number(edit?.timeIdx);
@@ -1472,9 +1593,13 @@ export function openCalendarExpectedScheduleModal(options) {
     taskLogScrollArea?.classList?.remove("is-expected-memo-kb-open");
     taskLogScrollArea?.classList?.remove("is-memo-keyboard-open");
     taskLogScrollArea?.classList?.remove("is-task-picker-open");
+    try {
+      delete modal.__lpDismissExpectedSchedule;
+    } catch (_) {}
     modal.remove();
-    document.body.style.overflow = "";
+    syncBodyOverflowAfterModalClose();
   };
+  modal.__lpDismissExpectedSchedule = close;
 
   /** 로컬 저장 직후 모달·화면 먼저 닫고, 서버 upsert는 백그라운드 */
   const finishAfterLocalSave = (dateStr) => {
@@ -1650,6 +1775,38 @@ export function openCalendarExpectedScheduleModal(options) {
       await scheduleTaskLogModalCloudSync(applyExpectedModalAfterCloudSync);
     } catch (_) {}
   })();
+}
+
+/**
+ * 탭 전환·홈 복귀 시 body에 남은 예상 일정/템플릿 모달 강제 닫기
+ */
+export function dismissOpenCalendarExpectedScheduleModals() {
+  try {
+    document
+      .querySelectorAll("body > .lp-calendar-budget-add-modal")
+      .forEach((modal) => {
+        if (!(modal instanceof HTMLElement)) return;
+        const dismiss =
+          modal.__lpDismissExpectedSchedule || modal.__lpDismissBudgetTemplate;
+        if (typeof dismiss === "function") {
+          try {
+            dismiss();
+          } catch (_) {
+            try {
+              modal.remove();
+            } catch (_) {}
+          }
+          return;
+        }
+        try {
+          modal.remove();
+        } catch (_) {}
+      });
+  } catch (_) {}
+  try {
+    document.documentElement.classList.remove("lp-task-log-modal-open");
+  } catch (_) {}
+  syncBodyOverflowAfterModalClose();
 }
 
 function taskLogResolveYmdForSyncInline(taskLogDateStart, taskLogStartInput, fallbackYmd) {

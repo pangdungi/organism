@@ -358,7 +358,10 @@ export function timeLedgerLocalMonthFirstYmd() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`;
 }
 
-/** 시간가계부 탭 재진입 시: 오늘 날짜·기본 타임라인·필터 없음 (App.setActiveTab time). */
+/**
+ * 시간가계부 탭을 나가거나 다시 들어올 때:
+ * 조회기간·일간/주간/월간/연간을 오늘 하루(1일)로 되돌림.
+ */
 export function resetTimeLedgerSessionFilterToToday() {
   try {
     if (typeof sessionStorage === "undefined") return;
@@ -369,7 +372,11 @@ export function resetTimeLedgerSessionFilterToToday() {
     sessionStorage.setItem("lp_time_usage_list_end", t);
     sessionStorage.setItem("lp_time_usage_memo_only", "0");
     sessionStorage.removeItem("lp_time_usage_task_filter");
+    sessionStorage.removeItem("lp_time_usage_text_search");
     sessionStorage.setItem("lp_time_ledger_layout_view", "timeline");
+    sessionStorage.setItem("lp_time_ledger_timeline_granularity", "day");
+    sessionStorage.setItem("lp_time_ledger_timebox_granularity", "day");
+    sessionStorage.setItem("lp_time_ledger_report_granularity", "day");
     sessionStorage.setItem("lp_time_report_range_start", t);
     sessionStorage.setItem("lp_time_report_range_end", t);
   } catch (_) {}

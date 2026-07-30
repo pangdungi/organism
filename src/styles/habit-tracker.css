@@ -907,12 +907,51 @@
 
 .lp-kpi-dream-page .habit-tracker-all-todos-list .dream-kpi-todo-item {
   padding: 0.45rem 0;
+  cursor: pointer;
+}
+
+.lp-kpi-dream-page
+  .habit-tracker-all-todos-list
+  .dream-kpi-todo-list-preview {
+  cursor: pointer;
 }
 
 .lp-kpi-dream-page .habit-tracker-all-todos-none {
   margin: 0.55rem 0;
   font-size: 0.8125rem;
   color: #888;
+}
+
+/* 전체 할일 — 칸 하단 추가 (모달) */
+.lp-kpi-dream-page .habit-tracker-all-todos-add {
+  flex: 0 0 auto;
+  padding: 0.4rem 0.55rem 0.55rem;
+  border-top: 1px solid #ececec;
+  background: #fff;
+}
+
+.lp-kpi-dream-page .habit-tracker-all-todos-add-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin: 0;
+  padding: 0.45rem 0.5rem;
+  border: 1px dashed #cbd5e1;
+  border-radius: 0.45rem;
+  background: #fafafa;
+  color: #475569;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  font-family: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lp-kpi-dream-page .habit-tracker-all-todos-add-toggle:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #1e293b;
 }
 
 @media (min-width: 46.01rem) {

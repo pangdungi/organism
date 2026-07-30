@@ -361,6 +361,9 @@ function initLpTabResumeCloudPull(getCurrentTabId) {
 
   const runIfNeeded = (reason = "visibility") => {
     if (typeof getCurrentTabId !== "function") return;
+    /* 잠금·백그라운드에서 돌아온 경우만 — 메뉴 클릭·창 focus 잡음은 제외 */
+    if (document.visibilityState === "hidden") return;
+    if (hiddenAt <= 0) return;
     const tab = getCurrentTabId();
     const homeDesktop =
       tab === "home" && isDesktopDashboardViewport();
@@ -368,11 +371,12 @@ function initLpTabResumeCloudPull(getCurrentTabId) {
     const cloudTab = TAB_IDS_WITH_CLOUD_PULL.has(tab);
     if (!homeDesktop && !homeMobile && !cloudTab) return;
     if (isResumeBlockingModalOpen()) return;
-    const awayMs = hiddenAt > 0 ? Date.now() - hiddenAt : MIN_AWAY_MS + 1;
+    const awayMs = Date.now() - hiddenAt;
     if (awayMs < MIN_AWAY_MS) return;
     const now = Date.now();
     if (now - lastResumeAt < MIN_RESUME_GAP_MS) return;
     lastResumeAt = now;
+    hiddenAt = 0;
     const gen = ++resumeGen;
     logTabSync("visibility_pull", {
       tab,
@@ -381,16 +385,17 @@ function initLpTabResumeCloudPull(getCurrentTabId) {
       homeDesktop,
       homeMobile,
     });
-    const toastMsg = homeDesktop || homeMobile
-      ? "홈 동기화 중…"
-      : tab === "schedulecalendar"
-        ? "플래너 동기화 중…"
-        : tab === "time"
-          ? "시간기록 동기화 중…"
+    /* 시간기록은 화면 위 오버레이만 — 토스트는 다른 탭만 */
+    if (tab !== "time") {
+      const toastMsg = homeDesktop || homeMobile
+        ? "홈 동기화 중…"
+        : tab === "schedulecalendar"
+          ? "플래너 동기화 중…"
           : "동기화 중…";
-    try {
-      showToast(toastMsg, { autoOnly: true, durationMs: 1800 });
-    } catch (_) {}
+      try {
+        showToast(toastMsg, { autoOnly: true, durationMs: 1800 });
+      } catch (_) {}
+    }
     void (async () => {
       try {
         if (homeDesktop) await runHomeDesktopResumePull(gen);
@@ -414,12 +419,11 @@ function initLpTabResumeCloudPull(getCurrentTabId) {
     }
     if (document.visibilityState === "visible") runIfNeeded("visibility");
   });
-  window.addEventListener("pageshow", () => {
-    runIfNeeded("pageshow");
+  window.addEventListener("pageshow", (ev) => {
+    /* bfcache 복귀 등 — 실제로 숨겼다 온 경우만 */
+    if (ev?.persisted || hiddenAt > 0) runIfNeeded("pageshow");
   });
-  window.addEventListener("focus", () => {
-    runIfNeeded("focus");
-  });
+  /* focus 는 클릭·탭 전환에도 자주 울려서 제외 — visibility/resume 만 */
   /* Chrome Android 등 — 잠금 후 복귀 */
   try {
     document.addEventListener("resume", () => runIfNeeded("resume"), {
@@ -914,6 +918,11 @@ export async function mountApp(container) {
     const cached = useDesktop ? desktopDashboardEl : homeMenuLauncherEl;
     if (!cached) return false;
 
+    /* 홈 캐시 복원 경로는 renderMain을 안 타므로, body에 남은 캘린더 모달·버블을 여기서 정리 */
+    try {
+      dismissCalendarDayExpandUI();
+    } catch (_) {}
+
     const prev = panelEl.firstElementChild;
     if (prev !== cached) {
       clearAppFooterActions();
@@ -942,6 +951,12 @@ export async function mountApp(container) {
   function applySetActiveTab(tabId) {
     const fromTab = currentTabId;
     if (fromTab !== tabId) flushAllPendingTimeDailyBudgetSync();
+    /* 시간기록 이탈 시 조회기간(연간 등)을 오늘 하루로 — 재진입 때 연간이 남는 문제 방지 */
+    if (fromTab === "time" && tabId !== "time") {
+      try {
+        resetTimeLedgerSessionFilterToToday();
+      } catch (_) {}
+    }
     /*
      * 홈으로 갈 때는 푸터를 미리 건드리지 않음(숨김/버튼 제거 금지).
      * 화면 교체(renderMain) 때 같이 정리한다.
@@ -1027,12 +1042,7 @@ export async function mountApp(container) {
               /* 한 프레임 그린 뒤 pull — 진입 체감 지연 완화 */
               await new Promise((r) => requestAnimationFrame(() => r()));
               if (currentTabId !== targetTabId) return;
-              if (targetTabId === "time") {
-                try {
-                  window.__lpTimeLedgerSetSyncing?.(true, "시간기록 동기화 중…");
-                } catch (_) {}
-              }
-              /* 메뉴 클릭·탭 재진입: 그 시점 서버를 강제 pull */
+              /* 메뉴 클릭·탭 재진입: pull 은 하되「동기화 중」오버레이는 안 띄움(복귀 pull 만) */
               pullResult = await pullDataForActiveTab(targetTabId, {
                 fromBoot: false,
                 preferServer: true,
@@ -1046,11 +1056,6 @@ export async function mountApp(container) {
               if (isKpiAppTabId(targetTabId)) clearKpiTabPullPending(targetTabId);
               if (targetTabId === "home" || targetTabId === "time") {
                 clearLpTabPullPending(targetTabId);
-              }
-              if (targetTabId === "time") {
-                try {
-                  window.__lpTimeLedgerSetSyncing?.(false);
-                } catch (_) {}
               }
               return;
             }
@@ -1077,9 +1082,6 @@ export async function mountApp(container) {
           try {
             window.__lpTimeLedgerSoftRefresh?.({ force: true });
           } catch (_) {}
-          try {
-            window.__lpTimeLedgerSetSyncing?.(false);
-          } catch (_) {}
         } else if (targetTabId === "habittracker") {
           try {
             window.__lpHabitTrackerSoftRefresh?.();
@@ -1093,11 +1095,6 @@ export async function mountApp(container) {
           } finally {
             if (tabPullOverlayTabId) {
               clearLpTabPullOverlay(tabPullOverlayTabId);
-            }
-            if (targetTabId === "time") {
-              try {
-                window.__lpTimeLedgerSetSyncing?.(false);
-              } catch (_) {}
             }
           }
         })();
@@ -1551,11 +1548,6 @@ export async function mountApp(container) {
 
       let pullResult;
       try {
-        if (bootTabId === "time") {
-          try {
-            window.__lpTimeLedgerSetSyncing?.(true, "시간기록 동기화 중…");
-          } catch (_) {}
-        }
         const [, pr] = await Promise.all([
           syncAdminMenuVisibility(),
           pullDataForActiveTab(bootTabId, {
@@ -1574,20 +1566,12 @@ export async function mountApp(container) {
           clearLpTabPullPending(bootTabId);
         }
         if (isKpiAppTabId(bootTabId)) clearKpiTabPullPending(bootTabId);
-        if (bootTabId === "time") {
-          try {
-            window.__lpTimeLedgerSetSyncing?.(false);
-          } catch (_) {}
-        }
         return;
       }
       if (bootTabId === "time") {
         clearLpTabPullPending("time");
         try {
           window.__lpTimeLedgerSoftRefresh?.({ force: true });
-        } catch (_) {}
-        try {
-          window.__lpTimeLedgerSetSyncing?.(false);
         } catch (_) {}
       } else if (bootTabId === "schedulecalendar") {
         try {

@@ -400,10 +400,12 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
     flex: none;
     min-height: auto;
   }
-  .time-task-setup-modal.time-task-log-modal
+  .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
     .time-task-log-memo-section
     .time-task-log-feedback,
-  [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+      .lp-calendar-budget-add-modal
+    )
     [data-legacy~="time-task-log-memo-section"]
     [data-legacy~="time-task-log-feedback"] {
     display: block;
@@ -1853,17 +1855,43 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-/* 예상 일정 모달 — 할 일 목록 보기 전용 */
-.lp-calendar-budget-add-modal .time-task-log-kpi-todo-row--readonly {
-  cursor: default;
-  gap: 0.4rem;
-}
-.lp-calendar-budget-add-modal .time-task-log-kpi-todo-row--readonly::before {
-  content: "·";
-  flex: 0 0 auto;
+/* 예상 일정 모달 — 할 일 목록을 눌러 메모에 넣기 */
+.lp-calendar-budget-add-modal [data-legacy~="time-task-log-kpi-todos-hint"] {
+  margin: 0.2rem 0 0.45rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.35;
   color: #94a3b8;
-  font-weight: 700;
+}
+.lp-calendar-budget-add-modal .time-task-log-kpi-todo-row--pick-memo,
+.lp-calendar-budget-add-modal .time-task-log-kpi-todo-row--readonly {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.28rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.2rem 0.1rem;
+  border: none;
+  border-radius: 0.3rem;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.lp-calendar-budget-add-modal .time-task-log-kpi-todo-row--pick-memo::before,
+.lp-calendar-budget-add-modal .time-task-log-kpi-todo-row--readonly::before {
+  content: "◽️";
+  flex: 0 0 auto;
   line-height: 1.45;
+  font-size: 0.8em;
+}
+.lp-calendar-budget-add-modal .time-task-log-kpi-todo-row--pick-memo:hover {
+  background: rgba(148, 163, 184, 0.12);
+}
+.lp-calendar-budget-add-modal .time-task-log-kpi-todo-row--pick-memo:active {
+  background: rgba(148, 163, 184, 0.2);
 }
 .time-task-log-kpi-todo-row input[type="checkbox"],
 .time-task-log-daily-todo-row input[type="checkbox"],

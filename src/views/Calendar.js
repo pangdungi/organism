@@ -101,7 +101,10 @@ import {
   pullTimeDailyBudgetForDateRange,
 } from "../utils/timeDailyBudgetSupabase.js";
 import { pullTaskListForCalendar1DayEnter } from "../utils/kpiTabCloudRefresh.js";
-import { openCalendarExpectedScheduleModal } from "../utils/calendarExpectedScheduleModal.js";
+import {
+  dismissOpenCalendarExpectedScheduleModals,
+  openCalendarExpectedScheduleModal,
+} from "../utils/calendarExpectedScheduleModal.js";
 import { lpRefreshAllVisibleCalendarLayoutsFromLocalData } from "../utils/lpCalendarLocalRefresh.js";
 import {
   calendarPullRangeForSubView,
@@ -5987,7 +5990,7 @@ function scheduleAnnualDayExpandHide() {
   }, 220);
 }
 
-/** body에 붙은 캘린더 떠있는 UI(할일 추가 버블·날짜 확장·반투명 오버레이) — 탭·서브뷰 전환 시 정리 */
+/** body에 붙은 캘린더 떠있는 UI(할일 추가 버블·날짜 확장·반투명 오버레이·일정추가 모달) — 탭·서브뷰 전환 시 정리 */
 export function dismissCalendarDayExpandUI() {
   cancelAnnualDayExpandHideTimer();
   try {
@@ -6007,6 +6010,12 @@ export function dismissCalendarDayExpandUI() {
   document
     .querySelectorAll(".calendar-day-expand-overlay")
     .forEach((el) => el.remove());
+  try {
+    dismissOpenCalendarExpectedScheduleModals();
+  } catch (_) {}
+  try {
+    closeDuplicateTodoAddModals();
+  } catch (_) {}
 }
 
 /** 연간 뷰: 왼쪽 월 라벨, 오른쪽 해당 월 날짜 셀 한 행 (Year Planner 구조), 요일 미표시.

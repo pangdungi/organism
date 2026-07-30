@@ -7584,6 +7584,78 @@
   font-size: 0.875rem;
 }
 
+/* 검색 필터가 걸려 있을 때 — 입력칸·안내를 분명히 */
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-usage-range-text-search.is-filter-active
+  .lp-search-bar__row,
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-usage-range-text-search[data-legacy~="is-filter-active"]
+  .lp-search-bar__row {
+  border-color: #1e4d7b;
+  background: rgba(30, 77, 123, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(30, 77, 123, 0.18);
+}
+
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-usage-range-text-search.is-filter-active
+  .lp-search-bar__input,
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-usage-range-text-search[data-legacy~="is-filter-active"]
+  .lp-search-bar__input {
+  color: #1e4d7b;
+  font-weight: 600;
+}
+
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-usage-range-filter-active-banner {
+  margin: 0 0 0.55rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.5rem;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  color: #9a3412;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-usage-filter-chip"],
+[data-legacy~="time-ledger-view"] .time-ledger-usage-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  margin: 0.28rem 0 0;
+  padding: 0.22rem 0.55rem;
+  border: 1px solid #fdba74;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-family: inherit;
+  line-height: 1.3;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-ledger-usage-filter-chip"]:hover,
+[data-legacy~="time-ledger-view"] .time-ledger-usage-filter-chip:hover {
+  background: #ffedd5;
+}
+
 [data-legacy~="time-ledger-view"]
   [data-legacy~="time-usage-range-modal"]
   .time-usage-range-task-label {
@@ -8644,6 +8716,81 @@
   + [data-legacy~="time-task-log-memo-section"] {
   margin-top: 1.1rem;
   padding-top: 0.85rem;
+}
+
+/* 메모 라벨 + □ 할 일 퀵버튼 */
+.time-task-setup-modal.time-task-log-modal
+  [data-legacy~="time-task-log-memo-label-row"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-memo-label-row"] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.time-task-setup-modal.time-task-log-modal
+  [data-legacy~="time-task-log-memo-label-row"]
+  > [data-legacy~="time-task-log-memo-section-label"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-memo-label-row"]
+  > [data-legacy~="time-task-log-memo-section-label"] {
+  margin-bottom: 0;
+}
+
+.time-task-setup-modal.time-task-log-modal
+  [data-legacy~="time-task-log-memo-quick"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-memo-quick"] {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.time-task-setup-modal.time-task-log-modal
+  [data-legacy~="time-task-log-memo-quick"]
+  > button,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-memo-quick"]
+  > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+  margin: 0;
+  padding: 0.15rem 0.4rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.45rem;
+  background: #fff;
+  color: #64748b;
+  font-size: 0.85rem;
+  line-height: 1;
+  font-family: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.time-task-setup-modal.time-task-log-modal
+  [data-legacy~="time-task-log-memo-quick"]
+  > button:hover,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-memo-quick"]
+  > button:hover {
+  border-color: #94a3b8;
+  color: #334155;
+  background: #f8fafc;
+}
+
+.time-task-setup-modal.time-task-log-modal
+  [data-legacy~="time-task-log-memo-quick"]
+  > button:active,
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-memo-quick"]
+  > button:active {
+  background: #f1f5f9;
 }
 
 /* 초집중 분석 레포트 */

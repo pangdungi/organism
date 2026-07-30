@@ -217,9 +217,15 @@ export function render(opts = {}) {
 
   function paintAllTodosOnly() {
     if (!goalHost) return;
+    const board = goalHost.querySelector(".habit-tracker-all-todos-board");
+    const keepScrollLeft =
+      board instanceof HTMLElement
+        ? board.scrollLeft
+        : Number(goalHost._lpAllTodosBoardScrollLeft) || 0;
+    goalHost._lpAllTodosBoardScrollLeft = keepScrollLeft;
     goalHost.replaceChildren();
     goalHost.classList.remove("habit-tracker-goal-host--panel");
-    mountKpiGoalAllTodosSection(goalHost);
+    mountKpiGoalAllTodosSection(goalHost, { boardScrollLeft: keepScrollLeft });
   }
 
   function paintGrid(opts = {}) {

@@ -143,6 +143,7 @@ import {
   deleteTimeLedgerEntryFromSupabase,
   pullTimeLedgerEntriesForDateRange,
   pushDirtyTimeLedgerEntriesToSupabase,
+  resetTimeLedgerSessionFilterToToday,
   timeLedgerLocalTodayYmd,
 } from "../utils/timeLedgerEntriesSupabase.js";
 import { pullTimeLedgerTabEnterFromCloud } from "../utils/timeLedgerCloudRefresh.js";
@@ -5653,40 +5654,23 @@ export function render(opts = {}) {
     _usageListFromSession?.start ?? _todayForUsageRange;
   let usageHistoryRangeEndYmd = _usageListFromSession?.end ?? _todayForUsageRange;
 
-  function readUsageQueryFiltersFromSession() {
+  function clearUsageQueryFiltersFromSession() {
     try {
-      if (typeof sessionStorage === "undefined") {
-        return { memoOnly: false, taskFilter: null, textSearch: "" };
-      }
-      const memoOnly = sessionStorage.getItem("lp_time_usage_memo_only") === "1";
-      const textSearch = String(
-        sessionStorage.getItem("lp_time_usage_text_search") || "",
-      ).trim();
-      const taskRaw = sessionStorage.getItem("lp_time_usage_task_filter");
-      if (taskRaw == null || taskRaw === "") {
-        return { memoOnly, taskFilter: null, textSearch };
-      }
-      const parsed = JSON.parse(taskRaw);
-      if (!Array.isArray(parsed)) {
-        return { memoOnly, taskFilter: null, textSearch };
-      }
-      return {
-        memoOnly,
-        taskFilter: parsed.map((n) => String(n || "").trim()),
-        textSearch,
-      };
-    } catch (_) {
-      return { memoOnly: false, taskFilter: null, textSearch: "" };
-    }
+      if (typeof sessionStorage === "undefined") return;
+      sessionStorage.removeItem("lp_time_usage_memo_only");
+      sessionStorage.removeItem("lp_time_usage_text_search");
+      sessionStorage.removeItem("lp_time_usage_task_filter");
+    } catch (_) {}
   }
 
+  /* 검색·과제·메모 필터는 탭을 나가면 리셋(세션에 남기지 않음) */
+  clearUsageQueryFiltersFromSession();
+
   /** 과제 필터: null = 전체, [] = 과제별 보기 켰지만 미선택, string[] = 선택 과제만 */
-  const _usageQueryFiltersFromSession = readUsageQueryFiltersFromSession();
-  let selectedTaskNamesForFilter = _usageQueryFiltersFromSession.taskFilter;
-  let usageHistoryMemoOnlyFilter = _usageQueryFiltersFromSession.memoOnly;
-  /** 타임라인 텍스트 검색(과제명·메모 등). 입력 시 연간 조회로 맞춤 */
-  let usageHistoryTextSearchQuery = _usageQueryFiltersFromSession.textSearch;
-  if (usageHistoryMemoOnlyFilter) selectedTaskNamesForFilter = null;
+  let selectedTaskNamesForFilter = null;
+  let usageHistoryMemoOnlyFilter = false;
+  /** 타임라인 텍스트 검색(과제명·메모 등). 선택한 일간·주간·월간·연간은 그대로 둠 */
+  let usageHistoryTextSearchQuery = "";
 
   function persistActiveViewTimeFilterToSession() {
     const t = getLedgerFilterTodayYmd();
@@ -5696,21 +5680,8 @@ export function render(opts = {}) {
       sessionStorage.setItem("lp_time_usage_list_end", usageHistoryRangeEndYmd);
       sessionStorage.setItem("lp_time_filter_start", t);
       sessionStorage.setItem("lp_time_filter_end", t);
-      sessionStorage.setItem(
-        "lp_time_usage_memo_only",
-        usageHistoryMemoOnlyFilter ? "1" : "0",
-      );
-      const q = String(usageHistoryTextSearchQuery || "").trim();
-      if (!q) sessionStorage.removeItem("lp_time_usage_text_search");
-      else sessionStorage.setItem("lp_time_usage_text_search", q);
-      if (selectedTaskNamesForFilter == null) {
-        sessionStorage.removeItem("lp_time_usage_task_filter");
-      } else {
-        sessionStorage.setItem(
-          "lp_time_usage_task_filter",
-          JSON.stringify(selectedTaskNamesForFilter),
-        );
-      }
+      /* 조회 필터(검색·과제·메모)는 화면을 나가면 사라지도록 세션에 저장하지 않음 */
+      clearUsageQueryFiltersFromSession();
     } catch (_) {}
   }
 
@@ -5914,16 +5885,6 @@ export function render(opts = {}) {
     persistActiveViewTimeFilterToSession();
   }
 
-  /* 검색어가 남아 있으면 연간 구간으로 맞춤(탭 재진입) */
-  if (
-    String(usageHistoryTextSearchQuery || "").trim() &&
-    timeLedgerLayoutView === "timeline"
-  ) {
-    timeLedgerTimelineGranularity = "year";
-    persistTimeLedgerTimelineGranularity();
-    ensureUsageHistoryRangeForTimelineGranularity();
-  }
-
   function formatGranularityRangeDateLabel(startYmd, endYmd, granularity, opts = {}) {
     const g = opts.report
       ? normalizeTimeLedgerReportGranularity(granularity)
@@ -6028,7 +5989,10 @@ export function render(opts = {}) {
     return ov;
   }
 
-  /** 조회·탭 복귀 pull 중 — 화면을 살짝 어둡게 해 「기록이 사라진 것」처럼 보이지 않게 */
+  /**
+   * 잠금·백그라운드 복귀 pull 전용 오버레이.
+   * 메뉴 진입·조회·서브탭 클릭 pull 에는 쓰지 않음.
+   */
   function showTimeLedgerPullLoadingUi(message = "동기화 중…") {
     if (!el.isConnected) return;
     const ov = ensureTimeLedgerSyncOverlay();
@@ -6065,7 +6029,6 @@ export function render(opts = {}) {
   }
 
   function schedulePullTimeLedgerForPickerRange() {
-    showTimeLedgerPullLoadingUi("동기화 중…");
     if (_timeLedgerFilterPullTimer) clearTimeout(_timeLedgerFilterPullTimer);
     _timeLedgerFilterPullTimer = setTimeout(() => {
       _timeLedgerFilterPullTimer = null;
@@ -6107,11 +6070,7 @@ export function render(opts = {}) {
               range: `${rs}..${re}`,
             });
           }
-        } finally {
-          if (pullGen === _usageListPullGen) {
-            dismissTimeLedgerPullLoadingUi();
-          }
-        }
+        } catch (_) {}
       })();
     }, 400);
   }
@@ -6538,13 +6497,14 @@ export function render(opts = {}) {
                 type="search"
                 class="lp-search-bar__input"
                 data-usage-text-search
-                placeholder="과제명·메모 검색 (입력 시 연간 조회)"
+                placeholder="과제명·메모 검색"
                 autocomplete="off"
                 enterkeyhint="search"
                 aria-label="시간기록 검색"
               />
             </div>
           </div>
+          <p class="time-usage-range-filter-active-banner" data-usage-filter-active-banner hidden></p>
           <div class="time-usage-range-filter-options">
             <label class="time-usage-range-filter-option">
               <input type="checkbox" data-usage-filter-by-task />
@@ -6615,6 +6575,12 @@ export function render(opts = {}) {
     );
     const usageTextSearchInp = usageRangeModal.querySelector(
       "[data-usage-text-search]",
+    );
+    const usageTextSearchWrap = usageRangeModal.querySelector(
+      "[data-usage-text-search-wrap]",
+    );
+    const usageFilterActiveBanner = usageRangeModal.querySelector(
+      "[data-usage-filter-active-banner]",
     );
     let _usageTextSearchLiveTimer = null;
     const usageRangeDatesWraps = usageRangeModal.querySelectorAll(
@@ -7237,7 +7203,25 @@ export function render(opts = {}) {
       lpTokenToggle(footerDateBtn, "is-active", active);
     }
 
-    /** 검색어 입력 — 즉시 목록 반영, 비어 있지 않으면 연간으로 맞춤 */
+    function syncUsageTextSearchFilterUi() {
+      const q = String(
+        usageTextSearchInp?.value ?? usageHistoryTextSearchQuery ?? "",
+      ).trim();
+      if (usageTextSearchWrap) {
+        lpTokenToggle(usageTextSearchWrap, "is-filter-active", !!q);
+      }
+      if (usageFilterActiveBanner) {
+        if (q) {
+          usageFilterActiveBanner.hidden = false;
+          usageFilterActiveBanner.textContent = `「${q}」검색 필터가 적용 중이에요. 지우면 전체 기록이 다시 보입니다.`;
+        } else {
+          usageFilterActiveBanner.hidden = true;
+          usageFilterActiveBanner.textContent = "";
+        }
+      }
+    }
+
+    /** 검색어 입력 — 선택한 일간·주간·월간·연간을 유지한 채 목록만 걸러 냄 */
     function applyUsageTextSearchLive(rawQ, opts = {}) {
       if (!isUsageRangeModalTimelineMode()) return;
       const q = String(rawQ ?? "").trim();
@@ -7246,27 +7230,10 @@ export function render(opts = {}) {
       if (usageTextSearchInp && usageTextSearchInp.value !== String(rawQ ?? "")) {
         usageTextSearchInp.value = String(rawQ ?? "");
       }
-      let rangeChanged = false;
-      if (q) {
-        const prevG = normalizeTimeLedgerReportGranularity(
-          timeLedgerTimelineGranularity,
-        );
-        setModalTimeboxGranularityDraft("year");
-        persistActiveLayoutGranularityFromModal();
-        const range = resolveGranularityRangeFromModalDrafts();
-        if (
-          prevG !== "year" ||
-          usageHistoryRangeStartYmd !== range.start ||
-          usageHistoryRangeEndYmd !== range.end
-        ) {
-          rangeChanged = true;
-        }
-        usageHistoryRangeStartYmd = range.start;
-        usageHistoryRangeEndYmd = range.end;
-      }
+      syncUsageTextSearchFilterUi();
       persistActiveViewTimeFilterToSession();
       onFilterChange();
-      if (rangeChanged || q !== prevQ) {
+      if (q !== prevQ) {
         requestTimeLedgerPullForUserQueryChange("usage_text_search");
       }
       syncFooterDateBtnActiveState();
@@ -7346,6 +7313,7 @@ export function render(opts = {}) {
         if (usageTextSearchInp) {
           usageTextSearchInp.value = String(usageHistoryTextSearchQuery || "");
         }
+        syncUsageTextSearchFilterUi();
         if (usageFilterMemoOnlyCb) {
           usageFilterMemoOnlyCb.checked = usageHistoryMemoOnlyFilter;
         }
@@ -7464,6 +7432,7 @@ export function render(opts = {}) {
       usageHistoryMemoOnlyFilter = false;
       usageHistoryTextSearchQuery = "";
       if (usageTextSearchInp) usageTextSearchInp.value = "";
+      syncUsageTextSearchFilterUi();
       if (usageFilterByTaskCb) usageFilterByTaskCb.checked = false;
       if (usageFilterMemoOnlyCb) usageFilterMemoOnlyCb.checked = false;
       syncFilterModeUi();
@@ -7531,13 +7500,7 @@ export function render(opts = {}) {
           usageHistoryTextSearchQuery = String(
             usageTextSearchInp?.value || "",
           ).trim();
-          if (usageHistoryTextSearchQuery) {
-            setModalTimeboxGranularityDraft("year");
-            persistActiveLayoutGranularityFromModal();
-            const yr = resolveGranularityRangeFromModalDrafts();
-            s = yr.start;
-            e = yr.end;
-          }
+          syncUsageTextSearchFilterUi();
         }
         if (timeLedgerLayoutView === "timebox") {
           persistTimeLedgerLayoutView();
@@ -7722,7 +7685,14 @@ export function render(opts = {}) {
               <input type="text" id="time-task-log-meal-detail" data-legacy="time-task-log-meal-detail-input time-task-log-memo-input" placeholder="무엇을 드셨는지 한 줄로 적어 주세요" autocomplete="off" />
             </div>
             <div data-legacy="time-task-log-field">
-              <label data-legacy="time-task-log-section-label time-task-log-memo-section-label" for="time-task-log-feedback">메모</label>
+              <div data-legacy="time-task-log-memo-label-row">
+                <label data-legacy="time-task-log-section-label time-task-log-memo-section-label" for="time-task-log-feedback">메모</label>
+                <div data-legacy="time-task-log-memo-quick" role="group" aria-label="메모 빠른 입력">
+                  <button type="button" data-legacy="time-task-log-memo-quick-todo" data-insert="◽️" title="할 일 표시 ◽️ 넣기" aria-label="할 일 네모 넣기">◽️</button>
+                  <button type="button" data-legacy="time-task-log-memo-quick-ok" data-insert="✔️" title="완료 표시 ✔️ 넣기" aria-label="완료 표시 넣기">✔️</button>
+                  <button type="button" data-legacy="time-task-log-memo-quick-no" data-insert="❌" title="불가 표시 ❌ 넣기" aria-label="불가 표시 넣기">❌</button>
+                </div>
+              </div>
               <textarea id="time-task-log-feedback" data-legacy="time-task-log-feedback time-task-log-memo-input" rows="2" placeholder="메모를 입력하세요"></textarea>
             </div>
             <div data-legacy="time-task-log-recent-reviews" hidden>
@@ -7822,9 +7792,54 @@ export function render(opts = {}) {
   const taskLogFeedbackInput = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-feedback"]',
   );
+  const taskLogMemoQuick = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-memo-quick"]',
+  );
   const taskLogMemoSection = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-memo-section"]',
   );
+
+  /** 메모 textarea 커서 위치에 문자 삽입(이모티콘 창 없이 □ 등) */
+  function insertTextIntoTaskLogMemo(text) {
+    const ta = taskLogFeedbackInput;
+    if (!(ta instanceof HTMLTextAreaElement) || ta.disabled) return;
+    const insert = String(text || "");
+    if (!insert) return;
+    const value = String(ta.value || "");
+    let start = Number.isFinite(ta.selectionStart)
+      ? ta.selectionStart
+      : value.length;
+    let end = Number.isFinite(ta.selectionEnd) ? ta.selectionEnd : start;
+    if (start > end) {
+      const t = start;
+      start = end;
+      end = t;
+    }
+    ta.value = value.slice(0, start) + insert + value.slice(end);
+    const caret = start + insert.length;
+    try {
+      ta.focus({ preventScroll: true });
+    } catch (_) {
+      try {
+        ta.focus();
+      } catch (_) {}
+    }
+    try {
+      ta.setSelectionRange(caret, caret);
+    } catch (_) {}
+    ta.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  taskLogMemoQuick?.querySelectorAll("button[data-insert]").forEach((btn) => {
+    btn.addEventListener("mousedown", (ev) => {
+      /* 버튼 클릭으로 textarea 포커스가 빠지기 전에 삽입 위치 유지 */
+      ev.preventDefault();
+    });
+    btn.addEventListener("click", () => {
+      const ch = btn.getAttribute("data-insert") || btn.textContent || "";
+      insertTextIntoTaskLogMemo(ch);
+    });
+  });
   const taskLogMealDetailSection = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-meal-detail-section"]',
   );
@@ -9871,19 +9886,37 @@ export function render(opts = {}) {
     };
   }
 
-  /** 과제 기록 모달: 선택·수정 중인 과제 id */
+  /** 과제 기록 모달: 지금 고른 과제 id (수정 중 과제 바꾸면 피커 우선) */
   function resolveTaskLogModalTaskId() {
-    const fromRow = String(taskLogEditTr?._rowData?.taskId || "").trim();
-    if (fromRow) return fromRow;
     const fromPicker = String(taskLogTaskDropdown?._getTaskId?.() || "").trim();
     if (fromPicker) return fromPicker;
-    return "";
+    const name = String(taskLogTaskDropdown?._getValue?.() || "").trim();
+    if (name) {
+      try {
+        const opt = getTaskOptionByName(name);
+        const id = String(opt?.id || "").trim();
+        if (id) return id;
+      } catch (_) {}
+    }
+    return String(taskLogEditTr?._rowData?.taskId || "").trim();
   }
 
   function resolveTaskLogModalKpiId() {
     const taskId = resolveTaskLogModalTaskId();
-    if (!taskId) return "";
-    return resolveKpiIdForTaskId(taskId);
+    if (taskId) {
+      const fromTask = resolveKpiIdForTaskId(taskId);
+      if (fromTask) return fromTask;
+    }
+    const name = String(taskLogTaskDropdown?._getValue?.() || "").trim();
+    if (name) {
+      try {
+        const opt = getTaskOptionByName(name);
+        const fromOpt = resolveKpiIdForTaskId(opt?.id);
+        if (fromOpt) return fromOpt;
+        return String(opt?.kpiId || "").trim();
+      } catch (_) {}
+    }
+    return "";
   }
 
   function runTaskLogModalCloudSync(opts = {}) {
@@ -13111,6 +13144,28 @@ export function render(opts = {}) {
             : formatUsageHistoryDateLabel(headingRangeStart, headingRangeEnd);
     usageHistoryHeadingLeft.appendChild(usageHistoryEyebrow);
     usageHistoryHeadingLeft.appendChild(usageHistoryDate);
+    const textFilterQ =
+      timeLedgerLayoutView === "timeline"
+        ? String(usageHistoryTextSearchQuery || "").trim()
+        : "";
+    if (textFilterQ) {
+      const filterChip = document.createElement("button");
+      filterChip.type = "button";
+      lpSetClasses(filterChip, "time-ledger-usage-filter-chip");
+      filterChip.setAttribute("data-usage-filter-chip", "");
+      filterChip.title = "조회에서 검색 필터 바꾸기";
+      filterChip.setAttribute(
+        "aria-label",
+        `검색 필터 적용 중: ${textFilterQ}. 누르면 조회 창을 엽니다.`,
+      );
+      filterChip.textContent = `검색 · ${textFilterQ}`;
+      filterChip.addEventListener("click", () => {
+        try {
+          footerDateBtn?.click();
+        } catch (_) {}
+      });
+      usageHistoryHeadingLeft.appendChild(filterChip);
+    }
 
     const usageHistoryTotalWrap = document.createElement("div");
     lpSetClasses(
@@ -13276,7 +13331,6 @@ export function render(opts = {}) {
       el._lpReportMountDeferred = false;
       persistActiveViewTimeFilterToSession();
       updateFilterBarVisibility();
-      showTimeLedgerPullLoadingUi("동기화 중…");
       void (async () => {
         try {
           await pullTimeLedgerTabEnterFromCloud({
@@ -13295,12 +13349,7 @@ export function render(opts = {}) {
           updateTotal();
           persistActiveViewTimeFilterToSession();
           updateFilterBarVisibility();
-        } catch (_) {
-        } finally {
-          if (gen === el._lpTimeSubTabPullGen) {
-            dismissTimeLedgerPullLoadingUi();
-          }
-        }
+        } catch (_) {}
       })();
       return;
     }
@@ -13324,7 +13373,6 @@ export function render(opts = {}) {
     if (userSubTabClick) {
       const gen = (el._lpTimeSubTabPullGen =
         (el._lpTimeSubTabPullGen || 0) + 1);
-      showTimeLedgerPullLoadingUi("동기화 중…");
       void (async () => {
         try {
           await pullTimeLedgerTabEnterFromCloud({
@@ -13333,12 +13381,7 @@ export function render(opts = {}) {
           });
           if (!el.isConnected || gen !== el._lpTimeSubTabPullGen) return;
           refreshTimeLedgerFromRemotePull({ force: true });
-        } catch (_) {
-        } finally {
-          if (gen === el._lpTimeSubTabPullGen) {
-            dismissTimeLedgerPullLoadingUi();
-          }
-        }
+        } catch (_) {}
       })();
     }
   }
@@ -13435,6 +13478,14 @@ export function render(opts = {}) {
         clearTimeout(_timeLedgerFilterPullTimer);
         _timeLedgerFilterPullTimer = null;
       }
+      usageHistoryTextSearchQuery = "";
+      usageHistoryMemoOnlyFilter = false;
+      selectedTaskNamesForFilter = null;
+      clearUsageQueryFiltersFromSession();
+      /* 탭 이탈 후 세션에 연간·주간 조회가 남지 않게 오늘 하루로 고정 */
+      try {
+        resetTimeLedgerSessionFilterToToday();
+      } catch (_) {}
       clearTimeLedgerMobileElapsedTimer(el);
       dismissTimeLedgerPullLoadingUi();
       try {

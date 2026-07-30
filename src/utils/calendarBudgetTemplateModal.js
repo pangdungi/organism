@@ -67,9 +67,13 @@ function mountBudgetTemplateModalShell(title, { variant = "apply" } = {}) {
   `;
 
   const finish = () => {
+    try {
+      delete modal.__lpDismissBudgetTemplate;
+    } catch (_) {}
     modal.remove();
     syncBodyOverflowAfterModalClose();
   };
+  modal.__lpDismissBudgetTemplate = finish;
 
   modal
     .querySelector('[data-legacy~="time-task-setup-close"]')
