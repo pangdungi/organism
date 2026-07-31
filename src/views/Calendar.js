@@ -1599,44 +1599,8 @@ function lpShowTimeBlockHoverTipFromRect(
   });
 }
 
-/** 좁은 타임블록: 본문 대신 호버 시 블록 배경색 맞춤 툴팁(터치는 토스트) */
-function lpAttachColoredTimeBlockTooltip(el, opts) {
-  if (!el || typeof el.addEventListener !== "function") return;
-  const taskName = (opts.taskName || "").trim();
-  const rangeStr = opts.rangeStr || "";
-  const memoStr = (opts.memo || "").trim();
-  const bgCss = opts.bgCss || "";
-  const fgCss = opts.accentCss || opts.fgCss || "";
-  const show = () => {
-    clearTimeout(_lpTimeBlockHoverTipHideTimer);
-    const r = el.getBoundingClientRect();
-    if (r.width < 2 || r.height < 2) return;
-    lpShowTimeBlockHoverTipFromRect(
-      r,
-      taskName,
-      rangeStr,
-      bgCss,
-      fgCss || "#ffffff",
-      memoStr,
-    );
-  };
-  const hide = () => {
-    _lpTimeBlockHoverTipHideTimer = setTimeout(lpHideTimeBlockHoverTip, 60);
-  };
-  el.addEventListener("mouseenter", show);
-  el.addEventListener("mouseleave", hide);
-  el.addEventListener("mousedown", hide);
-  try {
-    if (window.matchMedia("(hover: none)").matches) {
-      el.addEventListener("click", (e) => {
-        e.stopPropagation();
-        showToast(
-          [taskName || "일정", rangeStr, memoStr].filter(Boolean).join("\n"),
-        );
-      });
-    }
-  } catch (_) {}
-}
+/** 호버 툴팁 사용 안 함 */
+function lpAttachColoredTimeBlockTooltip(_el, _opts) {}
 
 function updateCustomSectionTaskDone(sectionId, taskId, done) {
   try {

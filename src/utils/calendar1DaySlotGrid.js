@@ -282,38 +282,11 @@ export function paintCalendar1DaySlotGridFromSpans(root, spans) {
     cell.classList.add("calendar-1day-slot-grid-cell--filled");
     cell.dataset.spanKey = spanKey(span);
 
-    const taskName = String(span.taskName || "").trim();
-    const label = expectedSpanSlotGridLabel(span);
-    const titleTask =
-      taskName && label && taskName !== label ? `${taskName} · ${label}` : label;
-    /* title은 라벨 merge 후 · 글자 잘릴 때만 (아래 sync) */
-    cell.dataset.lpTipTitle = titleTask
-      ? `${titleTask} (${span.startDisplay || ""} ~ ${span.endDisplay || ""})`
-      : "";
     cell.removeAttribute("title");
+    delete cell.dataset.lpTipTitle;
   });
 
   applyCalendarSlotGridRowSpanMerges(root, sorted);
-  syncCalendar1DaySlotGridHoverTitles(root);
-}
-
-/** 칸 라벨이 ellipsis로 잘렸을 때만 native title */
-function syncCalendar1DaySlotGridHoverTitles(root) {
-  if (!root) return;
-  const apply = () => {
-    if (!root.isConnected) return;
-    root.querySelectorAll(".calendar-1day-slot-grid-cell").forEach((cell) => {
-      const tip = String(cell.dataset.lpTipTitle || "").trim();
-      const label = cell.querySelector(".calendar-1day-slot-grid-cell-label");
-      const cut =
-        !!label &&
-        (label.scrollWidth > label.clientWidth + 0.5 ||
-          label.scrollHeight > label.clientHeight + 0.5);
-      if (tip && cut) cell.title = tip;
-      else cell.removeAttribute("title");
-    });
-  };
-  requestAnimationFrame(() => requestAnimationFrame(apply));
 }
 
 function spansMatchForDrag(a, b) {

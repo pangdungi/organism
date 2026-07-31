@@ -1357,10 +1357,10 @@ function buildSleepRecipeKeepOneLiner(tags, fiveStarCount) {
 
 function buildSleepRecipeAvoidOneLiner(tags, poorRatedCount) {
   if (!poorRatedCount) {
-    return "1~2점 수면이 쌓이면 피하면 좋은 조건이 보입니다.";
+    return "1~4점 수면이 쌓이면 피하면 좋은 조건이 보입니다.";
   }
   if (!tags.length) {
-    return `1~2점 수면 ${poorRatedCount}건 — 「아쉬웠던 이유」를 고르면 피할 항목이 정리됩니다.`;
+    return `1~4점 수면 ${poorRatedCount}건 — 「아쉬웠던 이유」를 고르면 피할 항목이 정리됩니다.`;
   }
   const top = tags[0];
   if (!top) return "";
@@ -1598,7 +1598,12 @@ function buildSleepReportSnapshot(rows, range, allRows) {
           seen.add(id);
           goodCounts.set(id, (goodCounts.get(id) || 0) + 1);
         }
-      } else if (rec.rating === 1 || rec.rating === 2) {
+      } else if (
+        rec.rating === 1 ||
+        rec.rating === 2 ||
+        rec.rating === 3 ||
+        rec.rating === 4
+      ) {
         poorRatedCount += 1;
         const seen = new Set();
         for (const id of rec.poorReasons || []) {

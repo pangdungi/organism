@@ -138,6 +138,11 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-add-task-modal"] {
   z-index: 10060;
 }
+/* KPI 할 일 추가 — 예상 일정·과제 기록 모달 위 */
+.time-task-setup-modal.dream-kpi-todo-add-modal,
+.time-task-setup-modal.dream-kpi-todo-edit-modal {
+  z-index: 10070;
+}
 /* 삭제·완료 제거 등 확인 — 과제 추가(10060)·내부 모달(11000) 위 */
 .time-task-setup-modal.lp-confirm-stack-modal,
 [data-legacy~="time-task-setup-modal"].lp-confirm-stack-modal {

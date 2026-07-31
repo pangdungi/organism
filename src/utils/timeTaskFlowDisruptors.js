@@ -12,7 +12,7 @@ export const TIME_TASK_FLOW_DISRUPTOR_CATEGORIES = [
 export const TIME_TASK_FLOW_DISRUPTOR_OPTIONS = [
   { id: "unclear_task", label: "불명확한 작업", category: "task" },
   { id: "supplies_unready", label: "준비물 미비", category: "task" },
-  { id: "boredom", label: "지루함", category: "mind" },
+  { id: "sleepiness", label: "졸림", category: "body" },
   { id: "task_difficulty", label: "작업 난이도", category: "task" },
   { id: "multitasking", label: "멀티태스킹", category: "mind" },
   { id: "device_malfunction", label: "기기 오작동", category: "environment" },
@@ -33,12 +33,14 @@ const BY_ID = new Map(TIME_TASK_FLOW_DISRUPTOR_OPTIONS.map((o) => [o.id, o]));
 const BY_LABEL = new Map(
   TIME_TASK_FLOW_DISRUPTOR_OPTIONS.map((o) => [o.label, o]),
 );
-/** 예전 UI 문구 → id (저장·불러오기 호환) */
+/** 예전 UI 문구·id → 현재 id (저장·불러오기 호환) */
 const LEGACY_DISRUPTOR_LABEL_TO_ID = new Map([
   ["잦은 작업중단", "frequent_interruption"],
   ["생리현상", "physiological"],
   ["미디어/디지털", "media_digital"],
   ["공간 정돈 상태", "messy_space"],
+  ["지루함", "sleepiness"],
+  ["boredom", "sleepiness"],
 ]);
 const CATEGORY_BY_ID = new Map(
   TIME_TASK_FLOW_DISRUPTOR_CATEGORIES.map((c) => [c.id, c]),

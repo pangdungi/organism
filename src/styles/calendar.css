@@ -3157,8 +3157,55 @@
   min-width: 0;
 }
 
-.lp-calendar-budget-add-modal [data-legacy~="time-task-log-kpi-todos-title"] {
+.lp-calendar-budget-add-modal [data-legacy~="time-task-log-kpi-todos-title-row"] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
   margin: 0 0 0.45rem;
+  min-width: 0;
+}
+
+.lp-calendar-budget-add-modal [data-legacy~="time-task-log-kpi-todos-title"] {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.lp-calendar-budget-add-modal [data-legacy~="lp-expected-kpi-todo-add-btn"] {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #d4d4d4;
+  border-radius: 6px;
+  background: #fff;
+  color: #111;
+  font-size: 1.05rem;
+  font-weight: 650;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lp-calendar-budget-add-modal [data-legacy~="lp-expected-kpi-todo-add-btn"]:hover {
+  background: #f5f5f5;
+  border-color: #bdbdbd;
+}
+
+.lp-calendar-budget-add-modal [data-legacy~="lp-expected-kpi-todo-add-btn"]:active {
+  background: #ececec;
+}
+
+/* 태스크완료형 — 메모 ◽️ 퀵입력 숨김(hidden 덮어쓰기 방지) */
+.lp-calendar-budget-add-modal
+  [data-legacy~="lp-expected-todo-memo-split"].is-split
+  [data-legacy~="time-task-log-memo-quick"][hidden] {
+  display: none !important;
 }
 
 .lp-calendar-budget-add-modal [data-legacy~="time-task-log-memo-section"] {
@@ -3199,10 +3246,22 @@
 
 .lp-calendar-budget-add-modal
   [data-legacy~="lp-expected-todo-memo-split"].is-split
-  [data-legacy~="time-task-log-kpi-todos-title"] {
+  [data-legacy~="time-task-log-kpi-todos-title-row"] {
   display: flex;
   align-items: center;
   flex: 0 0 var(--lp-expected-split-head-h);
+  margin: 0;
+  height: var(--lp-expected-split-head-h);
+  min-height: var(--lp-expected-split-head-h);
+  max-height: var(--lp-expected-split-head-h);
+  box-sizing: border-box;
+}
+
+.lp-calendar-budget-add-modal
+  [data-legacy~="lp-expected-todo-memo-split"].is-split
+  [data-legacy~="time-task-log-kpi-todos-title"] {
+  display: flex;
+  align-items: center;
   margin: 0;
   height: var(--lp-expected-split-head-h);
   min-height: var(--lp-expected-split-head-h);
@@ -3211,6 +3270,14 @@
   font-weight: 600;
   line-height: 1.35rem;
   box-sizing: border-box;
+}
+
+.lp-calendar-budget-add-modal
+  [data-legacy~="lp-expected-todo-memo-split"].is-split
+  [data-legacy~="lp-expected-kpi-todo-add-btn"] {
+  width: 1.45rem;
+  height: 1.45rem;
+  font-size: 0.95rem;
 }
 
 .lp-calendar-budget-add-modal
@@ -3279,7 +3346,7 @@
 .lp-calendar-budget-add-modal
   [data-legacy~="lp-expected-todo-memo-split"].is-split
   [data-legacy~="time-task-log-memo-label-row"]
-  > [data-legacy~="time-task-log-memo-quick"] {
+  > [data-legacy~="time-task-log-memo-quick"]:not([hidden]) {
   flex: 0 0 auto;
   height: var(--lp-expected-split-head-h);
   min-height: var(--lp-expected-split-head-h);

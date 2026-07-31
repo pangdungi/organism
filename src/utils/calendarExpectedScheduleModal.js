@@ -43,10 +43,12 @@ import {
 } from "./calendarExpectedScheduleModalKeyboard.js";
 import { syncBodyOverflowAfterModalClose } from "./lpModalStack.js";
 import {
+  addKpiTodo,
   getKpiTaskCompletionTodoInfoByKpiId,
   getKpiTodosByKpiId,
   resolveKpiIdForTaskId,
 } from "./kpiTodoSync.js";
+import { showKpiTodoAddModal } from "./kpiTodoAddModal.js";
 import {
   DEFAULT_READING_KPI_ID,
   DEFAULT_READING_KPI_TODO_LIST_LABEL,
@@ -565,14 +567,8 @@ function attachExpectedScheduleDatetimeUI(panel, ctx) {
         opts,
       );
       show = !!nextStart;
-      if (nextStart) {
-        gapBtn.title = `다음 예상 일정 시작(${nextStart})까지 마감 채우기`;
-      } else {
-        gapBtn.removeAttribute("title");
-      }
-    } else {
-      gapBtn.removeAttribute("title");
     }
+    gapBtn.removeAttribute("title");
     gapBtn.hidden = !show;
     gapBtn.dataset.lpGapFillNext = nextStart || "";
   }
@@ -862,7 +858,7 @@ export function openCalendarExpectedScheduleModal(options) {
                   <span data-legacy="time-task-log-datetime-sep" aria-hidden="true">–</span>
                   <div data-legacy="time-task-log-datetime-wrap-end">
                     <input type="text" data-legacy="time-task-log-time-end" lang="en" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="--:--" maxlength="5" autocomplete="off" inputmode="numeric" pattern="[0-9]*" aria-label="마감 시각" />
-                    <button type="button" class="time-task-log-date-clear" data-legacy="time-task-log-date-clear" aria-label="마감 시각 지우기" title="마감 시각 지우기" hidden><span aria-hidden="true">×</span></button>
+                    <button type="button" class="time-task-log-date-clear" data-legacy="time-task-log-date-clear" aria-label="마감 시각 지우기" hidden><span aria-hidden="true">×</span></button>
                   </div>
                 </div>
               </div>
@@ -901,7 +897,10 @@ export function openCalendarExpectedScheduleModal(options) {
           </div>
           <div data-legacy="lp-expected-todo-memo-split">
             <div data-legacy="time-task-log-kpi-todos-section" hidden>
-              <h4 data-legacy="time-task-log-kpi-todos-title">할 일 목록</h4>
+              <div data-legacy="time-task-log-kpi-todos-title-row">
+                <h4 data-legacy="time-task-log-kpi-todos-title">할 일 목록</h4>
+                <button type="button" data-legacy="lp-expected-kpi-todo-add-btn" aria-label="할 일 추가">+</button>
+              </div>
               <p data-legacy="time-task-log-kpi-todos-hint">오늘 할 항목을 누르면 골라집니다 (과제 기록에만 표시)</p>
               <p data-legacy="time-task-log-kpi-todos-status" hidden></p>
               <div data-legacy="time-task-log-kpi-todos-scroll" hidden>
@@ -919,7 +918,7 @@ export function openCalendarExpectedScheduleModal(options) {
                   <div data-legacy="time-task-log-memo-label-row">
                     <label data-legacy="time-task-log-section-label time-task-log-memo-section-label" for="lp-calendar-expected-feedback">메모</label>
                     <div data-legacy="time-task-log-memo-quick" role="group" aria-label="메모 빠른 입력">
-                      <button type="button" data-legacy="time-task-log-memo-quick-todo" data-insert="◽️" title="할 일 표시 ◽️ 넣기" aria-label="할 일 네모 넣기">◽️</button>
+                      <button type="button" data-legacy="time-task-log-memo-quick-todo" data-insert="◽️" aria-label="할 일 네모 넣기">◽️</button>
                     </div>
                   </div>
                   <textarea id="lp-calendar-expected-feedback" data-legacy="time-task-log-feedback time-task-log-memo-input" rows="2" placeholder="메모를 입력하세요"></textarea>
@@ -992,8 +991,14 @@ export function openCalendarExpectedScheduleModal(options) {
   const taskLogKpiTodosStatus = modal.querySelector(
     '[data-legacy~="time-task-log-kpi-todos-status"]',
   );
+  const expectedKpiTodoAddBtn = modal.querySelector(
+    '[data-legacy~="lp-expected-kpi-todo-add-btn"]',
+  );
   const plannedTodosPreview = modal.querySelector(
     '[data-legacy~="lp-expected-planned-todos-preview"]',
+  );
+  const taskLogMemoQuickEarly = modal.querySelector(
+    '[data-legacy~="time-task-log-memo-quick"]',
   );
   let expectedKpiTodosSyncGen = 0;
   /** @type {Map<string, string>} todoId → text (이 슬롯에서 고른 할일) */
@@ -1003,6 +1008,40 @@ export function openCalendarExpectedScheduleModal(options) {
   function setExpectedTodoMemoSplitActive(active) {
     if (!expectedTodoMemoSplit) return;
     expectedTodoMemoSplit.classList.toggle("is-split", !!active);
+    /* 태스크완료형: 할일 목록으로 고르므로 메모 ◽️ 퀵입력은 숨김 */
+    if (taskLogMemoQuickEarly) taskLogMemoQuickEarly.hidden = !!active;
+  }
+
+  async function openExpectedKpiTodoAddModal() {
+    const info = refreshExpectedTaskCompletionTodos();
+    if (!info?.kpiId || !info?.storageKey) {
+      showToast("연결된 KPI 할 일을 찾을 수 없습니다.");
+      return;
+    }
+    const text = await showKpiTodoAddModal({
+      kpiName: info.kpiName,
+      title: "할 일 추가",
+      placeholder: "할 일 입력",
+    });
+    if (!text || !modal.isConnected) return;
+    const result = addKpiTodo(info.kpiId, info.storageKey, text, {
+      pushServer: true,
+    });
+    if (!result?.success) {
+      showToast("할 일 추가에 실패했습니다.");
+      return;
+    }
+    refreshExpectedTaskCompletionTodos();
+    const newId = String(result.kpiTodoId || "").trim();
+    if (!newId) return;
+    plannedTodoSelection.set(newId, text);
+    refreshPlannedTodosPreview();
+    taskLogKpiTodosList
+      ?.querySelectorAll("[data-todo-id]")
+      .forEach((row) => {
+        const rid = String(row.getAttribute("data-todo-id") || "").trim();
+        row.classList.toggle("is-planned", plannedTodoSelection.has(rid));
+      });
   }
 
   function getPlannedTodoIdsList() {
@@ -1566,8 +1605,18 @@ export function openCalendarExpectedScheduleModal(options) {
   const taskLogFeedbackInput = modal.querySelector(
     '[data-legacy~="time-task-log-feedback"]',
   );
-  const taskLogMemoQuick = modal.querySelector(
-    '[data-legacy~="time-task-log-memo-quick"]',
+  const taskLogMemoQuick =
+    taskLogMemoQuickEarly ||
+    modal.querySelector('[data-legacy~="time-task-log-memo-quick"]');
+
+  expectedKpiTodoAddBtn?.addEventListener(
+    "click",
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      void openExpectedKpiTodoAddModal();
+    },
+    { signal },
   );
 
   function insertTextIntoExpectedMemo(text) {

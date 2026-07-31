@@ -261,6 +261,43 @@ function newRowId() {
   return `t-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 }
 
+/**
+ * 같은 id가 두 줄이면 서버 upsert가 실패함 — 더 최근 수정본 1개만 남김.
+ * @returns {{ rows: object[], dirty: boolean }}
+ */
+export function dedupeTimeLedgerEntriesById(rows) {
+  const arr = Array.isArray(rows) ? rows : [];
+  const byId = new Map();
+  const noId = [];
+  let dirty = false;
+  for (const r of arr) {
+    if (!r || typeof r !== "object") continue;
+    const id = String(r.id || "").trim();
+    if (!id) {
+      noId.push(r);
+      continue;
+    }
+    const prev = byId.get(id);
+    if (!prev) {
+      byId.set(id, r);
+      continue;
+    }
+    dirty = true;
+    const prevLm =
+      typeof prev.localModifiedAt === "number" &&
+      Number.isFinite(prev.localModifiedAt)
+        ? prev.localModifiedAt
+        : 0;
+    const nextLm =
+      typeof r.localModifiedAt === "number" && Number.isFinite(r.localModifiedAt)
+        ? r.localModifiedAt
+        : 0;
+    byId.set(id, nextLm >= prevLm ? r : prev);
+  }
+  if (!dirty) return { rows: arr, dirty: false };
+  return { rows: [...byId.values(), ...noId], dirty: true };
+}
+
 export function ensureTimeLedgerEntryIds(rows) {
   const arr = Array.isArray(rows) ? rows : [];
   let dirty = false;
@@ -276,7 +313,8 @@ export function ensureTimeLedgerEntryIds(rows) {
         : Date.now();
     return { ...r, id: newRowId(), localModifiedAt: lm };
   });
-  return { rows: out, dirty };
+  const deduped = dedupeTimeLedgerEntriesById(out);
+  return { rows: deduped.rows, dirty: dirty || deduped.dirty };
 }
 
 function normalizeEntryDate(d) {

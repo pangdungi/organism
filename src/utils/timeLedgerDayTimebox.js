@@ -289,7 +289,7 @@ function wireTimeLedgerDayTimeboxCellClicks(body) {
     e.preventDefault();
     cell.click();
   });
-  /* 과제명이 칸에서 잘렸을 때만 호버 안내 (빈 칸·全文 보이는 칸은 없음) */
+  /* 타임박스만 — 칸 글자가 잘렸을 때 호버 안내 */
   body.addEventListener("pointerover", (e) => {
     const cell = e.target.closest(".time-ledger-day-timebox-matrix-cell");
     if (!cell || !body.contains(cell)) return;
@@ -303,7 +303,11 @@ function wireTimeLedgerDayTimeboxCellClicks(body) {
   });
   body.addEventListener("pointerout", (e) => {
     const to = e.relatedTarget;
-    if (to && body.contains(to) && to.closest?.(".time-ledger-day-timebox-matrix-cell")) {
+    if (
+      to &&
+      body.contains(to) &&
+      to.closest?.(".time-ledger-day-timebox-matrix-cell")
+    ) {
       return;
     }
     _timeboxHoverTipHideTimer = setTimeout(hideTimeboxHoverTip, 60);

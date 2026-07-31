@@ -36,6 +36,8 @@ import {
 import { initOfflineAppGate } from "./utils/offlineAppGate.js";
 import { initModalNoAutoFocus } from "./utils/modalNoAutoFocus.js";
 import { initLpAppShellViewportLock } from "./utils/lpAppShellViewport.js";
+import { installGlobalTitleTooltipSuppression } from "./utils/suppressNativeTitleTooltips.js";
+installGlobalTitleTooltipSuppression();
 import { supabase } from "./supabase.js";
 import { getSupabaseSession } from "./utils/supabaseSession.js";
 import {

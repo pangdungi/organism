@@ -342,15 +342,12 @@ function appendTaskDropdownBadges(textWrap, task, opts = {}) {
     const bb = document.createElement("span");
     lpSetClasses(bb, "lp-task-badge lp-task-badge--builtin");
     bb.textContent = "기본";
-    bb.title =
-      "앱에서 제공하는 기본 과제입니다. 과제 설정에서 삭제할 수 없습니다.";
     textWrap.appendChild(bb);
   }
   if (isTimeTaskKpiLinked(task)) {
     const kb = document.createElement("span");
     lpSetClasses(kb, "lp-task-badge lp-task-badge--kpi");
     kb.textContent = "KPI";
-    kb.title = "KPI와 연결된 과제입니다. 이름·삭제는 KPI 화면에서만 변경할 수 있습니다.";
     textWrap.appendChild(kb);
   }
 }
@@ -1281,7 +1278,7 @@ function saveTimeRows(rows) {
   }
 }
 
-/** 모달 저장 직후 — 서버 반영 재시도(사용자 행동 우선, 실패 숨기지 않음) */
+/** 모달 저장 직후 — 서버 반영 재시도(실패해도 사용자 안내 없음) */
 async function pushTimeRowsAfterModalSaveWithRetry(entryIds, { attempts = 3 } = {}) {
   const ids = (Array.isArray(entryIds) ? entryIds : [])
     .map((id) => String(id || "").trim())
@@ -1307,6 +1304,22 @@ async function pushTimeRowsAfterModalSaveWithRetry(entryIds, { attempts = 3 } = 
     }
   }
   return last;
+}
+
+/** 같은 기록 id 한 건만 — 팝업 없이 백그라운드에서 다시 올림 */
+function scheduleSilentTimeLedgerPushRetry(entryIds) {
+  const ids = (Array.isArray(entryIds) ? entryIds : [])
+    .map((id) => String(id || "").trim())
+    .filter((id) => isUuid(id));
+  if (!ids.length) return;
+  [2000, 6000, 15000].forEach((ms) => {
+    setTimeout(() => {
+      void pushDirtyTimeLedgerEntriesToSupabase({
+        skipPull: true,
+        entryIds: ids,
+      }).catch(() => {});
+    }, ms);
+  });
 }
 
 const TASK_BAR_COLORS = [
@@ -3962,7 +3975,7 @@ function createTaskNameInput(initialValue, onTaskSelect, tabSignal) {
       const isLocked = lockedNames.has(name);
       const row = document.createElement("div");
       lpSetClasses(row, "time-task-name-option");
-      row.innerHTML = `<span data-legacy="time-task-tag">${escapeHtml(name)}</span>${isLocked ? "" : `<button type="button" data-legacy="time-task-delete-btn" title="삭제">${DELETE_ICON}</button>`}`;
+      row.innerHTML = `<span data-legacy="time-task-tag">${escapeHtml(name)}</span>${isLocked ? "" : `<button type="button" data-legacy="time-task-delete-btn">${DELETE_ICON}</button>`}`;
       row.dataset.value = name;
       const delBtn = row.querySelector('[data-legacy~="time-task-delete-btn"]');
       row.addEventListener("click", (e) => {
@@ -5077,19 +5090,16 @@ function createTimeLedgerViewModeBar(onViewChange) {
   timelineBtn.type = "button";
   timelineBtn.className = "diary-report-granularity__seg";
   timelineBtn.textContent = "타임라인";
-  timelineBtn.title = "타임라인 보기";
 
   const timeboxBtn = document.createElement("button");
   timeboxBtn.type = "button";
   timeboxBtn.className = "diary-report-granularity__seg";
   timeboxBtn.textContent = "타임박스";
-  timeboxBtn.title = "타임박스 보기";
 
   const reportBtn = document.createElement("button");
   reportBtn.type = "button";
   reportBtn.className = "diary-report-granularity__seg";
   reportBtn.textContent = "레포트";
-  reportBtn.title = "시간 레포트";
 
   bar.appendChild(timelineBtn);
   bar.appendChild(timeboxBtn);
@@ -5182,35 +5192,10 @@ function buildMobileTimeCardTitle(taskLabel, startClock, endClock, rowData) {
   return parts.join("\n");
 }
 
-/** 제목·메모가 카드에서 잘렸을 때만 native title(호버 툴팁) */
-function applyMobileTimeCardHoverTitle(
-  card,
-  taskLabel,
-  startClock,
-  endClock,
-  rowData,
-) {
+/** 호버 툴팁 없음 — title 제거만 */
+function applyMobileTimeCardHoverTitle(card) {
   if (!card) return;
-  const full = buildMobileTimeCardTitle(
-    taskLabel,
-    startClock,
-    endClock,
-    rowData,
-  );
-  const apply = () => {
-    if (!card.isConnected) return;
-    const titleEl = card.querySelector(".calendar-1day-timeline-card-title");
-    const memoEl = card.querySelector(".calendar-1day-timeline-card-memo");
-    const titleCut =
-      !!titleEl && titleEl.scrollWidth > titleEl.clientWidth + 0.5;
-    const memoCut =
-      !!memoEl &&
-      (memoEl.scrollHeight > memoEl.clientHeight + 0.5 ||
-        memoEl.scrollWidth > memoEl.clientWidth + 0.5);
-    if (titleCut || memoCut) card.title = full;
-    else card.removeAttribute("title");
-  };
-  requestAnimationFrame(() => requestAnimationFrame(apply));
+  card.removeAttribute("title");
 }
 
 function syncMobileTimeCardRatingEl(card, rowData) {
@@ -5303,13 +5288,7 @@ function refreshTimeLedgerRowMemoDisplay(tr, rowData) {
     const startInst = getRowStartInstantForMobileCard(rowData);
     const startClock = formatLedgerTimelineClockHHmm(startInst) || "—";
     const endClock = formatLedgerTimelineEndClock(rowData);
-    applyMobileTimeCardHoverTitle(
-      tr,
-      taskLabel,
-      startClock,
-      endClock,
-      rowData,
-    );
+    applyMobileTimeCardHoverTitle(tr);
     return;
   }
   const dispFeedback = tr.querySelector(
@@ -5593,13 +5572,7 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   card._rowData = rowData;
   card._timeLedgerViewEl = viewEl || null;
   card._onRowDelete = onDelete;
-  applyMobileTimeCardHoverTitle(
-    card,
-    taskLabel,
-    startClock,
-    endClock,
-    rowData,
-  );
+  applyMobileTimeCardHoverTitle(card);
 
   const startEl = document.createElement("span");
   startEl.className = "calendar-1day-timeline-card-start";
@@ -5770,7 +5743,7 @@ export function render(opts = {}) {
   ledgerAddFooterBtn.type = "button";
   lpSetClasses(ledgerAddFooterBtn, APP_FOOTER_ICON_BTN_CLASS);
   const ledgerAddFooterBtnWrap = mountAppFooterAddButton(ledgerAddFooterBtn);
-  ledgerAddFooterBtn.title = "과제 기록";
+  ledgerAddFooterBtn.removeAttribute("title");
   ledgerAddFooterBtn.setAttribute("aria-label", "과제 기록");
   ledgerAddFooterBtn.innerHTML = TIME_LEDGER_ADD_PLUS_ICON_SVG;
   ledgerAddFooterBtn.addEventListener("click", () => {
@@ -6148,7 +6121,7 @@ export function render(opts = {}) {
   taskSetupBtn.type = "button";
   lpSetClasses(taskSetupBtn, "time-task-setup-btn");
   taskSetupBtn.dataset.filterFor = "all";
-  taskSetupBtn.title = "과제명, 생산성, 카테고리를 한 번에 설정";
+  taskSetupBtn.removeAttribute("title");
   taskSetupBtn.setAttribute("aria-label", "과제 설정");
   taskSetupBtn.innerHTML = TIME_LEDGER_TOOLBAR_SETTINGS_ICON_SVG;
   lpTokenAdd(taskSetupBtn, "time-ledger-tabs-settings-btn");
@@ -6158,7 +6131,7 @@ export function render(opts = {}) {
   const footerDateBtn = document.createElement("button");
   footerDateBtn.type = "button";
   lpSetClasses(footerDateBtn, "time-ledger-footer-date-btn");
-  footerDateBtn.title = "조회 기간·필터";
+  footerDateBtn.removeAttribute("title");
   footerDateBtn.setAttribute("aria-label", "조회 기간·필터");
   footerDateBtn.innerHTML = TIME_LEDGER_FOOTER_FILTER_ICON_SVG;
   lpTokenAdd(footerDateBtn, "time-ledger-toolbar-icon-btn");
@@ -7187,7 +7160,7 @@ export function render(opts = {}) {
         } else if (timeLedgerLayoutView === "timeline") {
           label = "타임라인 조회";
         }
-        footerDateBtn.title = label;
+        footerDateBtn.removeAttribute("title");
         footerDateBtn.setAttribute("aria-label", label);
       }
       if (!dateOnlyMode && !usageRangeModal.hidden) {
@@ -7639,7 +7612,7 @@ export function render(opts = {}) {
                 <span data-legacy="time-task-log-datetime-sep" aria-hidden="true">–</span>
                 <div data-legacy="time-task-log-datetime-wrap-end">
                   <input type="text" data-legacy="time-task-log-time-end" name="time-task-log-time-end" lang="en" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="--:--" maxlength="5" autocomplete="off" inputmode="numeric" pattern="[0-9]*" aria-label="마감 시각" />
-                  <button type="button" class="time-task-log-date-clear" data-legacy="time-task-log-date-clear" aria-label="마감 시각 지우기" title="마감 시각 지우기" hidden><span aria-hidden="true">×</span></button>
+                  <button type="button" class="time-task-log-date-clear" data-legacy="time-task-log-date-clear" aria-label="마감 시각 지우기" hidden><span aria-hidden="true">×</span></button>
                 </div>
               </div>
             </div>
@@ -7737,9 +7710,9 @@ export function render(opts = {}) {
               <div data-legacy="time-task-log-memo-label-row">
                 <label data-legacy="time-task-log-section-label time-task-log-memo-section-label" for="time-task-log-feedback">메모</label>
                 <div data-legacy="time-task-log-memo-quick" role="group" aria-label="메모 빠른 입력">
-                  <button type="button" data-legacy="time-task-log-memo-quick-todo" data-insert="◽️" title="할 일 표시 ◽️ 넣기" aria-label="할 일 네모 넣기">◽️</button>
-                  <button type="button" data-legacy="time-task-log-memo-quick-ok" data-insert="✔️" title="완료 표시 ✔️ 넣기" aria-label="완료 표시 넣기">✔️</button>
-                  <button type="button" data-legacy="time-task-log-memo-quick-no" data-insert="❌" title="불가 표시 ❌ 넣기" aria-label="불가 표시 넣기">❌</button>
+                  <button type="button" data-legacy="time-task-log-memo-quick-todo" data-insert="◽️" aria-label="할 일 네모 넣기">◽️</button>
+                  <button type="button" data-legacy="time-task-log-memo-quick-ok" data-insert="✔️" aria-label="완료 표시 넣기">✔️</button>
+                  <button type="button" data-legacy="time-task-log-memo-quick-no" data-insert="❌" aria-label="불가 표시 넣기">❌</button>
                 </div>
               </div>
               <textarea id="time-task-log-feedback" data-legacy="time-task-log-feedback time-task-log-memo-input" rows="2" placeholder="메모를 입력하세요"></textarea>
@@ -11100,14 +11073,8 @@ export function render(opts = {}) {
         taskLogMergedRowsForGapLookup(),
       );
       show = !!nextStart;
-      if (nextStart) {
-        gapBtn.title = `다음 기록 시작(${nextStart})까지 마감 채우기`;
-      } else {
-        gapBtn.removeAttribute("title");
-      }
-    } else {
-      gapBtn.removeAttribute("title");
     }
+    gapBtn.removeAttribute("title");
     gapBtn.hidden = !show;
     gapBtn.dataset.lpGapFillNext = nextStart || "";
   }
@@ -12237,10 +12204,7 @@ export function render(opts = {}) {
         }
       }
       onFilterChange();
-      /*
-       * 로컬(마감시간 포함) 먼저 저장 → 서버 반영은 재시도·실패 안내.
-       * 사용자 모달 저장은 조용히 넘기지 않음.
-       */
+      /* 로컬 저장 → 같은 id 한 건만 서버 반영. 실패해도 팝업 없이 조용히 재시도 */
       const pushedId = String(
         (editTr?._rowData?.id || addLedgerTr?._rowData?.id || "").trim(),
       );
@@ -12255,25 +12219,12 @@ export function render(opts = {}) {
         (pushResult.pushedCount || 0) === 0 &&
         isUuid(pushedId)
       ) {
-        /* 로컬은 저장됐는데 이번 push 목록이 비었을 때 한 번 더 강제 */
         pushResult = await pushTimeRowsAfterModalSaveWithRetry([pushedId], {
           attempts: 2,
         });
       }
-      if (!pushResult?.ok) {
-        const why = String(pushResult?.reason || "");
-        const whyHint =
-          why === "no_session"
-            ? " 로그인이 풀렸을 수 있어요. 다시 로그인해 주세요."
-            : why && why !== "upsert_failed"
-              ? ` (${why})`
-              : "";
-        void showAlertModal({
-          title: "저장 안내",
-          message:
-            "이 기기에는 저장됐지만 서버에 올리지 못했습니다. 네트워크를 확인한 뒤, 목록에서 그 카드를 열어 「수정」으로 다시 저장해 주세요. 새 기록으로 또 만들지 마세요." +
-            whyHint,
-        });
+      if (!pushResult?.ok && isUuid(pushedId)) {
+        scheduleSilentTimeLedgerPushRetry([pushedId]);
       }
 
       const rowTaskId = String(ledgerRowForKpi?.taskId || "").trim();
@@ -12679,15 +12630,12 @@ export function render(opts = {}) {
         if (isTimeTaskBuiltinTemplate(t)) {
           const badge = document.createElement("span");
           badge.setAttribute("data-legacy", "lp-task-badge lp-task-badge--builtin");
-          badge.title =
-            "앱에서 제공하는 기본 과제입니다. 과제 설정에서 삭제할 수 없습니다.";
           badge.textContent = "기본";
           title.appendChild(badge);
         }
         if (fromKpi) {
           const badge = document.createElement("span");
           badge.setAttribute("data-legacy", "lp-task-badge lp-task-badge--kpi");
-          badge.title = "KPI(맵)에서 연결된 과제입니다";
           badge.textContent = "KPI";
           title.appendChild(badge);
         }
@@ -12786,16 +12734,12 @@ export function render(opts = {}) {
     const editName = (addTaskNameInput.dataset.editName || "").trim();
     if (editName && isTaskIconOnlyEditLocked(getTaskOptionByName(editName))) {
       addTaskSubmitBtn.disabled = false;
-      addTaskSubmitBtn.title = "";
+      addTaskSubmitBtn.removeAttribute("title");
       return;
     }
     const ready = !!(name && selectedCategory);
     addTaskSubmitBtn.disabled = !ready;
-    addTaskSubmitBtn.title = !ready
-      ? !name
-        ? "과제명을 입력해 주세요."
-        : "시급상승·행복·건강 중 카테고리를 하나 선택해 주세요."
-      : "";
+    addTaskSubmitBtn.removeAttribute("title");
   }
   function openAddTaskModal(editTask) {
     if (!el.isConnected) return;
@@ -12811,9 +12755,7 @@ export function render(opts = {}) {
       const deleteLocked = isEdit && isTaskDeleteLockedInSetup(editTask);
       addTaskDeleteBtn.hidden = !isEdit;
       addTaskDeleteBtn.disabled = deleteLocked;
-      addTaskDeleteBtn.title = deleteLocked
-        ? getTaskDeleteLockedInSetupMessage(editTask)
-        : "";
+      addTaskDeleteBtn.removeAttribute("title");
       addTaskDeleteBtn.setAttribute(
         "aria-disabled",
         deleteLocked ? "true" : "false",
@@ -12872,7 +12814,7 @@ export function render(opts = {}) {
     setAddTaskModalFieldsLocked(false);
     if (addTaskDeleteBtn) {
       addTaskDeleteBtn.disabled = false;
-      addTaskDeleteBtn.title = "";
+      addTaskDeleteBtn.removeAttribute("title");
       addTaskDeleteBtn.setAttribute("aria-disabled", "false");
     }
     if (opts.skipSetupListRender) {
@@ -13293,7 +13235,7 @@ export function render(opts = {}) {
   if (taskTh && taskCol) {
     const resizer = document.createElement("div");
     lpSetClasses(resizer, "time-col-resizer");
-    resizer.title = "드래그하여 너비 조절";
+    resizer.removeAttribute("title");
     taskTh.appendChild(resizer);
 
     let startX = 0;
@@ -13386,11 +13328,7 @@ export function render(opts = {}) {
       over && (perDay || !timeLedgerFilterSpansMultipleDays());
     lpTokenToggle(el, "time-ledger-total-over-24", showOver);
     el.classList.toggle("is-over-24h", showOver);
-    if (showOver) {
-      el.title = "하루 24시간을 초과한 기록입니다";
-    } else {
-      el.removeAttribute("title");
-    }
+    el.removeAttribute("title");
   }
 
   /** 사용내역 목록 — 진입·날짜 변경 시 1회만 맨 아래(최근 기록)로 스크롤 */
@@ -13749,7 +13687,7 @@ export function render(opts = {}) {
       filterChip.type = "button";
       lpSetClasses(filterChip, "time-ledger-usage-filter-chip");
       filterChip.setAttribute("data-usage-filter-chip", "");
-      filterChip.title = "조회에서 검색 필터 바꾸기";
+      filterChip.removeAttribute("title");
       filterChip.setAttribute(
         "aria-label",
         `검색 필터 적용 중: ${textFilterQ}. 누르면 조회 창을 엽니다.`,

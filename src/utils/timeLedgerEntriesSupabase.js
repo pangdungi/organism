@@ -735,9 +735,24 @@ async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
     idPreviews,
   });
 
-  const payloads = toUpload
-    .map((r) => localTimeLedgerRowToDbPayload(userId, r))
-    .filter(Boolean);
+  /* 같은 id가 한 배치에 두 번 있으면 Postgres ON CONFLICT 실패 — 마지막 값만 유지 */
+  const uploadById = new Map();
+  for (const r of toUpload) {
+    const id = String(r?.id || "").trim();
+    if (!isUuid(id)) continue;
+    uploadById.set(id, r);
+  }
+  toUpload = [...uploadById.values()];
+
+  const payloadById = new Map();
+  for (const r of toUpload) {
+    const p = localTimeLedgerRowToDbPayload(userId, r);
+    if (!p) continue;
+    const pid = String(p.id || "").trim();
+    if (!isUuid(pid)) continue;
+    payloadById.set(pid, p);
+  }
+  const payloads = [...payloadById.values()];
   if (payloads.length === 0) {
     timeLedgerSyncLog("push_dirty_skipped", { reason: "payloads_empty" });
     return { ok: false, reason: "payloads_empty", pushedCount: 0 };

@@ -827,27 +827,37 @@ export function removeKpiTodo(kpiTodoId, storageKey) {
  * @param {string} kpiId
  * @param {string} storageKey
  * @param {string} text
+ * @param {{ pushServer?: boolean }} [opts]
  * @returns {{ success: boolean, kpiTodoId?: string }}
  */
-export function addKpiTodo(kpiId, storageKey, text) {
+export function addKpiTodo(kpiId, storageKey, text, opts = {}) {
   const val = (text || "").trim();
-  if (!val) return { success: false };
+  const kid = String(kpiId || "").trim();
+  if (!val || !kid || !storageKey) return { success: false };
   try {
     const raw = readKpiMapScopedStorageRaw(storageKey);
     if (!raw) return { success: false };
+    let prevSnapshot;
+    try {
+      prevSnapshot = JSON.parse(raw);
+    } catch (_) {
+      return { success: false };
+    }
     const data = JSON.parse(raw);
-    const kpi = (data.kpis || []).find((k) => k.id === kpiId);
+    const kpi = (data.kpis || []).find((k) => String(k.id || "").trim() === kid);
     if (!kpi) return { success: false };
-    data.kpiTodos = data.kpiTodos || [];
+    data.kpiTodos = Array.isArray(data.kpiTodos) ? data.kpiTodos : [];
     const newId = nextId();
     data.kpiTodos.push({
       id: newId,
-      kpiId,
+      kpiId: kid,
       text: val,
       completed: false,
       itemType: "todo",
     });
-    writeKpiMapScopedStorageRaw(storageKey, JSON.stringify(data));
+    stampAndPersistKpiMap(storageKey, prevSnapshot, data, {
+      pushServer: opts.pushServer !== false,
+    });
     return { success: true, kpiTodoId: newId };
   } catch (_) {}
   return { success: false };
