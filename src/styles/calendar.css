@@ -1325,6 +1325,10 @@
   min-width: 0;
 }
 
+.calendar-1day-timeline-card-memo.time-ledger-card-memo--structured {
+  white-space: normal;
+}
+
 .calendar-1day-timeline-card-meta {
   display: flex;
   flex-direction: row;

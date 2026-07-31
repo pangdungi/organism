@@ -177,92 +177,9 @@ function showTimeboxCellRecordInfo(block) {
   showToast(title, [ `${startDisplay} ~ ${endDisplay}`, memo ].filter(Boolean).join("\n"));
 }
 
-function escapeTimeboxTipHtml(s) {
-  return String(s || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-let _timeboxHoverTipHideTimer = null;
-let _timeboxHoverTipScrollBound = false;
-
-function ensureTimeboxHoverTip() {
-  let tip = document.getElementById("time-ledger-timebox-hover-tip");
-  if (!tip) {
-    tip = document.createElement("div");
-    tip.id = "time-ledger-timebox-hover-tip";
-    tip.className = "time-ledger-timebox-hover-tip";
-    tip.setAttribute("role", "tooltip");
-    document.body.appendChild(tip);
-    if (!_timeboxHoverTipScrollBound) {
-      _timeboxHoverTipScrollBound = true;
-      window.addEventListener(
-        "scroll",
-        () => {
-          hideTimeboxHoverTip();
-        },
-        true,
-      );
-    }
-  }
-  return tip;
-}
-
 function hideTimeboxHoverTip() {
-  clearTimeout(_timeboxHoverTipHideTimer);
   const tip = document.getElementById("time-ledger-timebox-hover-tip");
   if (tip) tip.classList.remove("time-ledger-timebox-hover-tip--visible");
-}
-
-/** 칸 안 과제명이 ellipsis로 잘렸을 때만 툴팁 */
-function isTimeboxCellLabelTruncated(cell) {
-  const label = cell?.querySelector?.(
-    ".time-ledger-day-timebox-matrix-cell-label",
-  );
-  if (!label) return false;
-  return (
-    label.scrollWidth > label.clientWidth + 0.5 ||
-    label.scrollHeight > label.clientHeight + 0.5
-  );
-}
-
-function showTimeboxHoverTipFromCell(cell) {
-  if (!cell) return;
-  const title = String(cell.dataset.tipTitle || "").trim();
-  const meta = String(cell.dataset.tipMeta || "").trim();
-  if (!title && !meta) return;
-  if (!isTimeboxCellLabelTruncated(cell)) {
-    hideTimeboxHoverTip();
-    return;
-  }
-  const tip = ensureTimeboxHoverTip();
-  tip.innerHTML = `${
-    title
-      ? `<div class="time-ledger-timebox-hover-tip__title">${escapeTimeboxTipHtml(title)}</div>`
-      : ""
-  }${
-    meta
-      ? `<div class="time-ledger-timebox-hover-tip__meta">${escapeTimeboxTipHtml(meta)}</div>`
-      : ""
-  }`;
-  tip.classList.add("time-ledger-timebox-hover-tip--visible");
-  requestAnimationFrame(() => {
-    const rect = cell.getBoundingClientRect();
-    const pad = 8;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const tw = tip.offsetWidth;
-    const th = tip.offsetHeight;
-    let left = rect.left + rect.width / 2 - tw / 2;
-    let top = rect.bottom + pad;
-    if (top + th > vh - pad) top = Math.max(pad, rect.top - th - pad);
-    if (left < pad) left = pad;
-    if (left + tw > vw - pad) left = Math.max(pad, vw - tw - pad);
-    tip.style.left = `${Math.round(left)}px`;
-    tip.style.top = `${Math.round(top)}px`;
-  });
 }
 
 function wireTimeLedgerDayTimeboxCellClicks(body) {
@@ -288,29 +205,6 @@ function wireTimeLedgerDayTimeboxCellClicks(body) {
     if (!cell) return;
     e.preventDefault();
     cell.click();
-  });
-  /* 타임박스만 — 칸 글자가 잘렸을 때 호버 안내 */
-  body.addEventListener("pointerover", (e) => {
-    const cell = e.target.closest(".time-ledger-day-timebox-matrix-cell");
-    if (!cell || !body.contains(cell)) return;
-    if (!cell.dataset.tipTitle && !cell.dataset.tipMeta) return;
-    if (!isTimeboxCellLabelTruncated(cell)) {
-      hideTimeboxHoverTip();
-      return;
-    }
-    clearTimeout(_timeboxHoverTipHideTimer);
-    showTimeboxHoverTipFromCell(cell);
-  });
-  body.addEventListener("pointerout", (e) => {
-    const to = e.relatedTarget;
-    if (
-      to &&
-      body.contains(to) &&
-      to.closest?.(".time-ledger-day-timebox-matrix-cell")
-    ) {
-      return;
-    }
-    _timeboxHoverTipHideTimer = setTimeout(hideTimeboxHoverTip, 60);
   });
 }
 

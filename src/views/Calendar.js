@@ -1566,37 +1566,9 @@ function lpHideTimeBlockHoverTip() {
   if (tip) tip.classList.remove("lp-time-block-hover-tip--visible");
 }
 
-function lpShowTimeBlockHoverTipFromRect(
-  rect,
-  taskName,
-  rangeStr,
-  bgCss,
-  fgCss,
-  memoExtra,
-) {
-  const tip = lpEnsureTimeBlockHoverTip();
-  const fg = fgCss || "#ffffff";
-  const memoHtml = (memoExtra || "").trim()
-    ? `<div class="lp-time-block-hover-tip__memo">${escapeHtml(String(memoExtra).trim())}</div>`
-    : "";
-  tip.innerHTML = `<div class="lp-time-block-hover-tip__title">${escapeHtml((taskName || "").trim())}</div><div class="lp-time-block-hover-tip__meta">${escapeHtml(rangeStr || "")}</div>${memoHtml}`;
-  tip.style.backgroundColor = bgCss || "#4b5563";
-  tip.style.color = fg;
-  tip.classList.add("lp-time-block-hover-tip--visible");
-  requestAnimationFrame(() => {
-    const pad = 8;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const tw = tip.offsetWidth;
-    const th = tip.offsetHeight;
-    let left = rect.left + rect.width / 2 - tw / 2;
-    let top = rect.bottom + pad;
-    if (top + th > vh - pad) top = Math.max(pad, rect.top - th - pad);
-    if (left < pad) left = pad;
-    if (left + tw > vw - pad) left = Math.max(pad, vw - tw - pad);
-    tip.style.left = `${Math.round(left)}px`;
-    tip.style.top = `${Math.round(top)}px`;
-  });
+function lpShowTimeBlockHoverTipFromRect() {
+  /* 전역 툴팁 금지 */
+  lpHideTimeBlockHoverTip();
 }
 
 /** 호버 툴팁 사용 안 함 */

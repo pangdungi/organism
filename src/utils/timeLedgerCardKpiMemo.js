@@ -3,7 +3,7 @@
  */
 
 import { getKpiMeasureInfoByKpiId } from "./kpiTodoSync.js";
-import { formatEmotionReflectMemoDisplay } from "./timeEmotionReflectMemo.js";
+import { emotionReflectMemoParts } from "./timeEmotionReflectMemo.js";
 import { splitUnhealthyMealMemoFromDb } from "./timeLedgerEntriesModel.js";
 import * as TTC from "./timeTaskOptionsConstants.js";
 
@@ -103,54 +103,101 @@ export function ledgerRowUserMemoFeedback(rowData) {
   return memo;
 }
 
-/** @param {object} rowData @param {string} kpiId */
-export function formatTimeLedgerCardKpiMemoLines(rowData, kpiId) {
-  const kid = String(kpiId || "").trim();
-  if (!kid) return [];
+/**
+ * @typedef {{ label?: string, body: string }} TimeLedgerCardMemoPart
+ */
 
-  const lines = [];
-  const performed = String(rowData?.kpiPerformedValue ?? "").trim();
-  if (performed) {
-    const measure = getKpiMeasureInfoByKpiId(kid);
-    const unit = measure?.unit ? ` ${measure.unit}` : "";
-    lines.push(`수행값 ${performed}${unit}`);
-  }
+/** @param {object} rowData @param {string} kpiId @returns {TimeLedgerCardMemoPart[]} */
+export function buildTimeLedgerCardMemoParts(rowData, kpiId) {
+  /** @type {TimeLedgerCardMemoPart[]} */
+  const parts = [];
 
-  const daily = Array.isArray(rowData?.habitDailyCompleted)
-    ? rowData.habitDailyCompleted
-    : [];
-  const texts = daily
-    .map((t) => String(t?.text || "").trim())
-    .filter(Boolean);
-  if (texts.length > 0) {
-    const taskName = String(rowData?.taskName || "").trim();
-    const moveUsesDailyAsTitle =
-      taskName === MOVE_ROUTINE_TASK_NAME &&
-      !!formatMoveRoutineDisplayLabel(rowData?.habitDailyCompleted);
-    if (!moveUsesDailyAsTitle) {
-      lines.push(`매일할일 ✓ ${texts.join(" · ")}`);
+  if (!ledgerRowUsesDetailAsDisplayName(rowData)) {
+    const { kind, text } = resolveLedgerRowDetail(rowData);
+    if (kind && text) {
+      const label = TTC.ledgerDetailLinePrefix(kind);
+      if (label) parts.push({ label, body: text });
+      else parts.push({ body: text });
     }
   }
 
-  return lines;
+  const kid = String(kpiId || "").trim();
+  if (kid) {
+    const performed = String(rowData?.kpiPerformedValue ?? "").trim();
+    if (performed) {
+      const measure = getKpiMeasureInfoByKpiId(kid);
+      const unit = measure?.unit ? ` ${measure.unit}` : "";
+      parts.push({ label: "수행값", body: `${performed}${unit}`.trim() });
+    }
+
+    const daily = Array.isArray(rowData?.habitDailyCompleted)
+      ? rowData.habitDailyCompleted
+      : [];
+    const texts = daily
+      .map((t) => String(t?.text || "").trim())
+      .filter(Boolean);
+    if (texts.length > 0) {
+      const taskName = String(rowData?.taskName || "").trim();
+      const moveUsesDailyAsTitle =
+        taskName === MOVE_ROUTINE_TASK_NAME &&
+        !!formatMoveRoutineDisplayLabel(rowData?.habitDailyCompleted);
+      if (!moveUsesDailyAsTitle) {
+        parts.push({ label: "매일할일", body: `✓ ${texts.join(" · ")}` });
+      }
+    }
+  }
+
+  let memo = ledgerRowUserMemoFeedback(rowData);
+  if (memo && TTC.isNegativeEmotionalTaskName(rowData?.taskName)) {
+    parts.push(...emotionReflectMemoParts(memo));
+  } else if (memo) {
+    parts.push({ body: memo });
+  }
+
+  return parts;
 }
 
-/** 식단·콘텐츠·KPI 요약 + 사용자 메모 */
+/** @param {object} rowData @param {string} kpiId */
+export function formatTimeLedgerCardKpiMemoLines(rowData, kpiId) {
+  return buildTimeLedgerCardMemoParts(rowData, kpiId)
+    .filter((p) => p.label === "수행값" || p.label === "매일할일")
+    .map((p) => (p.label ? `${p.label} ${p.body}` : p.body));
+}
+
+/** 식단·콘텐츠·KPI 요약 + 사용자 메모 (평문) */
 export function buildTimeLedgerCardMemoText(rowData, kpiId) {
-  const summary = [
-    ...(ledgerRowUsesDetailAsDisplayName(rowData)
-      ? []
-      : formatTimeLedgerCardDetailLines(rowData)),
-    ...formatTimeLedgerCardKpiMemoLines(rowData, kpiId),
-  ].join("\n");
-  let memo = ledgerRowUserMemoFeedback(rowData);
-  if (
-    memo &&
-    TTC.isNegativeEmotionalTaskName(rowData?.taskName)
-  ) {
-    memo = formatEmotionReflectMemoDisplay(memo);
+  return buildTimeLedgerCardMemoParts(rowData, kpiId)
+    .map((p) => (p.label ? `${p.label} ${p.body}` : p.body))
+    .join("\n");
+}
+
+/**
+ * 카드 메모 DOM — 라벨은 칩, 본문은 일반 글
+ * @returns {boolean} 내용 있음
+ */
+export function fillTimeLedgerCardMemoElement(el, rowData, kpiId) {
+  if (!(el instanceof Element)) return false;
+  const parts = buildTimeLedgerCardMemoParts(rowData, kpiId);
+  el.replaceChildren();
+  if (!parts.length) {
+    el.classList.remove("time-ledger-card-memo--structured");
+    return false;
   }
-  if (!summary) return memo;
-  if (!memo) return summary;
-  return `${summary}\n${memo}`;
+  el.classList.add("time-ledger-card-memo--structured");
+  for (const part of parts) {
+    const row = document.createElement("div");
+    row.className = "time-ledger-card-memo-row";
+    if (part.label) {
+      const chip = document.createElement("span");
+      chip.className = "time-ledger-card-memo-chip";
+      chip.textContent = part.label;
+      row.appendChild(chip);
+    }
+    const body = document.createElement("span");
+    body.className = "time-ledger-card-memo-body";
+    body.textContent = part.body;
+    row.appendChild(body);
+    el.appendChild(row);
+  }
+  return true;
 }

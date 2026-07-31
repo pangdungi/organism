@@ -62,12 +62,23 @@ export function parseEmotionReflectMemo(raw) {
   return { fact, interpretation, isStructured: true };
 }
 
-/** 카드·레포트 표시용 */
-export function formatEmotionReflectMemoDisplay(raw) {
+/**
+ * 카드 구조화 표시용
+ * @returns {{ label?: string, body: string }[]}
+ */
+export function emotionReflectMemoParts(raw) {
   const { fact, interpretation, isStructured } = parseEmotionReflectMemo(raw);
-  if (!isStructured && fact) return fact;
-  const lines = [];
-  if (fact) lines.push(`사실 ${fact}`);
-  if (interpretation) lines.push(`해석 ${interpretation}`);
-  return lines.join("\n");
+  if (!fact && !interpretation) return [];
+  if (!isStructured && fact) return [{ body: fact }];
+  const parts = [];
+  if (fact) parts.push({ label: "사실", body: fact });
+  if (interpretation) parts.push({ label: "해석", body: interpretation });
+  return parts;
+}
+
+/** 카드·레포트 평문 표시용 */
+export function formatEmotionReflectMemoDisplay(raw) {
+  return emotionReflectMemoParts(raw)
+    .map((p) => (p.label ? `${p.label} ${p.body}` : p.body))
+    .join("\n");
 }

@@ -7565,6 +7565,48 @@
   line-height: 1.45;
 }
 
+/* 카드 메모 — 트리거·사실·해석·매일할일 등 라벨 칩 */
+.time-ledger-card-memo--structured,
+.calendar-1day-timeline-card-memo.time-ledger-card-memo--structured,
+.time-display-feedback.time-ledger-card-memo--structured {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  white-space: normal;
+}
+
+.time-ledger-card-memo-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.28rem 0.4rem;
+  min-width: 0;
+}
+
+.time-ledger-card-memo-chip {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 0.08rem 0.34rem;
+  border-radius: 6px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: #475569;
+  background: rgba(100, 116, 139, 0.16);
+}
+
+.time-ledger-card-memo-body {
+  flex: 1 1 7rem;
+  min-width: 0;
+  font-size: inherit;
+  font-weight: 400;
+  line-height: inherit;
+  color: inherit;
+  word-break: break-word;
+}
+
 /* 시간 사용내역 조회 기간 모달 — 패널·날짜 너비는 할일 수정 모달과 동일(lp-modals 26rem) */
 [data-legacy~="time-ledger-view"]
   [data-legacy~="time-usage-range-modal"]

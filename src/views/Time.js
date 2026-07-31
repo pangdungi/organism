@@ -188,6 +188,7 @@ import {
 } from "../utils/diaryTimeReportLogMemos.js";
 import {
   buildTimeLedgerCardMemoText,
+  fillTimeLedgerCardMemoElement,
   ledgerRowDisplayTaskName,
   ledgerRowTimeboxDisplayLabel,
   ledgerRowUsesDetailAsDisplayName,
@@ -4286,7 +4287,8 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
   lpSetClasses(feedbackTd, "time-cell time-cell-feedback");
   const feedbackSpan = document.createElement("span");
   lpSetClasses(feedbackSpan, "time-display-feedback");
-  feedbackSpan.textContent = buildTimeLedgerCardMemoText(
+  fillTimeLedgerCardMemoElement(
+    feedbackSpan,
     rowData,
     ledgerRowKpiIdFromTaskName(rowData.taskName),
   );
@@ -5247,16 +5249,18 @@ function syncMobileTimeCardRatingEl(card, rowData) {
 function syncMobileTimeCardMemoEl(card, rowData) {
   if (!card) return;
   const kpiId = ledgerRowKpiIdFromTaskName(rowData?.taskName);
-  const display = buildTimeLedgerCardMemoText(rowData, kpiId);
   const existing = card.querySelector(".calendar-1day-timeline-card-memo");
-  if (!display) {
-    existing?.remove();
-    return;
-  }
   let memoEl = existing;
   if (!memoEl) {
     memoEl = document.createElement("div");
     memoEl.className = "calendar-1day-timeline-card-memo";
+  }
+  const hasMemo = fillTimeLedgerCardMemoElement(memoEl, rowData, kpiId);
+  if (!hasMemo) {
+    existing?.remove();
+    return;
+  }
+  if (!existing) {
     const endEl = card.querySelector(".calendar-1day-timeline-card-end");
     const stack = card.querySelector(".calendar-1day-timeline-card-time-stack");
     if (endEl && endEl.parentElement === card) {
@@ -5267,13 +5271,11 @@ function syncMobileTimeCardMemoEl(card, rowData) {
       card.appendChild(memoEl);
     }
   }
-  memoEl.textContent = display;
 }
 
 function refreshTimeLedgerRowMemoDisplay(tr, rowData) {
   if (!tr || !rowData) return;
   const kpiId = ledgerRowKpiIdFromTaskName(rowData.taskName);
-  const text = buildTimeLedgerCardMemoText(rowData, kpiId);
   if (lpTokenHas(tr, "time-ledger-mobile-card")) {
     syncMobileTimeCardMemoEl(tr, rowData);
     syncMobileTimeCardRatingEl(tr, rowData);
@@ -5291,10 +5293,10 @@ function refreshTimeLedgerRowMemoDisplay(tr, rowData) {
     applyMobileTimeCardHoverTitle(tr);
     return;
   }
-  const dispFeedback = tr.querySelector(
-    '[data-legacy~="time-display-feedback"]',
-  );
-  if (dispFeedback) dispFeedback.textContent = text;
+  const dispFeedback =
+    tr.querySelector('[data-legacy~="time-display-feedback"]') ||
+    tr.querySelector(".time-display-feedback");
+  if (dispFeedback) fillTimeLedgerCardMemoElement(dispFeedback, rowData, kpiId);
 }
 
 function rememberDismissedNextExpectedBlock(viewEl, block, todayYmd) {
@@ -5531,7 +5533,6 @@ function resolveUsageTimelineItemFromCardNode(node) {
 function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   const taskLabel = ledgerRowDisplayTaskName(rowData) || "(제목 없음)";
   const kpiId = ledgerRowKpiIdFromTaskName(rowData.taskName);
-  const cardMemoText = buildTimeLedgerCardMemoText(rowData, kpiId);
   const startInst = getRowStartInstantForMobileCard(rowData);
   const startClock = formatLedgerTimelineClockHHmm(startInst) || "—";
   const endClock = formatLedgerTimelineEndClock(rowData);
@@ -5634,11 +5635,12 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   card.appendChild(titleEl);
   card.appendChild(statsCol);
   syncMobileTimeCardRatingEl(card, rowData);
-  if (cardMemoText) {
+  {
     const memoEl = document.createElement("div");
     memoEl.className = "calendar-1day-timeline-card-memo";
-    memoEl.textContent = cardMemoText;
-    card.appendChild(memoEl);
+    if (fillTimeLedgerCardMemoElement(memoEl, rowData, kpiId)) {
+      card.appendChild(memoEl);
+    }
   }
 
   card.appendChild(endEl);
@@ -7659,7 +7661,7 @@ export function render(opts = {}) {
           <div data-legacy="time-task-log-content-type-chips lp-choice-chip-row"></div>
         </div>
         <div data-legacy="time-task-log-emotion-trigger-section" hidden>
-          <span data-legacy="time-task-log-section-label time-task-log-emotion-trigger-label">트리거</span>
+          <span data-legacy="time-task-log-section-label time-task-log-emotion-trigger-label">트리거 (필수)</span>
           <div data-legacy="time-task-log-emotion-trigger-chips lp-choice-chip-row"></div>
         </div>
         <div data-legacy="time-task-log-kpi-todos-section" hidden>
@@ -7719,11 +7721,11 @@ export function render(opts = {}) {
             </div>
             <div data-legacy="time-task-log-emotion-reflect-section" hidden>
               <div data-legacy="time-task-log-field">
-                <label data-legacy="time-task-log-section-label" for="time-task-log-emotion-fact">상황에 대한 사실만 적기</label>
+                <label data-legacy="time-task-log-section-label time-task-log-emotion-fact-label" for="time-task-log-emotion-fact">상황에 대한 사실만 적기 (필수)</label>
                 <textarea id="time-task-log-emotion-fact" data-legacy="time-task-log-emotion-fact time-task-log-memo-input" rows="2" placeholder="무슨 일이 있었는지, 사실만 적어 주세요" autocomplete="off"></textarea>
               </div>
               <div data-legacy="time-task-log-field">
-                <label data-legacy="time-task-log-section-label" for="time-task-log-emotion-interp">내 해석 적기</label>
+                <label data-legacy="time-task-log-section-label time-task-log-emotion-interp-label" for="time-task-log-emotion-interp">내 해석 적기 (필수)</label>
                 <textarea id="time-task-log-emotion-interp" data-legacy="time-task-log-emotion-interp time-task-log-memo-input" rows="2" placeholder="내가 해석한 상황을 적어주세요" autocomplete="off"></textarea>
               </div>
             </div>
@@ -7841,8 +7843,14 @@ export function render(opts = {}) {
   const taskLogEmotionFactInput = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-emotion-fact"]',
   );
+  const taskLogEmotionFactLabel = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-emotion-fact-label"]',
+  );
   const taskLogEmotionInterpInput = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-emotion-interp"]',
+  );
+  const taskLogEmotionInterpLabel = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-emotion-interp-label"]',
   );
   const taskLogMemoQuick = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-memo-quick"]',
@@ -7870,6 +7878,16 @@ export function render(opts = {}) {
     }
     if (taskLogMemoDefaultField) {
       taskLogMemoDefaultField.hidden = show;
+    }
+    if (taskLogEmotionFactLabel) {
+      taskLogEmotionFactLabel.textContent = show
+        ? "상황에 대한 사실만 적기 (필수)"
+        : "상황에 대한 사실만 적기";
+    }
+    if (taskLogEmotionInterpLabel) {
+      taskLogEmotionInterpLabel.textContent = show
+        ? "내 해석 적기 (필수)"
+        : "내 해석 적기";
     }
     if (!show) clearTaskLogEmotionReflectInputs();
   }
@@ -7932,6 +7950,9 @@ export function render(opts = {}) {
   );
   const taskLogEmotionTriggerSection = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-emotion-trigger-section"]',
+  );
+  const taskLogEmotionTriggerLabel = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-emotion-trigger-label"]',
   );
   const taskLogEmotionTriggerChips = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-emotion-trigger-chips"]',
@@ -8940,6 +8961,11 @@ export function render(opts = {}) {
       const showTrigger =
         isEmotion && TTC.emotionTaskUsesTriggers(tn);
       taskLogEmotionTriggerSection.hidden = !showTrigger;
+      if (taskLogEmotionTriggerLabel) {
+        taskLogEmotionTriggerLabel.textContent = showTrigger
+          ? "트리거 (필수)"
+          : "트리거";
+      }
       if (!showTrigger) clearTaskLogEmotionTrigger();
     }
     syncTaskLogEmotionReflectVisibility(tn);
@@ -10670,10 +10696,13 @@ export function render(opts = {}) {
     }
   }
 
-  function taskCompletionTodoListLabelForKpiId(kpiId) {
-    return String(kpiId || "").trim() === DEFAULT_READING_KPI_ID
-      ? DEFAULT_READING_KPI_TODO_LIST_LABEL
-      : "할 일 목록";
+  function taskCompletionTodoListLabelForKpiId(kpiId, opts = {}) {
+    if (String(kpiId || "").trim() === DEFAULT_READING_KPI_ID) {
+      return DEFAULT_READING_KPI_TODO_LIST_LABEL;
+    }
+    /* 플래너(오늘 계획 퀵·지금 실행)로 연 경우만 「오늘의 할일 목록」 */
+    if (opts.plannedTodoFilterActive) return "오늘의 할일 목록";
+    return "할 일 목록";
   }
 
   function taskCompletionTodoListEmptyMessageForKpiId(kpiId) {
@@ -10683,7 +10712,9 @@ export function render(opts = {}) {
   }
 
   function applyTaskCompletionTodosUi(kpiId, todos, opts = {}) {
-    const listLabel = taskCompletionTodoListLabelForKpiId(kpiId);
+    const listLabel = taskCompletionTodoListLabelForKpiId(kpiId, {
+      plannedTodoFilterActive: !!opts.plannedTodoFilterActive,
+    });
     if (taskLogKpiTodosTitle) taskLogKpiTodosTitle.textContent = listLabel;
     if (
       !taskLogKpiTodosSection ||
@@ -10721,6 +10752,7 @@ export function render(opts = {}) {
       return;
     }
     applyTaskCompletionTodosUi(info.kpiId, info.todos, {
+      plannedTodoFilterActive: !!info.plannedTodoFilterActive,
       errorMessage: info.plannedTodoFilterActive
         ? "이 일정에서 고른 할 일이 없거나 이미 완료되었습니다."
         : undefined,
@@ -10760,26 +10792,35 @@ export function render(opts = {}) {
 
     if (!syncResult.stale) return;
 
-    const listLabel = taskCompletionTodoListLabelForKpiId(kpiId);
     const afterTaskInfo = getKpiTaskCompletionTodoInfoByKpiId(kpiId);
     const afterDailyInfo = getKpiDailyRepeatInfoByKpiId(kpiId);
     const afterTaskSnap = kpiTodoListSnapshot(afterTaskInfo?.todos);
     const afterDailySnap = kpiTodoListSnapshot(afterDailyInfo?.dailyTodos);
+    const filteredTaskInfo = getTaskCompletionTodoInfoForTaskLog();
+    const listLabel = taskCompletionTodoListLabelForKpiId(kpiId, {
+      plannedTodoFilterActive: !!filteredTaskInfo?.plannedTodoFilterActive,
+    });
 
     if (afterTaskSnap !== beforeTaskSnap) {
-      if (afterTaskInfo) {
-        applyTaskCompletionTodosUi(afterTaskInfo.kpiId, afterTaskInfo.todos, {
-          preserveChecks: taskChecks,
-        });
+      if (filteredTaskInfo) {
+        applyTaskCompletionTodosUi(
+          filteredTaskInfo.kpiId,
+          filteredTaskInfo.todos,
+          {
+            plannedTodoFilterActive: !!filteredTaskInfo.plannedTodoFilterActive,
+            preserveChecks: taskChecks,
+          },
+        );
       } else {
         hideTaskLogTaskCompletionTodosSection();
       }
     } else if (
       !syncResult.pullOk &&
-      getTaskCompletionTodoInfoForTaskLog() &&
+      filteredTaskInfo &&
       !afterTaskInfo?.todos?.length
     ) {
       applyTaskCompletionTodosUi(kpiId, [], {
+        plannedTodoFilterActive: !!filteredTaskInfo.plannedTodoFilterActive,
         errorMessage: `${listLabel}을 불러오지 못했습니다. 잠시 후 다시 선택해 주세요.`,
       });
     }
@@ -11683,6 +11724,86 @@ export function render(opts = {}) {
           taskLogMealDetailInput?.focus?.();
         }
         return;
+      }
+    }
+    if (
+      TTC.emotionTaskUsesTriggers(taskName) &&
+      !String(mealDetailForRow || "").trim()
+    ) {
+      /* 감정적이기(부정): 트리거 권장 · 「나중에」면 없이 저장 */
+      const pickTrigger = await showConfirmModal({
+        title: "알림",
+        message: "트리거를 아직 고르지 않았어요.",
+        cancelText: "나중에",
+        confirmText: "확인",
+      });
+      if (pickTrigger) {
+        if (taskLogEmotionTriggerSection) {
+          taskLogEmotionTriggerSection.hidden = false;
+          try {
+            taskLogEmotionTriggerSection.scrollIntoView({
+              block: "nearest",
+              behavior: "smooth",
+            });
+          } catch (_) {}
+        }
+        return;
+      }
+    }
+    if (TTC.isNegativeEmotionalTaskName(taskName)) {
+      const emotionFact = (taskLogEmotionFactInput?.value || "").trim();
+      if (!emotionFact) {
+        const enterFact = await showConfirmModal({
+          title: "알림",
+          message: "상황에 대한 사실을 아직 입력하지 않았어요.",
+          cancelText: "나중에",
+          confirmText: "확인",
+        });
+        if (enterFact) {
+          syncTaskLogEmotionReflectVisibility(taskName);
+          if (taskLogEmotionReflectSection) {
+            taskLogEmotionReflectSection.hidden = false;
+            try {
+              taskLogEmotionReflectSection.scrollIntoView({
+                block: "nearest",
+                behavior: "smooth",
+              });
+            } catch (_) {}
+          }
+          try {
+            taskLogEmotionFactInput?.focus?.({ preventScroll: true });
+          } catch (_) {
+            taskLogEmotionFactInput?.focus?.();
+          }
+          return;
+        }
+      }
+      const emotionInterp = (taskLogEmotionInterpInput?.value || "").trim();
+      if (!emotionInterp) {
+        const enterInterp = await showConfirmModal({
+          title: "알림",
+          message: "내 해석을 아직 입력하지 않았어요.",
+          cancelText: "나중에",
+          confirmText: "확인",
+        });
+        if (enterInterp) {
+          syncTaskLogEmotionReflectVisibility(taskName);
+          if (taskLogEmotionReflectSection) {
+            taskLogEmotionReflectSection.hidden = false;
+            try {
+              taskLogEmotionReflectSection.scrollIntoView({
+                block: "nearest",
+                behavior: "smooth",
+              });
+            } catch (_) {}
+          }
+          try {
+            taskLogEmotionInterpInput?.focus?.({ preventScroll: true });
+          } catch (_) {
+            taskLogEmotionInterpInput?.focus?.();
+          }
+          return;
+        }
       }
     }
     const feedback = feedbackBody;
