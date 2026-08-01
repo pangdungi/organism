@@ -8876,6 +8876,8 @@
   [data-legacy~="time-task-log-sleep-good-section"],
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   [data-legacy~="time-task-log-sleep-poor-section"],
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-bad-feeling-section"],
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
     .lp-calendar-budget-add-modal
   )
@@ -8895,7 +8897,11 @@
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
     .lp-calendar-budget-add-modal
   )
-  [data-legacy~="time-task-log-sleep-poor-section"] {
+  [data-legacy~="time-task-log-sleep-poor-section"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-bad-feeling-section"] {
   margin-top: 0.85rem;
   padding-top: 0.85rem;
   padding-bottom: 0.85rem;
@@ -8946,6 +8952,9 @@
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   [data-legacy~="time-task-log-sleep-poor-section"]
   > [data-legacy~="time-task-log-section-label"],
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-bad-feeling-section"]
+  > [data-legacy~="time-task-log-section-label"],
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
     .lp-calendar-budget-add-modal
   )
@@ -8970,6 +8979,11 @@
     .lp-calendar-budget-add-modal
   )
   [data-legacy~="time-task-log-sleep-poor-section"]
+  > [data-legacy~="time-task-log-section-label"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-bad-feeling-section"]
   > [data-legacy~="time-task-log-section-label"] {
   margin-top: 0;
   margin-bottom: 0.85rem;
@@ -8985,6 +8999,8 @@
   [data-legacy~="time-task-log-sleep-good-chips"],
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   [data-legacy~="time-task-log-sleep-poor-chips"],
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-bad-feeling-chips"],
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
     .lp-calendar-budget-add-modal
   )
@@ -9004,7 +9020,11 @@
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
     .lp-calendar-budget-add-modal
   )
-  [data-legacy~="time-task-log-sleep-poor-chips"] {
+  [data-legacy~="time-task-log-sleep-poor-chips"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-bad-feeling-chips"] {
   margin-top: 0;
   margin-bottom: 0;
 }

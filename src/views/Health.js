@@ -769,6 +769,8 @@ export function render() {
       ...kpiTimeFormOpts,
       preferredProgressStatus: initialStatus,
     };
+    const defaultStartYmd =
+      initialStatus !== "pending" ? toDateKey(new Date()) : "";
     const modal = document.createElement("div");
     modal.className = "time-task-setup-modal";
     modal.innerHTML = `
@@ -785,7 +787,10 @@ export function render() {
               <input type="text" name="name" placeholder="예) 30분이상의 유산소 운동하기" />
             </div>
             ${kpiFormGoalAndTargetSectionHtml(null, escapeHtml, formOpts)}
-            ${kpiProgressStatusFieldHtml({ progressStatus: initialStatus })}
+            ${kpiProgressStatusFieldHtml({
+              progressStatus: initialStatus,
+              targetStartDate: defaultStartYmd,
+            })}
           </div>
           <div data-legacy="time-task-log-footer">
             <button type="submit" data-legacy="time-task-log-submit">저장</button>
@@ -827,7 +832,7 @@ export function render() {
       refreshHealthAfterKpiDataChange();
     });
     document.body.appendChild(modal);
-    bindKpiProgressStatusField(modal);
+    bindKpiProgressStatusField(modal, { syncFromStartDate: true });
     bindKpiGoalModeForm(modal.querySelector(".dream-kpi-form"), null, formOpts);
   }
 

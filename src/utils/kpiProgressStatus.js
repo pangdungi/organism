@@ -57,7 +57,11 @@ function localTodayYmdTen() {
 }
 
 /**
- * 시작일이 오늘보다 미래면 진행 전.
+ * 시작일 기준 과제 상태.
+ * - 완료는 fallback이 완료일 때만 (사용자가 고른 경우)
+ * - 시작일이 오늘보다 미래 → 진행전
+ * - 시작일이 오늘 이내 → 진행중
+ * - 시작일 없음 → fallback
  * @param {string} startYmd
  * @param {unknown} [fallbackStatus]
  */
@@ -65,11 +69,17 @@ export function progressStatusForKpiStartDate(
   startYmd,
   fallbackStatus = KPI_PROGRESS_STATUS_DEFAULT,
 ) {
-  const start = String(startYmd || "").trim().slice(0, 10);
-  if (/^\d{4}-\d{2}-\d{2}$/.test(start) && start > localTodayYmdTen()) {
-    return KPI_PROGRESS_STATUS.PENDING;
+  const fb = normalizeKpiProgressStatus(fallbackStatus);
+  if (fb === KPI_PROGRESS_STATUS.COMPLETED) {
+    return KPI_PROGRESS_STATUS.COMPLETED;
   }
-  return normalizeKpiProgressStatus(fallbackStatus);
+  const start = String(startYmd || "").trim().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) {
+    return fb;
+  }
+  const today = localTodayYmdTen();
+  if (start > today) return KPI_PROGRESS_STATUS.PENDING;
+  return KPI_PROGRESS_STATUS.ACTIVE;
 }
 
 /**
@@ -95,8 +105,17 @@ export function resolveKpiProgressStatus(kpi, progress = null) {
   const stored = getKpiProgressStatus(kpi);
   if (stored === KPI_PROGRESS_STATUS.COMPLETED) return stored;
   const start = String(kpi?.targetStartDate || "").trim().slice(0, 10);
-  if (/^\d{4}-\d{2}-\d{2}$/.test(start) && start > localTodayYmdTen()) {
+  const today = localTodayYmdTen();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(start) && start > today) {
     return KPI_PROGRESS_STATUS.PENDING;
+  }
+  /* 진행전으로 저장돼 있어도 시작일이 오면 진행중으로 본다 */
+  if (
+    stored === KPI_PROGRESS_STATUS.PENDING &&
+    /^\d{4}-\d{2}-\d{2}$/.test(start) &&
+    start <= today
+  ) {
+    return KPI_PROGRESS_STATUS.ACTIVE;
   }
   return stored;
 }
@@ -176,7 +195,7 @@ export function kpiProgressStatusFilterBarHtml(kpiFilter) {
 
 /**
  * 행동 추가·수정 모달 — 과제 상태 (진행전·진행중·완료 라디오)
- * @param {object|null} [kpi] — 추가 시 `{ progressStatus }` 또는 null
+ * @param {object|null} [kpi] — 추가 시 `{ progressStatus, targetStartDate }` 또는 null
  * @param {{ isCompleted?: boolean }|null} [progress]
  */
 export function kpiProgressStatusFieldHtml(kpi = null, progress = null) {
@@ -203,12 +222,54 @@ export function kpiProgressStatusFieldHtml(kpi = null, progress = null) {
             </div>`;
 }
 
+/** @param {HTMLFormElement|ParentNode|null|undefined} form @param {string} status */
+export function setKpiProgressStatusRadio(form, status) {
+  if (!form?.querySelector) return;
+  const v = normalizeKpiProgressStatus(status);
+  const input = form.querySelector(
+    `input[type="radio"][name="progressStatus"][value="${v}"]`,
+  );
+  if (input instanceof HTMLInputElement) input.checked = true;
+}
+
 /**
  * @param {ParentNode|null|undefined} root — 모달 또는 form
- * 라디오는 name=progressStatus 로 폼에서 바로 읽힘 (바인딩 불필요, 호출 호환용)
+ * @param {{ syncFromStartDate?: boolean }} [opts]
+ *   syncFromStartDate — 새 행동 추가: 시작일에 맞춰 진행전/진행중 라디오를 맞춤(완료는 사용자 선택 유지)
  */
-export function bindKpiProgressStatusField(root) {
-  void root;
+export function bindKpiProgressStatusField(root, opts = {}) {
+  if (!root || root.dataset?.kpiProgressStatusBound === "1") return;
+  if (root.dataset) root.dataset.kpiProgressStatusBound = "1";
+  if (!opts.syncFromStartDate) return;
+
+  const form =
+    (root instanceof HTMLFormElement && root) ||
+    root.querySelector?.(".dream-kpi-form") ||
+    root.querySelector?.("form") ||
+    root;
+
+  const syncFromStart = () => {
+    const start = String(
+      form.querySelector?.('input[name="targetStartDate"]')?.value || "",
+    )
+      .trim()
+      .slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) return;
+    const current = readKpiProgressStatusFromForm(form);
+    if (current === KPI_PROGRESS_STATUS.COMPLETED) return;
+    setKpiProgressStatusRadio(
+      form,
+      progressStatusForKpiStartDate(start, KPI_PROGRESS_STATUS.ACTIVE),
+    );
+  };
+
+  form.addEventListener?.("change", (e) => {
+    if (e?.target?.name === "targetStartDate") syncFromStart();
+  });
+  form.addEventListener?.("input", (e) => {
+    if (e?.target?.name === "targetStartDate") syncFromStart();
+  });
+  syncFromStart();
 }
 
 /** @param {HTMLFormElement|null|undefined} form */

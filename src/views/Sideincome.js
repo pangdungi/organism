@@ -813,6 +813,8 @@ export function render(opts = {}) {
       ...kpiTimeFormOpts,
       preferredProgressStatus: initialStatus,
     };
+    const defaultStartYmd =
+      initialStatus !== "pending" ? toDateKey(new Date()) : "";
     const modal = document.createElement("div");
     modal.className = "time-task-setup-modal";
     modal.innerHTML = `
@@ -829,7 +831,10 @@ export function render(opts = {}) {
               <input type="text" name="name" placeholder="예) 인스타 게시물 포스팅하기" />
             </div>
             ${kpiFormGoalAndTargetSectionHtml(null, escapeHtml, formOpts)}
-            ${kpiProgressStatusFieldHtml({ progressStatus: initialStatus })}
+            ${kpiProgressStatusFieldHtml({
+              progressStatus: initialStatus,
+              targetStartDate: defaultStartYmd,
+            })}
           </div>
           <div data-legacy="time-task-log-footer">
             <button type="submit" data-legacy="time-task-log-submit">저장</button>
@@ -869,7 +874,7 @@ export function render(opts = {}) {
       refreshSideincomeAfterKpiDataChange();
     });
     document.body.appendChild(modal);
-    bindKpiProgressStatusField(modal);
+    bindKpiProgressStatusField(modal, { syncFromStartDate: true });
     bindKpiGoalModeForm(modal.querySelector(".dream-kpi-form"), null, formOpts);
   }
 
