@@ -5,8 +5,6 @@
 import { supabase } from "../supabase.js";
 import {
   applyCalendarDayIconsServerSnapshot,
-  clearCalendarDayIconLocalSyncPending,
-  markCalendarDayIconLocalSyncPending,
   setCalendarDayIconKeyForDate,
 } from "./calendarDayIconsModel.js";
 import { runTodoSectionTasksSerialized } from "./todoSectionTasksServerSyncSerial.js";
@@ -59,20 +57,18 @@ export async function syncCalendarDayIconForDate(dateKey, iconKey) {
       return { ok: false, reason: !supabase ? "no_supabase" : !userId ? "no_session" : "bad_date" };
     }
 
-    markCalendarDayIconLocalSyncPending(ymd);
-    try {
-      setCalendarDayIconKeyForDate(ymd, key);
+    /* 쓰기는 막지 않음. 끝난 뒤 서버 SELECT로 화면을 맞춤 */
+    setCalendarDayIconKeyForDate(ymd, key);
 
-      const { error: delErr } = await supabase
-        .from(TABLE)
-        .delete()
-        .eq("user_id", userId)
-        .eq("day_date", ymd);
-      if (delErr) {
-        return { ok: false, reason: delErr.message || "delete_failed" };
-      }
-      if (!key) return { ok: true };
-
+    const { error: delErr } = await supabase
+      .from(TABLE)
+      .delete()
+      .eq("user_id", userId)
+      .eq("day_date", ymd);
+    if (delErr) {
+      return { ok: false, reason: delErr.message || "delete_failed" };
+    }
+    if (key) {
       const { error: insErr } = await supabase.from(TABLE).insert([
         {
           user_id: userId,
@@ -84,10 +80,17 @@ export async function syncCalendarDayIconForDate(dateKey, iconKey) {
       if (insErr) {
         return { ok: false, reason: insErr.message || "insert_failed" };
       }
-      return { ok: true };
-    } finally {
-      clearCalendarDayIconLocalSyncPending(ymd);
     }
+    const { data, error: selErr } = await supabase
+      .from(TABLE)
+      .select("*")
+      .eq("user_id", userId)
+      .order("day_date", { ascending: true })
+      .order("sort_order", { ascending: true });
+    if (!selErr) {
+      applyCalendarDayIconsServerSnapshot(Array.isArray(data) ? data : []);
+    }
+    return { ok: true };
   });
 }
 

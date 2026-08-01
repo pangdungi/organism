@@ -759,13 +759,17 @@ export function applyTimeLedgerServerRangeSnapshot(
       .map((r) => String(r?.id || "").trim())
       .filter(Boolean),
   );
-  /* 서버에 아직 없는 신규·미업로드 행만 유지 */
+  /*
+   * 서버 응답에 없는 행: 한 번도 서버에 없던 신규(미업로드)만 유지.
+   * serverUpdatedAt이 있는데 응답에 없으면 서버에서 삭제된 것 — 로컬로 되살리지 않음.
+   */
   const pendingNewLocal = [];
   for (const r of localWithIds) {
     if (!rowEntryDateInInclusiveRange(r, rs, re)) continue;
     if (!timeLedgerRowNeedsPush(r)) continue;
     const id = String(r?.id || "").trim();
     if (!id || serverIds.has(id)) continue;
+    if (String(r.serverUpdatedAt || "").trim()) continue;
     pendingNewLocal.push(r);
   }
   const merged = [...outside, ...insideFromServer, ...pendingNewLocal];

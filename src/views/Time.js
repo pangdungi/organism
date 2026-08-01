@@ -2219,26 +2219,47 @@ function rowEffectiveLastMinutesLedger(row) {
   return parseLedgerTimeStringToMinutes(String(src || ""));
 }
 
-/** loadTimeRows와 화면 캐시(allRowsCache) 병합 — 동일 id·동일 복합키는 캐시가 우선 */
-function mergeLedgerRowsForDedupe(diskRows, cacheRows) {
+function ledgerRowDedupeKey(r) {
+  if (!r || typeof r !== "object") return "";
+  const id = String(r.id || "").trim();
+  if (id) return `id:${id}`;
+  const d =
+    normalizeDateForCompare(r.date || "") ||
+    String(r.date || "")
+      .trim()
+      .replace(/\//g, "-")
+      .slice(0, 10);
+  return `c:${d}|${(r.taskName || "").trim()}|${(r.startTime || "").trim()}`;
+}
+
+/**
+ * 메모리(서버 pull·저장본)와 화면 캐시 병합.
+ * 같은 키는 memoryRows가 이김. 캐시에만 있는 신규 행은 유지.
+ * preferCacheIds: 방금 수정한 id는 캐시 행을 씀.
+ */
+function mergeLedgerRowsForDedupe(memoryRows, cacheRows, preferCacheIds) {
+  const prefer =
+    preferCacheIds instanceof Set
+      ? preferCacheIds
+      : preferCacheIds
+        ? new Set(
+            [...preferCacheIds].map((x) => String(x || "").trim()).filter(Boolean),
+          )
+        : new Set();
   const map = new Map();
-  const keyOf = (r) => {
-    if (!r || typeof r !== "object") return "";
+  for (const r of cacheRows || []) {
+    if (r) map.set(ledgerRowDedupeKey(r), r);
+  }
+  for (const r of memoryRows || []) {
+    if (!r) continue;
     const id = String(r.id || "").trim();
-    if (id) return `id:${id}`;
-    const d =
-      normalizeDateForCompare(r.date || "") ||
-      String(r.date || "")
-        .trim()
-        .replace(/\//g, "-")
-        .slice(0, 10);
-    return `c:${d}|${(r.taskName || "").trim()}|${(r.startTime || "").trim()}`;
-  };
-  for (const r of diskRows || []) {
-    if (r) map.set(keyOf(r), r);
+    if (id && prefer.has(id)) continue;
+    map.set(ledgerRowDedupeKey(r), r);
   }
   for (const r of cacheRows || []) {
-    if (r) map.set(keyOf(r), r);
+    if (!r) continue;
+    const id = String(r.id || "").trim();
+    if (id && prefer.has(id)) map.set(ledgerRowDedupeKey(r), r);
   }
   return [...map.values()];
 }
@@ -11390,15 +11411,10 @@ export function render(opts = {}) {
   }
 
   function taskLogMergedRowsForGapLookup() {
-    const merged = mergeLedgerRowsForDedupe(
+    return mergeLedgerRowsForDedupe(
       loadTimeRows(),
       Array.isArray(allRowsCache) ? allRowsCache : [],
     );
-    try {
-      const live = getFilteredRows(getFullRowsForFilter(true));
-      if (live?.length) return mergeLedgerRowsForDedupe(merged, live);
-    } catch (_) {}
-    return merged;
   }
 
   function syncTaskLogGapFillBtnVisibility() {
@@ -12727,12 +12743,20 @@ export function render(opts = {}) {
           rememberDismissedNextExpectedBlockKey(dismissYmd, plannedKey);
         }
       }
-      onFilterChange();
       /* 로컬은 즉시 저장·모달 닫기. 서버 반영은 닫은 뒤에도 반드시 이어감(실패 시 조용히 재시도) */
       const pushedId = String(
         (editTr?._rowData?.id || addLedgerTr?._rowData?.id || "").trim(),
       );
-      const pushPromise = saveTimeRows(getFullRowsForFilter(true));
+      /* 불완전 캐시로 전체 메모리를 덮지 않음 — 메모리 우선 + 방금 수정 id만 캐시 */
+      const preferIds = pushedId ? new Set([pushedId]) : new Set();
+      const rowsToPersist = mergeLedgerRowsForDedupe(
+        loadTimeRows(),
+        Array.isArray(allRowsCache) ? allRowsCache : [],
+        preferIds,
+      );
+      allRowsCache = rowsToPersist;
+      const pushPromise = saveTimeRows(rowsToPersist);
+      onFilterChange(true);
 
       const rowTaskId = String(ledgerRowForKpi?.taskId || "").trim();
       const kpiLinks =
@@ -13656,8 +13680,8 @@ export function render(opts = {}) {
     });
   }
 
-  function getFullRowsForFilter(skipMerge = false) {
-    if (!skipMerge) mergeRowsIntoCache();
+  function getFullRowsForFilter(_skipMerge = false) {
+    /* DOM으로 캐시를 덮지 않음 — 화면·필터는 메모리(서버 pull·저장 반영분)만 */
     return [...allRowsCache];
   }
 
@@ -13750,8 +13774,6 @@ export function render(opts = {}) {
                 : ""),
         );
       });
-
-    mergeRowsIntoCache();
   }
   el._updateTotal = updateTotal;
 
@@ -13985,9 +14007,10 @@ export function render(opts = {}) {
           });
           await deleteTimeLedgerEntryFromSupabase(entryId);
         }
-        const { next } = removeTimeLedgerRowFromRows(allRowsCache, rowData);
+        /* 메모리 전체에서 제거 — 화면 캐시만으로 save 하면 다른 날짜 기록이 날아감 */
+        const { next } = removeTimeLedgerRowFromRows(loadTimeRows(), rowData);
         allRowsCache = next;
-        saveTimeRows(allRowsCache);
+        saveTimeRows(next);
       })();
     };
     const handleCardEdit = (card, rowData) => {
@@ -14109,7 +14132,6 @@ export function render(opts = {}) {
                 const presetStartHhMm = `${String(clickedAt.getHours()).padStart(2, "0")}:${String(clickedAt.getMinutes()).padStart(2, "0")}`;
                 rememberDismissedNextExpectedBlock(el, nextExpected, viewingYmd);
                 itemEl?.remove();
-                mergeRowsIntoCache();
                 allRowsCache = closeTodayInProgressRowsAtNowAndSave(
                   allRowsCache,
                   viewingYmd,
@@ -14414,7 +14436,8 @@ export function render(opts = {}) {
   function syncTimeLedgerContent(opts = {}) {
     const userSubTabClick = !!opts.userSubTabClick;
     el.dataset.timeContentView = "all";
-    mergeRowsIntoCache();
+    /* 화면(DOM) 옛 기록으로 캐시를 덮지 않음 — 항상 메모리(서버 pull분)만 */
+    allRowsCache = loadTimeRows();
     cachedRows = getFullRowsForFilter(true);
     const rowsToUse = getFilteredRows(cachedRows);
 

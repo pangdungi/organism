@@ -15,8 +15,6 @@ const MIRROR_KEY = "calendar_day_icons_mirror_v1";
 
 /** @type {Record<string, CalendarDayIconRow>} */
 let _byDate = {};
-/** 서버 push/pull 중인 날짜 — pull이 방금 지운 로컬 스탬프를 되살리지 않게 */
-const _pendingLocalSyncYmds = new Set();
 let _memInitialized = false;
 let _loadedUid = "";
 
@@ -114,16 +112,14 @@ export function readCalendarDayIconsSnapshot() {
   return out;
 }
 
-export function markCalendarDayIconLocalSyncPending(dateKey) {
-  const ymd = normalizeYmd(dateKey);
-  if (ymd) _pendingLocalSyncYmds.add(ymd);
-}
+/** @deprecated 화면은 서버 스냅샷만 — pending으로 pull을 덮지 않음 */
+export function markCalendarDayIconLocalSyncPending(_dateKey) {}
 
-export function clearCalendarDayIconLocalSyncPending(dateKey) {
-  _pendingLocalSyncYmds.delete(normalizeYmd(dateKey));
-}
+/** @deprecated */
+export function clearCalendarDayIconLocalSyncPending(_dateKey) {}
 
 /**
+ * pull 결과 = 화면. 로컬 pending으로 덮지 않음.
  * @param {unknown[]} rows Supabase SELECT rows
  */
 export function applyCalendarDayIconsServerSnapshot(rows) {
@@ -137,13 +133,6 @@ export function applyCalendarDayIconsServerSnapshot(rows) {
     if (!ymd || !iconKey || !id) continue;
     if (!next[ymd]) {
       next[ymd] = { id, iconKey };
-    }
-  }
-  for (const ymd of _pendingLocalSyncYmds) {
-    if (_byDate[ymd]) {
-      next[ymd] = { ..._byDate[ymd] };
-    } else {
-      delete next[ymd];
     }
   }
   _byDate = next;
