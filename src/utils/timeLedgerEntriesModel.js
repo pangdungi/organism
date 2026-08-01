@@ -695,21 +695,10 @@ export function applyTimeLedgerServerFullSnapshot(dbRows) {
 }
 
 /**
- * 마감시간: 한쪽만 있으면 그 값을 씀. 빈 문자열이 채워진 마감을 지우지 않음.
- * (dirty 로컬이 통째로 이기면서 서버 마감을 비우는 로스 방지)
- */
-function coalesceNonEmptyEndTime(primary, secondary) {
-  const a = String(primary || "").trim();
-  if (a) return a;
-  return String(secondary || "").trim();
-}
-
-/**
  * entry_date가 [rangeStart, rangeEnd] (포함)인 구간만 pull 스냅샷으로 맞춤.
- * 기본은 서버 우선. 다만 이 기기에서 사용자가 저장해 아직 서버에 안 올라간 행
- * (timeLedgerRowNeedsPush)은 로컬을 유지 — 마감 등 사용자 행동이 pull에 지워지지 않게.
- * 마감시간만큼은 빈 값으로 이미 있는 값을 덮어쓰지 않음.
- * @param {{ preferServer?: boolean }} [opts] — 호환용(무시).
+ * 같은 id는 무조건 서버 스냅샷(로컬 dirty·마감 보존 없음).
+ * 서버 응답에 없는 미업로드 신규 행만 로컬에 남김.
+ * @param {{ preferServer?: boolean }} [opts] — 호환용(무시, 항상 서버 우선).
  */
 export function applyTimeLedgerServerRangeSnapshot(
   dbRows,
@@ -735,44 +724,25 @@ export function applyTimeLedgerServerRangeSnapshot(
   const { rows: localWithIds } = ensureTimeLedgerEntryIds(
     readTimeLedgerEntriesRaw(),
   );
-  /** @type {Map<string, object>} */
-  const localById = new Map();
-  for (const r of localWithIds) {
-    const id = String(r?.id || "").trim();
-    if (id) localById.set(id, r);
-  }
   const outside = localWithIds.filter(
     (r) => !rowEntryDateInInclusiveRange(r, rs, re),
   );
-  /** @type {Map<string, object>} */
-  const pendingDirtyById = new Map();
+  /** 서버에 이미 있는 id — 로컬 dirty로 덮지 않음 */
+  const serverIds = new Set(
+    insideFromServer
+      .map((r) => String(r?.id || "").trim())
+      .filter(Boolean),
+  );
+  /* 서버에 아직 없는 신규·미업로드 행만 유지 */
+  const pendingNewLocal = [];
   for (const r of localWithIds) {
     if (!rowEntryDateInInclusiveRange(r, rs, re)) continue;
     if (!timeLedgerRowNeedsPush(r)) continue;
     const id = String(r?.id || "").trim();
-    if (!id) continue;
-    pendingDirtyById.set(id, r);
+    if (!id || serverIds.has(id)) continue;
+    pendingNewLocal.push(r);
   }
-  const insideMerged = insideFromServer.map((serverRow) => {
-    const id = String(serverRow?.id || "").trim();
-    const dirty = id ? pendingDirtyById.get(id) : null;
-    if (dirty) {
-      pendingDirtyById.delete(id);
-      /* dirty는 저장 단계에서 마감 로스 방지됨. 통째 유지(명시적 마감 지우기 포함). */
-      return dirty;
-    }
-    const localPrev = id ? localById.get(id) : null;
-    /* 서버가 마감 비움으로 와도, 로컬에 있던 사용자 마감은 지우지 않음 */
-    const endTime = coalesceNonEmptyEndTime(
-      serverRow.endTime,
-      localPrev?.endTime,
-    );
-    if (endTime === String(serverRow.endTime || "").trim()) return serverRow;
-    return { ...serverRow, endTime };
-  });
-  /* 서버에 아직 없는 신규·미업로드 행 */
-  const pendingNewLocal = [...pendingDirtyById.values()];
-  const merged = [...outside, ...insideMerged, ...pendingNewLocal];
+  const merged = [...outside, ...insideFromServer, ...pendingNewLocal];
   writeTimeLedgerEntriesRaw(merged);
   try {
     if (typeof document !== "undefined") {

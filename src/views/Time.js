@@ -6278,16 +6278,16 @@ export function render(opts = {}) {
           ) {
             return;
           }
-          /* 레포트: 로컬로 이미 그린 뒤 서버만 조용히 갱신 — 조회 중 스플래시로
-             마운트를 취소하면(시그니처 동일 시) 로딩이 영구히 남는 버그가 있었음 */
-          const ok = await pullTimeLedgerEntriesForDateRange(rs, re);
+          /* 구간 pull = 서버 스냅샷 반영 후 화면 강제 갱신(로컬 캐시 우선 없음) */
+          const ok = await pullTimeLedgerEntriesForDateRange(rs, re, {
+            force: true,
+            preferServer: true,
+          });
           if (pullGen !== _usageListPullGen) return;
           if (!el.isConnected) return;
-          const cacheRows = loadTimeRows();
-          allRowsCache = cacheRows;
-          cachedRows = [...cacheRows];
-          /* 데이터 안 바뀌면 레포트 통째 다시 그리지 않음 */
-          syncTimeLedgerContent();
+          allRowsCache = loadTimeRows();
+          cachedRows = getFullRowsForFilter(true);
+          syncTimeLedgerContent({ force: true });
           if (!ok) {
             lpPullDebug("time_ledger_range_pull_failed", {
               range: `${rs}..${re}`,
@@ -14171,8 +14171,8 @@ export function render(opts = {}) {
         persistTimeLedgerLayoutView();
         el._lpSyncUsageRangeModalForLayout?.();
         el._lpSyncUsageQueryFooterBtn?.();
-        renderAll(getFilteredRows(getFullRowsForFilter(true)));
-        requestTimeLedgerPullForUserQueryChange(`layout_${nextView}`);
+        /* 소메뉴 전환: 서버 pull 후 강제 다시 그림 */
+        syncTimeLedgerContent({ userSubTabClick: true, force: true });
       });
       viewModeBarWrap._syncTimeLedgerViewModeUi?.(timeLedgerLayoutView);
       ledgerContainer.appendChild(viewModeBarWrap);
@@ -14418,39 +14418,6 @@ export function render(opts = {}) {
     cachedRows = getFullRowsForFilter(true);
     const rowsToUse = getFilteredRows(cachedRows);
 
-    /* 레포트 탭 진입: 로컬로 먼저 그림 → 서버 pull은 뒤에서 → 바뀐 때만 다시 그림 */
-    if (userSubTabClick && timeLedgerLayoutView === "report") {
-      const gen = (el._lpTimeSubTabPullGen =
-        (el._lpTimeSubTabPullGen || 0) + 1);
-      el._lpReportMountDeferred = false;
-      renderAll(rowsToUse);
-      rememberTimeLedgerPaintSignature();
-      persistActiveViewTimeFilterToSession();
-      updateFilterBarVisibility();
-      void (async () => {
-        try {
-          const pullResult = await pullTimeLedgerTabEnterFromCloud({
-            force: true,
-            preferServer: true,
-          });
-          if (!el.isConnected || gen !== el._lpTimeSubTabPullGen) return;
-          if (timeLedgerLayoutView !== "report") return;
-          if (!pullResult?.anyChanged) return;
-          allRowsCache = loadTimeRows();
-          cachedRows = getFullRowsForFilter(true);
-          const filtered = getFilteredRows(cachedRows);
-          if (!patchTimeLedgerReportInPlace(filtered)) {
-            renderAll(filtered);
-            rememberTimeLedgerPaintSignature();
-          }
-          updateTotal();
-          persistActiveViewTimeFilterToSession();
-          updateFilterBarVisibility();
-        } catch (_) {}
-      })();
-      return;
-    }
-
     const nextSig = snapshotTimeLedgerPaintSignature();
     const sigSame = !opts.force && nextSig === el._lpLastTimeLedgerPaintSig;
     const reportShellStuckLoading =
@@ -14472,6 +14439,7 @@ export function render(opts = {}) {
       persistActiveViewTimeFilterToSession();
       updateFilterBarVisibility();
     }
+    /* 타임라인·타임박스·레포트 소메뉴: 서버 pull 후 무조건 다시 그림 */
     if (userSubTabClick) {
       const gen = (el._lpTimeSubTabPullGen =
         (el._lpTimeSubTabPullGen || 0) + 1);
@@ -14509,23 +14477,11 @@ export function render(opts = {}) {
     if (opts.scrollUsageListToBottom) {
       requestUsageListScrollToBottomOnce();
     }
-    try {
-      const t = getLedgerFilterTodayYmd();
-      try {
-        if (typeof sessionStorage !== "undefined") {
-          sessionStorage.setItem("lp_time_filter_start", t);
-          sessionStorage.setItem("lp_time_filter_end", t);
-        }
-      } catch (_) {}
-      usageHistoryRangeStartYmd = t;
-      usageHistoryRangeEndYmd = t;
-    } catch (_) {
-      syncUsageHistoryRangeFromSession();
-    }
+    /* 보고 있던 날짜를 오늘로 덮지 않음 — pull 후 서버 내용만 다시 그림 */
     allRowsCache = loadTimeRows();
     cachedRows = getFullRowsForFilter(true);
     refreshTaskLogTaskPickerIfMounted();
-    /* 메뉴·탭 재진입 등은 force:true 로 무조건 다시 그림 */
+    /* 메뉴·탭 재진입·복귀 pull 후는 force:true 로 무조건 다시 그림 */
     syncTimeLedgerContent({ force: !!opts.force });
     if (el._lpUsageListEnterScrollArmed) {
       const cardsWrap = contentWrap.querySelector(
