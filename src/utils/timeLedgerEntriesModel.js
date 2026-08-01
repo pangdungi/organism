@@ -748,9 +748,9 @@ export function applyTimeLedgerServerFullSnapshot(dbRows) {
 
 /**
  * entry_date가 [rangeStart, rangeEnd] (포함)인 구간만 pull 스냅샷으로 맞춤.
- * 같은 id는 무조건 서버 스냅샷(로컬 dirty·마감 보존 없음).
- * 서버 응답에 없는 미업로드 신규 행만 로컬에 남김.
- * @param {{ preferServer?: boolean }} [opts] — 호환용(무시, 항상 서버 우선).
+ * 기본은 서버 행. 다만 아직 서버에 안 올린 로컬 수정(needsPush)은 유지 —
+ * pull이 끼어들면 수정이 지워져 업로드가 영원히 안 되는 사고를 막음.
+ * @param {{ preferServer?: boolean }} [opts] — 호환용(무시).
  */
 export function applyTimeLedgerServerRangeSnapshot(
   dbRows,
@@ -772,22 +772,36 @@ export function applyTimeLedgerServerRangeSnapshot(
   const serverLocals = serverRowsFiltered.map((r) =>
     dbRowToLocalTimeLedgerRow(r),
   );
-  const { rows: insideFromServer } = ensureTimeLedgerEntryIds(serverLocals);
+  const { rows: insideFromServerRaw } = ensureTimeLedgerEntryIds(serverLocals);
   const { rows: localWithIds } = ensureTimeLedgerEntryIds(
     readTimeLedgerEntriesRaw(),
   );
+  const localById = new Map(
+    localWithIds
+      .map((r) => [String(r?.id || "").trim(), r])
+      .filter(([id]) => id),
+  );
+  /*
+   * 같은 id: 업로드 대기(localModifiedAt)가 있으면 로컬 유지.
+   * (저장 직후·동시 pull이 서버 옛 스냅샷으로 덮어 push할 내용이 사라지던 버그)
+   */
+  const insideFromServer = insideFromServerRaw.map((serverRow) => {
+    const id = String(serverRow?.id || "").trim();
+    const local = id ? localById.get(id) : null;
+    if (local && timeLedgerRowNeedsPush(local)) return local;
+    return serverRow;
+  });
   const outside = localWithIds.filter(
     (r) => !rowEntryDateInInclusiveRange(r, rs, re),
   );
-  /** 서버에 이미 있는 id — 로컬 dirty로 덮지 않음 */
   const serverIds = new Set(
-    insideFromServer
+    insideFromServerRaw
       .map((r) => String(r?.id || "").trim())
       .filter(Boolean),
   );
   /*
-   * 서버 응답에 없는 행: 한 번도 서버에 없던 신규(미업로드)만 유지.
-   * serverUpdatedAt이 있는데 응답에 없으면 서버에서 삭제된 것 — 로컬로 되살리지 않음.
+   * 서버 응답에 없는 행: 업로드 대기만 유지.
+   * 예전에 서버에 있던 행이 응답에 없고 업로드 대기도 아니면 삭제분으로 봄.
    */
   const pendingNewLocal = [];
   for (const r of localWithIds) {
@@ -795,7 +809,6 @@ export function applyTimeLedgerServerRangeSnapshot(
     if (!timeLedgerRowNeedsPush(r)) continue;
     const id = String(r?.id || "").trim();
     if (!id || serverIds.has(id)) continue;
-    if (String(r.serverUpdatedAt || "").trim()) continue;
     pendingNewLocal.push(r);
   }
   const merged = [...outside, ...insideFromServer, ...pendingNewLocal];

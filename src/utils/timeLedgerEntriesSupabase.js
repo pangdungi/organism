@@ -776,7 +776,13 @@ async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
       ? "no_matching_rows_to_upload"
       : "no_rows_to_upload";
     timeLedgerSyncLog("push_dirty_skipped", { reason });
-    /* 올릴 행이 없으면 실패가 아님(이미 반영·변경 없음) */
+    /*
+     * 모달이 특정 id를 올하라 했는데 0건이면 실패 — 재시도하게.
+     * (동시 pull이 dirty를 지운 뒤 ok:true/0건으로 넘어가던 사고 방지)
+     */
+    if (entryIdFilter.size > 0) {
+      return { ok: false, reason, pushedCount: 0 };
+    }
     return { ok: true, reason, pushedCount: 0 };
   }
 
@@ -874,18 +880,22 @@ async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
     return { ok: true, pushedCount: toUpload.length };
   }
 
-  const rs = opts.rangeStart;
-  const re = opts.rangeEnd;
-  if (rs && re && YMD_RE.test(rs) && YMD_RE.test(re)) {
-    await pullTimeLedgerEntriesForDateRangeCore(rs, re, {
-      trigger: "after_push",
-    });
-  } else {
-    const { rangeStart, rangeEnd } = readTimeLedgerCombinedPullRangeYmd();
-    await pullTimeLedgerEntriesForDateRangeCore(rangeStart, rangeEnd, {
-      trigger: "after_push",
-    });
+  let rs = opts.rangeStart;
+  let re = opts.rangeEnd;
+  if (!(rs && re && YMD_RE.test(rs) && YMD_RE.test(re))) {
+    ({ rangeStart: rs, rangeEnd: re } = readTimeLedgerCombinedPullRangeYmd());
   }
+  const today = timeLedgerLocalTodayYmd();
+  const yday = timeLedgerLocalYesterdayYmd();
+  if (!rs || rs > yday) rs = yday;
+  if (!re || re < today) re = today;
+  if (rs > re) {
+    rs = yday;
+    re = today;
+  }
+  await pullTimeLedgerEntriesForDateRangeCore(rs, re, {
+    trigger: "after_push",
+  });
   return { ok: true, pushedCount: toUpload.length };
 }
 
