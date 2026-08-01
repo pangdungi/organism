@@ -50,7 +50,9 @@ function ledgerEntrySelectColumns() {
     return `${mid}, time_end_reasons, time_flow_factors, updated_at`;
   if (_supportsTimeSleepFactorColumn === false)
     return `${mid}, time_end_reasons, time_flow_factors, time_flow_disruptors, updated_at`;
-  return `${mid}, time_end_reasons, time_flow_factors, time_flow_disruptors, time_sleep_good_factors, time_sleep_poor_reasons, updated_at`;
+  if (_supportsTimeBadFeelingColumn === false)
+    return `${mid}, time_end_reasons, time_flow_factors, time_flow_disruptors, time_sleep_good_factors, time_sleep_poor_reasons, updated_at`;
+  return `${mid}, time_end_reasons, time_flow_factors, time_flow_disruptors, time_sleep_good_factors, time_sleep_poor_reasons, time_bad_feeling_reasons, updated_at`;
 }
 
 function isMissingTimeRatingColumnError(error) {
@@ -83,6 +85,11 @@ function isMissingTimeSleepFactorColumnError(error) {
   return /time_sleep_good_factors|time_sleep_poor_reasons/i.test(msg);
 }
 
+function isMissingTimeBadFeelingColumnError(error) {
+  const msg = `${error?.message || ""} ${error?.details || ""} ${error?.hint || ""}`;
+  return /time_bad_feeling_reasons/i.test(msg);
+}
+
 function markTimeRatingColumnSupported(ok) {
   _supportsTimeRatingColumn = ok;
 }
@@ -113,6 +120,13 @@ let _supportsTimeSleepFactorColumn = null;
 
 function markTimeSleepFactorColumnSupported(ok) {
   _supportsTimeSleepFactorColumn = ok;
+}
+
+/** null=미확인, true=있음, false=마이그레이션 전 서버 */
+let _supportsTimeBadFeelingColumn = null;
+
+function markTimeBadFeelingColumnSupported(ok) {
+  _supportsTimeBadFeelingColumn = ok;
 }
 
 function stripTimeRatingFromPayloads(payloads) {
@@ -164,8 +178,15 @@ function stripTimeSleepFactorFromPayloads(payloads) {
     ({
       time_sleep_good_factors: _drop,
       time_sleep_poor_reasons: _drop2,
+      time_bad_feeling_reasons: _drop3,
       ...rest
     }) => rest,
+  );
+}
+
+function stripTimeBadFeelingFromPayloads(payloads) {
+  return payloads.map(
+    ({ time_bad_feeling_reasons: _drop, ...rest }) => rest,
   );
 }
 
@@ -193,6 +214,7 @@ async function fetchLedgerEntriesForRangePage(
     markTimeFlowFactorColumnSupported(false);
     markTimeFlowDisruptorColumnSupported(false);
     markTimeSleepFactorColumnSupported(false);
+    markTimeBadFeelingColumnSupported(false);
     result = await supabase
       .from(TABLE)
       .select(LEDGER_ENTRY_SELECT_BASE)
@@ -233,6 +255,7 @@ async function fetchLedgerEntriesForRangePage(
     markTimeFlowFactorColumnSupported(false);
     markTimeFlowDisruptorColumnSupported(false);
     markTimeSleepFactorColumnSupported(false);
+    markTimeBadFeelingColumnSupported(false);
     result = await supabase
       .from(TABLE)
       .select(
@@ -248,6 +271,7 @@ async function fetchLedgerEntriesForRangePage(
     markTimeFlowFactorColumnSupported(false);
     markTimeFlowDisruptorColumnSupported(false);
     markTimeSleepFactorColumnSupported(false);
+    markTimeBadFeelingColumnSupported(false);
     result = await supabase
       .from(TABLE)
       .select(
@@ -262,6 +286,7 @@ async function fetchLedgerEntriesForRangePage(
   } else if (result.error && isMissingTimeFlowDisruptorColumnError(result.error)) {
     markTimeFlowDisruptorColumnSupported(false);
     markTimeSleepFactorColumnSupported(false);
+    markTimeBadFeelingColumnSupported(false);
     result = await supabase
       .from(TABLE)
       .select(
@@ -275,10 +300,24 @@ async function fetchLedgerEntriesForRangePage(
       .range(offset, offset + pageSize - 1);
   } else if (result.error && isMissingTimeSleepFactorColumnError(result.error)) {
     markTimeSleepFactorColumnSupported(false);
+    markTimeBadFeelingColumnSupported(false);
     result = await supabase
       .from(TABLE)
       .select(
         `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, time_end_reasons, time_flow_factors, time_flow_disruptors, updated_at`,
+      )
+      .eq("user_id", userId)
+      .gte("entry_date", rs)
+      .lte("entry_date", re)
+      .order("entry_date", { ascending: false })
+      .order("start_time", { ascending: false })
+      .range(offset, offset + pageSize - 1);
+  } else if (result.error && isMissingTimeBadFeelingColumnError(result.error)) {
+    markTimeBadFeelingColumnSupported(false);
+    result = await supabase
+      .from(TABLE)
+      .select(
+        `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, time_end_reasons, time_flow_factors, time_flow_disruptors, time_sleep_good_factors, time_sleep_poor_reasons, updated_at`,
       )
       .eq("user_id", userId)
       .gte("entry_date", rs)
@@ -292,6 +331,7 @@ async function fetchLedgerEntriesForRangePage(
     if (_supportsTimeFlowFactorColumn === null) markTimeFlowFactorColumnSupported(true);
     if (_supportsTimeFlowDisruptorColumn === null) markTimeFlowDisruptorColumnSupported(true);
     if (_supportsTimeSleepFactorColumn === null) markTimeSleepFactorColumnSupported(true);
+    if (_supportsTimeBadFeelingColumn === null) markTimeBadFeelingColumnSupported(true);
   }
   return result;
 }
@@ -309,6 +349,7 @@ async function upsertLedgerEntryPayloads(payloads) {
     markTimeFlowFactorColumnSupported(false);
     markTimeFlowDisruptorColumnSupported(false);
     markTimeSleepFactorColumnSupported(false);
+    markTimeBadFeelingColumnSupported(false);
     result = await supabase
       .from(TABLE)
       .upsert(stripTimeRatingFromPayloads(payloads), {
@@ -339,6 +380,7 @@ async function upsertLedgerEntryPayloads(payloads) {
     markTimeFlowFactorColumnSupported(false);
     markTimeFlowDisruptorColumnSupported(false);
     markTimeSleepFactorColumnSupported(false);
+    markTimeBadFeelingColumnSupported(false);
     result = await supabase
       .from(TABLE)
       .upsert(stripTimeEndReasonFromPayloads(payloads), {
@@ -351,6 +393,7 @@ async function upsertLedgerEntryPayloads(payloads) {
     markTimeFlowFactorColumnSupported(false);
     markTimeFlowDisruptorColumnSupported(false);
     markTimeSleepFactorColumnSupported(false);
+    markTimeBadFeelingColumnSupported(false);
     result = await supabase
       .from(TABLE)
       .upsert(stripTimeFlowFactorFromPayloads(payloads), {
@@ -362,6 +405,7 @@ async function upsertLedgerEntryPayloads(payloads) {
   } else if (result.error && isMissingTimeFlowDisruptorColumnError(result.error)) {
     markTimeFlowDisruptorColumnSupported(false);
     markTimeSleepFactorColumnSupported(false);
+    markTimeBadFeelingColumnSupported(false);
     result = await supabase
       .from(TABLE)
       .upsert(stripTimeFlowDisruptorFromPayloads(payloads), {
@@ -372,6 +416,7 @@ async function upsertLedgerEntryPayloads(payloads) {
       );
   } else if (result.error && isMissingTimeSleepFactorColumnError(result.error)) {
     markTimeSleepFactorColumnSupported(false);
+    markTimeBadFeelingColumnSupported(false);
     result = await supabase
       .from(TABLE)
       .upsert(stripTimeSleepFactorFromPayloads(payloads), {
@@ -380,12 +425,23 @@ async function upsertLedgerEntryPayloads(payloads) {
       .select(
         `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, time_end_reasons, time_flow_factors, time_flow_disruptors, updated_at`,
       );
+  } else if (result.error && isMissingTimeBadFeelingColumnError(result.error)) {
+    markTimeBadFeelingColumnSupported(false);
+    result = await supabase
+      .from(TABLE)
+      .upsert(stripTimeBadFeelingFromPayloads(payloads), {
+        onConflict: UPSERT_CONFLICT_ROW,
+      })
+      .select(
+        `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, time_end_reasons, time_flow_factors, time_flow_disruptors, time_sleep_good_factors, time_sleep_poor_reasons, updated_at`,
+      );
   } else if (!result.error) {
     if (_supportsTimeRatingColumn === null) markTimeRatingColumnSupported(true);
     if (_supportsTimeEndReasonColumn === null) markTimeEndReasonColumnSupported(true);
     if (_supportsTimeFlowFactorColumn === null) markTimeFlowFactorColumnSupported(true);
     if (_supportsTimeFlowDisruptorColumn === null) markTimeFlowDisruptorColumnSupported(true);
     if (_supportsTimeSleepFactorColumn === null) markTimeSleepFactorColumnSupported(true);
+    if (_supportsTimeBadFeelingColumn === null) markTimeBadFeelingColumnSupported(true);
   }
   return result;
 }

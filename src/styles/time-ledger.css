@@ -7560,7 +7560,7 @@
   border-top: none;
   margin-inline: var(--time-ledger-usage-card-inset);
   padding: 0.15rem 0 var(--time-ledger-usage-card-inset);
-  color: #999999;
+  color: #666666;
   font-size: var(--tl-usage-memo);
   line-height: 1.45;
 }

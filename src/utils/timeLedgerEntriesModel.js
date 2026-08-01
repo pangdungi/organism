@@ -22,6 +22,7 @@ import { normalizeTimeFlowFactorsForRow } from "./timeTaskFlowFactors.js";
 import { normalizeTimeFlowDisruptorsForRow } from "./timeTaskFlowDisruptors.js";
 import { normalizeTimeSleepGoodFactorsForRow } from "./timeTaskSleepGoodFactors.js";
 import { normalizeTimeSleepPoorReasonsForRow } from "./timeTaskSleepPoorReasons.js";
+import { normalizeTimeBadFeelingReasonsForRow } from "./timeTaskBadFeelingReasons.js";
 
 export { normalizeTimeEndReasonForRow, normalizeTimeEndReasonsForRow } from "./timeTaskEndReasons.js";
 export {
@@ -37,6 +38,10 @@ export {
   normalizeTimeSleepPoorReasonForRow,
   normalizeTimeSleepPoorReasonsForRow,
 } from "./timeTaskSleepPoorReasons.js";
+export {
+  normalizeTimeBadFeelingReasonForRow,
+  normalizeTimeBadFeelingReasonsForRow,
+} from "./timeTaskBadFeelingReasons.js";
 
 /**
  * 로그아웃·계정 전환 시 호출. 해당 계정 로컬 저장·메모리 초기화.
@@ -545,6 +550,9 @@ export function localTimeLedgerRowToDbPayload(userId, row) {
     time_sleep_poor_reasons: normalizeTimeSleepPoorReasonsForRow(
       row.timeSleepPoorReasons,
     ),
+    time_bad_feeling_reasons: normalizeTimeBadFeelingReasonsForRow(
+      row.timeBadFeelingReasons,
+    ),
   };
 }
 
@@ -606,6 +614,9 @@ export function dbRowToLocalTimeLedgerRow(db) {
     ),
     timeSleepPoorReasons: normalizeTimeSleepPoorReasonsForRow(
       db.time_sleep_poor_reasons,
+    ),
+    timeBadFeelingReasons: normalizeTimeBadFeelingReasonsForRow(
+      db.time_bad_feeling_reasons,
     ),
     /** Supabase updated_at — 병합 시 last-write-wins */
     /** Supabase updated_at — 서버 스냅샷·동기화 표시용 */

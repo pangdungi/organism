@@ -48,6 +48,7 @@ import {
   buildPlanAdherenceReportSnapshot,
 } from "./timePlanAdherenceReport.js";
 import { buildFocusReportSnapshot } from "./timeFocusReport.js";
+import { buildNonproductiveBadFeelingReportSnapshot } from "./timeNonproductiveBadFeelingReport.js";
 import { buildMealTasteReportSnapshot } from "./timeMealTasteReport.js";
 import { flowDisruptorCategoryColor } from "./timeTaskFlowDisruptors.js";
 import {
@@ -4584,6 +4585,71 @@ function mountFocusDisruptorAnalysisBlock(sec, analysis) {
   sec.appendChild(analysisBlock);
 }
 
+function mountNonproductiveBadFeelingReportSection(scrollWrap, rows) {
+  const snap = buildNonproductiveBadFeelingReportSnapshot(rows);
+  if (!snap?.show) return;
+
+  const sec = createSection(
+    "무기력을 유발하는 행동",
+    "비생산적 작업 1~3점에서 고른 «별로였던 이유» · 다음에 줄이면 좋은 행동",
+  );
+  sec.classList.add("lp-tr2-bad-feeling-section");
+
+  const insight = document.createElement("p");
+  insight.className = "lp-tr2-focus-disruptor-insight";
+  insight.textContent = snap.oneLiner;
+  sec.appendChild(insight);
+
+  if (snap.behaviors.length) {
+    const block = createRatingBlock(
+      "어떤 행동이었는지",
+      "1~3점을 준 비생산적 과제 · 시간 많은 순",
+    );
+    const bars = document.createElement("div");
+    bars.className = "lp-tr2-bars lp-tr2-bars--bad-feeling";
+    const maxMin = Math.max(1, ...snap.behaviors.map((b) => b.minutes || 0));
+    snap.behaviors.slice(0, 8).forEach((b) => {
+      const sub = b.topReasonLabel
+        ? `${b.durationLabel} · ${b.topReasonLabel}`
+        : b.durationLabel;
+      bars.appendChild(
+        createFocusDisruptorBarRow(
+          b.taskName,
+          Math.round((b.minutes / maxMin) * 100),
+          sub,
+          "#8B5C3A",
+        ),
+      );
+    });
+    block.appendChild(bars);
+    sec.appendChild(block);
+  }
+
+  if (snap.reasonRanking.length) {
+    const block = createRatingBlock(
+      "자주 느낀 이유",
+      "별로였던 이유 · 많이 고른 순",
+    );
+    const bars = document.createElement("div");
+    bars.className = "lp-tr2-bars lp-tr2-bars--bad-feeling";
+    const maxCount = snap.reasonRanking[0]?.count || 1;
+    snap.reasonRanking.forEach((item, i) => {
+      bars.appendChild(
+        createFocusDisruptorBarRow(
+          `${i + 1}. ${item.label}`,
+          Math.round((item.count / maxCount) * 100),
+          `${item.count}회`,
+          "#64748B",
+        ),
+      );
+    });
+    block.appendChild(bars);
+    sec.appendChild(block);
+  }
+
+  scrollWrap.appendChild(sec);
+}
+
 function mountFocusReportSection(scrollWrap, range, rows) {
   const isDay = range?.start === range?.end;
   const ratingSnap = buildTimeRatingReportSnapshot(rows);
@@ -7041,5 +7107,6 @@ export function mountUnifiedTimeReport(scrollWrap, arg2, arg3) {
   mountHabitCheckSection(scrollWrap, range);
   mountHappinessRoutineSection(scrollWrap, range);
   mountFocusReportSection(scrollWrap, range, rows);
+  mountNonproductiveBadFeelingReportSection(scrollWrap, rows);
   mountPlanAdherenceSection(scrollWrap, range, rows);
 }

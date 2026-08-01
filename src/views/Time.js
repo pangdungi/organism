@@ -110,6 +110,7 @@ import {
   normalizeTimeFlowDisruptorsForRow,
   normalizeTimeSleepGoodFactorsForRow,
   normalizeTimeSleepPoorReasonsForRow,
+  normalizeTimeBadFeelingReasonsForRow,
   formatTimeLedgerCardRatingStarsHtml,
   applyProductiveTimeRatingToBasePrice,
   formatProductiveTimeRatingMultiplierLabel,
@@ -144,6 +145,10 @@ import {
   TIME_TASK_SLEEP_POOR_REASON_OPTIONS,
   shouldCollectTimeSleepPoorReasons,
 } from "../utils/timeTaskSleepPoorReasons.js";
+import {
+  TIME_TASK_BAD_FEELING_REASON_OPTIONS,
+  shouldCollectTimeBadFeelingReasons,
+} from "../utils/timeTaskBadFeelingReasons.js";
 import {
   closeActiveInProgressRowsAtNow,
   closeStaleInProgressTimeLedgerRows,
@@ -4156,6 +4161,9 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
     timeSleepPoorReasons: normalizeTimeSleepPoorReasonsForRow(
       initialData?.timeSleepPoorReasons,
     ),
+    timeBadFeelingReasons: normalizeTimeBadFeelingReasonsForRow(
+      initialData?.timeBadFeelingReasons,
+    ),
   };
   tr._rowData = rowData;
 
@@ -7701,6 +7709,10 @@ export function render(opts = {}) {
             <span data-legacy="time-task-log-section-label time-task-log-sleep-poor-section-label">아쉬웠던 이유</span>
             <div data-legacy="time-task-log-sleep-poor-chips" class="lp-choice-chip-row"></div>
           </div>
+          <div data-legacy="time-task-log-bad-feeling-section" hidden>
+            <span data-legacy="time-task-log-section-label time-task-log-bad-feeling-section-label">별로였던 이유</span>
+            <div data-legacy="time-task-log-bad-feeling-chips" class="lp-choice-chip-row"></div>
+          </div>
         </div>
         <div data-legacy="time-task-log-memo-section">
           <div data-legacy="time-task-log-memo-fields">
@@ -8116,12 +8128,19 @@ export function render(opts = {}) {
   const taskLogSleepPoorChips = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-sleep-poor-chips"]',
   );
+  const taskLogBadFeelingSection = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-bad-feeling-section"]',
+  );
+  const taskLogBadFeelingChips = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-bad-feeling-chips"]',
+  );
   let taskLogTimeRating = null;
   let taskLogTimeFlowDisruptors = [];
   let taskLogTimeFlowFactors = [];
   let taskLogTimeEndReasons = [];
   let taskLogTimeSleepGoodFactors = [];
   let taskLogTimeSleepPoorReasons = [];
+  let taskLogTimeBadFeelingReasons = [];
 
   function getTaskLogTimeRating() {
     return normalizeTimeRatingForRow(taskLogTimeRating);
@@ -8145,6 +8164,10 @@ export function render(opts = {}) {
 
   function getTaskLogTimeSleepPoorReasons() {
     return normalizeTimeSleepPoorReasonsForRow(taskLogTimeSleepPoorReasons);
+  }
+
+  function getTaskLogTimeBadFeelingReasons() {
+    return normalizeTimeBadFeelingReasonsForRow(taskLogTimeBadFeelingReasons);
   }
 
   function buildTaskLogModalProductivityStub() {
@@ -8186,6 +8209,13 @@ export function render(opts = {}) {
   function isTaskLogModalProductiveTask() {
     return getTimeLedgerRowDisplayProductivity(buildTaskLogModalProductivityStub()) ===
       "productive";
+  }
+
+  function isTaskLogModalNonproductiveTask() {
+    return (
+      getTimeLedgerRowDisplayProductivity(buildTaskLogModalProductivityStub()) ===
+      "nonproductive"
+    );
   }
 
   function isTaskLogModalSleepTask() {
@@ -8483,6 +8513,53 @@ export function render(opts = {}) {
     if (!show && taskLogTimeEndReasons.length) taskLogTimeEndReasons = [];
   }
 
+  function syncTaskLogBadFeelingChips() {
+    if (!taskLogBadFeelingChips) return;
+    const picked = new Set(getTaskLogTimeBadFeelingReasons());
+    taskLogBadFeelingChips
+      .querySelectorAll('[data-legacy~="lp-choice-chip"]')
+      .forEach((btn) => {
+        const on = picked.has(btn.getAttribute("data-bad-feeling") || "");
+        lpTokenToggle(btn, "lp-choice-chip--on", on);
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+  }
+
+  function setTaskLogTimeBadFeelingReasons(value, opts = {}) {
+    taskLogTimeBadFeelingReasons =
+      normalizeTimeBadFeelingReasonsForRow(value);
+    if (!opts.silent) syncTaskLogBadFeelingChips();
+  }
+
+  function toggleTaskLogTimeBadFeelingReason(id) {
+    const key = normalizeTimeBadFeelingReasonsForRow([id])[0];
+    if (!key) return;
+    const next = getTaskLogTimeBadFeelingReasons();
+    const idx = next.indexOf(key);
+    if (idx >= 0) next.splice(idx, 1);
+    else next.push(key);
+    setTaskLogTimeBadFeelingReasons(next);
+  }
+
+  function syncTaskLogBadFeelingSection() {
+    const show =
+      isTaskLogModalNonproductiveTask() &&
+      !isTaskLogModalMealIntakeTask() &&
+      !isTaskLogModalSleepTask() &&
+      !isTaskLogModalEmotionalTask() &&
+      shouldCollectTimeBadFeelingReasons(getTaskLogTimeRating());
+    if (taskLogBadFeelingSection) taskLogBadFeelingSection.hidden = !show;
+    const label = taskLogBadFeelingSection?.querySelector(
+      '[data-legacy~="time-task-log-bad-feeling-section-label"]',
+    );
+    if (label) {
+      label.textContent = show ? "별로였던 이유 (필수)" : "별로였던 이유";
+    }
+    if (!show && taskLogTimeBadFeelingReasons.length) {
+      taskLogTimeBadFeelingReasons = [];
+    }
+  }
+
   function applyTaskLogModalRatingUiState({
     rating = null,
     disruptors = [],
@@ -8490,6 +8567,7 @@ export function render(opts = {}) {
     endReasons = [],
     sleepGoodFactors = [],
     sleepPoorReasons = [],
+    badFeelingReasons = [],
     emotionSub = "",
   } = {}) {
     taskLogTimeRating = normalizeTimeRatingForRow(rating);
@@ -8501,6 +8579,8 @@ export function render(opts = {}) {
       normalizeTimeSleepGoodFactorsForRow(sleepGoodFactors);
     taskLogTimeSleepPoorReasons =
       normalizeTimeSleepPoorReasonsForRow(sleepPoorReasons);
+    taskLogTimeBadFeelingReasons =
+      normalizeTimeBadFeelingReasonsForRow(badFeelingReasons);
     syncTaskLogRatingSectionUi();
   }
 
@@ -8594,12 +8674,14 @@ export function render(opts = {}) {
       taskLogTimeEndReasons = [];
       taskLogTimeSleepGoodFactors = [];
       taskLogTimeSleepPoorReasons = [];
+      taskLogTimeBadFeelingReasons = [];
     }
     syncTaskLogFlowDisruptorSection();
     syncTaskLogFlowFactorSection();
     syncTaskLogEndReasonSection();
     syncTaskLogSleepGoodSection();
     syncTaskLogSleepPoorSection();
+    syncTaskLogBadFeelingSection();
     if (show) {
       renderTaskLogTimeRating();
       syncTaskLogFlowDisruptorChips();
@@ -8607,6 +8689,7 @@ export function render(opts = {}) {
       syncTaskLogEndReasonChips();
       syncTaskLogSleepGoodChips();
       syncTaskLogSleepPoorChips();
+      syncTaskLogBadFeelingChips();
     }
     syncTaskLogEmotionSectionOrder();
   }
@@ -8619,12 +8702,14 @@ export function render(opts = {}) {
     syncTaskLogEndReasonSection();
     syncTaskLogSleepGoodSection();
     syncTaskLogSleepPoorSection();
+    syncTaskLogBadFeelingSection();
     if (shouldShowTaskLogRatingSection()) {
       syncTaskLogFlowDisruptorChips();
       syncTaskLogFlowFactorChips();
       syncTaskLogEndReasonChips();
       syncTaskLogSleepGoodChips();
       syncTaskLogSleepPoorChips();
+      syncTaskLogBadFeelingChips();
     }
   }
 
@@ -8695,6 +8780,20 @@ export function render(opts = {}) {
         toggleTaskLogTimeSleepPoorReason(id);
       });
       taskLogSleepPoorChips.appendChild(btn);
+    });
+  }
+
+  if (taskLogBadFeelingChips) {
+    TIME_TASK_BAD_FEELING_REASON_OPTIONS.forEach(({ id, label }) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      lpSetClasses(btn, "lp-choice-chip");
+      btn.setAttribute("data-bad-feeling", id);
+      btn.textContent = label;
+      btn.addEventListener("click", () => {
+        toggleTaskLogTimeBadFeelingReason(id);
+      });
+      taskLogBadFeelingChips.appendChild(btn);
     });
   }
 
@@ -11311,6 +11410,7 @@ export function render(opts = {}) {
       endReasons: [],
       sleepGoodFactors: [],
       sleepPoorReasons: [],
+      badFeelingReasons: [],
     });
     taskLogMemoTags = [];
     taskLogModal
@@ -11547,6 +11647,7 @@ export function render(opts = {}) {
       endReasons: data.timeEndReasons ?? data.timeEndReason,
       sleepGoodFactors: data.timeSleepGoodFactors,
       sleepPoorReasons: data.timeSleepPoorReasons,
+      badFeelingReasons: data.timeBadFeelingReasons,
       emotionSub: extractEmotionSubFromMemoTags(rawMemoTagsForEdit),
     });
     taskLogMemoTags = userMemoTagsFromLedgerRaw(rawMemoTagsForEdit)
@@ -12018,6 +12119,36 @@ export function render(opts = {}) {
         return;
       }
     }
+    const needsBadFeeling =
+      isTaskLogModalNonproductiveTask() &&
+      !isTaskLogModalMealIntakeTask() &&
+      !isTaskLogModalSleepTask() &&
+      !isTaskLogModalEmotionalTask() &&
+      shouldCollectTimeBadFeelingReasons(timeRatingForRow);
+    const timeBadFeelingReasonsForRow = needsBadFeeling
+      ? getTaskLogTimeBadFeelingReasons()
+      : [];
+    if (needsBadFeeling && !timeBadFeelingReasonsForRow.length) {
+      const pickBad = await showConfirmModal({
+        title: "알림",
+        message: "별로였던 이유를 아직 고르지 않았어요.",
+        cancelText: "나중에",
+        confirmText: "확인",
+      });
+      if (pickBad) {
+        syncTaskLogBadFeelingSection();
+        if (taskLogBadFeelingSection) {
+          taskLogBadFeelingSection.hidden = false;
+          try {
+            taskLogBadFeelingSection.scrollIntoView({
+              block: "nearest",
+              behavior: "smooth",
+            });
+          } catch (_) {}
+        }
+        return;
+      }
+    }
 
     if (editTr) {
       oldRowDataToRemove = editTr._rowData ? { ...editTr._rowData } : null;
@@ -12059,6 +12190,7 @@ export function render(opts = {}) {
         timeFlowFactors: timeFlowFactorsForRow,
         timeSleepGoodFactors: timeSleepGoodFactorsForRow,
         timeSleepPoorReasons: timeSleepPoorReasonsForRow,
+        timeBadFeelingReasons: timeBadFeelingReasonsForRow,
       };
       editTr._rowData = newRowData;
       const isMobileCard = lpTokenHas(editTr, "time-ledger-mobile-card");
@@ -12200,6 +12332,7 @@ export function render(opts = {}) {
           timeFlowFactors: timeFlowFactorsForRow,
           timeSleepGoodFactors: timeSleepGoodFactorsForRow,
           timeSleepPoorReasons: timeSleepPoorReasonsForRow,
+          timeBadFeelingReasons: timeBadFeelingReasonsForRow,
         };
         const idx = allRowsCache.indexOf(existingSame);
         if (idx >= 0) allRowsCache[idx] = newRowData;
@@ -12233,6 +12366,7 @@ export function render(opts = {}) {
           timeFlowFactors: timeFlowFactorsForRow,
           timeSleepGoodFactors: timeSleepGoodFactorsForRow,
           timeSleepPoorReasons: timeSleepPoorReasonsForRow,
+          timeBadFeelingReasons: timeBadFeelingReasonsForRow,
         };
         const tr = createRow(
           newRowData,
@@ -12321,28 +12455,11 @@ export function render(opts = {}) {
         }
       }
       onFilterChange();
-      /* 로컬 저장 → 같은 id 한 건만 서버 반영. 실패해도 팝업 없이 조용히 재시도 */
+      /* 로컬은 즉시 저장·모달 닫기. 서버 반영은 닫은 뒤에도 반드시 이어감(실패 시 조용히 재시도) */
       const pushedId = String(
         (editTr?._rowData?.id || addLedgerTr?._rowData?.id || "").trim(),
       );
-      const saveResult = await saveTimeRows(getFullRowsForFilter(true));
-      let pushResult = saveResult;
-      if (!pushResult?.ok && isUuid(pushedId)) {
-        pushResult = await pushTimeRowsAfterModalSaveWithRetry([pushedId], {
-          attempts: 3,
-        });
-      } else if (
-        pushResult?.ok &&
-        (pushResult.pushedCount || 0) === 0 &&
-        isUuid(pushedId)
-      ) {
-        pushResult = await pushTimeRowsAfterModalSaveWithRetry([pushedId], {
-          attempts: 2,
-        });
-      }
-      if (!pushResult?.ok && isUuid(pushedId)) {
-        scheduleSilentTimeLedgerPushRetry([pushedId]);
-      }
+      const pushPromise = saveTimeRows(getFullRowsForFilter(true));
 
       const rowTaskId = String(ledgerRowForKpi?.taskId || "").trim();
       const kpiLinks =
@@ -12427,6 +12544,31 @@ export function render(opts = {}) {
       if (shouldNotifyHabit) {
         notifyHabitTrackerUiAfterTimeSave();
       }
+
+      void (async () => {
+        let pushResult;
+        try {
+          pushResult = await pushPromise;
+        } catch (_) {
+          pushResult = { ok: false, pushedCount: 0, reason: "push_threw" };
+        }
+        if (!pushResult?.ok && isUuid(pushedId)) {
+          pushResult = await pushTimeRowsAfterModalSaveWithRetry([pushedId], {
+            attempts: 3,
+          });
+        } else if (
+          pushResult?.ok &&
+          (pushResult.pushedCount || 0) === 0 &&
+          isUuid(pushedId)
+        ) {
+          pushResult = await pushTimeRowsAfterModalSaveWithRetry([pushedId], {
+            attempts: 2,
+          });
+        }
+        if (!pushResult?.ok && isUuid(pushedId)) {
+          scheduleSilentTimeLedgerPushRetry([pushedId]);
+        }
+      })();
       return;
     }
     closeTaskLogModal();
