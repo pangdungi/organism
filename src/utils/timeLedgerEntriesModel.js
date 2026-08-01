@@ -630,12 +630,35 @@ export function dbRowToLocalTimeLedgerRow(db) {
 /** 동기화 메타 제외 후 JSON 비교용 (저장 시 내용 변경 여부) */
 export function stripTimeLedgerSyncMetaForCompare(row) {
   if (!row || typeof row !== "object") return "";
-  const { localModifiedAt, serverUpdatedAt, ...rest } = row;
+  const {
+    localModifiedAt,
+    serverUpdatedAt,
+    endTimeClearedByUser: _endCleared,
+    ...rest
+  } = row;
   try {
     return JSON.stringify(rest);
   } catch (_) {
     return "";
   }
+}
+
+/**
+ * 사용자가 넣었던 마감시간을 빈 값으로 덮지 않음.
+ * (마감 지우기 버튼으로 명시한 경우만 비움 허용)
+ */
+export function preserveTimeLedgerEndTimeUnlessCleared(prevRow, nextRow) {
+  if (!nextRow || typeof nextRow !== "object") return nextRow;
+  const {
+    endTimeClearedByUser: clearedFlag,
+    ...rest
+  } = nextRow;
+  const prevEnd = String(prevRow?.endTime || "").trim();
+  const nextEnd = String(rest.endTime || "").trim();
+  if (prevEnd && !nextEnd && !clearedFlag) {
+    return { ...rest, endTime: prevEnd };
+  }
+  return rest;
 }
 
 function rowEntryDateInInclusiveRange(row, startYmd, endYmd) {
@@ -672,9 +695,20 @@ export function applyTimeLedgerServerFullSnapshot(dbRows) {
 }
 
 /**
+ * 마감시간: 한쪽만 있으면 그 값을 씀. 빈 문자열이 채워진 마감을 지우지 않음.
+ * (dirty 로컬이 통째로 이기면서 서버 마감을 비우는 로스 방지)
+ */
+function coalesceNonEmptyEndTime(primary, secondary) {
+  const a = String(primary || "").trim();
+  if (a) return a;
+  return String(secondary || "").trim();
+}
+
+/**
  * entry_date가 [rangeStart, rangeEnd] (포함)인 구간만 pull 스냅샷으로 맞춤.
  * 기본은 서버 우선. 다만 이 기기에서 사용자가 저장해 아직 서버에 안 올라간 행
  * (timeLedgerRowNeedsPush)은 로컬을 유지 — 마감 등 사용자 행동이 pull에 지워지지 않게.
+ * 마감시간만큼은 빈 값으로 이미 있는 값을 덮어쓰지 않음.
  * @param {{ preferServer?: boolean }} [opts] — 호환용(무시).
  */
 export function applyTimeLedgerServerRangeSnapshot(
@@ -701,6 +735,12 @@ export function applyTimeLedgerServerRangeSnapshot(
   const { rows: localWithIds } = ensureTimeLedgerEntryIds(
     readTimeLedgerEntriesRaw(),
   );
+  /** @type {Map<string, object>} */
+  const localById = new Map();
+  for (const r of localWithIds) {
+    const id = String(r?.id || "").trim();
+    if (id) localById.set(id, r);
+  }
   const outside = localWithIds.filter(
     (r) => !rowEntryDateInInclusiveRange(r, rs, re),
   );
@@ -718,9 +758,17 @@ export function applyTimeLedgerServerRangeSnapshot(
     const dirty = id ? pendingDirtyById.get(id) : null;
     if (dirty) {
       pendingDirtyById.delete(id);
+      /* dirty는 저장 단계에서 마감 로스 방지됨. 통째 유지(명시적 마감 지우기 포함). */
       return dirty;
     }
-    return serverRow;
+    const localPrev = id ? localById.get(id) : null;
+    /* 서버가 마감 비움으로 와도, 로컬에 있던 사용자 마감은 지우지 않음 */
+    const endTime = coalesceNonEmptyEndTime(
+      serverRow.endTime,
+      localPrev?.endTime,
+    );
+    if (endTime === String(serverRow.endTime || "").trim()) return serverRow;
+    return { ...serverRow, endTime };
   });
   /* 서버에 아직 없는 신규·미업로드 행 */
   const pendingNewLocal = [...pendingDirtyById.values()];

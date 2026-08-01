@@ -57,6 +57,44 @@ export function resetTimeLedgerReportRangeToToday(todayYmd) {
 }
 
 /**
+ * 레포트 조회·집계 대기 UI (프로그레스 + 안내 문구)
+ * @param {{ granularity?: string }} [opts]
+ */
+export function createTimeLedgerReportLoadingEl(opts = {}) {
+  const g = String(opts.granularity || "").trim();
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-report-loading";
+  wrap.setAttribute("role", "status");
+  wrap.setAttribute("aria-live", "polite");
+  wrap.setAttribute("aria-busy", "true");
+  const msg = document.createElement("p");
+  msg.className = "lp-tr2-report-loading-msg";
+  if (g === "year") msg.textContent = "연간 레포트를 조회하는 중…";
+  else if (g === "month") msg.textContent = "월간 레포트를 조회하는 중…";
+  else if (g === "week") msg.textContent = "주간 레포트를 조회하는 중…";
+  else msg.textContent = "레포트를 조회하는 중…";
+  const track = document.createElement("div");
+  track.className = "lp-tr2-report-loading-track";
+  track.setAttribute("aria-hidden", "true");
+  const fill = document.createElement("div");
+  fill.className = "lp-tr2-report-loading-fill";
+  track.appendChild(fill);
+  const sub = document.createElement("p");
+  sub.className = "lp-tr2-report-loading-sub";
+  sub.textContent = "기록이 많으면 조금 걸릴 수 있어요";
+  wrap.appendChild(msg);
+  wrap.appendChild(track);
+  wrap.appendChild(sub);
+  return wrap;
+}
+
+/** @param {HTMLElement|null|undefined} container */
+export function showTimeLedgerReportLoading(container, opts = {}) {
+  if (!container) return;
+  container.replaceChildren(createTimeLedgerReportLoadingEl(opts));
+}
+
+/**
  * @param {HTMLElement} scrollWrap
  * @param {{ rangeStart: string, rangeEnd: string }} opts
  */

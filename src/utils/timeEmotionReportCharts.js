@@ -8,6 +8,10 @@ import {
   EMOTION_CATEGORIES_POSITIVE,
   getEmotionCategoryChartColor,
 } from "./timeEmotionTaxonomy.js";
+import {
+  buildEmotionTriggerPatternSentence,
+  emotionTriggerSituationPhrase,
+} from "./timeEmotionTriggers.js";
 import { tr2SvgFontSize } from "./timeReportUiScale.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -147,46 +151,55 @@ function appendDonutCenterLabel(svg, cx, cy, label, meta) {
 }
 
 /**
- * @param {{ categories: Array<{ id: string, label: string, count: number, minutes: number }> }} snap
+ * 작은 빈도 원형 차트 + 옆 범례 (레포트용 컴팩트)
+ * @param {{
+ *   items: Array<{ id?: string, label: string, count: number, color?: string }>,
+ *   ariaLabel?: string,
+ *   emptyText?: string,
+ * }} opts
  */
-export function renderEmotionCategoryDonut(snap) {
+export function renderEmotionFrequencyPie(opts = {}) {
   const wrap = document.createElement("div");
-  wrap.className = "lp-tr2-emotion-donut-wrap";
+  wrap.className = "lp-tr2-emotion-freq-pie";
 
-  const items = (snap.categories || []).filter((c) => c.count > 0);
+  const items = (opts.items || []).filter((c) => c.count > 0);
   if (!items.length) {
     const empty = document.createElement("p");
     empty.className = "lp-tr2-chart-note";
-    empty.textContent = "대분류 데이터가 없습니다.";
+    empty.textContent = opts.emptyText || "데이터가 없습니다.";
     wrap.appendChild(empty);
     return wrap;
   }
 
   const total = items.reduce((a, c) => a + c.count, 0);
-  const size = 200;
+  const size = 112;
   const cx = size / 2;
   const cy = size / 2;
-  const r = 78;
-  const rInner = 52;
+  const r = 48;
+  const rInner = 28;
+  const palette = ["#D4645C", "#7B6BAE", "#5A8FC4", "#C46B8A", "#8F9A58", "#94A3B8"];
 
-  const ariaParts = items.map(
-    (item) => `${item.label} ${item.count}건`,
-  );
+  const chartCol = document.createElement("div");
+  chartCol.className = "lp-tr2-emotion-freq-pie-chart";
   const svg = svgEl("svg", {
-    class: "lp-tr2-emotion-donut-svg",
+    class: "lp-tr2-emotion-donut-svg lp-tr2-emotion-donut-svg--compact",
     width: size,
     height: size,
     viewBox: `0 0 ${size} ${size}`,
     role: "img",
-    "aria-label": `감정 대분류: ${ariaParts.join(", ")}`,
+    "aria-label":
+      opts.ariaLabel ||
+      items.map((item) => `${item.label} ${item.count}건`).join(", "),
   });
 
   let angle = -Math.PI / 2;
-  const sliceMeta = [];
-  items.forEach((item) => {
+  items.forEach((item, idx) => {
     const slice = (item.count / total) * Math.PI * 2;
     if (slice <= 0) return;
-    const color = getEmotionCategoryChartColor(item.id);
+    const color =
+      item.color ||
+      (item.id ? getEmotionCategoryChartColor(item.id) : "") ||
+      palette[idx % palette.length];
     const start = angle;
     const end = angle + slice;
     const path = svgEl("path", {
@@ -194,42 +207,258 @@ export function renderEmotionCategoryDonut(snap) {
       fill: color,
     });
     const title = document.createElementNS(SVG_NS, "title");
-    title.textContent = `${item.label} ${item.count}건`;
+    const pct = Math.round((item.count / total) * 100);
+    title.textContent = `${item.label} ${item.count}건 (${pct}%)`;
     path.appendChild(title);
     svg.appendChild(path);
-    sliceMeta.push({ item, slice, midAngle: start + slice / 2 });
     angle = end;
   });
+  appendDonutCenterLabel(svg, cx, cy, `${total}건`, "빈도");
+  chartCol.appendChild(svg);
 
-  const singleFull =
-    items.length === 1 && sliceMeta[0]?.slice >= Math.PI * 2 - 1e-5;
+  const legend = document.createElement("ul");
+  legend.className = "lp-tr2-emotion-freq-pie-legend";
+  items.forEach((item, idx) => {
+    const li = document.createElement("li");
+    li.className = "lp-tr2-emotion-freq-pie-legend-item";
+    const sw = document.createElement("span");
+    sw.className = "lp-tr2-emotion-freq-pie-legend-swatch";
+    sw.style.background =
+      item.color ||
+      (item.id ? getEmotionCategoryChartColor(item.id) : "") ||
+      palette[idx % palette.length];
+    const lab = document.createElement("span");
+    lab.className = "lp-tr2-emotion-freq-pie-legend-label";
+    lab.textContent = item.label;
+    const meta = document.createElement("span");
+    meta.className = "lp-tr2-emotion-freq-pie-legend-meta";
+    const pct = Math.round((item.count / total) * 100);
+    meta.textContent = `${item.count}회 · ${pct}%`;
+    li.append(sw, lab, meta);
+    legend.appendChild(li);
+  });
 
-  if (singleFull) {
-    const only = items[0];
-    appendDonutCenterLabel(
-      svg,
-      cx,
-      cy,
-      only.label,
-      `${only.count}건 · 100%`,
-    );
-  } else {
-    sliceMeta.forEach(({ item, slice, midAngle }) => {
-      appendDonutSliceLabel(
-        svg,
-        cx,
-        cy,
-        r,
-        rInner,
-        midAngle,
-        item.label,
-        slice,
+  wrap.append(chartCol, legend);
+  return wrap;
+}
+
+/**
+ * @param {{ categories: Array<{ id: string, label: string, count: number, minutes: number }> }} snap
+ */
+export function renderEmotionCategoryDonut(snap) {
+  return renderEmotionFrequencyPie({
+    items: (snap.categories || []).map((c) => ({
+      id: c.id,
+      label: c.label,
+      count: c.count,
+    })),
+    ariaLabel: "감정 빈도",
+    emptyText: "대분류 데이터가 없습니다.",
+  });
+}
+
+/**
+ * 트리거 대분류(사람·일·나 자신·몸·외부 상황) 빈도 원형
+ * @param {{ triggerCategories?: Array<{ label: string, count: number }>, triggers?: Array<{ label: string, count: number }> }} snap
+ */
+export function renderEmotionTriggerDonut(snap) {
+  const cats = snap.triggerCategories || [];
+  const items = (cats.length ? cats : snap.triggers || []).map((t) => ({
+    label: t.label,
+    count: t.count,
+  }));
+  return renderEmotionFrequencyPie({
+    items,
+    ariaLabel: "상황(트리거) 대분류 빈도",
+    emptyText: "상황 기록이 없습니다.",
+  });
+}
+
+/**
+ * 감정 분포 표 (보고서형)
+ * @param {{ categories: Array<{ label: string, count: number, minutes: number }> }} snap
+ */
+export function renderEmotionDistributionTable(snap) {
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-emotion-report-table-wrap";
+  const items = snap.categories || [];
+  if (!items.length) {
+    const empty = document.createElement("p");
+    empty.className = "lp-tr2-chart-note";
+    empty.textContent = "감정 분포 데이터가 없습니다.";
+    wrap.appendChild(empty);
+    return wrap;
+  }
+  const total = items.reduce((a, c) => a + c.count, 0) || 1;
+  const table = document.createElement("div");
+  table.className = "lp-tr2-emotion-report-table";
+  table.setAttribute("role", "table");
+  const head = document.createElement("div");
+  head.className = "lp-tr2-emotion-report-table-head";
+  head.innerHTML =
+    "<span>감정</span><span>횟수</span><span>비중</span><span>시간</span>";
+  table.appendChild(head);
+  items.forEach((c) => {
+    const row = document.createElement("div");
+    row.className = "lp-tr2-emotion-report-table-row";
+    const pct = Math.round((c.count / total) * 100);
+    row.innerHTML = `<span class="lp-tr2-emotion-report-table-label">${c.label}</span><span>${c.count}</span><span>${pct}%</span><span>${formatIntegerMinutesDurationKo(c.minutes)}</span>`;
+    table.appendChild(row);
+  });
+  wrap.appendChild(table);
+  return wrap;
+}
+
+/**
+ * 반복 트리거 TOP (세부) — 보고서형
+ * @param {{ situationPatterns?: Array<{ label: string, categoryLabel?: string, count: number, minutes: number, emotions: Array<{ categoryLabel: string, count: number }>, headline: string }>, triggers?: Array<{ label: string, categoryLabel?: string, count: number, totalMinutes: number }> }} snap
+ * @param {{ limit?: number }} [opts]
+ */
+export function renderEmotionTriggerTopReport(snap, opts = {}) {
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-emotion-trigger-top";
+  const limit = Math.max(1, Number(opts.limit) || 3);
+  const patterns = (snap.situationPatterns || [])
+    .filter((p) => p.headline || p.phrase)
+    .slice(0, limit);
+  if (!patterns.length) {
+    const empty = document.createElement("p");
+    empty.className = "lp-tr2-chart-note";
+    empty.textContent =
+      "세부 트리거를 고른 기록이 있으면, 반복되는 상황을 문장으로 보여 줍니다.";
+    wrap.appendChild(empty);
+    return wrap;
+  }
+  patterns.forEach((p, idx) => {
+    const card = document.createElement("article");
+    card.className = "lp-tr2-emotion-trigger-top-card";
+    const body = document.createElement("p");
+    body.className = "lp-tr2-emotion-trigger-top-body";
+    const sentence =
+      p.headline ||
+      buildEmotionTriggerPatternSentence(
+        p.label,
+        p.emotions?.[0]?.categoryLabel || "",
+      ) ||
+      emotionTriggerSituationPhrase(p.label);
+    body.textContent = `${idx + 1}. ${sentence}`;
+    card.appendChild(body);
+    const meta = document.createElement("p");
+    meta.className = "lp-tr2-emotion-trigger-top-meta";
+    meta.textContent = `${p.count}회 · ${formatIntegerMinutesDurationKo(p.minutes)}`;
+    card.appendChild(meta);
+    wrap.appendChild(card);
+  });
+  return wrap;
+}
+
+/**
+ * 기간 한 줄 요약
+ * @param {object} negSnap
+ * @param {object} [posSnap]
+ */
+export function renderEmotionPeriodSummaryLine(negSnap, posSnap) {
+  const p = document.createElement("p");
+  p.className = "lp-tr2-emotion-report-summary";
+  const negN = Number(negSnap?.consumptionCount) || 0;
+  const posN = Number(posSnap?.consumptionCount) || 0;
+  const topEmo = negSnap?.categories?.[0];
+  const topTrig = negSnap?.triggers?.[0];
+  let text = `부정 감정 ${negN}회`;
+  if (posN > 0) text += ` / 긍정 감정 ${posN}회`;
+  text += ".";
+  if (topEmo) {
+    text += ` 가장 많이 나온 감정은 「${topEmo.label}」(${topEmo.count}회)`;
+    const topSentence =
+      negSnap?.patternSentences?.[0]?.sentence ||
+      (topTrig
+        ? buildEmotionTriggerPatternSentence(topTrig.label, topEmo.label)
+        : "");
+    if (topSentence) {
+      text += `입니다. 예: ${topSentence}`;
+    } else {
+      text += "입니다.";
+    }
+  }
+  p.textContent = text;
+  return p;
+}
+
+/**
+ * 기록 기반 감정 패턴 목록
+ * 부정: 트리거 → 감정 / 긍정: 메모·시간대 → 감정
+ * @param {{
+ *   polarity?: string,
+ *   patternSentences?: Array<{ sentence: string, count: number, minutes?: number }>,
+ *   situationPatterns?: Array<{ sentences?: string[], headline?: string, count: number, minutes?: number }>,
+ * }} snap
+ * @param {{ limit?: number }} [opts]
+ */
+export function renderEmotionSituationPatterns(snap, opts = {}) {
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-emotion-pattern-list";
+  const isPositive = snap?.polarity === "positive";
+  const limit = Math.max(0, Number(opts.limit) || 0);
+
+  const fromPairs = Array.isArray(snap.patternSentences)
+    ? snap.patternSentences
+    : [];
+  const sentences = fromPairs.length
+    ? fromPairs
+    : (snap.situationPatterns || []).flatMap((s) =>
+        (s.sentences || (s.headline ? [s.headline] : [])).map((sentence) => ({
+          sentence,
+          count: s.count,
+          minutes: s.minutes,
+        })),
       );
+
+  const seen = new Set();
+  const unique = [];
+  for (const row of sentences) {
+    const text = String(row?.sentence || "").trim();
+    if (!text || seen.has(text)) continue;
+    seen.add(text);
+    unique.push({
+      sentence: text,
+      count: Number(row.count) || 0,
+      minutes: Number(row.minutes) || 0,
     });
-    appendDonutCenterLabel(svg, cx, cy, `${total}건`, "전체");
+  }
+  const shown = limit > 0 ? unique.slice(0, limit) : unique;
+
+  if (!shown.length) {
+    const empty = document.createElement("p");
+    empty.className = "lp-tr2-chart-note";
+    empty.textContent = isPositive
+      ? "긍정 감정을 고르고 「무엇이 그렇게 느끼게 했는지」를 적으면, 그 패턴이 여기에 모입니다."
+      : "트리거(상황)를 고른 부정 감정 기록이 쌓이면, 「언제·무엇이 부정 감정을 부르는지」 패턴으로 보여 줍니다.";
+    wrap.appendChild(empty);
+    return wrap;
   }
 
-  wrap.appendChild(svg);
+  const list = document.createElement("ul");
+  list.className = "lp-tr2-emotion-pattern-sentences";
+  shown.forEach((row, idx) => {
+    const li = document.createElement("li");
+    li.className = "lp-tr2-emotion-pattern-sentence";
+    const main = document.createElement("p");
+    main.className = "lp-tr2-emotion-pattern-sentence-text";
+    main.textContent = `${idx + 1}. ${row.sentence}`;
+    li.appendChild(main);
+    if (row.count > 0) {
+      const meta = document.createElement("p");
+      meta.className = "lp-tr2-emotion-pattern-sentence-meta";
+      const bits = [`${row.count}회`];
+      if (row.minutes > 0) {
+        bits.push(formatIntegerMinutesDurationKo(row.minutes));
+      }
+      meta.textContent = bits.join(" · ");
+      li.appendChild(meta);
+    }
+    list.appendChild(li);
+  });
+  wrap.appendChild(list);
   return wrap;
 }
 

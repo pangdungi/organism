@@ -300,6 +300,35 @@ export const CONVERSATION_DETAIL_TASK_NAMES = new Set([
   "비생산적 대화",
 ]);
 
+/** 비생산적 대화 — 종류 칩 (meal_detail 앞부분) */
+export const UNPRODUCTIVE_CONVERSATION_TASK_NAME = "비생산적 대화";
+export const PRODUCTIVE_CONVERSATION_TASK_NAME = "생산적 대화";
+/** 생산·비생산 대화 공통 — 대화 종류 */
+export const CONVERSATION_TYPE_OPTIONS = [
+  "논쟁",
+  "훈수",
+  "불평",
+  "자랑",
+  "변명",
+  "비교",
+  "험담",
+];
+/** @deprecated CONVERSATION_TYPE_OPTIONS 사용 */
+export const UNPRODUCTIVE_CONVERSATION_TYPE_OPTIONS = CONVERSATION_TYPE_OPTIONS;
+/** 말 점검 표 (생산·비생산 대화 공통) */
+export const CONVERSATION_SPEECH_CHECK_OPTIONS = [
+  "말 끊음",
+  "나에게 쏠린 대화중심",
+  "말하는 동안 다음할말 준비",
+  "묻지 않은 조언",
+  "자리에 없는 사람 이야기",
+  "휴대폰 보기",
+];
+/** 종류 칩과 대화명 사이 구분자 */
+export const CONVERSATION_TYPE_NAME_SEP = "｜";
+/** 대화명(·종류)과 말 점검 사이 구분자 */
+export const CONVERSATION_SPEECH_CHECK_SEP = "‖";
+
 /** 생산적·비생산적 외출 — 과제 기록 시 외출명 입력 */
 export const OUTING_DETAIL_TASK_NAMES = new Set([
   "생산적 외출",
@@ -333,15 +362,21 @@ export const EMOTIONAL_DETAIL_TASK_NAMES = new Set([
   "감정적이기(긍정적)",
 ]);
 
-/** 감정적이기 트리거 — time_ledger_entries.meal_detail 에 저장 */
-export const EMOTION_TRIGGER_OPTIONS = [
-  "사람·관계",
-  "업무·성취",
-  "신체 상태",
-  "환경·외부 자극",
-  "디지털·정보",
-  "돈·미래",
-];
+/** 감정적이기 트리거 — time_ledger_entries.meal_detail 에 저장 (대분류·세부) */
+export {
+  EMOTION_TRIGGER_CATEGORIES,
+  EMOTION_TRIGGER_OPTIONS,
+  formatEmotionTrigger,
+  parseEmotionTrigger,
+  resolveEmotionTriggerLabel,
+  emotionTriggerCategoryLabels,
+  emotionTriggerSubsForCategory,
+  emotionTriggerCategoryHint,
+  emotionTriggerReportKey,
+  emotionTriggerCategoryKey,
+  emotionTriggerSituationPhrase,
+  buildEmotionTriggerPatternSentence,
+} from "./timeEmotionTriggers.js";
 
 /** 콘텐츠 소비 — time_ledger_entries.meal_detail 에 저장 (복수 선택 가능) */
 export const CONTENT_TYPE_OPTIONS = [
@@ -400,14 +435,6 @@ export function isKnownContentType(value) {
   return resolveContentTypeLabel(value).known;
 }
 
-/** @param {string} value @returns {{ label: string, known: boolean }} */
-export function resolveEmotionTriggerLabel(value) {
-  const v = String(value || "").trim();
-  if (!v) return { label: "", known: false };
-  const found = EMOTION_TRIGGER_OPTIONS.find((opt) => opt === v);
-  return found ? { label: found, known: true } : { label: v, known: false };
-}
-
 /** 레포트 집계용 — 목록 외(구 자유텍스트)는 「기타」 */
 export function contentTypeReportLabel(value) {
   const { label, known } = resolveContentTypeLabel(value);
@@ -451,8 +478,26 @@ export function isChipDetailTaskName(name) {
   return isChipDetailTaskKind(ledgerDetailTaskKind(name));
 }
 
+/** @param {string} name */
+export function isUnproductiveConversationTaskName(name) {
+  const n = canonicalMealTaskDisplayName(name);
+  if (n === UNPRODUCTIVE_CONVERSATION_TASK_NAME) return true;
+  const raw = String(name || "").trim();
+  return (
+    raw === "비생산적 대화 또는 모임" || raw === "의미 없는 대화 또는 모임"
+  );
+}
+
+/** 콘텐츠·위생·외모·비생산적 대화 종류 — 칩 UI (생산적 대화는 종류 칩 없음) */
+export function taskUsesLedgerChipDetail(name) {
+  return isChipDetailTaskName(name) || isUnproductiveConversationTaskName(name);
+}
+
 /** @param {string} taskName */
 export function ledgerChipDetailOptionsForTask(taskName) {
+  if (isUnproductiveConversationTaskName(taskName)) {
+    return CONVERSATION_TYPE_OPTIONS;
+  }
   const kind = ledgerDetailTaskKind(taskName);
   if (kind === "content") return CONTENT_TYPE_OPTIONS;
   if (kind === "hygiene") return PERSONAL_HYGIENE_TYPE_OPTIONS;
@@ -477,6 +522,7 @@ export function resolveChipDetailLabel(taskName, value) {
 
 /** @param {string} taskName */
 export function ledgerChipDetailSectionLabel(taskName) {
+  if (isUnproductiveConversationTaskName(taskName)) return "대화 종류";
   const kind = ledgerDetailTaskKind(taskName);
   if (kind === "content") return "콘텐츠 종류";
   if (kind === "hygiene") return "개인위생";
@@ -540,6 +586,123 @@ export function serializeChipDetailSelection(taskName, values) {
   return normalizeChipDetailSelection(taskName, values).join(
     CHIP_DETAIL_STORE_SEPARATOR,
   );
+}
+
+/**
+ * @param {Iterable<string>} values
+ * @returns {string[]}
+ */
+export function normalizeConversationSpeechChecks(values) {
+  const order = new Map(
+    CONVERSATION_SPEECH_CHECK_OPTIONS.map((o, i) => [o, i]),
+  );
+  const seen = new Set();
+  /** @type {string[]} */
+  const out = [];
+  for (const v of values || []) {
+    const label = String(v || "").trim();
+    if (!label || !order.has(label) || seen.has(label)) continue;
+    seen.add(label);
+    out.push(label);
+  }
+  out.sort((a, b) => (order.get(a) || 0) - (order.get(b) || 0));
+  return out;
+}
+
+/**
+ * @param {string} raw
+ * @returns {{ types: string[], name: string, speechChecks: string[] }}
+ */
+export function parseConversationDetail(raw) {
+  let s = String(raw ?? "").trim();
+  /** @type {string[]} */
+  let speechChecks = [];
+  if (s.includes(CONVERSATION_SPEECH_CHECK_SEP)) {
+    const idx = s.indexOf(CONVERSATION_SPEECH_CHECK_SEP);
+    const checkPart = s.slice(idx + CONVERSATION_SPEECH_CHECK_SEP.length).trim();
+    s = s.slice(0, idx).trim();
+    speechChecks = normalizeConversationSpeechChecks(
+      parseChipDetailStoredValue("", checkPart),
+    );
+  }
+  const tn = UNPRODUCTIVE_CONVERSATION_TASK_NAME;
+  if (!s) return { types: [], name: "", speechChecks };
+  if (s.includes(CONVERSATION_TYPE_NAME_SEP)) {
+    const idx = s.indexOf(CONVERSATION_TYPE_NAME_SEP);
+    const left = s.slice(0, idx).trim();
+    const name = s.slice(idx + CONVERSATION_TYPE_NAME_SEP.length).trim();
+    return {
+      types: normalizeChipDetailSelection(
+        tn,
+        parseChipDetailStoredValue(tn, left),
+      ),
+      name,
+      speechChecks,
+    };
+  }
+  const parts = parseChipDetailStoredValue(tn, s);
+  const known = normalizeChipDetailSelection(tn, parts);
+  if (
+    known.length > 0 &&
+    known.length === parts.length &&
+    known.every((label) => resolveChipDetailLabel(tn, label).known)
+  ) {
+    return { types: known, name: "", speechChecks };
+  }
+  return { types: [], name: s, speechChecks };
+}
+
+/**
+ * @param {Iterable<string>} types
+ * @param {string} name
+ * @param {Iterable<string>} [speechChecks]
+ */
+export function serializeConversationDetail(types, name, speechChecks = []) {
+  const tn = UNPRODUCTIVE_CONVERSATION_TASK_NAME;
+  const typeStr = serializeChipDetailSelection(tn, types);
+  const nameStr = String(name || "").trim();
+  let main = "";
+  if (typeStr && nameStr) {
+    main = `${typeStr}${CONVERSATION_TYPE_NAME_SEP}${nameStr}`;
+  } else {
+    main = typeStr || nameStr;
+  }
+  const checkStr = normalizeConversationSpeechChecks(speechChecks).join(
+    CHIP_DETAIL_STORE_SEPARATOR,
+  );
+  if (main && checkStr) {
+    return `${main}${CONVERSATION_SPEECH_CHECK_SEP}${checkStr}`;
+  }
+  if (checkStr) return `${CONVERSATION_SPEECH_CHECK_SEP}${checkStr}`;
+  return main;
+}
+
+/** @deprecated parseConversationDetail */
+export function parseUnproductiveConversationDetail(raw) {
+  const p = parseConversationDetail(raw);
+  return { types: p.types, name: p.name, speechChecks: p.speechChecks };
+}
+
+/** @deprecated serializeConversationDetail */
+export function serializeUnproductiveConversationDetail(
+  types,
+  name,
+  speechChecks = [],
+) {
+  return serializeConversationDetail(types, name, speechChecks);
+}
+
+/** 화면용 — 대화명이 있으면 대화명, 없으면 종류 */
+export function formatConversationDisplayText(raw) {
+  const { types, name } = parseConversationDetail(raw);
+  if (name) return name;
+  if (types.length) return types.join(CHIP_DETAIL_STORE_SEPARATOR);
+  return "";
+}
+
+/** @deprecated formatConversationDisplayText */
+export function formatUnproductiveConversationDisplayText(raw) {
+  return formatConversationDisplayText(raw);
 }
 
 /**

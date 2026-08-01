@@ -571,7 +571,11 @@
 [data-legacy~="time-ledger-view"]
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card-start-end {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.08rem;
+  margin-top: 0.12rem;
   font-size: var(--tl-usage-caption);
   font-weight: 600;
   line-height: 1.15;
@@ -579,6 +583,18 @@
   font-variant-numeric: tabular-nums;
   color: #dc2626;
   white-space: nowrap;
+}
+
+.time-ledger-view
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card-start-end-hint,
+[data-legacy~="time-ledger-view"]
+  .diary-tab5-ledger-log-wrap
+  .calendar-1day-timeline-card-start-end-hint {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #dc2626;
 }
 
 /* 시간 사용내역 — 0시~24시 타임라인 바(구간 길이 = 24h 대비 비율) */
@@ -701,18 +717,21 @@
   /*
    * 레포트 타이포 계층 (큰 → 작음, 단계 겹침 없음)
    * display > hero > value > title > block > body > sub(=label) > meta > caption
+   * 화면 읽기용: body 이상 15px대, caption도 12px 미만으로 안 내려감
    */
-  --lp-tr2-display: 1.75rem;
-  --lp-tr2-hero: 1.25rem;
-  --lp-tr2-value: 1.0625rem;
-  --lp-tr2-title: 0.9375rem;
-  --lp-tr2-block: 0.875rem;
-  --lp-tr2-body: 0.8125rem;
-  --lp-tr2-sub: 0.75rem;
-  --lp-tr2-label: 0.75rem;
-  --lp-tr2-meta: 0.6875rem;
-  --lp-tr2-caption: 0.625rem;
-  --lp-tr2-section-pad: 0.95rem 1rem 1.05rem;
+  --lp-tr2-display: 1.875rem;
+  --lp-tr2-hero: 1.375rem;
+  --lp-tr2-value: 1.125rem;
+  --lp-tr2-title: 1.0625rem;
+  --lp-tr2-block: 1rem;
+  --lp-tr2-body: 0.9375rem;
+  --lp-tr2-sub: 0.875rem;
+  --lp-tr2-label: 0.875rem;
+  --lp-tr2-meta: 0.8125rem;
+  --lp-tr2-caption: 0.75rem;
+  --lp-tr2-lh-body: 1.55;
+  --lp-tr2-lh-tight: 1.35;
+  --lp-tr2-section-pad: 1rem 1.05rem 1.15rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -740,14 +759,16 @@
   font-size: var(--lp-tr2-title);
   font-weight: 700;
   color: #000000;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
+  line-height: var(--lp-tr2-lh-tight);
 }
 
 .lp-tr2-section-sub {
-  margin: 0.2rem 0 0.65rem;
+  margin: 0.28rem 0 0.75rem;
   font-size: var(--lp-tr2-sub);
   font-weight: 500;
-  color: #999999;
+  color: #64748b;
+  line-height: var(--lp-tr2-lh-body);
 }
 
 .lp-tr2-card-grid {
@@ -791,17 +812,69 @@
 
 .lp-tr2-stat-hint {
   font-size: var(--lp-tr2-meta);
-  color: #999999;
-  line-height: 1.35;
+  color: #64748b;
+  line-height: var(--lp-tr2-lh-body);
+}
+
+.lp-tr2-focus-day-advice-line {
+  font-size: var(--lp-tr2-body);
+  font-weight: 600;
+  color: #334155;
+  line-height: var(--lp-tr2-lh-body);
 }
 
 /* 연간 한 장 요약 — 기록 막대 + 구성 막대 + 순가치 카드 */
 .lp-tr2-report-loading {
-  margin: 1.25rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  margin: 2rem 0.75rem;
+  padding: 1.25rem 1rem;
+  text-align: center;
+  min-height: 8rem;
+}
+
+.lp-tr2-report-loading-msg {
+  margin: 0;
   font-size: var(--lp-tr2-body);
+  font-weight: 700;
+  color: #475569;
+  line-height: var(--lp-tr2-lh-body);
+}
+
+.lp-tr2-report-loading-sub {
+  margin: 0;
+  font-size: var(--lp-tr2-label);
   font-weight: 600;
   color: #94a3b8;
-  text-align: center;
+  line-height: 1.4;
+}
+
+.lp-tr2-report-loading-track {
+  width: min(16rem, 72%);
+  height: 0.35rem;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.lp-tr2-report-loading-fill {
+  width: 40%;
+  height: 100%;
+  border-radius: inherit;
+  background: #1e4d7b;
+  animation: lp-tr2-report-loading-slide 1.1s ease-in-out infinite;
+}
+
+@keyframes lp-tr2-report-loading-slide {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
 }
 
 .lp-tr2-year-hero {
@@ -2142,13 +2215,13 @@
   min-width: 0;
   font-size: var(--lp-tr2-body);
   font-weight: 600;
-  color: #4d4d4d;
+  color: #334155;
   text-align: left;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   font-variant-numeric: tabular-nums;
-  line-height: 1.3;
+  line-height: var(--lp-tr2-lh-tight);
 }
 
 .lp-tr2-bar-track {
@@ -3090,7 +3163,384 @@
   color: #4d4d4d;
 }
 
-/* 감정적이기 레포트 — 도넛·바·트리거·히트맵 */
+/* 과제 기록 — 감정 트리거 대분류·세부 */
+.time-task-log-emotion-trigger-hint {
+  margin: 0 0 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+[data-legacy~="time-task-log-emotion-trigger-cat-chips"] {
+  margin-bottom: 0.35rem;
+}
+
+[data-legacy~="time-task-log-emotion-trigger-sub-chips"]:not([hidden]) {
+  margin-top: 0.15rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid #e8edf2;
+}
+
+/* 감정 레포트 — 보고서형 */
+.lp-tr2-emotion-report-summary {
+  margin: 0;
+  font-size: var(--lp-tr2-body);
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.55;
+}
+
+.lp-tr2-emotion-report-table-wrap {
+  min-width: 0;
+}
+
+.lp-tr2-emotion-report-table {
+  border: 1px solid #e8edf2;
+  border-radius: 0.55rem;
+  overflow: hidden;
+  background: #fff;
+}
+
+.lp-tr2-emotion-report-table-head,
+.lp-tr2-emotion-report-table-row {
+  display: grid;
+  grid-template-columns: minmax(5rem, 1.6fr) 2.4rem 2.6rem 4rem;
+  gap: 0.35rem;
+  align-items: center;
+  padding: 0.45rem 0.55rem;
+}
+
+.lp-tr2-emotion-report-table-head {
+  background: #f1f5f9;
+  font-size: var(--lp-tr2-meta);
+  font-weight: 700;
+  color: #64748b;
+  border-bottom: 1px solid #e8edf2;
+}
+
+.lp-tr2-emotion-report-table-head span:not(:first-child),
+.lp-tr2-emotion-report-table-row span:not(:first-child) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-tr2-emotion-report-table-row {
+  font-size: var(--lp-tr2-body);
+  font-weight: 600;
+  color: #334155;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.lp-tr2-emotion-report-table-row:last-child {
+  border-bottom: none;
+}
+
+.lp-tr2-emotion-report-table-label {
+  font-weight: 800;
+  color: #111111;
+}
+
+.lp-tr2-emotion-trigger-top {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.lp-tr2-emotion-trigger-top-card {
+  padding: 0.55rem 0.65rem;
+  border: 1px solid #e8edf2;
+  border-radius: 0.55rem;
+  background: #fff;
+}
+
+.lp-tr2-emotion-trigger-top-rank {
+  margin: 0;
+  font-size: var(--lp-tr2-body);
+  font-weight: 800;
+  color: #111111;
+  line-height: 1.4;
+}
+
+.lp-tr2-emotion-trigger-top-body {
+  margin: 0.25rem 0 0;
+  font-size: var(--lp-tr2-meta);
+  font-weight: 600;
+  color: #475569;
+  line-height: 1.45;
+}
+
+.lp-tr2-emotion-trigger-top-meta {
+  margin: 0.2rem 0 0;
+  font-size: var(--lp-tr2-meta);
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+/* 감정적이기 레포트 — 패턴 카드 · 컴팩트 빈도 원형 */
+.lp-tr2-emotion-pattern-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.lp-tr2-emotion-pattern-sentences {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.lp-tr2-emotion-pattern-sentence {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #e8edf2;
+  border-radius: 0.55rem;
+  background: #fff;
+}
+
+.lp-tr2-emotion-pattern-sentence-text {
+  margin: 0;
+  font-size: var(--lp-tr2-body);
+  font-weight: 700;
+  color: #111111;
+  line-height: 1.55;
+}
+
+.lp-tr2-emotion-pattern-sentence-meta {
+  margin: 0.3rem 0 0;
+  font-size: var(--lp-tr2-meta);
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+/* 하루 레포트 — 어제 vs 오늘 과제별 시간 비교 */
+.lp-tr2-day-task-compare {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.lp-tr2-day-task-compare-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  font-size: var(--lp-tr2-meta);
+  font-weight: 700;
+  color: #64748b;
+}
+
+.lp-tr2-day-task-compare-swatch {
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  margin-right: 0.35rem;
+  vertical-align: -0.05rem;
+}
+
+.lp-tr2-day-task-compare-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.lp-tr2-day-task-compare-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.lp-tr2-day-task-compare-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.lp-tr2-day-task-compare-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.lp-tr2-day-task-compare-name {
+  font-size: var(--lp-tr2-body);
+  font-weight: 800;
+  color: #1e293b;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lp-tr2-day-task-compare-delta {
+  flex-shrink: 0;
+  font-size: var(--lp-tr2-meta);
+  font-weight: 800;
+}
+
+.lp-tr2-day-task-compare-delta.is-up {
+  color: #000000;
+}
+
+.lp-tr2-day-task-compare-delta.is-down {
+  color: #666666;
+}
+
+.lp-tr2-day-task-compare-delta.is-same {
+  color: #999999;
+}
+
+.lp-tr2-day-task-compare-meta {
+  margin: 0;
+  font-size: var(--lp-tr2-meta);
+  font-weight: 600;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+.lp-tr2-day-task-compare-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.lp-tr2-day-task-compare-bar {
+  height: 0.44rem;
+  border-radius: 999px;
+  background: #f3f4f6;
+  overflow: hidden;
+}
+
+.lp-tr2-day-task-compare-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  min-width: 0;
+}
+
+/* 대화 레포트 — 흑백 글 레포트 */
+.lp-tr2-conv-report {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin-top: 0.55rem;
+  margin-bottom: 0.15rem;
+}
+
+.lp-tr2-conv-report-p {
+  margin: 0;
+  font-size: var(--lp-tr2-body);
+  font-weight: 700;
+  color: #111111;
+  line-height: 1.55;
+}
+
+.lp-tr2-conv-report-block {
+  margin-top: 0.75rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid #e8e8e8;
+}
+
+.lp-tr2-conv-report-label {
+  margin: 0 0 0.4rem;
+  font-size: var(--lp-tr2-meta);
+  font-weight: 800;
+  color: #666666;
+  letter-spacing: -0.01em;
+}
+
+.lp-tr2-conv-report-entries {
+  margin-top: 0.55rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid #e8e8e8;
+}
+
+.lp-tr2-conv-report-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.lp-tr2-conv-report-list li {
+  margin: 0;
+  font-size: var(--lp-tr2-body);
+  font-weight: 700;
+  color: #222222;
+  line-height: 1.45;
+}
+
+.lp-tr2-emotion-freq-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
+}
+
+@media (min-width: 40rem) {
+  .lp-tr2-emotion-freq-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.lp-tr2-emotion-freq-pie {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.lp-tr2-emotion-freq-pie-chart {
+  flex: 0 0 auto;
+}
+
+.lp-tr2-emotion-freq-pie-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.lp-tr2-emotion-freq-pie-legend-item {
+  display: grid;
+  grid-template-columns: 0.55rem minmax(0, 1fr) auto;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.lp-tr2-emotion-freq-pie-legend-swatch {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+}
+
+.lp-tr2-emotion-freq-pie-legend-label {
+  font-size: var(--lp-tr2-meta);
+  font-weight: 700;
+  color: #334155;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lp-tr2-emotion-freq-pie-legend-meta {
+  font-size: var(--lp-tr2-meta);
+  font-weight: 600;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .lp-tr2-emotion-donut-wrap {
   display: flex;
   justify-content: center;
@@ -3101,6 +3551,11 @@
   display: block;
   width: min(100%, 12.5rem);
   height: auto;
+}
+
+.lp-tr2-emotion-donut-svg--compact {
+  width: 7rem;
+  height: 7rem;
 }
 
 .lp-tr2-emotion-donut-slice-label {
@@ -5548,6 +6003,39 @@
   margin-top: 0.15rem;
 }
 
+/* 주·월·연 — 점수 아래 상반 행동 확률 카드 */
+.lp-tr2-field-scores--prob {
+  margin-top: 0.7rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid #e8e8e8;
+}
+
+.lp-tr2-field-prob-card {
+  border: 1px solid #e5e5e5;
+  background: #fafafa;
+}
+
+.lp-tr2-field-prob-card .lp-tr2-stat-label {
+  color: #555555;
+}
+
+.lp-tr2-field-prob-card .lp-tr2-stat-value {
+  color: #111111;
+}
+
+.lp-tr2-field-prob-card--low .lp-tr2-stat-value {
+  color: #1e4d7b;
+}
+
+.lp-tr2-field-prob-card--low .lp-tr2-stat-label {
+  color: #1e4d7b;
+}
+
+.lp-tr2-field-prob-card .lp-tr2-stat-hint {
+  color: #777777;
+  line-height: 1.35;
+}
+
 .lp-tr2-donut-split {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -7579,7 +8067,7 @@
 .time-ledger-card-memo-row {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: 0.28rem 0.4rem;
   min-width: 0;
 }
@@ -7587,13 +8075,14 @@
 .time-ledger-card-memo-chip {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  padding: 0.08rem 0.34rem;
+  padding: 0.12rem 0.34rem;
   border-radius: 6px;
   font-size: 0.625rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  line-height: 1.25;
+  line-height: 1;
   color: #475569;
   background: rgba(100, 116, 139, 0.16);
 }
@@ -7601,9 +8090,11 @@
 .time-ledger-card-memo-body {
   flex: 1 1 7rem;
   min-width: 0;
+  display: inline-flex;
+  align-items: center;
   font-size: inherit;
   font-weight: 400;
-  line-height: inherit;
+  line-height: 1.3;
   color: inherit;
   word-break: break-word;
 }
@@ -8369,6 +8860,51 @@
   font-size: 0.75rem;
   padding: 0.35rem 0.55rem;
   line-height: 1.25;
+}
+
+/* 시간기록 모달 — 말 점검 표 (작게) */
+.time-task-setup-modal.time-task-log-modal
+  [data-legacy~="time-task-log-speech-check-section"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-speech-check-section"],
+.lp-calendar-budget-add-modal
+  [data-legacy~="time-task-log-speech-check-section"] {
+  margin-top: 0.55rem;
+  padding-top: 0.45rem;
+  padding-bottom: 0.25rem;
+}
+
+.time-task-log-speech-check-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  margin-top: 0.35rem;
+}
+
+.time-task-log-speech-check-row {
+  display: flex !important;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.12rem 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #475569;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.time-task-log-speech-check-row input[type="checkbox"] {
+  width: 0.85rem;
+  height: 0.85rem;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--lp-modal-accent, #000000);
+}
+
+.time-task-log-speech-check-text {
+  min-width: 0;
 }
 
 /* 시간기록 모달 — 감정적이기 트리거 */
@@ -9232,13 +9768,13 @@
   margin: 0 0 0.65rem;
   width: 100%;
   min-width: 0;
-  padding: 0.4rem 0.55rem;
+  padding: 0.45rem 0.6rem;
   border-radius: 8px;
   background: rgba(30, 77, 123, 0.06);
-  font-size: var(--lp-tr2-label);
+  font-size: var(--lp-tr2-body);
   font-weight: 600;
   color: #1e4d7b;
-  line-height: 1.45;
+  line-height: var(--lp-tr2-lh-body);
   word-break: keep-all;
   overflow-wrap: anywhere;
   box-sizing: border-box;
@@ -9338,7 +9874,7 @@
   padding-block: 0;
 }
 
-/* 진행중 — 시작시간 아래 작은 글씨 */
+/* 진행중 — 시작시간 아래, 빨간 ~마감과 같이 눈에 띄게 */
 .time-ledger-view
   .diary-tab5-ledger-log-wrap
   .calendar-1day-timeline-card-start
@@ -9349,10 +9885,10 @@
   .time-ledger-card-start-live-tag {
   display: block;
   margin-top: 0.18rem;
-  font-size: 0.6875rem;
-  font-weight: 600;
+  font-size: var(--tl-usage-caption, 0.75rem);
+  font-weight: 700;
   letter-spacing: -0.01em;
-  color: #999999;
+  color: #dc2626;
 }
 
 /* 시작시간 — 행 전체 기준 세로 가운데 */

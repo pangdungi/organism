@@ -100,6 +100,7 @@ import {
   ensureTimeLedgerEntryIds,
   ledgerRowEntryDateYmd,
   parseYmdTenFromLedgerStartTimeStr,
+  preserveTimeLedgerEndTimeUnlessCleared,
   readTimeLedgerEntriesRaw,
   splitUnhealthyMealMemoFromDb,
   stripTimeLedgerSyncMetaForCompare,
@@ -209,6 +210,7 @@ import {
   mountTimeLedgerReport,
   persistTimeLedgerReportRangeToSession,
   readTimeLedgerReportRangeFromSession,
+  showTimeLedgerReportLoading,
 } from "../utils/timeLedgerReportView.js";
 import {
   restoreTimeReportScrollTop,
@@ -1227,31 +1229,38 @@ function saveTimeRows(rows) {
     const toSave = withIds.map((r) => {
       const id = String(r?.id || "").trim();
       const prevRow = id ? prevById.get(id) : null;
+      /* 사용자 마감시간: 빈 값으로 덮어쓰지 않음(명시적 지우기만 허용) */
+      const row = prevRow
+        ? preserveTimeLedgerEndTimeUnlessCleared(prevRow, r)
+        : (() => {
+            const { endTimeClearedByUser: _c, ...rest } = r || {};
+            return rest;
+          })();
       if (!prevRow) {
         const lm =
-          typeof r.localModifiedAt === "number" &&
-          Number.isFinite(r.localModifiedAt)
-            ? r.localModifiedAt
+          typeof row.localModifiedAt === "number" &&
+          Number.isFinite(row.localModifiedAt)
+            ? row.localModifiedAt
             : Date.now();
         if (id) pushEntryIds.push(id);
-        return { ...r, localModifiedAt: lm };
+        return { ...row, localModifiedAt: lm };
       }
       const same =
         stripTimeLedgerSyncMetaForCompare(prevRow) ===
-        stripTimeLedgerSyncMetaForCompare(r);
+        stripTimeLedgerSyncMetaForCompare(row);
       if (same) {
         return {
-          ...r,
+          ...row,
           localModifiedAt: prevRow.localModifiedAt,
           serverUpdatedAt:
             prevRow.serverUpdatedAt !== undefined &&
             prevRow.serverUpdatedAt !== ""
               ? prevRow.serverUpdatedAt
-              : r.serverUpdatedAt,
+              : row.serverUpdatedAt,
         };
       }
       if (id) pushEntryIds.push(id);
-      return { ...r, localModifiedAt: Date.now() };
+      return { ...row, localModifiedAt: Date.now() };
     });
     if (dirty) {
       /* 신규 id 부여분 반영 */
@@ -5502,7 +5511,7 @@ function usageTimelineEndClockIsValid(clock) {
   return /^\d{2}:\d{2}$/.test(String(clock || ""));
 }
 
-/** 이전 마감 ≠ 다음 시작일 때만, 시작 시각 아래에 ~마감 작게 표시 */
+/** 다음 기록이 있고 마감 ≠ 다음 시작일 때만, 시작 아래 ~마감 + 점검 안내 */
 function applyUsageTimelineEndUnderStartDisplay(parentEl) {
   if (!parentEl?.querySelectorAll) return;
   const items = [
@@ -5523,12 +5532,16 @@ function applyUsageTimelineEndUnderStartDisplay(parentEl) {
     const nextStart = nextItem?.dataset.lpStartClock || "";
     const startEl = card.querySelector(".calendar-1day-timeline-card-start");
     let subEndEl = startEl?.querySelector(".calendar-1day-timeline-card-start-end");
+    const rowTaskName = String(card._rowData?.taskName || "").trim();
+    const isSleepRow = TTC.isSleepBuiltinTaskName(rowTaskName);
+    /* 다음 기록이 있고, 마감 ≠ 다음 시작일 때만 표시. (방금 끝낸·하루 마지막은 제외) */
     const showGapEnd =
+      !isSleepRow &&
       !mobileCardNeedsLiveClock(card._rowData) &&
       usageTimelineEndClockIsValid(endClock) &&
-      (!nextItem ||
-        !usageTimelineEndClockIsValid(nextStart) ||
-        nextStart !== endClock);
+      !!nextItem &&
+      usageTimelineEndClockIsValid(nextStart) &&
+      nextStart !== endClock;
 
     if (showGapEnd && startEl) {
       if (!subEndEl) {
@@ -5536,7 +5549,16 @@ function applyUsageTimelineEndUnderStartDisplay(parentEl) {
         subEndEl.className = "calendar-1day-timeline-card-start-end";
         startEl.appendChild(subEndEl);
       }
-      subEndEl.textContent = `~ ${endClock}`;
+      subEndEl.replaceChildren();
+      const clockEl = document.createElement("span");
+      clockEl.className = "calendar-1day-timeline-card-start-end-clock";
+      clockEl.textContent = `~ ${endClock}`;
+      subEndEl.appendChild(clockEl);
+      const hintEl = document.createElement("span");
+      hintEl.className = "calendar-1day-timeline-card-start-end-hint";
+      hintEl.textContent = "점검해 보세요";
+      subEndEl.appendChild(hintEl);
+      subEndEl.title = `마감(${endClock})과 다음 시작(${nextStart})이 달라요. 확인해 주세요.`;
     } else if (subEndEl) {
       subEndEl.remove();
     }
@@ -6267,6 +6289,8 @@ export function render(opts = {}) {
           ) {
             return;
           }
+          /* 레포트: 로컬로 이미 그린 뒤 서버만 조용히 갱신 — 조회 중 스플래시로
+             마운트를 취소하면(시그니처 동일 시) 로딩이 영구히 남는 버그가 있었음 */
           const ok = await pullTimeLedgerEntriesForDateRange(rs, re);
           if (pullGen !== _usageListPullGen) return;
           if (!el.isConnected) return;
@@ -7680,9 +7704,15 @@ export function render(opts = {}) {
           <span data-legacy="time-task-log-section-label time-task-log-content-type-label">콘텐츠 종류</span>
           <div data-legacy="time-task-log-content-type-chips lp-choice-chip-row"></div>
         </div>
+        <div data-legacy="time-task-log-speech-check-section" hidden>
+          <span data-legacy="time-task-log-section-label time-task-log-speech-check-label">말 점검 표</span>
+          <div data-legacy="time-task-log-speech-check-list" class="time-task-log-speech-check-list"></div>
+        </div>
         <div data-legacy="time-task-log-emotion-trigger-section" hidden>
           <span data-legacy="time-task-log-section-label time-task-log-emotion-trigger-label">트리거 (필수)</span>
-          <div data-legacy="time-task-log-emotion-trigger-chips lp-choice-chip-row"></div>
+          <p data-legacy="time-task-log-emotion-trigger-hint" class="time-task-log-emotion-trigger-hint" hidden></p>
+          <div data-legacy="time-task-log-emotion-trigger-cat-chips lp-choice-chip-row"></div>
+          <div data-legacy="time-task-log-emotion-trigger-sub-chips lp-choice-chip-row" hidden></div>
         </div>
         <div data-legacy="time-task-log-kpi-todos-section" hidden>
           <h4 data-legacy="time-task-log-kpi-todos-title">할 일 목록</h4>
@@ -7973,20 +8003,124 @@ export function render(opts = {}) {
   const taskLogContentTypeLabel = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-content-type-label"]',
   );
+  const taskLogSpeechCheckSection = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-speech-check-section"]',
+  );
+  const taskLogSpeechCheckList = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-speech-check-list"]',
+  );
   const taskLogEmotionTriggerSection = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-emotion-trigger-section"]',
   );
   const taskLogEmotionTriggerLabel = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-emotion-trigger-label"]',
   );
-  const taskLogEmotionTriggerChips = taskLogModal.querySelector(
-    '[data-legacy~="time-task-log-emotion-trigger-chips"]',
+  const taskLogEmotionTriggerHint = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-emotion-trigger-hint"]',
   );
+  const taskLogEmotionTriggerCatChips = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-emotion-trigger-cat-chips"]',
+  );
+  const taskLogEmotionTriggerSubChips = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-emotion-trigger-sub-chips"]',
+  );
+  /** meal_detail 저장값: "사람 · 세부" */
   let taskLogEmotionTrigger = "";
+  let taskLogEmotionTriggerCategory = "";
   let taskLogEmotionSub = "";
   /** @type {Set<string>} */
   const taskLogChipDetailSelection = new Set();
   let taskLogChipDetailTaskName = "";
+  /** @type {Set<string>} */
+  const taskLogSpeechCheckSelection = new Set();
+  let taskLogSpeechCheckBuilt = false;
+
+  function syncTaskLogSpeechCheckList() {
+    if (!taskLogSpeechCheckList) return;
+    taskLogSpeechCheckList
+      .querySelectorAll('input[type="checkbox"][data-speech-check]')
+      .forEach((input) => {
+        const label = input.getAttribute("data-speech-check") || "";
+        input.checked = taskLogSpeechCheckSelection.has(label);
+      });
+  }
+
+  function rebuildTaskLogSpeechCheckList() {
+    if (!taskLogSpeechCheckList) return;
+    if (taskLogSpeechCheckBuilt) {
+      syncTaskLogSpeechCheckList();
+      return;
+    }
+    taskLogSpeechCheckList.replaceChildren();
+    TTC.CONVERSATION_SPEECH_CHECK_OPTIONS.forEach((label) => {
+      const row = document.createElement("label");
+      row.className = "time-task-log-speech-check-row";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.setAttribute("data-speech-check", label);
+      input.addEventListener("change", () => {
+        if (input.checked) taskLogSpeechCheckSelection.add(label);
+        else taskLogSpeechCheckSelection.delete(label);
+      });
+      const text = document.createElement("span");
+      text.className = "time-task-log-speech-check-text";
+      text.textContent = label;
+      row.append(input, text);
+      taskLogSpeechCheckList.appendChild(row);
+    });
+    taskLogSpeechCheckBuilt = true;
+    syncTaskLogSpeechCheckList();
+  }
+
+  function setTaskLogSpeechChecks(values) {
+    taskLogSpeechCheckSelection.clear();
+    TTC.normalizeConversationSpeechChecks(values).forEach((label) => {
+      taskLogSpeechCheckSelection.add(label);
+    });
+    rebuildTaskLogSpeechCheckList();
+  }
+
+  function getTaskLogSpeechChecksForSave() {
+    return TTC.normalizeConversationSpeechChecks(taskLogSpeechCheckSelection);
+  }
+
+  function clearTaskLogSpeechChecks() {
+    taskLogSpeechCheckSelection.clear();
+    syncTaskLogSpeechCheckList();
+  }
+
+  /** 비생산 대화: 평가 → 대화 종류 → 말 점검 / 생산 대화: 평가 → 말 점검 */
+  function syncTaskLogConversationSectionOrder() {
+    if (!taskLogRatingSection) return;
+    const tn = (taskLogTaskDropdown?._getValue?.() || "").trim();
+    const isConv = TTC.isConversationDetailTaskName(tn);
+    const isUnprod = TTC.isUnproductiveConversationTaskName(tn);
+    if (isUnprod && taskLogContentTypeSection) {
+      taskLogRatingSection.insertAdjacentElement(
+        "afterend",
+        taskLogContentTypeSection,
+      );
+      if (taskLogSpeechCheckSection) {
+        taskLogContentTypeSection.insertAdjacentElement(
+          "afterend",
+          taskLogSpeechCheckSection,
+        );
+      }
+      return;
+    }
+    if (isConv && taskLogSpeechCheckSection) {
+      taskLogRatingSection.insertAdjacentElement(
+        "afterend",
+        taskLogSpeechCheckSection,
+      );
+    }
+    if (taskLogContentTypeSection) {
+      taskLogRatingSection.insertAdjacentElement(
+        "beforebegin",
+        taskLogContentTypeSection,
+      );
+    }
+  }
 
   function syncTaskLogContentTypeChips() {
     if (!taskLogContentTypeChips) return;
@@ -8054,45 +8188,109 @@ export function render(opts = {}) {
     syncTaskLogContentTypeChips();
   }
 
-  function syncTaskLogEmotionTriggerChips() {
-    if (!taskLogEmotionTriggerChips) return;
-    taskLogEmotionTriggerChips
-      .querySelectorAll('[data-legacy~="lp-choice-chip"]')
-      .forEach((btn) => {
-        const on =
-          !!taskLogEmotionTrigger &&
-          btn.getAttribute("data-emotion-trigger") === taskLogEmotionTrigger;
-        lpTokenToggle(btn, "lp-choice-chip--on", on);
+  function rebuildTaskLogEmotionTriggerSubChips() {
+    if (!taskLogEmotionTriggerSubChips) return;
+    taskLogEmotionTriggerSubChips.replaceChildren();
+    const subs = TTC.emotionTriggerSubsForCategory(
+      taskLogEmotionTriggerCategory,
+    );
+    const show = !!taskLogEmotionTriggerCategory && subs.length > 0;
+    taskLogEmotionTriggerSubChips.hidden = !show;
+    if (taskLogEmotionTriggerHint) {
+      const hint = TTC.emotionTriggerCategoryHint(
+        taskLogEmotionTriggerCategory,
+      );
+      taskLogEmotionTriggerHint.textContent = hint
+        ? `${taskLogEmotionTriggerCategory} — ${hint}`
+        : "";
+      taskLogEmotionTriggerHint.hidden = !hint;
+    }
+    if (!show) return;
+    const parsed = TTC.parseEmotionTrigger(taskLogEmotionTrigger);
+    subs.forEach((sub) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      lpSetClasses(btn, "lp-choice-chip");
+      btn.setAttribute("data-emotion-trigger-sub", sub);
+      btn.textContent = sub;
+      lpTokenToggle(
+        btn,
+        "lp-choice-chip--on",
+        parsed.subLabel === sub &&
+          parsed.categoryLabel === taskLogEmotionTriggerCategory,
+      );
+      btn.addEventListener("click", () => {
+        taskLogEmotionTrigger = TTC.formatEmotionTrigger(
+          taskLogEmotionTriggerCategory,
+          sub,
+        );
+        syncTaskLogEmotionTriggerChips();
       });
+      taskLogEmotionTriggerSubChips.appendChild(btn);
+    });
+  }
+
+  function syncTaskLogEmotionTriggerChips() {
+    if (taskLogEmotionTriggerCatChips) {
+      taskLogEmotionTriggerCatChips
+        .querySelectorAll('[data-legacy~="lp-choice-chip"]')
+        .forEach((btn) => {
+          const cat = btn.getAttribute("data-emotion-trigger-cat") || "";
+          lpTokenToggle(
+            btn,
+            "lp-choice-chip--on",
+            !!taskLogEmotionTriggerCategory &&
+              cat === taskLogEmotionTriggerCategory,
+          );
+        });
+    }
+    rebuildTaskLogEmotionTriggerSubChips();
   }
 
   function setTaskLogEmotionTrigger(value) {
-    const resolved = TTC.resolveEmotionTriggerLabel(value);
-    taskLogEmotionTrigger = resolved.label || "";
+    const parsed = TTC.parseEmotionTrigger(value);
+    taskLogEmotionTriggerCategory = parsed.categoryLabel || "";
+    taskLogEmotionTrigger = parsed.known
+      ? parsed.label
+      : parsed.categoryLabel && !parsed.subLabel
+        ? ""
+        : parsed.label || "";
     syncTaskLogEmotionTriggerChips();
   }
 
   function getTaskLogEmotionTriggerForSave() {
-    return (taskLogEmotionTrigger || "").trim();
+    const parsed = TTC.parseEmotionTrigger(taskLogEmotionTrigger);
+    if (parsed.known) return parsed.label;
+    return "";
   }
 
   function clearTaskLogEmotionTrigger() {
     taskLogEmotionTrigger = "";
+    taskLogEmotionTriggerCategory = "";
     syncTaskLogEmotionTriggerChips();
   }
 
-  if (taskLogEmotionTriggerChips) {
-    TTC.EMOTION_TRIGGER_OPTIONS.forEach((label) => {
+  if (taskLogEmotionTriggerCatChips) {
+    TTC.EMOTION_TRIGGER_CATEGORIES.forEach((cat) => {
       const btn = document.createElement("button");
       btn.type = "button";
       lpSetClasses(btn, "lp-choice-chip");
-      btn.setAttribute("data-emotion-trigger", label);
-      btn.textContent = label;
+      btn.setAttribute("data-emotion-trigger-cat", cat.label);
+      btn.textContent = cat.label;
+      btn.title = cat.hint;
       btn.addEventListener("click", () => {
-        taskLogEmotionTrigger = label;
+        if (taskLogEmotionTriggerCategory === cat.label) {
+          clearTaskLogEmotionTrigger();
+          return;
+        }
+        taskLogEmotionTriggerCategory = cat.label;
+        const parsed = TTC.parseEmotionTrigger(taskLogEmotionTrigger);
+        if (parsed.categoryLabel !== cat.label) {
+          taskLogEmotionTrigger = "";
+        }
         syncTaskLogEmotionTriggerChips();
       });
-      taskLogEmotionTriggerChips.appendChild(btn);
+      taskLogEmotionTriggerCatChips.appendChild(btn);
     });
   }
 
@@ -9033,7 +9231,7 @@ export function render(opts = {}) {
   function updateTaskLogMealDetailVisibility(taskName) {
     const tn = (taskName || "").trim();
     const kind = TTC.ledgerDetailTaskKind(tn);
-    const isChipDetail = TTC.isChipDetailTaskKind(kind);
+    const showChipDetail = TTC.taskUsesLedgerChipDetail(tn);
     const isEmotion = kind === "emotion";
     const showFreeTextDetail = TTC.isLedgerFreeTextDetailTaskName(tn);
     if (taskLogMealDetailSection) {
@@ -9051,7 +9249,7 @@ export function render(opts = {}) {
       }
     }
     if (taskLogContentTypeSection) {
-      taskLogContentTypeSection.hidden = !isChipDetail;
+      taskLogContentTypeSection.hidden = !showChipDetail;
       if (taskLogContentTypeLabel) {
         const base =
           TTC.ledgerChipDetailSectionLabel(tn) || "콘텐츠 종류";
@@ -9059,7 +9257,7 @@ export function render(opts = {}) {
           ? `${base} (필수)`
           : base;
       }
-      if (isChipDetail) {
+      if (showChipDetail) {
         if (tn !== taskLogChipDetailTaskName) {
           taskLogChipDetailSelection.clear();
         }
@@ -9068,6 +9266,12 @@ export function render(opts = {}) {
         clearTaskLogContentType();
         taskLogContentTypeChips?.replaceChildren?.();
       }
+    }
+    const showSpeechCheck = TTC.isConversationDetailTaskName(tn);
+    if (taskLogSpeechCheckSection) {
+      taskLogSpeechCheckSection.hidden = !showSpeechCheck;
+      if (showSpeechCheck) rebuildTaskLogSpeechCheckList();
+      else clearTaskLogSpeechChecks();
     }
     if (taskLogEmotionTriggerSection) {
       const showTrigger =
@@ -9081,7 +9285,11 @@ export function render(opts = {}) {
       if (!showTrigger) clearTaskLogEmotionTrigger();
     }
     syncTaskLogEmotionReflectVisibility(tn);
-    taskLogScrollArea?.classList?.toggle("is-content-detail-task", isChipDetail);
+    taskLogScrollArea?.classList?.toggle(
+      "is-content-detail-task",
+      showChipDetail,
+    );
+    syncTaskLogConversationSectionOrder();
     syncTaskLogEmotionSectionOrder();
     updateTaskLogMemoCopyForProductivity(tn);
   }
@@ -9372,6 +9580,9 @@ export function render(opts = {}) {
     syncStartToHidden();
   }
 
+  /** 마감 지우기 버튼으로만 true — 저장 시 기존 마감을 빈 값으로 덮을지 여부 */
+  let taskLogEndClearedByUser = false;
+
   function setEndFromDatetime(dtStr) {
     if (!dtStr || typeof dtStr !== "string") {
       taskLogTimeEnd.value = "";
@@ -9381,6 +9592,7 @@ export function render(opts = {}) {
     const m = dtStr.match(/[T\s](\d{1,2}):(\d{2})/);
     if (m) {
       taskLogTimeEnd.value = `${String(parseInt(m[1], 10)).padStart(2, "0")}:${m[2]}`;
+      taskLogEndClearedByUser = false;
     } else {
       taskLogTimeEnd.value = "";
     }
@@ -9399,6 +9611,7 @@ export function render(opts = {}) {
   function clearTaskLogEndTime() {
     if (taskLogTimeEnd) taskLogTimeEnd.value = "";
     syncEndToHidden();
+    taskLogEndClearedByUser = true;
     setTaskLogQuickAdjustActive(null);
   }
 
@@ -9548,6 +9761,7 @@ export function render(opts = {}) {
   taskLogTimeEnd?.addEventListener("beforeinput", beforeInputTimeDigitsOnly);
   taskLogTimeEnd?.addEventListener("input", () => {
     sanitizeTaskLogTimeField(taskLogTimeEnd);
+    if ((taskLogTimeEnd?.value || "").trim()) taskLogEndClearedByUser = false;
     updateEndTimeClearVisibility();
     updateTaskLogTimeOrderWarning();
   });
@@ -11373,7 +11587,16 @@ export function render(opts = {}) {
       return;
     }
     const kind = TTC.ledgerDetailTaskKind(taskName);
-    if (TTC.isChipDetailTaskName(taskName)) {
+    if (TTC.isConversationDetailTaskName(taskName)) {
+      updateTaskLogMealDetailVisibility(taskName);
+      const parsed = TTC.parseConversationDetail(detail);
+      setTaskLogContentType(
+        TTC.serializeChipDetailSelection(taskName, parsed.types),
+        taskName,
+      );
+      setTaskLogSpeechChecks(parsed.speechChecks);
+      if (taskLogMealDetailInput) taskLogMealDetailInput.value = parsed.name;
+    } else if (TTC.isChipDetailTaskName(taskName)) {
       setTaskLogContentType(detail, taskName);
     } else if (kind === "emotion") {
       setTaskLogEmotionTrigger(detail);
@@ -11390,6 +11613,7 @@ export function render(opts = {}) {
     taskLogAddContext = addContext;
     taskLogEditTr = null;
     taskLogEditExclude = null;
+    taskLogEndClearedByUser = false;
     pendingEditStartTime = "";
     taskLogSelectedPlannedSlot = null;
     taskLogTitleEl.textContent = "과제 기록";
@@ -11429,6 +11653,7 @@ export function render(opts = {}) {
     if (taskLogFeedbackInput) taskLogFeedbackInput.value = "";
     if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
     clearTaskLogContentType();
+    clearTaskLogSpeechChecks();
     clearTaskLogEmotionTrigger();
     clearTaskLogEmotionReflectInputs();
     applyTaskLogModalRatingUiState({
@@ -11557,6 +11782,7 @@ export function render(opts = {}) {
       composite: `${recKey}|${(data.taskName || "").trim()}|${(data.startTime || "").trim()}`,
     };
     pendingEditStartTime = startTime || "";
+    taskLogEndClearedByUser = false;
     taskLogTitleEl.textContent = "과제 수정";
     taskLogSubmitBtn.textContent = "수정";
     if (taskLogFooterEl) taskLogFooterEl.style.display = "";
@@ -11644,16 +11870,30 @@ export function render(opts = {}) {
       }
     }
     const memoOnly = feedbackRaw.replace(/#[^\s#]+/g, "").trim();
-    if (TTC.isChipDetailTaskName(tnForMemo)) {
+    if (TTC.isConversationDetailTaskName(tnForMemo)) {
+      updateTaskLogMealDetailVisibility(tnForMemo);
+      const parsed = TTC.parseConversationDetail(mealDetailVal);
+      setTaskLogContentType(
+        TTC.serializeChipDetailSelection(tnForMemo, parsed.types),
+        tnForMemo,
+      );
+      setTaskLogSpeechChecks(parsed.speechChecks);
+      if (taskLogMealDetailInput) taskLogMealDetailInput.value = parsed.name;
+      clearTaskLogEmotionTrigger();
+      clearTaskLogEmotionReflectInputs();
+      if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
+    } else if (TTC.isChipDetailTaskName(tnForMemo)) {
       updateTaskLogMealDetailVisibility(tnForMemo);
       setTaskLogContentType(mealDetailVal, tnForMemo);
       if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
       clearTaskLogEmotionTrigger();
+      clearTaskLogSpeechChecks();
       if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
     } else if (TTC.isEmotionalDetailTaskName(tnForMemo)) {
       setTaskLogEmotionTrigger(mealDetailVal);
       if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
       clearTaskLogContentType();
+      clearTaskLogSpeechChecks();
       if (TTC.isNegativeEmotionalTaskName(tnForMemo)) {
         if (taskLogFeedbackInput) taskLogFeedbackInput.value = "";
         setTaskLogEmotionReflectInputsFromMemo(memoOnly);
@@ -11665,6 +11905,7 @@ export function render(opts = {}) {
       if (taskLogMealDetailInput) taskLogMealDetailInput.value = mealDetailVal;
       clearTaskLogContentType();
       clearTaskLogEmotionTrigger();
+      clearTaskLogSpeechChecks();
       clearTaskLogEmotionReflectInputs();
       if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
     }
@@ -11791,8 +12032,13 @@ export function render(opts = {}) {
     }
     const feedbackBody = buildTaskLogFeedbackForSubmit(taskName);
     const detailKind = TTC.ledgerDetailTaskKind(taskName);
-    const mealDetailForRow =
-      TTC.isChipDetailTaskKind(detailKind)
+    const mealDetailForRow = TTC.isConversationDetailTaskName(taskName)
+      ? TTC.serializeConversationDetail(
+          taskLogChipDetailSelection,
+          (taskLogMealDetailInput?.value || "").trim(),
+          getTaskLogSpeechChecksForSave(),
+        )
+      : TTC.isChipDetailTaskKind(detailKind)
         ? getTaskLogContentTypeForSave()
         : detailKind === "emotion"
           ? TTC.emotionTaskUsesTriggers(taskName)
@@ -11861,7 +12107,7 @@ export function render(opts = {}) {
       /* 감정적이기(부정): 트리거 권장 · 「나중에」면 없이 저장 */
       const pickTrigger = await showConfirmModal({
         title: "알림",
-        message: "트리거를 아직 고르지 않았어요.",
+        message: "트리거 대분류와 세부 상황을 아직 고르지 않았어요.",
         cancelText: "나중에",
         confirmText: "확인",
       });
@@ -12193,6 +12439,11 @@ export function render(opts = {}) {
           "").trim(),
       );
       const prevId = String(prevRow.id || "").trim();
+      const endCleared =
+        taskLogEndClearedByUser && !String(endTime || "").trim();
+      const endTimeToSave = endCleared
+        ? ""
+        : String(endTime || "").trim() || String(prevRow.endTime || "").trim();
       const newRowData = {
         id: isUuid(prevId)
           ? prevId
@@ -12202,7 +12453,7 @@ export function render(opts = {}) {
         taskId: isUuid(tidRow) ? tidRow : "",
         taskName,
         startTime,
-        endTime,
+        endTime: endTimeToSave,
         timeTracked,
         productivity,
         category,
@@ -12223,6 +12474,7 @@ export function render(opts = {}) {
         timeSleepGoodFactors: timeSleepGoodFactorsForRow,
         timeSleepPoorReasons: timeSleepPoorReasonsForRow,
         timeBadFeelingReasons: timeBadFeelingReasonsForRow,
+        ...(endCleared ? { endTimeClearedByUser: true } : {}),
       };
       editTr._rowData = newRowData;
       const isMobileCard = lpTokenHas(editTr, "time-ledger-mobile-card");
@@ -13674,16 +13926,28 @@ export function render(opts = {}) {
     const shell = contentWrap.querySelector(".time-ledger-report-view-shell");
     if (!shell || timeLedgerLayoutView !== "report") return false;
     const savedTop = shell.scrollTop;
-    mountTimeLedgerReport(shell, {
-      rangeStart: reportRangeStartYmd,
-      rangeEnd: reportRangeEndYmd,
+    const rs = reportRangeStartYmd;
+    const re = reportRangeEndYmd;
+    const mountGen = (el._lpReportMountGen = (el._lpReportMountGen || 0) + 1);
+    showTimeLedgerReportLoading(shell, {
+      granularity: timeLedgerReportGranularity,
     });
-    restoreTimeReportScrollTop(shell, savedTop);
     patchTimeLedgerUsageHeadingInPlace(rowsToUse);
     updateTotal();
     persistActiveViewTimeFilterToSession();
     updateFilterBarVisibility();
-    rememberTimeLedgerPaintSignature();
+    /* 로딩이 먼저 그려진 뒤 집계 — 연간 등에서 화면이 멈춘 것처럼 보이지 않게 */
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!el.isConnected || mountGen !== el._lpReportMountGen) return;
+        if (timeLedgerLayoutView !== "report") return;
+        const live = contentWrap.querySelector(".time-ledger-report-view-shell");
+        if (live !== shell) return;
+        mountTimeLedgerReport(shell, { rangeStart: rs, rangeEnd: re });
+        restoreTimeReportScrollTop(shell, savedTop);
+        rememberTimeLedgerPaintSignature();
+      });
+    });
     return true;
   }
 
@@ -14049,21 +14313,39 @@ export function render(opts = {}) {
       reportShell.setAttribute("aria-label", "시간 레포트");
       ledgerContainer.appendChild(reportShell);
       if (el._lpReportMountDeferred) {
-        const loading = document.createElement("p");
-        loading.className = "lp-tr2-report-loading";
-        loading.textContent = "기록을 불러오는 중…";
-        reportShell.replaceChildren(loading);
-      } else {
-        mountTimeLedgerReport(reportShell, {
-          rangeStart: reportRangeStartYmd,
-          rangeEnd: reportRangeEndYmd,
+        showTimeLedgerReportLoading(reportShell, {
+          granularity: timeLedgerReportGranularity,
         });
-        if (
+      } else {
+        const mountGen = (el._lpReportMountGen =
+          (el._lpReportMountGen || 0) + 1);
+        const rs = reportRangeStartYmd;
+        const re = reportRangeEndYmd;
+        const restoreTop =
           reportScrollRestore?.top > 0 &&
           reportScrollRestore.key === reportScrollPreserveKey()
-        ) {
-          restoreTimeReportScrollTop(reportShell, reportScrollRestore.top);
-        }
+            ? reportScrollRestore.top
+            : 0;
+        showTimeLedgerReportLoading(reportShell, {
+          granularity: timeLedgerReportGranularity,
+        });
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            if (!el.isConnected || mountGen !== el._lpReportMountGen) return;
+            if (timeLedgerLayoutView !== "report") return;
+            const live = contentWrap.querySelector(
+              ".time-ledger-report-view-shell",
+            );
+            if (live !== reportShell) return;
+            mountTimeLedgerReport(reportShell, {
+              rangeStart: rs,
+              rangeEnd: re,
+            });
+            if (restoreTop > 0) {
+              restoreTimeReportScrollTop(reportShell, restoreTop);
+            }
+          });
+        });
       }
     } else if (showTimelineLedgerContent) {
       ledgerContainer.appendChild(cardsWrap);
@@ -14147,23 +14429,24 @@ export function render(opts = {}) {
     cachedRows = getFullRowsForFilter(true);
     const rowsToUse = getFilteredRows(cachedRows);
 
-    /* 레포트 탭 진입: pull 후 한 번만 본문 그림 */
+    /* 레포트 탭 진입: 로컬로 먼저 그림 → 서버 pull은 뒤에서 → 바뀐 때만 다시 그림 */
     if (userSubTabClick && timeLedgerLayoutView === "report") {
       const gen = (el._lpTimeSubTabPullGen =
         (el._lpTimeSubTabPullGen || 0) + 1);
-      el._lpReportMountDeferred = true;
-      renderAll(rowsToUse);
       el._lpReportMountDeferred = false;
+      renderAll(rowsToUse);
+      rememberTimeLedgerPaintSignature();
       persistActiveViewTimeFilterToSession();
       updateFilterBarVisibility();
       void (async () => {
         try {
-          await pullTimeLedgerTabEnterFromCloud({
+          const pullResult = await pullTimeLedgerTabEnterFromCloud({
             force: true,
             preferServer: true,
           });
           if (!el.isConnected || gen !== el._lpTimeSubTabPullGen) return;
           if (timeLedgerLayoutView !== "report") return;
+          if (!pullResult?.anyChanged) return;
           allRowsCache = loadTimeRows();
           cachedRows = getFullRowsForFilter(true);
           const filtered = getFilteredRows(cachedRows);
@@ -14181,7 +14464,12 @@ export function render(opts = {}) {
 
     const nextSig = snapshotTimeLedgerPaintSignature();
     const sigSame = !opts.force && nextSig === el._lpLastTimeLedgerPaintSig;
-    if (sigSame) {
+    const reportShellStuckLoading =
+      timeLedgerLayoutView === "report" &&
+      !!contentWrap.querySelector(
+        ".time-ledger-report-view-shell .lp-tr2-report-loading",
+      );
+    if (sigSame && !reportShellStuckLoading) {
       patchTimeLedgerUsageHeadingInPlace(rowsToUse);
       updateTotal();
       persistActiveViewTimeFilterToSession();

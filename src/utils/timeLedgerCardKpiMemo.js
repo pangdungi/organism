@@ -29,7 +29,9 @@ export function resolveLedgerRowDetail(rowData) {
   if (!kind) return { kind: null, text: "" };
 
   let text = String(rowData?.mealDetail || "").trim();
-  if (TTC.isChipDetailTaskKind(kind)) {
+  if (TTC.isConversationDetailTaskName(taskName)) {
+    text = TTC.formatConversationDisplayText(text);
+  } else if (TTC.isChipDetailTaskKind(kind)) {
     text = TTC.formatChipDetailDisplayText(taskName, text);
   }
   if (!text) {
@@ -58,11 +60,18 @@ export function formatTimeLedgerCardDetailLines(rowData) {
   return [`${TTC.ledgerDetailLinePrefix(kind)} ${text}`];
 }
 
-/** 상세명을 과제명 대신 표시할지 — 식단·감정·독서는 제외(과제명 유지) */
+/** 상세명을 과제명 대신 표시할지 — 식단·감정·독서·대화는 제외(과제명 유지) */
 export function ledgerRowUsesDetailAsDisplayName(rowData) {
   const taskName = String(rowData?.taskName || "").trim();
   const { kind, text } = resolveLedgerRowDetail(rowData);
-  if (kind === "emotion" || kind === "meal" || kind === "reading") return false;
+  if (
+    kind === "emotion" ||
+    kind === "meal" ||
+    kind === "reading" ||
+    TTC.isConversationDetailTaskName(taskName)
+  ) {
+    return false;
+  }
   return !!kind && !!text && TTC.isLedgerDetailTaskName(taskName);
 }
 
@@ -112,7 +121,25 @@ export function buildTimeLedgerCardMemoParts(rowData, kpiId) {
   /** @type {TimeLedgerCardMemoPart[]} */
   const parts = [];
 
-  if (!ledgerRowUsesDetailAsDisplayName(rowData)) {
+  const taskNameForDetail = String(rowData?.taskName || "").trim();
+  if (TTC.isConversationDetailTaskName(taskNameForDetail)) {
+    const parsed = TTC.parseConversationDetail(rowData?.mealDetail);
+    if (parsed.types.length) {
+      parts.push({
+        label: "종류",
+        body: parsed.types.join(TTC.CHIP_DETAIL_STORE_SEPARATOR),
+      });
+    }
+    if (parsed.name) {
+      parts.push({ label: "대화", body: parsed.name });
+    }
+    if (parsed.speechChecks?.length) {
+      parts.push({
+        label: "말 점검",
+        body: parsed.speechChecks.join(TTC.CHIP_DETAIL_STORE_SEPARATOR),
+      });
+    }
+  } else if (!ledgerRowUsesDetailAsDisplayName(rowData)) {
     const { kind, text } = resolveLedgerRowDetail(rowData);
     if (kind && text) {
       const label = TTC.ledgerDetailLinePrefix(kind);

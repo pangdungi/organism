@@ -228,11 +228,12 @@ function mergedDailyCompletedForKpiDay(
 
 /**
  * @param {{ start: string, end: string }} range
+ * @param {{ skipSync?: boolean }} [opts]
  */
-export function buildHappinessRoutineReportSnapshot(range) {
+export function buildHappinessRoutineReportSnapshot(range, opts = {}) {
   ensureAllKpiTimeTasksFromStorage();
   migrateTimeLogRowsTaskIds();
-  syncHabitTrackerLogs();
+  if (!opts.skipSync) syncHabitTrackerLogs();
   const data = loadHappinessMapForReport();
   const kpis = getOrderedHabitKpis(data);
   const calendarDays = listDatesInclusive(range?.start, range?.end);

@@ -28,6 +28,7 @@ import {
 import { readTimeDailyBudgetGoalsRaw } from "../utils/timeDailyBudgetModel.js";
 import { getScopedLocalStorageItem } from "../utils/clientStorageScope.js";
 import { mountUnifiedTimeReport } from "../utils/timeUnifiedReportMount.js";
+import { showTimeLedgerReportLoading } from "../utils/timeLedgerReportView.js";
 import {
   restoreTimeReportScrollTop,
   TIME_REPORT_HORIZONTAL_SCROLL_SELECTOR,
@@ -1397,13 +1398,9 @@ export function render() {
 
       let deferredReportPaint = false;
       if (!reportLedgerRefreshFromPull && !skipDupLedgerPull) {
-        /* pull 끝난 뒤 한 번만 그림 — 로컬→서버 이중 렌더 방지 */
-        deferredReportPaint = true;
-        const loading = document.createElement("p");
-        loading.className = "lp-tr2-report-loading";
-        loading.textContent = "기록을 불러오는 중…";
-        scrollWrap.replaceChildren(loading);
-
+        /* 로컬로 먼저 그림 → pull 후 데이터가 바뀌었을 때만 다시 그림 */
+        const sigBefore = snapshotTimeReportDataSignature();
+        paintUnifiedReport();
         const { rangeStart: rs, rangeEnd: re } = diaryReportLedgerPullRange(ymd, g);
         const yTen = normalizeDiaryDateStr(ymd);
         const anchorsAtStart = {
@@ -1430,6 +1427,8 @@ export function render() {
           ) {
             return;
           }
+          if (!scrollWrap.isConnected) return;
+          if (snapshotTimeReportDataSignature() === sigBefore) return;
           paintUnifiedReport();
         });
       } else {

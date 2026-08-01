@@ -6,7 +6,7 @@
  */
 export function tr2SvgFontSize(base) {
   const n = Number(base);
-  if (!Number.isFinite(n) || n <= 0) return 10;
+  if (!Number.isFinite(n) || n <= 0) return 11;
   let w = 0;
   if (typeof document !== "undefined") {
     const el = document.querySelector(".lp-tr2-root");
@@ -15,7 +15,8 @@ export function tr2SvgFontSize(base) {
   if (!(w > 0) && typeof window !== "undefined") {
     w = window.innerWidth || 0;
   }
-  if (w >= 1100) return Math.round(n * 1.5 * 10) / 10;
-  if (w >= 768) return Math.round(n * 1.3 * 10) / 10;
-  return n;
+  /* 화면 본문 스케일에 맞춰 SVG 글자도 한 단계 키움 */
+  if (w >= 1100) return Math.round(n * 1.55 * 10) / 10;
+  if (w >= 768) return Math.round(n * 1.35 * 10) / 10;
+  return Math.round(n * 1.08 * 10) / 10;
 }

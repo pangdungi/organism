@@ -13,7 +13,12 @@ import {
   isReadingDetailTaskName,
   isSleepBuiltinTaskName,
   isUnhealthyMealDetailTaskName,
+  CONVERSATION_SPEECH_CHECK_OPTIONS,
+  CONVERSATION_TYPE_OPTIONS,
+  isConversationDetailTaskName,
+  isUnproductiveConversationTaskName,
   isWorkBuiltinTaskName,
+  parseConversationDetail,
 } from "./timeTaskOptionsConstants.js";
 import {
   formatIntegerMinutesDurationKo,
@@ -35,9 +40,11 @@ import {
 import { buildEmotionReportSnapshot } from "./timeEmotionReport.js";
 import {
   renderEmotionCategoryDonut,
+  renderEmotionDistributionTable,
+  renderEmotionPeriodSummaryLine,
+  renderEmotionSituationPatterns,
   renderEmotionSubEmotionBars,
-  renderEmotionTriggerList,
-  renderEmotionTimeHeatmap,
+  renderEmotionTriggerDonut,
 } from "./timeEmotionReportCharts.js";
 import { getEmotionCategoryChartColor } from "./timeEmotionTaxonomy.js";
 import { parseEmotionReflectMemo } from "./timeEmotionReflectMemo.js";
@@ -64,6 +71,11 @@ import { readUserHourlyRateLocal } from "./userHourlySync.js";
 import { tr2SvgFontSize } from "./timeReportUiScale.js";
 import { mountReportHabitScoreboard } from "./reportHabitScoreboard.js";
 import { buildYearKpiGoalReportSnapshot } from "./yearKpiGoalReport.js";
+import {
+  buildDayTaskCompareReport,
+  renderDayTaskCompareChart,
+} from "./timeDayCompareReport.js";
+import { syncHabitTrackerLogs } from "./timeKpiSync.js";
 
 const SLEEP_TARGET_MIN = 7 * 60;
 const CHART_COLORS = {
@@ -2826,9 +2838,13 @@ function appendEmotionPolaritySection(
   rows,
   polarity,
   hourlyRate,
+  pairedSnap,
+  prebuiltSnap = null,
 ) {
   const isPositive = polarity === "positive";
-  const snap = buildEmotionReportSnapshot(rows, hourlyRate, { polarity });
+  const snap =
+    prebuiltSnap ||
+    buildEmotionReportSnapshot(rows, hourlyRate, { polarity });
   const isDay = range.start === range.end;
   const dayCount = listDatesInclusive(range.start, range.end).length;
   const isWeekView = !isDay && dayCount > 1 && dayCount <= 8;
@@ -2838,13 +2854,9 @@ function appendEmotionPolaritySection(
       ? isPositive
         ? "이날 느낀 긍정 감정과 남긴 메모"
         : "이날 느낀 부정 감정과 남긴 메모"
-      : isWeekView
-        ? isPositive
-          ? "긍정 감정 비중 · 시간대 패턴"
-          : "부정 감정 대분류 · 트리거 · 시간대 패턴"
-        : isPositive
-          ? "긍정 감정·시간대 패턴"
-          : "부정 감정 · 트리거 · 시간대 패턴",
+      : isPositive
+        ? "기록으로 보는 「언제 긍정 감정을 느끼는지」 패턴"
+        : "기록으로 보는 「언제·어떤 트리거가 부정 감정을 부르는지」 패턴",
   );
 
   if (!snap.hasData) {
@@ -2910,14 +2922,69 @@ function appendEmotionPolaritySection(
     return;
   }
 
-  const donutBlock = createRatingBlock(
-    isPositive ? "긍정 감정" : "감정 대분류",
-    isPositive
-      ? "5개 감정 중 어디가 가장 많은지 · 조각 크기=비중(%)"
-      : "5개 분류 중 어디가 가장 많은지 · 조각 크기=비중(%)",
-  );
-  donutBlock.appendChild(renderEmotionCategoryDonut(snap));
-  sec.appendChild(donutBlock);
+  if (!isPositive) {
+    const summaryBlock = createRatingBlock(
+      "1. 이번 기간 한 줄",
+      "부정·긍정 횟수와 가장 반복된 패턴",
+    );
+    summaryBlock.appendChild(
+      renderEmotionPeriodSummaryLine(snap, pairedSnap),
+    );
+    sec.appendChild(summaryBlock);
+
+    const patternBlock = createRatingBlock(
+      "2. 부정 감정 패턴",
+      "언제·어떤 트리거가 부정 감정을 부르는지 (기록 기준)",
+    );
+    patternBlock.appendChild(renderEmotionSituationPatterns(snap));
+    sec.appendChild(patternBlock);
+
+    const distBlock = createRatingBlock(
+      "3. 감정 분포",
+      "부정 감정이 어떤 종류로 나뉘는지",
+    );
+    distBlock.appendChild(renderEmotionDistributionTable(snap));
+    sec.appendChild(distBlock);
+
+    const freqRow = document.createElement("div");
+    freqRow.className = "lp-tr2-emotion-freq-row";
+    const emotionPieBlock = createRatingBlock(
+      "부정 감정 빈도",
+      "조각 = 기록 횟수 비중",
+    );
+    emotionPieBlock.appendChild(renderEmotionCategoryDonut(snap));
+    freqRow.appendChild(emotionPieBlock);
+    if (snap.triggerCategories?.length || snap.triggers?.length) {
+      const sitPieBlock = createRatingBlock(
+        "트리거 대분류 빈도",
+        "사람 · 일 · 나 자신 · 몸 · 외부 상황",
+      );
+      sitPieBlock.appendChild(renderEmotionTriggerDonut(snap));
+      freqRow.appendChild(sitPieBlock);
+    }
+    sec.appendChild(freqRow);
+  } else {
+    const patternBlock = createRatingBlock(
+      "1. 긍정 감정 패턴",
+      "어떤 때·무엇 때문에 긍정 감정을 느끼는지 (기록·메모 기준)",
+    );
+    patternBlock.appendChild(renderEmotionSituationPatterns(snap));
+    sec.appendChild(patternBlock);
+
+    const distBlock = createRatingBlock(
+      "2. 긍정 감정 분포",
+      "횟수와 시간",
+    );
+    distBlock.appendChild(renderEmotionDistributionTable(snap));
+    sec.appendChild(distBlock);
+
+    const emotionPieBlock = createRatingBlock(
+      "긍정 감정 빈도",
+      "조각 = 기록 횟수 비중",
+    );
+    emotionPieBlock.appendChild(renderEmotionCategoryDonut(snap));
+    sec.appendChild(emotionPieBlock);
+  }
 
   if (!isPositive && !isWeekView && snap.subEmotions?.length) {
     const subBlock = createRatingBlock(
@@ -2928,35 +2995,25 @@ function appendEmotionPolaritySection(
     sec.appendChild(subBlock);
   }
 
-  if (!isPositive && snap.triggers.length) {
-    const triggerBlock = createRatingBlock(
-      "트리거 패턴",
-      "어떤 상황에서 부정 감정이 반복되는지",
-    );
-    triggerBlock.appendChild(renderEmotionTriggerList(snap));
-    sec.appendChild(triggerBlock);
-  }
-
-  const heatBlock = createRatingBlock(
-    "요일·시간대",
-    isPositive
-      ? "언제 긍정 감정이 집중되는지 · 색=감정"
-      : "언제 부정 감정이 집중되는지 · 색=대분류",
-  );
-  heatBlock.appendChild(renderEmotionTimeHeatmap(snap));
-  sec.appendChild(heatBlock);
-
   scrollWrap.appendChild(sec);
 }
 
 function mountEmotionSection(scrollWrap, range, rows) {
   const hourlyRate = readReportHourlyRateNumber();
+  const negSnap = buildEmotionReportSnapshot(rows, hourlyRate, {
+    polarity: "negative",
+  });
+  const posSnap = buildEmotionReportSnapshot(rows, hourlyRate, {
+    polarity: "positive",
+  });
   appendEmotionPolaritySection(
     scrollWrap,
     range,
     rows,
     "negative",
     hourlyRate,
+    posSnap,
+    negSnap,
   );
   appendEmotionPolaritySection(
     scrollWrap,
@@ -2964,6 +3021,8 @@ function mountEmotionSection(scrollWrap, range, rows) {
     rows,
     "positive",
     hourlyRate,
+    null,
+    posSnap,
   );
 }
 
@@ -3576,7 +3635,7 @@ function mountYearKpiGoalReportSection(scrollWrap, range, rows) {
 }
 
 /** 콘텐츠·미디어 소비·독서와 행복 루틴 사이 — 전체 매일 KPI 습관 점검 구역 */
-function mountHabitCheckSection(scrollWrap, range) {
+function mountHabitCheckSection(scrollWrap, range, opts = {}) {
   const isDay = range?.start === range?.end;
   const dayCount = listDatesInclusive(range?.start, range?.end).length;
   const isYear = !isDay && dayCount >= 300;
@@ -3590,17 +3649,19 @@ function mountHabitCheckSection(scrollWrap, range) {
           ? `${dayCount}일 습관 점수판 · 지킨 날 수`
           : "기간 습관 점수판 · 지킨 날 수",
   );
-  mountReportHabitScoreboard(sec, range);
+  mountReportHabitScoreboard(sec, range, { skipSync: !!opts.skipSync });
   scrollWrap.appendChild(sec);
 }
 
-function mountHappinessRoutineSection(scrollWrap, range) {
+function mountHappinessRoutineSection(scrollWrap, range, opts = {}) {
   const isDay = range?.start === range?.end;
   const rangeDayCount = listDatesInclusive(range?.start, range?.end).length;
   /* 연간: 행복 루틴 점검 섹션 생략 */
   if (!isDay && rangeDayCount >= 300) return;
 
-  const snap = buildHappinessRoutineReportSnapshot(range);
+  const snap = buildHappinessRoutineReportSnapshot(range, {
+    skipSync: !!opts.skipSync,
+  });
   const dayCount = snap.calendarDayCount || 0;
   const sec = createSection(
     "행복 루틴 점검",
@@ -3624,6 +3685,258 @@ function mountHappinessRoutineSection(scrollWrap, range) {
   } else {
     /* 주간·월간 동일 — 카드형 실행율 + 잘 지킨/안 지킨 */
     appendHappinessRoutineWeekView(sec, snap);
+  }
+  scrollWrap.appendChild(sec);
+}
+
+/** 생산·비생산 대화 — 종류(비생산만)·말 점검 집계 */
+function buildConversationReportSnapshot(rows) {
+  /** @type {Map<string, { label: string, count: number, minutes: number }>} */
+  const typeMap = new Map();
+  /** @type {Map<string, { label: string, count: number, minutes: number }>} */
+  const speechMap = new Map();
+  /** @type {{ name: string, minutes: number, productive: boolean, types: string[], speechChecks: string[] }[]} */
+  const entries = [];
+  let totalMinutes = 0;
+  let totalCount = 0;
+  let unproductiveMinutes = 0;
+  let productiveMinutes = 0;
+  let unproductiveCount = 0;
+  for (const r of rows || []) {
+    if (!isConversationDetailTaskName(r?.taskName)) continue;
+    const mins = Math.round((parseTimeToHours(r?.timeTracked) || 0) * 60);
+    if (mins <= 0) continue;
+    totalMinutes += mins;
+    totalCount += 1;
+    const unprod = isUnproductiveConversationTaskName(r?.taskName);
+    if (unprod) {
+      unproductiveMinutes += mins;
+      unproductiveCount += 1;
+    } else {
+      productiveMinutes += mins;
+    }
+    const parsed = parseConversationDetail(r?.mealDetail);
+    entries.push({
+      name: parsed.name || "",
+      minutes: mins,
+      productive: !unprod,
+      types: parsed.types || [],
+      speechChecks: parsed.speechChecks || [],
+    });
+    /* 대화 종류는 비생산적 대화 + 실제 고른 종류만 */
+    if (unprod && parsed.types.length) {
+      const typeShare = mins / parsed.types.length;
+      for (const label of parsed.types) {
+        const prev = typeMap.get(label) || { label, count: 0, minutes: 0 };
+        prev.count += 1;
+        prev.minutes += typeShare;
+        typeMap.set(label, prev);
+      }
+    }
+    const checks = parsed.speechChecks || [];
+    if (checks.length) {
+      const checkShare = mins / checks.length;
+      for (const label of checks) {
+        const prev = speechMap.get(label) || { label, count: 0, minutes: 0 };
+        prev.count += 1;
+        prev.minutes += checkShare;
+        speechMap.set(label, prev);
+      }
+    }
+  }
+  const typeOrder = new Map(CONVERSATION_TYPE_OPTIONS.map((o, i) => [o, i]));
+  const speechOrder = new Map(
+    CONVERSATION_SPEECH_CHECK_OPTIONS.map((o, i) => [o, i]),
+  );
+  const toTags = (map, order, denomMin) =>
+    [...map.values()]
+      .map((t) => ({
+        label: t.label,
+        count: t.count,
+        minutes: Math.round(t.minutes),
+        pct:
+          denomMin > 0 ? Math.round((t.minutes / denomMin) * 100) : 0,
+      }))
+      .sort((a, b) => {
+        if (b.minutes !== a.minutes) return b.minutes - a.minutes;
+        const ia = order.has(a.label) ? order.get(a.label) : 900;
+        const ib = order.has(b.label) ? order.get(b.label) : 900;
+        return ia - ib;
+      });
+  return {
+    totalMinutes,
+    totalCount,
+    unproductiveMinutes,
+    productiveMinutes,
+    unproductiveCount,
+    typeTags: toTags(typeMap, typeOrder, unproductiveMinutes || totalMinutes),
+    speechTags: toTags(speechMap, speechOrder, totalMinutes),
+    entries,
+  };
+}
+
+/** 1일 대화 — 글 레포트 (막대 없음) */
+function renderConversationDayNarrative(snap) {
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-conv-report";
+
+  const summary = document.createElement("p");
+  summary.className = "lp-tr2-conv-report-p";
+  const bits = [
+    `이날 대화는 ${formatIntegerMinutesDurationKo(snap.totalMinutes)}(${snap.totalCount}건)이었습니다`,
+  ];
+  if (snap.productiveMinutes > 0 || snap.unproductiveMinutes > 0) {
+    bits.push(
+      `생산적 ${formatIntegerMinutesDurationKo(snap.productiveMinutes)}, 비생산적 ${formatIntegerMinutesDurationKo(snap.unproductiveMinutes)}`,
+    );
+  }
+  summary.textContent = `${bits.join(". ")}.`;
+  wrap.appendChild(summary);
+
+  if (snap.unproductiveCount > 0) {
+    const typeP = document.createElement("p");
+    typeP.className = "lp-tr2-conv-report-p";
+    if (snap.typeTags.length) {
+      const parts = snap.typeTags.map(
+        (t) =>
+          `「${t.label}」 ${formatIntegerMinutesDurationKo(t.minutes)}(${t.count}회)`,
+      );
+      typeP.textContent = `비생산적 대화 종류: ${parts.join(", ")}.`;
+    } else {
+      typeP.textContent =
+        "비생산적 대화가 있었으나, 대화 종류는 고르지 않았습니다.";
+    }
+    wrap.appendChild(typeP);
+  }
+
+  const speechP = document.createElement("p");
+  speechP.className = "lp-tr2-conv-report-p";
+  if (snap.speechTags.length) {
+    const parts = snap.speechTags.map((t) => `「${t.label}」(${t.count}회)`);
+    speechP.textContent = `말 점검에서 체크된 항목: ${parts.join(", ")}.`;
+  } else {
+    speechP.textContent = "말 점검 표에 체크한 항목은 없었습니다.";
+  }
+  wrap.appendChild(speechP);
+
+  const named = (snap.entries || []).filter((e) => e.name);
+  if (named.length) {
+    const listBlock = document.createElement("div");
+    listBlock.className = "lp-tr2-conv-report-entries";
+    const h = document.createElement("p");
+    h.className = "lp-tr2-conv-report-label";
+    h.textContent = "기록한 대화";
+    listBlock.appendChild(h);
+    const ul = document.createElement("ul");
+    ul.className = "lp-tr2-conv-report-list";
+    named.forEach((e) => {
+      const li = document.createElement("li");
+      const kind = e.productive ? "생산적" : "비생산적";
+      const typeBit = e.types.length ? ` · ${e.types.join(" · ")}` : "";
+      const checkBit = e.speechChecks.length
+        ? ` · 말 점검 ${e.speechChecks.join(" · ")}`
+        : "";
+      li.textContent = `${e.name} (${kind}${typeBit}, ${formatIntegerMinutesDurationKo(e.minutes)}${checkBit})`;
+      ul.appendChild(li);
+    });
+    listBlock.appendChild(ul);
+    wrap.appendChild(listBlock);
+  }
+
+  return wrap;
+}
+
+/** 주간+ — 흑백 목록 (색 막대 블록 없음) */
+function renderConversationPeriodList(title, rows) {
+  if (!rows.length) return null;
+  const block = document.createElement("div");
+  block.className = "lp-tr2-conv-report-block";
+  const h = document.createElement("p");
+  h.className = "lp-tr2-conv-report-label";
+  h.textContent = title;
+  block.appendChild(h);
+  const ul = document.createElement("ul");
+  ul.className = "lp-tr2-conv-report-list";
+  rows.forEach((t) => {
+    const li = document.createElement("li");
+    li.textContent = `「${t.label}」 ${formatIntegerMinutesDurationKo(t.minutes)} · ${t.count}회`;
+    ul.appendChild(li);
+  });
+  block.appendChild(ul);
+  return block;
+}
+
+function mountConversationReportSection(scrollWrap, range, rows) {
+  const snap = buildConversationReportSnapshot(rows);
+  const isDay = range?.start === range?.end;
+  const sec = createSection(
+    "대화",
+    isDay
+      ? "이날 대화 · 생산/비생산 · 말 점검"
+      : "생산/비생산 · 비생산 대화 종류 · 말 점검",
+  );
+  if (snap.totalMinutes <= 0) {
+    const empty = document.createElement("p");
+    empty.className = "lp-tr2-chart-note";
+    empty.textContent = "이 기간에 대화 기록이 없습니다.";
+    sec.appendChild(empty);
+    scrollWrap.appendChild(sec);
+    return;
+  }
+
+  if (isDay) {
+    sec.appendChild(renderConversationDayNarrative(snap));
+    scrollWrap.appendChild(sec);
+    return;
+  }
+
+  const hero = document.createElement("div");
+  hero.className = "lp-tr2-card-grid";
+  hero.appendChild(
+    createStatCard(
+      "대화 시간",
+      formatIntegerMinutesDurationKo(snap.totalMinutes),
+      snap.totalCount > 0 ? `기록 ${snap.totalCount}건` : "",
+    ),
+  );
+  hero.appendChild(
+    createStatCard(
+      "생산적",
+      formatIntegerMinutesDurationKo(snap.productiveMinutes),
+      "",
+    ),
+  );
+  hero.appendChild(
+    createStatCard(
+      "비생산적",
+      formatIntegerMinutesDurationKo(snap.unproductiveMinutes),
+      "",
+    ),
+  );
+  sec.appendChild(hero);
+
+  const typeList = renderConversationPeriodList(
+    "비생산적 대화 종류",
+    snap.typeTags,
+  );
+  if (typeList) sec.appendChild(typeList);
+  else if (snap.unproductiveCount > 0) {
+    const note = document.createElement("p");
+    note.className = "lp-tr2-chart-note";
+    note.textContent = "비생산적 대화 종류를 고른 기록이 없습니다.";
+    sec.appendChild(note);
+  }
+
+  const speechList = renderConversationPeriodList(
+    "말 점검 표",
+    snap.speechTags,
+  );
+  if (speechList) sec.appendChild(speechList);
+  else {
+    const note = document.createElement("p");
+    note.className = "lp-tr2-chart-note";
+    note.textContent = "말 점검 표에 체크한 기록이 아직 없습니다.";
+    sec.appendChild(note);
   }
   scrollWrap.appendChild(sec);
 }
@@ -6129,6 +6442,25 @@ function mountHeroSection(scrollWrap, range, rows) {
   scrollWrap.appendChild(sec);
 }
 
+/** 하루 레포트 — 어제 vs 오늘 과제별 시간 비교 그래프 */
+function mountDayCompareSection(scrollWrap, range, allRows) {
+  if (!range || range.start !== range.end) return;
+  const report = buildDayTaskCompareReport(range.start, allRows);
+  if (!report.hasData) return;
+  const prev = report.prevLabel || "어제";
+  const cur = report.curLabel || "오늘";
+  const hasBatchim = (w) => {
+    const c = String(w || "").charCodeAt(String(w || "").length - 1);
+    return c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 > 0;
+  };
+  const sec = createSection(
+    `${prev}${hasBatchim(prev) ? "과" : "와"} ${cur} 시간 비교`,
+    `근무·수면 등 과제별로 ${prev} 대비 ${cur}${hasBatchim(cur) ? "이" : "가"} 얼마나 늘고 줄었는지`,
+  );
+  renderDayTaskCompareChart(sec, report);
+  scrollWrap.appendChild(sec);
+}
+
 /** 일간: 목표 수면 대비 가로 진행 바 */
 function renderSleepGoalProgressBar(minutes) {
   const slept = Math.max(0, Math.round(Number(minutes) || 0));
@@ -6521,7 +6853,53 @@ function fieldTimeScoresFromDonutSnap(snap) {
   }));
 }
 
-function mountFieldTimeScoresRow(parent, snap) {
+/**
+ * 상반 행동 투자시간 → 앞으로의 방향 확률
+ * 시급상승↔시급저하 / 건강↔비건강 / 행복↔(불행+쾌락+미디어)
+ */
+function fieldTimeProbabilitiesFromDonutSnap(snap) {
+  const segments = snap?.segments || [];
+  const hours = (key) => hoursForFieldScoreKey(segments, key);
+  const wageUp = hours("sideincome");
+  const wageDown = hours("moneylosing");
+  const healthUp = hours("health");
+  const healthDown = hours("unhealthy");
+  const happyUp = hours("happiness");
+  const happyDown =
+    hours("unhappiness") + hours("pleasure") + hours("media_watch");
+
+  const pairPct = (posH, negH) => {
+    const total = posH + negH;
+    if (!(total > 0)) return null;
+    return Math.round((posH / total) * 100);
+  };
+
+  return [
+    {
+      key: "sideincome",
+      label: "시급이 오를 확률",
+      pct: pairPct(wageUp, wageDown),
+      compareHint: `${formatIntegerMinutesDurationKo(Math.round(wageUp * 60))} 상승 · ${formatIntegerMinutesDurationKo(Math.round(wageDown * 60))} 저하`,
+      emptyHint: "시급 상승·저하 기록이 없어요",
+    },
+    {
+      key: "health",
+      label: "건강해질 확률",
+      pct: pairPct(healthUp, healthDown),
+      compareHint: `${formatIntegerMinutesDurationKo(Math.round(healthUp * 60))} 건강 · ${formatIntegerMinutesDurationKo(Math.round(healthDown * 60))} 비건강`,
+      emptyHint: "건강·비건강 기록이 없어요",
+    },
+    {
+      key: "happiness",
+      label: "행복을 더 추구할 확률",
+      pct: pairPct(happyUp, happyDown),
+      compareHint: `${formatIntegerMinutesDurationKo(Math.round(happyUp * 60))} 행복 · ${formatIntegerMinutesDurationKo(Math.round(happyDown * 60))} 불행·쾌락·미디어`,
+      emptyHint: "행복·불행·쾌락·미디어 기록이 없어요",
+    },
+  ];
+}
+
+function mountFieldTimeScoresRow(parent, snap, opts = {}) {
   const row = document.createElement("div");
   row.className = "lp-tr2-field-scores";
   fieldTimeScoresFromDonutSnap(snap).forEach(({ label, hours, pct, score }) => {
@@ -6533,6 +6911,29 @@ function mountFieldTimeScoresRow(parent, snap) {
     row.appendChild(createStatCard(label, `${score}점`, hint));
   });
   parent.appendChild(row);
+
+  if (!opts.showProbabilities) return;
+
+  const probRow = document.createElement("div");
+  probRow.className = "lp-tr2-field-scores lp-tr2-field-scores--prob";
+  probRow.setAttribute(
+    "aria-label",
+    "투자 시간으로 본 앞으로의 방향 확률",
+  );
+  fieldTimeProbabilitiesFromDonutSnap(snap).forEach((item) => {
+    const value =
+      item.pct == null ? "—" : `${item.pct}%`;
+    const hint =
+      item.pct == null ? item.emptyHint : item.compareHint;
+    const card = createStatCard(item.label, value, hint);
+    card.classList.add("lp-tr2-field-prob-card");
+    /* 50% 미만 = 부정 쪽 시간이 더 큼 → 파란 강조 */
+    if (item.pct != null && item.pct < 50) {
+      card.classList.add("lp-tr2-field-prob-card--low");
+    }
+    probRow.appendChild(card);
+  });
+  parent.appendChild(probRow);
 }
 
 function radarGridStep(scaleMax) {
@@ -7146,14 +7547,18 @@ function mountDonutSection(scrollWrap, range, rows) {
     rows,
   );
   const radarSnap = buildCategoryTimeRadarFromDonutSnap(snap);
+  const isDay = range?.start === range?.end;
   const sec = createSection(
     "시간의 방향",
-    "수면·근무 제외 · 카테고리별 기록 시간",
+    isDay
+      ? "수면·근무 제외 · 카테고리별 기록 시간"
+      : "수면·근무 제외 · 점수와 앞으로의 방향 확률",
   );
   const wrap = document.createElement("div");
   wrap.className = "lp-tr2-donut-wrap";
 
   const hasProdNonProd = snap.totalHours > 0;
+  const scoreOpts = { showProbabilities: !isDay };
 
   if (!hasProdNonProd) {
     wrap.appendChild(renderCategoryTimeRadarChart(radarSnap));
@@ -7161,7 +7566,7 @@ function mountDonutSection(scrollWrap, range, rows) {
     empty.className = "lp-tr2-donut-legend-empty";
     empty.textContent = "집계할 생산·비생산 기록이 없습니다.";
     wrap.appendChild(empty);
-    mountFieldTimeScoresRow(wrap, snap);
+    mountFieldTimeScoresRow(wrap, snap, scoreOpts);
     sec.appendChild(wrap);
     scrollWrap.appendChild(sec);
     return;
@@ -7189,7 +7594,7 @@ function mountDonutSection(scrollWrap, range, rows) {
     wrap.appendChild(renderCategoryTimeRadarChart(radarSnap));
   }
 
-  mountFieldTimeScoresRow(wrap, snap);
+  mountFieldTimeScoresRow(wrap, snap, scoreOpts);
   sec.appendChild(wrap);
   scrollWrap.appendChild(sec);
 }
@@ -7205,24 +7610,69 @@ export function mountUnifiedTimeReport(scrollWrap, arg2, arg3) {
   /* 기록은 한 번만 읽고 섹션에 공유 */
   const allRows = loadTimeRows();
   const rows = rowsInRange(range.start, range.end, allRows);
+  /* 습관 동기화는 레포트당 1회 — 습관 점검·행복 루틴이 중복 호출하지 않음 */
+  try {
+    syncHabitTrackerLogs({ throttleMs: 2500 });
+  } catch (_) {}
 
-  scrollWrap.replaceChildren();
+  const mountGen = (scrollWrap._lpTr2MountGen =
+    (scrollWrap._lpTr2MountGen || 0) + 1);
+  const alive = () =>
+    scrollWrap.isConnected && scrollWrap._lpTr2MountGen === mountGen;
+
   scrollWrap.classList.remove("lp-time-report-body--empty");
   scrollWrap.classList.add("lp-tr2-root");
 
-  mountHeroSection(scrollWrap, range, rows);
-  mountTaskTimeMapSection(scrollWrap, range, rows);
-  mountDonutSection(scrollWrap, range, rows);
-  mountSleepSection(scrollWrap, range, rows, allRows);
-  mountIntakeSection(scrollWrap, range, rows);
-  mountEmotionSection(scrollWrap, range, rows);
-  mountMoveSection(scrollWrap, range, rows);
-  mountMediaSection(scrollWrap, range, rows);
-  mountReadingSection(scrollWrap, rows);
-  mountYearKpiGoalReportSection(scrollWrap, range, allRows);
-  mountHabitCheckSection(scrollWrap, range);
-  mountHappinessRoutineSection(scrollWrap, range);
-  mountFocusReportSection(scrollWrap, range, rows);
-  mountNonproductiveBadFeelingReportSection(scrollWrap, range, rows);
-  mountPlanAdherenceSection(scrollWrap, range, rows);
+  const flushChunk = (buildFn) => {
+    if (!alive()) return;
+    const stage = document.createElement("div");
+    buildFn(stage);
+    while (stage.firstChild) scrollWrap.appendChild(stage.firstChild);
+  };
+
+  /* 1) 상단 요약 먼저 — 로딩이 바로 내용으로 바뀜 */
+  scrollWrap.replaceChildren();
+  flushChunk((stage) => {
+    mountHeroSection(stage, range, rows);
+    mountDayCompareSection(stage, range, allRows);
+    mountDonutSection(stage, range, rows);
+  });
+
+  const schedule =
+    typeof requestAnimationFrame === "function"
+      ? (fn) => requestAnimationFrame(fn)
+      : (fn) => setTimeout(fn, 0);
+
+  /* 2) 수면·섭취·감정·이동 */
+  schedule(() => {
+    if (!alive()) return;
+    flushChunk((stage) => {
+      mountTaskTimeMapSection(stage, range, rows);
+      mountSleepSection(stage, range, rows, allRows);
+      mountIntakeSection(stage, range, rows);
+      mountEmotionSection(stage, range, rows);
+      mountMoveSection(stage, range, rows);
+    });
+    /* 3) 미디어·대화·독서·습관 */
+    schedule(() => {
+      if (!alive()) return;
+      flushChunk((stage) => {
+        mountMediaSection(stage, range, rows);
+        mountConversationReportSection(stage, range, rows);
+        mountReadingSection(stage, rows);
+        mountYearKpiGoalReportSection(stage, range, allRows);
+        mountHabitCheckSection(stage, range, { skipSync: true });
+        mountHappinessRoutineSection(stage, range, { skipSync: true });
+      });
+      /* 4) 집중·비생산·계획 */
+      schedule(() => {
+        if (!alive()) return;
+        flushChunk((stage) => {
+          mountFocusReportSection(stage, range, rows);
+          mountNonproductiveBadFeelingReportSection(stage, range, rows);
+          mountPlanAdherenceSection(stage, range, rows);
+        });
+      });
+    });
+  });
 }

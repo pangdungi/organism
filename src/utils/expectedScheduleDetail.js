@@ -5,12 +5,19 @@
 import * as TTC from "./timeTaskOptionsConstants.js";
 import { getKpiTodoTextById } from "./kpiTodoSync.js";
 
-/** 상세명을 과제명 대신 표시할지 — 식단·감정·독서는 제외(과제명 유지) */
+/** 상세명을 과제명 대신 표시할지 — 식단·감정·독서·대화는 제외(과제명 유지) */
 export function expectedSpanUsesDetailAsDisplayName(span) {
   const taskName = String(span?.taskName || "").trim();
   const detail = String(span?.scheduleDetail || "").trim();
   const kind = TTC.ledgerDetailTaskKind(taskName);
-  if (kind === "meal" || kind === "emotion" || kind === "reading") return false;
+  if (
+    kind === "meal" ||
+    kind === "emotion" ||
+    kind === "reading" ||
+    TTC.isConversationDetailTaskName(taskName)
+  ) {
+    return false;
+  }
   return TTC.isLedgerDetailTaskName(taskName) && !!detail;
 }
 
@@ -19,6 +26,9 @@ export function expectedSpanDisplayTaskName(span) {
   const taskName = String(span?.taskName || "").trim();
   const detail = String(span?.scheduleDetail || "").trim();
   if (expectedSpanUsesDetailAsDisplayName(span)) {
+    if (TTC.isConversationDetailTaskName(taskName)) {
+      return TTC.formatConversationDisplayText(detail) || detail;
+    }
     if (TTC.isChipDetailTaskName(taskName)) {
       return TTC.formatChipDetailDisplayText(taskName, detail) || detail;
     }
@@ -60,7 +70,20 @@ export function expectedSpanCardMemoLines(span) {
   const detail = String(span?.scheduleDetail || "").trim();
   const userMemo = String(span?.scheduleMemo || "").trim();
   const lines = [];
-  if (!expectedSpanUsesDetailAsDisplayName(span)) {
+  if (TTC.isConversationDetailTaskName(taskName) && detail) {
+    const parsed = TTC.parseConversationDetail(detail);
+    if (parsed.types.length) {
+      lines.push(
+        `종류 ${parsed.types.join(TTC.CHIP_DETAIL_STORE_SEPARATOR)}`,
+      );
+    }
+    if (parsed.name) lines.push(`대화 ${parsed.name}`);
+    if (parsed.speechChecks?.length) {
+      lines.push(
+        `말 점검 ${parsed.speechChecks.join(TTC.CHIP_DETAIL_STORE_SEPARATOR)}`,
+      );
+    }
+  } else if (!expectedSpanUsesDetailAsDisplayName(span)) {
     const detailLine = formatExpectedSpanDetailLine(taskName, detail);
     if (detailLine) lines.push(detailLine);
   }

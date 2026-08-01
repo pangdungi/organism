@@ -96,7 +96,10 @@ export function buildReportHabitScoreboardModel(opts = {}) {
   const period = resolveScoreboardPeriod(start, end);
 
   if (period.mode === "day") {
-    const dayGoals = buildGoalTrackerTodayGoalsModel({ habitsOnly: true });
+    const dayGoals = buildGoalTrackerTodayGoalsModel({
+      habitsOnly: true,
+      skipSync: !!opts.skipSync,
+    });
     return {
       mode: "day",
       title: period.title,
@@ -280,12 +283,14 @@ export function createReportHabitScoreboardElement(model) {
 /**
  * @param {HTMLElement} parent
  * @param {{ start?: string, end?: string }} range
+ * @param {{ skipSync?: boolean }} [opts]
  */
-export function mountReportHabitScoreboard(parent, range = {}) {
+export function mountReportHabitScoreboard(parent, range = {}, opts = {}) {
   if (!parent) return null;
   const model = buildReportHabitScoreboardModel({
     start: range.start,
     end: range.end,
+    skipSync: !!opts.skipSync,
   });
   const el = createReportHabitScoreboardElement(model);
   parent.appendChild(el);
