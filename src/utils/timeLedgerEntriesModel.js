@@ -60,6 +60,7 @@ export async function purgeTimeLedgerLocalData(uid = getActiveClientStorageUserI
   } catch (_) {}
   _deletionTombstonesObj = {};
   _ledgerRowsMem = [];
+  _ledgerMemRevision += 1;
   _storageReadyPromise = null;
   if (_persistTimer != null) {
     clearTimeout(_persistTimer);
@@ -110,11 +111,21 @@ export function recordTimeLedgerDeletionTombstone(entryId) {
 /** 메모리 캐시 — readTimeLedgerEntriesRaw / writeTimeLedgerEntriesRaw */
 let _ledgerRowsMem = null;
 
+/**
+ * 메모리 기록 세대. pull/저장이 IDB hydrate보다 먼저 메모리를 바꾸면
+ * 옛 IndexedDB 결과로 서버 스냅샷을 덮지 않기 위해 씀.
+ */
+let _ledgerMemRevision = 0;
+
 /** @type {Promise<void> | null} */
 let _storageReadyPromise = null;
 
 /** @type {ReturnType<typeof setTimeout> | null} */
 let _persistTimer = null;
+
+function bumpLedgerMemRevision() {
+  _ledgerMemRevision += 1;
+}
 
 function schedulePersistTimeLedgerRowsToDisk() {
   const uid = getActiveClientStorageUserId();
@@ -131,6 +142,7 @@ function applyTimeLedgerRowsToMemory(rows) {
   const arr = Array.isArray(rows) ? rows : [];
   const { rows: withIds, dirty } = ensureTimeLedgerEntryIds(arr);
   _ledgerRowsMem = withIds;
+  bumpLedgerMemRevision();
   if (dirty) schedulePersistTimeLedgerRowsToDisk();
 }
 
@@ -170,21 +182,34 @@ async function hydrateTimeLedgerFromIdbAuthoritative() {
   const uid = getActiveClientStorageUserId();
   if (!uid) {
     _ledgerRowsMem = [];
+    bumpLedgerMemRevision();
     return;
   }
   const memBeforeHydrate = Array.isArray(_ledgerRowsMem) ? _ledgerRowsMem : [];
+  const revAtStart = _ledgerMemRevision;
   let prevSig = "";
   try {
     prevSig = JSON.stringify(memBeforeHydrate);
   } catch (_) {}
   try {
     const rows = await readAllRowsFromIdb(uid);
-    /* IDB open 중 서버 pull이 메모리를 채운 뒤 빈 IDB로 덮어쓰면 홈「시간 가치」0 고착 */
+    /*
+     * IDB 읽는 동안 서버 pull/저장이 메모리를 갱신했으면 옛 IDB로 덮지 않음.
+     * (예: 부팅 hydrate 중 탭 pull → 최신 서버가 옛 폰 캐시에 지워지던 버그)
+     */
+    if (revAtStart !== _ledgerMemRevision) {
+      schedulePersistTimeLedgerRowsToDisk();
+      return;
+    }
+    /* 빈 IDB로 pull 직후 메모리를 비우지 않음 */
     if (rows.length > 0 || memBeforeHydrate.length === 0) {
       applyTimeLedgerRowsToMemory(rows);
     }
   } catch (_) {
-    if (_ledgerRowsMem == null) _ledgerRowsMem = [];
+    if (_ledgerRowsMem == null) {
+      _ledgerRowsMem = [];
+      bumpLedgerMemRevision();
+    }
   }
   let nextSig = "";
   try {
@@ -215,6 +240,7 @@ export function prepareTimeLedgerStorageForBoot() {
 export function resetTimeLedgerMemoryForAccountSwitch() {
   _deletionTombstonesObj = {};
   _ledgerRowsMem = [];
+  bumpLedgerMemRevision();
   _storageReadyPromise = null;
   if (_persistTimer != null) {
     clearTimeout(_persistTimer);
@@ -761,6 +787,7 @@ export function readTimeLedgerEntriesRaw() {
 export function writeTimeLedgerEntriesRaw(rows) {
   const arr = Array.isArray(rows) ? rows.slice() : [];
   _ledgerRowsMem = arr;
+  bumpLedgerMemRevision();
   schedulePersistTimeLedgerRowsToDisk();
 }
 
