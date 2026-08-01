@@ -5511,7 +5511,7 @@ function usageTimelineEndClockIsValid(clock) {
   return /^\d{2}:\d{2}$/.test(String(clock || ""));
 }
 
-/** 다음 기록이 있고 마감 ≠ 다음 시작일 때만, 시작 아래 ~마감 + 점검 안내 */
+/** 하루 마지막 기록, 또는 마감 ≠ 다음 시작일 때 시작 아래 ~마감 표시 */
 function applyUsageTimelineEndUnderStartDisplay(parentEl) {
   if (!parentEl?.querySelectorAll) return;
   const items = [
@@ -5532,33 +5532,22 @@ function applyUsageTimelineEndUnderStartDisplay(parentEl) {
     const nextStart = nextItem?.dataset.lpStartClock || "";
     const startEl = card.querySelector(".calendar-1day-timeline-card-start");
     let subEndEl = startEl?.querySelector(".calendar-1day-timeline-card-start-end");
-    const rowTaskName = String(card._rowData?.taskName || "").trim();
-    const isSleepRow = TTC.isSleepBuiltinTaskName(rowTaskName);
-    /* 다음 기록이 있고, 마감 ≠ 다음 시작일 때만 표시. (방금 끝낸·하루 마지막은 제외) */
-    const showGapEnd =
-      !isSleepRow &&
+    /* 마지막 기록(다음 없음)이거나, 마감과 다음 시작이 다를 때 */
+    const showEndUnderStart =
       !mobileCardNeedsLiveClock(card._rowData) &&
       usageTimelineEndClockIsValid(endClock) &&
-      !!nextItem &&
-      usageTimelineEndClockIsValid(nextStart) &&
-      nextStart !== endClock;
+      (!nextItem ||
+        !usageTimelineEndClockIsValid(nextStart) ||
+        nextStart !== endClock);
 
-    if (showGapEnd && startEl) {
+    if (showEndUnderStart && startEl) {
       if (!subEndEl) {
         subEndEl = document.createElement("span");
         subEndEl.className = "calendar-1day-timeline-card-start-end";
         startEl.appendChild(subEndEl);
       }
-      subEndEl.replaceChildren();
-      const clockEl = document.createElement("span");
-      clockEl.className = "calendar-1day-timeline-card-start-end-clock";
-      clockEl.textContent = `~ ${endClock}`;
-      subEndEl.appendChild(clockEl);
-      const hintEl = document.createElement("span");
-      hintEl.className = "calendar-1day-timeline-card-start-end-hint";
-      hintEl.textContent = "점검해 보세요";
-      subEndEl.appendChild(hintEl);
-      subEndEl.title = `마감(${endClock})과 다음 시작(${nextStart})이 달라요. 확인해 주세요.`;
+      subEndEl.textContent = `~ ${endClock}`;
+      subEndEl.removeAttribute("title");
     } else if (subEndEl) {
       subEndEl.remove();
     }
