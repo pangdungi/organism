@@ -75,10 +75,16 @@ export function markModalOpened() {
   modalFocusGraceUntil = Date.now() + MODAL_OPEN_FOCUS_GRACE_MS;
 }
 
+/** 아이콘 검색 등 — 자동 키보드 가드 제외 */
+function isKbAllowListed(el) {
+  return el instanceof HTMLElement && el.dataset.lpKbAllow === "1";
+}
+
 /** @param {Element} el */
 function shouldBlockModalInputFocus(el) {
   if (!(el instanceof HTMLElement)) return false;
   if (!el.matches(FOCUSABLE_INPUT_SELECTOR)) return false;
+  if (isKbAllowListed(el)) return false;
   if (!findModalRoot(el)) return false;
   if (el === userAllowedFocusTarget) return false;
   return true;
@@ -105,6 +111,7 @@ function unlockModalInput(inp) {
     inp.setAttribute("contenteditable", "true");
     delete inp.dataset.lpKbGuardCe;
   }
+  inp.dataset.lpKbUser = "1";
   try {
     inp.removeAttribute("autofocus");
   } catch (_) {}
@@ -124,6 +131,11 @@ function guardModalInputs(root) {
       try {
         inp.removeAttribute("autofocus");
       } catch (_) {}
+      /* 이미 사용자가 잠금 해제했거나 검색 허용 필드는 다시 잠그지 않음 */
+      if (isKbAllowListed(inp) || inp.dataset.lpKbUser === "1") {
+        unlockModalInput(inp);
+        return;
+      }
       if (inp.matches(TEXT_LIKE_INPUT_SELECTOR)) {
         inp.readOnly = true;
         inp.dataset.lpKbGuard = "1";
@@ -266,8 +278,32 @@ export function initModalNoAutoFocus() {
         pendingFocusFromPointer = null;
         return;
       }
+      if (isKbAllowListed(inp)) {
+        unlockModalInput(inp);
+        pendingFocusFromPointer = inp;
+        userAllowedFocusTarget = inp;
+        return;
+      }
       if (isInModalOpenGracePeriod()) {
-        pendingFocusFromPointer = null;
+        /* 유예 중 탭은 무시하지 말고, 유예 끝나면 잠금 해제(빠른 탭 시 검색 먹통 방지) */
+        pendingFocusFromPointer = inp;
+        const target = inp;
+        const unlockAt = modalFocusGraceUntil;
+        window.setTimeout(() => {
+          if (pendingFocusFromPointer !== target && document.activeElement !== target) {
+            return;
+          }
+          if (Date.now() < unlockAt) return;
+          unlockModalInput(target);
+          userAllowedFocusTarget = target;
+          try {
+            target.focus({ preventScroll: true });
+          } catch (_) {
+            try {
+              target.focus();
+            } catch (_) {}
+          }
+        }, Math.max(0, unlockAt - Date.now()) + 16);
         return;
       }
       unlockModalInput(inp);
@@ -284,6 +320,12 @@ export function initModalNoAutoFocus() {
       if (!(t instanceof HTMLElement) || !t.matches(FOCUSABLE_INPUT_SELECTOR)) return;
       if (!findModalRoot(t)) return;
 
+      if (isKbAllowListed(t)) {
+        unlockModalInput(t);
+        pendingFocusFromPointer = null;
+        return;
+      }
+
       if (isInModalOpenGracePeriod()) {
         try {
           t.blur();
@@ -292,6 +334,7 @@ export function initModalNoAutoFocus() {
       }
 
       if (pendingFocusFromPointer === t || userAllowedFocusTarget === t) {
+        unlockModalInput(t);
         pendingFocusFromPointer = null;
         userAllowedFocusTarget = null;
       }

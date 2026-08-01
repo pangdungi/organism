@@ -150,7 +150,6 @@ import {
 import { formatKpiCardHeroHtml } from "../utils/kpiViewModal.js";
 import { kpiFilterEmptyListMessage } from "../utils/kpiFilterEmptyMessage.js";
 import {
-  KPI_PROGRESS_STATUS_DEFAULT,
   applyAutoCompleteManualKpiIfNeeded,
   filterKpisByProgressStatus,
   bindKpiProgressStatusField,
@@ -656,6 +655,11 @@ export function render() {
   };
 
   function showKpiModal() {
+    const initialStatus = normalizeKpiListFilter(kpiFilter);
+    const formOpts = {
+      ...kpiTimeFormOpts,
+      preferredProgressStatus: initialStatus,
+    };
     const modal = document.createElement("div");
     modal.className = "time-task-setup-modal";
     modal.innerHTML = `
@@ -671,7 +675,8 @@ export function render() {
               <label>행동 이름</label>
               <input type="text" name="name" placeholder="예) 독서하기" />
             </div>
-            ${kpiFormGoalAndTargetSectionHtml(null, escapeHtml, kpiTimeFormOpts)}
+            ${kpiFormGoalAndTargetSectionHtml(null, escapeHtml, formOpts)}
+            ${kpiProgressStatusFieldHtml({ progressStatus: initialStatus })}
           </div>
           <div data-legacy="time-task-log-footer">
             <button type="submit" data-legacy="time-task-log-submit">저장</button>
@@ -696,7 +701,7 @@ export function render() {
         ...fields,
         progressStatus: progressStatusForKpiStartDate(
           fields.targetStartDate,
-          KPI_PROGRESS_STATUS_DEFAULT,
+          readKpiProgressStatusFromForm(form),
         ),
       };
       const data = loadHappinessMap();
@@ -713,7 +718,8 @@ export function render() {
       refreshHappinessAfterKpiDataChange();
     });
     document.body.appendChild(modal);
-    bindKpiGoalModeForm(modal.querySelector(".dream-kpi-form"), null, kpiTimeFormOpts);
+    bindKpiProgressStatusField(modal);
+    bindKpiGoalModeForm(modal.querySelector(".dream-kpi-form"), null, formOpts);
   }
 
   function showKpiEditModal(kpi) {

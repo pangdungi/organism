@@ -116,9 +116,9 @@
         font-display: block;
       }
       :root {
-        --lp-app-font-family: "LP Griun Cocochoitoon", system-ui, -apple-system, "Segoe UI",
-          Roboto, sans-serif;
-        --lp-app-font-weight-base: 500;
+        --lp-app-font-family: "LP Ongleip Gongbujahana", system-ui, -apple-system,
+          "Segoe UI", Roboto, sans-serif;
+        --lp-app-font-weight-base: 400;
         --lp-calendar-month-abbr-font-family: "Hello Scratchy Outlines", sans-serif;
         --lp-calendar-day-num-font-family: "LP Lee Seoyun", sans-serif;
       }
@@ -322,8 +322,8 @@
           link.crossOrigin = "anonymous";
           document.head.appendChild(link);
         }
-        var FALLBACK = MAP.leeseoyun;
-        var fontId = "leeseoyun";
+        var FALLBACK = MAP.gongbujahana;
+        var fontId = "gongbujahana";
         try {
           var uid = localStorage.getItem("lp_last_auth_uid") || "";
           if (uid) {

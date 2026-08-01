@@ -10347,6 +10347,8 @@ export function render(opts = {}) {
 
   function onTaskSelectedForLog(taskName) {
     const name = String(taskName || "").trim();
+    /* 이전 과제용 할일 pull 콜백이 새 선택 UI를 덮지 않게 */
+    taskLogKpiListsSyncGen += 1;
     if (
       taskLogSelectedPlannedSlot &&
       String(taskLogSelectedPlannedSlot.taskName || "").trim() !== name
@@ -10354,6 +10356,10 @@ export function render(opts = {}) {
       taskLogSelectedPlannedSlot = null;
       syncTaskLogPlannedSlotBtnSelection();
     }
+    try {
+      ensureAllKpiTimeTasksFromStorage();
+      patchKpiLinkedTasksFromKpiMaps();
+    } catch (_) {}
     refreshKpiTodosInLogModal();
     refreshTaskCompletionTodosInLogModal();
     void syncTaskLogKpiListsFromCloudIfStale();
@@ -10627,7 +10633,7 @@ export function render(opts = {}) {
   }
 
   function hideTaskLogTaskCompletionTodosSection() {
-    taskLogKpiListsSyncGen += 1;
+    /* sync gen 올리지 않음 — 잠깐 info 없을 때 hide가 pull 후 UI 갱신을 죽이던 원인 */
     if (!taskLogKpiTodosSection) return;
     taskLogKpiTodosSection.hidden = true;
     if (taskLogKpiTodosScroll) taskLogKpiTodosScroll.hidden = true;
@@ -10636,16 +10642,6 @@ export function render(opts = {}) {
       taskLogKpiTodosStatus.textContent = "";
     }
     taskLogKpiTodosList?.replaceChildren?.();
-  }
-
-  function kpiTodoListSnapshot(todos) {
-    return (todos || [])
-      .map(
-        (t) =>
-          `${String(t?.id || "").trim()}\x01${String(t?.text || "").trim()}`,
-      )
-      .sort()
-      .join("\x02");
   }
 
   function collectTaskLogTodoChecks(listEl, rowLegacyToken) {
@@ -10760,16 +10756,20 @@ export function render(opts = {}) {
   }
 
   async function syncTaskLogKpiListsFromCloudIfStale() {
+    try {
+      ensureAllKpiTimeTasksFromStorage();
+      patchKpiLinkedTasksFromKpiMaps();
+    } catch (_) {}
+
     const kpiId = resolveTaskLogModalKpiId();
-    if (!kpiId) return;
+    if (!kpiId) {
+      /* KPI 연결이 아직이면 로컬만 다시 그리고, 모달 cloud sync가 이어서 채움 */
+      refreshTaskCompletionTodosInLogModal();
+      refreshKpiTodosInLogModal();
+      return;
+    }
 
     const gen = ++taskLogKpiListsSyncGen;
-    const beforeTaskSnap = kpiTodoListSnapshot(
-      getKpiTaskCompletionTodoInfoByKpiId(kpiId)?.todos,
-    );
-    const beforeDailySnap = kpiTodoListSnapshot(
-      getKpiDailyRepeatInfoByKpiId(kpiId)?.dailyTodos,
-    );
     const taskChecks = collectTaskLogTodoChecks(
       taskLogKpiTodosList,
       "time-task-log-chore-todo-row",
@@ -10785,36 +10785,20 @@ export function render(opts = {}) {
     if (
       gen !== taskLogKpiListsSyncGen ||
       !taskLogModal.isConnected ||
-      taskLogModal.hidden
+      taskLogModal.hidden ||
+      resolveTaskLogModalKpiId() !== kpiId
     ) {
       return;
     }
 
-    if (!syncResult.stale) return;
-
-    const afterTaskInfo = getKpiTaskCompletionTodoInfoByKpiId(kpiId);
-    const afterDailyInfo = getKpiDailyRepeatInfoByKpiId(kpiId);
-    const afterTaskSnap = kpiTodoListSnapshot(afterTaskInfo?.todos);
-    const afterDailySnap = kpiTodoListSnapshot(afterDailyInfo?.dailyTodos);
     const filteredTaskInfo = getTaskCompletionTodoInfoForTaskLog();
     const listLabel = taskCompletionTodoListLabelForKpiId(kpiId, {
       plannedTodoFilterActive: !!filteredTaskInfo?.plannedTodoFilterActive,
     });
+    const afterTaskInfo = getKpiTaskCompletionTodoInfoByKpiId(kpiId);
 
-    if (afterTaskSnap !== beforeTaskSnap) {
-      if (filteredTaskInfo) {
-        applyTaskCompletionTodosUi(
-          filteredTaskInfo.kpiId,
-          filteredTaskInfo.todos,
-          {
-            plannedTodoFilterActive: !!filteredTaskInfo.plannedTodoFilterActive,
-            preserveChecks: taskChecks,
-          },
-        );
-      } else {
-        hideTaskLogTaskCompletionTodosSection();
-      }
-    } else if (
+    if (
+      syncResult.stale &&
       !syncResult.pullOk &&
       filteredTaskInfo &&
       !afterTaskInfo?.todos?.length
@@ -10822,12 +10806,23 @@ export function render(opts = {}) {
       applyTaskCompletionTodosUi(kpiId, [], {
         plannedTodoFilterActive: !!filteredTaskInfo.plannedTodoFilterActive,
         errorMessage: `${listLabel}을 불러오지 못했습니다. 잠시 후 다시 선택해 주세요.`,
+        preserveChecks: taskChecks,
       });
+    } else if (filteredTaskInfo) {
+      /* stale 여부와 무관하게 최신 로컬로 다시 그림(숨김 레이스 복구) */
+      applyTaskCompletionTodosUi(
+        filteredTaskInfo.kpiId,
+        filteredTaskInfo.todos,
+        {
+          plannedTodoFilterActive: !!filteredTaskInfo.plannedTodoFilterActive,
+          preserveChecks: taskChecks,
+        },
+      );
+    } else {
+      hideTaskLogTaskCompletionTodosSection();
     }
 
-    if (afterDailySnap !== beforeDailySnap) {
-      refreshKpiTodosInLogModal();
-    }
+    refreshKpiTodosInLogModal();
   }
 
   function isHabitDailyTodoChecked(todo, completedList) {
@@ -11586,6 +11581,7 @@ export function render(opts = {}) {
     taskLogEditKpiRestoreGuard = null;
     taskLogEditExclude = null;
     pendingEditStartTime = "";
+    taskLogKpiListsSyncGen += 1;
     hideTaskLogTaskCompletionTodosSection();
   }
 

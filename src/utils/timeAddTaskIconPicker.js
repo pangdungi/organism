@@ -27,14 +27,18 @@ function mountPickerIconSearchInput(onInput) {
   const searchRow = document.createElement("div");
   searchRow.className = "lp-search-bar__row";
   const searchInput = document.createElement("input");
-  searchInput.type = "text";
+  searchInput.type = "search";
   searchInput.className = "lp-search-bar__input";
   searchInput.placeholder = "";
   searchInput.setAttribute("aria-label", "아이콘 검색");
   searchInput.autocomplete = "off";
-  searchInput.addEventListener("input", () => {
-    onInput(String(searchInput.value ?? ""));
-  });
+  searchInput.enterKeyHint = "search";
+  /* 모달 자동 키보드 가드 제외 — 유예 중 탭해도 검색 잠기지 않게 */
+  searchInput.dataset.lpKbAllow = "1";
+  const emit = () => onInput(String(searchInput.value ?? ""));
+  searchInput.addEventListener("input", emit);
+  searchInput.addEventListener("compositionend", emit);
+  searchInput.addEventListener("search", emit);
   searchRow.appendChild(searchInput);
   searchBar.appendChild(searchRow);
   return { searchBar, searchInput };
@@ -151,6 +155,16 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
   const title = String(opts.title || "아이콘 선택").trim() || "아이콘 선택";
   let currentKey = String(opts.currentKey || "").trim();
   const { onPick, onRemove } = opts;
+
+  /* 이전에 안 닫힌 날짜 아이콘 픽커만 제거(검색 먹통·오버레이 잔존 방지) */
+  document.querySelectorAll(".calendar-day-icon-pick-modal").forEach((el) => {
+    if (el instanceof HTMLElement && el.isConnected) {
+      try {
+        el.remove();
+      } catch (_) {}
+    }
+  });
+  cancelPickerIconHydration();
 
   const modal = document.createElement("div");
   modal.className = `${TIME_TASK_ICON_PICK_MODAL_SHELL_CLASS} calendar-day-icon-pick-modal`;

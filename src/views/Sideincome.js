@@ -89,7 +89,6 @@ import {
 import { formatKpiCardHeroHtml } from "../utils/kpiViewModal.js";
 import { kpiFilterEmptyListMessage } from "../utils/kpiFilterEmptyMessage.js";
 import {
-  KPI_PROGRESS_STATUS_DEFAULT,
   applyAutoCompleteManualKpiIfNeeded,
   filterKpisByProgressStatus,
   bindKpiProgressStatusField,
@@ -809,6 +808,11 @@ export function render(opts = {}) {
 
   function showKpiModal() {
     if (!activePathId) return;
+    const initialStatus = normalizeKpiListFilter(kpiFilter);
+    const formOpts = {
+      ...kpiTimeFormOpts,
+      preferredProgressStatus: initialStatus,
+    };
     const modal = document.createElement("div");
     modal.className = "time-task-setup-modal";
     modal.innerHTML = `
@@ -824,7 +828,8 @@ export function render(opts = {}) {
               <label>행동 이름</label>
               <input type="text" name="name" placeholder="예) 인스타 게시물 포스팅하기" />
             </div>
-            ${kpiFormGoalAndTargetSectionHtml(null, escapeHtml, kpiTimeFormOpts)}
+            ${kpiFormGoalAndTargetSectionHtml(null, escapeHtml, formOpts)}
+            ${kpiProgressStatusFieldHtml({ progressStatus: initialStatus })}
           </div>
           <div data-legacy="time-task-log-footer">
             <button type="submit" data-legacy="time-task-log-submit">저장</button>
@@ -849,7 +854,7 @@ export function render(opts = {}) {
         ...fields,
         progressStatus: progressStatusForKpiStartDate(
           fields.targetStartDate,
-          KPI_PROGRESS_STATUS_DEFAULT,
+          readKpiProgressStatusFromForm(form),
         ),
       };
       const data = loadSideincomeMap();
@@ -864,7 +869,8 @@ export function render(opts = {}) {
       refreshSideincomeAfterKpiDataChange();
     });
     document.body.appendChild(modal);
-    bindKpiGoalModeForm(modal.querySelector(".dream-kpi-form"), null, kpiTimeFormOpts);
+    bindKpiProgressStatusField(modal);
+    bindKpiGoalModeForm(modal.querySelector(".dream-kpi-form"), null, formOpts);
   }
 
   function showKpiEditModal(kpi) {

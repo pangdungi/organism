@@ -175,12 +175,14 @@ export function kpiProgressStatusFilterBarHtml(kpiFilter) {
 }
 
 /**
- * 행동 수정 모달 — 과제 상태 (진행전·진행중·완료 라디오)
- * @param {object} kpi
+ * 행동 추가·수정 모달 — 과제 상태 (진행전·진행중·완료 라디오)
+ * @param {object|null} [kpi] — 추가 시 `{ progressStatus }` 또는 null
  * @param {{ isCompleted?: boolean }|null} [progress]
  */
-export function kpiProgressStatusFieldHtml(kpi, progress = null) {
-  const cur = resolveKpiProgressStatus(kpi, progress);
+export function kpiProgressStatusFieldHtml(kpi = null, progress = null) {
+  const cur = kpi
+    ? resolveKpiProgressStatus(kpi, progress)
+    : normalizeKpiProgressStatus(KPI_PROGRESS_STATUS_DEFAULT);
   return `
             <div class="dream-kpi-field dream-kpi-progress-status-field" data-legacy="time-add-task-field">
               <span class="dream-kpi-field-label">과제 상태</span>

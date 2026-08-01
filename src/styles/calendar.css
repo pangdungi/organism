@@ -1499,18 +1499,42 @@
   --cal-font-1week-badge: clamp(0.5625rem, calc(0.5rem + 100cqw / 220), 0.6875rem);
 }
 
-/* 홈 3분할 planner — 7열 격자 너bi(cqw)에 맞춰 할 일·일정 글자 유동 스케일 */
+/*
+ * 홈 3분할 — 할일·일정 글자만 격자 너비(cqw)에 비례
+ * 칸이 좁으면 모바일급, 넓으면(넓은 데스크탑) 일정 탭과 같이 커짐
+ * (스탬프·날짜·월 제목은 여기서 건드리지 않음)
+ */
 .lp-desktop-dashboard-col--planner .calendar-monthly-grid,
 .lp-desktop-dashboard-col--planner .calendar-1week-flow-hscroll-inner,
 .lp-desktop-dashboard-col--planner .calendar-1week-google-body {
-  --cal-font-span-bar: clamp(0.5625rem, calc(0.48rem + 100cqw / 72), 1rem);
+  --cal-font-span-bar: clamp(0.625rem, calc(0.56rem + 100cqw / 105), 0.875rem);
   --cal-font-span-todo: var(--cal-font-span-bar);
-  --cal-font-day-num: clamp(0.6875rem, calc(0.62rem + 100cqw / 88), 1.125rem);
-  --cal-font-day-entries: clamp(0.5625rem, calc(0.5rem + 100cqw / 100), 0.875rem);
-  --cal-font-1week-card: clamp(0.5625rem, calc(0.5rem + 100cqw / 80), 0.9375rem);
+  --cal-font-day-entries: clamp(0.6875rem, calc(0.62rem + 100cqw / 170), 0.875rem);
+  --cal-font-1week-card: clamp(0.6875rem, calc(0.62rem + 100cqw / 125), 0.9375rem);
   --cal-font-1week-title: var(--cal-font-1week-card);
-  --cal-font-1week-meta: clamp(0.5rem, calc(0.46rem + 100cqw / 110), 0.75rem);
-  --cal-font-1week-badge: clamp(0.4375rem, calc(0.4rem + 100cqw / 130), 0.6875rem);
+  --cal-font-1week-meta: clamp(0.625rem, calc(0.56rem + 100cqw / 185), 0.8125rem);
+  --cal-font-1week-badge: clamp(0.5625rem, calc(0.5rem + 100cqw / 220), 0.6875rem);
+}
+
+.lp-desktop-dashboard-col--planner .calendar-monthly-day-entries,
+.lp-desktop-dashboard-col--planner .calendar-monthly-span-bar {
+  font-size: var(--cal-font-span-bar);
+}
+
+.lp-desktop-dashboard-col--planner .calendar-monthly-span-bar-text {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.lp-desktop-dashboard-col--planner .calendar-1week-flow-card,
+.lp-desktop-dashboard-col--planner .calendar-1week-flow-card-title {
+  font-size: var(--cal-font-1week-title, var(--cal-font-1week-card));
+}
+
+.lp-desktop-dashboard-col--planner .calendar-1week-flow-card-meta,
+.lp-desktop-dashboard-col--planner .calendar-1week-flow-card-badge,
+.lp-desktop-dashboard-col--planner .calendar-1week-flow-card-progress {
+  font-size: var(--cal-font-1week-meta);
 }
 
 /* 월별 뷰만: 그리드 카드 전체의 아래 외곽 보더 제거(연간 등은 유지) */
@@ -1812,12 +1836,12 @@
 .calendar-monthly-span-bar {
   position: absolute;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   border-radius: 4px;
   font-size: var(--cal-font-span-bar, 0.625rem);
   font-weight: 600;
   line-height: 1.2;
-  padding: 0.08rem 0.2rem;
+  padding: 0 0.2rem;
   box-sizing: border-box;
   min-height: var(--cal-bar-row-min);
   height: auto;
@@ -1839,6 +1863,13 @@
   line-height: inherit;
   overflow-wrap: break-word;
   word-break: keep-all;
+}
+
+/* 여러 날 컬러 바 — 글자를 바 높이 기준 세로 가운데 */
+.calendar-monthly-span-bar--range,
+.calendar-monthly-span-bar--schedule-strip {
+  align-items: center;
+  justify-content: flex-start;
 }
 
 .calendar-monthly-span-bar.is-completed .calendar-monthly-span-bar-text,

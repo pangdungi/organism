@@ -34,6 +34,11 @@ import {
   DEFAULT_CHORE_TASK_KPI_ID,
   isDefaultAppKpiId,
 } from "./defaultKpiIconIds.js";
+import {
+  KPI_PROGRESS_STATUS,
+  progressStatusForKpiStartDate,
+  readKpiProgressStatusFromForm,
+} from "./kpiProgressStatus.js";
 
 /** 행복 「잡무 처리하기」만 이번 주 처리·남은 개수 UI */
 function isChoreTaskCompletionKpi(kpi) {
@@ -41,10 +46,6 @@ function isChoreTaskCompletionKpi(kpi) {
   if (id === DEFAULT_CHORE_TASK_KPI_ID) return true;
   return String(kpi?.name || "").trim() === "잡무 처리하기";
 }
-import {
-  KPI_PROGRESS_STATUS,
-  progressStatusForKpiStartDate,
-} from "./kpiProgressStatus.js";
 
 function localTodayYmd() {
   const d = new Date();
@@ -137,11 +138,17 @@ export function kpiFormGoalAndTargetSectionHtml(kpi, escapeHtml, opts = {}) {
 }
 
 /** 기본 KPI 제외 — 모든 목표 방식에 시작일·마감일 */
-function kpiFormPeriodSectionHtml(kpi, escapeHtml, _opts = {}) {
+function kpiFormPeriodSectionHtml(kpi, escapeHtml, opts = {}) {
   if (isDefaultAppKpiId(kpi?.id)) return "";
+  const preferredStatus = String(opts.preferredProgressStatus || "")
+    .trim()
+    .toLowerCase();
+  /* 진행전 추가: 아직 모를 수 있어 시작일 오늘 자동 채움 안 함 */
   const startVal =
     (kpi?.targetStartDate || "").trim().slice(0, 10) ||
-    (!kpi ? localTodayYmd() : "");
+    (!kpi && preferredStatus !== KPI_PROGRESS_STATUS.PENDING
+      ? localTodayYmd()
+      : "");
   const deadlineVal = (kpi?.targetDeadline || "").trim().slice(0, 10);
   return `
             <div class="dream-kpi-period-block" data-kpi-period-fields data-legacy="time-add-task-field">
@@ -310,8 +317,12 @@ export function validateKpiActionForm(form, opts = {}) {
     const deadline = (
       form.querySelector('input[name="targetDeadline"]')?.value || ""
     ).trim();
-    if (!start) addError("targetStartDate", "시작일을 선택해 주세요.");
-    if (!deadline) addError("targetDeadline", "마감일을 선택해 주세요.");
+    const status = readKpiProgressStatusFromForm(form);
+    /* 진행전: 시작·마감 아직 모를 수 있어 필수 아님 */
+    if (status !== KPI_PROGRESS_STATUS.PENDING) {
+      if (!start) addError("targetStartDate", "시작일을 선택해 주세요.");
+      if (!deadline) addError("targetDeadline", "마감일을 선택해 주세요.");
+    }
     if (start && deadline && start > deadline) {
       addError("targetDeadline", "마감일은 시작일 이후로 선택해 주세요.");
     }
@@ -367,11 +378,16 @@ function readKpiPeriodFieldsFromForm(form, _mode, opts = {}) {
     .trim()
     .slice(0, 10);
   if (!targetStartDate) {
-    const existingStart = (opts.existingKpi?.targetStartDate || "")
-      .trim()
-      .slice(0, 10);
-    targetStartDate =
-      opts.isNewKpi || !existingStart ? localTodayYmd() : existingStart;
+    const status = readKpiProgressStatusFromForm(form);
+    if (status === KPI_PROGRESS_STATUS.PENDING) {
+      targetStartDate = "";
+    } else {
+      const existingStart = (opts.existingKpi?.targetStartDate || "")
+        .trim()
+        .slice(0, 10);
+      targetStartDate =
+        opts.isNewKpi || !existingStart ? localTodayYmd() : existingStart;
+    }
   }
   return { targetStartDate, targetDeadline: deadline };
 }
