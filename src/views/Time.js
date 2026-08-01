@@ -1213,12 +1213,13 @@ function scheduleSyncHabitTrackerLogs() {
 
 /**
  * @param {object[]} rows
- * @param {{ forceRows?: object[] }} [opts] — 모달 추가·수정 행: 서버에 무조건 upsert
+ * @param {{ forceRows?: object[], skipPull?: boolean }} [opts] — 모달 추가·수정 행: 서버에 무조건 upsert
  * @returns {Promise<{ ok: boolean, reason?: string, pushedCount?: number }>}
  */
 function saveTimeRows(rows, opts = {}) {
   try {
     const forceRows = Array.isArray(opts.forceRows) ? opts.forceRows : [];
+    const skipPull = !!opts.skipPull;
     const forceIds = new Set(
       forceRows.map((r) => String(r?.id || "").trim()).filter((id) => isUuid(id)),
     );
@@ -1302,6 +1303,7 @@ function saveTimeRows(rows, opts = {}) {
       return pushDirtyTimeLedgerEntriesToSupabase({
         entryIds: pushEntryIds.length ? pushEntryIds : undefined,
         forceRows: forceRows.length ? forceRows : undefined,
+        skipPull,
       });
     }
     return Promise.resolve({ ok: true, pushedCount: 0, reason: "no_push_needed" });
@@ -1332,6 +1334,7 @@ async function pushTimeRowsAfterModalSaveWithRetry(
       last = await pushDirtyTimeLedgerEntriesToSupabase({
         entryIds: ids.length ? ids : undefined,
         forceRows: forced.length ? forced : undefined,
+        skipPull: true,
       });
       if (last?.ok && (last.pushedCount || 0) > 0) return last;
       if (last?.ok && !forced.length && !ids.length) return last;
@@ -1363,6 +1366,7 @@ function scheduleSilentTimeLedgerPushRetry(entryIds, forceRows = []) {
       void pushDirtyTimeLedgerEntriesToSupabase({
         entryIds: ids.length ? ids : undefined,
         forceRows: forced.length ? forced : undefined,
+        skipPull: true,
       }).catch(() => {});
     }, ms);
   });
@@ -12802,10 +12806,11 @@ export function render(opts = {}) {
         preferIds,
       );
       allRowsCache = rowsToPersist;
-      /* 모달 추가·수정: 로컬 저장 후 서버 확인될 때까지 모달을 닫지 않음 */
+      /* 로컬 즉시 저장·모달 닫기. 서버 upsert는 이어서(대기열에 묶이지 않게 skipPull) */
       const forceRows = forceRow ? [forceRow] : [];
       const pushPromise = saveTimeRows(rowsToPersist, {
         forceRows,
+        skipPull: true,
       });
       onFilterChange(true);
 
@@ -12887,51 +12892,41 @@ export function render(opts = {}) {
         if (editTr) refreshTimeLedgerRowMemoDisplay(editTr, rowForMemo);
         if (addLedgerTr) refreshTimeLedgerRowMemoDisplay(addLedgerTr, rowForMemo);
       }
-
-      let pushResult;
-      try {
-        pushResult = await pushPromise;
-      } catch (_) {
-        pushResult = { ok: false, pushedCount: 0, reason: "push_threw" };
-      }
-      if (
-        !pushResult?.ok ||
-        ((forceRows.length > 0 || isUuid(pushedId)) &&
-          (pushResult.pushedCount || 0) === 0)
-      ) {
-        pushResult = await pushTimeRowsAfterModalSaveWithRetry([pushedId], {
-          attempts: 4,
-          forceRows,
-        });
-      }
-      const pushOk =
-        !!pushResult?.ok &&
-        ((pushResult.pushedCount || 0) > 0 ||
-          (!forceRows.length && !isUuid(pushedId)));
-      if (!pushOk) {
-        scheduleSilentTimeLedgerPushRetry([pushedId], forceRows);
-        await showAlertModal({
-          message:
-            "서버에 저장되지 않았습니다. 인터넷 연결을 확인한 뒤 다시 저장해 주세요.",
-        });
-        if (el.isConnected) {
-          try {
-            refreshTimeLedgerFromRemotePull({ force: true });
-          } catch (_) {}
-        }
-        return;
-      }
-
       closeTaskLogModal();
       el._updateTotal?.();
       if (shouldNotifyHabit) {
         notifyHabitTrackerUiAfterTimeSave();
       }
-      if (el.isConnected) {
+
+      void (async () => {
+        let pushResult;
         try {
-          refreshTimeLedgerFromRemotePull({ force: true });
-        } catch (_) {}
-      }
+          pushResult = await pushPromise;
+        } catch (_) {
+          pushResult = { ok: false, pushedCount: 0, reason: "push_threw" };
+        }
+        if (
+          !pushResult?.ok ||
+          ((forceRows.length > 0 || isUuid(pushedId)) &&
+            (pushResult.pushedCount || 0) === 0)
+        ) {
+          pushResult = await pushTimeRowsAfterModalSaveWithRetry([pushedId], {
+            attempts: 4,
+            forceRows,
+          });
+        }
+        if (
+          (!pushResult?.ok || (pushResult.pushedCount || 0) === 0) &&
+          (forceRows.length || isUuid(pushedId))
+        ) {
+          scheduleSilentTimeLedgerPushRetry([pushedId], forceRows);
+        }
+        if (el.isConnected) {
+          try {
+            refreshTimeLedgerFromRemotePull({ force: true });
+          } catch (_) {}
+        }
+      })();
       return;
     }
     closeTaskLogModal();

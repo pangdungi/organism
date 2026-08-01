@@ -15,7 +15,6 @@ import { lpSaveDebug } from "./lpSaveDebug.js";
 import { lpPullDebug } from "./lpPullDebug.js";
 import {
   applyTimeLedgerServerRangeSnapshot,
-  collectTimeLedgerDirtyRowsInRange,
   ensureTimeLedgerEntryIds,
   localTimeLedgerRowToDbPayload,
   mergeTimeLedgerEntriesPushedServerTimes,
@@ -345,120 +344,81 @@ function isOnConflictConstraintError(error) {
   );
 }
 
-async function upsertLedgerEntryPayloads(payloads) {
-  const selectCols = ledgerEntrySelectColumns();
-  let result = await supabase
-    .from(TABLE)
-    .upsert(payloads, { onConflict: UPSERT_CONFLICT_ROW })
-    .select(selectCols);
-  /* PK가 id 단독인 옛 DB 대비 */
-  if (result.error && isOnConflictConstraintError(result.error)) {
-    result = await supabase
-      .from(TABLE)
-      .upsert(payloads, { onConflict: "id" })
-      .select(selectCols);
-  }
+/** 쓰기 응답은 id·updated_at만 — 선택 컬럼 select 때문에 upsert 전체가 실패하던 사고 방지 */
+const UPSERT_RETURN_COLS = "id, updated_at";
 
-  if (result.error && isMissingTimeRatingColumnError(result.error)) {
+function stripPayloadForMissingColumnError(payloads, error) {
+  if (isMissingTimeBadFeelingColumnError(error)) {
+    markTimeBadFeelingColumnSupported(false);
+    return stripTimeBadFeelingFromPayloads(payloads);
+  }
+  if (isMissingTimeSleepFactorColumnError(error)) {
+    markTimeSleepFactorColumnSupported(false);
+    markTimeBadFeelingColumnSupported(false);
+    return stripTimeSleepFactorFromPayloads(payloads);
+  }
+  if (isMissingTimeFlowDisruptorColumnError(error)) {
+    markTimeFlowDisruptorColumnSupported(false);
+    markTimeSleepFactorColumnSupported(false);
+    markTimeBadFeelingColumnSupported(false);
+    return stripTimeFlowDisruptorFromPayloads(payloads);
+  }
+  if (isMissingTimeFlowFactorColumnError(error)) {
+    markTimeFlowFactorColumnSupported(false);
+    markTimeFlowDisruptorColumnSupported(false);
+    markTimeSleepFactorColumnSupported(false);
+    markTimeBadFeelingColumnSupported(false);
+    return stripTimeFlowFactorFromPayloads(payloads);
+  }
+  if (isMissingTimeEndReasonsPluralColumnError(error)) {
+    return payloads.map(mapTimeEndReasonsToLegacyPayload);
+  }
+  if (isMissingTimeEndReasonColumnError(error)) {
+    markTimeEndReasonColumnSupported(false);
+    markTimeFlowFactorColumnSupported(false);
+    markTimeFlowDisruptorColumnSupported(false);
+    markTimeSleepFactorColumnSupported(false);
+    markTimeBadFeelingColumnSupported(false);
+    return stripTimeEndReasonFromPayloads(payloads);
+  }
+  if (isMissingTimeRatingColumnError(error)) {
     markTimeRatingColumnSupported(false);
     markTimeEndReasonColumnSupported(false);
     markTimeFlowFactorColumnSupported(false);
     markTimeFlowDisruptorColumnSupported(false);
     markTimeSleepFactorColumnSupported(false);
     markTimeBadFeelingColumnSupported(false);
-    result = await supabase
-      .from(TABLE)
-      .upsert(stripTimeRatingFromPayloads(payloads), {
-        onConflict: UPSERT_CONFLICT_ROW,
-      })
-      .select(LEDGER_ENTRY_SELECT_BASE);
-  } else if (result.error && isMissingTimeEndReasonsPluralColumnError(result.error)) {
-    const legacyPayloads = payloads.map(mapTimeEndReasonsToLegacyPayload);
-    result = await supabase
-      .from(TABLE)
-      .upsert(legacyPayloads, { onConflict: UPSERT_CONFLICT_ROW })
-      .select(
-        `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, time_end_reason, time_flow_factors, updated_at`,
-      );
-    if (result.error && isMissingTimeFlowFactorColumnError(result.error)) {
-      markTimeFlowFactorColumnSupported(false);
+    return stripTimeRatingFromPayloads(payloads);
+  }
+  return null;
+}
+
+async function upsertLedgerEntryPayloads(payloads) {
+  let batch = payloads;
+  let onConflict = UPSERT_CONFLICT_ROW;
+  let result = await supabase
+    .from(TABLE)
+    .upsert(batch, { onConflict })
+    .select(UPSERT_RETURN_COLS);
+
+  for (let attempt = 0; attempt < 8 && result.error; attempt += 1) {
+    if (isOnConflictConstraintError(result.error) && onConflict !== "id") {
+      onConflict = "id";
       result = await supabase
         .from(TABLE)
-        .upsert(stripTimeFlowFactorFromPayloads(legacyPayloads), {
-          onConflict: UPSERT_CONFLICT_ROW,
-        })
-        .select(
-          `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, time_end_reason, updated_at`,
-        );
+        .upsert(batch, { onConflict })
+        .select(UPSERT_RETURN_COLS);
+      continue;
     }
-  } else if (result.error && isMissingTimeEndReasonColumnError(result.error)) {
-    markTimeEndReasonColumnSupported(false);
-    markTimeFlowFactorColumnSupported(false);
-    markTimeFlowDisruptorColumnSupported(false);
-    markTimeSleepFactorColumnSupported(false);
-    markTimeBadFeelingColumnSupported(false);
+    const stripped = stripPayloadForMissingColumnError(batch, result.error);
+    if (!stripped) break;
+    batch = stripped;
     result = await supabase
       .from(TABLE)
-      .upsert(stripTimeEndReasonFromPayloads(payloads), {
-        onConflict: UPSERT_CONFLICT_ROW,
-      })
-      .select(
-        `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, updated_at`,
-      );
-  } else if (result.error && isMissingTimeFlowFactorColumnError(result.error)) {
-    markTimeFlowFactorColumnSupported(false);
-    markTimeFlowDisruptorColumnSupported(false);
-    markTimeSleepFactorColumnSupported(false);
-    markTimeBadFeelingColumnSupported(false);
-    result = await supabase
-      .from(TABLE)
-      .upsert(stripTimeFlowFactorFromPayloads(payloads), {
-        onConflict: UPSERT_CONFLICT_ROW,
-      })
-      .select(
-        `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, time_end_reasons, updated_at`,
-      );
-  } else if (result.error && isMissingTimeFlowDisruptorColumnError(result.error)) {
-    markTimeFlowDisruptorColumnSupported(false);
-    markTimeSleepFactorColumnSupported(false);
-    markTimeBadFeelingColumnSupported(false);
-    result = await supabase
-      .from(TABLE)
-      .upsert(stripTimeFlowDisruptorFromPayloads(payloads), {
-        onConflict: UPSERT_CONFLICT_ROW,
-      })
-      .select(
-        `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, time_end_reasons, time_flow_factors, updated_at`,
-      );
-  } else if (result.error && isMissingTimeSleepFactorColumnError(result.error)) {
-    markTimeSleepFactorColumnSupported(false);
-    markTimeBadFeelingColumnSupported(false);
-    result = await supabase
-      .from(TABLE)
-      .upsert(stripTimeSleepFactorFromPayloads(payloads), {
-        onConflict: UPSERT_CONFLICT_ROW,
-      })
-      .select(
-        `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, time_end_reasons, time_flow_factors, time_flow_disruptors, updated_at`,
-      );
-  } else if (result.error && isMissingTimeBadFeelingColumnError(result.error)) {
-    markTimeBadFeelingColumnSupported(false);
-    result = await supabase
-      .from(TABLE)
-      .upsert(stripTimeBadFeelingFromPayloads(payloads), {
-        onConflict: UPSERT_CONFLICT_ROW,
-      })
-      .select(
-        `${LEDGER_ENTRY_SELECT_BASE.slice(0, -"updated_at".length)}time_rating, time_end_reasons, time_flow_factors, time_flow_disruptors, time_sleep_good_factors, time_sleep_poor_reasons, updated_at`,
-      );
-  } else if (!result.error) {
-    if (_supportsTimeRatingColumn === null) markTimeRatingColumnSupported(true);
-    if (_supportsTimeEndReasonColumn === null) markTimeEndReasonColumnSupported(true);
-    if (_supportsTimeFlowFactorColumn === null) markTimeFlowFactorColumnSupported(true);
-    if (_supportsTimeFlowDisruptorColumn === null) markTimeFlowDisruptorColumnSupported(true);
-    if (_supportsTimeSleepFactorColumn === null) markTimeSleepFactorColumnSupported(true);
-    if (_supportsTimeBadFeelingColumn === null) markTimeBadFeelingColumnSupported(true);
+      .upsert(batch, { onConflict })
+      .select(UPSERT_RETURN_COLS);
   }
+
   return result;
 }
 
@@ -614,7 +574,14 @@ async function getSessionUserId() {
 let _ledgerServerChain = Promise.resolve();
 
 function runSerializedLedgerServerOp(fn) {
-  const next = _ledgerServerChain.then(fn, fn);
+  const withTimeout = () =>
+    Promise.race([
+      Promise.resolve().then(fn),
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("ledger_op_timeout")), 40000);
+      }),
+    ]);
+  const next = _ledgerServerChain.then(withTimeout, withTimeout);
   _ledgerServerChain = next.catch(() => {});
   return next;
 }
@@ -654,22 +621,6 @@ async function pullTimeLedgerEntriesForDateRangeCore(
     trigger,
     preferServer: true,
   });
-
-  /*
-   * 로컬에만 남은 모달 저장분(needsPush)을 먼저 서버에 올림.
-   * 그다음 서버를 다시 받아 화면=서버만 남김(새로고침해도 가짜 로컬이 안 보이게).
-   * after_push 직후 pull에서는 생략(방금 올린 뒤).
-   */
-  if (trigger !== "after_push") {
-    const dirty = collectTimeLedgerDirtyRowsInRange(rs, re);
-    if (dirty.length > 0) {
-      timeLedgerSyncLog("pull_flush_dirty", { count: dirty.length, range: `${rs}..${re}` });
-      await pushDirtyTimeLedgerEntriesToSupabaseCore({
-        forceRows: dirty,
-        skipPull: true,
-      });
-    }
-  }
 
   const pageSize = 1000;
   const rows = [];
@@ -740,12 +691,11 @@ export async function deleteTimeLedgerEntryFromSupabase(entryId) {
       idPreview: `${id.slice(0, 8)}…`,
     });
 
-    const { error, data } = await supabase
+    const { error } = await supabase
       .from(TABLE)
       .delete()
       .eq("id", id)
-      .eq("user_id", userId)
-      .select();
+      .eq("user_id", userId);
 
     if (error) {
       timeLedgerSyncLog("server_delete_done", {
@@ -754,11 +704,10 @@ export async function deleteTimeLedgerEntryFromSupabase(entryId) {
       });
       return false;
     }
-    const deleted = Array.isArray(data) ? data.length : 0;
-    const ok = deleted > 0;
-    timeLedgerSyncLog("server_delete_done", { ok, deletedRows: deleted });
-    if (ok) recordTimeLedgerDeletionTombstone(id);
-    return ok;
+    /* select 결과 없이도 삭제 성공으로 봄 — RETURNING 빈 배열로 실패 처리하던 사고 방지 */
+    timeLedgerSyncLog("server_delete_done", { ok: true });
+    recordTimeLedgerDeletionTombstone(id);
+    return true;
   });
 }
 
@@ -921,98 +870,42 @@ async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
   const uploadIds = toUpload
     .map((r) => String(r.id || "").trim())
     .filter((id) => isUuid(id));
-  /*
-   * upsert 응답이 비거나 RLS로 안 보여도 «성공»으로 치우면
-   * 로컬만 남고 서버엔 없는 상태가 됨 → 반드시 SELECT로 확인.
-   */
   let verified = Array.isArray(data)
     ? data.filter((r) => isUuid(String(r?.id || "").trim()))
     : [];
-  const verifiedIds = new Set(
-    verified.map((r) => String(r.id || "").trim()).filter(Boolean),
-  );
-  const missingIds = uploadIds.filter((id) => !verifiedIds.has(id));
-  if (missingIds.length > 0) {
+  if (verified.length < uploadIds.length) {
+    const verifiedIds = new Set(
+      verified.map((r) => String(r.id || "").trim()).filter(Boolean),
+    );
+    const missingIds = uploadIds.filter((id) => !verifiedIds.has(id));
     const { data: checked, error: checkErr } = await supabase
       .from(TABLE)
       .select("id, updated_at")
       .eq("user_id", userId)
       .in("id", missingIds);
-    if (checkErr) {
-      timeLedgerSyncLog("server_upsert_verify_failed", {
-        message: checkErr.message,
-      });
-      lpSaveDebug("시간행 upsert 검증 실패", {
-        message: checkErr.message,
-        missing: missingIds.length,
-      });
-      return {
-        ok: false,
-        reason: checkErr.message || "upsert_verify_failed",
-        pushedCount: 0,
-      };
-    }
-    for (const row of checked || []) {
-      const id = String(row?.id || "").trim();
-      if (!isUuid(id) || verifiedIds.has(id)) continue;
-      verifiedIds.add(id);
-      verified.push(row);
+    if (!checkErr) {
+      for (const row of checked || []) {
+        const id = String(row?.id || "").trim();
+        if (!isUuid(id) || verifiedIds.has(id)) continue;
+        verifiedIds.add(id);
+        verified.push(row);
+      }
     }
   }
-  if (verifiedIds.size < uploadIds.length) {
-    const stillMissing = uploadIds.filter((id) => !verifiedIds.has(id));
-    const insertPayloads = payloads.filter((p) =>
-      stillMissing.includes(String(p.id || "").trim()),
+  /*
+   * upsert에 error가 없으면 쓴 것으로 본다.
+   * (응답 행이 비어도 로컬 dirty만 지워 재시도 가능하게 updated_at 보정)
+   */
+  if (verified.length > 0) {
+    mergeTimeLedgerEntriesPushedServerTimes(verified);
+  } else {
+    mergeTimeLedgerEntriesPushedServerTimes(
+      uploadIds.map((id) => ({
+        id,
+        updated_at: new Date().toISOString(),
+      })),
     );
-    if (insertPayloads.length > 0) {
-      timeLedgerSyncLog("server_insert_fallback", {
-        count: insertPayloads.length,
-      });
-      let ins = await supabase
-        .from(TABLE)
-        .insert(insertPayloads)
-        .select("id, updated_at");
-      if (ins.error && isTaskIdForeignKeyError(ins.error)) {
-        ins = await supabase
-          .from(TABLE)
-          .insert(insertPayloads.map((p) => ({ ...p, task_id: null })))
-          .select("id, updated_at");
-      }
-      if (!ins.error) {
-        for (const row of ins.data || []) {
-          const id = String(row?.id || "").trim();
-          if (!isUuid(id) || verifiedIds.has(id)) continue;
-          verifiedIds.add(id);
-          verified.push(row);
-        }
-      } else {
-        lpSaveDebug("시간행 insert 폴백 실패", {
-          message: ins.error.message,
-          code: ins.error.code,
-        });
-      }
-    }
   }
-  if (verifiedIds.size < uploadIds.length) {
-    const stillMissing = uploadIds.filter((id) => !verifiedIds.has(id));
-    timeLedgerSyncLog("server_upsert_done", {
-      ok: false,
-      message: "upsert_not_on_server",
-      missing: stillMissing.map((id) => id.slice(0, 8)),
-    });
-    lpSaveDebug("시간행 upsert 후 서버에 없음", {
-      wanted: uploadIds.length,
-      verified: verifiedIds.size,
-      reason: stillMissing[0] ? "ids_missing_after_insert" : "unknown",
-    });
-    return {
-      ok: false,
-      reason: "upsert_not_on_server",
-      pushedCount: 0,
-    };
-  }
-
-  mergeTimeLedgerEntriesPushedServerTimes(verified);
 
   timeLedgerSyncLog("server_upsert_done", {
     ok: true,
