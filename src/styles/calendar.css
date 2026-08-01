@@ -1929,6 +1929,28 @@
   flex-shrink: 0;
 }
 
+/* 주간뷰 상단 — 스탬프 숨김 (월간뷰는 그대로) */
+.calendar-1week-strip-header .calendar-monthly-day-icons {
+  display: none !important;
+}
+
+.calendar-1week-strip-header .calendar-monthly-week--has-stamps {
+  --lp-cal-stamp-strip-rem: 0;
+}
+
+/* 주간뷰 날짜 숫자 → 일간 (평소는 그냥 숫자, 호버만 아주 살짝) */
+.calendar-1week-strip-header .calendar-1week-day-num--goto-day {
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: opacity 0.12s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .calendar-1week-strip-header .calendar-1week-day-num--goto-day:hover {
+    opacity: 0.55;
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /* 1주 타임그리드 외곽 (플로우 / 구글 스타일 래퍼) */
 /* -------------------------------------------------------------------------- */
@@ -2105,31 +2127,6 @@
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
   touch-action: pan-y;
-}
-
-.calendar-1week-flow-add-plan {
-  flex-shrink: 0;
-  margin-top: auto;
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0.28rem 0.4rem;
-  border: 1px dashed color-mix(in srgb, var(--cal-line) 72%, transparent);
-  border-radius: 6px;
-  background: transparent;
-  color: var(--cal-text-muted);
-  font: inherit;
-  font-size: var(--cal-font-1week-add, 0.8125rem);
-  font-weight: 600;
-  line-height: 1;
-  text-align: center;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.calendar-1week-flow-add-plan:hover {
-  border-color: color-mix(in srgb, var(--cal-today-accent) 35%, var(--cal-line));
-  color: var(--cal-text);
-  background: color-mix(in srgb, var(--cal-surface-muted) 55%, transparent);
 }
 
 .calendar-1week-flow-card {
@@ -2525,12 +2522,6 @@
   .calendar-1week-google-col {
     gap: 0.28rem;
     padding: 0.12rem 0.08rem 0.3rem;
-  }
-
-  .calendar-1week-flow-add-plan {
-    font-size: 0.875rem;
-    padding: 0.24rem 0.32rem;
-    border-radius: 7px;
   }
 
   .calendar-1week-flow-card {

@@ -3906,16 +3906,6 @@ export function buildExpectedScheduleSpansForDateKey(dateKey) {
   return { spans: normalized, maxLane: withLanes.maxLane };
 }
 
-/** 일간 타임라인과 동일한 스팬 기준: 새 예상 일정의 제안 시작 시각(빈 날이면 00:00) */
-function defaultStartHhMmForExpectedModalFromDateKey(dateKey) {
-  const { spans } = buildExpectedScheduleSpansForDateKey(dateKey);
-  if (!spans.length) return "00:00";
-  const maxEnd = Math.max(...spans.map((s) => Number(s.endMin) || 0));
-  const h = Math.floor(maxEnd / 60) % 24;
-  const mi = maxEnd % 60;
-  return `${String(h).padStart(2, "0")}:${String(mi).padStart(2, "0")}`;
-}
-
 /** 하루 길이(분) — 0:00~23:59. 24:00(1440)으로 세면 하루끝 23:59에도 1분이 남음 */
 const CALENDAR_1DAY_LENGTH_MINUTES = 23 * 60 + 59;
 
@@ -4392,7 +4382,9 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
   }
   wrap.dataset.lpHomeTodayTimeline = "1";
 
-  let dayOffset = 0;
+  let dayOffset = Number.isFinite(viewOpts.initialDayOffset)
+    ? Math.trunc(viewOpts.initialDayOffset)
+    : 0;
   /** Date#getDay() 용 (0=일) — 네비 날짜 옆 요일 표기 */
   const NAV_WEEKDAYS_SUN0 = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -5053,10 +5045,12 @@ function renderTodoView(tabsElement) {
 }
 
 
-function render1WeekView(tabsElement) {
+function render1WeekView(tabsElement, weekOpts = {}) {
   calendar1WeekDiagLog("render1WeekView.mount");
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout";
+  const onOpenDayView =
+    typeof weekOpts.onOpenDayView === "function" ? weekOpts.onOpenDayView : null;
 
   let weekOffset = 0;
   let _1weekRenderGen = 0;
@@ -5239,8 +5233,20 @@ function render1WeekView(tabsElement) {
       const key = formatDateKey(date);
       cell.dataset.date = key;
       const dayNum = document.createElement("div");
-      dayNum.className = "calendar-monthly-day-num";
+      dayNum.className = "calendar-monthly-day-num calendar-1week-day-num--goto-day";
       dayNum.textContent = date.getDate();
+      dayNum.setAttribute("role", "button");
+      dayNum.setAttribute("tabindex", "0");
+      dayNum.setAttribute("aria-label", `${key} 일간 보기`);
+      const goDay = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        onOpenDayView?.(key);
+      };
+      dayNum.addEventListener("click", goDay);
+      dayNum.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") goDay(e);
+      });
 
       const isCurrentMonth = date.getMonth() === currentMonth;
       if (!isCurrentMonth) cell.classList.add("other-month");
@@ -5249,17 +5255,7 @@ function render1WeekView(tabsElement) {
       if (date.getDay() === 6) cell.classList.add("sat");
 
       cell.appendChild(dayNum);
-      const dayIconsEl = document.createElement("div");
-      dayIconsEl.className = "calendar-monthly-day-icons";
-      dayIconsEl.setAttribute("aria-hidden", "true");
-      renderCalendarMonthlyDayIcons(dayIconsEl, key, {
-        onAfterChange: () => {
-          patchDayStamp(key);
-          refreshTodoList();
-        },
-      });
-      cell.classList.toggle("calendar-monthly-day--has-stamp", !dayIconsEl.hidden);
-      cell.appendChild(dayIconsEl);
+      /* 주간뷰 상단 스트립 — 스탬프 미표시 (월간만 표시) */
       const entriesEl = document.createElement("div");
       entriesEl.className = "calendar-monthly-day-entries";
       cell.appendChild(entriesEl);
@@ -5285,7 +5281,6 @@ function render1WeekView(tabsElement) {
           },
           {
             onAfterStampChange: () => {
-              patchDayStamp(key);
               refreshTodoList();
             },
           },
@@ -5759,12 +5754,6 @@ function render1WeekView(tabsElement) {
           memoEl.textContent = memoTextStored;
           card.appendChild(memoEl);
         }
-        if (memoTextStored) {
-          const memoEl = document.createElement("div");
-          memoEl.className = "calendar-1week-flow-card-memo";
-          memoEl.textContent = memoTextStored;
-          card.appendChild(memoEl);
-        }
         card.addEventListener("click", () => {
           if (lpHorizontalPanNavigateRecentlyFired()) return;
           const slotIdx = resolveBudgetScheduleSlotIndex(key, span);
@@ -5785,23 +5774,7 @@ function render1WeekView(tabsElement) {
         stack.appendChild(card);
       });
 
-      const addPlanBtn = document.createElement("button");
-      addPlanBtn.type = "button";
-      addPlanBtn.className = "calendar-1week-flow-add-plan";
-      addPlanBtn.textContent = "+";
-      addPlanBtn.title = "예상 일정(계획) 추가";
-      addPlanBtn.setAttribute("aria-label", `${key} 예상 일정 추가`);
-      addPlanBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        openCalendarExpectedScheduleModal({
-          dateKey: key,
-          defaultStartHhMm: defaultStartHhMmForExpectedModalFromDateKey(key),
-          onSaved: () => refreshCalendar1WeekLocal(),
-        });
-      });
-
       col.appendChild(stack);
-      col.appendChild(addPlanBtn);
       colsWrap.appendChild(col);
     });
 
@@ -6417,12 +6390,33 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
       const monthlyLayout = renderMonthlyView(null);
       contentArea.appendChild(monthlyLayout);
     } else if (subViewId === "1week") {
-      contentArea.appendChild(render1WeekView(null));
+      contentArea.appendChild(
+        render1WeekView(null, {
+          onOpenDayView: (dateKey) => {
+            const offset = lpCalendarDayOffsetFromYmd(dateKey);
+            if (offset == null) return;
+            void renderSubView("1day", { initialDayOffset: offset });
+          },
+        }),
+      );
       calendar1WeekDiagSnapshot(contentArea, "renderSubView.afterMount1week");
     } else if (subViewId === "annual") {
       contentArea.appendChild(renderAnnualView(null));
     } else if (subViewId === "1day") {
-      contentArea.appendChild(render1DayView(null, { hideTimelineCards: true }));
+      const initialDayOffset = Number.isFinite(subOpts.initialDayOffset)
+        ? Math.trunc(subOpts.initialDayOffset)
+        : 0;
+      contentArea.appendChild(
+        render1DayView(null, {
+          hideTimelineCards: true,
+          initialDayOffset,
+        }),
+      );
+    }
+    if (subTabsControlRoot) {
+      subTabsControlRoot.querySelectorAll(".calendar-sub-tab").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.subView === subViewId);
+      });
     }
     if (scheduleSubViewsInFooter) {
       syncScheduleSubViewFooterActive(subViewId);
@@ -6497,7 +6491,18 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
                 weekDates: getCalendarGridFor1Week(0).filter(Boolean),
               }
             : subViewId === "1day"
-              ? { dayYmd: timeLedgerLocalTodayYmd() }
+              ? {
+                  dayYmd: (() => {
+                    const off = Number.isFinite(subOpts.initialDayOffset)
+                      ? Math.trunc(subOpts.initialDayOffset)
+                      : 0;
+                    if (off === 0) return timeLedgerLocalTodayYmd();
+                    const d = new Date();
+                    d.setHours(0, 0, 0, 0);
+                    d.setDate(d.getDate() + off);
+                    return formatDateKey(d);
+                  })(),
+                }
               : subViewId === "annual"
                 ? { year: now.getFullYear() }
                 : { year: now.getFullYear(), monthIndex: now.getMonth() };
@@ -6517,8 +6522,17 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
       } catch (_) {}
       if (subViewId === "1day") {
         try {
-          const yEnd = timeLedgerLocalTodayYmd();
-          const yStart = timeLedgerLocalYesterdayYmd();
+          const off = Number.isFinite(subOpts.initialDayOffset)
+            ? Math.trunc(subOpts.initialDayOffset)
+            : 0;
+          const target = new Date();
+          target.setHours(0, 0, 0, 0);
+          target.setDate(target.getDate() + off);
+          const dayYmd = formatDateKey(target);
+          const yEnd = dayYmd;
+          const yPrev = new Date(target);
+          yPrev.setDate(yPrev.getDate() - 1);
+          const yStart = formatDateKey(yPrev);
           await Promise.all([
             pullTimeLedgerEntriesForDateRange(yStart, yEnd, { force: true }),
             pullTimeDailyBudgetForDateRange(yStart, yEnd),
