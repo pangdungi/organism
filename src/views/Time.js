@@ -1299,7 +1299,6 @@ async function pushTimeRowsAfterModalSaveWithRetry(entryIds, { attempts = 3 } = 
   for (let i = 0; i < attempts; i += 1) {
     try {
       last = await pushDirtyTimeLedgerEntriesToSupabase({
-        skipPull: true,
         entryIds: ids,
       });
       if (last?.ok) return last;
@@ -1326,7 +1325,6 @@ function scheduleSilentTimeLedgerPushRetry(entryIds) {
   [2000, 6000, 15000].forEach((ms) => {
     setTimeout(() => {
       void pushDirtyTimeLedgerEntriesToSupabase({
-        skipPull: true,
         entryIds: ids,
       }).catch(() => {});
     }, ms);
