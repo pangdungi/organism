@@ -12802,9 +12802,10 @@ export function render(opts = {}) {
         preferIds,
       );
       allRowsCache = rowsToPersist;
-      /* 모달 추가·수정: 화면 표시와 별개로 해당 행을 서버에 무조건 upsert */
+      /* 모달 추가·수정: 로컬 저장 후 서버 확인될 때까지 모달을 닫지 않음 */
+      const forceRows = forceRow ? [forceRow] : [];
       const pushPromise = saveTimeRows(rowsToPersist, {
-        forceRows: forceRow ? [forceRow] : [],
+        forceRows,
       });
       onFilterChange(true);
 
@@ -12886,42 +12887,51 @@ export function render(opts = {}) {
         if (editTr) refreshTimeLedgerRowMemoDisplay(editTr, rowForMemo);
         if (addLedgerTr) refreshTimeLedgerRowMemoDisplay(addLedgerTr, rowForMemo);
       }
-      closeTaskLogModal();
-      el._updateTotal?.();
-      if (shouldNotifyHabit) {
-        notifyHabitTrackerUiAfterTimeSave();
-      }
 
-      void (async () => {
-        const forceRows = forceRow ? [forceRow] : [];
-        let pushResult;
-        try {
-          pushResult = await pushPromise;
-        } catch (_) {
-          pushResult = { ok: false, pushedCount: 0, reason: "push_threw" };
-        }
-        const needRetry =
-          !pushResult?.ok ||
-          ((forceRows.length > 0 || isUuid(pushedId)) &&
-            (pushResult.pushedCount || 0) === 0);
-        if (needRetry && (forceRows.length || isUuid(pushedId))) {
-          pushResult = await pushTimeRowsAfterModalSaveWithRetry([pushedId], {
-            attempts: 4,
-            forceRows,
-          });
-        }
-        if (
-          (!pushResult?.ok || (pushResult.pushedCount || 0) === 0) &&
-          (forceRows.length || isUuid(pushedId))
-        ) {
-          scheduleSilentTimeLedgerPushRetry([pushedId], forceRows);
-        }
+      let pushResult;
+      try {
+        pushResult = await pushPromise;
+      } catch (_) {
+        pushResult = { ok: false, pushedCount: 0, reason: "push_threw" };
+      }
+      if (
+        !pushResult?.ok ||
+        ((forceRows.length > 0 || isUuid(pushedId)) &&
+          (pushResult.pushedCount || 0) === 0)
+      ) {
+        pushResult = await pushTimeRowsAfterModalSaveWithRetry([pushedId], {
+          attempts: 4,
+          forceRows,
+        });
+      }
+      const pushOk =
+        !!pushResult?.ok &&
+        ((pushResult.pushedCount || 0) > 0 ||
+          (!forceRows.length && !isUuid(pushedId)));
+      if (!pushOk) {
+        scheduleSilentTimeLedgerPushRetry([pushedId], forceRows);
+        await showAlertModal({
+          message:
+            "서버에 저장되지 않았습니다. 인터넷 연결을 확인한 뒤 다시 저장해 주세요.",
+        });
         if (el.isConnected) {
           try {
             refreshTimeLedgerFromRemotePull({ force: true });
           } catch (_) {}
         }
-      })();
+        return;
+      }
+
+      closeTaskLogModal();
+      el._updateTotal?.();
+      if (shouldNotifyHabit) {
+        notifyHabitTrackerUiAfterTimeSave();
+      }
+      if (el.isConnected) {
+        try {
+          refreshTimeLedgerFromRemotePull({ force: true });
+        } catch (_) {}
+      }
       return;
     }
     closeTaskLogModal();

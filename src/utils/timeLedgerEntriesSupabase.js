@@ -337,12 +337,27 @@ async function fetchLedgerEntriesForRangePage(
   return result;
 }
 
+function isOnConflictConstraintError(error) {
+  const msg = `${error?.message || ""} ${error?.details || ""} ${error?.hint || ""}`;
+  return (
+    /no unique|unique constraint|ON CONFLICT|conflict/i.test(msg) ||
+    String(error?.code || "") === "42P10"
+  );
+}
+
 async function upsertLedgerEntryPayloads(payloads) {
   const selectCols = ledgerEntrySelectColumns();
   let result = await supabase
     .from(TABLE)
     .upsert(payloads, { onConflict: UPSERT_CONFLICT_ROW })
     .select(selectCols);
+  /* PK가 id 단독인 옛 DB 대비 */
+  if (result.error && isOnConflictConstraintError(result.error)) {
+    result = await supabase
+      .from(TABLE)
+      .upsert(payloads, { onConflict: "id" })
+      .select(selectCols);
+  }
 
   if (result.error && isMissingTimeRatingColumnError(result.error)) {
     markTimeRatingColumnSupported(false);
@@ -903,29 +918,109 @@ async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
     };
   }
 
-  const returnedRows = Array.isArray(data) ? data : [];
+  const uploadIds = toUpload
+    .map((r) => String(r.id || "").trim())
+    .filter((id) => isUuid(id));
   /*
-   * select 결과가 비어도 error 없으면 upsert 자체는 성공한 경우가 있음.
-   * (빈 응답만으로 실패 처리하면 추가가 영원히 안 되고 로컬에만 남음)
+   * upsert 응답이 비거나 RLS로 안 보여도 «성공»으로 치우면
+   * 로컬만 남고 서버엔 없는 상태가 됨 → 반드시 SELECT로 확인.
    */
-  if (returnedRows.length > 0) {
-    mergeTimeLedgerEntriesPushedServerTimes(returnedRows);
-  } else {
-    mergeTimeLedgerEntriesPushedServerTimes(
-      toUpload.map((r) => ({
-        id: String(r.id || "").trim(),
-        updated_at: new Date().toISOString(),
-      })),
-    );
+  let verified = Array.isArray(data)
+    ? data.filter((r) => isUuid(String(r?.id || "").trim()))
+    : [];
+  const verifiedIds = new Set(
+    verified.map((r) => String(r.id || "").trim()).filter(Boolean),
+  );
+  const missingIds = uploadIds.filter((id) => !verifiedIds.has(id));
+  if (missingIds.length > 0) {
+    const { data: checked, error: checkErr } = await supabase
+      .from(TABLE)
+      .select("id, updated_at")
+      .eq("user_id", userId)
+      .in("id", missingIds);
+    if (checkErr) {
+      timeLedgerSyncLog("server_upsert_verify_failed", {
+        message: checkErr.message,
+      });
+      lpSaveDebug("시간행 upsert 검증 실패", {
+        message: checkErr.message,
+        missing: missingIds.length,
+      });
+      return {
+        ok: false,
+        reason: checkErr.message || "upsert_verify_failed",
+        pushedCount: 0,
+      };
+    }
+    for (const row of checked || []) {
+      const id = String(row?.id || "").trim();
+      if (!isUuid(id) || verifiedIds.has(id)) continue;
+      verifiedIds.add(id);
+      verified.push(row);
+    }
   }
+  if (verifiedIds.size < uploadIds.length) {
+    const stillMissing = uploadIds.filter((id) => !verifiedIds.has(id));
+    const insertPayloads = payloads.filter((p) =>
+      stillMissing.includes(String(p.id || "").trim()),
+    );
+    if (insertPayloads.length > 0) {
+      timeLedgerSyncLog("server_insert_fallback", {
+        count: insertPayloads.length,
+      });
+      let ins = await supabase
+        .from(TABLE)
+        .insert(insertPayloads)
+        .select("id, updated_at");
+      if (ins.error && isTaskIdForeignKeyError(ins.error)) {
+        ins = await supabase
+          .from(TABLE)
+          .insert(insertPayloads.map((p) => ({ ...p, task_id: null })))
+          .select("id, updated_at");
+      }
+      if (!ins.error) {
+        for (const row of ins.data || []) {
+          const id = String(row?.id || "").trim();
+          if (!isUuid(id) || verifiedIds.has(id)) continue;
+          verifiedIds.add(id);
+          verified.push(row);
+        }
+      } else {
+        lpSaveDebug("시간행 insert 폴백 실패", {
+          message: ins.error.message,
+          code: ins.error.code,
+        });
+      }
+    }
+  }
+  if (verifiedIds.size < uploadIds.length) {
+    const stillMissing = uploadIds.filter((id) => !verifiedIds.has(id));
+    timeLedgerSyncLog("server_upsert_done", {
+      ok: false,
+      message: "upsert_not_on_server",
+      missing: stillMissing.map((id) => id.slice(0, 8)),
+    });
+    lpSaveDebug("시간행 upsert 후 서버에 없음", {
+      wanted: uploadIds.length,
+      verified: verifiedIds.size,
+      reason: stillMissing[0] ? "ids_missing_after_insert" : "unknown",
+    });
+    return {
+      ok: false,
+      reason: "upsert_not_on_server",
+      pushedCount: 0,
+    };
+  }
+
+  mergeTimeLedgerEntriesPushedServerTimes(verified);
 
   timeLedgerSyncLog("server_upsert_done", {
     ok: true,
-    returnedRowCount: returnedRows.length,
+    returnedRowCount: verified.length,
   });
   lpSaveDebug("시간행 upsert 성공", {
     rowCount: toUpload.length,
-    returned: returnedRows.length,
+    returned: verified.length,
   });
 
   if (opts.skipPull) {
