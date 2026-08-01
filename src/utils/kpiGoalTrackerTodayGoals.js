@@ -19,6 +19,7 @@ import {
   syncHabitTrackerLogs,
 } from "./timeKpiSync.js";
 import { timeLedgerLocalTodayYmd } from "./timeLedgerEntriesSupabase.js";
+import { isHabitScheduledOnYmd } from "./kpiHabitWeekdays.js";
 
 const DOMAINS = [
   { storageKey: "kpi-sideincome-paths", category: "시급" },
@@ -223,6 +224,10 @@ export function buildGoalTrackerTodayGoalsModel(opts = {}) {
       const isHabit = resolveKpiGoalMode(kpi) === "habit" || !!kpi?.needHabitTracker;
       if (opts.habitsOnly && !isHabit) continue;
       if (isHabit && isKpiHabitDateBeforeStart(kpi, todayYmd)) {
+        continue;
+      }
+      /* 매일하기 — 하는 요일이 아니면 오늘의 행동·습관 목록에서 제외 */
+      if (isHabit && !isHabitScheduledOnYmd(kpi, todayYmd)) {
         continue;
       }
       const done = isKpiExecutedToday(kpi, data, todayYmd);

@@ -198,6 +198,9 @@ function rowToKpi(r) {
     useTaskCompletionGoal: !!r.use_task_completion_goal,
     direction: r.direction === "lower" ? "lower" : "higher",
     habitTrackerStartDate: r.habit_tracker_start_date ?? "",
+    habitWeekdays: Array.isArray(r.habit_weekdays)
+      ? r.habit_weekdays
+      : [0, 1, 2, 3, 4, 5, 6],
     serverUpdatedAt: serverUpdatedAtFromRow(r),
   };
 }
@@ -395,6 +398,9 @@ function kpiToRow(userId, k) {
     use_task_completion_goal: !!k.useTaskCompletionGoal,
     direction: k.direction === "lower" ? "lower" : "higher",
     habit_tracker_start_date: (k.habitTrackerStartDate || "").trim(),
+    habit_weekdays: Array.isArray(k.habitWeekdays)
+      ? k.habitWeekdays
+      : [0, 1, 2, 3, 4, 5, 6],
   };
 }
 

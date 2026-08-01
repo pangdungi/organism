@@ -1392,13 +1392,25 @@ function getProductivityFromCategory(categoryValue) {
   return "";
 }
 
-/** 낮잠 과제: 사용시간 30분 초과 시 쾌락충족/비생산적, 30분 이하 시 건강/생산적 */
+/**
+ * 낮잠: 30분 이하 → 건강/생산적·「낮잠(30분 이내)」,
+ * 30분 초과 → 쾌락충족/비생산적·「낮잠(30분이상)」
+ */
 function getNapCategoryProductivity(timeTracked) {
   const hours = parseTimeToHours(timeTracked);
   const minutes = hours * 60;
-  if (minutes > 30)
-    return { category: "pleasure", productivity: "nonproductive" };
-  return { category: "health", productivity: "productive" };
+  if (minutes > 30) {
+    return {
+      category: "pleasure",
+      productivity: "nonproductive",
+      recordedTaskName: TTC.NAP_TASK_NAME_OVER_30,
+    };
+  }
+  return {
+    category: "health",
+    productivity: "productive",
+    recordedTaskName: TTC.NAP_TASK_NAME_WITHIN_30,
+  };
 }
 
 function resolveRowCategoryProductivityForAudit(r) {
@@ -7724,9 +7736,10 @@ export function render(opts = {}) {
               <div data-legacy="time-task-log-memo-label-row">
                 <label data-legacy="time-task-log-section-label time-task-log-memo-section-label" for="time-task-log-feedback">메모</label>
                 <div data-legacy="time-task-log-memo-quick" role="group" aria-label="메모 빠른 입력">
-                  <button type="button" data-legacy="time-task-log-memo-quick-todo" data-insert="◽️" aria-label="할 일 네모 넣기">◽️</button>
-                  <button type="button" data-legacy="time-task-log-memo-quick-ok" data-insert="✔️" aria-label="완료 표시 넣기">✔️</button>
-                  <button type="button" data-legacy="time-task-log-memo-quick-no" data-insert="❌" aria-label="불가 표시 넣기">❌</button>
+                  <button type="button" data-legacy="time-task-log-memo-quick-todo" data-insert="◽️" aria-label="할 일 네모 넣기"><span data-legacy="time-task-log-memo-quick-emoji" aria-hidden="true">&#x25AB;&#xFE0F;</span></button>
+                  <button type="button" data-legacy="time-task-log-memo-quick-ok" data-insert="✔️" aria-label="완료 표시 넣기"><span data-legacy="time-task-log-memo-quick-emoji" aria-hidden="true">&#x2714;&#xFE0F;</span></button>
+                  <button type="button" data-legacy="time-task-log-memo-quick-no" data-insert="❌" aria-label="불가 표시 넣기"><span data-legacy="time-task-log-memo-quick-emoji" aria-hidden="true">&#x274C;</span></button>
+                  <button type="button" data-legacy="time-task-log-memo-quick-music" data-insert="🎵" aria-label="음표 넣기"><span data-legacy="time-task-log-memo-quick-emoji" aria-hidden="true">&#x1F3B5;</span></button>
                 </div>
               </div>
               <textarea id="time-task-log-feedback" data-legacy="time-task-log-feedback time-task-log-memo-input" rows="2" placeholder="메모를 입력하세요"></textarea>
@@ -11229,10 +11242,25 @@ export function render(opts = {}) {
         taskLogDateStart.setAttribute("value", ymd);
       } catch (_) {}
     }
+    const hasPresetEnd = !!normalizeHhMm(
+      String(taskLogAddContext?.presetEndHhMm || ""),
+    );
     applyTaskLogStartFromLedgerForDate(ymd, {
       allowPreset: true,
-      clearEnd: true,
+      clearEnd: !hasPresetEnd,
     });
+    if (hasPresetEnd && taskLogTimeEnd) {
+      const endHh = normalizeHhMm(
+        String(taskLogAddContext.presetEndHhMm || ""),
+      );
+      taskLogTimeEnd.value = endHh;
+      try {
+        taskLogTimeEnd.defaultValue = endHh;
+      } catch (_) {}
+      syncEndToHidden();
+      updateEndTimeClearVisibility();
+      updateTaskLogTimeOrderWarning();
+    }
     const wrap = taskLogDateStart?.closest?.(
       '[data-legacy~="time-task-log-date-native-wrap"]',
     );
@@ -11591,9 +11619,12 @@ export function render(opts = {}) {
       taskLogTaskWrap.appendChild(taskLogTaskDropdown);
     }
     taskLogTaskDropdown._setLedgerBucketPreset?.(null);
-    taskLogTaskDropdown._setValue?.(data.taskName || "", {
-      taskId: data.taskId,
-    });
+    taskLogTaskDropdown._setValue?.(
+      TTC.canonicalNapPickerTaskName(data.taskName || "") || data.taskName || "",
+      {
+        taskId: data.taskId,
+      },
+    );
     setStartFromDatetime(startTime || "");
     setEndFromDatetime(endTime || "");
     updateEndTimeClearVisibility();
@@ -11725,7 +11756,7 @@ export function render(opts = {}) {
     let addLedgerTr = null;
     let oldRowDataToRemove = null;
 
-    const taskName = TTC.canonicalMealTaskDisplayName(
+    let taskName = TTC.canonicalMealTaskDisplayName(
       (taskLogTaskDropdown?._getValue?.() || "").trim(),
     );
     const startRaw = (taskLogStartInput.value || "").trim();
@@ -11938,6 +11969,7 @@ export function render(opts = {}) {
       const nap = getNapCategoryProductivity(timeTracked);
       category = nap.category;
       productivity = nap.productivity;
+      if (nap.recordedTaskName) taskName = nap.recordedTaskName;
     }
     const dateStr = parseDateFromDateTime(startTime) || toDateStr(new Date());
     const focusValue = "";
@@ -14235,6 +14267,16 @@ export function render(opts = {}) {
     }
     const r = el._lpTaskLogModalLedgerRefs;
     if (!r?.hiddenTbody) return;
+    const editRow =
+      partial?.editRowData && typeof partial.editRowData === "object"
+        ? partial.editRowData
+        : null;
+    if (editRow) {
+      const stub = document.createElement("div");
+      stub._rowData = editRow;
+      void openTaskLogModalForEdit(stub, editRow);
+      return;
+    }
     openTaskLogModal({
       productivity: null,
       tbody: r.hiddenTbody,

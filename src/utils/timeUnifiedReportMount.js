@@ -4452,6 +4452,23 @@ function createFocusEndReasonRow(label, barPct, countMeta, tip, color) {
   return wrap;
 }
 
+/** 일간 레포트 — 막대 대신 요약·행동 제안 문구 */
+function appendDayReportAdviceLines(parent, lines) {
+  const list = (Array.isArray(lines) ? lines : [])
+    .map((t) => String(t || "").trim())
+    .filter(Boolean);
+  if (!list.length || !(parent instanceof HTMLElement)) return;
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-focus-day-advice";
+  list.forEach((text) => {
+    const p = document.createElement("p");
+    p.className = "lp-tr2-focus-end-reason-tip lp-tr2-focus-day-advice-line";
+    p.textContent = text;
+    wrap.appendChild(p);
+  });
+  parent.appendChild(wrap);
+}
+
 function pickFocusHourRanks(hourGrid, { best = true, take = 3, minCount = 1 } = {}) {
   const scored = (hourGrid || []).filter(
     (h) =>
@@ -4517,18 +4534,44 @@ function buildFocusNextPlanLines(ratingSnap, focusSnap) {
   return lines;
 }
 
-function mountFocusDisruptorAnalysisBlock(sec, analysis) {
+function mountFocusDisruptorAnalysisBlock(sec, analysis, { isDay = false } = {}) {
   if (!analysis?.show) return;
 
   const analysisBlock = createRatingBlock(
     "이럴 때 집중이 안 됐음",
-    "1~2점일 때 고른 방해 요소 · 다음에 피하면 좋은 조건",
+    isDay
+      ? "오늘 1~2점에서 고른 방해 요소 · 다음에 피하면 좋은 조건"
+      : "1~2점일 때 고른 방해 요소 · 다음에 피하면 좋은 조건",
   );
 
   const insight = document.createElement("p");
   insight.className = "lp-tr2-focus-disruptor-insight";
   insight.textContent = analysis.oneLiner;
   analysisBlock.appendChild(insight);
+
+  if (isDay) {
+    const labels = (analysis.ranking || [])
+      .slice(0, 5)
+      .map((item) => String(item?.label || "").trim())
+      .filter(Boolean);
+    const advice = [];
+    if (labels.length) {
+      advice.push(
+        `오늘은 「${labels.join("」, 「")}」 때문에 집중이 잘 안 된 편입니다.`,
+      );
+      advice.push("다음에는 이 조건이 덜한 시간·장소에서 집중 블록을 잡아 보세요.");
+    }
+    appendDayReportAdviceLines(analysisBlock, advice);
+    if (!labels.length && analysis.sessionCount > 0) {
+      const note = document.createElement("p");
+      note.className = "lp-tr2-chart-note";
+      note.textContent =
+        "1~2점일 때 몰입 방해 요소를 고르면, 다음에 피할 조건이 정리됩니다.";
+      analysisBlock.appendChild(note);
+    }
+    sec.appendChild(analysisBlock);
+    return;
+  }
 
   if (analysis.ranking.length) {
     analysisBlock.appendChild(
@@ -4585,13 +4628,16 @@ function mountFocusDisruptorAnalysisBlock(sec, analysis) {
   sec.appendChild(analysisBlock);
 }
 
-function mountNonproductiveBadFeelingReportSection(scrollWrap, rows) {
+function mountNonproductiveBadFeelingReportSection(scrollWrap, range, rows) {
   const snap = buildNonproductiveBadFeelingReportSnapshot(rows);
   if (!snap?.show) return;
+  const isDay = range?.start === range?.end;
 
   const sec = createSection(
     "무기력을 유발하는 행동",
-    "비생산적 작업 1~3점에서 고른 «별로였던 이유» · 다음에 줄이면 좋은 행동",
+    isDay
+      ? "오늘 비생산적 1~3점에서 고른 이유 · 다음에 줄이면 좋은 행동"
+      : "비생산적 작업 1~3점에서 고른 «별로였던 이유» · 다음에 줄이면 좋은 행동",
   );
   sec.classList.add("lp-tr2-bad-feeling-section");
 
@@ -4599,6 +4645,27 @@ function mountNonproductiveBadFeelingReportSection(scrollWrap, rows) {
   insight.className = "lp-tr2-focus-disruptor-insight";
   insight.textContent = snap.oneLiner;
   sec.appendChild(insight);
+
+  if (isDay) {
+    const advice = [];
+    const behaviors = (snap.behaviors || []).slice(0, 4);
+    if (behaviors.length) {
+      advice.push(
+        `오늘은 「${behaviors.map((b) => b.taskName).join("」, 「")}」에서 무기력한 느낌이 있었습니다.`,
+      );
+    }
+    const reasons = (snap.reasonRanking || [])
+      .slice(0, 4)
+      .map((r) => r.label)
+      .filter(Boolean);
+    if (reasons.length) {
+      advice.push(`자주 느낀 이유: 「${reasons.join("」, 「")}」`);
+      advice.push("다음에는 이 행동이 길어지기 전에 끊거나, 대체 행동을 먼저 잡아 보세요.");
+    }
+    appendDayReportAdviceLines(sec, advice);
+    scrollWrap.appendChild(sec);
+    return;
+  }
 
   if (snap.behaviors.length) {
     const block = createRatingBlock(
@@ -4721,14 +4788,29 @@ function mountFocusReportSection(scrollWrap, range, rows) {
   if (focusSnap?.recipeTags?.length) {
     const recipeBlock = createRatingBlock(
       "이럴 때 집중이 잘 됐음",
-      "4~5점일 때 함께 있던 몰입 요소 · 다음에 만들기 좋은 조건",
+      isDay
+        ? "오늘 4~5점일 때 함께 있던 조건 · 다음에 비슷하게 만들기"
+        : "4~5점일 때 함께 있던 몰입 요소 · 다음에 만들기 좋은 조건",
     );
-    const bars = document.createElement("div");
-    bars.className = "lp-tr2-bars";
-    focusSnap.recipeTags.slice(0, 6).forEach((item) => {
-      bars.appendChild(createFocusRecipeTagRow(item));
-    });
-    recipeBlock.appendChild(bars);
+    if (isDay) {
+      const labels = focusSnap.recipeTags
+        .slice(0, 5)
+        .map((item) => String(item?.label || "").trim())
+        .filter(Boolean);
+      appendDayReportAdviceLines(recipeBlock, [
+        labels.length
+          ? `오늘은 「${labels.join("」, 「")}」이(가) 있을 때 집중이 잘 됐습니다.`
+          : "",
+        "다음에는 이 조건을 먼저 맞춰 두고 집중 블록을 시작해 보세요.",
+      ]);
+    } else {
+      const bars = document.createElement("div");
+      bars.className = "lp-tr2-bars";
+      focusSnap.recipeTags.slice(0, 6).forEach((item) => {
+        bars.appendChild(createFocusRecipeTagRow(item));
+      });
+      recipeBlock.appendChild(bars);
+    }
     sec.appendChild(recipeBlock);
   } else if (focusSnap && focusSnap.highFocusSessionCount > 0) {
     const note = document.createElement("p");
@@ -4741,35 +4823,54 @@ function mountFocusReportSection(scrollWrap, range, rows) {
   if (focusSnap?.endReasonAnalysis?.show) {
     const endBlock = createRatingBlock(
       "잘하다 왜 멈췄는지",
-      "4~5점일 때 고른 종료 이유 · 다음에 더 오래 유지하는 힌트",
+      isDay
+        ? "오늘 잘하다 멈춘 이유 · 다음에 더 오래 유지하려면"
+        : "4~5점일 때 고른 종료 이유 · 다음에 더 오래 유지하는 힌트",
     );
     const insight = document.createElement("p");
     insight.className = "lp-tr2-focus-disruptor-insight";
     insight.textContent = focusSnap.endReasonAnalysis.oneLiner;
     endBlock.appendChild(insight);
     if (focusSnap.endReasonAnalysis.ranking?.length) {
-      const maxCount = focusSnap.endReasonAnalysis.ranking[0]?.count || 1;
-      const list = document.createElement("div");
-      list.className = "lp-tr2-focus-end-reason-list";
-      focusSnap.endReasonAnalysis.ranking.slice(0, 8).forEach((item, i) => {
-        list.appendChild(
-          createFocusEndReasonRow(
-            `${i + 1}. ${item.label}`,
-            Math.round((item.count / maxCount) * 100),
-            `${item.count}회 · ${item.pct}%`,
-            item.tip || "",
-            "#1e4d7b",
-          ),
-        );
-      });
-      endBlock.appendChild(list);
+      if (isDay) {
+        const advice = focusSnap.endReasonAnalysis.ranking
+          .slice(0, 4)
+          .map((item) => {
+            const tip = String(item?.tip || "").trim();
+            const label = String(item?.label || "").trim();
+            if (!label) return "";
+            return tip
+              ? `「${label}」이(가) 잦다면 → ${tip}`
+              : `「${label}」으로 멈춘 경우가 있었습니다.`;
+          })
+          .filter(Boolean);
+        appendDayReportAdviceLines(endBlock, advice);
+      } else {
+        const maxCount = focusSnap.endReasonAnalysis.ranking[0]?.count || 1;
+        const list = document.createElement("div");
+        list.className = "lp-tr2-focus-end-reason-list";
+        focusSnap.endReasonAnalysis.ranking.slice(0, 8).forEach((item, i) => {
+          list.appendChild(
+            createFocusEndReasonRow(
+              `${i + 1}. ${item.label}`,
+              Math.round((item.count / maxCount) * 100),
+              `${item.count}회 · ${item.pct}%`,
+              item.tip || "",
+              "#1e4d7b",
+            ),
+          );
+        });
+        endBlock.appendChild(list);
+      }
     }
     sec.appendChild(endBlock);
   }
 
   /* 4) 어떨 때 안 좋았는지 */
   if (focusSnap) {
-    mountFocusDisruptorAnalysisBlock(sec, focusSnap.disruptorAnalysis);
+    mountFocusDisruptorAnalysisBlock(sec, focusSnap.disruptorAnalysis, {
+      isDay,
+    });
   }
 
   if (!isDay && ratingSnap?.weekdayGrid?.some((w) => w.count > 0)) {
@@ -4784,20 +4885,35 @@ function mountFocusReportSection(scrollWrap, range, rows) {
   if (ratingSnap?.topTasks?.length) {
     const block = createRatingBlock(
       "어떤 활동에서",
-      "과제별 평균 집중도 · 집중이 잘 된 활동 유형",
+      isDay
+        ? "오늘 집중이 잘 된 활동 · 다음에 우선해 볼 유형"
+        : "과제별 평균 집중도 · 집중이 잘 된 활동 유형",
     );
-    const bars = document.createElement("div");
-    bars.className = "lp-tr2-bars";
-    ratingSnap.topTasks.forEach((t) => {
-      bars.appendChild(
-        createReturnRateBarRow(
-          t.name,
-          t.avgMult,
-          `${t.count}회 · ${formatIntegerMinutesDurationKo(t.minutes)}`,
-        ),
-      );
-    });
-    block.appendChild(bars);
+    if (isDay) {
+      const labels = ratingSnap.topTasks
+        .slice(0, 5)
+        .map((t) => String(t?.name || "").trim())
+        .filter(Boolean);
+      appendDayReportAdviceLines(block, [
+        labels.length
+          ? `오늘은 「${labels.join("」, 「")}」에서 집중이 잘 됐습니다.`
+          : "",
+        "비슷한 활동을 집중이 잘 되는 시간대에 먼저 배치해 보세요.",
+      ]);
+    } else {
+      const bars = document.createElement("div");
+      bars.className = "lp-tr2-bars";
+      ratingSnap.topTasks.forEach((t) => {
+        bars.appendChild(
+          createReturnRateBarRow(
+            t.name,
+            t.avgMult,
+            `${t.count}회 · ${formatIntegerMinutesDurationKo(t.minutes)}`,
+          ),
+        );
+      });
+      block.appendChild(bars);
+    }
     sec.appendChild(block);
   }
 
@@ -7107,6 +7223,6 @@ export function mountUnifiedTimeReport(scrollWrap, arg2, arg3) {
   mountHabitCheckSection(scrollWrap, range);
   mountHappinessRoutineSection(scrollWrap, range);
   mountFocusReportSection(scrollWrap, range, rows);
-  mountNonproductiveBadFeelingReportSection(scrollWrap, rows);
+  mountNonproductiveBadFeelingReportSection(scrollWrap, range, rows);
   mountPlanAdherenceSection(scrollWrap, range, rows);
 }

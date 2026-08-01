@@ -82,7 +82,7 @@ export const LP_CALENDAR_DAY_NUM_FONT_STACK =
 
 /** @param {UiFontDef} def */
 export function fontStackForDef(def) {
-  return `"${def.family}", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
+  return `"${def.family}", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
 }
 
 /** @param {string} fontId */

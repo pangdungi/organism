@@ -45,8 +45,16 @@ import {
   resolveBudgetScheduleSlotIndex,
   updateBudgetScheduleBlockAtIndex,
   getRowStartInstantForMobileCard,
+  getRowEndInstantForMobileCard,
+  rowHasEndTimeForMobileCard,
   getMobileCardEffectiveHoursForPrice,
+  ensureDetachedTimeLedgerTaskLogBridge,
 } from "./Time.js";
+import {
+  ledgerRowDisplayTaskName,
+  buildTimeLedgerCardMemoText,
+  fillTimeLedgerCardMemoElement,
+} from "../utils/timeLedgerCardKpiMemo.js";
 import { applyCalendarNavMonthLabel, formatMonthNameEn } from "../utils/lpDateDisplay.js";
 import { showToast } from "../utils/showToast.js";
 import { showAlertModal } from "../utils/confirmModal.js";
@@ -4103,6 +4111,100 @@ function dayKeyYmdCompare(a, b) {
   return String(a || "").localeCompare(String(b || ""));
 }
 
+function formatWeekFlowClockFromInst(inst) {
+  if (!inst || !(inst instanceof Date) || Number.isNaN(inst.getTime())) {
+    return "—";
+  }
+  return `${String(inst.getHours()).padStart(2, "0")}:${String(
+    inst.getMinutes(),
+  ).padStart(2, "0")}`;
+}
+
+function openWeekFlowLedgerRowEditor(rowData) {
+  const row =
+    rowData && typeof rowData === "object" ? { ...rowData } : null;
+  if (!row) return;
+  try {
+    ensureDetachedTimeLedgerTaskLogBridge();
+    window.__lpOpenTimeTaskLog?.({ editRowData: row });
+  } catch (_) {}
+}
+
+/**
+ * 오늘보다 과거 날짜는 예상 일정 모달 대신 과제 기록(시간기록)으로 연다.
+ * (주간·일간에서 과거를 예상 일정으로 고치면 화면과 안 맞음)
+ * opts.span 이 있으면 과거일 때 시간·과제 프리셋에 쓰고, 오늘·미래는 예산 슬롯 인덱스를 여기서 맞춘다.
+ */
+function openCalendarExpectedScheduleModalGuarded(opts = {}) {
+  const dk = String(opts.dateKey || "")
+    .replace(/\//g, "-")
+    .trim()
+    .slice(0, 10);
+  const todayYmd = timeLedgerLocalTodayYmd();
+  const span = opts.span && typeof opts.span === "object" ? opts.span : null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dk) && dayKeyYmdCompare(dk, todayYmd) < 0) {
+    const editName = String(
+      span?.taskName || opts.edit?.taskName || "",
+    ).trim();
+    try {
+      ensureDetachedTimeLedgerTaskLogBridge();
+      const dayRows = ledgerRowsForCalendarYmd(loadTimeRows(), dk);
+      let match = null;
+      if (span) {
+        match = dayRows.find((r) => ledgerRowMatchesExpectedSpanTask(r, span));
+      } else if (editName) {
+        match = dayRows.find((r) =>
+          ledgerRowMatchesExpectedSpanTask(r, { taskName: editName }),
+        );
+      }
+      if (match) {
+        window.__lpOpenTimeTaskLog?.({ editRowData: match });
+        return;
+      }
+      const startFromSpan =
+        (span?.startDisplay && String(span.startDisplay).trim()) ||
+        (Number.isFinite(span?.startMin)
+          ? minutesOfDayToHhMm(span.startMin)
+          : "");
+      const endFromSpan =
+        (span?.endDisplay && String(span.endDisplay).trim()) ||
+        (Number.isFinite(span?.endMin) ? minutesOfDayToHhMm(span.endMin) : "");
+      const startHhMm = String(
+        startFromSpan || opts.defaultStartHhMm || "",
+      ).trim();
+      const endHhMm = String(endFromSpan || "").trim();
+      const memo = span ? expectedSpanCardMemoLines(span).join("\n") : "";
+      window.__lpOpenTimeTaskLog?.({
+        recordDateKey: dk,
+        presetTaskName: editName,
+        presetMemo: memo,
+        presetStartHhMm: startHhMm || undefined,
+        presetEndHhMm: endHhMm || undefined,
+      });
+    } catch (_) {}
+    return;
+  }
+  const { span: _drop, ...modalOpts } = opts;
+  if (span && modalOpts.edit && typeof modalOpts.edit === "object") {
+    let slotIdx = Number(modalOpts.edit.timeIdx);
+    if (!Number.isFinite(slotIdx) || slotIdx < 0) {
+      slotIdx = resolveBudgetScheduleSlotIndex(dk, span);
+    }
+    if (slotIdx < 0) {
+      showToast(
+        "일간 예산에서 추가한 예상 일정만 여기서 수정할 수 있습니다.",
+      );
+      return;
+    }
+    modalOpts.edit = {
+      ...modalOpts.edit,
+      taskName: modalOpts.edit.taskName || span.taskName,
+      timeIdx: slotIdx,
+    };
+  }
+  openCalendarExpectedScheduleModal(modalOpts);
+}
+
 function paintCalendar1DaySlotGrid(root, dateKey) {
   if (!root || !dateKey) return;
   const { spans } = buildExpectedScheduleSpansForDateKey(dateKey);
@@ -4127,23 +4229,17 @@ function wireCalendar1DaySlotGridCells(root, dateKey, onSaved) {
       };
       const span = findExpectedSpanAtSlotMin(dateKey, slotMin);
       if (span) {
-        const slotIdx = resolveBudgetScheduleSlotIndex(dateKey, span);
-        if (slotIdx < 0) {
-          showToast(
-            "일간 예산에서 추가한 예상 일정만 여기서 수정할 수 있습니다.",
-          );
-          return;
-        }
-        openCalendarExpectedScheduleModal({
+        openCalendarExpectedScheduleModalGuarded({
           dateKey,
-          edit: { taskName: span.taskName, timeIdx: slotIdx },
+          span,
+          edit: { taskName: span.taskName },
           title: "예상 일정 수정",
           submitLabel: "저장",
           onSaved: refresh,
         });
         return;
       }
-      openCalendarExpectedScheduleModal({
+      openCalendarExpectedScheduleModalGuarded({
         dateKey,
         defaultStartHhMm: slotMinToHhMm(slotMin),
         onSaved: refresh,
@@ -4307,16 +4403,10 @@ function createCalendar1DayExpectedCardsPanel(dateKey, spans, onSaved) {
 
       card.addEventListener("click", () => {
         if (lpHorizontalPanNavigateRecentlyFired()) return;
-        const slotIdx = resolveBudgetScheduleSlotIndex(dateKey, span);
-        if (slotIdx < 0) {
-          showToast(
-            "일간 예산에서 추가한 예상 일정만 여기서 수정할 수 있습니다.",
-          );
-          return;
-        }
-        openCalendarExpectedScheduleModal({
+        openCalendarExpectedScheduleModalGuarded({
           dateKey,
-          edit: { taskName: span.taskName, timeIdx: slotIdx },
+          span,
+          edit: { taskName: span.taskName },
           title: "예상 일정 수정",
           submitLabel: "저장",
           onSaved: () => {
@@ -4751,16 +4841,10 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
         });
         card.addEventListener("click", () => {
           if (lpHorizontalPanNavigateRecentlyFired()) return;
-          const slotIdx = resolveBudgetScheduleSlotIndex(targetKey, span);
-          if (slotIdx < 0) {
-            showToast(
-              "일간 예산에서 추가한 예상 일정만 여기서 수정할 수 있습니다.",
-            );
-            return;
-          }
-          openCalendarExpectedScheduleModal({
+          openCalendarExpectedScheduleModalGuarded({
             dateKey: targetKey,
-            edit: { taskName: span.taskName, timeIdx: slotIdx },
+            span,
+            edit: { taskName: span.taskName },
             title: "예상 일정 수정",
             submitLabel: "저장",
             onSaved: () => renderCalendar(),
@@ -5169,8 +5253,6 @@ function render1WeekView(tabsElement, weekOpts = {}) {
 
     const todayYmd = timeLedgerLocalTodayYmd();
     const prodColorsExpected = getTimeCategoryColorsForTimetableExpected();
-    const nowForWeek = new Date();
-    const nowMinuteClock = nowForWeek.getHours() * 60 + nowForWeek.getMinutes();
     const WEEK_FLOW_SECTION_LABELS = {
       sideincome: "시급 상승",
       health: "건강",
@@ -5609,170 +5691,175 @@ function render1WeekView(tabsElement, weekOpts = {}) {
       stack.className = "calendar-1week-flow-stack";
 
       const prodColors = prodColorsExpected;
-      const { spans: daySpans } = buildExpectedScheduleSpansForDateKey(key);
-      const spansSorted = [...daySpans]
-        .filter((s) => !expectedSpanHiddenFromWeekFlowOnly(s))
-        .sort(
-          (a, b) =>
-            a.startMin - b.startMin ||
-            (a.lane ?? 0) - (b.lane ?? 0) ||
-            String(a.taskName || "").localeCompare(
-              String(b.taskName || ""),
-              "ko",
-            ),
-        );
+      /* 과거: 실제 시간기록만 / 오늘·미래: 예상 일정(계획)만 (✓·✕ 매칭 없음) */
+      const showActualOnly = dayKeyYmdCompare(key, todayYmd) < 0;
 
-      spansSorted.forEach((span) => {
-        const pk = prodKeyForWeekExpectedSpan(span);
-        const c = prodColors[pk] || prodColors.other;
-        const taskStorageName = String(span.taskName || "").trim();
-        const taskLabel = expectedSpanDisplayTaskName(span);
-        const memoTextStored = expectedSpanCardMemoLines(span).join("\n");
-        const rangeHuman = `${span.startDisplay} - ${span.endDisplay}`;
-
-        const ledgerMatched = weekFlowExpectedSpanHasLedgerMatch(
-          dayLedgerRows,
-          span,
-        );
-        const hasLiveRecordingForSpan = weekFlowSpanHasMatchingLiveRecording(
-          dayLedgerRows,
-          span,
-        );
-        const ledgerMissed =
-          !ledgerMatched &&
-          !hasLiveRecordingForSpan &&
-          weekFlowExpectedSpanLedgerMissed(key, todayYmd, nowMinuteClock, span);
-
-        const card = document.createElement("button");
-        card.type = "button";
-        card.className = "calendar-1week-flow-card";
-        const titleBase = memoTextStored
-          ? `${taskLabel} (${span.startDisplay} ~ ${span.endDisplay})\n${memoTextStored}`
-          : `${taskLabel} (${span.startDisplay} ~ ${span.endDisplay})`;
-        card.title = ledgerMatched
-          ? `${titleBase}\n실제 과제 기록에도 있음`
-          : ledgerMissed
-            ? `${titleBase}\n예정 종료 시간이 지났는데 아직 기록이 없습니다`
-            : titleBase;
-        if (ledgerMatched) {
-          card.classList.add("calendar-1week-flow-card--ledger-done");
-        } else if (ledgerMissed) {
-          card.classList.add("calendar-1week-flow-card--ledger-missed");
-        }
-
-        const sidRaw = String(span.sectionId || "").trim();
-        let badgeAccent = "";
-        if (sidRaw && !sidRaw.startsWith("custom-")) {
-          try {
-            badgeAccent = getSectionColor(sidRaw) || "";
-          } catch (_) {
-            badgeAccent = "";
-          }
-        }
-        if (!badgeAccent && c.border) badgeAccent = c.border;
-
-        const titleRow = document.createElement("div");
-        titleRow.className = "calendar-1week-flow-card-title-row";
-        if (ledgerMatched) {
-          const checkEl = document.createElement("span");
-          checkEl.className = "calendar-1week-flow-card-done-check";
-          checkEl.setAttribute("role", "img");
-          checkEl.setAttribute("aria-label", "실제 기록에 반영됨");
-          checkEl.textContent = "✓";
-          titleRow.appendChild(checkEl);
-        } else if (ledgerMissed) {
-          const missEl = document.createElement("span");
-          missEl.className = "calendar-1week-flow-card-missed-mark";
-          missEl.setAttribute("role", "img");
-          missEl.setAttribute(
-            "aria-label",
-            "예정 시간이 지났는데 아직 기록이 없음",
-          );
-          missEl.textContent = "✕";
-          titleRow.appendChild(missEl);
-        }
-        const titleEl = document.createElement("span");
-        titleEl.className = "calendar-1week-flow-card-title";
-        titleEl.textContent = taskLabel;
-        titleRow.appendChild(titleEl);
-
-        const meta = document.createElement("div");
-        meta.className = "calendar-1week-flow-card-meta";
-
-        const timeSpan = document.createElement("span");
-        timeSpan.className = "calendar-1week-flow-card-time";
-        timeSpan.textContent = rangeHuman;
-        meta.appendChild(timeSpan);
-
-        let badgeText = "";
-        if (sidRaw && WEEK_FLOW_SECTION_LABELS[sidRaw]) {
-          badgeText = WEEK_FLOW_SECTION_LABELS[sidRaw];
-        } else if (sidRaw.startsWith("custom-")) {
-          badgeText = "커스텀";
-        }
-        if (badgeText) {
-          const badge = document.createElement("span");
-          badge.className = "calendar-1week-flow-card-badge";
-          badge.textContent = badgeText;
-          if (badgeAccent) {
-            badge.style.backgroundColor = withMoreTransparency(
-              badgeAccent,
-              0.22,
-            );
-            badge.style.color =
-              timetableAccentTextColor(badgeAccent) || badgeAccent;
-          }
-          meta.appendChild(badge);
-        }
-
-        const inExpectedWindow =
-          key === todayYmd &&
-          span.startMin <= nowMinuteClock &&
-          nowMinuteClock < span.endMin;
-        const liveRecordingThisSpan =
-          inExpectedWindow && hasLiveRecordingForSpan;
-
-        if (liveRecordingThisSpan) {
-          card.classList.add("calendar-1week-flow-card--in-progress");
-          const prog = document.createElement("span");
-          prog.className = "calendar-1week-flow-card-progress";
-          prog.textContent = "진행 중";
-          meta.appendChild(prog);
-        } else if (
-          inExpectedWindow &&
-          !liveRecordingThisSpan &&
-          !ledgerMatched
-        ) {
-          card.classList.add("calendar-1week-flow-card--expected-now");
-        }
-
-        card.appendChild(titleRow);
-        card.appendChild(meta);
-        if (memoTextStored) {
-          const memoEl = document.createElement("div");
-          memoEl.className = "calendar-1week-flow-card-memo";
-          memoEl.textContent = memoTextStored;
-          card.appendChild(memoEl);
-        }
-        card.addEventListener("click", () => {
-          if (lpHorizontalPanNavigateRecentlyFired()) return;
-          const slotIdx = resolveBudgetScheduleSlotIndex(key, span);
-          if (slotIdx < 0) {
-            showToast(
-              "일간 예산에서 추가한 예상 일정만 여기서 수정할 수 있습니다.",
-            );
-            return;
-          }
-          openCalendarExpectedScheduleModal({
-            dateKey: key,
-            edit: { taskName: span.taskName, timeIdx: slotIdx },
-            title: "예상 일정 수정",
-            submitLabel: "저장",
-            onSaved: () => refreshCalendar1WeekLocal(),
-          });
+      if (showActualOnly) {
+        const rowsSorted = [...dayLedgerRows].sort((a, b) => {
+          const as = getRowStartInstantForMobileCard(a)?.getTime() ?? 0;
+          const bs = getRowStartInstantForMobileCard(b)?.getTime() ?? 0;
+          return as - bs;
         });
-        stack.appendChild(card);
-      });
+        rowsSorted.forEach((row) => {
+          const taskLabel = ledgerRowDisplayTaskName(row) || "(제목 없음)";
+          const kpiId = String(
+            getTaskOptionByName(row?.taskName)?.kpiId || "",
+          ).trim();
+          const memoTextStored = buildTimeLedgerCardMemoText(row, kpiId);
+          const startInst = getRowStartInstantForMobileCard(row);
+          const startClock = formatWeekFlowClockFromInst(startInst);
+          const live = isTimeLedgerRowLiveRecording(row);
+          const endClock = live
+            ? ""
+            : rowHasEndTimeForMobileCard(row)
+              ? formatWeekFlowClockFromInst(getRowEndInstantForMobileCard(row))
+              : "—";
+          const rangeHuman = endClock
+            ? `${startClock} - ${endClock}`
+            : `${startClock} -`;
+
+          const card = document.createElement("button");
+          card.type = "button";
+          card.className =
+            "calendar-1week-flow-card calendar-1week-flow-card--actual";
+          card.title = memoTextStored
+            ? `${taskLabel} (${startClock} ~ ${endClock || "진행 중"})\n${memoTextStored}`
+            : `${taskLabel} (${startClock} ~ ${endClock || "진행 중"})`;
+
+          const titleRow = document.createElement("div");
+          titleRow.className = "calendar-1week-flow-card-title-row";
+          const titleEl = document.createElement("span");
+          titleEl.className = "calendar-1week-flow-card-title";
+          titleEl.textContent = taskLabel;
+          titleRow.appendChild(titleEl);
+
+          const meta = document.createElement("div");
+          meta.className = "calendar-1week-flow-card-meta";
+          const timeSpan = document.createElement("span");
+          timeSpan.className = "calendar-1week-flow-card-time";
+          timeSpan.textContent = rangeHuman;
+          meta.appendChild(timeSpan);
+
+          if (live) {
+            card.classList.add("calendar-1week-flow-card--in-progress");
+            const prog = document.createElement("span");
+            prog.className = "calendar-1week-flow-card-progress";
+            prog.textContent = "진행 중";
+            meta.appendChild(prog);
+          }
+
+          card.appendChild(titleRow);
+          card.appendChild(meta);
+          {
+            const memoEl = document.createElement("div");
+            memoEl.className = "calendar-1week-flow-card-memo";
+            if (fillTimeLedgerCardMemoElement(memoEl, row, kpiId)) {
+              card.appendChild(memoEl);
+            }
+          }
+          card.addEventListener("click", () => {
+            if (lpHorizontalPanNavigateRecentlyFired()) return;
+            openWeekFlowLedgerRowEditor(row);
+          });
+          stack.appendChild(card);
+        });
+      } else {
+        const { spans: daySpans } = buildExpectedScheduleSpansForDateKey(key);
+        const spansSorted = [...daySpans]
+          .filter((s) => !expectedSpanHiddenFromWeekFlowOnly(s))
+          .sort(
+            (a, b) =>
+              a.startMin - b.startMin ||
+              (a.lane ?? 0) - (b.lane ?? 0) ||
+              String(a.taskName || "").localeCompare(
+                String(b.taskName || ""),
+                "ko",
+              ),
+          );
+
+        spansSorted.forEach((span) => {
+          const pk = prodKeyForWeekExpectedSpan(span);
+          const c = prodColors[pk] || prodColors.other;
+          const taskLabel = expectedSpanDisplayTaskName(span);
+          const memoTextStored = expectedSpanCardMemoLines(span).join("\n");
+          const rangeHuman = `${span.startDisplay} - ${span.endDisplay}`;
+
+          const card = document.createElement("button");
+          card.type = "button";
+          card.className = "calendar-1week-flow-card";
+          card.title = memoTextStored
+            ? `${taskLabel} (${span.startDisplay} ~ ${span.endDisplay})\n${memoTextStored}`
+            : `${taskLabel} (${span.startDisplay} ~ ${span.endDisplay})`;
+
+          const sidRaw = String(span.sectionId || "").trim();
+          let badgeAccent = "";
+          if (sidRaw && !sidRaw.startsWith("custom-")) {
+            try {
+              badgeAccent = getSectionColor(sidRaw) || "";
+            } catch (_) {
+              badgeAccent = "";
+            }
+          }
+          if (!badgeAccent && c.border) badgeAccent = c.border;
+
+          const titleRow = document.createElement("div");
+          titleRow.className = "calendar-1week-flow-card-title-row";
+          const titleEl = document.createElement("span");
+          titleEl.className = "calendar-1week-flow-card-title";
+          titleEl.textContent = taskLabel;
+          titleRow.appendChild(titleEl);
+
+          const meta = document.createElement("div");
+          meta.className = "calendar-1week-flow-card-meta";
+
+          const timeSpan = document.createElement("span");
+          timeSpan.className = "calendar-1week-flow-card-time";
+          timeSpan.textContent = rangeHuman;
+          meta.appendChild(timeSpan);
+
+          let badgeText = "";
+          if (sidRaw && WEEK_FLOW_SECTION_LABELS[sidRaw]) {
+            badgeText = WEEK_FLOW_SECTION_LABELS[sidRaw];
+          } else if (sidRaw.startsWith("custom-")) {
+            badgeText = "커스텀";
+          }
+          if (badgeText) {
+            const badge = document.createElement("span");
+            badge.className = "calendar-1week-flow-card-badge";
+            badge.textContent = badgeText;
+            if (badgeAccent) {
+              badge.style.backgroundColor = withMoreTransparency(
+                badgeAccent,
+                0.22,
+              );
+              badge.style.color =
+                timetableAccentTextColor(badgeAccent) || badgeAccent;
+            }
+            meta.appendChild(badge);
+          }
+
+          card.appendChild(titleRow);
+          card.appendChild(meta);
+          if (memoTextStored) {
+            const memoEl = document.createElement("div");
+            memoEl.className = "calendar-1week-flow-card-memo";
+            memoEl.textContent = memoTextStored;
+            card.appendChild(memoEl);
+          }
+          card.addEventListener("click", () => {
+            if (lpHorizontalPanNavigateRecentlyFired()) return;
+            openCalendarExpectedScheduleModalGuarded({
+              dateKey: key,
+              span,
+              edit: { taskName: span.taskName },
+              title: "예상 일정 수정",
+              submitLabel: "저장",
+              onSaved: () => refreshCalendar1WeekLocal(),
+            });
+          });
+          stack.appendChild(card);
+        });
+      }
 
       col.appendChild(stack);
       colsWrap.appendChild(col);

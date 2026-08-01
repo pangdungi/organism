@@ -4,8 +4,10 @@
  */
 
 :root {
-  --lp-app-font-family: "LP Ongleip Gongbujahana", system-ui, -apple-system,
-    "Segoe UI", Roboto, sans-serif;
+  /* 이모지는 앱 손글씨가 검정 기호로 가로채지 않게, 기기 이모지 글꼴로 넘김 */
+  --lp-app-font-family: "LP Ongleip Gongbujahana", "Apple Color Emoji",
+    "Segoe UI Emoji", "Noto Color Emoji", system-ui, -apple-system, "Segoe UI",
+    Roboto, sans-serif;
   --lp-app-font-weight-base: 400;
 }
 
@@ -52,12 +54,15 @@ select:-webkit-autofill:focus {
   transition: background-color 5000s ease-in-out 0s;
 }
 
+/* 한글·라틴·문장부호만 — ✔/❌ 등 딩뱃은 기기 이모지 글꼴로 */
 @font-face {
   font-family: "LP Griun Cocochoitoon";
   src: url("/fonts/LP-Griun-Cocochoitoon.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
   font-display: swap;
+  unicode-range: U+0000-00FF, U+0100-024F, U+1100-11FF, U+2000-206F, U+3000-303F,
+    U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF, U+FF00-FFEF;
 }
 
 @font-face {
@@ -66,6 +71,8 @@ select:-webkit-autofill:focus {
   font-weight: normal;
   font-style: normal;
   font-display: swap;
+  unicode-range: U+0000-00FF, U+0100-024F, U+1100-11FF, U+2000-206F, U+3000-303F,
+    U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF, U+FF00-FFEF;
 }
 
 @font-face {
@@ -74,6 +81,8 @@ select:-webkit-autofill:focus {
   font-weight: normal;
   font-style: normal;
   font-display: swap;
+  unicode-range: U+0000-00FF, U+0100-024F, U+1100-11FF, U+2000-206F, U+3000-303F,
+    U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF, U+FF00-FFEF;
 }
 
 @font-face {
@@ -82,6 +91,8 @@ select:-webkit-autofill:focus {
   font-weight: normal;
   font-style: normal;
   font-display: swap;
+  unicode-range: U+0000-00FF, U+0100-024F, U+1100-11FF, U+2000-206F, U+3000-303F,
+    U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF, U+FF00-FFEF;
 }
 
 @font-face {
@@ -90,6 +101,8 @@ select:-webkit-autofill:focus {
   font-weight: normal;
   font-style: normal;
   font-display: swap;
+  unicode-range: U+0000-00FF, U+0100-024F, U+1100-11FF, U+2000-206F, U+3000-303F,
+    U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF, U+FF00-FFEF;
 }
 
 @font-face {
@@ -98,6 +111,8 @@ select:-webkit-autofill:focus {
   font-weight: normal;
   font-style: normal;
   font-display: block;
+  unicode-range: U+0000-00FF, U+0100-024F, U+1100-11FF, U+2000-206F, U+3000-303F,
+    U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF, U+FF00-FFEF;
 }
 
 @font-face {
@@ -106,6 +121,8 @@ select:-webkit-autofill:focus {
   font-weight: normal;
   font-style: normal;
   font-display: swap;
+  unicode-range: U+0000-00FF, U+0100-024F, U+1100-11FF, U+2000-206F, U+3000-303F,
+    U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF, U+FF00-FFEF;
 }
 
 @font-face {
@@ -114,4 +131,6 @@ select:-webkit-autofill:focus {
   font-weight: normal;
   font-style: normal;
   font-display: block;
+  unicode-range: U+0000-00FF, U+0100-024F, U+1100-11FF, U+2000-206F, U+3000-303F,
+    U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF, U+FF00-FFEF;
 }

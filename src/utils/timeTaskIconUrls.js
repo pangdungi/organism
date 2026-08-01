@@ -5,7 +5,12 @@
 
 import pickerSvgNames from "../../public/time-task-picker-icons.json";
 import pickerIconFiles from "../../public/time-task-picker-icon-files.json";
-import { canonicalMealTaskDisplayName, NAP_TASK_NAME } from "./timeTaskOptionsConstants.js";
+import {
+  canonicalMealTaskDisplayName,
+  NAP_TASK_NAME,
+  NAP_TASK_NAME_OVER_30,
+  NAP_TASK_NAME_WITHIN_30,
+} from "./timeTaskOptionsConstants.js";
 import { DEFAULT_KPI_ICON_SLUG, DEFAULT_KPI_NAME_ICON_SLUG } from "./defaultKpiIconIds.js";
 import { matchFlexibleSearch } from "./flexibleSearchMatch.js";
 import { toolbarIconPng, withToolbarIconCacheVersion } from "./toolbarIconUrl.js";
@@ -42,6 +47,8 @@ export const BUILTIN_TASK_ICON_SLUG = {
   "시간기록 및 점검": "study",
   "개인 위생": "shower",
   [NAP_TASK_NAME]: "nap",
+  [NAP_TASK_NAME_WITHIN_30]: "nap",
+  [NAP_TASK_NAME_OVER_30]: "nap",
   "건강한 섭취": "healthy food",
   "건강한 섭취 준비": "cooking",
   "생산적 대화": "happy",

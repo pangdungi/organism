@@ -153,8 +153,10 @@ function mountPickerIconGrid(grid, icons, onPick) {
  */
 export function openStandaloneTimeTaskIconPickModal(opts = {}) {
   const title = String(opts.title || "아이콘 선택").trim() || "아이콘 선택";
-  let currentKey = String(opts.currentKey || "").trim();
+  const initialKey = String(opts.currentKey || "").trim();
+  let currentKey = initialKey;
   const { onPick, onRemove } = opts;
+  const isEdit = !!initialKey;
 
   /* 이전에 안 닫힌 날짜 아이콘 픽커만 제거(검색 먹통·오버레이 잔존 방지) */
   document.querySelectorAll(".calendar-day-icon-pick-modal").forEach((el) => {
@@ -179,10 +181,13 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
         <button type="button" class="time-task-setup-close" data-legacy="time-task-setup-close" aria-label="닫기">&times;</button>
       </div>
       <div class="time-task-setup-body time-add-task-icon-modal-body" data-legacy="time-task-setup-body time-add-task-icon-modal-body">
-        <div class="calendar-day-icon-pick-actions" data-calendar-day-icon-pick-actions hidden></div>
         <div class="time-add-task-icon-modal-search-mount" data-legacy="time-add-task-icon-modal-search-mount"></div>
         <div class="time-add-task-icon-modal-divider" data-legacy="time-add-task-icon-modal-divider" role="separator" aria-hidden="true"></div>
         <div class="time-add-task-icon-modal-grid-mount" data-legacy="time-add-task-icon-modal-grid-mount"></div>
+      </div>
+      <div class="time-task-log-footer calendar-day-icon-pick-footer" data-legacy="time-task-log-footer">
+        <button type="button" class="calendar-day-icon-pick-remove" data-calendar-day-icon-pick-remove hidden>스탬프 제거</button>
+        <button type="button" class="time-task-log-submit" data-legacy="time-task-log-submit" data-calendar-day-icon-pick-confirm></button>
       </div>
     </div>
   `;
@@ -202,21 +207,34 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
     if (e.key === "Escape") close();
   });
 
-  const actionsEl = modal.querySelector("[data-calendar-day-icon-pick-actions]");
-  if (actionsEl instanceof HTMLElement && currentKey && onRemove) {
-    actionsEl.hidden = false;
-    const removeBtn = document.createElement("button");
-    removeBtn.type = "button";
-    removeBtn.className = "calendar-day-icon-pick-remove";
-    removeBtn.textContent = "아이콘 제거";
+  const removeBtn = modal.querySelector("[data-calendar-day-icon-pick-remove]");
+  const confirmBtn = modal.querySelector("[data-calendar-day-icon-pick-confirm]");
+  if (confirmBtn instanceof HTMLElement) {
+    confirmBtn.textContent = isEdit ? "변경" : "추가";
+  }
+  if (removeBtn instanceof HTMLElement && isEdit && typeof onRemove === "function") {
+    removeBtn.hidden = false;
     removeBtn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
       onRemove();
       close();
     });
-    actionsEl.appendChild(removeBtn);
   }
+
+  function syncConfirmEnabled() {
+    if (!(confirmBtn instanceof HTMLButtonElement)) return;
+    confirmBtn.disabled = !String(currentKey || "").trim();
+  }
+
+  confirmBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const key = String(currentKey || "").trim();
+    if (!key) return;
+    onPick?.(key);
+    close();
+  });
 
   const searchMount = modal.querySelector(
     '[data-legacy~="time-add-task-icon-modal-search-mount"]',
@@ -238,6 +256,7 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
         lpTokenToggle(btn, "time-add-task-icon-modal-item--selected", on);
         btn.setAttribute("aria-pressed", on ? "true" : "false");
       });
+    syncConfirmEnabled();
   }
 
   if (searchMount) {
@@ -254,10 +273,9 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
       grid,
       getTimeTaskPickableIcons(CALENDAR_STAMP_ICON_PICKER_LIST_OPTS),
       (key) => {
-      currentKey = key;
-      onPick?.(key);
-      close();
-    },
+        currentKey = key;
+        syncGridSelection();
+      },
     );
     syncGridSelection();
   }

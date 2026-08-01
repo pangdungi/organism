@@ -937,10 +937,10 @@
   width: 100%;
   margin: 0;
   padding: 0.45rem 0.5rem;
-  border: 1px dashed #cbd5e1;
+  border: 1px dashed #c4c4c4;
   border-radius: 0.45rem;
   background: #fafafa;
-  color: #475569;
+  color: #333;
   font-size: 0.8125rem;
   font-weight: 650;
   font-family: inherit;
@@ -948,10 +948,18 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.lp-kpi-dream-page .habit-tracker-all-todos-add-toggle:hover {
-  background: #f1f5f9;
-  border-color: #94a3b8;
-  color: #1e293b;
+.lp-kpi-dream-page .habit-tracker-all-todos-add-toggle:hover,
+.lp-kpi-dream-page .habit-tracker-all-todos-add-toggle:focus-visible {
+  background: #f0f0f0;
+  border-color: #888;
+  color: #000;
+  outline: none;
+}
+
+.lp-kpi-dream-page .habit-tracker-all-todos-add-toggle:active {
+  background: #e8e8e8;
+  border-color: #666;
+  color: #000;
 }
 
 @media (min-width: 46.01rem) {

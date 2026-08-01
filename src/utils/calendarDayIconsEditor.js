@@ -42,7 +42,7 @@ export function readCalendarDayIconDragPayload(dataTransfer) {
  */
 export function showCalendarDayIconPickModal(opts = {}) {
   openStandaloneTimeTaskIconPickModal({
-    title: opts.title ?? "날짜 아이콘",
+    title: opts.title ?? "날짜 스탬프",
     currentKey: opts.currentKey,
     onPick: opts.onPick,
     onRemove: opts.onRemove,
@@ -161,7 +161,7 @@ export function renderCalendarMonthlyDayIcons(container, dateKey, opts = {}) {
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "calendar-monthly-day-icon-btn";
-  btn.setAttribute("aria-label", "날짜 아이콘 — 드래그로 옮기기, 탭으로 수정");
+  btn.setAttribute("aria-label", "날짜 스탬프 — 드래그로 옮기기, 탭으로 수정");
   btn.title = "드래그로 다른 날짜로 옮기기 · 탭하여 수정";
   btn.draggable = true;
   let suppressClickAfterDrag = false;
@@ -235,7 +235,7 @@ export function mountCalendarDayExpandIconBtn(mountEl, dateKey, opts = {}) {
     btn.replaceChildren();
     if (src) {
       btn.classList.add("calendar-day-expand-icon-btn--selected");
-      btn.setAttribute("aria-label", "날짜 아이콘 변경");
+      btn.setAttribute("aria-label", "날짜 스탬프 변경");
       btn.title = "아이콘 변경";
       const img = document.createElement("img");
       img.src = src;

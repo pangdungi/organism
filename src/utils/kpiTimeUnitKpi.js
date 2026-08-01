@@ -39,6 +39,11 @@ import {
   progressStatusForKpiStartDate,
   readKpiProgressStatusFromForm,
 } from "./kpiProgressStatus.js";
+import {
+  kpiHabitWeekdaysFieldHtml,
+  normalizeHabitWeekdays,
+  readHabitWeekdaysFromForm,
+} from "./kpiHabitWeekdays.js";
 
 /** 행복 「잡무 처리하기」만 이번 주 처리·남은 개수 UI */
 function isChoreTaskCompletionKpi(kpi) {
@@ -120,6 +125,7 @@ export function kpiFormGoalAndTargetSectionHtml(kpi, escapeHtml, opts = {}) {
             <div class="dream-kpi-field dream-kpi-goal-mode-field" data-legacy="time-add-task-field">
               ${kpiGoalModeOptionsHtml(kpi)}
             </div>
+            ${kpiHabitWeekdaysFieldHtml(kpi, habitMode)}
             <div class="dream-kpi-field dream-kpi-field-checkbox dream-kpi-habit-target-toggle" data-kpi-habit-target-toggle data-legacy="time-add-task-field"${habitMode ? "" : " hidden"}>
               <label class="dream-kpi-checkbox-label">
                 목표값·단위 입력하기
@@ -290,6 +296,12 @@ export function validateKpiActionForm(form, opts = {}) {
         addError("targetValue", "올바른 목표 시간을 입력해 주세요.");
       }
     } else if (mode === "habit") {
+      const weekdayBoxes = form.querySelectorAll(
+        'input[name="habitWeekday"]:checked',
+      );
+      if (!weekdayBoxes.length) {
+        addError("habitWeekday", "하는 요일을 하나 이상 선택해 주세요.");
+      }
       const trackHabitTarget = !!form.querySelector(
         'input[name="trackHabitTargetValue"]',
       )?.checked;
@@ -428,6 +440,7 @@ export function readKpiGoalModeFormFields(
     };
   }
   if (needHabitTracker) {
+    const habitWeekdays = readHabitWeekdaysFromForm(form);
     const trackHabitTarget = !!form.querySelector(
       'input[name="trackHabitTargetValue"]',
     )?.checked;
@@ -439,6 +452,7 @@ export function readKpiGoalModeFormFields(
         unit: "",
         targetValue: "",
         targetTimeRequired: "",
+        habitWeekdays,
         ...period,
         ...(opts.isNewKpi
           ? { habitTrackerStartDate: localTodayYmdForHabitStart() }
@@ -452,6 +466,7 @@ export function readKpiGoalModeFormFields(
       unit: (form.unit?.value || "").trim(),
       targetValue: sanitizeNumericInput(targetRaw) || "",
       targetTimeRequired: "",
+      habitWeekdays,
       ...period,
       ...(opts.isNewKpi
         ? { habitTrackerStartDate: localTodayYmdForHabitStart() }
@@ -495,6 +510,7 @@ export function applyKpiFormGoalFieldsToKpi(target, form, opts = {}) {
     target.progressStatus = KPI_PROGRESS_STATUS.PENDING;
   }
   if (fields.needHabitTracker) {
+    target.habitWeekdays = normalizeHabitWeekdays(fields.habitWeekdays);
     ensureKpiHabitTrackerStartDate(target);
     if (fields.habitTrackerStartDate && !target.habitTrackerStartDate) {
       target.habitTrackerStartDate = fields.habitTrackerStartDate;
@@ -524,6 +540,7 @@ export function bindKpiGoalModeForm(form, kpi = null, opts = {}) {
   const targetFieldsRow = form.querySelector("[data-kpi-target-fields]");
   const unitFieldWrap = form.querySelector(".dream-kpi-unit-field");
   const habitTargetToggle = form.querySelector("[data-kpi-habit-target-toggle]");
+  const habitWeekdaysField = form.querySelector("[data-kpi-habit-weekdays]");
   const trackHabitTargetCheck = form.querySelector(
     'input[name="trackHabitTargetValue"]',
   );
@@ -563,6 +580,7 @@ export function bindKpiGoalModeForm(form, kpi = null, opts = {}) {
     const isHabit = mode === "habit";
     const trackHabitTarget = !!trackHabitTargetCheck?.checked;
     if (habitTargetToggle) habitTargetToggle.hidden = !isHabit;
+    if (habitWeekdaysField) habitWeekdaysField.hidden = !isHabit;
     const showTargetFields =
       mode === "time" ||
       mode === "manual" ||
@@ -841,7 +859,11 @@ export function enrichKpiProgressWithHabitStreak(
   const success = collectKpiHabitSuccessDateKeys(kpi, storedLogs);
   return {
     ...progressResult,
-    habitStreak: computeKpiHabitCurrentStreakFromSuccess(success, todayYmd),
+    habitStreak: computeKpiHabitCurrentStreakFromSuccess(
+      success,
+      todayYmd,
+      kpi,
+    ),
     habitTotalDays: success.size,
     habitSuccessYmds: [...success],
   };
@@ -902,6 +924,8 @@ export function buildKpiCardTimePresentation(kpi, progressResult, formatNum) {
     const rangeLabel = formatKpiHabitPeriodRangeLabel(kpi);
     const weekStrip = buildKpiCardHabitWeekStripHtml(
       progressResult.habitSuccessYmds || [],
+      undefined,
+      kpi?.habitWeekdays,
     );
     const hasUnitGoal = kpiHasHabitUnitGoal(kpi);
 

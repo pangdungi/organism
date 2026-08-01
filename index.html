@@ -72,6 +72,8 @@
         font-weight: normal;
         font-style: normal;
         font-display: swap;
+        unicode-range: U+0000-00FF, U+0100-024F, U+1100-11FF, U+2000-206F, U+3000-303F,
+          U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF, U+FF00-FFEF;
       }
       @font-face {
         font-family: "LP Ongleip Gongbujahana";
@@ -79,6 +81,8 @@
         font-weight: normal;
         font-style: normal;
         font-display: swap;
+        unicode-range: U+0000-00FF, U+0100-024F, U+1100-11FF, U+2000-206F, U+3000-303F,
+          U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF, U+FF00-FFEF;
       }
       @font-face {
         font-family: "LP Griun Mongtori";
@@ -86,6 +90,8 @@
         font-weight: normal;
         font-style: normal;
         font-display: swap;
+        unicode-range: U+0000-00FF, U+0100-024F, U+1100-11FF, U+2000-206F, U+3000-303F,
+          U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF, U+FF00-FFEF;
       }
       @font-face {
         font-family: "LP Griun Cherry1Spoon";
@@ -93,6 +99,8 @@
         font-weight: normal;
         font-style: normal;
         font-display: swap;
+        unicode-range: U+0000-00FF, U+0100-024F, U+1100-11FF, U+2000-206F, U+3000-303F,
+          U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF, U+FF00-FFEF;
       }
       @font-face {
         font-family: "LP Griun Myeoneunheulrim";
@@ -100,6 +108,8 @@
         font-weight: normal;
         font-style: normal;
         font-display: swap;
+        unicode-range: U+0000-00FF, U+0100-024F, U+1100-11FF, U+2000-206F, U+3000-303F,
+          U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF, U+FF00-FFEF;
       }
       @font-face {
         font-family: "LP Lee Seoyun";
@@ -107,6 +117,17 @@
         font-weight: normal;
         font-style: normal;
         font-display: block;
+        unicode-range: U+0000-00FF, U+0100-024F, U+1100-11FF, U+2000-206F, U+3000-303F,
+          U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF, U+FF00-FFEF;
+      }
+      @font-face {
+        font-family: "LP Ongleip Mitmi";
+        src: url("/fonts/LP-Ongleip-Mitmi.ttf") format("truetype");
+        font-weight: normal;
+        font-style: normal;
+        font-display: swap;
+        unicode-range: U+0000-00FF, U+0100-024F, U+1100-11FF, U+2000-206F, U+3000-303F,
+          U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF, U+FF00-FFEF;
       }
       @font-face {
         font-family: "Hello Scratchy Outlines";
@@ -114,9 +135,12 @@
         font-weight: normal;
         font-style: normal;
         font-display: block;
+        unicode-range: U+0000-00FF, U+0100-024F, U+1100-11FF, U+2000-206F, U+3000-303F,
+          U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF, U+FF00-FFEF;
       }
       :root {
-        --lp-app-font-family: "LP Ongleip Gongbujahana", system-ui, -apple-system,
+        --lp-app-font-family: "LP Ongleip Gongbujahana", "Apple Color Emoji",
+          "Segoe UI Emoji", "Noto Color Emoji", system-ui, -apple-system,
           "Segoe UI", Roboto, sans-serif;
         --lp-app-font-weight-base: 400;
         --lp-calendar-month-abbr-font-family: "Hello Scratchy Outlines", sans-serif;
@@ -342,7 +366,7 @@
         var stack =
           '"' +
           def.family +
-          '", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+          '", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
         try {
           document.documentElement.style.setProperty(
             "--lp-app-font-family",

@@ -22,6 +22,7 @@ import {
   getKpiHabitTrackerStartYmd,
   isKpiHabitDateBeforeStart,
 } from "./kpiHabitTrackerStartDate.js";
+import { isHabitScheduledOnYmd } from "./kpiHabitWeekdays.js";
 import { isKpiEligibleForTimeTaskList } from "./kpiProgressStatus.js";
 import { getFullTaskOptions } from "./timeTaskOptionsModel.js";
 
@@ -552,6 +553,9 @@ export function getHabitTrackerCellDisplay(row, dateKey) {
   if (row.kind === "kpi" && row.kpi && isKpiHabitDateBeforeStart(row.kpi, dk)) {
     return { text: "", beforeStart: true, level: 0 };
   }
+  if (row.kind === "kpi" && row.kpi && !isHabitScheduledOnYmd(row.kpi, dk)) {
+    return { text: "", beforeStart: true, level: 0 };
+  }
 
   if (row.kind === "time-record") {
     const ok = isTimeRecordingCompleteForDay(dk);
@@ -639,6 +643,7 @@ export function getHabitTrackerCellLevel(row, dateKey, cellText) {
   const kpi = row.kpi;
   if (!kpi) return 0;
   if (isKpiHabitDateBeforeStart(kpi, dk)) return 0;
+  if (!isHabitScheduledOnYmd(kpi, dk)) return 0;
 
   const entry = ensureRowEntryByYmd(row).get(dk);
   const { done, total } = dailyTodoProgressFromEntry(row, entry);
@@ -701,6 +706,9 @@ export function getHabitTrackerCellText(row, dateKey) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dk)) return "";
 
   if (row.kind === "kpi" && row.kpi && isKpiHabitDateBeforeStart(row.kpi, dk)) {
+    return "";
+  }
+  if (row.kind === "kpi" && row.kpi && !isHabitScheduledOnYmd(row.kpi, dk)) {
     return "";
   }
 

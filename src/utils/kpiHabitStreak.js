@@ -7,6 +7,7 @@ import {
   normalizeKpiLogDateYmd,
   getKpiLedgerPerformedValueOnDate,
 } from "./timeKpiSync.js";
+import { isHabitScheduledOnYmd } from "./kpiHabitWeekdays.js";
 
 function parseKpiLogNumeric(val) {
   const n = parseFloat(String(val || "").replace(/[^0-9.-]/g, ""));
@@ -90,18 +91,48 @@ export function collectKpiHabitSuccessDateKeys(kpi, storedLogs = []) {
  * @param {object[]} storedLogs
  * @param {string} [todayYmd]
  */
-/** @param {Set<string>} success */
-export function computeKpiHabitCurrentStreakFromSuccess(success, todayYmd = "") {
-  const today = normalizeKpiLogDateYmd(todayYmd || new Date().toISOString().slice(0, 10));
+/**
+ * @param {Set<string>} success
+ * @param {string} [todayYmd]
+ * @param {{ needHabitTracker?: boolean, habitWeekdays?: unknown }|null} [kpi]
+ *   — 있으면 하는 요일만 연속일에 넣고, 쉬는 요일은 건너뜀
+ */
+export function computeKpiHabitCurrentStreakFromSuccess(
+  success,
+  todayYmd = "",
+  kpi = null,
+) {
+  const today = normalizeKpiLogDateYmd(
+    todayYmd || new Date().toISOString().slice(0, 10),
+  );
   if (!/^\d{4}-\d{2}-\d{2}$/.test(today)) return 0;
 
+  const onSchedule = (ymd) =>
+    !kpi?.needHabitTracker || isHabitScheduledOnYmd(kpi, ymd);
+
   let cursor = today;
-  if (!success.has(cursor)) {
+  /* 오늘은 하는 요일인데 아직 미완 → 어제부터(진행 중에도 어제까지 연속 유지) */
+  if (onSchedule(cursor) && !success.has(cursor)) {
     cursor = addDaysToYmd(cursor, -1);
+  }
+  let guard = 0;
+  while (
+    /^\d{4}-\d{2}-\d{2}$/.test(cursor) &&
+    !onSchedule(cursor) &&
+    guard < 14
+  ) {
+    cursor = addDaysToYmd(cursor, -1);
+    guard += 1;
   }
 
   let streak = 0;
-  while (/^\d{4}-\d{2}-\d{2}$/.test(cursor)) {
+  guard = 0;
+  while (/^\d{4}-\d{2}-\d{2}$/.test(cursor) && guard < 400) {
+    guard += 1;
+    if (!onSchedule(cursor)) {
+      cursor = addDaysToYmd(cursor, -1);
+      continue;
+    }
     if (!success.has(cursor)) break;
     streak += 1;
     cursor = addDaysToYmd(cursor, -1);
@@ -111,7 +142,7 @@ export function computeKpiHabitCurrentStreakFromSuccess(success, todayYmd = "") 
 
 export function computeKpiHabitCurrentStreak(kpi, storedLogs = [], todayYmd = "") {
   const success = collectKpiHabitSuccessDateKeys(kpi, storedLogs);
-  return computeKpiHabitCurrentStreakFromSuccess(success, todayYmd);
+  return computeKpiHabitCurrentStreakFromSuccess(success, todayYmd, kpi);
 }
 
 /**
@@ -154,8 +185,13 @@ export function habitWeekDateKeysMonSun(refYmd = "") {
  * 매일하기 카드 — 이번 주 월~일 완료 칩 (블랙/화이트)
  * @param {Iterable<string>|Set<string>|string[]} successYmds
  * @param {string} [todayYmd]
+ * @param {unknown} [habitWeekdays] 하는 요일(월=0…일=6). 없으면 전부 표시
  */
-export function buildKpiCardHabitWeekStripHtml(successYmds, todayYmd = "") {
+export function buildKpiCardHabitWeekStripHtml(
+  successYmds,
+  todayYmd = "",
+  habitWeekdays,
+) {
   const today = normalizeKpiLogDateYmd(
     todayYmd || new Date().toISOString().slice(0, 10),
   );
@@ -164,20 +200,30 @@ export function buildKpiCardHabitWeekStripHtml(successYmds, todayYmd = "") {
       .map((x) => normalizeKpiLogDateYmd(x))
       .filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x)),
   );
+  const scheduled = new Set(
+    Array.isArray(habitWeekdays) && habitWeekdays.length
+      ? habitWeekdays
+          .map((x) => Number(x))
+          .filter((n) => Number.isInteger(n) && n >= 0 && n <= 6)
+      : [0, 1, 2, 3, 4, 5, 6],
+  );
   const keys = habitWeekDateKeysMonSun(today);
   const chips = keys
     .map((ymd, i) => {
-      const done = success.has(ymd);
+      const onSchedule = scheduled.has(i);
+      const done = onSchedule && success.has(ymd);
       const isToday = ymd === today;
       const cls = [
         "dream-kpi-card-habit-day",
         done ? "is-done" : "",
         isToday ? "is-today" : "",
+        onSchedule ? "" : "is-off",
       ]
         .filter(Boolean)
         .join(" ");
       const label = HABIT_WEEKDAY_LABELS[i] || "";
-      return `<span class="${cls}" title="${ymd}" aria-label="${label} ${ymd}${done ? " 완료" : ""}">${label}</span>`;
+      const offHint = onSchedule ? "" : " (해당 없음)";
+      return `<span class="${cls}" title="${ymd}${offHint}" aria-label="${label} ${ymd}${done ? " 완료" : ""}${offHint}">${label}</span>`;
     })
     .join("");
   return `<div class="dream-kpi-card-habit-week" role="list" aria-label="이번 주 수행">${chips}</div>`;

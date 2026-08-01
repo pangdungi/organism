@@ -630,8 +630,9 @@ export function getTaskOptions() {
 }
 
 export function getTaskOptionByName(name) {
-  const n = (name || "").trim();
-  if (!n) return null;
+  const raw = (name || "").trim();
+  if (!raw) return null;
+  const n = C.isNapBuiltinTaskName(raw) ? C.NAP_TASK_NAME : raw;
   const matches = getFullTaskOptions().filter((o) => (o.name || "").trim() === n);
   if (!matches.length) return null;
   if (matches.length === 1) return matches[0];

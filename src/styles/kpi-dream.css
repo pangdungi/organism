@@ -3087,6 +3087,77 @@
   color: #000000;
 }
 
+/* 매일하기 — 하는 요일 선택 (행동 수정) */
+.dream-kpi-habit-weekdays-field {
+  margin-top: 0.15rem;
+}
+
+.dream-kpi-habit-weekday-row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.28rem;
+  width: 100%;
+  margin-top: 0.4rem;
+}
+
+.dream-kpi-habit-weekday-chip {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  margin: 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.dream-kpi-habit-weekday-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.dream-kpi-habit-weekday-text {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 2rem;
+  padding: 0.25rem 0;
+  border-radius: 0.4rem;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #9ca3af;
+  font-size: 0.75rem;
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  box-sizing: border-box;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.dream-kpi-habit-weekday-chip:has(.dream-kpi-habit-weekday-input:checked)
+  .dream-kpi-habit-weekday-text {
+  background: #111111;
+  border-color: #111111;
+  color: #fff;
+}
+
+.dream-kpi-habit-weekday-chip:has(.dream-kpi-habit-weekday-input:focus-visible)
+  .dream-kpi-habit-weekday-text {
+  outline: 2px solid #111111;
+  outline-offset: 2px;
+}
+
+.dream-kpi-card-habit-day.is-off {
+  opacity: 0.28;
+  border-style: dashed;
+}
+
 /* 매일하기 — 이번 주 월~일 칩 (블랙/화이트) */
 .dream-kpi-card-progress--habit-week {
   display: flex;

@@ -1,17 +1,28 @@
 /** 시간가계부 과제 고정 목록 (Time.js UI와 동일 소스) */
 
-/** 내장 낮잠 과제: 기록 시간 30분 초과 시 쾌락/비생산으로 분류 */
-export const NAP_TASK_NAME = "낮잠(30분 이내)";
+/** 내장 낮잠 — 선택 목록 표기명. 저장 시 시간에 따라 이내/이상 라벨로 기록 */
+export const NAP_TASK_NAME = "낮잠";
+/** 사용시간 30분 이하로 저장된 기록명 */
+export const NAP_TASK_NAME_WITHIN_30 = "낮잠(30분 이내)";
+/** 사용시간 30분 초과로 저장된 기록명 */
+export const NAP_TASK_NAME_OVER_30 = "낮잠(30분이상)";
 
 const NAP_TASK_NAMES_FOR_RULE = new Set([
   NAP_TASK_NAME,
+  NAP_TASK_NAME_WITHIN_30,
+  NAP_TASK_NAME_OVER_30,
   "낮잠 (30분 이상은 수면으로 기록)",
-  "낮잠",
 ]);
 
 /** 시간·오딧에서 30분 규칙 적용 대상(과거 표기·마이그레이션 전 데이터 포함) */
 export function isNapBuiltinTaskName(name) {
   return NAP_TASK_NAMES_FOR_RULE.has(String(name || "").trim());
+}
+
+/** 과제 선택 UI용 — 기록 라벨이 있어도 선택값은 「낮잠」 */
+export function canonicalNapPickerTaskName(name) {
+  const n = String(name || "").trim();
+  return isNapBuiltinTaskName(n) ? NAP_TASK_NAME : n;
 }
 
 export const SLEEP_BUILTIN_TASK_NAME = "수면하기";
@@ -680,7 +691,11 @@ export function isMealIntakeTasteRatingTaskName(name) {
   );
 }
 
-export const TASKS_LOCKED_FOR_EDIT = [NAP_TASK_NAME];
+export const TASKS_LOCKED_FOR_EDIT = [
+  NAP_TASK_NAME,
+  NAP_TASK_NAME_WITHIN_30,
+  NAP_TASK_NAME_OVER_30,
+];
 
 export const DEFAULT_TASK_OPTIONS = [
   ...FIXED_OTHER_TASKS,

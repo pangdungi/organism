@@ -7568,6 +7568,7 @@
 /* 카드 메모 — 트리거·사실·해석·매일할일 등 라벨 칩 */
 .time-ledger-card-memo--structured,
 .calendar-1day-timeline-card-memo.time-ledger-card-memo--structured,
+.calendar-1week-flow-card-memo.time-ledger-card-memo--structured,
 .time-display-feedback.time-ledger-card-memo--structured {
   display: flex;
   flex-direction: column;
@@ -9039,7 +9040,11 @@
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]
   [data-legacy~="time-task-log-memo-label-row"]
   > [data-legacy~="time-task-log-memo-section-label"] {
+  display: inline-flex;
+  align-items: center;
   margin-bottom: 0;
+  min-height: 1.75rem;
+  line-height: 1.2;
 }
 
 .time-task-setup-modal.time-task-log-modal
@@ -9061,19 +9066,33 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
   min-width: 1.75rem;
   min-height: 1.75rem;
   margin: 0;
-  padding: 0.15rem 0.4rem;
+  padding: 0;
   border: 1px solid #cbd5e1;
   border-radius: 0.45rem;
   background: #fff;
-  color: #64748b;
-  font-size: 0.85rem;
-  line-height: 1;
-  font-family: inherit;
+  color: inherit;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* 기기 기본 컬러 이모지 — 앱 손글씨/회색 color로 다시 칠하지 않음 */
+.time-task-setup-modal.time-task-log-modal
+  [data-legacy~="time-task-log-memo-quick-emoji"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-memo-quick-emoji"] {
+  display: block;
+  font-family: emoji, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji";
+  font-size: 0.95rem;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1;
+  color: unset;
+  -webkit-text-fill-color: unset;
 }
 
 .time-task-setup-modal.time-task-log-modal
@@ -9083,7 +9102,6 @@
   [data-legacy~="time-task-log-memo-quick"]
   > button:hover {
   border-color: #94a3b8;
-  color: #334155;
   background: #f8fafc;
 }
 
@@ -9204,6 +9222,19 @@
   word-break: keep-all;
   overflow-wrap: anywhere;
   box-sizing: border-box;
+}
+
+/* 일간 레포트 — 빈도 막대 대신 요약·행동 제안 */
+.lp-tr2-focus-day-advice {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+}
+
+.lp-tr2-focus-day-advice > .lp-tr2-focus-day-advice-line {
+  margin: 0;
+  grid-column: unset;
 }
 
 .lp-tr2-focus-end-reason-list > .lp-tr2-focus-end-reason-item:last-child .lp-tr2-focus-end-reason-tip {
