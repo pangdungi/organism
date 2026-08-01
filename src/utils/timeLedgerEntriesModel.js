@@ -747,9 +747,9 @@ export function applyTimeLedgerServerFullSnapshot(dbRows) {
 }
 
 /**
- * entry_date가 [rangeStart, rangeEnd] (포함)인 구간만 pull 스냅샷으로 맞춤.
- * 기본은 서버 행. 다만 아직 서버에 안 올린 로컬 수정(needsPush)은 유지 —
- * pull이 끼어들면 수정이 지워져 업로드가 영원히 안 되는 사고를 막음.
+ * entry_date가 [rangeStart, rangeEnd] (포함)인 구간만 **서버 스냅샷**으로 맞춤.
+ * 구간 안은 서버에 있는 행만 남김(로컬에만 있던 「가짜 저장」이 새로고침 후에도 보이지 않게).
+ * 미업로드 행은 pull 호출 쪽에서 먼저 모았다가 서버에 올린 뒤 이 함수를 씀.
  * @param {{ preferServer?: boolean }} [opts] — 호환용(무시).
  */
 export function applyTimeLedgerServerRangeSnapshot(
@@ -772,46 +772,14 @@ export function applyTimeLedgerServerRangeSnapshot(
   const serverLocals = serverRowsFiltered.map((r) =>
     dbRowToLocalTimeLedgerRow(r),
   );
-  const { rows: insideFromServerRaw } = ensureTimeLedgerEntryIds(serverLocals);
+  const { rows: insideFromServer } = ensureTimeLedgerEntryIds(serverLocals);
   const { rows: localWithIds } = ensureTimeLedgerEntryIds(
     readTimeLedgerEntriesRaw(),
   );
-  const localById = new Map(
-    localWithIds
-      .map((r) => [String(r?.id || "").trim(), r])
-      .filter(([id]) => id),
-  );
-  /*
-   * 같은 id: 업로드 대기(localModifiedAt)가 있으면 로컬 유지.
-   * (저장 직후·동시 pull이 서버 옛 스냅샷으로 덮어 push할 내용이 사라지던 버그)
-   */
-  const insideFromServer = insideFromServerRaw.map((serverRow) => {
-    const id = String(serverRow?.id || "").trim();
-    const local = id ? localById.get(id) : null;
-    if (local && timeLedgerRowNeedsPush(local)) return local;
-    return serverRow;
-  });
   const outside = localWithIds.filter(
     (r) => !rowEntryDateInInclusiveRange(r, rs, re),
   );
-  const serverIds = new Set(
-    insideFromServerRaw
-      .map((r) => String(r?.id || "").trim())
-      .filter(Boolean),
-  );
-  /*
-   * 서버 응답에 없는 행: 업로드 대기만 유지.
-   * 예전에 서버에 있던 행이 응답에 없고 업로드 대기도 아니면 삭제분으로 봄.
-   */
-  const pendingNewLocal = [];
-  for (const r of localWithIds) {
-    if (!rowEntryDateInInclusiveRange(r, rs, re)) continue;
-    if (!timeLedgerRowNeedsPush(r)) continue;
-    const id = String(r?.id || "").trim();
-    if (!id || serverIds.has(id)) continue;
-    pendingNewLocal.push(r);
-  }
-  const merged = [...outside, ...insideFromServer, ...pendingNewLocal];
+  const merged = [...outside, ...insideFromServer];
   writeTimeLedgerEntriesRaw(merged);
   void flushTimeLedgerRowsToDiskNow();
   try {
@@ -821,6 +789,20 @@ export function applyTimeLedgerServerRangeSnapshot(
       );
     }
   } catch (_) {}
+}
+
+/**
+ * pull 직전에 — 구간에 있고 아직 서버에 안 올린 로컬 행(모달 저장분)을 모음.
+ */
+export function collectTimeLedgerDirtyRowsInRange(rangeStart, rangeEnd) {
+  const rs = String(rangeStart || "").trim();
+  const re = String(rangeEnd || "").trim();
+  if (!rs || !re) return [];
+  const { rows } = ensureTimeLedgerEntryIds(readTimeLedgerEntriesRaw());
+  return rows.filter(
+    (r) =>
+      rowEntryDateInInclusiveRange(r, rs, re) && timeLedgerRowNeedsPush(r),
+  );
 }
 
 export function readTimeLedgerEntriesRaw() {

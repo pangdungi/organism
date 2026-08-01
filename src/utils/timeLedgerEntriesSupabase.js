@@ -7,7 +7,7 @@
  * 기본(skipPull 미지정 시): upsert 직후 피커 구간 pull — 저장 직후 덮어쓰기가 나면 skipPull: true 로 호출.
  * 서버 쓰기는 사용자가 모달에서 확인·추가·수정·삭제할 때만(pushDirty·delete API).
  * pull·화면 읽기·자동마감은 서버에 올리지 않음.
- * pull 병합: 항상 서버 우선(같은 id는 서버 스냅샷). 미업로드 신규 행만 로컬 유지.
+ * pull 병합: 구간은 서버 스냅샷만. 미업로드분은 pull 직전 서버에 올린 뒤 다시 조회.
  */
 
 import { supabase } from "../supabase.js";
@@ -15,6 +15,7 @@ import { lpSaveDebug } from "./lpSaveDebug.js";
 import { lpPullDebug } from "./lpPullDebug.js";
 import {
   applyTimeLedgerServerRangeSnapshot,
+  collectTimeLedgerDirtyRowsInRange,
   ensureTimeLedgerEntryIds,
   localTimeLedgerRowToDbPayload,
   mergeTimeLedgerEntriesPushedServerTimes,
@@ -639,6 +640,22 @@ async function pullTimeLedgerEntriesForDateRangeCore(
     preferServer: true,
   });
 
+  /*
+   * 로컬에만 남은 모달 저장분(needsPush)을 먼저 서버에 올림.
+   * 그다음 서버를 다시 받아 화면=서버만 남김(새로고침해도 가짜 로컬이 안 보이게).
+   * after_push 직후 pull에서는 생략(방금 올린 뒤).
+   */
+  if (trigger !== "after_push") {
+    const dirty = collectTimeLedgerDirtyRowsInRange(rs, re);
+    if (dirty.length > 0) {
+      timeLedgerSyncLog("pull_flush_dirty", { count: dirty.length, range: `${rs}..${re}` });
+      await pushDirtyTimeLedgerEntriesToSupabaseCore({
+        forceRows: dirty,
+        skipPull: true,
+      });
+    }
+  }
+
   const pageSize = 1000;
   const rows = [];
   for (let offset = 0; ; offset += pageSize) {
@@ -887,19 +904,20 @@ async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
   }
 
   const returnedRows = Array.isArray(data) ? data : [];
-  if (returnedRows.length === 0) {
-    timeLedgerSyncLog("server_upsert_done", {
-      ok: false,
-      message: "upsert_no_rows_returned",
-    });
-    return {
-      ok: false,
-      reason: "upsert_no_rows_returned",
-      pushedCount: 0,
-    };
+  /*
+   * select 결과가 비어도 error 없으면 upsert 자체는 성공한 경우가 있음.
+   * (빈 응답만으로 실패 처리하면 추가가 영원히 안 되고 로컬에만 남음)
+   */
+  if (returnedRows.length > 0) {
+    mergeTimeLedgerEntriesPushedServerTimes(returnedRows);
+  } else {
+    mergeTimeLedgerEntriesPushedServerTimes(
+      toUpload.map((r) => ({
+        id: String(r.id || "").trim(),
+        updated_at: new Date().toISOString(),
+      })),
+    );
   }
-
-  mergeTimeLedgerEntriesPushedServerTimes(returnedRows);
 
   timeLedgerSyncLog("server_upsert_done", {
     ok: true,

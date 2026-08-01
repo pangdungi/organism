@@ -12916,6 +12916,11 @@ export function render(opts = {}) {
         ) {
           scheduleSilentTimeLedgerPushRetry([pushedId], forceRows);
         }
+        if (el.isConnected) {
+          try {
+            refreshTimeLedgerFromRemotePull({ force: true });
+          } catch (_) {}
+        }
       })();
       return;
     }
