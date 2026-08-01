@@ -24,6 +24,7 @@ import {
   timeLedgerRowNeedsPush,
   writeTimeLedgerEntriesRaw,
 } from "./timeLedgerEntriesModel.js";
+import { closeStaleInProgressTimeLedgerRows } from "./timeLedgerStaleInProgressClose.js";
 import { timeLedgerSyncLog } from "./timeLedgerSyncDebug.js";
 import { isUuid } from "./idUtils.js";
 import { coalesceInFlightPull } from "./timeLedgerPullCoalesce.js";
@@ -666,9 +667,13 @@ async function pullTimeLedgerEntriesForDateRangeCore(
 
   applyTimeLedgerServerRangeSnapshot(rows, rs, re, { preferServer: true });
   /*
-   * 어제 이전 진행 중 마감은 loadTimeRows() 화면용으로만 계산.
-   * 여기서 메모리에 쓰지 않음 — 서버 open end를 로컬 23:59로 덮지 않음.
+   * 어제 이전 「진행 중」은 이 기기 로컬에 23:59 마감.
+   * 서버 반영은 사용자가 모달에서 저장할 때만 (자동 push 금지).
    */
+  const closed = closeStaleInProgressTimeLedgerRows(readTimeLedgerEntriesRaw());
+  if (closed.changed) {
+    writeTimeLedgerEntriesRaw(closed.rows);
+  }
   timeLedgerSyncLog("pull_done", {
     range: `${rs}..${re}`,
     trigger,
@@ -892,11 +897,20 @@ export async function pushDirtyTimeLedgerEntriesToSupabase(opts = {}) {
 }
 
 /**
- * 시간 탭에서 쓰는 pull: 계정 + 시간「기록」세션 구간 entry_date만 조회
+ * 시간 탭에서 쓰는 pull: 세션 구간 ∪ 어제~오늘.
+ * (오늘만 pull 하면 어제 날짜는 폰 옛 저장이 그대로 남는 문제 방지)
  * @param {{ preferServer?: boolean, force?: boolean }} [opts]
  */
 export async function pullTimeLedgerEntriesFromSupabase(opts = {}) {
-  const { rangeStart, rangeEnd } = readTimeLedgerCombinedPullRangeYmd();
+  let { rangeStart, rangeEnd } = readTimeLedgerCombinedPullRangeYmd();
+  const today = timeLedgerLocalTodayYmd();
+  const yday = timeLedgerLocalYesterdayYmd();
+  if (!rangeStart || rangeStart > yday) rangeStart = yday;
+  if (!rangeEnd || rangeEnd < today) rangeEnd = today;
+  if (rangeStart > rangeEnd) {
+    rangeStart = yday;
+    rangeEnd = today;
+  }
   return pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd, opts);
 }
 

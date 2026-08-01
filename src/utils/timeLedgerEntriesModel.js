@@ -138,6 +138,17 @@ function schedulePersistTimeLedgerRowsToDisk() {
   }, 350);
 }
 
+/** pull 직후 — 디바운스 없이 디스크·미러에 바로 써서 껏다 켜도 옛 IDB가 안 남게 */
+export function flushTimeLedgerRowsToDiskNow() {
+  const uid = getActiveClientStorageUserId();
+  if (!uid) return Promise.resolve();
+  if (_persistTimer != null) {
+    clearTimeout(_persistTimer);
+    _persistTimer = null;
+  }
+  return writeAllRowsToIdb(readTimeLedgerEntriesRaw(), uid).catch(() => {});
+}
+
 function applyTimeLedgerRowsToMemory(rows) {
   const arr = Array.isArray(rows) ? rows : [];
   const { rows: withIds, dirty } = ensureTimeLedgerEntryIds(arr);
@@ -789,6 +800,7 @@ export function applyTimeLedgerServerRangeSnapshot(
   }
   const merged = [...outside, ...insideFromServer, ...pendingNewLocal];
   writeTimeLedgerEntriesRaw(merged);
+  void flushTimeLedgerRowsToDiskNow();
   try {
     if (typeof document !== "undefined") {
       document.dispatchEvent(

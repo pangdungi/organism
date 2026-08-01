@@ -1162,16 +1162,20 @@ export function loadTimeRows() {
   try {
     migrateTimeLogRowsTaskIds();
     let arr = readTimeLedgerEntriesRaw();
+    /*
+     * 어제 이전 진행 중 → 로컬에 23:59 마감(평생 진행 중 방지).
+     * 서버 업로드는 사용자가 모달에서 저장할 때만.
+     */
+    const closed = closeStaleInProgressTimeLedgerRows(arr);
+    if (closed.changed) {
+      writeTimeLedgerEntriesRaw(closed.rows);
+      arr = closed.rows;
+    }
     const { rows, dirty } = ensureTimeLedgerEntryIds(arr);
     if (dirty) {
       writeTimeLedgerEntriesRaw(rows);
-      arr = rows;
     }
-    /*
-     * 어제 이전 진행 중 → 화면용 23:59만. 메모리·서버에는 쓰지 않음.
-     */
-    const closed = closeStaleInProgressTimeLedgerRows(arr);
-    return closed.changed ? closed.rows : arr;
+    return rows;
   } catch (_) {
     return [];
   }
