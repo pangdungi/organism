@@ -737,10 +737,9 @@ function isTaskIdForeignKeyError(error) {
 }
 
 /**
- * 로컬에서 «이번에 사용자가 저장해 바뀐 행»만 서버 upsert 후, 피커 구간을 서버 기준으로 pull.
- * @param {{ skipPull?: boolean, rangeStart?: string, rangeEnd?: string, entryIds?: string[], _insideSerializedOp?: boolean }} opts
- */
-/**
+ * 로컬 dirty 또는 모달이 넘긴 forceRows를 서버 upsert 후 구간 pull.
+ * forceRows: 모달 추가·수정 — needsPush·메모리 상태와 무관하게 반드시 upsert.
+ * @param {{ skipPull?: boolean, rangeStart?: string, rangeEnd?: string, entryIds?: string[], forceRows?: object[] }} opts
  * @returns {Promise<{ ok: boolean, reason?: string, pushedCount?: number }>}
  */
 async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
@@ -750,6 +749,28 @@ async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
     return { ok: false, reason: "no_session", pushedCount: 0 };
   }
 
+  const forceRowsIn = Array.isArray(opts.forceRows) ? opts.forceRows : [];
+  const forceStamped = [];
+  if (forceRowsIn.length > 0) {
+    const now = Date.now();
+    const { rows: forcedEnsured } = ensureTimeLedgerEntryIds(forceRowsIn);
+    for (const r of forcedEnsured) {
+      if (!timeLedgerRowIsSyncable(r)) continue;
+      forceStamped.push({ ...r, localModifiedAt: now });
+    }
+    if (forceStamped.length > 0) {
+      const byId = new Map(
+        readTimeLedgerEntriesRaw()
+          .map((r) => [String(r?.id || "").trim(), r])
+          .filter(([id]) => id),
+      );
+      for (const r of forceStamped) {
+        byId.set(String(r.id).trim(), r);
+      }
+      writeTimeLedgerEntriesRaw([...byId.values()]);
+    }
+  }
+
   let rows = readTimeLedgerEntriesRaw();
   const ensured = ensureTimeLedgerEntryIds(rows);
   if (ensured.dirty) {
@@ -757,30 +778,42 @@ async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
     writeTimeLedgerEntriesRaw(rows);
   }
 
-  const substantive = rows.filter((r) => timeLedgerRowIsSyncable(r));
-  let toUpload = substantive.filter((r) => timeLedgerRowNeedsPush(r));
-
   const entryIdFilter = new Set(
     (Array.isArray(opts.entryIds) ? opts.entryIds : [])
       .map((id) => String(id || "").trim())
       .filter((id) => isUuid(id)),
   );
-  if (entryIdFilter.size > 0) {
-    toUpload = toUpload.filter((r) =>
-      entryIdFilter.has(String(r.id || "").trim()),
-    );
+
+  let toUpload;
+  if (forceStamped.length > 0) {
+    /* 모달 저장본 그대로 — dirty 판정으로 빼지 않음 */
+    toUpload = forceStamped.slice();
+    if (entryIdFilter.size > 0) {
+      toUpload = toUpload.filter((r) =>
+        entryIdFilter.has(String(r.id || "").trim()),
+      );
+    }
+  } else {
+    const substantive = rows.filter((r) => timeLedgerRowIsSyncable(r));
+    toUpload = substantive.filter((r) => timeLedgerRowNeedsPush(r));
+    if (entryIdFilter.size > 0) {
+      toUpload = toUpload.filter((r) =>
+        entryIdFilter.has(String(r.id || "").trim()),
+      );
+    }
   }
 
   if (toUpload.length === 0) {
-    const reason = entryIdFilter.size
-      ? "no_matching_rows_to_upload"
-      : "no_rows_to_upload";
+    const reason =
+      forceRowsIn.length > 0 || entryIdFilter.size > 0
+        ? "no_matching_rows_to_upload"
+        : "no_rows_to_upload";
     timeLedgerSyncLog("push_dirty_skipped", { reason });
     /*
-     * 모달이 특정 id를 올하라 했는데 0건이면 실패 — 재시도하게.
+     * 모달이 올린 행/특정 id가 0건이면 실패 — 재시도하게.
      * (동시 pull이 dirty를 지운 뒤 ok:true/0건으로 넘어가던 사고 방지)
      */
-    if (entryIdFilter.size > 0) {
+    if (forceRowsIn.length > 0 || entryIdFilter.size > 0) {
       return { ok: false, reason, pushedCount: 0 };
     }
     return { ok: true, reason, pushedCount: 0 };
@@ -853,24 +886,28 @@ async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
     };
   }
 
-  if (Array.isArray(data) && data.length > 0) {
-    mergeTimeLedgerEntriesPushedServerTimes(data);
-  } else {
-    mergeTimeLedgerEntriesPushedServerTimes(
-      toUpload.map((r) => ({
-        id: String(r.id || "").trim(),
-        updated_at: new Date().toISOString(),
-      })),
-    );
+  const returnedRows = Array.isArray(data) ? data : [];
+  if (returnedRows.length === 0) {
+    timeLedgerSyncLog("server_upsert_done", {
+      ok: false,
+      message: "upsert_no_rows_returned",
+    });
+    return {
+      ok: false,
+      reason: "upsert_no_rows_returned",
+      pushedCount: 0,
+    };
   }
+
+  mergeTimeLedgerEntriesPushedServerTimes(returnedRows);
 
   timeLedgerSyncLog("server_upsert_done", {
     ok: true,
-    returnedRowCount: Array.isArray(data) ? data.length : 0,
+    returnedRowCount: returnedRows.length,
   });
   lpSaveDebug("시간행 upsert 성공", {
     rowCount: toUpload.length,
-    returned: Array.isArray(data) ? data.length : 0,
+    returned: returnedRows.length,
   });
 
   if (opts.skipPull) {

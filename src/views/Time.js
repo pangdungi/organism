@@ -1212,10 +1212,16 @@ function scheduleSyncHabitTrackerLogs() {
 }
 
 /**
+ * @param {object[]} rows
+ * @param {{ forceRows?: object[] }} [opts] — 모달 추가·수정 행: 서버에 무조건 upsert
  * @returns {Promise<{ ok: boolean, reason?: string, pushedCount?: number }>}
  */
-function saveTimeRows(rows) {
+function saveTimeRows(rows, opts = {}) {
   try {
+    const forceRows = Array.isArray(opts.forceRows) ? opts.forceRows : [];
+    const forceIds = new Set(
+      forceRows.map((r) => String(r?.id || "").trim()).filter((id) => isUuid(id)),
+    );
     const prevSnap = readTimeLedgerEntriesRaw();
     const prevById = new Map(
       (Array.isArray(prevSnap) ? prevSnap : []).map((r) => [
@@ -1236,6 +1242,17 @@ function saveTimeRows(rows) {
             const { endTimeClearedByUser: _c, ...rest } = r || {};
             return rest;
           })();
+      if (id && forceIds.has(id)) {
+        pushEntryIds.push(id);
+        return {
+          ...row,
+          localModifiedAt:
+            typeof row.localModifiedAt === "number" &&
+            Number.isFinite(row.localModifiedAt)
+              ? row.localModifiedAt
+              : Date.now(),
+        };
+      }
       if (!prevRow) {
         const lm =
           typeof row.localModifiedAt === "number" &&
@@ -1269,7 +1286,8 @@ function saveTimeRows(rows) {
     timeLedgerSyncLog("local_rows_saved", {
       totalRows: toSave.length,
       pushEntryCount: pushEntryIds.length,
-      note: "로컬 저장 완료 → 이번에 바뀐 기록만 서버 반영(push)",
+      forceRowCount: forceRows.length,
+      note: "로컬 저장 완료 → 모달/변경 기록 서버 반영(push)",
     });
     scheduleSyncHabitTrackerLogs();
     if (typeof document !== "undefined") {
@@ -1277,10 +1295,13 @@ function saveTimeRows(rows) {
         new CustomEvent("calendar-time-rows-updated", { detail: {} }),
       );
     }
-    if (typeof window !== "undefined" && pushEntryIds.length > 0) {
-      /* 올린 뒤 구간 pull — 화면에 서버 스냅샷을 맞춤 */
+    if (
+      typeof window !== "undefined" &&
+      (forceRows.length > 0 || pushEntryIds.length > 0)
+    ) {
       return pushDirtyTimeLedgerEntriesToSupabase({
-        entryIds: pushEntryIds,
+        entryIds: pushEntryIds.length ? pushEntryIds : undefined,
+        forceRows: forceRows.length ? forceRows : undefined,
       });
     }
     return Promise.resolve({ ok: true, pushedCount: 0, reason: "no_push_needed" });
@@ -1294,18 +1315,26 @@ function saveTimeRows(rows) {
 }
 
 /** 모달 저장 직후 — 서버 반영 재시도(실패해도 사용자 안내 없음) */
-async function pushTimeRowsAfterModalSaveWithRetry(entryIds, { attempts = 3 } = {}) {
+async function pushTimeRowsAfterModalSaveWithRetry(
+  entryIds,
+  { attempts = 3, forceRows = [] } = {},
+) {
   const ids = (Array.isArray(entryIds) ? entryIds : [])
     .map((id) => String(id || "").trim())
     .filter((id) => isUuid(id));
-  if (!ids.length) return { ok: true, pushedCount: 0, reason: "no_ids" };
+  const forced = Array.isArray(forceRows) ? forceRows : [];
+  if (!ids.length && !forced.length) {
+    return { ok: true, pushedCount: 0, reason: "no_ids" };
+  }
   let last = { ok: false, reason: "not_attempted", pushedCount: 0 };
   for (let i = 0; i < attempts; i += 1) {
     try {
       last = await pushDirtyTimeLedgerEntriesToSupabase({
-        entryIds: ids,
+        entryIds: ids.length ? ids : undefined,
+        forceRows: forced.length ? forced : undefined,
       });
-      if (last?.ok) return last;
+      if (last?.ok && (last.pushedCount || 0) > 0) return last;
+      if (last?.ok && !forced.length && !ids.length) return last;
     } catch (err) {
       last = {
         ok: false,
@@ -1317,19 +1346,23 @@ async function pushTimeRowsAfterModalSaveWithRetry(entryIds, { attempts = 3 } = 
       await new Promise((r) => setTimeout(r, 400 * (i + 1)));
     }
   }
-  return last;
+  return last?.ok && (last.pushedCount || 0) === 0 && (forced.length || ids.length)
+    ? { ok: false, reason: last.reason || "push_zero", pushedCount: 0 }
+    : last;
 }
 
 /** 같은 기록 id 한 건만 — 팝업 없이 백그라운드에서 다시 올림 */
-function scheduleSilentTimeLedgerPushRetry(entryIds) {
+function scheduleSilentTimeLedgerPushRetry(entryIds, forceRows = []) {
   const ids = (Array.isArray(entryIds) ? entryIds : [])
     .map((id) => String(id || "").trim())
     .filter((id) => isUuid(id));
-  if (!ids.length) return;
+  const forced = Array.isArray(forceRows) ? forceRows : [];
+  if (!ids.length && !forced.length) return;
   [2000, 6000, 15000].forEach((ms) => {
     setTimeout(() => {
       void pushDirtyTimeLedgerEntriesToSupabase({
-        entryIds: ids,
+        entryIds: ids.length ? ids : undefined,
+        forceRows: forced.length ? forced : undefined,
       }).catch(() => {});
     }, ms);
   });
@@ -12747,6 +12780,20 @@ export function render(opts = {}) {
       const pushedId = String(
         (editTr?._rowData?.id || addLedgerTr?._rowData?.id || "").trim(),
       );
+      const modalRowRaw = editTr?._rowData || addLedgerTr?._rowData;
+      const forceRow =
+        modalRowRaw && isUuid(pushedId)
+          ? { ...modalRowRaw, id: pushedId, localModifiedAt: Date.now() }
+          : null;
+      if (forceRow) {
+        if (editTr) editTr._rowData = forceRow;
+        if (addLedgerTr) addLedgerTr._rowData = forceRow;
+        const cacheIdx = (Array.isArray(allRowsCache) ? allRowsCache : []).findIndex(
+          (r) => String(r?.id || "").trim() === pushedId,
+        );
+        if (cacheIdx >= 0) allRowsCache[cacheIdx] = forceRow;
+        else if (Array.isArray(allRowsCache)) allRowsCache.push(forceRow);
+      }
       /* 불완전 캐시로 전체 메모리를 덮지 않음 — 메모리 우선 + 방금 수정 id만 캐시 */
       const preferIds = pushedId ? new Set([pushedId]) : new Set();
       const rowsToPersist = mergeLedgerRowsForDedupe(
@@ -12755,7 +12802,10 @@ export function render(opts = {}) {
         preferIds,
       );
       allRowsCache = rowsToPersist;
-      const pushPromise = saveTimeRows(rowsToPersist);
+      /* 모달 추가·수정: 화면 표시와 별개로 해당 행을 서버에 무조건 upsert */
+      const pushPromise = saveTimeRows(rowsToPersist, {
+        forceRows: forceRow ? [forceRow] : [],
+      });
       onFilterChange(true);
 
       const rowTaskId = String(ledgerRowForKpi?.taskId || "").trim();
@@ -12843,27 +12893,28 @@ export function render(opts = {}) {
       }
 
       void (async () => {
+        const forceRows = forceRow ? [forceRow] : [];
         let pushResult;
         try {
           pushResult = await pushPromise;
         } catch (_) {
           pushResult = { ok: false, pushedCount: 0, reason: "push_threw" };
         }
-        if (!pushResult?.ok && isUuid(pushedId)) {
+        const needRetry =
+          !pushResult?.ok ||
+          ((forceRows.length > 0 || isUuid(pushedId)) &&
+            (pushResult.pushedCount || 0) === 0);
+        if (needRetry && (forceRows.length || isUuid(pushedId))) {
           pushResult = await pushTimeRowsAfterModalSaveWithRetry([pushedId], {
-            attempts: 3,
-          });
-        } else if (
-          pushResult?.ok &&
-          (pushResult.pushedCount || 0) === 0 &&
-          isUuid(pushedId)
-        ) {
-          pushResult = await pushTimeRowsAfterModalSaveWithRetry([pushedId], {
-            attempts: 2,
+            attempts: 4,
+            forceRows,
           });
         }
-        if (!pushResult?.ok && isUuid(pushedId)) {
-          scheduleSilentTimeLedgerPushRetry([pushedId]);
+        if (
+          (!pushResult?.ok || (pushResult.pushedCount || 0) === 0) &&
+          (forceRows.length || isUuid(pushedId))
+        ) {
+          scheduleSilentTimeLedgerPushRetry([pushedId], forceRows);
         }
       })();
       return;
@@ -13988,12 +14039,36 @@ export function render(opts = {}) {
           timeLedgerSyncLog("ui_time_row_delete", {
             idPreview: `${entryId.slice(0, 8)}…`,
           });
-          await deleteTimeLedgerEntryFromSupabase(entryId);
+          let deleted = false;
+          for (let i = 0; i < 4 && !deleted; i += 1) {
+            try {
+              deleted = !!(await deleteTimeLedgerEntryFromSupabase(entryId));
+            } catch (_) {
+              deleted = false;
+            }
+            if (!deleted && i < 3) {
+              await new Promise((r) => setTimeout(r, 400 * (i + 1)));
+            }
+          }
+          if (!deleted) {
+            [2000, 6000, 15000].forEach((ms) => {
+              setTimeout(() => {
+                void deleteTimeLedgerEntryFromSupabase(entryId).catch(() => {});
+              }, ms);
+            });
+          }
         }
         /* 메모리 전체에서 제거 — 화면 캐시만으로 save 하면 다른 날짜 기록이 날아감 */
         const { next } = removeTimeLedgerRowFromRows(loadTimeRows(), rowData);
         allRowsCache = next;
-        saveTimeRows(next);
+        /* 삭제는 서버 delete API로만 — 나머지 행 일괄 push 금지 */
+        writeTimeLedgerEntriesRaw(next);
+        scheduleSyncHabitTrackerLogs();
+        try {
+          document.dispatchEvent(
+            new CustomEvent("calendar-time-rows-updated", { detail: {} }),
+          );
+        } catch (_) {}
       })();
     };
     const handleCardEdit = (card, rowData) => {
