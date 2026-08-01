@@ -24,7 +24,6 @@ import {
   timeLedgerRowNeedsPush,
   writeTimeLedgerEntriesRaw,
 } from "./timeLedgerEntriesModel.js";
-import { closeStaleInProgressTimeLedgerRows } from "./timeLedgerStaleInProgressClose.js";
 import { timeLedgerSyncLog } from "./timeLedgerSyncDebug.js";
 import { isUuid } from "./idUtils.js";
 import { coalesceInFlightPull } from "./timeLedgerPullCoalesce.js";
@@ -667,13 +666,9 @@ async function pullTimeLedgerEntriesForDateRangeCore(
 
   applyTimeLedgerServerRangeSnapshot(rows, rs, re, { preferServer: true });
   /*
-   * 어제 이전 「진행 중」은 이 기기 화면에만 마감 표시.
-   * 서버 반영은 사용자가 모달에서 저장할 때만 (자동 push 금지).
+   * 어제 이전 진행 중 마감은 loadTimeRows() 화면용으로만 계산.
+   * 여기서 메모리에 쓰지 않음 — 서버 open end를 로컬 23:59로 덮지 않음.
    */
-  const closed = closeStaleInProgressTimeLedgerRows(readTimeLedgerEntriesRaw());
-  if (closed.changed) {
-    writeTimeLedgerEntriesRaw(closed.rows);
-  }
   timeLedgerSyncLog("pull_done", {
     range: `${rs}..${re}`,
     trigger,

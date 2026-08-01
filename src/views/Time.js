@@ -1162,20 +1162,16 @@ export function loadTimeRows() {
   try {
     migrateTimeLogRowsTaskIds();
     let arr = readTimeLedgerEntriesRaw();
-    /*
-     * 화면용 자동마감만 — 서버 업로드 없음.
-     * (saveTimeRows는 모달 저장 등 사용자 행동에서만 호출)
-     */
-    const closed = closeStaleInProgressTimeLedgerRows(arr);
-    if (closed.changed) {
-      writeTimeLedgerEntriesRaw(closed.rows);
-      arr = closed.rows;
-    }
     const { rows, dirty } = ensureTimeLedgerEntryIds(arr);
     if (dirty) {
       writeTimeLedgerEntriesRaw(rows);
+      arr = rows;
     }
-    return rows;
+    /*
+     * 어제 이전 진행 중 → 화면용 23:59만. 메모리·서버에는 쓰지 않음.
+     */
+    const closed = closeStaleInProgressTimeLedgerRows(arr);
+    return closed.changed ? closed.rows : arr;
   } catch (_) {
     return [];
   }
@@ -1278,8 +1274,8 @@ function saveTimeRows(rows) {
       );
     }
     if (typeof window !== "undefined" && pushEntryIds.length > 0) {
+      /* 올린 뒤 구간 pull — 화면에 서버 스냅샷을 맞춤 */
       return pushDirtyTimeLedgerEntriesToSupabase({
-        skipPull: true,
         entryIds: pushEntryIds,
       });
     }
@@ -2247,19 +2243,23 @@ function mergeLedgerRowsForDedupe(memoryRows, cacheRows, preferCacheIds) {
           )
         : new Set();
   const map = new Map();
-  for (const r of cacheRows || []) {
+  /* 1) 메모리(서버 pull분) 먼저 */
+  for (const r of memoryRows || []) {
     if (r) map.set(ledgerRowDedupeKey(r), r);
   }
-  for (const r of memoryRows || []) {
-    if (!r) continue;
-    const id = String(r.id || "").trim();
-    if (id && prefer.has(id)) continue;
-    map.set(ledgerRowDedupeKey(r), r);
-  }
+  /* 2) 방금 수정한 id만 캐시가 이김 */
   for (const r of cacheRows || []) {
     if (!r) continue;
     const id = String(r.id || "").trim();
     if (id && prefer.has(id)) map.set(ledgerRowDedupeKey(r), r);
+  }
+  /* 3) 캐시에만 있고 한 번도 서버에 없던 신규만 추가(삭제된 서버 행 되살림 금지) */
+  for (const r of cacheRows || []) {
+    if (!r) continue;
+    const k = ledgerRowDedupeKey(r);
+    if (map.has(k)) continue;
+    if (String(r.serverUpdatedAt || "").trim()) continue;
+    map.set(k, r);
   }
   return [...map.values()];
 }
@@ -6359,12 +6359,10 @@ export function render(opts = {}) {
     return filtered;
   }
 
-  function onFilterChange(skipMerge = false) {
-    /* mount 직후·pull 선완료: allRowsCache 는 render 초반 스냅샷일 수 있음 */
-    if (skipMerge) {
-      allRowsCache = loadTimeRows();
-    }
-    const rows = getFullRowsForFilter(skipMerge);
+  function onFilterChange(_skipMerge = false) {
+    /* 항상 메모리(서버 pull분)에서 — 화면 캐시로 덮지 않음 */
+    allRowsCache = loadTimeRows();
+    const rows = getFullRowsForFilter(true);
     cachedRows = rows;
     const filtered = applyUsageListFilters(rows);
     renderAll(filtered);
@@ -13662,23 +13660,6 @@ export function render(opts = {}) {
   logTabSync("time_tab_hydrate", {});
   allRowsCache = loadTimeRows();
   cachedRows = getFullRowsForFilter(true);
-
-  function mergeRowsIntoCache() {
-    const fromDom = collectRowsFromDOM(contentWrap);
-    const seen = new Set();
-    fromDom.forEach((r) => {
-      if (isEmptyTimeRow(r)) return;
-      const k = `${r.date}|${r.taskName}|${r.startTime}`;
-      const idx = allRowsCache.findIndex(
-        (c) => `${c.date}|${c.taskName}|${c.startTime}` === k,
-      );
-      if (idx >= 0) allRowsCache[idx] = r;
-      else if (!seen.has(k)) {
-        seen.add(k);
-        allRowsCache.push(r);
-      }
-    });
-  }
 
   function getFullRowsForFilter(_skipMerge = false) {
     /* DOM으로 캐시를 덮지 않음 — 화면·필터는 메모리(서버 pull·저장 반영분)만 */

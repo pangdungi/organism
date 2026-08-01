@@ -160,13 +160,24 @@ function dispatchTimeLedgerRowsHydratedFromIdb() {
 
 /**
  * mountApp 직전: localStorage 미러만 동기 로드(IndexedDB open 대기 없음).
+ * 이미 pull/저장으로 메모리가 있으면 옛 미러로 덮지 않음(캘린더 탭 전환 레이스 방지).
+ * @param {{ force?: boolean }} [opts]
  * @returns {boolean} 미러에서 1건 이상 복구했으면 true
  */
-export function hydrateTimeLedgerFromLocalMirrorForBoot() {
+export function hydrateTimeLedgerFromLocalMirrorForBoot(opts = {}) {
   const uid = getActiveClientStorageUserId();
   if (!uid) {
     _ledgerRowsMem = [];
+    bumpLedgerMemRevision();
     return false;
+  }
+  if (
+    !opts.force &&
+    Array.isArray(_ledgerRowsMem) &&
+    _ledgerRowsMem.length > 0 &&
+    _ledgerMemRevision > 0
+  ) {
+    return true;
   }
   try {
     const rows = readTimeLedgerRowsLocalMirrorSync(uid);
@@ -671,7 +682,7 @@ export function stripTimeLedgerSyncMetaForCompare(row) {
 
 /**
  * 사용자가 넣었던 마감시간을 빈 값으로 덮지 않음.
- * (마감 지우기 버튼으로 명시한 경우만 비움 허용)
+ * pull로 받은 행(localModifiedAt 없음)에는 적용하지 않음 — 서버 빈 마감을 로컬이 되살리지 않음.
  */
 export function preserveTimeLedgerEndTimeUnlessCleared(prevRow, nextRow) {
   if (!nextRow || typeof nextRow !== "object") return nextRow;
@@ -679,6 +690,10 @@ export function preserveTimeLedgerEndTimeUnlessCleared(prevRow, nextRow) {
     endTimeClearedByUser: clearedFlag,
     ...rest
   } = nextRow;
+  const prevHadLocalEdit =
+    typeof prevRow?.localModifiedAt === "number" &&
+    Number.isFinite(prevRow.localModifiedAt);
+  if (!prevHadLocalEdit) return rest;
   const prevEnd = String(prevRow?.endTime || "").trim();
   const nextEnd = String(rest.endTime || "").trim();
   if (prevEnd && !nextEnd && !clearedFlag) {
