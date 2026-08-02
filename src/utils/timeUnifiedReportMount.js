@@ -4023,6 +4023,16 @@ function mountMediaSection(scrollWrap, range, rows) {
   scrollWrap.appendChild(sec);
 }
 
+/** 도서명 칸 · (예전) 읽을 예정 체크가 메모에만 들어간 경우 */
+function resolveReadingReportBookTitle(row) {
+  const fromDetail = String(row?.mealDetail || "").trim();
+  if (fromDetail) return fromDetail;
+  const fb = String(row?.feedback || "").trim();
+  /* 레거시: 체크한 책만 feedback에 넣고 줄바꿈 없는 한 줄로 저장된 경우 */
+  if (fb && !fb.includes("\n") && fb.length <= 120) return fb;
+  return "";
+}
+
 /** @param {ReturnType<typeof loadTimeRows>} rows */
 function buildReadingReportSnapshot(rows) {
   let totalMinutes = 0;
@@ -4036,7 +4046,7 @@ function buildReadingReportSnapshot(rows) {
     if (!(mins > 0)) continue;
     sessionCount += 1;
     totalMinutes += mins;
-    const title = String(r.mealDetail || "").trim();
+    const title = resolveReadingReportBookTitle(r);
     if (!title) {
       untitledMinutes += mins;
       continue;

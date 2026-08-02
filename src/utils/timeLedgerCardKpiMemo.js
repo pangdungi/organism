@@ -2,7 +2,10 @@
  * 시간가계부 카드 메모 — 식단·콘텐츠·KPI 매일할일·수행값 요약 (사용자 메모와 합쳐 표시)
  */
 
-import { getKpiMeasureInfoByKpiId } from "./kpiTodoSync.js";
+import {
+  getKpiMeasureInfoByKpiId,
+  kpiShowsDailyHabitChipOnLedgerCard,
+} from "./kpiTodoSync.js";
 import { emotionReflectMemoParts } from "./timeEmotionReflectMemo.js";
 import { splitUnhealthyMealMemoFromDb } from "./timeLedgerEntriesModel.js";
 import * as TTC from "./timeTaskOptionsConstants.js";
@@ -156,25 +159,42 @@ export function buildTimeLedgerCardMemoParts(rowData, kpiId) {
       const unit = measure?.unit ? ` ${measure.unit}` : "";
       parts.push({ label: "수행값", body: `${performed}${unit}`.trim() });
     }
+  }
 
-    const daily = Array.isArray(rowData?.habitDailyCompleted)
-      ? rowData.habitDailyCompleted
-      : [];
-    const texts = daily
-      .map((t) => String(t?.text || "").trim())
-      .filter(Boolean);
-    if (texts.length > 0) {
-      const taskName = String(rowData?.taskName || "").trim();
-      const moveUsesDailyAsTitle =
-        taskName === MOVE_ROUTINE_TASK_NAME &&
-        !!formatMoveRoutineDisplayLabel(rowData?.habitDailyCompleted);
-      if (!moveUsesDailyAsTitle) {
-        parts.push({ label: "매일할일", body: `✓ ${texts.join(" · ")}` });
+  /* 체크한 할일 — 습관「매일할일」 / 태스크완료형「할일」(독서는 도서명 칸) */
+  const daily = Array.isArray(rowData?.habitDailyCompleted)
+    ? rowData.habitDailyCompleted
+    : [];
+  const habitTexts = daily
+    .map((t) => String(t?.text || "").trim())
+    .filter(Boolean);
+  if (habitTexts.length > 0) {
+    const taskName = String(rowData?.taskName || "").trim();
+    const moveUsesDailyAsTitle =
+      taskName === MOVE_ROUTINE_TASK_NAME &&
+      !!formatMoveRoutineDisplayLabel(rowData?.habitDailyCompleted);
+    if (!moveUsesDailyAsTitle) {
+      if (kid && kpiShowsDailyHabitChipOnLedgerCard(kid, daily)) {
+        parts.push({
+          label: "매일할일",
+          body: `✓ ${habitTexts.join(" · ")}`,
+        });
+      } else if (!TTC.isReadingDetailTaskName(taskName)) {
+        parts.push({ label: "할일", body: `✓ ${habitTexts.join(" · ")}` });
       }
     }
   }
 
   let memo = ledgerRowUserMemoFeedback(rowData);
+  /* 예전: 완료형 체크 문구가 메모에도 들어가 할일 칩과 중복되던 것 — 같으면 메모는 숨김 */
+  if (
+    memo &&
+    habitTexts.length > 0 &&
+    !TTC.isNegativeEmotionalTaskName(rowData?.taskName)
+  ) {
+    const joined = habitTexts.join(" · ");
+    if (memo === joined || memo === `✓ ${joined}`) memo = "";
+  }
   if (memo && TTC.isNegativeEmotionalTaskName(rowData?.taskName)) {
     parts.push(...emotionReflectMemoParts(memo));
   } else if (memo) {
@@ -187,7 +207,10 @@ export function buildTimeLedgerCardMemoParts(rowData, kpiId) {
 /** @param {object} rowData @param {string} kpiId */
 export function formatTimeLedgerCardKpiMemoLines(rowData, kpiId) {
   return buildTimeLedgerCardMemoParts(rowData, kpiId)
-    .filter((p) => p.label === "수행값" || p.label === "매일할일")
+    .filter(
+      (p) =>
+        p.label === "수행값" || p.label === "매일할일" || p.label === "할일",
+    )
     .map((p) => (p.label ? `${p.label} ${p.body}` : p.body));
 }
 

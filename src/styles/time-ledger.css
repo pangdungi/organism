@@ -8066,10 +8066,16 @@
 
 .time-ledger-card-memo-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 0.28rem 0.4rem;
   min-width: 0;
+}
+
+/* 구매 후기만(칩 없음) — 여러 줄은 위에서부터 */
+.time-ledger-card-memo-row:not(:has(.time-ledger-card-memo-chip)) {
+  flex-wrap: wrap;
+  align-items: flex-start;
 }
 
 .time-ledger-card-memo-chip {
@@ -8077,7 +8083,9 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  padding: 0.12rem 0.34rem;
+  box-sizing: border-box;
+  height: 1.35em;
+  padding: 0 0.34rem;
   border-radius: 6px;
   font-size: 0.625rem;
   font-weight: 700;
@@ -8088,15 +8096,26 @@
 }
 
 .time-ledger-card-memo-body {
-  flex: 1 1 7rem;
+  flex: 1 1 auto;
   min-width: 0;
-  display: inline-flex;
-  align-items: center;
+  display: block;
   font-size: inherit;
   font-weight: 400;
-  line-height: 1.3;
+  line-height: 1.35;
   color: inherit;
   word-break: break-word;
+  /* 구매 후기 등 — 입력한 엔터 줄바꿈 유지 */
+  white-space: pre-wrap;
+}
+
+/* 칩+✓텍스트 한 줄 — 세로 가운데 */
+.time-ledger-card-memo-row:has(.time-ledger-card-memo-chip)
+  .time-ledger-card-memo-body {
+  display: flex;
+  align-items: center;
+  white-space: normal;
+  line-height: 1.35;
+  min-height: 1.35em;
 }
 
 /* 시간 사용내역 조회 기간 모달 — 패널·날짜 너비는 할일 수정 모달과 동일(lp-modals 26rem) */
@@ -8862,16 +8881,17 @@
   line-height: 1.25;
 }
 
-/* 시간기록 모달 — 말 점검 표 (작게) */
+/* 시간기록 모달 — 말 점검 표 (작게) · 이 시간 평가 아래 구분선 */
 .time-task-setup-modal.time-task-log-modal
   [data-legacy~="time-task-log-speech-check-section"],
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]
   [data-legacy~="time-task-log-speech-check-section"],
 .lp-calendar-budget-add-modal
   [data-legacy~="time-task-log-speech-check-section"] {
-  margin-top: 0.55rem;
-  padding-top: 0.45rem;
+  margin-top: 0.85rem;
+  padding-top: 0.65rem;
   padding-bottom: 0.25rem;
+  border-top: 1px solid #e5e5e5;
 }
 
 .time-task-log-speech-check-list {

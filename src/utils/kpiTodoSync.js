@@ -25,7 +25,12 @@ import {
   writeKpiMapScopedStorageRaw,
 } from "./kpiMapLocalStorage.js";
 import { getTaskOptionById } from "./timeTaskOptionsModel.js";
-import { removeKpiTaskCompletionEventsForTodos } from "./kpiTaskCompletionEvents.js";
+import {
+  normalizeKpiTaskCompletionEvents,
+  removeKpiTaskCompletionEventsForTodos,
+  syncKpiTaskCompletionEventOnTodoToggle,
+  toLocalDateKey,
+} from "./kpiTaskCompletionEvents.js";
 
 const DREAM_MAP_KEY = "kpi-dream-map";
 const SIDEINCOME_KEY = "kpi-sideincome-paths";
@@ -418,7 +423,29 @@ export function syncKpiTodoCompleted(kpiTodoId, storageKey, completed) {
       return;
     }
     const before = !!todo.completed;
-    todo.completed = !!completed;
+    const nowCompleted = !!completed;
+    if (before === nowCompleted) {
+      kpiTodoFineTrace("syncKpiTodoCompleted:변경없음", {
+        kpiTodoId: String(kpiTodoId),
+        completed: nowCompleted,
+      });
+      return;
+    }
+    todo.completed = nowCompleted;
+    const kid = String(todo.kpiId || "").trim();
+    const kpi = (data.kpis || []).find(
+      (k) => String(k?.id || "").trim() === kid,
+    );
+    /* 행복 KPI 탭 체크와 동일 — 완료 이벤트·진행률 연동 */
+    if (kpi?.useTaskCompletionGoal) {
+      syncKpiTaskCompletionEventOnTodoToggle(
+        data,
+        kpi,
+        String(kpiTodoId),
+        nowCompleted,
+        before,
+      );
+    }
     stampAndPersistKpiMap(storageKey, prevSnapshot, data, { pushServer: true });
     kpiTodoFineTrace("syncKpiTodoCompleted:저장직후", {
       kpiTodoId: String(kpiTodoId),
@@ -695,29 +722,167 @@ export function isKpiTaskCompletionGoalType(kpi) {
 }
 
 /**
+ * 시간기록 카드에 「매일할일」칩을 그릴지.
+ * 태스크완료형(useTaskCompletionGoal)·완료형 할일 id 저장분은 절대 매일할일이 아님.
+ * @param {string} kpiId
+ * @param {Array<{id?: string, text?: string}>} [completedList] 행의 habitDailyCompleted
+ */
+export function kpiShowsDailyHabitChipOnLedgerCard(kpiId, completedList) {
+  const kid = String(kpiId || "").trim();
+  if (!kid) return false;
+  for (const storageKey of STORAGE_KEYS) {
+    const data = loadJson(storageKey, {
+      kpis: [],
+      kpiTodos: [],
+      kpiDailyRepeatTodos: [],
+    });
+    const kpi = (data.kpis || []).find((k) => String(k.id || "").trim() === kid);
+    if (!kpi) continue;
+    if (kpi.useTaskCompletionGoal) return false;
+    if (!kpi.needHabitTracker) return false;
+    const items = Array.isArray(completedList) ? completedList : [];
+    if (items.length) {
+      const dailyIds = new Set(
+        (data.kpiDailyRepeatTodos || [])
+          .filter((t) => String(t?.kpiId || "").trim() === kid)
+          .map((t) => String(t?.id || "").trim())
+          .filter(Boolean),
+      );
+      const taskTodoIds = new Set(
+        (data.kpiTodos || [])
+          .filter((t) => String(t?.kpiId || "").trim() === kid)
+          .map((t) => String(t?.id || "").trim())
+          .filter(Boolean),
+      );
+      const ids = items
+        .map((x) => String(x?.id || "").trim())
+        .filter(Boolean);
+      /* 저장된 id가 전부 완료형 할일이고 매일할일 목록에 없으면 칩 숨김 */
+      if (
+        ids.length &&
+        ids.every((id) => taskTodoIds.has(id) && !dailyIds.has(id))
+      ) {
+        return false;
+      }
+    }
+    return true;
+  }
+  return false;
+}
+
+/**
+ * 시간기록 삭제 시: 그 기록에 묶인 완료형 할일(id)만 다시 미완료.
+ * 다른 시간기록에 같은 할일 id가 남아 있으면 유지.
+ * @param {object} rowData
+ * @param {object[]} remainingRows
+ */
+export function revertKpiTaskCompletionTodosForDeletedLedgerRow(
+  rowData,
+  remainingRows,
+) {
+  const checked = Array.isArray(rowData?.habitDailyCompleted)
+    ? rowData.habitDailyCompleted
+    : [];
+  if (!checked.length) return;
+  const deletedId = String(rowData?.id || "").trim();
+  const stillUsed = new Set();
+  for (const r of remainingRows || []) {
+    if (String(r?.id || "").trim() === deletedId) continue;
+    for (const x of Array.isArray(r?.habitDailyCompleted)
+      ? r.habitDailyCompleted
+      : []) {
+      const id = String(x?.id || "").trim();
+      if (id) stillUsed.add(id);
+    }
+  }
+  for (const item of checked) {
+    const todoId = String(item?.id || "").trim();
+    if (!todoId || stillUsed.has(todoId)) continue;
+    uncompleteTaskCompletionKpiTodoById(todoId);
+  }
+}
+
+/** 완료형 KPI 할일만 completed=false (매일반복 KPI 할일은 건드리지 않음) */
+function uncompleteTaskCompletionKpiTodoById(todoId) {
+  const tid = String(todoId || "").trim();
+  if (!tid) return;
+  for (const storageKey of STORAGE_KEYS) {
+    try {
+      const raw = readKpiMapScopedStorageRaw(storageKey);
+      if (!raw) continue;
+      const data = JSON.parse(raw);
+      const todo = (data.kpiTodos || []).find(
+        (t) => String(t?.id || "").trim() === tid,
+      );
+      if (!todo) continue;
+      const kid = String(todo.kpiId || "").trim();
+      const kpi = (data.kpis || []).find(
+        (k) => String(k?.id || "").trim() === kid,
+      );
+      if (!isKpiTaskCompletionGoalType(kpi)) return;
+      if (!todo.completed) return;
+      syncKpiTodoCompleted(tid, storageKey, false);
+      return;
+    } catch (_) {}
+  }
+}
+
+/**
  * KPI id — 태스크 완료형 할 일 목록 (과제 기록 모달)
+ * 기본은 미완료만. includeIds·includeCompletedOnYmd 로 오늘/이 기록 체크분은 보여 해제 가능.
+ * @param {string} kpiId
+ * @param {{ includeIds?: string[], includeCompletedOnYmd?: string }} [opts]
  * @returns {{ storageKey: string, kpiId: string, kpiName: string, useTaskCompletionGoal: boolean, todos: Array<{ id: string, text: string, completed: boolean }> } | null}
  */
-export function getKpiTaskCompletionTodoInfoByKpiId(kpiId) {
+export function getKpiTaskCompletionTodoInfoByKpiId(kpiId, opts = {}) {
   const kid = String(kpiId || "").trim();
   if (!kid) return null;
+  const includeIds = new Set(
+    (Array.isArray(opts.includeIds) ? opts.includeIds : [])
+      .map((x) => String(x || "").trim())
+      .filter(Boolean),
+  );
+  const completedOnYmd = String(opts.includeCompletedOnYmd || "").trim();
   for (const storageKey of STORAGE_KEYS) {
-    const data = loadJson(storageKey, { kpis: [], kpiTodos: [] });
+    const data = loadJson(storageKey, {
+      kpis: [],
+      kpiTodos: [],
+      kpiTaskCompletionEvents: [],
+    });
     const kpi = (data.kpis || []).find((k) => String(k.id || "").trim() === kid);
     if (!kpi) continue;
     if (!isKpiTaskCompletionGoalType(kpi)) return null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(completedOnYmd)) {
+      for (const e of normalizeKpiTaskCompletionEvents(
+        data.kpiTaskCompletionEvents,
+      )) {
+        if (String(e.kpiId || "").trim() !== kid) continue;
+        const tid = String(e.todoId || "").trim();
+        if (!tid) continue;
+        let day = "";
+        try {
+          day = toLocalDateKey(new Date(e.completedAt));
+        } catch (_) {
+          day = "";
+        }
+        if (day === completedOnYmd) includeIds.add(tid);
+      }
+    }
     const todos = sortNormalizedKpiTodoRows(
-      (data.kpiTodos || []).filter(
-        (t) =>
-          String(t.kpiId) === kid &&
-          (t.text || "").trim() !== "" &&
-          !t.completed,
-      ),
-    ).map((t) => ({
-      id: t.id,
-      text: (t.text || "").trim(),
-      completed: !!t.completed,
-    }));
+      (data.kpiTodos || []).filter((t) => {
+        if (String(t.kpiId) !== kid) return false;
+        if (!(t.text || "").trim()) return false;
+        /* 미완료는 항상 표시. 완료분은 includeIds(오늘/이 기록)만 다시 보여 해제 가능 */
+        if (!t.completed) return true;
+        return includeIds.has(String(t.id || "").trim());
+      }),
+    )
+      .map((t) => ({
+        id: t.id,
+        text: (t.text || "").trim(),
+        completed: !!t.completed,
+      }))
+      .sort((a, b) => Number(!!b.completed) - Number(!!a.completed));
     return {
       storageKey,
       kpiId: kid,

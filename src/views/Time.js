@@ -22,6 +22,7 @@ import {
   getKpiTaskCompletionTodoInfoByKpiId,
   resolveKpiIdForTaskId,
   syncKpiTodoCompleted,
+  revertKpiTaskCompletionTodosForDeletedLedgerRow,
 } from "../utils/kpiTodoSync.js";
 import { pullKpiTodosDomainFromCloudIfStale } from "../utils/kpiTabCloudRefresh.js";
 import {
@@ -8528,6 +8529,12 @@ export function render(opts = {}) {
     return TTC.isMealIntakeTasteRatingTaskName(taskName);
   }
 
+  /** 생산·비생산 대화 — 별점만 (몰입/종료 이유 UI 없음) */
+  function isTaskLogModalConversationTask() {
+    const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
+    return TTC.isConversationDetailTaskName(taskName);
+  }
+
   function shouldShowTaskLogRatingSection() {
     /* 취침~23:59 구간은 아직 자는 중 — 평가는 다음날 기상 때 */
     if (isTaskLogModalSleepOvernightCutoff()) return false;
@@ -8601,6 +8608,7 @@ export function render(opts = {}) {
     const show =
       isTaskLogModalProductiveTask() &&
       !isTaskLogModalMealIntakeTask() &&
+      !isTaskLogModalConversationTask() &&
       shouldCollectTimeFlowDisruptors(getTaskLogTimeRating());
     if (taskLogFlowDisruptorSection) taskLogFlowDisruptorSection.hidden = !show;
     const disruptorLabel = taskLogFlowDisruptorSection?.querySelector(
@@ -8645,6 +8653,7 @@ export function render(opts = {}) {
     const show =
       isTaskLogModalProductiveTask() &&
       !isTaskLogModalMealIntakeTask() &&
+      !isTaskLogModalConversationTask() &&
       shouldCollectTimeFlowFactors(getTaskLogTimeRating());
     if (taskLogFlowFactorSection) taskLogFlowFactorSection.hidden = !show;
     const factorLabel = taskLogFlowFactorSection?.querySelector(
@@ -8775,6 +8784,7 @@ export function render(opts = {}) {
     const show =
       isTaskLogModalProductiveTask() &&
       !isTaskLogModalMealIntakeTask() &&
+      !isTaskLogModalConversationTask() &&
       shouldCollectTimeEndReasons(getTaskLogTimeRating());
     if (taskLogEndReasonSection) taskLogEndReasonSection.hidden = !show;
     const endLabel = taskLogEndReasonSection?.querySelector(
@@ -9304,7 +9314,10 @@ export function render(opts = {}) {
           TTC.isMealIntakeTasteRatingTaskName(tn) ? `${base} (필수)` : base;
       }
       if (taskLogMealDetailInput) {
-        if (!showFreeTextDetail) taskLogMealDetailInput.value = "";
+        if (!showFreeTextDetail) {
+          taskLogMealDetailInput.value = "";
+          delete taskLogMealDetailInput.dataset.lpReadingAutoTitle;
+        }
         taskLogMealDetailInput.placeholder =
           TTC.ledgerDetailInputPlaceholder(kind) ||
           "무엇을 드셨는지 한 줄로 적어 주세요";
@@ -9620,7 +9633,11 @@ export function render(opts = {}) {
     updateTaskLogTimeOrderWarning();
   }
 
-  /** 저장용 마감 — 보이는 칸 > hidden > 기존 행. 사용자가 지운 경우만 빈 값 */
+  /**
+   * 저장용 마감 — 보이는 칸에 있을 때만 새 마감.
+   * 비면: 지우기 버튼 → "" / 아니면 기존 행 값만(hidden으로 지금시각·잔여값 절대 안 넣음).
+   * 지난 날짜 진행중 23:59 자동마감은 closeStaleInProgressTimeLedgerRows 전용.
+   */
   function resolveTaskLogEndTimeForSave(prevEndFallback = "") {
     if (taskLogTimeEnd) {
       const raw = String(taskLogTimeEnd.value || "").trim();
@@ -9636,10 +9653,14 @@ export function render(opts = {}) {
         }
       }
     }
-    if (taskLogEndClearedByUser) return "";
-    const hid = String(taskLogEndInput?.value || "").trim();
-    if (hid) return formatDateTimeInput(hid) || hid;
-    return String(prevEndFallback || "").trim();
+    if (taskLogEndClearedByUser) {
+      if (taskLogEndInput) taskLogEndInput.value = "";
+      return "";
+    }
+    const prevEnd = String(prevEndFallback || "").trim();
+    /* 보이는 칸이 비면 hidden은 쓰지 않음 — 잔여/지금시각 유입 차단 */
+    if (!prevEnd && taskLogEndInput) taskLogEndInput.value = "";
+    return prevEnd;
   }
 
   function setStartFromDatetime(dtStr) {
@@ -9682,18 +9703,26 @@ export function render(opts = {}) {
 
   function setEndFromDatetime(dtStr) {
     if (!dtStr || typeof dtStr !== "string") {
-      taskLogTimeEnd.value = "";
-      syncEndToHidden();
+      if (taskLogTimeEnd) taskLogTimeEnd.value = "";
+      /* 진행중 수정 오픈 시 이전 모달 hidden 마감이 남지 않게 비움 */
+      if (taskLogEndInput) taskLogEndInput.value = "";
+      updateEndTimeClearVisibility();
+      syncTaskLogDateOverlay();
+      updateTaskLogTimeOrderWarning();
       return;
     }
     const m = dtStr.match(/[T\s](\d{1,2}):(\d{2})/);
     if (m) {
       taskLogTimeEnd.value = `${String(parseInt(m[1], 10)).padStart(2, "0")}:${m[2]}`;
       taskLogEndClearedByUser = false;
-    } else {
-      taskLogTimeEnd.value = "";
+      syncEndToHidden();
+      return;
     }
-    syncEndToHidden();
+    if (taskLogTimeEnd) taskLogTimeEnd.value = "";
+    if (taskLogEndInput) taskLogEndInput.value = "";
+    updateEndTimeClearVisibility();
+    syncTaskLogDateOverlay();
+    updateTaskLogTimeOrderWarning();
   }
 
   let taskLogTimeEndInputFocused = false;
@@ -10995,26 +11024,65 @@ export function render(opts = {}) {
     return fromCtx.map((x) => String(x || "").trim()).filter(Boolean);
   }
 
+  /** 이 기록·같은 날 다른 기록에 체크된 완료형 할일 id (모달에서 다시 보이게) */
+  function collectTaskCompletionIncludeIdsForTaskLog(kpiId) {
+    const kid = String(kpiId || "").trim();
+    const ids = new Set();
+    if (!kid) return ids;
+    const addFromRow = (row) => {
+      for (const x of Array.isArray(row?.habitDailyCompleted)
+        ? row.habitDailyCompleted
+        : []) {
+        const id = String(x?.id || "").trim();
+        if (id) ids.add(id);
+      }
+    };
+    if (taskLogEditTr?._rowData) addFromRow(taskLogEditTr._rowData);
+    const ymd = normalizeTaskLogPickerDateYmd();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return ids;
+    for (const r of loadTimeRows() || []) {
+      if (ledgerRowEntryDateYmd(r) !== ymd) continue;
+      const rowKid =
+        resolveKpiIdForTaskId(String(r?.taskId || "").trim()) ||
+        String(
+          getTaskOptionByName(String(r?.taskName || "").trim())?.kpiId || "",
+        ).trim();
+      if (rowKid !== kid) continue;
+      addFromRow(r);
+    }
+    return ids;
+  }
+
   function getTaskCompletionTodoInfoForTaskLog() {
     const kpiId = resolveTaskLogModalKpiId();
     if (!kpiId) return null;
-    const info = getKpiTaskCompletionTodoInfoByKpiId(kpiId);
+    const includeIds = [...collectTaskCompletionIncludeIdsForTaskLog(kpiId)];
+    const ymd = normalizeTaskLogPickerDateYmd();
+    const info = getKpiTaskCompletionTodoInfoByKpiId(kpiId, {
+      includeIds,
+      includeCompletedOnYmd: /^\d{4}-\d{2}-\d{2}$/.test(ymd) ? ymd : "",
+    });
     if (!info) return null;
     const plannedIds = resolveTaskLogPlannedTodoIdFilter();
     if (!plannedIds.length) return info;
     const allow = new Set(plannedIds);
+    const keepChecked = new Set(includeIds);
+    for (const t of info.todos || []) {
+      if (t?.completed) keepChecked.add(String(t.id || "").trim());
+    }
     return {
       ...info,
-      todos: (info.todos || []).filter((t) =>
-        allow.has(String(t?.id || "").trim()),
-      ),
+      todos: (info.todos || []).filter((t) => {
+        const id = String(t?.id || "").trim();
+        return allow.has(id) || keepChecked.has(id);
+      }),
       plannedTodoFilterActive: true,
     };
   }
 
-  function collectCheckedTaskCompletionTodoTextsFromModal() {
-    const texts = [];
-    if (!taskLogKpiTodosList) return texts;
+  function collectCheckedTaskCompletionTodosFromModal() {
+    const out = [];
+    if (!taskLogKpiTodosList) return out;
     taskLogKpiTodosList
       .querySelectorAll('[data-legacy~="time-task-log-chore-todo-row"]')
       .forEach((label) => {
@@ -11023,23 +11091,74 @@ export function render(opts = {}) {
           '[data-legacy~="time-task-log-kpi-todo-text"]',
         );
         if (!cb?.checked) return;
-        const t = (span?.textContent || "").trim();
-        if (t) texts.push(t);
+        const id = String(cb?.dataset?.todoId || "").trim();
+        const text = (span?.textContent || "").trim();
+        if (!id) return;
+        out.push({ id, text });
       });
-    return texts;
+    return out;
   }
 
-  function applyTaskCompletionTodoCompletionsOnTaskLogSubmit() {
+  function collectCheckedTaskCompletionTodoTextsFromModal() {
+    return collectCheckedTaskCompletionTodosFromModal()
+      .map((x) => String(x?.text || "").trim())
+      .filter(Boolean);
+  }
+
+  function mergeLedgerHabitDailyCompletedLists(...lists) {
+    const map = new Map();
+    for (const list of lists) {
+      for (const x of Array.isArray(list) ? list : []) {
+        const id = String(x?.id || "").trim();
+        if (!id) continue;
+        map.set(id, {
+          id,
+          text: String(x?.text || "").trim(),
+        });
+      }
+    }
+    return [...map.values()];
+  }
+
+  function applyTaskCompletionTodoCompletionsOnTaskLogSubmit(
+    prevCompletedOnRow,
+    checkedSnapshot,
+  ) {
     const info = getTaskCompletionTodoInfoForTaskLog();
-    if (!info || !taskLogKpiTodosList) return;
-    taskLogKpiTodosList
-      .querySelectorAll('[data-legacy~="time-task-log-chore-todo-row"]')
-      .forEach((label) => {
-        const cb = label.querySelector('input[type="checkbox"]');
-        const id = String(cb?.dataset?.todoId || "").trim();
-        if (!id || !cb?.checked) return;
-        syncKpiTodoCompleted(id, info.storageKey, true);
+    if (!info) return;
+    const checkedList = Array.isArray(checkedSnapshot)
+      ? checkedSnapshot
+      : collectCheckedTaskCompletionTodosFromModal();
+    const checkedIds = new Set();
+    for (const item of checkedList) {
+      const id = String(item?.id || "").trim();
+      if (!id) continue;
+      checkedIds.add(id);
+      syncKpiTodoCompleted(id, info.storageKey, true);
+    }
+    /* 이 기록·오늘 보이던 체크를 해제한 할일 → 미완료(다른 기록에 남아 있으면 유지) */
+    const editId = String(taskLogEditTr?._rowData?.id || "").trim();
+    const others = loadTimeRows() || [];
+    const maybeUncheck = new Set(
+      (Array.isArray(prevCompletedOnRow) ? prevCompletedOnRow : [])
+        .map((x) => String(x?.id || "").trim())
+        .filter(Boolean),
+    );
+    for (const t of info.todos || []) {
+      if (t?.completed) maybeUncheck.add(String(t.id || "").trim());
+    }
+    for (const id of maybeUncheck) {
+      if (!id || checkedIds.has(id)) continue;
+      const stillOnOther = others.some((r) => {
+        if (editId && String(r?.id || "").trim() === editId) return false;
+        return (Array.isArray(r?.habitDailyCompleted)
+          ? r.habitDailyCompleted
+          : []
+        ).some((y) => String(y?.id || "").trim() === id);
       });
+      if (stillOnOther) continue;
+      syncKpiTodoCompleted(id, info.storageKey, false);
+    }
   }
 
   function buildTaskLogFeedbackForSubmit(taskName) {
@@ -11049,14 +11168,29 @@ export function render(opts = {}) {
         taskLogEmotionInterpInput?.value || "",
       );
     }
-    const userMemo = (taskLogFeedbackInput?.value || "").trim();
-    if (!getTaskCompletionTodoInfoForTaskLog()) {
-      return userMemo;
+    /* 완료형·독서·잡무: 체크한 할일은 「할일」/도서명으로만 — 구매 후기에 중복 넣지 않음 */
+    return (taskLogFeedbackInput?.value || "").trim();
+  }
+
+  /** 독서하기 — 도서명 칸 값, 없으면 체크한 읽을 예정 */
+  function resolveReadingBookTitleForSave() {
+    const typed = (taskLogMealDetailInput?.value || "").trim();
+    if (typed) return typed;
+    return collectCheckedTaskCompletionTodoTextsFromModal().join(" · ");
+  }
+
+  /** 읽을 예정 체크 ↔ 도서명: 체크한 책만 반영, 해제하면 도서명에서도 뺌 */
+  function syncReadingBookTitleFromCheckedTodos() {
+    const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
+    if (!TTC.isReadingDetailTaskName(taskName) || !taskLogMealDetailInput) return;
+    const texts = collectCheckedTaskCompletionTodoTextsFromModal();
+    const joined = texts.join(" · ");
+    taskLogMealDetailInput.value = joined;
+    if (joined) {
+      taskLogMealDetailInput.dataset.lpReadingAutoTitle = joined;
+    } else {
+      delete taskLogMealDetailInput.dataset.lpReadingAutoTitle;
     }
-    if (taskLogEditTr) return userMemo;
-    const doneTexts = collectCheckedTaskCompletionTodoTextsFromModal();
-    if (doneTexts.length) return doneTexts.join(" · ");
-    return userMemo;
   }
 
   function hideTaskLogTaskCompletionTodosSection() {
@@ -11098,8 +11232,10 @@ export function render(opts = {}) {
       );
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
-      checkbox.checked =
-        preserveChecks?.has(id) ? !!preserveChecks.get(id) : !!todo.completed;
+      const defaultChecked = !!todo.completed;
+      checkbox.checked = preserveChecks?.has(id)
+        ? !!preserveChecks.get(id)
+        : defaultChecked;
       if (id) checkbox.dataset.todoId = id;
       const span = document.createElement("span");
       lpSetClasses(span, "time-task-log-kpi-todo-text");
@@ -11112,8 +11248,12 @@ export function render(opts = {}) {
           todoId: id,
           checked: checkbox.checked,
         });
-        /* KPI 할일 완료는 「기록」 저장 시에만 반영 — X로 닫으면 체크만 무효 */
+        /* 저장 전에는 KPI 완료로 올리지 않음 — 목록에 남기고 체크/해제 가능 */
         lpTokenToggle(span, "is-done", checkbox.checked);
+        if (checkbox.checked && taskLogKpiTodosList?.firstChild !== label) {
+          taskLogKpiTodosList.insertBefore(label, taskLogKpiTodosList.firstChild);
+        }
+        syncReadingBookTitleFromCheckedTodos();
       });
       taskLogKpiTodosList.appendChild(label);
     }
@@ -11552,25 +11692,11 @@ export function render(opts = {}) {
         taskLogDateStart.setAttribute("value", ymd);
       } catch (_) {}
     }
-    const hasPresetEnd = !!normalizeHhMm(
-      String(taskLogAddContext?.presetEndHhMm || ""),
-    );
+    /* 마감은 사용자가 퀵버튼·직접입력할 때만 — 일정 프리셋으로 넣지 않음 */
     applyTaskLogStartFromLedgerForDate(ymd, {
       allowPreset: true,
-      clearEnd: !hasPresetEnd,
+      clearEnd: true,
     });
-    if (hasPresetEnd && taskLogTimeEnd) {
-      const endHh = normalizeHhMm(
-        String(taskLogAddContext.presetEndHhMm || ""),
-      );
-      taskLogTimeEnd.value = endHh;
-      try {
-        taskLogTimeEnd.defaultValue = endHh;
-      } catch (_) {}
-      syncEndToHidden();
-      updateEndTimeClearVisibility();
-      updateTaskLogTimeOrderWarning();
-    }
     const wrap = taskLogDateStart?.closest?.(
       '[data-legacy~="time-task-log-date-native-wrap"]',
     );
@@ -11747,7 +11873,10 @@ export function render(opts = {}) {
       );
     const firstTask = pickTasks[0]?.name || "";
     if (taskLogFeedbackInput) taskLogFeedbackInput.value = "";
-    if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
+    if (taskLogMealDetailInput) {
+      taskLogMealDetailInput.value = "";
+      delete taskLogMealDetailInput.dataset.lpReadingAutoTitle;
+    }
     clearTaskLogContentType();
     clearTaskLogSpeechChecks();
     clearTaskLogEmotionTrigger();
@@ -11949,6 +12078,8 @@ export function render(opts = {}) {
     );
     setStartFromDatetime(startTime || "");
     setEndFromDatetime(endTime || "");
+    /* 기본 대상은 마감 — 퀵버튼(지금·± 등)이 마감에 들어가게 */
+    lastFocusedTimeField = "end";
     updateEndTimeClearVisibility();
     let mealDetailVal = String(data.mealDetail || "").trim();
     let feedbackRaw = String(data.feedback || "").trim();
@@ -12106,11 +12237,17 @@ export function render(opts = {}) {
       return;
     }
     let startTime = formatDateTimeInput(startRaw) || startRaw;
+    const endVisibleGuard =
+      normalizeHhMm((taskLogTimeEnd?.value || "").trim()) || "";
+    /* 보이는 마감이 비면 저장 마감도 비움(또는 기존만 유지) — 자동 ‘지금’ 금지 */
+    if (!endVisibleGuard) {
+      endTime = taskLogEndClearedByUser
+        ? ""
+        : String(prevEndForResolve || "").trim();
+    }
     if (startTime && endTime) {
       endTime = mergeEndTimeWithStartDate(startTime, endTime) || endTime;
     }
-    const endVisibleGuard =
-      normalizeHhMm((taskLogTimeEnd?.value || "").trim()) || "";
     if (
       endVisibleGuard &&
       /^\d{1,2}:\d{2}$/.test(endVisibleGuard) &&
@@ -12136,9 +12273,11 @@ export function render(opts = {}) {
           ? TTC.emotionTaskUsesTriggers(taskName)
             ? getTaskLogEmotionTriggerForSave()
             : ""
-          : detailKind
-            ? (taskLogMealDetailInput?.value || "").trim()
-            : "";
+          : detailKind === "reading"
+            ? resolveReadingBookTitleForSave()
+            : detailKind
+              ? (taskLogMealDetailInput?.value || "").trim()
+              : "";
     if (
       TTC.isContentDetailTaskName(taskName) &&
       !String(mealDetailForRow || "").trim()
@@ -12349,6 +12488,7 @@ export function render(opts = {}) {
     const needsFlowDisruptors =
       isTaskLogModalProductiveTask() &&
       !isTaskLogModalMealIntakeTask() &&
+      !isTaskLogModalConversationTask() &&
       shouldCollectTimeFlowDisruptors(timeRatingForRow);
     const timeFlowDisruptorsForRow = needsFlowDisruptors
       ? getTaskLogTimeFlowDisruptors()
@@ -12378,7 +12518,8 @@ export function render(opts = {}) {
     const needsFlowFactors =
       shouldCollectTimeFlowFactors(timeRatingForRow) &&
       isTaskLogModalProductiveTask() &&
-      !isTaskLogModalMealIntakeTask();
+      !isTaskLogModalMealIntakeTask() &&
+      !isTaskLogModalConversationTask();
     const timeFlowFactorsForRow = needsFlowFactors
       ? getTaskLogTimeFlowFactors()
       : [];
@@ -12407,7 +12548,8 @@ export function render(opts = {}) {
     const needsEndReasons =
       shouldCollectTimeEndReasons(timeRatingForRow) &&
       isTaskLogModalProductiveTask() &&
-      !isTaskLogModalMealIntakeTask();
+      !isTaskLogModalMealIntakeTask() &&
+      !isTaskLogModalConversationTask();
     const timeEndReasonsForRow = needsEndReasons
       ? getTaskLogTimeEndReasons()
       : [];
@@ -12794,9 +12936,28 @@ export function render(opts = {}) {
       );
       const ledgerIdForKpi = isUuid(habitLedgerId) ? habitLedgerId : undefined;
       const ledgerRowForKpi = editTr?._rowData || addLedgerTr?._rowData;
-      const completedForKpi =
+      const dailyCompletedForKpi =
         dailyInfoSubmit?.needHabitTracker && taskLogDailyTodosList
           ? collectTaskLogDailyCompletedFromModal()
+          : [];
+      const hasTaskCompletionList = !!getTaskCompletionTodoInfoForTaskLog();
+      /* 화면 다시 그리기 전에 체크 스냅샷 — DOM이 비어도 KPI 완료 반영 */
+      const taskCompletionChecked = hasTaskCompletionList
+        ? collectCheckedTaskCompletionTodosFromModal()
+        : [];
+      /* 덮어쓰기 전 — 수정 시 체크 해제분 되돌릴 때 사용 */
+      const prevHabitDailyCompletedOnRow = Array.isArray(
+        ledgerRowForKpi?.habitDailyCompleted,
+      )
+        ? [...ledgerRowForKpi.habitDailyCompleted]
+        : [];
+      /* 완료형 할일 id는 삭제 되돌림용으로만 저장(카드「매일할일」표시와 무관) */
+      const completedForKpi =
+        dailyInfoSubmit?.needHabitTracker || hasTaskCompletionList
+          ? mergeLedgerHabitDailyCompletedLists(
+              dailyCompletedForKpi,
+              taskCompletionChecked,
+            )
           : null;
 
       if (ledgerRowForKpi) {
@@ -12804,6 +12965,13 @@ export function render(opts = {}) {
           completed: completedForKpi,
           performedValue: kpiPerformedRaw || undefined,
         });
+      }
+      /* 목록 리렌더 전에 KPI 체크 완료 반영 */
+      if (hasTaskCompletionList) {
+        applyTaskCompletionTodoCompletionsOnTaskLogSubmit(
+          prevHabitDailyCompletedOnRow,
+          taskCompletionChecked,
+        );
       }
       if (addCtx) {
         const dismissedKey = String(
@@ -12878,7 +13046,7 @@ export function render(opts = {}) {
         dailyInfoSubmit?.needHabitTracker &&
         normalizedDateRaw.length >= 10
       ) {
-        const completed = completedForKpi || [];
+        const completed = dailyCompletedForKpi;
         replaceHabitTrackerLogDailyCompleted(
           dailyInfoSubmit.storageKey,
           dailyInfoSubmit.kpiId,
@@ -12901,8 +13069,6 @@ export function render(opts = {}) {
           ledgerIdForKpi,
         );
       }
-
-      applyTaskCompletionTodoCompletionsOnTaskLogSubmit();
 
       if (kpiPerformedRaw && normalizedDateRaw.length >= 10) {
         const persistTargets = [];
@@ -14095,6 +14261,11 @@ export function render(opts = {}) {
       if (!rowData) return;
       const entryId = String(rowData?.id || "").trim();
       void (async () => {
+        /* 메모리 전체에서 제거 — 화면 캐시만으로 save 하면 다른 날짜 기록이 날아감 */
+        const { next } = removeTimeLedgerRowFromRows(loadTimeRows(), rowData);
+        allRowsCache = next;
+        /* 이 시간기록에서 체크한 완료형 할일 id → 다른 기록에 없으면 미완료로 */
+        revertKpiTaskCompletionTodosForDeletedLedgerRow(rowData, next);
         if (entryId) {
           removeKpiHabitLogsForTimeLedgerEntry(entryId);
           timeLedgerSyncLog("ui_time_row_delete", {
@@ -14119,9 +14290,6 @@ export function render(opts = {}) {
             });
           }
         }
-        /* 메모리 전체에서 제거 — 화면 캐시만으로 save 하면 다른 날짜 기록이 날아감 */
-        const { next } = removeTimeLedgerRowFromRows(loadTimeRows(), rowData);
-        allRowsCache = next;
         /* 삭제는 서버 delete API로만 — 나머지 행 일괄 push 금지 */
         writeTimeLedgerEntriesRaw(next);
         scheduleSyncHabitTrackerLogs();
