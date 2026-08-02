@@ -210,7 +210,8 @@ export const FIXED_PRODUCTIVE_TASKS = [
   {
     name: EMOTIONAL_POSITIVE_TASK_NAME,
     category: "happiness",
-    productivity: "productive",
+    /* 감정 선택·메모만 — 생산적 몰입/종료 이유와 무관 */
+    productivity: "other",
   },
 ];
 

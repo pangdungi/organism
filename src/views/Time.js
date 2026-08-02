@@ -8478,6 +8478,8 @@ export function render(opts = {}) {
   }
 
   function isTaskLogModalProductiveTask() {
+    /* 감정적이기(긍정·부정)는 생산적 몰입/종료 이유 UI 대상 아님 */
+    if (isTaskLogModalEmotionalTask()) return false;
     return getTimeLedgerRowDisplayProductivity(buildTaskLogModalProductivityStub()) ===
       "productive";
   }
