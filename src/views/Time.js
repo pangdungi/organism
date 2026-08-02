@@ -1163,13 +1163,26 @@ export function loadTimeRows() {
     migrateTimeLogRowsTaskIds();
     let arr = readTimeLedgerEntriesRaw();
     /*
-     * 어제 이전 진행 중 → 로컬에 23:59 마감(평생 진행 중 방지).
-     * 서버 업로드는 사용자가 모달에서 저장할 때만.
+     * 어제 이전 진행 중 → 23:59 마감 후 서버에도 올림(평생 진행 중 방지).
      */
     const closed = closeStaleInProgressTimeLedgerRows(arr);
     if (closed.changed) {
       writeTimeLedgerEntriesRaw(closed.rows);
       arr = closed.rows;
+      const ids = (closed.closedEntryIds || [])
+        .map((id) => String(id || "").trim())
+        .filter((id) => isUuid(id));
+      if (ids.length > 0) {
+        const idSet = new Set(ids);
+        const forceRows = closed.rows.filter((r) =>
+          idSet.has(String(r?.id || "").trim()),
+        );
+        void pushDirtyTimeLedgerEntriesToSupabase({
+          entryIds: ids,
+          forceRows,
+          skipPull: true,
+        }).catch(() => {});
+      }
     }
     const { rows, dirty } = ensureTimeLedgerEntryIds(arr);
     if (dirty) {

@@ -5,8 +5,7 @@
  * 올리기: 사용자 저장으로 바뀐 행만 upsert · 삭제는 delete API (통째 업로드 없음).
  * pushDirty는 opts.entryIds가 있으면 그 기록 id만 upsert(백로그 일괄 업로드로 저장 실패 방지).
  * 기본(skipPull 미지정 시): upsert 직후 피커 구간 pull — 저장 직후 덮어쓰기가 나면 skipPull: true 로 호출.
- * 서버 쓰기는 사용자가 모달에서 확인·추가·수정·삭제할 때만(pushDirty·delete API).
- * pull·화면 읽기·자동마감은 서버에 올리지 않음.
+ * 서버 쓰기: 모달 추가·수정·삭제 + 어제 이전 진행중 자동 23:59 마감(pushDirty).
  * pull 병합: 구간은 서버 스냅샷만. 미업로드분은 pull 직전 서버에 올린 뒤 다시 조회.
  */
 
@@ -650,12 +649,25 @@ async function pullTimeLedgerEntriesForDateRangeCore(
 
   applyTimeLedgerServerRangeSnapshot(rows, rs, re, { preferServer: true });
   /*
-   * 어제 이전 「진행 중」은 이 기기 로컬에 23:59 마감.
-   * 서버 반영은 사용자가 모달에서 저장할 때만 (자동 push 금지).
+   * 어제 이전 「진행 중」→ 로컬 23:59 마감 후 서버에도 upsert.
+   * (마감 없이 남은 행이 pull마다 다시 비어 보이지 않게)
    */
   const closed = closeStaleInProgressTimeLedgerRows(readTimeLedgerEntriesRaw());
   if (closed.changed) {
     writeTimeLedgerEntriesRaw(closed.rows);
+    const idSet = new Set(
+      (closed.closedEntryIds || []).map((id) => String(id || "").trim()).filter(Boolean),
+    );
+    const forceRows = closed.rows.filter((r) =>
+      idSet.has(String(r?.id || "").trim()),
+    );
+    if (forceRows.length > 0) {
+      await pushDirtyTimeLedgerEntriesToSupabaseCore({
+        forceRows,
+        entryIds: [...idSet],
+        skipPull: true,
+      });
+    }
   }
   timeLedgerSyncLog("pull_done", {
     range: `${rs}..${re}`,

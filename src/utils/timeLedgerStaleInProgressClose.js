@@ -67,10 +67,11 @@ export function closeStaleInProgressTimeLedgerRows(rows, opts = {}) {
     closedCount += 1;
     const id = String(row.id || "").trim();
     if (id) closedEntryIds.push(id);
-    /* localModifiedAt 갱신 금지 — 화면용 마감만. push·다른기기 pull을 막지 않음 */
+    /* 서버에도 23:59 반영되도록 dirty 표시(모달 저장과 동일하게 push) */
     return {
       ...row,
       endTime,
+      localModifiedAt: Date.now(),
     };
   });
   return { rows: next, changed, closedCount, closedEntryIds };
