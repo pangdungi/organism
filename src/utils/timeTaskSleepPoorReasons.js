@@ -1,4 +1,4 @@
-/** 시간기록 모달 — 수면 평가 1~4점 시 «아쉬웠던 이유» */
+/** 시간기록 모달 — 수면 평가 1~3점 시 «아쉬웠던 이유» */
 
 export const TIME_TASK_SLEEP_POOR_REASON_OPTIONS = [
   { id: "caffeine", label: "카페인" },
@@ -8,6 +8,7 @@ export const TIME_TASK_SLEEP_POOR_REASON_OPTIONS = [
   { id: "alcohol", label: "알코올 섭취" },
   { id: "phone_before_bed", label: "자기전 폰 사용" },
   { id: "irregular_sleep", label: "불규칙한 수면" },
+  { id: "sleep_start_delay", label: "수면 시작 지연" },
   { id: "temperature", label: "온도" },
   { id: "psychological", label: "심리적 요인" },
 ];
@@ -58,8 +59,8 @@ export function timeSleepPoorReasonLabelsForIds(ids) {
     .filter(Boolean);
 }
 
-/** 수면 평가 1~4점일 때 아쉬웠던 이유 입력 대상 */
+/** 수면 평가 1~3점일 때 아쉬웠던 이유 입력 대상 */
 export function shouldCollectTimeSleepPoorReasons(rating) {
   const n = Number(rating);
-  return n === 1 || n === 2 || n === 3 || n === 4;
+  return n === 1 || n === 2 || n === 3;
 }

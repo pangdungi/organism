@@ -1,46 +1,78 @@
-/** 시간기록 모달 — 생산적 작업 1~2점 시 «몰입 방해요소» */
+/** 시간기록 모달 — 생산적 작업 1~3점 시 «아쉬웠던 이유» */
 
 export const TIME_TASK_FLOW_DISRUPTOR_CATEGORIES = [
-  { id: "environment", label: "환경" },
+  { id: "task", label: "작업" },
   { id: "body", label: "신체" },
   { id: "mind", label: "심리" },
   { id: "digital", label: "디지털" },
-  { id: "task", label: "작업" },
+  { id: "environment", label: "환경" },
   { id: "external", label: "외부" },
 ];
 
 export const TIME_TASK_FLOW_DISRUPTOR_OPTIONS = [
-  { id: "unclear_task", label: "불명확한 작업", category: "task" },
+  { id: "took_too_long", label: "시간 초과", category: "task" },
+  { id: "task_difficulty", label: "고난이도", category: "task" },
   { id: "supplies_unready", label: "준비물 미비", category: "task" },
   { id: "sleepiness", label: "졸림", category: "body" },
-  { id: "task_difficulty", label: "작업 난이도", category: "task" },
-  { id: "multitasking", label: "멀티태스킹", category: "mind" },
-  { id: "device_malfunction", label: "기기 오작동", category: "environment" },
-  { id: "attention_scatter", label: "주의 분산", category: "mind" },
-  { id: "frequent_interruption", label: "잦은 작업 중단", category: "external" },
-  { id: "mind_wandering", label: "딴 생각", category: "mind" },
-  { id: "physiological", label: "생리 현상", category: "body" },
   { id: "hunger", label: "배고픔", category: "body" },
-  { id: "poor_condition", label: "컨디션 미비", category: "body" },
-  { id: "media_digital", label: "미디어·디지털", category: "digital" },
-  { id: "other_errands", label: "다른 용무", category: "external" },
-  { id: "noise", label: "소음", category: "environment" },
-  { id: "low_motivation", label: "의욕 저하", category: "mind" },
-  { id: "messy_space", label: "정돈되지 않은 공간", category: "environment" },
+  { id: "physiological", label: "생리현상", category: "body" },
+  { id: "attention_scatter", label: "주의산만", category: "mind" },
+  { id: "low_motivation", label: "의욕저하", category: "mind" },
+  { id: "media_digital", label: "디지털 기기", category: "digital" },
+  { id: "multitasking", label: "멀티태스킹", category: "mind" },
 ];
 
 const BY_ID = new Map(TIME_TASK_FLOW_DISRUPTOR_OPTIONS.map((o) => [o.id, o]));
 const BY_LABEL = new Map(
   TIME_TASK_FLOW_DISRUPTOR_OPTIONS.map((o) => [o.label, o]),
 );
-/** 예전 UI 문구·id → 현재 id (저장·불러오기 호환) */
+/** 예전 UI 문구 → 현재 id (저장·불러오기 호환) */
 const LEGACY_DISRUPTOR_LABEL_TO_ID = new Map([
-  ["잦은 작업중단", "frequent_interruption"],
+  ["생각보다 오래 걸림", "took_too_long"],
+  ["생각보다 오래걸림", "took_too_long"],
+  ["생각보다 오래걸렸어", "took_too_long"],
+  ["난이도가 높음", "task_difficulty"],
+  ["작업 난이도", "task_difficulty"],
+  ["준비물 부족", "supplies_unready"],
+  ["준비물 미비", "supplies_unready"],
+  ["생리 현상", "physiological"],
   ["생리현상", "physiological"],
+  ["주의가 흩어짐", "attention_scatter"],
+  ["주의 분산", "attention_scatter"],
+  ["의욕 저하", "low_motivation"],
+  ["미디어·디지털", "media_digital"],
   ["미디어/디지털", "media_digital"],
-  ["공간 정돈 상태", "messy_space"],
+  ["디지털 기기", "media_digital"],
+  ["디지털 기기 정리상태", "media_digital"],
+  ["정리상태", "media_digital"],
+  ["공간 미정리", "media_digital"],
+  ["공간 정돈 상태", "media_digital"],
+  ["정돈되지 않은 공간", "media_digital"],
+  ["기기 문제", "media_digital"],
+  ["기기 오작동", "media_digital"],
+  ["딴 생각", "attention_scatter"],
+  ["컨디션 나쁨", "sleepiness"],
+  ["컨디션 미비", "sleepiness"],
   ["지루함", "sleepiness"],
   ["boredom", "sleepiness"],
+  ["작업이 불명확함", "task_difficulty"],
+  ["불명확한 작업", "task_difficulty"],
+  ["잦은 작업중단", "multitasking"],
+  ["잦은 작업 중단", "multitasking"],
+  ["자주 끊김", "multitasking"],
+  ["다른 용무", "multitasking"],
+  ["소음", "attention_scatter"],
+]);
+/** 예전 옵션 id → 현재 id */
+const LEGACY_DISRUPTOR_ID_TO_ID = new Map([
+  ["unclear_task", "task_difficulty"],
+  ["poor_condition", "sleepiness"],
+  ["mind_wandering", "attention_scatter"],
+  ["messy_space", "media_digital"],
+  ["device_malfunction", "media_digital"],
+  ["noise", "attention_scatter"],
+  ["frequent_interruption", "multitasking"],
+  ["other_errands", "multitasking"],
 ]);
 const CATEGORY_BY_ID = new Map(
   TIME_TASK_FLOW_DISRUPTOR_CATEGORIES.map((c) => [c.id, c]),
@@ -51,6 +83,8 @@ export function normalizeTimeFlowDisruptorForRow(raw) {
   const s = String(raw ?? "").trim();
   if (!s) return "";
   if (BY_ID.has(s)) return s;
+  const aliased = LEGACY_DISRUPTOR_ID_TO_ID.get(s);
+  if (aliased && BY_ID.has(aliased)) return aliased;
   const byLabel = BY_LABEL.get(s);
   if (byLabel) return byLabel.id;
   return LEGACY_DISRUPTOR_LABEL_TO_ID.get(s) || "";
@@ -119,8 +153,8 @@ export function flowDisruptorCategoryColor(categoryId) {
   }
 }
 
-/** 생산적 작업 1~2점일 때 몰입 방해요소 입력 대상 */
+/** 생산적 작업 1~3점일 때 아쉬웠던 이유 입력 대상 */
 export function shouldCollectTimeFlowDisruptors(rating) {
   const n = Number(rating);
-  return n === 1 || n === 2;
+  return n === 1 || n === 2 || n === 3;
 }

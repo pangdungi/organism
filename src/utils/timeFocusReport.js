@@ -1,6 +1,6 @@
 /**
  * 시간 레포트 — 생산적 작업 초집중 분석
- * 몰입 요소·몰입 방해요소·별점·세션 길이
+ * 몰입 요소·아쉬웠던 이유·별점·세션 길이
  */
 
 import {
@@ -68,21 +68,21 @@ function buildRecipeOneLiner(tags, highFocusSessionCount) {
 
 function buildDisruptorOneLiner(ranking, sessionCount, totalPicks) {
   if (!sessionCount) {
-    return "1~2점 세션이 쌓이면 피해야 할 방해 요소 패턴이 보입니다.";
+    return "1~3점 세션이 쌓이면 아쉬웠던 이유 패턴이 보입니다.";
   }
   if (!totalPicks) {
-    return `1~2점 세션 ${sessionCount}건 — 몰입 방해요소를 고르면 피할 항목이 정리됩니다.`;
+    return `1~3점 세션 ${sessionCount}건 — 아쉬웠던 이유를 고르면 패턴이 정리됩니다.`;
   }
   const top = ranking[0];
   if (!top) return "";
   if (ranking.length === 1) {
-    return `가장 많은 방해 요소는 「${top.label}」입니다 (${top.count}회).`;
+    return `가장 많은 아쉬웠던 이유는 「${top.label}」입니다 (${top.count}회).`;
   }
   const second = ranking[1];
   if (second && top.count === second.count) {
-    return `가장 자주 겹치는 방해 요소는 「${top.label}」, 「${second.label}」입니다.`;
+    return `가장 자주 겹치는 아쉬웠던 이유는 「${top.label}」, 「${second.label}」입니다.`;
   }
-  return `가장 많은 방해 요소는 「${top.label}」입니다 (${top.count}회 · ${top.pct}%).`;
+  return `가장 많은 아쉬웠던 이유는 「${top.label}」입니다 (${top.count}회 · ${top.pct}%).`;
 }
 
 function buildEndReasonOneLiner(ranking, sessionCount, totalPicks) {

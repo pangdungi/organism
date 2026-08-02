@@ -113,6 +113,8 @@ import {
   normalizeTimeSleepGoodFactorsForRow,
   normalizeTimeSleepPoorReasonsForRow,
   normalizeTimeBadFeelingReasonsForRow,
+  normalizeTimeGoodFeelingReasonsForRow,
+  normalizeTimeContentEvalReasonsForRow,
   formatTimeLedgerCardRatingStarsHtml,
   applyProductiveTimeRatingToBasePrice,
   formatProductiveTimeRatingMultiplierLabel,
@@ -151,6 +153,14 @@ import {
   TIME_TASK_BAD_FEELING_REASON_OPTIONS,
   shouldCollectTimeBadFeelingReasons,
 } from "../utils/timeTaskBadFeelingReasons.js";
+import {
+  TIME_TASK_GOOD_FEELING_REASON_OPTIONS,
+  shouldCollectTimeGoodFeelingReasons,
+} from "../utils/timeTaskGoodFeelingReasons.js";
+import {
+  shouldCollectTimeContentEvalReasons,
+  timeContentEvalOptionsForRating,
+} from "../utils/timeTaskContentEvalReasons.js";
 import {
   closeActiveInProgressRowsAtNow,
   closeStaleInProgressTimeLedgerRows,
@@ -203,7 +213,6 @@ import {
 } from "../utils/timeLedgerCardKpiMemo.js";
 import {
   formatEmotionReflectMemoDisplay,
-  packEmotionReflectMemo,
   parseEmotionReflectMemo,
 } from "../utils/timeEmotionReflectMemo.js";
 import { mountTimeLedgerMemoFeed } from "../utils/timeLedgerMemoFeed.js";
@@ -1482,6 +1491,11 @@ function resolveRowCategoryProductivityForAudit(r) {
     const nap = getNapCategoryProductivity(r.timeTracked);
     category = nap.category;
     productivity = nap.productivity;
+  }
+  /* 감정적이기(긍정적) — 그 외가 아니라 생산적>행복 */
+  if (TTC.isPositiveEmotionalTaskName(taskName)) {
+    category = "happiness";
+    productivity = "productive";
   }
   if (!productivity && category)
     productivity = getProductivityFromCategory(category) || productivity;
@@ -4259,6 +4273,12 @@ function createRow(initialData, onUpdate, viewEl, onRowDelete, onRowEdit) {
     timeBadFeelingReasons: normalizeTimeBadFeelingReasonsForRow(
       initialData?.timeBadFeelingReasons,
     ),
+    timeGoodFeelingReasons: normalizeTimeGoodFeelingReasonsForRow(
+      initialData?.timeGoodFeelingReasons,
+    ),
+    timeContentEvalReasons: normalizeTimeContentEvalReasonsForRow(
+      initialData?.timeContentEvalReasons,
+    ),
   };
   tr._rowData = rowData;
 
@@ -5342,7 +5362,9 @@ function syncMobileTimeCardRatingEl(card, rowData) {
       ? "맛 평가"
       : isEmotional
         ? "감정 상태"
-        : "이 시간 평가";
+        : TTC.isContentDetailTaskName(rowData?.taskName)
+          ? "콘텐츠 평가"
+          : "이 시간 평가";
   ratingEl.setAttribute(
     "aria-label",
     rating != null ? `${ratingLabel} ${rating}점` : "",
@@ -7793,7 +7815,7 @@ export function render(opts = {}) {
           </div>
           <div data-legacy="time-task-log-emotion-rating" hidden></div>
           <div data-legacy="time-task-log-flow-disruptor-section" hidden>
-            <span data-legacy="time-task-log-section-label time-task-log-flow-disruptor-section-label">몰입 방해 요소</span>
+            <span data-legacy="time-task-log-section-label time-task-log-flow-disruptor-section-label">아쉬웠던 이유</span>
             <div data-legacy="time-task-log-flow-disruptor-chips" class="lp-choice-chip-row"></div>
           </div>
           <div data-legacy="time-task-log-flow-factor-section" hidden>
@@ -7816,6 +7838,14 @@ export function render(opts = {}) {
             <span data-legacy="time-task-log-section-label time-task-log-bad-feeling-section-label">별로였던 이유</span>
             <div data-legacy="time-task-log-bad-feeling-chips" class="lp-choice-chip-row"></div>
           </div>
+          <div data-legacy="time-task-log-good-feeling-section" hidden>
+            <span data-legacy="time-task-log-section-label time-task-log-good-feeling-section-label">좋았던 점</span>
+            <div data-legacy="time-task-log-good-feeling-chips" class="lp-choice-chip-row"></div>
+          </div>
+          <div data-legacy="time-task-log-content-eval-section" hidden>
+            <span data-legacy="time-task-log-section-label time-task-log-content-eval-section-label">콘텐츠 평가</span>
+            <div data-legacy="time-task-log-content-eval-chips" class="lp-choice-chip-row"></div>
+          </div>
         </div>
         <div data-legacy="time-task-log-memo-section">
           <div data-legacy="time-task-log-memo-fields">
@@ -7831,6 +7861,7 @@ export function render(opts = {}) {
                   <button type="button" data-legacy="time-task-log-memo-quick-ok" data-insert="✔️" aria-label="완료 표시 넣기"><span data-legacy="time-task-log-memo-quick-emoji" aria-hidden="true">&#x2714;&#xFE0F;</span></button>
                   <button type="button" data-legacy="time-task-log-memo-quick-no" data-insert="❌" aria-label="불가 표시 넣기"><span data-legacy="time-task-log-memo-quick-emoji" aria-hidden="true">&#x274C;</span></button>
                   <button type="button" data-legacy="time-task-log-memo-quick-music" data-insert="🎵" aria-label="음표 넣기"><span data-legacy="time-task-log-memo-quick-emoji" aria-hidden="true">&#x1F3B5;</span></button>
+                  <button type="button" data-legacy="time-task-log-memo-quick-desktop" data-insert="🖥️" aria-label="컴퓨터 넣기"><span data-legacy="time-task-log-memo-quick-emoji" aria-hidden="true">&#x1F5A5;&#xFE0F;</span></button>
                 </div>
               </div>
               <textarea id="time-task-log-feedback" data-legacy="time-task-log-feedback time-task-log-memo-input" rows="2" placeholder="메모를 입력하세요"></textarea>
@@ -7988,24 +8019,16 @@ export function render(opts = {}) {
   }
 
   function syncTaskLogEmotionReflectVisibility(taskName) {
-    const show = TTC.isNegativeEmotionalTaskName(taskName);
+    /* 감정적이기 — 사실/해석 없이 감정 상태(+일반 메모)만 */
     if (taskLogEmotionReflectSection) {
-      taskLogEmotionReflectSection.hidden = !show;
+      taskLogEmotionReflectSection.hidden = true;
     }
     if (taskLogMemoDefaultField) {
-      taskLogMemoDefaultField.hidden = show;
+      taskLogMemoDefaultField.hidden = false;
     }
-    if (taskLogEmotionFactLabel) {
-      taskLogEmotionFactLabel.textContent = show
-        ? "상황에 대한 사실만 적기 (필수)"
-        : "상황에 대한 사실만 적기";
+    if (String(taskName || "").trim()) {
+      clearTaskLogEmotionReflectInputs();
     }
-    if (taskLogEmotionInterpLabel) {
-      taskLogEmotionInterpLabel.textContent = show
-        ? "내 해석 적기 (필수)"
-        : "내 해석 적기";
-    }
-    if (!show) clearTaskLogEmotionReflectInputs();
   }
 
   /** 메모 textarea 커서 위치에 문자 삽입(이모티콘 창 없이 □ 등) */
@@ -8406,6 +8429,18 @@ export function render(opts = {}) {
   const taskLogBadFeelingChips = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-bad-feeling-chips"]',
   );
+  const taskLogGoodFeelingSection = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-good-feeling-section"]',
+  );
+  const taskLogGoodFeelingChips = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-good-feeling-chips"]',
+  );
+  const taskLogContentEvalSection = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-content-eval-section"]',
+  );
+  const taskLogContentEvalChips = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-content-eval-chips"]',
+  );
   let taskLogTimeRating = null;
   let taskLogTimeFlowDisruptors = [];
   let taskLogTimeFlowFactors = [];
@@ -8413,6 +8448,10 @@ export function render(opts = {}) {
   let taskLogTimeSleepGoodFactors = [];
   let taskLogTimeSleepPoorReasons = [];
   let taskLogTimeBadFeelingReasons = [];
+  let taskLogTimeGoodFeelingReasons = [];
+  let taskLogTimeContentEvalReasons = [];
+  /** @type {"" | "poor" | "good"} */
+  let taskLogContentEvalChipBand = "";
 
   function getTaskLogTimeRating() {
     return normalizeTimeRatingForRow(taskLogTimeRating);
@@ -8440,6 +8479,24 @@ export function render(opts = {}) {
 
   function getTaskLogTimeBadFeelingReasons() {
     return normalizeTimeBadFeelingReasonsForRow(taskLogTimeBadFeelingReasons);
+  }
+
+  function getTaskLogTimeGoodFeelingReasons() {
+    return normalizeTimeGoodFeelingReasonsForRow(taskLogTimeGoodFeelingReasons);
+  }
+
+  function getTaskLogTimeContentEvalReasons() {
+    return normalizeTimeContentEvalReasonsForRow(taskLogTimeContentEvalReasons);
+  }
+
+  /** 현재 시간평가 별점에 허용되는 콘텐츠 평가 id만 남김 */
+  function filterContentEvalReasonsForRating(raw, rating) {
+    const allowed = new Set(
+      timeContentEvalOptionsForRating(rating).map((o) => o.id),
+    );
+    return normalizeTimeContentEvalReasonsForRow(raw).filter((id) =>
+      allowed.has(id),
+    );
   }
 
   function buildTaskLogModalProductivityStub() {
@@ -8535,6 +8592,12 @@ export function render(opts = {}) {
     return TTC.isConversationDetailTaskName(taskName);
   }
 
+  /** 의식적·무의식적 콘텐츠 소비 — 별점 후 «콘텐츠 평가» 칩 */
+  function isTaskLogModalContentTask() {
+    const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
+    return TTC.isContentDetailTaskName(taskName);
+  }
+
   function shouldShowTaskLogRatingSection() {
     /* 취침~23:59 구간은 아직 자는 중 — 평가는 다음날 기상 때 */
     if (isTaskLogModalSleepOvernightCutoff()) return false;
@@ -8543,6 +8606,9 @@ export function render(opts = {}) {
       isTaskLogModalWorkTask() ||
       isTaskLogModalEmotionalTask()
     )
+      return true;
+    /* 맛·콘텐츠는 각각 맛/콘텐츠 평가 · 그 외 생산·비생산은 이 시간 평가 */
+    if (isTaskLogModalMealIntakeTask() || isTaskLogModalContentTask())
       return true;
     const pv = getTimeLedgerRowDisplayProductivity(
       buildTaskLogModalProductivityStub(),
@@ -8554,6 +8620,7 @@ export function render(opts = {}) {
     if (isTaskLogModalSleepTask()) return "수면 평가 (필수)";
     if (isTaskLogModalEmotionalTask()) return "감정 상태";
     if (isTaskLogModalMealIntakeTask()) return "맛 평가";
+    if (isTaskLogModalContentTask()) return "콘텐츠 평가";
     return "이 시간 평가";
   }
 
@@ -8605,21 +8672,31 @@ export function render(opts = {}) {
   }
 
   function syncTaskLogFlowDisruptorSection() {
-    const show =
+    const ratingMatches = shouldCollectTimeFlowDisruptors(
+      getTaskLogTimeRating(),
+    );
+    const taskAllows =
       isTaskLogModalProductiveTask() &&
       !isTaskLogModalMealIntakeTask() &&
       !isTaskLogModalConversationTask() &&
-      shouldCollectTimeFlowDisruptors(getTaskLogTimeRating());
+      !isTaskLogModalContentTask();
+    const show = taskAllows && ratingMatches;
     if (taskLogFlowDisruptorSection) taskLogFlowDisruptorSection.hidden = !show;
     const disruptorLabel = taskLogFlowDisruptorSection?.querySelector(
       '[data-legacy~="time-task-log-flow-disruptor-section-label"]',
     );
     if (disruptorLabel) {
       disruptorLabel.textContent = show
-        ? "몰입 방해 요소 (필수)"
-        : "몰입 방해 요소";
+        ? "아쉬웠던 이유 (필수)"
+        : "아쉬웠던 이유";
     }
-    if (!show && taskLogTimeFlowDisruptors.length) taskLogTimeFlowDisruptors = [];
+    /* 과제·별점이 이 필드를 쓰지 않을 때만 비움 (!show만으로 지우지 않음) */
+    if (
+      (!taskAllows || !ratingMatches) &&
+      taskLogTimeFlowDisruptors.length
+    ) {
+      taskLogTimeFlowDisruptors = [];
+    }
   }
 
   function syncTaskLogFlowFactorChips() {
@@ -8650,11 +8727,13 @@ export function render(opts = {}) {
   }
 
   function syncTaskLogFlowFactorSection() {
-    const show =
+    const ratingMatches = shouldCollectTimeFlowFactors(getTaskLogTimeRating());
+    const taskAllows =
       isTaskLogModalProductiveTask() &&
       !isTaskLogModalMealIntakeTask() &&
       !isTaskLogModalConversationTask() &&
-      shouldCollectTimeFlowFactors(getTaskLogTimeRating());
+      !isTaskLogModalContentTask();
+    const show = taskAllows && ratingMatches;
     if (taskLogFlowFactorSection) taskLogFlowFactorSection.hidden = !show;
     const factorLabel = taskLogFlowFactorSection?.querySelector(
       '[data-legacy~="time-task-log-flow-factor-section-label"]',
@@ -8662,7 +8741,9 @@ export function render(opts = {}) {
     if (factorLabel) {
       factorLabel.textContent = show ? "몰입 요소 (필수)" : "몰입 요소";
     }
-    if (!show && taskLogTimeFlowFactors.length) taskLogTimeFlowFactors = [];
+    if ((!taskAllows || !ratingMatches) && taskLogTimeFlowFactors.length) {
+      taskLogTimeFlowFactors = [];
+    }
   }
 
   function syncTaskLogEndReasonChips() {
@@ -8705,10 +8786,13 @@ export function render(opts = {}) {
   }
 
   function syncTaskLogSleepGoodSection() {
+    const ratingMatches = shouldCollectTimeSleepGoodFactors(
+      getTaskLogTimeRating(),
+    );
     const show =
       isTaskLogModalSleepTask() &&
       !isTaskLogModalSleepOvernightCutoff() &&
-      shouldCollectTimeSleepGoodFactors(getTaskLogTimeRating());
+      ratingMatches;
     if (taskLogSleepGoodSection) taskLogSleepGoodSection.hidden = !show;
     const goodLabel = taskLogSleepGoodSection?.querySelector(
       '[data-legacy~="time-task-log-sleep-good-section-label"]',
@@ -8716,7 +8800,8 @@ export function render(opts = {}) {
     if (goodLabel) {
       goodLabel.textContent = show ? "잘 잔 이유 (필수)" : "잘 잔 이유";
     }
-    if (!show && taskLogTimeSleepGoodFactors.length) {
+    /* 별점이 5가 아닐 때만 비움. 23:59로 섹션만 숨길 때 지우면 수정 저장이 []로 덮음 */
+    if (!ratingMatches && taskLogTimeSleepGoodFactors.length) {
       taskLogTimeSleepGoodFactors = [];
     }
   }
@@ -8749,10 +8834,13 @@ export function render(opts = {}) {
   }
 
   function syncTaskLogSleepPoorSection() {
+    const ratingMatches = shouldCollectTimeSleepPoorReasons(
+      getTaskLogTimeRating(),
+    );
     const show =
       isTaskLogModalSleepTask() &&
       !isTaskLogModalSleepOvernightCutoff() &&
-      shouldCollectTimeSleepPoorReasons(getTaskLogTimeRating());
+      ratingMatches;
     if (taskLogSleepPoorSection) taskLogSleepPoorSection.hidden = !show;
     const poorLabel = taskLogSleepPoorSection?.querySelector(
       '[data-legacy~="time-task-log-sleep-poor-section-label"]',
@@ -8760,7 +8848,8 @@ export function render(opts = {}) {
     if (poorLabel) {
       poorLabel.textContent = show ? "아쉬웠던 이유 (필수)" : "아쉬웠던 이유";
     }
-    if (!show && taskLogTimeSleepPoorReasons.length) {
+    /* 별점이 1~3이 아닐 때만 비움. 23:59로 섹션만 숨길 때 지우면 수정 저장이 []로 덮음 */
+    if (!ratingMatches && taskLogTimeSleepPoorReasons.length) {
       taskLogTimeSleepPoorReasons = [];
     }
   }
@@ -8781,11 +8870,13 @@ export function render(opts = {}) {
   }
 
   function syncTaskLogEndReasonSection() {
-    const show =
+    const ratingMatches = shouldCollectTimeEndReasons(getTaskLogTimeRating());
+    const taskAllows =
       isTaskLogModalProductiveTask() &&
       !isTaskLogModalMealIntakeTask() &&
       !isTaskLogModalConversationTask() &&
-      shouldCollectTimeEndReasons(getTaskLogTimeRating());
+      !isTaskLogModalContentTask();
+    const show = taskAllows && ratingMatches;
     if (taskLogEndReasonSection) taskLogEndReasonSection.hidden = !show;
     const endLabel = taskLogEndReasonSection?.querySelector(
       '[data-legacy~="time-task-log-end-reason-section-label"]',
@@ -8793,7 +8884,9 @@ export function render(opts = {}) {
     if (endLabel) {
       endLabel.textContent = show ? "종료 이유 (필수)" : "종료 이유";
     }
-    if (!show && taskLogTimeEndReasons.length) taskLogTimeEndReasons = [];
+    if ((!taskAllows || !ratingMatches) && taskLogTimeEndReasons.length) {
+      taskLogTimeEndReasons = [];
+    }
   }
 
   function syncTaskLogBadFeelingChips() {
@@ -8825,12 +8918,16 @@ export function render(opts = {}) {
   }
 
   function syncTaskLogBadFeelingSection() {
-    const show =
+    const ratingMatches = shouldCollectTimeBadFeelingReasons(
+      getTaskLogTimeRating(),
+    );
+    const taskAllows =
       isTaskLogModalNonproductiveTask() &&
       !isTaskLogModalMealIntakeTask() &&
       !isTaskLogModalSleepTask() &&
       !isTaskLogModalEmotionalTask() &&
-      shouldCollectTimeBadFeelingReasons(getTaskLogTimeRating());
+      !isTaskLogModalContentTask();
+    const show = taskAllows && ratingMatches;
     if (taskLogBadFeelingSection) taskLogBadFeelingSection.hidden = !show;
     const label = taskLogBadFeelingSection?.querySelector(
       '[data-legacy~="time-task-log-bad-feeling-section-label"]',
@@ -8838,8 +8935,161 @@ export function render(opts = {}) {
     if (label) {
       label.textContent = show ? "별로였던 이유 (필수)" : "별로였던 이유";
     }
-    if (!show && taskLogTimeBadFeelingReasons.length) {
+    if ((!taskAllows || !ratingMatches) && taskLogTimeBadFeelingReasons.length) {
       taskLogTimeBadFeelingReasons = [];
+    }
+  }
+
+  function syncTaskLogGoodFeelingChips() {
+    if (!taskLogGoodFeelingChips) return;
+    const picked = new Set(getTaskLogTimeGoodFeelingReasons());
+    taskLogGoodFeelingChips
+      .querySelectorAll('[data-legacy~="lp-choice-chip"]')
+      .forEach((btn) => {
+        const on = picked.has(btn.getAttribute("data-good-feeling") || "");
+        lpTokenToggle(btn, "lp-choice-chip--on", on);
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+  }
+
+  function setTaskLogTimeGoodFeelingReasons(value, opts = {}) {
+    taskLogTimeGoodFeelingReasons =
+      normalizeTimeGoodFeelingReasonsForRow(value);
+    if (!opts.silent) syncTaskLogGoodFeelingChips();
+  }
+
+  function toggleTaskLogTimeGoodFeelingReason(id) {
+    const key = normalizeTimeGoodFeelingReasonsForRow([id])[0];
+    if (!key) return;
+    const next = getTaskLogTimeGoodFeelingReasons();
+    const i = next.indexOf(key);
+    if (i >= 0) next.splice(i, 1);
+    else next.push(key);
+    setTaskLogTimeGoodFeelingReasons(next);
+  }
+
+  function syncTaskLogGoodFeelingSection() {
+    const ratingMatches = shouldCollectTimeGoodFeelingReasons(
+      getTaskLogTimeRating(),
+    );
+    const taskAllows =
+      isTaskLogModalNonproductiveTask() &&
+      !isTaskLogModalMealIntakeTask() &&
+      !isTaskLogModalSleepTask() &&
+      !isTaskLogModalEmotionalTask() &&
+      !isTaskLogModalContentTask();
+    const show = taskAllows && ratingMatches;
+    if (taskLogGoodFeelingSection) taskLogGoodFeelingSection.hidden = !show;
+    const label = taskLogGoodFeelingSection?.querySelector(
+      '[data-legacy~="time-task-log-good-feeling-section-label"]',
+    );
+    if (label) {
+      label.textContent = show ? "좋았던 점 (필수)" : "좋았던 점";
+    }
+    if ((!taskAllows || !ratingMatches) && taskLogTimeGoodFeelingReasons.length) {
+      taskLogTimeGoodFeelingReasons = [];
+    }
+  }
+
+  function rebuildTaskLogContentEvalChips() {
+    if (!taskLogContentEvalChips) return;
+    const rating = getTaskLogTimeRating();
+    const options = timeContentEvalOptionsForRating(rating);
+    const n = Number(rating);
+    const nextBand =
+      n === 1 || n === 2 || n === 3
+        ? "poor"
+        : n === 4 || n === 5
+          ? "good"
+          : "";
+    if (
+      nextBand === taskLogContentEvalChipBand &&
+      taskLogContentEvalChips.childElementCount === options.length
+    ) {
+      return;
+    }
+    taskLogContentEvalChipBand = nextBand;
+    taskLogContentEvalChips.replaceChildren();
+    options.forEach(({ id, label }) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      lpSetClasses(btn, "lp-choice-chip");
+      btn.setAttribute("data-content-eval", id);
+      btn.textContent = label;
+      btn.addEventListener("click", () => {
+        toggleTaskLogTimeContentEvalReason(id);
+      });
+      taskLogContentEvalChips.appendChild(btn);
+    });
+  }
+
+  function syncTaskLogContentEvalChips() {
+    if (!taskLogContentEvalChips) return;
+    const picked = new Set(getTaskLogTimeContentEvalReasons());
+    taskLogContentEvalChips
+      .querySelectorAll('[data-legacy~="lp-choice-chip"]')
+      .forEach((btn) => {
+        const on = picked.has(btn.getAttribute("data-content-eval") || "");
+        lpTokenToggle(btn, "lp-choice-chip--on", on);
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+  }
+
+  function setTaskLogTimeContentEvalReasons(value, opts = {}) {
+    taskLogTimeContentEvalReasons = filterContentEvalReasonsForRating(
+      value,
+      getTaskLogTimeRating(),
+    );
+    if (!opts.silent) syncTaskLogContentEvalChips();
+  }
+
+  function toggleTaskLogTimeContentEvalReason(id) {
+    const key = filterContentEvalReasonsForRating(
+      [id],
+      getTaskLogTimeRating(),
+    )[0];
+    if (!key) return;
+    const next = getTaskLogTimeContentEvalReasons();
+    const i = next.indexOf(key);
+    if (i >= 0) next.splice(i, 1);
+    else next.push(key);
+    setTaskLogTimeContentEvalReasons(next);
+  }
+
+  function syncTaskLogContentEvalSection() {
+    const rating = getTaskLogTimeRating();
+    const ratingMatches = shouldCollectTimeContentEvalReasons(rating);
+    const taskAllows = isTaskLogModalContentTask();
+    const show = taskAllows && ratingMatches;
+    if (taskLogContentEvalSection) taskLogContentEvalSection.hidden = !show;
+    const label = taskLogContentEvalSection?.querySelector(
+      '[data-legacy~="time-task-log-content-eval-section-label"]',
+    );
+    /* 별점이 이미 「콘텐츠 평가」이므로 칩 위 제목은 중복 없이 숨김 */
+    if (label) {
+      label.textContent = "";
+      label.hidden = true;
+    }
+    if (show) {
+      rebuildTaskLogContentEvalChips();
+      const filtered = filterContentEvalReasonsForRating(
+        taskLogTimeContentEvalReasons,
+        rating,
+      );
+      if (
+        filtered.length !==
+        normalizeTimeContentEvalReasonsForRow(taskLogTimeContentEvalReasons)
+          .length
+      ) {
+        taskLogTimeContentEvalReasons = filtered;
+      }
+    } else if (
+      (!taskAllows || !ratingMatches) &&
+      taskLogTimeContentEvalReasons.length
+    ) {
+      taskLogTimeContentEvalReasons = [];
+      taskLogContentEvalChipBand = "";
+      taskLogContentEvalChips?.replaceChildren?.();
     }
   }
 
@@ -8851,20 +9101,103 @@ export function render(opts = {}) {
     sleepGoodFactors = [],
     sleepPoorReasons = [],
     badFeelingReasons = [],
+    goodFeelingReasons = [],
+    contentEvalReasons = [],
     emotionSub = "",
   } = {}) {
-    taskLogTimeRating = normalizeTimeRatingForRow(rating);
-    taskLogEmotionSub = String(emotionSub || "").trim();
-    taskLogTimeFlowDisruptors = normalizeTimeFlowDisruptorsForRow(disruptors);
-    taskLogTimeFlowFactors = normalizeTimeFlowFactorsForRow(factors);
-    taskLogTimeEndReasons = normalizeTimeEndReasonsForRow(endReasons);
-    taskLogTimeSleepGoodFactors =
+    const nextRating = normalizeTimeRatingForRow(rating);
+    const nextDisruptors = normalizeTimeFlowDisruptorsForRow(disruptors);
+    const nextFactors = normalizeTimeFlowFactorsForRow(factors);
+    const nextEndReasons = normalizeTimeEndReasonsForRow(endReasons);
+    const nextSleepGood =
       normalizeTimeSleepGoodFactorsForRow(sleepGoodFactors);
-    taskLogTimeSleepPoorReasons =
+    const nextSleepPoor =
       normalizeTimeSleepPoorReasonsForRow(sleepPoorReasons);
-    taskLogTimeBadFeelingReasons =
+    const nextBadFeeling =
       normalizeTimeBadFeelingReasonsForRow(badFeelingReasons);
+    const nextGoodFeeling =
+      normalizeTimeGoodFeelingReasonsForRow(goodFeelingReasons);
+    const nextContentEval = filterContentEvalReasonsForRating(
+      contentEvalReasons,
+      nextRating,
+    );
+    taskLogTimeRating = nextRating;
+    taskLogEmotionSub = String(emotionSub || "").trim();
+    taskLogTimeFlowDisruptors = nextDisruptors;
+    taskLogTimeFlowFactors = nextFactors;
+    taskLogTimeEndReasons = nextEndReasons;
+    taskLogTimeSleepGoodFactors = nextSleepGood;
+    taskLogTimeSleepPoorReasons = nextSleepPoor;
+    taskLogTimeBadFeelingReasons = nextBadFeeling;
+    taskLogTimeGoodFeelingReasons = nextGoodFeeling;
+    taskLogTimeContentEvalReasons = nextContentEval;
     syncTaskLogRatingSectionUi();
+    /* sync가 숨김 처리로 비운 뒤에도 수정 오픈으로 불러온 칩 값 복구 */
+    if (
+      shouldCollectTimeFlowDisruptors(nextRating) &&
+      nextDisruptors.length &&
+      !getTaskLogTimeFlowDisruptors().length
+    ) {
+      taskLogTimeFlowDisruptors = nextDisruptors;
+      syncTaskLogFlowDisruptorChips();
+    }
+    if (
+      shouldCollectTimeFlowFactors(nextRating) &&
+      nextFactors.length &&
+      !getTaskLogTimeFlowFactors().length
+    ) {
+      taskLogTimeFlowFactors = nextFactors;
+      syncTaskLogFlowFactorChips();
+    }
+    if (
+      shouldCollectTimeEndReasons(nextRating) &&
+      nextEndReasons.length &&
+      !getTaskLogTimeEndReasons().length
+    ) {
+      taskLogTimeEndReasons = nextEndReasons;
+      syncTaskLogEndReasonChips();
+    }
+    if (
+      shouldCollectTimeSleepGoodFactors(nextRating) &&
+      nextSleepGood.length &&
+      !getTaskLogTimeSleepGoodFactors().length
+    ) {
+      taskLogTimeSleepGoodFactors = nextSleepGood;
+      syncTaskLogSleepGoodChips();
+    }
+    if (
+      shouldCollectTimeSleepPoorReasons(nextRating) &&
+      nextSleepPoor.length &&
+      !getTaskLogTimeSleepPoorReasons().length
+    ) {
+      taskLogTimeSleepPoorReasons = nextSleepPoor;
+      syncTaskLogSleepPoorChips();
+    }
+    if (
+      shouldCollectTimeBadFeelingReasons(nextRating) &&
+      nextBadFeeling.length &&
+      !getTaskLogTimeBadFeelingReasons().length
+    ) {
+      taskLogTimeBadFeelingReasons = nextBadFeeling;
+      syncTaskLogBadFeelingChips();
+    }
+    if (
+      shouldCollectTimeGoodFeelingReasons(nextRating) &&
+      nextGoodFeeling.length &&
+      !getTaskLogTimeGoodFeelingReasons().length
+    ) {
+      taskLogTimeGoodFeelingReasons = nextGoodFeeling;
+      syncTaskLogGoodFeelingChips();
+    }
+    if (
+      shouldCollectTimeContentEvalReasons(nextRating) &&
+      nextContentEval.length &&
+      !getTaskLogTimeContentEvalReasons().length
+    ) {
+      taskLogTimeContentEvalReasons = nextContentEval;
+      rebuildTaskLogContentEvalChips();
+      syncTaskLogContentEvalChips();
+    }
   }
 
   function getTaskLogEmotionSubForSave() {
@@ -8949,7 +9282,11 @@ export function render(opts = {}) {
       }
     }
     if (taskLogRatingSection) taskLogRatingSection.hidden = !show;
-    if (!show) {
+    /*
+     * 수면 마감 23:59 등 «평가 UI만 숨김»일 때는 고른 별·칩을 지우지 않음.
+     * 지우면 수정 저장 시 []/null로 사용자 입력을 덮음.
+     */
+    if (!show && !isTaskLogModalSleepOvernightCutoff()) {
       taskLogTimeRating = null;
       taskLogEmotionSub = "";
       taskLogTimeFlowDisruptors = [];
@@ -8958,6 +9295,10 @@ export function render(opts = {}) {
       taskLogTimeSleepGoodFactors = [];
       taskLogTimeSleepPoorReasons = [];
       taskLogTimeBadFeelingReasons = [];
+      taskLogTimeGoodFeelingReasons = [];
+      taskLogTimeContentEvalReasons = [];
+      taskLogContentEvalChipBand = "";
+      taskLogContentEvalChips?.replaceChildren?.();
     }
     syncTaskLogFlowDisruptorSection();
     syncTaskLogFlowFactorSection();
@@ -8965,14 +9306,18 @@ export function render(opts = {}) {
     syncTaskLogSleepGoodSection();
     syncTaskLogSleepPoorSection();
     syncTaskLogBadFeelingSection();
-    if (show) {
-      renderTaskLogTimeRating();
+    syncTaskLogGoodFeelingSection();
+    syncTaskLogContentEvalSection();
+    if (show || isTaskLogModalSleepOvernightCutoff()) {
+      if (show) renderTaskLogTimeRating();
       syncTaskLogFlowDisruptorChips();
       syncTaskLogFlowFactorChips();
       syncTaskLogEndReasonChips();
       syncTaskLogSleepGoodChips();
       syncTaskLogSleepPoorChips();
       syncTaskLogBadFeelingChips();
+      syncTaskLogGoodFeelingChips();
+      syncTaskLogContentEvalChips();
     }
     syncTaskLogEmotionSectionOrder();
   }
@@ -8986,6 +9331,8 @@ export function render(opts = {}) {
     syncTaskLogSleepGoodSection();
     syncTaskLogSleepPoorSection();
     syncTaskLogBadFeelingSection();
+    syncTaskLogGoodFeelingSection();
+    syncTaskLogContentEvalSection();
     if (shouldShowTaskLogRatingSection()) {
       syncTaskLogFlowDisruptorChips();
       syncTaskLogFlowFactorChips();
@@ -8993,6 +9340,8 @@ export function render(opts = {}) {
       syncTaskLogSleepGoodChips();
       syncTaskLogSleepPoorChips();
       syncTaskLogBadFeelingChips();
+      syncTaskLogGoodFeelingChips();
+      syncTaskLogContentEvalChips();
     }
   }
 
@@ -9079,6 +9428,22 @@ export function render(opts = {}) {
       taskLogBadFeelingChips.appendChild(btn);
     });
   }
+
+  if (taskLogGoodFeelingChips) {
+    TIME_TASK_GOOD_FEELING_REASON_OPTIONS.forEach(({ id, label }) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      lpSetClasses(btn, "lp-choice-chip");
+      btn.setAttribute("data-good-feeling", id);
+      btn.textContent = label;
+      btn.addEventListener("click", () => {
+        toggleTaskLogTimeGoodFeelingReason(id);
+      });
+      taskLogGoodFeelingChips.appendChild(btn);
+    });
+  }
+
+  /* 콘텐츠 평가 칩은 별점 밴드(1~3 / 4~5)에 따라 rebuildTaskLogContentEvalChips로 구성 */
 
   taskLogRatingStars
     ?.querySelectorAll('[data-rating-value]')
@@ -9262,9 +9627,15 @@ export function render(opts = {}) {
         ? `${prompt} 적어 주세요`
         : "감정을 고른 뒤, 무엇이 그렇게 느끼게 했는지 적어 주세요";
     } else if (TTC.isNegativeEmotionalTaskName(tn)) {
-      /* 부정 감정 — 사실/해석 2칸 (기본 메모 칸 숨김) */
-      memoLabel = TASK_LOG_MEMO_LABEL_DEFAULT;
-      memoPlaceholder = TASK_LOG_MEMO_PLACEHOLDER_DEFAULT;
+      const cat = getEmotionCategoryByRating(
+        getTaskLogTimeRating(),
+        "negative",
+      );
+      const prompt = getEmotionMemoPrompt(cat);
+      memoLabel = prompt || "무엇이 그렇게 느끼게 했어요?";
+      memoPlaceholder = prompt
+        ? `${prompt} 적어 주세요`
+        : "감정을 고른 뒤, 무엇이 그렇게 느끼게 했는지 적어 주세요";
     } else if (isTaskLogGeneralReviewTask(tn)) {
       memoLabel = TASK_LOG_MEMO_LABEL_REVIEW;
       memoPlaceholder = TASK_LOG_MEMO_PLACEHOLDER_REVIEW;
@@ -9328,9 +9699,11 @@ export function render(opts = {}) {
       if (taskLogContentTypeLabel) {
         const base =
           TTC.ledgerChipDetailSectionLabel(tn) || "콘텐츠 종류";
-        taskLogContentTypeLabel.textContent = TTC.isContentDetailTaskName(tn)
-          ? `${base} (필수)`
-          : base;
+        taskLogContentTypeLabel.textContent =
+          TTC.isContentDetailTaskName(tn) ||
+          TTC.isUnproductiveConversationTaskName(tn)
+            ? `${base} (필수)`
+            : base;
       }
       if (showChipDetail) {
         if (tn !== taskLogChipDetailTaskName) {
@@ -9349,15 +9722,8 @@ export function render(opts = {}) {
       else clearTaskLogSpeechChecks();
     }
     if (taskLogEmotionTriggerSection) {
-      const showTrigger =
-        isEmotion && TTC.emotionTaskUsesTriggers(tn);
-      taskLogEmotionTriggerSection.hidden = !showTrigger;
-      if (taskLogEmotionTriggerLabel) {
-        taskLogEmotionTriggerLabel.textContent = showTrigger
-          ? "트리거 (필수)"
-          : "트리거";
-      }
-      if (!showTrigger) clearTaskLogEmotionTrigger();
+      taskLogEmotionTriggerSection.hidden = true;
+      clearTaskLogEmotionTrigger();
     }
     syncTaskLogEmotionReflectVisibility(tn);
     taskLogScrollArea?.classList?.toggle(
@@ -11161,13 +11527,7 @@ export function render(opts = {}) {
     }
   }
 
-  function buildTaskLogFeedbackForSubmit(taskName) {
-    if (TTC.isNegativeEmotionalTaskName(taskName)) {
-      return packEmotionReflectMemo(
-        taskLogEmotionFactInput?.value || "",
-        taskLogEmotionInterpInput?.value || "",
-      );
-    }
+  function buildTaskLogFeedbackForSubmit(_taskName) {
     /* 완료형·독서·잡무: 체크한 할일은 「할일」/도서명으로만 — 구매 후기에 중복 넣지 않음 */
     return (taskLogFeedbackInput?.value || "").trim();
   }
@@ -12117,16 +12477,15 @@ export function render(opts = {}) {
       clearTaskLogSpeechChecks();
       if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
     } else if (TTC.isEmotionalDetailTaskName(tnForMemo)) {
-      setTaskLogEmotionTrigger(mealDetailVal);
+      clearTaskLogEmotionTrigger();
       if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
       clearTaskLogContentType();
       clearTaskLogSpeechChecks();
-      if (TTC.isNegativeEmotionalTaskName(tnForMemo)) {
-        if (taskLogFeedbackInput) taskLogFeedbackInput.value = "";
-        setTaskLogEmotionReflectInputsFromMemo(memoOnly);
-      } else {
-        clearTaskLogEmotionReflectInputs();
-        if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
+      clearTaskLogEmotionReflectInputs();
+      if (taskLogFeedbackInput) {
+        /* 예전 사실/해석 묶음 메모는 평문으로 메모 칸에 표시 */
+        const reflectPlain = formatEmotionReflectMemoDisplay(memoOnly);
+        taskLogFeedbackInput.value = reflectPlain || memoOnly;
       }
     } else {
       if (taskLogMealDetailInput) taskLogMealDetailInput.value = mealDetailVal;
@@ -12147,6 +12506,8 @@ export function render(opts = {}) {
       sleepGoodFactors: data.timeSleepGoodFactors,
       sleepPoorReasons: data.timeSleepPoorReasons,
       badFeelingReasons: data.timeBadFeelingReasons,
+      goodFeelingReasons: data.timeGoodFeelingReasons,
+      contentEvalReasons: data.timeContentEvalReasons,
       emotionSub: extractEmotionSubFromMemoTags(rawMemoTagsForEdit),
     });
     taskLogMemoTags = userMemoTagsFromLedgerRaw(rawMemoTagsForEdit)
@@ -12279,6 +12640,30 @@ export function render(opts = {}) {
               ? (taskLogMealDetailInput?.value || "").trim()
               : "";
     if (
+      TTC.isUnproductiveConversationTaskName(taskName) &&
+      !TTC.parseConversationDetail(mealDetailForRow).types.length
+    ) {
+      /* 왼쪽「나중에」= 종류 없이 저장 · 오른쪽「확인」= 선택하러 돌아가기 */
+      const selectConvType = await showConfirmModal({
+        title: "알림",
+        message: "대화 종류를 아직 고르지 않았어요.",
+        cancelText: "나중에",
+        confirmText: "확인",
+      });
+      if (selectConvType) {
+        if (taskLogContentTypeSection) {
+          taskLogContentTypeSection.hidden = false;
+          try {
+            taskLogContentTypeSection.scrollIntoView({
+              block: "nearest",
+              behavior: "smooth",
+            });
+          } catch (_) {}
+        }
+        return;
+      }
+    }
+    if (
       TTC.isContentDetailTaskName(taskName) &&
       !String(mealDetailForRow || "").trim()
     ) {
@@ -12331,86 +12716,6 @@ export function render(opts = {}) {
         return;
       }
     }
-    if (
-      TTC.emotionTaskUsesTriggers(taskName) &&
-      !String(mealDetailForRow || "").trim()
-    ) {
-      /* 감정적이기(부정): 트리거 권장 · 「나중에」면 없이 저장 */
-      const pickTrigger = await showConfirmModal({
-        title: "알림",
-        message: "트리거 대분류와 세부 상황을 아직 고르지 않았어요.",
-        cancelText: "나중에",
-        confirmText: "확인",
-      });
-      if (pickTrigger) {
-        if (taskLogEmotionTriggerSection) {
-          taskLogEmotionTriggerSection.hidden = false;
-          try {
-            taskLogEmotionTriggerSection.scrollIntoView({
-              block: "nearest",
-              behavior: "smooth",
-            });
-          } catch (_) {}
-        }
-        return;
-      }
-    }
-    if (TTC.isNegativeEmotionalTaskName(taskName)) {
-      const emotionFact = (taskLogEmotionFactInput?.value || "").trim();
-      if (!emotionFact) {
-        const enterFact = await showConfirmModal({
-          title: "알림",
-          message: "상황에 대한 사실을 아직 입력하지 않았어요.",
-          cancelText: "나중에",
-          confirmText: "확인",
-        });
-        if (enterFact) {
-          syncTaskLogEmotionReflectVisibility(taskName);
-          if (taskLogEmotionReflectSection) {
-            taskLogEmotionReflectSection.hidden = false;
-            try {
-              taskLogEmotionReflectSection.scrollIntoView({
-                block: "nearest",
-                behavior: "smooth",
-              });
-            } catch (_) {}
-          }
-          try {
-            taskLogEmotionFactInput?.focus?.({ preventScroll: true });
-          } catch (_) {
-            taskLogEmotionFactInput?.focus?.();
-          }
-          return;
-        }
-      }
-      const emotionInterp = (taskLogEmotionInterpInput?.value || "").trim();
-      if (!emotionInterp) {
-        const enterInterp = await showConfirmModal({
-          title: "알림",
-          message: "내 해석을 아직 입력하지 않았어요.",
-          cancelText: "나중에",
-          confirmText: "확인",
-        });
-        if (enterInterp) {
-          syncTaskLogEmotionReflectVisibility(taskName);
-          if (taskLogEmotionReflectSection) {
-            taskLogEmotionReflectSection.hidden = false;
-            try {
-              taskLogEmotionReflectSection.scrollIntoView({
-                block: "nearest",
-                behavior: "smooth",
-              });
-            } catch (_) {}
-          }
-          try {
-            taskLogEmotionInterpInput?.focus?.({ preventScroll: true });
-          } catch (_) {
-            taskLogEmotionInterpInput?.focus?.();
-          }
-          return;
-        }
-      }
-    }
     const feedback = feedbackBody;
     const userTagsForSubmit = (
       Array.isArray(taskLogMemoTags) ? taskLogMemoTags : []
@@ -12450,7 +12755,7 @@ export function render(opts = {}) {
     }
     const dateStr = parseDateFromDateTime(startTime) || toDateStr(new Date());
     const focusValue = "";
-    const timeRatingForRow = getTaskLogTimeRating();
+    let timeRatingForRow = getTaskLogTimeRating();
     const sleepEndsAtDayCutoff =
       TTC.isSleepBuiltinTaskName(taskName) &&
       (normalizeHhMm((taskLogTimeEnd?.value || "").trim()) === "23:59" ||
@@ -12460,6 +12765,17 @@ export function render(opts = {}) {
             .replace(/^.*[T\s]/, "")
             .slice(0, 5),
         ) === "23:59");
+    /* 취침 중(23:59) 수정 — 평가 UI가 꺼져 null이 되므로 기존 별점을 유지 */
+    if (
+      sleepEndsAtDayCutoff &&
+      editTr &&
+      timeRatingForRow == null &&
+      normalizeTimeRatingForRow(editTr._rowData?.timeRating) != null
+    ) {
+      timeRatingForRow = normalizeTimeRatingForRow(
+        editTr._rowData.timeRating,
+      );
+    }
     if (
       TTC.isSleepBuiltinTaskName(taskName) &&
       timeRatingForRow == null &&
@@ -12485,19 +12801,34 @@ export function render(opts = {}) {
         return;
       }
     }
+    const prevChipRow = editTr?._rowData || {};
+    const prevChipRating = normalizeTimeRatingForRow(prevChipRow.timeRating);
+    /** 수정 시 모달이 비어 보여도 별점이 같으면 기존 칩 유지(숨김 sync로 지워진 경우) */
+    const keepPrevChipsIfSameRating = (needs, picked, prevRaw, normalizeFn) => {
+      if (!needs) return [];
+      if (picked.length) return picked;
+      if (editTr && prevChipRating === timeRatingForRow) {
+        return normalizeFn(prevRaw);
+      }
+      return picked;
+    };
     const needsFlowDisruptors =
       isTaskLogModalProductiveTask() &&
       !isTaskLogModalMealIntakeTask() &&
       !isTaskLogModalConversationTask() &&
+      !isTaskLogModalContentTask() &&
       shouldCollectTimeFlowDisruptors(timeRatingForRow);
-    const timeFlowDisruptorsForRow = needsFlowDisruptors
-      ? getTaskLogTimeFlowDisruptors()
-      : [];
+    let timeFlowDisruptorsForRow = keepPrevChipsIfSameRating(
+      needsFlowDisruptors,
+      needsFlowDisruptors ? getTaskLogTimeFlowDisruptors() : [],
+      prevChipRow.timeFlowDisruptors ?? prevChipRow.timeFlowDisruptor,
+      normalizeTimeFlowDisruptorsForRow,
+    );
     if (needsFlowDisruptors && !timeFlowDisruptorsForRow.length) {
-      /* 1~2점 평가 시 몰입 방해 요소 권장 · 「나중에」면 없이 저장 */
+      /* 1~3점 평가 시 아쉬웠던 이유 권장 · 「나중에」면 없이 저장 */
       const pickDisruptor = await showConfirmModal({
         title: "알림",
-        message: "몰입 방해 요소를 아직 고르지 않았어요.",
+        message: "아쉬웠던 이유를 아직 고르지 않았어요.",
         cancelText: "나중에",
         confirmText: "확인",
       });
@@ -12519,10 +12850,14 @@ export function render(opts = {}) {
       shouldCollectTimeFlowFactors(timeRatingForRow) &&
       isTaskLogModalProductiveTask() &&
       !isTaskLogModalMealIntakeTask() &&
-      !isTaskLogModalConversationTask();
-    const timeFlowFactorsForRow = needsFlowFactors
-      ? getTaskLogTimeFlowFactors()
-      : [];
+      !isTaskLogModalConversationTask() &&
+      !isTaskLogModalContentTask();
+    let timeFlowFactorsForRow = keepPrevChipsIfSameRating(
+      needsFlowFactors,
+      needsFlowFactors ? getTaskLogTimeFlowFactors() : [],
+      prevChipRow.timeFlowFactors ?? prevChipRow.timeFlowFactor,
+      normalizeTimeFlowFactorsForRow,
+    );
     if (needsFlowFactors && !timeFlowFactorsForRow.length) {
       /* 4~5점 평가 시 몰입 요소 권장 · 「나중에」면 없이 저장 */
       const pickNow = await showConfirmModal({
@@ -12549,10 +12884,14 @@ export function render(opts = {}) {
       shouldCollectTimeEndReasons(timeRatingForRow) &&
       isTaskLogModalProductiveTask() &&
       !isTaskLogModalMealIntakeTask() &&
-      !isTaskLogModalConversationTask();
-    const timeEndReasonsForRow = needsEndReasons
-      ? getTaskLogTimeEndReasons()
-      : [];
+      !isTaskLogModalConversationTask() &&
+      !isTaskLogModalContentTask();
+    let timeEndReasonsForRow = keepPrevChipsIfSameRating(
+      needsEndReasons,
+      needsEndReasons ? getTaskLogTimeEndReasons() : [],
+      prevChipRow.timeEndReasons ?? prevChipRow.timeEndReason,
+      normalizeTimeEndReasonsForRow,
+    );
     if (needsEndReasons && !timeEndReasonsForRow.length) {
       /* 4~5점 — 왜 잘하다 멈췄는지 · 「나중에」면 없이 저장 */
       const pickEnd = await showConfirmModal({
@@ -12575,13 +12914,36 @@ export function render(opts = {}) {
         return;
       }
     }
+    const sleepOvernightSave = isTaskLogModalSleepOvernightCutoff();
     const needsSleepGood =
       isTaskLogModalSleepTask() &&
-      !isTaskLogModalSleepOvernightCutoff() &&
+      !sleepOvernightSave &&
       shouldCollectTimeSleepGoodFactors(timeRatingForRow);
-    const timeSleepGoodFactorsForRow = needsSleepGood
-      ? getTaskLogTimeSleepGoodFactors()
-      : [];
+    const needsSleepPoor =
+      isTaskLogModalSleepTask() &&
+      !sleepOvernightSave &&
+      shouldCollectTimeSleepPoorReasons(timeRatingForRow);
+    let timeSleepGoodFactorsForRow = keepPrevChipsIfSameRating(
+      needsSleepGood,
+      needsSleepGood ? getTaskLogTimeSleepGoodFactors() : [],
+      prevChipRow.timeSleepGoodFactors,
+      normalizeTimeSleepGoodFactorsForRow,
+    );
+    let timeSleepPoorReasonsForRow = keepPrevChipsIfSameRating(
+      needsSleepPoor,
+      needsSleepPoor ? getTaskLogTimeSleepPoorReasons() : [],
+      prevChipRow.timeSleepPoorReasons,
+      normalizeTimeSleepPoorReasonsForRow,
+    );
+    /* 취침(23:59) 수정: 평가 UI를 안 쓰므로 기존 별·이유를 빈 값으로 덮지 않음 */
+    if (isTaskLogModalSleepTask() && sleepOvernightSave && editTr) {
+      timeSleepGoodFactorsForRow = normalizeTimeSleepGoodFactorsForRow(
+        prevChipRow.timeSleepGoodFactors,
+      );
+      timeSleepPoorReasonsForRow = normalizeTimeSleepPoorReasonsForRow(
+        prevChipRow.timeSleepPoorReasons,
+      );
+    }
     if (needsSleepGood && !timeSleepGoodFactorsForRow.length) {
       const pickSleepGood = await showConfirmModal({
         title: "알림",
@@ -12603,13 +12965,6 @@ export function render(opts = {}) {
         return;
       }
     }
-    const needsSleepPoor =
-      isTaskLogModalSleepTask() &&
-      !isTaskLogModalSleepOvernightCutoff() &&
-      shouldCollectTimeSleepPoorReasons(timeRatingForRow);
-    const timeSleepPoorReasonsForRow = needsSleepPoor
-      ? getTaskLogTimeSleepPoorReasons()
-      : [];
     if (needsSleepPoor && !timeSleepPoorReasonsForRow.length) {
       const pickSleepPoor = await showConfirmModal({
         title: "알림",
@@ -12636,10 +12991,14 @@ export function render(opts = {}) {
       !isTaskLogModalMealIntakeTask() &&
       !isTaskLogModalSleepTask() &&
       !isTaskLogModalEmotionalTask() &&
+      !isTaskLogModalContentTask() &&
       shouldCollectTimeBadFeelingReasons(timeRatingForRow);
-    const timeBadFeelingReasonsForRow = needsBadFeeling
-      ? getTaskLogTimeBadFeelingReasons()
-      : [];
+    let timeBadFeelingReasonsForRow = keepPrevChipsIfSameRating(
+      needsBadFeeling,
+      needsBadFeeling ? getTaskLogTimeBadFeelingReasons() : [],
+      prevChipRow.timeBadFeelingReasons,
+      normalizeTimeBadFeelingReasonsForRow,
+    );
     if (needsBadFeeling && !timeBadFeelingReasonsForRow.length) {
       const pickBad = await showConfirmModal({
         title: "알림",
@@ -12661,6 +13020,53 @@ export function render(opts = {}) {
         return;
       }
     }
+    const needsGoodFeeling =
+      isTaskLogModalNonproductiveTask() &&
+      !isTaskLogModalMealIntakeTask() &&
+      !isTaskLogModalSleepTask() &&
+      !isTaskLogModalEmotionalTask() &&
+      !isTaskLogModalContentTask() &&
+      shouldCollectTimeGoodFeelingReasons(timeRatingForRow);
+    let timeGoodFeelingReasonsForRow = keepPrevChipsIfSameRating(
+      needsGoodFeeling,
+      needsGoodFeeling ? getTaskLogTimeGoodFeelingReasons() : [],
+      prevChipRow.timeGoodFeelingReasons,
+      normalizeTimeGoodFeelingReasonsForRow,
+    );
+    if (needsGoodFeeling && !timeGoodFeelingReasonsForRow.length) {
+      const pickGood = await showConfirmModal({
+        title: "알림",
+        message: "좋았던 점을 아직 고르지 않았어요.",
+        cancelText: "나중에",
+        confirmText: "확인",
+      });
+      if (pickGood) {
+        syncTaskLogGoodFeelingSection();
+        if (taskLogGoodFeelingSection) {
+          taskLogGoodFeelingSection.hidden = false;
+          try {
+            taskLogGoodFeelingSection.scrollIntoView({
+              block: "nearest",
+              behavior: "smooth",
+            });
+          } catch (_) {}
+        }
+        return;
+      }
+    }
+    /* 콘텐츠 평가 칩은 선택(필수 아님) — 비어 있어도 확인 모달 없음 */
+    const needsContentEval =
+      isTaskLogModalContentTask() &&
+      shouldCollectTimeContentEvalReasons(timeRatingForRow);
+    let timeContentEvalReasonsForRow = filterContentEvalReasonsForRating(
+      keepPrevChipsIfSameRating(
+        needsContentEval,
+        needsContentEval ? getTaskLogTimeContentEvalReasons() : [],
+        prevChipRow.timeContentEvalReasons,
+        normalizeTimeContentEvalReasonsForRow,
+      ),
+      timeRatingForRow,
+    );
 
     if (editTr) {
       oldRowDataToRemove = editTr._rowData ? { ...editTr._rowData } : null;
@@ -12696,7 +13102,10 @@ export function render(opts = {}) {
         feedback,
         mealDetail: mealDetailForRow,
         memoTags,
-        linkedExpenseIds: [],
+        /* 수정 시 기존 연결 지출을 []로 덮지 않음 */
+        linkedExpenseIds: Array.isArray(prevRow.linkedExpenseIds)
+          ? [...prevRow.linkedExpenseIds]
+          : [],
         focus: focusValue,
         habitDailyCompleted: Array.isArray(prevRow.habitDailyCompleted)
           ? prevRow.habitDailyCompleted
@@ -12709,6 +13118,8 @@ export function render(opts = {}) {
         timeSleepGoodFactors: timeSleepGoodFactorsForRow,
         timeSleepPoorReasons: timeSleepPoorReasonsForRow,
         timeBadFeelingReasons: timeBadFeelingReasonsForRow,
+        timeGoodFeelingReasons: timeGoodFeelingReasonsForRow,
+        timeContentEvalReasons: timeContentEvalReasonsForRow,
         ...(endCleared ? { endTimeClearedByUser: true } : {}),
       };
       editTr._rowData = newRowData;
@@ -12852,6 +13263,8 @@ export function render(opts = {}) {
           timeSleepGoodFactors: timeSleepGoodFactorsForRow,
           timeSleepPoorReasons: timeSleepPoorReasonsForRow,
           timeBadFeelingReasons: timeBadFeelingReasonsForRow,
+          timeGoodFeelingReasons: timeGoodFeelingReasonsForRow,
+          timeContentEvalReasons: timeContentEvalReasonsForRow,
         };
         const idx = allRowsCache.indexOf(existingSame);
         if (idx >= 0) allRowsCache[idx] = newRowData;
@@ -12886,6 +13299,8 @@ export function render(opts = {}) {
           timeSleepGoodFactors: timeSleepGoodFactorsForRow,
           timeSleepPoorReasons: timeSleepPoorReasonsForRow,
           timeBadFeelingReasons: timeBadFeelingReasonsForRow,
+          timeGoodFeelingReasons: timeGoodFeelingReasonsForRow,
+          timeContentEvalReasons: timeContentEvalReasonsForRow,
         };
         const tr = createRow(
           newRowData,
@@ -14194,16 +14609,45 @@ export function render(opts = {}) {
     return `${reportRangeStartYmd}|${reportRangeEndYmd}`;
   }
 
+  function reportMountedRangeKey() {
+    return `${reportRangeStartYmd}|${reportRangeEndYmd}|${timeLedgerReportGranularity}`;
+  }
+
+  /** 같은 기간 레포트가 이미 있으면 remount 생략 — 스크롤 중 맨 위 튕김 방지 */
+  function patchTimeLedgerReportHeadingOnly(rowsToUse) {
+    const shell = contentWrap.querySelector(".time-ledger-report-view-shell");
+    if (!shell || timeLedgerLayoutView !== "report") return false;
+    if (!shell.classList.contains("lp-tr2-root")) return false;
+    if (shell.querySelector(".lp-tr2-report-loading")) return false;
+    if (el._lpReportMountedRangeKey !== reportMountedRangeKey()) return false;
+    patchTimeLedgerUsageHeadingInPlace(rowsToUse);
+    updateTotal();
+    persistActiveViewTimeFilterToSession();
+    updateFilterBarVisibility();
+    rememberTimeLedgerPaintSignature();
+    return true;
+  }
+
   function patchTimeLedgerReportInPlace(rowsToUse) {
     const shell = contentWrap.querySelector(".time-ledger-report-view-shell");
     if (!shell || timeLedgerLayoutView !== "report") return false;
     const savedTop = shell.scrollTop;
     const rs = reportRangeStartYmd;
     const re = reportRangeEndYmd;
+    const rangeKey = reportMountedRangeKey();
     const mountGen = (el._lpReportMountGen = (el._lpReportMountGen || 0) + 1);
-    showTimeLedgerReportLoading(shell, {
-      granularity: timeLedgerReportGranularity,
-    });
+    /*
+     * 이미 레포트가 그려진 뒤(소메뉴 pull 재진입 등)에는 로딩을 다시 안 띄움.
+     * 로딩→내용→로딩→내용 두 번 깜빡임 방지.
+     */
+    const alreadyPainted =
+      shell.classList.contains("lp-tr2-root") &&
+      !shell.querySelector(".lp-tr2-report-loading");
+    if (!alreadyPainted) {
+      showTimeLedgerReportLoading(shell, {
+        granularity: timeLedgerReportGranularity,
+      });
+    }
     patchTimeLedgerUsageHeadingInPlace(rowsToUse);
     updateTotal();
     persistActiveViewTimeFilterToSession();
@@ -14216,6 +14660,7 @@ export function render(opts = {}) {
         const live = contentWrap.querySelector(".time-ledger-report-view-shell");
         if (live !== shell) return;
         mountTimeLedgerReport(shell, { rangeStart: rs, rangeEnd: re });
+        el._lpReportMountedRangeKey = rangeKey;
         restoreTimeReportScrollTop(shell, savedTop);
         rememberTimeLedgerPaintSignature();
       });
@@ -14639,6 +15084,7 @@ export function render(opts = {}) {
               rangeStart: rs,
               rangeEnd: re,
             });
+            el._lpReportMountedRangeKey = reportMountedRangeKey();
             if (restoreTop > 0) {
               restoreTimeReportScrollTop(reportShell, restoreTop);
             }
@@ -14740,6 +15186,12 @@ export function render(opts = {}) {
       updateTotal();
       persistActiveViewTimeFilterToSession();
       updateFilterBarVisibility();
+    } else if (
+      !opts.force &&
+      !reportShellStuckLoading &&
+      patchTimeLedgerReportHeadingOnly(rowsToUse)
+    ) {
+      /* 레포트 스크롤 중 soft refresh — 기간 같으면 remount 안 함 */
     } else if (patchTimeLedgerReportInPlace(rowsToUse)) {
       /* 레포트 탭 — 본문만 갱신, 세로 스크롤 유지 */
     } else {
@@ -14749,7 +15201,7 @@ export function render(opts = {}) {
       persistActiveViewTimeFilterToSession();
       updateFilterBarVisibility();
     }
-    /* 타임라인·타임박스·레포트 소메뉴: 서버 pull 후 무조건 다시 그림 */
+    /* 소메뉴: 서버 pull 후 갱신. 데이터 같으면 시그니처로 스킵(레포트 두 번 깜빡임 방지) */
     if (userSubTabClick) {
       const gen = (el._lpTimeSubTabPullGen =
         (el._lpTimeSubTabPullGen || 0) + 1);
@@ -14760,7 +15212,7 @@ export function render(opts = {}) {
             preferServer: true,
           });
           if (!el.isConnected || gen !== el._lpTimeSubTabPullGen) return;
-          refreshTimeLedgerFromRemotePull({ force: true });
+          refreshTimeLedgerFromRemotePull({ force: false });
         } catch (_) {}
       })();
     }

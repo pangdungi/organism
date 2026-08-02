@@ -273,18 +273,24 @@ export function buildHappinessRoutineReportSnapshot(range, opts = {}) {
     }
 
     let daysDone = 0;
+    let totalMinutes = 0;
     for (const day of calendarDays) {
-      if (
-        isRoutineDoneOnDay(
-          day,
-          minutesByDate,
-          performedByDate,
-          resolvedEntriesByDay.get(day),
-        )
-      ) {
+      const entry = resolvedEntriesByDay.get(day);
+      let dayMins = minutesByDate.get(day) || 0;
+      if (!dayMins) {
+        dayMins = Math.max(
+          0,
+          Math.round(Number(entry?.__ledgerMinutes) || 0),
+        );
+      }
+      totalMinutes += dayMins;
+      if (isRoutineDoneOnDay(day, minutesByDate, performedByDate, entry)) {
         daysDone += 1;
       }
     }
+    /* 주·월·연: 한 날 했을 때 평균 소요(분). 일간은 totalMinutes가 그날 소요 */
+    const avgMinutes =
+      daysDone > 0 ? Math.round(totalMinutes / daysDone) : 0;
 
     let routineChecks = 0;
     let routineOpportunities = 0;
@@ -349,6 +355,8 @@ export function buildHappinessRoutineReportSnapshot(range, opts = {}) {
       executionPct,
       daysDone,
       dayCount: calendarDayCount,
+      totalMinutes,
+      avgMinutes,
       totalChecks: routineChecks,
       totalOpportunities: routineOpportunities,
       isWellKept: executionPct >= ROUTINE_WELL_KEPT_PCT,

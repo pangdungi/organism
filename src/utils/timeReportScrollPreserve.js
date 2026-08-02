@@ -8,13 +8,12 @@ export function restoreTimeReportScrollTop(el, top) {
   if (!(el instanceof HTMLElement)) return;
   const t = Math.max(0, Math.round(Number(top) || 0));
   if (t <= 0) return;
-  const apply = () => {
-    el.scrollTop = t;
-  };
-  apply();
+  /* 한 번만 복원 — 연속 rAF로 다시 맞추면 스크롤 중 위로 튕김 */
+  el.scrollTop = t;
   requestAnimationFrame(() => {
-    apply();
-    requestAnimationFrame(apply);
+    if (!(el instanceof HTMLElement) || !el.isConnected) return;
+    /* 사용자가 이미 더 내린 경우 덮지 않음 */
+    if (el.scrollTop + 2 < t) el.scrollTop = t;
   });
 }
 

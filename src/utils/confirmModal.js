@@ -14,8 +14,11 @@ import { openDeleteAccountModal } from "./deleteAccountModal.js";
 
 /**
  * 할 일·타임레저와 동일한 `time-task-setup-modal` 셸로 확인창을 띄우고, Promise로 결과를 돌려줍니다.
- * @param {{ title?: string, message: string, warnMessage?: string, confirmText?: string, cancelText?: string, confirmDanger?: boolean }} options
- * @returns {Promise<boolean>} 확인 시 true, 취소·닫기 시 false
+ * @param {{ title?: string, message: string, warnMessage?: string, confirmText?: string, cancelText?: string, confirmDanger?: boolean, hideClose?: boolean }} options
+ * @returns {Promise<boolean>} 확인 시 true, 취소(·닫기) 시 false
+ *
+ * 「나중에」확인창: X를 숨김. Esc는 저장 이어가지 않고 창만 닫음(확인과 동일 true).
+ * (X→false면 「나중에」와 같아 과제 기록이 바로 이어지던 문제 방지)
  */
 export function showConfirmModal(options = {}) {
   const {
@@ -25,6 +28,7 @@ export function showConfirmModal(options = {}) {
     confirmText = "확인",
     cancelText = "취소",
     confirmDanger = false,
+    hideClose = false,
   } = options;
 
   if (typeof message !== "string" || !message.trim()) {
@@ -36,6 +40,10 @@ export function showConfirmModal(options = {}) {
   }
 
   dismissAppToast();
+
+  /* 「나중에」= 저장 계속 — X/Esc가 그와 같으면 안 됨 */
+  const softSkipLater = String(cancelText || "").trim() === "나중에";
+  const noCloseBtn = hideClose || softSkipLater;
 
   return new Promise((resolve) => {
     function escapeHtml(s) {
@@ -56,7 +64,11 @@ export function showConfirmModal(options = {}) {
       <div class="time-task-setup-panel time-add-task-panel">
         <div class="time-task-setup-header">
           <h3 class="time-task-setup-title">${escapeHtml(title)}</h3>
-          <button type="button" class="time-task-setup-close" aria-label="닫기">&times;</button>
+          ${
+            noCloseBtn
+              ? ""
+              : `<button type="button" class="time-task-setup-close" aria-label="닫기">&times;</button>`
+          }
         </div>
         <div class="time-task-setup-body todo-list-confirm-body">
           <p class="todo-list-confirm-message">${escapeHtml(message)}</p>
@@ -81,10 +93,13 @@ export function showConfirmModal(options = {}) {
 
     confirmBtn.addEventListener("click", () => finish(true));
     cancelBtn.addEventListener("click", () => finish(false));
-    closeBtn.addEventListener("click", () => finish(false));
+    /* 일반 확인: X=취소. 「나중에」창은 X 없음 */
+    closeBtn?.addEventListener("click", () => finish(false));
 
     modal.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") finish(false);
+      if (e.key !== "Escape") return;
+      /* 「나중에」창 Esc → 저장 말고 기록 모달로 복귀 */
+      finish(softSkipLater ? true : false);
     });
 
     document.body.appendChild(modal);

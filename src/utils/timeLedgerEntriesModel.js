@@ -23,6 +23,8 @@ import { normalizeTimeFlowDisruptorsForRow } from "./timeTaskFlowDisruptors.js";
 import { normalizeTimeSleepGoodFactorsForRow } from "./timeTaskSleepGoodFactors.js";
 import { normalizeTimeSleepPoorReasonsForRow } from "./timeTaskSleepPoorReasons.js";
 import { normalizeTimeBadFeelingReasonsForRow } from "./timeTaskBadFeelingReasons.js";
+import { normalizeTimeGoodFeelingReasonsForRow } from "./timeTaskGoodFeelingReasons.js";
+import { normalizeTimeContentEvalReasonsForRow } from "./timeTaskContentEvalReasons.js";
 
 export { normalizeTimeEndReasonForRow, normalizeTimeEndReasonsForRow } from "./timeTaskEndReasons.js";
 export {
@@ -42,6 +44,14 @@ export {
   normalizeTimeBadFeelingReasonForRow,
   normalizeTimeBadFeelingReasonsForRow,
 } from "./timeTaskBadFeelingReasons.js";
+export {
+  normalizeTimeGoodFeelingReasonForRow,
+  normalizeTimeGoodFeelingReasonsForRow,
+} from "./timeTaskGoodFeelingReasons.js";
+export {
+  normalizeTimeContentEvalReasonForRow,
+  normalizeTimeContentEvalReasonsForRow,
+} from "./timeTaskContentEvalReasons.js";
 
 /**
  * 로그아웃·계정 전환 시 호출. 해당 계정 로컬 저장·메모리 초기화.
@@ -601,6 +611,12 @@ export function localTimeLedgerRowToDbPayload(userId, row) {
     time_bad_feeling_reasons: normalizeTimeBadFeelingReasonsForRow(
       row.timeBadFeelingReasons,
     ),
+    time_good_feeling_reasons: normalizeTimeGoodFeelingReasonsForRow(
+      row.timeGoodFeelingReasons,
+    ),
+    time_content_eval_reasons: normalizeTimeContentEvalReasonsForRow(
+      row.timeContentEvalReasons,
+    ),
   };
 }
 
@@ -657,15 +673,37 @@ export function dbRowToLocalTimeLedgerRow(db) {
     timeFlowDisruptors: normalizeTimeFlowDisruptorsForRow(
       db.time_flow_disruptors ?? db.time_flow_disruptor,
     ),
-    timeSleepGoodFactors: normalizeTimeSleepGoodFactorsForRow(
-      db.time_sleep_good_factors,
-    ),
-    timeSleepPoorReasons: normalizeTimeSleepPoorReasonsForRow(
-      db.time_sleep_poor_reasons,
-    ),
-    timeBadFeelingReasons: normalizeTimeBadFeelingReasonsForRow(
-      db.time_bad_feeling_reasons,
-    ),
+    /* select에 컬럼이 빠지면 undefined — pull이 로컬 이유를 []로 지우지 않게 표시 */
+    timeSleepGoodFactors: Object.prototype.hasOwnProperty.call(
+      db,
+      "time_sleep_good_factors",
+    )
+      ? normalizeTimeSleepGoodFactorsForRow(db.time_sleep_good_factors)
+      : undefined,
+    timeSleepPoorReasons: Object.prototype.hasOwnProperty.call(
+      db,
+      "time_sleep_poor_reasons",
+    )
+      ? normalizeTimeSleepPoorReasonsForRow(db.time_sleep_poor_reasons)
+      : undefined,
+    timeBadFeelingReasons: Object.prototype.hasOwnProperty.call(
+      db,
+      "time_bad_feeling_reasons",
+    )
+      ? normalizeTimeBadFeelingReasonsForRow(db.time_bad_feeling_reasons)
+      : undefined,
+    timeGoodFeelingReasons: Object.prototype.hasOwnProperty.call(
+      db,
+      "time_good_feeling_reasons",
+    )
+      ? normalizeTimeGoodFeelingReasonsForRow(db.time_good_feeling_reasons)
+      : undefined,
+    timeContentEvalReasons: Object.prototype.hasOwnProperty.call(
+      db,
+      "time_content_eval_reasons",
+    )
+      ? normalizeTimeContentEvalReasonsForRow(db.time_content_eval_reasons)
+      : undefined,
     /** Supabase updated_at — 병합 시 last-write-wins */
     /** Supabase updated_at — 서버 스냅샷·동기화 표시용 */
     serverUpdatedAt:
@@ -737,7 +775,59 @@ export function applyTimeLedgerServerFullSnapshot(dbRows) {
           return !id || !tombIds.has(id);
         })
       : arr;
-  const locals = filtered.map((r) => dbRowToLocalTimeLedgerRow(r));
+  const prevById = new Map(
+    readTimeLedgerEntriesRaw()
+      .map((r) => [String(r?.id || "").trim(), r])
+      .filter(([id]) => id),
+  );
+  const locals = filtered.map((r) => {
+    const row = dbRowToLocalTimeLedgerRow(r);
+    const id = String(row?.id || "").trim();
+    const prev = id ? prevById.get(id) : null;
+    if (!prev) {
+      return {
+        ...row,
+        timeSleepGoodFactors: normalizeTimeSleepGoodFactorsForRow(
+          row.timeSleepGoodFactors,
+        ),
+        timeSleepPoorReasons: normalizeTimeSleepPoorReasonsForRow(
+          row.timeSleepPoorReasons,
+        ),
+        timeBadFeelingReasons: normalizeTimeBadFeelingReasonsForRow(
+          row.timeBadFeelingReasons,
+        ),
+        timeGoodFeelingReasons: normalizeTimeGoodFeelingReasonsForRow(
+          row.timeGoodFeelingReasons,
+        ),
+        timeContentEvalReasons: normalizeTimeContentEvalReasonsForRow(
+          row.timeContentEvalReasons,
+        ),
+      };
+    }
+    return {
+      ...row,
+      timeSleepGoodFactors:
+        row.timeSleepGoodFactors === undefined
+          ? normalizeTimeSleepGoodFactorsForRow(prev.timeSleepGoodFactors)
+          : normalizeTimeSleepGoodFactorsForRow(row.timeSleepGoodFactors),
+      timeSleepPoorReasons:
+        row.timeSleepPoorReasons === undefined
+          ? normalizeTimeSleepPoorReasonsForRow(prev.timeSleepPoorReasons)
+          : normalizeTimeSleepPoorReasonsForRow(row.timeSleepPoorReasons),
+      timeBadFeelingReasons:
+        row.timeBadFeelingReasons === undefined
+          ? normalizeTimeBadFeelingReasonsForRow(prev.timeBadFeelingReasons)
+          : normalizeTimeBadFeelingReasonsForRow(row.timeBadFeelingReasons),
+      timeGoodFeelingReasons:
+        row.timeGoodFeelingReasons === undefined
+          ? normalizeTimeGoodFeelingReasonsForRow(prev.timeGoodFeelingReasons)
+          : normalizeTimeGoodFeelingReasonsForRow(row.timeGoodFeelingReasons),
+      timeContentEvalReasons:
+        row.timeContentEvalReasons === undefined
+          ? normalizeTimeContentEvalReasonsForRow(prev.timeContentEvalReasons)
+          : normalizeTimeContentEvalReasonsForRow(row.timeContentEvalReasons),
+    };
+  });
   const { rows: withIds } = ensureTimeLedgerEntryIds(locals);
   writeTimeLedgerEntriesRaw(withIds);
 }
@@ -772,10 +862,63 @@ export function applyTimeLedgerServerRangeSnapshot(
   const { rows: localWithIds } = ensureTimeLedgerEntryIds(
     readTimeLedgerEntriesRaw(),
   );
+  const prevById = new Map(
+    localWithIds
+      .map((r) => [String(r?.id || "").trim(), r])
+      .filter(([id]) => id),
+  );
+  /* 서버 응답에 수면 이유 컬럼이 없으면(undefined) 로컬에 있던 값을 유지 */
+  const insideMerged = insideFromServer.map((row) => {
+    const id = String(row?.id || "").trim();
+    const prev = id ? prevById.get(id) : null;
+    if (!prev) {
+      return {
+        ...row,
+        timeSleepGoodFactors: normalizeTimeSleepGoodFactorsForRow(
+          row.timeSleepGoodFactors,
+        ),
+        timeSleepPoorReasons: normalizeTimeSleepPoorReasonsForRow(
+          row.timeSleepPoorReasons,
+        ),
+        timeBadFeelingReasons: normalizeTimeBadFeelingReasonsForRow(
+          row.timeBadFeelingReasons,
+        ),
+        timeGoodFeelingReasons: normalizeTimeGoodFeelingReasonsForRow(
+          row.timeGoodFeelingReasons,
+        ),
+        timeContentEvalReasons: normalizeTimeContentEvalReasonsForRow(
+          row.timeContentEvalReasons,
+        ),
+      };
+    }
+    return {
+      ...row,
+      timeSleepGoodFactors:
+        row.timeSleepGoodFactors === undefined
+          ? normalizeTimeSleepGoodFactorsForRow(prev.timeSleepGoodFactors)
+          : normalizeTimeSleepGoodFactorsForRow(row.timeSleepGoodFactors),
+      timeSleepPoorReasons:
+        row.timeSleepPoorReasons === undefined
+          ? normalizeTimeSleepPoorReasonsForRow(prev.timeSleepPoorReasons)
+          : normalizeTimeSleepPoorReasonsForRow(row.timeSleepPoorReasons),
+      timeBadFeelingReasons:
+        row.timeBadFeelingReasons === undefined
+          ? normalizeTimeBadFeelingReasonsForRow(prev.timeBadFeelingReasons)
+          : normalizeTimeBadFeelingReasonsForRow(row.timeBadFeelingReasons),
+      timeGoodFeelingReasons:
+        row.timeGoodFeelingReasons === undefined
+          ? normalizeTimeGoodFeelingReasonsForRow(prev.timeGoodFeelingReasons)
+          : normalizeTimeGoodFeelingReasonsForRow(row.timeGoodFeelingReasons),
+      timeContentEvalReasons:
+        row.timeContentEvalReasons === undefined
+          ? normalizeTimeContentEvalReasonsForRow(prev.timeContentEvalReasons)
+          : normalizeTimeContentEvalReasonsForRow(row.timeContentEvalReasons),
+    };
+  });
   const outside = localWithIds.filter(
     (r) => !rowEntryDateInInclusiveRange(r, rs, re),
   );
-  const merged = [...outside, ...insideFromServer];
+  const merged = [...outside, ...insideMerged];
   writeTimeLedgerEntriesRaw(merged);
   void flushTimeLedgerRowsToDiskNow();
   try {

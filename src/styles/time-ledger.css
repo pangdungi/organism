@@ -2176,6 +2176,27 @@
   font-size: var(--lp-tr2-body);
 }
 
+/* 수면 레시피 — 이유 문구가 먼저, 막대는 남는 칸만 */
+.lp-tr2-bars--sleep-recipe {
+  --lp-tr2-bar-label-w: 10.5rem;
+  --lp-tr2-bar-value-w: 5.5rem;
+  row-gap: 0.55rem;
+  column-gap: 0.4rem;
+}
+
+.lp-tr2-bars--sleep-recipe .lp-tr2-bar-label {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+  line-height: 1.35;
+  word-break: keep-all;
+}
+
+.lp-tr2-bars--sleep-recipe .lp-tr2-bar-track {
+  max-width: 5.5rem;
+  justify-self: stretch;
+}
+
 .lp-tr2-bars--month-trend {
   --lp-tr2-bar-label-w: 5.5rem;
   --lp-tr2-bar-value-w: 3.5rem;
@@ -2603,6 +2624,14 @@
   font-size: var(--lp-tr2-label);
   font-weight: 600;
   color: #94a3b8;
+}
+
+.lp-tr2-section:has(> .lp-tr2-sleep-stats) > .lp-tr2-section-sub {
+  margin-bottom: 1.25rem;
+}
+
+.lp-tr2-section:has(> .lp-tr2-sleep-stats) > .lp-tr2-section-title + .lp-tr2-sleep-stats {
+  margin-top: 1.05rem;
 }
 
 .lp-tr2-sleep-stats {
@@ -3067,9 +3096,26 @@
 
 .lp-tr2-emotion-day-item-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
+}
+
+.lp-tr2-emotion-day-item-emotion-chip {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  max-width: 100%;
+  padding: 0.28rem 0.62rem;
+  border-radius: 999px;
+  font-size: var(--lp-tr2-label);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: var(--lp-emotion-chip, #475569);
+  background: color-mix(in srgb, var(--lp-emotion-chip, #64748b) 16%, #fff);
+  border: 1px solid color-mix(in srgb, var(--lp-emotion-chip, #64748b) 32%, #fff);
 }
 
 .lp-tr2-emotion-day-item-emotion {
@@ -3097,8 +3143,63 @@
   line-height: 1.35;
 }
 
+.lp-tr2-emotion-day-item-reflect-table {
+  width: 100%;
+  margin: 0.65rem 0 0;
+  border-collapse: collapse;
+  table-layout: fixed;
+  border: 1px solid #e8edf2;
+  border-radius: 0.55rem;
+  overflow: hidden;
+  background: #fff;
+}
+
+.lp-tr2-emotion-day-item-reflect-table th,
+.lp-tr2-emotion-day-item-reflect-table td {
+  width: 50%;
+  padding: 0.45rem 0.55rem;
+  vertical-align: top;
+  text-align: left;
+  border-right: 1px solid #e8edf2;
+  overflow-wrap: anywhere;
+}
+
+.lp-tr2-emotion-day-item-reflect-table th:last-child,
+.lp-tr2-emotion-day-item-reflect-table td:last-child {
+  border-right: none;
+}
+
+.lp-tr2-emotion-day-item-reflect-table th {
+  background: #f2f2f2;
+  font-size: var(--lp-tr2-meta);
+  font-weight: 700;
+  color: #666666;
+  line-height: 1.3;
+}
+
+.lp-tr2-emotion-day-item-reflect-table td {
+  font-size: var(--lp-tr2-body);
+  font-weight: 500;
+  color: #334155;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  border-top: 1px solid #e8edf2;
+}
+
+.lp-tr2-emotion-day-item-reflect-table th:only-child,
+.lp-tr2-emotion-day-item-reflect-table td:only-child {
+  width: 100%;
+}
+
+.lp-tr2-emotion-day-item-trigger + .lp-tr2-emotion-day-item-memo,
+.lp-tr2-emotion-day-item-head + .lp-tr2-emotion-day-item-memo,
+.lp-tr2-emotion-day-item-head + .lp-tr2-emotion-day-item-reflect-table,
+.lp-tr2-emotion-day-item-trigger + .lp-tr2-emotion-day-item-reflect-table {
+  margin-top: 0.65rem;
+}
+
 .lp-tr2-emotion-day-item-memo {
-  margin: 0.3rem 0 0;
+  margin: 0.55rem 0 0;
   font-size: var(--lp-tr2-body);
   font-weight: 500;
   color: #334155;
@@ -4950,6 +5051,117 @@
   color: #999999;
 }
 
+.lp-tr2-media-day-journal {
+  margin: 0.35rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.lp-tr2-media-day-journal-title {
+  margin: 0;
+  font-size: var(--lp-tr2-label);
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.01em;
+}
+
+.lp-tr2-media-day-kind-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.lp-tr2-media-day-kind-section-title {
+  margin: 0;
+  font-size: var(--lp-tr2-body);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+.lp-tr2-media-day-kind-section--conscious .lp-tr2-media-day-kind-section-title {
+  color: #a87070;
+}
+
+.lp-tr2-media-day-kind-section--unconscious .lp-tr2-media-day-kind-section-title {
+  color: #6d8aad;
+}
+
+.lp-tr2-media-day-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  border: 1px solid #e8edf2;
+  border-radius: 0.65rem;
+  overflow: hidden;
+  background: #fff;
+}
+
+.lp-tr2-media-day-kind-section--conscious .lp-tr2-media-day-table {
+  border-color: #ecd8d8;
+}
+
+.lp-tr2-media-day-kind-section--unconscious .lp-tr2-media-day-table {
+  border-color: #d8e3ef;
+}
+
+.lp-tr2-media-day-table th,
+.lp-tr2-media-day-table td {
+  padding: 0.48rem 0.55rem;
+  vertical-align: top;
+  text-align: left;
+  border-top: 1px solid #e8edf2;
+  overflow-wrap: anywhere;
+}
+
+.lp-tr2-media-day-table thead th {
+  border-top: none;
+  background: #f2f2f2;
+  font-size: var(--lp-tr2-meta);
+  font-weight: 700;
+  color: #666666;
+  line-height: 1.3;
+}
+
+/* 시간 · 콘텐츠 · 후기 (구분 열 없음) */
+.lp-tr2-media-day-table th:nth-child(1),
+.lp-tr2-media-day-table td:nth-child(1) {
+  width: 5.6rem;
+}
+
+.lp-tr2-media-day-table th:nth-child(2),
+.lp-tr2-media-day-table td:nth-child(2) {
+  width: 30%;
+}
+
+.lp-tr2-media-day-table-time {
+  font-size: var(--lp-tr2-meta);
+  font-weight: 600;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.lp-tr2-media-day-table-content,
+.lp-tr2-media-day-table-memo {
+  font-size: var(--lp-tr2-body);
+  font-weight: 500;
+  color: #334155;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.lp-tr2-media-day-table-content.is-empty,
+.lp-tr2-media-day-table-memo.is-empty {
+  color: #cbd5e1;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .lp-tr2-media-tag-block {
   margin-bottom: 0.65rem;
   padding: 0.62rem 0.65rem 0.68rem;
@@ -5465,6 +5677,76 @@
   font-size: var(--lp-tr2-meta);
   line-height: 1;
   color: #666666;
+}
+
+/* 일간 — 모든 별점을 시간 순으로 이은 선 그래프 */
+.lp-tr2-day-rating-section .lp-tr2-day-rating-summary {
+  margin: 0 0 0.55rem;
+  font-size: var(--lp-tr2-body);
+  font-weight: 650;
+  color: #475569;
+  line-height: 1.45;
+}
+
+.lp-tr2-day-rating-line-chart {
+  margin-top: 0.1rem;
+  width: 100%;
+}
+
+.lp-tr2-day-rating-line-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  background: #fff;
+  border: 1px solid #e8edf3;
+  border-radius: 0.55rem;
+  display: flex;
+  justify-content: center;
+}
+
+.lp-tr2-day-rating-line-svg {
+  display: block;
+  width: auto;
+  height: 13.5rem;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.lp-tr2-day-rating-line-range-hint {
+  margin: 0.35rem 0 0.15rem;
+  font-size: var(--lp-tr2-meta);
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: -0.01em;
+}
+
+.lp-tr2-day-rating-line-guide {
+  stroke: #eef2f7;
+  stroke-width: 1;
+}
+
+.lp-tr2-day-rating-line-ylab,
+.lp-tr2-day-rating-line-xlab {
+  fill: #94a3b8;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-tr2-day-rating-line-path {
+  stroke: #64748b;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.lp-tr2-day-rating-line-dot {
+  stroke: #fff;
+  stroke-width: 1.5;
 }
 
 .lp-tr2-rating-hour-chart {
@@ -8200,7 +8482,7 @@
   font-size: 0.875rem;
 }
 
-/* 검색 필터가 걸려 있을 때 — 입력칸·안내를 분명히 */
+/* 검색 필터가 걸려 있을 때 — 블랙앤화이트 */
 [data-legacy~="time-ledger-view"]
   [data-legacy~="time-usage-range-modal"]
   .time-usage-range-text-search.is-filter-active
@@ -8209,9 +8491,9 @@
   [data-legacy~="time-usage-range-modal"]
   .time-usage-range-text-search[data-legacy~="is-filter-active"]
   .lp-search-bar__row {
-  border-color: #1e4d7b;
-  background: rgba(30, 77, 123, 0.06);
-  box-shadow: inset 0 0 0 1px rgba(30, 77, 123, 0.18);
+  border-color: #000000;
+  background: #f5f5f5;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
 }
 
 [data-legacy~="time-ledger-view"]
@@ -8222,8 +8504,19 @@
   [data-legacy~="time-usage-range-modal"]
   .time-usage-range-text-search[data-legacy~="is-filter-active"]
   .lp-search-bar__input {
-  color: #1e4d7b;
+  color: #000000;
   font-weight: 600;
+}
+
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-usage-range-text-search.is-filter-active
+  .lp-search-bar__clear,
+[data-legacy~="time-ledger-view"]
+  [data-legacy~="time-usage-range-modal"]
+  .time-usage-range-text-search[data-legacy~="is-filter-active"]
+  .lp-search-bar__clear {
+  color: #000000;
 }
 
 [data-legacy~="time-ledger-view"]
@@ -8232,9 +8525,9 @@
   margin: 0 0 0.55rem;
   padding: 0.5rem 0.65rem;
   border-radius: 0.5rem;
-  background: #fff7ed;
-  border: 1px solid #fdba74;
-  color: #9a3412;
+  background: #f5f5f5;
+  border: 1px solid #d4d4d4;
+  color: #262626;
   font-size: 0.8125rem;
   font-weight: 600;
   line-height: 1.4;
@@ -8248,10 +8541,10 @@
   max-width: 100%;
   margin: 0.28rem 0 0;
   padding: 0.22rem 0.55rem;
-  border: 1px solid #fdba74;
+  border: 1px solid #000000;
   border-radius: 999px;
-  background: #fff7ed;
-  color: #9a3412;
+  background: #ffffff;
+  color: #000000;
   font-size: 0.75rem;
   font-weight: 700;
   font-family: inherit;
@@ -8269,7 +8562,7 @@
 [data-legacy~="time-ledger-view"]
   [data-legacy~="time-ledger-usage-filter-chip"]:hover,
 [data-legacy~="time-ledger-view"] .time-ledger-usage-filter-chip:hover {
-  background: #ffedd5;
+  background: #f5f5f5;
 }
 
 [data-legacy~="time-ledger-view"]
@@ -8853,8 +9146,8 @@
   )
   [data-legacy~="time-task-log-content-type-section"] {
   margin-top: 0.85rem;
-  padding-top: 0.65rem;
-  padding-bottom: 0.4rem;
+  padding-top: 0.75rem;
+  padding-bottom: 0.55rem;
   border-top: 1px solid #e5e5e5;
 }
 
@@ -8864,8 +9157,9 @@
     .lp-calendar-budget-add-modal
   )
   [data-legacy~="time-task-log-content-type-chips"] {
-  margin-top: 0.45rem;
-  margin-bottom: 0.5rem;
+  margin-top: 0.6rem;
+  margin-bottom: 0.65rem;
+  gap: 0.5rem;
 }
 
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
@@ -8983,6 +9277,7 @@
   align-items: center;
   gap: 0.35rem;
   margin-top: 0.55rem;
+  margin-bottom: 0.35rem;
 }
 
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
@@ -9434,6 +9729,10 @@
   [data-legacy~="time-task-log-sleep-poor-section"],
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   [data-legacy~="time-task-log-bad-feeling-section"],
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-good-feeling-section"],
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-content-eval-section"],
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
     .lp-calendar-budget-add-modal
   )
@@ -9457,12 +9756,82 @@
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
     .lp-calendar-budget-add-modal
   )
-  [data-legacy~="time-task-log-bad-feeling-section"] {
-  margin-top: 0.85rem;
-  padding-top: 0.85rem;
+  [data-legacy~="time-task-log-bad-feeling-section"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-good-feeling-section"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-content-eval-section"] {
+  margin-top: 1.15rem;
+  padding-top: 1.15rem;
   padding-bottom: 0.85rem;
   border-top: 1px solid #e2e8f0;
   box-sizing: border-box;
+}
+
+/* 별점 바로 아래 첫 칩 블록(좋았던 점 등) — 붙어 보이지 않게 여백 고정 */
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-rating-stars"]
+  ~ [data-legacy~="time-task-log-good-feeling-section"]:not([hidden]),
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-rating-stars"]
+  ~ [data-legacy~="time-task-log-bad-feeling-section"]:not([hidden]),
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-rating-stars"]
+  ~ [data-legacy~="time-task-log-flow-disruptor-section"]:not([hidden]),
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-rating-stars"]
+  ~ [data-legacy~="time-task-log-flow-factor-section"]:not([hidden]),
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-rating-stars"]
+  ~ [data-legacy~="time-task-log-end-reason-section"]:not([hidden]),
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-rating-stars"]
+  ~ [data-legacy~="time-task-log-sleep-good-section"]:not([hidden]),
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-rating-stars"]
+  ~ [data-legacy~="time-task-log-sleep-poor-section"]:not([hidden]),
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-rating-stars"]
+  ~ [data-legacy~="time-task-log-good-feeling-section"]:not([hidden]),
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-rating-stars"]
+  ~ [data-legacy~="time-task-log-bad-feeling-section"]:not([hidden]),
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-rating-stars"]
+  ~ [data-legacy~="time-task-log-flow-disruptor-section"]:not([hidden]),
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-rating-stars"]
+  ~ [data-legacy~="time-task-log-flow-factor-section"]:not([hidden]),
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-rating-stars"]
+  ~ [data-legacy~="time-task-log-end-reason-section"]:not([hidden]),
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-rating-stars"]
+  ~ [data-legacy~="time-task-log-sleep-good-section"]:not([hidden]),
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-rating-stars"]
+  ~ [data-legacy~="time-task-log-sleep-poor-section"]:not([hidden]) {
+  margin-top: 1.35rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid #e2e8f0;
 }
 
 /* 연속 블록끼리 margin 겹침 방지 — 칩↔구분선 간격은 padding-bottom만 */
@@ -9489,7 +9858,23 @@
     .lp-calendar-budget-add-modal
   )
   [data-legacy~="time-task-log-flow-factor-section"]
-  + [data-legacy~="time-task-log-end-reason-section"] {
+  + [data-legacy~="time-task-log-end-reason-section"],
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-good-feeling-section"]
+  + [data-legacy~="time-task-log-content-eval-section"],
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-bad-feeling-section"]
+  + [data-legacy~="time-task-log-content-eval-section"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-good-feeling-section"]
+  + [data-legacy~="time-task-log-content-eval-section"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-bad-feeling-section"]
+  + [data-legacy~="time-task-log-content-eval-section"] {
   margin-top: 0;
 }
 
@@ -9511,6 +9896,12 @@
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   [data-legacy~="time-task-log-bad-feeling-section"]
   > [data-legacy~="time-task-log-section-label"],
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-good-feeling-section"]
+  > [data-legacy~="time-task-log-section-label"],
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-content-eval-section"]
+  > [data-legacy~="time-task-log-section-label"],
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
     .lp-calendar-budget-add-modal
   )
@@ -9540,6 +9931,16 @@
     .lp-calendar-budget-add-modal
   )
   [data-legacy~="time-task-log-bad-feeling-section"]
+  > [data-legacy~="time-task-log-section-label"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-good-feeling-section"]
+  > [data-legacy~="time-task-log-section-label"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-content-eval-section"]
   > [data-legacy~="time-task-log-section-label"] {
   margin-top: 0;
   margin-bottom: 0.85rem;
@@ -9557,6 +9958,10 @@
   [data-legacy~="time-task-log-sleep-poor-chips"],
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   [data-legacy~="time-task-log-bad-feeling-chips"],
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-good-feeling-chips"],
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-content-eval-chips"],
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
     .lp-calendar-budget-add-modal
   )
@@ -9580,9 +9985,18 @@
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
     .lp-calendar-budget-add-modal
   )
-  [data-legacy~="time-task-log-bad-feeling-chips"] {
+  [data-legacy~="time-task-log-bad-feeling-chips"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-good-feeling-chips"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-content-eval-chips"] {
   margin-top: 0;
   margin-bottom: 0;
+  gap: 0.5rem;
 }
 
 /* 평가 블록 다음 메모 구분선 — 이모티콘·칩과 선 사이 여백 */

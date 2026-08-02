@@ -107,48 +107,13 @@ export function mountTaskLogEmotionPicker(container, opts = {}) {
   let categoryRating = opts.categoryRating ?? null;
   let subLabel = String(opts.subLabel || "").trim();
 
+  /* 감정 상태(대분류)만 — 세부 감정 칩은 쓰지 않음 */
   function syncSubRow() {
     subRow.replaceChildren();
-    const cat = getEmotionCategoryByRating(categoryRating, polarity);
-    if (!cat || cat.selectOnly) {
-      subRow.hidden = true;
-      return;
-    }
-    subRow.hidden = false;
-    const subLabelEl = document.createElement("span");
-    subLabelEl.className =
-      "time-task-log-section-label time-task-log-emotion-sub-label";
-    subLabelEl.textContent = `${cat.label} — 어떤 감정인가요?`;
-    subRow.appendChild(subLabelEl);
-
-    const chips = document.createElement("div");
-    chips.className = "time-task-log-emotion-sub-chips lp-choice-chip-row";
-    cat.subs.forEach((sub) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      lpSetClasses(btn, "lp-choice-chip");
-      btn.setAttribute("data-emotion-sub", sub);
-      btn.textContent = sub;
-      btn.addEventListener("click", (ev) => {
-        ev.preventDefault();
-        ev.stopPropagation();
-        subLabel = subLabel === sub ? "" : sub;
-        syncSubChips();
-        emitChange();
-      });
-      chips.appendChild(btn);
-    });
-    subRow.appendChild(chips);
-    syncSubChips();
+    subRow.hidden = true;
   }
 
-  function syncSubChips() {
-    subRow.querySelectorAll("[data-emotion-sub]").forEach((btn) => {
-      const sub = btn.getAttribute("data-emotion-sub") || "";
-      lpTokenToggle(btn, "lp-choice-chip--on", subLabel === sub);
-      btn.setAttribute("aria-pressed", subLabel === sub ? "true" : "false");
-    });
-  }
+  function syncSubChips() {}
 
   function syncCategoryButtons() {
     categoryRow.querySelectorAll("[data-emotion-category]").forEach((btn) => {
@@ -188,11 +153,7 @@ export function mountTaskLogEmotionPicker(container, opts = {}) {
         subLabel = "";
       } else {
         categoryRating = cat.rating;
-        if (cat.selectOnly) {
-          subLabel = cat.label;
-        } else if (!cat.subs.includes(subLabel)) {
-          subLabel = "";
-        }
+        subLabel = cat.label;
       }
       syncCategoryButtons();
       syncSubRow();
@@ -213,7 +174,7 @@ export function mountTaskLogEmotionPicker(container, opts = {}) {
     if (inferred) categoryRating = inferred.rating;
   }
   const selected = getEmotionCategoryByRating(categoryRating, polarity);
-  if (selected?.selectOnly) {
+  if (selected) {
     subLabel = selected.label;
   }
   syncCategoryButtons();
@@ -227,7 +188,7 @@ export function mountTaskLogEmotionPicker(container, opts = {}) {
       if (inferred) categoryRating = inferred.rating;
     }
     const cat = getEmotionCategoryByRating(categoryRating, polarity);
-    if (cat?.selectOnly) subLabel = cat.label;
+    if (cat) subLabel = cat.label;
     syncCategoryButtons();
     syncSubRow();
   };

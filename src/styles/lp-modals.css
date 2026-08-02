@@ -385,6 +385,16 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   display: block;
 }
 
+/* display:block 이 [hidden] 을 덮어쓰지 않게 — 평가 없을 때 제목만 남는 문제 방지 */
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-rating-section"][hidden],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-rating-section"][hidden] {
+  display: none !important;
+}
+
 /* 과제 기록·예상 일정 — 모바일: flex 줄어듦 방지, 스크롤로 메모를 키보드 위에 */
 @media (max-width: 46rem) {
   html.lp-task-log-modal-open .time-task-setup-modal.time-task-log-modal,

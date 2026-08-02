@@ -1,8 +1,11 @@
 /** 시간가계부 과제 고정 목록 (Time.js UI와 동일 소스) */
 
-/** 내장 낮잠 — 선택 목록 표기명. 저장 시 시간에 따라 이내/이상 라벨로 기록 */
-export const NAP_TASK_NAME = "낮잠";
-/** 사용시간 30분 이하로 저장된 기록명 */
+/**
+ * 내장 낮잠 기본 과제(선택 목록·결정적 id 기준).
+ * 기록 저장 시에만 소요시간에 따라 이내/이상 라벨로 적힌다.
+ */
+export const NAP_TASK_NAME = "낮잠(30분 이내)";
+/** @deprecated NAP_TASK_NAME 과 동일 — 기록 라벨 */
 export const NAP_TASK_NAME_WITHIN_30 = "낮잠(30분 이내)";
 /** 사용시간 30분 초과로 저장된 기록명 */
 export const NAP_TASK_NAME_OVER_30 = "낮잠(30분이상)";
@@ -11,6 +14,7 @@ const NAP_TASK_NAMES_FOR_RULE = new Set([
   NAP_TASK_NAME,
   NAP_TASK_NAME_WITHIN_30,
   NAP_TASK_NAME_OVER_30,
+  "낮잠",
   "낮잠 (30분 이상은 수면으로 기록)",
 ]);
 
@@ -19,7 +23,7 @@ export function isNapBuiltinTaskName(name) {
   return NAP_TASK_NAMES_FOR_RULE.has(String(name || "").trim());
 }
 
-/** 과제 선택 UI용 — 기록 라벨이 있어도 선택값은 「낮잠」 */
+/** 과제 선택 UI용 — 기록 라벨이 있어도 선택값은 기본 낮잠 과제명 */
 export function canonicalNapPickerTaskName(name) {
   const n = String(name || "").trim();
   return isNapBuiltinTaskName(n) ? NAP_TASK_NAME : n;
@@ -76,8 +80,9 @@ export function emotionTaskPolarity(name) {
   return null;
 }
 
-export function emotionTaskUsesTriggers(name) {
-  return isNegativeEmotionalTaskName(name);
+/** 감정적이기 — 트리거 UI 사용 안 함(감정 상태만) */
+export function emotionTaskUsesTriggers(_name) {
+  return false;
 }
 
 export const FIXED_OTHER_TASKS = [
@@ -87,6 +92,8 @@ export const FIXED_OTHER_TASKS = [
 
 /** 기본 과제 목록에서 제거됨 — 기존 로컬·서버 행 정리용 */
 export const RETIRED_BUILTIN_TASK_TEMPLATES = [
+  /* 잘못 추가됐던 선택용 「낮잠」— 기본은 「낮잠(30분 이내)」만 */
+  { name: "낮잠", category: "health", productivity: "productive" },
   { name: "구매 고민", category: "moneylosing", productivity: "nonproductive" },
   { name: "술 마시기", category: "unhealthy", productivity: "nonproductive" },
   { name: "논쟁하기", category: "unhappiness", productivity: "nonproductive" },
@@ -210,8 +217,8 @@ export const FIXED_PRODUCTIVE_TASKS = [
   {
     name: EMOTIONAL_POSITIVE_TASK_NAME,
     category: "happiness",
-    /* 감정 선택·메모만 — 생산적 몰입/종료 이유와 무관 */
-    productivity: "other",
+    /* 생산적 > 행복 (몰입/종료 UI는 감정 과제라 별도 제외) */
+    productivity: "productive",
   },
 ];
 

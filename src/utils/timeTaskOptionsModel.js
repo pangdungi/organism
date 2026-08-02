@@ -549,8 +549,8 @@ function assignIdsToMergedList(merged) {
       upsertIds.push(nid);
       return {
         ...t,
-        productivity: t.productivity || builtin.productivity,
-        category: t.category || builtin.category,
+        productivity: builtin.productivity,
+        category: builtin.category,
         memo: t.memo || "",
         id: nid,
       };
@@ -594,7 +594,9 @@ export function getFullTaskOptions() {
   const arr = readTaskOptionsMemRows().filter(
     (o) => !C.isRetiredBuiltinTaskName(String(o.name || "").trim()),
   );
-  return assignIdsToMergedList(mergeMissingBuiltinTemplates(arr));
+  return assignIdsToMergedList(mergeMissingBuiltinTemplates(arr)).map((o) =>
+    normalizeBuiltinTaskRow(o),
+  );
 }
 
 /** 꿈 KPI 연동 과제 — 과제설정 모달 목록에서 숨김(기록·조회용 데이터는 유지) */
