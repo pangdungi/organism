@@ -151,7 +151,6 @@ import {
   shouldCollectTimeBadFeelingReasons,
 } from "../utils/timeTaskBadFeelingReasons.js";
 import {
-  closeActiveInProgressRowsAtNow,
   closeStaleInProgressTimeLedgerRows,
   timeLedgerRowIsActiveLiveInProgress,
 } from "../utils/timeLedgerStaleInProgressClose.js";
@@ -5427,22 +5426,6 @@ function getDismissedNextExpectedBlockKeysForDay(viewEl, todayYmd) {
     for (const k of viewEl._lpDismissedNextExpectedBlocks) keys.add(k);
   }
   return keys;
-}
-
-function closeTodayInProgressRowsAtNowAndSave(
-  allRowsCacheRef,
-  todayYmd,
-  at = new Date(),
-) {
-  const today = todayYmd || timeLedgerLocalTodayYmd();
-  const merged = mergeLedgerRowsForDedupe(
-    loadTimeRows(),
-    Array.isArray(allRowsCacheRef) ? allRowsCacheRef : [],
-  );
-  const { rows, changed } = closeActiveInProgressRowsAtNow(merged, today, at);
-  if (!changed) return allRowsCacheRef;
-  saveTimeRows(rows);
-  return rows;
 }
 
 /** 예상 일정 — 다음 예정 과제(회색 카드) */
@@ -14251,12 +14234,10 @@ export function render(opts = {}) {
                 const presetStartHhMm = `${String(clickedAt.getHours()).padStart(2, "0")}:${String(clickedAt.getMinutes()).padStart(2, "0")}`;
                 rememberDismissedNextExpectedBlock(el, nextExpected, viewingYmd);
                 itemEl?.remove();
-                allRowsCache = closeTodayInProgressRowsAtNowAndSave(
-                  allRowsCache,
-                  viewingYmd,
-                  clickedAt,
-                );
-                onFilterChange(true);
+                /*
+                 * 이전 진행 중 행을 「지금」시각으로 자동 마감·서버 업로드하지 않음.
+                 * 마감은 사용자가 모달에서 넣을 때만 (자동 23:59 제외).
+                 */
                 void openTaskLogModal({
                   productivity: null,
                   tbody: hiddenTbody,
