@@ -9586,23 +9586,58 @@ export function render(opts = {}) {
   }
 
   function syncEndToHidden() {
+    const rawVis = String(taskLogTimeEnd?.value || "").trim();
+    const time =
+      normalizeHhMm(rawVis) ||
+      normalizeHhMm(autoFormatDigitsToHhMm(rawVis) || "") ||
+      "";
+    /*
+     * 보이는 마감이 있을 때만 hidden을 덮어씀.
+     * 날짜/시각이 잠깐 비었다고 hidden을 ""로 지우지 않음(수정 버튼 포커스 경합 방지).
+     * 사용자가 지우기 버튼으로 비운 경우만 hidden도 비움.
+     */
+    if (!time) {
+      if (taskLogEndClearedByUser) taskLogEndInput.value = "";
+      updateEndTimeClearVisibility();
+      syncTaskLogDateOverlay();
+      updateTaskLogTimeOrderWarning();
+      return;
+    }
     const date = taskLogResolveYmdForSync();
-    const time = normalizeHhMm(taskLogTimeEnd?.value || "");
-    if (date && time) {
+    if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
       taskLogEndInput.value = `${date}T${time}`;
       if (
         taskLogDateStart &&
-        !String(taskLogDateStart.value || "").trim() &&
-        /^\d{4}-\d{2}-\d{2}$/.test(date)
+        !String(taskLogDateStart.value || "").trim()
       ) {
         taskLogDateStart.value = date;
       }
-    } else {
-      taskLogEndInput.value = "";
     }
     updateEndTimeClearVisibility();
     syncTaskLogDateOverlay();
     updateTaskLogTimeOrderWarning();
+  }
+
+  /** 저장용 마감 — 보이는 칸 > hidden > 기존 행. 사용자가 지운 경우만 빈 값 */
+  function resolveTaskLogEndTimeForSave(prevEndFallback = "") {
+    if (taskLogTimeEnd) {
+      const raw = String(taskLogTimeEnd.value || "").trim();
+      const pre = autoFormatDigitsToHhMm(raw) || raw;
+      const vis = normalizeHhMm(pre) || "";
+      if (vis && /^\d{1,2}:\d{2}$/.test(vis)) {
+        taskLogTimeEnd.value = vis;
+        const date = taskLogResolveYmdForSync();
+        if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+          const composed = `${date}T${vis}`;
+          taskLogEndInput.value = composed;
+          return formatDateTimeInput(composed) || composed;
+        }
+      }
+    }
+    if (taskLogEndClearedByUser) return "";
+    const hid = String(taskLogEndInput?.value || "").trim();
+    if (hid) return formatDateTimeInput(hid) || hid;
+    return String(prevEndFallback || "").trim();
   }
 
   function setStartFromDatetime(dtStr) {
@@ -9747,6 +9782,8 @@ export function render(opts = {}) {
     !!ev.relatedTarget?.closest?.(
       '[data-legacy~="time-task-log-time-adjust-btns"]',
     );
+  const taskLogFocusOutTargetIsSubmitBtn = (ev) =>
+    !!ev.relatedTarget?.closest?.('[data-legacy~="time-task-log-submit"]');
 
   [taskLogDateStart, taskLogTimeStart].forEach((el) => {
     el?.addEventListener("change", () => {
@@ -9811,6 +9848,8 @@ export function render(opts = {}) {
   taskLogTimeEnd?.addEventListener("focusout", (ev) => {
     if (ev.relatedTarget === taskLogTimeEndClearBtn) return;
     if (taskLogFocusOutTargetIsTimeAdjustBtn(ev)) return;
+    /* 기록/수정 버튼 클릭 시 blur가 먼저 돌아 마감이 비는 것 방지 */
+    if (taskLogFocusOutTargetIsSubmitBtn(ev)) return;
     taskLogTimeEndInputFocused = false;
     updateEndTimeClearVisibility();
     const preformatted =
@@ -12013,7 +12052,7 @@ export function render(opts = {}) {
     hideTaskLogTaskCompletionTodosSection();
   }
 
-  /** 기록 버튼: blur 없이 바로 누르면 숫자만 입력된 시각이 hidden에 반영되지 않을 수 있음 → blur와 동일 포맷 후 동기화 */
+  /** 기록 버튼: 보이는 시각을 먼저 포맷·반영. 마감 hidden은 비어 보일 때 지우지 않음 */
   function flushTaskLogTimeInputsBeforeSubmit() {
     if (taskLogTimeStart) {
       const raw = taskLogTimeStart.value || "";
@@ -12023,20 +12062,18 @@ export function render(opts = {}) {
     if (taskLogTimeEnd) {
       const raw = taskLogTimeEnd.value || "";
       const preformatted = autoFormatDigitsToHhMm(raw) || raw;
-      taskLogTimeEnd.value = normalizeHhMm(preformatted) || preformatted;
+      const norm = normalizeHhMm(preformatted) || "";
+      if (norm) taskLogTimeEnd.value = norm;
     }
     syncStartToHidden();
     syncEndToHidden();
-    const endVisNorm = normalizeHhMm(
-      (taskLogTimeEnd?.value || "").trim(),
-    ).trim();
-    const endHid = (taskLogEndInput?.value || "").trim();
-    if (endVisNorm && /^\d{1,2}:\d{2}$/.test(endVisNorm) && !endHid) {
-      syncEndToHidden();
-    }
   }
 
   let _taskLogSubmitBusy = false;
+  /* 데스크탑: 수정/기록 클릭 시 마감 칸 blur→sync가 먼저 도는 경합 방지 */
+  taskLogSubmitBtn?.addEventListener("mousedown", (e) => {
+    if (e.button === 0) e.preventDefault();
+  });
   taskLogSubmitBtn.addEventListener("click", async () => {
     /* 서버 반영 중 연타 → 같은 내용·다른 id 행이 여러 개 생기는 것 방지 */
     if (_taskLogSubmitBusy || taskLogSubmitBtn.disabled) return;
@@ -12056,13 +12093,10 @@ export function render(opts = {}) {
       (taskLogTaskDropdown?._getValue?.() || "").trim(),
     );
     const startRaw = (taskLogStartInput.value || "").trim();
-    let endRaw = (taskLogEndInput.value || "").trim();
-    const endVisibleGuard =
-      normalizeHhMm((taskLogTimeEnd?.value || "").trim()) || "";
-    if (!endRaw && endVisibleGuard && /^\d{1,2}:\d{2}$/.test(endVisibleGuard)) {
-      syncEndToHidden();
-      endRaw = (taskLogEndInput.value || "").trim();
-    }
+    const prevEndForResolve = String(
+      editTr?._rowData?.endTime || "",
+    ).trim();
+    let endTime = resolveTaskLogEndTimeForSave(prevEndForResolve);
     if (!taskName || !startRaw) {
       void showAlertModal({
         message: "과제 선택과 시작 시간을 입력해 주세요.",
@@ -12070,17 +12104,18 @@ export function render(opts = {}) {
       return;
     }
     let startTime = formatDateTimeInput(startRaw) || startRaw;
-    let endTime = formatDateTimeInput(endRaw) || endRaw;
     if (startTime && endTime) {
       endTime = mergeEndTimeWithStartDate(startTime, endTime) || endTime;
     }
+    const endVisibleGuard =
+      normalizeHhMm((taskLogTimeEnd?.value || "").trim()) || "";
     if (
       endVisibleGuard &&
       /^\d{1,2}:\d{2}$/.test(endVisibleGuard) &&
       !String(endTime || "").trim()
     ) {
       showToast(
-        "마감 시간이 반영되지 않았습니다. 「지금」을 한 번 더 누른 뒤 저장해 주세요.",
+        "마감 시간이 반영되지 않았습니다. 마감 칸을 다시 확인한 뒤 저장해 주세요.",
         "warn",
       );
       return;
@@ -12498,7 +12533,8 @@ export function render(opts = {}) {
         taskLogEndClearedByUser && !String(endTime || "").trim();
       const endTimeToSave = endCleared
         ? ""
-        : String(endTime || "").trim() || String(prevRow.endTime || "").trim();
+        : String(endTime || "").trim() ||
+          String(prevRow.endTime || "").trim();
       const newRowData = {
         id: isUuid(prevId)
           ? prevId

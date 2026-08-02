@@ -693,7 +693,7 @@ export function stripTimeLedgerSyncMetaForCompare(row) {
 
 /**
  * 사용자가 넣었던 마감시간을 빈 값으로 덮지 않음.
- * pull로 받은 행(localModifiedAt 없음)에는 적용하지 않음 — 서버 빈 마감을 로컬이 되살리지 않음.
+ * 지우기 버튼(endTimeClearedByUser)으로 명시한 경우만 빈 마감 허용.
  */
 export function preserveTimeLedgerEndTimeUnlessCleared(prevRow, nextRow) {
   if (!nextRow || typeof nextRow !== "object") return nextRow;
@@ -701,10 +701,6 @@ export function preserveTimeLedgerEndTimeUnlessCleared(prevRow, nextRow) {
     endTimeClearedByUser: clearedFlag,
     ...rest
   } = nextRow;
-  const prevHadLocalEdit =
-    typeof prevRow?.localModifiedAt === "number" &&
-    Number.isFinite(prevRow.localModifiedAt);
-  if (!prevHadLocalEdit) return rest;
   const prevEnd = String(prevRow?.endTime || "").trim();
   const nextEnd = String(rest.endTime || "").trim();
   if (prevEnd && !nextEnd && !clearedFlag) {
