@@ -7,6 +7,8 @@ import { supabase } from "../supabase.js";
 import { kpiSyncDebugEnabled, kpiSyncDebugLog, kpiSyncPayloadSummary, kpiSyncTrace } from "./kpiSyncDebug.js";
 import { logKpiServerSnapshot } from "./kpiServerAuditLog.js";
 import { bumpEntityArrayLocalModified, serverUpdatedAtFromRow } from "./kpiMapLwwMerge.js";
+import { isAppOffline } from "./networkPresence.js";
+import { whenOfflineFlushIdle } from "./offlineFlushState.js";
 import { lpPullDebug } from "./lpPullDebug.js";
 import {
   deletedRefsKpiTodosLen,
@@ -905,7 +907,9 @@ async function pullSideincomeKpiMapFromSupabaseImpl(opts = {}) {
 }
 
 /** @param {{ force?: boolean, skipLogs?: boolean, skipTodos?: boolean, habitTrackerLite?: boolean }} [opts] */
-export function pullSideincomeKpiMapFromSupabase(opts = {}) {
+export async function pullSideincomeKpiMapFromSupabase(opts = {}) {
+  if (isAppOffline()) return false;
+  await whenOfflineFlushIdle();
   const o = opts && typeof opts === "object" ? opts : { force: !!opts };
   return runSerializedSideincomeKpiServerOp(() => pullSideincomeKpiMapFromSupabaseImpl(o));
 }
@@ -1077,7 +1081,7 @@ export function syncSideincomeKpiMapToSupabase() {
 const PUSH_DEBOUNCE_MS = 800;
 
 export function flushSideincomeKpiMapSyncPush() {
-  if (!supabase) return;
+  if (isAppOffline() || !supabase) return;
   const hadPending = !!_pushTimer;
   if (_pushTimer) {
     clearTimeout(_pushTimer);
@@ -1092,6 +1096,7 @@ export function flushSideincomeKpiMapSyncPush() {
 export function scheduleSideincomeKpiMapSyncPush() {
   if (!supabase) return;
   _sideincomeKpiPushDirty = true;
+  if (isAppOffline()) return;
   if (_pushTimer) clearTimeout(_pushTimer);
   kpiSyncDebugLog("부수입 서버 업로드 예약", { debounceMs: PUSH_DEBOUNCE_MS });
   _pushTimer = setTimeout(() => {
@@ -1110,6 +1115,8 @@ export function attachSideincomeKpiMapSaveListener() {
   window.addEventListener("sideincome-kpi-map-saved", (e) => {
     if (e.detail?.fromServerMerge) return;
     if (!e.detail?.pushServer) return;
+    _sideincomeKpiPushDirty = true;
+    if (isAppOffline()) return;
     syncSideincomeKpiMapToSupabase().catch((err) => {
       sideincomeKpiUploadLog("error", { phase: "immediate_push", message: err?.message || String(err) });
     });

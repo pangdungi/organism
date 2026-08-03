@@ -6,7 +6,7 @@ export const TOOLBAR_ICON_EXT = "png";
 export const TOOLBAR_ICON_CACHE_VERSION = "61";
 
 /** public/sw.js ASSET_CACHE — 클라이언트 warmIconPathInSwCache 와 동일 버킷 */
-export const SW_ASSET_CACHE = "tip-assets-v62";
+export const SW_ASSET_CACHE = "tip-assets-v74";
 
 /** 로그인 화면 두들이 로고 — index.html·sw precache 와 동일 */
 export const LOGIN_BRAND_LOGO_V = "doodle-login-brand-2";

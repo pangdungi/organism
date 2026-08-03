@@ -1,0 +1,56 @@
+/* 오프라인(비행기 모드 등) — 전면 차단 없이 상단 안내만 */
+
+.lp-offline-gate {
+  display: none;
+}
+
+.lp-offline-gate:not([hidden]) {
+  display: block;
+}
+
+.lp-offline-gate--banner-only {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10050;
+  pointer-events: none;
+}
+
+.lp-offline-gate__banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.55rem 0.85rem;
+  padding-top: calc(0.55rem + env(safe-area-inset-top, 0px));
+  background: #1e3a5f;
+  color: #f8fafc;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.2);
+}
+
+.lp-offline-gate__banner-icon {
+  flex-shrink: 0;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-top: 0.1rem;
+  border-radius: 999px;
+  background: #fbbf24;
+  color: #1e3a5f;
+  font-weight: 700;
+  font-size: 0.75rem;
+  line-height: 1.15rem;
+  text-align: center;
+}
+
+.lp-offline-gate__banner-text {
+  flex: 1;
+  min-width: 0;
+}
+
+body.lp-is-offline {
+  /* 배너 높이만큼 살짝 여유 — 앱 사용은 그대로 */
+  padding-top: 0;
+}
