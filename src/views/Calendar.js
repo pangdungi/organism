@@ -328,6 +328,9 @@ function lpCalendarMonthlyDayHasVisibleIcon(weekRow, dayIdx) {
   return !!icons && !icons.hidden;
 }
 
+/** 스탬프 시각 상한(rem) — CSS `--cal-day-icon-max` 와 맞춤(축소 말고 과대만 막음) */
+const CALENDAR_MONTHLY_DAY_ICON_MAX_REM = 6;
+
 function lpCalendarMonthlyDayIconsStripRemForCell(cell) {
   if (!(cell instanceof HTMLElement)) return 0;
   const icons = cell.querySelector(".calendar-monthly-day-icons:not([hidden])");
@@ -338,9 +341,14 @@ function lpCalendarMonthlyDayIconsStripRemForCell(cell) {
     );
     if (Number.isFinite(rootFs) && rootFs > 0) {
       const hPx = icons.getBoundingClientRect().height;
-      if (hPx > 4) return hPx / rootFs;
+      if (hPx > 4) {
+        return Math.min(hPx / rootFs, CALENDAR_MONTHLY_DAY_ICON_MAX_REM);
+      }
+      /* 아직 높이 없으면 칸 너비 추정 — 상한까지만 */
       const wPx = cell.getBoundingClientRect().width;
-      if (wPx > 0) return wPx / rootFs;
+      if (wPx > 0) {
+        return Math.min(wPx / rootFs, CALENDAR_MONTHLY_DAY_ICON_MAX_REM);
+      }
     }
   } catch (_) {}
   return CALENDAR_MONTHLY_DAY_ICONS_STRIP_REM;
@@ -451,20 +459,28 @@ function lpCalendarWeeklyDayIconsStripRem(weekRow) {
     .map((el) => String(el.dataset.date || "").trim())
     .filter(Boolean);
   if (!keys.some((k) => calendarDayHasIcon(k))) return 0;
-  const dayEl = weekRow.querySelector(".calendar-monthly-day[data-date]");
-  if (dayEl) {
-    try {
-      const wPx = dayEl.getBoundingClientRect().width;
-      if (wPx > 0 && typeof getComputedStyle !== "undefined") {
-        const rootFs = parseFloat(
-          getComputedStyle(document.documentElement).fontSize,
-        );
-        if (Number.isFinite(rootFs) && rootFs > 0) {
-          return wPx / rootFs;
-        }
+  try {
+    const rootFs = parseFloat(
+      getComputedStyle(document.documentElement).fontSize,
+    );
+    if (Number.isFinite(rootFs) && rootFs > 0) {
+      let maxRem = 0;
+      weekRow
+        .querySelectorAll(".calendar-monthly-day-icons:not([hidden])")
+        .forEach((icons) => {
+          const hPx = icons.getBoundingClientRect().height;
+          if (hPx > 4) maxRem = Math.max(maxRem, hPx / rootFs);
+        });
+      if (maxRem > 0) {
+        return Math.min(maxRem, CALENDAR_MONTHLY_DAY_ICON_MAX_REM);
       }
-    } catch (_) {}
-  }
+      const dayEl = weekRow.querySelector(".calendar-monthly-day[data-date]");
+      const wPx = dayEl?.getBoundingClientRect?.().width || 0;
+      if (wPx > 0) {
+        return Math.min(wPx / rootFs, CALENDAR_MONTHLY_DAY_ICON_MAX_REM);
+      }
+    }
+  } catch (_) {}
   return CALENDAR_MONTHLY_DAY_ICONS_STRIP_REM;
 }
 

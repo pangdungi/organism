@@ -72,6 +72,11 @@
   --cal-bar-bottom-pad: 0.36rem;
   /** 날짜 아이콘(스탬프) 상단 스트립 — Calendar.js `CALENDAR_MONTHLY_DAY_ICONS_STRIP_REM` 과 동기 */
   --cal-day-icon-strip-rem: 2.85rem;
+  /**
+   * 스탬프 상한만 — 칸이 넓어질 때 무한히 커지지 않게.
+   * 좁은 칸에서는 100% 그대로(축소 아님). 레이아웃용 strip(2.85rem)보다 크게 둠.
+   */
+  --cal-day-icon-max: 6rem;
   /** 막대 없는 주·최소 행 높이 — Calendar.js `lpCalendarMonthlyWeekRowTargetMinHeightRem` 과 동기 */
   --cal-week-row-min: 4.75rem;
   color: var(--cal-text);
@@ -1655,9 +1660,11 @@
 
 .calendar-monthly-week--has-stamps .calendar-monthly-day-icons__img {
   width: 100%;
+  max-width: var(--cal-day-icon-max);
   height: auto;
   object-fit: contain;
   aspect-ratio: 1;
+  margin-inline: auto;
 }
 
 .calendar-monthly-day {
@@ -1756,9 +1763,9 @@
 .calendar-monthly-day-icon-btn {
   pointer-events: auto;
   display: block;
-  flex: 0 0 100%;
-  width: 100%;
-  max-width: 100%;
+  flex: 0 0 auto;
+  width: min(100%, var(--cal-day-icon-max));
+  max-width: var(--cal-day-icon-max);
   padding: 0;
   margin: 0;
   border: none;
@@ -1778,10 +1785,12 @@
 .calendar-monthly-day-icons__img {
   display: block;
   width: 100%;
+  max-width: var(--cal-day-icon-max);
   height: auto;
   aspect-ratio: 1;
   object-fit: contain;
   object-position: center;
+  margin-inline: auto;
   pointer-events: none;
 }
 

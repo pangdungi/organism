@@ -11191,6 +11191,19 @@ export function render(opts = {}) {
   }
 
   let taskLogKpiListsSyncGen = 0;
+  /** 모달 열린 동안 체크한 완료형 할일 — 새로고침·완료 반영 후에도 목록에 남김 */
+  const taskLogModalCheckedTodoIds = new Set();
+
+  function clearTaskLogModalCheckedTodoIds() {
+    taskLogModalCheckedTodoIds.clear();
+  }
+
+  function rememberTaskLogModalTodoCheck(todoId, checked) {
+    const id = String(todoId || "").trim();
+    if (!id) return;
+    if (checked) taskLogModalCheckedTodoIds.add(id);
+    else taskLogModalCheckedTodoIds.delete(id);
+  }
 
   function taskLogResolveYmdForPlannedSlots() {
     return String(
@@ -11390,7 +11403,7 @@ export function render(opts = {}) {
     return fromCtx.map((x) => String(x || "").trim()).filter(Boolean);
   }
 
-  /** 이 기록·같은 날 다른 기록에 체크된 완료형 할일 id (모달에서 다시 보이게) */
+  /** 이 기록·같은 날 다른 기록·지금 모달에서 체크한 완료형 할일 id (목록에 남겨 보이게) */
   function collectTaskCompletionIncludeIdsForTaskLog(kpiId) {
     const kid = String(kpiId || "").trim();
     const ids = new Set();
@@ -11405,16 +11418,28 @@ export function render(opts = {}) {
     };
     if (taskLogEditTr?._rowData) addFromRow(taskLogEditTr._rowData);
     const ymd = normalizeTaskLogPickerDateYmd();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return ids;
-    for (const r of loadTimeRows() || []) {
-      if (ledgerRowEntryDateYmd(r) !== ymd) continue;
-      const rowKid =
-        resolveKpiIdForTaskId(String(r?.taskId || "").trim()) ||
-        String(
-          getTaskOptionByName(String(r?.taskName || "").trim())?.kpiId || "",
-        ).trim();
-      if (rowKid !== kid) continue;
-      addFromRow(r);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
+      for (const r of loadTimeRows() || []) {
+        if (ledgerRowEntryDateYmd(r) !== ymd) continue;
+        const rowKid =
+          resolveKpiIdForTaskId(String(r?.taskId || "").trim()) ||
+          String(
+            getTaskOptionByName(String(r?.taskName || "").trim())?.kpiId || "",
+          ).trim();
+        if (rowKid !== kid) continue;
+        addFromRow(r);
+      }
+    }
+    /* 잡무·KPI 작업 공통: 방금 체크한 항목은 완료 처리돼도 모달에 남김 */
+    for (const id of taskLogModalCheckedTodoIds) ids.add(id);
+    if (taskLogKpiTodosList) {
+      taskLogKpiTodosList
+        .querySelectorAll('input[type="checkbox"][data-todo-id]')
+        .forEach((cb) => {
+          if (!cb.checked) return;
+          const id = String(cb.dataset.todoId || "").trim();
+          if (id) ids.add(id);
+        });
     }
     return ids;
   }
@@ -11568,13 +11593,33 @@ export function render(opts = {}) {
   function collectTaskLogTodoChecks(listEl, rowLegacyToken) {
     const map = new Map();
     if (!listEl) return map;
+    const fromLegacy = listEl.querySelectorAll(
+      `[data-legacy~="${rowLegacyToken}"]`,
+    );
+    const labels =
+      fromLegacy.length > 0
+        ? fromLegacy
+        : listEl.querySelectorAll(
+            '[data-legacy~="time-task-log-kpi-todo-row"], .time-task-log-kpi-todo-row',
+          );
+    labels.forEach((label) => {
+      const cb = label.querySelector?.('input[type="checkbox"]') || label;
+      const input =
+        cb?.tagName === "INPUT"
+          ? cb
+          : label.querySelector?.('input[type="checkbox"]');
+      const id = String(input?.dataset?.todoId || "").trim();
+      if (id) map.set(id, !!input?.checked);
+    });
     listEl
-      .querySelectorAll(`[data-legacy~="${rowLegacyToken}"]`)
-      .forEach((label) => {
-        const cb = label.querySelector('input[type="checkbox"]');
-        const id = String(cb?.dataset?.todoId || "").trim();
-        if (id) map.set(id, !!cb?.checked);
+      .querySelectorAll('input[type="checkbox"][data-todo-id]')
+      .forEach((input) => {
+        const id = String(input.dataset.todoId || "").trim();
+        if (id) map.set(id, !!input.checked);
       });
+    for (const id of taskLogModalCheckedTodoIds) {
+      if (!map.has(id)) map.set(id, true);
+    }
     return map;
   }
 
@@ -11592,11 +11637,13 @@ export function render(opts = {}) {
       );
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
-      const defaultChecked = !!todo.completed;
+      const defaultChecked =
+        !!todo.completed || (id ? taskLogModalCheckedTodoIds.has(id) : false);
       checkbox.checked = preserveChecks?.has(id)
         ? !!preserveChecks.get(id)
         : defaultChecked;
       if (id) checkbox.dataset.todoId = id;
+      if (checkbox.checked && id) taskLogModalCheckedTodoIds.add(id);
       const span = document.createElement("span");
       lpSetClasses(span, "time-task-log-kpi-todo-text");
       span.textContent = text;
@@ -11608,11 +11655,9 @@ export function render(opts = {}) {
           todoId: id,
           checked: checkbox.checked,
         });
-        /* 저장 전에는 KPI 완료로 올리지 않음 — 목록에 남기고 체크/해제 가능 */
+        /* 저장 전에도 목록에 남김 · 맨 위로 옮기지 않음(스크롤 밖으로 ‘사라짐’ 방지) */
+        rememberTaskLogModalTodoCheck(id, checkbox.checked);
         lpTokenToggle(span, "is-done", checkbox.checked);
-        if (checkbox.checked && taskLogKpiTodosList?.firstChild !== label) {
-          taskLogKpiTodosList.insertBefore(label, taskLogKpiTodosList.firstChild);
-        }
         syncReadingBookTitleFromCheckedTodos();
       });
       taskLogKpiTodosList.appendChild(label);
@@ -12198,6 +12243,7 @@ export function render(opts = {}) {
     taskLogEndClearedByUser = false;
     pendingEditStartTime = "";
     taskLogSelectedPlannedSlot = null;
+    clearTaskLogModalCheckedTodoIds();
     taskLogTitleEl.textContent = "과제 기록";
     taskLogSubmitBtn.textContent = "기록";
     if (taskLogFooterEl) taskLogFooterEl.style.display = "";
@@ -12354,6 +12400,7 @@ export function render(opts = {}) {
 
     taskLogAddContext = null;
     taskLogEditTr = tr;
+    clearTaskLogModalCheckedTodoIds();
     hideTaskLogPlannedSlotsSection();
     const recKey =
       recordDate ||
@@ -12543,6 +12590,7 @@ export function render(opts = {}) {
     taskLogEditExclude = null;
     pendingEditStartTime = "";
     taskLogKpiListsSyncGen += 1;
+    clearTaskLogModalCheckedTodoIds();
     hideTaskLogTaskCompletionTodosSection();
   }
 
