@@ -7,8 +7,6 @@ import { supabase } from "../supabase.js";
 import { kpiSyncDebugLog, kpiSyncDebugEnabled, kpiSyncPayloadSummary, kpiSyncTrace } from "./kpiSyncDebug.js";
 import { logKpiServerSnapshot } from "./kpiServerAuditLog.js";
 import { bumpEntityArrayLocalModified, serverUpdatedAtFromRow } from "./kpiMapLwwMerge.js";
-import { isAppOffline } from "./networkPresence.js";
-import { whenOfflineFlushIdle } from "./offlineFlushState.js";
 import { lpPullDebug } from "./lpPullDebug.js";
 import {
   deletedRefsKpiTodosLen,
@@ -1261,9 +1259,7 @@ async function pullHealthKpiMapFromSupabaseImpl(opts = {}) {
 }
 
 /** @param {{ force?: boolean, skipTodos?: boolean, skipLogs?: boolean, habitTrackerLite?: boolean }} [opts] */
-export async function pullHealthKpiMapFromSupabase(opts = {}) {
-  if (isAppOffline()) return false;
-  await whenOfflineFlushIdle();
+export function pullHealthKpiMapFromSupabase(opts = {}) {
   const o = opts && typeof opts === "object" ? opts : { force: !!opts };
   return runSerializedHealthKpiServerOp(() => pullHealthKpiMapFromSupabaseImpl(o));
 }
@@ -1482,7 +1478,7 @@ export function syncHealthKpiMapToSupabase() {
 const PUSH_DEBOUNCE_MS = 800;
 
 export function flushHealthKpiMapSyncPush() {
-  if (isAppOffline() || !supabase) return;
+  if (!supabase) return;
   const hadPending = !!_pushTimer;
   if (_pushTimer) {
     clearTimeout(_pushTimer);
@@ -1497,7 +1493,6 @@ export function flushHealthKpiMapSyncPush() {
 export function scheduleHealthKpiMapSyncPush() {
   if (!supabase) return;
   _healthKpiPushDirty = true;
-  if (isAppOffline()) return;
   if (_pushTimer) clearTimeout(_pushTimer);
   _pushTimer = setTimeout(() => {
     _pushTimer = null;
@@ -1515,8 +1510,6 @@ export function attachHealthKpiMapSaveListener() {
   window.addEventListener("health-kpi-map-saved", (e) => {
     if (e.detail?.fromServerMerge) return;
     if (!e.detail?.pushServer) return;
-    _healthKpiPushDirty = true;
-    if (isAppOffline()) return;
     syncHealthKpiMapToSupabase().catch((err) => {
       healthKpiUploadLog("error", { phase: "immediate_push", message: err?.message || String(err) });
     });

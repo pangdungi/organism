@@ -7,8 +7,6 @@ import { supabase } from "../supabase.js";
 import { kpiSyncDebugLog, kpiSyncDebugEnabled, kpiSyncPayloadSummary, kpiSyncTrace } from "./kpiSyncDebug.js";
 import { logKpiServerSnapshot } from "./kpiServerAuditLog.js";
 import { bumpEntityArrayLocalModified, serverUpdatedAtFromRow } from "./kpiMapLwwMerge.js";
-import { isAppOffline } from "./networkPresence.js";
-import { whenOfflineFlushIdle } from "./offlineFlushState.js";
 import { lpPullDebug } from "./lpPullDebug.js";
 import {
   deletedRefsKpiTodosLen,
@@ -1246,9 +1244,7 @@ async function pullHappinessKpiMapFromSupabaseImpl(opts = {}) {
 }
 
 /** @param {{ force?: boolean, skipTodos?: boolean, skipLogs?: boolean, habitTrackerLite?: boolean }} [opts] */
-export async function pullHappinessKpiMapFromSupabase(opts = {}) {
-  if (isAppOffline()) return false;
-  await whenOfflineFlushIdle();
+export function pullHappinessKpiMapFromSupabase(opts = {}) {
   const o = opts && typeof opts === "object" ? opts : { force: !!opts };
   return runSerializedHappinessKpiServerOp(() => pullHappinessKpiMapFromSupabaseImpl(o));
 }
@@ -1464,7 +1460,7 @@ export function syncHappinessKpiMapToSupabase() {
 const PUSH_DEBOUNCE_MS = 800;
 
 export function flushHappinessKpiMapSyncPush() {
-  if (isAppOffline() || !supabase) return;
+  if (!supabase) return;
   const hadPending = !!_pushTimer;
   if (_pushTimer) {
     clearTimeout(_pushTimer);
@@ -1479,7 +1475,6 @@ export function flushHappinessKpiMapSyncPush() {
 export function scheduleHappinessKpiMapSyncPush() {
   if (!supabase) return;
   _happinessKpiPushDirty = true;
-  if (isAppOffline()) return;
   if (_pushTimer) clearTimeout(_pushTimer);
   _pushTimer = setTimeout(() => {
     _pushTimer = null;
@@ -1497,8 +1492,6 @@ export function attachHappinessKpiMapSaveListener() {
   window.addEventListener("happiness-kpi-map-saved", (e) => {
     if (e.detail?.fromServerMerge) return;
     if (!e.detail?.pushServer) return;
-    _happinessKpiPushDirty = true;
-    if (isAppOffline()) return;
     syncHappinessKpiMapToSupabase().catch((err) => {
       happinessKpiUploadLog("error", { phase: "immediate_push", message: err?.message || String(err) });
     });

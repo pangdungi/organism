@@ -7,8 +7,6 @@ import { supabase } from "../supabase.js";
 import { kpiSyncDebugEnabled, kpiSyncDebugLog, kpiSyncPayloadSummary, kpiSyncTrace } from "./kpiSyncDebug.js";
 import { logKpiServerSnapshot } from "./kpiServerAuditLog.js";
 import { bumpEntityArrayLocalModified, serverUpdatedAtFromRow } from "./kpiMapLwwMerge.js";
-import { isAppOffline } from "./networkPresence.js";
-import { whenOfflineFlushIdle } from "./offlineFlushState.js";
 import { lpPullDebug } from "./lpPullDebug.js";
 import {
   deletedRefsKpiTodosLen,
@@ -859,9 +857,7 @@ async function pullDreamKpiMapFromSupabaseImpl(opts = {}) {
 /**
  * @param {{ force?: boolean, skipLogs?: boolean, skipTodos?: boolean }} [opts] — force: 탭 진입·hydrate 등, 대기 중이어도 서버 스냅샷으로 맞춤
  */
-export async function pullDreamKpiMapFromSupabase(opts = {}) {
-  if (isAppOffline()) return false;
-  await whenOfflineFlushIdle();
+export function pullDreamKpiMapFromSupabase(opts = {}) {
   const o = opts && typeof opts === "object" ? opts : { force: !!opts };
   return runSerializedDreamKpiServerOp(() => pullDreamKpiMapFromSupabaseImpl(o));
 }
@@ -1048,7 +1044,7 @@ const PUSH_DEBOUNCE_MS = 800;
 
 export function flushDreamKpiMapSyncPush() {
   kpiTodoFineTrace("dream.flush:호출", { supabase: !!supabase });
-  if (isAppOffline() || !supabase) return;
+  if (!supabase) return;
   const hadPending = !!_pushTimer;
   if (_pushTimer) {
     clearTimeout(_pushTimer);
@@ -1065,7 +1061,6 @@ export function scheduleDreamKpiMapSyncPush() {
   kpiTodoFineTrace("dream.schedulePush:디바운스예약", { ms: PUSH_DEBOUNCE_MS });
   if (!supabase) return;
   _dreamKpiPushDirty = true;
-  if (isAppOffline()) return;
   if (_pushTimer) clearTimeout(_pushTimer);
   _pushTimer = setTimeout(() => {
     _pushTimer = null;
@@ -1087,8 +1082,6 @@ export function attachDreamKpiMapSaveListener() {
     });
     if (e.detail?.fromServerMerge) return;
     if (!e.detail?.pushServer) return;
-    _dreamKpiPushDirty = true;
-    if (isAppOffline()) return;
     syncDreamKpiMapToSupabase().catch((err) => {
       dreamKpiUploadLog("error", { phase: "immediate_push", message: err?.message || String(err) });
     });

@@ -13,7 +13,6 @@ import "./styles/kpi-dream.css";
 import "./styles/habit-tracker.css";
 import "./styles/lp-pwa-install.css";
 import "./styles/lp-app-loading.css";
-import "./styles/lp-offline-banner.css";
 import { showOnly } from "./pages.js";
 import {
   login,
@@ -35,7 +34,6 @@ import {
   waitForAppBootReady,
 } from "./App.js";
 import { initOfflineAppGate } from "./utils/offlineAppGate.js";
-import { initOfflineSyncFlush } from "./utils/offlineSyncFlush.js";
 import { initModalNoAutoFocus } from "./utils/modalNoAutoFocus.js";
 import { initLpAppShellViewportLock } from "./utils/lpAppShellViewport.js";
 import { installGlobalTitleTooltipSuppression } from "./utils/suppressNativeTitleTooltips.js";
@@ -530,7 +528,6 @@ function init() {
   if (app) app.style.display = "block";
 
   initOfflineAppGate();
-  initOfflineSyncFlush();
   initModalNoAutoFocus();
   initAppSplashViewportLock();
   initLpAppShellViewportLock();
@@ -914,5 +911,5 @@ if (
   "serviceWorker" in navigator &&
   (location.protocol === "https:" || location.hostname === "localhost")
 ) {
-  navigator.serviceWorker.register("/sw.js?v=58").catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=57").catch(() => {});
 }

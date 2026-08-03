@@ -27,8 +27,6 @@ import { closeStaleInProgressTimeLedgerRows } from "./timeLedgerStaleInProgressC
 import { timeLedgerSyncLog } from "./timeLedgerSyncDebug.js";
 import { isUuid } from "./idUtils.js";
 import { coalesceInFlightPull } from "./timeLedgerPullCoalesce.js";
-import { isAppOffline } from "./networkPresence.js";
-import { whenOfflineFlushIdle } from "./offlineFlushState.js";
 
 const TABLE = "time_ledger_entries";
 const UPSERT_CONFLICT_ROW = "user_id,id";
@@ -1058,9 +1056,6 @@ async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
 
 /** @returns {Promise<{ ok: boolean, reason?: string, pushedCount?: number }>} */
 export async function pushDirtyTimeLedgerEntriesToSupabase(opts = {}) {
-  if (isAppOffline()) {
-    return { ok: false, reason: "offline", pushedCount: 0 };
-  }
   return runSerializedLedgerServerOp(() =>
     pushDirtyTimeLedgerEntriesToSupabaseCore(opts),
   );
@@ -1093,8 +1088,6 @@ export async function pullTimeLedgerEntriesForDateRange(
   rangeEnd,
   opts = {},
 ) {
-  if (isAppOffline()) return false;
-  await whenOfflineFlushIdle();
   const rs = String(rangeStart || "").trim();
   const re = String(rangeEnd || "").trim();
   const trigger = opts.trigger || "direct";

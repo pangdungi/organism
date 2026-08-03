@@ -2,9 +2,9 @@
 /** index.html·manifest 의 ?v= 와 동일하게 유지 */
 const PWA_BRAND = "doodle-calendar-1";
 /** 번들·아이콘 등 캐시 버전 (전략·브랜드 바꿀 때 올리면 이전 캐시 정리됨) */
-const ASSET_CACHE = "tip-assets-v74";
+const ASSET_CACHE = "tip-assets-v73";
 /** HTML 셸 캐시 — 홈 화면에서 열 때 즉시 표시용 */
-const HTML_CACHE = "tip-html-v15";
+const HTML_CACHE = "tip-html-v14";
 const LOGIN_BRAND_LOGO_V = "doodle-login-brand-2";
 
 const PWA_BRAND_BASENAMES = new Set([
@@ -47,11 +47,6 @@ const PWA_INSTALL_CORE_PATHS = [
   "/fonts/LP-Griun-Cocochoitoon.ttf",
   "/fonts/LP-LeeSeoyun.otf",
   "/fonts/Hello-Scratchy-Outlines.otf",
-  "/fonts/LP-Ongleip-Gongbujahana.ttf",
-  "/fonts/LP-Griun-Myeoneunheulrim.ttf",
-  "/fonts/LP-Ongleip-Mitmi.ttf",
-  "/fonts/LP-Griun-Mongtori-Rg.ttf",
-  "/fonts/LP-Griun-Cherry1Spoon-Rg.ttf",
   `/login-brand-logo.png?v=${LOGIN_BRAND_LOGO_V}`,
 ];
 

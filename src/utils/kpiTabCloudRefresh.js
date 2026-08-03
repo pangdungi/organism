@@ -46,8 +46,6 @@ import {
 } from "./timeLedgerTasksSupabase.js";
 import { ensureAllKpiTimeTasksFromStorage } from "./kpiTimeTaskSync.js";
 import { resolveKpiDomainForKpiId } from "./kpiTodoSync.js";
-import { isAppOffline } from "./networkPresence.js";
-import { whenOfflineFlushIdle } from "./offlineFlushState.js";
 
 const KPI_DOMAIN_PULL = {
   dream: pullDreamKpiMapFromSupabase,
@@ -131,8 +129,6 @@ export async function pullTimeLedgerForKpi(kpi) {
  * @returns {Promise<{ pullOk: boolean, localChanged: boolean }>}
  */
 export async function pullKpiTabFromCloud(tabId) {
-  if (isAppOffline()) return false;
-  await whenOfflineFlushIdle();
   kpiTodoFineTrace("cloud.pullKpiTab:시작", { tabId });
   lpPullDebug("pullKpiTabFromCloud", { tabId });
   const key = KPI_LOCAL_STORAGE_KEYS[tabId];
@@ -250,8 +246,6 @@ export async function pullKpiTodosDomainFromCloudIfStale(kpiId) {
  * @returns {Promise<boolean>}
  */
 export async function pullKpiMapSubViewFromCloud(tabId) {
-  if (isAppOffline()) return false;
-  await whenOfflineFlushIdle();
   kpiTodoFineTrace("cloud.pullKpiSubView:시작", { tabId });
   lpPullDebug("pullKpiMapSubViewFromCloud", { tabId });
 

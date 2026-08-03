@@ -16,8 +16,6 @@ import {
   setDiaryServerHadRowsFlag,
 } from "../diaryData.js";
 import { lpPullDebug } from "./lpPullDebug.js";
-import { isAppOffline } from "./networkPresence.js";
-import { whenOfflineFlushIdle } from "./offlineFlushState.js";
 
 const TABLE = "diary_daily_entries";
 const UPSERT_CONFLICT_ROW = "user_id,id";
@@ -195,8 +193,6 @@ async function getSessionUserId() {
  * 서버에 한 건도 없으면 병합하지 않음(빈 배열로 로컬을 비우지 않음).
  */
 export async function pullDiaryFromSupabase() {
-  if (isAppOffline()) return null;
-  await whenOfflineFlushIdle();
   const userId = await getSessionUserId();
   if (!userId || !supabase) return null;
   const { data, error } = await supabase
@@ -237,7 +233,6 @@ const PUSH_DEBOUNCE_MS = 900;
 
 /** 로컬 상태를 서버에 반영 (id PK upsert만; 삭제는 deleteDiaryEntryFromSupabase 또는 서버 진실 pull 반영) */
 export async function syncDiaryToSupabase(entries) {
-  if (isAppOffline()) return;
   const userId = await getSessionUserId();
   if (!userId || !supabase || !entries || typeof entries !== "object") return;
 
