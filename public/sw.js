@@ -2,9 +2,9 @@
 /** index.html·manifest 의 ?v= 와 동일하게 유지 */
 const PWA_BRAND = "doodle-calendar-1";
 /** 번들·아이콘 등 캐시 버전 (전략·브랜드 바꿀 때 올리면 이전 캐시 정리됨) */
-const ASSET_CACHE = "tip-assets-v73";
+const ASSET_CACHE = "tip-assets-v75";
 /** HTML 셸 캐시 — 홈 화면에서 열 때 즉시 표시용 */
-const HTML_CACHE = "tip-html-v14";
+const HTML_CACHE = "tip-html-v16";
 const LOGIN_BRAND_LOGO_V = "doodle-login-brand-2";
 
 const PWA_BRAND_BASENAMES = new Set([
@@ -47,18 +47,75 @@ const PWA_INSTALL_CORE_PATHS = [
   "/fonts/LP-Griun-Cocochoitoon.ttf",
   "/fonts/LP-LeeSeoyun.otf",
   "/fonts/Hello-Scratchy-Outlines.otf",
+  "/fonts/LP-Ongleip-Gongbujahana.ttf",
+  "/fonts/LP-Griun-Myeoneunheulrim.ttf",
+  "/fonts/LP-Ongleip-Mitmi.ttf",
+  "/fonts/LP-Griun-Mongtori-Rg.ttf",
+  "/fonts/LP-Griun-Cherry1Spoon-Rg.ttf",
   `/login-brand-logo.png?v=${LOGIN_BRAND_LOGO_V}`,
 ];
+
+/** 오프라인·캐시 미스 — respondWith 가 reject 되지 않게 항상 Response 반환 */
+function offlineFallbackResponse(request) {
+  const accept = String(request?.headers?.get?.("accept") || "");
+  const isNav =
+    request?.mode === "navigate" ||
+    accept.includes("text/html");
+  if (isNav) {
+    return new Response(
+      "<!doctype html><meta charset=utf-8><title>오프라인</title><body style=\"font-family:system-ui;padding:2rem;text-align:center\"><p>인터넷 연결이 필요합니다.</p><p>Wi-Fi 또는 데이터를 켠 뒤 다시 열어 주세요.</p></body>",
+      {
+        status: 503,
+        statusText: "Offline",
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      },
+    );
+  }
+  return new Response("", { status: 503, statusText: "Offline" });
+}
+
+async function safeFetch(request, init) {
+  try {
+    return await fetch(request, init);
+  } catch (_e) {
+    return null;
+  }
+}
+
+async function matchHtmlShell(cache, request) {
+  try {
+    let hit = await cache.match(request);
+    if (hit) return hit;
+    hit = await cache.match(request, { ignoreSearch: true });
+    if (hit) return hit;
+    const origin = self.location.origin;
+    hit = await cache.match(new Request(origin + "/"));
+    if (hit) return hit;
+    hit = await cache.match(origin + "/");
+    if (hit) return hit;
+  } catch (_e) {}
+  return null;
+}
+
+async function matchCached(cache, request) {
+  try {
+    let hit = await cache.match(request);
+    if (hit && hit.ok) return hit;
+    hit = await cache.match(request, { ignoreSearch: true });
+    if (hit && hit.ok) return hit;
+  } catch (_e) {}
+  return null;
+}
 
 /** 홈 화면 추가 시 과제 아이콘 picker PNG(우선) 캐시 */
 async function cacheTimeTaskPickerIcons(assetCache) {
   try {
-    const listRes = await fetch(
+    const listRes = await safeFetch(
       new Request(self.location.origin + "/app-icon-prefetch.json", {
         cache: "reload",
       }),
     );
-    if (!listRes.ok) return;
+    if (!listRes || !listRes.ok) return;
     const paths = await listRes.json();
     const picker = (Array.isArray(paths) ? paths : []).filter((p) =>
       String(p || "").startsWith("/toolbaricons/time-task-picker/"),
@@ -71,7 +128,7 @@ async function cacheTimeTaskPickerIcons(assetCache) {
             const u = self.location.origin + path;
             const cached = await assetCache.match(u);
             if (cached) return;
-            const r = await fetch(u);
+            const r = await safeFetch(u);
             if (r && r.ok) await assetCache.put(u, r.clone());
           } catch (_e) {}
         }),
@@ -80,25 +137,46 @@ async function cacheTimeTaskPickerIcons(assetCache) {
   } catch (_e) {}
 }
 
+async function precacheHtmlShell() {
+  const htmlCache = await caches.open(HTML_CACHE);
+  const shellReq = new Request(self.location.origin + "/");
+  try {
+    const shell = await safeFetch(
+      new Request(self.location.origin + "/", { cache: "reload" }),
+    );
+    if (shell && shell.ok) {
+      await htmlCache.put(shellReq, shell.clone());
+      return true;
+    }
+  } catch (_e) {}
+  /* 새 캐시가 비면 이전 tip-html / organism-html 에서 셸 복사 */
+  try {
+    const keys = await caches.keys();
+    for (const k of keys) {
+      if (k === HTML_CACHE) continue;
+      if (!k.startsWith("tip-html-") && !k.startsWith("organism-html-")) continue;
+      const old = await caches.open(k);
+      const prev = await matchHtmlShell(old, shellReq);
+      if (prev) {
+        await htmlCache.put(shellReq, prev.clone());
+        return true;
+      }
+    }
+  } catch (_e) {}
+  return false;
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
-      try {
-        const htmlCache = await caches.open(HTML_CACHE);
-        const shell = await fetch(
-          new Request(self.location.origin + "/", { cache: "reload" }),
-        );
-        if (shell && shell.ok) {
-          await htmlCache.put(new Request(self.location.origin + "/"), shell.clone());
-        }
-      } catch (_e) {}
+      await precacheHtmlShell();
       try {
         const assetCache = await caches.open(ASSET_CACHE);
         await Promise.all(
           PWA_INSTALL_CORE_PATHS.map(async (path) => {
             try {
               const u = self.location.origin + path;
-              const r = await fetch(new Request(u, { cache: "reload" }));
+              const r = await safeFetch(new Request(u, { cache: "reload" }));
               if (r && r.ok) await assetCache.put(u, r.clone());
             } catch (_e) {}
           }),
@@ -113,16 +191,35 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
-      const keys = await caches.keys();
+      /* 새 HTML 셸이 있을 때만 옛 HTML 캐시 삭제 — 빈 캐시로 오프라인 깨짐 방지 */
+      let htmlReady = false;
+      try {
+        const htmlCache = await caches.open(HTML_CACHE);
+        const keys = await htmlCache.keys();
+        htmlReady = keys.length > 0;
+        if (!htmlReady) {
+          htmlReady = await precacheHtmlShell();
+        }
+      } catch (_e) {}
+
+      const cacheKeys = await caches.keys();
       await Promise.all(
-        keys
-          .filter(
-            (k) =>
-              ((k.startsWith("organism-assets-") || k.startsWith("tip-assets-")) &&
-                k !== ASSET_CACHE) ||
-              ((k.startsWith("organism-html-") || k.startsWith("tip-html-")) &&
-                k !== HTML_CACHE),
-          )
+        cacheKeys
+          .filter((k) => {
+            if (
+              (k.startsWith("organism-assets-") || k.startsWith("tip-assets-")) &&
+              k !== ASSET_CACHE
+            ) {
+              return true;
+            }
+            if (
+              (k.startsWith("organism-html-") || k.startsWith("tip-html-")) &&
+              k !== HTML_CACHE
+            ) {
+              return htmlReady;
+            }
+            return false;
+          })
           .map((k) => caches.delete(k)),
       );
       await self.clients.claim();
@@ -134,7 +231,7 @@ function shouldUseAssetCache(url) {
   const p = url.pathname;
   if (p === "/sw.js") return false;
   if (p.startsWith("/assets/") && (p.endsWith(".js") || p.endsWith(".css"))) return true;
-  if (/\.(png|jpe?g|webp|gif|svg|ico|woff2?|ttf|eot)(\?.*)?$/i.test(p)) return true;
+  if (/\.(png|jpe?g|webp|gif|svg|ico|woff2?|ttf|eot|otf)(\?.*)?$/i.test(p)) return true;
   if (p === "/manifest.json" || p.startsWith("/manifest.json")) return true;
   return false;
 }
@@ -150,7 +247,6 @@ function isStaticImageAsset(pathname) {
   return /\.(png|jpe?g|webp|gif|svg|ico)(\?.*)?$/i.test(pathname);
 }
 
-/** 과제·KPI·메뉴 아이콘 전부 이 경로 — 응답은 stale-while-revalidate */
 function isToolbarIconPath(pathname) {
   return pathname.startsWith("/toolbaricons/");
 }
@@ -159,79 +255,66 @@ function isFontPath(pathname) {
   return pathname.startsWith("/fonts/");
 }
 
-/** JS/CSS 번들 — 네트워크 우선(배포 직후 구 HTML·빈 캐시로 실행 실패·무한 로딩 방지) */
+/** JS/CSS 번들 — 네트워크 우선 */
 async function networkFirstAsset(request) {
   const cache = await caches.open(ASSET_CACHE);
-  try {
-    const response = await fetch(new Request(request, { cache: "reload" }));
-    if (response && response.ok) {
-      try {
-        await cache.put(request, response.clone());
-      } catch (_e) {}
-      return response;
-    }
-  } catch (_e) {}
-  const cached = await cache.match(request);
-  if (cached && cached.ok) return cached;
-  return fetch(request);
+  const response = await safeFetch(new Request(request, { cache: "reload" }));
+  if (response && response.ok) {
+    try {
+      await cache.put(request, response.clone());
+    } catch (_e) {}
+    return response;
+  }
+  const cached = await matchCached(cache, request);
+  if (cached) return cached;
+  return offlineFallbackResponse(request);
 }
 
-/** manifest·홈 화면 아이콘 — 네트워크 우선(구 로고·구 이름 캐시 방지) */
+/** manifest·홈 화면 아이콘 — 네트워크 우선 */
 async function networkFirstBrandAsset(request) {
   const cache = await caches.open(ASSET_CACHE);
-  try {
-    const response = await fetch(new Request(request, { cache: "reload" }));
-    if (response && response.ok) {
-      try {
-        await cache.put(request, response.clone());
-      } catch (_e) {}
-      return response;
-    }
-  } catch (_e) {}
-  const cached = await cache.match(request);
+  const response = await safeFetch(new Request(request, { cache: "reload" }));
+  if (response && response.ok) {
+    try {
+      await cache.put(request, response.clone());
+    } catch (_e) {}
+    return response;
+  }
+  const cached = await matchCached(cache, request);
   if (cached) return cached;
-  return fetch(request);
+  return offlineFallbackResponse(request);
 }
 
-/** PNG·SVG 등 정적 아이콘 — 캐시 우선(install·prefetch 로 채운 뒤 즉시 표시) */
+/** PNG·SVG·폰트 — 캐시 우선 */
 async function cacheFirstStaticAsset(request) {
   const cache = await caches.open(ASSET_CACHE);
-  const cached = await cache.match(request);
-  if (cached && cached.ok) return cached;
-  try {
-    const response = await fetch(request);
+  const cached = await matchCached(cache, request);
+  if (cached) return cached;
+  const response = await safeFetch(request);
+  if (response && response.ok) {
+    try {
+      await cache.put(request, response.clone());
+    } catch (_e) {}
+    return response;
+  }
+  return offlineFallbackResponse(request);
+}
+
+/** toolbaricons — stale-while-revalidate */
+async function staleWhileRevalidateToolbarIcon(request, event) {
+  const cache = await caches.open(ASSET_CACHE);
+  const cached = await matchCached(cache, request);
+  const refresh = (async () => {
+    const response = await safeFetch(new Request(request, { cache: "no-cache" }));
     if (response && response.ok) {
       try {
         await cache.put(request, response.clone());
       } catch (_e) {}
       return response;
     }
-  } catch (_e) {}
-  if (cached && cached.ok) return cached;
-  return fetch(request);
-}
-
-/**
- * toolbaricons — 캐시 우선 + 백그라운드 갱신(stale-while-revalidate).
- * 네트워크 우선이면 재렌더마다 아이콘이 서버 응답을 기다려 텍스트와 따로 뜨고 깜빡임.
- * 캐시본을 즉시 반환해 깜빡임을 없애고, 배포로 파일이 바뀌면 다음 표시부터 새 파일.
- */
-async function staleWhileRevalidateToolbarIcon(request, event) {
-  const cache = await caches.open(ASSET_CACHE);
-  const cached = await cache.match(request);
-  const refresh = (async () => {
-    try {
-      const response = await fetch(new Request(request, { cache: "no-cache" }));
-      if (response && response.ok) {
-        try {
-          await cache.put(request, response.clone());
-        } catch (_e) {}
-        return response;
-      }
-    } catch (_e) {}
     return null;
   })();
-  if (cached && cached.ok) {
+  if (cached) {
     try {
       event.waitUntil(refresh);
     } catch (_e) {}
@@ -239,72 +322,85 @@ async function staleWhileRevalidateToolbarIcon(request, event) {
   }
   const fresh = await refresh;
   if (fresh) return fresh;
-  if (cached) return cached;
-  return fetch(request);
+  return offlineFallbackResponse(request);
 }
 
-/** HTML 셸(/) — 네트워크 우선 후 오프라인일 때만 캐시 */
+/** HTML 셸 — 네트워크 우선, 실패 시 캐시·폴백 (절대 fetch reject 안 함) */
 async function networkFirstHtml(request) {
   const cache = await caches.open(HTML_CACHE);
+  const response = await safeFetch(new Request(request, { cache: "reload" }));
+  if (response && response.ok) {
+    try {
+      await cache.put(new Request(self.location.origin + "/"), response.clone());
+      await cache.put(request, response.clone());
+    } catch (_e) {}
+    return response;
+  }
+  const cached = await matchHtmlShell(cache, request);
+  if (cached) return cached;
+  /* 다른 버전 HTML 캐시에서도 셸 찾기 */
   try {
-    const response = await fetch(new Request(request, { cache: "reload" }));
-    if (response && response.ok) {
-      try {
-        await cache.put(request, response.clone());
-      } catch (_e) {}
-      return response;
+    const keys = await caches.keys();
+    for (const k of keys) {
+      if (!k.startsWith("tip-html-") && !k.startsWith("organism-html-")) continue;
+      const old = await caches.open(k);
+      const prev = await matchHtmlShell(old, request);
+      if (prev) return prev;
     }
   } catch (_e) {}
-  const cached = await cache.match(request);
-  if (cached) return cached;
-  return fetch(request);
+  return offlineFallbackResponse(request);
+}
+
+function respondWithSafe(event, handlerPromise) {
+  event.respondWith(
+    Promise.resolve(handlerPromise).catch(() => offlineFallbackResponse(event.request)),
+  );
 }
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") {
-    event.respondWith(fetch(req));
+    respondWithSafe(event, safeFetch(req).then((r) => r || offlineFallbackResponse(req)));
     return;
   }
   let url;
   try {
     url = new URL(req.url);
   } catch (_e) {
-    event.respondWith(fetch(req));
+    respondWithSafe(event, safeFetch(req).then((r) => r || offlineFallbackResponse(req)));
     return;
   }
   if (url.origin !== self.location.origin) {
-    event.respondWith(fetch(req));
+    respondWithSafe(event, safeFetch(req).then((r) => r || offlineFallbackResponse(req)));
     return;
   }
-  /* 내비게이션 요청(HTML 페이지) */
   if (req.mode === "navigate") {
-    event.respondWith(networkFirstHtml(req));
+    respondWithSafe(event, networkFirstHtml(req));
     return;
   }
   if (!shouldUseAssetCache(url)) {
-    event.respondWith(fetch(req));
+    respondWithSafe(event, safeFetch(req).then((r) => r || offlineFallbackResponse(req)));
     return;
   }
   if (isBundledJsCss(url.pathname)) {
-    event.respondWith(networkFirstAsset(req));
+    respondWithSafe(event, networkFirstAsset(req));
     return;
   }
   if (isPwaBrandAsset(url.pathname)) {
-    event.respondWith(networkFirstBrandAsset(req));
+    respondWithSafe(event, networkFirstBrandAsset(req));
     return;
   }
   if (isStaticImageAsset(url.pathname)) {
     if (isToolbarIconPath(url.pathname)) {
-      event.respondWith(staleWhileRevalidateToolbarIcon(req, event));
+      respondWithSafe(event, staleWhileRevalidateToolbarIcon(req, event));
       return;
     }
-    event.respondWith(cacheFirstStaticAsset(req));
+    respondWithSafe(event, cacheFirstStaticAsset(req));
     return;
   }
   if (isFontPath(url.pathname)) {
-    event.respondWith(cacheFirstStaticAsset(req));
+    respondWithSafe(event, cacheFirstStaticAsset(req));
     return;
   }
-  event.respondWith(networkFirstAsset(req));
+  respondWithSafe(event, networkFirstAsset(req));
 });
