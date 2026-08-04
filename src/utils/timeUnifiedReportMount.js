@@ -805,6 +805,7 @@ function formatDayRatingAxisClock(mins) {
 /**
  * 일간 별점 — 시간대(시)별 평균을 점으로 찍고 이웃 시간대를 선으로 이음
  * 가로축 00~23, 눈금 「시」 없음
+ * 좁은 화면: 가로를 화면에 맞게 축소, X축 눈금은 2시간 단위
  */
 function renderDayRatingLinkChart(sessions) {
   const wrap = document.createElement("div");
@@ -819,13 +820,23 @@ function renderDayRatingLinkChart(sessions) {
     return wrap;
   }
 
+  let fitToViewport = false;
+  try {
+    fitToViewport =
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(max-width: 46rem)").matches;
+  } catch (_) {
+    fitToViewport = false;
+  }
+
   const hour0 = 0;
   const hour1 = 23;
   const nHours = 24;
-  const slotW = 28;
-  const H = 210;
-  const padL = 44;
-  const padR = 12;
+  const slotW = fitToViewport ? 12 : 28;
+  const H = fitToViewport ? 188 : 210;
+  const padL = fitToViewport ? 36 : 44;
+  const padR = fitToViewport ? 8 : 12;
   const padT = 14;
   const padB = 26;
   const W = slotW * nHours + padL + padR;
@@ -834,17 +845,31 @@ function renderDayRatingLinkChart(sessions) {
   const xAtHourCenter = (hour) =>
     padL + ((hour - hour0 + 0.5) / nHours) * plotW;
   const yAtRating = (rating) => padT + ((5 - rating) / 4) * plotH;
+  const xTickStep = fitToViewport ? 2 : 1;
 
   const scroll = document.createElement("div");
   scroll.className = "lp-tr2-day-rating-line-scroll";
+  if (fitToViewport) {
+    scroll.classList.add("lp-tr2-day-rating-line-scroll--fit");
+  }
 
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
-  svg.setAttribute("preserveAspectRatio", "xMinYMid meet");
+  svg.setAttribute(
+    "preserveAspectRatio",
+    fitToViewport ? "xMidYMid meet" : "xMinYMid meet",
+  );
   svg.setAttribute("class", "lp-tr2-day-rating-line-svg");
   svg.setAttribute("role", "img");
   svg.setAttribute("aria-label", "00부터 23까지 시간대별 평균 별점");
-  svg.style.minWidth = `${W}px`;
+  if (fitToViewport) {
+    svg.style.width = "100%";
+    svg.style.minWidth = "0";
+    svg.style.height = "auto";
+    svg.style.maxHeight = "12rem";
+  } else {
+    svg.style.minWidth = `${W}px`;
+  }
 
   for (let star = 1; star <= 5; star += 1) {
     const y = yAtRating(star);
@@ -907,8 +932,8 @@ function renderDayRatingLinkChart(sessions) {
     svg.appendChild(c);
   });
 
-  const tickFont = tr2SvgFontSize(8);
-  for (let h = hour0; h <= hour1; h += 1) {
+  const tickFont = tr2SvgFontSize(fitToViewport ? 7 : 8);
+  for (let h = hour0; h <= hour1; h += xTickStep) {
     const lab = document.createElementNS("http://www.w3.org/2000/svg", "text");
     lab.setAttribute("x", String(xAtHourCenter(h)));
     lab.setAttribute("y", String(H - 8));
@@ -923,7 +948,9 @@ function renderDayRatingLinkChart(sessions) {
   wrap.appendChild(scroll);
   const rangeHint = document.createElement("p");
   rangeHint.className = "lp-tr2-day-rating-line-range-hint";
-  rangeHint.textContent = "가로 00~23 · 각 점은 그 시간대 평균 별점";
+  rangeHint.textContent = fitToViewport
+    ? "가로 00~22(2시간 눈금) · 점은 매시 평균 별점"
+    : "가로 00~23 · 각 점은 그 시간대 평균 별점";
   wrap.appendChild(rangeHint);
   return wrap;
 }
@@ -5315,13 +5342,6 @@ function buildFocusNextPlanLines(ratingSnap, focusSnap) {
       `아쉬웠던 이유: ${badTags.map((t) => `「${t.label}」`).join(" · ")}`,
     );
   }
-  const endTop = (focusSnap?.endReasonAnalysis?.ranking || []).slice(0, 2);
-  if (endTop.length) {
-    const tips = endTop
-      .map((t) => (t.tip ? `「${t.label}」 → ${t.tip}` : `「${t.label}」`))
-      .join(" · ");
-    lines.push(`더 오래 유지하려면: ${tips}`);
-  }
   if (
     lowHours.length &&
     bestHours.length &&
@@ -5333,7 +5353,7 @@ function buildFocusNextPlanLines(ratingSnap, focusSnap) {
   }
   if (!lines.length) {
     return [
-      "생산적 작업에 「이 시간 평가」·몰입·종료 이유를 남기면, 다음에 더 오래 집중하는 방법이 정리됩니다.",
+      "생산적 작업에 「이 시간 평가」·몰입 요소를 남기면, 다음에 더 오래 집중하는 방법이 정리됩니다.",
     ];
   }
   return lines;
@@ -5710,53 +5730,6 @@ function mountFocusReportSection(scrollWrap, range, rows) {
     note.className = "lp-tr2-chart-note";
     note.textContent = focusSnap.recipeOneLiner;
     sec.appendChild(note);
-  }
-
-  /* 3.5) 잘하다 왜 멈췄는지 — 종료 이유 */
-  if (focusSnap?.endReasonAnalysis?.show) {
-    const endBlock = createRatingBlock(
-      "잘하다 왜 멈췄는지",
-      isDay
-        ? "오늘 잘하다 멈춘 이유 · 다음에 더 오래 유지하려면"
-        : "4~5점일 때 고른 종료 이유 · 다음에 더 오래 유지하는 힌트",
-    );
-    const insight = document.createElement("p");
-    insight.className = "lp-tr2-focus-disruptor-insight";
-    insight.textContent = focusSnap.endReasonAnalysis.oneLiner;
-    endBlock.appendChild(insight);
-    if (focusSnap.endReasonAnalysis.ranking?.length) {
-      if (isDay) {
-        const advice = focusSnap.endReasonAnalysis.ranking
-          .slice(0, 4)
-          .map((item) => {
-            const tip = String(item?.tip || "").trim();
-            const label = String(item?.label || "").trim();
-            if (!label) return "";
-            return tip
-              ? `「${label}」이(가) 잦다면 → ${tip}`
-              : `「${label}」으로 멈춘 경우가 있었습니다.`;
-          })
-          .filter(Boolean);
-        appendDayReportAdviceLines(endBlock, advice);
-      } else {
-        const maxCount = focusSnap.endReasonAnalysis.ranking[0]?.count || 1;
-        const list = document.createElement("div");
-        list.className = "lp-tr2-focus-end-reason-list";
-        focusSnap.endReasonAnalysis.ranking.slice(0, 8).forEach((item, i) => {
-          list.appendChild(
-            createFocusEndReasonRow(
-              `${i + 1}. ${item.label}`,
-              Math.round((item.count / maxCount) * 100),
-              `${item.count}회 · ${item.pct}%`,
-              item.tip || "",
-              "#1e4d7b",
-            ),
-          );
-        });
-        endBlock.appendChild(list);
-      }
-    }
-    sec.appendChild(endBlock);
   }
 
   /* 4) 어떨 때 안 좋았는지 */

@@ -97,37 +97,14 @@ function buildEndReasonOneLiner(ranking, sessionCount, totalPicks) {
   return `잘하다 멈춘 이유로 「${top.label}」이(가) 가장 많았습니다 (${top.count}회).`;
 }
 
-function buildEndReasonAnalysis(highFocusSessions) {
-  const sessionCount = highFocusSessions.length;
-  const counts = new Map();
-  for (const r of highFocusSessions) {
-    const seen = new Set();
-    for (const id of normalizeTimeEndReasonsForRow(
-      r.timeEndReasons ?? r.timeEndReason,
-    )) {
-      if (!id || seen.has(id)) continue;
-      seen.add(id);
-      counts.set(id, (counts.get(id) || 0) + 1);
-    }
-  }
-  const totalPicks = [...counts.values()].reduce((s, n) => s + n, 0);
-  const ranking = [...counts.entries()]
-    .map(([id, count]) => ({
-      id,
-      label: timeEndReasonLabelForId(id),
-      tip: timeEndReasonLongerTipForId(id),
-      count,
-      pct:
-        sessionCount > 0 ? Math.round((count / sessionCount) * 100) : 0,
-    }))
-    .sort((a, b) => b.count - a.count || b.pct - a.pct);
-
+function buildEndReasonAnalysis(_highFocusSessions) {
+  /* 종료 이유 레포트 비표시 */
   return {
-    sessionCount,
-    totalPicks,
-    ranking,
-    oneLiner: buildEndReasonOneLiner(ranking, sessionCount, totalPicks),
-    show: sessionCount > 0 || ranking.length > 0,
+    sessionCount: 0,
+    totalPicks: 0,
+    ranking: [],
+    oneLiner: "",
+    show: false,
   };
 }
 

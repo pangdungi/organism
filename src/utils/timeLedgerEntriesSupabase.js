@@ -14,9 +14,11 @@ import { lpSaveDebug } from "./lpSaveDebug.js";
 import { lpPullDebug } from "./lpPullDebug.js";
 import {
   applyTimeLedgerServerRangeSnapshot,
+  collectTimeLedgerDirtyRowsInRange,
   ensureTimeLedgerEntryIds,
   localTimeLedgerRowToDbPayload,
   mergeTimeLedgerEntriesPushedServerTimes,
+  preserveTimeLedgerEndTimeUnlessCleared,
   readTimeLedgerEntriesRaw,
   recordTimeLedgerDeletionTombstone,
   timeLedgerRowIsSyncable,
@@ -723,6 +725,24 @@ async function pullTimeLedgerEntriesForDateRangeCore(
     preferServer: true,
   });
 
+  /*
+   * 미업로드 로컬(마감시간 포함)을 서버 스냅샷으로 덮기 전에 먼저 올림.
+   * after_push 직후 pull 은 방금 올린 뒤라 생략.
+   */
+  if (trigger !== "after_push") {
+    const dirty = collectTimeLedgerDirtyRowsInRange(rs, re);
+    if (dirty.length > 0) {
+      timeLedgerSyncLog("pull_flush_dirty", {
+        count: dirty.length,
+        range: `${rs}..${re}`,
+      });
+      await pushDirtyTimeLedgerEntriesToSupabaseCore({
+        forceRows: dirty,
+        skipPull: true,
+      });
+    }
+  }
+
   const pageSize = 1000;
   const rows = [];
   for (let offset = 0; ; offset += pageSize) {
@@ -848,17 +868,24 @@ async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
   const forceStamped = [];
   if (forceRowsIn.length > 0) {
     const now = Date.now();
+    const memById = new Map(
+      readTimeLedgerEntriesRaw()
+        .map((r) => [String(r?.id || "").trim(), r])
+        .filter(([id]) => id),
+    );
     const { rows: forcedEnsured } = ensureTimeLedgerEntryIds(forceRowsIn);
     for (const r of forcedEnsured) {
       if (!timeLedgerRowIsSyncable(r)) continue;
-      forceStamped.push({ ...r, localModifiedAt: now });
+      const id = String(r?.id || "").trim();
+      const prev = id ? memById.get(id) : null;
+      /* 빈 마감이 이미 저장된 마감을 다시 비워 올리지 않음(지우기 명시만 허용) */
+      const preserved = prev
+        ? preserveTimeLedgerEndTimeUnlessCleared(prev, r)
+        : r;
+      forceStamped.push({ ...preserved, localModifiedAt: now });
     }
     if (forceStamped.length > 0) {
-      const byId = new Map(
-        readTimeLedgerEntriesRaw()
-          .map((r) => [String(r?.id || "").trim(), r])
-          .filter(([id]) => id),
-      );
+      const byId = new Map(memById);
       for (const r of forceStamped) {
         byId.set(String(r.id).trim(), r);
       }

@@ -5695,6 +5695,7 @@
 
 .lp-tr2-day-rating-line-scroll {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
@@ -5704,6 +5705,11 @@
   border-radius: 0.55rem;
   display: flex;
   justify-content: center;
+  box-sizing: border-box;
+}
+
+.lp-tr2-day-rating-line-scroll--fit {
+  overflow-x: hidden;
 }
 
 .lp-tr2-day-rating-line-svg {
@@ -5715,6 +5721,15 @@
   border-radius: 0;
   margin-left: auto;
   margin-right: auto;
+}
+
+@media (max-width: 46rem) {
+  .lp-tr2-day-rating-line-scroll--fit .lp-tr2-day-rating-line-svg {
+    width: 100%;
+    min-width: 0 !important;
+    height: auto;
+    max-height: 12rem;
+  }
 }
 
 .lp-tr2-day-rating-line-range-hint {

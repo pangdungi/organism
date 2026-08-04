@@ -503,6 +503,72 @@
   border-radius: 0;
 }
 
+button.calendar-1day-pane-section-head--action {
+  display: block;
+  width: 100%;
+  margin: 0;
+  border: none;
+  border-bottom: 1px solid #e8edf3;
+  cursor: pointer;
+  /* font: inherit 쓰면 헤더 font-size가 부모로 돌아가 타임박스 헤더와 달라짐 */
+  font-family: inherit;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: inherit;
+  color: #475569;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+button.calendar-1day-pane-section-head--action:hover {
+  color: #1e4d7b;
+  background: #f1f5f9;
+}
+
+button.calendar-1day-pane-section-head--action:focus-visible {
+  outline: 2px solid #1e4d7b;
+  outline-offset: -2px;
+}
+
+/* 예상 일정란에 전일 타임박스(오른쪽 타임박스와 같은 격자) */
+.calendar-1day-expected-prev-timebox {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.calendar-1day-expected-prev-timebox[hidden] {
+  display: none !important;
+}
+
+.calendar-1day-expected-cards-section--prev
+  .calendar-1day-expected-cards-scroll,
+.calendar-1day-expected-cards-section--prev
+  .calendar-1day-expected-cards-footer {
+  display: none !important;
+}
+
+.calendar-1day-view--slot-grid
+  .calendar-1day-expected-prev-timebox-scroll.calendar-1day-slot-grid-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+/* 전일 타임박스 라벨 — 오른쪽 타임박스와 동일 */
+.calendar-1day-view--slot-grid
+  .calendar-1day-expected-prev-timebox
+  .calendar-1day-slot-grid-cell--labeled {
+  font-size: clamp(0.4375rem, 1.4vw, 0.5625rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
 .calendar-1day-timebox-section {
   flex: 1 1 0;
   min-height: 0;

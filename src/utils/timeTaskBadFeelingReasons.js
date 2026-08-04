@@ -3,6 +3,7 @@
 export const TIME_TASK_BAD_FEELING_REASON_OPTIONS = [
   { id: "regret", label: "후회" },
   { id: "time_waste", label: "시간낭비" },
+  { id: "nonproductive", label: "비생산적" },
   { id: "low_self_control", label: "자제력부족" },
   { id: "self_disappointment", label: "자기실망" },
   { id: "emptiness", label: "공허함" },

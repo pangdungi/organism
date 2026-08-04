@@ -64,7 +64,10 @@ import {
   wireModalEnterToConfirm,
   closeDuplicateTodoAddModals,
 } from "../utils/modalNoAutoFocus.js";
-import { syncBodyOverflowAfterModalClose } from "../utils/lpModalStack.js";
+import {
+  resolveLpModalStackZIndex,
+  syncBodyOverflowAfterModalClose,
+} from "../utils/lpModalStack.js";
 import {
   calendar1WeekDiagLog,
   calendar1WeekDiagSnapshot,
@@ -4327,6 +4330,49 @@ function createCalendar1DayTimeboxPanel(dateKey, onSaved) {
   return section;
 }
 
+/** YYYY-MM-DD → "8.03 (월)" */
+function formatCalendar1DayShortLabel(dateKey) {
+  const key = String(dateKey || "")
+    .replace(/\//g, "-")
+    .trim()
+    .slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return "";
+  const d = new Date(`${key}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return "";
+  const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+  return `${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")} (${weekdays[d.getDay()]})`;
+}
+
+/** 예상 일정란에 넣을 전일 타임박스(읽기 전용 · 오른쪽 타임박스와 같은 격자) */
+function createPrevDayTimeboxInline(viewedDateKey) {
+  const viewed = String(viewedDateKey || "")
+    .replace(/\//g, "-")
+    .trim()
+    .slice(0, 10);
+  const prevKey = /^\d{4}-\d{2}-\d{2}$/.test(viewed)
+    ? addDaysToDateKey(viewed, -1)
+    : "";
+  const wrap = document.createElement("div");
+  wrap.className = "calendar-1day-expected-prev-timebox";
+  if (!prevKey) {
+    const empty = document.createElement("p");
+    empty.className = "calendar-1day-expected-cards-empty";
+    empty.textContent = "전일 날짜를 확인할 수 없습니다.";
+    wrap.appendChild(empty);
+    return { wrap, prevKey: "", prevLabel: "" };
+  }
+  const prevLabel = formatCalendar1DayShortLabel(prevKey);
+  const scroll = createCalendar1DaySlotGridScroll();
+  scroll.classList.add("calendar-1day-expected-prev-timebox-scroll");
+  scroll.setAttribute(
+    "aria-label",
+    `전일 타임박스 ${prevLabel || prevKey}`,
+  );
+  paintCalendar1DaySlotGrid(scroll, prevKey);
+  wrap.appendChild(scroll);
+  return { wrap, prevKey, prevLabel };
+}
+
 /** 캘린더 일간뷰 — 24행×12열(5분 칸) */
 function createCalendar1DaySlotGrid(dateKey, onSaved) {
   const scroll = createCalendar1DaySlotGridScroll();
@@ -4336,14 +4382,18 @@ function createCalendar1DaySlotGrid(dateKey, onSaved) {
   return scroll;
 }
 
-/** 캘린더 일간뷰(슬롯 그리드 모드) — 예상 일정 카드 목록 */
+/** 캘린더 일간뷰(슬롯 그리드 모드) — 예상 일정 카드 · 헤더로 전일 타임박스 토글 */
 function createCalendar1DayExpectedCardsPanel(dateKey, spans, onSaved) {
   const section = document.createElement("div");
   section.className = "calendar-1day-expected-cards-section";
 
-  const head = document.createElement("div");
-  head.className = "calendar-1day-pane-section-head";
+  const head = document.createElement("button");
+  head.type = "button";
+  head.className =
+    "calendar-1day-pane-section-head calendar-1day-pane-section-head--action";
   head.textContent = "예상 일정";
+  head.title = "전일 타임박스 보기";
+  head.setAttribute("aria-label", "예상 일정 · 전일 타임박스 보기");
   section.appendChild(head);
 
   const scroll = document.createElement("div");
@@ -4475,6 +4525,40 @@ function createCalendar1DayExpectedCardsPanel(dateKey, spans, onSaved) {
   footer.appendChild(applyTemplateBtn);
   footer.appendChild(saveTemplateBtn);
   section.appendChild(footer);
+
+  const {
+    wrap: prevTimebox,
+    prevLabel,
+  } = createPrevDayTimeboxInline(dateKey);
+  prevTimebox.hidden = true;
+  section.appendChild(prevTimebox);
+
+  let showingPrevTimebox = false;
+  const setShowingPrevTimebox = (on) => {
+    showingPrevTimebox = !!on;
+    scroll.hidden = showingPrevTimebox;
+    footer.hidden = showingPrevTimebox;
+    prevTimebox.hidden = !showingPrevTimebox;
+    section.classList.toggle(
+      "calendar-1day-expected-cards-section--prev",
+      showingPrevTimebox,
+    );
+    if (showingPrevTimebox) {
+      head.textContent = prevLabel
+        ? `전일 타임박스 · ${prevLabel}`
+        : "전일 타임박스";
+      head.title = "예상 일정 목록으로 돌아가기";
+      head.setAttribute("aria-label", "전일 타임박스 · 예상 일정으로 돌아가기");
+    } else {
+      head.textContent = "예상 일정";
+      head.title = "전일 타임박스 보기";
+      head.setAttribute("aria-label", "예상 일정 · 전일 타임박스 보기");
+    }
+  };
+  head.addEventListener("click", () => {
+    if (lpHorizontalPanNavigateRecentlyFired()) return;
+    setShowingPrevTimebox(!showingPrevTimebox);
+  });
 
   return section;
 }

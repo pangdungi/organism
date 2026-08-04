@@ -99,8 +99,7 @@ export function timeEndReasonLongerTipForId(id) {
   return END_REASON_LONGER_TIP.get(key) || "";
 }
 
-/** 생산적 작업 4~5점일 때 종료 이유 입력 대상 */
-export function shouldCollectTimeEndReasons(rating) {
-  const n = Number(rating);
-  return n === 4 || n === 5;
+/** 종료 이유 입력·수집 중단(UI·레포트에서 제거). 예전 저장분은 유지. */
+export function shouldCollectTimeEndReasons(_rating) {
+  return false;
 }

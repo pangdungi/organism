@@ -1323,9 +1323,14 @@ function saveTimeRows(rows, opts = {}) {
       typeof window !== "undefined" &&
       (forceRows.length > 0 || pushEntryIds.length > 0)
     ) {
+      /* 마감 보존된 toSave 기준으로 올림 — 원본 forceRows 빈 마감이 서버를 덮지 않게 */
+      const forceFromSaved =
+        forceIds.size > 0
+          ? toSave.filter((r) => forceIds.has(String(r?.id || "").trim()))
+          : [];
       return pushDirtyTimeLedgerEntriesToSupabase({
         entryIds: pushEntryIds.length ? pushEntryIds : undefined,
-        forceRows: forceRows.length ? forceRows : undefined,
+        forceRows: forceFromSaved.length ? forceFromSaved : undefined,
         skipPull,
       });
     }
@@ -8870,23 +8875,9 @@ export function render(opts = {}) {
   }
 
   function syncTaskLogEndReasonSection() {
-    const ratingMatches = shouldCollectTimeEndReasons(getTaskLogTimeRating());
-    const taskAllows =
-      isTaskLogModalProductiveTask() &&
-      !isTaskLogModalMealIntakeTask() &&
-      !isTaskLogModalConversationTask() &&
-      !isTaskLogModalContentTask();
-    const show = taskAllows && ratingMatches;
-    if (taskLogEndReasonSection) taskLogEndReasonSection.hidden = !show;
-    const endLabel = taskLogEndReasonSection?.querySelector(
-      '[data-legacy~="time-task-log-end-reason-section-label"]',
-    );
-    if (endLabel) {
-      endLabel.textContent = show ? "종료 이유 (필수)" : "종료 이유";
-    }
-    if ((!taskAllows || !ratingMatches) && taskLogTimeEndReasons.length) {
-      taskLogTimeEndReasons = [];
-    }
+    /* 종료 이유 UI 제거 — 섹션은 항상 숨김 */
+    if (taskLogEndReasonSection) taskLogEndReasonSection.hidden = true;
+    if (taskLogTimeEndReasons.length) taskLogTimeEndReasons = [];
   }
 
   function syncTaskLogBadFeelingChips() {
@@ -9891,15 +9882,29 @@ export function render(opts = {}) {
     return val.trim();
   };
 
-  /** 과제 기록 모달: 기본 기록일은 오늘(로컬). 상단 피커 구간과 무관 — 과거·다른 날은 모달에서 날짜를 바꿈. */
+  /** 과제 기록 모달: 폴백 기록일(오늘·로컬). */
   function taskLogDefaultRecordYmd() {
     return toDateStr(new Date());
   }
 
-  /** 신규 기록: 캘린더 등에서 넘긴 `taskLogAddContext.recordDateKey`가 있으면 그날을 기록일로 씀. */
+  /**
+   * 신규 기록 기본일.
+   * 1) 캘린더 등에서 넘긴 recordDateKey
+   * 2) 시간기록에서 보고 있는 날짜(일간) — 날짜를 바꾼 뒤 + 하면 그날에 추가
+   * 3) 오늘
+   */
   function resolveTaskLogNewEntryRecordYmd() {
     const ctxYmd = String(taskLogAddContext?.recordDateKey || "").trim();
     if (/^\d{4}-\d{2}-\d{2}$/.test(ctxYmd)) return ctxYmd;
+    if (timeLedgerLayoutView !== "report") {
+      const s = String(usageHistoryRangeStartYmd || "")
+        .trim()
+        .slice(0, 10);
+      const e = String(usageHistoryRangeEndYmd || "")
+        .trim()
+        .slice(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s) && s === e) return s;
+    }
     return taskLogDefaultRecordYmd();
   }
 
@@ -9966,19 +9971,15 @@ export function render(opts = {}) {
     updateTaskLogTimeOrderWarning();
   }
 
+  /** 시작시간과 동일: 보이는 시:분 + 기록일 → 숨은 datetime. 비면 숨은 값도 비움. */
   function syncEndToHidden() {
     const rawVis = String(taskLogTimeEnd?.value || "").trim();
     const time =
       normalizeHhMm(rawVis) ||
       normalizeHhMm(autoFormatDigitsToHhMm(rawVis) || "") ||
       "";
-    /*
-     * 보이는 마감이 있을 때만 hidden을 덮어씀.
-     * 날짜/시각이 잠깐 비었다고 hidden을 ""로 지우지 않음(수정 버튼 포커스 경합 방지).
-     * 사용자가 지우기 버튼으로 비운 경우만 hidden도 비움.
-     */
     if (!time) {
-      if (taskLogEndClearedByUser) taskLogEndInput.value = "";
+      if (taskLogEndInput) taskLogEndInput.value = "";
       updateEndTimeClearVisibility();
       syncTaskLogDateOverlay();
       updateTaskLogTimeOrderWarning();
@@ -9997,36 +9998,6 @@ export function render(opts = {}) {
     updateEndTimeClearVisibility();
     syncTaskLogDateOverlay();
     updateTaskLogTimeOrderWarning();
-  }
-
-  /**
-   * 저장용 마감 — 보이는 칸에 있을 때만 새 마감.
-   * 비면: 지우기 버튼 → "" / 아니면 기존 행 값만(hidden으로 지금시각·잔여값 절대 안 넣음).
-   * 지난 날짜 진행중 23:59 자동마감은 closeStaleInProgressTimeLedgerRows 전용.
-   */
-  function resolveTaskLogEndTimeForSave(prevEndFallback = "") {
-    if (taskLogTimeEnd) {
-      const raw = String(taskLogTimeEnd.value || "").trim();
-      const pre = autoFormatDigitsToHhMm(raw) || raw;
-      const vis = normalizeHhMm(pre) || "";
-      if (vis && /^\d{1,2}:\d{2}$/.test(vis)) {
-        taskLogTimeEnd.value = vis;
-        const date = taskLogResolveYmdForSync();
-        if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
-          const composed = `${date}T${vis}`;
-          taskLogEndInput.value = composed;
-          return formatDateTimeInput(composed) || composed;
-        }
-      }
-    }
-    if (taskLogEndClearedByUser) {
-      if (taskLogEndInput) taskLogEndInput.value = "";
-      return "";
-    }
-    const prevEnd = String(prevEndFallback || "").trim();
-    /* 보이는 칸이 비면 hidden은 쓰지 않음 — 잔여/지금시각 유입 차단 */
-    if (!prevEnd && taskLogEndInput) taskLogEndInput.value = "";
-    return prevEnd;
   }
 
   function setStartFromDatetime(dtStr) {
@@ -12594,7 +12565,7 @@ export function render(opts = {}) {
     hideTaskLogTaskCompletionTodosSection();
   }
 
-  /** 기록 버튼: 보이는 시각을 먼저 포맷·반영. 마감 hidden은 비어 보일 때 지우지 않음 */
+  /** 기록 버튼: 시작·마감 모두 보이는 시각 포맷 후 숨은 칸에 동일하게 반영 */
   function flushTaskLogTimeInputsBeforeSubmit() {
     if (taskLogTimeStart) {
       const raw = taskLogTimeStart.value || "";
@@ -12605,7 +12576,7 @@ export function render(opts = {}) {
       const raw = taskLogTimeEnd.value || "";
       const preformatted = autoFormatDigitsToHhMm(raw) || raw;
       const norm = normalizeHhMm(preformatted) || "";
-      if (norm) taskLogTimeEnd.value = norm;
+      taskLogTimeEnd.value = norm;
     }
     syncStartToHidden();
     syncEndToHidden();
@@ -12634,11 +12605,9 @@ export function render(opts = {}) {
     let taskName = TTC.canonicalMealTaskDisplayName(
       (taskLogTaskDropdown?._getValue?.() || "").trim(),
     );
+    /* 시작과 동일: flush 후 숨은 칸 값을 그대로 저장 */
     const startRaw = (taskLogStartInput.value || "").trim();
-    const prevEndForResolve = String(
-      editTr?._rowData?.endTime || "",
-    ).trim();
-    let endTime = resolveTaskLogEndTimeForSave(prevEndForResolve);
+    const endRaw = (taskLogEndInput.value || "").trim();
     if (!taskName || !startRaw) {
       void showAlertModal({
         message: "과제 선택과 시작 시간을 입력해 주세요.",
@@ -12646,27 +12615,9 @@ export function render(opts = {}) {
       return;
     }
     let startTime = formatDateTimeInput(startRaw) || startRaw;
-    const endVisibleGuard =
-      normalizeHhMm((taskLogTimeEnd?.value || "").trim()) || "";
-    /* 보이는 마감이 비면 저장 마감도 비움(또는 기존만 유지) — 자동 ‘지금’ 금지 */
-    if (!endVisibleGuard) {
-      endTime = taskLogEndClearedByUser
-        ? ""
-        : String(prevEndForResolve || "").trim();
-    }
+    let endTime = formatDateTimeInput(endRaw) || endRaw;
     if (startTime && endTime) {
       endTime = mergeEndTimeWithStartDate(startTime, endTime) || endTime;
-    }
-    if (
-      endVisibleGuard &&
-      /^\d{1,2}:\d{2}$/.test(endVisibleGuard) &&
-      !String(endTime || "").trim()
-    ) {
-      showToast(
-        "마감 시간이 반영되지 않았습니다. 마감 칸을 다시 확인한 뒤 저장해 주세요.",
-        "warn",
-      );
-      return;
     }
     const feedbackBody = buildTaskLogFeedbackForSubmit(taskName);
     const detailKind = TTC.ledgerDetailTaskKind(taskName);
@@ -12928,40 +12879,12 @@ export function render(opts = {}) {
         return;
       }
     }
-    const needsEndReasons =
-      shouldCollectTimeEndReasons(timeRatingForRow) &&
-      isTaskLogModalProductiveTask() &&
-      !isTaskLogModalMealIntakeTask() &&
-      !isTaskLogModalConversationTask() &&
-      !isTaskLogModalContentTask();
-    let timeEndReasonsForRow = keepPrevChipsIfSameRating(
-      needsEndReasons,
-      needsEndReasons ? getTaskLogTimeEndReasons() : [],
-      prevChipRow.timeEndReasons ?? prevChipRow.timeEndReason,
-      normalizeTimeEndReasonsForRow,
-    );
-    if (needsEndReasons && !timeEndReasonsForRow.length) {
-      /* 4~5점 — 왜 잘하다 멈췄는지 · 「나중에」면 없이 저장 */
-      const pickEnd = await showConfirmModal({
-        title: "알림",
-        message: "종료 이유를 아직 고르지 않았어요.",
-        cancelText: "나중에",
-        confirmText: "확인",
-      });
-      if (pickEnd) {
-        syncTaskLogEndReasonSection();
-        if (taskLogEndReasonSection) {
-          taskLogEndReasonSection.hidden = false;
-          try {
-            taskLogEndReasonSection.scrollIntoView({
-              block: "nearest",
-              behavior: "smooth",
-            });
-          } catch (_) {}
-        }
-        return;
-      }
-    }
+    /* 종료 이유 수집 중단 — 수정 시 예전 값만 유지, 신규는 비움 */
+    const timeEndReasonsForRow = editTr
+      ? normalizeTimeEndReasonsForRow(
+          prevChipRow.timeEndReasons ?? prevChipRow.timeEndReason,
+        )
+      : [];
     const sleepOvernightSave = isTaskLogModalSleepOvernightCutoff();
     const needsSleepGood =
       isTaskLogModalSleepTask() &&
@@ -13127,12 +13050,9 @@ export function render(opts = {}) {
           "").trim(),
       );
       const prevId = String(prevRow.id || "").trim();
-      const endCleared =
-        taskLogEndClearedByUser && !String(endTime || "").trim();
-      const endTimeToSave = endCleared
-        ? ""
-        : String(endTime || "").trim() ||
-          String(prevRow.endTime || "").trim();
+      /* 시작과 동일: 칸에 있는 값이 저장값. 비면 빈 마감(진행 중) */
+      const endTimeToSave = String(endTime || "").trim();
+      const endCleared = !endTimeToSave;
       const newRowData = {
         id: isUuid(prevId)
           ? prevId
@@ -13216,7 +13136,7 @@ export function render(opts = {}) {
         if (dispEnd)
           dispEnd.textContent = formatTimeLedgerEndCellDisplay(
             startTime,
-            endTime,
+            endTimeToSave,
           );
         const dispTracked = editTr.querySelector(
           '[data-legacy~="time-display-tracked"]',
