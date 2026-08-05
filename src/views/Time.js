@@ -6273,6 +6273,25 @@ export function render(opts = {}) {
 
   let _timeLedgerFilterPullTimer = null;
   let _usageListPullGen = 0;
+  /** 이번 탭 세션에서 이미 서버 pull 한 조회 구간 — 같은 기간 재요청 생략 */
+  const _lpPulledLedgerRangeKeys = new Set();
+
+  function ledgerPulledRangeKey(rs, re) {
+    return `${String(rs || "").trim()}|${String(re || "").trim()}`;
+  }
+
+  function markLedgerRangePulled(rs, re) {
+    const k = ledgerPulledRangeKey(rs, re);
+    if (k !== "|") _lpPulledLedgerRangeKeys.add(k);
+  }
+
+  function wasLedgerRangePulled(rs, re) {
+    return _lpPulledLedgerRangeKeys.has(ledgerPulledRangeKey(rs, re));
+  }
+
+  function clearPulledLedgerRanges() {
+    _lpPulledLedgerRangeKeys.clear();
+  }
 
   function patchUsageRangeHeadingOnly() {
     const cap = contentWrap.querySelector("[data-usage-range-caption]");
@@ -6379,16 +6398,29 @@ export function render(opts = {}) {
           ) {
             return;
           }
-          /* 구간 pull = 서버 스냅샷 반영 후 화면 강제 갱신(로컬 캐시 우선 없음) */
+          /*
+           * 이미 이 세션에서 받은 구간은 서버를 다시 치지 않음.
+           * 화면은 onFilterChange에서 로컬로 이미 그렸고, 데이터 같으면 remount 안 함.
+           */
+          if (wasLedgerRangePulled(rs, re)) {
+            if (pullGen !== _usageListPullGen) return;
+            syncTimeLedgerContent({ force: false });
+            return;
+          }
           const ok = await pullTimeLedgerEntriesForDateRange(rs, re, {
             force: true,
             preferServer: true,
           });
           if (pullGen !== _usageListPullGen) return;
           if (!el.isConnected) return;
+          if (ok) markLedgerRangePulled(rs, re);
           allRowsCache = loadTimeRows();
           cachedRows = getFullRowsForFilter(true);
-          syncTimeLedgerContent({ force: true });
+          /*
+           * pull 후 force remount 금지 — 시그니처·기간 같으면 제목만,
+           * 데이터가 바뀐 경우에만 차트 갱신(기간 변경 시 이중 그리기 완화).
+           */
+          syncTimeLedgerContent({ force: false });
           if (!ok) {
             lpPullDebug("time_ledger_range_pull_failed", {
               range: `${rs}..${re}`,
@@ -6444,6 +6476,17 @@ export function render(opts = {}) {
     allRowsCache = loadTimeRows();
     const rows = getFullRowsForFilter(true);
     cachedRows = rows;
+    /*
+     * 레포트: 이미 셸이 있으면 통째 innerHTML 비우지 않고 본문만 1회 갱신.
+     * (이어서 오는 pull 성공 시 force:false 로 이중 remount를 줄임)
+     */
+    if (
+      timeLedgerLayoutView === "report" &&
+      contentWrap.querySelector(".time-ledger-report-view-shell")
+    ) {
+      syncTimeLedgerContent({ force: true });
+      return;
+    }
     const filtered = applyUsageListFilters(rows);
     renderAll(filtered);
     rememberTimeLedgerPaintSignature();
@@ -15150,6 +15193,7 @@ export function render(opts = {}) {
         ".time-ledger-report-view-shell .lp-tr2-report-loading",
       );
     if (sigSame && !reportShellStuckLoading) {
+      /* 데이터·기간 동일 — 차트 다시 안 그림(제목·합계만) */
       patchTimeLedgerUsageHeadingInPlace(rowsToUse);
       updateTotal();
       persistActiveViewTimeFilterToSession();
@@ -15159,7 +15203,7 @@ export function render(opts = {}) {
       !reportShellStuckLoading &&
       patchTimeLedgerReportHeadingOnly(rowsToUse)
     ) {
-      /* 레포트 스크롤 중 soft refresh — 기간 같으면 remount 안 함 */
+      /* soft refresh: 기간 같으면 차트 remount 생략 */
     } else if (patchTimeLedgerReportInPlace(rowsToUse)) {
       /* 레포트 탭 — 본문만 갱신, 세로 스크롤 유지 */
     } else {
@@ -15269,6 +15313,15 @@ export function render(opts = {}) {
   }
   window.__lpTimeLedgerSetSyncing = setTimeLedgerSyncingUi;
 
+  /* 기록 추가·수정·삭제 후에는 구간 pull 캐시를 비워 다음 조회에 서버를 다시 맞춤 */
+  document.addEventListener(
+    "calendar-time-rows-updated",
+    () => {
+      clearPulledLedgerRanges();
+    },
+    { signal },
+  );
+
   signal.addEventListener(
     "abort",
     () => {
@@ -15276,6 +15329,7 @@ export function render(opts = {}) {
         clearTimeout(_timeLedgerFilterPullTimer);
         _timeLedgerFilterPullTimer = null;
       }
+      clearPulledLedgerRanges();
       usageHistoryTextSearchQuery = "";
       usageHistoryMemoOnlyFilter = false;
       clearUsageQueryFiltersFromSession();
