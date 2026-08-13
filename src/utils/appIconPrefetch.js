@@ -1,8 +1,11 @@
 /**
  * 앱 정적 아이콘 — Service Worker 캐시에만 적재(화면에 <img> prefetch 금지: iOS·Android 메모리 폭주 방지)
+ *
+ * 과제·스탬프 picker(time-task-picker):
+ * - 탭 진입 시 전량 받지 않음 → 기본+사용 중만 (`pickerIconCacheWarm`)
+ * - 전량은 아이콘 선택 화면을 열 때만
  */
 import appIconPrefetchPaths from "../../public/app-icon-prefetch.json";
-import { isMobileIconBudgetDevice } from "./timeTaskIconLazyDisplay.js";
 import {
   SW_ASSET_CACHE,
   withToolbarIconCacheVersion,
@@ -25,7 +28,11 @@ function matcherForTab(tabId) {
   const id = String(tabId || "").trim();
   switch (id) {
     case "time":
-      return (p) => p.startsWith("/toolbaricons/time-task-picker/");
+      /* picker 전량은 선택 모달에서만 — 탭 진입 시 UI 아이콘만 */
+      return (p) =>
+        p.startsWith("/toolbaricons/menu-time") ||
+        p.startsWith("/toolbaricons/time/") ||
+        p === "/toolbaricons/menu-time.png";
     case "diary":
       return (p) => p.startsWith("/diary-tr-icons/");
     case "calendar":
@@ -35,8 +42,7 @@ function matcherForTab(tabId) {
         p.startsWith("/todo-tab-icons/") ||
         p.startsWith("/toolbaricons/calendar") ||
         p.startsWith("/toolbaricons/menu-schedule") ||
-        p.startsWith("/toolbaricons/menu-todo") ||
-        p.startsWith("/toolbaricons/time-task-picker/");
+        p.startsWith("/toolbaricons/menu-todo");
     case "dream":
       return (p) =>
         p.startsWith("/retrospect-kpi/") ||
@@ -126,7 +132,10 @@ export function prefetchCriticalAppIconAssets() {
   }
 }
 
-/** PWA 기동 후 과제 picker 아이콘 전량을 SW 캐시에 한 번만 적재 */
+/**
+ * picker 아이콘 전량 — 아이콘 선택 모달을 열 때만 호출.
+ * (탭 진입·모바일/데스크탑 공통으로 전량 미리받기는 하지 않음)
+ */
 export function warmTimeTaskPickerIconsOnce() {
   if (pickerIconsWarmStarted) return Promise.resolve();
   pickerIconsWarmStarted = true;
@@ -141,19 +150,38 @@ export function warmTimeTaskPickerIconsOnce() {
   });
 }
 
+function warmDefaultAndInUseForTab() {
+  void import("./pickerIconCacheWarm.js")
+    .then((m) => {
+      m.warmDefaultAndInUsePickerIcons();
+    })
+    .catch(() => {});
+}
+
 /** @param {string} tabId */
 export function prefetchIconsForTab(tabId) {
   const id = String(tabId || "").trim();
   if (!id || id === "home") return Promise.resolve();
-  if (id === "time") {
-    if (isMobileIconBudgetDevice()) return Promise.resolve();
-    return warmTimeTaskPickerIconsOnce();
+
+  if (
+    id === "time" ||
+    id === "schedulecalendar" ||
+    id === "calendar" ||
+    id === "dream" ||
+    id === "health" ||
+    id === "happiness" ||
+    id === "sideincome" ||
+    id === "habittracker"
+  ) {
+    warmDefaultAndInUseForTab();
   }
+
   if (id === "schedulecalendar" || id === "calendar") {
     void import("./calendarDayIconsModel.js").then((m) => {
       m.warmCalendarDayStampIconAssetsFromMemory();
     });
   }
+
   const existing = tabWarmJobs.get(id);
   if (existing) return existing;
 

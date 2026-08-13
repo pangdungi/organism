@@ -171,6 +171,11 @@ function setLedgerTasksMemory(list) {
     list.map((o) => normalizeBuiltinTaskRow(o)),
   );
   mirrorTaskOptionsToLocalStorage();
+  void import("./pickerIconCacheWarm.js")
+    .then((m) => {
+      m.warmDefaultAndInUsePickerIcons();
+    })
+    .catch(() => {});
 }
 
 /**
@@ -769,16 +774,24 @@ export function updateTaskOptionIconByName(taskName, iconKey) {
         : `t-${Date.now()}`;
   }
   const newId = String(nextId).trim();
+  const nextIconKey = String(iconKey || "").trim();
   opts[idx] = {
     ...opts[idx],
     id: newId,
-    iconKey: String(iconKey || "").trim(),
+    iconKey: nextIconKey,
   };
   saveMergedList(opts, {
     bumpPullSkip: true,
     scheduleSyncPush: isUuid(newId),
     upsertTaskIds: isUuid(newId) ? [newId] : [],
   });
+  if (nextIconKey) {
+    void import("./pickerIconCacheWarm.js")
+      .then((m) => {
+        m.warmPickerIconKeyInSwCache(nextIconKey);
+      })
+      .catch(() => {});
+  }
   return opts;
 }
 

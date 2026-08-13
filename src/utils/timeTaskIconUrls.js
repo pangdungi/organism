@@ -313,6 +313,28 @@ const NONPRODUCTIVE_CATEGORY_PICKER_ICON = {
   moneylosing: "shopping bag",
 };
 
+/** 기본 KPI·내장 과제·비생산 카테고리 기본 아이콘 키 (`svg:슬러그`) */
+export function listDefaultPickerIconKeys() {
+  /** @type {string[]} */
+  const out = [];
+  const seen = new Set();
+  const addSlug = (slug) => {
+    const s = normalizePickerSlug(slug);
+    if (!s) return;
+    const key = `svg:${s}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(key);
+  };
+  for (const slug of Object.values(DEFAULT_KPI_ICON_SLUG)) addSlug(slug);
+  for (const slug of Object.values(DEFAULT_KPI_NAME_ICON_SLUG)) addSlug(slug);
+  for (const slug of Object.values(BUILTIN_TASK_ICON_SLUG)) addSlug(slug);
+  for (const slug of Object.values(NONPRODUCTIVE_CATEGORY_PICKER_ICON)) {
+    addSlug(slug);
+  }
+  return out;
+}
+
 /** @param {string} name */
 function findPickerSlug(name) {
   let s = String(name || "").trim();

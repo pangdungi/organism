@@ -19,6 +19,10 @@ import { attachPickerIconSrcFallback } from "./timeTaskIconLazyDisplay.js";
 import { lpSetClasses, lpTokenToggle } from "./timeLedgerClassPolicy.js";
 import { markModalOpened } from "./modalNoAutoFocus.js";
 import { syncBodyOverflowAfterModalClose } from "./lpModalStack.js";
+import {
+  warmFullPickerIconsWhenOpeningPicker,
+  warmPickerIconKeyInSwCache,
+} from "./pickerIconCacheWarm.js";
 
 /** @param {(query: string) => void} onInput */
 function mountPickerIconSearchInput(onInput) {
@@ -157,6 +161,7 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
   let currentKey = initialKey;
   const { onPick, onRemove } = opts;
   const isEdit = !!initialKey;
+  warmFullPickerIconsWhenOpeningPicker();
 
   /* 이전에 안 닫힌 날짜 아이콘 픽커만 제거(검색 먹통·오버레이 잔존 방지) */
   document.querySelectorAll(".calendar-day-icon-pick-modal").forEach((el) => {
@@ -232,6 +237,7 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
     e.stopPropagation();
     const key = String(currentKey || "").trim();
     if (!key) return;
+    warmPickerIconKeyInSwCache(key);
     onPick?.(key);
     close();
   });
@@ -364,6 +370,7 @@ export function mountTimeAddTaskIconPicker(mountEl) {
     selectedKey = key;
     previewSrc = "";
     userPickedIcon = true;
+    warmPickerIconKeyInSwCache(key);
     syncTrigger();
     syncGridSelection();
     closeIconModal();
@@ -416,6 +423,7 @@ export function mountTimeAddTaskIconPicker(mountEl) {
 
   function openIconModal() {
     if (!modalEl) return;
+    warmFullPickerIconsWhenOpeningPicker();
     renderIconGrid();
     modalEl.hidden = false;
     trigger.setAttribute("aria-expanded", "true");
@@ -476,7 +484,10 @@ export function mountTimeAddTaskIconPicker(mountEl) {
     setSelectedKey: (key) => {
       selectedKey = String(key || "").trim();
       previewSrc = selectedKey ? "" : previewSrc;
-      if (selectedKey) userPickedIcon = true;
+      if (selectedKey) {
+        userPickedIcon = true;
+        warmPickerIconKeyInSwCache(selectedKey);
+      }
       syncTrigger();
       syncGridSelection();
     },

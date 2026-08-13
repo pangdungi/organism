@@ -47,6 +47,7 @@ import {
   preloadCalendarMonthFont,
 } from "./utils/appUiFont.js";
 import { prefetchCriticalAppIconAssets } from "./utils/appIconPrefetch.js";
+import { warmDefaultAndInUsePickerIcons } from "./utils/pickerIconCacheWarm.js";
 import { setAppSplashMessage } from "./utils/lpAppLoading.js";
 import {
   initAppSplashViewportLock,
@@ -428,6 +429,7 @@ async function enterAuthenticatedApp(opts = {}) {
       finishStep("메인 화면 조립(mountApp)");
       await waitForAppBootReady();
       prefetchCriticalAppIconAssets();
+      void warmDefaultAndInUsePickerIcons();
       refreshLpPwaInstall();
 
       markTabBootAuthUid(uid);
