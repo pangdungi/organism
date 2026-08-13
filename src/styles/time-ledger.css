@@ -6691,7 +6691,6 @@
 .time-ledger-day-timebox-matrix-row-label,
 [data-legacy~="time-ledger-view"] .time-ledger-day-timebox-matrix-col-label,
 [data-legacy~="time-ledger-view"] .time-ledger-day-timebox-matrix-row-label {
-  font-size: 0.5625rem;
   font-weight: 600;
   letter-spacing: 0;
   color: #c4c4c4;
@@ -6700,11 +6699,31 @@
   font-variant-numeric: tabular-nums;
 }
 
+.time-ledger-day-timebox-matrix-row-label,
+[data-legacy~="time-ledger-view"] .time-ledger-day-timebox-matrix-row-label {
+  font-size: 0.5625rem;
+}
+
+/* 분(5·10…) — 칸이 좁아 작게 · 칸 가운데 정렬 */
 .time-ledger-day-timebox-matrix-col-label,
 [data-legacy~="time-ledger-view"] .time-ledger-day-timebox-matrix-col-label {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
+  font-size: 0.4375rem;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  text-align: center;
+  color: #d0d0d0;
+}
+
+/* 실제|예상 듀얼 — 열이 더 좁아 분 숫자만 한 단계 더 축소 */
+.time-ledger-day-timebox-dual-pane .time-ledger-day-timebox-matrix-col-label,
+[data-legacy~="time-ledger-view"]
+  .time-ledger-day-timebox-dual-pane
+  .time-ledger-day-timebox-matrix-col-label {
+  font-size: 0.35rem;
+  letter-spacing: -0.06em;
 }
 
 .time-ledger-day-timebox-matrix-row-label,
