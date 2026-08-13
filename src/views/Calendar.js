@@ -2005,14 +2005,6 @@ function lpCalendarGuardCellClickFromMonthlyBar(e) {
   return lpCalendarClickHitsMonthlySpanBar(e);
 }
 
-function lpCalendarIsMobileViewport() {
-  try {
-    return window.matchMedia("(max-width: 46rem)").matches;
-  } catch (_) {
-    return false;
-  }
-}
-
 function lpCalendarFindMonthlyDayCell(dateKey, barEl) {
   const key = String(dateKey || "").trim().slice(0, 10);
   if (!key) return null;
@@ -2070,34 +2062,33 @@ function lpAttachCalendarBarOpenTodoEdit(
     if (suppressClickAfterDrag) return;
     e.preventDefault();
     e.stopPropagation();
-    if (lpCalendarIsMobileViewport()) {
-      const dateKey = lpCalendarDayKeyFromSpanBarClick(bar, b, e);
-      const cell = lpCalendarFindMonthlyDayCell(dateKey, bar);
-      if (cell && dateKey) {
-        lpOpenCalendarMonthlyDayActionBubble(
-          cell,
-          dateKey,
-          (meta) => {
+    /* 모바일·데스크탑·3분할 공통: 날짜 목록 모달 먼저 → 항목 클릭 시 수정 */
+    const dateKey = lpCalendarDayKeyFromSpanBarClick(bar, b, e);
+    const cell = lpCalendarFindMonthlyDayCell(dateKey, bar);
+    if (cell && dateKey) {
+      lpOpenCalendarMonthlyDayActionBubble(
+        cell,
+        dateKey,
+        (meta) => {
+          try {
+            renderCalendar?.(meta);
+          } catch (_) {}
+          try {
+            refreshTodoList?.();
+          } catch (_) {}
+        },
+        {
+          onAfterStampChange: () => {
             try {
-              renderCalendar?.(meta);
+              patchDayStamp?.(dateKey);
             } catch (_) {}
             try {
               refreshTodoList?.();
             } catch (_) {}
           },
-          {
-            onAfterStampChange: () => {
-              try {
-                patchDayStamp?.(dateKey);
-              } catch (_) {}
-              try {
-                refreshTodoList?.();
-              } catch (_) {}
-            },
-          },
-        );
-        return;
-      }
+        },
+      );
+      return;
     }
     lpOpenCalendarTaskEdit(b, {
       selectionEl: bar,
@@ -2667,6 +2658,7 @@ function createCalendarDayExpandBubble(
   }
 
   const BUBBLE_PADDING = 16;
+  const BUBBLE_MIN_W = 280;
   let top = positionBelow
     ? cellRect.bottom + 4
     : Math.min(cellRect.top, window.innerHeight - 320);
@@ -2682,24 +2674,55 @@ function createCalendarDayExpandBubble(
       zIndex: "1002",
     });
   } else {
+    const left = Math.max(
+      BUBBLE_PADDING,
+      Math.min(cellRect.left, window.innerWidth - BUBBLE_MIN_W - BUBBLE_PADDING),
+    );
     Object.assign(bubble.style, {
       position: "fixed",
-      left: `${Math.min(cellRect.left, window.innerWidth - 280)}px`,
-      top: `${top}px`,
+      left: `${left}px`,
+      top: `${Math.max(BUBBLE_PADDING, top)}px`,
+      maxHeight: `min(70vh, ${Math.max(180, window.innerHeight - BUBBLE_PADDING * 2)}px)`,
+      overflowY: "auto",
       zIndex: "1002",
     });
   }
 
   document.body.appendChild(bubble);
 
-  if (!isMobile && positionBelow) {
-    const bubbleHeight = bubble.getBoundingClientRect().height;
+  if (!isMobile) {
+    const br = bubble.getBoundingClientRect();
+    const bubbleHeight = br.height;
+    const bubbleWidth = br.width || BUBBLE_MIN_W;
+    let nextTop = positionBelow ? cellRect.bottom + 4 : top;
     if (
-      cellRect.bottom + 4 + bubbleHeight >
-      window.innerHeight - BUBBLE_PADDING
+      positionBelow &&
+      nextTop + bubbleHeight > window.innerHeight - BUBBLE_PADDING
     ) {
-      bubble.style.top = `${cellRect.top - bubbleHeight - 4}px`;
+      nextTop = cellRect.top - bubbleHeight - 4;
     }
+    if (nextTop < BUBBLE_PADDING) {
+      nextTop = BUBBLE_PADDING;
+    }
+    if (nextTop + bubbleHeight > window.innerHeight - BUBBLE_PADDING) {
+      nextTop = Math.max(
+        BUBBLE_PADDING,
+        window.innerHeight - bubbleHeight - BUBBLE_PADDING,
+      );
+    }
+    let nextLeft = Math.max(
+      BUBBLE_PADDING,
+      Math.min(
+        cellRect.left,
+        window.innerWidth - bubbleWidth - BUBBLE_PADDING,
+      ),
+    );
+    bubble.style.top = `${nextTop}px`;
+    bubble.style.left = `${nextLeft}px`;
+    bubble.style.maxHeight = `${Math.max(
+      160,
+      window.innerHeight - nextTop - BUBBLE_PADDING,
+    )}px`;
   }
 
   return { bubble, close };
