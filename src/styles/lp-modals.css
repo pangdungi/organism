@@ -1984,14 +1984,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 }
 .lp-calendar-budget-add-modal
   [data-legacy~="lp-expected-planned-todos-preview"] {
-  flex: 0 0 auto;
-  margin: 0.4rem 0 0;
-  padding: 0.35rem 0.45rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background: rgba(30, 77, 123, 0.04);
-  box-sizing: border-box;
-  min-width: 0;
+  display: none !important;
 }
 .lp-calendar-budget-add-modal .lp-expected-planned-todos-preview-line {
   font-size: 0.8125rem;

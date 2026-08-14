@@ -907,7 +907,7 @@ export function openCalendarExpectedScheduleModal(options) {
                 <h4 data-legacy="time-task-log-kpi-todos-title">할 일 목록</h4>
                 <button type="button" data-legacy="lp-expected-kpi-todo-add-btn" aria-label="할 일 추가">+</button>
               </div>
-              <p data-legacy="time-task-log-kpi-todos-hint">오늘 할 항목을 누르면 골라집니다 (과제 기록에만 표시)</p>
+              <p data-legacy="time-task-log-kpi-todos-hint" hidden>오늘 할 항목을 누르면 골라집니다 (과제 기록에만 표시)</p>
               <p data-legacy="time-task-log-kpi-todos-status" hidden></p>
               <div data-legacy="time-task-log-kpi-todos-scroll" hidden>
                 <div data-legacy="time-task-log-kpi-todos-list"></div>
@@ -1007,6 +1007,48 @@ export function openCalendarExpectedScheduleModal(options) {
   const taskLogKpiTodosScroll = modal.querySelector(
     '[data-legacy~="time-task-log-kpi-todos-scroll"]',
   );
+  /* 바깥 모달 스크롤이 가로채지 않게 — 회색 칸 안에서만 스크롤 */
+  if (taskLogKpiTodosScroll) {
+    taskLogKpiTodosScroll.addEventListener(
+      "wheel",
+      (e) => {
+        const el = taskLogKpiTodosScroll;
+        const max = el.scrollHeight - el.clientHeight;
+        if (max <= 0) return;
+        const next = Math.min(max, Math.max(0, el.scrollTop + e.deltaY));
+        el.scrollTop = next;
+        e.preventDefault();
+        e.stopPropagation();
+      },
+      { passive: false, signal },
+    );
+    let touchLastY = 0;
+    taskLogKpiTodosScroll.addEventListener(
+      "touchstart",
+      (e) => {
+        if (e.touches.length === 1) touchLastY = e.touches[0].clientY;
+      },
+      { passive: true, signal },
+    );
+    taskLogKpiTodosScroll.addEventListener(
+      "touchmove",
+      (e) => {
+        if (e.touches.length !== 1) return;
+        const el = taskLogKpiTodosScroll;
+        const max = el.scrollHeight - el.clientHeight;
+        if (max <= 0) return;
+        const y = e.touches[0].clientY;
+        const dy = touchLastY - y;
+        touchLastY = y;
+        el.scrollTop = Math.min(max, Math.max(0, el.scrollTop + dy));
+        if (e.cancelable) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      },
+      { passive: false, signal },
+    );
+  }
   const taskLogKpiTodosStatus = modal.querySelector(
     '[data-legacy~="time-task-log-kpi-todos-status"]',
   );
@@ -1068,19 +1110,10 @@ export function openCalendarExpectedScheduleModal(options) {
   }
 
   function refreshPlannedTodosPreview() {
+    /* 목록에서 체크(is-planned)로 보이므로 아래 미리보기 칸은 쓰지 않음 */
     if (!plannedTodosPreview) return;
     plannedTodosPreview.replaceChildren();
-    if (!plannedTodoSelection.size) {
-      plannedTodosPreview.hidden = true;
-      return;
-    }
-    plannedTodosPreview.hidden = false;
-    for (const text of plannedTodoSelection.values()) {
-      const line = document.createElement("div");
-      line.className = "lp-expected-planned-todos-preview-line";
-      line.textContent = `◽️ ${text}`;
-      plannedTodosPreview.appendChild(line);
-    }
+    plannedTodosPreview.hidden = true;
   }
 
   function togglePlannedTodoSelection(todoId, todoText) {
