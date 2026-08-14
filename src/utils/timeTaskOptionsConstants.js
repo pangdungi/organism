@@ -326,12 +326,21 @@ export const UNPRODUCTIVE_CONVERSATION_TYPE_OPTIONS = CONVERSATION_TYPE_OPTIONS;
 /** 말 점검 표 (생산·비생산 대화 공통) */
 export const CONVERSATION_SPEECH_CHECK_OPTIONS = [
   "말 끊음",
-  "나에게 쏠린 대화중심",
-  "말하는 동안 다음할말 준비",
+  "나에게 쏠린 대화 중심",
+  "말하는 동안 다음 할 말 준비",
   "묻지 않은 조언",
   "자리에 없는 사람 이야기",
   "휴대폰 보기",
+  "근거 없는 말",
+  "거짓말",
 ];
+
+/** 말 점검 — 구 문구 → 현재 문구 (저장된 meal_detail 호환) */
+const CONVERSATION_SPEECH_CHECK_LEGACY_LABEL = {
+  "나에게 쏠린 대화중심": "나에게 쏠린 대화 중심",
+  "말하는 동안 다음할말 준비": "말하는 동안 다음 할 말 준비",
+  "근거없는 말": "근거 없는 말",
+};
 /** 종류 칩과 대화명 사이 구분자 */
 export const CONVERSATION_TYPE_NAME_SEP = "｜";
 /** 대화명(·종류)과 말 점검 사이 구분자 */
@@ -608,8 +617,10 @@ export function normalizeConversationSpeechChecks(values) {
   /** @type {string[]} */
   const out = [];
   for (const v of values || []) {
-    const label = String(v || "").trim();
-    if (!label || !order.has(label) || seen.has(label)) continue;
+    let label = String(v || "").trim();
+    if (!label) continue;
+    label = CONVERSATION_SPEECH_CHECK_LEGACY_LABEL[label] || label;
+    if (!order.has(label) || seen.has(label)) continue;
     seen.add(label);
     out.push(label);
   }
