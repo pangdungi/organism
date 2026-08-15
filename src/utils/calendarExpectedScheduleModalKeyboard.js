@@ -215,13 +215,10 @@ function bindExpectedScheduleKeyboardShell(modal, scrollArea, signal) {
     "focusout",
     () => {
       window.setTimeout(() => {
+        if (!modal.isConnected) return;
         const active = document.activeElement;
         if (active instanceof HTMLElement && modal.contains(active)) return;
-        setExpectedMemoScrollMode(scrollArea, false);
-        clearExpectedShellGeometry(modal, scrollArea);
-        try {
-          document.documentElement.classList.remove(EXPECTED_SHELL_CLASS);
-        } catch (_) {}
+        clearExpectedScheduleModalKeyboardShell(modal, scrollArea);
       }, 120);
     },
     { capture: true, signal },
@@ -274,6 +271,7 @@ export function bindExpectedScheduleModalKeyboard(modal, scrollArea, signal) {
 export function clearExpectedScheduleModalKeyboardShell(modal, scrollArea) {
   try {
     document.documentElement.classList.remove(EXPECTED_SHELL_CLASS);
+    document.documentElement.classList.remove("lp-keyboard-open");
   } catch (_) {}
   setExpectedMemoScrollMode(scrollArea, false);
   if (modal instanceof HTMLElement) clearExpectedShellGeometry(modal, scrollArea);

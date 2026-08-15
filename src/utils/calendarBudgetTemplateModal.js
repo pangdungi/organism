@@ -231,7 +231,7 @@ function openBudgetTemplatePreviewModal(template, callbacks = {}) {
 function openBudgetTemplateClearModal(callbacks = {}) {
   const dk = normalizeDateKey(callbacks.dateKey);
   if (!dk) return;
-  const shell = mountBudgetTemplateModalShell("템플릿 없음", {
+  const shell = mountBudgetTemplateModalShell("현재 템플릿 비우기", {
     variant: "clear",
   });
   if (!shell) return;
@@ -394,8 +394,8 @@ export function openApplyBudgetTemplateModal(options) {
     const nonePick = document.createElement("button");
     nonePick.type = "button";
     nonePick.className = "lp-budget-template-pick-name";
-    nonePick.textContent = "템플릿 없음";
-    nonePick.setAttribute("aria-label", "템플릿 없음");
+    nonePick.textContent = "현재 템플릿 비우기";
+    nonePick.setAttribute("aria-label", "현재 템플릿 비우기");
     nonePick.addEventListener("click", () => {
       openBudgetTemplateClearModal({
         dateKey: dk,

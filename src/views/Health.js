@@ -106,10 +106,6 @@ import {
 } from "../utils/kpiTabNameEditIcon.js";
 import { kpiCardHeadHtml, wireKpiCardIconsIn } from "../utils/kpiCardIcon.js";
 import { appendKpiCardToGrid } from "../utils/kpiCardDeadlineFoot.js";
-import {
-  setupKpiCategoryHeaderIcon,
-  setKpiCategoryHeaderIconVisible,
-} from "../utils/kpiCategoryHeaderIcon.js";
 import { sortKpiLogsNewestFirst, getLatestKpiLogWithExplicitValue } from "../utils/kpiLogsSort.js";
 import {
   deletedRefsKpiTodosLen,
@@ -146,6 +142,7 @@ import {
   isKpiTwoPaneSplitViewport,
   kpiTwoPanePlaceholderHtml,
   setKpiFooterBackVisible,
+  ensureKpiHeaderBackButton,
 } from "../utils/kpiTwoPaneSplit.js";
 
 const FIXED_TASK_NAMES = new Set(["수면하기", "근무하기"]);
@@ -533,17 +530,22 @@ export function render() {
 
   const header = document.createElement("header");
   header.className = "dream-view-header";
+  const titleRow = document.createElement("div");
+  titleRow.className = "dream-view-header-title-row";
+  const textCol = document.createElement("div");
+  textCol.className = "dream-view-header-text";
   const label = document.createElement("span");
   label.className = "dream-view-label";
   label.textContent = "HEALTH";
-  const titleRow = document.createElement("div");
-  titleRow.className = "dream-view-header-title-row";
+  const titleInner = document.createElement("div");
+  titleInner.className = "dream-view-header-title-inner";
   const title = document.createElement("h1");
   title.className = "dream-view-title";
   title.textContent = "건강";
-  titleRow.appendChild(title);
-  setupKpiCategoryHeaderIcon(titleRow, "health");
-  header.appendChild(label);
+  titleInner.appendChild(title);
+  textCol.append(label, titleInner);
+  titleRow.appendChild(textCol);
+  ensureKpiHeaderBackButton(titleRow, { label: "오늘(메인)으로" });
   header.appendChild(titleRow);
   el.appendChild(header);
 
@@ -711,9 +713,9 @@ export function render() {
   }
 
   function syncHealthHeader() {
+    ensureKpiHeaderBackButton(titleRow, { label: "오늘(메인)으로" });
     if (wantsSplitLayout() || layoutIsSplit) {
       title.textContent = "건강";
-      setKpiCategoryHeaderIconVisible(titleRow, true);
       syncHealthFooterBackLabel();
       return;
     }
@@ -724,7 +726,6 @@ export function render() {
     } else {
       title.textContent = "건강";
     }
-    setKpiCategoryHeaderIconVisible(titleRow, healthViewScreen === "main");
     syncHealthFooterBackLabel();
   }
 

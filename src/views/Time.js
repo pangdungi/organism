@@ -232,6 +232,7 @@ import {
 } from "../utils/expectedScheduleDetail.js";
 import {
   findNextExpectedBudgetBlockForRecording,
+  listExpectedScheduleBlocksForDate,
   listOpenExpectedScheduleBlocksForDate,
   nextExpectedBudgetBlockKey,
   readDismissedNextExpectedBlockKeys,
@@ -5537,6 +5538,11 @@ function createNextExpectedScheduleTimelineItem(block, handlers) {
     scheduleDetail: block.detail,
     scheduleMemo: block.memo,
   }).join("\n");
+  /* 클릭 시 저장소가 비어도 카드에 있던 메모를 넘기기 위해 보관 */
+  try {
+    item.dataset.lpLockedMemo = String(block.memo || "").trim();
+    item.dataset.lpLockedDetail = String(block.detail || "").trim();
+  } catch (_) {}
 
   const actions = document.createElement("div");
   actions.className = "time-ledger-next-expected-actions";
@@ -12152,6 +12158,7 @@ export function render(opts = {}) {
     if (presetTask) {
       taskLogTaskDropdown?._setValue?.(presetTask);
       onTaskSelectedForLog(presetTask);
+      applyExpectedSchedulePresetsToTaskLogModal(taskLogAddContext);
       return;
     }
     const v = (taskLogTaskDropdown?._getValue?.() || "").trim();
@@ -12170,6 +12177,9 @@ export function render(opts = {}) {
         taskLogTaskDropdown?._setValue?.(first);
         onTaskSelectedForLog(first);
       }
+    }
+    if (taskLogAddContext?.presetMemo != null || taskLogAddContext?.presetDetail) {
+      applyExpectedSchedulePresetsToTaskLogModal(taskLogAddContext);
     }
   }
 
@@ -12202,26 +12212,196 @@ export function render(opts = {}) {
     lastFocusedTimeField = "end";
   }
 
+  /** 예상 일정 슬롯 — 저장소에서 메모·상세를 다시 읽음(닫힌 슬롯 포함) */
+  function readExpectedScheduleSlotFieldsFromBudget(dateKey, blockOrCtx) {
+    const dk = String(dateKey || "")
+      .replace(/\//g, "-")
+      .trim()
+      .slice(0, 10);
+    const taskName = String(
+      blockOrCtx?.taskName || blockOrCtx?.presetTaskName || "",
+    ).trim();
+    const timeIdxRaw = blockOrCtx?.timeIdx ?? blockOrCtx?.presetTimeIdx;
+    const timeIdx = Number(timeIdxRaw);
+    const blockKey = String(
+      blockOrCtx?.key ||
+        blockOrCtx?.presetNextExpectedBlockKey ||
+        "",
+    ).trim();
+    /* 클릭·프리셋 잠금 값을 최우선 — goals 재조회가 비워도 유지 */
+    let memo = String(
+      blockOrCtx?._lockedPresetMemo ||
+        blockOrCtx?.memo ||
+        blockOrCtx?.presetMemo ||
+        "",
+    ).trim();
+    let detail = String(
+      blockOrCtx?._lockedPresetDetail ||
+        blockOrCtx?.detail ||
+        blockOrCtx?.presetDetail ||
+        "",
+    ).trim();
+    let plannedTodoIds = [];
+    const fromCtxPlanned =
+      blockOrCtx?.plannedTodoIds || blockOrCtx?.presetPlannedTodoIds;
+    if (Array.isArray(fromCtxPlanned)) {
+      plannedTodoIds = fromCtxPlanned
+        .map((x) => String(x || "").trim())
+        .filter(Boolean);
+    }
+
+    /* 1) goals — 블록 키(과제|시작|마감)로 슬롯 맞추고, 없을 때만 timeIdx */
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dk) && taskName) {
+      try {
+        const entry = getBudgetGoals(dk)?.[taskName];
+        if (entry && typeof entry === "object") {
+          const memos = Array.isArray(entry.scheduleMemos)
+            ? entry.scheduleMemos
+            : [];
+          const details = Array.isArray(entry.scheduleDetails)
+            ? entry.scheduleDetails
+            : [];
+          const planned = Array.isArray(entry.schedulePlannedTodoIds)
+            ? entry.schedulePlannedTodoIds
+            : [];
+          const times = Array.isArray(entry.scheduledTimes)
+            ? entry.scheduledTimes
+            : entry.scheduledTime
+              ? [String(entry.scheduledTime)]
+              : [];
+          let ix = -1;
+          if (blockKey) {
+            const keyParts = blockKey.split("|");
+            if (keyParts.length >= 3) {
+              const wantStart = String(keyParts[keyParts.length - 2] || "").trim();
+              const wantEnd = String(keyParts[keyParts.length - 1] || "").trim();
+              for (let i = 0; i < times.length; i++) {
+                const parts = String(times[i] || "").trim().split("-");
+                if (parts.length < 2) continue;
+                const st = parseBudgetTimeToNormalizedHhMm(parts[0]);
+                const et = parseBudgetTimeToNormalizedHhMm(parts[1]);
+                if (st === wantStart && et === wantEnd) {
+                  ix = i;
+                  break;
+                }
+              }
+            }
+          }
+          if (ix < 0 && Number.isFinite(timeIdx) && timeIdx >= 0) ix = timeIdx;
+          if (ix >= 0) {
+            if (!memo) memo = String(memos[ix] || "").trim();
+            if (!detail) detail = String(details[ix] || "").trim();
+            if (!plannedTodoIds.length) {
+              plannedTodoIds = normalizeSchedulePlannedTodoIdsEntry(planned[ix]);
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    /* 2) 블록 목록으로 키 매칭 (있을 때만 보강) */
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dk)) {
+      const blocks = listExpectedScheduleBlocksForDate(dk);
+      let hit = null;
+      if (blockKey) {
+        hit = blocks.find((b) => nextExpectedBudgetBlockKey(b) === blockKey) || null;
+      }
+      if (!hit && taskName && Number.isFinite(timeIdx) && timeIdx >= 0) {
+        hit =
+          blocks.find(
+            (b) =>
+              String(b.taskName || "").trim() === taskName &&
+              Number(b.timeIdx) === timeIdx,
+          ) || null;
+      }
+      if (hit) {
+        if (!memo) memo = String(hit.memo || "").trim();
+        if (!detail) detail = String(hit.detail || "").trim();
+        if (!plannedTodoIds.length) {
+          plannedTodoIds = Array.isArray(hit.plannedTodoIds)
+            ? hit.plannedTodoIds
+                .map((x) => String(x || "").trim())
+                .filter(Boolean)
+            : [];
+        }
+      }
+    }
+    return { memo, detail, plannedTodoIds, taskName };
+  }
+
   /** 「지금 실행하기」등 — 예상 일정의 메모·상세를 과제 기록 모달에 채움 */
   function applyExpectedSchedulePresetsToTaskLogModal(ctx) {
-    /* 예전 ◽️ 계획 줄은 메모가 아님 — 할일 목록 필터로만 씀 */
-    const memo = String(ctx?.presetMemo || "")
-      .split(/\n/)
-      .filter((line) => {
-        const t = String(line || "").trim();
-        if (!t) return false;
-        return !/^(?:⬜|▫|□|◽|◽️)\s*/u.test(t);
-      })
-      .join("\n")
-      .trim();
-    const detail = String(ctx?.presetDetail || "").trim();
+    if (!ctx) return;
+    const ymd = String(
+      ctx.recordDateKey ||
+        taskLogAddContext?.recordDateKey ||
+        taskLogResolveYmdForPlannedSlots() ||
+        "",
+    )
+      .replace(/\//g, "-")
+      .trim()
+      .slice(0, 10);
+    const lockedMemo = String(
+      ctx._lockedPresetMemo ||
+        taskLogAddContext?._lockedPresetMemo ||
+        ctx.presetMemo ||
+        taskLogAddContext?.presetMemo ||
+        "",
+    ).trim();
+    const fresh = readExpectedScheduleSlotFieldsFromBudget(ymd, {
+      ...ctx,
+      taskName: ctx.presetTaskName,
+      memo: ctx.presetMemo,
+      detail: ctx.presetDetail,
+      plannedTodoIds: ctx.presetPlannedTodoIds,
+      key: ctx.presetNextExpectedBlockKey,
+      timeIdx: ctx.presetTimeIdx,
+      _lockedPresetMemo: lockedMemo,
+      _lockedPresetDetail:
+        ctx._lockedPresetDetail || taskLogAddContext?._lockedPresetDetail,
+    });
+    /* 잠긴 메모 우선 — sync/재조회가 비워도 클릭 시점 값을 지킴 */
+    let memo = lockedMemo || String(fresh.memo || "").trim();
+    /* 잠긴 값이 없을 때만 예전 ◽️ 계획 줄 제거. 본문 메모는 유지 */
+    if (
+      !lockedMemo &&
+      memo &&
+      /^(?:⬜|▫|□|◽|◽️)/u.test(
+        memo
+          .split(/\n/)
+          .map((l) => l.trim())
+          .find(Boolean) || "",
+      )
+    ) {
+      const kept = memo
+        .split(/\n/)
+        .filter((line) => {
+          const t = String(line || "").trim();
+          if (!t) return false;
+          return !/^(?:⬜|▫|□|◽|◽️)\s*/u.test(t);
+        })
+        .join("\n")
+        .trim();
+      if (kept) memo = kept;
+    }
+    const detail = String(
+      ctx._lockedPresetDetail ||
+        taskLogAddContext?._lockedPresetDetail ||
+        fresh.detail ||
+        "",
+    ).trim();
     const taskName = String(
-      ctx?.presetTaskName ||
+      fresh.taskName ||
+        ctx?.presetTaskName ||
         taskLogTaskDropdown?._getValue?.() ||
         "",
     ).trim();
-    if (memo && taskLogFeedbackInput) {
+    /* 빈 문자열로 덮어쓰지 않음 — rAF/클라우드 sync 재적용이 후기를 지우는 경로 차단 */
+    if (taskLogFeedbackInput && memo) {
       taskLogFeedbackInput.value = memo;
+    }
+    if (Array.isArray(fresh.plannedTodoIds) && fresh.plannedTodoIds.length) {
+      ctx.presetPlannedTodoIds = fresh.plannedTodoIds;
     }
     if (!detail || !taskName) {
       updateTaskLogMealDetailVisibility(taskName);
@@ -12292,7 +12472,22 @@ export function render(opts = {}) {
         taskAllowedForLedgerPreset(t, presetAdd),
       );
     const firstTask = pickTasks[0]?.name || "";
-    if (taskLogFeedbackInput) taskLogFeedbackInput.value = "";
+    const lockedOpenMemo = String(
+      addContext?._lockedPresetMemo || addContext?.presetMemo || "",
+    ).trim();
+    const hasExpectedMemoPreset = !!(
+      addContext?._lockedPresetMemo ||
+      addContext?.presetMemo ||
+      addContext?.presetNextExpectedBlockKey
+    );
+    if (taskLogFeedbackInput) {
+      /* 지금 실행하기: 빈 값으로 후기를 지우지 않음(아래에서 프리셋 재적용) */
+      if (hasExpectedMemoPreset) {
+        if (lockedOpenMemo) taskLogFeedbackInput.value = lockedOpenMemo;
+      } else {
+        taskLogFeedbackInput.value = "";
+      }
+    }
     if (taskLogMealDetailInput) {
       taskLogMealDetailInput.value = "";
       delete taskLogMealDetailInput.dataset.lpReadingAutoTitle;
@@ -14873,6 +15068,42 @@ export function render(opts = {}) {
               onStartNow: (itemEl) => {
                 const clickedAt = new Date();
                 const presetStartHhMm = `${String(clickedAt.getHours()).padStart(2, "0")}:${String(clickedAt.getMinutes()).padStart(2, "0")}`;
+                const nextBlockKey = nextExpectedBudgetBlockKey(nextExpected);
+                const fromItemMemo = String(
+                  itemEl?.dataset?.lpLockedMemo || "",
+                ).trim();
+                const fromItemDetail = String(
+                  itemEl?.dataset?.lpLockedDetail || "",
+                ).trim();
+                const freshSlot = readExpectedScheduleSlotFieldsFromBudget(
+                  viewingYmd,
+                  {
+                    ...nextExpected,
+                    key: nextBlockKey,
+                    _lockedPresetMemo:
+                      nextExpected.memo || fromItemMemo || "",
+                    _lockedPresetDetail:
+                      nextExpected.detail || fromItemDetail || "",
+                  },
+                );
+                /* 클릭 시점 메모를 잠금 — 이후 초기화·클라우드 sync가 비우지 못하게 */
+                const lockedMemo = String(
+                  freshSlot.memo ||
+                    nextExpected.memo ||
+                    fromItemMemo ||
+                    "",
+                ).trim();
+                const lockedDetail = String(
+                  freshSlot.detail ||
+                    nextExpected.detail ||
+                    fromItemDetail ||
+                    "",
+                ).trim();
+                const lockedPlanned = freshSlot.plannedTodoIds.length
+                  ? freshSlot.plannedTodoIds
+                  : Array.isArray(nextExpected.plannedTodoIds)
+                    ? nextExpected.plannedTodoIds
+                    : [];
                 rememberDismissedNextExpectedBlock(el, nextExpected, viewingYmd);
                 itemEl?.remove();
                 allRowsCache = closeTodayInProgressRowsAtNowAndSave(
@@ -14880,7 +15111,6 @@ export function render(opts = {}) {
                   viewingYmd,
                   clickedAt,
                 );
-                onFilterChange(true);
                 void openTaskLogModal({
                   productivity: null,
                   tbody: hiddenTbody,
@@ -14893,16 +15123,19 @@ export function render(opts = {}) {
                   createRow,
                   handleRowDelete: handleCardDelete,
                   handleRowEdit: handleCardEdit,
-                  presetTaskName: nextExpected.taskName,
+                  recordDateKey: viewingYmd,
+                  presetTaskName:
+                    freshSlot.taskName || nextExpected.taskName,
                   presetStartHhMm,
                   presetNextExpectedBlockKey: nextBlockKey,
-                  presetMemo: nextExpected.memo,
-                  presetDetail: nextExpected.detail,
-                  presetPlannedTodoIds: Array.isArray(
-                    nextExpected.plannedTodoIds,
-                  )
-                    ? nextExpected.plannedTodoIds
-                    : [],
+                  presetTimeIdx: Number(nextExpected.timeIdx),
+                  presetMemo: lockedMemo,
+                  _lockedPresetMemo: lockedMemo,
+                  presetDetail: lockedDetail,
+                  _lockedPresetDetail: lockedDetail,
+                  presetPlannedTodoIds: lockedPlanned,
+                }).finally(() => {
+                  onFilterChange(true);
                 });
               },
               onSkip: (itemEl) => {

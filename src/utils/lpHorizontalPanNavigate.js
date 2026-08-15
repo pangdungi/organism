@@ -223,19 +223,27 @@ export function bindLpHorizontalPanNavigate(root, opts) {
   }
 
   if (enableWheel) {
+    /* passive:false + preventDefault — 맥 트랙패드 가로 스와이프가 브라우저 뒤로가기로 새는 것 차단
+     * capture: 자식(날짜 셀 등)에서 가로 휠이 먼저 처리돼도 히스토리 제스처를 막음 */
     root.addEventListener(
       "wheel",
       (e) => {
+        const dx = e.deltaX;
+        const dy = e.deltaY;
+        const horizontal =
+          Math.abs(dx) >= 1 && Math.abs(dx) >= Math.abs(dy) * 0.85;
+        if (!horizontal) return;
+
         const now = Date.now();
-        if (now < wheelNavBlockedUntil) return;
+        if (now < wheelNavBlockedUntil) {
+          e.preventDefault();
+          return;
+        }
         if (touchPanActive) return;
         if (!isActive()) return;
         if (shouldIgnore(e.target)) return;
-        const dx = e.deltaX;
-        const dy = e.deltaY;
-        if (Math.abs(dx) < Math.abs(dy) * 0.85) return;
-        if (Math.abs(dx) < 1) return;
 
+        e.preventDefault();
         wheelAccum += dx;
         if (Math.abs(wheelAccum) < wheelThreshold) return;
         const sign = wheelAccum > 0 ? -1 : 1;
@@ -243,7 +251,7 @@ export function bindLpHorizontalPanNavigate(root, opts) {
         fireNavigate(sign);
         wheelNavBlockedUntil = Date.now() + wheelQuietMs;
       },
-      passive,
+      { passive: false, capture: true, signal },
     );
   }
 

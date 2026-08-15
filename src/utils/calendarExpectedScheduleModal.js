@@ -1924,6 +1924,11 @@ export function openCalendarExpectedScheduleModal(options) {
   syncExpectedGapFillBtnVisibility();
 
   const close = () => {
+    if (!modal.isConnected) return;
+    try {
+      const ae = document.activeElement;
+      if (ae instanceof HTMLElement && modal.contains(ae)) ae.blur();
+    } catch (_) {}
     try {
       ac.abort();
     } catch (_) {}
@@ -1958,10 +1963,41 @@ export function openCalendarExpectedScheduleModal(options) {
     });
   };
 
-  /* 배경 탭으로 닫지 않음 — 입력 중 실수로 닫히는 것 방지 (닫기는 ×만) */
-  modal
-    .querySelector('[data-legacy~="time-task-setup-close"]')
-    ?.addEventListener("click", close, { signal });
+  /* 키보드 열린 채 × 누르면 레이아웃이 먼저 움직여 click이 씹힘 → pointerdown에서 바로 닫기 */
+  const closeBtn = modal.querySelector(
+    '[data-legacy~="time-task-setup-close"]',
+  );
+  closeBtn?.addEventListener(
+    "pointerdown",
+    (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      /* 모달 제거 후 아래 화면으로 click이 뚫리는 것 막기 */
+      const swallowClick = (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+      };
+      document.addEventListener("click", swallowClick, {
+        capture: true,
+        once: true,
+      });
+      window.setTimeout(() => {
+        document.removeEventListener("click", swallowClick, { capture: true });
+      }, 500);
+      close();
+    },
+    { signal },
+  );
+  closeBtn?.addEventListener(
+    "click",
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      close();
+    },
+    { signal },
+  );
 
   submitBtn?.addEventListener(
     "click",

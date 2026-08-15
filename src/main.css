@@ -272,6 +272,8 @@ body {
 /* 손가락 가로 스와이프(캘린더·할일·시간레포트 등) — 세로 스크롤만 브라우저, 가로는 JS */
 .lp-horizontal-pan-navigate {
   touch-action: pan-y;
+  /* 맥 트랙패드 왼→오가 히스토리 뒤로가기로 나가지 않게 */
+  overscroll-behavior-x: none;
 }
 
 /* 하단 고정: 한 슬롯 안에서 뒤로 + 탭 액션을 칸 단위로 균등 분할 */

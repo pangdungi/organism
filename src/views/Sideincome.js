@@ -107,10 +107,7 @@ import {
 } from "../utils/kpiTabNameEditIcon.js";
 import { kpiCardHeadHtml, wireKpiCardIconsIn } from "../utils/kpiCardIcon.js";
 import { appendKpiCardToGrid } from "../utils/kpiCardDeadlineFoot.js";
-import {
-  setupKpiCategoryHeaderIcon,
-  setKpiCategoryHeaderIconVisible,
-} from "../utils/kpiCategoryHeaderIcon.js";
+import { ensureKpiHeaderBackButton } from "../utils/kpiTwoPaneSplit.js";
 import { sortKpiLogsNewestFirst } from "../utils/kpiLogsSort.js";
 import {
   deletedRefsKpiTodosLen,
@@ -537,17 +534,22 @@ export function render(opts = {}) {
 
   const header = document.createElement("header");
   header.className = "dream-view-header";
+  const titleRow = document.createElement("div");
+  titleRow.className = "dream-view-header-title-row";
+  const textCol = document.createElement("div");
+  textCol.className = "dream-view-header-text";
   const label = document.createElement("span");
   label.className = "dream-view-label";
   label.textContent = "TIME PRICE";
-  const titleRow = document.createElement("div");
-  titleRow.className = "dream-view-header-title-row";
+  const titleInner = document.createElement("div");
+  titleInner.className = "dream-view-header-title-inner";
   const title = document.createElement("h1");
   title.className = "dream-view-title";
   title.textContent = "시급 상승";
-  titleRow.appendChild(title);
-  setupKpiCategoryHeaderIcon(titleRow, "sideincome");
-  header.appendChild(label);
+  titleInner.appendChild(title);
+  textCol.append(label, titleInner);
+  titleRow.appendChild(textCol);
+  ensureKpiHeaderBackButton(titleRow, { label: "오늘(메인)으로" });
   header.appendChild(titleRow);
   el.appendChild(header);
 
@@ -721,9 +723,9 @@ export function render(opts = {}) {
   }
 
   function syncSideincomeHeader() {
+    ensureKpiHeaderBackButton(titleRow, { label: "오늘(메인)으로" });
     if (wantsSplitLayout() || layoutIsSplit) {
       title.textContent = "시급 상승";
-      setKpiCategoryHeaderIconVisible(titleRow, true);
       syncSideincomeFooterBackLabel();
       return;
     }
@@ -737,7 +739,6 @@ export function render(opts = {}) {
     } else {
       title.textContent = "시급 상승";
     }
-    setKpiCategoryHeaderIconVisible(titleRow, sideincomeViewScreen === "goals");
     syncSideincomeFooterBackLabel();
   }
 
