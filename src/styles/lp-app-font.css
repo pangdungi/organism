@@ -126,6 +126,36 @@ select:-webkit-autofill:focus {
 }
 
 @font-face {
+  font-family: "LP UhBee ZZIBA";
+  src: url("/fonts/LP-UhBee-ZZIBA.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0100-024F, U+1100-11FF, U+2000-206F, U+3000-303F,
+    U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF, U+FF00-FFEF;
+}
+
+@font-face {
+  font-family: "LP Griun Oksooni";
+  src: url("/fonts/LP-Griun-Oksooni-Rg.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0100-024F, U+1100-11FF, U+2000-206F, U+3000-303F,
+    U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF, U+FF00-FFEF;
+}
+
+@font-face {
+  font-family: "LP Griun Myoeunddobak";
+  src: url("/fonts/LP-Griun-Myoeunddobak-Rg.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0100-024F, U+1100-11FF, U+2000-206F, U+3000-303F,
+    U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF, U+FF00-FFEF;
+}
+
+@font-face {
   font-family: "Hello Scratchy Outlines";
   src: url("/fonts/Hello-Scratchy-Outlines.otf") format("opentype");
   font-weight: normal;

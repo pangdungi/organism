@@ -152,6 +152,12 @@ export function render() {
             return;
           }
           syncFontPickerSelection(res.id);
+          if (res.mismatched) {
+            showToast(
+              "선택한 글꼴이 아직 서버에 등록되지 않아 저장되지 않았습니다.",
+            );
+            return;
+          }
           showToast("글꼴이 적용되었습니다.");
         })
         .finally(() => {

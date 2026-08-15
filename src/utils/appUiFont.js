@@ -49,6 +49,30 @@ export const UI_FONT_DEFS = {
     format: "truetype",
     weight: 400,
   },
+  uhbeezziba: {
+    id: "uhbeezziba",
+    label: "어비 찌바체",
+    family: "LP UhBee ZZIBA",
+    url: "/fonts/LP-UhBee-ZZIBA.ttf",
+    format: "truetype",
+    weight: 400,
+  },
+  oksooni: {
+    id: "oksooni",
+    label: "그리운 옥수니체",
+    family: "LP Griun Oksooni",
+    url: "/fonts/LP-Griun-Oksooni-Rg.ttf",
+    format: "truetype",
+    weight: 400,
+  },
+  myoeunddobak: {
+    id: "myoeunddobak",
+    label: "그리운 묘은또박체",
+    family: "LP Griun Myoeunddobak",
+    url: "/fonts/LP-Griun-Myoeunddobak-Rg.ttf",
+    format: "truetype",
+    weight: 400,
+  },
 };
 
 /** 나의 계정 — 선택 가능한 UI 글꼴(기본 포함) */
@@ -57,6 +81,9 @@ export const UI_FONT_PICKER_OPTIONS = [
   UI_FONT_DEFS.gongbujahana,
   UI_FONT_DEFS.mitmi,
   UI_FONT_DEFS.myeoneunheulrim,
+  UI_FONT_DEFS.uhbeezziba,
+  UI_FONT_DEFS.oksooni,
+  UI_FONT_DEFS.myoeunddobak,
 ];
 
 const LEGACY_UI_FONT_ALIASES = {
@@ -66,6 +93,8 @@ const LEGACY_UI_FONT_ALIASES = {
   cocochoitoon: "mitmi",
   mongtori: "mitmi",
   cherryspoon: "mitmi",
+  uhbeerice: "mitmi",
+  fromsol: "mitmi",
 };
 
 /** @deprecated applyUiFontById 사용 */
@@ -200,13 +229,34 @@ export async function pullUserUiFontFromSupabase() {
 /** @param {string} fontId — 서버 저장 성공 후에만 로컬·화면 반영 */
 export async function saveUserUiFontToSupabase(fontId) {
   if (!supabase) return { ok: false };
-  const id = normalizeUiFontId(fontId);
+  const requestedId = normalizeUiFontId(fontId);
   const { error } = await supabase.rpc("set_my_ui_font_id", {
-    p_font_id: id,
+    p_font_id: requestedId,
   });
-  if (error) return { ok: false, id, error };
-  persistUiFontIdLocal(id);
-  applyUiFontById(id);
-  await preloadUiFontById(id);
-  return { ok: true, id };
+  if (error) return { ok: false, id: requestedId, error };
+  /* 서버 allowlist가 옛것이면 다른 id(밑미 등)로 저장될 수 있음 → 실제 저장값으로 맞춤 */
+  let savedId = requestedId;
+  try {
+    const {
+      data: { session },
+    } = await getSupabaseSession();
+    if (session?.user?.id) {
+      const { data } = await supabase
+        .from("user_subscriptions")
+        .select("ui_font_id")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+      if (data?.ui_font_id != null && String(data.ui_font_id).trim() !== "") {
+        savedId = normalizeUiFontId(data.ui_font_id);
+      }
+    }
+  } catch (_) {}
+  persistUiFontIdLocal(savedId);
+  applyUiFontById(savedId);
+  await preloadUiFontById(savedId);
+  return {
+    ok: true,
+    id: savedId,
+    mismatched: savedId !== requestedId,
+  };
 }
