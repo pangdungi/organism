@@ -213,6 +213,7 @@ import {
 } from "../utils/timeLedgerCardKpiMemo.js";
 import {
   formatEmotionReflectMemoDisplay,
+  packEmotionReflectMemo,
   parseEmotionReflectMemo,
 } from "../utils/timeEmotionReflectMemo.js";
 import { mountTimeLedgerMemoFeed } from "../utils/timeLedgerMemoFeed.js";
@@ -8073,16 +8074,24 @@ export function render(opts = {}) {
   }
 
   function syncTaskLogEmotionReflectVisibility(taskName) {
-    /* 감정적이기 — 사실/해석 없이 감정 상태(+일반 메모)만 */
+    const show = TTC.isNegativeEmotionalTaskName(taskName);
     if (taskLogEmotionReflectSection) {
-      taskLogEmotionReflectSection.hidden = true;
+      taskLogEmotionReflectSection.hidden = !show;
     }
     if (taskLogMemoDefaultField) {
-      taskLogMemoDefaultField.hidden = false;
+      taskLogMemoDefaultField.hidden = show;
     }
-    if (String(taskName || "").trim()) {
-      clearTaskLogEmotionReflectInputs();
+    if (taskLogEmotionFactLabel) {
+      taskLogEmotionFactLabel.textContent = show
+        ? "상황에 대한 사실만 적기 (필수)"
+        : "상황에 대한 사실만 적기";
     }
+    if (taskLogEmotionInterpLabel) {
+      taskLogEmotionInterpLabel.textContent = show
+        ? "내 해석 적기 (필수)"
+        : "내 해석 적기";
+    }
+    if (!show) clearTaskLogEmotionReflectInputs();
   }
 
   /** 메모 textarea 커서 위치에 문자 삽입(이모티콘 창 없이 □ 등) */
@@ -9667,15 +9676,9 @@ export function render(opts = {}) {
         ? `${prompt} 적어 주세요`
         : "감정을 고른 뒤, 무엇이 그렇게 느끼게 했는지 적어 주세요";
     } else if (TTC.isNegativeEmotionalTaskName(tn)) {
-      const cat = getEmotionCategoryByRating(
-        getTaskLogTimeRating(),
-        "negative",
-      );
-      const prompt = getEmotionMemoPrompt(cat);
-      memoLabel = prompt || "무엇이 그렇게 느끼게 했어요?";
-      memoPlaceholder = prompt
-        ? `${prompt} 적어 주세요`
-        : "감정을 고른 뒤, 무엇이 그렇게 느끼게 했는지 적어 주세요";
+      /* 부정 감정 — 사실/해석 2칸 (기본 메모 칸 숨김) */
+      memoLabel = TASK_LOG_MEMO_LABEL_DEFAULT;
+      memoPlaceholder = TASK_LOG_MEMO_PLACEHOLDER_DEFAULT;
     } else if (isTaskLogGeneralReviewTask(tn)) {
       memoLabel = TASK_LOG_MEMO_LABEL_REVIEW;
       memoPlaceholder = TASK_LOG_MEMO_PLACEHOLDER_REVIEW;
@@ -9762,8 +9765,14 @@ export function render(opts = {}) {
       else clearTaskLogSpeechChecks();
     }
     if (taskLogEmotionTriggerSection) {
-      taskLogEmotionTriggerSection.hidden = true;
-      clearTaskLogEmotionTrigger();
+      const showTrigger = isEmotion && TTC.emotionTaskUsesTriggers(tn);
+      taskLogEmotionTriggerSection.hidden = !showTrigger;
+      if (taskLogEmotionTriggerLabel) {
+        taskLogEmotionTriggerLabel.textContent = showTrigger
+          ? "트리거 (필수)"
+          : "트리거";
+      }
+      if (!showTrigger) clearTaskLogEmotionTrigger();
     }
     syncTaskLogEmotionReflectVisibility(tn);
     taskLogScrollArea?.classList?.toggle(
@@ -11572,7 +11581,13 @@ export function render(opts = {}) {
     }
   }
 
-  function buildTaskLogFeedbackForSubmit(_taskName) {
+  function buildTaskLogFeedbackForSubmit(taskName) {
+    if (TTC.isNegativeEmotionalTaskName(taskName)) {
+      return packEmotionReflectMemo(
+        taskLogEmotionFactInput?.value || "",
+        taskLogEmotionInterpInput?.value || "",
+      );
+    }
     /* 완료형·독서·잡무: 체크한 할일은 「할일」/도서명으로만 — 구매 후기에 중복 넣지 않음 */
     return (taskLogFeedbackInput?.value || "").trim();
   }
@@ -12733,15 +12748,16 @@ export function render(opts = {}) {
       clearTaskLogSpeechChecks();
       if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
     } else if (TTC.isEmotionalDetailTaskName(tnForMemo)) {
-      clearTaskLogEmotionTrigger();
+      setTaskLogEmotionTrigger(mealDetailVal);
       if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
       clearTaskLogContentType();
       clearTaskLogSpeechChecks();
-      clearTaskLogEmotionReflectInputs();
-      if (taskLogFeedbackInput) {
-        /* 예전 사실/해석 묶음 메모는 평문으로 메모 칸에 표시 */
-        const reflectPlain = formatEmotionReflectMemoDisplay(memoOnly);
-        taskLogFeedbackInput.value = reflectPlain || memoOnly;
+      if (TTC.isNegativeEmotionalTaskName(tnForMemo)) {
+        if (taskLogFeedbackInput) taskLogFeedbackInput.value = "";
+        setTaskLogEmotionReflectInputsFromMemo(memoOnly);
+      } else {
+        clearTaskLogEmotionReflectInputs();
+        if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
       }
     } else {
       if (taskLogMealDetailInput) taskLogMealDetailInput.value = mealDetailVal;
@@ -12951,6 +12967,86 @@ export function render(opts = {}) {
           taskLogMealDetailInput?.focus?.();
         }
         return;
+      }
+    }
+    if (
+      TTC.emotionTaskUsesTriggers(taskName) &&
+      !String(mealDetailForRow || "").trim()
+    ) {
+      /* 감정적이기(부정): 트리거 권장 · 「나중에」면 없이 저장 */
+      const pickTrigger = await showConfirmModal({
+        title: "알림",
+        message: "트리거 대분류와 세부 상황을 아직 고르지 않았어요.",
+        cancelText: "나중에",
+        confirmText: "확인",
+      });
+      if (pickTrigger) {
+        if (taskLogEmotionTriggerSection) {
+          taskLogEmotionTriggerSection.hidden = false;
+          try {
+            taskLogEmotionTriggerSection.scrollIntoView({
+              block: "nearest",
+              behavior: "smooth",
+            });
+          } catch (_) {}
+        }
+        return;
+      }
+    }
+    if (TTC.isNegativeEmotionalTaskName(taskName)) {
+      const emotionFact = (taskLogEmotionFactInput?.value || "").trim();
+      if (!emotionFact) {
+        const enterFact = await showConfirmModal({
+          title: "알림",
+          message: "상황에 대한 사실을 아직 입력하지 않았어요.",
+          cancelText: "나중에",
+          confirmText: "확인",
+        });
+        if (enterFact) {
+          syncTaskLogEmotionReflectVisibility(taskName);
+          if (taskLogEmotionReflectSection) {
+            taskLogEmotionReflectSection.hidden = false;
+            try {
+              taskLogEmotionReflectSection.scrollIntoView({
+                block: "nearest",
+                behavior: "smooth",
+              });
+            } catch (_) {}
+          }
+          try {
+            taskLogEmotionFactInput?.focus?.({ preventScroll: true });
+          } catch (_) {
+            taskLogEmotionFactInput?.focus?.();
+          }
+          return;
+        }
+      }
+      const emotionInterp = (taskLogEmotionInterpInput?.value || "").trim();
+      if (!emotionInterp) {
+        const enterInterp = await showConfirmModal({
+          title: "알림",
+          message: "내 해석을 아직 입력하지 않았어요.",
+          cancelText: "나중에",
+          confirmText: "확인",
+        });
+        if (enterInterp) {
+          syncTaskLogEmotionReflectVisibility(taskName);
+          if (taskLogEmotionReflectSection) {
+            taskLogEmotionReflectSection.hidden = false;
+            try {
+              taskLogEmotionReflectSection.scrollIntoView({
+                block: "nearest",
+                behavior: "smooth",
+              });
+            } catch (_) {}
+          }
+          try {
+            taskLogEmotionInterpInput?.focus?.({ preventScroll: true });
+          } catch (_) {
+            taskLogEmotionInterpInput?.focus?.();
+          }
+          return;
+        }
       }
     }
     const feedback = feedbackBody;

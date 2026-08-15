@@ -80,9 +80,9 @@ export function emotionTaskPolarity(name) {
   return null;
 }
 
-/** 감정적이기 — 트리거 UI 사용 안 함(감정 상태만) */
-export function emotionTaskUsesTriggers(_name) {
-  return false;
+/** 감정적이기(부정)만 트리거 UI */
+export function emotionTaskUsesTriggers(name) {
+  return isNegativeEmotionalTaskName(name);
 }
 
 export const FIXED_OTHER_TASKS = [
