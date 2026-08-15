@@ -7915,7 +7915,7 @@ export function render(opts = {}) {
                   <button type="button" data-legacy="time-task-log-memo-quick-ok" data-insert="✔️" aria-label="완료 표시 넣기"><span data-legacy="time-task-log-memo-quick-emoji" aria-hidden="true">&#x2714;&#xFE0F;</span></button>
                   <button type="button" data-legacy="time-task-log-memo-quick-no" data-insert="❌" aria-label="불가 표시 넣기"><span data-legacy="time-task-log-memo-quick-emoji" aria-hidden="true">&#x274C;</span></button>
                   <button type="button" data-legacy="time-task-log-memo-quick-music" data-insert="🎵" aria-label="음표 넣기"><span data-legacy="time-task-log-memo-quick-emoji" aria-hidden="true">&#x1F3B5;</span></button>
-                  <button type="button" data-legacy="time-task-log-memo-quick-desktop" data-insert="🖥️" aria-label="컴퓨터 넣기"><span data-legacy="time-task-log-memo-quick-emoji" aria-hidden="true">&#x1F5A5;&#xFE0F;</span></button>
+                  <button type="button" data-legacy="time-task-log-memo-quick-desktop" data-insert="🎬" aria-label="영화 넣기"><span data-legacy="time-task-log-memo-quick-emoji" aria-hidden="true">&#x1F3AC;</span></button>
                 </div>
               </div>
               <textarea id="time-task-log-feedback" data-legacy="time-task-log-feedback time-task-log-memo-input" rows="2" placeholder="메모를 입력하세요"></textarea>
