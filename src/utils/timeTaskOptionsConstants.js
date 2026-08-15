@@ -320,26 +320,31 @@ export const CONVERSATION_TYPE_OPTIONS = [
   "변명",
   "비교",
   "험담",
+  "억측",
+  "허언",
 ];
 /** @deprecated CONVERSATION_TYPE_OPTIONS 사용 */
 export const UNPRODUCTIVE_CONVERSATION_TYPE_OPTIONS = CONVERSATION_TYPE_OPTIONS;
 /** 말 점검 표 (생산·비생산 대화 공통) */
 export const CONVERSATION_SPEECH_CHECK_OPTIONS = [
-  "말 끊음",
-  "나에게 쏠린 대화 중심",
-  "말하는 동안 다음 할 말 준비",
-  "묻지 않은 조언",
-  "자리에 없는 사람 이야기",
-  "휴대폰 보기",
-  "근거 없는 말",
-  "거짓말",
+  "말 끊지 않기",
+  "나 중심 대화 하지 않기",
+  "말하는 동안 다음 할 말 준비하지 않기",
+  "묻지 않은 조언 금지",
+  "자리에 없는 사람 이야기 하지 않기",
+  "휴대폰 보지 않기",
 ];
 
 /** 말 점검 — 구 문구 → 현재 문구 (저장된 meal_detail 호환) */
 const CONVERSATION_SPEECH_CHECK_LEGACY_LABEL = {
-  "나에게 쏠린 대화중심": "나에게 쏠린 대화 중심",
-  "말하는 동안 다음할말 준비": "말하는 동안 다음 할 말 준비",
-  "근거없는 말": "근거 없는 말",
+  "말 끊음": "말 끊지 않기",
+  "나에게 쏠린 대화 중심": "나 중심 대화 하지 않기",
+  "나에게 쏠린 대화중심": "나 중심 대화 하지 않기",
+  "말하는 동안 다음 할 말 준비": "말하는 동안 다음 할 말 준비하지 않기",
+  "말하는 동안 다음할말 준비": "말하는 동안 다음 할 말 준비하지 않기",
+  "묻지 않은 조언": "묻지 않은 조언 금지",
+  "자리에 없는 사람 이야기": "자리에 없는 사람 이야기 하지 않기",
+  "휴대폰 보기": "휴대폰 보지 않기",
 };
 /** 종류 칩과 대화명 사이 구분자 */
 export const CONVERSATION_TYPE_NAME_SEP = "｜";
