@@ -206,11 +206,28 @@ function toKoAuthError(raw) {
   if (/Signups not allowed/i.test(t)) {
     return "현재 새 계정 가입이 제한되어 있어요.";
   }
+  if (/signup_email_not_purchased|구매한 이메일로만/i.test(t)) {
+    return "두들 자사몰에서 구매한 이메일로만 가입할 수 있어요.";
+  }
   if (/[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(t)) return t;
   return "처리 중 문제가 생겼어요. 잠시 후 다시 시도해 주세요.";
 }
 
-/** 이메일·비밀번호로 회원가입 (이메일 확인이 켜져 있으면 세션 없을 수 있음) */
+/** 아임웹 최초 이용권(미적용) 주문이 있는 이메일인지 */
+export async function canSignupWithPurchaseEmail(email) {
+  const e = String(email || "").trim();
+  if (!e || !supabase) return { ok: false, known: false };
+  const { data, error } = await supabase.rpc("lp_can_signup_with_email", {
+    p_email: e,
+  });
+  if (error) {
+    console.warn("lp_can_signup_with_email", error);
+    return { ok: false, known: false };
+  }
+  return { ok: data === true, known: true };
+}
+
+/** 이메일·비밀번호로 회원가입 (구매 이메일만 · 확인 메일 끄면 바로 세션) */
 export async function signUp(email, password) {
   if (!email?.trim() || !password) {
     return { ok: false, msg: "이메일과 비밀번호를 입력하세요." };
@@ -220,6 +237,13 @@ export async function signUp(email, password) {
   }
   if (!supabase) {
     return { ok: false, msg: "서버를 재시작해 주세요. (.env가 로드되지 않았습니다)" };
+  }
+  const gate = await canSignupWithPurchaseEmail(email);
+  if (gate.known && !gate.ok) {
+    return {
+      ok: false,
+      msg: "두들 자사몰에서 구매한 이메일로만 가입할 수 있어요. 구매 때 쓴 이메일을 확인해 주세요.",
+    };
   }
   const emailRedirectTo = getSignupEmailRedirectUrl();
   const { data, error } = await supabase.auth.signUp({
@@ -234,6 +258,13 @@ export async function signUp(email, password) {
   if (uid) {
     await ensureClientStorageForAuthUser(uid);
     primeSupabaseSession(data?.session ?? null);
+  }
+  /* 확인 메일이 켜져 있으면 session 없음 → 비밀번호로 바로 로그인 시도 */
+  if (!data?.session) {
+    const loginResult = await login(email.trim(), password, { rememberMe: true });
+    if (loginResult.ok) {
+      return { ok: true, data: loginResult.data };
+    }
   }
   return { ok: true, data };
 }

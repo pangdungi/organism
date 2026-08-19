@@ -492,7 +492,7 @@
       </div>
     </div>
     <div id="app">
-      <!-- 진입: 기본 로그인 — 상단 세그먼트로 회원가입 전환 -->
+      <!-- 진입: 기본 회원가입 — 상단 세그먼트로 로그인 전환 -->
       <div id="login-page" class="page login-page login-page--gate" style="display: none">
         <div class="auth-gate-body">
           <div class="login-wrap">
@@ -506,9 +506,9 @@
               fetchpriority="high"
             />
             <div class="login-card login-card--brand">
-              <h1 class="auth-gate-heading login-title" id="auth-gate-heading">로그인</h1>
+              <h1 class="auth-gate-heading login-title" id="auth-gate-heading">회원가입</h1>
               <div
-                class="auth-gate-segments"
+                class="auth-gate-segments is-signup"
                 id="auth-gate-segments"
                 role="tablist"
                 aria-label="로그인 또는 회원가입"
@@ -517,8 +517,8 @@
                 type="button"
                 role="tab"
                 id="auth-seg-login"
-                class="auth-gate-seg is-active"
-                aria-selected="true"
+                class="auth-gate-seg"
+                aria-selected="false"
                 aria-controls="auth-panel-login"
               >
                 로그인
@@ -527,17 +527,17 @@
                 type="button"
                 role="tab"
                 id="auth-seg-signup"
-                class="auth-gate-seg"
-                aria-selected="false"
+                class="auth-gate-seg is-active"
+                aria-selected="true"
                 aria-controls="auth-panel-signup"
               >
                 회원가입
               </button>
             </div>
-            <div id="auth-panel-signup" class="auth-gate-panel" style="display: none">
+            <div id="auth-panel-signup" class="auth-gate-panel">
             <form class="login-form login-form--auth-gate" id="signup-form" onsubmit="return false">
               <p class="auth-signup-notice">
-                반드시 <strong>두들 자사몰</strong>에서 가입한 이메일(아이디)로 가입해 주세요.
+                <strong>두들 자사몰에서 구매한 이메일</strong>로만 가입할 수 있어요. 비밀번호를 정하면 바로 이용할 수 있습니다.
               </p>
               <div class="login-field login-field--auth">
                 <label class="login-label" for="signup-email">이메일</label>
@@ -604,7 +604,7 @@
               <button type="button" class="login-btn-cta" id="btn-do-signup">가입하기</button>
             </form>
             </div>
-            <div id="auth-panel-login" class="auth-gate-panel">
+            <div id="auth-panel-login" class="auth-gate-panel" style="display: none">
             <form class="login-form login-form--auth-gate" id="login-form">
               <div class="login-field login-field--auth">
                 <label class="login-label" for="login-id">이메일</label>

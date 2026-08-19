@@ -317,12 +317,30 @@ function initLpAppResumeSplashCover() {
 /** @type {null | (() => Promise<void>)} */
 let lpRerouteInitialPage = null;
 
+/** 로그아웃 직후에만 로그인 탭 · 그 외(첫 방문 등)는 회원가입 */
+const LP_AUTH_GATE_AFTER_LOGOUT_KEY = "lp_auth_gate_after_logout";
+
+function markAuthGatePreferLoginAfterLogout() {
+  try {
+    sessionStorage.setItem(LP_AUTH_GATE_AFTER_LOGOUT_KEY, "1");
+  } catch (_) {}
+}
+
+function openAuthGateForLoggedOut() {
+  let preferLogin = false;
+  try {
+    preferLogin = sessionStorage.getItem(LP_AUTH_GATE_AFTER_LOGOUT_KEY) === "1";
+    if (preferLogin) sessionStorage.removeItem(LP_AUTH_GATE_AFTER_LOGOUT_KEY);
+  } catch (_) {}
+  setAuthGatePanel(preferLogin ? "login" : "signup");
+}
+
 function lpShellRecoveryDeps() {
   return {
     hasAppMounted: () => lpAppMounted,
     restorePage: (pageId) => {
       showOnly(pageId);
-      if (pageId === "login") setAuthGatePanel("login");
+      if (pageId === "login") openAuthGateForLoggedOut();
     },
     hideSplash: () => hideAppSplashNow(),
     rerouteInitial: async () => {
@@ -331,7 +349,7 @@ function lpShellRecoveryDeps() {
         return;
       }
       showOnly("login");
-      setAuthGatePanel("login");
+      openAuthGateForLoggedOut();
       hideAppSplashNow();
     },
   };
@@ -392,7 +410,7 @@ async function enterAuthenticatedApp(opts = {}) {
       } = await getSupabaseSession();
       if (!bootSession?.user?.id) {
         showOnly("login");
-        setAuthGatePanel("login");
+        openAuthGateForLoggedOut();
         return;
       }
 
@@ -603,7 +621,12 @@ function init() {
     ?.addEventListener("click", () => setAuthGatePanel("login"));
   document
     .getElementById("auth-seg-signup")
-    ?.addEventListener("click", () => setAuthGatePanel("signup"));
+    ?.addEventListener("click", () => {
+      try {
+        sessionStorage.removeItem(LP_AUTH_GATE_AFTER_LOGOUT_KEY);
+      } catch (_) {}
+      setAuthGatePanel("signup");
+    });
   document
     .getElementById("btn-show-forgot-pw")
     ?.addEventListener("click", () => openAuthPwRecoveryModal());
@@ -674,6 +697,7 @@ function init() {
         sessionStorage.removeItem(LP_LAST_TAB_SESSION_KEY);
         localStorage.removeItem(LP_LAST_TAB_LOCAL_KEY);
       } catch (_) {}
+      markAuthGatePreferLoginAfterLogout();
       void (async () => {
         try {
           flushAllPendingTimeDailyBudgetSync();
@@ -739,7 +763,7 @@ function init() {
     try {
       if (!supabase) {
         showOnly("login");
-        setAuthGatePanel("login");
+        openAuthGateForLoggedOut();
         return "login";
       }
       let session = null;
@@ -756,7 +780,7 @@ function init() {
         session = res?.data?.session ?? null;
       } catch (_e) {
         showOnly("login");
-        setAuthGatePanel("login");
+        openAuthGateForLoggedOut();
         return "login";
       }
       if (session) {
@@ -769,7 +793,7 @@ function init() {
         return "authenticated";
       }
       showOnly("login");
-      setAuthGatePanel("login");
+      openAuthGateForLoggedOut();
       return "login";
     } finally {
       setLpAuthBootPending(false);
@@ -841,7 +865,6 @@ async function doSignUp() {
     showToast(result.msg);
     return;
   }
-  // 이메일 확인(Confirm email)이 켜져 있으면 signUp 직후 session 은 null → 메일 안내
   const session = result.data?.session;
   if (session) {
     setLpAuthBootPending(true);
@@ -855,9 +878,10 @@ async function doSignUp() {
     showToast("가입이 완료됐어요.", "메인 화면으로 들어갔어요.");
     return;
   }
+  /* Confirm email 이 켜져 있으면 여기로 옴 — 대시보드에서 끄면 바로 로그인됨 */
   showToast(
-    "가입 확인 메일을 보냈어요.",
-    "메일의 링크를 눌러 인증한 뒤 아래에서 로그인해 주세요.",
+    "가입은 됐어요.",
+    "이메일 확인이 켜져 있으면 메일 링크 후 로그인해 주세요. (운영에서는 확인 메일을 끄는 것을 권장해요)",
   );
   setAuthGatePanel("login");
   const loginId = document.getElementById("login-id");
