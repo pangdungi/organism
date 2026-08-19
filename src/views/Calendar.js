@@ -97,6 +97,11 @@ import {
   upsertCalendarSectionTaskRowFromSessionMemory,
 } from "../utils/todoSectionTasksSupabase.js";
 import {
+  calendarDiaryToggleMarkup,
+  filterCalendarTasksForDisplay,
+  wireCalendarDiaryToggle,
+} from "../utils/calendarDiaryVisibility.js";
+import {
   readSectionTasksObject,
   readCustomSectionTasksObject,
   CALENDAR_FIXED_SECTION_IDS,
@@ -1190,8 +1195,9 @@ function getSectionTasksForDate(dateKey) {
           endTime: t.endTime || "",
           sectionId,
           sectionLabel,
-          itemType: "todo",
+          itemType: t.itemType || "todo",
           done: !!t.done,
+          isCalendarDiary: !!t.isCalendarDiary,
           taskId: t.taskId || "",
           eisenhower: (t.eisenhower || "").trim() || "",
           classification: "",
@@ -1240,8 +1246,9 @@ function getSectionTasksWithDateRange() {
             endTime: t.endTime || "",
             sectionId,
             sectionLabel,
-            itemType: "todo",
+            itemType: t.itemType || "todo",
             done: !!t.done,
+            isCalendarDiary: !!t.isCalendarDiary,
             taskId: t.taskId || "",
             eisenhower: (t.eisenhower || "").trim() || "",
             classification: "",
@@ -2154,6 +2161,7 @@ function getCustomSectionTasksForDate(dateKey) {
           sectionLabel: sec.label || sec.id,
           itemType: t.itemType || "todo",
           done: !!t.done,
+          isCalendarDiary: !!t.isCalendarDiary,
           taskId: t.taskId || "",
           eisenhower: (t.eisenhower || "").trim() || "",
           classification: "",
@@ -2177,7 +2185,7 @@ function getTasksForDate(dateKey, excludeSpanningTasks = false) {
   if (excludeSpanningTasks) {
     tasks = tasks.filter((t) => !calendarTaskIsMultiDayDateSpan(t));
   }
-  return tasks;
+  return filterCalendarTasksForDisplay(tasks);
 }
 
 function getAllTasksForDateDisplay(dateKey) {
@@ -2228,6 +2236,7 @@ function getAllTasksWithDateRange() {
             sectionLabel: sec.label || sec.id,
             itemType: t.itemType || "todo",
             done: !!t.done,
+            isCalendarDiary: !!t.isCalendarDiary,
             taskId: t.taskId || "",
             eisenhower: (t.eisenhower || "").trim() || "",
             classification: "",
@@ -2238,7 +2247,7 @@ function getAllTasksWithDateRange() {
         );
     });
   } catch (_) {}
-  return [...sectionRange, ...customRange];
+  return filterCalendarTasksForDisplay([...sectionRange, ...customRange]);
 }
 
 /**
@@ -2248,6 +2257,7 @@ function addSectionTodoFromCalendarBubble(
   startYmd,
   dueYmd,
   name,
+  opts = {},
 ) {
   const sid = TODO_UNIFIED_SECTION_KEY;
   const start = String(startYmd || "")
@@ -2257,6 +2267,7 @@ function addSectionTodoFromCalendarBubble(
     .trim()
     .slice(0, 10);
   const todoName = String(name || "").trim();
+  const isCalendarDiary = !!opts.isCalendarDiary;
   if (!due || !todoName || !isCalendarFixedSectionKey(sid)) return false;
   if (start && start > due) return false;
   const it = "todo";
@@ -2277,6 +2288,7 @@ function addSectionTodoFromCalendarBubble(
       endTime: "",
       done: false,
       itemType: it,
+      isCalendarDiary,
       serverUpdatedAt: new Date(touch).toISOString(),
       _calCellTouchMs: touch,
     });
@@ -2291,6 +2303,7 @@ function addSectionTodoFromCalendarBubble(
       eisenhower: "",
       done: false,
       itemType: it,
+      isCalendarDiary,
       reminderDate: "",
       reminderTime: "",
     };
@@ -2359,6 +2372,13 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
             maxlength="500"
           />
         </div>
+        <div class="time-task-log-field calendar-diary-check-field">
+          <label class="calendar-diary-check-label">
+            <input type="checkbox" class="calendar-diary-check" data-calendar-diary-check aria-describedby="calendar-diary-check-hint" />
+            <span>캘린더일기</span>
+          </label>
+          <p class="calendar-diary-check-hint" id="calendar-diary-check-hint">체크하면 모바일 캘린더에서는 기본으로 숨겨집니다. 「일기 보기」로 볼 수 있어요.</p>
+        </div>
         <div class="time-task-log-field">
           <label>시작일</label>
           <div class="time-task-log-date-native-wrap">
@@ -2384,6 +2404,7 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
   const backdrop = modal.querySelector(".time-task-setup-backdrop");
   const confirmBtn = modal.querySelector(".time-add-task-submit");
   const nameInput = modal.querySelector(".time-add-task-name");
+  const diaryCheck = modal.querySelector("[data-calendar-diary-check]");
   const startInput = modal.querySelector(".todo-task-edit-start");
   const dueInput = modal.querySelector(".todo-task-edit-due");
   initModalStandardDateFields(modal);
@@ -2424,7 +2445,11 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
     }
     saving = true;
     try {
-      if (!addSectionTodoFromCalendarBubble(startDate, dueDate, name)) {
+      if (
+        !addSectionTodoFromCalendarBubble(startDate, dueDate, name, {
+          isCalendarDiary: !!diaryCheck?.checked,
+        })
+      ) {
         void showAlertModal({
         message: "할 일을 추가하지 못했습니다. 잠시 후 다시 시도해 주세요.",
       });
@@ -2971,6 +2996,7 @@ function renderMonthlyView(tabsElement) {
     <div class="calendar-nav-controls">
       <button type="button" class="calendar-nav-prev" title="이전 달">&lt;</button>
       <button type="button" class="calendar-nav-today" title="오늘">오늘</button>
+      ${calendarDiaryToggleMarkup()}
       <button type="button" class="calendar-nav-next" title="다음 달">&gt;</button>
     </div>
   `;
@@ -3554,6 +3580,9 @@ function renderMonthlyView(tabsElement) {
     "click",
     goNextMonth,
   );
+  wireCalendarDiaryToggle(nav, () => {
+    renderCalendar({ resetScroll: false });
+  });
 
   /* 월 그리드: 왼쪽=다음 달, 오른쪽=이전 달 (터치·마우스·트랙패드 가로) */
   bindLpHorizontalPanNavigate(calendarGrid, {
@@ -4632,6 +4661,7 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
     <div class="calendar-nav-controls">
       <button type="button" class="calendar-nav-prev" title="전날">&lt;</button>
       <button type="button" class="calendar-nav-today" title="오늘">오늘</button>
+      ${calendarDiaryToggleMarkup()}
       <button type="button" class="calendar-nav-next" title="다음날">&gt;</button>
     </div>
   `;
@@ -5117,6 +5147,9 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
     "click",
     goNextDay,
   );
+  wireCalendarDiaryToggle(nav, () => {
+    renderCalendar();
+  });
 
   const topBar = document.createElement("div");
   topBar.className = "calendar-monthly-top-bar";
@@ -5291,6 +5324,7 @@ function render1WeekView(tabsElement, weekOpts = {}) {
     <div class="calendar-nav-controls">
       <button type="button" class="calendar-nav-prev" title="이전 주">&lt;</button>
       <button type="button" class="calendar-nav-today" title="오늘">오늘</button>
+      ${calendarDiaryToggleMarkup()}
       <button type="button" class="calendar-nav-next" title="다음 주">&gt;</button>
     </div>
   `;
@@ -6092,6 +6126,9 @@ function render1WeekView(tabsElement, weekOpts = {}) {
       void renderCalendar();
     },
   );
+  wireCalendarDiaryToggle(nav, () => {
+    void renderCalendar();
+  });
 
   calendarSection.appendChild(nav);
   calendarSection.appendChild(calendarGrid);

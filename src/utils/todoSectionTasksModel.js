@@ -281,6 +281,7 @@ export function localTaskToDbPayload(userId, sectionKey, isCustom, sortOrder, t)
     eisenhower: String(t.eisenhower || "").trim(),
     done: !!t.done,
     item_type: String(t.itemType || "todo").trim() || "todo",
+    is_calendar_diary: !!t.isCalendarDiary,
   };
 }
 
@@ -331,6 +332,7 @@ export function applyCalendarSectionTasksServerSnapshot(rows, knownCustomSection
       eisenhower: String(r.eisenhower != null ? r.eisenhower : "").trim(),
       done: !!r.done,
       itemType: String(r.item_type != null ? r.item_type : "todo").trim() || "todo",
+      isCalendarDiary: !!r.is_calendar_diary,
       serverUpdatedAt: r.updated_at != null ? String(r.updated_at) : "",
     };
   }
@@ -381,6 +383,7 @@ function calendarSectionTaskFromServerRow(row) {
     eisenhower: String(r.eisenhower != null ? r.eisenhower : "").trim(),
     done: !!r.done,
     itemType: String(r.item_type != null ? r.item_type : "todo").trim() || "todo",
+    isCalendarDiary: !!r.is_calendar_diary,
     serverUpdatedAt: r.updated_at != null ? String(r.updated_at) : "",
     _sectionKey: String(r.section_key || "").trim(),
     _isCustom: !!r.is_custom_section || String(r.section_key || "").startsWith("custom-"),

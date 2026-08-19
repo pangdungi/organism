@@ -124,6 +124,7 @@ function showCalendarTaskEditModal(options) {
     startDate = "",
     dueDate = "",
     done = false,
+    isCalendarDiary = false,
   } = taskData;
   const storageSectionId = String(taskData.sectionId || "").trim();
 
@@ -147,6 +148,13 @@ function showCalendarTaskEditModal(options) {
         <div class="time-task-log-field">
           <label>할일/일정 이름</label>
           <input type="text" class="time-add-task-name" placeholder="할일/일정 입력" value="${escapeHtml(name)}" maxlength="500" />
+        </div>
+        <div class="time-task-log-field calendar-diary-check-field">
+          <label class="calendar-diary-check-label">
+            <input type="checkbox" class="calendar-diary-check" data-calendar-diary-check aria-describedby="calendar-task-edit-diary-hint" ${isCalendarDiary ? "checked" : ""} />
+            <span>캘린더일기</span>
+          </label>
+          <p class="calendar-diary-check-hint" id="calendar-task-edit-diary-hint">체크하면 모바일 캘린더에서는 기본으로 숨겨집니다. 「일기 보기」로 볼 수 있어요.</p>
         </div>
         <div class="time-task-log-field calendar-task-edit-done-field">
           <label class="calendar-task-edit-done-label">
@@ -189,6 +197,7 @@ function showCalendarTaskEditModal(options) {
   const confirmBtn = modal.querySelector(".time-add-task-submit");
   const deleteBtn = modal.querySelector(".todo-task-edit-footer-delete");
   const nameInput = modal.querySelector(".time-add-task-name");
+  const diaryCheck = modal.querySelector("[data-calendar-diary-check]");
   const doneCheck = modal.querySelector(".calendar-task-edit-done-check");
   const startInput = modal.querySelector(".todo-task-edit-start");
   const dueInput = modal.querySelector(".todo-task-edit-due");
@@ -209,6 +218,7 @@ function showCalendarTaskEditModal(options) {
       startDate: (startInput?.value || "").trim().slice(0, 10),
       dueDate: (dueInput?.value || "").trim().slice(0, 10),
       done: !!doneCheck?.checked,
+      isCalendarDiary: !!diaryCheck?.checked,
       sectionId: storageSectionId,
     };
   }
@@ -299,6 +309,7 @@ export function openCalendarTaskEditFromBarModel(barModel, options = {}) {
     .trim()
     .slice(0, 10);
   const prevDone = !!(row.done ?? b.done);
+  const prevDiary = !!(row.isCalendarDiary ?? b.isCalendarDiary);
 
   showCalendarTaskEditModal({
     taskData: {
@@ -307,6 +318,7 @@ export function openCalendarTaskEditFromBarModel(barModel, options = {}) {
       startDate: (row.startDate || b.startDate || "").toString().slice(0, 10),
       dueDate: (row.dueDate || b.dueDate || "").toString().slice(0, 10),
       done: !!(row.done ?? b.done),
+      isCalendarDiary: prevDiary,
       sectionId: storageSectionId,
       itemType,
     },
@@ -322,6 +334,7 @@ export function openCalendarTaskEditFromBarModel(barModel, options = {}) {
         eisenhower: String(row.eisenhower || "").trim() || "",
         itemType,
         done: !!payload.done,
+        isCalendarDiary: !!payload.isCalendarDiary,
       };
 
       if (isCustom) {
@@ -359,6 +372,7 @@ export function openCalendarTaskEditFromBarModel(barModel, options = {}) {
           eisenhower: merged.eisenhower,
           done: !!merged.done,
           itemType: merged.itemType || "todo",
+          isCalendarDiary: !!merged.isCalendarDiary,
           reminderDate: "",
           reminderTime: "",
         },
@@ -371,10 +385,12 @@ export function openCalendarTaskEditFromBarModel(barModel, options = {}) {
       const mergedStart = (payload.startDate || "").trim().slice(0, 10) || "";
       const mergedDue = (payload.dueDate || "").trim().slice(0, 10) || "";
       const mergedDone = !!payload.done;
+      const mergedDiary = !!payload.isCalendarDiary;
       const doneOnly =
         mergedName === prevName &&
         mergedStart === prevStart &&
         mergedDue === prevDue &&
+        mergedDiary === prevDiary &&
         mergedDone !== prevDone;
       runAfter(
         doneOnly

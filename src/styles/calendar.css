@@ -275,6 +275,27 @@
   font-weight: 600;
 }
 
+/* 캘린더일기 — 모바일(폰)에서만 「일기 보기」 토글 표시 */
+.calendar-nav-controls .calendar-nav-diary-toggle {
+  display: none;
+  padding-inline: 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.calendar-nav-controls .calendar-nav-diary-toggle.is-active {
+  border-color: #000000;
+  color: #000000;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+@media (max-width: 46rem) {
+  .calendar-nav-controls .calendar-nav-diary-toggle {
+    display: inline-flex;
+  }
+}
+
 /* 일간(타임블록) 네비: 시간가계부와 동일 `.time-filter-date-field` + 아이콘 — 주간/월간 `.calendar-nav-today` 와 시각 정렬 */
 .calendar-nav-controls .time-filter-date-field.calendar-1day-nav-date-field {
   margin: 0;
@@ -3904,4 +3925,35 @@ button.calendar-1day-pane-section-head--action:focus-visible {
 .calendar-task-edit-active {
   outline: 2px solid rgba(0, 0, 0, 0.35);
   outline-offset: 1px;
+}
+
+/* 캘린더일기 체크 (추가·수정 모달) */
+.calendar-diary-check-field {
+  margin-top: -0.1rem;
+}
+
+.calendar-diary-check-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--lp-modal-navy, #000000);
+}
+
+.calendar-diary-check-label input.calendar-diary-check {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  accent-color: #000000;
+  cursor: pointer;
+}
+
+.calendar-diary-check-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--text-caption-color, #64748b);
 }
