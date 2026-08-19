@@ -1,8 +1,10 @@
 /**
- * 캘린더일기 — 모바일에서 기본 숨김 / 「일기 보기」 토글
+ * 캘린더일기 — 「일기 보기」 토글
+ * - 휴대폰: 기본 숨김
+ * - 데스크탑·아이패드: 기본 표시 (원하면 토글로 가림)
  */
 
-const LP_CALENDAR_SHOW_DIARY_MOBILE_KEY = "lp_calendar_show_diary_mobile";
+const LP_CALENDAR_SHOW_DIARY_KEY = "lp_calendar_show_diary";
 
 /** 폰 너비(아이패드는 보통 더 큼) */
 export function isCalendarPhoneViewport() {
@@ -17,24 +19,25 @@ export function isCalendarPhoneViewport() {
   }
 }
 
-export function readCalendarShowDiaryOnMobile() {
+/** 세션에 값이 없으면 뷰포트 기본: 폰=숨김, 그 외=표시 */
+export function readCalendarShowDiary() {
   try {
-    return sessionStorage.getItem(LP_CALENDAR_SHOW_DIARY_MOBILE_KEY) === "1";
-  } catch (_) {
-    return false;
-  }
+    const v = sessionStorage.getItem(LP_CALENDAR_SHOW_DIARY_KEY);
+    if (v === "1") return true;
+    if (v === "0") return false;
+  } catch (_) {}
+  return !isCalendarPhoneViewport();
 }
 
-export function setCalendarShowDiaryOnMobile(on) {
+export function setCalendarShowDiary(on) {
   try {
-    if (on) sessionStorage.setItem(LP_CALENDAR_SHOW_DIARY_MOBILE_KEY, "1");
-    else sessionStorage.removeItem(LP_CALENDAR_SHOW_DIARY_MOBILE_KEY);
+    sessionStorage.setItem(LP_CALENDAR_SHOW_DIARY_KEY, on ? "1" : "0");
   } catch (_) {}
 }
 
-export function toggleCalendarShowDiaryOnMobile() {
-  const next = !readCalendarShowDiaryOnMobile();
-  setCalendarShowDiaryOnMobile(next);
+export function toggleCalendarShowDiary() {
+  const next = !readCalendarShowDiary();
+  setCalendarShowDiary(next);
   return next;
 }
 
@@ -42,17 +45,16 @@ export function taskIsCalendarDiary(t) {
   return !!(t && (t.isCalendarDiary === true || t.is_calendar_diary === true));
 }
 
-/** 모바일 + 일기 보기 끔 → 캘린더일기 제외 */
+/** 일기 보기 끔 → 캘린더일기 제외 (모든 화면) */
 export function filterCalendarTasksForDisplay(tasks) {
   const list = Array.isArray(tasks) ? tasks : [];
-  if (!isCalendarPhoneViewport()) return list;
-  if (readCalendarShowDiaryOnMobile()) return list;
+  if (readCalendarShowDiary()) return list;
   return list.filter((t) => !taskIsCalendarDiary(t));
 }
 
 export function calendarDiaryToggleMarkup() {
-  const on = readCalendarShowDiaryOnMobile();
-  return `<button type="button" class="calendar-nav-diary-toggle${on ? " is-active" : ""}" data-calendar-diary-toggle title="캘린더일기 보기" aria-pressed="${on ? "true" : "false"}">일기 보기</button>`;
+  const on = readCalendarShowDiary();
+  return `<button type="button" class="calendar-nav-diary-toggle${on ? " is-active" : ""}" data-calendar-diary-toggle title="캘린더일기 보기/가리기" aria-pressed="${on ? "true" : "false"}">일기 보기</button>`;
 }
 
 /**
@@ -65,7 +67,7 @@ export function wireCalendarDiaryToggle(root, onToggle) {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      const on = toggleCalendarShowDiaryOnMobile();
+      const on = toggleCalendarShowDiary();
       btn.classList.toggle("is-active", on);
       btn.setAttribute("aria-pressed", on ? "true" : "false");
       try {

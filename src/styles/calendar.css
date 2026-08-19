@@ -275,9 +275,9 @@
   font-weight: 600;
 }
 
-/* 캘린더일기 — 모바일(폰)에서만 「일기 보기」 토글 표시 */
+/* 캘린더일기 — 「일기 보기」 토글 (모든 화면) */
 .calendar-nav-controls .calendar-nav-diary-toggle {
-  display: none;
+  display: inline-flex;
   padding-inline: 0.55rem;
   font-size: 0.75rem;
   font-weight: 600;
@@ -288,12 +288,6 @@
   border-color: #000000;
   color: #000000;
   background: rgba(0, 0, 0, 0.06);
-}
-
-@media (max-width: 46rem) {
-  .calendar-nav-controls .calendar-nav-diary-toggle {
-    display: inline-flex;
-  }
 }
 
 /* 일간(타임블록) 네비: 시간가계부와 동일 `.time-filter-date-field` + 아이콘 — 주간/월간 `.calendar-nav-today` 와 시각 정렬 */
