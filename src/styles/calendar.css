@@ -2784,6 +2784,57 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   margin: 0 1rem 0.85rem;
 }
 
+.calendar-event-add-modal .calendar-event-name-emoji-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.calendar-event-add-modal .calendar-event-name-emoji-label-row > label {
+  margin-bottom: 0;
+  min-height: 1.75rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+.calendar-event-add-modal .calendar-event-name-emoji-quick {
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
+  flex-shrink: 0;
+}
+
+.calendar-event-add-modal .calendar-event-name-emoji-quick-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.85rem;
+  min-height: 1.85rem;
+  margin: 0;
+  padding: 0.15rem;
+  font: inherit;
+  font-size: 0.95rem;
+  line-height: 1;
+  color: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.calendar-event-add-modal .calendar-event-name-emoji-quick-btn:hover {
+  background: rgba(30, 77, 123, 0.06);
+  border-color: rgba(30, 77, 123, 0.12);
+}
+
+.calendar-event-add-modal .calendar-event-name-emoji-quick-btn:focus-visible {
+  outline: 2px solid var(--idea-navy, #1e4d7b);
+  outline-offset: 1px;
+}
+
 .calendar-event-bubble .time-task-log-field > .time-task-log-date-native-wrap {
   width: 100%;
   max-width: 100%;

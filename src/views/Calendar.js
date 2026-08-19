@@ -60,6 +60,10 @@ import { showToast } from "../utils/showToast.js";
 import { showAlertModal } from "../utils/confirmModal.js";
 import { initModalStandardDateFields } from "../utils/modalNativeDateField.js";
 import {
+  buildCalendarEventNameEmojiQuickMarkup,
+  wireCalendarEventNameEmojiQuick,
+} from "../utils/calendarEventNameEmojiQuick.js";
+import {
   allowModalInputFocus,
   wireModalEnterToConfirm,
   closeDuplicateTodoAddModals,
@@ -2342,7 +2346,10 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
       </div>
       <div class="time-task-setup-body">
         <div class="time-task-log-field">
-          <label for="calendar-event-name-input">할일 / 일정 이름</label>
+          <div class="calendar-event-name-emoji-label-row">
+            <label for="calendar-event-name-input">할일 / 일정 이름</label>
+            ${buildCalendarEventNameEmojiQuickMarkup()}
+          </div>
           <input
             type="text"
             id="calendar-event-name-input"
@@ -2380,6 +2387,7 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
   const startInput = modal.querySelector(".todo-task-edit-start");
   const dueInput = modal.querySelector(".todo-task-edit-due");
   initModalStandardDateFields(modal);
+  wireCalendarEventNameEmojiQuick(modal, nameInput);
 
   function close() {
     detachCalendarEventBubbleOutsideListener();
