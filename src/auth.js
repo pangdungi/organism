@@ -375,23 +375,40 @@ export async function updatePasswordForRecovery(newPassword) {
   return { ok: true };
 }
 
-export async function changePassword({ email, currentPassword, newPassword }) {
-  if (!email?.trim() || !currentPassword || !newPassword) {
-    return { ok: false, msg: "모든 칸을 입력하세요." };
+/** 로그인 중 비밀번호 변경 (현재 비밀번호 확인 후 갱신 · 세션 유지) */
+export async function changePassword({
+  email,
+  currentPassword,
+  newPassword,
+  confirmPassword,
+}) {
+  if (!email?.trim() || !currentPassword || !newPassword || !confirmPassword) {
+    return { ok: false, msg: "모든 칸을 입력해 주세요." };
   }
-  if (newPassword !== document.getElementById("cp-confirm")?.value) {
-    return { ok: false, msg: "새 비밀번호가 일치하지 않아요." };
+  if (newPassword.length < 6) {
+    return { ok: false, msg: "새 비밀번호는 6자 이상이어야 해요." };
   }
-  if (!supabase) return { ok: false, msg: "연결되지 않았습니다." };
+  if (newPassword !== confirmPassword) {
+    return { ok: false, msg: "새 비밀번호가 서로 달라요." };
+  }
+  if (currentPassword === newPassword) {
+    return { ok: false, msg: "지금과 같은 비밀번호예요. 다른 비밀번호를 정해 주세요." };
+  }
+  if (!supabase) {
+    return { ok: false, msg: "연결되지 않았습니다." };
+  }
   const { error: signInError } = await supabase.auth.signInWithPassword({
     email: email.trim(),
     password: currentPassword,
   });
   if (signInError) {
-    return { ok: false, msg: "아이디(이메일) 또는 현재 비밀번호가 틀려요." };
+    return { ok: false, msg: "현재 비밀번호가 틀려요." };
   }
-  const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
-  if (updateError) return { ok: false, msg: toKoAuthError(updateError.message) };
-  await supabase.auth.signOut();
+  const { error: updateError } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+  if (updateError) {
+    return { ok: false, msg: toKoAuthError(updateError.message) };
+  }
   return { ok: true };
 }

@@ -2,7 +2,7 @@
  * My account - 기본정보, 나의 시급 계산
  */
 
-import { signOut } from "../auth.js";
+import { signOut, changePassword } from "../auth.js";
 import { supabase } from "../supabase.js";
 import { openDeleteAccountModal } from "../utils/deleteAccountModal.js";
 import { USER_HOURLY_RATE_KEY, readUserHourlyRateLocal, readUserHourlyRateModeLocal, setUserHourlyRateModeLocal, HOURLY_RATE_MODE_CALC, HOURLY_RATE_MODE_DIRECT, applyAppearanceFromServer } from "../utils/userHourlySync.js";
@@ -327,6 +327,74 @@ export function render() {
     </div>
   `;
   grid.appendChild(hourlyWidget);
+
+  // ----- 비밀번호 변경 -----
+  const passwordWidget = document.createElement("div");
+  passwordWidget.className =
+    "time-dashboard-widget idea-widget idea-widget-password";
+  passwordWidget.innerHTML = `
+    <div class="time-dashboard-widget-title">비밀번호 변경</div>
+    <form class="idea-password-form" id="idea-password-form" autocomplete="off">
+      <div class="idea-form-row">
+        <label class="idea-form-label" for="idea-pw-current">현재 비밀번호</label>
+        <input type="password" id="idea-pw-current" class="idea-form-input idea-pw-current" autocomplete="current-password" placeholder="현재 비밀번호" />
+      </div>
+      <div class="idea-form-row">
+        <label class="idea-form-label" for="idea-pw-new">새 비밀번호</label>
+        <input type="password" id="idea-pw-new" class="idea-form-input idea-pw-new" autocomplete="new-password" placeholder="6자 이상" />
+      </div>
+      <div class="idea-form-row">
+        <label class="idea-form-label" for="idea-pw-confirm">새 비밀번호 확인</label>
+        <input type="password" id="idea-pw-confirm" class="idea-form-input idea-pw-confirm" autocomplete="new-password" placeholder="한 번 더 입력" />
+      </div>
+      <button type="submit" class="idea-btn-calc idea-btn-change-password">변경하기</button>
+    </form>
+  `;
+  grid.appendChild(passwordWidget);
+
+  const passwordForm = passwordWidget.querySelector("#idea-password-form");
+  const pwCurrent = passwordWidget.querySelector(".idea-pw-current");
+  const pwNew = passwordWidget.querySelector(".idea-pw-new");
+  const pwConfirm = passwordWidget.querySelector(".idea-pw-confirm");
+  const pwSubmit = passwordWidget.querySelector(".idea-btn-change-password");
+  let passwordSaving = false;
+
+  passwordForm?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (passwordSaving) return;
+    void (async () => {
+      passwordSaving = true;
+      if (pwSubmit) pwSubmit.disabled = true;
+      try {
+        let email = "";
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          email = session?.user?.email || "";
+        } catch (_) {}
+        if (!email) {
+          showToast("로그인 정보를 확인할 수 없어요.");
+          return;
+        }
+        const result = await changePassword({
+          email,
+          currentPassword: pwCurrent?.value || "",
+          newPassword: pwNew?.value || "",
+          confirmPassword: pwConfirm?.value || "",
+        });
+        if (!result.ok) {
+          showToast(result.msg);
+          return;
+        }
+        if (pwCurrent) pwCurrent.value = "";
+        if (pwNew) pwNew.value = "";
+        if (pwConfirm) pwConfirm.value = "";
+        showToast("비밀번호가 변경됐어요.");
+      } finally {
+        passwordSaving = false;
+        if (pwSubmit) pwSubmit.disabled = false;
+      }
+    })();
+  });
 
   const logoutWidget = document.createElement("div");
   logoutWidget.className = "time-dashboard-widget idea-widget idea-widget-logout";
