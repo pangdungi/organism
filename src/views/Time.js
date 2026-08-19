@@ -33,6 +33,7 @@ import { kpiTodoFineTrace } from "../utils/kpiTodoFineTrace.js";
 import {
   bindModalNativeDateRange,
   initModalNativeDateFieldsIn,
+  openModalNativeDateInput,
   wireModalNativeDateSlot,
 } from "../utils/modalNativeDateField.js";
 import {
@@ -6809,7 +6810,10 @@ export function render(opts = {}) {
         <div class="time-usage-timebox-day-panel" data-usage-timebox-day-panel hidden>
           <div class="time-usage-timebox-stepper" role="group" aria-label="날짜 선택">
             <button type="button" class="time-usage-timebox-stepper-btn" data-usage-day-nav="-1" aria-label="이전 날">&lt;</button>
-            <span class="time-usage-timebox-day-label" data-usage-timebox-day-label></span>
+            <div class="time-usage-timebox-day-pick">
+              <input type="date" class="time-usage-timebox-day-pick-input" data-usage-timebox-day-pick aria-label="날짜 선택" tabindex="-1" />
+              <button type="button" class="time-usage-timebox-day-pick-face" data-usage-timebox-day-label aria-label="캘린더에서 날짜 고르기"></button>
+            </div>
             <button type="button" class="time-usage-timebox-stepper-btn" data-usage-day-nav="1" aria-label="다음 날">&gt;</button>
           </div>
           <div class="todo-task-date-quick time-usage-timebox-today-quick" role="group" aria-label="오늘로 이동">
@@ -6944,6 +6948,9 @@ export function render(opts = {}) {
     );
     const usageTimeboxDayLabel = usageRangeModal.querySelector(
       "[data-usage-timebox-day-label]",
+    );
+    const usageTimeboxDayPick = usageRangeModal.querySelector(
+      "[data-usage-timebox-day-pick]",
     );
     let modalDayDraft = getTimeboxDayAnchorYmd(
       usageHistoryRangeStartYmd,
@@ -7231,8 +7238,13 @@ export function render(opts = {}) {
 
     function syncTimeboxDayModalDraftFromInputs() {
       const d = modalDayDraft;
+      if (usageTimeboxDayPick instanceof HTMLInputElement) {
+        usageTimeboxDayPick.value = d || "";
+      }
       if (usageTimeboxDayLabel) {
-        usageTimeboxDayLabel.textContent = formatTimeFilterDateDotsWithWeekday(d);
+        usageTimeboxDayLabel.textContent = d
+          ? formatTimeFilterDateDotsWithWeekday(d)
+          : "";
       }
       if (usageRangeStartInp instanceof HTMLInputElement) {
         usageRangeStartInp.value = d;
@@ -7608,6 +7620,17 @@ export function render(opts = {}) {
       btn.addEventListener("click", () => {
         applyTimeboxDayNavFromModal(Number(btn.dataset.usageDayNav || "0"));
       });
+    });
+    usageTimeboxDayLabel?.addEventListener("click", () => {
+      if (usageTimeboxDayPick instanceof HTMLInputElement) {
+        openModalNativeDateInput(usageTimeboxDayPick);
+      }
+    });
+    usageTimeboxDayPick?.addEventListener("change", () => {
+      const v = String(usageTimeboxDayPick.value || "")
+        .trim()
+        .slice(0, 10);
+      if (v) setModalDayDraft(v);
     });
     usageRangeModal.querySelectorAll("[data-usage-month-nav]").forEach((btn) => {
       btn.addEventListener("click", () => {
