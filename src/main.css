@@ -295,9 +295,10 @@ body {
   align-items: stretch;
   gap: 0;
   width: 100%;
-  padding: 0.45rem 0.75rem max(0.25rem, var(--lp-safe-bottom));
+  padding: 0.35rem 0.75rem;
   padding-left: calc(0.75rem + var(--lp-safe-left));
   padding-right: calc(0.75rem + var(--lp-safe-right));
+  padding-bottom: calc(0.35rem + var(--lp-safe-bottom));
   border-top: 1px solid #e5e5e5;
   background: #fff;
   box-sizing: border-box;

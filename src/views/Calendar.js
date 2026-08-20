@@ -147,7 +147,6 @@ import {
   CALENDAR_SHORT_SPAN_BAR_HEX,
 } from "../utils/calendarShortSpanBar.js";
 import { logLpRender } from "../utils/lpRenderDebugLog.js";
-import { FIXED_OTHER_TASKS } from "../utils/timeTaskOptionsConstants.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
   getAppFooterActionsSlot,
@@ -4025,6 +4024,63 @@ function minutesCoveredByExpectedSpansUnion(spans) {
   return sum;
 }
 
+/**
+ * 하루(0:00~23:59)에서 예상 일정 합집합을 뺀 빈 구간.
+ * @param {unknown[]} spans
+ * @param {{ minGapMin?: number }} [opts]
+ * @returns {{ startMin: number, endMin: number }[]}
+ */
+function freeGapsFromExpectedSpans(spans, opts = {}) {
+  const minGap = Math.max(0, Math.floor(Number(opts.minGapMin) || 15));
+  const dayCap = CALENDAR_1DAY_LENGTH_MINUTES;
+  const iv = (Array.isArray(spans) ? spans : [])
+    .map((s) => {
+      const a = Math.max(0, Number(s?.startMin));
+      const b = Math.min(dayCap, Number(s?.endMin));
+      return [a, b];
+    })
+    .filter(([a, b]) => Number.isFinite(a) && Number.isFinite(b) && b > a)
+    .sort((x, y) => x[0] - y[0]);
+
+  /* 예상 일정이 아예 없으면 하루 통째 여유(00:00–23:59) 줄은 넣지 않음 */
+  if (iv.length === 0) return [];
+
+  /** @type {[number, number][]} */
+  const merged = [];
+  for (const [s, e] of iv) {
+    if (!merged.length || s > merged[merged.length - 1][1]) {
+      merged.push([s, e]);
+    } else {
+      merged[merged.length - 1][1] = Math.max(merged[merged.length - 1][1], e);
+    }
+  }
+
+  /** @type {{ startMin: number, endMin: number }[]} */
+  const gaps = [];
+  let cursor = 0;
+  for (const [s, e] of merged) {
+    if (s - cursor >= minGap) {
+      gaps.push({ startMin: cursor, endMin: s });
+    }
+    cursor = Math.max(cursor, e);
+  }
+  if (dayCap - cursor >= minGap) {
+    gaps.push({ startMin: cursor, endMin: dayCap });
+  }
+  return gaps;
+}
+
+function formatWeekFlowClockFromMin(minOfDay) {
+  const n = Math.max(0, Math.floor(Number(minOfDay) || 0));
+  try {
+    const hhmm = minutesOfDayToHhMm(n);
+    if (hhmm) return hhmm;
+  } catch (_) {}
+  const h = Math.floor(n / 60);
+  const m = n % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
 /** 일간 남은 시간 표기 (예: 17h 15m, 45m, 2h) */
 function formatMinutesAsCompactHm(totalMin) {
   const m = Math.max(0, Math.floor(Number(totalMin) || 0));
@@ -4066,15 +4122,6 @@ function expectedSpansWithFreshProd(spans) {
     prod: resolveExpectedSpanProdKey(span),
     category: resolveExpectedSpanCategory(span),
   }));
-}
-
-/** 주간 플로우만: 수면하기(sleep) 카드 숨김 — 일간 타임라인은 그대로 표시 */
-const WEEK_FLOW_EXCLUDED_TASK_NAMES = new Set(
-  FIXED_OTHER_TASKS.filter((t) => t.category === "sleep").map((t) => t.name),
-);
-
-function expectedSpanHiddenFromWeekFlowOnly(span) {
-  return WEEK_FLOW_EXCLUDED_TASK_NAMES.has(String(span?.taskName || "").trim());
 }
 
 function normLedgerRowDateYmd(s) {
@@ -5931,7 +5978,6 @@ function render1WeekView(tabsElement, weekOpts = {}) {
       } else {
         const { spans: daySpans } = buildExpectedScheduleSpansForDateKey(key);
         const spansSorted = [...daySpans]
-          .filter((s) => !expectedSpanHiddenFromWeekFlowOnly(s))
           .sort(
             (a, b) =>
               a.startMin - b.startMin ||
@@ -5941,8 +5987,50 @@ function render1WeekView(tabsElement, weekOpts = {}) {
                 "ko",
               ),
           );
+        const freeGaps = freeGapsFromExpectedSpans(daySpans, { minGapMin: 20 });
 
-        spansSorted.forEach((span) => {
+        /** @type {{ kind: "gap"|"card", startMin: number, gap?: { startMin: number, endMin: number }, span?: object }[]} */
+        const flowItems = [
+          ...freeGaps.map((gap) => ({
+            kind: "gap",
+            startMin: gap.startMin,
+            gap,
+          })),
+          ...spansSorted.map((span) => ({
+            kind: "card",
+            startMin: Number(span.startMin) || 0,
+            span,
+          })),
+        ].sort(
+          (a, b) =>
+            a.startMin - b.startMin ||
+            (a.kind === "gap" ? -1 : 1) - (b.kind === "gap" ? -1 : 1),
+        );
+
+        flowItems.forEach((item) => {
+          if (item.kind === "gap" && item.gap) {
+            const g = item.gap;
+            const startClock = formatWeekFlowClockFromMin(g.startMin);
+            const endClock = formatWeekFlowClockFromMin(g.endMin);
+            const durLabel = formatMinutesAsCompactHm(g.endMin - g.startMin);
+            const gapEl = document.createElement("div");
+            gapEl.className = "calendar-1week-flow-free-gap";
+            gapEl.setAttribute("role", "note");
+            gapEl.title = `여유 ${startClock}–${endClock} (${durLabel})`;
+            const gapLabel = document.createElement("span");
+            gapLabel.className = "calendar-1week-flow-free-gap-label";
+            gapLabel.textContent = "여유";
+            const gapTime = document.createElement("span");
+            gapTime.className = "calendar-1week-flow-free-gap-time";
+            gapTime.textContent = `${startClock}–${endClock}`;
+            gapEl.appendChild(gapLabel);
+            gapEl.appendChild(gapTime);
+            stack.appendChild(gapEl);
+            return;
+          }
+
+          const span = item.span;
+          if (!span) return;
           const pk = prodKeyForWeekExpectedSpan(span);
           const c = prodColors[pk] || prodColors.other;
           const taskLabel = expectedSpanDisplayTaskName(span);
