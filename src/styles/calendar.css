@@ -2227,6 +2227,11 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   background: var(--cal-surface);
 }
 
+/* 지난 날 실제 기록 카드 — 오늘·미래 예상 카드와 구분되도록 살짝 흐리게 */
+.calendar-1week-flow-card--actual {
+  opacity: 0.62;
+}
+
 /* 카드만 스크롤 — + 버튼은 칸 맨 아래 고정 */
 .calendar-1week-flow-stack {
   display: flex;
