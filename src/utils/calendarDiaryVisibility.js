@@ -1,7 +1,8 @@
 /**
  * 캘린더일기 — 「일기 보기」 토글
  * - 휴대폰: 기본 숨김
- * - 데스크탑·아이패드: 기본 표시 (원하면 토글로 가림)
+ * - 홈 3분할 캘린더: 기본 숨김
+ * - 전체 화면 캘린더(데스크탑·아이패드): 기본 표시 (원하면 토글로 가림)
  */
 
 const LP_CALENDAR_SHOW_DIARY_KEY = "lp_calendar_show_diary";
@@ -19,14 +20,27 @@ export function isCalendarPhoneViewport() {
   }
 }
 
-/** 세션에 값이 없으면 뷰포트 기본: 폰=숨김, 그 외=표시 */
+/** 홈 3분할에 붙은 플래너 캘린더가 문서에 있을 때 (전체 탭으로 나가면 DOM에서 떨어짐) */
+export function isCalendarPlannerDashboardEmbed() {
+  try {
+    return !!document.querySelector(
+      ".lp-desktop-dashboard-col--planner .calendar-view",
+    );
+  } catch (_) {
+    return false;
+  }
+}
+
+/** 세션 값 없으면: 폰·3분할은 숨김, 그 외(전체 캘린더)는 표시 */
 export function readCalendarShowDiary() {
   try {
     const v = sessionStorage.getItem(LP_CALENDAR_SHOW_DIARY_KEY);
     if (v === "1") return true;
     if (v === "0") return false;
   } catch (_) {}
-  return !isCalendarPhoneViewport();
+  if (isCalendarPhoneViewport()) return false;
+  if (isCalendarPlannerDashboardEmbed()) return false;
+  return true;
 }
 
 export function setCalendarShowDiary(on) {
