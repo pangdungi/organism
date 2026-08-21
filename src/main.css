@@ -1602,6 +1602,7 @@ table {
 }
 
 .admin-view .admin-view-header {
+  flex-shrink: 0;
   padding: 0.65rem 1rem 0.85rem;
   border-bottom: 1px solid rgba(26, 45, 69, 0.08);
   background: #fff;
@@ -1619,6 +1620,10 @@ table {
 .admin-view .admin-view-body {
   flex: 1 1 auto;
   min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding: 1rem;
   padding-bottom: 1.75rem;
   max-width: 64rem;
