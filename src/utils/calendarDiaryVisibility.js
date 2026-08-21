@@ -66,9 +66,14 @@ export function filterCalendarTasksForDisplay(tasks) {
   return list.filter((t) => !taskIsCalendarDiary(t));
 }
 
+function calendarDiaryToggleLabel(showing) {
+  return showing ? "일기 숨기기" : "일기 보기";
+}
+
 export function calendarDiaryToggleMarkup() {
   const on = readCalendarShowDiary();
-  return `<button type="button" class="calendar-nav-diary-toggle${on ? " is-active" : ""}" data-calendar-diary-toggle title="캘린더일기 보기/가리기" aria-pressed="${on ? "true" : "false"}">일기 보기</button>`;
+  const label = calendarDiaryToggleLabel(on);
+  return `<button type="button" class="calendar-nav-diary-toggle${on ? " is-active" : ""}" data-calendar-diary-toggle title="${label}" aria-pressed="${on ? "true" : "false"}">${label}</button>`;
 }
 
 /**
@@ -82,8 +87,11 @@ export function wireCalendarDiaryToggle(root, onToggle) {
       e.preventDefault();
       e.stopPropagation();
       const on = toggleCalendarShowDiary();
+      const label = calendarDiaryToggleLabel(on);
       btn.classList.toggle("is-active", on);
       btn.setAttribute("aria-pressed", on ? "true" : "false");
+      btn.setAttribute("title", label);
+      btn.textContent = label;
       try {
         onToggle?.();
       } catch (_) {}

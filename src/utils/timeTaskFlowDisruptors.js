@@ -13,13 +13,15 @@ export const TIME_TASK_FLOW_DISRUPTOR_OPTIONS = [
   { id: "took_too_long", label: "시간 초과", category: "task" },
   { id: "task_difficulty", label: "고난이도", category: "task" },
   { id: "supplies_unready", label: "준비물 미비", category: "task" },
+  { id: "result_unsatisfied", label: "결과물 불만족", category: "task" },
   { id: "sleepiness", label: "졸림", category: "body" },
   { id: "hunger", label: "배고픔", category: "body" },
-  { id: "physiological", label: "생리현상", category: "body" },
-  { id: "attention_scatter", label: "주의산만", category: "mind" },
-  { id: "low_motivation", label: "의욕저하", category: "mind" },
+  { id: "physiological", label: "생리 현상", category: "body" },
+  { id: "attention_scatter", label: "주의 산만", category: "mind" },
+  { id: "low_motivation", label: "의욕 저하", category: "mind" },
   { id: "media_digital", label: "디지털 기기", category: "digital" },
   { id: "multitasking", label: "멀티태스킹", category: "mind" },
+  { id: "environment", label: "환경", category: "environment" },
 ];
 
 const BY_ID = new Map(TIME_TASK_FLOW_DISRUPTOR_OPTIONS.map((o) => [o.id, o]));
@@ -35,10 +37,15 @@ const LEGACY_DISRUPTOR_LABEL_TO_ID = new Map([
   ["작업 난이도", "task_difficulty"],
   ["준비물 부족", "supplies_unready"],
   ["준비물 미비", "supplies_unready"],
+  ["결과물 불만족", "result_unsatisfied"],
+  ["결과 불만족", "result_unsatisfied"],
   ["생리 현상", "physiological"],
   ["생리현상", "physiological"],
   ["주의가 흩어짐", "attention_scatter"],
   ["주의 분산", "attention_scatter"],
+  ["주의산만", "attention_scatter"],
+  ["주의 산만", "attention_scatter"],
+  ["의욕저하", "low_motivation"],
   ["의욕 저하", "low_motivation"],
   ["미디어·디지털", "media_digital"],
   ["미디어/디지털", "media_digital"],
@@ -62,6 +69,9 @@ const LEGACY_DISRUPTOR_LABEL_TO_ID = new Map([
   ["자주 끊김", "multitasking"],
   ["다른 용무", "multitasking"],
   ["소음", "attention_scatter"],
+  ["환경", "environment"],
+  ["주변 환경", "environment"],
+  ["환경 문제", "environment"],
 ]);
 /** 예전 옵션 id → 현재 id */
 const LEGACY_DISRUPTOR_ID_TO_ID = new Map([
