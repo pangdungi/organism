@@ -2373,10 +2373,9 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
         </div>
         <div class="time-task-log-field calendar-diary-check-field">
           <label class="calendar-diary-check-label">
-            <input type="checkbox" class="calendar-diary-check" data-calendar-diary-check aria-describedby="calendar-diary-check-hint" />
+            <input type="checkbox" class="calendar-diary-check" data-calendar-diary-check />
             <span>캘린더일기</span>
           </label>
-          <p class="calendar-diary-check-hint" id="calendar-diary-check-hint">체크하면 휴대폰·홈 3분할 캘린더에서는 기본으로 숨겨집니다. 전체 화면에서는 보이며, 「일기 보기」로 가리거나 볼 수 있어요.</p>
         </div>
         <div class="time-task-log-field">
           <label>시작일</label>

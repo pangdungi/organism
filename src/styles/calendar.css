@@ -3981,10 +3981,3 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   accent-color: #000000;
   cursor: pointer;
 }
-
-.calendar-diary-check-hint {
-  margin: 0.35rem 0 0;
-  font-size: 0.75rem;
-  line-height: 1.45;
-  color: var(--text-caption-color, #64748b);
-}
