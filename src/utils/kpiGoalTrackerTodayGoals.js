@@ -20,6 +20,16 @@ import {
 } from "./timeKpiSync.js";
 import { timeLedgerLocalTodayYmd } from "./timeLedgerEntriesSupabase.js";
 import { isHabitScheduledOnYmd } from "./kpiHabitWeekdays.js";
+import {
+  DEFAULT_CHECKUP_KPI_ID,
+  DEFAULT_READING_KPI_ID,
+} from "./defaultKpiIconIds.js";
+
+/** 오늘의 행동 목록에서 제외 — 기본 KPI「건강 검진」「독서하기」 */
+const TODAY_GOALS_EXCLUDED_KPI_IDS = new Set([
+  DEFAULT_CHECKUP_KPI_ID,
+  DEFAULT_READING_KPI_ID,
+]);
 
 const DOMAINS = [
   { storageKey: "kpi-sideincome-paths", category: "시급" },
@@ -189,7 +199,8 @@ function isKpiExecutedToday(kpi, data, todayYmd) {
 }
 
 /**
- * 진행중 KPI 전부(기본 KPI 포함) — 오늘 할 목록
+ * 진행중 KPI (시급·건강·행복) — 오늘 할 목록
+ * 기본 KPI「건강 검진」「독서하기」는 제외
  * @param {{ habitsOnly?: boolean }} [opts] — true면 매일 반복만
  * @returns {{
  *   todayYmd: string,
@@ -221,6 +232,7 @@ export function buildGoalTrackerTodayGoalsModel(opts = {}) {
       const id = String(kpi?.id || "").trim();
       const name = String(kpi?.name || "").trim();
       if (!id || !name) continue;
+      if (TODAY_GOALS_EXCLUDED_KPI_IDS.has(id)) continue;
       const isHabit = resolveKpiGoalMode(kpi) === "habit" || !!kpi?.needHabitTracker;
       if (opts.habitsOnly && !isHabit) continue;
       if (isHabit && isKpiHabitDateBeforeStart(kpi, todayYmd)) {
