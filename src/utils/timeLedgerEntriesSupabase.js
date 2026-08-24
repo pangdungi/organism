@@ -21,6 +21,7 @@ import {
   preserveTimeLedgerEndTimeUnlessCleared,
   readTimeLedgerEntriesRaw,
   recordTimeLedgerDeletionTombstone,
+  pruneTimeLedgerLocalEntriesToRecentRetention,
   timeLedgerRowIsSyncable,
   timeLedgerRowNeedsPush,
   writeTimeLedgerEntriesRaw,
@@ -552,7 +553,8 @@ export function timeLedgerLocalMonthFirstYmd() {
 
 /**
  * 시간가계부 탭을 나가거나 다시 들어올 때:
- * 조회기간·일간/주간/월간/연간을 오늘 하루(1일)로 되돌림.
+ * 조회기간·일간/주간/월간/연간을 오늘 하루(1일)로 되돌리고,
+ * 기기에는 최근 기록만 남긴다(먼 날짜는 다시 열 때 서버에서 받음).
  */
 export function resetTimeLedgerSessionFilterToToday() {
   try {
@@ -571,6 +573,9 @@ export function resetTimeLedgerSessionFilterToToday() {
     sessionStorage.setItem("lp_time_ledger_report_granularity", "day");
     sessionStorage.setItem("lp_time_report_range_start", t);
     sessionStorage.setItem("lp_time_report_range_end", t);
+  } catch (_) {}
+  try {
+    pruneTimeLedgerLocalEntriesToRecentRetention();
   } catch (_) {}
 }
 

@@ -275,7 +275,7 @@
   font-weight: 600;
 }
 
-/* 캘린더일기 — 「일기 보기」 토글 (모든 화면) */
+/* 캘린더일기 — 「일기 보기/숨기기」 (문구만 바꿈, 활성 칠 없음) */
 .calendar-nav-controls .calendar-nav-diary-toggle {
   display: inline-flex;
   padding-inline: 0.55rem;
@@ -284,10 +284,11 @@
   white-space: nowrap;
 }
 
-.calendar-nav-controls .calendar-nav-diary-toggle.is-active {
-  border-color: #000000;
-  color: #000000;
-  background: rgba(0, 0, 0, 0.06);
+/* 일기 숨김 — 전체 재그리기 없이 일기 막대만 가림 */
+.calendar-view--diary-hidden .calendar-monthly-span-bar[data-lp-calendar-diary="1"],
+.calendar-monthly-layout.calendar-view--diary-hidden
+  .calendar-monthly-span-bar[data-lp-calendar-diary="1"] {
+  display: none !important;
 }
 
 /* 일간(타임블록) 네비: 시간가계부와 동일 `.time-filter-date-field` + 아이콘 — 주간/월간 `.calendar-nav-today` 와 시각 정렬 */

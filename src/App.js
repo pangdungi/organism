@@ -87,6 +87,7 @@ import { logTodoScheduleTabOnNavigate } from "./utils/lpTabDataSourceLog.js";
 import {
   ensureTimeLedgerStorageReady,
   hydrateTimeLedgerFromLocalMirrorForBoot,
+  pruneTimeLedgerLocalEntriesToRecentRetention,
 } from "./utils/timeLedgerEntriesModel.js";
 import { hydrateSectionTasksFromLocalMirrorForBoot } from "./utils/todoSectionTasksModel.js";
 import { hydrateCalendarDayIconsFromLocalMirrorForBoot } from "./utils/calendarDayIconsModel.js";
@@ -955,6 +956,12 @@ export async function mountApp(container) {
     if (fromTab === "time" && tabId !== "time") {
       try {
         resetTimeLedgerSessionFilterToToday();
+      } catch (_) {}
+    }
+    /* 캘린더에서 먼 달을 받은 뒤에도 기기에는 최근만 남김 */
+    if (fromTab === "schedulecalendar" && tabId !== "schedulecalendar") {
+      try {
+        pruneTimeLedgerLocalEntriesToRecentRetention();
       } catch (_) {}
     }
     /*

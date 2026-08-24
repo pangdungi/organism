@@ -100,6 +100,9 @@ import {
   calendarDiaryToggleMarkup,
   filterCalendarTasksForDisplay,
   wireCalendarDiaryToggle,
+  applyCalendarDiaryVisibilityToRoot,
+  softReflowCalendarAfterDiaryToggle,
+  taskIsCalendarDiary,
 } from "../utils/calendarDiaryVisibility.js";
 import {
   readSectionTasksObject,
@@ -1907,7 +1910,7 @@ function lpPatchAnnualDayCell(table, dateKey) {
     `.calendar-annual-cell[data-date-key="${key}"]:not(.calendar-annual-cell--pad)`,
   );
   if (!cell) return;
-  const hasTasks = getTasksForDate(key).length > 0;
+  const hasTasks = filterCalendarTasksForDisplay(getTasksForDate(key)).length > 0;
   let dot = cell.querySelector(".calendar-annual-cell-dot");
   if (hasTasks && !dot) {
     dot = document.createElement("span");
@@ -2184,7 +2187,8 @@ function getTasksForDate(dateKey, excludeSpanningTasks = false) {
   if (excludeSpanningTasks) {
     tasks = tasks.filter((t) => !calendarTaskIsMultiDayDateSpan(t));
   }
-  return filterCalendarTasksForDisplay(tasks);
+  /* 캘린더 그리드에는 일기 포함(표시는 CSS). 목록 모달은 getAllTasksForDateDisplay 에서 필터 */
+  return tasks;
 }
 
 function getAllTasksForDateDisplay(dateKey) {
@@ -2199,13 +2203,14 @@ function getAllTasksForDateDisplay(dateKey) {
     return s && d && s <= dateKey && dateKey <= d;
   });
   const seen = new Set();
-  return [...singleDay, ...rangeTasks].filter((t) => {
+  const merged = [...singleDay, ...rangeTasks].filter((t) => {
     const id =
       (t.taskId || t.name || "") + (t.startDate || "") + (t.dueDate || "");
     if (seen.has(id)) return false;
     seen.add(id);
     return true;
   });
+  return filterCalendarTasksForDisplay(merged);
 }
 
 function getAllTasksWithDateRange() {
@@ -2246,7 +2251,7 @@ function getAllTasksWithDateRange() {
         );
     });
   } catch (_) {}
-  return filterCalendarTasksForDisplay([...sectionRange, ...customRange]);
+  return [...sectionRange, ...customRange];
 }
 
 /**
@@ -3277,6 +3282,7 @@ function renderMonthlyView(tabsElement) {
           startDate: t.startDate,
           dueDate: t.dueDate,
           isOverdueBar: calendarBarTaskIsOverdueTodo(t),
+          isCalendarDiary: taskIsCalendarDiary(t),
           _calPrevStart: (t._calPrevStart || "").toString().slice(0, 10) || "",
           _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
         });
@@ -3309,6 +3315,7 @@ function renderMonthlyView(tabsElement) {
             startDate: t.startDate || "",
             dueDate: t.dueDate || dateKey,
             isOverdueBar: calendarBarTaskIsOverdueTodo(t),
+            isCalendarDiary: taskIsCalendarDiary(t),
             _calPrevStart:
               (t._calPrevStart || "").toString().slice(0, 10) || "",
             _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
@@ -3364,6 +3371,7 @@ function renderMonthlyView(tabsElement) {
           : baseBarTop + b.row * (BAR_HEIGHT + ROW_GAP);
         bar.style.cssText = `left:${b.left}%;width:${b.width}%;${barStyleVars};top:${topRem}rem;min-height:${BAR_HEIGHT}rem`;
         if (b.taskId) bar.dataset.taskId = String(b.taskId).trim();
+        if (b.isCalendarDiary) bar.dataset.lpCalendarDiary = "1";
         lpApplyCalendarMultiDaySpanBarBackground(bar, b);
         bar.innerHTML = lpBuildCalendarSpanBarInnerHtml(b.name, !!b.done);
         lpApplyCalendarSpanBarDonePastClasses(bar, b, calendarBarTodayYmd);
@@ -3538,6 +3546,8 @@ function renderMonthlyView(tabsElement) {
       });
     });
     wrap._lpRememberCalendarGridPaintSig?.();
+    applyCalendarDiaryVisibilityToRoot(wrap);
+    requestAnimationFrame(() => softReflowCalendarAfterDiaryToggle(wrap));
   }
 
   function goPrevMonth() {
@@ -3578,9 +3588,7 @@ function renderMonthlyView(tabsElement) {
     "click",
     goNextMonth,
   );
-  wireCalendarDiaryToggle(nav, () => {
-    renderCalendar({ resetScroll: false });
-  });
+  wireCalendarDiaryToggle(nav);
 
   /* 월 그리드: 왼쪽=다음 달, 오른쪽=이전 달 (터치·마우스·트랙패드 가로) */
   bindLpHorizontalPanNavigate(calendarGrid, {
@@ -5193,9 +5201,7 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
     "click",
     goNextDay,
   );
-  wireCalendarDiaryToggle(nav, () => {
-    renderCalendar();
-  });
+  wireCalendarDiaryToggle(nav);
 
   const topBar = document.createElement("div");
   topBar.className = "calendar-monthly-top-bar";
@@ -5641,6 +5647,7 @@ function render1WeekView(tabsElement, weekOpts = {}) {
         startDate: t.startDate,
         dueDate: t.dueDate,
         isOverdueBar: calendarBarTaskIsOverdueTodo(t),
+        isCalendarDiary: taskIsCalendarDiary(t),
         _calPrevStart: (t._calPrevStart || "").toString().slice(0, 10) || "",
         _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
       });
@@ -5673,6 +5680,7 @@ function render1WeekView(tabsElement, weekOpts = {}) {
           startDate: t.startDate || "",
           dueDate: t.dueDate || dateKey,
           isOverdueBar: calendarBarTaskIsOverdueTodo(t),
+          isCalendarDiary: taskIsCalendarDiary(t),
           _calPrevStart: (t._calPrevStart || "").toString().slice(0, 10) || "",
           _calPrevDue: (t._calPrevDue || "").toString().slice(0, 10) || "",
         });
@@ -5725,6 +5733,7 @@ function render1WeekView(tabsElement, weekOpts = {}) {
         : baseBarTop + b.row * (BAR_HEIGHT + ROW_GAP);
       bar.style.cssText = `left:${b.left}%;width:${b.width}%;${barStyleVars};top:${topRem}rem;min-height:${BAR_HEIGHT}rem`;
       if (b.taskId) bar.dataset.taskId = String(b.taskId).trim();
+      if (b.isCalendarDiary) bar.dataset.lpCalendarDiary = "1";
       lpApplyCalendarMultiDaySpanBarBackground(bar, b);
       bar.innerHTML = lpBuildCalendarSpanBarInnerHtml(b.name, !!b.done);
       lpApplyCalendarSpanBarDonePastClasses(bar, b, calendarBarTodayYmd);
@@ -6174,6 +6183,8 @@ function render1WeekView(tabsElement, weekOpts = {}) {
     calendarGrid.appendChild(outer);
 
     wrap._lpRememberCalendarGridPaintSig?.();
+    applyCalendarDiaryVisibilityToRoot(wrap);
+    requestAnimationFrame(() => softReflowCalendarAfterDiaryToggle(wrap));
     calendar1WeekDiagLog("renderCalendar.domBuilt", {
       renderSeq,
       bars: allBars.length,
@@ -6213,9 +6224,7 @@ function render1WeekView(tabsElement, weekOpts = {}) {
       void renderCalendar();
     },
   );
-  wireCalendarDiaryToggle(nav, () => {
-    void renderCalendar();
-  });
+  wireCalendarDiaryToggle(nav);
 
   calendarSection.appendChild(nav);
   calendarSection.appendChild(calendarGrid);
@@ -6414,7 +6423,7 @@ function renderAnnualView(tabsElement) {
         dayNum.className = "calendar-annual-cell-num";
         dayNum.textContent = d;
         cell.appendChild(dayNum);
-        if (getTasksForDate(key).length > 0) {
+        if (filterCalendarTasksForDisplay(getTasksForDate(key)).length > 0) {
           const dot = document.createElement("span");
           dot.className = "calendar-annual-cell-dot";
           cell.appendChild(dot);

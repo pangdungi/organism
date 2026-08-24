@@ -930,6 +930,71 @@ export function applyTimeLedgerServerRangeSnapshot(
   } catch (_) {}
 }
 
+/** 기기에 남겨 둘 최근 일수(오늘 포함). 더 오래된 날은 탭 이탈 시 정리하고, 다시 볼 때 서버에서 받음 */
+export const TIME_LEDGER_LOCAL_RETENTION_DAYS = 14;
+
+function shiftYmdTenLocal(ymd, deltaDays) {
+  const m = String(ymd || "")
+    .trim()
+    .match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return "";
+  const dt = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  if (Number.isNaN(dt.getTime())) return "";
+  dt.setDate(dt.getDate() + Number(deltaDays) || 0);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+}
+
+function localTodayYmdTenForRetention() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/**
+ * 최근 N일(+ 아직 서버에 안 올린 행)만 기기에 남김.
+ * 빈 로컬로 서버를 지우는 경로가 아님 — 기기 캐시만 줄임.
+ * @param {{ retentionDays?: number }} [opts]
+ * @returns {{ pruned: number, kept: number }}
+ */
+export function pruneTimeLedgerLocalEntriesToRecentRetention(opts = {}) {
+  const daysRaw = Number(opts.retentionDays);
+  const days =
+    Number.isFinite(daysRaw) && daysRaw > 0
+      ? Math.floor(daysRaw)
+      : TIME_LEDGER_LOCAL_RETENTION_DAYS;
+  const today = localTodayYmdTenForRetention();
+  const cutoff = shiftYmdTenLocal(today, -(days - 1));
+  if (!cutoff) return { pruned: 0, kept: 0 };
+
+  const { rows } = ensureTimeLedgerEntryIds(readTimeLedgerEntriesRaw());
+  if (!rows.length) return { pruned: 0, kept: 0 };
+
+  const kept = rows.filter((r) => {
+    /* 미업로드·로컬 수정분은 절대 버리지 않음 */
+    if (timeLedgerRowNeedsPush(r)) return true;
+    const ymd = ledgerRowEntryDateYmd(r);
+    if (!ymd) return true;
+    return ymd >= cutoff;
+  });
+
+  const pruned = rows.length - kept.length;
+  if (pruned <= 0) return { pruned: 0, kept: kept.length };
+
+  writeTimeLedgerEntriesRaw(kept);
+  void flushTimeLedgerRowsToDiskNow();
+  try {
+    if (typeof document !== "undefined") {
+      document.dispatchEvent(
+        new CustomEvent("calendar-time-rows-updated", {
+          detail: { prunedLocal: true },
+        }),
+      );
+    }
+  } catch (_) {}
+  return { pruned, kept: kept.length };
+}
+
 /**
  * pull 직전에 — 구간에 있고 아직 서버에 안 올린 로컬 행(모달 저장분)을 모음.
  */
