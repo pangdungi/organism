@@ -1,0 +1,39 @@
+---
+description: 스탬프/할일 피커 아이콘 추가 시 SVG→고화질 PNG 절차 (채팅 PNG 업스케일 금지)
+alwaysApply: true
+---
+
+# 시간·캘린더 피커 아이콘 추가
+
+`public/toolbaricons/time-task-picker/` 스탬프·할일 아이콘을 넣을 때 **반드시** 아래를 따른다. 채팅에 붙은 미리보기 PNG를 키워 넣지 않는다.
+
+## 금지
+
+- Cursor 채팅/assets의 **작은 PNG(예: 48×48)** 를 nearest/lanczos로 업스케일해 넣는 것
+- 기존 아이콘 **slug·파일명 변경·삭제** (이미 찍힌 스탬프가 깨짐)
+- SVG 없이 “화질만 고친” 것처럼 PNG만 교체하는 것
+
+## 올바른 순서
+
+1. **SVG 원본**을 확보한다.
+   - 사용자가 채팅에 SVG를 올려도, 실제 디스크에는 `.png`로만 올 수 있다. 그 경우 **Downloads의 zip/폴더**(예: `아이콘 (3)`)나 사용자가 준 **로컬 `.svg` 경로**를 먼저 찾는다.
+   - SVG가 없으면 업스케일하지 말고 **SVG를 다시 달라**고 짧게 요청한다.
+2. 영문 slug로 `public/toolbaricons/time-task-picker/{slug}.svg`에 복사한다. (기존 이름과 겹치면 `sad2`처럼 새 slug)
+3. 같은 slug의 낡은 PNG가 있으면 **삭제**한 뒤, 프로젝트 변환을 돌린다:
+   - `npm run gen:icons`
+   - (= `ensure-toolbar-icons-png.mjs`가 SVG를 `density: 288`로 **256×256 PNG** 생성 + 목록 JSON 갱신)
+4. 한글 검색어는 `src/utils/timeTaskIconUrls.js`의 `PICKER_SEARCH_EXTRA_RAW`에만 추가한다.
+5. 다른 화면/기능 코드는 건드리지 않는다. (아이콘 추가 요청이면 아이콘·목록·검색어만)
+
+## 참고 스크립트
+
+| 역할 | 파일 |
+|---|---|
+| SVG→PNG | `scripts/ensure-toolbar-icons-png.mjs` (`time-task-picker` → 256px) |
+| 목록 생성 | `scripts/generate-time-task-picker-icons.mjs` |
+| 일괄 import 예 | `scripts/import-time-task-picker-icons.mjs` (SVG 우선, 없으면 래스터) |
+
+## 완료 확인
+
+- `{slug}.svg`와 `{slug}.png`가 함께 있고, PNG는 **256×256**
+- `public/time-task-picker-icons.json` 등에 새 slug가 포함됨
