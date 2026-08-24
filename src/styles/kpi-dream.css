@@ -1951,6 +1951,26 @@
   letter-spacing: -0.01em;
 }
 
+/* 진행중 + 마감일 지남 — 마감 글자·ㄴ 기호 빨강 */
+:is(.lp-kpi-dream-page, .kpi-view-modal)
+  .dream-kpi-card-deadline-foot--overdue {
+  color: #ef4444;
+}
+
+:is(.lp-kpi-dream-page, .kpi-view-modal)
+  .dream-kpi-card-deadline-foot--overdue
+  .dream-kpi-card-deadline-foot-text {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+:is(.lp-kpi-dream-page, .kpi-view-modal)
+  .dream-kpi-card-deadline-foot--overdue
+  .dream-kpi-card-deadline-foot-corner {
+  border-left-color: #ef4444;
+  border-bottom-color: #ef4444;
+}
+
 .lp-kpi-dream-page .dream-kpi-card-progress {
   margin-top: 0.65rem;
 }

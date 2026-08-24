@@ -943,13 +943,13 @@ export function buildKpiCardTimePresentation(kpi, progressResult, formatNum) {
       );
       const footParts = [
         `오늘 ${currentStr} / ${targetStr}${unitSuffix}`,
+        `누적 ${accumStr}${unitSuffix}`,
         streakLabel,
-        rangeLabel,
       ].filter(Boolean);
       return {
         displayProgress: progress,
         progressText: footParts.join(" · "),
-        heroStr: accumStr,
+        heroStr: currentStr,
         heroUnit: kpi.unit,
         heroPrefix: "",
         habitStatsHtml: "",
@@ -962,8 +962,11 @@ export function buildKpiCardTimePresentation(kpi, progressResult, formatNum) {
       };
     }
 
-    const footParts = [streakLabel, rangeLabel || (totalDays ? `총 ${totalDays}일` : "")]
-      .filter(Boolean);
+    const hasDeadline = !!String(kpi?.targetDeadline || "").trim().slice(0, 10);
+    const footParts = [
+      streakLabel,
+      hasDeadline ? "" : rangeLabel || (totalDays ? `총 ${totalDays}일` : ""),
+    ].filter(Boolean);
     return {
       displayProgress: 0,
       progressText: footParts.join(" · ") || streakLabel,
