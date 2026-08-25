@@ -406,8 +406,8 @@ export const CONTENT_TYPE_OPTIONS = [
   "쇼츠",
   "ebook",
   "스레드",
-  "유튜브 영상(예능)",
-  "유튜브 영상(지식)",
+  "유튜브(예능)",
+  "유튜브(지식)",
   "OTT",
   "영화",
   "뉴스",
@@ -420,6 +420,7 @@ export const CONTENT_TYPE_OPTIONS = [
   "웹툰",
   "웹소설",
   "온라인 강좌",
+  "AI",
 ];
 
 /** 개인 위생 — time_ledger_entries.meal_detail 에 저장 */
