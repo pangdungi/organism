@@ -7876,6 +7876,12 @@ export function render(opts = {}) {
           <div data-legacy="time-task-log-emotion-trigger-sub-chips lp-choice-chip-row" hidden></div>
         </div>
         <div data-legacy="time-task-log-kpi-todos-section" hidden>
+          <div data-legacy="time-task-log-kpi-todos-all-block" hidden>
+            <h4 data-legacy="time-task-log-kpi-todos-all-title">할 일 목록</h4>
+            <div data-legacy="time-task-log-kpi-todos-all-scroll">
+              <div data-legacy="time-task-log-kpi-todos-all-list"></div>
+            </div>
+          </div>
           <h4 data-legacy="time-task-log-kpi-todos-title">할 일 목록</h4>
           <p data-legacy="time-task-log-kpi-todos-status" hidden></p>
           <div data-legacy="time-task-log-kpi-todos-scroll" hidden>
@@ -10525,6 +10531,18 @@ export function render(opts = {}) {
   const taskLogKpiTodosStatus = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-kpi-todos-status"]',
   );
+  const taskLogKpiTodosAllBlock = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-kpi-todos-all-block"]',
+  );
+  const taskLogKpiTodosAllTitle = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-kpi-todos-all-title"]',
+  );
+  const taskLogKpiTodosAllScroll = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-kpi-todos-all-scroll"]',
+  );
+  const taskLogKpiTodosAllList = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-kpi-todos-all-list"]',
+  );
   const taskLogKpiValueSection = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-kpi-value-section"]',
   );
@@ -11471,15 +11489,13 @@ export function render(opts = {}) {
     if (taskLogEditTr?._rowData) addFromRow(taskLogEditTr._rowData);
     /* 잡무·KPI 작업 공통: 방금 체크한 항목은 완료 처리돼도 모달에 남김 */
     for (const id of taskLogModalCheckedTodoIds) ids.add(id);
-    if (taskLogKpiTodosList) {
-      taskLogKpiTodosList
-        .querySelectorAll('input[type="checkbox"][data-todo-id]')
-        .forEach((cb) => {
-          if (!cb.checked) return;
-          const id = String(cb.dataset.todoId || "").trim();
-          if (id) ids.add(id);
-        });
-    }
+    taskLogKpiTodosSection
+      ?.querySelectorAll('input[type="checkbox"][data-todo-id]')
+      .forEach((cb) => {
+        if (!cb.checked) return;
+        const id = String(cb.dataset.todoId || "").trim();
+        if (id) ids.add(id);
+      });
     return ids;
   }
 
@@ -11509,10 +11525,9 @@ export function render(opts = {}) {
   }
 
   function collectCheckedTaskCompletionTodosFromModal() {
-    const out = [];
-    if (!taskLogKpiTodosList) return out;
-    taskLogKpiTodosList
-      .querySelectorAll('[data-legacy~="time-task-log-chore-todo-row"]')
+    const map = new Map();
+    taskLogKpiTodosSection
+      ?.querySelectorAll('[data-legacy~="time-task-log-chore-todo-row"]')
       .forEach((label) => {
         const cb = label.querySelector('input[type="checkbox"]');
         const span = label.querySelector(
@@ -11522,9 +11537,9 @@ export function render(opts = {}) {
         const id = String(cb?.dataset?.todoId || "").trim();
         const text = (span?.textContent || "").trim();
         if (!id) return;
-        out.push({ id, text });
+        map.set(id, { id, text });
       });
-    return out;
+    return [...map.values()];
   }
 
   function collectCheckedTaskCompletionTodoTextsFromModal() {
@@ -11630,7 +11645,9 @@ export function render(opts = {}) {
       taskLogKpiTodosStatus.hidden = true;
       taskLogKpiTodosStatus.textContent = "";
     }
+    if (taskLogKpiTodosAllBlock) taskLogKpiTodosAllBlock.hidden = true;
     taskLogKpiTodosList?.replaceChildren?.();
+    taskLogKpiTodosAllList?.replaceChildren?.();
   }
 
   function collectTaskLogTodoChecks(listEl, rowLegacyToken) {
@@ -11666,9 +11683,25 @@ export function render(opts = {}) {
     return map;
   }
 
-  function renderTaskLogTaskCompletionTodoRows(todos, preserveChecks) {
-    if (!taskLogKpiTodosList) return;
-    taskLogKpiTodosList.replaceChildren();
+  function syncTaskLogTodoChecksAcrossLists(todoId, checked) {
+    const id = String(todoId || "").trim();
+    if (!id) return;
+    rememberTaskLogModalTodoCheck(id, checked);
+    taskLogKpiTodosSection
+      ?.querySelectorAll(`input[type="checkbox"][data-todo-id="${id}"]`)
+      .forEach((cb) => {
+        if (cb.checked !== checked) cb.checked = checked;
+        const span = cb.parentElement?.querySelector(
+          '[data-legacy~="time-task-log-kpi-todo-text"]',
+        );
+        if (span) lpTokenToggle(span, "is-done", checked);
+      });
+  }
+
+  function renderTaskLogTaskCompletionTodoRows(todos, preserveChecks, listEl) {
+    const host = listEl || taskLogKpiTodosList;
+    if (!host) return;
+    host.replaceChildren();
     for (const todo of todos) {
       const id = String(todo?.id || "").trim();
       const text = String(todo?.text || "").trim();
@@ -11698,11 +11731,10 @@ export function render(opts = {}) {
           checked: checkbox.checked,
         });
         /* 저장 전에도 목록에 남김 · 맨 위로 옮기지 않음(스크롤 밖으로 ‘사라짐’ 방지) */
-        rememberTaskLogModalTodoCheck(id, checkbox.checked);
-        lpTokenToggle(span, "is-done", checkbox.checked);
+        syncTaskLogTodoChecksAcrossLists(id, checkbox.checked);
         syncReadingBookTitleFromCheckedTodos();
       });
-      taskLogKpiTodosList.appendChild(label);
+      host.appendChild(label);
     }
   }
 
@@ -11722,8 +11754,9 @@ export function render(opts = {}) {
   }
 
   function applyTaskCompletionTodosUi(kpiId, todos, opts = {}) {
+    const planned = !!opts.plannedTodoFilterActive;
     const listLabel = taskCompletionTodoListLabelForKpiId(kpiId, {
-      plannedTodoFilterActive: !!opts.plannedTodoFilterActive,
+      plannedTodoFilterActive: planned,
     });
     if (taskLogKpiTodosTitle) taskLogKpiTodosTitle.textContent = listLabel;
     if (
@@ -11735,6 +11768,31 @@ export function render(opts = {}) {
       return;
     }
     taskLogKpiTodosSection.hidden = false;
+    if (taskLogKpiTodosAllBlock) {
+      taskLogKpiTodosAllBlock.hidden = !planned;
+    }
+    if (planned && taskLogKpiTodosAllList) {
+      if (taskLogKpiTodosAllTitle) {
+        taskLogKpiTodosAllTitle.textContent =
+          taskCompletionTodoListLabelForKpiId(kpiId);
+      }
+      const full = getKpiTaskCompletionTodoInfoByKpiId(kpiId, {
+        includeIds: [...collectTaskCompletionIncludeIdsForTaskLog(kpiId)],
+      });
+      const fullTodos = (full?.todos || []).filter((t) =>
+        String(t?.text || "").trim(),
+      );
+      if (taskLogKpiTodosAllScroll) {
+        taskLogKpiTodosAllScroll.hidden = !fullTodos.length;
+      }
+      renderTaskLogTaskCompletionTodoRows(
+        fullTodos,
+        opts.preserveChecks,
+        taskLogKpiTodosAllList,
+      );
+    } else {
+      taskLogKpiTodosAllList?.replaceChildren?.();
+    }
     const filtered = (todos || []).filter((t) =>
       String(t?.text || "").trim(),
     );
@@ -11752,7 +11810,11 @@ export function render(opts = {}) {
     taskLogKpiTodosStatus.hidden = true;
     taskLogKpiTodosStatus.textContent = "";
     taskLogKpiTodosScroll.hidden = false;
-    renderTaskLogTaskCompletionTodoRows(filtered, opts.preserveChecks);
+    renderTaskLogTaskCompletionTodoRows(
+      filtered,
+      opts.preserveChecks,
+      taskLogKpiTodosList,
+    );
   }
 
   function refreshTaskCompletionTodosInLogModal() {
@@ -11788,6 +11850,11 @@ export function render(opts = {}) {
       taskLogKpiTodosList,
       "time-task-log-chore-todo-row",
     );
+    const allChecks = collectTaskLogTodoChecks(
+      taskLogKpiTodosAllList,
+      "time-task-log-chore-todo-row",
+    );
+    for (const [id, checked] of allChecks) taskChecks.set(id, checked);
 
     let syncResult = { stale: false, pulled: false, pullOk: true };
     try {

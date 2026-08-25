@@ -1828,6 +1828,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 .time-task-log-kpi-todos-title,
 .time-task-log-daily-todos-title,
 [data-legacy~="time-task-log-kpi-todos-title"],
+[data-legacy~="time-task-log-kpi-todos-all-title"],
 [data-legacy~="time-task-log-daily-todos-title"] {
   margin: 0 0 0.5rem;
   font-size: 0.8125rem;
@@ -1847,13 +1848,18 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 .time-task-log-kpi-todos-list,
 .time-task-log-daily-todos-list,
 [data-legacy~="time-task-log-kpi-todos-list"],
+[data-legacy~="time-task-log-kpi-todos-all-list"],
 [data-legacy~="time-task-log-daily-todos-list"] {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
 }
+[data-legacy~="time-task-log-kpi-todos-all-block"] {
+  margin: 0 0 0.75rem;
+}
 .time-task-log-kpi-todos-scroll,
-[data-legacy~="time-task-log-kpi-todos-scroll"] {
+[data-legacy~="time-task-log-kpi-todos-scroll"],
+[data-legacy~="time-task-log-kpi-todos-all-scroll"] {
   max-height: min(9.5rem, 30vh);
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -1866,7 +1872,9 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 }
 .time-task-log-kpi-todos-scroll [data-legacy~="time-task-log-kpi-todos-list"],
 [data-legacy~="time-task-log-kpi-todos-scroll"]
-  [data-legacy~="time-task-log-kpi-todos-list"] {
+  [data-legacy~="time-task-log-kpi-todos-list"],
+[data-legacy~="time-task-log-kpi-todos-all-scroll"]
+  [data-legacy~="time-task-log-kpi-todos-all-list"] {
   margin: 0;
   padding: 0;
 }
