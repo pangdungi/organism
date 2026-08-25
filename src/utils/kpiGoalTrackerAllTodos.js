@@ -72,6 +72,7 @@ function escapeHtml(str) {
  *   kpiId: string,
  *   kpiName: string,
  *   isChore: boolean,
+ *   rows: Array<{ id: string, text: string, completed: boolean }>,
  *   open: Array<{ id: string, text: string, completed: boolean }>,
  *   done: Array<{ id: string, text: string, completed: boolean }>,
  * }[]}
@@ -108,6 +109,7 @@ export function collectTaskCompletionTodoGroups() {
         kpiId,
         kpiName: String(kpi.name || "").trim() || "KPI",
         isChore: kpiId === DEFAULT_CHORE_TASK_KPI_ID,
+        rows,
         open: rows.filter((r) => !r.completed),
         done: rows.filter((r) => r.completed),
       });
@@ -194,12 +196,44 @@ function addTodoToKpi(storageKey, kpiId, text) {
 }
 
 /**
+ * @param {ParentNode | null | undefined} root
+ * @returns {{ boardScrollLeft: number, listScrollByKpi: Record<string, number> }}
+ */
+export function captureAllTodosBoardScrollState(root) {
+  const board =
+    root instanceof Element
+      ? root.querySelector(".habit-tracker-all-todos-board")
+      : null;
+  /** @type {Record<string, number>} */
+  const listScrollByKpi = {};
+  if (root instanceof Element) {
+    root.querySelectorAll("[data-all-todos-kpi-id]").forEach((col) => {
+      const id = String(col.getAttribute("data-all-todos-kpi-id") || "").trim();
+      const list = col.querySelector(".habit-tracker-all-todos-list");
+      if (!id || !(list instanceof HTMLElement)) return;
+      listScrollByKpi[id] = list.scrollTop;
+    });
+  }
+  return {
+    boardScrollLeft: board instanceof HTMLElement ? board.scrollLeft : 0,
+    listScrollByKpi,
+  };
+}
+
+/**
  * @param {HTMLElement} container
- * @param {{ boardScrollLeft?: number }} [opts]
+ * @param {{ boardScrollLeft?: number, listScrollByKpi?: Record<string, number> }} [opts]
  */
 export function mountKpiGoalAllTodosSection(container, opts = {}) {
   if (!container) return;
   const keepScrollLeft = Number(opts.boardScrollLeft);
+  const keepListScroll =
+    opts.listScrollByKpi && typeof opts.listScrollByKpi === "object"
+      ? opts.listScrollByKpi
+      : container._lpAllTodosListScrollByKpi &&
+          typeof container._lpAllTodosListScrollByKpi === "object"
+        ? container._lpAllTodosListScrollByKpi
+        : {};
   container.replaceChildren();
 
   const root = document.createElement("section");
@@ -234,23 +268,27 @@ export function mountKpiGoalAllTodosSection(container, opts = {}) {
     const col = document.createElement("article");
     col.className = "habit-tracker-all-todos-col";
     col.setAttribute("role", "listitem");
+    col.setAttribute("data-all-todos-kpi-id", g.kpiId);
     if (g.isChore) col.classList.add("is-chore");
 
     const head = document.createElement("header");
     head.className = "habit-tracker-all-todos-col-head";
-    head.innerHTML = `
-      <h3 class="habit-tracker-all-todos-card-name">${escapeHtml(g.kpiName)}</h3>
-      <span class="habit-tracker-all-todos-card-meta">${escapeHtml(g.domainLabel)} · 남음 ${g.open.length}</span>
-    `;
+    const meta = document.createElement("span");
+    meta.className = "habit-tracker-all-todos-card-meta";
+    meta.dataset.domainLabel = g.domainLabel;
+    meta.textContent = `${g.domainLabel} · 남음 ${g.open.length}`;
+    head.innerHTML = `<h3 class="habit-tracker-all-todos-card-name">${escapeHtml(g.kpiName)}</h3>`;
+    head.appendChild(meta);
     col.appendChild(head);
 
     const list = document.createElement("div");
     list.className = "dream-kpi-todo-list habit-tracker-all-todos-list";
 
     const remountBoard = () => {
-      mountKpiGoalAllTodosSection(container, {
-        boardScrollLeft: board.scrollLeft,
-      });
+      const snap = captureAllTodosBoardScrollState(container);
+      container._lpAllTodosBoardScrollLeft = snap.boardScrollLeft;
+      container._lpAllTodosListScrollByKpi = snap.listScrollByKpi;
+      mountKpiGoalAllTodosSection(container, snap);
     };
 
     const renderRow = (todo) => {
@@ -305,7 +343,8 @@ export function mountKpiGoalAllTodosSection(container, opts = {}) {
           check.checked = !check.checked;
           return;
         }
-        remountBoard();
+        item.classList.toggle("is-completed", !!check.checked);
+        refreshOpenCounts();
       });
 
       item.appendChild(label);
@@ -313,14 +352,34 @@ export function mountKpiGoalAllTodosSection(container, opts = {}) {
       list.appendChild(item);
     };
 
-    if (!g.open.length && !g.done.length) {
+    const refreshOpenCounts = () => {
+      let totalOpen = 0;
+      root.querySelectorAll("[data-all-todos-kpi-id]").forEach((colEl) => {
+        const listEl = colEl.querySelector(".habit-tracker-all-todos-list");
+        const openN = listEl
+          ? [...listEl.querySelectorAll(".dream-kpi-todo-item")].filter(
+              (el) => !el.classList.contains("is-completed"),
+            ).length
+          : 0;
+        totalOpen += openN;
+        const metaEl = colEl.querySelector(".habit-tracker-all-todos-card-meta");
+        if (metaEl instanceof HTMLElement) {
+          const label = String(metaEl.dataset.domainLabel || "").trim();
+          metaEl.textContent = label
+            ? `${label} · 남음 ${openN}`
+            : `남음 ${openN}`;
+        }
+      });
+      summary.textContent = `남은 할일 ${totalOpen}개 · KPI ${groups.length}개`;
+    };
+
+    if (!g.rows.length) {
       const none = document.createElement("p");
       none.className = "habit-tracker-all-todos-none";
       none.textContent = "할일 없음";
       list.appendChild(none);
     } else {
-      for (const t of g.open) renderRow(t);
-      for (const t of g.done) renderRow(t);
+      for (const t of g.rows) renderRow(t);
     }
 
     col.appendChild(list);
@@ -347,6 +406,17 @@ export function mountKpiGoalAllTodosSection(container, opts = {}) {
     addWrap.appendChild(addBtn);
     col.appendChild(addWrap);
 
+    list.addEventListener(
+      "scroll",
+      () => {
+        if (!container._lpAllTodosListScrollByKpi) {
+          container._lpAllTodosListScrollByKpi = {};
+        }
+        container._lpAllTodosListScrollByKpi[g.kpiId] = list.scrollTop;
+      },
+      { passive: true },
+    );
+
     board.appendChild(col);
   }
 
@@ -354,8 +424,17 @@ export function mountKpiGoalAllTodosSection(container, opts = {}) {
   container.appendChild(root);
 
   const restoreScroll = () => {
-    if (!Number.isFinite(keepScrollLeft) || keepScrollLeft <= 0) return;
-    board.scrollLeft = keepScrollLeft;
+    if (Number.isFinite(keepScrollLeft) && keepScrollLeft > 0) {
+      board.scrollLeft = keepScrollLeft;
+    }
+    for (const [kpiId, top] of Object.entries(keepListScroll || {})) {
+      const t = Number(top);
+      if (!kpiId || !Number.isFinite(t) || t <= 0) continue;
+      const listEl = root.querySelector(
+        `[data-all-todos-kpi-id="${kpiId}"] .habit-tracker-all-todos-list`,
+      );
+      if (listEl instanceof HTMLElement) listEl.scrollTop = t;
+    }
   };
   restoreScroll();
   requestAnimationFrame(() => {

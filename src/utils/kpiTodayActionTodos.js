@@ -215,6 +215,9 @@ function findKpiBundle(kpiId) {
 /**
  * 태스크완료·잡무·목표도달형만. 매일하기는 제외.
  * @param {string} kpiId
+ * @param {{ includeCompleted?: boolean }} [opts]
+ *   includeCompleted — 행동 아래 오늘 고른 목록용. 완료분도 체크된 채로 남김.
+ *   고르는 창은 기본(미완료만).
  * @returns {{
  *   kind: "task",
  *   storageKey: string,
@@ -222,7 +225,7 @@ function findKpiBundle(kpiId) {
  *   todos: Array<{ id: string, text: string, checked: boolean }>
  * } | null}
  */
-export function collectTodayActionTodos(kpiId) {
+export function collectTodayActionTodos(kpiId, opts = {}) {
   const bundle = findKpiBundle(kpiId);
   if (!bundle) return null;
   const { storageKey, kpi, data } = bundle;
@@ -230,6 +233,7 @@ export function collectTodayActionTodos(kpiId) {
   if (!kid) return null;
   const mode = resolveKpiGoalMode(kpi);
   if (mode !== "task" && mode !== "manual") return null;
+  const includeCompleted = !!opts.includeCompleted;
 
   const doneByEvent = new Set();
   for (const e of data.kpiTaskCompletionEvents || []) {
@@ -245,26 +249,29 @@ export function collectTodayActionTodos(kpiId) {
       const text = String(t?.text || "").trim();
       const id = String(t?.id || "").trim();
       if (!text || !id) return false;
-      if (t.completed) return false;
-      if (doneByEvent.has(id)) return false;
-      if (doneOnLedger.has(id)) return false;
+      const checked =
+        !!t.completed || doneByEvent.has(id) || doneOnLedger.has(id);
+      if (!includeCompleted && checked) return false;
       return true;
     }),
-  ).map((t) => ({
-    id: String(t.id || "").trim(),
-    text: String(t.text || "").trim(),
-    checked: false,
-  }));
+  ).map((t) => {
+    const id = String(t.id || "").trim();
+    return {
+      id,
+      text: String(t.text || "").trim(),
+      checked: !!t.completed || doneByEvent.has(id) || doneOnLedger.has(id),
+    };
+  });
   if (!todos.length) return null;
   return { kind: "task", storageKey, kpi, todos };
 }
 
 export function todayActionHasTodos(kpiId) {
-  return !!collectTodayActionTodos(kpiId);
+  return !!collectTodayActionTodos(kpiId, { includeCompleted: true });
 }
 
 export function setTodayActionTodoChecked(kpiId, todoId, checked) {
-  const collected = collectTodayActionTodos(kpiId);
+  const collected = collectTodayActionTodos(kpiId, { includeCompleted: true });
   if (!collected) return false;
   const todo = collected.todos.find(
     (t) => String(t.id || "").trim() === String(todoId || "").trim(),
@@ -423,7 +430,7 @@ export function appendTodayActionPinnedTodos(host, item, opts = {}) {
   const kpiId = String(item?.id || "").trim();
   const pickIds = readTodayActionTodoPickIds(kpiId, opts.todayYmd);
   if (!pickIds.length) return;
-  const collected = collectTodayActionTodos(kpiId);
+  const collected = collectTodayActionTodos(kpiId, { includeCompleted: true });
   if (!collected) return;
   const byId = new Map(collected.todos.map((t) => [t.id, t]));
   const pinned = pickIds.map((id) => byId.get(id)).filter(Boolean);

@@ -13,7 +13,10 @@ import {
 } from "../utils/habitTrackerPageModel.js";
 import { mountKpiActiveGanttView } from "../utils/kpiActiveGanttView.js";
 import { collectGoalTrackerActiveKpis } from "../utils/kpiGoalTrackerActiveKpis.js";
-import { mountKpiGoalAllTodosSection } from "../utils/kpiGoalTrackerAllTodos.js";
+import {
+  captureAllTodosBoardScrollState,
+  mountKpiGoalAllTodosSection,
+} from "../utils/kpiGoalTrackerAllTodos.js";
 import { mountKpiGoalSuccessFailSection } from "../utils/kpiGoalTrackerSuccessFail.js";
 import { mountKpiGoalTodayGoalsSection } from "../utils/kpiGoalTrackerTodayGoals.js";
 
@@ -217,15 +220,23 @@ export function render(opts = {}) {
 
   function paintAllTodosOnly() {
     if (!goalHost) return;
-    const board = goalHost.querySelector(".habit-tracker-all-todos-board");
+    const snap = captureAllTodosBoardScrollState(goalHost);
     const keepScrollLeft =
-      board instanceof HTMLElement
-        ? board.scrollLeft
-        : Number(goalHost._lpAllTodosBoardScrollLeft) || 0;
+      snap.boardScrollLeft ||
+      Number(goalHost._lpAllTodosBoardScrollLeft) ||
+      0;
+    const listScrollByKpi = {
+      ...(goalHost._lpAllTodosListScrollByKpi || {}),
+      ...snap.listScrollByKpi,
+    };
     goalHost._lpAllTodosBoardScrollLeft = keepScrollLeft;
+    goalHost._lpAllTodosListScrollByKpi = listScrollByKpi;
     goalHost.replaceChildren();
     goalHost.classList.remove("habit-tracker-goal-host--panel");
-    mountKpiGoalAllTodosSection(goalHost, { boardScrollLeft: keepScrollLeft });
+    mountKpiGoalAllTodosSection(goalHost, {
+      boardScrollLeft: keepScrollLeft,
+      listScrollByKpi,
+    });
   }
 
   function paintGrid(opts = {}) {

@@ -2552,10 +2552,18 @@
 
 .lp-kpi-dream-page .dream-kpi-todo-item {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 0;
   border-bottom: 1px solid var(--lp-kpi-border-gray-soft);
+}
+
+.lp-kpi-dream-page .dream-kpi-todo-check-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  align-self: center;
 }
 
 .lp-kpi-dream-page .dream-kpi-todo-item:last-child {
@@ -2570,7 +2578,7 @@
 .lp-kpi-dream-page .dream-kpi-todo-check {
   width: 1.05rem;
   height: 1.05rem;
-  margin-top: 0.15rem;
+  margin: 0;
   accent-color: var(--lp-modal-accent);
   cursor: pointer;
 }
