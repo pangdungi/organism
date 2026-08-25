@@ -11455,7 +11455,7 @@ export function render(opts = {}) {
     return fromCtx.map((x) => String(x || "").trim()).filter(Boolean);
   }
 
-  /** 이 기록·같은 날 다른 기록·지금 모달에서 체크한 완료형 할일 id (목록에 남겨 보이게) */
+  /** 이 기록·지금 모달에서 체크한 완료형 할일 id만 (다른 기록 완료분은 넣지 않음) */
   function collectTaskCompletionIncludeIdsForTaskLog(kpiId) {
     const kid = String(kpiId || "").trim();
     const ids = new Set();
@@ -11469,19 +11469,6 @@ export function render(opts = {}) {
       }
     };
     if (taskLogEditTr?._rowData) addFromRow(taskLogEditTr._rowData);
-    const ymd = normalizeTaskLogPickerDateYmd();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
-      for (const r of loadTimeRows() || []) {
-        if (ledgerRowEntryDateYmd(r) !== ymd) continue;
-        const rowKid =
-          resolveKpiIdForTaskId(String(r?.taskId || "").trim()) ||
-          String(
-            getTaskOptionByName(String(r?.taskName || "").trim())?.kpiId || "",
-          ).trim();
-        if (rowKid !== kid) continue;
-        addFromRow(r);
-      }
-    }
     /* 잡무·KPI 작업 공통: 방금 체크한 항목은 완료 처리돼도 모달에 남김 */
     for (const id of taskLogModalCheckedTodoIds) ids.add(id);
     if (taskLogKpiTodosList) {
@@ -11500,10 +11487,8 @@ export function render(opts = {}) {
     const kpiId = resolveTaskLogModalKpiId();
     if (!kpiId) return null;
     const includeIds = [...collectTaskCompletionIncludeIdsForTaskLog(kpiId)];
-    const ymd = normalizeTaskLogPickerDateYmd();
     const info = getKpiTaskCompletionTodoInfoByKpiId(kpiId, {
       includeIds,
-      includeCompletedOnYmd: /^\d{4}-\d{2}-\d{2}$/.test(ymd) ? ymd : "",
     });
     if (!info) return null;
     const plannedIds = resolveTaskLogPlannedTodoIdFilter();
@@ -11695,8 +11680,7 @@ export function render(opts = {}) {
       );
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
-      const defaultChecked =
-        !!todo.completed || (id ? taskLogModalCheckedTodoIds.has(id) : false);
+      const defaultChecked = id ? taskLogModalCheckedTodoIds.has(id) : false;
       checkbox.checked = preserveChecks?.has(id)
         ? !!preserveChecks.get(id)
         : defaultChecked;
@@ -12679,6 +12663,11 @@ export function render(opts = {}) {
     hydrateLedgerRowKpiFieldsFromStorage(data, recordDateYmd);
     if (tr?._rowData && tr._rowData !== data) {
       hydrateLedgerRowKpiFieldsFromStorage(tr._rowData, recordDateYmd);
+    }
+    for (const x of Array.isArray(data?.habitDailyCompleted)
+      ? data.habitDailyCompleted
+      : []) {
+      rememberTaskLogModalTodoCheck(x?.id, true);
     }
     const measureInfoForEdit = getKpiMeasureInfoForTaskLog();
     const dailyCompletedBeforeCloudPull =
