@@ -1403,9 +1403,9 @@
 }
 
 .lp-kpi-dream-page .habit-tracker-today-goals-target {
-  font-size: 0.8125rem;
-  font-weight: 650;
-  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: #94a3b8;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   line-height: 1.35;
