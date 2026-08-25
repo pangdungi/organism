@@ -15,6 +15,7 @@ import { patchKpiLinkedTasksFromKpiMaps } from "./timeTaskOptionsModel.js";
 import { ensureAllKpiTimeTasksFromStorage } from "./kpiTimeTaskSync.js";
 import { lastDayYmdOfMonth } from "./kpiHabitTrackerStartDate.js";
 import { coalesceInFlightPull } from "./timeLedgerPullCoalesce.js";
+import { pullTodayActionTodoPicksFromSupabase } from "./kpiTodayActionTodos.js";
 
 /** 진행 상황 탭: 할일·로그 전체는 생략, 맵은 강제 pull */
 const HABIT_TRACKER_KPI_PULL_OPTS = {
@@ -40,7 +41,7 @@ export async function pullHabitTrackerTabFromCloud(year, month) {
   return coalesceInFlightPull(pullKey, async () => {
     let pullOk = false;
     try {
-      const [d, h, ha, s, ledgerOk, budgetOk] = await Promise.all([
+      const [d, h, ha, s, ledgerOk, budgetOk, picksOk] = await Promise.all([
         pullDreamKpiMapFromSupabase({
           force: true,
           skipLogs: true,
@@ -54,8 +55,9 @@ export async function pullHabitTrackerTabFromCloud(year, month) {
           preferServer: true,
         }),
         pullTimeDailyBudgetForDateRange(rangeStart, rangeEnd),
+        pullTodayActionTodoPicksFromSupabase(),
       ]);
-      pullOk = !!(d || h || ha || s || ledgerOk || budgetOk);
+      pullOk = !!(d || h || ha || s || ledgerOk || budgetOk || picksOk);
       patchKpiLinkedTasksFromKpiMaps();
       ensureAllKpiTimeTasksFromStorage();
       syncHabitTrackerLogs();

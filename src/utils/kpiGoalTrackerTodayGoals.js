@@ -24,6 +24,11 @@ import {
   DEFAULT_CHECKUP_KPI_ID,
   DEFAULT_READING_KPI_ID,
 } from "./defaultKpiIconIds.js";
+import {
+  appendTodayActionPinnedTodos,
+  todayActionHasTodos,
+  showTodayActionTodosModal,
+} from "./kpiTodayActionTodos.js";
 
 /** 오늘의 행동 목록에서 제외 — 기본 KPI「건강 검진」「독서하기」 */
 const TODAY_GOALS_EXCLUDED_KPI_IDS = new Set([
@@ -208,7 +213,7 @@ function isKpiExecutedToday(kpi, data, todayYmd) {
  *   total: number,
  *   remaining: number,
  *   pct: number,
- *   items: Array<{ id: string, name: string, targetLabel: string, done: boolean, category: string, isHabit: boolean }>
+ *   items: Array<{ id: string, name: string, targetLabel: string, done: boolean, category: string, isHabit: boolean, hasTodos: boolean }>
  * }}
  */
 export function buildGoalTrackerTodayGoalsModel(opts = {}) {
@@ -219,7 +224,7 @@ export function buildGoalTrackerTodayGoalsModel(opts = {}) {
   }
 
   const todayYmd = timeLedgerLocalTodayYmd() || toDateKey();
-  /** @type {Array<{ id: string, name: string, targetLabel: string, done: boolean, category: string, isHabit: boolean }>} */
+  /** @type {Array<{ id: string, name: string, targetLabel: string, done: boolean, category: string, isHabit: boolean, hasTodos: boolean }>} */
   const items = [];
 
   for (const domain of DOMAINS) {
@@ -250,6 +255,7 @@ export function buildGoalTrackerTodayGoalsModel(opts = {}) {
         done,
         category: domain.category,
         isHabit,
+        hasTodos: todayActionHasTodos(id),
       });
     }
   }
@@ -368,21 +374,78 @@ export function mountKpiGoalTodayGoalsSection(container, opts = {}) {
     return;
   }
 
+  const remount = () => {
+    const scrollEl = container.querySelector(
+      ".habit-tracker-today-goals-pin-scroll",
+    );
+    const keepTop =
+      scrollEl instanceof HTMLElement ? scrollEl.scrollTop : 0;
+    mountKpiGoalTodayGoalsSection(container, {
+      ...opts,
+      skipSync: true,
+      restoreScrollTop: keepTop,
+    });
+  };
+
   const list = document.createElement("ul");
   list.className = "habit-tracker-today-goals-list";
   list.setAttribute("aria-label", "오늘의 행동 목록");
 
   for (const item of model.items) {
     const li = document.createElement("li");
-    li.className = `habit-tracker-today-goals-row${item.done ? " is-done" : ""}`;
-    li.innerHTML = `
+    li.className = `habit-tracker-today-goals-row${item.done ? " is-done" : ""}${
+      item.hasTodos ? " has-todos" : ""
+    }`;
+
+    const rowHead = document.createElement(item.hasTodos ? "button" : "div");
+    if (item.hasTodos) {
+      rowHead.type = "button";
+      rowHead.setAttribute("aria-label", `${item.name} 할일 보기`);
+    }
+    rowHead.className = "habit-tracker-today-goals-head";
+    rowHead.innerHTML = `
       <span class="habit-tracker-today-goals-mark" aria-label="${item.done ? "실행함" : "미실행"}">${item.done ? "O" : "X"}</span>
       <span class="habit-tracker-today-goals-main">
         <span class="habit-tracker-today-goals-name">${escapeHtml(item.name)}</span>
         <span class="habit-tracker-today-goals-target">${escapeHtml(item.targetLabel)}</span>
       </span>
+      ${
+        item.hasTodos
+          ? `<span class="habit-tracker-today-goals-open-hint">할일 보기 ›</span>`
+          : ""
+      }
     `;
+    if (item.hasTodos) {
+      rowHead.addEventListener("click", () => {
+        showTodayActionTodosModal({
+          kpiId: item.id,
+          name: item.name,
+          todayYmd: model.todayYmd,
+          onChange: remount,
+        });
+      });
+    }
+    li.appendChild(rowHead);
+    if (item.hasTodos) {
+      appendTodayActionPinnedTodos(li, item, {
+        todayYmd: model.todayYmd,
+        onChange: remount,
+      });
+    }
     list.appendChild(li);
   }
   listParent.appendChild(list);
+
+  const restoreTop = Number(opts.restoreScrollTop);
+  if (Number.isFinite(restoreTop) && restoreTop > 0) {
+    const scrollEl = container.querySelector(
+      ".habit-tracker-today-goals-pin-scroll",
+    );
+    if (scrollEl instanceof HTMLElement) {
+      scrollEl.scrollTop = restoreTop;
+      requestAnimationFrame(() => {
+        scrollEl.scrollTop = restoreTop;
+      });
+    }
+  }
 }

@@ -11,6 +11,11 @@ import {
   normalizeSectionTaskListFilter,
 } from "./todoSettings.js";
 import { applyUiFontFromServerRow } from "./appUiFont.js";
+import {
+  applyTodayActionTodoPicksFromServer,
+  pushTodayActionTodoPicksToSupabase,
+  readTodayActionTodoPicksHasAnyToday,
+} from "./kpiTodayActionTodos.js";
 
 export const USER_HOURLY_RATE_KEY = "user_hourly_rate";
 export const USER_HOURLY_RATE_MODE_KEY = "user_hourly_rate_mode";
@@ -91,13 +96,20 @@ export async function pullUserPrefsFromSupabase() {
     data: { session },
   } = await getSupabaseSession();
   if (!session?.user?.id) return null;
-  const { data, error } = await supabase
+  const prefSelectBase =
+    "hourly_rate, hourly_rate_mode, appearance, subscription_status, access_until, ui_font_id";
+  let { data, error } = await supabase
     .from("user_subscriptions")
-    .select(
-      "hourly_rate, hourly_rate_mode, appearance, subscription_status, access_until, ui_font_id",
-    )
+    .select(`${prefSelectBase}, today_action_todo_picks`)
     .eq("user_id", session.user.id)
     .maybeSingle();
+  if (error) {
+    ({ data, error } = await supabase
+      .from("user_subscriptions")
+      .select(prefSelectBase)
+      .eq("user_id", session.user.id)
+      .maybeSingle());
+  }
   if (error || !data) return null;
 
   if (data.hourly_rate != null) {
@@ -124,6 +136,13 @@ export async function pullUserPrefsFromSupabase() {
     } catch (_) {}
   }
   applyUiFontFromServerRow(data);
+  const appliedPicks = applyTodayActionTodoPicksFromServer(
+    data.today_action_todo_picks,
+  );
+  /* 서버에 오늘분이 없고 이 기기에만 있으면 올려서 다른 기기와 맞춤 */
+  if (!appliedPicks && readTodayActionTodoPicksHasAnyToday()) {
+    void pushTodayActionTodoPicksToSupabase();
+  }
   await syncUserIanaTimezoneToSupabase();
   return data;
 }

@@ -1331,11 +1331,46 @@
 
 .lp-kpi-dream-page .habit-tracker-today-goals-row {
   display: flex;
-  align-items: baseline;
-  gap: 0.55rem;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.3rem;
   padding: 0.65rem 0.1rem;
   border-bottom: 1px solid #eef2f6;
   box-sizing: border-box;
+}
+
+.lp-kpi-dream-page .habit-tracker-today-goals-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.lp-kpi-dream-page .habit-tracker-today-goals-row.has-todos .habit-tracker-today-goals-head {
+  cursor: pointer;
+}
+
+.lp-kpi-dream-page .habit-tracker-today-goals-row.has-todos .habit-tracker-today-goals-head:focus-visible {
+  outline: 1.5px solid #111;
+  outline-offset: 2px;
+}
+
+.lp-kpi-dream-page .habit-tracker-today-goals-open-hint {
+  flex: 0 0 auto;
+  margin-left: auto;
+  font-size: 0.75rem;
+  font-weight: 550;
+  color: #8a8a8a;
+  white-space: nowrap;
+  line-height: 1.35;
 }
 
 /* 실행여부 왼쪽 고정 — 세로로 한눈에 훑기 */
@@ -1590,4 +1625,137 @@
     #e8e8e8 4px,
     #e8e8e8 8px
   );
+}
+
+.lp-kpi-dream-page .habit-tracker-today-action-todos {
+  list-style: none;
+  margin: 0 0 0 1.7rem;
+  padding: 0.15rem 0 0.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.lp-kpi-dream-page .habit-tracker-today-action-todo-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.lp-kpi-dream-page .habit-tracker-today-action-todo-check {
+  flex: 0 0 auto;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 0.7rem;
+  height: 0.7rem;
+  margin: 0.22rem 0 0;
+  padding: 0;
+  border: 1.5px solid #c4c4c4;
+  border-radius: 0.12rem;
+  background: #fff;
+  accent-color: #333;
+  cursor: pointer;
+}
+
+.lp-kpi-dream-page .habit-tracker-today-action-todo-check:checked {
+  border-color: #333;
+  background-color: #333;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='none' stroke='%23fff' stroke-width='2' d='M2.4 6.2l2.5 2.4 4.7-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 0.5rem 0.5rem;
+}
+
+.lp-kpi-dream-page .habit-tracker-today-action-todo-text {
+  min-width: 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  font-weight: 550;
+  color: #475569;
+}
+
+.lp-kpi-dream-page .habit-tracker-today-action-todo.is-checked .habit-tracker-today-action-todo-text {
+  color: #94a3b8;
+  text-decoration: line-through;
+}
+
+.lp-today-action-todos-modal [data-legacy~="time-task-log-kpi-todos-section"] {
+  display: block;
+  margin: 0;
+  padding: 0.15rem 0 0;
+  border-top: none;
+  min-width: 0;
+}
+
+.lp-today-action-todos-modal [data-legacy~="time-task-log-kpi-todos-title-row"] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  margin: 0 0 0.45rem;
+}
+
+.lp-today-action-todos-modal [data-legacy~="time-task-log-kpi-todos-title"] {
+  margin: 0;
+}
+
+.lp-today-action-todos-modal [data-legacy~="lp-expected-kpi-todo-add-btn"] {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #d4d4d4;
+  border-radius: 6px;
+  background: #fff;
+  color: #111;
+  font-size: 1.05rem;
+  font-weight: 650;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lp-today-action-todos-modal [data-legacy~="time-task-log-kpi-todos-hint"] {
+  margin: 0.1rem 0 0.45rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: #8a8a8a;
+}
+
+.lp-today-action-todos-modal .time-task-log-kpi-todo-row--pick-memo {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.28rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.2rem 0.1rem;
+  border: none;
+  border-radius: 0.3rem;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.lp-today-action-todos-modal .time-task-log-kpi-todo-row--pick-memo::before {
+  content: "◽️";
+  flex: 0 0 auto;
+  line-height: 1.45;
+  font-size: 0.72em;
+}
+
+.lp-today-action-todos-modal
+  .time-task-log-kpi-todo-row--pick-memo.is-planned::before {
+  content: "☑️";
+}
+
+.lp-today-action-todos-modal
+  .time-task-log-kpi-todo-row--pick-memo.is-planned {
+  background: rgba(0, 0, 0, 0.06);
 }
