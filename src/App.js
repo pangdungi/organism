@@ -892,6 +892,10 @@ export async function mountApp(container) {
       if (root) {
         root.classList.toggle("lp-tab-footer-visible", !footerNav.hidden);
       }
+      document.documentElement.classList.toggle(
+        "lp-tab-footer-visible",
+        !footerNav.hidden,
+      );
     } catch (_) {}
   }
   syncAppFooterVisibility();

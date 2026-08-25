@@ -150,7 +150,7 @@ body {
   .calendar-day-expand-overlay,
   .diary-tr-invest-detail-modal-backdrop,
   .idea-delete-account-modal,
-  .app-toast-modal,
+  .app-toast-modal:not(.app-toast-modal--auto),
   .auth-pw-modal {
     top: 0;
     left: 0;
@@ -2301,12 +2301,21 @@ table {
   outline-offset: 2px;
 }
 
-/* 확인 없이 잠깐만 보이는 안내 — 화면을 막지 않음 */
+/* 확인 없이 잠깐만 보이는 안내 — 화면을 막지 않음, 보이는 화면 안에 통째로 */
 .app-toast-modal--auto {
   align-items: flex-end;
   justify-content: center;
-  padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0));
+  top: auto;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  inset: auto 0 0;
+  padding: 0 1rem calc(1.35rem + env(safe-area-inset-bottom, 0px));
   pointer-events: none;
+}
+
+html.lp-tab-footer-visible .app-toast-modal--auto {
+  padding-bottom: calc(4.35rem + env(safe-area-inset-bottom, 0px));
 }
 
 .app-toast-modal--auto .app-toast-backdrop {
