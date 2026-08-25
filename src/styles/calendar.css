@@ -1964,7 +1964,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   white-space: normal;
   overflow: visible;
   overflow-wrap: break-word;
-  word-break: keep-all;
+  word-break: break-word;
 }
 
 .calendar-monthly-span-bar-text {
@@ -1975,7 +1975,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   font-size: inherit;
   line-height: inherit;
   overflow-wrap: break-word;
-  word-break: keep-all;
+  word-break: break-word;
 }
 
 /* 여러 날 컬러 바 — 글자를 바 높이 기준 세로 가운데 */
