@@ -147,19 +147,16 @@ function showCalendarTaskEditModal(options) {
       <div class="time-task-setup-body">
         <div class="time-task-log-field">
           <label>할일/일정 이름</label>
-          <input type="text" class="time-add-task-name" placeholder="할일/일정 입력" value="${escapeHtml(name)}" maxlength="500" />
+          <input type="text" class="time-add-task-name" placeholder="할일/일정 입력" value="${escapeHtml(name)}" maxlength="500" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
         </div>
-        <div class="time-task-log-field calendar-diary-check-field">
+        <div class="time-task-log-field calendar-task-edit-checks-row">
           <label class="calendar-diary-check-label">
             <input type="checkbox" class="calendar-diary-check" data-calendar-diary-check ${isCalendarDiary ? "checked" : ""} />
             <span>캘린더일기</span>
           </label>
-        </div>
-        <div class="time-task-log-field calendar-task-edit-done-field">
-          <label class="calendar-task-edit-done-label">
-            <input type="checkbox" class="calendar-task-edit-done-check" aria-label="완료" ${done ? "checked" : ""} />
-            <span class="calendar-task-edit-done-face" aria-hidden="true"></span>
-            <span class="calendar-task-edit-done-text">완료</span>
+          <label class="calendar-diary-check-label">
+            <input type="checkbox" class="calendar-diary-check calendar-task-edit-done-check" aria-label="완료" ${done ? "checked" : ""} />
+            <span>완료</span>
           </label>
         </div>
         <div class="todo-task-date-block">

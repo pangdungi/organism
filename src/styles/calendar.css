@@ -3916,42 +3916,14 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   opacity: 0.9;
 }
 
-/* 캘린더 할일/일정 수정 모달 — 완료 체크 */
-.calendar-task-edit-done-field {
-  margin-top: -0.15rem;
-}
-
-.calendar-task-edit-done-label {
-  position: relative;
-  display: inline-flex;
+/* 캘린더 할일/일정 수정 모달 — 일기·완료 같은 줄 */
+.calendar-task-edit-checks-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.45rem;
-  cursor: pointer;
-  user-select: none;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--lp-modal-navy, #000000);
-}
-
-.calendar-task-edit-done-check {
-  position: absolute;
-  opacity: 0;
-  width: 1.25rem;
-  height: 1.25rem;
-  margin: 0;
-  cursor: pointer;
-}
-
-.calendar-task-edit-done-face {
-  width: 1.25rem;
-  height: 1.25rem;
-  flex-shrink: 0;
-  background: url("/todo-card-icons/checkbox.png") center / contain no-repeat;
-}
-
-.calendar-task-edit-done-label:has(.calendar-task-edit-done-check:checked)
-  .calendar-task-edit-done-face {
-  background-image: url("/todo-card-icons/check-done.png");
+  gap: 1.15rem 1.35rem;
+  margin-top: -0.1rem;
 }
 
 .calendar-task-edit-active {
@@ -3976,9 +3948,25 @@ button.calendar-1day-pane-section-head--action:focus-visible {
 }
 
 .calendar-diary-check-label input.calendar-diary-check {
-  width: 1rem;
-  height: 1rem;
+  flex: 0 0 auto;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 0.7rem;
+  height: 0.7rem;
   margin: 0;
-  accent-color: #000000;
+  padding: 0;
+  border: 1.5px solid #c4c4c4;
+  border-radius: 0.12rem;
+  background: #fff;
+  accent-color: #333;
   cursor: pointer;
+}
+
+.calendar-diary-check-label input.calendar-diary-check:checked {
+  border-color: #333;
+  background-color: #333;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='none' stroke='%23fff' stroke-width='2' d='M2.4 6.2l2.5 2.4 4.7-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 0.5rem 0.5rem;
 }

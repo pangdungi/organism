@@ -2374,6 +2374,10 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
             class="time-add-task-name"
             placeholder="할일/일정 입력"
             maxlength="500"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
           />
         </div>
         <div class="time-task-log-field calendar-diary-check-field">
