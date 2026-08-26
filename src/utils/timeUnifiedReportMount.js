@@ -8227,14 +8227,11 @@ export function mountUnifiedTimeReport(scrollWrap, arg2, arg3) {
         mountHabitCheckSection(stage, range, { skipSync: true });
         mountHappinessRoutineSection(stage, range, { skipSync: true });
       });
-      /* 4) 일간 별점 · 집중·비생산·계획 */
+      /* 4) 집중·계획 */
       schedule(() => {
         if (!alive()) return;
         flushChunk((stage) => {
-          mountDayStarRatingSection(stage, range, rows);
           mountFocusReportSection(stage, range, rows);
-          mountNonproductiveBadFeelingReportSection(stage, range, rows);
-          mountNonproductiveGoodFeelingReportSection(stage, range, rows);
           mountPlanAdherenceSection(stage, range, rows);
         });
       });

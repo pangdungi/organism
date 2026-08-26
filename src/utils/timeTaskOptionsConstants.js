@@ -879,6 +879,34 @@ export function isMealIntakeTasteRatingTaskName(name) {
   );
 }
 
+/** 시간기록 모달에서 «이 시간 평가»를 받지 않는 내장 행동 */
+const TIME_RATING_REMOVED_TASK_NAMES = new Set([
+  "비생산적 소비",
+  "건강하지 않은 섭취 준비",
+  "비생산적 대화",
+  "비생산적 외출",
+  "물건 찾기",
+  "잡생각하기",
+  "단순 이동",
+  "게임",
+  "생산적 소비",
+  "시간 관리 관련 행동",
+  "개인 위생",
+  "건강한 섭취 준비",
+  "생산적 대화",
+  "생산적 외출",
+  "기록하기",
+  "외모관리",
+  WORK_BUILTIN_TASK_NAME,
+]);
+
+export function isTimeRatingRemovedBuiltinTaskName(name) {
+  const n = canonicalMealTaskDisplayName(name);
+  if (!n) return false;
+  if (isNapBuiltinTaskName(n)) return true;
+  return TIME_RATING_REMOVED_TASK_NAMES.has(n);
+}
+
 export const TASKS_LOCKED_FOR_EDIT = [
   NAP_TASK_NAME,
   NAP_TASK_NAME_WITHIN_30,

@@ -8693,19 +8693,24 @@ export function render(opts = {}) {
   function shouldShowTaskLogRatingSection() {
     /* 취침~23:59 구간은 아직 자는 중 — 평가는 다음날 기상 때 */
     if (isTaskLogModalSleepOvernightCutoff()) return false;
+    const ratingTaskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
+    if (TTC.isTimeRatingRemovedBuiltinTaskName(ratingTaskName)) return false;
     if (
       isTaskLogModalSleepTask() ||
       isTaskLogModalWorkTask() ||
       isTaskLogModalEmotionalTask()
     )
       return true;
-    /* 맛·콘텐츠는 각각 맛/콘텐츠 평가 · 그 외 생산·비생산은 이 시간 평가 */
+    /* 맛·콘텐츠는 각각 맛/콘텐츠 평가 · 그 외는 KPI 연동(또는 독서노트 쓰기)만 이 시간 평가 */
     if (isTaskLogModalMealIntakeTask() || isTaskLogModalContentTask())
       return true;
     const pv = getTimeLedgerRowDisplayProductivity(
       buildTaskLogModalProductivityStub(),
     );
-    return pv === "productive" || pv === "nonproductive";
+    if (pv !== "productive" && pv !== "nonproductive") return false;
+    const opt = ratingTaskName ? getTaskOptionByName(ratingTaskName) : null;
+    if (isTimeTaskKpiLinked(opt)) return true;
+    return TTC.canonicalMealTaskDisplayName(ratingTaskName) === "독서노트 쓰기";
   }
 
   function taskLogRatingSectionLabelText() {
