@@ -275,13 +275,19 @@
   font-weight: 600;
 }
 
-/* 캘린더일기 — 「일기 보기/숨기기」 (문구만 바꿈, 활성 칠 없음) */
-.calendar-nav-controls .calendar-nav-diary-toggle {
+/* 캘린더일기 — 「일기 보기/숨기기」 (문구만 바꿈, 활성·호버 칠 없음) */
+.calendar-nav-controls .calendar-nav-diary-toggle,
+.calendar-nav-controls .calendar-nav-diary-toggle:hover,
+.calendar-nav-controls .calendar-nav-diary-toggle:active,
+.calendar-nav-controls .calendar-nav-diary-toggle:focus,
+.calendar-nav-controls .calendar-nav-diary-toggle:focus-visible {
   display: inline-flex;
   padding-inline: 0.55rem;
   font-size: 0.75rem;
   font-weight: 600;
   white-space: nowrap;
+  background: var(--cal-surface);
+  border-color: var(--cal-line);
 }
 
 /* 일기 숨김 — 전체 재그리기 없이 일기 막대만 가림 */

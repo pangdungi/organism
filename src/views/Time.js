@@ -211,6 +211,7 @@ import {
   ledgerRowTimeboxDisplayLabel,
   ledgerRowUsesDetailAsDisplayName,
   ledgerRowUserMemoFeedback,
+  resolveLedgerRowDetail,
 } from "../utils/timeLedgerCardKpiMemo.js";
 import {
   formatEmotionReflectMemoDisplay,
@@ -1167,6 +1168,33 @@ function removeFromBudgetExcluded(dateStr, taskName) {
       writeTimeDailyBudgetExcludedRaw(JSON.stringify(excl));
       notifyTimeDailyBudgetSaved(dateStr);
     }
+  } catch (_) {}
+}
+
+/** 브라우저 새로고침 1회만 — 타임라인 조회(연간 등)를 오늘로 되돌림 */
+let timeLedgerReloadInquiryResetDone = false;
+
+function isDocumentReloadNavigation() {
+  try {
+    const nav = performance.getEntriesByType?.("navigation")?.[0];
+    return String(nav?.type || "") === "reload";
+  } catch (_) {
+    return false;
+  }
+}
+
+function clearTimelineInquirySessionOnReload() {
+  if (timeLedgerReloadInquiryResetDone) return;
+  if (!isDocumentReloadNavigation()) return;
+  timeLedgerReloadInquiryResetDone = true;
+  try {
+    if (typeof sessionStorage === "undefined") return;
+    sessionStorage.removeItem("lp_time_usage_list_start");
+    sessionStorage.removeItem("lp_time_usage_list_end");
+    sessionStorage.removeItem("lp_time_ledger_timeline_granularity");
+    sessionStorage.removeItem("lp_time_usage_memo_only");
+    sessionStorage.removeItem("lp_time_usage_text_search");
+    sessionStorage.removeItem("lp_time_usage_task_filter");
   } catch (_) {}
 }
 
@@ -4483,21 +4511,70 @@ function timeLedgerRowHasUserMemo(row) {
   return ledgerRowHasDisplayableMemo(row);
 }
 
-/** 타임라인 텍스트 검색 — 과제명·메모·태그·피드백 */
+/** 검색 — 콘텐츠/컨텐츠 표기를 둘 다 넣음 */
+function withContentSpellingVariants(text) {
+  const s = String(text || "");
+  if (!s) return "";
+  const a = s.replace(/콘텐츠/g, "컨텐츠");
+  const b = s.replace(/컨텐츠/g, "콘텐츠");
+  return [s, a, b].filter((x, i, arr) => arr.indexOf(x) === i).join(" ");
+}
+
+/** 저장된 과제명 + 예전 이름 + 같은 과제 별칭 */
+function timeLedgerRowSearchTaskNames(row) {
+  const raw = String(row?.taskName || "").trim();
+  const canon = TTC.canonicalMealTaskDisplayName(raw) || raw;
+  const names = new Set([raw, canon].filter(Boolean));
+  for (const { from, to } of TTC.MEAL_TASK_NAME_RENAMES) {
+    if (from === raw || to === raw || from === canon || to === canon) {
+      names.add(from);
+      names.add(to);
+    }
+  }
+  const cat = String(row?.category || "").trim();
+  const detailRaw = String(row?.mealDetail || "").trim();
+  const detailParts = TTC.parseChipDetailStoredValue(raw || canon, detailRaw);
+  const looksContent =
+    TTC.isContentDetailTaskName(raw) ||
+    TTC.isContentDetailTaskName(canon) ||
+    detailParts.some((p) => TTC.isKnownContentType(p));
+  if (looksContent && (cat === "media_watch" || canon === "무의식적 콘텐츠 소비")) {
+    names.add("무의식적 콘텐츠 소비");
+    names.add("무의식적 영상 시청");
+    names.add("단순 쾌락형 영상 시청");
+    names.add("콘텐츠");
+    names.add("컨텐츠");
+  }
+  if (looksContent && (cat === "happiness" || canon === "의식적 콘텐츠 소비")) {
+    names.add("의식적 콘텐츠 소비");
+    names.add("콘텐츠");
+    names.add("컨텐츠");
+  }
+  return [...names];
+}
+
+/** 타임라인 텍스트 검색 — 원래 과제·화면 이름·옵션 상세·메모·태그 */
 function timeLedgerRowSearchHaystack(row) {
   if (!row || typeof row !== "object") return "";
   const kpiId = String(row.kpiId || row.linkedKpiId || "").trim();
+  const detail = resolveLedgerRowDetail(row);
   const parts = [
-    row.taskName,
+    ...timeLedgerRowSearchTaskNames(row),
+    ledgerRowDisplayTaskName(row),
     row.category,
+    row.mealDetail,
+    detail?.text,
     row.feedback,
+    ledgerRowUserMemoFeedback(row),
     buildTimeLedgerCardMemoText(row, kpiId),
     ...getMemoTagDisplayTextsForLedgerRow(row),
   ];
-  return parts
-    .map((x) => String(x || "").trim())
-    .filter(Boolean)
-    .join(" ");
+  return withContentSpellingVariants(
+    parts
+      .map((x) => String(x || "").trim())
+      .filter(Boolean)
+      .join(" "),
+  );
 }
 
 /** 사용자 메모 태그만 memo_tags에 넣음 */
@@ -5980,6 +6057,7 @@ export function render(opts = {}) {
       return null;
     }
   }
+  clearTimelineInquirySessionOnReload();
   const _usageListFromSession = readUsageListRangeFromSession();
   const _todayForUsageRange = getLedgerFilterTodayYmd();
   let usageHistoryRangeStartYmd =
