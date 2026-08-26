@@ -14,6 +14,18 @@ export function flexibleSearchTextKey(text) {
 }
 
 /**
+ * 「의식적」검색이 「무의식적」에 글자만 들어 있어 같이 잡히지 않게.
+ * 검색어에 무의식적이 있을 때는 그대로 둠.
+ * @param {string} text
+ * @param {string} queryFlat
+ */
+function maskMuUisikjeokUnlessQueried(text, queryFlat) {
+  const q = String(queryFlat || "");
+  if (!q.includes("의식적") || q.includes("무의식적")) return String(text || "");
+  return String(text || "").replace(/무의식적/g, "····");
+}
+
+/**
  * @param {string} searchText
  * @param {string} query
  */
@@ -22,9 +34,13 @@ export function matchFlexibleSearch(searchText, query) {
     .trim()
     .toLowerCase();
   if (!q) return true;
-  const hay = normalizeFlexibleSearchHaystack(searchText);
-  const hayFlat = flexibleSearchTextKey(searchText);
   const qFlat = flexibleSearchTextKey(q);
+  const hayRaw = maskMuUisikjeokUnlessQueried(
+    normalizeFlexibleSearchHaystack(searchText),
+    qFlat,
+  );
+  const hay = hayRaw;
+  const hayFlat = hayRaw.replace(/\s/g, "");
   if (qFlat && hayFlat.includes(qFlat)) return true;
   if (hay.includes(q)) return true;
   const tokens = q.split(/\s+/).filter(Boolean);

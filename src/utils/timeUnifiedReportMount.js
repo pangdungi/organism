@@ -8014,6 +8014,149 @@ function renderMonthTaskTreemap(items, { ariaLabel = "과제별 사용 시간" }
   return wrap;
 }
 
+function formatMinutesAsHhMm(totalMinutes) {
+  const n = Math.max(0, Math.round(Number(totalMinutes) || 0));
+  const h = Math.floor(n / 60);
+  const m = n % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+const DAY_TASK_DONUT_PALETTE = [
+  "#E8A0A0",
+  "#7E9FC3",
+  "#D4B896",
+  "#86C4A3",
+  "#E8C48A",
+  "#B8A8E0",
+  "#E8A8C0",
+  "#8BB8D8",
+  "#C9A0B4",
+  "#A8C4B0",
+  "#D8B090",
+  "#9AA8C8",
+  "#C4B8D8",
+  "#B0C8A0",
+  "#D0A898",
+];
+
+function assignDayTaskDonutColors(items) {
+  const used = new Set();
+  return (items || []).map((item, index) => {
+    const preferred = String(
+      MONTH_TASK_TREEMAP_COLORS[item.categoryKey] ||
+        MONTH_TASK_TREEMAP_COLORS.other,
+    );
+    let color = preferred;
+    if (used.has(color.toLowerCase())) {
+      let guard = 0;
+      color = DAY_TASK_DONUT_PALETTE[index % DAY_TASK_DONUT_PALETTE.length];
+      while (
+        used.has(color.toLowerCase()) &&
+        guard < DAY_TASK_DONUT_PALETTE.length
+      ) {
+        color =
+          DAY_TASK_DONUT_PALETTE[
+            (index + guard + 1) % DAY_TASK_DONUT_PALETTE.length
+          ];
+        guard += 1;
+      }
+    }
+    used.add(color.toLowerCase());
+    return { ...item, color };
+  });
+}
+
+/** 1일 — 그 외 시간 도넛(조각 라벨 없음) + 과제 목록 */
+function renderDayTaskTimeDonut(items, { ariaLabel = "과제별 사용 시간" } = {}) {
+  const total = (items || []).reduce(
+    (sum, item) => sum + Math.max(0, Number(item.minutes) || 0),
+    0,
+  );
+  const colored = assignDayTaskDonutColors(items).map((item) => ({
+    ...item,
+    pct: total > 0 ? Math.round((item.minutes / total) * 100) : 0,
+  }));
+
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-day-task-donut";
+
+  const body = document.createElement("div");
+  body.className = "lp-tr2-day-task-donut-body";
+
+  const viz = document.createElement("div");
+  viz.className = "lp-tr2-day-task-donut-viz";
+  viz.setAttribute("aria-hidden", "true");
+
+  const size = 220;
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = 98;
+  const rInner = 60;
+  const svg = svgEl("svg", {
+    class: "lp-tr2-day-task-donut-svg",
+    width: size,
+    height: size,
+    viewBox: `0 0 ${size} ${size}`,
+  });
+  const gap = colored.length > 1 ? 0.04 : 0;
+  const usable = Math.PI * 2 - gap * colored.length;
+  let angle = -Math.PI / 2;
+  colored.forEach((item) => {
+    const mins = Math.max(0, Number(item.minutes) || 0);
+    if (mins <= 0 || total <= 0) return;
+    const slice = (mins / total) * usable;
+    if (slice <= 0) return;
+    const d = donutSlicePath(cx, cy, r, rInner, angle, angle + slice);
+    if (d) {
+      const path = svgEl("path", { d, fill: item.color });
+      const title = document.createElementNS(SVG_NS, "title");
+      title.textContent = `${item.name} ${formatMinutesAsHhMm(mins)} · ${item.pct}%`;
+      path.appendChild(title);
+      svg.appendChild(path);
+    }
+    angle += slice + gap;
+  });
+  viz.appendChild(svg);
+
+  const center = document.createElement("div");
+  center.className = "lp-tr2-day-task-donut-center";
+  const cap = document.createElement("span");
+  cap.className = "lp-tr2-day-task-donut-cap";
+  cap.textContent = "전체";
+  const totalEl = document.createElement("strong");
+  totalEl.className = "lp-tr2-day-task-donut-total";
+  totalEl.textContent = formatMinutesAsHhMm(total);
+  center.append(cap, totalEl);
+  viz.appendChild(center);
+
+  const list = document.createElement("ul");
+  list.className = "lp-tr2-day-task-donut-list";
+  list.setAttribute("aria-label", ariaLabel);
+  colored.forEach((item) => {
+    const li = document.createElement("li");
+    li.className = "lp-tr2-day-task-donut-row";
+    const bar = document.createElement("span");
+    bar.className = "lp-tr2-day-task-donut-bar";
+    bar.style.background = item.color;
+    bar.setAttribute("aria-hidden", "true");
+    const text = document.createElement("span");
+    text.className = "lp-tr2-day-task-donut-text";
+    const name = document.createElement("span");
+    name.className = "lp-tr2-day-task-donut-name";
+    name.textContent = item.name;
+    const meta = document.createElement("span");
+    meta.className = "lp-tr2-day-task-donut-meta";
+    meta.textContent = `${formatMinutesAsHhMm(item.minutes)} · ${item.pct}%`;
+    text.append(name, meta);
+    li.append(bar, text);
+    list.appendChild(li);
+  });
+
+  body.append(viz, list);
+  wrap.appendChild(body);
+  return wrap;
+}
+
 /** 일·주·월·연간 — 과제 트리맵 / 연간은 카테고리 버블 */
 function mountTaskTimeMapSection(scrollWrap, range, rows) {
   const isDay = range.start === range.end;
@@ -8039,29 +8182,6 @@ function mountTaskTimeMapSection(scrollWrap, range, rows) {
   const { work, sleep, total } = sumWorkSleepMinutesFromRows(rows);
   appendWorkSleepTimeMapSummary(sec, work, sleep, total);
 
-  if (isYear) {
-    const bubbles = buildCategoryBubbleItems(rows, { excludeWorkSleep: true });
-    if (!bubbles.length) {
-      const note = document.createElement("p");
-      note.className = "lp-tr2-chart-note";
-      note.textContent =
-        work > 0 || sleep > 0
-          ? "근무·수면 외에 집계할 카테고리 기록이 없습니다."
-          : "이 해에 집계할 과제 기록이 없습니다.";
-      sec.appendChild(note);
-      scrollWrap.appendChild(sec);
-      return;
-    }
-    const restBlock = createRatingBlock(
-      "그 외 시간",
-      "근무·수면 제외 · 원 크기 = 카테고리 비율",
-    );
-    restBlock.appendChild(renderCategoryBubbleChart(bubbles));
-    sec.appendChild(restBlock);
-    scrollWrap.appendChild(sec);
-    return;
-  }
-
   const items = buildMonthTaskTreemapItems(rows, { excludeWorkSleep: true });
   if (!items.length) {
     const note = document.createElement("p");
@@ -8073,7 +8193,9 @@ function mountTaskTimeMapSection(scrollWrap, range, rows) {
         ? "이날 집계할 과제 기록이 없습니다."
         : isWeek
           ? "이 주에 집계할 과제 기록이 없습니다."
-          : "이 기간에 집계할 과제 기록이 없습니다.";
+          : isYear
+            ? "이 해에 집계할 과제 기록이 없습니다."
+            : "이 기간에 집계할 과제 기록이 없습니다.";
     }
     sec.appendChild(note);
     scrollWrap.appendChild(sec);
@@ -8082,10 +8204,10 @@ function mountTaskTimeMapSection(scrollWrap, range, rows) {
 
   const restBlock = createRatingBlock(
     "그 외 시간",
-    "근무·수면 제외 · 칸 면적 = 과제 시간 비율",
+    "근무·수면 제외 · 조각 크기 = 과제 시간 비율",
   );
   restBlock.appendChild(
-    renderMonthTaskTreemap(items, {
+    renderDayTaskTimeDonut(items, {
       ariaLabel: `${title} · 근무·수면 제외 과제별 사용 시간`,
     }),
   );

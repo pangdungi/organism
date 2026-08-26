@@ -6293,6 +6293,42 @@ export function render(opts = {}) {
     persistActiveViewTimeFilterToSession();
   }
 
+  /** 타임라인 연간·기간 조회를 떠남: 화면·세션은 오늘 하루, 기기의 먼 날짜는 지움 */
+  function isTimelineInquiryBeyondToday() {
+    const today = getLedgerFilterTodayYmd();
+    return (
+      usageHistoryMemoOnlyFilter ||
+      !!String(usageHistoryTextSearchQuery || "").trim() ||
+      usageHistoryRangeStartYmd !== today ||
+      usageHistoryRangeEndYmd !== today ||
+      normalizeTimeLedgerReportGranularity(timeLedgerTimelineGranularity) !==
+        "day"
+    );
+  }
+
+  function leaveTimelineInquiryToToday() {
+    const today = getLedgerFilterTodayYmd();
+    usageHistoryRangeStartYmd = today;
+    usageHistoryRangeEndYmd = today;
+    reportRangeStartYmd = today;
+    reportRangeEndYmd = today;
+    timeLedgerTimelineGranularity = "day";
+    timeLedgerTimeboxGranularity = "day";
+    timeLedgerReportGranularity = "day";
+    usageHistoryMemoOnlyFilter = false;
+    usageHistoryTextSearchQuery = "";
+    const searchInp = usageRangeModal?.querySelector("[data-usage-text-search]");
+    if (searchInp) searchInp.value = "";
+    const memoCb = usageRangeModal?.querySelector("[data-usage-filter-memo-only]");
+    if (memoCb) memoCb.checked = false;
+    try {
+      resetTimeLedgerSessionFilterToToday();
+    } catch (_) {}
+    try {
+      clearPulledLedgerRanges();
+    } catch (_) {}
+  }
+
   function formatGranularityRangeDateLabel(startYmd, endYmd, granularity, opts = {}) {
     const g = opts.report
       ? normalizeTimeLedgerReportGranularity(granularity)
@@ -6416,9 +6452,26 @@ export function render(opts = {}) {
     return ov;
   }
 
+  function inquiryRangeLoadingMessage(rs, re) {
+    const s = String(rs || "").slice(0, 10);
+    const e = String(re || "").slice(0, 10);
+    const g =
+      timeLedgerLayoutView === "report"
+        ? normalizeTimeLedgerReportGranularity(timeLedgerReportGranularity)
+        : timeLedgerLayoutView === "timebox"
+          ? normalizeTimeLedgerTimeboxGranularity(timeLedgerTimeboxGranularity)
+          : normalizeTimeLedgerReportGranularity(timeLedgerTimelineGranularity);
+    if (g === "year" || (s && e && s.slice(0, 4) === e.slice(0, 4) && s.slice(5) === "01-01" && e.slice(5) === "12-31")) {
+      return "1년 기록을 불러오는 중…";
+    }
+    if (g === "month") return "한달 기록을 불러오는 중…";
+    if (g === "week") return "1주 기록을 불러오는 중…";
+    if (s && e && s !== e) return "선택한 기간 기록을 불러오는 중…";
+    return "기록을 불러오는 중…";
+  }
+
   /**
-   * 잠금·백그라운드 복귀 pull 전용 오버레이.
-   * 메뉴 진입·조회·서브탭 클릭 pull 에는 쓰지 않음.
+   * 잠금·백그라운드 복귀 + 기간 조회(주·월·연) pull 안내.
    */
   function showTimeLedgerPullLoadingUi(message = "동기화 중…") {
     if (!el.isConnected) return;
@@ -6461,11 +6514,11 @@ export function render(opts = {}) {
       _timeLedgerFilterPullTimer = null;
       const pullGen = ++_usageListPullGen;
       void (async () => {
+        let rs = "";
+        let re = "";
         try {
           if (!el.isConnected) return;
           persistActiveViewTimeFilterToSession();
-          let rs;
-          let re;
           if (timeLedgerLayoutView === "report") {
             rs = String(reportRangeStartYmd || "").trim();
             re = String(reportRangeEndYmd || "").trim();
@@ -6493,6 +6546,9 @@ export function render(opts = {}) {
             syncTimeLedgerContent({ force: false });
             return;
           }
+          if (rs !== re) {
+            showTimeLedgerPullLoadingUi(inquiryRangeLoadingMessage(rs, re));
+          }
           const ok = await pullTimeLedgerEntriesForDateRange(rs, re, {
             force: true,
             preferServer: true,
@@ -6512,7 +6568,12 @@ export function render(opts = {}) {
               range: `${rs}..${re}`,
             });
           }
-        } catch (_) {}
+        } catch (_) {
+        } finally {
+          if (pullGen === _usageListPullGen) {
+            dismissTimeLedgerPullLoadingUi();
+          }
+        }
       })();
     }, 400);
   }
@@ -6993,7 +7054,6 @@ export function render(opts = {}) {
     const usageFilterActiveBanner = usageRangeModal.querySelector(
       "[data-usage-filter-active-banner]",
     );
-    let _usageTextSearchLiveTimer = null;
     const usageRangeDatesWraps = usageRangeModal.querySelectorAll(
       "[data-usage-range-dates-wrap]",
     );
@@ -7605,25 +7665,6 @@ export function render(opts = {}) {
       }
     }
 
-    /** 검색어 입력 — 선택한 일간·주간·월간·연간을 유지한 채 목록만 걸러 냄 */
-    function applyUsageTextSearchLive(rawQ, opts = {}) {
-      if (!isUsageRangeModalTimelineMode()) return;
-      const q = String(rawQ ?? "").trim();
-      const prevQ = String(usageHistoryTextSearchQuery || "").trim();
-      usageHistoryTextSearchQuery = q;
-      if (usageTextSearchInp && usageTextSearchInp.value !== String(rawQ ?? "")) {
-        usageTextSearchInp.value = String(rawQ ?? "");
-      }
-      syncUsageTextSearchFilterUi();
-      persistActiveViewTimeFilterToSession();
-      onFilterChange();
-      if (q !== prevQ) {
-        requestTimeLedgerPullForUserQueryChange("usage_text_search");
-      }
-      syncFooterDateBtnActiveState();
-      if (opts.closeModal) closeUsageRangeModal();
-    }
-
     function openUsageRangeModal() {
       const { start, end } = activeRangeYmdForModal();
       modalTimeboxGranularityDraft = activeLayoutGranularityFromView();
@@ -7726,39 +7767,24 @@ export function render(opts = {}) {
       });
     });
     taskSelectClearBtn?.addEventListener("click", () => {
-      usageHistoryMemoOnlyFilter = false;
-      usageHistoryTextSearchQuery = "";
-      if (usageTextSearchInp) usageTextSearchInp.value = "";
+      const hadInquiry =
+        isTimelineInquiryBeyondToday() ||
+        !!String(usageTextSearchInp?.value || "").trim();
+      leaveTimelineInquiryToToday();
       syncUsageTextSearchFilterUi();
-      if (usageFilterMemoOnlyCb) usageFilterMemoOnlyCb.checked = false;
-      persistActiveViewTimeFilterToSession();
-      onFilterChange();
-      requestTimeLedgerPullForUserQueryChange("task_filter_clear");
       syncFooterDateBtnActiveState();
-    });
-    usageTextSearchInp?.addEventListener("input", () => {
-      if (!isUsageRangeModalTimelineMode()) return;
-      const raw = usageTextSearchInp.value || "";
-      if (_usageTextSearchLiveTimer) {
-        clearTimeout(_usageTextSearchLiveTimer);
-        _usageTextSearchLiveTimer = null;
-      }
-      _usageTextSearchLiveTimer = setTimeout(() => {
-        _usageTextSearchLiveTimer = null;
+      closeUsageRangeModal();
+      if (!hadInquiry) return;
+      requestAnimationFrame(() => {
         if (!el.isConnected) return;
-        applyUsageTextSearchLive(raw);
-      }, 120);
+        onFilterChange();
+        requestTimeLedgerPullForUserQueryChange("filter_clear");
+      });
     });
     usageTextSearchInp?.addEventListener("keydown", (ev) => {
       if (ev.key !== "Enter") return;
       ev.preventDefault();
-      if (_usageTextSearchLiveTimer) {
-        clearTimeout(_usageTextSearchLiveTimer);
-        _usageTextSearchLiveTimer = null;
-      }
-      applyUsageTextSearchLive(usageTextSearchInp.value || "", {
-        closeModal: true,
-      });
+      usageRangeApplyBtn?.click();
     });
     usageRangeApplyBtn?.addEventListener("click", () => {
       let s = String(usageRangeStartInp?.value || "").trim();
@@ -7807,6 +7833,22 @@ export function render(opts = {}) {
       closeUsageRangeModal();
       if (timeLedgerLayoutView !== "report") {
         requestUsageListScrollToBottomOnce();
+      }
+      {
+        const waitRs =
+          timeLedgerLayoutView === "report" ? reportRangeStartYmd : s;
+        const waitRe =
+          timeLedgerLayoutView === "report" ? reportRangeEndYmd : e;
+        if (
+          waitRs &&
+          waitRe &&
+          waitRs !== waitRe &&
+          !wasLedgerRangePulled(waitRs, waitRe)
+        ) {
+          showTimeLedgerPullLoadingUi(
+            inquiryRangeLoadingMessage(waitRs, waitRe),
+          );
+        }
       }
       onFilterChange();
       requestTimeLedgerPullForUserQueryChange(
@@ -15416,6 +15458,12 @@ export function render(opts = {}) {
     if (!showMemoOnlyLogView) {
       const viewModeBarWrap = createTimeLedgerViewModeBar((nextView) => {
         if (timeLedgerLayoutView === nextView) return;
+        if (
+          timeLedgerLayoutView === "timeline" &&
+          (nextView === "timebox" || nextView === "report")
+        ) {
+          leaveTimelineInquiryToToday();
+        }
         timeLedgerLayoutView = nextView;
         if (nextView === "timebox") {
           ensureUsageHistoryRangeForTimeboxGranularity();
@@ -15809,6 +15857,23 @@ export function render(opts = {}) {
     "calendar-time-rows-updated",
     () => {
       clearPulledLedgerRanges();
+    },
+    { signal },
+  );
+
+  document.addEventListener(
+    "visibilitychange",
+    () => {
+      if (document.visibilityState !== "visible") return;
+      if (!el.isConnected) return;
+      if (!isTimelineInquiryBeyondToday()) return;
+      const modalOpen = !!(
+        (taskLogModal && !taskLogModal.hidden) ||
+        (usageRangeModal && !usageRangeModal.hidden)
+      );
+      if (modalOpen) return;
+      leaveTimelineInquiryToToday();
+      onFilterChange();
     },
     { signal },
   );

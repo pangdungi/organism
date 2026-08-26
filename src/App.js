@@ -282,6 +282,10 @@ function initLpTabResumeCloudPull(getCurrentTabId) {
    * 서버만 받아 그리고, 서버 쓰기는 사용자가 저장·삭제할 때만.
    */
   async function runTimeResumePull(gen) {
+    /* 잠금·백그라운드 복귀: 연간 조회를 오늘로 — 1년 화면을 다시 그리지 않음 */
+    try {
+      resetTimeLedgerSessionFilterToToday();
+    } catch (_) {}
     try {
       window.__lpTimeLedgerSetSyncing?.(true, "시간기록 동기화 중…");
     } catch (_) {}
