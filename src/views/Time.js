@@ -218,6 +218,11 @@ import {
   packEmotionReflectMemo,
   parseEmotionReflectMemo,
 } from "../utils/timeEmotionReflectMemo.js";
+import {
+  packReflectionJournal,
+  parseReflectionJournal,
+  REFLECTION_JOURNAL_QUESTIONS,
+} from "../utils/timeReflectionJournal.js";
 import { mountTimeLedgerMemoFeed } from "../utils/timeLedgerMemoFeed.js";
 import {
   mountTimeLedgerReport,
@@ -8162,6 +8167,7 @@ export function render(opts = {}) {
                 <textarea id="time-task-log-emotion-interp" data-legacy="time-task-log-emotion-interp time-task-log-memo-input" rows="2" placeholder="내가 해석한 상황을 적어주세요" autocomplete="off"></textarea>
               </div>
             </div>
+            <div data-legacy="time-task-log-reflection-section" hidden></div>
             <div data-legacy="time-task-log-recent-reviews" hidden>
               <span data-legacy="time-task-log-section-label time-task-log-recent-reviews-label">최근 구매 후기</span>
               <ul data-legacy="time-task-log-recent-reviews-list"></ul>
@@ -8285,6 +8291,9 @@ export function render(opts = {}) {
   const taskLogEmotionInterpLabel = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-emotion-interp-label"]',
   );
+  const taskLogReflectionSection = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-reflection-section"]',
+  );
   const taskLogMemoQuick = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-memo-quick"]',
   );
@@ -8304,13 +8313,75 @@ export function render(opts = {}) {
       taskLogEmotionInterpInput.value = interpretation;
   }
 
+  function ensureTaskLogReflectionFields() {
+    if (!taskLogReflectionSection || taskLogReflectionSection.dataset.lpBuilt === "1") {
+      return;
+    }
+    const frag = document.createDocumentFragment();
+    for (const q of REFLECTION_JOURNAL_QUESTIONS) {
+      const field = document.createElement("div");
+      field.setAttribute("data-legacy", "time-task-log-field");
+      const lab = document.createElement("label");
+      lab.setAttribute(
+        "data-legacy",
+        "time-task-log-section-label time-task-log-reflection-q-label",
+      );
+      lab.htmlFor = `time-task-log-reflection-${q.id}`;
+      lab.textContent = q.label;
+      const ta = document.createElement("textarea");
+      ta.id = `time-task-log-reflection-${q.id}`;
+      ta.dataset.reflectionId = q.id;
+      ta.setAttribute(
+        "data-legacy",
+        "time-task-log-reflection-input time-task-log-memo-input",
+      );
+      ta.rows = 2;
+      ta.placeholder = "답하기";
+      ta.autocomplete = "off";
+      field.append(lab, ta);
+      frag.appendChild(field);
+    }
+    taskLogReflectionSection.appendChild(frag);
+    taskLogReflectionSection.dataset.lpBuilt = "1";
+  }
+
+  function clearTaskLogReflectionInputs() {
+    taskLogReflectionSection
+      ?.querySelectorAll('[data-legacy~="time-task-log-reflection-input"]')
+      .forEach((el) => {
+        if (el instanceof HTMLTextAreaElement) el.value = "";
+      });
+  }
+
+  function setTaskLogReflectionInputs(raw) {
+    ensureTaskLogReflectionFields();
+    const answers = parseReflectionJournal(raw);
+    taskLogReflectionSection
+      ?.querySelectorAll('[data-legacy~="time-task-log-reflection-input"]')
+      .forEach((el) => {
+        if (!(el instanceof HTMLTextAreaElement)) return;
+        const id = String(el.dataset.reflectionId || "").trim();
+        el.value = answers[id] || "";
+      });
+  }
+
+  function collectTaskLogReflectionAnswers() {
+    /** @type {Record<string, string>} */
+    const answers = {};
+    taskLogReflectionSection
+      ?.querySelectorAll('[data-legacy~="time-task-log-reflection-input"]')
+      .forEach((el) => {
+        if (!(el instanceof HTMLTextAreaElement)) return;
+        const id = String(el.dataset.reflectionId || "").trim();
+        if (id) answers[id] = el.value || "";
+      });
+    return answers;
+  }
+
   function syncTaskLogEmotionReflectVisibility(taskName) {
     const show = TTC.isNegativeEmotionalTaskName(taskName);
     if (taskLogEmotionReflectSection) {
       taskLogEmotionReflectSection.hidden = !show;
-    }
-    if (taskLogMemoDefaultField) {
-      taskLogMemoDefaultField.hidden = show;
     }
     if (taskLogEmotionFactLabel) {
       taskLogEmotionFactLabel.textContent = show
@@ -8323,6 +8394,24 @@ export function render(opts = {}) {
         : "내 해석 적기";
     }
     if (!show) clearTaskLogEmotionReflectInputs();
+    syncTaskLogStructuredMemoFieldVisibility(taskName);
+  }
+
+  function syncTaskLogReflectionVisibility(taskName) {
+    const show = TTC.isReflectionJournalTaskName(taskName);
+    if (taskLogReflectionSection) {
+      taskLogReflectionSection.hidden = !show;
+      if (show) ensureTaskLogReflectionFields();
+    }
+    if (!show) clearTaskLogReflectionInputs();
+    syncTaskLogStructuredMemoFieldVisibility(taskName);
+  }
+
+  function syncTaskLogStructuredMemoFieldVisibility(taskName) {
+    if (!taskLogMemoDefaultField) return;
+    taskLogMemoDefaultField.hidden =
+      TTC.isNegativeEmotionalTaskName(taskName) ||
+      TTC.isReflectionJournalTaskName(taskName);
   }
 
   /** 메모 textarea 커서 위치에 문자 삽입(이모티콘 창 없이 □ 등) */
@@ -10025,6 +10114,7 @@ export function render(opts = {}) {
       if (!showTrigger) clearTaskLogEmotionTrigger();
     }
     syncTaskLogEmotionReflectVisibility(tn);
+    syncTaskLogReflectionVisibility(tn);
     taskLogScrollArea?.classList?.toggle(
       "is-content-detail-task",
       showChipDetail,
@@ -12806,6 +12896,7 @@ export function render(opts = {}) {
     clearTaskLogSpeechChecks();
     clearTaskLogEmotionTrigger();
     clearTaskLogEmotionReflectInputs();
+    clearTaskLogReflectionInputs();
     applyTaskLogModalRatingUiState({
       rating: null,
       disruptors: [],
@@ -13039,6 +13130,7 @@ export function render(opts = {}) {
       if (taskLogMealDetailInput) taskLogMealDetailInput.value = parsed.name;
       clearTaskLogEmotionTrigger();
       clearTaskLogEmotionReflectInputs();
+      clearTaskLogReflectionInputs();
       if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
     } else if (TTC.isChipDetailTaskName(tnForMemo)) {
       updateTaskLogMealDetailVisibility(tnForMemo);
@@ -13046,12 +13138,14 @@ export function render(opts = {}) {
       if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
       clearTaskLogEmotionTrigger();
       clearTaskLogSpeechChecks();
+      clearTaskLogReflectionInputs();
       if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
     } else if (TTC.isEmotionalDetailTaskName(tnForMemo)) {
       setTaskLogEmotionTrigger(mealDetailVal);
       if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
       clearTaskLogContentType();
       clearTaskLogSpeechChecks();
+      clearTaskLogReflectionInputs();
       if (TTC.isNegativeEmotionalTaskName(tnForMemo)) {
         if (taskLogFeedbackInput) taskLogFeedbackInput.value = "";
         setTaskLogEmotionReflectInputsFromMemo(memoOnly);
@@ -13059,12 +13153,20 @@ export function render(opts = {}) {
         clearTaskLogEmotionReflectInputs();
         if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
       }
+    } else if (TTC.isReflectionJournalTaskName(tnForMemo)) {
+      if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
+      clearTaskLogContentType();
+      clearTaskLogEmotionTrigger();
+      clearTaskLogSpeechChecks();
+      clearTaskLogEmotionReflectInputs();
+      if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
     } else {
       if (taskLogMealDetailInput) taskLogMealDetailInput.value = mealDetailVal;
       clearTaskLogContentType();
       clearTaskLogEmotionTrigger();
       clearTaskLogSpeechChecks();
       clearTaskLogEmotionReflectInputs();
+      clearTaskLogReflectionInputs();
       if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
     }
     const rawMemoTagsForEdit = Array.isArray(data.memoTags)
@@ -13095,6 +13197,9 @@ export function render(opts = {}) {
     refreshKpiTodosInLogModal();
     refreshTaskCompletionTodosInLogModal();
     updateTaskLogMealDetailVisibility(tnSync);
+    if (TTC.isReflectionJournalTaskName(tnForMemo)) {
+      setTaskLogReflectionInputs(mealDetailVal);
+    }
     syncTaskLogGapFillBtnVisibility();
     void runTaskLogModalCloudSync();
   }
@@ -13189,9 +13294,11 @@ export function render(opts = {}) {
             : ""
           : detailKind === "reading"
             ? resolveReadingBookTitleForSave()
-            : detailKind
-              ? (taskLogMealDetailInput?.value || "").trim()
-              : "";
+            : detailKind === "reflection"
+              ? packReflectionJournal(collectTaskLogReflectionAnswers())
+              : detailKind
+                ? (taskLogMealDetailInput?.value || "").trim()
+                : "";
     if (
       TTC.isUnproductiveConversationTaskName(taskName) &&
       !TTC.parseConversationDetail(mealDetailForRow).types.length

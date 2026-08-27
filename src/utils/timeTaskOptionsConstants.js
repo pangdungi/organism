@@ -213,6 +213,7 @@ export const FIXED_PRODUCTIVE_TASKS = [
     productivity: "productive",
   },
   { name: "기록하기", category: "happiness", productivity: "productive" },
+  { name: "성찰 일기쓰기", category: "happiness", productivity: "productive" },
   { name: "외모관리", category: "happiness", productivity: "productive" },
   {
     name: EMOTIONAL_POSITIVE_TASK_NAME,
@@ -793,18 +794,24 @@ export function isLedgerFreeTextDetailTaskName(name) {
   );
 }
 
-/** 섭취·대화·외출·독서·콘텐츠·위생·외모·감정 — time_ledger_entries.meal_detail 에 저장 */
+/** 성찰 일기쓰기 — time_ledger_entries.meal_detail 에 질문 답 저장 */
+export function isReflectionJournalTaskName(name) {
+  return String(name || "").trim() === "성찰 일기쓰기";
+}
+
+/** 섭취·대화·외출·독서·콘텐츠·위생·외모·감정·성찰 — time_ledger_entries.meal_detail 에 저장 */
 export function isLedgerDetailTaskName(name) {
   return (
     isLedgerFreeTextDetailTaskName(name) ||
     isContentDetailTaskName(name) ||
     isHygieneDetailTaskName(name) ||
     isAppearanceDetailTaskName(name) ||
-    isEmotionalDetailTaskName(name)
+    isEmotionalDetailTaskName(name) ||
+    isReflectionJournalTaskName(name)
   );
 }
 
-/** @returns {"meal" | "conversation" | "outing" | "reading" | "content" | "hygiene" | "appearance" | "emotion" | null} */
+/** @returns {"meal" | "conversation" | "outing" | "reading" | "content" | "hygiene" | "appearance" | "emotion" | "reflection" | null} */
 export function ledgerDetailTaskKind(name) {
   if (isMealDetailTaskName(name)) return "meal";
   if (isConversationDetailTaskName(name)) return "conversation";
@@ -814,6 +821,7 @@ export function ledgerDetailTaskKind(name) {
   if (isHygieneDetailTaskName(name)) return "hygiene";
   if (isAppearanceDetailTaskName(name)) return "appearance";
   if (isEmotionalDetailTaskName(name)) return "emotion";
+  if (isReflectionJournalTaskName(name)) return "reflection";
   return null;
 }
 
@@ -896,6 +904,7 @@ const TIME_RATING_REMOVED_TASK_NAMES = new Set([
   "생산적 대화",
   "생산적 외출",
   "기록하기",
+  "성찰 일기쓰기",
   "외모관리",
   WORK_BUILTIN_TASK_NAME,
 ]);

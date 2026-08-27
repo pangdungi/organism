@@ -262,6 +262,8 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   [data-legacy~="time-task-log-emotion-reflect-section"][hidden],
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-reflection-section"][hidden],
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   [data-legacy~="time-task-log-memo-default-field"][hidden],
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   [data-legacy~="time-task-log-meal-detail-section"][hidden],
@@ -287,6 +289,10 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
     .lp-calendar-budget-add-modal
   )
   [data-legacy~="time-task-log-emotion-reflect-section"][hidden],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-reflection-section"][hidden],
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
     .lp-calendar-budget-add-modal
   )
@@ -1173,6 +1179,61 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   [data-legacy~="time-task-log-emotion-reflect-section"]
   [data-legacy~="time-task-log-field"] {
   margin-bottom: 0;
+}
+.time-task-setup-modal.time-task-log-modal
+  [data-legacy~="time-task-log-reflection-section"]:not([hidden]),
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-reflection-section"]:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin: 0;
+}
+.time-task-setup-modal.time-task-log-modal
+  [data-legacy~="time-task-log-reflection-section"]
+  [data-legacy~="time-task-log-field"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-reflection-section"]
+  [data-legacy~="time-task-log-field"] {
+  margin-bottom: 0;
+}
+.time-task-log-reflection-q-label,
+[data-legacy~="time-task-log-reflection-q-label"] {
+  display: block;
+  margin-bottom: 0.2rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--text-caption-color, #64748b);
+}
+.time-task-log-reflection-input,
+[data-legacy~="time-task-log-reflection-input"] {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.2rem 0 0.35rem;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  line-height: 1.8;
+  color: var(--text-body, #475569);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #cbd5e1;
+  border-radius: 0;
+  outline: none;
+  resize: none;
+  min-height: 2.6rem;
+  field-sizing: fixed;
+}
+.time-task-log-reflection-input::placeholder,
+[data-legacy~="time-task-log-reflection-input"]::placeholder {
+  color: var(--text-placeholder, #94a3b8);
+}
+.time-task-log-reflection-input:focus,
+[data-legacy~="time-task-log-reflection-input"]:focus {
+  border-bottom: 1.5px solid #1e4d7b;
+  background: rgba(30, 77, 123, 0.04);
+  color: var(--text-ink, #1d40ba);
 }
 .time-task-log-expense-classification-wrap select,
 [data-legacy~="time-task-log-expense-classification-wrap"] select {

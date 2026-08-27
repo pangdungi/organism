@@ -7,6 +7,10 @@ import {
   kpiShowsDailyHabitChipOnLedgerCard,
 } from "./kpiTodoSync.js";
 import { emotionReflectMemoParts } from "./timeEmotionReflectMemo.js";
+import {
+  formatReflectionJournalDisplay,
+  reflectionJournalCardParts,
+} from "./timeReflectionJournal.js";
 import { splitUnhealthyMealMemoFromDb } from "./timeLedgerEntriesModel.js";
 import * as TTC from "./timeTaskOptionsConstants.js";
 
@@ -36,6 +40,8 @@ export function resolveLedgerRowDetail(rowData) {
     text = TTC.formatConversationDisplayText(text);
   } else if (TTC.isChipDetailTaskKind(kind)) {
     text = TTC.formatChipDetailDisplayText(taskName, text);
+  } else if (kind === "reflection") {
+    text = formatReflectionJournalDisplay(text);
   }
   if (!text) {
     const feedback = String(rowData?.feedback || "").trim();
@@ -60,6 +66,9 @@ export function resolveLedgerRowMealDetail(rowData) {
 export function formatTimeLedgerCardDetailLines(rowData) {
   const { kind, text } = resolveLedgerRowDetail(rowData);
   if (!kind || !text) return [];
+  if (kind === "reflection") {
+    return text ? [text] : [];
+  }
   return [`${TTC.ledgerDetailLinePrefix(kind)} ${text}`];
 }
 
@@ -71,6 +80,7 @@ export function ledgerRowUsesDetailAsDisplayName(rowData) {
     kind === "emotion" ||
     kind === "meal" ||
     kind === "reading" ||
+    kind === "reflection" ||
     TTC.isConversationDetailTaskName(taskName)
   ) {
     return false;
@@ -125,7 +135,9 @@ export function buildTimeLedgerCardMemoParts(rowData, kpiId) {
   const parts = [];
 
   const taskNameForDetail = String(rowData?.taskName || "").trim();
-  if (TTC.isConversationDetailTaskName(taskNameForDetail)) {
+  if (TTC.isReflectionJournalTaskName(taskNameForDetail)) {
+    parts.push(...reflectionJournalCardParts(rowData?.mealDetail));
+  } else if (TTC.isConversationDetailTaskName(taskNameForDetail)) {
     const parsed = TTC.parseConversationDetail(rowData?.mealDetail);
     if (parsed.types.length) {
       parts.push({
@@ -245,7 +257,20 @@ export function fillTimeLedgerCardMemoElement(el, rowData, kpiId) {
     }
     const body = document.createElement("span");
     body.className = "time-ledger-card-memo-body";
-    body.textContent = part.body;
+    if (Array.isArray(part.segments) && part.segments.length) {
+      part.segments.forEach((seg, i) => {
+        if (i > 0) body.append(" / ");
+        const span = document.createElement("span");
+        span.className =
+          seg.kind === "bridge"
+            ? "time-ledger-card-memo-bridge"
+            : "time-ledger-card-memo-answer";
+        span.textContent = seg.text;
+        body.appendChild(span);
+      });
+    } else {
+      body.textContent = part.body;
+    }
     row.appendChild(body);
     el.appendChild(row);
   }
