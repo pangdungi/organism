@@ -303,11 +303,6 @@ export function mountKpiGoalSuccessFailSection(container, opts = {}) {
   const section = document.createElement("section");
   section.className = "habit-tracker-success-fail-section";
 
-  const head = document.createElement("h2");
-  head.className = "habit-tracker-success-fail-title";
-  head.textContent = "성공·실패표";
-  section.appendChild(head);
-
   const weekKeys = habitWeekDateKeysMonSun(opts.weekAnchorYmd || toDateKey());
   const weekNav = document.createElement("div");
   weekNav.className = "habit-tracker-success-fail-week-nav";

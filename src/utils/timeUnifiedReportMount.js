@@ -4155,9 +4155,9 @@ function mountHabitCheckSection(scrollWrap, range, opts = {}) {
   const dayCount = listDatesInclusive(range?.start, range?.end).length;
   const isYear = !isDay && dayCount >= 300;
   const sec = createSection(
-    "습관 점검",
+    isDay ? "오늘의 행동" : "습관 점검",
     isDay
-      ? "오늘 해야 할 매일 습관 · 완료 / 남은 목표"
+      ? "그날 하기로 한 것 · 안 한 것 / 한 것"
       : isYear
         ? "습관별 지킨 날 · 실행률"
         : dayCount <= 10

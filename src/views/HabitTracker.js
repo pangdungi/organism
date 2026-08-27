@@ -2,7 +2,12 @@
  * 해빗 트랙커 — 오늘의 행동 / 간트 / 성공·실패 / 전체 할일 / 행동 트래커
  */
 
-import { setupKpiCategoryHeaderIcon } from "../utils/kpiCategoryHeaderIcon.js";
+import {
+  KPI_TWOPANE_SPLIT_MQ,
+  isKpiTwoPaneSplitViewport,
+  setKpiFooterBackVisible,
+  ensureKpiHeaderBackButton,
+} from "../utils/kpiTwoPaneSplit.js";
 import {
   createHabitTrackerPageGridElement,
 } from "../utils/habitTrackerPageGrid.js";
@@ -88,17 +93,22 @@ export function render(opts = {}) {
   if (!dashboardEmbedMode) {
     const header = document.createElement("header");
     header.className = "dream-view-header";
+    const titleRow = document.createElement("div");
+    titleRow.className = "dream-view-header-title-row";
+    const textCol = document.createElement("div");
+    textCol.className = "dream-view-header-text";
     label = document.createElement("span");
     label.className = "dream-view-label";
     label.textContent = VIEW_CHROME.today.label;
-    const titleRow = document.createElement("div");
-    titleRow.className = "dream-view-header-title-row";
+    const titleInner = document.createElement("div");
+    titleInner.className = "dream-view-header-title-inner";
     title = document.createElement("h1");
     title.className = "dream-view-title";
     title.textContent = VIEW_CHROME.today.title;
-    titleRow.appendChild(title);
-    setupKpiCategoryHeaderIcon(titleRow, "habittracker");
-    header.appendChild(label);
+    titleInner.appendChild(title);
+    textCol.append(label, titleInner);
+    titleRow.appendChild(textCol);
+    ensureKpiHeaderBackButton(titleRow, { label: "오늘(메인)으로" });
     header.appendChild(titleRow);
     el.appendChild(header);
   }
@@ -161,6 +171,16 @@ export function render(opts = {}) {
     const chrome = VIEW_CHROME[mainView] || VIEW_CHROME.today;
     label.textContent = chrome.label;
     title.textContent = chrome.title;
+  }
+
+  function syncHabitDesktopBack() {
+    if (dashboardEmbedMode) return;
+    const wide = isKpiTwoPaneSplitViewport();
+    el.classList.toggle("habit-tracker-view--wide", wide);
+    setKpiFooterBackVisible(
+      document.querySelector("[data-lp-app-footer-back]"),
+      !wide,
+    );
   }
 
   function syncViewModeBar() {
@@ -332,6 +352,7 @@ export function render(opts = {}) {
 
   function applyMainView() {
     syncHeaderChrome();
+    syncHabitDesktopBack();
     if (!dashboardEmbedMode) syncViewModeBar();
     contentWrap.dataset.habitView = mainView;
     paintActiveView();
@@ -372,6 +393,25 @@ export function render(opts = {}) {
   }
   syncViewMonthGlobal();
   applyMainView();
+
+  if (!dashboardEmbedMode) {
+    /** @type {MediaQueryList | null} */
+    let wideMql = null;
+    function onWideViewportChange() {
+      if (!el.isConnected) return;
+      syncHabitDesktopBack();
+    }
+    try {
+      wideMql = window.matchMedia(KPI_TWOPANE_SPLIT_MQ);
+      if (wideMql.addEventListener) {
+        wideMql.addEventListener("change", onWideViewportChange);
+      } else if (wideMql.addListener) {
+        wideMql.addListener(onWideViewportChange);
+      }
+    } catch (_) {
+      wideMql = null;
+    }
+  }
 
   return el;
 }

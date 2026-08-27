@@ -26,7 +26,8 @@ import {
 } from "./defaultKpiIconIds.js";
 import {
   appendTodayActionPinnedTodos,
-  todayActionHasTodos,
+  readTodayActionExtraIds,
+  readTodayActionHiddenIds,
   showTodayActionTodosModal,
 } from "./kpiTodayActionTodos.js";
 
@@ -203,17 +204,32 @@ function isKpiExecutedToday(kpi, data, todayYmd) {
   return hasLogOrLedgerActivityToday(kpi, logs, todayYmd);
 }
 
+function makeTodayGoalItem(kpi, data, category, todayYmd) {
+  const id = String(kpi?.id || "").trim();
+  const isHabit = resolveKpiGoalMode(kpi) === "habit" || !!kpi?.needHabitTracker;
+  return {
+    id,
+    name: String(kpi?.name || "").trim(),
+    targetLabel: formatTodayTargetLabel(kpi, data, todayYmd),
+    done: isKpiExecutedToday(kpi, data, todayYmd),
+    category,
+    isHabit,
+  };
+}
+
 /**
  * 진행중 KPI (시급·건강·행복) — 오늘 할 목록
  * 기본 KPI「건강 검진」「독서하기」는 제외
- * @param {{ habitsOnly?: boolean }} [opts] — true면 매일 반복만
+ * @param {{ habitsOnly?: boolean, forYmd?: string }} [opts]
+ *   habitsOnly — true면 매일 반복만
+ *   forYmd — 그 날짜 기준으로 목록·실행여부 (없으면 오늘). 오늘 빼기·추가는 오늘만 반영
  * @returns {{
  *   todayYmd: string,
  *   done: number,
  *   total: number,
  *   remaining: number,
  *   pct: number,
- *   items: Array<{ id: string, name: string, targetLabel: string, done: boolean, category: string, isHabit: boolean, hasTodos: boolean }>
+ *   items: Array<{ id: string, name: string, targetLabel: string, done: boolean, category: string, isHabit: boolean }>
  * }}
  */
 export function buildGoalTrackerTodayGoalsModel(opts = {}) {
@@ -223,9 +239,18 @@ export function buildGoalTrackerTodayGoalsModel(opts = {}) {
     } catch (_) {}
   }
 
-  const todayYmd = timeLedgerLocalTodayYmd() || toDateKey();
-  /** @type {Array<{ id: string, name: string, targetLabel: string, done: boolean, category: string, isHabit: boolean, hasTodos: boolean }>} */
+  const realToday = timeLedgerLocalTodayYmd() || toDateKey();
+  const asked = String(opts.forYmd || "").slice(0, 10);
+  const todayYmd = /^\d{4}-\d{2}-\d{2}$/.test(asked) ? asked : realToday;
+  const applyTodayEdits = todayYmd === realToday;
+  const hidden = new Set(
+    applyTodayEdits ? readTodayActionHiddenIds(todayYmd) : [],
+  );
+  const extra = applyTodayEdits ? readTodayActionExtraIds(todayYmd) : [];
+  /** @type {Array<{ id: string, name: string, targetLabel: string, done: boolean, category: string, isHabit: boolean }>} */
   const items = [];
+  /** @type {Map<string, { kpi: object, data: object, category: string }>} */
+  const byId = new Map();
 
   for (const domain of DOMAINS) {
     const data = loadMap(domain.storageKey);
@@ -238,6 +263,7 @@ export function buildGoalTrackerTodayGoalsModel(opts = {}) {
       const name = String(kpi?.name || "").trim();
       if (!id || !name) continue;
       if (TODAY_GOALS_EXCLUDED_KPI_IDS.has(id)) continue;
+      byId.set(id, { kpi, data, category: domain.category });
       const isHabit = resolveKpiGoalMode(kpi) === "habit" || !!kpi?.needHabitTracker;
       if (opts.habitsOnly && !isHabit) continue;
       if (isHabit && isKpiHabitDateBeforeStart(kpi, todayYmd)) {
@@ -247,17 +273,20 @@ export function buildGoalTrackerTodayGoalsModel(opts = {}) {
       if (isHabit && !isHabitScheduledOnYmd(kpi, todayYmd)) {
         continue;
       }
-      const done = isKpiExecutedToday(kpi, data, todayYmd);
-      items.push({
-        id,
-        name,
-        targetLabel: formatTodayTargetLabel(kpi, data, todayYmd),
-        done,
-        category: domain.category,
-        isHabit,
-        hasTodos: todayActionHasTodos(id),
-      });
+      if (hidden.has(id)) continue;
+      items.push(makeTodayGoalItem(kpi, data, domain.category, todayYmd));
     }
+  }
+
+  for (const extraId of extra) {
+    if (hidden.has(extraId)) continue;
+    if (items.some((x) => x.id === extraId)) continue;
+    const found = byId.get(extraId);
+    if (!found) continue;
+    const isHabit =
+      resolveKpiGoalMode(found.kpi) === "habit" || !!found.kpi?.needHabitTracker;
+    if (opts.habitsOnly && !isHabit) continue;
+    items.push(makeTodayGoalItem(found.kpi, found.data, found.category, todayYmd));
   }
 
   /* 매일 반복 먼저, 그다음 나머지 */
@@ -328,10 +357,12 @@ export function mountKpiGoalTodayGoalsSection(container, opts = {}) {
     ? "habit-tracker-today-goals-sticky habit-tracker-today-goals-sticky--pin"
     : "habit-tracker-today-goals-sticky";
 
-  const head = document.createElement("h2");
-  head.className = "habit-tracker-today-goals-title";
-  head.textContent = "오늘의 행동";
-  chrome.appendChild(head);
+  if (pinChrome) {
+    const head = document.createElement("h2");
+    head.className = "habit-tracker-today-goals-title";
+    head.textContent = "오늘의 행동";
+    chrome.appendChild(head);
+  }
 
   const ringHost = document.createElement("div");
   ringHost.className = "habit-tracker-today-goals-ring-host";
@@ -366,14 +397,6 @@ export function mountKpiGoalTodayGoalsSection(container, opts = {}) {
     listParent = section;
   }
 
-  if (!model.items.length) {
-    const empty = document.createElement("p");
-    empty.className = "habit-tracker-today-goals-empty";
-    empty.textContent = "오늘 진행 중인 목표가 없습니다.";
-    listParent.appendChild(empty);
-    return;
-  }
-
   const remount = () => {
     const scrollEl = container.querySelector(
       ".habit-tracker-today-goals-pin-scroll",
@@ -387,21 +410,27 @@ export function mountKpiGoalTodayGoalsSection(container, opts = {}) {
     });
   };
 
+  if (!model.items.length) {
+    const empty = document.createElement("p");
+    empty.className = "habit-tracker-today-goals-empty";
+    empty.textContent = "오늘 진행 중인 목표가 없습니다.";
+    listParent.appendChild(empty);
+    return;
+  }
+
   const list = document.createElement("ul");
   list.className = "habit-tracker-today-goals-list";
   list.setAttribute("aria-label", "오늘의 행동 목록");
 
   for (const item of model.items) {
     const li = document.createElement("li");
-    li.className = `habit-tracker-today-goals-row${item.done ? " is-done" : ""}${
-      item.hasTodos ? " has-todos" : ""
+    li.className = `habit-tracker-today-goals-row has-todos${
+      item.done ? " is-done" : ""
     }`;
 
-    const rowHead = document.createElement(item.hasTodos ? "button" : "div");
-    if (item.hasTodos) {
-      rowHead.type = "button";
-      rowHead.setAttribute("aria-label", `${item.name} 할일 보기`);
-    }
+    const rowHead = document.createElement("button");
+    rowHead.type = "button";
+    rowHead.setAttribute("aria-label", item.name);
     rowHead.className = "habit-tracker-today-goals-head";
     rowHead.innerHTML = `
       <span class="habit-tracker-today-goals-mark" aria-label="${item.done ? "실행함" : "미실행"}">${item.done ? "O" : "X"}</span>
@@ -409,29 +438,20 @@ export function mountKpiGoalTodayGoalsSection(container, opts = {}) {
         <span class="habit-tracker-today-goals-name">${escapeHtml(item.name)}</span>
         <span class="habit-tracker-today-goals-target">${escapeHtml(item.targetLabel)}</span>
       </span>
-      ${
-        item.hasTodos
-          ? `<span class="habit-tracker-today-goals-open-hint">할일 보기 ›</span>`
-          : ""
-      }
     `;
-    if (item.hasTodos) {
-      rowHead.addEventListener("click", () => {
-        showTodayActionTodosModal({
-          kpiId: item.id,
-          name: item.name,
-          todayYmd: model.todayYmd,
-          onChange: remount,
-        });
-      });
-    }
-    li.appendChild(rowHead);
-    if (item.hasTodos) {
-      appendTodayActionPinnedTodos(li, item, {
+    rowHead.addEventListener("click", () => {
+      showTodayActionTodosModal({
+        kpiId: item.id,
+        name: item.name,
         todayYmd: model.todayYmd,
         onChange: remount,
       });
-    }
+    });
+    li.appendChild(rowHead);
+    appendTodayActionPinnedTodos(li, item, {
+      todayYmd: model.todayYmd,
+      onChange: remount,
+    });
     list.appendChild(li);
   }
   listParent.appendChild(list);

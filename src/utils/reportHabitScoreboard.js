@@ -10,10 +10,7 @@ import {
   getHabitTrackerCellLevel,
 } from "./habitTrackerPageModel.js";
 import { createHabitTrackerTodayRingElement } from "./habitTrackerTodayRing.js";
-import {
-  buildGoalTrackerTodayGoalsModel,
-  createGoalTrackerTodayGoalsListElement,
-} from "./kpiGoalTrackerTodayGoals.js";
+import { buildGoalTrackerTodayGoalsModel } from "./kpiGoalTrackerTodayGoals.js";
 import { timeLedgerLocalTodayYmd } from "./timeLedgerEntriesSupabase.js";
 
 function escapeHtml(str) {
@@ -65,7 +62,7 @@ function resolveScoreboardPeriod(start, end) {
   const s = normYmd(start);
   const e = normYmd(end);
   if (s && s === e) {
-    return { mode: "day", dateKeys: [s], title: "오늘의 습관" };
+    return { mode: "day", dateKeys: [s], title: "오늘의 행동" };
   }
   const keys = listDatesInclusive(s, e);
   if (keys.length >= 300) {
@@ -97,7 +94,7 @@ export function buildReportHabitScoreboardModel(opts = {}) {
 
   if (period.mode === "day") {
     const dayGoals = buildGoalTrackerTodayGoalsModel({
-      habitsOnly: true,
+      forYmd: period.dateKeys[0] || start,
       skipSync: !!opts.skipSync,
     });
     return {
@@ -163,6 +160,61 @@ export function buildReportHabitScoreboardModel(opts = {}) {
 }
 
 /**
+ * @param {ReturnType<typeof buildGoalTrackerTodayGoalsModel>} goals
+ */
+function createReportTodayActionsSplitList(goals) {
+  const items = Array.isArray(goals?.items) ? goals.items : [];
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-today-actions-split";
+  if (!items.length) {
+    const empty = document.createElement("p");
+    empty.className = "lp-tr2-habit-scoreboard-empty";
+    empty.textContent = "그날 하기로 한 행동이 없습니다.";
+    wrap.appendChild(empty);
+    return wrap;
+  }
+  const missed = items.filter((x) => !x.done);
+  const done = items.filter((x) => x.done);
+  const groups = [
+    { key: "missed", title: "안 한 것", rows: missed },
+    { key: "kept", title: "한 것", rows: done },
+  ];
+  for (const g of groups) {
+    const panel = document.createElement("div");
+    panel.className = `lp-tr2-today-actions-panel lp-tr2-today-actions-panel--${g.key}`;
+    const head = document.createElement("div");
+    head.className = "lp-tr2-today-actions-panel-head";
+    head.innerHTML = `<span class="lp-tr2-today-actions-panel-title">${g.title}</span><span class="lp-tr2-today-actions-panel-count">${g.rows.length}</span>`;
+    panel.appendChild(head);
+    if (!g.rows.length) {
+      const none = document.createElement("p");
+      none.className = "lp-tr2-today-actions-panel-empty";
+      none.textContent = g.key === "missed" ? "안 한 행동이 없습니다." : "한 행동이 없습니다.";
+      panel.appendChild(none);
+    } else {
+      const list = document.createElement("ul");
+      list.className = "habit-tracker-today-goals-list";
+      list.setAttribute("aria-label", g.title);
+      for (const item of g.rows) {
+        const li = document.createElement("li");
+        li.className = `habit-tracker-today-goals-row${item.done ? " is-done" : ""}`;
+        li.innerHTML = `
+          <span class="habit-tracker-today-goals-mark" aria-label="${item.done ? "실행함" : "미실행"}">${item.done ? "O" : "X"}</span>
+          <span class="habit-tracker-today-goals-main">
+            <span class="habit-tracker-today-goals-name">${escapeHtml(item.name)}</span>
+            <span class="habit-tracker-today-goals-target">${escapeHtml(item.targetLabel)}</span>
+          </span>
+        `;
+        list.appendChild(li);
+      }
+      panel.appendChild(list);
+    }
+    wrap.appendChild(panel);
+  }
+  return wrap;
+}
+
+/**
  * @param {ReturnType<typeof buildReportHabitScoreboardModel>} model
  */
 export function createReportHabitScoreboardElement(model) {
@@ -177,11 +229,6 @@ export function createReportHabitScoreboardElement(model) {
   root.setAttribute("aria-label", model?.title || "습관 점수판");
   root.dataset.segCount = String((model?.dateKeys || []).length || 0);
 
-  const badge = document.createElement("div");
-  badge.className = "lp-tr2-habit-scoreboard-badge";
-  badge.textContent = model?.title || "습관 점수판";
-  root.appendChild(badge);
-
   if (model?.mode === "day") {
     const goals = model.dayGoals || {
       done: 0,
@@ -195,13 +242,18 @@ export function createReportHabitScoreboardElement(model) {
     const ring = createHabitTrackerTodayRingElement(goals);
     ring.setAttribute(
       "aria-label",
-      `오늘 습관 ${goals.done} / ${goals.total}`,
+      `그날 행동 ${goals.done} / ${goals.total}`,
     );
     ringHost.appendChild(ring);
     root.appendChild(ringHost);
-    root.appendChild(createGoalTrackerTodayGoalsListElement(goals));
+    root.appendChild(createReportTodayActionsSplitList(goals));
     return root;
   }
+
+  const badge = document.createElement("div");
+  badge.className = "lp-tr2-habit-scoreboard-badge";
+  badge.textContent = model?.title || "습관 점수판";
+  root.appendChild(badge);
 
   const habits = Array.isArray(model?.habits) ? model.habits : [];
   const segCount = Math.max(1, (model?.dateKeys || []).length);

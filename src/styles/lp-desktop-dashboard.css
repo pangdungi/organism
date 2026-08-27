@@ -386,19 +386,19 @@
     max-width: none !important;
   }
 
-  /* 3분할 좁은 칸 — 조금 작되 본문·캡션은 읽히는 크기 유지 */
+  /* 3분할 좁은 칸 — 모바일 레포트와 같은 실제 크기(html rem 확대 상쇄) */
   .lp-desktop-dashboard-col--time .lp-tr2-root {
-    --lp-tr2-display: 1.625rem;
-    --lp-tr2-title: 1rem;
-    --lp-tr2-sub: 0.8125rem;
-    --lp-tr2-body: 0.875rem;
-    --lp-tr2-label: 0.8125rem;
-    --lp-tr2-meta: 0.75rem;
-    --lp-tr2-caption: 0.75rem;
-    --lp-tr2-value: 1.0625rem;
-    --lp-tr2-hero: 1.25rem;
-    --lp-tr2-block: 0.9375rem;
-    --lp-tr2-section-pad: 0.9rem 0.9rem 1rem;
+    --lp-tr2-display: 1.5rem;
+    --lp-tr2-hero: 1.1rem;
+    --lp-tr2-value: 0.9rem;
+    --lp-tr2-title: 0.85rem;
+    --lp-tr2-block: 0.8rem;
+    --lp-tr2-body: 0.75rem;
+    --lp-tr2-sub: 0.7rem;
+    --lp-tr2-label: 0.7rem;
+    --lp-tr2-meta: 0.65rem;
+    --lp-tr2-caption: 0.6rem;
+    --lp-tr2-section-pad: 0.8rem 0.85rem 0.92rem;
   }
 
   .lp-desktop-dashboard-col--time .time-ledger-mobile-cards,

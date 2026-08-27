@@ -12,6 +12,7 @@ import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
 import { sortNormalizedKpiTodoRows } from "./kpiMapTodoListOrder.js";
 import { showKpiTodoAddModal } from "./kpiTodoAddModal.js";
 import { addKpiTodo, syncKpiTodoCompleted } from "./kpiTodoSync.js";
+import { DEFAULT_SUPPLEMENT_KPI_ID } from "./defaultKpiIconIds.js";
 import { resolveKpiGoalMode } from "./kpiTimeUnitKpi.js";
 import { LP_MODAL_HTML_OPEN_CLASS } from "./lpModalKeyboard.js";
 import { supabase } from "../supabase.js";
@@ -64,7 +65,25 @@ function todayYmdOr(fallback) {
 }
 
 function emptyPicks(ymd) {
-  return { ymd: String(ymd || "").slice(0, 10), picks: {} };
+  return {
+    ymd: String(ymd || "").slice(0, 10),
+    picks: {},
+    hidden: [],
+    extra: [],
+  };
+}
+
+function cleanIdList(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const x of raw) {
+    const id = String(x || "").trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
 }
 
 function readPickStore(todayYmd) {
@@ -93,7 +112,12 @@ function normalizePickStore(raw, todayYmd) {
     if (!k || !Array.isArray(ids)) continue;
     clean[k] = ids.map((x) => String(x || "").trim()).filter(Boolean);
   }
-  return { ymd, picks: clean };
+  return {
+    ymd,
+    picks: clean,
+    hidden: cleanIdList(parsed.hidden),
+    extra: cleanIdList(parsed.extra),
+  };
 }
 
 function writePickStoreLocal(store) {
@@ -103,6 +127,8 @@ function writePickStoreLocal(store) {
       JSON.stringify({
         ymd: String(store?.ymd || "").slice(0, 10),
         picks: store?.picks && typeof store.picks === "object" ? store.picks : {},
+        hidden: cleanIdList(store?.hidden),
+        extra: cleanIdList(store?.extra),
       }),
     );
   } catch (_) {}
@@ -110,6 +136,9 @@ function writePickStoreLocal(store) {
 
 function pickStoreHasAny(store) {
   const picks = store?.picks && typeof store.picks === "object" ? store.picks : {};
+  if (cleanIdList(store?.hidden).length || cleanIdList(store?.extra).length) {
+    return true;
+  }
   return Object.values(picks).some(
     (ids) => Array.isArray(ids) && ids.some((x) => String(x || "").trim()),
   );
@@ -199,6 +228,50 @@ export function toggleTodayActionTodoPick(kpiId, todoId, todayYmd) {
   return set.has(tid);
 }
 
+/** 오늘 고른 할일 — 저장 버튼에서 한 번에 반영 */
+export function setTodayActionTodoPickIds(kpiId, todoIds, todayYmd) {
+  const kid = String(kpiId || "").trim();
+  if (!kid) return;
+  const ymd = todayYmdOr(todayYmd);
+  const store = readPickStore(ymd);
+  store.picks[kid] = cleanIdList(todoIds);
+  writePickStore(store);
+}
+
+/** 오늘 목록에서 뺀 행동 */
+export function readTodayActionHiddenIds(todayYmd) {
+  return cleanIdList(readPickStore(todayYmd).hidden);
+}
+
+/** 오늘 목록에 직접 넣은 행동 */
+export function readTodayActionExtraIds(todayYmd) {
+  return cleanIdList(readPickStore(todayYmd).extra);
+}
+
+/** 오늘만 목록에서 빼기 */
+export function hideTodayActionKpi(kpiId, todayYmd) {
+  const kid = String(kpiId || "").trim();
+  if (!kid) return;
+  const store = readPickStore(todayYmd);
+  store.hidden = cleanIdList([...(store.hidden || []), kid]);
+  store.extra = cleanIdList(store.extra).filter((id) => id !== kid);
+  writePickStore(store);
+}
+
+/** 오늘 목록에 넣기(뺀 것 되돌리거나, 기본에 없던 것 추가) */
+export function addTodayActionKpi(kpiId, todayYmd) {
+  const kid = String(kpiId || "").trim();
+  if (!kid) return;
+  const store = readPickStore(todayYmd);
+  const hidden = new Set(cleanIdList(store.hidden));
+  if (hidden.has(kid)) {
+    store.hidden = cleanIdList(store.hidden).filter((id) => id !== kid);
+  } else {
+    store.extra = cleanIdList([...(store.extra || []), kid]);
+  }
+  writePickStore(store);
+}
+
 function findKpiBundle(kpiId) {
   const kid = String(kpiId || "").trim();
   if (!kid) return null;
@@ -270,6 +343,39 @@ export function todayActionHasTodos(kpiId) {
   return !!collectTodayActionTodos(kpiId, { includeCompleted: true });
 }
 
+function isHabitTodayActionKpi(kpi) {
+  return resolveKpiGoalMode(kpi) === "habit" || !!kpi?.needHabitTracker;
+}
+
+function isSupplementTodayActionKpi(kpi) {
+  return String(kpi?.id || "").trim() === DEFAULT_SUPPLEMENT_KPI_ID;
+}
+
+/** @returns {"task"|"habit"|"supplement"} */
+function resolveTodayActionModalKind(kpiId) {
+  const bundle = findKpiBundle(kpiId);
+  if (!bundle) return "task";
+  if (isSupplementTodayActionKpi(bundle.kpi)) return "supplement";
+  if (isHabitTodayActionKpi(bundle.kpi)) return "habit";
+  return "task";
+}
+
+function listTodayActionDailyItems(kpiId) {
+  const bundle = findKpiBundle(kpiId);
+  if (!bundle) return [];
+  const kid = String(bundle.kpi?.id || "").trim();
+  if (!kid) return [];
+  return sortNormalizedKpiTodoRows(
+    (bundle.data.kpiDailyRepeatTodos || []).filter((t) => {
+      if (String(t?.kpiId || "").trim() !== kid) return false;
+      return !!(String(t?.text || "").trim() && String(t?.id || "").trim());
+    }),
+  ).map((t) => ({
+    id: String(t.id || "").trim(),
+    text: String(t.text || "").trim(),
+  }));
+}
+
 export function setTodayActionTodoChecked(kpiId, todoId, checked) {
   const collected = collectTodayActionTodos(kpiId, { includeCompleted: true });
   if (!collected) return false;
@@ -295,12 +401,26 @@ export function showTodayActionTodosModal(opts = {}) {
   const todayYmd = todayYmdOr(opts.todayYmd);
   if (!kpiId) return;
 
+  const kind = resolveTodayActionModalKind(kpiId);
+  const canPickTodos = kind === "task";
+  const showDailyList = kind === "habit" || kind === "supplement";
   const existing = document.querySelector(".lp-today-action-todos-modal");
   existing?.remove();
+
+  const listTitle =
+    kind === "supplement"
+      ? "보충제 목록"
+      : kind === "habit"
+        ? "매일 할 일 목록"
+        : "오늘 행동 할 일 목록";
+  const listHint = canPickTodos
+    ? "오늘 할 항목을 고른 뒤 저장을 누르세요"
+    : "";
 
   const modal = document.createElement("div");
   modal.className =
     "time-task-setup-modal lp-today-action-todos-modal lp-modal-compact";
+  modal.setAttribute("data-today-action-kind", kind);
   modal.innerHTML = `
     <div data-legacy="time-task-setup-backdrop"></div>
     <div data-legacy="time-task-setup-panel">
@@ -311,15 +431,31 @@ export function showTodayActionTodosModal(opts = {}) {
       <div class="dream-kpi-form-body" data-legacy="time-task-setup-body">
         <div data-legacy="time-task-log-kpi-todos-section">
           <div data-legacy="time-task-log-kpi-todos-title-row">
-            <h4 data-legacy="time-task-log-kpi-todos-title">할 일 목록</h4>
-            <button type="button" data-legacy="lp-expected-kpi-todo-add-btn" aria-label="할 일 추가">+</button>
+            <h4 data-legacy="time-task-log-kpi-todos-title">${escapeHtml(listTitle)}</h4>
+            ${
+              canPickTodos
+                ? `<button type="button" data-legacy="lp-expected-kpi-todo-add-btn" aria-label="할 일 추가">+</button>`
+                : ""
+            }
           </div>
-          <p data-legacy="time-task-log-kpi-todos-hint">오늘 할 항목을 누르면 골라집니다</p>
+          ${
+            listHint
+              ? `<p data-legacy="time-task-log-kpi-todos-hint">${escapeHtml(listHint)}</p>`
+              : ""
+          }
           <p data-legacy="time-task-log-kpi-todos-status" hidden></p>
           <div data-legacy="time-task-log-kpi-todos-scroll">
             <div data-legacy="time-task-log-kpi-todos-list"></div>
           </div>
         </div>
+      </div>
+      <div data-legacy="time-task-log-footer">
+        <button type="button" class="habit-tracker-today-goals-remove-today">오늘 행동에서 제거하기</button>
+        ${
+          canPickTodos
+            ? `<button type="button" data-legacy="time-task-log-submit">저장</button>`
+            : ""
+        }
       </div>
     </div>
   `;
@@ -334,6 +470,7 @@ export function showTodayActionTodosModal(opts = {}) {
     '[data-legacy~="time-task-log-kpi-todos-status"]',
   );
   const prevOverflow = document.body.style.overflow;
+  const draftPicks = new Set(readTodayActionTodoPickIds(kpiId, todayYmd));
 
   function close() {
     try {
@@ -344,15 +481,21 @@ export function showTodayActionTodosModal(opts = {}) {
   }
 
   function paintList() {
-    const collected = collectTodayActionTodos(kpiId);
     if (!(listEl instanceof HTMLElement)) return;
     listEl.replaceChildren();
-    const todos = collected?.todos || [];
+    const todos = showDailyList
+      ? listTodayActionDailyItems(kpiId)
+      : collectTodayActionTodos(kpiId)?.todos || [];
     if (!todos.length) {
       if (scrollEl instanceof HTMLElement) scrollEl.hidden = true;
       if (statusEl instanceof HTMLElement) {
         statusEl.hidden = false;
-        statusEl.textContent = "등록된 할 일이 없습니다.";
+        statusEl.textContent =
+          kind === "supplement"
+            ? "등록된 보충제가 없습니다."
+            : kind === "habit"
+              ? "등록된 매일 할 일이 없습니다."
+              : "등록된 할 일이 없습니다.";
       }
       return;
     }
@@ -361,8 +504,20 @@ export function showTodayActionTodosModal(opts = {}) {
       statusEl.hidden = true;
       statusEl.textContent = "";
     }
-    const pickIds = new Set(readTodayActionTodoPickIds(kpiId, todayYmd));
     for (const todo of todos) {
+      if (showDailyList) {
+        const row = document.createElement("div");
+        row.className =
+          "time-task-log-kpi-todo-row time-task-log-chore-todo-row habit-tracker-today-action-daily-row";
+        row.setAttribute("data-legacy", "time-task-log-chore-todo-row");
+        const span = document.createElement("span");
+        span.className = "time-task-log-kpi-todo-text";
+        span.setAttribute("data-legacy", "time-task-log-kpi-todo-text");
+        span.textContent = todo.text;
+        row.appendChild(span);
+        listEl.appendChild(row);
+        continue;
+      }
       const row = document.createElement("button");
       row.type = "button";
       row.className =
@@ -370,18 +525,16 @@ export function showTodayActionTodosModal(opts = {}) {
       row.setAttribute("data-legacy", "time-task-log-chore-todo-row");
       row.setAttribute("data-todo-id", todo.id);
       row.setAttribute("aria-label", `오늘 할 일로 고르기: ${todo.text}`);
-      row.classList.toggle("is-planned", pickIds.has(todo.id));
+      row.classList.toggle("is-planned", draftPicks.has(todo.id));
       const span = document.createElement("span");
       span.className = "time-task-log-kpi-todo-text";
       span.setAttribute("data-legacy", "time-task-log-kpi-todo-text");
       span.textContent = todo.text;
       row.appendChild(span);
       row.addEventListener("click", () => {
-        toggleTodayActionTodoPick(kpiId, todo.id, todayYmd);
+        if (draftPicks.has(todo.id)) draftPicks.delete(todo.id);
+        else draftPicks.add(todo.id);
         paintList();
-        try {
-          opts.onChange?.();
-        } catch (_) {}
       });
       listEl.appendChild(row);
     }
@@ -390,27 +543,50 @@ export function showTodayActionTodosModal(opts = {}) {
   modal
     .querySelector('[data-legacy~="time-task-setup-close"]')
     ?.addEventListener("click", close);
-
   modal
-    .querySelector('[data-legacy~="lp-expected-kpi-todo-add-btn"]')
-    ?.addEventListener("click", async () => {
-      const collected = collectTodayActionTodos(kpiId);
-      const text = await showKpiTodoAddModal({
-        kpiName: name,
-        title: "할 일 추가",
-        placeholder: "할 일 입력",
-      });
-      if (!text || !modal.isConnected) return;
-      const storageKey =
-        collected?.storageKey || findKpiBundle(kpiId)?.storageKey || "";
-      const ok = !!addKpiTodo(kpiId, storageKey, text, { pushServer: true })
-        ?.success;
-      if (!ok) return;
-      paintList();
+    .querySelector('[data-legacy~="time-task-setup-backdrop"]')
+    ?.addEventListener("click", close);
+  modal
+    .querySelector('[data-legacy~="time-task-log-submit"]')
+    ?.addEventListener("click", () => {
+      setTodayActionTodoPickIds(kpiId, [...draftPicks], todayYmd);
+      close();
       try {
         opts.onChange?.();
       } catch (_) {}
     });
+  modal
+    .querySelector(".habit-tracker-today-goals-remove-today")
+    ?.addEventListener("click", () => {
+      hideTodayActionKpi(kpiId, todayYmd);
+      close();
+      try {
+        opts.onChange?.();
+      } catch (_) {}
+    });
+
+  if (canPickTodos) {
+    modal
+      .querySelector('[data-legacy~="lp-expected-kpi-todo-add-btn"]')
+      ?.addEventListener("click", async () => {
+        const collected = collectTodayActionTodos(kpiId);
+        const text = await showKpiTodoAddModal({
+          kpiName: name,
+          title: "할 일 추가",
+          placeholder: "할 일 입력",
+        });
+        if (!text || !modal.isConnected) return;
+        const storageKey =
+          collected?.storageKey || findKpiBundle(kpiId)?.storageKey || "";
+        const ok = !!addKpiTodo(kpiId, storageKey, text, { pushServer: true })
+          ?.success;
+        if (!ok) return;
+        paintList();
+        try {
+          opts.onChange?.();
+        } catch (_) {}
+      });
+  }
 
   document.body.appendChild(modal);
   document.body.style.overflow = "hidden";

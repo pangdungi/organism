@@ -367,12 +367,14 @@
 @media (min-width: 64rem) and (orientation: landscape) {
   /* 하단 홈/뒤로 바 제거 → 본문이 아래까지 사용 */
   #signin-page:has(.lp-kpi-dream-page.sideincome-view--split) .app-footer-menu,
-  #signin-page:has(.lp-kpi-dream-page.kpi-twopane-view--split) .app-footer-menu {
+  #signin-page:has(.lp-kpi-dream-page.kpi-twopane-view--split) .app-footer-menu,
+  #signin-page:has(.lp-kpi-dream-page.habit-tracker-view--wide) .app-footer-menu {
     display: none !important;
   }
 
   .lp-kpi-dream-page.sideincome-view--split .dream-view-header-back,
-  .lp-kpi-dream-page.kpi-twopane-view--split .dream-view-header-back {
+  .lp-kpi-dream-page.kpi-twopane-view--split .dream-view-header-back,
+  .lp-kpi-dream-page.habit-tracker-view--wide .dream-view-header-back {
     display: inline-flex;
   }
 
