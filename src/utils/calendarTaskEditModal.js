@@ -5,6 +5,10 @@
 
 import { initModalStandardDateFields } from "./modalNativeDateField.js";
 import {
+  buildCalendarEventNameEmojiQuickMarkup,
+  wireCalendarEventNameEmojiQuick,
+} from "./calendarEventNameEmojiQuick.js";
+import {
   buildTodoTaskDateQuickMarkup,
   setupTodoTaskDateQuickButtons,
 } from "./deadlineQuickButtons.js";
@@ -146,7 +150,10 @@ function showCalendarTaskEditModal(options) {
       </div>
       <div class="time-task-setup-body">
         <div class="time-task-log-field">
-          <label>할일/일정 이름</label>
+          <div class="calendar-event-name-emoji-label-row">
+            <label>할일/일정 이름</label>
+            ${buildCalendarEventNameEmojiQuickMarkup()}
+          </div>
           <input type="text" class="time-add-task-name" placeholder="할일/일정 입력" value="${escapeHtml(name)}" maxlength="500" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
         </div>
         <div class="time-task-log-field calendar-task-edit-checks-row">
@@ -251,6 +258,7 @@ function showCalendarTaskEditModal(options) {
   wireModalEnterToConfirm(modal, confirmBtn);
   initModalStandardDateFields(modal);
   setupTodoTaskDateQuickButtons(modal);
+  wireCalendarEventNameEmojiQuick(modal, nameInput);
 }
 
 /**
