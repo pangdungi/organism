@@ -80,6 +80,11 @@ export function warmDefaultAndInUsePickerIcons() {
         paths.push(src);
       }
     }
+    void import("./reuseDisplayIconImg.js")
+      .then((m) => {
+        paths.forEach((p) => m.keepAliveDisplayIconSrc(p));
+      })
+      .catch(() => {});
     const CHUNK = 16;
     for (let i = 0; i < paths.length; i += CHUNK) {
       const batch = paths.slice(i, i + CHUNK);

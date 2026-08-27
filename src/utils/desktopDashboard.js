@@ -4,6 +4,7 @@
  */
 
 import { applyStaticAppIconImg } from "./staticAppIconImg.js";
+import { takeDisplayIconImg } from "./reuseDisplayIconImg.js";
 import { appBrandLogoUrl, withToolbarIconCacheVersion } from "./toolbarIconUrl.js";
 import { render as renderTime } from "../views/Time.js";
 import { render as renderHabitTracker } from "../views/HabitTracker.js";
@@ -99,10 +100,9 @@ function renderQuickKpiButtons(navigateToTab) {
     btn.title = tab.label;
     btn.setAttribute("aria-label", tab.label);
 
-    const img = document.createElement("img");
-    img.className = "lp-desktop-dashboard-quick-kpi-img";
-    img.src = withToolbarIconCacheVersion(tab.icon);
-    img.alt = "";
+    const img = takeDisplayIconImg(withToolbarIconCacheVersion(tab.icon), {
+      className: "lp-desktop-dashboard-quick-kpi-img",
+    });
     applyStaticAppIconImg(img);
 
     const label = document.createElement("span");
@@ -138,10 +138,9 @@ export function renderDesktopDashboard(opts) {
   brand.title = "새로고침";
   brand.setAttribute("aria-label", "홈 새로고침");
 
-  const brandImg = document.createElement("img");
-  brandImg.className = "lp-desktop-dashboard-brand-img";
-  brandImg.src = appBrandLogoUrl();
-  brandImg.alt = "";
+  const brandImg = takeDisplayIconImg(appBrandLogoUrl(), {
+    className: "lp-desktop-dashboard-brand-img",
+  });
   applyStaticAppIconImg(brandImg);
 
   const brandTitle = document.createElement("span");
@@ -159,10 +158,10 @@ export function renderDesktopDashboard(opts) {
   accountBtn.className = "lp-desktop-dashboard-account-btn";
   accountBtn.title = "나의 계정";
   accountBtn.setAttribute("aria-label", "나의 계정");
-  const accountImg = document.createElement("img");
-  accountImg.className = "lp-desktop-dashboard-account-img";
-  accountImg.src = withToolbarIconCacheVersion(opts.accountIconSrc || "");
-  accountImg.alt = "";
+  const accountImg = takeDisplayIconImg(
+    withToolbarIconCacheVersion(opts.accountIconSrc || ""),
+    { className: "lp-desktop-dashboard-account-img" },
+  );
   applyStaticAppIconImg(accountImg);
   const accountLabel = document.createElement("span");
   accountLabel.className = "lp-desktop-dashboard-account-label";

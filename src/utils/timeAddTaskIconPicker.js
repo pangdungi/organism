@@ -16,6 +16,10 @@ import {
   CALENDAR_STAMP_ICON_PICKER_LIST_OPTS,
 } from "./timeTaskIconUrls.js";
 import { attachPickerIconSrcFallback } from "./timeTaskIconLazyDisplay.js";
+import {
+  salvageDisplayIconImgs,
+  takeDisplayIconImg,
+} from "./reuseDisplayIconImg.js";
 import { lpSetClasses, lpTokenToggle } from "./timeLedgerClassPolicy.js";
 import { markModalOpened } from "./modalNoAutoFocus.js";
 import { syncBodyOverflowAfterModalClose } from "./lpModalStack.js";
@@ -329,13 +333,12 @@ export function mountTimeAddTaskIconPicker(mountEl) {
       "aria-label",
       has ? "아이콘 선택됨, 변경하려면 누르세요" : "아이콘 선택",
     );
+    salvageDisplayIconImgs(trigger);
     trigger.replaceChildren();
     if (!has) return;
-    const img = document.createElement("img");
-    img.alt = "";
+    const img = takeDisplayIconImg(src);
     applyStaticAppIconImg(img);
     attachPickerIconSrcFallback(img, src);
-    img.src = src;
     lpSetClasses(img, "time-add-task-icon-picker__trigger-icon");
     trigger.appendChild(img);
   }

@@ -9,6 +9,7 @@ import {
   lpTokenToggle,
 } from "./timeLedgerClassPolicy.js";
 import { getTimeTaskListIconSrc } from "./timeTaskIconUrls.js";
+import { takeDisplayIconImg } from "./reuseDisplayIconImg.js";
 import { matchFlexibleSearch } from "./flexibleSearchMatch.js";
 
 function scrollItemToCenter(listEl, itemEl) {
@@ -329,11 +330,10 @@ export function createMobileTaskLogPicker(options = {}) {
       iconKey: task.iconKey,
     });
     if (iconSrc) {
-      const icon = document.createElement("img");
+      const icon = takeDisplayIconImg(iconSrc, {
+        className: "lp-task-log-mobile-picker-item-icon",
+      });
       lpSetClasses(icon, "lp-task-log-mobile-picker-item-icon");
-      icon.src = iconSrc;
-      icon.alt = "";
-      icon.decoding = "async";
       row.appendChild(icon);
     }
 
@@ -462,11 +462,10 @@ export function createMobileTaskLogPicker(options = {}) {
     const iconWrap = document.createElement("span");
     lpSetClasses(iconWrap, "lp-task-log-mobile-search-item-icon-wrap");
     if (iconSrc) {
-      const icon = document.createElement("img");
+      const icon = takeDisplayIconImg(iconSrc, {
+        className: "lp-task-log-mobile-search-item-icon",
+      });
       lpSetClasses(icon, "lp-task-log-mobile-search-item-icon");
-      icon.src = iconSrc;
-      icon.alt = "";
-      icon.decoding = "async";
       iconWrap.appendChild(icon);
     }
 

@@ -129,6 +129,7 @@ import {
   openCalendarExpectedScheduleModal,
 } from "../utils/calendarExpectedScheduleModal.js";
 import { lpRefreshAllVisibleCalendarLayoutsFromLocalData } from "../utils/lpCalendarLocalRefresh.js";
+import { takeDisplayIconImg } from "../utils/reuseDisplayIconImg.js";
 import {
   calendarPullRangeForSubView,
   calendarPullRangeYmdForMonth,
@@ -4980,12 +4981,7 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
         const iconCell = document.createElement("div");
         iconCell.className = "time-ledger-usage-icon-cell";
         if (iconSrc) {
-          const iconImg = document.createElement("img");
-          iconImg.src = iconSrc;
-          iconImg.alt = "";
-          iconImg.loading = "eager";
-          iconImg.decoding = "sync";
-          iconCell.appendChild(iconImg);
+          iconCell.appendChild(takeDisplayIconImg(iconSrc, { decoding: "sync" }));
         }
 
         const titleRow = document.createElement("div");

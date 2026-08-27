@@ -1741,6 +1741,13 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   flex-direction: column;
   gap: 0.45rem;
 }
+.time-task-log-recent-reviews-empty,
+[data-legacy~="time-task-log-recent-reviews-empty"] {
+  padding: 0.55rem 0.15rem 0.2rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #94a3b8;
+}
 .time-task-log-recent-review-item,
 [data-legacy~="time-task-log-recent-review-item"] {
   padding: 0.45rem 0.55rem;

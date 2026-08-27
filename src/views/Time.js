@@ -99,6 +99,10 @@ import {
 import { mountTimeAddTaskIconPicker } from "../utils/timeAddTaskIconPicker.js";
 import { createSetupListIconImg } from "../utils/timeTaskIconLazyDisplay.js";
 import {
+  salvageDisplayIconImgs,
+  takeDisplayIconImg,
+} from "../utils/reuseDisplayIconImg.js";
+import {
   ensureTimeLedgerEntryIds,
   ledgerRowEntryDateYmd,
   parseYmdTenFromLedgerStartTimeStr,
@@ -4947,17 +4951,18 @@ function patchTimeLedgerTaskIconsForTaskName(root, taskName) {
     const cell = card.querySelector(".time-ledger-usage-icon-cell");
     if (!cell) return;
     if (!iconSrc) {
+      salvageDisplayIconImgs(cell);
       cell.replaceChildren();
       return;
     }
     let img = cell.querySelector("img");
     if (!img) {
-      img = document.createElement("img");
-      img.alt = "";
-      img.loading = "lazy";
-      cell.appendChild(img);
+      cell.appendChild(takeDisplayIconImg(iconSrc, { decoding: "sync" }));
+      return;
     }
-    if (img.getAttribute("src") !== iconSrc) img.setAttribute("src", iconSrc);
+    if (img.getAttribute("src") !== iconSrc) {
+      img.replaceWith(takeDisplayIconImg(iconSrc, { decoding: "sync" }));
+    }
   });
 }
 
@@ -5449,7 +5454,9 @@ function syncMobileTimeCardRatingEl(card, rowData) {
         ? "감정 상태"
         : TTC.isContentDetailTaskName(rowData?.taskName)
           ? "콘텐츠 평가"
-          : "이 시간 평가";
+          : TTC.isReadingDetailTaskName(rowData?.taskName)
+            ? "도서 별점"
+            : "이 시간 평가";
   ratingEl.setAttribute(
     "aria-label",
     rating != null ? `${ratingLabel} ${rating}점` : "",
@@ -5593,12 +5600,7 @@ function createNextExpectedScheduleTimelineItem(block, handlers) {
   const iconCell = document.createElement("div");
   iconCell.className = "time-ledger-usage-icon-cell";
   if (iconSrc) {
-    const iconImg = document.createElement("img");
-    iconImg.src = iconSrc;
-    iconImg.alt = "";
-    iconImg.loading = "eager";
-    iconImg.decoding = "sync";
-    iconCell.appendChild(iconImg);
+    iconCell.appendChild(takeDisplayIconImg(iconSrc, { decoding: "sync" }));
   }
 
   const bodyCol = document.createElement("div");
@@ -5813,12 +5815,7 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   const iconCell = document.createElement("div");
   iconCell.className = "time-ledger-usage-icon-cell";
   if (iconSrc) {
-    const iconImg = document.createElement("img");
-    iconImg.src = iconSrc;
-    iconImg.alt = "";
-    iconImg.loading = "eager";
-    iconImg.decoding = "sync";
-    iconCell.appendChild(iconImg);
+    iconCell.appendChild(takeDisplayIconImg(iconSrc, { decoding: "sync" }));
   }
 
   const titleEl = document.createElement("div");
@@ -8838,6 +8835,8 @@ export function render(opts = {}) {
     if (isTaskLogModalEmotionalTask()) return "감정 상태";
     if (isTaskLogModalMealIntakeTask()) return "맛 평가";
     if (isTaskLogModalContentTask()) return "콘텐츠 평가";
+    const ratingTaskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
+    if (TTC.isReadingDetailTaskName(ratingTaskName)) return "도서 별점";
     return "이 시간 평가";
   }
 
@@ -9705,6 +9704,9 @@ export function render(opts = {}) {
   const TASK_LOG_RECENT_REVIEW_LABEL = "최근 후기";
   const TASK_LOG_RECENT_PURCHASE_REVIEW_LABEL = "최근 구매 후기";
   const TASK_LOG_RECENT_EMOTION_CONTEXT_LABEL = "최근 사실·해석";
+  const TASK_LOG_RECENT_REVIEW_EMPTY = "최근 후기가 없습니다";
+  const TASK_LOG_RECENT_PURCHASE_REVIEW_EMPTY = "최근 구매 후기가 없습니다";
+  const TASK_LOG_RECENT_EMOTION_CONTEXT_EMPTY = "최근 사실·해석이 없습니다";
   const TASK_LOG_RECENT_REVIEW_LIMIT = 5;
 
   function extractTaskLogRecentReviewMemo(row) {
@@ -9761,11 +9763,20 @@ export function render(opts = {}) {
       excludeId,
     );
     taskLogRecentReviewsList.replaceChildren();
+    taskLogRecentReviewsSection.hidden = false;
     if (!rows.length) {
-      taskLogRecentReviewsSection.hidden = true;
+      const empty = document.createElement("li");
+      lpSetClasses(empty, "time-task-log-recent-reviews-empty");
+      if (TTC.isEmotionalBuiltinTaskName(tn)) {
+        empty.textContent = TASK_LOG_RECENT_EMOTION_CONTEXT_EMPTY;
+      } else if (isTaskLogGeneralReviewTask(tn)) {
+        empty.textContent = TASK_LOG_RECENT_REVIEW_EMPTY;
+      } else {
+        empty.textContent = TASK_LOG_RECENT_PURCHASE_REVIEW_EMPTY;
+      }
+      taskLogRecentReviewsList.appendChild(empty);
       return;
     }
-    taskLogRecentReviewsSection.hidden = false;
     for (const row of rows) {
       const memoText = extractTaskLogRecentReviewMemo(row);
       if (!memoText) continue;
@@ -11413,7 +11424,10 @@ export function render(opts = {}) {
 
   function hideTaskLogPlannedSlotsSection() {
     taskLogSelectedPlannedSlot = null;
-    if (taskLogPlannedSlotsBtns) taskLogPlannedSlotsBtns.replaceChildren();
+    if (taskLogPlannedSlotsBtns) {
+      salvageDisplayIconImgs(taskLogPlannedSlotsBtns);
+      taskLogPlannedSlotsBtns.replaceChildren();
+    }
     if (taskLogPlannedSlotsSection) taskLogPlannedSlotsSection.hidden = true;
   }
 
@@ -11491,6 +11505,7 @@ export function render(opts = {}) {
       return;
     }
     const prevKey = taskLogSelectedPlannedSlot?.key || "";
+    salvageDisplayIconImgs(taskLogPlannedSlotsBtns);
     taskLogPlannedSlotsBtns.replaceChildren();
     for (const block of blocks) {
       const key = nextExpectedBudgetBlockKey(block);
@@ -11511,11 +11526,9 @@ export function render(opts = {}) {
       iconWrap.setAttribute("data-legacy", "time-task-log-planned-slot-btn-icon");
       iconWrap.setAttribute("aria-hidden", "true");
       if (iconSrc) {
-        const img = document.createElement("img");
-        img.src = iconSrc;
-        img.alt = "";
-        img.draggable = false;
-        iconWrap.appendChild(img);
+        iconWrap.appendChild(
+          takeDisplayIconImg(iconSrc, { draggable: false }),
+        );
       }
       const label = document.createElement("span");
       label.setAttribute("data-legacy", "time-task-log-planned-slot-btn-label");
@@ -14346,6 +14359,7 @@ export function render(opts = {}) {
     otherTasks = applySetupSearchFilter(otherTasks);
     const lockedForDisplay = getLockedForSetupDisplay();
     function renderList(container, list) {
+      salvageDisplayIconImgs(container);
       container.replaceChildren();
       list.forEach((t) => {
         const fromKpi = isTimeTaskKpiLinked(t);
@@ -15201,6 +15215,7 @@ export function render(opts = {}) {
     try {
       delete el._lpTaskLogModalLedgerRefs;
     } catch (_) {}
+    salvageDisplayIconImgs(contentWrap);
     contentWrap.innerHTML = "";
 
     const handleCardDelete = (card, rowData) => {

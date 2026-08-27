@@ -2931,11 +2931,25 @@ function appendMediaDayJournalEntryRow(tbody, e) {
 
   const timeTd = document.createElement("td");
   timeTd.className = "lp-tr2-media-day-table-time";
-  const timeParts = [
-    e.startLabel || null,
-    e.minutes > 0 ? formatIntegerMinutesDurationKo(e.minutes) : null,
-  ].filter(Boolean);
-  timeTd.textContent = timeParts.join(" · ") || "—";
+  const startLabel = String(e.startLabel || "").trim();
+  const durLabel =
+    e.minutes > 0 ? formatIntegerMinutesDurationKo(e.minutes) : "";
+  if (startLabel || durLabel) {
+    if (startLabel) {
+      const startEl = document.createElement("span");
+      startEl.className = "lp-tr2-media-day-table-time-start";
+      startEl.textContent = startLabel;
+      timeTd.appendChild(startEl);
+    }
+    if (durLabel) {
+      const durEl = document.createElement("span");
+      durEl.className = "lp-tr2-media-day-table-time-dur";
+      durEl.textContent = durLabel;
+      timeTd.appendChild(durEl);
+    }
+  } else {
+    timeTd.textContent = "—";
+  }
 
   const contentTd = document.createElement("td");
   contentTd.className = "lp-tr2-media-day-table-content";
@@ -4542,13 +4556,31 @@ function resolveReadingReportBookTitle(row) {
   return "";
 }
 
+function emptyReadingBookStat() {
+  return { minutes: 0, ratingSum: 0, ratingCount: 0 };
+}
+
+function addReadingRowToBookStat(stat, row, mins) {
+  stat.minutes += mins;
+  const rating = normalizeTimeRatingForRow(row?.timeRating);
+  if (rating != null) {
+    stat.ratingSum += rating;
+    stat.ratingCount += 1;
+  }
+}
+
+function readingBookRatingAvg(stat) {
+  if (!stat?.ratingCount) return null;
+  return stat.ratingSum / stat.ratingCount;
+}
+
 /** @param {ReturnType<typeof loadTimeRows>} rows */
 function buildReadingReportSnapshot(rows) {
   let totalMinutes = 0;
   let sessionCount = 0;
-  let untitledMinutes = 0;
-  /** @type {Map<string, number>} */
-  const bookMinutes = new Map();
+  const untitled = emptyReadingBookStat();
+  /** @type {Map<string, ReturnType<typeof emptyReadingBookStat>>} */
+  const bookStats = new Map();
   for (const r of rows || []) {
     if (!isReadingDetailTaskName(r?.taskName)) continue;
     const mins = rowMinutes(r);
@@ -4557,18 +4589,33 @@ function buildReadingReportSnapshot(rows) {
     totalMinutes += mins;
     const title = resolveReadingReportBookTitle(r);
     if (!title) {
-      untitledMinutes += mins;
+      addReadingRowToBookStat(untitled, r, mins);
       continue;
     }
-    bookMinutes.set(title, (bookMinutes.get(title) || 0) + mins);
+    let stat = bookStats.get(title);
+    if (!stat) {
+      stat = emptyReadingBookStat();
+      bookStats.set(title, stat);
+    }
+    addReadingRowToBookStat(stat, r, mins);
   }
-  const books = [...bookMinutes.entries()]
-    .map(([title, minutes]) => ({ title, minutes }))
+  const books = [...bookStats.entries()]
+    .map(([title, stat]) => ({
+      title,
+      minutes: stat.minutes,
+      ratingAvg: readingBookRatingAvg(stat),
+    }))
     .sort(
       (a, b) =>
         b.minutes - a.minutes || a.title.localeCompare(b.title, "ko"),
     );
-  return { totalMinutes, sessionCount, untitledMinutes, books };
+  return {
+    totalMinutes,
+    sessionCount,
+    untitledMinutes: untitled.minutes,
+    untitledRatingAvg: readingBookRatingAvg(untitled),
+    books,
+  };
 }
 
 function mountReadingSection(scrollWrap, rows) {
@@ -4602,7 +4649,7 @@ function mountReadingSection(scrollWrap, rows) {
 
   const listBlock = createRatingBlock(
     "읽은 책 목록",
-    "도서명별로 모은 독서 시간",
+    "도서명별로 모은 독서 시간 · 도서 별점",
   );
   if (!snap.books.length && !(snap.untitledMinutes > 0)) {
     const note = document.createElement("p");
@@ -4613,29 +4660,39 @@ function mountReadingSection(scrollWrap, rows) {
     const list = document.createElement("ul");
     list.className = "lp-tr2-reading-book-list";
     list.setAttribute("aria-label", "읽은 책 목록");
-    snap.books.forEach((book) => {
+    const appendReadingBookRow = (title, minutes, ratingAvg, untitled) => {
       const li = document.createElement("li");
-      li.className = "lp-tr2-reading-book-item";
+      li.className = untitled
+        ? "lp-tr2-reading-book-item lp-tr2-reading-book-item--untitled"
+        : "lp-tr2-reading-book-item";
       const name = document.createElement("span");
       name.className = "lp-tr2-reading-book-title";
-      name.textContent = `📖 ${book.title}`;
+      name.textContent = untitled ? "📖 (도서명 없음)" : `📖 ${title}`;
       const meta = document.createElement("span");
       meta.className = "lp-tr2-reading-book-meta";
-      meta.textContent = formatIntegerMinutesDurationKo(book.minutes);
+      if (ratingAvg != null) {
+        const ratingEl = createSleepRatingStarsEl(ratingAvg, { showScore: true });
+        ratingEl.classList.add("lp-tr2-reading-book-rating");
+        ratingEl.title = `도서 별점 ${formatRatingAvg(ratingAvg)}점`;
+        meta.appendChild(ratingEl);
+      }
+      const timeEl = document.createElement("span");
+      timeEl.className = "lp-tr2-reading-book-time";
+      timeEl.textContent = formatIntegerMinutesDurationKo(minutes);
+      meta.appendChild(timeEl);
       li.append(name, meta);
       list.appendChild(li);
+    };
+    snap.books.forEach((book) => {
+      appendReadingBookRow(book.title, book.minutes, book.ratingAvg, false);
     });
     if (snap.untitledMinutes > 0) {
-      const li = document.createElement("li");
-      li.className = "lp-tr2-reading-book-item lp-tr2-reading-book-item--untitled";
-      const name = document.createElement("span");
-      name.className = "lp-tr2-reading-book-title";
-      name.textContent = "📖 (도서명 없음)";
-      const meta = document.createElement("span");
-      meta.className = "lp-tr2-reading-book-meta";
-      meta.textContent = formatIntegerMinutesDurationKo(snap.untitledMinutes);
-      li.append(name, meta);
-      list.appendChild(li);
+      appendReadingBookRow(
+        "",
+        snap.untitledMinutes,
+        snap.untitledRatingAvg,
+        true,
+      );
     }
     listBlock.appendChild(list);
   }

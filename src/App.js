@@ -1,4 +1,5 @@
 import { applyStaticAppIconImg } from "./utils/staticAppIconImg.js";
+import { takeDisplayIconImg } from "./utils/reuseDisplayIconImg.js";
 import {
   loginBrandLogoUrl,
   withToolbarIconCacheVersion,
@@ -1150,10 +1151,10 @@ export async function mountApp(container) {
     const accountIconWrap = document.createElement("span");
     accountIconWrap.className = "app-home-menu-launcher-account-icon-wrap";
     accountIconWrap.setAttribute("aria-hidden", "true");
-    const accountImg = document.createElement("img");
-    accountImg.className = "app-home-menu-launcher-account-img";
-    accountImg.src = withToolbarIconCacheVersion(HOME_MENU_ACCOUNT_ICON);
-    accountImg.alt = "";
+    const accountImg = takeDisplayIconImg(
+      withToolbarIconCacheVersion(HOME_MENU_ACCOUNT_ICON),
+      { className: "app-home-menu-launcher-account-img" },
+    );
     applyStaticAppIconImg(accountImg);
     accountIconWrap.appendChild(accountImg);
     const accountLabel = document.createElement("span");
@@ -1181,12 +1182,12 @@ export async function mountApp(container) {
       const iconWrap = document.createElement("span");
       iconWrap.className = "app-home-menu-launcher-icon";
       iconWrap.setAttribute("aria-hidden", "true");
-      const img = document.createElement("img");
-      img.className = "app-home-menu-launcher-grid-img";
-      img.src = withToolbarIconCacheVersion(
-        HOME_MENU_ICON[tab.id] ?? tab.iconDesktop ?? tab.icon,
+      const img = takeDisplayIconImg(
+        withToolbarIconCacheVersion(
+          HOME_MENU_ICON[tab.id] ?? tab.iconDesktop ?? tab.icon,
+        ),
+        { className: "app-home-menu-launcher-grid-img" },
       );
-      img.alt = "";
       applyStaticAppIconImg(img);
       iconWrap.appendChild(img);
 
@@ -1205,10 +1206,9 @@ export async function mountApp(container) {
     brandRow.className = "app-home-menu-launcher-brand-row";
     const logoShell = document.createElement("div");
     logoShell.className = "app-home-menu-launcher-logo-float-shell";
-    const logoImg = document.createElement("img");
-    logoImg.className = "app-home-menu-launcher-logo";
-    logoImg.src = loginBrandLogoUrl();
-    logoImg.alt = "";
+    const logoImg = takeDisplayIconImg(loginBrandLogoUrl(), {
+      className: "app-home-menu-launcher-logo",
+    });
     logoImg.setAttribute("aria-hidden", "true");
     applyStaticAppIconImg(logoImg);
     logoShell.appendChild(logoImg);

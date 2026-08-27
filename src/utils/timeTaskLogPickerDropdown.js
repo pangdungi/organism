@@ -14,6 +14,7 @@ import {
 } from "./timeTaskOptionsModel.js";
 import * as TTC from "./timeTaskOptionsConstants.js";
 import { getTimeTaskListIconSrc } from "./timeTaskIconUrls.js";
+import { takeDisplayIconImg } from "./reuseDisplayIconImg.js";
 import { matchFlexibleSearch } from "./flexibleSearchMatch.js";
 import {
   isIosLikeMobile,
@@ -373,12 +374,11 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
         productivity: t.productivity,
         iconKey: t.iconKey,
       });
-      const iconEl = iconSrc ? document.createElement("img") : null;
+      const iconEl = iconSrc
+        ? takeDisplayIconImg(iconSrc, { decoding: "sync" })
+        : null;
       if (iconEl) {
         lpSetClasses(iconEl, "time-task-log-task-dropdown-option-icon");
-        iconEl.src = iconSrc;
-        iconEl.alt = "";
-        iconEl.decoding = "sync";
       }
       const textWrap = document.createElement("span");
       lpSetClasses(textWrap, "time-task-log-task-dropdown-option-text");

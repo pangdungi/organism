@@ -259,5 +259,5 @@ export function buildEmotionCategoryIconImgHtml(category, opts = {}) {
   const size = opts.size ?? 40;
   const alt = String(cat.label || "").trim();
   if (!url) return "";
-  return `<img class="lp-emotion-category-icon" src="${url}" width="${size}" height="${size}" alt="${alt}" loading="lazy" decoding="async" />`;
+  return `<img class="lp-emotion-category-icon" src="${url}" width="${size}" height="${size}" alt="${alt}" loading="eager" decoding="async" />`;
 }

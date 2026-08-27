@@ -4884,7 +4884,7 @@
 
 .lp-tr2-reading-book-item {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.4rem 0.15rem;
@@ -4910,9 +4910,25 @@
 
 .lp-tr2-reading-book-meta {
   flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.45rem;
   font-size: var(--lp-tr2-label);
   font-weight: 600;
   color: #64748b;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-tr2-reading-book-rating .lp-tr2-sleep-rating-stars-row {
+  font-size: var(--lp-tr2-label);
+}
+
+.lp-tr2-reading-book-rating .lp-tr2-sleep-rating-stars-score {
+  font-size: var(--lp-tr2-label);
+}
+
+.lp-tr2-reading-book-time {
   font-variant-numeric: tabular-nums;
 }
 
@@ -5111,10 +5127,11 @@
 
 .lp-tr2-media-day-table th,
 .lp-tr2-media-day-table td {
-  padding: 0.48rem 0.55rem;
+  padding: 0.48rem 0.45rem;
   vertical-align: top;
   text-align: left;
   border-top: 1px solid #e8edf2;
+  overflow: hidden;
   overflow-wrap: anywhere;
 }
 
@@ -5127,15 +5144,15 @@
   line-height: 1.3;
 }
 
-/* 시간 · 콘텐츠 · 후기 (구분 열 없음) */
+/* 시간 · 콘텐츠 · 후기 — 시간은 시각/길이를 두 줄로 (한 줄이면 옆 칸과 겹침) */
 .lp-tr2-media-day-table th:nth-child(1),
 .lp-tr2-media-day-table td:nth-child(1) {
-  width: 5.6rem;
+  width: 4.6rem;
 }
 
 .lp-tr2-media-day-table th:nth-child(2),
 .lp-tr2-media-day-table td:nth-child(2) {
-  width: 30%;
+  width: 32%;
 }
 
 .lp-tr2-media-day-table-time {
@@ -5143,7 +5160,13 @@
   font-weight: 600;
   color: #64748b;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  white-space: normal;
+  line-height: 1.35;
+}
+
+.lp-tr2-media-day-table-time-start,
+.lp-tr2-media-day-table-time-dur {
+  display: block;
 }
 
 .lp-tr2-media-day-table-content,

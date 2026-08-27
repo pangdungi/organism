@@ -4,6 +4,10 @@
 
 import { applyStaticAppIconImg } from "./staticAppIconImg.js";
 import {
+  salvageDisplayIconImgs,
+  takeDisplayIconImg,
+} from "./reuseDisplayIconImg.js";
+import {
   getCalendarDayIconKeyForDate,
   setCalendarDayIconKeyForDate,
 } from "./calendarDayIconsModel.js";
@@ -148,6 +152,7 @@ export function openCalendarDayIconEditor(dateKey, opts = {}) {
  */
 export function renderCalendarMonthlyDayIcons(container, dateKey, opts = {}) {
   if (!(container instanceof HTMLElement)) return;
+  salvageDisplayIconImgs(container);
   container.replaceChildren();
   const iconKey = getCalendarDayIconKeyForDate(dateKey);
   const src = iconKey ? getTimeTaskIconDisplaySrcByKey(iconKey) : "";
@@ -165,12 +170,11 @@ export function renderCalendarMonthlyDayIcons(container, dateKey, opts = {}) {
   btn.title = "드래그로 다른 날짜로 옮기기 · 탭하여 수정";
   btn.draggable = true;
   let suppressClickAfterDrag = false;
-  const img = document.createElement("img");
-  img.src = src;
+  const img = takeDisplayIconImg(src, {
+    className: "calendar-monthly-day-icons__img",
+  });
   attachIconSvgFallback(img, src);
-  img.alt = "";
   applyStaticAppIconImg(img);
-  img.className = "calendar-monthly-day-icons__img";
   btn.appendChild(img);
   const requestWeekStampLayout = () => {
     const weekRow = container.closest(".calendar-monthly-week");
@@ -220,10 +224,12 @@ export function mountCalendarDayExpandIconBtn(mountEl, dateKey, opts = {}) {
   if (!(mountEl instanceof HTMLElement)) return;
   const ymd = String(dateKey || "").trim().slice(0, 10);
   if (!ymd) {
+    salvageDisplayIconImgs(mountEl);
     mountEl.replaceChildren();
     return;
   }
 
+  salvageDisplayIconImgs(mountEl);
   mountEl.replaceChildren();
   const btn = document.createElement("button");
   btn.type = "button";
@@ -232,17 +238,17 @@ export function mountCalendarDayExpandIconBtn(mountEl, dateKey, opts = {}) {
   function syncBtn() {
     const iconKey = getCalendarDayIconKeyForDate(ymd);
     const src = iconKey ? getTimeTaskIconDisplaySrcByKey(iconKey) : "";
+    salvageDisplayIconImgs(btn);
     btn.replaceChildren();
     if (src) {
       btn.classList.add("calendar-day-expand-icon-btn--selected");
       btn.setAttribute("aria-label", "날짜 스탬프 변경");
       btn.title = "아이콘 변경";
-      const img = document.createElement("img");
-      img.src = src;
+      const img = takeDisplayIconImg(src, {
+        className: "calendar-day-expand-icon-btn__img",
+      });
       attachIconSvgFallback(img, src);
-      img.alt = "";
       applyStaticAppIconImg(img);
-      img.className = "calendar-day-expand-icon-btn__img";
       btn.appendChild(img);
     } else {
       btn.classList.remove("calendar-day-expand-icon-btn--selected");
