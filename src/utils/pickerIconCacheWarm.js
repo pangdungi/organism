@@ -8,6 +8,7 @@ import {
   warmIconPathInSwCache,
   warmTimeTaskPickerIconsOnce,
 } from "./appIconPrefetch.js";
+import { decodeDisplayIconSrcs } from "./decodeDisplayIcons.js";
 import {
   getTimeTaskIconDisplaySrcByKey,
   getTimeTaskIconSrcByKey,
@@ -80,11 +81,6 @@ export function warmDefaultAndInUsePickerIcons() {
         paths.push(src);
       }
     }
-    void import("./reuseDisplayIconImg.js")
-      .then((m) => {
-        paths.forEach((p) => m.keepAliveDisplayIconSrc(p));
-      })
-      .catch(() => {});
     const CHUNK = 16;
     for (let i = 0; i < paths.length; i += CHUNK) {
       const batch = paths.slice(i, i + CHUNK);
@@ -93,6 +89,9 @@ export function warmDefaultAndInUsePickerIcons() {
         await new Promise((r) => setTimeout(r, 0));
       }
     }
+    try {
+      await decodeDisplayIconSrcs(paths, { timeoutMs: 2500 });
+    } catch (_) {}
   })().finally(() => {
     _inUseWarmJob = null;
   });

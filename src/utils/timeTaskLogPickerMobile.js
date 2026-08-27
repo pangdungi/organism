@@ -9,7 +9,7 @@ import {
   lpTokenToggle,
 } from "./timeLedgerClassPolicy.js";
 import { getTimeTaskListIconSrc } from "./timeTaskIconUrls.js";
-import { takeDisplayIconImg } from "./reuseDisplayIconImg.js";
+import { decodeDisplayIconSrcs } from "./decodeDisplayIcons.js";
 import { matchFlexibleSearch } from "./flexibleSearchMatch.js";
 
 function scrollItemToCenter(listEl, itemEl) {
@@ -87,6 +87,8 @@ export function createMobileTaskLogPicker(options = {}) {
   let wheelTasksCacheKey = "";
   /** @type {ReturnType<typeof setTimeout> | null} */
   let searchRenderTimer = null;
+  let wheelPaintGen = 0;
+  let searchPaintGen = 0;
   let mounted = false;
 
   const pickerRoot = document.createElement("div");
@@ -324,16 +326,13 @@ export function createMobileTaskLogPicker(options = {}) {
     }
     row.setAttribute("role", "option");
 
-    const iconSrc = getTimeTaskListIconSrc(task.name, {
-      category: task.category,
-      productivity: task.productivity,
-      iconKey: task.iconKey,
-    });
+    const iconSrc = pickerTaskIconSrc(task);
     if (iconSrc) {
-      const icon = takeDisplayIconImg(iconSrc, {
-        className: "lp-task-log-mobile-picker-item-icon",
-      });
+      const icon = document.createElement("img");
       lpSetClasses(icon, "lp-task-log-mobile-picker-item-icon");
+      icon.src = iconSrc;
+      icon.alt = "";
+      icon.decoding = "async";
       row.appendChild(icon);
     }
 
@@ -371,7 +370,19 @@ export function createMobileTaskLogPicker(options = {}) {
     });
   }
 
-  function renderWheel(opts = {}) {
+  function pickerTaskIconSrc(task) {
+    return getTimeTaskListIconSrc(task.name, {
+      category: task.category,
+      productivity: task.productivity,
+      iconKey: task.iconKey,
+    });
+  }
+
+  function collectPickerTaskIconSrcs(tasks) {
+    return (tasks || []).map((t) => pickerTaskIconSrc(t)).filter(Boolean);
+  }
+
+  async function renderWheel(opts = {}) {
     const force = opts.force === true;
     const tasks = getTasks?.() || [];
     const cacheKey = wheelTasksCacheKeyFrom(tasks);
@@ -384,6 +395,11 @@ export function createMobileTaskLogPicker(options = {}) {
       requestAnimationFrame(() => scrollWheelToPendingValue());
       return;
     }
+    const gen = ++wheelPaintGen;
+    await decodeDisplayIconSrcs(collectPickerTaskIconSrcs(tasks), {
+      timeoutMs: 400,
+    });
+    if (gen !== wheelPaintGen) return;
     wheelTasksCacheKey = cacheKey;
 
     const chips = getVisibleBucketChips?.() || [];
@@ -454,18 +470,15 @@ export function createMobileTaskLogPicker(options = {}) {
     radio.checked = searchPendingValue === task.name;
     lpSetClasses(radio, "lp-task-log-mobile-search-radio");
 
-    const iconSrc = getTimeTaskListIconSrc(task.name, {
-      category: task.category,
-      productivity: task.productivity,
-      iconKey: task.iconKey,
-    });
+    const iconSrc = pickerTaskIconSrc(task);
     const iconWrap = document.createElement("span");
     lpSetClasses(iconWrap, "lp-task-log-mobile-search-item-icon-wrap");
     if (iconSrc) {
-      const icon = takeDisplayIconImg(iconSrc, {
-        className: "lp-task-log-mobile-search-item-icon",
-      });
+      const icon = document.createElement("img");
       lpSetClasses(icon, "lp-task-log-mobile-search-item-icon");
+      icon.src = iconSrc;
+      icon.alt = "";
+      icon.decoding = "async";
       iconWrap.appendChild(icon);
     }
 
@@ -494,11 +507,16 @@ export function createMobileTaskLogPicker(options = {}) {
     return row;
   }
 
-  function renderSearchList() {
+  async function renderSearchList() {
     const q = (searchQuery || "").trim().toLowerCase();
     const tasks = (getTasks?.() || []).filter((t) =>
       q ? matchFlexibleSearch(t.name || "", q) : true,
     );
+    const gen = ++searchPaintGen;
+    await decodeDisplayIconSrcs(collectPickerTaskIconSrcs(tasks), {
+      timeoutMs: 400,
+    });
+    if (gen !== searchPaintGen) return;
     const chips = getVisibleBucketChips?.() || [];
     const showHeaders = !q && typeof getTaskBucket === "function" && chips.length;
     const frag = document.createDocumentFragment();

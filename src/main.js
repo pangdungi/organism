@@ -48,8 +48,6 @@ import {
 } from "./utils/appUiFont.js";
 import { prefetchCriticalAppIconAssets } from "./utils/appIconPrefetch.js";
 import { warmDefaultAndInUsePickerIcons } from "./utils/pickerIconCacheWarm.js";
-import { installDisplayIconReuse } from "./utils/reuseDisplayIconImg.js";
-installDisplayIconReuse();
 import { setAppSplashMessage } from "./utils/lpAppLoading.js";
 import {
   initAppSplashViewportLock,

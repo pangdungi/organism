@@ -4,7 +4,6 @@ import {
   resolveEffectiveTaskIconKey,
 } from "./timeTaskIconUrls.js";
 import { applyStaticAppIconImg } from "./staticAppIconImg.js";
-import { takeDisplayIconImg } from "./reuseDisplayIconImg.js";
 
 /** @param {object} kpi */
 export function findLinkedTaskOptionForKpi(kpi) {
@@ -63,14 +62,7 @@ export function wireKpiCardIconsIn(root) {
   if (!root?.querySelectorAll) return;
   root.querySelectorAll(".dream-kpi-card-icon img").forEach((img) => {
     try {
-      const src = img.getAttribute("src") || "";
-      const next = takeDisplayIconImg(src, {
-        className: img.className,
-        width: 28,
-        height: 28,
-      });
-      applyStaticAppIconImg(next);
-      img.replaceWith(next);
+      applyStaticAppIconImg(img);
     } catch (_) {}
   });
 }

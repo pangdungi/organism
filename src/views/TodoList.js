@@ -4,7 +4,6 @@
  */
 
 import { applyStaticAppIconImg } from "../utils/staticAppIconImg.js";
-import { takeDisplayIconImg } from "../utils/reuseDisplayIconImg.js";
 import {
   getKpiDisplayNameForTodo,
   moveKpiTodoToSection,
@@ -135,17 +134,10 @@ function updateTodoCardTypeIconColumn(card) {
   const img = wrap?.querySelector(".todo-card-type-icon-img");
   if (!wrap || !img) return;
   if (isSched) {
-    const src =
+    img.src =
       card.dataset.done === "true"
         ? TODO_CARD_ICON_URL_CALENDAR_DONE
         : TODO_CARD_ICON_URL_CALENDAR;
-    if (img.getAttribute("src") !== src) {
-      const next = takeDisplayIconImg(src, {
-        className: "todo-card-type-icon-img",
-      });
-      applyStaticAppIconImg(next);
-      img.replaceWith(next);
-    }
     wrap.hidden = false;
   } else {
     wrap.hidden = true;

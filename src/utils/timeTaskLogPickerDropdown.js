@@ -14,7 +14,7 @@ import {
 } from "./timeTaskOptionsModel.js";
 import * as TTC from "./timeTaskOptionsConstants.js";
 import { getTimeTaskListIconSrc } from "./timeTaskIconUrls.js";
-import { takeDisplayIconImg } from "./reuseDisplayIconImg.js";
+import { decodeDisplayIconSrcs } from "./decodeDisplayIcons.js";
 import { matchFlexibleSearch } from "./flexibleSearchMatch.js";
 import {
   isIosLikeMobile,
@@ -208,6 +208,7 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
   );
   panel.hidden = true;
   let searchQuery = "";
+  let optionsPaintGen = 0;
   let pickerBucket = "sideincome";
   let ledgerBucketPreset =
     options.ledgerBucketPreset === "expense" ||
@@ -332,8 +333,7 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
     if (!ids.has(pickerBucket)) pickerBucket = getVisibleChips()[0]?.id || "sideincome";
   }
 
-  function renderOptions(container, filter) {
-    container.innerHTML = "";
+  async function renderOptions(container, filter) {
     const q = (filter || "").trim().toLowerCase();
     const bucketAllow = getAllowedBucketsForLedgerPreset(ledgerBucketPreset);
     const allTasks = getServerLedgerTaskOptionsForTaskLog();
@@ -352,6 +352,19 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
       tasks = tasks.filter((t) => matchFlexibleSearch(t.name || "", q));
     }
     tasks = sortTasksForLedgerPicker(tasks);
+    const gen = ++optionsPaintGen;
+    await decodeDisplayIconSrcs(
+      tasks.map((t) =>
+        getTimeTaskListIconSrc(t.name, {
+          category: t.category,
+          productivity: t.productivity,
+          iconKey: t.iconKey,
+        }),
+      ),
+      { timeoutMs: 400 },
+    );
+    if (gen !== optionsPaintGen) return;
+    container.innerHTML = "";
     tasks.forEach((t) => {
       const row = document.createElement("div");
       lpSetClasses(row, "time-task-log-task-dropdown-option");
@@ -374,11 +387,12 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
         productivity: t.productivity,
         iconKey: t.iconKey,
       });
-      const iconEl = iconSrc
-        ? takeDisplayIconImg(iconSrc, { decoding: "sync" })
-        : null;
+      const iconEl = iconSrc ? document.createElement("img") : null;
       if (iconEl) {
         lpSetClasses(iconEl, "time-task-log-task-dropdown-option-icon");
+        iconEl.src = iconSrc;
+        iconEl.alt = "";
+        iconEl.decoding = "sync";
       }
       const textWrap = document.createElement("span");
       lpSetClasses(textWrap, "time-task-log-task-dropdown-option-text");

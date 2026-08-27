@@ -99,10 +99,6 @@ import {
 import { mountTimeAddTaskIconPicker } from "../utils/timeAddTaskIconPicker.js";
 import { createSetupListIconImg } from "../utils/timeTaskIconLazyDisplay.js";
 import {
-  salvageDisplayIconImgs,
-  takeDisplayIconImg,
-} from "../utils/reuseDisplayIconImg.js";
-import {
   ensureTimeLedgerEntryIds,
   ledgerRowEntryDateYmd,
   parseYmdTenFromLedgerStartTimeStr,
@@ -4951,18 +4947,17 @@ function patchTimeLedgerTaskIconsForTaskName(root, taskName) {
     const cell = card.querySelector(".time-ledger-usage-icon-cell");
     if (!cell) return;
     if (!iconSrc) {
-      salvageDisplayIconImgs(cell);
       cell.replaceChildren();
       return;
     }
     let img = cell.querySelector("img");
     if (!img) {
-      cell.appendChild(takeDisplayIconImg(iconSrc, { decoding: "sync" }));
-      return;
+      img = document.createElement("img");
+      img.alt = "";
+      img.loading = "lazy";
+      cell.appendChild(img);
     }
-    if (img.getAttribute("src") !== iconSrc) {
-      img.replaceWith(takeDisplayIconImg(iconSrc, { decoding: "sync" }));
-    }
+    if (img.getAttribute("src") !== iconSrc) img.setAttribute("src", iconSrc);
   });
 }
 
@@ -5600,7 +5595,12 @@ function createNextExpectedScheduleTimelineItem(block, handlers) {
   const iconCell = document.createElement("div");
   iconCell.className = "time-ledger-usage-icon-cell";
   if (iconSrc) {
-    iconCell.appendChild(takeDisplayIconImg(iconSrc, { decoding: "sync" }));
+    const iconImg = document.createElement("img");
+    iconImg.src = iconSrc;
+    iconImg.alt = "";
+    iconImg.loading = "eager";
+    iconImg.decoding = "sync";
+    iconCell.appendChild(iconImg);
   }
 
   const bodyCol = document.createElement("div");
@@ -5815,7 +5815,12 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   const iconCell = document.createElement("div");
   iconCell.className = "time-ledger-usage-icon-cell";
   if (iconSrc) {
-    iconCell.appendChild(takeDisplayIconImg(iconSrc, { decoding: "sync" }));
+    const iconImg = document.createElement("img");
+    iconImg.src = iconSrc;
+    iconImg.alt = "";
+    iconImg.loading = "eager";
+    iconImg.decoding = "sync";
+    iconCell.appendChild(iconImg);
   }
 
   const titleEl = document.createElement("div");
@@ -6636,6 +6641,86 @@ export function render(opts = {}) {
     rememberTimeLedgerPaintSignature();
     updateTotal();
     persistActiveViewTimeFilterToSession();
+  }
+
+  function insertUsageTimelineItemByStart(list, nextItem, row) {
+    const items = [
+      ...list.querySelectorAll(
+        ":scope > .calendar-1day-timeline-item:not(.time-ledger-next-expected-item)",
+      ),
+    ];
+    for (const item of items) {
+      const other = item.querySelector(".time-ledger-mobile-card")?._rowData;
+      if (!other) continue;
+      const dateA = normalizeDateForCompare(row.date || "") || row.date || "";
+      const dateB =
+        normalizeDateForCompare(other.date || "") || other.date || "";
+      if (dateA !== dateB) {
+        if (dateA.localeCompare(dateB) < 0) {
+          item.before(nextItem);
+          return;
+        }
+        continue;
+      }
+      const startA = parseDateTimeToHours(row.startTime) ?? 0;
+      const startB = parseDateTimeToHours(other.startTime) ?? 0;
+      if (startA < startB) {
+        item.before(nextItem);
+        return;
+      }
+    }
+    const nextExpected = list.querySelector(
+      ":scope > .time-ledger-next-expected-item",
+    );
+    if (nextExpected) nextExpected.before(nextItem);
+    else list.appendChild(nextItem);
+  }
+
+  /** 타임라인 하루 목록이면 해당 카드만 교체. 일 그룹·메모만·다른 뷰는 false */
+  function tryPatchTimeLedgerTimelineRow(rowData) {
+    if (!rowData || timeLedgerLayoutView !== "timeline") return false;
+    if (usageHistoryMemoOnlyFilter) return false;
+    const allFiltered = applyUsageListFilters(loadTimeRows());
+    if (timeLedgerShouldShowDayGroups(allFiltered)) return false;
+    const list = contentWrap.querySelector(".calendar-1day-timeline-list");
+    if (!list) return false;
+    const refs = el._lpTaskLogModalLedgerRefs;
+    if (!refs?.handleCardEdit || !refs?.handleCardDelete) return false;
+    const id = String(rowData.id || "").trim();
+    if (!id) return false;
+
+    const row =
+      allFiltered.find((r) => String(r?.id || "").trim() === id) || rowData;
+    const inList = allFiltered.some((r) => String(r?.id || "").trim() === id);
+
+    let existingCard = null;
+    list.querySelectorAll(".time-ledger-mobile-card").forEach((c) => {
+      if (String(c._rowData?.id || "").trim() === id) existingCard = c;
+    });
+
+    if (!inList) {
+      if (!existingCard) return false;
+      resolveUsageTimelineItemFromCardNode(existingCard)?.remove();
+      applyUsageTimelineEndUnderStartDisplay(list);
+      patchTimeLedgerUsageHeadingInPlace(allFiltered);
+      return true;
+    }
+
+    const nextItem = createMobileTimeCard(
+      row,
+      refs.handleCardEdit,
+      refs.handleCardDelete,
+      el,
+    );
+    nextItem._onRowDelete = refs.handleCardDelete;
+    if (existingCard) {
+      resolveUsageTimelineItemFromCardNode(existingCard)?.remove();
+    }
+    list.querySelector(".time-ledger-usage-timeline-empty")?.remove();
+    insertUsageTimelineItemByStart(list, nextItem, row);
+    applyUsageTimelineEndUnderStartDisplay(list);
+    patchTimeLedgerUsageHeadingInPlace(allFiltered);
+    return true;
   }
 
   function shiftYmdTenByDays(ymdTen, deltaDays) {
@@ -11424,10 +11509,7 @@ export function render(opts = {}) {
 
   function hideTaskLogPlannedSlotsSection() {
     taskLogSelectedPlannedSlot = null;
-    if (taskLogPlannedSlotsBtns) {
-      salvageDisplayIconImgs(taskLogPlannedSlotsBtns);
-      taskLogPlannedSlotsBtns.replaceChildren();
-    }
+    if (taskLogPlannedSlotsBtns) taskLogPlannedSlotsBtns.replaceChildren();
     if (taskLogPlannedSlotsSection) taskLogPlannedSlotsSection.hidden = true;
   }
 
@@ -11505,7 +11587,6 @@ export function render(opts = {}) {
       return;
     }
     const prevKey = taskLogSelectedPlannedSlot?.key || "";
-    salvageDisplayIconImgs(taskLogPlannedSlotsBtns);
     taskLogPlannedSlotsBtns.replaceChildren();
     for (const block of blocks) {
       const key = nextExpectedBudgetBlockKey(block);
@@ -11526,9 +11607,11 @@ export function render(opts = {}) {
       iconWrap.setAttribute("data-legacy", "time-task-log-planned-slot-btn-icon");
       iconWrap.setAttribute("aria-hidden", "true");
       if (iconSrc) {
-        iconWrap.appendChild(
-          takeDisplayIconImg(iconSrc, { draggable: false }),
-        );
+        const img = document.createElement("img");
+        img.src = iconSrc;
+        img.alt = "";
+        img.draggable = false;
+        iconWrap.appendChild(img);
       }
       const label = document.createElement("span");
       label.setAttribute("data-legacy", "time-task-log-planned-slot-btn-label");
@@ -13965,7 +14048,13 @@ export function render(opts = {}) {
         forceRows,
         skipPull: true,
       });
-      onFilterChange(true);
+      if (!forceRow || !tryPatchTimeLedgerTimelineRow(forceRow)) {
+        onFilterChange(true);
+      } else {
+        rememberTimeLedgerPaintSignature();
+        updateTotal();
+        persistActiveViewTimeFilterToSession();
+      }
 
       const rowTaskId = String(ledgerRowForKpi?.taskId || "").trim();
       const kpiLinks =
@@ -14074,7 +14163,7 @@ export function render(opts = {}) {
         }
         if (el.isConnected) {
           try {
-            refreshTimeLedgerFromRemotePull({ force: true });
+            refreshTimeLedgerFromRemotePull({ force: false });
           } catch (_) {}
         }
       })();
@@ -14359,7 +14448,6 @@ export function render(opts = {}) {
     otherTasks = applySetupSearchFilter(otherTasks);
     const lockedForDisplay = getLockedForSetupDisplay();
     function renderList(container, list) {
-      salvageDisplayIconImgs(container);
       container.replaceChildren();
       list.forEach((t) => {
         const fromKpi = isTimeTaskKpiLinked(t);
@@ -15215,7 +15303,6 @@ export function render(opts = {}) {
     try {
       delete el._lpTaskLogModalLedgerRefs;
     } catch (_) {}
-    salvageDisplayIconImgs(contentWrap);
     contentWrap.innerHTML = "";
 
     const handleCardDelete = (card, rowData) => {
