@@ -75,6 +75,24 @@ function calendarDiaryToggleLabel(showing) {
   return showing ? "일기 숨기기" : "일기 보기";
 }
 
+/** 버튼 문구를 지금 숨김/표시 상태와 같게 */
+function syncCalendarDiaryToggleButtons(scope, showing) {
+  const label = calendarDiaryToggleLabel(showing);
+  const root =
+    scope instanceof Element
+      ? scope
+      : typeof document !== "undefined"
+        ? document
+        : null;
+  if (!root?.querySelectorAll) return;
+  root.querySelectorAll("[data-calendar-diary-toggle]").forEach((btn) => {
+    btn.classList.remove("is-active");
+    btn.setAttribute("aria-pressed", showing ? "true" : "false");
+    btn.setAttribute("title", label);
+    btn.textContent = label;
+  });
+}
+
 export function calendarDiaryToggleMarkup() {
   const on = readCalendarShowDiary();
   const label = calendarDiaryToggleLabel(on);
@@ -87,19 +105,23 @@ export function calendarDiaryToggleMarkup() {
  * @param {Element | null | undefined} root
  */
 export function applyCalendarDiaryVisibilityToRoot(root) {
-  if (!(root instanceof Element)) return;
   const showing = readCalendarShowDiary();
-  /** @type {Set<Element>} */
-  const targets = new Set([root]);
-  const layout = root.classList.contains("calendar-monthly-layout")
-    ? root
-    : root.closest?.(".calendar-monthly-layout");
-  if (layout) targets.add(layout);
-  const view = root.closest?.(".calendar-view");
-  if (view) targets.add(view);
-  for (const el of targets) {
-    el.classList.toggle(CALENDAR_DIARY_HIDDEN_CLASS, !showing);
+  if (root instanceof Element) {
+    /** @type {Set<Element>} */
+    const targets = new Set([root]);
+    const layout = root.classList.contains("calendar-monthly-layout")
+      ? root
+      : root.closest?.(".calendar-monthly-layout");
+    if (layout) targets.add(layout);
+    const view = root.closest?.(".calendar-view") || root;
+    if (view) targets.add(view);
+    for (const el of targets) {
+      el.classList.toggle(CALENDAR_DIARY_HIDDEN_CLASS, !showing);
+    }
+    syncCalendarDiaryToggleButtons(view || root, showing);
+    return;
   }
+  syncCalendarDiaryToggleButtons(document, showing);
 }
 
 /**
@@ -152,30 +174,29 @@ export function wireCalendarDiaryToggle(root, onToggle) {
         root.closest?.(".calendar-view") ||
         root
       : null;
-  if (layoutRoot instanceof Element) {
-    applyCalendarDiaryVisibilityToRoot(layoutRoot);
-  }
+  const applyNow = () => {
+    if (layoutRoot instanceof Element) {
+      applyCalendarDiaryVisibilityToRoot(layoutRoot);
+    }
+  };
+  applyNow();
+  /* 홈 3분할은 붙인 뒤에야 숨김 기본이 맞음 — 버튼도 그때 다시 맞춤 */
+  requestAnimationFrame(() => {
+    applyNow();
+    requestAnimationFrame(applyNow);
+  });
 
   root.querySelectorAll("[data-calendar-diary-toggle]").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      const on = toggleCalendarShowDiary();
-      const label = calendarDiaryToggleLabel(on);
+      toggleCalendarShowDiary();
       const viewRoot =
         btn.closest?.(".calendar-monthly-layout") ||
         btn.closest?.(".calendar-view") ||
         (layoutRoot instanceof Element ? layoutRoot : null);
       applyCalendarDiaryVisibilityToRoot(viewRoot);
       softReflowCalendarAfterDiaryToggle(viewRoot);
-      viewRoot
-        ?.querySelectorAll?.("[data-calendar-diary-toggle]")
-        ?.forEach((b) => {
-          b.classList.remove("is-active");
-          b.setAttribute("aria-pressed", on ? "true" : "false");
-          b.setAttribute("title", label);
-          b.textContent = label;
-        });
       try {
         onToggle?.();
       } catch (_) {}
