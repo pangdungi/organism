@@ -6854,8 +6854,12 @@
 
 .time-ledger-day-timebox-dual-pane__head,
 [data-legacy~="time-ledger-view"] .time-ledger-day-timebox-dual-pane__head {
+  position: relative;
   flex-shrink: 0;
-  padding: 0.42rem 0.55rem 0.36rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.42rem 1.85rem 0.36rem;
   font-size: 0.6875rem;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -6863,6 +6867,58 @@
   text-align: center;
   border-bottom: 1px solid #e8edf3;
   background: #fafbfc;
+}
+
+.time-ledger-day-timebox-dual-pane__expand,
+[data-legacy~="time-ledger-view"] .time-ledger-day-timebox-dual-pane__expand {
+  position: absolute;
+  right: 0.12rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  cursor: pointer;
+  color: rgba(0, 0, 0, 0.38);
+  background: transparent;
+  border: none;
+  border-radius: 0.25rem;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.time-ledger-day-timebox-dual-pane__expand:hover,
+[data-legacy~="time-ledger-view"]
+  .time-ledger-day-timebox-dual-pane__expand:hover {
+  color: rgba(30, 77, 123, 0.88);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.time-ledger-day-timebox-dual-pane__expand:active,
+[data-legacy~="time-ledger-view"]
+  .time-ledger-day-timebox-dual-pane__expand:active {
+  color: rgba(30, 77, 123, 1);
+}
+
+.time-ledger-day-timebox-dual-pane--solo-actual
+  .time-ledger-day-timebox-dual-pane__col--expected,
+.time-ledger-day-timebox-dual-pane--solo-expected
+  .time-ledger-day-timebox-dual-pane__col:not(
+    .time-ledger-day-timebox-dual-pane__col--expected
+  ) {
+  display: none;
+}
+
+.time-ledger-day-timebox-dual-pane--solo-actual
+  .time-ledger-day-timebox-dual-pane__col,
+.time-ledger-day-timebox-dual-pane--solo-expected
+  .time-ledger-day-timebox-dual-pane__col--expected {
+  flex: 1 1 100%;
+  border-left: none;
 }
 
 .time-ledger-day-timebox-dual-pane__col .time-ledger-day-timebox-scroll,

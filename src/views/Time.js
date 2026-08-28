@@ -5116,6 +5116,62 @@ function normalizeTimeLedgerReportGranularity(raw) {
   return "day";
 }
 
+const TIMEBOX_DUAL_EXPAND_ICON =
+  '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" d="M7 17 17 7M9 7h8v8"/></svg>';
+const TIMEBOX_DUAL_COLLAPSE_ICON =
+  '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" d="M17 7 7 17M7 9v8h8"/></svg>';
+
+function applyTimeLedgerTimeboxDualSolo(dual, kind) {
+  if (!(dual instanceof HTMLElement)) return;
+  const solo = kind === "actual" || kind === "expected" ? kind : "";
+  dual.dataset.lpTimeboxSolo = solo;
+  dual.classList.toggle(
+    "time-ledger-day-timebox-dual-pane--solo-actual",
+    solo === "actual",
+  );
+  dual.classList.toggle(
+    "time-ledger-day-timebox-dual-pane--solo-expected",
+    solo === "expected",
+  );
+  const shell = dual.closest(".time-ledger-timebox-view-shell");
+  if (shell) shell.dataset.lpTimeboxSolo = solo;
+  dual.querySelectorAll("[data-lp-timebox-expand]").forEach((btn) => {
+    const k = btn.dataset.lpTimeboxExpand;
+    const on = solo === k;
+    const label = k === "actual" ? "실제" : "예상";
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+    btn.title = on ? `${label} 2분할로 돌아가기` : `${label}만 한 화면으로 보기`;
+    btn.setAttribute("aria-label", btn.title);
+    btn.innerHTML = on ? TIMEBOX_DUAL_COLLAPSE_ICON : TIMEBOX_DUAL_EXPAND_ICON;
+  });
+}
+
+function createTimeboxDualPaneHead(label, kind) {
+  const head = document.createElement("div");
+  head.className = "time-ledger-day-timebox-dual-pane__head";
+  const title = document.createElement("span");
+  title.className = "time-ledger-day-timebox-dual-pane__head-label";
+  title.textContent = label;
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "time-ledger-day-timebox-dual-pane__expand";
+  btn.dataset.lpTimeboxExpand = kind;
+  btn.innerHTML = TIMEBOX_DUAL_EXPAND_ICON;
+  btn.title = `${label}만 한 화면으로 보기`;
+  btn.setAttribute("aria-label", `${label}만 한 화면으로 보기`);
+  btn.setAttribute("aria-pressed", "false");
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const dual = head.closest(".time-ledger-day-timebox-dual-pane");
+    if (!dual) return;
+    const cur = dual.dataset.lpTimeboxSolo || "";
+    applyTimeLedgerTimeboxDualSolo(dual, cur === kind ? "" : kind);
+  });
+  head.append(title, btn);
+  return head;
+}
+
 /** 1일 타임박스 — 좌=실제 기록, 우=예상 일정(일간 예산) */
 function createTimeLedgerDayTimeboxDualPane(actualBlocks, expectedBlocks) {
   const dual = document.createElement("div");
@@ -5123,10 +5179,7 @@ function createTimeLedgerDayTimeboxDualPane(actualBlocks, expectedBlocks) {
 
   const actualCol = document.createElement("div");
   actualCol.className = "time-ledger-day-timebox-dual-pane__col";
-  const actualHead = document.createElement("div");
-  actualHead.className = "time-ledger-day-timebox-dual-pane__head";
-  actualHead.textContent = "실제";
-  actualCol.appendChild(actualHead);
+  actualCol.appendChild(createTimeboxDualPaneHead("실제", "actual"));
   const actualScroll = createTimeLedgerDayTimeboxElement(actualBlocks, {
     matrixAriaLabel: "실제 수행 24행 12열 5분 단위 시간박스",
   });
@@ -5137,10 +5190,7 @@ function createTimeLedgerDayTimeboxDualPane(actualBlocks, expectedBlocks) {
   const expectedCol = document.createElement("div");
   expectedCol.className =
     "time-ledger-day-timebox-dual-pane__col time-ledger-day-timebox-dual-pane__col--expected";
-  const expectedHead = document.createElement("div");
-  expectedHead.className = "time-ledger-day-timebox-dual-pane__head";
-  expectedHead.textContent = "예상";
-  expectedCol.appendChild(expectedHead);
+  expectedCol.appendChild(createTimeboxDualPaneHead("예상", "expected"));
   const expectedScroll = createTimeLedgerDayTimeboxElement(expectedBlocks, {
     showRowLabels: true,
     emptyMessage: "예상 일정이 없습니다.",
@@ -5190,12 +5240,12 @@ function mountTimeLedgerTimeboxView(
   const dayKey = rangeStartYmd || rangeEndYmd;
   const dayRows = rows.filter((r) => ledgerRowDateYmdForFilter(r) === dayKey);
   timeboxShell.dataset.lpTimeboxDayDual = "1";
-  timeboxShell.appendChild(
-    createTimeLedgerDayTimeboxDualPane(
-      buildTimeLedgerDayTimeboxBlocks(dayRows),
-      buildTimeLedgerExpectedDayTimeboxBlocks(dayKey),
-    ),
+  const dualPane = createTimeLedgerDayTimeboxDualPane(
+    buildTimeLedgerDayTimeboxBlocks(dayRows),
+    buildTimeLedgerExpectedDayTimeboxBlocks(dayKey),
   );
+  timeboxShell.appendChild(dualPane);
+  applyTimeLedgerTimeboxDualSolo(dualPane, timeboxShell.dataset.lpTimeboxSolo);
 }
 
 function refreshTimeLedgerTimeboxSlotGrid(
@@ -10550,10 +10600,22 @@ export function render(opts = {}) {
   const taskLogFocusOutTargetIsSubmitBtn = (ev) =>
     !!ev.relatedTarget?.closest?.('[data-legacy~="time-task-log-submit"]');
 
+  function taskLogAllowClickedSlotPresetForYmd(ymd) {
+    const ctxYmd = String(taskLogAddContext?.recordDateKey || "").trim();
+    return (
+      /^\d{4}-\d{2}-\d{2}$/.test(ymd) &&
+      ymd === ctxYmd &&
+      !!String(taskLogAddContext?.presetStartHhMm || "").trim()
+    );
+  }
+
   [taskLogDateStart, taskLogTimeStart].forEach((el) => {
     el?.addEventListener("change", () => {
       if (el === taskLogDateStart && !taskLogEditTr) {
-        applyTaskLogStartFromLedgerForDate(taskLogResolveYmdForSync());
+        const ymd = taskLogResolveYmdForSync();
+        applyTaskLogStartFromLedgerForDate(ymd, {
+          allowPreset: taskLogAllowClickedSlotPresetForYmd(ymd),
+        });
         taskLogSelectedPlannedSlot = null;
         refreshTaskLogPlannedSlotsSection({ preferPreset: false });
       } else {
@@ -10585,7 +10647,9 @@ export function render(opts = {}) {
     if (!taskLogEditTr) {
       const ymd = (taskLogDateStart?.value || "").trim().slice(0, 10);
       if (/^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
-        applyTaskLogStartFromLedgerForDate(ymd);
+        applyTaskLogStartFromLedgerForDate(ymd, {
+          allowPreset: taskLogAllowClickedSlotPresetForYmd(ymd),
+        });
       }
     }
     syncTaskLogGapFillBtnVisibility();
