@@ -5981,6 +5981,7 @@ export function render(opts = {}) {
         addRow: null,
         onRowUpdate: () => {
           updateTotal();
+          onFilterChange();
         },
         viewEl: el,
         createRow,
@@ -14153,12 +14154,7 @@ export function render(opts = {}) {
         forceRows,
         skipPull: true,
       });
-      if (forceRow) {
-        tryPatchTimeLedgerTimelineRow(forceRow);
-      }
-      rememberTimeLedgerPaintSignature();
-      updateTotal();
-      persistActiveViewTimeFilterToSession();
+      onFilterChange(true);
 
       const rowTaskId = String(ledgerRowForKpi?.taskId || "").trim();
       const kpiLinks =
@@ -14265,7 +14261,11 @@ export function render(opts = {}) {
         ) {
           scheduleSilentTimeLedgerPushRetry([pushedId], forceRows);
         }
-        /* 저장 뒤 목록을 다시 그리지 않음 — 메모 있는 카드만 이미 붙임 */
+        if (el.isConnected) {
+          try {
+            refreshTimeLedgerFromRemotePull({ force: true });
+          } catch (_) {}
+        }
       })();
       return;
     }
@@ -15619,6 +15619,7 @@ export function render(opts = {}) {
                   addRow: null,
                   onRowUpdate: () => {
                     updateTotal();
+                    onFilterChange();
                   },
                   viewEl: el,
                   createRow,
@@ -16028,6 +16029,7 @@ export function render(opts = {}) {
       addRow: null,
       onRowUpdate: () => {
         updateTotal();
+        onFilterChange();
       },
       viewEl: el,
       createRow,
