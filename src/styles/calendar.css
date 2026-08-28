@@ -1560,10 +1560,13 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   background: var(--cal-surface);
 }
 
-/* 막대 줄 높이 재측정 전: 갭이 넓어 보였다 줄어드는 깜빡임 완화 */
-.calendar-monthly-grid.calendar-monthly-grid--layout-pending {
+/* 막대만 재측정 전 가림 — 요일·날짜 칸은 숨기지 않음(진입 시 흰 화면 방지) */
+.calendar-monthly-grid.calendar-monthly-grid--layout-pending
+  .calendar-monthly-bars {
   visibility: hidden;
 }
+.calendar-monthly-grid.calendar-monthly-grid--layout-ready
+  .calendar-monthly-bars,
 .calendar-monthly-grid.calendar-monthly-grid--layout-ready {
   visibility: visible;
 }

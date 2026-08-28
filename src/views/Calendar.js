@@ -3139,7 +3139,9 @@ function renderMonthlyView(tabsElement) {
       });
     } else {
       calendarGrid.innerHTML = "";
-      layoutPass = lpBeginCalendarGridLayoutPass(calendarGrid);
+      layoutPass = lpBeginCalendarGridLayoutPass(calendarGrid, {
+        keepVisible: true,
+      });
     }
 
     if (!partialWeekPatch) {
@@ -6999,7 +7001,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
       const layout = contentArea.querySelector(".calendar-monthly-layout");
       if (layout?._lpRefreshCalendarView) {
         try {
-          layout._lpRefreshCalendarView();
+          layout._lpRefreshCalendarView({ softLocal: true });
         } catch (_) {}
         return;
       }
