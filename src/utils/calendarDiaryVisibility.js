@@ -125,40 +125,15 @@ export function applyCalendarDiaryVisibilityToRoot(root) {
 }
 
 /**
- * 일기 토글 후 — 주 행 높이만 보이는 막대 기준으로 맞춤 (전체 재그리기 없음)
+ * 일기 토글 후 — 숨긴 일기는 자리 빼고 보이는 막대만 다시 쌓음 (전체 재그리기 없음)
  * @param {Element | null | undefined} root
  */
 export function softReflowCalendarAfterDiaryToggle(root) {
   if (!(root instanceof Element)) return;
-  const remPx =
-    parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-  root.querySelectorAll(".calendar-monthly-week-wrap").forEach((weekWrap) => {
-    const weekRow = weekWrap.querySelector(".calendar-monthly-week");
-    const barsEl = weekWrap.querySelector(".calendar-monthly-bars");
-    if (!(weekRow instanceof HTMLElement) || !(barsEl instanceof HTMLElement)) {
-      return;
+  root.querySelectorAll(".calendar-monthly-week").forEach((weekRow) => {
+    if (typeof weekRow._lpMonthlyBarLayoutRerun === "function") {
+      weekRow._lpMonthlyBarLayoutRerun();
     }
-    const visibleBars = [
-      ...barsEl.querySelectorAll(".calendar-monthly-span-bar"),
-    ].filter((el) => {
-      if (!(el instanceof HTMLElement)) return false;
-      if (el.hidden) return false;
-      return getComputedStyle(el).display !== "none";
-    });
-    if (!visibleBars.length) {
-      weekRow.style.removeProperty("min-height");
-      return;
-    }
-    const wrapTop = weekWrap.getBoundingClientRect().top;
-    let maxBottom = 0;
-    for (const bar of visibleBars) {
-      const r = bar.getBoundingClientRect();
-      if (r.height <= 0) continue;
-      maxBottom = Math.max(maxBottom, r.bottom - wrapTop);
-    }
-    if (maxBottom <= 0) return;
-    const minRem = Math.max(4, maxBottom / remPx + 0.35);
-    weekRow.style.minHeight = `${minRem}rem`;
   });
 }
 

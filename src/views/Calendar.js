@@ -103,6 +103,7 @@ import {
   applyCalendarDiaryVisibilityToRoot,
   softReflowCalendarAfterDiaryToggle,
   taskIsCalendarDiary,
+  readCalendarShowDiary,
 } from "../utils/calendarDiaryVisibility.js";
 import {
   readSectionTasksObject,
@@ -591,6 +592,13 @@ function lpCalendarMonthlyWeekRowTargetMinHeightRem(
   return Math.max(floor, stackHeight);
 }
 
+/** 숨긴 캘린더일기는 자리 차지 안 함 */
+function lpCalendarMonthlyBarTakesLayoutSpace(b) {
+  if (!b) return false;
+  if (b.isCalendarDiary && !readCalendarShowDiary()) return false;
+  return true;
+}
+
 /** 월간 여러 날 막대: 가로 구간이 겹치면 다른 줄 */
 function calendarMonthlyRangeBarsOverlap(a, b) {
   return a.left < b.left + b.width && b.left < a.left + a.width;
@@ -599,6 +607,10 @@ function calendarMonthlyRangeBarsOverlap(a, b) {
 function lpCalendarAssignMonthlyRangeBarRows(rangeBars) {
   const rowBars = [];
   rangeBars.forEach((b) => {
+    if (!lpCalendarMonthlyBarTakesLayoutSpace(b)) {
+      b.row = 0;
+      return;
+    }
     let row = 0;
     while (
       rowBars[row] &&
@@ -618,6 +630,10 @@ function lpCalendarAssignMonthlySingleDayLocalRows(singleDayBars) {
   singleDayBars.forEach((b) => {
     const d = b.dayIdx;
     if (!Number.isFinite(d) || d < 0) return;
+    if (!lpCalendarMonthlyBarTakesLayoutSpace(b)) {
+      b.localRow = 0;
+      return;
+    }
     b.localRow = perDay[d] != null ? perDay[d] : 0;
     perDay[d] = b.localRow + 1;
   });
@@ -637,6 +653,7 @@ function lpCalendarAssignMonthlyBarLayout(allBars) {
 function lpCalendarMonthlyRangeRowCountOnDay(rangeBars, dayIdx) {
   let maxRow = -1;
   for (const b of rangeBars) {
+    if (!lpCalendarMonthlyBarTakesLayoutSpace(b)) continue;
     const s = b.startIdx;
     const e = b.endIdx;
     if (!Number.isFinite(s) || !Number.isFinite(e)) continue;
@@ -674,7 +691,10 @@ function lpCalendarMonthlyWeekStackSlotCount(allBars, dayCount = 7) {
   for (let d = 0; d < dayCount; d++) {
     const rangeRows = lpCalendarMonthlyRangeRowCountOnDay(rangeBars, d);
     const singleCount = allBars.filter(
-      (b) => b.isSingleDay && b.dayIdx === d,
+      (b) =>
+        b.isSingleDay &&
+        b.dayIdx === d &&
+        lpCalendarMonthlyBarTakesLayoutSpace(b),
     ).length;
     maxSlots = Math.max(maxSlots, rangeRows + singleCount);
   }
@@ -712,6 +732,7 @@ function lpAttachCalendarMonthlyWeekBarLayoutSync(weekRow, barsWithRow, layoutMe
   const { BAR_HEIGHT, BARS_TOP, BOTTOM_PAD, ROW_GAP } = layoutMetrics;
   const rerun = () => {
     if (!weekRow.isConnected) return;
+    lpCalendarAssignMonthlyBarLayout(barsWithRow || []);
     lpCalendarFinalizeBarRowLayout(
       barsWithRow || [],
       weekRow,
@@ -977,8 +998,12 @@ function lpCalendarFinalizeBarRowLayout(
     return;
   }
   const { WEEK_ROW_MIN } = lpCalendarWeekBarLayoutMetrics(weekRow);
-  const rangeBars = bars.filter((b) => !b.isSingleDay);
-  const singleBars = bars.filter((b) => b.isSingleDay);
+  const rangeBars = bars.filter(
+    (b) => !b.isSingleDay && lpCalendarMonthlyBarTakesLayoutSpace(b),
+  );
+  const singleBars = bars.filter(
+    (b) => b.isSingleDay && lpCalendarMonthlyBarTakesLayoutSpace(b),
+  );
   const maxRangeRow = rangeBars.length
     ? Math.max(...rangeBars.map((b) => b.row), 0)
     : -1;
@@ -1173,11 +1198,17 @@ function tasksForCalendarSameDayInStorageOrder(arr, dateKey) {
 }
 
 /**
- * 같은 날 단일일 할일·일정 — 섹션 저장 배열 순서(추가한 순) 그대로.
- * 여러 날짜에 걸친 일정(기간 막대)은 이 함수 대상이 아님.
+ * 같은 날 할일·일정 — 저장 순서 유지, 캘린더일기만 맨 아래.
  */
 function orderSingleDayTasksForMonthlyBarStack(tasks) {
-  return Array.isArray(tasks) ? tasks.slice() : [];
+  const list = Array.isArray(tasks) ? tasks.slice() : [];
+  const rest = [];
+  const diary = [];
+  list.forEach((t) => {
+    if (taskIsCalendarDiary(t)) diary.push(t);
+    else rest.push(t);
+  });
+  return rest.concat(diary);
 }
 
 function getSectionTasksForDate(dateKey) {
@@ -2187,7 +2218,7 @@ function getTasksForDate(dateKey, excludeSpanningTasks = false) {
   if (excludeSpanningTasks) {
     tasks = tasks.filter((t) => !calendarTaskIsMultiDayDateSpan(t));
   }
-  /* 캘린더 그리드에는 일기 포함(표시는 CSS). 목록 모달은 getAllTasksForDateDisplay 에서 필터 */
+  /* 칸 막대는 CSS·레이아웃에서만 일기 숨김. 목록은 그대로 */
   return tasks;
 }
 
@@ -2210,7 +2241,7 @@ function getAllTasksForDateDisplay(dateKey) {
     seen.add(id);
     return true;
   });
-  return filterCalendarTasksForDisplay(merged);
+  return merged;
 }
 
 function getAllTasksWithDateRange() {
@@ -3743,7 +3774,7 @@ function clipBudgetExpectedSpansBySavedAt(
  */
 export function buildExpectedScheduleSpansForDateKey(dateKey) {
   const budgetGoals = getBudgetGoals(dateKey);
-  const tasks = getAllTasksForDateDisplay(dateKey);
+  const tasks = filterCalendarTasksForDisplay(getAllTasksForDateDisplay(dateKey));
   const SLOTS_PER_DAY = CAL_1DAY_TIMETABLE_SLOTS_PER_DAY;
   const MIN_PER_SLOT = CAL_1DAY_TIMETABLE_MIN_PER_SLOT;
   const fmt = (m) =>
