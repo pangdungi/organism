@@ -15636,6 +15636,8 @@ export function render(opts = {}) {
                   presetDetail: lockedDetail,
                   _lockedPresetDetail: lockedDetail,
                   presetPlannedTodoIds: lockedPlanned,
+                }).finally(() => {
+                  onFilterChange(true);
                 });
               },
               onSkip: (itemEl) => {
