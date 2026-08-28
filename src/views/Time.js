@@ -2532,6 +2532,40 @@ function getNextLedgerRowStartHhMmAfterCurrent(
   return null;
 }
 
+/** 현재 시작보다 앞 기록의 마감(HH:mm). 마감이 시작보다 이를 때만(앞쪽 빈칸). */
+function getPrevLedgerRowEndHhMmBeforeCurrent(
+  dateInputValue,
+  currentStartHhMm,
+  exclude,
+  rowsOverride,
+) {
+  const currentMin = parseLedgerTimeStringToMinutes(
+    normalizeLedgerHhMmTen(String(currentStartHhMm || "").trim()) ||
+      String(currentStartHhMm || "").trim(),
+  );
+  if (currentMin == null) return null;
+  const dayRows = collectLedgerRowsForDate(
+    dateInputValue,
+    exclude,
+    rowsOverride,
+  );
+  if (dayRows.length === 0) return null;
+  const sorted = sortRowsByDateTime(dayRows);
+  let prev = null;
+  for (const row of sorted) {
+    const rowStartMin = parseLedgerTimeStringToMinutes(row.startTime);
+    if (rowStartMin == null) continue;
+    if (rowStartMin < currentMin) prev = row;
+    else break;
+  }
+  if (!prev) return null;
+  const endTrim = String(prev.endTime || "").trim();
+  if (!endTrim) return null;
+  const endMin = parseLedgerTimeStringToMinutes(prev.endTime);
+  if (endMin == null || endMin >= currentMin) return null;
+  return ledgerMinutesToHhMm(endMin);
+}
+
 /** 날짜·시작시간 기준 과거→최근 (이른 날짜·이른 시각이 위, 시간레포트 로그와 동일) */
 function sortRowsByDateTime(rows) {
   return [...rows].sort((a, b) => {
@@ -10780,22 +10814,35 @@ export function render(opts = {}) {
             showToast("기록 날짜를 확인해 주세요.");
             return;
           }
+          const rowsForGap = taskLogMergedRowsForGapLookup();
+          let prevEnd =
+            btn.dataset.lpGapFillPrev ||
+            getPrevLedgerRowEndHhMmBeforeCurrent(
+              dateVal,
+              gapStartTimeVal,
+              taskLogEditExclude,
+              rowsForGap,
+            );
           let nextStart =
             btn.dataset.lpGapFillNext ||
             getNextLedgerRowStartHhMmAfterCurrent(
               dateVal,
               gapStartTimeVal,
               taskLogEditExclude,
-              taskLogMergedRowsForGapLookup(),
+              rowsForGap,
             );
+          prevEnd = normalizeHhMm(String(prevEnd || "").trim());
           nextStart = normalizeHhMm(String(nextStart || "").trim());
-          if (!nextStart || !/^\d{1,2}:\d{2}$/.test(nextStart)) {
-            showToast("이어지는 다음 기록이 없습니다.");
+          const canFillStart = !!(prevEnd && /^\d{1,2}:\d{2}$/.test(prevEnd));
+          const canFillEnd = !!(nextStart && /^\d{1,2}:\d{2}$/.test(nextStart));
+          if (!canFillStart && !canFillEnd) {
+            showToast("채울 빈칸이 없습니다.");
             syncTaskLogGapFillBtnVisibility();
             return;
           }
-          setEndFromDatetime(`${dateVal}T${nextStart}`);
-          lastFocusedTimeField = "end";
+          if (canFillStart) setStartFromDatetime(`${dateVal}T${prevEnd}`);
+          if (canFillEnd) setEndFromDatetime(`${dateVal}T${nextStart}`);
+          lastFocusedTimeField = canFillEnd ? "end" : "start";
           updateEndTimeClearVisibility();
           updateTaskLogTimeOrderWarning();
           setTaskLogQuickAdjustActive(btn);
@@ -12544,25 +12591,37 @@ export function render(opts = {}) {
     const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
     const dateVal = taskLogResolveYmdForSync();
     const startTimeVal = normalizeHhMm((taskLogTimeStart?.value || "").trim());
+    const endTimeVal = normalizeHhMm((taskLogTimeEnd?.value || "").trim());
     let show = false;
     let nextStart = null;
+    let prevEnd = null;
     if (
       taskName &&
       /^\d{4}-\d{2}-\d{2}$/.test(dateVal) &&
       startTimeVal &&
       /^\d{1,2}:\d{2}$/.test(startTimeVal)
     ) {
+      const rowsForGap = taskLogMergedRowsForGapLookup();
       nextStart = getNextLedgerRowStartHhMmAfterCurrent(
         dateVal,
         startTimeVal,
         taskLogEditExclude,
-        taskLogMergedRowsForGapLookup(),
+        rowsForGap,
       );
-      show = !!nextStart;
+      prevEnd = getPrevLedgerRowEndHhMmBeforeCurrent(
+        dateVal,
+        startTimeVal,
+        taskLogEditExclude,
+        rowsForGap,
+      );
+      const backGap = !!(nextStart && nextStart !== endTimeVal);
+      const frontGap = !!prevEnd;
+      show = frontGap || backGap;
     }
     gapBtn.removeAttribute("title");
     gapBtn.hidden = !show;
     gapBtn.dataset.lpGapFillNext = nextStart || "";
+    gapBtn.dataset.lpGapFillPrev = prevEnd || "";
   }
 
   /**
