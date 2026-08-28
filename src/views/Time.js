@@ -5981,7 +5981,6 @@ export function render(opts = {}) {
         addRow: null,
         onRowUpdate: () => {
           updateTotal();
-          onFilterChange();
         },
         viewEl: el,
         createRow,
@@ -6686,7 +6685,6 @@ export function render(opts = {}) {
     if (!rowData || timeLedgerLayoutView !== "timeline") return false;
     if (usageHistoryMemoOnlyFilter) return false;
     const allFiltered = applyUsageListFilters(loadTimeRows());
-    if (timeLedgerShouldShowDayGroups(allFiltered)) return false;
     const list = contentWrap.querySelector(".calendar-1day-timeline-list");
     if (!list) return false;
     const refs = el._lpTaskLogModalLedgerRefs;
@@ -14155,13 +14153,12 @@ export function render(opts = {}) {
         forceRows,
         skipPull: true,
       });
-      if (!forceRow || !tryPatchTimeLedgerTimelineRow(forceRow)) {
-        onFilterChange(true);
-      } else {
-        rememberTimeLedgerPaintSignature();
-        updateTotal();
-        persistActiveViewTimeFilterToSession();
+      if (forceRow) {
+        tryPatchTimeLedgerTimelineRow(forceRow);
       }
+      rememberTimeLedgerPaintSignature();
+      updateTotal();
+      persistActiveViewTimeFilterToSession();
 
       const rowTaskId = String(ledgerRowForKpi?.taskId || "").trim();
       const kpiLinks =
@@ -14268,11 +14265,7 @@ export function render(opts = {}) {
         ) {
           scheduleSilentTimeLedgerPushRetry([pushedId], forceRows);
         }
-        if (el.isConnected) {
-          try {
-            refreshTimeLedgerFromRemotePull({ force: false });
-          } catch (_) {}
-        }
+        /* 저장 뒤 목록을 다시 그리지 않음 — 메모 있는 카드만 이미 붙임 */
       })();
       return;
     }
@@ -15626,7 +15619,6 @@ export function render(opts = {}) {
                   addRow: null,
                   onRowUpdate: () => {
                     updateTotal();
-                    onFilterChange();
                   },
                   viewEl: el,
                   createRow,
@@ -15643,8 +15635,6 @@ export function render(opts = {}) {
                   presetDetail: lockedDetail,
                   _lockedPresetDetail: lockedDetail,
                   presetPlannedTodoIds: lockedPlanned,
-                }).finally(() => {
-                  onFilterChange(true);
                 });
               },
               onSkip: (itemEl) => {
@@ -16038,7 +16028,6 @@ export function render(opts = {}) {
       addRow: null,
       onRowUpdate: () => {
         updateTotal();
-        onFilterChange();
       },
       viewEl: el,
       createRow,
