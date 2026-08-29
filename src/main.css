@@ -2195,7 +2195,6 @@ table {
   html.lp-auth-gate-focus .login-page.login-page--gate .auth-gate-body,
   html.lp-keyboard-open .login-page.login-page--gate .auth-gate-body {
     overflow: hidden;
-    padding-bottom: calc(0.55rem + var(--vv-keyboard, 0px));
   }
 }
 
