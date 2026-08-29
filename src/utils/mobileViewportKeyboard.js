@@ -349,11 +349,14 @@ export function initAuthGateKeyboardScroll() {
   document.addEventListener(
     "touchmove",
     (e) => {
-      if (!document.documentElement.classList.contains("lp-auth-gate-open")) return;
       const t = e.target;
-      if (t instanceof Element && t.closest(".auth-pw-modal__body, .auth-pw-modal__panel")) {
-        return;
-      }
+      if (!(t instanceof Element)) return;
+      if (t.closest(".auth-pw-modal__body, .auth-pw-modal__panel")) return;
+      const onAuth =
+        document.documentElement.classList.contains("lp-auth-gate-open") &&
+        t.closest(".login-page.login-page--gate");
+      const onHomeMenu = t.closest(".app-home-menu-launcher");
+      if (!onAuth && !onHomeMenu) return;
       if (e.cancelable) e.preventDefault();
     },
     { passive: false },

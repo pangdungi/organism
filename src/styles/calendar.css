@@ -2285,7 +2285,8 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
-  touch-action: pan-y;
+  /* 세로는 카드 목록, 가로는 바깥 주간 스크롤(금–일)로 넘김 */
+  touch-action: pan-x pan-y;
 }
 
 .calendar-1week-flow-card {
@@ -2406,6 +2407,18 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   font-weight: 600;
   font-size: var(--cal-font-1week-badge, 0.5625rem);
   color: var(--cal-today-accent);
+}
+
+.calendar-1week-flow-card-memo .time-ledger-card-memo-chip {
+  display: none;
+}
+
+.calendar-1week-flow-card-memo .time-ledger-card-memo-row,
+.calendar-1week-flow-card-memo
+  .time-ledger-card-memo-row:has(.time-ledger-card-memo-chip)
+  .time-ledger-card-memo-body {
+  display: block;
+  width: 100%;
 }
 
 .calendar-1week-flow-card-memo {

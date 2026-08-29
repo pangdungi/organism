@@ -110,63 +110,163 @@ export function render() {
   fontHint.textContent =
     "앱 본문·버튼·입력창 등에 적용됩니다. 캘린더 월 이름·날짜 숫자는 그대로입니다.";
   fontWidget.appendChild(fontHint);
-  const fontList = document.createElement("div");
-  fontList.className = "idea-ui-font-list";
-  fontList.setAttribute("role", "radiogroup");
-  fontList.setAttribute("aria-label", "앱 글꼴 선택");
+
+  const fontDropdown = document.createElement("div");
+  fontDropdown.className =
+    "idea-app-font-dropdown-slot idea-ui-font-dropdown";
+  const fontTrigger = document.createElement("button");
+  fontTrigger.type = "button";
+  fontTrigger.className = "idea-ui-font-dropdown-trigger";
+  fontTrigger.setAttribute("aria-haspopup", "listbox");
+  fontTrigger.setAttribute("aria-expanded", "false");
+  fontTrigger.setAttribute("aria-label", "앱 글꼴 선택");
+  const fontTriggerValue = document.createElement("span");
+  fontTriggerValue.className = "idea-ui-font-dropdown-value";
+  fontTrigger.appendChild(fontTriggerValue);
+  const fontPanel = document.createElement("div");
+  fontPanel.className = "idea-ui-font-dropdown-panel";
+  fontPanel.hidden = true;
+  fontPanel.setAttribute("role", "listbox");
+  fontPanel.setAttribute("aria-label", "앱 글꼴 목록");
   let fontSaving = false;
+  let fontPanelOpen = false;
+
+  function fontDefById(fontId) {
+    const id = normalizeUiFontId(fontId);
+    return (
+      UI_FONT_PICKER_OPTIONS.find((d) => d.id === id) ||
+      UI_FONT_PICKER_OPTIONS[0]
+    );
+  }
+
+  function applyFontPreview(el, def) {
+    if (!el || !def) return;
+    el.style.fontFamily = fontStackForDef(def);
+    el.style.fontWeight = String(def.weight ?? 400);
+    el.textContent = def.label;
+  }
+
+  function closeFontPanel() {
+    fontPanelOpen = false;
+    fontPanel.hidden = true;
+    fontDropdown.classList.remove("is-open");
+    fontTrigger.setAttribute("aria-expanded", "false");
+    if (fontPanel.parentNode !== fontDropdown) {
+      fontDropdown.appendChild(fontPanel);
+    }
+  }
+
+  function layoutFontPanel() {
+    const r = fontTrigger.getBoundingClientRect();
+    const gap = 4;
+    const maxH = Math.max(
+      120,
+      Math.min(window.innerHeight - r.bottom - gap - 12, 280),
+    );
+    fontPanel.style.position = "fixed";
+    fontPanel.style.left = `${Math.max(8, r.left)}px`;
+    fontPanel.style.top = `${r.bottom + gap}px`;
+    fontPanel.style.width = `${Math.max(160, r.width)}px`;
+    fontPanel.style.maxHeight = `${maxH}px`;
+    fontPanel.style.zIndex = "13050";
+  }
+
+  function openFontPanel() {
+    fontPanelOpen = true;
+    document.body.appendChild(fontPanel);
+    fontPanel.hidden = false;
+    fontDropdown.classList.add("is-open");
+    fontTrigger.setAttribute("aria-expanded", "true");
+    layoutFontPanel();
+  }
 
   function syncFontPickerSelection(fontId) {
-    const id = normalizeUiFontId(fontId);
-    fontList.querySelectorAll(".idea-ui-font-option").forEach((label) => {
-      const input = label.querySelector('input[type="radio"]');
-      const on = input?.value === id;
-      if (input) input.checked = on;
-      label.classList.toggle("is-selected", on);
+    const def = fontDefById(fontId);
+    applyFontPreview(fontTriggerValue, def);
+    fontPanel.querySelectorAll(".idea-ui-font-dropdown-option").forEach((btn) => {
+      btn.classList.toggle("is-selected", btn.dataset.fontId === def.id);
+      btn.setAttribute(
+        "aria-selected",
+        btn.dataset.fontId === def.id ? "true" : "false",
+      );
     });
   }
 
+  function saveFontChoice(fontId) {
+    const def = fontDefById(fontId);
+    if (!def || fontSaving) return;
+    fontSaving = true;
+    void saveUserUiFontToSupabase(def.id)
+      .then((res) => {
+        if (!res.ok) {
+          showToast("글꼴 저장에 실패했습니다.");
+          syncFontPickerSelection(readUiFontIdLocal());
+          return;
+        }
+        syncFontPickerSelection(res.id);
+        if (res.mismatched) {
+          showToast(
+            "선택한 글꼴이 아직 서버에 등록되지 않아 저장되지 않았습니다.",
+          );
+          return;
+        }
+        showToast("글꼴이 적용되었습니다.");
+      })
+      .finally(() => {
+        fontSaving = false;
+      });
+  }
+
   UI_FONT_PICKER_OPTIONS.forEach((def) => {
-    const label = document.createElement("label");
-    label.className = "idea-ui-font-option";
-    const input = document.createElement("input");
-    input.type = "radio";
-    input.name = "idea-ui-font";
-    input.value = def.id;
-    input.className = "idea-ui-font-option-input";
-    const preview = document.createElement("span");
-    preview.className = "idea-ui-font-option-preview";
-    preview.style.fontFamily = fontStackForDef(def);
-    preview.style.fontWeight = String(def.weight ?? 400);
-    preview.textContent = def.label;
-    label.appendChild(input);
-    label.appendChild(preview);
-    input.addEventListener("change", () => {
-      if (!input.checked || fontSaving) return;
-      fontSaving = true;
-      void saveUserUiFontToSupabase(def.id)
-        .then((res) => {
-          if (!res.ok) {
-            showToast("글꼴 저장에 실패했습니다.");
-            syncFontPickerSelection(readUiFontIdLocal());
-            return;
-          }
-          syncFontPickerSelection(res.id);
-          if (res.mismatched) {
-            showToast(
-              "선택한 글꼴이 아직 서버에 등록되지 않아 저장되지 않았습니다.",
-            );
-            return;
-          }
-          showToast("글꼴이 적용되었습니다.");
-        })
-        .finally(() => {
-          fontSaving = false;
-        });
+    const opt = document.createElement("button");
+    opt.type = "button";
+    opt.className = "idea-ui-font-dropdown-option";
+    opt.dataset.fontId = def.id;
+    opt.setAttribute("role", "option");
+    applyFontPreview(opt, def);
+    opt.addEventListener("click", () => {
+      closeFontPanel();
+      saveFontChoice(def.id);
     });
-    fontList.appendChild(label);
+    fontPanel.appendChild(opt);
   });
-  fontWidget.appendChild(fontList);
+
+  fontTrigger.addEventListener("click", () => {
+    if (fontPanelOpen) closeFontPanel();
+    else openFontPanel();
+  });
+  document.addEventListener(
+    "pointerdown",
+    (e) => {
+      if (!fontPanelOpen) return;
+      if (fontDropdown.contains(e.target) || fontPanel.contains(e.target)) {
+        return;
+      }
+      closeFontPanel();
+    },
+    { signal: tabAbort.signal },
+  );
+  document.addEventListener(
+    "keydown",
+    (e) => {
+      if (e.key === "Escape" && fontPanelOpen) closeFontPanel();
+    },
+    { signal: tabAbort.signal },
+  );
+  window.addEventListener(
+    "resize",
+    () => {
+      if (fontPanelOpen) layoutFontPanel();
+    },
+    { signal: tabAbort.signal },
+  );
+  tabAbort.signal.addEventListener("abort", () => {
+    closeFontPanel();
+    fontPanel.remove();
+  });
+
+  fontDropdown.append(fontTrigger, fontPanel);
+  fontWidget.appendChild(fontDropdown);
   syncFontPickerSelection(readUiFontIdLocal());
   grid.appendChild(fontWidget);
 

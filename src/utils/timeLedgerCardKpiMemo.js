@@ -235,9 +235,10 @@ export function buildTimeLedgerCardMemoText(rowData, kpiId) {
 
 /**
  * 카드 메모 DOM — 라벨은 칩, 본문은 일반 글
+ * @param {{ omitLabelChips?: boolean }} [opts] 주간뷰처럼 좁은 칸에서는 칩 생략
  * @returns {boolean} 내용 있음
  */
-export function fillTimeLedgerCardMemoElement(el, rowData, kpiId) {
+export function fillTimeLedgerCardMemoElement(el, rowData, kpiId, opts = {}) {
   if (!(el instanceof Element)) return false;
   const parts = buildTimeLedgerCardMemoParts(rowData, kpiId);
   el.replaceChildren();
@@ -246,10 +247,11 @@ export function fillTimeLedgerCardMemoElement(el, rowData, kpiId) {
     return false;
   }
   el.classList.add("time-ledger-card-memo--structured");
+  const omitChips = opts.omitLabelChips === true;
   for (const part of parts) {
     const row = document.createElement("div");
     row.className = "time-ledger-card-memo-row";
-    if (part.label) {
+    if (part.label && !omitChips) {
       const chip = document.createElement("span");
       chip.className = "time-ledger-card-memo-chip";
       chip.textContent = part.label;

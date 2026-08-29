@@ -123,9 +123,10 @@
   }
 
   .lp-desktop-dashboard-account-img {
-    width: 1.35rem;
-    height: 1.35rem;
+    width: 1.7rem;
+    height: 1.7rem;
     object-fit: contain;
+    mix-blend-mode: multiply;
   }
 
   .lp-desktop-dashboard-grid {
@@ -538,8 +539,8 @@
     }
 
     .lp-desktop-dashboard-account-img {
-      width: 1.15rem;
-      height: 1.15rem;
+      width: 1.45rem;
+      height: 1.45rem;
     }
 
     .lp-desktop-dashboard-grid {

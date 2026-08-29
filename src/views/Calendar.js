@@ -6010,7 +6010,11 @@ function render1WeekView(tabsElement, weekOpts = {}) {
           {
             const memoEl = document.createElement("div");
             memoEl.className = "calendar-1week-flow-card-memo";
-            if (fillTimeLedgerCardMemoElement(memoEl, row, kpiId)) {
+            if (
+              fillTimeLedgerCardMemoElement(memoEl, row, kpiId, {
+                omitLabelChips: true,
+              })
+            ) {
               card.appendChild(memoEl);
             }
           }

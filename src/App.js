@@ -105,6 +105,7 @@ import {
   renderDesktopDashboard,
   runDesktopDashboardSoftRefresh,
 } from "./utils/desktopDashboard.js";
+import { openDesktopIdeaAccountModal } from "./utils/desktopIdeaAccountModal.js";
 
 /** 상위 탭 메타(아이콘·메뉴 런처 구역 순서) */
 const TABS = [
@@ -170,6 +171,7 @@ const HOME_MENU_TAB_ORDER = [
 ];
 
 const HOME_MENU_ACCOUNT_ICON = "/toolbaricons/menu-home/grid-my-account.png";
+const DESKTOP_ACCOUNT_ICON = "/toolbaricons/menu-home/desktop-my-account.png";
 
 /** 홈 메뉴 2×3 — 아이콘만(라벨은 텍스트로 분리, 앱 글꼴 적용) */
 const HOME_MENU_ICON = {
@@ -265,7 +267,7 @@ function initLpTabResumeCloudPull(getCurrentTabId) {
   /** 실제 열린 모달만 — 숨긴 과제기록·과제설정 모달은 DOM에 항상 있음 */
   const isResumeBlockingModalOpen = () => {
     const nodes = document.querySelectorAll(
-      ".time-task-setup-modal, .time-task-log-modal, .lp-calendar-budget-add-modal",
+      ".time-task-setup-modal, .time-task-log-modal, .lp-calendar-budget-add-modal, .lp-desktop-idea-modal",
     );
     for (const m of nodes) {
       if (!(m instanceof HTMLElement)) continue;
@@ -840,6 +842,17 @@ export async function mountApp(container) {
    * 통째 재생성하면 약 1초 지연이 난다.
    */
   function openAppTabFromHome(tabId) {
+    if (tabId === "idea" && isDesktopDashboardViewport()) {
+      openDesktopIdeaAccountModal({
+        pullAccount: () =>
+          pullDataForActiveTab("idea", {
+            fromBoot: false,
+            preferServer: true,
+            force: true,
+          }),
+      });
+      return;
+    }
     setActiveTab(tabId);
   }
 
@@ -1364,7 +1377,7 @@ export async function mountApp(container) {
           } else {
             desktopDashboardEl = renderDesktopDashboard({
               navigateToTab: openAppTabFromHome,
-              accountIconSrc: HOME_MENU_ACCOUNT_ICON,
+              accountIconSrc: DESKTOP_ACCOUNT_ICON,
               onBrandRefresh: () => refreshHomeFromBrandClick(),
             });
             mountNodes = [desktopDashboardEl];

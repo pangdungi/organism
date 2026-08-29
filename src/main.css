@@ -70,6 +70,21 @@ body {
   color: var(--text-ink);
 }
 
+html,
+body,
+#app,
+#signin-page,
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 html.lp-auth-gate-open,
 html.lp-auth-gate-open body {
   overflow: hidden;
@@ -79,7 +94,6 @@ html.lp-auth-gate-open body {
   position: fixed;
   inset: 0;
   width: 100%;
-  touch-action: none;
 }
 
 html.lp-auth-gate-open #app {
@@ -117,10 +131,14 @@ html.lp-auth-gate-open .login-page.login-page--gate label {
   max-height: var(--lp-app-shell-h, 100svh);
   min-height: 0;
   overflow: hidden;
-  overscroll-behavior: none;
+  overscroll-behavior: contain;
   border: none;
   box-shadow: none;
   background-color: #fff;
+}
+
+#signin-page:has(.app-home-menu-launcher) {
+  overscroll-behavior: none;
 }
 
 /**
@@ -575,6 +593,7 @@ html.lp-task-log-modal-open #signin-page {
   height: auto;
   max-height: min(42dvh, 17rem);
   margin: 0 auto;
+  transform: translateX(0.7rem);
   object-fit: contain;
   user-select: none;
   -webkit-user-drag: none;
@@ -1176,6 +1195,69 @@ table {
   padding: 0.85rem 1rem 1.5rem;
 }
 
+.lp-desktop-idea-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  box-sizing: border-box;
+}
+
+.lp-desktop-idea-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.38);
+}
+
+.lp-desktop-idea-modal__panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: min(36rem, 92vw);
+  max-height: min(88vh, 52rem);
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+
+.lp-desktop-idea-modal__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding-bottom: 1.25rem;
+}
+
+.lp-desktop-idea-modal .idea-view--desktop-modal {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  height: auto;
+  min-height: auto;
+  overflow: visible;
+}
+
+.lp-desktop-idea-modal .idea-view--desktop-modal .idea-widget-grid.time-dashboard-view {
+  flex: none;
+  min-height: auto;
+  overflow: visible;
+  padding-bottom: 0.5rem;
+}
+
+.lp-desktop-idea-modal__close {
+  position: absolute;
+  top: 1.05rem;
+  right: 0.75rem;
+  z-index: 2;
+}
+
+.lp-desktop-idea-modal .idea-view--desktop-modal .dream-view-header {
+  padding: 1.15rem 2.85rem 0.95rem 1.15rem;
+}
+
 .idea-view .time-dashboard-widget.idea-widget {
   margin: 0;
   padding: 1rem 1.05rem;
@@ -1468,42 +1550,106 @@ table {
 }
 
 .idea-view .idea-ui-font-hint {
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.55rem;
   line-height: 1.5;
 }
 
-.idea-view .idea-ui-font-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
+.idea-view .idea-widget-ui-font {
+  overflow: visible;
 }
 
-.idea-view .idea-ui-font-option {
+.idea-view .idea-ui-font-dropdown {
+  position: relative;
+  width: 100%;
+}
+
+.idea-view .idea-ui-font-dropdown-trigger {
+  width: 100%;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-  padding: 0.55rem 0.65rem;
-  border: 1px solid rgba(30, 77, 123, 0.14);
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+  text-align: left;
+  color: var(--idea-navy);
+  background: #fff;
+  border: 1px solid rgba(30, 77, 123, 0.18);
   border-radius: 8px;
   cursor: pointer;
-  transition: border-color 0.12s ease, background 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.idea-view .idea-ui-font-option.is-selected,
-.idea-view .idea-ui-font-option:has(input:checked) {
-  border-color: var(--idea-ocean);
-  background: rgba(30, 77, 123, 0.05);
-}
-
-.idea-view .idea-ui-font-option-input {
+.idea-view .idea-ui-font-dropdown-trigger::after {
+  content: "";
+  width: 0.4rem;
+  height: 0.4rem;
+  border-right: 1.5px solid var(--idea-navy);
+  border-bottom: 1.5px solid var(--idea-navy);
+  transform: rotate(45deg);
   flex-shrink: 0;
-  margin: 0;
+  margin-top: -0.15rem;
+  opacity: 0.5;
 }
 
-.idea-view .idea-ui-font-option-preview {
+.idea-view .idea-ui-font-dropdown.is-open .idea-ui-font-dropdown-trigger {
+  border-color: var(--idea-ocean, #1e4d7b);
+}
+
+.idea-view .idea-ui-font-dropdown.is-open .idea-ui-font-dropdown-trigger::after {
+  transform: rotate(-135deg);
+  margin-top: 0.15rem;
+}
+
+.idea-view .idea-ui-font-dropdown-value {
+  min-width: 0;
+  flex: 1 1 auto;
+  font-size: 1.05rem;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.idea-ui-font-dropdown-panel {
+  box-sizing: border-box;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid rgba(30, 77, 123, 0.16);
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
+}
+
+.idea-ui-font-dropdown-panel[hidden] {
+  display: none;
+}
+
+.idea-ui-font-dropdown-option {
+  display: block;
+  width: 100%;
+  padding: 0.62rem 0.75rem;
+  border: none;
+  border-bottom: 1px solid rgba(30, 77, 123, 0.08);
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
   font-size: 1.05rem;
   line-height: 1.35;
   color: var(--idea-ink, #1d1d1f);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.idea-ui-font-dropdown-option:last-child {
+  border-bottom: none;
+}
+
+.idea-ui-font-dropdown-option:hover {
+  background: rgba(30, 77, 123, 0.04);
+}
+
+.idea-ui-font-dropdown-option.is-selected {
+  background: rgba(30, 77, 123, 0.07);
 }
 
 .idea-view .idea-btn-calc {
