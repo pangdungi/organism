@@ -11,7 +11,7 @@ import { supabase } from "../supabase.js";
 import { getSupabaseSession } from "./supabaseSession.js";
 
 export const USER_UI_FONT_ID_KEY = "user_ui_font_id";
-export const DEFAULT_UI_FONT_ID = "leeseoyun";
+export const DEFAULT_UI_FONT_ID = "fromsol";
 
 /** @typedef {{ id: string, label: string, family: string, url: string, format: "truetype"|"opentype", weight: number|string }} UiFontDef */
 
@@ -73,10 +73,19 @@ export const UI_FONT_DEFS = {
     format: "truetype",
     weight: 400,
   },
+  fromsol: {
+    id: "fromsol",
+    label: "그리운 프롬솔",
+    family: "LP Griun Fromsol",
+    url: "/fonts/LP-Griun-Fromsol-Rg.ttf",
+    format: "truetype",
+    weight: 400,
+  },
 };
 
 /** 나의 계정 — 선택 가능한 UI 글꼴(기본 포함) */
 export const UI_FONT_PICKER_OPTIONS = [
+  UI_FONT_DEFS.fromsol,
   UI_FONT_DEFS.leeseoyun,
   UI_FONT_DEFS.gongbujahana,
   UI_FONT_DEFS.mitmi,
@@ -94,11 +103,10 @@ const LEGACY_UI_FONT_ALIASES = {
   mongtori: "mitmi",
   cherryspoon: "mitmi",
   uhbeerice: "mitmi",
-  fromsol: "mitmi",
 };
 
 /** @deprecated applyUiFontById 사용 */
-export const LP_APP_FONT_STACK = fontStackForDef(UI_FONT_DEFS.leeseoyun);
+export const LP_APP_FONT_STACK = fontStackForDef(UI_FONT_DEFS.fromsol);
 
 export const LP_LEE_SEOYUN_FONT_STACK =
   '"LP Lee Seoyun", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
@@ -195,14 +203,17 @@ export function preloadCalendarMonthFont() {
   return preloadUiFontById(readUiFontIdLocal());
 }
 
-/** 서버 ui_font_id → 로컬 미러·화면 (서버만 진실) */
+/** 서버 ui_font_id → 로컬 미러·화면. 서버가 비면 이미 고른 로컬 글꼴은 유지 */
 export function applyUiFontFromServerRow(row) {
   const raw = row?.ui_font_id;
+  const storedRaw = getScopedLocalStorageItem(USER_UI_FONT_ID_KEY);
   const id =
     raw == null || String(raw).trim() === ""
-      ? DEFAULT_UI_FONT_ID
+      ? storedRaw
+        ? normalizeUiFontId(storedRaw)
+        : DEFAULT_UI_FONT_ID
       : normalizeUiFontId(raw);
-  const prev = readUiFontIdLocal();
+  const prev = storedRaw ? normalizeUiFontId(storedRaw) : DEFAULT_UI_FONT_ID;
   persistUiFontIdLocal(id);
   applyUiFontById(id);
   if (prev !== id) void preloadUiFontById(id);
