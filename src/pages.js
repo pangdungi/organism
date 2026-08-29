@@ -21,5 +21,11 @@ export function showOnly(pageId) {
       p.style.display = "none";
     }
   });
+  try {
+    document.documentElement.classList.toggle(
+      "lp-auth-gate-open",
+      pageId === "login" || pageId === "reset-password",
+    );
+  } catch (_) {}
   refreshLpPwaInstall();
 }

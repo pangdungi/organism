@@ -1,8 +1,5 @@
 import { applyStaticAppIconImg } from "./utils/staticAppIconImg.js";
-import {
-  loginBrandLogoUrl,
-  withToolbarIconCacheVersion,
-} from "./utils/toolbarIconUrl.js";
+import { withToolbarIconCacheVersion } from "./utils/toolbarIconUrl.js";
 import { signOut } from "./auth.js";
 import {
   observeDatePickerInit,
@@ -160,14 +157,16 @@ const TABS = [
   },
 ];
 
-/** 홈 메뉴: 섹션 제목 없이 한 그리드 순서 */
+/** 홈 메뉴 글자 2열: 왼 시간기록·플래너·진행상황 / 오른 시급상승·건강·행복·나의 계정 */
 const HOME_MENU_TAB_ORDER = [
   "time",
-  "schedulecalendar",
   "sideincome",
+  "schedulecalendar",
   "health",
-  "happiness",
   "habittracker",
+  "happiness",
+  null,
+  "idea",
 ];
 
 const HOME_MENU_ACCOUNT_ICON = "/toolbaricons/menu-home/grid-my-account.png";
@@ -1128,6 +1127,13 @@ export async function mountApp(container) {
 
   function renderHomeMenuLauncher() {
     /* 탭 이탈 시 패널에서만 떼어 둠 — isConnected 아니어도 재사용(재생성 지연 방지) */
+    if (
+      homeMenuLauncherEl &&
+      !homeMenuLauncherEl.querySelector("[data-lp-home-text-menu]")
+    ) {
+      homeMenuLauncherEl = null;
+      launcherAdminBtn = null;
+    }
     if (homeMenuLauncherEl) {
       bindHomeMenuLauncherAdminBtn(homeMenuLauncherEl);
       void syncAdminMenuVisibility();
@@ -1138,30 +1144,6 @@ export async function mountApp(container) {
 
     const root = document.createElement("div");
     root.className = "app-home-menu-launcher";
-
-    const topBar = document.createElement("div");
-    topBar.className = "app-home-menu-launcher-topbar";
-
-    const accountBtn = document.createElement("button");
-    accountBtn.type = "button";
-    accountBtn.className = "app-home-menu-launcher-account-btn";
-    accountBtn.title = "나의 계정";
-    accountBtn.setAttribute("aria-label", "나의 계정");
-    const accountIconWrap = document.createElement("span");
-    accountIconWrap.className = "app-home-menu-launcher-account-icon-wrap";
-    accountIconWrap.setAttribute("aria-hidden", "true");
-    const accountImg = document.createElement("img");
-    accountImg.className = "app-home-menu-launcher-account-img";
-    accountImg.src = withToolbarIconCacheVersion(HOME_MENU_ACCOUNT_ICON);
-    accountImg.alt = "";
-    applyStaticAppIconImg(accountImg);
-    accountIconWrap.appendChild(accountImg);
-    const accountLabel = document.createElement("span");
-    accountLabel.className = "app-home-menu-launcher-account-label";
-    accountLabel.textContent = "나의 계정";
-    accountBtn.append(accountIconWrap, accountLabel);
-    accountBtn.addEventListener("click", () => openAppTabFromHome("idea"));
-    topBar.appendChild(accountBtn);
 
     const card = document.createElement("div");
     card.className = "app-home-menu-launcher-card";
@@ -1177,57 +1159,48 @@ export async function mountApp(container) {
       btn.dataset.tabId = tab.id;
       btn.title = menuLabel;
       btn.setAttribute("aria-label", menuLabel);
-
-      const iconWrap = document.createElement("span");
-      iconWrap.className = "app-home-menu-launcher-icon";
-      iconWrap.setAttribute("aria-hidden", "true");
-      const img = document.createElement("img");
-      img.className = "app-home-menu-launcher-grid-img";
-      img.src = withToolbarIconCacheVersion(
-        HOME_MENU_ICON[tab.id] ?? tab.iconDesktop ?? tab.icon,
-      );
-      img.alt = "";
-      applyStaticAppIconImg(img);
-      iconWrap.appendChild(img);
-
       const label = document.createElement("span");
       label.className = "app-home-menu-launcher-label";
       label.textContent = menuLabel;
-
-      btn.append(iconWrap, label);
+      btn.append(label);
       btn.addEventListener("click", () => openAppTabFromHome(tab.id));
       return btn;
     }
 
     const brand = document.createElement("div");
     brand.className = "app-home-menu-launcher-brand";
-    const brandRow = document.createElement("div");
-    brandRow.className = "app-home-menu-launcher-brand-row";
-    const logoShell = document.createElement("div");
-    logoShell.className = "app-home-menu-launcher-logo-float-shell";
     const logoImg = document.createElement("img");
-    logoImg.className = "app-home-menu-launcher-logo";
-    logoImg.src = loginBrandLogoUrl();
-    logoImg.alt = "";
-    logoImg.setAttribute("aria-hidden", "true");
+    logoImg.className = "app-home-menu-launcher-hero";
+    logoImg.src = "/home-time-management.jpg?v=1";
+    logoImg.alt = "Time management";
     applyStaticAppIconImg(logoImg);
-    logoShell.appendChild(logoImg);
     const brandTitle = document.createElement("h1");
     brandTitle.className = "app-home-menu-launcher-title";
     brandTitle.textContent = "두들";
-    brandRow.append(logoShell, brandTitle);
-    const brandSub = document.createElement("p");
-    brandSub.className = "app-home-menu-launcher-brand-sub";
-    brandSub.textContent = "나를 위한 모든 '행동'들";
-    brand.append(brandRow, brandSub);
+    brandTitle.hidden = true;
+    brand.append(logoImg, brandTitle);
 
     const grid = document.createElement("div");
-    grid.className = "app-home-menu-launcher-section-grid";
+    grid.className = "app-home-menu-launcher-text-list";
+    grid.dataset.lpHomeTextMenu = "1";
     HOME_MENU_TAB_ORDER.forEach((tid) => {
+      if (!tid) {
+        const spacer = document.createElement("span");
+        spacer.className = "app-home-menu-launcher-text-spacer";
+        spacer.setAttribute("aria-hidden", "true");
+        grid.appendChild(spacer);
+        return;
+      }
       const tab = tabMetaById(tid);
       if (tab) grid.appendChild(navButtonFromTab(tab));
     });
-    body.append(brand, grid);
+    const deskImg = document.createElement("img");
+    deskImg.className = "app-home-menu-launcher-desk";
+    deskImg.src = "/home-desk-doodle.png?v=2";
+    deskImg.alt = "";
+    deskImg.setAttribute("aria-hidden", "true");
+    applyStaticAppIconImg(deskImg);
+    body.append(brand, grid, deskImg);
 
     launcherAdminBtn = document.createElement("button");
     launcherAdminBtn.type = "button";
@@ -1241,7 +1214,7 @@ export async function mountApp(container) {
     void syncAdminMenuVisibility();
 
     card.appendChild(body);
-    root.append(topBar, card, launcherAdminBtn);
+    root.append(card, launcherAdminBtn);
     homeMenuLauncherEl = root;
     bindHomeMenuLauncherAdminBtn(root);
     return root;

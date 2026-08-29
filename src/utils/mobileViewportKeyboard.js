@@ -161,6 +161,19 @@ export function syncVisualViewportKeyboardInset() {
     return 0;
   }
   const h = readInnerHeight();
+  let authGateOpen = false;
+  try {
+    authGateOpen = document.documentElement.classList.contains("lp-auth-gate-open");
+  } catch (_) {}
+  if (authGateOpen && !isAuthGateTextInput(document.activeElement)) {
+    try {
+      document.documentElement.style.setProperty("--vv-keyboard", "0px");
+      document.documentElement.style.setProperty("--vv-visible-height", `${h}px`);
+      document.documentElement.style.setProperty("--vv-offset-top", "0px");
+      document.documentElement.classList.remove("lp-keyboard-open");
+    } catch (_) {}
+    return 0;
+  }
   const vvKb = Math.max(0, h - vv.height - (vv.offsetTop || 0));
   const layoutShrinkKb = Math.max(0, _baselineInnerHeight - h);
   const measuredKb = Math.max(vvKb, layoutShrinkKb);
@@ -332,6 +345,19 @@ export function initAuthGateKeyboardScroll() {
   if (typeof document === "undefined") return;
   if (document.documentElement.dataset.lpAuthGateKbScroll === "1") return;
   document.documentElement.dataset.lpAuthGateKbScroll = "1";
+
+  document.addEventListener(
+    "touchmove",
+    (e) => {
+      if (!document.documentElement.classList.contains("lp-auth-gate-open")) return;
+      const t = e.target;
+      if (t instanceof Element && t.closest(".auth-pw-modal__body, .auth-pw-modal__panel")) {
+        return;
+      }
+      if (e.cancelable) e.preventDefault();
+    },
+    { passive: false },
+  );
 
   document.addEventListener(
     "focusin",

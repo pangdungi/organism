@@ -52,18 +52,18 @@
     </script>
     <!-- manifest·favicon·og:image — 탭·검색은 favicon.ico·og-app-icon.png(별도 경로) -->
     <link rel="manifest" href="/manifest.json?v=doodle-calendar-1" />
-    <link rel="preload" href="/toolbaricons/splash/splash-screen.png?v=splash-unified-5" as="image" type="image/png" />
+    <link rel="preload" href="/toolbaricons/splash/splash-screen.png?v=splash-doodle-1" as="image" type="image/png" />
     <!-- 탭 아이콘: ico·png만 (svg는 Chrome 탭에서 외부 이미지 참조 시 빈 칸) -->
     <link rel="icon" href="/favicon.ico?v=doodle-calendar-1" sizes="any" />
     <link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png?v=doodle-calendar-1" />
     <link rel="icon" type="image/png" sizes="16x16" href="/icon-16.png?v=doodle-calendar-1" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=doodle-calendar-1" />
     <!-- iOS 홈 화면 실행 직후 네이티브 스플래시(전체 화면 물결+수달) -->
-    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1179.png?v=splash-unified-5" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
-    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1179.png?v=splash-unified-5" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
-    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1284.png?v=splash-unified-5" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
-    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1170.png?v=splash-unified-5" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
-    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1080.png?v=splash-unified-5" media="(orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1179.png?v=splash-doodle-1" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1179.png?v=splash-doodle-1" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1284.png?v=splash-doodle-1" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1170.png?v=splash-doodle-1" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/pwa-splash-portrait-1080.png?v=splash-doodle-1" media="(orientation: portrait)" />
     <!-- FOUC 방지 + 첫 페인트부터 계정별 UI 글꼴(캐시) -->
     <style>
       @font-face {
@@ -408,9 +408,9 @@
     </script>
     <link
       rel="preload"
-      href="/login-brand-logo.png?v=doodle-login-brand-2"
+      href="/login-brand-doodle.jpg?v=doodle-login-dos-1"
       as="image"
-      type="image/png"
+      type="image/jpeg"
     />
     <link rel="stylesheet" href="/src/main.css" />
   </head>
@@ -446,7 +446,7 @@
     >
       <img
         class="lp-unified-loading__screen-img"
-        src="/toolbaricons/splash/splash-screen.png?v=splash-unified-5"
+        src="/toolbaricons/splash/splash-screen.png?v=splash-doodle-1"
         alt=""
         width="1046"
         height="1609"
@@ -498,42 +498,15 @@
           <div class="login-wrap">
             <img
               class="login-brand-logo"
-              src="/login-brand-logo.png?v=doodle-login-brand-2"
-              alt="두들이"
-              width="112"
-              height="112"
+              src="/login-brand-doodle.jpg?v=doodle-login-dos-1"
+              alt="나를 위한 Do들, Doodle"
+              width="320"
+              height="305"
               decoding="async"
               fetchpriority="high"
             />
             <div class="login-card login-card--brand">
               <h1 class="auth-gate-heading login-title" id="auth-gate-heading">회원가입</h1>
-              <div
-                class="auth-gate-segments is-signup"
-                id="auth-gate-segments"
-                role="tablist"
-                aria-label="로그인 또는 회원가입"
-              >
-              <button
-                type="button"
-                role="tab"
-                id="auth-seg-login"
-                class="auth-gate-seg"
-                aria-selected="false"
-                aria-controls="auth-panel-login"
-              >
-                로그인
-              </button>
-              <button
-                type="button"
-                role="tab"
-                id="auth-seg-signup"
-                class="auth-gate-seg is-active"
-                aria-selected="true"
-                aria-controls="auth-panel-signup"
-              >
-                회원가입
-              </button>
-            </div>
             <div id="auth-panel-signup" class="auth-gate-panel">
             <form class="login-form login-form--auth-gate" id="signup-form" onsubmit="return false">
               <p class="auth-signup-notice">
@@ -603,6 +576,10 @@
               </div>
               <button type="button" class="login-btn-cta" id="btn-do-signup">가입하기</button>
             </form>
+            <p class="login-auth-switch login-auth-switch--to-login">
+              <span>계정이 있나요?</span>
+              <button type="button" class="login-link" id="btn-show-login">로그인하기</button>
+            </p>
             </div>
             <div id="auth-panel-login" class="auth-gate-panel" style="display: none">
             <form class="login-form login-form--auth-gate" id="login-form">
@@ -657,6 +634,10 @@
               <button type="button" class="login-link login-link--forgot" id="btn-show-forgot-pw">
                 비밀번호를 잊었나요?
               </button>
+            </p>
+            <p class="login-auth-switch login-auth-switch--to-signup">
+              <span>계정이 없나요?</span>
+              <button type="button" class="login-link" id="btn-show-signup">가입하기</button>
             </p>
             </div>
             </div>

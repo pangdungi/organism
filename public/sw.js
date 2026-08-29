@@ -5,7 +5,7 @@ const PWA_BRAND = "doodle-calendar-1";
 const ASSET_CACHE = "tip-assets-v75";
 /** HTML 셸 캐시 — 홈 화면에서 열 때 즉시 표시용 */
 const HTML_CACHE = "tip-html-v16";
-const LOGIN_BRAND_LOGO_V = "doodle-login-brand-2";
+const LOGIN_BRAND_LOGO_V = "doodle-login-dos-1";
 
 const PWA_BRAND_BASENAMES = new Set([
   "/manifest.json",
@@ -20,7 +20,7 @@ const PWA_BRAND_BASENAMES = new Set([
   "/icon-maskable-512.png",
   "/apple-touch-icon.png",
   "/icon.svg",
-  "/login-brand-logo.png",
+  "/login-brand-doodle.jpg",
 ]);
 
 function isPwaBrandAsset(pathname) {
@@ -52,7 +52,8 @@ const PWA_INSTALL_CORE_PATHS = [
   "/fonts/LP-Ongleip-Mitmi.ttf",
   "/fonts/LP-Griun-Mongtori-Rg.ttf",
   "/fonts/LP-Griun-Cherry1Spoon-Rg.ttf",
-  `/login-brand-logo.png?v=${LOGIN_BRAND_LOGO_V}`,
+  "/fonts/LP-Griun-Fromsol-Rg.ttf",
+  `/login-brand-doodle.jpg?v=${LOGIN_BRAND_LOGO_V}`,
 ];
 
 /** 오프라인·캐시 미스 — respondWith 가 reject 되지 않게 항상 Response 반환 */

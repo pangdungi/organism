@@ -491,9 +491,6 @@ function setAuthGatePanel(mode) {
   const signupEl = document.getElementById("auth-panel-signup");
   const loginEl = document.getElementById("auth-panel-login");
   const headingEl = document.getElementById("auth-gate-heading");
-  const segWrap = document.getElementById("auth-gate-segments");
-  const segLogin = document.getElementById("auth-seg-login");
-  const segSignup = document.getElementById("auth-seg-signup");
   if (!signupEl || !loginEl) return;
   const isSignup = mode === "signup";
   if (isSignup) {
@@ -504,11 +501,6 @@ function setAuthGatePanel(mode) {
     loginEl.style.display = "";
   }
   if (headingEl) headingEl.textContent = isSignup ? "회원가입" : "로그인";
-  segWrap?.classList.toggle("is-signup", isSignup);
-  segLogin?.classList.toggle("is-active", !isSignup);
-  segSignup?.classList.toggle("is-active", isSignup);
-  segLogin?.setAttribute("aria-selected", isSignup ? "false" : "true");
-  segSignup?.setAttribute("aria-selected", isSignup ? "true" : "false");
   if (!isSignup) syncLoginRememberMeCheckbox();
 }
 
@@ -617,10 +609,10 @@ function init() {
   syncLoginRememberMeCheckbox();
   document.getElementById("btn-do-signup")?.addEventListener("click", doSignUp);
   document
-    .getElementById("auth-seg-login")
+    .getElementById("btn-show-login")
     ?.addEventListener("click", () => setAuthGatePanel("login"));
   document
-    .getElementById("auth-seg-signup")
+    .getElementById("btn-show-signup")
     ?.addEventListener("click", () => {
       try {
         sessionStorage.removeItem(LP_AUTH_GATE_AFTER_LOGOUT_KEY);

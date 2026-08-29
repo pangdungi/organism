@@ -70,6 +70,31 @@ body {
   color: var(--text-ink);
 }
 
+html.lp-auth-gate-open,
+html.lp-auth-gate-open body {
+  overflow: hidden;
+  overscroll-behavior: none;
+  height: 100%;
+  max-height: 100%;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  touch-action: none;
+}
+
+html.lp-auth-gate-open #app {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+html.lp-auth-gate-open .login-page.login-page--gate button,
+html.lp-auth-gate-open .login-page.login-page--gate input,
+html.lp-auth-gate-open .login-page.login-page--gate a,
+html.lp-auth-gate-open .login-page.login-page--gate label {
+  touch-action: manipulation;
+}
+
 #app {
   min-height: 100vh;
   min-height: 100dvh;
@@ -124,7 +149,9 @@ body {
   }
 
   .login-page.login-page--gate {
-    min-height: 100lvh;
+    min-height: 0;
+    height: 100%;
+    max-height: 100%;
   }
 
   /* body 포털 fixed 전체화면 — inset:0 아래 홈바·세이프까지 덮개·배경 연장 */
@@ -492,7 +519,7 @@ html.lp-task-log-modal-open #signin-page {
   min-height: 0;
   width: 100%;
   max-width: min(100%, 22.5rem);
-  margin: 0 auto clamp(0.85rem, 2.4dvh, 1.35rem);
+  margin: 0 auto clamp(1.7rem, 5.2dvh, 2.5rem);
   padding: 0;
   background: transparent;
   text-align: center;
@@ -538,6 +565,30 @@ html.lp-task-log-modal-open #signin-page {
   max-width: min(5.5rem, 28vw);
   margin: 0;
   object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.app-home-menu-launcher-hero {
+  display: block;
+  width: min(100%, 18.5rem);
+  height: auto;
+  max-height: min(42dvh, 17rem);
+  margin: 0 auto;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.app-home-menu-launcher-desk {
+  display: block;
+  width: min(128%, 26rem);
+  height: auto;
+  max-height: min(34dvh, 15rem);
+  margin: auto 0 0 auto;
+  object-fit: contain;
+  object-position: right center;
+  pointer-events: none;
   user-select: none;
   -webkit-user-drag: none;
 }
@@ -667,9 +718,10 @@ html.lp-task-log-modal-open #signin-page {
     clamp(1.35rem, 6dvh, 2.8rem) max(0.85rem, var(--lp-safe-right));
 }
 
-.app-home-menu-launcher-card .app-home-menu-launcher-section-grid {
+.app-home-menu-launcher-card .app-home-menu-launcher-section-grid,
+.app-home-menu-launcher-card .app-home-menu-launcher-text-list {
   box-sizing: border-box;
-  width: min(100%, 22.5rem);
+  width: min(100%, 20.5rem);
 }
 
 /* 탭 동기화 로딩 — 통일 UI(lp-app-loading.css) inline 변형 */
@@ -708,6 +760,68 @@ html.lp-task-log-modal-open #signin-page {
   justify-items: stretch;
   flex: 0 1 auto;
   min-height: 0;
+}
+
+.app-home-menu-launcher-text-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: clamp(1.45rem, 7vw, 2.4rem);
+  row-gap: clamp(0.72rem, 2.8dvh, 1.15rem);
+  width: min(100%, 20.5rem);
+  height: auto;
+  margin: 0 auto;
+  align-items: start;
+  justify-items: start;
+  flex: 0 1 auto;
+  min-height: 0;
+}
+
+.app-home-menu-launcher-text-list,
+.app-home-menu-launcher-text-list .app-home-menu-launcher-btn,
+.app-home-menu-launcher-text-list .app-home-menu-launcher-label {
+  font-family: "LP Home Menu Fromsol", sans-serif !important;
+  font-weight: 400 !important;
+}
+
+.app-home-menu-launcher-text-list .app-home-menu-launcher-btn {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
+  width: auto;
+  max-width: 100%;
+  aspect-ratio: auto;
+  height: auto;
+  min-height: 0;
+  padding: 0.12rem 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  text-align: left;
+  font-size: clamp(1.28rem, 5.8vw, 1.72rem);
+  letter-spacing: 0.16em;
+  color: #111111;
+}
+
+.app-home-menu-launcher-text-list .app-home-menu-launcher-btn:hover {
+  opacity: 0.72;
+  border-color: transparent;
+}
+
+.app-home-menu-launcher-text-list .app-home-menu-launcher-label {
+  font-size: inherit;
+  line-height: 1.25;
+  letter-spacing: 0.16em;
+  overflow: visible;
+  text-overflow: unset;
+  text-align: left;
+}
+
+.app-home-menu-launcher-text-spacer {
+  display: block;
+  min-height: 1.2em;
 }
 
 .app-home-menu-launcher-btn {
@@ -1845,54 +1959,59 @@ table {
   --auth-track: rgba(0, 0, 0, 0.14);
   --auth-seg-muted: rgba(0, 0, 0, 0.55);
   --auth-ink: #111111;
-  min-height: 100vh;
-  min-height: 100dvh;
+  position: fixed;
+  inset: 0;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
   width: 100%;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: var(--lp-safe-bottom);
-  font-family: inherit;
+  font-family: "LP Home Menu Fromsol", sans-serif !important;
   color: var(--auth-ink);
   background: #fff;
 }
 
 @media (max-width: 64rem) and (pointer: coarse) {
   .login-page.login-page--gate {
-    min-height: 100svh;
-    min-height: 100dvh;
-    max-height: 100svh;
-    max-height: 100dvh;
+    min-height: 0;
+    height: 100%;
+    max-height: 100%;
     overflow: hidden;
   }
 
   .login-page.login-page--gate .auth-gate-body {
     min-height: 0;
     flex: 1 1 auto;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    justify-content: flex-start;
-    padding-top: max(2rem, calc(env(safe-area-inset-top, 0px) + 1.25rem));
+    overflow: hidden;
+    overscroll-behavior: none;
+    justify-content: center;
+    padding: 0.35rem 1rem 0.7rem;
   }
 
   html.lp-auth-gate-focus .login-page.login-page--gate,
   html.lp-keyboard-open .login-page.login-page--gate {
-    height: var(--vv-visible-height, 100dvh);
-    max-height: var(--vv-visible-height, 100dvh);
+    height: 100%;
+    max-height: 100%;
     min-height: 0;
   }
 
   html.lp-auth-gate-focus .login-page.login-page--gate .auth-gate-body,
   html.lp-keyboard-open .login-page.login-page--gate .auth-gate-body {
-    padding-bottom: calc(1.25rem + var(--vv-keyboard, 0px));
+    overflow: hidden;
+    padding-bottom: calc(0.55rem + var(--vv-keyboard, 0px));
   }
 
-  html.lp-auth-gate-focus .login-page.login-page--gate .login-brand-logo {
-    width: min(4.5rem, 28vw);
-    max-width: 72px;
-    margin-bottom: 0.5rem;
+  html.lp-auth-gate-focus .login-page.login-page--gate .login-brand-logo,
+  html.lp-keyboard-open .login-page.login-page--gate .login-brand-logo {
+    max-height: 10rem;
+    width: min(14rem, 72vw);
   }
 }
 
@@ -1901,20 +2020,44 @@ table {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: max(1rem, 0.85rem) 1.25rem 1.5rem;
+  min-height: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  padding: 0.35rem 1rem 0.75rem;
   box-sizing: border-box;
 }
 
 .login-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   width: 100%;
-  max-width: 22.5rem;
+  max-width: 24rem;
+  max-height: 100%;
+  min-height: 0;
+  flex: 0 0 auto;
+  overflow: hidden;
   margin: 0 auto;
+}
+
+.login-page.login-page--gate button,
+.login-page.login-page--gate input,
+.login-page.login-page--gate label,
+.login-page.login-page--gate a,
+.login-page.login-page--gate .auth-gate-heading,
+.login-page.login-page--gate .auth-gate-seg,
+.login-page.login-page--gate .login-btn-cta,
+.login-page.login-page--gate .login-remember-me-label,
+.login-page.login-page--gate .login-link--forgot {
+  font-family: "LP Home Menu Fromsol", sans-serif !important;
 }
 
 .login-brand-logo {
   display: block;
-  width: min(7rem, 38vw);
-  max-width: 112px;
+  flex: 0 0 auto;
+  width: min(19.5rem, 84vw);
+  max-width: 100%;
+  max-height: 16.5rem;
   height: auto;
   margin: 0 auto 0.85rem;
   object-fit: contain;
@@ -1922,17 +2065,18 @@ table {
 
 .login-card.login-card--brand {
   position: relative;
-  background: #fff;
-  border-radius: 20px;
-  padding: 1.6rem 1.35rem 1rem;
-  box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.09),
-    0 1px 0 rgba(255, 255, 255, 0.9) inset;
+  background: transparent;
+  border: none;
+  border-radius: 18px;
+  flex: 0 0 auto;
+  min-height: 0;
+  padding: 0.35rem 1.05rem 0.7rem;
+  box-shadow: none;
   box-sizing: border-box;
 }
 
 .auth-gate-heading.login-title {
-  margin: 0 0 1.1rem;
+  margin: 0 0 0.6rem;
   font-size: 1.35rem;
   font-weight: 700;
   letter-spacing: -0.03em;
@@ -1948,7 +2092,7 @@ table {
   grid-template-columns: 1fr 1fr;
   gap: 0;
   padding: var(--ag-pad);
-  margin-bottom: 1.35rem;
+  margin-bottom: 0.75rem;
   border-radius: 14px;
   background: var(--auth-track);
   box-sizing: border-box;
@@ -2014,7 +2158,7 @@ table {
 .login-form--auth-gate {
   display: flex;
   flex-direction: column;
-  gap: 1.15rem;
+  gap: 0.7rem;
 }
 
 .login-field--auth {
@@ -2169,8 +2313,20 @@ table {
   text-align: center;
 }
 
+.login-auth-switch--to-login,
+.login-auth-switch--to-signup {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  color: #555555;
+}
+
 .login-auth-switch--forgot {
-  margin-top: 1rem;
+  margin-top: 0.55rem;
 }
 
 .login-link {
@@ -2429,18 +2585,18 @@ body.auth-pw-modal-open {
 }
 
 .auth-signup-notice {
-  margin: 0 0 0.85rem;
-  padding: 0.65rem 0.75rem;
-  font-size: 0.8125rem;
-  line-height: 1.55;
-  color: rgba(0, 0, 0, 0.72);
-  background: rgba(30, 77, 123, 0.06);
+  margin: 0;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: #333333;
+  background: rgba(0, 0, 0, 0.06);
   border-radius: 8px;
 }
 
 .auth-signup-notice strong {
   font-weight: 600;
-  color: #1e4d7b;
+  color: #111111;
 }
 
 .login-change-actions {

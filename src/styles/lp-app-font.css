@@ -164,3 +164,14 @@ select:-webkit-autofill:focus {
   unicode-range: U+0000-00FF, U+0100-024F, U+1100-11FF, U+2000-206F, U+3000-303F,
     U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF, U+FF00-FFEF;
 }
+
+/* 홈 메인 메뉴 전용 — 계정 글꼴 설정과 무관하게 고정 */
+@font-face {
+  font-family: "LP Home Menu Fromsol";
+  src: url("/fonts/LP-Griun-Fromsol-Rg.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0100-024F, U+1100-11FF, U+2000-206F, U+3000-303F,
+    U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF, U+FF00-FFEF;
+}

@@ -23,12 +23,37 @@ function splashScreenSource() {
 
 /** @param {string} src @param {number} width @param {number} height */
 async function rasterSplash(src, width, height) {
-  const input = src.toLowerCase().endsWith(".svg")
-    ? sharp(src, { density: 288 })
-    : sharp(src);
-  return input
+  const isSvg = src.toLowerCase().endsWith(".svg");
+  if (isSvg) {
+    return sharp(src, { density: 288 })
+      .resize(width, height, {
+        fit: "contain",
+        background: { r: 255, g: 255, b: 255 },
+      })
+      .png()
+      .toBuffer();
+  }
+  const meta = await sharp(src).metadata();
+  const sw = meta.width || width;
+  const sh = meta.height || height;
+  if (sw <= width && sh <= height) {
+    const logo = await sharp(src).png().toBuffer();
+    return sharp({
+      create: {
+        width,
+        height,
+        channels: 3,
+        background: { r: 255, g: 255, b: 255 },
+      },
+    })
+      .composite([{ input: logo, gravity: "center" }])
+      .png()
+      .toBuffer();
+  }
+  return sharp(src)
     .resize(width, height, {
       fit: "contain",
+      withoutEnlargement: true,
       background: { r: 255, g: 255, b: 255 },
     })
     .png()
