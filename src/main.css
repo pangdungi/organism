@@ -601,13 +601,17 @@ html.lp-task-log-modal-open #signin-page {
 
 .app-home-menu-launcher-desk {
   display: block;
-  width: min(128%, 26rem);
+  flex: 0 0 auto;
+  align-self: center;
+  box-sizing: border-box;
+  width: min(92vw, 42rem);
+  max-width: 42rem;
   height: auto;
-  max-height: min(34dvh, 15rem);
-  margin: auto 0 0 auto;
-  transform: translateX(1.15rem);
+  max-height: min(42dvh, 22rem);
+  margin: clamp(1.1rem, 3.5dvh, 2rem) auto 0;
+  transform: translateX(1.4rem);
   object-fit: contain;
-  object-position: right center;
+  object-position: center bottom;
   pointer-events: none;
   user-select: none;
   -webkit-user-drag: none;
@@ -732,7 +736,7 @@ html.lp-task-log-modal-open #signin-page {
   overflow: auto;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
   padding: clamp(1.1rem, 5dvh, 2.4rem) max(0.85rem, var(--lp-safe-right))
     clamp(1.35rem, 6dvh, 2.8rem) max(0.85rem, var(--lp-safe-left));
@@ -786,15 +790,15 @@ html.lp-task-log-modal-open #signin-page {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   column-gap: clamp(1.45rem, 7vw, 2.4rem);
-  row-gap: clamp(0.72rem, 2.8dvh, 1.15rem);
+  row-gap: clamp(0.4rem, 2.2dvh, 1.15rem);
   width: min(100%, 20.5rem);
   height: auto;
   margin: 0 auto;
   transform: translateX(0.7rem);
   align-items: start;
   justify-items: start;
-  flex: 0 1 auto;
-  min-height: 0;
+  flex: 0 0 auto;
+  min-height: min-content;
 }
 
 .app-home-menu-launcher-text-list,
@@ -821,7 +825,7 @@ html.lp-task-log-modal-open #signin-page {
   border-radius: 0;
   box-shadow: none;
   text-align: left;
-  font-size: clamp(1.28rem, 5.8vw, 1.72rem);
+  font-size: clamp(0.95rem, min(5.8vw, 3.8dvh), 1.72rem);
   letter-spacing: 0.16em;
   color: #111111;
 }
@@ -838,11 +842,12 @@ html.lp-task-log-modal-open #signin-page {
   overflow: visible;
   text-overflow: unset;
   text-align: left;
+  white-space: nowrap;
 }
 
 .app-home-menu-launcher-text-spacer {
   display: block;
-  min-height: 1.2em;
+  min-height: clamp(0.45em, 1.8dvh, 1.2em);
 }
 
 .app-home-menu-launcher-btn {
@@ -946,6 +951,43 @@ html.lp-task-log-modal-open #signin-page {
 @media (min-width: 40rem) {
   .app-main:has(.app-home-menu-launcher) {
     --home-menu-grid-gap: clamp(0.45rem, 1.2vw, 0.75rem);
+  }
+}
+
+@media (min-width: 46.0625rem) {
+  .app-home-menu-launcher-text-list {
+    margin-top: clamp(2rem, 7dvh, 3.4rem);
+  }
+}
+
+@media (max-height: 46rem) {
+  .app-home-menu-launcher-card .app-home-menu-launcher-body {
+    padding-top: clamp(0.45rem, 2.2dvh, 1.2rem);
+    padding-bottom: clamp(0.5rem, 2.4dvh, 1.4rem);
+  }
+
+  .app-home-menu-launcher-text-list .app-home-menu-launcher-btn {
+    font-size: clamp(0.92rem, 3.2dvh, 1.35rem);
+    letter-spacing: 0.1em;
+  }
+
+  .app-home-menu-launcher-text-list .app-home-menu-launcher-label {
+    letter-spacing: 0.1em;
+  }
+}
+
+@media (max-height: 36rem) {
+  .app-home-menu-launcher-text-list {
+    row-gap: clamp(0.22rem, 1.2dvh, 0.5rem);
+  }
+
+  .app-home-menu-launcher-text-list .app-home-menu-launcher-btn {
+    font-size: clamp(0.82rem, 2.8dvh, 1.1rem);
+    letter-spacing: 0.06em;
+  }
+
+  .app-home-menu-launcher-text-list .app-home-menu-launcher-label {
+    letter-spacing: 0.06em;
   }
 }
 
