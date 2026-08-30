@@ -36,7 +36,7 @@
   --cal-line: rgba(0, 0, 0, 0.14);
   --lp-calendar-day-num-font-family: "LP Lee Seoyun", sans-serif;
   --cal-line-strong: rgba(0, 0, 0, 0.22);
-  --cal-surface: #fafafa;
+  --cal-surface: transparent;
   --cal-surface-muted: rgba(0, 0, 0, 0.06);
   --cal-text: #111111;
   --cal-text-muted: rgba(0, 0, 0, 0.52);
@@ -521,7 +521,7 @@
   color: #475569;
   text-align: center;
   border-bottom: 1px solid #e8edf3;
-  background: #fafafa;
+  background: transparent;
   border-radius: 0;
 }
 
@@ -560,7 +560,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #fafafa;
+  background: transparent;
   box-sizing: border-box;
 }
 
@@ -597,7 +597,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #fafafa;
+  background: transparent;
   box-sizing: border-box;
 }
 
@@ -822,7 +822,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   overflow: hidden;
   isolation: isolate;
   contain: layout paint;
-  background: #fafafa;
+  background: transparent;
   border: none;
   border-bottom: 1px solid #e0e0e0;
   border-radius: 0;
@@ -922,7 +922,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #fafafa;
+  background: transparent;
   border: none;
   border-radius: 0;
   box-shadow: none;
@@ -1557,7 +1557,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
-  background: var(--cal-surface);
+  background: transparent;
 }
 
 /* 막대만 재측정 전 가림 — 요일·날짜 칸은 숨기지 않음(진입 시 흰 화면 방지) */
@@ -1692,7 +1692,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   border-inline: none;
   border-radius: var(--cal-radius);
   overflow: hidden;
-  background: var(--cal-surface);
+  background: transparent;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1703,7 +1703,15 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   border-bottom: 1px solid var(--cal-line);
-  background: #fafafa;
+  background-color: #fafafa;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E"),
+    repeating-linear-gradient(
+      -12deg,
+      transparent 0 10px,
+      rgba(0, 0, 0, 0.008) 10px 11px
+    );
+  background-size: 180px 180px, auto;
   box-shadow: 0 -3px 0 0 #fafafa;
 }
 
@@ -1776,7 +1784,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   padding: var(--cal-cell-pad);
   border-right: 1px solid var(--cal-line);
   min-height: var(--cal-week-row-min);
-  background: var(--cal-surface);
+  background: transparent;
   transition: background 0.12s ease;
 }
 
@@ -1795,7 +1803,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
 }
 
 .calendar-monthly-day.today {
-  background: var(--cal-surface);
+  background: transparent;
 }
 
 /* 오늘만 원형 칩 — 높이는 아래 .calendar-monthly-day-num 과 동일하게 두어 옆 칸 숫자와 수평 정렬 */
@@ -2083,7 +2091,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   border-block: 1px solid var(--cal-line);
   border-inline: none;
   overflow: hidden;
-  background: var(--cal-surface);
+  background: transparent;
   flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
@@ -2507,7 +2515,15 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   letter-spacing: 0.02em;
   line-height: 1.15;
   border-right: 1px solid var(--cal-line);
-  background: #fafafa;
+  background-color: #fafafa;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E"),
+    repeating-linear-gradient(
+      -12deg,
+      transparent 0 10px,
+      rgba(0, 0, 0, 0.008) 10px 11px
+    );
+  background-size: 180px 180px, auto;
   box-shadow: 1px 0 0 var(--cal-line);
 }
 

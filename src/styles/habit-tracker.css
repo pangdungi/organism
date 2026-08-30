@@ -1001,7 +1001,7 @@
   margin: 0 0 0.75rem;
   border: 1px solid #e2e8f0;
   border-radius: 0.65rem;
-  background: #fafafa;
+  background: transparent;
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -1015,7 +1015,7 @@
   margin: 0;
   padding: 0.65rem 0.75rem;
   border: none;
-  background: #fafafa;
+  background: transparent;
   color: #111;
   font: inherit;
   font-size: 0.9375rem;
@@ -1058,7 +1058,7 @@
   padding: 0.55rem 0.35rem 0.65rem;
   border-radius: 0;
   border: none;
-  background: #fafafa;
+  background: transparent;
   box-sizing: border-box;
   overflow-x: hidden;
   min-width: 0;
@@ -1079,7 +1079,7 @@
   gap: 0.55rem;
   min-width: 0;
   z-index: 3;
-  background: #fafafa;
+  background: transparent;
 }
 
 .lp-kpi-dream-page .dream-kpi-gantt-tracks-scroll {
