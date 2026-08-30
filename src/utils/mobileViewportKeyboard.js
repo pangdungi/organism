@@ -357,6 +357,17 @@ export function initAuthGateKeyboardScroll() {
         t.closest(".login-page.login-page--gate");
       const onHomeMenu = t.closest(".app-home-menu-launcher");
       if (!onAuth && !onHomeMenu) return;
+      if (onAuth) {
+        const touch = e.touches?.[0] || e.changedTouches?.[0];
+        if (touch && touch.touchType === "stylus") return;
+        if (
+          t.closest(
+            "button, a, input, label, textarea, .login-pw-toggle, .login-remember-me",
+          )
+        ) {
+          return;
+        }
+      }
       if (e.cancelable) e.preventDefault();
     },
     { passive: false },

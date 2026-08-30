@@ -513,6 +513,36 @@ function openAuthPwRecoveryModal() {
   document.body.classList.add("auth-pw-modal-open");
 }
 
+/** 로그인·가입 — 아이패드 펜슬은 click이 안 오는 경우가 있어 버튼만 눌러 줌 */
+function bindAuthGatePenClicks() {
+  const page = document.getElementById("login-page");
+  if (!page || page.dataset.lpAuthPenClick === "1") return;
+  page.dataset.lpAuthPenClick = "1";
+  let ignoreTrustedUntil = 0;
+  page.addEventListener(
+    "click",
+    (e) => {
+      if (Date.now() > ignoreTrustedUntil || !e.isTrusted) return;
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    true,
+  );
+  page.addEventListener("pointerup", (e) => {
+    if (e.pointerType !== "pen") return;
+    if (typeof e.button === "number" && e.button !== 0) return;
+    const t = e.target;
+    if (!(t instanceof Element)) return;
+    const hit = t.closest(
+      "button, a, .login-pw-toggle, .login-remember-me, label[for]",
+    );
+    if (!(hit instanceof HTMLElement) || !page.contains(hit)) return;
+    if (hit instanceof HTMLButtonElement && hit.disabled) return;
+    ignoreTrustedUntil = Date.now() + 450;
+    hit.click();
+  });
+}
+
 function closeAuthPwRecoveryModal() {
   const modal = document.getElementById("auth-pw-recovery-modal");
   if (!modal || modal.hasAttribute("hidden")) return;
@@ -604,6 +634,7 @@ function init() {
     mq.addEventListener("change", sync);
   })();
 
+  bindAuthGatePenClicks();
   document.getElementById("login-form")?.addEventListener("submit", (e) => {
     e.preventDefault();
     void doLogin();
