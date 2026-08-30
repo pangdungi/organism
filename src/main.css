@@ -2242,13 +2242,48 @@ table {
 
 .login-brand-logo {
   display: block;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   width: min(19.5rem, 84vw);
   max-width: 100%;
-  max-height: 16.5rem;
+  max-height: min(16.5rem, 30svh);
   height: auto;
   margin: 0 auto 0.85rem;
   object-fit: contain;
+}
+
+/* 아이패드 가로 등 낮은 화면 — 스크롤 없이 로그인하기까지 한 화면에 */
+@media (max-height: 56rem) {
+  .login-page.login-page--gate .login-brand-logo {
+    width: min(13rem, 38vw);
+    max-height: min(7.75rem, 20svh);
+    margin-bottom: 0.35rem;
+  }
+
+  .login-page.login-page--gate .auth-gate-heading.login-title {
+    margin-bottom: 0.4rem;
+    font-size: 1.2rem;
+  }
+
+  .login-page.login-page--gate .login-card.login-card--brand {
+    padding: 0.15rem 1.05rem 0.35rem;
+  }
+
+  .login-page.login-page--gate .login-form--auth-gate {
+    gap: 0.42rem;
+  }
+
+  .login-page.login-page--gate .auth-signup-notice {
+    padding: 0.3rem 0.5rem;
+  }
+
+  .login-page.login-page--gate .login-btn-cta {
+    padding: 0.7rem 1rem;
+  }
+
+  .login-page.login-page--gate .login-auth-switch--to-login,
+  .login-page.login-page--gate .login-auth-switch--to-signup {
+    margin-top: 0.4rem;
+  }
 }
 
 .login-card.login-card--brand {

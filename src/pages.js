@@ -1,6 +1,26 @@
 import { refreshLpPwaInstall } from "./utils/lpPwaInstall.js";
 
+/** 로그인·가입 화면으로 나갈 때 계정 창(시급 등)이 body에 남으면 안 됨 */
+function dismissAccountOverlaysOnAuthGate() {
+  try {
+    document
+      .querySelectorAll(".lp-desktop-idea-modal, .idea-delete-account-modal")
+      .forEach((n) => n.remove());
+  } catch (_) {}
+  try {
+    document.documentElement.classList.remove("lp-desktop-idea-modal-open");
+  } catch (_) {}
+  void import("./utils/desktopIdeaAccountModal.js")
+    .then((m) => {
+      m.closeDesktopIdeaAccountModal();
+    })
+    .catch(() => {});
+}
+
 export function showOnly(pageId) {
+  if (pageId === "login" || pageId === "reset-password") {
+    dismissAccountOverlaysOnAuthGate();
+  }
   if (pageId !== "login") {
     const m = document.getElementById("auth-pw-recovery-modal");
     if (m) {

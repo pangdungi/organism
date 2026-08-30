@@ -13,15 +13,28 @@ function onEsc(e) {
 }
 
 export function closeDesktopIdeaAccountModal() {
-  if (!openWrap) return;
-  const idea = openWrap.querySelector(".idea-view");
+  const wrap =
+    openWrap ||
+    (typeof document !== "undefined"
+      ? document.querySelector(".lp-desktop-idea-modal")
+      : null);
+  if (!wrap) {
+    try {
+      document.documentElement.classList.remove("lp-desktop-idea-modal-open");
+    } catch (_) {}
+    try {
+      syncBodyOverflowAfterModalClose();
+    } catch (_) {}
+    return;
+  }
+  const idea = wrap.querySelector(".idea-view");
   try {
     idea?._lpTabAbortController?.abort();
   } catch (_) {}
   try {
     document.removeEventListener("keydown", onEsc, true);
   } catch (_) {}
-  openWrap.remove();
+  wrap.remove();
   openWrap = null;
   try {
     document.documentElement.classList.remove("lp-desktop-idea-modal-open");
