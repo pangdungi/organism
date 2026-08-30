@@ -110,7 +110,7 @@ function appendDonutSliceLabel(
     y: ty.toFixed(1),
     "text-anchor": "middle",
     "dominant-baseline": "middle",
-    fill: innerOk ? "#fafafa" : "#333333",
+    fill: innerOk ? "#ffffff" : "#333333",
     "font-size": String(tr2SvgFontSize(innerOk ? 11 : 10)),
     "font-weight": "700",
     class: innerOk
