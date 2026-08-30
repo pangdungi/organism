@@ -1654,7 +1654,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   > .calendar-monthly-weekdays {
   flex-shrink: 0;
   position: sticky;
-  top: 0;
+  top: -1px;
   z-index: 2;
 }
 
@@ -1703,7 +1703,8 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   border-bottom: 1px solid var(--cal-line);
-  background: transparent;
+  background: #fafafa;
+  box-shadow: 0 -3px 0 0 #fafafa;
 }
 
 .calendar-monthly-weekday {
