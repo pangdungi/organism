@@ -906,6 +906,7 @@ const TIME_RATING_REMOVED_TASK_NAMES = new Set([
   "기록하기",
   "성찰 일기쓰기",
   "외모관리",
+  "잡무 처리하기",
   WORK_BUILTIN_TASK_NAME,
 ]);
 
