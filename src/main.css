@@ -832,10 +832,11 @@ html.lp-task-log-modal-open #signin-page {
   font-size: clamp(0.95rem, min(5.8vw, 3.8dvh), 1.72rem);
   letter-spacing: 0.16em;
   color: #111111;
+  touch-action: manipulation;
 }
 
 .app-home-menu-launcher-text-list .app-home-menu-launcher-btn:hover {
-  opacity: 0.72;
+  opacity: 1;
   border-color: transparent;
 }
 

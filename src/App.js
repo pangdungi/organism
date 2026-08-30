@@ -1186,7 +1186,24 @@ export async function mountApp(container) {
       label.className = "app-home-menu-launcher-label";
       label.textContent = menuLabel;
       btn.append(label);
-      btn.addEventListener("click", () => openAppTabFromHome(tab.id));
+      let openedByPen = false;
+      const go = () => openAppTabFromHome(tab.id);
+      btn.addEventListener("pointerup", (e) => {
+        if (e.pointerType !== "pen") return;
+        if (typeof e.button === "number" && e.button !== 0) return;
+        openedByPen = true;
+        go();
+        window.setTimeout(() => {
+          openedByPen = false;
+        }, 400);
+      });
+      btn.addEventListener("click", (e) => {
+        if (openedByPen) {
+          e.preventDefault();
+          return;
+        }
+        go();
+      });
       return btn;
     }
 
