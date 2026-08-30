@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
     <meta name="color-scheme" content="light" />
-    <meta name="theme-color" content="#ffffff" />
+    <meta name="theme-color" content="#fafafa" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <!-- viewport-fit=cover: 세로 세이프는 .app-page padding-top 한 곳만 -->
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -52,9 +52,9 @@
     </script>
     <!-- manifest·favicon·og:image — 탭·검색은 favicon.ico·og-app-icon.png(별도 경로) -->
     <link rel="manifest" href="/manifest.json?v=doodle-calendar-1" />
-    <link rel="preload" href="/toolbaricons/splash/splash-screen.png?v=splash-doodle-1" as="image" type="image/png" />
-    <link rel="preload" href="/home-time-management.jpg?v=1" as="image" type="image/jpeg" />
-    <link rel="preload" href="/home-desk-doodle.png?v=2" as="image" type="image/png" />
+    <link rel="preload" href="/toolbaricons/splash/splash-screen.png?v=splash-paper-1" as="image" type="image/png" />
+    <link rel="preload" href="/home-time-management.png?v=paper-2" as="image" type="image/png" />
+    <link rel="preload" href="/home-desk-doodle.png?v=paper-2" as="image" type="image/png" />
     <!-- 탭 아이콘: ico·png만 (svg는 Chrome 탭에서 외부 이미지 참조 시 빈 칸) -->
     <link rel="icon" href="/favicon.ico?v=doodle-calendar-1" sizes="any" />
     <link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png?v=doodle-calendar-1" />
@@ -174,21 +174,21 @@
         min-height: 100vh;
         min-height: -webkit-fill-available;
         min-height: 100dvh;
-        background-color: #fff;
+        background-color: #fafafa;
       }
       html.lp-splash-active {
         overflow: hidden;
         height: 100%;
-        background: #000;
+        background-color: #fafafa;
       }
       html.lp-splash-active body {
         overflow: hidden;
         height: 100%;
-        background: #000;
+        background-color: #fafafa;
       }
       #app {
         display: none;
-        background-color: #fff;
+        background-color: #fafafa;
       }
       /* 부팅 스플래시 — JS 번들 전 첫 페인트용(본문은 lp-app-loading.css와 동일) */
       #app-splash,
@@ -214,7 +214,15 @@
         box-sizing: border-box;
         overflow: hidden;
         isolation: isolate;
-        background: #fff;
+        background-color: #fafafa;
+        background-image:
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E"),
+          repeating-linear-gradient(
+            -12deg,
+            transparent 0 10px,
+            rgba(0, 0, 0, 0.008) 10px 11px
+          );
+        background-size: 180px 180px, auto;
         color: #000000;
         -webkit-tap-highlight-color: transparent;
         transition: opacity 0.38s ease;
@@ -261,7 +269,7 @@
         padding: max(1.5rem, env(safe-area-inset-top, 0)) 1.5rem
           max(2rem, env(safe-area-inset-bottom, 0));
         box-sizing: border-box;
-        background: #fff;
+        background: #fafafa;
         color: #000000;
         font-family: inherit;
         text-align: center;
@@ -298,7 +306,7 @@
       }
       #lp-boot-fallback .lp-boot-retry-btn {
         background: #000000;
-        color: #fff;
+        color: #fafafa;
       }
     </style>
     <script>
@@ -435,7 +443,7 @@
           font-family: inherit;
           line-height: 1.65;
           color: #1d1d1f;
-          background: #fff;
+          background: #fafafa;
         "
       >
         <h1 style="font-size: 1.35rem; margin: 0 0 0.75rem">Doodle</h1>
@@ -457,7 +465,7 @@
     >
       <img
         class="lp-unified-loading__screen-img"
-        src="/toolbaricons/splash/splash-screen.png?v=splash-doodle-1"
+        src="/toolbaricons/splash/splash-screen.png?v=splash-paper-1"
         alt=""
         width="1046"
         height="1609"

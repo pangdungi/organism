@@ -129,7 +129,7 @@ body.lp-pwa-install-modal-open {
 .lp-pwa-install-btn--primary {
   border: none;
   background: #000000;
-  color: #fff;
+  color: #fafafa;
 }
 
 .lp-pwa-install-btn--ghost {
@@ -140,7 +140,7 @@ body.lp-pwa-install-modal-open {
 
 .idea-pwa-install-btn {
   border: 1px solid rgba(0, 0, 0, 0.35);
-  background: #fff;
+  background: #fafafa;
   color: #000000;
   border-radius: 0.5rem;
   min-height: 2.125rem;

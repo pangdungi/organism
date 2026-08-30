@@ -144,12 +144,12 @@ function snapSettingsColorMaps(settings) {
 /** rgba 배경에 맞는 명도 대비용 글자색(프리셋 톤용) */
 function pillTextColorForRgbaBg(rgbaStr) {
   const m = rgbaStr?.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
-  if (!m) return "#ffffff";
+  if (!m) return "#fafafa";
   const r = parseInt(m[1], 10) / 255;
   const g = parseInt(m[2], 10) / 255;
   const b = parseInt(m[3], 10) / 255;
   const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  return lum > 0.62 ? "#000000" : "#ffffff";
+  return lum > 0.62 ? "#000000" : "#fafafa";
 }
 
 /** 할일 분류 칩 등 프리셋 rgba 배경 위 글자색 */
@@ -573,9 +573,9 @@ export function applyTimeCategoryColors() {
   const prodRgb = rgbaToRgb(productive);
   const nonprodRgb = rgbaToRgb(nonproductive);
   styleEl.textContent = `
-    .time-tag-pill.prod-pink { background: ${productive} !important; color: #fff !important; }
-    .time-tag-pill.prod-blue { background: ${nonproductive} !important; color: #fff !important; }
-    .time-tag-pill.prod-green { background: ${other} !important; color: #fff !important; }
+    .time-tag-pill.prod-pink { background: ${productive} !important; color: #fafafa !important; }
+    .time-tag-pill.prod-blue { background: ${nonproductive} !important; color: #fafafa !important; }
+    .time-tag-pill.prod-green { background: ${other} !important; color: #fafafa !important; }
     .time-tag-pill.prod-empty,
     .time-tag-pill.cat-empty { background: var(--ui-surface-alt) !important; color: var(--text-muted) !important; }
     .time-task-prod-bar--productive { background: ${productive} !important; }

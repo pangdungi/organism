@@ -28,8 +28,8 @@
 
 /** 앱 전체 배경 — index.html 의 html·body 에 `class="lp-app-bg"` (항상 흰색) */
 .lp-app-bg {
-  --lp-shell-chrome-bg: #ffffff;
-  background-color: #fff;
+  --lp-shell-chrome-bg: #fafafa;
+  background-color: #fafafa;
   background-image: none;
 }
 
@@ -113,7 +113,7 @@ html.lp-auth-gate-open .login-page.login-page--gate label {
   min-height: 100vh;
   min-height: 100dvh;
   width: 100%;
-  background-color: #fff;
+  background-color: #fafafa;
 }
 
 /* 로그인 후 메인 셸: 상단 세이프는 .app-page 한 곳만 — #signin-page padding 은 hairline 유발 */
@@ -134,11 +134,35 @@ html.lp-auth-gate-open .login-page.login-page--gate label {
   overscroll-behavior: contain;
   border: none;
   box-shadow: none;
-  background-color: #fff;
+  background-color: #fafafa;
 }
 
 #signin-page:has(.app-home-menu-launcher) {
   overscroll-behavior: none;
+}
+
+/* 홈·시간기록 — 새하얀 #fff 대신 종이 질감 */
+#signin-page:has(.app-home-menu-launcher),
+#signin-page:has(.app-home-menu-launcher) .app-page,
+#signin-page:has(.app-home-menu-launcher) #app-screen,
+#signin-page:has(.app-home-menu-launcher) #app-screen-inner,
+#signin-page:has(.time-ledger-view),
+#signin-page:has(.time-ledger-view) .app-page,
+#signin-page:has(.time-ledger-view) #app-screen,
+#signin-page:has(.time-ledger-view) #app-screen-inner,
+#signin-page:has([data-legacy~="time-ledger-view"]),
+#signin-page:has([data-legacy~="time-ledger-view"]) .app-page,
+#signin-page:has([data-legacy~="time-ledger-view"]) #app-screen,
+#signin-page:has([data-legacy~="time-ledger-view"]) #app-screen-inner {
+  background-color: #fafafa;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E"),
+    repeating-linear-gradient(
+      -12deg,
+      transparent 0 10px,
+      rgba(0, 0, 0, 0.008) 10px 11px
+    );
+  background-size: 180px 180px, auto;
 }
 
 /**
@@ -151,13 +175,13 @@ html.lp-auth-gate-open .login-page.login-page--gate label {
     min-height: -webkit-fill-available;
     min-height: 100lvh;
     height: -webkit-fill-available;
-    background-color: #fff;
+    background-color: #fafafa;
   }
 
   #app {
     min-height: -webkit-fill-available;
     min-height: 100lvh;
-    background-color: #fff;
+    background-color: #fafafa;
   }
 
   #signin-page {
@@ -215,7 +239,7 @@ html.lp-auth-gate-open .login-page.login-page--gate label {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background-color: #fff;
+  background-color: #fafafa;
 }
 
 /* --- App.js: .app-page > #app-screen-inner --- */
@@ -229,7 +253,7 @@ html.lp-auth-gate-open .login-page.login-page--gate label {
   overflow: hidden;
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
-  background-color: #fff;
+  background-color: #fafafa;
   border: none;
   box-shadow: none;
 }
@@ -279,7 +303,7 @@ html.lp-auth-gate-open .login-page.login-page--gate label {
   padding-bottom: 0;
   padding-left: var(--lp-safe-left);
   padding-right: var(--lp-safe-right);
-  background-color: #fff;
+  background-color: #fafafa;
 }
 
 .app-main > .app-tab-panel > :first-child {
@@ -345,7 +369,7 @@ html.lp-auth-gate-open .login-page.login-page--gate label {
   padding-right: calc(0.75rem + var(--lp-safe-right));
   padding-bottom: calc(0.35rem + var(--lp-safe-bottom));
   border-top: 1px solid #e5e5e5;
-  background: #fff;
+  background: #fafafa;
   box-sizing: border-box;
 }
 
@@ -443,7 +467,7 @@ html.lp-task-log-modal-open #signin-page {
   margin: 0;
   border-radius: 9999px;
   background: var(--idea-navy, #000000);
-  color: #fff;
+  color: #fafafa;
 }
 .app-footer-actions .lp-app-footer-add-slot .app-footer-icon-btn[data-lp-app-footer-add][aria-pressed="true"],
 .app-footer-actions [data-lp-app-footer-add-slot] .app-footer-icon-btn[data-lp-app-footer-add][aria-pressed="true"],
@@ -451,7 +475,7 @@ html.lp-task-log-modal-open #signin-page {
   [data-lp-app-footer-add-slot]
   .app-footer-icon-btn[data-lp-app-footer-add][aria-pressed="true"] {
   background: var(--idea-navy, #000000);
-  color: #fff;
+  color: #fafafa;
 }
 .app-footer-actions .lp-app-footer-add-slot .app-footer-icon-btn[data-lp-app-footer-add] svg,
 .app-footer-actions [data-lp-app-footer-add-slot] .app-footer-icon-btn[data-lp-app-footer-add] svg,
@@ -459,7 +483,7 @@ html.lp-task-log-modal-open #signin-page {
   [data-lp-app-footer-add-slot]
   .app-footer-icon-btn[data-lp-app-footer-add]
   svg {
-  color: #fff;
+  color: #fafafa;
 }
 .app-footer-actions .lp-app-footer-add-slot .app-footer-icon-btn[data-lp-app-footer-add] img,
 .app-footer-actions [data-lp-app-footer-add-slot] .app-footer-icon-btn[data-lp-app-footer-add] img,
@@ -470,11 +494,13 @@ html.lp-task-log-modal-open #signin-page {
   filter: brightness(0) invert(1);
 }
 
-/* 메인(오늘) 뷰 — 흰 배경 + 메뉴 그리드 */
-.app-main:has(.app-home-menu-launcher) {
+/* 메인(오늘)·시간기록 — 종이 질감은 셸에서 이어받음 */
+.app-main:has(.app-home-menu-launcher),
+.app-main:has(.time-ledger-view),
+.app-main:has([data-legacy~="time-ledger-view"]) {
   --home-menu-grid-gap: clamp(0.35rem, 1.6vw, 0.72rem);
   --home-menu-logo-h: clamp(2.6rem, 9vw, 3.6rem);
-  background: #fff;
+  background: transparent;
   overflow: hidden;
 }
 
@@ -487,7 +513,7 @@ html.lp-task-log-modal-open #signin-page {
   isolation: isolate;
   overflow: hidden;
   padding: 0;
-  background: #fff;
+  background: transparent;
 }
 
 .app-main:has(.app-home-menu-launcher) .app-tab-panel > .app-home-menu-launcher {
@@ -616,6 +642,7 @@ html.lp-task-log-modal-open #signin-page {
   transform: translateX(1.4rem);
   object-fit: contain;
   object-position: center bottom;
+  background: transparent;
   pointer-events: none;
   user-select: none;
   -webkit-user-drag: none;
@@ -662,7 +689,7 @@ html.lp-task-log-modal-open #signin-page {
   height: 2.25rem;
   box-sizing: border-box;
   overflow: hidden;
-  background: #fff;
+  background: #fafafa;
   border: 1px solid #e2e8f0;
   border-radius: 50%;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
@@ -874,7 +901,7 @@ html.lp-task-log-modal-open #signin-page {
   font: inherit;
   text-align: center;
   color: inherit;
-  background: #fff;
+  background: #fafafa;
   border: 1.5px solid #d8dee6;
   border-radius: 1rem;
   box-shadow: none;
@@ -948,7 +975,7 @@ html.lp-task-log-modal-open #signin-page {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  background: #fff;
+  background: #fafafa;
   border: none;
   border-radius: 0;
 }
@@ -1166,18 +1193,18 @@ table {
 
 /* -------------------------------------------------------------------------- */
 /* 나의 계정 — 미니멀 · 하늘색 톤 (Idea.js / .idea-view) */
-/* 팔레트: Cloud #f5f5f5 · Sky Mist #dddddd · Bubble #c4c4c4 · Ocean #000000 · Navy #000000 · Blue text #444444 */
+/* 팔레트: Cloud #fafafa · Sky Mist #dddddd · Bubble #c4c4c4 · Ocean #000000 · Navy #000000 · Blue text #444444 */
 /* -------------------------------------------------------------------------- */
 
 .idea-view.app-tab-panel-content {
   /* 토큰 — 이 블록 안에서만 사용 */
-  --idea-cloud: #f5f5f5;
+  --idea-cloud: #fafafa;
   --idea-navy: #000000;
   --idea-blue: #444444;
   --idea-mist: #dddddd;
   --idea-bubble: #c4c4c4;
   --idea-ocean: #000000;
-  --idea-surface: #fff;
+  --idea-surface: #fafafa;
   --idea-border: rgba(0, 0, 0, 0.16);
   --idea-border-soft: rgba(0, 0, 0, 0.1);
   --idea-shadow: rgba(0, 0, 0, 0.06);
@@ -1187,7 +1214,7 @@ table {
   min-height: 0;
   min-width: 0;
   flex: 1 1 auto;
-  background: #fff;
+  background: #fafafa;
   color: var(--idea-navy);
   font-family: inherit;
 }
@@ -1196,7 +1223,7 @@ table {
   flex-shrink: 0;
   padding: 0.65rem 1rem 0.85rem;
   border-bottom: none;
-  background: #fff;
+  background: #fafafa;
 }
 
 .idea-view .dream-view-label {
@@ -1265,7 +1292,7 @@ table {
   flex-direction: column;
   width: min(36rem, 92vw);
   max-height: min(88vh, 52rem);
-  background: #fff;
+  background: #fafafa;
   border-radius: 16px;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
   overflow: hidden;
@@ -1477,7 +1504,7 @@ table {
   font: inherit;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #fff;
+  color: #fafafa;
   text-decoration: none;
   background: var(--idea-navy);
   border: 1px solid var(--idea-navy);
@@ -1621,7 +1648,7 @@ table {
   font: inherit;
   text-align: left;
   color: var(--idea-navy);
-  background: #fff;
+  background: #fafafa;
   border: 1px solid rgba(30, 77, 123, 0.18);
   border-radius: 8px;
   cursor: pointer;
@@ -1662,7 +1689,7 @@ table {
 .idea-ui-font-dropdown-panel {
   box-sizing: border-box;
   overflow: auto;
-  background: #fff;
+  background: #fafafa;
   border: 1px solid rgba(30, 77, 123, 0.16);
   border-radius: 8px;
   box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
@@ -1678,7 +1705,7 @@ table {
   padding: 0.62rem 0.75rem;
   border: none;
   border-bottom: 1px solid rgba(30, 77, 123, 0.08);
-  background: #fff;
+  background: #fafafa;
   text-align: left;
   cursor: pointer;
   font-size: 1.05rem;
@@ -1755,13 +1782,13 @@ table {
 
 /* 회원 탈퇴 모달 — body에 붙으므로 토큰을 이 루트에도 둠 */
 .idea-delete-account-modal {
-  --idea-cloud: #f5f5f5;
+  --idea-cloud: #fafafa;
   --idea-navy: #000000;
   --idea-blue: #444444;
   --idea-mist: #dddddd;
   --idea-bubble: #c4c4c4;
   --idea-ocean: #000000;
-  --idea-surface: #fff;
+  --idea-surface: #fafafa;
   --idea-border: rgba(0, 0, 0, 0.16);
   --idea-border-soft: rgba(0, 0, 0, 0.1);
 
@@ -1905,7 +1932,7 @@ table {
   flex-direction: column;
   min-height: 0;
   flex: 1 1 auto;
-  background: #fff;
+  background: #fafafa;
   color: var(--text-ink);
   font-family: inherit;
 }
@@ -1914,7 +1941,7 @@ table {
   flex-shrink: 0;
   padding: 0.65rem 1rem 0.85rem;
   border-bottom: 1px solid rgba(26, 45, 69, 0.08);
-  background: #fff;
+  background: #fafafa;
 }
 
 .admin-view .admin-view-title {
@@ -1961,7 +1988,7 @@ table {
   font-size: 0.8125rem;
   font-weight: 500;
   color: #444444;
-  background: #fff;
+  background: #fafafa;
   border: 1px solid rgba(26, 45, 69, 0.16);
   border-radius: 999px;
   cursor: pointer;
@@ -1969,7 +1996,7 @@ table {
 }
 
 .admin-view .admin-section-nav-btn.is-active {
-  color: #fff;
+  color: #fafafa;
   background: #000000;
   border-color: #000000;
 }
@@ -2017,7 +2044,7 @@ table {
   font-size: 0.8125rem;
   font-weight: 500;
   color: #000000;
-  background: #fff;
+  background: #fafafa;
   border: 1px solid rgba(26, 45, 69, 0.18);
   border-radius: 8px;
   cursor: pointer;
@@ -2040,7 +2067,7 @@ table {
   -webkit-overflow-scrolling: touch;
   border: 1px solid rgba(26, 45, 69, 0.1);
   border-radius: 10px;
-  background: #fff;
+  background: #fafafa;
   box-shadow: 0 1px 0 rgba(26, 34, 24, 0.04);
 }
 
@@ -2096,7 +2123,7 @@ table {
   font: inherit;
   font-size: 0.76rem;
   color: var(--text-ink);
-  background: #fff;
+  background: #fafafa;
   border: 1px solid rgba(26, 45, 69, 0.14);
   border-radius: 6px;
 }
@@ -2130,7 +2157,7 @@ table {
 }
 
 .admin-view .admin-subs-btn--save {
-  color: #fff;
+  color: #fafafa;
   background: #000000;
   border: none;
 }
@@ -2170,7 +2197,7 @@ table {
   padding-bottom: var(--lp-safe-bottom);
   font-family: "LP Home Menu Fromsol", sans-serif !important;
   color: var(--auth-ink);
-  background: #fff;
+  background: #fafafa;
 }
 
 @media (max-width: 64rem) and (pointer: coarse) {
@@ -2329,7 +2356,7 @@ table {
   left: var(--ag-pad);
   width: calc((100% - 2 * var(--ag-pad)) / 2);
   border-radius: 10px;
-  background: #fff;
+  background: #fafafa;
   box-shadow:
     0 2px 8px rgba(0, 0, 0, 0.1),
     0 1px 2px rgba(0, 0, 0, 0.06);
@@ -2434,7 +2461,7 @@ table {
 .login-input--auth:-webkit-autofill:active {
   -webkit-text-fill-color: #000000 !important;
   caret-color: #000000;
-  box-shadow: 0 0 0 1000px #ffffff inset !important;
+  box-shadow: 0 0 0 1000px #fafafa inset !important;
   transition: background-color 5000s ease-in-out 0s;
 }
 
@@ -2499,7 +2526,7 @@ table {
   font-size: 0.9375rem;
   font-weight: 600;
   letter-spacing: -0.02em;
-  color: #fff;
+  color: #fafafa;
   background: var(--auth-navy);
   border: none;
   border-radius: 12px;
@@ -2620,7 +2647,7 @@ table {
   width: 100%;
   max-width: var(--lp-modal-max-sm);
   padding: 1.35rem 1.25rem 1.15rem;
-  background: #fff;
+  background: #fafafa;
   border-radius: 18px;
   border: 1px solid rgba(0, 0, 0, 0.14);
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.2);
@@ -2663,7 +2690,7 @@ table {
   font-family: inherit;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #fff;
+  color: #fafafa;
   background: #000000;
   border: none;
   border-radius: 10px;
@@ -2750,7 +2777,7 @@ body.auth-pw-modal-open {
   max-width: var(--lp-modal-max-sm);
   max-height: min(90vh, 36rem);
   overflow: auto;
-  background: #fff;
+  background: #fafafa;
   border-radius: 18px;
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.18);
   box-sizing: border-box;
