@@ -47,6 +47,7 @@ import {
   preloadCalendarMonthFont,
 } from "./utils/appUiFont.js";
 import { prefetchCriticalAppIconAssets } from "./utils/appIconPrefetch.js";
+import { startHomeMenuAssetWarm } from "./utils/homeMenuPaintReady.js";
 import { warmDefaultAndInUsePickerIcons } from "./utils/pickerIconCacheWarm.js";
 import { setAppSplashMessage } from "./utils/lpAppLoading.js";
 import {
@@ -521,6 +522,7 @@ function closeAuthPwRecoveryModal() {
 }
 
 function init() {
+  startHomeMenuAssetWarm();
   const imwebResult = readImwebConnectResult();
   if (imwebResult) {
     clearImwebConnectQueryFromUrl();

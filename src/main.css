@@ -526,6 +526,10 @@ html.lp-task-log-modal-open #signin-page {
   background: transparent;
 }
 
+.app-home-menu-launcher--await-paint {
+  visibility: hidden;
+}
+
 .app-home-menu-launcher-brand {
   display: flex;
   flex-direction: column;

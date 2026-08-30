@@ -1,4 +1,9 @@
 import { applyStaticAppIconImg } from "./utils/staticAppIconImg.js";
+import {
+  HOME_DESK_DOODLE_SRC,
+  HOME_TIME_MANAGEMENT_SRC,
+  waitHomeMenuFirstPaintReady,
+} from "./utils/homeMenuPaintReady.js";
 import { withToolbarIconCacheVersion } from "./utils/toolbarIconUrl.js";
 import { signOut } from "./auth.js";
 import {
@@ -1150,13 +1155,18 @@ export async function mountApp(container) {
     if (homeMenuLauncherEl) {
       bindHomeMenuLauncherAdminBtn(homeMenuLauncherEl);
       void syncAdminMenuVisibility();
+      homeMenuLauncherEl.classList.remove("app-home-menu-launcher--await-paint");
       return homeMenuLauncherEl;
     }
 
     launcherAdminBtn = null;
 
     const root = document.createElement("div");
-    root.className = "app-home-menu-launcher";
+    const splash = document.getElementById("app-splash");
+    const splashUp = !!splash && !splash.hasAttribute("hidden");
+    root.className = splashUp
+      ? "app-home-menu-launcher app-home-menu-launcher--await-paint"
+      : "app-home-menu-launcher";
 
     const card = document.createElement("div");
     card.className = "app-home-menu-launcher-card";
@@ -1184,7 +1194,7 @@ export async function mountApp(container) {
     brand.className = "app-home-menu-launcher-brand";
     const logoImg = document.createElement("img");
     logoImg.className = "app-home-menu-launcher-hero";
-    logoImg.src = "/home-time-management.jpg?v=1";
+    logoImg.src = HOME_TIME_MANAGEMENT_SRC;
     logoImg.alt = "Time management";
     applyStaticAppIconImg(logoImg);
     const brandTitle = document.createElement("h1");
@@ -1209,7 +1219,7 @@ export async function mountApp(container) {
     });
     const deskImg = document.createElement("img");
     deskImg.className = "app-home-menu-launcher-desk";
-    deskImg.src = "/home-desk-doodle.png?v=2";
+    deskImg.src = HOME_DESK_DOODLE_SRC;
     deskImg.alt = "";
     deskImg.setAttribute("aria-hidden", "true");
     applyStaticAppIconImg(deskImg);
@@ -1513,11 +1523,12 @@ export async function mountApp(container) {
   }
   renderMain(main);
   /*
-   * 로컬 화면을 그린 뒤 바로 스플래시 해제.
+   * 홈 메뉴·책상 그림이 준비된 뒤에만 스플래시 해제.
    * 서버 pull은 뒤에서 이어가고, 끝나면 soft refresh로만 반영한다.
-   * (예전: pull 끝날 때까지 스플래시를 붙잡아 복귀·재실행 시 수 초 대기)
    */
-  finishAppBootReady();
+  void waitHomeMenuFirstPaintReady().then(() => {
+    finishAppBootReady();
+  });
   void (async () => {
     const bootTabId = currentTabId;
     try {

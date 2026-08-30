@@ -37,6 +37,7 @@ export const LP_MAIN_CLASS = new Set([
   "app-home-menu-launcher-account-img",
   "app-home-menu-launcher-account-label",
   "app-home-menu-launcher-admin-fab",
+  "app-home-menu-launcher--await-paint",
   "app-home-menu-launcher-body",
   "app-home-menu-launcher-brand",
   "app-home-menu-launcher-brand-row",
