@@ -204,7 +204,15 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   max-height: min(92vh, 44rem);
   display: flex;
   flex-direction: column;
-  background: var(--lp-modal-surface);
+  background-color: #fafafa;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E"),
+    repeating-linear-gradient(
+      -12deg,
+      transparent 0 10px,
+      rgba(0, 0, 0, 0.008) 10px 11px
+    );
+  background-size: 180px 180px, auto;
   color: var(--lp-modal-navy);
   border-radius: var(--lp-modal-radius);
   box-shadow: 0 20px 50px rgba(21, 43, 69, 0.2);
@@ -591,7 +599,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   gap: 0.75rem;
   padding: 0.85rem 1rem;
   border-bottom: 1px solid var(--lp-modal-border);
-  background: linear-gradient(180deg, #fafafa 0%, #fafafa 100%);
+  background: transparent;
 }
 .time-task-setup-title,
 .todo-list-modal-title,
@@ -1312,7 +1320,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 .lp-modal-datetime-card,
 [data-legacy~="lp-modal-datetime-card"] {
   padding: 0.45rem 0.55rem;
-  background: #fafafa;
+  background: transparent;
   border: 1px solid var(--lp-modal-border);
   border-radius: 10px;
   margin-bottom: 0.65rem;
@@ -2113,7 +2121,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   gap: 0.5rem;
   padding: 0.75rem 1rem 1rem;
   border-top: 1px solid var(--lp-modal-border);
-  background: #fafafa;
+  background: transparent;
 }
 /* 과제 기록 — X·기록은 시간 피커 반투명 막(z-index 15)보다 위 */
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)

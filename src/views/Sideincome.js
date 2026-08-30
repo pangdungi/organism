@@ -69,8 +69,7 @@ import {
 } from "../utils/kpiGridScrollRestore.js";
 import {
   KPI_UI_SESSION_KEYS,
-  readKpiUiSession,
-  restoreKpiTabFromSession,
+  shouldSkipKpiMapSavedUiRefresh,
 } from "../utils/kpiViewUiSession.js";
 import { showKpiTodoAddModal } from "../utils/kpiTodoAddModal.js";
 import {
@@ -658,16 +657,9 @@ export function render(opts = {}) {
     container.innerHTML = sideincomeSplitPlaceholderHtml(message);
   }
 
-  const _sideincomeUiSession = readKpiUiSession(KPI_UI_SESSION_KEYS.sideincome);
   const _sideincomeInitData = loadSideincomeMap();
-  const _sideincomeRestored = restoreKpiTabFromSession(_sideincomeUiSession, {
-    categoryIds: _sideincomeInitData.paths || [],
-    kpis: _sideincomeInitData.kpis || [],
-    foreignKey: "pathId",
-  });
-  /* 목록 필터는 항상 진행중부터 (세션 복원하지 않음) */
-  kpiFilter = "active";
   /* 시급 상승 메뉴 진입은 항상 목표 목록 — KPI 화면은 목표 클릭 후에만 */
+  kpiFilter = "active";
   sideincomeViewScreen = "goals";
   activePathId = null;
   selectedKpiId = null;
@@ -1679,10 +1671,8 @@ export function render(opts = {}) {
 
   async function renderKpiHistory(opts = {}) {
     syncHabitTrackerLogs();
-    const { scrollTodoAfterMutation = false, target = historyWrap } = opts;
-    const scrollSnap = scrollTodoAfterMutation
-      ? captureKpiDetailScroll(target)
-      : null;
+    const { target = historyWrap } = opts;
+    const scrollSnap = captureKpiDetailScroll(target);
     target.innerHTML = "";
     if (!selectedKpiId) {
       if (target === historyWrap) historyWrap.hidden = true;
@@ -2225,9 +2215,7 @@ export function render(opts = {}) {
         clearCompleted: clearCompletedOpts,
       });
     }
-    if (scrollTodoAfterMutation) {
-      afterKpiTodoListMutationScroll(target, scrollSnap);
-    }
+    afterKpiTodoListMutationScroll(target, scrollSnap);
     syncAppFooterSideincomeKpiActions();
 
     if (KPI_DETAIL_LOGS_UI_ENABLED && panelLogSeg && kpiDetailLogsNeedCloudPull(kpi, storedLogs)) {
@@ -2814,8 +2802,13 @@ export function render(opts = {}) {
 
   const onMergedSync = (e) => {
     if (!el.isConnected) return;
-    /* push 시에는 화면 갱신 불필요 (로컬 변경을 서버에 올린 것이므로) */
-    if (e.detail?.fromPush) return;
+    /* 로컬 체크·저장은 이미 그 줄만 바꿈 — 통째 다시 그리면 스크롤이 맨 위로 감 */
+    if (shouldSkipKpiMapSavedUiRefresh(e.detail)) {
+      lastKpiMapPaintSig = readKpiMapLocalStorageSignature(
+        SIDEINCOME_KPI_MAP_STORAGE_KEY,
+      );
+      return;
+    }
     if (!e.detail?.fromServerMerge && !e.detail?.fromLocalWrite) return;
     syncSideincomeUiFromStoredMap();
   };

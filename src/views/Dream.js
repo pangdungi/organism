@@ -66,6 +66,7 @@ import {
   KPI_UI_SESSION_KEYS,
   readKpiUiSession,
   restoreKpiTabFromSession,
+  shouldSkipKpiMapSavedUiRefresh,
 } from "../utils/kpiViewUiSession.js";
 import { showKpiTodoAddModal } from "../utils/kpiTodoAddModal.js";
 import {
@@ -980,10 +981,8 @@ export function render() {
 
   async function renderKpiHistory(opts = {}) {
     syncHabitTrackerLogs();
-    const { scrollTodoAfterMutation = false, target = historyWrap } = opts;
-    const scrollSnap = scrollTodoAfterMutation
-      ? captureKpiDetailScroll(target)
-      : null;
+    const { target = historyWrap } = opts;
+    const scrollSnap = captureKpiDetailScroll(target);
     target.innerHTML = "";
     if (!selectedKpiId) {
       if (target === historyWrap) historyWrap.hidden = true;
@@ -1314,9 +1313,7 @@ export function render() {
         clearCompleted: clearCompletedOpts,
       });
     }
-    if (scrollTodoAfterMutation) {
-      afterKpiTodoListMutationScroll(target, scrollSnap);
-    }
+    afterKpiTodoListMutationScroll(target, scrollSnap);
     syncAppFooterDreamKpiActions();
 
     if (KPI_DETAIL_LOGS_UI_ENABLED && panelLogSeg && kpiDetailLogsNeedCloudPull(kpi, storedLogs)) {
@@ -1681,8 +1678,13 @@ export function render() {
 
   const onMergedSync = (e) => {
     if (!el.isConnected) return;
-    /* push 시에는 화면 갱신 불필요 (로컬 변경을 서버에 올린 것이므로) */
-    if (e.detail?.fromPush) return;
+    /* 로컬 체크·저장은 이미 그 줄만 바꿈 — 통째 다시 그리면 스크롤이 맨 위로 감 */
+    if (shouldSkipKpiMapSavedUiRefresh(e.detail)) {
+      lastKpiMapPaintSig = readKpiMapLocalStorageSignature(
+        DREAM_KPI_MAP_STORAGE_KEY,
+      );
+      return;
+    }
     if (!e.detail?.fromServerMerge && !e.detail?.fromLocalWrite) return;
     syncDreamUiFromStoredMap();
   };

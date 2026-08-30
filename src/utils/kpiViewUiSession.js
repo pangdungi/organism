@@ -47,6 +47,12 @@ export function clearAllKpiUiSessions() {
   Object.values(KPI_UI_SESSION_KEYS).forEach((k) => clearKpiUiSession(k));
 }
 
+/** 로컬에서 이미 반영한 저장(할일 체크 등)은 화면을 통째로 다시 그리지 않음 */
+export function shouldSkipKpiMapSavedUiRefresh(detail) {
+  if (!detail || typeof detail !== "object") return false;
+  return !!(detail.fromPush || detail.pushServer);
+}
+
 /**
  * @param {object|null} session
  * @param {{ categoryIds: Array<{ id: string }>, kpis: Array<Record<string, unknown>>, foreignKey: string }} opts

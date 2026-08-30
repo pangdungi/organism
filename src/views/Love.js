@@ -51,6 +51,7 @@ import {
   readKpiUiSession,
   writeKpiUiSession,
   restoreKpiTabFromSession,
+  shouldSkipKpiMapSavedUiRefresh,
 } from "../utils/kpiViewUiSession.js";
 import {
   deletedRefsKpiTodosLen,
@@ -886,10 +887,7 @@ export function render() {
 
   async function renderKpiHistory(opts = {}) {
     syncHabitTrackerLogs();
-    const { scrollTodoAfterMutation = false } = opts;
-    const scrollSnap = scrollTodoAfterMutation
-      ? captureKpiDetailScroll(historyWrap)
-      : null;
+    const scrollSnap = captureKpiDetailScroll(historyWrap);
     historyWrap.innerHTML = "";
     if (!selectedKpiId) {
       historyWrap.hidden = true;
@@ -1101,9 +1099,7 @@ export function render() {
 
       historyWrap.appendChild(todoList);
     }
-    if (scrollTodoAfterMutation) {
-      afterKpiTodoListMutationScroll(historyWrap, scrollSnap);
-    }
+    afterKpiTodoListMutationScroll(historyWrap, scrollSnap);
     syncAppFooterLoveKpiActions();
 
     if (loveLogPanelEl && kpiDetailLogsNeedCloudPull(kpi, storedLogs)) {
@@ -1341,8 +1337,8 @@ export function render() {
 
   const onMergedSync = (e) => {
     if (!el.isConnected) return;
-    /* push 시에는 화면 갱신 불필요 (로컬 변경을 서버에 올린 것이므로) */
-    if (e.detail?.fromPush) return;
+    /* 로컬 체크·저장은 이미 그 줄만 바꿈 — 통째 다시 그리면 스크롤이 맨 위로 감 */
+    if (shouldSkipKpiMapSavedUiRefresh(e.detail)) return;
     if (!e.detail?.fromServerMerge && !e.detail?.fromLocalWrite) return;
     const data = loadHappinessMap();
     if (!data.happinesses.some((h) => h.id === activeHappinessId)) {

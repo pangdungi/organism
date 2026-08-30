@@ -459,7 +459,7 @@ html.lp-auth-gate-open .login-page.login-page--gate label {
   padding-right: calc(0.75rem + var(--lp-safe-right));
   padding-bottom: calc(0.35rem + var(--lp-safe-bottom));
   border-top: 1px solid #e5e5e5;
-  background: #fafafa;
+  background: transparent;
   box-sizing: border-box;
 }
 

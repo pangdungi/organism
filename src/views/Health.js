@@ -66,9 +66,8 @@ import {
 } from "../utils/kpiGridScrollRestore.js";
 import {
   KPI_UI_SESSION_KEYS,
-  readKpiUiSession,
   writeKpiUiSession,
-  restoreKpiTabFromSession,
+  shouldSkipKpiMapSavedUiRefresh,
 } from "../utils/kpiViewUiSession.js";
 import { showKpiTodoAddModal } from "../utils/kpiTodoAddModal.js";
 import {
@@ -656,33 +655,11 @@ export function render() {
     })
     .catch(() => {});
 
-  const _healthUiSession = readKpiUiSession(KPI_UI_SESSION_KEYS.health);
   const _healthInitData = loadHealthMap();
-  const _healthRestored = restoreKpiTabFromSession(_healthUiSession, {
-    categoryIds: _healthInitData.healths || [],
-    kpis: _healthInitData.kpis || [],
-    foreignKey: "healthId",
-  });
-  /* 목록 필터는 항상 진행중부터 (세션 복원하지 않음) */
+  /* 건강 메뉴 진입은 항상 목록 — 상세는 카드 클릭 후에만 */
   kpiFilter = "active";
-  const _sessScreen = _healthUiSession?.healthViewScreen;
-  const _sessKpiId =
-    _healthUiSession?.selectedKpiId != null
-      ? String(_healthUiSession.selectedKpiId)
-      : null;
-  const _sessKpiExists =
-    !!_sessKpiId &&
-    (_healthInitData.kpis || []).some((k) => String(k.id) === _sessKpiId);
-  if (
-    (_sessScreen === "kpiDetail" || _sessScreen === "kpis") &&
-    _sessKpiExists
-  ) {
-    healthViewScreen = "kpiDetail";
-    selectedKpiId = _sessKpiId;
-  } else {
-    healthViewScreen = "main";
-    selectedKpiId = null;
-  }
+  selectedKpiId = null;
+  healthViewScreen = "main";
 
   function persistKpiUiState() {
     writeKpiUiSession(KPI_UI_SESSION_KEYS.health, {
@@ -1518,10 +1495,8 @@ export function render() {
 
   async function renderKpiHistory(opts = {}) {
     syncHabitTrackerLogs();
-    const { scrollTodoAfterMutation = false, target = historyWrap } = opts;
-    const scrollSnap = scrollTodoAfterMutation
-      ? captureKpiDetailScroll(target)
-      : null;
+    const { target = historyWrap } = opts;
+    const scrollSnap = captureKpiDetailScroll(target);
     target.innerHTML = "";
     if (!selectedKpiId) {
       if (target === historyWrap) historyWrap.hidden = true;
@@ -1944,9 +1919,7 @@ export function render() {
         clearCompleted: clearCompletedOpts,
       });
     }
-    if (scrollTodoAfterMutation) {
-      afterKpiTodoListMutationScroll(target, scrollSnap);
-    }
+    afterKpiTodoListMutationScroll(target, scrollSnap);
     syncAppFooterHealthKpiActions();
 
     if (KPI_DETAIL_LOGS_UI_ENABLED && panelLogSeg && kpiDetailLogsNeedCloudPull(kpi, storedLogs)) {
@@ -2478,8 +2451,14 @@ export function render() {
 
   const onMergedSync = (e) => {
     if (!el.isConnected) return;
-    /* push 시에는 화면 갱신 불필요 (로컬 변경을 서버에 올린 것이므로) */
-    if (e.detail?.fromPush) return;
+    /* 로컬 체크·저장은 이미 그 줄만 바꿈 — 통째 다시 그리면 스크롤이 맨 위로 감 */
+    if (shouldSkipKpiMapSavedUiRefresh(e.detail)) {
+      lastKpiMapPaintSig = readKpiMapLocalStorageSignature(
+        HEALTH_KPI_MAP_STORAGE_KEY,
+      );
+      lastHealthMainPaintSig = computeHealthMainPaintSig();
+      return;
+    }
     if (!e.detail?.fromServerMerge && !e.detail?.fromLocalWrite) return;
     scheduleSyncHealthUiFromStoredMap();
   };

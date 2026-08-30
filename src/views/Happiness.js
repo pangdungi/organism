@@ -126,8 +126,7 @@ import {
 } from "../utils/kpiTodoInputScroll.js";
 import {
   KPI_UI_SESSION_KEYS,
-  readKpiUiSession,
-  restoreKpiTabFromSession,
+  shouldSkipKpiMapSavedUiRefresh,
 } from "../utils/kpiViewUiSession.js";
 import { showKpiTodoAddModal } from "../utils/kpiTodoAddModal.js";
 import {
@@ -548,28 +547,11 @@ export function render() {
     container.innerHTML = kpiTwoPanePlaceholderHtml(message);
   }
 
-  const _happinessUiSession = readKpiUiSession(KPI_UI_SESSION_KEYS.happiness);
   const _happinessInitData = loadHappinessMap();
-  const _happinessRestored = restoreKpiTabFromSession(_happinessUiSession, {
-    categoryIds: [{ id: HAPPINESS_KPI_LIST_SCOPE_ID }],
-    kpis: _happinessInitData.kpis || [],
-    foreignKey: "happinessId",
-  });
-  /* 목록 필터는 항상 진행중부터 (세션 복원하지 않음) */
+  /* 행복 메뉴 진입은 항상 목록 — 상세는 카드 클릭 후에만 */
   kpiFilter = "active";
-  selectedKpiId = _happinessRestored.selectedKpiId;
-  if (
-    _happinessUiSession?.happinessViewScreen === "kpiDetail" &&
-    selectedKpiId &&
-    (_happinessInitData.kpis || []).some(
-      (k) => k.id === selectedKpiId && happinessKpiInTabScope(k),
-    )
-  ) {
-    happinessViewScreen = "kpiDetail";
-  } else {
-    selectedKpiId = null;
-    happinessViewScreen = "kpis";
-  }
+  selectedKpiId = null;
+  happinessViewScreen = "kpis";
 
   function persistKpiUiState() {
     try {
@@ -1289,10 +1271,8 @@ export function render() {
 
   async function renderKpiHistory(opts = {}) {
     syncHabitTrackerLogs();
-    const { scrollTodoAfterMutation = false, target = historyWrap } = opts;
-    const scrollSnap = scrollTodoAfterMutation
-      ? captureKpiDetailScroll(target)
-      : null;
+    const { target = historyWrap } = opts;
+    const scrollSnap = captureKpiDetailScroll(target);
     target.innerHTML = "";
     if (!selectedKpiId) {
       if (target === historyWrap) historyWrap.hidden = true;
@@ -1863,9 +1843,7 @@ export function render() {
         clearCompleted: clearCompletedOpts,
       });
     }
-    if (scrollTodoAfterMutation) {
-      afterKpiTodoListMutationScroll(target, scrollSnap);
-    }
+    afterKpiTodoListMutationScroll(target, scrollSnap);
     syncAppFooterHappinessKpiActions();
 
     if (KPI_DETAIL_LOGS_UI_ENABLED && panelLogSeg && kpiDetailLogsNeedCloudPull(kpi, storedLogs)) {
@@ -1954,8 +1932,14 @@ export function render() {
 
   const onMergedSync = (e) => {
     if (!el.isConnected) return;
-    /* push 시에는 화면 갱신 불필요 (로컬 변경을 서버에 올린 것이므로) */
-    if (e.detail?.fromPush) return;
+    /* 로컬 체크·저장은 이미 그 줄만 바꿈 — 통째 다시 그리면 스크롤이 맨 위로 감 */
+    if (shouldSkipKpiMapSavedUiRefresh(e.detail)) {
+      lastKpiMapPaintSig = readKpiMapLocalStorageSignature(
+        HAPPINESS_KPI_MAP_STORAGE_KEY,
+      );
+      lastHappinessKpiListPaintSig = computeHappinessKpiListPaintSig();
+      return;
+    }
     if (!e.detail?.fromServerMerge && !e.detail?.fromLocalWrite) return;
     syncHappinessUiFromStoredMap();
   };

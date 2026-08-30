@@ -120,11 +120,18 @@ export function captureKpiDetailScroll(fromEl) {
     }
     node = node.parentElement;
   }
+  let windowTop = 0;
+  try {
+    windowTop = window.scrollY || document.documentElement.scrollTop || 0;
+  } catch (_) {
+    windowTop = 0;
+  }
   return {
     el,
     top: el ? el.scrollTop : 0,
     listTops,
     pageTop: page ? page.scrollTop : 0,
+    windowTop,
   };
 }
 
@@ -167,6 +174,12 @@ export function restoreKpiDetailScroll(snapshot, afterRoot) {
     if (pageTop > 0) {
       const main = document.querySelector(".app-main");
       if (main instanceof HTMLElement) main.scrollTop = pageTop;
+    }
+    if (typeof snapshot.windowTop === "number") {
+      const wt = Math.max(0, Math.round(Number(snapshot.windowTop) || 0));
+      try {
+        window.scrollTo(0, wt);
+      } catch (_) {}
     }
   };
   apply();
