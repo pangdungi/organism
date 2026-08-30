@@ -1433,12 +1433,8 @@
   gap: 0.4rem;
   padding: 0.7rem 0.75rem 0.65rem;
   border-radius: 0.85rem;
-  background: linear-gradient(
-    165deg,
-    rgba(30, 77, 123, 0.06),
-    rgba(248, 250, 252, 0.98)
-  );
-  border: 1px solid rgba(30, 77, 123, 0.1);
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .lp-tr2-day-hero-value-title {

@@ -4201,7 +4201,7 @@ function mountHappinessRoutineSection(scrollWrap, range, opts = {}) {
   scrollWrap.appendChild(sec);
 }
 
-/** 생산·비생산 대화 — 종류(비생산만)·말 점검 집계 */
+/** 생산·비생산 대화 — 종류·말 점검 집계 */
 function buildConversationReportSnapshot(rows) {
   /** @type {Map<string, { label: string, count: number, minutes: number }>} */
   const typeMap = new Map();
@@ -4235,8 +4235,7 @@ function buildConversationReportSnapshot(rows) {
       types: parsed.types || [],
       speechChecks: parsed.speechChecks || [],
     });
-    /* 대화 종류는 비생산적 대화 + 실제 고른 종류만 */
-    if (unprod && parsed.types.length) {
+    if (parsed.types.length) {
       const typeShare = mins / parsed.types.length;
       for (const label of parsed.types) {
         const prev = typeMap.get(label) || { label, count: 0, minutes: 0 };
@@ -4305,7 +4304,7 @@ function renderConversationDayNarrative(snap) {
   summary.textContent = `${bits.join(". ")}.`;
   wrap.appendChild(summary);
 
-  if (snap.unproductiveCount > 0) {
+  if (snap.totalCount > 0) {
     const typeP = document.createElement("p");
     typeP.className = "lp-tr2-conv-report-p";
     if (snap.typeTags.length) {
@@ -4313,10 +4312,9 @@ function renderConversationDayNarrative(snap) {
         (t) =>
           `「${t.label}」 ${formatIntegerMinutesDurationKo(t.minutes)}(${t.count}회)`,
       );
-      typeP.textContent = `비생산적 대화 종류: ${parts.join(", ")}.`;
+      typeP.textContent = `대화 종류: ${parts.join(", ")}.`;
     } else {
-      typeP.textContent =
-        "비생산적 대화가 있었으나, 대화 종류는 고르지 않았습니다.";
+      typeP.textContent = "대화 종류는 고르지 않았습니다.";
     }
     wrap.appendChild(typeP);
   }
@@ -4385,7 +4383,7 @@ function mountConversationReportSection(scrollWrap, range, rows) {
     "대화",
     isDay
       ? "이날 대화 · 생산/비생산 · 말 점검"
-      : "생산/비생산 · 비생산 대화 종류 · 말 점검",
+      : "생산/비생산 · 대화 종류 · 말 점검",
   );
   if (snap.totalMinutes <= 0) {
     const empty = document.createElement("p");
@@ -4428,14 +4426,14 @@ function mountConversationReportSection(scrollWrap, range, rows) {
   sec.appendChild(hero);
 
   const typeList = renderConversationPeriodList(
-    "비생산적 대화 종류",
+    "대화 종류",
     snap.typeTags,
   );
   if (typeList) sec.appendChild(typeList);
-  else if (snap.unproductiveCount > 0) {
+  else if (snap.totalCount > 0) {
     const note = document.createElement("p");
     note.className = "lp-tr2-chart-note";
-    note.textContent = "비생산적 대화 종류를 고른 기록이 없습니다.";
+    note.textContent = "대화 종류를 고른 기록이 없습니다.";
     sec.appendChild(note);
   }
 

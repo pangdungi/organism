@@ -323,6 +323,7 @@ export const CONVERSATION_TYPE_OPTIONS = [
   "험담",
   "억측",
   "허언",
+  "기타",
 ];
 /** @deprecated CONVERSATION_TYPE_OPTIONS 사용 */
 export const UNPRODUCTIVE_CONVERSATION_TYPE_OPTIONS = CONVERSATION_TYPE_OPTIONS;
@@ -512,14 +513,14 @@ export function isUnproductiveConversationTaskName(name) {
   );
 }
 
-/** 콘텐츠·위생·외모·비생산적 대화 종류 — 칩 UI (생산적 대화는 종류 칩 없음) */
+/** 콘텐츠·위생·외모·생산·비생산 대화 종류 — 칩 UI */
 export function taskUsesLedgerChipDetail(name) {
-  return isChipDetailTaskName(name) || isUnproductiveConversationTaskName(name);
+  return isChipDetailTaskName(name) || isConversationDetailTaskName(name);
 }
 
 /** @param {string} taskName */
 export function ledgerChipDetailOptionsForTask(taskName) {
-  if (isUnproductiveConversationTaskName(taskName)) {
+  if (isConversationDetailTaskName(taskName)) {
     return CONVERSATION_TYPE_OPTIONS;
   }
   const kind = ledgerDetailTaskKind(taskName);
@@ -546,7 +547,7 @@ export function resolveChipDetailLabel(taskName, value) {
 
 /** @param {string} taskName */
 export function ledgerChipDetailSectionLabel(taskName) {
-  if (isUnproductiveConversationTaskName(taskName)) return "대화 종류";
+  if (isConversationDetailTaskName(taskName)) return "대화 종류";
   const kind = ledgerDetailTaskKind(taskName);
   if (kind === "content") return "콘텐츠 종류";
   if (kind === "hygiene") return "개인위생";

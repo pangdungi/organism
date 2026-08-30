@@ -8639,13 +8639,12 @@ export function render(opts = {}) {
     syncTaskLogSpeechCheckList();
   }
 
-  /** 비생산 대화: 평가 → 대화 종류 → 말 점검 / 생산 대화: 평가 → 말 점검 */
+  /** 생산·비생산 대화: 평가 → 대화 종류 → 말 점검 */
   function syncTaskLogConversationSectionOrder() {
     if (!taskLogRatingSection) return;
     const tn = (taskLogTaskDropdown?._getValue?.() || "").trim();
     const isConv = TTC.isConversationDetailTaskName(tn);
-    const isUnprod = TTC.isUnproductiveConversationTaskName(tn);
-    if (isUnprod && taskLogContentTypeSection) {
+    if (isConv && taskLogContentTypeSection) {
       taskLogRatingSection.insertAdjacentElement(
         "afterend",
         taskLogContentTypeSection,
@@ -8657,12 +8656,6 @@ export function render(opts = {}) {
         );
       }
       return;
-    }
-    if (isConv && taskLogSpeechCheckSection) {
-      taskLogRatingSection.insertAdjacentElement(
-        "afterend",
-        taskLogSpeechCheckSection,
-      );
     }
     if (taskLogContentTypeSection) {
       taskLogRatingSection.insertAdjacentElement(
@@ -10166,7 +10159,7 @@ export function render(opts = {}) {
           TTC.ledgerChipDetailSectionLabel(tn) || "콘텐츠 종류";
         taskLogContentTypeLabel.textContent =
           TTC.isContentDetailTaskName(tn) ||
-          TTC.isUnproductiveConversationTaskName(tn)
+          TTC.isConversationDetailTaskName(tn)
             ? `${base} (필수)`
             : base;
       }
@@ -13422,7 +13415,7 @@ export function render(opts = {}) {
                 ? (taskLogMealDetailInput?.value || "").trim()
                 : "";
     if (
-      TTC.isUnproductiveConversationTaskName(taskName) &&
+      TTC.isConversationDetailTaskName(taskName) &&
       !TTC.parseConversationDetail(mealDetailForRow).types.length
     ) {
       /* 왼쪽「나중에」= 종류 없이 저장 · 오른쪽「확인」= 선택하러 돌아가기 */
