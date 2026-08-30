@@ -25,7 +25,7 @@
   padding: 0.55rem 0.85rem;
   padding-top: calc(0.55rem + env(safe-area-inset-top, 0px));
   background: #1e3a5f;
-  color: #f8fafc;
+  color: #fafafa;
   font-size: 0.8125rem;
   line-height: 1.45;
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.2);

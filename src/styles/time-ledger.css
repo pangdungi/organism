@@ -7,10 +7,61 @@
 
 /* [auto] data-legacy 병기 선택자 — scripts/time-js-main-only-classes.mjs */
 
-/* 동기화 중 — 목록 위에 살짝 어둡게 + 안내 (기록이 사라진 것처럼 오해 방지) */
+/* 타임라인·타임박스·레포트 — 종이 질감을 뷰에 직접 (class 가 data-legacy 로만 있을 수 있음) */
+.time-ledger-view,
+[data-legacy~="time-ledger-view"],
+.time-ledger-view .time-ledger-usage-sheet,
+[data-legacy~="time-ledger-view"] .time-ledger-usage-sheet,
+[data-legacy~="time-ledger-view"] [data-legacy~="time-ledger-usage-sheet"],
+.time-ledger-view .time-ledger-timebox-view-shell,
+[data-legacy~="time-ledger-view"] .time-ledger-timebox-view-shell,
+.time-ledger-view .time-ledger-report-view-shell,
+[data-legacy~="time-ledger-view"] .time-ledger-report-view-shell {
+  --cal-surface: transparent;
+  --idea-surface: transparent;
+  background-color: #fafafa;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E"),
+    repeating-linear-gradient(
+      -12deg,
+      transparent 0 10px,
+      rgba(0, 0, 0, 0.008) 10px 11px
+    );
+  background-size: 180px 180px, auto;
+}
+
 .time-ledger-view,
 [data-legacy~="time-ledger-view"] {
   position: relative;
+}
+
+.time-ledger-view .calendar-1day-timeline-card,
+[data-legacy~="time-ledger-view"] .calendar-1day-timeline-card,
+.time-ledger-view .lp-tr2-section,
+[data-legacy~="time-ledger-view"] .lp-tr2-section,
+.time-ledger-view .time-view-content-wrap,
+[data-legacy~="time-ledger-view"] [data-legacy~="time-view-content-wrap"],
+.time-ledger-view .diary-tab5-ledger-log-wrap,
+[data-legacy~="time-ledger-view"] .diary-tab5-ledger-log-wrap,
+.time-ledger-view .diary-tr-consumption-top3-card,
+[data-legacy~="time-ledger-view"] .diary-tr-consumption-top3-card,
+.time-ledger-view .diary-budget-unplanned-card,
+[data-legacy~="time-ledger-view"] .diary-budget-unplanned-card,
+.time-ledger-view .diary-tr-invest-card,
+[data-legacy~="time-ledger-view"] .diary-tr-invest-card,
+.time-ledger-view .diary-tr-prod-bars-card,
+[data-legacy~="time-ledger-view"] .diary-tr-prod-bars-card,
+.time-ledger-view .diary-tr-ai-checkup-card,
+[data-legacy~="time-ledger-view"] .diary-tr-ai-checkup-card,
+.time-ledger-view .diary-tr-summary-card,
+[data-legacy~="time-ledger-view"] .diary-tr-summary-card,
+.time-ledger-view .diary-tr-donut-card,
+[data-legacy~="time-ledger-view"] .diary-tr-donut-card,
+.time-ledger-view .time-ledger-view-mode-bar-wrap,
+[data-legacy~="time-ledger-view"] .time-ledger-view-mode-bar-wrap {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none;
 }
 
 .time-ledger-view .time-ledger-sync-overlay,
@@ -41,7 +92,7 @@
   margin: 0;
   padding: 0.65rem 1.1rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.96);
+  background: rgba(250, 250, 250, 0.96);
   color: #1e293b;
   font-size: 0.875rem;
   font-weight: 600;
@@ -50,12 +101,12 @@
   box-shadow: 0 4px 18px rgba(15, 23, 42, 0.14);
 }
 
-/* 시간가계부 탭만: 본문 흰 배경 — 시간 사용내역만 표시 */
+/* 시간가계부 탭만: 본문 종이 질감은 셸에서 이어받음 — 시간 사용내역만 표시 */
 #signin-page
   .app-main:has(
     > .app-tab-panel > .app-tab-panel-content[data-legacy~="time-ledger-view"]
   ) {
-  background: #fff;
+  background: transparent;
   /* 본문 전체 스크롤 대신「시간 사용내역」목록만 내부 스크롤 */
   overflow: hidden;
 }
@@ -214,7 +265,7 @@
   font-size: clamp(1.85rem, 7.2vw, 2.45rem);
   font-weight: 800;
   letter-spacing: -0.05em;
-  color: #fff;
+  color: #fafafa;
   text-shadow: 0 2px 16px rgba(0, 35, 70, 0.38);
   font-variant-numeric: tabular-nums;
 }
@@ -347,7 +398,7 @@
   border: 1px solid rgba(255, 255, 255, 0.42);
   border-radius: 0.45rem;
   background: rgba(255, 255, 255, 0.14);
-  color: rgba(255, 255, 255, 0.96);
+  color: rgba(250, 250, 250, 0.96);
   font-size: 0.8125rem;
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -407,7 +458,7 @@
   display: flex;
   flex-direction: column;
   margin-top: 0;
-  background: #fff;
+  background: transparent;
   border-radius: 0;
   box-shadow: none;
   box-sizing: border-box;
@@ -653,9 +704,9 @@
   display: flex;
   justify-content: center;
   padding: 0.5rem 1rem 0.45rem;
-  border-bottom: 1px solid #fafafa;
+  border-bottom: 1px solid transparent;
   box-sizing: border-box;
-  background-color: #fff;
+  background-color: transparent;
 }
 
 /* 시간가계부 — 타임라인 / 타임박스 / 레포트 (3칸 슬라이딩 칩) */
@@ -773,7 +824,7 @@
 .lp-tr2-section {
   margin: 0;
   padding: var(--lp-tr2-section-pad);
-  background: #fff;
+  background: transparent;
   border-radius: 1rem;
   box-shadow: 0 2px 14px rgba(0, 0, 0, 0.07);
   box-sizing: border-box;
@@ -1011,7 +1062,7 @@
   width: 100%;
   padding: 0.45rem 0.15rem 0.25rem;
   border-radius: 0.75rem;
-  background: #fff;
+  background: transparent;
   border: 1px solid #eef2f7;
   box-sizing: border-box;
 }
@@ -1319,7 +1370,7 @@
   gap: 0.5rem;
   padding: 0.65rem 0.7rem 0.7rem;
   border-radius: 0.7rem;
-  background: #fff;
+  background: transparent;
   border: 1px solid #eef2f7;
   box-sizing: border-box;
 }
@@ -1892,7 +1943,7 @@
   margin-bottom: 0.55rem;
   padding: 0.55rem 0.65rem 0.55rem;
   border-radius: 0.6rem;
-  background: #ffffff;
+  background: transparent;
   border: 1px solid #f0e6d8;
   box-sizing: border-box;
 }
@@ -2422,7 +2473,7 @@
   height: 6.25rem;
   padding: 0 0.1rem;
   border-radius: 0.55rem;
-  background: #fafafa;
+  background: transparent;
   border: 1px solid #e2e8f0;
   box-sizing: border-box;
 }
@@ -2683,7 +2734,7 @@
 .lp-tr2-sleep-stat {
   padding: 0.4rem 0.45rem;
   border-radius: 0.5rem;
-  background: #fafafa;
+  background: transparent;
   min-width: 0;
 }
 
@@ -2732,7 +2783,7 @@
   padding: 0.28rem 0.55rem;
   border-radius: 999px;
   border: 1px solid #e2e8f0;
-  background: #f8fafc;
+  background: transparent;
   font-size: var(--lp-tr2-meta);
   font-weight: 600;
   color: #475569;
@@ -2890,7 +2941,7 @@
 .lp-tr2-move-day-bar-seg-label {
   font-size: var(--lp-tr2-meta);
   font-weight: 750;
-  color: #fff;
+  color: #fafafa;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.18);
@@ -2934,7 +2985,7 @@
     160deg,
     rgba(201, 132, 132, 0.08) 0%,
     rgba(248, 250, 252, 0.98) 55%,
-    #fff 100%
+    #fafafa 100%
   );
   border: 1px solid rgba(201, 132, 132, 0.18);
   box-sizing: border-box;
@@ -2983,7 +3034,7 @@
   flex-shrink: 0;
   font-size: var(--lp-tr2-caption);
   font-weight: 800;
-  color: #fff;
+  color: #fafafa;
   background: #c98484;
   line-height: 1;
 }
@@ -3139,8 +3190,8 @@
   letter-spacing: -0.02em;
   line-height: 1.25;
   color: var(--lp-emotion-chip, #475569);
-  background: color-mix(in srgb, var(--lp-emotion-chip, #64748b) 16%, #fff);
-  border: 1px solid color-mix(in srgb, var(--lp-emotion-chip, #64748b) 32%, #fff);
+  background: color-mix(in srgb, var(--lp-emotion-chip, #64748b) 16%, #fafafa);
+  border: 1px solid color-mix(in srgb, var(--lp-emotion-chip, #64748b) 32%, #fafafa);
 }
 
 .lp-tr2-emotion-day-item-emotion {
@@ -3176,7 +3227,7 @@
   border: 1px solid #e8edf2;
   border-radius: 0.55rem;
   overflow: hidden;
-  background: #fff;
+  background: transparent;
 }
 
 .lp-tr2-emotion-day-item-reflect-table th,
@@ -3242,7 +3293,7 @@
   border: 1px solid #e8edf2;
   border-radius: 0.65rem;
   overflow: hidden;
-  background: #fff;
+  background: transparent;
 }
 
 .lp-tr2-emotion-trigger-table-head,
@@ -3325,7 +3376,7 @@
   border: 1px solid #e8edf2;
   border-radius: 0.55rem;
   overflow: hidden;
-  background: #fff;
+  background: transparent;
 }
 
 .lp-tr2-emotion-report-table-head,
@@ -3377,7 +3428,7 @@
   padding: 0.55rem 0.65rem;
   border: 1px solid #e8edf2;
   border-radius: 0.55rem;
-  background: #fff;
+  background: transparent;
 }
 
 .lp-tr2-emotion-trigger-top-rank {
@@ -3423,7 +3474,7 @@
   padding: 0.65rem 0.75rem;
   border: 1px solid #e8edf2;
   border-radius: 0.55rem;
-  background: #fff;
+  background: transparent;
 }
 
 .lp-tr2-emotion-pattern-sentence-text {
@@ -3717,7 +3768,7 @@
   padding: 0.38rem 0.55rem;
   border: 1px solid #e0e0e0;
   border-radius: 0.55rem;
-  background: #fafafa;
+  background: transparent;
   min-width: 0;
 }
 
@@ -3839,7 +3890,7 @@
   padding: 0.75rem 0.8rem 0.85rem;
   border: 1px solid #e8edf2;
   border-radius: 0.75rem;
-  background: #ffffff;
+  background: transparent;
 }
 
 .lp-tr2-routine-day-card:first-of-type {
@@ -3912,7 +3963,7 @@
   padding: 0.5rem 0.55rem 0.55rem;
   border: 1px solid #e8edf2;
   border-radius: 0.5rem;
-  background: #fafbfc;
+  background: transparent;
 }
 
 .lp-tr2-routine-card-item-text {
@@ -4218,7 +4269,7 @@
   border: 1px solid #e5e5e5;
   border-radius: 0.55rem;
   overflow: hidden;
-  background: #fff;
+  background: transparent;
 }
 
 .lp-tr2-intake-panel--healthy {
@@ -4235,7 +4286,7 @@
 }
 
 .lp-tr2-intake-panel--unhealthy .lp-tr2-intake-panel-head {
-  background: #f6f8fb;
+  background: transparent;
   color: #6d8aad;
 }
 
@@ -4245,7 +4296,7 @@
   justify-content: space-between;
   gap: 0.35rem;
   padding: 0.3rem 0.45rem;
-  background: #fafafa;
+  background: transparent;
   border-bottom: 1px solid #f2f2f2;
   font-size: var(--lp-tr2-label);
   font-weight: 700;
@@ -4598,7 +4649,7 @@
   margin: 0 0 1rem;
   padding: 0.75rem 0.7rem 0.55rem;
   border-radius: 0.75rem;
-  background: #fff;
+  background: transparent;
   border: 1px solid #f0f0f0;
   box-sizing: border-box;
 }
@@ -4638,7 +4689,7 @@
     135deg,
     rgba(143, 168, 196, 0.14) 0%,
     rgba(248, 250, 252, 0.98) 55%,
-    #fff 100%
+    #fafafa 100%
   );
   border: 1px solid rgba(143, 168, 196, 0.22);
   overflow: hidden;
@@ -4895,7 +4946,7 @@
   align-items: baseline;
   gap: 0.55rem;
   padding: 0.55rem 0.05rem;
-  border-bottom: 1px solid #f8fafc;
+  border-bottom: 1px solid #fafafa;
 }
 
 .lp-tr2-habit-scoreboard .habit-tracker-today-goals-mark {
@@ -4949,7 +5000,7 @@
   margin-bottom: 0.55rem;
   padding: 0.5rem 0.6rem;
   border-radius: 0.55rem;
-  background: linear-gradient(135deg, #f5f5f5 0%, #fafafa 100%);
+  background: linear-gradient(135deg, #fafafa 0%, #fafafa 100%);
   border: 1px solid #dbe4ef;
 }
 
@@ -5209,7 +5260,7 @@
   border: 1px solid #e8edf2;
   border-radius: 0.65rem;
   overflow: hidden;
-  background: #fff;
+  background: transparent;
 }
 
 .lp-tr2-media-day-kind-section--conscious .lp-tr2-media-day-table {
@@ -5284,7 +5335,7 @@
   margin-bottom: 0.65rem;
   padding: 0.62rem 0.65rem 0.68rem;
   border-radius: 0.65rem;
-  background: #fff;
+  background: transparent;
   border: 1px solid #eef2f7;
 }
 
@@ -5294,7 +5345,7 @@
 }
 
 .lp-tr2-media-tag-block--unconscious {
-  background: #f6f8fb;
+  background: transparent;
   border-color: #d8e3ef;
 }
 
@@ -5342,7 +5393,7 @@
 .lp-tr2-media-day-block {
   padding: 0.55rem 0.6rem 0.62rem;
   border-radius: 0.65rem;
-  background: #fff;
+  background: transparent;
   border: 1px solid #eef2f7;
 }
 
@@ -5388,7 +5439,7 @@
 .lp-tr2-media-kind-panel {
   padding: 0.42rem 0.48rem;
   border-radius: 0.5rem;
-  background: #fafafa;
+  background: transparent;
   border: 1px solid #eef2f7;
   min-width: 0;
 }
@@ -5399,7 +5450,7 @@
 }
 
 .lp-tr2-media-kind-panel--unconscious {
-  background: #f6f8fb;
+  background: transparent;
   border-color: #d8e3ef;
 }
 
@@ -5491,7 +5542,7 @@
 .lp-tr2-media-compare-chart {
   padding: 0.45rem 0.35rem 0.15rem;
   border-radius: 0.55rem;
-  background: #fff;
+  background: transparent;
   border: 1px solid #eef2f7;
 }
 
@@ -5579,7 +5630,7 @@
   gap: 0.45rem 0.65rem;
   padding: 0.5rem 0.55rem;
   border-radius: 0.65rem;
-  background: #fafafa;
+  background: transparent;
 }
 
 .lp-tr2-journal-date {
@@ -5620,7 +5671,7 @@
 .lp-tr2-action-block {
   padding: 0.65rem 0.7rem;
   border-radius: 0.75rem;
-  background: #fafafa;
+  background: transparent;
   margin-bottom: 0.45rem;
 }
 
@@ -5661,7 +5712,7 @@
   margin: 0.7rem 0 0;
   padding: 0.6rem 0.7rem;
   border-radius: 0.65rem;
-  background: #f5f5f5;
+  background: transparent;
   border: 1px solid #dbe4ef;
   font-size: var(--lp-tr2-body);
   line-height: 1.5;
@@ -5672,7 +5723,7 @@
   margin-top: 0.85rem;
   padding: 0.75rem 0.55rem 0.8rem;
   border-radius: 0.75rem;
-  background: #fafafa;
+  background: transparent;
   border: 1px solid #eef2f7;
   box-sizing: border-box;
   width: 100%;
@@ -5818,7 +5869,7 @@
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
-  background: #fff;
+  background: transparent;
   border: 1px solid #e8edf3;
   border-radius: 0.55rem;
   display: flex;
@@ -5878,7 +5929,7 @@
 }
 
 .lp-tr2-day-rating-line-dot {
-  stroke: #fff;
+  stroke: #fafafa;
   stroke-width: 1.5;
 }
 
@@ -5888,7 +5939,7 @@
 
 .lp-tr2-rating-hour-chart-panel {
   border-radius: 0.55rem;
-  background: #fff;
+  background: transparent;
   border: 1px solid #e8edf3;
   overflow: hidden;
 }
@@ -5936,7 +5987,7 @@
   gap: 0.12rem;
   padding: 0.28rem 0.15rem 0.38rem;
   border-top: 1px solid #eef2f7;
-  background: #fafbfd;
+  background: transparent;
 }
 
 .lp-tr2-rating-hour-axis-tick {
@@ -5961,7 +6012,7 @@
   align-items: end;
   padding: 0.45rem 0.2rem 0.25rem;
   border-radius: 0.55rem;
-  background: #fff;
+  background: transparent;
   border: 1px solid #e8edf3;
   overflow: visible;
 }
@@ -6057,7 +6108,7 @@
 }
 
 .lp-tr2-rating-chart-legend-swatch.is-peak-ring {
-  background: #fff;
+  background: transparent;
   border: 1.5px solid #d97706;
   box-sizing: border-box;
 }
@@ -6095,12 +6146,12 @@
 }
 
 .lp-tr2-rating-peak-col--high {
-  background: #fff;
+  background: transparent;
   border: 1px solid #fde68a;
 }
 
 .lp-tr2-rating-peak-col--low {
-  background: #fff;
+  background: transparent;
   border: 1px solid #e5e5e5;
 }
 
@@ -6261,7 +6312,7 @@
   min-width: 0;
   padding: 0.65rem 0.7rem 0.7rem;
   border-radius: 0.7rem;
-  background: #fff;
+  background: transparent;
   border: 1px solid #eef2f7;
   box-sizing: border-box;
 }
@@ -6576,7 +6627,7 @@
 
 .lp-tr2-field-prob-card {
   border: 1px solid #e5e5e5;
-  background: #fafafa;
+  background: transparent;
 }
 
 .lp-tr2-field-prob-card .lp-tr2-stat-label {
@@ -6622,7 +6673,7 @@
 }
 
 .lp-tr2-donut-split-chip--nonprod {
-  background: #f6f8fb;
+  background: transparent;
   border: 1px solid #d8e3ef;
 }
 
@@ -6866,7 +6917,7 @@
   color: #475569;
   text-align: center;
   border-bottom: 1px solid #e8edf3;
-  background: #fafbfc;
+  background: transparent;
 }
 
 .time-ledger-day-timebox-dual-pane__expand,
@@ -7178,7 +7229,7 @@
   font-family: var(--lp-app-font-family, inherit);
   font-weight: var(--lp-app-font-weight-base, 400);
   color: #111111;
-  background: #ffffff;
+  background: transparent;
   border: 1px solid #e5e5e5;
   border-radius: 0.55rem;
   box-shadow: 0 8px 28px rgba(15, 23, 42, 0.12);
@@ -7284,7 +7335,7 @@
   overflow: hidden;
   padding: 0.25rem 0.45rem 0.4rem;
   box-sizing: border-box;
-  background: #ffffff;
+  background: transparent;
 }
 
 .time-ledger-week-timebox-hour-rail,
@@ -7296,7 +7347,7 @@
   flex-direction: column;
   min-height: 0;
   margin-right: 0.12rem;
-  background: #ffffff;
+  background: transparent;
   box-shadow: 4px 0 6px -4px rgba(15, 23, 42, 0.1);
 }
 
@@ -7630,7 +7681,7 @@
   border: 1px dashed #e5e5e5;
   border-radius: 2px;
   box-sizing: border-box;
-  background: #ffffff;
+  background: transparent;
   cursor: default;
   -webkit-tap-highlight-color: transparent;
 }
@@ -7646,7 +7697,7 @@
 .time-ledger-productivity-heatmap-cell--out-range,
 [data-legacy~="time-ledger-view"]
   .time-ledger-productivity-heatmap-cell--out-range {
-  background: #ffffff;
+  background: transparent;
   border-style: dashed;
   border-color: #ececec;
   opacity: 0.45;
@@ -7666,7 +7717,7 @@
   .time-ledger-productivity-heatmap-cell--lv0:not(
     .time-ledger-productivity-heatmap-cell--out-range
   ) {
-  background: #ffffff;
+  background: transparent;
   border: 1px dashed #e5e5e5;
 }
 
@@ -7758,7 +7809,7 @@
 .time-ledger-productivity-heatmap-legend-swatch.time-ledger-productivity-heatmap-cell--lv0,
 [data-legacy~="time-ledger-view"]
   .time-ledger-productivity-heatmap-legend-swatch.time-ledger-productivity-heatmap-cell--lv0 {
-  background: #ffffff;
+  background: transparent;
   border: 1px dashed #e5e5e5;
 }
 
@@ -7935,7 +7986,7 @@
 [data-legacy~="time-ledger-view"]
   .diary-tab5-ledger-log-wrap
   .time-ledger-next-expected-card::before {
-  background: #fafafa;
+  background: transparent;
   border: 1px dashed #cccccc;
 }
 .time-ledger-view
@@ -8054,7 +8105,7 @@
 .time-ledger-view .time-ledger-next-expected-start-btn,
 [data-legacy~="time-ledger-view"] .time-ledger-next-expected-start-btn {
   border: 1px solid #999999;
-  background: #fff;
+  background: transparent;
   color: #4d4d4d;
 }
 
@@ -8117,7 +8168,7 @@
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.4rem 0.55rem;
-  background: var(--idea-cloud, #f5f5f5);
+  background: var(--idea-cloud, #fafafa);
   border-radius: 0.4rem;
   box-sizing: border-box;
 }
@@ -8398,7 +8449,7 @@
   color: #999999;
   position: relative;
   z-index: 2;
-  background: #fff;
+  background: transparent;
   padding-bottom: 0.12rem;
 }
 .time-ledger-view
@@ -8460,7 +8511,7 @@
   color: #999999;
   position: relative;
   z-index: 2;
-  background: #fff;
+  background: transparent;
   padding-top: 0.12rem;
 }
 .time-ledger-view
@@ -8849,7 +8900,7 @@
   .time-usage-range-text-search[data-legacy~="is-filter-active"]
   .lp-search-bar__row {
   border-color: #000000;
-  background: #f5f5f5;
+  background: transparent;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
 }
 
@@ -8882,7 +8933,7 @@
   margin: 0 0 0.55rem;
   padding: 0.5rem 0.65rem;
   border-radius: 0.5rem;
-  background: #f5f5f5;
+  background: transparent;
   border: 1px solid #d4d4d4;
   color: #262626;
   font-size: 0.8125rem;
@@ -8900,7 +8951,7 @@
   padding: 0.22rem 0.55rem;
   border: 1px solid #000000;
   border-radius: 999px;
-  background: #ffffff;
+  background: transparent;
   color: #000000;
   font-size: 0.75rem;
   font-weight: 700;
@@ -8919,7 +8970,7 @@
 [data-legacy~="time-ledger-view"]
   [data-legacy~="time-ledger-usage-filter-chip"]:hover,
 [data-legacy~="time-ledger-view"] .time-ledger-usage-filter-chip:hover {
-  background: #f5f5f5;
+  background: transparent;
 }
 
 [data-legacy~="time-ledger-view"]
@@ -9150,7 +9201,7 @@
   height: 2.25rem;
   border: 1px solid rgba(0, 0, 0, 0.14);
   border-radius: 999px;
-  background: #ffffff;
+  background: transparent;
   color: #000000;
   font-size: 1.05rem;
   font-weight: 700;
@@ -9226,7 +9277,7 @@
   color: #333333;
   letter-spacing: -0.02em;
   white-space: nowrap;
-  background: #fff;
+  background: transparent;
   border: 1px solid rgba(0, 0, 0, 0.16);
   border-radius: 10px;
   cursor: pointer;
@@ -9465,7 +9516,7 @@
   padding: 0.3rem 0.2rem;
   font-family: inherit;
   color: #475569;
-  background: #fff;
+  background: transparent;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   cursor: pointer;
@@ -9524,7 +9575,7 @@
   [data-legacy~="time-task-log-planned-slot-btn"]:hover {
   border-color: rgba(0, 0, 0, 0.45);
   color: #111;
-  background: #f7f7f7;
+  background: transparent;
 }
 
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
@@ -9534,7 +9585,7 @@
   )
   [data-legacy~="time-task-log-planned-slot-btn"][data-legacy~="is-on"] {
   color: #111;
-  background: #fff;
+  background: transparent;
   border-color: var(--lp-modal-accent, #000000);
   border-width: 1.5px;
   box-shadow: inset 0 0 0 1px var(--lp-modal-accent, #000000);
@@ -9547,7 +9598,7 @@
   )
   [data-legacy~="time-task-log-planned-slot-btn"][data-legacy~="is-on"]:hover {
   color: #111;
-  background: #f7f7f7;
+  background: transparent;
   border-color: var(--lp-modal-accent, #000000);
 }
 
@@ -10003,7 +10054,7 @@
   appearance: none;
   border: 1px solid #e0e0e0;
   border-radius: 0.55rem;
-  background: #fafafa;
+  background: transparent;
   padding: 0.35rem 0.15rem 0.42rem;
   margin: 0;
   display: flex;
@@ -10029,7 +10080,7 @@
   .time-task-log-emotion-category-btn[aria-pressed="true"] {
   opacity: 1;
   border-color: #333333;
-  background: #ffffff;
+  background: transparent;
 }
 
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
@@ -10478,7 +10529,7 @@
   padding: 0;
   border: 1px solid #cbd5e1;
   border-radius: 0.45rem;
-  background: #fff;
+  background: transparent;
   color: inherit;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -10506,7 +10557,7 @@
   [data-legacy~="time-task-log-memo-quick"]
   > button:hover {
   border-color: #94a3b8;
-  background: #f8fafc;
+  background: transparent;
 }
 
 .time-task-setup-modal.time-task-log-modal

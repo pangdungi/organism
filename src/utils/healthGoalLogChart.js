@@ -4,7 +4,7 @@ const CHART = {
   stroke: "#000000",
   strokeWidth: 2.5,
   dotFill: "#000000",
-  dotStroke: "#ffffff",
+  dotStroke: "#fafafa",
   grid: "#e5e5e5",
   axis: "#cccccc",
   target: "#f59e0b",
@@ -141,7 +141,7 @@ function addValueLabel(svg, svgNs, x, y, text, above = true) {
     width: textW,
     height: 14,
     rx: 4,
-    fill: "#ffffff",
+    fill: "#fafafa",
     stroke: "#e5e5e5",
     "stroke-width": 1,
   });

@@ -149,7 +149,7 @@
     min-height: 0;
     border: 1px solid rgba(0, 0, 0, 0.1);
     border-radius: 0.65rem;
-    background: #fff;
+    background: #fafafa;
     overflow: hidden;
   }
 
@@ -220,7 +220,7 @@
     /* safe-area는 셸에 두지 않음 — 열 푸터에 또 넣으면 데스크탑보다 위로 뜸 */
     padding: 0.35rem 0.5rem;
     border-top: 1px solid rgba(0, 0, 0, 0.08);
-    background: #fff;
+    background: #fafafa;
   }
 
   .lp-desktop-dashboard-col--center {
@@ -238,7 +238,7 @@
     min-height: 0;
     border: 1px solid rgba(0, 0, 0, 0.1);
     border-radius: 0.65rem;
-    background: #fff;
+    background: #fafafa;
     overflow: hidden;
   }
 
@@ -247,7 +247,7 @@
     /* 좌·우 칸과 동일 — 오늘의 행동도 테두리 카드 */
     border: 1px solid rgba(0, 0, 0, 0.1);
     border-radius: 0.65rem;
-    background: #fff;
+    background: #fafafa;
   }
 
   .lp-desktop-dashboard-quick-kpi {
