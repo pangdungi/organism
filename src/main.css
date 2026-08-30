@@ -602,7 +602,6 @@ html.lp-task-log-modal-open #signin-page {
   justify-content: stretch;
   align-items: stretch;
   position: relative;
-  isolation: isolate;
   overflow: hidden;
   padding: 0;
   background: transparent;
@@ -717,6 +716,8 @@ html.lp-task-log-modal-open #signin-page {
   margin: 0 auto;
   transform: translateX(0.7rem);
   object-fit: contain;
+  background: transparent;
+  mix-blend-mode: multiply;
   user-select: none;
   -webkit-user-drag: none;
 }
@@ -735,6 +736,7 @@ html.lp-task-log-modal-open #signin-page {
   object-fit: contain;
   object-position: center bottom;
   background: transparent;
+  mix-blend-mode: multiply;
   pointer-events: none;
   user-select: none;
   -webkit-user-drag: none;
@@ -2368,6 +2370,8 @@ table {
   height: auto;
   margin: 0 auto 0.85rem;
   object-fit: contain;
+  background: transparent;
+  mix-blend-mode: multiply;
 }
 
 /* 아이패드 가로 등 낮은 화면 — 스크롤 없이 로그인하기까지 한 화면에 */

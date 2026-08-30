@@ -1703,7 +1703,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   border-bottom: 1px solid var(--cal-line);
-  background: #fafafa;
+  background: transparent;
 }
 
 .calendar-monthly-weekday {

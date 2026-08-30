@@ -12,10 +12,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const publicDir = join(__dirname, "..", "public");
 const SOURCE = join(publicDir, "app-icon-source.png");
 const SPLASH_DIR = join(publicDir, "toolbaricons/splash");
+const SPLASH_SCREEN_INK_PNG = join(SPLASH_DIR, "splash-screen-ink.png");
 const SPLASH_SCREEN_PNG = join(SPLASH_DIR, "splash-screen.png");
 const SPLASH_SCREEN_SVG = join(SPLASH_DIR, "splash-screen.svg");
 
 function splashScreenSource() {
+  if (existsSync(SPLASH_SCREEN_INK_PNG)) return SPLASH_SCREEN_INK_PNG;
   if (existsSync(SPLASH_SCREEN_PNG)) return SPLASH_SCREEN_PNG;
   if (existsSync(SPLASH_SCREEN_SVG)) return SPLASH_SCREEN_SVG;
   return "";
@@ -28,7 +30,7 @@ async function rasterSplash(src, width, height) {
     return sharp(src, { density: 288 })
       .resize(width, height, {
         fit: "contain",
-        background: { r: 255, g: 255, b: 255 },
+        background: { r: 250, g: 250, b: 250 },
       })
       .png()
       .toBuffer();
@@ -43,7 +45,7 @@ async function rasterSplash(src, width, height) {
         width,
         height,
         channels: 3,
-        background: { r: 255, g: 255, b: 255 },
+        background: { r: 250, g: 250, b: 250 },
       },
     })
       .composite([{ input: logo, gravity: "center" }])
@@ -54,7 +56,7 @@ async function rasterSplash(src, width, height) {
     .resize(width, height, {
       fit: "contain",
       withoutEnlargement: true,
-      background: { r: 255, g: 255, b: 255 },
+      background: { r: 250, g: 250, b: 250 },
     })
     .png()
     .toBuffer();

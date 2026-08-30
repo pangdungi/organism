@@ -9,10 +9,10 @@ export const TOOLBAR_ICON_CACHE_VERSION = "62";
 export const SW_ASSET_CACHE = "tip-assets-v75";
 
 /** 로그인 화면 브랜드 그림 — index.html·sw precache 와 동일 */
-export const LOGIN_BRAND_LOGO_V = "doodle-login-dos-1";
+export const LOGIN_BRAND_LOGO_V = "user-1";
 
 export function loginBrandLogoUrl() {
-  return `/login-brand-doodle.jpg?v=${LOGIN_BRAND_LOGO_V}`;
+  return `/login%20brand%20logo.png?v=${LOGIN_BRAND_LOGO_V}`;
 }
 
 /** 상단 브랜드(데스크탑 대시보드) — PWA 앱 아이콘과 동일 */

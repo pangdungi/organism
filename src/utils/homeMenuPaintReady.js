@@ -1,7 +1,8 @@
 /** 홈 메뉴 히어로·책상 — 스플래시가 내려가기 전에 디코딩까지 끝낸다 */
 
-export const HOME_TIME_MANAGEMENT_SRC = "/home-time-management.png?v=paper-2";
-export const HOME_DESK_DOODLE_SRC = "/home-desk-doodle.png?v=paper-2";
+export const HOME_TIME_MANAGEMENT_SRC =
+  "/home%20time%20management.png?v=user-1";
+export const HOME_DESK_DOODLE_SRC = "/homedesk.png?v=user-1";
 
 const PAINT_WAIT_MS = 4000;
 

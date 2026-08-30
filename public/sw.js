@@ -2,10 +2,10 @@
 /** index.html·manifest 의 ?v= 와 동일하게 유지 */
 const PWA_BRAND = "doodle-calendar-1";
 /** 번들·아이콘 등 캐시 버전 (전략·브랜드 바꿀 때 올리면 이전 캐시 정리됨) */
-const ASSET_CACHE = "tip-assets-v77";
+const ASSET_CACHE = "tip-assets-v79";
 /** HTML 셸 캐시 — 홈 화면에서 열 때 즉시 표시용 */
 const HTML_CACHE = "tip-html-v16";
-const LOGIN_BRAND_LOGO_V = "doodle-login-dos-1";
+const LOGIN_BRAND_LOGO_V = "user-1";
 
 const PWA_BRAND_BASENAMES = new Set([
   "/manifest.json",
@@ -21,10 +21,27 @@ const PWA_BRAND_BASENAMES = new Set([
   "/apple-touch-icon.png",
   "/icon.svg",
   "/login-brand-doodle.jpg",
+  "/login-brand-doodle.png",
+  "/login brand logo.png",
 ]);
 
 function isPwaBrandAsset(pathname) {
   return PWA_BRAND_BASENAMES.has(pathname);
+}
+
+function isPaperDoodlePath(pathname) {
+  return (
+    pathname === "/home time management.png" ||
+    pathname === "/homedesk.png" ||
+    pathname === "/login brand logo.png" ||
+    pathname === "/home-time-management-ink.png" ||
+    pathname === "/home-desk-doodle-ink.png" ||
+    pathname === "/home-time-management.png" ||
+    pathname === "/home-desk-doodle.png" ||
+    pathname === "/toolbaricons/splash/splash-screen-ink.png" ||
+    pathname === "/toolbaricons/splash/splash-screen.png" ||
+    pathname === "/login-brand-doodle.png"
+  );
 }
 
 /** install 단계: PWA 설치 조건만 빠르게 — 887개 아이콘은 클라이언트 idle prefetch */
@@ -44,6 +61,9 @@ const PWA_INSTALL_CORE_PATHS = [
   "/pwa-splash-portrait-1179.png",
   "/pwa-splash-portrait-1284.png",
   "/toolbaricons/splash/splash-screen.png",
+  "/home time management.png",
+  "/homedesk.png",
+  "/login brand logo.png",
   "/fonts/LP-Griun-Cocochoitoon.ttf",
   "/fonts/LP-LeeSeoyun.otf",
   "/fonts/Hello-Scratchy-Outlines.otf",
@@ -53,7 +73,7 @@ const PWA_INSTALL_CORE_PATHS = [
   "/fonts/LP-Griun-Mongtori-Rg.ttf",
   "/fonts/LP-Griun-Cherry1Spoon-Rg.ttf",
   "/fonts/LP-Griun-Fromsol-Rg.ttf",
-  `/login-brand-doodle.jpg?v=${LOGIN_BRAND_LOGO_V}`,
+  `/login%20brand%20logo.png?v=${LOGIN_BRAND_LOGO_V}`,
 ];
 
 /** 오프라인·캐시 미스 — respondWith 가 reject 되지 않게 항상 Response 반환 */
@@ -392,6 +412,10 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   if (isStaticImageAsset(url.pathname)) {
+    if (isPaperDoodlePath(url.pathname)) {
+      respondWithSafe(event, networkFirstBrandAsset(req));
+      return;
+    }
     if (isToolbarIconPath(url.pathname)) {
       respondWithSafe(event, staleWhileRevalidateToolbarIcon(req, event));
       return;

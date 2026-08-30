@@ -38,6 +38,8 @@ html.lp-splash-active body {
   margin: 0;
   object-fit: contain;
   object-position: center center;
+  background: transparent;
+  mix-blend-mode: multiply;
   user-select: none;
   -webkit-user-drag: none;
 }
