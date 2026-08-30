@@ -1754,6 +1754,19 @@ export function render(opts = {}) {
 
     const appendSideincomeKpiNotesPanel = (parentEl, kpiIdForNotes, kpiNameForModal) => {
       parentEl.replaceChildren();
+      if (layoutIsSplit) {
+        const notesAddCard = document.createElement("button");
+        notesAddCard.type = "button";
+        notesAddCard.className =
+          "dream-kpi-add-card sideincome-split-todo-add-card";
+        notesAddCard.innerHTML =
+          '<span class="dream-kpi-add-card-text">기록 추가하기</span>';
+        notesAddCard.addEventListener("click", () => {
+          setKpiHistoryBottomTab("sideincome", selKpi, KPI_BOTTOM_TAB_NOTES);
+          void runSideincomeKpiFooterAddAction();
+        });
+        parentEl.appendChild(notesAddCard);
+      }
       const kid = String(kpiIdForNotes || selectedKpiId || "").trim();
       const tags = getLocalSideincomeKpiNoteTags(kid);
       const notes = getLocalSideincomeKpiNotes(kid);

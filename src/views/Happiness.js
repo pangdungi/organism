@@ -1369,6 +1369,19 @@ export function render() {
 
     const appendReadingKpiNotesPanel = (parentEl, kpiIdForNotes, kpiNameForModal) => {
       parentEl.replaceChildren();
+      if (layoutIsSplit) {
+        const notesAddCard = document.createElement("button");
+        notesAddCard.type = "button";
+        notesAddCard.className =
+          "dream-kpi-add-card sideincome-split-todo-add-card";
+        notesAddCard.innerHTML =
+          '<span class="dream-kpi-add-card-text">위시리스트 추가하기</span>';
+        notesAddCard.addEventListener("click", () => {
+          setKpiHistoryBottomTab("happiness", selKpi, KPI_BOTTOM_TAB_NOTES);
+          void runHappinessKpiFooterAddAction();
+        });
+        parentEl.appendChild(notesAddCard);
+      }
       const kid = String(kpiIdForNotes || selectedKpiId || "").trim();
       const tags = getLocalSideincomeKpiNoteTags(kid);
       const notes = getLocalSideincomeKpiNotes(kid);
