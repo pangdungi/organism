@@ -15,6 +15,26 @@ export const DEFAULT_OUT_AFTER_ROUTINE_KPI_ID = "__lp_default_kpi_out_after_rout
 export const DEFAULT_BEDTIME_ROUTINE_KPI_ID = "__lp_default_kpi_bedtime_routine__";
 export const DEFAULT_READING_KPI_ID = "__lp_default_kpi_reading__";
 
+const DEFAULT_HAPPINESS_ROUTINE_KPI_IDS = new Set([
+  DEFAULT_MORNING_ROUTINE_KPI_ID,
+  DEFAULT_MOVE_ROUTINE_KPI_ID,
+  DEFAULT_TIDY_ROUTINE_KPI_ID,
+  DEFAULT_OUT_PREP_ROUTINE_KPI_ID,
+  DEFAULT_OUT_AFTER_ROUTINE_KPI_ID,
+  DEFAULT_BEDTIME_ROUTINE_KPI_ID,
+]);
+
+/** 모닝·이동·정리·외출준비·외출후·취침 루틴 */
+export function isDefaultHappinessRoutineKpiId(id) {
+  return DEFAULT_HAPPINESS_ROUTINE_KPI_IDS.has(String(id ?? ""));
+}
+
+/** 매일하기만 · 요일 선택 (행복 루틴 + 보충제 섭취) */
+export function isHabitOnlyDefaultKpiId(id) {
+  const s = String(id ?? "");
+  return isDefaultHappinessRoutineKpiId(s) || s === DEFAULT_SUPPLEMENT_KPI_ID;
+}
+
 export const DEFAULT_AEROBIC_KPI_ID = "__lp_default_kpi_aerobic__";
 export const DEFAULT_SUPPLEMENT_KPI_ID = "__lp_default_kpi_supplement__";
 export const DEFAULT_CHECKUP_KPI_ID = "__lp_default_kpi_checkup__";

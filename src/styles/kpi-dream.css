@@ -3124,6 +3124,20 @@
   width: 100%;
 }
 
+.dream-kpi-goal-mode-row--habit-only {
+  justify-content: flex-start;
+  margin-top: 0;
+}
+
+.dream-kpi-goal-mode-row--habit-only .lp-modal-field-subcheck {
+  flex: 0 0 auto;
+}
+
+.dream-kpi-goal-mode-row--habit-only .lp-modal-field-subcheck__label {
+  justify-content: flex-start;
+  width: auto;
+}
+
 .dream-kpi-goal-mode-row--single .lp-modal-field-subcheck__input {
   width: 0.9375rem;
   height: 0.9375rem;

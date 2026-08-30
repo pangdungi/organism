@@ -171,8 +171,7 @@ function healthKpiDailyListTitle(kpi) {
 }
 
 function isHealthFixedGoalModeKpi(kpi) {
-  const id = String(kpi?.id ?? "");
-  return id === DEFAULT_SUPPLEMENT_KPI_ID || id === DEFAULT_CHECKUP_KPI_ID;
+  return String(kpi?.id ?? "") === DEFAULT_CHECKUP_KPI_ID;
 }
 
 function getOrderedAllHealthKpis(data) {

@@ -32,7 +32,9 @@ import {
 } from "./kpiHabitTrackerStartDate.js";
 import {
   DEFAULT_CHORE_TASK_KPI_ID,
+  DEFAULT_READING_KPI_ID,
   isDefaultAppKpiId,
+  isHabitOnlyDefaultKpiId,
 } from "./defaultKpiIconIds.js";
 import {
   KPI_PROGRESS_STATUS,
@@ -44,6 +46,17 @@ import {
   normalizeHabitWeekdays,
   readHabitWeekdaysFromForm,
 } from "./kpiHabitWeekdays.js";
+
+/** 기본 KPI는 기간 잠금 — 독서하기·잡무 처리하기는 시작일·마감일 표시(필수 아님) */
+function isOptionalDefaultKpiPeriod(id) {
+  const s = String(id ?? "").trim();
+  return s === DEFAULT_READING_KPI_ID || s === DEFAULT_CHORE_TASK_KPI_ID;
+}
+
+function locksDefaultKpiGoalPeriod(id) {
+  if (isOptionalDefaultKpiPeriod(id)) return false;
+  return isDefaultAppKpiId(id);
+}
 
 /** 행복 「잡무 처리하기」만 이번 주 처리·남은 개수 UI */
 function isChoreTaskCompletionKpi(kpi) {
@@ -84,22 +97,24 @@ function resolveKpiGoalModeForForm(kpi) {
 }
 
 export function kpiGoalModeOptionsHtml(kpi = null) {
-  return `
-    <div class="dream-kpi-goal-mode-block" data-legacy="dream-kpi-goal-mode-block">
-      <span class="dream-kpi-goal-mode-caption">수치화 방식</span>
-      <div class="lp-modal-field-subcheck-row dream-kpi-goal-mode-row dream-kpi-goal-mode-row--single" data-legacy="lp-modal-field-subcheck-row">
+  const habitOnly = isHabitOnlyDefaultKpiId(kpi?.id);
+  const habitRadio = `
+        <div class="lp-modal-field-subcheck" data-legacy="lp-modal-field-subcheck">
+          <label class="lp-modal-field-subcheck__label" data-legacy="lp-modal-field-subcheck__label">
+            <input type="radio" name="kpiGoalMode" value="habit" class="lp-modal-field-subcheck__input" data-legacy="lp-modal-field-subcheck__input"${habitOnly ? " checked" : goalModeRadioAttr(kpi, "habit")} />
+            <span class="lp-modal-field-subcheck__text" data-legacy="lp-modal-field-subcheck__text">매일하기</span>
+          </label>
+        </div>`;
+  const otherRadios = habitOnly
+    ? ""
+    : `
         <div class="lp-modal-field-subcheck" data-legacy="lp-modal-field-subcheck">
           <label class="lp-modal-field-subcheck__label" data-legacy="lp-modal-field-subcheck__label">
             <input type="radio" name="kpiGoalMode" value="time" class="lp-modal-field-subcheck__input" data-legacy="lp-modal-field-subcheck__input"${goalModeRadioAttr(kpi, "time")} />
             <span class="lp-modal-field-subcheck__text" data-legacy="lp-modal-field-subcheck__text">시간목표</span>
           </label>
         </div>
-        <div class="lp-modal-field-subcheck" data-legacy="lp-modal-field-subcheck">
-          <label class="lp-modal-field-subcheck__label" data-legacy="lp-modal-field-subcheck__label">
-            <input type="radio" name="kpiGoalMode" value="habit" class="lp-modal-field-subcheck__input" data-legacy="lp-modal-field-subcheck__input"${goalModeRadioAttr(kpi, "habit")} />
-            <span class="lp-modal-field-subcheck__text" data-legacy="lp-modal-field-subcheck__text">매일하기</span>
-          </label>
-        </div>
+        ${habitRadio}
         <div class="lp-modal-field-subcheck" data-legacy="lp-modal-field-subcheck">
           <label class="lp-modal-field-subcheck__label" data-legacy="lp-modal-field-subcheck__label">
             <input type="radio" name="kpiGoalMode" value="task" class="lp-modal-field-subcheck__input" data-legacy="lp-modal-field-subcheck__input"${goalModeRadioAttr(kpi, "task")} />
@@ -111,21 +126,25 @@ export function kpiGoalModeOptionsHtml(kpi = null) {
             <input type="radio" name="kpiGoalMode" value="manual" class="lp-modal-field-subcheck__input" data-legacy="lp-modal-field-subcheck__input"${goalModeRadioAttr(kpi, "manual")} />
             <span class="lp-modal-field-subcheck__text" data-legacy="lp-modal-field-subcheck__text">목표 도달형</span>
           </label>
-        </div>
+        </div>`;
+  return `
+    <div class="dream-kpi-goal-mode-block" data-legacy="dream-kpi-goal-mode-block">
+      <span class="dream-kpi-goal-mode-caption">수치화 방식</span>
+      <div class="lp-modal-field-subcheck-row dream-kpi-goal-mode-row${habitOnly ? " dream-kpi-goal-mode-row--habit-only" : " dream-kpi-goal-mode-row--single"}" data-legacy="lp-modal-field-subcheck-row">
+        ${habitOnly ? habitRadio : otherRadios}
       </div>
     </div>
   `;
 }
 
 export function kpiFormGoalAndTargetSectionHtml(kpi, escapeHtml, opts = {}) {
-  const habitMode = kpi ? resolveKpiGoalMode(kpi) === "habit" : false;
+  const habitOnly = isHabitOnlyDefaultKpiId(kpi?.id);
+  const habitMode = habitOnly || (kpi ? resolveKpiGoalMode(kpi) === "habit" : false);
   const trackHabitTarget =
-    habitMode && kpi ? kpiHasHabitUnitGoal(kpi) : false;
-  return `
-            <div class="dream-kpi-field dream-kpi-goal-mode-field" data-legacy="time-add-task-field">
-              ${kpiGoalModeOptionsHtml(kpi)}
-            </div>
-            ${kpiHabitWeekdaysFieldHtml(kpi, habitMode)}
+    !habitOnly && habitMode && kpi ? kpiHasHabitUnitGoal(kpi) : false;
+  const habitTargetHtml = habitOnly
+    ? ""
+    : `
             <div class="dream-kpi-field dream-kpi-field-checkbox dream-kpi-habit-target-toggle" data-kpi-habit-target-toggle data-legacy="time-add-task-field"${habitMode ? "" : " hidden"}>
               <label class="dream-kpi-checkbox-label">
                 목표값·단위 입력하기
@@ -139,13 +158,19 @@ export function kpiFormGoalAndTargetSectionHtml(kpi, escapeHtml, opts = {}) {
               <div class="dream-kpi-field dream-kpi-unit-field" data-legacy="time-add-task-field">
                 ${kpiUnitFieldHtml(kpi, escapeHtml, opts)}
               </div>
+            </div>`;
+  return `
+            <div class="dream-kpi-field dream-kpi-goal-mode-field" data-legacy="time-add-task-field">
+              ${kpiGoalModeOptionsHtml(kpi)}
             </div>
+            ${kpiHabitWeekdaysFieldHtml(kpi, habitMode)}
+            ${habitTargetHtml}
             ${kpiFormPeriodSectionHtml(kpi, escapeHtml, opts)}`;
 }
 
-/** 기본 KPI 제외 — 모든 목표 방식에 시작일·마감일 */
+/** 기본 KPI(독서하기·잡무 처리하기 제외) — 시작일·마감일 없음 */
 function kpiFormPeriodSectionHtml(kpi, escapeHtml, opts = {}) {
-  if (isDefaultAppKpiId(kpi?.id)) return "";
+  if (locksDefaultKpiGoalPeriod(kpi?.id)) return "";
   const preferredStatus = String(opts.preferredProgressStatus || "")
     .trim()
     .toLowerCase();
@@ -157,7 +182,7 @@ function kpiFormPeriodSectionHtml(kpi, escapeHtml, opts = {}) {
       : "");
   const deadlineVal = (kpi?.targetDeadline || "").trim().slice(0, 10);
   return `
-            <div class="dream-kpi-period-block" data-kpi-period-fields data-legacy="time-add-task-field">
+            <div class="dream-kpi-period-block" data-kpi-period-fields${isOptionalDefaultKpiPeriod(kpi?.id) ? " data-kpi-period-optional" : ""} data-legacy="time-add-task-field">
               <div class="dream-kpi-field" data-legacy="time-add-task-field">
                 <label>시작일</label>
                 ${buildModalNativeDateFieldMarkup({
@@ -330,8 +355,9 @@ export function validateKpiActionForm(form, opts = {}) {
       form.querySelector('input[name="targetDeadline"]')?.value || ""
     ).trim();
     const status = readKpiProgressStatusFromForm(form);
-    /* 진행전: 시작·마감 아직 모를 수 있어 필수 아님 */
-    if (status !== KPI_PROGRESS_STATUS.PENDING) {
+    const periodOptional = periodBlock.hasAttribute("data-kpi-period-optional");
+    /* 진행전·독서하기·잡무: 시작·마감 필수 아님 */
+    if (!periodOptional && status !== KPI_PROGRESS_STATUS.PENDING) {
       if (!start) addError("targetStartDate", "시작일을 선택해 주세요.");
       if (!deadline) addError("targetDeadline", "마감일을 선택해 주세요.");
     }
@@ -365,7 +391,7 @@ export function bindKpiFormValidationClear(form) {
 }
 
 function readKpiPeriodFieldsFromForm(form, _mode, opts = {}) {
-  if (isDefaultAppKpiId(opts.existingKpi?.id)) {
+  if (locksDefaultKpiGoalPeriod(opts.existingKpi?.id)) {
     return {
       targetStartDate: String(opts.existingKpi?.targetStartDate || "")
         .trim()
@@ -391,7 +417,8 @@ function readKpiPeriodFieldsFromForm(form, _mode, opts = {}) {
     .slice(0, 10);
   if (!targetStartDate) {
     const status = readKpiProgressStatusFromForm(form);
-    if (status === KPI_PROGRESS_STATUS.PENDING) {
+    const periodOptional = periodBlock.hasAttribute("data-kpi-period-optional");
+    if (periodOptional || status === KPI_PROGRESS_STATUS.PENDING) {
       targetStartDate = "";
     } else {
       const existingStart = (opts.existingKpi?.targetStartDate || "")
@@ -503,7 +530,7 @@ export function applyKpiFormGoalFieldsToKpi(target, form, opts = {}) {
   target.targetStartDate = fields.targetStartDate;
   target.targetDeadline = fields.targetDeadline;
   if (
-    !isDefaultAppKpiId(target.id) &&
+    !locksDefaultKpiGoalPeriod(target.id) &&
     progressStatusForKpiStartDate(target.targetStartDate) ===
       KPI_PROGRESS_STATUS.PENDING
   ) {

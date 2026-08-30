@@ -329,43 +329,9 @@ function migrateDefaultHappinessHabitKpis(kpis) {
   return { kpis: changed ? next : kpis, changed };
 }
 
-const DEFAULT_HAPPINESS_TASK_COMPLETION_KPI_MIGRATIONS = [
-  { id: DEFAULT_CHORE_TASK_KPI_ID, name: "잡무 처리하기" },
-  { id: DEFAULT_READING_KPI_ID, name: "독서하기" },
-];
-
-/** 기본 태스크 완료형 KPI — 과제 완료 목표 유지 */
+/** 독서하기·잡무는 행동 수정 그대로 유지 — 태스크완료로 되돌리지 않음 */
 function migrateDefaultHappinessTaskCompletionKpis(kpis) {
-  let changed = false;
-  let next = kpis || [];
-  for (const { id, name } of DEFAULT_HAPPINESS_TASK_COMPLETION_KPI_MIGRATIONS) {
-    next = next.map((k) => {
-      if (String(k?.id ?? "") !== id) return k;
-      const displayName = String(k.name || "").trim() || name;
-      if (
-        k.useTaskCompletionGoal &&
-        !k.needHabitTracker &&
-        !k.useTimeAsUnit &&
-        displayName === (k.name || "").trim()
-      ) {
-        return k;
-      }
-      changed = true;
-      return {
-        ...k,
-        name: displayName,
-        needHabitTracker: false,
-        useTimeAsUnit: false,
-        useTaskCompletionGoal: true,
-        unit: "",
-        targetValue: "",
-        targetStartDate: "",
-        targetDeadline: "",
-        targetTimeRequired: "",
-      };
-    });
-  }
-  return { kpis: changed ? next : kpis, changed };
+  return { kpis: kpis || [], changed: false };
 }
 
 /** @param {string[]} orderIds @param {string[]} allKpiIds */
