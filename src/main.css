@@ -153,15 +153,7 @@ html.lp-auth-gate-open .login-page.login-page--gate label {
 #signin-page:has([data-legacy~="time-ledger-view"]),
 #signin-page:has([data-legacy~="time-ledger-view"]) .app-page,
 #signin-page:has([data-legacy~="time-ledger-view"]) #app-screen,
-#signin-page:has([data-legacy~="time-ledger-view"]) #app-screen-inner,
-#signin-page:has(.lp-desktop-dashboard),
-#signin-page:has(.lp-desktop-dashboard) .app-page,
-#signin-page:has(.lp-desktop-dashboard) #app-screen,
-#signin-page:has(.lp-desktop-dashboard) #app-screen-inner,
-#signin-page:has(.lp-kpi-dream-page),
-#signin-page:has(.lp-kpi-dream-page) .app-page,
-#signin-page:has(.lp-kpi-dream-page) #app-screen,
-#signin-page:has(.lp-kpi-dream-page) #app-screen-inner {
+#signin-page:has([data-legacy~="time-ledger-view"]) #app-screen-inner {
   background-color: #fafafa;
   background-image:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E"),
@@ -171,88 +163,6 @@ html.lp-auth-gate-open .login-page.login-page--gate label {
       rgba(0, 0, 0, 0.008) 10px 11px
     );
   background-size: 180px 180px, auto;
-}
-
-/* 데스크탑 — 셸에 종이를 깔고, 본문 흰 깔개는 걷는다 */
-@media (min-width: 64rem) {
-  html.lp-app-bg,
-  html.lp-app-bg body,
-  #app,
-  #signin-page,
-  #signin-page .app-page,
-  #signin-page #app-screen,
-  #signin-page #app-screen-inner {
-    --cal-surface: transparent;
-    --lp-kpi-sky-surface: transparent;
-    --idea-surface: transparent;
-    --idea-cloud: transparent;
-    background-color: #fafafa;
-    background-image:
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E"),
-      repeating-linear-gradient(
-        -12deg,
-        transparent 0 10px,
-        rgba(0, 0, 0, 0.008) 10px 11px
-      );
-    background-size: 180px 180px, auto;
-  }
-
-  #signin-page .calendar-monthly-layout,
-  #signin-page .lp-kpi-dream-page,
-  #signin-page .idea-view {
-    --cal-surface: transparent;
-    --lp-kpi-sky-surface: transparent;
-    --idea-surface: transparent;
-    --idea-cloud: transparent;
-  }
-
-  #signin-page .app-main,
-  #signin-page .app-tab-panel,
-  #signin-page .app-tab-panel-content,
-  #signin-page .lp-kpi-dream-page,
-  #signin-page .dream-view-header,
-  #signin-page .dream-kpi-card,
-  #signin-page .dream-kpi-card.is-selected,
-  #signin-page .sideincome-goals-year-bar,
-  #signin-page .sideincome-goals-year-nav,
-  #signin-page .lp-desktop-dashboard,
-  #signin-page .lp-desktop-dashboard-col,
-  #signin-page .lp-desktop-dashboard-col-split,
-  #signin-page .lp-desktop-dashboard-col-split--bottom,
-  #signin-page .lp-desktop-dashboard-col-footer,
-  #signin-page .lp-desktop-dashboard-col-footer-actions,
-  #signin-page .habit-tracker-page-grid-scroll,
-  #signin-page .habit-tracker-page-grid-month-nav,
-  #signin-page .habit-tracker-page-grid-td--habit,
-  #signin-page .habit-tracker-content-wrap,
-  #signin-page .habit-tracker-view,
-  #signin-page .calendar-monthly-layout,
-  #signin-page .calendar-content-wrap,
-  #signin-page .calendar-view--mobile-schedule,
-  #signin-page .calendar-monthly-day,
-  #signin-page .calendar-1week-flow-card,
-  #signin-page .idea-view,
-  #signin-page .idea-view .dream-view-header,
-  #signin-page .lp-tr2-section,
-  #signin-page .time-ledger-usage-sheet,
-  #signin-page .time-ledger-report-view-shell,
-  #signin-page .time-ledger-timebox-view-shell,
-  #signin-page .app-home-menu-launcher,
-  #signin-page .app-home-menu-launcher-card,
-  #signin-page .app-home-menu-launcher-body,
-  #signin-page .todo-list-view,
-  #signin-page .admin-view,
-  #signin-page .diary-view,
-  #signin-page .calendar-view,
-  #signin-page .kpi-view,
-  #signin-page .routine-view,
-  #signin-page .health-view,
-  #signin-page .happiness-view,
-  #signin-page .sideincome-view,
-  #signin-page .habit-tracker-view--wide {
-    background-color: transparent !important;
-    background-image: none !important;
-  }
 }
 
 /**
@@ -587,9 +497,7 @@ html.lp-task-log-modal-open #signin-page {
 /* 메인(오늘)·시간기록 — 종이 질감은 셸에서 이어받음 */
 .app-main:has(.app-home-menu-launcher),
 .app-main:has(.time-ledger-view),
-.app-main:has([data-legacy~="time-ledger-view"]),
-.app-main:has(.lp-desktop-dashboard),
-.app-main:has(.lp-kpi-dream-page) {
+.app-main:has([data-legacy~="time-ledger-view"]) {
   --home-menu-grid-gap: clamp(0.35rem, 1.6vw, 0.72rem);
   --home-menu-logo-h: clamp(2.6rem, 9vw, 3.6rem);
   background: transparent;
