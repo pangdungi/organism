@@ -129,7 +129,7 @@
   left: var(--lp-seg-pad);
   width: calc((100% - 2 * var(--lp-seg-pad)) / var(--lp-seg-count));
   border-radius: calc(0.5625rem - var(--lp-seg-pad));
-  background: #fafafa;
+  background: transparent;
   box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.08);
   transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);

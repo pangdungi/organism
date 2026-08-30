@@ -20,11 +20,20 @@
 
 .lp-kpi-dream-page {
   --lp-kpi-inset: 1rem;
+  --lp-kpi-sky-surface: transparent;
   /* 로그 목록 약 3행 분량(카드·메모 줄수에 따라 대략) — 필요 시 조정 */
   --lp-kpi-dream-log-list-max-h: 14rem;
   font-family: inherit;
   color: var(--text-ink);
-  background: #fafafa;
+  background-color: #fafafa;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E"),
+    repeating-linear-gradient(
+      -12deg,
+      transparent 0 10px,
+      rgba(0, 0, 0, 0.008) 10px 11px
+    );
+  background-size: 180px 180px, auto;
   box-sizing: border-box;
 }
 
@@ -48,7 +57,7 @@
   flex-shrink: 0;
   padding: 0.65rem var(--lp-kpi-inset) 0.85rem;
   border-bottom: 1px solid #e5e7eb;
-  background: #fafafa;
+  background: transparent;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -191,7 +200,7 @@
   padding: 0;
   border: 1px solid #e2e8f0;
   border-radius: 0.4rem;
-  background: #fafafa;
+  background: transparent;
   color: var(--text-ink);
   font-size: 1.15rem;
   line-height: 1;
@@ -428,7 +437,7 @@
     .sideincome-split-pane--goals
     .sideincome-goals-year-bar {
     flex: 0 0 auto;
-    background: #fafafa;
+    background: transparent;
     padding-bottom: 0.15rem;
   }
 
@@ -1762,7 +1771,7 @@
   margin: 0;
   padding: 0;
   text-align: left;
-  background: #fafafa;
+  background: transparent;
   border: 1.5px solid rgba(58, 88, 120, 0.26);
   border-radius: 14px;
   box-shadow:
@@ -1786,7 +1795,7 @@
   /* 선택: 사방 동일 검정 테두리 */
   border-width: 2px;
   border-color: #111111;
-  background: #fafafa;
+  background: transparent;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
