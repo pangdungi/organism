@@ -1,3 +1,4 @@
+import { confirmKpiNoteDelete } from "./confirmModal.js";
 import { allowModalInputFocus } from "./modalNoAutoFocus.js";
 import { bindKpiTodoModalMobileKeyboard } from "./kpiTodoModalKeyboard.js";
 import {
@@ -116,7 +117,7 @@ export function showSideincomeKpiNoteModal(opts = {}) {
           <div data-legacy="time-task-log-footer" class="dream-kpi-note-modal-footer">
             ${
               mode === "edit"
-                ? `<button type="button" class="dream-kpi-note-delete-btn" data-lp-kpi-note-delete>삭제</button>`
+                ? `<button type="button" data-legacy="time-task-log-delete-btn" class="dream-kpi-note-delete-btn" data-lp-kpi-note-delete>삭제</button>`
                 : ""
             }
             <button type="submit" data-legacy="time-task-log-submit">${escapeHtml(submitLabel)}</button>
@@ -296,7 +297,8 @@ export function showSideincomeKpiNoteModal(opts = {}) {
       .querySelector('[data-legacy~="time-task-setup-close"]')
       .addEventListener("click", () => finish(null));
 
-    modal.querySelector("[data-lp-kpi-note-delete]")?.addEventListener("click", () => {
+    modal.querySelector("[data-lp-kpi-note-delete]")?.addEventListener("click", async () => {
+      if (!(await confirmKpiNoteDelete())) return;
       finish({ action: "delete" });
     });
 

@@ -295,6 +295,17 @@ export function confirmKpiActionDelete(kpiName) {
   });
 }
 
+/** KPI 기록 수정 모달 삭제 — 할 일 수정과 동일한 확인 */
+export function confirmKpiNoteDelete() {
+  return showConfirmModal({
+    title: "기록 삭제",
+    message: "이 기록을 삭제할까요?",
+    confirmText: "삭제",
+    cancelText: "취소",
+    confirmDanger: true,
+  });
+}
+
 /** KPI 카드「할 일 목록」× 클릭 — 실수 삭제 방지 */
 export function confirmKpiTodoDelete() {
   return showConfirmModal({
