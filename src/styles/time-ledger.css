@@ -1793,8 +1793,8 @@
 }
 
 .lp-tr2-plan-day-outcome--match {
-  background: #ecfdf5;
-  color: #15803d;
+  background: #d5d9d4;
+  color: #3a423c;
 }
 
 .lp-tr2-plan-day-outcome--under {
@@ -1844,9 +1844,9 @@
   height: 1.2rem;
   margin-top: 0.1rem;
   border-radius: 0.28rem;
-  background: #ecfdf5;
-  border: 1px solid #a7f3d0;
-  color: #15803d;
+  background: #d5d9d4;
+  border: 1px solid #b8beb6;
+  color: #3a423c;
   font-size: var(--lp-tr2-meta);
   font-weight: 800;
   line-height: 1;
@@ -2563,7 +2563,7 @@
 }
 
 .lp-tr2-sleep-goal-chart-val.is-met {
-  color: #15803d;
+  color: #3a423c;
 }
 
 .lp-tr2-sleep-goal-chart-date {
@@ -2586,7 +2586,7 @@
 }
 
 .lp-tr2-sleep-goal-chart-bar.is-met {
-  background: #22c55e;
+  background: #6a7f6e;
   opacity: 0.92;
 }
 
@@ -2629,7 +2629,7 @@
 }
 
 .lp-tr2-sleep-chart-legend-met {
-  background: #22c55e;
+  background: #6a7f6e;
 }
 
 .lp-tr2-sleep-chart-legend-miss {
@@ -2764,7 +2764,7 @@
 }
 
 .lp-tr2-sleep-stat-value--bedtime {
-  color: #15803d;
+  color: #3a423c;
 }
 
 .lp-tr2-sleep-stat-value--rating {
@@ -4471,8 +4471,8 @@
 }
 
 .lp-tr2-intake-taste-chip--high {
-  background: #ecfdf5;
-  color: #166534;
+  background: #d5d9d4;
+  color: #3a423c;
 }
 
 .lp-tr2-intake-taste-chip--mid {
@@ -4481,8 +4481,8 @@
 }
 
 .lp-tr2-intake-taste-chip--low {
-  background: #fff7ed;
-  color: #9a3412;
+  background: #e8ddd4;
+  color: #5c4033;
 }
 
 .lp-tr2-intake-taste-by-rating {
@@ -4558,21 +4558,21 @@
   gap: 0.25rem 0.65rem;
   padding: 0.4rem 0.5rem;
   border-radius: 0.5rem;
-  background: #ecfdf5;
+  background: #d5d9d4;
   box-sizing: border-box;
 }
 
 .lp-tr2-year-kpi-name-text {
   font-size: var(--lp-tr2-body);
   font-weight: 750;
-  color: #166534;
+  color: #3a423c;
   word-break: keep-all;
 }
 
 .lp-tr2-year-kpi-name-tag {
   font-size: var(--lp-tr2-label);
   font-weight: 650;
-  color: #15803d;
+  color: #3a423c;
 }
 
 .lp-tr2-year-kpi-progress-list {
@@ -4620,7 +4620,7 @@
 }
 
 .lp-tr2-year-kpi-progress-row.is-done .lp-tr2-year-kpi-progress-pct {
-  color: #15803d;
+  color: #3a423c;
 }
 
 .lp-tr2-year-kpi-progress-meta {
@@ -4646,7 +4646,7 @@
 }
 
 .lp-tr2-year-kpi-progress-fill.is-done {
-  background: #22c55e;
+  background: #6a7f6e;
 }
 
 /* 레포트 — 습관 점수판 */
@@ -7171,55 +7171,55 @@
 .time-ledger-day-timebox-matrix-cell--sideincome,
 [data-legacy~="time-ledger-view"]
   .time-ledger-day-timebox-matrix-cell--sideincome {
-  background: rgba(255, 246, 246, 0.82);
-  border-color: rgba(255, 171, 171, 0.38);
+  background: rgba(244, 236, 234, 0.88);
+  border-color: rgba(196, 150, 150, 0.42);
   border-style: solid;
-  color: #b85050;
+  color: #8a5454;
 }
 
 .time-ledger-day-timebox-matrix-cell--happiness,
 [data-legacy~="time-ledger-view"]
   .time-ledger-day-timebox-matrix-cell--happiness {
-  background: rgba(255, 246, 250, 0.82);
-  border-color: rgba(232, 190, 210, 0.42);
+  background: rgba(242, 234, 238, 0.88);
+  border-color: rgba(196, 168, 180, 0.4);
   border-style: solid;
-  color: #ad5078;
+  color: #8a5a6e;
 }
 
 /* 생산·비생산 대화·외출 */
 .time-ledger-day-timebox-matrix-cell--social,
 [data-legacy~="time-ledger-view"]
   .time-ledger-day-timebox-matrix-cell--social {
-  background: rgba(247, 244, 252, 0.82);
-  border-color: rgba(208, 195, 232, 0.42);
+  background: rgba(238, 236, 242, 0.88);
+  border-color: rgba(176, 168, 196, 0.4);
   border-style: solid;
-  color: #6554a8;
+  color: #5c5478;
 }
 
 .time-ledger-day-timebox-matrix-cell--health,
 [data-legacy~="time-ledger-view"]
   .time-ledger-day-timebox-matrix-cell--health {
-  background: rgba(255, 248, 242, 0.82);
-  border-color: rgba(232, 205, 180, 0.42);
+  background: rgba(244, 238, 232, 0.88);
+  border-color: rgba(196, 176, 156, 0.4);
   border-style: solid;
-  color: #b86e38;
+  color: #8a6848;
 }
 
 .time-ledger-day-timebox-matrix-cell--other,
 [data-legacy~="time-ledger-view"] .time-ledger-day-timebox-matrix-cell--other {
-  background: rgba(242, 249, 244, 0.82);
-  border-color: rgba(186, 216, 198, 0.42);
+  background: rgba(232, 236, 232, 0.88);
+  border-color: rgba(164, 180, 168, 0.4);
   border-style: solid;
-  color: #458b58;
+  color: #4a5c4e;
 }
 
 .time-ledger-day-timebox-matrix-cell--nonproductive,
 [data-legacy~="time-ledger-view"]
   .time-ledger-day-timebox-matrix-cell--nonproductive {
-  background: rgba(243, 248, 252, 0.82);
-  border-color: rgba(175, 203, 230, 0.42);
+  background: rgba(232, 236, 240, 0.88);
+  border-color: rgba(160, 180, 196, 0.4);
   border-style: solid;
-  color: #3a6288;
+  color: #3d5266;
 }
 
 .time-ledger-day-timebox-matrix-cell--labeled,

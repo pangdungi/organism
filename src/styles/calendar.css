@@ -704,46 +704,46 @@ button.calendar-1day-pane-section-head--action:focus-visible {
 }
 
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--sideincome {
-  background: rgba(255, 246, 246, 0.82);
-  border-color: rgba(255, 171, 171, 0.38);
+  background: rgba(244, 236, 234, 0.88);
+  border-color: rgba(196, 150, 150, 0.42);
   border-style: solid;
-  color: #b85050;
+  color: #8a5454;
 }
 
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--happiness {
-  background: rgba(255, 246, 250, 0.82);
-  border-color: rgba(232, 190, 210, 0.42);
+  background: rgba(242, 234, 238, 0.88);
+  border-color: rgba(196, 168, 180, 0.4);
   border-style: solid;
-  color: #ad5078;
+  color: #8a5a6e;
 }
 
 /* 생산·비생산 대화·외출(예상 일정) */
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--social {
-  background: rgba(247, 244, 252, 0.82);
-  border-color: rgba(208, 195, 232, 0.42);
+  background: rgba(238, 236, 242, 0.88);
+  border-color: rgba(176, 168, 196, 0.4);
   border-style: solid;
-  color: #6554a8;
+  color: #5c5478;
 }
 
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--health {
-  background: rgba(255, 248, 242, 0.82);
-  border-color: rgba(232, 205, 180, 0.42);
+  background: rgba(244, 238, 232, 0.88);
+  border-color: rgba(196, 176, 156, 0.4);
   border-style: solid;
-  color: #b86e38;
+  color: #8a6848;
 }
 
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--other {
-  background: rgba(242, 249, 244, 0.82);
-  border-color: rgba(186, 216, 198, 0.42);
+  background: rgba(232, 236, 232, 0.88);
+  border-color: rgba(164, 180, 168, 0.4);
   border-style: solid;
-  color: #458b58;
+  color: #4a5c4e;
 }
 
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--nonproductive {
-  background: rgba(243, 248, 252, 0.82);
-  border-color: rgba(175, 203, 230, 0.42);
+  background: rgba(232, 236, 240, 0.88);
+  border-color: rgba(160, 180, 196, 0.4);
   border-style: solid;
-  color: #3a6288;
+  color: #3d5266;
 }
 
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--labeled {
