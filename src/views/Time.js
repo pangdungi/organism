@@ -29,6 +29,10 @@ import {
   DEFAULT_READING_KPI_ID,
   DEFAULT_READING_KPI_TODO_LIST_LABEL,
 } from "../utils/happinessKpiMapSupabase.js";
+import {
+  isDefaultHappinessRoutineKpiId,
+  isDefaultHappinessRoutineTaskName,
+} from "../utils/defaultKpiIconIds.js";
 import { kpiTodoFineTrace } from "../utils/kpiTodoFineTrace.js";
 import {
   bindModalNativeDateRange,
@@ -9007,6 +9011,17 @@ export function render(opts = {}) {
       "productive";
   }
 
+  /** 기본 루틴 6종 — 별점만, 몰입·아쉬움 칩 없음 */
+  function isTaskLogModalDefaultHappinessRoutine() {
+    const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
+    if (isDefaultHappinessRoutineTaskName(taskName)) return true;
+    const opt = getTaskOptionByName(taskName);
+    if (isDefaultHappinessRoutineKpiId(opt?.kpiId)) return true;
+    return resolveKpiLinksForTaskName(taskName).some((l) =>
+      isDefaultHappinessRoutineKpiId(l.kpiId),
+    );
+  }
+
   function isTaskLogModalNonproductiveTask() {
     return (
       getTimeLedgerRowDisplayProductivity(buildTaskLogModalProductivityStub()) ===
@@ -9063,10 +9078,16 @@ export function render(opts = {}) {
     return TTC.isContentDetailTaskName(taskName);
   }
 
+  function isTaskLogModalStarsOnlyRatingTask() {
+    const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
+    return TTC.isTimeRatingStarsOnlyBuiltinTaskName(taskName);
+  }
+
   function shouldShowTaskLogRatingSection() {
     /* 취침~23:59 구간은 아직 자는 중 — 평가는 다음날 기상 때 */
     if (isTaskLogModalSleepOvernightCutoff()) return false;
     const ratingTaskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
+    if (TTC.isTimeRatingStarsOnlyBuiltinTaskName(ratingTaskName)) return true;
     if (TTC.isTimeRatingRemovedBuiltinTaskName(ratingTaskName)) return false;
     if (
       isTaskLogModalSleepTask() ||
@@ -9149,6 +9170,8 @@ export function render(opts = {}) {
     );
     const taskAllows =
       isTaskLogModalProductiveTask() &&
+      !isTaskLogModalDefaultHappinessRoutine() &&
+      !isTaskLogModalStarsOnlyRatingTask() &&
       !isTaskLogModalMealIntakeTask() &&
       !isTaskLogModalConversationTask() &&
       !isTaskLogModalContentTask();
@@ -9202,6 +9225,8 @@ export function render(opts = {}) {
     const ratingMatches = shouldCollectTimeFlowFactors(getTaskLogTimeRating());
     const taskAllows =
       isTaskLogModalProductiveTask() &&
+      !isTaskLogModalDefaultHappinessRoutine() &&
+      !isTaskLogModalStarsOnlyRatingTask() &&
       !isTaskLogModalMealIntakeTask() &&
       !isTaskLogModalConversationTask() &&
       !isTaskLogModalContentTask();
@@ -9381,6 +9406,7 @@ export function render(opts = {}) {
     );
     const taskAllows =
       isTaskLogModalNonproductiveTask() &&
+      !isTaskLogModalStarsOnlyRatingTask() &&
       !isTaskLogModalMealIntakeTask() &&
       !isTaskLogModalSleepTask() &&
       !isTaskLogModalEmotionalTask() &&
@@ -9432,6 +9458,7 @@ export function render(opts = {}) {
     );
     const taskAllows =
       isTaskLogModalNonproductiveTask() &&
+      !isTaskLogModalStarsOnlyRatingTask() &&
       !isTaskLogModalMealIntakeTask() &&
       !isTaskLogModalSleepTask() &&
       !isTaskLogModalEmotionalTask() &&
@@ -13621,6 +13648,8 @@ export function render(opts = {}) {
     };
     const needsFlowDisruptors =
       isTaskLogModalProductiveTask() &&
+      !isTaskLogModalDefaultHappinessRoutine() &&
+      !isTaskLogModalStarsOnlyRatingTask() &&
       !isTaskLogModalMealIntakeTask() &&
       !isTaskLogModalConversationTask() &&
       !isTaskLogModalContentTask() &&
@@ -13656,6 +13685,8 @@ export function render(opts = {}) {
     const needsFlowFactors =
       shouldCollectTimeFlowFactors(timeRatingForRow) &&
       isTaskLogModalProductiveTask() &&
+      !isTaskLogModalDefaultHappinessRoutine() &&
+      !isTaskLogModalStarsOnlyRatingTask() &&
       !isTaskLogModalMealIntakeTask() &&
       !isTaskLogModalConversationTask() &&
       !isTaskLogModalContentTask();
@@ -13767,6 +13798,7 @@ export function render(opts = {}) {
     }
     const needsBadFeeling =
       isTaskLogModalNonproductiveTask() &&
+      !isTaskLogModalStarsOnlyRatingTask() &&
       !isTaskLogModalMealIntakeTask() &&
       !isTaskLogModalSleepTask() &&
       !isTaskLogModalEmotionalTask() &&
@@ -13801,6 +13833,7 @@ export function render(opts = {}) {
     }
     const needsGoodFeeling =
       isTaskLogModalNonproductiveTask() &&
+      !isTaskLogModalStarsOnlyRatingTask() &&
       !isTaskLogModalMealIntakeTask() &&
       !isTaskLogModalSleepTask() &&
       !isTaskLogModalEmotionalTask() &&

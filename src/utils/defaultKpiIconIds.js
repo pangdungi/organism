@@ -29,6 +29,26 @@ export function isDefaultHappinessRoutineKpiId(id) {
   return DEFAULT_HAPPINESS_ROUTINE_KPI_IDS.has(String(id ?? ""));
 }
 
+export const DEFAULT_HAPPINESS_ROUTINE_TASK_NAMES = [
+  "모닝 루틴",
+  "이동 루틴",
+  "정리루틴",
+  "외출 준비 루틴",
+  "외출 후 루틴",
+  "취침 루틴",
+];
+
+/** 기본 루틴 과제명(공백 차이 허용) */
+export function isDefaultHappinessRoutineTaskName(name) {
+  const n = String(name || "").trim();
+  if (!n) return false;
+  if (DEFAULT_HAPPINESS_ROUTINE_TASK_NAMES.includes(n)) return true;
+  const compact = n.replace(/\s+/g, "");
+  return DEFAULT_HAPPINESS_ROUTINE_TASK_NAMES.some(
+    (label) => label.replace(/\s+/g, "") === compact,
+  );
+}
+
 /** 매일하기만 · 요일 선택 (행복 루틴 + 보충제 섭취) */
 export function isHabitOnlyDefaultKpiId(id) {
   const s = String(id ?? "");

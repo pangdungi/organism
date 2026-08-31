@@ -108,8 +108,8 @@ const CATEGORY_RADAR_AXES = [
 
 const RATING_REPORT_COLOR = "#C98484";
 const RATING_REPORT_COLOR_MID = "#7E9FC3";
-const RATING_REPORT_COLOR_LOW = "#C8D9EC";
-const RATING_REPORT_COLOR_EMPTY = "#e8edf3";
+const RATING_REPORT_COLOR_LOW = "#8AA8C8";
+const RATING_REPORT_COLOR_EMPTY = "#cfcfcf";
 const RATING_REPORT_COLOR_PEAK = "#d97706";
 const WEEKDAY_LABELS_KO = ["일", "월", "화", "수", "목", "금", "토"];
 const WEEKDAY_CHART_ORDER = [1, 2, 3, 4, 5, 6, 0];
@@ -690,6 +690,69 @@ function collectAllRatedSessions(rows) {
     return am - bm;
   });
   return out;
+}
+
+/** 별점(1~5)마다 그 점수를 받은 행동 이름(중복 없이) */
+function groupTaskNamesByStarRating(rows) {
+  /** @type {Record<number, string[]>} */
+  const buckets = { 5: [], 4: [], 3: [], 2: [], 1: [] };
+  /** @type {Record<number, Set<string>>} */
+  const seen = {
+    5: new Set(),
+    4: new Set(),
+    3: new Set(),
+    2: new Set(),
+    1: new Set(),
+  };
+  for (const r of rows || []) {
+    const rating = normalizeTimeRatingForRow(r?.timeRating);
+    if (rating == null || !buckets[rating]) continue;
+    const raw = String(r?.taskName || "").trim();
+    const task = canonicalMealTaskDisplayName(raw) || raw;
+    if (!task || seen[rating].has(task)) continue;
+    seen[rating].add(task);
+    buckets[rating].push(task);
+  }
+  return buckets;
+}
+
+function mountStarRatingTaskListSection(scrollWrap, range, rows) {
+  if (!scrollWrap) return;
+  const buckets = groupTaskNamesByStarRating(rows);
+  const stars = [5, 4, 3, 2, 1];
+  const hasAny = stars.some((n) => buckets[n].length > 0);
+  const sec = createSection(
+    "별점별 행동",
+    "다음에 행동을 구매할 때 고려해보세요!",
+  );
+  if (!hasAny) {
+    const note = document.createElement("p");
+    note.className = "lp-tr2-chart-note";
+    note.textContent =
+      "별점을 남긴 기록이 없습니다. 과제 기록할 때 평가를 남겨 보세요.";
+    sec.appendChild(note);
+    scrollWrap.appendChild(sec);
+    return;
+  }
+  const list = document.createElement("div");
+  list.className = "lp-tr2-star-task-list";
+  for (const n of stars) {
+    const names = buckets[n];
+    if (!names.length) continue;
+    const row = document.createElement("div");
+    row.className = "lp-tr2-star-task-row";
+    const score = document.createElement("span");
+    score.className = "lp-tr2-star-task-score";
+    score.appendChild(createSleepRatingStarsEl(n));
+    const tasks = document.createElement("p");
+    tasks.className = "lp-tr2-star-task-names";
+    tasks.textContent = names.join(" · ");
+    row.appendChild(score);
+    row.appendChild(tasks);
+    list.appendChild(row);
+  }
+  sec.appendChild(list);
+  scrollWrap.appendChild(sec);
 }
 
 function addRatedMinutesToHourBuckets(hourBuckets, rating, fromMin, toMin) {
@@ -6656,7 +6719,7 @@ function renderYearInvestConsumeChart(series) {
         y1: y,
         x2: padL + plotW,
         y2: y,
-        stroke: "#e8edf3",
+        stroke: "#c4bfb6",
         "stroke-width": 1,
       }),
     );
@@ -6815,7 +6878,7 @@ function renderYearHeroSummary(
         {
           label: "미기록",
           minutes: unrecorded,
-          color: "#e8edf3",
+          color: "#c4bfb6",
           title: `미기록 ${formatIntegerMinutesDurationKo(unrecorded)}`,
         },
       ],
@@ -7660,7 +7723,7 @@ function renderCategoryTimeRadarChart(radarSnap) {
       svgEl("polygon", {
         points: ringPts.join(" "),
         fill: "none",
-        stroke: "#e8edf3",
+        stroke: "#c4bfb6",
         "stroke-width": 1,
       }),
     );
@@ -7674,7 +7737,7 @@ function renderCategoryTimeRadarChart(radarSnap) {
         y1: cy,
         x2: cx + R * Math.cos(ang),
         y2: cy + R * Math.sin(ang),
-        stroke: "#e8edf3",
+        stroke: "#c4bfb6",
         "stroke-width": 1,
       }),
     );
@@ -7686,7 +7749,7 @@ function renderCategoryTimeRadarChart(radarSnap) {
     svg.appendChild(
       svgEl("polygon", {
         points: closedPointsAttr(pts),
-        fill: "rgba(126, 159, 195, 0.12)",
+        fill: "rgba(126, 159, 195, 0.28)",
         stroke: "#64748b",
         "stroke-width": 2,
         "stroke-linejoin": "round",
@@ -8375,6 +8438,7 @@ export function mountUnifiedTimeReport(scrollWrap, arg2, arg3) {
     mountHeroSection(stage, range, rows);
     mountDayCompareSection(stage, range, allRows);
     mountDonutSection(stage, range, rows);
+    mountStarRatingTaskListSection(stage, range, rows);
   });
   reapplyScroll();
 

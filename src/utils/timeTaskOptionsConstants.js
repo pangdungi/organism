@@ -891,32 +891,42 @@ export function isMealIntakeTasteRatingTaskName(name) {
 }
 
 /** 시간기록 모달에서 «이 시간 평가»를 받지 않는 내장 행동 */
-const TIME_RATING_REMOVED_TASK_NAMES = new Set([
+const TIME_RATING_REMOVED_TASK_NAMES = new Set([]);
+
+/** 별점만 — 몰입·아쉬움·좋았던/별로였던 칩 없음 */
+const TIME_RATING_STARS_ONLY_TASK_NAMES = new Set([
+  "생산적 소비",
   "비생산적 소비",
-  "건강하지 않은 섭취 준비",
   "비생산적 대화",
+  "시간 관리 관련 행동",
+  "기록하기",
+  "생산적 대화",
+  "생산적 외출",
   "비생산적 외출",
-  "물건 찾기",
+  "외모관리",
+  "잡무 처리하기",
+  "개인 위생",
+  "건강한 섭취 준비",
+  "건강하지 않은 섭취 준비",
+  WORK_BUILTIN_TASK_NAME,
   "잡생각하기",
   "단순 이동",
   "게임",
-  "생산적 소비",
-  "시간 관리 관련 행동",
-  "개인 위생",
-  "건강한 섭취 준비",
-  "생산적 대화",
-  "생산적 외출",
-  "기록하기",
+  "물건 찾기",
   "성찰 일기쓰기",
-  "외모관리",
-  "잡무 처리하기",
-  WORK_BUILTIN_TASK_NAME,
 ]);
+
+export function isTimeRatingStarsOnlyBuiltinTaskName(name) {
+  const n = canonicalMealTaskDisplayName(name);
+  if (!n) return false;
+  if (isNapBuiltinTaskName(n)) return true;
+  return TIME_RATING_STARS_ONLY_TASK_NAMES.has(n);
+}
 
 export function isTimeRatingRemovedBuiltinTaskName(name) {
   const n = canonicalMealTaskDisplayName(name);
   if (!n) return false;
-  if (isNapBuiltinTaskName(n)) return true;
+  if (isTimeRatingStarsOnlyBuiltinTaskName(n)) return false;
   return TIME_RATING_REMOVED_TASK_NAMES.has(n);
 }
 
