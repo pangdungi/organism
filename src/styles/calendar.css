@@ -633,7 +633,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
 .calendar-1day-slot-grid-row {
   display: grid;
   /* 시 라벨 열 = 숫자폭 + 오른쪽 여백 */
-  grid-template-columns: 1.1rem repeat(12, minmax(0, 1fr));
+  grid-template-columns: 1.4rem repeat(12, minmax(0, 1fr));
   column-gap: 0.06rem;
   row-gap: 0;
   align-items: stretch;
@@ -678,7 +678,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   justify-content: flex-end;
   margin: 0;
   /* 00·01… 숫자와 타임박스 칸 사이 여백 */
-  padding: 0 0.28rem 0 0;
+  padding: 0 0.34rem 0 0.12rem;
   box-sizing: border-box;
 }
 
@@ -1642,11 +1642,15 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   font-size: var(--cal-font-1week-meta);
 }
 
-/* 월별 뷰만: 그리드 카드 전체의 아래 외곽 보더 제거(연간 등은 유지) */
+/* 월·주: 그리드 아래 외곽선 제거 — 푸터 윗선과 겹치면 굵어짐 */
 .calendar-monthly-layout.calendar-subview-monthly
   > .calendar-monthly-main
-  > .calendar-monthly-grid {
+  > .calendar-monthly-grid,
+.calendar-monthly-layout
+  > .calendar-monthly-main
+  > .calendar-monthly-grid.calendar-monthly-grid--1week-timegrid {
   border-bottom: none;
+  border-block-end: none;
 }
 
 /* 월별: 요일 행 고정, 주 행은 남는 높이 균등 분배(셀 min·JS 높이는 유지) */
@@ -1688,7 +1692,8 @@ button.calendar-1day-pane-section-head--action:focus-visible {
 }
 
 .calendar-monthly-grid--1week-timegrid {
-  border-block: 1px solid var(--cal-line);
+  border-block-start: 1px solid var(--cal-line);
+  border-block-end: none;
   border-inline: none;
   border-radius: var(--cal-radius);
   overflow: hidden;
@@ -2088,8 +2093,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
 
 .calendar-1week-time-grid-google {
   border-radius: var(--cal-radius);
-  border-block: 1px solid var(--cal-line);
-  border-inline: none;
+  border: none;
   overflow: hidden;
   background: transparent;
   flex: 1 1 auto;
@@ -2469,7 +2473,8 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
-  border-block: 1px solid var(--cal-line);
+  border-block-start: 1px solid var(--cal-line);
+  border-block-end: none;
   border-inline: none;
   border-radius: var(--cal-radius);
   background: var(--cal-surface);

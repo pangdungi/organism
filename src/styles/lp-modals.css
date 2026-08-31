@@ -2347,9 +2347,9 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   font-size: 0.8125rem;
   font-weight: 500;
   font-family: inherit;
-  color: var(--lp-modal-navy-muted);
-  background: #f2f2f2;
-  border: 1px solid transparent;
+  color: #000000;
+  background: transparent;
+  border: 1px solid #000000;
   border-radius: 999px;
   cursor: pointer;
 }

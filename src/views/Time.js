@@ -5227,7 +5227,7 @@ function createTimeLedgerDayTimeboxDualPane(actualBlocks, expectedBlocks) {
   expectedCol.appendChild(createTimeboxDualPaneHead("예상", "expected"));
   const expectedScroll = createTimeLedgerDayTimeboxElement(expectedBlocks, {
     showRowLabels: true,
-    emptyMessage: "예상 일정이 없습니다.",
+    showEmptyMessage: false,
     matrixAriaLabel: "예상 일정 24행 12열 5분 단위 시간박스",
   });
   expectedScroll.dataset.lpTimeboxKind = "expected";

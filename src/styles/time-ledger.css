@@ -479,6 +479,11 @@
   justify-content: space-between;
   gap: 0.75rem;
 }
+
+[data-legacy~="time-ledger-view"]:has(.time-ledger-timebox-view-shell)
+  [data-legacy~="time-ledger-usage-history-heading-row"] {
+  border-bottom: none;
+}
 [data-legacy~="time-ledger-view"]
   [data-legacy~="time-ledger-usage-history-heading-left"] {
   flex: 1 1 auto;
@@ -6912,6 +6917,7 @@
   letter-spacing: -0.02em;
   color: #475569;
   text-align: center;
+  border-top: 1px solid #e8edf3;
   border-bottom: 1px solid #e8edf3;
   background: transparent;
 }

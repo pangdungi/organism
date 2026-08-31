@@ -109,9 +109,7 @@
 }
 
 .lp-kpi-dream-page .habit-tracker-page-grid-month-nav {
-  position: sticky;
-  top: 0;
-  z-index: 12;
+  position: relative;
   display: inline-flex;
   align-self: center;
   align-items: center;

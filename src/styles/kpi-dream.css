@@ -1784,11 +1784,13 @@
     box-shadow 0.15s ease;
 }
 
-.lp-kpi-dream-page .dream-kpi-card:hover {
-  border-color: rgba(0, 0, 0, 0.34);
-  box-shadow:
-    0 2px 8px rgba(21, 43, 69, 0.12),
-    0 1px 3px rgba(21, 43, 69, 0.08);
+@media (hover: hover) and (pointer: fine) {
+  .lp-kpi-dream-page .dream-kpi-card:hover {
+    border-color: rgba(0, 0, 0, 0.34);
+    box-shadow:
+      0 2px 8px rgba(21, 43, 69, 0.12),
+      0 1px 3px rgba(21, 43, 69, 0.08);
+  }
 }
 
 .lp-kpi-dream-page .dream-kpi-card.is-selected {
