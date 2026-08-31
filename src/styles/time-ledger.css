@@ -9479,25 +9479,13 @@
     .lp-calendar-budget-add-modal
   )
   [data-legacy~="time-task-log-planned-slots-btns"] {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-start;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.25rem, 1fr));
+  justify-content: stretch;
   align-items: stretch;
   gap: 0.35rem;
   margin: 0;
   width: 100%;
-}
-
-/* 모바일만 — 계획 버튼 가운데 정렬 */
-@media (max-width: 35.99rem) {
-  .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
-    [data-legacy~="time-task-log-planned-slots-btns"],
-  [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
-      .lp-calendar-budget-add-modal
-    )
-    [data-legacy~="time-task-log-planned-slots-btns"] {
-    justify-content: center;
-  }
 }
 
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
@@ -9513,8 +9501,11 @@
   align-items: center;
   justify-content: center;
   gap: 0.22rem;
-  width: 4.25rem;
-  height: 4.25rem;
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  min-height: 4.25rem;
+  aspect-ratio: 1;
   padding: 0.3rem 0.2rem;
   font-family: inherit;
   color: #475569;

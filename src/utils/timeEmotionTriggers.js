@@ -314,6 +314,23 @@ export function emotionTriggerCategoryLabels() {
   return EMOTION_TRIGGER_CATEGORIES.map((c) => c.label);
 }
 
+/** @param {string} label */
+export function isEmotionTriggerCategoryLabel(label) {
+  return CAT_BY_LABEL.has(String(label || "").trim());
+}
+
+/**
+ * 대분류만 골라도 저장. 세부는 있으면 같이 붙인다.
+ * @param {string} raw
+ * @param {string} [categoryFallback]
+ */
+export function emotionTriggerValueForSave(raw, categoryFallback = "") {
+  const parsed = parseEmotionTrigger(raw);
+  const cat = parsed.categoryLabel || String(categoryFallback || "").trim();
+  if (!isEmotionTriggerCategoryLabel(cat)) return "";
+  return formatEmotionTrigger(cat, parsed.subLabel);
+}
+
 /** @param {string} categoryLabel @returns {string[]} */
 export function emotionTriggerSubsForCategory(categoryLabel) {
   const c = CAT_BY_LABEL.get(String(categoryLabel || "").trim());

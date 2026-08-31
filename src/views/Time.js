@@ -8250,11 +8250,11 @@ export function render(opts = {}) {
             </div>
             <div data-legacy="time-task-log-emotion-reflect-section" hidden>
               <div data-legacy="time-task-log-field">
-                <label data-legacy="time-task-log-section-label time-task-log-emotion-fact-label" for="time-task-log-emotion-fact">상황에 대한 사실만 적기 (필수)</label>
+                <label data-legacy="time-task-log-section-label time-task-log-emotion-fact-label" for="time-task-log-emotion-fact">상황에 대한 사실만 적기</label>
                 <textarea id="time-task-log-emotion-fact" data-legacy="time-task-log-emotion-fact time-task-log-memo-input" rows="2" placeholder="무슨 일이 있었는지, 사실만 적어 주세요" autocomplete="off"></textarea>
               </div>
               <div data-legacy="time-task-log-field">
-                <label data-legacy="time-task-log-section-label time-task-log-emotion-interp-label" for="time-task-log-emotion-interp">내 해석 적기 (필수)</label>
+                <label data-legacy="time-task-log-section-label time-task-log-emotion-interp-label" for="time-task-log-emotion-interp">내 해석 적기</label>
                 <textarea id="time-task-log-emotion-interp" data-legacy="time-task-log-emotion-interp time-task-log-memo-input" rows="2" placeholder="내가 해석한 상황을 적어주세요" autocomplete="off"></textarea>
               </div>
             </div>
@@ -8475,14 +8475,10 @@ export function render(opts = {}) {
       taskLogEmotionReflectSection.hidden = !show;
     }
     if (taskLogEmotionFactLabel) {
-      taskLogEmotionFactLabel.textContent = show
-        ? "상황에 대한 사실만 적기 (필수)"
-        : "상황에 대한 사실만 적기";
+      taskLogEmotionFactLabel.textContent = "상황에 대한 사실만 적기";
     }
     if (taskLogEmotionInterpLabel) {
-      taskLogEmotionInterpLabel.textContent = show
-        ? "내 해석 적기 (필수)"
-        : "내 해석 적기";
+      taskLogEmotionInterpLabel.textContent = "내 해석 적기";
     }
     if (!show) clearTaskLogEmotionReflectInputs();
     syncTaskLogStructuredMemoFieldVisibility(taskName);
@@ -8771,9 +8767,12 @@ export function render(opts = {}) {
           parsed.categoryLabel === taskLogEmotionTriggerCategory,
       );
       btn.addEventListener("click", () => {
+        const on =
+          parsed.subLabel === sub &&
+          parsed.categoryLabel === taskLogEmotionTriggerCategory;
         taskLogEmotionTrigger = TTC.formatEmotionTrigger(
           taskLogEmotionTriggerCategory,
-          sub,
+          on ? "" : sub,
         );
         syncTaskLogEmotionTriggerChips();
       });
@@ -8801,18 +8800,16 @@ export function render(opts = {}) {
   function setTaskLogEmotionTrigger(value) {
     const parsed = TTC.parseEmotionTrigger(value);
     taskLogEmotionTriggerCategory = parsed.categoryLabel || "";
-    taskLogEmotionTrigger = parsed.known
-      ? parsed.label
-      : parsed.categoryLabel && !parsed.subLabel
-        ? ""
-        : parsed.label || "";
+    taskLogEmotionTrigger =
+      TTC.emotionTriggerValueForSave(value) || parsed.label || "";
     syncTaskLogEmotionTriggerChips();
   }
 
   function getTaskLogEmotionTriggerForSave() {
-    const parsed = TTC.parseEmotionTrigger(taskLogEmotionTrigger);
-    if (parsed.known) return parsed.label;
-    return "";
+    return TTC.emotionTriggerValueForSave(
+      taskLogEmotionTrigger,
+      taskLogEmotionTriggerCategory,
+    );
   }
 
   function clearTaskLogEmotionTrigger() {
@@ -8836,9 +8833,10 @@ export function render(opts = {}) {
         }
         taskLogEmotionTriggerCategory = cat.label;
         const parsed = TTC.parseEmotionTrigger(taskLogEmotionTrigger);
-        if (parsed.categoryLabel !== cat.label) {
-          taskLogEmotionTrigger = "";
-        }
+        taskLogEmotionTrigger =
+          parsed.categoryLabel === cat.label && parsed.subLabel
+            ? TTC.formatEmotionTrigger(cat.label, parsed.subLabel)
+            : TTC.formatEmotionTrigger(cat.label, "");
         syncTaskLogEmotionTriggerChips();
       });
       taskLogEmotionTriggerCatChips.appendChild(btn);
@@ -13501,12 +13499,14 @@ export function render(opts = {}) {
     }
     if (
       TTC.emotionTaskUsesTriggers(taskName) &&
-      !String(mealDetailForRow || "").trim()
+      !TTC.isEmotionTriggerCategoryLabel(
+        TTC.parseEmotionTrigger(mealDetailForRow).categoryLabel,
+      )
     ) {
-      /* 감정적이기(부정): 트리거 권장 · 「나중에」면 없이 저장 */
+      /* 감정적이기(부정): 대분류 5개만 필수 · 「나중에」면 없이 저장 */
       const pickTrigger = await showConfirmModal({
         title: "알림",
-        message: "트리거 대분류와 세부 상황을 아직 고르지 않았어요.",
+        message: "트리거(사람·일·나 자신·몸·외부 상황)를 아직 고르지 않았어요.",
         cancelText: "나중에",
         confirmText: "확인",
       });
@@ -13521,62 +13521,6 @@ export function render(opts = {}) {
           } catch (_) {}
         }
         return;
-      }
-    }
-    if (TTC.isNegativeEmotionalTaskName(taskName)) {
-      const emotionFact = (taskLogEmotionFactInput?.value || "").trim();
-      if (!emotionFact) {
-        const enterFact = await showConfirmModal({
-          title: "알림",
-          message: "상황에 대한 사실을 아직 입력하지 않았어요.",
-          cancelText: "나중에",
-          confirmText: "확인",
-        });
-        if (enterFact) {
-          syncTaskLogEmotionReflectVisibility(taskName);
-          if (taskLogEmotionReflectSection) {
-            taskLogEmotionReflectSection.hidden = false;
-            try {
-              taskLogEmotionReflectSection.scrollIntoView({
-                block: "nearest",
-                behavior: "smooth",
-              });
-            } catch (_) {}
-          }
-          try {
-            taskLogEmotionFactInput?.focus?.({ preventScroll: true });
-          } catch (_) {
-            taskLogEmotionFactInput?.focus?.();
-          }
-          return;
-        }
-      }
-      const emotionInterp = (taskLogEmotionInterpInput?.value || "").trim();
-      if (!emotionInterp) {
-        const enterInterp = await showConfirmModal({
-          title: "알림",
-          message: "내 해석을 아직 입력하지 않았어요.",
-          cancelText: "나중에",
-          confirmText: "확인",
-        });
-        if (enterInterp) {
-          syncTaskLogEmotionReflectVisibility(taskName);
-          if (taskLogEmotionReflectSection) {
-            taskLogEmotionReflectSection.hidden = false;
-            try {
-              taskLogEmotionReflectSection.scrollIntoView({
-                block: "nearest",
-                behavior: "smooth",
-              });
-            } catch (_) {}
-          }
-          try {
-            taskLogEmotionInterpInput?.focus?.({ preventScroll: true });
-          } catch (_) {
-            taskLogEmotionInterpInput?.focus?.();
-          }
-          return;
-        }
       }
     }
     const feedback = feedbackBody;

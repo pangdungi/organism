@@ -393,6 +393,8 @@ export {
   formatEmotionTrigger,
   parseEmotionTrigger,
   resolveEmotionTriggerLabel,
+  emotionTriggerValueForSave,
+  isEmotionTriggerCategoryLabel,
   emotionTriggerCategoryLabels,
   emotionTriggerSubsForCategory,
   emotionTriggerCategoryHint,

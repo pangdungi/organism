@@ -25,7 +25,7 @@ export function showConfirmModal(options = {}) {
     title = "확인",
     message,
     warnMessage,
-    confirmText = "확인",
+    confirmText: confirmTextOpt = "확인",
     cancelText = "취소",
     confirmDanger = false,
     hideClose = false,
@@ -43,6 +43,10 @@ export function showConfirmModal(options = {}) {
 
   /* 「나중에」= 저장 계속 — X/Esc가 그와 같으면 안 됨 */
   const softSkipLater = String(cancelText || "").trim() === "나중에";
+  const confirmText =
+    softSkipLater && String(confirmTextOpt || "").trim() === "확인"
+      ? "다시 입력하기"
+      : confirmTextOpt;
   const noCloseBtn = hideClose || softSkipLater;
 
   return new Promise((resolve) => {
@@ -75,7 +79,7 @@ export function showConfirmModal(options = {}) {
           ${warnMessage ? `<p class="todo-list-confirm-warn">${escapeHtml(warnMessage)}</p>` : ""}
         </div>
         <div class="time-task-log-footer">
-          <button type="button" class="todo-list-modal-cancel">${escapeHtml(cancelText)}</button>
+          <button type="button" class="todo-list-modal-cancel${softSkipLater ? " todo-list-modal-cancel--later" : ""}">${escapeHtml(cancelText)}</button>
           <button type="button" class="${confirmBtnClass}">${escapeHtml(confirmText)}</button>
         </div>
       </div>

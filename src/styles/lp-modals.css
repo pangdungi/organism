@@ -2247,6 +2247,14 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   border-color: rgba(0, 0, 0, 0.3);
   color: var(--lp-modal-navy);
 }
+.todo-list-modal-cancel--later {
+  border-color: #000;
+  color: #000;
+}
+.todo-list-modal-cancel--later:hover {
+  border-color: #000;
+  color: #000;
+}
 .time-task-log-delete-btn,
 .time-add-task-delete,
 .todo-task-edit-footer-delete,

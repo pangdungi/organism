@@ -1332,9 +1332,12 @@ export function openCalendarExpectedScheduleModal(options) {
       btn.addEventListener(
         "click",
         () => {
+          const on =
+            parsed.subLabel === sub &&
+            parsed.categoryLabel === taskLogEmotionTriggerCategory;
           taskLogEmotionTrigger = TTC.formatEmotionTrigger(
             taskLogEmotionTriggerCategory,
-            sub,
+            on ? "" : sub,
           );
           syncTaskLogEmotionTriggerChips();
         },
@@ -1364,11 +1367,8 @@ export function openCalendarExpectedScheduleModal(options) {
   function setTaskLogEmotionTrigger(value) {
     const parsed = TTC.parseEmotionTrigger(value);
     taskLogEmotionTriggerCategory = parsed.categoryLabel || "";
-    taskLogEmotionTrigger = parsed.known
-      ? parsed.label
-      : parsed.categoryLabel && !parsed.subLabel
-        ? ""
-        : parsed.label || "";
+    taskLogEmotionTrigger =
+      TTC.emotionTriggerValueForSave(value) || parsed.label || "";
     syncTaskLogEmotionTriggerChips();
   }
 
@@ -1396,9 +1396,10 @@ export function openCalendarExpectedScheduleModal(options) {
           }
           taskLogEmotionTriggerCategory = cat.label;
           const parsed = TTC.parseEmotionTrigger(taskLogEmotionTrigger);
-          if (parsed.categoryLabel !== cat.label) {
-            taskLogEmotionTrigger = "";
-          }
+          taskLogEmotionTrigger =
+            parsed.categoryLabel === cat.label && parsed.subLabel
+              ? TTC.formatEmotionTrigger(cat.label, parsed.subLabel)
+              : TTC.formatEmotionTrigger(cat.label, "");
           syncTaskLogEmotionTriggerChips();
         },
         { signal },
@@ -1636,8 +1637,10 @@ export function openCalendarExpectedScheduleModal(options) {
     }
     if (TTC.isChipDetailTaskKind(kind)) return getTaskLogContentTypeForSave();
     if (kind === "emotion") {
-      const parsed = TTC.parseEmotionTrigger(taskLogEmotionTrigger);
-      return parsed.known ? parsed.label : "";
+      return TTC.emotionTriggerValueForSave(
+        taskLogEmotionTrigger,
+        taskLogEmotionTriggerCategory,
+      );
     }
     if (kind) return (taskLogMealDetailInput?.value || "").trim();
     return "";
