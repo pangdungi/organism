@@ -56,6 +56,7 @@ export function showToast(message, subMessageOrOpts, opts) {
 
   let autoTimer = null;
   const close = () => {
+    document.removeEventListener("keydown", onDocKeyDown, true);
     if (autoTimer != null) {
       clearTimeout(autoTimer);
       autoTimer = null;
@@ -65,10 +66,42 @@ export function showToast(message, subMessageOrOpts, opts) {
     } catch (_) {}
   };
 
+  function onDocKeyDown(e) {
+    if (!overlay.isConnected) {
+      document.removeEventListener("keydown", onDocKeyDown, true);
+      return;
+    }
+    if (overlay.contains(e.target)) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        close();
+      }
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.key === "Escape") {
+      close();
+      return;
+    }
+    overlay.querySelector(".app-toast-btn")?.focus({ preventScroll: true });
+  }
+
   overlay.querySelector(".app-toast-backdrop")?.addEventListener("click", close);
   overlay.querySelector(".app-toast-btn")?.addEventListener("click", close);
 
   document.body.appendChild(overlay);
+  try {
+    const ae = document.activeElement;
+    if (ae instanceof HTMLElement && ae !== document.body) ae.blur();
+  } catch (_) {}
+  if (!autoOnly) {
+    overlay.setAttribute("tabindex", "-1");
+    requestAnimationFrame(() => {
+      overlay.querySelector(".app-toast-btn")?.focus({ preventScroll: true });
+    });
+    document.addEventListener("keydown", onDocKeyDown, true);
+  }
 
   const autoMs =
     typeof options.durationMs === "number" && options.durationMs > 0

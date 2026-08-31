@@ -171,6 +171,13 @@ export function showAlertModal(options = {}) {
     document.body.appendChild(modal);
     modal.style.zIndex = String(resolveLpModalStackZIndex());
     document.body.style.overflow = "hidden";
+    try {
+      const ae = document.activeElement;
+      if (ae instanceof HTMLElement && ae !== document.body) ae.blur();
+    } catch (_) {}
+    requestAnimationFrame(() => {
+      confirmBtn?.focus({ preventScroll: true });
+    });
   });
 }
 

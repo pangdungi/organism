@@ -1009,11 +1009,11 @@
   height: 0.95rem;
   border-radius: 999px;
   overflow: hidden;
-  background: #eef2f7;
+  background: #cfcfcf;
 }
 
 .lp-tr2-year-hero-bar-track.is-empty {
-  background: #eef2f7;
+  background: #cfcfcf;
 }
 
 .lp-tr2-year-hero-bar-seg {
@@ -2330,7 +2330,7 @@
   max-height: var(--lp-tr2-bar-track-h, 8px);
   align-self: center;
   border-radius: 999px;
-  background: #f2f2f2;
+  background: #cfcfcf;
   overflow: hidden;
   box-sizing: border-box;
 }
@@ -3933,7 +3933,7 @@
   height: 0.55rem;
   min-width: 0;
   border-radius: 999px;
-  background: #e8edf3;
+  background: #cfcfcf;
   overflow: hidden;
 }
 
@@ -4631,7 +4631,7 @@
 .lp-tr2-year-kpi-progress-track {
   height: 0.35rem;
   border-radius: 999px;
-  background: #e8edf3;
+  background: #cfcfcf;
   overflow: hidden;
 }
 
@@ -5378,7 +5378,7 @@
 }
 
 .lp-tr2-bar-row--media-tag .lp-tr2-bar-track {
-  background: #eef2f7;
+  background: #cfcfcf;
 }
 
 .lp-tr2-media-days {
@@ -5793,7 +5793,7 @@
 }
 
 .lp-tr2-bar-row--rating .lp-tr2-bar-track {
-  background: #e8edf3;
+  background: #cfcfcf;
 }
 
 .lp-tr2-bar-row--rating .lp-tr2-bar-fill {

@@ -6027,7 +6027,9 @@ export function render(opts = {}) {
   lpSetClasses(el, "app-tab-panel-content time-ledger-view");
   el.dataset.timeContentView = "all";
   el._lpUsageListScrollToBottomPending = false;
+  el._lpUsageListScrollToTopPending = false;
   el._lpUsageListEnterScrollArmed = true;
+  el._lpReportInquiryScrollToTop = false;
   const timeTabAbort = new AbortController();
   el._lpTabAbortController = timeTabAbort;
   const signal = timeTabAbort.signal;
@@ -8001,7 +8003,13 @@ export function render(opts = {}) {
         persistActiveViewTimeFilterToSession();
       }
       closeUsageRangeModal();
-      if (timeLedgerLayoutView !== "report") {
+      if (timeLedgerLayoutView === "report") {
+        /* 조회 적용 때만 맨 위. 수정 remount는 기존 스크롤 유지 */
+        el._lpReportInquiryScrollToTop = true;
+      } else if (s && e && s !== e) {
+        requestUsageListScrollToTopOnce();
+        el._lpUsageListEnterScrollArmed = false;
+      } else {
         requestUsageListScrollToBottomOnce();
       }
       {
@@ -15385,7 +15393,21 @@ export function render(opts = {}) {
     el.removeAttribute("title");
   }
 
-  /** 사용내역 목록 — 진입·날짜 변경 시 1회만 맨 아래(최근 기록)로 스크롤 */
+  /** 사용내역 목록 — 주간·월간 조회 시 1회만 맨 위(기간 시작)로 스크롤 */
+  function requestUsageListScrollToTopOnce() {
+    try {
+      if (
+        typeof sessionStorage !== "undefined" &&
+        sessionStorage.getItem("lp_time_usage_memo_only") === "1"
+      ) {
+        return;
+      }
+    } catch (_) {}
+    el._lpUsageListScrollToTopPending = true;
+    el._lpUsageListScrollToBottomPending = false;
+  }
+
+  /** 사용내역 목록 — 하루 진입·날짜 변경 시 1회만 맨 아래(최근 기록)로 스크롤 */
   function requestUsageListScrollToBottomOnce() {
     try {
       if (
@@ -15396,27 +15418,27 @@ export function render(opts = {}) {
       }
     } catch (_) {}
     el._lpUsageListScrollToBottomPending = true;
+    el._lpUsageListScrollToTopPending = false;
   }
 
-  function shouldApplyUsageListScrollToBottom() {
-    return (
-      !!el._lpUsageListScrollToBottomPending ||
-      !!el._lpUsageListEnterScrollArmed
-    );
-  }
-
-  function applyUsageListScrollToBottomIfPending(cardsWrap) {
-    if (!cardsWrap || !shouldApplyUsageListScrollToBottom()) return;
+  function applyUsageListScrollIfPending(cardsWrap) {
+    if (!cardsWrap) return false;
+    const wantTop = !!el._lpUsageListScrollToTopPending;
+    const wantBottom = !wantTop && !!el._lpUsageListScrollToBottomPending;
+    if (!wantTop && !wantBottom) return false;
+    el._lpUsageListScrollToTopPending = false;
     el._lpUsageListScrollToBottomPending = false;
-    const scrollToBottom = () => {
+    if (wantTop) el._lpUsageListEnterScrollArmed = false;
+    const apply = () => {
       if (!cardsWrap.isConnected) return;
-      cardsWrap.scrollTop = cardsWrap.scrollHeight;
+      cardsWrap.scrollTop = wantTop ? 0 : cardsWrap.scrollHeight;
     };
-    scrollToBottom();
+    apply();
     requestAnimationFrame(() => {
-      scrollToBottom();
-      requestAnimationFrame(scrollToBottom);
+      apply();
+      requestAnimationFrame(apply);
     });
+    return true;
   }
 
   function finishUsageListEnterScroll() {
@@ -15425,7 +15447,7 @@ export function render(opts = {}) {
       '[data-legacy~="time-ledger-mobile-cards"]',
     );
     requestUsageListScrollToBottomOnce();
-    applyUsageListScrollToBottomIfPending(cardsWrap);
+    applyUsageListScrollIfPending(cardsWrap);
     el._lpUsageListEnterScrollArmed = false;
   }
 
@@ -15485,7 +15507,11 @@ export function render(opts = {}) {
         if (live !== shell) return;
         mountTimeLedgerReport(shell, { rangeStart: rs, rangeEnd: re });
         el._lpReportMountedRangeKey = rangeKey;
-        restoreTimeReportScrollTop(shell, savedTop);
+        const inquiryTop = !!el._lpReportInquiryScrollToTop;
+        el._lpReportInquiryScrollToTop = false;
+        if (!inquiryTop) {
+          restoreTimeReportScrollTop(shell, savedTop);
+        }
         rememberTimeLedgerPaintSignature();
       });
     });
@@ -15507,12 +15533,24 @@ export function render(opts = {}) {
       ensureUsageHistoryRangeForTimelineGranularity();
     }
     let reportScrollRestore = null;
+    let usageListScrollRestore = null;
     if (timeLedgerLayoutView === "report") {
       const shell = contentWrap.querySelector(".time-ledger-report-view-shell");
-      if (shell) {
+      if (shell && !el._lpReportInquiryScrollToTop) {
         reportScrollRestore = {
           key: reportScrollPreserveKey(),
           top: shell.scrollTop,
+        };
+      }
+      el._lpReportInquiryScrollToTop = false;
+    } else if (timeLedgerLayoutView === "timeline") {
+      const prevCards = contentWrap.querySelector(
+        '[data-legacy~="time-ledger-mobile-cards"]',
+      );
+      if (prevCards) {
+        usageListScrollRestore = {
+          key: el._lpUsageListMountedRangeKey || "",
+          top: prevCards.scrollTop,
         };
       }
     }
@@ -16023,7 +16061,34 @@ export function render(opts = {}) {
       };
     } catch (_) {}
     updateTotal();
-    applyUsageListScrollToBottomIfPending(cardsWrap);
+    if (timeLedgerLayoutView === "timeline") {
+      el._lpUsageListMountedRangeKey = `${usageHistoryRangeStartYmd || ""}|${usageHistoryRangeEndYmd || ""}`;
+      if (
+        el._lpUsageListEnterScrollArmed &&
+        usageHistoryRangeStartYmd &&
+        usageHistoryRangeEndYmd &&
+        usageHistoryRangeStartYmd !== usageHistoryRangeEndYmd
+      ) {
+        requestUsageListScrollToTopOnce();
+        el._lpUsageListEnterScrollArmed = false;
+      }
+    }
+    const forcedUsageScroll = applyUsageListScrollIfPending(cardsWrap);
+    if (
+      !forcedUsageScroll &&
+      cardsWrap &&
+      usageListScrollRestore &&
+      usageListScrollRestore.key === el._lpUsageListMountedRangeKey &&
+      usageListScrollRestore.top > 0
+    ) {
+      const top = usageListScrollRestore.top;
+      const restore = () => {
+        if (!cardsWrap.isConnected) return;
+        cardsWrap.scrollTop = top;
+      };
+      restore();
+      requestAnimationFrame(restore);
+    }
   }
 
   function updateFilterBarVisibility() {
@@ -16118,7 +16183,17 @@ export function render(opts = {}) {
       const cardsWrap = contentWrap.querySelector(
         '[data-legacy~="time-ledger-mobile-cards"]',
       );
-      applyUsageListScrollToBottomIfPending(cardsWrap);
+      if (
+        usageHistoryRangeStartYmd &&
+        usageHistoryRangeEndYmd &&
+        usageHistoryRangeStartYmd !== usageHistoryRangeEndYmd
+      ) {
+        requestUsageListScrollToTopOnce();
+      } else {
+        requestUsageListScrollToBottomOnce();
+      }
+      applyUsageListScrollIfPending(cardsWrap);
+      el._lpUsageListEnterScrollArmed = false;
     }
   }
 

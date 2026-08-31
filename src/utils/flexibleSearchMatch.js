@@ -26,6 +26,22 @@ function maskMuUisikjeokUnlessQueried(text, queryFlat) {
 }
 
 /**
+ * 「섭취」「않은 섭취」검색이 「섭취 준비」에 글자만 들어 있어 같이 잡히지 않게.
+ * 검색어에 준비가 있을 때는 그대로 둠.
+ * @param {string} text
+ * @param {string} queryFlat
+ */
+function maskIntakePrepUnlessQueried(text, queryFlat) {
+  const q = String(queryFlat || "");
+  const wantsPrep = q.includes("준비");
+  const wantsIntake = q.includes("섭취") || q.includes("식사");
+  if (!wantsIntake || wantsPrep) return String(text || "");
+  return String(text || "")
+    .replace(/섭취\s*준비/g, "····")
+    .replace(/식사\s*준비/g, "····");
+}
+
+/**
  * @param {string} searchText
  * @param {string} query
  */
@@ -35,8 +51,11 @@ export function matchFlexibleSearch(searchText, query) {
     .toLowerCase();
   if (!q) return true;
   const qFlat = flexibleSearchTextKey(q);
-  const hayRaw = maskMuUisikjeokUnlessQueried(
-    normalizeFlexibleSearchHaystack(searchText),
+  const hayRaw = maskIntakePrepUnlessQueried(
+    maskMuUisikjeokUnlessQueried(
+      normalizeFlexibleSearchHaystack(searchText),
+      qFlat,
+    ),
     qFlat,
   );
   const hay = hayRaw;
