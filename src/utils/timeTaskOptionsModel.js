@@ -121,7 +121,12 @@ export function patchKpiLinkedTasksFromKpiMaps() {
     for (const o of _ledgerTasksMem) {
       const kid = String(o.kpiId || "").trim();
       /* 맵에 있는데 진행중이 아니면(진행전·완료) 과제목록에서 제외. 맵 미로드 시에는 건드리지 않음 */
-      if (kid && allKpiIds.size > 0 && allKpiIds.has(kid) && !keepers.has(kid)) {
+      if (
+        kid &&
+        allKpiIds.size > 0 &&
+        allKpiIds.has(kid) &&
+        !keepers.has(kid)
+      ) {
         changed = true;
         continue;
       }
@@ -155,9 +160,14 @@ let _ledgerTasksMem = null;
 
 function mirrorTaskOptionsToLocalStorage() {
   const uid = getActiveClientStorageUserId();
-  if (!uid || _ledgerTasksMem == null || !Array.isArray(_ledgerTasksMem)) return;
+  if (!uid || _ledgerTasksMem == null || !Array.isArray(_ledgerTasksMem))
+    return;
   try {
-    setScopedLocalStorageItem(TASK_OPTIONS_KEY, JSON.stringify(_ledgerTasksMem), uid);
+    setScopedLocalStorageItem(
+      TASK_OPTIONS_KEY,
+      JSON.stringify(_ledgerTasksMem),
+      uid,
+    );
   } catch (_) {}
 }
 
@@ -494,9 +504,7 @@ function scheduleKpiTaskServerIdRealign(kpiId) {
     setTimeout(() => {
       _kpiTaskRealignTimers.delete(kid);
       void import("./timeLedgerTasksSupabase.js")
-        .then((m) =>
-          m.pullTimeLedgerTasksFromSupabase({ ignoreSkip: true }),
-        )
+        .then((m) => m.pullTimeLedgerTasksFromSupabase({ ignoreSkip: true }))
         .catch(() => {});
     }, KPI_TASK_SERVER_ID_REALIGN_MS),
   );
@@ -607,7 +615,9 @@ export function getFullTaskOptions() {
 /** 꿈 KPI 연동 과제 — 과제설정 모달 목록에서 숨김(기록·조회용 데이터는 유지) */
 export function isDreamKpiLedgerTask(task) {
   if (!task) return false;
-  const cat = String(task.category || "").trim().toLowerCase();
+  const cat = String(task.category || "")
+    .trim()
+    .toLowerCase();
   if (cat === "dream") return true;
   const kpiId = String(task.kpiId || "").trim();
   if (!kpiId) return false;
@@ -640,7 +650,9 @@ export function getTaskOptionByName(name) {
   const raw = (name || "").trim();
   if (!raw) return null;
   const n = C.isNapBuiltinTaskName(raw) ? C.NAP_TASK_NAME : raw;
-  const matches = getFullTaskOptions().filter((o) => (o.name || "").trim() === n);
+  const matches = getFullTaskOptions().filter(
+    (o) => (o.name || "").trim() === n,
+  );
   if (!matches.length) return null;
   if (matches.length === 1) return matches[0];
   const activeKpiIds = new Set(getActiveKpiTaskKeepersById().keys());
@@ -978,11 +990,7 @@ export function remapTimeLedgerEntryTaskIds(idPairs) {
     }))
     .filter(
       (p) =>
-        p.from &&
-        p.to &&
-        p.from !== p.to &&
-        isUuid(p.from) &&
-        isUuid(p.to),
+        p.from && p.to && p.from !== p.to && isUuid(p.from) && isUuid(p.to),
     );
   if (!pairs.length) return;
   const byFrom = new Map(pairs.map((p) => [p.from, p.to]));
@@ -1031,9 +1039,7 @@ export function migrateTimeLogRowsTaskIds() {
       if (!n) return row;
       if (kpiSyncedNames.has(n)) {
         const kpiLinked = opts.filter(
-          (o) =>
-            (o.name || "").trim() === n &&
-            String(o.kpiId || "").trim(),
+          (o) => (o.name || "").trim() === n && String(o.kpiId || "").trim(),
         );
         if (kpiLinked.length === 1 && isUuid(String(kpiLinked[0].id || ""))) {
           changed = true;
@@ -1042,8 +1048,7 @@ export function migrateTimeLogRowsTaskIds() {
         return row;
       }
       const matches = opts.filter(
-        (o) =>
-          (o.name || "").trim() === n && !String(o.kpiId || "").trim(),
+        (o) => (o.name || "").trim() === n && !String(o.kpiId || "").trim(),
       );
       if (matches.length === 1 && isUuid(String(matches[0].id || ""))) {
         changed = true;
@@ -1092,9 +1097,7 @@ export function applyTimeLedgerTasksFromServer(
     builtInIdSet.add(deterministicTaskId(t.name, t.productivity, t.category));
     for (const { from, to } of C.MEAL_TASK_NAME_RENAMES) {
       if (to === t.name) {
-        builtInIdSet.add(
-          deterministicTaskId(from, t.productivity, t.category),
-        );
+        builtInIdSet.add(deterministicTaskId(from, t.productivity, t.category));
       }
     }
   }
@@ -1112,15 +1115,13 @@ export function applyTimeLedgerTasksFromServer(
     if (C.isRetiredBuiltinTaskName(r.name)) continue;
     const loc = localById.get(rid);
     const fromServerKpi = String(r.kpi_id ?? "").trim();
-    const kid =
-      fromServerKpi || (loc && String(loc.kpiId || "").trim()) || "";
+    const kid = fromServerKpi || (loc && String(loc.kpiId || "").trim()) || "";
     /* 진행전·완료 KPI 연동 과제는 pull로도 목록에 넣지 않음 */
-    if (
-      kid &&
-      allKpiIds.size > 0 &&
-      allKpiIds.has(kid) &&
-      !keepers.has(kid)
-    ) {
+    if (kid && allKpiIds.size > 0 && allKpiIds.has(kid) && !keepers.has(kid)) {
+      continue;
+    }
+    /* 이 사람 KPI 목록에 없는 id — 삭제한 행동을 서버 스냅샷으로 다시 넣지 않음 */
+    if (kid && allKpiIds.size > 0 && !allKpiIds.has(kid)) {
       continue;
     }
     outIds.add(rid);
@@ -1152,9 +1153,7 @@ export function applyTimeLedgerTasksFromServer(
     serverRowsSafe.map((r) => String(r.id || "").trim()).filter((k) => k),
   );
   const serverKpiIdSet = new Set(
-    serverRowsSafe
-      .map((r) => String(r.kpi_id ?? "").trim())
-      .filter((k) => k),
+    serverRowsSafe.map((r) => String(r.kpi_id ?? "").trim()).filter((k) => k),
   );
   const serverTaskIdByKpiId = new Map();
   for (const r of serverRowsSafe) {
@@ -1176,7 +1175,10 @@ export function applyTimeLedgerTasksFromServer(
     }
   }
   const order = new Map(
-    serverRowsSafe.map((r, i) => [String(r.id || "").trim(), r.sort_order ?? i]),
+    serverRowsSafe.map((r, i) => [
+      String(r.id || "").trim(),
+      r.sort_order ?? i,
+    ]),
   );
   out.sort((a, b) => (order.get(a.id) ?? 9999) - (order.get(b.id) ?? 9999));
   const listUnchanged =
