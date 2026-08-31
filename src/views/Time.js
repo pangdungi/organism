@@ -5219,6 +5219,7 @@ function createTimeLedgerDayTimeboxDualPane(actualBlocks, expectedBlocks) {
   actualCol.className = "time-ledger-day-timebox-dual-pane__col";
   actualCol.appendChild(createTimeboxDualPaneHead("실제", "actual"));
   const actualScroll = createTimeLedgerDayTimeboxElement(actualBlocks, {
+    showEmptyMessage: false,
     matrixAriaLabel: "실제 수행 24행 12열 5분 단위 시간박스",
   });
   actualScroll.dataset.lpTimeboxKind = "actual";
