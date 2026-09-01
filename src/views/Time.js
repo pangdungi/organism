@@ -93,8 +93,10 @@ import {
 } from "../utils/timeDailyBudgetModel.js";
 import {
   buildTimeTaskLogPickerDropdown,
+  decodeLedgerPickerTaskIcons,
   taskAllowedForLedgerPreset,
 } from "../utils/timeTaskLogPickerDropdown.js";
+import { createReadyIconImg } from "../utils/decodeDisplayIcons.js";
 import {
   getTimeTaskListIconSrc,
   resolveTimeTaskDisplayIconSrc,
@@ -4995,10 +4997,9 @@ function patchTimeLedgerTaskIconsForTaskName(root, taskName) {
     }
     let img = cell.querySelector("img");
     if (!img) {
-      img = document.createElement("img");
-      img.alt = "";
-      img.loading = "lazy";
+      img = createReadyIconImg(iconSrc);
       cell.appendChild(img);
+      return;
     }
     if (img.getAttribute("src") !== iconSrc) img.setAttribute("src", iconSrc);
   });
@@ -5662,6 +5663,7 @@ function createNextExpectedScheduleTimelineItem(block, handlers) {
     category: getTaskOptionByName(block.taskName)?.category,
     productivity: getTaskOptionByName(block.taskName)?.productivity,
     iconKey: getTaskOptionByName(block.taskName)?.iconKey || "",
+    kpiId: getTaskOptionByName(block.taskName)?.kpiId || "",
   });
 
   const item = document.createElement("div");
@@ -5689,12 +5691,7 @@ function createNextExpectedScheduleTimelineItem(block, handlers) {
   const iconCell = document.createElement("div");
   iconCell.className = "time-ledger-usage-icon-cell";
   if (iconSrc) {
-    const iconImg = document.createElement("img");
-    iconImg.src = iconSrc;
-    iconImg.alt = "";
-    iconImg.loading = "eager";
-    iconImg.decoding = "sync";
-    iconCell.appendChild(iconImg);
+    iconCell.appendChild(createReadyIconImg(iconSrc));
   }
 
   const bodyCol = document.createElement("div");
@@ -5909,12 +5906,7 @@ function createMobileTimeCard(rowData, onEdit, onDelete, viewEl) {
   const iconCell = document.createElement("div");
   iconCell.className = "time-ledger-usage-icon-cell";
   if (iconSrc) {
-    const iconImg = document.createElement("img");
-    iconImg.src = iconSrc;
-    iconImg.alt = "";
-    iconImg.loading = "eager";
-    iconImg.decoding = "sync";
-    iconCell.appendChild(iconImg);
+    iconCell.appendChild(createReadyIconImg(iconSrc));
   }
 
   const titleEl = document.createElement("div");
@@ -11829,14 +11821,13 @@ export function render(opts = {}) {
         category: opt?.category,
         productivity: opt?.productivity,
         iconKey: opt?.iconKey || "",
+        kpiId: opt?.kpiId || "",
       });
       const iconWrap = document.createElement("span");
       iconWrap.setAttribute("data-legacy", "time-task-log-planned-slot-btn-icon");
       iconWrap.setAttribute("aria-hidden", "true");
       if (iconSrc) {
-        const img = document.createElement("img");
-        img.src = iconSrc;
-        img.alt = "";
+        const img = createReadyIconImg(iconSrc);
         img.draggable = false;
         iconWrap.appendChild(img);
       }
@@ -12744,6 +12735,7 @@ export function render(opts = {}) {
     if (!el.isConnected) return;
     primeTaskLogModalFromLocal();
     refreshTaskLogTaskPickerIfMounted();
+    void decodeLedgerPickerTaskIcons();
     openTaskLogModalAfterPull(addContext);
     await runTaskLogModalCloudSync();
   }

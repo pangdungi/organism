@@ -4,6 +4,8 @@
  */
 
 const decoded = new Set();
+/** @type {Map<string, HTMLImageElement>} */
+const decodedImgs = new Map();
 
 /**
  * @param {unknown} srcs
@@ -26,12 +28,34 @@ export function decodeDisplayIconSrcs(srcs, opts = {}) {
   return Promise.all(
     unique.map((src) =>
       withTimeout(decodeOne(src), waitMs)
-        .then((ok) => {
-          if (ok) decoded.add(src);
-        })
+        .then(() => {})
         .catch(() => {}),
     ),
   ).then(() => {});
+}
+
+/**
+ * 이미 decode된 비트맵을 복제해 글자와 같이 붙인다.
+ * @param {string} src
+ * @returns {HTMLImageElement}
+ */
+export function createReadyIconImg(src) {
+  const s = String(src || "").trim();
+  const cached = s ? decodedImgs.get(s) : null;
+  if (cached && cached.naturalWidth > 0) {
+    const clone = /** @type {HTMLImageElement} */ (cached.cloneNode(true));
+    clone.alt = "";
+    clone.decoding = "sync";
+    clone.loading = "eager";
+    if (!clone.getAttribute("src")) clone.src = s;
+    return clone;
+  }
+  const img = document.createElement("img");
+  img.alt = "";
+  img.decoding = "sync";
+  img.loading = "eager";
+  if (s) img.src = s;
+  return img;
 }
 
 /**
@@ -43,7 +67,13 @@ function decodeOne(src) {
     try {
       const img = new Image();
       img.decoding = "async";
-      const done = (ok) => resolve(!!ok);
+      const done = (ok) => {
+        if (ok && img.naturalWidth > 0) {
+          decoded.add(src);
+          decodedImgs.set(src, img);
+        }
+        resolve(!!ok && img.naturalWidth > 0);
+      };
       img.onerror = () => done(false);
       const afterLoad = () => {
         if (typeof img.decode !== "function") {

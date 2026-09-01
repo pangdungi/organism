@@ -9,7 +9,10 @@ import {
   lpTokenToggle,
 } from "./timeLedgerClassPolicy.js";
 import { getTimeTaskListIconSrc } from "./timeTaskIconUrls.js";
-import { decodeDisplayIconSrcs } from "./decodeDisplayIcons.js";
+import {
+  createReadyIconImg,
+  decodeDisplayIconSrcs,
+} from "./decodeDisplayIcons.js";
 import { matchFlexibleSearch } from "./flexibleSearchMatch.js";
 
 function scrollItemToCenter(listEl, itemEl) {
@@ -328,11 +331,8 @@ export function createMobileTaskLogPicker(options = {}) {
 
     const iconSrc = pickerTaskIconSrc(task);
     if (iconSrc) {
-      const icon = document.createElement("img");
+      const icon = createReadyIconImg(iconSrc);
       lpSetClasses(icon, "lp-task-log-mobile-picker-item-icon");
-      icon.src = iconSrc;
-      icon.alt = "";
-      icon.decoding = "async";
       row.appendChild(icon);
     }
 
@@ -351,7 +351,7 @@ export function createMobileTaskLogPicker(options = {}) {
       .map((t) => {
         const b =
           typeof getTaskBucket === "function" ? getTaskBucket(t) || "" : "";
-        return `${t.name || ""}\x1f${t.id || ""}\x1f${b}`;
+        return `${t.name || ""}\x1f${t.id || ""}\x1f${b}\x1f${t.iconKey || ""}`;
       })
       .join("\x1e");
   }
@@ -375,6 +375,7 @@ export function createMobileTaskLogPicker(options = {}) {
       category: task.category,
       productivity: task.productivity,
       iconKey: task.iconKey,
+      kpiId: task.kpiId,
     });
   }
 
@@ -397,7 +398,7 @@ export function createMobileTaskLogPicker(options = {}) {
     }
     const gen = ++wheelPaintGen;
     await decodeDisplayIconSrcs(collectPickerTaskIconSrcs(tasks), {
-      timeoutMs: 400,
+      timeoutMs: 1500,
     });
     if (gen !== wheelPaintGen) return;
     wheelTasksCacheKey = cacheKey;
@@ -474,11 +475,8 @@ export function createMobileTaskLogPicker(options = {}) {
     const iconWrap = document.createElement("span");
     lpSetClasses(iconWrap, "lp-task-log-mobile-search-item-icon-wrap");
     if (iconSrc) {
-      const icon = document.createElement("img");
+      const icon = createReadyIconImg(iconSrc);
       lpSetClasses(icon, "lp-task-log-mobile-search-item-icon");
-      icon.src = iconSrc;
-      icon.alt = "";
-      icon.decoding = "async";
       iconWrap.appendChild(icon);
     }
 
@@ -514,7 +512,7 @@ export function createMobileTaskLogPicker(options = {}) {
     );
     const gen = ++searchPaintGen;
     await decodeDisplayIconSrcs(collectPickerTaskIconSrcs(tasks), {
-      timeoutMs: 400,
+      timeoutMs: 1500,
     });
     if (gen !== searchPaintGen) return;
     const chips = getVisibleBucketChips?.() || [];
@@ -678,10 +676,16 @@ export function createMobileTaskLogPicker(options = {}) {
     acOpts,
   );
 
+  function refreshIfOpen() {
+    if (!searchRoot.hidden) void renderSearchList();
+    if (!pickerRoot.hidden) void renderWheel({ force: true });
+  }
+
   return {
     open: openPicker,
     close: closePicker,
     forceDismiss: closePicker,
+    refresh: refreshIfOpen,
     isOpen: () => !pickerRoot.hidden || !searchRoot.hidden,
   };
 }

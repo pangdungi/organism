@@ -14,7 +14,10 @@ import {
 } from "./timeTaskOptionsModel.js";
 import * as TTC from "./timeTaskOptionsConstants.js";
 import { getTimeTaskListIconSrc } from "./timeTaskIconUrls.js";
-import { decodeDisplayIconSrcs } from "./decodeDisplayIcons.js";
+import {
+  createReadyIconImg,
+  decodeDisplayIconSrcs,
+} from "./decodeDisplayIcons.js";
 import { matchFlexibleSearch } from "./flexibleSearchMatch.js";
 import {
   isIosLikeMobile,
@@ -111,6 +114,25 @@ function ledgerBucketSortIndex(task) {
   return i >= 0 ? i : LEDGER_BUCKET_SORT_ORDER.length;
 }
 
+/** @param {{ name?: string, category?: string, productivity?: string, iconKey?: string, kpiId?: string }} task */
+export function ledgerPickerTaskIconSrc(task) {
+  return getTimeTaskListIconSrc(task?.name, {
+    category: task?.category,
+    productivity: task?.productivity,
+    iconKey: task?.iconKey,
+    kpiId: task?.kpiId,
+  });
+}
+
+export function decodeLedgerPickerTaskIcons() {
+  return decodeDisplayIconSrcs(
+    getServerLedgerTaskOptionsForTaskLog()
+      .map((t) => ledgerPickerTaskIconSrc(t))
+      .filter(Boolean),
+    { timeoutMs: 2500 },
+  );
+}
+
 export function sortTasksForLedgerPicker(tasks) {
   return [...tasks].sort((a, b) => {
     const ba = ledgerBucketSortIndex(a);
@@ -168,6 +190,7 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
     onTaskSelected = () => {},
     onDismissBlockingLayers = () => {},
   } = options;
+  void decodeLedgerPickerTaskIcons();
 
   const wrap = document.createElement("div");
   lpSetClasses(wrap, "time-task-log-task-dropdown");
@@ -354,14 +377,8 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
     tasks = sortTasksForLedgerPicker(tasks);
     const gen = ++optionsPaintGen;
     await decodeDisplayIconSrcs(
-      tasks.map((t) =>
-        getTimeTaskListIconSrc(t.name, {
-          category: t.category,
-          productivity: t.productivity,
-          iconKey: t.iconKey,
-        }),
-      ),
-      { timeoutMs: 400 },
+      tasks.map((t) => ledgerPickerTaskIconSrc(t)),
+      { timeoutMs: 1500 },
     );
     if (gen !== optionsPaintGen) return;
     container.innerHTML = "";
@@ -382,17 +399,10 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
       const bar = document.createElement("span");
       lpSetClasses(bar, barClass);
       bar.setAttribute("aria-hidden", "true");
-      const iconSrc = getTimeTaskListIconSrc(t.name, {
-        category: t.category,
-        productivity: t.productivity,
-        iconKey: t.iconKey,
-      });
-      const iconEl = iconSrc ? document.createElement("img") : null;
+      const iconSrc = ledgerPickerTaskIconSrc(t);
+      const iconEl = iconSrc ? createReadyIconImg(iconSrc) : null;
       if (iconEl) {
         lpSetClasses(iconEl, "time-task-log-task-dropdown-option-icon");
-        iconEl.src = iconSrc;
-        iconEl.alt = "";
-        iconEl.decoding = "sync";
       }
       const textWrap = document.createElement("span");
       lpSetClasses(textWrap, "time-task-log-task-dropdown-option-text");
@@ -698,6 +708,7 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
     if (!panel.hidden) {
       renderOptions(optionsContainer, searchQuery);
     }
+    mobilePicker.refresh?.();
   };
   wrap._getLedgerBucketPreset = () => ledgerBucketPreset;
   return wrap;
