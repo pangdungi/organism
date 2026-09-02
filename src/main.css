@@ -1854,8 +1854,9 @@ table {
   font: inherit;
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--idea-cloud);
-  background: var(--idea-ocean);
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+  background: #000000;
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -2032,8 +2033,9 @@ table {
 }
 
 .idea-delete-account-modal-submit {
-  color: var(--idea-cloud);
-  background: var(--idea-ocean);
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+  background: #000000;
   border: none;
 }
 
