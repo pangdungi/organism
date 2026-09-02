@@ -101,6 +101,24 @@ export function addBudgetScheduleTemplate(name, blocks) {
   return { ok: true, template: row };
 }
 
+/** @param {string} templateId @param {string} name */
+export function renameBudgetScheduleTemplate(templateId, name) {
+  const id = String(templateId || "").trim();
+  const trimmed = String(name || "").trim();
+  if (!id) return { ok: false, error: "템플릿을 찾을 수 없습니다." };
+  if (!trimmed) return { ok: false, error: "템플릿 이름을 입력해 주세요." };
+  const list = readBudgetScheduleTemplates();
+  const idx = list.findIndex((t) => t.id === id);
+  if (idx < 0) return { ok: false, error: "템플릿을 찾을 수 없습니다." };
+  if (list[idx].name === trimmed) {
+    return { ok: true, template: list[idx], unchanged: true };
+  }
+  const row = { ...list[idx], name: trimmed, updatedAt: Date.now() };
+  list[idx] = row;
+  writeBudgetScheduleTemplates(list);
+  return { ok: true, template: row };
+}
+
 /** @param {string} templateId */
 export function removeBudgetScheduleTemplate(templateId) {
   const id = String(templateId || "").trim();

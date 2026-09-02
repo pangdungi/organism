@@ -20,6 +20,7 @@ import {
   clearBudgetDayPlanFromDateKey,
   budgetTemplateBlocksToCalendarSpans,
   ensureBudgetTemplatesLoaded,
+  renameBudgetDayTemplate,
 } from "./timeDailyBudgetTemplateOps.js";
 import {
   readBudgetScheduleTemplates,
@@ -160,16 +161,52 @@ function openBudgetTemplatePreviewModal(template, callbacks = {}) {
   const tpl = template;
   if (!tpl?.id) return;
   const dk = normalizeDateKey(callbacks.dateKey);
-  const shell = mountBudgetTemplateModalShell(
-    String(tpl.name || "템플릿 미리보기"),
-    { variant: "preview" },
-  );
+  const shell = mountBudgetTemplateModalShell("템플릿", { variant: "preview" });
   if (!shell) return;
   const { body, footer, close } = shell;
 
+  const nameField = document.createElement("div");
+  nameField.setAttribute("data-legacy", "time-task-log-field");
+  const nameLabel = document.createElement("label");
+  nameLabel.setAttribute("for", "lp-budget-template-edit-name");
+  nameLabel.textContent = "템플릿 이름";
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.id = "lp-budget-template-edit-name";
+  nameInput.className = "lp-budget-template-name-input";
+  nameInput.setAttribute("data-legacy", "time-task-log-meal-detail-input");
+  nameInput.placeholder = "템플릿 이름";
+  nameInput.maxLength = 80;
+  nameInput.autocomplete = "off";
+  nameInput.value = String(tpl.name || "");
+  nameField.append(nameLabel, nameInput);
+  body.appendChild(nameField);
+  allowModalInputFocus(nameInput);
+
+  const persistName = async () => {
+    const next = String(nameInput.value || "").trim();
+    if (!next) {
+      nameInput.value = String(tpl.name || "");
+      return { ok: false, empty: true };
+    }
+    const r = await renameBudgetDayTemplate(tpl.id, next);
+    if (!r.ok) {
+      showToast(r.error || "이름을 바꾸지 못했습니다.");
+      return r;
+    }
+    if (!r.unchanged) {
+      tpl.name = next;
+      callbacks.onRenamed?.();
+    }
+    return r;
+  };
+  nameInput.addEventListener("blur", () => {
+    void persistName();
+  });
+
   const lead = document.createElement("p");
   lead.className = "lp-budget-template-preview-lead";
-  lead.textContent = `예상 일정 ${tpl.blocks?.length || 0}건 · 타임박스 미리보기`;
+  lead.textContent = `일정 ${tpl.blocks?.length || 0}건`;
   body.appendChild(lead);
 
   if (tpl.blocks?.length) {
@@ -180,23 +217,6 @@ function openBudgetTemplatePreviewModal(template, callbacks = {}) {
     empty.textContent = "이 템플릿에 일정이 없습니다.";
     body.appendChild(empty);
   }
-
-  const dangerZone = document.createElement("div");
-  dangerZone.className = "lp-budget-template-preview-danger";
-  const deleteBtn = document.createElement("button");
-  deleteBtn.type = "button";
-  deleteBtn.className = "lp-budget-template-delete-template-btn";
-  deleteBtn.textContent = "이 템플릿 삭제하기";
-  deleteBtn.addEventListener("click", async () => {
-    deleteBtn.disabled = true;
-    const deleted = await deleteBudgetTemplateById(tpl.id, tpl.name);
-    deleteBtn.disabled = false;
-    if (!deleted) return;
-    close();
-    callbacks.onDeleted?.();
-  });
-  dangerZone.appendChild(deleteBtn);
-  body.appendChild(dangerZone);
 
   const applyBtn = document.createElement("button");
   applyBtn.type = "button";
@@ -209,6 +229,17 @@ function openBudgetTemplatePreviewModal(template, callbacks = {}) {
       return;
     }
     applyBtn.disabled = true;
+    const named = await persistName();
+    if (named.empty) {
+      showToast("템플릿 이름을 입력해 주세요.");
+      nameInput.focus();
+      applyBtn.disabled = false;
+      return;
+    }
+    if (!named.ok) {
+      applyBtn.disabled = false;
+      return;
+    }
     const r = await applyBudgetTemplateToDateKey(dk, tpl.id, "replace");
     applyBtn.disabled = false;
     if (!r.ok) {
@@ -220,9 +251,24 @@ function openBudgetTemplatePreviewModal(template, callbacks = {}) {
     callbacks.onCloseAll?.();
     callbacks.onApplied?.();
   });
-  footer.appendChild(applyBtn);
 
+  const deleteBtn = document.createElement("button");
+  deleteBtn.type = "button";
+  deleteBtn.className = "lp-budget-template-delete-template-btn";
+  deleteBtn.textContent = "템플릿 삭제";
+  deleteBtn.addEventListener("click", async () => {
+    const named = String(nameInput.value || "").trim() || tpl.name;
+    deleteBtn.disabled = true;
+    const deleted = await deleteBudgetTemplateById(tpl.id, named);
+    deleteBtn.disabled = false;
+    if (!deleted) return;
+    close();
+    callbacks.onDeleted?.();
+  });
+
+  footer.append(deleteBtn, applyBtn);
   wireModalEnterToConfirm(shell.modal, applyBtn);
+  requestAnimationFrame(() => nameInput.focus({ preventScroll: true }));
 }
 
 /**
@@ -420,6 +466,7 @@ export function openApplyBudgetTemplateModal(options) {
           onCloseAll: close,
           onApplied,
           onDeleted: () => renderList(),
+          onRenamed: () => renderList(),
         });
       });
       li.appendChild(pick);

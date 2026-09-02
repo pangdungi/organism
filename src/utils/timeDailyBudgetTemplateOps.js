@@ -11,6 +11,7 @@ import { syncTimeDailyBudgetDateToSupabase } from "./timeDailyBudgetSupabase.js"
 import {
   addBudgetScheduleTemplate,
   readBudgetScheduleTemplates,
+  renameBudgetScheduleTemplate,
 } from "./timeDailyBudgetTemplateModel.js";
 import {
   pullBudgetScheduleTemplatesFromSupabase,
@@ -108,6 +109,19 @@ export async function saveBudgetDayAsTemplate(dateKey, name) {
   const blocks = extractBudgetBlocksFromDateKey(dateKey);
   const result = addBudgetScheduleTemplate(name, blocks);
   if (!result.ok) return result;
+  try {
+    await syncBudgetScheduleTemplateToSupabase(result.template);
+  } catch (_) {}
+  return result;
+}
+
+/**
+ * @param {string} templateId
+ * @param {string} name
+ */
+export async function renameBudgetDayTemplate(templateId, name) {
+  const result = renameBudgetScheduleTemplate(templateId, name);
+  if (!result.ok || result.unchanged) return result;
   try {
     await syncBudgetScheduleTemplateToSupabase(result.template);
   } catch (_) {}

@@ -4373,10 +4373,63 @@ html.lp-task-log-mobile-picker-open
   padding: 0.85rem 1rem 1rem;
   -webkit-overflow-scrolling: touch;
 }
-.lp-budget-template-modal--preview [data-legacy~="time-task-log-footer"],
+.lp-budget-template-modal--preview [data-legacy~="time-task-log-footer"] {
+  flex-shrink: 0;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  padding-bottom: 0.85rem;
+}
 .lp-budget-template-modal--clear [data-legacy~="time-task-log-footer"] {
   flex-shrink: 0;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
   justify-content: flex-end;
+  padding-top: 0.75rem;
+  padding-bottom: 0.85rem;
+}
+.lp-budget-template-modal--preview [data-legacy~="time-task-log-footer"]
+  > .lp-budget-template-apply-template-btn,
+.lp-budget-template-modal--preview [data-legacy~="time-task-log-footer"]
+  > .lp-budget-template-delete-template-btn {
+  width: auto;
+  min-width: 5.5rem;
+  margin-left: 0;
+}
+.lp-budget-template-modal--clear [data-legacy~="time-task-log-footer"]
+  > .lp-budget-template-apply-template-btn {
+  width: auto;
+  min-width: 5.5rem;
+  margin-left: auto;
+}
+.lp-budget-template-modal .lp-budget-template-name-input,
+.lp-budget-template-modal
+  [data-legacy~="time-task-log-field"]
+  > .lp-budget-template-name-input {
+  border: none;
+  border-bottom: 1px solid #cbd5e1;
+  border-radius: 0;
+  background: transparent;
+  padding: 0.45rem 0;
+  box-shadow: none;
+}
+.lp-budget-template-modal
+  [data-legacy~="time-task-log-field"]
+  > .lp-budget-template-name-input:focus {
+  border: none;
+  border-bottom: 1.5px solid #000000;
+  background: rgba(0, 0, 0, 0.04);
+  box-shadow: none;
+  color: #000000;
+}
+.lp-budget-template-modal
+  [data-legacy~="time-task-log-field"]:focus-within
+  > label[for="lp-budget-template-edit-name"] {
+  color: #000000;
 }
 .lp-budget-template-modal .lp-budget-template-apply-template-btn {
   display: inline-flex;
@@ -4424,8 +4477,8 @@ html.lp-task-log-mobile-picker-open
 .lp-budget-template-modal .lp-budget-template-preview-danger {
   flex-shrink: 0;
   margin: 0;
-  padding: 1.25rem 0 0.75rem;
-  border-top: 1px solid var(--lp-modal-border);
+  padding: 0;
+  border-top: none;
 }
 .lp-budget-template-modal .lp-budget-template-delete-template-btn {
   display: inline-flex;

@@ -21,15 +21,14 @@ alwaysApply: true
 | 상태 | 규칙 |
 |------|------|
 | **IDLE (기본)** | `border: none` · `border-bottom: 1px solid #CBD5E1` · `background: transparent` · placeholder 색 `#94A3B8` |
-| **FOCUS** | `border-bottom: 1.5px solid #1E4D7B` · 레이블 색 `#1E4D7B` · 입력 텍스트 색 `#1D40BA` |
+| **FOCUS** | `border-bottom: 1.5px solid #000000` · 레이블 색 `#000000` · 입력 텍스트 색 `#000000` |
 | **FILLED (입력 완료)** | `border-bottom: 1px solid #CBD5E1` · 텍스트 색 `#475569` · 레이블 색 `#64748B` |
 | **ERROR** | `border-bottom: 1.5px solid #8B5C3A` · 레이블·에러메시지 색 `#8B5C3A` · 에러메시지는 border 아래 표시 |
 | **DISABLED** | `border-bottom: 1px solid #E2E8F0` · `opacity: 0.5` · `cursor: not-allowed` |
 
 ### 색상 변수 매핑 (프로젝트에 있으면 사용)
 - `#CBD5E1` / `#94A3B8` → idle 밑줄 / placeholder (`var(--text-placeholder)` 등)
-- `#1E4D7B` → `var(--idea-navy)` 등 강조
-- `#1D40BA` → `var(--text-ink)`
+- `#000000` → 강조·포커스 (`var(--lp-modal-accent)` / `var(--lp-modal-navy)`)
 - `#475569` → 본문 (`var(--text-body)`)
 - `#64748B` → 캡션 (`var(--text-caption-color)`)
 - `#8B5C3A` → 에러용 (프로젝트 변수 있으면 사용)
@@ -47,7 +46,7 @@ alwaysApply: true
 | 상태 | 규칙 |
 |------|------|
 | **IDLE** | `border: none` · **border-bottom만** 표시 · `resize: none` · `line-height: 1.8` |
-| **FOCUS** | `border-bottom: 1.5px solid #1E4D7B` · `background: rgba(30, 77, 123, 0.04)` |
+| **FOCUS** | `border-bottom: 1.5px solid #000000` · `background: rgba(0, 0, 0, 0.04)` |
 
 IDLE 시 border-bottom 두께/색은 일반 인풋 IDLE과 동일하게 1px solid #CBD5E1 로 맞춘다.
 
