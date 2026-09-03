@@ -31,6 +31,7 @@ import { supabase } from "./supabase.js";
 import { getSupabaseSession } from "./utils/supabaseSession.js";
 import { isAppAdminUser } from "./utils/adminAccess.js";
 import { dismissAppToast, showToast } from "./utils/showToast.js";
+import { consumeAppShellUpdateOnTabLeave } from "./utils/lpAppShellUpdate.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
   clearAppFooterActions,
@@ -976,6 +977,9 @@ export async function mountApp(container) {
 
   function applySetActiveTab(tabId) {
     const fromTab = currentTabId;
+    if (fromTab && fromTab !== tabId) {
+      if (consumeAppShellUpdateOnTabLeave()) return;
+    }
     if (fromTab !== tabId) flushAllPendingTimeDailyBudgetSync();
     /* 시간기록 이탈 시 조회기간(연간 등)을 오늘 하루로 — 재진입 때 연간이 남는 문제 방지 */
     if (fromTab === "time" && tabId !== "time") {
