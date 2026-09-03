@@ -369,7 +369,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   .time-task-log-datetime-fields-wrap,
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
-  [data-legacy~="time-task-log-kpi-todos-section"],
+  [data-legacy~="time-task-log-kpi-todos-section"]:not(.is-split),
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
   [data-legacy~="time-task-log-daily-todos-section"],
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
@@ -383,7 +383,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
     .lp-calendar-budget-add-modal
   )
-  [data-legacy~="time-task-log-kpi-todos-section"],
+  [data-legacy~="time-task-log-kpi-todos-section"]:not(.is-split),
 [data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
     .lp-calendar-budget-add-modal
   )
@@ -1942,6 +1942,9 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 [data-legacy~="time-task-log-kpi-todos-all-block"] {
   margin: 0 0 0.75rem;
 }
+[data-legacy~="time-task-log-kpi-todos-all-block"][hidden] {
+  display: none !important;
+}
 .time-task-log-kpi-todos-scroll,
 [data-legacy~="time-task-log-kpi-todos-scroll"],
 [data-legacy~="time-task-log-kpi-todos-all-scroll"] {
@@ -1953,7 +1956,70 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   padding: 0.4rem 0.55rem;
   border: 1px solid var(--lp-modal-border);
   border-radius: 8px;
-  background: rgba(30, 77, 123, 0.04);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+/* 과제 기록 — 할 일 · 오늘 할일 좌우 (모달은 data-legacy 토큰) */
+[data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-kpi-todos-section"].is-split {
+  --lp-task-log-todo-head-h: 1.75rem;
+  --lp-task-log-todo-body-h: 8.5rem;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0;
+  align-items: stretch;
+}
+[data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-kpi-todos-section"].is-split
+  > [data-legacy~="time-task-log-kpi-todos-all-block"],
+[data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-kpi-todos-section"].is-split
+  > [data-legacy~="time-task-log-kpi-todos-today-pane"] {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  min-width: 0;
+  min-height: 0;
+  height: calc(
+    var(--lp-task-log-todo-head-h) + var(--lp-task-log-todo-body-h) + 0.85rem
+  );
+  overflow: hidden;
+  box-sizing: border-box;
+}
+[data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-kpi-todos-section"].is-split
+  > [data-legacy~="time-task-log-kpi-todos-all-block"] {
+  padding-right: 0.5rem;
+  border-right: 1px solid #e5e5e5;
+}
+[data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-kpi-todos-section"].is-split
+  > [data-legacy~="time-task-log-kpi-todos-today-pane"] {
+  padding-left: 0.5rem;
+}
+[data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-kpi-todos-section"].is-split
+  [data-legacy~="time-task-log-kpi-todos-all-title"],
+[data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-kpi-todos-section"].is-split
+  [data-legacy~="time-task-log-kpi-todos-title"] {
+  flex: 0 0 var(--lp-task-log-todo-head-h);
+  height: var(--lp-task-log-todo-head-h);
+  margin: 0 0 0.35rem;
+  display: flex;
+  align-items: center;
+}
+[data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-kpi-todos-section"].is-split
+  [data-legacy~="time-task-log-kpi-todos-all-scroll"],
+[data-legacy~="time-task-log-modal"]
+  [data-legacy~="time-task-log-kpi-todos-section"].is-split
+  [data-legacy~="time-task-log-kpi-todos-scroll"] {
+  flex: 1 1 auto;
+  height: var(--lp-task-log-todo-body-h);
+  max-height: var(--lp-task-log-todo-body-h);
+  min-height: 0;
+  overflow-y: auto;
 }
 .time-task-log-kpi-todos-scroll [data-legacy~="time-task-log-kpi-todos-list"],
 [data-legacy~="time-task-log-kpi-todos-scroll"]
@@ -2067,24 +2133,39 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 }
 .lp-calendar-budget-add-modal
   .time-task-log-kpi-todo-row--pick-memo.is-planned {
-  background: rgba(30, 77, 123, 0.08);
+  background: rgba(0, 0, 0, 0.06);
 }
 .lp-calendar-budget-add-modal .time-task-log-kpi-todo-row--pick-memo:hover {
-  background: rgba(148, 163, 184, 0.12);
+  background: rgba(0, 0, 0, 0.04);
 }
 .lp-calendar-budget-add-modal .time-task-log-kpi-todo-row--pick-memo:active {
-  background: rgba(148, 163, 184, 0.2);
+  background: rgba(0, 0, 0, 0.08);
 }
 .lp-calendar-budget-add-modal
   [data-legacy~="lp-expected-planned-todos-preview"] {
-  display: none !important;
+  display: block;
+}
+.lp-calendar-budget-add-modal .lp-expected-planned-todos-preview-empty {
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: #999;
 }
 .lp-calendar-budget-add-modal .lp-expected-planned-todos-preview-line {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0.12rem 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font: inherit;
   font-size: 0.8125rem;
   line-height: 1.45;
-  color: #475569;
+  color: #111;
   white-space: pre-wrap;
   word-break: break-word;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 .lp-calendar-budget-add-modal
   .lp-expected-planned-todos-preview-line

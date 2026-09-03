@@ -12,6 +12,7 @@ import { getTimeTaskListIconSrc } from "./timeTaskIconUrls.js";
 import {
   createReadyIconImg,
   decodeDisplayIconSrcs,
+  waitIconImgsReady,
 } from "./decodeDisplayIcons.js";
 import { matchFlexibleSearch } from "./flexibleSearchMatch.js";
 
@@ -530,6 +531,8 @@ export function createMobileTaskLogPicker(options = {}) {
       }
       frag.appendChild(buildSearchRow(t));
     });
+    await waitIconImgsReady(frag, 1500);
+    if (gen !== searchPaintGen) return;
     searchList.replaceChildren(frag);
   }
 

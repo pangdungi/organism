@@ -17,6 +17,7 @@ import { getTimeTaskListIconSrc } from "./timeTaskIconUrls.js";
 import {
   createReadyIconImg,
   decodeDisplayIconSrcs,
+  waitIconImgsReady,
 } from "./decodeDisplayIcons.js";
 import { matchFlexibleSearch } from "./flexibleSearchMatch.js";
 import {
@@ -381,7 +382,7 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
       { timeoutMs: 1500 },
     );
     if (gen !== optionsPaintGen) return;
-    container.innerHTML = "";
+    const frag = document.createDocumentFragment();
     tasks.forEach((t) => {
       const row = document.createElement("div");
       lpSetClasses(row, "time-task-log-task-dropdown-option");
@@ -428,8 +429,11 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
         e.stopPropagation();
         closePanelAndSelect();
       });
-      container.appendChild(row);
+      frag.appendChild(row);
     });
+    await waitIconImgsReady(frag, 1500);
+    if (gen !== optionsPaintGen) return;
+    container.replaceChildren(frag);
   }
 
   /** @type {AbortController | null} */

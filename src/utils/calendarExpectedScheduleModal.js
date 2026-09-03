@@ -54,6 +54,11 @@ import {
   DEFAULT_READING_KPI_TODO_LIST_LABEL,
 } from "./happinessKpiMapSupabase.js";
 import { pullKpiTodosDomainFromCloudIfStale } from "./kpiTabCloudRefresh.js";
+import {
+  readTodayActionTodoPickIds,
+  setTodayActionTodoPickIds,
+} from "./kpiTodayActionTodos.js";
+import { timeLedgerLocalTodayYmd } from "./timeLedgerEntriesSupabase.js";
 
 function lpExpectedDeleteDebug(step, detail) {
   try {
@@ -901,18 +906,25 @@ export function openCalendarExpectedScheduleModal(options) {
             <div data-legacy="time-task-log-emotion-trigger-cat-chips lp-choice-chip-row"></div>
             <div data-legacy="time-task-log-emotion-trigger-sub-chips lp-choice-chip-row" hidden></div>
           </div>
-          <div data-legacy="lp-expected-todo-memo-split">
-            <div data-legacy="time-task-log-kpi-todos-section" hidden>
-              <div data-legacy="time-task-log-kpi-todos-title-row">
-                <h4 data-legacy="time-task-log-kpi-todos-title">할 일 목록</h4>
-                <button type="button" data-legacy="lp-expected-kpi-todo-add-btn" aria-label="할 일 추가">+</button>
+          <div data-legacy="lp-expected-todo-memo-stack">
+            <div data-legacy="lp-expected-todo-memo-split">
+              <div data-legacy="time-task-log-kpi-todos-section" hidden>
+                <div data-legacy="time-task-log-kpi-todos-title-row">
+                  <h4 data-legacy="time-task-log-kpi-todos-title">할 일 목록</h4>
+                  <button type="button" data-legacy="lp-expected-kpi-todo-add-btn" aria-label="할 일 추가">+</button>
+                </div>
+                <p data-legacy="time-task-log-kpi-todos-hint" hidden>오늘 할 항목을 누르면 골라집니다 (과제 기록에만 표시)</p>
+                <p data-legacy="time-task-log-kpi-todos-status" hidden></p>
+                <div data-legacy="time-task-log-kpi-todos-scroll" hidden>
+                  <div data-legacy="time-task-log-kpi-todos-list"></div>
+                </div>
               </div>
-              <p data-legacy="time-task-log-kpi-todos-hint" hidden>오늘 할 항목을 누르면 골라집니다 (과제 기록에만 표시)</p>
-              <p data-legacy="time-task-log-kpi-todos-status" hidden></p>
-              <div data-legacy="time-task-log-kpi-todos-scroll" hidden>
-                <div data-legacy="time-task-log-kpi-todos-list"></div>
+              <div data-legacy="lp-expected-planned-todos-pane" hidden>
+                <div data-legacy="lp-expected-planned-todos-title-row">
+                  <h4 data-legacy="lp-expected-planned-todos-title">오늘 할일 목록</h4>
+                </div>
+                <div data-legacy="lp-expected-planned-todos-preview" aria-label="오늘 할일 목록"></div>
               </div>
-              <div data-legacy="lp-expected-planned-todos-preview" hidden aria-label="고른 할일 미리보기"></div>
             </div>
             <div data-legacy="time-task-log-memo-section">
               <div data-legacy="time-task-log-memo-fields">
@@ -992,6 +1004,9 @@ export function openCalendarExpectedScheduleModal(options) {
   const taskLogScrollArea = modal.querySelector(
     '[data-legacy~="time-task-log-scroll-area"]',
   );
+  const expectedTodoMemoStack = modal.querySelector(
+    '[data-legacy~="lp-expected-todo-memo-stack"]',
+  );
   const expectedTodoMemoSplit = modal.querySelector(
     '[data-legacy~="lp-expected-todo-memo-split"]',
   );
@@ -1007,57 +1022,37 @@ export function openCalendarExpectedScheduleModal(options) {
   const taskLogKpiTodosScroll = modal.querySelector(
     '[data-legacy~="time-task-log-kpi-todos-scroll"]',
   );
-  /* 바깥 모달 스크롤이 가로채지 않게 — 회색 칸 안에서만 스크롤 */
-  if (taskLogKpiTodosScroll) {
-    taskLogKpiTodosScroll.addEventListener(
+  function bindInnerPaneScroll(el) {
+    if (!el) return;
+    el.addEventListener(
       "wheel",
       (e) => {
-        const el = taskLogKpiTodosScroll;
         const max = el.scrollHeight - el.clientHeight;
-        if (max <= 0) return;
-        const next = Math.min(max, Math.max(0, el.scrollTop + e.deltaY));
-        el.scrollTop = next;
+        if (max <= 1) return;
+        const down = e.deltaY > 0;
+        const atEdge = down ? el.scrollTop >= max - 1 : el.scrollTop <= 0;
+        if (atEdge) return;
+        el.scrollTop += e.deltaY;
         e.preventDefault();
         e.stopPropagation();
       },
       { passive: false, signal },
     );
-    let touchLastY = 0;
-    taskLogKpiTodosScroll.addEventListener(
-      "touchstart",
-      (e) => {
-        if (e.touches.length === 1) touchLastY = e.touches[0].clientY;
-      },
-      { passive: true, signal },
-    );
-    taskLogKpiTodosScroll.addEventListener(
-      "touchmove",
-      (e) => {
-        if (e.touches.length !== 1) return;
-        const el = taskLogKpiTodosScroll;
-        const max = el.scrollHeight - el.clientHeight;
-        if (max <= 0) return;
-        const y = e.touches[0].clientY;
-        const dy = touchLastY - y;
-        touchLastY = y;
-        el.scrollTop = Math.min(max, Math.max(0, el.scrollTop + dy));
-        if (e.cancelable) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-      },
-      { passive: false, signal },
-    );
   }
+  bindInnerPaneScroll(taskLogKpiTodosScroll);
   const taskLogKpiTodosStatus = modal.querySelector(
     '[data-legacy~="time-task-log-kpi-todos-status"]',
   );
   const expectedKpiTodoAddBtn = modal.querySelector(
     '[data-legacy~="lp-expected-kpi-todo-add-btn"]',
   );
+  const plannedTodosPane = modal.querySelector(
+    '[data-legacy~="lp-expected-planned-todos-pane"]',
+  );
   const plannedTodosPreview = modal.querySelector(
     '[data-legacy~="lp-expected-planned-todos-preview"]',
   );
+  bindInnerPaneScroll(plannedTodosPreview);
   const taskLogMemoQuickEarly = modal.querySelector(
     '[data-legacy~="time-task-log-memo-quick"]',
   );
@@ -1069,8 +1064,13 @@ export function openCalendarExpectedScheduleModal(options) {
   function setExpectedTodoMemoSplitActive(active) {
     if (!expectedTodoMemoSplit) return;
     expectedTodoMemoSplit.classList.toggle("is-split", !!active);
+    if (expectedTodoMemoStack) {
+      expectedTodoMemoStack.classList.toggle("is-split", !!active);
+    }
+    if (plannedTodosPane) plannedTodosPane.hidden = !active;
     /* 태스크완료형: 할일 목록으로 고르므로 메모 ◽️ 퀵입력은 숨김 */
     if (taskLogMemoQuickEarly) taskLogMemoQuickEarly.hidden = !!active;
+    if (active) refreshPlannedTodosPreview();
   }
 
   async function openExpectedKpiTodoAddModal() {
@@ -1096,6 +1096,7 @@ export function openCalendarExpectedScheduleModal(options) {
     const newId = String(result.kpiTodoId || "").trim();
     if (!newId) return;
     plannedTodoSelection.set(newId, text);
+    persistPlannedTodoSelectionToToday(info.kpiId);
     refreshPlannedTodosPreview();
     taskLogKpiTodosList
       ?.querySelectorAll("[data-todo-id]")
@@ -1110,10 +1111,50 @@ export function openCalendarExpectedScheduleModal(options) {
   }
 
   function refreshPlannedTodosPreview() {
-    /* 목록에서 체크(is-planned)로 보이므로 아래 미리보기 칸은 쓰지 않음 */
     if (!plannedTodosPreview) return;
     plannedTodosPreview.replaceChildren();
-    plannedTodosPreview.hidden = true;
+    plannedTodosPreview.hidden = false;
+    if (!plannedTodoSelection.size) {
+      const empty = document.createElement("div");
+      empty.className = "lp-expected-planned-todos-preview-empty";
+      empty.textContent = "왼쪽에서 눌러 추가됩니다";
+      plannedTodosPreview.appendChild(empty);
+      return;
+    }
+    for (const [id, text] of plannedTodoSelection) {
+      const line = document.createElement("button");
+      line.type = "button";
+      line.className = "lp-expected-planned-todos-preview-line";
+      line.textContent = `◽️ ${text}`;
+      line.addEventListener("click", () => {
+        togglePlannedTodoSelection(id, text);
+      });
+      plannedTodosPreview.appendChild(line);
+    }
+  }
+
+  function persistPlannedTodoSelectionToToday(kpiId) {
+    const kid = String(kpiId || "").trim();
+    if (!kid) return;
+    setTodayActionTodoPickIds(kid, [...plannedTodoSelection.keys()]);
+  }
+
+  function hydratePlannedTodoSelectionFromToday(kpiId) {
+    const kid = String(kpiId || "").trim();
+    let ids = kid ? readTodayActionTodoPickIds(kid) : [];
+    const today = String(timeLedgerLocalTodayYmd() || "").slice(0, 10);
+    if (!ids.length && kid && today && dk === today) {
+      const slotIds = getPlannedTodoIdsFromBudgetSlot(
+        dk,
+        taskDropdown?._getValue?.() || editTaskName || "",
+        isEdit ? editTimeIdx : -1,
+      );
+      if (slotIds.length) {
+        setTodayActionTodoPickIds(kid, slotIds);
+        ids = slotIds;
+      }
+    }
+    hydratePlannedTodoSelectionFromIds(kid, ids);
   }
 
   function togglePlannedTodoSelection(todoId, todoText) {
@@ -1122,6 +1163,7 @@ export function openCalendarExpectedScheduleModal(options) {
     if (!id || !text) return;
     if (plannedTodoSelection.has(id)) plannedTodoSelection.delete(id);
     else plannedTodoSelection.set(id, text);
+    persistPlannedTodoSelectionToToday(resolveExpectedModalKpiId());
     refreshPlannedTodosPreview();
     taskLogKpiTodosList
       ?.querySelectorAll("[data-todo-id]")
@@ -1556,6 +1598,9 @@ export function openCalendarExpectedScheduleModal(options) {
       hideExpectedTaskCompletionTodos();
       return null;
     }
+    if (!suppressPlannedClearOnTaskChange) {
+      hydratePlannedTodoSelectionFromToday(kpiId);
+    }
     applyExpectedTaskCompletionTodosUi(info.kpiId, info.todos);
     return info;
   }
@@ -1741,7 +1786,7 @@ export function openCalendarExpectedScheduleModal(options) {
         taskId: getTaskOptionByName(editTaskName)?.taskId || "",
         taskName: editTaskName,
       });
-      hydratePlannedTodoSelectionFromIds(kpiId, slot.plannedTodoIds);
+      hydratePlannedTodoSelectionFromToday(kpiId);
       if (taskLogFeedbackInput) {
         const cleaned = migrateLegacyMemoTodoLinesIntoPlanned(
           kpiId,
@@ -1788,10 +1833,6 @@ export function openCalendarExpectedScheduleModal(options) {
   const taskDropdown = buildTimeTaskLogPickerDropdown({
     abortSignal: signal,
     onTaskSelected: (name, meta) => {
-      if (!suppressPlannedClearOnTaskChange) {
-        plannedTodoSelection.clear();
-        refreshPlannedTodosPreview();
-      }
       updateExpectedDetailVisibility(name, meta || {});
     },
   });
@@ -2017,6 +2058,9 @@ export function openCalendarExpectedScheduleModal(options) {
       const memo = (taskLogFeedbackInput?.value || "").trim();
       const detail = getExpectedDetailForSave(taskName);
       const plannedTodoIds = getPlannedTodoIdsList();
+      persistPlannedTodoSelectionToToday(
+        resolveExpectedModalKpiId({ taskName }),
+      );
 
       if (!taskName) {
         showToast("과제를 선택해 주세요.");

@@ -59,6 +59,53 @@ export function createReadyIconImg(src) {
 }
 
 /**
+ * 목록에 붙이기 전, 그 안의 img가 실제로 그려질 때까지 기다린다.
+ * @param {ParentNode | Iterable<Element>} rootOrImgs
+ * @param {number} [timeoutMs]
+ * @returns {Promise<void>}
+ */
+export function waitIconImgsReady(rootOrImgs, timeoutMs = 1500) {
+  /** @type {HTMLImageElement[]} */
+  let imgs = [];
+  if (rootOrImgs instanceof DocumentFragment || rootOrImgs instanceof Element) {
+    imgs = [...rootOrImgs.querySelectorAll("img")];
+  } else if (rootOrImgs && typeof rootOrImgs[Symbol.iterator] === "function") {
+    imgs = [...rootOrImgs].filter((n) => n instanceof HTMLImageElement);
+  }
+  const pending = imgs.filter((img) =>
+    String(img.currentSrc || img.getAttribute("src") || img.src || "").trim(),
+  );
+  if (!pending.length) return Promise.resolve();
+  const waitMs = Number.isFinite(timeoutMs) ? Math.max(0, timeoutMs) : 1500;
+  return Promise.all(
+    pending.map((img) => withTimeout(waitOneDomImg(img), waitMs).catch(() => {})),
+  ).then(() => {});
+}
+
+/**
+ * @param {HTMLImageElement} img
+ * @returns {Promise<boolean>}
+ */
+function waitOneDomImg(img) {
+  return new Promise((resolve) => {
+    const done = () => resolve(true);
+    const after = () => {
+      if (typeof img.decode !== "function") {
+        done();
+        return;
+      }
+      img.decode().then(done).catch(done);
+    };
+    if (img.complete && img.naturalWidth > 0) {
+      after();
+      return;
+    }
+    img.addEventListener("load", after, { once: true });
+    img.addEventListener("error", done, { once: true });
+  });
+}
+
+/**
  * @param {string} src
  * @returns {Promise<boolean>}
  */

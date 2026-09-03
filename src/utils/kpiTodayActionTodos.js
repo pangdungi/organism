@@ -208,6 +208,14 @@ export function readTodayActionTodoPickIds(kpiId, todayYmd) {
     : [];
 }
 
+/** 보는 날이 오늘일 때만. 다음 날이면 빈 목록. */
+export function readTodayActionTodoPickIdsIfViewingToday(kpiId, viewedYmd) {
+  const today = todayYmdOr();
+  const view = String(viewedYmd || today).slice(0, 10);
+  if (!view || view !== today) return [];
+  return readTodayActionTodoPickIds(kpiId, today);
+}
+
 export function isTodayActionTodoPicked(kpiId, todoId, todayYmd) {
   const tid = String(todoId || "").trim();
   return tid ? readTodayActionTodoPickIds(kpiId, todayYmd).includes(tid) : false;

@@ -25,6 +25,7 @@ import {
   revertKpiTaskCompletionTodosForDeletedLedgerRow,
 } from "../utils/kpiTodoSync.js";
 import { pullKpiTodosDomainFromCloudIfStale } from "../utils/kpiTabCloudRefresh.js";
+import { readTodayActionTodoPickIds } from "../utils/kpiTodayActionTodos.js";
 import {
   DEFAULT_READING_KPI_ID,
   DEFAULT_READING_KPI_TODO_LIST_LABEL,
@@ -8177,10 +8178,12 @@ export function render(opts = {}) {
               <div data-legacy="time-task-log-kpi-todos-all-list"></div>
             </div>
           </div>
-          <h4 data-legacy="time-task-log-kpi-todos-title">할 일 목록</h4>
-          <p data-legacy="time-task-log-kpi-todos-status" hidden></p>
-          <div data-legacy="time-task-log-kpi-todos-scroll" hidden>
-            <div data-legacy="time-task-log-kpi-todos-list"></div>
+          <div data-legacy="time-task-log-kpi-todos-today-pane">
+            <h4 data-legacy="time-task-log-kpi-todos-title">할 일 목록</h4>
+            <p data-legacy="time-task-log-kpi-todos-status" hidden></p>
+            <div data-legacy="time-task-log-kpi-todos-scroll" hidden>
+              <div data-legacy="time-task-log-kpi-todos-list"></div>
+            </div>
           </div>
         </div>
         <div data-legacy="time-task-log-rating-section">
@@ -10705,6 +10708,8 @@ export function render(opts = {}) {
         });
       }
     }
+    const tn = taskLogTaskDropdown?._getValue?.() || "";
+    if (tn) refreshTaskCompletionTodosInLogModal();
     syncTaskLogGapFillBtnVisibility();
   });
   const taskLogDateWrap = taskLogDateStart?.closest?.(
@@ -11894,15 +11899,22 @@ export function render(opts = {}) {
     syncTaskLogPlannedSlotBtnSelection();
   }
 
-  /** 퀵버튼(오늘 계획)·「지금 실행하기」로 고른 경우만 계획 할일 필터. 그 외는 일반 과제 기록. */
+  /** 오늘 할일 — 기록 날짜가 오늘일 때만. 어제는 그날 고른 게 아니면 안 보임. */
   function resolveTaskLogPlannedTodoIdFilter() {
+    const recordYmd = String(taskLogResolveYmdForSync() || "").slice(0, 10);
+    const todayYmd = String(timeLedgerLocalTodayYmd() || "").slice(0, 10);
+    if (!recordYmd || !todayYmd || recordYmd !== todayYmd) return [];
+    const kpiId = resolveTaskLogModalKpiId();
+    const todayIds = kpiId ? readTodayActionTodoPickIds(kpiId) : [];
+    if (todayIds.length) return todayIds;
     if (
       taskLogSelectedPlannedSlot &&
       Array.isArray(taskLogSelectedPlannedSlot.plannedTodoIds)
     ) {
-      return taskLogSelectedPlannedSlot.plannedTodoIds
+      const fromSlot = taskLogSelectedPlannedSlot.plannedTodoIds
         .map((x) => String(x || "").trim())
         .filter(Boolean);
+      if (fromSlot.length) return fromSlot;
     }
     const fromCtx = taskLogAddContext?.presetPlannedTodoIds;
     if (!Array.isArray(fromCtx) || !fromCtx.length) return [];
@@ -12085,6 +12097,7 @@ export function render(opts = {}) {
       taskLogKpiTodosStatus.textContent = "";
     }
     if (taskLogKpiTodosAllBlock) taskLogKpiTodosAllBlock.hidden = true;
+    taskLogKpiTodosSection.classList.remove("is-split");
     taskLogKpiTodosList?.replaceChildren?.();
     taskLogKpiTodosAllList?.replaceChildren?.();
   }
@@ -12207,6 +12220,7 @@ export function render(opts = {}) {
       return;
     }
     taskLogKpiTodosSection.hidden = false;
+    taskLogKpiTodosSection.classList.toggle("is-split", planned);
     if (taskLogKpiTodosAllBlock) {
       taskLogKpiTodosAllBlock.hidden = !planned;
     }
@@ -12218,9 +12232,15 @@ export function render(opts = {}) {
       const full = getKpiTaskCompletionTodoInfoByKpiId(kpiId, {
         includeIds: [...collectTaskCompletionIncludeIdsForTaskLog(kpiId)],
       });
-      const fullTodos = (full?.todos || []).filter((t) =>
-        String(t?.text || "").trim(),
+      const todayIds = new Set(
+        (todos || [])
+          .map((t) => String(t?.id || "").trim())
+          .filter(Boolean),
       );
+      const fullTodos = (full?.todos || []).filter((t) => {
+        const id = String(t?.id || "").trim();
+        return String(t?.text || "").trim() && id && !todayIds.has(id);
+      });
       if (taskLogKpiTodosAllScroll) {
         taskLogKpiTodosAllScroll.hidden = !fullTodos.length;
       }
