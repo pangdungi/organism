@@ -1,4 +1,5 @@
 import { applyStaticAppIconImg } from "./utils/staticAppIconImg.js";
+import { checkLatestAppInBackground } from "./utils/lpReloadIfAppStale.js";
 import {
   HOME_DESK_DOODLE_SRC,
   HOME_TIME_MANAGEMENT_SRC,
@@ -1008,6 +1009,7 @@ export async function mountApp(container) {
     }
     currentTabId = tabId;
     persistActiveTabId(tabId);
+    checkLatestAppInBackground();
     logTodoScheduleTabOnNavigate(tabId, fromTab);
     logTabSync("tab_switch", { from: fromTab, to: tabId });
     /* 홈은 즉시 전환(푸터 홈 등) — 나머지 탭만 짧게 디바운스 */
