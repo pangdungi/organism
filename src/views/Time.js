@@ -8244,6 +8244,7 @@ export function render(opts = {}) {
                   <button type="button" data-legacy="time-task-log-memo-quick-no" data-insert="❌" aria-label="불가 표시 넣기"><span data-legacy="time-task-log-memo-quick-emoji" aria-hidden="true">&#x274C;</span></button>
                   <button type="button" data-legacy="time-task-log-memo-quick-music" data-insert="🎵" aria-label="음표 넣기"><span data-legacy="time-task-log-memo-quick-emoji" aria-hidden="true">&#x1F3B5;</span></button>
                   <button type="button" data-legacy="time-task-log-memo-quick-desktop" data-insert="🎬" aria-label="영화 넣기"><span data-legacy="time-task-log-memo-quick-emoji" aria-hidden="true">&#x1F3AC;</span></button>
+                  <button type="button" data-legacy="time-task-log-memo-quick-idea" data-insert="💡" aria-label="아이디어 넣기"><span data-legacy="time-task-log-memo-quick-emoji" aria-hidden="true">&#x1F4A1;</span></button>
                 </div>
               </div>
               <textarea id="time-task-log-feedback" data-legacy="time-task-log-feedback time-task-log-memo-input" rows="2" placeholder="메모를 입력하세요"></textarea>

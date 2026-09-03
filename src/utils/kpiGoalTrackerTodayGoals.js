@@ -30,6 +30,11 @@ import {
   readTodayActionHiddenIds,
   showTodayActionTodosModal,
 } from "./kpiTodayActionTodos.js";
+import { readTimeDailyBudgetGoalsRaw } from "./timeDailyBudgetModel.js";
+import { getTaskOptionByName } from "./timeTaskOptionsModel.js";
+import { resolveKpiIdForTaskId } from "./kpiTodoSync.js";
+
+const BUDGET_PLACEHOLDER_PREFIX = "(과제 선택)·";
 
 /** 오늘의 행동 목록에서 제외 — 기본 KPI「건강 검진」「독서하기」 */
 const TODAY_GOALS_EXCLUDED_KPI_IDS = new Set([
@@ -204,6 +209,45 @@ function isKpiExecutedToday(kpi, data, todayYmd) {
   return hasLogOrLedgerActivityToday(kpi, logs, todayYmd);
 }
 
+function scheduledTimesForBudgetTask(data) {
+  if (!data) return [];
+  if (Array.isArray(data.scheduledTimes)) {
+    return data.scheduledTimes.filter((x) => x && String(x).trim());
+  }
+  if (data.scheduledTime && String(data.scheduledTime).trim()) {
+    return [String(data.scheduledTime).trim()];
+  }
+  return [];
+}
+
+/** 그날 예상일정에 올라간 행동 KPI id */
+function listExpectedScheduleKpiIdsForYmd(ymd) {
+  const key = String(ymd || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return [];
+  let goals = {};
+  try {
+    const raw = readTimeDailyBudgetGoalsRaw();
+    const all = raw ? JSON.parse(raw) : {};
+    const day = all[key];
+    if (day && typeof day === "object" && !Array.isArray(day)) goals = day;
+  } catch (_) {
+    return [];
+  }
+  const ids = [];
+  const seen = new Set();
+  for (const [taskName, data] of Object.entries(goals)) {
+    if (String(taskName).startsWith(BUDGET_PLACEHOLDER_PREFIX)) continue;
+    if (!scheduledTimesForBudgetTask(data).length) continue;
+    const opt = getTaskOptionByName(taskName);
+    const kid =
+      resolveKpiIdForTaskId(opt?.id) || String(opt?.kpiId || "").trim();
+    if (!kid || seen.has(kid)) continue;
+    seen.add(kid);
+    ids.push(kid);
+  }
+  return ids;
+}
+
 function makeTodayGoalItem(kpi, data, category, todayYmd) {
   const id = String(kpi?.id || "").trim();
   const isHabit = resolveKpiGoalMode(kpi) === "habit" || !!kpi?.needHabitTracker;
@@ -255,6 +299,12 @@ export function buildGoalTrackerTodayGoalsModel(opts = {}) {
   for (const domain of DOMAINS) {
     const data = loadMap(domain.storageKey);
     const list = Array.isArray(data.kpis) ? data.kpis : [];
+    for (const kpi of list) {
+      const id = String(kpi?.id || "").trim();
+      const name = String(kpi?.name || "").trim();
+      if (!id || !name) continue;
+      if (!byId.has(id)) byId.set(id, { kpi, data, category: domain.category });
+    }
     const active = filterKpisByProgressStatus(list, "active", (kpi) =>
       progressForKpi(kpi, data),
     );
@@ -263,7 +313,6 @@ export function buildGoalTrackerTodayGoalsModel(opts = {}) {
       const name = String(kpi?.name || "").trim();
       if (!id || !name) continue;
       if (TODAY_GOALS_EXCLUDED_KPI_IDS.has(id)) continue;
-      byId.set(id, { kpi, data, category: domain.category });
       const isHabit = resolveKpiGoalMode(kpi) === "habit" || !!kpi?.needHabitTracker;
       if (opts.habitsOnly && !isHabit) continue;
       if (isHabit && isKpiHabitDateBeforeStart(kpi, todayYmd)) {
@@ -278,15 +327,24 @@ export function buildGoalTrackerTodayGoalsModel(opts = {}) {
     }
   }
 
-  for (const extraId of extra) {
-    if (hidden.has(extraId)) continue;
-    if (items.some((x) => x.id === extraId)) continue;
-    const found = byId.get(extraId);
-    if (!found) continue;
+  const pushIfMissing = (kpiId, { ignoreHidden = false } = {}) => {
+    const id = String(kpiId || "").trim();
+    if (!id) return;
+    if (!ignoreHidden && hidden.has(id)) return;
+    if (items.some((x) => x.id === id)) return;
+    const found = byId.get(id);
+    if (!found) return;
     const isHabit =
       resolveKpiGoalMode(found.kpi) === "habit" || !!found.kpi?.needHabitTracker;
-    if (opts.habitsOnly && !isHabit) continue;
+    if (opts.habitsOnly && !isHabit) return;
     items.push(makeTodayGoalItem(found.kpi, found.data, found.category, todayYmd));
+  };
+
+  for (const extraId of extra) {
+    pushIfMissing(extraId);
+  }
+  for (const scheduledId of listExpectedScheduleKpiIdsForYmd(todayYmd)) {
+    pushIfMissing(scheduledId, { ignoreHidden: true });
   }
 
   /* 매일 반복 먼저, 그다음 나머지 */

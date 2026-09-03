@@ -1127,7 +1127,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   }
 }
 
-/* 좁은 터치 화면: 화면 높이에 맞춰 24행 균등 분할 · 예상 4 : 타임박스 6 */
+/* 좁은 터치 화면: 화면 높이에 맞춰 24행 균등 분할 · 예상 5 : 타임박스 5 */
 @media (max-width: 40rem) and (pointer: coarse) {
   .calendar-1day-view--slot-grid .calendar-1day-dual-pane {
     flex: 1 1 0;
@@ -1135,12 +1135,9 @@ button.calendar-1day-pane-section-head--action:focus-visible {
     overflow: hidden;
   }
 
-  .calendar-1day-view--slot-grid .calendar-1day-dual-pane__cards {
-    flex: 4 1 0;
-  }
-
+  .calendar-1day-view--slot-grid .calendar-1day-dual-pane__cards,
   .calendar-1day-view--slot-grid .calendar-1day-dual-pane__grid {
-    flex: 6 1 0;
+    flex: 1 1 0;
   }
 
   .calendar-1day-view--slot-grid .calendar-1day-slot-grid-scroll {
