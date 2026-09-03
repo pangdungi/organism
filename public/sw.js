@@ -251,11 +251,15 @@ self.addEventListener("activate", (event) => {
         type: "window",
         includeUncontrolled: true,
       });
-      for (const client of windows) {
-        try {
-          client.postMessage({ type: "LP_SW_UPDATED" });
-        } catch (_) {}
-      }
+      await Promise.all(
+        windows.map(async (client) => {
+          try {
+            if (typeof client.navigate === "function") {
+              await client.navigate(client.url || "/");
+            }
+          } catch (_) {}
+        }),
+      );
     })(),
   );
 });

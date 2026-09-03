@@ -15,7 +15,6 @@ import "./styles/lp-pwa-install.css";
 import "./styles/lp-app-loading.css";
 import "./styles/lp-offline-banner.css";
 import { showOnly } from "./pages.js";
-import { bindAppShellUpdateListeners } from "./utils/lpAppShellUpdate.js";
 import {
   login,
   signUp,
@@ -966,6 +965,5 @@ if (
   "serviceWorker" in navigator &&
   (location.protocol === "https:" || location.hostname === "localhost")
 ) {
-  navigator.serviceWorker.register("/sw.js?v=61").catch(() => {});
-  bindAppShellUpdateListeners();
+  navigator.serviceWorker.register("/sw.js?v=60").catch(() => {});
 }
