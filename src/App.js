@@ -31,6 +31,7 @@ import { supabase } from "./supabase.js";
 import { getSupabaseSession } from "./utils/supabaseSession.js";
 import { isAppAdminUser } from "./utils/adminAccess.js";
 import { dismissAppToast, showToast } from "./utils/showToast.js";
+import { reloadIfAppShellUpdated } from "./utils/lpAppShellUpdate.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
   clearAppFooterActions,
@@ -428,7 +429,10 @@ function initLpTabResumeCloudPull(getCurrentTabId) {
       hiddenAt = Date.now();
       return;
     }
-    if (document.visibilityState === "visible") runIfNeeded("visibility");
+    if (document.visibilityState === "visible") {
+      void reloadIfAppShellUpdated();
+      runIfNeeded("visibility");
+    }
   });
   window.addEventListener("pageshow", (ev) => {
     /* bfcache 복귀 등 — 실제로 숨겼다 온 경우만 */
