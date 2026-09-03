@@ -96,6 +96,10 @@ export function ledgerRowDisplayTaskName(rowData) {
     const moveLabel = formatMoveRoutineDisplayLabel(rowData?.habitDailyCompleted);
     if (moveLabel) return moveLabel;
   }
+  if (TTC.isContentDetailTaskName(taskName)) {
+    const { text } = resolveLedgerRowDetail(rowData);
+    return TTC.formatContentConsumptionDisplayName(taskName, text) || taskName;
+  }
   const { text } = resolveLedgerRowDetail(rowData);
   if (ledgerRowUsesDetailAsDisplayName(rowData)) return text;
   return taskName;

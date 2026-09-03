@@ -25,6 +25,9 @@ export function expectedSpanUsesDetailAsDisplayName(span) {
 export function expectedSpanDisplayTaskName(span) {
   const taskName = String(span?.taskName || "").trim();
   const detail = String(span?.scheduleDetail || "").trim();
+  if (TTC.isContentDetailTaskName(taskName)) {
+    return TTC.formatContentConsumptionDisplayName(taskName, detail) || taskName;
+  }
   if (expectedSpanUsesDetailAsDisplayName(span)) {
     if (TTC.isConversationDetailTaskName(taskName)) {
       return TTC.formatConversationDisplayText(detail) || detail;

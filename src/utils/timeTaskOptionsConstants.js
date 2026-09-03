@@ -483,6 +483,24 @@ export function isContentDetailTaskName(name) {
   return CONTENT_DETAIL_TASK_NAMES.has(n);
 }
 
+/**
+ * 카드 제목 — 종류를 고른 경우 「무의식적 인스타 릴스/피드 콘텐츠 소비」
+ * @param {string} taskName
+ * @param {string} detailRaw
+ */
+export function formatContentConsumptionDisplayName(taskName, detailRaw) {
+  const tn = String(taskName || "").trim();
+  if (!isContentDetailTaskName(tn)) return "";
+  const types = formatChipDetailDisplayText(tn, detailRaw).trim();
+  if (!types) return tn;
+  const tone = tn.includes("무의식적")
+    ? "무의식적"
+    : tn.includes("의식적")
+      ? "의식적"
+      : "";
+  return tone ? `${tone} ${types} 콘텐츠 소비` : `${types} 콘텐츠 소비`;
+}
+
 /** @param {string} name */
 export function isHygieneDetailTaskName(name) {
   const n = String(name || "").trim();

@@ -13138,6 +13138,7 @@ export function render(opts = {}) {
   }
 
   async function openTaskLogModalForEdit(tr, rowData) {
+    rememberUsageListScrollForEdit();
     const data =
       tr?._rowData && typeof tr._rowData === "object" ? tr._rowData : rowData;
     let startTime = data.startTime || "";
@@ -14269,7 +14270,16 @@ export function render(opts = {}) {
         forceRows,
         skipPull: true,
       });
-      onFilterChange(true);
+      if (editTr) {
+        el._lpUsageListScrollToBottomPending = false;
+        el._lpUsageListScrollToTopPending = false;
+        el._lpUsageListEnterScrollArmed = false;
+        if (!tryPatchTimeLedgerTimelineRow(forceRow || editTr._rowData)) {
+          onFilterChange(true);
+        }
+      } else {
+        onFilterChange(true);
+      }
 
       const rowTaskId = String(ledgerRowForKpi?.taskId || "").trim();
       const kpiLinks =
@@ -14378,7 +14388,9 @@ export function render(opts = {}) {
         }
         if (el.isConnected) {
           try {
-            refreshTimeLedgerFromRemotePull({ force: true });
+            refreshTimeLedgerFromRemotePull({
+              force: !editTr,
+            });
           } catch (_) {}
         }
       })();
@@ -15149,6 +15161,9 @@ export function render(opts = {}) {
   bindLpHorizontalPanNavigate(contentWrap, {
     signal,
     dominance: 1.75,
+    touchDominance: 2,
+    touchMinDx: 72,
+    lockDetectPx: 20,
     isActive: timeLedgerHorizontalPanNavigateActive,
     onNext: () => shiftActiveTimeLedgerPanDay(1),
     onPrev: () => shiftActiveTimeLedgerPanDay(-1),
@@ -15394,6 +15409,7 @@ export function render(opts = {}) {
         return;
       }
     } catch (_) {}
+    clearUsageListKeepScroll();
     el._lpUsageListScrollToTopPending = true;
     el._lpUsageListScrollToBottomPending = false;
   }
@@ -15408,12 +15424,42 @@ export function render(opts = {}) {
         return;
       }
     } catch (_) {}
+    clearUsageListKeepScroll();
     el._lpUsageListScrollToBottomPending = true;
     el._lpUsageListScrollToTopPending = false;
   }
 
+  /** 수정 모달을 열 때 보고 있던 위치 — 닫아도 23:59로 끌어내리지 않음 */
+  function rememberUsageListScrollForEdit() {
+    const cards = contentWrap.querySelector(
+      '[data-legacy~="time-ledger-mobile-cards"]',
+    );
+    if (!cards) return;
+    el._lpUsageListKeepScrollTop = cards.scrollTop;
+    el._lpUsageListScrollToBottomPending = false;
+    el._lpUsageListScrollToTopPending = false;
+    el._lpUsageListEnterScrollArmed = false;
+  }
+
+  function clearUsageListKeepScroll() {
+    el._lpUsageListKeepScrollTop = null;
+  }
+
   function applyUsageListScrollIfPending(cardsWrap) {
     if (!cardsWrap) return false;
+    if (typeof el._lpUsageListKeepScrollTop === "number") {
+      el._lpUsageListScrollToTopPending = false;
+      el._lpUsageListScrollToBottomPending = false;
+      el._lpUsageListEnterScrollArmed = false;
+      const top = el._lpUsageListKeepScrollTop;
+      const restore = () => {
+        if (!cardsWrap.isConnected) return;
+        cardsWrap.scrollTop = top;
+      };
+      restore();
+      requestAnimationFrame(restore);
+      return true;
+    }
     const wantTop = !!el._lpUsageListScrollToTopPending;
     const wantBottom = !wantTop && !!el._lpUsageListScrollToBottomPending;
     if (!wantTop && !wantBottom) return false;
