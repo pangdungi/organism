@@ -167,20 +167,35 @@ self.addEventListener("activate", (event) => {
     (async () => {
       const cacheKeys = await caches.keys();
       await Promise.all(
-        cacheKeys
-          .filter((k) => {
-            if (k.startsWith("organism-html-") || k.startsWith("tip-html-")) {
-              return true;
-            }
-            if (
-              (k.startsWith("organism-assets-") || k.startsWith("tip-assets-")) &&
-              k !== ASSET_CACHE
-            ) {
-              return true;
-            }
-            return false;
-          })
-          .map((k) => caches.delete(k)),
+        cacheKeys.map(async (k) => {
+          if (k.startsWith("organism-html-") || k.startsWith("tip-html-")) {
+            await caches.delete(k);
+            return;
+          }
+          if (!k.startsWith("organism-assets-") && !k.startsWith("tip-assets-")) {
+            return;
+          }
+          if (k !== ASSET_CACHE) {
+            await caches.delete(k);
+            return;
+          }
+          const cache = await caches.open(k);
+          const reqs = await cache.keys();
+          await Promise.all(
+            reqs.map((req) => {
+              let p = "";
+              try {
+                p = new URL(req.url).pathname;
+              } catch (_e) {
+                return null;
+              }
+              if (p.startsWith("/assets/") && /\.(js|css)$/i.test(p)) {
+                return cache.delete(req);
+              }
+              return null;
+            }),
+          );
+        }),
       );
       await self.clients.claim();
     })(),
@@ -215,7 +230,14 @@ function isFontPath(pathname) {
   return pathname.startsWith("/fonts/");
 }
 
-/** JS/CSS 번들 — 네트워크 우선 */
+/** JS/CSS 번들 — 저장하지 않음. 예전 스크립트를 다시 주지 않음 */
+async function networkOnlyAsset(request) {
+  const response = await safeFetch(new Request(request, { cache: "reload" }));
+  if (response && response.ok) return response;
+  return offlineFallbackResponse(request);
+}
+
+/** 그 외 네트워크 우선 자산 */
 async function networkFirstAsset(request) {
   const cache = await caches.open(ASSET_CACHE);
   const response = await safeFetch(new Request(request, { cache: "reload" }));
@@ -324,7 +346,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   if (isBundledJsCss(url.pathname)) {
-    respondWithSafe(event, networkFirstAsset(req));
+    respondWithSafe(event, networkOnlyAsset(req));
     return;
   }
   if (isPwaBrandAsset(url.pathname)) {
