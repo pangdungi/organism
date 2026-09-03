@@ -4,7 +4,7 @@ const PWA_BRAND = "doodle-calendar-1";
 /** 번들·아이콘 등 캐시 버전 (전략·브랜드 바꿀 때 올리면 이전 캐시 정리됨) */
 const ASSET_CACHE = "tip-assets-v79";
 /** HTML 셸 캐시 — 홈 화면에서 열 때 즉시 표시용 */
-const HTML_CACHE = "tip-html-v18";
+const HTML_CACHE = "tip-html-v16";
 /** 빌드 때 커밋 값으로 바뀜 — 쓰는 중 검사는 없고, 새 워커가 켜질 때만 화면을 한 번 다시 연다 */
 const SW_RELEASE = "__LP_SW_RELEASE__";
 const LOGIN_BRAND_LOGO_V = "user-1";
@@ -251,18 +251,11 @@ self.addEventListener("activate", (event) => {
         type: "window",
         includeUncontrolled: true,
       });
-      await Promise.all(
-        windows.map(async (client) => {
-          try {
-            client.postMessage({ type: "LP_SW_UPDATED" });
-          } catch (_) {}
-          try {
-            if (typeof client.navigate === "function") {
-              await client.navigate(client.url || "/");
-            }
-          } catch (_) {}
-        }),
-      );
+      for (const client of windows) {
+        try {
+          client.postMessage({ type: "LP_SW_UPDATED" });
+        } catch (_) {}
+      }
     })(),
   );
 });
