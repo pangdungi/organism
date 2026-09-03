@@ -663,6 +663,8 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   text-align: right;
   line-height: 1;
   font-variant-numeric: tabular-nums;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .calendar-1day-slot-grid-col-label {
@@ -1138,6 +1140,10 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   .calendar-1day-view--slot-grid .calendar-1day-dual-pane__cards,
   .calendar-1day-view--slot-grid .calendar-1day-dual-pane__grid {
     flex: 1 1 0;
+    width: 50%;
+    max-width: 50%;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .calendar-1day-view--slot-grid .calendar-1day-slot-grid-scroll {
@@ -1146,6 +1152,16 @@ button.calendar-1day-pane-section-head--action:focus-visible {
     overflow: hidden;
     /* 왼쪽 여백 없이 · 오른쪽만 약간 */
     padding: 0.28rem 0.28rem 0.4rem 0;
+  }
+
+  .calendar-1day-view--slot-grid .calendar-1day-slot-grid-col-label {
+    font-size: 0.4375rem;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .calendar-1day-expected-cards-list {
+    --cal-expected-time-col-w: 2.4rem;
   }
 }
 
@@ -3500,25 +3516,24 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   flex: 0 0 auto !important;
   height: auto !important;
   min-height: auto !important;
-  overflow: visible !important;
+  overflow: visible;
 }
 
 .lp-calendar-budget-add-modal
   [data-legacy~="lp-expected-todo-memo-split"].is-split {
-  --lp-expected-split-h: calc(
-    var(--lp-expected-split-head-h) + var(--lp-expected-split-body-h) + 1.1rem
-  );
-  display: grid;
+  --lp-expected-split-head-h: 1.75rem;
+  --lp-expected-split-body-h: 8.5rem;
+  display: grid !important;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 0;
   align-items: stretch;
-  margin-top: 0.2rem;
-  padding: 0;
+  margin-top: 0.35rem;
+  padding: 0.65rem 0 0;
   border-top: 1px solid #e5e5e5;
   flex: 0 0 auto;
-  height: var(--lp-expected-split-h);
-  min-height: var(--lp-expected-split-h);
-  max-height: var(--lp-expected-split-h);
+  height: auto;
+  min-height: 0;
+  max-height: none;
   align-self: stretch;
 }
 
@@ -3531,13 +3546,28 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   display: flex;
   flex-direction: column;
   margin: 0;
-  padding: 0.45rem 0 0.35rem;
+  padding: 0;
   border-top: none;
   min-width: 0;
   min-height: 0;
-  height: 100%;
+  height: calc(
+    var(--lp-expected-split-head-h) + var(--lp-expected-split-body-h) + 0.85rem
+  );
   overflow: hidden;
   box-sizing: border-box;
+}
+
+.lp-calendar-budget-add-modal
+  [data-legacy~="lp-expected-todo-memo-split"].is-split
+  > [data-legacy~="time-task-log-kpi-todos-section"] {
+  padding-right: 0.5rem;
+  border-right: 1px solid #e5e5e5;
+}
+
+.lp-calendar-budget-add-modal
+  [data-legacy~="lp-expected-todo-memo-split"].is-split
+  > [data-legacy~="lp-expected-planned-todos-pane"] {
+  padding-left: 0.5rem;
 }
 
 .lp-calendar-budget-add-modal
@@ -3567,7 +3597,6 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   margin: 0 0 0.35rem;
   height: var(--lp-expected-split-head-h);
   min-height: var(--lp-expected-split-head-h);
-  max-height: var(--lp-expected-split-head-h);
   box-sizing: border-box;
 }
 
@@ -3582,7 +3611,6 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   margin: 0;
   height: var(--lp-expected-split-head-h);
   min-height: var(--lp-expected-split-head-h);
-  max-height: var(--lp-expected-split-head-h);
   font-size: 0.8125rem;
   font-weight: 600;
   line-height: 1.35rem;
@@ -3734,36 +3762,6 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   line-height: 1.55;
 }
 
-@media (max-width: 35.99rem) {
-  .lp-calendar-budget-add-modal
-    [data-legacy~="lp-expected-todo-memo-split"].is-split
-    > [data-legacy~="lp-expected-planned-todos-pane"] {
-    border-top: 1px solid #e5e5e5;
-  }
-}
-
-@media (min-width: 36rem) {
-  .lp-calendar-budget-add-modal
-    [data-legacy~="lp-expected-todo-memo-split"].is-split {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 0;
-    align-items: stretch;
-  }
-
-  .lp-calendar-budget-add-modal
-    [data-legacy~="lp-expected-todo-memo-split"].is-split
-    > [data-legacy~="time-task-log-kpi-todos-section"] {
-    border-right: 1px solid #e5e5e5;
-    padding-right: 0.5rem;
-  }
-
-  .lp-calendar-budget-add-modal
-    [data-legacy~="lp-expected-todo-memo-split"].is-split
-    > [data-legacy~="lp-expected-planned-todos-pane"] {
-    padding-left: 0.5rem;
-  }
-}
 
 .lp-calendar-budget-add-modal
   [data-legacy~="time-task-log-content-type-section"]:not([hidden])

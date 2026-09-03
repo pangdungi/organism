@@ -1624,7 +1624,7 @@
 
 .lp-kpi-dream-page .habit-tracker-today-action-todo-wrap {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.4rem;
   min-width: 0;
 }
@@ -1633,12 +1633,12 @@
   flex: 0 0 auto;
   appearance: none;
   -webkit-appearance: none;
-  width: 0.7rem;
-  height: 0.7rem;
-  margin: 0.22rem 0 0;
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
   padding: 0;
   border: 1.5px solid #c4c4c4;
-  border-radius: 0.12rem;
+  border-radius: 0.15rem;
   background: #fafafa;
   accent-color: #333;
   cursor: pointer;
@@ -1650,7 +1650,7 @@
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='none' stroke='%23fff' stroke-width='2' d='M2.4 6.2l2.5 2.4 4.7-5'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: center;
-  background-size: 0.5rem 0.5rem;
+  background-size: 0.65rem 0.65rem;
 }
 
 .lp-kpi-dream-page .habit-tracker-today-action-todo-text {
