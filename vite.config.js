@@ -1,6 +1,5 @@
 import { defineConfig } from "vite";
 import { execFile } from "node:child_process";
-import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -50,34 +49,9 @@ function toolbarIconsSvgWatchPlugin() {
   };
 }
 
-/** 배포 빌드마다 sw.js 표시만 바꿈 — 앱 사용 중 추가는 없음 */
-function stampSwReleasePlugin() {
-  return {
-    name: "lp-stamp-sw-release",
-    apply: "build",
-    closeBundle() {
-      const swPath = path.resolve(__dirname, "dist", "sw.js");
-      try {
-        if (!fs.existsSync(swPath)) return;
-        const raw = fs.readFileSync(swPath, "utf8");
-        const sha = String(
-          process.env.VERCEL_GIT_COMMIT_SHA ||
-            process.env.GITHUB_SHA ||
-            Date.now(),
-        ).slice(0, 12);
-        fs.writeFileSync(
-          swPath,
-          raw.replaceAll("__LP_SW_RELEASE__", sha),
-          "utf8",
-        );
-      } catch (_) {}
-    },
-  };
-}
-
 export default defineConfig({
   root: ".",
-  plugins: [toolbarIconsSvgWatchPlugin(), stampSwReleasePlugin()],
+  plugins: [toolbarIconsSvgWatchPlugin()],
   server: {
     host: "0.0.0.0", // localhost:5179 + 같은 Wi‑Fi에서 http://(맥IP):5179
     port: 5179,

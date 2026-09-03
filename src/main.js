@@ -965,5 +965,5 @@ if (
   "serviceWorker" in navigator &&
   (location.protocol === "https:" || location.hostname === "localhost")
 ) {
-  navigator.serviceWorker.register("/sw.js?v=60").catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=59").catch(() => {});
 }
