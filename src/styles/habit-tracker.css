@@ -1540,7 +1540,8 @@
 
 .lp-kpi-dream-page .habit-tracker-success-fail-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   table-layout: fixed;
   font-size: 0.8125rem;
   font-variant-numeric: tabular-nums;
@@ -1548,7 +1549,9 @@
 
 .lp-kpi-dream-page .habit-tracker-success-fail-table th,
 .lp-kpi-dream-page .habit-tracker-success-fail-table td {
-  border: 1px solid #d4d4d4;
+  border: none;
+  border-right: 1px solid #d4d4d4;
+  border-bottom: 1px solid #d4d4d4;
   padding: 0.5rem 0.2rem;
   text-align: center;
   vertical-align: middle;
@@ -1556,6 +1559,16 @@
   font-weight: 650;
   line-height: 1.25;
   font-size: 0.8125rem;
+}
+
+.lp-kpi-dream-page .habit-tracker-success-fail-table th:last-child,
+.lp-kpi-dream-page .habit-tracker-success-fail-table td:last-child {
+  border-right: none;
+}
+
+.lp-kpi-dream-page .habit-tracker-success-fail-table tbody tr:last-child th,
+.lp-kpi-dream-page .habit-tracker-success-fail-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .lp-kpi-dream-page .habit-tracker-success-fail-table thead th {
@@ -1566,7 +1579,7 @@
 
 .lp-kpi-dream-page .habit-tracker-success-fail-table tbody th {
   background: #fafafa;
-  text-align: left;
+  text-align: center;
   padding-left: 0.55rem;
   padding-right: 0.35rem;
   font-size: 0.75rem;

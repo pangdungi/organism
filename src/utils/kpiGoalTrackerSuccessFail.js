@@ -431,7 +431,7 @@ export function mountKpiGoalSuccessFailSection(container, opts = {}) {
             .join("")}
         </tr>
         <tr class="habit-tracker-success-fail-row--mark">
-          <th scope="row">성공·실패</th>
+          <th scope="row">성공</th>
           ${cells
             .map(
               (c) =>
@@ -443,11 +443,11 @@ export function mountKpiGoalSuccessFailSection(container, opts = {}) {
     } else if (hasUnit) {
       tbody.innerHTML = `
         <tr>
-          <th scope="row">매일의 목표</th>
+          <th scope="row">목표</th>
           ${cells.map((c) => `<td>${escapeHtml(c.goal || "")}</td>`).join("")}
         </tr>
         <tr>
-          <th scope="row">매일의 결과</th>
+          <th scope="row">결과</th>
           ${cells
             .map(
               (c) =>
@@ -456,7 +456,7 @@ export function mountKpiGoalSuccessFailSection(container, opts = {}) {
             .join("")}
         </tr>
         <tr class="habit-tracker-success-fail-row--mark">
-          <th scope="row">성공·실패</th>
+          <th scope="row">성공</th>
           ${cells
             .map(
               (c) =>
@@ -468,7 +468,7 @@ export function mountKpiGoalSuccessFailSection(container, opts = {}) {
     } else {
       tbody.innerHTML = `
         <tr class="habit-tracker-success-fail-row--mark">
-          <th scope="row">성공·실패</th>
+          <th scope="row">성공</th>
           ${cells
             .map(
               (c) =>

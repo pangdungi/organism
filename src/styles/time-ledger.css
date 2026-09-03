@@ -6943,7 +6943,7 @@
 .time-ledger-day-timebox-dual-pane__col--expected,
 [data-legacy~="time-ledger-view"]
   .time-ledger-day-timebox-dual-pane__col--expected {
-  border-left: 1px solid var(--lp-tr2-line, #c4bfb6);
+  border-left: 1px solid #ddd8d1;
 }
 
 .time-ledger-day-timebox-dual-pane__head,
@@ -6959,8 +6959,8 @@
   letter-spacing: -0.02em;
   color: #475569;
   text-align: center;
-  border-top: 1px solid var(--lp-tr2-line, #c4bfb6);
-  border-bottom: 1px solid var(--lp-tr2-line, #c4bfb6);
+  border-top: 1px solid #ddd8d1;
+  border-bottom: 1px solid #ddd8d1;
   background: transparent;
 }
 
