@@ -966,6 +966,6 @@ if (
   "serviceWorker" in navigator &&
   (location.protocol === "https:" || location.hostname === "localhost")
 ) {
-  navigator.serviceWorker.register("/sw.js?v=61").catch(() => {});
+  navigator.serviceWorker.register("/sw.js?v=62").catch(() => {});
   bindAppShellUpdateListeners();
 }
