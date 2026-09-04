@@ -14270,14 +14270,7 @@ export function render(opts = {}) {
         forceRows,
         skipPull: true,
       });
-      if (editTr) {
-        el._lpUsageListScrollToBottomPending = false;
-        el._lpUsageListScrollToTopPending = false;
-        el._lpUsageListEnterScrollArmed = false;
-        if (!tryPatchTimeLedgerTimelineRow(forceRow || editTr._rowData)) {
-          onFilterChange(true);
-        }
-      } else {
+      if (!editTr) {
         onFilterChange(true);
       }
 
@@ -14386,11 +14379,9 @@ export function render(opts = {}) {
         ) {
           scheduleSilentTimeLedgerPushRetry([pushedId], forceRows);
         }
-        if (el.isConnected) {
+        if (el.isConnected && !editTr) {
           try {
-            refreshTimeLedgerFromRemotePull({
-              force: !editTr,
-            });
+            refreshTimeLedgerFromRemotePull({ force: true });
           } catch (_) {}
         }
       })();
