@@ -2132,7 +2132,10 @@ function updateMobileTimeCardLiveFields(card) {
   const live = mobileCardNeedsLiveClock(card._rowData);
   lpTokenToggle(card, "time-ledger-mobile-card--in-progress", live);
   card.classList.toggle("calendar-1day-timeline-card--in-progress", live);
-  if (!live) return;
+  if (!live) {
+    card.querySelector(".time-ledger-card-start-live-tag")?.remove();
+    return;
+  }
   const rd = card._rowData;
   const viewEl = card._timeLedgerViewEl;
   const trackedEl = card.querySelector(".calendar-1day-timeline-card-duration");
@@ -5838,6 +5841,45 @@ function resolveUsageTimelineItemFromCardNode(node) {
   if (!node) return null;
   if (node.classList?.contains("calendar-1day-timeline-item")) return node;
   return node.closest?.(".calendar-1day-timeline-item") || null;
+}
+
+/** 수정 저장 후 그 카드만 — 진행중/마감·소요. 새 카드 만들지 않음 */
+function syncMobileTimeCardTimesFromRow(card, rowData) {
+  if (!card || !rowData) return;
+  card._rowData = rowData;
+  const item = resolveUsageTimelineItemFromCardNode(card);
+  const startInst = getRowStartInstantForMobileCard(rowData);
+  const startClock = formatLedgerTimelineClockHHmm(startInst) || "—";
+  const endClock = formatLedgerTimelineEndClock(rowData);
+  const live = mobileCardNeedsLiveClock(rowData);
+  const durMin = Math.max(
+    0,
+    Math.round((getMobileCardEffectiveHoursForPrice(rowData) || 0) * 60),
+  );
+  if (item) {
+    item.dataset.lpStartClock = startClock;
+    item.dataset.lpEndClock = endClock;
+  }
+  lpTokenToggle(card, "time-ledger-mobile-card--in-progress", live);
+  card.classList.toggle("calendar-1day-timeline-card--in-progress", live);
+  const startEl = card.querySelector(".calendar-1day-timeline-card-start");
+  if (startEl) {
+    startEl.textContent = startClock;
+    if (live) {
+      const liveTag = document.createElement("span");
+      liveTag.className = "time-ledger-card-start-live-tag";
+      liveTag.textContent = "진행중..";
+      startEl.appendChild(liveTag);
+    }
+  }
+  const endEl = card.querySelector(".calendar-1day-timeline-card-end");
+  if (endEl) endEl.textContent = endClock;
+  const durEl = card.querySelector(".calendar-1day-timeline-card-duration");
+  if (durEl) durEl.textContent = formatIntegerMinutesDurationKo(durMin);
+  const parent =
+    item?.parentElement ||
+    card.closest?.(".calendar-1day-timeline-list, .time-ledger-day-card-stack");
+  if (parent) applyUsageTimelineEndUnderStartDisplay(parent);
 }
 
 /** 모바일 시간가계부 카드 — 좌 시간열 | 우(아이콘·과제명 1–2행·소요/가격·메모) */
@@ -13965,6 +14007,7 @@ export function render(opts = {}) {
           );
         }
         syncMobileTimeCardRatingEl(editTr, newRowData);
+        syncMobileTimeCardTimesFromRow(editTr, newRowData);
       } else {
         const dispTask = editTr.querySelector(
           '[data-legacy~="time-display-task"]',
