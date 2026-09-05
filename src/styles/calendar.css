@@ -1655,6 +1655,11 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   font-size: var(--cal-font-1week-meta);
 }
 
+.lp-desktop-dashboard-col--planner .calendar-1week-flow-card-time,
+.lp-desktop-dashboard-col--planner .calendar-1week-flow-free-gap-time {
+  font-size: 0.65rem;
+}
+
 /* 월·주: 그리드 아래 외곽선 제거 — 푸터 윗선과 겹치면 굵어짐 */
 .calendar-monthly-layout.calendar-subview-monthly
   > .calendar-monthly-main
@@ -2297,6 +2302,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
 
 .calendar-1week-flow-free-gap-time {
   font-variant-numeric: tabular-nums;
+  font-size: 0.65rem;
   color: #475569;
 }
 
@@ -2414,6 +2420,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
 .calendar-1week-flow-card-time {
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
+  font-size: 0.65rem;
 }
 
 .calendar-1week-flow-card-badge {
@@ -2749,8 +2756,13 @@ button.calendar-1day-pane-section-head--action:focus-visible {
     font-size: var(--cal-font-1week-badge, 0.5625rem);
   }
 
-  .calendar-1week-flow-card-memo {
+  .calendar-1week-flow-card-memo,
+  .calendar-1week-flow-card-time,
+  .calendar-1week-flow-free-gap-time {
     font-size: 0.55rem;
+  }
+
+  .calendar-1week-flow-card-memo {
     margin-top: 0.26rem;
     padding-top: 0.26rem;
   }
