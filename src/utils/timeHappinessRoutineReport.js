@@ -23,6 +23,7 @@ import {
 import { migrateTimeLogRowsTaskIds } from "./timeTaskOptionsModel.js";
 import { ensureAllKpiTimeTasksFromStorage } from "./kpiTimeTaskSync.js";
 import { resolveKpiDetailLogEntriesLocal } from "./kpiTimeLedgerLogs.js";
+import { isHabitScheduledOnYmd } from "./kpiHabitWeekdays.js";
 
 const ROUTINE_WELL_KEPT_PCT = 75;
 const ITEM_WEAK_PCT = 50;
@@ -272,9 +273,15 @@ export function buildHappinessRoutineReportSnapshot(range, opts = {}) {
       resolvedEntriesByDay.set(dk, entry);
     }
 
+    /* 조회 기간이 7일이어도, 하는 요일만 분모 (월–금 루틴 → 5일) */
+    const scheduledDays = calendarDays.filter((day) =>
+      isHabitScheduledOnYmd(kpi, day),
+    );
+    const scheduledDayCount = scheduledDays.length;
+
     let daysDone = 0;
     let totalMinutes = 0;
-    for (const day of calendarDays) {
+    for (const day of scheduledDays) {
       const entry = resolvedEntriesByDay.get(day);
       let dayMins = minutesByDate.get(day) || 0;
       if (!dayMins) {
@@ -302,7 +309,7 @@ export function buildHappinessRoutineReportSnapshot(range, opts = {}) {
       let checkCount = 0;
       let opportunityCount = 0;
 
-      for (const day of calendarDays) {
+      for (const day of scheduledDays) {
         opportunityCount += 1;
         routineOpportunities += 1;
         const completedList = mergedDailyCompletedForKpiDay(
@@ -342,8 +349,8 @@ export function buildHappinessRoutineReportSnapshot(range, opts = {}) {
 
     /* 루틴 실행율 = 한 날 했는지 여부만 (매일할일 체크 비율과 무관) */
     const executionPct =
-      calendarDayCount > 0
-        ? Math.round((daysDone / calendarDayCount) * 100)
+      scheduledDayCount > 0
+        ? Math.round((daysDone / scheduledDayCount) * 100)
         : 0;
 
     const keptItems = items.filter((i) => i.checkCount > 0);
@@ -354,7 +361,7 @@ export function buildHappinessRoutineReportSnapshot(range, opts = {}) {
       name,
       executionPct,
       daysDone,
-      dayCount: calendarDayCount,
+      dayCount: scheduledDayCount,
       totalMinutes,
       avgMinutes,
       totalChecks: routineChecks,

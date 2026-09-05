@@ -1509,7 +1509,7 @@ function getProductivityFromCategory(categoryValue) {
 
 /**
  * 낮잠: 30분 이하 → 건강/생산적·「낮잠(30분 이내)」,
- * 30분 초과 → 쾌락충족/비생산적·「낮잠(30분이상)」
+ * 30분 초과 → 쾌락충족/비생산적·「낮잠(30분 이상)」
  */
 function getNapCategoryProductivity(timeTracked) {
   const hours = parseTimeToHours(timeTracked);
@@ -9101,7 +9101,7 @@ export function render(opts = {}) {
     if (pv !== "productive" && pv !== "nonproductive") return false;
     const opt = ratingTaskName ? getTaskOptionByName(ratingTaskName) : null;
     if (isTimeTaskKpiLinked(opt)) return true;
-    return TTC.canonicalMealTaskDisplayName(ratingTaskName) === "독서노트 쓰기";
+    return TTC.canonicalMealTaskDisplayName(ratingTaskName) === "독서 노트 쓰기";
   }
 
   function taskLogRatingSectionLabelText() {

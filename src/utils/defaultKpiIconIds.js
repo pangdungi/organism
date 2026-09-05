@@ -32,7 +32,7 @@ export function isDefaultHappinessRoutineKpiId(id) {
 export const DEFAULT_HAPPINESS_ROUTINE_TASK_NAMES = [
   "모닝 루틴",
   "이동 루틴",
-  "정리루틴",
+  "정리 루틴",
   "외출 준비 루틴",
   "외출 후 루틴",
   "취침 루틴",
@@ -79,6 +79,7 @@ export const DEFAULT_KPI_NAME_ICON_SLUG = {
   "잡무 처리하기": "to do list",
   "모닝 루틴": "drip coffee",
   "이동 루틴": "moving_basic",
+  "정리 루틴": "clean",
   "정리루틴": "clean",
   "외출 준비 루틴": "packing",
   "외출 후 루틴": "cloth",
@@ -86,5 +87,6 @@ export const DEFAULT_KPI_NAME_ICON_SLUG = {
   "독서하기": "reading",
   "유산소 운동": "running",
   "보충제 섭취": "medicine",
+  "건강검진": "dental appointment",
   "건강 검진": "dental appointment",
 };

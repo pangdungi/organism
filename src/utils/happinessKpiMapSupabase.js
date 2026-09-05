@@ -204,7 +204,7 @@ export function createDefaultMoveRoutineKpi() {
 export function createDefaultTidyRoutineKpi() {
   return createDefaultHappinessKpi({
     id: DEFAULT_TIDY_ROUTINE_KPI_ID,
-    name: "정리루틴",
+    name: "정리 루틴",
     needHabitTracker: true,
   });
 }
@@ -290,11 +290,22 @@ const DEFAULT_HAPPINESS_KPI_FACTORIES = [
 const DEFAULT_HAPPINESS_HABIT_KPI_MIGRATIONS = [
   { id: DEFAULT_MORNING_ROUTINE_KPI_ID, name: "모닝 루틴" },
   { id: DEFAULT_MOVE_ROUTINE_KPI_ID, name: "이동 루틴" },
-  { id: DEFAULT_TIDY_ROUTINE_KPI_ID, name: "정리루틴" },
+  { id: DEFAULT_TIDY_ROUTINE_KPI_ID, name: "정리 루틴" },
   { id: DEFAULT_OUT_PREP_ROUTINE_KPI_ID, name: "외출 준비 루틴" },
   { id: DEFAULT_OUT_AFTER_ROUTINE_KPI_ID, name: "외출 후 루틴" },
   { id: DEFAULT_BEDTIME_ROUTINE_KPI_ID, name: "취침 루틴" },
 ];
+
+function migrateDefaultTidyRoutineKpiLabel(kpis) {
+  let changed = false;
+  const next = (kpis || []).map((k) => {
+    if (String(k?.id ?? "") !== DEFAULT_TIDY_ROUTINE_KPI_ID) return k;
+    if (String(k.name || "").trim() !== "정리루틴") return k;
+    changed = true;
+    return { ...k, name: "정리 루틴" };
+  });
+  return { kpis: changed ? next : kpis, changed };
+}
 
 /** 기본 루틴 KPI — 매일하기 유지, 사용자가 넣은 목표값·단위는 지우지 않음 */
 function migrateDefaultHappinessHabitKpis(kpis) {
@@ -372,8 +383,10 @@ export function ensureDefaultHappinessKpis(payload) {
     nextDeletedKpis.length !== (deletedRefs.kpis || []).length;
 
   const mergedKpis = [...toPrepend, ...kpis];
+  const { kpis: afterTidyLabel, changed: tidyLabelMigrated } =
+    migrateDefaultTidyRoutineKpiLabel(mergedKpis);
   const { kpis: afterHabit, changed: habitMigrated } =
-    migrateDefaultHappinessHabitKpis(mergedKpis);
+    migrateDefaultHappinessHabitKpis(afterTidyLabel);
   const { kpis: migratedKpis, changed: taskMigrated } =
     migrateDefaultHappinessTaskCompletionKpis(afterHabit);
 
@@ -394,6 +407,7 @@ export function ensureDefaultHappinessKpis(payload) {
   if (
     !toPrepend.length &&
     !deletedRefsChanged &&
+    !tidyLabelMigrated &&
     !habitMigrated &&
     !taskMigrated &&
     !orderChanged

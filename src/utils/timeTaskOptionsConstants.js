@@ -8,12 +8,13 @@ export const NAP_TASK_NAME = "낮잠(30분 이내)";
 /** @deprecated NAP_TASK_NAME 과 동일 — 기록 라벨 */
 export const NAP_TASK_NAME_WITHIN_30 = "낮잠(30분 이내)";
 /** 사용시간 30분 초과로 저장된 기록명 */
-export const NAP_TASK_NAME_OVER_30 = "낮잠(30분이상)";
+export const NAP_TASK_NAME_OVER_30 = "낮잠(30분 이상)";
 
 const NAP_TASK_NAMES_FOR_RULE = new Set([
   NAP_TASK_NAME,
   NAP_TASK_NAME_WITHIN_30,
   NAP_TASK_NAME_OVER_30,
+  "낮잠(30분이상)",
   "낮잠",
   "낮잠 (30분 이상은 수면으로 기록)",
 ]);
@@ -187,7 +188,7 @@ export const FIXED_PRODUCTIVE_TASKS = [
     category: "sideincome",
     productivity: "productive",
   },
-  { name: "독서노트 쓰기", category: "sideincome", productivity: "productive" },
+  { name: "독서 노트 쓰기", category: "sideincome", productivity: "productive" },
   { name: "시간 관리 관련 행동", category: "sideincome", productivity: "productive" },
   { name: "개인 위생", category: "health", productivity: "productive" },
   {
@@ -213,8 +214,8 @@ export const FIXED_PRODUCTIVE_TASKS = [
     productivity: "productive",
   },
   { name: "기록하기", category: "happiness", productivity: "productive" },
-  { name: "성찰 일기쓰기", category: "happiness", productivity: "productive" },
-  { name: "외모관리", category: "happiness", productivity: "productive" },
+  { name: "성찰 일기 쓰기", category: "happiness", productivity: "productive" },
+  { name: "외모 관리", category: "happiness", productivity: "productive" },
   {
     name: EMOTIONAL_POSITIVE_TASK_NAME,
     category: "happiness",
@@ -277,8 +278,15 @@ export const MEAL_TASK_NAME_RENAMES = [
   { from: "의미 없는 대화 또는 모임", to: "비생산적 대화" },
   { from: "단순 쾌락형 영상 시청", to: "무의식적 콘텐츠 소비" },
   { from: "무의식적 영상 시청", to: "무의식적 콘텐츠 소비" },
-  { from: "독서 및 독서노트 작성", to: "독서노트 쓰기" },
-  { from: "독서노트 작성", to: "독서노트 쓰기" },
+  { from: "낮잠(30분이상)", to: "낮잠(30분 이상)" },
+  { from: "성찰 일기쓰기", to: "성찰 일기 쓰기" },
+  { from: "외모관리", to: "외모 관리" },
+  { from: "영상편집", to: "영상 편집" },
+  { from: "시간기록", to: "시간 기록" },
+  { from: "정리루틴", to: "정리 루틴" },
+  { from: "독서 및 독서노트 작성", to: "독서 노트 쓰기" },
+  { from: "독서노트 작성", to: "독서 노트 쓰기" },
+  { from: "독서노트 쓰기", to: "독서 노트 쓰기" },
   { from: "시간기록 점검", to: "시간 관리 관련 행동" },
   { from: "시간기록 및 점검", to: "시간 관리 관련 행동" },
   { from: "메모하기", to: "기록하기" },
@@ -374,8 +382,8 @@ export const PERSONAL_HYGIENE_DETAIL_TASK_NAMES = new Set([
   "개인위생",
 ]);
 
-/** 외모관리 — 과제 기록 시 항목 선택 */
-export const APPEARANCE_DETAIL_TASK_NAMES = new Set(["외모관리"]);
+/** 외모 관리 — 과제 기록 시 항목 선택 */
+export const APPEARANCE_DETAIL_TASK_NAMES = new Set(["외모 관리", "외모관리"]);
 
 /** 감정적이기(부정·긍정) — meal_detail 은 부정만 트리거로 사용 */
 export const EMOTIONAL_DETAIL_TASK_NAMES = new Set([
@@ -420,7 +428,7 @@ export const CONTENT_TYPE_OPTIONS = [
   "블로그",
   "커뮤니티",
   "틱톡",
-  "라이브스트리밍",
+  "라이브 스트리밍",
   "웹툰",
   "웹소설",
   "온라인 강좌",
@@ -430,13 +438,13 @@ export const CONTENT_TYPE_OPTIONS = [
 /** 개인 위생 — time_ledger_entries.meal_detail 에 저장 */
 export const PERSONAL_HYGIENE_TYPE_OPTIONS = [
   "구강케어",
-  "체모관리",
+  "체모 관리",
   "샤워",
   "목욕",
   "손발톱 정리",
 ];
 
-/** 외모관리 — time_ledger_entries.meal_detail 에 저장 */
+/** 외모 관리 — time_ledger_entries.meal_detail 에 저장 */
 export const APPEARANCE_TYPE_OPTIONS = [
   "네일 시술",
   "미용시술",
@@ -447,9 +455,20 @@ export const APPEARANCE_TYPE_OPTIONS = [
   "마사지하기",
 ];
 
+/** 칩 상세 — 구 띄어쓰기 → 현재 표기 */
+const CHIP_DETAIL_LABEL_RENAMES = {
+  체모관리: "체모 관리",
+  라이브스트리밍: "라이브 스트리밍",
+};
+
+function canonicalChipDetailLabel(value) {
+  const v = String(value || "").trim();
+  return CHIP_DETAIL_LABEL_RENAMES[v] || v;
+}
+
 /** @param {string} value @returns {{ label: string, known: boolean }} */
 export function resolveContentTypeLabel(value) {
-  const v = String(value || "").trim();
+  const v = canonicalChipDetailLabel(value);
   if (!v) return { label: "", known: false };
   const found = CONTENT_TYPE_OPTIONS.find(
     (opt) => opt === v || opt.toLowerCase() === v.toLowerCase(),
@@ -556,7 +575,7 @@ export function ledgerChipDetailOptionsForTask(taskName) {
  * @returns {{ label: string, known: boolean }}
  */
 export function resolveChipDetailLabel(taskName, value) {
-  const v = String(value || "").trim();
+  const v = canonicalChipDetailLabel(value);
   if (!v) return { label: "", known: false };
   const options = ledgerChipDetailOptionsForTask(taskName);
   const found = options.find(
@@ -571,7 +590,7 @@ export function ledgerChipDetailSectionLabel(taskName) {
   const kind = ledgerDetailTaskKind(taskName);
   if (kind === "content") return "콘텐츠 종류";
   if (kind === "hygiene") return "개인위생";
-  if (kind === "appearance") return "외모관리";
+  if (kind === "appearance") return "외모 관리";
   return "";
 }
 
@@ -815,9 +834,10 @@ export function isLedgerFreeTextDetailTaskName(name) {
   );
 }
 
-/** 성찰 일기쓰기 — time_ledger_entries.meal_detail 에 질문 답 저장 */
+/** 성찰 일기 쓰기 — time_ledger_entries.meal_detail 에 질문 답 저장 */
 export function isReflectionJournalTaskName(name) {
-  return String(name || "").trim() === "성찰 일기쓰기";
+  const n = canonicalMealTaskDisplayName(name);
+  return n === "성찰 일기 쓰기";
 }
 
 /** 섭취·대화·외출·독서·콘텐츠·위생·외모·감정·성찰 — time_ledger_entries.meal_detail 에 저장 */
@@ -921,7 +941,7 @@ const TIME_RATING_STARS_ONLY_TASK_NAMES = new Set([
   "생산적 대화",
   "생산적 외출",
   "비생산적 외출",
-  "외모관리",
+  "외모 관리",
   "잡무 처리하기",
   "개인 위생",
   "건강한 섭취 준비",
@@ -931,7 +951,7 @@ const TIME_RATING_STARS_ONLY_TASK_NAMES = new Set([
   "단순 이동",
   "게임",
   "물건 찾기",
-  "성찰 일기쓰기",
+  "성찰 일기 쓰기",
 ]);
 
 export function isTimeRatingStarsOnlyBuiltinTaskName(name) {

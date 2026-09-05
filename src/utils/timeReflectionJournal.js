@@ -1,9 +1,9 @@
 /**
- * 성찰 일기쓰기 — 질문 템플릿
+ * 성찰 일기 쓰기 — 질문 템플릿
  * time_ledger_entries.meal_detail 에 성찰v1:JSON 으로 저장
  */
 
-export const REFLECTION_JOURNAL_TASK_NAME = "성찰 일기쓰기";
+export const REFLECTION_JOURNAL_TASK_NAME = "성찰 일기 쓰기";
 export const REFLECTION_JOURNAL_PREFIX = "성찰v1:";
 
 /** @type {{ id: string, label: string, bridge: string }[]} */
@@ -57,7 +57,8 @@ export const REFLECTION_JOURNAL_QUESTIONS = [
 
 /** @param {string} name */
 export function isReflectionJournalTaskName(name) {
-  return String(name || "").trim() === REFLECTION_JOURNAL_TASK_NAME;
+  const n = String(name || "").trim();
+  return n === REFLECTION_JOURNAL_TASK_NAME || n === "성찰 일기쓰기";
 }
 
 /** @returns {Record<string, string>} */

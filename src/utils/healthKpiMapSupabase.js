@@ -264,6 +264,17 @@ function migrateDefaultSupplementKpiLabel(kpis) {
   return { kpis: changed ? next : kpis, changed };
 }
 
+function migrateDefaultCheckupKpiLabel(kpis) {
+  let changed = false;
+  const next = (kpis || []).map((k) => {
+    if (String(k?.id ?? "") !== DEFAULT_CHECKUP_KPI_ID) return k;
+    if (String(k.name || "").trim() !== "건강 검진") return k;
+    changed = true;
+    return { ...k, name: "건강검진" };
+  });
+  return { kpis: changed ? next : kpis, changed };
+}
+
 export function createDefaultSupplementKpi() {
   return createDefaultHealthKpi({
     id: DEFAULT_SUPPLEMENT_KPI_ID,
@@ -275,7 +286,7 @@ export function createDefaultSupplementKpi() {
 export function createDefaultCheckupKpi() {
   return createDefaultHealthKpi({
     id: DEFAULT_CHECKUP_KPI_ID,
-    name: "건강 검진",
+    name: "건강검진",
     useTaskCompletionGoal: true,
   });
 }
@@ -309,14 +320,17 @@ export function ensureDefaultHealthKpis(payload) {
     nextDeletedKpis.length !== (deletedRefs.kpis || []).length;
 
   const mergedKpis = [...toPrepend, ...kpis];
-  const { kpis: migratedKpis, changed: supplementLabelMigrated } =
+  const { kpis: afterSupplement, changed: supplementLabelMigrated } =
     migrateDefaultSupplementKpiLabel(mergedKpis);
+  const { kpis: migratedKpis, changed: checkupLabelMigrated } =
+    migrateDefaultCheckupKpiLabel(afterSupplement);
 
   if (
     !retired.changed &&
     !toPrepend.length &&
     !deletedRefsChanged &&
-    !supplementLabelMigrated
+    !supplementLabelMigrated &&
+    !checkupLabelMigrated
   ) {
     return p;
   }
