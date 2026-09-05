@@ -10189,7 +10189,7 @@ export function render(opts = {}) {
           TTC.ledgerChipDetailSectionLabel(tn) || "콘텐츠 종류";
         taskLogContentTypeLabel.textContent =
           TTC.isContentDetailTaskName(tn) ||
-          TTC.isConversationDetailTaskName(tn)
+          TTC.isUnproductiveConversationTaskName(tn)
             ? `${base} (필수)`
             : base;
       }
@@ -13463,7 +13463,7 @@ export function render(opts = {}) {
                 ? (taskLogMealDetailInput?.value || "").trim()
                 : "";
     if (
-      TTC.isConversationDetailTaskName(taskName) &&
+      TTC.isUnproductiveConversationTaskName(taskName) &&
       !TTC.parseConversationDetail(mealDetailForRow).types.length
     ) {
       /* 왼쪽「나중에」= 종류 없이 저장 · 오른쪽「확인」= 선택하러 돌아가기 */

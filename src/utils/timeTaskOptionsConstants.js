@@ -320,7 +320,7 @@ export const CONVERSATION_DETAIL_TASK_NAMES = new Set([
 /** 비생산적 대화 — 종류 칩 (meal_detail 앞부분) */
 export const UNPRODUCTIVE_CONVERSATION_TASK_NAME = "비생산적 대화";
 export const PRODUCTIVE_CONVERSATION_TASK_NAME = "생산적 대화";
-/** 생산·비생산 대화 공통 — 대화 종류 */
+/** 비생산적 대화 — 대화 종류 */
 export const CONVERSATION_TYPE_OPTIONS = [
   "논쟁",
   "훈수",
@@ -552,14 +552,14 @@ export function isUnproductiveConversationTaskName(name) {
   );
 }
 
-/** 콘텐츠·위생·외모·생산·비생산 대화 종류 — 칩 UI */
+/** 콘텐츠·위생·외모·비생산적 대화 종류 — 칩 UI */
 export function taskUsesLedgerChipDetail(name) {
-  return isChipDetailTaskName(name) || isConversationDetailTaskName(name);
+  return isChipDetailTaskName(name) || isUnproductiveConversationTaskName(name);
 }
 
 /** @param {string} taskName */
 export function ledgerChipDetailOptionsForTask(taskName) {
-  if (isConversationDetailTaskName(taskName)) {
+  if (isUnproductiveConversationTaskName(taskName)) {
     return CONVERSATION_TYPE_OPTIONS;
   }
   const kind = ledgerDetailTaskKind(taskName);
@@ -586,7 +586,7 @@ export function resolveChipDetailLabel(taskName, value) {
 
 /** @param {string} taskName */
 export function ledgerChipDetailSectionLabel(taskName) {
-  if (isConversationDetailTaskName(taskName)) return "대화 종류";
+  if (isUnproductiveConversationTaskName(taskName)) return "대화 종류";
   const kind = ledgerDetailTaskKind(taskName);
   if (kind === "content") return "콘텐츠 종류";
   if (kind === "hygiene") return "개인위생";
