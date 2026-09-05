@@ -2132,7 +2132,10 @@ function updateMobileTimeCardLiveFields(card) {
   const live = mobileCardNeedsLiveClock(card._rowData);
   lpTokenToggle(card, "time-ledger-mobile-card--in-progress", live);
   card.classList.toggle("calendar-1day-timeline-card--in-progress", live);
-  if (!live) return;
+  if (!live) {
+    card.querySelector(".time-ledger-card-start-live-tag")?.remove();
+    return;
+  }
   const rd = card._rowData;
   const viewEl = card._timeLedgerViewEl;
   const trackedEl = card.querySelector(".calendar-1day-timeline-card-duration");
@@ -5838,6 +5841,75 @@ function resolveUsageTimelineItemFromCardNode(node) {
   if (!node) return null;
   if (node.classList?.contains("calendar-1day-timeline-item")) return node;
   return node.closest?.(".calendar-1day-timeline-item") || null;
+}
+
+/** 수정 저장 후 그 카드만 다시 맞춤. 새 카드·목록 재그리기 없음 */
+function syncMobileTimeCardFromRow(card, rowData, viewEl) {
+  if (!card || !rowData) return;
+  card._rowData = rowData;
+  const item = resolveUsageTimelineItemFromCardNode(card);
+  const startInst = getRowStartInstantForMobileCard(rowData);
+  const startClock = formatLedgerTimelineClockHHmm(startInst) || "—";
+  const endClock = formatLedgerTimelineEndClock(rowData);
+  const live = mobileCardNeedsLiveClock(rowData);
+  const durMin = Math.max(
+    0,
+    Math.round((getMobileCardEffectiveHoursForPrice(rowData) || 0) * 60),
+  );
+  if (item) {
+    item.dataset.lpStartClock = startClock;
+    item.dataset.lpEndClock = endClock;
+  }
+  lpTokenToggle(card, "time-ledger-mobile-card--in-progress", live);
+  card.classList.toggle("calendar-1day-timeline-card--in-progress", live);
+  card.classList.toggle(
+    "time-ledger-card--detail-display-name",
+    ledgerRowUsesDetailAsDisplayName(rowData),
+  );
+  const startEl = card.querySelector(".calendar-1day-timeline-card-start");
+  if (startEl) {
+    startEl.textContent = startClock;
+    if (live) {
+      const liveTag = document.createElement("span");
+      liveTag.className = "time-ledger-card-start-live-tag";
+      liveTag.textContent = "진행중..";
+      startEl.appendChild(liveTag);
+    }
+  }
+  const endEl = card.querySelector(".calendar-1day-timeline-card-end");
+  if (endEl) endEl.textContent = endClock;
+  const titleEl = card.querySelector(".calendar-1day-timeline-card-title");
+  if (titleEl) {
+    titleEl.textContent = ledgerRowDisplayTaskName(rowData) || "(제목 없음)";
+  }
+  const durEl = card.querySelector(".calendar-1day-timeline-card-duration");
+  if (durEl) durEl.textContent = formatIntegerMinutesDurationKo(durMin);
+  applyMobileCardPriceEl(
+    card.querySelector(".diary-tab5-timeline-price"),
+    rowData,
+    readTimeLedgerViewHourlyRate(viewEl || card._timeLedgerViewEl),
+  );
+  const iconSrc = timeLedgerListRowIconSrc(rowData);
+  const iconCell = card.querySelector(".time-ledger-usage-icon-cell");
+  if (iconCell) {
+    if (!iconSrc) {
+      iconCell.replaceChildren();
+    } else {
+      const img = iconCell.querySelector("img");
+      if (!img) {
+        iconCell.appendChild(createReadyIconImg(iconSrc));
+      } else if (img.getAttribute("src") !== iconSrc) {
+        img.setAttribute("src", iconSrc);
+      }
+    }
+  }
+  syncMobileTimeCardRatingEl(card, rowData);
+  syncMobileTimeCardMemoEl(card, rowData);
+  applyMobileTimeCardHoverTitle(card);
+  const parent =
+    item?.parentElement ||
+    card.closest?.(".calendar-1day-timeline-list, .time-ledger-day-card-stack");
+  if (parent) applyUsageTimelineEndUnderStartDisplay(parent);
 }
 
 /** 모바일 시간가계부 카드 — 좌 시간열 | 우(아이콘·과제명 1–2행·소요/가격·메모) */
@@ -13956,15 +14028,7 @@ export function render(opts = {}) {
       editTr._rowData = newRowData;
       const isMobileCard = lpTokenHas(editTr, "time-ledger-mobile-card");
       if (isMobileCard) {
-        const priceEl = editTr.querySelector(".diary-tab5-timeline-price");
-        if (priceEl) {
-          applyMobileCardPriceEl(
-            priceEl,
-            newRowData,
-            readTimeLedgerViewHourlyRate(el),
-          );
-        }
-        syncMobileTimeCardRatingEl(editTr, newRowData);
+        syncMobileTimeCardFromRow(editTr, newRowData, el);
       } else {
         const dispTask = editTr.querySelector(
           '[data-legacy~="time-display-task"]',
@@ -14279,6 +14343,28 @@ export function render(opts = {}) {
       });
       if (!editTr) {
         onFilterChange(true);
+      } else if (lpTokenHas(editTr, "time-ledger-mobile-card")) {
+        const rowForCard = forceRow || editTr._rowData;
+        syncMobileTimeCardFromRow(editTr, rowForCard, el);
+        const list = contentWrap.querySelector(".calendar-1day-timeline-list");
+        const item = resolveUsageTimelineItemFromCardNode(editTr);
+        if (list && item && rowForCard) {
+          const filtered = applyUsageListFilters(rowsToPersist);
+          const id = String(rowForCard.id || "").trim();
+          const stillIn = filtered.some((r) => String(r?.id || "").trim() === id);
+          if (!stillIn) {
+            item.remove();
+          } else if (item.parentElement === list) {
+            item.remove();
+            insertUsageTimelineItemByStart(list, item, rowForCard);
+          }
+          applyUsageTimelineEndUnderStartDisplay(list);
+        }
+        try {
+          patchTimeLedgerUsageHeadingInPlace(
+            applyUsageListFilters(rowsToPersist),
+          );
+        } catch (_) {}
       }
 
       const rowTaskId = String(ledgerRowForKpi?.taskId || "").trim();
