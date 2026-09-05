@@ -104,6 +104,7 @@ import {
   softReflowCalendarAfterDiaryToggle,
   taskIsCalendarDiary,
   readCalendarShowDiary,
+  CALENDAR_DIARY_HIDDEN_CLASS,
 } from "../utils/calendarDiaryVisibility.js";
 import {
   readSectionTasksObject,
@@ -4767,7 +4768,6 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
     <div class="calendar-nav-controls">
       <button type="button" class="calendar-nav-prev" title="전날">&lt;</button>
       <button type="button" class="calendar-nav-today" title="오늘">오늘</button>
-      ${calendarDiaryToggleMarkup()}
       <button type="button" class="calendar-nav-next" title="다음날">&gt;</button>
     </div>
   `;
@@ -4778,7 +4778,40 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
 
   function refreshTodoList() {}
 
-  function renderCalendar() {
+  let _1dayRenderGen = 0;
+
+  async function pullVisibleDayFromServer() {
+    const target = new Date();
+    target.setHours(0, 0, 0, 0);
+    target.setDate(target.getDate() + dayOffset);
+    const dayYmd = formatDateKey(target);
+    const yPrev = new Date(target);
+    yPrev.setDate(yPrev.getDate() - 1);
+    const yStart = formatDateKey(yPrev);
+    const taskRange = calendarPullRangeForSubView("1day", { dayYmd });
+    await Promise.all([
+      pullCalendarSectionTasksFromSupabase({
+        reason: "calendar_1day_nav",
+        subView: "calendar",
+        rangeStart: taskRange.rangeStart,
+        rangeEnd: taskRange.rangeEnd,
+        force: true,
+      }),
+      pullTimeLedgerEntriesForDateRange(yStart, dayYmd, { force: true }),
+      pullTimeDailyBudgetForDateRange(yStart, dayYmd),
+      pullCalendar1DayExpectedTaskListFromCloud(),
+    ]);
+  }
+
+  async function renderCalendar(opts = {}) {
+    const skipDayPull = !!opts.skipDayPull;
+    if (!skipDayPull) {
+      const pullGen = ++_1dayRenderGen;
+      try {
+        await pullVisibleDayFromServer();
+      } catch (_) {}
+      if (pullGen !== _1dayRenderGen || !wrap.isConnected) return;
+    }
     document
       .querySelectorAll(".calendar-1day-drag-drop-line")
       .forEach((el) => el.remove());
@@ -4859,7 +4892,9 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
       const gridPane = document.createElement("div");
       gridPane.className = "calendar-1day-dual-pane__grid";
       gridPane.appendChild(
-        createCalendar1DayTimeboxPanel(targetKey, () => renderCalendar()),
+        createCalendar1DayTimeboxPanel(targetKey, () =>
+          renderCalendar({ skipDayPull: true }),
+        ),
       );
 
       const cardsPane = document.createElement("div");
@@ -4868,7 +4903,7 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
         createCalendar1DayExpectedCardsPanel(
           targetKey,
           expectedSpansWithFreshProd(daySpansTl),
-          () => renderCalendar(),
+          () => renderCalendar({ skipDayPull: true }),
         ),
       );
 
@@ -5114,7 +5149,7 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
             edit: { taskName: span.taskName },
             title: "예상 일정 수정",
             submitLabel: "저장",
-            onSaved: () => renderCalendar(),
+            onSaved: () => renderCalendar({ skipDayPull: true }),
           });
         });
 
@@ -5230,19 +5265,19 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
 
   function goPrevDay() {
     dayOffset -= 1;
-    renderCalendar();
+    void renderCalendar();
   }
 
   function goNextDay() {
     dayOffset += 1;
-    renderCalendar();
+    void renderCalendar();
   }
 
   lpCalendarNavQ(nav, wrap, ".calendar-nav-today")?.addEventListener(
     "click",
     () => {
       dayOffset = 0;
-      renderCalendar();
+      void renderCalendar();
     },
   );
   lpCalendarNavQ(nav, wrap, ".calendar-nav-prev")?.addEventListener(
@@ -5253,7 +5288,6 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
     "click",
     goNextDay,
   );
-  wireCalendarDiaryToggle(nav);
 
   const topBar = document.createElement("div");
   topBar.className = "calendar-monthly-top-bar";
@@ -5287,7 +5321,7 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
 
   const refreshTimetableOverlays = (e) => {
     if (e?.detail?.rebuildBudgetTables) {
-      renderCalendar();
+      void renderCalendar({ skipDayPull: true });
       return;
     }
     const source = e?.type || "unknown";
@@ -5301,11 +5335,11 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
     /* getFullTaskOptions → assignIds UUID 부여 시 bumpPullSkip 이벤트 — 전체 재빌드 시 동기 무한 루프 */
     if (e?.type === "time-ledger-tasks-saved") {
       if (e?.detail?.bumpPullSkip) return;
-      renderCalendar();
+      void renderCalendar({ skipDayPull: true });
       return;
     }
     if (hideTimelineCards) {
-      renderCalendar();
+      void renderCalendar({ skipDayPull: true });
       return;
     }
     if (
@@ -5313,7 +5347,7 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
         "calendar-1day-time-table-inner--timeline-only",
       )
     ) {
-      renderCalendar();
+      void renderCalendar({ skipDayPull: true });
       return;
     }
     if (timeTableInner && dateStr) {
@@ -5337,17 +5371,17 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
       else timeTableInner.appendChild(actual);
       stampHourRows?.(timeTableInner);
     } else if (!timeTableInner || !dateStr) {
-      renderCalendar();
+      void renderCalendar({ skipDayPull: true });
     }
   };
 
   ensureOneDayTimetableDocumentListeners();
   oneDayTimetableRefreshHandler = (e) => refreshTimetableOverlays(e);
 
-  renderCalendar();
+  void renderCalendar({ skipDayPull: true });
 
   wrap._lpRefreshCalendarView = () => {
-    renderCalendar();
+    void renderCalendar({ skipDayPull: true });
   };
 
   /* 일간 뷰: 왼쪽 스와이프=다음 날, 오른쪽=이전 날 (손가락·마우스 드래그·트랙패드 가로) */
@@ -5400,7 +5434,8 @@ function renderTodoView(tabsElement) {
 function render1WeekView(tabsElement, weekOpts = {}) {
   calendar1WeekDiagLog("render1WeekView.mount");
   const wrap = document.createElement("div");
-  wrap.className = "calendar-monthly-layout";
+  wrap.className = "calendar-monthly-layout calendar-1week-view";
+  wrap.classList.add(CALENDAR_DIARY_HIDDEN_CLASS);
   const onOpenDayView =
     typeof weekOpts.onOpenDayView === "function" ? weekOpts.onOpenDayView : null;
 
@@ -5428,7 +5463,6 @@ function render1WeekView(tabsElement, weekOpts = {}) {
     <div class="calendar-nav-controls">
       <button type="button" class="calendar-nav-prev" title="이전 주">&lt;</button>
       <button type="button" class="calendar-nav-today" title="오늘">오늘</button>
-      ${calendarDiaryToggleMarkup()}
       <button type="button" class="calendar-nav-next" title="다음 주">&gt;</button>
     </div>
   `;
@@ -5551,6 +5585,7 @@ function render1WeekView(tabsElement, weekOpts = {}) {
       0,
     );
     const rangeTasks = getAllTasksWithDateRange().filter((t) =>
+      !taskIsCalendarDiary(t) &&
       calendarSectionTaskOverlapsYmdRange(
         t,
         weekSpan.rangeStart,
@@ -5706,7 +5741,7 @@ function render1WeekView(tabsElement, weekOpts = {}) {
     });
     weekDateKeys.forEach((dateKey, dayIdx) => {
       orderSingleDayTasksForMonthlyBarStack(
-        getTasksForDate(dateKey, true),
+        getTasksForDate(dateKey, true).filter((t) => !taskIsCalendarDiary(t)),
       ).forEach((t) => {
         const left = (dayIdx / 7) * 100 + CELL_GAP / 7;
         const width = (1 / 7) * 100 - (CELL_GAP * 2) / 7;
@@ -6239,7 +6274,7 @@ function render1WeekView(tabsElement, weekOpts = {}) {
     calendarGrid.appendChild(outer);
 
     wrap._lpRememberCalendarGridPaintSig?.();
-    applyCalendarDiaryVisibilityToRoot(wrap);
+    wrap.classList.add(CALENDAR_DIARY_HIDDEN_CLASS);
     requestAnimationFrame(() => softReflowCalendarAfterDiaryToggle(wrap));
     calendar1WeekDiagLog("renderCalendar.domBuilt", {
       renderSeq,
@@ -6280,7 +6315,6 @@ function render1WeekView(tabsElement, weekOpts = {}) {
       void renderCalendar();
     },
   );
-  wireCalendarDiaryToggle(nav);
 
   calendarSection.appendChild(nav);
   calendarSection.appendChild(calendarGrid);
