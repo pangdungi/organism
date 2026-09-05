@@ -379,7 +379,6 @@ export function createGoalTrackerTodayGoalsListElement(model) {
       <span class="habit-tracker-today-goals-mark" aria-label="${item.done ? "실행함" : "미실행"}">${item.done ? "O" : "X"}</span>
       <span class="habit-tracker-today-goals-main">
         <span class="habit-tracker-today-goals-name">${escapeHtml(item.name)}</span>
-        <span class="habit-tracker-today-goals-target">${escapeHtml(item.targetLabel)}</span>
       </span>
     `;
     list.appendChild(li);
@@ -494,7 +493,6 @@ export function mountKpiGoalTodayGoalsSection(container, opts = {}) {
       <span class="habit-tracker-today-goals-mark" aria-label="${item.done ? "실행함" : "미실행"}">${item.done ? "O" : "X"}</span>
       <span class="habit-tracker-today-goals-main">
         <span class="habit-tracker-today-goals-name">${escapeHtml(item.name)}</span>
-        <span class="habit-tracker-today-goals-target">${escapeHtml(item.targetLabel)}</span>
       </span>
     `;
     rowHead.addEventListener("click", () => {

@@ -913,7 +913,7 @@ export function openCalendarExpectedScheduleModal(options) {
                   <h4 data-legacy="time-task-log-kpi-todos-title">할 일 목록</h4>
                   <button type="button" data-legacy="lp-expected-kpi-todo-add-btn" aria-label="할 일 추가">+</button>
                 </div>
-                <p data-legacy="time-task-log-kpi-todos-hint" hidden>오늘 할 항목을 누르면 골라집니다 (과제 기록에만 표시)</p>
+                <p data-legacy="time-task-log-kpi-todos-hint" hidden>할 항목을 누르면 그날 목록에 골라집니다 (과제 기록에만 표시)</p>
                 <p data-legacy="time-task-log-kpi-todos-status" hidden></p>
                 <div data-legacy="time-task-log-kpi-todos-scroll" hidden>
                   <div data-legacy="time-task-log-kpi-todos-list"></div>
@@ -923,7 +923,7 @@ export function openCalendarExpectedScheduleModal(options) {
                 <div data-legacy="lp-expected-planned-todos-title-row">
                   <h4 data-legacy="lp-expected-planned-todos-title">오늘 할일 목록</h4>
                 </div>
-                <div data-legacy="lp-expected-planned-todos-preview" aria-label="오늘 할일 목록"></div>
+                <div data-legacy="lp-expected-planned-todos-preview" aria-label="할일 목록"></div>
               </div>
             </div>
             <div data-legacy="time-task-log-memo-section">
@@ -1049,6 +1049,9 @@ export function openCalendarExpectedScheduleModal(options) {
   const plannedTodosPane = modal.querySelector(
     '[data-legacy~="lp-expected-planned-todos-pane"]',
   );
+  const plannedTodosTitle = modal.querySelector(
+    '[data-legacy~="lp-expected-planned-todos-title"]',
+  );
   const plannedTodosPreview = modal.querySelector(
     '[data-legacy~="lp-expected-planned-todos-preview"]',
   );
@@ -1096,7 +1099,7 @@ export function openCalendarExpectedScheduleModal(options) {
     const newId = String(result.kpiTodoId || "").trim();
     if (!newId) return;
     plannedTodoSelection.set(newId, text);
-    persistPlannedTodoSelectionToToday(info.kpiId);
+    persistPlannedTodoSelectionIfToday(info.kpiId);
     refreshPlannedTodosPreview();
     taskLogKpiTodosList
       ?.querySelectorAll("[data-todo-id]")
@@ -1133,7 +1136,38 @@ export function openCalendarExpectedScheduleModal(options) {
     }
   }
 
-  function persistPlannedTodoSelectionToToday(kpiId) {
+  function getExpectedModalYmd() {
+    const el = modal.querySelector('[data-legacy~="time-task-log-date-start"]');
+    const fromInput = String(el?.value || "")
+      .trim()
+      .slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(fromInput)) return fromInput;
+    return dk;
+  }
+
+  function isExpectedModalToday() {
+    const ymd = getExpectedModalYmd();
+    const today = String(timeLedgerLocalTodayYmd() || "").slice(0, 10);
+    return !!(ymd && today && ymd === today);
+  }
+
+  function formatPlannedTodosPaneTitle(ymd) {
+    const today = String(timeLedgerLocalTodayYmd() || "").slice(0, 10);
+    if (ymd && today && ymd === today) return "오늘 할일 목록";
+    const m = String(ymd || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return "할일 목록";
+    return `${Number(m[2])}/${Number(m[3])}일에 할일 목록`;
+  }
+
+  function updatePlannedTodosPaneLabel() {
+    const title = formatPlannedTodosPaneTitle(getExpectedModalYmd());
+    if (plannedTodosTitle) plannedTodosTitle.textContent = title;
+    if (plannedTodosPreview) plannedTodosPreview.setAttribute("aria-label", title);
+  }
+
+  /** 오늘 날짜일 때만 오늘의 행동 고른 할일로 저장 */
+  function persistPlannedTodoSelectionIfToday(kpiId) {
+    if (!isExpectedModalToday()) return;
     const kid = String(kpiId || "").trim();
     if (!kid) return;
     setTodayActionTodoPickIds(kid, [...plannedTodoSelection.keys()]);
@@ -1141,19 +1175,23 @@ export function openCalendarExpectedScheduleModal(options) {
 
   function hydratePlannedTodoSelectionFromToday(kpiId) {
     const kid = String(kpiId || "").trim();
-    let ids = kid ? readTodayActionTodoPickIds(kid) : [];
-    const today = String(timeLedgerLocalTodayYmd() || "").slice(0, 10);
-    if (!ids.length && kid && today && dk === today) {
+    const ymd = getExpectedModalYmd();
+    let ids = [];
+    if (isExpectedModalToday() && kid) {
+      ids = readTodayActionTodoPickIds(kid);
+    }
+    if (!ids.length && kid) {
       const slotIds = getPlannedTodoIdsFromBudgetSlot(
-        dk,
+        ymd,
         taskDropdown?._getValue?.() || editTaskName || "",
         isEdit ? editTimeIdx : -1,
       );
       if (slotIds.length) {
-        setTodayActionTodoPickIds(kid, slotIds);
+        if (isExpectedModalToday()) setTodayActionTodoPickIds(kid, slotIds);
         ids = slotIds;
       }
     }
+    updatePlannedTodosPaneLabel();
     hydratePlannedTodoSelectionFromIds(kid, ids);
   }
 
@@ -1163,7 +1201,7 @@ export function openCalendarExpectedScheduleModal(options) {
     if (!id || !text) return;
     if (plannedTodoSelection.has(id)) plannedTodoSelection.delete(id);
     else plannedTodoSelection.set(id, text);
-    persistPlannedTodoSelectionToToday(resolveExpectedModalKpiId());
+    persistPlannedTodoSelectionIfToday(resolveExpectedModalKpiId());
     refreshPlannedTodosPreview();
     taskLogKpiTodosList
       ?.querySelectorAll("[data-todo-id]")
@@ -1949,6 +1987,21 @@ export function openCalendarExpectedScheduleModal(options) {
     });
 
   applyDefaultsForYmd(dk);
+  updatePlannedTodosPaneLabel();
+  let lastPlannedHydrateYmd = getExpectedModalYmd();
+  const onExpectedDateForPlannedTodos = () => {
+    updatePlannedTodosPaneLabel();
+    const ymd = getExpectedModalYmd();
+    if (ymd === lastPlannedHydrateYmd) return;
+    lastPlannedHydrateYmd = ymd;
+    hydratePlannedTodoSelectionFromToday(resolveExpectedModalKpiId());
+  };
+  taskLogDateStart?.addEventListener("input", onExpectedDateForPlannedTodos, {
+    signal,
+  });
+  taskLogDateStart?.addEventListener("change", onExpectedDateForPlannedTodos, {
+    signal,
+  });
 
   const deleteBtn = modal.querySelector(
     '[data-legacy~="lp-calendar-expected-delete-btn"]',
@@ -2058,7 +2111,7 @@ export function openCalendarExpectedScheduleModal(options) {
       const memo = (taskLogFeedbackInput?.value || "").trim();
       const detail = getExpectedDetailForSave(taskName);
       const plannedTodoIds = getPlannedTodoIdsList();
-      persistPlannedTodoSelectionToToday(
+      persistPlannedTodoSelectionIfToday(
         resolveExpectedModalKpiId({ taskName }),
       );
 

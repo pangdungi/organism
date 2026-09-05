@@ -19,6 +19,8 @@ import { supabase } from "../supabase.js";
 import { getSupabaseSession } from "./supabaseSession.js";
 import { readTimeLedgerEntriesRaw } from "./timeLedgerEntriesModel.js";
 import { timeLedgerLocalTodayYmd } from "./timeLedgerEntriesSupabase.js";
+import { collectBudgetPlannedTodoIdsForKpiOnDate } from "./expectedScheduleDetail.js";
+import { pullKpiTodosDomainFromCloudIfStale } from "./kpiTabCloudRefresh.js";
 
 function ledgerCheckedTodoIds() {
   const ids = new Set();
@@ -330,9 +332,8 @@ export function collectTodayActionTodos(kpiId, opts = {}) {
       const text = String(t?.text || "").trim();
       const id = String(t?.id || "").trim();
       if (!text || !id) return false;
-      const checked =
-        !!t.completed || doneByEvent.has(id) || doneOnLedger.has(id);
-      if (!includeCompleted && checked) return false;
+      /* 고르는 창은 전체 할일 체크박스만 봄. 예전 완료 기록·시간기록 체크로는 숨기지 않음 */
+      if (!includeCompleted && !!t.completed) return false;
       return true;
     }),
   ).map((t) => {
@@ -602,6 +603,13 @@ export function showTodayActionTodosModal(opts = {}) {
     document.documentElement.classList.add(LP_MODAL_HTML_OPEN_CLASS);
   } catch (_) {}
   paintList();
+  void (async () => {
+    try {
+      await pullKpiTodosDomainFromCloudIfStale(kpiId);
+    } catch (_) {}
+    if (!modal.isConnected) return;
+    paintList();
+  })();
 }
 
 /**
@@ -612,7 +620,13 @@ export function showTodayActionTodosModal(opts = {}) {
 export function appendTodayActionPinnedTodos(host, item, opts = {}) {
   if (!(host instanceof HTMLElement)) return;
   const kpiId = String(item?.id || "").trim();
-  const pickIds = readTodayActionTodoPickIds(kpiId, opts.todayYmd);
+  const today = todayYmdOr();
+  const viewed = String(opts.todayYmd || today).slice(0, 10);
+  if (viewed && today && viewed !== today) return;
+  let pickIds = readTodayActionTodoPickIds(kpiId, today);
+  if (!pickIds.length) {
+    pickIds = collectBudgetPlannedTodoIdsForKpiOnDate(today, kpiId);
+  }
   if (!pickIds.length) return;
   const collected = collectTodayActionTodos(kpiId, { includeCompleted: true });
   if (!collected) return;

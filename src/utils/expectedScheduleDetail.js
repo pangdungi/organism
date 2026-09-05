@@ -3,7 +3,9 @@
  */
 
 import * as TTC from "./timeTaskOptionsConstants.js";
-import { getKpiTodoTextById } from "./kpiTodoSync.js";
+import { getKpiTodoTextById, resolveKpiIdForTaskId } from "./kpiTodoSync.js";
+import { readTimeDailyBudgetGoalsRaw } from "./timeDailyBudgetModel.js";
+import { getTaskOptionByName } from "./timeTaskOptionsModel.js";
 
 /** 상세명을 과제명 대신 표시할지 — 식단·감정·독서·대화는 제외(과제명 유지) */
 export function expectedSpanUsesDetailAsDisplayName(span) {
@@ -95,4 +97,44 @@ export function expectedSpanCardMemoLines(span) {
   }
   if (userMemo) lines.push(userMemo);
   return lines;
+}
+
+/** 그날 예상 일정에 골라 둔 할일 — KPI 기준 (오늘의 행동은 오늘 날짜만 넘길 것) */
+export function collectBudgetPlannedTodoIdsForKpiOnDate(dateStr, kpiId) {
+  const dk = String(dateStr || "")
+    .replace(/\//g, "-")
+    .trim()
+    .slice(0, 10);
+  const kid = String(kpiId || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dk) || !kid) return [];
+  let day = null;
+  try {
+    const raw = readTimeDailyBudgetGoalsRaw();
+    const all = raw ? JSON.parse(raw) : {};
+    day = all?.[dk];
+  } catch (_) {
+    return [];
+  }
+  if (!day || typeof day !== "object" || Array.isArray(day)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const [taskName, goal] of Object.entries(day)) {
+    const opt = getTaskOptionByName(String(taskName || "").trim());
+    const resolved =
+      resolveKpiIdForTaskId(opt?.id) || String(opt?.kpiId || "").trim();
+    if (resolved !== kid) continue;
+    const slots = Array.isArray(goal?.schedulePlannedTodoIds)
+      ? goal.schedulePlannedTodoIds
+      : [];
+    for (const slot of slots) {
+      if (!Array.isArray(slot)) continue;
+      for (const id of slot) {
+        const s = String(id || "").trim();
+        if (!s || seen.has(s)) continue;
+        seen.add(s);
+        out.push(s);
+      }
+    }
+  }
+  return out;
 }

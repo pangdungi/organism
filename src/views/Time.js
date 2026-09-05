@@ -11900,14 +11900,15 @@ export function render(opts = {}) {
     syncTaskLogPlannedSlotBtnSelection();
   }
 
-  /** 오늘 할일 — 기록 날짜가 오늘일 때만. 어제는 그날 고른 게 아니면 안 보임. */
+  /** 오늘 할일 고른 목록은 오늘만. 다른 날은 그날 예상 일정에 고른 할일. */
   function resolveTaskLogPlannedTodoIdFilter() {
     const recordYmd = String(taskLogResolveYmdForSync() || "").slice(0, 10);
     const todayYmd = String(timeLedgerLocalTodayYmd() || "").slice(0, 10);
-    if (!recordYmd || !todayYmd || recordYmd !== todayYmd) return [];
     const kpiId = resolveTaskLogModalKpiId();
-    const todayIds = kpiId ? readTodayActionTodoPickIds(kpiId) : [];
-    if (todayIds.length) return todayIds;
+    if (recordYmd && todayYmd && recordYmd === todayYmd) {
+      const todayIds = kpiId ? readTodayActionTodoPickIds(kpiId) : [];
+      if (todayIds.length) return todayIds;
+    }
     if (
       taskLogSelectedPlannedSlot &&
       Array.isArray(taskLogSelectedPlannedSlot.plannedTodoIds)
@@ -11918,11 +11919,17 @@ export function render(opts = {}) {
       if (fromSlot.length) return fromSlot;
     }
     const fromCtx = taskLogAddContext?.presetPlannedTodoIds;
-    if (!Array.isArray(fromCtx) || !fromCtx.length) return [];
-    const presetTask = String(taskLogAddContext?.presetTaskName || "").trim();
     const taskName = String(taskLogTaskDropdown?._getValue?.() || "").trim();
-    if (presetTask && taskName && presetTask !== taskName) return [];
-    return fromCtx.map((x) => String(x || "").trim()).filter(Boolean);
+    if (Array.isArray(fromCtx) && fromCtx.length) {
+      const presetTask = String(taskLogAddContext?.presetTaskName || "").trim();
+      if (!presetTask || !taskName || presetTask === taskName) {
+        return fromCtx.map((x) => String(x || "").trim()).filter(Boolean);
+      }
+    }
+    if (recordYmd && taskName) {
+      return findRelevantPlannedTodoIdsForRecording(recordYmd, taskName);
+    }
+    return [];
   }
 
   /** 이 기록·지금 모달에서 체크한 완료형 할일 id만 (다른 기록 완료분은 넣지 않음) */

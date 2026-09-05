@@ -3944,7 +3944,7 @@ export function buildExpectedScheduleSpansForDateKey(dateKey) {
         ? todayPickIds.length
           ? todayPickIds
           : slotPlannedIds
-        : [];
+        : slotPlannedIds;
       const span = {
         startSlot,
         endSlot: Math.max(endSlot, startSlot),
