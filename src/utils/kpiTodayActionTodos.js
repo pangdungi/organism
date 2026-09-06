@@ -1,7 +1,7 @@
 /**
  * 오늘의 행동 — 할일이 있는 행동을 눌러 목록을 보고,
  * 「오늘 할 일」로 고른 항목을 행동 아래 작게 보여 줌.
- * 체크는 기존 KPI·시간기록 연동을 그대로 씀.
+ * 체크는 할일 완료 값만 본다. 사용자가 칸을 누를 때만 바뀐다.
  */
 
 import {
@@ -17,25 +17,9 @@ import { resolveKpiGoalMode } from "./kpiTimeUnitKpi.js";
 import { LP_MODAL_HTML_OPEN_CLASS } from "./lpModalKeyboard.js";
 import { supabase } from "../supabase.js";
 import { getSupabaseSession } from "./supabaseSession.js";
-import { readTimeLedgerEntriesRaw } from "./timeLedgerEntriesModel.js";
 import { timeLedgerLocalTodayYmd } from "./timeLedgerEntriesSupabase.js";
 import { collectBudgetPlannedTodoIdsForKpiOnDate } from "./expectedScheduleDetail.js";
 import { pullKpiTodosDomainFromCloudIfStale } from "./kpiTabCloudRefresh.js";
-
-function ledgerCheckedTodoIds() {
-  const ids = new Set();
-  try {
-    for (const r of readTimeLedgerEntriesRaw()) {
-      for (const x of Array.isArray(r?.habitDailyCompleted)
-        ? r.habitDailyCompleted
-        : []) {
-        const id = String(x?.id || "").trim();
-        if (id) ids.add(id);
-      }
-    }
-  } catch (_) {}
-  return ids;
-}
 
 export const TODAY_ACTION_TODO_PICKS_KEY = "lp_today_action_todo_picks";
 
@@ -318,21 +302,12 @@ export function collectTodayActionTodos(kpiId, opts = {}) {
   if (mode !== "task" && mode !== "manual") return null;
   const includeCompleted = !!opts.includeCompleted;
 
-  const doneByEvent = new Set();
-  for (const e of data.kpiTaskCompletionEvents || []) {
-    if (String(e?.kpiId || "").trim() !== kid) continue;
-    const tid = String(e?.todoId || "").trim();
-    if (tid) doneByEvent.add(tid);
-  }
-  const doneOnLedger = ledgerCheckedTodoIds();
-
   const todos = sortNormalizedKpiTodoRows(
     (data.kpiTodos || []).filter((t) => {
       if (String(t?.kpiId || "").trim() !== kid) return false;
       const text = String(t?.text || "").trim();
       const id = String(t?.id || "").trim();
       if (!text || !id) return false;
-      /* 고르는 창은 전체 할일 체크박스만 봄. 예전 완료 기록·시간기록 체크로는 숨기지 않음 */
       if (!includeCompleted && !!t.completed) return false;
       return true;
     }),
@@ -341,7 +316,7 @@ export function collectTodayActionTodos(kpiId, opts = {}) {
     return {
       id,
       text: String(t.text || "").trim(),
-      checked: !!t.completed || doneByEvent.has(id) || doneOnLedger.has(id),
+      checked: !!t.completed,
     };
   });
   if (!todos.length) return null;
