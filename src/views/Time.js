@@ -14354,9 +14354,6 @@ export function render(opts = {}) {
           const stillIn = filtered.some((r) => String(r?.id || "").trim() === id);
           if (!stillIn) {
             item.remove();
-          } else if (item.parentElement === list) {
-            item.remove();
-            insertUsageTimelineItemByStart(list, item, rowForCard);
           }
           applyUsageTimelineEndUnderStartDisplay(list);
         }
