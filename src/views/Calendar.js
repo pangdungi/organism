@@ -346,8 +346,19 @@ function lpCalendarMonthlyDayHasVisibleIcon(weekRow, dayIdx) {
   return !!icons && !icons.hidden;
 }
 
-/** 스탬프 시각 상한(rem) — CSS `--cal-day-icon-max` 와 맞춤(축소 말고 과대만 막음) */
-const CALENDAR_MONTHLY_DAY_ICON_MAX_REM = 6;
+/** 스탬프 시각 상한(rem) — CSS `--cal-day-icon-max` (화면 너비 미디어쿼리) */
+function lpCalendarDayIconMaxRem() {
+  try {
+    const el =
+      document.querySelector(".calendar-monthly-layout") ||
+      document.documentElement;
+    const v = parseFloat(
+      getComputedStyle(el).getPropertyValue("--cal-day-icon-max"),
+    );
+    if (Number.isFinite(v) && v > 0) return v;
+  } catch (_) {}
+  return 20;
+}
 
 function lpCalendarMonthlyDayIconsStripRemForCell(cell) {
   if (!(cell instanceof HTMLElement)) return 0;
@@ -360,12 +371,12 @@ function lpCalendarMonthlyDayIconsStripRemForCell(cell) {
     if (Number.isFinite(rootFs) && rootFs > 0) {
       const hPx = icons.getBoundingClientRect().height;
       if (hPx > 4) {
-        return Math.min(hPx / rootFs, CALENDAR_MONTHLY_DAY_ICON_MAX_REM);
+        return Math.min(hPx / rootFs, lpCalendarDayIconMaxRem());
       }
       /* 아직 높이 없으면 칸 너비 추정 — 상한까지만 */
       const wPx = cell.getBoundingClientRect().width;
       if (wPx > 0) {
-        return Math.min(wPx / rootFs, CALENDAR_MONTHLY_DAY_ICON_MAX_REM);
+        return Math.min(wPx / rootFs, lpCalendarDayIconMaxRem());
       }
     }
   } catch (_) {}
@@ -405,29 +416,26 @@ function lpCalendarMonthlyRangeStackBottomRemOnDay(
 }
 
 /**
- * 월간 세로 순서: ① 여러 날 일정 ② 스탬프(있을 때) ③ 할일·일정
+ * 월간 세로 순서: ① 스탬프(있을 때) ② 여러 날 일정 ③ 할일·일정
  * @returns {number} 스탬프 absolute top (rem)
  */
 function lpCalendarMonthlyDayStampTopRem(
-  rangeBars,
-  dayIdx,
+  _rangeBars,
+  _dayIdx,
   baseTop,
-  gap,
-  rowTopRem,
-  rowSlotRem,
+  _gap,
+  _rowTopRem,
+  _rowSlotRem,
 ) {
-  if (lpCalendarMonthlyRangeRowCountOnDay(rangeBars, dayIdx) <= 0) {
-    return baseTop;
-  }
-  return (
-    lpCalendarMonthlyRangeStackBottomRemOnDay(
-      rangeBars,
-      dayIdx,
-      baseTop,
-      rowTopRem,
-      rowSlotRem,
-    ) + gap
-  );
+  return baseTop;
+}
+
+/** 여러 날 막대를 스탬프 아래로 내릴 때 쓰는 간격(rem) */
+function lpCalendarWeekStampLayoutPadRem(weekRow, gap) {
+  const strip = lpCalendarWeeklyDayIconsStripRem(weekRow);
+  if (!(strip > 0)) return 0;
+  const g = Number.isFinite(gap) ? Math.max(0, gap) : 0;
+  return strip + g;
 }
 
 /** 기간 막대 아래(또는 baseTop)에 스탬프 배치 — DOM 흐름 대신 주행 기준 absolute */
@@ -490,12 +498,12 @@ function lpCalendarWeeklyDayIconsStripRem(weekRow) {
           if (hPx > 4) maxRem = Math.max(maxRem, hPx / rootFs);
         });
       if (maxRem > 0) {
-        return Math.min(maxRem, CALENDAR_MONTHLY_DAY_ICON_MAX_REM);
+        return Math.min(maxRem, lpCalendarDayIconMaxRem());
       }
       const dayEl = weekRow.querySelector(".calendar-monthly-day[data-date]");
       const wPx = dayEl?.getBoundingClientRect?.().width || 0;
       if (wPx > 0) {
-        return Math.min(wPx / rootFs, CALENDAR_MONTHLY_DAY_ICON_MAX_REM);
+        return Math.min(wPx / rootFs, lpCalendarDayIconMaxRem());
       }
     }
   } catch (_) {}
@@ -685,7 +693,7 @@ function lpCalendarMonthlyEstimateSingleDayBarTopRem(
     Number.isFinite(stampStackOffsetRem) && stampStackOffsetRem > 0
       ? stampStackOffsetRem
       : 0;
-  return baseBarTop + offset + stampPad + localRow * singleSlot;
+  return baseBarTop + stampPad + offset + localRow * singleSlot;
 }
 
 function lpCalendarMonthlyWeekStackSlotCount(allBars, dayCount = 7) {
@@ -1065,7 +1073,7 @@ function lpCalendarFinalizeBarRowLayout(
       const r = b.row;
       rowMaxPx[r] = Math.max(rowMaxPx[r] || 0, h);
     }
-    let topAcc = baseTop;
+    let topAcc = baseTop + lpCalendarWeekStampLayoutPadRem(weekRow, gap);
     const rowTopRem = [];
     const rowSlotRem = [];
     for (let r = 0; r <= maxRangeRow; r++) {
@@ -1115,8 +1123,9 @@ function lpCalendarFinalizeBarRowLayout(
         (a, b) => (a.localRow || 0) - (b.localRow || 0),
       );
       const hasRange = lpCalendarMonthlyRangeRowCountOnDay(rangeBars, dayIdx) > 0;
-      let acc = hasRange ? rangeStackBottomOnDay(dayIdx) + gap : baseTop;
-      acc += lpCalendarMonthlyDayStampStackOffsetRem(weekRow, dayIdx);
+      let acc = hasRange
+        ? rangeStackBottomOnDay(dayIdx) + gap
+        : baseTop + lpCalendarMonthlyDayStampStackOffsetRem(weekRow, dayIdx);
       list.forEach((b, i) => {
         if (!b._barEl?.isConnected) return;
         b._barEl.style.top = `${acc}rem`;
@@ -3382,6 +3391,8 @@ function renderMonthlyView(tabsElement) {
       )}rem`;
       const barsWithRow = allBars;
       const calendarBarTodayYmd = timeLedgerLocalTodayYmd();
+      lpCalendarApplyWeekStampStripLayout(weekRow);
+      const weekStampPad = lpCalendarWeekStampLayoutPadRem(weekRow, ROW_GAP);
       barsWithRow.forEach((b) => {
         const bar = document.createElement("div");
         bar.className =
@@ -3408,7 +3419,7 @@ function renderMonthlyView(tabsElement) {
               ROW_GAP,
               lpCalendarMonthlyDayStampStackOffsetRem(weekRow, b.dayIdx),
             )
-          : baseBarTop + b.row * (BAR_HEIGHT + ROW_GAP);
+          : baseBarTop + weekStampPad + b.row * (BAR_HEIGHT + ROW_GAP);
         bar.style.cssText = `left:${b.left}%;width:${b.width}%;${barStyleVars};top:${topRem}rem;min-height:${BAR_HEIGHT}rem`;
         if (b.taskId) bar.dataset.taskId = String(b.taskId).trim();
         if (b.isCalendarDiary) bar.dataset.lpCalendarDiary = "1";
@@ -5792,6 +5803,8 @@ function render1WeekView(tabsElement, weekOpts = {}) {
     )}rem`;
     const barsWithRow = allBars;
     const calendarBarTodayYmd = timeLedgerLocalTodayYmd();
+    lpCalendarApplyWeekStampStripLayout(weekRow);
+    const weekStampPad = lpCalendarWeekStampLayoutPadRem(weekRow, ROW_GAP);
     barsWithRow.forEach((b) => {
       const bar = document.createElement("div");
       bar.className =
@@ -5816,8 +5829,9 @@ function render1WeekView(tabsElement, weekOpts = {}) {
             b.localRow || 0,
             BAR_HEIGHT,
             ROW_GAP,
+            lpCalendarMonthlyDayStampStackOffsetRem(weekRow, b.dayIdx),
           )
-        : baseBarTop + b.row * (BAR_HEIGHT + ROW_GAP);
+        : baseBarTop + weekStampPad + b.row * (BAR_HEIGHT + ROW_GAP);
       bar.style.cssText = `left:${b.left}%;width:${b.width}%;${barStyleVars};top:${topRem}rem;min-height:${BAR_HEIGHT}rem`;
       if (b.taskId) bar.dataset.taskId = String(b.taskId).trim();
       if (b.isCalendarDiary) bar.dataset.lpCalendarDiary = "1";

@@ -23,7 +23,8 @@ alwaysApply: true
    - `npm run gen:icons`
    - (= `ensure-toolbar-icons-png.mjs`가 SVG를 `density: 288`로 **256×256 PNG** 생성 + 목록 JSON 갱신)
 4. 한글 검색어는 `src/utils/timeTaskIconUrls.js`의 `PICKER_SEARCH_EXTRA_RAW`에만 추가한다.
-5. 다른 화면/기능 코드는 건드리지 않는다. (아이콘 추가 요청이면 아이콘·목록·검색어만)
+5. 사용자가 **캘린더 스탬프용**이라고 하면 `CALENDAR_STAMP_ONLY_PICKER_SLUGS`에만 넣고, 과제 아이콘 목록에는 안 나오게 한다. **과제용**이면 그 목록에 넣지 않는다.
+6. 다른 화면/기능 코드는 건드리지 않는다. (아이콘 추가 요청이면 아이콘·목록·검색어만)
 
 ## 참고 스크립트
 

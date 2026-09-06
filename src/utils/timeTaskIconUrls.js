@@ -164,7 +164,7 @@ const PICKER_SEARCH_EXTRA_RAW = {
   bookstore: "서점 책방",
   charging: "충전 배터리 충전기",
   darksky: "밤하늘 달 별 야경 밤",
-  finish: "완주 결승 도착 피니시 끝",
+  finish: "완주 결승 도착 피니시 끝 마감",
   paitent: "환자 병원 병가 아픈",
   ramen: "라면 면 식사",
   readingbooks: "책읽기 독서 책 서적",
@@ -185,9 +185,10 @@ const PICKER_SEARCH_EXTRA_RAW = {
   잘났어: "잘났어",
   잘했어: "잘했어",
   케이크: "케이크 생일",
+  발렌타인: "발렌타인 초콜릿 발렌타인데이",
   학교: "학교",
   힘내: "힘내 파이팅",
-  신정: "신정 공휴일",
+  신정: "신정 공휴일 새해 new year",
   삼일절: "삼일절 공휴일 3",
   어린이날: "어린이 공휴일",
   "부처님오신날": "부처님 공휴일",
@@ -215,6 +216,77 @@ const PICKER_SEARCH_EXTRA_RAW = {
   night: "나이트",
   "day off": "오프 쉬는날",
   egg: "달걀 계란",
+  workerday: "노동절 근로자의날",
+  alternativeholiday: "대체휴일",
+  "no drink": "술 금주 안마심",
+  sickalcohol: "술 술병",
+  election: "선거",
+  newyear: "새해 new year",
+  church: "교회 church",
+  buda: "절 부처님",
+  camera: "카메라 촬영",
+  candy: "캔디 사탕",
+  출근: "출근",
+  쉴거야: "쉴거야 핸드폰 폰",
+  치킨: "치킨",
+  떡볶이: "떡볶이",
+  운동: "운동",
+  헬스장: "헬스장 헬스",
+  게임기: "게임기",
+  칼퇴: "칼퇴",
+  미친: "미친",
+  청첩장: "청첩장",
+  사회성소진: "사회성소진 사회성 소진",
+  놀이공원: "놀이공원",
+  사직서: "사직서",
+  피자: "피자",
+  삼겹살: "삼겹살",
+  종강: "종강",
+  캠핑: "캠핑",
+  수영장: "수영장",
+  soccer: "축구 축구장 경기 운동장",
+  공강: "공강",
+  인터넷요금: "인터넷요금",
+  공과금: "공과금",
+  가스비: "가스비",
+  휴대폰요금: "휴대폰요금",
+  파티: "파티",
+  "what the fuck": "what the fuck",
+  "what the fuck-1": "what the fuck",
+  다이어트: "다이어트",
+  단식: "단식",
+  네가뭔데: "네가뭔데",
+  살려줘: "살려줘",
+  지쳤나요: "지쳤나요",
+  도망가자: "도망가자",
+  "이러시는 이유": "이러시는 이유",
+  다울엇니: "다울엇니",
+  킹받네: "킹받네",
+  "어덯게든 되겠지": "어덯게든 되겠지",
+  야호: "야호",
+  야르: "야르",
+  금연: "금연",
+  금일체력소진: "금일체력소진",
+  불타: "불타",
+  걱정은쓰레기: "걱정은쓰레기",
+  월급2: "월급",
+  일기: "일기",
+  책들: "책들",
+  이케아: "이케아",
+  바다: "바다",
+  "혼잣말 어쩌고": "혼잣말 어쩌고",
+  "혼잣말 비웃": "혼잣말 비웃",
+  "명언 불행": "명언 불행",
+  "명언 해피": "명언 해피",
+  명언화해: "명언화해",
+  "명언 자책": "명언 자책",
+  "시작하면 된다": "시작하면 된다",
+  좋아해: "좋아해",
+  사랑해: "사랑해",
+  징징: "징징",
+  특별해: "특별해",
+  고독: "고독",
+  시시: "시시",
 };
 
 /** JSON 파일명(NFD)·별칭 — picker 검색용 */
@@ -274,6 +346,370 @@ export const TIME_TASK_ICON_PICKER_LIST_OPTS = {
 export const CALENDAR_STAMP_ICON_PICKER_LIST_OPTS = {
   includeCalendarStampOnly: true,
 };
+
+export const CALENDAR_STAMP_CATEGORY_ALL = "all";
+export const CALENDAR_STAMP_CATEGORY_HOLIDAY = "holiday";
+export const CALENDAR_STAMP_CATEGORY_TIME = "time";
+export const CALENDAR_STAMP_CATEGORY_EVENT = "event";
+export const CALENDAR_STAMP_CATEGORY_FOOD = "food";
+export const CALENDAR_STAMP_CATEGORY_EMOTION = "emotion";
+export const CALENDAR_STAMP_CATEGORY_WORK = "work";
+export const CALENDAR_STAMP_CATEGORY_DAILY = "daily";
+export const CALENDAR_STAMP_CATEGORY_WEATHER = "weather";
+export const CALENDAR_STAMP_CATEGORY_CHEER = "cheer";
+export const CALENDAR_STAMP_CATEGORY_MENT = "ment";
+export const CALENDAR_STAMP_CATEGORY_QUOTE = "quote";
+
+/** 날짜 스탬프 「공휴일」 탭 — 파일은 그대로, 분류만 */
+const CALENDAR_STAMP_HOLIDAY_SLUGS = new Set(
+  [
+    "alternativeholiday",
+    "christmas",
+    "election",
+    "newyear",
+    "public holiday",
+    "workerday",
+    "개천절",
+    "광복절",
+    "부처님오신날",
+    "삼일절",
+    "설날",
+    "스승의날",
+    "신정",
+    "어린이날",
+    "어버이날",
+    "연휴",
+    "추석",
+    "한글날",
+    "현충일",
+  ].map((s) => s.normalize("NFC")),
+);
+
+/** @param {string} name picker JSON 슬러그 */
+export function isCalendarStampHolidayIcon(name) {
+  return CALENDAR_STAMP_HOLIDAY_SLUGS.has(
+    String(name || "").trim().normalize("NFC"),
+  );
+}
+
+/** `1am start` · `10pm start` 같은 시각 숫자 스탬프 */
+export function isCalendarStampTimeIcon(name) {
+  return /^\d{1,2}(am|pm)\s+start$/i.test(String(name || "").trim());
+}
+
+function calendarStampTimeSortKey(name) {
+  const m = String(name || "").trim().match(/^(\d{1,2})(am|pm)\s+start$/i);
+  if (!m) return 9999;
+  let hour = Number(m[1]);
+  const ap = m[2].toLowerCase();
+  if (ap === "am") {
+    if (hour === 12) hour = 0;
+  } else if (hour !== 12) {
+    hour += 12;
+  }
+  return hour;
+}
+
+/** 날짜 스탬프 「이벤트」 탭 — 파일은 그대로, 분류만 */
+const CALENDAR_STAMP_EVENT_SLUGS = new Set(
+  [
+    "airplane",
+    "airplane1",
+    "baseball",
+    "beer",
+    "birthday",
+    "buda",
+    "candy",
+    "church",
+    "cinema",
+    "day",
+    "day off",
+    "day off1",
+    "dental appointment",
+    "hair cut",
+    "night",
+    "salary",
+    "subway1",
+    "subway2",
+    "subway3",
+    "test",
+    "그날",
+    "놀이공원",
+    "발렌타인",
+    "병가",
+    "월세",
+    "은행",
+    "장례식",
+    "졸업식",
+    "종강",
+    "청첩장",
+    "카드값",
+    "케이크",
+    "moving_basic",
+    "결혼 기념일",
+    "병원",
+    "학교",
+    "evening",
+    "flower",
+    "gift",
+    "경찰서",
+    "플렉스",
+    "travel",
+    "soccer",
+    "공강",
+    "인터넷요금",
+    "공과금",
+    "가스비",
+    "휴대폰요금",
+    "파티",
+    "what the fuck",
+    "what the fuck-1",
+    "다이어트",
+    "단식",
+    "다울엇니",
+    "어덯게든 되겠지",
+    "야호",
+    "야르",
+    "금연",
+    "월급2",
+  ].map((s) => s.normalize("NFC")),
+);
+
+/** @param {string} name picker JSON 슬러그 */
+export function isCalendarStampEventIcon(name) {
+  return CALENDAR_STAMP_EVENT_SLUGS.has(
+    String(name || "").trim().normalize("NFC"),
+  );
+}
+
+/** 날짜 스탬프 「음식」 탭 — 파일은 그대로, 분류만 */
+const CALENDAR_STAMP_FOOD_SLUGS = new Set(
+  [
+    "blender",
+    "burger",
+    "cocktail",
+    "Coffee",
+    "cooking",
+    "drip coffee",
+    "egg",
+    "healthy food",
+    "ramen",
+    "rice",
+    "sickalcohol",
+    "tea",
+    "떡볶이",
+    "치킨",
+    "피자",
+    "삼겹살",
+  ].map((s) => s.normalize("NFC")),
+);
+
+/** @param {string} name picker JSON 슬러그 */
+export function isCalendarStampFoodIcon(name) {
+  return CALENDAR_STAMP_FOOD_SLUGS.has(
+    String(name || "").trim().normalize("NFC"),
+  );
+}
+
+/** 날짜 스탬프 「감정」 탭 — 파일은 그대로, 분류만 */
+const CALENDAR_STAMP_EMOTION_SLUGS = new Set(
+  [
+    "angry",
+    "happy",
+    "happymomment",
+    "it's okay",
+    "it's okay not to be okay",
+    "sad",
+    "sad2",
+    "sowhat",
+    "미움",
+    "신나",
+    "아무생각없음",
+    "우울",
+    "행복해짐",
+    "힘내",
+    "우울해하지말자",
+    "잊어",
+  ].map((s) => s.normalize("NFC")),
+);
+
+/** @param {string} name picker JSON 슬러그 */
+export function isCalendarStampEmotionIcon(name) {
+  return CALENDAR_STAMP_EMOTION_SLUGS.has(
+    String(name || "").trim().normalize("NFC"),
+  );
+}
+
+/** 날짜 스탬프 「직장인」 탭 — 파일은 그대로, 분류만 */
+const CALENDAR_STAMP_WORK_SLUGS = new Set(
+  [
+    "출근",
+    "fighting",
+    "finish",
+    "train",
+    "work",
+    "writting",
+    "you can do this",
+    "칼퇴",
+    "미친",
+    "사회성소진",
+    "stone",
+    "해야지...",
+    "사직서",
+    "도망가자",
+    "이러시는 이유",
+    "킹받네",
+    "지쳤나요",
+    "살려줘",
+    "네가뭔데",
+    "금일체력소진",
+    "불타",
+  ].map((s) => s.normalize("NFC")),
+);
+
+/** @param {string} name picker JSON 슬러그 */
+export function isCalendarStampWorkIcon(name) {
+  return CALENDAR_STAMP_WORK_SLUGS.has(
+    String(name || "").trim().normalize("NFC"),
+  );
+}
+
+/** 날짜 스탬프 「일상」 탭 — 파일은 그대로, 분류만 */
+const CALENDAR_STAMP_DAILY_SLUGS = new Set(
+  [
+    "bedtime",
+    "bicycle",
+    "bookstore",
+    "brush",
+    "camera",
+    "energy saving mode",
+    "clean",
+    "cloth",
+    "darksky",
+    "dryer",
+    "english",
+    "headset",
+    "medicine",
+    "meditation",
+    "mic",
+    "money",
+    "nap",
+    "youtube",
+    "게임기",
+    "packing",
+    "paitent",
+    "phone",
+    "puppy",
+    "puppywalk",
+    "reading",
+    "readingbooks",
+    "running",
+    "shopping bag",
+    "shower",
+    "skin care",
+    "sleeping",
+    "stretching",
+    "study",
+    "to do list",
+    "배부름",
+    "수영장",
+    "쉴거야",
+    "운동",
+    "이상무",
+    "잡생각",
+    "헬스장",
+    "회복중",
+    "charging",
+    "done is better than pefect",
+    "no drink",
+    "sidedown",
+    "오늘의 계획",
+    "notgoing",
+    "이케아",
+    "바다",
+  ].map((s) => s.normalize("NFC")),
+);
+
+/** @param {string} name picker JSON 슬러그 */
+export function isCalendarStampDailyIcon(name) {
+  return CALENDAR_STAMP_DAILY_SLUGS.has(
+    String(name || "").trim().normalize("NFC"),
+  );
+}
+
+/** 날짜 스탬프 「날씨」 탭 — 파일은 그대로, 분류만 */
+const CALENDAR_STAMP_WEATHER_SLUGS = new Set(
+  [
+    "rain",
+    "rainsuit",
+    "snowmanwithsnow",
+    "sun",
+    "sunset",
+    "umbrellawithrain",
+  ].map((s) => s.normalize("NFC")),
+);
+
+/** @param {string} name picker JSON 슬러그 */
+export function isCalendarStampWeatherIcon(name) {
+  return CALENDAR_STAMP_WEATHER_SLUGS.has(
+    String(name || "").trim().normalize("NFC"),
+  );
+}
+
+/** 날짜 스탬프 「응원」 탭 — 파일은 그대로, 분류만 */
+const CALENDAR_STAMP_CHEER_SLUGS = new Set(
+  [
+    "응원",
+    "10of10",
+    "난 완벽행",
+    "문제없어",
+    "잘났어",
+    "잘했어",
+    "걱정은쓰레기",
+  ].map((s) => s.normalize("NFC")),
+);
+
+/** @param {string} name picker JSON 슬러그 */
+export function isCalendarStampCheerIcon(name) {
+  return CALENDAR_STAMP_CHEER_SLUGS.has(
+    String(name || "").trim().normalize("NFC"),
+  );
+}
+
+/** 날짜 스탬프 「멘트」 탭 — 파일은 그대로, 분류만 */
+const CALENDAR_STAMP_MENT_SLUGS = new Set(
+  [
+    "혼잣말 어쩌고",
+    "혼잣말 비웃",
+    "좋아해",
+    "사랑해",
+    "징징",
+    "특별해",
+    "고독",
+    "시시",
+  ].map((s) => s.normalize("NFC")),
+);
+
+/** @param {string} name picker JSON 슬러그 */
+export function isCalendarStampMentIcon(name) {
+  return CALENDAR_STAMP_MENT_SLUGS.has(
+    String(name || "").trim().normalize("NFC"),
+  );
+}
+
+/** 날짜 스탬프 「명언」 탭 — 파일은 그대로, 분류만 */
+const CALENDAR_STAMP_QUOTE_SLUGS = new Set(
+  ["시작하면 된다", "명언 불행", "명언 해피", "명언화해", "명언 자책"].map(
+    (s) => s.normalize("NFC"),
+  ),
+);
+
+/** @param {string} name picker JSON 슬러그 */
+export function isCalendarStampQuoteIcon(name) {
+  return CALENDAR_STAMP_QUOTE_SLUGS.has(
+    String(name || "").trim().normalize("NFC"),
+  );
+}
 
 /** @param {string} iconFileName */
 export function buildPickerIconSearchText(iconFileName) {
@@ -445,16 +881,23 @@ function resolvePickerSvgFileName(name) {
 function pickerListedIconSrc(fileName) {
   const n = resolvePickerSvgFileName(fileName);
   if (!n) return "";
-  return pickerIconSrc(n, PICKER_ICON_EXT);
+  return pickerIconSrc(n, "svg") || pickerIconSrc(n, PICKER_ICON_EXT);
 }
 
 /**
  * @param {string} key
  * @returns {string}
  */
+function isRemovedQuoteStartIconKey(iconKey) {
+  const k = String(iconKey || "").trim().normalize("NFC");
+  if (!k) return false;
+  const bare = k.startsWith("svg:") || k.startsWith("png:") ? k.slice(4).trim() : k;
+  return bare === "명언 시작".normalize("NFC");
+}
+
 export function getTimeTaskIconSrcByKey(key) {
   const k = String(key || "").trim();
-  if (!k) return "";
+  if (!k || isRemovedQuoteStartIconKey(k)) return "";
   if (k.startsWith("svg:")) {
     const fileName = resolvePickerSvgFileName(k.slice(4).trim());
     if (!fileName) return "";
@@ -477,7 +920,7 @@ export function getTimeTaskIconSrcByKey(key) {
  */
 export function getTimeTaskIconDisplaySrcByKey(key) {
   const k = String(key || "").trim();
-  if (!k) return "";
+  if (!k || isRemovedQuoteStartIconKey(k)) return "";
   const slugRaw = k.startsWith("svg:") || k.startsWith("png:") ? k.slice(4).trim() : k;
   const fileName = resolvePickerSvgFileName(slugRaw);
   if (!fileName) return "";
@@ -587,26 +1030,62 @@ function pickerIconLabelFromFilename(name) {
 /** 캘린더 날짜 스탬프 전용 — 과제 설정 아이콘 선택 그리드에서는 제외 */
 const CALENDAR_STAMP_ONLY_PICKER_SLUGS = new Set(
   [
+    "10of10",
+    "alternativeholiday",
+    "birthday",
+    "election",
+    "newyear",
+    "no drink",
+    "sickalcohol",
+    "candy",
+    "쉴거야",
+    "workerday",
     "day off",
     "day off1",
     "day",
+    "done is better than pefect",
     "evening",
+    "it's okay",
+    "it's okay not to be okay",
     "night",
+    "sidedown",
+    "sowhat",
+    "notgoing",
+    "paitent",
+    "stone",
+    "you can do this",
+    "결혼 기념일",
+    "개천절",
+    "광복절",
+    "그날",
+    "난 완벽행",
+    "문제없어",
+    "발렌타인",
+    "병가",
+    "설날",
+    "스승의날",
     "신정",
-    "삼일절",
     "어린이날",
+    "어버이날",
+    "연휴",
+    "오늘의 계획",
+    "우울",
+    "우울해하지말자",
+    "응원",
+    "월세",
+    "이상무",
+    "잊어",
+    "잘났어",
+    "잘했어",
+    "장례식",
+    "졸업식",
+    "카드값",
+    "추석",
+    "힘내",
+    "삼일절",
     "부처님오신날",
     "현충일",
-    "광복절",
-    "개천절",
     "한글날",
-    "설날",
-    "추석",
-    "장례식",
-    "병가",
-    "졸업식",
-    "스승의날",
-    "어버이날",
   ].map((s) => s.normalize("NFC")),
 );
 
@@ -617,22 +1096,100 @@ function isCalendarStampOnlyPickerIcon(name) {
   );
 }
 
+/** 피커 목록에서만 숨김 — 파일·이미 찍힌 스탬프는 유지 */
+const PICKER_HIDDEN_SLUGS = new Set(
+  ["책들", "캠핑", "일기", "명언 시작"].map((s) => s.normalize("NFC")),
+);
+
+function isPickerHiddenIcon(name) {
+  return PICKER_HIDDEN_SLUGS.has(String(name || "").trim().normalize("NFC"));
+}
+
 /** @param {string} searchText @param {string} query */
 export function matchTimeTaskPickerIconSearch(searchText, query) {
   return matchFlexibleSearch(searchText, query);
 }
 
 /**
- * @param {{ includeCalendarStampOnly?: boolean }} [opts]
+ * @param {{ includeCalendarStampOnly?: boolean, stampCategory?: string }} [opts]
  *   includeCalendarStampOnly — true면 스탬프·공휴일 전용 아이콘 포함
+ *   stampCategory — holiday / time / event
  * @returns {{ key: string, label: string, src: string, searchText: string }[]}
  */
 export function getTimeTaskPickableIcons(opts = {}) {
   const includeStampOnly = opts.includeCalendarStampOnly === true;
-  /** @type {{ key: string, label: string, src: string, searchText: string }[]} */
+  const stampCategory = String(opts.stampCategory || "").trim();
+  /** @type {{ key: string, label: string, src: string, searchText: string, _name?: string }[]} */
   const out = [];
   for (const name of pickerSvgNames) {
+    if (isPickerHiddenIcon(name)) continue;
     if (!includeStampOnly && isCalendarStampOnlyPickerIcon(name)) continue;
+    if (
+      stampCategory === CALENDAR_STAMP_CATEGORY_HOLIDAY &&
+      !isCalendarStampHolidayIcon(name)
+    ) {
+      continue;
+    }
+    if (
+      stampCategory === CALENDAR_STAMP_CATEGORY_TIME &&
+      !isCalendarStampTimeIcon(name)
+    ) {
+      continue;
+    }
+    if (
+      stampCategory === CALENDAR_STAMP_CATEGORY_EVENT &&
+      !isCalendarStampEventIcon(name)
+    ) {
+      continue;
+    }
+    if (
+      stampCategory === CALENDAR_STAMP_CATEGORY_FOOD &&
+      !isCalendarStampFoodIcon(name)
+    ) {
+      continue;
+    }
+    if (
+      stampCategory === CALENDAR_STAMP_CATEGORY_EMOTION &&
+      !isCalendarStampEmotionIcon(name)
+    ) {
+      continue;
+    }
+    if (
+      stampCategory === CALENDAR_STAMP_CATEGORY_WORK &&
+      !isCalendarStampWorkIcon(name)
+    ) {
+      continue;
+    }
+    if (
+      stampCategory === CALENDAR_STAMP_CATEGORY_DAILY &&
+      !isCalendarStampDailyIcon(name)
+    ) {
+      continue;
+    }
+    if (
+      stampCategory === CALENDAR_STAMP_CATEGORY_WEATHER &&
+      !isCalendarStampWeatherIcon(name)
+    ) {
+      continue;
+    }
+    if (
+      stampCategory === CALENDAR_STAMP_CATEGORY_CHEER &&
+      !isCalendarStampCheerIcon(name)
+    ) {
+      continue;
+    }
+    if (
+      stampCategory === CALENDAR_STAMP_CATEGORY_MENT &&
+      !isCalendarStampMentIcon(name)
+    ) {
+      continue;
+    }
+    if (
+      stampCategory === CALENDAR_STAMP_CATEGORY_QUOTE &&
+      !isCalendarStampQuoteIcon(name)
+    ) {
+      continue;
+    }
     const src = pickerListedIconSrc(name);
     if (!src) continue;
     out.push({
@@ -640,7 +1197,15 @@ export function getTimeTaskPickableIcons(opts = {}) {
       label: pickerIconLabelFromFilename(name),
       src,
       searchText: buildPickerIconSearchText(name),
+      _name: name,
     });
   }
+  if (stampCategory === CALENDAR_STAMP_CATEGORY_TIME) {
+    out.sort(
+      (a, b) =>
+        calendarStampTimeSortKey(a._name) - calendarStampTimeSortKey(b._name),
+    );
+  }
+  for (const row of out) delete row._name;
   return out;
 }

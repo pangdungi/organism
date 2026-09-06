@@ -14,6 +14,18 @@ import {
   matchTimeTaskPickerIconSearch,
   TIME_TASK_ICON_PICKER_LIST_OPTS,
   CALENDAR_STAMP_ICON_PICKER_LIST_OPTS,
+  CALENDAR_STAMP_CATEGORY_ALL,
+  CALENDAR_STAMP_CATEGORY_HOLIDAY,
+  CALENDAR_STAMP_CATEGORY_TIME,
+  CALENDAR_STAMP_CATEGORY_EVENT,
+  CALENDAR_STAMP_CATEGORY_FOOD,
+  CALENDAR_STAMP_CATEGORY_EMOTION,
+  CALENDAR_STAMP_CATEGORY_WORK,
+  CALENDAR_STAMP_CATEGORY_DAILY,
+  CALENDAR_STAMP_CATEGORY_WEATHER,
+  CALENDAR_STAMP_CATEGORY_CHEER,
+  CALENDAR_STAMP_CATEGORY_MENT,
+  CALENDAR_STAMP_CATEGORY_QUOTE,
 } from "./timeTaskIconUrls.js";
 import { attachPickerIconSrcFallback } from "./timeTaskIconLazyDisplay.js";
 import { lpSetClasses, lpTokenToggle } from "./timeLedgerClassPolicy.js";
@@ -186,6 +198,20 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
         <button type="button" class="time-task-setup-close" data-legacy="time-task-setup-close" aria-label="닫기">&times;</button>
       </div>
       <div class="time-task-setup-body time-add-task-icon-modal-body" data-legacy="time-task-setup-body time-add-task-icon-modal-body">
+        <div class="calendar-day-icon-pick-tabs" role="tablist" aria-label="스탬프 분류">
+          <button type="button" class="calendar-day-icon-pick-tab is-active" role="tab" aria-selected="true" data-stamp-category="all">전체</button>
+          <button type="button" class="calendar-day-icon-pick-tab" role="tab" aria-selected="false" data-stamp-category="holiday">공휴일</button>
+          <button type="button" class="calendar-day-icon-pick-tab" role="tab" aria-selected="false" data-stamp-category="time">시간</button>
+          <button type="button" class="calendar-day-icon-pick-tab" role="tab" aria-selected="false" data-stamp-category="event">이벤트</button>
+          <button type="button" class="calendar-day-icon-pick-tab" role="tab" aria-selected="false" data-stamp-category="food">음식</button>
+          <button type="button" class="calendar-day-icon-pick-tab" role="tab" aria-selected="false" data-stamp-category="emotion">감정</button>
+          <button type="button" class="calendar-day-icon-pick-tab" role="tab" aria-selected="false" data-stamp-category="work">직장인</button>
+          <button type="button" class="calendar-day-icon-pick-tab" role="tab" aria-selected="false" data-stamp-category="daily">일상</button>
+          <button type="button" class="calendar-day-icon-pick-tab" role="tab" aria-selected="false" data-stamp-category="weather">날씨</button>
+          <button type="button" class="calendar-day-icon-pick-tab" role="tab" aria-selected="false" data-stamp-category="cheer">응원</button>
+          <button type="button" class="calendar-day-icon-pick-tab" role="tab" aria-selected="false" data-stamp-category="ment">멘트</button>
+          <button type="button" class="calendar-day-icon-pick-tab" role="tab" aria-selected="false" data-stamp-category="quote">명언</button>
+        </div>
         <div class="time-add-task-icon-modal-search-mount" data-legacy="time-add-task-icon-modal-search-mount"></div>
         <div class="time-add-task-icon-modal-divider" data-legacy="time-add-task-icon-modal-divider" role="separator" aria-hidden="true"></div>
         <div class="time-add-task-icon-modal-grid-mount" data-legacy="time-add-task-icon-modal-grid-mount"></div>
@@ -249,6 +275,8 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
     '[data-legacy~="time-add-task-icon-modal-grid-mount"]',
   );
   let searchInput = null;
+  let stampCategory = CALENDAR_STAMP_CATEGORY_ALL;
+  let stampGrid = null;
 
   function applySearchFilter() {
     applyPickerIconSearchFilter(modal, String(searchInput?.value ?? ""));
@@ -265,25 +293,70 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
     syncConfirmEnabled();
   }
 
+  function iconsForStampTab() {
+    return getTimeTaskPickableIcons({
+      ...CALENDAR_STAMP_ICON_PICKER_LIST_OPTS,
+      stampCategory,
+    });
+  }
+
+  function remountStampGrid() {
+    if (!stampGrid) return;
+    mountPickerIconGrid(stampGrid, iconsForStampTab(), (key) => {
+      currentKey = key;
+      syncGridSelection();
+    });
+    applySearchFilter();
+    syncGridSelection();
+  }
+
+  function syncStampCategoryTabs() {
+    modal.querySelectorAll(".calendar-day-icon-pick-tab").forEach((btn) => {
+      const on =
+        btn.getAttribute("data-stamp-category") === stampCategory;
+      btn.classList.toggle("is-active", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+    });
+  }
+
   if (searchMount) {
     const mounted = mountPickerIconSearchInput(applySearchFilter);
     searchInput = mounted.searchInput;
     searchMount.appendChild(mounted.searchBar);
   }
 
+  modal.querySelectorAll(".calendar-day-icon-pick-tab").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const next = String(btn.getAttribute("data-stamp-category") || "").trim();
+      const nextCategory = (
+        {
+          [CALENDAR_STAMP_CATEGORY_HOLIDAY]: CALENDAR_STAMP_CATEGORY_HOLIDAY,
+          [CALENDAR_STAMP_CATEGORY_TIME]: CALENDAR_STAMP_CATEGORY_TIME,
+          [CALENDAR_STAMP_CATEGORY_EVENT]: CALENDAR_STAMP_CATEGORY_EVENT,
+          [CALENDAR_STAMP_CATEGORY_FOOD]: CALENDAR_STAMP_CATEGORY_FOOD,
+          [CALENDAR_STAMP_CATEGORY_EMOTION]: CALENDAR_STAMP_CATEGORY_EMOTION,
+          [CALENDAR_STAMP_CATEGORY_WORK]: CALENDAR_STAMP_CATEGORY_WORK,
+          [CALENDAR_STAMP_CATEGORY_DAILY]: CALENDAR_STAMP_CATEGORY_DAILY,
+          [CALENDAR_STAMP_CATEGORY_WEATHER]: CALENDAR_STAMP_CATEGORY_WEATHER,
+          [CALENDAR_STAMP_CATEGORY_CHEER]: CALENDAR_STAMP_CATEGORY_CHEER,
+          [CALENDAR_STAMP_CATEGORY_MENT]: CALENDAR_STAMP_CATEGORY_MENT,
+          [CALENDAR_STAMP_CATEGORY_QUOTE]: CALENDAR_STAMP_CATEGORY_QUOTE,
+        }[next] || CALENDAR_STAMP_CATEGORY_ALL
+      );
+      if (nextCategory === stampCategory) return;
+      stampCategory = nextCategory;
+      syncStampCategoryTabs();
+      remountStampGrid();
+    });
+  });
+
   if (gridMount) {
-    const grid = document.createElement("div");
-    lpSetClasses(grid, "time-add-task-icon-modal-grid");
-    gridMount.appendChild(grid);
-    mountPickerIconGrid(
-      grid,
-      getTimeTaskPickableIcons(CALENDAR_STAMP_ICON_PICKER_LIST_OPTS),
-      (key) => {
-        currentKey = key;
-        syncGridSelection();
-      },
-    );
-    syncGridSelection();
+    stampGrid = document.createElement("div");
+    lpSetClasses(stampGrid, "time-add-task-icon-modal-grid");
+    gridMount.appendChild(stampGrid);
+    remountStampGrid();
   }
 
   markModalOpened();

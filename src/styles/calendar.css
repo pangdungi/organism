@@ -73,14 +73,19 @@
   /** 날짜 아이콘(스탬프) 상단 스트립 — Calendar.js `CALENDAR_MONTHLY_DAY_ICONS_STRIP_REM` 과 동기 */
   --cal-day-icon-strip-rem: 2.85rem;
   /**
-   * 스탬프 상한만 — 칸이 넓어질 때 무한히 커지지 않게.
-   * 좁은 칸에서는 100% 그대로(축소 아님). 레이아웃용 strip(2.85rem)보다 크게 둠.
+   * 스탬프 — 기본은 날짜 칸 너비. 큰 모니터만 아래에서 6rem으로 자름.
    */
-  --cal-day-icon-max: 6rem;
+  --cal-day-icon-max: 20rem;
   /** 막대 없는 주·최소 행 높이 — Calendar.js `lpCalendarMonthlyWeekRowTargetMinHeightRem` 과 동기 */
   --cal-week-row-min: 4.75rem;
   color: var(--cal-text);
   box-sizing: border-box;
+}
+
+@media (min-width: 90rem) {
+  .calendar-monthly-layout {
+    --cal-day-icon-max: 6rem;
+  }
 }
 
 .calendar-monthly-layout *,
@@ -1792,7 +1797,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
 
 .calendar-monthly-week--has-stamps .calendar-monthly-day-icons__img {
   width: 100%;
-  max-width: var(--cal-day-icon-max);
+  max-width: min(100%, var(--cal-day-icon-max));
   height: auto;
   object-fit: contain;
   aspect-ratio: 1;
@@ -1897,7 +1902,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   display: block;
   flex: 0 0 auto;
   width: min(100%, var(--cal-day-icon-max));
-  max-width: var(--cal-day-icon-max);
+  max-width: min(100%, var(--cal-day-icon-max));
   padding: 0;
   margin: 0;
   border: none;
@@ -1917,7 +1922,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
 .calendar-monthly-day-icons__img {
   display: block;
   width: 100%;
-  max-width: var(--cal-day-icon-max);
+  max-width: min(100%, var(--cal-day-icon-max));
   height: auto;
   aspect-ratio: 1;
   object-fit: contain;
@@ -1929,6 +1934,57 @@ button.calendar-1day-pane-section-head--action:focus-visible {
 /* 할일 추가 모달 위 — 날짜 아이콘 picker (과제 아이콘 picker와 동일 z-index) */
 .calendar-day-icon-pick-modal.time-task-setup-modal.time-add-task-icon-modal {
   z-index: 11000;
+}
+
+.calendar-day-icon-pick-modal.time-task-setup-modal.time-add-task-icon-modal
+  .time-add-task-panel {
+  max-height: min(86vh, 40rem);
+  width: min(36rem, calc(100vw - 1.5rem));
+}
+
+.calendar-day-icon-pick-modal .time-add-task-icon-modal-grid,
+.calendar-day-icon-pick-modal [data-legacy~="time-add-task-icon-modal-grid"] {
+  grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+  gap: 0.45rem;
+}
+
+.calendar-day-icon-pick-modal .time-add-task-icon-modal-item-icon,
+.calendar-day-icon-pick-modal [data-legacy~="time-add-task-icon-modal-item-icon"] {
+  width: 4.1rem;
+  height: 4.1rem;
+}
+
+.calendar-day-icon-pick-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  gap: 0.15rem;
+  margin: 0 0 0.5rem;
+  border-bottom: 1px solid var(--lp-modal-border, #e2e8f0);
+}
+
+.calendar-day-icon-pick-tab {
+  margin: 0 0 -1px;
+  padding: 0.4rem 0.7rem;
+  border: none;
+  border-bottom: 1.5px solid transparent;
+  background: transparent;
+  color: #666666;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.calendar-day-icon-pick-tab:hover {
+  color: #000000;
+}
+
+.calendar-day-icon-pick-tab.is-active {
+  color: #000000;
+  font-weight: 700;
+  border-bottom-color: #000000;
 }
 
 .calendar-day-icon-pick-footer {
