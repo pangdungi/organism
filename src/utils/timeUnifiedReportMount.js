@@ -74,6 +74,7 @@ import { readUserHourlyRateLocal } from "./userHourlySync.js";
 import { tr2SvgFontSize } from "./timeReportUiScale.js";
 import { mountReportHabitScoreboard } from "./reportHabitScoreboard.js";
 import { buildYearKpiGoalReportSnapshot } from "./yearKpiGoalReport.js";
+import { buildMonthKpiProgressSnapshot } from "./monthKpiProgressReport.js";
 import {
   buildDayTaskCompareReport,
   renderDayTaskCompareChart,
@@ -865,166 +866,209 @@ function formatDayRatingAxisClock(mins) {
   return formatClockFromMinutes(m);
 }
 
+/** 시작~마감 막대. 자정 넘김은 하루 안에서 두 토막 */
+function dayRatingBarSegments(session) {
+  const dayCap = 24 * 60;
+  const start = session?.startMin;
+  const end = session?.endMin;
+  if (start == null || end == null || !Number.isFinite(start) || !Number.isFinite(end)) {
+    return [];
+  }
+  if (session.overnight && end < start) {
+    return [
+      { from: start, to: dayCap },
+      { from: 0, to: end },
+    ].filter((seg) => seg.to > seg.from);
+  }
+  if (end > start) return [{ from: start, to: end }];
+  return [];
+}
+
+/** 30분 칸마다 별점 하나. 같은 점수가 이어지면 한 막대 */
+function buildDayRatingHalfHourBars(sessions) {
+  const dayCap = 24 * 60;
+  const slot = 30;
+  const n = dayCap / slot;
+  const ratings = new Array(n).fill(null);
+  const weights = new Array(n).fill(0);
+  const tasks = new Array(n).fill("");
+  for (const s of sessions || []) {
+    const rating = normalizeTimeRatingForRow(s?.rating);
+    if (rating == null) continue;
+    for (const seg of dayRatingBarSegments(s)) {
+      if (!(seg.to > seg.from)) continue;
+      const from = Math.max(0, Math.floor(seg.from / slot) * slot);
+      const to = Math.min(dayCap, Math.ceil(seg.to / slot) * slot);
+      for (let t = from; t < to; t += slot) {
+        const i = t / slot;
+        const cover = Math.min(seg.to, t + slot) - Math.max(seg.from, t);
+        if (cover > weights[i]) {
+          weights[i] = cover;
+          ratings[i] = rating;
+          tasks[i] = s.task;
+        }
+      }
+    }
+  }
+  const segs = [];
+  let i = 0;
+  while (i < n) {
+    if (ratings[i] == null) {
+      i += 1;
+      continue;
+    }
+    const rating = ratings[i];
+    const from = i * slot;
+    let j = i + 1;
+    while (j < n && ratings[j] === rating) j += 1;
+    segs.push({
+      from,
+      to: j * slot,
+      rating,
+      task: tasks[i],
+      startLabel: formatDayRatingAxisClock(from),
+      endLabel: formatDayRatingAxisClock(j * slot),
+    });
+    i = j;
+  }
+  return segs;
+}
+
 /**
- * 일간 별점 — 시간대(시)별 평균을 점으로 찍고 이웃 시간대를 선으로 이음
- * 가로축 00~23, 눈금 「시」 없음
- * 좁은 화면: 가로를 화면에 맞게 축소, X축 눈금은 2시간 단위
+ * 일간 별점 — 가로는 0시→24시, 세로는 1~5점.
+ * 30분 칸 막대. 같은 점수는 붙임. 빈 시간은 막대 없음. 선은 막대 위 가운데를 이음.
  */
 function renderDayRatingLinkChart(sessions) {
   const wrap = document.createElement("div");
   wrap.className = "lp-tr2-day-rating-line-chart";
-  const hourGrid = buildHourGridFromRatedSessions(sessions);
-  const series = hourGrid.filter((h) => h.count > 0 && h.avg != null);
-  if (!series.length) {
+  const segs = buildDayRatingHalfHourBars(sessions);
+  if (!segs.length) {
     const empty = document.createElement("p");
     empty.className = "lp-tr2-chart-note";
-    empty.textContent = "시간대별 별점 기록이 없습니다.";
+    empty.textContent = "시작·마감과 별점이 있는 기록이 없습니다.";
     wrap.appendChild(empty);
     return wrap;
   }
 
-  let fitToViewport = false;
-  try {
-    fitToViewport =
-      typeof window !== "undefined" &&
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(max-width: 46rem)").matches;
-  } catch (_) {
-    fitToViewport = false;
-  }
-
-  const hour0 = 0;
-  const hour1 = 23;
-  const nHours = 24;
-  const slotW = fitToViewport ? 12 : 28;
-  const H = fitToViewport ? 188 : 210;
-  const padL = fitToViewport ? 36 : 44;
-  const padR = fitToViewport ? 8 : 12;
-  const padT = 14;
+  const dayCap = 24 * 60;
+  const W = 640;
+  const H = 200;
+  const padL = 36;
+  const padR = 12;
+  const padT = 12;
   const padB = 26;
-  const W = slotW * nHours + padL + padR;
   const plotW = W - padL - padR;
   const plotH = H - padT - padB;
-  const xAtHourCenter = (hour) =>
-    padL + ((hour - hour0 + 0.5) / nHours) * plotW;
-  const yAtRating = (rating) => padT + ((5 - rating) / 4) * plotH;
-  const xTickStep = fitToViewport ? 2 : 1;
+  const xAtMin = (mins) => padL + (mins / dayCap) * plotW;
+  const yAtRating = (rating) => padT + ((5 - rating) / 5) * plotH;
+  const yBase = padT + plotH;
 
   const scroll = document.createElement("div");
-  scroll.className = "lp-tr2-day-rating-line-scroll";
-  if (fitToViewport) {
-    scroll.classList.add("lp-tr2-day-rating-line-scroll--fit");
-  }
+  scroll.className = "lp-tr2-day-rating-line-scroll lp-tr2-day-rating-line-scroll--fit";
 
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
-  svg.setAttribute(
-    "preserveAspectRatio",
-    fitToViewport ? "xMidYMid meet" : "xMinYMid meet",
-  );
+  svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
   svg.setAttribute("class", "lp-tr2-day-rating-line-svg");
   svg.setAttribute("role", "img");
-  svg.setAttribute("aria-label", "00부터 23까지 시간대별 평균 별점");
-  if (fitToViewport) {
-    svg.style.width = "100%";
-    svg.style.minWidth = "0";
-    svg.style.height = "auto";
-    svg.style.maxHeight = "12rem";
-  } else {
-    svg.style.minWidth = `${W}px`;
-  }
+  svg.setAttribute(
+    "aria-label",
+    "왼쪽 0시 오른쪽 24시, 시작부터 마감까지 별점 막대",
+  );
 
   for (let star = 1; star <= 5; star += 1) {
     const y = yAtRating(star);
-    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    line.setAttribute("x1", String(padL));
-    line.setAttribute("x2", String(padL + plotW));
-    line.setAttribute("y1", String(y));
-    line.setAttribute("y2", String(y));
-    line.setAttribute("class", "lp-tr2-day-rating-line-guide");
-    svg.appendChild(line);
     const lab = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    lab.setAttribute("x", String(padL - 10));
+    lab.setAttribute("x", String(padL - 8));
     lab.setAttribute("y", String(y + 3.5));
     lab.setAttribute("text-anchor", "end");
     lab.setAttribute("class", "lp-tr2-day-rating-line-ylab");
-    lab.setAttribute("font-size", String(tr2SvgFontSize(10)));
-    lab.textContent = `${star}★`;
+    lab.setAttribute("font-size", String(tr2SvgFontSize(6.5)));
+    lab.textContent = `${star}`;
     svg.appendChild(lab);
   }
 
-  const coords = series.map((h) => ({
-    hour: h.hour,
-    avg: h.avg,
-    count: h.count,
-    minutes: h.minutes,
-    x: xAtHourCenter(h.hour),
-    y: yAtRating(h.avg),
-  }));
-
-  for (let i = 0; i < coords.length - 1; i += 1) {
-    const a = coords[i];
-    const b = coords[i + 1];
-    if (b.hour - a.hour > 3) continue;
-    const seg = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    seg.setAttribute("x1", String(a.x));
-    seg.setAttribute("y1", String(a.y));
-    seg.setAttribute("x2", String(b.x));
-    seg.setAttribute("y2", String(b.y));
-    seg.setAttribute("class", "lp-tr2-day-rating-line-path");
-    svg.appendChild(seg);
+  const tickFont = tr2SvgFontSize(6.5);
+  for (let h = 0; h <= 24; h += 1) {
+    const xh = xAtMin(Math.min(dayCap, h * 60));
+    const v = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    v.setAttribute("x1", String(xh));
+    v.setAttribute("x2", String(xh));
+    v.setAttribute("y1", String(padT));
+    v.setAttribute("y2", String(padT + plotH));
+    v.setAttribute("class", "lp-tr2-day-rating-line-vguide");
+    svg.appendChild(v);
+    const lab = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    lab.setAttribute("x", String(xh));
+    lab.setAttribute("y", String(H - 8));
+    lab.setAttribute("text-anchor", h === 0 ? "start" : h === 24 ? "end" : "middle");
+    lab.setAttribute("class", "lp-tr2-day-rating-line-xlab");
+    lab.setAttribute("font-size", String(tickFont));
+    lab.textContent = h === 24 ? "24" : String(h).padStart(2, "0");
+    svg.appendChild(lab);
   }
 
-  coords.forEach((p) => {
-    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    c.setAttribute("cx", String(p.x));
-    c.setAttribute("cy", String(p.y));
-    c.setAttribute("r", "4.5");
-    c.setAttribute("fill", ratingFillColor(p.avg));
-    c.setAttribute("class", "lp-tr2-day-rating-line-dot");
+  for (const b of segs) {
+    const x = xAtMin(b.from);
+    const barW = xAtMin(b.to) - x;
+    const y = yAtRating(b.rating);
+    const barH = yBase - y;
+    if (barW < 2 || barH < 2) continue;
+    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("x", String(x));
+    rect.setAttribute("y", String(y));
+    rect.setAttribute("width", String(barW));
+    rect.setAttribute("height", String(barH));
+    rect.setAttribute("class", "lp-tr2-day-rating-bar");
+    rect.setAttribute("stroke", "none");
     const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
     title.textContent = [
-      `${String(p.hour).padStart(2, "0")}`,
-      `평균 ${formatRatingAvg(p.avg)}점`,
-      `${p.count}건`,
-      p.minutes > 0 ? formatIntegerMinutesDurationKo(p.minutes) : null,
+      b.task,
+      `${b.startLabel || formatDayRatingAxisClock(b.from)} ~ ${b.endLabel || formatDayRatingAxisClock(b.to)}`,
+      `${b.rating}점`,
     ]
       .filter(Boolean)
       .join(" · ");
-    c.appendChild(title);
-    svg.appendChild(c);
-  });
+    rect.appendChild(title);
+    svg.appendChild(rect);
+  }
 
-  const tickFont = tr2SvgFontSize(fitToViewport ? 7 : 8);
-  for (let h = hour0; h <= hour1; h += xTickStep) {
-    const lab = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    lab.setAttribute("x", String(xAtHourCenter(h)));
-    lab.setAttribute("y", String(H - 8));
-    lab.setAttribute("text-anchor", "middle");
-    lab.setAttribute("class", "lp-tr2-day-rating-line-xlab");
-    lab.setAttribute("font-size", String(tickFont));
-    lab.textContent = String(h).padStart(2, "0");
-    svg.appendChild(lab);
+  const dots = segs.map((b) => ({
+    x: (xAtMin(b.from) + xAtMin(b.to)) / 2,
+    y: yAtRating(b.rating),
+  }));
+  if (dots.length >= 2) {
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+    path.setAttribute("points", dots.map((p) => `${p.x},${p.y}`).join(" "));
+    path.setAttribute("class", "lp-tr2-day-rating-line-path");
+    path.setAttribute("fill", "none");
+    svg.appendChild(path);
+  }
+  for (const p of dots) {
+    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    c.setAttribute("cx", String(p.x));
+    c.setAttribute("cy", String(p.y));
+    c.setAttribute("r", "2.2");
+    c.setAttribute("class", "lp-tr2-day-rating-line-dot");
+    svg.appendChild(c);
   }
 
   scroll.appendChild(svg);
   wrap.appendChild(scroll);
   const rangeHint = document.createElement("p");
   rangeHint.className = "lp-tr2-day-rating-line-range-hint";
-  rangeHint.textContent = fitToViewport
-    ? "가로 00~22(2시간 눈금) · 점은 매시 평균 별점"
-    : "가로 00~23 · 각 점은 그 시간대 평균 별점";
+  rangeHint.textContent = "왼쪽 0시 · 오른쪽 24시 · 세로는 별점 1~5 · 빈 시간은 막대 없이 선만 이음";
   wrap.appendChild(rangeHint);
   return wrap;
 }
 
-/** 일간 전용 — 모든 별점 기록을 이은 그래프 */
+/** 일간 전용 — 시작~마감·별점 막대 그래프 */
 function mountDayStarRatingSection(scrollWrap, range, rows) {
   if (!scrollWrap || range?.start !== range?.end) return;
   const sessions = collectAllRatedSessions(rows);
   const sec = createSection(
     "이날의 별점",
-    "시간대별 평균 별점을 선으로 이은 그래프",
+    "왼쪽 0시, 오른쪽 24시 · 세로는 별점 1~5 · 빈 시간은 막대 없이 선만 이음",
   );
   sec.classList.add("lp-tr2-day-rating-section");
 
@@ -1052,8 +1096,8 @@ function mountDayStarRatingSection(scrollWrap, range, rows) {
   sec.appendChild(summary);
 
   const lineBlock = createRatingBlock(
-    "별점 선 그래프",
-    "시간대(시)별 평균 별점 · 점과 점을 선으로 연결",
+    "별점 그래프",
+    "가로가 하루, 세로는 1~5점 · 막대 끝 가운데를 이어 그림",
   );
   lineBlock.appendChild(renderDayRatingLinkChart(sessions));
   sec.appendChild(lineBlock);
@@ -4208,6 +4252,187 @@ function mountYearKpiGoalReportSection(scrollWrap, range, rows) {
   });
   allBlock.appendChild(list);
   sec.appendChild(allBlock);
+
+  scrollWrap.appendChild(sec);
+}
+
+function formatMonthKpiMeasure(n) {
+  if (n == null || Number.isNaN(Number(n))) return "0";
+  const v = Number(n);
+  const rounded =
+    Math.abs(v - Math.round(v)) < 0.05 ? Math.round(v) : Math.round(v * 10) / 10;
+  return String(rounded).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function createMonthKpiProgressRow(item) {
+  const row = document.createElement("div");
+  row.className = "lp-tr2-year-kpi-progress-row";
+  row.dataset.kpiMode = item.mode || "";
+  if (item.remainPct === 0 && item.displayPct != null) {
+    row.classList.add("is-done");
+  }
+
+  const spent = formatIntegerMinutesDurationKo(item.periodMins || 0);
+  const head = document.createElement("div");
+  head.className = "lp-tr2-year-kpi-progress-head";
+  const name = document.createElement("span");
+  name.className = "lp-tr2-year-kpi-progress-name";
+  name.textContent = item.name;
+  const right = document.createElement("span");
+  right.className = "lp-tr2-year-kpi-progress-pct";
+  if (item.mode === "time") {
+    right.textContent =
+      item.displayPct != null ? `${item.displayPct}%` : "";
+  } else if (item.mode === "manual") {
+    right.textContent =
+      item.displayPct != null ? `${item.displayPct}%` : "";
+  } else if (item.isChore) {
+    right.textContent = `${item.taskCount || 0}건`;
+  } else if (item.mode === "task") {
+    right.textContent =
+      item.displayPct != null
+        ? `${item.displayPct}% (${item.taskDone || 0}/${item.taskAssigned || 0})`
+        : item.taskAssigned > 0 || item.taskDone > 0
+          ? `(${item.taskDone || 0}/${item.taskAssigned || 0})`
+          : "";
+  } else if (item.mode === "habit") {
+    right.textContent =
+      item.scheduledDays > 0
+        ? `${item.displayPct ?? 0}% (${item.habitDays || 0}/${item.scheduledDays}일)`
+        : item.displayPct != null
+          ? `${item.displayPct}%`
+          : "";
+  } else if (item.displayPct != null) {
+    right.textContent = `${item.displayPct}%`;
+  }
+  head.append(name, right);
+  row.appendChild(head);
+
+  if (item.mode === "time") {
+    const timeEl = document.createElement("p");
+    timeEl.className = "lp-tr2-month-kpi-time lp-tr2-month-kpi-time--hero";
+    timeEl.textContent =
+      item.paceMins > 0
+        ? `${spent} / ${formatIntegerMinutesDurationKo(item.paceMins)}`
+        : spent;
+    row.appendChild(timeEl);
+  } else if (item.mode === "manual") {
+    const unit = String(item.unit || "").trim();
+    const unitSuffix = unit ? ` ${unit}` : "";
+    const now = formatMonthKpiMeasure(item.periodMeasure);
+    const tgt = formatMonthKpiMeasure(item.measureTarget);
+    const measureEl = document.createElement("p");
+    measureEl.className = "lp-tr2-month-kpi-time lp-tr2-month-kpi-time--hero";
+    measureEl.textContent =
+      item.measureTarget > 0 || item.lowerBetter
+        ? `${now} / ${tgt}${unitSuffix}`
+        : `${now}${unitSuffix}`;
+    row.appendChild(measureEl);
+  }
+
+  if (item.displayPct != null) {
+    const track = document.createElement("div");
+    track.className = "lp-tr2-year-kpi-progress-track";
+    const fill = document.createElement("div");
+    fill.className = "lp-tr2-year-kpi-progress-fill";
+    if (item.remainPct === 0) fill.classList.add("is-done");
+    fill.style.width = `${Math.min(100, Math.max(0, item.displayPct))}%`;
+    track.appendChild(fill);
+    row.appendChild(track);
+  }
+
+  if (item.mode !== "time" && item.periodMins > 0) {
+    const timeEl = document.createElement("p");
+    timeEl.className = "lp-tr2-month-kpi-time";
+    timeEl.textContent = `투자 ${spent}`;
+    row.appendChild(timeEl);
+  }
+
+  return row;
+}
+
+function isMonthReportRange(range) {
+  const dayCount = listDatesInclusive(range?.start, range?.end).length;
+  return dayCount >= 28 && dayCount <= 31;
+}
+
+/** 월간 전용 — KPI별 이번 달 진행 (목표 종류에 맞게) */
+function mountMonthKpiProgressSection(scrollWrap, range, rows) {
+  if (!isMonthReportRange(range)) return;
+
+  const snap = buildMonthKpiProgressSnapshot(range, rows);
+  const sec = createSection("KPI 진행", "조회한 달 · 과제 / 매일 / 시간");
+  sec.classList.add("lp-tr2-month-kpi-section");
+
+  if (!snap.hasData) {
+    const note = document.createElement("p");
+    note.className = "lp-tr2-chart-note";
+    note.textContent =
+      "이번 달 시간기록·할일 완료가 연결된 KPI가 없습니다.";
+    sec.appendChild(note);
+    scrollWrap.appendChild(sec);
+    return;
+  }
+
+  const s = snap.summary;
+  const grid = document.createElement("div");
+  grid.className = "lp-tr2-card-grid lp-tr2-year-kpi-summary-grid";
+  grid.appendChild(
+    createStatCard("그달 KPI", `${s.totalKpis}개`, "그달 기록이 있는 목표"),
+  );
+  grid.appendChild(
+    createStatCard("할일 이행", `${s.taskCompletions}건`, "그달 완료한 과제"),
+  );
+  grid.appendChild(
+    createStatCard(
+      "시간 투자",
+      formatIntegerMinutesDurationKo(s.periodMinutes),
+      "그달 연결된 시간기록",
+    ),
+  );
+  grid.appendChild(
+    createStatCard("평균", `${s.avgDisplayPct}%`, "그달 기준 진행"),
+  );
+  sec.appendChild(grid);
+
+  const groups = [
+    {
+      key: "task",
+      title: "과제형",
+      hint: "그달 할일 중 끝낸 개수",
+      items: snap.items.filter((x) => x.mode === "task" || x.isChore),
+    },
+    {
+      key: "habit",
+      title: "매일반복",
+      hint: "그달 지켜야 할 날 중 지킨 날",
+      items: snap.items.filter((x) => x.mode === "habit" && !x.isChore),
+    },
+    {
+      key: "time",
+      title: "시간 누적",
+      hint: "그달 투자 시간 · 목표 기간이 있으면 그달 몫과 비교",
+      items: snap.items.filter((x) => x.mode === "time"),
+    },
+    {
+      key: "manual",
+      title: "목표 도달",
+      hint: "그달 기록 / 그달 목표",
+      items: snap.items.filter((x) => x.mode === "manual"),
+    },
+  ];
+
+  groups.forEach((group) => {
+    if (!group.items.length) return;
+    const block = createRatingBlock(group.title, group.hint);
+    const list = document.createElement("div");
+    list.className = "lp-tr2-year-kpi-progress-list";
+    group.items.forEach((item) => {
+      list.appendChild(createMonthKpiProgressRow(item));
+    });
+    block.appendChild(list);
+    sec.appendChild(block);
+  });
 
   scrollWrap.appendChild(sec);
 }
@@ -8438,6 +8663,7 @@ export function mountUnifiedTimeReport(scrollWrap, arg2, arg3) {
     mountHeroSection(stage, range, rows);
     mountDayCompareSection(stage, range, allRows);
     mountDonutSection(stage, range, rows);
+    mountDayStarRatingSection(stage, range, rows);
     mountStarRatingTaskListSection(stage, range, rows);
   });
   reapplyScroll();
@@ -8465,6 +8691,7 @@ export function mountUnifiedTimeReport(scrollWrap, arg2, arg3) {
         mountConversationReportSection(stage, range, rows);
         mountReadingSection(stage, rows);
         mountYearKpiGoalReportSection(stage, range, allRows);
+        mountMonthKpiProgressSection(stage, range, allRows);
         mountHabitCheckSection(stage, range, { skipSync: true });
         mountHappinessRoutineSection(stage, range, { skipSync: true });
       });

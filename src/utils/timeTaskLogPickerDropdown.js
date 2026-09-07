@@ -17,7 +17,6 @@ import { getTimeTaskListIconSrc } from "./timeTaskIconUrls.js";
 import {
   createReadyIconImg,
   decodeDisplayIconSrcs,
-  waitIconImgsReady,
 } from "./decodeDisplayIcons.js";
 import { matchFlexibleSearch } from "./flexibleSearchMatch.js";
 import {
@@ -377,11 +376,10 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
     }
     tasks = sortTasksForLedgerPicker(tasks);
     const gen = ++optionsPaintGen;
-    await decodeDisplayIconSrcs(
+    void decodeDisplayIconSrcs(
       tasks.map((t) => ledgerPickerTaskIconSrc(t)),
-      { timeoutMs: 1500 },
+      { timeoutMs: 800 },
     );
-    if (gen !== optionsPaintGen) return;
     const frag = document.createDocumentFragment();
     tasks.forEach((t) => {
       const row = document.createElement("div");
@@ -431,7 +429,6 @@ export function buildTimeTaskLogPickerDropdown(options = {}) {
       });
       frag.appendChild(row);
     });
-    await waitIconImgsReady(frag, 1500);
     if (gen !== optionsPaintGen) return;
     container.replaceChildren(frag);
   }

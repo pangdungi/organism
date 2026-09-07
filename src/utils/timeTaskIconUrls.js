@@ -881,7 +881,8 @@ function resolvePickerSvgFileName(name) {
 function pickerListedIconSrc(fileName) {
   const n = resolvePickerSvgFileName(fileName);
   if (!n) return "";
-  return pickerIconSrc(n, "svg") || pickerIconSrc(n, PICKER_ICON_EXT);
+  /* SVG는 48px 그림이 들어 있어 흐림. 목록은 256 PNG */
+  return pickerIconSrc(n, PICKER_ICON_EXT) || pickerIconSrc(n, "svg");
 }
 
 /**
@@ -914,7 +915,7 @@ export function getTimeTaskIconSrcByKey(key) {
 }
 
 /**
- * 캘린더·목록 등 크게 보이는 곳 — SVG 원본 우선(선명), 없으면 PNG
+ * 캘린더·목록 — 256 PNG 우선. SVG는 48px 래스터라 크게 보면 깨짐.
  * @param {string} key
  * @returns {string}
  */
@@ -924,9 +925,7 @@ export function getTimeTaskIconDisplaySrcByKey(key) {
   const slugRaw = k.startsWith("svg:") || k.startsWith("png:") ? k.slice(4).trim() : k;
   const fileName = resolvePickerSvgFileName(slugRaw);
   if (!fileName) return "";
-  const svgSrc = pickerIconSrc(fileName, "svg");
-  if (svgSrc) return svgSrc;
-  return pickerIconSrc(fileName, PICKER_ICON_EXT);
+  return pickerIconSrc(fileName, PICKER_ICON_EXT) || pickerIconSrc(fileName, "svg");
 }
 
 /**

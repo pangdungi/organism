@@ -97,7 +97,10 @@ import {
   decodeLedgerPickerTaskIcons,
   taskAllowedForLedgerPreset,
 } from "../utils/timeTaskLogPickerDropdown.js";
-import { createReadyIconImg } from "../utils/decodeDisplayIcons.js";
+import {
+  createReadyIconImg,
+  decodeDisplayIconSrcs,
+} from "../utils/decodeDisplayIcons.js";
 import {
   getTimeTaskListIconSrc,
   resolveTimeTaskDisplayIconSrc,
@@ -7094,6 +7097,40 @@ export function render(opts = {}) {
         total.removeAttribute("title");
       }
     }
+  }
+
+  /** 그날 기록 합으로 상단 총 기록만 맞춤. 목록 재그리기·보이는 카드 재합산 없음 */
+  function patchTimeLedgerDayGroupTotalsInPlace() {
+    const list = contentWrap.querySelector(".calendar-1day-timeline-list");
+    if (!list) return;
+    list
+      .querySelectorAll(":scope > .time-ledger-day-group-header")
+      .forEach((header) => {
+        const totalEl = header.querySelector(".time-ledger-day-group-total");
+        if (!totalEl) return;
+        const stack = header.nextElementSibling;
+        const rows = [];
+        if (stack?.classList?.contains("time-ledger-day-card-stack")) {
+          stack
+            .querySelectorAll(
+              '[data-legacy~="time-ledger-mobile-card"], .calendar-1day-timeline-card',
+            )
+            .forEach((c) => {
+              if (c._rowData) rows.push(c._rowData);
+            });
+        }
+        const dayHrs = sumTimeLedgerDayHours(rows);
+        totalEl.textContent = formatHoursDisplay(dayHrs);
+        syncTimeLedgerTotalOver24Ui(totalEl, dayHrs, { perDay: true });
+      });
+  }
+
+  function refreshUsageHeadingFromCache() {
+    const filtered = applyUsageListFilters(
+      Array.isArray(allRowsCache) ? allRowsCache : loadTimeRows(),
+    );
+    patchTimeLedgerUsageHeadingInPlace(filtered);
+    patchTimeLedgerDayGroupTotalsInPlace();
   }
 
   /** 설정·과제 기록(+)·조회 — 앱 푸터 공통: appFooterShell + main.css */
@@ -14358,9 +14395,11 @@ export function render(opts = {}) {
           applyUsageTimelineEndUnderStartDisplay(list);
         }
         try {
-          patchTimeLedgerUsageHeadingInPlace(
-            applyUsageListFilters(rowsToPersist),
-          );
+          refreshUsageHeadingFromCache();
+        } catch (_) {}
+      } else {
+        try {
+          refreshUsageHeadingFromCache();
         } catch (_) {}
       }
 
@@ -15162,6 +15201,17 @@ export function render(opts = {}) {
       const listSigBeforePull = getTaskSetupListRenderSig();
       syncTaskSetupListVisibility(activeSetupTab);
       renderSubcatButtons(activeSetupTab);
+      void decodeDisplayIconSrcs(
+        filterTasksForTaskSetupModalList(getFullTaskOptions()).map((t) =>
+          getTimeTaskListIconSrc(t.name, {
+            category: t.category,
+            productivity: t.productivity,
+            iconKey: t.iconKey,
+            kpiId: t.kpiId,
+          }),
+        ),
+        { timeoutMs: 800 },
+      );
       renderTaskSetupList({ force: true });
       try {
         await pullTimeLedgerTasksWhenSetupModalOpens();
@@ -15637,6 +15687,12 @@ export function render(opts = {}) {
   }
 
   function renderAll(rows = []) {
+    if (timeLedgerLayoutView === "timeline" && !usageHistoryMemoOnlyFilter) {
+      void decodeDisplayIconSrcs(
+        (rows || []).map((r) => timeLedgerListRowIconSrc(r)).filter(Boolean),
+        { timeoutMs: 800 },
+      );
+    }
     clearTimeLedgerMobileElapsedTimer(el);
     rescueTimeFilterControlsToFilterBar();
     contentWrap.style.touchAction =
@@ -15682,13 +15738,17 @@ export function render(opts = {}) {
       const parent = item?.parentElement;
       item?.remove();
       if (parent) applyUsageTimelineEndUnderStartDisplay(parent);
+      if (!rowData) {
+        updateTotal();
+        return;
+      }
+      /* 목록은 다시 안 그림 — 메모리에서 바로 빼고 상단 총 기록만 맞춤 */
+      const { next } = removeTimeLedgerRowFromRows(loadTimeRows(), rowData);
+      allRowsCache = next;
+      writeTimeLedgerEntriesRaw(next);
       updateTotal();
-      if (!rowData) return;
       const entryId = String(rowData?.id || "").trim();
       void (async () => {
-        /* 메모리 전체에서 제거 — 화면 캐시만으로 save 하면 다른 날짜 기록이 날아감 */
-        const { next } = removeTimeLedgerRowFromRows(loadTimeRows(), rowData);
-        allRowsCache = next;
         /* 이 시간기록에서 체크한 완료형 할일 id → 다른 기록에 없으면 미완료로 */
         revertKpiTaskCompletionTodosForDeletedLedgerRow(rowData, next);
         if (entryId) {
@@ -15715,8 +15775,7 @@ export function render(opts = {}) {
             });
           }
         }
-        /* 삭제는 서버 delete API로만 — 나머지 행 일괄 push 금지 */
-        writeTimeLedgerEntriesRaw(next);
+        /* 로컬은 삭제 직후 이미 씀. 서버는 delete만 — 나머지 행 일괄 push 금지 */
         scheduleSyncHabitTrackerLogs();
         try {
           document.dispatchEvent(

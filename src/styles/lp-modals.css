@@ -3258,6 +3258,7 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   height: 2.15rem;
   object-fit: contain;
   display: block;
+  image-rendering: auto;
 }
 .time-task-setup-item,
 [data-legacy~="time-task-setup-item"] {

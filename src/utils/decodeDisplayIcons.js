@@ -39,6 +39,13 @@ export function decodeDisplayIconSrcs(srcs, opts = {}) {
  * @param {string} src
  * @returns {HTMLImageElement}
  */
+function rememberDecodedImg(src, img) {
+  const s = String(src || "").trim();
+  if (!s || !img || img.naturalWidth <= 0) return;
+  decoded.add(s);
+  decodedImgs.set(s, img);
+}
+
 export function createReadyIconImg(src) {
   const s = String(src || "").trim();
   const cached = s ? decodedImgs.get(s) : null;
@@ -54,7 +61,18 @@ export function createReadyIconImg(src) {
   img.alt = "";
   img.decoding = "sync";
   img.loading = "eager";
-  if (s) img.src = s;
+  if (s) {
+    img.src = s;
+    if (img.complete && img.naturalWidth > 0) {
+      rememberDecodedImg(s, img);
+    } else {
+      img.addEventListener(
+        "load",
+        () => rememberDecodedImg(s, img),
+        { once: true },
+      );
+    }
+  }
   return img;
 }
 
@@ -115,10 +133,7 @@ function decodeOne(src) {
       const img = new Image();
       img.decoding = "async";
       const done = (ok) => {
-        if (ok && img.naturalWidth > 0) {
-          decoded.add(src);
-          decodedImgs.set(src, img);
-        }
+        if (ok && img.naturalWidth > 0) rememberDecodedImg(src, img);
         resolve(!!ok && img.naturalWidth > 0);
       };
       img.onerror = () => done(false);

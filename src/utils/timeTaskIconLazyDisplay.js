@@ -1,7 +1,7 @@
 /**
  * 과제 아이콘(SVG) — 한꺼번에 <img src> 넣지 않음(iOS·Android WebView 멈춤·종료 방지)
  */
-import { applyEagerIconImg, applyLazyPickerIconImg } from "./staticAppIconImg.js";
+import { applyLazyPickerIconImg } from "./staticAppIconImg.js";
 import { attachIconPngFallback } from "./toolbarIconUrl.js";
 import { isIosLikeMobile } from "./mobileViewportKeyboard.js";
 import { matchTimeTaskPickerIconSearch } from "./timeTaskIconUrls.js";
@@ -50,11 +50,12 @@ export function attachPickerIconSrcFallback(img, pngSrc) {
   if (cur) attachIconPngFallback(img, cur);
 }
 
-/** 과제설정 목록 — eager + PNG→SVG 폴백 */
+/** 과제설정 목록 — SVG를 비트맵 복제하지 않음(복제하면 레티나에서 깨짐) */
 export function createSetupListIconImg(src) {
   const img = document.createElement("img");
   img.alt = "";
-  applyEagerIconImg(img);
+  img.decoding = "async";
+  img.loading = "eager";
   if (src) {
     attachIconPngFallback(img, src);
     img.src = src;

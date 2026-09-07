@@ -81,6 +81,8 @@ export function warmDefaultAndInUsePickerIcons() {
         paths.push(src);
       }
     }
+    /* SW 다 채운 뒤에야 decode 하면 첫 화면·날짜 변경 아이콘이 ~1초 늦음 */
+    void decodeDisplayIconSrcs(paths, { timeoutMs: 2500 });
     const CHUNK = 16;
     for (let i = 0; i < paths.length; i += CHUNK) {
       const batch = paths.slice(i, i + CHUNK);
@@ -89,9 +91,6 @@ export function warmDefaultAndInUsePickerIcons() {
         await new Promise((r) => setTimeout(r, 0));
       }
     }
-    try {
-      await decodeDisplayIconSrcs(paths, { timeoutMs: 2500 });
-    } catch (_) {}
   })().finally(() => {
     _inUseWarmJob = null;
   });

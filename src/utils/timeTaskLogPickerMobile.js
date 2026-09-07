@@ -12,7 +12,6 @@ import { getTimeTaskListIconSrc } from "./timeTaskIconUrls.js";
 import {
   createReadyIconImg,
   decodeDisplayIconSrcs,
-  waitIconImgsReady,
 } from "./decodeDisplayIcons.js";
 import { matchFlexibleSearch } from "./flexibleSearchMatch.js";
 
@@ -398,10 +397,9 @@ export function createMobileTaskLogPicker(options = {}) {
       return;
     }
     const gen = ++wheelPaintGen;
-    await decodeDisplayIconSrcs(collectPickerTaskIconSrcs(tasks), {
-      timeoutMs: 1500,
+    void decodeDisplayIconSrcs(collectPickerTaskIconSrcs(tasks), {
+      timeoutMs: 800,
     });
-    if (gen !== wheelPaintGen) return;
     wheelTasksCacheKey = cacheKey;
 
     const chips = getVisibleBucketChips?.() || [];
@@ -512,10 +510,9 @@ export function createMobileTaskLogPicker(options = {}) {
       q ? matchFlexibleSearch(t.name || "", q) : true,
     );
     const gen = ++searchPaintGen;
-    await decodeDisplayIconSrcs(collectPickerTaskIconSrcs(tasks), {
-      timeoutMs: 1500,
+    void decodeDisplayIconSrcs(collectPickerTaskIconSrcs(tasks), {
+      timeoutMs: 800,
     });
-    if (gen !== searchPaintGen) return;
     const chips = getVisibleBucketChips?.() || [];
     const showHeaders = !q && typeof getTaskBucket === "function" && chips.length;
     const frag = document.createDocumentFragment();
@@ -531,7 +528,6 @@ export function createMobileTaskLogPicker(options = {}) {
       }
       frag.appendChild(buildSearchRow(t));
     });
-    await waitIconImgsReady(frag, 1500);
     if (gen !== searchPaintGen) return;
     searchList.replaceChildren(frag);
   }
