@@ -6021,7 +6021,9 @@
 
 .lp-tr2-day-rating-line-chart--vertical .lp-tr2-day-rating-line-svg {
   max-height: none;
-  min-height: 28rem;
+  min-height: 0;
+  width: 100%;
+  margin-inline: 0;
 }
 
 .lp-tr2-day-rating-area {

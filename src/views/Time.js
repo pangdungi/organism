@@ -8295,6 +8295,7 @@ export function render(opts = {}) {
         <div data-legacy="time-task-log-kpi-todos-section" hidden>
           <div data-legacy="time-task-log-kpi-todos-all-block" hidden>
             <h4 data-legacy="time-task-log-kpi-todos-all-title">할 일 목록</h4>
+            <p data-legacy="time-task-log-kpi-todos-all-status" hidden></p>
             <div data-legacy="time-task-log-kpi-todos-all-scroll">
               <div data-legacy="time-task-log-kpi-todos-all-list"></div>
             </div>
@@ -11110,6 +11111,9 @@ export function render(opts = {}) {
   const taskLogKpiTodosAllList = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-kpi-todos-all-list"]',
   );
+  const taskLogKpiTodosAllStatus = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-kpi-todos-all-status"]',
+  );
   const taskLogKpiValueSection = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-kpi-value-section"]',
   );
@@ -12226,6 +12230,10 @@ export function render(opts = {}) {
       taskLogKpiTodosStatus.textContent = "";
     }
     if (taskLogKpiTodosAllBlock) taskLogKpiTodosAllBlock.hidden = true;
+    if (taskLogKpiTodosAllStatus) {
+      taskLogKpiTodosAllStatus.hidden = true;
+      taskLogKpiTodosAllStatus.textContent = "";
+    }
     taskLogKpiTodosSection.classList.remove("is-split");
     taskLogKpiTodosList?.replaceChildren?.();
     taskLogKpiTodosAllList?.replaceChildren?.();
@@ -12373,6 +12381,13 @@ export function render(opts = {}) {
       if (taskLogKpiTodosAllScroll) {
         taskLogKpiTodosAllScroll.hidden = !fullTodos.length;
       }
+      if (taskLogKpiTodosAllStatus) {
+        const emptyLeft = !fullTodos.length;
+        taskLogKpiTodosAllStatus.hidden = !emptyLeft;
+        taskLogKpiTodosAllStatus.textContent = emptyLeft
+          ? "오늘 고른 할 일은 오른쪽에 있습니다"
+          : "";
+      }
       renderTaskLogTaskCompletionTodoRows(
         fullTodos,
         opts.preserveChecks,
@@ -12380,6 +12395,10 @@ export function render(opts = {}) {
       );
     } else {
       taskLogKpiTodosAllList?.replaceChildren?.();
+      if (taskLogKpiTodosAllStatus) {
+        taskLogKpiTodosAllStatus.hidden = true;
+        taskLogKpiTodosAllStatus.textContent = "";
+      }
     }
     const filtered = (todos || []).filter((t) =>
       String(t?.text || "").trim(),

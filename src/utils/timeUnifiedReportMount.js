@@ -942,13 +942,18 @@ function dayRatingChartHostEl(el) {
   );
 }
 
-/** 창이 아니라 레포트 칸 너비 — 3분할처럼 칸이 좁으면 세로 */
+/** 아이패드 미니 세로부터는 가로. 휴대폰만 세로 */
 function dayRatingChartIsVertical(el) {
+  try {
+    if (window.matchMedia("(min-width: 44rem)").matches) return false;
+  } catch (_) {
+    /* ignore */
+  }
   const host = dayRatingChartHostEl(el);
   const w = Number(host?.clientWidth || 0);
-  if (w > 0) return w <= 48 * 16;
+  if (w > 0) return w <= 36 * 16;
   try {
-    return window.matchMedia("(max-width: 48rem)").matches;
+    return window.matchMedia("(max-width: 36rem)").matches;
   } catch (_) {
     return false;
   }
@@ -994,7 +999,9 @@ function renderDayRatingLinkChart(sessions, opts = {}) {
 
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
-  svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+  svg.setAttribute("preserveAspectRatio", vertical ? "xMinYMin meet" : "xMidYMid meet");
+  svg.setAttribute("width", String(W));
+  svg.setAttribute("height", String(H));
   svg.setAttribute("class", "lp-tr2-day-rating-line-svg");
   svg.setAttribute("role", "img");
   svg.setAttribute(

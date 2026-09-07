@@ -2034,7 +2034,8 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
   padding: 0.15rem 0.1rem;
 }
 .time-task-log-kpi-todos-status,
-[data-legacy~="time-task-log-kpi-todos-status"] {
+[data-legacy~="time-task-log-kpi-todos-status"],
+[data-legacy~="time-task-log-kpi-todos-all-status"] {
   margin: 0.15rem 0 0;
   font-size: 0.8125rem;
   line-height: 1.45;

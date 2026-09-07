@@ -952,6 +952,8 @@ const TIME_RATING_STARS_ONLY_TASK_NAMES = new Set([
   "게임",
   "물건 찾기",
   "성찰 일기 쓰기",
+  "아이디어 작업",
+  "아이디어 작업하기",
 ]);
 
 export function isTimeRatingStarsOnlyBuiltinTaskName(name) {
