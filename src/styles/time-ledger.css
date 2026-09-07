@@ -6019,6 +6019,11 @@
   border-radius: 0;
 }
 
+.lp-tr2-day-rating-line-chart--vertical .lp-tr2-day-rating-line-svg {
+  max-height: none;
+  min-height: 28rem;
+}
+
 .lp-tr2-day-rating-area {
   fill: rgba(0, 0, 0, 0.14);
 }

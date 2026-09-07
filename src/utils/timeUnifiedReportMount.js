@@ -934,13 +934,36 @@ function buildDayRatingHalfHourBars(sessions) {
   return segs;
 }
 
+function dayRatingChartHostEl(el) {
+  return (
+    el?.closest?.(".lp-tr2-root") ||
+    el?.closest?.("[data-lp-time-report-body]") ||
+    el
+  );
+}
+
+/** 창이 아니라 레포트 칸 너비 — 3분할처럼 칸이 좁으면 세로 */
+function dayRatingChartIsVertical(el) {
+  const host = dayRatingChartHostEl(el);
+  const w = Number(host?.clientWidth || 0);
+  if (w > 0) return w <= 48 * 16;
+  try {
+    return window.matchMedia("(max-width: 48rem)").matches;
+  } catch (_) {
+    return false;
+  }
+}
+
 /**
- * 일간 별점 — 가로는 0시→24시, 세로는 1~5점.
- * 30분 칸 막대. 같은 점수는 붙임. 빈 시간은 막대 없음. 선은 막대 위 가운데를 이음.
+ * 일간 별점 — 가로는 0시→24시, 세로는 1~5점. 휴대폰은 세로(위 0시·아래 24시).
+ * 30분 칸 막대. 같은 점수는 붙임. 빈 시간은 막대 없음. 선은 막대 끝 가운데를 이음.
  */
-function renderDayRatingLinkChart(sessions) {
+function renderDayRatingLinkChart(sessions, opts = {}) {
+  const vertical = !!opts.vertical;
   const wrap = document.createElement("div");
-  wrap.className = "lp-tr2-day-rating-line-chart";
+  wrap.className =
+    "lp-tr2-day-rating-line-chart" +
+    (vertical ? " lp-tr2-day-rating-line-chart--vertical" : "");
   const segs = buildDayRatingHalfHourBars(sessions);
   if (!segs.length) {
     const empty = document.createElement("p");
@@ -951,17 +974,20 @@ function renderDayRatingLinkChart(sessions) {
   }
 
   const dayCap = 24 * 60;
-  const W = 640;
-  const H = 200;
-  const padL = 36;
-  const padR = 12;
-  const padT = 12;
-  const padB = 26;
+  const W = vertical ? 280 : 640;
+  const H = vertical ? 720 : 200;
+  const padL = vertical ? 34 : 36;
+  const padR = vertical ? 14 : 12;
+  const padT = vertical ? 22 : 12;
+  const padB = vertical ? 16 : 26;
   const plotW = W - padL - padR;
   const plotH = H - padT - padB;
   const xAtMin = (mins) => padL + (mins / dayCap) * plotW;
   const yAtRating = (rating) => padT + ((5 - rating) / 5) * plotH;
   const yBase = padT + plotH;
+  const xAtRating = (rating) => padL + (rating / 5) * plotW;
+  const yAtMin = (mins) => padT + (mins / dayCap) * plotH;
+  const xBase = padL;
 
   const scroll = document.createElement("div");
   scroll.className = "lp-tr2-day-rating-line-scroll lp-tr2-day-rating-line-scroll--fit";
@@ -973,46 +999,97 @@ function renderDayRatingLinkChart(sessions) {
   svg.setAttribute("role", "img");
   svg.setAttribute(
     "aria-label",
-    "왼쪽 0시 오른쪽 24시, 시작부터 마감까지 별점 막대",
+    vertical
+      ? "위 0시 아래 24시, 가로는 별점 1~5, 시작부터 마감까지 별점 막대"
+      : "왼쪽 0시 오른쪽 24시, 시작부터 마감까지 별점 막대",
   );
 
-  for (let star = 1; star <= 5; star += 1) {
-    const y = yAtRating(star);
-    const lab = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    lab.setAttribute("x", String(padL - 8));
-    lab.setAttribute("y", String(y + 3.5));
-    lab.setAttribute("text-anchor", "end");
-    lab.setAttribute("class", "lp-tr2-day-rating-line-ylab");
-    lab.setAttribute("font-size", String(tr2SvgFontSize(6.5)));
-    lab.textContent = `${star}`;
-    svg.appendChild(lab);
-  }
-
   const tickFont = tr2SvgFontSize(6.5);
-  for (let h = 0; h <= 24; h += 1) {
-    const xh = xAtMin(Math.min(dayCap, h * 60));
-    const v = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    v.setAttribute("x1", String(xh));
-    v.setAttribute("x2", String(xh));
-    v.setAttribute("y1", String(padT));
-    v.setAttribute("y2", String(padT + plotH));
-    v.setAttribute("class", "lp-tr2-day-rating-line-vguide");
-    svg.appendChild(v);
-    const lab = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    lab.setAttribute("x", String(xh));
-    lab.setAttribute("y", String(H - 8));
-    lab.setAttribute("text-anchor", h === 0 ? "start" : h === 24 ? "end" : "middle");
-    lab.setAttribute("class", "lp-tr2-day-rating-line-xlab");
-    lab.setAttribute("font-size", String(tickFont));
-    lab.textContent = h === 24 ? "24" : String(h).padStart(2, "0");
-    svg.appendChild(lab);
+  if (vertical) {
+    for (let star = 1; star <= 5; star += 1) {
+      const x = xAtRating(star);
+      const g = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      g.setAttribute("x1", String(x));
+      g.setAttribute("x2", String(x));
+      g.setAttribute("y1", String(padT));
+      g.setAttribute("y2", String(padT + plotH));
+      g.setAttribute("class", "lp-tr2-day-rating-line-vguide");
+      svg.appendChild(g);
+      const lab = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      lab.setAttribute("x", String(x));
+      lab.setAttribute("y", String(padT - 8));
+      lab.setAttribute("text-anchor", "middle");
+      lab.setAttribute("class", "lp-tr2-day-rating-line-ylab");
+      lab.setAttribute("font-size", String(tickFont));
+      lab.textContent = `${star}`;
+      svg.appendChild(lab);
+    }
+    for (let h = 0; h <= 24; h += 1) {
+      const yh = yAtMin(Math.min(dayCap, h * 60));
+      const g = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      g.setAttribute("x1", String(padL));
+      g.setAttribute("x2", String(padL + plotW));
+      g.setAttribute("y1", String(yh));
+      g.setAttribute("y2", String(yh));
+      g.setAttribute("class", "lp-tr2-day-rating-line-vguide");
+      svg.appendChild(g);
+      const lab = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      lab.setAttribute("x", String(padL - 6));
+      lab.setAttribute("y", String(yh + 3.5));
+      lab.setAttribute("text-anchor", "end");
+      lab.setAttribute("class", "lp-tr2-day-rating-line-xlab");
+      lab.setAttribute("font-size", String(tickFont));
+      lab.textContent = h === 24 ? "24" : String(h).padStart(2, "0");
+      svg.appendChild(lab);
+    }
+  } else {
+    for (let star = 1; star <= 5; star += 1) {
+      const y = yAtRating(star);
+      const lab = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      lab.setAttribute("x", String(padL - 8));
+      lab.setAttribute("y", String(y + 3.5));
+      lab.setAttribute("text-anchor", "end");
+      lab.setAttribute("class", "lp-tr2-day-rating-line-ylab");
+      lab.setAttribute("font-size", String(tr2SvgFontSize(6.5)));
+      lab.textContent = `${star}`;
+      svg.appendChild(lab);
+    }
+    for (let h = 0; h <= 24; h += 1) {
+      const xh = xAtMin(Math.min(dayCap, h * 60));
+      const v = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      v.setAttribute("x1", String(xh));
+      v.setAttribute("x2", String(xh));
+      v.setAttribute("y1", String(padT));
+      v.setAttribute("y2", String(padT + plotH));
+      v.setAttribute("class", "lp-tr2-day-rating-line-vguide");
+      svg.appendChild(v);
+      const lab = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      lab.setAttribute("x", String(xh));
+      lab.setAttribute("y", String(H - 8));
+      lab.setAttribute("text-anchor", h === 0 ? "start" : h === 24 ? "end" : "middle");
+      lab.setAttribute("class", "lp-tr2-day-rating-line-xlab");
+      lab.setAttribute("font-size", String(tickFont));
+      lab.textContent = h === 24 ? "24" : String(h).padStart(2, "0");
+      svg.appendChild(lab);
+    }
   }
 
   for (const b of segs) {
-    const x = xAtMin(b.from);
-    const barW = xAtMin(b.to) - x;
-    const y = yAtRating(b.rating);
-    const barH = yBase - y;
+    let x;
+    let y;
+    let barW;
+    let barH;
+    if (vertical) {
+      x = xBase;
+      y = yAtMin(b.from);
+      barW = xAtRating(b.rating) - xBase;
+      barH = yAtMin(b.to) - y;
+    } else {
+      x = xAtMin(b.from);
+      y = yAtRating(b.rating);
+      barW = xAtMin(b.to) - x;
+      barH = yBase - y;
+    }
     if (barW < 2 || barH < 2) continue;
     const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     rect.setAttribute("x", String(x));
@@ -1033,10 +1110,17 @@ function renderDayRatingLinkChart(sessions) {
     svg.appendChild(rect);
   }
 
-  const dots = segs.map((b) => ({
-    x: (xAtMin(b.from) + xAtMin(b.to)) / 2,
-    y: yAtRating(b.rating),
-  }));
+  const dots = segs.map((b) =>
+    vertical
+      ? {
+          x: xAtRating(b.rating),
+          y: (yAtMin(b.from) + yAtMin(b.to)) / 2,
+        }
+      : {
+          x: (xAtMin(b.from) + xAtMin(b.to)) / 2,
+          y: yAtRating(b.rating),
+        },
+  );
   if (dots.length >= 2) {
     const path = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
     path.setAttribute("points", dots.map((p) => `${p.x},${p.y}`).join(" "));
@@ -1057,7 +1141,9 @@ function renderDayRatingLinkChart(sessions) {
   wrap.appendChild(scroll);
   const rangeHint = document.createElement("p");
   rangeHint.className = "lp-tr2-day-rating-line-range-hint";
-  rangeHint.textContent = "왼쪽 0시 · 오른쪽 24시 · 세로는 별점 1~5 · 빈 시간은 막대 없이 선만 이음";
+  rangeHint.textContent = vertical
+    ? "위 0시 · 아래 24시 · 가로는 별점 1~5 · 빈 시간은 막대 없이 선만 이음"
+    : "왼쪽 0시 · 오른쪽 24시 · 세로는 별점 1~5 · 빈 시간은 막대 없이 선만 이음";
   wrap.appendChild(rangeHint);
   return wrap;
 }
@@ -1068,7 +1154,7 @@ function mountDayStarRatingSection(scrollWrap, range, rows) {
   const sessions = collectAllRatedSessions(rows);
   const sec = createSection(
     "이날의 별점",
-    "왼쪽 0시, 오른쪽 24시 · 세로는 별점 1~5 · 빈 시간은 막대 없이 선만 이음",
+    "칸이 좁으면 위 0시·아래 24시, 넓으면 왼쪽 0시·오른쪽 24시 · 별점 1~5",
   );
   sec.classList.add("lp-tr2-day-rating-section");
 
@@ -1097,12 +1183,27 @@ function mountDayStarRatingSection(scrollWrap, range, rows) {
 
   const lineBlock = createRatingBlock(
     "별점 그래프",
-    "가로가 하루, 세로는 1~5점 · 막대 끝 가운데를 이어 그림",
+    "막대 끝 가운데를 이어 그림 · 빈 시간은 막대 없이 선만 이음",
   );
-  lineBlock.appendChild(renderDayRatingLinkChart(sessions));
+  const chartHost = document.createElement("div");
+  lineBlock.appendChild(chartHost);
   sec.appendChild(lineBlock);
-
   scrollWrap.appendChild(sec);
+
+  let lastVertical = null;
+  const paintChart = () => {
+    if (!sec.isConnected) return;
+    const vertical = dayRatingChartIsVertical(scrollWrap);
+    if (vertical === lastVertical && chartHost.firstChild) return;
+    lastVertical = vertical;
+    chartHost.replaceChildren(renderDayRatingLinkChart(sessions, { vertical }));
+  };
+  paintChart();
+  requestAnimationFrame(paintChart);
+  if (typeof ResizeObserver === "function") {
+    const ro = new ResizeObserver(() => paintChart());
+    ro.observe(dayRatingChartHostEl(scrollWrap) || scrollWrap);
+  }
 }
 
 function renderWeekdayReturnChart(weekdayGrid) {

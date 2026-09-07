@@ -49,7 +49,9 @@ import {
   rowHasEndTimeForMobileCard,
   getMobileCardEffectiveHoursForPrice,
   ensureDetachedTimeLedgerTaskLogBridge,
+  buildTimeLedgerDayTimeboxBlocksForYmd,
 } from "./Time.js";
+import { createTimeLedgerDayTimeboxElement } from "../utils/timeLedgerDayTimebox.js";
 import {
   ledgerRowDisplayTaskName,
   buildTimeLedgerCardMemoText,
@@ -4521,7 +4523,7 @@ function formatCalendar1DayShortLabel(dateKey) {
   return `${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")} (${weekdays[d.getDay()]})`;
 }
 
-/** 예상 일정란에 넣을 전일 타임박스(읽기 전용 · 오른쪽 타임박스와 같은 격자) */
+/** 예상 일정란에 넣을 전일 타임박스(전날 실제 시간기록) */
 function createPrevDayTimeboxInline(viewedDateKey) {
   const viewed = String(viewedDateKey || "")
     .replace(/\//g, "-")
@@ -4540,13 +4542,16 @@ function createPrevDayTimeboxInline(viewedDateKey) {
     return { wrap, prevKey: "", prevLabel: "" };
   }
   const prevLabel = formatCalendar1DayShortLabel(prevKey);
-  const scroll = createCalendar1DaySlotGridScroll();
-  scroll.classList.add("calendar-1day-expected-prev-timebox-scroll");
-  scroll.setAttribute(
-    "aria-label",
-    `전일 타임박스 ${prevLabel || prevKey}`,
+  const scroll = createTimeLedgerDayTimeboxElement(
+    buildTimeLedgerDayTimeboxBlocksForYmd(prevKey),
+    {
+      showEmptyMessage: true,
+      showRowLabels: true,
+      emptyMessage: "전날 시작·종료가 있는 시간기록이 없습니다.",
+      matrixAriaLabel: `전일 시간기록 타임박스 ${prevLabel || prevKey}`,
+    },
   );
-  paintCalendar1DaySlotGrid(scroll, prevKey);
+  scroll.classList.add("calendar-1day-expected-prev-timebox-scroll");
   wrap.appendChild(scroll);
   return { wrap, prevKey, prevLabel };
 }

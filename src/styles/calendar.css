@@ -523,7 +523,7 @@
   font-size: 0.6875rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: #475569;
+  color: #4d4d4d;
   text-align: center;
   border-bottom: 1px solid #e8edf3;
   background: transparent;
@@ -543,18 +543,18 @@ button.calendar-1day-pane-section-head--action {
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: inherit;
-  color: #475569;
+  color: #4d4d4d;
   appearance: none;
   -webkit-appearance: none;
 }
 
 button.calendar-1day-pane-section-head--action:hover {
-  color: #1e4d7b;
-  background: #f1f5f9;
+  color: #000000;
+  background: rgba(0, 0, 0, 0.04);
 }
 
 button.calendar-1day-pane-section-head--action:focus-visible {
-  outline: 2px solid #1e4d7b;
+  outline: 2px solid #000000;
   outline-offset: -2px;
 }
 
@@ -581,7 +581,8 @@ button.calendar-1day-pane-section-head--action:focus-visible {
 }
 
 .calendar-1day-view--slot-grid
-  .calendar-1day-expected-prev-timebox-scroll.calendar-1day-slot-grid-scroll {
+  .calendar-1day-expected-prev-timebox-scroll.calendar-1day-slot-grid-scroll,
+.calendar-1day-expected-prev-timebox .time-ledger-day-timebox-scroll {
   flex: 1 1 0;
   min-height: 0;
 }

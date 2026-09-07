@@ -5085,7 +5085,7 @@ function formatLedgerSlotGridClockMin(minOfDay) {
 }
 
 /** 타임박스뷰 — 실제 시작·끝(분) 구간 목록 */
-function buildTimeLedgerDayTimeboxBlocks(dayRows) {
+export function buildTimeLedgerDayTimeboxBlocks(dayRows) {
   const blocks = [];
   for (const r of dayRows || []) {
     const seg = getLedgerRowDayBarSegmentMinutes(r);
@@ -5103,6 +5103,18 @@ function buildTimeLedgerDayTimeboxBlocks(dayRows) {
     });
   }
   return blocks;
+}
+
+/** 해당 날짜 실제 시간기록만 — 캘린더 전일 타임박스 등 */
+export function buildTimeLedgerDayTimeboxBlocksForYmd(ymd) {
+  const key = String(ymd || "")
+    .replace(/\//g, "-")
+    .trim()
+    .slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return [];
+  return buildTimeLedgerDayTimeboxBlocks(
+    loadTimeRows().filter((r) => ledgerRowDateYmdForFilter(r) === key),
+  );
 }
 
 function buildDayProductivityStatsMap(rows) {
