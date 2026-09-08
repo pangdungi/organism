@@ -13203,18 +13203,12 @@ export function render(opts = {}) {
     const lockedOpenMemo = String(
       addContext?._lockedPresetMemo || addContext?.presetMemo || "",
     ).trim();
-    const hasExpectedMemoPreset = !!(
-      addContext?._lockedPresetMemo ||
-      addContext?.presetMemo ||
-      addContext?.presetNextExpectedBlockKey
-    );
     if (taskLogFeedbackInput) {
-      /* 지금 실행하기: 빈 값으로 후기를 지우지 않음(아래에서 프리셋 재적용) */
-      if (hasExpectedMemoPreset) {
-        if (lockedOpenMemo) taskLogFeedbackInput.value = lockedOpenMemo;
-      } else {
-        taskLogFeedbackInput.value = "";
-      }
+      /* 새 기록은 칸을 비운 뒤, 그 예상에 메모가 있을 때만 넣음 */
+      taskLogFeedbackInput.value = lockedOpenMemo;
+    }
+    if (taskLogMemoInnerInput) {
+      taskLogMemoInnerInput.value = lockedOpenMemo;
     }
     if (taskLogMealDetailInput) {
       taskLogMealDetailInput.value = "";
