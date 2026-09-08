@@ -4,18 +4,26 @@
 
 import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
 import { filterKpisByProgressStatus } from "./kpiProgressStatus.js";
-import { kpiHasHabitUnitGoal } from "./kpiHabitUnitGoal.js";
+import {
+  kpiHasHabitUnitGoal,
+  kpiHabitMeasuresFromLedgerMinutes,
+  parseHabitMinuteTargetToMinutes,
+} from "./kpiHabitUnitGoal.js";
+import { isHabitScheduledOnYmd } from "./kpiHabitWeekdays.js";
 import {
   addDaysToYmd,
   collectKpiHabitSuccessDateKeys,
   getKpiHabitTodayNumericValue,
   habitWeekDateKeysMonSun,
 } from "./kpiHabitStreak.js";
+import { resolveKpiDetailLogEntriesLocal } from "./kpiTimeLedgerLogs.js";
 import {
   formatMinutesToKoreanHm,
   formatKpiTargetTimeRequiredDisplay,
   getAccumulatedMinutesForKpiId,
+  getAccumulatedMinutesForKpiIdInDateRange,
   getAccumulatedMinutesForKpiIdOnDate,
+  normalizeKpiLogDateYmd,
   parseKpiTargetTimeRequiredToMinutes,
   syncHabitTrackerLogs,
 } from "./timeKpiSync.js";
@@ -130,10 +138,70 @@ export function collectGoalTrackerActiveHabitKpis(opts = {}) {
   return out;
 }
 
+function getSuccessFailStartYmd(kpi) {
+  const fromTarget = normalizeKpiLogDateYmd(kpi?.targetStartDate || "");
+  if (/^\d{4}-\d{2}-\d{2}$/.test(fromTarget)) return fromTarget;
+  const fromHabit = normalizeKpiLogDateYmd(kpi?.habitTrackerStartDate || "");
+  if (/^\d{4}-\d{2}-\d{2}$/.test(fromHabit)) return fromHabit;
+  return "";
+}
+
+function ymdInWeek(ymd, weekKeys) {
+  const d = normalizeKpiLogDateYmd(ymd);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !weekKeys?.length) return false;
+  return d >= weekKeys[0] && d <= weekKeys[weekKeys.length - 1];
+}
+
+/** 조회 주에 이 KPI와 연결된 시간기록·일지가 있는지 */
+function hasRelatedRecordsInWeek(item, weekKeys) {
+  const kpi = item?.kpi;
+  const kid = String(kpi?.id || "").trim();
+  if (!kid || !weekKeys?.length) return false;
+  const weekStart = weekKeys[0];
+  const weekEnd = weekKeys[weekKeys.length - 1];
+  if (getAccumulatedMinutesForKpiIdInDateRange(kid, weekStart, weekEnd) > 0) {
+    return true;
+  }
+  for (const log of item.logs || []) {
+    if (String(log?.kpiId || "").trim() !== kid) continue;
+    if (ymdInWeek(log?.dateRaw || log?.date || "", weekKeys)) return true;
+  }
+  const entries = resolveKpiDetailLogEntriesLocal(kpi, item.logs || []);
+  for (const entry of entries) {
+    if (ymdInWeek(entry?.dateRaw || entry?.date || "", weekKeys)) return true;
+  }
+  return false;
+}
+
+/** 시작일이 이 주면 항상 표시. 아니면 그 주 기록이 있을 때만 */
+function shouldShowSuccessFailItem(item, weekKeys) {
+  const start = getSuccessFailStartYmd(item?.kpi);
+  if (start && ymdInWeek(start, weekKeys)) return true;
+  if (!start) return true;
+  return hasRelatedRecordsInWeek(item, weekKeys);
+}
+
 /**
  * @param {{ kpi: object, logs: object[], kind?: string }} item
  * @param {string[]} weekKeys
  */
+function offDayCell(ymd) {
+  return {
+    ymd,
+    goal: null,
+    result: "",
+    mark: "",
+    ok: null,
+    pending: false,
+    off: true,
+  };
+}
+
+function isHabitOffDay(kpi, ymd) {
+  if (!kpi?.needHabitTracker) return false;
+  return !isHabitScheduledOnYmd(kpi, ymd);
+}
+
 function buildWeekCells(item, weekKeys) {
   const { kpi, logs } = item;
   const kind = item.kind || "habit";
@@ -193,11 +261,17 @@ function buildWeekCells(item, weekKeys) {
   }
 
   const hasUnit = kpiHasHabitUnitGoal(kpi);
-  const goalNum = hasUnit ? parseNum(kpi.targetValue) : null;
+  const fromMins = kpiHabitMeasuresFromLedgerMinutes(kpi);
+  const goalNum = hasUnit
+    ? fromMins
+      ? parseHabitMinuteTargetToMinutes(kpi.targetValue)
+      : parseNum(kpi.targetValue)
+    : null;
   const success = collectKpiHabitSuccessDateKeys(kpi, logs);
   const unit = String(kpi?.unit || "").trim();
 
   return weekKeys.map((ymd) => {
+    if (isHabitOffDay(kpi, ymd)) return offDayCell(ymd);
     if (ymd > todayYmd) {
       return {
         ymd,
@@ -205,7 +279,7 @@ function buildWeekCells(item, weekKeys) {
         result: "",
         mark: "",
         ok: null,
-        pending: true,
+        pending: false,
       };
     }
     if (hasUnit) {
@@ -337,7 +411,7 @@ export function mountKpiGoalSuccessFailSection(container, opts = {}) {
 
   const items = collectGoalTrackerActiveHabitKpis({
     skipSync: !!opts.skipSync,
-  });
+  }).filter((item) => shouldShowSuccessFailItem(item, weekKeys));
   if (!items.length) {
     const empty = document.createElement("p");
     empty.className = "dream-goals-empty habit-tracker-success-fail-empty";
@@ -398,8 +472,15 @@ export function mountKpiGoalSuccessFailSection(container, opts = {}) {
 
     const tbody = document.createElement("tbody");
     const markClass = (c) => {
+      if (c.off) return "is-off";
       if (c.pending) return "is-pending";
+      if (c.ok == null) return "";
       return c.ok ? "is-ok" : "is-fail";
+    };
+    const dayClass = (c) => {
+      if (c.off) return "is-off";
+      if (c.pending) return "is-pending";
+      return "";
     };
 
     if (kind === "time") {
@@ -444,14 +525,19 @@ export function mountKpiGoalSuccessFailSection(container, opts = {}) {
       tbody.innerHTML = `
         <tr>
           <th scope="row">목표</th>
-          ${cells.map((c) => `<td>${escapeHtml(c.goal || "")}</td>`).join("")}
+          ${cells
+            .map(
+              (c) =>
+                `<td class="${dayClass(c)}">${escapeHtml(c.off ? "" : c.goal || "")}</td>`,
+            )
+            .join("")}
         </tr>
         <tr>
           <th scope="row">결과</th>
           ${cells
             .map(
               (c) =>
-                `<td class="${c.pending ? "is-pending" : ""}">${escapeHtml(c.result || "")}</td>`,
+                `<td class="${dayClass(c)}">${escapeHtml(c.result || "")}</td>`,
             )
             .join("")}
         </tr>

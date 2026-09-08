@@ -1626,6 +1626,12 @@
   );
 }
 
+/* 하는 요일이 아닌 날 — 빈칸 (실패 아님) */
+.lp-kpi-dream-page .habit-tracker-success-fail-table td.is-off {
+  color: transparent;
+  background: #f3f3f3;
+}
+
 .lp-kpi-dream-page .habit-tracker-today-action-todos {
   list-style: none;
   margin: 0 0 0 1.7rem;
