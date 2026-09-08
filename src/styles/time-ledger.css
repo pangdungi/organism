@@ -3707,6 +3707,72 @@
   line-height: 1.45;
 }
 
+.lp-tr2-speech-check-chart {
+  margin-top: 0.15rem;
+}
+
+.lp-tr2-speech-check-chart-hint {
+  margin: 0 0 0.55rem;
+  font-size: var(--lp-tr2-meta);
+  font-weight: 600;
+  color: #666666;
+  line-height: 1.4;
+}
+
+.lp-tr2-speech-check-chart-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.lp-tr2-speech-check-chart-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 4.25rem;
+  grid-template-rows: auto 0.55rem;
+  column-gap: 0.55rem;
+  row-gap: 0.28rem;
+  align-items: center;
+}
+
+.lp-tr2-speech-check-chart-label {
+  grid-column: 1;
+  min-width: 0;
+  font-size: var(--lp-tr2-body);
+  font-weight: 700;
+  color: #111111;
+  line-height: 1.35;
+}
+
+.lp-tr2-speech-check-chart-verdict {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  font-size: var(--lp-tr2-meta);
+  font-weight: 800;
+  color: #4d4d4d;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.lp-tr2-speech-check-chart-row.is-missed .lp-tr2-speech-check-chart-verdict {
+  color: #111111;
+}
+
+.lp-tr2-speech-check-chart-track {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: #d4d4d4;
+  overflow: hidden;
+}
+
+.lp-tr2-speech-check-chart-fill {
+  height: 100%;
+  background: #111111;
+  border-radius: 999px;
+}
+
 .lp-tr2-emotion-freq-row {
   display: grid;
   grid-template-columns: 1fr;

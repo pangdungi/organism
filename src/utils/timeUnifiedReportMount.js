@@ -4601,8 +4601,10 @@ function mountHappinessRoutineSection(scrollWrap, range, opts = {}) {
 function buildConversationReportSnapshot(rows) {
   /** @type {Map<string, { label: string, count: number, minutes: number }>} */
   const typeMap = new Map();
-  /** @type {Map<string, { label: string, count: number, minutes: number }>} */
-  const speechMap = new Map();
+  /** @type {Map<string, { label: string, count: number }>} */
+  const speechKeptMap = new Map();
+  /** @type {Map<string, { label: string, count: number }>} */
+  const speechMissedMap = new Map();
   /** @type {{ name: string, minutes: number, productive: boolean, types: string[], speechChecks: string[] }[]} */
   const entries = [];
   let totalMinutes = 0;
@@ -4642,12 +4644,12 @@ function buildConversationReportSnapshot(rows) {
     }
     const checks = parsed.speechChecks || [];
     if (checks.length) {
-      const checkShare = mins / checks.length;
-      for (const label of checks) {
-        const prev = speechMap.get(label) || { label, count: 0, minutes: 0 };
+      const has = new Set(checks);
+      for (const label of CONVERSATION_SPEECH_CHECK_OPTIONS) {
+        const map = has.has(label) ? speechKeptMap : speechMissedMap;
+        const prev = map.get(label) || { label, count: 0 };
         prev.count += 1;
-        prev.minutes += checkShare;
-        speechMap.set(label, prev);
+        map.set(label, prev);
       }
     }
   }
@@ -4660,16 +4662,26 @@ function buildConversationReportSnapshot(rows) {
       .map((t) => ({
         label: t.label,
         count: t.count,
-        minutes: Math.round(t.minutes),
+        minutes: Math.round(t.minutes || 0),
         pct:
-          denomMin > 0 ? Math.round((t.minutes / denomMin) * 100) : 0,
+          denomMin > 0 ? Math.round(((t.minutes || 0) / denomMin) * 100) : 0,
       }))
       .sort((a, b) => {
-        if (b.minutes !== a.minutes) return b.minutes - a.minutes;
+        if ((b.minutes || 0) !== (a.minutes || 0)) {
+          return (b.minutes || 0) - (a.minutes || 0);
+        }
+        if (b.count !== a.count) return b.count - a.count;
         const ia = order.has(a.label) ? order.get(a.label) : 900;
         const ib = order.has(b.label) ? order.get(b.label) : 900;
         return ia - ib;
       });
+  const toSpeechTags = (map) =>
+    [...map.values()].sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
+      const ia = speechOrder.has(a.label) ? speechOrder.get(a.label) : 900;
+      const ib = speechOrder.has(b.label) ? speechOrder.get(b.label) : 900;
+      return ia - ib;
+    });
   return {
     totalMinutes,
     totalCount,
@@ -4677,7 +4689,8 @@ function buildConversationReportSnapshot(rows) {
     productiveMinutes,
     unproductiveCount,
     typeTags: toTags(typeMap, typeOrder, unproductiveMinutes || totalMinutes),
-    speechTags: toTags(speechMap, speechOrder, totalMinutes),
+    speechTags: toSpeechTags(speechKeptMap),
+    speechMissedTags: toSpeechTags(speechMissedMap),
     entries,
   };
 }
@@ -4715,15 +4728,14 @@ function renderConversationDayNarrative(snap) {
     wrap.appendChild(typeP);
   }
 
-  const speechP = document.createElement("p");
-  speechP.className = "lp-tr2-conv-report-p";
-  if (snap.speechTags.length) {
-    const parts = snap.speechTags.map((t) => `「${t.label}」(${t.count}회)`);
-    speechP.textContent = `말 점검에서 체크된 항목: ${parts.join(", ")}.`;
-  } else {
+  const speechChart = renderSpeechCheckKeepChart(snap);
+  if (speechChart) wrap.appendChild(speechChart);
+  else {
+    const speechP = document.createElement("p");
+    speechP.className = "lp-tr2-conv-report-p";
     speechP.textContent = "말 점검 표에 체크한 항목은 없었습니다.";
+    wrap.appendChild(speechP);
   }
-  wrap.appendChild(speechP);
 
   const named = (snap.entries || []).filter((e) => e.name);
   if (named.length) {
@@ -4752,9 +4764,81 @@ function renderConversationDayNarrative(snap) {
   return wrap;
 }
 
-/** 주간+ — 흑백 목록 (색 막대 블록 없음) */
-function renderConversationPeriodList(title, rows) {
+function collectSpeechCheckChartRows(snap) {
+  const keptMap = new Map(
+    (snap.speechTags || []).map((t) => [t.label, t.count]),
+  );
+  const missMap = new Map(
+    (snap.speechMissedTags || []).map((t) => [t.label, t.count]),
+  );
+  return CONVERSATION_SPEECH_CHECK_OPTIONS.map((label) => {
+    const kept = Number(keptMap.get(label) || 0);
+    const missed = Number(missMap.get(label) || 0);
+    const total = kept + missed;
+    return {
+      label,
+      kept,
+      missed,
+      total,
+      keepPct: total > 0 ? Math.round((kept / total) * 100) : 0,
+    };
+  })
+    .filter((r) => r.total > 0)
+    .sort((a, b) => a.keepPct - b.keepPct || b.missed - a.missed);
+}
+
+/** 말 점검 — 막대가 길수록 지킨 비율. 안 지킨 항목이 위에 */
+function renderSpeechCheckKeepChart(snap) {
+  const rows = collectSpeechCheckChartRows(snap);
   if (!rows.length) return null;
+  const wrap = document.createElement("div");
+  wrap.className = "lp-tr2-speech-check-chart";
+  const h = document.createElement("p");
+  h.className = "lp-tr2-conv-report-label";
+  h.textContent = "말 점검";
+  wrap.appendChild(h);
+  const hint = document.createElement("p");
+  hint.className = "lp-tr2-speech-check-chart-hint";
+  hint.textContent = "막대가 길수록 지킨 비율 · 위쪽이 더 자주 안 지킨 항목";
+  wrap.appendChild(hint);
+  const list = document.createElement("div");
+  list.className = "lp-tr2-speech-check-chart-list";
+  rows.forEach((r) => {
+    const row = document.createElement("div");
+    row.className = "lp-tr2-speech-check-chart-row";
+    if (r.keepPct < 50) row.classList.add("is-missed");
+    const lab = document.createElement("span");
+    lab.className = "lp-tr2-speech-check-chart-label";
+    lab.textContent = r.label;
+    const track = document.createElement("div");
+    track.className = "lp-tr2-speech-check-chart-track";
+    track.setAttribute("role", "img");
+    track.setAttribute(
+      "aria-label",
+      `${r.label} 지킴 ${r.kept}회, 안 지킴 ${r.missed}회`,
+    );
+    if (r.keepPct > 0) {
+      const fill = document.createElement("div");
+      fill.className = "lp-tr2-speech-check-chart-fill";
+      fill.style.width = `${r.keepPct}%`;
+      track.appendChild(fill);
+    }
+    const val = document.createElement("span");
+    val.className = "lp-tr2-speech-check-chart-verdict";
+    if (r.missed > 0 && r.kept === 0) val.textContent = "안 지킴";
+    else if (r.kept > 0 && r.missed === 0) val.textContent = "지킴";
+    else val.textContent = `지킴 ${r.kept} · 안 지킴 ${r.missed}`;
+    row.append(lab, track, val);
+    list.appendChild(row);
+  });
+  wrap.appendChild(list);
+  return wrap;
+}
+
+/** 주간+ — 흑백 목록 (색 막대 블록 없음) */
+function renderConversationPeriodList(title, rows, opts = {}) {
+  if (!rows.length) return null;
+  const countOnly = !!opts.countOnly;
   const block = document.createElement("div");
   block.className = "lp-tr2-conv-report-block";
   const h = document.createElement("p");
@@ -4765,7 +4849,9 @@ function renderConversationPeriodList(title, rows) {
   ul.className = "lp-tr2-conv-report-list";
   rows.forEach((t) => {
     const li = document.createElement("li");
-    li.textContent = `「${t.label}」 ${formatIntegerMinutesDurationKo(t.minutes)} · ${t.count}회`;
+    li.textContent = countOnly
+      ? `「${t.label}」 ${t.count}회`
+      : `「${t.label}」 ${formatIntegerMinutesDurationKo(t.minutes)} · ${t.count}회`;
     ul.appendChild(li);
   });
   block.appendChild(ul);
@@ -4833,11 +4919,8 @@ function mountConversationReportSection(scrollWrap, range, rows) {
     sec.appendChild(note);
   }
 
-  const speechList = renderConversationPeriodList(
-    "말 점검 표",
-    snap.speechTags,
-  );
-  if (speechList) sec.appendChild(speechList);
+  const speechChart = renderSpeechCheckKeepChart(snap);
+  if (speechChart) sec.appendChild(speechChart);
   else {
     const note = document.createElement("p");
     note.className = "lp-tr2-chart-note";
