@@ -9,7 +9,10 @@ import {
   normalizeKpiLogDateYmd,
   kpiShouldUseTimeLedgerLogs,
 } from "./timeKpiSync.js";
-import { kpiHasHabitUnitGoal } from "./kpiHabitUnitGoal.js";
+import {
+  kpiHasHabitUnitGoal,
+  kpiHabitMeasuresFromLedgerMinutes,
+} from "./kpiHabitUnitGoal.js";
 
 export const KPI_LOG_SOURCE_MANUAL = "manual";
 export const KPI_LOG_SOURCE_TIME_LEDGER = "time_ledger";
@@ -82,6 +85,11 @@ export function formatKpiHistoryValueText(log, kpi, opts) {
   const u = kpi?.unit ? String(kpi.unit).trim() : "";
   const ledgerMins = getKpiLogDisplayMinutes(log, kpi);
   const v = String(log?.value ?? "").trim();
+
+  if (kpiHabitMeasuresFromLedgerMinutes(kpi)) {
+    const mins = ledgerMins > 0 ? ledgerMins : 0;
+    return `${mins} ${u || "분"}`;
+  }
 
   /** 매일하기+단위·직접입력 수행값 — 시간 표시보다 우선 */
   if (v && u && (kpiHasHabitUnitGoal(kpi) || (!kpi?.useTimeAsUnit && !kpi?.needHabitTracker))) {

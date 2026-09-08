@@ -445,6 +445,10 @@ export function wireCalendar1DaySlotGridDrag(root, options) {
       try {
         cell.setPointerCapture(e.pointerId);
       } catch (_) {}
+      root.classList.add("calendar-1day-slot-grid-scroll--drag-hold");
+      try {
+        root.style.setProperty("touch-action", "none", "important");
+      } catch (_) {}
     },
     { passive: false },
   );
@@ -454,6 +458,10 @@ export function wireCalendar1DaySlotGridDrag(root, options) {
     const state = drag;
     drag = null;
     root.classList.remove("calendar-1day-slot-grid-scroll--dragging");
+    root.classList.remove("calendar-1day-slot-grid-scroll--drag-hold");
+    try {
+      root.style.removeProperty("touch-action");
+    } catch (_) {}
     try {
       if (state.captureCell?.hasPointerCapture?.(e.pointerId)) {
         state.captureCell.releasePointerCapture(e.pointerId);
@@ -533,6 +541,10 @@ export function wireCalendar1DaySlotGridDrag(root, options) {
     if (!drag || e.pointerId !== drag.pointerId) return;
     drag = null;
     root.classList.remove("calendar-1day-slot-grid-scroll--dragging");
+    root.classList.remove("calendar-1day-slot-grid-scroll--drag-hold");
+    try {
+      root.style.removeProperty("touch-action");
+    } catch (_) {}
     clearDragVisuals(root);
     suppressClickUntil = Date.now() + 300;
   });

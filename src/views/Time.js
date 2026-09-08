@@ -6957,7 +6957,8 @@ export function render(opts = {}) {
     persistActiveViewTimeFilterToSession();
     patchUsageRangeHeadingOnly();
     onFilterChange();
-    requestUsageListScrollToBottomOnce();
+    requestUsageListScrollToTopOnce();
+    el._lpUsageListEnterScrollArmed = false;
     requestTimeLedgerPullForUserQueryChange("swipe");
   }
 
@@ -7065,8 +7066,12 @@ export function render(opts = {}) {
         );
       }
     }
-    const totalWrap = contentWrap.querySelector("[data-usage-total-wrap]");
-    const total = contentWrap.querySelector("[data-usage-total-time]");
+    const headingRoot = el?.isConnected ? el : contentWrap;
+    const totalWrap =
+      headingRoot.querySelector("[data-usage-total-wrap]") ||
+      contentWrap.querySelector("[data-usage-total-wrap]");
+    const totalEls = headingRoot.querySelectorAll("[data-usage-total-time]");
+    const total = totalEls[0] || contentWrap.querySelector("[data-usage-total-time]");
     const reportSpanDays = (() => {
       const a = String(reportRangeStartYmd || "")
         .replace(/\//g, "-")
@@ -7096,18 +7101,24 @@ export function render(opts = {}) {
         totalWrap.style.display = "";
       }
     }
-    if (total && !hideReportHeaderTotal) {
+    if (!hideReportHeaderTotal) {
       const hrs = sumTimeLedgerDayHours(rows);
-      total.textContent = usageHistoryMemoOnlyFilter
+      const label = usageHistoryMemoOnlyFilter
         ? String(mapLedgerRowsToLogMemos(rows).length)
         : formatHoursToHHMM(hrs);
-      if (!usageHistoryMemoOnlyFilter) {
-        syncTimeLedgerTotalOver24Ui(total, hrs);
-      } else {
-        lpTokenRemove(total, "time-ledger-total-over-24");
-        total.classList.remove("is-over-24h");
-        total.removeAttribute("title");
-      }
+      const applyOne = (node) => {
+        if (!node) return;
+        node.textContent = label;
+        if (!usageHistoryMemoOnlyFilter) {
+          syncTimeLedgerTotalOver24Ui(node, hrs);
+        } else {
+          lpTokenRemove(node, "time-ledger-total-over-24");
+          node.classList.remove("is-over-24h");
+          node.removeAttribute("title");
+        }
+      };
+      if (totalEls.length) totalEls.forEach(applyOne);
+      else applyOne(total);
     }
   }
 
@@ -7138,9 +7149,10 @@ export function render(opts = {}) {
   }
 
   function refreshUsageHeadingFromCache() {
-    const filtered = applyUsageListFilters(
-      Array.isArray(allRowsCache) ? allRowsCache : loadTimeRows(),
-    );
+    const rows = Array.isArray(allRowsCache)
+      ? allRowsCache
+      : readTimeLedgerEntriesRaw();
+    const filtered = applyUsageListFilters(rows);
     patchTimeLedgerUsageHeadingInPlace(filtered);
     patchTimeLedgerDayGroupTotalsInPlace();
   }
@@ -8125,11 +8137,9 @@ export function render(opts = {}) {
       if (timeLedgerLayoutView === "report") {
         /* 조회 적용 때만 맨 위. 수정 remount는 기존 스크롤 유지 */
         el._lpReportInquiryScrollToTop = true;
-      } else if (s && e && s !== e) {
+      } else {
         requestUsageListScrollToTopOnce();
         el._lpUsageListEnterScrollArmed = false;
-      } else {
-        requestUsageListScrollToBottomOnce();
       }
       {
         const waitRs =
@@ -11768,7 +11778,11 @@ export function render(opts = {}) {
         if (fromLog.length > 0) row.habitDailyCompleted = fromLog;
       }
     }
-    if (measure?.hasUnitGoal && !sanitizeKpiPerformedValueForRow(row.kpiPerformedValue)) {
+    if (
+      measure?.hasUnitGoal &&
+      !measure?.measureFromLedgerMinutes &&
+      !sanitizeKpiPerformedValueForRow(row.kpiPerformedValue)
+    ) {
       const v = getHabitTrackerLogValueForLedgerEntry(
         measure.storageKey,
         measure.kpiId,
@@ -11782,7 +11796,8 @@ export function render(opts = {}) {
   function syncTaskLogKpiValueField(dateYmd) {
     if (!taskLogKpiValueSection) return;
     const measure = getKpiMeasureInfoForTaskLog();
-    const showField = !!measure?.hasUnitGoal;
+    const showField =
+      !!measure?.hasUnitGoal && !measure?.measureFromLedgerMinutes;
     if (!showField) {
       taskLogKpiValueSection.hidden = true;
       if (taskLogHabitValueInput) taskLogHabitValueInput.value = "";
@@ -12644,7 +12659,11 @@ export function render(opts = {}) {
       }
     }
 
-    if (measure?.hasUnitGoal && guard.kpiPerformedBeforeCloudPull) {
+    if (
+      measure?.hasUnitGoal &&
+      !measure?.measureFromLedgerMinutes &&
+      guard.kpiPerformedBeforeCloudPull
+    ) {
       const rowVal = sanitizeKpiPerformedValueForRow(row.kpiPerformedValue);
       const afterVal = sanitizeKpiPerformedValueForRow(
         getHabitTrackerLogValueForLedgerEntry(
@@ -13370,7 +13389,9 @@ export function render(opts = {}) {
           )
         : [];
     const kpiPerformedBeforeCloudPull =
-      measureInfoForEdit?.hasUnitGoal && recordDateYmd.length >= 10
+      measureInfoForEdit?.hasUnitGoal &&
+      !measureInfoForEdit?.measureFromLedgerMinutes &&
+      recordDateYmd.length >= 10
         ? resolvePerformedValueForTaskLogEdit(
             measureInfoForEdit.storageKey,
             measureInfoForEdit.kpiId,
@@ -14383,14 +14404,17 @@ export function render(opts = {}) {
       );
       const modalRowRaw = editTr?._rowData || addLedgerTr?._rowData;
       const forceRow =
-        modalRowRaw && isUuid(pushedId)
+        modalRowRaw && pushedId
           ? { ...modalRowRaw, id: pushedId, localModifiedAt: Date.now() }
-          : null;
+          : modalRowRaw
+            ? { ...modalRowRaw, localModifiedAt: Date.now() }
+            : null;
       if (forceRow) {
         if (editTr) editTr._rowData = forceRow;
         if (addLedgerTr) addLedgerTr._rowData = forceRow;
+        const cacheId = String(forceRow.id || pushedId || "").trim();
         const cacheIdx = (Array.isArray(allRowsCache) ? allRowsCache : []).findIndex(
-          (r) => String(r?.id || "").trim() === pushedId,
+          (r) => String(r?.id || "").trim() === cacheId,
         );
         if (cacheIdx >= 0) allRowsCache[cacheIdx] = forceRow;
         else if (Array.isArray(allRowsCache)) allRowsCache.push(forceRow);
@@ -14404,11 +14428,13 @@ export function render(opts = {}) {
       );
       allRowsCache = rowsToPersist;
       /* 로컬 즉시 저장·모달 닫기. 서버 upsert는 이어서(대기열에 묶이지 않게 skipPull) */
-      const forceRows = forceRow ? [forceRow] : [];
+      const forceRows =
+        forceRow && isUuid(String(forceRow.id || "").trim()) ? [forceRow] : [];
       const pushPromise = saveTimeRows(rowsToPersist, {
         forceRows,
         skipPull: true,
       });
+      allRowsCache = rowsToPersist;
       if (!editTr) {
         onFilterChange(true);
       } else if (lpTokenHas(editTr, "time-ledger-mobile-card")) {
@@ -14417,7 +14443,9 @@ export function render(opts = {}) {
         const list = contentWrap.querySelector(".calendar-1day-timeline-list");
         const item = resolveUsageTimelineItemFromCardNode(editTr);
         if (list && item && rowForCard) {
-          const filtered = applyUsageListFilters(rowsToPersist);
+          const filtered = applyUsageListFilters(
+            Array.isArray(allRowsCache) ? allRowsCache : rowsToPersist,
+          );
           const id = String(rowForCard.id || "").trim();
           const stillIn = filtered.some((r) => String(r?.id || "").trim() === id);
           if (!stillIn) {
@@ -14427,10 +14455,12 @@ export function render(opts = {}) {
         }
         try {
           refreshUsageHeadingFromCache();
+          rememberTimeLedgerPaintSignature();
         } catch (_) {}
       } else {
         try {
           refreshUsageHeadingFromCache();
+          rememberTimeLedgerPaintSignature();
         } catch (_) {}
       }
 
@@ -14512,6 +14542,12 @@ export function render(opts = {}) {
       }
       closeTaskLogModal();
       el._updateTotal?.();
+      if (editTr) {
+        try {
+          refreshUsageHeadingFromCache();
+          rememberTimeLedgerPaintSignature();
+        } catch (_) {}
+      }
       if (shouldNotifyHabit) {
         notifyHabitTrackerUiAfterTimeSave();
       }
@@ -15645,7 +15681,7 @@ export function render(opts = {}) {
     const cardsWrap = contentWrap.querySelector(
       '[data-legacy~="time-ledger-mobile-cards"]',
     );
-    requestUsageListScrollToBottomOnce();
+    requestUsageListScrollToTopOnce();
     applyUsageListScrollIfPending(cardsWrap);
     el._lpUsageListEnterScrollArmed = false;
   }
@@ -15770,6 +15806,9 @@ export function render(opts = {}) {
       item?.remove();
       if (parent) applyUsageTimelineEndUnderStartDisplay(parent);
       if (!rowData) {
+        try {
+          refreshUsageHeadingFromCache();
+        } catch (_) {}
         updateTotal();
         return;
       }
@@ -15777,6 +15816,10 @@ export function render(opts = {}) {
       const { next } = removeTimeLedgerRowFromRows(loadTimeRows(), rowData);
       allRowsCache = next;
       writeTimeLedgerEntriesRaw(next);
+      try {
+        refreshUsageHeadingFromCache();
+        rememberTimeLedgerPaintSignature();
+      } catch (_) {}
       updateTotal();
       const entryId = String(rowData?.id || "").trim();
       void (async () => {
@@ -16243,12 +16286,9 @@ export function render(opts = {}) {
           });
         }
       }
-      const totalEl = contentWrap.querySelector("[data-usage-total-time]");
-      if (totalEl) {
-        const hrs = sumTimeLedgerDayHours(liveRows);
-        totalEl.textContent = formatHoursToHHMM(hrs);
-        syncTimeLedgerTotalOver24Ui(totalEl, hrs);
-      }
+      try {
+        refreshUsageHeadingFromCache();
+      } catch (_) {}
       updateTotal();
     };
     if (
@@ -16366,7 +16406,7 @@ export function render(opts = {}) {
   ledgerContainer.appendChild(tableWrap);
   contentWrap.appendChild(ledgerContainer);
 
-  requestUsageListScrollToBottomOnce();
+  requestUsageListScrollToTopOnce();
   onFilterChange(true);
 
   function syncUsageHistoryRangeFromSession() {
@@ -16391,15 +16431,7 @@ export function render(opts = {}) {
       const cardsWrap = contentWrap.querySelector(
         '[data-legacy~="time-ledger-mobile-cards"]',
       );
-      if (
-        usageHistoryRangeStartYmd &&
-        usageHistoryRangeEndYmd &&
-        usageHistoryRangeStartYmd !== usageHistoryRangeEndYmd
-      ) {
-        requestUsageListScrollToTopOnce();
-      } else {
-        requestUsageListScrollToBottomOnce();
-      }
+      requestUsageListScrollToTopOnce();
       applyUsageListScrollIfPending(cardsWrap);
       el._lpUsageListEnterScrollArmed = false;
     }

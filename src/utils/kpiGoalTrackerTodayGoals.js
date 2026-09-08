@@ -3,7 +3,11 @@
  */
 
 import { createHabitTrackerTodayRingElement } from "./habitTrackerTodayRing.js";
-import { kpiHasHabitUnitGoal } from "./kpiHabitUnitGoal.js";
+import {
+  kpiHasHabitUnitGoal,
+  kpiHabitMeasuresFromLedgerMinutes,
+  parseHabitMinuteTargetToMinutes,
+} from "./kpiHabitUnitGoal.js";
 import { isKpiHabitDateBeforeStart } from "./kpiHabitTrackerStartDate.js";
 import {
   collectKpiHabitSuccessDateKeys,
@@ -118,6 +122,11 @@ function formatTodayTargetLabel(kpi, data, todayYmd) {
 
   if (mode === "habit") {
     if (kpiHasHabitUnitGoal(kpi)) {
+      if (kpiHabitMeasuresFromLedgerMinutes(kpi)) {
+        const goalNum = parseHabitMinuteTargetToMinutes(kpi.targetValue);
+        const result = getKpiHabitTodayNumericValue(kpi, logs, todayYmd);
+        return `${formatDisplayNum(result)} / ${formatDisplayNum(goalNum)}${unit ? ` ${unit}` : " 분"}`;
+      }
       const goalNum = parseNum(kpi.targetValue);
       const result = getKpiHabitTodayNumericValue(kpi, logs, todayYmd);
       return `${formatDisplayNum(result)} / ${formatDisplayNum(goalNum)}${unit}`;

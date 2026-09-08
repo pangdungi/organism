@@ -6,8 +6,13 @@ import { resolveKpiDetailLogEntriesLocal } from "./kpiTimeLedgerLogs.js";
 import {
   normalizeKpiLogDateYmd,
   getKpiLedgerPerformedValueOnDate,
+  getAccumulatedMinutesForKpiIdOnDate,
 } from "./timeKpiSync.js";
 import { isHabitScheduledOnYmd } from "./kpiHabitWeekdays.js";
+import {
+  kpiHabitMeasuresFromLedgerMinutes,
+  parseHabitMinuteTargetToMinutes,
+} from "./kpiHabitUnitGoal.js";
 
 function parseKpiLogNumeric(val) {
   const n = parseFloat(String(val || "").replace(/[^0-9.-]/g, ""));
@@ -28,6 +33,9 @@ export function getKpiHabitTodayNumericValue(kpi, storedLogs = [], todayYmd = ""
   if (!/^\d{4}-\d{2}-\d{2}$/.test(today)) return 0;
   const kid = String(kpi?.id || "").trim();
   if (!kid) return 0;
+  if (kpiHabitMeasuresFromLedgerMinutes(kpi)) {
+    return getAccumulatedMinutesForKpiIdOnDate(kid, kpi?.name, today);
+  }
   for (const log of storedLogs || []) {
     if (String(log?.kpiId || "").trim() !== kid) continue;
     const dk = normalizeKpiLogDateYmd(log?.dateRaw || log?.date || "");
@@ -79,9 +87,19 @@ export function collectKpiHabitSuccessDateKeys(kpi, storedLogs = []) {
   const entries = resolveKpiDetailLogEntriesLocal(kpi, storedLogs);
   /** @type {Set<string>} */
   const keys = new Set();
+  const fromMins = kpiHabitMeasuresFromLedgerMinutes(kpi);
+  const needMins = fromMins
+    ? parseHabitMinuteTargetToMinutes(kpi?.targetValue)
+    : 0;
+  const kid = String(kpi?.id || "").trim();
   for (const log of entries) {
     const dk = normalizeKpiLogDateYmd(log?.dateRaw || log?.date || "");
-    if (dk) keys.add(dk);
+    if (!dk) continue;
+    if (fromMins && needMins > 0) {
+      const dayMins = getAccumulatedMinutesForKpiIdOnDate(kid, kpi?.name, dk);
+      if (dayMins < needMins) continue;
+    }
+    keys.add(dk);
   }
   return keys;
 }

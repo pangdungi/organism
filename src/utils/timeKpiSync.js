@@ -420,6 +420,9 @@ export function getKpiAccumulatedMeasureValue(kpi, storedLogs = []) {
     const unit = String(kpi.unit || "").trim();
     const target = String(kpi.targetValue ?? "").trim();
     if (!unit || !target) return 0;
+    if (unit.match(/^(분|min|mins|분\(min\))$/i)) {
+      return getAccumulatedMinutesForKpi(kpi);
+    }
   }
   const { start, end } = getKpiTargetDateRange(kpi);
   const logs = Array.isArray(storedLogs) ? storedLogs : [];
@@ -1289,6 +1292,12 @@ function ledgerRowDailyCompleted(row) {
 function kpiAcceptsPerformedValueFromTimeLedger(kpi) {
   if (!kpi) return false;
   if (kpi.useTimeAsUnit || kpi.useTaskCompletionGoal) return false;
+  if (
+    habitKpiHasUnitGoal(kpi) &&
+    /^(분|min|mins|분\(min\))$/i.test(String(kpi.unit || "").trim())
+  ) {
+    return false;
+  }
   if (kpi.needHabitTracker) return habitKpiHasUnitGoal(kpi);
   return kpiHasTargetValueAndUnit(kpi);
 }

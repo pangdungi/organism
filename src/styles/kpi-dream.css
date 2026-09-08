@@ -3142,6 +3142,35 @@
   display: none !important;
 }
 
+.dream-kpi-unit-input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.dream-kpi-unit-input-row input[name="unit"] {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dream-kpi-unit-min-check {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
+  margin: 0 0 0.15rem;
+  white-space: nowrap;
+  cursor: pointer;
+  color: #000;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.dream-kpi-unit-min-check[hidden] {
+  display: none !important;
+}
+
 .dream-kpi-card-progress-bar--empty .dream-kpi-card-progress-fill {
   width: 0 !important;
 }

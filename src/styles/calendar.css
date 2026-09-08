@@ -622,7 +622,8 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   -webkit-touch-callout: none;
 }
 
-.calendar-1day-view--slot-grid .calendar-1day-slot-grid-scroll--dragging {
+.calendar-1day-view--slot-grid .calendar-1day-slot-grid-scroll--dragging,
+.calendar-1day-view--slot-grid .calendar-1day-slot-grid-scroll--drag-hold {
   touch-action: none;
 }
 
@@ -809,6 +810,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
 
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--filled {
   cursor: grab;
+  touch-action: none;
 }
 
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-cell--drag-source {

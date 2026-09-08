@@ -20,6 +20,10 @@ import {
   formatKpiHabitPeriodRangeLabel,
 } from "./kpiHabitStreak.js";
 import {
+  kpiHabitMeasuresFromLedgerMinutes,
+  parseHabitMinuteTargetToMinutes,
+} from "./kpiHabitUnitGoal.js";
+import {
   countKpiTaskCompletionsThisWeek,
   resolveKpiTaskCompletionCounts,
 } from "./kpiTaskCompletionEvents.js";
@@ -214,14 +218,17 @@ export function kpiTargetValueFieldHtml(kpi, escapeHtml, opts = {}) {
   const val = kpi
     ? useTime
       ? kpi.targetTimeRequired || ""
-      : sanitizeNumericInput(kpi.targetValue)
+      : kpiHabitMeasuresFromLedgerMinutes(kpi)
+        ? String(parseHabitMinuteTargetToMinutes(kpi.targetValue) || "")
+        : sanitizeNumericInput(kpi.targetValue)
     : "";
   const valueAttr = kpi ? ` value="${escapeHtml(val)}"` : "";
   const timePh = opts.timePlaceholder ?? "1시간 : 01:00 20분 : 00:20";
   const higherPh = opts.higherPlaceholder ?? "예) 99";
+  const fromMins = kpiHabitMeasuresFromLedgerMinutes(kpi);
   const inputAttrs = useTime
     ? ` placeholder="${timePh}"`
-    : ` placeholder="${higherPh}" inputmode="numeric"`;
+    : ` placeholder="${fromMins ? "예) 30분, 60분, 90분" : higherPh}" inputmode="numeric"`;
   return `
       <label><span class="dream-kpi-target-label-text">${useTime ? "목표 시간" : "목표값"}</span></label>
       <input type="text" name="targetValue"${valueAttr}${inputAttrs} />
@@ -247,9 +254,16 @@ export function kpiUnitFieldHtml(kpi, escapeHtml, opts = {}) {
     : kpi
       ? ` value="${escapeHtml(unitVal)}"`
       : "";
+  const minChecked = kpiHabitMeasuresFromLedgerMinutes(kpi);
   return `
     <label>단위</label>
-    <input type="text" name="unit"${unitAttrs} placeholder="${escapeHtml(unitPlaceholder)}" />
+    <div class="dream-kpi-unit-input-row">
+      <input type="text" name="unit"${unitAttrs} placeholder="${escapeHtml(unitPlaceholder)}" />
+      <label class="lp-modal-field-subcheck__label dream-kpi-unit-min-check" data-kpi-habit-unit-min hidden>
+        <input type="checkbox" name="habitUnitMinutes" class="lp-modal-field-subcheck__input" data-legacy="lp-modal-field-subcheck__input"${minChecked ? " checked" : ""} />
+        <span class="lp-modal-field-subcheck__text" data-legacy="lp-modal-field-subcheck__text">분(min)</span>
+      </label>
+    </div>
   `;
 }
 
@@ -331,12 +345,25 @@ export function validateKpiActionForm(form, opts = {}) {
         'input[name="trackHabitTargetValue"]',
       )?.checked;
       if (trackHabitTarget) {
-        const targetValue = sanitizeNumericInput(
-          (form.targetValue?.value || "").trim(),
-        );
+        const minutesOn = !!form.querySelector(
+          'input[name="habitUnitMinutes"]',
+        )?.checked;
         const unit = (form.unit?.value || "").trim();
-        if (!targetValue) addError("targetValue", "목표값을 입력해 주세요.");
-        if (!unit) addError("unit", "단위를 입력해 주세요.");
+        if (minutesOn) {
+          const mins = parseHabitMinuteTargetToMinutes(
+            (form.targetValue?.value || "").trim(),
+          );
+          if (mins <= 0) {
+            addError("targetValue", "목표 분을 숫자로 입력해 주세요. 예) 30분, 60분, 90분");
+          }
+          if (!unit) addError("unit", "단위를 입력해 주세요.");
+        } else {
+          const targetValue = sanitizeNumericInput(
+            (form.targetValue?.value || "").trim(),
+          );
+          if (!targetValue) addError("targetValue", "목표값을 입력해 주세요.");
+          if (!unit) addError("unit", "단위를 입력해 주세요.");
+        }
       }
     } else if (mode === "manual") {
       const targetValue = sanitizeNumericInput((form.targetValue?.value || "").trim());
@@ -471,6 +498,9 @@ export function readKpiGoalModeFormFields(
     const trackHabitTarget = !!form.querySelector(
       'input[name="trackHabitTargetValue"]',
     )?.checked;
+    const minutesOn = !!form.querySelector(
+      'input[name="habitUnitMinutes"]',
+    )?.checked;
     if (!trackHabitTarget) {
       return {
         useTimeAsUnit: false,
@@ -490,8 +520,10 @@ export function readKpiGoalModeFormFields(
       useTimeAsUnit: false,
       needHabitTracker: true,
       useTaskCompletionGoal: false,
-      unit: (form.unit?.value || "").trim(),
-      targetValue: sanitizeNumericInput(targetRaw) || "",
+      unit: minutesOn ? "분" : (form.unit?.value || "").trim(),
+      targetValue: minutesOn
+        ? String(parseHabitMinuteTargetToMinutes(targetRaw) || "")
+        : sanitizeNumericInput(targetRaw) || "",
       targetTimeRequired: "",
       habitWeekdays,
       ...period,
@@ -571,6 +603,10 @@ export function bindKpiGoalModeForm(form, kpi = null, opts = {}) {
   const trackHabitTargetCheck = form.querySelector(
     'input[name="trackHabitTargetValue"]',
   );
+  const habitUnitMinutesCheck = form.querySelector(
+    'input[name="habitUnitMinutes"]',
+  );
+  const habitUnitMinutesWrap = form.querySelector("[data-kpi-habit-unit-min]");
   const periodFieldsBlock = form.querySelector("[data-kpi-period-fields]");
   const goalModeRadios = form.querySelectorAll('input[name="kpiGoalMode"]');
   const kpiMode = kpi ? resolveKpiGoalMode(kpi) : "";
@@ -592,9 +628,16 @@ export function bindKpiGoalModeForm(form, kpi = null, opts = {}) {
       return;
     }
     if (mode === "habit") {
+      const minutesOn = !!habitUnitMinutesCheck?.checked;
       if (labelSpan) labelSpan.textContent = "목표값";
-      if (targetInput) targetInput.placeholder = habitTargetPlaceholder;
-      if (unitInput) unitInput.placeholder = habitUnitPlaceholder;
+      if (targetInput) {
+        targetInput.placeholder = minutesOn
+          ? "예) 30분, 60분, 90분"
+          : habitTargetPlaceholder;
+      }
+      if (unitInput) {
+        unitInput.placeholder = minutesOn ? "분" : habitUnitPlaceholder;
+      }
       return;
     }
     if (labelSpan) labelSpan.textContent = "목표값";
@@ -613,6 +656,10 @@ export function bindKpiGoalModeForm(form, kpi = null, opts = {}) {
       mode === "manual" ||
       (isHabit && trackHabitTarget);
     const showUnitField = mode === "manual" || (isHabit && trackHabitTarget);
+    const minutesOn = isHabit && trackHabitTarget && !!habitUnitMinutesCheck?.checked;
+    if (habitUnitMinutesWrap) {
+      habitUnitMinutesWrap.hidden = !(isHabit && trackHabitTarget);
+    }
     if (targetFieldsRow) targetFieldsRow.hidden = !showTargetFields;
     if (unitFieldWrap) unitFieldWrap.hidden = !showUnitField;
     /* 시작일·마감일은 목표 방식과 무관하게 표시(기본 KPI는 HTML 자체가 없음) */
@@ -620,7 +667,14 @@ export function bindKpiGoalModeForm(form, kpi = null, opts = {}) {
     syncTargetLabelForDirection();
 
     const onTime = mode === "time";
-    if (unitInput && showUnitField) {
+    if (unitInput && showUnitField && minutesOn) {
+      const cur = (unitInput.value || "").trim();
+      if (cur && cur !== "분" && cur !== "시간") savedUnit = cur;
+      unitInput.value = "분";
+      unitInput.readOnly = true;
+      unitInput.setAttribute("aria-readonly", "true");
+      unitInput.classList.add("dream-kpi-input-readonly");
+    } else if (unitInput && showUnitField) {
       unitInput.readOnly = false;
       unitInput.removeAttribute("aria-readonly");
       unitInput.classList.remove("dream-kpi-input-readonly");
@@ -653,6 +707,21 @@ export function bindKpiGoalModeForm(form, kpi = null, opts = {}) {
   );
   trackHabitTargetCheck?.addEventListener("change", () => {
     clearKpiFormFieldErrors(form);
+    sync();
+  });
+  habitUnitMinutesCheck?.addEventListener("change", () => {
+    clearKpiFormFieldErrors(form);
+    if (habitUnitMinutesCheck.checked && targetInput) {
+      const raw = (targetInput.value || "").trim();
+      if (raw) {
+        const mins = parseHabitMinuteTargetToMinutes(raw);
+        if (mins > 0) targetInput.value = String(mins);
+      }
+    } else if (!habitUnitMinutesCheck.checked && targetInput) {
+      if (unitInput && (unitInput.value || "").trim() === "분") {
+        unitInput.value = savedUnit || "";
+      }
+    }
     sync();
   });
   sync();
@@ -808,7 +877,9 @@ export function computeKpiProgress(kpi, deps) {
     );
     const currentVal = getKpiHabitTodayNumericValue(kpi, kpiLogs, todayYmd);
     const habitAccumulatedVal = getKpiAccumulatedMeasureValue(kpi, kpiLogs);
-    const targetVal = parseNum(kpi.targetValue);
+    const targetVal = kpiHabitMeasuresFromLedgerMinutes(kpi)
+      ? parseHabitMinuteTargetToMinutes(kpi.targetValue)
+      : parseNum(kpi.targetValue);
     const progress =
       targetVal > 0 ? Math.min(100, (currentVal / targetVal) * 100) : 0;
     const isCompleted = targetVal > 0 && currentVal >= targetVal;
@@ -958,10 +1029,13 @@ export function buildKpiCardTimePresentation(kpi, progressResult, formatNum) {
 
     if (hasUnitGoal) {
       const unitSuffix = kpi.unit ? " " + kpi.unit : "";
+      const fromMins = kpiHabitMeasuresFromLedgerMinutes(kpi);
       const currentStr = formatNum(currentVal);
-      const targetStr = kpi.targetValue
-        ? String(kpi.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-        : "—";
+      const targetStr = fromMins
+        ? formatNum(progressResult.targetVal)
+        : kpi.targetValue
+          ? String(kpi.targetValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+          : "—";
       const accumRaw = progressResult.habitAccumulatedVal;
       const accumStr = formatNum(
         accumRaw == null || Number.isNaN(Number(accumRaw))

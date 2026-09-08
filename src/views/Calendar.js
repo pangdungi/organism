@@ -5237,7 +5237,6 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
                     "touch",
                     "important",
                   );
-                  scrollEl.style.setProperty("touch-action", "pan-y", "important");
                 }
                 const cardsScrollEl = el.querySelector(
                   ".calendar-1day-expected-cards-scroll",

@@ -20,6 +20,7 @@ import { applyHappinessKpiTimestampsOnSave } from "./happinessKpiMapSupabase.js"
 import { applyHealthKpiTimestampsOnSave } from "./healthKpiMapSupabase.js";
 import { formatKpiHistoryValueText } from "./kpiLogFields.js";
 import { kpiHasHabitUnitGoal } from "./kpiHabitStreak.js";
+import { kpiHabitMeasuresFromLedgerMinutes } from "./kpiHabitUnitGoal.js";
 import {
   readKpiMapScopedStorageRaw,
   writeKpiMapScopedStorageRaw,
@@ -551,6 +552,7 @@ export function getKpiMeasureInfoByTaskName(_taskName, taskId = "") {
 export function kpiShowTimeLedgerMeasureField(kpi) {
   if (!kpi) return false;
   if (kpi.direction === "lower") return false;
+  if (kpiHabitMeasuresFromLedgerMinutes(kpi)) return false;
   return kpiHasTargetValueAndUnit(kpi);
 }
 
@@ -710,6 +712,7 @@ export function getKpiMeasureInfoByKpiId(kpiId) {
       hasUnitGoal,
       unit: String(kpi.unit || "").trim(),
       needHabitTracker: !!kpi.needHabitTracker,
+      measureFromLedgerMinutes: kpiHabitMeasuresFromLedgerMinutes(kpi),
     };
   }
   return null;
