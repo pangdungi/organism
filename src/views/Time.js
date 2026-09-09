@@ -10717,6 +10717,8 @@ export function render(opts = {}) {
 
   /** 마감 지우기 버튼으로만 true — 저장 시 기존 마감을 빈 값으로 덮을지 여부 */
   let taskLogEndClearedByUser = false;
+  /** 이번 모달에서 사용자가 마감을 직접 넣었는지(타이핑·지금·마지막·갭·하루끝·±) */
+  let taskLogEndEnteredByUserThisOpen = false;
 
   function setEndFromDatetime(dtStr) {
     if (!dtStr || typeof dtStr !== "string") {
@@ -10924,7 +10926,10 @@ export function render(opts = {}) {
   taskLogTimeEnd?.addEventListener("beforeinput", beforeInputTimeDigitsOnly);
   taskLogTimeEnd?.addEventListener("input", () => {
     sanitizeTaskLogTimeField(taskLogTimeEnd);
-    if ((taskLogTimeEnd?.value || "").trim()) taskLogEndClearedByUser = false;
+    if ((taskLogTimeEnd?.value || "").trim()) {
+      taskLogEndClearedByUser = false;
+      taskLogEndEnteredByUserThisOpen = true;
+    }
     updateEndTimeClearVisibility();
     updateTaskLogTimeOrderWarning();
   });
@@ -11042,7 +11047,10 @@ export function render(opts = {}) {
             return;
           }
           if (canFillStart) setStartFromDatetime(`${dateVal}T${prevEnd}`);
-          if (canFillEnd) setEndFromDatetime(`${dateVal}T${nextStart}`);
+          if (canFillEnd) {
+            taskLogEndEnteredByUserThisOpen = true;
+            setEndFromDatetime(`${dateVal}T${nextStart}`);
+          }
           lastFocusedTimeField = canFillEnd ? "end" : "start";
           updateEndTimeClearVisibility();
           updateTaskLogTimeOrderWarning();
@@ -11076,6 +11084,7 @@ export function render(opts = {}) {
             if (taskLogTimeStart) taskLogTimeStart.value = latest;
             syncStartToHidden();
           } else {
+            taskLogEndEnteredByUserThisOpen = true;
             if (taskLogTimeEnd) taskLogTimeEnd.value = latest;
             syncEndToHidden();
           }
@@ -11084,6 +11093,7 @@ export function render(opts = {}) {
         }
 
         if (btn.dataset.dayEnd === "true") {
+          taskLogEndEnteredByUserThisOpen = true;
           if (taskLogTimeEnd) taskLogTimeEnd.value = "23:59";
           syncEndToHidden();
           setTaskLogQuickAdjustActive(btn);
@@ -11096,6 +11106,7 @@ export function render(opts = {}) {
             if (taskLogTimeStart) taskLogTimeStart.value = newTime;
             syncStartToHidden();
           } else {
+            taskLogEndEnteredByUserThisOpen = true;
             if (taskLogTimeEnd) taskLogTimeEnd.value = newTime;
             syncEndToHidden();
           }
@@ -11124,6 +11135,7 @@ export function render(opts = {}) {
             if (taskLogTimeStart) taskLogTimeStart.value = newTime;
             syncStartToHidden();
           } else {
+            taskLogEndEnteredByUserThisOpen = true;
             if (taskLogTimeEnd) taskLogTimeEnd.value = newTime;
             syncEndToHidden();
           }
@@ -12809,18 +12821,14 @@ export function render(opts = {}) {
         taskLogTimeStart.defaultValue = startHhMm;
       } catch (_) {}
     }
-    if (clearEnd) {
-      const typedEnd = (taskLogTimeEnd?.value || "").trim();
-      /* 사용자가 이미 넣은 마감은 기본값·날짜 sync가 지우지 않음 */
-      if (!typedEnd) {
-        if (taskLogTimeEnd) {
-          taskLogTimeEnd.value = "";
-          try {
-            taskLogTimeEnd.defaultValue = "";
-          } catch (_) {}
-        }
-        if (taskLogEndInput) taskLogEndInput.value = "";
+    if (clearEnd && !taskLogEndEnteredByUserThisOpen) {
+      if (taskLogTimeEnd) {
+        taskLogTimeEnd.value = "";
+        try {
+          taskLogTimeEnd.defaultValue = "";
+        } catch (_) {}
       }
+      if (taskLogEndInput) taskLogEndInput.value = "";
     }
     syncStartToHidden();
     syncEndToHidden();
@@ -13211,6 +13219,7 @@ export function render(opts = {}) {
     taskLogEditTr = null;
     taskLogEditExclude = null;
     taskLogEndClearedByUser = false;
+    taskLogEndEnteredByUserThisOpen = false;
     pendingEditStartTime = "";
     taskLogSelectedPlannedSlot = null;
     clearTaskLogModalCheckedTodoIds();
