@@ -9847,6 +9847,13 @@ export function render(opts = {}) {
     }
   }
 
+  function syncTaskLogPurchaseReviewSectionOrder() {
+    if (!taskLogScrollArea || !taskLogMemoSection) return;
+    const tn = (taskLogTaskDropdown?._getValue?.() || "").trim();
+    if (!isTaskLogPurchaseReviewTask(tn)) return;
+    taskLogScrollArea.appendChild(taskLogMemoSection);
+  }
+
   function syncTaskLogRatingSectionUi() {
     const show = shouldShowTaskLogRatingSection();
     const emotional = isTaskLogModalEmotionalTask();
@@ -9934,6 +9941,7 @@ export function render(opts = {}) {
       syncTaskLogContentEvalChips();
     }
     syncTaskLogEmotionSectionOrder();
+    syncTaskLogPurchaseReviewSectionOrder();
   }
 
   function setTaskLogTimeRating(value) {
@@ -10357,8 +10365,13 @@ export function render(opts = {}) {
       "is-content-detail-task",
       showChipDetail,
     );
+    taskLogScrollArea?.classList?.toggle(
+      "is-purchase-review-task",
+      isTaskLogPurchaseReviewTask(tn),
+    );
     syncTaskLogConversationSectionOrder();
     syncTaskLogEmotionSectionOrder();
+    syncTaskLogPurchaseReviewSectionOrder();
     updateTaskLogMemoCopyForProductivity(tn);
   }
   let taskLogMemoTags = [];
@@ -15606,6 +15619,16 @@ export function render(opts = {}) {
     el._lpUsageListScrollToBottomPending = false;
   }
 
+  /** 탭 진입·3분할 메인 복귀 — 하루면 최신(아래), 주·월 조회 기간이면 처음부터(위) */
+  function requestUsageListEnterScrollOnce() {
+    const multiDay =
+      !!usageHistoryRangeStartYmd &&
+      !!usageHistoryRangeEndYmd &&
+      usageHistoryRangeStartYmd !== usageHistoryRangeEndYmd;
+    if (multiDay) requestUsageListScrollToTopOnce();
+    else requestUsageListScrollToBottomOnce();
+  }
+
   /** 사용내역 목록 — 하루 진입·날짜 변경 시 1회만 맨 아래(최근 기록)로 스크롤 */
   function requestUsageListScrollToBottomOnce() {
     try {
@@ -15675,7 +15698,7 @@ export function render(opts = {}) {
     const cardsWrap = contentWrap.querySelector(
       '[data-legacy~="time-ledger-mobile-cards"]',
     );
-    requestUsageListScrollToTopOnce();
+    requestUsageListEnterScrollOnce();
     applyUsageListScrollIfPending(cardsWrap);
     el._lpUsageListEnterScrollArmed = false;
   }
@@ -16400,7 +16423,7 @@ export function render(opts = {}) {
   ledgerContainer.appendChild(tableWrap);
   contentWrap.appendChild(ledgerContainer);
 
-  requestUsageListScrollToTopOnce();
+  requestUsageListEnterScrollOnce();
   onFilterChange(true);
 
   function syncUsageHistoryRangeFromSession() {
@@ -16425,7 +16448,7 @@ export function render(opts = {}) {
       const cardsWrap = contentWrap.querySelector(
         '[data-legacy~="time-ledger-mobile-cards"]',
       );
-      requestUsageListScrollToTopOnce();
+      requestUsageListEnterScrollOnce();
       applyUsageListScrollIfPending(cardsWrap);
       el._lpUsageListEnterScrollArmed = false;
     }
