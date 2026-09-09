@@ -10719,6 +10719,29 @@ export function render(opts = {}) {
   let taskLogEndClearedByUser = false;
   /** 이번 모달에서 사용자가 마감을 직접 넣었는지(타이핑·지금·마지막·갭·하루끝·±) */
   let taskLogEndEnteredByUserThisOpen = false;
+  /** 새 기록 오픈 직후 — 모바일 + 탭이 「마지막」에 전달되어 시작=마감이 되는 동안 */
+  let taskLogNewEntryAdjustGuardUntil = 0;
+
+  function taskLogNewEntryAdjustGuarded() {
+    return !taskLogEditTr && Date.now() < taskLogNewEntryAdjustGuardUntil;
+  }
+
+  function clearTaskLogEndIfCopiedFromStart() {
+    if (taskLogEditTr || taskLogEndEnteredByUserThisOpen) return;
+    const endV = normalizeHhMm((taskLogTimeEnd?.value || "").trim());
+    const startV = normalizeHhMm((taskLogTimeStart?.value || "").trim());
+    if (!endV || !startV || endV !== startV) return;
+    if (taskLogTimeEnd) {
+      taskLogTimeEnd.value = "";
+      try {
+        taskLogTimeEnd.defaultValue = "";
+      } catch (_) {}
+    }
+    if (taskLogEndInput) taskLogEndInput.value = "";
+    syncEndToHidden();
+    updateEndTimeClearVisibility();
+    updateTaskLogTimeOrderWarning();
+  }
 
   function setEndFromDatetime(dtStr) {
     if (!dtStr || typeof dtStr !== "string") {
@@ -10924,11 +10947,18 @@ export function render(opts = {}) {
     syncEndToHidden();
   });
   taskLogTimeEnd?.addEventListener("beforeinput", beforeInputTimeDigitsOnly);
-  taskLogTimeEnd?.addEventListener("input", () => {
+  taskLogTimeEnd?.addEventListener("input", (e) => {
     sanitizeTaskLogTimeField(taskLogTimeEnd);
     if ((taskLogTimeEnd?.value || "").trim()) {
       taskLogEndClearedByUser = false;
-      taskLogEndEnteredByUserThisOpen = true;
+      const it = e.inputType || "";
+      const autofill =
+        it === "insertReplacementText" || it === "insertFromAutoFill";
+      if (!autofill && !taskLogNewEntryAdjustGuarded()) {
+        taskLogEndEnteredByUserThisOpen = true;
+      } else {
+        clearTaskLogEndIfCopiedFromStart();
+      }
     }
     updateEndTimeClearVisibility();
     updateTaskLogTimeOrderWarning();
@@ -10993,6 +11023,7 @@ export function render(opts = {}) {
         if (e.button === 0) e.preventDefault();
       });
       btn.addEventListener("click", () => {
+        if (taskLogNewEntryAdjustGuarded()) return;
         const endVal = (taskLogTimeEnd?.value || "").trim();
         const endHasTime = endVal && endVal.match(/\d{1,2}:\d{2}/);
         /* 사용자가 직접 누른 칸 기준 — 시작 칸을 눌렀다면 마감이 비어 있어도 시작에 넣는다 */
@@ -13220,6 +13251,7 @@ export function render(opts = {}) {
     taskLogEditExclude = null;
     taskLogEndClearedByUser = false;
     taskLogEndEnteredByUserThisOpen = false;
+    taskLogNewEntryAdjustGuardUntil = Date.now() + 500;
     pendingEditStartTime = "";
     taskLogSelectedPlannedSlot = null;
     clearTaskLogModalCheckedTodoIds();
@@ -13352,6 +13384,10 @@ export function render(opts = {}) {
       ),
     );
     syncTaskLogGapFillBtnVisibility();
+    setTimeout(() => {
+      if (!el.isConnected || taskLogModal.hidden || taskLogEditTr) return;
+      clearTaskLogEndIfCopiedFromStart();
+    }, 500);
   }
 
   async function openTaskLogModalForEdit(tr, rowData) {
