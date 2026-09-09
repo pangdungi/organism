@@ -154,7 +154,7 @@ function showCalendarTaskEditModal(options) {
             <label>할일/일정 이름</label>
             ${buildCalendarEventNameEmojiQuickMarkup()}
           </div>
-          <input type="text" class="time-add-task-name" placeholder="할일/일정 입력" value="${escapeHtml(name)}" maxlength="500" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+          <textarea class="time-add-task-name" placeholder="할일/일정 입력" maxlength="500" rows="3" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">${escapeHtml(name)}</textarea>
         </div>
         <div class="time-task-log-field calendar-task-edit-checks-row">
           <label class="calendar-diary-check-label">
@@ -255,7 +255,10 @@ function showCalendarTaskEditModal(options) {
 
   document.body.appendChild(modal);
   document.body.style.overflow = "hidden";
-  wireModalEnterToConfirm(modal, confirmBtn);
+  wireModalEnterToConfirm(modal, confirmBtn, {
+    inputSelector:
+      'input[type="text"], input[type="search"], input:not([type="date"]):not([type="hidden"])',
+  });
   initModalStandardDateFields(modal);
   setupTodoTaskDateQuickButtons(modal);
   wireCalendarEventNameEmojiQuick(modal, nameInput);
