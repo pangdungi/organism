@@ -32,6 +32,21 @@ export const KPI_CATEGORY_ICON_SRC = {
 
 const PICKER_SVG_SET = new Set(pickerSvgNames);
 
+/** 붙인 한글(NFC)·풀어쓴 한글(NFD)을 같은 슬러그로 찾기 */
+const PICKER_SLUG_BY_NFC = (() => {
+  /** @type {Map<string, string>} */
+  const map = new Map();
+  for (const n of pickerSvgNames) {
+    const raw = String(n || "");
+    if (!raw) continue;
+    const nfc = raw.normalize("NFC");
+    if (!map.has(nfc)) map.set(nfc, raw);
+    const lower = nfc.toLowerCase();
+    if (!map.has(lower)) map.set(lower, raw);
+  }
+  return map;
+})();
+
 /** 삭제된 picker 파일명 → 대체 슬러그 (잘못 저장된 iconKey 호환) */
 const REMOVED_PICKER_SLUG_ALIAS = {
   "train-1": "burger",
@@ -802,11 +817,16 @@ function findPickerSlug(name) {
   if (PICKER_SVG_SET.has(s)) return s;
   const lower = s.toLowerCase();
   if (PICKER_SVG_SET.has(lower)) return lower;
+  const nfc = s.normalize("NFC");
+  const fromNfc = PICKER_SLUG_BY_NFC.get(nfc) || PICKER_SLUG_BY_NFC.get(nfc.toLowerCase());
+  if (fromNfc) return fromNfc;
   for (const n of pickerSvgNames) {
     if (n.toLowerCase() === lower) return n;
   }
   const mapped = pickerIconFiles[s] || pickerIconFiles[lower];
   if (mapped && PICKER_SVG_SET.has(mapped)) return mapped;
+  const mappedNfc = pickerIconFiles[nfc] || pickerIconFiles[nfc.toLowerCase()];
+  if (mappedNfc && PICKER_SVG_SET.has(mappedNfc)) return mappedNfc;
   return "";
 }
 
