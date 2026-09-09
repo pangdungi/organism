@@ -173,8 +173,10 @@ import {
   timeContentEvalOptionsForRating,
 } from "../utils/timeTaskContentEvalReasons.js";
 import {
+  buildEndTimeAtDayEnd2359,
   closeActiveInProgressRowsAtNow,
   closeStaleInProgressTimeLedgerRows,
+  timeLedgerRowEntryYmd,
   timeLedgerRowIsActiveLiveInProgress,
 } from "../utils/timeLedgerStaleInProgressClose.js";
 import {
@@ -1302,7 +1304,7 @@ function saveTimeRows(rows, opts = {}) {
     const arr = Array.isArray(rows) ? rows : [];
     const { rows: withIds, dirty } = ensureTimeLedgerEntryIds(arr);
     const pushEntryIds = [];
-    const toSave = withIds.map((r) => {
+    let toSave = withIds.map((r) => {
       const id = String(r?.id || "").trim();
       const prevRow = id ? prevById.get(id) : null;
       /* 사용자 마감시간: 빈 값으로 덮어쓰지 않음(명시적 지우기만 허용) */
@@ -1349,6 +1351,16 @@ function saveTimeRows(rows, opts = {}) {
       if (id) pushEntryIds.push(id);
       return { ...row, localModifiedAt: Date.now() };
     });
+    const closedPast = closeStaleInProgressTimeLedgerRows(toSave);
+    if (closedPast.changed) {
+      toSave = closedPast.rows;
+      (closedPast.closedEntryIds || []).forEach((id) => {
+        const sid = String(id || "").trim();
+        if (!isUuid(sid)) return;
+        forceIds.add(sid);
+        if (!pushEntryIds.includes(sid)) pushEntryIds.push(sid);
+      });
+    }
     if (dirty) {
       /* 신규 id 부여분 반영 */
     }
@@ -1920,11 +1932,22 @@ function getMobileCardTrackedDisplayForRow(rowData) {
   const tracked = (rowData.timeTracked || "").trim();
   if (tracked) return tracked;
   if (rowHasEndTimeForMobileCard(rowData)) return "—";
-  const start = getRowStartInstantForMobileCard(rowData);
-  if (!start) return "—";
-  const ms = Date.now() - start.getTime();
-  if (ms < 0) return "0h";
-  return formatElapsedDurationForMobileCard(ms);
+  if (timeLedgerRowIsActiveLiveInProgress(rowData)) {
+    const start = getRowStartInstantForMobileCard(rowData);
+    if (!start) return "—";
+    const ms = Date.now() - start.getTime();
+    if (ms < 0) return "0h";
+    return formatElapsedDurationForMobileCard(ms);
+  }
+  const endTime = buildEndTimeAtDayEnd2359(
+    timeLedgerRowEntryYmd(rowData),
+    rowData?.startTime,
+  );
+  if (endTime) {
+    const hrs = hoursBetweenRowStartEnd({ ...rowData, endTime });
+    return hrs > 0 ? formatHoursDisplay(hrs) : "—";
+  }
+  return "—";
 }
 
 /** 마감 미입력(진행 중)일 때 테이블·모바일 카드에 쓰는 표시 (실제 종료 시각으로 오해하지 않도록) */
@@ -1992,10 +2015,18 @@ export function getMobileCardEffectiveHoursForPrice(rowData) {
   if (tracked) return parseTimeToHours(tracked) || 0;
   if (rowHasEndTimeForMobileCard(rowData))
     return hoursBetweenRowStartEnd(rowData);
-  const start = getRowStartInstantForMobileCard(rowData);
-  if (!start) return 0;
-  const ms = Date.now() - start.getTime();
-  return ms < 0 ? 0 : ms / 3600000;
+  if (timeLedgerRowIsActiveLiveInProgress(rowData)) {
+    const start = getRowStartInstantForMobileCard(rowData);
+    if (!start) return 0;
+    const ms = Date.now() - start.getTime();
+    return ms < 0 ? 0 : ms / 3600000;
+  }
+  const endTime = buildEndTimeAtDayEnd2359(
+    timeLedgerRowEntryYmd(rowData),
+    rowData?.startTime,
+  );
+  if (!endTime) return 0;
+  return hoursBetweenRowStartEnd({ ...rowData, endTime });
 }
 
 /** 생산적 과제의 「이 시간 평가」별점만 금액 배율에 반영(감정 과제 제외) */
@@ -12779,13 +12810,17 @@ export function render(opts = {}) {
       } catch (_) {}
     }
     if (clearEnd) {
-      if (taskLogTimeEnd) {
-        taskLogTimeEnd.value = "";
-        try {
-          taskLogTimeEnd.defaultValue = "";
-        } catch (_) {}
+      const typedEnd = (taskLogTimeEnd?.value || "").trim();
+      /* 사용자가 이미 넣은 마감은 기본값·날짜 sync가 지우지 않음 */
+      if (!typedEnd) {
+        if (taskLogTimeEnd) {
+          taskLogTimeEnd.value = "";
+          try {
+            taskLogTimeEnd.defaultValue = "";
+          } catch (_) {}
+        }
+        if (taskLogEndInput) taskLogEndInput.value = "";
       }
-      if (taskLogEndInput) taskLogEndInput.value = "";
     }
     syncStartToHidden();
     syncEndToHidden();
@@ -14441,11 +14476,19 @@ export function render(opts = {}) {
         forceRows,
         skipPull: true,
       });
-      allRowsCache = rowsToPersist;
+      allRowsCache = readTimeLedgerEntriesRaw();
+      const savedClosed =
+        pushedId && Array.isArray(allRowsCache)
+          ? allRowsCache.find((r) => String(r?.id || "").trim() === pushedId)
+          : null;
+      if (savedClosed) {
+        if (editTr) editTr._rowData = savedClosed;
+        if (addLedgerTr) addLedgerTr._rowData = savedClosed;
+      }
       if (!editTr) {
         onFilterChange(true);
       } else if (lpTokenHas(editTr, "time-ledger-mobile-card")) {
-        const rowForCard = forceRow || editTr._rowData;
+        const rowForCard = savedClosed || forceRow || editTr._rowData;
         syncMobileTimeCardFromRow(editTr, rowForCard, el);
         const list = contentWrap.querySelector(".calendar-1day-timeline-list");
         const item = resolveUsageTimelineItemFromCardNode(editTr);

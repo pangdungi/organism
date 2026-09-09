@@ -36,7 +36,7 @@ export function timeLedgerRowIsActiveLiveInProgress(row, todayYmd) {
   return !!entryYmd && entryYmd === today;
 }
 
-function buildEndTimeAtDayEnd2359(entryYmd, startTime) {
+export function buildEndTimeAtDayEnd2359(entryYmd, startTime) {
   if (!entryYmd || !/^\d{4}-\d{2}-\d{2}$/.test(entryYmd)) return "";
   const st = String(startTime || "").trim();
   const [y, mo, d] = entryYmd.split("-");
