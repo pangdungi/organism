@@ -2521,18 +2521,18 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
             <label for="calendar-event-name-input">할일 / 일정 이름</label>
             ${buildCalendarEventNameEmojiQuickMarkup()}
           </div>
-          <input
-            type="text"
+          <textarea
             id="calendar-event-name-input"
             name="calendar-event-name"
             class="time-add-task-name"
             placeholder="할일/일정 입력"
             maxlength="500"
+            rows="3"
             autocomplete="off"
             autocorrect="off"
             autocapitalize="off"
             spellcheck="false"
-          />
+          ></textarea>
         </div>
         <div class="time-task-log-field calendar-diary-check-field">
           <label class="calendar-diary-check-label">
@@ -2639,7 +2639,10 @@ function createCalendarEventBubble(cellRect, dateKey, onSave, onClose) {
 
   document.body.appendChild(modal);
   document.body.style.overflow = "hidden";
-  wireModalEnterToConfirm(modal, confirmBtn);
+  wireModalEnterToConfirm(modal, confirmBtn, {
+    inputSelector:
+      'input[type="text"], input[type="search"], input:not([type="date"]):not([type="hidden"])',
+  });
 
   return modal;
 }

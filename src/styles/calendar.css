@@ -2074,6 +2074,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   pointer-events: none;
   font-size: inherit;
   line-height: inherit;
+  white-space: pre-wrap;
   overflow-wrap: break-word;
   word-break: break-word;
 }
@@ -3022,6 +3023,13 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   outline-offset: 1px;
 }
 
+.calendar-event-add-modal textarea.time-add-task-name,
+.calendar-task-edit-modal textarea.time-add-task-name {
+  min-height: 4.25rem;
+  resize: none;
+  line-height: 1.5;
+}
+
 .calendar-event-bubble .time-task-log-field > .time-task-log-date-native-wrap {
   width: 100%;
   max-width: 100%;
@@ -3284,6 +3292,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   font-size: var(--cal-font-day-expand-text, 0.75rem);
   font-weight: 500;
   color: #000000;
+  white-space: pre-wrap;
   word-break: break-word;
 }
 
