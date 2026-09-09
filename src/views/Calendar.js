@@ -348,6 +348,26 @@ function lpCalendarMonthlyDayHasVisibleIcon(weekRow, dayIdx) {
   return !!icons && !icons.hidden;
 }
 
+/** 여러 날 막대가 걸친 칸 중 스탬프가 하나라도 있으면 true */
+function lpCalendarMonthlyRangeBarSpanHasStamp(weekRow, bar) {
+  const s = Number(bar?.startIdx);
+  const e = Number(bar?.endIdx);
+  if (!Number.isFinite(s) || !Number.isFinite(e)) return false;
+  const lo = Math.min(s, e);
+  const hi = Math.max(s, e);
+  for (let d = lo; d <= hi; d += 1) {
+    if (lpCalendarMonthlyDayHasVisibleIcon(weekRow, d)) return true;
+  }
+  return false;
+}
+
+/** 그 구간에 스탬프가 없으면 스탬프 자리(위)로 올림 */
+function lpCalendarMonthlyRangeBarLiftsToStampSlot(weekRow, bar) {
+  if (!bar || bar.isSingleDay) return false;
+  if (!weekRow || !lpCalendarWeekHasVisibleDayIcons(weekRow)) return false;
+  return !lpCalendarMonthlyRangeBarSpanHasStamp(weekRow, bar);
+}
+
 /** 스탬프 시각 상한(rem) — CSS `--cal-day-icon-max` (화면 너비 미디어쿼리) */
 function lpCalendarDayIconMaxRem() {
   try {
@@ -652,14 +672,23 @@ function lpCalendarAssignMonthlySingleDayLocalRows(singleDayBars) {
   });
 }
 
-function lpCalendarAssignMonthlyBarLayout(allBars) {
+function lpCalendarAssignMonthlyBarLayout(allBars, weekRow) {
   const rangeBars = [];
   const singleBars = [];
   allBars.forEach((b) => {
     if (b.isSingleDay) singleBars.push(b);
     else rangeBars.push(b);
   });
-  lpCalendarAssignMonthlyRangeBarRows(rangeBars);
+  const liftBars = [];
+  const belowBars = [];
+  rangeBars.forEach((b) => {
+    const lift = lpCalendarMonthlyRangeBarLiftsToStampSlot(weekRow, b);
+    b._lpLiftToStampSlot = lift;
+    if (lift) liftBars.push(b);
+    else belowBars.push(b);
+  });
+  lpCalendarAssignMonthlyRangeBarRows(liftBars);
+  lpCalendarAssignMonthlyRangeBarRows(belowBars);
   lpCalendarAssignMonthlySingleDayLocalRows(singleBars);
 }
 
@@ -675,6 +704,50 @@ function lpCalendarMonthlyRangeRowCountOnDay(rangeBars, dayIdx) {
   return maxRow + 1;
 }
 
+function lpCalendarMonthlyRangeBarBottomEstimateRem(
+  bar,
+  baseTop,
+  BAR_HEIGHT,
+  gap,
+  weekStampPad,
+) {
+  const pad = bar?._lpLiftToStampSlot ? 0 : weekStampPad;
+  const row = Number(bar?.row);
+  const r = Number.isFinite(row) && row > 0 ? row : 0;
+  return baseTop + pad + r * (BAR_HEIGHT + gap) + BAR_HEIGHT;
+}
+
+function lpCalendarMonthlyRangeStackBottomEstimateOnDay(
+  rangeBars,
+  dayIdx,
+  baseTop,
+  BAR_HEIGHT,
+  gap,
+  weekStampPad,
+) {
+  let bottom = baseTop;
+  let any = false;
+  for (const b of rangeBars) {
+    if (!lpCalendarMonthlyBarTakesLayoutSpace(b)) continue;
+    const s = Number(b.startIdx);
+    const e = Number(b.endIdx);
+    if (!Number.isFinite(s) || !Number.isFinite(e)) continue;
+    if (dayIdx < Math.min(s, e) || dayIdx > Math.max(s, e)) continue;
+    any = true;
+    bottom = Math.max(
+      bottom,
+      lpCalendarMonthlyRangeBarBottomEstimateRem(
+        b,
+        baseTop,
+        BAR_HEIGHT,
+        gap,
+        weekStampPad,
+      ),
+    );
+  }
+  return any ? bottom : baseTop;
+}
+
 function lpCalendarMonthlyEstimateSingleDayBarTopRem(
   baseBarTop,
   rangeBars,
@@ -683,19 +756,30 @@ function lpCalendarMonthlyEstimateSingleDayBarTopRem(
   BAR_HEIGHT,
   ROW_GAP,
   stampStackOffsetRem = 0,
+  weekStampPad = 0,
 ) {
-  const rangeRows = lpCalendarMonthlyRangeRowCountOnDay(rangeBars, dayIdx);
   const gap = Number.isFinite(ROW_GAP) ? Math.max(0, ROW_GAP) : 0;
   const singleSlot = BAR_HEIGHT + gap;
-  let offset = 0;
-  if (rangeRows > 0) {
-    offset = rangeRows * BAR_HEIGHT + (rangeRows - 1) * gap + gap;
+  const hasRange = lpCalendarMonthlyRangeRowCountOnDay(rangeBars, dayIdx) > 0;
+  if (hasRange) {
+    return (
+      lpCalendarMonthlyRangeStackBottomEstimateOnDay(
+        rangeBars,
+        dayIdx,
+        baseBarTop,
+        BAR_HEIGHT,
+        gap,
+        weekStampPad,
+      ) +
+      gap +
+      localRow * singleSlot
+    );
   }
   const stampPad =
     Number.isFinite(stampStackOffsetRem) && stampStackOffsetRem > 0
       ? stampStackOffsetRem
       : 0;
-  return baseBarTop + stampPad + offset + localRow * singleSlot;
+  return baseBarTop + stampPad + localRow * singleSlot;
 }
 
 function lpCalendarMonthlyWeekStackSlotCount(allBars, dayCount = 7) {
@@ -745,7 +829,7 @@ function lpAttachCalendarMonthlyWeekBarLayoutSync(weekRow, barsWithRow, layoutMe
   const { BAR_HEIGHT, BARS_TOP, BOTTOM_PAD, ROW_GAP } = layoutMetrics;
   const rerun = () => {
     if (!weekRow.isConnected) return;
-    lpCalendarAssignMonthlyBarLayout(barsWithRow || []);
+    lpCalendarAssignMonthlyBarLayout(barsWithRow || [], weekRow);
     lpCalendarFinalizeBarRowLayout(
       barsWithRow || [],
       weekRow,
@@ -1017,10 +1101,6 @@ function lpCalendarFinalizeBarRowLayout(
   const singleBars = bars.filter(
     (b) => b.isSingleDay && lpCalendarMonthlyBarTakesLayoutSpace(b),
   );
-  const maxRangeRow = rangeBars.length
-    ? Math.max(...rangeBars.map((b) => b.row), 0)
-    : -1;
-
   const run = () => {
     if (!weekRow.isConnected) return;
     lpCalendarApplyWeekStampStripLayout(weekRow);
@@ -1067,49 +1147,75 @@ function lpCalendarFinalizeBarRowLayout(
       return;
     }
 
-    const rowMaxPx = [];
-    for (const b of rangeBars) {
-      const el = b._barEl;
-      if (!el || !el.isConnected) continue;
-      const h = lpCalendarMeasureMonthlySpanBarHeightPx(el);
-      const r = b.row;
-      rowMaxPx[r] = Math.max(rowMaxPx[r] || 0, h);
-    }
-    let topAcc = baseTop + lpCalendarWeekStampLayoutPadRem(weekRow, gap);
-    const rowTopRem = [];
-    const rowSlotRem = [];
-    for (let r = 0; r <= maxRangeRow; r++) {
-      rowTopRem[r] = topAcc;
-      const slotRem = Math.max(
-        BAR_HEIGHT,
-        rowMaxPx[r] != null ? pxToRem(rowMaxPx[r]) : BAR_HEIGHT,
-      );
-      rowSlotRem[r] = slotRem;
-      topAcc += slotRem;
-      if (r < maxRangeRow) topAcc += gap;
-    }
-    const rangeStackBottomOnDay = (dayIdx) =>
-      lpCalendarMonthlyRangeStackBottomRemOnDay(
-        rangeBars,
+    const weekStampPad = lpCalendarWeekStampLayoutPadRem(weekRow, gap);
+    const liftBars = rangeBars.filter((b) => b._lpLiftToStampSlot);
+    const belowBars = rangeBars.filter((b) => !b._lpLiftToStampSlot);
+    const layoutRangeGroup = (group, startTop) => {
+      const maxRow = group.length
+        ? Math.max(...group.map((b) => Number(b.row) || 0), 0)
+        : -1;
+      const rowMaxPx = [];
+      for (const b of group) {
+        const el = b._barEl;
+        if (!el || !el.isConnected) continue;
+        const h = lpCalendarMeasureMonthlySpanBarHeightPx(el);
+        const r = Number(b.row) || 0;
+        rowMaxPx[r] = Math.max(rowMaxPx[r] || 0, h);
+      }
+      let topAcc = startTop;
+      const rowTopRem = [];
+      const rowSlotRem = [];
+      for (let r = 0; r <= maxRow; r += 1) {
+        rowTopRem[r] = topAcc;
+        const slotRem = Math.max(
+          BAR_HEIGHT,
+          rowMaxPx[r] != null ? pxToRem(rowMaxPx[r]) : BAR_HEIGHT,
+        );
+        rowSlotRem[r] = slotRem;
+        topAcc += slotRem;
+        if (r < maxRow) topAcc += gap;
+      }
+      for (const b of group) {
+        const r = Number(b.row) || 0;
+        if (b._barEl?.isConnected) {
+          b._barEl.style.top = `${rowTopRem[r]}rem`;
+          b._barEl.style.minHeight = `${rowSlotRem[r]}rem`;
+          b._barEl.style.height = "auto";
+        }
+      }
+      return { rowTopRem, rowSlotRem, topAcc, maxRow };
+    };
+    const liftStack = layoutRangeGroup(liftBars, baseTop);
+    const belowStack = layoutRangeGroup(belowBars, baseTop + weekStampPad);
+    const rangeStackBottomOnDay = (dayIdx) => {
+      const liftBottom = lpCalendarMonthlyRangeStackBottomRemOnDay(
+        liftBars,
         dayIdx,
         baseTop,
-        rowTopRem,
-        rowSlotRem,
+        liftStack.rowTopRem,
+        liftStack.rowSlotRem,
       );
-    for (const b of rangeBars) {
-      if (b._barEl?.isConnected) {
-        b._barEl.style.top = `${rowTopRem[b.row]}rem`;
-        b._barEl.style.minHeight = `${rowSlotRem[b.row]}rem`;
-        b._barEl.style.height = "auto";
-      }
-    }
+      const belowBottom = lpCalendarMonthlyRangeStackBottomRemOnDay(
+        belowBars,
+        dayIdx,
+        baseTop,
+        belowStack.rowTopRem,
+        belowStack.rowSlotRem,
+      );
+      const liftHit = lpCalendarMonthlyRangeRowCountOnDay(liftBars, dayIdx) > 0;
+      const belowHit = lpCalendarMonthlyRangeRowCountOnDay(belowBars, dayIdx) > 0;
+      if (liftHit && belowHit) return Math.max(liftBottom, belowBottom);
+      if (liftHit) return liftBottom;
+      if (belowHit) return belowBottom;
+      return baseTop;
+    };
     lpCalendarApplyMonthlyDayStampPositions(
       weekRow,
       rangeBars,
       baseTop,
       gap,
-      rowTopRem,
-      rowSlotRem,
+      emptyRowTop,
+      emptyRowSlot,
     );
     const singleByDay = {};
     for (const b of singleBars) {
@@ -1140,8 +1246,11 @@ function lpCalendarFinalizeBarRowLayout(
       });
       maxBottomRem = Math.max(maxBottomRem, acc);
     });
-    if (rangeBars.length) {
-      maxBottomRem = Math.max(maxBottomRem, topAcc);
+    if (liftBars.length) {
+      maxBottomRem = Math.max(maxBottomRem, liftStack.topAcc);
+    }
+    if (belowBars.length) {
+      maxBottomRem = Math.max(maxBottomRem, belowStack.topAcc);
     }
     weekRow
       .querySelectorAll(".calendar-monthly-day:not(.empty)")
@@ -1156,8 +1265,8 @@ function lpCalendarFinalizeBarRowLayout(
           dayIdx,
           baseTop,
           gap,
-          rowTopRem,
-          rowSlotRem,
+          emptyRowTop,
+          emptyRowSlot,
         );
         maxBottomRem = Math.max(maxBottomRem, stampTop + stampOff);
       });
@@ -3373,7 +3482,7 @@ function renderMonthlyView(tabsElement) {
           });
         });
       });
-      lpCalendarAssignMonthlyBarLayout(allBars);
+      lpCalendarAssignMonthlyBarLayout(allBars, weekRow);
       const rangeBarsOnly = allBars.filter((b) => !b.isSingleDay);
       /* 막대 줄 수에 맞춰 해당 주 행만 높이 확장(빈 주는 최소 높이만) */
       allBars.forEach((b) => {
@@ -3420,8 +3529,11 @@ function renderMonthlyView(tabsElement) {
               BAR_HEIGHT,
               ROW_GAP,
               lpCalendarMonthlyDayStampStackOffsetRem(weekRow, b.dayIdx),
+              weekStampPad,
             )
-          : baseBarTop + weekStampPad + b.row * (BAR_HEIGHT + ROW_GAP);
+          : baseBarTop +
+            (b._lpLiftToStampSlot ? 0 : weekStampPad) +
+            b.row * (BAR_HEIGHT + ROW_GAP);
         bar.style.cssText = `left:${b.left}%;width:${b.width}%;${barStyleVars};top:${topRem}rem;min-height:${BAR_HEIGHT}rem`;
         if (b.taskId) bar.dataset.taskId = String(b.taskId).trim();
         if (b.isCalendarDiary) bar.dataset.lpCalendarDiary = "1";
@@ -4521,6 +4633,15 @@ function createCalendar1DaySlotGrid(dateKey, onSaved) {
   return scroll;
 }
 
+/** 일간 예상 패널 — 이번 Day 화면에서만 전일 타임박스 유지. 탭·화면·다른 날이면 끔. */
+let calendar1DayExpectedPrevTimeboxOn = false;
+let calendar1DayExpectedPrevTimeboxDateKey = "";
+
+function clearCalendar1DayExpectedPrevTimeboxSession() {
+  calendar1DayExpectedPrevTimeboxOn = false;
+  calendar1DayExpectedPrevTimeboxDateKey = "";
+}
+
 /** 캘린더 일간뷰(슬롯 그리드 모드) — 예상 일정 카드 · 헤더로 전일 타임박스 토글 */
 function createCalendar1DayExpectedCardsPanel(dateKey, spans, onSaved) {
   const section = document.createElement("div");
@@ -4675,6 +4796,10 @@ function createCalendar1DayExpectedCardsPanel(dateKey, spans, onSaved) {
   let showingPrevTimebox = false;
   const setShowingPrevTimebox = (on) => {
     showingPrevTimebox = !!on;
+    calendar1DayExpectedPrevTimeboxOn = showingPrevTimebox;
+    calendar1DayExpectedPrevTimeboxDateKey = showingPrevTimebox
+      ? dateKey
+      : "";
     scroll.hidden = showingPrevTimebox;
     footer.hidden = showingPrevTimebox;
     prevTimebox.hidden = !showingPrevTimebox;
@@ -4698,11 +4823,24 @@ function createCalendar1DayExpectedCardsPanel(dateKey, spans, onSaved) {
     if (lpHorizontalPanNavigateRecentlyFired()) return;
     setShowingPrevTimebox(!showingPrevTimebox);
   });
+  if (
+    calendar1DayExpectedPrevTimeboxDateKey &&
+    calendar1DayExpectedPrevTimeboxDateKey !== dateKey
+  ) {
+    clearCalendar1DayExpectedPrevTimeboxSession();
+  }
+  if (
+    calendar1DayExpectedPrevTimeboxOn &&
+    calendar1DayExpectedPrevTimeboxDateKey === dateKey
+  ) {
+    setShowingPrevTimebox(true);
+  }
 
   return section;
 }
 
 function render1DayView(tabsElement = null, viewOpts = {}) {
+  clearCalendar1DayExpectedPrevTimeboxSession();
   const hideTimelineCards = !!viewOpts.hideTimelineCards;
   const wrap = document.createElement("div");
   wrap.className = "calendar-monthly-layout calendar-1day-view";
@@ -5744,7 +5882,7 @@ function render1WeekView(tabsElement, weekOpts = {}) {
         });
       });
     });
-    lpCalendarAssignMonthlyBarLayout(allBars);
+    lpCalendarAssignMonthlyBarLayout(allBars, weekRow);
     const rangeBarsOnly = allBars.filter((b) => !b.isSingleDay);
     allBars.forEach((b) => {
       b.isOverflow = false;
@@ -5790,8 +5928,11 @@ function render1WeekView(tabsElement, weekOpts = {}) {
             BAR_HEIGHT,
             ROW_GAP,
             lpCalendarMonthlyDayStampStackOffsetRem(weekRow, b.dayIdx),
+            weekStampPad,
           )
-        : baseBarTop + weekStampPad + b.row * (BAR_HEIGHT + ROW_GAP);
+        : baseBarTop +
+          (b._lpLiftToStampSlot ? 0 : weekStampPad) +
+          b.row * (BAR_HEIGHT + ROW_GAP);
       bar.style.cssText = `left:${b.left}%;width:${b.width}%;${barStyleVars};top:${topRem}rem;min-height:${BAR_HEIGHT}rem`;
       if (b.taskId) bar.dataset.taskId = String(b.taskId).trim();
       if (b.isCalendarDiary) bar.dataset.lpCalendarDiary = "1";
@@ -6780,6 +6921,7 @@ function createCalendarSubViewRoot(tabsElement, opts = {}) {
     const skipPull = !!subOpts.skipPull;
     if (activeSubViewId === "1day" && subViewId !== "1day") {
       flushAllPendingTimeDailyBudgetSync();
+      clearCalendar1DayExpectedPrevTimeboxSession();
     }
     activeSubViewId = subViewId;
     dismissCalendarDayExpandUI();
