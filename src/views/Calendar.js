@@ -4330,59 +4330,15 @@ function openWeekFlowLedgerRowEditor(rowData) {
 }
 
 /**
- * 오늘보다 과거 날짜는 예상 일정 모달 대신 과제 기록(시간기록)으로 연다.
- * (주간·일간에서 과거를 예상 일정으로 고치면 화면과 안 맞음)
- * opts.span 이 있으면 과거일 때 시간·과제 프리셋에 쓰고, 오늘·미래는 예산 슬롯 인덱스를 여기서 맞춘다.
+ * 일·주 타임박스 클릭 — 그날 예상 일정 추가·수정.
+ * (지난 날이어도 과제 기록으로 바꾸지 않음)
  */
 function openCalendarExpectedScheduleModalGuarded(opts = {}) {
   const dk = String(opts.dateKey || "")
     .replace(/\//g, "-")
     .trim()
     .slice(0, 10);
-  const todayYmd = timeLedgerLocalTodayYmd();
   const span = opts.span && typeof opts.span === "object" ? opts.span : null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dk) && dayKeyYmdCompare(dk, todayYmd) < 0) {
-    const editName = String(
-      span?.taskName || opts.edit?.taskName || "",
-    ).trim();
-    try {
-      ensureDetachedTimeLedgerTaskLogBridge();
-      const dayRows = ledgerRowsForCalendarYmd(loadTimeRows(), dk);
-      let match = null;
-      if (span) {
-        match = dayRows.find((r) => ledgerRowMatchesExpectedSpanTask(r, span));
-      } else if (editName) {
-        match = dayRows.find((r) =>
-          ledgerRowMatchesExpectedSpanTask(r, { taskName: editName }),
-        );
-      }
-      if (match) {
-        window.__lpOpenTimeTaskLog?.({ editRowData: match });
-        return;
-      }
-      const startFromSpan =
-        (span?.startDisplay && String(span.startDisplay).trim()) ||
-        (Number.isFinite(span?.startMin)
-          ? minutesOfDayToHhMm(span.startMin)
-          : "");
-      const endFromSpan =
-        (span?.endDisplay && String(span.endDisplay).trim()) ||
-        (Number.isFinite(span?.endMin) ? minutesOfDayToHhMm(span.endMin) : "");
-      const startHhMm = String(
-        startFromSpan || opts.defaultStartHhMm || "",
-      ).trim();
-      const endHhMm = String(endFromSpan || "").trim();
-      const memo = span ? expectedSpanCardMemoLines(span).join("\n") : "";
-      window.__lpOpenTimeTaskLog?.({
-        recordDateKey: dk,
-        presetTaskName: editName,
-        presetMemo: memo,
-        presetStartHhMm: startHhMm || undefined,
-        presetEndHhMm: endHhMm || undefined,
-      });
-    } catch (_) {}
-    return;
-  }
   const { span: _drop, ...modalOpts } = opts;
   if (span && modalOpts.edit && typeof modalOpts.edit === "object") {
     let slotIdx = Number(modalOpts.edit.timeIdx);
