@@ -26,6 +26,7 @@ import {
   writeKpiMapScopedStorageRaw,
 } from "./kpiMapLocalStorage.js";
 import { getTaskOptionById } from "./timeTaskOptionsModel.js";
+import { DEFAULT_READING_KPI_ID } from "./defaultKpiIconIds.js";
 import {
   normalizeKpiTaskCompletionEvents,
   removeKpiTaskCompletionEventsForTodos,
@@ -724,6 +725,12 @@ export function isKpiTaskCompletionGoalType(kpi) {
   return !!kpi.useTaskCompletionGoal && !kpi.needHabitTracker;
 }
 
+/** 과제 기록·예상 일정에 완료형 할 일(독서하기는 읽을 예정)을 보여줄지 */
+function kpiShowsTaskCompletionTodos(kpi) {
+  if (isKpiTaskCompletionGoalType(kpi)) return true;
+  return String(kpi?.id || "").trim() === DEFAULT_READING_KPI_ID;
+}
+
 /**
  * 시간기록 카드에 「매일할일」칩을 그릴지.
  * 태스크완료형(useTaskCompletionGoal)·완료형 할일 id 저장분은 절대 매일할일이 아님.
@@ -822,7 +829,7 @@ function uncompleteTaskCompletionKpiTodoById(todoId) {
       const kpi = (data.kpis || []).find(
         (k) => String(k?.id || "").trim() === kid,
       );
-      if (!isKpiTaskCompletionGoalType(kpi)) return;
+      if (!kpiShowsTaskCompletionTodos(kpi)) return;
       if (!todo.completed) return;
       syncKpiTodoCompleted(tid, storageKey, false);
       return;
@@ -854,7 +861,7 @@ export function getKpiTaskCompletionTodoInfoByKpiId(kpiId, opts = {}) {
     });
     const kpi = (data.kpis || []).find((k) => String(k.id || "").trim() === kid);
     if (!kpi) continue;
-    if (!isKpiTaskCompletionGoalType(kpi)) return null;
+    if (!kpiShowsTaskCompletionTodos(kpi)) return null;
     if (/^\d{4}-\d{2}-\d{2}$/.test(completedOnYmd)) {
       for (const e of normalizeKpiTaskCompletionEvents(
         data.kpiTaskCompletionEvents,

@@ -1297,9 +1297,9 @@ export function render() {
     );
     if (target === historyWrap) historyWrap.hidden = false;
 
-    const hasDailyTab = needHabitTracker;
-    const dailyTodosOnly = kpiUsesDailyTodosOnly(kpi);
     const readingKpi = isDefaultReadingHappinessKpiId(selKpi);
+    const hasDailyTab = needHabitTracker && !readingKpi;
+    const dailyTodosOnly = kpiUsesDailyTodosOnly(kpi);
     const dailyCopy = happinessDailyTodoCopy(selKpi);
     const todoSegLabel = readingKpi
       ? DEFAULT_READING_KPI_TODO_LIST_LABEL

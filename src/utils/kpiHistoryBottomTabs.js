@@ -42,8 +42,9 @@ export function kpiNotesTabEnabledForKpi(namespace, kpiId) {
   return false;
 }
 
-/** KPI「매일 반복」— 일반 할 일 없이 매일 할 일·기록만 사용 */
+/** KPI「매일 반복」— 일반 할 일 없이 매일 할 일·기록만 사용. 독서하기는 읽을 예정·위시리스트만 */
 export function kpiUsesDailyTodosOnly(kpi) {
+  if (isDefaultReadingHappinessKpiId(kpi?.id)) return false;
   return !!(kpi && kpi.needHabitTracker);
 }
 
