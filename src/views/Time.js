@@ -71,6 +71,7 @@ import {
   updateTaskOptionIconByName,
   removeTaskOption,
   getTaskOptionByName,
+  getTaskOptionById,
   migrateTimeLogRowsTaskIds,
   patchKpiLinkedTasksFromKpiMaps,
   isUuid,
@@ -11637,17 +11638,33 @@ export function render(opts = {}) {
 
   /** 과제 기록 모달: 지금 고른 과제 id (수정 중 과제 바꾸면 피커 우선) */
   function resolveTaskLogModalTaskId() {
-    const fromPicker = String(taskLogTaskDropdown?._getTaskId?.() || "").trim();
-    if (fromPicker) return fromPicker;
     const name = String(taskLogTaskDropdown?._getValue?.() || "").trim();
+    const fromPicker = String(taskLogTaskDropdown?._getTaskId?.() || "").trim();
+    if (fromPicker) {
+      if (!name) return fromPicker;
+      try {
+        const pickerOpt = getTaskOptionById(fromPicker);
+        const pickerName = String(pickerOpt?.name || "").trim();
+        if (!pickerName || pickerName === name) return fromPicker;
+      } catch (_) {
+        return fromPicker;
+      }
+    }
     if (name) {
       try {
         const opt = getTaskOptionByName(name);
         const id = String(opt?.id || "").trim();
         if (id) return id;
       } catch (_) {}
+      return "";
     }
     return String(taskLogEditTr?._rowData?.taskId || "").trim();
+  }
+
+  function taskLogPickerMatchesEditRowName() {
+    const name = String(taskLogTaskDropdown?._getValue?.() || "").trim();
+    const rowName = String(taskLogEditTr?._rowData?.taskName || "").trim();
+    return !name || !rowName || name === rowName;
   }
 
   function resolveTaskLogModalKpiId() {
@@ -11822,7 +11839,9 @@ export function render(opts = {}) {
       taskLogHabitValueUnit.textContent = measure?.unit || "";
     }
     if (!taskLogHabitValueInput) return;
-    const editRow = taskLogEditTr?._rowData;
+    const editRow = taskLogPickerMatchesEditRowName()
+      ? taskLogEditTr?._rowData
+      : { ...(taskLogEditTr?._rowData || {}), kpiPerformedValue: "" };
     const ledgerEntryId = String(editRow?.id || "").trim();
     const storageKey = measure?.storageKey;
     const kpiId = measure?.kpiId;
@@ -11838,6 +11857,10 @@ export function render(opts = {}) {
 
   function onTaskSelectedForLog(taskName) {
     const name = String(taskName || "").trim();
+    const rowName = String(taskLogEditTr?._rowData?.taskName || "").trim();
+    if (!rowName || name !== rowName) {
+      clearTaskLogModalCheckedTodoIds();
+    }
     /* 이전 과제용 할일 pull 콜백이 새 선택 UI를 덮지 않게 */
     taskLogKpiListsSyncGen += 1;
     if (
@@ -12583,7 +12606,9 @@ export function render(opts = {}) {
         kpiId: dailyKpiId,
         dailyTodos,
       } = dailyInfo;
-      const editRow = taskLogEditTr?._rowData;
+      const editRow = taskLogPickerMatchesEditRowName()
+        ? taskLogEditTr?._rowData
+        : { ...(taskLogEditTr?._rowData || {}), habitDailyCompleted: [] };
       const ledgerEntryId = String(editRow?.id || "").trim();
       const checkedSource = resolveDailyCompletedForTaskLogEdit(
         dailyStorageKey,
@@ -14074,11 +14099,15 @@ export function render(opts = {}) {
       oldRowDataToRemove = editTr._rowData ? { ...editTr._rowData } : null;
       const prevRow = editTr._rowData || {};
       const optTask = taskName ? getTaskOptionByName(taskName) : null;
+      const prevTaskName = String(prevRow.taskName || "").trim();
+      const taskChanged = prevTaskName !== String(taskName || "").trim();
       const tidRow = String(
-        (taskLogTaskDropdown?._getTaskId?.() ||
+        (
+          taskLogTaskDropdown?._getTaskId?.() ||
           optTask?.id ||
-          prevRow.taskId ||
-          "").trim(),
+          (taskChanged ? "" : prevRow.taskId) ||
+          ""
+        ).trim(),
       );
       const prevId = String(prevRow.id || "").trim();
       /* 시작과 동일: 칸에 있는 값이 저장값. 비면 빈 마감(진행 중) */
@@ -14106,10 +14135,14 @@ export function render(opts = {}) {
           ? [...prevRow.linkedExpenseIds]
           : [],
         focus: focusValue,
-        habitDailyCompleted: Array.isArray(prevRow.habitDailyCompleted)
-          ? prevRow.habitDailyCompleted
-          : [],
-        kpiPerformedValue: String(prevRow.kpiPerformedValue ?? "").trim(),
+        habitDailyCompleted: taskChanged
+          ? []
+          : Array.isArray(prevRow.habitDailyCompleted)
+            ? prevRow.habitDailyCompleted
+            : [],
+        kpiPerformedValue: taskChanged
+          ? ""
+          : String(prevRow.kpiPerformedValue ?? "").trim(),
         timeRating: timeRatingForRow,
         timeEndReasons: timeEndReasonsForRow,
         timeFlowDisruptors: timeFlowDisruptorsForRow,
@@ -14353,29 +14386,59 @@ export function render(opts = {}) {
         : [];
       /* 덮어쓰기 전 — 수정 시 체크 해제분 되돌릴 때 사용 */
       const prevHabitDailyCompletedOnRow = Array.isArray(
-        ledgerRowForKpi?.habitDailyCompleted,
+        oldRowDataToRemove?.habitDailyCompleted,
       )
-        ? [...ledgerRowForKpi.habitDailyCompleted]
-        : [];
-      /* 완료형 할일 id는 삭제 되돌림용으로만 저장(카드「매일할일」표시와 무관) */
+        ? [...oldRowDataToRemove.habitDailyCompleted]
+        : Array.isArray(ledgerRowForKpi?.habitDailyCompleted)
+          ? [...ledgerRowForKpi.habitDailyCompleted]
+          : [];
+      /* 지금 고른 과제의 칸만 — 예전 과제 매일할일·할일을 남기지 않음 */
       const completedForKpi =
         dailyInfoSubmit?.needHabitTracker || hasTaskCompletionList
           ? mergeLedgerHabitDailyCompletedLists(
               dailyCompletedForKpi,
               taskCompletionChecked,
             )
-          : null;
+          : [];
+      const submitTaskChanged =
+        !!oldRowDataToRemove &&
+        String(oldRowDataToRemove.taskName || "").trim() !==
+          String(taskName || "").trim();
 
       if (ledgerRowForKpi) {
         applyKpiFieldsToLedgerRow(ledgerRowForKpi, {
           completed: completedForKpi,
-          performedValue: kpiPerformedRaw || undefined,
+          performedValue: submitTaskChanged
+            ? kpiPerformedRaw || ""
+            : kpiPerformedRaw || undefined,
         });
+        if (editTr) {
+          if (lpTokenHas(editTr, "time-ledger-mobile-card")) {
+            syncMobileTimeCardFromRow(editTr, ledgerRowForKpi, el);
+          } else {
+            refreshTimeLedgerRowMemoDisplay(editTr, ledgerRowForKpi);
+          }
+        }
       }
       /* 목록 리렌더 전에 KPI 체크 완료 반영 */
+      if (submitTaskChanged && prevHabitDailyCompletedOnRow.length) {
+        const dropId = String(
+          ledgerRowForKpi?.id || oldRowDataToRemove?.id || "",
+        ).trim();
+        const others = (loadTimeRows() || []).filter(
+          (r) => String(r?.id || "").trim() !== dropId,
+        );
+        revertKpiTaskCompletionTodosForDeletedLedgerRow(
+          {
+            id: dropId,
+            habitDailyCompleted: prevHabitDailyCompletedOnRow,
+          },
+          others,
+        );
+      }
       if (hasTaskCompletionList) {
         applyTaskCompletionTodoCompletionsOnTaskLogSubmit(
-          prevHabitDailyCompletedOnRow,
+          submitTaskChanged ? [] : prevHabitDailyCompletedOnRow,
           taskCompletionChecked,
         );
       }
