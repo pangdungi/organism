@@ -282,15 +282,16 @@ export function render() {
         <span class="idea-user-id-value idea-subscription-status" id="idea-subscription-status">—</span>
       </div>
       <p class="idea-subscription-pass" id="idea-subscription-pass" hidden></p>
-      <p class="idea-subscription-renewal" id="idea-subscription-renewal" hidden>
+      <div class="idea-subscription-renewal" id="idea-subscription-renewal" hidden>
+        <span class="idea-form-label">갱신권</span>
         <a
           class="idea-btn-renewal"
           id="idea-subscription-renewal-link"
           href="${SUBSCRIPTION_RENEWAL_SHOP_URL}"
           target="_blank"
           rel="noopener noreferrer"
-        >갱신권 구매하기</a>
-      </p>
+        >1년 갱신권 구매하기</a>
+      </div>
     </div>
   `;
   grid.appendChild(subscriptionWidget);

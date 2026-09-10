@@ -8,7 +8,8 @@ export const SUBSCRIPTION_EXPIRED_MESSAGE = "이용기간이 종료되었습니�
 export const SUBSCRIPTION_NO_ACCESS_MESSAGE = "이용 권한이 없습니다.";
 export const SUBSCRIPTION_NO_ACCESS_HINT =
   "아임웹에서 이용권을 구매한 뒤, 결제하신 이메일로 로그인해 주세요.";
-export const SUBSCRIPTION_RENEWAL_SHOP_URL = "https://doodledoodle.me/";
+export const SUBSCRIPTION_RENEWAL_SHOP_URL =
+  "https://www.doodledoodle.me/shop_view?idx=67";
 /** 나의 계정 — 갱신권 구매 노출: 이용 종료일까지 이 일수 이하일 때 */
 export const SUBSCRIPTION_RENEWAL_SHOW_DAYS = 5;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
