@@ -6574,6 +6574,8 @@ export function render(opts = {}) {
 
   let _timeLedgerFilterPullTimer = null;
   let _usageListPullGen = 0;
+  /** 서버에서 해당 기간을 받아오는 중일 때만 빈 칸에 「불러오는 중」 */
+  let _lpUsageRangePullPending = false;
   /** 이번 탭 세션에서 이미 서버 pull 한 조회 구간 — 같은 기간 재요청 생략 */
   const _lpPulledLedgerRangeKeys = new Set();
 
@@ -6605,9 +6607,37 @@ export function render(opts = {}) {
     return { rs, re };
   }
 
+  function currentLedgerPullRangeYmd() {
+    if (timeLedgerLayoutView === "report") {
+      let rs = String(reportRangeStartYmd || "").trim();
+      let re = String(reportRangeEndYmd || "").trim();
+      if (rs > re) {
+        const x = rs;
+        rs = re;
+        re = x;
+      }
+      return { rs, re };
+    }
+    return normalizedUsageHistoryRangeYmd();
+  }
+
+  function armUsageEmptyLoadingIfUnpulled() {
+    const { rs, re } = currentLedgerPullRangeYmd();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(rs) || !/^\d{4}-\d{2}-\d{2}$/.test(re)) {
+      return;
+    }
+    if (wasLedgerRangePulled(rs, re)) return;
+    _lpUsageRangePullPending = true;
+  }
+
+  function clearUsageEmptyLoading() {
+    _lpUsageRangePullPending = false;
+    if (el.isConnected) patchUsageTimelineEmptyMessage();
+  }
+
   function usageTimelineEmptyMessage() {
+    if (_lpUsageRangePullPending) return "불러오는 중…";
     const { rs, re } = normalizedUsageHistoryRangeYmd();
-    if (!wasLedgerRangePulled(rs, re)) return "로딩 중…";
     const today = getLedgerFilterTodayYmd();
     const singleDay = !timeLedgerFilterSpansMultipleDays();
     const viewingToday = singleDay && rs === today && re === today;
@@ -6780,6 +6810,7 @@ export function render(opts = {}) {
         } catch (_) {
         } finally {
           if (pullGen === _usageListPullGen) {
+            clearUsageEmptyLoading();
             dismissTimeLedgerPullLoadingUi();
           }
         }
@@ -6987,6 +7018,7 @@ export function render(opts = {}) {
     usageHistoryRangeEndYmd = next;
     persistActiveViewTimeFilterToSession();
     patchUsageRangeHeadingOnly();
+    armUsageEmptyLoadingIfUnpulled();
     onFilterChange();
     requestUsageListScrollToTopOnce();
     el._lpUsageListEnterScrollArmed = false;
@@ -7004,6 +7036,7 @@ export function render(opts = {}) {
     usageHistoryRangeEndYmd = r.end;
     persistActiveViewTimeFilterToSession();
     patchUsageRangeHeadingOnly();
+    armUsageEmptyLoadingIfUnpulled();
     onFilterChange();
     requestTimeLedgerPullForUserQueryChange("swipe");
   }
@@ -7032,6 +7065,7 @@ export function render(opts = {}) {
     }
     persistReportRangeToSession();
     patchUsageRangeHeadingOnly();
+    armUsageEmptyLoadingIfUnpulled();
     onFilterChange();
     requestTimeLedgerPullForUserQueryChange("swipe");
   }
@@ -8189,6 +8223,7 @@ export function render(opts = {}) {
           );
         }
       }
+      armUsageEmptyLoadingIfUnpulled();
       onFilterChange();
       requestTimeLedgerPullForUserQueryChange(
         timeLedgerLayoutView === "report" ? "report_range_modal" : "usage_range_modal",
@@ -16490,13 +16525,17 @@ export function render(opts = {}) {
         (el._lpTimeSubTabPullGen || 0) + 1);
       void (async () => {
         try {
+          armUsageEmptyLoadingIfUnpulled();
+          patchUsageTimelineEmptyMessage();
           await pullTimeLedgerTabEnterFromCloud({
             force: true,
             preferServer: true,
           });
           if (!el.isConnected || gen !== el._lpTimeSubTabPullGen) return;
           refreshTimeLedgerFromRemotePull({ force: false });
-        } catch (_) {}
+        } catch (_) {
+          clearUsageEmptyLoading();
+        }
       })();
     }
   }
@@ -16508,6 +16547,7 @@ export function render(opts = {}) {
   contentWrap.appendChild(ledgerContainer);
 
   requestUsageListEnterScrollOnce();
+  armUsageEmptyLoadingIfUnpulled();
   onFilterChange(true);
 
   function syncUsageHistoryRangeFromSession() {
@@ -16519,6 +16559,11 @@ export function render(opts = {}) {
 
   function refreshTimeLedgerFromRemotePull(opts = {}) {
     if (!el.isConnected) return;
+    const { rs, re } = currentLedgerPullRangeYmd();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(rs) && /^\d{4}-\d{2}-\d{2}$/.test(re)) {
+      markLedgerRangePulled(rs, re);
+    }
+    clearUsageEmptyLoading();
     if (opts.scrollUsageListToBottom) {
       requestUsageListScrollToBottomOnce();
     }
