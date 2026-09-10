@@ -17,7 +17,7 @@ export const SUBSCRIPTION_FIRST_YEAR_SHOP_URL = SUBSCRIPTION_SHOP_HOME_URL;
 export const SUBSCRIPTION_RENEWAL_SHOP_URL =
   "https://www.doodledoodle.me/shop_view?idx=67";
 /** 나의 계정 — 갱신권 구매 노출: 이용 종료일까지 이 일수 이하일 때 */
-export const SUBSCRIPTION_RENEWAL_SHOW_DAYS = 5;
+export const SUBSCRIPTION_RENEWAL_SHOW_DAYS = 7;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /** 갱신권 구매 페이지를 새 탭으로 연다 */
@@ -143,7 +143,7 @@ export function subscriptionBlockedModalOptions(snap) {
   };
 }
 
-/** 나의 계정 — 1년 이용권(active) + 만료 5일 이내 */
+/** 나의 계정 — 1년 이용권(active) + 종료 7일 이내이거나 이미 지남 */
 export function subscriptionRenewalOfferDue(snap) {
   if (!subscriptionRenewalEligible(snap)) return false;
   const msLeft = subscriptionMsUntilAccessEnd(snap);

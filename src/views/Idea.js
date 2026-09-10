@@ -329,11 +329,19 @@ export function render() {
               : subscriptionExpiredMessage(snap);
             passEl.hidden = false;
             if (renewalEl) {
-              renewalEl.hidden = false;
               const link = document.getElementById("idea-subscription-renewal-link");
-              if (link) {
-                link.href = subscriptionShopUrl(snap);
-                link.textContent = "자사몰 들어가기";
+              if (showRenewal) {
+                renewalEl.hidden = false;
+                if (link) {
+                  link.href = SUBSCRIPTION_RENEWAL_SHOP_URL;
+                  link.textContent = "1년 갱신권 구매하기";
+                }
+              } else {
+                renewalEl.hidden = false;
+                if (link) {
+                  link.href = subscriptionShopUrl(snap);
+                  link.textContent = "자사몰 들어가기";
+                }
               }
             }
           } else if (data.subscription_status === "active") {

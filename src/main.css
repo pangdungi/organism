@@ -1617,6 +1617,10 @@ table {
   margin: 0.45rem 0 0;
 }
 
+.idea-view .idea-subscription-renewal[hidden] {
+  display: none;
+}
+
 .idea-view .idea-btn-renewal {
   display: inline-flex;
   align-items: center;
@@ -1628,17 +1632,11 @@ table {
   font-weight: 600;
   color: #fafafa;
   text-decoration: none;
-  background: var(--idea-navy);
-  border: 1px solid var(--idea-navy);
+  background: #000000;
+  border: 1px solid #000000;
   border-radius: 8px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: background 0.12s ease, border-color 0.12s ease;
-}
-
-.idea-view .idea-btn-renewal:hover {
-  background: #163a5c;
-  border-color: #163a5c;
 }
 
 .idea-view .idea-hourly-tabs {
