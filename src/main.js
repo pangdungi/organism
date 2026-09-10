@@ -459,13 +459,19 @@ async function enterAuthenticatedApp(opts = {}) {
       if (!sameAccountFastPath) {
         if (showSplash) setAppSplashMessage("설정 불러오는 중…");
         await prepareTimeLedgerStorageForCurrentSession();
-        await pullPrefsAndArmSubscriptionGate();
-        finishStep("계정 설정 pull");
       }
+      await pullPrefsAndArmSubscriptionGate();
+      finishStep("계정 설정 pull");
 
       await mountApp(screen);
       finishStep("메인 화면 조립(mountApp)");
-      await waitForAppBootReady();
+      if (isSubscriptionAccessLocked()) {
+        setLpAuthBootPending(false);
+        hideAppSplashNow({ force: true });
+        await notifyExpiredSubscriptionStayInApp();
+      } else {
+        await waitForAppBootReady();
+      }
       prefetchCriticalAppIconAssets();
       void warmDefaultAndInUsePickerIcons();
       refreshLpPwaInstall();
@@ -477,10 +483,6 @@ async function enterAuthenticatedApp(opts = {}) {
         try {
           if (sameAccountFastPath) {
             await prepareTimeLedgerStorageForCurrentSession();
-            await pullPrefsAndArmSubscriptionGate();
-          }
-          if (isSubscriptionAccessLocked()) {
-            await notifyExpiredSubscriptionStayInApp();
           }
         } catch (_) {}
       })();
@@ -494,7 +496,9 @@ async function enterAuthenticatedApp(opts = {}) {
     } finally {
       if (showSplash) {
         setLpAuthBootPending(false);
-        hideAppSplashNow();
+        hideAppSplashNow(
+          isSubscriptionAccessLocked() ? { force: true } : {},
+        );
       }
     }
   })();
