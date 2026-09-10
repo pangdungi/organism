@@ -110,7 +110,12 @@ import {
   isDesktopDashboardViewport,
   renderDesktopDashboard,
   runDesktopDashboardSoftRefresh,
+  syncDesktopExpiredInteractionLock,
 } from "./utils/desktopDashboard.js";
+import {
+  isSubscriptionAccessLocked,
+  subscriptionExpiredMessage,
+} from "./utils/subscriptionAccess.js";
 import { openDesktopIdeaAccountModal } from "./utils/desktopIdeaAccountModal.js";
 
 /** 상위 탭 메타(아이콘·메뉴 런처 구역 순서) */
@@ -717,6 +722,13 @@ export async function mountApp(container) {
   if (container.querySelector(".app-page")) return;
   /* 로그아웃 등으로 저장소가 비었는데 메모리 탭만 남으면 크롬·첫 화면이 어긋남 → 오늘로 고정 */
   if (!applyPersistedTabIdFromSessionStorage()) currentTabId = "home";
+  if (
+    isSubscriptionAccessLocked() &&
+    currentTabId !== "home" &&
+    currentTabId !== "idea"
+  ) {
+    currentTabId = "home";
+  }
   if (currentTabId === "admin" && supabase) {
     try {
       const { data: { session } = {} } = await getSupabaseSession();
@@ -847,7 +859,17 @@ export async function mountApp(container) {
    * 홈 3분할 DOM은 버리지 않음 — 전체 탭 갔다가 홈(푸터 홈 등)으로 돌아올 때
    * 통째 재생성하면 약 1초 지연이 난다.
    */
+  function blockExpiredTabIfNeeded(tabId) {
+    if (!isSubscriptionAccessLocked()) return false;
+    if (tabId === "idea" || tabId === "home") return false;
+    if (!isDesktopDashboardViewport()) {
+      showToast(subscriptionExpiredMessage());
+    }
+    return true;
+  }
+
   function openAppTabFromHome(tabId) {
+    if (blockExpiredTabIfNeeded(tabId)) return;
     if (tabId === "idea" && isDesktopDashboardViewport()) {
       openDesktopIdeaAccountModal({
         pullAccount: () =>
@@ -863,6 +885,7 @@ export async function mountApp(container) {
   }
 
   function setActiveTab(tabId) {
+    if (blockExpiredTabIfNeeded(tabId)) return;
     if (tabId === "admin") {
       void (async () => {
         if (!supabase) return;
@@ -1461,6 +1484,14 @@ export async function mountApp(container) {
 
   window.__lpRenderMain = (opts) => renderMain(main, opts || {});
   window.__lpSetTab = (tabId) => setActiveTab(tabId);
+  window.__lpOpenMyAccount = () => openAppTabFromHome("idea");
+  window.__lpSyncExpiredDesktopLock = () => {
+    const root =
+      desktopDashboardEl?.isConnected && desktopDashboardEl
+        ? desktopDashboardEl
+        : document.querySelector(".lp-desktop-dashboard");
+    syncDesktopExpiredInteractionLock(root);
+  };
 
   try {
     const desktopDashboardMq = window.matchMedia(DESKTOP_DASHBOARD_MQ);

@@ -4,10 +4,16 @@
  */
 import { supabase } from "../supabase.js";
 
-export const SUBSCRIPTION_EXPIRED_MESSAGE = "이용기간이 종료되었습니다.";
-export const SUBSCRIPTION_NO_ACCESS_MESSAGE = "이용 권한이 없습니다.";
+export const SUBSCRIPTION_EXPIRED_MESSAGE = "1년 구독이 종료되었습니다.";
+export const SUBSCRIPTION_TRIAL_EXPIRED_MESSAGE =
+  "테스트 이용기간이 끝났습니다.";
+export const SUBSCRIPTION_YEAR_EXPIRED_MESSAGE =
+  "1년 구독이 종료되었습니다.";
+export const SUBSCRIPTION_NO_ACCESS_MESSAGE = SUBSCRIPTION_EXPIRED_MESSAGE;
 export const SUBSCRIPTION_NO_ACCESS_HINT =
-  "아임웹에서 이용권을 구매한 뒤, 결제하신 이메일로 로그인해 주세요.";
+  "자사몰에서 이용권을 구매해 주세요.";
+export const SUBSCRIPTION_SHOP_HOME_URL = "https://www.doodledoodle.me/";
+export const SUBSCRIPTION_FIRST_YEAR_SHOP_URL = SUBSCRIPTION_SHOP_HOME_URL;
 export const SUBSCRIPTION_RENEWAL_SHOP_URL =
   "https://www.doodledoodle.me/shop_view?idx=67";
 /** 나의 계정 — 갱신권 구매 노출: 이용 종료일까지 이 일수 이하일 때 */
@@ -27,12 +33,59 @@ export function openSubscriptionRenewalShop() {
 const MAX_TIMER_MS = 2147483647;
 
 let subscriptionSignOutTimerId = null;
+let subscriptionAccessLocked = false;
+let expiredNoticeShown = false;
+/** @type {"year" | "trial" | null} */
+let lastExpiredKind = null;
+
+export function isSubscriptionAccessLocked() {
+  return subscriptionAccessLocked;
+}
+
+export function setSubscriptionAccessLocked(on, snap) {
+  subscriptionAccessLocked = !!on;
+  if (!on) {
+    lastExpiredKind = null;
+    return;
+  }
+  if (snap) {
+    lastExpiredKind = subscriptionRenewalEligible(snap) ? "year" : "trial";
+  }
+}
+
+export function subscriptionExpiredMessage(snap) {
+  const year =
+    snap != null
+      ? subscriptionRenewalEligible(snap)
+      : lastExpiredKind === "year";
+  return year
+    ? SUBSCRIPTION_YEAR_EXPIRED_MESSAGE
+    : SUBSCRIPTION_TRIAL_EXPIRED_MESSAGE;
+}
+
+export function resetSubscriptionAccessGate() {
+  subscriptionAccessLocked = false;
+  expiredNoticeShown = false;
+  lastExpiredKind = null;
+  clearSubscriptionAccessAutoSignOutSchedule();
+}
+
+export function consumeExpiredNoticeSlot() {
+  if (expiredNoticeShown) return false;
+  expiredNoticeShown = true;
+  return true;
+}
 
 export function clearSubscriptionAccessAutoSignOutSchedule() {
   if (subscriptionSignOutTimerId != null) {
     clearTimeout(subscriptionSignOutTimerId);
     subscriptionSignOutTimerId = null;
   }
+}
+
+/** 자사몰 들어가기 — 두들 홈 */
+export function subscriptionShopUrl() {
+  return SUBSCRIPTION_SHOP_HOME_URL;
 }
 
 /**
@@ -78,19 +131,15 @@ export function subscriptionRenewalEligible(snap) {
   return String(snap?.status || "").toLowerCase() === "active";
 }
 
-/** 로그인 차단 모달 문구·갱신 버튼 */
+/** 이용기간 종료 안내 — 자사몰 버튼만 */
 export function subscriptionBlockedModalOptions(snap) {
-  if (subscriptionRenewalEligible(snap)) {
-    return {
-      message: SUBSCRIPTION_EXPIRED_MESSAGE,
-      warnMessage: "갱신권 구매 후 다시 로그인해 주세요.",
-      showRenewal: true,
-    };
-  }
   return {
-    message: SUBSCRIPTION_NO_ACCESS_MESSAGE,
-    warnMessage: SUBSCRIPTION_NO_ACCESS_HINT,
-    showRenewal: false,
+    message: subscriptionExpiredMessage(snap),
+    warnMessage: "",
+    showRenewal: true,
+    showDelete: false,
+    renewalText: "자사몰 들어가기",
+    renewalUrl: subscriptionShopUrl(snap),
   };
 }
 
@@ -135,9 +184,11 @@ export async function syncSubscriptionAccessAutoSignOut(signOutFn, snapOpt) {
   if (!snap) return;
 
   if (subscriptionAccessEnded(snap)) {
+    setSubscriptionAccessLocked(true, snap);
     await signOutFn();
     return;
   }
+  setSubscriptionAccessLocked(false);
 
   if (snap.status !== "inactive" || !snap.accessUntil) return;
 
@@ -167,8 +218,10 @@ export async function runBackgroundSubscriptionGateFromPrefsRow(row, signOutFn) 
   const snap = subscriptionSnapFromPrefsRow(row);
   if (!snap) return;
   if (subscriptionAccessEnded(snap)) {
+    setSubscriptionAccessLocked(true, snap);
     await signOutFn();
     return;
   }
+  setSubscriptionAccessLocked(false);
   await syncSubscriptionAccessAutoSignOut(signOutFn, snap);
 }

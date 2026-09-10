@@ -18,7 +18,6 @@ import { showOnly } from "./pages.js";
 import {
   login,
   signUp,
-  signOut,
   resetPasswordRequest,
   updatePasswordForRecovery,
   purgeTimeLedgerLocalOnSignOut,
@@ -89,7 +88,11 @@ import {
   fetchSubscriptionGateSnapshot,
   subscriptionAccessEnded,
   subscriptionBlockedModalOptions,
-  runBackgroundSubscriptionGateFromPrefsRow,
+  subscriptionSnapFromPrefsRow,
+  setSubscriptionAccessLocked,
+  isSubscriptionAccessLocked,
+  consumeExpiredNoticeSlot,
+  syncSubscriptionAccessAutoSignOut,
 } from "./utils/subscriptionAccess.js";
 import {
   isLpEnterAppDebugEnabled,
@@ -108,23 +111,43 @@ import {
 } from "./utils/mobileViewportKeyboard.js";
 import { syncLoginRememberMeCheckbox } from "./utils/authRememberMe.js";
 
-async function blockExpiredSubscriptionOrSignOut() {
+async function notifyExpiredSubscriptionStayInApp() {
   const snap = await fetchSubscriptionGateSnapshot();
-  if (!subscriptionAccessEnded(snap)) return false;
-  const result = await showSubscriptionExpiredModal(
-    subscriptionBlockedModalOptions(snap),
-  );
-  if (!result?.deleted) await signOut();
+  if (!subscriptionAccessEnded(snap)) {
+    setSubscriptionAccessLocked(false);
+    return false;
+  }
+  setSubscriptionAccessLocked(true, snap);
+  setLpAuthBootPending(false);
+  hideAppSplashNow({ force: true });
+  try {
+    window.__lpSyncExpiredDesktopLock?.();
+  } catch (_) {}
+  if (consumeExpiredNoticeSlot()) {
+    await showSubscriptionExpiredModal(
+      subscriptionBlockedModalOptions(snap),
+    );
+    try {
+      window.__lpOpenMyAccount?.();
+    } catch (_) {}
+  }
   return true;
 }
 
-/** 설정 pull 후 구독·기한 타이머 */
-async function pullPrefsAndRunSubscriptionGate() {
+/** 설정 pull 후 잠금만 맞추고, 만료 안내는 화면이 뜬 뒤에 */
+async function pullPrefsAndArmSubscriptionGate() {
   const row = await pullUserPrefsFromSupabase().catch(() => null);
-  await runBackgroundSubscriptionGateFromPrefsRow(
-    row,
-    blockExpiredSubscriptionOrSignOut,
-  ).catch(() => {});
+  const snap = subscriptionSnapFromPrefsRow(row);
+  if (!snap) return;
+  if (subscriptionAccessEnded(snap)) {
+    setSubscriptionAccessLocked(true, snap);
+    return;
+  }
+  setSubscriptionAccessLocked(false);
+  await syncSubscriptionAccessAutoSignOut(
+    notifyExpiredSubscriptionStayInApp,
+    snap,
+  );
 }
 
 /**
@@ -213,7 +236,8 @@ function showAppSplashNow() {
   setAppSplashViewportLock(true);
 }
 
-function hideAppSplashNow() {
+function hideAppSplashNow(opts = {}) {
+  const force = !!opts.force;
   const splash = document.getElementById("app-splash");
   if (!splash || splash.hasAttribute("hidden")) return;
 
@@ -224,6 +248,7 @@ function hideAppSplashNow() {
     .getElementById("app-screen")
     ?.querySelector(".app-page");
   if (
+    !force &&
     lpAppMounted &&
     signinVisible &&
     !hasAppPage &&
@@ -387,7 +412,7 @@ async function enterAuthenticatedApp(opts = {}) {
     void getSupabaseSession().then(({ data: { session } }) => {
       markTabBootAuthUid(session?.user?.id);
     });
-    void blockExpiredSubscriptionOrSignOut();
+    void notifyExpiredSubscriptionStayInApp();
     return;
   }
   if (lpAppMounted) return;
@@ -432,15 +457,9 @@ async function enterAuthenticatedApp(opts = {}) {
       finishStep("로컬 캐시 준비");
 
       if (!sameAccountFastPath) {
-        if (showSplash) setAppSplashMessage("이용 권한 확인 중…");
-        const blocked = await blockExpiredSubscriptionOrSignOut();
-        if (blocked) {
-          lpAppMounted = false;
-          return;
-        }
         if (showSplash) setAppSplashMessage("설정 불러오는 중…");
         await prepareTimeLedgerStorageForCurrentSession();
-        await pullPrefsAndRunSubscriptionGate();
+        await pullPrefsAndArmSubscriptionGate();
         finishStep("계정 설정 pull");
       }
 
@@ -454,15 +473,17 @@ async function enterAuthenticatedApp(opts = {}) {
       markTabBootAuthUid(uid);
       finishStep("세션·탭 표시");
 
-      if (sameAccountFastPath) {
-        void (async () => {
-          try {
+      void (async () => {
+        try {
+          if (sameAccountFastPath) {
             await prepareTimeLedgerStorageForCurrentSession();
-            await pullPrefsAndRunSubscriptionGate();
-            await blockExpiredSubscriptionOrSignOut();
-          } catch (_) {}
-        })();
-      }
+            await pullPrefsAndArmSubscriptionGate();
+          }
+          if (isSubscriptionAccessLocked()) {
+            await notifyExpiredSubscriptionStayInApp();
+          }
+        } catch (_) {}
+      })();
 
       timings.push({
         label: "진입 합계",
@@ -888,6 +909,11 @@ async function doSignUp() {
   const result = await signUp(email, pw);
   if (!result.ok) {
     showToast(result.msg);
+    if (result.alreadyMember || result.alreadyActive) {
+      setAuthGatePanel("login");
+      const loginId = document.getElementById("login-id");
+      if (loginId) loginId.value = email;
+    }
     return;
   }
   const session = result.data?.session;

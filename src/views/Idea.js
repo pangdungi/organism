@@ -17,12 +17,11 @@ import {
 import { setScopedLocalStorageItem, getScopedLocalStorageItem } from "../utils/clientStorageScope.js";
 import { showToast } from "../utils/showToast.js";
 import {
-  SUBSCRIPTION_EXPIRED_MESSAGE,
-  SUBSCRIPTION_NO_ACCESS_HINT,
+  subscriptionExpiredMessage,
   SUBSCRIPTION_RENEWAL_SHOP_URL,
   subscriptionAccessEnded,
-  subscriptionRenewalEligible,
   subscriptionRenewalOfferDue,
+  subscriptionShopUrl,
   subscriptionSnapFromPrefsRow,
 } from "../utils/subscriptionAccess.js";
 
@@ -324,17 +323,19 @@ export function render() {
           const expired = subscriptionAccessEnded(snap);
           const showRenewal = subscriptionRenewalOfferDue(snap);
           if (expired) {
-            if (subscriptionRenewalEligible(snap)) {
-              statusEl.textContent = "이용 만료";
-              passEl.textContent = data.access_until
-                ? `이용 종료일 ${formatDateKo(data.access_until)}`
-                : SUBSCRIPTION_EXPIRED_MESSAGE;
-            } else {
-              statusEl.textContent = "이용 권한 없음";
-              passEl.textContent = SUBSCRIPTION_NO_ACCESS_HINT;
-            }
+            statusEl.textContent = "이용 만료";
+            passEl.textContent = data.access_until
+              ? `이용 종료일 ${formatDateKo(data.access_until)}`
+              : subscriptionExpiredMessage(snap);
             passEl.hidden = false;
-            if (renewalEl) renewalEl.hidden = !showRenewal;
+            if (renewalEl) {
+              renewalEl.hidden = false;
+              const link = document.getElementById("idea-subscription-renewal-link");
+              if (link) {
+                link.href = subscriptionShopUrl(snap);
+                link.textContent = "자사몰 들어가기";
+              }
+            }
           } else if (data.subscription_status === "active") {
             statusEl.textContent = "구독중";
             const start = formatDateKo(data.signup_at);

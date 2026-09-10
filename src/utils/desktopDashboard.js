@@ -4,6 +4,7 @@
  */
 
 import { applyStaticAppIconImg } from "./staticAppIconImg.js";
+import { isSubscriptionAccessLocked } from "./subscriptionAccess.js";
 import { appBrandLogoUrl, withToolbarIconCacheVersion } from "./toolbarIconUrl.js";
 import { render as renderTime } from "../views/Time.js";
 import { render as renderHabitTracker } from "../views/HabitTracker.js";
@@ -33,6 +34,31 @@ const DESKTOP_QUICK_KPI_TABS = [
     icon: "/toolbaricons/menu-happiness.png",
   },
 ];
+
+/** 이용기간 만료 — 3분할은 보이되 칸 안 조작·전체화면 진입만 막음 */
+export function syncDesktopExpiredInteractionLock(dashboardRoot) {
+  const root =
+    dashboardRoot || document.querySelector(".lp-desktop-dashboard");
+  const grid = root?.querySelector?.(".lp-desktop-dashboard-grid");
+  if (!grid) return;
+  let overlay = grid.querySelector(".lp-desktop-expired-lock");
+  const locked = isSubscriptionAccessLocked();
+  if (!locked) {
+    overlay?.remove();
+    return;
+  }
+  if (overlay) return;
+  overlay = document.createElement("div");
+  overlay.className = "lp-desktop-expired-lock";
+  overlay.setAttribute("aria-hidden", "true");
+  const block = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  overlay.addEventListener("pointerdown", block, true);
+  overlay.addEventListener("click", block, true);
+  grid.appendChild(overlay);
+}
 
 export function isDesktopDashboardViewport() {
   try {
@@ -209,6 +235,7 @@ export function renderDesktopDashboard(opts) {
 
   grid.append(colTime, colCenter, colPlanner);
   root.append(topBar, grid);
+  syncDesktopExpiredInteractionLock(root);
 
   const embedCommon = {
     dashboardEmbedMode: true,

@@ -18,7 +18,7 @@ import {
   getSignupEmailRedirectUrl,
 } from "./utils/authEmailRedirect.js";
 import { clearSupabaseSessionCache, primeSupabaseSession } from "./utils/supabaseSession.js";
-import { clearSubscriptionAccessAutoSignOutSchedule } from "./utils/subscriptionAccess.js";
+import { resetSubscriptionAccessGate } from "./utils/subscriptionAccess.js";
 import { clearUserHourlyRateLocal } from "./utils/userHourlySync.js";
 import {
   getActiveClientStorageUserId,
@@ -227,6 +227,26 @@ export async function canSignupWithPurchaseEmail(email) {
   return { ok: data === true, known: true };
 }
 
+/** 이미 가입된 계정 이메일인지 */
+export async function isExistingMemberEmail(email) {
+  const e = String(email || "").trim();
+  if (!e || !supabase) return false;
+  const { data, error } = await supabase.rpc("lp_email_is_existing_member", {
+    p_email: e,
+  });
+  if (error) {
+    const fallback = await supabase.rpc("lp_email_is_active_subscriber", {
+      p_email: e,
+    });
+    if (fallback.error) {
+      console.warn("lp_email_is_existing_member", error);
+      return false;
+    }
+    return fallback.data === true;
+  }
+  return data === true;
+}
+
 /** 이메일·비밀번호로 회원가입 (구매 이메일만 · 확인 메일 끄면 바로 세션) */
 export async function signUp(email, password) {
   if (!email?.trim() || !password) {
@@ -238,11 +258,18 @@ export async function signUp(email, password) {
   if (!supabase) {
     return { ok: false, msg: "서버를 재시작해 주세요. (.env가 로드되지 않았습니다)" };
   }
+  if (await isExistingMemberEmail(email)) {
+    return {
+      ok: false,
+      alreadyMember: true,
+      msg: "이미 가입된 회원입니다.",
+    };
+  }
   const gate = await canSignupWithPurchaseEmail(email);
   if (gate.known && !gate.ok) {
     return {
       ok: false,
-      msg: "두들 자사몰에서 구매한 이메일로만 가입할 수 있어요. 구매 때 쓴 이메일을 확인해 주세요.",
+      msg: "두들 자사몰에서 1년 이용권 또는 체험권을 산 이메일로만 가입할 수 있어요. 구매 때 쓴 이메일을 확인해 주세요.",
     };
   }
   const emailRedirectTo = getSignupEmailRedirectUrl();
@@ -252,6 +279,13 @@ export async function signUp(email, password) {
     options: { emailRedirectTo },
   });
   if (error) {
+    if (/already registered|already been registered|User already exists/i.test(error.message || "")) {
+      return {
+        ok: false,
+        alreadyMember: true,
+        msg: "이미 가입된 회원입니다.",
+      };
+    }
     return { ok: false, msg: toKoAuthError(error.message) };
   }
   const uid = data?.session?.user?.id || data?.user?.id;
@@ -327,7 +361,7 @@ export function clearAuthGateForms() {
 }
 
 export async function signOut() {
-  clearSubscriptionAccessAutoSignOutSchedule();
+  resetSubscriptionAccessGate();
   clearSupabaseSessionCache();
   try {
     flushAllPendingTimeDailyBudgetSync();

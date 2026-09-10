@@ -8,6 +8,7 @@ import {
 import {
   SUBSCRIPTION_EXPIRED_MESSAGE,
   SUBSCRIPTION_RENEWAL_SHOP_URL,
+  SUBSCRIPTION_SHOP_HOME_URL,
   openSubscriptionRenewalShop,
 } from "./subscriptionAccess.js";
 import { openDeleteAccountModal } from "./deleteAccountModal.js";
@@ -194,11 +195,12 @@ export function showSubscriptionExpiredModal(options = {}) {
   const {
     title = "안내",
     message = SUBSCRIPTION_EXPIRED_MESSAGE,
-    warnMessage = "갱신권 구매 후 다시 로그인해 주세요.",
+    warnMessage = "",
     deleteAccountText = "회원 탈퇴하기",
-    renewalText = "갱신권 구매하기",
-    renewalUrl = SUBSCRIPTION_RENEWAL_SHOP_URL,
+    renewalText = "자사몰 들어가기",
+    renewalUrl = SUBSCRIPTION_SHOP_HOME_URL,
     showRenewal = true,
+    showDelete = false,
   } = options;
 
   dismissAppToast();
@@ -226,7 +228,7 @@ export function showSubscriptionExpiredModal(options = {}) {
           ${warnMessage ? `<p class="todo-list-confirm-warn">${escapeHtml(warnMessage)}</p>` : ""}
         </div>
         <div class="time-task-log-footer lp-subscription-expired-footer">
-          <button type="button" class="todo-list-modal-cancel lp-subscription-delete-btn">${escapeHtml(deleteAccountText)}</button>
+          ${showDelete ? `<button type="button" class="todo-list-modal-cancel lp-subscription-delete-btn">${escapeHtml(deleteAccountText)}</button>` : ""}
           ${showRenewal ? `<button type="button" class="todo-list-modal-confirm lp-subscription-renewal-btn">${escapeHtml(renewalText)}</button>` : ""}
         </div>
       </div>
@@ -253,7 +255,7 @@ export function showSubscriptionExpiredModal(options = {}) {
         }
       }
     });
-    deleteBtn.addEventListener("click", () => {
+    deleteBtn?.addEventListener("click", () => {
       modal.style.visibility = "hidden";
       void openDeleteAccountModal().then(({ deleted }) => {
         if (deleted) {
