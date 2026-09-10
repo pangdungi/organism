@@ -6594,6 +6594,36 @@ export function render(opts = {}) {
     _lpPulledLedgerRangeKeys.clear();
   }
 
+  function normalizedUsageHistoryRangeYmd() {
+    let rs = String(usageHistoryRangeStartYmd || "").trim();
+    let re = String(usageHistoryRangeEndYmd || "").trim();
+    if (rs > re) {
+      const x = rs;
+      rs = re;
+      re = x;
+    }
+    return { rs, re };
+  }
+
+  function usageTimelineEmptyMessage() {
+    const { rs, re } = normalizedUsageHistoryRangeYmd();
+    if (!wasLedgerRangePulled(rs, re)) return "로딩 중…";
+    const today = getLedgerFilterTodayYmd();
+    const singleDay = !timeLedgerFilterSpansMultipleDays();
+    const viewingToday = singleDay && rs === today && re === today;
+    if (viewingToday) return "오늘 기록이 없습니다.";
+    if (singleDay) return "이 날 기록이 없습니다.";
+    return "선택 기간에 기록이 없습니다.";
+  }
+
+  function patchUsageTimelineEmptyMessage() {
+    const emptyTl = contentWrap.querySelector(
+      ".time-ledger-usage-timeline-empty",
+    );
+    if (!emptyTl) return;
+    emptyTl.textContent = usageTimelineEmptyMessage();
+  }
+
   function patchUsageRangeHeadingOnly() {
     const cap = contentWrap.querySelector("[data-usage-range-caption]");
     if (!cap) return;
@@ -7068,6 +7098,7 @@ export function render(opts = {}) {
       }
     }
     const headingRoot = el?.isConnected ? el : contentWrap;
+    patchUsageTimelineEmptyMessage();
     const totalWrap =
       headingRoot.querySelector("[data-usage-total-wrap]") ||
       contentWrap.querySelector("[data-usage-total-wrap]");
@@ -16018,17 +16049,7 @@ export function render(opts = {}) {
       if (rows.length === 0) {
         const emptyTl = document.createElement("p");
         lpSetClasses(emptyTl, "time-ledger-usage-timeline-empty");
-        const today = getLedgerFilterTodayYmd();
-        const singleDay = !timeLedgerFilterSpansMultipleDays();
-        const viewingToday =
-          singleDay &&
-          usageHistoryRangeStartYmd === today &&
-          usageHistoryRangeEndYmd === today;
-        emptyTl.textContent = viewingToday
-          ? "오늘 기록이 없습니다."
-          : singleDay
-            ? "이 날 기록이 없습니다."
-            : "선택 기간에 기록이 없습니다.";
+        emptyTl.textContent = usageTimelineEmptyMessage();
         timelineList.appendChild(emptyTl);
       }
 
