@@ -6636,11 +6636,12 @@ export function render(opts = {}) {
   }
 
   function usageTimelineEmptyMessage() {
-    if (_lpUsageRangePullPending) return "불러오는 중…";
     const { rs, re } = normalizedUsageHistoryRangeYmd();
     const today = getLedgerFilterTodayYmd();
     const singleDay = !timeLedgerFilterSpansMultipleDays();
     const viewingToday = singleDay && rs === today && re === today;
+    /* 오늘 빈 칸은 새 날·미기록 — 불러오는 중으로 두지 않음. 다른 날만 받아올 때 */
+    if (_lpUsageRangePullPending && !viewingToday) return "불러오는 중…";
     if (viewingToday) return "오늘 기록이 없습니다.";
     if (singleDay) return "이 날 기록이 없습니다.";
     return "선택 기간에 기록이 없습니다.";
@@ -16525,17 +16526,13 @@ export function render(opts = {}) {
         (el._lpTimeSubTabPullGen || 0) + 1);
       void (async () => {
         try {
-          armUsageEmptyLoadingIfUnpulled();
-          patchUsageTimelineEmptyMessage();
           await pullTimeLedgerTabEnterFromCloud({
             force: true,
             preferServer: true,
           });
           if (!el.isConnected || gen !== el._lpTimeSubTabPullGen) return;
           refreshTimeLedgerFromRemotePull({ force: false });
-        } catch (_) {
-          clearUsageEmptyLoading();
-        }
+        } catch (_) {}
       })();
     }
   }
@@ -16547,7 +16544,6 @@ export function render(opts = {}) {
   contentWrap.appendChild(ledgerContainer);
 
   requestUsageListEnterScrollOnce();
-  armUsageEmptyLoadingIfUnpulled();
   onFilterChange(true);
 
   function syncUsageHistoryRangeFromSession() {
