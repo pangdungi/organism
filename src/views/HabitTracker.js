@@ -378,8 +378,11 @@ export function render(opts = {}) {
     syncHabitDesktopBack();
     if (!dashboardEmbedMode) syncViewModeBar();
     contentWrap.dataset.habitView = mainView;
-    paintActiveView();
-    if (!dashboardEmbedMode) void pullActiveViewFromServerThenPaint();
+    if (dashboardEmbedMode) {
+      paintActiveView();
+      return;
+    }
+    void pullActiveViewFromServerThenPaint();
   }
 
   if (!dashboardEmbedMode) {

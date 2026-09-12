@@ -129,6 +129,7 @@ import {
   shouldSkipKpiMapSavedUiRefresh,
 } from "../utils/kpiViewUiSession.js";
 import { showKpiTodoAddModal } from "../utils/kpiTodoAddModal.js";
+import { pullKpiDetailTodosFromCloud } from "../utils/kpiTabCloudRefresh.js";
 import {
   appendKpiDailyRepeatTodoAtEnd,
   sortNormalizedKpiTodoRows,
@@ -608,6 +609,16 @@ export function render() {
     happinessViewScreen = "kpiDetail";
     syncHappinessHeader();
     updateHappinessView();
+    void pullHappinessTodosThenRefresh();
+  }
+
+  async function pullHappinessTodosThenRefresh() {
+    const kid = selectedKpiId;
+    try {
+      await pullKpiDetailTodosFromCloud("happiness");
+    } catch (_) {}
+    if (!el.isConnected || selectedKpiId !== kid) return;
+    syncHappinessUiFromStoredMap();
   }
 
   function exitToKpiList() {
@@ -1900,6 +1911,7 @@ export function render() {
   reconcileScopeWithStoredMap(_happinessInitData);
   syncHappinessHeader();
   updateHappinessView();
+  void pullHappinessTodosThenRefresh();
   if (happinessViewScreen !== "kpis") {
     lastKpiMapPaintSig = readKpiMapLocalStorageSignature(
       HAPPINESS_KPI_MAP_STORAGE_KEY,

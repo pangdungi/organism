@@ -228,12 +228,21 @@ function rowToLog(r) {
 
 function rowToTodo(r) {
   const ex = r.extra && typeof r.extra === "object" && !Array.isArray(r.extra) ? r.extra : {};
+  const {
+    id: _eid,
+    kpiId: _ekpi,
+    text: _etext,
+    completed: _ecmp,
+    localModifiedAt: _lm,
+    serverUpdatedAt: _su,
+    ...exRest
+  } = ex;
   return {
+    ...exRest,
     id: r.id,
     kpiId: r.kpi_id,
     text: r.text || "",
     completed: !!r.completed,
-    ...ex,
     serverUpdatedAt: serverUpdatedAtFromRow(r),
   };
 }
@@ -863,6 +872,11 @@ export async function pullDreamKpiMapFromSupabase(opts = {}) {
   if (isAppOffline()) return false;
   await whenOfflineFlushIdle();
   const o = opts && typeof opts === "object" ? opts : { force: !!opts };
+  if (o.force) {
+    try {
+      await flushDreamKpiMapSyncPush();
+    } catch (_) {}
+  }
   return runSerializedDreamKpiServerOp(() => pullDreamKpiMapFromSupabaseImpl(o));
 }
 
