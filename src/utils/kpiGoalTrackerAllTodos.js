@@ -136,16 +136,12 @@ export function collectTaskCompletionTodoGroups() {
     }
   }
 
-  groups.sort((a, b) => {
+  const all = [...collectBuiltinAllTodoGroups(), ...groups];
+  all.sort((a, b) => {
     if (a.isChore !== b.isChore) return a.isChore ? -1 : 1;
-    const domainRank = (g) =>
-      DOMAINS.findIndex((x) => x.storageKey === g.storageKey);
-    const dr = domainRank(a) - domainRank(b);
-    if (dr) return dr;
     return a.kpiName.localeCompare(b.kpiName, "ko");
   });
-
-  return [...collectBuiltinAllTodoGroups(), ...groups];
+  return all;
 }
 
 /**
