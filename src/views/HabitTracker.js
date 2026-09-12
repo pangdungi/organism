@@ -12,6 +12,7 @@ import {
   createHabitTrackerPageGridElement,
 } from "../utils/habitTrackerPageGrid.js";
 import { pullHabitTrackerTabFromCloud } from "../utils/habitTrackerCloudRefresh.js";
+import { pullAllKpiTodosForAllTodosTab } from "../utils/kpiTabCloudRefresh.js";
 import { timeLedgerLocalTodayYmd } from "../utils/timeLedgerEntriesSupabase.js";
 import {
   habitTrackerWeekDateKeys,
@@ -356,7 +357,9 @@ export function render(opts = {}) {
     const view = mainView;
     const gen = ++viewPullGen;
     try {
-      if (view === "successfail") {
+      if (view === "alltodos") {
+        await pullAllKpiTodosForAllTodosTab();
+      } else if (view === "successfail") {
         await pullMonthsCoveringYmds(
           habitTrackerWeekDateKeys(
             successFailWeekAnchorYmd || timeLedgerLocalTodayYmd(),

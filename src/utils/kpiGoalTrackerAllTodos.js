@@ -7,7 +7,7 @@ import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
 import { sortNormalizedKpiTodoRows } from "./kpiMapTodoListOrder.js";
 import { syncKpiTaskCompletionEventOnTodoToggle } from "./kpiTaskCompletionEvents.js";
 import {
-  isKpiTaskCompletionGoalType,
+  kpiShowsTaskCompletionTodos,
   removeKpiTodo,
   stampAndPersistKpiMap,
   updateKpiTodo,
@@ -87,7 +87,7 @@ export function collectTaskCompletionTodoGroups() {
     const todos = Array.isArray(data.kpiTodos) ? data.kpiTodos : [];
 
     for (const kpi of kpis) {
-      if (!isKpiTaskCompletionGoalType(kpi)) continue;
+      if (!kpiShowsTaskCompletionTodos(kpi)) continue;
       const kpiId = String(kpi.id || "").trim();
       if (!kpiId) continue;
       const rows = sortNormalizedKpiTodoRows(

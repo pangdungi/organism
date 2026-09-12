@@ -725,8 +725,8 @@ export function isKpiTaskCompletionGoalType(kpi) {
   return !!kpi.useTaskCompletionGoal && !kpi.needHabitTracker;
 }
 
-/** 과제 기록·예상 일정에 완료형 할 일(독서하기는 읽을 예정)을 보여줄지 */
-function kpiShowsTaskCompletionTodos(kpi) {
+/** 과제 기록·예상 일정·전체 할일에 완료형 할 일(독서하기는 읽을 예정)을 보여줄지 */
+export function kpiShowsTaskCompletionTodos(kpi) {
   if (isKpiTaskCompletionGoalType(kpi)) return true;
   return String(kpi?.id || "").trim() === DEFAULT_READING_KPI_ID;
 }

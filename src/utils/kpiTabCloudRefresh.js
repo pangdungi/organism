@@ -201,6 +201,19 @@ export async function pullKpiDetailTodosFromCloud(tabId) {
   return false;
 }
 
+/** 전체 할일 — 할일만 서버에서 받음. 행복·건강 할일 pull은 올리기 대기로 건너뛰지 않음 */
+export async function pullAllKpiTodosForAllTodosTab() {
+  if (isAppOffline()) return false;
+  await whenOfflineFlushIdle();
+  const [d, h, ha, si] = await Promise.all([
+    pullDreamKpiMapFromSupabase({ force: true, skipLogs: true }),
+    pullHealthKpiMapTodosFromSupabase(),
+    pullHappinessKpiMapTodosFromSupabase(),
+    pullSideincomeKpiMapFromSupabase({ force: true, skipLogs: true }),
+  ]);
+  return !!(d || h || ha || si);
+}
+
 /**
  * 과제 기록 모달 — 연결 KPI 도메인의 할 일 목록 pull
  * @param {string} kpiId
