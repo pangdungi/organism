@@ -28,6 +28,7 @@ import {
   readKpiMapScopedStorageRaw,
   writeKpiMapScopedStorageRaw,
 } from "./kpiMapLocalStorage.js";
+import { normalizeKpiTaskCompletionEvents } from "./kpiTaskCompletionEvents.js";
 import {
   applyKpiMapExplicitDeletesOnServer,
   healthMapActiveIdsFromPayload,
@@ -440,6 +441,7 @@ function emptyPayload() {
     kpiLogs: [],
     kpiTodos: [],
     kpiDailyRepeatTodos: [],
+    kpiTaskCompletionEvents: [],
     kpiOrder: {},
     kpiTaskSync: {},
     deletedRefs: defaultDeletedRefs(),
@@ -463,6 +465,7 @@ function normalizePayload(p) {
     kpiLogs: Array.isArray(p.kpiLogs) ? p.kpiLogs : [],
     kpiTodos: Array.isArray(p.kpiTodos) ? p.kpiTodos : [],
     kpiDailyRepeatTodos: Array.isArray(p.kpiDailyRepeatTodos) ? p.kpiDailyRepeatTodos : [],
+    kpiTaskCompletionEvents: normalizeKpiTaskCompletionEvents(p.kpiTaskCompletionEvents),
     kpiOrder: p.kpiOrder && typeof p.kpiOrder === "object" ? p.kpiOrder : {},
     kpiTaskSync: p.kpiTaskSync && typeof p.kpiTaskSync === "object" ? p.kpiTaskSync : {},
     deletedRefs: normalizeDeletedRefs(p.deletedRefs),
@@ -695,6 +698,9 @@ function buildPayloadFromNormalizedRows(categories, goalLogs, kpis, logs, todos,
     kpiDailyRepeatTodos: sortNormalizedKpiTodoRows(dailyFiltered).map(rowToDaily),
     kpiOrder,
     kpiTaskSync,
+    kpiTaskCompletionEvents: normalizeKpiTaskCompletionEvents(
+      meta?.kpi_task_completion_events,
+    ),
     deletedRefs: dr,
     metaServerUpdatedAt: serverUpdatedAtFromRow(meta) || "",
   });
@@ -1321,6 +1327,9 @@ async function pullHealthKpiMapTodosFromSupabaseImpl() {
     ...localBefore,
     kpiTodos: sortNormalizedKpiTodoRows(todosFiltered).map(rowToTodo),
     kpiDailyRepeatTodos: sortNormalizedKpiTodoRows(dailyFiltered).map(rowToDaily),
+    kpiTaskCompletionEvents: normalizeKpiTaskCompletionEvents(
+      metaRes.data?.kpi_task_completion_events,
+    ),
     deletedRefs: {
       ...(localBefore.deletedRefs || {}),
       kpiTodos: dr.kpiTodos || [],

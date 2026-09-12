@@ -29,6 +29,7 @@ import {
   readKpiMapScopedStorageRaw,
   writeKpiMapScopedStorageRaw,
 } from "./kpiMapLocalStorage.js";
+import { normalizeKpiTaskCompletionEvents } from "./kpiTaskCompletionEvents.js";
 import {
   applyKpiMapExplicitDeletesOnServer,
   dreamMapActiveIdsFromPayload,
@@ -117,6 +118,7 @@ function emptyPayload() {
     kpiLogs: [],
     kpiTodos: [],
     kpiDailyRepeatTodos: [],
+    kpiTaskCompletionEvents: [],
     kpiOrder: {},
     kpiTaskSync: {},
     desiredLife: "",
@@ -142,6 +144,7 @@ function normalizePayload(p) {
     kpiLogs: Array.isArray(p.kpiLogs) ? p.kpiLogs : [],
     kpiTodos: Array.isArray(p.kpiTodos) ? p.kpiTodos : [],
     kpiDailyRepeatTodos: Array.isArray(p.kpiDailyRepeatTodos) ? p.kpiDailyRepeatTodos : [],
+    kpiTaskCompletionEvents: normalizeKpiTaskCompletionEvents(p.kpiTaskCompletionEvents),
     kpiOrder: p.kpiOrder && typeof p.kpiOrder === "object" ? p.kpiOrder : {},
     kpiTaskSync: p.kpiTaskSync && typeof p.kpiTaskSync === "object" ? p.kpiTaskSync : {},
     desiredLife: typeof p.desiredLife === "string" ? p.desiredLife : "",
@@ -323,6 +326,9 @@ function buildPayloadFromNormalizedRows(categories, kpis, logs, todos, daily, me
     kpiDailyRepeatTodos: sortNormalizedKpiTodoRows(dailyFiltered).map(rowToDaily),
     kpiOrder,
     kpiTaskSync,
+    kpiTaskCompletionEvents: normalizeKpiTaskCompletionEvents(
+      meta?.kpi_task_completion_events,
+    ),
     deletedRefs: dr,
     metaServerUpdatedAt: serverUpdatedAtFromRow(meta) || "",
   });

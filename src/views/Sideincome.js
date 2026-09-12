@@ -124,7 +124,12 @@ import {
   writeKpiMapScopedStorageRaw,
 } from "../utils/kpiMapLocalStorage.js";
 import { pullKpiDetailTodosFromCloud } from "../utils/kpiTabCloudRefresh.js";
-import { applyKpiTodoCompletedStamp } from "../utils/kpiTaskCompletionEvents.js";
+import { persistKpiCompletionEventOnly } from "../utils/kpiCompletionEventPersist.js";
+import {
+  applyKpiTodoCompletedStamp,
+  retainKpiTaskCompletionEventOnTodoDelete,
+  syncKpiTaskCompletionEventOnTodoToggle,
+} from "../utils/kpiTaskCompletionEvents.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
   APP_FOOTER_ADD_BTN_ATTR,
@@ -196,6 +201,7 @@ function loadSideincomeMap() {
         kpiLogs: parsed.kpiLogs || [],
         kpiTodos: parsed.kpiTodos || [],
         kpiDailyRepeatTodos: parsed.kpiDailyRepeatTodos || [],
+        kpiTaskCompletionEvents: parsed.kpiTaskCompletionEvents || [],
         kpiNotes: parsed.kpiNotes || [],
         kpiNoteTags: parsed.kpiNoteTags || [],
         kpiOrder: parsed.kpiOrder || {},
@@ -211,6 +217,7 @@ function loadSideincomeMap() {
     kpiLogs: [],
     kpiTodos: [],
     kpiDailyRepeatTodos: [],
+    kpiTaskCompletionEvents: [],
     kpiNotes: [],
     kpiNoteTags: [],
     kpiOrder: {},
@@ -1980,9 +1987,19 @@ export function render(opts = {}) {
             삭제전dr: deletedRefsKpiTodosLen(d),
           });
           appendDeletedRef(d, "kpiTodos", todo.id);
+          const wasCompleted = !!todo.completed;
+          retainKpiTaskCompletionEventOnTodoDelete(d, todo);
           d.kpiTodos = (d.kpiTodos || []).filter((x) => x.id !== todo.id);
           saveSideincomeMap(d, { pushServer: false });
-          void persistSideincomeKpiTodoDelete(todo.id);
+          if (wasCompleted) {
+            void persistKpiCompletionEventOnly(
+              SIDEINCOME_KPI_MAP_STORAGE_KEY,
+              todo.id,
+              true,
+            ).then(() => persistSideincomeKpiTodoDelete(todo.id));
+          } else {
+            void persistSideincomeKpiTodoDelete(todo.id);
+          }
           const after = loadSideincomeMap();
           kpiTodoLifecycleLog("부수입KPI탭_모달삭제_saveSideincomeMap후", {
             todoId: String(todo.id),
@@ -2015,9 +2032,22 @@ export function render(opts = {}) {
             이전완료: !!t.completed,
             요청완료: !!check.checked,
           });
+          const wasCompleted = !!t.completed;
           applyKpiTodoCompletedStamp(t, !!check.checked);
+          syncKpiTaskCompletionEventOnTodoToggle(
+            d,
+            kpi,
+            String(todo.id),
+            !!check.checked,
+            wasCompleted,
+          );
           saveSideincomeMap(d, { pushServer: false });
           void persistSideincomeKpiTodoRow(t);
+          void persistKpiCompletionEventOnly(
+            SIDEINCOME_KPI_MAP_STORAGE_KEY,
+            todo.id,
+            !!check.checked,
+          );
           kpiTodoLifecycleLog("부수입KPI탭_체크_save후", {
             todoId: String(todo.id),
             completion: kpiTodosCompletionBrief(loadSideincomeMap(), 20),

@@ -106,6 +106,7 @@ export function ensureAllKpiTimeTasksFromStorage() {
         kpiLogs: p.kpiLogs || [],
         kpiTodos: p.kpiTodos || [],
         kpiDailyRepeatTodos: p.kpiDailyRepeatTodos || [],
+        kpiTaskCompletionEvents: p.kpiTaskCompletionEvents || [],
         kpiOrder: p.kpiOrder || {},
         kpiTaskSync: p.kpiTaskSync || {},
         deletedRefs: p.deletedRefs,

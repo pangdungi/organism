@@ -232,6 +232,31 @@ export function setTodayActionTodoPickIds(kpiId, todoIds, todayYmd) {
   writePickStore(store);
 }
 
+/**
+ * 예상일정 슬롯에서 뺀 할일 — 다른 오늘 슬롯에도 없으면 오늘의 할일에서 제거
+ * @param {string} kpiId
+ * @param {string[]} removedTodoIds
+ * @param {string} [ymd]
+ */
+export function pruneTodayActionPicksRemovedFromSchedule(
+  kpiId,
+  removedTodoIds,
+  todayYmd,
+) {
+  const kid = String(kpiId || "").trim();
+  if (!kid) return;
+  const ymd = todayYmdOr(todayYmd);
+  const today = timeLedgerLocalTodayYmd();
+  if (!ymd || !today || ymd !== today) return;
+  const removed = cleanIdList(removedTodoIds);
+  if (!removed.length) return;
+  const stillOn = new Set(collectBudgetPlannedTodoIdsForKpiOnDate(ymd, kid));
+  const picks = readTodayActionTodoPickIds(kid, ymd);
+  const next = picks.filter((id) => stillOn.has(id) || !removed.includes(id));
+  if (next.length === picks.length) return;
+  setTodayActionTodoPickIds(kid, next, ymd);
+}
+
 /** 오늘 목록에서 뺀 행동 */
 export function readTodayActionHiddenIds(todayYmd) {
   return cleanIdList(readPickStore(todayYmd).hidden);
@@ -598,10 +623,10 @@ export function appendTodayActionPinnedTodos(host, item, opts = {}) {
   const today = todayYmdOr();
   const viewed = String(opts.todayYmd || today).slice(0, 10);
   if (viewed && today && viewed !== today) return;
-  let pickIds = readTodayActionTodoPickIds(kpiId, today);
-  if (!pickIds.length) {
-    pickIds = collectBudgetPlannedTodoIdsForKpiOnDate(today, kpiId);
-  }
+  const pickIds = cleanIdList([
+    ...collectBudgetPlannedTodoIdsForKpiOnDate(today, kpiId),
+    ...readTodayActionTodoPickIds(kpiId, today),
+  ]);
   if (!pickIds.length) return;
   const collected = collectTodayActionTodos(kpiId, { includeCompleted: true });
   if (!collected) return;

@@ -19,15 +19,13 @@ import { resolveKpiDetailLogEntriesLocal } from "./kpiTimeLedgerLogs.js";
 import { computeKpiProgress, resolveKpiGoalMode } from "./kpiTimeUnitKpi.js";
 import {
   getAccumulatedMinutesForKpiIdOnDate,
+  getTaskDailyAverageMinutesInDateRange,
   normalizeKpiLogDateYmd,
   syncHabitTrackerLogs,
 } from "./timeKpiSync.js";
 import { timeLedgerLocalTodayYmd } from "./timeLedgerEntriesSupabase.js";
 import { isHabitScheduledOnYmd } from "./kpiHabitWeekdays.js";
-import {
-  DEFAULT_CHECKUP_KPI_ID,
-  DEFAULT_READING_KPI_ID,
-} from "./defaultKpiIconIds.js";
+import { DEFAULT_CHECKUP_KPI_ID } from "./defaultKpiIconIds.js";
 import {
   appendTodayActionPinnedTodos,
   readTodayActionExtraIds,
@@ -40,11 +38,8 @@ import { resolveKpiIdForTaskId } from "./kpiTodoSync.js";
 
 const BUDGET_PLACEHOLDER_PREFIX = "(과제 선택)·";
 
-/** 오늘의 행동 목록에서 제외 — 기본 KPI「건강검진」「독서하기」 */
-const TODAY_GOALS_EXCLUDED_KPI_IDS = new Set([
-  DEFAULT_CHECKUP_KPI_ID,
-  DEFAULT_READING_KPI_ID,
-]);
+/** 오늘의 행동 목록에서 제외 — 기본 KPI「건강검진」 */
+const TODAY_GOALS_EXCLUDED_KPI_IDS = new Set([DEFAULT_CHECKUP_KPI_ID]);
 
 const DOMAINS = [
   { storageKey: "kpi-sideincome-paths", category: "시급" },
@@ -229,10 +224,46 @@ function scheduledTimesForBudgetTask(data) {
   return [];
 }
 
-/** 그날 예상일정에 올라간 행동 KPI id */
-function listExpectedScheduleKpiIdsForYmd(ymd) {
+function categoryForScheduleTask(opt) {
+  const c = String(opt?.category || "").trim();
+  if (c === "sideincome") return "시급";
+  if (c === "health") return "건강";
+  if (c === "happiness") return "행복";
+  return "";
+}
+
+function isScheduleTaskDoneToday(taskName, taskId, todayYmd) {
+  const avg = getTaskDailyAverageMinutesInDateRange(
+    taskName,
+    todayYmd,
+    todayYmd,
+    taskId,
+  );
+  return avg != null && Number(avg) > 0;
+}
+
+function makeScheduleOnlyTodayGoalItem(taskName, opt, todayYmd) {
+  const name = String(taskName || "").trim();
+  return {
+    id: `schedule:${name}`,
+    name,
+    targetLabel: "",
+    done: isScheduleTaskDoneToday(name, opt?.id, todayYmd),
+    category: categoryForScheduleTask(opt),
+    isHabit: false,
+    scheduleOnly: true,
+  };
+}
+
+/**
+ * 그날 예상일정 — KPI 연동 id, KPI 없는 과제는 이름 1개만
+ * @returns {{ kpiIds: string[], scheduleOnly: Array<{ name: string, opt: object | null }> }}
+ */
+function listExpectedScheduleTodayAddsForYmd(ymd) {
   const key = String(ymd || "").slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return [];
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) {
+    return { kpiIds: [], scheduleOnly: [] };
+  }
   let goals = {};
   try {
     const raw = readTimeDailyBudgetGoalsRaw();
@@ -240,21 +271,30 @@ function listExpectedScheduleKpiIdsForYmd(ymd) {
     const day = all[key];
     if (day && typeof day === "object" && !Array.isArray(day)) goals = day;
   } catch (_) {
-    return [];
+    return { kpiIds: [], scheduleOnly: [] };
   }
-  const ids = [];
-  const seen = new Set();
+  const kpiIds = [];
+  const scheduleOnly = [];
+  const seenKpi = new Set();
+  const seenName = new Set();
   for (const [taskName, data] of Object.entries(goals)) {
     if (String(taskName).startsWith(BUDGET_PLACEHOLDER_PREFIX)) continue;
     if (!scheduledTimesForBudgetTask(data).length) continue;
-    const opt = getTaskOptionByName(taskName);
+    const name = String(taskName || "").trim();
+    if (!name || seenName.has(name)) continue;
+    seenName.add(name);
+    const opt = getTaskOptionByName(name);
     const kid =
       resolveKpiIdForTaskId(opt?.id) || String(opt?.kpiId || "").trim();
-    if (!kid || seen.has(kid)) continue;
-    seen.add(kid);
-    ids.push(kid);
+    if (kid) {
+      if (seenKpi.has(kid)) continue;
+      seenKpi.add(kid);
+      kpiIds.push(kid);
+      continue;
+    }
+    scheduleOnly.push({ name, opt: opt || null });
   }
-  return ids;
+  return { kpiIds, scheduleOnly };
 }
 
 function makeTodayGoalItem(kpi, data, category, todayYmd) {
@@ -272,7 +312,7 @@ function makeTodayGoalItem(kpi, data, category, todayYmd) {
 
 /**
  * 진행중 KPI (시급·건강·행복) — 오늘 할 목록
- * 기본 KPI「건강검진」「독서하기」는 제외
+ * 기본 KPI「건강검진」은 제외
  * @param {{ habitsOnly?: boolean, forYmd?: string }} [opts]
  *   habitsOnly — true면 매일 반복만
  *   forYmd — 그 날짜 기준으로 목록·실행여부 (없으면 오늘). 오늘 빼기·추가는 오늘만 반영
@@ -282,7 +322,7 @@ function makeTodayGoalItem(kpi, data, category, todayYmd) {
  *   total: number,
  *   remaining: number,
  *   pct: number,
- *   items: Array<{ id: string, name: string, targetLabel: string, done: boolean, category: string, isHabit: boolean }>
+ *   items: Array<{ id: string, name: string, targetLabel: string, done: boolean, category: string, isHabit: boolean, scheduleOnly?: boolean }>
  * }}
  */
 export function buildGoalTrackerTodayGoalsModel(opts = {}) {
@@ -352,8 +392,21 @@ export function buildGoalTrackerTodayGoalsModel(opts = {}) {
   for (const extraId of extra) {
     pushIfMissing(extraId);
   }
-  for (const scheduledId of listExpectedScheduleKpiIdsForYmd(todayYmd)) {
+  const scheduledAdds = listExpectedScheduleTodayAddsForYmd(todayYmd);
+  for (const scheduledId of scheduledAdds.kpiIds) {
     pushIfMissing(scheduledId, { ignoreHidden: true });
+  }
+  if (!opts.habitsOnly) {
+    for (const row of scheduledAdds.scheduleOnly) {
+      if (
+        items.some(
+          (x) => x.name === row.name || x.id === `schedule:${row.name}`,
+        )
+      ) {
+        continue;
+      }
+      items.push(makeScheduleOnlyTodayGoalItem(row.name, row.opt, todayYmd));
+    }
   }
 
   /* 매일 반복 먼저, 그다음 나머지 */
@@ -490,13 +543,18 @@ export function mountKpiGoalTodayGoalsSection(container, opts = {}) {
 
   for (const item of model.items) {
     const li = document.createElement("li");
-    li.className = `habit-tracker-today-goals-row has-todos${
-      item.done ? " is-done" : ""
-    }`;
+    const scheduleOnly = !!item.scheduleOnly;
+    li.className = `habit-tracker-today-goals-row${
+      scheduleOnly ? "" : " has-todos"
+    }${item.done ? " is-done" : ""}`;
 
-    const rowHead = document.createElement("button");
-    rowHead.type = "button";
-    rowHead.setAttribute("aria-label", item.name);
+    const rowHead = document.createElement(scheduleOnly ? "div" : "button");
+    if (!scheduleOnly) {
+      rowHead.type = "button";
+      rowHead.setAttribute("aria-label", item.name);
+    } else {
+      rowHead.style.cursor = "default";
+    }
     rowHead.className = "habit-tracker-today-goals-head";
     rowHead.innerHTML = `
       <span class="habit-tracker-today-goals-mark" aria-label="${item.done ? "실행함" : "미실행"}">${item.done ? "O" : "X"}</span>
@@ -504,19 +562,23 @@ export function mountKpiGoalTodayGoalsSection(container, opts = {}) {
         <span class="habit-tracker-today-goals-name">${escapeHtml(item.name)}</span>
       </span>
     `;
-    rowHead.addEventListener("click", () => {
-      showTodayActionTodosModal({
-        kpiId: item.id,
-        name: item.name,
+    if (!scheduleOnly) {
+      rowHead.addEventListener("click", () => {
+        showTodayActionTodosModal({
+          kpiId: item.id,
+          name: item.name,
+          todayYmd: model.todayYmd,
+          onChange: remount,
+        });
+      });
+    }
+    li.appendChild(rowHead);
+    if (!scheduleOnly) {
+      appendTodayActionPinnedTodos(li, item, {
         todayYmd: model.todayYmd,
         onChange: remount,
       });
-    });
-    li.appendChild(rowHead);
-    appendTodayActionPinnedTodos(li, item, {
-      todayYmd: model.todayYmd,
-      onChange: remount,
-    });
+    }
     list.appendChild(li);
   }
   listParent.appendChild(list);

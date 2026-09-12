@@ -8,6 +8,7 @@ import {
   persistHappinessKpiDailyTodoDelete,
   persistHappinessKpiDailyTodoRow,
   persistHappinessKpiTodoCompleted,
+  persistHappinessKpiCompletionEventOnly,
   persistHappinessKpiTodoDelete,
   persistHappinessKpiTodoRow,
   applyHappinessKpiTimestampsOnSave,
@@ -146,7 +147,7 @@ import {
 } from "../utils/kpiTodoBulkDeleteUi.js";
 import {
   syncKpiTaskCompletionEventOnTodoToggle,
-  removeKpiTaskCompletionEventsForTodos,
+  retainKpiTaskCompletionEventOnTodoDelete,
 } from "../utils/kpiTaskCompletionEvents.js";
 import { wireKpiDailyTodoListDragReorder } from "../utils/kpiDailyTodoListDragReorder.js";
 import {
@@ -1626,12 +1627,17 @@ export function render() {
             삭제전dr: deletedRefsKpiTodosLen(d),
           });
           appendDeletedRef(d, "kpiTodos", todo.id);
-          if (String(todo.kpiId || "").trim() !== DEFAULT_CHORE_TASK_KPI_ID) {
-            removeKpiTaskCompletionEventsForTodos(d, todo.id);
-          }
+          const wasCompleted = !!todo.completed;
+          retainKpiTaskCompletionEventOnTodoDelete(d, todo);
           d.kpiTodos = (d.kpiTodos || []).filter((x) => x.id !== todo.id);
           saveHappinessMap(d, { pushServer: false });
-          void persistHappinessKpiTodoDelete(todo.id);
+          if (wasCompleted) {
+            void persistHappinessKpiCompletionEventOnly(todo.id, true).then(() =>
+              persistHappinessKpiTodoDelete(todo.id),
+            );
+          } else {
+            void persistHappinessKpiTodoDelete(todo.id);
+          }
           const after = loadHappinessMap();
           kpiTodoLifecycleLog("행복KPI탭_모달삭제_saveHappinessMap후", {
             todoId: String(todo.id),

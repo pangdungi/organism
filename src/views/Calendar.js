@@ -128,8 +128,6 @@ import {
   pullTimeDailyBudgetForDateRange,
 } from "../utils/timeDailyBudgetSupabase.js";
 import { pullTaskListForCalendar1DayEnter } from "../utils/kpiTabCloudRefresh.js";
-import { readTodayActionTodoPickIdsIfViewingToday } from "../utils/kpiTodayActionTodos.js";
-import { resolveKpiIdForTaskId } from "../utils/kpiTodoSync.js";
 import {
   dismissOpenCalendarExpectedScheduleModals,
   openCalendarExpectedScheduleModal,
@@ -4056,24 +4054,11 @@ export function buildExpectedScheduleSpansForDateKey(dateKey) {
       const prod = opt?.productivity || "other";
       const scheduleMemo = String(memos[timeIdx] || "").trim();
       const scheduleDetail = String(details[timeIdx] || "").trim();
-      const slotPlannedIds = Array.isArray(plannedIdsArr[timeIdx])
+      const plannedTodoIds = Array.isArray(plannedIdsArr[timeIdx])
         ? plannedIdsArr[timeIdx]
             .map((x) => String(x || "").trim())
             .filter(Boolean)
         : [];
-      const kpiId =
-        resolveKpiIdForTaskId(opt?.id) || String(opt?.kpiId || "").trim();
-      const todayPickIds = kpiId
-        ? readTodayActionTodoPickIdsIfViewingToday(kpiId, dateKey)
-        : [];
-      const viewedToday =
-        String(dateKey || "").slice(0, 10) ===
-        String(timeLedgerLocalTodayYmd() || "");
-      const plannedTodoIds = viewedToday
-        ? todayPickIds.length
-          ? todayPickIds
-          : slotPlannedIds
-        : slotPlannedIds;
       const span = {
         startSlot,
         endSlot: Math.max(endSlot, startSlot),

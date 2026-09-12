@@ -26,6 +26,7 @@ import {
 } from "../utils/kpiTodoSync.js";
 import { pullKpiTodosDomainFromCloudIfStale } from "../utils/kpiTabCloudRefresh.js";
 import { readTodayActionTodoPickIds } from "../utils/kpiTodayActionTodos.js";
+import { collectBudgetPlannedTodoIdsForKpiOnDate } from "../utils/expectedScheduleDetail.js";
 import {
   DEFAULT_READING_KPI_ID,
   DEFAULT_READING_KPI_TODO_LIST_LABEL,
@@ -532,6 +533,47 @@ export function getPlannedTodoIdsFromBudgetSlot(dateStr, taskName, timeIdx) {
   else if (goal.scheduledTime) n = 1;
   const padded = padSchedulePlannedTodoIdsArray(goal.schedulePlannedTodoIds, n);
   return padded[ix] || [];
+}
+
+/**
+ * 슬롯의 계획 할일만 바꿈 (시각·메모는 그대로, savedAt 안 올림)
+ * @returns {{ ok: boolean }}
+ */
+export function setBudgetSchedulePlannedTodoIdsAtIndex(
+  dateStr,
+  taskName,
+  timeIdx,
+  todoIds,
+  opts = {},
+) {
+  const dk = String(dateStr || "")
+    .replace(/\//g, "-")
+    .trim()
+    .slice(0, 10);
+  const name = String(taskName || "").trim();
+  const ix = Number(timeIdx);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dk) || !name || !Number.isFinite(ix) || ix < 0) {
+    return { ok: false };
+  }
+  try {
+    const raw = readTimeDailyBudgetGoalsRaw();
+    const all = raw ? JSON.parse(raw) : {};
+    const goal = all?.[dk]?.[name];
+    if (!goal || typeof goal !== "object") return { ok: false };
+    let n = 0;
+    if (Array.isArray(goal.scheduledTimes)) n = goal.scheduledTimes.length;
+    else if (goal.scheduledTime) n = 1;
+    if (ix >= n) return { ok: false };
+    const padded = padSchedulePlannedTodoIdsArray(goal.schedulePlannedTodoIds, n);
+    padded[ix] = normalizeSchedulePlannedTodoIdsEntry(todoIds);
+    all[dk][name] = { ...goal, schedulePlannedTodoIds: padded };
+    writeTimeDailyBudgetGoalsRaw(JSON.stringify(all));
+    markTimeDailyBudgetDateLocalDirty(dk);
+    if (!opts.skipDebouncedSync) notifyTimeDailyBudgetSaved(dk);
+    return { ok: true };
+  } catch (_) {
+    return { ok: false };
+  }
 }
 
 /**
@@ -1253,8 +1295,8 @@ export function loadTimeRows() {
 
 let _syncHabitTrackerLogsTimer = null;
 
-/** 시간기록 저장 후 — 루틴 트랙커 화면만 다시 그리기(전체 탭·3분할 embed) */
-function notifyHabitTrackerUiAfterTimeSave() {
+/** 시간기록·예상일정 할일 변경 후 — 루틴 트랙커 화면만 다시 그리기(전체 탭·3분할 embed) */
+export function notifyHabitTrackerUiAfterTimeSave() {
   try {
     window.__lpHabitTrackerSoftRefresh?.();
   } catch (_) {}
@@ -8298,7 +8340,7 @@ export function render(opts = {}) {
             <div data-legacy="time-task-log-planned-slots-btns" role="group" aria-label="오늘 예상 일정"></div>
           </div>
           <div data-legacy="time-task-log-field time-task-log-task-field">
-            <label>이 시간에 할 행동</label>
+            <label data-legacy="time-task-log-task-label">과제 선택</label>
             <div data-legacy="time-task-log-task-wrap"></div>
           </div>
           <div data-legacy="time-task-log-field time-task-log-datetime-onerow">
@@ -8526,6 +8568,9 @@ export function render(opts = {}) {
   const taskLogFooterEl = taskLogModal.querySelector("[data-task-log-footer]");
   const taskLogTaskWrap = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-task-wrap"]',
+  );
+  const taskLogTaskFieldLabel = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-task-label"]',
   );
   const taskLogPlannedSlotsSection = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-planned-slots-section"]',
@@ -11979,6 +12024,7 @@ export function render(opts = {}) {
     taskLogSelectedPlannedSlot = null;
     if (taskLogPlannedSlotsBtns) taskLogPlannedSlotsBtns.replaceChildren();
     if (taskLogPlannedSlotsSection) taskLogPlannedSlotsSection.hidden = true;
+    updateTaskLogActionFieldLabel();
   }
 
   function syncTaskLogPlannedSlotBtnSelection() {
@@ -12002,6 +12048,7 @@ export function render(opts = {}) {
     ) {
       taskLogSelectedPlannedSlot = null;
       syncTaskLogPlannedSlotBtnSelection();
+      updateTaskLogActionFieldLabel();
       refreshTaskCompletionTodosInLogModal();
       return;
     }
@@ -12036,6 +12083,7 @@ export function render(opts = {}) {
       refreshTaskCompletionTodosInLogModal();
     }
     syncTaskLogPlannedSlotBtnSelection();
+    updateTaskLogActionFieldLabel();
   }
 
   function refreshTaskLogPlannedSlotsSection(opts = {}) {
@@ -12143,15 +12191,30 @@ export function render(opts = {}) {
     syncTaskLogPlannedSlotBtnSelection();
   }
 
-  /** 오늘 할일 고른 목록은 오늘만. 다른 날은 그날 예상 일정에 고른 할일. */
-  function resolveTaskLogPlannedTodoIdFilter() {
-    const recordYmd = String(taskLogResolveYmdForSync() || "").slice(0, 10);
-    const todayYmd = String(timeLedgerLocalTodayYmd() || "").slice(0, 10);
-    const kpiId = resolveTaskLogModalKpiId();
-    if (recordYmd && todayYmd && recordYmd === todayYmd) {
-      const todayIds = kpiId ? readTodayActionTodoPickIds(kpiId) : [];
-      if (todayIds.length) return todayIds;
+  function isTaskLogFromExpectedSchedule() {
+    if (taskLogSelectedPlannedSlot) return true;
+    const ctx = taskLogAddContext;
+    if (!ctx) return false;
+    if (String(ctx.presetNextExpectedBlockKey || "").trim()) return true;
+    if (
+      Array.isArray(ctx.presetPlannedTodoIds) &&
+      ctx.presetPlannedTodoIds.some((x) => String(x || "").trim())
+    ) {
+      return true;
     }
+    const idx = Number(ctx.presetTimeIdx);
+    return Number.isFinite(idx) && idx >= 0;
+  }
+
+  function updateTaskLogActionFieldLabel() {
+    if (!taskLogTaskFieldLabel) return;
+    taskLogTaskFieldLabel.textContent = isTaskLogFromExpectedSchedule()
+      ? "이 시간에 할 행동"
+      : "과제 선택";
+  }
+
+  /** 예상일정·지금 실행하기: 이 시간 할일. 일반 추가는 그 과제의 오늘 할일. */
+  function resolveTaskLogPlannedTodoIdFilter() {
     if (
       taskLogSelectedPlannedSlot &&
       Array.isArray(taskLogSelectedPlannedSlot.plannedTodoIds)
@@ -12161,18 +12224,42 @@ export function render(opts = {}) {
         .filter(Boolean);
       if (fromSlot.length) return fromSlot;
     }
-    const fromCtx = taskLogAddContext?.presetPlannedTodoIds;
-    const taskName = String(taskLogTaskDropdown?._getValue?.() || "").trim();
-    if (Array.isArray(fromCtx) && fromCtx.length) {
-      const presetTask = String(taskLogAddContext?.presetTaskName || "").trim();
-      if (!presetTask || !taskName || presetTask === taskName) {
-        return fromCtx.map((x) => String(x || "").trim()).filter(Boolean);
+    if (isTaskLogFromExpectedSchedule()) {
+      const fromCtx = taskLogAddContext?.presetPlannedTodoIds;
+      const taskName = String(taskLogTaskDropdown?._getValue?.() || "").trim();
+      if (Array.isArray(fromCtx) && fromCtx.length) {
+        const presetTask = String(taskLogAddContext?.presetTaskName || "").trim();
+        if (!presetTask || !taskName || presetTask === taskName) {
+          return fromCtx.map((x) => String(x || "").trim()).filter(Boolean);
+        }
       }
+      const recordYmd = String(taskLogResolveYmdForSync() || "").slice(0, 10);
+      if (recordYmd && taskName) {
+        const fromDay = findRelevantPlannedTodoIdsForRecording(
+          recordYmd,
+          taskName,
+        );
+        if (fromDay.length) return fromDay;
+      }
+      return [];
     }
-    if (recordYmd && taskName) {
-      return findRelevantPlannedTodoIdsForRecording(recordYmd, taskName);
+    const recordYmd = String(taskLogResolveYmdForSync() || "").slice(0, 10);
+    const todayYmd = String(timeLedgerLocalTodayYmd() || "").slice(0, 10);
+    if (!recordYmd || !todayYmd || recordYmd !== todayYmd) return [];
+    const kpiId = resolveTaskLogModalKpiId();
+    if (!kpiId) return [];
+    const seen = new Set();
+    const out = [];
+    for (const id of [
+      ...collectBudgetPlannedTodoIdsForKpiOnDate(recordYmd, kpiId),
+      ...readTodayActionTodoPickIds(kpiId),
+    ]) {
+      const s = String(id || "").trim();
+      if (!s || seen.has(s)) continue;
+      seen.add(s);
+      out.push(s);
     }
-    return [];
+    return out;
   }
 
   /** 이 기록·지금 모달에서 체크한 완료형 할일 id만 (다른 기록 완료분은 넣지 않음) */
@@ -12449,8 +12536,12 @@ export function render(opts = {}) {
     if (String(kpiId || "").trim() === DEFAULT_READING_KPI_ID) {
       return DEFAULT_READING_KPI_TODO_LIST_LABEL;
     }
-    /* 플래너(오늘 계획 퀵·지금 실행)로 연 경우만 「오늘의 할일 목록」 */
-    if (opts.plannedTodoFilterActive) return "오늘의 할일 목록";
+    /* 예상일정·지금 실행하기만 「이 시간에 할일 목록」 */
+    if (opts.plannedTodoFilterActive) {
+      return isTaskLogFromExpectedSchedule()
+        ? "이 시간에 할일 목록"
+        : "오늘의 할일 목록";
+    }
     return "할 일 목록";
   }
 
@@ -12503,7 +12594,9 @@ export function render(opts = {}) {
         const emptyLeft = !fullTodos.length;
         taskLogKpiTodosAllStatus.hidden = !emptyLeft;
         taskLogKpiTodosAllStatus.textContent = emptyLeft
-          ? "오늘 고른 할 일은 오른쪽에 있습니다"
+          ? isTaskLogFromExpectedSchedule()
+            ? "이 시간에 고른 할 일은 오른쪽에 있습니다"
+            : "오늘 고른 할 일은 오른쪽에 있습니다"
           : "";
       }
       renderTaskLogTaskCompletionTodoRows(
@@ -13270,6 +13363,7 @@ export function render(opts = {}) {
     taskLogEndClearedByUser = false;
     pendingEditStartTime = "";
     taskLogSelectedPlannedSlot = null;
+    updateTaskLogActionFieldLabel();
     clearTaskLogModalCheckedTodoIds();
     taskLogTitleEl.textContent = "과제 기록";
     taskLogSubmitBtn.textContent = "기록";

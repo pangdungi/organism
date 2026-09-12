@@ -3,10 +3,15 @@
  */
 
 import { DEFAULT_CHORE_TASK_KPI_ID } from "./defaultKpiIconIds.js";
+import { persistHappinessKpiTodoCompleted } from "./happinessKpiMapSupabase.js";
+import { persistKpiCompletionEventOnly } from "./kpiCompletionEventPersist.js";
 import { persistKpiTodoRowOnly } from "./kpiTodoOneRowPersist.js";
 import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
 import { sortNormalizedKpiTodoRows } from "./kpiMapTodoListOrder.js";
-import { syncKpiTaskCompletionEventOnTodoToggle } from "./kpiTaskCompletionEvents.js";
+import {
+  applyKpiTodoCompletedStamp,
+  syncKpiTaskCompletionEventOnTodoToggle,
+} from "./kpiTaskCompletionEvents.js";
 import {
   addKpiTodo,
   kpiShowsTaskCompletionTodos,
@@ -140,13 +145,13 @@ function toggleTodoCompleted(storageKey, todoId, completed) {
   const todo = data.kpiTodos.find((t) => String(t.id) === String(todoId));
   if (!todo) return false;
   const wasCompleted = !!todo.completed;
-  todo.completed = !!completed;
+  applyKpiTodoCompletedStamp(todo, !!completed);
   const kpi = (data.kpis || []).find(
     (k) => String(k.id || "").trim() === String(todo.kpiId || "").trim(),
   );
   syncKpiTaskCompletionEventOnTodoToggle(
     data,
-    kpi,
+    kpi || { id: todo.kpiId },
     String(todoId),
     !!completed,
     wasCompleted,
@@ -154,7 +159,12 @@ function toggleTodoCompleted(storageKey, todoId, completed) {
   stampAndPersistKpiMap(storageKey, prevSnapshot, data, {
     pushServer: false,
   });
-  void persistKpiTodoRowOnly(storageKey, todo);
+  if (storageKey === "kpi-happiness-map") {
+    void persistHappinessKpiTodoCompleted(String(todoId), !!completed);
+  } else {
+    void persistKpiTodoRowOnly(storageKey, todo);
+    void persistKpiCompletionEventOnly(storageKey, String(todoId), !!completed);
+  }
   return true;
 }
 

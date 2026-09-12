@@ -112,7 +112,8 @@ function completionDayYmd(at) {
 }
 
 /**
- * 완료한 할일 중, 완료 날짜가 이번 주인 개수.
+ * 이번 주 처리 수 — 그 주 완료 기록 ∪ 아직 목록에 남은 완료 할일.
+ * 목록에서 지워도 기록은 남기고, 체크를 끈 것만 빠진다.
  */
 export function countKpiTodosCompletedThisWeek(
   todos,
@@ -126,24 +127,23 @@ export function countKpiTodosCompletedThisWeek(
   const weekStart = weekStartYmdMonday(todayYmd);
   const weekEnd = weekEndYmdSunday(weekStart);
   if (!weekStart || !weekEnd) return 0;
-  const dateByTodoId = new Map();
+  const inWeek = (dayYmd) =>
+    !!dayYmd && dayYmd >= weekStart && dayYmd <= weekEnd;
+  const ids = new Set();
   for (const e of normalizeKpiTaskCompletionEvents(events)) {
     if (String(e.kpiId) !== kid) continue;
-    const tid = String(e.todoId || "").trim();
-    const dayYmd = completionDayYmd(e.completedAt);
-    if (tid && dayYmd) dateByTodoId.set(tid, dayYmd);
+    if (!inWeek(completionDayYmd(e.completedAt))) continue;
+    const tid = String(e.todoId || "").trim() || String(e.id || "").trim();
+    if (tid) ids.add(tid);
   }
-  let n = 0;
   for (const t of Array.isArray(todos) ? todos : []) {
     if (!t?.completed) continue;
     if (String(t.text || "").trim() === "") continue;
     const tid = String(t.id || "").trim();
     if (!tid) continue;
-    const dayYmd =
-      completionDayYmd(t.completedAt) || dateByTodoId.get(tid) || "";
-    if (dayYmd && dayYmd >= weekStart && dayYmd <= weekEnd) n += 1;
+    if (inWeek(completionDayYmd(t.completedAt))) ids.add(tid);
   }
-  return n;
+  return ids.size;
 }
 
 /** 기간 안에 완료된 할일 개수(할일 완료 날짜 ∪ 완료 기록). */
@@ -230,6 +230,38 @@ export function resolveKpiTaskCompletionCounts(todos, events, kpiId) {
  * @param {object} data KPI 맵 payload (mutate)
  * @param {string|string[]} todoIds
  */
+/**
+ * 완료한 할일을 목록에서 지울 때 — 그 주 완료 기록은 남긴다.
+ * @param {object} data KPI 맵 payload (mutate)
+ * @param {object | null | undefined} todo
+ */
+export function retainKpiTaskCompletionEventOnTodoDelete(data, todo) {
+  if (!data || !todo || typeof todo !== "object") return;
+  if (!todo.completed) return;
+  const kid = String(todo.kpiId || "").trim();
+  const tid = String(todo.id || "").trim();
+  const at = String(todo.completedAt || "").trim();
+  if (!kid || !tid || !at) return;
+  const list = normalizeKpiTaskCompletionEvents(data.kpiTaskCompletionEvents);
+  if (
+    list.some(
+      (e) =>
+        String(e.kpiId) === kid && String(e.todoId || "").trim() === tid,
+    )
+  ) {
+    return;
+  }
+  data.kpiTaskCompletionEvents = [
+    ...list,
+    {
+      id: newCompletionEventId(),
+      kpiId: kid,
+      todoId: tid,
+      completedAt: at,
+    },
+  ];
+}
+
 export function removeKpiTaskCompletionEventsForTodos(data, todoIds) {
   if (!data || typeof data !== "object") return;
   const ids = new Set(
@@ -262,9 +294,8 @@ export function syncKpiTaskCompletionEventOnTodoToggle(
   nowCompleted,
   wasCompleted,
 ) {
-  if (!kpi?.useTaskCompletionGoal) return;
   if (!data || typeof data !== "object") return;
-  const kid = String(kpi.id || "").trim();
+  const kid = String(kpi?.id || "").trim();
   const tid = String(todoId || "").trim();
   if (!kid || !tid) return;
 

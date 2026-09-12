@@ -26,6 +26,8 @@ import {
   appendBudgetScheduleBlock,
   getBudgetGoals,
   getPlannedTodoIdsFromBudgetSlot,
+  setBudgetSchedulePlannedTodoIdsAtIndex,
+  notifyHabitTrackerUiAfterTimeSave,
   loadTimeRows,
   getNextTaskLogStartHhMmFromLedger,
   getLatestBudgetScheduleEndHhMm,
@@ -54,11 +56,7 @@ import {
   DEFAULT_READING_KPI_TODO_LIST_LABEL,
 } from "./happinessKpiMapSupabase.js";
 import { pullKpiTodosDomainFromCloudIfStale } from "./kpiTabCloudRefresh.js";
-import {
-  readTodayActionTodoPickIds,
-  setTodayActionTodoPickIds,
-} from "./kpiTodayActionTodos.js";
-import { timeLedgerLocalTodayYmd } from "./timeLedgerEntriesSupabase.js";
+import { pruneTodayActionPicksRemovedFromSchedule } from "./kpiTodayActionTodos.js";
 
 function lpExpectedDeleteDebug(step, detail) {
   try {
@@ -913,7 +911,7 @@ export function openCalendarExpectedScheduleModal(options) {
                   <h4 data-legacy="time-task-log-kpi-todos-title">할 일 목록</h4>
                   <button type="button" data-legacy="lp-expected-kpi-todo-add-btn" aria-label="할 일 추가">+</button>
                 </div>
-                <p data-legacy="time-task-log-kpi-todos-hint" hidden>할 항목을 누르면 그날 목록에 골라집니다 (과제 기록에만 표시)</p>
+                <p data-legacy="time-task-log-kpi-todos-hint" hidden>할 항목을 누르면 이 시간에 할 일로 골라집니다</p>
                 <p data-legacy="time-task-log-kpi-todos-status" hidden></p>
                 <div data-legacy="time-task-log-kpi-todos-scroll" hidden>
                   <div data-legacy="time-task-log-kpi-todos-list"></div>
@@ -921,7 +919,7 @@ export function openCalendarExpectedScheduleModal(options) {
               </div>
               <div data-legacy="lp-expected-planned-todos-pane" hidden>
                 <div data-legacy="lp-expected-planned-todos-title-row">
-                  <h4 data-legacy="lp-expected-planned-todos-title">오늘 할일 목록</h4>
+                  <h4 data-legacy="lp-expected-planned-todos-title">이 시간에 할일 목록</h4>
                 </div>
                 <div data-legacy="lp-expected-planned-todos-preview" aria-label="할일 목록"></div>
               </div>
@@ -1099,8 +1097,8 @@ export function openCalendarExpectedScheduleModal(options) {
     const newId = String(result.kpiTodoId || "").trim();
     if (!newId) return;
     plannedTodoSelection.set(newId, text);
-    persistPlannedTodoSelectionIfToday(info.kpiId);
     refreshPlannedTodosPreview();
+    persistPlannedTodosLiveToExpectedSlot();
     taskLogKpiTodosList
       ?.querySelectorAll("[data-todo-id]")
       .forEach((row) => {
@@ -1111,6 +1109,36 @@ export function openCalendarExpectedScheduleModal(options) {
 
   function getPlannedTodoIdsList() {
     return [...plannedTodoSelection.keys()];
+  }
+
+  function persistPlannedTodosLiveToExpectedSlot() {
+    if (!isEdit) return;
+    const current = String(taskDropdown?._getValue?.() || "").trim();
+    if (!current || current !== editTaskName) return;
+    const ymd = getExpectedModalYmd();
+    if (ymd !== dk) return;
+    const ids = getPlannedTodoIdsList();
+    const prev = getPlannedTodoIdsFromBudgetSlot(
+      dk,
+      editTaskName,
+      editTimeIdx,
+    );
+    const wrote = setBudgetSchedulePlannedTodoIdsAtIndex(
+      dk,
+      editTaskName,
+      editTimeIdx,
+      ids,
+      { skipDebouncedSync: true },
+    );
+    if (!wrote?.ok) return;
+    expectedPlanLiveDirty = true;
+    const removed = prev.filter((id) => !ids.includes(id));
+    pruneTodayActionPicksRemovedFromSchedule(
+      resolveExpectedModalKpiId(),
+      removed,
+      dk,
+    );
+    notifyHabitTrackerUiAfterTimeSave();
   }
 
   function refreshPlannedTodosPreview() {
@@ -1145,54 +1173,26 @@ export function openCalendarExpectedScheduleModal(options) {
     return dk;
   }
 
-  function isExpectedModalToday() {
-    const ymd = getExpectedModalYmd();
-    const today = String(timeLedgerLocalTodayYmd() || "").slice(0, 10);
-    return !!(ymd && today && ymd === today);
-  }
-
-  function formatPlannedTodosPaneTitle(ymd) {
-    const today = String(timeLedgerLocalTodayYmd() || "").slice(0, 10);
-    if (ymd && today && ymd === today) return "오늘 할일 목록";
-    const m = String(ymd || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!m) return "할일 목록";
-    return `${Number(m[2])}/${Number(m[3])}일에 할일 목록`;
+  function formatPlannedTodosPaneTitle() {
+    return "이 시간에 할일 목록";
   }
 
   function updatePlannedTodosPaneLabel() {
-    const title = formatPlannedTodosPaneTitle(getExpectedModalYmd());
+    const title = formatPlannedTodosPaneTitle();
     if (plannedTodosTitle) plannedTodosTitle.textContent = title;
     if (plannedTodosPreview) plannedTodosPreview.setAttribute("aria-label", title);
   }
 
-  /** 오늘 날짜일 때만 오늘의 행동 고른 할일로 저장 */
-  function persistPlannedTodoSelectionIfToday(kpiId) {
-    if (!isExpectedModalToday()) return;
-    const kid = String(kpiId || "").trim();
-    if (!kid) return;
-    setTodayActionTodoPickIds(kid, [...plannedTodoSelection.keys()]);
-  }
-
-  function hydratePlannedTodoSelectionFromToday(kpiId) {
+  function hydratePlannedTodoSelectionFromSlot(kpiId) {
     const kid = String(kpiId || "").trim();
     const ymd = getExpectedModalYmd();
-    let ids = [];
-    if (isExpectedModalToday() && kid) {
-      ids = readTodayActionTodoPickIds(kid);
-    }
-    if (!ids.length && kid) {
-      const slotIds = getPlannedTodoIdsFromBudgetSlot(
-        ymd,
-        taskDropdown?._getValue?.() || editTaskName || "",
-        isEdit ? editTimeIdx : -1,
-      );
-      if (slotIds.length) {
-        if (isExpectedModalToday()) setTodayActionTodoPickIds(kid, slotIds);
-        ids = slotIds;
-      }
-    }
+    const slotIds = getPlannedTodoIdsFromBudgetSlot(
+      ymd,
+      taskDropdown?._getValue?.() || editTaskName || "",
+      isEdit ? editTimeIdx : -1,
+    );
     updatePlannedTodosPaneLabel();
-    hydratePlannedTodoSelectionFromIds(kid, ids);
+    hydratePlannedTodoSelectionFromIds(kid, slotIds);
   }
 
   function togglePlannedTodoSelection(todoId, todoText) {
@@ -1201,8 +1201,8 @@ export function openCalendarExpectedScheduleModal(options) {
     if (!id || !text) return;
     if (plannedTodoSelection.has(id)) plannedTodoSelection.delete(id);
     else plannedTodoSelection.set(id, text);
-    persistPlannedTodoSelectionIfToday(resolveExpectedModalKpiId());
     refreshPlannedTodosPreview();
+    persistPlannedTodosLiveToExpectedSlot();
     taskLogKpiTodosList
       ?.querySelectorAll("[data-todo-id]")
       .forEach((row) => {
@@ -1637,7 +1637,7 @@ export function openCalendarExpectedScheduleModal(options) {
       return null;
     }
     if (!suppressPlannedClearOnTaskChange) {
-      hydratePlannedTodoSelectionFromToday(kpiId);
+      hydratePlannedTodoSelectionFromSlot(kpiId);
     }
     applyExpectedTaskCompletionTodosUi(info.kpiId, info.todos);
     return info;
@@ -1824,7 +1824,7 @@ export function openCalendarExpectedScheduleModal(options) {
         taskId: getTaskOptionByName(editTaskName)?.taskId || "",
         taskName: editTaskName,
       });
-      hydratePlannedTodoSelectionFromToday(kpiId);
+      hydratePlannedTodoSelectionFromSlot(kpiId);
       if (taskLogFeedbackInput) {
         const cleaned = migrateLegacyMemoTodoLinesIntoPlanned(
           kpiId,
@@ -1966,6 +1966,11 @@ export function openCalendarExpectedScheduleModal(options) {
     editTaskName &&
     Number.isFinite(editTimeIdx) &&
     editTimeIdx >= 0;
+  let expectedPlanCommitted = false;
+  let expectedPlanLiveDirty = false;
+  const plannedIdsAtOpen = isEdit
+    ? getPlannedTodoIdsFromBudgetSlot(dk, editTaskName, editTimeIdx)
+    : [];
 
   const { applyDefaultsForYmd, flushBeforeSubmit, syncExpectedGapFillBtnVisibility } =
     attachExpectedScheduleDatetimeUI(panel, {
@@ -1994,7 +1999,7 @@ export function openCalendarExpectedScheduleModal(options) {
     const ymd = getExpectedModalYmd();
     if (ymd === lastPlannedHydrateYmd) return;
     lastPlannedHydrateYmd = ymd;
-    hydratePlannedTodoSelectionFromToday(resolveExpectedModalKpiId());
+    hydratePlannedTodoSelectionFromSlot(resolveExpectedModalKpiId());
   };
   taskLogDateStart?.addEventListener("input", onExpectedDateForPlannedTodos, {
     signal,
@@ -2022,6 +2027,16 @@ export function openCalendarExpectedScheduleModal(options) {
 
   const close = () => {
     if (!modal.isConnected) return;
+    if (isEdit && expectedPlanLiveDirty && !expectedPlanCommitted) {
+      setBudgetSchedulePlannedTodoIdsAtIndex(
+        dk,
+        editTaskName,
+        editTimeIdx,
+        plannedIdsAtOpen,
+        { skipDebouncedSync: true },
+      );
+      notifyHabitTrackerUiAfterTimeSave();
+    }
     try {
       const ae = document.activeElement;
       if (ae instanceof HTMLElement && modal.contains(ae)) ae.blur();
@@ -2046,12 +2061,14 @@ export function openCalendarExpectedScheduleModal(options) {
 
   /** 로컬 저장 직후 모달·화면 먼저 닫고, 서버 upsert는 백그라운드 */
   const finishAfterLocalSave = (dateStr) => {
+    expectedPlanCommitted = true;
     cancelPendingTimeDailyBudgetSyncPush(dateStr);
     close();
     try {
       onSaved?.();
     } catch (_) {}
     lpRefreshAllVisibleCalendarLayoutsFromLocalData();
+    notifyHabitTrackerUiAfterTimeSave();
     void syncTimeDailyBudgetDateToSupabase(dateStr).then((syncR) => {
       lpExpectedDeleteDebug("server.sync.result", syncR);
       if (!syncR?.ok) {
@@ -2111,8 +2128,13 @@ export function openCalendarExpectedScheduleModal(options) {
       const memo = (taskLogFeedbackInput?.value || "").trim();
       const detail = getExpectedDetailForSave(taskName);
       const plannedTodoIds = getPlannedTodoIdsList();
-      persistPlannedTodoSelectionIfToday(
-        resolveExpectedModalKpiId({ taskName }),
+      const oldKpiId = resolveExpectedModalKpiId({
+        taskName: isEdit ? editTaskName : taskName,
+      });
+      const oldSlotIds = getPlannedTodoIdsFromBudgetSlot(
+        dateStr,
+        isEdit ? editTaskName : taskName,
+        isEdit ? editTimeIdx : -1,
       );
 
       if (!taskName) {
@@ -2152,6 +2174,22 @@ export function openCalendarExpectedScheduleModal(options) {
           return;
         }
       }
+      const newKpiId = resolveExpectedModalKpiId({ taskName });
+      if (oldKpiId && newKpiId && oldKpiId !== newKpiId) {
+        pruneTodayActionPicksRemovedFromSchedule(
+          oldKpiId,
+          oldSlotIds,
+          dateStr,
+        );
+      }
+      const removedIds = oldSlotIds.filter(
+        (id) => !plannedTodoIds.includes(id),
+      );
+      pruneTodayActionPicksRemovedFromSchedule(
+        newKpiId || oldKpiId,
+        removedIds,
+        dateStr,
+      );
       finishAfterLocalSave(dateStr);
     },
     { signal },
@@ -2192,6 +2230,14 @@ export function openCalendarExpectedScheduleModal(options) {
         editTimeIdx,
         taskSlots: beforeGoals[editTaskName]?.scheduledTimes,
       });
+      const deletedKpiId = resolveExpectedModalKpiId({
+        taskName: editTaskName,
+      });
+      const deletedSlotIds = getPlannedTodoIdsFromBudgetSlot(
+        dateStr,
+        editTaskName,
+        editTimeIdx,
+      );
       const r = removeBudgetScheduleBlockAtIndex(
         dateStr,
         editTaskName,
@@ -2203,6 +2249,11 @@ export function openCalendarExpectedScheduleModal(options) {
         showToast(r.error || "삭제에 실패했습니다.");
         return;
       }
+      pruneTodayActionPicksRemovedFromSchedule(
+        deletedKpiId,
+        deletedSlotIds,
+        dateStr,
+      );
       const afterGoals = getBudgetGoals(dateStr);
       lpExpectedDeleteDebug("local.after", {
         taskSlots: afterGoals[editTaskName]?.scheduledTimes,

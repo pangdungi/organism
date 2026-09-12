@@ -1309,6 +1309,19 @@ export function persistHappinessKpiTodoCompleted(todoId, completed) {
   );
 }
 
+/** 할일 줄을 지운 뒤에도 그 주 완료 기록만 서버에 남긴다 */
+export function persistHappinessKpiCompletionEventOnly(todoId, completed) {
+  return runSerializedHappinessKpiServerOp(async () => {
+    const userId = await getSessionUserId();
+    if (!userId || !supabase) return false;
+    return persistHappinessCompletionEventOnServer(
+      userId,
+      String(todoId || "").trim(),
+      !!completed,
+    );
+  });
+}
+
 async function persistHappinessKpiTodoCompletedImpl(todoId, completed) {
   const userId = await getSessionUserId();
   if (!userId || !supabase) return false;
@@ -1365,6 +1378,12 @@ async function persistHappinessCompletionEventOnServer(userId, todoId, completed
   const local = readLocalPayload();
   const todo = (local?.kpiTodos || []).find((t) => String(t.id) === tid);
   let kpiId = String(todo?.kpiId || "").trim();
+  if (!kpiId) {
+    const localEv = normalizeKpiTaskCompletionEvents(
+      local?.kpiTaskCompletionEvents,
+    ).find((e) => String(e.todoId || "").trim() === tid);
+    kpiId = String(localEv?.kpiId || "").trim();
+  }
   if (!kpiId) {
     const { data: row, error: todoErr } = await supabase
       .from("happiness_map_kpi_todos")

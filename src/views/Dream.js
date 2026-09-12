@@ -107,7 +107,12 @@ import {
   writeKpiMapScopedStorageRaw,
 } from "../utils/kpiMapLocalStorage.js";
 import { pullKpiDetailTodosFromCloud } from "../utils/kpiTabCloudRefresh.js";
-import { applyKpiTodoCompletedStamp } from "../utils/kpiTaskCompletionEvents.js";
+import { persistKpiCompletionEventOnly } from "../utils/kpiCompletionEventPersist.js";
+import {
+  applyKpiTodoCompletedStamp,
+  retainKpiTaskCompletionEventOnTodoDelete,
+  syncKpiTaskCompletionEventOnTodoToggle,
+} from "../utils/kpiTaskCompletionEvents.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
   mountAppFooterAddButton,
@@ -164,6 +169,7 @@ function loadDreamMap() {
         kpiLogs: parsed.kpiLogs || [],
         kpiTodos: parsed.kpiTodos || [],
         kpiDailyRepeatTodos: parsed.kpiDailyRepeatTodos || [],
+        kpiTaskCompletionEvents: parsed.kpiTaskCompletionEvents || [],
         kpiOrder: parsed.kpiOrder || {},
         kpiTaskSync: parsed.kpiTaskSync || {},
         desiredLife: parsed.desiredLife || "",
@@ -179,6 +185,7 @@ function loadDreamMap() {
     kpiLogs: [],
     kpiTodos: [],
     kpiDailyRepeatTodos: [],
+    kpiTaskCompletionEvents: [],
     kpiOrder: {},
     kpiTaskSync: {},
     desiredLife: "",
@@ -1158,9 +1165,19 @@ export function render() {
               삭제전dr: deletedRefsKpiTodosLen(d),
             });
             appendDeletedRef(d, "kpiTodos", todo.id);
+            const wasCompleted = !!todo.completed;
+            retainKpiTaskCompletionEventOnTodoDelete(d, todo);
             d.kpiTodos = (d.kpiTodos || []).filter((x) => x.id !== todo.id);
             saveDreamMap(d, { pushServer: false });
-            void persistDreamKpiTodoDelete(todo.id);
+            if (wasCompleted) {
+              void persistKpiCompletionEventOnly(
+                DREAM_KPI_MAP_STORAGE_KEY,
+                todo.id,
+                true,
+              ).then(() => persistDreamKpiTodoDelete(todo.id));
+            } else {
+              void persistDreamKpiTodoDelete(todo.id);
+            }
             const after = loadDreamMap();
             kpiTodoLifecycleLog("꿈KPI탭_모달삭제_saveDreamMap후", {
               todoId: String(todo.id),
@@ -1193,9 +1210,22 @@ export function render() {
               이전완료: !!t.completed,
               요청완료: !!check.checked,
             });
+            const wasCompleted = !!t.completed;
             applyKpiTodoCompletedStamp(t, !!check.checked);
+            syncKpiTaskCompletionEventOnTodoToggle(
+              d,
+              kpi,
+              String(todo.id),
+              !!check.checked,
+              wasCompleted,
+            );
             saveDreamMap(d, { pushServer: false });
             void persistDreamKpiTodoRow(t);
+            void persistKpiCompletionEventOnly(
+              DREAM_KPI_MAP_STORAGE_KEY,
+              todo.id,
+              !!check.checked,
+            );
             kpiTodoLifecycleLog("꿈KPI탭_체크_saveDreamMap후", {
               todoId: String(todo.id),
               completion: kpiTodosCompletionBrief(loadDreamMap(), 20),

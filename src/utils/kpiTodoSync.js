@@ -18,6 +18,8 @@ import { applyDreamKpiTimestampsOnSave } from "./dreamKpiMapSupabase.js";
 import { applySideincomeKpiTimestampsOnSave } from "./sideincomeKpiMapSupabase.js";
 import { applyHappinessKpiTimestampsOnSave } from "./happinessKpiMapSupabase.js";
 import { applyHealthKpiTimestampsOnSave } from "./healthKpiMapSupabase.js";
+import { persistKpiCompletionEventOnly } from "./kpiCompletionEventPersist.js";
+import { persistHappinessKpiTodoCompleted } from "./happinessKpiMapSupabase.js";
 import {
   persistKpiDailyTodoRowOnly,
   persistKpiTodoDeleteOnly,
@@ -31,10 +33,10 @@ import {
   writeKpiMapScopedStorageRaw,
 } from "./kpiMapLocalStorage.js";
 import { getTaskOptionById } from "./timeTaskOptionsModel.js";
-import { DEFAULT_CHORE_TASK_KPI_ID, DEFAULT_READING_KPI_ID } from "./defaultKpiIconIds.js";
+import { DEFAULT_READING_KPI_ID } from "./defaultKpiIconIds.js";
 import {
   normalizeKpiTaskCompletionEvents,
-  removeKpiTaskCompletionEventsForTodos,
+  retainKpiTaskCompletionEventOnTodoDelete,
   applyKpiTodoCompletedStamp,
   syncKpiTaskCompletionEventOnTodoToggle,
   toLocalDateKey,
@@ -441,18 +443,20 @@ export function syncKpiTodoCompleted(kpiTodoId, storageKey, completed) {
     const kpi = (data.kpis || []).find(
       (k) => String(k?.id || "").trim() === kid,
     );
-    /* 행복 KPI 탭 체크와 동일 — 완료 이벤트·진행률 연동 */
-    if (kpi?.useTaskCompletionGoal) {
-      syncKpiTaskCompletionEventOnTodoToggle(
-        data,
-        kpi,
-        String(kpiTodoId),
-        nowCompleted,
-        before,
-      );
-    }
+    syncKpiTaskCompletionEventOnTodoToggle(
+      data,
+      kpi || { id: kid },
+      String(kpiTodoId),
+      nowCompleted,
+      before,
+    );
     stampAndPersistKpiMap(storageKey, prevSnapshot, data, { pushServer: false });
-    void persistKpiTodoRowOnly(storageKey, todo);
+    if (storageKey === HAPPINESS_KEY) {
+      void persistHappinessKpiTodoCompleted(String(kpiTodoId), nowCompleted);
+    } else {
+      void persistKpiTodoRowOnly(storageKey, todo);
+      void persistKpiCompletionEventOnly(storageKey, String(kpiTodoId), nowCompleted);
+    }
     kpiTodoFineTrace("syncKpiTodoCompleted:저장직후", {
       kpiTodoId: String(kpiTodoId),
       storageKey,
@@ -973,10 +977,9 @@ export function removeKpiTodo(kpiTodoId, storageKey) {
       삭제전dr: deletedRefsKpiTodosLen(data),
     });
     appendDeletedKpiTodoRef(data, storageKey, idNorm);
-    const removedKpiId = String(data.kpiTodos[idx]?.kpiId || "").trim();
-    if (removedKpiId !== DEFAULT_CHORE_TASK_KPI_ID) {
-      removeKpiTaskCompletionEventsForTodos(data, idNorm);
-    }
+    const removed = data.kpiTodos[idx];
+    const removedWasCompleted = !!removed?.completed;
+    retainKpiTaskCompletionEventOnTodoDelete(data, removed);
     kpiTodoFineTrace("removeKpiTodo:deletedRefs추가후", {
       idNorm,
       drKpiTodosLen: (data.deletedRefs?.kpiTodos || []).length,
@@ -993,7 +996,13 @@ export function removeKpiTodo(kpiTodoId, storageKey) {
       삭제후: kpiTodoSnapshotBrief(data),
       삭제후dr: deletedRefsKpiTodosLen(data),
     });
-    void persistKpiTodoDeleteOnly(storageKey, idNorm);
+    if (removedWasCompleted) {
+      void persistKpiCompletionEventOnly(storageKey, idNorm, true).then(() =>
+        persistKpiTodoDeleteOnly(storageKey, idNorm),
+      );
+    } else {
+      void persistKpiTodoDeleteOnly(storageKey, idNorm);
+    }
     return true;
   } catch (e) {
     kpiTodoLifecycleLog("할일목록_removeKpiTodo_예외", {
@@ -1073,13 +1082,8 @@ export function removeAllCompletedKpiTodos() {
         });
         for (const row of completedRows) {
           appendDeletedKpiTodoRef(data, key, row.id);
+          retainKpiTaskCompletionEventOnTodoDelete(data, row);
         }
-        removeKpiTaskCompletionEventsForTodos(
-          data,
-          completedRows
-            .filter((r) => String(r.kpiId || "").trim() !== DEFAULT_CHORE_TASK_KPI_ID)
-            .map((r) => r.id),
-        );
       }
       writeKpiMapScopedStorageRaw(key, JSON.stringify(data));
       if (before > after) dispatchKpiMapSavedAfterLocalWrite(key, "removeAllCompletedKpiTodos");
