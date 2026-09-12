@@ -11,7 +11,7 @@ export const REFLECTION_JOURNAL_QUESTIONS = [
   {
     id: "q1",
     label: "Q1 오늘 내가 못한 것 또는 자제하지 못한 나쁜 습관은 무엇인가?",
-    bridge: "",
+    bridge: "못한 것",
   },
   {
     id: "q2",
@@ -129,11 +129,19 @@ export function formatReflectionJournalDisplay(raw) {
 }
 
 /**
- * 카드 표시용 — 라벨 칩 없이 글 한 덩어리
- * @returns {{ label?: string, body: string, segments?: { kind: "bridge" | "answer", text: string }[] }[]}
+ * 카드 표시용 — 질문마다 라벨 칩 + 답
+ * @returns {{ label: string, body: string }[]}
  */
 export function reflectionJournalCardParts(raw) {
-  const segments = reflectionJournalDisplaySegments(raw);
-  const text = segments.map((s) => s.text).join(" / ");
-  return text ? [{ body: text, segments }] : [];
+  const answers = parseReflectionJournal(raw);
+  /** @type {{ label: string, body: string }[]} */
+  const parts = [];
+  for (const q of REFLECTION_JOURNAL_QUESTIONS) {
+    const body = String(answers[q.id] || "").trim();
+    if (!body) continue;
+    const label = String(q.bridge || "").trim();
+    if (label) parts.push({ label, body });
+    else parts.push({ body });
+  }
+  return parts;
 }
