@@ -7,6 +7,10 @@
 import {
   SIDEINCOME_KPI_MAP_STORAGE_KEY,
   applySideincomeKpiTimestampsOnSave,
+  persistSideincomeKpiDailyTodoDelete,
+  persistSideincomeKpiDailyTodoRow,
+  persistSideincomeKpiTodoDelete,
+  persistSideincomeKpiTodoRow,
 } from "../utils/sideincomeKpiMapSupabase.js";
 import {
   kpiTimeTaskEnsure,
@@ -119,6 +123,8 @@ import {
   readKpiMapScopedStorageRaw,
   writeKpiMapScopedStorageRaw,
 } from "../utils/kpiMapLocalStorage.js";
+import { pullKpiDetailTodosFromCloud } from "../utils/kpiTabCloudRefresh.js";
+import { applyKpiTodoCompletedStamp } from "../utils/kpiTaskCompletionEvents.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
   APP_FOOTER_ADD_BTN_ATTR,
@@ -739,16 +745,40 @@ export function render(opts = {}) {
     activePathId = pathId;
     selectedKpiId = null;
     sideincomeViewScreen = "kpis";
+    persistKpiUiState();
     syncSideincomeHeader();
-    updateSideincomeView();
+    const gen = ++sideincomeDetailPullGen;
+    void (async () => {
+      try {
+        await pullKpiDetailTodosFromCloud("sideincome");
+      } catch (_) {}
+      if (!el.isConnected || gen !== sideincomeDetailPullGen) return;
+      if (activePathId !== pathId || sideincomeViewScreen !== "kpis") return;
+      lastKpiMapPaintSig = readKpiMapLocalStorageSignature(
+        SIDEINCOME_KPI_MAP_STORAGE_KEY,
+      );
+      updateSideincomeView();
+    })();
   }
 
   function enterKpiDetailView(kpiId) {
     if (!kpiId || !activePathId) return;
     selectedKpiId = kpiId;
     sideincomeViewScreen = "kpiDetail";
+    persistKpiUiState();
     syncSideincomeHeader();
-    updateSideincomeView();
+    const gen = ++sideincomeDetailPullGen;
+    void (async () => {
+      try {
+        await pullKpiDetailTodosFromCloud("sideincome");
+      } catch (_) {}
+      if (!el.isConnected || gen !== sideincomeDetailPullGen) return;
+      if (selectedKpiId !== kpiId || sideincomeViewScreen !== "kpiDetail") return;
+      lastKpiMapPaintSig = readKpiMapLocalStorageSignature(
+        SIDEINCOME_KPI_MAP_STORAGE_KEY,
+      );
+      updateSideincomeView();
+    })();
   }
 
   function exitToKpiList() {
@@ -1188,13 +1218,15 @@ export function render(opts = {}) {
       if (!text) return;
       const d2 = loadSideincomeMap();
       d2.kpiTodos = d2.kpiTodos || [];
-      d2.kpiTodos.push({
+      const added = {
         id: nextId(),
         kpiId: String(selectedKpiId),
         text,
         completed: false,
-      });
-      saveSideincomeMap(d2, { pushServer: true });
+      };
+      d2.kpiTodos.push(added);
+      saveSideincomeMap(d2, { pushServer: false });
+      void persistSideincomeKpiTodoRow(added);
       renderKpiDetailView({ scrollTodoAfterMutation: true });
       return;
     }
@@ -1208,13 +1240,15 @@ export function render(opts = {}) {
       if (!text) return;
       const d2 = loadSideincomeMap();
       d2.kpiDailyRepeatTodos = d2.kpiDailyRepeatTodos || [];
-      appendKpiDailyRepeatTodoAtEnd(d2.kpiDailyRepeatTodos, {
+      const addedDaily = {
         id: nextId(),
         kpiId: String(selectedKpiId),
         text,
         completed: false,
-      });
-      saveSideincomeMap(d2, { pushServer: true });
+      };
+      appendKpiDailyRepeatTodoAtEnd(d2.kpiDailyRepeatTodos, addedDaily);
+      saveSideincomeMap(d2, { pushServer: false });
+      void persistSideincomeKpiDailyTodoRow(addedDaily);
       renderKpiDetailView({ scrollTodoAfterMutation: true });
       return;
     }
@@ -1947,7 +1981,8 @@ export function render(opts = {}) {
           });
           appendDeletedRef(d, "kpiTodos", todo.id);
           d.kpiTodos = (d.kpiTodos || []).filter((x) => x.id !== todo.id);
-          saveSideincomeMap(d, { pushServer: true });
+          saveSideincomeMap(d, { pushServer: false });
+          void persistSideincomeKpiTodoDelete(todo.id);
           const after = loadSideincomeMap();
           kpiTodoLifecycleLog("부수입KPI탭_모달삭제_saveSideincomeMap후", {
             todoId: String(todo.id),
@@ -1961,7 +1996,8 @@ export function render(opts = {}) {
         const row = (d.kpiTodos || []).find((x) => x.id === todo.id);
         if (!row) return;
         row.text = result.text;
-        saveSideincomeMap(d, { pushServer: true });
+        saveSideincomeMap(d, { pushServer: false });
+        void persistSideincomeKpiTodoRow(row);
         renderKpiDetailView({ scrollTodoAfterMutation: true });
       };
 
@@ -1979,8 +2015,9 @@ export function render(opts = {}) {
             이전완료: !!t.completed,
             요청완료: !!check.checked,
           });
-          t.completed = !!check.checked;
-          saveSideincomeMap(d, { pushServer: true });
+          applyKpiTodoCompletedStamp(t, !!check.checked);
+          saveSideincomeMap(d, { pushServer: false });
+          void persistSideincomeKpiTodoRow(t);
           kpiTodoLifecycleLog("부수입KPI탭_체크_save후", {
             todoId: String(todo.id),
             completion: kpiTodosCompletionBrief(loadSideincomeMap(), 20),
@@ -2087,7 +2124,8 @@ export function render(opts = {}) {
             const d = loadSideincomeMap();
             appendDeletedRef(d, "kpiDailyRepeatTodos", todo.id);
             d.kpiDailyRepeatTodos = (d.kpiDailyRepeatTodos || []).filter((x) => x.id !== todo.id);
-            saveSideincomeMap(d, { pushServer: true });
+            saveSideincomeMap(d, { pushServer: false });
+            void persistSideincomeKpiDailyTodoDelete(todo.id);
             renderKpiDetailView({ scrollTodoAfterMutation: true });
             return;
           }
@@ -2095,7 +2133,8 @@ export function render(opts = {}) {
           const row = (d.kpiDailyRepeatTodos || []).find((x) => x.id === todo.id);
           if (!row) return;
           row.text = result.text;
-          saveSideincomeMap(d, { pushServer: true });
+          saveSideincomeMap(d, { pushServer: false });
+          void persistSideincomeKpiDailyTodoRow(row);
           renderKpiDetailView({ scrollTodoAfterMutation: true });
         };
 
@@ -2141,6 +2180,7 @@ export function render(opts = {}) {
       kpiId: selKpi,
       loadMap: loadSideincomeMap,
       saveMap: saveSideincomeMap,
+      storageKey: SIDEINCOME_KPI_MAP_STORAGE_KEY,
       appendDeletedRef,
       onAfterDelete: () => renderKpiDetailView({ scrollTodoAfterMutation: true }),
     };
@@ -2765,6 +2805,7 @@ export function render(opts = {}) {
   let lastKpiMapPaintSig = readKpiMapLocalStorageSignature(
     SIDEINCOME_KPI_MAP_STORAGE_KEY,
   );
+  let sideincomeDetailPullGen = 0;
 
   function syncSideincomeUiFromStoredMap() {
     if (!el.isConnected) return;

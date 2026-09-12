@@ -932,12 +932,21 @@ async function upsertNormalizedFromPayload(userId, p) {
   }
   if (localPayloadHasAnythingToPersist(p)) {
     const dr = normalizeDeletedRefs(p.deletedRefs);
+    const { data: metaNow, error: metaSelErr } = await supabase
+      .from("happiness_map_meta")
+      .select("kpi_task_completion_events")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (metaSelErr) throw new Error(`happiness_map_meta: ${metaSelErr.message}`);
+    const eventsOnServer = normalizeKpiTaskCompletionEvents(
+      metaNow?.kpi_task_completion_events,
+    );
     const { error } = await supabase.from("happiness_map_meta").upsert(
       {
         user_id: userId,
         kpi_order: p.kpiOrder || {},
         kpi_task_sync: p.kpiTaskSync || {},
-        kpi_task_completion_events: p.kpiTaskCompletionEvents || [],
+        kpi_task_completion_events: eventsOnServer,
         deleted_refs: dr,
       },
       { onConflict: "user_id" },
@@ -1239,11 +1248,6 @@ export async function pullHappinessKpiMapFromSupabase(opts = {}) {
   if (isAppOffline()) return false;
   await whenOfflineFlushIdle();
   const o = opts && typeof opts === "object" ? opts : { force: !!opts };
-  if (o.force) {
-    try {
-      await flushHappinessKpiMapSyncPush();
-    } catch (_) {}
-  }
   return runSerializedHappinessKpiServerOp(() => pullHappinessKpiMapFromSupabaseImpl(o));
 }
 
@@ -1277,6 +1281,9 @@ async function pullHappinessKpiMapTodosFromSupabaseImpl() {
     ...localBefore,
     kpiTodos: sortNormalizedKpiTodoRows(todosFiltered).map(rowToTodo),
     kpiDailyRepeatTodos: sortNormalizedKpiTodoRows(dailyFiltered).map(rowToDaily),
+    kpiTaskCompletionEvents: normalizeKpiTaskCompletionEvents(
+      metaRes.data?.kpi_task_completion_events,
+    ),
     deletedRefs: {
       ...(localBefore.deletedRefs || {}),
       kpiTodos: dr.kpiTodos || [],
@@ -1293,6 +1300,223 @@ async function pullHappinessKpiMapTodosFromSupabaseImpl() {
 
 export function pullHappinessKpiMapTodosFromSupabase() {
   return runSerializedHappinessKpiServerOp(() => pullHappinessKpiMapTodosFromSupabaseImpl());
+}
+
+/** 사용자가 체크한 그 할일 한 줄만 서버에 씀 */
+export function persistHappinessKpiTodoCompleted(todoId, completed) {
+  return runSerializedHappinessKpiServerOp(() =>
+    persistHappinessKpiTodoCompletedImpl(todoId, completed),
+  );
+}
+
+async function persistHappinessKpiTodoCompletedImpl(todoId, completed) {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) return false;
+  const tid = String(todoId || "").trim();
+  if (!tid) return false;
+  const data = readLocalPayload();
+  const todo = (data?.kpiTodos || []).find((t) => String(t.id) === tid);
+  const nowIso = new Date().toISOString();
+  const stamped = todo
+    ? {
+        ...todo,
+        completed: !!completed,
+        completedAt: completed
+          ? String(todo.completedAt || "").trim() || nowIso
+          : undefined,
+      }
+    : null;
+  if (stamped && !completed) delete stamped.completedAt;
+  if (stamped) {
+    const row = todoToRow(userId, stamped, 0);
+    const { error } = await supabase
+      .from("happiness_map_kpi_todos")
+      .upsert(row, { onConflict: UPSERT_CONFLICT_ROW });
+    if (error) return false;
+    try {
+      const nextTodos = (data?.kpiTodos || []).map((t) =>
+        String(t.id) === tid ? stamped : t,
+      );
+      writeKpiMapScopedStorageRaw(
+        HAPPINESS_KPI_MAP_STORAGE_KEY,
+        JSON.stringify(normalizePayload({ ...data, kpiTodos: nextTodos })),
+      );
+    } catch (_) {}
+  } else {
+    const { error } = await supabase
+      .from("happiness_map_kpi_todos")
+      .update({ completed: !!completed })
+      .eq("user_id", userId)
+      .eq("id", tid);
+    if (error) return false;
+  }
+  const eventOk = await persistHappinessCompletionEventOnServer(
+    userId,
+    tid,
+    !!completed,
+  );
+  return eventOk;
+}
+
+/** 체크한 그 할일의 완료 기록만 서버 목록에 넣거나 뺌. 이 창 전체 기록으로 덮지 않음 */
+async function persistHappinessCompletionEventOnServer(userId, todoId, completed) {
+  const tid = String(todoId || "").trim();
+  if (!userId || !tid) return false;
+  const local = readLocalPayload();
+  const todo = (local?.kpiTodos || []).find((t) => String(t.id) === tid);
+  let kpiId = String(todo?.kpiId || "").trim();
+  if (!kpiId) {
+    const { data: row, error: todoErr } = await supabase
+      .from("happiness_map_kpi_todos")
+      .select("kpi_id")
+      .eq("user_id", userId)
+      .eq("id", tid)
+      .maybeSingle();
+    if (todoErr) return false;
+    kpiId = String(row?.kpi_id || "").trim();
+  }
+  if (completed && !kpiId) return false;
+  const { data: meta, error: selErr } = await supabase
+    .from("happiness_map_meta")
+    .select("kpi_order, kpi_task_sync, deleted_refs, kpi_task_completion_events")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (selErr) return false;
+  let events = normalizeKpiTaskCompletionEvents(meta?.kpi_task_completion_events);
+  events = events.filter((e) => String(e.todoId || "").trim() !== tid);
+  if (completed) {
+    const localEv = normalizeKpiTaskCompletionEvents(
+      local?.kpiTaskCompletionEvents,
+    ).find(
+      (e) =>
+        String(e.todoId || "").trim() === tid &&
+        String(e.kpiId || "").trim() === kpiId,
+    );
+    events.push(
+      localEv || {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+        kpiId,
+        todoId: tid,
+        completedAt:
+          String(todo?.completedAt || "").trim() || new Date().toISOString(),
+      },
+    );
+  }
+  const { error } = await supabase.from("happiness_map_meta").upsert(
+    {
+      user_id: userId,
+      kpi_order:
+        meta?.kpi_order && typeof meta.kpi_order === "object"
+          ? meta.kpi_order
+          : local?.kpiOrder || {},
+      kpi_task_sync:
+        meta?.kpi_task_sync && typeof meta.kpi_task_sync === "object"
+          ? meta.kpi_task_sync
+          : local?.kpiTaskSync || {},
+      deleted_refs:
+        meta?.deleted_refs && typeof meta.deleted_refs === "object"
+          ? meta.deleted_refs
+          : normalizeDeletedRefs(local?.deletedRefs),
+      kpi_task_completion_events: events,
+    },
+    { onConflict: "user_id" },
+  );
+  if (error) return false;
+  try {
+    const next = normalizePayload({
+      ...readLocalPayload(),
+      kpiTaskCompletionEvents: events,
+    });
+    writeKpiMapScopedStorageRaw(
+      HAPPINESS_KPI_MAP_STORAGE_KEY,
+      JSON.stringify(next),
+    );
+  } catch (_) {}
+  return true;
+}
+
+/** 사용자가 추가한 그 할일 한 줄만 서버에 씀 */
+export function persistHappinessKpiTodoRow(todo) {
+  return runSerializedHappinessKpiServerOp(() => persistHappinessKpiTodoRowImpl(todo));
+}
+
+async function persistHappinessKpiTodoRowImpl(todo) {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) return false;
+  const t = todo && typeof todo === "object" ? todo : null;
+  if (!t || !String(t.id || "").trim() || !String(t.kpiId || "").trim()) return false;
+  const local = readLocalPayload();
+  const idx = (local?.kpiTodos || []).findIndex((x) => String(x.id) === String(t.id));
+  const { error } = await supabase
+    .from("happiness_map_kpi_todos")
+    .upsert(todoToRow(userId, t, idx >= 0 ? idx : 0), {
+      onConflict: UPSERT_CONFLICT_ROW,
+    });
+  return !error;
+}
+
+/** 사용자가 지운 그 할일 한 줄만 서버에서 지움 */
+export function persistHappinessKpiTodoDelete(todoId) {
+  return runSerializedHappinessKpiServerOp(() =>
+    persistHappinessKpiTodoDeleteImpl(todoId),
+  );
+}
+
+async function persistHappinessKpiTodoDeleteImpl(todoId) {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) return false;
+  const tid = String(todoId || "").trim();
+  if (!tid) return false;
+  const { error } = await supabase
+    .from("happiness_map_kpi_todos")
+    .delete()
+    .eq("user_id", userId)
+    .eq("id", tid);
+  return !error;
+}
+
+/** 사용자가 추가·고친 매일 할일 한 줄만 서버에 씀 */
+export function persistHappinessKpiDailyTodoRow(todo) {
+  return runSerializedHappinessKpiServerOp(() =>
+    persistHappinessKpiDailyTodoRowImpl(todo),
+  );
+}
+
+async function persistHappinessKpiDailyTodoRowImpl(todo) {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) return false;
+  const t = todo && typeof todo === "object" ? todo : null;
+  if (!t || !String(t.id || "").trim() || !String(t.kpiId || "").trim()) return false;
+  const local = readLocalPayload();
+  const idx = (local?.kpiDailyRepeatTodos || []).findIndex(
+    (x) => String(x.id) === String(t.id),
+  );
+  const { error } = await supabase
+    .from("happiness_map_kpi_daily_todos")
+    .upsert(dailyTodoToRow(userId, t, idx >= 0 ? idx : 0), {
+      onConflict: UPSERT_CONFLICT_ROW,
+    });
+  return !error;
+}
+
+/** 사용자가 지운 매일 할일 한 줄만 서버에서 지움 */
+export function persistHappinessKpiDailyTodoDelete(todoId) {
+  return runSerializedHappinessKpiServerOp(() =>
+    persistHappinessKpiDailyTodoDeleteImpl(todoId),
+  );
+}
+
+async function persistHappinessKpiDailyTodoDeleteImpl(todoId) {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) return false;
+  const tid = String(todoId || "").trim();
+  if (!tid) return false;
+  const { error } = await supabase
+    .from("happiness_map_kpi_daily_todos")
+    .delete()
+    .eq("user_id", userId)
+    .eq("id", tid);
+  return !error;
 }
 
 async function runHappinessKpiMapSyncOnce() {
@@ -1383,12 +1607,19 @@ async function runHappinessKpiMapSyncOnce() {
       let metaEmptyErr = null;
       const drEmpty = normalizeDeletedRefs(toSync.deletedRefs);
       for (let attempt = 0; attempt < 3; attempt++) {
+        const { data: metaNow } = await supabase
+          .from("happiness_map_meta")
+          .select("kpi_task_completion_events")
+          .eq("user_id", userId)
+          .maybeSingle();
         const { error } = await supabase.from("happiness_map_meta").upsert(
           {
             user_id: userId,
             kpi_order: {},
             kpi_task_sync: {},
-            kpi_task_completion_events: [],
+            kpi_task_completion_events: normalizeKpiTaskCompletionEvents(
+              metaNow?.kpi_task_completion_events,
+            ),
             deleted_refs: drEmpty,
           },
           { onConflict: "user_id" },

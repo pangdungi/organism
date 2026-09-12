@@ -263,6 +263,13 @@ function countTaskMonthStats(kpiId, todos, events, startYmd, endYmd) {
     if (!tid || doneIds.has(tid)) continue;
     doneIds.add(tid);
   }
+  for (const t of todos || []) {
+    if (!t?.completed) continue;
+    const tid = String(t?.id || "").trim();
+    const day = eventDayYmd(t.completedAt);
+    if (!tid || !ymdInRange(day, startYmd, endYmd) || doneIds.has(tid)) continue;
+    doneIds.add(tid);
+  }
   const ledger = collectLedgerMonthTaskHits(kpiId, startYmd, endYmd);
   for (const id of ledger.ids) doneIds.add(id);
 

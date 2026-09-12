@@ -920,12 +920,89 @@ export async function pullSideincomeKpiMapFromSupabase(opts = {}) {
   if (isAppOffline()) return false;
   await whenOfflineFlushIdle();
   const o = opts && typeof opts === "object" ? opts : { force: !!opts };
-  if (o.force) {
-    try {
-      await flushSideincomeKpiMapSyncPush();
-    } catch (_) {}
-  }
   return runSerializedSideincomeKpiServerOp(() => pullSideincomeKpiMapFromSupabaseImpl(o));
+}
+
+/** 사용자가 추가한 그 할일 한 줄만 서버에 씀 */
+export function persistSideincomeKpiTodoRow(todo) {
+  return runSerializedSideincomeKpiServerOp(() => persistSideincomeKpiTodoRowImpl(todo));
+}
+
+async function persistSideincomeKpiTodoRowImpl(todo) {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) return false;
+  const t = todo && typeof todo === "object" ? todo : null;
+  if (!t || !String(t.id || "").trim() || !String(t.kpiId || "").trim()) return false;
+  const local = readLocalPayload();
+  const idx = (local?.kpiTodos || []).findIndex((x) => String(x.id) === String(t.id));
+  const { error } = await supabase
+    .from("sideincome_map_kpi_todos")
+    .upsert(todoToRow(userId, t, idx >= 0 ? idx : 0), {
+      onConflict: UPSERT_CONFLICT_ROW,
+    });
+  return !error;
+}
+
+/** 사용자가 지운 그 할일 한 줄만 서버에서 지움 */
+export function persistSideincomeKpiTodoDelete(todoId) {
+  return runSerializedSideincomeKpiServerOp(() =>
+    persistSideincomeKpiTodoDeleteImpl(todoId),
+  );
+}
+
+async function persistSideincomeKpiTodoDeleteImpl(todoId) {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) return false;
+  const tid = String(todoId || "").trim();
+  if (!tid) return false;
+  const { error } = await supabase
+    .from("sideincome_map_kpi_todos")
+    .delete()
+    .eq("user_id", userId)
+    .eq("id", tid);
+  return !error;
+}
+
+/** 사용자가 추가·고친 매일 할일 한 줄만 서버에 씀 */
+export function persistSideincomeKpiDailyTodoRow(todo) {
+  return runSerializedSideincomeKpiServerOp(() => persistSideincomeKpiDailyTodoRowImpl(todo));
+}
+
+async function persistSideincomeKpiDailyTodoRowImpl(todo) {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) return false;
+  const t = todo && typeof todo === "object" ? todo : null;
+  if (!t || !String(t.id || "").trim() || !String(t.kpiId || "").trim()) return false;
+  const local = readLocalPayload();
+  const idx = (local?.kpiDailyRepeatTodos || []).findIndex(
+    (x) => String(x.id) === String(t.id),
+  );
+  const { error } = await supabase
+    .from("sideincome_map_kpi_daily_todos")
+    .upsert(dailyTodoToRow(userId, t, idx >= 0 ? idx : 0), {
+      onConflict: UPSERT_CONFLICT_ROW,
+    });
+  return !error;
+}
+
+/** 사용자가 지운 매일 할일 한 줄만 서버에서 지움 */
+export function persistSideincomeKpiDailyTodoDelete(todoId) {
+  return runSerializedSideincomeKpiServerOp(() =>
+    persistSideincomeKpiDailyTodoDeleteImpl(todoId),
+  );
+}
+
+async function persistSideincomeKpiDailyTodoDeleteImpl(todoId) {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) return false;
+  const tid = String(todoId || "").trim();
+  if (!tid) return false;
+  const { error } = await supabase
+    .from("sideincome_map_kpi_daily_todos")
+    .delete()
+    .eq("user_id", userId)
+    .eq("id", tid);
+  return !error;
 }
 
 async function runSideincomeKpiMapSyncOnce() {

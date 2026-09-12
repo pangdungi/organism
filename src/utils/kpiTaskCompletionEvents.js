@@ -1,6 +1,6 @@
 /**
  * 태스크 완료형 KPI — 체크 시점 완료 이벤트
- * (이번 주 처리 수: 현재 목록에 남은 할 일만 반영. 삭제되면 집계에서 빠짐)
+ * (이번 주 처리 수: 그 주 완료 기록. 할일을 지워도 기록은 남음)
  */
 
 /** @param {Date} d */
@@ -49,7 +49,7 @@ export function normalizeKpiTaskCompletionEvents(arr) {
 }
 
 /**
- * 이번 주 처리 수 — 현재 할 일 목록에 아직 있는 항목만 센다.
+ * 이번 주 처리 수 — 그 주 완료 기록을 센다. activeTodoIds가 있으면 그 id만.
  * @param {object[]} events
  * @param {string} kpiId
  * @param {Date} [refDate]
@@ -87,6 +87,93 @@ export function countKpiTaskCompletionsThisWeek(
     }
     return dayYmd >= weekStart && dayYmd <= weekEnd;
   }).length;
+}
+
+export function applyKpiTodoCompletedStamp(todo, completed) {
+  if (!todo || typeof todo !== "object") return todo;
+  todo.completed = !!completed;
+  if (todo.completed) {
+    todo.completedAt =
+      String(todo.completedAt || "").trim() || new Date().toISOString();
+  } else {
+    delete todo.completedAt;
+  }
+  return todo;
+}
+
+function completionDayYmd(at) {
+  const raw = String(at || "").trim();
+  if (!raw) return "";
+  const dayYmd = raw.length >= 10 ? raw.slice(0, 10) : "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dayYmd)) return dayYmd;
+  const parsed = Date.parse(raw);
+  if (!Number.isFinite(parsed)) return "";
+  return toLocalDateKey(new Date(parsed));
+}
+
+/**
+ * 완료한 할일 중, 완료 날짜가 이번 주인 개수.
+ */
+export function countKpiTodosCompletedThisWeek(
+  todos,
+  events,
+  kpiId,
+  refDate = new Date(),
+) {
+  const kid = String(kpiId || "").trim();
+  if (!kid) return 0;
+  const todayYmd = toLocalDateKey(refDate);
+  const weekStart = weekStartYmdMonday(todayYmd);
+  const weekEnd = weekEndYmdSunday(weekStart);
+  if (!weekStart || !weekEnd) return 0;
+  const dateByTodoId = new Map();
+  for (const e of normalizeKpiTaskCompletionEvents(events)) {
+    if (String(e.kpiId) !== kid) continue;
+    const tid = String(e.todoId || "").trim();
+    const dayYmd = completionDayYmd(e.completedAt);
+    if (tid && dayYmd) dateByTodoId.set(tid, dayYmd);
+  }
+  let n = 0;
+  for (const t of Array.isArray(todos) ? todos : []) {
+    if (!t?.completed) continue;
+    if (String(t.text || "").trim() === "") continue;
+    const tid = String(t.id || "").trim();
+    if (!tid) continue;
+    const dayYmd =
+      completionDayYmd(t.completedAt) || dateByTodoId.get(tid) || "";
+    if (dayYmd && dayYmd >= weekStart && dayYmd <= weekEnd) n += 1;
+  }
+  return n;
+}
+
+/** 기간 안에 완료된 할일 개수(할일 완료 날짜 ∪ 완료 기록). */
+export function countCompletedTodosInDateRange(
+  todos,
+  events,
+  startYmd,
+  endYmd,
+) {
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(String(startYmd || "")) ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(String(endYmd || ""))
+  ) {
+    return 0;
+  }
+  const ids = new Set();
+  for (const e of normalizeKpiTaskCompletionEvents(events)) {
+    const dayYmd = completionDayYmd(e.completedAt);
+    if (!dayYmd || dayYmd < startYmd || dayYmd > endYmd) continue;
+    const tid = String(e.todoId || "").trim() || String(e.id || "").trim();
+    if (tid) ids.add(tid);
+  }
+  for (const t of Array.isArray(todos) ? todos : []) {
+    if (!t?.completed) continue;
+    if (String(t.text || "").trim() === "") continue;
+    const tid = String(t.id || "").trim();
+    const dayYmd = completionDayYmd(t.completedAt);
+    if (tid && dayYmd && dayYmd >= startYmd && dayYmd <= endYmd) ids.add(tid);
+  }
+  return ids.size;
 }
 
 /**

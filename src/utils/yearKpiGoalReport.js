@@ -14,7 +14,10 @@ import {
   enrichKpiProgressWithHabitStreak,
   resolveKpiGoalMode,
 } from "./kpiTimeUnitKpi.js";
-import { normalizeKpiTaskCompletionEvents } from "./kpiTaskCompletionEvents.js";
+import {
+  countCompletedTodosInDateRange,
+  normalizeKpiTaskCompletionEvents,
+} from "./kpiTaskCompletionEvents.js";
 import {
   beginKpiTimeLedgerReportCache,
   endKpiTimeLedgerReportCache,
@@ -293,7 +296,8 @@ export function buildYearKpiGoalReportSnapshot(range, ledgerRows) {
       const status = resolveKpiProgressStatus(kpi, progress);
       const mode = resolveKpiGoalMode(kpi);
       const chore = isChoreKpi(kpi);
-      const taskYearCount = countEventsInRange(
+      const taskYearCount = countCompletedTodosInDateRange(
+        deps.getKpiTodos(id),
         eventsByKpi.get(id) || [],
         startYmd,
         endYmd,

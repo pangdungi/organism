@@ -3,10 +3,12 @@
  */
 
 import { DEFAULT_CHORE_TASK_KPI_ID } from "./defaultKpiIconIds.js";
+import { persistKpiTodoRowOnly } from "./kpiTodoOneRowPersist.js";
 import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
 import { sortNormalizedKpiTodoRows } from "./kpiMapTodoListOrder.js";
 import { syncKpiTaskCompletionEventOnTodoToggle } from "./kpiTaskCompletionEvents.js";
 import {
+  addKpiTodo,
   kpiShowsTaskCompletionTodos,
   removeKpiTodo,
   stampAndPersistKpiMap,
@@ -14,15 +16,6 @@ import {
 } from "./kpiTodoSync.js";
 import { showKpiTodoAddModal } from "./kpiTodoAddModal.js";
 import { showKpiTodoEditModal } from "./kpiTodoEditModal.js";
-
-function newTodoId() {
-  try {
-    if (typeof crypto !== "undefined" && crypto.randomUUID) {
-      return crypto.randomUUID();
-    }
-  } catch (_) {}
-  return `t-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
 
 const DOMAINS = [
   {
@@ -158,7 +151,10 @@ function toggleTodoCompleted(storageKey, todoId, completed) {
     !!completed,
     wasCompleted,
   );
-  stampAndPersistKpiMap(storageKey, prevSnapshot, data, { pushServer: true });
+  stampAndPersistKpiMap(storageKey, prevSnapshot, data, {
+    pushServer: false,
+  });
+  void persistKpiTodoRowOnly(storageKey, todo);
   return true;
 }
 
@@ -169,30 +165,7 @@ function toggleTodoCompleted(storageKey, todoId, completed) {
  * @returns {boolean}
  */
 function addTodoToKpi(storageKey, kpiId, text) {
-  const val = String(text || "").trim();
-  const kid = String(kpiId || "").trim();
-  if (!val || !kid) return false;
-  const raw = readKpiMapScopedStorageRaw(storageKey);
-  if (!raw) return false;
-  let prevSnapshot;
-  try {
-    prevSnapshot = JSON.parse(raw);
-  } catch (_) {
-    return false;
-  }
-  const data = JSON.parse(raw);
-  const kpi = (data.kpis || []).find((k) => String(k.id || "").trim() === kid);
-  if (!kpi) return false;
-  data.kpiTodos = Array.isArray(data.kpiTodos) ? data.kpiTodos : [];
-  data.kpiTodos.push({
-    id: newTodoId(),
-    kpiId: kid,
-    text: val,
-    completed: false,
-    itemType: "todo",
-  });
-  stampAndPersistKpiMap(storageKey, prevSnapshot, data, { pushServer: true });
-  return true;
+  return !!addKpiTodo(kpiId, storageKey, text)?.success;
 }
 
 /**

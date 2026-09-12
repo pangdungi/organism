@@ -1530,7 +1530,8 @@ function syncHabitTrackerLogsInner() {
 
       if (changed) {
         data.kpiLogs = logs;
-        stampAndPersistKpiMap(key, prev, data, { pushServer: true });
+        /* 할일 완료는 사용자가 체크할 때만 서버에 씀 — 여기서 맵 전체를 올리지 않음 */
+        stampAndPersistKpiMap(key, prev, data, { pushServer: false });
       }
     } catch (_) {}
   });

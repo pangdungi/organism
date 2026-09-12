@@ -872,12 +872,85 @@ export async function pullDreamKpiMapFromSupabase(opts = {}) {
   if (isAppOffline()) return false;
   await whenOfflineFlushIdle();
   const o = opts && typeof opts === "object" ? opts : { force: !!opts };
-  if (o.force) {
-    try {
-      await flushDreamKpiMapSyncPush();
-    } catch (_) {}
-  }
   return runSerializedDreamKpiServerOp(() => pullDreamKpiMapFromSupabaseImpl(o));
+}
+
+/** 사용자가 추가한 그 할일 한 줄만 서버에 씀 */
+export function persistDreamKpiTodoRow(todo) {
+  return runSerializedDreamKpiServerOp(() => persistDreamKpiTodoRowImpl(todo));
+}
+
+async function persistDreamKpiTodoRowImpl(todo) {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) return false;
+  const t = todo && typeof todo === "object" ? todo : null;
+  if (!t || !String(t.id || "").trim() || !String(t.kpiId || "").trim()) return false;
+  const local = readLocalPayload();
+  const idx = (local?.kpiTodos || []).findIndex((x) => String(x.id) === String(t.id));
+  const { error } = await supabase
+    .from("dream_map_kpi_todos")
+    .upsert(todoToRow(userId, t, idx >= 0 ? idx : 0), {
+      onConflict: UPSERT_CONFLICT_ROW,
+    });
+  return !error;
+}
+
+/** 사용자가 지운 그 할일 한 줄만 서버에서 지움 */
+export function persistDreamKpiTodoDelete(todoId) {
+  return runSerializedDreamKpiServerOp(() => persistDreamKpiTodoDeleteImpl(todoId));
+}
+
+async function persistDreamKpiTodoDeleteImpl(todoId) {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) return false;
+  const tid = String(todoId || "").trim();
+  if (!tid) return false;
+  const { error } = await supabase
+    .from("dream_map_kpi_todos")
+    .delete()
+    .eq("user_id", userId)
+    .eq("id", tid);
+  return !error;
+}
+
+/** 사용자가 추가·고친 매일 할일 한 줄만 서버에 씀 */
+export function persistDreamKpiDailyTodoRow(todo) {
+  return runSerializedDreamKpiServerOp(() => persistDreamKpiDailyTodoRowImpl(todo));
+}
+
+async function persistDreamKpiDailyTodoRowImpl(todo) {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) return false;
+  const t = todo && typeof todo === "object" ? todo : null;
+  if (!t || !String(t.id || "").trim() || !String(t.kpiId || "").trim()) return false;
+  const local = readLocalPayload();
+  const idx = (local?.kpiDailyRepeatTodos || []).findIndex(
+    (x) => String(x.id) === String(t.id),
+  );
+  const { error } = await supabase
+    .from("dream_map_kpi_daily_todos")
+    .upsert(dailyTodoToRow(userId, t, idx >= 0 ? idx : 0), {
+      onConflict: UPSERT_CONFLICT_ROW,
+    });
+  return !error;
+}
+
+/** 사용자가 지운 매일 할일 한 줄만 서버에서 지움 */
+export function persistDreamKpiDailyTodoDelete(todoId) {
+  return runSerializedDreamKpiServerOp(() => persistDreamKpiDailyTodoDeleteImpl(todoId));
+}
+
+async function persistDreamKpiDailyTodoDeleteImpl(todoId) {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) return false;
+  const tid = String(todoId || "").trim();
+  if (!tid) return false;
+  const { error } = await supabase
+    .from("dream_map_kpi_daily_todos")
+    .delete()
+    .eq("user_id", userId)
+    .eq("id", tid);
+  return !error;
 }
 
 async function runDreamKpiMapSyncOnce() {

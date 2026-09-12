@@ -198,6 +198,12 @@ export async function pullKpiTabFromCloud(tabId) {
 export async function pullKpiDetailTodosFromCloud(tabId) {
   if (tabId === "health") return pullHealthKpiMapTodosFromSupabase();
   if (tabId === "happiness") return pullHappinessKpiMapTodosFromSupabase();
+  if (tabId === "dream") {
+    return pullDreamKpiMapFromSupabase({ force: true, skipLogs: true });
+  }
+  if (tabId === "sideincome") {
+    return pullSideincomeKpiMapFromSupabase({ force: true, skipLogs: true });
+  }
   return false;
 }
 

@@ -3,6 +3,8 @@
  */
 
 import { showAlertModal, showConfirmModal } from "./confirmModal.js";
+import { DEFAULT_CHORE_TASK_KPI_ID } from "./defaultKpiIconIds.js";
+import { persistKpiTodoDeleteOnly } from "./kpiTodoOneRowPersist.js";
 import { removeKpiTaskCompletionEventsForTodos } from "./kpiTaskCompletionEvents.js";
 
 export const KPI_SEG_CLEAR_COMPLETED_TRASH_ICON =
@@ -37,7 +39,9 @@ export function purgeCompletedKpiTodosForKpi(data, kpiId, appendDeletedRefFn) {
   }
   removeKpiTaskCompletionEventsForTodos(
     data,
-    toRemove.map((t) => t.id),
+    toRemove
+      .filter((t) => String(t?.kpiId || "").trim() !== DEFAULT_CHORE_TASK_KPI_ID)
+      .map((t) => t.id),
   );
   data.kpiTodos = todos.filter((t) => !(String(t?.kpiId ?? "") === kid && !!t.completed));
   return toRemove.length;
@@ -60,6 +64,7 @@ export async function confirmAndPurgeCompletedKpiTodos(options) {
     kpiId,
     loadMap,
     saveMap,
+    storageKey,
     appendDeletedRef,
     onAfterDelete,
     title = "완료한 할 일 삭제",
@@ -84,8 +89,15 @@ export async function confirmAndPurgeCompletedKpiTodos(options) {
   });
   if (!ok) return false;
   const d = loadMap();
+  const kid = String(kpiId ?? "");
+  const removedIds = (d.kpiTodos || [])
+    .filter((t) => String(t?.kpiId ?? "") === kid && !!t.completed)
+    .map((t) => String(t.id));
   purgeCompletedKpiTodosForKpi(d, kpiId, appendDeletedRef);
-  saveMap(d, { pushServer: true });
+  saveMap(d, { pushServer: false });
+  if (storageKey) {
+    for (const id of removedIds) void persistKpiTodoDeleteOnly(storageKey, id);
+  }
   onAfterDelete?.();
   return true;
 }
@@ -131,6 +143,7 @@ export function mountKpiSegBarClearCompletedRow(segBar, options) {
     kpiId,
     loadMap,
     saveMap,
+    storageKey,
     appendDeletedRef,
     onAfterDelete,
   } = options;
@@ -149,6 +162,7 @@ export function mountKpiSegBarClearCompletedRow(segBar, options) {
       kpiId,
       loadMap,
       saveMap,
+      storageKey,
       appendDeletedRef,
       onAfterDelete,
     });

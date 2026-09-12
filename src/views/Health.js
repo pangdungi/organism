@@ -6,6 +6,10 @@ import {
   HEALTH_KPI_MAP_STORAGE_KEY,
   HEALTH_KPI_GLOBAL_SCOPE_ID,
   applyHealthKpiTimestampsOnSave,
+  persistHealthKpiDailyTodoDelete,
+  persistHealthKpiDailyTodoRow,
+  persistHealthKpiTodoDelete,
+  persistHealthKpiTodoRow,
   ensureDefaultHealthMapDefaults,
   DEFAULT_AEROBIC_KPI_ID,
   DEFAULT_CHECKUP_KPI_ID,
@@ -117,6 +121,8 @@ import {
   readKpiMapScopedStorageRaw,
   writeKpiMapScopedStorageRaw,
 } from "../utils/kpiMapLocalStorage.js";
+import { pullKpiDetailTodosFromCloud } from "../utils/kpiTabCloudRefresh.js";
+import { applyKpiTodoCompletedStamp } from "../utils/kpiTaskCompletionEvents.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
   mountAppFooterAddButton,
@@ -709,8 +715,20 @@ export function render() {
     if (!kpiId) return;
     selectedKpiId = kpiId;
     healthViewScreen = "kpiDetail";
+    persistKpiUiState();
     syncHealthHeader();
-    updateHealthView();
+    const gen = ++healthDetailPullGen;
+    void (async () => {
+      try {
+        await pullKpiDetailTodosFromCloud("health");
+      } catch (_) {}
+      if (!el.isConnected || gen !== healthDetailPullGen) return;
+      if (selectedKpiId !== kpiId || healthViewScreen !== "kpiDetail") return;
+      lastKpiMapPaintSig = readKpiMapLocalStorageSignature(
+        HEALTH_KPI_MAP_STORAGE_KEY,
+      );
+      updateHealthView();
+    })();
   }
 
   function exitToHealthMain() {
@@ -967,13 +985,15 @@ export function render() {
       if (!text) return;
       const d2 = loadHealthMap();
       d2.kpiTodos = d2.kpiTodos || [];
-      d2.kpiTodos.push({
+      const added = {
         id: nextId(),
         kpiId: String(selectedKpiId),
         text,
         completed: false,
-      });
-      saveHealthMap(d2, { pushServer: true });
+      };
+      d2.kpiTodos.push(added);
+      saveHealthMap(d2, { pushServer: false });
+      void persistHealthKpiTodoRow(added);
       renderKpiDetailView({ scrollTodoAfterMutation: true });
       return;
     }
@@ -987,13 +1007,15 @@ export function render() {
       if (!text) return;
       const d2 = loadHealthMap();
       d2.kpiDailyRepeatTodos = d2.kpiDailyRepeatTodos || [];
-      appendKpiDailyRepeatTodoAtEnd(d2.kpiDailyRepeatTodos, {
+      const addedDaily = {
         id: nextId(),
         kpiId: String(selectedKpiId),
         text,
         completed: false,
-      });
-      saveHealthMap(d2, { pushServer: true });
+      };
+      appendKpiDailyRepeatTodoAtEnd(d2.kpiDailyRepeatTodos, addedDaily);
+      saveHealthMap(d2, { pushServer: false });
+      void persistHealthKpiDailyTodoRow(addedDaily);
       renderKpiDetailView({ scrollTodoAfterMutation: true });
       return;
     }
@@ -1146,6 +1168,7 @@ export function render() {
 
   let lastHealthMainPaintSig = "";
   let lastKpiMapPaintSig = "";
+  let healthDetailPullGen = 0;
 
   function appendHealthKpiGridSection(parentEl, data) {
     const healthKpis = getOrderedAllHealthKpis(data);
@@ -1656,7 +1679,8 @@ export function render() {
           });
           appendDeletedRef(d, "kpiTodos", todo.id);
           d.kpiTodos = (d.kpiTodos || []).filter((x) => x.id !== todo.id);
-          saveHealthMap(d, { pushServer: true });
+          saveHealthMap(d, { pushServer: false });
+          void persistHealthKpiTodoDelete(todo.id);
           const after = loadHealthMap();
           kpiTodoLifecycleLog("건강KPI탭_모달삭제_saveHealthMap후", {
             todoId: String(todo.id),
@@ -1670,7 +1694,8 @@ export function render() {
         const row = (d.kpiTodos || []).find((x) => x.id === todo.id);
         if (!row) return;
         row.text = result.text;
-        saveHealthMap(d, { pushServer: true });
+        saveHealthMap(d, { pushServer: false });
+        void persistHealthKpiTodoRow(row);
         renderKpiDetailView({ scrollTodoAfterMutation: true });
       };
 
@@ -1688,8 +1713,9 @@ export function render() {
             이전완료: !!t.completed,
             요청완료: !!check.checked,
           });
-          t.completed = !!check.checked;
-          saveHealthMap(d, { pushServer: true });
+          applyKpiTodoCompletedStamp(t, !!check.checked);
+          saveHealthMap(d, { pushServer: false });
+          void persistHealthKpiTodoRow(t);
           kpiTodoLifecycleLog("건강KPI탭_체크_save후", {
             todoId: String(todo.id),
             completion: kpiTodosCompletionBrief(loadHealthMap(), 20),
@@ -1736,6 +1762,7 @@ export function render() {
           kpiId: selKpi,
           loadMap: loadHealthMap,
           saveMap: saveHealthMap,
+          storageKey: HEALTH_KPI_MAP_STORAGE_KEY,
           appendDeletedRef,
           onAfterDelete: () =>
             renderKpiDetailView({ scrollTodoAfterMutation: true }),
@@ -1799,7 +1826,8 @@ export function render() {
             const d = loadHealthMap();
             appendDeletedRef(d, "kpiDailyRepeatTodos", todo.id);
             d.kpiDailyRepeatTodos = (d.kpiDailyRepeatTodos || []).filter((x) => x.id !== todo.id);
-            saveHealthMap(d, { pushServer: true });
+            saveHealthMap(d, { pushServer: false });
+            void persistHealthKpiDailyTodoDelete(todo.id);
             renderKpiDetailView({ scrollTodoAfterMutation: true });
             return;
           }
@@ -1807,7 +1835,8 @@ export function render() {
           const row = (d.kpiDailyRepeatTodos || []).find((x) => x.id === todo.id);
           if (!row) return;
           row.text = result.text;
-          saveHealthMap(d, { pushServer: true });
+          saveHealthMap(d, { pushServer: false });
+          void persistHealthKpiDailyTodoRow(row);
           renderKpiDetailView({ scrollTodoAfterMutation: true });
         };
 
@@ -1856,6 +1885,7 @@ export function render() {
       kpiId: selKpi,
       loadMap: loadHealthMap,
       saveMap: saveHealthMap,
+      storageKey: HEALTH_KPI_MAP_STORAGE_KEY,
       appendDeletedRef,
       onAfterDelete: () => renderKpiDetailView({ scrollTodoAfterMutation: true }),
     };

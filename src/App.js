@@ -540,6 +540,7 @@ function kpiSoftRefreshIfPullChanged(tabId, pullResult) {
       window.__lpHealthSoftRefresh?.();
     }
     else if (tabId === "happiness") window.__lpHappinessSoftRefresh?.();
+    else if (tabId === "dream") window.__lpDreamSoftRefresh?.();
     else if (tabId === "sideincome") window.__lpSideincomeSoftRefresh?.();
     else if (tabId === "habittracker") window.__lpHabitTrackerSoftRefresh?.();
   } catch (_) {}
@@ -595,6 +596,7 @@ async function pullDataForActiveTab(tabId, opts = {}) {
         preferServer: true,
       });
       break;
+    case "dream":
     case "health":
     case "happiness":
     case "sideincome":
@@ -687,6 +689,7 @@ const ROUTINE_REMOVED_KEY = "app-routine-removed-v1";
 const TAB_IDS_WITH_CLOUD_PULL = new Set([
   "schedulecalendar",
   "time",
+  "dream",
   "health",
   "happiness",
   "sideincome",
@@ -1066,6 +1069,47 @@ export async function mountApp(container) {
           void refreshHomeDesktopDashboardAfterEnter({
             forceTaskList: true,
           });
+          return;
+        }
+        const serverFirstKpi =
+          targetTabId === "health" ||
+          targetTabId === "happiness" ||
+          targetTabId === "sideincome" ||
+          targetTabId === "dream";
+        if (serverFirstKpi) {
+          /** @type {string | null} */
+          let tabPullOverlayTabId = null;
+          try {
+            if (
+              TAB_IDS_WITH_CLOUD_PULL.has(targetTabId) &&
+              isLpMainPanelEmpty(main)
+            ) {
+              tabPullOverlayTabId = targetTabId;
+              scheduleLpTabPullOverlay(targetTabId, { immediate: true });
+            }
+            let pullResult;
+            try {
+              pullResult = await pullDataForActiveTab(targetTabId, {
+                fromBoot: false,
+                preferServer: true,
+                force: true,
+              });
+            } catch (_) {}
+            if (currentTabId !== targetTabId) {
+              if (isKpiAppTabId(targetTabId)) clearKpiTabPullPending(targetTabId);
+              return;
+            }
+            renderMain(main, { force: true, skipTodoSaveBeforeUnmount: true });
+            syncAppFooterVisibility();
+            kpiSoftRefreshAfterPull(targetTabId, pullResult);
+            afterLpTabPaint(() => {
+              void prefetchIconsForTab(targetTabId);
+            });
+          } finally {
+            if (tabPullOverlayTabId) {
+              clearLpTabPullOverlay(tabPullOverlayTabId);
+            }
+          }
           return;
         }
         /* 화면 먼저 — pull 을 먼저 돌리면 메인스레드가 막혀 습관관리 등이 ~1초 지연됨 */

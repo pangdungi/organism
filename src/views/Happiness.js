@@ -5,6 +5,11 @@
 
 import {
   HAPPINESS_KPI_MAP_STORAGE_KEY,
+  persistHappinessKpiDailyTodoDelete,
+  persistHappinessKpiDailyTodoRow,
+  persistHappinessKpiTodoCompleted,
+  persistHappinessKpiTodoDelete,
+  persistHappinessKpiTodoRow,
   applyHappinessKpiTimestampsOnSave,
   ensureHappinessMapDefaults,
   HAPPINESS_KPI_GLOBAL_SCOPE_ID,
@@ -14,6 +19,7 @@ import {
   DEFAULT_READING_KPI_NOTES_TAB_LABEL,
   DEFAULT_READING_KPI_NOTE_FIELD_LABEL,
   READING_KPI_NOTE_MODAL_LABELS,
+  DEFAULT_CHORE_TASK_KPI_ID,
   DEFAULT_TIDY_ROUTINE_KPI_ID,
   DEFAULT_OUT_PREP_ROUTINE_KPI_ID,
   DEFAULT_OUT_AFTER_ROUTINE_KPI_ID,
@@ -607,9 +613,20 @@ export function render() {
     if (!kpiId) return;
     selectedKpiId = kpiId;
     happinessViewScreen = "kpiDetail";
+    persistKpiUiState();
     syncHappinessHeader();
-    updateHappinessView();
-    void pullHappinessTodosThenRefresh();
+    const gen = ++happinessDetailPullGen;
+    void (async () => {
+      try {
+        await pullKpiDetailTodosFromCloud("happiness");
+      } catch (_) {}
+      if (!el.isConnected || gen !== happinessDetailPullGen) return;
+      if (selectedKpiId !== kpiId || happinessViewScreen !== "kpiDetail") return;
+      lastKpiMapPaintSig = readKpiMapLocalStorageSignature(
+        HAPPINESS_KPI_MAP_STORAGE_KEY,
+      );
+      updateHappinessView();
+    })();
   }
 
   async function pullHappinessTodosThenRefresh() {
@@ -864,13 +881,15 @@ export function render() {
       if (!text) return;
       const d2 = loadHappinessMap();
       d2.kpiTodos = d2.kpiTodos || [];
-      d2.kpiTodos.push({
+      const added = {
         id: nextId(),
         kpiId: String(selectedKpiId),
         text,
         completed: false,
-      });
-      saveHappinessMap(d2, { pushServer: true });
+      };
+      d2.kpiTodos.push(added);
+      saveHappinessMap(d2, { pushServer: false });
+      void persistHappinessKpiTodoRow(added);
       renderKpiDetailView({ scrollTodoAfterMutation: true });
       return;
     }
@@ -886,13 +905,15 @@ export function render() {
       if (!text) return;
       const d2 = loadHappinessMap();
       d2.kpiDailyRepeatTodos = d2.kpiDailyRepeatTodos || [];
-      appendKpiDailyRepeatTodoAtEnd(d2.kpiDailyRepeatTodos, {
+      const addedDaily = {
         id: nextId(),
         kpiId: String(selectedKpiId),
         text,
         completed: false,
-      });
-      saveHappinessMap(d2, { pushServer: true });
+      };
+      appendKpiDailyRepeatTodoAtEnd(d2.kpiDailyRepeatTodos, addedDaily);
+      saveHappinessMap(d2, { pushServer: false });
+      void persistHappinessKpiDailyTodoRow(addedDaily);
       renderKpiDetailView({ scrollTodoAfterMutation: true });
       return;
     }
@@ -1021,6 +1042,39 @@ export function render() {
     );
   }
 
+  function refreshOneKpiCardNumbers(kpiId) {
+    const host = layoutIsSplit ? paneList : contentWrap;
+    const card = host?.querySelector?.(
+      `.dream-kpi-card[data-kpi-id="${CSS.escape(String(kpiId))}"]`,
+    );
+    if (!card) return;
+    const data = loadHappinessMap();
+    const kpi = (data.kpis || []).find((k) => String(k.id) === String(kpiId));
+    if (!kpi) return;
+    const progressResult = getKpiProgress(kpi);
+    const formatNum = (n) =>
+      n == null || Number.isNaN(n)
+        ? "—"
+        : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    const pres = buildKpiCardTimePresentation(kpi, progressResult, formatNum);
+    const textEl = card.querySelector(".dream-kpi-card-progress-text");
+    if (textEl) textEl.textContent = pres.progressText || "";
+    const heroEl = card.querySelector(".dream-kpi-card-target-num");
+    if (heroEl && !pres.hideHabitHero) {
+      heroEl.innerHTML =
+        formatKpiCardHeroHtml(
+          progressResult.lowerBetter,
+          pres.heroStr,
+          pres.heroUnit,
+          pres.heroPrefix,
+        ) + (pres.heroStreakAsideHtml || "");
+    }
+    const fill = card.querySelector(".dream-kpi-card-progress-fill");
+    if (fill) {
+      fill.style.width = `${Math.max(0, Number(pres.displayProgress) || 0)}%`;
+    }
+  }
+
   function computeHappinessKpiListPaintSig() {
     const data = loadHappinessMap();
     const happinessKpis = getOrderedHappinessTabKpis(data);
@@ -1042,6 +1096,7 @@ export function render() {
 
   let lastHappinessKpiListPaintSig = "";
   let lastKpiMapPaintSig = "";
+  let happinessDetailPullGen = 0;
 
   function hideKpiFilterStrip() {
     kpiFilterStrip.hidden = true;
@@ -1571,9 +1626,12 @@ export function render() {
             삭제전dr: deletedRefsKpiTodosLen(d),
           });
           appendDeletedRef(d, "kpiTodos", todo.id);
-          removeKpiTaskCompletionEventsForTodos(d, todo.id);
+          if (String(todo.kpiId || "").trim() !== DEFAULT_CHORE_TASK_KPI_ID) {
+            removeKpiTaskCompletionEventsForTodos(d, todo.id);
+          }
           d.kpiTodos = (d.kpiTodos || []).filter((x) => x.id !== todo.id);
-          saveHappinessMap(d, { pushServer: true });
+          saveHappinessMap(d, { pushServer: false });
+          void persistHappinessKpiTodoDelete(todo.id);
           const after = loadHappinessMap();
           kpiTodoLifecycleLog("행복KPI탭_모달삭제_saveHappinessMap후", {
             todoId: String(todo.id),
@@ -1587,7 +1645,8 @@ export function render() {
         const row = (d.kpiTodos || []).find((x) => x.id === todo.id);
         if (!row) return;
         row.text = result.text;
-        saveHappinessMap(d, { pushServer: true });
+        saveHappinessMap(d, { pushServer: false });
+        void persistHappinessKpiTodoRow(row);
         renderKpiDetailView({ scrollTodoAfterMutation: true });
       };
 
@@ -1607,6 +1666,12 @@ export function render() {
             요청완료: !!check.checked,
           });
           t.completed = !!check.checked;
+          if (t.completed) {
+            t.completedAt =
+              String(t.completedAt || "").trim() || new Date().toISOString();
+          } else {
+            delete t.completedAt;
+          }
           syncKpiTaskCompletionEventOnTodoToggle(
             d,
             kpi,
@@ -1614,12 +1679,19 @@ export function render() {
             !!check.checked,
             wasCompleted,
           );
-          saveHappinessMap(d, { pushServer: true });
+          saveHappinessMap(d);
+          void persistHappinessKpiTodoCompleted(todo.id, !!check.checked);
           kpiTodoLifecycleLog("행복KPI탭_체크_save후", {
             todoId: String(todo.id),
             completion: kpiTodosCompletionBrief(loadHappinessMap(), 20),
           });
           item.classList.toggle("is-completed", t.completed);
+          if (
+            String(kpi.id) === DEFAULT_CHORE_TASK_KPI_ID ||
+            String(kpi.name || "").trim() === "잡무 처리하기"
+          ) {
+            refreshOneKpiCardNumbers(kpi.id);
+          }
         }
       });
 
@@ -1660,6 +1732,7 @@ export function render() {
           kpiId: selKpi,
           loadMap: loadHappinessMap,
           saveMap: saveHappinessMap,
+          storageKey: HAPPINESS_KPI_MAP_STORAGE_KEY,
           appendDeletedRef,
           onAfterDelete: () =>
             renderKpiDetailView({ scrollTodoAfterMutation: true }),
@@ -1726,7 +1799,8 @@ export function render() {
             const d = loadHappinessMap();
             appendDeletedRef(d, "kpiDailyRepeatTodos", todo.id);
             d.kpiDailyRepeatTodos = (d.kpiDailyRepeatTodos || []).filter((x) => x.id !== todo.id);
-            saveHappinessMap(d, { pushServer: true });
+            saveHappinessMap(d, { pushServer: false });
+            void persistHappinessKpiDailyTodoDelete(todo.id);
             renderKpiDetailView({ scrollTodoAfterMutation: true });
             return;
           }
@@ -1734,7 +1808,8 @@ export function render() {
           const row = (d.kpiDailyRepeatTodos || []).find((x) => x.id === todo.id);
           if (!row) return;
           row.text = result.text;
-          saveHappinessMap(d, { pushServer: true });
+          saveHappinessMap(d, { pushServer: false });
+          void persistHappinessKpiDailyTodoRow(row);
           renderKpiDetailView({ scrollTodoAfterMutation: true });
         };
 
@@ -1779,6 +1854,7 @@ export function render() {
       kpiId: selKpi,
       loadMap: loadHappinessMap,
       saveMap: saveHappinessMap,
+      storageKey: HAPPINESS_KPI_MAP_STORAGE_KEY,
       appendDeletedRef,
       onAfterDelete: () => renderKpiDetailView({ scrollTodoAfterMutation: true }),
     };

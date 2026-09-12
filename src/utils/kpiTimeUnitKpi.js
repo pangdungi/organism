@@ -24,7 +24,7 @@ import {
   parseHabitMinuteTargetToMinutes,
 } from "./kpiHabitUnitGoal.js";
 import {
-  countKpiTaskCompletionsThisWeek,
+  countKpiTodosCompletedThisWeek,
   resolveKpiTaskCompletionCounts,
 } from "./kpiTaskCompletionEvents.js";
 import { normalizeKpiLogDateYmd } from "./timeKpiSync.js";
@@ -777,14 +777,11 @@ export function computeKpiProgress(kpi, deps) {
       const total = todos.length;
       const done = todos.filter((t) => !!t.completed).length;
       const remaining = todos.filter((t) => !t.completed).length;
-      const activeTodoIds = todos
-        .map((t) => String(t?.id || "").trim())
-        .filter(Boolean);
-      const weekDone = countKpiTaskCompletionsThisWeek(
+      const weekDone = countKpiTodosCompletedThisWeek(
+        todos,
         events,
         kpi.id,
         new Date(),
-        activeTodoIds,
       );
       const taskCompletionEmpty = total === 0 && weekDone === 0;
       const progress =

@@ -1288,11 +1288,6 @@ export async function pullHealthKpiMapFromSupabase(opts = {}) {
   if (isAppOffline()) return false;
   await whenOfflineFlushIdle();
   const o = opts && typeof opts === "object" ? opts : { force: !!opts };
-  if (o.force) {
-    try {
-      await flushHealthKpiMapSyncPush();
-    } catch (_) {}
-  }
   return runSerializedHealthKpiServerOp(() => pullHealthKpiMapFromSupabaseImpl(o));
 }
 
@@ -1342,6 +1337,84 @@ async function pullHealthKpiMapTodosFromSupabaseImpl() {
 
 export function pullHealthKpiMapTodosFromSupabase() {
   return runSerializedHealthKpiServerOp(() => pullHealthKpiMapTodosFromSupabaseImpl());
+}
+
+/** 사용자가 추가한 그 할일 한 줄만 서버에 씀 */
+export function persistHealthKpiTodoRow(todo) {
+  return runSerializedHealthKpiServerOp(() => persistHealthKpiTodoRowImpl(todo));
+}
+
+async function persistHealthKpiTodoRowImpl(todo) {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) return false;
+  const t = todo && typeof todo === "object" ? todo : null;
+  if (!t || !String(t.id || "").trim() || !String(t.kpiId || "").trim()) return false;
+  const local = readLocalPayload();
+  const idx = (local?.kpiTodos || []).findIndex((x) => String(x.id) === String(t.id));
+  const { error } = await supabase
+    .from("health_map_kpi_todos")
+    .upsert(todoToRow(userId, t, idx >= 0 ? idx : 0), {
+      onConflict: UPSERT_CONFLICT_ROW,
+    });
+  return !error;
+}
+
+/** 사용자가 지운 그 할일 한 줄만 서버에서 지움 */
+export function persistHealthKpiTodoDelete(todoId) {
+  return runSerializedHealthKpiServerOp(() => persistHealthKpiTodoDeleteImpl(todoId));
+}
+
+async function persistHealthKpiTodoDeleteImpl(todoId) {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) return false;
+  const tid = String(todoId || "").trim();
+  if (!tid) return false;
+  const { error } = await supabase
+    .from("health_map_kpi_todos")
+    .delete()
+    .eq("user_id", userId)
+    .eq("id", tid);
+  return !error;
+}
+
+/** 사용자가 추가·고친 매일 할일 한 줄만 서버에 씀 */
+export function persistHealthKpiDailyTodoRow(todo) {
+  return runSerializedHealthKpiServerOp(() => persistHealthKpiDailyTodoRowImpl(todo));
+}
+
+async function persistHealthKpiDailyTodoRowImpl(todo) {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) return false;
+  const t = todo && typeof todo === "object" ? todo : null;
+  if (!t || !String(t.id || "").trim() || !String(t.kpiId || "").trim()) return false;
+  const local = readLocalPayload();
+  const idx = (local?.kpiDailyRepeatTodos || []).findIndex(
+    (x) => String(x.id) === String(t.id),
+  );
+  const { error } = await supabase
+    .from("health_map_kpi_daily_todos")
+    .upsert(dailyTodoToRow(userId, t, idx >= 0 ? idx : 0), {
+      onConflict: UPSERT_CONFLICT_ROW,
+    });
+  return !error;
+}
+
+/** 사용자가 지운 매일 할일 한 줄만 서버에서 지움 */
+export function persistHealthKpiDailyTodoDelete(todoId) {
+  return runSerializedHealthKpiServerOp(() => persistHealthKpiDailyTodoDeleteImpl(todoId));
+}
+
+async function persistHealthKpiDailyTodoDeleteImpl(todoId) {
+  const userId = await getSessionUserId();
+  if (!userId || !supabase) return false;
+  const tid = String(todoId || "").trim();
+  if (!tid) return false;
+  const { error } = await supabase
+    .from("health_map_kpi_daily_todos")
+    .delete()
+    .eq("user_id", userId)
+    .eq("id", tid);
+  return !error;
 }
 
 async function runHealthKpiMapSyncOnce() {

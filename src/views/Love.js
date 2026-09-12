@@ -16,6 +16,9 @@ import {
 import {
   HAPPINESS_KPI_MAP_STORAGE_KEY,
   applyHappinessKpiTimestampsOnSave,
+  persistHappinessKpiDailyTodoRow,
+  persistHappinessKpiTodoDelete,
+  persistHappinessKpiTodoRow,
 } from "../utils/happinessKpiMapSupabase.js";
 import {
   getAccumulatedMinutesForKpi,
@@ -573,7 +576,8 @@ export function render() {
       };
       d2.kpiTodos = d2.kpiTodos || [];
       d2.kpiTodos.push(todo);
-      saveHappinessMap(d2, { pushServer: true });
+      saveHappinessMap(d2, { pushServer: false });
+      void persistHappinessKpiTodoRow(todo);
       renderKpiHistory({ scrollTodoAfterMutation: true });
     });
 
@@ -596,13 +600,15 @@ export function render() {
       if (!text) return;
       const d2 = loadHappinessMap();
       d2.kpiDailyRepeatTodos = d2.kpiDailyRepeatTodos || [];
-      appendKpiDailyRepeatTodoAtEnd(d2.kpiDailyRepeatTodos, {
+      const addedDaily = {
         id: nextId(),
         kpiId: String(selectedKpiId),
         text,
         completed: false,
-      });
-      saveHappinessMap(d2, { pushServer: true });
+      };
+      appendKpiDailyRepeatTodoAtEnd(d2.kpiDailyRepeatTodos, addedDaily);
+      saveHappinessMap(d2, { pushServer: false });
+      void persistHappinessKpiDailyTodoRow(addedDaily);
       renderKpiHistory({ scrollTodoAfterMutation: true });
     });
 
@@ -1050,7 +1056,8 @@ export function render() {
             });
             appendDeletedRef(d, "kpiTodos", todo.id);
             d.kpiTodos = (d.kpiTodos || []).filter((x) => x.id !== todo.id);
-            saveHappinessMap(d, { pushServer: true });
+            saveHappinessMap(d, { pushServer: false });
+            void persistHappinessKpiTodoDelete(todo.id);
             const after = loadHappinessMap();
             kpiTodoLifecycleLog("러브KPI탭_모달삭제_saveHappinessMap후", {
               todoId: String(todo.id),
@@ -1064,7 +1071,8 @@ export function render() {
           const row = (d.kpiTodos || []).find((x) => x.id === todo.id);
           if (!row) return;
           row.text = result.text;
-          saveHappinessMap(d, { pushServer: true });
+          saveHappinessMap(d, { pushServer: false });
+          void persistHappinessKpiTodoRow(row);
           renderKpiHistory({ scrollTodoAfterMutation: true });
         };
 
@@ -1083,7 +1091,8 @@ export function render() {
               요청완료: !!check.checked,
             });
             t.completed = !!check.checked;
-            saveHappinessMap(d, { pushServer: true });
+            saveHappinessMap(d, { pushServer: false });
+            void persistHappinessKpiTodoRow(t);
             kpiTodoLifecycleLog("러브KPI탭_체크_save후", {
               todoId: String(todo.id),
               completion: kpiTodosCompletionBrief(loadHappinessMap(), 20),
