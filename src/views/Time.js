@@ -23,10 +23,12 @@ import {
   resolveKpiIdForTaskId,
   syncKpiTodoCompleted,
   revertKpiTaskCompletionTodosForDeletedLedgerRow,
+  lookupKpiTodoCompleted,
 } from "../utils/kpiTodoSync.js";
 import { pullKpiTodosDomainFromCloudIfStale } from "../utils/kpiTabCloudRefresh.js";
 import { readTodayActionTodoPickIds } from "../utils/kpiTodayActionTodos.js";
 import { collectBudgetPlannedTodoIdsForKpiOnDate } from "../utils/expectedScheduleDetail.js";
+import { KPI_TODO_UNCOMPLETED_LEDGER_EVENT } from "../utils/kpiTodoStripFromTimeLedger.js";
 import {
   DEFAULT_READING_KPI_ID,
   DEFAULT_READING_KPI_TODO_LIST_LABEL,
@@ -8476,6 +8478,7 @@ export function render(opts = {}) {
             <div data-legacy="time-task-log-field time-task-log-meal-detail-section" hidden>
               <label data-legacy="time-task-log-section-label time-task-log-meal-detail-label" for="time-task-log-meal-detail">식단명</label>
               <input type="text" id="time-task-log-meal-detail" data-legacy="time-task-log-meal-detail-input time-task-log-memo-input" placeholder="무엇을 드셨는지 한 줄로 적어 주세요" autocomplete="off" />
+              <div data-legacy="time-task-log-reading-book-chips" hidden></div>
             </div>
             <div data-legacy="time-task-log-field time-task-log-memo-default-field">
               <div data-legacy="time-task-log-memo-label-row">
@@ -8793,6 +8796,9 @@ export function render(opts = {}) {
   );
   const taskLogMealDetailInput = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-meal-detail-input"]',
+  );
+  const taskLogReadingBookChips = taskLogModal.querySelector(
+    '[data-legacy~="time-task-log-reading-book-chips"]',
   );
   const taskLogContentTypeSection = taskLogModal.querySelector(
     '[data-legacy~="time-task-log-content-type-section"]',
@@ -9322,7 +9328,9 @@ export function render(opts = {}) {
 
   function isTaskLogModalStarsOnlyRatingTask() {
     const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
-    return TTC.isTimeRatingStarsOnlyBuiltinTaskName(taskName);
+    if (TTC.isTimeRatingStarsOnlyBuiltinTaskName(taskName)) return true;
+    const opt = getTaskOptionByName(taskName);
+    return String(opt?.kpiId || "").trim() === DEFAULT_READING_KPI_ID;
   }
 
   function shouldShowTaskLogRatingSection() {
@@ -10434,6 +10442,7 @@ export function render(opts = {}) {
           TTC.ledgerDetailInputPlaceholder(kind) ||
           "무엇을 드셨는지 한 줄로 적어 주세요";
       }
+      paintReadingCheckedBookChips();
     }
     if (taskLogContentTypeSection) {
       taskLogContentTypeSection.hidden = !showChipDetail;
@@ -11995,11 +12004,13 @@ export function render(opts = {}) {
   }
 
   let taskLogKpiListsSyncGen = 0;
-  /** 모달 열린 동안 체크한 완료형 할일 — 새로고침·완료 반영 후에도 목록에 남김 */
+  /** 모달 열린 동안 사용자가 만진 완료형 할일 */
   const taskLogModalCheckedTodoIds = new Set();
+  const taskLogModalTouchedTodoIds = new Set();
 
   function clearTaskLogModalCheckedTodoIds() {
     taskLogModalCheckedTodoIds.clear();
+    taskLogModalTouchedTodoIds.clear();
   }
 
   function rememberTaskLogModalTodoCheck(todoId, checked) {
@@ -12007,6 +12018,20 @@ export function render(opts = {}) {
     if (!id) return;
     if (checked) taskLogModalCheckedTodoIds.add(id);
     else taskLogModalCheckedTodoIds.delete(id);
+  }
+
+  function markTaskLogModalTodoTouched(todoId) {
+    const id = String(todoId || "").trim();
+    if (id) taskLogModalTouchedTodoIds.add(id);
+  }
+
+  function resolveTaskLogCompletionChecked(id, kpiCompleted, preserveChecks) {
+    const tid = String(id || "").trim();
+    if (tid && preserveChecks?.has(id)) return !!preserveChecks.get(id);
+    if (tid && taskLogModalTouchedTodoIds.has(tid)) {
+      return taskLogModalCheckedTodoIds.has(id);
+    }
+    return !!kpiCompleted;
   }
 
   function taskLogResolveYmdForPlannedSlots() {
@@ -12404,24 +12429,51 @@ export function render(opts = {}) {
     return (taskLogFeedbackInput?.value || "").trim();
   }
 
-  /** 독서하기 — 도서명 칸 값, 없으면 체크한 읽을 예정 */
+  /** 독서하기 — 도서명 칸은 직접 쓴 이름만 */
   function resolveReadingBookTitleForSave() {
-    const typed = (taskLogMealDetailInput?.value || "").trim();
-    if (typed) return typed;
-    return collectCheckedTaskCompletionTodoTextsFromModal().join(" · ");
+    return (taskLogMealDetailInput?.value || "").trim();
   }
 
-  /** 읽을 예정 체크 ↔ 도서명: 체크한 책만 반영, 해제하면 도서명에서도 뺌 */
-  function syncReadingBookTitleFromCheckedTodos() {
+  function isTaskLogReadingDetailOpen() {
     const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
-    if (!TTC.isReadingDetailTaskName(taskName) || !taskLogMealDetailInput) return;
-    const texts = collectCheckedTaskCompletionTodoTextsFromModal();
-    const joined = texts.join(" · ");
-    taskLogMealDetailInput.value = joined;
-    if (joined) {
-      taskLogMealDetailInput.dataset.lpReadingAutoTitle = joined;
-    } else {
-      delete taskLogMealDetailInput.dataset.lpReadingAutoTitle;
+    return TTC.isReadingDetailTaskName(taskName);
+  }
+
+  /** 읽을 예정 체크 → 도서명 아래 칩. 직접 쓴 책 이름은 덮지 않음 */
+  function paintReadingCheckedBookChips() {
+    if (!(taskLogReadingBookChips instanceof HTMLElement)) return;
+    taskLogReadingBookChips.replaceChildren();
+    if (!isTaskLogReadingDetailOpen()) {
+      taskLogReadingBookChips.hidden = true;
+      return;
+    }
+    const items = collectCheckedTaskCompletionTodosFromModal();
+    if (!items.length) {
+      taskLogReadingBookChips.hidden = true;
+      return;
+    }
+    taskLogReadingBookChips.hidden = false;
+    for (const item of items) {
+      const chip = document.createElement("span");
+      lpSetClasses(chip, "time-task-log-reading-book-chip");
+      const text = document.createElement("span");
+      lpSetClasses(text, "time-task-log-reading-book-chip-text");
+      text.textContent = item.text;
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.setAttribute("aria-label", `${item.text} 체크 해제`);
+      lpSetClasses(remove, "time-task-log-reading-book-chip-remove");
+      remove.textContent = "×";
+      remove.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = String(item.id || "").trim();
+        if (!id) return;
+        syncTaskLogTodoChecksAcrossLists(id, false);
+        paintReadingCheckedBookChips();
+      });
+      chip.append(text, remove);
+      taskLogReadingBookChips.appendChild(chip);
     }
   }
 
@@ -12442,6 +12494,7 @@ export function render(opts = {}) {
     taskLogKpiTodosSection.classList.remove("is-split");
     taskLogKpiTodosList?.replaceChildren?.();
     taskLogKpiTodosAllList?.replaceChildren?.();
+    paintReadingCheckedBookChips();
   }
 
   function collectTaskLogTodoChecks(listEl, rowLegacyToken) {
@@ -12471,8 +12524,12 @@ export function render(opts = {}) {
         const id = String(input.dataset.todoId || "").trim();
         if (id) map.set(id, !!input.checked);
       });
-    for (const id of taskLogModalCheckedTodoIds) {
-      if (!map.has(id)) map.set(id, true);
+    for (const id of taskLogModalTouchedTodoIds) {
+      if (!map.has(id) && taskLogModalCheckedTodoIds.has(id)) {
+        map.set(id, true);
+      } else if (!map.has(id) && !taskLogModalCheckedTodoIds.has(id)) {
+        map.set(id, false);
+      }
     }
     return map;
   }
@@ -12481,6 +12538,7 @@ export function render(opts = {}) {
     const id = String(todoId || "").trim();
     if (!id) return;
     rememberTaskLogModalTodoCheck(id, checked);
+    markTaskLogModalTodoTouched(id);
     taskLogKpiTodosSection
       ?.querySelectorAll(`input[type="checkbox"][data-todo-id="${id}"]`)
       .forEach((cb) => {
@@ -12507,10 +12565,12 @@ export function render(opts = {}) {
       );
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
-      const defaultChecked = id ? taskLogModalCheckedTodoIds.has(id) : false;
-      checkbox.checked = preserveChecks?.has(id)
-        ? !!preserveChecks.get(id)
-        : defaultChecked;
+      const defaultChecked = resolveTaskLogCompletionChecked(
+        id,
+        todo.completed,
+        preserveChecks,
+      );
+      checkbox.checked = defaultChecked;
       if (id) checkbox.dataset.todoId = id;
       if (checkbox.checked && id) taskLogModalCheckedTodoIds.add(id);
       const span = document.createElement("span");
@@ -12526,7 +12586,7 @@ export function render(opts = {}) {
         });
         /* 저장 전에도 목록에 남김 · 맨 위로 옮기지 않음(스크롤 밖으로 ‘사라짐’ 방지) */
         syncTaskLogTodoChecksAcrossLists(id, checkbox.checked);
-        syncReadingBookTitleFromCheckedTodos();
+        paintReadingCheckedBookChips();
       });
       host.appendChild(label);
     }
@@ -12622,6 +12682,7 @@ export function render(opts = {}) {
         opts.errorMessage ||
         taskCompletionTodoListEmptyMessageForKpiId(kpiId);
       taskLogKpiTodosList.replaceChildren();
+      paintReadingCheckedBookChips();
       return;
     }
 
@@ -12633,6 +12694,7 @@ export function render(opts = {}) {
       opts.preserveChecks,
       taskLogKpiTodosList,
     );
+    paintReadingCheckedBookChips();
   }
 
   function refreshTaskCompletionTodosInLogModal() {
@@ -12673,6 +12735,11 @@ export function render(opts = {}) {
       "time-task-log-chore-todo-row",
     );
     for (const [id, checked] of allChecks) taskChecks.set(id, checked);
+    const preserveTouched = new Map();
+    for (const id of taskLogModalTouchedTodoIds) {
+      if (taskChecks.has(id)) preserveTouched.set(id, taskChecks.get(id));
+    }
+    const preserveChecks = preserveTouched.size ? preserveTouched : undefined;
 
     let syncResult = { stale: false, pulled: false, pullOk: true };
     try {
@@ -12705,7 +12772,7 @@ export function render(opts = {}) {
       applyTaskCompletionTodosUi(kpiId, [], {
         plannedTodoFilterActive: !!filteredTaskInfo.plannedTodoFilterActive,
         errorMessage: `${listLabel}을 불러오지 못했습니다. 잠시 후 다시 선택해 주세요.`,
-        preserveChecks: taskChecks,
+        preserveChecks,
       });
     } else if (filteredTaskInfo) {
       /* stale 여부와 무관하게 최신 로컬로 다시 그림(숨김 레이스 복구) */
@@ -12714,7 +12781,7 @@ export function render(opts = {}) {
         filteredTaskInfo.todos,
         {
           plannedTodoFilterActive: !!filteredTaskInfo.plannedTodoFilterActive,
-          preserveChecks: taskChecks,
+          preserveChecks,
         },
       );
     } else {
@@ -13568,6 +13635,8 @@ export function render(opts = {}) {
     for (const x of Array.isArray(data?.habitDailyCompleted)
       ? data.habitDailyCompleted
       : []) {
+      const live = lookupKpiTodoCompleted(x?.id);
+      if (live === false) continue;
       rememberTaskLogModalTodoCheck(x?.id, true);
     }
     const measureInfoForEdit = getKpiMeasureInfoForTaskLog();
@@ -16726,6 +16795,23 @@ export function render(opts = {}) {
     "calendar-time-rows-updated",
     () => {
       clearPulledLedgerRanges();
+    },
+    { signal },
+  );
+
+  document.addEventListener(
+    KPI_TODO_UNCOMPLETED_LEDGER_EVENT,
+    () => {
+      if (!el.isConnected) return;
+      refreshTimeLedgerFromRemotePull({ force: true });
+      const editId = String(taskLogEditTr?._rowData?.id || "").trim();
+      if (!editId) return;
+      const latest = (loadTimeRows() || []).find(
+        (r) => String(r?.id || "").trim() === editId,
+      );
+      if (!latest) return;
+      taskLogEditTr._rowData = latest;
+      paintReadingCheckedBookChips();
     },
     { signal },
   );

@@ -14,7 +14,11 @@ import {
   getKpiHabitTodayNumericValue,
 } from "./kpiHabitStreak.js";
 import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
-import { filterKpisByProgressStatus } from "./kpiProgressStatus.js";
+import {
+  filterKpisByProgressStatus,
+  KPI_PROGRESS_STATUS,
+  resolveKpiProgressStatus,
+} from "./kpiProgressStatus.js";
 import { resolveKpiDetailLogEntriesLocal } from "./kpiTimeLedgerLogs.js";
 import { computeKpiProgress, resolveKpiGoalMode } from "./kpiTimeUnitKpi.js";
 import {
@@ -30,11 +34,14 @@ import {
   appendTodayActionPinnedTodos,
   readTodayActionExtraIds,
   readTodayActionHiddenIds,
+  showTodayActionAddKpiModal,
   showTodayActionTodosModal,
 } from "./kpiTodayActionTodos.js";
 import { readTimeDailyBudgetGoalsRaw } from "./timeDailyBudgetModel.js";
 import { getTaskOptionByName } from "./timeTaskOptionsModel.js";
 import { resolveKpiIdForTaskId } from "./kpiTodoSync.js";
+import { expectedSpanDisplayTaskName } from "./expectedScheduleDetail.js";
+import { ledgerDetailTaskKind } from "./timeTaskOptionsConstants.js";
 
 const BUDGET_PLACEHOLDER_PREFIX = "(과제 선택)·";
 
@@ -242,17 +249,28 @@ function isScheduleTaskDoneToday(taskName, taskId, todayYmd) {
   return avg != null && Number(avg) > 0;
 }
 
-function makeScheduleOnlyTodayGoalItem(taskName, opt, todayYmd) {
-  const name = String(taskName || "").trim();
+function makeScheduleOnlyTodayGoalItem(taskName, opt, todayYmd, displayName) {
+  const stored = String(taskName || "").trim();
+  const shown = String(displayName || stored).trim() || stored;
   return {
-    id: `schedule:${name}`,
-    name,
+    id: `schedule:${stored}:${shown}`,
+    name: shown,
     targetLabel: "",
-    done: isScheduleTaskDoneToday(name, opt?.id, todayYmd),
+    done: isScheduleTaskDoneToday(stored, opt?.id, todayYmd),
     category: categoryForScheduleTask(opt),
     isHabit: false,
     scheduleOnly: true,
   };
+}
+
+function expectedTodayShowsChangedName(taskName) {
+  const kind = ledgerDetailTaskKind(taskName);
+  return (
+    kind === "outing" ||
+    kind === "content" ||
+    kind === "hygiene" ||
+    kind === "appearance"
+  );
 }
 
 /**
@@ -279,20 +297,38 @@ function listExpectedScheduleTodayAddsForYmd(ymd) {
   const seenName = new Set();
   for (const [taskName, data] of Object.entries(goals)) {
     if (String(taskName).startsWith(BUDGET_PLACEHOLDER_PREFIX)) continue;
-    if (!scheduledTimesForBudgetTask(data).length) continue;
+    const times = scheduledTimesForBudgetTask(data);
+    if (!times.length) continue;
     const name = String(taskName || "").trim();
-    if (!name || seenName.has(name)) continue;
-    seenName.add(name);
+    if (!name) continue;
     const opt = getTaskOptionByName(name);
     const kid =
       resolveKpiIdForTaskId(opt?.id) || String(opt?.kpiId || "").trim();
+    if (expectedTodayShowsChangedName(name)) {
+      const details = Array.isArray(data.scheduleDetails)
+        ? data.scheduleDetails
+        : [];
+      for (let i = 0; i < times.length; i++) {
+        const shown =
+          expectedSpanDisplayTaskName({
+            taskName: name,
+            scheduleDetail: String(details[i] || "").trim(),
+          }) || name;
+        if (!shown || seenName.has(shown)) continue;
+        seenName.add(shown);
+        scheduleOnly.push({ name: shown, storedName: name, opt: opt || null });
+      }
+      continue;
+    }
+    if (seenName.has(name)) continue;
+    seenName.add(name);
     if (kid) {
       if (seenKpi.has(kid)) continue;
       seenKpi.add(kid);
       kpiIds.push(kid);
       continue;
     }
-    scheduleOnly.push({ name, opt: opt || null });
+    scheduleOnly.push({ name, storedName: name, opt: opt || null });
   }
   return { kpiIds, scheduleOnly };
 }
@@ -382,7 +418,27 @@ export function buildGoalTrackerTodayGoalsModel(opts = {}) {
     if (!ignoreHidden && hidden.has(id)) return;
     if (items.some((x) => x.id === id)) return;
     const found = byId.get(id);
-    if (!found) return;
+    if (!found) {
+      if (!id.startsWith("schedule:")) return;
+      const name = id.slice("schedule:".length).trim();
+      if (!name || items.some((x) => x.name === name)) return;
+      items.push(
+        makeScheduleOnlyTodayGoalItem(
+          name,
+          getTaskOptionByName(name),
+          todayYmd,
+        ),
+      );
+      return;
+    }
+    if (
+      resolveKpiProgressStatus(
+        found.kpi,
+        progressForKpi(found.kpi, found.data),
+      ) !== KPI_PROGRESS_STATUS.ACTIVE
+    ) {
+      return;
+    }
     const isHabit =
       resolveKpiGoalMode(found.kpi) === "habit" || !!found.kpi?.needHabitTracker;
     if (opts.habitsOnly && !isHabit) return;
@@ -400,12 +456,22 @@ export function buildGoalTrackerTodayGoalsModel(opts = {}) {
     for (const row of scheduledAdds.scheduleOnly) {
       if (
         items.some(
-          (x) => x.name === row.name || x.id === `schedule:${row.name}`,
+          (x) =>
+            x.name === row.name ||
+            x.id === `schedule:${row.storedName || row.name}:${row.name}` ||
+            x.id === `schedule:${row.name}`,
         )
       ) {
         continue;
       }
-      items.push(makeScheduleOnlyTodayGoalItem(row.name, row.opt, todayYmd));
+      items.push(
+        makeScheduleOnlyTodayGoalItem(
+          row.storedName || row.name,
+          row.opt,
+          todayYmd,
+          row.name,
+        ),
+      );
     }
   }
 
@@ -534,54 +600,73 @@ export function mountKpiGoalTodayGoalsSection(container, opts = {}) {
     empty.className = "habit-tracker-today-goals-empty";
     empty.textContent = "오늘 진행 중인 목표가 없습니다.";
     listParent.appendChild(empty);
-    return;
-  }
+  } else {
+    const list = document.createElement("ul");
+    list.className = "habit-tracker-today-goals-list";
+    list.setAttribute("aria-label", "오늘의 행동 목록");
 
-  const list = document.createElement("ul");
-  list.className = "habit-tracker-today-goals-list";
-  list.setAttribute("aria-label", "오늘의 행동 목록");
+    for (const item of model.items) {
+      const li = document.createElement("li");
+      const scheduleOnly = !!item.scheduleOnly;
+      li.className = `habit-tracker-today-goals-row${
+        scheduleOnly ? "" : " has-todos"
+      }${item.done ? " is-done" : ""}`;
 
-  for (const item of model.items) {
-    const li = document.createElement("li");
-    const scheduleOnly = !!item.scheduleOnly;
-    li.className = `habit-tracker-today-goals-row${
-      scheduleOnly ? "" : " has-todos"
-    }${item.done ? " is-done" : ""}`;
-
-    const rowHead = document.createElement(scheduleOnly ? "div" : "button");
-    if (!scheduleOnly) {
-      rowHead.type = "button";
-      rowHead.setAttribute("aria-label", item.name);
-    } else {
-      rowHead.style.cursor = "default";
-    }
-    rowHead.className = "habit-tracker-today-goals-head";
-    rowHead.innerHTML = `
+      const rowHead = document.createElement(scheduleOnly ? "div" : "button");
+      if (!scheduleOnly) {
+        rowHead.type = "button";
+        rowHead.setAttribute("aria-label", item.name);
+      } else {
+        rowHead.style.cursor = "default";
+      }
+      rowHead.className = "habit-tracker-today-goals-head";
+      rowHead.innerHTML = `
       <span class="habit-tracker-today-goals-mark" aria-label="${item.done ? "실행함" : "미실행"}">${item.done ? "O" : "X"}</span>
       <span class="habit-tracker-today-goals-main">
         <span class="habit-tracker-today-goals-name">${escapeHtml(item.name)}</span>
       </span>
     `;
-    if (!scheduleOnly) {
-      rowHead.addEventListener("click", () => {
-        showTodayActionTodosModal({
-          kpiId: item.id,
-          name: item.name,
+      if (!scheduleOnly) {
+        rowHead.addEventListener("click", () => {
+          showTodayActionTodosModal({
+            kpiId: item.id,
+            name: item.name,
+            todayYmd: model.todayYmd,
+            onChange: remount,
+          });
+        });
+      }
+      li.appendChild(rowHead);
+      if (!scheduleOnly) {
+        appendTodayActionPinnedTodos(li, item, {
           todayYmd: model.todayYmd,
           onChange: remount,
         });
-      });
+      }
+      list.appendChild(li);
     }
-    li.appendChild(rowHead);
-    if (!scheduleOnly) {
-      appendTodayActionPinnedTodos(li, item, {
-        todayYmd: model.todayYmd,
-        onChange: remount,
-      });
-    }
-    list.appendChild(li);
+    listParent.appendChild(list);
   }
-  listParent.appendChild(list);
+
+  const addBtn = document.createElement("button");
+  addBtn.type = "button";
+  addBtn.className = "habit-tracker-today-goals-add-btn";
+  addBtn.setAttribute("aria-label", "오늘의 행동 추가");
+  addBtn.innerHTML = `
+    <span class="habit-tracker-today-goals-mark" aria-hidden="true">+</span>
+    <span class="habit-tracker-today-goals-main">
+      <span class="habit-tracker-today-goals-name">오늘의 행동 추가</span>
+    </span>
+  `;
+  addBtn.addEventListener("click", () => {
+    showTodayActionAddKpiModal({
+      todayYmd: model.todayYmd,
+      excludeIds: model.items.map((x) => x.id),
+      excludeNames: model.items.map((x) => x.name),
+      onAdded: remount,
+    });
+  });
+  listParent.appendChild(addBtn);
 
   const restoreTop = Number(opts.restoreScrollTop);
   if (Number.isFinite(restoreTop) && restoreTop > 0) {

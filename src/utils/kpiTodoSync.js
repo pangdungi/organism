@@ -482,6 +482,23 @@ export function syncKpiTodoCompleted(kpiTodoId, storageKey, completed) {
 
 const STORAGE_KEYS = [DREAM_MAP_KEY, SIDEINCOME_KEY, HAPPINESS_KEY, HEALTH_KEY];
 
+/**
+ * 할일이 목록에 있으면 현재 완료값. 완료목록에서 지워져 없으면 null.
+ * @returns {boolean|null}
+ */
+export function lookupKpiTodoCompleted(todoId) {
+  const tid = String(todoId || "").trim();
+  if (!tid) return null;
+  for (const storageKey of STORAGE_KEYS) {
+    const data = loadJson(storageKey, { kpiTodos: [] });
+    const todo = (data.kpiTodos || []).find(
+      (t) => String(t?.id || "").trim() === tid,
+    );
+    if (todo) return !!todo.completed;
+  }
+  return null;
+}
+
 const STORAGE_KEY_TO_DOMAIN = {
   [DREAM_MAP_KEY]: "dream",
   [SIDEINCOME_KEY]: "sideincome",

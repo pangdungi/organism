@@ -21,6 +21,7 @@ import {
 } from "./kpiTodoSync.js";
 import { showKpiTodoAddModal } from "./kpiTodoAddModal.js";
 import { showKpiTodoEditModal } from "./kpiTodoEditModal.js";
+import { stripKpiTodoFromTimeLedgerIfUncompleted } from "./kpiTodoStripFromTimeLedger.js";
 
 const DOMAINS = [
   {
@@ -165,6 +166,11 @@ function toggleTodoCompleted(storageKey, todoId, completed) {
     void persistKpiTodoRowOnly(storageKey, todo);
     void persistKpiCompletionEventOnly(storageKey, String(todoId), !!completed);
   }
+  stripKpiTodoFromTimeLedgerIfUncompleted(
+    !!completed,
+    todoId,
+    todo.text,
+  );
   return true;
 }
 

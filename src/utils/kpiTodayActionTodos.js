@@ -12,8 +12,15 @@ import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
 import { sortNormalizedKpiTodoRows } from "./kpiMapTodoListOrder.js";
 import { showKpiTodoAddModal } from "./kpiTodoAddModal.js";
 import { addKpiTodo, syncKpiTodoCompleted } from "./kpiTodoSync.js";
-import { DEFAULT_SUPPLEMENT_KPI_ID } from "./defaultKpiIconIds.js";
+import { stripKpiTodoFromTimeLedgerIfUncompleted } from "./kpiTodoStripFromTimeLedger.js";
+import {
+  DEFAULT_CHECKUP_KPI_ID,
+  DEFAULT_READING_KPI_ID,
+  DEFAULT_SUPPLEMENT_KPI_ID,
+} from "./defaultKpiIconIds.js";
+import { DEFAULT_READING_KPI_TODO_LIST_LABEL } from "./happinessKpiMapSupabase.js";
 import { resolveKpiGoalMode } from "./kpiTimeUnitKpi.js";
+import { getFullTaskOptions, isDreamKpiLedgerTask } from "./timeTaskOptionsModel.js";
 import { LP_MODAL_HTML_OPEN_CLASS } from "./lpModalKeyboard.js";
 import { supabase } from "../supabase.js";
 import { getSupabaseSession } from "./supabaseSession.js";
@@ -279,16 +286,189 @@ export function hideTodayActionKpi(kpiId, todayYmd) {
 
 /** 오늘 목록에 넣기(뺀 것 되돌리거나, 기본에 없던 것 추가) */
 export function addTodayActionKpi(kpiId, todayYmd) {
-  const kid = String(kpiId || "").trim();
-  if (!kid) return;
+  addTodayActionKpis([kpiId], todayYmd);
+}
+
+/** 오늘 목록에 여러 행동 한 번에 넣기 — 서버에도 한 번만 올림 */
+export function addTodayActionKpis(kpiIds, todayYmd) {
+  const ids = cleanIdList(kpiIds);
+  if (!ids.length) return;
   const store = readPickStore(todayYmd);
-  const hidden = new Set(cleanIdList(store.hidden));
-  if (hidden.has(kid)) {
-    store.hidden = cleanIdList(store.hidden).filter((id) => id !== kid);
-  } else {
-    store.extra = cleanIdList([...(store.extra || []), kid]);
+  let hidden = cleanIdList(store.hidden);
+  let extra = cleanIdList(store.extra);
+  for (const kid of ids) {
+    if (hidden.includes(kid)) {
+      hidden = hidden.filter((id) => id !== kid);
+    } else if (!extra.includes(kid)) {
+      extra.push(kid);
+    }
   }
+  store.hidden = hidden;
+  store.extra = extra;
   writePickStore(store);
+}
+
+function categoryLabelForTask(opt) {
+  const c = String(opt?.category || "").trim().toLowerCase();
+  if (c === "sideincome") return "시급";
+  if (c === "health") return "건강";
+  if (c === "happiness") return "행복";
+  return "";
+}
+
+/**
+ * 과제목록에서, 이미 오늘의 행동에 있는 것을 뺀 목록
+ * @param {{ excludeIds?: Iterable<string>, excludeNames?: Iterable<string> }} [opts]
+ * @returns {Array<{ id: string, name: string, category: string }>}
+ */
+export function listAddableTodayActionKpis(opts = {}) {
+  const takenIds = new Set(
+    [...(opts.excludeIds || [])].map((x) => String(x || "").trim()).filter(Boolean),
+  );
+  takenIds.add(DEFAULT_CHECKUP_KPI_ID);
+  const takenNames = new Set(
+    [...(opts.excludeNames || [])]
+      .map((x) => String(x || "").trim())
+      .filter(Boolean),
+  );
+  const out = [];
+  const seen = new Set();
+  for (const opt of getFullTaskOptions()) {
+    if (isDreamKpiLedgerTask(opt)) continue;
+    const name = String(opt?.name || "").trim();
+    if (!name || takenNames.has(name) || seen.has(name)) continue;
+    const kid = String(opt?.kpiId || "").trim();
+    if (kid && (takenIds.has(kid) || kid === DEFAULT_CHECKUP_KPI_ID)) continue;
+    const id = kid || `schedule:${name}`;
+    if (takenIds.has(id) || seen.has(id)) continue;
+    seen.add(id);
+    seen.add(name);
+    out.push({
+      id,
+      name,
+      category: categoryLabelForTask(opt),
+    });
+  }
+  out.sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  return out;
+}
+
+/**
+ * @param {{
+ *   excludeIds?: Iterable<string>,
+ *   excludeNames?: Iterable<string>,
+ *   todayYmd?: string,
+ *   onAdded?: () => void,
+ * }} [opts]
+ */
+export function showTodayActionAddKpiModal(opts = {}) {
+  const todayYmd = todayYmdOr(opts.todayYmd);
+  document.querySelector(".lp-today-action-add-modal")?.remove();
+  const rows = listAddableTodayActionKpis({
+    excludeIds: opts.excludeIds,
+    excludeNames: opts.excludeNames,
+  });
+
+  const modal = document.createElement("div");
+  modal.className =
+    "time-task-setup-modal lp-today-action-todos-modal lp-today-action-add-modal lp-modal-compact";
+  modal.innerHTML = `
+    <div data-legacy="time-task-setup-backdrop"></div>
+    <div data-legacy="time-task-setup-panel">
+      <div data-legacy="time-task-setup-header">
+        <h3 data-legacy="time-task-setup-title">오늘의 행동 추가</h3>
+        <button type="button" data-legacy="time-task-setup-close" title="닫기" aria-label="닫기">&times;</button>
+      </div>
+      <div class="dream-kpi-form-body" data-legacy="time-task-setup-body">
+        <div data-legacy="time-task-log-kpi-todos-section">
+          ${
+            rows.length
+              ? `<p data-legacy="time-task-log-kpi-todos-hint">넣을 행동을 고른 뒤 추가를 누르세요</p>`
+              : ""
+          }
+          <p data-legacy="time-task-log-kpi-todos-status" ${rows.length ? "hidden" : ""}>${
+            rows.length ? "" : "더 넣을 진행중 행동이 없습니다."
+          }</p>
+          <div data-legacy="time-task-log-kpi-todos-scroll" ${rows.length ? "" : "hidden"}>
+            <div data-legacy="time-task-log-kpi-todos-list"></div>
+          </div>
+        </div>
+      </div>
+      ${
+        rows.length
+          ? `<div data-legacy="time-task-log-footer">
+        <button type="button" data-legacy="time-task-log-submit" disabled>추가</button>
+      </div>`
+          : ""
+      }
+    </div>
+  `;
+
+  const listEl = modal.querySelector(
+    '[data-legacy~="time-task-log-kpi-todos-list"]',
+  );
+  const submitBtn = modal.querySelector(
+    '[data-legacy~="time-task-log-submit"]',
+  );
+  const prevOverflow = document.body.style.overflow;
+  const draft = new Set();
+
+  function close() {
+    try {
+      document.documentElement.classList.remove(LP_MODAL_HTML_OPEN_CLASS);
+    } catch (_) {}
+    modal.remove();
+    document.body.style.overflow = prevOverflow;
+  }
+
+  function syncSubmit() {
+    if (submitBtn instanceof HTMLButtonElement) {
+      submitBtn.disabled = draft.size === 0;
+    }
+  }
+
+  if (listEl instanceof HTMLElement) {
+    for (const row of rows) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className =
+        "time-task-log-kpi-todo-row time-task-log-chore-todo-row time-task-log-kpi-todo-row--pick-memo";
+      btn.setAttribute("aria-label", `${row.name} 고르기`);
+      const span = document.createElement("span");
+      span.className = "time-task-log-kpi-todo-text";
+      span.textContent = row.name;
+      btn.appendChild(span);
+      btn.addEventListener("click", () => {
+        if (draft.has(row.id)) draft.delete(row.id);
+        else draft.add(row.id);
+        btn.classList.toggle("is-planned", draft.has(row.id));
+        syncSubmit();
+      });
+      listEl.appendChild(btn);
+    }
+  }
+
+  modal
+    .querySelector('[data-legacy~="time-task-setup-close"]')
+    ?.addEventListener("click", close);
+  modal
+    .querySelector('[data-legacy~="time-task-setup-backdrop"]')
+    ?.addEventListener("click", close);
+  submitBtn?.addEventListener("click", () => {
+    if (!draft.size) return;
+    addTodayActionKpis([...draft], todayYmd);
+    close();
+    try {
+      opts.onAdded?.();
+    } catch (_) {}
+  });
+  syncSubmit();
+
+  document.body.style.overflow = "hidden";
+  try {
+    document.documentElement.classList.add(LP_MODAL_HTML_OPEN_CLASS);
+  } catch (_) {}
+  document.body.appendChild(modal);
 }
 
 function findKpiBundle(kpiId) {
@@ -309,7 +489,7 @@ function findKpiBundle(kpiId) {
  * @param {string} kpiId
  * @param {{ includeCompleted?: boolean }} [opts]
  *   includeCompleted — 행동 아래 오늘 고른 목록용. 완료분도 체크된 채로 남김.
- *   고르는 창은 기본(미완료만).
+ *   고르는 창은 기본 미완료만. 독서하기는 읽을 예정 전체를 보여 준다.
  * @returns {{
  *   kind: "task",
  *   storageKey: string,
@@ -324,8 +504,9 @@ export function collectTodayActionTodos(kpiId, opts = {}) {
   const kid = String(kpi?.id || "").trim();
   if (!kid) return null;
   const mode = resolveKpiGoalMode(kpi);
-  if (mode !== "task" && mode !== "manual") return null;
-  const includeCompleted = !!opts.includeCompleted;
+  const isReading = String(kpi?.id || "").trim() === DEFAULT_READING_KPI_ID;
+  if (!isReading && mode !== "task" && mode !== "manual") return null;
+  const includeCompleted = !!opts.includeCompleted || isReading;
 
   const todos = sortNormalizedKpiTodoRows(
     (data.kpiTodos || []).filter((t) => {
@@ -356,14 +537,19 @@ function isHabitTodayActionKpi(kpi) {
   return resolveKpiGoalMode(kpi) === "habit" || !!kpi?.needHabitTracker;
 }
 
+function isReadingTodayActionKpi(kpi) {
+  return String(kpi?.id || "").trim() === DEFAULT_READING_KPI_ID;
+}
+
 function isSupplementTodayActionKpi(kpi) {
   return String(kpi?.id || "").trim() === DEFAULT_SUPPLEMENT_KPI_ID;
 }
 
-/** @returns {"task"|"habit"|"supplement"} */
+/** @returns {"task"|"habit"|"supplement"|"reading"} */
 function resolveTodayActionModalKind(kpiId) {
   const bundle = findKpiBundle(kpiId);
   if (!bundle) return "task";
+  if (isReadingTodayActionKpi(bundle.kpi)) return "reading";
   if (isSupplementTodayActionKpi(bundle.kpi)) return "supplement";
   if (isHabitTodayActionKpi(bundle.kpi)) return "habit";
   return "task";
@@ -393,6 +579,7 @@ export function setTodayActionTodoChecked(kpiId, todoId, checked) {
   );
   if (!todo) return false;
   syncKpiTodoCompleted(todo.id, collected.storageKey, !!checked);
+  stripKpiTodoFromTimeLedgerIfUncompleted(!!checked, todo.id, todo.text);
   return true;
 }
 
@@ -411,7 +598,7 @@ export function showTodayActionTodosModal(opts = {}) {
   if (!kpiId) return;
 
   const kind = resolveTodayActionModalKind(kpiId);
-  const canPickTodos = kind === "task";
+  const canPickTodos = kind === "task" || kind === "reading";
   const showDailyList = kind === "habit" || kind === "supplement";
   const existing = document.querySelector(".lp-today-action-todos-modal");
   existing?.remove();
@@ -421,9 +608,13 @@ export function showTodayActionTodosModal(opts = {}) {
       ? "보충제 목록"
       : kind === "habit"
         ? "매일 할 일 목록"
-        : "오늘 행동 할 일 목록";
+        : kind === "reading"
+          ? DEFAULT_READING_KPI_TODO_LIST_LABEL
+          : "오늘 행동 할 일 목록";
   const listHint = canPickTodos
-    ? "오늘 할 항목을 고른 뒤 저장을 누르세요"
+    ? kind === "reading"
+      ? "오늘 읽을 책을 고른 뒤 저장을 누르세요"
+      : "오늘 할 항목을 고른 뒤 저장을 누르세요"
     : "";
 
   const modal = document.createElement("div");
@@ -443,7 +634,9 @@ export function showTodayActionTodosModal(opts = {}) {
             <h4 data-legacy="time-task-log-kpi-todos-title">${escapeHtml(listTitle)}</h4>
             ${
               canPickTodos
-                ? `<button type="button" data-legacy="lp-expected-kpi-todo-add-btn" aria-label="할 일 추가">+</button>`
+                ? `<button type="button" data-legacy="lp-expected-kpi-todo-add-btn" aria-label="${
+                    kind === "reading" ? "읽을 예정 추가" : "할 일 추가"
+                  }">+</button>`
                 : ""
             }
           </div>
@@ -494,7 +687,9 @@ export function showTodayActionTodosModal(opts = {}) {
     listEl.replaceChildren();
     const todos = showDailyList
       ? listTodayActionDailyItems(kpiId)
-      : collectTodayActionTodos(kpiId)?.todos || [];
+      : collectTodayActionTodos(kpiId, {
+          includeCompleted: kind === "reading",
+        })?.todos || [];
     if (!todos.length) {
       if (scrollEl instanceof HTMLElement) scrollEl.hidden = true;
       if (statusEl instanceof HTMLElement) {
@@ -504,7 +699,9 @@ export function showTodayActionTodosModal(opts = {}) {
             ? "등록된 보충제가 없습니다."
             : kind === "habit"
               ? "등록된 매일 할 일이 없습니다."
-              : "등록된 할 일이 없습니다.";
+              : kind === "reading"
+                ? "등록된 읽을 예정이 없습니다."
+                : "등록된 할 일이 없습니다.";
       }
       return;
     }
@@ -533,7 +730,12 @@ export function showTodayActionTodosModal(opts = {}) {
         "time-task-log-kpi-todo-row time-task-log-chore-todo-row time-task-log-kpi-todo-row--pick-memo";
       row.setAttribute("data-legacy", "time-task-log-chore-todo-row");
       row.setAttribute("data-todo-id", todo.id);
-      row.setAttribute("aria-label", `오늘 할 일로 고르기: ${todo.text}`);
+      row.setAttribute(
+        "aria-label",
+        kind === "reading"
+          ? `오늘 읽을 책으로 고르기: ${todo.text}`
+          : `오늘 할 일로 고르기: ${todo.text}`,
+      );
       row.classList.toggle("is-planned", draftPicks.has(todo.id));
       const span = document.createElement("span");
       span.className = "time-task-log-kpi-todo-text";
@@ -578,18 +780,31 @@ export function showTodayActionTodosModal(opts = {}) {
     modal
       .querySelector('[data-legacy~="lp-expected-kpi-todo-add-btn"]')
       ?.addEventListener("click", async () => {
-        const collected = collectTodayActionTodos(kpiId);
+        const collected = collectTodayActionTodos(kpiId, {
+          includeCompleted: kind === "reading",
+        });
         const text = await showKpiTodoAddModal({
           kpiName: name,
-          title: "할 일 추가",
-          placeholder: "할 일 입력",
+          title: kind === "reading" ? "독서 추가" : "할 일 추가",
+          placeholder: kind === "reading" ? "독서 입력" : "할 일 입력",
+          inputLabel:
+            kind === "reading" ? DEFAULT_READING_KPI_TODO_LIST_LABEL : undefined,
         });
         if (!text || !modal.isConnected) return;
         const storageKey =
           collected?.storageKey || findKpiBundle(kpiId)?.storageKey || "";
-        const ok = !!addKpiTodo(kpiId, storageKey, text, { pushServer: true })
-          ?.success;
-        if (!ok) return;
+        const added = addKpiTodo(kpiId, storageKey, text, { pushServer: true });
+        if (!added?.success) return;
+        const newId = String(added.kpiTodoId || "").trim();
+        if (newId) {
+          draftPicks.add(newId);
+          const saved = readTodayActionTodoPickIds(kpiId, todayYmd);
+          setTodayActionTodoPickIds(
+            kpiId,
+            [...saved, newId],
+            todayYmd,
+          );
+        }
         paintList();
         try {
           opts.onChange?.();
@@ -636,7 +851,12 @@ export function appendTodayActionPinnedTodos(host, item, opts = {}) {
 
   const ul = document.createElement("ul");
   ul.className = "habit-tracker-today-action-todos";
-  ul.setAttribute("aria-label", `${item?.name || "행동"} 오늘 할일`);
+  ul.setAttribute(
+    "aria-label",
+    String(item?.id || "").trim() === DEFAULT_READING_KPI_ID
+      ? `${item?.name || "독서하기"} 오늘 읽을 책`
+      : `${item?.name || "행동"} 오늘 할일`,
+  );
   for (const todo of pinned) {
     const li = document.createElement("li");
     li.className = `habit-tracker-today-action-todo${

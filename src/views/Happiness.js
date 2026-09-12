@@ -145,6 +145,7 @@ import {
   mountKpiSegBarClearCompletedRow,
   confirmAndPurgeCompletedKpiTodos,
 } from "../utils/kpiTodoBulkDeleteUi.js";
+import { stripKpiTodoFromTimeLedgerIfUncompleted } from "../utils/kpiTodoStripFromTimeLedger.js";
 import {
   syncKpiTaskCompletionEventOnTodoToggle,
   retainKpiTaskCompletionEventOnTodoDelete,
@@ -1687,6 +1688,11 @@ export function render() {
           );
           saveHappinessMap(d);
           void persistHappinessKpiTodoCompleted(todo.id, !!check.checked);
+          stripKpiTodoFromTimeLedgerIfUncompleted(
+            !!check.checked,
+            todo.id,
+            todo.text || t.text,
+          );
           kpiTodoLifecycleLog("행복KPI탭_체크_save후", {
             todoId: String(todo.id),
             completion: kpiTodosCompletionBrief(loadHappinessMap(), 20),

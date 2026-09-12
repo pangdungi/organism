@@ -960,6 +960,8 @@ export function isTimeRatingStarsOnlyBuiltinTaskName(name) {
   const n = canonicalMealTaskDisplayName(name);
   if (!n) return false;
   if (isNapBuiltinTaskName(n)) return true;
+  /* 독서하기 — 도서 별점만, 몰입·아쉬움 칩 없음 */
+  if (isReadingDetailTaskName(n)) return true;
   return TIME_RATING_STARS_ONLY_TASK_NAMES.has(n);
 }
 

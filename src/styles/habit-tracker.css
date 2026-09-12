@@ -1317,6 +1317,34 @@
   text-align: center;
 }
 
+.lp-kpi-dream-page .habit-tracker-today-goals-add-btn {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0.65rem 0.1rem;
+  border: none;
+  border-bottom: 1px solid #eef2f6;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.lp-kpi-dream-page .habit-tracker-today-goals-add-btn .habit-tracker-today-goals-name {
+  color: #94a3b8;
+  font-weight: 650;
+}
+
+.lp-kpi-dream-page .habit-tracker-today-goals-add-btn:focus-visible {
+  outline: 1.5px solid #111;
+  outline-offset: 2px;
+}
+
 .lp-kpi-dream-page .habit-tracker-today-goals-list {
   list-style: none;
   margin: 0;
@@ -1696,6 +1724,11 @@
   justify-content: flex-end;
 }
 
+.lp-today-action-add-modal [data-legacy~="time-task-log-submit"]:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .lp-today-action-todos-modal [data-legacy~="time-task-log-kpi-todos-section"] {
   display: block;
   margin: 0;
@@ -1757,6 +1790,13 @@
   font: inherit;
   color: inherit;
   cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.lp-today-action-todos-modal [data-legacy~="time-task-log-submit"]:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .lp-today-action-todos-modal .time-task-log-kpi-todo-row--pick-memo::before {

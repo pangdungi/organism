@@ -38,6 +38,10 @@ import {
   normalizeTimeRatingForRow,
   productiveTimeRatingPriceMultiplier,
 } from "./timeLedgerEntriesModel.js";
+import {
+  uniqueReadingBookTitles,
+  splitReadingBookTitles,
+} from "./readingBookTitles.js";
 import { buildEmotionReportSnapshot } from "./timeEmotionReport.js";
 import {
   renderEmotionCategoryDonut,
@@ -5033,6 +5037,17 @@ function resolveReadingReportBookTitle(row) {
   return "";
 }
 
+function collectReadingReportBookTitles(row) {
+  const fromDetail = splitReadingBookTitles(resolveReadingReportBookTitle(row));
+  const fromChecks = (Array.isArray(row?.habitDailyCompleted)
+    ? row.habitDailyCompleted
+    : []
+  )
+    .map((t) => String(t?.text || "").trim())
+    .filter(Boolean);
+  return uniqueReadingBookTitles([...fromDetail, ...fromChecks]);
+}
+
 function emptyReadingBookStat() {
   return { minutes: 0, ratingSum: 0, ratingCount: 0 };
 }
@@ -5064,17 +5079,20 @@ function buildReadingReportSnapshot(rows) {
     if (!(mins > 0)) continue;
     sessionCount += 1;
     totalMinutes += mins;
-    const title = resolveReadingReportBookTitle(r);
-    if (!title) {
+    const titles = collectReadingReportBookTitles(r);
+    if (!titles.length) {
       addReadingRowToBookStat(untitled, r, mins);
       continue;
     }
-    let stat = bookStats.get(title);
-    if (!stat) {
-      stat = emptyReadingBookStat();
-      bookStats.set(title, stat);
+    const share = mins / titles.length;
+    for (const title of titles) {
+      let stat = bookStats.get(title);
+      if (!stat) {
+        stat = emptyReadingBookStat();
+        bookStats.set(title, stat);
+      }
+      addReadingRowToBookStat(stat, r, share);
     }
-    addReadingRowToBookStat(stat, r, mins);
   }
   const books = [...bookStats.entries()]
     .map(([title, stat]) => ({

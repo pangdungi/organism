@@ -63,6 +63,7 @@ import {
   kpiTodosCompletionBrief,
 } from "../utils/kpiTodoLifecycleDebug.js";
 import { showKpiTodoAddModal } from "../utils/kpiTodoAddModal.js";
+import { stripKpiTodoFromTimeLedgerIfUncompleted } from "../utils/kpiTodoStripFromTimeLedger.js";
 import {
   appendKpiDailyRepeatTodoAtEnd,
   sortNormalizedKpiTodoRows,
@@ -1093,6 +1094,11 @@ export function render() {
             t.completed = !!check.checked;
             saveHappinessMap(d, { pushServer: false });
             void persistHappinessKpiTodoRow(t);
+            stripKpiTodoFromTimeLedgerIfUncompleted(
+              !!check.checked,
+              todo.id,
+              todo.text || t.text,
+            );
             kpiTodoLifecycleLog("러브KPI탭_체크_save후", {
               todoId: String(todo.id),
               completion: kpiTodosCompletionBrief(loadHappinessMap(), 20),

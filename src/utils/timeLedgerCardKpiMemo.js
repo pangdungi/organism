@@ -5,6 +5,7 @@
 import {
   getKpiMeasureInfoByKpiId,
   kpiShowsDailyHabitChipOnLedgerCard,
+  lookupKpiTodoCompleted,
 } from "./kpiTodoSync.js";
 import { emotionReflectMemoParts } from "./timeEmotionReflectMemo.js";
 import {
@@ -13,6 +14,10 @@ import {
 } from "./timeReflectionJournal.js";
 import { splitUnhealthyMealMemoFromDb } from "./timeLedgerEntriesModel.js";
 import * as TTC from "./timeTaskOptionsConstants.js";
+import {
+  readingBookTitleKey,
+  splitReadingBookTitles,
+} from "./readingBookTitles.js";
 
 const CONTENT_MEMO_PREFIX = "[콘텐츠] ";
 const MOVE_ROUTINE_TASK_NAME = "이동 루틴";
@@ -182,6 +187,7 @@ export function buildTimeLedgerCardMemoParts(rowData, kpiId) {
     ? rowData.habitDailyCompleted
     : [];
   const habitTexts = daily
+    .filter((t) => lookupKpiTodoCompleted(t?.id) !== false)
     .map((t) => String(t?.text || "").trim())
     .filter(Boolean);
   if (habitTexts.length > 0) {
@@ -195,7 +201,18 @@ export function buildTimeLedgerCardMemoParts(rowData, kpiId) {
           label: "매일할일",
           body: `✓ ${habitTexts.join(" · ")}`,
         });
-      } else if (!TTC.isReadingDetailTaskName(taskName)) {
+      } else if (TTC.isReadingDetailTaskName(taskName)) {
+        const typedKeys = new Set(
+          splitReadingBookTitles(rowData?.mealDetail).map(readingBookTitleKey),
+        );
+        const extra = habitTexts.filter(
+          (t) => !typedKeys.has(readingBookTitleKey(t)),
+        );
+        const bookLabel = TTC.ledgerDetailLinePrefix("reading") || "도서";
+        for (const title of extra) {
+          parts.push({ label: bookLabel, body: title });
+        }
+      } else {
         parts.push({ label: "할일", body: `✓ ${habitTexts.join(" · ")}` });
       }
     }
@@ -225,7 +242,9 @@ export function formatTimeLedgerCardKpiMemoLines(rowData, kpiId) {
   return buildTimeLedgerCardMemoParts(rowData, kpiId)
     .filter(
       (p) =>
-        p.label === "수행값" || p.label === "매일할일" || p.label === "할일",
+        p.label === "수행값" ||
+        p.label === "매일할일" ||
+        p.label === "할일",
     )
     .map((p) => (p.label ? `${p.label} ${p.body}` : p.body));
 }

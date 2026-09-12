@@ -108,6 +108,7 @@ import {
 } from "../utils/kpiMapLocalStorage.js";
 import { pullKpiDetailTodosFromCloud } from "../utils/kpiTabCloudRefresh.js";
 import { persistKpiCompletionEventOnly } from "../utils/kpiCompletionEventPersist.js";
+import { stripKpiTodoFromTimeLedgerIfUncompleted } from "../utils/kpiTodoStripFromTimeLedger.js";
 import {
   applyKpiTodoCompletedStamp,
   retainKpiTaskCompletionEventOnTodoDelete,
@@ -1225,6 +1226,11 @@ export function render() {
               DREAM_KPI_MAP_STORAGE_KEY,
               todo.id,
               !!check.checked,
+            );
+            stripKpiTodoFromTimeLedgerIfUncompleted(
+              !!check.checked,
+              todo.id,
+              todo.text || t.text,
             );
             kpiTodoLifecycleLog("꿈KPI탭_체크_saveDreamMap후", {
               todoId: String(todo.id),

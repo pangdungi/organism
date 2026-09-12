@@ -82,6 +82,7 @@ import {
   mountKpiSegBarClearCompletedRow,
   confirmAndPurgeCompletedKpiTodos,
 } from "../utils/kpiTodoBulkDeleteUi.js";
+import { stripKpiTodoFromTimeLedgerIfUncompleted } from "../utils/kpiTodoStripFromTimeLedger.js";
 import { wireKpiDailyTodoListDragReorder } from "../utils/kpiDailyTodoListDragReorder.js";
 import {
   mountKpiDetailStackedSections,
@@ -1745,6 +1746,11 @@ export function render() {
             HEALTH_KPI_MAP_STORAGE_KEY,
             todo.id,
             !!check.checked,
+          );
+          stripKpiTodoFromTimeLedgerIfUncompleted(
+            !!check.checked,
+            todo.id,
+            todo.text || t.text,
           );
           kpiTodoLifecycleLog("건강KPI탭_체크_save후", {
             todoId: String(todo.id),

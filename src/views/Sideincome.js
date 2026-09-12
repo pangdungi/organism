@@ -84,6 +84,7 @@ import {
   mountKpiSegBarClearCompletedRow,
   confirmAndPurgeCompletedKpiTodos,
 } from "../utils/kpiTodoBulkDeleteUi.js";
+import { stripKpiTodoFromTimeLedgerIfUncompleted } from "../utils/kpiTodoStripFromTimeLedger.js";
 import { wireKpiDailyTodoListDragReorder } from "../utils/kpiDailyTodoListDragReorder.js";
 import {
   createKpiDetailSectionHeader,
@@ -2047,6 +2048,11 @@ export function render(opts = {}) {
             SIDEINCOME_KPI_MAP_STORAGE_KEY,
             todo.id,
             !!check.checked,
+          );
+          stripKpiTodoFromTimeLedgerIfUncompleted(
+            !!check.checked,
+            todo.id,
+            todo.text || t.text,
           );
           kpiTodoLifecycleLog("부수입KPI탭_체크_save후", {
             todoId: String(todo.id),
