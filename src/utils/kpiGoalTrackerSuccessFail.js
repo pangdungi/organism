@@ -20,7 +20,6 @@ import { resolveKpiDetailLogEntriesLocal } from "./kpiTimeLedgerLogs.js";
 import {
   formatMinutesToKoreanHm,
   formatKpiTargetTimeRequiredDisplay,
-  getAccumulatedMinutesForKpiId,
   getAccumulatedMinutesForKpiIdInDateRange,
   getAccumulatedMinutesForKpiIdOnDate,
   normalizeKpiLogDateYmd,
@@ -306,12 +305,19 @@ function buildWeekCells(item, weekKeys) {
   });
 }
 
-/** @param {object} kpi */
-function buildTimeProgressHead(kpi) {
+/** @param {object} kpi @param {string[]} weekKeys */
+function buildTimeProgressHead(kpi, weekKeys) {
   const targetMins = parseKpiTargetTimeRequiredToMinutes(
     kpi?.targetTimeRequired || kpi?.targetValue,
   );
-  const accumulatedMins = getAccumulatedMinutesForKpiId(kpi?.id, kpi?.name);
+  const weekStart = weekKeys?.[0] || "";
+  const weekEnd = weekKeys?.[weekKeys.length - 1] || "";
+  const accumulatedMins = getAccumulatedMinutesForKpiIdInDateRange(
+    kpi?.id,
+    weekStart,
+    weekEnd,
+    kpi?.name,
+  );
   const pct =
     targetMins > 0
       ? Math.min(100, Math.round((accumulatedMins / targetMins) * 100))
@@ -354,10 +360,6 @@ function renderProgressCardHeadHtml(name, prog) {
   return `
     <div class="habit-tracker-success-fail-head-row">
       <span class="habit-tracker-success-fail-head-name">${escapeHtml(name)}</span>
-      <span class="habit-tracker-success-fail-head-pct">${prog.pct}%</span>
-    </div>
-    <div class="habit-tracker-success-fail-progress" role="progressbar" aria-valuenow="${prog.pct}" aria-valuemin="0" aria-valuemax="100" aria-label="${escapeHtml(prog.ariaLabel)}">
-      <div class="habit-tracker-success-fail-progress-fill" style="width:${prog.pct}%"></div>
     </div>
     <div class="habit-tracker-success-fail-head-meta">${escapeHtml(prog.meta)}</div>
   `;
@@ -440,7 +442,7 @@ export function mountKpiGoalSuccessFailSection(container, opts = {}) {
       cardHead.classList.add("habit-tracker-success-fail-card-head--time");
       cardHead.innerHTML = renderProgressCardHeadHtml(
         name,
-        buildTimeProgressHead(item.kpi),
+        buildTimeProgressHead(item.kpi, weekKeys),
       );
     } else if (kind === "manual") {
       cardHead.classList.add("habit-tracker-success-fail-card-head--time");

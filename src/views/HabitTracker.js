@@ -158,6 +158,7 @@ export function render(opts = {}) {
   let viewWeekAnchorYmd = timeLedgerLocalTodayYmd();
   let successFailWeekAnchorYmd = timeLedgerLocalTodayYmd();
   let paintGen = 0;
+  let viewPullGen = 0;
   let hasSyncedPaint = false;
 
   function syncViewMonthGlobal() {
@@ -233,6 +234,7 @@ export function render(opts = {}) {
       onWeekChange: (nextAnchorYmd) => {
         successFailWeekAnchorYmd = String(nextAnchorYmd || "").slice(0, 10);
         paintSuccessFailOnly({ skipSync: true });
+        if (mainView === "successfail") void pullActiveViewFromServerThenPaint();
       },
     });
     if (!skipSync) hasSyncedPaint = true;
@@ -350,12 +352,34 @@ export function render(opts = {}) {
     paintSuccessFailOnly(opts);
   }
 
+  async function pullActiveViewFromServerThenPaint() {
+    const view = mainView;
+    const gen = ++viewPullGen;
+    try {
+      if (view === "successfail") {
+        await pullMonthsCoveringYmds(
+          habitTrackerWeekDateKeys(
+            successFailWeekAnchorYmd || timeLedgerLocalTodayYmd(),
+          ),
+        );
+      } else {
+        await pullHabitTrackerTabFromCloud(viewYear, viewMonth);
+      }
+    } catch (_) {}
+    if (gen !== viewPullGen || !el.isConnected || mainView !== view) return;
+    paintActiveView({
+      skipSync: true,
+      forceGrid: view === "routine",
+    });
+  }
+
   function applyMainView() {
     syncHeaderChrome();
     syncHabitDesktopBack();
     if (!dashboardEmbedMode) syncViewModeBar();
     contentWrap.dataset.habitView = mainView;
     paintActiveView();
+    if (!dashboardEmbedMode) void pullActiveViewFromServerThenPaint();
   }
 
   if (!dashboardEmbedMode) {
