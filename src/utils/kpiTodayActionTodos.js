@@ -12,6 +12,13 @@ import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
 import { sortNormalizedKpiTodoRows } from "./kpiMapTodoListOrder.js";
 import { showKpiTodoAddModal } from "./kpiTodoAddModal.js";
 import { addKpiTodo, syncKpiTodoCompleted } from "./kpiTodoSync.js";
+import {
+  ALL_TODOS_BUILTIN_STORAGE_KEY,
+  ALL_TODOS_BUILTIN_LISTS,
+  builtinListKeyFromTaskName,
+  getBuiltinTaskCompletionTodoInfo,
+  resolveBuiltinListKeyFromActionId,
+} from "./allTodosBuiltinLists.js";
 import { stripKpiTodoFromTimeLedgerIfUncompleted } from "./kpiTodoStripFromTimeLedger.js";
 import {
   DEFAULT_CHECKUP_KPI_ID,
@@ -339,7 +346,8 @@ export function listAddableTodayActionKpis(opts = {}) {
     if (!name || takenNames.has(name) || seen.has(name)) continue;
     const kid = String(opt?.kpiId || "").trim();
     if (kid && (takenIds.has(kid) || kid === DEFAULT_CHECKUP_KPI_ID)) continue;
-    const id = kid || `schedule:${name}`;
+    const builtinKey = builtinListKeyFromTaskName(name);
+    const id = kid || builtinKey || `schedule:${name}`;
     if (takenIds.has(id) || seen.has(id)) continue;
     seen.add(id);
     seen.add(name);
@@ -498,6 +506,25 @@ function findKpiBundle(kpiId) {
  * } | null}
  */
 export function collectTodayActionTodos(kpiId, opts = {}) {
+  const builtinKey = resolveBuiltinListKeyFromActionId(kpiId);
+  if (builtinKey) {
+    const list = ALL_TODOS_BUILTIN_LISTS.find((x) => x.key === builtinKey);
+    const includeCompleted = !!opts.includeCompleted;
+    const info = getBuiltinTaskCompletionTodoInfo(builtinKey, {
+      includeCompleted,
+    });
+    const todos = (info?.todos || []).map((t) => ({
+      id: t.id,
+      text: t.text,
+      checked: !!t.completed,
+    }));
+    return {
+      kind: "task",
+      storageKey: ALL_TODOS_BUILTIN_STORAGE_KEY,
+      kpi: { id: builtinKey, name: list?.name || "" },
+      todos,
+    };
+  }
   const bundle = findKpiBundle(kpiId);
   if (!bundle) return null;
   const { storageKey, kpi, data } = bundle;
@@ -592,7 +619,9 @@ export function setTodayActionTodoChecked(kpiId, todoId, checked) {
  * }} opts
  */
 export function showTodayActionTodosModal(opts = {}) {
-  const kpiId = String(opts.kpiId || "").trim();
+  const kpiId =
+    resolveBuiltinListKeyFromActionId(opts.kpiId, opts.name) ||
+    String(opts.kpiId || "").trim();
   const name = String(opts.name || "").trim() || "행동";
   const todayYmd = todayYmdOr(opts.todayYmd);
   if (!kpiId) return;
@@ -688,7 +717,7 @@ export function showTodayActionTodosModal(opts = {}) {
     const todos = showDailyList
       ? listTodayActionDailyItems(kpiId)
       : collectTodayActionTodos(kpiId, {
-          includeCompleted: kind === "reading",
+          includeCompleted: false,
         })?.todos || [];
     if (!todos.length) {
       if (scrollEl instanceof HTMLElement) scrollEl.hidden = true;
@@ -834,7 +863,9 @@ export function showTodayActionTodosModal(opts = {}) {
  */
 export function appendTodayActionPinnedTodos(host, item, opts = {}) {
   if (!(host instanceof HTMLElement)) return;
-  const kpiId = String(item?.id || "").trim();
+  const kpiId =
+    resolveBuiltinListKeyFromActionId(item?.id, item?.name) ||
+    String(item?.id || "").trim();
   const today = todayYmdOr();
   const viewed = String(opts.todayYmd || today).slice(0, 10);
   if (viewed && today && viewed !== today) return;

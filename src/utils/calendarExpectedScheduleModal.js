@@ -50,6 +50,7 @@ import {
   getKpiTodosByKpiId,
   resolveKpiIdForTaskId,
 } from "./kpiTodoSync.js";
+import { builtinListKeyFromTaskName } from "./allTodosBuiltinLists.js";
 import { showKpiTodoAddModal } from "./kpiTodoAddModal.js";
 import {
   DEFAULT_READING_KPI_ID,
@@ -1533,10 +1534,10 @@ export function openCalendarExpectedScheduleModal(options) {
       const opt = getTaskOptionByName(name);
       const fromOpt = resolveKpiIdForTaskId(opt?.id);
       if (fromOpt) return fromOpt;
-      return String(opt?.kpiId || "").trim();
-    } catch (_) {
-      return "";
-    }
+      const fromKpiField = String(opt?.kpiId || "").trim();
+      if (fromKpiField) return fromKpiField;
+    } catch (_) {}
+    return builtinListKeyFromTaskName(name);
   }
 
   function hideExpectedTaskCompletionTodos() {

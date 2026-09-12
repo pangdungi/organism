@@ -4,6 +4,7 @@
 
 import { supabase } from "../supabase.js";
 import { persistHappinessKpiCompletionEventOnly } from "./happinessKpiMapSupabase.js";
+import { mergeKpiDeletedRefs } from "./kpiMapPullLocalDeletes.js";
 import {
   readKpiMapScopedStorageRaw,
   writeKpiMapScopedStorageRaw,
@@ -138,7 +139,7 @@ async function persistDomainCompletionEvent(spec, storageKey, todoId, completed)
           : local?.kpiTaskSync || {},
       deleted_refs:
         meta?.deleted_refs && typeof meta.deleted_refs === "object"
-          ? meta.deleted_refs
+          ? mergeKpiDeletedRefs(meta.deleted_refs, local?.deletedRefs)
           : local?.deletedRefs || {},
       kpi_task_completion_events: events,
     },

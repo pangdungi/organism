@@ -17,6 +17,26 @@ function mergeIdLists(...lists) {
   return uniqIds(lists.flatMap((x) => (Array.isArray(x) ? x : [])));
 }
 
+/** 서버·로컬 지움 표시를 합침 (한쪽만 있으면 그쪽) */
+export function mergeKpiDeletedRefs(a, b) {
+  const A = a && typeof a === "object" && !Array.isArray(a) ? a : {};
+  const B = b && typeof b === "object" && !Array.isArray(b) ? b : {};
+  return {
+    ...A,
+    ...B,
+    categories: mergeIdLists(A.categories, B.categories),
+    healthGoalLogs: mergeIdLists(A.healthGoalLogs, B.healthGoalLogs),
+    pathLogs: mergeIdLists(A.pathLogs, B.pathLogs),
+    kpis: mergeIdLists(A.kpis, B.kpis),
+    kpiLogs: mergeIdLists(A.kpiLogs, B.kpiLogs),
+    kpiTodos: mergeIdLists(A.kpiTodos, B.kpiTodos),
+    kpiDailyRepeatTodos: mergeIdLists(
+      A.kpiDailyRepeatTodos,
+      B.kpiDailyRepeatTodos,
+    ),
+  };
+}
+
 /**
  * @param {object} snapshot pull로 만든 로컬 저장 payload
  * @param {object | null | undefined} localBefore write 직전 로컬 payload
@@ -37,20 +57,10 @@ export function applyLocalPendingKpiDeletesToPullSnapshot(snapshot, localBefore)
 
   const deletedKpis = mergeIdLists(snapDr.kpis, localDr.kpis);
   const deletedKpiSet = new Set(deletedKpis);
-
-  const nextDeletedRefs = {
-    ...snapDr,
-    categories: mergeIdLists(snapDr.categories, localDr.categories),
-    healthGoalLogs: mergeIdLists(snapDr.healthGoalLogs, localDr.healthGoalLogs),
-    pathLogs: mergeIdLists(snapDr.pathLogs, localDr.pathLogs),
-    kpis: deletedKpis,
-    kpiLogs: mergeIdLists(snapDr.kpiLogs, localDr.kpiLogs),
-    kpiTodos: mergeIdLists(snapDr.kpiTodos, localDr.kpiTodos),
-    kpiDailyRepeatTodos: mergeIdLists(
-      snapDr.kpiDailyRepeatTodos,
-      localDr.kpiDailyRepeatTodos,
-    ),
-  };
+  const nextDeletedRefs = mergeKpiDeletedRefs(snapDr, localDr);
+  const deletedTodoIds = new Set(nextDeletedRefs.kpiTodos);
+  const deletedDailyIds = new Set(nextDeletedRefs.kpiDailyRepeatTodos);
+  const deletedLogIds = new Set(nextDeletedRefs.kpiLogs);
 
   const next = {
     ...snapshot,
@@ -58,16 +68,24 @@ export function applyLocalPendingKpiDeletesToPullSnapshot(snapshot, localBefore)
       (k) => !deletedKpiSet.has(String(k?.id ?? "")),
     ),
     kpiLogs: (Array.isArray(snapshot.kpiLogs) ? snapshot.kpiLogs : []).filter(
-      (l) => !deletedKpiSet.has(String(l?.kpiId ?? "")),
+      (l) =>
+        !deletedKpiSet.has(String(l?.kpiId ?? "")) &&
+        !deletedLogIds.has(String(l?.id ?? "")),
     ),
     kpiTodos: (Array.isArray(snapshot.kpiTodos) ? snapshot.kpiTodos : []).filter(
-      (t) => !deletedKpiSet.has(String(t?.kpiId ?? "")),
+      (t) =>
+        !deletedKpiSet.has(String(t?.kpiId ?? "")) &&
+        !deletedTodoIds.has(String(t?.id ?? "")),
     ),
     kpiDailyRepeatTodos: (
       Array.isArray(snapshot.kpiDailyRepeatTodos)
         ? snapshot.kpiDailyRepeatTodos
         : []
-    ).filter((t) => !deletedKpiSet.has(String(t?.kpiId ?? ""))),
+    ).filter(
+      (t) =>
+        !deletedKpiSet.has(String(t?.kpiId ?? "")) &&
+        !deletedDailyIds.has(String(t?.id ?? "")),
+    ),
     deletedRefs: nextDeletedRefs,
   };
 

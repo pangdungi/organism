@@ -35,6 +35,15 @@ import {
 import { getTaskOptionById } from "./timeTaskOptionsModel.js";
 import { DEFAULT_READING_KPI_ID } from "./defaultKpiIconIds.js";
 import {
+  ALL_TODOS_BUILTIN_STORAGE_KEY,
+  addBuiltinAllTodo,
+  getBuiltinTaskCompletionTodoInfo,
+  getBuiltinTodoTextById,
+  isAllTodosBuiltinListKey,
+  lookupBuiltinTodoCompleted,
+  syncBuiltinTodoCompleted,
+} from "./allTodosBuiltinLists.js";
+import {
   normalizeKpiTaskCompletionEvents,
   retainKpiTaskCompletionEventOnTodoDelete,
   applyKpiTodoCompletedStamp,
@@ -311,7 +320,7 @@ export function getKpiDisplayNameForTodo(kpiTodoId, storageKey) {
  * @param {{ text?: string, dueDate?: string }} updates
  * @returns {boolean}
  */
-export function updateKpiTodo(kpiTodoId, storageKey, updates) {
+export function updateKpiTodo(kpiTodoId, storageKey, updates, opts = {}) {
   kpiTodoFineTrace("updateKpiTodo:진입", {
     kpiTodoId: String(kpiTodoId),
     storageKey,
@@ -365,7 +374,11 @@ export function updateKpiTodo(kpiTodoId, storageKey, updates) {
         completed: !!todo.completed,
       });
     }
-    void persistKpiTodoRowOnly(storageKey, todo);
+    const persist = persistKpiTodoRowOnly(storageKey, todo);
+    if (opts.waitServer) {
+      return persist.then(() => true);
+    }
+    void persist;
     kpiTodoFineTrace("updateKpiTodo:종료_true", { kpiTodoId: String(kpiTodoId), storageKey });
     return true;
   } catch (_) {}
@@ -394,6 +407,9 @@ export function clearKpiTodoCalendarRevertSnapshot(kpiTodoId, storageKey) {
  * KPI 할일 완료 상태 동기화
  */
 export function syncKpiTodoCompleted(kpiTodoId, storageKey, completed) {
+  if (String(storageKey || "") === ALL_TODOS_BUILTIN_STORAGE_KEY) {
+    return syncBuiltinTodoCompleted(kpiTodoId, !!completed);
+  }
   kpiTodoFineTrace("syncKpiTodoCompleted:진입", {
     kpiTodoId: String(kpiTodoId),
     storageKey,
@@ -489,6 +505,8 @@ const STORAGE_KEYS = [DREAM_MAP_KEY, SIDEINCOME_KEY, HAPPINESS_KEY, HEALTH_KEY];
 export function lookupKpiTodoCompleted(todoId) {
   const tid = String(todoId || "").trim();
   if (!tid) return null;
+  const builtin = lookupBuiltinTodoCompleted(tid);
+  if (builtin !== null) return builtin;
   for (const storageKey of STORAGE_KEYS) {
     const data = loadJson(storageKey, { kpiTodos: [] });
     const todo = (data.kpiTodos || []).find(
@@ -643,6 +661,18 @@ export function getKpiTodosByKpiName(_kpiName) {
 export function getKpiTodosByKpiId(kpiId, opts = {}) {
   const kid = String(kpiId || "").trim();
   if (!kid) return null;
+  if (isAllTodosBuiltinListKey(kid)) {
+    const info = getBuiltinTaskCompletionTodoInfo(kid, {
+      includeCompleted: opts.includeCompleted === true,
+    });
+    if (!info) return null;
+    return {
+      storageKey: info.storageKey,
+      kpiId: kid,
+      kpiName: info.kpiName,
+      todos: info.todos || [],
+    };
+  }
   const includeCompleted = opts.includeCompleted === true;
   for (const storageKey of STORAGE_KEYS) {
     const data = loadJson(storageKey, { kpis: [], kpiTodos: [] });
@@ -674,6 +704,8 @@ export function getKpiTodosByKpiId(kpiId, opts = {}) {
 export function getKpiTodoTextById(todoId) {
   const id = String(todoId || "").trim();
   if (!id) return "";
+  const builtinText = getBuiltinTodoTextById(id);
+  if (builtinText) return builtinText;
   for (const storageKey of STORAGE_KEYS) {
     const data = loadJson(storageKey, { kpiTodos: [] });
     const t = (data.kpiTodos || []).find(
@@ -818,7 +850,7 @@ export function revertKpiTaskCompletionTodosForDeletedLedgerRow(
   const checked = Array.isArray(rowData?.habitDailyCompleted)
     ? rowData.habitDailyCompleted
     : [];
-  if (!checked.length) return;
+  if (!checked.length) return Promise.resolve();
   const deletedId = String(rowData?.id || "").trim();
   const stillUsed = new Set();
   for (const r of remainingRows || []) {
@@ -830,17 +862,20 @@ export function revertKpiTaskCompletionTodosForDeletedLedgerRow(
       if (id) stillUsed.add(id);
     }
   }
+  const jobs = [];
   for (const item of checked) {
     const todoId = String(item?.id || "").trim();
     if (!todoId || stillUsed.has(todoId)) continue;
-    uncompleteTaskCompletionKpiTodoById(todoId);
+    jobs.push(uncompleteTaskCompletionKpiTodoById(todoId));
   }
+  return Promise.all(jobs);
 }
 
 /** 완료형 KPI 할일만 completed=false (매일반복 KPI 할일은 건드리지 않음) */
-function uncompleteTaskCompletionKpiTodoById(todoId) {
+async function uncompleteTaskCompletionKpiTodoById(todoId) {
   const tid = String(todoId || "").trim();
   if (!tid) return;
+  if (await syncBuiltinTodoCompleted(tid, false)) return;
   for (const storageKey of STORAGE_KEYS) {
     try {
       const raw = readKpiMapScopedStorageRaw(storageKey);
@@ -856,7 +891,7 @@ function uncompleteTaskCompletionKpiTodoById(todoId) {
       );
       if (!kpiShowsTaskCompletionTodos(kpi)) return;
       if (!todo.completed) return;
-      syncKpiTodoCompleted(tid, storageKey, false);
+      await syncKpiTodoCompleted(tid, storageKey, false);
       return;
     } catch (_) {}
   }
@@ -872,6 +907,9 @@ function uncompleteTaskCompletionKpiTodoById(todoId) {
 export function getKpiTaskCompletionTodoInfoByKpiId(kpiId, opts = {}) {
   const kid = String(kpiId || "").trim();
   if (!kid) return null;
+  if (isAllTodosBuiltinListKey(kid)) {
+    return getBuiltinTaskCompletionTodoInfo(kid, opts);
+  }
   const includeIds = new Set(
     (Array.isArray(opts.includeIds) ? opts.includeIds : [])
       .map((x) => String(x || "").trim())
@@ -960,9 +998,10 @@ export function syncKpiDailyRepeatTodoCompleted(todoId, storageKey, completed) {
  * KPI 할일 1건 제거
  * @param {string} kpiTodoId
  * @param {string} storageKey
- * @returns {boolean} 제거 성공 여부
+ * @param {{ waitServer?: boolean }} [opts] waitServer — 일괄 삭제와 같이 서버에서 지운 뒤에만 끝
+ * @returns {boolean | Promise<boolean>} 제거 성공 여부
  */
-export function removeKpiTodo(kpiTodoId, storageKey) {
+export function removeKpiTodo(kpiTodoId, storageKey, opts = {}) {
   kpiTodoFineTrace("removeKpiTodo:진입", { kpiTodoId: String(kpiTodoId ?? ""), storageKey });
   const idNorm = String(kpiTodoId ?? "").trim();
   if (!idNorm) {
@@ -1014,9 +1053,13 @@ export function removeKpiTodo(kpiTodoId, storageKey) {
       삭제후dr: deletedRefsKpiTodosLen(data),
     });
     if (removedWasCompleted) {
-      void persistKpiCompletionEventOnly(storageKey, idNorm, true).then(() =>
+      const persist = persistKpiCompletionEventOnly(storageKey, idNorm, true).then(() =>
         persistKpiTodoDeleteOnly(storageKey, idNorm),
       );
+      if (opts.waitServer) return persist.then(() => true);
+      void persist;
+    } else if (opts.waitServer) {
+      return persistKpiTodoDeleteOnly(storageKey, idNorm).then(() => true);
     } else {
       void persistKpiTodoDeleteOnly(storageKey, idNorm);
     }
@@ -1040,6 +1083,11 @@ export function removeKpiTodo(kpiTodoId, storageKey) {
  * @returns {{ success: boolean, kpiTodoId?: string }}
  */
 export function addKpiTodo(kpiId, storageKey, text, opts = {}) {
+  if (String(storageKey || "") === ALL_TODOS_BUILTIN_STORAGE_KEY) {
+    const kpiTodoId = addBuiltinAllTodo(kpiId, text);
+    if (!kpiTodoId) return { success: false };
+    return { success: true, kpiTodoId };
+  }
   const val = (text || "").trim();
   const kid = String(kpiId || "").trim();
   if (!val || !kid || !storageKey) return { success: false };

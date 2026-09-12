@@ -36,7 +36,7 @@ import {
   happinessMapActiveIdsFromPayload,
   HAPPINESS_KPI_MAP_DELETE_TABLES,
 } from "./kpiMapServerExplicitDeletes.js";
-import { applyLocalPendingKpiDeletesToPullSnapshot } from "./kpiMapPullLocalDeletes.js";
+import { applyLocalPendingKpiDeletesToPullSnapshot, mergeKpiDeletedRefs } from "./kpiMapPullLocalDeletes.js";
 
 export const HAPPINESS_KPI_MAP_STORAGE_KEY = "kpi-happiness-map";
 
@@ -1267,8 +1267,9 @@ async function pullHappinessKpiMapTodosFromSupabaseImpl() {
   }
   if (metaRes.error) return false;
   const dr = deletedRefsFromMetaRow(metaRes.data);
-  const drTodo = new Set(dr.kpiTodos || []);
-  const drDaily = new Set(dr.kpiDailyRepeatTodos || []);
+  const mergedDr = mergeKpiDeletedRefs(localBefore.deletedRefs, dr);
+  const drTodo = new Set(mergedDr.kpiTodos || []);
+  const drDaily = new Set(mergedDr.kpiDailyRepeatTodos || []);
   const todosFiltered = (todoRes.data || []).filter((t) => {
     if (drTodo.has(String(t.id))) return false;
     return kpiIds.has(String(t.kpi_id));
@@ -1277,19 +1278,18 @@ async function pullHappinessKpiMapTodosFromSupabaseImpl() {
     if (drDaily.has(String(t.id))) return false;
     return kpiIds.has(String(t.kpi_id));
   });
-  const next = normalizePayload({
-    ...localBefore,
-    kpiTodos: sortNormalizedKpiTodoRows(todosFiltered).map(rowToTodo),
-    kpiDailyRepeatTodos: sortNormalizedKpiTodoRows(dailyFiltered).map(rowToDaily),
-    kpiTaskCompletionEvents: normalizeKpiTaskCompletionEvents(
-      metaRes.data?.kpi_task_completion_events,
-    ),
-    deletedRefs: {
-      ...(localBefore.deletedRefs || {}),
-      kpiTodos: dr.kpiTodos || [],
-      kpiDailyRepeatTodos: dr.kpiDailyRepeatTodos || [],
-    },
-  });
+  const next = applyLocalPendingKpiDeletesToPullSnapshot(
+    normalizePayload({
+      ...localBefore,
+      kpiTodos: sortNormalizedKpiTodoRows(todosFiltered).map(rowToTodo),
+      kpiDailyRepeatTodos: sortNormalizedKpiTodoRows(dailyFiltered).map(rowToDaily),
+      kpiTaskCompletionEvents: normalizeKpiTaskCompletionEvents(
+        metaRes.data?.kpi_task_completion_events,
+      ),
+      deletedRefs: mergedDr,
+    }),
+    localBefore,
+  );
   try {
     writeKpiMapScopedStorageRaw(HAPPINESS_KPI_MAP_STORAGE_KEY, JSON.stringify(next));
   } catch (_) {
@@ -1434,7 +1434,7 @@ async function persistHappinessCompletionEventOnServer(userId, todoId, completed
           : local?.kpiTaskSync || {},
       deleted_refs:
         meta?.deleted_refs && typeof meta.deleted_refs === "object"
-          ? meta.deleted_refs
+          ? mergeKpiDeletedRefs(meta.deleted_refs, local?.deletedRefs)
           : normalizeDeletedRefs(local?.deletedRefs),
       kpi_task_completion_events: events,
     },

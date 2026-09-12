@@ -9062,8 +9062,8 @@
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1;
-  color: #475569;
-  background: rgba(100, 116, 139, 0.16);
+  color: #000;
+  background: #e8e8e8;
 }
 
 .time-ledger-card-memo-body {
@@ -10024,6 +10024,28 @@
   )
   [data-legacy~="time-task-log-rating-stars"][hidden] {
   display: none !important;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-reading-rating-hint"],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-reading-rating-hint"] {
+  margin: 0.1rem 0 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.45;
+  color: #666;
+}
+
+.time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)
+  [data-legacy~="time-task-log-reading-rating-hint"][hidden],
+[data-legacy~="time-task-setup-modal"][data-legacy~="time-task-log-modal"]:not(
+    .lp-calendar-budget-add-modal
+  )
+  [data-legacy~="time-task-log-reading-rating-hint"][hidden] {
+  display: none;
 }
 
 .time-task-setup-modal.time-task-log-modal:not(.lp-calendar-budget-add-modal)

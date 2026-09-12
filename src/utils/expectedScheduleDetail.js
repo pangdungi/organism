@@ -4,6 +4,10 @@
 
 import * as TTC from "./timeTaskOptionsConstants.js";
 import { getKpiTodoTextById, resolveKpiIdForTaskId } from "./kpiTodoSync.js";
+import {
+  builtinListKeyFromTaskName,
+  isAllTodosBuiltinListKey,
+} from "./allTodosBuiltinLists.js";
 import { readTimeDailyBudgetGoalsRaw } from "./timeDailyBudgetModel.js";
 import { getTaskOptionByName } from "./timeTaskOptionsModel.js";
 
@@ -122,7 +126,10 @@ export function collectBudgetPlannedTodoIdsForKpiOnDate(dateStr, kpiId) {
     const opt = getTaskOptionByName(String(taskName || "").trim());
     const resolved =
       resolveKpiIdForTaskId(opt?.id) || String(opt?.kpiId || "").trim();
-    if (resolved !== kid) continue;
+    const nameKey = builtinListKeyFromTaskName(String(taskName || "").trim());
+    if (resolved !== kid && !(isAllTodosBuiltinListKey(kid) && nameKey === kid)) {
+      continue;
+    }
     const slots = Array.isArray(goal?.schedulePlannedTodoIds)
       ? goal.schedulePlannedTodoIds
       : [];

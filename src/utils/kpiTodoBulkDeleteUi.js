@@ -91,14 +91,12 @@ export async function confirmAndPurgeCompletedKpiTodos(options) {
   purgeCompletedKpiTodosForKpi(d, kpiId, appendDeletedRef);
   saveMap(d, { pushServer: false });
   if (storageKey) {
-    void (async () => {
-      for (const id of removedIds) {
-        await persistKpiCompletionEventOnly(storageKey, id, true);
-      }
-      for (const id of removedIds) {
-        await persistKpiTodoDeleteOnly(storageKey, id);
-      }
-    })();
+    for (const id of removedIds) {
+      await persistKpiCompletionEventOnly(storageKey, id, true);
+    }
+    for (const id of removedIds) {
+      await persistKpiTodoDeleteOnly(storageKey, id);
+    }
   }
   onAfterDelete?.();
   return true;

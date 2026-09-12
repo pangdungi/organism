@@ -25,6 +25,11 @@ import {
 } from "../utils/kpiGoalTrackerAllTodos.js";
 import { mountKpiGoalSuccessFailSection } from "../utils/kpiGoalTrackerSuccessFail.js";
 import { mountKpiGoalTodayGoalsSection } from "../utils/kpiGoalTrackerTodayGoals.js";
+import { KPI_SEG_CLEAR_COMPLETED_TRASH_ICON } from "../utils/kpiTodoBulkDeleteUi.js";
+import {
+  APP_FOOTER_ICON_BTN_CLASS,
+  getAppFooterActionsSlot,
+} from "../utils/appFooterShell.js";
 
 const MAIN_VIEW_KEY = "lp_habit_tracker_main_view";
 
@@ -175,6 +180,53 @@ export function render(opts = {}) {
     title.textContent = chrome.title;
   }
 
+  function clearAllTodosFooterAdd() {
+    const slot = getAppFooterActionsSlot();
+    if (!slot) return;
+    slot
+      .querySelectorAll(
+        "[data-lp-habit-all-todos-footer-add], [data-lp-habit-all-todos-footer-clear]",
+      )
+      .forEach((btn) => {
+        const wrap = btn.closest("[data-lp-app-footer-add-slot]");
+        if (wrap) wrap.remove();
+        else btn.remove();
+      });
+  }
+
+  function syncAllTodosFooterAdd() {
+    if (dashboardEmbedMode) return;
+    clearAllTodosFooterAdd();
+    goalHost._lpAllTodosSyncAddChrome?.();
+    if (mainView !== "alltodos") return;
+    if (isKpiTwoPaneSplitViewport()) return;
+    const slot = getAppFooterActionsSlot();
+    if (!slot) return;
+    const addBtn = document.createElement("button");
+    addBtn.type = "button";
+    addBtn.className = APP_FOOTER_ICON_BTN_CLASS;
+    addBtn.setAttribute("data-lp-habit-all-todos-footer-add", "");
+    addBtn.title = "할일 추가";
+    addBtn.setAttribute("aria-label", "할일 추가");
+    addBtn.innerHTML =
+      '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>';
+    addBtn.addEventListener("click", () => {
+      void goalHost._lpAllTodosOpenAdd?.();
+    });
+    const trashBtn = document.createElement("button");
+    trashBtn.type = "button";
+    trashBtn.className = APP_FOOTER_ICON_BTN_CLASS;
+    trashBtn.setAttribute("data-lp-habit-all-todos-footer-clear", "");
+    trashBtn.title = "완료한 할 일 삭제";
+    trashBtn.setAttribute("aria-label", "완료한 할 일 삭제");
+    trashBtn.innerHTML = KPI_SEG_CLEAR_COMPLETED_TRASH_ICON;
+    trashBtn.addEventListener("click", () => {
+      void goalHost._lpAllTodosClearCompleted?.();
+    });
+    slot.appendChild(addBtn);
+    slot.appendChild(trashBtn);
+  }
+
   function syncHabitDesktopBack() {
     if (dashboardEmbedMode) return;
     const wide = isKpiTwoPaneSplitViewport();
@@ -183,6 +235,7 @@ export function render(opts = {}) {
       document.querySelector("[data-lp-app-footer-back]"),
       !wide,
     );
+    syncAllTodosFooterAdd();
   }
 
   function syncViewModeBar() {
@@ -244,22 +297,22 @@ export function render(opts = {}) {
   function paintAllTodosOnly() {
     if (!goalHost) return;
     const snap = captureAllTodosBoardScrollState(goalHost);
-    const keepScrollLeft =
-      snap.boardScrollLeft ||
-      Number(goalHost._lpAllTodosBoardScrollLeft) ||
-      0;
+    const keepNavScroll =
+      snap.navScrollTop || Number(goalHost._lpAllTodosNavScrollTop) || 0;
     const listScrollByKpi = {
       ...(goalHost._lpAllTodosListScrollByKpi || {}),
       ...snap.listScrollByKpi,
     };
-    goalHost._lpAllTodosBoardScrollLeft = keepScrollLeft;
+    goalHost._lpAllTodosNavScrollTop = keepNavScroll;
     goalHost._lpAllTodosListScrollByKpi = listScrollByKpi;
     goalHost.replaceChildren();
-    goalHost.classList.remove("habit-tracker-goal-host--panel");
+    goalHost.classList.add("habit-tracker-goal-host--panel");
     mountKpiGoalAllTodosSection(goalHost, {
-      boardScrollLeft: keepScrollLeft,
+      navScrollTop: keepNavScroll,
       listScrollByKpi,
     });
+    goalHost._lpAllTodosSyncAddChrome?.();
+    if (!goalHost._lpAllTodosOpenAdd) clearAllTodosFooterAdd();
   }
 
   function paintGrid(opts = {}) {

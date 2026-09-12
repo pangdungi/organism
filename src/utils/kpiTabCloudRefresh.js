@@ -48,6 +48,7 @@ import { ensureAllKpiTimeTasksFromStorage } from "./kpiTimeTaskSync.js";
 import { resolveKpiDomainForKpiId } from "./kpiTodoSync.js";
 import { isAppOffline } from "./networkPresence.js";
 import { whenOfflineFlushIdle } from "./offlineFlushState.js";
+import { pullBuiltinAllTodosFromServer, pullBuiltinAllTodosFromServerIfStale, probeBuiltinAllTodosServerStale, isAllTodosBuiltinListKey } from "./allTodosBuiltinLists.js";
 
 const KPI_DOMAIN_PULL = {
   dream: pullDreamKpiMapFromSupabase,
@@ -211,13 +212,14 @@ export async function pullKpiDetailTodosFromCloud(tabId) {
 export async function pullAllKpiTodosForAllTodosTab() {
   if (isAppOffline()) return false;
   await whenOfflineFlushIdle();
-  const [d, h, ha, si] = await Promise.all([
+  const [d, h, ha, si, builtin] = await Promise.all([
     pullDreamKpiMapFromSupabase({ force: true, skipLogs: true }),
     pullHealthKpiMapTodosFromSupabase(),
     pullHappinessKpiMapTodosFromSupabase(),
     pullSideincomeKpiMapFromSupabase({ force: true, skipLogs: true }),
+    pullBuiltinAllTodosFromServer(),
   ]);
-  return !!(d || h || ha || si);
+  return !!(d || h || ha || si || builtin);
 }
 
 /**
@@ -226,6 +228,9 @@ export async function pullAllKpiTodosForAllTodosTab() {
  * @returns {Promise<boolean>}
  */
 export async function pullKpiTodosDomainFromCloud(kpiId) {
+  if (isAllTodosBuiltinListKey(kpiId)) {
+    return pullBuiltinAllTodosFromServer();
+  }
   const domain = resolveKpiDomainForKpiId(kpiId);
   if (!domain) return false;
   switch (domain) {
@@ -248,6 +253,14 @@ export async function pullKpiTodosDomainFromCloud(kpiId) {
  * @returns {Promise<{ stale: boolean, pulled: boolean, pullOk: boolean }>}
  */
 export async function pullKpiTodosDomainFromCloudIfStale(kpiId) {
+  if (isAllTodosBuiltinListKey(kpiId)) {
+    const probe = await probeBuiltinAllTodosServerStale();
+    if (!probe.stale) {
+      return { stale: false, pulled: false, pullOk: true };
+    }
+    const pullOk = !!(await pullBuiltinAllTodosFromServer());
+    return { stale: true, pulled: true, pullOk };
+  }
   const domain = resolveKpiDomainForKpiId(kpiId);
   if (!domain) return { stale: false, pulled: false, pullOk: false };
   const probe = await probeKpiDomainServerStale(domain);
@@ -520,23 +533,28 @@ export async function pullKpiMapsForTaskLogModalOpen(opts = {}) {
   let note = "과제 선택 전 — KPI 도메인 pull 생략";
 
   if (kpiId) {
-    const domain = resolveKpiDomainForKpiId(kpiId);
-    if (domain && KPI_DOMAIN_PULL[domain]) {
-      const stale = await probeKpiDomainServerStale(domain);
-      if (stale?.stale) {
-        const changed = !!(await KPI_DOMAIN_PULL[domain]({ force: false }));
-        if (changed && stale.serverMs > 0) {
-          rememberKpiDomainServerWatermarkMs(
-            domain,
-            stale.serverMs,
-            stale.userId,
-          );
-        }
-        kpiChanged = !!changed;
-      }
-      note = `연결된 KPI 도메인만 stale pull (${domain})`;
+    if (isAllTodosBuiltinListKey(kpiId)) {
+      kpiChanged = !!(await pullBuiltinAllTodosFromServerIfStale());
+      note = "기본 과제 할일 stale pull";
     } else {
-      note = "KPI 도메인 미확인 — pull 생략";
+      const domain = resolveKpiDomainForKpiId(kpiId);
+      if (domain && KPI_DOMAIN_PULL[domain]) {
+        const stale = await probeKpiDomainServerStale(domain);
+        if (stale?.stale) {
+          const changed = !!(await KPI_DOMAIN_PULL[domain]({ force: false }));
+          if (changed && stale.serverMs > 0) {
+            rememberKpiDomainServerWatermarkMs(
+              domain,
+              stale.serverMs,
+              stale.userId,
+            );
+          }
+          kpiChanged = !!changed;
+        }
+        note = `연결된 KPI 도메인만 stale pull (${domain})`;
+      } else {
+        note = "KPI 도메인 미확인 — pull 생략";
+      }
     }
   }
 

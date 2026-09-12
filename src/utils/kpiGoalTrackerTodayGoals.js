@@ -40,6 +40,12 @@ import {
 import { readTimeDailyBudgetGoalsRaw } from "./timeDailyBudgetModel.js";
 import { getTaskOptionByName } from "./timeTaskOptionsModel.js";
 import { resolveKpiIdForTaskId } from "./kpiTodoSync.js";
+import {
+  ALL_TODOS_BUILTIN_LISTS,
+  builtinListKeyFromTaskName,
+  isAllTodosBuiltinListKey,
+  resolveBuiltinListKeyFromActionId,
+} from "./allTodosBuiltinLists.js";
 import { expectedSpanDisplayTaskName } from "./expectedScheduleDetail.js";
 import { ledgerDetailTaskKind } from "./timeTaskOptionsConstants.js";
 
@@ -419,6 +425,27 @@ export function buildGoalTrackerTodayGoalsModel(opts = {}) {
     if (items.some((x) => x.id === id)) return;
     const found = byId.get(id);
     if (!found) {
+      const builtinKey = isAllTodosBuiltinListKey(id)
+        ? id
+        : resolveBuiltinListKeyFromActionId(id);
+      if (builtinKey) {
+        const list = ALL_TODOS_BUILTIN_LISTS.find((x) => x.key === builtinKey);
+        const name = list?.name || "";
+        if (!name || items.some((x) => x.id === builtinKey || x.name === name)) {
+          return;
+        }
+        const opt = getTaskOptionByName(name);
+        items.push({
+          id: builtinKey,
+          name,
+          targetLabel: "",
+          done: isScheduleTaskDoneToday(name, opt?.id, todayYmd),
+          category: categoryForScheduleTask(opt),
+          isHabit: false,
+          scheduleOnly: false,
+        });
+        return;
+      }
       if (!id.startsWith("schedule:")) return;
       const name = id.slice("schedule:".length).trim();
       if (!name || items.some((x) => x.name === name)) return;
@@ -454,6 +481,32 @@ export function buildGoalTrackerTodayGoalsModel(opts = {}) {
   }
   if (!opts.habitsOnly) {
     for (const row of scheduledAdds.scheduleOnly) {
+      const builtinKey = builtinListKeyFromTaskName(
+        row.storedName || row.name,
+      );
+      if (builtinKey) {
+        if (
+          items.some(
+            (x) => x.id === builtinKey || x.name === row.name,
+          )
+        ) {
+          continue;
+        }
+        items.push({
+          id: builtinKey,
+          name: row.name,
+          targetLabel: "",
+          done: isScheduleTaskDoneToday(
+            row.storedName || row.name,
+            row.opt?.id,
+            todayYmd,
+          ),
+          category: categoryForScheduleTask(row.opt),
+          isHabit: false,
+          scheduleOnly: false,
+        });
+        continue;
+      }
       if (
         items.some(
           (x) =>
@@ -629,7 +682,9 @@ export function mountKpiGoalTodayGoalsSection(container, opts = {}) {
       if (!scheduleOnly) {
         rowHead.addEventListener("click", () => {
           showTodayActionTodosModal({
-            kpiId: item.id,
+            kpiId:
+              resolveBuiltinListKeyFromActionId(item.id, item.name) ||
+              item.id,
             name: item.name,
             todayYmd: model.todayYmd,
             onChange: remount,

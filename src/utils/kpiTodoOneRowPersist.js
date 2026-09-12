@@ -37,18 +37,27 @@ const DELETE_BY_KEY = {
   "kpi-sideincome-paths": persistSideincomeKpiTodoDelete,
 };
 
+async function persistUntilOk(job, tries = 3) {
+  for (let i = 0; i < tries; i += 1) {
+    try {
+      if (await job()) return true;
+    } catch (_) {}
+  }
+  return false;
+}
+
 /** 추가·수정한 그 할일 한 줄만 서버에 씀. 이 창 목록 전체는 올리지 않음 */
 export function persistKpiTodoRowOnly(storageKey, todo) {
   const fn = ROW_BY_KEY[String(storageKey || "")];
   if (!fn) return Promise.resolve(false);
-  return fn(todo);
+  return persistUntilOk(() => fn(todo));
 }
 
 /** 지운 그 할일 한 줄만 서버에서 지움. 이 창 목록 전체는 올리지 않음 */
 export function persistKpiTodoDeleteOnly(storageKey, todoId) {
   const fn = DELETE_BY_KEY[String(storageKey || "")];
   if (!fn) return Promise.resolve(false);
-  return fn(todoId);
+  return persistUntilOk(() => fn(todoId));
 }
 
 const DAILY_ROW_BY_KEY = {

@@ -15,6 +15,7 @@ import {
   pushDirtyTimeLedgerEntriesToSupabase,
 } from "./timeLedgerEntriesSupabase.js";
 import { isReadingDetailTaskName } from "./timeTaskOptionsConstants.js";
+import { lookupBuiltinTodoById } from "./allTodosBuiltinLists.js";
 import {
   omitReadingBookTitle,
   readingBookTitleKey,
@@ -53,6 +54,13 @@ function findKpiTodoMeta(todoId) {
         kpiId: String(todo?.kpiId || "").trim(),
       };
     } catch (_) {}
+  }
+  const builtin = lookupBuiltinTodoById(tid);
+  if (builtin) {
+    return {
+      text: String(builtin.todo?.text || "").trim(),
+      kpiId: builtin.listKey,
+    };
   }
   return { text: "", kpiId: "" };
 }
