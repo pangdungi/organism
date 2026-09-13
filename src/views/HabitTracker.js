@@ -433,11 +433,16 @@ export function render(opts = {}) {
     syncHeaderChrome();
     syncHabitDesktopBack();
     if (!dashboardEmbedMode) syncViewModeBar();
-    contentWrap.dataset.habitView = mainView;
     if (dashboardEmbedMode) {
+      contentWrap.dataset.habitView = mainView;
       paintActiveView();
       return;
     }
+    /* 전체 할일: 스크롤 잠기기 전에 로컬 목록을 먼저 그림. 서버는 뒤에서 받은 뒤 맞춤 */
+    if (mainView === "alltodos") {
+      paintActiveView({ skipSync: true });
+    }
+    contentWrap.dataset.habitView = mainView;
     void pullActiveViewFromServerThenPaint();
   }
 
