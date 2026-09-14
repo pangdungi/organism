@@ -14,10 +14,10 @@ import { showKpiTodoAddModal } from "./kpiTodoAddModal.js";
 import { addKpiTodo, syncKpiTodoCompleted } from "./kpiTodoSync.js";
 import {
   ALL_TODOS_BUILTIN_STORAGE_KEY,
-  ALL_TODOS_BUILTIN_LISTS,
-  builtinListKeyFromTaskName,
   getBuiltinTaskCompletionTodoInfo,
-  resolveBuiltinListKeyFromActionId,
+  isAllTodosListKey,
+  resolveAllTodosListKeyFromActionId,
+  resolveAllTodosListKeyFromTask,
 } from "./allTodosBuiltinLists.js";
 import { stripKpiTodoFromTimeLedgerIfUncompleted } from "./kpiTodoStripFromTimeLedger.js";
 import {
@@ -32,8 +32,11 @@ import { LP_MODAL_HTML_OPEN_CLASS } from "./lpModalKeyboard.js";
 import { supabase } from "../supabase.js";
 import { getSupabaseSession } from "./supabaseSession.js";
 import { timeLedgerLocalTodayYmd } from "./timeLedgerEntriesSupabase.js";
-import { collectBudgetPlannedTodoIdsForKpiOnDate } from "./expectedScheduleDetail.js";
-import { pullKpiTodosDomainFromCloudIfStale } from "./kpiTabCloudRefresh.js";
+import {
+  collectBudgetPlannedTodoIdsForKpiOnDate,
+  removePlannedTodoIdsFromBudgetDateForKpi,
+} from "./expectedScheduleDetail.js";
+import { lpRefreshAllVisibleCalendarLayoutsFromLocalData } from "./lpCalendarLocalRefresh.js";
 
 export const TODAY_ACTION_TODO_PICKS_KEY = "lp_today_action_todo_picks";
 
@@ -346,8 +349,8 @@ export function listAddableTodayActionKpis(opts = {}) {
     if (!name || takenNames.has(name) || seen.has(name)) continue;
     const kid = String(opt?.kpiId || "").trim();
     if (kid && (takenIds.has(kid) || kid === DEFAULT_CHECKUP_KPI_ID)) continue;
-    const builtinKey = builtinListKeyFromTaskName(name);
-    const id = kid || builtinKey || `schedule:${name}`;
+    const listKey = resolveAllTodosListKeyFromTask(opt?.id, name);
+    const id = kid || listKey || `schedule:${name}`;
     if (takenIds.has(id) || seen.has(id)) continue;
     seen.add(id);
     seen.add(name);
@@ -506,11 +509,10 @@ function findKpiBundle(kpiId) {
  * } | null}
  */
 export function collectTodayActionTodos(kpiId, opts = {}) {
-  const builtinKey = resolveBuiltinListKeyFromActionId(kpiId);
-  if (builtinKey) {
-    const list = ALL_TODOS_BUILTIN_LISTS.find((x) => x.key === builtinKey);
+  const listKey = resolveAllTodosListKeyFromActionId(kpiId);
+  if (isAllTodosListKey(listKey)) {
     const includeCompleted = !!opts.includeCompleted;
-    const info = getBuiltinTaskCompletionTodoInfo(builtinKey, {
+    const info = getBuiltinTaskCompletionTodoInfo(listKey, {
       includeCompleted,
     });
     const todos = (info?.todos || []).map((t) => ({
@@ -521,7 +523,7 @@ export function collectTodayActionTodos(kpiId, opts = {}) {
     return {
       kind: "task",
       storageKey: ALL_TODOS_BUILTIN_STORAGE_KEY,
-      kpi: { id: builtinKey, name: list?.name || "" },
+      kpi: { id: listKey, name: info?.kpiName || "" },
       todos,
     };
   }
@@ -620,7 +622,7 @@ export function setTodayActionTodoChecked(kpiId, todoId, checked) {
  */
 export function showTodayActionTodosModal(opts = {}) {
   const kpiId =
-    resolveBuiltinListKeyFromActionId(opts.kpiId, opts.name) ||
+    resolveAllTodosListKeyFromActionId(opts.kpiId, opts.name) ||
     String(opts.kpiId || "").trim();
   const name = String(opts.name || "").trim() || "행동";
   const todayYmd = todayYmdOr(opts.todayYmd);
@@ -701,7 +703,12 @@ export function showTodayActionTodosModal(opts = {}) {
     '[data-legacy~="time-task-log-kpi-todos-status"]',
   );
   const prevOverflow = document.body.style.overflow;
-  const draftPicks = new Set(readTodayActionTodoPickIds(kpiId, todayYmd));
+  const draftPicks = new Set(
+    cleanIdList([
+      ...readTodayActionTodoPickIds(kpiId, todayYmd),
+      ...collectBudgetPlannedTodoIdsForKpiOnDate(todayYmd, kpiId),
+    ]),
+  );
 
   function close() {
     try {
@@ -789,8 +796,30 @@ export function showTodayActionTodosModal(opts = {}) {
   modal
     .querySelector('[data-legacy~="time-task-log-submit"]')
     ?.addEventListener("click", () => {
-      setTodayActionTodoPickIds(kpiId, [...draftPicks], todayYmd);
+      const prev = new Set(
+        cleanIdList([
+          ...readTodayActionTodoPickIds(kpiId, todayYmd),
+          ...collectBudgetPlannedTodoIdsForKpiOnDate(todayYmd, kpiId),
+        ]),
+      );
+      const next = [...draftPicks];
+      const removed = [...prev].filter((id) => !draftPicks.has(id));
+      if (removed.length) {
+        removePlannedTodoIdsFromBudgetDateForKpi(
+          todayYmd,
+          kpiId,
+          removed,
+          name,
+        );
+      }
+      setTodayActionTodoPickIds(kpiId, next, todayYmd);
       close();
+      try {
+        lpRefreshAllVisibleCalendarLayoutsFromLocalData();
+      } catch (_) {}
+      try {
+        window.__lpHabitTrackerSoftRefresh?.();
+      } catch (_) {}
       try {
         opts.onChange?.();
       } catch (_) {}
@@ -864,7 +893,7 @@ export function showTodayActionTodosModal(opts = {}) {
 export function appendTodayActionPinnedTodos(host, item, opts = {}) {
   if (!(host instanceof HTMLElement)) return;
   const kpiId =
-    resolveBuiltinListKeyFromActionId(item?.id, item?.name) ||
+    resolveAllTodosListKeyFromActionId(item?.id, item?.name) ||
     String(item?.id || "").trim();
   const today = todayYmdOr();
   const viewed = String(opts.todayYmd || today).slice(0, 10);

@@ -48,13 +48,34 @@ function escapeAttr(value) {
  * @param {object} kpi
  * @param {string} ledgerCategory
  * @param {string} nameInnerHtml
+ * @param {{ completed?: boolean }} [opts]
  */
-export function kpiCardHeadHtml(kpi, ledgerCategory, nameInnerHtml) {
+export function kpiCardHeadHtml(kpi, ledgerCategory, nameInnerHtml, opts = {}) {
   const src = resolveKpiCardIconSrc(kpi, ledgerCategory);
   const iconHtml = src
     ? `<span class="dream-kpi-card-icon" aria-hidden="true"><img src="${escapeAttr(src)}" alt="" width="28" height="28" decoding="async" /></span>`
     : "";
-  return `<div class="dream-kpi-card-head">${iconHtml}<div class="dream-kpi-card-name">${nameInnerHtml}</div></div>`;
+  const doneChip = opts.completed
+    ? `<span class="dream-kpi-card-done-chip">완료</span>`
+    : "";
+  return `<div class="dream-kpi-card-head">${iconHtml}<div class="dream-kpi-card-name">${nameInnerHtml}</div>${doneChip}</div>`;
+}
+
+/** 진행 수치만 맞출 때 완료 칩도 같이 맞춤 */
+export function syncKpiCardDoneChip(card, completed) {
+  if (!(card instanceof HTMLElement)) return;
+  const head = card.querySelector(".dream-kpi-card-head");
+  if (!head) return;
+  let chip = head.querySelector(".dream-kpi-card-done-chip");
+  if (completed) {
+    if (chip) return;
+    chip = document.createElement("span");
+    chip.className = "dream-kpi-card-done-chip";
+    chip.textContent = "완료";
+    head.appendChild(chip);
+    return;
+  }
+  chip?.remove();
 }
 
 /** innerHTML 삽입 후 KPI 카드 아이콘 img 처리 */

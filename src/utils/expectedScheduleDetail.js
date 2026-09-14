@@ -4,11 +4,13 @@
 
 import * as TTC from "./timeTaskOptionsConstants.js";
 import { getKpiTodoTextById, resolveKpiIdForTaskId } from "./kpiTodoSync.js";
+import { resolveAllTodosListKeyFromTask } from "./allTodosBuiltinLists.js";
 import {
-  builtinListKeyFromTaskName,
-  isAllTodosBuiltinListKey,
-} from "./allTodosBuiltinLists.js";
-import { readTimeDailyBudgetGoalsRaw } from "./timeDailyBudgetModel.js";
+  readTimeDailyBudgetGoalsRaw,
+  writeTimeDailyBudgetGoalsRaw,
+  markTimeDailyBudgetDateLocalDirty,
+} from "./timeDailyBudgetModel.js";
+import { scheduleTimeDailyBudgetSyncPush } from "./timeDailyBudgetSupabase.js";
 import { getTaskOptionByName } from "./timeTaskOptionsModel.js";
 
 /** 상세명을 과제명 대신 표시할지 — 식단·감정·독서·대화는 제외(과제명 유지) */
@@ -103,6 +105,17 @@ export function expectedSpanCardMemoLines(span) {
   return lines;
 }
 
+function budgetTaskMatchesKpiId(taskName, kpiId) {
+  const kid = String(kpiId || "").trim();
+  const name = String(taskName || "").trim();
+  if (!kid || !name) return false;
+  const opt = getTaskOptionByName(name);
+  const resolved =
+    resolveKpiIdForTaskId(opt?.id) || String(opt?.kpiId || "").trim();
+  const listKey = resolveAllTodosListKeyFromTask(opt?.id, name);
+  return resolved === kid || listKey === kid;
+}
+
 /** 그날 예상 일정에 골라 둔 할일 — KPI 기준 (오늘의 행동은 오늘 날짜만 넘길 것) */
 export function collectBudgetPlannedTodoIdsForKpiOnDate(dateStr, kpiId) {
   const dk = String(dateStr || "")
@@ -123,13 +136,7 @@ export function collectBudgetPlannedTodoIdsForKpiOnDate(dateStr, kpiId) {
   const out = [];
   const seen = new Set();
   for (const [taskName, goal] of Object.entries(day)) {
-    const opt = getTaskOptionByName(String(taskName || "").trim());
-    const resolved =
-      resolveKpiIdForTaskId(opt?.id) || String(opt?.kpiId || "").trim();
-    const nameKey = builtinListKeyFromTaskName(String(taskName || "").trim());
-    if (resolved !== kid && !(isAllTodosBuiltinListKey(kid) && nameKey === kid)) {
-      continue;
-    }
+    if (!budgetTaskMatchesKpiId(taskName, kid)) continue;
     const slots = Array.isArray(goal?.schedulePlannedTodoIds)
       ? goal.schedulePlannedTodoIds
       : [];
@@ -144,4 +151,66 @@ export function collectBudgetPlannedTodoIdsForKpiOnDate(dateStr, kpiId) {
     }
   }
   return out;
+}
+
+/**
+ * 오늘의 행동에서 뺀 할일 — 그날 예상일정의 「이 시간에 할일」에서도 뺌.
+ * 시간기록은 건드리지 않음.
+ */
+export function removePlannedTodoIdsFromBudgetDateForKpi(
+  dateStr,
+  kpiId,
+  todoIds,
+  taskNameHint,
+) {
+  const dk = String(dateStr || "")
+    .replace(/\//g, "-")
+    .trim()
+    .slice(0, 10);
+  const kid = String(kpiId || "").trim();
+  const hint = String(taskNameHint || "").trim();
+  const remove = new Set(
+    (Array.isArray(todoIds) ? todoIds : [])
+      .map((x) => String(x || "").trim())
+      .filter(Boolean),
+  );
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dk) || !remove.size) return false;
+  if (!kid && !hint) return false;
+  let all = {};
+  try {
+    const raw = readTimeDailyBudgetGoalsRaw();
+    all = raw ? JSON.parse(raw) : {};
+  } catch (_) {
+    return false;
+  }
+  const day = all?.[dk];
+  if (!day || typeof day !== "object" || Array.isArray(day)) return false;
+  let changed = false;
+  for (const [taskName, goal] of Object.entries(day)) {
+    const name = String(taskName || "").trim();
+    const nameOk = !!hint && name === hint;
+    if (!budgetTaskMatchesKpiId(name, kid) && !nameOk) continue;
+    const slots = Array.isArray(goal?.schedulePlannedTodoIds)
+      ? goal.schedulePlannedTodoIds
+      : [];
+    if (!slots.length) continue;
+    const nextSlots = slots.map((slot) => {
+      if (!Array.isArray(slot)) return slot;
+      const filtered = slot.filter(
+        (id) => !remove.has(String(id || "").trim()),
+      );
+      if (filtered.length !== slot.length) changed = true;
+      return filtered;
+    });
+    day[taskName] = { ...goal, schedulePlannedTodoIds: nextSlots };
+  }
+  if (!changed) return false;
+  try {
+    writeTimeDailyBudgetGoalsRaw(JSON.stringify(all));
+    markTimeDailyBudgetDateLocalDirty(dk);
+    scheduleTimeDailyBudgetSyncPush(dk);
+  } catch (_) {
+    return false;
+  }
+  return true;
 }

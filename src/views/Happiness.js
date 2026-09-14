@@ -183,7 +183,11 @@ import {
   KPI_CARD_EDIT_PENCIL_HTML,
   bindKpiCardEditButton,
 } from "../utils/kpiTabNameEditIcon.js";
-import { kpiCardHeadHtml, wireKpiCardIconsIn } from "../utils/kpiCardIcon.js";
+import {
+  kpiCardHeadHtml,
+  syncKpiCardDoneChip,
+  wireKpiCardIconsIn,
+} from "../utils/kpiCardIcon.js";
 import { appendKpiCardToGrid } from "../utils/kpiCardDeadlineFoot.js";
 import { sortKpiLogsNewestFirst, getLatestKpiLogWithExplicitValue } from "../utils/kpiLogsSort.js";
 import {
@@ -1075,6 +1079,7 @@ export function render() {
     if (fill) {
       fill.style.width = `${Math.max(0, Number(pres.displayProgress) || 0)}%`;
     }
+    syncKpiCardDoneChip(card, !!progressResult.isCompleted);
   }
 
   function computeHappinessKpiListPaintSig() {
@@ -1235,7 +1240,9 @@ export function render() {
       card.innerHTML = `
         <div class="dream-kpi-card-inner">
           ${KPI_CARD_EDIT_PENCIL_HTML}
-          ${kpiCardHeadHtml(kpi, "happiness", nameHtml)}
+          ${kpiCardHeadHtml(kpi, "happiness", nameHtml, {
+            completed: !!progressResult.isCompleted,
+          })}
           ${heroHtml}
           ${progressHtml}
         </div>

@@ -15,9 +15,11 @@ import { lpPullDebug } from "./lpPullDebug.js";
 import {
   applyTimeLedgerServerRangeSnapshot,
   collectTimeLedgerDirtyRowsInRange,
+  dbRowToLocalTimeLedgerRow,
   ensureTimeLedgerEntryIds,
   localTimeLedgerRowToDbPayload,
   mergeTimeLedgerEntriesPushedServerTimes,
+  mergeTimeLedgerLocalRowsById,
   preserveTimeLedgerEndTimeUnlessCleared,
   readTimeLedgerEntriesRaw,
   recordTimeLedgerDeletionTombstone,
@@ -1114,6 +1116,26 @@ export async function pullTimeLedgerEntriesFromSupabase(opts = {}) {
     rangeEnd = today;
   }
   return pullTimeLedgerEntriesForDateRange(rangeStart, rangeEnd, opts);
+}
+
+/** 다른 기기에 있는 그 기록 id만 받아 메모리에 합친다. 구간 전체를 비우지 않음. */
+export async function pullTimeLedgerEntriesByIds(ids) {
+  const userId = await getSessionUserId();
+  const uniq = [
+    ...new Set(
+      (Array.isArray(ids) ? ids : []).map((id) => String(id || "").trim()),
+    ),
+  ].filter((id) => isUuid(id));
+  if (!userId || !supabase || !uniq.length) return [];
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select(LEDGER_ENTRY_SELECT_BASE)
+    .eq("user_id", userId)
+    .in("id", uniq);
+  if (error || !Array.isArray(data) || !data.length) return [];
+  const locals = data.map((r) => dbRowToLocalTimeLedgerRow(r));
+  mergeTimeLedgerLocalRowsById(locals);
+  return locals;
 }
 
 /**

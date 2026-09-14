@@ -25,11 +25,17 @@ import {
   revertKpiTaskCompletionTodosForDeletedLedgerRow,
   lookupKpiTodoCompleted,
 } from "../utils/kpiTodoSync.js";
-import { builtinListKeyFromTaskName } from "../utils/allTodosBuiltinLists.js";
+import {
+  purgeOpenAllTodosForCustomTaskId,
+  resolveAllTodosListKeyFromTask,
+} from "../utils/allTodosBuiltinLists.js";
 import { pullKpiTodosDomainFromCloudIfStale } from "../utils/kpiTabCloudRefresh.js";
 import { readTodayActionTodoPickIds } from "../utils/kpiTodayActionTodos.js";
 import { collectBudgetPlannedTodoIdsForKpiOnDate } from "../utils/expectedScheduleDetail.js";
-import { KPI_TODO_UNCOMPLETED_LEDGER_EVENT } from "../utils/kpiTodoStripFromTimeLedger.js";
+import {
+  KPI_TODO_UNCOMPLETED_LEDGER_EVENT,
+  clearKpiTodoLedgerRestore,
+} from "../utils/kpiTodoStripFromTimeLedger.js";
 import {
   DEFAULT_READING_KPI_ID,
   DEFAULT_READING_KPI_TODO_LIST_LABEL,
@@ -4246,9 +4252,14 @@ function createTaskNameInput(initialValue, onTaskSelect, tabSignal) {
             void showAlertModal({ message: MSG_TIME_TASK_KPI_LINKED });
             return;
           }
+          const removedOpt = getTaskOptionByName(name);
           if (!(await removeTaskOption(name))) {
             void showAlertModal({ message: MSG_TIME_TASK_KPI_LINKED });
             return;
+          }
+          const rid = String(removedOpt?.id || "").trim();
+          if (rid && !String(removedOpt?.kpiId || "").trim()) {
+            purgeOpenAllTodosForCustomTaskId(rid);
           }
           renderPanel(input.value);
         });
@@ -11824,7 +11835,7 @@ export function render(opts = {}) {
         if (fromKpiField) return fromKpiField;
       } catch (_) {}
     }
-    return builtinListKeyFromTaskName(name);
+    return resolveAllTodosListKeyFromTask(taskId, name);
   }
 
   function runTaskLogModalCloudSync(opts = {}) {
@@ -14738,6 +14749,10 @@ export function render(opts = {}) {
             ? kpiPerformedRaw || ""
             : kpiPerformedRaw || undefined,
         });
+        for (const item of completedForKpi) {
+          const id = String(item?.id || "").trim();
+          if (id) clearKpiTodoLedgerRestore(id);
+        }
         if (editTr) {
           if (lpTokenHas(editTr, "time-ledger-mobile-card")) {
             syncMobileTimeCardFromRow(editTr, ledgerRowForKpi, el);
@@ -15615,6 +15630,11 @@ export function render(opts = {}) {
     closeAddTaskModal();
     if (!(await removeTaskOption(editName))) {
       void showAlertModal({ message: MSG_TIME_TASK_KPI_LINKED });
+    } else {
+      const rid = String(editTask?.id || "").trim();
+      if (rid && !String(editTask?.kpiId || "").trim()) {
+        purgeOpenAllTodosForCustomTaskId(rid);
+      }
     }
     scheduleRenderTaskSetupList();
   });
@@ -16897,8 +16917,32 @@ export function render(opts = {}) {
 
   document.addEventListener(
     KPI_TODO_UNCOMPLETED_LEDGER_EVENT,
-    () => {
+    (e) => {
       if (!el.isConnected) return;
+      const detail = e?.detail || {};
+      const changedRows = Array.isArray(detail.rows) ? detail.rows : [];
+      if (detail.restore) {
+        const byId = new Map();
+        for (const row of changedRows) {
+          const id = String(row?.id || "").trim();
+          if (id) byId.set(id, row);
+        }
+        el.querySelectorAll(
+          ".time-ledger-mobile-card, [data-legacy~='time-ledger-mobile-card'], .time-row, [data-legacy~='time-row']",
+        ).forEach((node) => {
+          const id = String(node?._rowData?.id || "").trim();
+          const next = byId.get(id);
+          if (!next) return;
+          node._rowData = next;
+          refreshTimeLedgerRowMemoDisplay(node, next);
+        });
+        const editId = String(taskLogEditTr?._rowData?.id || "").trim();
+        if (editId && byId.has(editId)) {
+          taskLogEditTr._rowData = byId.get(editId);
+          paintReadingCheckedBookChips();
+        }
+        return;
+      }
       refreshTimeLedgerFromRemotePull({ force: true });
       const editId = String(taskLogEditTr?._rowData?.id || "").trim();
       if (!editId) return;

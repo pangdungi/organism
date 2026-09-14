@@ -39,7 +39,7 @@ import {
   addBuiltinAllTodo,
   getBuiltinTaskCompletionTodoInfo,
   getBuiltinTodoTextById,
-  isAllTodosBuiltinListKey,
+  isAllTodosListKey,
   lookupBuiltinTodoCompleted,
   syncBuiltinTodoCompleted,
 } from "./allTodosBuiltinLists.js";
@@ -661,7 +661,7 @@ export function getKpiTodosByKpiName(_kpiName) {
 export function getKpiTodosByKpiId(kpiId, opts = {}) {
   const kid = String(kpiId || "").trim();
   if (!kid) return null;
-  if (isAllTodosBuiltinListKey(kid)) {
+  if (isAllTodosListKey(kid)) {
     const info = getBuiltinTaskCompletionTodoInfo(kid, {
       includeCompleted: opts.includeCompleted === true,
     });
@@ -907,7 +907,7 @@ async function uncompleteTaskCompletionKpiTodoById(todoId) {
 export function getKpiTaskCompletionTodoInfoByKpiId(kpiId, opts = {}) {
   const kid = String(kpiId || "").trim();
   if (!kid) return null;
-  if (isAllTodosBuiltinListKey(kid)) {
+  if (isAllTodosListKey(kid)) {
     return getBuiltinTaskCompletionTodoInfo(kid, opts);
   }
   const includeIds = new Set(

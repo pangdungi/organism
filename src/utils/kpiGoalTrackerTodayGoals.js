@@ -41,10 +41,10 @@ import { readTimeDailyBudgetGoalsRaw } from "./timeDailyBudgetModel.js";
 import { getTaskOptionByName } from "./timeTaskOptionsModel.js";
 import { resolveKpiIdForTaskId } from "./kpiTodoSync.js";
 import {
-  ALL_TODOS_BUILTIN_LISTS,
-  builtinListKeyFromTaskName,
-  isAllTodosBuiltinListKey,
-  resolveBuiltinListKeyFromActionId,
+  getBuiltinTaskCompletionTodoInfo,
+  isAllTodosListKey,
+  resolveAllTodosListKeyFromActionId,
+  resolveAllTodosListKeyFromTask,
 } from "./allTodosBuiltinLists.js";
 import { expectedSpanDisplayTaskName } from "./expectedScheduleDetail.js";
 import { ledgerDetailTaskKind } from "./timeTaskOptionsConstants.js";
@@ -425,18 +425,17 @@ export function buildGoalTrackerTodayGoalsModel(opts = {}) {
     if (items.some((x) => x.id === id)) return;
     const found = byId.get(id);
     if (!found) {
-      const builtinKey = isAllTodosBuiltinListKey(id)
+      const listKey = isAllTodosListKey(id)
         ? id
-        : resolveBuiltinListKeyFromActionId(id);
-      if (builtinKey) {
-        const list = ALL_TODOS_BUILTIN_LISTS.find((x) => x.key === builtinKey);
-        const name = list?.name || "";
-        if (!name || items.some((x) => x.id === builtinKey || x.name === name)) {
+        : resolveAllTodosListKeyFromActionId(id);
+      if (listKey) {
+        const name = getBuiltinTaskCompletionTodoInfo(listKey)?.kpiName || "";
+        if (!name || items.some((x) => x.id === listKey || x.name === name)) {
           return;
         }
         const opt = getTaskOptionByName(name);
         items.push({
-          id: builtinKey,
+          id: listKey,
           name,
           targetLabel: "",
           done: isScheduleTaskDoneToday(name, opt?.id, todayYmd),
@@ -481,19 +480,20 @@ export function buildGoalTrackerTodayGoalsModel(opts = {}) {
   }
   if (!opts.habitsOnly) {
     for (const row of scheduledAdds.scheduleOnly) {
-      const builtinKey = builtinListKeyFromTaskName(
+      const listKey = resolveAllTodosListKeyFromTask(
+        row.opt?.id,
         row.storedName || row.name,
       );
-      if (builtinKey) {
+      if (listKey) {
         if (
           items.some(
-            (x) => x.id === builtinKey || x.name === row.name,
+            (x) => x.id === listKey || x.name === row.name,
           )
         ) {
           continue;
         }
         items.push({
-          id: builtinKey,
+          id: listKey,
           name: row.name,
           targetLabel: "",
           done: isScheduleTaskDoneToday(
@@ -683,7 +683,7 @@ export function mountKpiGoalTodayGoalsSection(container, opts = {}) {
         rowHead.addEventListener("click", () => {
           showTodayActionTodosModal({
             kpiId:
-              resolveBuiltinListKeyFromActionId(item.id, item.name) ||
+              resolveAllTodosListKeyFromActionId(item.id, item.name) ||
               item.id,
             name: item.name,
             todayYmd: model.todayYmd,

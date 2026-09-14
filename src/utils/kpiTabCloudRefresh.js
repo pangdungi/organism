@@ -48,7 +48,7 @@ import { ensureAllKpiTimeTasksFromStorage } from "./kpiTimeTaskSync.js";
 import { resolveKpiDomainForKpiId } from "./kpiTodoSync.js";
 import { isAppOffline } from "./networkPresence.js";
 import { whenOfflineFlushIdle } from "./offlineFlushState.js";
-import { pullBuiltinAllTodosFromServer, pullBuiltinAllTodosFromServerIfStale, probeBuiltinAllTodosServerStale, isAllTodosBuiltinListKey } from "./allTodosBuiltinLists.js";
+import { pullBuiltinAllTodosFromServer, pullBuiltinAllTodosFromServerIfStale, probeBuiltinAllTodosServerStale, isAllTodosListKey } from "./allTodosBuiltinLists.js";
 
 const KPI_DOMAIN_PULL = {
   dream: pullDreamKpiMapFromSupabase,
@@ -246,7 +246,7 @@ export async function pullAllKpiTodosForAllTodosTab() {
  * @returns {Promise<boolean>}
  */
 export async function pullKpiTodosDomainFromCloud(kpiId) {
-  if (isAllTodosBuiltinListKey(kpiId)) {
+  if (isAllTodosListKey(kpiId)) {
     return pullBuiltinAllTodosFromServer();
   }
   const domain = resolveKpiDomainForKpiId(kpiId);
@@ -271,7 +271,7 @@ export async function pullKpiTodosDomainFromCloud(kpiId) {
  * @returns {Promise<{ stale: boolean, pulled: boolean, pullOk: boolean }>}
  */
 export async function pullKpiTodosDomainFromCloudIfStale(kpiId) {
-  if (isAllTodosBuiltinListKey(kpiId)) {
+  if (isAllTodosListKey(kpiId)) {
     const probe = await probeBuiltinAllTodosServerStale();
     if (!probe.stale) {
       return { stale: false, pulled: false, pullOk: true };
@@ -551,7 +551,7 @@ export async function pullKpiMapsForTaskLogModalOpen(opts = {}) {
   let note = "과제 선택 전 — KPI 도메인 pull 생략";
 
   if (kpiId) {
-    if (isAllTodosBuiltinListKey(kpiId)) {
+    if (isAllTodosListKey(kpiId)) {
       kpiChanged = !!(await pullBuiltinAllTodosFromServerIfStale());
       note = "기본 과제 할일 stale pull";
     } else {

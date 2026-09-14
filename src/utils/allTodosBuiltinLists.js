@@ -14,6 +14,12 @@ import {
   mergeRowsByLwwWithServerOrder,
   parseIsoMs,
 } from "./kpiMapLwwMerge.js";
+import {
+  getFullTaskOptions,
+  getTaskOptionById,
+  getTaskOptionByName,
+  isBuiltinTaskName,
+} from "./timeTaskOptionsModel.js";
 
 export const ALL_TODOS_BUILTIN_STORAGE_KEY = "all-todos-builtin";
 
@@ -30,6 +36,7 @@ export const ALL_TODOS_BUILTIN_LISTS = [
 ];
 
 const LIST_KEY_SET = new Set(ALL_TODOS_BUILTIN_LISTS.map((x) => x.key));
+const CUSTOM_TASK_LIST_PREFIX = "task:";
 const TABLE = "all_todos_builtin_items";
 const UPSERT_CONFLICT = "user_id,id";
 
@@ -58,6 +65,29 @@ function emptyByList() {
   return out;
 }
 
+export function customTaskAllTodosListKey(taskId) {
+  const id = String(taskId || "").trim();
+  return id ? `${CUSTOM_TASK_LIST_PREFIX}${id}` : "";
+}
+
+export function isAllTodosCustomTaskListKey(key) {
+  const k = String(key || "").trim();
+  return (
+    k.startsWith(CUSTOM_TASK_LIST_PREFIX) &&
+    k.length > CUSTOM_TASK_LIST_PREFIX.length
+  );
+}
+
+export function isAllTodosListKey(key) {
+  return isAllTodosBuiltinListKey(key) || isAllTodosCustomTaskListKey(key);
+}
+
+function mapStoredListRows(rows) {
+  return sortNormalizedKpiTodoRows(
+    (Array.isArray(rows) ? rows : []).map(mapStoredTodo).filter(Boolean),
+  );
+}
+
 function uniqDeleted(arr) {
   const seen = new Set();
   const out = [];
@@ -82,6 +112,7 @@ function mapStoredTodo(t) {
   if (!id || !text) return null;
   const lm = Number(t?.localModifiedAt);
   const su = String(t?.serverUpdatedAt || "").trim();
+  const restore = Array.isArray(t?.lpLedgerRestore) ? t.lpLedgerRestore : [];
   return {
     id,
     text,
@@ -89,6 +120,7 @@ function mapStoredTodo(t) {
     sortOrder: typeof t?.sortOrder === "number" ? t.sortOrder : undefined,
     localModifiedAt: Number.isFinite(lm) && lm > 0 ? lm : undefined,
     serverUpdatedAt: su || undefined,
+    ...(restore.length ? { lpLedgerRestore: restore } : {}),
   };
 }
 
@@ -103,10 +135,11 @@ function readLocalStore() {
     const parsed = JSON.parse(raw);
     const src = parsed?.lists && typeof parsed.lists === "object" ? parsed.lists : {};
     for (const list of ALL_TODOS_BUILTIN_LISTS) {
-      const rows = Array.isArray(src[list.key]) ? src[list.key] : [];
-      lists[list.key] = sortNormalizedKpiTodoRows(
-        rows.map(mapStoredTodo).filter(Boolean),
-      );
+      lists[list.key] = mapStoredListRows(src[list.key]);
+    }
+    for (const [key, rows] of Object.entries(src)) {
+      if (!isAllTodosCustomTaskListKey(key)) continue;
+      lists[key] = mapStoredListRows(rows);
     }
     deleted = uniqDeleted(parsed?.deleted);
     const meta = Number(parsed?.localMetaModifiedAt);
@@ -127,6 +160,10 @@ function writeLocalStore(store) {
     lists[list.key] = Array.isArray(store?.lists?.[list.key])
       ? store.lists[list.key]
       : [];
+  }
+  for (const [key, rows] of Object.entries(store?.lists || {})) {
+    if (!isAllTodosCustomTaskListKey(key)) continue;
+    lists[key] = Array.isArray(rows) ? rows : [];
   }
   setScopedLocalStorageItem(
     ALL_TODOS_BUILTIN_STORAGE_KEY,
@@ -151,8 +188,8 @@ function stampLocalNow() {
 function localTodosMaxMs(store) {
   let max = Number(store?.localMetaModifiedAt) || 0;
   max = Math.max(max, Number(store?.serverWatermarkMs) || 0);
-  for (const list of ALL_TODOS_BUILTIN_LISTS) {
-    for (const t of store?.lists?.[list.key] || []) {
+  for (const rows of Object.values(store?.lists || {})) {
+    for (const t of rows || []) {
       max = Math.max(max, localEntityTimeMs(t));
     }
   }
@@ -182,13 +219,17 @@ async function persistUntilOk(job, tries = 3) {
 }
 
 function toRow(userId, listKey, todo, sortIndex) {
+  const restore = Array.isArray(todo?.lpLedgerRestore) ? todo.lpLedgerRestore : [];
   return {
     user_id: userId,
     id: String(todo.id),
     list_key: listKey,
     text: String(todo.text || "").trim(),
     completed: !!todo.completed,
-    extra: { sortOrder: sortIndex },
+    extra: {
+      sortOrder: sortIndex,
+      ...(restore.length ? { lpLedgerRestore: restore } : {}),
+    },
     updated_at: new Date().toISOString(),
   };
 }
@@ -230,6 +271,48 @@ export function collectBuiltinAllTodoGroups() {
   });
 }
 
+/** 과제설정에서 KPI 없이 직접 넣은 과제 */
+export function collectCustomTaskAllTodoGroups() {
+  /** @type {ReturnType<typeof collectBuiltinAllTodoGroups>} */
+  const groups = [];
+  let tasks = [];
+  try {
+    tasks = getFullTaskOptions();
+  } catch (_) {
+    tasks = [];
+  }
+  const byList = readLocalByList();
+  const seen = new Set();
+  for (const t of tasks) {
+    const name = String(t?.name || "").trim();
+    const id = String(t?.id || "").trim();
+    if (!name || !id) continue;
+    if (String(t?.kpiId || "").trim()) continue;
+    if (isBuiltinTaskName(name) || builtinListKeyFromTaskName(name)) continue;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const key = customTaskAllTodosListKey(id);
+    const rows = (byList[key] || []).map((row) => ({
+      id: row.id,
+      text: row.text,
+      completed: !!row.completed,
+    }));
+    groups.push({
+      storageKey: ALL_TODOS_BUILTIN_STORAGE_KEY,
+      domain: "task",
+      domainLabel: "과제",
+      kpiId: key,
+      kpiName: name,
+      isChore: false,
+      isBuiltin: false,
+      rows,
+      open: rows.filter((r) => !r.completed),
+      done: rows.filter((r) => r.completed),
+    });
+  }
+  return groups;
+}
+
 export function isAllTodosBuiltinListKey(key) {
   return LIST_KEY_SET.has(String(key || "").trim());
 }
@@ -239,6 +322,43 @@ export function builtinListKeyFromTaskName(name) {
   if (!n) return "";
   const hit = ALL_TODOS_BUILTIN_LISTS.find((x) => x.name === n);
   return hit ? hit.key : "";
+}
+
+/**
+ * 과제기록·예상일정 — KPI 없는 사용자 과제는 task:{id}, 기본 9개는 기존 키
+ */
+export function resolveAllTodosListKeyFromTask(taskId, name) {
+  const n = String(name || "").trim();
+  const fromName = builtinListKeyFromTaskName(n);
+  if (fromName) return fromName;
+  let opt = null;
+  try {
+    const id = String(taskId || "").trim();
+    if (id) opt = getTaskOptionById(id);
+    if (!opt && n) opt = getTaskOptionByName(n);
+  } catch (_) {
+    opt = null;
+  }
+  if (!opt) return "";
+  const optName = String(opt.name || "").trim();
+  const builtin = builtinListKeyFromTaskName(optName);
+  if (builtin) return builtin;
+  if (isBuiltinTaskName(optName)) return "";
+  if (String(opt.kpiId || "").trim()) return "";
+  return customTaskAllTodosListKey(opt.id);
+}
+
+export function resolveAllTodosListKeyFromActionId(actionId, name) {
+  const raw = String(actionId || "").trim();
+  if (isAllTodosListKey(raw)) return raw;
+  const builtin = resolveBuiltinListKeyFromActionId(actionId, name);
+  if (builtin) return builtin;
+  if (raw.startsWith("schedule:")) {
+    const rest = raw.slice("schedule:".length).trim();
+    const fromSchedule = resolveAllTodosListKeyFromTask("", rest);
+    if (fromSchedule) return fromSchedule;
+  }
+  return resolveAllTodosListKeyFromTask("", name);
 }
 
 /**
@@ -267,9 +387,13 @@ export function lookupBuiltinTodoById(todoId) {
   const tid = String(todoId || "").trim();
   if (!tid) return null;
   const byList = readLocalByList();
-  for (const list of ALL_TODOS_BUILTIN_LISTS) {
-    const todo = (byList[list.key] || []).find((t) => t.id === tid);
-    if (todo) return { listKey: list.key, listName: list.name, todo };
+  for (const [listKey, rows] of Object.entries(byList)) {
+    const todo = (rows || []).find((t) => t.id === tid);
+    if (todo) {
+      const listName =
+        ALL_TODOS_BUILTIN_LISTS.find((x) => x.key === listKey)?.name || "";
+      return { listKey, listName, todo };
+    }
   }
   return null;
 }
@@ -291,8 +415,20 @@ export function getBuiltinTodoTextById(todoId) {
  */
 export function getBuiltinTaskCompletionTodoInfo(listKey, opts = {}) {
   const key = String(listKey || "").trim();
+  if (!isAllTodosListKey(key)) return null;
   const list = ALL_TODOS_BUILTIN_LISTS.find((x) => x.key === key);
-  if (!list) return null;
+  let kpiName = list?.name || "";
+  if (!kpiName && isAllTodosCustomTaskListKey(key)) {
+    const taskId = key.slice(CUSTOM_TASK_LIST_PREFIX.length);
+    try {
+      kpiName =
+        getFullTaskOptions().find((t) => String(t?.id || "").trim() === taskId)
+          ?.name || "";
+    } catch (_) {
+      kpiName = "";
+    }
+  }
+  if (!kpiName) return null;
   const includeIds = new Set(
     (Array.isArray(opts.includeIds) ? opts.includeIds : [])
       .map((x) => String(x || "").trim())
@@ -315,9 +451,9 @@ export function getBuiltinTaskCompletionTodoInfo(listKey, opts = {}) {
   return {
     storageKey: ALL_TODOS_BUILTIN_STORAGE_KEY,
     kpiId: key,
-    kpiName: list.name,
+    kpiName,
     useTaskCompletionGoal: true,
-    isBuiltin: true,
+    isBuiltin: !isAllTodosCustomTaskListKey(key),
     todos,
   };
 }
@@ -328,11 +464,32 @@ export function syncBuiltinTodoCompleted(todoId, completed) {
   return toggleBuiltinAllTodo(found.listKey, todoId, !!completed);
 }
 
+/** 오늘의 행동에서 해제된 할일을 어느 시간기록에 되돌릴지. 빈 배열이면 지움. */
+export function setBuiltinTodoLedgerRestore(todoId, refs) {
+  const found = lookupBuiltinTodoById(todoId);
+  if (!found) return false;
+  const { listKey } = found;
+  const id = String(todoId || "").trim();
+  if (!isAllTodosListKey(listKey) || !id) return false;
+  const byList = readLocalByList();
+  const rows = byList[listKey] || [];
+  const idx = rows.findIndex((t) => t.id === id);
+  if (idx < 0) return false;
+  const next = { ...rows[idx], localModifiedAt: stampLocalNow() };
+  if (Array.isArray(refs) && refs.length) next.lpLedgerRestore = refs;
+  else delete next.lpLedgerRestore;
+  rows[idx] = next;
+  byList[listKey] = rows;
+  writeLocalByList(byList);
+  void enqueueBuiltinPersist(() => persistBuiltinTodoLatest(listKey, id));
+  return true;
+}
+
 /** @param {string} listKey @param {string} text @returns {string} 새 id 또는 빈 문자열 */
 export function addBuiltinAllTodo(listKey, text) {
   const key = String(listKey || "").trim();
   const val = String(text || "").trim();
-  if (!LIST_KEY_SET.has(key) || !val) return "";
+  if (!isAllTodosListKey(key) || !val) return "";
   const byList = readLocalByList();
   const rows = byList[key] || [];
   const added = {
@@ -354,7 +511,7 @@ export function updateBuiltinAllTodo(listKey, todoId, text) {
   const key = String(listKey || "").trim();
   const id = String(todoId || "").trim();
   const val = String(text || "").trim();
-  if (!LIST_KEY_SET.has(key) || !id || !val) return false;
+  if (!isAllTodosListKey(key) || !id || !val) return false;
   const byList = readLocalByList();
   const rows = byList[key] || [];
   const idx = rows.findIndex((t) => t.id === id);
@@ -370,7 +527,7 @@ export function updateBuiltinAllTodo(listKey, todoId, text) {
 export function removeBuiltinAllTodo(listKey, todoId) {
   const key = String(listKey || "").trim();
   const id = String(todoId || "").trim();
-  if (!LIST_KEY_SET.has(key) || !id) return false;
+  if (!isAllTodosListKey(key) || !id) return false;
   const byList = readLocalByList();
   const rows = byList[key] || [];
   const next = rows.filter((t) => t.id !== id);
@@ -390,7 +547,7 @@ export function removeBuiltinAllTodo(listKey, todoId) {
 /** 완료한 할일만 목록·서버에서 지움. 시간기록은 건드리지 않음. */
 export async function purgeCompletedBuiltinAllTodos(listKey) {
   const key = String(listKey || "").trim();
-  if (!LIST_KEY_SET.has(key)) return 0;
+  if (!isAllTodosListKey(key)) return 0;
   const byList = readLocalByList();
   const rows = byList[key] || [];
   const toRemove = rows.filter((t) => t.completed);
@@ -413,11 +570,58 @@ export async function purgeCompletedBuiltinAllTodos(listKey) {
   return toRemove.length;
 }
 
+/**
+ * 과제설정에서 과제 자체를 지울 때 — 아직 안 한 할일만 목록·서버에서 지움.
+ * 완료한 할일·시간기록은 건드리지 않음.
+ */
+export function purgeOpenAllTodosForCustomTaskId(taskId) {
+  const key = customTaskAllTodosListKey(taskId);
+  if (!isAllTodosCustomTaskListKey(key)) return 0;
+  const byList = readLocalByList();
+  const rows = byList[key] || [];
+  const toRemove = rows.filter((t) => !t.completed);
+  const now = stampLocalNow();
+  if (toRemove.length) {
+    byList[key] = rows.filter((t) => t.completed);
+    const prev = readLocalStore();
+    writeLocalStore({
+      ...prev,
+      lists: byList,
+      deleted: uniqDeleted([
+        ...prev.deleted,
+        ...toRemove.map((t) => ({ id: t.id, localModifiedAt: now })),
+      ]),
+      localMetaModifiedAt: now,
+    });
+    for (const t of toRemove) {
+      void enqueueBuiltinPersist(() => persistBuiltinTodoDelete(t.id));
+    }
+  }
+  void enqueueBuiltinPersist(() => persistOpenTodosDeleteByCustomListKey(key));
+  return toRemove.length;
+}
+
+async function persistOpenTodosDeleteByCustomListKey(listKey) {
+  return persistUntilOk(async () => {
+    const userId = await getSessionUserId();
+    if (!userId || !supabase) return false;
+    const key = String(listKey || "").trim();
+    if (!isAllTodosCustomTaskListKey(key)) return false;
+    const { error } = await supabase
+      .from(TABLE)
+      .delete()
+      .eq("user_id", userId)
+      .eq("list_key", key)
+      .eq("completed", false);
+    return !error;
+  });
+}
+
 /** @param {string} listKey @param {string} todoId @param {boolean} completed */
 export function toggleBuiltinAllTodo(listKey, todoId, completed) {
   const key = String(listKey || "").trim();
   const id = String(todoId || "").trim();
-  if (!LIST_KEY_SET.has(key) || !id) return false;
+  if (!isAllTodosListKey(key) || !id) return false;
   const byList = readLocalByList();
   const rows = byList[key] || [];
   const idx = rows.findIndex((t) => t.id === id);
@@ -475,12 +679,14 @@ function serverRowToTodo(r) {
       ? r.extra
       : {};
   const updatedAt = String(r.updated_at || "").trim();
+  const restore = Array.isArray(extra.lpLedgerRestore) ? extra.lpLedgerRestore : [];
   return {
     id: String(r.id || "").trim(),
     text: String(r.text || "").trim(),
     completed: !!r.completed,
     sortOrder: typeof extra.sortOrder === "number" ? extra.sortOrder : undefined,
     serverUpdatedAt: updatedAt || undefined,
+    ...(restore.length ? { lpLedgerRestore: restore } : {}),
   };
 }
 
@@ -536,7 +742,8 @@ export async function pullBuiltinAllTodosFromServer() {
   let maxServerMs = 0;
   for (const r of data || []) {
     const key = String(r.list_key || "").trim();
-    if (!LIST_KEY_SET.has(key)) continue;
+    if (!isAllTodosListKey(key)) continue;
+    if (!Array.isArray(serverByList[key])) serverByList[key] = [];
     const todo = serverRowToTodo(r);
     if (!todo.id || !todo.text) continue;
     if (deletedSet.has(todo.id)) continue;
@@ -546,15 +753,22 @@ export async function pullBuiltinAllTodosFromServer() {
     serverIds.add(todo.id);
     maxServerMs = Math.max(maxServerMs, ts);
   }
+  const mergeKeys = new Set(ALL_TODOS_BUILTIN_LISTS.map((x) => x.key));
+  for (const k of Object.keys(local.lists || {})) {
+    if (isAllTodosCustomTaskListKey(k)) mergeKeys.add(k);
+  }
+  for (const k of Object.keys(serverByList)) {
+    if (isAllTodosListKey(k)) mergeKeys.add(k);
+  }
   const byList = emptyByList();
-  for (const list of ALL_TODOS_BUILTIN_LISTS) {
+  for (const key of mergeKeys) {
     const merged = mergeRowsByLwwWithServerOrder({
-      localArr: local.lists[list.key] || [],
-      serverArr: serverByList[list.key],
+      localArr: local.lists[key] || [],
+      serverArr: serverByList[key] || [],
       serverTsMap,
       getId: (t) => t.id,
     }).filter((t) => t?.id && t?.text && !deletedSet.has(String(t.id)));
-    byList[list.key] = sortNormalizedKpiTodoRows(merged);
+    byList[key] = sortNormalizedKpiTodoRows(merged);
   }
   writeLocalStore({
     lists: byList,

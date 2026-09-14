@@ -1913,6 +1913,25 @@
   border-radius: 4px;
 }
 
+.lp-kpi-dream-page .dream-kpi-card-done-chip,
+.kpi-view-modal .dream-kpi-card-done-chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 1.35em;
+  margin: 0 2.75rem 0 0;
+  padding: 0 0.34rem;
+  border-radius: 6px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: #000;
+  background: #e8e8e8;
+}
+
 .lp-kpi-dream-page .dream-kpi-card-target-num {
   margin-top: 0.45rem;
   font-size: 1.35rem;

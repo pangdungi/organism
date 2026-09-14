@@ -3438,7 +3438,11 @@ button.calendar-1day-pane-section-head--action:focus-visible {
 .lp-calendar-budget-add-modal
   [data-legacy~="time-task-log-emotion-trigger-section"][hidden],
 .lp-calendar-budget-add-modal
-  [data-legacy~="time-task-log-kpi-todos-section"][hidden] {
+  [data-legacy~="time-task-log-kpi-todos-section"][hidden],
+.lp-calendar-budget-add-modal
+  [data-legacy~="time-task-log-kpi-todos-scroll"][hidden],
+.lp-calendar-budget-add-modal
+  [data-legacy~="time-task-log-kpi-todos-status"][hidden] {
   display: none !important;
 }
 
@@ -3631,7 +3635,8 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   min-width: 0;
   min-height: 0;
   height: calc(
-    var(--lp-expected-split-head-h) + var(--lp-expected-split-body-h) + 0.85rem
+    var(--lp-expected-split-head-h) + 0.35rem + var(--lp-expected-split-body-h) +
+      0.85rem
   );
   overflow: hidden;
   box-sizing: border-box;
@@ -3771,10 +3776,13 @@ button.calendar-1day-pane-section-head--action:focus-visible {
 .lp-calendar-budget-add-modal
   [data-legacy~="lp-expected-todo-memo-split"].is-split
   [data-legacy~="time-task-log-kpi-todos-status"]:not([hidden]) {
-  flex: 1 1 auto;
+  flex: 0 0 var(--lp-expected-split-body-h);
   display: flex;
   align-items: flex-start;
-  min-height: var(--lp-expected-split-body-h);
+  width: 100%;
+  min-height: 0;
+  height: var(--lp-expected-split-body-h);
+  max-height: var(--lp-expected-split-body-h);
   margin: 0;
   padding: 0.15rem 0.25rem;
   border: 1px solid #e2e8f0;
@@ -3789,7 +3797,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
 .lp-calendar-budget-add-modal
   [data-legacy~="lp-expected-todo-memo-split"].is-split
   [data-legacy~="lp-expected-planned-todos-preview"] {
-  flex: 1 1 auto;
+  flex: 0 0 var(--lp-expected-split-body-h);
   width: 100%;
   min-height: 0;
   height: var(--lp-expected-split-body-h);
@@ -3806,6 +3814,12 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   touch-action: pan-y;
+}
+
+.lp-calendar-budget-add-modal
+  [data-legacy~="lp-expected-todo-memo-split"].is-split
+  [data-legacy~="time-task-log-kpi-todos-scroll"][hidden] {
+  display: none !important;
 }
 
 .lp-calendar-budget-add-modal

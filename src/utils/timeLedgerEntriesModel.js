@@ -1021,6 +1021,21 @@ export function writeTimeLedgerEntriesRaw(rows) {
   schedulePersistTimeLedgerRowsToDisk();
 }
 
+/** 서버에서 가져온 그 기록만 메모리에 합침. 다른 날짜 기록을 비우지 않음. */
+export function mergeTimeLedgerLocalRowsById(incoming) {
+  if (!Array.isArray(incoming) || !incoming.length) return;
+  const byId = new Map();
+  for (const row of readTimeLedgerEntriesRaw()) {
+    const id = String(row?.id || "").trim();
+    if (id) byId.set(id, row);
+  }
+  for (const row of incoming) {
+    const id = String(row?.id || "").trim();
+    if (id) byId.set(id, row);
+  }
+  writeTimeLedgerEntriesRaw([...byId.values()]);
+}
+
 /** Calendar 일간 ledger 필터와 동일한 날짜 정규화(YYYY-MM-DD) */
 export function normalizeLedgerRowDateYmdTen(s) {
   return String(s || "").replace(/\//g, "-").trim().slice(0, 10);

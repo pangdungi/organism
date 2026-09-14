@@ -32,6 +32,7 @@ import {
   ALL_TODOS_BUILTIN_STORAGE_KEY,
   addBuiltinAllTodo,
   collectBuiltinAllTodoGroups,
+  collectCustomTaskAllTodoGroups,
   getBuiltinTodoTextById,
   purgeCompletedBuiltinAllTodos,
   removeBuiltinAllTodo,
@@ -136,7 +137,11 @@ export function collectTaskCompletionTodoGroups() {
     }
   }
 
-  const all = [...collectBuiltinAllTodoGroups(), ...groups];
+  const all = [
+    ...collectBuiltinAllTodoGroups(),
+    ...collectCustomTaskAllTodoGroups(),
+    ...groups,
+  ];
   all.sort((a, b) => {
     if (a.isChore !== b.isChore) return a.isChore ? -1 : 1;
     return a.kpiName.localeCompare(b.kpiName, "ko");

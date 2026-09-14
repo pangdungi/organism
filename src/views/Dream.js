@@ -935,7 +935,9 @@ export function render() {
       card.innerHTML = `
         <div class="dream-kpi-card-inner">
           ${KPI_CARD_EDIT_PENCIL_HTML}
-          ${kpiCardHeadHtml(kpi, "dream", nameHtml)}
+          ${kpiCardHeadHtml(kpi, "dream", nameHtml, {
+            completed: !!progressResult.isCompleted,
+          })}
           ${heroHtml}
           ${progressHtml}
           ${investedTimeHtml ? `<div class="dream-kpi-card-invested">${investedTimeHtml}</div>` : ""}
