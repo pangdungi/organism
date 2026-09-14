@@ -105,6 +105,19 @@ export function expectedSpanCardMemoLines(span) {
   return lines;
 }
 
+const BUDGET_PLACEHOLDER_PREFIX = "(과제 선택)·";
+
+function scheduledTimesForBudgetTask(data) {
+  if (!data) return [];
+  if (Array.isArray(data.scheduledTimes)) {
+    return data.scheduledTimes.filter((x) => x && String(x).trim());
+  }
+  if (data.scheduledTime && String(data.scheduledTime).trim()) {
+    return [String(data.scheduledTime).trim()];
+  }
+  return [];
+}
+
 function budgetTaskMatchesKpiId(taskName, kpiId) {
   const kid = String(kpiId || "").trim();
   const name = String(taskName || "").trim();
@@ -114,6 +127,34 @@ function budgetTaskMatchesKpiId(taskName, kpiId) {
     resolveKpiIdForTaskId(opt?.id) || String(opt?.kpiId || "").trim();
   const listKey = resolveAllTodosListKeyFromTask(opt?.id, name);
   return resolved === kid || listKey === kid;
+}
+
+/** 그날 예상일정에 시간이 있는 행동인지 — 오늘의 행동에서 빼기가 막히는 경우 */
+export function isActionOnExpectedScheduleDate(dateStr, kpiId, taskNameHint) {
+  const dk = String(dateStr || "")
+    .replace(/\//g, "-")
+    .trim()
+    .slice(0, 10);
+  const kid = String(kpiId || "").trim();
+  const hint = String(taskNameHint || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dk) || (!kid && !hint)) return false;
+  let day = null;
+  try {
+    const raw = readTimeDailyBudgetGoalsRaw();
+    const all = raw ? JSON.parse(raw) : {};
+    day = all?.[dk];
+  } catch (_) {
+    return false;
+  }
+  if (!day || typeof day !== "object" || Array.isArray(day)) return false;
+  for (const [taskName, goal] of Object.entries(day)) {
+    if (String(taskName).startsWith(BUDGET_PLACEHOLDER_PREFIX)) continue;
+    if (!scheduledTimesForBudgetTask(goal).length) continue;
+    const name = String(taskName || "").trim();
+    if (hint && name === hint) return true;
+    if (kid && budgetTaskMatchesKpiId(name, kid)) return true;
+  }
+  return false;
 }
 
 /** 그날 예상 일정에 골라 둔 할일 — KPI 기준 (오늘의 행동은 오늘 날짜만 넘길 것) */

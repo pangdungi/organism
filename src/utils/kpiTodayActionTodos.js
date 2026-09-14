@@ -34,6 +34,7 @@ import { getSupabaseSession } from "./supabaseSession.js";
 import { timeLedgerLocalTodayYmd } from "./timeLedgerEntriesSupabase.js";
 import {
   collectBudgetPlannedTodoIdsForKpiOnDate,
+  isActionOnExpectedScheduleDate,
   removePlannedTodoIdsFromBudgetDateForKpi,
 } from "./expectedScheduleDetail.js";
 import { lpRefreshAllVisibleCalendarLayoutsFromLocalData } from "./lpCalendarLocalRefresh.js";
@@ -647,6 +648,11 @@ export function showTodayActionTodosModal(opts = {}) {
       ? "오늘 읽을 책을 고른 뒤 저장을 누르세요"
       : "오늘 할 항목을 고른 뒤 저장을 누르세요"
     : "";
+  const lockedBySchedule = isActionOnExpectedScheduleDate(
+    todayYmd,
+    kpiId,
+    name,
+  );
 
   const modal = document.createElement("div");
   modal.className =
@@ -683,7 +689,11 @@ export function showTodayActionTodosModal(opts = {}) {
         </div>
       </div>
       <div data-legacy="time-task-log-footer">
-        <button type="button" class="habit-tracker-today-goals-remove-today">오늘 행동에서 제거하기</button>
+        ${
+          lockedBySchedule
+            ? `<p class="habit-tracker-today-goals-remove-today-hint">데이 캘린더에서 삭제할 수 있습니다.</p>`
+            : `<button type="button" class="habit-tracker-today-goals-remove-today">오늘 행동에서 제거하기</button>`
+        }
         ${
           canPickTodos
             ? `<button type="button" data-legacy="time-task-log-submit">저장</button>`

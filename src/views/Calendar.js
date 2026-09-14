@@ -450,8 +450,9 @@ function lpCalendarMonthlyDayStampTopRem(
   return baseTop;
 }
 
-/** 여러 날 막대를 스탬프 아래로 내릴 때 쓰는 간격(rem) */
+/** 여러 날 막대를 스탬프 아래로 내릴 때 쓰는 간격(rem) — 스탬프가 안 보이면 0 */
 function lpCalendarWeekStampLayoutPadRem(weekRow, gap) {
+  if (!lpCalendarWeekHasVisibleDayIcons(weekRow)) return 0;
   const strip = lpCalendarWeeklyDayIconsStripRem(weekRow);
   if (!(strip > 0)) return 0;
   const g = Number.isFinite(gap) ? Math.max(0, gap) : 0;
