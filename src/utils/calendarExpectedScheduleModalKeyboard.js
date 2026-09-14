@@ -15,10 +15,16 @@ const MEMO_INPUT_SELECTOR =
 const ALL_INPUT_SELECTOR = `${TIME_INPUT_SELECTOR}, ${MEMO_INPUT_SELECTOR}, .time-task-log-task-dropdown-search, [data-legacy~="time-task-log-task-dropdown-search"]`;
 
 function isMobileModalUi() {
-  return (
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(max-width: 46rem)").matches
-  );
+  if (typeof window.matchMedia !== "function") return false;
+  if (!window.matchMedia("(max-width: 46rem)").matches) return false;
+  /* 창만 좁힌 데스크탑 — 터치폰이 아니면 키보드 shell을 쓰지 않음 */
+  if (
+    window.matchMedia("(hover: hover)").matches &&
+    window.matchMedia("(pointer: fine)").matches
+  ) {
+    return false;
+  }
+  return true;
 }
 
 function isModalTextInput(el) {

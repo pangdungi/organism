@@ -3935,7 +3935,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
     min-height: 0 !important;
     overflow: hidden !important;
     align-items: center !important;
-    justify-content: flex-end !important;
+    justify-content: center !important;
     padding: max(0.35rem, env(safe-area-inset-top, 0px)) 0.75rem 0.35rem !important;
     box-sizing: border-box !important;
     z-index: 2147483647 !important;
