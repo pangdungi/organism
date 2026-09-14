@@ -57,7 +57,7 @@
 .lp-kpi-dream-page
   .habit-tracker-content-wrap[data-habit-view="alltodos"]
   .habit-tracker-goal-host {
-  flex: 1 1 auto;
+  flex: 1 1 0%;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -809,7 +809,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
-  flex: 1 1 auto;
+  flex: 1 1 0%;
   min-height: 0;
   min-width: 0;
   padding: 0.15rem 0 0;
@@ -832,7 +832,8 @@
 .lp-kpi-dream-page .habit-tracker-all-todos-split {
   display: grid;
   grid-template-columns: minmax(7.25rem, 34%) minmax(0, 1fr);
-  flex: 1 1 auto;
+  grid-template-rows: minmax(0, 1fr);
+  flex: 1 1 0%;
   min-height: 0;
   min-width: 0;
   overflow: hidden;
@@ -902,7 +903,7 @@
 }
 
 .lp-kpi-dream-page .habit-tracker-all-todos-col {
-  flex: 1 1 auto;
+  flex: 1 1 0%;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -977,7 +978,7 @@
 }
 
 .lp-kpi-dream-page .habit-tracker-all-todos-list {
-  flex: 1 1 auto;
+  flex: 1 1 0%;
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;

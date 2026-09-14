@@ -208,16 +208,34 @@ export async function pullKpiDetailTodosFromCloud(tabId) {
   return false;
 }
 
-/** 전체 할일 — 할일만 서버에서 받음. 행복·건강 할일 pull은 올리기 대기로 건너뛰지 않음 */
+async function pullAllTodosDomainIfStale(domain, pullFn) {
+  const probe = await probeKpiDomainServerStale(domain);
+  if (!probe.stale) return false;
+  const ok = !!(await pullFn());
+  if (ok && probe.serverMs > 0) {
+    rememberKpiDomainServerWatermarkMs(domain, probe.serverMs, probe.userId);
+  }
+  return ok;
+}
+
+/** 전체 할일 — 서버가 더 새로울 때만 할일을 받음. 같으면 화면을 다시 그리지 않음 */
 export async function pullAllKpiTodosForAllTodosTab() {
   if (isAppOffline()) return false;
   await whenOfflineFlushIdle();
   const [d, h, ha, si, builtin] = await Promise.all([
-    pullDreamKpiMapFromSupabase({ force: true, skipLogs: true }),
-    pullHealthKpiMapTodosFromSupabase(),
-    pullHappinessKpiMapTodosFromSupabase(),
-    pullSideincomeKpiMapFromSupabase({ force: true, skipLogs: true }),
-    pullBuiltinAllTodosFromServer(),
+    pullAllTodosDomainIfStale("dream", () =>
+      pullDreamKpiMapFromSupabase({ force: false, skipLogs: true }),
+    ),
+    pullAllTodosDomainIfStale("health", () =>
+      pullHealthKpiMapTodosFromSupabase(),
+    ),
+    pullAllTodosDomainIfStale("happiness", () =>
+      pullHappinessKpiMapTodosFromSupabase(),
+    ),
+    pullAllTodosDomainIfStale("sideincome", () =>
+      pullSideincomeKpiMapFromSupabase({ force: false, skipLogs: true }),
+    ),
+    pullBuiltinAllTodosFromServerIfStale(),
   ]);
   return !!(d || h || ha || si || builtin);
 }

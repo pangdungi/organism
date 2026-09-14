@@ -20,6 +20,7 @@ import {
 import { mountKpiActiveGanttView } from "../utils/kpiActiveGanttView.js";
 import { collectGoalTrackerActiveKpis } from "../utils/kpiGoalTrackerActiveKpis.js";
 import {
+  allTodosBoardFingerprint,
   captureAllTodosBoardScrollState,
   mountKpiGoalAllTodosSection,
 } from "../utils/kpiGoalTrackerAllTodos.js";
@@ -296,6 +297,14 @@ export function render(opts = {}) {
 
   function paintAllTodosOnly() {
     if (!goalHost) return;
+    const fp = allTodosBoardFingerprint();
+    if (
+      goalHost.querySelector(".habit-tracker-all-todos") &&
+      goalHost._lpAllTodosFp === fp
+    ) {
+      goalHost._lpAllTodosSyncAddChrome?.();
+      return;
+    }
     const snap = captureAllTodosBoardScrollState(goalHost);
     const keepNavScroll =
       snap.navScrollTop || Number(goalHost._lpAllTodosNavScrollTop) || 0;
@@ -311,6 +320,7 @@ export function render(opts = {}) {
       navScrollTop: keepNavScroll,
       listScrollByKpi,
     });
+    goalHost._lpAllTodosFp = fp;
     goalHost._lpAllTodosSyncAddChrome?.();
     if (!goalHost._lpAllTodosOpenAdd) clearAllTodosFooterAdd();
   }
@@ -409,9 +419,10 @@ export function render(opts = {}) {
   async function pullActiveViewFromServerThenPaint() {
     const view = mainView;
     const gen = ++viewPullGen;
+    let allTodosChanged = false;
     try {
       if (view === "alltodos") {
-        await pullAllKpiTodosForAllTodosTab();
+        allTodosChanged = !!(await pullAllKpiTodosForAllTodosTab());
       } else if (view === "successfail") {
         await pullMonthsCoveringYmds(
           habitTrackerWeekDateKeys(
@@ -423,6 +434,7 @@ export function render(opts = {}) {
       }
     } catch (_) {}
     if (gen !== viewPullGen || !el.isConnected || mainView !== view) return;
+    if (view === "alltodos" && !allTodosChanged) return;
     paintActiveView({
       skipSync: true,
       forceGrid: view === "routine",
@@ -462,6 +474,7 @@ export function render(opts = {}) {
   let softRefreshRaf = 0;
   function scheduleSoftRefresh() {
     if (!el.isConnected) return;
+    if (mainView === "alltodos") return;
     if (softRefreshRaf) return;
     softRefreshRaf = requestAnimationFrame(() => {
       softRefreshRaf = 0;

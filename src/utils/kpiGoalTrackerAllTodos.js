@@ -286,6 +286,21 @@ function groupKey(g) {
   return `${g.storageKey}::${g.kpiId}`;
 }
 
+/** 할일 id·체크가 같으면 목록을 다시 그리지 않기 위한 지문 */
+export function allTodosBoardFingerprint(groups) {
+  const list = Array.isArray(groups)
+    ? groups
+    : collectTaskCompletionTodoGroups();
+  return list
+    .map((g) => {
+      const rows = (g.rows || [])
+        .map((r) => `${r.id}:${r.completed ? 1 : 0}`)
+        .join(",");
+      return `${groupKey(g)}:${rows}`;
+    })
+    .join("|");
+}
+
 function readSelectedKey() {
   try {
     return String(sessionStorage.getItem(SELECTED_KEY) || "").trim();
@@ -358,6 +373,7 @@ export function mountKpiGoalAllTodosSection(container, opts = {}) {
   root.setAttribute("aria-label", "전체 할일");
 
   const groups = collectTaskCompletionTodoGroups();
+  container._lpAllTodosFp = allTodosBoardFingerprint(groups);
   const openTotal = groups.reduce((n, g) => n + g.open.length, 0);
 
   const summary = document.createElement("p");
