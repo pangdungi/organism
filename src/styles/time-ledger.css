@@ -9037,8 +9037,8 @@
 
 .time-ledger-card-memo-row {
   display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
+  flex-wrap: wrap;
+  align-items: flex-start;
   gap: 0.28rem 0.4rem;
   min-width: 0;
 }
@@ -9053,7 +9053,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  flex: 0 1 auto;
   box-sizing: border-box;
   height: auto;
   min-height: 1.35em;
@@ -9071,8 +9071,8 @@
 }
 
 .time-ledger-card-memo-body {
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 1 1 10rem;
+  min-width: min(100%, 8rem);
   display: block;
   font-size: inherit;
   font-weight: 400;
@@ -9083,11 +9083,10 @@
   white-space: pre-wrap;
 }
 
-/* 칩+✓텍스트 한 줄 — 세로 가운데 */
+/* 칩+본문 — 긴 칩이면 본문은 다음 줄 */
 .time-ledger-card-memo-row:has(.time-ledger-card-memo-chip)
   .time-ledger-card-memo-body {
-  display: flex;
-  align-items: center;
+  display: block;
   white-space: normal;
   line-height: 1.35;
   min-height: 1.35em;
