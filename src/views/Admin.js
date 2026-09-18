@@ -6,6 +6,7 @@
 import { isCurrentUserAppAdmin } from "../utils/adminAccess.js";
 import {
   adminGrantOneYear,
+  adminListImwebOrderGrants,
   adminListSubscriptions,
   adminListUserDeletions,
   adminSetSubscription,
@@ -13,18 +14,40 @@ import {
 import { supabase } from "../supabase.js";
 import { showToast } from "../utils/showToast.js";
 
+const IMWEB_PROD_YEAR = 66;
+const IMWEB_PROD_RENEWAL = 67;
+const IMWEB_PROD_TRIAL = 68;
+
 const ADMIN_SECTIONS = [
   {
     id: "all",
     label: "전체 목록",
-    hint: "모든 회원의 구독 상태·이용 만료를 수정할 수 있습니다.",
-    toolbarLabel: "이용권(구독) 목록",
+    hint: "모든 회원의 이용권·만료일을 보고 고칠 수 있습니다.",
+    toolbarLabel: "이용권 목록",
+  },
+  {
+    id: "trial",
+    label: "테스트권",
+    hint: "테스트 이용권(7일) 회원입니다.",
+    toolbarLabel: "테스트권 회원",
+  },
+  {
+    id: "year",
+    label: "1년권",
+    hint: "1년 이용권 회원입니다.",
+    toolbarLabel: "1년권 회원",
   },
   {
     id: "expired",
     label: "이용 만료",
     hint: "이용 종료일이 지난 회원입니다. 갱신권 구매 확인 후 1년 이용권을 부여하세요.",
     toolbarLabel: "이용 만료 회원",
+  },
+  {
+    id: "imweb",
+    label: "아임웹 구매",
+    hint: "자사몰에서 이용권을 결제한 주문만 봅니다. 한 사람이 여러 번 샀으면 여러 줄입니다.",
+    toolbarLabel: "아임웹 구매",
   },
   {
     id: "withdrawn",
@@ -68,6 +91,46 @@ function isRowExpired(row) {
   if (!row?.access_until) return false;
   const endMs = new Date(row.access_until).getTime();
   return !Number.isNaN(endMs) && Date.now() > endMs;
+}
+
+function isYearPass(row) {
+  return String(row?.subscription_status || "").toLowerCase() === "active";
+}
+
+function passKindLabel(row) {
+  return isYearPass(row) ? "1년권" : "테스트권";
+}
+
+function fillPassKindCell(td, row) {
+  td.replaceChildren();
+  const kind = document.createElement("span");
+  kind.className = `admin-subs-pass-kind ${
+    isYearPass(row) ? "admin-subs-pass-kind--year" : "admin-subs-pass-kind--trial"
+  }`;
+  kind.textContent = passKindLabel(row);
+  td.appendChild(kind);
+  if (isRowExpired(row)) {
+    const exp = document.createElement("span");
+    exp.className = "admin-subs-pass-expired";
+    exp.textContent = "만료";
+    td.appendChild(exp);
+  }
+}
+
+function imwebProdLabel(prodNo) {
+  const n = Number(prodNo);
+  if (n === IMWEB_PROD_YEAR) return "1년권";
+  if (n === IMWEB_PROD_RENEWAL) return "1년 갱신권";
+  if (n === IMWEB_PROD_TRIAL) return "테스트권";
+  return Number.isFinite(n) ? `상품 ${n}` : "—";
+}
+
+function imwebGrantStatusLabel(status) {
+  const v = String(status || "").toLowerCase();
+  if (v === "applied") return "반영됨";
+  if (v === "pending") return "대기";
+  if (v === "ignored") return "무시";
+  return v || "—";
 }
 
 function normalizeEmailSearchQuery(query) {
@@ -114,10 +177,15 @@ function buildRowTr(row, onPatched) {
 
   appendEmailCell(tr, row.email);
 
+  const tdPass = document.createElement("td");
+  tdPass.className = "admin-subs-td admin-subs-td--pass";
+  fillPassKindCell(tdPass, row);
+  tr.appendChild(tdPass);
+
   appendUidCell(tr, row.user_id);
 
   const tdSignup = document.createElement("td");
-  tdSignup.className = "admin-subs-td admin-subs-td--dt";
+  tdSignup.className = "admin-subs-td admin-subs-td--dt admin-subs-td--signup";
   tdSignup.textContent = formatKoDateTime(row.signup_at);
   tr.appendChild(tdSignup);
 
@@ -125,11 +193,11 @@ function buildRowTr(row, onPatched) {
   tdStatus.className = "admin-subs-td admin-subs-td--form";
   const statusSel = document.createElement("select");
   statusSel.className = "admin-subs-status";
-  statusSel.setAttribute("aria-label", "구독 상태");
+  statusSel.setAttribute("aria-label", "이용권");
   for (const v of ["inactive", "active"]) {
     const opt = document.createElement("option");
     opt.value = v;
-    opt.textContent = v === "active" ? "active (이용중)" : "inactive";
+    opt.textContent = v === "active" ? "1년권" : "테스트권";
     if (String(row.subscription_status || "").toLowerCase() === v) opt.selected = true;
     statusSel.appendChild(opt);
   }
@@ -213,9 +281,50 @@ function buildWithdrawnRowTr(row) {
   return tr;
 }
 
+function buildImwebRowTr(row) {
+  const tr = document.createElement("tr");
+  tr.className = "admin-subs-tr admin-subs-tr--imweb";
+
+  appendEmailCell(tr, row.orderer_email);
+
+  const tdProd = document.createElement("td");
+  tdProd.className = "admin-subs-td admin-subs-td--pass";
+  const kind = document.createElement("span");
+  const n = Number(row.prod_no);
+  kind.className = `admin-subs-pass-kind ${
+    n === IMWEB_PROD_TRIAL ? "admin-subs-pass-kind--trial" : "admin-subs-pass-kind--year"
+  }`;
+  kind.textContent = imwebProdLabel(row.prod_no);
+  tdProd.appendChild(kind);
+  tr.appendChild(tdProd);
+
+  const tdOrder = document.createElement("td");
+  tdOrder.className = "admin-subs-td admin-subs-td--uid";
+  tdOrder.textContent = row.order_no != null ? String(row.order_no) : "—";
+  tr.appendChild(tdOrder);
+
+  const tdBought = document.createElement("td");
+  tdBought.className = "admin-subs-td admin-subs-td--dt";
+  tdBought.textContent = formatKoDateTime(row.created_at);
+  tr.appendChild(tdBought);
+
+  const tdGrant = document.createElement("td");
+  tdGrant.className = "admin-subs-td";
+  tdGrant.textContent = imwebGrantStatusLabel(row.grant_status);
+  tr.appendChild(tdGrant);
+
+  const tdUntil = document.createElement("td");
+  tdUntil.className = "admin-subs-td admin-subs-td--dt";
+  tdUntil.textContent = formatKoDateTime(row.access_until_after);
+  tr.appendChild(tdUntil);
+
+  return tr;
+}
+
 function applyRowData(tr, row) {
   const st = tr.querySelector(".admin-subs-status");
   const un = tr.querySelector(".admin-subs-until");
+  const pass = tr.querySelector(".admin-subs-td--pass");
   if (st) {
     const v = String(row.subscription_status || "").toLowerCase();
     for (const opt of st.querySelectorAll("option")) {
@@ -223,6 +332,7 @@ function applyRowData(tr, row) {
     }
   }
   if (un) un.value = toDatetimeLocalValue(row.access_until);
+  if (pass) fillPassKindCell(pass, row);
   tr.classList.toggle("admin-subs-tr--expired", isRowExpired(row));
 }
 
@@ -328,26 +438,38 @@ export function render() {
   let requestId = 0;
   let cachedSubsRows = [];
   let cachedWithdrawnRows = [];
+  let cachedImwebRows = [];
   let emailSearchQuery = "";
 
+  function getSubscriptionBaseRows() {
+    if (activeSection === "expired") return cachedSubsRows.filter(isRowExpired);
+    if (activeSection === "trial") return cachedSubsRows.filter((row) => !isYearPass(row));
+    if (activeSection === "year") return cachedSubsRows.filter(isYearPass);
+    return cachedSubsRows;
+  }
+
   function getSubscriptionRowsForView() {
-    const base =
-      activeSection === "expired"
-        ? cachedSubsRows.filter(isRowExpired)
-        : cachedSubsRows;
-    return filterRowsByEmail(base, emailSearchQuery);
+    return filterRowsByEmail(getSubscriptionBaseRows(), emailSearchQuery);
   }
 
   function getWithdrawnRowsForView() {
     return filterRowsByEmail(cachedWithdrawnRows, emailSearchQuery);
   }
 
-  function formatStatusLineCount(shown, totalBeforeFilter) {
+  function getImwebRowsForView() {
+    const q = normalizeEmailSearchQuery(emailSearchQuery);
+    if (!q) return cachedImwebRows;
+    return cachedImwebRows.filter((row) =>
+      String(row?.orderer_email || "").toLowerCase().includes(q),
+    );
+  }
+
+  function formatStatusLineCount(shown, totalBeforeFilter, unit = "명") {
     const q = normalizeEmailSearchQuery(emailSearchQuery);
     if (q && totalBeforeFilter != null && shown < totalBeforeFilter) {
-      return `검색 ${shown}명 · ${totalBeforeFilter}명 중`;
+      return `검색 ${shown}${unit} · ${totalBeforeFilter}${unit} 중`;
     }
-    return `총 ${shown}명`;
+    return `총 ${shown}${unit}`;
   }
 
   function getSectionMeta(id) {
@@ -357,27 +479,25 @@ export function render() {
   function setTableHead(sectionId) {
     thead.innerHTML = "";
     const tr = document.createElement("tr");
+    let labels = [
+      "이메일",
+      "이용권",
+      "사용자 ID",
+      "가입(기록)",
+      "상태",
+      "이용 만료(까지)",
+      "처리",
+    ];
     if (sectionId === "withdrawn") {
-      for (const label of ["이메일", "사용자 ID", "탈퇴 일시"]) {
-        const th = document.createElement("th");
-        th.scope = "col";
-        th.textContent = label;
-        tr.appendChild(th);
-      }
-    } else {
-      for (const label of [
-        "이메일",
-        "사용자 ID",
-        "가입(기록)",
-        "상태",
-        "이용 만료(까지)",
-        "처리",
-      ]) {
-        const th = document.createElement("th");
-        th.scope = "col";
-        th.textContent = label;
-        tr.appendChild(th);
-      }
+      labels = ["이메일", "사용자 ID", "탈퇴 일시"];
+    } else if (sectionId === "imweb") {
+      labels = ["이메일", "상품", "주문번호", "구매일", "반영", "이용 종료(부여 후)"];
+    }
+    for (const label of labels) {
+      const th = document.createElement("th");
+      th.scope = "col";
+      th.textContent = label;
+      tr.appendChild(th);
     }
     thead.appendChild(tr);
   }
@@ -408,7 +528,11 @@ export function render() {
         ? `「${emailSearchQuery.trim()}」 검색 결과가 없어요.`
         : activeSection === "expired"
           ? "이용 만료 회원이 없어요."
-          : "표시할 사용자가 없어요.";
+          : activeSection === "trial"
+            ? "테스트권 회원이 없어요."
+            : activeSection === "year"
+              ? "1년권 회원이 없어요."
+              : "표시할 사용자가 없어요.";
       return;
     }
     statusLine.textContent = formatStatusLineCount(rows.length, totalBeforeFilter);
@@ -416,8 +540,8 @@ export function render() {
       const tr = buildRowTr(row, (patched) => {
         applyRowData(tr, patched);
         patchCachedRow(patched);
-        const tds = tr.querySelectorAll("td");
-        if (tds[2] && patched.signup_at) tds[2].textContent = formatKoDateTime(patched.signup_at);
+        const signup = tr.querySelector(".admin-subs-td--signup");
+        if (signup && patched.signup_at) signup.textContent = formatKoDateTime(patched.signup_at);
         const em = tr.querySelector(".admin-subs-td--email");
         if (em && patched.email) em.textContent = patched.email;
       });
@@ -440,16 +564,32 @@ export function render() {
     }
   }
 
+  function renderImwebRows(rows, { totalBeforeFilter } = {}) {
+    tbody.innerHTML = "";
+    const q = normalizeEmailSearchQuery(emailSearchQuery);
+    if (!rows.length) {
+      statusLine.textContent = q
+        ? `「${emailSearchQuery.trim()}」 검색 결과가 없어요.`
+        : "아임웹 구매 기록이 없어요.";
+      return;
+    }
+    statusLine.textContent = formatStatusLineCount(rows.length, totalBeforeFilter, "건");
+    for (const row of rows) {
+      tbody.appendChild(buildImwebRowTr(row));
+    }
+  }
+
   function applyCachedView() {
     if (activeSection === "withdrawn") {
       const base = cachedWithdrawnRows;
       renderWithdrawnRows(getWithdrawnRowsForView(), { totalBeforeFilter: base.length });
       return;
     }
-    const base =
-      activeSection === "expired"
-        ? cachedSubsRows.filter(isRowExpired)
-        : cachedSubsRows;
+    if (activeSection === "imweb") {
+      renderImwebRows(getImwebRowsForView(), { totalBeforeFilter: cachedImwebRows.length });
+      return;
+    }
+    const base = getSubscriptionBaseRows();
     renderSubscriptionRows(getSubscriptionRowsForView(), { totalBeforeFilter: base.length });
   }
 
@@ -458,7 +598,12 @@ export function render() {
       statusLine.textContent = "관리자만 이 목록을 불러올 수 있어요.";
       return;
     }
-    if (!force && cachedSubsRows.length && activeSection !== "withdrawn") {
+    if (
+      !force &&
+      cachedSubsRows.length &&
+      activeSection !== "withdrawn" &&
+      activeSection !== "imweb"
+    ) {
       applyCachedView();
       return;
     }
@@ -475,7 +620,7 @@ export function render() {
           String(error || ""),
         )
       ) {
-        renderTableError(tbody, 6, "lp_admin_list_subscriptions", error);
+        renderTableError(tbody, 7, "lp_admin_list_subscriptions", error);
       }
       return;
     }
@@ -513,10 +658,44 @@ export function render() {
     applyCachedView();
   }
 
+  async function loadImweb(force = false) {
+    if (!(await isCurrentUserAppAdmin())) {
+      statusLine.textContent = "관리자만 이 목록을 불러올 수 있어요.";
+      return;
+    }
+    if (!force && cachedImwebRows.length) {
+      applyCachedView();
+      return;
+    }
+    const myId = ++requestId;
+    statusLine.textContent = "불러오는 중…";
+    tbody.innerHTML = "";
+    const { ok, data, error } = await adminListImwebOrderGrants();
+    if (myId !== requestId) return;
+    if (!ok) {
+      statusLine.textContent = "";
+      showToast("아임웹 목록을 불러오지 못했어요.", error || "");
+      if (
+        /permission denied|42501|P0001|function.*does not exist|not find/i.test(
+          String(error || ""),
+        )
+      ) {
+        renderTableError(tbody, 6, "lp_admin_list_imweb_order_grants", error);
+      }
+      return;
+    }
+    cachedImwebRows = data || [];
+    applyCachedView();
+  }
+
   async function loadActiveSection(force = false) {
     setActiveSection(activeSection);
     if (activeSection === "withdrawn") {
-      await loadWithdrawn();
+      await loadWithdrawn(force);
+      return;
+    }
+    if (activeSection === "imweb") {
+      await loadImweb(force);
       return;
     }
     await loadSubscriptions(force);

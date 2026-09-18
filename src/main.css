@@ -1419,23 +1419,26 @@ table {
 .lp-desktop-idea-modal__body {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   padding-bottom: 1.25rem;
 }
 
 .lp-desktop-idea-modal .idea-view--desktop-modal {
   display: flex;
   flex-direction: column;
-  flex: none;
-  height: auto;
-  min-height: auto;
-  overflow: visible;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .lp-desktop-idea-modal .idea-view--desktop-modal .idea-widget-grid.time-dashboard-view {
-  flex: none;
-  min-height: auto;
-  overflow: visible;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding-bottom: 0.5rem;
 }
 
@@ -1443,11 +1446,13 @@ table {
   position: absolute;
   top: 1.05rem;
   right: 0.75rem;
-  z-index: 2;
+  z-index: 3;
 }
 
 .lp-desktop-idea-modal .idea-view--desktop-modal .dream-view-header {
+  flex-shrink: 0;
   padding: 1.15rem 2.85rem 0.95rem 1.15rem;
+  background: #fafafa;
 }
 
 .idea-view .time-dashboard-widget.idea-widget {
@@ -1637,6 +1642,75 @@ table {
   border-radius: 8px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+}
+
+.idea-view .idea-widget-ebook {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.16);
+}
+
+.idea-view .idea-ebook-card {
+  display: flex;
+  align-items: center;
+  gap: 0.95rem;
+}
+
+.idea-view .idea-ebook-cover-wrap {
+  flex: 0 0 6.6rem;
+  width: 6.6rem;
+  padding: 0.4rem 0.35rem 0.5rem;
+  background: #f4f4f4;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.idea-view .idea-ebook-cover {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.idea-view .idea-ebook-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.idea-view .idea-widget-ebook .time-dashboard-widget-title {
+  margin-bottom: 0.65rem;
+}
+
+.idea-view .idea-ebook-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.idea-view .idea-btn-ebook-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.5rem 0.85rem;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #000000;
+  background: #fafafa;
+  border: 1px solid rgba(0, 0, 0, 0.28);
+  border-radius: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.idea-view .idea-btn-ebook-copy:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.idea-view .idea-btn-ebook-open:disabled,
+.idea-view .idea-btn-ebook-copy:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .idea-view .idea-hourly-tabs {
@@ -2135,6 +2209,25 @@ table {
   color: #666666;
 }
 
+.admin-view .admin-subs-td--pass {
+  white-space: nowrap;
+}
+
+.admin-view .admin-subs-pass-kind {
+  font-weight: 600;
+  color: #000000;
+}
+
+.admin-view .admin-subs-pass-kind--trial {
+  color: #444444;
+}
+
+.admin-view .admin-subs-pass-expired {
+  margin-left: 0.35rem;
+  font-weight: 500;
+  color: #8b5c3a;
+}
+
 .admin-view .admin-subs-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -2195,7 +2288,7 @@ table {
 
 .admin-view .admin-subs-table {
   width: 100%;
-  min-width: 44rem;
+  min-width: 50rem;
   border-collapse: collapse;
   font-size: 0.78rem;
 }

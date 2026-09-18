@@ -28,6 +28,33 @@ import {
 export { USER_HOURLY_RATE_KEY };
 
 const USER_HOURLY_CALC_INPUTS_KEY = "user_hourly_calc_inputs";
+const EBOOK_URL_YEAR =
+  "https://intothemagicbook.com/read/I_TjdjCsLZcIrDpP9IbhBT-p7jJfrwTm";
+const EBOOK_URL_TRIAL =
+  "https://intothemagicbook.com/read/_qo4OWOPl8iw0Vdu2jBC7dvXp7nkkDI5";
+
+async function copyTextToClipboard(text) {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch (_) {}
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    ta.remove();
+    return ok;
+  } catch (_) {
+    return false;
+  }
+}
 
 function formatPrice(amount) {
   if (amount == null || Number.isNaN(amount)) return "—";
@@ -295,6 +322,56 @@ export function render() {
   `;
   grid.appendChild(subscriptionWidget);
 
+  const ebookWidget = document.createElement("div");
+  ebookWidget.className =
+    "time-dashboard-widget idea-widget idea-widget-ebook";
+  ebookWidget.innerHTML = `
+    <div class="idea-ebook-card">
+      <div class="idea-ebook-cover-wrap">
+        <img
+          class="idea-ebook-cover"
+          src="/idea-ebook-cover-v3.png"
+          alt="시간격차 책"
+          width="640"
+          height="480"
+        />
+      </div>
+      <div class="idea-ebook-main">
+        <div class="time-dashboard-widget-title">시간격차 전자책 보기</div>
+        <div class="idea-ebook-actions">
+          <button type="button" class="idea-btn-renewal idea-btn-ebook-open" disabled>새 링크로 열기</button>
+          <button type="button" class="idea-btn-ebook-copy" disabled>복사하기</button>
+        </div>
+      </div>
+    </div>
+  `;
+  grid.appendChild(ebookWidget);
+  const ebookOpenBtn = ebookWidget.querySelector(".idea-btn-ebook-open");
+  const ebookCopyBtn = ebookWidget.querySelector(".idea-btn-ebook-copy");
+  let ebookUrl = "";
+
+  function setEbookUrl(url) {
+    ebookUrl = String(url || "").trim();
+    const ready = !!ebookUrl;
+    if (ebookOpenBtn) ebookOpenBtn.disabled = !ready;
+    if (ebookCopyBtn) ebookCopyBtn.disabled = !ready;
+  }
+
+  ebookOpenBtn?.addEventListener("click", () => {
+    if (!ebookUrl) return;
+    try {
+      window.open(ebookUrl, "_blank", "noopener,noreferrer");
+    } catch (_) {
+      showToast("책을 열지 못했어요.");
+    }
+  });
+  ebookCopyBtn?.addEventListener("click", () => {
+    if (!ebookUrl) return;
+    void copyTextToClipboard(ebookUrl).then((ok) => {
+      showToast(ok ? "링크를 복사했어요." : "복사를 못 했어요.");
+    });
+  });
+
   if (typeof supabase !== "undefined" && supabase?.auth) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       const idEl = document.getElementById("idea-user-id");
@@ -317,11 +394,17 @@ export function render() {
             statusEl.textContent = "—";
             passEl.hidden = true;
             if (renewalEl) renewalEl.hidden = true;
+            setEbookUrl("");
             return;
           }
           const snap = subscriptionSnapFromPrefsRow(data);
           const expired = subscriptionAccessEnded(snap);
           const showRenewal = subscriptionRenewalOfferDue(snap);
+          setEbookUrl(
+            String(data.subscription_status || "").toLowerCase() === "active"
+              ? EBOOK_URL_YEAR
+              : EBOOK_URL_TRIAL,
+          );
           if (expired) {
             statusEl.textContent = "이용 만료";
             passEl.textContent = data.access_until
