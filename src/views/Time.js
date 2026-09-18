@@ -6682,19 +6682,27 @@ export function render(opts = {}) {
     return normalizedUsageHistoryRangeYmd();
   }
 
+  function localLedgerRowCountInRange(rs, re) {
+    const a = String(rs || "").trim();
+    const b = String(re || "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(a) || !/^\d{4}-\d{2}-\d{2}$/.test(b)) {
+      return 0;
+    }
+    const lo = a <= b ? a : b;
+    const hi = a <= b ? b : a;
+    try {
+      return loadTimeRows().filter((row) => {
+        const y = timeLedgerRowYmd(row);
+        return y && y >= lo && y <= hi;
+      }).length;
+    } catch (_) {
+      return 0;
+    }
+  }
+
   function armUsageEmptyLoadingIfUnpulled() {
-    const { rs, re } = currentLedgerPullRangeYmd();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(rs) || !/^\d{4}-\d{2}-\d{2}$/.test(re)) {
-      return;
-    }
-    if (wasLedgerRangePulled(rs, re)) return;
-    const today = getLedgerFilterTodayYmd();
-    /* 오늘·아직 안 온 날은 미기록 — 받아올 기록이 있을 때만 불러오는 중 */
-    if (rs > today || (rs === today && re === today)) {
-      _lpUsageRangePullPending = false;
-      return;
-    }
-    _lpUsageRangePullPending = true;
+    /* 빈 칸은 미기록. 불러오는 중은 이미 있는 기록을 받을 때만 */
+    _lpUsageRangePullPending = false;
   }
 
   function clearUsageEmptyLoading() {
@@ -6707,11 +6715,6 @@ export function render(opts = {}) {
     const today = getLedgerFilterTodayYmd();
     const singleDay = !timeLedgerFilterSpansMultipleDays();
     const viewingToday = singleDay && rs === today && re === today;
-    const rangeNotYet = rs > today;
-    /* 오늘·아직 안 온 날은 미기록. 지나간 날만 서버에서 받을 때 불러오는 중 */
-    if (_lpUsageRangePullPending && !viewingToday && !rangeNotYet) {
-      return "불러오는 중…";
-    }
     if (viewingToday) return "오늘 기록이 없습니다.";
     if (singleDay) return "이 날 기록이 없습니다.";
     return "선택 기간에 기록이 없습니다.";
@@ -6856,7 +6859,7 @@ export function render(opts = {}) {
             syncTimeLedgerContent({ force: false });
             return;
           }
-          if (rs !== re) {
+          if (rs !== re && localLedgerRowCountInRange(rs, re) > 0) {
             showTimeLedgerPullLoadingUi(inquiryRangeLoadingMessage(rs, re));
           }
           const ok = await pullTimeLedgerEntriesForDateRange(rs, re, {
@@ -8287,7 +8290,8 @@ export function render(opts = {}) {
           waitRs &&
           waitRe &&
           waitRs !== waitRe &&
-          !wasLedgerRangePulled(waitRs, waitRe)
+          !wasLedgerRangePulled(waitRs, waitRe) &&
+          localLedgerRowCountInRange(waitRs, waitRe) > 0
         ) {
           showTimeLedgerPullLoadingUi(
             inquiryRangeLoadingMessage(waitRs, waitRe),
