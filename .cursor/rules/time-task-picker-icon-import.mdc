@@ -1,5 +1,5 @@
 ---
-description: 스탬프/할일 피커 아이콘 추가 시 SVG→고화질 PNG 절차 (채팅 PNG 업스케일 금지)
+description: 스탬프/할일 피커 아이콘 — SVG 원본만 변환. 옛 PNG·채팅 PNG 재사용 금지
 alwaysApply: true
 ---
 
@@ -12,6 +12,12 @@ alwaysApply: true
 - Cursor 채팅/assets의 **작은 PNG(예: 48×48)** 를 nearest/lanczos로 업스케일해 넣는 것
 - 기존 아이콘 **slug·파일명 변경·삭제** (이미 찍힌 스탬프가 깨짐)
 - SVG 없이 “화질만 고친” 것처럼 PNG만 교체하는 것
+- 프로젝트에 이미 있는 PNG를 원본처럼 쓰거나, 그 PNG를 다시 SVG 안에 넣어서 만드는 것
+  (그 PNG는 **빈 타원·빈 종이**만 있고 손글씨 층이 빠진 경우가 있다. 예: 지쳤나요·금일체력소진)
+
+## 두 겹 SVG (글 빠짐 사고)
+
+손그림 아이콘 SVG는 종종 **아래=도형 사진, 위=글씨 선**이다. 피커·캘린더는 PNG를 쓰므로, PNG는 **반드시 그 SVG 전체**에서 다시 뽑는다. 글 없는 옛 PNG를 남기면 피커에는 글이 없고 SVG를 쓰는 화면만 글이 보인다.
 
 ## 올바른 순서
 
@@ -22,6 +28,8 @@ alwaysApply: true
 3. 같은 slug의 낡은 PNG가 있으면 **삭제**한 뒤, 프로젝트 변환을 돌린다:
    - `npm run gen:icons`
    - (= `ensure-toolbar-icons-png.mjs`가 SVG를 `density: 288`로 **256×256 PNG** 생성 + 목록 JSON 갱신)
+   - **교체**도 같다: 이름 유지 → SVG만 덮어씀 → 옛 PNG 삭제 → `gen:icons`. 옛 PNG를 고친 그림으로 쓰지 않는다.
+   - 변환 후 PNG를 열어서 **원본과 같은 글·그림인지** 확인한다. 도형만 있으면 실패이므로 그 PNG를 쓰지 않는다.
 4. 한글 검색어는 `src/utils/timeTaskIconUrls.js`의 `PICKER_SEARCH_EXTRA_RAW`에만 추가한다.
 5. 사용자가 **캘린더 스탬프용**이라고 하면 `CALENDAR_STAMP_ONLY_PICKER_SLUGS`에만 넣고, 과제 아이콘 목록에는 안 나오게 한다. **과제용**이면 그 목록에 넣지 않는다.
 6. 다른 화면/기능 코드는 건드리지 않는다. (아이콘 추가 요청이면 아이콘·목록·검색어만)
@@ -37,4 +45,5 @@ alwaysApply: true
 ## 완료 확인
 
 - `{slug}.svg`와 `{slug}.png`가 함께 있고, PNG는 **256×256**
+- PNG에 원본과 같은 글·그림이 보이는지 확인
 - `public/time-task-picker-icons.json` 등에 새 slug가 포함됨
