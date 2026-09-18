@@ -7155,7 +7155,7 @@
   overflow: hidden;
 }
 
-/* 1일 타임박스 — 좌=실제 기록, 우=예상 일정 */
+/* 1일 타임박스 — 좌=예상 일정, 우=실제 기록 */
 .time-ledger-day-timebox-dual-pane,
 [data-legacy~="time-ledger-view"] .time-ledger-day-timebox-dual-pane {
   flex: 1 1 0;
@@ -7177,9 +7177,19 @@
   overflow: hidden;
 }
 
-.time-ledger-day-timebox-dual-pane__col--expected,
+.time-ledger-day-timebox-dual-pane:not(
+    .time-ledger-day-timebox-dual-pane--solo-actual
+  ):not(.time-ledger-day-timebox-dual-pane--solo-expected)
+  .time-ledger-day-timebox-dual-pane__col:not(
+    .time-ledger-day-timebox-dual-pane__col--expected
+  ),
 [data-legacy~="time-ledger-view"]
-  .time-ledger-day-timebox-dual-pane__col--expected {
+  .time-ledger-day-timebox-dual-pane:not(
+    .time-ledger-day-timebox-dual-pane--solo-actual
+  ):not(.time-ledger-day-timebox-dual-pane--solo-expected)
+  .time-ledger-day-timebox-dual-pane__col:not(
+    .time-ledger-day-timebox-dual-pane__col--expected
+  ) {
   border-left: 1px solid #d9dcdf;
 }
 

@@ -5292,21 +5292,10 @@ function createTimeboxDualPaneHead(label, kind) {
   return head;
 }
 
-/** 1일 타임박스 — 좌=실제 기록, 우=예상 일정(일간 예산) */
+/** 1일 타임박스 — 좌=예상 일정(일간 예산), 우=실제 기록 */
 function createTimeLedgerDayTimeboxDualPane(actualBlocks, expectedBlocks) {
   const dual = document.createElement("div");
   dual.className = "time-ledger-day-timebox-dual-pane";
-
-  const actualCol = document.createElement("div");
-  actualCol.className = "time-ledger-day-timebox-dual-pane__col";
-  actualCol.appendChild(createTimeboxDualPaneHead("실제", "actual"));
-  const actualScroll = createTimeLedgerDayTimeboxElement(actualBlocks, {
-    showEmptyMessage: false,
-    matrixAriaLabel: "실제 수행 24행 12열 5분 단위 시간박스",
-  });
-  actualScroll.dataset.lpTimeboxKind = "actual";
-  actualCol.appendChild(actualScroll);
-  dual.appendChild(actualCol);
 
   const expectedCol = document.createElement("div");
   expectedCol.className =
@@ -5320,6 +5309,17 @@ function createTimeLedgerDayTimeboxDualPane(actualBlocks, expectedBlocks) {
   expectedScroll.dataset.lpTimeboxKind = "expected";
   expectedCol.appendChild(expectedScroll);
   dual.appendChild(expectedCol);
+
+  const actualCol = document.createElement("div");
+  actualCol.className = "time-ledger-day-timebox-dual-pane__col";
+  actualCol.appendChild(createTimeboxDualPaneHead("실제", "actual"));
+  const actualScroll = createTimeLedgerDayTimeboxElement(actualBlocks, {
+    showEmptyMessage: false,
+    matrixAriaLabel: "실제 수행 24행 12열 5분 단위 시간박스",
+  });
+  actualScroll.dataset.lpTimeboxKind = "actual";
+  actualCol.appendChild(actualScroll);
+  dual.appendChild(actualCol);
 
   return dual;
 }
