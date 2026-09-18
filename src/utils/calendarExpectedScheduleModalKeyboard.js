@@ -113,29 +113,16 @@ function scrollAnchorIntoBand(scrollArea, anchor, wantTop, wantBottom) {
   }
 }
 
-/** 메모 — 레이블+입력+커서가 키보드·액세서리 바로 위에 보이게 (수동 스크롤 불필요) */
+/** 메모 — 키보드에 가려질 때만 그 만큼만 올림. 맨 위 고정·아래 공백·입력마다 재스크롤 없음 */
 function scrollExpectedMemoIntoView(modal, scrollArea, inputEl) {
   if (!(inputEl instanceof HTMLElement)) return;
   if (!(scrollArea instanceof HTMLElement)) return;
 
   applyExpectedShellGeometry(modal, scrollArea);
-  const { top: wantTop, bottom: wantBottom } = readExpectedVisibleBand();
-  const anchor = findMemoAnchor(inputEl);
-  const vv = window.visualViewport;
-  const pad = vv
-    ? Math.max(72, window.innerHeight - vv.height - (vv.offsetTop || 0))
-    : 72;
-  scrollArea.style.setProperty("--lp-expected-scroll-pad", `${pad}px`);
-
-  scrollAnchorIntoBand(scrollArea, anchor, wantTop, wantBottom);
-
-  let inputRect = inputEl.getBoundingClientRect();
-  if (inputRect.bottom > wantBottom) {
-    scrollArea.scrollTop += inputRect.bottom - wantBottom;
-  }
-  inputRect = inputEl.getBoundingClientRect();
-  if (inputRect.top < wantTop) {
-    scrollArea.scrollTop -= wantTop - inputRect.top;
+  const { bottom: wantBottom } = readExpectedVisibleBand();
+  const rect = inputEl.getBoundingClientRect();
+  if (rect.bottom > wantBottom) {
+    scrollArea.scrollTop += rect.bottom - wantBottom;
   }
 }
 
@@ -163,13 +150,6 @@ function scrollExpectedFieldIntoView(modal, scrollArea, inputEl) {
   scrollAnchorIntoBand(scrollArea, inputEl, top, bottom);
 }
 
-function runMemoScrollPasses(modal, scrollArea, inputEl) {
-  const run = () => scrollExpectedMemoIntoView(modal, scrollArea, inputEl);
-  run();
-  requestAnimationFrame(run);
-  scheduleMobileKeyboardInsetSync(run, [0, 120, 280, 480, 720]);
-}
-
 function setExpectedMemoScrollMode(scrollArea, on) {
   scrollArea?.classList?.toggle("is-expected-memo-kb-open", !!on);
 }
@@ -190,10 +170,7 @@ function bindExpectedScheduleKeyboardShell(modal, scrollArea, signal) {
     if (!inputFocused) return;
 
     applyExpectedShellGeometry(modal, scrollArea);
-    setExpectedMemoScrollMode(
-      scrollArea,
-      !!(active instanceof HTMLElement && active.matches(MEMO_INPUT_SELECTOR)),
-    );
+    setExpectedMemoScrollMode(scrollArea, false);
 
     try {
       document.documentElement.classList.add("lp-keyboard-open");
@@ -201,7 +178,7 @@ function bindExpectedScheduleKeyboardShell(modal, scrollArea, signal) {
     } catch (_) {}
 
     if (active.matches(MEMO_INPUT_SELECTOR)) {
-      runMemoScrollPasses(modal, scrollArea, active);
+      scrollExpectedMemoIntoView(modal, scrollArea, active);
     } else {
       scrollExpectedFieldIntoView(modal, scrollArea, active);
     }
@@ -249,7 +226,12 @@ function bindExpectedScheduleFieldScroll(modal, scrollArea, signal) {
       "focus",
       () => {
         if (el.matches(MEMO_INPUT_SELECTOR)) {
-          runMemoScrollPasses(modal, scrollArea, el);
+          scrollExpectedMemoIntoView(modal, scrollArea, el);
+          requestAnimationFrame(() => {
+            if (document.activeElement === el) {
+              scrollExpectedMemoIntoView(modal, scrollArea, el);
+            }
+          });
         } else {
           align();
           requestAnimationFrame(align);
@@ -258,14 +240,6 @@ function bindExpectedScheduleFieldScroll(modal, scrollArea, signal) {
       },
       { signal },
     );
-
-    if (el.tagName === "TEXTAREA") {
-      el.addEventListener("input", () => {
-        if (document.activeElement === el) {
-          scrollExpectedMemoIntoView(modal, scrollArea, el);
-        }
-      }, { signal });
-    }
   });
 }
 
