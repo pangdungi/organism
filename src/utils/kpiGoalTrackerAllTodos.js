@@ -122,7 +122,6 @@ export function collectTaskCompletionTodoGroups() {
         text: String(t.text || "").trim(),
         completed: !!t.completed,
       }));
-      if (!rows.length) continue;
       groups.push({
         storageKey: d.storageKey,
         domain: d.domain,
@@ -605,7 +604,7 @@ export function mountKpiGoalAllTodosSection(container, opts = {}) {
     if (!g.rows.length) {
       const none = document.createElement("p");
       none.className = "habit-tracker-all-todos-none";
-      none.textContent = "할일 없음";
+      none.textContent = "할일이 아직 없습니다.";
       list.appendChild(none);
     } else {
       for (const t of g.rows) renderRow(t);
