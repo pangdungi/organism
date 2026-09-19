@@ -249,6 +249,11 @@ import {
   parseReflectionJournal,
   REFLECTION_JOURNAL_QUESTIONS,
 } from "../utils/timeReflectionJournal.js";
+import {
+  KPT_RETROSPECTIVE_QUESTIONS,
+  packKptRetrospective,
+  parseKptRetrospective,
+} from "../utils/timeKptRetrospective.js";
 import { mountTimeLedgerMemoFeed } from "../utils/timeLedgerMemoFeed.js";
 import {
   mountTimeLedgerReport,
@@ -8684,12 +8689,25 @@ export function render(opts = {}) {
       taskLogEmotionInterpInput.value = interpretation;
   }
 
-  function ensureTaskLogReflectionFields() {
-    if (!taskLogReflectionSection || taskLogReflectionSection.dataset.lpBuilt === "1") {
-      return;
-    }
+  function taskLogJournalKind(taskName) {
+    if (TTC.isKptRetrospectiveTaskName(taskName)) return "kpt";
+    if (TTC.isReflectionJournalTaskName(taskName)) return "reflection";
+    return "";
+  }
+
+  function taskLogJournalQuestions(kind) {
+    return kind === "kpt"
+      ? KPT_RETROSPECTIVE_QUESTIONS
+      : REFLECTION_JOURNAL_QUESTIONS;
+  }
+
+  function ensureTaskLogReflectionFields(taskName) {
+    if (!taskLogReflectionSection) return;
+    const kind = taskLogJournalKind(taskName) || "reflection";
+    if (taskLogReflectionSection.dataset.lpBuilt === kind) return;
+    taskLogReflectionSection.replaceChildren();
     const frag = document.createDocumentFragment();
-    for (const q of REFLECTION_JOURNAL_QUESTIONS) {
+    for (const q of taskLogJournalQuestions(kind)) {
       const field = document.createElement("div");
       field.setAttribute("data-legacy", "time-task-log-field");
       const lab = document.createElement("label");
@@ -8707,13 +8725,13 @@ export function render(opts = {}) {
         "time-task-log-reflection-input time-task-log-memo-input",
       );
       ta.rows = 2;
-      ta.placeholder = "답하기";
+      ta.placeholder = q.placeholder || "답하기";
       ta.autocomplete = "off";
       field.append(lab, ta);
       frag.appendChild(field);
     }
     taskLogReflectionSection.appendChild(frag);
-    taskLogReflectionSection.dataset.lpBuilt = "1";
+    taskLogReflectionSection.dataset.lpBuilt = kind;
   }
 
   function clearTaskLogReflectionInputs() {
@@ -8724,9 +8742,11 @@ export function render(opts = {}) {
       });
   }
 
-  function setTaskLogReflectionInputs(raw) {
-    ensureTaskLogReflectionFields();
-    const answers = parseReflectionJournal(raw);
+  function setTaskLogReflectionInputs(raw, taskName) {
+    const kind = taskLogJournalKind(taskName) || "reflection";
+    ensureTaskLogReflectionFields(taskName);
+    const answers =
+      kind === "kpt" ? parseKptRetrospective(raw) : parseReflectionJournal(raw);
     taskLogReflectionSection
       ?.querySelectorAll('[data-legacy~="time-task-log-reflection-input"]')
       .forEach((el) => {
@@ -8765,10 +8785,10 @@ export function render(opts = {}) {
   }
 
   function syncTaskLogReflectionVisibility(taskName) {
-    const show = TTC.isReflectionJournalTaskName(taskName);
+    const show = !!taskLogJournalKind(taskName);
     if (taskLogReflectionSection) {
       taskLogReflectionSection.hidden = !show;
-      if (show) ensureTaskLogReflectionFields();
+      if (show) ensureTaskLogReflectionFields(taskName);
     }
     if (!show) clearTaskLogReflectionInputs();
     syncTaskLogStructuredMemoFieldVisibility(taskName);
@@ -8778,7 +8798,7 @@ export function render(opts = {}) {
     if (!taskLogMemoDefaultField) return;
     taskLogMemoDefaultField.hidden =
       TTC.isNegativeEmotionalTaskName(taskName) ||
-      TTC.isReflectionJournalTaskName(taskName);
+      !!taskLogJournalKind(taskName);
   }
 
   /** 메모 textarea 커서 위치에 문자 삽입(이모티콘 창 없이 □ 등) */
@@ -13857,7 +13877,7 @@ export function render(opts = {}) {
         clearTaskLogEmotionReflectInputs();
         if (taskLogFeedbackInput) taskLogFeedbackInput.value = memoOnly;
       }
-    } else if (TTC.isReflectionJournalTaskName(tnForMemo)) {
+    } else if (taskLogJournalKind(tnForMemo)) {
       if (taskLogMealDetailInput) taskLogMealDetailInput.value = "";
       clearTaskLogContentType();
       clearTaskLogEmotionTrigger();
@@ -13901,8 +13921,8 @@ export function render(opts = {}) {
     refreshKpiTodosInLogModal();
     refreshTaskCompletionTodosInLogModal();
     updateTaskLogMealDetailVisibility(tnSync);
-    if (TTC.isReflectionJournalTaskName(tnForMemo)) {
-      setTaskLogReflectionInputs(mealDetailVal);
+    if (taskLogJournalKind(tnForMemo)) {
+      setTaskLogReflectionInputs(mealDetailVal, tnForMemo);
     }
     syncTaskLogGapFillBtnVisibility();
     void runTaskLogModalCloudSync();
@@ -14000,7 +14020,9 @@ export function render(opts = {}) {
             ? resolveReadingBookTitleForSave()
             : detailKind === "reflection"
               ? packReflectionJournal(collectTaskLogReflectionAnswers())
-              : detailKind
+              : detailKind === "kpt"
+                ? packKptRetrospective(collectTaskLogReflectionAnswers())
+                : detailKind
                 ? (taskLogMealDetailInput?.value || "").trim()
                 : "";
     if (

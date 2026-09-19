@@ -215,6 +215,7 @@ export const FIXED_PRODUCTIVE_TASKS = [
   },
   { name: "기록하기", category: "happiness", productivity: "productive" },
   { name: "성찰 일기 쓰기", category: "happiness", productivity: "productive" },
+  { name: "KPT회고하기", category: "happiness", productivity: "productive" },
   { name: "외모 관리", category: "happiness", productivity: "productive" },
   {
     name: EMOTIONAL_POSITIVE_TASK_NAME,
@@ -280,6 +281,7 @@ export const MEAL_TASK_NAME_RENAMES = [
   { from: "무의식적 영상 시청", to: "무의식적 콘텐츠 소비" },
   { from: "낮잠(30분이상)", to: "낮잠(30분 이상)" },
   { from: "성찰 일기쓰기", to: "성찰 일기 쓰기" },
+  { from: "KPT회고", to: "KPT회고하기" },
   { from: "외모관리", to: "외모 관리" },
   { from: "영상편집", to: "영상 편집" },
   { from: "시간기록", to: "시간 기록" },
@@ -840,7 +842,13 @@ export function isReflectionJournalTaskName(name) {
   return n === "성찰 일기 쓰기";
 }
 
-/** 섭취·대화·외출·독서·콘텐츠·위생·외모·감정·성찰 — time_ledger_entries.meal_detail 에 저장 */
+/** KPT회고하기 — time_ledger_entries.meal_detail 에 질문 답 저장 */
+export function isKptRetrospectiveTaskName(name) {
+  const n = canonicalMealTaskDisplayName(name);
+  return n === "KPT회고하기";
+}
+
+/** 섭취·대화·외출·독서·콘텐츠·위생·외모·감정·성찰·KPT — time_ledger_entries.meal_detail 에 저장 */
 export function isLedgerDetailTaskName(name) {
   return (
     isLedgerFreeTextDetailTaskName(name) ||
@@ -848,11 +856,12 @@ export function isLedgerDetailTaskName(name) {
     isHygieneDetailTaskName(name) ||
     isAppearanceDetailTaskName(name) ||
     isEmotionalDetailTaskName(name) ||
-    isReflectionJournalTaskName(name)
+    isReflectionJournalTaskName(name) ||
+    isKptRetrospectiveTaskName(name)
   );
 }
 
-/** @returns {"meal" | "conversation" | "outing" | "reading" | "content" | "hygiene" | "appearance" | "emotion" | "reflection" | null} */
+/** @returns {"meal" | "conversation" | "outing" | "reading" | "content" | "hygiene" | "appearance" | "emotion" | "reflection" | "kpt" | null} */
 export function ledgerDetailTaskKind(name) {
   if (isMealDetailTaskName(name)) return "meal";
   if (isConversationDetailTaskName(name)) return "conversation";
@@ -863,6 +872,7 @@ export function ledgerDetailTaskKind(name) {
   if (isAppearanceDetailTaskName(name)) return "appearance";
   if (isEmotionalDetailTaskName(name)) return "emotion";
   if (isReflectionJournalTaskName(name)) return "reflection";
+  if (isKptRetrospectiveTaskName(name)) return "kpt";
   return null;
 }
 
@@ -952,6 +962,7 @@ const TIME_RATING_STARS_ONLY_TASK_NAMES = new Set([
   "게임",
   "물건 찾기",
   "성찰 일기 쓰기",
+  "KPT회고하기",
   "아이디어 작업",
   "아이디어 작업하기",
 ]);
