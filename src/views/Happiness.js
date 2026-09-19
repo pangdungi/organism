@@ -1222,7 +1222,8 @@ export function render() {
       card.className =
         "dream-kpi-card" +
         (lowerBetter ? " dream-kpi-card--lower-better" : "") +
-        cardExtraClass;
+        cardExtraClass +
+        (selectedKpiId === kpi.id ? " is-selected" : "");
       card.dataset.kpiId = kpi.id;
       card.draggable = true;
       const nameHtml = `${escapeHtml(kpi.name)}${lowerBetter ? '<span class="dream-kpi-card-direction-badge" title="낮을수록 좋음 행동">↓낮음</span>' : ""}`;
@@ -1723,8 +1724,9 @@ export function render() {
       const todoAddCard = document.createElement("button");
       todoAddCard.type = "button";
       todoAddCard.className = "dream-kpi-add-card sideincome-split-todo-add-card";
-      todoAddCard.innerHTML =
-        '<span class="dream-kpi-add-card-text">할 일 추가하기</span>';
+      todoAddCard.innerHTML = `<span class="dream-kpi-add-card-text">${
+        readingKpi ? "도서 추가하기" : "할 일 추가하기"
+      }</span>`;
       todoAddCard.addEventListener("click", () => {
         setKpiHistoryBottomTab("happiness", selKpi, KPI_BOTTOM_TAB_TODO);
         void runHappinessKpiFooterAddAction();

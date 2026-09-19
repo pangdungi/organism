@@ -915,7 +915,8 @@ export function render() {
       card.className =
         "dream-kpi-card" +
         (lowerBetter ? " dream-kpi-card--lower-better" : "") +
-        cardExtraClass;
+        cardExtraClass +
+        (selectedKpiId === kpi.id ? " is-selected" : "");
       card.dataset.kpiId = kpi.id;
       card.draggable = true;
       const investedTimeHtml = "";
