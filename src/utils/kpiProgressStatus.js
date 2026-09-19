@@ -58,9 +58,8 @@ function localTodayYmdTen() {
 
 /**
  * 시작일 기준 과제 상태.
- * - 완료는 fallback이 완료일 때만 (사용자가 고른 경우)
- * - 시작일이 오늘보다 미래 → 진행전
- * - 시작일이 오늘 이내 → 진행중
+ * - 사용자가 진행중·완료를 고르면 시작일과 상관없이 그 상태
+ * - 진행전만 시작일이 오늘 이내면 진행중, 미래면 진행전
  * - 시작일 없음 → fallback
  * @param {string} startYmd
  * @param {unknown} [fallbackStatus]
@@ -72,6 +71,9 @@ export function progressStatusForKpiStartDate(
   const fb = normalizeKpiProgressStatus(fallbackStatus);
   if (fb === KPI_PROGRESS_STATUS.COMPLETED) {
     return KPI_PROGRESS_STATUS.COMPLETED;
+  }
+  if (fb === KPI_PROGRESS_STATUS.ACTIVE) {
+    return KPI_PROGRESS_STATUS.ACTIVE;
   }
   const start = String(startYmd || "").trim().slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) {
@@ -94,7 +96,8 @@ export function isKpiEligibleForTimeTaskList(kpi, progress = null) {
 /**
  * 목록·필터용 유효 상태.
  * 직접입력이고 목표 달성(isCompleted)이면 항상 완료.
- * 시작일이 미래면 진행 전(완료 제외).
+ * 진행중·완료로 저장된 값은 시작일과 상관없이 유지.
+ * 진행전만 시작일이 오면 진행중으로 본다.
  * @param {unknown} kpi
  * @param {{ isCompleted?: boolean }|null|undefined} progress
  */
@@ -104,11 +107,9 @@ export function resolveKpiProgressStatus(kpi, progress = null) {
   }
   const stored = getKpiProgressStatus(kpi);
   if (stored === KPI_PROGRESS_STATUS.COMPLETED) return stored;
+  if (stored === KPI_PROGRESS_STATUS.ACTIVE) return stored;
   const start = String(kpi?.targetStartDate || "").trim().slice(0, 10);
   const today = localTodayYmdTen();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(start) && start > today) {
-    return KPI_PROGRESS_STATUS.PENDING;
-  }
   /* 진행전으로 저장돼 있어도 시작일이 오면 진행중으로 본다 */
   if (
     stored === KPI_PROGRESS_STATUS.PENDING &&
@@ -256,10 +257,15 @@ export function bindKpiProgressStatusField(root, opts = {}) {
       .slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) return;
     const current = readKpiProgressStatusFromForm(form);
-    if (current === KPI_PROGRESS_STATUS.COMPLETED) return;
+    if (
+      current === KPI_PROGRESS_STATUS.COMPLETED ||
+      current === KPI_PROGRESS_STATUS.ACTIVE
+    ) {
+      return;
+    }
     setKpiProgressStatusRadio(
       form,
-      progressStatusForKpiStartDate(start, KPI_PROGRESS_STATUS.ACTIVE),
+      progressStatusForKpiStartDate(start, current),
     );
   };
 

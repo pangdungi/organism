@@ -9,22 +9,18 @@ import {
   parseHabitMinuteTargetToMinutes,
 } from "./kpiHabitUnitGoal.js";
 import { isKpiHabitDateBeforeStart } from "./kpiHabitTrackerStartDate.js";
-import {
-  collectKpiHabitSuccessDateKeys,
-  getKpiHabitTodayNumericValue,
-} from "./kpiHabitStreak.js";
+import { getKpiHabitTodayNumericValue } from "./kpiHabitStreak.js";
 import { readKpiMapScopedStorageRaw } from "./kpiMapLocalStorage.js";
 import {
   filterKpisByProgressStatus,
   KPI_PROGRESS_STATUS,
   resolveKpiProgressStatus,
 } from "./kpiProgressStatus.js";
-import { resolveKpiDetailLogEntriesLocal } from "./kpiTimeLedgerLogs.js";
 import { computeKpiProgress, resolveKpiGoalMode } from "./kpiTimeUnitKpi.js";
 import {
   getAccumulatedMinutesForKpiIdOnDate,
+  getKpiDailyLedgerSummaries,
   getTaskDailyAverageMinutesInDateRange,
-  normalizeKpiLogDateYmd,
   syncHabitTrackerLogs,
 } from "./timeKpiSync.js";
 import { timeLedgerLocalTodayYmd } from "./timeLedgerEntriesSupabase.js";
@@ -173,57 +169,14 @@ function formatTodayTargetLabel(kpi, data, todayYmd) {
   return raw;
 }
 
-function hasLogOrLedgerActivityToday(kpi, logs, todayYmd) {
+/** 오늘 시간기록에 그 행동이 있으면 동그라미 — 할일·책 추가·수치만으로는 안 함 */
+function isKpiExecutedToday(kpi, _data, todayYmd) {
   const kid = String(kpi?.id || "").trim();
-  if (!kid) return false;
-  const entries = resolveKpiDetailLogEntriesLocal(kpi, logs);
-  for (const entry of entries) {
-    if (normalizeKpiLogDateYmd(entry?.dateRaw || entry?.date || "") !== todayYmd) {
-      continue;
-    }
-    const v = String(entry?.value ?? "").trim();
-    const hasChecks = (entry?.dailyCompleted || []).length > 0;
-    const hasLedger =
-      (Array.isArray(entry?.timeLedgerEntryIds) &&
-        entry.timeLedgerEntryIds.length > 0) ||
-      Number(entry?.__ledgerMinutes) > 0;
-    if (hasChecks || hasLedger || (v && v !== "0")) return true;
-  }
-  if (getAccumulatedMinutesForKpiIdOnDate(kid, kpi?.name, todayYmd) > 0) {
-    return true;
-  }
-  return false;
-}
-
-function hasTaskCompletionToday(kpi, data, todayYmd) {
-  const kid = String(kpi?.id || "").trim();
-  for (const e of data.kpiTaskCompletionEvents || []) {
-    if (String(e?.kpiId || "").trim() !== kid) continue;
-    const dk = normalizeKpiLogDateYmd(
-      e?.dateRaw || e?.date || e?.completedAt || e?.createdAt || "",
-    );
-    if (dk === todayYmd) return true;
-  }
-  return hasLogOrLedgerActivityToday(kpi, data.kpiLogs || [], todayYmd);
-}
-
-function isKpiExecutedToday(kpi, data, todayYmd) {
-  const mode = resolveKpiGoalMode(kpi);
-  const logs = data.kpiLogs || [];
-
-  if (mode === "habit") {
-    if (isKpiHabitDateBeforeStart(kpi, todayYmd)) return false;
-    if (kpiHasHabitUnitGoal(kpi)) {
-      const goalNum = parseNum(kpi.targetValue);
-      const result = getKpiHabitTodayNumericValue(kpi, logs, todayYmd);
-      return goalNum > 0 ? result >= goalNum : result > 0;
-    }
-    return collectKpiHabitSuccessDateKeys(kpi, logs).has(todayYmd);
-  }
-  if (mode === "task") {
-    return hasTaskCompletionToday(kpi, data, todayYmd);
-  }
-  return hasLogOrLedgerActivityToday(kpi, logs, todayYmd);
+  if (!kid || !/^\d{4}-\d{2}-\d{2}$/.test(String(todayYmd || ""))) return false;
+  return getKpiDailyLedgerSummaries(kid, kpi?.name, {
+    startYmd: todayYmd,
+    endYmd: todayYmd,
+  }).some((d) => String(d?.dateRaw || "") === todayYmd);
 }
 
 function scheduledTimesForBudgetTask(data) {
