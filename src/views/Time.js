@@ -7325,13 +7325,13 @@ export function render(opts = {}) {
       <div data-legacy="time-task-setup-body">
         <button type="button" data-legacy="time-task-add-btn">+ 과제 추가하기</button>
         <div data-legacy="time-task-setup-tabs">
-          <button type="button" data-legacy="time-task-setup-tab active" data-tab="all">전체</button>
+          <button type="button" class="active" data-legacy="time-task-setup-tab" data-tab="all">전체</button>
           <button type="button" data-legacy="time-task-setup-tab" data-tab="productive">생산적</button>
           <button type="button" data-legacy="time-task-setup-tab" data-tab="nonproductive">비생산적</button>
           <button type="button" data-legacy="time-task-setup-tab" data-tab="other">그 외</button>
         </div>
         <div data-legacy="time-task-setup-subcats" data-subcat-bar style="display:none">
-          <button type="button" data-legacy="time-task-setup-subcat-btn active" data-subcat="">전체</button>
+          <button type="button" class="active" data-legacy="time-task-setup-subcat-btn" data-subcat="">전체</button>
         </div>
         <div data-legacy="time-task-setup-search" class="lp-search-bar time-task-setup-search">
           <div class="lp-search-bar__row">
@@ -15699,7 +15699,7 @@ export function render(opts = {}) {
       document.body.style.overflow = "hidden";
       activeSetupTab =
         taskSetupModal.querySelector(
-          '[data-legacy~="time-task-setup-tab"][data-legacy~="active"]',
+          '[data-legacy~="time-task-setup-tab"].active',
         )?.dataset?.tab || "all";
       selectedSubcat = "";
       taskSetupSearchQuery = "";
