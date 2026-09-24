@@ -3,10 +3,10 @@
 export const TOOLBAR_ICON_EXT = "png";
 
 /** public/sw.js ASSET_CACHE 와 함께 올리면 구 아이콘 URL·SW 캐시 무력화 */
-export const TOOLBAR_ICON_CACHE_VERSION = "62";
+export const TOOLBAR_ICON_CACHE_VERSION = "63";
 
 /** public/sw.js ASSET_CACHE — 클라이언트 warmIconPathInSwCache 와 동일 버킷 */
-export const SW_ASSET_CACHE = "tip-assets-v75";
+export const SW_ASSET_CACHE = "tip-assets-v80";
 
 /** 로그인 화면 브랜드 그림 — index.html·sw precache 와 동일 */
 export const LOGIN_BRAND_LOGO_V = "user-1";

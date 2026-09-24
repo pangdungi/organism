@@ -2,7 +2,7 @@
 /** index.html·manifest 의 ?v= 와 동일하게 유지 */
 const PWA_BRAND = "doodle-calendar-1";
 /** 번들·아이콘 등 캐시 버전 (전략·브랜드 바꿀 때 올리면 이전 캐시 정리됨) */
-const ASSET_CACHE = "tip-assets-v79";
+const ASSET_CACHE = "tip-assets-v80";
 const LOGIN_BRAND_LOGO_V = "user-1";
 
 const PWA_BRAND_BASENAMES = new Set([

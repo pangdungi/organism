@@ -304,6 +304,10 @@ const PICKER_SEARCH_EXTRA_RAW = {
   특별해: "특별해",
   고독: "고독",
   시시: "시시",
+  pen: "펜 볼펜 필기",
+  notebook: "노트북 랩탑",
+  englishbook: "잉글리시북 영어책 영어 북",
+  laptopstudy: "노트북학습 노트북 학습 공부",
 };
 
 /** JSON 파일명(NFD)·별칭 — picker 검색용 */
@@ -1107,6 +1111,24 @@ const CALENDAR_STAMP_ONLY_PICKER_SLUGS = new Set(
     "부처님오신날",
     "현충일",
     "한글날",
+    "salary",
+    "월급2",
+    "인터넷요금",
+    "휴대폰요금",
+    "행복해짐",
+    "지쳤나요",
+    "청첩장",
+    "좋아해",
+    "사랑해",
+    "징징",
+    "야호",
+    "어덯게든 되겠지",
+    "시작하면 된다",
+    "명언 불행",
+    "명언 해피",
+    "명언화해",
+    "명언 자책",
+    "laptopstudy",
   ].map((s) => s.normalize("NFC")),
 );
 
@@ -1119,7 +1141,7 @@ function isCalendarStampOnlyPickerIcon(name) {
 
 /** 피커 목록에서만 숨김 — 파일·이미 찍힌 스탬프는 유지 */
 const PICKER_HIDDEN_SLUGS = new Set(
-  ["책들", "캠핑", "일기", "명언 시작"].map((s) => s.normalize("NFC")),
+  ["책들", "캠핑", "일기", "명언 시작", "야호"].map((s) => s.normalize("NFC")),
 );
 
 function isPickerHiddenIcon(name) {

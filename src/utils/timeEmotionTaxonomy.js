@@ -14,7 +14,7 @@ export const EMOTION_CATEGORIES = [
   {
     rating: 1,
     id: "anger",
-    label: "짜증·분노",
+    label: "짜증·분노·질투",
     iconFile: "anger.png",
     chartColor: "#D4645C",
     subs: ["짜증·분노"],
