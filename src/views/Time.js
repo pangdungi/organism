@@ -13928,7 +13928,12 @@ export function render(opts = {}) {
     void runTaskLogModalCloudSync();
   }
 
-  function closeTaskLogModal() {
+  function isTaskLogModalOpen() {
+    return !!(taskLogModal && !taskLogModal.hidden);
+  }
+
+  function closeTaskLogModal(opts = {}) {
+    const wasOpen = isTaskLogModalOpen();
     dismissTaskLogBlockingPickers();
     document.documentElement.classList.remove("lp-task-log-mobile-picker-open");
     taskLogScrollArea?.classList?.remove?.("is-task-picker-open");
@@ -13946,6 +13951,12 @@ export function render(opts = {}) {
     taskLogKpiListsSyncGen += 1;
     clearTaskLogModalCheckedTodoIds();
     hideTaskLogTaskCompletionTodosSection();
+    /* 창이 열린 동안 목록을 안 갈아 끼웠으면, 닫은 뒤에만 맞춤 */
+    if (wasOpen && opts.refreshList !== false && el.isConnected) {
+      try {
+        syncTimeLedgerContent({ force: true });
+      } catch (_) {}
+    }
   }
 
   /** 기록 버튼: 시작·마감 모두 보이는 시각 포맷 후 숨은 칸에 동일하게 반영 */
@@ -16790,6 +16801,8 @@ export function render(opts = {}) {
   }
 
   function syncTimeLedgerContent(opts = {}) {
+    /* 수정 창이 연 카드를 기억 중이면 목록을 다시 만들지 않음 */
+    if (isTaskLogModalOpen()) return;
     const userSubTabClick = !!opts.userSubTabClick;
     el.dataset.timeContentView = "all";
     /* 화면(DOM) 옛 기록으로 캐시를 덮지 않음 — 항상 메모리(서버 pull분)만 */
@@ -16860,6 +16873,7 @@ export function render(opts = {}) {
 
   function refreshTimeLedgerFromRemotePull(opts = {}) {
     if (!el.isConnected) return;
+    if (isTaskLogModalOpen()) return;
     const { rs, re } = currentLedgerPullRangeYmd();
     if (/^\d{4}-\d{2}-\d{2}$/.test(rs) && /^\d{4}-\d{2}-\d{2}$/.test(re)) {
       markLedgerRangePulled(rs, re);
@@ -17017,7 +17031,7 @@ export function render(opts = {}) {
       clearTimeLedgerMobileElapsedTimer(el);
       dismissTimeLedgerPullLoadingUi();
       try {
-        closeTaskLogModal();
+        closeTaskLogModal({ refreshList: false });
       } catch (_) {}
       try {
         taskLogModal?.remove();

@@ -48,30 +48,19 @@ function rememberDecodedImg(src, img) {
 
 export function createReadyIconImg(src) {
   const s = String(src || "").trim();
-  const cached = s ? decodedImgs.get(s) : null;
-  if (cached && cached.naturalWidth > 0) {
-    const clone = /** @type {HTMLImageElement} */ (cached.cloneNode(true));
-    clone.alt = "";
-    clone.decoding = "sync";
-    clone.loading = "eager";
-    if (!clone.getAttribute("src")) clone.src = s;
-    return clone;
-  }
   const img = document.createElement("img");
   img.alt = "";
   img.decoding = "sync";
   img.loading = "eager";
-  if (s) {
-    img.src = s;
-    if (img.complete && img.naturalWidth > 0) {
-      rememberDecodedImg(s, img);
-    } else {
-      img.addEventListener(
-        "load",
-        () => rememberDecodedImg(s, img),
-        { once: true },
-      );
-    }
+  if (!s) return img;
+  /* cloneNode는 빈 칸으로 다시 읽힘. 이미 읽은 주소는 src만 넣어 바로 칠함 */
+  img.src = s;
+  if (img.complete && img.naturalWidth > 0) {
+    rememberDecodedImg(s, img);
+  } else {
+    img.addEventListener("load", () => rememberDecodedImg(s, img), {
+      once: true,
+    });
   }
   return img;
 }
