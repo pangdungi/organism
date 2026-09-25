@@ -6,6 +6,28 @@
 const decoded = new Set();
 /** @type {Map<string, HTMLImageElement>} */
 const decodedImgs = new Map();
+/** @type {Map<string, string>} */
+const paintedSrc = new Map();
+
+function paintedDataUrl(src, fromImg) {
+  const s = String(src || "").trim();
+  if (!s || !fromImg || fromImg.naturalWidth <= 0) return "";
+  const hit = paintedSrc.get(s);
+  if (hit) return hit;
+  try {
+    const c = document.createElement("canvas");
+    c.width = fromImg.naturalWidth;
+    c.height = fromImg.naturalHeight;
+    const ctx = c.getContext("2d");
+    if (!ctx) return "";
+    ctx.drawImage(fromImg, 0, 0);
+    const data = c.toDataURL("image/png");
+    if (data) paintedSrc.set(s, data);
+    return data;
+  } catch (_) {
+    return "";
+  }
+}
 
 /**
  * @param {unknown} srcs
@@ -44,6 +66,15 @@ function rememberDecodedImg(src, img) {
   if (!s || !img || img.naturalWidth <= 0) return;
   decoded.add(s);
   decodedImgs.set(s, img);
+  paintedDataUrl(s, img);
+}
+
+/** 카드 img의 원래 아이콘 주소 — 칠해 둔 그림과 비교할 때 */
+export function iconImgLogicalSrc(img) {
+  if (!img) return "";
+  return String(
+    img.dataset?.lpIconSrc || img.getAttribute("src") || img.src || "",
+  ).trim();
 }
 
 export function createReadyIconImg(src) {
@@ -53,7 +84,16 @@ export function createReadyIconImg(src) {
   img.decoding = "sync";
   img.loading = "eager";
   if (!s) return img;
-  /* cloneNode는 빈 칸으로 다시 읽힘. 이미 읽은 주소는 src만 넣어 바로 칠함 */
+  img.dataset.lpIconSrc = s;
+  const ready = decodedImgs.get(s);
+  if (ready && ready.complete && ready.naturalWidth > 0) {
+    const painted = paintedDataUrl(s, ready);
+    if (painted) {
+      img.src = painted;
+      return img;
+    }
+  }
+  /* cloneNode·칸 옮기기 없음. 이미 칠해 둔 그림이 없으면 주소만 넣음 */
   img.src = s;
   if (img.complete && img.naturalWidth > 0) {
     rememberDecodedImg(s, img);

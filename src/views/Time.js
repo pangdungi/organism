@@ -110,6 +110,7 @@ import {
 } from "../utils/timeTaskLogPickerDropdown.js";
 import {
   createReadyIconImg,
+  iconImgLogicalSrc,
   decodeDisplayIconSrcs,
 } from "../utils/decodeDisplayIcons.js";
 import {
@@ -5075,7 +5076,10 @@ function patchTimeLedgerTaskIconsForTaskName(root, taskName) {
       cell.appendChild(img);
       return;
     }
-    if (img.getAttribute("src") !== iconSrc) img.setAttribute("src", iconSrc);
+    if (iconImgLogicalSrc(img) !== iconSrc) {
+      img.dataset.lpIconSrc = iconSrc;
+      img.setAttribute("src", iconSrc);
+    }
   });
 }
 
@@ -5980,7 +5984,8 @@ function syncMobileTimeCardFromRow(card, rowData, viewEl) {
       const img = iconCell.querySelector("img");
       if (!img) {
         iconCell.appendChild(createReadyIconImg(iconSrc));
-      } else if (img.getAttribute("src") !== iconSrc) {
+      } else if (iconImgLogicalSrc(img) !== iconSrc) {
+        img.dataset.lpIconSrc = iconSrc;
         img.setAttribute("src", iconSrc);
       }
     }
