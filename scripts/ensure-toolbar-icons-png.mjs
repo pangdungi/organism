@@ -51,9 +51,12 @@ function pngIsUpToDate(svgPath, pngPath) {
 
 async function svgToPng(svgPath) {
   const pngPath = svgPath.replace(/\.svg$/i, ".png");
+  const hasPng = fs.existsSync(pngPath);
   if (pngIsUpToDate(svgPath, pngPath) && !FORCE) return { svgPath, pngPath, skipped: true };
+  let svgSize = 0;
   try {
     const stat = fs.statSync(svgPath);
+    svgSize = stat.size;
     if (stat.size < 8) {
       console.warn("skip empty svg", path.relative(ROOT, svgPath));
       return { svgPath, pngPath, skipped: true };
@@ -61,15 +64,37 @@ async function svgToPng(svgPath) {
   } catch (_) {
     return { svgPath, pngPath, skipped: true };
   }
+  /* 사진이 박힌 큰 SVG는 sharp가 XML 한도에 걸려 배포를 멈춤. 있는 PNG를 씀 */
+  if (hasPng && svgSize > 800 * 1024 && !FORCE) {
+    console.warn("skip huge svg, keep png", path.relative(ROOT, svgPath));
+    return { svgPath, pngPath, skipped: true };
+  }
   const size = targetSize(svgPath);
-  await sharp(svgPath, { density: 288 })
-    .resize(size, size, {
-      fit: "contain",
-      background: { r: 0, g: 0, b: 0, alpha: 0 },
-    })
-    .png()
-    .toFile(pngPath);
-  return { svgPath, pngPath, skipped: false };
+  try {
+    await sharp(svgPath, { density: 288 })
+      .resize(size, size, {
+        fit: "contain",
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      })
+      .png()
+      .toFile(pngPath);
+    return { svgPath, pngPath, skipped: false };
+  } catch (err) {
+    if (hasPng) {
+      console.warn(
+        "keep existing png",
+        path.relative(ROOT, pngPath),
+        String(err?.message || err).split("\n")[0],
+      );
+      return { svgPath, pngPath, skipped: true };
+    }
+    console.warn(
+      "skip svg convert",
+      path.relative(ROOT, svgPath),
+      String(err?.message || err).split("\n")[0],
+    );
+    return { svgPath, pngPath, skipped: true };
+  }
 }
 
 const svgs = walk(ICONS_DIR);
