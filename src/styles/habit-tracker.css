@@ -1758,7 +1758,17 @@
 }
 
 .lp-today-action-todos-modal [data-legacy~="time-task-log-footer"] {
-  justify-content: flex-end;
+  justify-content: flex-start;
+}
+
+.lp-today-action-todos-modal
+  [data-legacy~="time-task-log-footer"]
+  > .habit-tracker-today-goals-remove-today,
+.lp-today-action-todos-modal
+  [data-legacy~="time-task-log-footer"]
+  > .habit-tracker-today-goals-remove-today-hint {
+  margin-left: 0;
+  margin-right: auto;
 }
 
 .lp-today-action-add-modal [data-legacy~="time-task-log-submit"]:disabled {
@@ -1873,6 +1883,7 @@
   justify-content: center;
   min-height: 2.5rem;
   margin: 0;
+  margin-right: auto;
   padding: 0 0.85rem;
   border: 1px solid #d4d4d4;
   border-radius: 8px;
