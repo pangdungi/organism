@@ -117,6 +117,12 @@ const PICKER_SEARCH_EXTRA_RAW = {
   tea: "차 녹차",
   "healthy food": "건강식 야채",
   sad: "슬픔",
+  blank: "어이 멍 멍때리기",
+  blamk: "어이 멍 멍때리기",
+  surprised: "놀람 충격",
+  unsure: "글쎄 잘모름",
+  tired: "피곤 빡셈",
+  inlove: "사랑 행복",
   travel: "여행",
   salary: "월급",
   birthday: "생일",
@@ -133,8 +139,8 @@ const PICKER_SEARCH_EXTRA_RAW = {
   headset: "헤드셋",
   blender: "믹서기",
   rice: "밥 쌀",
-  happy: "행복",
-  angry: "화남",
+  happy: "행복 해피 웃음",
+  angry: "화남 열받음",
   잡생각: "잡생각 머릿속",
   money: "돈",
   bedtime: "취침",
@@ -304,6 +310,39 @@ const PICKER_SEARCH_EXTRA_RAW = {
   특별해: "특별해",
   고독: "고독",
   시시: "시시",
+  우울하지마: "우울하지마 우울",
+  그만곤란해: "그만곤란해 곤란해 곤란",
+  "내가 아무렇지 않으면": "아무렇지 아무렇지않으면",
+  잘했다: "잘했다",
+  잘될거고잘해왓고: "잘될거고 잘해왔고 잘해왓고",
+  얼마나잘될지감도안옴: "얼마나잘될지 감도",
+  지금당장만힘들뿐: "지금당장만 힘들뿐 힘들분",
+  "삽질도 경험": "삽질 경험",
+  복날: "복날",
+  지름신: "지름신 지름",
+  오독완: "오독완",
+  곰아워: "곰아워",
+  쾌변: "쾌변",
+  오운완: "오운완",
+  "오늘은 여기까지": "오늘은 여기까지 여기까지",
+  코바늘: "코바늘",
+  외식날: "외식날 외식",
+  금융치료: "금융치료",
+  축: "축 축하",
+  생일투미: "생일투미 생일",
+  마감일: "마감일 마감",
+  디데이: "디데이",
+  커피머신: "커피머신 커피 머신",
+  busyday: "바쁜날 바쁜",
+  sobusyday: "너무바쁜날 너무바쁜 소바쁜",
+  chillday: "칠데이 쉬는날 여유",
+  productiveday: "생산적인날 생산적",
+  selfcareday: "셀프케어 나를위한날",
+  cheatingday: "치팅데이 치팅",
+  눈부신: "눈부신",
+  멘탈나감: "멘탈나감 멘탈",
+  찢었다: "찢었다",
+  "퇴근을 원함": "퇴근을 원함 퇴근",
   pen: "펜 볼펜 필기",
   notebook: "노트북 랩탑",
   englishbook: "잉글리시북 영어책 영어 북",
@@ -493,6 +532,13 @@ const CALENDAR_STAMP_EVENT_SLUGS = new Set(
     "야르",
     "금연",
     "월급2",
+    "복날",
+    "축",
+    "외식날",
+    "생일투미",
+    "마감일",
+    "디데이",
+    "오늘은 여기까지",
   ].map((s) => s.normalize("NFC")),
 );
 
@@ -522,6 +568,8 @@ const CALENDAR_STAMP_FOOD_SLUGS = new Set(
     "치킨",
     "피자",
     "삼겹살",
+    "커피머신",
+    "외식날",
   ].map((s) => s.normalize("NFC")),
 );
 
@@ -536,8 +584,15 @@ export function isCalendarStampFoodIcon(name) {
 const CALENDAR_STAMP_EMOTION_SLUGS = new Set(
   [
     "angry",
+    "blank",
+    "blamk",
+    "darkcircle",
     "happy",
     "happymomment",
+    "inlove",
+    "surprised",
+    "tired",
+    "unsure",
     "it's okay",
     "it's okay not to be okay",
     "sad",
@@ -585,6 +640,10 @@ const CALENDAR_STAMP_WORK_SLUGS = new Set(
     "네가뭔데",
     "금일체력소진",
     "불타",
+    "눈부신",
+    "멘탈나감",
+    "찢었다",
+    "퇴근을 원함",
   ].map((s) => s.normalize("NFC")),
 );
 
@@ -648,6 +707,19 @@ const CALENDAR_STAMP_DAILY_SLUGS = new Set(
     "notgoing",
     "이케아",
     "바다",
+    "지름신",
+    "오독완",
+    "곰아워",
+    "쾌변",
+    "오운완",
+    "코바늘",
+    "금융치료",
+    "busyday",
+    "sobusyday",
+    "chillday",
+    "productiveday",
+    "selfcareday",
+    "cheatingday",
   ].map((s) => s.normalize("NFC")),
 );
 
@@ -686,7 +758,12 @@ const CALENDAR_STAMP_CHEER_SLUGS = new Set(
     "문제없어",
     "잘났어",
     "잘했어",
-    "걱정은쓰레기",
+    "내가 아무렇지 않으면",
+    "잘했다",
+    "잘될거고잘해왓고",
+    "얼마나잘될지감도안옴",
+    "지금당장만힘들뿐",
+    "삽질도 경험",
   ].map((s) => s.normalize("NFC")),
 );
 
@@ -708,6 +785,8 @@ const CALENDAR_STAMP_MENT_SLUGS = new Set(
     "특별해",
     "고독",
     "시시",
+    "우울하지마",
+    "그만곤란해",
   ].map((s) => s.normalize("NFC")),
 );
 
@@ -1129,6 +1208,54 @@ const CALENDAR_STAMP_ONLY_PICKER_SLUGS = new Set(
     "명언화해",
     "명언 자책",
     "laptopstudy",
+    "혼잣말 어쩌고",
+    "혼잣말 비웃",
+    "특별해",
+    "고독",
+    "시시",
+    "우울하지마",
+    "그만곤란해",
+    "내가 아무렇지 않으면",
+    "잘했다",
+    "잘될거고잘해왓고",
+    "얼마나잘될지감도안옴",
+    "지금당장만힘들뿐",
+    "삽질도 경험",
+    "복날",
+    "지름신",
+    "오독완",
+    "곰아워",
+    "쾌변",
+    "눈부신",
+    "멘탈나감",
+    "찢었다",
+    "퇴근을 원함",
+    "종강",
+    "살려줘",
+    "해야지...",
+    "해야지....",
+    "what the fuck",
+    "what the fuck-1",
+    "네가뭔데",
+    "금연",
+    "공과금",
+    "공강",
+    "가스비",
+    "이러시는 이유",
+    "오운완",
+    "오늘은 여기까지",
+    "코바늘",
+    "외식날",
+    "금융치료",
+    "축",
+    "생일투미",
+    "마감일",
+    "디데이",
+    "sobusyday",
+    "chillday",
+    "productiveday",
+    "selfcareday",
+    "cheatingday",
   ].map((s) => s.normalize("NFC")),
 );
 
@@ -1141,7 +1268,15 @@ function isCalendarStampOnlyPickerIcon(name) {
 
 /** 피커 목록에서만 숨김 — 파일·이미 찍힌 스탬프는 유지 */
 const PICKER_HIDDEN_SLUGS = new Set(
-  ["책들", "캠핑", "일기", "명언 시작", "야호"].map((s) => s.normalize("NFC")),
+  [
+    "책들",
+    "캠핑",
+    "일기",
+    "명언 시작",
+    "야호",
+    "걱정은쓰레기",
+    "어덯게든 되겠지",
+  ].map((s) => s.normalize("NFC")),
 );
 
 function isPickerHiddenIcon(name) {
@@ -1166,7 +1301,14 @@ export function getTimeTaskPickableIcons(opts = {}) {
   const out = [];
   for (const name of pickerSvgNames) {
     if (isPickerHiddenIcon(name)) continue;
-    if (!includeStampOnly && isCalendarStampOnlyPickerIcon(name)) continue;
+    if (
+      !includeStampOnly &&
+      (isCalendarStampOnlyPickerIcon(name) ||
+        isCalendarStampMentIcon(name) ||
+        isCalendarStampQuoteIcon(name))
+    ) {
+      continue;
+    }
     if (
       stampCategory === CALENDAR_STAMP_CATEGORY_HOLIDAY &&
       !isCalendarStampHolidayIcon(name)

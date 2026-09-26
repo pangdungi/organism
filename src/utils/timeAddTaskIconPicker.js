@@ -278,8 +278,12 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
   let stampCategory = CALENDAR_STAMP_CATEGORY_ALL;
   let stampGrid = null;
 
+  function stampSearchQuery() {
+    return String(searchInput?.value ?? "").trim();
+  }
+
   function applySearchFilter() {
-    applyPickerIconSearchFilter(modal, String(searchInput?.value ?? ""));
+    remountStampGrid();
   }
 
   function syncGridSelection() {
@@ -294,19 +298,32 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
   }
 
   function iconsForStampTab() {
+    const q = stampSearchQuery();
     return getTimeTaskPickableIcons({
       ...CALENDAR_STAMP_ICON_PICKER_LIST_OPTS,
-      stampCategory,
+      stampCategory: q ? CALENDAR_STAMP_CATEGORY_ALL : stampCategory,
     });
   }
 
   function remountStampGrid() {
     if (!stampGrid) return;
+    const q = stampSearchQuery();
+    const searchingAll = !!q;
+    if (
+      searchingAll &&
+      stampGrid.dataset.lpStampSearchAll === "1"
+    ) {
+      applyPickerIconSearchFilter(modal, q);
+      syncGridSelection();
+      return;
+    }
     mountPickerIconGrid(stampGrid, iconsForStampTab(), (key) => {
       currentKey = key;
       syncGridSelection();
     });
-    applySearchFilter();
+    if (searchingAll) stampGrid.dataset.lpStampSearchAll = "1";
+    else delete stampGrid.dataset.lpStampSearchAll;
+    applyPickerIconSearchFilter(modal, q);
     syncGridSelection();
   }
 
