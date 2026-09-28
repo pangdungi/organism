@@ -43,6 +43,8 @@ import {
 import {
   isDefaultHappinessRoutineKpiId,
   isDefaultHappinessRoutineTaskName,
+  DEFAULT_SUPPLEMENT_KPI_ID,
+  DEFAULT_CHECKUP_KPI_ID,
 } from "../utils/defaultKpiIconIds.js";
 import { kpiTodoFineTrace } from "../utils/kpiTodoFineTrace.js";
 import {
@@ -9389,7 +9391,20 @@ export function render(opts = {}) {
     const taskName = (taskLogTaskDropdown?._getValue?.() || "").trim();
     if (TTC.isTimeRatingStarsOnlyBuiltinTaskName(taskName)) return true;
     const opt = getTaskOptionByName(taskName);
-    return String(opt?.kpiId || "").trim() === DEFAULT_READING_KPI_ID;
+    const kpiId = String(opt?.kpiId || "").trim();
+    if (kpiId === DEFAULT_READING_KPI_ID) return true;
+    if (
+      kpiId === DEFAULT_SUPPLEMENT_KPI_ID ||
+      kpiId === DEFAULT_CHECKUP_KPI_ID
+    ) {
+      return true;
+    }
+    return resolveKpiLinksForTaskName(taskName).some((l) => {
+      const id = String(l?.kpiId || "").trim();
+      return (
+        id === DEFAULT_SUPPLEMENT_KPI_ID || id === DEFAULT_CHECKUP_KPI_ID
+      );
+    });
   }
 
   function shouldShowTaskLogRatingSection() {

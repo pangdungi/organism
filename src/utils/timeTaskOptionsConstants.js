@@ -965,6 +965,9 @@ const TIME_RATING_STARS_ONLY_TASK_NAMES = new Set([
   "KPT회고하기",
   "아이디어 작업",
   "아이디어 작업하기",
+  "보충제 섭취",
+  "건강검진",
+  "건강 검진",
 ]);
 
 export function isTimeRatingStarsOnlyBuiltinTaskName(name) {
