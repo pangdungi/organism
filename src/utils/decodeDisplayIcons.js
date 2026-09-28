@@ -9,6 +9,24 @@ const decodedImgs = new Map();
 /** @type {Map<string, string>} */
 const paintedSrc = new Map();
 
+function forgetPaintedIcon(src) {
+  const s = String(src || "").trim();
+  if (!s) return;
+  decoded.delete(s);
+  decodedImgs.delete(s);
+  paintedSrc.delete(s);
+}
+
+function canvasHasInk(ctx, w, h) {
+  try {
+    const { data } = ctx.getImageData(0, 0, w, h);
+    for (let i = 3; i < data.length; i += 4) {
+      if (data[i] > 8) return true;
+    }
+  } catch (_) {}
+  return false;
+}
+
 function paintedDataUrl(src, fromImg) {
   const s = String(src || "").trim();
   if (!s || !fromImg || fromImg.naturalWidth <= 0) return "";
@@ -18,9 +36,10 @@ function paintedDataUrl(src, fromImg) {
     const c = document.createElement("canvas");
     c.width = fromImg.naturalWidth;
     c.height = fromImg.naturalHeight;
-    const ctx = c.getContext("2d");
+    const ctx = c.getContext("2d", { willReadFrequently: true });
     if (!ctx) return "";
     ctx.drawImage(fromImg, 0, 0);
+    if (!canvasHasInk(ctx, c.width, c.height)) return "";
     const data = c.toDataURL("image/png");
     if (data) paintedSrc.set(s, data);
     return data;
@@ -41,7 +60,7 @@ export function decodeDisplayIconSrcs(srcs, opts = {}) {
   const seen = new Set();
   for (const raw of Array.isArray(srcs) ? srcs : []) {
     const s = String(raw || "").trim();
-    if (!s || seen.has(s) || decoded.has(s)) continue;
+    if (!s || seen.has(s) || paintedSrc.has(s)) continue;
     seen.add(s);
     unique.push(s);
   }
@@ -64,9 +83,13 @@ export function decodeDisplayIconSrcs(srcs, opts = {}) {
 function rememberDecodedImg(src, img) {
   const s = String(src || "").trim();
   if (!s || !img || img.naturalWidth <= 0) return;
+  const painted = paintedDataUrl(s, img);
+  if (!painted) {
+    forgetPaintedIcon(s);
+    return;
+  }
   decoded.add(s);
   decodedImgs.set(s, img);
-  paintedDataUrl(s, img);
 }
 
 /** 카드 img의 원래 아이콘 주소 — 칠해 둔 그림과 비교할 때 */
@@ -85,6 +108,11 @@ export function createReadyIconImg(src) {
   img.loading = "eager";
   if (!s) return img;
   img.dataset.lpIconSrc = s;
+  const cached = paintedSrc.get(s);
+  if (cached) {
+    img.src = cached;
+    return img;
+  }
   const ready = decodedImgs.get(s);
   if (ready && ready.complete && ready.naturalWidth > 0) {
     const painted = paintedDataUrl(s, ready);
@@ -92,9 +120,11 @@ export function createReadyIconImg(src) {
       img.src = painted;
       return img;
     }
+    forgetPaintedIcon(s);
   }
-  /* cloneNode·칸 옮기기 없음. 이미 칠해 둔 그림이 없으면 주소만 넣음 */
+  /* cloneNode·칸 옮기기 없음. 빈 그림은 기억하지 않고 주소로 다시 받음 */
   img.src = s;
+  img.addEventListener("error", () => forgetPaintedIcon(s), { once: true });
   if (img.complete && img.naturalWidth > 0) {
     rememberDecodedImg(s, img);
   } else {

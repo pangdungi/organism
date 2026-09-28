@@ -110,6 +110,8 @@ import {
   isDesktopDashboardViewport,
   renderDesktopDashboard,
   runDesktopDashboardSoftRefresh,
+  showDesktopDashboardSyncing,
+  hideDesktopDashboardSyncing,
   syncDesktopExpiredInteractionLock,
 } from "./utils/desktopDashboard.js";
 import {
@@ -335,14 +337,38 @@ function initLpTabResumeCloudPull(getCurrentTabId) {
   /** 데스크탑 홈 3분할 — pull 후 embed soft refresh(옛 화면 고정 방지) */
   async function runHomeDesktopResumePull(gen) {
     if (!isDesktopDashboardViewport()) return;
-    await pullDesktopDashboardData({ forceTaskList: true, force: true });
-    if (gen !== resumeGen) return;
-    if (getCurrentTabId() !== "home") return;
-    if (isResumeBlockingModalOpen()) return;
-    if (!isDesktopDashboardViewport()) return;
-    const root = document.querySelector(".lp-desktop-dashboard");
-    if (!root?.isConnected) return;
-    runDesktopDashboardSoftRefresh(root, { force: true });
+    const dash = document.querySelector(".lp-desktop-dashboard");
+    if (dash?.isConnected) showDesktopDashboardSyncing(dash);
+    try {
+      const pullP = pullDesktopDashboardData({
+        forceTaskList: true,
+        force: true,
+      });
+      await lastDesktopDashboardVisibleReady;
+      if (
+        gen === resumeGen &&
+        getCurrentTabId() === "home" &&
+        !isResumeBlockingModalOpen() &&
+        isDesktopDashboardViewport()
+      ) {
+        const root = document.querySelector(".lp-desktop-dashboard");
+        if (root?.isConnected) {
+          runDesktopDashboardSoftRefresh(root, { force: true });
+          hideDesktopDashboardSyncing(root);
+        }
+      }
+      await pullP;
+      if (gen !== resumeGen) return;
+      if (getCurrentTabId() !== "home") return;
+      if (isResumeBlockingModalOpen()) return;
+      if (!isDesktopDashboardViewport()) return;
+      const root = document.querySelector(".lp-desktop-dashboard");
+      if (!root?.isConnected) return;
+      runDesktopDashboardSoftRefresh(root, { force: true });
+    } finally {
+      const root = document.querySelector(".lp-desktop-dashboard");
+      if (root?.isConnected) hideDesktopDashboardSyncing(root);
+    }
   }
 
   /** 모바일 홈 메뉴 — 꺼졌다 켜도 시간기록 등 서버를 미리 받아 둠 */
@@ -618,8 +644,11 @@ async function pullDataForActiveTab(tabId, opts = {}) {
   }
 }
 
+/** 3분할 덮개 — 오늘·어제 기록만 오면 걷음(전체 pull 과 별개) */
+let lastDesktopDashboardVisibleReady = Promise.resolve();
+
 async function pullDesktopDashboardDataCore(opts = {}) {
-  const { forceTaskList = false, force = false } = opts;
+  const { forceTaskList = false, force = false, entriesJob = null } = opts;
   const now = new Date();
   const yEnd = timeLedgerLocalTodayYmd();
   const yStart = timeLedgerLocalYesterdayYmd();
@@ -628,6 +657,12 @@ async function pullDesktopDashboardDataCore(opts = {}) {
     now.getMonth(),
     21,
   );
+  const entries =
+    entriesJob ||
+    pullTimeLedgerEntriesForDateRange(yStart, yEnd, {
+      preferServer: true,
+      force: !!force,
+    });
   await (forceTaskList
     ? pullKpiDomainsForTaskLogListForce()
     : pullStaleKpiDomainsForTaskLogList());
@@ -652,10 +687,7 @@ async function pullDesktopDashboardDataCore(opts = {}) {
     pullCalendarDayIconsFromSupabase({
       reason: "app_desktop_dashboard",
     }),
-    pullTimeLedgerEntriesForDateRange(yStart, yEnd, {
-      preferServer: true,
-      force: !!force,
-    }),
+    entries,
     pullTimeDailyBudgetForDateRange(yStart, yEnd),
     import("./utils/timeDailyBudgetTemplateSupabase.js").then((m) =>
       m.pullBudgetScheduleTemplatesFromSupabase(),
@@ -677,9 +709,19 @@ async function pullDesktopDashboardDataCore(opts = {}) {
 function pullDesktopDashboardData(opts = {}) {
   const forceTaskList = !!opts.forceTaskList;
   const force = !!opts.force;
+  const yEnd = timeLedgerLocalTodayYmd();
+  const yStart = timeLedgerLocalYesterdayYmd();
+  const entriesJob = pullTimeLedgerEntriesForDateRange(yStart, yEnd, {
+    preferServer: true,
+    force: !!force,
+  });
+  lastDesktopDashboardVisibleReady = Promise.resolve(entriesJob).then(
+    () => {},
+    () => {},
+  );
   return coalesceInFlightPull(
     `desktop-dashboard-data:${forceTaskList ? "boot" : "sync"}${force ? ":force" : ""}`,
-    () => pullDesktopDashboardDataCore({ forceTaskList, force }),
+    () => pullDesktopDashboardDataCore({ forceTaskList, force, entriesJob }),
   );
 }
 
@@ -781,6 +823,14 @@ export async function mountApp(container) {
     if (launcherAdminBtn) launcherAdminBtn.hidden = !show;
   }
 
+  function liveDesktopDashboardRoot() {
+    const root =
+      desktopDashboardEl?.isConnected && desktopDashboardEl
+        ? desktopDashboardEl
+        : main.querySelector(".lp-desktop-dashboard");
+    return root?.isConnected ? root : null;
+  }
+
   /** 홈 로고 클릭 — 서버에서 최신 데이터 pull 후 3분할 embed 갱신 */
   async function refreshHomeFromBrandClick() {
     if (currentTabId !== "home") return;
@@ -792,18 +842,34 @@ export async function mountApp(container) {
         resetTimeLedgerSessionFilterToToday();
       } catch (_) {}
     }
+    const dash = isDesktopDashboardViewport()
+      ? liveDesktopDashboardRoot()
+      : null;
+    if (dash) showDesktopDashboardSyncing(dash);
+    const pullP = pullDesktopDashboardData({ forceTaskList: true });
     try {
-      await pullDesktopDashboardData({ forceTaskList: true });
+      await lastDesktopDashboardVisibleReady;
+    } catch (_) {}
+    if (currentTabId !== "home") {
+      if (dash) hideDesktopDashboardSyncing(dash);
+      return;
+    }
+    if (isDesktopDashboardViewport()) {
+      const root = liveDesktopDashboardRoot();
+      if (root) {
+        runDesktopDashboardSoftRefresh(root);
+        hideDesktopDashboardSyncing(root);
+      }
+    } else if (dash) {
+      hideDesktopDashboardSyncing(dash);
+    }
+    try {
+      await pullP;
     } catch (_) {}
     if (currentTabId !== "home") return;
     if (isDesktopDashboardViewport()) {
-      const root =
-        desktopDashboardEl?.isConnected && desktopDashboardEl
-          ? desktopDashboardEl
-          : main.querySelector(".lp-desktop-dashboard");
-      if (root?.isConnected) {
-        runDesktopDashboardSoftRefresh(root);
-      }
+      const root = liveDesktopDashboardRoot();
+      if (root) runDesktopDashboardSoftRefresh(root);
     }
     try {
       await syncAdminMenuVisibility();
@@ -832,20 +898,32 @@ export async function mountApp(container) {
       }
       return;
     }
+    const dash = liveDesktopDashboardRoot();
+    if (dash) showDesktopDashboardSyncing(dash);
+    const pullP = pullDesktopDashboardData({
+      forceTaskList: true,
+      force: true,
+    });
     try {
-      await pullDesktopDashboardData({
-        forceTaskList: true,
-        force: true,
-      });
+      await lastDesktopDashboardVisibleReady;
+    } catch (_) {}
+    if (currentTabId !== "home") {
+      if (dash) hideDesktopDashboardSyncing(dash);
+      return;
+    }
+    const rootAfterVisible = liveDesktopDashboardRoot();
+    if (rootAfterVisible) {
+      runDesktopDashboardSoftRefresh(rootAfterVisible, { force: true });
+      hideDesktopDashboardSyncing(rootAfterVisible);
+    } else if (dash) {
+      hideDesktopDashboardSyncing(dash);
+    }
+    try {
+      await pullP;
     } catch (_) {}
     if (currentTabId !== "home") return;
-    const root =
-      desktopDashboardEl?.isConnected && desktopDashboardEl
-        ? desktopDashboardEl
-        : main.querySelector(".lp-desktop-dashboard");
-    if (root?.isConnected) {
-      runDesktopDashboardSoftRefresh(root, { force: true });
-    }
+    const root = liveDesktopDashboardRoot();
+    if (root) runDesktopDashboardSoftRefresh(root, { force: true });
     try {
       await syncAdminMenuVisibility();
     } catch (_) {}

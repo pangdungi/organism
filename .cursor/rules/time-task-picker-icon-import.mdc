@@ -49,3 +49,12 @@ alwaysApply: true
 - `{slug}.svg`와 `{slug}.png`가 함께 있고, PNG는 **256×256**
 - PNG에 원본과 같은 글·그림이 보이는지 확인
 - `public/time-task-picker-icons.json` 등에 새 slug가 포함됨
+
+## 배포 — 큰 SVG 변환 실패
+
+깃 푸시 뒤 Vercel은 `npm run build` → `ensure-toolbar-icons-png.mjs`가 **모든** SVG를 sharp로 돌린다. 사진이 박힌 큰 SVG(수 MB, 예: 우울하지마)는 `XML parse error` / `Buffer size limit exceeded`로 **배포가 실패**한다. 2026-09-26 에 이미 났다.
+
+변환이 실패하면 **건너뛰고 끝내지 않는다.** 그 아이콘 PNG를 **고친 뒤** 올린다. (글·그림이 있는 256 PNG를 만든 다음 푸시. sharp가 큰 SVG를 못 읽으면 레이어를 나눠 뽑거나 슬림 SVG로 다시 만든다.)
+
+- 푸시 전에 그 slug의 **되는 PNG가 반드시** 있어야 한다. PNG 없이 큰 SVG만 올리지 않는다.
+- 같은 sharp 한 줄만 다시 돌려 배포를 또 깨지 않는다. 실패한 변환 방식은 재시도하지 않고, PNG가 나오게 **다른 길**으로 고친다.

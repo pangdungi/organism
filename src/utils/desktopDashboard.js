@@ -281,6 +281,39 @@ export function renderDesktopDashboard(opts) {
   return root;
 }
 
+/** 3분할 — 서버 받는 동안 옛 기록 위에 「동기화 중」 */
+export function showDesktopDashboardSyncing(
+  dashboardRoot,
+  message = "동기화 중…",
+) {
+  const grid = dashboardRoot?.querySelector?.(".lp-desktop-dashboard-grid");
+  if (!grid) return;
+  let ov = grid.querySelector("[data-lp-desktop-dashboard-sync]");
+  if (!(ov instanceof HTMLElement)) {
+    ov = document.createElement("div");
+    ov.className = "lp-desktop-dashboard-sync-overlay";
+    ov.setAttribute("data-lp-desktop-dashboard-sync", "");
+    ov.innerHTML =
+      '<div class="lp-desktop-dashboard-sync-overlay__label" role="status" aria-live="polite"></div>';
+    grid.appendChild(ov);
+  }
+  const label = ov.querySelector(".lp-desktop-dashboard-sync-overlay__label");
+  if (label) label.textContent = String(message || "동기화 중…");
+  ov.hidden = false;
+  ov.setAttribute("aria-hidden", "false");
+  ov.setAttribute("aria-busy", "true");
+}
+
+export function hideDesktopDashboardSyncing(dashboardRoot) {
+  const ov = dashboardRoot?.querySelector?.(
+    "[data-lp-desktop-dashboard-sync]",
+  );
+  if (!(ov instanceof HTMLElement)) return;
+  ov.hidden = true;
+  ov.setAttribute("aria-hidden", "true");
+  ov.setAttribute("aria-busy", "false");
+}
+
 /**
  * @param {HTMLElement | null | undefined} dashboardRoot
  * @param {{ skipEmbedKeys?: string[], force?: boolean }} [opts]
