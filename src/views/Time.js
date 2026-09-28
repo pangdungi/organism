@@ -14245,14 +14245,9 @@ export function render(opts = {}) {
       }
     }
     const prevChipRow = editTr?._rowData || {};
-    const prevChipRating = normalizeTimeRatingForRow(prevChipRow.timeRating);
-    /** 수정 시 모달이 비어 보여도 별점이 같으면 기존 칩 유지(숨김 sync로 지워진 경우) */
-    const keepPrevChipsIfSameRating = (needs, picked, prevRaw, normalizeFn) => {
+    /** 보이는 칸은 고른 그대로(빈 선택 포함). 숨은 칸만 비움. 예전 칩을 되살리지 않음 */
+    const keepPrevChipsIfSameRating = (needs, picked) => {
       if (!needs) return [];
-      if (picked.length) return picked;
-      if (editTr && prevChipRating === timeRatingForRow) {
-        return normalizeFn(prevRaw);
-      }
       return picked;
     };
     const needsFlowDisruptors =
