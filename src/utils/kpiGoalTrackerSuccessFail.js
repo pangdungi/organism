@@ -196,6 +196,17 @@ function offDayCell(ymd) {
   };
 }
 
+function beforeStartCell(ymd, extras = {}) {
+  return {
+    ymd,
+    goal: extras.goal ?? null,
+    result: "",
+    mark: "",
+    ok: null,
+    pending: false,
+  };
+}
+
 function isHabitOffDay(kpi, ymd) {
   if (!kpi?.needHabitTracker) return false;
   return !isHabitScheduledOnYmd(kpi, ymd);
@@ -205,6 +216,7 @@ function buildWeekCells(item, weekKeys) {
   const { kpi, logs } = item;
   const kind = item.kind || "habit";
   const todayYmd = toDateKey();
+  const startYmd = getSuccessFailStartYmd(kpi);
 
   if (kind === "time") {
     return weekKeys.map((ymd) => {
@@ -218,6 +230,7 @@ function buildWeekCells(item, weekKeys) {
           pending: true,
         };
       }
+      if (startYmd && ymd < startYmd) return beforeStartCell(ymd);
       const mins = getAccumulatedMinutesForKpiIdOnDate(kpi?.id, kpi?.name, ymd);
       const label = formatDayMinutesLabel(mins);
       const ok = mins > 0;
@@ -246,6 +259,7 @@ function buildWeekCells(item, weekKeys) {
           pending: true,
         };
       }
+      if (startYmd && ymd < startYmd) return beforeStartCell(ymd);
       const result = getKpiHabitTodayNumericValue(kpi, logs, ymd);
       const label = result > 0 ? formatValueWithUnit(result, unit) : "";
       return {
@@ -281,6 +295,7 @@ function buildWeekCells(item, weekKeys) {
         pending: false,
       };
     }
+    if (startYmd && ymd < startYmd) return beforeStartCell(ymd);
     if (hasUnit) {
       const result = getKpiHabitTodayNumericValue(kpi, logs, ymd);
       const ok = goalNum > 0 ? result >= goalNum : result > 0;
@@ -504,8 +519,8 @@ export function mountKpiGoalSuccessFailSection(container, opts = {}) {
           <th scope="row">그날 수행</th>
           ${cells
             .map((c) => {
-              if (c.pending) {
-                return `<td class="is-pending"></td>`;
+              if (c.pending || c.ok == null) {
+                return `<td class="${c.pending ? "is-pending" : ""}"></td>`;
               }
               const label =
                 c.result || formatValueWithUnit(0, unit) || "0";

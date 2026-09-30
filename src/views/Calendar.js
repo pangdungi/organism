@@ -380,6 +380,15 @@ function lpCalendarDayIconMaxRem() {
   return 20;
 }
 
+function lpCalendarMonthlyIconsAreCustomPhoto(icons) {
+  return !!icons?.querySelector?.(".calendar-monthly-day-icons__img--custom");
+}
+
+function lpCalendarDayIconCapRem(icons) {
+  if (lpCalendarMonthlyIconsAreCustomPhoto(icons)) return 20;
+  return lpCalendarDayIconMaxRem();
+}
+
 function lpCalendarMonthlyDayIconsStripRemForCell(cell) {
   if (!(cell instanceof HTMLElement)) return 0;
   const icons = cell.querySelector(".calendar-monthly-day-icons:not([hidden])");
@@ -389,14 +398,15 @@ function lpCalendarMonthlyDayIconsStripRemForCell(cell) {
       getComputedStyle(document.documentElement).fontSize,
     );
     if (Number.isFinite(rootFs) && rootFs > 0) {
+      const cap = lpCalendarDayIconCapRem(icons);
       const hPx = icons.getBoundingClientRect().height;
       if (hPx > 4) {
-        return Math.min(hPx / rootFs, lpCalendarDayIconMaxRem());
+        return Math.min(hPx / rootFs, cap);
       }
       /* 아직 높이 없으면 칸 너비 추정 — 상한까지만 */
       const wPx = cell.getBoundingClientRect().width;
       if (wPx > 0) {
-        return Math.min(wPx / rootFs, lpCalendarDayIconMaxRem());
+        return Math.min(wPx / rootFs, cap);
       }
     }
   } catch (_) {}
@@ -516,15 +526,22 @@ function lpCalendarWeeklyDayIconsStripRem(weekRow) {
         .querySelectorAll(".calendar-monthly-day-icons:not([hidden])")
         .forEach((icons) => {
           const hPx = icons.getBoundingClientRect().height;
-          if (hPx > 4) maxRem = Math.max(maxRem, hPx / rootFs);
+          if (hPx > 4) {
+            maxRem = Math.max(
+              maxRem,
+              Math.min(hPx / rootFs, lpCalendarDayIconCapRem(icons)),
+            );
+          }
         });
-      if (maxRem > 0) {
-        return Math.min(maxRem, lpCalendarDayIconMaxRem());
-      }
+      if (maxRem > 0) return maxRem;
       const dayEl = weekRow.querySelector(".calendar-monthly-day[data-date]");
       const wPx = dayEl?.getBoundingClientRect?.().width || 0;
       if (wPx > 0) {
-        return Math.min(wPx / rootFs, lpCalendarDayIconMaxRem());
+        const anyCustom = [...weekRow.querySelectorAll(
+          ".calendar-monthly-day-icons:not([hidden])",
+        )].some((el) => lpCalendarMonthlyIconsAreCustomPhoto(el));
+        const cap = anyCustom ? 20 : lpCalendarDayIconMaxRem();
+        return Math.min(wPx / rootFs, cap);
       }
     }
   } catch (_) {}

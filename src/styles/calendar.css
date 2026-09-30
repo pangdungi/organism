@@ -1934,6 +1934,22 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   pointer-events: none;
 }
 
+.calendar-monthly-day-icons__img--custom {
+  filter: grayscale(1);
+}
+
+/* 큰 화면 6rem 상한은 손그림만. 사진은 칸 너비·정사각형 유지 */
+.calendar-monthly-day-icon-btn:has(.calendar-monthly-day-icons__img--custom) {
+  width: 100%;
+  max-width: 100%;
+}
+
+.calendar-monthly-day-icons__img--custom,
+.calendar-monthly-week--has-stamps .calendar-monthly-day-icons__img--custom {
+  width: 100%;
+  max-width: 100%;
+}
+
 /* 할일 추가 모달 위 — 날짜 아이콘 picker (과제 아이콘 picker와 동일 z-index) */
 .calendar-day-icon-pick-modal.time-task-setup-modal.time-add-task-icon-modal {
   z-index: 11000;
@@ -1988,6 +2004,66 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   color: #000000;
   font-weight: 700;
   border-bottom-color: #000000;
+}
+
+.calendar-day-custom-stamp-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  min-height: 14rem;
+  padding: 0.5rem 0 0.25rem;
+}
+
+.calendar-day-custom-stamp-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  width: min(100%, 16rem);
+  min-height: 13.5rem;
+  padding: 1.25rem 1rem 1.1rem;
+  border: 1px dashed #cbd5e1;
+  background: transparent;
+  color: #000000;
+  font: inherit;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.calendar-day-custom-stamp-drop.is-dragover {
+  border-color: #000000;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.calendar-day-custom-stamp-frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  color: #000000;
+}
+
+.calendar-day-custom-stamp-drop-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #000000;
+}
+
+.calendar-day-custom-stamp-drop-label {
+  font-size: 0.75rem;
+  color: #666666;
+}
+
+.calendar-day-custom-stamp-preview {
+  width: 5.5rem;
+  height: 5.5rem;
+  object-fit: cover;
+  display: block;
+  filter: grayscale(1);
 }
 
 .calendar-day-icon-pick-footer {

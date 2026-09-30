@@ -26,7 +26,16 @@ import {
   CALENDAR_STAMP_CATEGORY_CHEER,
   CALENDAR_STAMP_CATEGORY_MENT,
   CALENDAR_STAMP_CATEGORY_QUOTE,
+  CALENDAR_STAMP_CATEGORY_CUSTOM,
 } from "./timeTaskIconUrls.js";
+import {
+  buildCalendarCustomStampKey,
+  getCalendarCustomStampSrc,
+  isCalendarCustomStampKey,
+  resizeImageFileToCalendarStampBlob,
+  uploadCalendarCustomStampForDate,
+} from "./calendarDayCustomStamp.js";
+import { showToast } from "./showToast.js";
 import { attachPickerIconSrcFallback } from "./timeTaskIconLazyDisplay.js";
 import { lpSetClasses, lpTokenToggle } from "./timeLedgerClassPolicy.js";
 import { markModalOpened } from "./modalNoAutoFocus.js";
@@ -170,6 +179,7 @@ function mountPickerIconGrid(grid, icons, onPick) {
 export function openStandaloneTimeTaskIconPickModal(opts = {}) {
   const title = String(opts.title || "아이콘 선택").trim() || "아이콘 선택";
   const initialKey = String(opts.currentKey || "").trim();
+  const stampDateKey = String(opts.dateKey || "").trim().slice(0, 10);
   let currentKey = initialKey;
   const { onPick, onRemove } = opts;
   const isEdit = !!initialKey;
@@ -211,6 +221,7 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
           <button type="button" class="calendar-day-icon-pick-tab" role="tab" aria-selected="false" data-stamp-category="cheer">응원</button>
           <button type="button" class="calendar-day-icon-pick-tab" role="tab" aria-selected="false" data-stamp-category="ment">멘트</button>
           <button type="button" class="calendar-day-icon-pick-tab" role="tab" aria-selected="false" data-stamp-category="quote">명언</button>
+          <button type="button" class="calendar-day-icon-pick-tab" role="tab" aria-selected="false" data-stamp-category="custom">사진 추가</button>
         </div>
         <div class="time-add-task-icon-modal-search-mount" data-legacy="time-add-task-icon-modal-search-mount"></div>
         <div class="time-add-task-icon-modal-divider" data-legacy="time-add-task-icon-modal-divider" role="separator" aria-hidden="true"></div>
@@ -229,6 +240,7 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
     if (closed) return;
     closed = true;
     cancelPickerIconHydration();
+    revokePendingCustomPreview();
     modal.remove();
     syncBodyOverflowAfterModalClose();
   }
@@ -258,24 +270,55 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
     confirmBtn.disabled = !String(currentKey || "").trim();
   }
 
-  confirmBtn?.addEventListener("click", (e) => {
+  let pendingCustomBlob = null;
+  let pendingCustomPreviewUrl = "";
+  function revokePendingCustomPreview() {
+    if (pendingCustomPreviewUrl) {
+      try {
+        URL.revokeObjectURL(pendingCustomPreviewUrl);
+      } catch (_) {}
+      pendingCustomPreviewUrl = "";
+    }
+  }
+
+  confirmBtn?.addEventListener("click", async (e) => {
     e.preventDefault();
     e.stopPropagation();
     const key = String(currentKey || "").trim();
     if (!key) return;
-    warmPickerIconKeyInSwCache(key);
-    onPick?.(key);
+    if (confirmBtn instanceof HTMLButtonElement) confirmBtn.disabled = true;
+    if (pendingCustomBlob && stampDateKey) {
+      const uploaded = await uploadCalendarCustomStampForDate(
+        stampDateKey,
+        pendingCustomBlob,
+      );
+      if (!uploaded.ok) {
+        showToast("사진을 올리지 못했습니다. 다시 시도해 주세요.");
+        syncConfirmEnabled();
+        return;
+      }
+      currentKey = uploaded.key || buildCalendarCustomStampKey(stampDateKey);
+    }
+    if (!isCalendarCustomStampKey(currentKey)) {
+      warmPickerIconKeyInSwCache(currentKey);
+    }
+    onPick?.(currentKey);
     close();
   });
 
   const searchMount = modal.querySelector(
     '[data-legacy~="time-add-task-icon-modal-search-mount"]',
   );
+  const dividerEl = modal.querySelector(
+    '[data-legacy~="time-add-task-icon-modal-divider"]',
+  );
   const gridMount = modal.querySelector(
     '[data-legacy~="time-add-task-icon-modal-grid-mount"]',
   );
   let searchInput = null;
-  let stampCategory = CALENDAR_STAMP_CATEGORY_ALL;
+  let stampCategory = isCalendarCustomStampKey(initialKey)
+    ? CALENDAR_STAMP_CATEGORY_CUSTOM
+    : CALENDAR_STAMP_CATEGORY_ALL;
   let stampGrid = null;
 
   function stampSearchQuery() {
@@ -305,8 +348,104 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
     });
   }
 
+  function setCustomSearchChromeHidden(hidden) {
+    if (searchMount instanceof HTMLElement) searchMount.hidden = hidden;
+    if (dividerEl instanceof HTMLElement) dividerEl.hidden = hidden;
+  }
+
+  async function acceptCustomStampFile(file) {
+    if (!(file instanceof Blob) || !stampDateKey) {
+      showToast("이 날짜에 사진을 올릴 수 없습니다.");
+      return;
+    }
+    try {
+      const blob = await resizeImageFileToCalendarStampBlob(file);
+      revokePendingCustomPreview();
+      pendingCustomBlob = blob;
+      pendingCustomPreviewUrl = URL.createObjectURL(blob);
+      currentKey = buildCalendarCustomStampKey(stampDateKey);
+      remountStampGrid();
+    } catch (_) {
+      showToast("이 사진은 쓸 수 없습니다. 다른 사진을 골라 주세요.");
+    }
+  }
+
+  function mountCustomStampUploadPanel(grid) {
+    cancelPickerIconHydration();
+    grid.replaceChildren();
+    delete grid.dataset.lpStampSearchAll;
+    grid.classList.remove("time-add-task-icon-modal-grid");
+    grid.classList.add("calendar-day-custom-stamp-panel");
+
+    const drop = document.createElement("button");
+    drop.type = "button";
+    drop.className = "calendar-day-custom-stamp-drop";
+    const previewSrc =
+      pendingCustomPreviewUrl ||
+      getCalendarCustomStampSrc(buildCalendarCustomStampKey(stampDateKey));
+    if (previewSrc) {
+      const img = document.createElement("img");
+      img.className = "calendar-day-custom-stamp-preview";
+      img.alt = "";
+      img.src = previewSrc;
+      drop.appendChild(img);
+      const hint = document.createElement("span");
+      hint.className = "calendar-day-custom-stamp-drop-label";
+      hint.textContent = "다른 사진으로 바꾸기";
+      drop.appendChild(hint);
+    } else {
+      const frame = document.createElement("span");
+      frame.className = "calendar-day-custom-stamp-frame";
+      frame.setAttribute("aria-hidden", "true");
+      frame.innerHTML =
+        '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3.2" y="6.2" width="17.6" height="13.6" rx="1.2"/><circle cx="12" cy="13.2" r="3.1"/><path d="M8.2 6.2 9.5 4.2h5l1.3 2"/></svg>';
+      const title = document.createElement("span");
+      title.className = "calendar-day-custom-stamp-drop-title";
+      title.textContent = "사진 넣기";
+      const hint = document.createElement("span");
+      hint.className = "calendar-day-custom-stamp-drop-label";
+      hint.textContent = "끌어다 놓거나 앨범에서 고르기";
+      drop.append(frame, title, hint);
+    }
+
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = "image/*,.heic,.heif,image/heic,image/heif";
+    fileInput.hidden = true;
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files?.[0];
+      fileInput.value = "";
+      if (file) void acceptCustomStampFile(file);
+    });
+    drop.addEventListener("click", () => fileInput.click());
+    drop.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      drop.classList.add("is-dragover");
+    });
+    drop.addEventListener("dragleave", () => {
+      drop.classList.remove("is-dragover");
+    });
+    drop.addEventListener("drop", (e) => {
+      e.preventDefault();
+      drop.classList.remove("is-dragover");
+      const file = e.dataTransfer?.files?.[0];
+      if (file) void acceptCustomStampFile(file);
+    });
+    grid.appendChild(drop);
+    grid.appendChild(fileInput);
+    syncConfirmEnabled();
+  }
+
   function remountStampGrid() {
     if (!stampGrid) return;
+    if (stampCategory === CALENDAR_STAMP_CATEGORY_CUSTOM) {
+      setCustomSearchChromeHidden(true);
+      mountCustomStampUploadPanel(stampGrid);
+      return;
+    }
+    setCustomSearchChromeHidden(false);
+    stampGrid.classList.remove("calendar-day-custom-stamp-panel");
+    lpSetClasses(stampGrid, "time-add-task-icon-modal-grid");
     const q = stampSearchQuery();
     const searchingAll = !!q;
     if (
@@ -318,6 +457,8 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
       return;
     }
     mountPickerIconGrid(stampGrid, iconsForStampTab(), (key) => {
+      revokePendingCustomPreview();
+      pendingCustomBlob = null;
       currentKey = key;
       syncGridSelection();
     });
@@ -360,6 +501,7 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
           [CALENDAR_STAMP_CATEGORY_CHEER]: CALENDAR_STAMP_CATEGORY_CHEER,
           [CALENDAR_STAMP_CATEGORY_MENT]: CALENDAR_STAMP_CATEGORY_MENT,
           [CALENDAR_STAMP_CATEGORY_QUOTE]: CALENDAR_STAMP_CATEGORY_QUOTE,
+          [CALENDAR_STAMP_CATEGORY_CUSTOM]: CALENDAR_STAMP_CATEGORY_CUSTOM,
         }[next] || CALENDAR_STAMP_CATEGORY_ALL
       );
       if (nextCategory === stampCategory) return;
@@ -373,6 +515,7 @@ export function openStandaloneTimeTaskIconPickModal(opts = {}) {
     stampGrid = document.createElement("div");
     lpSetClasses(stampGrid, "time-add-task-icon-modal-grid");
     gridMount.appendChild(stampGrid);
+    syncStampCategoryTabs();
     remountStampGrid();
   }
 

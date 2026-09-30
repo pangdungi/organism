@@ -1,6 +1,6 @@
 /**
  * 캘린더 월간 뷰 — 날짜별 아이콘 1개 세션 메모리
- * @typedef {{ id: string, iconKey: string }} CalendarDayIconRow
+ * @typedef {{ id: string, iconKey: string, src?: string }} CalendarDayIconRow
  */
 
 import { warmIconPathInSwCache } from "./appIconPrefetch.js";
@@ -10,6 +10,13 @@ import {
   setScopedLocalStorageItem,
 } from "./clientStorageScope.js";
 import { getTimeTaskIconSrcByKey } from "./timeTaskIconUrls.js";
+import {
+  calendarCustomStampYmdFromKey,
+  getCalendarCustomStampSrc,
+  isCalendarCustomStampKey,
+  refreshCalendarCustomStampSignedUrls,
+  setCalendarCustomStampSrc,
+} from "./calendarDayCustomStamp.js";
 
 const MIRROR_KEY = "calendar_day_icons_mirror_v1";
 
@@ -45,7 +52,13 @@ function initCalendarDayIconsMemOnce() {
       const iconKey = normalizeIconKey(row?.iconKey);
       const id = String(row?.id || "").trim();
       if (!key || !iconKey) continue;
-      next[key] = { id: id || newCalendarDayIconId(), iconKey };
+      const src = isCalendarCustomStampKey(iconKey)
+        ? String(row?.src || "").trim()
+        : "";
+      next[key] = src
+        ? { id: id || newCalendarDayIconId(), iconKey, src }
+        : { id: id || newCalendarDayIconId(), iconKey };
+      if (src) setCalendarCustomStampSrc(key, src);
     }
     if (Object.keys(next).length) _byDate = next;
   } catch (_) {}
@@ -60,8 +73,31 @@ export function prepareCalendarDayIconsForBoot() {
 export function hydrateCalendarDayIconsFromLocalMirrorForBoot() {
   initCalendarDayIconsMemOnce();
   const ok = Object.keys(_byDate).length > 0;
-  if (ok) warmCalendarDayStampIconAssetsFromMemory();
+  if (ok) {
+    const customYmds = Object.entries(_byDate)
+      .filter(([, row]) => isCalendarCustomStampKey(row?.iconKey))
+      .map(([ymd]) => ymd);
+    if (customYmds.length) {
+      void refreshCalendarCustomStampSignedUrls(customYmds).then(() => {
+        persistCalendarCustomStampDisplaySrcs();
+      });
+    }
+    warmCalendarDayStampIconAssetsFromMemory();
+  }
   return ok;
+}
+
+/** 받은 사진 주소를 그날 칸에 남겨, 다음 캘린더 열 때 바로 쓰게 함 */
+export function persistCalendarCustomStampDisplaySrcs() {
+  let changed = false;
+  for (const [ymd, row] of Object.entries(_byDate)) {
+    if (!isCalendarCustomStampKey(row?.iconKey)) continue;
+    const src = String(getCalendarCustomStampSrc(row.iconKey) || "").trim();
+    if (!src || src === row.src) continue;
+    _byDate[ymd] = { ...row, src };
+    changed = true;
+  }
+  if (changed) mirrorCalendarDayIconsToScopedLocalStorage();
 }
 
 export function warmCalendarDayStampIconAssetsFromMemory() {
@@ -94,6 +130,9 @@ function normalizeYmd(v) {
 
 function normalizeIconKey(v) {
   const k = String(v || "").trim();
+  if (isCalendarCustomStampKey(k)) {
+    return calendarCustomStampYmdFromKey(k) ? k : "";
+  }
   if (!k || !getTimeTaskIconSrcByKey(k)) return "";
   return k;
 }
@@ -124,6 +163,7 @@ export function clearCalendarDayIconLocalSyncPending(_dateKey) {}
  */
 export function applyCalendarDayIconsServerSnapshot(rows) {
   /** @type {Record<string, CalendarDayIconRow>} */
+  const prev = _byDate;
   const next = {};
   for (const row of Array.isArray(rows) ? rows : []) {
     const r = row && typeof row === "object" ? row : {};
@@ -131,9 +171,14 @@ export function applyCalendarDayIconsServerSnapshot(rows) {
     const iconKey = normalizeIconKey(r.icon_key);
     const id = String(r.id || "").trim();
     if (!ymd || !iconKey || !id) continue;
-    if (!next[ymd]) {
-      next[ymd] = { id, iconKey };
-    }
+    if (next[ymd]) continue;
+    const keepSrc = isCalendarCustomStampKey(iconKey)
+      ? String(
+          getCalendarCustomStampSrc(iconKey) || prev[ymd]?.src || "",
+        ).trim()
+      : "";
+    next[ymd] = keepSrc ? { id, iconKey, src: keepSrc } : { id, iconKey };
+    if (keepSrc) setCalendarCustomStampSrc(ymd, keepSrc);
   }
   _byDate = next;
   mirrorCalendarDayIconsToScopedLocalStorage();
@@ -167,10 +212,12 @@ export function setCalendarDayIconKeyForDate(dateKey, iconKey) {
     return;
   }
   const prevId = _byDate[ymd]?.id;
-  _byDate[ymd] = {
-    id: prevId || newCalendarDayIconId(),
-    iconKey: key,
-  };
+  const keepSrc = isCalendarCustomStampKey(key)
+    ? String(getCalendarCustomStampSrc(key) || _byDate[ymd]?.src || "").trim()
+    : "";
+  _byDate[ymd] = keepSrc
+    ? { id: prevId || newCalendarDayIconId(), iconKey: key, src: keepSrc }
+    : { id: prevId || newCalendarDayIconId(), iconKey: key };
   mirrorCalendarDayIconsToScopedLocalStorage();
   warmCalendarDayStampIconAssetsFromMemory();
 }
@@ -194,11 +241,17 @@ export function moveCalendarDayIconOnDate(fromDateKey, toDateKey) {
   const iconKey = normalizeIconKey(_byDate[from]?.iconKey);
   if (!iconKey) return false;
   if (from === to) return true;
+  const keepSrc = isCalendarCustomStampKey(iconKey)
+    ? String(getCalendarCustomStampSrc(iconKey) || _byDate[from]?.src || "").trim()
+    : "";
   delete _byDate[from];
-  _byDate[to] = {
-    id: _byDate[to]?.id || newCalendarDayIconId(),
-    iconKey,
-  };
+  _byDate[to] = keepSrc
+    ? {
+        id: _byDate[to]?.id || newCalendarDayIconId(),
+        iconKey,
+        src: keepSrc,
+      }
+    : { id: _byDate[to]?.id || newCalendarDayIconId(), iconKey };
   mirrorCalendarDayIconsToScopedLocalStorage();
   warmCalendarDayStampIconAssetsFromMemory();
   return true;

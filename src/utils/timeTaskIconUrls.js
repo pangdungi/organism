@@ -14,6 +14,7 @@ import {
 import { DEFAULT_KPI_ICON_SLUG, DEFAULT_KPI_NAME_ICON_SLUG } from "./defaultKpiIconIds.js";
 import { matchFlexibleSearch } from "./flexibleSearchMatch.js";
 import { toolbarIconPng, withToolbarIconCacheVersion } from "./toolbarIconUrl.js";
+import { getCalendarCustomStampSrc } from "./calendarDayCustomStamp.js";
 
 const PICKER_ICON_BASE = "/toolbaricons/time-task-picker";
 /** 과제 아이콘 전부 128×128 PNG (SVG 폴백만) */
@@ -419,6 +420,7 @@ export const CALENDAR_STAMP_CATEGORY_WEATHER = "weather";
 export const CALENDAR_STAMP_CATEGORY_CHEER = "cheer";
 export const CALENDAR_STAMP_CATEGORY_MENT = "ment";
 export const CALENDAR_STAMP_CATEGORY_QUOTE = "quote";
+export const CALENDAR_STAMP_CATEGORY_CUSTOM = "custom";
 
 /** 날짜 스탬프 「공휴일」 탭 — 파일은 그대로, 분류만 */
 const CALENDAR_STAMP_HOLIDAY_SLUGS = new Set(
@@ -1004,6 +1006,7 @@ function isRemovedQuoteStartIconKey(iconKey) {
 export function getTimeTaskIconSrcByKey(key) {
   const k = String(key || "").trim();
   if (!k || isRemovedQuoteStartIconKey(k)) return "";
+  if (k.startsWith("lp-custom:")) return getCalendarCustomStampSrc(k);
   if (k.startsWith("svg:")) {
     const fileName = resolvePickerSvgFileName(k.slice(4).trim());
     if (!fileName) return "";
@@ -1027,6 +1030,7 @@ export function getTimeTaskIconSrcByKey(key) {
 export function getTimeTaskIconDisplaySrcByKey(key) {
   const k = String(key || "").trim();
   if (!k || isRemovedQuoteStartIconKey(k)) return "";
+  if (k.startsWith("lp-custom:")) return getCalendarCustomStampSrc(k);
   const slugRaw = k.startsWith("svg:") || k.startsWith("png:") ? k.slice(4).trim() : k;
   const fileName = resolvePickerSvgFileName(slugRaw);
   if (!fileName) return "";
@@ -1297,6 +1301,7 @@ export function matchTimeTaskPickerIconSearch(searchText, query) {
 export function getTimeTaskPickableIcons(opts = {}) {
   const includeStampOnly = opts.includeCalendarStampOnly === true;
   const stampCategory = String(opts.stampCategory || "").trim();
+  if (stampCategory === CALENDAR_STAMP_CATEGORY_CUSTOM) return [];
   /** @type {{ key: string, label: string, src: string, searchText: string, _name?: string }[]} */
   const out = [];
   for (const name of pickerSvgNames) {

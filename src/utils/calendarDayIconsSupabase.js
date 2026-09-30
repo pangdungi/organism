@@ -5,8 +5,17 @@
 import { supabase } from "../supabase.js";
 import {
   applyCalendarDayIconsServerSnapshot,
+  persistCalendarCustomStampDisplaySrcs,
   setCalendarDayIconKeyForDate,
 } from "./calendarDayIconsModel.js";
+import {
+  buildCalendarCustomStampKey,
+  calendarCustomStampYmdFromKey,
+  isCalendarCustomStampKey,
+  moveCalendarCustomStampFile,
+  refreshCalendarCustomStampSignedUrls,
+  removeCalendarCustomStampFile,
+} from "./calendarDayCustomStamp.js";
 import { runTodoSectionTasksSerialized } from "./todoSectionTasksServerSyncSerial.js";
 
 const TABLE = "calendar_day_icons";
@@ -39,6 +48,17 @@ export async function pullCalendarDayIconsFromSupabase(opts = {}) {
     }
     const rows = Array.isArray(data) ? data : [];
     applyCalendarDayIconsServerSnapshot(rows);
+    const customYmds = rows
+      .map((r) => {
+        const ymd = String(r?.day_date || "").trim().slice(0, 10);
+        const key = String(r?.icon_key || "").trim();
+        return isCalendarCustomStampKey(key) ? ymd : "";
+      })
+      .filter(Boolean);
+    if (customYmds.length) {
+      await refreshCalendarCustomStampSignedUrls(customYmds);
+      persistCalendarCustomStampDisplaySrcs();
+    }
     return { ok: true, rowCount: rows.length, reason: String(opts.reason || "") };
   });
 }
@@ -58,6 +78,11 @@ export async function syncCalendarDayIconForDate(dateKey, iconKey) {
     }
 
     /* 쓰기는 막지 않음. 끝난 뒤 서버 SELECT로 화면을 맞춤 */
+    const nextCustom =
+      isCalendarCustomStampKey(key) && calendarCustomStampYmdFromKey(key) === ymd;
+    if (!nextCustom) {
+      await removeCalendarCustomStampFile(ymd);
+    }
     setCalendarDayIconKeyForDate(ymd, key);
 
     const { error: delErr } = await supabase
@@ -107,6 +132,18 @@ export async function syncCalendarDayIconMove(fromDateKey, toDateKey, iconKey) {
   const key = String(iconKey || "").trim();
   if (!from || !to || !key) {
     return { ok: false, reason: "bad_args" };
+  }
+  if (isCalendarCustomStampKey(key)) {
+    if (from !== to) {
+      const moved = await moveCalendarCustomStampFile(from, to);
+      if (!moved.ok) return { ok: false, reason: moved.reason || "move_failed" };
+    }
+    const destKey = buildCalendarCustomStampKey(to);
+    if (from !== to) {
+      const cleared = await syncCalendarDayIconForDate(from, "");
+      if (!cleared.ok) return cleared;
+    }
+    return syncCalendarDayIconForDate(to, destKey);
   }
   if (from !== to) {
     const cleared = await syncCalendarDayIconForDate(from, "");

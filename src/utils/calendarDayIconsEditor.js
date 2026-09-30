@@ -5,10 +5,16 @@
 import { applyStaticAppIconImg } from "./staticAppIconImg.js";
 import {
   getCalendarDayIconKeyForDate,
+  persistCalendarCustomStampDisplaySrcs,
   setCalendarDayIconKeyForDate,
 } from "./calendarDayIconsModel.js";
 import { syncCalendarDayIconForDate } from "./calendarDayIconsSupabase.js";
 import { getTimeTaskIconDisplaySrcByKey } from "./timeTaskIconUrls.js";
+import {
+  calendarCustomStampYmdFromKey,
+  isCalendarCustomStampKey,
+  refreshCalendarCustomStampSignedUrls,
+} from "./calendarDayCustomStamp.js";
 import { attachIconSvgFallback } from "./toolbarIconUrl.js";
 import { openStandaloneTimeTaskIconPickModal } from "./timeAddTaskIconPicker.js";
 
@@ -44,6 +50,7 @@ export function showCalendarDayIconPickModal(opts = {}) {
   openStandaloneTimeTaskIconPickModal({
     title: opts.title ?? "날짜 스탬프",
     currentKey: opts.currentKey,
+    dateKey: opts.dateKey,
     onPick: opts.onPick,
     onRemove: opts.onRemove,
   });
@@ -120,6 +127,7 @@ export function openCalendarDayIconEditor(dateKey, opts = {}) {
 
   showCalendarDayIconPickModal({
     currentKey,
+    dateKey: ymd,
     onPick: (key) => {
       const iconKey = String(key || "").trim();
       if (!iconKey) return;
@@ -146,17 +154,49 @@ export function openCalendarDayIconEditor(dateKey, opts = {}) {
  * @param {string} dateKey
  * @param {{ onAfterChange?: () => void }} [opts]
  */
+function calendarStampImgHasSrc(img) {
+  return (
+    img instanceof HTMLImageElement && !!(img.getAttribute("src") || img.src)
+  );
+}
+
 export function renderCalendarMonthlyDayIcons(container, dateKey, opts = {}) {
   if (!(container instanceof HTMLElement)) return;
-  container.replaceChildren();
   const iconKey = getCalendarDayIconKeyForDate(dateKey);
   const src = iconKey ? getTimeTaskIconDisplaySrcByKey(iconKey) : "";
+  const existingImg = container.querySelector(".calendar-monthly-day-icons__img");
+  const existingKey = String(container.dataset.lpStampKey || "").trim();
+
+  if (!iconKey) {
+    container.replaceChildren();
+    container.hidden = true;
+    delete container.dataset.lpStampKey;
+    return;
+  }
+  if (existingKey === iconKey && calendarStampImgHasSrc(existingImg)) {
+    if (src && existingImg.currentSrc !== src && existingImg.src !== src) {
+      const probe = new Image();
+      probe.onload = () => {
+        if (container.dataset.lpStampKey !== iconKey) return;
+        existingImg.src = src;
+      };
+      probe.src = src;
+    }
+    if (isCalendarCustomStampKey(iconKey)) {
+      existingImg.classList.add("calendar-monthly-day-icons__img--custom");
+    }
+    container.hidden = false;
+    return;
+  }
   if (!src) {
+    container.replaceChildren();
     container.hidden = true;
     return;
   }
+  container.replaceChildren();
   container.hidden = false;
   container.className = "calendar-monthly-day-icons";
+  container.dataset.lpStampKey = iconKey;
 
   const btn = document.createElement("button");
   btn.type = "button";
@@ -171,6 +211,24 @@ export function renderCalendarMonthlyDayIcons(container, dateKey, opts = {}) {
   img.alt = "";
   applyStaticAppIconImg(img);
   img.className = "calendar-monthly-day-icons__img";
+  if (isCalendarCustomStampKey(iconKey)) {
+    img.classList.add("calendar-monthly-day-icons__img--custom");
+    img.addEventListener(
+      "error",
+      () => {
+        const ymd = calendarCustomStampYmdFromKey(iconKey);
+        if (!ymd) return;
+        void refreshCalendarCustomStampSignedUrls([ymd]).then(() => {
+          persistCalendarCustomStampDisplaySrcs();
+          const next = getTimeTaskIconDisplaySrcByKey(iconKey);
+          if (next && container.dataset.lpStampKey === iconKey) {
+            img.src = next;
+          }
+        });
+      },
+      { once: true },
+    );
+  }
   btn.appendChild(img);
   const requestWeekStampLayout = () => {
     const weekRow = container.closest(".calendar-monthly-week");
@@ -279,3 +337,17 @@ export function calendarDayHasIcon(dateKey) {
 
 /** 월간 주 행 — 스탬프 아이콘 높이(rem, 상단). calendar.css `--cal-day-icon-strip-rem` 과 동기 */
 export const CALENDAR_MONTHLY_DAY_ICONS_STRIP_REM = 2.85;
+
+if (typeof document !== "undefined") {
+  document.addEventListener("calendar-day-custom-stamps-ready", () => {
+    document
+      .querySelectorAll(".calendar-monthly-day[data-date]")
+      .forEach((cell) => {
+        const ymd = String(cell.getAttribute("data-date") || "").trim();
+        if (!ymd || !isCalendarCustomStampKey(getCalendarDayIconKeyForDate(ymd))) {
+          return;
+        }
+        repaintCalendarDayStampCells(ymd);
+      });
+  });
+}
