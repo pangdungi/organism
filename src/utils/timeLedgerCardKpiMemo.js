@@ -22,6 +22,10 @@ import {
   readingBookTitleKey,
   splitReadingBookTitles,
 } from "./readingBookTitles.js";
+import { timeSleepGoodFactorLabelsForIds } from "./timeTaskSleepGoodFactors.js";
+import { timeSleepPoorReasonLabelsForIds } from "./timeTaskSleepPoorReasons.js";
+import { timeFlowFactorLabelsForIds } from "./timeTaskFlowFactors.js";
+import { timeFlowDisruptorLabelsForIds } from "./timeTaskFlowDisruptors.js";
 
 const CONTENT_MEMO_PREFIX = "[콘텐츠] ";
 const MOVE_ROUTINE_TASK_NAME = "이동 루틴";
@@ -179,6 +183,34 @@ export function buildTimeLedgerCardMemoParts(rowData, kpiId) {
       if (label) parts.push({ label, body: text });
       else parts.push({ body: text });
     }
+  }
+
+  if (TTC.isSleepBuiltinTaskName(taskNameForDetail)) {
+    const good = timeSleepGoodFactorLabelsForIds(
+      rowData?.timeSleepGoodFactors,
+    );
+    if (good.length) {
+      parts.push({ label: "잘 잔 이유", body: good.join(" · ") });
+    }
+    const poor = timeSleepPoorReasonLabelsForIds(
+      rowData?.timeSleepPoorReasons,
+    );
+    if (poor.length) {
+      parts.push({ label: "못 잔 이유", body: poor.join(" · ") });
+    }
+  }
+
+  const flow = timeFlowFactorLabelsForIds(
+    rowData?.timeFlowFactors ?? rowData?.timeFlowFactor,
+  );
+  if (flow.length) {
+    parts.push({ label: "몰입 요소", body: flow.join(" · ") });
+  }
+  const disrupt = timeFlowDisruptorLabelsForIds(
+    rowData?.timeFlowDisruptors ?? rowData?.timeFlowDisruptor,
+  );
+  if (disrupt.length) {
+    parts.push({ label: "아쉬웠던 이유", body: disrupt.join(" · ") });
   }
 
   const kid = String(kpiId || "").trim();

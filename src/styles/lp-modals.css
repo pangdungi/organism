@@ -148,6 +148,15 @@ button[data-legacy~="lp-choice-chip--has-icon"] {
 [data-legacy~="time-task-setup-modal"].lp-confirm-stack-modal {
   z-index: 11010;
 }
+.time-task-setup-modal.lp-confirm-stack-modal .time-add-task-panel,
+[data-legacy~="time-task-setup-modal"].lp-confirm-stack-modal
+  [data-legacy~="time-add-task-panel"] {
+  width: min(100%, 22rem);
+  max-width: 22rem;
+  height: auto;
+  min-height: 0;
+  max-height: min(80vh, 32rem);
+}
 .time-task-setup-modal[hidden],
 .todo-list-modal[hidden],
 .diary-desktop-compose-modal[hidden],

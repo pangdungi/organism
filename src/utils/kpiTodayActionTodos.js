@@ -38,6 +38,7 @@ import {
   removePlannedTodoIdsFromBudgetDateForKpi,
 } from "./expectedScheduleDetail.js";
 import { lpRefreshAllVisibleCalendarLayoutsFromLocalData } from "./lpCalendarLocalRefresh.js";
+import { showConfirmModal } from "./confirmModal.js";
 
 export const TODAY_ACTION_TODO_PICKS_KEY = "lp_today_action_todo_picks";
 
@@ -836,7 +837,14 @@ export function showTodayActionTodosModal(opts = {}) {
     });
   modal
     .querySelector(".habit-tracker-today-goals-remove-today")
-    ?.addEventListener("click", () => {
+    ?.addEventListener("click", async () => {
+      const ok = await showConfirmModal({
+        title: "오늘 행동에서 제거",
+        message: `"${name}"을 오늘 행동에서 제거할까요?`,
+        confirmText: "제거하기",
+        cancelText: "취소",
+      });
+      if (!ok || !modal.isConnected) return;
       hideTodayActionKpi(kpiId, todayYmd);
       close();
       try {
