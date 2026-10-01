@@ -1698,6 +1698,11 @@ button.calendar-1day-pane-section-head--action:focus-visible {
 }
 
 .calendar-monthly-grid:not(.calendar-monthly-grid--1week-timegrid)
+  > .calendar-monthly-week-wrap:has(.calendar-monthly-week--has-stamps) {
+  flex-grow: 0;
+}
+
+.calendar-monthly-grid:not(.calendar-monthly-grid--1week-timegrid)
   > .calendar-monthly-week-wrap
   > .calendar-monthly-week {
   flex: 1 0 auto;
