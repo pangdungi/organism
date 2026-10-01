@@ -3201,22 +3201,12 @@ function renderMonthlyView(tabsElement) {
   }
 
   function schedulePullTasksForVisibleMonth() {
-    void (async () => {
-      const stampsBefore = snapshotCalendarDayIconsSemanticForCompare();
-      const [taskRes] = await Promise.all([
-        pullTasksForVisibleMonth(),
-        pullCalendarDayIconsFromSupabase({
-          reason: "calendar_month_nav",
-        }),
-      ]);
-      if (!wrap.isConnected) return;
-      const stampsChanged =
-        stampsBefore !== snapshotCalendarDayIconsSemanticForCompare();
-      if (!stampsChanged && (!taskRes?.ok || taskRes.skipped)) return;
+    void pullTasksForVisibleMonth().then((res) => {
+      if (!res?.ok || res.skipped || !wrap.isConnected) return;
       try {
         refreshCalendarLocal();
       } catch (_) {}
-    })();
+    });
   }
 
   /** 할일·일정 추가·수정·삭제·드래그 직후 — pull 없이 로컬만 다시 그림(전체 깜빡임 완화) */
@@ -4922,9 +4912,6 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
         rangeStart: taskRange.rangeStart,
         rangeEnd: taskRange.rangeEnd,
         force: true,
-      }),
-      pullCalendarDayIconsFromSupabase({
-        reason: "calendar_1day_nav",
       }),
       pullTimeLedgerEntriesForDateRange(yStart, dayYmd, { force: true }),
       pullTimeDailyBudgetForDateRange(yStart, dayYmd),
