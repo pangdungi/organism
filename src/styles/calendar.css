@@ -607,6 +607,50 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   box-sizing: border-box;
 }
 
+.calendar-1day-pane-section-head--timebox {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 1.85rem;
+  cursor: pointer;
+}
+
+.calendar-1day-timebox-expand {
+  position: absolute;
+  right: 0.12rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  cursor: pointer;
+  color: rgba(0, 0, 0, 0.38);
+  background: transparent;
+  border: none;
+  border-radius: 0.25rem;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.calendar-1day-timebox-expand:hover {
+  color: #000000;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.calendar-1day-dual-pane--solo-timebox .calendar-1day-dual-pane__cards {
+  display: none;
+}
+
+.calendar-1day-dual-pane--solo-timebox .calendar-1day-dual-pane__grid {
+  flex: 1 1 100%;
+  border-left: none;
+}
+
 .calendar-1day-view--slot-grid .calendar-1day-slot-grid-scroll {
   flex: 1 1 0;
   min-height: 0;

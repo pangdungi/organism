@@ -37,7 +37,10 @@ import {
   formatIntegerMinutesDurationKo,
 } from "../views/Time.js";
 import { getTaskDailyAverageMinutesLast30Days } from "./timeKpiSync.js";
-import { getNextExpectedScheduleStartHhMmAfterCurrent } from "./timeLedgerNextExpectedSchedule.js";
+import {
+  getNextExpectedScheduleStartHhMmAfterCurrent,
+  getPrevExpectedScheduleEndHhMmBeforeCurrent,
+} from "./timeLedgerNextExpectedSchedule.js";
 import * as TTC from "./timeTaskOptionsConstants.js";
 import {
   bindExpectedScheduleModalKeyboard,
@@ -555,6 +558,7 @@ function attachExpectedScheduleDatetimeUI(panel, ctx) {
     const startTimeVal = normalizeHhMm((taskLogTimeStart?.value || "").trim());
     let show = false;
     let nextStart = null;
+    let prevEnd = null;
     if (
       /^\d{4}-\d{2}-\d{2}$/.test(dateVal) &&
       startTimeVal &&
@@ -570,11 +574,20 @@ function attachExpectedScheduleDatetimeUI(panel, ctx) {
         startTimeVal,
         opts,
       );
-      show = !!nextStart;
+      prevEnd = getPrevExpectedScheduleEndHhMmBeforeCurrent(
+        dateVal,
+        startTimeVal,
+        opts,
+      );
+      const endTimeVal = normalizeHhMm((taskLogTimeEnd?.value || "").trim());
+      const backGap = !!(nextStart && nextStart !== endTimeVal);
+      const frontGap = !!prevEnd;
+      show = frontGap || backGap;
     }
     gapBtn.removeAttribute("title");
     gapBtn.hidden = !show;
     gapBtn.dataset.lpGapFillNext = nextStart || "";
+    gapBtn.dataset.lpGapFillPrev = prevEnd || "";
   }
 
   panel
@@ -622,6 +635,13 @@ function attachExpectedScheduleDatetimeUI(panel, ctx) {
               gapOpts.excludeTaskName = gapFillExclude.excludeTaskName;
               gapOpts.excludeTimeIdx = gapFillExclude.excludeTimeIdx;
             }
+            let prevEnd =
+              btn.dataset.lpGapFillPrev ||
+              getPrevExpectedScheduleEndHhMmBeforeCurrent(
+                dateVal,
+                gapStartTimeVal,
+                gapOpts,
+              );
             let nextStart =
               btn.dataset.lpGapFillNext ||
               getNextExpectedScheduleStartHhMmAfterCurrent(
@@ -629,14 +649,25 @@ function attachExpectedScheduleDatetimeUI(panel, ctx) {
                 gapStartTimeVal,
                 gapOpts,
               );
+            prevEnd = normalizeHhMm(String(prevEnd || "").trim());
             nextStart = normalizeHhMm(String(nextStart || "").trim());
-            if (!nextStart || !/^\d{1,2}:\d{2}$/.test(nextStart)) {
-              showToast("이어지는 다음 예상 일정이 없습니다.");
+            const canFillStart = !!(prevEnd && /^\d{1,2}:\d{2}$/.test(prevEnd));
+            const canFillEnd = !!(nextStart && /^\d{1,2}:\d{2}$/.test(nextStart));
+            if (!canFillStart && !canFillEnd) {
+              showToast("채울 빈칸이 없습니다.");
               syncExpectedGapFillBtnVisibility();
               return;
             }
-            if (taskLogTimeEnd) taskLogTimeEnd.value = nextStart;
-            syncEndToHidden();
+            if (canFillStart && taskLogTimeStart) {
+              taskLogTimeStart.value = prevEnd;
+              syncStartToHidden();
+            }
+            if (canFillEnd && taskLogTimeEnd) {
+              taskLogTimeEnd.value = nextStart;
+              syncEndToHidden();
+            }
+            lastFocusedTimeField = canFillEnd ? "end" : "start";
+            updateTaskLogTimeOrderWarning();
             setTaskLogQuickAdjustActive(btn);
             syncExpectedGapFillBtnVisibility();
             return;

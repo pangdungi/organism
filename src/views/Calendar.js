@@ -4582,13 +4582,57 @@ function wireCalendar1DaySlotGridDragMove(scroll, dateKey, onSaved) {
   });
 }
 
+const CAL_1DAY_TIMEBOX_EXPAND_ICON =
+  '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" d="M7 17 17 7M9 7h8v8"/></svg>';
+const CAL_1DAY_TIMEBOX_COLLAPSE_ICON =
+  '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" d="M17 7 7 17M7 9v8h8"/></svg>';
+
+function applyCalendar1DayTimeboxSolo(dual, on) {
+  if (!(dual instanceof HTMLElement)) return;
+  const solo = !!on;
+  dual.classList.toggle("calendar-1day-dual-pane--solo-timebox", solo);
+  dual.querySelectorAll("[data-lp-1day-timebox-expand]").forEach((btn) => {
+    btn.setAttribute("aria-pressed", solo ? "true" : "false");
+    btn.title = solo ? "2분할로 돌아가기" : "타임박스만 한 화면으로 보기";
+    btn.setAttribute("aria-label", btn.title);
+    btn.innerHTML = solo
+      ? CAL_1DAY_TIMEBOX_COLLAPSE_ICON
+      : CAL_1DAY_TIMEBOX_EXPAND_ICON;
+  });
+}
+
 /** 캘린더 일간뷰 — 24행×12열(5분 칸) + 「타임박스」헤더 */
-function createCalendar1DayTimeboxPanel(dateKey, onSaved) {
+function createCalendar1DayTimeboxPanel(dateKey, onSaved, opts = {}) {
   const section = document.createElement("div");
   section.className = "calendar-1day-timebox-section";
   const head = document.createElement("div");
-  head.className = "calendar-1day-pane-section-head";
-  head.textContent = "타임박스";
+  head.className =
+    "calendar-1day-pane-section-head calendar-1day-pane-section-head--timebox";
+  const title = document.createElement("span");
+  title.className = "calendar-1day-pane-section-head-label";
+  title.textContent = "타임박스";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "calendar-1day-timebox-expand";
+  btn.dataset.lp1dayTimeboxExpand = "1";
+  btn.innerHTML = CAL_1DAY_TIMEBOX_EXPAND_ICON;
+  btn.title = "타임박스만 한 화면으로 보기";
+  btn.setAttribute("aria-label", "타임박스만 한 화면으로 보기");
+  btn.setAttribute("aria-pressed", "false");
+  const toggleSolo = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const dual =
+      (typeof opts.getDual === "function" ? opts.getDual() : null) ||
+      section.closest(".calendar-1day-dual-pane");
+    if (!dual) return;
+    const next = !dual.classList.contains("calendar-1day-dual-pane--solo-timebox");
+    if (typeof opts.persistSolo === "function") opts.persistSolo(next);
+    applyCalendar1DayTimeboxSolo(dual, next);
+  };
+  btn.addEventListener("click", toggleSolo);
+  head.addEventListener("click", toggleSolo);
+  head.append(title, btn);
   section.appendChild(head);
   section.appendChild(createCalendar1DaySlotGrid(dateKey, onSaved));
   return section;
@@ -5021,8 +5065,15 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
       const gridPane = document.createElement("div");
       gridPane.className = "calendar-1day-dual-pane__grid";
       gridPane.appendChild(
-        createCalendar1DayTimeboxPanel(targetKey, () =>
-          renderCalendar({ skipDayPull: true }),
+        createCalendar1DayTimeboxPanel(
+          targetKey,
+          () => renderCalendar({ skipDayPull: true }),
+          {
+            getDual: () => dualPane,
+            persistSolo: (on) => {
+              wrap._lp1dayTimeboxSolo = !!on;
+            },
+          },
         ),
       );
 
@@ -5038,6 +5089,7 @@ function render1DayView(tabsElement = null, viewOpts = {}) {
 
       dualPane.appendChild(cardsPane);
       dualPane.appendChild(gridPane);
+      applyCalendar1DayTimeboxSolo(dualPane, !!wrap._lp1dayTimeboxSolo);
       timeColumn.appendChild(dualPane);
     } else {
     const nowForTimeline = new Date();

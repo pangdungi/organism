@@ -28,10 +28,8 @@ import {
 export { USER_HOURLY_RATE_KEY };
 
 const USER_HOURLY_CALC_INPUTS_KEY = "user_hourly_calc_inputs";
-const EBOOK_URL_YEAR =
+const EBOOK_URL =
   "https://intothemagicbook.com/read/I_TjdjCsLZcIrDpP9IbhBT-p7jJfrwTm";
-const EBOOK_URL_TRIAL =
-  "https://intothemagicbook.com/read/_qo4OWOPl8iw0Vdu2jBC7dvXp7nkkDI5";
 
 async function copyTextToClipboard(text) {
   try {
@@ -400,11 +398,7 @@ export function render() {
           const snap = subscriptionSnapFromPrefsRow(data);
           const expired = subscriptionAccessEnded(snap);
           const showRenewal = subscriptionRenewalOfferDue(snap);
-          setEbookUrl(
-            String(data.subscription_status || "").toLowerCase() === "active"
-              ? EBOOK_URL_YEAR
-              : EBOOK_URL_TRIAL,
-          );
+          setEbookUrl(EBOOK_URL);
           if (expired) {
             statusEl.textContent = "이용 만료";
             passEl.textContent = data.access_until

@@ -270,6 +270,43 @@ export function getNextExpectedScheduleStartHhMmAfterCurrent(
   return null;
 }
 
+/**
+ * 예상 일정 — 현재 시작보다 앞 블록의 마감(HH:mm). 마감이 시작보다 이를 때만(앞쪽 빈칸).
+ * @param {string} dateKey YYYY-MM-DD
+ * @param {string} currentStartHhMm
+ * @param {{ excludeTaskName?: string, excludeTimeIdx?: number }} [opts]
+ */
+export function getPrevExpectedScheduleEndHhMmBeforeCurrent(
+  dateKey,
+  currentStartHhMm,
+  opts = {},
+) {
+  const currentMin = minutesFromHhMm(currentStartHhMm);
+  if (currentMin == null) return null;
+  const dk = normalizeDateKey(dateKey);
+  if (!dk) return null;
+  const excludeTask = normalizeTaskNameKey(opts.excludeTaskName);
+  const excludeIdx = Number(opts.excludeTimeIdx);
+  const hasExcludeIdx = Number.isFinite(excludeIdx) && excludeIdx >= 0;
+
+  let prev = null;
+  for (const block of collectBudgetBlocksForDate(dk)) {
+    if (
+      hasExcludeIdx &&
+      excludeTask &&
+      normalizeTaskNameKey(block.taskName) === excludeTask &&
+      block.timeIdx === excludeIdx
+    ) {
+      continue;
+    }
+    if (block.startMin < currentMin) prev = block;
+    else break;
+  }
+  if (!prev) return null;
+  if (prev.endMin == null || prev.endMin >= currentMin) return null;
+  return prev.endHhMm;
+}
+
 function activeInProgressTaskNamesForDay(ledgerRows, dateKey) {
   const names = new Set();
   for (const row of Array.isArray(ledgerRows) ? ledgerRows : []) {
