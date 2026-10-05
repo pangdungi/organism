@@ -651,22 +651,21 @@ function attachExpectedScheduleDatetimeUI(panel, ctx) {
               );
             prevEnd = normalizeHhMm(String(prevEnd || "").trim());
             nextStart = normalizeHhMm(String(nextStart || "").trim());
+            const fillStart = lastFocusedTimeField === "start";
             const canFillStart = !!(prevEnd && /^\d{1,2}:\d{2}$/.test(prevEnd));
             const canFillEnd = !!(nextStart && /^\d{1,2}:\d{2}$/.test(nextStart));
-            if (!canFillStart && !canFillEnd) {
+            if (fillStart ? !canFillStart : !canFillEnd) {
               showToast("채울 빈칸이 없습니다.");
               syncExpectedGapFillBtnVisibility();
               return;
             }
-            if (canFillStart && taskLogTimeStart) {
+            if (fillStart && taskLogTimeStart) {
               taskLogTimeStart.value = prevEnd;
               syncStartToHidden();
-            }
-            if (canFillEnd && taskLogTimeEnd) {
+            } else if (taskLogTimeEnd) {
               taskLogTimeEnd.value = nextStart;
               syncEndToHidden();
             }
-            lastFocusedTimeField = canFillEnd ? "end" : "start";
             updateTaskLogTimeOrderWarning();
             setTaskLogQuickAdjustActive(btn);
             syncExpectedGapFillBtnVisibility();
@@ -1669,7 +1668,7 @@ export function openCalendarExpectedScheduleModal(options) {
       hideExpectedTaskCompletionTodos();
       return null;
     }
-    if (!suppressPlannedClearOnTaskChange) {
+    if (meta.reloadPlannedFromSlot && !suppressPlannedClearOnTaskChange) {
       hydratePlannedTodoSelectionFromSlot(kpiId);
     }
     applyExpectedTaskCompletionTodosUi(info.kpiId, info.todos);
@@ -1737,7 +1736,7 @@ export function openCalendarExpectedScheduleModal(options) {
       "is-content-detail-task",
       showChipDetail,
     );
-    const todoMeta = { taskName: tn, taskId: meta?.taskId };
+    const todoMeta = { taskName: tn, taskId: meta?.taskId, reloadPlannedFromSlot: true };
     refreshExpectedTaskCompletionTodos(todoMeta);
     void syncExpectedTaskCompletionTodosFromCloud(todoMeta);
   }

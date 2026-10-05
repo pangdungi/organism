@@ -62,6 +62,9 @@ export function wireCalendarEventNameEmojiQuick(root, input) {
   root
     .querySelectorAll(".calendar-event-name-emoji-quick-btn[data-insert]")
     .forEach((btn) => {
+      btn.addEventListener("mousedown", (ev) => {
+        ev.preventDefault();
+      });
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
