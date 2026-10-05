@@ -4282,6 +4282,63 @@ function formatWeekFlowClockFromMin(minOfDay) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
+/** 주간 예상 카드 — 저장 직후 그 카드 글만 맞춤(주간 격자 다시 만들기 없음) */
+function findUpdatedWeekExpectedSpan(dateKey, prevSpan) {
+  const { spans } = buildExpectedScheduleSpansForDateKey(dateKey);
+  const taskName = String(prevSpan?.taskName || "").trim();
+  const timeIdx = Number(prevSpan?._timeIdx);
+  if (Number.isFinite(timeIdx) && timeIdx >= 0) {
+    const byIdx = spans.find(
+      (s) =>
+        String(s.taskName || "").trim() === taskName &&
+        Number(s._timeIdx) === timeIdx,
+    );
+    if (byIdx) return byIdx;
+  }
+  const startMin = Number(prevSpan?.startMin);
+  const endMin = Number(prevSpan?.endMin);
+  return (
+    spans.find(
+      (s) =>
+        String(s.taskName || "").trim() === taskName &&
+        Number(s.startMin) === startMin &&
+        Number(s.endMin) === endMin,
+    ) || null
+  );
+}
+
+function applyCalendar1WeekExpectedCardText(card, span) {
+  if (!card || !span) return;
+  const taskLabel = expectedSpanDisplayTaskName(span);
+  const memoTextStored = expectedSpanCardMemoLines(span).join("\n");
+  const rangeHuman = `${span.startDisplay} - ${span.endDisplay}`;
+  const titleEl = card.querySelector(".calendar-1week-flow-card-title");
+  if (titleEl) titleEl.textContent = taskLabel;
+  const timeEl = card.querySelector(".calendar-1week-flow-card-time");
+  if (timeEl) timeEl.textContent = rangeHuman;
+  let memoEl = card.querySelector(".calendar-1week-flow-card-memo");
+  if (memoTextStored) {
+    if (!memoEl) {
+      memoEl = document.createElement("div");
+      memoEl.className = "calendar-1week-flow-card-memo";
+      card.appendChild(memoEl);
+    }
+    memoEl.textContent = memoTextStored;
+  } else if (memoEl) {
+    memoEl.remove();
+  }
+  card.title = memoTextStored
+    ? `${taskLabel} (${span.startDisplay} ~ ${span.endDisplay})\n${memoTextStored}`
+    : `${taskLabel} (${span.startDisplay} ~ ${span.endDisplay})`;
+}
+
+function patchCalendar1WeekExpectedCardAfterSave(card, dateKey, prevSpan) {
+  if (!card?.isConnected) return;
+  const next = findUpdatedWeekExpectedSpan(dateKey, prevSpan);
+  if (!next) return;
+  applyCalendar1WeekExpectedCardText(card, next);
+}
+
 /** 일간 남은 시간 표기 (예: 17h 15m, 45m, 2h) */
 function formatMinutesAsCompactHm(totalMin) {
   const m = Math.max(0, Math.floor(Number(totalMin) || 0));
@@ -6392,7 +6449,8 @@ function render1WeekView(tabsElement, weekOpts = {}) {
               edit: { taskName: span.taskName },
               title: "예상 일정 수정",
               submitLabel: "저장",
-              onSaved: () => refreshCalendar1WeekLocal(),
+              onSaved: () =>
+                patchCalendar1WeekExpectedCardAfterSave(card, key, span),
             });
           });
           stack.appendChild(card);
