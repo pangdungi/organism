@@ -1236,6 +1236,7 @@ export function render(opts = {}) {
       saveSideincomeMap(d2, { pushServer: false });
       void persistSideincomeKpiTodoRow(added);
       renderKpiDetailView({ scrollTodoAfterMutation: true });
+      refreshOneKpiCardNumbers(selectedKpiId);
       return;
     }
     if (tab === KPI_BOTTOM_TAB_DAILY) {
@@ -1445,6 +1446,13 @@ export function render(opts = {}) {
     const fill = card.querySelector(".dream-kpi-card-progress-fill");
     if (fill) {
       fill.style.width = `${Math.max(0, Number(pres.displayProgress) || 0)}%`;
+    }
+    const bar = card.querySelector(".dream-kpi-card-progress-bar");
+    if (bar) {
+      bar.classList.toggle(
+        "dream-kpi-card-progress-bar--empty",
+        !!pres.hideProgressFill,
+      );
     }
     syncKpiCardDoneChip(card, !!progressResult.isCompleted);
   }
@@ -2044,6 +2052,7 @@ export function render(opts = {}) {
             삭제후dr: deletedRefsKpiTodosLen(after),
           });
           renderKpiDetailView({ scrollTodoAfterMutation: true });
+          refreshOneKpiCardNumbers(kpi.id);
           return;
         }
         const d = loadSideincomeMap();
@@ -2135,8 +2144,10 @@ export function render(opts = {}) {
           loadMap: loadSideincomeMap,
           saveMap: saveSideincomeMap,
           appendDeletedRef,
-          onAfterDelete: () =>
-            renderKpiDetailView({ scrollTodoAfterMutation: true }),
+          onAfterDelete: () => {
+            renderKpiDetailView({ scrollTodoAfterMutation: true });
+            refreshOneKpiCardNumbers(selKpi);
+          },
           title: "완료목록 모두 삭제",
           emptyMessage: "삭제할 완료한 할 일이 없습니다.",
         });
@@ -2255,7 +2266,10 @@ export function render(opts = {}) {
       saveMap: saveSideincomeMap,
       storageKey: SIDEINCOME_KPI_MAP_STORAGE_KEY,
       appendDeletedRef,
-      onAfterDelete: () => renderKpiDetailView({ scrollTodoAfterMutation: true }),
+      onAfterDelete: () => {
+        renderKpiDetailView({ scrollTodoAfterMutation: true });
+        refreshOneKpiCardNumbers(selKpi);
+      },
     };
 
     if (useKpiSegBar && segBar) {
