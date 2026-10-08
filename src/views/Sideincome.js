@@ -109,7 +109,7 @@ import {
   SIDEINCOME_GOAL_EDIT_PENCIL_HTML,
   bindKpiCardEditButton,
 } from "../utils/kpiTabNameEditIcon.js";
-import { kpiCardHeadHtml, wireKpiCardIconsIn } from "../utils/kpiCardIcon.js";
+import { kpiCardHeadHtml, syncKpiCardDoneChip, wireKpiCardIconsIn } from "../utils/kpiCardIcon.js";
 import { appendKpiCardToGrid } from "../utils/kpiCardDeadlineFoot.js";
 import { ensureKpiHeaderBackButton } from "../utils/kpiTwoPaneSplit.js";
 import { sortKpiLogsNewestFirst } from "../utils/kpiLogsSort.js";
@@ -1415,6 +1415,40 @@ export function render(opts = {}) {
     );
   }
 
+  function refreshOneKpiCardNumbers(kpiId) {
+    const host = layoutIsSplit ? paneKpis : contentWrap;
+    const card = host?.querySelector?.(
+      `.dream-kpi-card[data-kpi-id="${CSS.escape(String(kpiId))}"]`,
+    );
+    if (!card) return;
+    const data = loadSideincomeMap();
+    const kpi = (data.kpis || []).find((k) => String(k.id) === String(kpiId));
+    if (!kpi) return;
+    const progressResult = getKpiProgress(kpi);
+    const formatNum = (n) =>
+      n == null || Number.isNaN(n)
+        ? "—"
+        : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    const pres = buildKpiCardTimePresentation(kpi, progressResult, formatNum);
+    const textEl = card.querySelector(".dream-kpi-card-progress-text");
+    if (textEl) textEl.textContent = pres.progressText || "";
+    const heroEl = card.querySelector(".dream-kpi-card-target-num");
+    if (heroEl && !pres.hideHabitHero) {
+      heroEl.innerHTML =
+        formatKpiCardHeroHtml(
+          progressResult.lowerBetter,
+          pres.heroStr,
+          pres.heroUnit,
+          pres.heroPrefix,
+        ) + (pres.heroStreakAsideHtml || "");
+    }
+    const fill = card.querySelector(".dream-kpi-card-progress-fill");
+    if (fill) {
+      fill.style.width = `${Math.max(0, Number(pres.displayProgress) || 0)}%`;
+    }
+    syncKpiCardDoneChip(card, !!progressResult.isCompleted);
+  }
+
   function renderKpiList(host) {
     const container = host || kpisHost();
     if (!container) return;
@@ -2061,6 +2095,7 @@ export function render(opts = {}) {
             completion: kpiTodosCompletionBrief(loadSideincomeMap(), 20),
           });
           item.classList.toggle("is-completed", t.completed);
+          refreshOneKpiCardNumbers(kpi.id);
         }
       });
 
