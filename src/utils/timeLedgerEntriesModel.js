@@ -744,7 +744,25 @@ export function preserveTimeLedgerEndTimeUnlessCleared(prevRow, nextRow) {
   if (prevEnd && !nextEnd && !clearedFlag) {
     return { ...rest, endTime: prevEnd };
   }
+  const rid = String(rest.id || "").trim();
+  if (rid) {
+    if (clearedFlag && !nextEnd) _endTimeClearedByUserIds.add(rid);
+    else if (nextEnd) _endTimeClearedByUserIds.delete(rid);
+  }
   return rest;
+}
+
+/** 지우기 버튼으로 마감을 비운 기록 id — 이 id만 서버 마감을 빈 값으로 덮을 수 있음 */
+const _endTimeClearedByUserIds = new Set();
+
+export function isTimeLedgerEndTimeClearedByUser(id) {
+  return _endTimeClearedByUserIds.has(String(id || "").trim());
+}
+
+export function forgetTimeLedgerEndTimeClearedByUser(ids) {
+  for (const id of Array.isArray(ids) ? ids : []) {
+    _endTimeClearedByUserIds.delete(String(id || "").trim());
+  }
 }
 
 function rowEntryDateInInclusiveRange(row, startYmd, endYmd) {

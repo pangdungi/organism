@@ -21,6 +21,8 @@ import {
   mergeTimeLedgerEntriesPushedServerTimes,
   mergeTimeLedgerLocalRowsById,
   preserveTimeLedgerEndTimeUnlessCleared,
+  isTimeLedgerEndTimeClearedByUser,
+  forgetTimeLedgerEndTimeClearedByUser,
   readTimeLedgerEntriesRaw,
   recordTimeLedgerDeletionTombstone,
   pruneTimeLedgerLocalEntriesToRecentRetention,
@@ -499,7 +501,26 @@ function stripPayloadForMissingColumnError(payloads, error) {
   return null;
 }
 
+/**
+ * end_time 키가 없는 행은 따로 upsert — 컬럼 목록에서 빠져 서버 마감을 건드리지 않음
+ * (한 배치에 섞으면 빠진 키가 null/기본값으로 채워져 서버 마감을 덮음)
+ */
 async function upsertLedgerEntryPayloads(payloads) {
+  const withEnd = payloads.filter((p) => Object.prototype.hasOwnProperty.call(p, "end_time"));
+  const withoutEnd = payloads.filter((p) => !Object.prototype.hasOwnProperty.call(p, "end_time"));
+  if (withoutEnd.length === 0) return upsertLedgerEntryPayloadsSameShape(withEnd);
+  if (withEnd.length === 0) return upsertLedgerEntryPayloadsSameShape(withoutEnd);
+  const a = await upsertLedgerEntryPayloadsSameShape(withEnd);
+  if (a.error) return a;
+  const b = await upsertLedgerEntryPayloadsSameShape(withoutEnd);
+  if (b.error) return b;
+  return {
+    data: [...(Array.isArray(a.data) ? a.data : []), ...(Array.isArray(b.data) ? b.data : [])],
+    error: null,
+  };
+}
+
+async function upsertLedgerEntryPayloadsSameShape(payloads) {
   let batch = payloads;
   let onConflict = UPSERT_CONFLICT_ROW;
   let result = await supabase
@@ -974,6 +995,10 @@ async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
     if (!p) continue;
     const pid = String(p.id || "").trim();
     if (!isUuid(pid)) continue;
+    /* 빈 마감은 지우기 버튼으로 비운 경우만 보냄 — 서버에 있는 마감을 빈 값으로 덮지 않음 */
+    if (!String(p.end_time || "").trim() && !isTimeLedgerEndTimeClearedByUser(pid)) {
+      delete p.end_time;
+    }
     payloadById.set(pid, p);
   }
   const payloads = [...payloadById.values()];
@@ -1018,6 +1043,7 @@ async function pushDirtyTimeLedgerEntriesToSupabaseCore(opts = {}) {
   const uploadIds = toUpload
     .map((r) => String(r.id || "").trim())
     .filter((id) => isUuid(id));
+  forgetTimeLedgerEndTimeClearedByUser(uploadIds);
   let verified = Array.isArray(data)
     ? data.filter((r) => isUuid(String(r?.id || "").trim()))
     : [];
