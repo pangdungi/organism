@@ -91,6 +91,7 @@ import {
   mountKpiDetailStackedSections,
 } from "../utils/kpiDetailSectionUi.js";
 import { formatKpiCardHeroHtml } from "../utils/kpiViewModal.js";
+import { buildKpiListPaintSignature } from "../utils/kpiListPaintSignature.js";
 import { kpiFilterEmptyListMessage } from "../utils/kpiFilterEmptyMessage.js";
 import {
   applyAutoCompleteManualKpiIfNeeded,
@@ -587,6 +588,7 @@ export function render(opts = {}) {
   let kpiGridScrollPrevFilter = null;
   let kpiGridScrollPrevScopeId = null;
   let pathAddModalJustClosed = false;
+  let lastSideincomeKpiListPaintSig = "";
 
   function wantsSplitLayout() {
     return !dashboardEmbedMode && isSideincomeSplitViewport();
@@ -1416,6 +1418,39 @@ export function render(opts = {}) {
     );
   }
 
+  function computeSideincomeKpiListPaintSig() {
+    const data = loadSideincomeMap();
+    let pathKpis = (data.kpis || []).filter((k) => k.pathId === activePathId);
+    const order = (data.kpiOrder || {})[activePathId];
+    if (order && order.length > 0) {
+      const orderMap = new Map(order.map((id, i) => [id, i]));
+      pathKpis = [...pathKpis].sort((a, b) => {
+        const ia = orderMap.has(a.id) ? orderMap.get(a.id) : 999;
+        const ib = orderMap.has(b.id) ? orderMap.get(b.id) : 999;
+        return ia - ib;
+      });
+    }
+    const progressByKpiId = new Map();
+    const progressFor = (kpi) => {
+      const id = String(kpi?.id ?? "");
+      if (!progressByKpiId.has(id)) {
+        progressByKpiId.set(id, getKpiProgress(kpi));
+      }
+      return progressByKpiId.get(id);
+    };
+    const path = (data.paths || []).find((p) => p.id === activePathId);
+    const pathLogs = (data.pathLogs || []).filter((l) => l.pathId === activePathId);
+    const pathCurrentVal = pathLogs.reduce((sum, l) => sum + parseNum(l.value), 0);
+    return [
+      String(activePathId || ""),
+      String(selectedKpiId || ""),
+      String(!!layoutIsSplit),
+      String(pathCurrentVal),
+      String(path?.targetAmount || ""),
+      buildKpiListPaintSignature(pathKpis, kpiFilter, progressFor, "sideincome"),
+    ].join("\n");
+  }
+
   function refreshOneKpiCardNumbers(kpiId) {
     const host = layoutIsSplit ? paneKpis : contentWrap;
     const card = host?.querySelector?.(
@@ -1455,12 +1490,22 @@ export function render(opts = {}) {
       );
     }
     syncKpiCardDoneChip(card, !!progressResult.isCompleted);
+    lastSideincomeKpiListPaintSig = computeSideincomeKpiListPaintSig();
   }
 
   function renderKpiList(host) {
     const container = host || kpisHost();
     if (!container) return;
     const inSplitPane = layoutIsSplit && container !== contentWrap;
+    const nextListSig = computeSideincomeKpiListPaintSig();
+    if (
+      nextListSig === lastSideincomeKpiListPaintSig &&
+      container.querySelector(".dream-kpi-card, .dream-kpi-grid")
+    ) {
+      persistKpiUiState();
+      syncAppFooterSideincomeKpiActions();
+      return;
+    }
 
     syncHabitTrackerLogs();
     const scopeId = activePathId;
@@ -1722,6 +1767,7 @@ export function render(opts = {}) {
     applyKpiGridScrollRestore(container, savedGridScroll);
     kpiGridScrollPrevFilter = kpiFilter;
     kpiGridScrollPrevScopeId = scopeId;
+    lastSideincomeKpiListPaintSig = nextListSig;
     persistKpiUiState();
     syncAppFooterSideincomeKpiActions();
   }

@@ -37,12 +37,21 @@ export function isAppAdminSession(session) {
 /**
  * @returns {Promise<boolean>}
  */
-export async function isCurrentUserAppAdmin() {
-  if (!supabase) return false;
+async function isAppAdminByLocalSession() {
   try {
     const { data: { session } = {} } = await supabase.auth.getSession();
     return isAppAdminSession(session);
   } catch (_) {
     return false;
   }
+}
+
+export async function isCurrentUserAppAdmin() {
+  if (!supabase) return false;
+  try {
+    const { data, error } = await supabase.rpc("lp_is_app_admin");
+    if (!error && typeof data === "boolean") return data;
+  } catch (_) {}
+  /* 서버 확인이 잠깐 실패해도 관리자 메뉴·입장은 지금처럼 유지 */
+  return isAppAdminByLocalSession();
 }

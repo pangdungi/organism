@@ -36,12 +36,7 @@ function verifyWebhookSecret(req: Request): boolean {
     console.warn("IMWEB_WEBHOOK_SECRET not set — rejecting webhook");
     return false;
   }
-  if (readWebhookSecret(req) === expected) return true;
-  try {
-    const url = new URL(req.url);
-    if (url.searchParams.get("imweb_secret") === expected) return true;
-  } catch (_) {}
-  return false;
+  return readWebhookSecret(req) === expected;
 }
 
 function hasTargetProduct(payload: Record<string, unknown>): boolean {

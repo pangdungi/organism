@@ -30,7 +30,7 @@ import { render as renderAdmin } from "./views/Admin.js";
 import { render as renderHabitTracker } from "./views/HabitTracker.js";
 import { supabase } from "./supabase.js";
 import { getSupabaseSession } from "./utils/supabaseSession.js";
-import { isAppAdminUser } from "./utils/adminAccess.js";
+import { isCurrentUserAppAdmin } from "./utils/adminAccess.js";
 import { dismissAppToast, showToast } from "./utils/showToast.js";
 import {
   APP_FOOTER_ICON_BTN_CLASS,
@@ -776,8 +776,7 @@ export async function mountApp(container) {
   }
   if (currentTabId === "admin" && supabase) {
     try {
-      const { data: { session } = {} } = await getSupabaseSession();
-      if (!isAppAdminUser(session?.user)) {
+      if (!(await isCurrentUserAppAdmin())) {
         currentTabId = "home";
         try {
           sessionStorage.setItem(LP_LAST_TAB_SESSION_KEY, "home");
@@ -816,11 +815,11 @@ export async function mountApp(container) {
     let show = false;
     if (supabase) {
       try {
-        const { data: { session } = {} } = await getSupabaseSession();
-        show = isAppAdminUser(session?.user);
+        show = await isCurrentUserAppAdmin();
       } catch (_) {}
     }
     if (launcherAdminBtn) launcherAdminBtn.hidden = !show;
+    return show;
   }
 
   function liveDesktopDashboardRoot() {
@@ -971,8 +970,7 @@ export async function mountApp(container) {
       void (async () => {
         if (!supabase) return;
         try {
-          const { data: { session } = {} } = await getSupabaseSession();
-          if (!isAppAdminUser(session?.user)) {
+          if (!(await isCurrentUserAppAdmin())) {
             showToast("관리자만 접근할 수 있어요.");
             return;
           }
@@ -1653,10 +1651,10 @@ export async function mountApp(container) {
     },
   });
   if (supabase?.auth?.onAuthStateChange) {
-    supabase.auth.onAuthStateChange((_event, session) => {
+    supabase.auth.onAuthStateChange((_event, _session) => {
       void (async () => {
-        await syncAdminMenuVisibility();
-        if (currentTabId === "admin" && !isAppAdminUser(session?.user)) {
+        const showAdmin = await syncAdminMenuVisibility();
+        if (currentTabId === "admin" && !showAdmin) {
           applySetActiveTab("home");
         }
       })();
