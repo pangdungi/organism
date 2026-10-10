@@ -1774,6 +1774,35 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   flex: 1 1 auto;
 }
 
+/* 데스크탑 3분할 월간: 다음 달 한 주 포함, 칸 높이를 나눔. 내용이 더 크면 그 주만 늘어 칸 안에서 스크롤 */
+.lp-desktop-dashboard-col--planner
+  .calendar-monthly-grid:not(.calendar-monthly-grid--1week-timegrid)
+  > .calendar-monthly-week-wrap,
+.lp-desktop-dashboard-col--planner
+  .calendar-monthly-grid:not(.calendar-monthly-grid--1week-timegrid)
+  > .calendar-monthly-week-wrap.calendar-monthly-week-wrap--fit-content,
+.lp-desktop-dashboard-col--planner
+  .calendar-monthly-grid:not(.calendar-monthly-grid--1week-timegrid)
+  > .calendar-monthly-week-wrap.calendar-monthly-week-wrap--continuation {
+  flex: 1 1 0%;
+  min-height: min-content;
+}
+
+.lp-desktop-dashboard-col--planner
+  .calendar-monthly-grid:not(.calendar-monthly-grid--1week-timegrid)
+  > .calendar-monthly-week-wrap
+  > .calendar-monthly-week,
+.lp-desktop-dashboard-col--planner
+  .calendar-monthly-grid:not(.calendar-monthly-grid--1week-timegrid)
+  > .calendar-monthly-week-wrap.calendar-monthly-week-wrap--fit-content
+  > .calendar-monthly-week,
+.lp-desktop-dashboard-col--planner
+  .calendar-monthly-grid:not(.calendar-monthly-grid--1week-timegrid)
+  > .calendar-monthly-week-wrap.calendar-monthly-week-wrap--continuation
+  > .calendar-monthly-week {
+  flex: 1 1 auto;
+}
+
 .calendar-monthly-layout:not(.calendar-1day-view)
   > .calendar-monthly-main
   > .calendar-monthly-tabs-wrap {

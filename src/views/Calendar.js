@@ -3837,8 +3837,12 @@ function renderMonthlyView(tabsElement) {
         const already = calendarGrid.querySelectorAll(
           ":scope > .calendar-monthly-week-wrap--continuation",
         ).length;
+        if (already >= 1) return;
+        const inPlannerSplit = !!calendarGrid.closest(
+          ".lp-desktop-dashboard-col--planner",
+        );
         const gap = monthRowsShortfallPx();
-        if (gap < 12 || already >= 1) return;
+        if (!inPlannerSplit && gap < 12) return;
         const painted = appendWeeksAfterLastPaintedDay(1);
         if (!painted) return;
         wrap._lpRememberCalendarGridPaintSig?.();
