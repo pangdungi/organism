@@ -3334,7 +3334,7 @@ function renderMonthlyView(tabsElement) {
 
     const todayKey = formatDateKey(new Date());
     const gridSpan = calendarPullRangeYmdForMonthGrid(grid, 0);
-    const rangeTasks = getAllTasksWithDateRange().filter((t) =>
+    let rangeTasks = getAllTasksWithDateRange().filter((t) =>
       calendarSectionTaskOverlapsYmdRange(
         t,
         gridSpan.rangeStart,
@@ -3342,7 +3342,7 @@ function renderMonthlyView(tabsElement) {
       ),
     );
 
-    grid.forEach((week) => {
+    const paintMonthWeek = (week, paintOpts = {}) => {
       const weekDateKeys = week
         .map((d) => (d ? formatDateKey(d) : ""))
         .filter(Boolean);
@@ -3354,6 +3354,9 @@ function renderMonthlyView(tabsElement) {
       }
       const weekWrap = document.createElement("div");
       weekWrap.className = "calendar-monthly-week-wrap";
+      if (paintOpts.continuation) {
+        weekWrap.classList.add("calendar-monthly-week-wrap--continuation");
+      }
       const weekRow = document.createElement("div");
       weekRow.className = "calendar-monthly-week";
       const firstDayKey = weekDateKeys[0] || "";
@@ -3764,7 +3767,67 @@ function renderMonthlyView(tabsElement) {
         BOTTOM_PAD,
         ROW_GAP,
       });
-    });
+    };
+    grid.forEach((week) => paintMonthWeek(week));
+    if (!partialWeekPatch) {
+      const fillGen = (calendarGrid._lpContFillGen || 0) + 1;
+      calendarGrid._lpContFillGen = fillGen;
+      requestAnimationFrame(() => {
+        if (calendarGrid._lpContFillGen !== fillGen) return;
+        if (!calendarGrid.isConnected) return;
+        const gap = calendarGrid.clientHeight - calendarGrid.scrollHeight;
+        if (gap < 12) return;
+        const fontPx =
+          parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+        const minRem =
+          parseFloat(
+            getComputedStyle(calendarGrid).getPropertyValue("--cal-week-row-min"),
+          ) || 4.75;
+        const minPx = Math.max(48, minRem * fontPx);
+        const n = Math.min(8, Math.max(1, Math.ceil(gap / minPx)));
+        const lastWeek = grid[grid.length - 1] || [];
+        const lastDate = [...lastWeek].reverse().find((d) => d instanceof Date);
+        if (!lastDate) return;
+        const cursor = new Date(lastDate);
+        cursor.setDate(cursor.getDate() + 1);
+        const extras = [];
+        for (let i = 0; i < n; i += 1) {
+          const extraWeek = [];
+          for (let d = 0; d < 7; d += 1) {
+            const dt = new Date(cursor);
+            dt.setDate(cursor.getDate() + d);
+            extraWeek.push(dt);
+          }
+          extras.push(extraWeek);
+          cursor.setDate(cursor.getDate() + 7);
+        }
+        const extraKeys = extras
+          .flat()
+          .filter((d) => d instanceof Date)
+          .map((d) => formatDateKey(d));
+        const extraStart = extraKeys[0];
+        const extraEnd = extraKeys[extraKeys.length - 1];
+        if (extraStart && extraEnd) {
+          const seen = new Set(
+            rangeTasks.map((t) => String(t.taskId || t.id || "")),
+          );
+          getAllTasksWithDateRange()
+            .filter((t) =>
+              calendarSectionTaskOverlapsYmdRange(t, extraStart, extraEnd),
+            )
+            .forEach((t) => {
+              const id = String(t.taskId || t.id || "");
+              if (id && seen.has(id)) return;
+              if (id) seen.add(id);
+              rangeTasks.push(t);
+            });
+        }
+        extras.forEach((week) =>
+          paintMonthWeek(week, { continuation: true }),
+        );
+        wrap._lpRememberCalendarGridPaintSig?.();
+      });
+    }
     wrap._lpRememberCalendarGridPaintSig?.();
     applyCalendarDiaryVisibilityToRoot(wrap);
     requestAnimationFrame(() => softReflowCalendarAfterDiaryToggle(wrap));
