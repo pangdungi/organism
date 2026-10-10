@@ -3772,23 +3772,32 @@ function renderMonthlyView(tabsElement) {
     if (!partialWeekPatch) {
       const fillGen = (calendarGrid._lpContFillGen || 0) + 1;
       calendarGrid._lpContFillGen = fillGen;
-      requestAnimationFrame(() => {
-        if (calendarGrid._lpContFillGen !== fillGen) return;
-        if (!calendarGrid.isConnected) return;
-        const gap = calendarGrid.clientHeight - calendarGrid.scrollHeight;
-        if (gap < 12) return;
-        const fontPx =
-          parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-        const minRem =
-          parseFloat(
-            getComputedStyle(calendarGrid).getPropertyValue("--cal-week-row-min"),
-          ) || 4.75;
-        const minPx = Math.max(48, minRem * fontPx);
-        const n = Math.min(8, Math.max(1, Math.ceil(gap / minPx)));
-        const lastWeek = grid[grid.length - 1] || [];
-        const lastDate = [...lastWeek].reverse().find((d) => d instanceof Date);
-        if (!lastDate) return;
-        const cursor = new Date(lastDate);
+      const monthRowsShortfallPx = () => {
+        const rows = calendarGrid.querySelectorAll(
+          ":scope > .calendar-monthly-week-wrap",
+        );
+        const last = rows[rows.length - 1];
+        if (!(last instanceof HTMLElement)) return 0;
+        const lastBottom = last.getBoundingClientRect().bottom;
+        const gridBottom = calendarGrid.getBoundingClientRect().bottom;
+        const mainBottom =
+          calendarGrid.parentElement?.getBoundingClientRect().bottom ?? gridBottom;
+        return Math.max(gridBottom, mainBottom) - lastBottom;
+      };
+      const appendWeeksAfterLastPaintedDay = (n) => {
+        const cells = calendarGrid.querySelectorAll(
+          ".calendar-monthly-day[data-date]",
+        );
+        const lastKey = String(
+          cells[cells.length - 1]?.dataset?.date || "",
+        ).slice(0, 10);
+        const lastMatch = lastKey.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!lastMatch || n < 1) return 0;
+        const cursor = new Date(
+          Number(lastMatch[1]),
+          Number(lastMatch[2]) - 1,
+          Number(lastMatch[3]),
+        );
         cursor.setDate(cursor.getDate() + 1);
         const extras = [];
         for (let i = 0; i < n; i += 1) {
@@ -3801,32 +3810,41 @@ function renderMonthlyView(tabsElement) {
           extras.push(extraWeek);
           cursor.setDate(cursor.getDate() + 7);
         }
-        const extraKeys = extras
-          .flat()
-          .filter((d) => d instanceof Date)
-          .map((d) => formatDateKey(d));
+        const extraKeys = extras.map((week) => formatDateKey(week[0]));
         const extraStart = extraKeys[0];
-        const extraEnd = extraKeys[extraKeys.length - 1];
-        if (extraStart && extraEnd) {
-          const seen = new Set(
-            rangeTasks.map((t) => String(t.taskId || t.id || "")),
-          );
-          getAllTasksWithDateRange()
-            .filter((t) =>
-              calendarSectionTaskOverlapsYmdRange(t, extraStart, extraEnd),
-            )
-            .forEach((t) => {
-              const id = String(t.taskId || t.id || "");
-              if (id && seen.has(id)) return;
-              if (id) seen.add(id);
-              rangeTasks.push(t);
-            });
-        }
+        const extraEnd = formatDateKey(extras[extras.length - 1][6]);
+        const seen = new Set(
+          rangeTasks.map((t) => String(t.taskId || t.id || "")),
+        );
+        getAllTasksWithDateRange()
+          .filter((t) =>
+            calendarSectionTaskOverlapsYmdRange(t, extraStart, extraEnd),
+          )
+          .forEach((t) => {
+            const id = String(t.taskId || t.id || "");
+            if (id && seen.has(id)) return;
+            if (id) seen.add(id);
+            rangeTasks.push(t);
+          });
         extras.forEach((week) =>
           paintMonthWeek(week, { continuation: true }),
         );
+        return extras.length;
+      };
+      const fillShortMonth = () => {
+        if (calendarGrid._lpContFillGen !== fillGen) return;
+        if (!calendarGrid.isConnected) return;
+        const already = calendarGrid.querySelectorAll(
+          ":scope > .calendar-monthly-week-wrap--continuation",
+        ).length;
+        const gap = monthRowsShortfallPx();
+        if (gap < 12 || already >= 1) return;
+        const painted = appendWeeksAfterLastPaintedDay(1);
+        if (!painted) return;
         wrap._lpRememberCalendarGridPaintSig?.();
-      });
+      };
+      requestAnimationFrame(() => fillShortMonth());
+      setTimeout(() => fillShortMonth(), 180);
     }
     wrap._lpRememberCalendarGridPaintSig?.();
     applyCalendarDiaryVisibilityToRoot(wrap);

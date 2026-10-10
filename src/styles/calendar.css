@@ -1761,6 +1761,19 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   flex: 0 0 auto;
 }
 
+/* 이번 달 아래 빈칸은 다음 달 한 주만 늘려 채움 */
+.calendar-monthly-grid:not(.calendar-monthly-grid--1week-timegrid)
+  > .calendar-monthly-week-wrap.calendar-monthly-week-wrap--continuation {
+  flex: 1 1 auto;
+  padding-bottom: 0;
+}
+
+.calendar-monthly-grid:not(.calendar-monthly-grid--1week-timegrid)
+  > .calendar-monthly-week-wrap.calendar-monthly-week-wrap--continuation
+  > .calendar-monthly-week {
+  flex: 1 1 auto;
+}
+
 .calendar-monthly-layout:not(.calendar-1day-view)
   > .calendar-monthly-main
   > .calendar-monthly-tabs-wrap {
