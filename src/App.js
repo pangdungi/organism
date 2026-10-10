@@ -337,8 +337,6 @@ function initLpTabResumeCloudPull(getCurrentTabId) {
   /** 데스크탑 홈 3분할 — pull 후 embed soft refresh(옛 화면 고정 방지) */
   async function runHomeDesktopResumePull(gen) {
     if (!isDesktopDashboardViewport()) return;
-    const dash = document.querySelector(".lp-desktop-dashboard");
-    if (dash?.isConnected) showDesktopDashboardSyncing(dash);
     try {
       const pullP = pullDesktopDashboardData({
         forceTaskList: true,
@@ -429,7 +427,7 @@ function initLpTabResumeCloudPull(getCurrentTabId) {
       homeMobile,
     });
     /* 시간기록은 화면 위 오버레이만 — 토스트는 다른 탭만 */
-    if (tab !== "time") {
+    if (tab !== "time" && !homeDesktop) {
       const toastMsg = homeDesktop || homeMobile
         ? "홈 동기화 중…"
         : tab === "schedulecalendar"
@@ -898,7 +896,8 @@ export async function mountApp(container) {
       return;
     }
     const dash = liveDesktopDashboardRoot();
-    if (dash) showDesktopDashboardSyncing(dash);
+    /* 탭 복귀는 화면 그대로 두고 뒤에서 pull — 가림막은 첫 부팅만 */
+    if (dash && opts.showSyncOverlay) showDesktopDashboardSyncing(dash);
     const pullP = pullDesktopDashboardData({
       forceTaskList: true,
       force: true,
@@ -1713,7 +1712,10 @@ export async function mountApp(container) {
       if (bootTabId === "home") {
         try {
           if (isDesktopDashboardViewport()) {
-            await refreshHomeDesktopDashboardAfterEnter({ forceTaskList: true });
+            await refreshHomeDesktopDashboardAfterEnter({
+              forceTaskList: true,
+              showSyncOverlay: true,
+            });
           } else {
             /* 모바일 홈: 예전엔 pull 없이 끝났음 → 메뉴 들어가도 옛 로컬만 보임 */
             await Promise.all([

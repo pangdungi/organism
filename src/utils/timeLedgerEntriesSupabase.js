@@ -799,10 +799,13 @@ async function pullTimeLedgerEntriesForDateRangeCore(
 
   applyTimeLedgerServerRangeSnapshot(rows, rs, re, { preferServer: true });
   /*
-   * 어제 이전 「진행 중」→ 로컬 23:59 마감 후 서버에도 upsert.
-   * (마감 없이 남은 행이 pull마다 다시 비어 보이지 않게)
+   * 방금 받은 서버 구간에 마감이 비어 있을 때만 23:59.
+   * 서버에 마감이 있으면 스냅샷에 남아 있어서 여기서 건드리지 않음.
    */
-  const closed = closeStaleInProgressTimeLedgerRows(readTimeLedgerEntriesRaw());
+  const closed = closeStaleInProgressTimeLedgerRows(readTimeLedgerEntriesRaw(), {
+    rangeStart: rs,
+    rangeEnd: re,
+  });
   if (closed.changed) {
     writeTimeLedgerEntriesRaw(closed.rows);
     const idSet = new Set(

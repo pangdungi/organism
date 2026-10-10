@@ -54,6 +54,8 @@ function buildEndTimeAtDayEnd2359(entryYmd, startTime) {
  */
 export function closeStaleInProgressTimeLedgerRows(rows, opts = {}) {
   const today = opts.todayYmd || timeLedgerLocalTodayYmd();
+  const rangeStart = String(opts.rangeStart || "").trim();
+  const rangeEnd = String(opts.rangeEnd || "").trim();
   let changed = false;
   let closedCount = 0;
   const closedEntryIds = [];
@@ -61,6 +63,9 @@ export function closeStaleInProgressTimeLedgerRows(rows, opts = {}) {
     if (!timeLedgerRowHasOpenEnd(row)) return row;
     const entryYmd = timeLedgerRowEntryYmd(row);
     if (!entryYmd || entryYmd >= today) return row;
+    /* 방금 서버에서 받은 날짜만 — 그 밖은 기기 옛 기록이라 23:59를 넣지 않음 */
+    if (rangeStart && entryYmd < rangeStart) return row;
+    if (rangeEnd && entryYmd > rangeEnd) return row;
     const endTime = buildEndTimeAtDayEnd2359(entryYmd, row.startTime);
     if (!endTime) return row;
     changed = true;
