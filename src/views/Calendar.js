@@ -1087,6 +1087,23 @@ function lpBeginCalendarGridLayoutPass(calendarGrid, opts = {}) {
   };
 }
 
+/** 내용이 최소 주 높이보다 큰 주는 남는 화면 높이를 더 받지 않음 */
+function lpCalendarSyncMonthlyWeekWrapFit(weekRow, heightRem, weekRowMinRem) {
+  const wrap = weekRow?.closest?.(".calendar-monthly-week-wrap");
+  if (!(wrap instanceof HTMLElement)) return;
+  const floor =
+    Number.isFinite(weekRowMinRem) && weekRowMinRem > 0 ? weekRowMinRem : 4.75;
+  const h = Number(heightRem);
+  const hasStamp = !!weekRow?.classList?.contains(
+    "calendar-monthly-week--has-stamps",
+  );
+  const taller = Number.isFinite(h) && h > floor + 0.08;
+  wrap.classList.toggle(
+    "calendar-monthly-week-wrap--fit-content",
+    hasStamp || taller,
+  );
+}
+
 /** 월간 막대: 줄바꿈 반영 후 행별 실제 높이로 top·주 행 minHeight 맞춤(행 겹침 방지). */
 function lpCalendarFinalizeBarRowLayout(
   barsWithRow,
@@ -1107,6 +1124,9 @@ function lpCalendarFinalizeBarRowLayout(
       hasWeekRow: !!weekRow,
       hasStamps,
     });
+    weekRow
+      ?.closest?.(".calendar-monthly-week-wrap")
+      ?.classList.remove("calendar-monthly-week-wrap--fit-content");
     onSettled?.();
     return;
   }
@@ -1159,7 +1179,9 @@ function lpCalendarFinalizeBarRowLayout(
           maxBottomRem = Math.max(maxBottomRem, stampTop + stampOff);
         });
       const requiredHeight = maxBottomRem + bottomPad + subPxSlackRem;
-      weekRow.style.minHeight = `${Math.max(WEEK_ROW_MIN, requiredHeight)}rem`;
+      const fitted = Math.max(WEEK_ROW_MIN, requiredHeight);
+      weekRow.style.minHeight = `${fitted}rem`;
+      lpCalendarSyncMonthlyWeekWrapFit(weekRow, fitted, WEEK_ROW_MIN);
       return;
     }
 
@@ -1287,7 +1309,9 @@ function lpCalendarFinalizeBarRowLayout(
         maxBottomRem = Math.max(maxBottomRem, stampTop + stampOff);
       });
     const requiredHeight = maxBottomRem + bottomPad + subPxSlackRem;
-    weekRow.style.minHeight = `${Math.max(WEEK_ROW_MIN, requiredHeight)}rem`;
+    const fitted = Math.max(WEEK_ROW_MIN, requiredHeight);
+    weekRow.style.minHeight = `${fitted}rem`;
+    lpCalendarSyncMonthlyWeekWrapFit(weekRow, fitted, WEEK_ROW_MIN);
   };
 
   let pass = 0;
@@ -3521,17 +3545,19 @@ function renderMonthlyView(tabsElement) {
         allBars,
         weekDateKeys.length,
       );
-      weekRow.style.minHeight = `${lpCalendarMonthlyWeekRowTargetMinHeightRem(
+      const weekTargetRem = lpCalendarMonthlyWeekRowTargetMinHeightRem(
         baseBarTop,
         rowsNeeded,
         BAR_HEIGHT,
         ROW_GAP,
         BOTTOM_PAD,
         WEEK_ROW_MIN,
-      )}rem`;
+      );
+      weekRow.style.minHeight = `${weekTargetRem}rem`;
       const barsWithRow = allBars;
       const calendarBarTodayYmd = timeLedgerLocalTodayYmd();
       lpCalendarApplyWeekStampStripLayout(weekRow);
+      lpCalendarSyncMonthlyWeekWrapFit(weekRow, weekTargetRem, WEEK_ROW_MIN);
       const weekStampPad = lpCalendarWeekStampLayoutPadRem(weekRow, ROW_GAP);
       barsWithRow.forEach((b) => {
         const bar = document.createElement("div");
@@ -6019,17 +6045,19 @@ function render1WeekView(tabsElement, weekOpts = {}) {
       allBars,
       weekDateKeys.length,
     );
-    weekRow.style.minHeight = `${lpCalendarMonthlyWeekRowTargetMinHeightRem(
+    const weekTargetRem = lpCalendarMonthlyWeekRowTargetMinHeightRem(
       baseBarTop,
       rowsNeeded,
       BAR_HEIGHT,
       ROW_GAP,
       BOTTOM_PAD,
       WEEK_ROW_MIN,
-    )}rem`;
+    );
+    weekRow.style.minHeight = `${weekTargetRem}rem`;
     const barsWithRow = allBars;
     const calendarBarTodayYmd = timeLedgerLocalTodayYmd();
     lpCalendarApplyWeekStampStripLayout(weekRow);
+    lpCalendarSyncMonthlyWeekWrapFit(weekRow, weekTargetRem, WEEK_ROW_MIN);
     const weekStampPad = lpCalendarWeekStampLayoutPadRem(weekRow, ROW_GAP);
     barsWithRow.forEach((b) => {
       const bar = document.createElement("div");

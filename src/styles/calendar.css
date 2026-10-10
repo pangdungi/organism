@@ -1732,7 +1732,7 @@ button.calendar-1day-pane-section-head--action:focus-visible {
   z-index: 2;
 }
 
-/* 주 행: 내용(JS min-height) 이상 + 남는 세로는 주마다 균등 확장(아래 빈 여백 없음). 넘치면 그리드 스크롤 */
+/* 빈 주: 남는 세로를 나눔. 내용 주(--fit-content)는 내용 높이만. 넘치면 그리드 스크롤 */
 .calendar-monthly-grid:not(.calendar-monthly-grid--1week-timegrid)
   > .calendar-monthly-week-wrap {
   flex: 1 0 auto;
@@ -1742,11 +1742,23 @@ button.calendar-1day-pane-section-head--action:focus-visible {
 }
 
 .calendar-monthly-grid:not(.calendar-monthly-grid--1week-timegrid)
+  > .calendar-monthly-week-wrap.calendar-monthly-week-wrap--fit-content {
+  flex: 0 0 auto;
+  padding-bottom: 0.2rem;
+}
+
+.calendar-monthly-grid:not(.calendar-monthly-grid--1week-timegrid)
   > .calendar-monthly-week-wrap
   > .calendar-monthly-week {
   flex: 1 0 auto;
   width: 100%;
   min-height: 0;
+}
+
+.calendar-monthly-grid:not(.calendar-monthly-grid--1week-timegrid)
+  > .calendar-monthly-week-wrap.calendar-monthly-week-wrap--fit-content
+  > .calendar-monthly-week {
+  flex: 0 0 auto;
 }
 
 .calendar-monthly-layout:not(.calendar-1day-view)
